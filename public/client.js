@@ -81,6 +81,34 @@
   //   conns[zoneId] = { ws, role: 'primary'|'observer', meta, resources, claims, others }
   const conns = new Map();
 
+  // === Entity interpolation (다른 플레이어/mob 부드러운 움직임) ===
+  // 서버 tick(10Hz, 100ms 간격) 위치를 timestamped buffer에 쌓고, 렌더는 (now - INTERP_DELAY_MS)
+  // 시점의 위치를 양옆 두 샘플 사이 선형 보간으로 그린다. 60fps에서 연속적으로 흐름.
+  // 본인 캐릭터(myAbsPredicted)는 입력 예측이라 영향 없음.
+  // 핸드오프 시 player_left/mob_removed 받으면 즉시 비우니까 잔상 없음.
+  const INTERP_DELAY_MS = 120;
+  const INTERP_HISTORY_MS = 1000;
+  function pushSample(buf, t, x, y) {
+    buf.push({ t, x, y });
+    const cutoff = t - INTERP_HISTORY_MS;
+    while (buf.length > 2 && buf[0].t < cutoff) buf.shift();
+  }
+  function sampleAt(buf, t, fallbackX, fallbackY) {
+    if (!buf || buf.length === 0) return { x: fallbackX, y: fallbackY };
+    if (t <= buf[0].t) return { x: buf[0].x, y: buf[0].y };
+    const last = buf[buf.length - 1];
+    if (t >= last.t) return { x: last.x, y: last.y };
+    for (let i = buf.length - 1; i > 0; i--) {
+      const a = buf[i - 1], b = buf[i];
+      if (a.t <= t && t <= b.t) {
+        const dt = b.t - a.t;
+        const u = dt > 0 ? (t - a.t) / dt : 0;
+        return { x: a.x + (b.x - a.x) * u, y: a.y + (b.y - a.y) * u };
+      }
+    }
+    return { x: last.x, y: last.y };
+  }
+
   // === 입력 ===
   const keys = new Set();
   // e.code → 게임 키 매핑 — OS 키보드 layout(한/영) 무관
@@ -417,10 +445,13 @@
           lastTickWithMyPidAt = now;
         } else {
           const prev = c.others.get(pp.pid);
+          const buf = prev?.buf || [];
+          pushSample(buf, now, pp.x, pp.y);
           c.others.set(pp.pid, {
             pid: pp.pid,
             x: pp.x, y: pp.y, name: pp.name, color: pp.color || '#5a9ae0',
             hp: pp.hp, maxHp: pp.maxHp,
+            buf,
             lastX: prev?.x ?? pp.x, lastY: prev?.y ?? pp.y,
             lastT: now,
           });
@@ -433,8 +464,11 @@
         const aliveMobs = new Set(msg.mobs.map(m => m.mid));
         for (const m of msg.mobs) {
           const prev = c.mobs.get(m.mid);
+          const buf = prev?.buf || [];
+          pushSample(buf, now, m.x, m.y);
           c.mobs.set(m.mid, {
             ...m,
+            buf,
             lastX: prev?.x ?? m.x, lastY: prev?.y ?? m.y,
             lastT: now,
           });
@@ -782,6 +816,7 @@
 
     // === 2) 엔티티 수집 (depth sort용) ===
     const renderables = [];
+    const renderT = performance.now() - INTERP_DELAY_MS;
 
     for (const c of conns.values()) {
       if (!c.meta) continue;
@@ -802,19 +837,15 @@
         renderables.push({ z: iso.y, kind: 'building', b, iso, ax, ay });
       }
       for (const m of c.mobs.values()) {
-        const t = Math.min(1, (performance.now() - (m.lastT || performance.now())) / 100);
-        const lx = (m.lastX ?? m.x) + (m.x - (m.lastX ?? m.x)) * t;
-        const ly = (m.lastY ?? m.y) + (m.y - (m.lastY ?? m.y)) * t;
-        const ax = ox + lx, ay = oy + ly;
+        const pos = sampleAt(m.buf, renderT, m.x, m.y);
+        const ax = ox + pos.x, ay = oy + pos.y;
         if (Math.abs(ax - worldCx) > VIEW_RADIUS || Math.abs(ay - worldCy) > VIEW_RADIUS) continue;
         const iso = w2i(ax, ay);
         renderables.push({ z: iso.y, kind: 'mob', m, iso, ax, ay });
       }
       for (const o of c.others.values()) {
-        const t = Math.min(1, (performance.now() - o.lastT) / 100);
-        const lx = o.lastX + (o.x - o.lastX) * t;
-        const ly = o.lastY + (o.y - o.lastY) * t;
-        const ax = ox + lx, ay = oy + ly;
+        const pos = sampleAt(o.buf, renderT, o.x, o.y);
+        const ax = ox + pos.x, ay = oy + pos.y;
         if (Math.abs(ax - worldCx) > VIEW_RADIUS || Math.abs(ay - worldCy) > VIEW_RADIUS) continue;
         const iso = w2i(ax, ay);
         renderables.push({ z: iso.y, kind: 'player', pid: o.pid, name: o.name, color: o.color || '#5a9ae0', hp: o.hp, maxHp: o.maxHp, iso, ax, ay });
