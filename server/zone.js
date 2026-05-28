@@ -55,7 +55,7 @@ if (!ZONE) {
 // 각 zone이 다른 국가에 있다고 가정. 송수신 양쪽에 단방향 지연 적용 → 총 RTT = 2x.
 const LATENCY_MS = parseInt(process.env.LATENCY_MS || String(ZONE.simulatedLatencyMs || 0), 10);
 
-const TICK_HZ = 10;
+const TICK_HZ = 30;
 const MOVE_SPEED = 220; // px/sec
 const GATHER_RANGE = 48;
 const MAX_RESOURCES = 80;

@@ -86,7 +86,7 @@
   // 시점의 위치를 양옆 두 샘플 사이 선형 보간으로 그린다. 60fps에서 연속적으로 흐름.
   // 본인 캐릭터(myAbsPredicted)는 입력 예측이라 영향 없음.
   // 핸드오프 시 player_left/mob_removed 받으면 즉시 비우니까 잔상 없음.
-  const INTERP_DELAY_MS = 120;
+  const INTERP_DELAY_MS = 60;  // server tick 33ms(30Hz) + 약간의 jitter buffer
   const INTERP_HISTORY_MS = 1000;
   function pushSample(buf, t, x, y) {
     buf.push({ t, x, y });
