@@ -1,0 +1,32 @@
+# Central 서버 컨테이너 — 인증/거래소/dispatcher
+# 빌드:  docker build -f Dockerfile.central -t durango-central .
+# 실행:  docker run -p 3010:3010 \
+#         -e PUBLIC_HOST=central.example.com \
+#         -e ZONE_HOSTS='{"korea":"kr.example.com",...}' \
+#         -v /srv/durango/central.db:/data/central.db \
+#         -e DB_PATH=/data/central.db \
+#         durango-central
+
+FROM node:22-alpine
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install --omit=dev
+
+COPY server ./server
+COPY public ./public
+
+ENV NODE_ENV=production
+ENV PORT=3010
+ENV DB_PATH=/data/central.db
+ENV PUBLIC_HOST=localhost
+
+VOLUME /data
+
+EXPOSE 3010
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD wget -q -O- http://localhost:${PORT}/health || exit 1
+
+CMD ["node", "--experimental-sqlite", "server/central.js"]

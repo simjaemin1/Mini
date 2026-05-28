@@ -1,0 +1,33 @@
+# Caddy 리버스 프록시 설정 — 프로덕션 SSL 자동화
+#
+# 사용: 도메인이 이 서버 IP로 향하면 Caddy가 Let's Encrypt 인증서 자동 발급 후 HTTPS 활성화.
+# WS도 wss://로 자동 업그레이드됨.
+#
+# 각 VPS에 이 파일을 두고 컨테이너에 마운트 (compose의 caddy 섹션 참고).
+
+# 중앙 서버 (central VPS에 둠)
+central.example.com {
+    reverse_proxy localhost:3010
+    encode gzip
+}
+
+# 5개 zone — 각자의 VPS에 해당 zone 블록만 두기.
+fr.example.com {
+    reverse_proxy localhost:3004
+}
+
+cn.example.com {
+    reverse_proxy localhost:3001
+}
+
+kr.example.com {
+    reverse_proxy localhost:3002
+}
+
+jp.example.com {
+    reverse_proxy localhost:3003
+}
+
+us.example.com {
+    reverse_proxy localhost:3005
+}

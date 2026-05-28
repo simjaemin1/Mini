@@ -1,0 +1,32 @@
+# japan zone — Osaka(kix)로 띄워서 korea와 진짜 구분
+# (Tokyo nrt와 Osaka kix 간 RTT는 ~10ms, 의미 있는 지리 분리)
+
+app = "durango-japan"
+primary_region = "kix"
+
+[build]
+  dockerfile = "../Dockerfile.zone"
+
+[env]
+  ZONE_ID = "japan"
+  PORT = "3003"
+  DB_PATH = "/data/world-japan.db"
+  LATENCY_MS = "0"
+  WS_PROTO = "wss"
+  HTTP_PROTO = "https"
+  CENTRAL_PORT = "443"
+
+[http_service]
+  internal_port = 3003
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[mounts]]
+  source = "japan_data"
+  destination = "/data"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

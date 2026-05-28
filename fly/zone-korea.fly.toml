@@ -1,0 +1,39 @@
+# korea zone — Tokyo 리전 (한국 사용자 RTT ~30ms)
+#
+# 첫 배포 전:
+#   fly apps create durango-korea
+#   fly volumes create korea_data --region nrt --size 1
+#   fly secrets set CENTRAL_HOST=durango-central.fly.dev CENTRAL_PORT=443 HTTP_PROTO=https \
+#     ZONE_HOSTS='{"korea":"durango-korea.fly.dev","japan":"durango-japan.fly.dev"}' -a durango-korea
+# 배포:
+#   fly deploy --config fly/zone-korea.fly.toml --dockerfile Dockerfile.zone
+
+app = "durango-korea"
+primary_region = "nrt"
+
+[build]
+  dockerfile = "../Dockerfile.zone"
+
+[env]
+  ZONE_ID = "korea"
+  PORT = "3002"
+  DB_PATH = "/data/world-korea.db"
+  LATENCY_MS = "0"
+  WS_PROTO = "wss"
+  HTTP_PROTO = "https"
+  CENTRAL_PORT = "443"
+
+[http_service]
+  internal_port = 3002
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[mounts]]
+  source = "korea_data"
+  destination = "/data"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

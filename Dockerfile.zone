@@ -1,0 +1,41 @@
+# Zone 서버 컨테이너
+# 빌드:  docker build -f Dockerfile.zone -t durango-zone .
+# 실행:  docker run -e ZONE_ID=korea -e PORT=3002 -p 3002:3002 \
+#         -e CENTRAL_HOST=central.example.com -e CENTRAL_PORT=3010 \
+#         -e ZONE_HOSTS='{"korea":"kr.example.com","japan":"jp.example.com",...}' \
+#         -v /srv/durango/world-korea.db:/data/world.db \
+#         -e DB_PATH=/data/world.db \
+#         durango-zone
+
+FROM node:22-alpine
+
+WORKDIR /app
+
+# 의존성 캐싱
+COPY package*.json ./
+RUN npm install --omit=dev
+
+# 소스
+COPY server ./server
+COPY public ./public
+
+# 기본 환경
+ENV NODE_ENV=production
+ENV ZONE_ID=korea
+ENV PORT=3002
+ENV DB_PATH=/data/world.db
+ENV LATENCY_MS=0
+# 분산 모드 기본값 — 실제론 docker run 시 override
+ENV CENTRAL_HOST=central
+ENV CENTRAL_PORT=3010
+
+# DB 마운트 포인트
+VOLUME /data
+
+EXPOSE 3002
+
+# 헬스체크 — Docker가 컨테이너 상태 모니터링
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD wget -q -O- http://localhost:${PORT}/health || exit 1
+
+CMD ["sh", "-c", "node --experimental-sqlite server/zone.js"]

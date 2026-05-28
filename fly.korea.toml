@@ -1,0 +1,35 @@
+# Fly.io — korea zone
+# 첫 배포 전:
+#   fly apps create durango-korea
+#   fly volumes create korea_data --region nrt --size 1 -a durango-korea
+#   fly secrets set CENTRAL_HOST=durango-central.fly.dev \
+#     ZONE_HOSTS='{"korea":"durango-korea.fly.dev","japan":"durango-japan.fly.dev"}' -a durango-korea
+# 배포:
+#   fly deploy --config fly.korea.toml --dockerfile Dockerfile.zone
+
+app = "durango-korea-jm"
+primary_region = "nrt"   # Tokyo
+
+[env]
+  ZONE_ID = "korea"
+  PORT = "3002"
+  DB_PATH = "/data/world-korea.db"
+  LATENCY_MS = "0"
+  WS_PROTO = "wss"
+  HTTP_PROTO = "https"
+  CENTRAL_PORT = "443"
+
+[http_service]
+  internal_port = 3002
+  force_https = true
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[mounts]]
+  source = "korea_data"
+  destination = "/data"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

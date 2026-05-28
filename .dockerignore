@@ -1,0 +1,15 @@
+node_modules
+*.db
+*.db-shm
+*.db-wal
+*.db.legacy
+logs/
+.DS_Store
+*.log
+.git
+.gitignore
+DEPLOY.md
+KNOWN_ISSUES.md
+DEVELOPMENT_LOG.md
+PHASE_NOTES.md
+ecosystem.config.js

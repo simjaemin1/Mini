@@ -1,0 +1,135 @@
+# 로컬 dev용 docker-compose
+# 실제 분산 배포에선 각 zone을 다른 VPS에 띄움 (compose 사용 안 함).
+#
+# 사용:
+#   docker compose up --build      # 6개 컨테이너 다 띄움
+#   docker compose down -v         # 정리 (volumes 포함)
+#
+# 접속: http://localhost:3010
+
+services:
+  central:
+    build:
+      context: .
+      dockerfile: Dockerfile.central
+    image: durango-central
+    container_name: durango-central
+    ports:
+      - "3010:3010"
+    environment:
+      PUBLIC_HOST: localhost
+      ZONE_HOSTS: '{"france":"localhost","china":"localhost","korea":"localhost","japan":"localhost","usa":"localhost"}'
+    volumes:
+      - central-data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:3010/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  zone-france:
+    build: { context: ., dockerfile: Dockerfile.zone }
+    image: durango-zone
+    container_name: durango-zone-france
+    depends_on:
+      central: { condition: service_healthy }
+    ports: ["3004:3004"]
+    environment:
+      ZONE_ID: france
+      PORT: 3004
+      CENTRAL_HOST: central
+      CENTRAL_PORT: 3010
+      ZONE_HOSTS: '{"france":"zone-france","china":"zone-china","korea":"zone-korea","japan":"zone-japan","usa":"zone-usa"}'
+      LATENCY_MS: 0
+    volumes:
+      - france-data:/data
+
+  zone-china:
+    build: { context: ., dockerfile: Dockerfile.zone }
+    image: durango-zone
+    container_name: durango-zone-china
+    depends_on:
+      central: { condition: service_healthy }
+    ports: ["3001:3001"]
+    environment:
+      ZONE_ID: china
+      PORT: 3001
+      CENTRAL_HOST: central
+      CENTRAL_PORT: 3010
+      ZONE_HOSTS: '{"france":"zone-france","china":"zone-china","korea":"zone-korea","japan":"zone-japan","usa":"zone-usa"}'
+      LATENCY_MS: 0
+    volumes:
+      - china-data:/data
+
+  zone-korea:
+    build: { context: ., dockerfile: Dockerfile.zone }
+    image: durango-zone
+    container_name: durango-zone-korea
+    depends_on:
+      central: { condition: service_healthy }
+    ports: ["3002:3002"]
+    environment:
+      ZONE_ID: korea
+      PORT: 3002
+      CENTRAL_HOST: central
+      CENTRAL_PORT: 3010
+      ZONE_HOSTS: '{"france":"zone-france","china":"zone-china","korea":"zone-korea","japan":"zone-japan","usa":"zone-usa"}'
+      LATENCY_MS: 0
+    volumes:
+      - korea-data:/data
+
+  zone-japan:
+    build: { context: ., dockerfile: Dockerfile.zone }
+    image: durango-zone
+    container_name: durango-zone-japan
+    depends_on:
+      central: { condition: service_healthy }
+    ports: ["3003:3003"]
+    environment:
+      ZONE_ID: japan
+      PORT: 3003
+      CENTRAL_HOST: central
+      CENTRAL_PORT: 3010
+      ZONE_HOSTS: '{"france":"zone-france","china":"zone-china","korea":"zone-korea","japan":"zone-japan","usa":"zone-usa"}'
+      LATENCY_MS: 0
+    volumes:
+      - japan-data:/data
+
+  zone-usa:
+    build: { context: ., dockerfile: Dockerfile.zone }
+    image: durango-zone
+    container_name: durango-zone-usa
+    depends_on:
+      central: { condition: service_healthy }
+    ports: ["3005:3005"]
+    environment:
+      ZONE_ID: usa
+      PORT: 3005
+      CENTRAL_HOST: central
+      CENTRAL_PORT: 3010
+      ZONE_HOSTS: '{"france":"zone-france","china":"zone-china","korea":"zone-korea","japan":"zone-japan","usa":"zone-usa"}'
+      LATENCY_MS: 0
+    volumes:
+      - usa-data:/data
+
+  # === Caddy 리버스 프록시 (선택) ===
+  # 프로덕션엔 도메인 + Let's Encrypt 자동 발급. 로컬에선 주석 처리하거나 그대로 둠.
+  # caddy:
+  #   image: caddy:2-alpine
+  #   container_name: durango-caddy
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./Caddyfile:/etc/caddy/Caddyfile
+  #     - caddy-data:/data
+  #   depends_on: [central]
+
+volumes:
+  central-data:
+  france-data:
+  china-data:
+  korea-data:
+  japan-data:
+  usa-data:
+  # caddy-data:

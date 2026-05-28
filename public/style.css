@@ -1,0 +1,251 @@
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; height: 100%; font-family: -apple-system, "Segoe UI", system-ui, sans-serif; background: #1a1d1f; color: #e8eaed; overflow: hidden; }
+
+.hidden { display: none !important; }
+
+/* === Lobby === */
+#lobby {
+  position: fixed; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(circle at 30% 30%, #2d3a44, #14191c 70%);
+}
+.lobby-card {
+  background: #232830; padding: 32px 36px; border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  min-width: 360px;
+}
+.lobby-card h1 { margin: 0 0 4px; font-size: 26px; }
+.lobby-card .sub { margin: 0 0 24px; color: #8a93a0; font-size: 13px; }
+.lobby-card label { display: block; font-size: 12px; color: #9aa3b0; margin: 10px 0 4px; }
+.lobby-card input, .lobby-card select {
+  width: 100%; background: #1a1f25; color: #e8eaed; border: 1px solid #333a44;
+  padding: 9px 12px; border-radius: 6px; font-size: 14px;
+}
+.lobby-card button {
+  margin-top: 18px; width: 100%; padding: 11px; border: 0;
+  background: linear-gradient(180deg, #4a8a6a, #3a6a4a);
+  color: #fff; font-weight: 600; border-radius: 6px; cursor: pointer; font-size: 14px;
+}
+.lobby-card button:hover { filter: brightness(1.1); }
+.hint { margin-top: 18px; font-size: 11px; color: #6c7686; line-height: 1.7; }
+#health { margin-top: 12px; font-size: 11px; color: #8a93a0; font-family: monospace; }
+.sublabel { font-size: 10px; color: #6c7686; font-weight: normal; }
+.auth-error {
+  margin-top: 10px; padding: 8px 11px; border-radius: 4px;
+  background: rgba(220, 60, 60, 0.15); border: 1px solid rgba(220, 60, 60, 0.4);
+  color: #e88;
+  font-size: 12px;
+}
+
+/* === 색상 팔레트 === */
+#colorPicker { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.color-swatch {
+  width: 28px; height: 28px; border-radius: 50%;
+  cursor: pointer; border: 2px solid transparent;
+  transition: transform 0.1s;
+}
+.color-swatch:hover { transform: scale(1.1); }
+.color-swatch.selected {
+  border-color: #f0c674;
+  box-shadow: 0 0 0 2px #1a1d1f, 0 0 8px rgba(240, 198, 116, 0.6);
+}
+
+/* === 채팅 패널 === */
+#chatPanel {
+  position: fixed; left: 12px; bottom: 12px;
+  width: 360px; z-index: 10;
+  display: flex; flex-direction: column; gap: 4px;
+  pointer-events: none;
+}
+#chatLog {
+  max-height: 140px; overflow-y: hidden;
+  display: flex; flex-direction: column; gap: 2px;
+  pointer-events: none;
+}
+.chat-line {
+  background: rgba(20, 25, 30, 0.7);
+  padding: 3px 8px; border-radius: 3px;
+  font-size: 12px; color: #cdd6e3;
+  border-left: 3px solid #5a9ae0;
+}
+.chat-line b { color: #f0c674; margin-right: 4px; }
+#chatInputWrap { pointer-events: auto; }
+#chatInput {
+  width: 100%; background: rgba(20, 25, 30, 0.9);
+  color: #e8eaed; border: 1px solid #3a424d;
+  padding: 6px 10px; border-radius: 3px; font-size: 13px;
+  outline: none;
+}
+#chatInput:focus { border-color: #f0c674; background: rgba(20, 25, 30, 1); }
+#chatInput:not(.active) { opacity: 0.5; }
+
+/* === Game === */
+#game {
+  position: fixed; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: #0c0f11;
+}
+#canvas {
+  background: #2d3a2a;
+  image-rendering: pixelated;
+  box-shadow: 0 0 0 1px #333, 0 20px 60px rgba(0,0,0,0.6);
+}
+
+#hud {
+  position: fixed; top: 12px; left: 12px;
+  display: flex; flex-direction: column; gap: 8px;
+  pointer-events: none;
+  z-index: 10;
+}
+.hud-row { display: flex; gap: 8px; align-items: center; pointer-events: auto; }
+.hud-actions button {
+  background: #2a313a; color: #e8eaed; border: 1px solid #3a424d;
+  padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;
+}
+.hud-actions button:hover { background: #3a424d; }
+.badge {
+  background: rgba(20, 25, 30, 0.85); padding: 5px 11px;
+  border-radius: 4px; font-size: 12px;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.badge.ping { font-family: monospace; }
+.badge.coord { font-family: monospace; font-size: 11px; color: #c5cad3; }
+.inv {
+  background: rgba(20, 25, 30, 0.85); padding: 5px 11px;
+  border-radius: 4px; font-size: 13px;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.inv b { color: #f0c674; margin-left: 4px; }
+
+/* HP bar */
+.hp-bar {
+  position: relative; width: 220px; height: 18px;
+  background: rgba(20,25,30,0.85); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 4px; overflow: hidden;
+}
+.hp-fill {
+  position: absolute; left: 0; top: 0; bottom: 0;
+  width: 100%; background: linear-gradient(90deg, #c84a4a, #e07a5a);
+  transition: width 200ms;
+}
+.hp-text {
+  position: absolute; left: 0; right: 0; top: 0; bottom: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; color: #fff; font-family: monospace;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+}
+
+/* Modal */
+.modal {
+  position: fixed; inset: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.5);
+}
+.modal-card {
+  background: #1f242c; border: 1px solid #3a424d;
+  border-radius: 8px; padding: 16px;
+  min-width: 360px; max-width: 520px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+}
+.modal-head {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 14px; font-weight: bold; color: #f0c674;
+  border-bottom: 1px solid #333; padding-bottom: 8px; margin-bottom: 12px;
+}
+.modal-head button { background: #2a313a; color: #ccc; border: 1px solid #3a424d; padding: 4px 10px; border-radius: 3px; cursor: pointer; font-size: 11px; }
+.modal-body { font-size: 12px; color: #cdd6e3; }
+
+/* 거래소 */
+.market-form {
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  background: #1a1f25; padding: 8px; border-radius: 4px; margin-bottom: 8px;
+}
+.market-form label { display: flex; align-items: center; gap: 4px; font-size: 11px; color: #aaa; }
+.market-form input, .market-form select {
+  background: #0c0f11; color: #e8eaed; border: 1px solid #3a424d;
+  padding: 4px 6px; border-radius: 3px; font-size: 12px; width: 60px;
+}
+.market-form select { width: 80px; }
+.market-form button.buy { background: #3a6a4a; color: #fff; border: 0; padding: 5px 12px; border-radius: 3px; cursor: pointer; }
+.market-form button.sell { background: #8a4a3a; color: #fff; border: 0; padding: 5px 12px; border-radius: 3px; cursor: pointer; }
+.market-hint { font-size: 10px; color: #6c7686; margin-bottom: 8px; }
+#marketOrders { max-height: 260px; overflow-y: auto; }
+.market-order {
+  display: flex; gap: 8px; align-items: center;
+  background: rgba(30,35,42,0.5); padding: 4px 8px; margin-bottom: 3px;
+  border-radius: 3px; font-size: 11px;
+}
+.market-order .sell { color: #e07a5a; font-weight: bold; }
+.market-order .buy { color: #5ad88a; font-weight: bold; }
+.market-order .who { color: #8a93a0; margin-left: auto; font-size: 10px; }
+.market-order button { background: #5a3a3a; color: #fff; border: 0; padding: 2px 8px; border-radius: 3px; cursor: pointer; font-size: 10px; }
+
+/* 상자 */
+.chest-card { min-width: 280px; }
+.chest-content { display: flex; gap: 16px; font-size: 14px; margin-bottom: 12px; }
+.chest-content b { color: #f0c674; }
+.chest-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.chest-actions button { background: #2a313a; color: #ccc; border: 1px solid #3a424d; padding: 6px 10px; border-radius: 3px; cursor: pointer; font-size: 11px; }
+.chest-actions button:hover { background: #3a424d; }
+
+/* Craft */
+.craft-card { min-width: 360px; }
+.craft-equipped-row { font-size: 12px; color: #b5bcc8; margin-bottom: 10px; }
+.craft-equipped-row b { color: #f0c674; }
+.craft-equipped-row .hint { color: #6a737d; margin-left: 6px; font-size: 10px; }
+.craft-row {
+  display: flex; align-items: center; gap: 10px;
+  background: rgba(30,35,42,0.5); padding: 8px 10px; margin-bottom: 6px;
+  border-radius: 4px; border: 1px solid transparent;
+}
+.craft-row.eq { border-color: #f0c674; background: rgba(60,50,30,0.5); }
+.craft-icon { font-size: 22px; }
+.craft-info { flex: 1; }
+.craft-name { font-size: 13px; color: #d5dae3; }
+.craft-name .craft-have { color: #5ad88a; font-size: 11px; margin-left: 6px; }
+.craft-cost { font-size: 11px; color: #8a93a0; margin-top: 2px; }
+.craft-btn, .equip-btn {
+  background: #2a3a3a; color: #ccc; border: 1px solid #3a4d4d;
+  padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 11px;
+}
+.craft-btn:hover:not(:disabled), .equip-btn:hover:not(:disabled) { background: #3a4d4d; }
+.craft-btn:disabled, .equip-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.equip-btn { background: #2a323a; border-color: #3a424d; }
+
+#notice {
+  background: rgba(20, 25, 30, 0.9);
+  padding: 6px 11px; border-radius: 4px;
+  font-size: 12px; max-width: 320px; min-height: 18px;
+  border: 1px solid rgba(255,255,255,0.08);
+  color: #c5cad3;
+}
+
+#minimap {
+  position: fixed; top: 12px; right: 12px;
+  background: rgba(20, 25, 30, 0.85); padding: 8px 10px;
+  border-radius: 6px; border: 1px solid rgba(255,255,255,0.08);
+  z-index: 10;
+}
+.mini-row { display: flex; gap: 4px; }
+.mini-cell {
+  position: relative;
+  width: 64px; height: 44px; border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; color: rgba(255,255,255,0.85);
+  border: 1px solid transparent;
+  overflow: hidden;
+  text-align: center;
+  line-height: 1.2;
+}
+.mini-cell small { font-size: 9px; opacity: 0.8; }
+.mini-cell.active { border-color: #f0c674; box-shadow: 0 0 8px rgba(240, 198, 116, 0.5); }
+.mini-cell span { z-index: 2; text-shadow: 0 1px 2px rgba(0,0,0,0.7); }
+.mini-dot {
+  position: absolute; width: 7px; height: 7px;
+  background: #f0c674; border: 1.5px solid #1a1d1f;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 3;
+  box-shadow: 0 0 4px rgba(240, 198, 116, 0.8);
+}
+.mini-label { font-size: 10px; color: #8a93a0; margin-top: 6px; text-align: center; }

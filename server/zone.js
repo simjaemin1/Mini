@@ -1,0 +1,1379 @@
+// 존 서버 — 한 지역의 시뮬레이션을 권위적으로 처리
+// 환경변수 ZONE_ID, PORT 로 어떤 존을 띄울지 결정
+//
+// 실제 분산 배포에서는 각 ZONE을 다른 국가의 서버에서 실행하면 됨.
+// 프로토타입에서는 같은 머신에서 다른 포트로 시뮬레이션.
+
+const WebSocket = require('ws');
+const http = require('http');
+const { ZONES, WORLD, isNight, worldPhase, darknessLevel } = require('./zone-config');
+const db = require('./zone-local-db'); // 로컬 zone DB — players 없음
+const central = require('./central-client'); // central HTTP 클라이언트
+
+// 플레이어 변경을 central에 fire-and-forget 저장
+function savePlayer(player, extra = {}) {
+  if (!player.playerId || player.playerId.startsWith('anon_')) return;
+  const patch = {
+    wood: player.inventory.wood,
+    stone: player.inventory.stone,
+    tools_json: JSON.stringify(player.tools || {}),
+    equipped: player.equipped || null,
+    last_zone: extra.last_zone ?? null, // 명시적으로 넘긴 zone만 변경
+    last_x: extra.last_x ?? player.x,
+    last_y: extra.last_y ?? player.y,
+    color: player.color,
+    ...extra,
+  };
+  central.updatePlayer(player.playerId, patch).catch(e =>
+    console.warn(`[${process.env.ZONE_ID || 'zone'}] central save 실패 (${player.playerId}):`, e.message)
+  );
+}
+
+const ZONE_ID = process.env.ZONE_ID || 'korea';
+const PORT = parseInt(process.env.PORT || ZONES[ZONE_ID]?.port || '3002', 10);
+const ZONE = ZONES[ZONE_ID];
+// 메트릭 카운터
+const metrics = {
+  startedAt: Date.now(),
+  handoffs_out: 0,
+  handoffs_in: 0,
+  handoff_acks: 0,
+  handoff_timeouts: 0,
+  chats: 0,
+  attacks: 0,
+  builds: 0,
+  ws_connects: 0,
+  ws_closes: 0,
+};
+
+if (!ZONE) {
+  console.error(`[FATAL] Unknown zone: ${ZONE_ID}. Valid: ${Object.keys(ZONES).join(', ')}`);
+  process.exit(1);
+}
+
+// === 인공 지연 시뮬레이션 ===
+// 각 zone이 다른 국가에 있다고 가정. 송수신 양쪽에 단방향 지연 적용 → 총 RTT = 2x.
+const LATENCY_MS = parseInt(process.env.LATENCY_MS || String(ZONE.simulatedLatencyMs || 0), 10);
+
+const TICK_HZ = 10;
+const MOVE_SPEED = 220; // px/sec
+const GATHER_RANGE = 48;
+const MAX_RESOURCES = 80;
+
+// === 상태 ===
+const players = new Map();      // pid -> { ws, x, y, vx, vy, name, inventory, handingOff }
+const observers = new Map();    // ws -> { viewerX, viewerY, lastSeen }
+const resources = new Map();
+const AOI_RADIUS = 800;         // 클라 VIEW_RADIUS(650) + 여유. 이 안의 player만 tick에 포함
+const claims = new Map();
+const buildings = new Map();    // id -> { id, dbId, type, ownerId, ownerName, x, y, data }
+const mobs = new Map();         // mid -> { mid, type, x, y, vx, vy, hp, maxHp, aggroTarget, lastAttackAt, wanderUntil }
+const BUILDING_SIZE = 32;
+const BUILDING_COST = {
+  wall:  { wood: 2, stone: 1 },
+  chest: { wood: 5, stone: 2 },
+};
+const MOB_DEFS = {
+  deer: { maxHp: 10, speed: 80,  aggroRange: 0, damage: 0, sightRange: 0,   loot: { wood: 1 } },
+  wolf: { maxHp: 30, speed: 140, aggroRange: 250, damage: 5, sightRange: 300, loot: { stone: 1 } },
+};
+
+// === Crafting ===
+// 레시피: { 도구이름: { wood, stone, label } }
+const RECIPES = {
+  axe:     { wood: 5, stone: 2, label: '도끼' },
+  pickaxe: { wood: 3, stone: 5, label: '곡괭이' },
+  sword:   { wood: 2, stone: 8, label: '검' },
+};
+// 장착 시 효과 — 채집/공격 데미지 배수
+// 채집은 자원 hp 깎는 1회 데미지를 배수 적용. 기본 1.
+const TOOL_EFFECTS = {
+  axe:     { gatherWoodMult: 3, gatherStoneMult: 1, attackMult: 1.0 },
+  pickaxe: { gatherWoodMult: 1, gatherStoneMult: 3, attackMult: 1.0 },
+  sword:   { gatherWoodMult: 1, gatherStoneMult: 1, attackMult: 2.0 },
+};
+const PLAYER_MAX_HP = 100;
+const PLAYER_ATTACK_RANGE = 60;
+const PLAYER_ATTACK_DAMAGE = 10;
+const PLAYER_ATTACK_COOLDOWN_MS = 500;
+let nextMid = 1;
+const pendingHandoffs = new Map(); // token -> { source_zone, name, x, y, vx, vy, inventory, createdAt } (수신측)
+const outgoingHandoffs = new Map(); // token -> { pid, timeoutHandle } (송신측 — ACK 대기 중)
+let nextPid = 1;
+let nextRid = 1;
+let nextBid = 1;
+let nextClaimId = 1;
+
+function generateToken() {
+  return Math.random().toString(36).slice(2, 12) + Date.now().toString(36).slice(-6);
+}
+
+// === 자원 스폰 ===
+function biomeResourceType() {
+  if (ZONE.biome === 'plains') return Math.random() < 0.72 ? 'tree' : 'rock';
+  if (ZONE.biome === 'mountains') return Math.random() < 0.32 ? 'tree' : 'rock';
+  return Math.random() < 0.85 ? 'tree' : 'rock'; // forest
+}
+
+function spawnOneResource() {
+  const x = 32 + Math.random() * (WORLD.zoneWidth - 64);
+  const y = 32 + Math.random() * (WORLD.zoneHeight - 64);
+  const type = biomeResourceType();
+  const maxHp = type === 'tree' ? 3 : 4;
+  // DB에 영속화
+  const dbId = db.insertResource({ type, x, y, hp: maxHp, max_hp: maxHp });
+  const id = `r${nextRid++}`;
+  const r = { id, dbId, x, y, type, hp: maxHp, maxHp };
+  resources.set(id, r);
+  return r;
+}
+
+// === DB에서 기존 자원 로드 (없으면 새로 spawn) ===
+{
+  const existing = db.getResources();
+  if (existing.length > 0) {
+    for (const row of existing) {
+      const id = `r${nextRid++}`;
+      resources.set(id, {
+        id, dbId: row.id,
+        type: row.type, x: row.x, y: row.y,
+        hp: row.hp, maxHp: row.max_hp,
+      });
+    }
+    console.log(`[${ZONE_ID}] DB에서 자원 ${existing.length}개 로드`);
+  } else {
+    for (let i = 0; i < MAX_RESOURCES; i++) spawnOneResource();
+    console.log(`[${ZONE_ID}] 새 자원 ${MAX_RESOURCES}개 spawn`);
+  }
+}
+
+// === DB에서 자기 zone의 claims 로드 ===
+{
+  const rows = db.getClaims();
+  for (const row of rows) {
+    const id = `c${nextClaimId++}`;
+    claims.set(id, {
+      id,
+      dbId: row.id,
+      ownerPid: row.owner_id,  // DB의 player_id (안정적인 식별자)
+      ownerName: row.owner_name,
+      x: row.x, y: row.y, w: row.w, h: row.h,
+    });
+  }
+  console.log(`[${ZONE_ID}] DB에서 claim ${rows.length}개 로드`);
+}
+
+// === Mob spawn — DB에 영속화 (위치/HP는 주기적 저장) ===
+function spawnMob(type, opts = {}) {
+  const def = MOB_DEFS[type];
+  const mid = `m${nextMid++}`;
+  const x = opts.x ?? 32 + Math.random() * (WORLD.zoneWidth - 64);
+  const y = opts.y ?? 32 + Math.random() * (WORLD.zoneHeight - 64);
+  const hp = opts.hp ?? def.maxHp;
+  // DB에 insert (dbId가 없으면 새로 만들고, 있으면 그대로 사용 — 로드 케이스)
+  const dbId = opts.dbId ?? db.insertMob({ type, x, y, hp, max_hp: def.maxHp });
+  const m = {
+    mid, dbId, type,
+    x, y,
+    vx: 0, vy: 0,
+    hp, maxHp: def.maxHp,
+    aggroTarget: null,
+    lastAttackAt: 0,
+    wanderUntil: 0,
+    dirty: false, // tick-by-tick 변경 추적 — 주기 저장에 사용
+  };
+  mobs.set(mid, m);
+  return m;
+}
+{
+  // DB에서 기존 mob 로드 — 없으면 바이옴별 신규 스폰
+  const existing = db.getMobs();
+  if (existing.length > 0) {
+    for (const row of existing) {
+      spawnMob(row.type, { dbId: row.id, x: row.x, y: row.y, hp: row.hp });
+    }
+    console.log(`[${ZONE_ID}] DB에서 mob ${existing.length}마리 로드`);
+  } else {
+    const isHostile = ZONE.biome === 'mountains' || ZONE.biome === 'forest';
+    const deerCount = isHostile ? 4 : 8;
+    const wolfCount = isHostile ? 5 : 2;
+    for (let i = 0; i < deerCount; i++) spawnMob('deer');
+    for (let i = 0; i < wolfCount; i++) spawnMob('wolf');
+    console.log(`[${ZONE_ID}] 새 mob 스폰: 사슴 ${deerCount}, 늑대 ${wolfCount}`);
+  }
+}
+
+// 주기적으로 mob 위치/HP 저장 (10초 간격) — dirty 플래그 켜진 것만
+setInterval(() => {
+  let saved = 0;
+  for (const m of mobs.values()) {
+    if (m.dirty && m.dbId) {
+      try { db.updateMobState(m.dbId, m.x, m.y, m.hp); saved++; m.dirty = false; }
+      catch (e) { /* lock 잡혔으면 다음 라운드 */ }
+    }
+  }
+  if (saved > 0) console.log(`[${ZONE_ID}] mob 상태 저장 ${saved}건`);
+}, 10000);
+
+// === DB에서 건축물 로드 ===
+{
+  const rows = db.getBuildings();
+  for (const row of rows) {
+    const id = `b${nextBid++}`;
+    buildings.set(id, {
+      id, dbId: row.id,
+      type: row.type,
+      ownerId: row.owner_id,
+      ownerName: row.owner_name,
+      x: row.x, y: row.y,
+      data: row.data ? JSON.parse(row.data) : null,
+    });
+  }
+  console.log(`[${ZONE_ID}] DB에서 건축물 ${rows.length}개 로드`);
+}
+
+// 점진적 리스폰
+setInterval(() => {
+  if (resources.size < MAX_RESOURCES) {
+    const r = spawnOneResource();
+    broadcast({ type: 'resource_spawn', resource: r });
+  }
+}, 4000);
+
+// === HTTP + WebSocket ===
+const server = http.createServer((req, res) => {
+  if (req.url === '/health' && req.method === 'GET') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      zone: ZONE_ID,
+      players: players.size,
+      observers: observers.size,
+      resources: resources.size,
+      buildings: buildings.size,
+      mobs: mobs.size,
+      claims: claims.size,
+      latency_ms: LATENCY_MS,
+      uptime: process.uptime(),
+    }));
+    return;
+  }
+  if (req.url === '/metrics' && req.method === 'GET') {
+    // Prometheus exposition format (간단 버전)
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    const lines = [
+      `# zone=${ZONE_ID}`,
+      `durango_players ${players.size}`,
+      `durango_observers ${observers.size}`,
+      `durango_resources ${resources.size}`,
+      `durango_buildings ${buildings.size}`,
+      `durango_mobs ${mobs.size}`,
+      `durango_claims ${claims.size}`,
+      `durango_uptime_seconds ${process.uptime().toFixed(1)}`,
+      `durango_latency_ms ${LATENCY_MS}`,
+      `durango_handoffs_out_total ${metrics.handoffs_out}`,
+      `durango_handoffs_in_total ${metrics.handoffs_in}`,
+      `durango_handoff_acks_total ${metrics.handoff_acks}`,
+      `durango_handoff_timeouts_total ${metrics.handoff_timeouts}`,
+      `durango_chats_total ${metrics.chats}`,
+      `durango_attacks_total ${metrics.attacks}`,
+      `durango_builds_total ${metrics.builds}`,
+      `durango_ws_connects_total ${metrics.ws_connects}`,
+      `durango_ws_closes_total ${metrics.ws_closes}`,
+    ];
+    res.end(lines.join('\n') + '\n');
+    return;
+  }
+  // === 다른 zone 서버가 보내는 핸드오프 준비 요청 ===
+  // POST /handoff_prepare { token, name, x, y, vx, vy, inventory }
+  // target 서버는 토큰을 받아두고, 클라가 그 토큰으로 접속하면 그 상태로 플레이어 생성.
+  if (req.url === '/handoff_prepare' && req.method === 'POST') {
+    let body = '';
+    req.on('data', (chunk) => body += chunk);
+    req.on('end', () => {
+      try {
+        const data = JSON.parse(body);
+        if (!data.token) { res.writeHead(400); res.end('no token'); return; }
+        metrics.handoffs_in++;
+        pendingHandoffs.set(data.token, {
+          source_zone: data.source_zone || null,
+          player_id: data.player_id || `anon_${Math.random().toString(36).slice(2,10)}`,
+          name: (data.name || '여행자').slice(0, 16),
+          color: (typeof data.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(data.color)) ? data.color : '#5a9ae0',
+          x: Math.max(0, Math.min(WORLD.zoneWidth, +data.x || 0)),
+          y: Math.max(0, Math.min(WORLD.zoneHeight, +data.y || 0)),
+          vx: +data.vx || 0,
+          vy: +data.vy || 0,
+          inventory: data.inventory || { wood: 0, stone: 0 },
+          tools: data.tools || {},
+          equipped: data.equipped || null,
+          createdAt: Date.now(),
+        });
+        // 5초 안에 클라가 접속 안 하면 만료
+        setTimeout(() => pendingHandoffs.delete(data.token), 5000);
+        console.log(`[${ZONE_ID}] ⇐ handoff_prepare token=${data.token.slice(0,8)} for ${data.name}`);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true }));
+      } catch (e) {
+        res.writeHead(500); res.end(String(e));
+      }
+    });
+    return;
+  }
+  // === 크로스존 kick — 다른 zone에서 같은 player가 들어왔다는 알림 ===
+  // POST /kick_player { player_id }
+  if (req.url === '/kick_player' && req.method === 'POST') {
+    let body = '';
+    req.on('data', (chunk) => body += chunk);
+    req.on('end', () => {
+      try {
+        const data = JSON.parse(body);
+        const targetPlayerId = data.player_id;
+        if (targetPlayerId) {
+          for (const [pid, p] of players) {
+            if (p.playerId === targetPlayerId) {
+              console.log(`[${ZONE_ID}] 크로스존 kick: ${p.name} (${targetPlayerId})`);
+              send(p.ws, { type: 'kicked', reason: 'duplicate_login' });
+              const wsToClose = p.ws;
+              players.delete(pid);
+              broadcast({ type: 'player_left', pid });
+              setTimeout(() => { try { wsToClose.close(); } catch (e) {} }, 300);
+            }
+          }
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true }));
+      } catch (e) {
+        res.writeHead(500); res.end(String(e));
+      }
+    });
+    return;
+  }
+  // === 핸드오프 ACK — target이 토큰 사용해서 player 생성했다는 알림 ===
+  // POST /handoff_ack { token }
+  if (req.url === '/handoff_ack' && req.method === 'POST') {
+    let body = '';
+    req.on('data', (chunk) => body += chunk);
+    req.on('end', () => {
+      try {
+        const data = JSON.parse(body);
+        const entry = outgoingHandoffs.get(data.token);
+        if (entry) {
+          clearTimeout(entry.timeoutHandle);
+          outgoingHandoffs.delete(data.token);
+          metrics.handoff_acks++;
+          const p = players.get(entry.pid);
+          if (p) {
+            players.delete(entry.pid);
+            broadcast({ type: 'player_left', pid: entry.pid });
+            // ws.close()는 0.5초 지연 — 클라가 새 zone welcome 받기까지 broadcast 계속
+            // 그동안 자기 player는 이미 삭제됐으니 input 와도 무시됨
+            const wsToClose = p.ws;
+            setTimeout(() => { try { wsToClose.close(); } catch (e) {} }, 500);
+            console.log(`[${ZONE_ID}] ✓ ACK token=${data.token.slice(0,8)} — ${p.name} 정상 인계됨`);
+          }
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true }));
+      } catch (e) {
+        res.writeHead(500); res.end(String(e));
+      }
+    });
+    return;
+  }
+  res.writeHead(404);
+  res.end();
+});
+
+const wss = new WebSocket.Server({ server });
+
+wss.on('connection', async (ws, req) => {
+  metrics.ws_connects++;
+  const url = new URL(req.url, `http://localhost:${PORT}`);
+  const isObserver = url.searchParams.get('observer') === '1';
+
+  // === Observer 분기 — 플레이어로 안 잡고 상태만 흘려보냄 ===
+  if (isObserver) {
+    // 초기 viewer 위치 (zone-local). 안 주면 zone 중앙.
+    const initVx = parseFloat(url.searchParams.get('vx'));
+    const initVy = parseFloat(url.searchParams.get('vy'));
+    observers.set(ws, {
+      viewerX: !isNaN(initVx) ? initVx : WORLD.zoneWidth / 2,
+      viewerY: !isNaN(initVy) ? initVy : WORLD.zoneHeight / 2,
+      lastSeen: Date.now(),
+    });
+    send(ws, {
+      type: 'welcome',
+      observer: true,
+      zone: zonePublicMeta(),
+      resources: Array.from(resources.values()),
+      claims: Array.from(claims.values()),
+      buildings: Array.from(buildings.values()),
+      worldClock: {
+        epoch: WORLD.worldEpoch,
+        dayLengthMs: WORLD.dayLengthMs,
+        dayPhaseRatio: WORLD.dayPhaseRatio,
+        serverNow: Date.now(),
+      },
+    });
+    // 초기 tick — AOI 필터 적용
+    const obs = observers.get(ws);
+    send(ws, {
+      type: 'tick',
+      t: Date.now(),
+      players: Array.from(players.values())
+        .filter(p => Math.hypot(p.x - obs.viewerX, p.y - obs.viewerY) < AOI_RADIUS)
+        .map(p => ({ pid: p.pid, x: p.x, y: p.y, name: p.name, color: p.color })),
+    });
+    function handleObsIncoming(raw) {
+      let msg; try { msg = JSON.parse(raw.toString()); } catch (e) { return; }
+      if (msg.type === 'ping') send(ws, { type: 'pong', t: msg.t });
+      else if (msg.type === 'viewport_update') {
+        const data = observers.get(ws);
+        if (!data) return;
+        data.viewerX = Math.max(0, Math.min(WORLD.zoneWidth, +msg.x || 0));
+        data.viewerY = Math.max(0, Math.min(WORLD.zoneHeight, +msg.y || 0));
+        data.lastSeen = Date.now();
+      }
+      else if (msg.type === 'promote_to_primary' && msg.token && pendingHandoffs.has(msg.token)) {
+        // === Observer→Primary in-place 승격 ===
+        // 새 ws 안 만들고 기존 observer ws 재사용 → 끊김 거의 0
+        const pending = pendingHandoffs.get(msg.token);
+        pendingHandoffs.delete(msg.token);
+
+        // 중복 player 정리 (한 ws에 두 명 막기)
+        for (const [oldPid, p] of players) {
+          if (p.playerId === pending.player_id && p.ws !== ws) {
+            console.log(`[${ZONE_ID}] promote: 기존 ${oldPid} 정리`);
+            send(p.ws, { type: 'kicked', reason: 'promoted_elsewhere' });
+            players.delete(oldPid);
+            broadcast({ type: 'player_left', pid: oldPid });
+            setTimeout(() => { try { p.ws.close(); } catch (e) {} }, 200);
+          }
+        }
+
+        observers.delete(ws);
+        const pid = `p${nextPid++}`;
+        const player = {
+          pid, playerId: pending.player_id, ws,
+          name: pending.name, color: pending.color,
+          x: pending.x, y: pending.y,
+          vx: pending.vx || 0, vy: pending.vy || 0,
+          inventory: pending.inventory || { wood: 0, stone: 0 },
+          tools: pending.tools || {},
+          equipped: pending.equipped || null,
+          hp: PLAYER_MAX_HP, maxHp: PLAYER_MAX_HP,
+          lastAttackAt: 0, lastDamagedAt: 0,
+          handingOff: false, lastSeen: Date.now(),
+        };
+        players.set(pid, player);
+
+        // source zone에 ACK
+        if (pending.source_zone && ZONES[pending.source_zone]) {
+          const src = ZONES[pending.source_zone];
+          postJSON(src.host, src.port, '/handoff_ack', { token: msg.token })
+            .catch(e => console.warn(`[${ZONE_ID}] promote ACK 실패:`, e.message));
+        }
+
+        // welcome 전송 (클라가 자기 player 알게)
+        send(ws, {
+          type: 'welcome',
+          pid,
+          zone: zonePublicMeta(),
+          resources: Array.from(resources.values()),
+          claims: Array.from(claims.values()),
+          buildings: Array.from(buildings.values()),
+          mobs: Array.from(mobs.values()).map(m => ({ mid: m.mid, type: m.type, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp })),
+          inventory: player.inventory,
+          tools: player.tools, equipped: player.equipped,
+          recipes: RECIPES,
+          self: { x: player.x, y: player.y, hp: player.hp, maxHp: player.maxHp },
+          worldClock: {
+            epoch: WORLD.worldEpoch, dayLengthMs: WORLD.dayLengthMs,
+            dayPhaseRatio: WORLD.dayPhaseRatio, serverNow: Date.now(),
+          },
+        });
+
+        // 핸들러 교체 — observer → player
+        attachPlayerHandlers(ws, player);
+        console.log(`[${ZONE_ID}] ✨ promote observer→primary ${player.name} token=${msg.token.slice(0,8)} v=(${player.vx},${player.vy})`);
+      }
+    }
+    ws.on('message', (raw) => {
+      if (LATENCY_MS > 0) setTimeout(() => handleObsIncoming(raw), LATENCY_MS);
+      else handleObsIncoming(raw);
+    });
+    ws.on('close', () => observers.delete(ws));
+    ws.on('error', () => observers.delete(ws));
+    return;
+  }
+
+  // === 토큰 기반 핸드오프 우선 처리 ===
+  const handoffToken = url.searchParams.get('handoff_token');
+  let playerId, name, sx, sy, ivx = 0, ivy = 0, inventory = { wood: 0, stone: 0 }, color = '#5a9ae0';
+  let tools = {}, equipped = null;
+
+  if (handoffToken && pendingHandoffs.has(handoffToken)) {
+    const pending = pendingHandoffs.get(handoffToken);
+    pendingHandoffs.delete(handoffToken);
+    playerId = pending.player_id || `anon_${Math.random().toString(36).slice(2,10)}`;
+    name = pending.name;
+    sx = pending.x;
+    sy = pending.y;
+    ivx = pending.vx;
+    ivy = pending.vy;
+    inventory = pending.inventory;
+    color = pending.color || color;
+    tools = pending.tools || {};
+    equipped = pending.equipped || null;
+    console.log(`[${ZONE_ID}] ✓ handoff token=${handoffToken.slice(0,8)} consumed (player=${playerId})`);
+    // source zone에 ACK 전송
+    if (pending.source_zone && ZONES[pending.source_zone]) {
+      const src = ZONES[pending.source_zone];
+      console.log(`[${ZONE_ID}] ACK 전송 시작 → ${pending.source_zone} (${src.host}:${src.port}) token=${handoffToken.slice(0,8)}`);
+      postJSON(src.host, src.port, '/handoff_ack', { token: handoffToken })
+        .then(r => console.log(`[${ZONE_ID}] ACK → ${pending.source_zone} OK`, r))
+        .catch(e => console.warn(`[${ZONE_ID}] ACK → ${pending.source_zone} 실패:`, e.message));
+    } else {
+      console.warn(`[${ZONE_ID}] ACK 못 보냄: source_zone=${pending.source_zone} ZONES에 ${pending.source_zone}=${!!ZONES[pending.source_zone]}`);
+    }
+  } else {
+    // === 인증 처리 ===
+    const inUsername = (url.searchParams.get('username') || '').trim().slice(0, 16);
+    const inPassword = url.searchParams.get('password') || '';
+    const incomingColor = url.searchParams.get('color');
+    if (incomingColor && /^#[0-9a-fA-F]{6}$/.test(incomingColor)) color = incomingColor;
+
+    if (inUsername && inPassword) {
+      // 등록 또는 로그인 — central에 HTTP 호출
+      let result;
+      try { result = await central.authenticate(inUsername, inPassword, color); }
+      catch (e) {
+        console.error(`[${ZONE_ID}] central 인증 실패:`, e.message);
+        send(ws, { type: 'auth_error', reason: 'central_unavailable' });
+        setTimeout(() => { try { ws.close(); } catch (e) {} }, 100);
+        return;
+      }
+      if (!result || !result.ok) {
+        send(ws, { type: 'auth_error', reason: result?.reason || 'unknown' });
+        setTimeout(() => { try { ws.close(); } catch (e) {} }, 100);
+        return;
+      }
+      playerId = result.player.player_id;
+      name = result.player.name;
+      color = result.player.color || color;
+      inventory = { wood: result.player.wood | 0, stone: result.player.stone | 0 };
+      try { tools = result.player.tools_json ? JSON.parse(result.player.tools_json) : {}; }
+      catch (e) { tools = {}; }
+      equipped = result.player.equipped || null;
+      console.log(`[${ZONE_ID}] ${result.isNew ? '신규 가입' : '로그인'}: ${name}  tools=${JSON.stringify(tools)} eq=${equipped}`);
+    } else {
+      // 게스트 모드 — central에 username 충돌만 확인
+      if (inUsername) {
+        try {
+          const taken = await central.checkUsernameTaken(inUsername);
+          if (taken) {
+            send(ws, { type: 'auth_error', reason: 'username_taken' });
+            setTimeout(() => { try { ws.close(); } catch (e) {} }, 100);
+            return;
+          }
+        } catch (e) { /* central 죽었으면 그냥 통과 — 게스트는 영속화 안 되니까 큰 문제 안 됨 */ }
+      }
+      playerId = `anon_${Math.random().toString(36).slice(2,10)}`;
+      name = inUsername || `여행자${nextPid}`;
+      console.log(`[${ZONE_ID}] 게스트 접속: ${name} (${playerId})`);
+    }
+
+    // 같은 player_id로 이 zone 내에 이미 접속 중이면 기존 세션 종료
+    for (const [pid, p] of players) {
+      if (p.playerId === playerId && p.ws !== ws) {
+        console.log(`[${ZONE_ID}] 동일 zone 중복 차단: ${name}`);
+        send(p.ws, { type: 'kicked', reason: 'duplicate_login' });
+        const wsToClose = p.ws;
+        players.delete(pid);
+        broadcast({ type: 'player_left', pid });
+        setTimeout(() => { try { wsToClose.close(); } catch (e) {} }, 300);
+        break;
+      }
+    }
+    // 등록 계정이면 다른 zone에도 kick 신호 전파 (크로스존 중복 차단)
+    if (!playerId.startsWith('anon_')) {
+      for (const [zid, z] of Object.entries(ZONES)) {
+        if (zid === ZONE_ID) continue;
+        postJSON(z.host, z.port, '/kick_player', { player_id: playerId })
+          .catch(() => {}); // 다른 zone이 죽어있어도 무시
+      }
+    }
+
+    sx = WORLD.zoneWidth / 2;
+    sy = WORLD.zoneHeight / 2;
+  }
+
+  const pid = `p${nextPid++}`;
+  const player = {
+    pid, playerId, ws, name, color,
+    x: sx, y: sy,
+    vx: ivx, vy: ivy,
+    inventory,
+    tools, equipped,
+    hp: PLAYER_MAX_HP, maxHp: PLAYER_MAX_HP,
+    lastAttackAt: 0,
+    lastDamagedAt: 0,
+    handingOff: false,
+    lastSeen: Date.now(),
+  };
+  players.set(pid, player);
+
+  // central에 위치 업데이트 (게스트 제외)
+  savePlayer(player, { last_zone: ZONE_ID, last_x: sx, last_y: sy });
+
+  console.log(`[${ZONE_ID}] + ${name} (${pid}) @ (${sx.toFixed(0)}, ${sy.toFixed(0)})  total=${players.size}`);
+
+  // 환영 메시지 — 존 정보와 현재 상태 모두 전달
+  send(ws, {
+    type: 'welcome',
+    pid,
+    zone: zonePublicMeta(),
+    resources: Array.from(resources.values()),
+    claims: Array.from(claims.values()),
+    buildings: Array.from(buildings.values()),
+    mobs: Array.from(mobs.values()).map(m => ({ mid: m.mid, type: m.type, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp })),
+    inventory: player.inventory,
+    tools: player.tools, equipped: player.equipped,
+    recipes: RECIPES,
+    self: { x: player.x, y: player.y, hp: player.hp, maxHp: player.maxHp },
+    worldClock: {
+      epoch: WORLD.worldEpoch,
+      dayLengthMs: WORLD.dayLengthMs,
+      dayPhaseRatio: WORLD.dayPhaseRatio,
+      serverNow: Date.now(), // 클라가 자기 시계 보정용으로 씀
+    },
+  });
+
+  // ws에 player input/close 핸들러 attach
+  attachPlayerHandlers(ws, player);
+});
+
+// === 외부 player 핸들러 (observer promotion에서 재사용) ===
+function handlePlayerInput(player, raw) {
+  let msg;
+  try { msg = JSON.parse(raw.toString()); } catch (e) { return; }
+  const ws = player.ws;
+
+  if (msg.type === 'input') {
+    const vx = clamp(msg.vx, -1, 1);
+    const vy = clamp(msg.vy, -1, 1);
+    const len = Math.hypot(vx, vy) || 1;
+    player.vx = (vx / len) * MOVE_SPEED * Math.min(1, Math.hypot(vx, vy));
+    player.vy = (vy / len) * MOVE_SPEED * Math.min(1, Math.hypot(vx, vy));
+    player.lastSeen = Date.now();
+    player._inputCnt = (player._inputCnt || 0) + 1;
+    if (!player._inputLogAt || Date.now() - player._inputLogAt > 1000) {
+      player._inputLogAt = Date.now();
+      console.log(`[${ZONE_ID}/in] ${player.name} input cnt=${player._inputCnt} vx=${vx} vy=${vy}`);
+    }
+  } else if (msg.type === 'gather') tryGather(player);
+  else if (msg.type === 'claim') tryClaim(player);
+  else if (msg.type === 'trade_offer') tryTrade(player, msg);
+  else if (msg.type === 'ping') send(ws, { type: 'pong', t: msg.t });
+  else if (msg.type === 'chat') {
+    const text = (msg.text || '').slice(0, 200);
+    if (!text.trim()) return;
+    metrics.chats++;
+    broadcast({
+      type: 'chat', pid: player.pid, name: player.name, color: player.color,
+      text, t: Date.now(),
+    });
+    console.log(`[${ZONE_ID}] 💬 ${player.name}: ${text}`);
+  } else if (msg.type === 'build') { metrics.builds++; tryBuild(player, msg.buildType); }
+  else if (msg.type === 'chest_put') tryChestPut(player, msg.buildingId, msg.item, +msg.amount || 1);
+  else if (msg.type === 'chest_take') tryChestTake(player, msg.buildingId, msg.item, +msg.amount || 1);
+  else if (msg.type === 'attack') { metrics.attacks++; tryAttack(player); }
+  else if (msg.type === 'craft') doCraft(player, msg.recipe);
+  else if (msg.type === 'equip') doEquip(player, msg.tool);
+}
+
+function attachPlayerHandlers(ws, player) {
+  ws.removeAllListeners('message');
+  ws.removeAllListeners('close');
+  ws.on('message', (raw) => {
+    if (LATENCY_MS > 0) setTimeout(() => handlePlayerInput(player, raw), LATENCY_MS);
+    else handlePlayerInput(player, raw);
+  });
+  ws.on('close', () => {
+    metrics.ws_closes++;
+    savePlayer(player, { last_zone: ZONE_ID, last_x: player.x, last_y: player.y });
+    players.delete(player.pid);
+    console.log(`[${ZONE_ID}] - ${player.name} (${player.pid})  total=${players.size}`);
+    broadcast({ type: 'player_left', pid: player.pid });
+  });
+}
+
+// === Crafting ===
+function doCraft(player, recipeName) {
+  const recipe = RECIPES[recipeName];
+  if (!recipe) {
+    send(player.ws, { type: 'notice', text: `알 수 없는 레시피: ${recipeName}` });
+    return;
+  }
+  if ((player.inventory.wood || 0) < recipe.wood || (player.inventory.stone || 0) < recipe.stone) {
+    send(player.ws, { type: 'notice', text: `${recipe.label} 제작에는 나무 ${recipe.wood}, 돌 ${recipe.stone} 필요` });
+    return;
+  }
+  player.inventory.wood -= recipe.wood;
+  player.inventory.stone -= recipe.stone;
+  player.tools[recipeName] = (player.tools[recipeName] || 0) + 1;
+  // 처음 만든 도구면 자동 장착
+  if (!player.equipped) player.equipped = recipeName;
+  send(player.ws, { type: 'inventory', inventory: player.inventory });
+  send(player.ws, { type: 'tools_update', tools: player.tools, equipped: player.equipped });
+  send(player.ws, { type: 'notice', text: `${recipe.label} 제작 완료` });
+  if (!player.playerId.startsWith('anon_')) {
+    savePlayer(player);
+  }
+}
+
+function doEquip(player, toolName) {
+  // null/빈 문자열이면 장착 해제
+  if (!toolName) {
+    player.equipped = null;
+  } else {
+    if (!RECIPES[toolName]) return;
+    if (!(player.tools[toolName] > 0)) {
+      send(player.ws, { type: 'notice', text: `${RECIPES[toolName].label} 보유 없음` });
+      return;
+    }
+    player.equipped = toolName;
+  }
+  send(player.ws, { type: 'tools_update', tools: player.tools, equipped: player.equipped });
+  if (!player.playerId.startsWith('anon_')) {
+    savePlayer(player);
+  }
+}
+
+function tryGather(player) {
+  let best = null;
+  let bestDist = GATHER_RANGE;
+  for (const r of resources.values()) {
+    const d = Math.hypot(r.x - player.x, r.y - player.y);
+    if (d < bestDist) { best = r; bestDist = d; }
+  }
+  if (!best) return;
+
+  // 토지 보호 체크: 다른 사람이 클레임한 땅 안의 자원은 채집 불가
+  for (const c of claims.values()) {
+    if (c.ownerPid !== player.pid &&
+        best.x >= c.x && best.x < c.x + c.w &&
+        best.y >= c.y && best.y < c.y + c.h) {
+      send(player.ws, { type: 'notice', text: `${c.ownerName}의 영지입니다.` });
+      return;
+    }
+  }
+
+  // 도구 효과: tree면 axe 보너스, rock이면 pickaxe 보너스
+  const eff = player.equipped ? TOOL_EFFECTS[player.equipped] : null;
+  let dmg = 1;
+  if (eff) {
+    if (best.type === 'tree') dmg = eff.gatherWoodMult;
+    else if (best.type === 'rock') dmg = eff.gatherStoneMult;
+  }
+  best.hp -= dmg;
+  if (best.hp <= 0) {
+    const item = best.type === 'tree' ? 'wood' : 'stone';
+    player.inventory[item] = (player.inventory[item] || 0) + 1;
+    resources.delete(best.id);
+    if (best.dbId) db.deleteResource(best.dbId);
+    send(player.ws, { type: 'inventory', inventory: player.inventory });
+    broadcast({ type: 'resource_removed', id: best.id });
+    savePlayer(player);
+  } else {
+    if (best.dbId) db.updateResourceHp(best.dbId, best.hp);
+    broadcast({ type: 'resource_update', id: best.id, hp: best.hp });
+  }
+}
+
+function tryClaim(player) {
+  // 토지 점유: wood 5 + stone 5 소비, 자기 위치 중심 128×128 영역
+  const CLAIM_W = 192, CLAIM_H = 192;
+  const COST_WOOD = 5, COST_STONE = 5;
+  if ((player.inventory.wood || 0) < COST_WOOD || (player.inventory.stone || 0) < COST_STONE) {
+    send(player.ws, { type: 'notice', text: `토지 점유에는 나무 ${COST_WOOD}, 돌 ${COST_STONE} 필요` });
+    return;
+  }
+  const cx = player.x - CLAIM_W / 2;
+  const cy = player.y - CLAIM_H / 2;
+
+  // 기존 클레임과 충돌 체크
+  for (const c of claims.values()) {
+    if (rectsOverlap(cx, cy, CLAIM_W, CLAIM_H, c.x, c.y, c.w, c.h)) {
+      send(player.ws, { type: 'notice', text: `다른 영지와 겹칩니다.` });
+      return;
+    }
+  }
+
+  player.inventory.wood -= COST_WOOD;
+  player.inventory.stone -= COST_STONE;
+
+  const id = `c${nextClaimId++}`;
+  const claim = {
+    id, ownerPid: player.playerId, ownerName: player.name,
+    x: cx, y: cy, w: CLAIM_W, h: CLAIM_H,
+  };
+  claims.set(id, claim);
+  // DB 영속화 (zone 로컬)
+  db.insertClaim({
+    owner_id: player.playerId,
+    owner_name: player.name,
+    x: cx, y: cy, w: CLAIM_W, h: CLAIM_H,
+  });
+  savePlayer(player);
+  send(player.ws, { type: 'inventory', inventory: player.inventory });
+  send(player.ws, { type: 'notice', text: `영지를 세웠습니다!` });
+  broadcast({ type: 'claim_added', claim });
+}
+
+function tryTrade(player, msg) {
+  // 가장 가까운 다른 플레이어에게 trade_request 전달
+  const TRADE_RANGE = 80;
+  let target = null;
+  let bestDist = TRADE_RANGE;
+  for (const p of players.values()) {
+    if (p.pid === player.pid) continue;
+    const d = Math.hypot(p.x - player.x, p.y - player.y);
+    if (d < bestDist) { target = p; bestDist = d; }
+  }
+  if (!target) {
+    send(player.ws, { type: 'notice', text: `근처에 거래 상대가 없습니다.` });
+    return;
+  }
+  // 간단 거래: 내 wood 1 ↔ 상대 stone 1 (또는 반대)
+  const give = msg.give; // 'wood' or 'stone'
+  const get = give === 'wood' ? 'stone' : 'wood';
+  if ((player.inventory[give] || 0) < 1) {
+    send(player.ws, { type: 'notice', text: `${give} 부족` });
+    return;
+  }
+  if ((target.inventory[get] || 0) < 1) {
+    send(player.ws, { type: 'notice', text: `${target.name}에게 ${get} 부족` });
+    return;
+  }
+  player.inventory[give] -= 1;
+  player.inventory[get] = (player.inventory[get] || 0) + 1;
+  target.inventory[get] -= 1;
+  target.inventory[give] = (target.inventory[give] || 0) + 1;
+  send(player.ws, { type: 'inventory', inventory: player.inventory });
+  send(target.ws, { type: 'inventory', inventory: target.inventory });
+  send(player.ws, { type: 'notice', text: `${target.name}와 거래 성공: ${give}→${get}` });
+  send(target.ws, { type: 'notice', text: `${player.name}와 거래 성공: ${get}→${give}` });
+  savePlayer(player);
+  savePlayer(target);
+}
+
+// === 건축 ===
+function tryBuild(player, type) {
+  if (!BUILDING_COST[type]) {
+    send(player.ws, { type: 'notice', text: '알 수 없는 건축물' }); return;
+  }
+  const cost = BUILDING_COST[type];
+  if ((player.inventory.wood || 0) < cost.wood || (player.inventory.stone || 0) < cost.stone) {
+    send(player.ws, { type: 'notice', text: `재료 부족 (나무 ${cost.wood}, 돌 ${cost.stone})` });
+    return;
+  }
+  // 격자에 스냅 (32 단위)
+  const gx = Math.floor(player.x / BUILDING_SIZE) * BUILDING_SIZE + BUILDING_SIZE / 2;
+  const gy = Math.floor(player.y / BUILDING_SIZE) * BUILDING_SIZE + BUILDING_SIZE / 2;
+
+  // 자기 claim 안에 있어야
+  let inOwnClaim = false;
+  for (const c of claims.values()) {
+    if (c.ownerPid === player.playerId &&
+        gx >= c.x && gx < c.x + c.w && gy >= c.y && gy < c.y + c.h) {
+      inOwnClaim = true; break;
+    }
+  }
+  if (!inOwnClaim) {
+    send(player.ws, { type: 'notice', text: '자기 영지 안에서만 건축 가능' }); return;
+  }
+
+  // 같은 타일에 다른 건축물 없는지
+  for (const b of buildings.values()) {
+    if (Math.abs(b.x - gx) < BUILDING_SIZE && Math.abs(b.y - gy) < BUILDING_SIZE) {
+      send(player.ws, { type: 'notice', text: '이미 건축물이 있습니다' }); return;
+    }
+  }
+
+  player.inventory.wood -= cost.wood;
+  player.inventory.stone -= cost.stone;
+  const initialData = type === 'chest' ? { wood: 0, stone: 0 } : null;
+  const dbId = db.insertBuilding({
+    type, owner_id: player.playerId, owner_name: player.name,
+    x: gx, y: gy, data: initialData ? JSON.stringify(initialData) : null,
+  });
+  const id = `b${nextBid++}`;
+  const building = { id, dbId, type, ownerId: player.playerId, ownerName: player.name, x: gx, y: gy, data: initialData };
+  buildings.set(id, building);
+  send(player.ws, { type: 'inventory', inventory: player.inventory });
+  savePlayer(player);
+  broadcast({ type: 'building_added', building });
+}
+
+function tryChestPut(player, buildingId, item, amount) {
+  const b = buildings.get(buildingId);
+  if (!b || b.type !== 'chest') return;
+  if (b.ownerId !== player.playerId) {
+    send(player.ws, { type: 'notice', text: '내 상자가 아닙니다' }); return;
+  }
+  // 가까이 있어야 (64px)
+  if (Math.hypot(b.x - player.x, b.y - player.y) > 64) {
+    send(player.ws, { type: 'notice', text: '상자에서 너무 멀리 있습니다' }); return;
+  }
+  if (item !== 'wood' && item !== 'stone') return;
+  amount = Math.max(1, Math.min(99, amount | 0));
+  if ((player.inventory[item] || 0) < amount) {
+    send(player.ws, { type: 'notice', text: `${item} 부족` }); return;
+  }
+  player.inventory[item] -= amount;
+  b.data = b.data || { wood: 0, stone: 0 };
+  b.data[item] = (b.data[item] || 0) + amount;
+  db.updateBuildingData(b.dbId, JSON.stringify(b.data));
+  savePlayer(player);
+  send(player.ws, { type: 'inventory', inventory: player.inventory });
+  send(player.ws, { type: 'chest_state', buildingId: b.id, data: b.data });
+}
+
+function tryChestTake(player, buildingId, item, amount) {
+  const b = buildings.get(buildingId);
+  if (!b || b.type !== 'chest') return;
+  if (b.ownerId !== player.playerId) {
+    send(player.ws, { type: 'notice', text: '내 상자가 아닙니다' }); return;
+  }
+  if (Math.hypot(b.x - player.x, b.y - player.y) > 64) {
+    send(player.ws, { type: 'notice', text: '상자에서 너무 멀리 있습니다' }); return;
+  }
+  if (item !== 'wood' && item !== 'stone') return;
+  amount = Math.max(1, Math.min(99, amount | 0));
+  if (!b.data || (b.data[item] || 0) < amount) {
+    send(player.ws, { type: 'notice', text: `상자에 ${item} 부족` }); return;
+  }
+  b.data[item] -= amount;
+  player.inventory[item] = (player.inventory[item] || 0) + amount;
+  db.updateBuildingData(b.dbId, JSON.stringify(b.data));
+  savePlayer(player);
+  send(player.ws, { type: 'inventory', inventory: player.inventory });
+  send(player.ws, { type: 'chest_state', buildingId: b.id, data: b.data });
+}
+
+// === 전투 ===
+function tryAttack(player) {
+  const now = Date.now();
+  if (now - player.lastAttackAt < PLAYER_ATTACK_COOLDOWN_MS) return;
+  player.lastAttackAt = now;
+
+  // 무기 효과 — 검 장착 시 데미지 배수
+  const eff = player.equipped ? TOOL_EFFECTS[player.equipped] : null;
+  const atk = Math.round(PLAYER_ATTACK_DAMAGE * (eff ? eff.attackMult : 1));
+
+  // 가장 가까운 mob을 범위 안에서
+  let bestMob = null, bestDist = PLAYER_ATTACK_RANGE;
+  for (const m of mobs.values()) {
+    const d = Math.hypot(m.x - player.x, m.y - player.y);
+    if (d < bestDist) { bestMob = m; bestDist = d; }
+  }
+  if (bestMob) {
+    bestMob.hp -= atk;
+    bestMob.dirty = true;
+    broadcast({ type: 'mob_damaged', mid: bestMob.mid, hp: bestMob.hp });
+    // 늑대는 공격당하면 즉시 어그로
+    if (bestMob.type === 'wolf' && !bestMob.aggroTarget) bestMob.aggroTarget = player.pid;
+    if (bestMob.hp <= 0) {
+      // 사망 — 드롭 처리
+      const def = MOB_DEFS[bestMob.type];
+      for (const [item, amt] of Object.entries(def.loot)) {
+        player.inventory[item] = (player.inventory[item] || 0) + amt;
+      }
+      send(player.ws, { type: 'inventory', inventory: player.inventory });
+      send(player.ws, { type: 'notice', text: `${bestMob.type === 'deer' ? '사슴' : '늑대'} 사냥 +${Object.entries(def.loot).map(([k,v])=>`${k} ${v}`).join(', ')}` });
+      savePlayer(player);
+      // DB에서 제거
+      if (bestMob.dbId) { try { db.deleteMob(bestMob.dbId); } catch (e) {} }
+      mobs.delete(bestMob.mid);
+      broadcast({ type: 'mob_removed', mid: bestMob.mid });
+      // 일정 시간 후 리스폰 (새 DB row 생성됨)
+      const respawnType = bestMob.type;
+      setTimeout(() => {
+        const m = spawnMob(respawnType);
+        broadcast({ type: 'mob_spawn', mob: { mid: m.mid, type: m.type, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp } });
+      }, 15000);
+    }
+    return;
+  }
+  // 근처 mob 없으면 근처 플레이어 (PvP)
+  let bestPlayer = null, bestPDist = PLAYER_ATTACK_RANGE;
+  for (const p of players.values()) {
+    if (p.pid === player.pid) continue;
+    if (p.hp <= 0) continue;
+    const d = Math.hypot(p.x - player.x, p.y - player.y);
+    if (d < bestPDist) { bestPlayer = p; bestPDist = d; }
+  }
+  if (bestPlayer) {
+    damagePlayer(bestPlayer, atk, `player:${player.name}`);
+  }
+}
+
+function damagePlayer(p, dmg, source) {
+  if (p.hp <= 0) return;
+  p.hp -= dmg;
+  p.lastDamagedAt = Date.now();
+  broadcast({ type: 'player_damaged', pid: p.pid, hp: p.hp });
+  if (p.hp <= 0) {
+    send(p.ws, { type: 'notice', text: '사망. 5초 후 부활합니다.' });
+    p.hp = 0;
+    // 5초 후 zone 중앙에 부활
+    setTimeout(() => {
+      if (!players.has(p.pid)) return;
+      p.hp = p.maxHp;
+      p.x = WORLD.zoneWidth / 2;
+      p.y = WORLD.zoneHeight / 2;
+      p.vx = 0; p.vy = 0;
+      // 모든 mob의 어그로 해제 — 부활 직후 잠시 안전 시간
+      for (const m of mobs.values()) {
+        if (m.aggroTarget === p.pid) m.aggroTarget = null;
+      }
+      // 위치 포함해서 broadcast — 클라가 즉시 동기화
+      broadcast({ type: 'player_respawn', pid: p.pid, hp: p.hp, x: p.x, y: p.y });
+      send(p.ws, { type: 'notice', text: '부활했습니다.' });
+    }, 5000);
+  }
+}
+
+// 벽 충돌 — 이동 후 위치가 wall과 겹치면 막음
+function isBlockedByWall(x, y) {
+  for (const b of buildings.values()) {
+    if (b.type !== 'wall') continue;
+    if (Math.abs(b.x - x) < BUILDING_SIZE * 0.7 && Math.abs(b.y - y) < BUILDING_SIZE * 0.7) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// === 게임 틱 ===
+const TICK_MS = 1000 / TICK_HZ;
+let lastTick = Date.now();
+
+setInterval(() => {
+  const now = Date.now();
+  const dt = Math.min(0.2, (now - lastTick) / 1000);
+  lastTick = now;
+
+  // 입력 타임아웃 — 1초 동안 입력 없으면 정지
+  for (const p of players.values()) {
+    if (p.handingOff) continue;
+    if (now - p.lastSeen > 1000) { p.vx = 0; p.vy = 0; }
+  }
+
+  // 이동 + 경계 처리 + 벽 충돌
+  for (const p of players.values()) {
+    if (p.handingOff) continue;
+    let nx = p.x + p.vx * dt;
+    let ny = p.y + p.vy * dt;
+
+    // 벽 충돌: 각 축 별로 따로 처리해서 slide 가능
+    if (isBlockedByWall(nx, p.y)) nx = p.x;
+    if (isBlockedByWall(p.x, ny)) ny = p.y;
+    if (isBlockedByWall(nx, ny)) { nx = p.x; ny = p.y; }
+
+    // 4방향 경계 처리 — 새 위치가 zone 밖으로 나가면 이웃으로 핸드오프
+    // 우선순위: 가장 큰 초과 축. 모서리에서 두 방향 동시에 초과돼도 한 zone으로만.
+    const outW = -nx;                              // 서쪽 초과량 (>0이면 밖)
+    const outE = nx - WORLD.zoneWidth;             // 동쪽 초과량
+    const outN = -ny;                              // 북쪽 초과량
+    const outS = ny - WORLD.zoneHeight;            // 남쪽 초과량
+    const maxOut = Math.max(outW, outE, outN, outS);
+    // DEBUG — 1초마다 1회만
+    if ((p.vy !== 0 || p.vx !== 0) && (!p._dbgT || now - p._dbgT > 1000)) {
+      p._dbgT = now;
+      console.log(`[${ZONE_ID}/dbg] ${p.name} pos=(${nx.toFixed(0)},${ny.toFixed(0)}) v=(${p.vx.toFixed(0)},${p.vy.toFixed(0)}) maxOut=${maxOut.toFixed(0)} N=${ZONE.north||'∅'} handingOff=${p.handingOff}`);
+    }
+    if (maxOut > 0) {
+      if (outW === maxOut && ZONE.west) {
+        p.x = nx; p.y = ny;
+        fireHandoff(p, ZONE.west, WORLD.zoneWidth + nx, clamp(ny, 0, WORLD.zoneHeight));
+      } else if (outE === maxOut && ZONE.east) {
+        p.x = nx; p.y = ny;
+        fireHandoff(p, ZONE.east, nx - WORLD.zoneWidth, clamp(ny, 0, WORLD.zoneHeight));
+      } else if (outN === maxOut && ZONE.north) {
+        p.x = nx; p.y = ny;
+        fireHandoff(p, ZONE.north, clamp(nx, 0, WORLD.zoneWidth), WORLD.zoneHeight + ny);
+      } else if (outS === maxOut && ZONE.south) {
+        p.x = nx; p.y = ny;
+        fireHandoff(p, ZONE.south, clamp(nx, 0, WORLD.zoneWidth), ny - WORLD.zoneHeight);
+      } else {
+        // 이웃 없는 방향 — clamp
+        p.x = clamp(nx, 0, WORLD.zoneWidth);
+        p.y = clamp(ny, 0, WORLD.zoneHeight);
+      }
+    } else {
+      p.x = nx;
+      p.y = ny;
+    }
+  }
+
+  // === HP 회복 (out-of-combat 1초 후) ===
+  for (const p of players.values()) {
+    if (p.hp > 0 && p.hp < p.maxHp && now - p.lastDamagedAt > 1000) {
+      p.hp = Math.min(p.maxHp, p.hp + 2 * dt * 5); // 초당 ~10hp
+    }
+  }
+
+  // === Mob AI ===
+  // 밤이면 늑대 시야 1.5배, 데미지 1.3배 — 모든 zone이 동일한 phase 사용
+  const night = isNight(now);
+  const sightMult = night ? 1.5 : 1.0;
+  const dmgMult = night ? 1.3 : 1.0;
+  for (const m of mobs.values()) {
+    const def = MOB_DEFS[m.type];
+    const sight = def.sightRange * sightMult;
+    // 어그로 타겟 검증
+    if (m.aggroTarget) {
+      const t = players.get(m.aggroTarget);
+      if (!t || t.hp <= 0 || Math.hypot(t.x - m.x, t.y - m.y) > sight * 1.5) {
+        m.aggroTarget = null;
+      }
+    }
+    // 늑대만: 시야 안 플레이어 어그로
+    if (m.type === 'wolf' && !m.aggroTarget) {
+      let best = null, bestD = sight;
+      for (const p of players.values()) {
+        if (p.hp <= 0) continue;
+        const d = Math.hypot(p.x - m.x, p.y - m.y);
+        if (d < bestD) { best = p; bestD = d; }
+      }
+      if (best) m.aggroTarget = best.pid;
+    }
+    // 이동
+    if (m.aggroTarget) {
+      const t = players.get(m.aggroTarget);
+      if (t) {
+        const dx = t.x - m.x, dy = t.y - m.y;
+        const d = Math.hypot(dx, dy);
+        if (d > 30) {
+          m.vx = (dx / d) * def.speed;
+          m.vy = (dy / d) * def.speed;
+        } else {
+          // 공격 범위 — 데미지 (밤이면 강화)
+          m.vx = 0; m.vy = 0;
+          if (now - m.lastAttackAt > 1000) {
+            m.lastAttackAt = now;
+            damagePlayer(t, Math.round(def.damage * dmgMult), `mob:${m.type}`);
+          }
+        }
+      }
+    } else {
+      // 배회
+      if (now > m.wanderUntil) {
+        const angle = Math.random() * Math.PI * 2;
+        m.vx = Math.cos(angle) * def.speed * 0.3;
+        m.vy = Math.sin(angle) * def.speed * 0.3;
+        m.wanderUntil = now + 2000 + Math.random() * 3000;
+        if (Math.random() < 0.4) { m.vx = 0; m.vy = 0; m.wanderUntil = now + 1500; }
+      }
+    }
+    let nx = m.x + m.vx * dt;
+    let ny = m.y + m.vy * dt;
+    nx = clamp(nx, 0, WORLD.zoneWidth);
+    ny = clamp(ny, 0, WORLD.zoneHeight);
+    if (isBlockedByWall(nx, m.y)) nx = m.x;
+    if (isBlockedByWall(m.x, ny)) ny = m.y;
+    // 의미 있는 이동(>2px)일 때만 dirty 마크 — 영속화 부담 최소화
+    if (Math.abs(nx - m.x) + Math.abs(ny - m.y) > 2) m.dirty = true;
+    m.x = nx; m.y = ny;
+  }
+
+  // === AOI 필터링: per-viewer tick ===
+  // 각 viewer(player+observer)에 자기 시야(AOI_RADIUS) 안 player만 송신.
+  // 대역폭 절감 + observer를 통한 정보 누출 차단.
+  const allPlayers = Array.from(players.values());
+  const allMobs = Array.from(mobs.values());
+  function visiblePlayers(vx, vy, selfPid) {
+    return allPlayers
+      .filter(o => o.pid === selfPid || Math.hypot(o.x - vx, o.y - vy) < AOI_RADIUS)
+      .map(o => ({ pid: o.pid, x: o.x, y: o.y, name: o.name, color: o.color, hp: o.hp, maxHp: o.maxHp }));
+  }
+  function visibleMobs(vx, vy) {
+    return allMobs
+      .filter(m => Math.hypot(m.x - vx, m.y - vy) < AOI_RADIUS)
+      .map(m => ({ mid: m.mid, type: m.type, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp }));
+  }
+  for (const p of allPlayers) {
+    send(p.ws, {
+      type: 'tick', t: now,
+      players: visiblePlayers(p.x, p.y, p.pid),
+      mobs: visibleMobs(p.x, p.y),
+    });
+  }
+  for (const [ws, data] of observers) {
+    send(ws, {
+      type: 'tick', t: now,
+      players: visiblePlayers(data.viewerX, data.viewerY, null),
+      mobs: visibleMobs(data.viewerX, data.viewerY),
+    });
+  }
+}, TICK_MS);
+
+// === 핸드오프 fire (HTTP POST + 토큰 발급) ===
+async function fireHandoff(player, targetZoneId, newX, newY) {
+  if (player.handingOff) return;
+  if (player.lastHandoffFailAt && Date.now() - player.lastHandoffFailAt < 2000) return;
+  // 핸드오프 시점의 vx/vy를 새 zone에 그대로 전달 — 새 zone에서 즉시 이어 이동
+  // 그래야 클라가 새 ws OPEN하고 input 보내기까지의 갭에도 player가 멈추지 않음
+  const carryVx = player.vx;
+  const carryVy = player.vy;
+  player.handingOff = true;
+  player.vx = 0;
+  player.vy = 0;
+  player.x = Math.max(0, Math.min(WORLD.zoneWidth, player.x));
+  player.y = Math.max(0, Math.min(WORLD.zoneHeight, player.y));
+  const target = ZONES[targetZoneId];
+  if (!target) { player.handingOff = false; return; }
+  savePlayer(player, { last_zone: targetZoneId, last_x: newX, last_y: newY });
+  const token = generateToken();
+  try {
+    await postJSON(target.host, target.port, '/handoff_prepare', {
+      token,
+      source_zone: ZONE_ID,
+      player_id: player.playerId,
+      name: player.name,
+      color: player.color,
+      x: newX, y: newY,
+      vx: carryVx, vy: carryVy,   // ★ 핸드오프 시점의 속도 보존
+      inventory: player.inventory,
+      tools: player.tools,
+      equipped: player.equipped,
+    });
+  } catch (e) {
+    console.error(`[${ZONE_ID}] handoff_prepare → ${targetZoneId} 실패:`, e.message);
+    player.handingOff = false;
+    player.lastHandoffFailAt = Date.now();
+    return;
+  }
+  send(player.ws, { type: 'handoff', targetZone: targetZoneId, token });
+  console.log(`[${ZONE_ID}] ⇒ handoff ${player.name} (${player.pid}) → ${targetZoneId} token=${token.slice(0,8)}`);
+
+  // ACK 대기 — 도착하면 즉시 정리. 못 받으면 3초 후 fallback 정리.
+  const pid = player.pid;
+  const timeoutHandle = setTimeout(() => {
+    if (outgoingHandoffs.has(token)) {
+      outgoingHandoffs.delete(token);
+      metrics.handoff_timeouts++;
+      const p = players.get(pid);
+      if (p) {
+        players.delete(pid);
+        broadcast({ type: 'player_left', pid });
+        try { p.ws.close(); } catch (e) {}
+        console.warn(`[${ZONE_ID}] ⚠ ACK timeout token=${token.slice(0,8)} — fallback 정리`);
+      }
+    }
+  }, 3000);
+  outgoingHandoffs.set(token, { pid, timeoutHandle });
+  metrics.handoffs_out++;
+}
+
+const https = require('https');
+function postJSON(host, port, path, data) {
+  return new Promise((resolve, reject) => {
+    const body = JSON.stringify(data);
+    // 프로덕션(fly 등)에선 HTTPS로 zone↔zone. HTTP_PROTO=https 일 때 https, port 443 자동.
+    const useHttps = (process.env.HTTP_PROTO === 'https') || port === 443;
+    const proto = useHttps ? https : http;
+    const realPort = useHttps && port === 3001 ? 443 :  // 로컬 dev 포트가 들어와도 https면 443으로 강제
+                     useHttps ? 443 : port;
+    const req = proto.request({
+      hostname: host, port: useHttps ? 443 : port, path, method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+    }, (res) => {
+      let buf = '';
+      res.on('data', (chunk) => buf += chunk);
+      res.on('end', () => {
+        try { resolve(JSON.parse(buf)); } catch (e) { reject(e); }
+      });
+    });
+    req.on('error', reject);
+    req.setTimeout(5000, () => { req.destroy(new Error('timeout')); });
+    req.write(body); req.end();
+  });
+}
+
+// === 유틸 ===
+function rawSend(ws, str) {
+  try { if (ws.readyState === WebSocket.OPEN) ws.send(str); } catch (e) {}
+}
+function send(ws, obj) {
+  const str = JSON.stringify(obj);
+  if (LATENCY_MS > 0) setTimeout(() => rawSend(ws, str), LATENCY_MS);
+  else rawSend(ws, str);
+}
+function broadcast(obj) {
+  const str = JSON.stringify(obj);
+  const doSend = () => {
+    for (const p of players.values()) rawSend(p.ws, str);
+    for (const ws of observers.keys()) rawSend(ws, str);
+  };
+  if (LATENCY_MS > 0) setTimeout(doSend, LATENCY_MS);
+  else doSend();
+}
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+function rectsOverlap(ax, ay, aw, ah, bx, by, bw, bh) {
+  return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
+}
+function zonePublicMeta() {
+  return {
+    id: ZONE_ID,
+    displayName: ZONE.displayName,
+    biome: ZONE.biome,
+    groundColor: ZONE.groundColor,
+    tintColor: ZONE.tintColor,
+    width: WORLD.zoneWidth,
+    height: WORLD.zoneHeight,
+    tileSize: WORLD.tileSize,
+    worldOffsetX: ZONE.worldOffsetX,
+    worldOffsetY: ZONE.worldOffsetY,
+    west: ZONE.west,
+    east: ZONE.east,
+    north: ZONE.north,
+    south: ZONE.south,
+  };
+}
+
+server.listen(PORT, () => {
+  console.log(`[${ZONE_ID}] 🌏 zone server up on :${PORT}  latency=${LATENCY_MS}ms (RTT≈${LATENCY_MS*2}ms)`);
+  console.log(`        biome=${ZONE.biome}  W=${ZONE.west||'∅'}  E=${ZONE.east||'∅'}  N=${ZONE.north||'∅'}  S=${ZONE.south||'∅'}`);
+});
+
+// === Graceful shutdown — 종료 직전 모든 mob/플레이어 상태 flush ===
+let shuttingDown = false;
+function gracefulShutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`[${ZONE_ID}] ${signal} 받음 — 상태 flush 후 종료...`);
+  try {
+    let mobsSaved = 0;
+    for (const m of mobs.values()) {
+      if (m.dbId) {
+        try { db.updateMobState(m.dbId, m.x, m.y, m.hp); mobsSaved++; } catch (e) {}
+      }
+    }
+    let playersSaved = 0;
+    for (const p of players.values()) {
+      if (!p.playerId || p.playerId.startsWith('anon_')) continue;
+      // fire-and-forget — process.exit가 곧 따라오니 응답 못 받을 수도 있음
+      savePlayer(p, { last_zone: ZONE_ID, last_x: p.x, last_y: p.y });
+      playersSaved++;
+    }
+    console.log(`[${ZONE_ID}] flush 완료: mob ${mobsSaved}, player ${playersSaved} (central에 전송)`);
+  } catch (e) {
+    console.error(`[${ZONE_ID}] shutdown flush 에러:`, e.message);
+  }
+  setTimeout(() => process.exit(0), 200);
+}
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT',  () => gracefulShutdown('SIGINT'));

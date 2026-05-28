@@ -1,0 +1,35 @@
+# Fly.io — japan zone (Osaka)
+# 첫 배포 전:
+#   fly apps create durango-japan
+#   fly volumes create japan_data --region kix --size 1 -a durango-japan
+#   fly secrets set CENTRAL_HOST=durango-central.fly.dev \
+#     ZONE_HOSTS='{"korea":"durango-korea.fly.dev","japan":"durango-japan.fly.dev"}' -a durango-japan
+# 배포:
+#   fly deploy --config fly.japan.toml --dockerfile Dockerfile.zone
+
+app = "durango-japan"
+primary_region = "kix"   # Osaka — Tokyo와 다른 도시로 진짜 분산
+
+[env]
+  ZONE_ID = "japan"
+  PORT = "3003"
+  DB_PATH = "/data/world-japan.db"
+  LATENCY_MS = "0"
+  WS_PROTO = "wss"
+  HTTP_PROTO = "https"
+  CENTRAL_PORT = "443"
+
+[http_service]
+  internal_port = 3003
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[mounts]]
+  source = "japan_data"
+  destination = "/data"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

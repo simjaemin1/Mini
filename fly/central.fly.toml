@@ -1,0 +1,35 @@
+# Fly.io central 서버 설정
+# 배포: cd /Users/simjaemin1/Mini/durango-mini && fly deploy --config fly/central.fly.toml --dockerfile Dockerfile.central
+#
+# 첫 배포 전 한 번:
+#   fly apps create durango-central          # 앱 만들기 (이름 중복이면 다른 이름)
+#   fly volumes create central_data --region nrt --size 1   # SQLite 영속 볼륨
+
+app = "durango-central"
+primary_region = "nrt"   # Tokyo — 한국에서 가장 가까운 Fly 리전
+
+[build]
+  dockerfile = "../Dockerfile.central"
+
+[env]
+  PORT = "3010"
+  DB_PATH = "/data/central.db"
+  # PUBLIC_HOST는 fly cert 등록 후 채울 것. 기본은 *.fly.dev 도메인
+  PUBLIC_HOST = "durango-central.fly.dev"
+  # ZONE_HOSTS는 zone app들 만든 후 업데이트 (fly secrets set):
+  # fly secrets set ZONE_HOSTS='{"korea":"durango-korea.fly.dev",...}'
+
+[http_service]
+  internal_port = 3010
+  force_https = true
+  auto_stop_machines = true     # 트래픽 없으면 정지 → $ 절약
+  auto_start_machines = true    # 요청 오면 자동 wake
+  min_machines_running = 0      # 0이면 진짜 정지. 1이면 항상 1개 깨워둠.
+
+[[mounts]]
+  source = "central_data"
+  destination = "/data"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
