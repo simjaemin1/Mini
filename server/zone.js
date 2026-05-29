@@ -9,6 +9,23 @@ const http = require('http');
 const { ZONES, WORLD, isNight, worldPhase, darknessLevel } = require('./zone-config');
 const db = require('./zone-local-db'); // 로컬 zone DB — players 없음
 const central = require('./central-client'); // central HTTP 클라이언트
+const { Quadtree } = require('./quadtree'); // spatial index — O(N²) 검색 회피
+
+// === Spatial index — 매 tick 재구축 ===
+// 모든 nearest-search (visiblePlayers, tryGather 등)에서 사용. message handler에서도
+// stale 33ms 정도는 OK (다음 tick에 재구축).
+let qtPlayers, qtMobs, qtResources, qtBuildings;
+function rebuildSpatialIndex() {
+  const W = WORLD.zoneWidth, H = WORLD.zoneHeight;
+  qtPlayers   = new Quadtree(0, 0, W, H);
+  qtMobs      = new Quadtree(0, 0, W, H);
+  qtResources = new Quadtree(0, 0, W, H);
+  qtBuildings = new Quadtree(0, 0, W, H);
+  for (const p of players.values())    qtPlayers.insert({ x: p.x, y: p.y, ref: p });
+  for (const m of mobs.values())       qtMobs.insert({ x: m.x, y: m.y, ref: m });
+  for (const r of resources.values())  qtResources.insert({ x: r.x, y: r.y, ref: r });
+  for (const b of buildings.values())  qtBuildings.insert({ x: b.x, y: b.y, ref: b });
+}
 
 // 플레이어 변경을 central에 fire-and-forget 저장
 function savePlayer(player, extra = {}) {
@@ -391,9 +408,10 @@ function spawnNpc(opts = {}) {
 function decideNpcBehavior(npc, now) {
   if (now < npc.nextDecisionAt) return;
   npc.nextDecisionAt = now + 500 + Math.random() * 1000;
-  // ① 늑대 시야 안이면 도망
+  // ① 늑대 시야 안이면 도망 — quadtree로 후보 추리고 종류 필터
+  const nearbyMobs = qtMobs ? qtMobs.queryCircle(npc.x, npc.y, NPC_FLEE_RANGE) : Array.from(mobs.values());
   let nearestWolf = null, wolfDist = NPC_FLEE_RANGE;
-  for (const m of mobs.values()) {
+  for (const m of nearbyMobs) {
     if (m.type !== 'wolf' || m.tameOwner) continue;
     const d = Math.hypot(m.x - npc.x, m.y - npc.y);
     if (d < wolfDist) { nearestWolf = m; wolfDist = d; }
@@ -436,9 +454,10 @@ function decideNpcBehavior(npc, now) {
       return;
     }
   }
-  // ④ 가까운 자원 채집 (자기 사유지 안 우선, 없으면 사유지 밖도 OK)
+  // ④ 가까운 자원 채집 (자기 사유지 안 우선, 없으면 사유지 밖도 OK) — quadtree
+  const nearbyRes = qtResources ? qtResources.queryCircle(npc.x, npc.y, 400) : Array.from(resources.values());
   let bestRes = null, bestResDist = 400;
-  for (const r of resources.values()) {
+  for (const r of nearbyRes) {
     // 다른 사람 사유지면 패스
     let blocked = false;
     for (const c of claims.values()) {
@@ -1153,9 +1172,9 @@ function broadcastToTribe(senderPlayer, msg) {
 
 // === mob 길들이기 ===
 function tryFeed(player) {
-  // 가까운 mob 한 마리 (이미 길든 mob도 OK — 단 자기 소유여야)
+  const nearby = qtMobs ? qtMobs.queryCircle(player.x, player.y, 80) : Array.from(mobs.values());
   let best = null, bestDist = 80;
-  for (const m of mobs.values()) {
+  for (const m of nearby) {
     const d = Math.hypot(m.x - player.x, m.y - player.y);
     if (d < bestDist) { best = m; bestDist = d; }
   }
@@ -1196,8 +1215,9 @@ function tryFeed(player) {
 
 // === 농사 수확 ===
 function tryHarvest(player) {
+  const nearby = qtBuildings ? qtBuildings.queryCircle(player.x, player.y, 96) : Array.from(buildings.values());
   let best = null, bestDist = 96;
-  for (const b of buildings.values()) {
+  for (const b of nearby) {
     if (b.type !== 'farmland') continue;
     if (b.ownerId !== player.playerId) continue; // 자기 farmland만
     const d = Math.hypot(b.x - player.x, b.y - player.y);
@@ -1331,9 +1351,11 @@ function doEquip(player, toolName) {
 }
 
 function tryGather(player) {
+  // 가까운 자원 — quadtree로 O(log N)
+  const nearby = qtResources ? qtResources.queryCircle(player.x, player.y, GATHER_RANGE) : Array.from(resources.values());
   let best = null;
   let bestDist = GATHER_RANGE;
-  for (const r of resources.values()) {
+  for (const r of nearby) {
     const d = Math.hypot(r.x - player.x, r.y - player.y);
     if (d < bestDist) { best = r; bestDist = d; }
   }
@@ -1514,8 +1536,9 @@ function tryBuild(player, type) {
     send(player.ws, { type: 'notice', text: '자기 영지 안에서만 건축 가능' }); return;
   }
 
-  // 같은 타일에 다른 건축물 없는지
-  for (const b of buildings.values()) {
+  // 같은 타일에 다른 건축물 없는지 — quadtree
+  const nearBuilds = qtBuildings ? qtBuildings.queryCircle(gx, gy, BUILDING_SIZE * 1.5) : Array.from(buildings.values());
+  for (const b of nearBuilds) {
     if (Math.abs(b.x - gx) < BUILDING_SIZE && Math.abs(b.y - gy) < BUILDING_SIZE) {
       send(player.ws, { type: 'notice', text: '이미 건축물이 있습니다' }); return;
     }
@@ -1595,9 +1618,10 @@ function tryAttack(player) {
   const eff = player.equipped ? TOOL_EFFECTS[player.equipped] : null;
   const atk = Math.round(PLAYER_ATTACK_DAMAGE * (eff ? eff.attackMult : 1));
 
-  // 가장 가까운 mob을 범위 안에서
+  // 가장 가까운 mob을 범위 안에서 — quadtree
+  const nearbyMobs = qtMobs ? qtMobs.queryCircle(player.x, player.y, PLAYER_ATTACK_RANGE) : Array.from(mobs.values());
   let bestMob = null, bestDist = PLAYER_ATTACK_RANGE;
-  for (const m of mobs.values()) {
+  for (const m of nearbyMobs) {
     const d = Math.hypot(m.x - player.x, m.y - player.y);
     if (d < bestDist) { bestMob = m; bestDist = d; }
   }
@@ -1642,9 +1666,10 @@ function tryAttack(player) {
     }
     return;
   }
-  // 근처 mob 없으면 근처 플레이어 (PvP)
+  // 근처 mob 없으면 근처 플레이어 (PvP) — quadtree
+  const nearbyPlayers = qtPlayers ? qtPlayers.queryCircle(player.x, player.y, PLAYER_ATTACK_RANGE) : Array.from(players.values());
   let bestPlayer = null, bestPDist = PLAYER_ATTACK_RANGE;
-  for (const p of players.values()) {
+  for (const p of nearbyPlayers) {
     if (p.pid === player.pid) continue;
     if (p.hp <= 0) continue;
     const d = Math.hypot(p.x - player.x, p.y - player.y);
@@ -1712,9 +1737,10 @@ function damagePlayer(p, dmg, source) {
   }
 }
 
-// 콜라이더 — 이동 후 위치가 blocking 건축물과 겹치면 막음
+// 콜라이더 — 이동 후 위치가 blocking 건축물과 겹치면 막음. quadtree로 가속.
 function isBlockedByWall(x, y) {
-  for (const b of buildings.values()) {
+  const nearby = qtBuildings ? qtBuildings.queryCircle(x, y, BUILDING_SIZE) : Array.from(buildings.values());
+  for (const b of nearby) {
     if (!BLOCKING_BUILDINGS.has(b.type)) continue;
     if (Math.abs(b.x - x) < BUILDING_SIZE * 0.7 && Math.abs(b.y - y) < BUILDING_SIZE * 0.7) {
       return true;
@@ -1731,6 +1757,9 @@ setInterval(() => {
   const now = Date.now();
   const dt = Math.min(0.2, (now - lastTick) / 1000);
   lastTick = now;
+
+  // === Spatial index 재구축 — 모든 nearest-search가 이걸 씀 ===
+  rebuildSpatialIndex();
 
   // 입력 타임아웃 — 1초 동안 입력 없으면 정지
   for (const p of players.values()) {
@@ -1895,8 +1924,10 @@ setInterval(() => {
     if (m.type === 'wolf' && !m.aggroTarget) {
       const homeDist = Math.hypot(m.x - m.homeX, m.y - m.homeY);
       if (homeDist < WOLF_TERRITORY_RADIUS) {
+        // quadtree로 sight 안 플레이어만 추림
+        const nearby = qtPlayers ? qtPlayers.queryCircle(m.x, m.y, sight) : Array.from(players.values());
         let best = null, bestD = sight;
-        for (const p of players.values()) {
+        for (const p of nearby) {
           if (p.hp <= 0) continue;
           // 타겟이 영역 안에 있어야 시작 (영역 밖 플레이어는 그냥 둠)
           if (Math.hypot(p.x - m.homeX, p.y - m.homeY) > WOLF_TERRITORY_RADIUS) continue;
@@ -1962,14 +1993,19 @@ setInterval(() => {
   const allPlayers = Array.from(players.values());
   const allMobs = Array.from(mobs.values());
   function visiblePlayers(vx, vy, selfPid) {
-    return allPlayers
-      .filter(o => o.pid === selfPid || Math.hypot(o.x - vx, o.y - vy) < AOI_RADIUS)
-      .map(o => ({ pid: o.pid, x: o.x, y: o.y, name: o.name, color: o.color, hp: o.hp, maxHp: o.maxHp,
-                   tribeName: o.tribeName || null }));
+    // quadtree로 AOI 안 player만 추림 — O(log N)
+    const nearby = qtPlayers.queryCircle(vx, vy, AOI_RADIUS);
+    const result = nearby.map(o => ({ pid: o.pid, x: o.x, y: o.y, name: o.name, color: o.color, hp: o.hp, maxHp: o.maxHp,
+                                       tribeName: o.tribeName || null }));
+    // self가 AOI 밖이어도 항상 포함 (player view는 자기 위치가 viewer라 항상 들어옴이긴 하지만 안전 가드)
+    if (selfPid && !result.some(p => p.pid === selfPid)) {
+      const self = players.get(selfPid);
+      if (self) result.push({ pid: self.pid, x: self.x, y: self.y, name: self.name, color: self.color, hp: self.hp, maxHp: self.maxHp, tribeName: self.tribeName || null });
+    }
+    return result;
   }
   function visibleMobs(vx, vy) {
-    return allMobs
-      .filter(m => Math.hypot(m.x - vx, m.y - vy) < AOI_RADIUS)
+    return qtMobs.queryCircle(vx, vy, AOI_RADIUS)
       .map(m => ({ mid: m.mid, type: m.type, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp,
                    tameOwner: m.tameOwner || null, tameOwnerName: m.tameOwnerName || null }));
   }
