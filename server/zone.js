@@ -505,41 +505,48 @@ function spawnNpc(opts = {}) {
   // 그리드 32px 기준으로 사유지 중심 주변에 wall 배치
   const houseGx = Math.floor(cx / BUILDING_SIZE) * BUILDING_SIZE + BUILDING_SIZE / 2;
   const houseGy = Math.floor(cy / BUILDING_SIZE) * BUILDING_SIZE + BUILDING_SIZE / 2;
-  // 3x3 집 — 벽 4면 둘러싸고 가운데 (0,0) 입구, 옆에 계단. 1F 바닥 + 외벽.
-  const houseLayout = [
-    // [dx, dy, type, floor]
-    // 0F 외벽 — 위·좌·우·아래. 입구는 아래 가운데 (0,1) 비움
-    [-1, -1, 'wall', 0], [ 0, -1, 'wall', 0], [ 1, -1, 'wall', 0],
-    [-1,  0, 'wall', 0],                       [ 1,  0, 'wall', 0],
-    [-1,  1, 'wall', 0],                       [ 1,  1, 'wall', 0],
-    // 옆 계단 (집 오른쪽 밖)
-    [ 2,  0, 'stair', 0],
-    // 1F 바닥 (3x3) — 천장 역할도
-    [-1, -1, 'floor', 1], [ 0, -1, 'floor', 1], [ 1, -1, 'floor', 1],
-    [-1,  0, 'floor', 1], [ 0,  0, 'floor', 1], [ 1,  0, 'floor', 1],
-    [-1,  1, 'floor', 1], [ 0,  1, 'floor', 1], [ 1,  1, 'floor', 1],
-    // 1F 외벽 (다락방)
-    [-1, -1, 'wall', 1], [ 0, -1, 'wall', 1], [ 1, -1, 'wall', 1],
-    [-1,  0, 'wall', 1],                       [ 1,  0, 'wall', 1],
-    [-1,  1, 'wall', 1], [ 0,  1, 'wall', 1], [ 1,  1, 'wall', 1],
-  ];
-  for (const [dx, dy, type, floor] of houseLayout) {
-    const bx = houseGx + dx * BUILDING_SIZE;
-    const by = houseGy + dy * BUILDING_SIZE;
-    // 같은 (bx, by, floor) 충돌 체크
-    let collide = false;
-    for (const b of buildings.values()) {
-      if ((b.floor || 0) === floor && Math.abs(b.x - bx) < BUILDING_SIZE && Math.abs(b.y - by) < BUILDING_SIZE) { collide = true; break; }
-    }
-    if (collide) continue;
-    const initialData = { floor };
-    const dbId = db.insertBuilding({ type, owner_id: npcId, owner_name: name, x: bx, y: by, data: JSON.stringify(initialData) });
+  // PZ식 3x3 집 — wall은 cell edge에. floor (바닥)는 cell 가운데에.
+  // cell 좌표 (houseCx, houseCy) 기준 -1..+1 범위.
+  const houseCx = Math.floor(cx / BUILDING_SIZE);
+  const houseCy = Math.floor(cy / BUILDING_SIZE);
+  function addWall(cellCx, cellCy, side, floor) {
+    const wx = cellCx * BUILDING_SIZE;
+    const wy = cellCy * BUILDING_SIZE;
+    const data = { side, floor };
+    const dbId = db.insertBuilding({ type: 'wall', owner_id: npcId, owner_name: name, x: wx, y: wy, data: JSON.stringify(data) });
     const id = `b${nextBid++}`;
-    const building = { id, dbId, type, ownerId: npcId, ownerName: name, x: bx, y: by, data: initialData, floor };
+    const building = { id, dbId, type: 'wall', ownerId: npcId, ownerName: name, x: wx, y: wy, data, floor };
     buildings.set(id, building);
     chunkManager.insertBuilding(building);
-    // broadcast 없음 — 부팅 시 player welcome에 한꺼번에 가니까
   }
+  function addBlock(cellCx, cellCy, type, floor) {
+    const bx = cellCx * BUILDING_SIZE + BUILDING_SIZE / 2;
+    const by = cellCy * BUILDING_SIZE + BUILDING_SIZE / 2;
+    const data = { floor };
+    const dbId = db.insertBuilding({ type, owner_id: npcId, owner_name: name, x: bx, y: by, data: JSON.stringify(data) });
+    const id = `b${nextBid++}`;
+    const building = { id, dbId, type, ownerId: npcId, ownerName: name, x: bx, y: by, data, floor };
+    buildings.set(id, building);
+    chunkManager.insertBuilding(building);
+  }
+  // 3x3 영역의 외곽 edge 4면. cell 범위 (cx-1, cy-1) ~ (cx+1, cy+1).
+  for (const f of [0, 1]) {
+    // 북쪽 변 (cy-1의 N)
+    for (let i = -1; i <= 1; i++) addWall(houseCx + i, houseCy - 1, 'N', f);
+    // 남쪽 변 (cy+1의 S = cy+2의 N) — 입구 (가운데) 0F만 비움
+    for (let i = -1; i <= 1; i++) {
+      if (f === 0 && i === 0) continue; // 0F 입구
+      addWall(houseCx + i, houseCy + 2, 'N', f);
+    }
+    // 동쪽 변 (cx+1의 E)
+    for (let j = -1; j <= 1; j++) addWall(houseCx + 1, houseCy + j, 'E', f);
+    // 서쪽 변 (cx-1의 W = cx-2의 E)
+    for (let j = -1; j <= 1; j++) addWall(houseCx - 2, houseCy + j, 'E', f);
+  }
+  // 1F 바닥 (3x3) — 천장
+  for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) addBlock(houseCx + i, houseCy + j, 'floor', 1);
+  // 옆 계단
+  addBlock(houseCx + 2, houseCy, 'stair', 0);
 
   console.log(`[${ZONE_ID}] 🤖 NPC 스폰: ${name} @ (${cx.toFixed(0)},${cy.toFixed(0)}) + 집 (${houseLayout.length}부재)`);
   return player;
@@ -1351,7 +1358,7 @@ function handlePlayerInput(player, raw) {
       text, t: Date.now(),
     });
     console.log(`[${ZONE_ID}] 💬 ${player.name}: ${text}`);
-  } else if (msg.type === 'build') { metrics.builds++; tryBuild(player, msg.buildType, msg.floor || 0); }
+  } else if (msg.type === 'build') { metrics.builds++; tryBuild(player, msg.buildType, msg.floor || 0, msg.side || null); }
   else if (msg.type === 'chest_put') tryChestPut(player, msg.buildingId, msg.item, +msg.amount || 1);
   else if (msg.type === 'chest_take') tryChestTake(player, msg.buildingId, msg.item, +msg.amount || 1);
   else if (msg.type === 'attack') { metrics.attacks++; tryAttack(player); }
@@ -1745,10 +1752,55 @@ function tryTrade(player, msg) {
 }
 
 // === 건축 ===
-function tryBuild(player, type, floor = 0) {
-  floor = Math.max(0, Math.min(5, floor | 0)); // 0~5층
+function tryBuild(player, type, floor = 0, side = null) {
+  floor = Math.max(0, Math.min(5, floor | 0));
   if (!BUILDING_COST[type]) {
     send(player.ws, { type: 'notice', text: '알 수 없는 건축물' }); return;
+  }
+  // wall은 cell edge에 (PZ식). side가 안 주어졌으면 player 위치에서 가장 가까운 edge 결정.
+  // S/W → 인접 cell의 N/E로 정규화. 결과는 'N' or 'E'.
+  if (type === 'wall') {
+    const { cx, cy } = cellOf(player.x, player.y);
+    const cellCenterX = cx * BUILDING_SIZE + BUILDING_SIZE / 2;
+    const cellCenterY = cy * BUILDING_SIZE + BUILDING_SIZE / 2;
+    const dx = player.x - cellCenterX;
+    const dy = player.y - cellCenterY;
+    let useCx = cx, useCy = cy, useSide;
+    if (Math.abs(dx) > Math.abs(dy)) {
+      if (dx > 0) useSide = 'E';
+      else { useCx = cx - 1; useSide = 'E'; }
+    } else {
+      if (dy > 0) { useCy = cy + 1; useSide = 'N'; }
+      else useSide = 'N';
+    }
+    // 사용자가 강제 side 줬으면 그걸 우선
+    if (side === 'N') { useCx = cx; useCy = cy; useSide = 'N'; }
+    else if (side === 'S') { useCx = cx; useCy = cy + 1; useSide = 'N'; }
+    else if (side === 'E') { useCx = cx; useCy = cy; useSide = 'E'; }
+    else if (side === 'W') { useCx = cx - 1; useCy = cy; useSide = 'E'; }
+    // 중복 wall 체크
+    if (findEdgeWall(useCx, useCy, useSide, floor)) {
+      send(player.ws, { type: 'notice', text: '이미 벽이 있습니다' }); return;
+    }
+    const cost = BUILDING_COST.wall;
+    if ((player.inventory.wood || 0) < cost.wood || (player.inventory.stone || 0) < cost.stone) {
+      send(player.ws, { type: 'notice', text: `재료 부족 (나무 ${cost.wood}, 돌 ${cost.stone})` });
+      return;
+    }
+    player.inventory.wood -= cost.wood;
+    player.inventory.stone -= cost.stone;
+    const wx = useCx * BUILDING_SIZE;
+    const wy = useCy * BUILDING_SIZE;
+    const data = { side: useSide, floor };
+    const dbId = db.insertBuilding({ type: 'wall', owner_id: player.playerId, owner_name: player.name, x: wx, y: wy, data: JSON.stringify(data) });
+    const id = `b${nextBid++}`;
+    const building = { id, dbId, type: 'wall', ownerId: player.playerId, ownerName: player.name, x: wx, y: wy, data, floor };
+    buildings.set(id, building);
+    chunkManager.insertBuilding(building);
+    send(player.ws, { type: 'inventory', inventory: player.inventory });
+    savePlayer(player);
+    broadcast({ type: 'building_added', building });
+    return;
   }
   const cost = BUILDING_COST[type];
   if ((player.inventory.wood || 0) < cost.wood || (player.inventory.stone || 0) < cost.stone) {
@@ -1993,18 +2045,40 @@ function damagePlayer(p, dmg, source) {
   }
 }
 
-// 콜라이더 — 이동 후 위치가 blocking 건축물과 겹치면 막음. 같은 floor만 막힘.
-// playerFloor 기본 0 (지상). 다층 캐릭터 이동은 Phase 13 후반에서.
-function isBlockedByWall(x, y, playerFloor = 0) {
-  const nearby = qtBuildings ? qtBuildings.queryCircle(x, y, BUILDING_SIZE) : Array.from(buildings.values());
+// === PZ식 wall edge 콜라이더 ===
+// wall은 cell edge에 있음. side ∈ {N, E} 정규화.
+// N wall = cell (cx, cy)의 북쪽 edge = y = cy*BUILDING_SIZE 라인
+// E wall = cell (cx, cy)의 동쪽 edge = x = (cx+1)*BUILDING_SIZE 라인
+// 이동 (oldX, oldY) → (newX, newY)가 wall edge 가로지르면 차단.
+function cellOf(x, y) { return { cx: Math.floor(x / BUILDING_SIZE), cy: Math.floor(y / BUILDING_SIZE) }; }
+function findEdgeWall(cx, cy, side, floor) {
+  // qtBuildings에서 그 위치 wall 찾기
+  const ex = cx * BUILDING_SIZE + (side === 'E' ? BUILDING_SIZE : 0);
+  const ey = cy * BUILDING_SIZE + (side === 'N' ? 0 : BUILDING_SIZE / 2);
+  const nearby = qtBuildings ? qtBuildings.queryCircle(ex, ey, BUILDING_SIZE) : Array.from(buildings.values());
   for (const b of nearby) {
     if (!BLOCKING_BUILDINGS.has(b.type)) continue;
-    if ((b.floor || 0) !== playerFloor) continue; // 다른 층은 통과
-    // 콜라이더 = BUILDING_SIZE 전체
-    if (Math.abs(b.x - x) < BUILDING_SIZE && Math.abs(b.y - y) < BUILDING_SIZE) {
-      return true;
-    }
+    if ((b.floor || 0) !== floor) continue;
+    const bSide = b.data?.side;
+    const bcx = Math.floor(b.x / BUILDING_SIZE);
+    const bcy = Math.floor(b.y / BUILDING_SIZE);
+    if (bcx === cx && bcy === cy && bSide === side) return true;
   }
+  return false;
+}
+function isBlockedByWall(newX, newY, oldX, oldY, playerFloor = 0) {
+  // 같은 cell 안 이동 — wall 가로지르지 않음
+  const oc = cellOf(oldX, oldY);
+  const nc = cellOf(newX, newY);
+  if (oc.cx === nc.cx && oc.cy === nc.cy) return false;
+  // 동쪽 이동 (cx 증가): oc.E edge (= nc.W = (oc.cx+1, oc.cy).W = oc.E)
+  if (nc.cx > oc.cx && findEdgeWall(oc.cx, oc.cy, 'E', playerFloor)) return true;
+  // 서쪽 이동: nc.E edge
+  if (nc.cx < oc.cx && findEdgeWall(nc.cx, nc.cy, 'E', playerFloor)) return true;
+  // 남쪽 이동 (cy 증가): oc.S = (oc.cx, oc.cy+1).N = nc.N
+  if (nc.cy > oc.cy && findEdgeWall(nc.cx, nc.cy, 'N', playerFloor)) return true;
+  // 북쪽 이동: oc.N edge
+  if (nc.cy < oc.cy && findEdgeWall(oc.cx, oc.cy, 'N', playerFloor)) return true;
   return false;
 }
 
@@ -2052,11 +2126,11 @@ setInterval(() => {
     let nx = p.x + p.vx * dt;
     let ny = p.y + p.vy * dt;
 
-    // 벽 충돌: 각 축 별로 따로 처리해서 slide 가능. player floor만 막힘.
+    // PZ식 edge 콜라이더 — 각 축 별로 따로 처리해서 slide 가능. player floor만.
     const pf = p.floor || 0;
-    if (isBlockedByWall(nx, p.y, pf)) nx = p.x;
-    if (isBlockedByWall(p.x, ny, pf)) ny = p.y;
-    if (isBlockedByWall(nx, ny, pf)) { nx = p.x; ny = p.y; }
+    if (isBlockedByWall(nx, p.y, p.x, p.y, pf)) nx = p.x;
+    if (isBlockedByWall(p.x, ny, p.x, p.y, pf)) ny = p.y;
+    if (isBlockedByWall(nx, ny, p.x, p.y, pf)) { nx = p.x; ny = p.y; }
 
     // 4방향 경계 처리 — 새 위치가 zone 밖으로 나가면 이웃으로 핸드오프
     // 우선순위: 가장 큰 초과 축. 모서리에서 두 방향 동시에 초과돼도 한 zone으로만.
@@ -2173,8 +2247,8 @@ setInterval(() => {
       let ny = m.y + m.vy * dt;
       nx = clamp(nx, 0, WORLD.zoneWidth);
       ny = clamp(ny, 0, WORLD.zoneHeight);
-      if (isBlockedByWall(nx, m.y)) nx = m.x;
-      if (isBlockedByWall(m.x, ny)) ny = m.y;
+      if (isBlockedByWall(nx, m.y, m.x, m.y, 0)) nx = m.x;
+      if (isBlockedByWall(m.x, ny, m.x, m.y, 0)) ny = m.y;
       if (Math.abs(nx - m.x) + Math.abs(ny - m.y) > 2) m.dirty = true;
       m.x = nx; m.y = ny;
       chunkManager.updateMobChunk(m);
@@ -2248,8 +2322,8 @@ setInterval(() => {
     let ny = m.y + m.vy * dt;
     nx = clamp(nx, 0, WORLD.zoneWidth);
     ny = clamp(ny, 0, WORLD.zoneHeight);
-    if (isBlockedByWall(nx, m.y)) nx = m.x;
-    if (isBlockedByWall(m.x, ny)) ny = m.y;
+    if (isBlockedByWall(nx, m.y, m.x, m.y, 0)) nx = m.x;
+    if (isBlockedByWall(m.x, ny, m.x, m.y, 0)) ny = m.y;
     // 의미 있는 이동(>2px)일 때만 dirty 마크 — 영속화 부담 최소화
     if (Math.abs(nx - m.x) + Math.abs(ny - m.y) > 2) m.dirty = true;
     m.x = nx; m.y = ny;

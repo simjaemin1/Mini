@@ -947,12 +947,19 @@
         renderables.push({ z: w2i(ox + cl.x + cl.w/2, oy + cl.y + cl.h/2).y - 400, kind: 'claim', cl, off: ox, offY: oy });
       }
       for (const b of c.buildings.values()) {
-        const ax = ox + b.x, ay = oy + b.y;
+        // wall은 cell edge 좌표 (b.x, b.y = cell 좌상단). 다른 건축은 cell 중심.
+        let ax, ay;
+        if (b.type === 'wall') {
+          const side = b.data?.side || 'N';
+          // edge 중간점 — N: 북쪽 변 중간, E: 동쪽 변 중간
+          if (side === 'N') { ax = ox + b.x + 16; ay = oy + b.y; }
+          else /* E */     { ax = ox + b.x + 32; ay = oy + b.y + 16; }
+        } else {
+          ax = ox + b.x; ay = oy + b.y;
+        }
         if (Math.abs(ax - worldCx) > VIEW_RADIUS || Math.abs(ay - worldCy) > VIEW_RADIUS) continue;
-        // 2.5D — floor 만큼 z(높이)로 위로 띄움
         const bZ = (b.floor || 0) * FLOOR_HEIGHT;
         const iso = w2i(ax, ay, bZ);
-        // depth sort: 큰 floor가 나중에 그려져 위에 덮어쓰게
         renderables.push({ z: (ax + ay) * 0.5 + (b.floor || 0) * 1000, kind: 'building', b, iso, ax, ay });
       }
       for (const m of c.mobs.values()) {
@@ -1179,25 +1186,33 @@
       return;
     }
     if (type === 'wall') {
-      // 돌벽 — 정육면체. stroke 약하게 — 연속 wall이 한 면으로 보임
+      // PZ식 얇은 edge wall — side가 'N'이면 cell 북쪽 가장자리(가로 줄), 'E'면 동쪽(세로 줄)
       const H = WALL_HEIGHT;
-      ctx.fillStyle = 'rgba(0,0,0,0.35)';
-      ctx.beginPath(); ctx.ellipse(x, y + H - 2, 18, 5, 0, 0, Math.PI * 2); ctx.fill();
-      // 우측면
-      ctx.beginPath();
-      ctx.moveTo(x + 18, y - 9); ctx.lineTo(x + 18, y - 9 + H);
-      ctx.lineTo(x, y + H); ctx.lineTo(x, y); ctx.closePath();
-      ctx.fillStyle = '#7a7a7a'; ctx.fill();
-      // 좌측면
-      ctx.beginPath();
-      ctx.moveTo(x - 18, y - 9); ctx.lineTo(x - 18, y - 9 + H);
-      ctx.lineTo(x, y + H); ctx.lineTo(x, y); ctx.closePath();
-      ctx.fillStyle = '#8c8c8c'; ctx.fill();
-      // 다이아 윗면
-      ctx.beginPath();
-      ctx.moveTo(x, y - 18); ctx.lineTo(x + 18, y - 9);
-      ctx.lineTo(x, y); ctx.lineTo(x - 18, y - 9); ctx.closePath();
-      ctx.fillStyle = '#a0a0a0'; ctx.fill();
+      const side = building?.data?.side || 'N';
+      ctx.strokeStyle = '#3a3a3a'; ctx.lineWidth = 0.5;
+      if (side === 'N') {
+        // 북쪽 edge — 좌상 - 우하 다이아 한 줄 (위쪽 가장자리)
+        // 화면 (x, y)가 cell 중심이면 edge는 (x-16,y-8)~(x+16,y-24) 사이 (북쪽 변)
+        // 단순화: 가로 폭 32 × 두께 4 + 높이 H
+        ctx.beginPath();
+        ctx.moveTo(x - 16, y - 8); ctx.lineTo(x + 16, y - 24);
+        ctx.lineTo(x + 16, y - 24 + H); ctx.lineTo(x - 16, y - 8 + H); ctx.closePath();
+        ctx.fillStyle = '#7a7a7a'; ctx.fill(); ctx.stroke();
+        // 윗면 (얇은 평행사변형)
+        ctx.beginPath();
+        ctx.moveTo(x - 16, y - 8); ctx.lineTo(x + 16, y - 24);
+        ctx.lineTo(x + 18, y - 22); ctx.lineTo(x - 14, y - 6); ctx.closePath();
+        ctx.fillStyle = '#a0a0a0'; ctx.fill(); ctx.stroke();
+      } else { // E
+        ctx.beginPath();
+        ctx.moveTo(x - 16, y - 24); ctx.lineTo(x + 16, y - 8);
+        ctx.lineTo(x + 16, y - 8 + H); ctx.lineTo(x - 16, y - 24 + H); ctx.closePath();
+        ctx.fillStyle = '#8c8c8c'; ctx.fill(); ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x - 16, y - 24); ctx.lineTo(x + 16, y - 8);
+        ctx.lineTo(x + 14, y - 6); ctx.lineTo(x - 18, y - 22); ctx.closePath();
+        ctx.fillStyle = '#a0a0a0'; ctx.fill(); ctx.stroke();
+      }
     } else if (type === 'floor') {
       // 바닥 — 평평한 다이아 (입체감 약간만)
       const data = building?.data || {};
