@@ -76,6 +76,7 @@ db.exec(`
     thirst        INTEGER NOT NULL DEFAULT 100,
     violation_points INTEGER NOT NULL DEFAULT 0,
     tribe_id      INTEGER,
+    floor         INTEGER NOT NULL DEFAULT 0,
     last_zone     TEXT,
     last_x        REAL,
     last_y        REAL,
@@ -114,6 +115,10 @@ try {
     db.exec('ALTER TABLE players ADD COLUMN tribe_id INTEGER');
     console.log('[central/db] tribe_id 컬럼 추가됨');
   }
+  if (!cols.includes('floor')) {
+    db.exec('ALTER TABLE players ADD COLUMN floor INTEGER NOT NULL DEFAULT 0');
+    console.log('[central/db] floor 컬럼 추가됨');
+  }
 } catch (e) { /* 새 DB면 위 CREATE에서 이미 만들어짐 */ }
 
 // === Password hashing (scrypt) ===
@@ -143,7 +148,7 @@ const stmtInsertPlayer = db.prepare(`
 `);
 const stmtUpdateProfile = db.prepare(`
   UPDATE players SET wood = ?, stone = ?, tools_json = ?, equipped = ?,
-    inventory_json = ?, hunger = ?, thirst = ?, violation_points = ?, tribe_id = ?,
+    inventory_json = ?, hunger = ?, thirst = ?, violation_points = ?, tribe_id = ?, floor = ?,
     last_zone = ?, last_x = ?, last_y = ?, last_seen = ?, color = ?
   WHERE player_id = ?
 `);
@@ -330,6 +335,7 @@ const server = http.createServer(async (req, res) => {
         data.thirst ?? p.thirst ?? 100,
         data.violation_points ?? p.violation_points ?? 0,
         data.tribe_id ?? p.tribe_id ?? null,
+        data.floor ?? p.floor ?? 0,
         data.last_zone ?? p.last_zone,
         data.last_x ?? p.last_x,
         data.last_y ?? p.last_y,

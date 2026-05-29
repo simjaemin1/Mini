@@ -118,6 +118,7 @@ function savePlayer(player, extra = {}) {
     thirst: Math.round(player.thirst ?? 100),
     violation_points: Math.round(player.vp ?? 0),
     tribe_id: player.tribeId ?? null,
+    floor: player.floor || 0,
     tools_json: JSON.stringify(player.tools || {}),
     equipped: player.equipped || null,
     last_zone: extra.last_zone ?? null, // 명시적으로 넘긴 zone만 변경
@@ -888,6 +889,7 @@ const server = http.createServer((req, res) => {
           tribeId: data.tribeId || null,
           tribeName: data.tribeName || null,
           pvpEnabled: !!data.pvpEnabled,
+          floor: data.floor || 0,
           createdAt: Date.now(),
         });
         // 5초 안에 클라가 접속 안 하면 만료
@@ -1123,6 +1125,7 @@ wss.on('connection', async (ws, req) => {
   let tools = {}, equipped = null;
   let initHunger = HUNGER_MAX, initThirst = THIRST_MAX, initVp = 0;
   let initTribeId = null, initTribeName = null;
+  let initFloor = 0;
 
   if (handoffToken && pendingHandoffs.has(handoffToken)) {
     const pending = pendingHandoffs.get(handoffToken);
@@ -1133,6 +1136,7 @@ wss.on('connection', async (ws, req) => {
     if (typeof pending.thirst === 'number') initThirst = pending.thirst;
     if (typeof pending.vp === 'number') initVp = pending.vp;
     if (pending.tribeId) { initTribeId = pending.tribeId; initTribeName = pending.tribeName || null; }
+    if (typeof pending.floor === 'number') initFloor = pending.floor;
     sx = pending.x;
     sy = pending.y;
     ivx = pending.vx;
@@ -1189,6 +1193,7 @@ wss.on('connection', async (ws, req) => {
       initThirst = (typeof result.player.thirst === 'number') ? result.player.thirst : THIRST_MAX;
       initVp = (typeof result.player.violation_points === 'number') ? result.player.violation_points : 0;
       initTribeId = result.player.tribe_id || null;
+      initFloor = (typeof result.player.floor === 'number') ? result.player.floor : 0;
       if (initTribeId) {
         // 부족 이름 한 번 더 조회 (캐시 가능)
         try {
@@ -1250,7 +1255,7 @@ wss.on('connection', async (ws, req) => {
     hunger: initHunger, thirst: initThirst, vp: initVp,
     tribeId: initTribeId, tribeName: initTribeName,
     pvpEnabled: false,
-    floor: 0, // 2.5D — 현재 캐릭터 층
+    floor: initFloor, // 2.5D — 현재 캐릭터 층 (영속화 + 핸드오프 캐리)
     lastAttackAt: 0,
     lastDamagedAt: 0,
     handingOff: false,
@@ -2340,6 +2345,7 @@ async function fireHandoff(player, targetZoneId, newX, newY) {
       tribeId: player.tribeId || null,
       tribeName: player.tribeName || null,
       pvpEnabled: !!player.pvpEnabled,
+      floor: player.floor || 0,
     });
   } catch (e) {
     console.error(`[${ZONE_ID}] handoff_prepare → ${targetZoneId} 실패:`, e.message);
