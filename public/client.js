@@ -11,7 +11,7 @@
   // worldX,worldY (픽셀) → 화면상 iso 픽셀. z(높이)는 화면 y에서 빼서 위로 올림.
   // (1,0,0) → (1, 0.5), (0,1,0) → (-1, 0.5), (0,0,1) → (0, -1) 형태.
   // 모든 호출자는 z=0 기본 — Phase 13.2에서 건물/계단에 z>0 도입.
-  const FLOOR_HEIGHT = 40; // 한 층 = 40px (다층 건축의 단위)
+  const FLOOR_HEIGHT = 32; // 한 층 = 32px (정육면체 비율로 사람 키와 자연스러움)
   function w2i(wx, wy, wz = 0) {
     return { x: (wx - wy), y: (wx + wy) * 0.5 - wz };
   }
@@ -128,7 +128,7 @@
     KeyE: 'e', KeyC: 'c', KeyT: 't', KeyY: 'y', KeyF: 'f',
     KeyB: 'b', KeyH: 'h', KeyM: 'm', KeyK: 'k', KeyJ: 'j', KeyR: 'r', KeyL: 'l',
     KeyP: 'p', KeyO: 'o', KeyG: 'g', KeyN: 'n', KeyV: 'v', KeyZ: 'z', KeyX: 'x',
-    KeyU: 'u', Comma: ',', Period: '.',
+    KeyU: 'u', KeyI: 'i', Comma: ',', Period: '.',
     Digit0: '0', Digit1: '1', Digit2: '2', Digit3: '3',
     ArrowUp: 'arrowup', ArrowDown: 'arrowdown', ArrowLeft: 'arrowleft', ArrowRight: 'arrowright',
     Space: ' ', Enter: 'enter', Tab: 'tab',
@@ -157,6 +157,7 @@
     else if (k === 'h') sendPrimary({ type: 'build', buildType: 'chest', floor: myBuildFloor });
     else if (k === 'j') sendPrimary({ type: 'build', buildType: 'campfire', floor: myBuildFloor });
     else if (k === 'l') sendPrimary({ type: 'build', buildType: 'fence', floor: myBuildFloor });
+    else if (k === 'i') sendPrimary({ type: 'build', buildType: 'floor', floor: myBuildFloor });
     else if (k === 'p') sendPrimary({ type: 'build', buildType: 'farmland', floor: myBuildFloor });
     else if (k === 'o') sendPrimary({ type: 'harvest' });
     else if (k === 'g') sendPrimary({ type: 'feed' });
@@ -226,6 +227,7 @@
       else if (a === 'build_fence') sendPrimary({ type: 'build', buildType: 'fence', floor: myBuildFloor });
       else if (a === 'build_farmland') sendPrimary({ type: 'build', buildType: 'farmland', floor: myBuildFloor });
       else if (a === 'build_stair') sendPrimary({ type: 'build', buildType: 'stair', floor: myBuildFloor });
+      else if (a === 'build_floor') sendPrimary({ type: 'build', buildType: 'floor', floor: myBuildFloor });
       else if (a === 'harvest') sendPrimary({ type: 'harvest' });
       else if (a === 'feed') sendPrimary({ type: 'feed' });
       else if (a === 'tribe') toggleTribePanel();
@@ -1137,7 +1139,7 @@
     ctx.fillStyle = color; ctx.fill();
   }
 
-  const WALL_HEIGHT = 40; // FLOOR_HEIGHT와 같음 — 1F가 0F에 딱 쌓임
+  const WALL_HEIGHT = 32; // FLOOR_HEIGHT와 같음 — 1F가 0F에 딱 쌓임
   function drawBuildingIso(x, y, type, building) {
     if (type === 'farmland') {
       // 갈색 흙 다이아 + 작물
@@ -1177,27 +1179,35 @@
       return;
     }
     if (type === 'wall') {
-      // 돌벽 — FLOOR_HEIGHT(40)에 맞춘 입체 큐브
+      // 돌벽 — 정육면체. stroke 약하게 — 연속 wall이 한 면으로 보임
       const H = WALL_HEIGHT;
-      ctx.fillStyle = 'rgba(0,0,0,0.4)';
-      ctx.beginPath(); ctx.ellipse(x, y + H - 2, 18, 6, 0, 0, Math.PI * 2); ctx.fill();
-      // 우측면 (높이 H)
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.beginPath(); ctx.ellipse(x, y + H - 2, 18, 5, 0, 0, Math.PI * 2); ctx.fill();
+      // 우측면
       ctx.beginPath();
       ctx.moveTo(x + 18, y - 9); ctx.lineTo(x + 18, y - 9 + H);
       ctx.lineTo(x, y + H); ctx.lineTo(x, y); ctx.closePath();
-      ctx.fillStyle = '#6a6a6a'; ctx.fill();
-      ctx.strokeStyle = '#444'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.fillStyle = '#7a7a7a'; ctx.fill();
       // 좌측면
       ctx.beginPath();
       ctx.moveTo(x - 18, y - 9); ctx.lineTo(x - 18, y - 9 + H);
       ctx.lineTo(x, y + H); ctx.lineTo(x, y); ctx.closePath();
-      ctx.fillStyle = '#7c7c7c'; ctx.fill(); ctx.stroke();
-      // 다이아 윗면 (가장 위에 그려서 측면 위에 덮어쓰기)
+      ctx.fillStyle = '#8c8c8c'; ctx.fill();
+      // 다이아 윗면
       ctx.beginPath();
       ctx.moveTo(x, y - 18); ctx.lineTo(x + 18, y - 9);
       ctx.lineTo(x, y); ctx.lineTo(x - 18, y - 9); ctx.closePath();
-      ctx.fillStyle = '#9e9e9e'; ctx.fill();
-      ctx.strokeStyle = '#555'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.fillStyle = '#a0a0a0'; ctx.fill();
+    } else if (type === 'floor') {
+      // 바닥 — 평평한 다이아 (입체감 약간만)
+      const data = building?.data || {};
+      ctx.fillStyle = 'rgba(0,0,0,0.2)';
+      ctx.beginPath(); ctx.ellipse(x, y + 2, 16, 4, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(x, y - 16); ctx.lineTo(x + 16, y - 8);
+      ctx.lineTo(x, y); ctx.lineTo(x - 16, y - 8); ctx.closePath();
+      ctx.fillStyle = '#8a6a4a'; ctx.fill();
+      ctx.strokeStyle = '#5a3a1c'; ctx.lineWidth = 0.5; ctx.stroke();
     } else if (type === 'chest') {
       // 나무상자
       ctx.fillStyle = 'rgba(0,0,0,0.4)';

@@ -177,19 +177,17 @@ const mobs = new Map();         // mid -> { mid, type, x, y, vx, vy, hp, maxHp, 
 const BUILDING_SIZE = 32;
 const BUILDING_COST = {
   wall:     { wood: 2, stone: 1 },
-  fence:    { wood: 1, stone: 0 }, // 울타리 — 콜라이더 O, 싸다
+  floor:    { wood: 1, stone: 0 }, // 바닥 — 1F 짓기 지지대. 콜라이더 X (밟고 다님)
+  fence:    { wood: 1, stone: 0 },
   chest:    { wood: 5, stone: 2 },
-  campfire: { wood: 3, stone: 2 }, // 요리 가능 — 콜라이더 없음
-  farmland: { wood: 0, stone: 0, seed: 'seed_berry' }, // 씨앗 1 소비 (재료 외 별도)
-  stair:    { wood: 4, stone: 2 }, // 계단 — 옆에서 ,/. 키로 층 이동
+  campfire: { wood: 3, stone: 2 },
+  farmland: { wood: 0, stone: 0, seed: 'seed_berry' },
+  stair:    { wood: 4, stone: 2 },
 };
-// 작물 성장 시간 (밀리초)
 const CROP_GROW_MS = 60 * 1000;
-// 콜라이더가 있는 건축물 (벽처럼 통과 불가).
 const BLOCKING_BUILDINGS = new Set(['wall', 'fence']);
-// 2.5D — 건물 높이 (시각용. floor=0은 지상).
-const BUILDING_HEIGHT = { wall: 40, fence: 24, chest: 24, campfire: 20, farmland: 4, stair: 40 };
-const FLOOR_HEIGHT = 40; // 한 층 = 40px
+const BUILDING_HEIGHT = { wall: 32, floor: 4, fence: 24, chest: 24, campfire: 20, farmland: 4, stair: 32 };
+const FLOOR_HEIGHT = 32;
 
 // === 위반 점수 (vp) — PvP 공격·타인 사유지 침범 시 누적, 시간당 감소 ===
 const VP_TRESPASS_GATHER = 3;   // 남 영지 자원 채집 시도
@@ -507,14 +505,23 @@ function spawnNpc(opts = {}) {
   // 그리드 32px 기준으로 사유지 중심 주변에 wall 배치
   const houseGx = Math.floor(cx / BUILDING_SIZE) * BUILDING_SIZE + BUILDING_SIZE / 2;
   const houseGy = Math.floor(cy / BUILDING_SIZE) * BUILDING_SIZE + BUILDING_SIZE / 2;
+  // 3x3 집 — 벽 4면 둘러싸고 가운데 (0,0) 입구, 옆에 계단. 1F 바닥 + 외벽.
   const houseLayout = [
-    // [dx, dy, type, floor] — dx/dy는 BUILDING_SIZE 단위
-    [-1, -1, 'wall', 0], [ 0, -1, 'wall', 0], [ 1, -1, 'wall', 0], // 위 벽 3칸 (입구는 아래쪽)
-    [-1,  0, 'wall', 0],                       [ 1,  0, 'wall', 0], // 좌우 벽
-    [-1,  1, 'wall', 0],                       [ 1,  1, 'wall', 0], // 좌우 더 벽
-    [ 2,  0, 'stair', 0],                                            // 옆에 계단
-    [-1, -1, 'wall', 1], [ 0, -1, 'wall', 1], [ 1, -1, 'wall', 1], // 1F 윗벽
-    [-1,  0, 'wall', 1],                       [ 1,  0, 'wall', 1], // 1F 좌우
+    // [dx, dy, type, floor]
+    // 0F 외벽 — 위·좌·우·아래. 입구는 아래 가운데 (0,1) 비움
+    [-1, -1, 'wall', 0], [ 0, -1, 'wall', 0], [ 1, -1, 'wall', 0],
+    [-1,  0, 'wall', 0],                       [ 1,  0, 'wall', 0],
+    [-1,  1, 'wall', 0],                       [ 1,  1, 'wall', 0],
+    // 옆 계단 (집 오른쪽 밖)
+    [ 2,  0, 'stair', 0],
+    // 1F 바닥 (3x3) — 천장 역할도
+    [-1, -1, 'floor', 1], [ 0, -1, 'floor', 1], [ 1, -1, 'floor', 1],
+    [-1,  0, 'floor', 1], [ 0,  0, 'floor', 1], [ 1,  0, 'floor', 1],
+    [-1,  1, 'floor', 1], [ 0,  1, 'floor', 1], [ 1,  1, 'floor', 1],
+    // 1F 외벽 (다락방)
+    [-1, -1, 'wall', 1], [ 0, -1, 'wall', 1], [ 1, -1, 'wall', 1],
+    [-1,  0, 'wall', 1],                       [ 1,  0, 'wall', 1],
+    [-1,  1, 'wall', 1], [ 0,  1, 'wall', 1], [ 1,  1, 'wall', 1],
   ];
   for (const [dx, dy, type, floor] of houseLayout) {
     const bx = houseGx + dx * BUILDING_SIZE;
@@ -1777,15 +1784,16 @@ function tryBuild(player, type, floor = 0) {
       send(player.ws, { type: 'notice', text: `이미 ${floor}F에 건축물이 있습니다` }); return;
     }
   }
-  // 위층(floor > 0) 건축은 같은 (x,y) 아래 모든 floor에 지지 구조물이 있어야
+  // 위층(floor > 0) 건축은 아래층에 wall 또는 floor 있어야 (지지)
   if (floor > 0) {
     let supported = false;
     for (const b of nearBuilds) {
-      if (Math.abs(b.x - gx) < BUILDING_SIZE && Math.abs(b.y - gy) < BUILDING_SIZE && (b.floor || 0) === floor - 1) {
+      if (Math.abs(b.x - gx) < BUILDING_SIZE && Math.abs(b.y - gy) < BUILDING_SIZE && (b.floor || 0) === floor - 1
+          && (b.type === 'wall' || b.type === 'floor')) {
         supported = true; break;
       }
     }
-    if (!supported) { send(player.ws, { type: 'notice', text: `${floor}F 짓려면 ${floor-1}F에 지지대 필요` }); return; }
+    if (!supported) { send(player.ws, { type: 'notice', text: `${floor}F 짓려면 ${floor-1}F에 벽/바닥 필요` }); return; }
   }
 
   player.inventory.wood -= cost.wood;
@@ -1992,8 +2000,8 @@ function isBlockedByWall(x, y, playerFloor = 0) {
   for (const b of nearby) {
     if (!BLOCKING_BUILDINGS.has(b.type)) continue;
     if ((b.floor || 0) !== playerFloor) continue; // 다른 층은 통과
-    // 콜라이더 = wall 시각 크기와 동일 (BUILDING_SIZE)
-    if (Math.abs(b.x - x) < BUILDING_SIZE * 0.95 && Math.abs(b.y - y) < BUILDING_SIZE * 0.95) {
+    // 콜라이더 = BUILDING_SIZE 전체
+    if (Math.abs(b.x - x) < BUILDING_SIZE && Math.abs(b.y - y) < BUILDING_SIZE) {
       return true;
     }
   }
