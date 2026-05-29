@@ -85,7 +85,7 @@ const MOVE_SPEED = 220; // px/sec
 // 부하 테스트로 측정한 단일 코어 한계 ~300. 안전 마진으로 150 기본.
 const PLAYER_CAP = parseInt(process.env.PLAYER_CAP || '150', 10);
 const GATHER_RANGE = 48;
-const MAX_RESOURCES = 8000; // Phase 12.1: 면적 100배 → 자원 100배
+const MAX_RESOURCES = 80;
 
 // === 상태 ===
 const players = new Map();      // pid -> { ws, x, y, vx, vy, name, inventory, handingOff }
@@ -308,9 +308,8 @@ function spawnMob(type, opts = {}) {
     console.log(`[${ZONE_ID}] DB에서 mob ${existing.length}마리 로드`);
   } else {
     const isHostile = ZONE.biome === 'mountains' || ZONE.biome === 'forest';
-    // Phase 12.1 — 100배 비례
-    const deerCount = isHostile ? 400 : 800;
-    const wolfCount = isHostile ? 500 : 200;
+    const deerCount = isHostile ? 4 : 8;
+    const wolfCount = isHostile ? 5 : 2;
     for (let i = 0; i < deerCount; i++) spawnMob('deer');
     // 늑대는 팩으로 묶음 — 2~3마리씩
     let spawned = 0, packNum = 0;
@@ -344,7 +343,7 @@ const npcs = new Set(); // pid 모음 (players Map과 같은 pid 사용)
 let nextNpcSerial = 1;
 const NPC_NAMES = ['에코', '루나', '오리온', '베가', '카이', '미라', '솔', '아라'];
 const NPC_COLORS = ['#d8806a', '#7aa8d0', '#9ad8a0', '#d8c060', '#c080d8', '#80d8c0'];
-const NPC_COUNT_PER_ZONE = 50; // Phase 12.1: 100배는 과부하라 50명만
+const NPC_COUNT_PER_ZONE = 2;
 const NPC_RESPAWN_MS = 30 * 1000;
 const NPC_FLEE_RANGE = 250;        // 늑대 시야 안이면 도망
 const NPC_CLAIM_SIZE = 192;
@@ -633,12 +632,9 @@ setInterval(() => {
   console.log(`[${ZONE_ID}] DB에서 건축물 ${rows.length}개 로드`);
 }
 
-// 점진적 리스폰 — Phase 12.1: 한 번에 여러 개 (8000개 회복 위해)
+// 점진적 리스폰
 setInterval(() => {
-  const deficit = MAX_RESOURCES - resources.size;
-  if (deficit <= 0) return;
-  const batchSize = Math.min(20, deficit);
-  for (let i = 0; i < batchSize; i++) {
+  if (resources.size < MAX_RESOURCES) {
     const r = spawnOneResource();
     broadcast({ type: 'resource_spawn', resource: r });
   }
