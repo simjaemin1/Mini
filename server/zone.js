@@ -553,47 +553,27 @@ function spawnNpc(opts = {}) {
   return player;
 }
 
-// === 부팅: 옛 NPC 사유지 정리 + zone-config의 고정 마을 spawn ===
-// 마을 좌표는 zone-config.js의 ZONE.villages 배열에서 가져옴 (고정 — 매번 같은 자리).
+// === 부팅: DB 직접 wipe (옛 NPC + debug + legacy wall) → DB 로드 → 마을 spawn ===
+// 중요: DB 로드는 라인 836+에서 일어남. 그래서 메모리 기반 cleanup은 의미 X.
+// 여기서 DB에 직접 DELETE 쿼리로 wipe — DB 로드 시 이미 사라져 있음.
 const VILLAGES = ZONE.villages || [];
 const NPC_PER_VILLAGE = VILLAGES.length > 0 ? Math.floor(NPC_COUNT_PER_ZONE / VILLAGES.length) : 0;
 const VILLAGE_SAFE_RADIUS = 600; // 늑대 이 안에 spawn X (마을 안전구역)
 {
-  const npcClaims = Array.from(claims.values()).filter(c => c.ownerPid && c.ownerPid.startsWith('npc_'));
-  for (const c of npcClaims) {
-    if (c.dbId) { try { db.db.prepare('DELETE FROM claims WHERE id = ?').run(c.dbId); } catch (e) {} }
-    claims.delete(c.id);
-  }
-  if (npcClaims.length > 0) console.log(`[${ZONE_ID}] 옛 NPC 사유지 ${npcClaims.length}개 정리`);
-
-  // Phase 13.9.a — 옛 NPC가 만든 buildings(wall/floor/stair/chest) 정리.
-  // 매 부팅마다 NPC가 자동 집을 새로 짓기 때문에, 옛 큐브 wall(data.side 없음)이 누적되면 안 됨.
-  const npcBuildings = Array.from(buildings.values()).filter(b => b.ownerId && b.ownerId.startsWith('npc_'));
-  for (const b of npcBuildings) {
-    if (b.dbId) { try { db.deleteBuilding(b.dbId); } catch (e) {} }
-    buildings.delete(b.id);
-  }
-  if (npcBuildings.length > 0) console.log(`[${ZONE_ID}] 옛 NPC 건축물 ${npcBuildings.length}개 정리`);
-
-  // Phase 13.9.a — 옛 형식 wall(data.side 없음) 일괄 정리. 사용자 wall이라도 옛 큐브 모양이라 새 체계와 안 맞음.
-  const legacyWalls = Array.from(buildings.values()).filter(b => b.type === 'wall' && !b.data?.side);
-  for (const b of legacyWalls) {
-    if (b.dbId) { try { db.deleteBuilding(b.dbId); } catch (e) {} }
-    buildings.delete(b.id);
-  }
-  if (legacyWalls.length > 0) console.log(`[${ZONE_ID}] 옛 큐브 wall ${legacyWalls.length}개 정리`);
-
-  // Phase 13.9.a 디버그 wall 박스는 검증 완료 — 부팅 시 옛 데이터만 wipe.
-  if (ZONE_ID === 'korea') {
-    const TEST_OWNER = 'debug_test';
-    const oldTest = Array.from(buildings.values()).filter(b => b.ownerId === TEST_OWNER);
-    for (const b of oldTest) {
-      if (b.dbId) { try { db.deleteBuilding(b.dbId); } catch (e) {} }
-      buildings.delete(b.id);
-    }
-    if (oldTest.length > 0) console.log(`[${ZONE_ID}] 옛 디버그 wall ${oldTest.length}개 정리`);
-  }
-
+  try {
+    const npcClaimRes = db.db.prepare("DELETE FROM claims WHERE owner_id LIKE 'npc_%'").run();
+    if (npcClaimRes.changes > 0) console.log(`[${ZONE_ID}] DB wipe: NPC 사유지 ${npcClaimRes.changes}개`);
+    const npcBldRes = db.db.prepare("DELETE FROM buildings WHERE owner_id LIKE 'npc_%'").run();
+    if (npcBldRes.changes > 0) console.log(`[${ZONE_ID}] DB wipe: NPC 건축물 ${npcBldRes.changes}개`);
+    const dbgRes = db.db.prepare("DELETE FROM buildings WHERE owner_id = 'debug_test'").run();
+    if (dbgRes.changes > 0) console.log(`[${ZONE_ID}] DB wipe: 디버그 wall ${dbgRes.changes}개`);
+    // 옛 큐브 wall (data 안에 side 키 없음) — SQLite JSON 함수 없으니 LIKE로 근사
+    const legRes = db.db.prepare("DELETE FROM buildings WHERE type='wall' AND (data IS NULL OR data NOT LIKE '%\"side\"%')").run();
+    if (legRes.changes > 0) console.log(`[${ZONE_ID}] DB wipe: 옛 큐브 wall ${legRes.changes}개`);
+  } catch (e) { console.error(`[${ZONE_ID}] DB wipe error:`, e); }
+}
+// NPC spawn은 DB 로드 후로 (spawnVillagers 함수, 라인 836 DB 로드 다음에 호출)
+function spawnVillagers() {
   for (let v = 0; v < VILLAGES.length; v++) {
     const village = VILLAGES[v];
     const villageId = `village_${ZONE_ID}_${v}`;
@@ -854,6 +834,9 @@ setInterval(() => {
   }
   console.log(`[${ZONE_ID}] DB에서 건축물 ${rows.length}개 로드`);
 }
+
+// === NPC 마을 spawn — DB 로드 후 (중복 방지) ===
+spawnVillagers();
 
 // Phase 12.2.e: 자원 respawn 제거 — 청크 활성화 시 시드로 자동 생성됨
 
