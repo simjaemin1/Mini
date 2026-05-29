@@ -33,7 +33,7 @@ const ZONES_BASE = {
   korea: {
     port: 3002, biome: 'mountains', displayName: '한반도 산악',
     groundColor: '#9a9670', tintColor: '#7a8a4a',
-    worldOffsetX: 0,    worldOffsetY: 4096,
+    worldOffsetX: 0,     worldOffsetY: 10240,
     simulatedLatencyMs: 5,
     north: 'russia', south: null, west: null, east: 'china',
   },
@@ -47,14 +47,14 @@ const ZONES_BASE = {
   usa: {
     port: 3005, biome: 'plains', displayName: '미국 평원',
     groundColor: '#bca56a', tintColor: '#8a6a3a',
-    worldOffsetX: 4096, worldOffsetY: 0,
+    worldOffsetX: 10240, worldOffsetY: 0,
     simulatedLatencyMs: 90,
     north: null, south: 'china', west: 'russia', east: null,
   },
   china: {
     port: 3003, biome: 'plains', displayName: '중국 평원',
     groundColor: '#8aa860', tintColor: '#d4b97a',
-    worldOffsetX: 4096, worldOffsetY: 4096,
+    worldOffsetX: 10240, worldOffsetY: 10240,
     simulatedLatencyMs: 25,
     north: 'usa', south: null, west: 'korea', east: null,
   },
@@ -87,9 +87,9 @@ const CENTRAL = {
 };
 
 const WORLD = {
-  // Phase 12.2 — zone 4배 (1024→4096). 청크 시스템으로 활성 청크만 tick 처리.
-  zoneWidth: 4096,
-  zoneHeight: 4096,
+  // Phase 12.2.e — zone 10배 (1024→10240, 면적 100배). 자원은 procedural (메모리 X).
+  zoneWidth: 10240,
+  zoneHeight: 10240,
   tileSize: 32,
   dayLengthMs: 10 * 60 * 1000,
   dayPhaseRatio: 0.7,

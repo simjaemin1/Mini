@@ -131,4 +131,65 @@ class ChunkManager {
   size() { return this.chunks.size; }
 }
 
-module.exports = { Chunk, ChunkManager, CHUNK_SIZE };
+// === Procedural generation (12.2.e) ===
+// 청크별 시드로 자원 위치/타입 결정. 같은 청크는 매번 같은 자원 spawn.
+// 채집된 자원만 harvested_seeds DB에 기록.
+function hashStr(s) { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0; return h; }
+function seedRand(zoneId, cx, cy, n) {
+  let h = hashStr(zoneId);
+  h = (h ^ (cx * 73856093)) >>> 0;
+  h = (h ^ (cy * 19349663)) >>> 0;
+  h = (h ^ (n * 83492791)) >>> 0;
+  h = ((h * 9301) + 49297) >>> 0;
+  return (h % 2147483647) / 2147483647;
+}
+
+const RESOURCE_HP_TABLE = { tree: 3, rock: 4, berry_bush: 2, water_pool: 999 };
+
+// biome별 자원 분포 (zone.js의 biomeResourceType과 같이 유지)
+function pickResourceType(biome, r) {
+  if (biome === 'plains') {
+    if (r < 0.45) return 'tree';
+    if (r < 0.60) return 'rock';
+    if (r < 0.90) return 'berry_bush';
+    return 'water_pool';
+  }
+  if (biome === 'mountains') {
+    if (r < 0.25) return 'tree';
+    if (r < 0.75) return 'rock';
+    if (r < 0.92) return 'berry_bush';
+    return 'water_pool';
+  }
+  // forest
+  if (r < 0.60) return 'tree';
+  if (r < 0.72) return 'rock';
+  if (r < 0.94) return 'berry_bush';
+  return 'water_pool';
+}
+
+// 청크 안 자원 시드 생성. harvestedSet에 있는 건 제외.
+// 청크당 자원 N개 (기본 5개) — 청크 면적 256² = 65536. zone 4096이면 16×16=256 청크. 총 자원 1280.
+const RESOURCES_PER_CHUNK = 5;
+function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet) {
+  const result = [];
+  for (let n = 0; n < RESOURCES_PER_CHUNK; n++) {
+    const seedKey = `${cx}_${cy}_${n}`;
+    if (harvestedSet && harvestedSet.has(seedKey)) continue;
+    const r1 = seedRand(zoneId, cx, cy, n * 3);
+    const r2 = seedRand(zoneId, cx, cy, n * 3 + 1);
+    const r3 = seedRand(zoneId, cx, cy, n * 3 + 2);
+    const x = cx * chunkSize + 16 + r1 * (chunkSize - 32);
+    const y = cy * chunkSize + 16 + r2 * (chunkSize - 32);
+    const type = pickResourceType(biome, r3);
+    const maxHp = RESOURCE_HP_TABLE[type] || 3;
+    result.push({
+      id: `s_${cx}_${cy}_${n}`,
+      seedKey, // 채집 시 DB 기록용
+      isSeed: true,
+      x, y, type, hp: maxHp, maxHp,
+    });
+  }
+  return result;
+}
+
+module.exports = { Chunk, ChunkManager, CHUNK_SIZE, generateChunkResources, seedRand };

@@ -10,26 +10,77 @@ const { ZONES, WORLD, isNight, worldPhase, darknessLevel } = require('./zone-con
 const db = require('./zone-local-db'); // 로컬 zone DB — players 없음
 const central = require('./central-client'); // central HTTP 클라이언트
 const { Quadtree } = require('./quadtree'); // spatial index — O(N²) 검색 회피
-const { ChunkManager, CHUNK_SIZE } = require('./chunk'); // 청크 단위 entity 분류
+const { ChunkManager, CHUNK_SIZE, generateChunkResources } = require('./chunk'); // 청크 단위 entity 분류 + procedural
 const chunkManager = new ChunkManager(WORLD.zoneWidth, WORLD.zoneHeight);
+const harvestedSeeds = new Set(); // 채집된 시드 자원 (DB에서 load)
 
 // === 활성 청크 (12.2.b) — 사람 player + observer 위치 주변 청크만 시뮬레이션 ===
 // 비활성 청크의 mob/NPC는 멈춤 — CPU 절약. 청크 시스템의 핵심.
 const CHUNK_ACTIVE_RADIUS = 1200; // 시야(650) + AOI(800) + 약간 마진
 let activeChunkKeys = new Set();
+// 청크 활성/비활성 transition 감지 + procedural 자원 spawn/despawn
+let prevActiveChunkKeys = new Set();
 function updateActiveChunks() {
-  activeChunkKeys = new Set();
+  const newActive = new Set();
+  // 사람 player 시야 기반 활성 청크
   for (const p of players.values()) {
-    if (p.isNpc) continue; // NPC는 viewer 아님
+    if (p.isNpc) continue;
     if (p.hp <= 0) continue;
-    for (const c of chunkManager.getChunksInRadius(p.x, p.y, CHUNK_ACTIVE_RADIUS)) {
-      activeChunkKeys.add(chunkManager.keyOf(c.cx, c.cy));
+    const { cx: pcx, cy: pcy } = chunkManager.chunkXY(p.x, p.y);
+    const r = Math.ceil(CHUNK_ACTIVE_RADIUS / chunkManager.chunkSize);
+    for (let dx = -r; dx <= r; dx++) for (let dy = -r; dy <= r; dy++) {
+      const cx = pcx + dx, cy = pcy + dy;
+      if (cx < 0 || cy < 0 || cx >= chunkManager.colsX || cy >= chunkManager.colsY) continue;
+      newActive.add(chunkManager.keyOf(cx, cy));
     }
   }
   for (const data of observers.values()) {
-    for (const c of chunkManager.getChunksInRadius(data.viewerX, data.viewerY, CHUNK_ACTIVE_RADIUS)) {
-      activeChunkKeys.add(chunkManager.keyOf(c.cx, c.cy));
+    const { cx: pcx, cy: pcy } = chunkManager.chunkXY(data.viewerX, data.viewerY);
+    const r = Math.ceil(CHUNK_ACTIVE_RADIUS / chunkManager.chunkSize);
+    for (let dx = -r; dx <= r; dx++) for (let dy = -r; dy <= r; dy++) {
+      const cx = pcx + dx, cy = pcy + dy;
+      if (cx < 0 || cy < 0 || cx >= chunkManager.colsX || cy >= chunkManager.colsY) continue;
+      newActive.add(chunkManager.keyOf(cx, cy));
     }
+  }
+  // transition: 새로 활성된 청크 → procedural 자원 spawn
+  for (const k of newActive) {
+    if (!prevActiveChunkKeys.has(k)) {
+      const [cx, cy] = k.split('_').map(Number);
+      activateChunk(cx, cy);
+    }
+  }
+  // transition: 비활성된 청크 → 시드 자원 despawn (메모리/quadtree에서 제거)
+  for (const k of prevActiveChunkKeys) {
+    if (!newActive.has(k)) {
+      const [cx, cy] = k.split('_').map(Number);
+      deactivateChunk(cx, cy);
+    }
+  }
+  prevActiveChunkKeys = newActive;
+  activeChunkKeys = newActive;
+}
+
+// 활성화 — 그 청크의 시드 자원 생성
+function activateChunk(cx, cy) {
+  const seedResources = generateChunkResources(ZONE_ID, ZONE.biome, cx, cy, chunkManager.chunkSize, harvestedSeeds);
+  for (const r of seedResources) {
+    resources.set(r.id, r);
+    chunkManager.insertResource(r);
+    broadcast({ type: 'resource_spawn', resource: r });
+  }
+}
+
+// 비활성화 — 그 청크의 시드 자원만 제거 (수동 자원은 안 건드림)
+function deactivateChunk(cx, cy) {
+  const c = chunkManager.chunks.get(chunkManager.keyOf(cx, cy));
+  if (!c) return;
+  const toRemove = [];
+  for (const r of c.resources.values()) if (r.isSeed) toRemove.push(r);
+  for (const r of toRemove) {
+    resources.delete(r.id);
+    chunkManager.removeResource(r);
+    broadcast({ type: 'resource_removed', id: r.id });
   }
 }
 function isChunkActiveKey(key) { return activeChunkKeys.has(key); }
@@ -112,7 +163,7 @@ const MOVE_SPEED = 220; // px/sec
 // 부하 테스트로 측정한 단일 코어 한계 ~300. 안전 마진으로 150 기본.
 const PLAYER_CAP = parseInt(process.env.PLAYER_CAP || '150', 10);
 const GATHER_RANGE = 48;
-const MAX_RESOURCES = 1280; // 면적 16배 → 자원 16배
+const MAX_RESOURCES = 0; // Phase 12.2.e: procedural — 청크 활성화 시 lazy 생성. 이 변수 더 안 씀.
 
 // === 상태 ===
 const players = new Map();      // pid -> { ws, x, y, vx, vy, name, inventory, handingOff }
@@ -260,25 +311,12 @@ function spawnOneResource() {
   return r;
 }
 
-// === DB에서 기존 자원 로드 (없으면 새로 spawn) ===
+// === Phase 12.2.e: procedural — 자원은 청크 활성화 시 lazy 생성 ===
+// 부팅 시 채집된 시드만 DB에서 load. 기존 resources 테이블 row는 무시 (procedural로 대체).
 {
-  const existing = db.getResources();
-  if (existing.length > 0) {
-    for (const row of existing) {
-      const id = `r${nextRid++}`;
-      const r = {
-        id, dbId: row.id,
-        type: row.type, x: row.x, y: row.y,
-        hp: row.hp, maxHp: row.max_hp,
-      };
-      resources.set(id, r);
-      chunkManager.insertResource(r);
-    }
-    console.log(`[${ZONE_ID}] DB에서 자원 ${existing.length}개 로드`);
-  } else {
-    for (let i = 0; i < MAX_RESOURCES; i++) spawnOneResource();
-    console.log(`[${ZONE_ID}] 새 자원 ${MAX_RESOURCES}개 spawn`);
-  }
+  const harvested = db.getAllHarvestedSeeds();
+  for (const k of harvested) harvestedSeeds.add(k);
+  console.log(`[${ZONE_ID}] 채집된 시드 자원 ${harvested.length}개 로드 (procedural 모드)`);
 }
 
 // === DB에서 자기 zone의 claims 로드 ===
@@ -339,8 +377,9 @@ function spawnMob(type, opts = {}) {
     console.log(`[${ZONE_ID}] DB에서 mob ${existing.length}마리 로드`);
   } else {
     const isHostile = ZONE.biome === 'mountains' || ZONE.biome === 'forest';
-    const deerCount = isHostile ? 32 : 64; // 16배 비례
-    const wolfCount = isHostile ? 40 : 16;
+    // 면적 100배지만 mob도 메모리 차지 — 적당히 50배 (비활성 청크는 AI skip)
+    const deerCount = isHostile ? 200 : 400;
+    const wolfCount = isHostile ? 250 : 100;
     for (let i = 0; i < deerCount; i++) spawnMob('deer');
     // 늑대는 팩으로 묶음 — 2~3마리씩
     let spawned = 0, packNum = 0;
@@ -374,7 +413,7 @@ const npcs = new Set(); // pid 모음 (players Map과 같은 pid 사용)
 let nextNpcSerial = 1;
 const NPC_NAMES = ['에코', '루나', '오리온', '베가', '카이', '미라', '솔', '아라'];
 const NPC_COLORS = ['#d8806a', '#7aa8d0', '#9ad8a0', '#d8c060', '#c080d8', '#80d8c0'];
-const NPC_COUNT_PER_ZONE = 12; // 면적 16배 — NPC도 늘리되 절제
+const NPC_COUNT_PER_ZONE = 30; // 면적 100배지만 NPC는 메모리 차지하니 30명만
 const NPC_RESPAWN_MS = 30 * 1000;
 const NPC_FLEE_RANGE = 250;        // 늑대 시야 안이면 도망
 const NPC_CLAIM_SIZE = 192;
@@ -593,7 +632,12 @@ function npcStep(npc, dt, now) {
           for (const [k, v] of Object.entries(loot)) npc.inventory[k] = (npc.inventory[k] || 0) + v;
           resources.delete(r.id);
           chunkManager.removeResource(r);
-          if (r.dbId) db.deleteResource(r.dbId);
+          if (r.isSeed && r.seedKey) {
+            harvestedSeeds.add(r.seedKey);
+            try { db.insertHarvestedSeed(r.seedKey); } catch (e) {}
+          } else if (r.dbId) {
+            db.deleteResource(r.dbId);
+          }
           broadcast({ type: 'resource_removed', id: r.id });
         } else {
           if (r.dbId) db.updateResourceHp(r.dbId, r.hp);
@@ -669,13 +713,7 @@ setInterval(() => {
   console.log(`[${ZONE_ID}] DB에서 건축물 ${rows.length}개 로드`);
 }
 
-// 점진적 리스폰
-setInterval(() => {
-  if (resources.size < MAX_RESOURCES) {
-    const r = spawnOneResource();
-    broadcast({ type: 'resource_spawn', resource: r });
-  }
-}, 4000);
+// Phase 12.2.e: 자원 respawn 제거 — 청크 활성화 시 시드로 자동 생성됨
 
 // === HTTP + WebSocket ===
 const server = http.createServer((req, res) => {
@@ -1476,7 +1514,12 @@ function tryGather(player) {
     }
     resources.delete(best.id);
     chunkManager.removeResource(best);
-    if (best.dbId) db.deleteResource(best.dbId);
+    if (best.isSeed && best.seedKey) {
+      harvestedSeeds.add(best.seedKey);
+      try { db.insertHarvestedSeed(best.seedKey); } catch (e) {}
+    } else if (best.dbId) {
+      db.deleteResource(best.dbId);
+    }
     send(player.ws, { type: 'inventory', inventory: player.inventory });
     broadcast({ type: 'resource_removed', id: best.id });
     savePlayer(player);

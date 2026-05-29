@@ -71,6 +71,11 @@ db.exec(`
     h          REAL NOT NULL,
     created_at INTEGER NOT NULL
   );
+  -- Phase 12.2.e: 시드 자원 중 채집된 것만 기록 (그 외엔 매번 시드로 재생성)
+  CREATE TABLE IF NOT EXISTS harvested_seeds (
+    seed_key      TEXT PRIMARY KEY,
+    harvested_at  INTEGER NOT NULL
+  );
 `);
 
 // === resources ===
@@ -147,6 +152,12 @@ function insertClaim(c) {
   return result.lastInsertRowid;
 }
 
+// === harvested_seeds (procedural 자원 채집 기록) ===
+const stmtInsertHarvested = db.prepare('INSERT OR IGNORE INTO harvested_seeds (seed_key, harvested_at) VALUES (?, ?)');
+const stmtGetAllHarvested = db.prepare('SELECT seed_key FROM harvested_seeds');
+function insertHarvestedSeed(key) { stmtInsertHarvested.run(key, Date.now()); }
+function getAllHarvestedSeeds() { return stmtGetAllHarvested.all().map(r => r.seed_key); }
+
 console.log(`[${ZONE_ID}/db] 로컬 zone DB 준비됨: ${DB_PATH}`);
 
 module.exports = {
@@ -155,4 +166,5 @@ module.exports = {
   getBuildings, insertBuilding, updateBuildingData, deleteBuilding,
   getMobs, insertMob, updateMobState, deleteMob,
   getClaims, insertClaim,
+  insertHarvestedSeed, getAllHarvestedSeeds,
 };
