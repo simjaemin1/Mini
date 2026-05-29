@@ -32,7 +32,8 @@
   let recipes = {};   // 서버에서 받은 도구 레시피
   let cookRecipes = {}; // 서버에서 받은 요리 레시피
   let foodEffects = {}; // 서버에서 받은 음식 효과 정보 (표시용)
-  let myHunger = 100, myThirst = 100;
+  let myHunger = 100, myThirst = 100, myVp = 0;
+  const VP_THRESHOLD = 50; // 클라 표시용 — 서버와 동일해야 함
   let lastServerPingMs = 0;
   let lastTickAt = 0;
 
@@ -119,7 +120,7 @@
   const CODE_TO_KEY = {
     KeyW: 'w', KeyA: 'a', KeyS: 's', KeyD: 'd',
     KeyE: 'e', KeyC: 'c', KeyT: 't', KeyY: 'y', KeyF: 'f',
-    KeyB: 'b', KeyH: 'h', KeyM: 'm', KeyK: 'k', KeyJ: 'j', KeyR: 'r',
+    KeyB: 'b', KeyH: 'h', KeyM: 'm', KeyK: 'k', KeyJ: 'j', KeyR: 'r', KeyL: 'l',
     Digit0: '0', Digit1: '1', Digit2: '2', Digit3: '3',
     ArrowUp: 'arrowup', ArrowDown: 'arrowdown', ArrowLeft: 'arrowleft', ArrowRight: 'arrowright',
     Space: ' ', Enter: 'enter', Tab: 'tab',
@@ -147,6 +148,7 @@
     else if (k === 'b') sendPrimary({ type: 'build', buildType: 'wall' });
     else if (k === 'h') sendPrimary({ type: 'build', buildType: 'chest' });
     else if (k === 'j') sendPrimary({ type: 'build', buildType: 'campfire' });
+    else if (k === 'l') sendPrimary({ type: 'build', buildType: 'fence' });
     else if (k === 'm') toggleMarketplace();
     else if (k === 'k') toggleCraft();
     else if (k === 'r') toggleCookPanel();
@@ -203,6 +205,7 @@
       else if (a === 'build_wall') sendPrimary({ type: 'build', buildType: 'wall' });
       else if (a === 'build_chest') sendPrimary({ type: 'build', buildType: 'chest' });
       else if (a === 'build_campfire') sendPrimary({ type: 'build', buildType: 'campfire' });
+      else if (a === 'build_fence') sendPrimary({ type: 'build', buildType: 'fence' });
       else if (a === 'cook') toggleCookPanel();
       else if (a === 'market') toggleMarketplace();
     };
@@ -430,6 +433,7 @@
         if (msg.self.hp !== undefined) { myHp = msg.self.hp; myMaxHp = msg.self.maxHp; }
         if (typeof msg.self.hunger === 'number') myHunger = msg.self.hunger;
         if (typeof msg.self.thirst === 'number') myThirst = msg.self.thirst;
+        if (typeof msg.self.vp === 'number') myVp = msg.self.vp;
         const absX = msg.zone.worldOffsetX + msg.self.x;
         const absY = (msg.zone.worldOffsetY || 0) + msg.self.y;
         myAbsPos = { x: absX, y: absY };
@@ -540,6 +544,7 @@
     } else if (msg.type === 'gauges') {
       if (typeof msg.hunger === 'number') myHunger = msg.hunger;
       if (typeof msg.thirst === 'number') myThirst = msg.thirst;
+      if (typeof msg.vp === 'number') myVp = msg.vp;
       updateHud();
     } else if (msg.type === 'handoff') {
       // 서버가 발급한 토큰으로 새 zone에 접속.
@@ -1066,6 +1071,18 @@
       // 자물쇠 노란점
       ctx.fillStyle = '#f0c674';
       ctx.fillRect(x - 2, y - 2, 4, 4);
+    } else if (type === 'fence') {
+      // 나무 울타리 — 세로 막대 2개 + 가로 두 줄
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.beginPath(); ctx.ellipse(x, y + 5, 14, 4, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#6a4828'; ctx.lineWidth = 2;
+      // 두 세로 막대
+      ctx.beginPath(); ctx.moveTo(x - 10, y + 3); ctx.lineTo(x - 8, y - 10); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x + 10, y + 3); ctx.lineTo(x + 8, y - 10); ctx.stroke();
+      // 가로 두 줄
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(x - 9, y - 2); ctx.lineTo(x + 9, y - 2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x - 9, y - 7); ctx.lineTo(x + 9, y - 7); ctx.stroke();
     } else if (type === 'campfire') {
       // 모닥불 — 통나무 + 흔들리는 불꽃
       ctx.fillStyle = 'rgba(0,0,0,0.4)';
@@ -1293,6 +1310,15 @@
     if (thirstEl) {
       thirstEl.style.width = `${Math.max(0, myThirst)}%`;
       document.getElementById('thirstText').textContent = `💧 ${Math.round(myThirst)}`;
+    }
+    const vpEl = document.getElementById('vpFill');
+    if (vpEl) {
+      vpEl.style.width = `${Math.max(0, Math.min(100, myVp))}%`;
+      const txt = myVp >= VP_THRESHOLD
+        ? `⚠️ 위반 ${Math.round(myVp)} — 내 영지 보호 해제됨!`
+        : `⚖️ 위반 ${Math.round(myVp)}/${VP_THRESHOLD}`;
+      document.getElementById('vpText').textContent = txt;
+      document.querySelector('.vp-bar')?.classList.toggle('danger', myVp >= VP_THRESHOLD);
     }
     // 음식/extra 인벤토리
     const foodRow = document.getElementById('invFoodRow');

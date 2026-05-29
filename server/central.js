@@ -49,6 +49,7 @@ db.exec(`
     inventory_json TEXT DEFAULT '{}',
     hunger        INTEGER NOT NULL DEFAULT 100,
     thirst        INTEGER NOT NULL DEFAULT 100,
+    violation_points INTEGER NOT NULL DEFAULT 0,
     last_zone     TEXT,
     last_x        REAL,
     last_y        REAL,
@@ -72,6 +73,10 @@ try {
   if (!cols.includes('thirst')) {
     db.exec('ALTER TABLE players ADD COLUMN thirst INTEGER NOT NULL DEFAULT 100');
     console.log('[central/db] thirst 컬럼 추가됨');
+  }
+  if (!cols.includes('violation_points')) {
+    db.exec('ALTER TABLE players ADD COLUMN violation_points INTEGER NOT NULL DEFAULT 0');
+    console.log('[central/db] violation_points 컬럼 추가됨');
   }
 } catch (e) { /* 새 DB면 위 CREATE에서 이미 만들어짐 */ }
 
@@ -102,7 +107,7 @@ const stmtInsertPlayer = db.prepare(`
 `);
 const stmtUpdateProfile = db.prepare(`
   UPDATE players SET wood = ?, stone = ?, tools_json = ?, equipped = ?,
-    inventory_json = ?, hunger = ?, thirst = ?,
+    inventory_json = ?, hunger = ?, thirst = ?, violation_points = ?,
     last_zone = ?, last_x = ?, last_y = ?, last_seen = ?, color = ?
   WHERE player_id = ?
 `);
@@ -273,6 +278,7 @@ const server = http.createServer(async (req, res) => {
         data.inventory_json ?? p.inventory_json ?? '{}',
         data.hunger ?? p.hunger ?? 100,
         data.thirst ?? p.thirst ?? 100,
+        data.violation_points ?? p.violation_points ?? 0,
         data.last_zone ?? p.last_zone,
         data.last_x ?? p.last_x,
         data.last_y ?? p.last_y,

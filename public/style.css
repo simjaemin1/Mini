@@ -139,6 +139,10 @@ html, body { margin: 0; padding: 0; height: 100%; font-family: -apple-system, "S
 .hunger-fill { background: linear-gradient(90deg, #c87a2a, #e6a55a); }
 .thirst-fill { background: linear-gradient(90deg, #2a6aa8, #5aaaff); }
 .hunger-bar .hp-text, .thirst-bar .hp-text { font-size: 9px; }
+.vp-bar { width: 220px; height: 14px; }
+.vp-fill { background: linear-gradient(90deg, #6a6a6a, #b03030); }
+.vp-bar.danger .vp-fill { background: linear-gradient(90deg, #b03030, #ff5050); }
+.vp-bar .hp-text { font-size: 10px; }
 
 /* 음식/extra 인벤토리 */
 #invFoodRow .inv { font-size: 12px; padding: 2px 6px; cursor: pointer; }

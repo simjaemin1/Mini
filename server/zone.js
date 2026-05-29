@@ -21,6 +21,7 @@ function savePlayer(player, extra = {}) {
     inventory_json: JSON.stringify(extInv),
     hunger: Math.round(player.hunger ?? 100),
     thirst: Math.round(player.thirst ?? 100),
+    violation_points: Math.round(player.vp ?? 0),
     tools_json: JSON.stringify(player.tools || {}),
     equipped: player.equipped || null,
     last_zone: extra.last_zone ?? null, // 명시적으로 넘긴 zone만 변경
@@ -76,11 +77,19 @@ const mobs = new Map();         // mid -> { mid, type, x, y, vx, vy, hp, maxHp, 
 const BUILDING_SIZE = 32;
 const BUILDING_COST = {
   wall:     { wood: 2, stone: 1 },
+  fence:    { wood: 1, stone: 0 }, // 울타리 — 콜라이더 O, 싸다
   chest:    { wood: 5, stone: 2 },
   campfire: { wood: 3, stone: 2 }, // 요리 가능 — 콜라이더 없음
 };
-// 콜라이더가 있는 건축물 (벽처럼 통과 불가). 추후 fence 추가 예정.
-const BLOCKING_BUILDINGS = new Set(['wall']);
+// 콜라이더가 있는 건축물 (벽처럼 통과 불가).
+const BLOCKING_BUILDINGS = new Set(['wall', 'fence']);
+
+// === 위반 점수 (vp) — PvP 공격·타인 사유지 침범 시 누적, 시간당 감소 ===
+const VP_TRESPASS_GATHER = 3;   // 남 영지 자원 채집 시도
+const VP_ATTACK_PLAYER   = 8;   // PvP 공격 한 번
+const VP_DECAY_PER_SEC   = 10 / 3600; // 시간당 -10
+const VP_THRESHOLD       = 50;  // 이 이상이면 본인 사유지 보호 해제
+const VP_MAX             = 100;
 
 const MOB_DEFS = {
   deer: { maxHp: 10, speed: 80,  aggroRange: 0, damage: 0, sightRange: 0,   loot: { meat_raw: 1, hide: 1 } },
@@ -361,6 +370,7 @@ const server = http.createServer((req, res) => {
           equipped: data.equipped || null,
           hunger: typeof data.hunger === 'number' ? data.hunger : HUNGER_MAX,
           thirst: typeof data.thirst === 'number' ? data.thirst : THIRST_MAX,
+          vp: typeof data.vp === 'number' ? data.vp : 0,
           createdAt: Date.now(),
         });
         // 5초 안에 클라가 접속 안 하면 만료
@@ -519,6 +529,7 @@ wss.on('connection', async (ws, req) => {
           hp: PLAYER_MAX_HP, maxHp: PLAYER_MAX_HP,
           hunger: typeof pending.hunger === 'number' ? pending.hunger : HUNGER_MAX,
           thirst: typeof pending.thirst === 'number' ? pending.thirst : THIRST_MAX,
+          vp: typeof pending.vp === 'number' ? pending.vp : 0,
           lastAttackAt: 0, lastDamagedAt: 0,
           handingOff: false, lastSeen: Date.now(),
         };
@@ -546,7 +557,8 @@ wss.on('connection', async (ws, req) => {
           cookRecipes: COOK_RECIPES,
           foodEffects: FOOD_EFFECTS,
           self: { x: player.x, y: player.y, hp: player.hp, maxHp: player.maxHp,
-                  hunger: Math.round(player.hunger), thirst: Math.round(player.thirst) },
+                  hunger: Math.round(player.hunger), thirst: Math.round(player.thirst),
+                  vp: Math.round(player.vp ?? 0) },
           worldClock: {
             epoch: WORLD.worldEpoch, dayLengthMs: WORLD.dayLengthMs,
             dayPhaseRatio: WORLD.dayPhaseRatio, serverNow: Date.now(),
@@ -571,7 +583,7 @@ wss.on('connection', async (ws, req) => {
   const handoffToken = url.searchParams.get('handoff_token');
   let playerId, name, sx, sy, ivx = 0, ivy = 0, inventory = { wood: 0, stone: 0 }, color = '#5a9ae0';
   let tools = {}, equipped = null;
-  let initHunger = HUNGER_MAX, initThirst = THIRST_MAX;
+  let initHunger = HUNGER_MAX, initThirst = THIRST_MAX, initVp = 0;
 
   if (handoffToken && pendingHandoffs.has(handoffToken)) {
     const pending = pendingHandoffs.get(handoffToken);
@@ -580,6 +592,7 @@ wss.on('connection', async (ws, req) => {
     name = pending.name;
     if (typeof pending.hunger === 'number') initHunger = pending.hunger;
     if (typeof pending.thirst === 'number') initThirst = pending.thirst;
+    if (typeof pending.vp === 'number') initVp = pending.vp;
     sx = pending.x;
     sy = pending.y;
     ivx = pending.vx;
@@ -634,7 +647,8 @@ wss.on('connection', async (ws, req) => {
       equipped = result.player.equipped || null;
       initHunger = (typeof result.player.hunger === 'number') ? result.player.hunger : HUNGER_MAX;
       initThirst = (typeof result.player.thirst === 'number') ? result.player.thirst : THIRST_MAX;
-      console.log(`[${ZONE_ID}] ${result.isNew ? '신규 가입' : '로그인'}: ${name}  hunger=${initHunger} thirst=${initThirst}`);
+      initVp = (typeof result.player.violation_points === 'number') ? result.player.violation_points : 0;
+      console.log(`[${ZONE_ID}] ${result.isNew ? '신규 가입' : '로그인'}: ${name}  hunger=${initHunger} thirst=${initThirst} vp=${initVp}`);
     } else {
       // 게스트 모드 — central에 username 충돌만 확인
       if (inUsername) {
@@ -685,7 +699,7 @@ wss.on('connection', async (ws, req) => {
     inventory,
     tools, equipped,
     hp: PLAYER_MAX_HP, maxHp: PLAYER_MAX_HP,
-    hunger: initHunger, thirst: initThirst,
+    hunger: initHunger, thirst: initThirst, vp: initVp,
     lastAttackAt: 0,
     lastDamagedAt: 0,
     handingOff: false,
@@ -886,12 +900,26 @@ function tryGather(player) {
   }
   if (!best) return;
 
-  // 토지 보호 체크: 다른 사람이 클레임한 땅 안의 자원은 채집 불가
+  // 토지 보호 체크: 다른 사람이 클레임한 땅 안의 자원
+  //   - 주인 vp >= VP_THRESHOLD (주인이 같은 zone 접속 중일 때만 확인 가능) → 보호 해제 → 채집 허용 (vp 안 늘림)
+  //   - 그 외 → 차단 + 침입자 vp +N
+  // 주인이 오프라인이면 안전한 쪽으로(=보호된 것으로) 가정
   for (const c of claims.values()) {
-    if (c.ownerPid !== player.pid &&
+    if (c.ownerPid !== player.playerId &&
         best.x >= c.x && best.x < c.x + c.w &&
         best.y >= c.y && best.y < c.y + c.h) {
-      send(player.ws, { type: 'notice', text: `${c.ownerName}의 영지입니다.` });
+      let ownerOnline = null;
+      for (const p of players.values()) if (p.playerId === c.ownerPid) { ownerOnline = p; break; }
+      const ownerVp = ownerOnline ? (ownerOnline.vp ?? 0) : 0;
+      if (ownerVp >= VP_THRESHOLD) {
+        // 보호 해제 — 채집 허용. 침입자 vp는 안 늘림 (주인 본인이 페널티 받는 중)
+        break;
+      }
+      // 차단 + 침입자 vp 증가
+      player.vp = Math.min(VP_MAX, (player.vp ?? 0) + VP_TRESPASS_GATHER);
+      send(player.ws, { type: 'notice', text: `${c.ownerName}의 영지입니다. (위반 +${VP_TRESPASS_GATHER})` });
+      send(player.ws, { type: 'gauges', hunger: Math.round(player.hunger), thirst: Math.round(player.thirst), vp: Math.round(player.vp) });
+      savePlayer(player);
       return;
     }
   }
@@ -1161,6 +1189,11 @@ function tryAttack(player) {
   }
   if (bestPlayer) {
     damagePlayer(bestPlayer, atk, `player:${player.name}`);
+    // PvP 공격 → vp 누적
+    player.vp = Math.min(VP_MAX, (player.vp ?? 0) + VP_ATTACK_PLAYER);
+    send(player.ws, { type: 'notice', text: `${bestPlayer.name} 공격 (위반 +${VP_ATTACK_PLAYER})` });
+    send(player.ws, { type: 'gauges', hunger: Math.round(player.hunger), thirst: Math.round(player.thirst), vp: Math.round(player.vp) });
+    savePlayer(player);
   }
 }
 
@@ -1263,11 +1296,13 @@ setInterval(() => {
     }
   }
 
-  // === 생존 게이지: hunger/thirst 감소 + 0이면 HP 페널티 ===
+  // === 생존 게이지: hunger/thirst 감소 + 0이면 HP 페널티 + vp decay ===
   for (const p of players.values()) {
     if (p.hp <= 0) continue;
     p.hunger = Math.max(0, (p.hunger ?? HUNGER_MAX) - HUNGER_DRAIN_PER_SEC * dt);
     p.thirst = Math.max(0, (p.thirst ?? THIRST_MAX) - THIRST_DRAIN_PER_SEC * dt);
+    // vp 시간당 감소
+    if ((p.vp ?? 0) > 0) p.vp = Math.max(0, p.vp - VP_DECAY_PER_SEC * dt);
     // 게이지 0이면 굶주림/탈수 데미지 (둘 다 0이면 2배)
     let starv = 0;
     if (p.hunger <= 0) starv += STARVATION_HP_PER_SEC;
@@ -1295,6 +1330,7 @@ setInterval(() => {
         type: 'gauges',
         hunger: Math.round(p.hunger ?? HUNGER_MAX),
         thirst: Math.round(p.thirst ?? THIRST_MAX),
+        vp: Math.round(p.vp ?? 0),
       });
     }
   }
@@ -1425,6 +1461,7 @@ async function fireHandoff(player, targetZoneId, newX, newY) {
       equipped: player.equipped,
       hunger: Math.round(player.hunger ?? HUNGER_MAX),
       thirst: Math.round(player.thirst ?? THIRST_MAX),
+      vp: Math.round(player.vp ?? 0),
     });
   } catch (e) {
     console.error(`[${ZONE_ID}] handoff_prepare → ${targetZoneId} 실패:`, e.message);
