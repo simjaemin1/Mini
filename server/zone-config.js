@@ -132,6 +132,8 @@ function publicZoneMap(fallbackHost = 'localhost') {
       tintColor: z.tintColor,
       worldOffsetX: z.worldOffsetX,
       worldOffsetY: z.worldOffsetY,
+      zoneWidth: WORLD.zoneWidth,
+      zoneHeight: WORLD.zoneHeight,
       simulatedLatencyMs: z.simulatedLatencyMs,
       north: filterNbr(z.north),
       south: filterNbr(z.south),

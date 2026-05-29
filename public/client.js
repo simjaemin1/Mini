@@ -240,8 +240,8 @@
     worldWidth = 0;
     worldHeight = 0;
     for (const z of Object.values(zonesMeta)) {
-      worldWidth = Math.max(worldWidth, z.worldOffsetX + 1024);
-      worldHeight = Math.max(worldHeight, (z.worldOffsetY || 0) + 1024);
+      worldWidth = Math.max(worldWidth, z.worldOffsetX + (z.zoneWidth || 1024));
+      worldHeight = Math.max(worldHeight, (z.worldOffsetY || 0) + (z.zoneHeight || 1024));
     }
 
     // localStorage에서 이전 프로필 복원 (패스워드는 저장 안 함 — 매번 입력)
@@ -334,8 +334,9 @@
         if (c.role !== 'observer' || c.ws.readyState !== 1) continue;
         const zm = zonesMeta[zid];
         if (!zm) continue;
-        const localX = Math.max(0, Math.min(1024, myAbsPredicted.x - zm.worldOffsetX));
-        const localY = Math.max(0, Math.min(1024, myAbsPredicted.y - (zm.worldOffsetY||0)));
+        const zW = zm.zoneWidth || 1024, zH = zm.zoneHeight || 1024;
+        const localX = Math.max(0, Math.min(zW, myAbsPredicted.x - zm.worldOffsetX));
+        const localY = Math.max(0, Math.min(zH, myAbsPredicted.y - (zm.worldOffsetY||0)));
         c.ws.send(JSON.stringify({ type: 'viewport_update', x: localX, y: localY }));
       }
     }, 1000);
@@ -399,8 +400,9 @@
       // observer는 자기 viewport(예측 좌표를 해당 zone-local로 변환) 전송
       const meta2 = zonesMeta[zoneId];
       if (meta2) {
-        params.set('vx', Math.max(0, Math.min(1024, myAbsPredicted.x - meta2.worldOffsetX)));
-        params.set('vy', Math.max(0, Math.min(1024, myAbsPredicted.y - (meta2.worldOffsetY||0))));
+        const zW2 = meta2.zoneWidth || 1024, zH2 = meta2.zoneHeight || 1024;
+        params.set('vx', Math.max(0, Math.min(zW2, myAbsPredicted.x - meta2.worldOffsetX)));
+        params.set('vy', Math.max(0, Math.min(zH2, myAbsPredicted.y - (meta2.worldOffsetY||0))));
       }
     } else if (transfer && transfer.token) {
       // 핸드오프는 인증 우회 — 토큰이 source 서버에서 발급한 신원 증명
@@ -699,12 +701,13 @@
 
   // === 인접 존 자동 구독/해제 ===
   // 시야 반경(VIEW_RADIUS=650) + 여유 = 800. 시야에 들어오기 전에 미리 구독.
-  const PEEK_THRESHOLD = 900;  // zone 크기 1024라 거의 진입 직후부터 이웃 observer 연결
+  const PEEK_THRESHOLD = 900;  // 이웃 zone 경계에서 이만큼 안쪽에 있으면 observer 미리 연결
   function manageNeighborSubscriptions() {
     if (!primaryZoneId) return;
     const pmeta = zonesMeta[primaryZoneId];
     if (!pmeta) return;
-    const zoneW = 1024, zoneH = 1024;
+    const pMeta = zonesMeta[primaryZoneId];
+    const zoneW = pMeta?.zoneWidth || 1024, zoneH = pMeta?.zoneHeight || 1024;
     const localX = myAbsPredicted.x - pmeta.worldOffsetX;
     const localY = myAbsPredicted.y - (pmeta.worldOffsetY || 0);
     // 4방향 이웃 거리 계산
@@ -891,7 +894,8 @@
         let zMeta = null;
         for (const zm of Object.values(zonesMeta)) {
           const ox = zm.worldOffsetX, oy = zm.worldOffsetY || 0;
-          if (wx >= ox && wx < ox + 1024 && wy >= oy && wy < oy + 1024) { zMeta = zm; break; }
+          const zW3 = zm.zoneWidth || 1024, zH3 = zm.zoneHeight || 1024;
+          if (wx >= ox && wx < ox + zW3 && wy >= oy && wy < oy + zH3) { zMeta = zm; break; }
         }
         if (!zMeta) continue;
         const iso = w2i(wx + TS / 2, wy + TS / 2);
@@ -1541,8 +1545,10 @@
           const zm = zonesMeta[id];
           const localX = myAbsPredicted.x - zm.worldOffsetX;
           const localY = myAbsPredicted.y - (zm.worldOffsetY || 0);
-          dot.style.left = `${(localX / 1024) * 100}%`;
-          dot.style.top = `${(localY / 1024) * 100}%`;
+          const zmm = zonesMeta[primaryZoneId];
+          const zWmm = zmm?.zoneWidth || 1024, zHmm = zmm?.zoneHeight || 1024;
+          dot.style.left = `${(localX / zWmm) * 100}%`;
+          dot.style.top = `${(localY / zHmm) * 100}%`;
         } else {
           dot.style.display = 'none';
         }
