@@ -7,11 +7,13 @@
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
 
-  // === 아이소메트릭 투영 (2:1 다이아몬드) ===
-  // worldX,worldY (픽셀) → 화면상 iso 픽셀
-  // (1,0) → (1, 0.5), (0,1) → (-1, 0.5) 이므로 2:1 다이아메트릭
-  function w2i(wx, wy) {
-    return { x: (wx - wy), y: (wx + wy) * 0.5 };
+  // === 아이소메트릭 투영 (2:1 다이아몬드) — 2.5D ===
+  // worldX,worldY (픽셀) → 화면상 iso 픽셀. z(높이)는 화면 y에서 빼서 위로 올림.
+  // (1,0,0) → (1, 0.5), (0,1,0) → (-1, 0.5), (0,0,1) → (0, -1) 형태.
+  // 모든 호출자는 z=0 기본 — Phase 13.2에서 건물/계단에 z>0 도입.
+  const FLOOR_HEIGHT = 40; // 한 층 = 40px (다층 건축의 단위)
+  function w2i(wx, wy, wz = 0) {
+    return { x: (wx - wy), y: (wx + wy) * 0.5 - wz };
   }
 
   // === 상태 ===
@@ -36,6 +38,7 @@
   const VP_THRESHOLD = 50; // 클라 표시용 — 서버와 동일해야 함
   let myTribeId = null, myTribeName = null;
   let myPvpEnabled = false;
+  let myBuildFloor = 0; // 2.5D — 현재 건축 층 (Z=위, X=아래)
   let lastServerPingMs = 0;
   let lastTickAt = 0;
 
@@ -123,7 +126,7 @@
     KeyW: 'w', KeyA: 'a', KeyS: 's', KeyD: 'd',
     KeyE: 'e', KeyC: 'c', KeyT: 't', KeyY: 'y', KeyF: 'f',
     KeyB: 'b', KeyH: 'h', KeyM: 'm', KeyK: 'k', KeyJ: 'j', KeyR: 'r', KeyL: 'l',
-    KeyP: 'p', KeyO: 'o', KeyG: 'g', KeyN: 'n', KeyV: 'v',
+    KeyP: 'p', KeyO: 'o', KeyG: 'g', KeyN: 'n', KeyV: 'v', KeyZ: 'z', KeyX: 'x',
     Digit0: '0', Digit1: '1', Digit2: '2', Digit3: '3',
     ArrowUp: 'arrowup', ArrowDown: 'arrowdown', ArrowLeft: 'arrowleft', ArrowRight: 'arrowright',
     Space: ' ', Enter: 'enter', Tab: 'tab',
@@ -148,15 +151,17 @@
     else if (k === 't') sendPrimary({ type: 'trade_offer', give: 'wood' });
     else if (k === 'y') sendPrimary({ type: 'trade_offer', give: 'stone' });
     else if (k === 'f') sendPrimary({ type: 'attack' });
-    else if (k === 'b') sendPrimary({ type: 'build', buildType: 'wall' });
-    else if (k === 'h') sendPrimary({ type: 'build', buildType: 'chest' });
-    else if (k === 'j') sendPrimary({ type: 'build', buildType: 'campfire' });
-    else if (k === 'l') sendPrimary({ type: 'build', buildType: 'fence' });
-    else if (k === 'p') sendPrimary({ type: 'build', buildType: 'farmland' });
+    else if (k === 'b') sendPrimary({ type: 'build', buildType: 'wall', floor: myBuildFloor });
+    else if (k === 'h') sendPrimary({ type: 'build', buildType: 'chest', floor: myBuildFloor });
+    else if (k === 'j') sendPrimary({ type: 'build', buildType: 'campfire', floor: myBuildFloor });
+    else if (k === 'l') sendPrimary({ type: 'build', buildType: 'fence', floor: myBuildFloor });
+    else if (k === 'p') sendPrimary({ type: 'build', buildType: 'farmland', floor: myBuildFloor });
     else if (k === 'o') sendPrimary({ type: 'harvest' });
     else if (k === 'g') sendPrimary({ type: 'feed' });
     else if (k === 'n') toggleTribePanel();
     else if (k === 'v') sendPrimary({ type: 'pvp_set', enabled: !myPvpEnabled });
+    else if (k === 'z') { myBuildFloor = Math.min(5, myBuildFloor + 1); showNotice(`건축 층: ${myBuildFloor}F`); updateHud(); }
+    else if (k === 'x') { myBuildFloor = Math.max(0, myBuildFloor - 1); showNotice(`건축 층: ${myBuildFloor}F`); updateHud(); }
     else if (k === 'm') toggleMarketplace();
     else if (k === 'k') toggleCraft();
     else if (k === 'r') toggleCookPanel();
@@ -210,11 +215,11 @@
       else if (a === 'trade_wood') sendPrimary({ type: 'trade_offer', give: 'wood' });
       else if (a === 'trade_stone') sendPrimary({ type: 'trade_offer', give: 'stone' });
       else if (a === 'attack') sendPrimary({ type: 'attack' });
-      else if (a === 'build_wall') sendPrimary({ type: 'build', buildType: 'wall' });
-      else if (a === 'build_chest') sendPrimary({ type: 'build', buildType: 'chest' });
-      else if (a === 'build_campfire') sendPrimary({ type: 'build', buildType: 'campfire' });
-      else if (a === 'build_fence') sendPrimary({ type: 'build', buildType: 'fence' });
-      else if (a === 'build_farmland') sendPrimary({ type: 'build', buildType: 'farmland' });
+      else if (a === 'build_wall') sendPrimary({ type: 'build', buildType: 'wall', floor: myBuildFloor });
+      else if (a === 'build_chest') sendPrimary({ type: 'build', buildType: 'chest', floor: myBuildFloor });
+      else if (a === 'build_campfire') sendPrimary({ type: 'build', buildType: 'campfire', floor: myBuildFloor });
+      else if (a === 'build_fence') sendPrimary({ type: 'build', buildType: 'fence', floor: myBuildFloor });
+      else if (a === 'build_farmland') sendPrimary({ type: 'build', buildType: 'farmland', floor: myBuildFloor });
       else if (a === 'harvest') sendPrimary({ type: 'harvest' });
       else if (a === 'feed') sendPrimary({ type: 'feed' });
       else if (a === 'tribe') toggleTribePanel();
@@ -932,8 +937,11 @@
       for (const b of c.buildings.values()) {
         const ax = ox + b.x, ay = oy + b.y;
         if (Math.abs(ax - worldCx) > VIEW_RADIUS || Math.abs(ay - worldCy) > VIEW_RADIUS) continue;
-        const iso = w2i(ax, ay);
-        renderables.push({ z: iso.y, kind: 'building', b, iso, ax, ay });
+        // 2.5D — floor 만큼 z(높이)로 위로 띄움
+        const bZ = (b.floor || 0) * FLOOR_HEIGHT;
+        const iso = w2i(ax, ay, bZ);
+        // depth sort: 큰 floor가 나중에 그려져 위에 덮어쓰게
+        renderables.push({ z: (ax + ay) * 0.5 + (b.floor || 0) * 1000, kind: 'building', b, iso, ax, ay });
       }
       for (const m of c.mobs.values()) {
         const pos = sampleAt(m.buf, renderT, m.x, m.y);
@@ -1448,6 +1456,16 @@
       pvpBadge.onclick = () => sendPrimary({ type: 'pvp_set', enabled: !myPvpEnabled });
       pvpBadge.style.cursor = 'pointer';
     }
+    // 건축 층 뱃지
+    let floorBadge = document.getElementById('floorBadge');
+    if (!floorBadge && pvpBadge) {
+      floorBadge = document.createElement('span');
+      floorBadge.id = 'floorBadge';
+      floorBadge.className = 'badge';
+      floorBadge.title = '건축 층 (Z=위, X=아래)';
+      pvpBadge.parentNode.insertBefore(floorBadge, pvpBadge.nextSibling);
+    }
+    if (floorBadge) floorBadge.textContent = `🏗️ ${myBuildFloor}F`;
     // 음식/extra 인벤토리
     const foodRow = document.getElementById('invFoodRow');
     if (foodRow) {

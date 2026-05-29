@@ -36,6 +36,11 @@ const ZONES_BASE = {
     worldOffsetX: 0,     worldOffsetY: 10240,
     simulatedLatencyMs: 5,
     north: 'russia', south: null, west: null, east: 'china',
+    villages: [
+      { name: '서울', x: 5120, y: 2560 },
+      { name: '부산', x: 8192, y: 8192 },
+      { name: '광주', x: 2048, y: 7680 },
+    ],
   },
   russia: {
     port: 3001, biome: 'forest', displayName: '러시아 타이가',
@@ -43,6 +48,11 @@ const ZONES_BASE = {
     worldOffsetX: 0,    worldOffsetY: 0,
     simulatedLatencyMs: 30,
     north: null, south: 'korea', west: null, east: 'usa',
+    villages: [
+      { name: '모스크바',       x: 2560, y: 3072 },
+      { name: '노보시비르스크', x: 5632, y: 6144 },
+      { name: '블라디보스토크', x: 8704, y: 8704 },
+    ],
   },
   usa: {
     port: 3005, biome: 'plains', displayName: '미국 평원',
@@ -50,6 +60,11 @@ const ZONES_BASE = {
     worldOffsetX: 10240, worldOffsetY: 0,
     simulatedLatencyMs: 90,
     north: null, south: 'china', west: 'russia', east: null,
+    villages: [
+      { name: '뉴욕',  x: 8704, y: 2560 },
+      { name: '시카고', x: 5120, y: 5120 },
+      { name: 'LA',    x: 2048, y: 8192 },
+    ],
   },
   china: {
     port: 3003, biome: 'plains', displayName: '중국 평원',
@@ -57,6 +72,11 @@ const ZONES_BASE = {
     worldOffsetX: 10240, worldOffsetY: 10240,
     simulatedLatencyMs: 25,
     north: 'usa', south: null, west: 'korea', east: null,
+    villages: [
+      { name: '베이징', x: 5120, y: 2560 },
+      { name: '상하이', x: 8192, y: 5632 },
+      { name: '충칭',   x: 2560, y: 7680 },
+    ],
   },
 };
 

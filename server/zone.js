@@ -185,6 +185,9 @@ const BUILDING_COST = {
 const CROP_GROW_MS = 60 * 1000;
 // 콜라이더가 있는 건축물 (벽처럼 통과 불가).
 const BLOCKING_BUILDINGS = new Set(['wall', 'fence']);
+// 2.5D — 건물 높이 (시각용. floor=0은 지상).
+const BUILDING_HEIGHT = { wall: 40, fence: 24, chest: 24, campfire: 20, farmland: 4 };
+const FLOOR_HEIGHT = 40; // 한 층 = 40px
 
 // === 위반 점수 (vp) — PvP 공격·타인 사유지 침범 시 누적, 시간당 감소 ===
 const VP_TRESPASS_GATHER = 3;   // 남 영지 자원 채집 시도
@@ -339,8 +342,17 @@ function spawnOneResource() {
 function spawnMob(type, opts = {}) {
   const def = MOB_DEFS[type];
   const mid = `m${nextMid++}`;
-  const x = opts.x ?? 32 + Math.random() * (WORLD.zoneWidth - 64);
-  const y = opts.y ?? 32 + Math.random() * (WORLD.zoneHeight - 64);
+  let x, y;
+  if (typeof opts.x === 'number' && typeof opts.y === 'number') {
+    x = opts.x; y = opts.y;
+  } else {
+    // 늑대는 마을 안전구역 밖에서만 spawn (사슴은 마을 근처도 OK)
+    for (let att = 0; att < 20; att++) {
+      x = 32 + Math.random() * (WORLD.zoneWidth - 64);
+      y = 32 + Math.random() * (WORLD.zoneHeight - 64);
+      if (type !== 'wolf' || !(typeof isNearVillage === 'function' && isNearVillage(x, y))) break;
+    }
+  }
   const hp = opts.hp ?? def.maxHp;
   // DB에 insert (dbId가 없으면 새로 만들고, 있으면 그대로 사용 — 로드 케이스)
   const dbId = opts.dbId ?? db.insertMob({ type, x, y, hp, max_hp: def.maxHp });
@@ -381,14 +393,18 @@ function spawnMob(type, opts = {}) {
     const deerCount = isHostile ? 200 : 400;
     const wolfCount = isHostile ? 250 : 100;
     for (let i = 0; i < deerCount; i++) spawnMob('deer');
-    // 늑대는 팩으로 묶음 — 2~3마리씩
+    // 늑대는 팩으로 묶음 — 2~3마리씩. home은 마을 근처 피해서.
     let spawned = 0, packNum = 0;
     while (spawned < wolfCount) {
       const packSize = Math.min(2 + Math.floor(Math.random() * 2), wolfCount - spawned); // 2 또는 3
       const packId = `pack_${ZONE_ID}_${packNum++}_${Math.random().toString(36).slice(2,6)}`;
-      // 팩의 home — zone 내부 랜덤
-      const homeX = 100 + Math.random() * (WORLD.zoneWidth - 200);
-      const homeY = 100 + Math.random() * (WORLD.zoneHeight - 200);
+      // 팩의 home — 마을 안전구역 밖에서만 (20회 재시도)
+      let homeX, homeY;
+      for (let att = 0; att < 20; att++) {
+        homeX = 200 + Math.random() * (WORLD.zoneWidth - 400);
+        homeY = 200 + Math.random() * (WORLD.zoneHeight - 400);
+        if (!isNearVillage(homeX, homeY)) break;
+      }
       for (let i = 0; i < packSize; i++) {
         // 멤버는 home 주변 50px 안에 spawn
         const ang = Math.random() * Math.PI * 2;
@@ -488,10 +504,11 @@ function spawnNpc(opts = {}) {
   return player;
 }
 
-// === 부팅: 옛 NPC 사유지 정리 + 마을(village) 단위 NPC 스폰 ===
-const VILLAGE_NAMES = ['새벽골', '안골', '너른들', '산기슭', '강가마을', '바위골', '솔숲', '들꽃마을', '구름고개', '달빛터'];
-const VILLAGES_PER_ZONE = 3;
-const NPC_PER_VILLAGE = Math.floor(NPC_COUNT_PER_ZONE / VILLAGES_PER_ZONE);
+// === 부팅: 옛 NPC 사유지 정리 + zone-config의 고정 마을 spawn ===
+// 마을 좌표는 zone-config.js의 ZONE.villages 배열에서 가져옴 (고정 — 매번 같은 자리).
+const VILLAGES = ZONE.villages || [];
+const NPC_PER_VILLAGE = VILLAGES.length > 0 ? Math.floor(NPC_COUNT_PER_ZONE / VILLAGES.length) : 0;
+const VILLAGE_SAFE_RADIUS = 600; // 늑대 이 안에 spawn X (마을 안전구역)
 {
   const npcClaims = Array.from(claims.values()).filter(c => c.ownerPid && c.ownerPid.startsWith('npc_'));
   for (const c of npcClaims) {
@@ -500,39 +517,26 @@ const NPC_PER_VILLAGE = Math.floor(NPC_COUNT_PER_ZONE / VILLAGES_PER_ZONE);
   }
   if (npcClaims.length > 0) console.log(`[${ZONE_ID}] 옛 NPC 사유지 ${npcClaims.length}개 정리`);
 
-  // 마을 N개 spawn — 각 마을 NPC 그룹
-  const usedNames = new Set();
-  for (let v = 0; v < VILLAGES_PER_ZONE; v++) {
-    // 마을 이름 (중복 X)
-    let name;
-    do {
-      name = VILLAGE_NAMES[Math.floor(Math.random() * VILLAGE_NAMES.length)];
-    } while (usedNames.has(name) && usedNames.size < VILLAGE_NAMES.length);
-    usedNames.add(name);
+  for (let v = 0; v < VILLAGES.length; v++) {
+    const village = VILLAGES[v];
     const villageId = `village_${ZONE_ID}_${v}`;
-    // 마을 중심 — zone 안 random, 다른 마을과 최소 거리
-    let centerX, centerY;
-    const MIN_VILLAGE_DIST = 1500;
-    for (let attempt = 0; attempt < 20; attempt++) {
-      centerX = 800 + Math.random() * (WORLD.zoneWidth - 1600);
-      centerY = 800 + Math.random() * (WORLD.zoneHeight - 1600);
-      // 다른 마을 사유지와 거리 체크 (대충 — 첫 NPC가 그 마을 중심)
-      let tooClose = false;
-      for (const c of claims.values()) {
-        if (Math.hypot(c.x + c.w/2 - centerX, c.y + c.h/2 - centerY) < MIN_VILLAGE_DIST) { tooClose = true; break; }
-      }
-      if (!tooClose) break;
-    }
-    console.log(`[${ZONE_ID}] 🏘️ 마을 [${name}] @ (${centerX.toFixed(0)},${centerY.toFixed(0)}) — ${NPC_PER_VILLAGE}명`);
-    // NPC들을 마을 중심 주변에 spawn
+    console.log(`[${ZONE_ID}] 🏘️ 마을 [${village.name}] @ (${village.x},${village.y}) — ${NPC_PER_VILLAGE}명`);
     for (let i = 0; i < NPC_PER_VILLAGE; i++) {
       const ang = (Math.PI * 2 * i / NPC_PER_VILLAGE) + Math.random() * 0.3;
       const r = 200 + Math.random() * 300;
-      const npcX = centerX + Math.cos(ang) * r;
-      const npcY = centerY + Math.sin(ang) * r;
-      spawnNpc({ x: npcX, y: npcY, villageId, villageName: name });
+      const npcX = village.x + Math.cos(ang) * r;
+      const npcY = village.y + Math.sin(ang) * r;
+      spawnNpc({ x: npcX, y: npcY, villageId, villageName: village.name });
     }
   }
+}
+
+// 좌표가 마을 안전구역 안인지 체크 (늑대 spawn 위치 검증용)
+function isNearVillage(x, y) {
+  for (const v of VILLAGES) {
+    if (Math.hypot(v.x - x, v.y - y) < VILLAGE_SAFE_RADIUS) return true;
+  }
+  return false;
 }
 
 // NPC 행동 결정 — tick 안에서 호출
@@ -757,13 +761,16 @@ setInterval(() => {
   const rows = db.getBuildings();
   for (const row of rows) {
     const id = `b${nextBid++}`;
+    const parsed = row.data ? JSON.parse(row.data) : null;
+    const floor = (parsed && typeof parsed.floor === 'number') ? parsed.floor : 0;
     const b = {
       id, dbId: row.id,
       type: row.type,
       ownerId: row.owner_id,
       ownerName: row.owner_name,
       x: row.x, y: row.y,
-      data: row.data ? JSON.parse(row.data) : null,
+      data: parsed,
+      floor,
     };
     buildings.set(id, b);
     chunkManager.insertBuilding(b);
@@ -1295,7 +1302,7 @@ function handlePlayerInput(player, raw) {
       text, t: Date.now(),
     });
     console.log(`[${ZONE_ID}] 💬 ${player.name}: ${text}`);
-  } else if (msg.type === 'build') { metrics.builds++; tryBuild(player, msg.buildType); }
+  } else if (msg.type === 'build') { metrics.builds++; tryBuild(player, msg.buildType, msg.floor || 0); }
   else if (msg.type === 'chest_put') tryChestPut(player, msg.buildingId, msg.item, +msg.amount || 1);
   else if (msg.type === 'chest_take') tryChestTake(player, msg.buildingId, msg.item, +msg.amount || 1);
   else if (msg.type === 'attack') { metrics.attacks++; tryAttack(player); }
@@ -1671,7 +1678,8 @@ function tryTrade(player, msg) {
 }
 
 // === 건축 ===
-function tryBuild(player, type) {
+function tryBuild(player, type, floor = 0) {
+  floor = Math.max(0, Math.min(5, floor | 0)); // 0~5층
   if (!BUILDING_COST[type]) {
     send(player.ws, { type: 'notice', text: '알 수 없는 건축물' }); return;
   }
@@ -1701,12 +1709,23 @@ function tryBuild(player, type) {
     send(player.ws, { type: 'notice', text: '자기 영지 안에서만 건축 가능' }); return;
   }
 
-  // 같은 타일에 다른 건축물 없는지 — quadtree
+  // 같은 (x,y,floor)에 다른 건축물 없는지 — quadtree + floor 일치만 체크
   const nearBuilds = qtBuildings ? qtBuildings.queryCircle(gx, gy, BUILDING_SIZE * 1.5) : Array.from(buildings.values());
   for (const b of nearBuilds) {
+    if ((b.floor || 0) !== floor) continue; // 다른 층은 OK (위/아래 가능)
     if (Math.abs(b.x - gx) < BUILDING_SIZE && Math.abs(b.y - gy) < BUILDING_SIZE) {
-      send(player.ws, { type: 'notice', text: '이미 건축물이 있습니다' }); return;
+      send(player.ws, { type: 'notice', text: `이미 ${floor}F에 건축물이 있습니다` }); return;
     }
+  }
+  // 위층(floor > 0) 건축은 같은 (x,y) 아래 모든 floor에 지지 구조물이 있어야
+  if (floor > 0) {
+    let supported = false;
+    for (const b of nearBuilds) {
+      if (Math.abs(b.x - gx) < BUILDING_SIZE && Math.abs(b.y - gy) < BUILDING_SIZE && (b.floor || 0) === floor - 1) {
+        supported = true; break;
+      }
+    }
+    if (!supported) { send(player.ws, { type: 'notice', text: `${floor}F 짓려면 ${floor-1}F에 지지대 필요` }); return; }
   }
 
   player.inventory.wood -= cost.wood;
@@ -1715,12 +1734,14 @@ function tryBuild(player, type) {
   let initialData = null;
   if (type === 'chest') initialData = { wood: 0, stone: 0 };
   else if (type === 'farmland') initialData = { cropType: 'berry', plantedAt: Date.now(), readyAt: Date.now() + CROP_GROW_MS, ready: false };
+  // floor 정보는 data JSON에 합쳐 저장 (DB 스키마 변경 회피)
+  const dataWithFloor = { ...(initialData || {}), floor };
   const dbId = db.insertBuilding({
     type, owner_id: player.playerId, owner_name: player.name,
-    x: gx, y: gy, data: initialData ? JSON.stringify(initialData) : null,
+    x: gx, y: gy, data: JSON.stringify(dataWithFloor),
   });
   const id = `b${nextBid++}`;
-  const building = { id, dbId, type, ownerId: player.playerId, ownerName: player.name, x: gx, y: gy, data: initialData };
+  const building = { id, dbId, type, ownerId: player.playerId, ownerName: player.name, x: gx, y: gy, data: initialData, floor };
   buildings.set(id, building);
   chunkManager.insertBuilding(building);
   send(player.ws, { type: 'inventory', inventory: player.inventory });
@@ -1904,11 +1925,13 @@ function damagePlayer(p, dmg, source) {
   }
 }
 
-// 콜라이더 — 이동 후 위치가 blocking 건축물과 겹치면 막음. quadtree로 가속.
-function isBlockedByWall(x, y) {
+// 콜라이더 — 이동 후 위치가 blocking 건축물과 겹치면 막음. 같은 floor만 막힘.
+// playerFloor 기본 0 (지상). 다층 캐릭터 이동은 Phase 13 후반에서.
+function isBlockedByWall(x, y, playerFloor = 0) {
   const nearby = qtBuildings ? qtBuildings.queryCircle(x, y, BUILDING_SIZE) : Array.from(buildings.values());
   for (const b of nearby) {
     if (!BLOCKING_BUILDINGS.has(b.type)) continue;
+    if ((b.floor || 0) !== playerFloor) continue; // 다른 층은 통과
     if (Math.abs(b.x - x) < BUILDING_SIZE * 0.7 && Math.abs(b.y - y) < BUILDING_SIZE * 0.7) {
       return true;
     }
