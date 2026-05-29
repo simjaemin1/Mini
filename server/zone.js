@@ -1992,7 +1992,8 @@ function isBlockedByWall(x, y, playerFloor = 0) {
   for (const b of nearby) {
     if (!BLOCKING_BUILDINGS.has(b.type)) continue;
     if ((b.floor || 0) !== playerFloor) continue; // 다른 층은 통과
-    if (Math.abs(b.x - x) < BUILDING_SIZE * 0.7 && Math.abs(b.y - y) < BUILDING_SIZE * 0.7) {
+    // 콜라이더 = wall 시각 크기와 동일 (BUILDING_SIZE)
+    if (Math.abs(b.x - x) < BUILDING_SIZE * 0.95 && Math.abs(b.y - y) < BUILDING_SIZE * 0.95) {
       return true;
     }
   }

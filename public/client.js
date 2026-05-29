@@ -1137,6 +1137,7 @@
     ctx.fillStyle = color; ctx.fill();
   }
 
+  const WALL_HEIGHT = 40; // FLOOR_HEIGHT와 같음 — 1F가 0F에 딱 쌓임
   function drawBuildingIso(x, y, type, building) {
     if (type === 'farmland') {
       // 갈색 흙 다이아 + 작물
@@ -1176,25 +1177,27 @@
       return;
     }
     if (type === 'wall') {
-      // 돌벽 — 회색 입체 박스
+      // 돌벽 — FLOOR_HEIGHT(40)에 맞춘 입체 큐브
+      const H = WALL_HEIGHT;
       ctx.fillStyle = 'rgba(0,0,0,0.4)';
-      ctx.beginPath(); ctx.ellipse(x, y + 8, 18, 6, 0, 0, Math.PI * 2); ctx.fill();
-      // 다이아 윗면
+      ctx.beginPath(); ctx.ellipse(x, y + H - 2, 18, 6, 0, 0, Math.PI * 2); ctx.fill();
+      // 우측면 (높이 H)
+      ctx.beginPath();
+      ctx.moveTo(x + 18, y - 9); ctx.lineTo(x + 18, y - 9 + H);
+      ctx.lineTo(x, y + H); ctx.lineTo(x, y); ctx.closePath();
+      ctx.fillStyle = '#6a6a6a'; ctx.fill();
+      ctx.strokeStyle = '#444'; ctx.lineWidth = 1; ctx.stroke();
+      // 좌측면
+      ctx.beginPath();
+      ctx.moveTo(x - 18, y - 9); ctx.lineTo(x - 18, y - 9 + H);
+      ctx.lineTo(x, y + H); ctx.lineTo(x, y); ctx.closePath();
+      ctx.fillStyle = '#7c7c7c'; ctx.fill(); ctx.stroke();
+      // 다이아 윗면 (가장 위에 그려서 측면 위에 덮어쓰기)
       ctx.beginPath();
       ctx.moveTo(x, y - 18); ctx.lineTo(x + 18, y - 9);
       ctx.lineTo(x, y); ctx.lineTo(x - 18, y - 9); ctx.closePath();
-      ctx.fillStyle = '#8e8e8e'; ctx.fill();
+      ctx.fillStyle = '#9e9e9e'; ctx.fill();
       ctx.strokeStyle = '#555'; ctx.lineWidth = 1; ctx.stroke();
-      // 우측면
-      ctx.beginPath();
-      ctx.moveTo(x + 18, y - 9); ctx.lineTo(x + 18, y + 1);
-      ctx.lineTo(x, y + 10); ctx.lineTo(x, y); ctx.closePath();
-      ctx.fillStyle = '#6a6a6a'; ctx.fill(); ctx.stroke();
-      // 좌측면
-      ctx.beginPath();
-      ctx.moveTo(x - 18, y - 9); ctx.lineTo(x - 18, y + 1);
-      ctx.lineTo(x, y + 10); ctx.lineTo(x, y); ctx.closePath();
-      ctx.fillStyle = '#7c7c7c'; ctx.fill(); ctx.stroke();
     } else if (type === 'chest') {
       // 나무상자
       ctx.fillStyle = 'rgba(0,0,0,0.4)';
