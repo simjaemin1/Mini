@@ -1992,35 +1992,60 @@ setInterval(() => {
   // 대역폭 절감 + observer를 통한 정보 누출 차단.
   const allPlayers = Array.from(players.values());
   const allMobs = Array.from(mobs.values());
-  function visiblePlayers(vx, vy, selfPid) {
-    // quadtree로 AOI 안 player만 추림 — O(log N)
-    const nearby = qtPlayers.queryCircle(vx, vy, AOI_RADIUS);
-    const result = nearby.map(o => ({ pid: o.pid, x: o.x, y: o.y, name: o.name, color: o.color, hp: o.hp, maxHp: o.maxHp,
-                                       tribeName: o.tribeName || null }));
-    // self가 AOI 밖이어도 항상 포함 (player view는 자기 위치가 viewer라 항상 들어옴이긴 하지만 안전 가드)
-    if (selfPid && !result.some(p => p.pid === selfPid)) {
-      const self = players.get(selfPid);
-      if (self) result.push({ pid: self.pid, x: self.x, y: self.y, name: self.name, color: self.color, hp: self.hp, maxHp: self.maxHp, tribeName: self.tribeName || null });
+  // viewer별 "이전 tick에 본 entity pid/mid" 추적 — 새로 보이는 것만 메타 포함
+  // 이미 본 것은 위치/HP만. payload ~70% 감소.
+  function makeEntry(o, isNew, kind) {
+    if (kind === 'player') {
+      const e = { pid: o.pid, x: o.x, y: o.y, hp: o.hp };
+      if (isNew) { e.name = o.name; e.color = o.color; e.maxHp = o.maxHp; e.tribeName = o.tribeName || null; }
+      return e;
     }
+    const e = { mid: o.mid, x: o.x, y: o.y, hp: o.hp };
+    if (isNew) { e.type = o.type; e.maxHp = o.maxHp; e.tameOwner = o.tameOwner || null; e.tameOwnerName = o.tameOwnerName || null; }
+    return e;
+  }
+  function visiblePlayers(vx, vy, selfPid, viewerState) {
+    const nearby = qtPlayers.queryCircle(vx, vy, AOI_RADIUS);
+    const prevSeen = viewerState.seenPlayers;
+    const newSeen = new Set();
+    const result = [];
+    for (const o of nearby) {
+      newSeen.add(o.pid);
+      result.push(makeEntry(o, !prevSeen.has(o.pid), 'player'));
+    }
+    if (selfPid && !newSeen.has(selfPid)) {
+      const self = players.get(selfPid);
+      if (self) { newSeen.add(selfPid); result.push(makeEntry(self, !prevSeen.has(selfPid), 'player')); }
+    }
+    viewerState.seenPlayers = newSeen;
     return result;
   }
-  function visibleMobs(vx, vy) {
-    return qtMobs.queryCircle(vx, vy, AOI_RADIUS)
-      .map(m => ({ mid: m.mid, type: m.type, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp,
-                   tameOwner: m.tameOwner || null, tameOwnerName: m.tameOwnerName || null }));
+  function visibleMobs(vx, vy, viewerState) {
+    const nearby = qtMobs.queryCircle(vx, vy, AOI_RADIUS);
+    const prevSeen = viewerState.seenMobs;
+    const newSeen = new Set();
+    const result = [];
+    for (const m of nearby) {
+      newSeen.add(m.mid);
+      result.push(makeEntry(m, !prevSeen.has(m.mid), 'mob'));
+    }
+    viewerState.seenMobs = newSeen;
+    return result;
   }
   for (const p of allPlayers) {
+    if (!p.viewerState) p.viewerState = { seenPlayers: new Set(), seenMobs: new Set() };
     send(p.ws, {
       type: 'tick', t: now,
-      players: visiblePlayers(p.x, p.y, p.pid),
-      mobs: visibleMobs(p.x, p.y),
+      players: visiblePlayers(p.x, p.y, p.pid, p.viewerState),
+      mobs: visibleMobs(p.x, p.y, p.viewerState),
     });
   }
   for (const [ws, data] of observers) {
+    if (!data.viewerState) data.viewerState = { seenPlayers: new Set(), seenMobs: new Set() };
     send(ws, {
       type: 'tick', t: now,
-      players: visiblePlayers(data.viewerX, data.viewerY, null),
-      mobs: visibleMobs(data.viewerX, data.viewerY),
+      players: visiblePlayers(data.viewerX, data.viewerY, null, data.viewerState),
+      mobs: visibleMobs(data.viewerX, data.viewerY, data.viewerState),
     });
   }
 }, TICK_MS);

@@ -476,13 +476,18 @@
           applyServerCorrection(absX, absY);
           lastTickWithMyPidAt = now;
         } else {
+          // 서버가 메타 필드(name/color/maxHp/tribeName)를 첫 visible 때만 보냄. 나머진 prev 캐시 유지.
           const prev = c.others.get(pp.pid);
           const buf = prev?.buf || [];
           pushSample(buf, now, pp.x, pp.y);
           c.others.set(pp.pid, {
             pid: pp.pid,
-            x: pp.x, y: pp.y, name: pp.name, color: pp.color || '#5a9ae0',
-            hp: pp.hp, maxHp: pp.maxHp,
+            x: pp.x, y: pp.y,
+            name: pp.name ?? prev?.name ?? '?',
+            color: pp.color ?? prev?.color ?? '#5a9ae0',
+            hp: pp.hp,
+            maxHp: pp.maxHp ?? prev?.maxHp ?? 100,
+            tribeName: pp.tribeName !== undefined ? pp.tribeName : prev?.tribeName,
             buf,
             lastX: prev?.x ?? pp.x, lastY: prev?.y ?? pp.y,
             lastT: now,
@@ -495,11 +500,18 @@
       if (Array.isArray(msg.mobs)) {
         const aliveMobs = new Set(msg.mobs.map(m => m.mid));
         for (const m of msg.mobs) {
+          // mob도 메타(type/maxHp/tameOwner)는 첫 visible 때만. 나머지엔 prev 유지.
           const prev = c.mobs.get(m.mid);
           const buf = prev?.buf || [];
           pushSample(buf, now, m.x, m.y);
           c.mobs.set(m.mid, {
-            ...m,
+            mid: m.mid,
+            x: m.x, y: m.y,
+            hp: m.hp,
+            type: m.type ?? prev?.type ?? 'deer',
+            maxHp: m.maxHp ?? prev?.maxHp ?? 10,
+            tameOwner: m.tameOwner !== undefined ? m.tameOwner : prev?.tameOwner,
+            tameOwnerName: m.tameOwnerName !== undefined ? m.tameOwnerName : prev?.tameOwnerName,
             buf,
             lastX: prev?.x ?? m.x, lastY: prev?.y ?? m.y,
             lastT: now,
