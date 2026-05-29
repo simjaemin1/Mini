@@ -42,6 +42,46 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
   let myPvpEnabled = false;
   let myBuildFloor = 0; // 2.5D — 현재 건축 층 (Z=위, X=아래)
   let myFloor = 0;      // 캐릭터가 현재 있는 층 (계단으로 이동)
+
+  // === 클라 사이드 wall edge 콜라이더 (server isBlockedByWall 미러) ===
+  // wall은 cell edge에 (data.side ∈ {N, E}). BUILDING_SIZE=32 서버와 동일.
+  const CL_BUILDING_SIZE = 32;
+  function clCellOf(x, y) { return { cx: Math.floor(x / CL_BUILDING_SIZE), cy: Math.floor(y / CL_BUILDING_SIZE) }; }
+  function clHasWallAt(absX, absY, cellCx, cellCy, side, floor) {
+    // 모든 zone conns의 buildings 다 검색 (zone 경계 cross 시 이웃 zone wall도 적용)
+    for (const [zid, c] of conns) {
+      const zm = c.meta || zonesMeta[zid];
+      if (!zm) continue;
+      const ox = zm.worldOffsetX || 0, oy = zm.worldOffsetY || 0;
+      // absX/Y → 이 zone의 local 좌표
+      const lx = absX - ox, ly = absY - oy;
+      if (lx < -64 || lx > (zm.zoneWidth || 10240) + 64) continue;
+      if (ly < -64 || ly > (zm.zoneHeight || 10240) + 64) continue;
+      const targetCx = cellCx - Math.floor(ox / CL_BUILDING_SIZE);
+      const targetCy = cellCy - Math.floor(oy / CL_BUILDING_SIZE);
+      for (const b of c.buildings.values()) {
+        if (b.type !== 'wall' && b.type !== 'fence') continue;
+        if ((b.floor || 0) !== floor) continue;
+        const bSide = b.data?.side;
+        if (!bSide) continue; // 옛 큐브 wall은 무시
+        const bcx = Math.floor(b.x / CL_BUILDING_SIZE);
+        const bcy = Math.floor(b.y / CL_BUILDING_SIZE);
+        if (bcx === targetCx && bcy === targetCy && bSide === side) return true;
+      }
+    }
+    return false;
+  }
+  function clientIsBlockedByWall(newX, newY, oldX, oldY, playerFloor = 0) {
+    const oc = clCellOf(oldX, oldY);
+    const nc = clCellOf(newX, newY);
+    if (oc.cx === nc.cx && oc.cy === nc.cy) return false;
+    // 절대 cell 좌표 — zone offset 더한 거. abs 좌표 그대로 사용해도 됨 (cellOf가 abs 입력).
+    if (nc.cx > oc.cx && clHasWallAt(oldX, oldY, oc.cx, oc.cy, 'E', playerFloor)) return true;
+    if (nc.cx < oc.cx && clHasWallAt(newX, newY, nc.cx, nc.cy, 'E', playerFloor)) return true;
+    if (nc.cy > oc.cy && clHasWallAt(newX, newY, nc.cx, nc.cy, 'N', playerFloor)) return true;
+    if (nc.cy < oc.cy && clHasWallAt(oldX, oldY, oc.cx, oc.cy, 'N', playerFloor)) return true;
+    return false;
+  }
   let lastServerPingMs = 0;
   let lastTickAt = 0;
 
@@ -791,12 +831,25 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
 
     if (now - lastInputSentAt > 33) sendInput();
 
+    // === 클라 사이드 wall edge 콜라이더 (server isBlockedByWall 미러) ===
+    // primary zone의 buildings + 이웃 zone들도 검사 (zone 경계 cross 시).
+    // wall은 cell edge에 있음 (data.side ∈ {N, E}). cell 가로지를 때만 검사.
+    // BUILDING_SIZE = 32 (server와 동일).
+    // 인라인 함수 X — 매 프레임 만들기 비싸서 위에 한 번 정의함
+
     // 클라이언트 예측: 입력으로 즉시 반응 (시각 부드러움)
+    // Phase 13.9.a: wall edge 콜라이더 클라 사이드 복제 — 서버와 동일 로직
     const { wx, wy } = worldKeysDir();
     if (wx !== 0 || wy !== 0) {
       const speed = 220;
-      myAbsPredicted.x += wx * speed * dt;
-      myAbsPredicted.y += wy * speed * dt;
+      let nx = myAbsPredicted.x + wx * speed * dt;
+      let ny = myAbsPredicted.y + wy * speed * dt;
+      // 각 축 별로 wall check (slide 가능)
+      if (clientIsBlockedByWall(nx, myAbsPredicted.y, myAbsPredicted.x, myAbsPredicted.y, myFloor)) nx = myAbsPredicted.x;
+      if (clientIsBlockedByWall(myAbsPredicted.x, ny, myAbsPredicted.x, myAbsPredicted.y, myFloor)) ny = myAbsPredicted.y;
+      if (clientIsBlockedByWall(nx, ny, myAbsPredicted.x, myAbsPredicted.y, myFloor)) { nx = myAbsPredicted.x; ny = myAbsPredicted.y; }
+      myAbsPredicted.x = nx;
+      myAbsPredicted.y = ny;
     }
     // 서버 권위 좌표로의 부드러운 보정 (snap 대신 lerp)
     if (now < correctionUntil) {
