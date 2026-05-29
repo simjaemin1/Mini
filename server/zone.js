@@ -80,7 +80,10 @@ const BUILDING_COST = {
   fence:    { wood: 1, stone: 0 }, // 울타리 — 콜라이더 O, 싸다
   chest:    { wood: 5, stone: 2 },
   campfire: { wood: 3, stone: 2 }, // 요리 가능 — 콜라이더 없음
+  farmland: { wood: 0, stone: 0, seed: 'seed_berry' }, // 씨앗 1 소비 (재료 외 별도)
 };
+// 작물 성장 시간 (밀리초)
+const CROP_GROW_MS = 60 * 1000;
 // 콜라이더가 있는 건축물 (벽처럼 통과 불가).
 const BLOCKING_BUILDINGS = new Set(['wall', 'fence']);
 
@@ -779,6 +782,33 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'equip') doEquip(player, msg.tool);
   else if (msg.type === 'eat') doEat(player, msg.item);
   else if (msg.type === 'cook') doCook(player, msg.recipe);
+  else if (msg.type === 'harvest') tryHarvest(player);
+}
+
+// === 농사 수확 ===
+function tryHarvest(player) {
+  let best = null, bestDist = 96;
+  for (const b of buildings.values()) {
+    if (b.type !== 'farmland') continue;
+    if (b.ownerId !== player.playerId) continue; // 자기 farmland만
+    const d = Math.hypot(b.x - player.x, b.y - player.y);
+    if (d < bestDist) { best = b; bestDist = d; }
+  }
+  if (!best) { send(player.ws, { type: 'notice', text: '근처에 자기 농지가 없습니다' }); return; }
+  if (!best.data || !best.data.ready) {
+    const remain = Math.max(0, Math.round((best.data?.readyAt - Date.now()) / 1000));
+    send(player.ws, { type: 'notice', text: `아직 자라는 중 (${remain}초 남음)` });
+    return;
+  }
+  // 수확 — berry 3 + seed_berry 1 + farmland 제거
+  player.inventory.berry = (player.inventory.berry || 0) + 3;
+  player.inventory.seed_berry = (player.inventory.seed_berry || 0) + 1;
+  if (best.dbId) { try { db.deleteBuilding(best.dbId); } catch (e) {} }
+  buildings.delete(best.id);
+  broadcast({ type: 'building_removed', id: best.id });
+  send(player.ws, { type: 'inventory', inventory: player.inventory });
+  send(player.ws, { type: 'notice', text: '수확! 🫐 ×3 + 씨앗 ×1' });
+  savePlayer(player);
 }
 
 // === 음식 먹기 ===
@@ -949,7 +979,10 @@ function tryGather(player) {
     let loot = {};
     if (best.type === 'tree')        loot = { wood: 1 };
     else if (best.type === 'rock')   loot = { stone: 1 };
-    else if (best.type === 'berry_bush') loot = { berry: 2, fiber: 1 };
+    else if (best.type === 'berry_bush') {
+      loot = { berry: 2, fiber: 1 };
+      if (Math.random() < 0.3) loot.seed_berry = 1; // 30% 확률로 씨앗
+    }
     for (const [item, amt] of Object.entries(loot)) {
       player.inventory[item] = (player.inventory[item] || 0) + amt;
     }
@@ -1051,6 +1084,11 @@ function tryBuild(player, type) {
     send(player.ws, { type: 'notice', text: `재료 부족 (나무 ${cost.wood}, 돌 ${cost.stone})` });
     return;
   }
+  // farmland은 추가로 씨앗 필요
+  if (cost.seed && (player.inventory[cost.seed] || 0) < 1) {
+    send(player.ws, { type: 'notice', text: `${cost.seed} 1개 필요` });
+    return;
+  }
   // 격자에 스냅 (32 단위)
   const gx = Math.floor(player.x / BUILDING_SIZE) * BUILDING_SIZE + BUILDING_SIZE / 2;
   const gy = Math.floor(player.y / BUILDING_SIZE) * BUILDING_SIZE + BUILDING_SIZE / 2;
@@ -1076,7 +1114,10 @@ function tryBuild(player, type) {
 
   player.inventory.wood -= cost.wood;
   player.inventory.stone -= cost.stone;
-  const initialData = type === 'chest' ? { wood: 0, stone: 0 } : null;
+  if (cost.seed) player.inventory[cost.seed] -= 1;
+  let initialData = null;
+  if (type === 'chest') initialData = { wood: 0, stone: 0 };
+  else if (type === 'farmland') initialData = { cropType: 'berry', plantedAt: Date.now(), readyAt: Date.now() + CROP_GROW_MS, ready: false };
   const dbId = db.insertBuilding({
     type, owner_id: player.playerId, owner_name: player.name,
     x: gx, y: gy, data: initialData ? JSON.stringify(initialData) : null,

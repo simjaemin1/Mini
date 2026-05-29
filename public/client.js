@@ -121,6 +121,7 @@
     KeyW: 'w', KeyA: 'a', KeyS: 's', KeyD: 'd',
     KeyE: 'e', KeyC: 'c', KeyT: 't', KeyY: 'y', KeyF: 'f',
     KeyB: 'b', KeyH: 'h', KeyM: 'm', KeyK: 'k', KeyJ: 'j', KeyR: 'r', KeyL: 'l',
+    KeyP: 'p', KeyO: 'o', KeyG: 'g', KeyN: 'n',
     Digit0: '0', Digit1: '1', Digit2: '2', Digit3: '3',
     ArrowUp: 'arrowup', ArrowDown: 'arrowdown', ArrowLeft: 'arrowleft', ArrowRight: 'arrowright',
     Space: ' ', Enter: 'enter', Tab: 'tab',
@@ -149,6 +150,8 @@
     else if (k === 'h') sendPrimary({ type: 'build', buildType: 'chest' });
     else if (k === 'j') sendPrimary({ type: 'build', buildType: 'campfire' });
     else if (k === 'l') sendPrimary({ type: 'build', buildType: 'fence' });
+    else if (k === 'p') sendPrimary({ type: 'build', buildType: 'farmland' });
+    else if (k === 'o') sendPrimary({ type: 'harvest' });
     else if (k === 'm') toggleMarketplace();
     else if (k === 'k') toggleCraft();
     else if (k === 'r') toggleCookPanel();
@@ -206,6 +209,8 @@
       else if (a === 'build_chest') sendPrimary({ type: 'build', buildType: 'chest' });
       else if (a === 'build_campfire') sendPrimary({ type: 'build', buildType: 'campfire' });
       else if (a === 'build_fence') sendPrimary({ type: 'build', buildType: 'fence' });
+      else if (a === 'build_farmland') sendPrimary({ type: 'build', buildType: 'farmland' });
+      else if (a === 'harvest') sendPrimary({ type: 'harvest' });
       else if (a === 'cook') toggleCookPanel();
       else if (a === 'market') toggleMarketplace();
     };
@@ -933,7 +938,7 @@
         }
       } else if (item.kind === 'building') {
         const s = toScreen(item.iso.x, item.iso.y);
-        drawBuildingIso(s.x, s.y, item.b.type);
+        drawBuildingIso(s.x, s.y, item.b.type, item.b);
       } else if (item.kind === 'mob') {
         const s = toScreen(item.iso.x, item.iso.y);
         const d = Math.hypot(item.ax - worldCx, item.ay - worldCy);
@@ -1030,7 +1035,44 @@
     ctx.fillStyle = color; ctx.fill();
   }
 
-  function drawBuildingIso(x, y, type) {
+  function drawBuildingIso(x, y, type, building) {
+    if (type === 'farmland') {
+      // 갈색 흙 다이아 + 작물
+      const data = building?.data || {};
+      const readyAt = data.readyAt || 0;
+      const now = Date.now();
+      const isReady = now >= readyAt;
+      const growProgress = readyAt > data.plantedAt ? Math.min(1, (now - data.plantedAt) / (readyAt - data.plantedAt)) : 1;
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.beginPath(); ctx.ellipse(x, y + 4, 14, 4, 0, 0, Math.PI * 2); ctx.fill();
+      // 흙
+      ctx.beginPath();
+      ctx.moveTo(x, y - 4); ctx.lineTo(x + 14, y + 2);
+      ctx.lineTo(x, y + 8); ctx.lineTo(x - 14, y + 2); ctx.closePath();
+      ctx.fillStyle = '#5a3a20'; ctx.fill();
+      ctx.strokeStyle = '#3a2810'; ctx.lineWidth = 1; ctx.stroke();
+      // 작물 — growProgress에 따라 크기 다름
+      const cropH = 3 + 8 * growProgress;
+      ctx.fillStyle = isReady ? '#2a8a4a' : '#5aa050';
+      for (const [ox, oy] of [[-6, -2], [0, -3], [6, -1]]) {
+        ctx.fillRect(x + ox - 1, y + oy - cropH/2, 2, cropH);
+      }
+      if (isReady) {
+        // 빨간 베리 (수확 가능 표시)
+        ctx.fillStyle = '#c83a3a';
+        for (const [ox, oy] of [[-6, -8], [0, -10], [6, -8]]) {
+          ctx.beginPath(); ctx.arc(x + ox, y + oy, 2, 0, Math.PI*2); ctx.fill();
+        }
+        // "READY" 라벨
+        ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillStyle = '#9adb6e';
+        ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.lineWidth = 2;
+        ctx.strokeText('수확가능', x, y - 16);
+        ctx.fillText('수확가능', x, y - 16);
+        ctx.textAlign = 'start';
+      }
+      return;
+    }
     if (type === 'wall') {
       // 돌벽 — 회색 입체 박스
       ctx.fillStyle = 'rgba(0,0,0,0.4)';
@@ -1281,10 +1323,12 @@
   const ITEM_ICONS = {
     berry: '🫐', fiber: '🌾', meat_raw: '🥩', meat_cooked: '🍗',
     hide: '🦌', berry_jam: '🍯', water_bottle: '🥤',
+    seed_berry: '🌱',
   };
   const ITEM_LABEL = {
     berry: '베리', fiber: '풀', meat_raw: '날고기', meat_cooked: '구운고기',
     hide: '가죽', berry_jam: '베리잼', water_bottle: '물병',
+    seed_berry: '베리씨앗',
   };
 
   function updateHud() {
