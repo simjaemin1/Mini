@@ -51,13 +51,15 @@ db.exec(`
     created_at INTEGER NOT NULL
   );
   CREATE TABLE IF NOT EXISTS mobs (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    type       TEXT NOT NULL,
-    x          REAL NOT NULL,
-    y          REAL NOT NULL,
-    hp         INTEGER NOT NULL,
-    max_hp     INTEGER NOT NULL,
-    created_at INTEGER NOT NULL
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    type            TEXT NOT NULL,
+    x               REAL NOT NULL,
+    y               REAL NOT NULL,
+    hp              INTEGER NOT NULL,
+    max_hp          INTEGER NOT NULL,
+    tame_owner      TEXT,
+    tame_owner_name TEXT,
+    created_at      INTEGER NOT NULL
   );
   CREATE TABLE IF NOT EXISTS claims (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -104,11 +106,24 @@ function updateBuildingData(id, dataJson) { stmtUpdateBuildingData.run(dataJson,
 function deleteBuilding(id) { stmtDeleteBuilding.run(id); }
 
 // === mobs ===
+// 마이그레이션 — tame_owner 컬럼 없으면 추가
+try {
+  const cols = db.prepare("PRAGMA table_info(mobs)").all().map(c => c.name);
+  if (!cols.includes('tame_owner')) {
+    db.exec('ALTER TABLE mobs ADD COLUMN tame_owner TEXT');
+    console.log(`[${ZONE_ID}/db] mobs.tame_owner 컬럼 추가됨`);
+  }
+  if (!cols.includes('tame_owner_name')) {
+    db.exec('ALTER TABLE mobs ADD COLUMN tame_owner_name TEXT');
+    console.log(`[${ZONE_ID}/db] mobs.tame_owner_name 컬럼 추가됨`);
+  }
+} catch (e) {}
+
 const stmtGetMobs = db.prepare('SELECT * FROM mobs');
 const stmtInsertMob = db.prepare(
   'INSERT INTO mobs (type, x, y, hp, max_hp, created_at) VALUES (?, ?, ?, ?, ?, ?)'
 );
-const stmtUpdateMobState = db.prepare('UPDATE mobs SET x = ?, y = ?, hp = ? WHERE id = ?');
+const stmtUpdateMobState = db.prepare('UPDATE mobs SET x = ?, y = ?, hp = ?, tame_owner = ?, tame_owner_name = ? WHERE id = ?');
 const stmtDeleteMob = db.prepare('DELETE FROM mobs WHERE id = ?');
 
 function getMobs() { return stmtGetMobs.all(); }
@@ -116,7 +131,9 @@ function insertMob(m) {
   const result = stmtInsertMob.run(m.type, m.x, m.y, m.hp, m.max_hp, Date.now());
   return result.lastInsertRowid;
 }
-function updateMobState(id, x, y, hp) { stmtUpdateMobState.run(x, y, hp, id); }
+function updateMobState(id, x, y, hp, tameOwner, tameOwnerName) {
+  stmtUpdateMobState.run(x, y, hp, tameOwner || null, tameOwnerName || null, id);
+}
 function deleteMob(id) { stmtDeleteMob.run(id); }
 
 // === claims ===

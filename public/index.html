@@ -81,6 +81,8 @@
         <button data-action="build_campfire">모닥불 (J)</button>
         <button data-action="build_farmland">농지 (P)</button>
         <button data-action="harvest">수확 (O)</button>
+        <button data-action="feed">먹이 (G)</button>
+        <button data-action="tribe">부족 (N)</button>
         <button data-action="cook">요리 (R)</button>
         <button data-action="market">거래소 (M)</button>
       </div>
@@ -134,6 +136,18 @@
         <div class="modal-body">
           <div class="craft-equipped-row">장착 중: <b id="equippedNow">없음</b> <span class="hint">(1=도끼, 2=곡괭이, 3=검, 0=해제)</span></div>
           <div id="craftList"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="tribePanel" class="modal hidden">
+      <div class="modal-card craft-card">
+        <div class="modal-head">
+          <span>🛡️ 부족</span>
+          <button id="tribeCloseBtn">닫기</button>
+        </div>
+        <div class="modal-body">
+          <div id="tribeBody"></div>
         </div>
       </div>
     </div>

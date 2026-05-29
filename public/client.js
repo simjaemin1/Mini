@@ -34,6 +34,7 @@
   let foodEffects = {}; // 서버에서 받은 음식 효과 정보 (표시용)
   let myHunger = 100, myThirst = 100, myVp = 0;
   const VP_THRESHOLD = 50; // 클라 표시용 — 서버와 동일해야 함
+  let myTribeId = null, myTribeName = null;
   let lastServerPingMs = 0;
   let lastTickAt = 0;
 
@@ -152,6 +153,8 @@
     else if (k === 'l') sendPrimary({ type: 'build', buildType: 'fence' });
     else if (k === 'p') sendPrimary({ type: 'build', buildType: 'farmland' });
     else if (k === 'o') sendPrimary({ type: 'harvest' });
+    else if (k === 'g') sendPrimary({ type: 'feed' });
+    else if (k === 'n') toggleTribePanel();
     else if (k === 'm') toggleMarketplace();
     else if (k === 'k') toggleCraft();
     else if (k === 'r') toggleCookPanel();
@@ -211,6 +214,8 @@
       else if (a === 'build_fence') sendPrimary({ type: 'build', buildType: 'fence' });
       else if (a === 'build_farmland') sendPrimary({ type: 'build', buildType: 'farmland' });
       else if (a === 'harvest') sendPrimary({ type: 'harvest' });
+      else if (a === 'feed') sendPrimary({ type: 'feed' });
+      else if (a === 'tribe') toggleTribePanel();
       else if (a === 'cook') toggleCookPanel();
       else if (a === 'market') toggleMarketplace();
     };
@@ -335,6 +340,7 @@
     document.getElementById('marketCloseBtn')?.addEventListener('click', toggleMarketplace);
     document.getElementById('craftCloseBtn')?.addEventListener('click', toggleCraft);
     document.getElementById('cookCloseBtn')?.addEventListener('click', toggleCookPanel);
+    document.getElementById('tribeCloseBtn')?.addEventListener('click', toggleTribePanel);
     document.getElementById('chestCloseBtn')?.addEventListener('click', closeChest);
     document.getElementById('chestPutWood')?.addEventListener('click', () => { if (openChestId) sendPrimary({type:'chest_put', buildingId: openChestId, item: 'wood', amount: 1}); });
     document.getElementById('chestPutStone')?.addEventListener('click', () => { if (openChestId) sendPrimary({type:'chest_put', buildingId: openChestId, item: 'stone', amount: 1}); });
@@ -439,6 +445,8 @@
         if (typeof msg.self.hunger === 'number') myHunger = msg.self.hunger;
         if (typeof msg.self.thirst === 'number') myThirst = msg.self.thirst;
         if (typeof msg.self.vp === 'number') myVp = msg.self.vp;
+        if (msg.self.tribeId !== undefined) myTribeId = msg.self.tribeId;
+        if (msg.self.tribeName !== undefined) myTribeName = msg.self.tribeName;
         const absX = msg.zone.worldOffsetX + msg.self.x;
         const absY = (msg.zone.worldOffsetY || 0) + msg.self.y;
         myAbsPos = { x: absX, y: absY };
@@ -521,6 +529,9 @@
       c.mobs.delete(msg.mid);
     } else if (msg.type === 'mob_spawn') {
       c.mobs.set(msg.mob.mid, msg.mob);
+    } else if (msg.type === 'mob_tamed') {
+      const m = c.mobs.get(msg.mid);
+      if (m) { m.tameOwner = msg.owner; m.tameOwnerName = msg.ownerName; }
     } else if (msg.type === 'player_damaged') {
       if (msg.pid === myPid) { myHp = msg.hp; updateHud(); }
       else {
@@ -618,10 +629,11 @@
     } else if (msg.type === 'pong') {
       if (c.role === 'primary') lastRttMs = performance.now() - msg.t;
     } else if (msg.type === 'chat') {
-      // 같은 zone(또는 observer zone)에서 온 채팅
-      chatLog.push({ name: msg.name, color: msg.color || '#5a9ae0', text: msg.text, t: msg.t });
+      // 같은 zone(또는 observer zone)에서 온 채팅. 부족 채팅이면 prefix 표시.
+      const prefix = msg.tribe ? `[부족:${msg.tribe}] ` : '';
+      chatLog.push({ name: prefix + msg.name, color: msg.color || '#5a9ae0', text: msg.text, t: msg.t, isTribe: !!msg.tribe });
       if (chatLog.length > 20) chatLog.shift();
-      speechBubbles.set(msg.pid, { text: msg.text, until: performance.now() + 4000 });
+      speechBubbles.set(msg.pid, { text: (msg.tribe ? '🛡️ ' : '') + msg.text, until: performance.now() + 4000 });
       renderChatLog();
     } else if (msg.type === 'notice') {
       showNotice(msg.text);
@@ -874,12 +886,14 @@
         const ax = ox + pos.x, ay = oy + pos.y;
         if (Math.abs(ax - worldCx) > VIEW_RADIUS || Math.abs(ay - worldCy) > VIEW_RADIUS) continue;
         const iso = w2i(ax, ay);
-        renderables.push({ z: iso.y, kind: 'player', pid: o.pid, name: o.name, color: o.color || '#5a9ae0', hp: o.hp, maxHp: o.maxHp, iso, ax, ay });
+        const displayName = o.tribeName ? `[${o.tribeName}] ${o.name}` : o.name;
+        renderables.push({ z: iso.y, kind: 'player', pid: o.pid, name: displayName, color: o.color || '#5a9ae0', hp: o.hp, maxHp: o.maxHp, iso, ax, ay });
       }
     }
     {
       const iso = w2i(myAbsPredicted.x, myAbsPredicted.y);
-      renderables.push({ z: iso.y, kind: 'player', pid: myPid, name: myName, color: myColor, hp: myHp, maxHp: myMaxHp, iso, ax: myAbsPredicted.x, ay: myAbsPredicted.y, isMe: true });
+      const myDisplay = myTribeName ? `[${myTribeName}] ${myName}` : myName;
+      renderables.push({ z: iso.y, kind: 'player', pid: myPid, name: myDisplay, color: myColor, hp: myHp, maxHp: myMaxHp, iso, ax: myAbsPredicted.x, ay: myAbsPredicted.y, isMe: true });
     }
 
     renderables.sort((a, b) => a.z - b.z);
@@ -1185,9 +1199,10 @@
     }
     // 이름
     ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillStyle = '#cdd6e3';
+    ctx.fillStyle = mob.tameOwner ? '#ffb0c0' : '#cdd6e3';
     ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.lineWidth = 2;
-    const label = isWolf ? '늑대' : '사슴';
+    const baseLabel = isWolf ? '늑대' : '사슴';
+    const label = mob.tameOwner ? `❤️ ${baseLabel} (${mob.tameOwnerName || ''})` : baseLabel;
     ctx.strokeText(label, x, y - 20); ctx.fillText(label, x, y - 20);
     ctx.textAlign = 'start';
   }
@@ -1644,6 +1659,86 @@
   function rerenderPanelsIfOpen() {
     if (craftOpen) renderCraftPanel();
     if (cookOpen) renderCookPanel();
+  }
+
+  // === 부족 패널 ===
+  let tribeOpen = false;
+  function toggleTribePanel() {
+    tribeOpen = !tribeOpen;
+    const panel = document.getElementById('tribePanel');
+    if (!panel) return;
+    panel.classList.toggle('hidden', !tribeOpen);
+    if (tribeOpen) renderTribePanel();
+  }
+  async function renderTribePanel() {
+    const body = document.getElementById('tribeBody');
+    if (!body) return;
+    body.innerHTML = '<div class="hint">로딩 중...</div>';
+    if (!myUsername || myUsername.startsWith('anon_')) {
+      body.innerHTML = '<div class="hint">게스트 모드는 부족 사용 불가 — 로그인 필요</div>';
+      return;
+    }
+    if (myTribeId) {
+      // 내 부족 정보
+      try {
+        const r = await fetch(`/tribe/${myTribeId}`);
+        const data = await r.json();
+        const members = (data.members || []).map(m =>
+          `<div class="craft-row"><span style="background:${m.color};display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px"></span>${m.name}${m.player_id === data.tribe.leader_id ? ' 👑' : ''}</div>`
+        ).join('');
+        body.innerHTML = `
+          <div class="hint">소속 부족: <b>[${myTribeName}]</b> (멤버 ${data.members.length}명)</div>
+          <div class="hint" style="margin-top:8px">멤버 목록:</div>
+          ${members}
+          <div class="hint" style="margin-top:8px">부족 채팅: <b>Enter → /t 메시지</b></div>
+          <button class="craft-btn" id="tribeLeaveBtn" style="margin-top:12px;background:#b03030">부족 탈퇴</button>
+        `;
+        document.getElementById('tribeLeaveBtn').onclick = async () => {
+          if (!confirm('정말 탈퇴하시겠습니까?')) return;
+          const r = await fetch('/tribe/leave', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ player_id: myUsername }) });
+          const d = await r.json();
+          if (d.ok) { myTribeId = null; myTribeName = null; sendPrimary({ type: 'tribe_set', tribeId: null, tribeName: null }); renderTribePanel(); }
+          else alert(d.error || '탈퇴 실패');
+        };
+      } catch (e) {
+        body.innerHTML = `<div class="hint">로드 실패: ${e.message}</div>`;
+      }
+    } else {
+      // 부족 없음 — 만들기 또는 가입
+      try {
+        const r = await fetch('/tribes');
+        const data = await r.json();
+        const list = (data.tribes || []).map(t =>
+          `<div class="craft-row"><div class="craft-info"><div class="craft-name">[${t.name}]</div><div class="craft-cost">멤버 ${t.member_count}</div></div><button class="craft-btn" data-join="${t.id}">가입</button></div>`
+        ).join('');
+        body.innerHTML = `
+          <div class="hint">새 부족 만들기:</div>
+          <div style="display:flex;gap:6px;margin:4px 0 12px">
+            <input id="tribeNameInput" maxlength="20" placeholder="부족 이름" style="flex:1;padding:4px 6px"/>
+            <button class="craft-btn" id="tribeCreateBtn">만들기</button>
+          </div>
+          <div class="hint">또는 기존 부족 가입:</div>
+          ${list || '<div class="hint">(부족 없음)</div>'}
+        `;
+        document.getElementById('tribeCreateBtn').onclick = async () => {
+          const name = document.getElementById('tribeNameInput').value.trim();
+          if (!name) return;
+          const r = await fetch('/tribe/create', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ player_id: myUsername, name }) });
+          const d = await r.json();
+          if (d.ok) { myTribeId = d.tribe_id; myTribeName = d.name; sendPrimary({ type: 'tribe_set', tribeId: d.tribe_id, tribeName: d.name }); renderTribePanel(); }
+          else alert(d.error || '생성 실패');
+        };
+        body.querySelectorAll('[data-join]').forEach(b => b.onclick = async () => {
+          const tid = parseInt(b.dataset.join, 10);
+          const r = await fetch('/tribe/join', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ player_id: myUsername, tribe_id: tid }) });
+          const d = await r.json();
+          if (d.ok) { myTribeId = d.tribe_id; myTribeName = d.name; sendPrimary({ type: 'tribe_set', tribeId: d.tribe_id, tribeName: d.name }); renderTribePanel(); }
+          else alert(d.error || '가입 실패');
+        });
+      } catch (e) {
+        body.innerHTML = `<div class="hint">로드 실패: ${e.message}</div>`;
+      }
+    }
   }
 
   let noticeTimer;

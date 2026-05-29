@@ -50,6 +50,7 @@ db.exec(`
     hunger        INTEGER NOT NULL DEFAULT 100,
     thirst        INTEGER NOT NULL DEFAULT 100,
     violation_points INTEGER NOT NULL DEFAULT 0,
+    tribe_id      INTEGER,
     last_zone     TEXT,
     last_x        REAL,
     last_y        REAL,
@@ -57,6 +58,12 @@ db.exec(`
     created_at    INTEGER NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_players_last_zone ON players(last_zone);
+  CREATE TABLE IF NOT EXISTS tribes (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    name       TEXT NOT NULL UNIQUE,
+    leader_id  TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+  );
 `);
 
 // 마이그레이션 — 기존 DB에 새 컬럼 없으면 추가
@@ -77,6 +84,10 @@ try {
   if (!cols.includes('violation_points')) {
     db.exec('ALTER TABLE players ADD COLUMN violation_points INTEGER NOT NULL DEFAULT 0');
     console.log('[central/db] violation_points 컬럼 추가됨');
+  }
+  if (!cols.includes('tribe_id')) {
+    db.exec('ALTER TABLE players ADD COLUMN tribe_id INTEGER');
+    console.log('[central/db] tribe_id 컬럼 추가됨');
   }
 } catch (e) { /* 새 DB면 위 CREATE에서 이미 만들어짐 */ }
 
@@ -107,7 +118,7 @@ const stmtInsertPlayer = db.prepare(`
 `);
 const stmtUpdateProfile = db.prepare(`
   UPDATE players SET wood = ?, stone = ?, tools_json = ?, equipped = ?,
-    inventory_json = ?, hunger = ?, thirst = ?, violation_points = ?,
+    inventory_json = ?, hunger = ?, thirst = ?, violation_points = ?, tribe_id = ?,
     last_zone = ?, last_x = ?, last_y = ?, last_seen = ?, color = ?
   WHERE player_id = ?
 `);
@@ -279,6 +290,7 @@ const server = http.createServer(async (req, res) => {
         data.hunger ?? p.hunger ?? 100,
         data.thirst ?? p.thirst ?? 100,
         data.violation_points ?? p.violation_points ?? 0,
+        data.tribe_id ?? p.tribe_id ?? null,
         data.last_zone ?? p.last_zone,
         data.last_x ?? p.last_x,
         data.last_y ?? p.last_y,
@@ -347,6 +359,80 @@ const server = http.createServer(async (req, res) => {
           .run(inv.wood, inv.stone, Date.now(), playerId);
       }
       orders.delete(orderId);
+      return jsonResp(res, 200, { ok: true });
+    }
+
+    // === 부족(Tribe) API ===
+    if (req.url === '/tribes' && req.method === 'GET') {
+      const rows = db.prepare(`
+        SELECT t.id, t.name, t.leader_id, t.created_at,
+               (SELECT COUNT(*) FROM players WHERE tribe_id = t.id) AS member_count
+        FROM tribes t ORDER BY t.id
+      `).all();
+      return jsonResp(res, 200, { tribes: rows });
+    }
+    if (req.url.startsWith('/tribe/') && req.method === 'GET') {
+      const id = parseInt(req.url.slice('/tribe/'.length), 10);
+      const t = db.prepare('SELECT * FROM tribes WHERE id = ?').get(id);
+      if (!t) return jsonResp(res, 404, { error: 'not found' });
+      const members = db.prepare('SELECT player_id, name, color FROM players WHERE tribe_id = ?').all(id);
+      return jsonResp(res, 200, { tribe: t, members });
+    }
+    if (req.url === '/tribe/create' && req.method === 'POST') {
+      const data = await readBody(req);
+      const playerId = data.player_id;
+      const name = (data.name || '').trim().slice(0, 20);
+      if (!playerId || playerId.startsWith('anon_')) return jsonResp(res, 400, { error: '로그인 필요' });
+      if (!name) return jsonResp(res, 400, { error: '부족 이름 필요' });
+      const p = stmtGetPlayer.get(playerId);
+      if (!p) return jsonResp(res, 404, { error: 'player not found' });
+      if (p.tribe_id) return jsonResp(res, 400, { error: '이미 부족에 소속됨 — 먼저 탈퇴' });
+      try {
+        const r = db.prepare('INSERT INTO tribes (name, leader_id, created_at) VALUES (?, ?, ?)').run(name, playerId, Date.now());
+        const newId = Number(r.lastInsertRowid);
+        db.prepare('UPDATE players SET tribe_id = ? WHERE player_id = ?').run(newId, playerId);
+        console.log(`[central] 부족 생성: ${name} (id=${newId}) leader=${playerId}`);
+        return jsonResp(res, 200, { ok: true, tribe_id: newId, name });
+      } catch (e) {
+        return jsonResp(res, 400, { error: '같은 이름 부족 존재 (' + e.message + ')' });
+      }
+    }
+    if (req.url === '/tribe/join' && req.method === 'POST') {
+      const data = await readBody(req);
+      const playerId = data.player_id;
+      const tribeId = parseInt(data.tribe_id, 10);
+      if (!playerId || playerId.startsWith('anon_')) return jsonResp(res, 400, { error: '로그인 필요' });
+      const p = stmtGetPlayer.get(playerId);
+      if (!p) return jsonResp(res, 404, { error: 'player not found' });
+      if (p.tribe_id) return jsonResp(res, 400, { error: '이미 부족에 소속됨' });
+      const t = db.prepare('SELECT * FROM tribes WHERE id = ?').get(tribeId);
+      if (!t) return jsonResp(res, 404, { error: '부족 없음' });
+      db.prepare('UPDATE players SET tribe_id = ? WHERE player_id = ?').run(tribeId, playerId);
+      console.log(`[central] 부족 가입: ${playerId} → ${t.name}`);
+      return jsonResp(res, 200, { ok: true, tribe_id: tribeId, name: t.name });
+    }
+    if (req.url === '/tribe/leave' && req.method === 'POST') {
+      const data = await readBody(req);
+      const playerId = data.player_id;
+      if (!playerId || playerId.startsWith('anon_')) return jsonResp(res, 400, { error: '로그인 필요' });
+      const p = stmtGetPlayer.get(playerId);
+      if (!p || !p.tribe_id) return jsonResp(res, 400, { error: '부족 소속 아님' });
+      const tribeId = p.tribe_id;
+      db.prepare('UPDATE players SET tribe_id = NULL WHERE player_id = ?').run(playerId);
+      // leader가 탈퇴하고 남은 멤버 없으면 부족 자체 삭제
+      const t = db.prepare('SELECT * FROM tribes WHERE id = ?').get(tribeId);
+      const remaining = db.prepare('SELECT COUNT(*) AS cnt FROM players WHERE tribe_id = ?').get(tribeId).cnt;
+      if (t && t.leader_id === playerId) {
+        if (remaining === 0) {
+          db.prepare('DELETE FROM tribes WHERE id = ?').run(tribeId);
+          console.log(`[central] 부족 해체: ${t.name} (멤버 없음)`);
+        } else {
+          // leader 이양 — 가장 일찍 가입한 멤버 (created_at 기준 player)
+          const next = db.prepare('SELECT player_id FROM players WHERE tribe_id = ? ORDER BY created_at LIMIT 1').get(tribeId);
+          if (next) db.prepare('UPDATE tribes SET leader_id = ? WHERE id = ?').run(next.player_id, tribeId);
+        }
+      }
+      console.log(`[central] 부족 탈퇴: ${playerId} ← ${t?.name || tribeId}`);
       return jsonResp(res, 200, { ok: true });
     }
 
