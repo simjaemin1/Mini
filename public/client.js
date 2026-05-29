@@ -39,6 +39,7 @@
   let myTribeId = null, myTribeName = null;
   let myPvpEnabled = false;
   let myBuildFloor = 0; // 2.5D — 현재 건축 층 (Z=위, X=아래)
+  let myFloor = 0;      // 캐릭터가 현재 있는 층 (계단으로 이동)
   let lastServerPingMs = 0;
   let lastTickAt = 0;
 
@@ -127,6 +128,7 @@
     KeyE: 'e', KeyC: 'c', KeyT: 't', KeyY: 'y', KeyF: 'f',
     KeyB: 'b', KeyH: 'h', KeyM: 'm', KeyK: 'k', KeyJ: 'j', KeyR: 'r', KeyL: 'l',
     KeyP: 'p', KeyO: 'o', KeyG: 'g', KeyN: 'n', KeyV: 'v', KeyZ: 'z', KeyX: 'x',
+    KeyU: 'u', Comma: ',', Period: '.',
     Digit0: '0', Digit1: '1', Digit2: '2', Digit3: '3',
     ArrowUp: 'arrowup', ArrowDown: 'arrowdown', ArrowLeft: 'arrowleft', ArrowRight: 'arrowright',
     Space: ' ', Enter: 'enter', Tab: 'tab',
@@ -162,6 +164,9 @@
     else if (k === 'v') sendPrimary({ type: 'pvp_set', enabled: !myPvpEnabled });
     else if (k === 'z') { myBuildFloor = Math.min(5, myBuildFloor + 1); showNotice(`건축 층: ${myBuildFloor}F`); updateHud(); }
     else if (k === 'x') { myBuildFloor = Math.max(0, myBuildFloor - 1); showNotice(`건축 층: ${myBuildFloor}F`); updateHud(); }
+    else if (k === ',') sendPrimary({ type: 'change_floor', direction: 'down' });
+    else if (k === '.') sendPrimary({ type: 'change_floor', direction: 'up' });
+    else if (k === 'u') sendPrimary({ type: 'build', buildType: 'stair', floor: myBuildFloor });
     else if (k === 'm') toggleMarketplace();
     else if (k === 'k') toggleCraft();
     else if (k === 'r') toggleCookPanel();
@@ -220,6 +225,7 @@
       else if (a === 'build_campfire') sendPrimary({ type: 'build', buildType: 'campfire', floor: myBuildFloor });
       else if (a === 'build_fence') sendPrimary({ type: 'build', buildType: 'fence', floor: myBuildFloor });
       else if (a === 'build_farmland') sendPrimary({ type: 'build', buildType: 'farmland', floor: myBuildFloor });
+      else if (a === 'build_stair') sendPrimary({ type: 'build', buildType: 'stair', floor: myBuildFloor });
       else if (a === 'harvest') sendPrimary({ type: 'harvest' });
       else if (a === 'feed') sendPrimary({ type: 'feed' });
       else if (a === 'tribe') toggleTribePanel();
@@ -479,6 +485,7 @@
         if (typeof msg.self.vp === 'number') myVp = msg.self.vp;
         if (msg.self.tribeId !== undefined) myTribeId = msg.self.tribeId;
         if (msg.self.tribeName !== undefined) myTribeName = msg.self.tribeName;
+        if (typeof msg.self.floor === 'number') myFloor = msg.self.floor;
         const absX = msg.zone.worldOffsetX + msg.self.x;
         const absY = (msg.zone.worldOffsetY || 0) + msg.self.y;
         myAbsPos = { x: absX, y: absY };
@@ -608,6 +615,9 @@
       updateHud();
     } else if (msg.type === 'pvp_state') {
       myPvpEnabled = !!msg.enabled;
+      updateHud();
+    } else if (msg.type === 'floor_changed') {
+      myFloor = msg.floor;
       updateHud();
     } else if (msg.type === 'handoff') {
       // 서버가 발급한 토큰으로 새 zone에 접속.
@@ -956,13 +966,18 @@
         if (Math.abs(ax - worldCx) > VIEW_RADIUS || Math.abs(ay - worldCy) > VIEW_RADIUS) continue;
         const iso = w2i(ax, ay);
         const displayName = o.tribeName ? `[${o.tribeName}] ${o.name}` : o.name;
-        renderables.push({ z: iso.y, kind: 'player', pid: o.pid, name: displayName, color: o.color || '#5a9ae0', hp: o.hp, maxHp: o.maxHp, iso, ax, ay });
+        const oFloor = o.floor || 0;
+        const oZ = oFloor * FLOOR_HEIGHT;
+        const isoF = w2i(ax, ay, oZ);
+        renderables.push({ z: (ax + ay) * 0.5 + oFloor * 1000 + 500, kind: 'player', pid: o.pid, name: displayName, color: o.color || '#5a9ae0', hp: o.hp, maxHp: o.maxHp, iso: isoF, ax, ay });
       }
     }
     {
       const iso = w2i(myAbsPredicted.x, myAbsPredicted.y);
       const myDisplay = myTribeName ? `[${myTribeName}] ${myName}` : myName;
-      renderables.push({ z: iso.y, kind: 'player', pid: myPid, name: myDisplay, color: myColor, hp: myHp, maxHp: myMaxHp, iso, ax: myAbsPredicted.x, ay: myAbsPredicted.y, isMe: true });
+      const myZ = myFloor * FLOOR_HEIGHT;
+      const isoMe = w2i(myAbsPredicted.x, myAbsPredicted.y, myZ);
+      renderables.push({ z: (myAbsPredicted.x + myAbsPredicted.y) * 0.5 + myFloor * 1000 + 500, kind: 'player', pid: myPid, name: myDisplay, color: myColor, hp: myHp, maxHp: myMaxHp, iso: isoMe, ax: myAbsPredicted.x, ay: myAbsPredicted.y, isMe: true });
     }
 
     renderables.sort((a, b) => a.z - b.z);
@@ -1208,6 +1223,23 @@
       ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.moveTo(x - 9, y - 2); ctx.lineTo(x + 9, y - 2); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(x - 9, y - 7); ctx.lineTo(x + 9, y - 7); ctx.stroke();
+    } else if (type === 'stair') {
+      // 계단 — 사선 단들
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      ctx.beginPath(); ctx.ellipse(x, y + 6, 14, 5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#6a4828'; ctx.lineWidth = 1.5;
+      ctx.fillStyle = '#8a6a3a';
+      // 3개 단
+      for (let i = 0; i < 3; i++) {
+        const yy = y + 4 - i * 6;
+        ctx.fillRect(x - 10 + i * 3, yy - 4, 18 - i * 5, 4);
+        ctx.strokeRect(x - 10 + i * 3, yy - 4, 18 - i * 5, 4);
+      }
+      ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillStyle = '#cdd6e3';
+      ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.lineWidth = 2;
+      ctx.strokeText('계단 ,/.', x, y - 18); ctx.fillText('계단 ,/.', x, y - 18);
+      ctx.textAlign = 'start';
     } else if (type === 'campfire') {
       // 모닥불 — 통나무 + 흔들리는 불꽃
       ctx.fillStyle = 'rgba(0,0,0,0.4)';
@@ -1465,7 +1497,7 @@
       floorBadge.title = '건축 층 (Z=위, X=아래)';
       pvpBadge.parentNode.insertBefore(floorBadge, pvpBadge.nextSibling);
     }
-    if (floorBadge) floorBadge.textContent = `🏗️ ${myBuildFloor}F`;
+    if (floorBadge) floorBadge.textContent = `🏗️ 짓:${myBuildFloor}F · 🚶 ${myFloor}F`;
     // 음식/extra 인벤토리
     const foodRow = document.getElementById('invFoodRow');
     if (foodRow) {

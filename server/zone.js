@@ -180,13 +180,14 @@ const BUILDING_COST = {
   chest:    { wood: 5, stone: 2 },
   campfire: { wood: 3, stone: 2 }, // 요리 가능 — 콜라이더 없음
   farmland: { wood: 0, stone: 0, seed: 'seed_berry' }, // 씨앗 1 소비 (재료 외 별도)
+  stair:    { wood: 4, stone: 2 }, // 계단 — 옆에서 ,/. 키로 층 이동
 };
 // 작물 성장 시간 (밀리초)
 const CROP_GROW_MS = 60 * 1000;
 // 콜라이더가 있는 건축물 (벽처럼 통과 불가).
 const BLOCKING_BUILDINGS = new Set(['wall', 'fence']);
 // 2.5D — 건물 높이 (시각용. floor=0은 지상).
-const BUILDING_HEIGHT = { wall: 40, fence: 24, chest: 24, campfire: 20, farmland: 4 };
+const BUILDING_HEIGHT = { wall: 40, fence: 24, chest: 24, campfire: 20, farmland: 4, stair: 40 };
 const FLOOR_HEIGHT = 40; // 한 층 = 40px
 
 // === 위반 점수 (vp) — PvP 공격·타인 사유지 침범 시 누적, 시간당 감소 ===
@@ -1029,6 +1030,7 @@ wss.on('connection', async (ws, req) => {
           vp: typeof pending.vp === 'number' ? pending.vp : 0,
           tribeId: pending.tribeId || null, tribeName: pending.tribeName || null,
           pvpEnabled: !!pending.pvpEnabled,
+          floor: pending.floor || 0,
           lastAttackAt: 0, lastDamagedAt: 0,
           handingOff: false, lastSeen: Date.now(),
         };
@@ -1061,7 +1063,8 @@ wss.on('connection', async (ws, req) => {
           self: { x: player.x, y: player.y, hp: player.hp, maxHp: player.maxHp,
                   hunger: Math.round(player.hunger), thirst: Math.round(player.thirst),
                   vp: Math.round(player.vp ?? 0),
-                  tribeId: player.tribeId || null, tribeName: player.tribeName || null },
+                  tribeId: player.tribeId || null, tribeName: player.tribeName || null,
+            floor: player.floor || 0 },
           worldClock: {
             epoch: WORLD.worldEpoch, dayLengthMs: WORLD.dayLengthMs,
             dayPhaseRatio: WORLD.dayPhaseRatio, serverNow: Date.now(),
@@ -1215,6 +1218,7 @@ wss.on('connection', async (ws, req) => {
     hunger: initHunger, thirst: initThirst, vp: initVp,
     tribeId: initTribeId, tribeName: initTribeName,
     pvpEnabled: false,
+    floor: 0, // 2.5D — 현재 캐릭터 층
     lastAttackAt: 0,
     lastDamagedAt: 0,
     handingOff: false,
@@ -1247,7 +1251,8 @@ wss.on('connection', async (ws, req) => {
     self: { x: player.x, y: player.y, hp: player.hp, maxHp: player.maxHp,
             hunger: Math.round(player.hunger), thirst: Math.round(player.thirst),
             vp: Math.round(player.vp ?? 0),
-            tribeId: player.tribeId || null, tribeName: player.tribeName || null },
+            tribeId: player.tribeId || null, tribeName: player.tribeName || null,
+            floor: player.floor || 0 },
     worldClock: {
       epoch: WORLD.worldEpoch,
       dayLengthMs: WORLD.dayLengthMs,
@@ -1323,6 +1328,24 @@ function handlePlayerInput(player, raw) {
     player.pvpEnabled = !!msg.enabled;
     send(player.ws, { type: 'pvp_state', enabled: player.pvpEnabled });
     send(player.ws, { type: 'notice', text: player.pvpEnabled ? '⚔️ PvP 활성화' : '🕊️ PvP 비활성화' });
+  }
+  else if (msg.type === 'change_floor') {
+    // 계단 근처 (80px 안)에서만 가능. direction: 'up'|'down'.
+    let nearStair = false;
+    const nearby = qtBuildings ? qtBuildings.queryCircle(player.x, player.y, 80) : Array.from(buildings.values());
+    for (const b of nearby) {
+      if (b.type !== 'stair') continue;
+      if (Math.hypot(b.x - player.x, b.y - player.y) < 64) { nearStair = true; break; }
+    }
+    if (!nearStair) { send(player.ws, { type: 'notice', text: '계단 옆에서만 층 이동 가능' }); return; }
+    const dir = msg.direction;
+    if (dir === 'up') {
+      player.floor = Math.min(5, (player.floor || 0) + 1);
+    } else if (dir === 'down') {
+      player.floor = Math.max(0, (player.floor || 0) - 1);
+    } else return;
+    send(player.ws, { type: 'floor_changed', floor: player.floor });
+    send(player.ws, { type: 'notice', text: `${player.floor}F 이동` });
   }
 }
 
@@ -1983,10 +2006,11 @@ setInterval(() => {
     let nx = p.x + p.vx * dt;
     let ny = p.y + p.vy * dt;
 
-    // 벽 충돌: 각 축 별로 따로 처리해서 slide 가능
-    if (isBlockedByWall(nx, p.y)) nx = p.x;
-    if (isBlockedByWall(p.x, ny)) ny = p.y;
-    if (isBlockedByWall(nx, ny)) { nx = p.x; ny = p.y; }
+    // 벽 충돌: 각 축 별로 따로 처리해서 slide 가능. player floor만 막힘.
+    const pf = p.floor || 0;
+    if (isBlockedByWall(nx, p.y, pf)) nx = p.x;
+    if (isBlockedByWall(p.x, ny, pf)) ny = p.y;
+    if (isBlockedByWall(nx, ny, pf)) { nx = p.x; ny = p.y; }
 
     // 4방향 경계 처리 — 새 위치가 zone 밖으로 나가면 이웃으로 핸드오프
     // 우선순위: 가장 큰 초과 축. 모서리에서 두 방향 동시에 초과돼도 한 zone으로만.
@@ -2193,7 +2217,7 @@ setInterval(() => {
   // 이미 본 것은 위치/HP만. payload ~70% 감소.
   function makeEntry(o, isNew, kind) {
     if (kind === 'player') {
-      const e = { pid: o.pid, x: o.x, y: o.y, hp: o.hp };
+      const e = { pid: o.pid, x: o.x, y: o.y, hp: o.hp, floor: o.floor || 0 };
       if (isNew) { e.name = o.name; e.color = o.color; e.maxHp = o.maxHp; e.tribeName = o.tribeName || null; }
       return e;
     }
