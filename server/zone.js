@@ -548,7 +548,7 @@ function spawnNpc(opts = {}) {
   // 옆 계단
   addBlock(houseCx + 2, houseCy, 'stair', 0);
 
-  console.log(`[${ZONE_ID}] 🤖 NPC 스폰: ${name} @ (${cx.toFixed(0)},${cy.toFixed(0)}) + 집 (${houseLayout.length}부재)`);
+  console.log(`[${ZONE_ID}] 🤖 NPC 스폰: ${name} @ (${cx.toFixed(0)},${cy.toFixed(0)}) + PZ식 집`);
   return player;
 }
 
