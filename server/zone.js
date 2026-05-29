@@ -386,6 +386,7 @@ const server = http.createServer((req, res) => {
           vp: typeof data.vp === 'number' ? data.vp : 0,
           tribeId: data.tribeId || null,
           tribeName: data.tribeName || null,
+          pvpEnabled: !!data.pvpEnabled,
           createdAt: Date.now(),
         });
         // 5초 안에 클라가 접속 안 하면 만료
@@ -546,6 +547,7 @@ wss.on('connection', async (ws, req) => {
           thirst: typeof pending.thirst === 'number' ? pending.thirst : THIRST_MAX,
           vp: typeof pending.vp === 'number' ? pending.vp : 0,
           tribeId: pending.tribeId || null, tribeName: pending.tribeName || null,
+          pvpEnabled: !!pending.pvpEnabled,
           lastAttackAt: 0, lastDamagedAt: 0,
           handingOff: false, lastSeen: Date.now(),
         };
@@ -728,6 +730,7 @@ wss.on('connection', async (ws, req) => {
     hp: PLAYER_MAX_HP, maxHp: PLAYER_MAX_HP,
     hunger: initHunger, thirst: initThirst, vp: initVp,
     tribeId: initTribeId, tribeName: initTribeName,
+    pvpEnabled: false,
     lastAttackAt: 0,
     lastDamagedAt: 0,
     handingOff: false,
@@ -797,12 +800,12 @@ function handlePlayerInput(player, raw) {
     if (!text.trim()) return;
     metrics.chats++;
     if (text.startsWith('/t ')) {
-      if (!player.tribeId) { send(player.ws, { type: 'notice', text: '부족 소속이 아닙니다' }); return; }
+      if (!player.tribeId) { send(player.ws, { type: 'notice', text: '길드 소속이 아닙니다' }); return; }
       const tribeText = text.slice(3).trim();
       if (!tribeText) return;
       broadcastToTribe(player, {
         type: 'chat', pid: player.pid, name: player.name, color: player.color,
-        text: tribeText, t: Date.now(), tribe: player.tribeName || '부족',
+        text: tribeText, t: Date.now(), tribe: player.tribeName || '길드',
       });
       console.log(`[${ZONE_ID}] 💬[${player.tribeName}] ${player.name}: ${tribeText}`);
       return;
@@ -823,12 +826,16 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'harvest') tryHarvest(player);
   else if (msg.type === 'feed') tryFeed(player);
   else if (msg.type === 'tribe_set') {
-    // 클라가 central에 부족 만들기/가입/탈퇴 후 자기 zone에 알림
-    // 신뢰: 서버는 central에서 확인. 단 간단 검증 후 적용.
+    // 클라가 central에 길드 만들기/가입/탈퇴 후 자기 zone에 알림
     player.tribeId = msg.tribeId || null;
     player.tribeName = msg.tribeName || null;
     savePlayer(player);
-    send(player.ws, { type: 'notice', text: player.tribeId ? `부족 [${player.tribeName}] 적용` : '부족 탈퇴됨' });
+    send(player.ws, { type: 'notice', text: player.tribeId ? `길드 [${player.tribeName}] 적용` : '길드 탈퇴됨' });
+  }
+  else if (msg.type === 'pvp_set') {
+    player.pvpEnabled = !!msg.enabled;
+    send(player.ws, { type: 'pvp_state', enabled: player.pvpEnabled });
+    send(player.ws, { type: 'notice', text: player.pvpEnabled ? '⚔️ PvP 활성화' : '🕊️ PvP 비활성화' });
   }
 }
 
@@ -1338,6 +1345,16 @@ function tryAttack(player) {
     if (d < bestPDist) { bestPlayer = p; bestPDist = d; }
   }
   if (bestPlayer) {
+    // 같은 길드 — 절대 공격 불가
+    if (player.tribeId && bestPlayer.tribeId === player.tribeId) {
+      send(player.ws, { type: 'notice', text: '같은 길드 멤버는 공격 불가' });
+      return;
+    }
+    // PvP 비활성 — 공격 차단
+    if (!player.pvpEnabled) {
+      send(player.ws, { type: 'notice', text: 'PvP 비활성화 상태 (V 키로 켜기)' });
+      return;
+    }
     damagePlayer(bestPlayer, atk, `player:${player.name}`);
     // PvP 공격 → vp 누적
     player.vp = Math.min(VP_MAX, (player.vp ?? 0) + VP_ATTACK_PLAYER);
@@ -1647,6 +1664,7 @@ async function fireHandoff(player, targetZoneId, newX, newY) {
       vp: Math.round(player.vp ?? 0),
       tribeId: player.tribeId || null,
       tribeName: player.tribeName || null,
+      pvpEnabled: !!player.pvpEnabled,
     });
   } catch (e) {
     console.error(`[${ZONE_ID}] handoff_prepare → ${targetZoneId} 실패:`, e.message);

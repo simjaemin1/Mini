@@ -63,6 +63,7 @@
           <div class="hp-fill vp-fill" id="vpFill"></div>
           <span class="hp-text" id="vpText">⚖️ 위반 0</span>
         </div>
+        <span class="badge" id="pvpBadge" title="PvP 토글 (V)">🕊️ PvP OFF</span>
       </div>
       <div class="hud-row" id="invRow">
         <span class="inv">🪵 <b id="invWood">0</b></span>
@@ -82,7 +83,8 @@
         <button data-action="build_farmland">농지 (P)</button>
         <button data-action="harvest">수확 (O)</button>
         <button data-action="feed">먹이 (G)</button>
-        <button data-action="tribe">부족 (N)</button>
+        <button data-action="tribe">길드 (N)</button>
+        <button data-action="pvp_toggle">PvP (V)</button>
         <button data-action="cook">요리 (R)</button>
         <button data-action="market">거래소 (M)</button>
       </div>
@@ -143,7 +145,7 @@
     <div id="tribePanel" class="modal hidden">
       <div class="modal-card craft-card">
         <div class="modal-head">
-          <span>🛡️ 부족</span>
+          <span>🛡️ 길드</span>
           <button id="tribeCloseBtn">닫기</button>
         </div>
         <div class="modal-body">

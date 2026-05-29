@@ -35,6 +35,7 @@
   let myHunger = 100, myThirst = 100, myVp = 0;
   const VP_THRESHOLD = 50; // 클라 표시용 — 서버와 동일해야 함
   let myTribeId = null, myTribeName = null;
+  let myPvpEnabled = false;
   let lastServerPingMs = 0;
   let lastTickAt = 0;
 
@@ -122,7 +123,7 @@
     KeyW: 'w', KeyA: 'a', KeyS: 's', KeyD: 'd',
     KeyE: 'e', KeyC: 'c', KeyT: 't', KeyY: 'y', KeyF: 'f',
     KeyB: 'b', KeyH: 'h', KeyM: 'm', KeyK: 'k', KeyJ: 'j', KeyR: 'r', KeyL: 'l',
-    KeyP: 'p', KeyO: 'o', KeyG: 'g', KeyN: 'n',
+    KeyP: 'p', KeyO: 'o', KeyG: 'g', KeyN: 'n', KeyV: 'v',
     Digit0: '0', Digit1: '1', Digit2: '2', Digit3: '3',
     ArrowUp: 'arrowup', ArrowDown: 'arrowdown', ArrowLeft: 'arrowleft', ArrowRight: 'arrowright',
     Space: ' ', Enter: 'enter', Tab: 'tab',
@@ -155,6 +156,7 @@
     else if (k === 'o') sendPrimary({ type: 'harvest' });
     else if (k === 'g') sendPrimary({ type: 'feed' });
     else if (k === 'n') toggleTribePanel();
+    else if (k === 'v') sendPrimary({ type: 'pvp_set', enabled: !myPvpEnabled });
     else if (k === 'm') toggleMarketplace();
     else if (k === 'k') toggleCraft();
     else if (k === 'r') toggleCookPanel();
@@ -216,6 +218,7 @@
       else if (a === 'harvest') sendPrimary({ type: 'harvest' });
       else if (a === 'feed') sendPrimary({ type: 'feed' });
       else if (a === 'tribe') toggleTribePanel();
+      else if (a === 'pvp_toggle') sendPrimary({ type: 'pvp_set', enabled: !myPvpEnabled });
       else if (a === 'cook') toggleCookPanel();
       else if (a === 'market') toggleMarketplace();
     };
@@ -562,6 +565,9 @@
       if (typeof msg.thirst === 'number') myThirst = msg.thirst;
       if (typeof msg.vp === 'number') myVp = msg.vp;
       updateHud();
+    } else if (msg.type === 'pvp_state') {
+      myPvpEnabled = !!msg.enabled;
+      updateHud();
     } else if (msg.type === 'handoff') {
       // 서버가 발급한 토큰으로 새 zone에 접속.
       const target = msg.targetZone;
@@ -629,8 +635,8 @@
     } else if (msg.type === 'pong') {
       if (c.role === 'primary') lastRttMs = performance.now() - msg.t;
     } else if (msg.type === 'chat') {
-      // 같은 zone(또는 observer zone)에서 온 채팅. 부족 채팅이면 prefix 표시.
-      const prefix = msg.tribe ? `[부족:${msg.tribe}] ` : '';
+      // 같은 zone(또는 observer zone)에서 온 채팅. 길드 채팅이면 prefix 표시.
+      const prefix = msg.tribe ? `[길드:${msg.tribe}] ` : '';
       chatLog.push({ name: prefix + msg.name, color: msg.color || '#5a9ae0', text: msg.text, t: msg.t, isTribe: !!msg.tribe });
       if (chatLog.length > 20) chatLog.shift();
       speechBubbles.set(msg.pid, { text: (msg.tribe ? '🛡️ ' : '') + msg.text, until: performance.now() + 4000 });
@@ -1379,6 +1385,14 @@
       document.getElementById('vpText').textContent = txt;
       document.querySelector('.vp-bar')?.classList.toggle('danger', myVp >= VP_THRESHOLD);
     }
+    // PvP 뱃지
+    const pvpBadge = document.getElementById('pvpBadge');
+    if (pvpBadge) {
+      pvpBadge.textContent = myPvpEnabled ? '⚔️ PvP ON' : '🕊️ PvP OFF';
+      pvpBadge.style.background = myPvpEnabled ? 'rgba(176,48,48,0.4)' : '';
+      pvpBadge.onclick = () => sendPrimary({ type: 'pvp_set', enabled: !myPvpEnabled });
+      pvpBadge.style.cursor = 'pointer';
+    }
     // 음식/extra 인벤토리
     const foodRow = document.getElementById('invFoodRow');
     if (foodRow) {
@@ -1661,7 +1675,7 @@
     if (cookOpen) renderCookPanel();
   }
 
-  // === 부족 패널 ===
+  // === 길드 패널 ===
   let tribeOpen = false;
   function toggleTribePanel() {
     tribeOpen = !tribeOpen;
@@ -1675,11 +1689,11 @@
     if (!body) return;
     body.innerHTML = '<div class="hint">로딩 중...</div>';
     if (!myUsername || myUsername.startsWith('anon_')) {
-      body.innerHTML = '<div class="hint">게스트 모드는 부족 사용 불가 — 로그인 필요</div>';
+      body.innerHTML = '<div class="hint">게스트 모드는 길드 사용 불가 — 로그인 필요</div>';
       return;
     }
     if (myTribeId) {
-      // 내 부족 정보
+      // 내 길드 정보
       try {
         const r = await fetch(`/tribe/${myTribeId}`);
         const data = await r.json();
@@ -1687,11 +1701,11 @@
           `<div class="craft-row"><span style="background:${m.color};display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px"></span>${m.name}${m.player_id === data.tribe.leader_id ? ' 👑' : ''}</div>`
         ).join('');
         body.innerHTML = `
-          <div class="hint">소속 부족: <b>[${myTribeName}]</b> (멤버 ${data.members.length}명)</div>
+          <div class="hint">소속 길드: <b>[${myTribeName}]</b> (멤버 ${data.members.length}명)</div>
           <div class="hint" style="margin-top:8px">멤버 목록:</div>
           ${members}
-          <div class="hint" style="margin-top:8px">부족 채팅: <b>Enter → /t 메시지</b></div>
-          <button class="craft-btn" id="tribeLeaveBtn" style="margin-top:12px;background:#b03030">부족 탈퇴</button>
+          <div class="hint" style="margin-top:8px">길드 채팅: <b>Enter → /t 메시지</b></div>
+          <button class="craft-btn" id="tribeLeaveBtn" style="margin-top:12px;background:#b03030">길드 탈퇴</button>
         `;
         document.getElementById('tribeLeaveBtn').onclick = async () => {
           if (!confirm('정말 탈퇴하시겠습니까?')) return;
@@ -1704,7 +1718,7 @@
         body.innerHTML = `<div class="hint">로드 실패: ${e.message}</div>`;
       }
     } else {
-      // 부족 없음 — 만들기 또는 가입
+      // 길드 없음 — 만들기 또는 가입
       try {
         const r = await fetch('/tribes');
         const data = await r.json();
@@ -1712,13 +1726,13 @@
           `<div class="craft-row"><div class="craft-info"><div class="craft-name">[${t.name}]</div><div class="craft-cost">멤버 ${t.member_count}</div></div><button class="craft-btn" data-join="${t.id}">가입</button></div>`
         ).join('');
         body.innerHTML = `
-          <div class="hint">새 부족 만들기:</div>
+          <div class="hint">새 길드 만들기:</div>
           <div style="display:flex;gap:6px;margin:4px 0 12px">
-            <input id="tribeNameInput" maxlength="20" placeholder="부족 이름" style="flex:1;padding:4px 6px"/>
+            <input id="tribeNameInput" maxlength="20" placeholder="길드 이름" style="flex:1;padding:4px 6px"/>
             <button class="craft-btn" id="tribeCreateBtn">만들기</button>
           </div>
-          <div class="hint">또는 기존 부족 가입:</div>
-          ${list || '<div class="hint">(부족 없음)</div>'}
+          <div class="hint">또는 기존 길드 가입:</div>
+          ${list || '<div class="hint">(길드 없음)</div>'}
         `;
         document.getElementById('tribeCreateBtn').onclick = async () => {
           const name = document.getElementById('tribeNameInput').value.trim();
