@@ -1246,32 +1246,49 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
       return;
     }
     if (type === 'wall') {
-      // PZ식 얇은 edge wall — side가 'N'이면 cell 북쪽 가장자리(가로 줄), 'E'면 동쪽(세로 줄)
+      // PZ식 edge wall — cell edge에 정확히 배치.
+      // 핵심: wall 바닥 = cell edge (z=0), 윗면 = cell edge 위 H (z=H).
+      // N wall: cell N edge (TL ↘ TR). E wall: cell E edge (TR ↙ BR).
+      // 좌표계: wall 중심 (x, y)는 cell edge 중점 + z=H/2 보정 — render z에서 미리 H만큼 빼서 보냄.
+      // 단순화: render 좌표 (x, y)는 cell edge 중점에 z=0 그대로. 평행사변형 직접 계산.
       const H = WALL_HEIGHT;
       const side = building?.data?.side || 'N';
       ctx.strokeStyle = '#3a3a3a'; ctx.lineWidth = 0.5;
       if (side === 'N') {
-        // 북쪽 edge — 좌상 - 우하 다이아 한 줄 (위쪽 가장자리)
-        // 화면 (x, y)가 cell 중심이면 edge는 (x-16,y-8)~(x+16,y-24) 사이 (북쪽 변)
-        // 단순화: 가로 폭 32 × 두께 4 + 높이 H
+        // cell N edge: 좌상 (x-16, y-8) → 우하 (x+16, y+8). 바닥선.
+        // 윗면(z=H): 좌상 (x-16, y-8-H) → 우하 (x+16, y+8-H).
+        // 측면(앞쪽 보이는 면) = bottom 사선과 top 사선 잇는 직사각형.
         ctx.beginPath();
-        ctx.moveTo(x - 16, y - 8); ctx.lineTo(x + 16, y - 24);
-        ctx.lineTo(x + 16, y - 24 + H); ctx.lineTo(x - 16, y - 8 + H); ctx.closePath();
-        ctx.fillStyle = '#7a7a7a'; ctx.fill(); ctx.stroke();
-        // 윗면 (얇은 평행사변형)
+        ctx.moveTo(x - 16, y - 8);       // 바닥 TL = cell TL
+        ctx.lineTo(x + 16, y + 8);       // 바닥 TR = cell TR
+        ctx.lineTo(x + 16, y + 8 - H);   // 윗면 TR
+        ctx.lineTo(x - 16, y - 8 - H);   // 윗면 TL
+        ctx.closePath();
+        ctx.fillStyle = '#8a7a5c'; ctx.fill(); ctx.stroke(); // 나무색
+        // 윗면 (cell edge 위 H px) — 얇은 평행사변형으로 입체감
         ctx.beginPath();
-        ctx.moveTo(x - 16, y - 8); ctx.lineTo(x + 16, y - 24);
-        ctx.lineTo(x + 18, y - 22); ctx.lineTo(x - 14, y - 6); ctx.closePath();
-        ctx.fillStyle = '#a0a0a0'; ctx.fill(); ctx.stroke();
+        ctx.moveTo(x - 16, y - 8 - H);
+        ctx.lineTo(x + 16, y + 8 - H);
+        ctx.lineTo(x + 14, y + 6 - H);
+        ctx.lineTo(x - 18, y - 10 - H);
+        ctx.closePath();
+        ctx.fillStyle = '#b8a075'; ctx.fill(); ctx.stroke();
       } else { // E
+        // cell E edge: 우상 (x+16, y-8) → 우하 (x-16, y+8). 바닥선.
         ctx.beginPath();
-        ctx.moveTo(x - 16, y - 24); ctx.lineTo(x + 16, y - 8);
-        ctx.lineTo(x + 16, y - 8 + H); ctx.lineTo(x - 16, y - 24 + H); ctx.closePath();
-        ctx.fillStyle = '#8c8c8c'; ctx.fill(); ctx.stroke();
+        ctx.moveTo(x + 16, y - 8);       // 바닥 TR = cell TR
+        ctx.lineTo(x - 16, y + 8);       // 바닥 BR = cell BR
+        ctx.lineTo(x - 16, y + 8 - H);   // 윗면 BR
+        ctx.lineTo(x + 16, y - 8 - H);   // 윗면 TR
+        ctx.closePath();
+        ctx.fillStyle = '#8a7a5c'; ctx.fill(); ctx.stroke();
         ctx.beginPath();
-        ctx.moveTo(x - 16, y - 24); ctx.lineTo(x + 16, y - 8);
-        ctx.lineTo(x + 14, y - 6); ctx.lineTo(x - 18, y - 22); ctx.closePath();
-        ctx.fillStyle = '#a0a0a0'; ctx.fill(); ctx.stroke();
+        ctx.moveTo(x + 16, y - 8 - H);
+        ctx.lineTo(x - 16, y + 8 - H);
+        ctx.lineTo(x - 18, y + 6 - H);
+        ctx.lineTo(x + 14, y - 10 - H);
+        ctx.closePath();
+        ctx.fillStyle = '#b8a075'; ctx.fill(); ctx.stroke();
       }
     } else if (type === 'floor') {
       // 바닥 — 평평한 다이아 (입체감 약간만)
