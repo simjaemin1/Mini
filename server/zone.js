@@ -199,8 +199,8 @@ const MOB_DEFS = {
 };
 const TAME_FOLLOW_DIST = 200; // 주인이 이만큼 멀어지면 따라옴
 const TAME_FOLLOW_STOP = 80;  // 이만큼 가까우면 정지
-const WOLF_TERRITORY_RADIUS = 350; // 늑대가 home에서 이만큼 벗어나면 추적 중단
-const WOLF_WANDER_RADIUS = 180;    // 늑대 배회는 home 주변 이 범위 안
+const WOLF_TERRITORY_RADIUS = 700; // 늑대가 home에서 이만큼 벗어나면 추적 중단
+const WOLF_WANDER_RADIUS = 250;    // 늑대 배회는 home 주변 이 범위 안
 const WOLF_RETURN_SPEED_MULT = 0.5; // home 복귀 시 속도 (느긋하게)
 
 // 같은 팩 늑대들에 어그로 전파 — 단 자기 영역 안에 있는 멤버만
@@ -1027,6 +1027,9 @@ wss.on('connection', async (ws, req) => {
         };
         players.set(pid, player);
 
+        // 활성 청크 갱신 — promote 직후 청크 자원 보장
+        updateActiveChunks();
+
         // source zone에 ACK
         if (pending.source_zone && ZONES[pending.source_zone]) {
           const src = ZONES[pending.source_zone];
@@ -1211,6 +1214,9 @@ wss.on('connection', async (ws, req) => {
     lastSeen: Date.now(),
   };
   players.set(pid, player);
+
+  // 활성 청크 즉시 갱신 — 이 player 주변 청크의 시드 자원 spawn → welcome.resources에 포함됨
+  updateActiveChunks();
 
   // central에 위치 업데이트 (게스트 제외)
   savePlayer(player, { last_zone: ZONE_ID, last_x: sx, last_y: sy });
@@ -2093,13 +2099,11 @@ setInterval(() => {
     if (m.type === 'wolf' && !m.aggroTarget) {
       const homeDist = Math.hypot(m.x - m.homeX, m.y - m.homeY);
       if (homeDist < WOLF_TERRITORY_RADIUS) {
-        // quadtree로 sight 안 플레이어만 추림
+        // quadtree로 sight 안 플레이어만 추림 (늑대 영역 안에 있으면 시야 안 player 무조건 어그로)
         const nearby = qtPlayers ? qtPlayers.queryCircle(m.x, m.y, sight) : Array.from(players.values());
         let best = null, bestD = sight;
         for (const p of nearby) {
           if (p.hp <= 0) continue;
-          // 타겟이 영역 안에 있어야 시작 (영역 밖 플레이어는 그냥 둠)
-          if (Math.hypot(p.x - m.homeX, p.y - m.homeY) > WOLF_TERRITORY_RADIUS) continue;
           const d = Math.hypot(p.x - m.x, p.y - m.y);
           if (d < bestD) { best = p; bestD = d; }
         }
