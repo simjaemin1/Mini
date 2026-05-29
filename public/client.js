@@ -86,7 +86,7 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
     }
     return blocked;
   }
-  window._collDbg = true; // 콘솔에서 _collDbg = false로 끌 수 있음
+  window._collDbg = false; // 콘솔에서 window._collDbg = true로 켤 수 있음 (기본 OFF)
   let lastServerPingMs = 0;
   let lastTickAt = 0;
 
