@@ -12,7 +12,7 @@ const central = require('./central-client'); // central HTTP 클라이언트
 
 // 플레이어 변경을 central에 fire-and-forget 저장
 function savePlayer(player, extra = {}) {
-  if (!player.playerId || player.playerId.startsWith('anon_')) return;
+  if (!player.playerId || player.playerId.startsWith('anon_') || player.playerId.startsWith('npc_')) return;
   // wood/stone은 별도 컬럼, 나머지 아이템(berry, meat_raw 등)은 inventory_json에
   const inv = player.inventory || {};
   const { wood = 0, stone = 0, ...extInv } = inv;
@@ -101,6 +101,22 @@ const MOB_DEFS = {
 };
 const TAME_FOLLOW_DIST = 200; // 주인이 이만큼 멀어지면 따라옴
 const TAME_FOLLOW_STOP = 80;  // 이만큼 가까우면 정지
+const WOLF_TERRITORY_RADIUS = 350; // 늑대가 home에서 이만큼 벗어나면 추적 중단
+const WOLF_WANDER_RADIUS = 180;    // 늑대 배회는 home 주변 이 범위 안
+const WOLF_RETURN_SPEED_MULT = 0.5; // home 복귀 시 속도 (느긋하게)
+
+// 같은 팩 늑대들에 어그로 전파 — 단 자기 영역 안에 있는 멤버만
+function aggroPackmates(sourceWolf, targetPid) {
+  if (!sourceWolf.packId) return;
+  for (const other of mobs.values()) {
+    if (other === sourceWolf) continue;
+    if (other.type !== 'wolf' || other.packId !== sourceWolf.packId) continue;
+    if (other.tameOwner) continue;          // 길든 늑대는 제외
+    if (other.aggroTarget) continue;        // 이미 자기 타겟 있으면 유지
+    if (Math.hypot(other.x - other.homeX, other.y - other.homeY) > WOLF_TERRITORY_RADIUS) continue;
+    other.aggroTarget = targetPid;
+  }
+}
 
 // === Crafting ===
 // 도구 레시피: 인벤토리에 도구로 들어감 (player.tools)
@@ -243,6 +259,8 @@ function spawnMob(type, opts = {}) {
   const m = {
     mid, dbId, type,
     x, y,
+    homeX: opts.homeX ?? x, homeY: opts.homeY ?? y, // 스폰 위치 = home (팩이면 리더 위치 공유)
+    packId: opts.packId || null, // 같은 packId = 같은 무리. 어그로 공유.
     vx: 0, vy: 0,
     hp, maxHp: def.maxHp,
     aggroTarget: null,
@@ -273,8 +291,239 @@ function spawnMob(type, opts = {}) {
     const deerCount = isHostile ? 4 : 8;
     const wolfCount = isHostile ? 5 : 2;
     for (let i = 0; i < deerCount; i++) spawnMob('deer');
-    for (let i = 0; i < wolfCount; i++) spawnMob('wolf');
+    // 늑대는 팩으로 묶음 — 2~3마리씩
+    let spawned = 0, packNum = 0;
+    while (spawned < wolfCount) {
+      const packSize = Math.min(2 + Math.floor(Math.random() * 2), wolfCount - spawned); // 2 또는 3
+      const packId = `pack_${ZONE_ID}_${packNum++}_${Math.random().toString(36).slice(2,6)}`;
+      // 팩의 home — zone 내부 랜덤
+      const homeX = 100 + Math.random() * (WORLD.zoneWidth - 200);
+      const homeY = 100 + Math.random() * (WORLD.zoneHeight - 200);
+      for (let i = 0; i < packSize; i++) {
+        // 멤버는 home 주변 50px 안에 spawn
+        const ang = Math.random() * Math.PI * 2;
+        const r = Math.random() * 50;
+        spawnMob('wolf', {
+          x: homeX + Math.cos(ang) * r,
+          y: homeY + Math.sin(ang) * r,
+          homeX, homeY, packId,
+        });
+        spawned++;
+      }
+      console.log(`[${ZONE_ID}] 🐺 늑대 팩 ${packId.slice(-6)}: ${packSize}마리 @ (${homeX.toFixed(0)},${homeY.toFixed(0)})`);
+    }
     console.log(`[${ZONE_ID}] 새 mob 스폰: 사슴 ${deerCount}, 늑대 ${wolfCount}`);
+  }
+}
+
+// === AI NPC ===
+// 사람 플레이어와 같은 players Map에 넣고 ws=null. 행동은 npcs Set로 별도 트래킹.
+// 각 NPC는 자기 사유지 + 인벤토리 + 농사. 늑대 보면 도망. 죽으면 30초 후 리스폰.
+const npcs = new Set(); // pid 모음 (players Map과 같은 pid 사용)
+let nextNpcSerial = 1;
+const NPC_NAMES = ['에코', '루나', '오리온', '베가', '카이', '미라', '솔', '아라'];
+const NPC_COLORS = ['#d8806a', '#7aa8d0', '#9ad8a0', '#d8c060', '#c080d8', '#80d8c0'];
+const NPC_COUNT_PER_ZONE = 2;
+const NPC_RESPAWN_MS = 30 * 1000;
+const NPC_FLEE_RANGE = 250;        // 늑대 시야 안이면 도망
+const NPC_CLAIM_SIZE = 192;
+
+function spawnNpc(opts = {}) {
+  // 위치: zone 내부 랜덤 (클레임 충돌 안 나는 곳)
+  let cx = 200 + Math.random() * (WORLD.zoneWidth - 400);
+  let cy = 200 + Math.random() * (WORLD.zoneHeight - 400);
+  for (let attempt = 0; attempt < 8; attempt++) {
+    let collide = false;
+    for (const c of claims.values()) {
+      if (rectsOverlap(cx - NPC_CLAIM_SIZE/2, cy - NPC_CLAIM_SIZE/2, NPC_CLAIM_SIZE, NPC_CLAIM_SIZE, c.x, c.y, c.w, c.h)) { collide = true; break; }
+    }
+    if (!collide) break;
+    cx = 200 + Math.random() * (WORLD.zoneWidth - 400);
+    cy = 200 + Math.random() * (WORLD.zoneHeight - 400);
+  }
+  const pid = `p${nextPid++}`;
+  const npcId = `npc_${ZONE_ID}_${nextNpcSerial++}_${Math.random().toString(36).slice(2,6)}`;
+  const name = (opts.name || NPC_NAMES[Math.floor(Math.random()*NPC_NAMES.length)]) + '🤖';
+  const color = opts.color || NPC_COLORS[Math.floor(Math.random()*NPC_COLORS.length)];
+  const player = {
+    pid, playerId: npcId, ws: null,
+    name, color,
+    x: cx, y: cy, vx: 0, vy: 0,
+    inventory: { wood: 0, stone: 0, berry: 0, fiber: 0, meat_raw: 0, hide: 0, seed_berry: 2 },
+    tools: {}, equipped: null,
+    hp: PLAYER_MAX_HP, maxHp: PLAYER_MAX_HP,
+    hunger: HUNGER_MAX, thirst: THIRST_MAX, vp: 0,
+    tribeId: null, tribeName: null,
+    pvpEnabled: false,
+    isNpc: true,
+    behavior: 'wander', targetX: cx, targetY: cy,
+    nextDecisionAt: 0,
+    lastAttackAt: 0, lastDamagedAt: 0,
+    handingOff: false, lastSeen: Date.now(),
+  };
+  // 자기 사유지 자동 생성
+  const claimX = cx - NPC_CLAIM_SIZE/2, claimY = cy - NPC_CLAIM_SIZE/2;
+  const claimId = `c${nextClaimId++}`;
+  const dbId = db.insertClaim({ owner_id: npcId, owner_name: name, x: claimX, y: claimY, w: NPC_CLAIM_SIZE, h: NPC_CLAIM_SIZE });
+  const claim = { id: claimId, dbId, ownerPid: npcId, ownerName: name, x: claimX, y: claimY, w: NPC_CLAIM_SIZE, h: NPC_CLAIM_SIZE };
+  claims.set(claimId, claim);
+  player.myClaim = claim;
+  players.set(pid, player);
+  npcs.add(pid);
+  broadcast({ type: 'claim_added', claim });
+  console.log(`[${ZONE_ID}] 🤖 NPC 스폰: ${name} @ (${cx.toFixed(0)},${cy.toFixed(0)})`);
+  return player;
+}
+
+// 부팅 시 옛 NPC 사유지 정리 (DB에 npc_* owner_id로 남아있는 거)
+{
+  const npcClaims = Array.from(claims.values()).filter(c => c.ownerPid && c.ownerPid.startsWith('npc_'));
+  for (const c of npcClaims) {
+    if (c.dbId) { try { db.db.prepare('DELETE FROM claims WHERE id = ?').run(c.dbId); } catch (e) {} }
+    claims.delete(c.id);
+  }
+  if (npcClaims.length > 0) console.log(`[${ZONE_ID}] 옛 NPC 사유지 ${npcClaims.length}개 정리`);
+  // 새 NPC 스폰
+  for (let i = 0; i < NPC_COUNT_PER_ZONE; i++) spawnNpc();
+}
+
+// NPC 행동 결정 — tick 안에서 호출
+function decideNpcBehavior(npc, now) {
+  if (now < npc.nextDecisionAt) return;
+  npc.nextDecisionAt = now + 500 + Math.random() * 1000;
+  // ① 늑대 시야 안이면 도망
+  let nearestWolf = null, wolfDist = NPC_FLEE_RANGE;
+  for (const m of mobs.values()) {
+    if (m.type !== 'wolf' || m.tameOwner) continue;
+    const d = Math.hypot(m.x - npc.x, m.y - npc.y);
+    if (d < wolfDist) { nearestWolf = m; wolfDist = d; }
+  }
+  if (nearestWolf) {
+    npc.behavior = 'flee';
+    // 늑대 반대방향으로
+    const dx = npc.x - nearestWolf.x, dy = npc.y - nearestWolf.y;
+    const dd = Math.hypot(dx, dy) || 1;
+    npc.targetX = npc.x + (dx/dd) * 200;
+    npc.targetY = npc.y + (dy/dd) * 200;
+    return;
+  }
+  // ② 자기 농지 익었으면 수확
+  for (const b of buildings.values()) {
+    if (b.type !== 'farmland' || b.ownerId !== npc.playerId) continue;
+    if (b.data?.ready || (b.data?.readyAt && now >= b.data.readyAt)) {
+      npc.behavior = 'harvest';
+      npc.targetX = b.x; npc.targetY = b.y;
+      npc.harvestTarget = b.id;
+      return;
+    }
+  }
+  // ③ seed 있고 사유지에 농지 슬롯 빈 데 → 농사
+  if ((npc.inventory.seed_berry || 0) >= 1 && npc.myClaim) {
+    const cl = npc.myClaim;
+    let myFarmCount = 0;
+    for (const b of buildings.values()) if (b.type === 'farmland' && b.ownerId === npc.playerId) myFarmCount++;
+    if (myFarmCount < 3) {
+      // 사유지 안 빈 자리 (대충 중심에서 약간 어긋난 곳)
+      npc.behavior = 'plant';
+      npc.targetX = cl.x + 40 + Math.random() * (cl.w - 80);
+      npc.targetY = cl.y + 40 + Math.random() * (cl.h - 80);
+      return;
+    }
+  }
+  // ④ 가까운 자원 채집 (자기 사유지 안 우선, 없으면 사유지 밖도 OK)
+  let bestRes = null, bestResDist = 400;
+  for (const r of resources.values()) {
+    // 다른 사람 사유지면 패스
+    let blocked = false;
+    for (const c of claims.values()) {
+      if (c.ownerPid !== npc.playerId && r.x >= c.x && r.x < c.x + c.w && r.y >= c.y && r.y < c.y + c.h) { blocked = true; break; }
+    }
+    if (blocked) continue;
+    const d = Math.hypot(r.x - npc.x, r.y - npc.y);
+    if (d < bestResDist) { bestRes = r; bestResDist = d; }
+  }
+  if (bestRes) {
+    npc.behavior = 'gather';
+    npc.targetX = bestRes.x; npc.targetY = bestRes.y;
+    npc.gatherTarget = bestRes.id;
+    return;
+  }
+  // ⑤ 배회 — 사유지 안에서 랜덤
+  npc.behavior = 'wander';
+  if (npc.myClaim) {
+    const cl = npc.myClaim;
+    npc.targetX = cl.x + Math.random() * cl.w;
+    npc.targetY = cl.y + Math.random() * cl.h;
+  } else {
+    npc.targetX = npc.x + (Math.random() - 0.5) * 200;
+    npc.targetY = npc.y + (Math.random() - 0.5) * 200;
+  }
+}
+
+function npcStep(npc, dt, now) {
+  decideNpcBehavior(npc, now);
+  // 목표 방향으로 이동
+  const dx = npc.targetX - npc.x, dy = npc.targetY - npc.y;
+  const dd = Math.hypot(dx, dy);
+  if (dd > 8) {
+    const speed = npc.behavior === 'flee' ? MOVE_SPEED * 1.0 : MOVE_SPEED * 0.6;
+    npc.vx = (dx / dd) * speed;
+    npc.vy = (dy / dd) * speed;
+  } else {
+    npc.vx = 0; npc.vy = 0;
+    // 목표 도달 시 행동 실행
+    if (npc.behavior === 'gather' && npc.gatherTarget) {
+      const r = resources.get(npc.gatherTarget);
+      if (r && Math.hypot(r.x - npc.x, r.y - npc.y) < GATHER_RANGE) {
+        // 직접 채집 (tryGather 로직 간소화)
+        r.hp -= 1;
+        if (r.hp <= 0) {
+          let loot = {};
+          if (r.type === 'tree') loot = { wood: 1 };
+          else if (r.type === 'rock') loot = { stone: 1 };
+          else if (r.type === 'berry_bush') { loot = { berry: 2, fiber: 1 }; if (Math.random() < 0.3) loot.seed_berry = 1; }
+          for (const [k, v] of Object.entries(loot)) npc.inventory[k] = (npc.inventory[k] || 0) + v;
+          resources.delete(r.id);
+          if (r.dbId) db.deleteResource(r.dbId);
+          broadcast({ type: 'resource_removed', id: r.id });
+        } else {
+          if (r.dbId) db.updateResourceHp(r.dbId, r.hp);
+          broadcast({ type: 'resource_update', id: r.id, hp: r.hp });
+        }
+        npc.gatherTarget = null;
+        npc.nextDecisionAt = 0;
+      }
+    } else if (npc.behavior === 'plant') {
+      // 농지 짓기
+      if ((npc.inventory.seed_berry || 0) >= 1 && npc.myClaim) {
+        const gx = Math.floor(npc.x / BUILDING_SIZE) * BUILDING_SIZE + BUILDING_SIZE / 2;
+        const gy = Math.floor(npc.y / BUILDING_SIZE) * BUILDING_SIZE + BUILDING_SIZE / 2;
+        // 같은 타일 중복 체크
+        let occupied = false;
+        for (const b of buildings.values()) if (Math.abs(b.x - gx) < BUILDING_SIZE && Math.abs(b.y - gy) < BUILDING_SIZE) { occupied = true; break; }
+        if (!occupied) {
+          npc.inventory.seed_berry -= 1;
+          const data = { cropType: 'berry', plantedAt: Date.now(), readyAt: Date.now() + CROP_GROW_MS, ready: false };
+          const dbId = db.insertBuilding({ type: 'farmland', owner_id: npc.playerId, owner_name: npc.name, x: gx, y: gy, data: JSON.stringify(data) });
+          const id = `b${nextBid++}`;
+          const building = { id, dbId, type: 'farmland', ownerId: npc.playerId, ownerName: npc.name, x: gx, y: gy, data };
+          buildings.set(id, building);
+          broadcast({ type: 'building_added', building });
+        }
+      }
+      npc.nextDecisionAt = 0;
+    } else if (npc.behavior === 'harvest' && npc.harvestTarget) {
+      const b = buildings.get(npc.harvestTarget);
+      if (b && b.type === 'farmland' && b.ownerId === npc.playerId && b.data && now >= b.data.readyAt) {
+        npc.inventory.berry = (npc.inventory.berry || 0) + 3;
+        npc.inventory.seed_berry = (npc.inventory.seed_berry || 0) + 1;
+        if (b.dbId) { try { db.deleteBuilding(b.dbId); } catch (e) {} }
+        buildings.delete(b.id);
+        broadcast({ type: 'building_removed', id: b.id });
+      }
+      npc.harvestTarget = null;
+      npc.nextDecisionAt = 0;
+    }
   }
 }
 
@@ -1307,8 +1556,11 @@ function tryAttack(player) {
     bestMob.hp -= atk;
     bestMob.dirty = true;
     broadcast({ type: 'mob_damaged', mid: bestMob.mid, hp: bestMob.hp });
-    // 늑대는 공격당하면 즉시 어그로 — 단 길든 mob은 어그로 안 가짐
-    if (bestMob.type === 'wolf' && !bestMob.aggroTarget && !bestMob.tameOwner) bestMob.aggroTarget = player.pid;
+    // 늑대는 공격당하면 즉시 어그로 — 단 길든 mob은 어그로 안 가짐. 팩 동료도 같이 어그로.
+    if (bestMob.type === 'wolf' && !bestMob.tameOwner) {
+      bestMob.aggroTarget = player.pid;
+      aggroPackmates(bestMob, player.pid);
+    }
     // 남의 길든 동물 공격 시 vp 누적 (PvP 비슷)
     if (bestMob.tameOwner && bestMob.tameOwner !== player.playerId) {
       player.vp = Math.min(VP_MAX, (player.vp ?? 0) + VP_ATTACK_PLAYER);
@@ -1370,8 +1622,24 @@ function damagePlayer(p, dmg, source) {
   p.lastDamagedAt = Date.now();
   broadcast({ type: 'player_damaged', pid: p.pid, hp: p.hp });
   if (p.hp <= 0) {
-    send(p.ws, { type: 'notice', text: '사망. 5초 후 부활합니다.' });
     p.hp = 0;
+    if (p.isNpc) {
+      // NPC: 30초 후 자기 사유지 중심에 부활
+      console.log(`[${ZONE_ID}] 🤖 NPC ${p.name} 사망 (by ${source}) — ${NPC_RESPAWN_MS/1000}초 후 부활`);
+      const respawnX = p.myClaim ? p.myClaim.x + p.myClaim.w/2 : WORLD.zoneWidth/2;
+      const respawnY = p.myClaim ? p.myClaim.y + p.myClaim.h/2 : WORLD.zoneHeight/2;
+      setTimeout(() => {
+        if (!players.has(p.pid)) return;
+        p.hp = p.maxHp;
+        p.x = respawnX; p.y = respawnY;
+        p.vx = 0; p.vy = 0;
+        p.hunger = HUNGER_MAX; p.thirst = THIRST_MAX;
+        for (const m of mobs.values()) if (m.aggroTarget === p.pid) m.aggroTarget = null;
+        broadcast({ type: 'player_respawn', pid: p.pid, hp: p.hp, x: p.x, y: p.y });
+      }, NPC_RESPAWN_MS);
+      return;
+    }
+    send(p.ws, { type: 'notice', text: '사망. 5초 후 부활합니다.' });
     // 5초 후 zone 중앙에 부활
     setTimeout(() => {
       if (!players.has(p.pid)) return;
@@ -1416,9 +1684,24 @@ setInterval(() => {
     if (now - p.lastSeen > 1000) { p.vx = 0; p.vy = 0; }
   }
 
+  // === NPC 행동 결정 (사람 plyer는 input으로 vx/vy 받지만 NPC는 직접 결정) ===
+  for (const pid of npcs) {
+    const npc = players.get(pid);
+    if (!npc || npc.hp <= 0) continue;
+    npcStep(npc, dt, now);
+  }
+  // 농지 ready 마크 (시간 지남) — 한 번 ready되면 그대로
+  for (const b of buildings.values()) {
+    if (b.type === 'farmland' && b.data && !b.data.ready && now >= b.data.readyAt) {
+      b.data.ready = true;
+      // broadcast 안 함 — 클라가 시간 보고 자체 판단
+    }
+  }
+
   // 이동 + 경계 처리 + 벽 충돌
   for (const p of players.values()) {
     if (p.handingOff) continue;
+    // NPC는 zone 핸드오프 안 함 (사유지에 묶임). 경계 넘으면 그냥 클램프.
     let nx = p.x + p.vx * dt;
     let ny = p.y + p.vy * dt;
 
@@ -1439,7 +1722,13 @@ setInterval(() => {
       p._dbgT = now;
       console.log(`[${ZONE_ID}/dbg] ${p.name} pos=(${nx.toFixed(0)},${ny.toFixed(0)}) v=(${p.vx.toFixed(0)},${p.vy.toFixed(0)}) maxOut=${maxOut.toFixed(0)} N=${ZONE.north||'∅'} handingOff=${p.handingOff}`);
     }
-    if (maxOut > 0) {
+    // NPC는 zone 핸드오프 안 함 — 항상 클램프
+    if (maxOut > 0 && p.isNpc) {
+      p.x = clamp(nx, 0, WORLD.zoneWidth);
+      p.y = clamp(ny, 0, WORLD.zoneHeight);
+      // 경계 닿으면 NPC가 다음 결정 다시 — 안 막힘
+      p.nextDecisionAt = 0;
+    } else if (maxOut > 0) {
       if (outW === maxOut && ZONE.west) {
         p.x = nx; p.y = ny;
         fireHandoff(p, ZONE.west, WORLD.zoneWidth + nx, clamp(ny, 0, WORLD.zoneHeight));
@@ -1541,22 +1830,30 @@ setInterval(() => {
       continue;
     }
 
-    // 어그로 타겟 검증
+    // 어그로 타겟 검증 — 타겟 죽음/실종/시야 밖이면 해제. 늑대는 영역 너무 벗어났을 때도 해제.
     if (m.aggroTarget) {
       const t = players.get(m.aggroTarget);
-      if (!t || t.hp <= 0 || Math.hypot(t.x - m.x, t.y - m.y) > sight * 1.5) {
-        m.aggroTarget = null;
-      }
+      const tooFarFromTarget = !t || t.hp <= 0 || Math.hypot(t.x - m.x, t.y - m.y) > sight * 1.5;
+      const tooFarFromHome   = m.type === 'wolf' && Math.hypot(m.x - m.homeX, m.y - m.homeY) > WOLF_TERRITORY_RADIUS;
+      if (tooFarFromTarget || tooFarFromHome) m.aggroTarget = null;
     }
-    // 늑대만: 시야 안 플레이어 어그로
+    // 늑대만: 시야 안 플레이어 어그로. 단 영역 안에서만 사냥 시작.
     if (m.type === 'wolf' && !m.aggroTarget) {
-      let best = null, bestD = sight;
-      for (const p of players.values()) {
-        if (p.hp <= 0) continue;
-        const d = Math.hypot(p.x - m.x, p.y - m.y);
-        if (d < bestD) { best = p; bestD = d; }
+      const homeDist = Math.hypot(m.x - m.homeX, m.y - m.homeY);
+      if (homeDist < WOLF_TERRITORY_RADIUS) {
+        let best = null, bestD = sight;
+        for (const p of players.values()) {
+          if (p.hp <= 0) continue;
+          // 타겟이 영역 안에 있어야 시작 (영역 밖 플레이어는 그냥 둠)
+          if (Math.hypot(p.x - m.homeX, p.y - m.homeY) > WOLF_TERRITORY_RADIUS) continue;
+          const d = Math.hypot(p.x - m.x, p.y - m.y);
+          if (d < bestD) { best = p; bestD = d; }
+        }
+        if (best) {
+          m.aggroTarget = best.pid;
+          aggroPackmates(m, best.pid); // 팩 동료들 동시 어그로
+        }
       }
-      if (best) m.aggroTarget = best.pid;
     }
     // 이동
     if (m.aggroTarget) {
@@ -1577,8 +1874,16 @@ setInterval(() => {
         }
       }
     } else {
-      // 배회
-      if (now > m.wanderUntil) {
+      // 배회 — 늑대는 home 영역 안에서만. home에서 너무 멀어졌으면 강제로 복귀.
+      const homeDist = Math.hypot(m.x - m.homeX, m.y - m.homeY);
+      if (m.type === 'wolf' && homeDist > WOLF_WANDER_RADIUS) {
+        // 영역 밖 — home 쪽으로 직진
+        const dx = m.homeX - m.x, dy = m.homeY - m.y;
+        const dd = Math.hypot(dx, dy) || 1;
+        m.vx = (dx / dd) * def.speed * WOLF_RETURN_SPEED_MULT;
+        m.vy = (dy / dd) * def.speed * WOLF_RETURN_SPEED_MULT;
+        m.wanderUntil = now + 1500;
+      } else if (now > m.wanderUntil) {
         const angle = Math.random() * Math.PI * 2;
         m.vx = Math.cos(angle) * def.speed * 0.3;
         m.vy = Math.sin(angle) * def.speed * 0.3;
@@ -1721,6 +2026,7 @@ function postJSON(host, port, path, data) {
 
 // === 유틸 ===
 function rawSend(ws, str) {
+  if (!ws) return; // NPC는 ws=null
   try { if (ws.readyState === WebSocket.OPEN) ws.send(str); } catch (e) {}
 }
 function send(ws, obj) {
