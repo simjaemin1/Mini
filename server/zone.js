@@ -419,18 +419,39 @@ const NPC_FLEE_RANGE = 250;        // 늑대 시야 안이면 도망
 const NPC_CLAIM_SIZE = 192;
 
 function spawnNpc(opts = {}) {
-  // 위치: zone 내부 랜덤 (클레임 충돌 안 나는 곳)
-  let cx = 200 + Math.random() * (WORLD.zoneWidth - 400);
-  let cy = 200 + Math.random() * (WORLD.zoneHeight - 400);
-  for (let attempt = 0; attempt < 8; attempt++) {
-    let collide = false;
-    for (const c of claims.values()) {
-      if (rectsOverlap(cx - NPC_CLAIM_SIZE/2, cy - NPC_CLAIM_SIZE/2, NPC_CLAIM_SIZE, NPC_CLAIM_SIZE, c.x, c.y, c.w, c.h)) { collide = true; break; }
+  // 위치: opts.x/y 우선, 없으면 zone 내부 랜덤 (클레임 충돌 안 나는 곳)
+  let cx, cy;
+  if (typeof opts.x === 'number' && typeof opts.y === 'number') {
+    cx = opts.x; cy = opts.y;
+    // 충돌나면 약간 흔들어서 16회 재시도
+    for (let attempt = 0; attempt < 16; attempt++) {
+      let collide = false;
+      for (const c of claims.values()) {
+        if (rectsOverlap(cx - NPC_CLAIM_SIZE/2, cy - NPC_CLAIM_SIZE/2, NPC_CLAIM_SIZE, NPC_CLAIM_SIZE, c.x, c.y, c.w, c.h)) { collide = true; break; }
+      }
+      if (!collide) break;
+      // 마을 중심 주변에서 흔들기
+      const ang = Math.random() * Math.PI * 2;
+      const r = Math.random() * 200;
+      cx = opts.x + Math.cos(ang) * r;
+      cy = opts.y + Math.sin(ang) * r;
     }
-    if (!collide) break;
+  } else {
     cx = 200 + Math.random() * (WORLD.zoneWidth - 400);
     cy = 200 + Math.random() * (WORLD.zoneHeight - 400);
+    for (let attempt = 0; attempt < 8; attempt++) {
+      let collide = false;
+      for (const c of claims.values()) {
+        if (rectsOverlap(cx - NPC_CLAIM_SIZE/2, cy - NPC_CLAIM_SIZE/2, NPC_CLAIM_SIZE, NPC_CLAIM_SIZE, c.x, c.y, c.w, c.h)) { collide = true; break; }
+      }
+      if (!collide) break;
+      cx = 200 + Math.random() * (WORLD.zoneWidth - 400);
+      cy = 200 + Math.random() * (WORLD.zoneHeight - 400);
+    }
   }
+  // 사이즈 안 벗어나게 clamp
+  cx = clamp(cx, NPC_CLAIM_SIZE, WORLD.zoneWidth - NPC_CLAIM_SIZE);
+  cy = clamp(cy, NPC_CLAIM_SIZE, WORLD.zoneHeight - NPC_CLAIM_SIZE);
   const pid = `p${nextPid++}`;
   const npcId = `npc_${ZONE_ID}_${nextNpcSerial++}_${Math.random().toString(36).slice(2,6)}`;
   const name = (opts.name || NPC_NAMES[Math.floor(Math.random()*NPC_NAMES.length)]) + '🤖';
@@ -443,7 +464,9 @@ function spawnNpc(opts = {}) {
     tools: {}, equipped: null,
     hp: PLAYER_MAX_HP, maxHp: PLAYER_MAX_HP,
     hunger: HUNGER_MAX, thirst: THIRST_MAX, vp: 0,
-    tribeId: null, tribeName: null,
+    // NPC끼리 같은 마을 = 같은 길드 (zone 안 메모리 길드 — central 등록 X, 시각상만)
+    tribeId: opts.villageId || null,
+    tribeName: opts.villageName || null,
     pvpEnabled: false,
     isNpc: true,
     behavior: 'wander', targetX: cx, targetY: cy,
@@ -465,7 +488,10 @@ function spawnNpc(opts = {}) {
   return player;
 }
 
-// 부팅 시 옛 NPC 사유지 정리 (DB에 npc_* owner_id로 남아있는 거)
+// === 부팅: 옛 NPC 사유지 정리 + 마을(village) 단위 NPC 스폰 ===
+const VILLAGE_NAMES = ['새벽골', '안골', '너른들', '산기슭', '강가마을', '바위골', '솔숲', '들꽃마을', '구름고개', '달빛터'];
+const VILLAGES_PER_ZONE = 3;
+const NPC_PER_VILLAGE = Math.floor(NPC_COUNT_PER_ZONE / VILLAGES_PER_ZONE);
 {
   const npcClaims = Array.from(claims.values()).filter(c => c.ownerPid && c.ownerPid.startsWith('npc_'));
   for (const c of npcClaims) {
@@ -473,8 +499,40 @@ function spawnNpc(opts = {}) {
     claims.delete(c.id);
   }
   if (npcClaims.length > 0) console.log(`[${ZONE_ID}] 옛 NPC 사유지 ${npcClaims.length}개 정리`);
-  // 새 NPC 스폰
-  for (let i = 0; i < NPC_COUNT_PER_ZONE; i++) spawnNpc();
+
+  // 마을 N개 spawn — 각 마을 NPC 그룹
+  const usedNames = new Set();
+  for (let v = 0; v < VILLAGES_PER_ZONE; v++) {
+    // 마을 이름 (중복 X)
+    let name;
+    do {
+      name = VILLAGE_NAMES[Math.floor(Math.random() * VILLAGE_NAMES.length)];
+    } while (usedNames.has(name) && usedNames.size < VILLAGE_NAMES.length);
+    usedNames.add(name);
+    const villageId = `village_${ZONE_ID}_${v}`;
+    // 마을 중심 — zone 안 random, 다른 마을과 최소 거리
+    let centerX, centerY;
+    const MIN_VILLAGE_DIST = 1500;
+    for (let attempt = 0; attempt < 20; attempt++) {
+      centerX = 800 + Math.random() * (WORLD.zoneWidth - 1600);
+      centerY = 800 + Math.random() * (WORLD.zoneHeight - 1600);
+      // 다른 마을 사유지와 거리 체크 (대충 — 첫 NPC가 그 마을 중심)
+      let tooClose = false;
+      for (const c of claims.values()) {
+        if (Math.hypot(c.x + c.w/2 - centerX, c.y + c.h/2 - centerY) < MIN_VILLAGE_DIST) { tooClose = true; break; }
+      }
+      if (!tooClose) break;
+    }
+    console.log(`[${ZONE_ID}] 🏘️ 마을 [${name}] @ (${centerX.toFixed(0)},${centerY.toFixed(0)}) — ${NPC_PER_VILLAGE}명`);
+    // NPC들을 마을 중심 주변에 spawn
+    for (let i = 0; i < NPC_PER_VILLAGE; i++) {
+      const ang = (Math.PI * 2 * i / NPC_PER_VILLAGE) + Math.random() * 0.3;
+      const r = 200 + Math.random() * 300;
+      const npcX = centerX + Math.cos(ang) * r;
+      const npcY = centerY + Math.sin(ang) * r;
+      spawnNpc({ x: npcX, y: npcY, villageId, villageName: name });
+    }
+  }
 }
 
 // NPC 행동 결정 — tick 안에서 호출
