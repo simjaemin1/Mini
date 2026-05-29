@@ -75,13 +75,18 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
     const oc = clCellOf(oldX, oldY);
     const nc = clCellOf(newX, newY);
     if (oc.cx === nc.cx && oc.cy === nc.cy) return false;
-    // 절대 cell 좌표 — zone offset 더한 거. abs 좌표 그대로 사용해도 됨 (cellOf가 abs 입력).
-    if (nc.cx > oc.cx && clHasWallAt(oldX, oldY, oc.cx, oc.cy, 'E', playerFloor)) return true;
-    if (nc.cx < oc.cx && clHasWallAt(newX, newY, nc.cx, nc.cy, 'E', playerFloor)) return true;
-    if (nc.cy > oc.cy && clHasWallAt(newX, newY, nc.cx, nc.cy, 'N', playerFloor)) return true;
-    if (nc.cy < oc.cy && clHasWallAt(oldX, oldY, oc.cx, oc.cy, 'N', playerFloor)) return true;
-    return false;
+    let blocked = false, reason = '';
+    if (nc.cx > oc.cx && clHasWallAt(oldX, oldY, oc.cx, oc.cy, 'E', playerFloor)) { blocked = true; reason = 'E'; }
+    else if (nc.cx < oc.cx && clHasWallAt(newX, newY, nc.cx, nc.cy, 'E', playerFloor)) { blocked = true; reason = 'W'; }
+    else if (nc.cy > oc.cy && clHasWallAt(newX, newY, nc.cx, nc.cy, 'N', playerFloor)) { blocked = true; reason = 'S'; }
+    else if (nc.cy < oc.cy && clHasWallAt(oldX, oldY, oc.cx, oc.cy, 'N', playerFloor)) { blocked = true; reason = 'N'; }
+    // DEBUG — 클라가 어떤 cell→cell 시도하는지, 막힘/통과 결과까지
+    if (window._collDbg !== false) {
+      console.log(`[coll] cell ${oc.cx},${oc.cy}→${nc.cx},${nc.cy} f${playerFloor} ${blocked ? 'BLOCKED:' + reason : 'pass'} (zones: ${Array.from(conns.keys()).map(k => k + ':' + (conns.get(k).buildings?.size||0)).join(',')})`);
+    }
+    return blocked;
   }
+  window._collDbg = true; // 콘솔에서 _collDbg = false로 끌 수 있음
   let lastServerPingMs = 0;
   let lastTickAt = 0;
 
