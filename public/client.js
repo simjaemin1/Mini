@@ -1078,6 +1078,8 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
         else if (item.r.type === 'rock') drawRockIso(s.x, s.y);
         else if (item.r.type === 'berry_bush') drawBerryBushIso(s.x, s.y);
         else if (item.r.type === 'water_pool') drawWaterPoolIso(s.x, s.y);
+        else if (item.r.type === 'herb') drawHerbIso(s.x, s.y);
+        else if (item.r.type === 'ore') drawOreIso(s.x, s.y);
         if (item.r.hp < item.r.maxHp) {
           const pct = item.r.hp / item.r.maxHp;
           ctx.fillStyle = '#222'; ctx.fillRect(s.x - 10, s.y - 28, 20, 3);
@@ -1479,6 +1481,49 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
     ctx.beginPath(); ctx.ellipse(x + 5, y + 2, 2, 0.8, 0, 0, Math.PI*2); ctx.fill();
   }
 
+  // Phase 14.3 — 약초 (herb): 작은 녹색 꽃 무더기
+  function drawHerbIso(x, y) {
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.beginPath(); ctx.ellipse(x, y + 2, 8, 3, 0, 0, Math.PI*2); ctx.fill();
+    // 줄기 3개
+    ctx.strokeStyle = '#3a7a3a'; ctx.lineWidth = 1.5;
+    for (const [ox, oy] of [[-4, 0], [0, -2], [4, 0]]) {
+      ctx.beginPath(); ctx.moveTo(x + ox, y); ctx.lineTo(x + ox, y - 10 + oy); ctx.stroke();
+    }
+    // 잎/꽃
+    ctx.fillStyle = '#7ac86a';
+    for (const [ox, oy] of [[-4, -10], [0, -12], [4, -10]]) {
+      ctx.beginPath(); ctx.arc(x + ox, y + oy, 2.5, 0, Math.PI*2); ctx.fill();
+    }
+    // 노란 꽃 점
+    ctx.fillStyle = '#e8d048';
+    for (const [ox, oy] of [[-4, -10], [4, -10]]) {
+      ctx.beginPath(); ctx.arc(x + ox, y + oy, 1, 0, Math.PI*2); ctx.fill();
+    }
+  }
+
+  // Phase 14.3 — 광물 (ore): 회색 바위 + 빛나는 금속 결정
+  function drawOreIso(x, y) {
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.beginPath(); ctx.ellipse(x, y + 5, 13, 5, 0, 0, Math.PI*2); ctx.fill();
+    // 바위 본체
+    ctx.beginPath();
+    ctx.moveTo(x - 12, y); ctx.lineTo(x, y - 14);
+    ctx.lineTo(x + 12, y - 2); ctx.lineTo(x + 8, y + 6);
+    ctx.lineTo(x - 8, y + 6); ctx.closePath();
+    ctx.fillStyle = '#5a5a6a'; ctx.fill();
+    ctx.strokeStyle = '#2a2a3a'; ctx.lineWidth = 1; ctx.stroke();
+    // 금속 결정 (반짝)
+    ctx.fillStyle = '#c8a838';
+    ctx.beginPath();
+    ctx.moveTo(x - 3, y - 4); ctx.lineTo(x, y - 9);
+    ctx.lineTo(x + 3, y - 4); ctx.lineTo(x, y - 1); ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#8a7820'; ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,200,0.6)';
+    ctx.beginPath(); ctx.arc(x, y - 6, 1.5, 0, Math.PI*2); ctx.fill();
+  }
+
   function drawSpeechBubble(x, y, text) {
     if (!text) return;
     ctx.font = '12px sans-serif';
@@ -1548,12 +1593,12 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
   const ITEM_ICONS = {
     berry: '🫐', fiber: '🌾', meat_raw: '🥩', meat_cooked: '🍗',
     hide: '🦌', berry_jam: '🍯', water_bottle: '🥤',
-    seed_berry: '🌱',
+    seed_berry: '🌱', herb: '🌿', ore: '⛏️',
   };
   const ITEM_LABEL = {
     berry: '베리', fiber: '풀', meat_raw: '날고기', meat_cooked: '구운고기',
     hide: '가죽', berry_jam: '베리잼', water_bottle: '물병',
-    seed_berry: '베리씨앗',
+    seed_berry: '베리씨앗', herb: '약초', ore: '광물',
   };
 
   function updateHud() {

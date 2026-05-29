@@ -144,26 +144,36 @@ function seedRand(zoneId, cx, cy, n) {
   return (h % 2147483647) / 2147483647;
 }
 
-const RESOURCE_HP_TABLE = { tree: 3, rock: 4, berry_bush: 2, water_pool: 999 };
+const RESOURCE_HP_TABLE = { tree: 3, rock: 4, berry_bush: 2, water_pool: 999, herb: 1, ore: 5 };
 
-// biome별 자원 분포 (zone.js의 biomeResourceType과 같이 유지)
+// Phase 14.1+14.3: biome별 자원 강한 편재 + herb/ore 추가
+// 설계 문서 §2.2: "지역마다 편재" — 우리 맵에 적용:
+//   - korea (mountains): rock·ore 압도 → 광물 지대
+//   - russia (forest): tree 압도 → 목재 지대
+//   - usa/china (plains): berry·herb 많음 → 농경/약초 지대
 function pickResourceType(biome, r) {
   if (biome === 'plains') {
-    if (r < 0.45) return 'tree';
-    if (r < 0.60) return 'rock';
-    if (r < 0.90) return 'berry_bush';
+    // 평원: berry 50, herb 25, tree 20, rock 4, water 1
+    if (r < 0.50) return 'berry_bush';
+    if (r < 0.75) return 'herb';
+    if (r < 0.95) return 'tree';
+    if (r < 0.99) return 'rock';
     return 'water_pool';
   }
   if (biome === 'mountains') {
-    if (r < 0.25) return 'tree';
-    if (r < 0.75) return 'rock';
-    if (r < 0.92) return 'berry_bush';
+    // 산악: rock 55, ore 20, tree 10, herb 8, berry 5, water 2
+    if (r < 0.55) return 'rock';
+    if (r < 0.75) return 'ore';
+    if (r < 0.85) return 'tree';
+    if (r < 0.93) return 'herb';
+    if (r < 0.98) return 'berry_bush';
     return 'water_pool';
   }
-  // forest
-  if (r < 0.60) return 'tree';
-  if (r < 0.72) return 'rock';
-  if (r < 0.94) return 'berry_bush';
+  // forest: tree 70, berry 15, herb 8, rock 5, water 2
+  if (r < 0.70) return 'tree';
+  if (r < 0.85) return 'berry_bush';
+  if (r < 0.93) return 'herb';
+  if (r < 0.98) return 'rock';
   return 'water_pool';
 }
 

@@ -272,33 +272,35 @@ function generateToken() {
 }
 
 // === 자원 스폰 ===
-// 종류별 가중치: 바이옴마다 분포 다름. water_pool은 모든 바이옴에 소량.
+// Phase 14.1+14.3: biome별 강한 편재 + herb/ore 추가 (chunk.js와 동기 유지)
 function biomeResourceType() {
   const r = Math.random();
   if (ZONE.biome === 'plains') {
-    // 평원: 베리·풀 많고 나무 적음
-    if (r < 0.45) return 'tree';
-    if (r < 0.60) return 'rock';
-    if (r < 0.90) return 'berry_bush';
+    if (r < 0.50) return 'berry_bush';
+    if (r < 0.75) return 'herb';
+    if (r < 0.95) return 'tree';
+    if (r < 0.99) return 'rock';
     return 'water_pool';
   }
   if (ZONE.biome === 'mountains') {
-    // 산악: 돌 많고 베리 적음
-    if (r < 0.25) return 'tree';
-    if (r < 0.75) return 'rock';
-    if (r < 0.92) return 'berry_bush';
+    if (r < 0.55) return 'rock';
+    if (r < 0.75) return 'ore';
+    if (r < 0.85) return 'tree';
+    if (r < 0.93) return 'herb';
+    if (r < 0.98) return 'berry_bush';
     return 'water_pool';
   }
   // forest
-  if (r < 0.60) return 'tree';
-  if (r < 0.72) return 'rock';
-  if (r < 0.94) return 'berry_bush';
+  if (r < 0.70) return 'tree';
+  if (r < 0.85) return 'berry_bush';
+  if (r < 0.93) return 'herb';
+  if (r < 0.98) return 'rock';
   return 'water_pool';
 }
 
-// 자원 종류별 maxHp (몇 번 치면 깎이는지)
+// 자원 종류별 maxHp
 const RESOURCE_HP = {
-  tree: 3, rock: 4, berry_bush: 2, water_pool: 999, // water_pool은 무한 — 깎이지 않음
+  tree: 3, rock: 4, berry_bush: 2, water_pool: 999, herb: 1, ore: 5,
 };
 
 function spawnOneResource() {
@@ -748,6 +750,8 @@ function npcStep(npc, dt, now) {
           if (r.type === 'tree') loot = { wood: 1 };
           else if (r.type === 'rock') loot = { stone: 1 };
           else if (r.type === 'berry_bush') { loot = { berry: 2, fiber: 1 }; if (Math.random() < 0.3) loot.seed_berry = 1; }
+          else if (r.type === 'herb') loot = { herb: 2 };
+          else if (r.type === 'ore') loot = { ore: 1, stone: 1 };
           for (const [k, v] of Object.entries(loot)) npc.inventory[k] = (npc.inventory[k] || 0) + v;
           resources.delete(r.id);
           chunkManager.removeResource(r);
@@ -1664,8 +1668,10 @@ function tryGather(player) {
     else if (best.type === 'rock')   loot = { stone: 1 };
     else if (best.type === 'berry_bush') {
       loot = { berry: 2, fiber: 1 };
-      if (Math.random() < 0.3) loot.seed_berry = 1; // 30% 확률로 씨앗
+      if (Math.random() < 0.3) loot.seed_berry = 1;
     }
+    else if (best.type === 'herb')   loot = { herb: 2 };       // Phase 14.3
+    else if (best.type === 'ore')    loot = { ore: 1, stone: 1 }; // Phase 14.3 — ore + 부산물 stone
     for (const [item, amt] of Object.entries(loot)) {
       player.inventory[item] = (player.inventory[item] || 0) + amt;
     }
