@@ -10,6 +10,33 @@ const { ZONES, WORLD, isNight, worldPhase, darknessLevel } = require('./zone-con
 const db = require('./zone-local-db'); // 로컬 zone DB — players 없음
 const central = require('./central-client'); // central HTTP 클라이언트
 const { Quadtree } = require('./quadtree'); // spatial index — O(N²) 검색 회피
+const { ChunkManager, CHUNK_SIZE } = require('./chunk'); // 청크 단위 entity 분류
+const chunkManager = new ChunkManager(WORLD.zoneWidth, WORLD.zoneHeight);
+
+// === 활성 청크 (12.2.b) — 사람 player + observer 위치 주변 청크만 시뮬레이션 ===
+// 비활성 청크의 mob/NPC는 멈춤 — CPU 절약. 청크 시스템의 핵심.
+const CHUNK_ACTIVE_RADIUS = 1200; // 시야(650) + AOI(800) + 약간 마진
+let activeChunkKeys = new Set();
+function updateActiveChunks() {
+  activeChunkKeys = new Set();
+  for (const p of players.values()) {
+    if (p.isNpc) continue; // NPC는 viewer 아님
+    if (p.hp <= 0) continue;
+    for (const c of chunkManager.getChunksInRadius(p.x, p.y, CHUNK_ACTIVE_RADIUS)) {
+      activeChunkKeys.add(chunkManager.keyOf(c.cx, c.cy));
+    }
+  }
+  for (const data of observers.values()) {
+    for (const c of chunkManager.getChunksInRadius(data.viewerX, data.viewerY, CHUNK_ACTIVE_RADIUS)) {
+      activeChunkKeys.add(chunkManager.keyOf(c.cx, c.cy));
+    }
+  }
+}
+function isChunkActiveKey(key) { return activeChunkKeys.has(key); }
+function isPositionActive(x, y) {
+  const { cx, cy } = chunkManager.chunkXY(x, y);
+  return activeChunkKeys.has(chunkManager.keyOf(cx, cy));
+}
 
 // === Spatial index — 매 tick 재구축 ===
 // 모든 nearest-search (visiblePlayers, tryGather 등)에서 사용. message handler에서도
@@ -85,7 +112,7 @@ const MOVE_SPEED = 220; // px/sec
 // 부하 테스트로 측정한 단일 코어 한계 ~300. 안전 마진으로 150 기본.
 const PLAYER_CAP = parseInt(process.env.PLAYER_CAP || '150', 10);
 const GATHER_RANGE = 48;
-const MAX_RESOURCES = 80;
+const MAX_RESOURCES = 1280; // 면적 16배 → 자원 16배
 
 // === 상태 ===
 const players = new Map();      // pid -> { ws, x, y, vx, vy, name, inventory, handingOff }
@@ -229,6 +256,7 @@ function spawnOneResource() {
   const id = `r${nextRid++}`;
   const r = { id, dbId, x, y, type, hp: maxHp, maxHp };
   resources.set(id, r);
+  chunkManager.insertResource(r);
   return r;
 }
 
@@ -238,11 +266,13 @@ function spawnOneResource() {
   if (existing.length > 0) {
     for (const row of existing) {
       const id = `r${nextRid++}`;
-      resources.set(id, {
+      const r = {
         id, dbId: row.id,
         type: row.type, x: row.x, y: row.y,
         hp: row.hp, maxHp: row.max_hp,
-      });
+      };
+      resources.set(id, r);
+      chunkManager.insertResource(r);
     }
     console.log(`[${ZONE_ID}] DB에서 자원 ${existing.length}개 로드`);
   } else {
@@ -292,6 +322,7 @@ function spawnMob(type, opts = {}) {
     dirty: false, // tick-by-tick 변경 추적 — 주기 저장에 사용
   };
   mobs.set(mid, m);
+  chunkManager.insertMob(m);
   return m;
 }
 {
@@ -308,8 +339,8 @@ function spawnMob(type, opts = {}) {
     console.log(`[${ZONE_ID}] DB에서 mob ${existing.length}마리 로드`);
   } else {
     const isHostile = ZONE.biome === 'mountains' || ZONE.biome === 'forest';
-    const deerCount = isHostile ? 4 : 8;
-    const wolfCount = isHostile ? 5 : 2;
+    const deerCount = isHostile ? 32 : 64; // 16배 비례
+    const wolfCount = isHostile ? 40 : 16;
     for (let i = 0; i < deerCount; i++) spawnMob('deer');
     // 늑대는 팩으로 묶음 — 2~3마리씩
     let spawned = 0, packNum = 0;
@@ -343,7 +374,7 @@ const npcs = new Set(); // pid 모음 (players Map과 같은 pid 사용)
 let nextNpcSerial = 1;
 const NPC_NAMES = ['에코', '루나', '오리온', '베가', '카이', '미라', '솔', '아라'];
 const NPC_COLORS = ['#d8806a', '#7aa8d0', '#9ad8a0', '#d8c060', '#c080d8', '#80d8c0'];
-const NPC_COUNT_PER_ZONE = 2;
+const NPC_COUNT_PER_ZONE = 12; // 면적 16배 — NPC도 늘리되 절제
 const NPC_RESPAWN_MS = 30 * 1000;
 const NPC_FLEE_RANGE = 250;        // 늑대 시야 안이면 도망
 const NPC_CLAIM_SIZE = 192;
@@ -521,6 +552,7 @@ function npcStep(npc, dt, now) {
         }
         if (target.hp <= 0) {
           if (target.dbId) { try { db.deleteMob(target.dbId); } catch (e) {} }
+          chunkManager.removeMob(target);
           mobs.delete(target.mid);
           broadcast({ type: 'mob_removed', mid: target.mid });
           // 일정 시간 후 같은 종 리스폰
@@ -560,6 +592,7 @@ function npcStep(npc, dt, now) {
           else if (r.type === 'berry_bush') { loot = { berry: 2, fiber: 1 }; if (Math.random() < 0.3) loot.seed_berry = 1; }
           for (const [k, v] of Object.entries(loot)) npc.inventory[k] = (npc.inventory[k] || 0) + v;
           resources.delete(r.id);
+          chunkManager.removeResource(r);
           if (r.dbId) db.deleteResource(r.dbId);
           broadcast({ type: 'resource_removed', id: r.id });
         } else {
@@ -584,6 +617,7 @@ function npcStep(npc, dt, now) {
           const id = `b${nextBid++}`;
           const building = { id, dbId, type: 'farmland', ownerId: npc.playerId, ownerName: npc.name, x: gx, y: gy, data };
           buildings.set(id, building);
+          chunkManager.insertBuilding(building);
           broadcast({ type: 'building_added', building });
         }
       }
@@ -594,6 +628,7 @@ function npcStep(npc, dt, now) {
         npc.inventory.berry = (npc.inventory.berry || 0) + 3;
         npc.inventory.seed_berry = (npc.inventory.seed_berry || 0) + 1;
         if (b.dbId) { try { db.deleteBuilding(b.dbId); } catch (e) {} }
+        chunkManager.removeBuilding(b);
         buildings.delete(b.id);
         broadcast({ type: 'building_removed', id: b.id });
       }
@@ -620,14 +655,16 @@ setInterval(() => {
   const rows = db.getBuildings();
   for (const row of rows) {
     const id = `b${nextBid++}`;
-    buildings.set(id, {
+    const b = {
       id, dbId: row.id,
       type: row.type,
       ownerId: row.owner_id,
       ownerName: row.owner_name,
       x: row.x, y: row.y,
       data: row.data ? JSON.parse(row.data) : null,
-    });
+    };
+    buildings.set(id, b);
+    chunkManager.insertBuilding(b);
   }
   console.log(`[${ZONE_ID}] DB에서 건축물 ${rows.length}개 로드`);
 }
@@ -1252,6 +1289,7 @@ function tryHarvest(player) {
   player.inventory.berry = (player.inventory.berry || 0) + 3;
   player.inventory.seed_berry = (player.inventory.seed_berry || 0) + 1;
   if (best.dbId) { try { db.deleteBuilding(best.dbId); } catch (e) {} }
+  chunkManager.removeBuilding(best);
   buildings.delete(best.id);
   broadcast({ type: 'building_removed', id: best.id });
   send(player.ws, { type: 'inventory', inventory: player.inventory });
@@ -1437,6 +1475,7 @@ function tryGather(player) {
       player.inventory[item] = (player.inventory[item] || 0) + amt;
     }
     resources.delete(best.id);
+    chunkManager.removeResource(best);
     if (best.dbId) db.deleteResource(best.dbId);
     send(player.ws, { type: 'inventory', inventory: player.inventory });
     broadcast({ type: 'resource_removed', id: best.id });
@@ -1576,6 +1615,7 @@ function tryBuild(player, type) {
   const id = `b${nextBid++}`;
   const building = { id, dbId, type, ownerId: player.playerId, ownerName: player.name, x: gx, y: gy, data: initialData };
   buildings.set(id, building);
+  chunkManager.insertBuilding(building);
   send(player.ws, { type: 'inventory', inventory: player.inventory });
   savePlayer(player);
   broadcast({ type: 'building_added', building });
@@ -1672,8 +1712,9 @@ function tryAttack(player) {
       send(player.ws, { type: 'inventory', inventory: player.inventory });
       send(player.ws, { type: 'notice', text: `${bestMob.type === 'deer' ? '사슴' : '늑대'} 사냥 +${Object.entries(def.loot).map(([k,v])=>`${k} ${v}`).join(', ')}` });
       savePlayer(player);
-      // DB에서 제거
+      // DB + chunk에서 제거
       if (bestMob.dbId) { try { db.deleteMob(bestMob.dbId); } catch (e) {} }
+      chunkManager.removeMob(bestMob);
       mobs.delete(bestMob.mid);
       broadcast({ type: 'mob_removed', mid: bestMob.mid });
       // 일정 시간 후 리스폰 (새 DB row 생성됨)
@@ -1777,6 +1818,9 @@ setInterval(() => {
   const dt = Math.min(0.2, (now - lastTick) / 1000);
   lastTick = now;
 
+  // === 활성 청크 갱신 (player·observer 위치 기반) ===
+  updateActiveChunks();
+
   // === Spatial index 재구축 — 모든 nearest-search가 이걸 씀 ===
   rebuildSpatialIndex();
 
@@ -1786,10 +1830,12 @@ setInterval(() => {
     if (now - p.lastSeen > 1000) { p.vx = 0; p.vy = 0; }
   }
 
-  // === NPC 행동 결정 (사람 plyer는 input으로 vx/vy 받지만 NPC는 직접 결정) ===
+  // === NPC 행동 결정 (사람 player는 input으로 vx/vy 받지만 NPC는 직접 결정) ===
+  // 비활성 청크 NPC는 멈춤 (CPU 절약). 가까이 player 오면 자동 재개.
   for (const pid of npcs) {
     const npc = players.get(pid);
     if (!npc || npc.hp <= 0) continue;
+    if (!isPositionActive(npc.x, npc.y)) { npc.vx = 0; npc.vy = 0; continue; }
     npcStep(npc, dt, now);
   }
   // 농지 ready 마크 (시간 지남) — 한 번 ready되면 그대로
@@ -1899,6 +1945,8 @@ setInterval(() => {
   const sightMult = night ? 1.5 : 1.0;
   const dmgMult = night ? 1.3 : 1.0;
   for (const m of mobs.values()) {
+    // 비활성 청크 mob 멈춤 — CPU 절약
+    if (!isChunkActiveKey(m._chunkKey)) { m.vx = 0; m.vy = 0; continue; }
     const def = MOB_DEFS[m.type];
     const sight = def.sightRange * sightMult;
 
@@ -1929,6 +1977,7 @@ setInterval(() => {
       if (isBlockedByWall(m.x, ny)) ny = m.y;
       if (Math.abs(nx - m.x) + Math.abs(ny - m.y) > 2) m.dirty = true;
       m.x = nx; m.y = ny;
+      chunkManager.updateMobChunk(m);
       continue;
     }
 
@@ -2004,6 +2053,7 @@ setInterval(() => {
     // 의미 있는 이동(>2px)일 때만 dirty 마크 — 영속화 부담 최소화
     if (Math.abs(nx - m.x) + Math.abs(ny - m.y) > 2) m.dirty = true;
     m.x = nx; m.y = ny;
+    chunkManager.updateMobChunk(m);
   }
 
   // === AOI 필터링: per-viewer tick ===
