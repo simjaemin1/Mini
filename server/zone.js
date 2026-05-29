@@ -81,8 +81,11 @@ const LATENCY_MS = parseInt(process.env.LATENCY_MS || String(ZONE.simulatedLaten
 
 const TICK_HZ = 30;
 const MOVE_SPEED = 220; // px/sec
+// per-zone player cap — 환경변수로 조정. 차면 새 접속 거부.
+// 부하 테스트로 측정한 단일 코어 한계 ~300. 안전 마진으로 150 기본.
+const PLAYER_CAP = parseInt(process.env.PLAYER_CAP || '150', 10);
 const GATHER_RANGE = 48;
-const MAX_RESOURCES = 80;
+const MAX_RESOURCES = 8000; // Phase 12.1: 면적 100배 → 자원 100배
 
 // === 상태 ===
 const players = new Map();      // pid -> { ws, x, y, vx, vy, name, inventory, handingOff }
@@ -305,8 +308,9 @@ function spawnMob(type, opts = {}) {
     console.log(`[${ZONE_ID}] DB에서 mob ${existing.length}마리 로드`);
   } else {
     const isHostile = ZONE.biome === 'mountains' || ZONE.biome === 'forest';
-    const deerCount = isHostile ? 4 : 8;
-    const wolfCount = isHostile ? 5 : 2;
+    // Phase 12.1 — 100배 비례
+    const deerCount = isHostile ? 400 : 800;
+    const wolfCount = isHostile ? 500 : 200;
     for (let i = 0; i < deerCount; i++) spawnMob('deer');
     // 늑대는 팩으로 묶음 — 2~3마리씩
     let spawned = 0, packNum = 0;
@@ -340,7 +344,7 @@ const npcs = new Set(); // pid 모음 (players Map과 같은 pid 사용)
 let nextNpcSerial = 1;
 const NPC_NAMES = ['에코', '루나', '오리온', '베가', '카이', '미라', '솔', '아라'];
 const NPC_COLORS = ['#d8806a', '#7aa8d0', '#9ad8a0', '#d8c060', '#c080d8', '#80d8c0'];
-const NPC_COUNT_PER_ZONE = 2;
+const NPC_COUNT_PER_ZONE = 50; // Phase 12.1: 100배는 과부하라 50명만
 const NPC_RESPAWN_MS = 30 * 1000;
 const NPC_FLEE_RANGE = 250;        // 늑대 시야 안이면 도망
 const NPC_CLAIM_SIZE = 192;
@@ -629,9 +633,12 @@ setInterval(() => {
   console.log(`[${ZONE_ID}] DB에서 건축물 ${rows.length}개 로드`);
 }
 
-// 점진적 리스폰
+// 점진적 리스폰 — Phase 12.1: 한 번에 여러 개 (8000개 회복 위해)
 setInterval(() => {
-  if (resources.size < MAX_RESOURCES) {
+  const deficit = MAX_RESOURCES - resources.size;
+  if (deficit <= 0) return;
+  const batchSize = Math.min(20, deficit);
+  for (let i = 0; i < batchSize; i++) {
     const r = spawnOneResource();
     broadcast({ type: 'resource_spawn', resource: r });
   }
@@ -641,9 +648,12 @@ setInterval(() => {
 const server = http.createServer((req, res) => {
   if (req.url === '/health' && req.method === 'GET') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
+    let humans = 0;
+    for (const p of players.values()) if (!p.isNpc) humans++;
     res.end(JSON.stringify({
       zone: ZONE_ID,
       players: players.size,
+      humans, cap: PLAYER_CAP,
       observers: observers.size,
       resources: resources.size,
       buildings: buildings.size,
@@ -793,6 +803,19 @@ wss.on('connection', async (ws, req) => {
   metrics.ws_connects++;
   const url = new URL(req.url, `http://localhost:${PORT}`);
   const isObserver = url.searchParams.get('observer') === '1';
+
+  // === Player cap 체크 (observer는 부담 적으니 제한 안 함) ===
+  if (!isObserver) {
+    // NPC 제외 인간 player 수
+    let humanCount = 0;
+    for (const p of players.values()) if (!p.isNpc) humanCount++;
+    if (humanCount >= PLAYER_CAP) {
+      console.log(`[${ZONE_ID}] zone 가득 참 (${humanCount}/${PLAYER_CAP}) — 접속 거부`);
+      try { ws.send(JSON.stringify({ type: 'zone_full', cap: PLAYER_CAP, current: humanCount, zone: ZONE_ID })); } catch (e) {}
+      setTimeout(() => { try { ws.close(); } catch (e) {} }, 100);
+      return;
+    }
+  }
 
   // === Observer 분기 — 플레이어로 안 잡고 상태만 흘려보냄 ===
   if (isObserver) {

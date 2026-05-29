@@ -22,6 +22,31 @@ const fs = require('fs');
 const crypto = require('crypto');
 const { DatabaseSync } = require('node:sqlite');
 const { ZONES, publicZoneMap } = require('./zone-config');
+const httpClient = require('http');
+
+// === zone 인구 캐시 — 5초마다 각 zone의 /health fetch ===
+const zonePopulation = {}; // zoneId -> { humans, cap, observers, ts }
+function fetchZoneHealth(zoneId) {
+  const z = ZONES[zoneId]; if (!z) return;
+  const req = httpClient.request({
+    host: z.host, port: z.port, path: '/health', method: 'GET', timeout: 2000,
+  }, (res) => {
+    let body = '';
+    res.on('data', c => body += c);
+    res.on('end', () => {
+      try {
+        const d = JSON.parse(body);
+        zonePopulation[zoneId] = { humans: d.humans ?? d.players ?? 0, cap: d.cap ?? 150, observers: d.observers ?? 0, ts: Date.now() };
+      } catch (e) {}
+    });
+  });
+  req.on('error', () => {});
+  req.on('timeout', () => req.destroy());
+  req.end();
+}
+setInterval(() => {
+  for (const zid of Object.keys(ZONES)) fetchZoneHealth(zid);
+}, 5000);
 
 const PORT = parseInt(process.env.PORT || '3010', 10);
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', 'central.db');
@@ -225,8 +250,22 @@ const server = http.createServer(async (req, res) => {
     // === 클라용: zone 목록 ===
     // dispatcher 역할도 겸함. 클라가 시작할 때 호출.
     if (req.url === '/zones' && req.method === 'GET') {
+      const zones = publicZoneMap(PUBLIC_HOST);
+      // 각 zone에 인구/cap 정보 첨부 (캐시된 값)
+      for (const [zid, z] of Object.entries(zones)) {
+        const pop = zonePopulation[zid];
+        if (pop) {
+          z.population = pop.humans;
+          z.cap = pop.cap;
+          z.full = pop.humans >= pop.cap;
+        } else {
+          z.population = null; // 아직 fetch 안 됨
+          z.cap = null;
+          z.full = false;
+        }
+      }
       return jsonResp(res, 200, {
-        zones: publicZoneMap(PUBLIC_HOST),
+        zones,
         central: `${PUBLIC_HOST}:${PORT}`,
       });
     }

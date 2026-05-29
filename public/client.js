@@ -265,12 +265,34 @@
     }
 
     const sel = document.getElementById('startZone');
-    for (const [id, z] of Object.entries(zonesMeta)) {
-      const opt = document.createElement('option');
-      opt.value = id; opt.textContent = `${z.displayName} (RTT ≈ ${(z.simulatedLatencyMs || 0) * 2}ms)`;
-      if (id === data.defaultZone) opt.selected = true;
-      sel.appendChild(opt);
+    function refreshZoneOptions() {
+      sel.innerHTML = '';
+      for (const [id, z] of Object.entries(zonesMeta)) {
+        const opt = document.createElement('option');
+        opt.value = id;
+        const popPart = (z.population !== null && z.population !== undefined && z.cap)
+          ? ` · ${z.population}/${z.cap}명${z.full ? ' (가득참)' : ''}`
+          : '';
+        opt.textContent = `${z.displayName} (RTT ≈ ${(z.simulatedLatencyMs || 0) * 2}ms)${popPart}`;
+        if (z.full) opt.disabled = true;
+        if (id === data.defaultZone && !z.full) opt.selected = true;
+        sel.appendChild(opt);
+      }
     }
+    refreshZoneOptions();
+    // 로비에서 10초마다 zone 인구 갱신
+    const zoneRefreshTimer = setInterval(async () => {
+      if (document.getElementById('lobby').classList.contains('hidden')) {
+        clearInterval(zoneRefreshTimer);
+        return;
+      }
+      try {
+        const r = await fetch('/zones');
+        const d = await r.json();
+        zonesMeta = d.zones;
+        refreshZoneOptions();
+      } catch (e) {}
+    }, 10000);
 
     document.getElementById('enter').onclick = () => {
       const inputName = document.getElementById('name').value.trim();
@@ -623,6 +645,23 @@
       const err = document.getElementById('authError');
       err.textContent = text;
       err.classList.remove('hidden');
+      return;
+    } else if (msg.type === 'zone_full') {
+      // zone 가득 참 — 로비로 복귀 + 알림
+      const text = `${zonesMeta[msg.zone]?.displayName || msg.zone} 가득 참 (${msg.current}/${msg.cap}명). 다른 zone 선택.`;
+      console.warn('[zone_full]', text);
+      for (const [zid, cc] of conns) try { cc.ws.close(); } catch (e) {}
+      conns.clear();
+      primaryZoneId = null;
+      myPid = null;
+      initialWelcomeReceived = false;
+      document.getElementById('game').classList.add('hidden');
+      document.getElementById('lobby').classList.remove('hidden');
+      const err = document.getElementById('authError');
+      err.textContent = text;
+      err.classList.remove('hidden');
+      // zone 인구 강제 새로고침
+      fetch('/zones').then(r => r.json()).then(d => { zonesMeta = d.zones; }).catch(() => {});
       return;
     } else if (msg.type === 'auth_error') {
       // 로비로 복귀, 에러 표시
