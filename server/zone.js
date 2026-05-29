@@ -501,7 +501,39 @@ function spawnNpc(opts = {}) {
   players.set(pid, player);
   npcs.add(pid);
   broadcast({ type: 'claim_added', claim });
-  console.log(`[${ZONE_ID}] 🤖 NPC 스폰: ${name} @ (${cx.toFixed(0)},${cy.toFixed(0)})`);
+
+  // NPC 자동 집 — 사유지 안에 작은 2x2 박스 + 계단 + 1F 한 칸 (다층 마을)
+  // 그리드 32px 기준으로 사유지 중심 주변에 wall 배치
+  const houseGx = Math.floor(cx / BUILDING_SIZE) * BUILDING_SIZE + BUILDING_SIZE / 2;
+  const houseGy = Math.floor(cy / BUILDING_SIZE) * BUILDING_SIZE + BUILDING_SIZE / 2;
+  const houseLayout = [
+    // [dx, dy, type, floor] — dx/dy는 BUILDING_SIZE 단위
+    [-1, -1, 'wall', 0], [ 0, -1, 'wall', 0], [ 1, -1, 'wall', 0], // 위 벽 3칸 (입구는 아래쪽)
+    [-1,  0, 'wall', 0],                       [ 1,  0, 'wall', 0], // 좌우 벽
+    [-1,  1, 'wall', 0],                       [ 1,  1, 'wall', 0], // 좌우 더 벽
+    [ 2,  0, 'stair', 0],                                            // 옆에 계단
+    [-1, -1, 'wall', 1], [ 0, -1, 'wall', 1], [ 1, -1, 'wall', 1], // 1F 윗벽
+    [-1,  0, 'wall', 1],                       [ 1,  0, 'wall', 1], // 1F 좌우
+  ];
+  for (const [dx, dy, type, floor] of houseLayout) {
+    const bx = houseGx + dx * BUILDING_SIZE;
+    const by = houseGy + dy * BUILDING_SIZE;
+    // 같은 (bx, by, floor) 충돌 체크
+    let collide = false;
+    for (const b of buildings.values()) {
+      if ((b.floor || 0) === floor && Math.abs(b.x - bx) < BUILDING_SIZE && Math.abs(b.y - by) < BUILDING_SIZE) { collide = true; break; }
+    }
+    if (collide) continue;
+    const initialData = { floor };
+    const dbId = db.insertBuilding({ type, owner_id: npcId, owner_name: name, x: bx, y: by, data: JSON.stringify(initialData) });
+    const id = `b${nextBid++}`;
+    const building = { id, dbId, type, ownerId: npcId, ownerName: name, x: bx, y: by, data: initialData, floor };
+    buildings.set(id, building);
+    chunkManager.insertBuilding(building);
+    // broadcast 없음 — 부팅 시 player welcome에 한꺼번에 가니까
+  }
+
+  console.log(`[${ZONE_ID}] 🤖 NPC 스폰: ${name} @ (${cx.toFixed(0)},${cy.toFixed(0)}) + 집 (${houseLayout.length}부재)`);
   return player;
 }
 
@@ -2135,12 +2167,13 @@ setInterval(() => {
       continue;
     }
 
-    // 어그로 타겟 검증 — 타겟 죽음/실종/시야 밖이면 해제. 늑대는 영역 너무 벗어났을 때도 해제.
+    // 어그로 타겟 검증 — 타겟 죽음/실종/시야 밖/다른 floor면 해제. 늑대는 영역 너무 벗어났을 때도 해제.
     if (m.aggroTarget) {
       const t = players.get(m.aggroTarget);
       const tooFarFromTarget = !t || t.hp <= 0 || Math.hypot(t.x - m.x, t.y - m.y) > sight * 1.5;
+      const differentFloor   = t && (t.floor || 0) !== 0; // mob은 항상 0F. 다른 층 캐릭터는 못 잡음.
       const tooFarFromHome   = m.type === 'wolf' && Math.hypot(m.x - m.homeX, m.y - m.homeY) > WOLF_TERRITORY_RADIUS;
-      if (tooFarFromTarget || tooFarFromHome) m.aggroTarget = null;
+      if (tooFarFromTarget || differentFloor || tooFarFromHome) m.aggroTarget = null;
     }
     // 늑대만: 시야 안 플레이어 어그로. 단 영역 안에서만 사냥 시작.
     if (m.type === 'wolf' && !m.aggroTarget) {
@@ -2151,6 +2184,7 @@ setInterval(() => {
         let best = null, bestD = sight;
         for (const p of nearby) {
           if (p.hp <= 0) continue;
+          if ((p.floor || 0) !== 0) continue; // 다른 floor 캐릭터 못 잡음
           const d = Math.hypot(p.x - m.x, p.y - m.y);
           if (d < bestD) { best = p; bestD = d; }
         }

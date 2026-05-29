@@ -1036,7 +1036,11 @@
         }
       } else if (item.kind === 'building') {
         const s = toScreen(item.iso.x, item.iso.y);
+        // 천장 투명 — 캐릭터 floor보다 높은 건물은 흐릿하게 (안에 들어간 느낌)
+        const bf = item.b.floor || 0;
+        if (bf > myFloor) ctx.globalAlpha = 0.3;
         drawBuildingIso(s.x, s.y, item.b.type, item.b);
+        ctx.globalAlpha = 1;
       } else if (item.kind === 'mob') {
         const s = toScreen(item.iso.x, item.iso.y);
         const d = Math.hypot(item.ax - worldCx, item.ay - worldCy);
