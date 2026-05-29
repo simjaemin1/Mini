@@ -46,6 +46,9 @@ db.exec(`
     stone         INTEGER NOT NULL DEFAULT 0,
     tools_json    TEXT DEFAULT '{}',
     equipped      TEXT,
+    inventory_json TEXT DEFAULT '{}',
+    hunger        INTEGER NOT NULL DEFAULT 100,
+    thirst        INTEGER NOT NULL DEFAULT 100,
     last_zone     TEXT,
     last_x        REAL,
     last_y        REAL,
@@ -54,6 +57,23 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_players_last_zone ON players(last_zone);
 `);
+
+// 마이그레이션 — 기존 DB에 새 컬럼 없으면 추가
+try {
+  const cols = db.prepare("PRAGMA table_info(players)").all().map(c => c.name);
+  if (!cols.includes('inventory_json')) {
+    db.exec("ALTER TABLE players ADD COLUMN inventory_json TEXT DEFAULT '{}'");
+    console.log('[central/db] inventory_json 컬럼 추가됨');
+  }
+  if (!cols.includes('hunger')) {
+    db.exec('ALTER TABLE players ADD COLUMN hunger INTEGER NOT NULL DEFAULT 100');
+    console.log('[central/db] hunger 컬럼 추가됨');
+  }
+  if (!cols.includes('thirst')) {
+    db.exec('ALTER TABLE players ADD COLUMN thirst INTEGER NOT NULL DEFAULT 100');
+    console.log('[central/db] thirst 컬럼 추가됨');
+  }
+} catch (e) { /* 새 DB면 위 CREATE에서 이미 만들어짐 */ }
 
 // === Password hashing (scrypt) ===
 const SCRYPT_KEY_LEN = 64;
@@ -82,6 +102,7 @@ const stmtInsertPlayer = db.prepare(`
 `);
 const stmtUpdateProfile = db.prepare(`
   UPDATE players SET wood = ?, stone = ?, tools_json = ?, equipped = ?,
+    inventory_json = ?, hunger = ?, thirst = ?,
     last_zone = ?, last_x = ?, last_y = ?, last_seen = ?, color = ?
   WHERE player_id = ?
 `);
@@ -249,6 +270,9 @@ const server = http.createServer(async (req, res) => {
         data.stone ?? p.stone,
         data.tools_json ?? p.tools_json,
         data.equipped ?? p.equipped,
+        data.inventory_json ?? p.inventory_json ?? '{}',
+        data.hunger ?? p.hunger ?? 100,
+        data.thirst ?? p.thirst ?? 100,
         data.last_zone ?? p.last_zone,
         data.last_x ?? p.last_x,
         data.last_y ?? p.last_y,

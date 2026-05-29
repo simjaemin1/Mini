@@ -49,10 +49,21 @@
         </div>
       </div>
       <div class="hud-row">
-        <span class="inv">🪵 나무 <b id="invWood">0</b></span>
-        <span class="inv">🪨 돌 <b id="invStone">0</b></span>
+        <div class="hp-bar hunger-bar">
+          <div class="hp-fill hunger-fill" id="hungerFill"></div>
+          <span class="hp-text" id="hungerText">🍖 100/100</span>
+        </div>
+        <div class="hp-bar thirst-bar">
+          <div class="hp-fill thirst-fill" id="thirstFill"></div>
+          <span class="hp-text" id="thirstText">💧 100/100</span>
+        </div>
+      </div>
+      <div class="hud-row" id="invRow">
+        <span class="inv">🪵 <b id="invWood">0</b></span>
+        <span class="inv">🪨 <b id="invStone">0</b></span>
         <span class="inv">🔧 <b id="equippedBadge">맨손</b></span>
       </div>
+      <div class="hud-row" id="invFoodRow"></div>
       <div id="notice"></div>
       <div class="hud-row hud-actions">
         <button data-action="gather">채집 (E)</button>
@@ -60,6 +71,8 @@
         <button data-action="attack">공격 (F)</button>
         <button data-action="build_wall">벽 (B)</button>
         <button data-action="build_chest">상자 (H)</button>
+        <button data-action="build_campfire">모닥불 (J)</button>
+        <button data-action="cook">요리 (R)</button>
         <button data-action="market">거래소 (M)</button>
       </div>
       <div class="hud-row hud-actions">
@@ -112,6 +125,19 @@
         <div class="modal-body">
           <div class="craft-equipped-row">장착 중: <b id="equippedNow">없음</b> <span class="hint">(1=도끼, 2=곡괭이, 3=검, 0=해제)</span></div>
           <div id="craftList"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="cookPanel" class="modal hidden">
+      <div class="modal-card craft-card">
+        <div class="modal-head">
+          <span>🔥 요리 (모닥불 근처에서)</span>
+          <button id="cookCloseBtn">닫기</button>
+        </div>
+        <div class="modal-body">
+          <div class="craft-equipped-row hint">근처에 모닥불(🔥)이 있어야 요리할 수 있습니다.</div>
+          <div id="cookList"></div>
         </div>
       </div>
     </div>

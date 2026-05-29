@@ -13,9 +13,14 @@ const central = require('./central-client'); // central HTTP 클라이언트
 // 플레이어 변경을 central에 fire-and-forget 저장
 function savePlayer(player, extra = {}) {
   if (!player.playerId || player.playerId.startsWith('anon_')) return;
+  // wood/stone은 별도 컬럼, 나머지 아이템(berry, meat_raw 등)은 inventory_json에
+  const inv = player.inventory || {};
+  const { wood = 0, stone = 0, ...extInv } = inv;
   const patch = {
-    wood: player.inventory.wood,
-    stone: player.inventory.stone,
+    wood, stone,
+    inventory_json: JSON.stringify(extInv),
+    hunger: Math.round(player.hunger ?? 100),
+    thirst: Math.round(player.thirst ?? 100),
     tools_json: JSON.stringify(player.tools || {}),
     equipped: player.equipped || null,
     last_zone: extra.last_zone ?? null, // 명시적으로 넘긴 zone만 변경
@@ -70,21 +75,46 @@ const buildings = new Map();    // id -> { id, dbId, type, ownerId, ownerName, x
 const mobs = new Map();         // mid -> { mid, type, x, y, vx, vy, hp, maxHp, aggroTarget, lastAttackAt, wanderUntil }
 const BUILDING_SIZE = 32;
 const BUILDING_COST = {
-  wall:  { wood: 2, stone: 1 },
-  chest: { wood: 5, stone: 2 },
+  wall:     { wood: 2, stone: 1 },
+  chest:    { wood: 5, stone: 2 },
+  campfire: { wood: 3, stone: 2 }, // 요리 가능 — 콜라이더 없음
 };
+// 콜라이더가 있는 건축물 (벽처럼 통과 불가). 추후 fence 추가 예정.
+const BLOCKING_BUILDINGS = new Set(['wall']);
+
 const MOB_DEFS = {
-  deer: { maxHp: 10, speed: 80,  aggroRange: 0, damage: 0, sightRange: 0,   loot: { wood: 1 } },
-  wolf: { maxHp: 30, speed: 140, aggroRange: 250, damage: 5, sightRange: 300, loot: { stone: 1 } },
+  deer: { maxHp: 10, speed: 80,  aggroRange: 0, damage: 0, sightRange: 0,   loot: { meat_raw: 1, hide: 1 } },
+  wolf: { maxHp: 30, speed: 140, aggroRange: 250, damage: 5, sightRange: 300, loot: { meat_raw: 2, hide: 1 } },
 };
 
 // === Crafting ===
-// 레시피: { 도구이름: { wood, stone, label } }
+// 도구 레시피: 인벤토리에 도구로 들어감 (player.tools)
 const RECIPES = {
   axe:     { wood: 5, stone: 2, label: '도끼' },
   pickaxe: { wood: 3, stone: 5, label: '곡괭이' },
   sword:   { wood: 2, stone: 8, label: '검' },
 };
+// 요리 레시피: campfire 근처에서만 가능. cost = 인벤토리 소비, produces = 인벤토리 산출 (item: count)
+const COOK_RECIPES = {
+  meat_cooked: { cost: { meat_raw: 1 }, produces: { meat_cooked: 1 }, label: '구운 고기' },
+  berry_jam:   { cost: { berry: 3 },    produces: { berry_jam: 1 },   label: '베리잼' },
+};
+// 음식 효과: hunger/thirst 회복량. 'eat' 메시지로 소비.
+const FOOD_EFFECTS = {
+  berry:        { hunger: 6,  thirst: 4 },
+  meat_raw:     { hunger: 8,  thirst: 0, hpDelta: -3 }, // 날고기는 약간 해로움
+  meat_cooked:  { hunger: 40, thirst: 0 },
+  berry_jam:    { hunger: 18, thirst: 6 },
+};
+// 음료 (water_pool에서 E로 즉시 회복 — 인벤토리 아이템 아님)
+const WATER_DRINK_AMOUNT = 35;
+
+// 생존 게이지 상수
+const HUNGER_MAX = 100;
+const THIRST_MAX = 100;
+const HUNGER_DRAIN_PER_SEC = 100 / 600; // 약 10분에 0까지
+const THIRST_DRAIN_PER_SEC = 100 / 420; // 약 7분에 0까지
+const STARVATION_HP_PER_SEC = 1;        // hunger/thirst 0이면 초당 -1 HP
 // 장착 시 효과 — 채집/공격 데미지 배수
 // 채집은 자원 hp 깎는 1회 데미지를 배수 적용. 기본 1.
 const TOOL_EFFECTS = {
@@ -109,17 +139,40 @@ function generateToken() {
 }
 
 // === 자원 스폰 ===
+// 종류별 가중치: 바이옴마다 분포 다름. water_pool은 모든 바이옴에 소량.
 function biomeResourceType() {
-  if (ZONE.biome === 'plains') return Math.random() < 0.72 ? 'tree' : 'rock';
-  if (ZONE.biome === 'mountains') return Math.random() < 0.32 ? 'tree' : 'rock';
-  return Math.random() < 0.85 ? 'tree' : 'rock'; // forest
+  const r = Math.random();
+  if (ZONE.biome === 'plains') {
+    // 평원: 베리·풀 많고 나무 적음
+    if (r < 0.45) return 'tree';
+    if (r < 0.60) return 'rock';
+    if (r < 0.90) return 'berry_bush';
+    return 'water_pool';
+  }
+  if (ZONE.biome === 'mountains') {
+    // 산악: 돌 많고 베리 적음
+    if (r < 0.25) return 'tree';
+    if (r < 0.75) return 'rock';
+    if (r < 0.92) return 'berry_bush';
+    return 'water_pool';
+  }
+  // forest
+  if (r < 0.60) return 'tree';
+  if (r < 0.72) return 'rock';
+  if (r < 0.94) return 'berry_bush';
+  return 'water_pool';
 }
+
+// 자원 종류별 maxHp (몇 번 치면 깎이는지)
+const RESOURCE_HP = {
+  tree: 3, rock: 4, berry_bush: 2, water_pool: 999, // water_pool은 무한 — 깎이지 않음
+};
 
 function spawnOneResource() {
   const x = 32 + Math.random() * (WORLD.zoneWidth - 64);
   const y = 32 + Math.random() * (WORLD.zoneHeight - 64);
   const type = biomeResourceType();
-  const maxHp = type === 'tree' ? 3 : 4;
+  const maxHp = RESOURCE_HP[type] || 3;
   // DB에 영속화
   const dbId = db.insertResource({ type, x, y, hp: maxHp, max_hp: maxHp });
   const id = `r${nextRid++}`;
@@ -306,6 +359,8 @@ const server = http.createServer((req, res) => {
           inventory: data.inventory || { wood: 0, stone: 0 },
           tools: data.tools || {},
           equipped: data.equipped || null,
+          hunger: typeof data.hunger === 'number' ? data.hunger : HUNGER_MAX,
+          thirst: typeof data.thirst === 'number' ? data.thirst : THIRST_MAX,
           createdAt: Date.now(),
         });
         // 5초 안에 클라가 접속 안 하면 만료
@@ -462,6 +517,8 @@ wss.on('connection', async (ws, req) => {
           tools: pending.tools || {},
           equipped: pending.equipped || null,
           hp: PLAYER_MAX_HP, maxHp: PLAYER_MAX_HP,
+          hunger: typeof pending.hunger === 'number' ? pending.hunger : HUNGER_MAX,
+          thirst: typeof pending.thirst === 'number' ? pending.thirst : THIRST_MAX,
           lastAttackAt: 0, lastDamagedAt: 0,
           handingOff: false, lastSeen: Date.now(),
         };
@@ -486,7 +543,10 @@ wss.on('connection', async (ws, req) => {
           inventory: player.inventory,
           tools: player.tools, equipped: player.equipped,
           recipes: RECIPES,
-          self: { x: player.x, y: player.y, hp: player.hp, maxHp: player.maxHp },
+          cookRecipes: COOK_RECIPES,
+          foodEffects: FOOD_EFFECTS,
+          self: { x: player.x, y: player.y, hp: player.hp, maxHp: player.maxHp,
+                  hunger: Math.round(player.hunger), thirst: Math.round(player.thirst) },
           worldClock: {
             epoch: WORLD.worldEpoch, dayLengthMs: WORLD.dayLengthMs,
             dayPhaseRatio: WORLD.dayPhaseRatio, serverNow: Date.now(),
@@ -511,12 +571,15 @@ wss.on('connection', async (ws, req) => {
   const handoffToken = url.searchParams.get('handoff_token');
   let playerId, name, sx, sy, ivx = 0, ivy = 0, inventory = { wood: 0, stone: 0 }, color = '#5a9ae0';
   let tools = {}, equipped = null;
+  let initHunger = HUNGER_MAX, initThirst = THIRST_MAX;
 
   if (handoffToken && pendingHandoffs.has(handoffToken)) {
     const pending = pendingHandoffs.get(handoffToken);
     pendingHandoffs.delete(handoffToken);
     playerId = pending.player_id || `anon_${Math.random().toString(36).slice(2,10)}`;
     name = pending.name;
+    if (typeof pending.hunger === 'number') initHunger = pending.hunger;
+    if (typeof pending.thirst === 'number') initThirst = pending.thirst;
     sx = pending.x;
     sy = pending.y;
     ivx = pending.vx;
@@ -561,11 +624,17 @@ wss.on('connection', async (ws, req) => {
       playerId = result.player.player_id;
       name = result.player.name;
       color = result.player.color || color;
-      inventory = { wood: result.player.wood | 0, stone: result.player.stone | 0 };
+      // wood/stone은 컬럼, 나머지는 inventory_json에
+      let extInv = {};
+      try { extInv = result.player.inventory_json ? JSON.parse(result.player.inventory_json) : {}; }
+      catch (e) { extInv = {}; }
+      inventory = { wood: result.player.wood | 0, stone: result.player.stone | 0, ...extInv };
       try { tools = result.player.tools_json ? JSON.parse(result.player.tools_json) : {}; }
       catch (e) { tools = {}; }
       equipped = result.player.equipped || null;
-      console.log(`[${ZONE_ID}] ${result.isNew ? '신규 가입' : '로그인'}: ${name}  tools=${JSON.stringify(tools)} eq=${equipped}`);
+      initHunger = (typeof result.player.hunger === 'number') ? result.player.hunger : HUNGER_MAX;
+      initThirst = (typeof result.player.thirst === 'number') ? result.player.thirst : THIRST_MAX;
+      console.log(`[${ZONE_ID}] ${result.isNew ? '신규 가입' : '로그인'}: ${name}  hunger=${initHunger} thirst=${initThirst}`);
     } else {
       // 게스트 모드 — central에 username 충돌만 확인
       if (inUsername) {
@@ -616,6 +685,7 @@ wss.on('connection', async (ws, req) => {
     inventory,
     tools, equipped,
     hp: PLAYER_MAX_HP, maxHp: PLAYER_MAX_HP,
+    hunger: initHunger, thirst: initThirst,
     lastAttackAt: 0,
     lastDamagedAt: 0,
     handingOff: false,
@@ -640,7 +710,10 @@ wss.on('connection', async (ws, req) => {
     inventory: player.inventory,
     tools: player.tools, equipped: player.equipped,
     recipes: RECIPES,
-    self: { x: player.x, y: player.y, hp: player.hp, maxHp: player.maxHp },
+    cookRecipes: COOK_RECIPES,
+    foodEffects: FOOD_EFFECTS,
+    self: { x: player.x, y: player.y, hp: player.hp, maxHp: player.maxHp,
+            hunger: Math.round(player.hunger), thirst: Math.round(player.thirst) },
     worldClock: {
       epoch: WORLD.worldEpoch,
       dayLengthMs: WORLD.dayLengthMs,
@@ -690,6 +763,60 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'attack') { metrics.attacks++; tryAttack(player); }
   else if (msg.type === 'craft') doCraft(player, msg.recipe);
   else if (msg.type === 'equip') doEquip(player, msg.tool);
+  else if (msg.type === 'eat') doEat(player, msg.item);
+  else if (msg.type === 'cook') doCook(player, msg.recipe);
+}
+
+// === 음식 먹기 ===
+function doEat(player, item) {
+  const eff = FOOD_EFFECTS[item];
+  if (!eff) {
+    send(player.ws, { type: 'notice', text: `먹을 수 없는 아이템: ${item}` }); return;
+  }
+  if ((player.inventory[item] || 0) < 1) {
+    send(player.ws, { type: 'notice', text: `${item} 부족` }); return;
+  }
+  player.inventory[item] -= 1;
+  if (eff.hunger)   player.hunger = Math.min(HUNGER_MAX, (player.hunger ?? HUNGER_MAX) + eff.hunger);
+  if (eff.thirst)   player.thirst = Math.min(THIRST_MAX, (player.thirst ?? THIRST_MAX) + eff.thirst);
+  if (eff.hpDelta)  { player.hp = Math.max(0, Math.min(player.maxHp, player.hp + eff.hpDelta));
+                      broadcast({ type: 'player_damaged', pid: player.pid, hp: player.hp }); }
+  send(player.ws, { type: 'inventory', inventory: player.inventory });
+  send(player.ws, { type: 'gauges', hunger: Math.round(player.hunger), thirst: Math.round(player.thirst) });
+  send(player.ws, { type: 'notice', text: `${item} 섭취 (+허기 ${eff.hunger||0})` });
+  savePlayer(player);
+}
+
+// === 요리 (campfire 근처에서만) ===
+function doCook(player, recipeName) {
+  const recipe = COOK_RECIPES[recipeName];
+  if (!recipe) {
+    send(player.ws, { type: 'notice', text: `알 수 없는 요리: ${recipeName}` }); return;
+  }
+  // campfire 근처(96px) 확인
+  let nearFire = false;
+  for (const b of buildings.values()) {
+    if (b.type !== 'campfire') continue;
+    if (Math.hypot(b.x - player.x, b.y - player.y) < 96) { nearFire = true; break; }
+  }
+  if (!nearFire) {
+    send(player.ws, { type: 'notice', text: '모닥불 근처여야 요리 가능' }); return;
+  }
+  // 재료 확인
+  for (const [item, amt] of Object.entries(recipe.cost)) {
+    if ((player.inventory[item] || 0) < amt) {
+      send(player.ws, { type: 'notice', text: `${item} ${amt}개 필요` }); return;
+    }
+  }
+  for (const [item, amt] of Object.entries(recipe.cost)) {
+    player.inventory[item] -= amt;
+  }
+  for (const [item, amt] of Object.entries(recipe.produces)) {
+    player.inventory[item] = (player.inventory[item] || 0) + amt;
+  }
+  send(player.ws, { type: 'inventory', inventory: player.inventory });
+  send(player.ws, { type: 'notice', text: `${recipe.label} 완성` });
+  savePlayer(player);
 }
 
 function attachPlayerHandlers(ws, player) {
@@ -769,6 +896,18 @@ function tryGather(player) {
     }
   }
 
+  // === water_pool 특수 처리: hp 안 깎고 thirst 즉시 회복 ===
+  if (best.type === 'water_pool') {
+    if (player.thirst >= THIRST_MAX) {
+      send(player.ws, { type: 'notice', text: '이미 충분히 마셨습니다' });
+      return;
+    }
+    player.thirst = Math.min(THIRST_MAX, player.thirst + WATER_DRINK_AMOUNT);
+    send(player.ws, { type: 'gauges', hunger: player.hunger, thirst: player.thirst });
+    send(player.ws, { type: 'notice', text: '물을 마셨습니다 (+갈증 회복)' });
+    return;
+  }
+
   // 도구 효과: tree면 axe 보너스, rock이면 pickaxe 보너스
   const eff = player.equipped ? TOOL_EFFECTS[player.equipped] : null;
   let dmg = 1;
@@ -778,8 +917,14 @@ function tryGather(player) {
   }
   best.hp -= dmg;
   if (best.hp <= 0) {
-    const item = best.type === 'tree' ? 'wood' : 'stone';
-    player.inventory[item] = (player.inventory[item] || 0) + 1;
+    // 자원 종류별 산출물
+    let loot = {};
+    if (best.type === 'tree')        loot = { wood: 1 };
+    else if (best.type === 'rock')   loot = { stone: 1 };
+    else if (best.type === 'berry_bush') loot = { berry: 2, fiber: 1 };
+    for (const [item, amt] of Object.entries(loot)) {
+      player.inventory[item] = (player.inventory[item] || 0) + amt;
+    }
     resources.delete(best.id);
     if (best.dbId) db.deleteResource(best.dbId);
     send(player.ws, { type: 'inventory', inventory: player.inventory });
@@ -1045,10 +1190,10 @@ function damagePlayer(p, dmg, source) {
   }
 }
 
-// 벽 충돌 — 이동 후 위치가 wall과 겹치면 막음
+// 콜라이더 — 이동 후 위치가 blocking 건축물과 겹치면 막음
 function isBlockedByWall(x, y) {
   for (const b of buildings.values()) {
-    if (b.type !== 'wall') continue;
+    if (!BLOCKING_BUILDINGS.has(b.type)) continue;
     if (Math.abs(b.x - x) < BUILDING_SIZE * 0.7 && Math.abs(b.y - y) < BUILDING_SIZE * 0.7) {
       return true;
     }
@@ -1118,10 +1263,39 @@ setInterval(() => {
     }
   }
 
-  // === HP 회복 (out-of-combat 1초 후) ===
+  // === 생존 게이지: hunger/thirst 감소 + 0이면 HP 페널티 ===
+  for (const p of players.values()) {
+    if (p.hp <= 0) continue;
+    p.hunger = Math.max(0, (p.hunger ?? HUNGER_MAX) - HUNGER_DRAIN_PER_SEC * dt);
+    p.thirst = Math.max(0, (p.thirst ?? THIRST_MAX) - THIRST_DRAIN_PER_SEC * dt);
+    // 게이지 0이면 굶주림/탈수 데미지 (둘 다 0이면 2배)
+    let starv = 0;
+    if (p.hunger <= 0) starv += STARVATION_HP_PER_SEC;
+    if (p.thirst <= 0) starv += STARVATION_HP_PER_SEC;
+    if (starv > 0) {
+      p.hp -= starv * dt;
+      if (p.hp <= 0) damagePlayer(p, 0, 'starvation'); // damagePlayer 안에서 사망 처리
+    }
+  }
+
+  // === HP 회복 (out-of-combat 1초 후) — 단 hunger/thirst 모두 0이상일 때만 ===
   for (const p of players.values()) {
     if (p.hp > 0 && p.hp < p.maxHp && now - p.lastDamagedAt > 1000) {
-      p.hp = Math.min(p.maxHp, p.hp + 2 * dt * 5); // 초당 ~10hp
+      if ((p.hunger ?? HUNGER_MAX) > 10 && (p.thirst ?? THIRST_MAX) > 10) {
+        p.hp = Math.min(p.maxHp, p.hp + 2 * dt * 5); // 초당 ~10hp
+      }
+    }
+  }
+
+  // === 게이지 변화 주기 broadcast (1초 간격, self에만) ===
+  for (const p of players.values()) {
+    if (!p._lastGaugeSentAt || now - p._lastGaugeSentAt > 1000) {
+      p._lastGaugeSentAt = now;
+      send(p.ws, {
+        type: 'gauges',
+        hunger: Math.round(p.hunger ?? HUNGER_MAX),
+        thirst: Math.round(p.thirst ?? THIRST_MAX),
+      });
     }
   }
 
@@ -1249,6 +1423,8 @@ async function fireHandoff(player, targetZoneId, newX, newY) {
       inventory: player.inventory,
       tools: player.tools,
       equipped: player.equipped,
+      hunger: Math.round(player.hunger ?? HUNGER_MAX),
+      thirst: Math.round(player.thirst ?? THIRST_MAX),
     });
   } catch (e) {
     console.error(`[${ZONE_ID}] handoff_prepare → ${targetZoneId} 실패:`, e.message);

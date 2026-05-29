@@ -29,7 +29,10 @@
   let inventory = { wood: 0, stone: 0 };
   let tools = {};     // { axe: 1, pickaxe: 0, sword: 2, ... }
   let equipped = null; // 'axe' | 'pickaxe' | 'sword' | null
-  let recipes = {};   // 서버에서 받은 레시피
+  let recipes = {};   // 서버에서 받은 도구 레시피
+  let cookRecipes = {}; // 서버에서 받은 요리 레시피
+  let foodEffects = {}; // 서버에서 받은 음식 효과 정보 (표시용)
+  let myHunger = 100, myThirst = 100;
   let lastServerPingMs = 0;
   let lastTickAt = 0;
 
@@ -116,7 +119,7 @@
   const CODE_TO_KEY = {
     KeyW: 'w', KeyA: 'a', KeyS: 's', KeyD: 'd',
     KeyE: 'e', KeyC: 'c', KeyT: 't', KeyY: 'y', KeyF: 'f',
-    KeyB: 'b', KeyH: 'h', KeyM: 'm', KeyK: 'k',
+    KeyB: 'b', KeyH: 'h', KeyM: 'm', KeyK: 'k', KeyJ: 'j', KeyR: 'r',
     Digit0: '0', Digit1: '1', Digit2: '2', Digit3: '3',
     ArrowUp: 'arrowup', ArrowDown: 'arrowdown', ArrowLeft: 'arrowleft', ArrowRight: 'arrowright',
     Space: ' ', Enter: 'enter', Tab: 'tab',
@@ -143,8 +146,10 @@
     else if (k === 'f') sendPrimary({ type: 'attack' });
     else if (k === 'b') sendPrimary({ type: 'build', buildType: 'wall' });
     else if (k === 'h') sendPrimary({ type: 'build', buildType: 'chest' });
+    else if (k === 'j') sendPrimary({ type: 'build', buildType: 'campfire' });
     else if (k === 'm') toggleMarketplace();
     else if (k === 'k') toggleCraft();
+    else if (k === 'r') toggleCookPanel();
     else if (k === '1') sendPrimary({ type: 'equip', tool: 'axe' });
     else if (k === '2') sendPrimary({ type: 'equip', tool: 'pickaxe' });
     else if (k === '3') sendPrimary({ type: 'equip', tool: 'sword' });
@@ -197,6 +202,8 @@
       else if (a === 'attack') sendPrimary({ type: 'attack' });
       else if (a === 'build_wall') sendPrimary({ type: 'build', buildType: 'wall' });
       else if (a === 'build_chest') sendPrimary({ type: 'build', buildType: 'chest' });
+      else if (a === 'build_campfire') sendPrimary({ type: 'build', buildType: 'campfire' });
+      else if (a === 'cook') toggleCookPanel();
       else if (a === 'market') toggleMarketplace();
     };
   });
@@ -319,6 +326,7 @@
     document.getElementById('marketSellBtn')?.addEventListener('click', () => placeOrder('sell'));
     document.getElementById('marketCloseBtn')?.addEventListener('click', toggleMarketplace);
     document.getElementById('craftCloseBtn')?.addEventListener('click', toggleCraft);
+    document.getElementById('cookCloseBtn')?.addEventListener('click', toggleCookPanel);
     document.getElementById('chestCloseBtn')?.addEventListener('click', closeChest);
     document.getElementById('chestPutWood')?.addEventListener('click', () => { if (openChestId) sendPrimary({type:'chest_put', buildingId: openChestId, item: 'wood', amount: 1}); });
     document.getElementById('chestPutStone')?.addEventListener('click', () => { if (openChestId) sendPrimary({type:'chest_put', buildingId: openChestId, item: 'stone', amount: 1}); });
@@ -417,7 +425,11 @@
         if (msg.tools) tools = msg.tools;
         if (msg.equipped !== undefined) equipped = msg.equipped;
         if (msg.recipes) recipes = msg.recipes;
+        if (msg.cookRecipes) cookRecipes = msg.cookRecipes;
+        if (msg.foodEffects) foodEffects = msg.foodEffects;
         if (msg.self.hp !== undefined) { myHp = msg.self.hp; myMaxHp = msg.self.maxHp; }
+        if (typeof msg.self.hunger === 'number') myHunger = msg.self.hunger;
+        if (typeof msg.self.thirst === 'number') myThirst = msg.self.thirst;
         const absX = msg.zone.worldOffsetX + msg.self.x;
         const absY = (msg.zone.worldOffsetY || 0) + msg.self.y;
         myAbsPos = { x: absX, y: absY };
@@ -477,7 +489,7 @@
         for (const mid of c.mobs.keys()) if (!aliveMobs.has(mid)) c.mobs.delete(mid);
       }
     } else if (msg.type === 'inventory') {
-      inventory = msg.inventory; updateHud(); renderCraftPanel();
+      inventory = msg.inventory; updateHud(); renderCraftPanel(); if (cookOpen) renderCookPanel();
     } else if (msg.type === 'tools_update') {
       if (msg.tools) tools = msg.tools;
       if (msg.equipped !== undefined) equipped = msg.equipped;
@@ -525,6 +537,10 @@
       renderChestUi(msg.buildingId, msg.data);
     } else if (msg.type === 'player_left') {
       c.others.delete(msg.pid);
+    } else if (msg.type === 'gauges') {
+      if (typeof msg.hunger === 'number') myHunger = msg.hunger;
+      if (typeof msg.thirst === 'number') myThirst = msg.thirst;
+      updateHud();
     } else if (msg.type === 'handoff') {
       // 서버가 발급한 토큰으로 새 zone에 접속.
       const target = msg.targetZone;
@@ -882,7 +898,9 @@
         const vis = Math.max(0.1, 1 - Math.pow(d / VIEW_RADIUS, 1.4));
         ctx.globalAlpha = vis;
         if (item.r.type === 'tree') drawTreeIso(s.x, s.y);
-        else drawRockIso(s.x, s.y);
+        else if (item.r.type === 'rock') drawRockIso(s.x, s.y);
+        else if (item.r.type === 'berry_bush') drawBerryBushIso(s.x, s.y);
+        else if (item.r.type === 'water_pool') drawWaterPoolIso(s.x, s.y);
         if (item.r.hp < item.r.maxHp) {
           const pct = item.r.hp / item.r.maxHp;
           ctx.fillStyle = '#222'; ctx.fillRect(s.x - 10, s.y - 28, 20, 3);
@@ -1048,6 +1066,30 @@
       // 자물쇠 노란점
       ctx.fillStyle = '#f0c674';
       ctx.fillRect(x - 2, y - 2, 4, 4);
+    } else if (type === 'campfire') {
+      // 모닥불 — 통나무 + 흔들리는 불꽃
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      ctx.beginPath(); ctx.ellipse(x, y + 5, 14, 5, 0, 0, Math.PI * 2); ctx.fill();
+      // 통나무 받침
+      ctx.fillStyle = '#5a3a1c';
+      ctx.fillRect(x - 10, y - 1, 20, 4);
+      ctx.fillStyle = '#3a2818';
+      ctx.fillRect(x - 8, y + 3, 16, 2);
+      // 불꽃 (시간 기반 흔들림)
+      const tt = performance.now() * 0.008;
+      const flicker = Math.sin(tt) * 1.5;
+      ctx.fillStyle = '#ff6a2a';
+      ctx.beginPath();
+      ctx.moveTo(x - 5, y - 1);
+      ctx.quadraticCurveTo(x - 3 + flicker, y - 12, x, y - 16);
+      ctx.quadraticCurveTo(x + 4 + flicker, y - 11, x + 5, y - 1);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#ffce4a';
+      ctx.beginPath();
+      ctx.moveTo(x - 2, y - 2);
+      ctx.quadraticCurveTo(x + flicker, y - 9, x + 1, y - 13);
+      ctx.quadraticCurveTo(x + 3 + flicker, y - 8, x + 3, y - 2);
+      ctx.closePath(); ctx.fill();
     }
   }
 
@@ -1123,6 +1165,36 @@
     ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fill();
   }
 
+  function drawBerryBushIso(x, y) {
+    // 낮은 덤불 + 빨간 베리들
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath(); ctx.ellipse(x, y + 4, 10, 4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#2a4a20';
+    ctx.beginPath(); ctx.ellipse(x, y - 2, 9, 7, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#1a3a10'; ctx.lineWidth = 1; ctx.stroke();
+    // 베리들
+    ctx.fillStyle = '#c83a3a';
+    ctx.beginPath(); ctx.arc(x - 3, y - 1, 1.5, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(x + 2, y - 3, 1.5, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(x + 4, y + 1, 1.5, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(x - 1, y + 2, 1.5, 0, Math.PI*2); ctx.fill();
+  }
+
+  function drawWaterPoolIso(x, y) {
+    // 푸른 다이아 (반짝이는 작은 연못)
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.beginPath(); ctx.ellipse(x, y + 3, 14, 5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(x, y - 6); ctx.lineTo(x + 14, y);
+    ctx.lineTo(x, y + 6); ctx.lineTo(x - 14, y); ctx.closePath();
+    ctx.fillStyle = '#2a6aa8'; ctx.fill();
+    ctx.strokeStyle = '#1a4a78'; ctx.lineWidth = 1; ctx.stroke();
+    // 반짝이
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.beginPath(); ctx.ellipse(x - 4, y - 1, 3, 1, 0, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(x + 5, y + 2, 2, 0.8, 0, 0, Math.PI*2); ctx.fill();
+  }
+
   function drawSpeechBubble(x, y, text) {
     if (!text) return;
     ctx.font = '12px sans-serif';
@@ -1188,6 +1260,16 @@
   }
 
   // === HUD ===
+  // 음식 아이콘 매핑 (인벤토리 표시 + 클릭 시 'eat' 송신)
+  const ITEM_ICONS = {
+    berry: '🫐', fiber: '🌾', meat_raw: '🥩', meat_cooked: '🍗',
+    hide: '🦌', berry_jam: '🍯', water_bottle: '🥤',
+  };
+  const ITEM_LABEL = {
+    berry: '베리', fiber: '풀', meat_raw: '날고기', meat_cooked: '구운고기',
+    hide: '가죽', berry_jam: '베리잼', water_bottle: '물병',
+  };
+
   function updateHud() {
     document.getElementById('invWood').textContent = inventory.wood || 0;
     document.getElementById('invStone').textContent = inventory.stone || 0;
@@ -1200,6 +1282,37 @@
     if (hpEl) {
       hpEl.style.width = `${Math.max(0, (myHp / myMaxHp) * 100)}%`;
       document.getElementById('hpText').textContent = `${Math.round(myHp)}/${myMaxHp}`;
+    }
+    // hunger / thirst bar
+    const hungerEl = document.getElementById('hungerFill');
+    if (hungerEl) {
+      hungerEl.style.width = `${Math.max(0, myHunger)}%`;
+      document.getElementById('hungerText').textContent = `🍖 ${Math.round(myHunger)}`;
+    }
+    const thirstEl = document.getElementById('thirstFill');
+    if (thirstEl) {
+      thirstEl.style.width = `${Math.max(0, myThirst)}%`;
+      document.getElementById('thirstText').textContent = `💧 ${Math.round(myThirst)}`;
+    }
+    // 음식/extra 인벤토리
+    const foodRow = document.getElementById('invFoodRow');
+    if (foodRow) {
+      const items = Object.keys(ITEM_ICONS).filter(k => (inventory[k] || 0) > 0);
+      foodRow.innerHTML = '';
+      for (const k of items) {
+        const sp = document.createElement('span');
+        const isFood = !!foodEffects[k];
+        sp.className = 'inv' + (isFood ? '' : ' disabled');
+        sp.textContent = `${ITEM_ICONS[k]} ${ITEM_LABEL[k]} ${inventory[k]}`;
+        if (isFood) {
+          const eff = foodEffects[k];
+          sp.title = `먹기 (+허기 ${eff.hunger||0}${eff.thirst?', +갈증 '+eff.thirst:''}${eff.hpDelta?', HP '+eff.hpDelta:''})`;
+          sp.onclick = () => sendPrimary({ type: 'eat', item: k });
+        } else {
+          sp.title = `${ITEM_LABEL[k]} (먹을 수 없음 — 가공/거래용)`;
+        }
+        foodRow.appendChild(sp);
+      }
     }
     let total = 1;
     for (const c of conns.values()) total += c.others.size;
@@ -1419,6 +1532,48 @@
     const wood = data?.wood || 0, stone = data?.stone || 0;
     document.getElementById('chestWood').textContent = wood;
     document.getElementById('chestStone').textContent = stone;
+  }
+
+  // === Cook 패널 ===
+  let cookOpen = false;
+  function toggleCookPanel() {
+    cookOpen = !cookOpen;
+    const panel = document.getElementById('cookPanel');
+    if (!panel) return;
+    panel.classList.toggle('hidden', !cookOpen);
+    if (cookOpen) renderCookPanel();
+  }
+  function renderCookPanel() {
+    const list = document.getElementById('cookList');
+    if (!list) return;
+    list.innerHTML = '';
+    const entries = Object.entries(cookRecipes || {});
+    if (entries.length === 0) {
+      list.innerHTML = '<div class="hint">요리 레시피 없음</div>';
+      return;
+    }
+    for (const [name, r] of entries) {
+      const canCook = Object.entries(r.cost).every(([k, v]) => (inventory[k] || 0) >= v);
+      const costStr = Object.entries(r.cost).map(([k, v]) => `${ITEM_ICONS[k]||k} ${v}`).join(' · ');
+      const prodStr = Object.entries(r.produces).map(([k, v]) => `${ITEM_ICONS[k]||k} ×${v}`).join(' ');
+      const row = document.createElement('div');
+      row.className = 'craft-row';
+      row.innerHTML = `
+        <div class="craft-icon">${ITEM_ICONS[name] || '🍳'}</div>
+        <div class="craft-info">
+          <div class="craft-name">${r.label} → ${prodStr}</div>
+          <div class="craft-cost">${costStr}</div>
+        </div>
+        <button class="craft-btn" data-cook="${name}" ${canCook ? '' : 'disabled'}>요리</button>
+      `;
+      list.appendChild(row);
+    }
+    list.querySelectorAll('[data-cook]').forEach(b => b.onclick = () => sendPrimary({ type: 'cook', recipe: b.dataset.cook }));
+  }
+  // 인벤토리 바뀌면 패널 열려있을 때 갱신
+  function rerenderPanelsIfOpen() {
+    if (craftOpen) renderCraftPanel();
+    if (cookOpen) renderCookPanel();
   }
 
   let noticeTimer;
