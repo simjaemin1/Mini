@@ -2101,10 +2101,11 @@ function damagePlayer(p, dmg, source) {
 // 이동 (oldX, oldY) → (newX, newY)가 wall edge 가로지르면 차단.
 function cellOf(x, y) { return { cx: Math.floor(x / BUILDING_SIZE), cy: Math.floor(y / BUILDING_SIZE) }; }
 function findEdgeWall(cx, cy, side, floor) {
-  // qtBuildings에서 그 위치 wall 찾기
-  const ex = cx * BUILDING_SIZE + (side === 'E' ? BUILDING_SIZE : 0);
-  const ey = cy * BUILDING_SIZE + (side === 'N' ? 0 : BUILDING_SIZE / 2);
-  const nearby = qtBuildings ? qtBuildings.queryCircle(ex, ey, BUILDING_SIZE) : Array.from(buildings.values());
+  // wall은 cell (cx,cy)의 좌상단(b.x=cx*32, b.y=cy*32)에 저장됨. data.side로 N/E 구분.
+  // queryCircle 중심을 wall 저장 위치(좌상단)와 동일하게 잡고, radius 넉넉히 (cell 한 칸 + 여유).
+  const ex = cx * BUILDING_SIZE;
+  const ey = cy * BUILDING_SIZE;
+  const nearby = qtBuildings ? qtBuildings.queryCircle(ex, ey, BUILDING_SIZE * 2) : Array.from(buildings.values());
   for (const b of nearby) {
     if (!BLOCKING_BUILDINGS.has(b.type)) continue;
     if ((b.floor || 0) !== floor) continue;
