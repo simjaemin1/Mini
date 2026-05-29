@@ -399,6 +399,12 @@ function decideNpcBehavior(npc, now) {
     if (d < wolfDist) { nearestWolf = m; wolfDist = d; }
   }
   if (nearestWolf) {
+    // 궁지에 몰린 상황 — HP 절반 미만 + 매우 가까움 → 반격
+    if (npc.hp < npc.maxHp * 0.5 && wolfDist < 100) {
+      npc.behavior = 'fight';
+      npc.fightTarget = nearestWolf.mid;
+      return;
+    }
     npc.behavior = 'flee';
     // 늑대 반대방향으로
     const dx = npc.x - nearestWolf.x, dy = npc.y - nearestWolf.y;
@@ -462,6 +468,54 @@ function decideNpcBehavior(npc, now) {
 
 function npcStep(npc, dt, now) {
   decideNpcBehavior(npc, now);
+
+  // === fight 모드: 늑대 직접 공격 (target 사라지면 자동 해제) ===
+  if (npc.behavior === 'fight') {
+    const target = npc.fightTarget ? mobs.get(npc.fightTarget) : null;
+    if (!target || target.hp <= 0) {
+      npc.behavior = 'wander';
+      npc.fightTarget = null;
+      npc.nextDecisionAt = 0;
+      return;
+    }
+    const tdx = target.x - npc.x, tdy = target.y - npc.y;
+    const tdd = Math.hypot(tdx, tdy);
+    if (tdd > PLAYER_ATTACK_RANGE * 0.8) {
+      // range 안으로 접근
+      npc.vx = (tdx/tdd) * MOVE_SPEED * 0.8;
+      npc.vy = (tdy/tdd) * MOVE_SPEED * 0.8;
+    } else {
+      npc.vx = 0; npc.vy = 0;
+      if (now - npc.lastAttackAt > 1000) {
+        npc.lastAttackAt = now;
+        const dmg = 8;
+        target.hp -= dmg;
+        target.dirty = true;
+        broadcast({ type: 'mob_damaged', mid: target.mid, hp: target.hp });
+        // 늑대 공격당하면 어그로 — 이미 NPC 향해있을 거. 팩 전파도.
+        if (!target.tameOwner) {
+          target.aggroTarget = npc.pid;
+          if (target.type === 'wolf') aggroPackmates(target, npc.pid);
+        }
+        if (target.hp <= 0) {
+          if (target.dbId) { try { db.deleteMob(target.dbId); } catch (e) {} }
+          mobs.delete(target.mid);
+          broadcast({ type: 'mob_removed', mid: target.mid });
+          // 일정 시간 후 같은 종 리스폰
+          const respawnType = target.type;
+          setTimeout(() => {
+            const m = spawnMob(respawnType);
+            broadcast({ type: 'mob_spawn', mob: { mid: m.mid, type: m.type, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, tameOwner: null, tameOwnerName: null } });
+          }, 15000);
+          npc.fightTarget = null;
+          npc.behavior = 'wander';
+          npc.nextDecisionAt = 0;
+        }
+      }
+    }
+    return;
+  }
+
   // 목표 방향으로 이동
   const dx = npc.targetX - npc.x, dy = npc.targetY - npc.y;
   const dd = Math.hypot(dx, dy);
