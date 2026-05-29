@@ -489,7 +489,13 @@ const server = http.createServer(async (req, res) => {
       if (filePath.startsWith(path.join(__dirname, '..', 'public')) && fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
         const ext = path.extname(filePath).toLowerCase();
         const mime = { '.html':'text/html', '.js':'application/javascript', '.css':'text/css', '.png':'image/png', '.ico':'image/x-icon' }[ext] || 'application/octet-stream';
-        res.writeHead(200, { 'Content-Type': mime });
+        // 캐시 끄기 — 개발 중이라 매 deploy마다 새 파일 받게
+        res.writeHead(200, {
+          'Content-Type': mime,
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        });
         return fs.createReadStream(filePath).pipe(res);
       }
     }
