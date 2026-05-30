@@ -110,7 +110,7 @@ const ZONES_BASE = {
   },
   // 콩그 + 케이프 통합 (남부 아프리카) — 아래쪽 큰 1 zone
   kongra: {
-    port: 3010, biome: 'savanna', displayName: '콩그·케이프',
+    port: 3030, biome: 'savanna', displayName: '콩그·케이프',
     groundColor: '#8a8a5a', tintColor: '#6a6a3a',
     worldOffsetX: 18000, worldOffsetY: 23000, zoneWidth: 10000, zoneHeight: 16000,
     villageSeed: 1010, villageCount: 10,
