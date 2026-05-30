@@ -31,18 +31,27 @@
   <div id="game" class="hidden">
     <canvas id="canvas" width="960" height="640"></canvas>
 
-    <!-- Phase 14.16: 좀보이드식 상단 탭 + 슬라이드 패널 -->
-    <div id="topbar">
-      <div class="tb-tab" data-panel="inv"><span class="tb-icon">🎒</span><span class="tb-label">인벤</span><span class="tb-hint">I</span></div>
-      <div class="tb-tab" data-panel="craft"><span class="tb-icon">🔨</span><span class="tb-label">제작</span><span class="tb-hint">K</span></div>
-      <div class="tb-tab" data-panel="build"><span class="tb-icon">🏗️</span><span class="tb-label">건축</span><span class="tb-hint">B</span></div>
-      <div class="tb-tab" data-panel="tribe"><span class="tb-icon">🛡️</span><span class="tb-label">길드</span><span class="tb-hint">N</span></div>
-      <div class="tb-tab" data-panel="market"><span class="tb-icon">🏪</span><span class="tb-label">거래소</span><span class="tb-hint">M</span></div>
+    <!-- Phase 14.17: 좀보이드식 정통 — 좌측 사이드바 + 상단 인벤 드롭다운 only -->
+    <div id="sidebar">
+      <div class="sb-icon" data-side="craft"><span class="sb-emo">🔨</span><span class="sb-hint">제작 (K)</span></div>
+      <div class="sb-icon" data-side="build"><span class="sb-emo">🏗️</span><span class="sb-hint">건축 (Shift+B)</span></div>
+      <div class="sb-icon" data-side="tribe"><span class="sb-emo">🛡️</span><span class="sb-hint">길드 (N)</span></div>
+      <div class="sb-icon" data-side="market"><span class="sb-emo">🏪</span><span class="sb-hint">거래소 (M)</span></div>
     </div>
-    <div id="slidePanel">
+    <!-- 상단 인벤 드롭다운 (좀보이드 정통) — 작은 토글 버튼 클릭 / I 키로 -->
+    <div class="id-toggle" id="invToggle" title="인벤토리 (I)">🎒 ▾</div>
+    <div id="invDropdown">
+      <div class="id-head">
+        <span class="id-title">🎒 인벤토리</span>
+        <span style="color:#8a93a0;font-size:11px">I 또는 토글 클릭으로 닫기</span>
+      </div>
+      <div class="id-body" id="invBody"></div>
+    </div>
+    <!-- 좌측 패널 (사이드 아이콘 클릭 시 옆에 펼쳐짐) -->
+    <div id="sidePanel">
       <div class="sp-head">
         <span class="sp-title" id="spTitle">패널</span>
-        <span style="color:#8a93a0;font-size:11px">Esc 또는 다시 클릭으로 닫기</span>
+        <button class="sp-close" id="spClose">✕</button>
       </div>
       <div class="sp-body" id="spBody"></div>
     </div>
@@ -96,7 +105,6 @@
         <button data-action="build_fence">울타리 (L)</button>
         <button data-action="build_chest">상자 (H)</button>
         <button data-action="build_campfire">모닥불 (J)</button>
-        <button data-action="build_siege">공성캠프 (Q)</button>
         <button data-action="build_farmland">농지 (P)</button>
         <button data-action="build_stair">계단 (U)</button>
         <button data-action="build_floor">바닥 (I)</button>

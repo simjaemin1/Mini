@@ -184,16 +184,13 @@ const BUILDING_COST = {
   campfire: { wood: 3, stone: 2 },
   farmland: { wood: 0, stone: 0, seed: 'seed_berry' },
   stair:    { wood: 4, stone: 2 },
-  // Phase 14.5 — 공성 캠프 (설계 §3.2): 빠른 decay, 약한 보호, 전쟁 종료 시 해체
-  siege_camp: { wood: 4, stone: 0, fiber: 2 },
+  // 14.5 공성 캠프는 제거 — "임시 사유지" 개념으로 대체 (Phase 14.18 예정)
 };
-// 공성 캠프 수명 (10분 = 600s decay 시작 → 자연 해체)
-const SIEGE_CAMP_LIFETIME_MS = 10 * 60 * 1000;
 const CROP_GROW_MS = 60 * 1000;
 const BLOCKING_BUILDINGS = new Set(['wall', 'fence']);
-const BUILDING_HEIGHT = { wall: 32, floor: 4, fence: 24, chest: 24, campfire: 20, farmland: 4, stair: 32, siege_camp: 20 };
+const BUILDING_HEIGHT = { wall: 32, floor: 4, fence: 24, chest: 24, campfire: 20, farmland: 4, stair: 32 };
 // Phase 14.14: 건축물 maxHp — 손상=상태 전이 (영구파괴 X, 수리 가능)
-const BUILDING_MAX_HP = { wall: 80, fence: 30, chest: 50, campfire: 20, farmland: 10, stair: 60, floor: 40, siege_camp: 15 };
+const BUILDING_MAX_HP = { wall: 80, fence: 30, chest: 50, campfire: 20, farmland: 10, stair: 60, floor: 40 };
 const FLOOR_HEIGHT = 32;
 
 // === 위반 점수 (vp) — PvP 공격·타인 사유지 침범 시 누적, 시간당 감소 ===
@@ -578,6 +575,9 @@ const VILLAGE_SAFE_RADIUS = 600; // 늑대 이 안에 spawn X (마을 안전구�
     // 옛 큐브 wall (data 안에 side 키 없음) — SQLite JSON 함수 없으니 LIKE로 근사
     const legRes = db.db.prepare("DELETE FROM buildings WHERE type='wall' AND (data IS NULL OR data NOT LIKE '%\"side\"%')").run();
     if (legRes.changes > 0) console.log(`[${ZONE_ID}] DB wipe: 옛 큐브 wall ${legRes.changes}개`);
+    // 14.17 — 공성캠프 모두 제거 (개념 폐기)
+    const sgRes = db.db.prepare("DELETE FROM buildings WHERE type='siege_camp'").run();
+    if (sgRes.changes > 0) console.log(`[${ZONE_ID}] DB wipe: 옛 공성캠프 ${sgRes.changes}개`);
   } catch (e) { console.error(`[${ZONE_ID}] DB wipe error:`, e); }
 }
 // NPC spawn은 DB 로드 후로 (spawnVillagers 함수, 라인 836 DB 로드 다음에 호출)
@@ -1861,26 +1861,16 @@ function tryBuild(player, type, floor = 0, side = null) {
   const gx = Math.floor(player.x / BUILDING_SIZE) * BUILDING_SIZE + BUILDING_SIZE / 2;
   const gy = Math.floor(player.y / BUILDING_SIZE) * BUILDING_SIZE + BUILDING_SIZE / 2;
 
-  // 자기 claim 안에 있어야 — 단, siege_camp(공성캠프)는 사유지 밖에만 (적 도시 인근, 설계 §3.2)
-  if (type === 'siege_camp') {
-    let inAnyClaim = false;
-    for (const c of claims.values()) {
-      if (gx >= c.x && gx < c.x + c.w && gy >= c.y && gy < c.y + c.h) { inAnyClaim = true; break; }
+  // 자기 claim 안에서만 (개인 사유지든 임시 사유지든)
+  let inOwnClaim = false;
+  for (const c of claims.values()) {
+    if (c.ownerPid === player.playerId &&
+        gx >= c.x && gx < c.x + c.w && gy >= c.y && gy < c.y + c.h) {
+      inOwnClaim = true; break;
     }
-    if (inAnyClaim) {
-      send(player.ws, { type: 'notice', text: '공성 캠프는 사유지 밖에만 설치 가능' }); return;
-    }
-  } else {
-    let inOwnClaim = false;
-    for (const c of claims.values()) {
-      if (c.ownerPid === player.playerId &&
-          gx >= c.x && gx < c.x + c.w && gy >= c.y && gy < c.y + c.h) {
-        inOwnClaim = true; break;
-      }
-    }
-    if (!inOwnClaim) {
-      send(player.ws, { type: 'notice', text: '자기 영지 안에서만 건축 가능' }); return;
-    }
+  }
+  if (!inOwnClaim) {
+    send(player.ws, { type: 'notice', text: '자기 영지 안에서만 건축 가능' }); return;
   }
 
   // 같은 (x,y,floor)에 다른 건축물 없는지 — quadtree + floor 일치만 체크
@@ -1910,7 +1900,7 @@ function tryBuild(player, type, floor = 0, side = null) {
   let initialData = null;
   if (type === 'chest') initialData = { wood: 0, stone: 0 };
   else if (type === 'farmland') initialData = { cropType: 'berry', plantedAt: Date.now(), readyAt: Date.now() + CROP_GROW_MS, ready: false };
-  else if (type === 'siege_camp') initialData = { expiresAt: Date.now() + SIEGE_CAMP_LIFETIME_MS, ownerTribeId: player.tribeId || null };
+  // 14.5 siege_camp 제거 — 임시 사유지로 대체 (14.18)
   // floor 정보는 data JSON에 합쳐 저장 (DB 스키마 변경 회피)
   const dataWithFloor = { ...(initialData || {}), floor };
   const dbId = db.insertBuilding({
@@ -2189,28 +2179,12 @@ function damagePlayer(p, dmg, source) {
       return;
     }
     send(p.ws, { type: 'notice', text: '사망. 5초 후 부활합니다.' });
-    // 5초 후 부활 — Phase 14.10: 같은 길드 활성 siege_camp가 가까이 있으면 거기서 부활
+    // 5초 후 zone 중앙 부활 (siege_camp 리스폰은 14.18 임시 사유지로 대체 예정)
     setTimeout(() => {
       if (!players.has(p.pid)) return;
       p.hp = p.maxHp;
-      // Phase 14.10: siege_camp 부활 우선순위
-      let respawnAt = null;
-      if (p.tribeId) {
-        let nearest = null, bestDist = Infinity;
-        for (const b of buildings.values()) {
-          if (b.type !== 'siege_camp') continue;
-          if (b.data?.ownerTribeId !== p.tribeId) continue;
-          const d = Math.hypot(b.x - p.x, b.y - p.y);
-          if (d < bestDist) { bestDist = d; nearest = b; }
-        }
-        if (nearest) {
-          respawnAt = { x: nearest.x, y: nearest.y };
-          send(p.ws, { type: 'notice', text: '🏕️ 공성 캠프에서 부활' });
-        }
-      }
-      if (!respawnAt) respawnAt = { x: WORLD.zoneWidth / 2, y: WORLD.zoneHeight / 2 };
-      p.x = respawnAt.x;
-      p.y = respawnAt.y;
+      p.x = WORLD.zoneWidth / 2;
+      p.y = WORLD.zoneHeight / 2;
       p.vx = 0; p.vy = 0;
       for (const m of mobs.values()) {
         if (m.aggroTarget === p.pid) m.aggroTarget = null;
@@ -2288,24 +2262,7 @@ setInterval(async () => {
   }
 }, 60 * 1000);
 
-// === Phase 14.5: siege_camp decay tick (5초마다) ===
-// 만료된 공성 캠프 자동 해체. 향후 War 종료 시 일괄 해체 hook 추가 예정.
-setInterval(() => {
-  const now = Date.now();
-  const toRemove = [];
-  for (const b of buildings.values()) {
-    if (b.type !== 'siege_camp') continue;
-    const exp = b.data?.expiresAt;
-    if (exp && now >= exp) toRemove.push(b);
-  }
-  for (const b of toRemove) {
-    if (b.dbId) { try { db.deleteBuilding(b.dbId); } catch (e) {} }
-    buildings.delete(b.id);
-    chunkManager.removeBuilding(b);
-    broadcast({ type: 'building_removed', id: b.id });
-    console.log(`[${ZONE_ID}] 🏕️ 공성 캠프 만료 해체: ${b.id} (owner=${b.ownerName})`);
-  }
-}, 5000);
+// 14.5 siege_camp decay tick 제거 — 임시 사유지(claim)로 대체 (Phase 14.18)
 
 // === 게임 틱 ===
 const TICK_MS = 1000 / TICK_HZ;

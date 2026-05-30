@@ -203,7 +203,7 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
     else if (k === 'b') sendPrimary({ type: 'build', buildType: 'wall', floor: myBuildFloor });
     else if (k === 'h') sendPrimary({ type: 'build', buildType: 'chest', floor: myBuildFloor });
     else if (k === 'j') sendPrimary({ type: 'build', buildType: 'campfire', floor: myBuildFloor });
-    else if (k === 'q') sendPrimary({ type: 'build', buildType: 'siege_camp', floor: 0 }); // Phase 14.5
+    // Q 단축키 제거 — 공성캠프는 임시 사유지로 대체 예정 (Phase 14.18)
     else if (k === 'l') sendPrimary({ type: 'build', buildType: 'fence', floor: myBuildFloor });
     // I 키는 새 인벤 패널 (좀보이드식). 바닥은 건축 패널에서 클릭으로.
     else if (k === 'p') sendPrimary({ type: 'build', buildType: 'farmland', floor: myBuildFloor });
@@ -272,7 +272,7 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
       else if (a === 'build_wall') sendPrimary({ type: 'build', buildType: 'wall', floor: myBuildFloor });
       else if (a === 'build_chest') sendPrimary({ type: 'build', buildType: 'chest', floor: myBuildFloor });
       else if (a === 'build_campfire') sendPrimary({ type: 'build', buildType: 'campfire', floor: myBuildFloor });
-      else if (a === 'build_siege') sendPrimary({ type: 'build', buildType: 'siege_camp', floor: 0 });
+      // build_siege 제거 — 임시 사유지로 대체 (14.18)
       else if (a === 'build_fence') sendPrimary({ type: 'build', buildType: 'fence', floor: myBuildFloor });
       else if (a === 'build_farmland') sendPrimary({ type: 'build', buildType: 'farmland', floor: myBuildFloor });
       else if (a === 'build_stair') sendPrimary({ type: 'build', buildType: 'stair', floor: myBuildFloor });
@@ -2151,59 +2151,77 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
 
   boot();
 
-  // === Phase 14.16: 좀보이드식 상단 탭 + 슬라이드 패널 ===
-  // 탭 클릭 → 패널 토글. 같은 탭 다시 클릭 또는 Esc로 닫기.
-  let activePanel = null;
-  function openPanel(name) {
-    activePanel = name;
-    const sp = document.getElementById('slidePanel');
-    sp.classList.add('open');
-    document.querySelectorAll('.tb-tab').forEach(t => t.classList.toggle('active', t.dataset.panel === name));
+  // === Phase 14.17: 좀보이드 정통 — 좌측 사이드바 + 상단 인벤 드롭다운 ===
+  // 사이드 아이콘 4개(제작/건축/길드/거래소) + 인벤은 상단 드롭다운(별개)
+  let activeSide = null; // 좌측 패널 (한 번에 1개)
+  let invOpen = false;
+
+  function openSide(name) {
+    activeSide = name;
+    document.getElementById('sidePanel').classList.add('open');
+    document.querySelectorAll('.sb-icon').forEach(t => t.classList.toggle('active', t.dataset.side === name));
     document.getElementById('spTitle').textContent = ({
-      inv: '🎒 인벤토리', craft: '🔨 제작', build: '🏗️ 건축',
-      tribe: '🛡️ 길드', market: '🏪 거래소',
+      craft: '🔨 제작', build: '🏗️ 건축', tribe: '🛡️ 길드', market: '🏪 거래소',
     })[name] || name;
-    renderPanel(name);
+    renderSide(name);
   }
-  function closePanel() {
-    activePanel = null;
-    document.getElementById('slidePanel').classList.remove('open');
-    document.querySelectorAll('.tb-tab').forEach(t => t.classList.remove('active'));
+  function closeSide() {
+    activeSide = null;
+    document.getElementById('sidePanel').classList.remove('open');
+    document.querySelectorAll('.sb-icon').forEach(t => t.classList.remove('active'));
   }
+  function toggleSide(name) {
+    if (activeSide === name) closeSide();
+    else openSide(name);
+  }
+  // 호환: 옛 togglePanel(name)이 inv면 인벤 토글, 나머지는 좌측 패널
   function togglePanel(name) {
-    if (activePanel === name) closePanel();
-    else openPanel(name);
+    if (name === 'inv') return toggleInv();
+    return toggleSide(name);
   }
-  document.querySelectorAll('.tb-tab').forEach(t => {
-    t.addEventListener('click', () => togglePanel(t.dataset.panel));
+
+  function toggleInv() {
+    invOpen = !invOpen;
+    document.getElementById('invDropdown').classList.toggle('open', invOpen);
+    if (invOpen) renderInvPanel(document.getElementById('invBody'));
+  }
+
+  document.querySelectorAll('.sb-icon').forEach(t => {
+    t.addEventListener('click', () => toggleSide(t.dataset.side));
   });
-  // Esc로 닫기
+  document.getElementById('invToggle').addEventListener('click', toggleInv);
+  document.getElementById('spClose').addEventListener('click', closeSide);
+
+  // Esc 처리
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && activePanel) { closePanel(); e.stopPropagation(); }
+    if (e.key === 'Escape') {
+      if (invOpen) { toggleInv(); e.stopPropagation(); }
+      else if (activeSide) { closeSide(); e.stopPropagation(); }
+    }
   });
-  // 단축키 (I/K/B/N/M) — 채팅 input focused 아닐 때만
+  // 단축키 (I=인벤 / K=제작 / Shift+B=건축) — 채팅 input focused 아닐 때만
   document.addEventListener('keydown', (e) => {
     const ci = document.getElementById('chatInput');
     if (document.activeElement === ci) return;
     const k = e.key.toLowerCase();
-    if (k === 'i') { togglePanel('inv'); e.preventDefault(); }
-    else if (k === 'k') { togglePanel('craft'); e.preventDefault(); }
-    // B는 기존 wall 빌드 단축키와 겹침 — 충돌 회피: Shift+B로 패널
-    else if (k === 'b' && e.shiftKey) { togglePanel('build'); e.preventDefault(); }
+    if (k === 'i') { toggleInv(); e.preventDefault(); }
+    else if (k === 'k') { toggleSide('craft'); e.preventDefault(); }
+    else if (k === 'b' && e.shiftKey) { toggleSide('build'); e.preventDefault(); }
   });
 
-  // === 패널 렌더링 디스패치 ===
-  function renderPanel(name) {
+  function renderSide(name) {
     const body = document.getElementById('spBody');
-    if (name === 'inv') renderInvPanel(body);
-    else if (name === 'craft') renderCraftPanel2(body);
+    if (name === 'craft') renderCraftPanel2(body);
     else if (name === 'build') renderBuildPanel(body);
     else if (name === 'tribe') { body.innerHTML = '<div id="tribeBody"></div>'; renderTribePanel(); }
     else if (name === 'market') renderMarketPanel(body);
   }
 
-  // 패널 열려있으면 주기적으로 갱신 (인벤 갱신, 근처 chest 등)
-  setInterval(() => { if (activePanel) renderPanel(activePanel); }, 1000);
+  // 패널 열려있으면 주기적 갱신
+  setInterval(() => {
+    if (activeSide) renderSide(activeSide);
+    if (invOpen) renderInvPanel(document.getElementById('invBody'));
+  }, 1000);
 
   // === 인벤 + 근처 chest 슬롯 (좀보이드 양분) ===
   function renderInvPanel(body) {
@@ -2315,13 +2333,13 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
   function renderBuildPanel(body) {
     const items = [
       { id: 'wall',      icon: '🧱', name: '벽',       cost: '🪵2 🪨1', key: 'B' },
-      { id: 'floor',     icon: '⬜', name: '바닥',     cost: '🪵1',      key: 'I' },
+      { id: 'floor',     icon: '⬜', name: '바닥',     cost: '🪵1',      key: '-' },
       { id: 'stair',     icon: '🪜', name: '계단',     cost: '🪵4 🪨2', key: 'U' },
       { id: 'fence',     icon: '🪵', name: '울타리',  cost: '🪵1',      key: 'L' },
       { id: 'chest',     icon: '📦', name: '상자',     cost: '🪵5 🪨2', key: 'H' },
       { id: 'campfire',  icon: '🔥', name: '모닥불',  cost: '🪵3 🪨2', key: 'J' },
       { id: 'farmland',  icon: '🌱', name: '농지',     cost: '🌱1',      key: 'P' },
-      { id: 'siege_camp',icon: '🏕️', name: '공성캠프',cost: '🪵4 🌾2', key: 'Q' },
+      // 공성캠프 제거 — 임시 사유지(claim) 시스템으로 대체 예정 (Phase 14.18)
     ];
     body.innerHTML = `
       <div style="font-size:11px;color:#8a93a0;margin-bottom:8px">건축물 카드 클릭 → 현재 위치(${0}F=${0}, 1F=${1}, ...)에 즉시 설치 · 층 변경: <b>Z/X</b></div>
