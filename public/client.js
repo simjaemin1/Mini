@@ -2531,83 +2531,106 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
       t.onclick = () => { activeContainerId = t.dataset.cid; renderInvPanel(body); };
     });
 
-    // === Phase 14.23: HTML5 드래그 (인벤 row → 컨테이너 탭/바닥/빈화면) ===
-    body.querySelectorAll('tr[draggable], .inv-table tbody tr').forEach(tr => {
+    // === Phase 14.24: HTML5 드래그 + 폴리시 ===
+    body.querySelectorAll('.inv-table tbody tr').forEach(tr => {
       const btn = tr.querySelector('[data-move]');
       if (!btn) return;
       tr.setAttribute('draggable', 'true');
       tr.addEventListener('dragstart', (e) => {
-        const payload = { kind: btn.dataset.move, item: btn.dataset.item, cid: btn.dataset.cid };
+        const item = btn.dataset.item;
+        const payload = { kind: btn.dataset.move, item, cid: btn.dataset.cid };
         e.dataTransfer.setData('text/plain', JSON.stringify(payload));
         e.dataTransfer.effectAllowed = 'move';
+        tr.classList.add('dragging');
+        // 작은 ghost (이모지 + 라벨)
+        const icon = (ITEM_ICONS && ITEM_ICONS[item]) || ({wood:'🪵',stone:'🪨'}[item]) || '📦';
+        const label = (ITEM_LABEL && ITEM_LABEL[item]) || item;
+        const ghost = document.createElement('div');
+        ghost.className = 'drag-ghost';
+        ghost.textContent = `${icon} ${label}`;
+        document.body.appendChild(ghost);
+        e.dataTransfer.setDragImage(ghost, 18, 18);
+        setTimeout(() => ghost.remove(), 0);
+      });
+      tr.addEventListener('dragend', () => {
+        tr.classList.remove('dragging');
+        // 모든 drop-zone class 정리
+        document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+        document.querySelectorAll('.drag-over-ground').forEach(el => el.classList.remove('drag-over-ground'));
       });
     });
-    // drop targets: 컨테이너 탭 + 바닥 탭 + 빈화면(canvas)
+
+    // drop targets
     body.querySelectorAll('.cont-tab').forEach(t => {
-      t.addEventListener('dragover', (e) => { e.preventDefault(); t.style.borderColor = '#f0c674'; });
-      t.addEventListener('dragleave', () => { t.style.borderColor = ''; });
+      t.addEventListener('dragover', (e) => { e.preventDefault(); t.classList.add('drag-over'); });
+      t.addEventListener('dragleave', () => t.classList.remove('drag-over'));
       t.addEventListener('drop', (e) => {
-        e.preventDefault(); t.style.borderColor = '';
+        e.preventDefault(); t.classList.remove('drag-over');
         try {
           const payload = JSON.parse(e.dataTransfer.getData('text/plain'));
-          const targetCid = t.dataset.cid;
-          handleDrop(payload, targetCid);
+          const amount = dragAmountFromEvent(e);
+          handleDrop(payload, t.dataset.cid, amount);
         } catch (err) {}
       });
     });
     body.querySelectorAll('[data-drop-target]').forEach(col => {
-      col.addEventListener('dragover', (e) => { e.preventDefault(); });
+      col.addEventListener('dragover', (e) => { e.preventDefault(); col.classList.add('drag-over'); });
+      col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
       col.addEventListener('drop', (e) => {
-        e.preventDefault();
+        e.preventDefault(); col.classList.remove('drag-over');
         try {
           const payload = JSON.parse(e.dataTransfer.getData('text/plain'));
-          const target = col.dataset.dropTarget;
-          handleDrop(payload, target);
+          const amount = dragAmountFromEvent(e);
+          handleDrop(payload, col.dataset.dropTarget, amount);
         } catch (err) {}
       });
     });
   }
 
-  // 드래그 결과 처리: payload(원본) → target(목적지)
-  function handleDrop(payload, target) {
+  // Phase 14.24 — Shift=10, Ctrl/Alt/Meta=99, 평소=1
+  function dragAmountFromEvent(e) {
+    if (e.ctrlKey || e.altKey || e.metaKey) return 99;
+    if (e.shiftKey) return 10;
+    return 1;
+  }
+
+  // 드래그 결과 처리: payload(원본) → target(목적지) + amount
+  function handleDrop(payload, target, amount = 1) {
     const { kind, item, cid: srcCid } = payload;
-    // 같은 곳이면 무시
     if (kind === 'mine' && target === 'mine') return;
     if (kind === 'chest' && target === srcCid) return;
-    // mine → ground: drop_item
     if (kind === 'mine' && target === 'ground') {
-      sendPrimary({ type: 'drop_item', item, amount: 1 });
+      sendPrimary({ type: 'drop_item', item, amount });
       return;
     }
-    // mine → chest
     if (kind === 'mine' && target && target !== 'ground' && target !== 'mine') {
       if (item !== 'wood' && item !== 'stone') {
         showNotice(`${ITEM_LABEL[item] || item}은 상자에 못 넣음 (wood/stone만 지원)`);
         return;
       }
-      sendPrimary({ type: 'chest_put', buildingId: target, item, amount: 1 });
+      sendPrimary({ type: 'chest_put', buildingId: target, item, amount });
       return;
     }
-    // chest → mine
     if (kind === 'chest' && target === 'mine') {
-      sendPrimary({ type: 'chest_take', buildingId: srcCid, item, amount: 1 });
+      sendPrimary({ type: 'chest_take', buildingId: srcCid, item, amount });
       return;
     }
-    // chest → ground: take then drop (서버에서 직접 처리는 미구현, 2단계)
     if (kind === 'chest' && target === 'ground') {
-      sendPrimary({ type: 'chest_take', buildingId: srcCid, item, amount: 1 });
-      setTimeout(() => sendPrimary({ type: 'drop_item', item, amount: 1 }), 100);
+      sendPrimary({ type: 'chest_take', buildingId: srcCid, item, amount });
+      setTimeout(() => sendPrimary({ type: 'drop_item', item, amount }), 120);
       return;
     }
   }
 
-  // 빈 화면(canvas) drop → 바닥에 떨어뜨리기
-  canvas.addEventListener('dragover', (e) => { e.preventDefault(); });
+  // 빈 화면(canvas) drop → 바닥에 떨어뜨리기 (Shift=10, Ctrl=99)
+  canvas.addEventListener('dragover', (e) => { e.preventDefault(); canvas.classList.add('drag-over-ground'); });
+  canvas.addEventListener('dragleave', () => canvas.classList.remove('drag-over-ground'));
   canvas.addEventListener('drop', (e) => {
     e.preventDefault();
+    canvas.classList.remove('drag-over-ground');
     try {
       const payload = JSON.parse(e.dataTransfer.getData('text/plain'));
-      handleDrop(payload, 'ground');
+      handleDrop(payload, 'ground', dragAmountFromEvent(e));
     } catch (err) {}
   });
 

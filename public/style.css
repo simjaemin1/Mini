@@ -524,3 +524,23 @@ html, body { margin: 0; padding: 0; height: 100%; font-family: -apple-system, "S
 .cont-tab .ct-count {
   font-size: 10px; color: #cdd6e3; margin-top: 2px; font-weight: 600;
 }
+
+/* === Phase 14.24: 드래그 UX 폴리시 === */
+.inv-table tbody tr[draggable] { user-select: none; }
+.inv-table tbody tr.dragging { opacity: 0.35; background: #4a8a6a !important; }
+.inv-col.drag-over { box-shadow: inset 0 0 0 2px #f0c674; background: rgba(240,198,116,0.06); }
+.cont-tab.drag-over {
+  border-color: #f0c674 !important;
+  box-shadow: 0 0 0 2px #f0c674, 0 0 8px rgba(240,198,116,0.6) !important;
+  transform: scale(1.05);
+}
+/* 캔버스 drag hover (빈 화면=바닥에 떨어뜨림) */
+#canvas.drag-over-ground { box-shadow: inset 0 0 0 4px rgba(240,198,116,0.6); }
+/* ghost 미리보기 — 작은 아이콘만 (HTML5 setDragImage로 동적 생성) */
+.drag-ghost {
+  position: absolute; top: -1000px; left: -1000px;
+  background: rgba(20,25,30,0.95); border: 1px solid #f0c674;
+  border-radius: 4px; padding: 4px 8px; font-size: 16px;
+  color: #fff; white-space: nowrap;
+  pointer-events: none;
+}
