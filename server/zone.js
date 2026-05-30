@@ -3215,22 +3215,10 @@ setInterval(() => {
   }
   // 어떤 stair의 어떤 step에 entity가 있는지 찾음. 없으면 null.
   function findStairStepFor(entity) {
+    // 14.49-e3-perf4: O(1) cache 활용 (findStairBuildingForCell와 통합)
     const ex = Math.floor(entity.x / BUILDING_SIZE);
     const ey = Math.floor(entity.y / BUILDING_SIZE);
-    const near = qtBuildings ? qtBuildings.queryCircle(entity.x, entity.y, BUILDING_SIZE * 3) : Array.from(buildings.values());
-    for (const b of near) {
-      if (b.type !== 'stair') continue;
-      const dir = b.data?.dir || 'N';
-      const dv = dirVec(dir);
-      const acx = Math.floor(b.x / BUILDING_SIZE);
-      const acy = Math.floor(b.y / BUILDING_SIZE);
-      for (let step = 0; step <= 2; step++) {
-        const ccx = acx + dv.x * step;
-        const ccy = acy + dv.y * step;
-        if (ex === ccx && ey === ccy) return { stair: b, step };
-      }
-    }
-    return null;
+    return findStairBuildingForCell(ex, ey);
   }
   function stepStairFor(entity) {
     const cur = findStairStepFor(entity);
