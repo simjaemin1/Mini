@@ -61,9 +61,12 @@ function updateActiveChunks() {
 }
 
 // 활성화 — 그 청크의 시드 자원 생성
+// 14.46-b-smooth-fix: water tile에 떨어진 자원(나무·돌·약초 등)은 스킵.
+//   기존: 해안선 water tile 위에 나무·돌 spawn → 바다에 떠 있는 모양 버그.
 function activateChunk(cx, cy) {
   const seedResources = generateChunkResources(ZONE_ID, ZONE.biome, cx, cy, chunkManager.chunkSize, harvestedSeeds);
   for (const r of seedResources) {
+    if (isWaterTileLocal(r.x, r.y)) continue; // 바다 위 자원 차단
     resources.set(r.id, r);
     chunkManager.insertResource(r);
     broadcast({ type: 'resource_spawn', resource: r });
@@ -405,10 +408,12 @@ function spawnMob(type, opts = {}) {
   if (typeof opts.x === 'number' && typeof opts.y === 'number') {
     x = opts.x; y = opts.y;
   } else {
-    // 늑대는 마을 안전구역 밖에서만 spawn (사슴은 마을 근처도 OK)
-    for (let att = 0; att < 20; att++) {
+    // 늑대는 마을 안전구역 밖에서만 spawn. 14.46-b-smooth-fix: 물 타일도 회피.
+    for (let att = 0; att < 30; att++) {
       x = 32 + Math.random() * (ZONE.zoneWidth - 64);
       y = 32 + Math.random() * (ZONE.zoneHeight - 64);
+      const inWater = typeof isWaterTileLocal === 'function' && isWaterTileLocal(x, y);
+      if (inWater) continue;
       if (type !== 'wolf' || !(typeof isNearVillage === 'function' && isNearVillage(x, y))) break;
     }
   }
