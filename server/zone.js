@@ -2252,7 +2252,7 @@ async function tryChestTake(player, buildingId, item, amount) {
 }
 
 // === 전투 ===
-function tryAttack(player) {
+async function tryAttack(player) {
   const now = Date.now();
   if (now - player.lastAttackAt < PLAYER_ATTACK_COOLDOWN_MS) return;
   player.lastAttackAt = now;
@@ -2329,6 +2329,19 @@ function tryAttack(player) {
     if (!player.pvpEnabled) {
       send(player.ws, { type: 'notice', text: 'PvP 비활성화 상태 (V 키로 켜기)' });
       return;
+    }
+    // Phase 14.18.c — 보호 강도 다이얼
+    // 피해자가 자기 길드의 길드 영토 안에 있을 때:
+    //   전쟁 중이면 → 공격 가능 (다이얼 적용)
+    //   전쟁 중 아니면 → 공격 불가 (강보호)
+    // 피해자가 personal/temporary 사유지 안: kind별로 다름 (TODO: 14.18.d)
+    const victimGuildArea = findGuildClaimContaining(bestPlayer.x, bestPlayer.y, bestPlayer.tribeId);
+    if (victimGuildArea) {
+      const atWar = await isAtWar(player.tribeId, bestPlayer.tribeId);
+      if (!atWar) {
+        send(player.ws, { type: 'notice', text: '🛡️ 길드 영토 보호 — 전쟁 중이어야 공격 가능' });
+        return;
+      }
     }
     damagePlayer(bestPlayer, atk, `player:${player.name}`);
     // === Phase 14.8: 명분 다이얼 — 개인 vp + 길드 vp ===
