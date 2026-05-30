@@ -31,6 +31,22 @@
   <div id="game" class="hidden">
     <canvas id="canvas" width="960" height="640"></canvas>
 
+    <!-- Phase 14.16: 좀보이드식 상단 탭 + 슬라이드 패널 -->
+    <div id="topbar">
+      <div class="tb-tab" data-panel="inv"><span class="tb-icon">🎒</span><span class="tb-label">인벤</span><span class="tb-hint">I</span></div>
+      <div class="tb-tab" data-panel="craft"><span class="tb-icon">🔨</span><span class="tb-label">제작</span><span class="tb-hint">K</span></div>
+      <div class="tb-tab" data-panel="build"><span class="tb-icon">🏗️</span><span class="tb-label">건축</span><span class="tb-hint">B</span></div>
+      <div class="tb-tab" data-panel="tribe"><span class="tb-icon">🛡️</span><span class="tb-label">길드</span><span class="tb-hint">N</span></div>
+      <div class="tb-tab" data-panel="market"><span class="tb-icon">🏪</span><span class="tb-label">거래소</span><span class="tb-hint">M</span></div>
+    </div>
+    <div id="slidePanel">
+      <div class="sp-head">
+        <span class="sp-title" id="spTitle">패널</span>
+        <span style="color:#8a93a0;font-size:11px">Esc 또는 다시 클릭으로 닫기</span>
+      </div>
+      <div class="sp-body" id="spBody"></div>
+    </div>
+
     <div id="hud">
       <div class="hud-row">
         <span class="badge" id="zoneBadge">…</span>

@@ -205,7 +205,7 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
     else if (k === 'j') sendPrimary({ type: 'build', buildType: 'campfire', floor: myBuildFloor });
     else if (k === 'q') sendPrimary({ type: 'build', buildType: 'siege_camp', floor: 0 }); // Phase 14.5
     else if (k === 'l') sendPrimary({ type: 'build', buildType: 'fence', floor: myBuildFloor });
-    else if (k === 'i') sendPrimary({ type: 'build', buildType: 'floor', floor: myBuildFloor });
+    // I 키는 새 인벤 패널 (좀보이드식). 바닥은 건축 패널에서 클릭으로.
     else if (k === 'p') sendPrimary({ type: 'build', buildType: 'farmland', floor: myBuildFloor });
     else if (k === 'o') sendPrimary({ type: 'harvest' });
     else if (k === 'g') sendPrimary({ type: 'feed' });
@@ -1819,6 +1819,8 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
   // === 거래소 UI ===
   let marketOpen = false;
   function toggleMarketplace() {
+    // Phase 14.16: 옛 modal 대신 새 슬라이드 패널로
+    if (typeof togglePanel === 'function') return togglePanel('market');
     marketOpen = !marketOpen;
     const panel = document.getElementById('marketPanel');
     if (!panel) return;
@@ -1887,6 +1889,7 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
   // === Craft 패널 ===
   let craftOpen = false;
   function toggleCraft() {
+    if (typeof togglePanel === 'function') return togglePanel('craft'); // 14.16
     craftOpen = !craftOpen;
     const panel = document.getElementById('craftPanel');
     if (!panel) return;
@@ -1977,6 +1980,7 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
   // === 길드 패널 ===
   let tribeOpen = false;
   function toggleTribePanel() {
+    if (typeof togglePanel === 'function') return togglePanel('tribe'); // 14.16
     tribeOpen = !tribeOpen;
     const panel = document.getElementById('tribePanel');
     if (!panel) return;
@@ -2146,4 +2150,227 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
   }
 
   boot();
+
+  // === Phase 14.16: 좀보이드식 상단 탭 + 슬라이드 패널 ===
+  // 탭 클릭 → 패널 토글. 같은 탭 다시 클릭 또는 Esc로 닫기.
+  let activePanel = null;
+  function openPanel(name) {
+    activePanel = name;
+    const sp = document.getElementById('slidePanel');
+    sp.classList.add('open');
+    document.querySelectorAll('.tb-tab').forEach(t => t.classList.toggle('active', t.dataset.panel === name));
+    document.getElementById('spTitle').textContent = ({
+      inv: '🎒 인벤토리', craft: '🔨 제작', build: '🏗️ 건축',
+      tribe: '🛡️ 길드', market: '🏪 거래소',
+    })[name] || name;
+    renderPanel(name);
+  }
+  function closePanel() {
+    activePanel = null;
+    document.getElementById('slidePanel').classList.remove('open');
+    document.querySelectorAll('.tb-tab').forEach(t => t.classList.remove('active'));
+  }
+  function togglePanel(name) {
+    if (activePanel === name) closePanel();
+    else openPanel(name);
+  }
+  document.querySelectorAll('.tb-tab').forEach(t => {
+    t.addEventListener('click', () => togglePanel(t.dataset.panel));
+  });
+  // Esc로 닫기
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && activePanel) { closePanel(); e.stopPropagation(); }
+  });
+  // 단축키 (I/K/B/N/M) — 채팅 input focused 아닐 때만
+  document.addEventListener('keydown', (e) => {
+    const ci = document.getElementById('chatInput');
+    if (document.activeElement === ci) return;
+    const k = e.key.toLowerCase();
+    if (k === 'i') { togglePanel('inv'); e.preventDefault(); }
+    else if (k === 'k') { togglePanel('craft'); e.preventDefault(); }
+    // B는 기존 wall 빌드 단축키와 겹침 — 충돌 회피: Shift+B로 패널
+    else if (k === 'b' && e.shiftKey) { togglePanel('build'); e.preventDefault(); }
+  });
+
+  // === 패널 렌더링 디스패치 ===
+  function renderPanel(name) {
+    const body = document.getElementById('spBody');
+    if (name === 'inv') renderInvPanel(body);
+    else if (name === 'craft') renderCraftPanel2(body);
+    else if (name === 'build') renderBuildPanel(body);
+    else if (name === 'tribe') { body.innerHTML = '<div id="tribeBody"></div>'; renderTribePanel(); }
+    else if (name === 'market') renderMarketPanel(body);
+  }
+
+  // 패널 열려있으면 주기적으로 갱신 (인벤 갱신, 근처 chest 등)
+  setInterval(() => { if (activePanel) renderPanel(activePanel); }, 1000);
+
+  // === 인벤 + 근처 chest 슬롯 (좀보이드 양분) ===
+  function renderInvPanel(body) {
+    // 근처 chest 자동 감지 — 64px 안의 본인 chest
+    let nearestChest = null;
+    if (primaryZoneId) {
+      const pc = conns.get(primaryZoneId);
+      if (pc && pc.meta) {
+        const ox = pc.meta.worldOffsetX || 0, oy = pc.meta.worldOffsetY || 0;
+        for (const b of pc.buildings.values()) {
+          if (b.type !== 'chest') continue;
+          const absX = ox + b.x, absY = oy + b.y;
+          if (Math.hypot(absX - myAbsPredicted.x, absY - myAbsPredicted.y) < 80) {
+            if (!nearestChest) nearestChest = b;
+          }
+        }
+      }
+    }
+    const slotsHtml = (inv) => {
+      const entries = Object.entries(inv).filter(([k,v]) => v > 0);
+      while (entries.length < 24) entries.push(['', 0]);
+      return entries.map(([k, v]) => {
+        if (!k) return `<div class="inv-slot empty"></div>`;
+        const icon = (ITEM_ICONS && ITEM_ICONS[k]) || ({wood:'🪵',stone:'🪨'}[k]) || '📦';
+        const label = (ITEM_LABEL && ITEM_LABEL[k]) || k;
+        return `<div class="inv-slot" title="${label}">${icon}<span class="slot-count">${v}</span></div>`;
+      }).join('');
+    };
+    const chestPanel = nearestChest
+      ? `<div class="inv-col">
+           <div class="inv-col-head">📦 근처 상자 (${nearestChest.ownerName || '?'})</div>
+           <div class="inv-grid">${slotsHtml(nearestChest.data || {})}</div>
+           <div style="margin-top:8px;display:flex;gap:4px;flex-wrap:wrap">
+             <button class="craft-btn" data-cput="wood">🪵 1↓</button>
+             <button class="craft-btn" data-ctake="wood">🪵 1↑</button>
+             <button class="craft-btn" data-cput="stone">🪨 1↓</button>
+             <button class="craft-btn" data-ctake="stone">🪨 1↑</button>
+           </div>
+         </div>`
+      : `<div class="inv-col"><div class="inv-col-head">📦 근처 상자 없음</div>
+           <div style="color:#6c7686;font-size:12px;padding:20px;text-align:center;background:#0e1217;border-radius:6px;flex:1;display:flex;align-items:center;justify-content:center">
+             상자에 가까이 가면 자동으로 표시됩니다
+           </div>
+         </div>`;
+    body.innerHTML = `
+      <div class="inv-two-col">
+        <div class="inv-col">
+          <div class="inv-col-head">🎒 내 인벤토리</div>
+          <div class="inv-grid">${slotsHtml(inventory)}</div>
+        </div>
+        ${chestPanel}
+      </div>`;
+    if (nearestChest) {
+      body.querySelectorAll('[data-cput]').forEach(b => b.onclick = () =>
+        sendPrimary({ type: 'chest_put', buildingId: nearestChest.id, item: b.dataset.cput, amount: 1 }));
+      body.querySelectorAll('[data-ctake]').forEach(b => b.onclick = () =>
+        sendPrimary({ type: 'chest_take', buildingId: nearestChest.id, item: b.dataset.ctake, amount: 1 }));
+    }
+  }
+
+  // === 제작창 (카테고리 + 레시피) ===
+  let craftCat = 'tool';
+  function renderCraftPanel2(body) {
+    const recipes = {
+      tool: [
+        { id: 'axe',     icon: '🪓', name: '도끼',     cost: { wood: 2, stone: 1 }, equip: 1 },
+        { id: 'pickaxe', icon: '⛏️', name: '곡괭이',  cost: { wood: 2, stone: 2 }, equip: 2 },
+        { id: 'sword',   icon: '⚔️', name: '검',       cost: { wood: 1, stone: 3 }, equip: 3 },
+      ],
+      food: [
+        { id: 'cook_meat', icon: '🍗', name: '고기 굽기', cost: { meat_raw: 1 }, needCampfire: true },
+        { id: 'berry_jam', icon: '🍯', name: '베리잼',    cost: { berry: 3 } },
+        { id: 'water_bottle', icon: '🥤', name: '물병', cost: { fiber: 2 } },
+      ],
+    };
+    const cats = [
+      { id: 'tool', label: '🔧 도구' },
+      { id: 'food', label: '🍖 음식/요리' },
+    ];
+    const items = recipes[craftCat] || [];
+    body.innerHTML = `
+      <div class="craft-layout">
+        <div class="craft-cats">
+          ${cats.map(c => `<div class="craft-cat ${c.id===craftCat?'active':''}" data-cat="${c.id}">${c.label}</div>`).join('')}
+        </div>
+        <div class="craft-items">
+          ${items.map(r => {
+            const canMake = Object.entries(r.cost).every(([k,v]) => (inventory[k]||0) >= v);
+            const costStr = Object.entries(r.cost).map(([k,v]) => `${(ITEM_ICONS&&ITEM_ICONS[k])||k} ${v}`).join(' · ');
+            return `<div class="craft-recipe ${canMake?'can-make':'cant-make'}">
+              <div class="cr-icon">${r.icon}</div>
+              <div class="cr-info"><div class="cr-name">${r.name}</div><div class="cr-cost">${costStr}${r.needCampfire?' · 🔥 필요':''}</div></div>
+              <button data-craft="${r.id}" ${canMake?'':'disabled'}>제작</button>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+    body.querySelectorAll('[data-cat]').forEach(c => c.onclick = () => { craftCat = c.dataset.cat; renderCraftPanel2(body); });
+    body.querySelectorAll('[data-craft]').forEach(b => b.onclick = () => {
+      const id = b.dataset.craft;
+      if (id === 'axe' || id === 'pickaxe' || id === 'sword') sendPrimary({ type: 'craft', recipe: id });
+      else if (id === 'cook_meat') sendPrimary({ type: 'cook', recipe: 'meat_cooked' });
+      else if (id === 'berry_jam') sendPrimary({ type: 'cook', recipe: 'berry_jam' });
+      else if (id === 'water_bottle') sendPrimary({ type: 'cook', recipe: 'water_bottle' });
+    });
+  }
+
+  // === 건축 메뉴 (카테고리별 카드) ===
+  function renderBuildPanel(body) {
+    const items = [
+      { id: 'wall',      icon: '🧱', name: '벽',       cost: '🪵2 🪨1', key: 'B' },
+      { id: 'floor',     icon: '⬜', name: '바닥',     cost: '🪵1',      key: 'I' },
+      { id: 'stair',     icon: '🪜', name: '계단',     cost: '🪵4 🪨2', key: 'U' },
+      { id: 'fence',     icon: '🪵', name: '울타리',  cost: '🪵1',      key: 'L' },
+      { id: 'chest',     icon: '📦', name: '상자',     cost: '🪵5 🪨2', key: 'H' },
+      { id: 'campfire',  icon: '🔥', name: '모닥불',  cost: '🪵3 🪨2', key: 'J' },
+      { id: 'farmland',  icon: '🌱', name: '농지',     cost: '🌱1',      key: 'P' },
+      { id: 'siege_camp',icon: '🏕️', name: '공성캠프',cost: '🪵4 🌾2', key: 'Q' },
+    ];
+    body.innerHTML = `
+      <div style="font-size:11px;color:#8a93a0;margin-bottom:8px">건축물 카드 클릭 → 현재 위치(${0}F=${0}, 1F=${1}, ...)에 즉시 설치 · 층 변경: <b>Z/X</b></div>
+      <div class="build-grid">
+        ${items.map(i => `<div class="build-card" data-build="${i.id}">
+          <div class="bc-icon">${i.icon}</div>
+          <div class="bc-name">${i.name}</div>
+          <div class="bc-cost">${i.cost}</div>
+          <div class="bc-key">단축키 ${i.key}</div>
+        </div>`).join('')}
+      </div>`;
+    body.querySelectorAll('[data-build]').forEach(c => c.onclick = () => {
+      const type = c.dataset.build;
+      const fl = type === 'siege_camp' ? 0 : myBuildFloor;
+      sendPrimary({ type: 'build', buildType: type, floor: fl });
+    });
+  }
+
+  // === 거래소 패널 (기존 modal 코드 재활용) ===
+  function renderMarketPanel(body) {
+    body.innerHTML = `
+      <div class="market-form">
+        <label>아이템:
+          <select id="m2Item"><option value="wood">🪵 나무</option><option value="stone">🪨 돌</option></select>
+        </label>
+        <label>수량: <input id="m2Amount" type="number" value="1" min="1" max="99" /></label>
+        <label>개당 가격: <input id="m2Price" type="number" value="1" min="1" max="99" /></label>
+        <button id="m2Buy" class="buy">구매</button>
+        <button id="m2Sell" class="sell">판매</button>
+      </div>
+      <div class="market-hint">반대 통화로 거래 (나무 거래는 돌로, 돌 거래는 나무로). 게스트 불가.</div>
+      <div id="m2Orders" style="margin-top:12px"></div>`;
+    document.getElementById('m2Buy').onclick = () => {
+      const item = document.getElementById('m2Item').value;
+      const amount = parseInt(document.getElementById('m2Amount').value, 10);
+      const price = parseInt(document.getElementById('m2Price').value, 10);
+      sendPrimary({ type: 'market_order', side: 'buy', item, amount, price });
+    };
+    document.getElementById('m2Sell').onclick = () => {
+      const item = document.getElementById('m2Item').value;
+      const amount = parseInt(document.getElementById('m2Amount').value, 10);
+      const price = parseInt(document.getElementById('m2Price').value, 10);
+      sendPrimary({ type: 'market_order', side: 'sell', item, amount, price });
+    };
+    // 활성 주문
+    fetch('/market/orders').then(r => r.json()).then(d => {
+      const orders = d.orders || [];
+      document.getElementById('m2Orders').innerHTML = '<div class="inv-col-head">활성 주문</div>' +
+        (orders.length ? orders.map(o => `<div class="sp-list-row">${o.side==='buy'?'🟢 구매':'🔴 판매'} ${o.item} ×${o.amount} @ ${o.price}</div>`).join('') : '<div style="color:#6c7686;padding:10px">(주문 없음)</div>');
+    }).catch(() => {});
+  }
 })();
