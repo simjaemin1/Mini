@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.42-a-home-zone+main-square ===
-console.log('%c[durango-mini] client build = 14.42-a-home-zone+main-square', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.43-zombie-recover + 14.44-wasd-screen ===
+console.log('%c[durango-mini] client build = 14.43-zombie-recover + 14.44-wasd-screen', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -512,12 +512,44 @@ console.log('%c[durango-mini] client build = 14.42-a-home-zone+main-square', 'co
     };
 
     // RTT 측정 — 1초마다 primary에 ping
+    // 14.43: pong watchdog — 5초 이상 pong 못 받으면 ws 좀비로 간주, 강제 close → 자동 재연결
     setInterval(() => {
       const c = conns.get(primaryZoneId);
-      if (c && c.ws.readyState === 1) {
-        c.ws.send(JSON.stringify({ type: 'ping', t: performance.now() }));
+      if (!c || c.ws.readyState !== 1) return;
+      const now = performance.now();
+      // 초기엔 lastPongAt 없으니까 첫 ping부터 기록 시작
+      if (!c.lastPongAt && c.firstPingAt && now - c.firstPingAt > 15000) {
+        console.warn('[recover] ping 후 15초간 pong 한 번도 못 받음 — ws 좀비, 강제 close');
+        try { c.ws.close(); } catch (e) {}
+        return;
       }
+      if (c.lastPongAt && now - c.lastPongAt > 7000) {
+        console.warn(`[recover] pong 마지막 ${((now - c.lastPongAt)/1000).toFixed(1)}초 전 — ws 좀비, 강제 close`);
+        try { c.ws.close(); } catch (e) {}
+        return;
+      }
+      if (!c.firstPingAt) c.firstPingAt = now;
+      c.ws.send(JSON.stringify({ type: 'ping', t: now }));
     }, 1000);
+
+    // 14.43: 탭이 다시 보이면 — 백그라운드 동안 RAF 멈춰서 watchdog/checkOrphan 안 돌았을 수 있음.
+    // 마지막 tick 5초 넘으면 primary 좀비로 간주, 강제 끊고 즉시 재연결 트리거.
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'visible') return;
+      const now = performance.now();
+      const stale = !lastTickAt || (now - lastTickAt > 5000);
+      console.log(`[recover] visibilitychange visible — lastTick ${lastTickAt ? Math.round(now - lastTickAt) + 'ms 전' : '없음'} stale=${stale}`);
+      if (stale && primaryZoneId) {
+        const c = conns.get(primaryZoneId);
+        if (c) { try { c.ws.close(); } catch (e) {} }
+        // observer ws들도 같이 정리 (얘들도 보통 같이 죽어있음)
+        for (const [zid, conn] of conns) {
+          if (zid !== primaryZoneId) { try { conn.ws.close(); } catch (e) {} }
+        }
+        // 재트리거 방지 — 다음 welcome이 lastTickAt 갱신할 때까지 stale 판정 안 나게
+        lastTickAt = now;
+      }
+    });
 
     // observer viewport 업데이트 — 1초마다 자기 abs position을 각 observer zone-local로 변환
     setInterval(() => {
@@ -1012,7 +1044,9 @@ console.log('%c[durango-mini] client build = 14.42-a-home-zone+main-square', 'co
       err.classList.remove('hidden');
       return;
     } else if (msg.type === 'pong') {
-      if (c.role === 'primary') lastRttMs = performance.now() - msg.t;
+      // 14.43: watchdog용 — 최근 pong 시각 기록
+      c.lastPongAt = performance.now();
+      if (c.role === 'primary') lastRttMs = c.lastPongAt - msg.t;
     } else if (msg.type === 'chat') {
       // 같은 zone(또는 observer zone)에서 온 채팅. 길드 채팅이면 prefix 표시.
       const prefix = msg.tribe ? `[길드:${msg.tribe}] ` : '';
@@ -1064,17 +1098,27 @@ console.log('%c[durango-mini] client build = 14.42-a-home-zone+main-square', 'co
     }
   }
 
-  // === WASD = 월드 방향 (D=동쪽 = 일본 방향) ===
-  // 시각적으로 D를 누르면 화면상 "오른쪽-아래"로 가지만, 그게 월드의 동쪽임.
-  // PZ도 이 방식 — iso 시점에선 동/서/남/북이 사선으로 보임.
+  // === Phase 14.44: WASD = 화면 기준 (PZ식) ===
+  // W = 화면상 "위" (월드로는 NW), D = 화면상 "오른쪽" (월드로는 NE) 등.
+  // iso 투영 w2i(wx,wy) = (wx-wy, (wx+wy)/2) 의 역변환으로 화면 방향을 월드 방향으로 매핑.
+  //   sx = wx - wy
+  //   sy = (wx + wy) / 2
+  //   → wx = sy + sx/2,  wy = sy - sx/2
+  // 결과: W alone → NW, D alone → NE, W+D → 월드 N (화면상 ↑→ 사선) 등 자연스러움.
   function worldKeysDir() {
-    let wx = 0, wy = 0;
-    if (keys.has('w') || keys.has('arrowup'))    wy -= 1; // 북
-    if (keys.has('s') || keys.has('arrowdown'))  wy += 1; // 남
-    if (keys.has('a') || keys.has('arrowleft'))  wx -= 1; // 서
-    if (keys.has('d') || keys.has('arrowright')) wx += 1; // 동
-    const len = Math.hypot(wx, wy);
-    if (len > 0) { wx /= len; wy /= len; }
+    let sx = 0, sy = 0; // screen-space 방향 (sy: +1 = 화면 아래)
+    if (keys.has('w') || keys.has('arrowup'))    sy -= 1;
+    if (keys.has('s') || keys.has('arrowdown'))  sy += 1;
+    if (keys.has('a') || keys.has('arrowleft'))  sx -= 1;
+    if (keys.has('d') || keys.has('arrowright')) sx += 1;
+    const slen = Math.hypot(sx, sy);
+    if (slen === 0) return { wx: 0, wy: 0 };
+    sx /= slen; sy /= slen;
+    // 화면 → 월드 역변환
+    let wx = sy + sx * 0.5;
+    let wy = sy - sx * 0.5;
+    const wlen = Math.hypot(wx, wy);
+    if (wlen > 0) { wx /= wlen; wy /= wlen; }
     return { wx, wy };
   }
 

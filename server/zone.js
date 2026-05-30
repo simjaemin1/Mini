@@ -906,6 +906,36 @@ setInterval(() => {
   if (saved > 0) console.log(`[${ZONE_ID}] mob 상태 저장 ${saved}건`);
 }, 10000);
 
+// === Phase 14.43: 좀비 ws 청소 ===
+// 클라가 백그라운드 freeze + NAT timeout으로 TCP 죽었는데 close 이벤트는 안 떠서
+// 서버가 계속 살아있는 줄 알고 tick 보내는 케이스 정리.
+// player: 30초간 input/ping 없으면 ws.terminate() (NPC 제외)
+// observer: 30초간 viewport_update/ping 없으면 ws.terminate()
+const STALE_WS_MS = 30000;
+setInterval(() => {
+  const now = Date.now();
+  let kicked = 0;
+  for (const [pid, p] of players) {
+    if (p.isNpc) continue;
+    if (p.handingOff) continue;
+    if (now - (p.lastSeen || 0) > STALE_WS_MS) {
+      console.warn(`[${ZONE_ID}] 💀 좀비 player ${p.name} (${pid}) 강제 종료 (lastSeen ${Math.round((now-p.lastSeen)/1000)}초 전)`);
+      try { p.ws.terminate ? p.ws.terminate() : p.ws.close(); } catch (e) {}
+      players.delete(pid);
+      broadcast({ type: 'player_left', pid });
+      kicked++;
+    }
+  }
+  for (const [ws, data] of observers) {
+    if (now - (data.lastSeen || 0) > STALE_WS_MS) {
+      try { ws.terminate ? ws.terminate() : ws.close(); } catch (e) {}
+      observers.delete(ws);
+      kicked++;
+    }
+  }
+  if (kicked > 0) console.log(`[${ZONE_ID}] 좀비 ws ${kicked}개 정리`);
+}, 5000);
+
 // === DB에서 건축물 로드 ===
 {
   const rows = db.getBuildings();
@@ -1189,7 +1219,10 @@ wss.on('connection', async (ws, req) => {
     });
     function handleObsIncoming(raw) {
       let msg; try { msg = JSON.parse(raw.toString()); } catch (e) { return; }
-      if (msg.type === 'ping') send(ws, { type: 'pong', t: msg.t });
+      if (msg.type === 'ping') {
+        const d = observers.get(ws); if (d) d.lastSeen = Date.now();
+        send(ws, { type: 'pong', t: msg.t });
+      }
       else if (msg.type === 'viewport_update') {
         const data = observers.get(ws);
         if (!data) return;
@@ -1557,7 +1590,7 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'repair_building') tryRepairBuilding(player);
   else if (msg.type === 'unclaim') tryUnclaim(player, msg.claimId);
   else if (msg.type === 'trade_offer') tryTrade(player, msg);
-  else if (msg.type === 'ping') send(ws, { type: 'pong', t: msg.t });
+  else if (msg.type === 'ping') { player.lastSeen = Date.now(); send(ws, { type: 'pong', t: msg.t }); }
   else if (msg.type === 'chat') {
     const text = (msg.text || '').slice(0, 200);
     if (!text.trim()) return;
