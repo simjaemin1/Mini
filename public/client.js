@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.47-handoff-ghost-fix ===
-console.log('%c[durango-mini] client build = 14.47-handoff-ghost-fix', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.47-handoff-ghost-fix + 14.48 minimap-2d ===
+console.log('%c[durango-mini] client build = 14.47-handoff-ghost-fix + 14.48 minimap-2d', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -2324,52 +2324,49 @@ console.log('%c[durango-mini] client build = 14.47-handoff-ghost-fix', 'color:#5
 
   function updateMinimap() {
     const row = document.getElementById('miniRow');
+    if (!row) return;
     if (!row.dataset.built) {
       row.innerHTML = '';
-      // 2x2 그리드 — worldOffsetY 작은 순(=북 먼저), Y가 같으면 X 작은 순(=서 먼저)
-      const ordered = Object.values(zonesMeta).sort((a, b) => {
-        const ay = a.worldOffsetY || 0, by = b.worldOffsetY || 0;
-        if (ay !== by) return ay - by;
-        return a.worldOffsetX - b.worldOffsetX;
-      });
-      row.style.display = 'grid';
-      row.style.gridTemplateColumns = 'repeat(2, 1fr)';
-      row.style.gap = '3px';
-      for (const z of ordered) {
+      // 14.46-a: 24 zone × 가변 크기 → worldOffsetX/Y 기준으로 절대 위치 배치 (실제 지리 반영)
+      const W = row.clientWidth || 320, H = row.clientHeight || 200;
+      const sx = W / worldWidth, sy = H / worldHeight;
+      for (const z of Object.values(zonesMeta)) {
         const cell = document.createElement('div');
         cell.className = 'mini-cell';
         cell.style.background = z.groundColor;
+        cell.style.left = (z.worldOffsetX * sx) + 'px';
+        cell.style.top  = ((z.worldOffsetY||0) * sy) + 'px';
+        cell.style.width  = (z.zoneWidth * sx) + 'px';
+        cell.style.height = (z.zoneHeight * sy) + 'px';
         cell.dataset.zone = z.id;
         const label = document.createElement('span');
-        label.innerHTML = `${z.displayName.split(' ')[0]}<br/><small>${(z.simulatedLatencyMs || 0) * 2}ms</small>`;
+        // 짧은 이름 (괄호 부분 제거)
+        const short = (z.displayName || z.id).split(' ')[0].replace(/\(.*?\)/g, '').trim();
+        label.textContent = short;
         cell.appendChild(label);
-        const dot = document.createElement('div');
-        dot.className = 'mini-dot';
-        cell.appendChild(dot);
         row.appendChild(cell);
       }
+      // dot — 따로 1개만 (활성 zone 위에 띄움). 절대 좌표 기준이라 어느 zone이든 같은 dot 위치 사용.
+      const dot = document.createElement('div');
+      dot.className = 'mini-dot';
+      dot.id = 'miniDot';
+      row.appendChild(dot);
       row.dataset.built = '1';
     }
+    // 매 프레임: active zone 표시 + dot 위치 갱신
+    const W = row.clientWidth || 320, H = row.clientHeight || 200;
+    const sx = W / worldWidth, sy = H / worldHeight;
     for (const cell of row.children) {
+      if (!cell.dataset.zone) continue;
       const id = cell.dataset.zone;
-      cell.classList.toggle('active', id === primaryZoneId);
       const c = conns.get(id);
-      cell.style.opacity = id === primaryZoneId ? 1 : (c && c.role === 'observer') ? 0.85 : 0.45;
-      const dot = cell.querySelector('.mini-dot');
-      if (dot) {
-        if (id === primaryZoneId) {
-          dot.style.display = 'block';
-          const zm = zonesMeta[id];
-          const localX = myAbsPredicted.x - zm.worldOffsetX;
-          const localY = myAbsPredicted.y - (zm.worldOffsetY || 0);
-          const zmm = zonesMeta[primaryZoneId];
-          const zWmm = zmm?.zoneWidth || 1024, zHmm = zmm?.zoneHeight || 1024;
-          dot.style.left = `${(localX / zWmm) * 100}%`;
-          dot.style.top = `${(localY / zHmm) * 100}%`;
-        } else {
-          dot.style.display = 'none';
-        }
-      }
+      cell.classList.toggle('active', id === primaryZoneId);
+      cell.style.opacity = id === primaryZoneId ? 1 : (c && c.role === 'observer') ? 0.85 : 0.5;
+    }
+    const dot = document.getElementById('miniDot');
+    if (dot) {
+      dot.style.left = (myAbsPredicted.x * sx) + 'px';
+      dot.style.top  = (myAbsPredicted.y * sy) + 'px';
     }
   }
 
