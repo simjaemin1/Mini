@@ -496,3 +496,31 @@ html, body { margin: 0; padding: 0; height: 100%; font-family: -apple-system, "S
   background: #0e1217; border-radius: 6px; flex: 1;
   display: flex; align-items: center; justify-content: center;
 }
+
+/* === Phase 14.21: 3-column 좀보이드 인벤 + 우측 컨테이너 탭 === */
+.inv-three-col { display: flex; gap: 8px; height: 100%; }
+.inv-three-col .inv-col:first-child { flex: 1; min-width: 0; }
+.inv-three-col .inv-col:nth-child(2) { flex: 1; min-width: 0; }
+.cont-tabs {
+  width: 56px; flex-shrink: 0;
+  background: #0e1217; border-radius: 4px;
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 4px; overflow-y: auto;
+}
+.cont-tab {
+  background: #2a3038; border: 1px solid #3a424d;
+  border-radius: 4px; padding: 6px 4px;
+  display: flex; flex-direction: column; align-items: center;
+  cursor: pointer; transition: all 0.1s;
+  position: relative;
+}
+.cont-tab:hover { background: #3a424d; border-color: #5a9ae0; }
+.cont-tab.active {
+  background: linear-gradient(180deg, #4a8a6a, #3a6a4a);
+  border-color: #6abc8a;
+  box-shadow: 0 0 4px rgba(106,188,138,0.4);
+}
+.cont-tab .ct-icon { font-size: 18px; line-height: 1; }
+.cont-tab .ct-count {
+  font-size: 10px; color: #cdd6e3; margin-top: 2px; font-weight: 600;
+}

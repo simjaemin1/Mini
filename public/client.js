@@ -415,9 +415,8 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
     refreshHealth();
     setInterval(refreshHealth, 3000);
 
-    // 캔버스 클릭 → 가까운 상자 열기
+    // Phase 14.21: 캔버스 클릭 → 가까운 상자 있으면 인벤 패널 open + 그 상자 active
     canvas.addEventListener('click', () => {
-      // 내 주변(64px) chest 검색
       let best = null, bestD = 80;
       for (const c of conns.values()) {
         if (!c.meta) continue;
@@ -428,7 +427,7 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
           if (d < bestD) { best = b; bestD = d; }
         }
       }
-      if (best) openChest(best.id);
+      if (best && typeof openInvWithContainer === 'function') openInvWithContainer(best.id);
     });
 
     // 거래소·상자 패널 이벤트
@@ -1882,17 +1881,17 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
     } catch (e) { showNotice('거래소 오류'); }
   }
 
-  // === 상자 UI ===
+  // === 상자 UI === (Phase 14.21 — 옛 modal 폐기, 새 인벤 패널로 redirect)
   let openChestId = null;
   function openChest(buildingId) {
+    if (typeof openInvWithContainer === 'function') return openInvWithContainer(buildingId);
     openChestId = buildingId;
-    document.getElementById('chestPanel').classList.remove('hidden');
-    // 서버에 현재 상태 요청은 chest_state로 받음. 일단 빈 상태로 표시.
+    document.getElementById('chestPanel')?.classList.remove('hidden');
     renderChestUi(buildingId, null);
   }
   function closeChest() {
     openChestId = null;
-    document.getElementById('chestPanel').classList.add('hidden');
+    document.getElementById('chestPanel')?.classList.add('hidden');
   }
 
   // === Craft 패널 ===
@@ -2206,20 +2205,12 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
     t.addEventListener('click', () => toggleSide(t.dataset.side));
   });
 
-  // Phase 14.20: 인벤 hover-open / outside-click close (좀보이드식)
+  // Phase 14.21: 인벤 hover-open (mouseleave 자동닫힘 폐기 — outside click만 닫음)
   const invToggleEl = document.getElementById('invToggle');
   const invDropEl = document.getElementById('invDropdown');
-  let invCloseTimer = null;
-  function cancelInvClose() { if (invCloseTimer) { clearTimeout(invCloseTimer); invCloseTimer = null; } }
-  function scheduleInvClose() {
-    cancelInvClose();
-    invCloseTimer = setTimeout(() => { closeInv(); invCloseTimer = null; }, 250);
-  }
-  invToggleEl.addEventListener('mouseenter', () => { cancelInvClose(); openInv(); });
-  invToggleEl.addEventListener('mouseleave', () => scheduleInvClose());
-  invDropEl.addEventListener('mouseenter', () => cancelInvClose());
-  invDropEl.addEventListener('mouseleave', () => scheduleInvClose());
-  invToggleEl.addEventListener('click', () => { cancelInvClose(); toggleInv(); });
+  invToggleEl.addEventListener('mouseenter', openInv);
+  invToggleEl.addEventListener('click', toggleInv);
+  // 빈 화면 클릭에서만 닫음 (아래 mousedown handler)
 
   // 빈 화면 클릭 → 인벤·사이드 패널 둘 다 닫음
   document.addEventListener('mousedown', (e) => {
@@ -2273,7 +2264,7 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
     }
   }, 1000);
 
-  // === Phase 14.19: 좀보이드식 인벤 테이블 (양분 — 내 인벤 | Prox/근처 컨테이너) ===
+  // === Phase 14.21: 좀보이드 정통 인벤 — 좌(내인벤) | 가운데(활성 컨테이너) | 우(컨테이너 탭) ===
   const ITEM_CAT = {
     wood: '자재', stone: '자재', ore: '자재',
     berry: '음식', meat_raw: '음식', meat_cooked: '음식', berry_jam: '음식', herb: '약초',
@@ -2282,22 +2273,37 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
     axe: '도구', pickaxe: '도구', sword: '도구',
   };
 
-  function renderInvPanel(body) {
-    // 근처 chest 자동 감지 — 80px 안
-    let nearestChest = null;
-    if (primaryZoneId) {
-      const pc = conns.get(primaryZoneId);
-      if (pc && pc.meta) {
-        const ox = pc.meta.worldOffsetX || 0, oy = pc.meta.worldOffsetY || 0;
-        let bestDist = 80;
-        for (const b of pc.buildings.values()) {
-          if (b.type !== 'chest') continue;
-          const absX = ox + b.x, absY = oy + b.y;
-          const d = Math.hypot(absX - myAbsPredicted.x, absY - myAbsPredicted.y);
-          if (d < bestDist) { bestDist = d; nearestChest = b; }
-        }
-      }
+  // 근처 모든 chest (120px 반경)
+  function nearbyContainers() {
+    const list = [];
+    if (!primaryZoneId) return list;
+    const pc = conns.get(primaryZoneId);
+    if (!pc || !pc.meta) return list;
+    const ox = pc.meta.worldOffsetX || 0, oy = pc.meta.worldOffsetY || 0;
+    for (const b of pc.buildings.values()) {
+      if (b.type !== 'chest') continue;
+      const absX = ox + b.x, absY = oy + b.y;
+      const d = Math.hypot(absX - myAbsPredicted.x, absY - myAbsPredicted.y);
+      if (d <= 120) list.push({ b, d, absX, absY });
     }
+    list.sort((a, b) => a.d - b.d);
+    return list;
+  }
+
+  // 활성 컨테이너 (사용자 선택 또는 가까운 거 자동)
+  let activeContainerId = null;
+  // 외부에서 호출: chest 클릭하면 인벤 열고 그 chest 선택
+  window.openInvWithContainer = function openInvWithContainer(chestId) {
+    activeContainerId = chestId;
+    openInv();
+  };
+
+  function renderInvPanel(body) {
+    const conts = nearbyContainers();
+    // 활성 컨테이너 검증 — 사라졌으면 가장 가까운 거로
+    if (activeContainerId && !conts.find(c => c.b.id === activeContainerId)) activeContainerId = null;
+    if (!activeContainerId && conts.length > 0) activeContainerId = conts[0].b.id;
+    const activeC = activeContainerId ? conts.find(c => c.b.id === activeContainerId)?.b : null;
 
     const rowsHtml = (inv, kind, chestId) => {
       const entries = Object.entries(inv).filter(([k, v]) => v > 0).sort((a, b) => {
@@ -2319,32 +2325,48 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
     };
 
     const myCount = Object.values(inventory).filter(v => v > 0).length;
-    const chestCount = nearestChest ? Object.values(nearestChest.data || {}).filter(v => v > 0).length : 0;
-
     const myTable = `<div class="inv-col">
       <div class="inv-col-head">🎒 내 인벤토리<span class="col-count">(${myCount}종)</span></div>
       <div style="flex:1;overflow:auto;background:#0e1217;border-radius:4px">
         <table class="inv-table">
           <thead><tr><th></th><th>아이템</th><th>분류</th><th></th></tr></thead>
-          <tbody>${rowsHtml(inventory, 'mine', nearestChest ? nearestChest.id : null)}</tbody>
+          <tbody>${rowsHtml(inventory, 'mine', activeC ? activeC.id : null)}</tbody>
         </table>
       </div></div>`;
 
-    const chestTable = nearestChest
-      ? `<div class="inv-col">
-          <div class="inv-col-head">📦 ${nearestChest.ownerName || '?'}의 상자<span class="col-count">(${chestCount}종)</span></div>
-          <div style="flex:1;overflow:auto;background:#0e1217;border-radius:4px">
-            <table class="inv-table">
-              <thead><tr><th></th><th>아이템</th><th>분류</th><th></th></tr></thead>
-              <tbody>${rowsHtml(nearestChest.data || {}, 'chest', nearestChest.id)}</tbody>
-            </table>
-          </div></div>`
-      : `<div class="inv-col">
-          <div class="inv-col-head">📦 근처 컨테이너</div>
-          <div class="id-empty">상자에 가까이 가면 (80px) 자동 표시됩니다</div>
-        </div>`;
+    // 가운데: 활성 컨테이너 내용
+    let chestTable;
+    if (activeC) {
+      const chestCount = Object.values(activeC.data || {}).filter(v => v > 0).length;
+      chestTable = `<div class="inv-col">
+        <div class="inv-col-head">📦 ${activeC.ownerName || '?'}<span class="col-count">(${chestCount}종)</span></div>
+        <div style="flex:1;overflow:auto;background:#0e1217;border-radius:4px">
+          <table class="inv-table">
+            <thead><tr><th></th><th>아이템</th><th>분류</th><th></th></tr></thead>
+            <tbody>${rowsHtml(activeC.data || {}, 'chest', activeC.id)}</tbody>
+          </table>
+        </div></div>`;
+    } else {
+      chestTable = `<div class="inv-col">
+        <div class="inv-col-head">📦 근처 컨테이너</div>
+        <div class="id-empty">상자(📦) 가까이 (120px) 가면 자동 표시됩니다</div>
+      </div>`;
+    }
 
-    body.innerHTML = `<div class="inv-two-col" style="height:100%">${myTable}${chestTable}</div>`;
+    // 우측: 컨테이너 탭 (각 chest 버튼)
+    const tabs = conts.length === 0
+      ? `<div style="color:#6c7686;font-size:10px;text-align:center;padding:10px">근처에<br/>상자<br/>없음</div>`
+      : conts.map(({ b, d }) => {
+          const total = Object.values(b.data || {}).reduce((s, v) => s + v, 0);
+          const isActive = b.id === activeContainerId ? 'active' : '';
+          return `<div class="cont-tab ${isActive}" data-cid="${b.id}" title="${b.ownerName || '?'} · ${d.toFixed(0)}px">
+            <div class="ct-icon">📦</div>
+            <div class="ct-count">${total}</div>
+          </div>`;
+        }).join('');
+    const tabsCol = `<div class="cont-tabs">${tabs}</div>`;
+
+    body.innerHTML = `<div class="inv-three-col" style="height:100%">${myTable}${chestTable}${tabsCol}</div>`;
 
     body.querySelectorAll('[data-move]').forEach(btn => btn.onclick = () => {
       const kind = btn.dataset.move;
@@ -2357,6 +2379,10 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
       }
       if (kind === 'mine') sendPrimary({ type: 'chest_put', buildingId: cid, item, amount: 1 });
       else sendPrimary({ type: 'chest_take', buildingId: cid, item, amount: 1 });
+    });
+    body.querySelectorAll('[data-cid]').forEach(t => {
+      if (!t.classList.contains('cont-tab')) return;
+      t.onclick = () => { activeContainerId = t.dataset.cid; renderInvPanel(body); };
     });
   }
 
