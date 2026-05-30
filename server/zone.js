@@ -3178,12 +3178,13 @@ setInterval(() => {
     const newSeen = new Set();
     const result = [];
     for (const o of nearby) {
+      if (o.handingOff) continue; // 14.47: 핸드오프 중인 player는 다른 viewer에게도 안 보냄
       newSeen.add(o.pid);
       result.push(makeEntry(o, !prevSeen.has(o.pid), 'player'));
     }
     if (selfPid && !newSeen.has(selfPid)) {
       const self = players.get(selfPid);
-      if (self) { newSeen.add(selfPid); result.push(makeEntry(self, !prevSeen.has(selfPid), 'player')); }
+      if (self && !self.handingOff) { newSeen.add(selfPid); result.push(makeEntry(self, !prevSeen.has(selfPid), 'player')); }
     }
     viewerState.seenPlayers = newSeen;
     return result;
@@ -3202,6 +3203,10 @@ setInterval(() => {
   }
   for (const p of allPlayers) {
     if (!p.viewerState) p.viewerState = { seenPlayers: new Set(), seenMobs: new Set() };
+    // 14.47: 핸드오프 중인 player에겐 tick 보내지 않음.
+    //  이유: 클라가 이미 새 zone으로 넘어가서 myPid가 새 pid로 바뀌었는데,
+    //  옛 zone이 tick에 옛 pid를 포함하면 클라가 "다른 플레이어"로 인식 → name 없어서 '?' 표시됨.
+    if (p.handingOff) continue;
     send(p.ws, {
       type: 'tick', t: now,
       players: visiblePlayers(p.x, p.y, p.pid, p.viewerState),
