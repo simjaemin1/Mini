@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.49-fix2 (계단 자동 floor 변경 OFF) ===
-console.log('%c[durango-mini] client build = 14.49-fix2 (계단 자동 변경 OFF)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.49-fix3 (계단 PZ식 사선 ramp) ===
+console.log('%c[durango-mini] client build = 14.49-fix3 (계단 사선)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -1912,21 +1912,77 @@ console.log('%c[durango-mini] client build = 14.49-fix2 (계단 자동 변경 OF
       ctx.beginPath(); ctx.moveTo(x - 9, y - 2); ctx.lineTo(x + 9, y - 2); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(x - 9, y - 7); ctx.lineTo(x + 9, y - 7); ctx.stroke();
     } else if (type === 'stair') {
-      // 계단 — 사선 단들
+      // === PZ식 isometric 사선 ramp ===
+      // S(앞)에서 N(뒤)로 z 0→32 올라가는 wedge. 측면 삼각형 2개 + 뒷면 사다리꼴 2개 + 사선 top + step 선.
+      const H = 32;
+      // 바닥 4 corner (z=0)
+      const sb = { x: x,      y: y + 8 };  // S 바닥
+      const wb = { x: x - 16, y: y };      // W 바닥
+      const nb = { x: x,      y: y - 8 };  // N 바닥
+      const eb = { x: x + 16, y: y };      // E 바닥
+      // top 4 corner: S=z0, W=zH/2(16), N=zH(32), E=zH/2
+      const sT = { x: x,      y: y + 8 };       // = sb (S top z=0)
+      const wT = { x: x - 16, y: y - 16 };      // W top
+      const nT = { x: x,      y: y - 40 };      // N top
+      const eT = { x: x + 16, y: y - 16 };      // E top
+      // 그림자
       ctx.fillStyle = 'rgba(0,0,0,0.4)';
-      ctx.beginPath(); ctx.ellipse(x, y + 6, 14, 5, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = '#6a4828'; ctx.lineWidth = 1.5;
-      ctx.fillStyle = '#8a6a3a';
-      // 3개 단
-      for (let i = 0; i < 3; i++) {
-        const yy = y + 4 - i * 6;
-        ctx.fillRect(x - 10 + i * 3, yy - 4, 18 - i * 5, 4);
-        ctx.strokeRect(x - 10 + i * 3, yy - 4, 18 - i * 5, 4);
+      ctx.beginPath(); ctx.ellipse(x, y + 6, 16, 5, 0, 0, Math.PI * 2); ctx.fill();
+      // 측면 W 삼각형 (그림자 톤)
+      ctx.strokeStyle = '#3a2010'; ctx.lineWidth = 1;
+      ctx.fillStyle = '#6a4a2a';
+      ctx.beginPath();
+      ctx.moveTo(sb.x, sb.y); ctx.lineTo(wb.x, wb.y); ctx.lineTo(wT.x, wT.y);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      // 측면 E 삼각형 (햇빛 톤)
+      ctx.fillStyle = '#9a7a4a';
+      ctx.beginPath();
+      ctx.moveTo(sb.x, sb.y); ctx.lineTo(eb.x, eb.y); ctx.lineTo(eT.x, eT.y);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      // 뒷면 NW + NE (가장 어둠)
+      ctx.fillStyle = '#5a3a1c';
+      ctx.beginPath();
+      ctx.moveTo(wb.x, wb.y); ctx.lineTo(nb.x, nb.y); ctx.lineTo(nT.x, nT.y); ctx.lineTo(wT.x, wT.y);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(nb.x, nb.y); ctx.lineTo(eb.x, eb.y); ctx.lineTo(eT.x, eT.y); ctx.lineTo(nT.x, nT.y);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      // 사선 top — 걸어가는 면
+      ctx.fillStyle = '#b08858';
+      ctx.beginPath();
+      ctx.moveTo(sT.x, sT.y); ctx.lineTo(wT.x, wT.y); ctx.lineTo(nT.x, nT.y); ctx.lineTo(eT.x, eT.y);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      // step 선 5개 — S→N 방향으로 등간격, 좌우 ramp 가장자리에 닿음
+      ctx.strokeStyle = '#5a3818'; ctx.lineWidth = 1.2;
+      for (let i = 1; i <= 5; i++) {
+        const f = i / 6;
+        let l, r;
+        if (f < 0.5) {
+          const t = f * 2;
+          l = { x: sT.x + (wT.x - sT.x) * t, y: sT.y + (wT.y - sT.y) * t };
+          r = { x: sT.x + (eT.x - sT.x) * t, y: sT.y + (eT.y - sT.y) * t };
+        } else {
+          const t = (f - 0.5) * 2;
+          l = { x: wT.x + (nT.x - wT.x) * t, y: wT.y + (nT.y - wT.y) * t };
+          r = { x: eT.x + (nT.x - eT.x) * t, y: eT.y + (nT.y - eT.y) * t };
+        }
+        ctx.beginPath();
+        ctx.moveTo(l.x, l.y); ctx.lineTo(r.x, r.y);
+        ctx.stroke();
       }
-      ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
+      // 위 방향 화살표 (계단 정상)
       ctx.fillStyle = '#cdd6e3';
       ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.lineWidth = 2;
-      ctx.strokeText('계단 ,/.', x, y - 18); ctx.fillText('계단 ,/.', x, y - 18);
+      const aX = nT.x, aY = nT.y - 4;
+      ctx.beginPath();
+      ctx.moveTo(aX, aY - 5); ctx.lineTo(aX - 5, aY + 2); ctx.lineTo(aX + 5, aY + 2);
+      ctx.closePath(); ctx.stroke(); ctx.fill();
+      // 라벨 (',/. 층 이동')
+      ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillStyle = '#e8d8a8';
+      ctx.strokeStyle = 'rgba(0,0,0,0.85)'; ctx.lineWidth = 2;
+      ctx.strokeText(',/.', x, y + 22);
+      ctx.fillText(',/.', x, y + 22);
       ctx.textAlign = 'start';
     } else if (type === 'campfire') {
       // 모닥불 — 통나무 + 흔들리는 불꽃
