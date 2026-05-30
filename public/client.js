@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.49-e2 (층 2배 + 24단 + 낙하) ===
-console.log('%c[durango-mini] client build = 14.49-e2 (층2배+24단+낙하)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.49-e2-hotfix (BUILDING_SIZE ReferenceError 수정) ===
+console.log('%c[durango-mini] client build = 14.49-e2-hotfix (계단 그림 fix)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -1964,14 +1964,14 @@ console.log('%c[durango-mini] client build = 14.49-e2 (층2배+24단+낙하)', '
       // (각 sub-step 너비 = 32/8 = 4 px along dir)
       const SUB_PER_CELL = 8;
       const SUB_TOTAL = 24;
-      const SUB_WIDTH = BUILDING_SIZE / SUB_PER_CELL; // = 4 px
+      const SUB_WIDTH = CL_BUILDING_SIZE / SUB_PER_CELL; // = 4 px
       for (let S = 0; S < SUB_TOTAL; S++) {
         const cellN = Math.floor(S / SUB_PER_CELL);
         const subInCell = S % SUB_PER_CELL;
-        const w = cellN * BUILDING_SIZE + (subInCell - 3.5) * SUB_WIDTH;
+        const w = cellN * CL_BUILDING_SIZE + (subInCell - 3.5) * SUB_WIDTH;
         const z = (S / (SUB_TOTAL - 1)) * H; // 0 ~ H
         const halfDV = SUB_WIDTH / 2;
-        const halfPV = BUILDING_SIZE / 2;
+        const halfPV = CL_BUILDING_SIZE / 2;
         function corner(dvSign, pvSign) {
           const wx = dv.x * (w + halfDV * dvSign) + pv.x * halfPV * pvSign;
           const wy = dv.y * (w + halfDV * dvSign) + pv.y * halfPV * pvSign;
@@ -2007,7 +2007,7 @@ console.log('%c[durango-mini] client build = 14.49-e2 (층2배+24단+낙하)', '
       // ↑ 화살표 (가장 높은 sub-step 위)
       const topZ = H;
       const tcell = 2, tsub = 7;
-      const tw = tcell * BUILDING_SIZE + (tsub - 3.5) * SUB_WIDTH;
+      const tw = tcell * CL_BUILDING_SIZE + (tsub - 3.5) * SUB_WIDTH;
       const topS = worldOffToScreen(dv.x * tw, dv.y * tw, topZ);
       ctx.fillStyle = '#cdd6e3';
       ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.lineWidth = 2;

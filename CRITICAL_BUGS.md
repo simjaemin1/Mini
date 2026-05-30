@@ -13,6 +13,21 @@
 
 ---
 
+## 2026-05-31 · 계단 그림 BUILDING_SIZE ReferenceError — 모든 빌딩 렌더링 중단
+
+**증상**: `[Error] ReferenceError: Can't find variable: BUILDING_SIZE at drawBuildingIso`. 한 줄 에러로 전체 빌딩 그림이 안 그려져서 맵이 거의 비어 보임.
+
+**진짜 원인**: 서버 코드의 상수명(`BUILDING_SIZE`)을 그대로 클라 코드에 복붙. 클라에는 그 이름의 변수가 없음 (`CL_BUILDING_SIZE`만 정의됨).
+
+**수정**: `BUILDING_SIZE` → `CL_BUILDING_SIZE` 4곳 모두.
+
+**교훈**:
+- **서버에서 클라로 코드 이식할 때 변수명은 무조건 다시 확인.** 서버 상수가 클라에 똑같이 있다고 가정 X.
+- **`node --check`로는 ReferenceError 안 잡힘** (선언 안 된 변수도 valid syntax). 브라우저 콘솔에서만 잡힘.
+- 큰 함수에서 새 코드 추가 시, 그 함수에서 평소 쓰는 변수 prefix(여기선 `CL_`)를 미리 살펴봐야 함.
+
+---
+
 ## 2026-05-30 · 자동 계단이 floor 변경 → 0F 벽 무력화 (벽 통과 버그)
 
 **증상**: 캐나다에서 산책하다 갑자기 벽을 통과해 다님. "이건 무슨 일?"
