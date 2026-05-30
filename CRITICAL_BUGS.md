@@ -33,6 +33,23 @@
 
 ---
 
+## 2026-05-31 · stair cache TDZ — 모든 zone 컨테이너 부팅 실패 (TDZ 두 번째)
+
+**증상**: 14.49-e3-perf 배포 직후 모든 zone 컨테이너에 WS 연결 실패 ("Could not connect to the server"). 클라가 ws://...:3001 등 어떤 zone에도 못 붙음.
+
+**진짜 원인**: `stairCellCache`/`stairCellDirty` 선언이 line 3007 (`isBlockedByWall` 근처). 그런데 `addBlock`이 line 595 (spawnNpc 내부)에 정의, 모듈 init 단계의 NPC 마을 spawn(line 714 spawnNpc 호출)에서 `addBlock(.., 'stair', ..)` 호출 시 `stairCellDirty = true` 시도 → TDZ ReferenceError → 모듈 throw → 컨테이너 즉시 죽음.
+
+같은 함정 (2026-05-30 WATER_TILES BUILDING_SIZE TDZ)이 두 번째. 이번엔 함수 선언이 아니라 `let`/`const` 변수.
+
+**수정**: 선언을 FLOOR_HEIGHT 옆 line 247로 끌어올림. 함수 `rebuildStairCellCache` 등은 그대로 둠 (함수 선언은 hoist되어 정의 위치 무관).
+
+**교훈**:
+- **TDZ는 같은 함정에 두 번 빠진다.** const/let 사용 시 항상 "모듈 init 시 누가 누구를 부르나" 순서 추적.
+- **새 cache 변수 추가 시, 그 cache를 dirty 마크하는 코드가 어디서 호출되는지 trace.** 모듈 init 코드(spawn, generate 등)에서 부르면 위로.
+- **함수 호이스팅 vs let 호이스팅 차이를 명심.** `function foo()` 선언은 위에서 호출 가능. `const foo = () => {}`는 안 됨. `let bar`도 안 됨.
+
+---
+
 ## 2026-05-31 · 계단 그림 BUILDING_SIZE ReferenceError — 모든 빌딩 렌더링 중단
 
 **증상**: `[Error] ReferenceError: Can't find variable: BUILDING_SIZE at drawBuildingIso`. 한 줄 에러로 전체 빌딩 그림이 안 그려져서 맵이 거의 비어 보임.

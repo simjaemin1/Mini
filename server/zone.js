@@ -247,6 +247,10 @@ const CHEST_ALLOWED_ITEMS = new Set([
 const BUILDING_MAX_HP = { wall: 80, fence: 30, chest: 50, campfire: 20, farmland: 10, stair: 60, floor: 40 };
 const FLOOR_HEIGHT = 64; // 14.49-e2: 32 → 64
 
+// 14.49-e3-perf: stair cell 캐시 — O(1) lookup. (NPC 마을 spawn 시 addBlock에서 참조하므로 위로 끌어올림)
+const stairCellCache = new Map(); // "cx_cy" → { stairId, step }
+let stairCellDirty = true;
+
 // === 위반 점수 (vp) — PvP 공격·타인 사유지 침범 시 누적, 시간당 감소 ===
 const VP_TRESPASS_GATHER = 3;   // 남 영지 자원 채집 시도
 const VP_ATTACK_PLAYER   = 8;   // PvP 공격 한 번
@@ -3003,9 +3007,7 @@ function dirVecForCollider(dir) {
   if (dir === 'W') return { x: -1, y: 0 };
   return { x: 0, y: -1 };
 }
-// 14.49-e3-perf: stair cell 캐시 — O(1) lookup. 매 collider check마다 quadtree 쿼리하는 부담 제거.
-const stairCellCache = new Map(); // "cx_cy" → { stairId, step }
-let stairCellDirty = true;
+// stair cell cache는 line 247 부근으로 이동됨 (TDZ 회피 — NPC 마을 생성 시 addBlock 호출됨)
 function rebuildStairCellCache() {
   stairCellCache.clear();
   for (const b of buildings.values()) {
