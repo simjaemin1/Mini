@@ -2189,22 +2189,55 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
     return toggleSide(name);
   }
 
-  function toggleInv() {
-    invOpen = !invOpen;
-    document.getElementById('invDropdown').classList.toggle('open', invOpen);
-    if (invOpen) renderInvPanel(document.getElementById('invBody'));
+  function openInv() {
+    if (invOpen) return;
+    invOpen = true;
+    document.getElementById('invDropdown').classList.add('open');
+    renderInvPanel(document.getElementById('invBody'));
   }
+  function closeInv() {
+    if (!invOpen) return;
+    invOpen = false;
+    document.getElementById('invDropdown').classList.remove('open');
+  }
+  function toggleInv() { invOpen ? closeInv() : openInv(); }
 
   document.querySelectorAll('.sb-icon').forEach(t => {
     t.addEventListener('click', () => toggleSide(t.dataset.side));
   });
-  document.getElementById('invToggle').addEventListener('click', toggleInv);
+
+  // Phase 14.20: 인벤 hover-open / outside-click close (좀보이드식)
+  const invToggleEl = document.getElementById('invToggle');
+  const invDropEl = document.getElementById('invDropdown');
+  let invCloseTimer = null;
+  function cancelInvClose() { if (invCloseTimer) { clearTimeout(invCloseTimer); invCloseTimer = null; } }
+  function scheduleInvClose() {
+    cancelInvClose();
+    invCloseTimer = setTimeout(() => { closeInv(); invCloseTimer = null; }, 250);
+  }
+  invToggleEl.addEventListener('mouseenter', () => { cancelInvClose(); openInv(); });
+  invToggleEl.addEventListener('mouseleave', () => scheduleInvClose());
+  invDropEl.addEventListener('mouseenter', () => cancelInvClose());
+  invDropEl.addEventListener('mouseleave', () => scheduleInvClose());
+  invToggleEl.addEventListener('click', () => { cancelInvClose(); toggleInv(); });
+
+  // 빈 화면 클릭 → 인벤·사이드 패널 둘 다 닫음
+  document.addEventListener('mousedown', (e) => {
+    const inInv = invDropEl.contains(e.target) || invToggleEl.contains(e.target);
+    const inSide = document.getElementById('sidePanel').contains(e.target) || document.getElementById('sidebar').contains(e.target);
+    const inChat = document.getElementById('chatPanel')?.contains(e.target);
+    if (!inInv && !inSide && !inChat) {
+      if (invOpen) closeInv();
+      if (activeSide) closeSide();
+    }
+  });
+
   document.getElementById('spClose').addEventListener('click', closeSide);
 
   // Esc 처리
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-      if (invOpen) { toggleInv(); e.stopPropagation(); }
+      if (invOpen) { closeInv(); e.stopPropagation(); }
       else if (activeSide) { closeSide(); e.stopPropagation(); }
     }
   });
@@ -2226,10 +2259,18 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
     else if (name === 'market') renderMarketPanel(body);
   }
 
-  // 패널 열려있으면 주기적 갱신
+  // Phase 14.20: 깜빡 fix — 패널 갱신 빈도 3초로 (이전 1초). content hash 비교는 다음 sprint.
+  // 길드 패널: 사용자가 입력 안 했으면 안 갱신 (fetch 깜빡 방지). 옛 1초 setInterval 폐기.
+  let lastSideRenderAt = 0;
   setInterval(() => {
-    if (activeSide) renderSide(activeSide);
+    const now = Date.now();
+    // 인벤: 1초에 한 번 (item 변경 자주)
     if (invOpen) renderInvPanel(document.getElementById('invBody'));
+    // 사이드 패널: 5초에 한 번만 (사용자 input fetch에 의존하니까)
+    if (activeSide && now - lastSideRenderAt > 5000) {
+      renderSide(activeSide);
+      lastSideRenderAt = now;
+    }
   }, 1000);
 
   // === Phase 14.19: 좀보이드식 인벤 테이블 (양분 — 내 인벤 | Prox/근처 컨테이너) ===

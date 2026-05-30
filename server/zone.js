@@ -863,6 +863,32 @@ setInterval(() => {
 registerVillageGuilds().catch(e => console.warn(`[${ZONE_ID}] village guild register error:`, e.message));
 spawnVillagers();
 
+// === Phase 14.20: 한반도 스폰 (5120,5120) 옆에 디버그 public chest 3개 ===
+// owner='public' — 누구나 자유 입출. 사용자가 디버그·테스트용으로 쉽게 자원 가져갈 수 있게.
+if (ZONE_ID === 'korea') {
+  // 옛 public chest 정리
+  try {
+    const r = db.db.prepare("DELETE FROM buildings WHERE owner_id = 'public'").run();
+    if (r.changes > 0) console.log(`[${ZONE_ID}] DB wipe: 옛 public chest ${r.changes}개`);
+  } catch (e) {}
+  const debugChests = [
+    { x: 5152 + 16, y: 5120 + 16, data: { wood: 50, stone: 50, floor: 0 } },  // 스폰 동쪽 옆 cell
+    { x: 5184 + 16, y: 5120 + 16, data: { wood: 30, stone: 30, floor: 0 } },  // 더 동쪽
+    { x: 5152 + 16, y: 5152 + 16, data: { wood: 20, stone: 80, floor: 0 } },  // 동남쪽
+  ];
+  for (const cdef of debugChests) {
+    const dbId = db.insertBuilding({
+      type: 'chest', owner_id: 'public', owner_name: '공용 상자',
+      x: cdef.x, y: cdef.y, data: JSON.stringify(cdef.data),
+    });
+    const id = `b${nextBid++}`;
+    const b = { id, dbId, type: 'chest', ownerId: 'public', ownerName: '공용 상자', x: cdef.x, y: cdef.y, data: cdef.data, floor: 0 };
+    buildings.set(id, b);
+    chunkManager.insertBuilding(b);
+  }
+  console.log(`[${ZONE_ID}] 📦 디버그 public chest 3개 @ (5120,5120) 옆 — wood/stone 채워둠`);
+}
+
 // Phase 12.2.e: 자원 respawn 제거 — 청크 활성화 시 시드로 자동 생성됨
 
 // === HTTP + WebSocket ===
@@ -1961,7 +1987,8 @@ function tryBuild(player, type, floor = 0, side = null) {
 function tryChestPut(player, buildingId, item, amount) {
   const b = buildings.get(buildingId);
   if (!b || b.type !== 'chest') return;
-  if (b.ownerId !== player.playerId) {
+  // Phase 14.20: public chest는 누구나 입출
+  if (b.ownerId !== player.playerId && b.ownerId !== 'public') {
     send(player.ws, { type: 'notice', text: '내 상자가 아닙니다' }); return;
   }
   // 가까이 있어야 (64px)
@@ -1991,11 +2018,13 @@ async function tryChestTake(player, buildingId, item, amount) {
   if (item !== 'wood' && item !== 'stone') return;
   amount = Math.max(1, Math.min(99, amount | 0));
 
+  // Phase 14.20: public chest는 자유 인출
+  const isPublic = (b.ownerId === 'public');
   // Phase 14.13: 약탈 분기 — 본인 chest가 아니면 적 길드 chest인지 확인
   const isOwn = (b.ownerId === player.playerId);
   let isLoot = false;
   let lootRate = 0;
-  if (!isOwn) {
+  if (!isOwn && !isPublic) {
     // 적 길드 chest? — owner의 tribeId 알아내야. owner도 player일 수 있고 NPC일 수도.
     // 일단 buildings는 owner_name이 있고 ownerId가 player_id. zone players 메모리에서 찾기.
     let ownerTribeId = null;
