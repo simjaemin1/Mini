@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.46-a-mega-map-24zones ===
-console.log('%c[durango-mini] client build = 14.46-a-mega-map-24zones', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.46-a-fix (정확한 위도 + 즉시 stop) ===
+console.log('%c[durango-mini] client build = 14.46-a-fix (정확한 위도 + 즉시 stop)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -269,6 +269,10 @@ console.log('%c[durango-mini] client build = 14.46-a-mega-map-24zones', 'color:#
     if (k === ' ' || k.startsWith('arrow') || k === 'tab') e.preventDefault();
     if (keys.has(k)) return;
     keys.add(k);
+    // Phase 14.46-a-fix: 이동 키 누르는 즉시도 송신 (시작 지연도 줄임)
+    if (k === 'w' || k === 'a' || k === 's' || k === 'd' || k.startsWith('arrow')) {
+      sendInput();
+    }
     // Phase 14.41: 다운 중엔 행동 키 차단 (R 키 구조 시도만 별도 처리 — 본인이 다운 아닐 때만)
     if (myIsDown) {
       // 다운 중엔 어떤 행동도 안 함 — 부활 패널에서만 클릭
@@ -313,7 +317,13 @@ console.log('%c[durango-mini] client build = 14.46-a-mega-map-24zones', 'color:#
   });
   window.addEventListener('keyup', (e) => {
     if (e.key === 'Shift' && mySprint) { mySprint = false; updateHud(); }
-    keys.delete(normalizeKey(e));
+    const k = normalizeKey(e);
+    keys.delete(k);
+    // Phase 14.46-a-fix: WASD/Arrow를 떼면 즉시 input 송신 (vx=0,vy=0) — 33ms 인터벌 기다리지 말고.
+    // 이게 빠지면 ping이 200ms일 때 키 뗀 뒤 ~250ms간 더 걷는 현상 발생.
+    if (k === 'w' || k === 'a' || k === 's' || k === 'd' || k.startsWith('arrow')) {
+      sendInput();
+    }
   });
   // blur 이벤트로 keys 초기화 안 함 — 콘솔 열기/탭 전환 등 사소한 이유로 키가 reset돼서
   // 사용자가 "막힌 느낌" 받는 원인. 진짜 화면 떠나면 어차피 keyup 자연스럽게 일어남.
