@@ -84,9 +84,9 @@
         </div>
       </div>
       <div class="hud-row">
-        <div class="hp-bar vp-bar" title="적대감 점수 (50 이상이면 본인 사유지 보호 해제)">
+        <div class="hp-bar vp-bar" title="위반 점수 (50 이상이면 본인 사유지 보호 해제)">
           <div class="hp-fill vp-fill" id="vpFill"></div>
-          <span class="hp-text" id="vpText">⚖️ 적대감 0</span>
+          <span class="hp-text" id="vpText">⚖️ 위반 0</span>
         </div>
         <span class="badge" id="pvpBadge" title="PvP 토글 (V)">🕊️ PvP OFF</span>
       </div>

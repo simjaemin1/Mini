@@ -268,10 +268,9 @@ html, body { margin: 0; padding: 0; height: 100%; font-family: -apple-system, "S
 
 /* === Phase 14.17: 좀보이드식 UI — 좌측 사이드바 + 상단 인벤 드롭다운 === */
 
-/* 좌측 수직 아이콘 바 — 화면 가운데 (HUD가 위쪽 차지) */
+/* 좌측 수직 아이콘 바 */
 #sidebar {
-  position: fixed; left: 8px;
-  top: 50%; transform: translateY(-50%);
+  position: fixed; left: 8px; top: 80px;
   display: flex; flex-direction: column; gap: 6px;
   z-index: 30;
 }
@@ -307,9 +306,9 @@ html, body { margin: 0; padding: 0; height: 100%; font-family: -apple-system, "S
 /* === 상단 인벤토리 드롭다운 (좀보이드 정통 — 인벤만 위에서 슬라이드) === */
 #invDropdown {
   position: fixed;
-  top: -50vh;
+  top: -360px;
   left: 50%; transform: translateX(-50%);
-  width: 880px; max-width: 96vw; height: 42vh; min-height: 320px;
+  width: 760px; max-width: 96vw; height: 340px;
   background: rgba(20, 25, 30, 0.97);
   border: 1px solid #3a424d; border-top: 0;
   border-radius: 0 0 12px 12px;
@@ -453,46 +452,6 @@ html, body { margin: 0; padding: 0; height: 100%; font-family: -apple-system, "S
   padding: 8px 12px; border-bottom: 1px solid #2a3038; font-size: 12px;
 }
 
-/* HUD: 좌측 끝 (사이드바는 가운데로 옮겼으니 충돌 X) */
-#hud { top: 12px; left: 12px; }
+/* 기존 HUD slim diet */
+#hud { top: 12px; left: 60px; } /* 사이드바 옆 */
 .hud-actions { display: none; }
-/* sidePanel도 좌측 사이드바 옆에서 슬라이드 */
-#sidePanel.open { left: 60px; }
-
-/* === Phase 14.19: 좀보이드식 인벤토리 테이블 === */
-.inv-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-.inv-table thead th {
-  background: #2a3038; color: #8a93a0;
-  font-weight: 600; padding: 5px 8px;
-  text-align: left; position: sticky; top: 0;
-  border-bottom: 1px solid #3a424d;
-  font-size: 11px; text-transform: uppercase;
-}
-.inv-table tbody tr {
-  border-bottom: 1px solid #1a1f25;
-  cursor: pointer; transition: background 0.08s;
-}
-.inv-table tbody tr:nth-child(even) { background: rgba(255,255,255,0.02); }
-.inv-table tbody tr:hover { background: rgba(90, 154, 224, 0.18); }
-.inv-table td { padding: 5px 8px; vertical-align: middle; }
-.inv-table .it-icon { width: 28px; text-align: center; font-size: 16px; }
-.inv-table .it-name { color: #e8eaed; }
-.inv-table .it-name .it-count { color: #8a93a0; margin-left: 4px; font-size: 11px; }
-.inv-table .it-cat { color: #8a93a0; font-size: 11px; width: 90px; }
-.inv-table .it-action { width: 60px; text-align: right; }
-.inv-table .it-action button {
-  background: #3a424d; border: 0; color: #cdd6e3;
-  padding: 2px 6px; border-radius: 3px; cursor: pointer; font-size: 11px;
-}
-.inv-table .it-action button:hover { background: #4a8a6a; color: #fff; }
-.inv-col-head {
-  font-size: 11px; color: #f0c674; margin-bottom: 4px;
-  font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
-  padding: 2px 4px;
-}
-.inv-col-head .col-count { color: #8a93a0; font-weight: 400; margin-left: 6px; }
-.id-empty {
-  color: #6c7686; padding: 30px; text-align: center;
-  background: #0e1217; border-radius: 6px; flex: 1;
-  display: flex; align-items: center; justify-content: center;
-}

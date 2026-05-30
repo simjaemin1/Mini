@@ -8,6 +8,7 @@ logs/
 *.log
 .git
 .gitignore
+*.bak
 DEPLOY.md
 KNOWN_ISSUES.md
 DEVELOPMENT_LOG.md
