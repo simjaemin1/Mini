@@ -1558,7 +1558,8 @@ wss.on('connection', async (ws, req) => {
       initThirst = (typeof result.player.thirst === 'number') ? result.player.thirst : THIRST_MAX;
       initVp = (typeof result.player.violation_points === 'number') ? result.player.violation_points : 0;
       initTribeId = result.player.tribe_id || null;
-      initFloor = (typeof result.player.floor === 'number') ? result.player.floor : 0;
+      // 14.49-fix2: 옛 auto-stair 버그로 floor 1+에 stuck된 사용자 복구. 무조건 0F로 시작.
+      initFloor = 0;
       initHomeZone = result.player.home_zone || null;
       initHomeX = (typeof result.player.home_x === 'number') ? result.player.home_x : null;
       initHomeY = (typeof result.player.home_y === 'number') ? result.player.home_y : null;
@@ -3125,64 +3126,25 @@ setInterval(() => {
     }
   }
 
-  // === Phase 14.49-c: PZ식 계단 — 자동 ascent/descent + z 보간 ===
-  // 계단 tile에 진입하면 자동으로 다음 층으로. cooldown으로 ping-pong 방지.
+  // === Phase 14.49-c: PZ식 계단 — z 시각 효과만 (자동 floor 변경 일시 중단) ===
+  // 14.49-fix2: 자동 floor 변경이 NPC 마을 stair에 우연히 걸려 0F 벽들이 무력화되는 버그.
+  // 임시: stair 위에 서있을 때만 z 살짝 올라감 (PZ 느낌). floor 변경은 ,/. 키로만.
   for (const p of players.values()) {
     if (p.handingOff || p.isNpc || p.isDown) continue;
-    // cooldown 중이면 z만 부드럽게 0으로 복원
-    if (p.stairCooldownUntil && now < p.stairCooldownUntil) {
-      if (p.z > 0) p.z = Math.max(0, p.z - 80 * dt);
-      continue;
-    }
-    // 발 밑 계단 찾기 (player floor와 같거나 한 층 아래)
     const cx = Math.floor(p.x / BUILDING_SIZE);
     const cy = Math.floor(p.y / BUILDING_SIZE);
-    let stairUnder = null;
+    let onStair = false;
     const nearbyB = qtBuildings ? qtBuildings.queryCircle(cx * BUILDING_SIZE + 16, cy * BUILDING_SIZE + 16, 40) : Array.from(buildings.values());
     for (const b of nearbyB) {
       if (b.type !== 'stair') continue;
       const bcx = Math.floor(b.x / BUILDING_SIZE);
       const bcy = Math.floor(b.y / BUILDING_SIZE);
-      if (bcx !== cx || bcy !== cy) continue;
-      const bf = b.floor || 0;
-      // player가 stair floor 또는 stair floor+1에 있을 때 사용 가능
-      if (bf === (p.floor || 0) || bf + 1 === (p.floor || 0)) {
-        stairUnder = b; break;
-      }
+      if (bcx === cx && bcy === cy && (b.floor || 0) === (p.floor || 0)) { onStair = true; break; }
     }
-    if (!stairUnder) {
-      // 계단 벗어남 — 진행 중이던 transition 취소, z 복원
-      if (p.onStairId) {
-        p.onStairId = null;
-        p.stairProgress = 0;
-        p.z = 0;
-      }
-      continue;
-    }
-    // 계단 위 — 진입 또는 진행 중
-    const stairFloor = stairUnder.floor || 0;
-    const goingUp = (p.floor || 0) === stairFloor; // 계단 아래층 → 위로
-    if (!p.onStairId || p.onStairId !== stairUnder.id) {
-      p.onStairId = stairUnder.id;
-      p.stairProgress = 0;
-      p.stairGoingUp = goingUp;
-    }
-    p.stairProgress += dt / 0.7; // 0.7초 traverse
-    if (p.stairGoingUp) {
-      p.z = Math.min(32, p.stairProgress * 32);
-    } else {
-      p.z = Math.max(0, 32 - p.stairProgress * 32);
-    }
-    if (p.stairProgress >= 1) {
-      p.floor = p.stairGoingUp ? (stairFloor + 1) : stairFloor;
-      p.floor = Math.max(0, Math.min(5, p.floor));
-      p.z = 0;
-      p.onStairId = null;
-      p.stairProgress = 0;
-      p.stairCooldownUntil = now + 1500;
-      send(p.ws, { type: 'floor_changed', floor: p.floor });
-      broadcast({ type: 'player_floor_changed', pid: p.pid, floor: p.floor });
-    }
+    // z lerp — 계단 위에 있으면 16px까지 부드럽게, 벗어나면 0으로
+    const targetZ = onStair ? 16 : 0;
+    p.z = (p.z || 0) + (targetZ - (p.z || 0)) * Math.min(1, dt * 4);
+    if (Math.abs(p.z - targetZ) < 0.5) p.z = targetZ;
   }
 
   // === 생존 게이지: hunger/thirst 감소 + 0이면 HP 페널티 + vp decay ===

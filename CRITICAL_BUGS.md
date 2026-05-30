@@ -13,6 +13,32 @@
 
 ---
 
+## 2026-05-30 · 자동 계단이 floor 변경 → 0F 벽 무력화 (벽 통과 버그)
+
+**증상**: 캐나다에서 산책하다 갑자기 벽을 통과해 다님. "이건 무슨 일?"
+
+**잘못된 가설**: 서버 CPU 포화로 isBlockedByWall 미작동.
+
+**진짜 원인**: 14.49-c "PZ식 자동 계단"이 NPC 마을 stair 타일에 무차별 반응:
+1. 플레이어가 NPC 마을 산책 중 우연히 stair 타일(NPC 집 옆) 위로 걸어감
+2. 0.7초 후 floor 0 → 1로 자동 ascent
+3. **stair에서 벗어나면 transition 취소하면서 floor는 1로 유지**
+4. 1F에는 건축물 없음 (NPC 집은 모두 0F) → 0F 벽들이 1F 플레이어를 안 막음
+5. **0F 벽들 전부 그냥 통과** = 산책 자유
+
+**수정 (14.49-fix2)**:
+1. 자동 floor 변경 코드 일시 제거. z 시각 효과만 유지 (계단 위에 서있을 때 16px 살짝 올라감).
+2. floor 변경은 기존처럼 `,`/`.` 키로만 가능.
+3. welcome 시 `initFloor = 0` 강제 — 이미 stuck된 사용자 복구.
+
+**교훈**:
+- **"자동" UX는 짜릿하지만 무차별 트리거 가능성 항상 검토.** PZ 진짜 계단은 hand-crafted 맵에서만 작동. 프로시저럴 환경에서 무차별 자동화는 위험.
+- **floor 변경 같은 "상태 전이"는 명확한 사용자 의도 신호 필요.** 우연한 보행으로 floor 바뀌면 안 됨.
+- **벽 통과 버그는 collider 자체 문제일 거라 가정하기 쉽지만**, 실제론 "비교 대상이 다른 floor"인 경우가 많음. floor mismatch 항상 우선 의심.
+- 진짜 PZ식 계단은 **방향(dir) + entry/exit 지점**을 명시한 2-tile 구조로 다시 설계해야 함. 그건 별도 Phase에서.
+
+---
+
 ## 2026-05-30 · NPC A* pathfinding이 한반도 zone CPU 폭발
 
 **증상**: 14.49 배포 후 한반도(NPC 많은 zone) 컨테이너가 hang. 클라 콘솔에 `WebSocket failed: Could not connect` + `[recover] primary 재연결` 폭주. 자원·NPC 다 멈춤. 추가로 집 벽 콜라이더도 작동 안 함 (= 서버가 tick 못 돌려서 isBlockedByWall 검사 못 함).
