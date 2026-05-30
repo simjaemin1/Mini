@@ -170,6 +170,38 @@ html, body { margin: 0; padding: 0; height: 100%; font-family: -apple-system, "S
 .modal-head button { background: #2a313a; color: #ccc; border: 1px solid #3a424d; padding: 4px 10px; border-radius: 3px; cursor: pointer; font-size: 11px; }
 .modal-body { font-size: 12px; color: #cdd6e3; }
 
+/* Phase 14.41: 사망 / 부활 패널 */
+#downPanel .down-card {
+  background: #1a1115; border-color: #5a2a2a; min-width: 420px;
+}
+#downPanel .modal-head { color: #ff8888; border-bottom-color: #4a1a1a; }
+.down-status { font-size: 14px; color: #ffaa88; margin-bottom: 12px; }
+.down-rescue-hint {
+  font-size: 12px; color: #ffd57a; background: rgba(80,50,10,0.4);
+  padding: 8px 10px; border-radius: 4px; margin-bottom: 10px;
+}
+.down-rescue-hint.expired { color: #888; background: rgba(40,40,40,0.4); }
+.down-options { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.down-options .down-opt {
+  background: #2a2a3a; color: #cdd6e3; border: 1px solid #3a424d;
+  padding: 10px 14px; border-radius: 4px; cursor: pointer; text-align: left;
+  font-size: 13px; transition: background 0.1s;
+}
+.down-options .down-opt:hover { background: #3a3a4a; border-color: #5a8aff; }
+.down-options .down-opt .kind-badge {
+  display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 2px;
+  margin-right: 8px; vertical-align: middle;
+}
+.down-options .down-opt.personal .kind-badge { background: #3a5a8a; color: #fff; }
+.down-options .down-opt.temporary .kind-badge { background: #6a4a2a; color: #fff; }
+.down-options .down-opt.guild .kind-badge { background: #6a3a8a; color: #fff; }
+.down-options .down-opt.home .kind-badge { background: #3a8a6a; color: #fff; }
+.down-options .down-opt-none {
+  background: rgba(60,40,40,0.3); border: 1px dashed #5a3a3a;
+  padding: 12px; border-radius: 4px; color: #c98080; text-align: center;
+}
+.down-foot { font-size: 11px; color: #888; text-align: center; margin-top: 6px; }
+
 /* 거래소 */
 .market-form {
   display: flex; gap: 8px; align-items: center; flex-wrap: wrap;

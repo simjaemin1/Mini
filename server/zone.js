@@ -160,6 +160,15 @@ const LATENCY_MS = parseInt(process.env.LATENCY_MS || String(ZONE.simulatedLaten
 
 const TICK_HZ = 30;
 const MOVE_SPEED = 220; // px/sec
+// Phase 14.40 — Shift 달리기: 1.6× 속도, hunger/thirst 1.5× 빠른 감소.
+// 단 hunger/thirst가 5 이하면 자동 해제 (지쳐서 못 뜀).
+const SPRINT_MULT = 1.6;
+const SPRINT_DRAIN_MULT = 1.5;
+const SPRINT_MIN_GAUGE = 5;
+// Phase 14.41 — 사망/구조: downed 상태 유지 시간, 구조 가능 윈도우.
+// 0~10초: 구조 가능 + 즉시 부활 가능.  10초 후: 부활만 가능.
+const RESCUE_WINDOW_MS = 10000;
+const RESCUE_RANGE_PX = 80;
 // per-zone player cap — 환경변수로 조정. 차면 새 접속 거부.
 // 부하 테스트로 측정한 단일 코어 한계 ~300. 안전 마진으로 150 기본.
 const PLAYER_CAP = parseInt(process.env.PLAYER_CAP || '150', 10);
@@ -1222,6 +1231,10 @@ wss.on('connection', async (ws, req) => {
           tribeId: pending.tribeId || null, tribeName: pending.tribeName || null,
           pvpEnabled: !!pending.pvpEnabled,
           floor: pending.floor || 0,
+          // 14.42-a: home carryover
+          _homeZone: pending.home_zone || null,
+          _homeX: typeof pending.home_x === 'number' ? pending.home_x : null,
+          _homeY: typeof pending.home_y === 'number' ? pending.home_y : null,
           lastAttackAt: 0, lastDamagedAt: 0,
           handingOff: false, lastSeen: Date.now(),
         };
@@ -1255,7 +1268,9 @@ wss.on('connection', async (ws, req) => {
                   hunger: Math.round(player.hunger), thirst: Math.round(player.thirst),
                   vp: Math.round(player.vp ?? 0),
                   tribeId: player.tribeId || null, tribeName: player.tribeName || null,
-            floor: player.floor || 0 },
+                  floor: player.floor || 0,
+                  homeZone: player._homeZone || null,
+                  homeX: player._homeX, homeY: player._homeY },
           worldClock: {
             epoch: WORLD.worldEpoch, dayLengthMs: WORLD.dayLengthMs,
             dayPhaseRatio: WORLD.dayPhaseRatio, serverNow: Date.now(),
@@ -1283,6 +1298,8 @@ wss.on('connection', async (ws, req) => {
   let initHunger = HUNGER_MAX, initThirst = THIRST_MAX, initVp = 0;
   let initTribeId = null, initTribeName = null;
   let initFloor = 0;
+  // 14.42-a: home (영구 부활 fallback). 게스트면 null로 유지.
+  let initHomeZone = null, initHomeX = null, initHomeY = null;
 
   if (handoffToken && pendingHandoffs.has(handoffToken)) {
     const pending = pendingHandoffs.get(handoffToken);
@@ -1294,6 +1311,9 @@ wss.on('connection', async (ws, req) => {
     if (typeof pending.vp === 'number') initVp = pending.vp;
     if (pending.tribeId) { initTribeId = pending.tribeId; initTribeName = pending.tribeName || null; }
     if (typeof pending.floor === 'number') initFloor = pending.floor;
+    if (pending.home_zone) initHomeZone = pending.home_zone;
+    if (typeof pending.home_x === 'number') initHomeX = pending.home_x;
+    if (typeof pending.home_y === 'number') initHomeY = pending.home_y;
     sx = pending.x;
     sy = pending.y;
     ivx = pending.vx;
@@ -1321,9 +1341,12 @@ wss.on('connection', async (ws, req) => {
     if (incomingColor && /^#[0-9a-fA-F]{6}$/.test(incomingColor)) color = incomingColor;
 
     if (inUsername && inPassword) {
-      // 등록 또는 로그인 — central에 HTTP 호출
+      // 14.42-a: 신규 가입이면 client가 선택한 home_zone 전달.
+      //  - 이 zone(접속 zone)이 곧 home zone임 (lobby에서 선택한 zone에 ws 연결되니까)
+      //  - 그 zone의 마을광장이 home 좌표
+      const myMain = ZONE.mainSquare || { x: WORLD.zoneWidth/2, y: WORLD.zoneHeight/2 };
       let result;
-      try { result = await central.authenticate(inUsername, inPassword, color); }
+      try { result = await central.authenticate(inUsername, inPassword, color, ZONE_ID, myMain.x, myMain.y); }
       catch (e) {
         console.error(`[${ZONE_ID}] central 인증 실패:`, e.message);
         send(ws, { type: 'auth_error', reason: 'central_unavailable' });
@@ -1351,6 +1374,9 @@ wss.on('connection', async (ws, req) => {
       initVp = (typeof result.player.violation_points === 'number') ? result.player.violation_points : 0;
       initTribeId = result.player.tribe_id || null;
       initFloor = (typeof result.player.floor === 'number') ? result.player.floor : 0;
+      initHomeZone = result.player.home_zone || null;
+      initHomeX = (typeof result.player.home_x === 'number') ? result.player.home_x : null;
+      initHomeY = (typeof result.player.home_y === 'number') ? result.player.home_y : null;
       if (initTribeId) {
         // 부족 이름 한 번 더 조회 (캐시 가능)
         try {
@@ -1358,7 +1384,21 @@ wss.on('connection', async (ws, req) => {
           if (tr.status === 200 && tr.data?.tribe) initTribeName = tr.data.tribe.name;
         } catch (e) {}
       }
-      console.log(`[${ZONE_ID}] ${result.isNew ? '신규 가입' : '로그인'}: ${name}  tribe=${initTribeName || '없음'}`);
+      // 14.42-a: 등록 계정 — 우선순위로 spawn 좌표 산정
+      //  1) last_zone == THIS && last_x/y 있음 → 그 자리 (재로그인 정상)
+      //  2) home_zone == THIS && home_x/y 있음 → home 마을광장 (신규 가입 직후)
+      //  3) 외 → zone center fallback
+      //  (다른 zone에 home/last가 있는 경우 cross-zone 라우팅은 14.42-b)
+      const p = result.player;
+      if (p.last_zone === ZONE_ID && typeof p.last_x === 'number' && typeof p.last_y === 'number') {
+        sx = p.last_x; sy = p.last_y;
+      } else if (p.home_zone === ZONE_ID && typeof p.home_x === 'number' && typeof p.home_y === 'number') {
+        sx = p.home_x; sy = p.home_y;
+      } else {
+        sx = WORLD.zoneWidth / 2;
+        sy = WORLD.zoneHeight / 2;
+      }
+      console.log(`[${ZONE_ID}] ${result.isNew ? '신규 가입' : '로그인'}: ${name}  tribe=${initTribeName || '없음'}  spawn=(${sx.toFixed(0)},${sy.toFixed(0)})`);
     } else {
       // 게스트 모드 — central에 username 충돌만 확인
       if (inUsername) {
@@ -1374,6 +1414,9 @@ wss.on('connection', async (ws, req) => {
       playerId = `anon_${Math.random().toString(36).slice(2,10)}`;
       name = inUsername || `여행자${nextPid}`;
       console.log(`[${ZONE_ID}] 게스트 접속: ${name} (${playerId})`);
+      // 14.42-a: 게스트도 마을광장에서 시작
+      const myMain = ZONE.mainSquare || { x: WORLD.zoneWidth/2, y: WORLD.zoneHeight/2 };
+      sx = myMain.x; sy = myMain.y;
     }
 
     // 같은 player_id로 이 zone 내에 이미 접속 중이면 기존 세션 종료
@@ -1396,9 +1439,11 @@ wss.on('connection', async (ws, req) => {
           .catch(() => {}); // 다른 zone이 죽어있어도 무시
       }
     }
-
-    sx = WORLD.zoneWidth / 2;
-    sy = WORLD.zoneHeight / 2;
+    // 14.42-a: sx/sy는 이미 위(등록 분기 or 게스트 분기)에서 정해짐 — 추가 fallback만
+    if (typeof sx !== 'number' || typeof sy !== 'number') {
+      const fb = ZONE.mainSquare || { x: WORLD.zoneWidth/2, y: WORLD.zoneHeight/2 };
+      sx = fb.x; sy = fb.y;
+    }
   }
 
   const pid = `p${nextPid++}`;
@@ -1413,6 +1458,10 @@ wss.on('connection', async (ws, req) => {
     tribeId: initTribeId, tribeName: initTribeName,
     pvpEnabled: false,
     floor: initFloor, // 2.5D — 현재 캐릭터 층 (영속화 + 핸드오프 캐리)
+    // 14.42-a: home (영구 부활 fallback)
+    _homeZone: initHomeZone,
+    _homeX: initHomeX,
+    _homeY: initHomeY,
     lastAttackAt: 0,
     lastDamagedAt: 0,
     handingOff: false,
@@ -1447,7 +1496,10 @@ wss.on('connection', async (ws, req) => {
             hunger: Math.round(player.hunger), thirst: Math.round(player.thirst),
             vp: Math.round(player.vp ?? 0),
             tribeId: player.tribeId || null, tribeName: player.tribeName || null,
-            floor: player.floor || 0 },
+            floor: player.floor || 0,
+            // 14.42-a — home 위치 (클라가 부활 옵션 UI 등에 사용)
+            homeZone: player._homeZone || null,
+            homeX: player._homeX, homeY: player._homeY },
     worldClock: {
       epoch: WORLD.worldEpoch,
       dayLengthMs: WORLD.dayLengthMs,
@@ -1466,18 +1518,38 @@ function handlePlayerInput(player, raw) {
   try { msg = JSON.parse(raw.toString()); } catch (e) { return; }
   const ws = player.ws;
 
+  // Phase 14.41: 다운 중엔 부활/구조/ping/chat만 허용
+  if (player.isDown) {
+    const allowed = new Set(['respawn_choice', 'rescue_request', 'ping', 'chat', 'input']);
+    if (!allowed.has(msg.type)) return;
+  }
+
   if (msg.type === 'input') {
+    // Phase 14.41: 다운(사망) 중이면 입력 무시
+    if (player.isDown) { player.vx = 0; player.vy = 0; return; }
     const vx = clamp(msg.vx, -1, 1);
     const vy = clamp(msg.vy, -1, 1);
     const len = Math.hypot(vx, vy) || 1;
-    player.vx = (vx / len) * MOVE_SPEED * Math.min(1, Math.hypot(vx, vy));
-    player.vy = (vy / len) * MOVE_SPEED * Math.min(1, Math.hypot(vx, vy));
+    // Phase 14.40: Shift = 달리기. hunger/thirst가 너무 낮으면 자동 해제.
+    const wantSprint = !!msg.sprint;
+    const canSprint = (player.hunger ?? HUNGER_MAX) > SPRINT_MIN_GAUGE
+                   && (player.thirst ?? THIRST_MAX) > SPRINT_MIN_GAUGE;
+    player.sprint = wantSprint && canSprint;
+    const spMult = player.sprint ? SPRINT_MULT : 1.0;
+    player.vx = (vx / len) * MOVE_SPEED * Math.min(1, Math.hypot(vx, vy)) * spMult;
+    player.vy = (vy / len) * MOVE_SPEED * Math.min(1, Math.hypot(vx, vy)) * spMult;
     player.lastSeen = Date.now();
     player._inputCnt = (player._inputCnt || 0) + 1;
     if (!player._inputLogAt || Date.now() - player._inputLogAt > 1000) {
       player._inputLogAt = Date.now();
-      console.log(`[${ZONE_ID}/in] ${player.name} input cnt=${player._inputCnt} vx=${vx} vy=${vy}`);
+      console.log(`[${ZONE_ID}/in] ${player.name} input cnt=${player._inputCnt} vx=${vx} vy=${vy} sp=${player.sprint?1:0}`);
     }
+  } else if (msg.type === 'respawn_choice') {
+    // Phase 14.41: 사망 후 부활 위치 선택 (personal | temporary)
+    tryRespawnChoice(player, msg.kind);
+  } else if (msg.type === 'rescue_request') {
+    // Phase 14.41: 같은 길드원이 다운된 동료를 R 키로 구조
+    tryRescue(player, msg.pid);
   } else if (msg.type === 'gather') tryGather(player);
   else if (msg.type === 'claim') tryClaim(player, msg.kind || 'personal');
   else if (msg.type === 'drop_item') tryDropItem(player, msg.item, msg.amount || 1);
@@ -1867,6 +1939,19 @@ function tryClaim(player, kind = 'personal') {
   if (kind === 'guild') {
     if (!player.tribeId) { send(player.ws, { type: 'notice', text: '길드 소속이 아닙니다 — 길드 영토 만들 수 없음' }); return; }
     // leader 체크는 central 호출 필요. 일단 단순화: 길드원이면 누구나 (TODO: leader만)
+    // 14.42-a: 길드당 단 하나의 길드 사유지(메인 거점). 기존 거 있으면 자동 옮기기 (제거 후 새로 만듦).
+    const existingGuildClaims = [];
+    for (const [id, c] of claims) {
+      if (c.kind === 'guild' && c.guildTribeId === player.tribeId) existingGuildClaims.push([id, c]);
+    }
+    if (existingGuildClaims.length > 0) {
+      for (const [id, c] of existingGuildClaims) {
+        if (c.dbId) { try { db.db.prepare('DELETE FROM claims WHERE id = ?').run(c.dbId); } catch (e) {} }
+        claims.delete(id);
+        broadcast({ type: 'claim_removed', id });
+      }
+      send(player.ws, { type: 'notice', text: `🏛️ 길드 메인 사유지 ${existingGuildClaims.length}개 → 새 위치로 이동` });
+    }
   }
   // 슬롯 한도 체크
   const used = countMyClaims(player.playerId);
@@ -2338,6 +2423,8 @@ async function tryChestTake(player, buildingId, item, amount) {
 
 // === 전투 ===
 async function tryAttack(player) {
+  // Phase 14.41: 다운 중엔 공격 불가
+  if (player.isDown) return;
   const now = Date.now();
   if (now - player.lastAttackAt < PLAYER_ATTACK_COOLDOWN_MS) return;
   player.lastAttackAt = now;
@@ -2401,6 +2488,7 @@ async function tryAttack(player) {
   for (const p of nearbyPlayers) {
     if (p.pid === player.pid) continue;
     if (p.hp <= 0) continue;
+    if (p.isDown) continue; // Phase 14.41: 다운된 플레이어는 추가 공격 불가 (방어자 보호)
     const d = Math.hypot(p.x - player.x, p.y - player.y);
     if (d < bestPDist) { bestPlayer = p; bestPDist = d; }
   }
@@ -2530,16 +2618,15 @@ async function isAtWar(guildA, guildB) {
 }
 
 function damagePlayer(p, dmg, source) {
-  if (p.hp <= 0) return;
+  if (p.hp <= 0 || p.isDown) return;
   p.hp -= dmg;
   p.lastDamagedAt = Date.now();
   broadcast({ type: 'player_damaged', pid: p.pid, hp: p.hp });
   if (p.hp <= 0) {
     p.hp = 0;
     if (p.isNpc) {
-      // NPC: 30초 후 자기 사유지 중심에 부활
+      // NPC: 30초 후 자기 사유지 중심에 부활 (기존 로직 유지)
       console.log(`[${ZONE_ID}] 🤖 NPC ${p.name} 사망 (by ${source}) — ${NPC_RESPAWN_MS/1000}초 후 부활`);
-      // NPC는 자기 마을 (villageName)의 좌표 또는 zone 중앙으로 부활
       let respawnX = WORLD.zoneWidth/2, respawnY = WORLD.zoneHeight/2;
       const village = VILLAGES.find(v => v.name === p.tribeName);
       if (village) { respawnX = village.x; respawnY = village.y; }
@@ -2554,21 +2641,122 @@ function damagePlayer(p, dmg, source) {
       }, NPC_RESPAWN_MS);
       return;
     }
-    send(p.ws, { type: 'notice', text: '사망. 5초 후 부활합니다.' });
-    // 5초 후 zone 중앙 부활 (siege_camp 리스폰은 14.18 임시 사유지로 대체 예정)
-    setTimeout(() => {
-      if (!players.has(p.pid)) return;
-      p.hp = p.maxHp;
-      p.x = WORLD.zoneWidth / 2;
-      p.y = WORLD.zoneHeight / 2;
-      p.vx = 0; p.vy = 0;
-      for (const m of mobs.values()) {
-        if (m.aggroTarget === p.pid) m.aggroTarget = null;
-      }
-      broadcast({ type: 'player_respawn', pid: p.pid, hp: p.hp, x: p.x, y: p.y });
-      send(p.ws, { type: 'notice', text: '부활했습니다.' });
-    }, 5000);
+    // Phase 14.41: 휴먼 플레이어 — 자동 부활 없음. downed 상태 진입.
+    // 0~10초: 같은 길드원이 R 키로 구조 가능 + 임시/개인 사유지 즉시 부활 가능.
+    // 10초 후: 임시/개인 사유지 부활만 가능. 사용자 선택 전엔 부활 안 함.
+    p.isDown = true;
+    p.downedAt = Date.now();
+    p.vx = 0; p.vy = 0;
+    // 어그로 해제 — 다운된 플레이어를 계속 패지 않도록
+    for (const m of mobs.values()) if (m.aggroTarget === p.pid) m.aggroTarget = null;
+    // 부활 옵션 산정
+    const opts = listRespawnOptions(p);
+    send(p.ws, {
+      type: 'player_downed', pid: p.pid,
+      rescueWindowMs: RESCUE_WINDOW_MS,
+      options: opts,
+      source,
+    });
+    // 모두에게 down 상태 broadcast (시각/동작용)
+    broadcast({ type: 'player_down_state', pid: p.pid, isDown: true });
+    console.log(`[${ZONE_ID}] ☠️ ${p.name} 다운 (by ${source}) — 부활 선택 대기`);
   }
+}
+
+// Phase 14.41/14.42-a — 부활 옵션 산정:
+//   1) 본인 personal/temporary 사유지 (현 zone)
+//   2) 본인 길드의 단일 메인 사유지 (현 zone — 길드사유지는 길드당 1개)
+//   3) home zone 마을광장 (현 zone이 home일 때만. 다른 zone home은 14.42-b)
+//   4) (옵션 0개일 때 마지막 보루로) 현 zone 마을광장
+function listRespawnOptions(p) {
+  const opts = [];
+  for (const c of claims.values()) {
+    if (c.ownerId !== p.playerId) continue;
+    if (c.kind !== 'personal' && c.kind !== 'temporary') continue;
+    opts.push({
+      claimId: c.id, kind: c.kind,
+      x: c.x + (c.w || BUILDING_SIZE) / 2,
+      y: c.y + (c.h || BUILDING_SIZE) / 2,
+    });
+  }
+  // 길드 메인 사유지 — 본인 길드 소속만, 길드당 1개 (단일 강제)
+  if (p.tribeId) {
+    for (const c of claims.values()) {
+      if (c.kind !== 'guild') continue;
+      if (c.guildTribeId !== p.tribeId) continue;
+      opts.push({
+        claimId: c.id, kind: 'guild',
+        x: c.x + (c.w || BUILDING_SIZE) / 2,
+        y: c.y + (c.h || BUILDING_SIZE) / 2,
+      });
+      break; // 단일 강제 — 첫 거 하나만
+    }
+  }
+  // home 마을광장 — 본인 home_zone이 현 zone일 때만 (cross-zone은 14.42-b)
+  if (p._homeZone === ZONE_ID && typeof p._homeX === 'number' && typeof p._homeY === 'number') {
+    opts.push({
+      claimId: '__home__', kind: 'home',
+      x: p._homeX, y: p._homeY,
+    });
+  }
+  return opts;
+}
+
+function tryRespawnChoice(player, claimId) {
+  if (!player.isDown) { send(player.ws, { type: 'notice', text: '다운 상태가 아닙니다' }); return; }
+  const opts = listRespawnOptions(player);
+  const target = opts.find(o => o.claimId === claimId);
+  if (!target) {
+    send(player.ws, { type: 'notice', text: '해당 사유지가 없습니다. 옵션을 다시 확인하세요.' });
+    // 옵션 갱신 송신
+    send(player.ws, { type: 'player_downed', pid: player.pid, rescueWindowMs: RESCUE_WINDOW_MS, options: opts });
+    return;
+  }
+  // 부활 실행
+  player.isDown = false;
+  player.downedAt = 0;
+  player.hp = player.maxHp;
+  player.x = target.x;
+  player.y = target.y;
+  player.vx = 0; player.vy = 0;
+  broadcast({ type: 'player_respawn', pid: player.pid, hp: player.hp, x: player.x, y: player.y });
+  broadcast({ type: 'player_down_state', pid: player.pid, isDown: false });
+  send(player.ws, { type: 'notice', text: `${target.kind === 'personal' ? '개인' : '임시'} 사유지에서 부활했습니다.` });
+}
+
+function tryRescue(rescuer, downedPid) {
+  if (rescuer.isDown) return;
+  const target = players.get(downedPid);
+  if (!target || !target.isDown) {
+    send(rescuer.ws, { type: 'notice', text: '구조 대상이 없습니다' });
+    return;
+  }
+  // 구조 윈도우 내인가?
+  const elapsed = Date.now() - (target.downedAt || 0);
+  if (elapsed > RESCUE_WINDOW_MS) {
+    send(rescuer.ws, { type: 'notice', text: '구조 가능 시간이 지났습니다' });
+    return;
+  }
+  // 같은 길드여야
+  if (!rescuer.tribeId || rescuer.tribeId !== target.tribeId) {
+    send(rescuer.ws, { type: 'notice', text: '같은 길드원만 구조 가능' });
+    return;
+  }
+  // 거리 체크
+  const d = Math.hypot(rescuer.x - target.x, rescuer.y - target.y);
+  if (d > RESCUE_RANGE_PX) {
+    send(rescuer.ws, { type: 'notice', text: `${Math.round(d)}px 떨어짐 — ${RESCUE_RANGE_PX}px 안에서 R` });
+    return;
+  }
+  // 구조 — HP 50%, 자리에서 일어남
+  target.isDown = false;
+  target.downedAt = 0;
+  target.hp = Math.round(target.maxHp * 0.5);
+  broadcast({ type: 'player_respawn', pid: target.pid, hp: target.hp, x: target.x, y: target.y });
+  broadcast({ type: 'player_down_state', pid: target.pid, isDown: false });
+  send(target.ws, { type: 'notice', text: `🤝 ${rescuer.name}님이 당신을 구조했습니다 (HP ${target.hp})` });
+  send(rescuer.ws, { type: 'notice', text: `🤝 ${target.name}님을 구조했습니다` });
+  console.log(`[${ZONE_ID}] 🤝 ${rescuer.name} → ${target.name} 구조 성공`);
 }
 
 // === PZ식 wall edge 콜라이더 ===
@@ -2736,9 +2924,16 @@ setInterval(() => {
 
   // === 생존 게이지: hunger/thirst 감소 + 0이면 HP 페널티 + vp decay ===
   for (const p of players.values()) {
-    if (p.hp <= 0) continue;
-    p.hunger = Math.max(0, (p.hunger ?? HUNGER_MAX) - HUNGER_DRAIN_PER_SEC * dt);
-    p.thirst = Math.max(0, (p.thirst ?? THIRST_MAX) - THIRST_DRAIN_PER_SEC * dt);
+    if (p.hp <= 0 || p.isDown) continue;
+    // Phase 14.40: 달리는 중이면 1.5× 빠르게 감소 (실제로 이동 중일 때만)
+    const moving = Math.hypot(p.vx || 0, p.vy || 0) > 1;
+    const drainMult = (p.sprint && moving) ? SPRINT_DRAIN_MULT : 1.0;
+    p.hunger = Math.max(0, (p.hunger ?? HUNGER_MAX) - HUNGER_DRAIN_PER_SEC * dt * drainMult);
+    p.thirst = Math.max(0, (p.thirst ?? THIRST_MAX) - THIRST_DRAIN_PER_SEC * dt * drainMult);
+    // 게이지가 sprint 하한 밑으로 떨어지면 자동 해제
+    if (p.sprint && (p.hunger <= SPRINT_MIN_GAUGE || p.thirst <= SPRINT_MIN_GAUGE)) {
+      p.sprint = false;
+    }
     // vp 시간당 감소
     if ((p.vp ?? 0) > 0) p.vp = Math.max(0, p.vp - VP_DECAY_PER_SEC * dt);
     // 게이지 0이면 굶주림/탈수 데미지 (둘 다 0이면 2배)
@@ -2832,6 +3027,7 @@ setInterval(() => {
         let best = null, bestD = sight;
         for (const p of nearby) {
           if (p.hp <= 0) continue;
+          if (p.isDown) continue; // Phase 14.41: 다운된 플레이어는 어그로 안 함
           if ((p.floor || 0) !== 0) continue; // 다른 floor 캐릭터 못 잡음
           const d = Math.hypot(p.x - m.x, p.y - m.y);
           if (d < bestD) { best = p; bestD = d; }
@@ -2845,7 +3041,8 @@ setInterval(() => {
     // 이동
     if (m.aggroTarget) {
       const t = players.get(m.aggroTarget);
-      if (t) {
+      if (t && t.isDown) { m.aggroTarget = null; } // Phase 14.41: 다운되면 어그로 풀림
+      else if (t) {
         const dx = t.x - m.x, dy = t.y - m.y;
         const d = Math.hypot(dx, dy);
         if (d > 30) {
@@ -2900,7 +3097,9 @@ setInterval(() => {
   function makeEntry(o, isNew, kind) {
     if (kind === 'player') {
       // Phase 14.35: 걷기 모션 동기화 — vx/vy 포함 (이동 중인지 클라가 판단)
+      // Phase 14.41: isDown — 다운된 플레이어는 클라에서 누워있게 렌더
       const e = { pid: o.pid, x: o.x, y: o.y, hp: o.hp, floor: o.floor || 0, vx: o.vx | 0, vy: o.vy | 0 };
+      if (o.isDown) e.isDown = 1;
       if (isNew) { e.name = o.name; e.color = o.color; e.maxHp = o.maxHp; e.tribeName = o.tribeName || null; }
       return e;
     }
@@ -2991,6 +3190,10 @@ async function fireHandoff(player, targetZoneId, newX, newY) {
       tribeName: player.tribeName || null,
       pvpEnabled: !!player.pvpEnabled,
       floor: player.floor || 0,
+      // 14.42-a: home carryover (cross-zone에서도 home 유지)
+      home_zone: player._homeZone || null,
+      home_x: typeof player._homeX === 'number' ? player._homeX : null,
+      home_y: typeof player._homeY === 'number' ? player._homeY : null,
     });
   } catch (e) {
     console.error(`[${ZONE_ID}] handoff_prepare → ${targetZoneId} 실패:`, e.message);

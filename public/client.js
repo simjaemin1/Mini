@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 13.9.a-pz-edge-wall ===
-console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.42-a-home-zone+main-square ===
+console.log('%c[durango-mini] client build = 14.42-a-home-zone+main-square', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -55,6 +55,17 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
   let placementCursor = { wx: 0, wy: 0 }; // 마우스 따라가는 abs 좌표
   let myLastAttackAt = 0; // Phase 14.35: 공격 모션
   let myFacingVx = 1, myFacingVy = 0; // Phase 14.37: 본인 마지막 facing (기본 동쪽)
+  // Phase 14.40: Shift 달리기
+  let mySprint = false;
+  // Phase 14.41: 사망/구조
+  let myIsDown = false;
+  let myDownedAt = 0;
+  let myDownRescueWindowMs = 10000;
+  let myRespawnOptions = [];      // [{ claimId, kind, x, y }]
+  const downStates = new Map();    // pid -> true (다운된 다른 플레이어)
+  // Phase 14.42-a: home zone (영구 부활 fallback)
+  let myHomeZone = null;
+  let myHomeX = null, myHomeY = null;
 
   // Phase 14.39: 시야 cone 헬퍼
   // 지형: 뒤쪽도 보임 (0.55) — 탐험한 곳 윤곽
@@ -224,6 +235,8 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
     return CODE_TO_KEY[e.code] || (e.key || '').toLowerCase();
   }
   window.addEventListener('keydown', (e) => {
+    // Phase 14.40: Shift는 modal/채팅 상관 없이 sprint 상태로만 트랙
+    if (e.key === 'Shift' && !mySprint) { mySprint = true; updateHud(); }
     if (chatActive) return;
     const k = normalizeKey(e);
     if (k === 'enter') {
@@ -234,6 +247,11 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
     if (k === ' ' || k.startsWith('arrow') || k === 'tab') e.preventDefault();
     if (keys.has(k)) return;
     keys.add(k);
+    // Phase 14.41: 다운 중엔 행동 키 차단 (R 키 구조 시도만 별도 처리 — 본인이 다운 아닐 때만)
+    if (myIsDown) {
+      // 다운 중엔 어떤 행동도 안 함 — 부활 패널에서만 클릭
+      return;
+    }
     if (k === 'e') sendPrimary({ type: 'gather' });
     else if (k === 'c' && e.shiftKey) sendPrimary({ type: 'claim', kind: 'guild' });  // 길드 영토 (Shift+C)
     else if (k === 'c') sendPrimary({ type: 'claim', kind: 'personal' });  // 개인 사유지 (1 grid)
@@ -260,13 +278,21 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
     else if (k === 'm') toggleMarketplace();
     else if (k === 'k') toggleCraft();
     else if (k === 'r' && e.shiftKey) sendPrimary({ type: 'repair_building' }); // Phase 14.34 수리
-    else if (k === 'r') toggleCookPanel();
+    else if (k === 'r') {
+      // Phase 14.41: R = 우선 근처 다운 길드원 구조 시도, 없으면 요리 패널
+      const target = findNearestDownedGuildmate();
+      if (target) sendPrimary({ type: 'rescue_request', pid: target.pid });
+      else toggleCookPanel();
+    }
     else if (k === '1') sendPrimary({ type: 'equip', tool: 'axe' });
     else if (k === '2') sendPrimary({ type: 'equip', tool: 'pickaxe' });
     else if (k === '3') sendPrimary({ type: 'equip', tool: 'sword' });
     else if (k === '0') sendPrimary({ type: 'equip', tool: null });
   });
-  window.addEventListener('keyup', (e) => keys.delete(normalizeKey(e)));
+  window.addEventListener('keyup', (e) => {
+    if (e.key === 'Shift' && mySprint) { mySprint = false; updateHud(); }
+    keys.delete(normalizeKey(e));
+  });
   // blur 이벤트로 keys 초기화 안 함 — 콘솔 열기/탭 전환 등 사소한 이유로 키가 reset돼서
   // 사용자가 "막힌 느낌" 받는 원인. 진짜 화면 떠나면 어차피 keyup 자연스럽게 일어남.
   // window.addEventListener('blur', () => { keys.clear(); });
@@ -384,6 +410,66 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
       }
     }
     refreshZoneOptions();
+
+    // 14.42-a: 이름 입력 시 기존 계정 여부 확인 → zone picker 토글
+    //   - 게스트(이름+비번 없음): picker 노출 — 지역 직접 선택
+    //   - 신규 가입(이름+비번 있음, DB에 없음): picker 노출 — 영구 home 됨
+    //   - 기존 로그인(이름+비번 있음, DB에 있음): picker 숨김 + last_zone 자동 사용
+    const nameInput = document.getElementById('name');
+    const pwInput = document.getElementById('password');
+    const zoneRow = document.getElementById('zoneRow');
+    const existingHint = document.getElementById('existingLoginHint');
+    let checkTimer = null;
+    let lastCheckedName = null;
+    // 기존 계정의 자동 라우팅용 — 마지막에 fetch한 player.last_zone (or home_zone)
+    window.__autoZone = null;
+    async function refreshLobbyMode() {
+      const u = nameInput.value.trim();
+      const p = pwInput.value;
+      if (!u || !p) {
+        zoneRow.classList.remove('hidden');
+        existingHint.classList.add('hidden');
+        window.__autoZone = null;
+        return;
+      }
+      if (u === lastCheckedName) return; // debounce
+      lastCheckedName = u;
+      try {
+        const r = await fetch('/check_username', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: u }) });
+        const d = await r.json();
+        if (d.taken) {
+          zoneRow.classList.add('hidden');
+          existingHint.classList.remove('hidden');
+          // 기존 계정 — last_zone/home_zone 가져와서 자동 라우팅
+          try {
+            const r2 = await fetch('/player/' + encodeURIComponent(u));
+            if (r2.ok) {
+              const pd = await r2.json();
+              const dest = (pd.player?.last_zone) || (pd.player?.home_zone);
+              if (dest && zonesMeta[dest]) {
+                window.__autoZone = dest;
+                existingHint.innerHTML = `🔑 기존 계정 — <b>${zonesMeta[dest].displayName}</b>의 마지막 위치에서 시작합니다`;
+              }
+            }
+          } catch (e) {}
+        } else {
+          zoneRow.classList.remove('hidden');
+          existingHint.classList.add('hidden');
+          window.__autoZone = null;
+        }
+      } catch (e) {
+        zoneRow.classList.remove('hidden');
+        existingHint.classList.add('hidden');
+        window.__autoZone = null;
+      }
+    }
+    function debouncedCheck() {
+      if (checkTimer) clearTimeout(checkTimer);
+      checkTimer = setTimeout(refreshLobbyMode, 250);
+    }
+    nameInput.addEventListener('input', debouncedCheck);
+    pwInput.addEventListener('input', debouncedCheck);
+
     // 로비에서 10초마다 zone 인구 갱신
     const zoneRefreshTimer = setInterval(async () => {
       if (document.getElementById('lobby').classList.contains('hidden')) {
@@ -415,7 +501,8 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
       // 채팅 입력창 비활성화 상태로
       const chatInput = document.getElementById('chatInput');
       if (chatInput) { chatInput.classList.remove('active'); chatInput.blur(); chatInput.value = ''; }
-      const startZone = sel.value;
+      // 14.42-a: 기존 계정이면 last_zone/home_zone으로 자동 라우팅 (zone picker 무시)
+      const startZone = window.__autoZone || sel.value;
       document.getElementById('lobby').classList.add('hidden');
       document.getElementById('game').classList.remove('hidden');
       connect(startZone, 'primary', null);
@@ -648,6 +735,10 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
         if (msg.self.tribeId !== undefined) myTribeId = msg.self.tribeId;
         if (msg.self.tribeName !== undefined) myTribeName = msg.self.tribeName;
         if (typeof msg.self.floor === 'number') myFloor = msg.self.floor;
+        // 14.42-a — home 위치 (없으면 null)
+        myHomeZone = msg.self.homeZone || null;
+        myHomeX = (typeof msg.self.homeX === 'number') ? msg.self.homeX : null;
+        myHomeY = (typeof msg.self.homeY === 'number') ? msg.self.homeY : null;
         const absX = msg.zone.worldOffsetX + msg.self.x;
         const absY = (msg.zone.worldOffsetY || 0) + msg.self.y;
         myAbsPos = { x: absX, y: absY };
@@ -696,10 +787,15 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
             lastT: now,
             lastAttackAt: prev?.lastAttackAt || 0,
           });
+          // Phase 14.41: tick에 isDown=1 있으면 다운 상태 갱신 (보강 — broadcast 누락 대비)
+          if (pp.isDown) downStates.set(pp.pid, true);
+          else if (pp.isDown === undefined && downStates.has(pp.pid)) {
+            // tick은 absent 키를 못 보냄. player_down_state로만 해제됨.
+          }
         }
       }
       const alive = new Set(msg.players.map(p => p.pid));
-      for (const pid of c.others.keys()) if (!alive.has(pid)) c.others.delete(pid);
+      for (const pid of c.others.keys()) if (!alive.has(pid)) { c.others.delete(pid); downStates.delete(pid); }
       // mob 갱신 (tick에 포함된 것)
       if (Array.isArray(msg.mobs)) {
         const aliveMobs = new Set(msg.mobs.map(m => m.mid));
@@ -742,6 +838,8 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
       c.resources.set(msg.resource.id, msg.resource);
     } else if (msg.type === 'claim_added') {
       c.claims.set(msg.claim.id, msg.claim);
+    } else if (msg.type === 'claim_removed') {
+      c.claims.delete(msg.id);
     } else if (msg.type === 'building_added') {
       c.buildings.set(msg.building.id, msg.building);
     } else if (msg.type === 'building_removed') {
@@ -780,7 +878,12 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
     } else if (msg.type === 'player_respawn') {
       if (msg.pid === myPid) {
         myHp = msg.hp;
-        // 서버가 zone 중앙으로 텔레포트했으니 클라 좌표도 즉시 동기화
+        // Phase 14.41: 부활 → 다운 상태 해제
+        myIsDown = false;
+        myDownedAt = 0;
+        myRespawnOptions = [];
+        hideDownPanel();
+        // 서버가 자기 사유지 좌표로 텔레포트했으니 클라 좌표도 즉시 동기화
         if (msg.x !== undefined && c.meta) {
           const absX = c.meta.worldOffsetX + msg.x;
           const absY = (c.meta.worldOffsetY || 0) + msg.y;
@@ -790,6 +893,25 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
           correctionUntil = 0;
         }
         updateHud();
+      } else {
+        downStates.delete(msg.pid); // 다른 사람도 부활하면 down 해제
+      }
+    } else if (msg.type === 'player_downed') {
+      // Phase 14.41: 본인 사망 — 부활 패널 표시
+      if (msg.pid === myPid) {
+        myIsDown = true;
+        myDownedAt = performance.now();
+        myDownRescueWindowMs = msg.rescueWindowMs || 10000;
+        myRespawnOptions = msg.options || [];
+        showDownPanel();
+      }
+    } else if (msg.type === 'player_down_state') {
+      // 다른 사람 다운/일어남 상태 (시각용)
+      if (msg.pid === myPid) {
+        // 본인은 player_downed/respawn 로직으로 처리. 여기선 안 변경
+      } else {
+        if (msg.isDown) downStates.set(msg.pid, true);
+        else downStates.delete(msg.pid);
       }
     } else if (msg.type === 'chest_state') {
       // 상자 UI에 반영
@@ -962,9 +1084,34 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
     if (!primaryZoneId) return;
     const c = conns.get(primaryZoneId);
     if (!c || c.ws.readyState !== 1) return;
+    // Phase 14.41: 다운 중이면 입력 전송 X (서버도 무시하지만 트래픽 줄임)
+    if (myIsDown) {
+      c.ws.send(JSON.stringify({ type: 'input', vx: 0, vy: 0, sprint: false }));
+      lastInputSentAt = performance.now();
+      return;
+    }
     const { wx, wy } = worldKeysDir();
-    c.ws.send(JSON.stringify({ type: 'input', vx: wx, vy: wy }));
+    // Phase 14.40: Shift = sprint. 게이지 너무 낮으면 서버에서 자동 거부.
+    c.ws.send(JSON.stringify({ type: 'input', vx: wx, vy: wy, sprint: !!mySprint }));
     lastInputSentAt = performance.now();
+  }
+
+  // Phase 14.41: 근처 다운된 같은 길드원 찾기 (RESCUE_RANGE_PX = 80)
+  function findNearestDownedGuildmate() {
+    if (!myTribeId) return null;
+    let best = null, bestD = 80;
+    for (const c of conns.values()) {
+      if (!c.others) continue;
+      for (const o of c.others.values()) {
+        if (!downStates.get(o.pid)) continue;
+        if (!o.tribeName || o.tribeName !== myTribeName) continue;
+        const ax = (c.meta?.worldOffsetX || 0) + o.x;
+        const ay = (c.meta?.worldOffsetY || 0) + o.y;
+        const d = Math.hypot(myAbsPredicted.x - ax, myAbsPredicted.y - ay);
+        if (d < bestD) { best = o; bestD = d; }
+      }
+    }
+    return best;
   }
 
   // === 메인 루프 ===
@@ -985,8 +1132,10 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
     // 클라이언트 예측: 입력으로 즉시 반응 (시각 부드러움)
     // Phase 13.9.a: wall edge 콜라이더 클라 사이드 복제 — 서버와 동일 로직
     const { wx, wy } = worldKeysDir();
-    if (wx !== 0 || wy !== 0) {
-      const speed = 220;
+    if (!myIsDown && (wx !== 0 || wy !== 0)) {
+      // Phase 14.40: Shift 달리기 — 클라 예측도 1.6× (게이지 5 이하면 자동 해제)
+      const canSprintClient = mySprint && myHunger > 5 && myThirst > 5;
+      const speed = 220 * (canSprintClient ? 1.6 : 1);
       let nx = myAbsPredicted.x + wx * speed * dt;
       let ny = myAbsPredicted.y + wy * speed * dt;
       // 각 축 별로 wall check (slide 가능)
@@ -1317,7 +1466,9 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
           else { fvx = item._fvx || 1; fvy = item._fvy || 0; }
           if (item.lastAttackAt && now - item.lastAttackAt < 300) attackPhase = 1 - (now - item.lastAttackAt) / 300;
         }
-        drawPlayerIso(s.x, s.y, item.name, item.color, item.isMe, { moving, attackPhase, fvx, fvy });
+        // Phase 14.41: 다운 상태 — 본인은 myIsDown, 다른 사람은 downStates Map
+        const downFlag = item.isMe ? myIsDown : !!downStates.get(item.pid);
+        drawPlayerIso(s.x, s.y, item.name, item.color, item.isMe, { moving, attackPhase, fvx, fvy, isDown: downFlag });
         // HP bar for others
         if (!item.isMe) {
           const o = item.hp !== undefined ? item : null;
@@ -1845,7 +1996,35 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
   function drawPlayerIso(x, y, name, color, isMe = false, opts = {}) {
     const t = performance.now() * 0.01;
     const moving = opts.moving || false;
+    const isDown = !!opts.isDown; // Phase 14.41
     const attackP = Math.max(0, opts.attackPhase || 0); // 0=쉼, 1=시작, 0.5=중간
+    // Phase 14.41: 다운 — 누워있는 모습 (옆으로 길게)
+    if (isDown) {
+      // 그림자 크게
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.beginPath(); ctx.ellipse(x, y + 4, 14, 4, 0, 0, Math.PI * 2); ctx.fill();
+      // 몸통 (옆으로 누움)
+      ctx.fillStyle = color;
+      ctx.fillRect(x - 12, y - 2, 22, 7);
+      ctx.strokeStyle = '#000'; ctx.lineWidth = 1; ctx.strokeRect(x - 12, y - 2, 22, 7);
+      // 머리 (한쪽 끝)
+      ctx.beginPath(); ctx.arc(x + 12, y + 1, 5, 0, Math.PI * 2);
+      ctx.fillStyle = '#f0d8b8'; ctx.fill();
+      ctx.strokeStyle = '#000'; ctx.lineWidth = 1; ctx.stroke();
+      // X 눈 (다운)
+      ctx.strokeStyle = '#000'; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(x + 10, y - 1); ctx.lineTo(x + 13, y + 2);
+      ctx.moveTo(x + 13, y - 1); ctx.lineTo(x + 10, y + 2); ctx.stroke();
+      // 이름 + 💀
+      ctx.font = '11px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#ff8888';
+      ctx.strokeStyle = 'rgba(0,0,0,0.85)'; ctx.lineWidth = 3;
+      ctx.strokeText('💀 ' + name, x, y - 12);
+      ctx.fillText('💀 ' + name, x, y - 12);
+      ctx.textAlign = 'start';
+      return;
+    }
     // Phase 14.37: facing — vx/vy를 iso 화면 방향으로 변환
     // world(vx,vy) → iso 화면 dx,dy: dx = vx-vy, dy = (vx+vy)/2
     const fvx = opts.fvx || 0, fvy = opts.fvy || 0;
@@ -1972,6 +2151,21 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
         : `⚖️ 적대감 ${Math.round(myVp)}/${VP_THRESHOLD}`;
       document.getElementById('vpText').textContent = txt;
       document.querySelector('.vp-bar')?.classList.toggle('danger', myVp >= VP_THRESHOLD);
+    }
+    // Phase 14.40: Sprint 뱃지 — Shift 누르고 있을 때 시각 피드백
+    const pvpBadgeForSprint = document.getElementById('pvpBadge');
+    if (pvpBadgeForSprint) {
+      let sprintBadge = document.getElementById('sprintBadge');
+      if (!sprintBadge) {
+        sprintBadge = document.createElement('span');
+        sprintBadge.id = 'sprintBadge';
+        sprintBadge.className = 'badge';
+        sprintBadge.title = 'Shift = 달리기 (배고픔/목마름 1.5배 소모)';
+        pvpBadgeForSprint.parentNode.insertBefore(sprintBadge, pvpBadgeForSprint);
+      }
+      const canSp = mySprint && myHunger > 5 && myThirst > 5;
+      sprintBadge.textContent = canSp ? '🏃 달리기' : (mySprint ? '😩 지침' : '🚶 걷기');
+      sprintBadge.style.background = canSp ? 'rgba(80,180,80,0.35)' : '';
     }
     // PvP 뱃지
     const pvpBadge = document.getElementById('pvpBadge');
@@ -2277,6 +2471,63 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
     if (craftOpen) renderCraftPanel();
     if (cookOpen) renderCookPanel();
   }
+
+  // === Phase 14.41: 다운 / 부활 패널 ===
+  function showDownPanel() {
+    const panel = document.getElementById('downPanel');
+    if (!panel) return;
+    panel.classList.remove('hidden');
+    renderDownPanel();
+  }
+  function hideDownPanel() {
+    const panel = document.getElementById('downPanel');
+    if (panel) panel.classList.add('hidden');
+  }
+  function renderDownPanel() {
+    const optBox = document.getElementById('downOptions');
+    if (!optBox) return;
+    optBox.innerHTML = '';
+    // 우선순위 정렬: personal > temporary > guild > home
+    const KIND_ORDER = { personal: 0, temporary: 1, guild: 2, home: 3 };
+    const KIND_LABEL = { personal: '개인', temporary: '임시', guild: '🛡️ 길드', home: '🏛️ 마을광장' };
+    const sorted = [...myRespawnOptions].sort((a, b) => (KIND_ORDER[a.kind] ?? 9) - (KIND_ORDER[b.kind] ?? 9));
+    if (sorted.length === 0) {
+      const none = document.createElement('div');
+      none.className = 'down-opt-none';
+      none.innerHTML = '⚠️ 부활 가능한 지점이 없습니다.<br/>사유지를 만들거나 길드에 가입하세요.<br/><span style="font-size:10px;opacity:0.7">길드원이 R 키로 구조해줄 수 있음</span>';
+      optBox.appendChild(none);
+    } else {
+      for (const o of sorted) {
+        const btn = document.createElement('button');
+        btn.className = `down-opt ${o.kind}`;
+        const kindLabel = KIND_LABEL[o.kind] || o.kind;
+        btn.innerHTML = `<span class="kind-badge">${kindLabel}</span> (${Math.round(o.x)}, ${Math.round(o.y)})에서 부활`;
+        btn.onclick = () => sendPrimary({ type: 'respawn_choice', kind: o.claimId });
+        optBox.appendChild(btn);
+      }
+    }
+    // 첫 렌더 시 hint 초기화
+    const hint = document.getElementById('downRescueHint');
+    if (hint) hint.classList.remove('expired');
+  }
+  // 1초마다 타이머 업데이트 + 윈도우 만료 시 hint 회색
+  setInterval(() => {
+    if (!myIsDown) return;
+    const elapsedMs = performance.now() - myDownedAt;
+    const remainMs = Math.max(0, myDownRescueWindowMs - elapsedMs);
+    const sec = Math.ceil(remainMs / 1000);
+    const tEl = document.getElementById('downTimer');
+    const hint = document.getElementById('downRescueHint');
+    if (remainMs > 0) {
+      if (tEl) tEl.textContent = sec;
+      if (hint) hint.classList.remove('expired');
+    } else {
+      if (hint) {
+        hint.classList.add('expired');
+        hint.innerHTML = '⌛ 구조 가능 시간 지남. 사유지를 선택해 부활하세요.';
+      }
+    }
+  }, 500);
 
   // === 길드 패널 ===
   let tribeOpen = false;

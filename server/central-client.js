@@ -35,8 +35,11 @@ function request(method, path, body) {
   });
 }
 
-async function authenticate(username, password, color) {
-  const r = await request('POST', '/auth', { username, password, color });
+async function authenticate(username, password, color, homeZone = null, homeX = null, homeY = null) {
+  const r = await request('POST', '/auth', {
+    username, password, color,
+    home_zone: homeZone, home_x: homeX, home_y: homeY,
+  });
   return r.data;
 }
 

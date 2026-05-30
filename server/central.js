@@ -135,6 +135,19 @@ try {
     db.exec('ALTER TABLE players ADD COLUMN floor INTEGER NOT NULL DEFAULT 0');
     console.log('[central/db] floor 컬럼 추가됨');
   }
+  // 14.42-a: home_zone / home_x / home_y — 영구 fallback (첫 가입 시 정해짐)
+  if (!cols.includes('home_zone')) {
+    db.exec('ALTER TABLE players ADD COLUMN home_zone TEXT');
+    console.log('[central/db] home_zone 컬럼 추가됨');
+  }
+  if (!cols.includes('home_x')) {
+    db.exec('ALTER TABLE players ADD COLUMN home_x REAL');
+    console.log('[central/db] home_x 컬럼 추가됨');
+  }
+  if (!cols.includes('home_y')) {
+    db.exec('ALTER TABLE players ADD COLUMN home_y REAL');
+    console.log('[central/db] home_y 컬럼 추가됨');
+  }
   // Phase 14.2 — tribes 테이블에 vp + treasury + is_npc + behavior_tier 컬럼
   const tribeCols = db.prepare("PRAGMA table_info(tribes)").all().map(c => c.name);
   if (!tribeCols.includes('vp')) {
@@ -187,7 +200,8 @@ const stmtInsertPlayer = db.prepare(`
 const stmtUpdateProfile = db.prepare(`
   UPDATE players SET wood = ?, stone = ?, tools_json = ?, equipped = ?,
     inventory_json = ?, hunger = ?, thirst = ?, violation_points = ?, tribe_id = ?, floor = ?,
-    last_zone = ?, last_x = ?, last_y = ?, last_seen = ?, color = ?
+    last_zone = ?, last_x = ?, last_y = ?, last_seen = ?, color = ?,
+    home_zone = ?, home_x = ?, home_y = ?
   WHERE player_id = ?
 `);
 const stmtCountPlayers = db.prepare('SELECT COUNT(*) as cnt FROM players');
@@ -343,23 +357,44 @@ const server = http.createServer(async (req, res) => {
       const color = (typeof data.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(data.color)) ? data.color : '#5a9ae0';
       if (!username || !password) return jsonResp(res, 400, { ok: false, reason: 'missing_credentials' });
 
+      // 14.42-a: 신규 가입 시 home_zone과 home_x/home_y 받아서 저장.
+      // 기존 계정은 home_zone 무시 (이미 정해진 home 유지).
+      const homeZone = (typeof data.home_zone === 'string' && data.home_zone.length <= 32) ? data.home_zone : null;
+      const homeX = (typeof data.home_x === 'number') ? data.home_x : null;
+      const homeY = (typeof data.home_y === 'number') ? data.home_y : null;
+
       const existing = stmtGetPlayer.get(username);
       if (existing) {
         if (!existing.password_hash) return jsonResp(res, 200, { ok: false, reason: 'username_taken' });
         if (!verifyPassword(password, existing.password_hash, existing.password_salt))
           return jsonResp(res, 200, { ok: false, reason: 'wrong_password' });
+        // 14.42-a 마이그레이션: 기존 계정인데 home_zone 없으면 last_zone 기반으로 자동 할당
+        if (!existing.home_zone && existing.last_zone) {
+          db.prepare('UPDATE players SET home_zone=?, home_x=?, home_y=? WHERE player_id=?')
+            .run(existing.last_zone, existing.last_x, existing.last_y, username);
+          existing.home_zone = existing.last_zone;
+          existing.home_x = existing.last_x;
+          existing.home_y = existing.last_y;
+          console.log(`[central] 마이그레이션: ${username} home = ${existing.last_zone}`);
+        }
         return jsonResp(res, 200, { ok: true, player: existing, isNew: false });
       }
-      // 신규 등록
+      // 신규 등록 — home_zone 필수
+      if (!homeZone || homeX === null || homeY === null) {
+        return jsonResp(res, 200, { ok: false, reason: 'missing_home_zone' });
+      }
       const { hash, salt } = hashPassword(password);
       const now = Date.now();
       try {
         stmtInsertPlayer.run(username, username, color, hash, salt, now, now);
+        // 신규 가입자에게 home + last_zone 동시 세팅 — 첫 입장은 home에서.
+        db.prepare('UPDATE players SET home_zone=?, home_x=?, home_y=?, last_zone=?, last_x=?, last_y=? WHERE player_id=?')
+          .run(homeZone, homeX, homeY, homeZone, homeX, homeY, username);
       } catch (e) {
         return jsonResp(res, 200, { ok: false, reason: 'username_taken' });
       }
       const created = stmtGetPlayer.get(username);
-      console.log(`[central] 신규 가입: ${username}`);
+      console.log(`[central] 신규 가입: ${username}  home=${homeZone} (${Math.round(homeX)},${Math.round(homeY)})`);
       return jsonResp(res, 200, { ok: true, player: created, isNew: true });
     }
     // === 게스트 username 검증 ===
@@ -400,6 +435,9 @@ const server = http.createServer(async (req, res) => {
         data.last_y ?? p.last_y,
         Date.now(),
         data.color ?? p.color,
+        data.home_zone ?? p.home_zone,
+        data.home_x ?? p.home_x,
+        data.home_y ?? p.home_y,
         id
       );
       return jsonResp(res, 200, { ok: true });

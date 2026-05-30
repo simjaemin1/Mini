@@ -29,6 +29,8 @@ function hostFromEnv(zoneId, fallback) {
 const WS_PROTO = process.env.WS_PROTO || 'ws';
 const HTTP_PROTO = process.env.HTTP_PROTO || 'http';
 
+// 14.42-a: 각 zone에 mainSquare (마을 광장) — 초기 스폰 + home fallback 지점.
+// 통상 villages[0]을 main으로 지정.
 const ZONES_BASE = {
   korea: {
     port: 3002, biome: 'mountains', displayName: '한반도 산악',
@@ -41,6 +43,7 @@ const ZONES_BASE = {
       { name: '부산', x: 8192, y: 8192 },
       { name: '광주', x: 2048, y: 7680 },
     ],
+    mainSquare: { name: '서울 광장', x: 5120, y: 2560 },
   },
   russia: {
     port: 3001, biome: 'forest', displayName: '러시아 타이가',
@@ -53,6 +56,7 @@ const ZONES_BASE = {
       { name: '노보시비르스크', x: 5632, y: 6144 },
       { name: '블라디보스토크', x: 8704, y: 8704 },
     ],
+    mainSquare: { name: '모스크바 광장', x: 2560, y: 3072 },
   },
   usa: {
     port: 3005, biome: 'plains', displayName: '미국 평원',
@@ -65,6 +69,7 @@ const ZONES_BASE = {
       { name: '시카고', x: 5120, y: 5120 },
       { name: 'LA',    x: 2048, y: 8192 },
     ],
+    mainSquare: { name: '뉴욕 광장', x: 8704, y: 2560 },
   },
   china: {
     port: 3003, biome: 'plains', displayName: '중국 평원',
@@ -77,6 +82,7 @@ const ZONES_BASE = {
       { name: '상하이', x: 8192, y: 5632 },
       { name: '충칭',   x: 2560, y: 7680 },
     ],
+    mainSquare: { name: '베이징 광장', x: 5120, y: 2560 },
   },
 };
 
@@ -159,6 +165,7 @@ function publicZoneMap(fallbackHost = 'localhost') {
       south: filterNbr(z.south),
       west:  filterNbr(z.west),
       east:  filterNbr(z.east),
+      mainSquare: z.mainSquare || null, // 14.42-a — 마을 광장 (초기 스폰)
     };
   }
   return map;
