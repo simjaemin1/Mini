@@ -908,9 +908,11 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
   let chatSetup = false;
 
   // === 서버 권위 좌표 → 클라 예측 보정 ===
-  // - <100px: 무시 (정상 client-side prediction에서 항상 발생하는 lag-induced 드리프트)
-  // - 100~500px: 200ms lerp (의도된 위치 변경 같은 중간 보정)
-  // - >500px: 즉시 snap (zone 전환 비정상 같은 큰 desync)
+  // Phase 14.15: 임계 100 → 16 (cell 절반). wall 두께 0이라 작은 desync도 즉시 lerp.
+  // wall에 막혔는데 client만 자유 이동하면 server position 따라 lerp되어야 함.
+  // - <16px: 무시 (정상 lag 드리프트)
+  // - 16~500px: 짧은 lerp (80ms — wall 막힘 sync 빠르게)
+  // - >500px: 즉시 snap
   function applyServerCorrection(absX, absY) {
     const ex = absX - myAbsPredicted.x, ey = absY - myAbsPredicted.y;
     const dist = Math.hypot(ex, ey);
@@ -918,13 +920,12 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
       myAbsPredicted = { x: absX, y: absY };
       correctionVel = { x: 0, y: 0 };
       correctionUntil = 0;
-    } else if (dist > 100) {
-      const T = 0.2;
+    } else if (dist > 16) {
+      const T = 0.08; // 80ms — wall stick 빠르게
       correctionVel.x = ex / T;
       correctionVel.y = ey / T;
       correctionUntil = performance.now() + T * 1000;
     } else {
-      // 작은 드리프트는 무시 — predicted를 truth로 유지해서 부드러운 시각 효과
       correctionVel = { x: 0, y: 0 };
       correctionUntil = 0;
     }
