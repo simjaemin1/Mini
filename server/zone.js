@@ -6,12 +6,11 @@
 
 const WebSocket = require('ws');
 const http = require('http');
-const { ZONES, WORLD, isNight, worldPhase, darknessLevel } = require('./zone-config');
+const { ZONES, WORLD, isNight, worldPhase, darknessLevel, findZoneAt, worldDistance, worldDeltaX } = require('./zone-config');
 const db = require('./zone-local-db'); // 로컬 zone DB — players 없음
 const central = require('./central-client'); // central HTTP 클라이언트
 const { Quadtree } = require('./quadtree'); // spatial index — O(N²) 검색 회피
-const { ChunkManager, CHUNK_SIZE, generateChunkResources } = require('./chunk'); // 청크 단위 entity 분류 + procedural
-const chunkManager = new ChunkManager(WORLD.zoneWidth, WORLD.zoneHeight);
+const { ChunkManager, CHUNK_SIZE, generateChunkResources, generateVillagesForZone } = require('./chunk'); // 청크 단위 entity 분류 + procedural
 const harvestedSeeds = new Set(); // 채집된 시드 자원 (DB에서 load)
 
 // === 활성 청크 (12.2.b) — 사람 player + observer 위치 주변 청크만 시뮬레이션 ===
@@ -94,7 +93,7 @@ function isPositionActive(x, y) {
 // stale 33ms 정도는 OK (다음 tick에 재구축).
 let qtPlayers, qtMobs, qtResources, qtBuildings;
 function rebuildSpatialIndex() {
-  const W = WORLD.zoneWidth, H = WORLD.zoneHeight;
+  const W = ZONE.zoneWidth, H = ZONE.zoneHeight;
   qtPlayers   = new Quadtree(0, 0, W, H);
   qtMobs      = new Quadtree(0, 0, W, H);
   qtResources = new Quadtree(0, 0, W, H);
@@ -132,9 +131,26 @@ function savePlayer(player, extra = {}) {
   );
 }
 
-const ZONE_ID = process.env.ZONE_ID || 'korea';
-const PORT = parseInt(process.env.PORT || ZONES[ZONE_ID]?.port || '3002', 10);
+const ZONE_ID = process.env.ZONE_ID || 'hanbando';
+if (!ZONES[ZONE_ID]) {
+  console.error(`[fatal] ZONE_ID=${ZONE_ID} 가 zone-config에 없음. 사용 가능: ${Object.keys(ZONES).join(', ')}`);
+  process.exit(1);
+}
+const PORT = parseInt(process.env.PORT || ZONES[ZONE_ID]?.port || '3020', 10);
 const ZONE = ZONES[ZONE_ID];
+// Phase 14.46-a: chunkManager는 zone별 크기 사용
+const chunkManager = new ChunkManager(ZONE.zoneWidth, ZONE.zoneHeight);
+// Phase 14.46-a: 각 변에 이웃 zone이 있는지 (월드 가장자리 판정용 — ice barrier 등).
+// 이웃 zone 자체가 무엇인지는 핸드오프 시점 abs lookup으로 결정. 여기는 단순 boolean.
+const NEIGHBOR = {
+  hasNorth: !!findZoneAt(ZONE.worldOffsetX + ZONE.zoneWidth/2, ZONE.worldOffsetY - 1),
+  hasSouth: !!findZoneAt(ZONE.worldOffsetX + ZONE.zoneWidth/2, ZONE.worldOffsetY + ZONE.zoneHeight + 1),
+  hasWest:  !!findZoneAt(ZONE.worldOffsetX - 1, ZONE.worldOffsetY + ZONE.zoneHeight/2),
+  hasEast:  !!findZoneAt(ZONE.worldOffsetX + ZONE.zoneWidth + 1, ZONE.worldOffsetY + ZONE.zoneHeight/2),
+};
+// Phase 14.46-a: 마을 자동 생성 — 모듈 로드 시 mob spawn 등이 isNearVillage를 호출하므로 일찍 정의해야 함.
+const VILLAGES = generateVillagesForZone(ZONE);
+const VILLAGE_SAFE_RADIUS = 600; // 늑대 이 안에 spawn X (마을 안전구역). isNearVillage()도 이거 씀.
 // 메트릭 카운터
 const metrics = {
   startedAt: Date.now(),
@@ -327,8 +343,8 @@ const RESOURCE_HP = {
 };
 
 function spawnOneResource() {
-  const x = 32 + Math.random() * (WORLD.zoneWidth - 64);
-  const y = 32 + Math.random() * (WORLD.zoneHeight - 64);
+  const x = 32 + Math.random() * (ZONE.zoneWidth - 64);
+  const y = 32 + Math.random() * (ZONE.zoneHeight - 64);
   const type = biomeResourceType();
   const maxHp = RESOURCE_HP[type] || 3;
   // DB에 영속화
@@ -374,8 +390,8 @@ function spawnMob(type, opts = {}) {
   } else {
     // 늑대는 마을 안전구역 밖에서만 spawn (사슴은 마을 근처도 OK)
     for (let att = 0; att < 20; att++) {
-      x = 32 + Math.random() * (WORLD.zoneWidth - 64);
-      y = 32 + Math.random() * (WORLD.zoneHeight - 64);
+      x = 32 + Math.random() * (ZONE.zoneWidth - 64);
+      y = 32 + Math.random() * (ZONE.zoneHeight - 64);
       if (type !== 'wolf' || !(typeof isNearVillage === 'function' && isNearVillage(x, y))) break;
     }
   }
@@ -413,8 +429,12 @@ function spawnMob(type, opts = {}) {
       });
     }
     console.log(`[${ZONE_ID}] DB에서 mob ${existing.length}마리 로드`);
+  } else if (ZONE.isOcean) {
+    // 14.46-a: 해양 zone — mob 생성 안 함 (사슴/늑대 바다에 떠있으면 이상함).
+    // 14.46-b에서 fish 추가 예정.
+    console.log(`[${ZONE_ID}] 🌊 ocean zone — mob spawn skip`);
   } else {
-    const isHostile = ZONE.biome === 'mountains' || ZONE.biome === 'forest';
+    const isHostile = ZONE.biome === 'mountains' || ZONE.biome === 'mountain' || ZONE.biome === 'forest' || ZONE.biome === 'taiga';
     // 면적 100배지만 mob도 메모리 차지 — 적당히 50배 (비활성 청크는 AI skip)
     const deerCount = isHostile ? 200 : 400;
     const wolfCount = isHostile ? 250 : 100;
@@ -427,8 +447,8 @@ function spawnMob(type, opts = {}) {
       // 팩의 home — 마을 안전구역 밖에서만 (20회 재시도)
       let homeX, homeY;
       for (let att = 0; att < 20; att++) {
-        homeX = 200 + Math.random() * (WORLD.zoneWidth - 400);
-        homeY = 200 + Math.random() * (WORLD.zoneHeight - 400);
+        homeX = 200 + Math.random() * (ZONE.zoneWidth - 400);
+        homeY = 200 + Math.random() * (ZONE.zoneHeight - 400);
         if (!isNearVillage(homeX, homeY)) break;
       }
       for (let i = 0; i < packSize; i++) {
@@ -479,21 +499,21 @@ function spawnNpc(opts = {}) {
       cy = opts.y + Math.sin(ang) * r;
     }
   } else {
-    cx = 200 + Math.random() * (WORLD.zoneWidth - 400);
-    cy = 200 + Math.random() * (WORLD.zoneHeight - 400);
+    cx = 200 + Math.random() * (ZONE.zoneWidth - 400);
+    cy = 200 + Math.random() * (ZONE.zoneHeight - 400);
     for (let attempt = 0; attempt < 8; attempt++) {
       let collide = false;
       for (const c of claims.values()) {
         if (rectsOverlap(cx - NPC_CLAIM_SIZE/2, cy - NPC_CLAIM_SIZE/2, NPC_CLAIM_SIZE, NPC_CLAIM_SIZE, c.x, c.y, c.w, c.h)) { collide = true; break; }
       }
       if (!collide) break;
-      cx = 200 + Math.random() * (WORLD.zoneWidth - 400);
-      cy = 200 + Math.random() * (WORLD.zoneHeight - 400);
+      cx = 200 + Math.random() * (ZONE.zoneWidth - 400);
+      cy = 200 + Math.random() * (ZONE.zoneHeight - 400);
     }
   }
   // 사이즈 안 벗어나게 clamp
-  cx = clamp(cx, NPC_CLAIM_SIZE, WORLD.zoneWidth - NPC_CLAIM_SIZE);
-  cy = clamp(cy, NPC_CLAIM_SIZE, WORLD.zoneHeight - NPC_CLAIM_SIZE);
+  cx = clamp(cx, NPC_CLAIM_SIZE, ZONE.zoneWidth - NPC_CLAIM_SIZE);
+  cy = clamp(cy, NPC_CLAIM_SIZE, ZONE.zoneHeight - NPC_CLAIM_SIZE);
   const pid = `p${nextPid++}`;
   const npcId = `npc_${ZONE_ID}_${nextNpcSerial++}_${Math.random().toString(36).slice(2,6)}`;
   const name = (opts.name || NPC_NAMES[Math.floor(Math.random()*NPC_NAMES.length)]) + '🤖';
@@ -576,9 +596,8 @@ function spawnNpc(opts = {}) {
 // === 부팅: DB 직접 wipe (옛 NPC + debug + legacy wall) → DB 로드 → 마을 spawn ===
 // 중요: DB 로드는 라인 836+에서 일어남. 그래서 메모리 기반 cleanup은 의미 X.
 // 여기서 DB에 직접 DELETE 쿼리로 wipe — DB 로드 시 이미 사라져 있음.
-const VILLAGES = ZONE.villages || [];
+// VILLAGES + VILLAGE_SAFE_RADIUS는 위 ~150줄에서 정의됨 (모듈 로드 hoisting 문제로)
 const NPC_PER_VILLAGE = VILLAGES.length > 0 ? Math.floor(NPC_COUNT_PER_ZONE / VILLAGES.length) : 0;
-const VILLAGE_SAFE_RADIUS = 600; // 늑대 이 안에 spawn X (마을 안전구역)
 {
   try {
     const npcClaimRes = db.db.prepare("DELETE FROM claims WHERE owner_id LIKE 'npc_%'").run();
@@ -964,7 +983,7 @@ registerVillageGuilds().catch(e => console.warn(`[${ZONE_ID}] village guild regi
 spawnVillagers();
 
 // === Phase 14.20+14.22: 한반도 스폰 옆 public chest 3개 + chest 진단/정리 ===
-if (ZONE_ID === 'korea') {
+if (ZONE_ID === 'hanbando') {
   // 1) 메모리 + DB 모두 정리: public 또는 debug_chest owner chest 전부 제거
   let removedMem = 0;
   for (const [id, b] of buildings) {
@@ -1072,8 +1091,8 @@ const server = http.createServer((req, res) => {
           player_id: data.player_id || `anon_${Math.random().toString(36).slice(2,10)}`,
           name: (data.name || '여행자').slice(0, 16),
           color: (typeof data.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(data.color)) ? data.color : '#5a9ae0',
-          x: Math.max(0, Math.min(WORLD.zoneWidth, +data.x || 0)),
-          y: Math.max(0, Math.min(WORLD.zoneHeight, +data.y || 0)),
+          x: Math.max(0, Math.min(ZONE.zoneWidth, +data.x || 0)),
+          y: Math.max(0, Math.min(ZONE.zoneHeight, +data.y || 0)),
           vx: +data.vx || 0,
           vy: +data.vy || 0,
           inventory: data.inventory || { wood: 0, stone: 0 },
@@ -1190,8 +1209,8 @@ wss.on('connection', async (ws, req) => {
     const initVx = parseFloat(url.searchParams.get('vx'));
     const initVy = parseFloat(url.searchParams.get('vy'));
     observers.set(ws, {
-      viewerX: !isNaN(initVx) ? initVx : WORLD.zoneWidth / 2,
-      viewerY: !isNaN(initVy) ? initVy : WORLD.zoneHeight / 2,
+      viewerX: !isNaN(initVx) ? initVx : ZONE.zoneWidth / 2,
+      viewerY: !isNaN(initVy) ? initVy : ZONE.zoneHeight / 2,
       lastSeen: Date.now(),
     });
     send(ws, {
@@ -1226,8 +1245,8 @@ wss.on('connection', async (ws, req) => {
       else if (msg.type === 'viewport_update') {
         const data = observers.get(ws);
         if (!data) return;
-        data.viewerX = Math.max(0, Math.min(WORLD.zoneWidth, +msg.x || 0));
-        data.viewerY = Math.max(0, Math.min(WORLD.zoneHeight, +msg.y || 0));
+        data.viewerX = Math.max(0, Math.min(ZONE.zoneWidth, +msg.x || 0));
+        data.viewerY = Math.max(0, Math.min(ZONE.zoneHeight, +msg.y || 0));
         data.lastSeen = Date.now();
       }
       else if (msg.type === 'promote_to_primary' && msg.token && pendingHandoffs.has(msg.token)) {
@@ -1377,7 +1396,7 @@ wss.on('connection', async (ws, req) => {
       // 14.42-a: 신규 가입이면 client가 선택한 home_zone 전달.
       //  - 이 zone(접속 zone)이 곧 home zone임 (lobby에서 선택한 zone에 ws 연결되니까)
       //  - 그 zone의 마을광장이 home 좌표
-      const myMain = ZONE.mainSquare || { x: WORLD.zoneWidth/2, y: WORLD.zoneHeight/2 };
+      const myMain = ZONE.mainSquare || { x: ZONE.zoneWidth/2, y: ZONE.zoneHeight/2 };
       let result;
       try { result = await central.authenticate(inUsername, inPassword, color, ZONE_ID, myMain.x, myMain.y); }
       catch (e) {
@@ -1428,8 +1447,8 @@ wss.on('connection', async (ws, req) => {
       } else if (p.home_zone === ZONE_ID && typeof p.home_x === 'number' && typeof p.home_y === 'number') {
         sx = p.home_x; sy = p.home_y;
       } else {
-        sx = WORLD.zoneWidth / 2;
-        sy = WORLD.zoneHeight / 2;
+        sx = ZONE.zoneWidth / 2;
+        sy = ZONE.zoneHeight / 2;
       }
       console.log(`[${ZONE_ID}] ${result.isNew ? '신규 가입' : '로그인'}: ${name}  tribe=${initTribeName || '없음'}  spawn=(${sx.toFixed(0)},${sy.toFixed(0)})`);
     } else {
@@ -1448,7 +1467,7 @@ wss.on('connection', async (ws, req) => {
       name = inUsername || `여행자${nextPid}`;
       console.log(`[${ZONE_ID}] 게스트 접속: ${name} (${playerId})`);
       // 14.42-a: 게스트도 마을광장에서 시작
-      const myMain = ZONE.mainSquare || { x: WORLD.zoneWidth/2, y: WORLD.zoneHeight/2 };
+      const myMain = ZONE.mainSquare || { x: ZONE.zoneWidth/2, y: ZONE.zoneHeight/2 };
       sx = myMain.x; sy = myMain.y;
     }
 
@@ -1474,7 +1493,7 @@ wss.on('connection', async (ws, req) => {
     }
     // 14.42-a: sx/sy는 이미 위(등록 분기 or 게스트 분기)에서 정해짐 — 추가 fallback만
     if (typeof sx !== 'number' || typeof sy !== 'number') {
-      const fb = ZONE.mainSquare || { x: WORLD.zoneWidth/2, y: WORLD.zoneHeight/2 };
+      const fb = ZONE.mainSquare || { x: ZONE.zoneWidth/2, y: ZONE.zoneHeight/2 };
       sx = fb.x; sy = fb.y;
     }
   }
@@ -2660,7 +2679,7 @@ function damagePlayer(p, dmg, source) {
     if (p.isNpc) {
       // NPC: 30초 후 자기 사유지 중심에 부활 (기존 로직 유지)
       console.log(`[${ZONE_ID}] 🤖 NPC ${p.name} 사망 (by ${source}) — ${NPC_RESPAWN_MS/1000}초 후 부활`);
-      let respawnX = WORLD.zoneWidth/2, respawnY = WORLD.zoneHeight/2;
+      let respawnX = ZONE.zoneWidth/2, respawnY = ZONE.zoneHeight/2;
       const village = VILLAGES.find(v => v.name === p.tribeName);
       if (village) { respawnX = village.x; respawnY = village.y; }
       setTimeout(() => {
@@ -2792,6 +2811,16 @@ function tryRescue(rescuer, downedPid) {
   console.log(`[${ZONE_ID}] 🤝 ${rescuer.name} → ${target.name} 구조 성공`);
 }
 
+// === Phase 14.45: 극지방 빙하 콜라이더 ===
+// 북쪽 이웃 없는 zone(russia/usa)은 y < ICE_BAND 차단
+// 남쪽 이웃 없는 zone(korea/china)은 y > zoneHeight - ICE_BAND 차단
+const ICE_BAND_PX = 800;
+function isInIceBand(y) {
+  if (!NEIGHBOR.hasNorth && y < ICE_BAND_PX) return true;
+  if (!NEIGHBOR.hasSouth && y > ZONE.zoneHeight - ICE_BAND_PX) return true;
+  return false;
+}
+
 // === PZ식 wall edge 콜라이더 ===
 // wall은 cell edge에 있음. side ∈ {N, E} 정규화.
 // N wall = cell (cx, cy)의 북쪽 edge = y = cy*BUILDING_SIZE 라인
@@ -2912,42 +2941,42 @@ setInterval(() => {
     if (isBlockedByWall(nx, p.y, p.x, p.y, pf, trace)) nx = p.x;
     if (isBlockedByWall(p.x, ny, p.x, p.y, pf, trace)) ny = p.y;
     if (isBlockedByWall(nx, ny, p.x, p.y, pf, trace)) { nx = p.x; ny = p.y; }
+    // 14.45: 빙하 콜라이더 — y가 극지방 진입하면 ny 무효. nx는 그대로 → 빙하 경계 따라 좌우 슬라이드 가능.
+    if (isInIceBand(ny) && !isInIceBand(p.y)) ny = p.y;
 
     // 4방향 경계 처리 — 새 위치가 zone 밖으로 나가면 이웃으로 핸드오프
     // 우선순위: 가장 큰 초과 축. 모서리에서 두 방향 동시에 초과돼도 한 zone으로만.
     const outW = -nx;                              // 서쪽 초과량 (>0이면 밖)
-    const outE = nx - WORLD.zoneWidth;             // 동쪽 초과량
+    const outE = nx - ZONE.zoneWidth;             // 동쪽 초과량
     const outN = -ny;                              // 북쪽 초과량
-    const outS = ny - WORLD.zoneHeight;            // 남쪽 초과량
+    const outS = ny - ZONE.zoneHeight;            // 남쪽 초과량
     const maxOut = Math.max(outW, outE, outN, outS);
     // DEBUG — 1초마다 1회만
     if ((p.vy !== 0 || p.vx !== 0) && (!p._dbgT || now - p._dbgT > 1000)) {
       p._dbgT = now;
-      console.log(`[${ZONE_ID}/dbg] ${p.name} pos=(${nx.toFixed(0)},${ny.toFixed(0)}) v=(${p.vx.toFixed(0)},${p.vy.toFixed(0)}) maxOut=${maxOut.toFixed(0)} N=${ZONE.north||'∅'} handingOff=${p.handingOff}`);
+      console.log(`[${ZONE_ID}/dbg] ${p.name} pos=(${nx.toFixed(0)},${ny.toFixed(0)}) v=(${p.vx.toFixed(0)},${p.vy.toFixed(0)}) maxOut=${maxOut.toFixed(0)} handingOff=${p.handingOff}`);
     }
     // NPC는 zone 핸드오프 안 함 — 항상 클램프
     if (maxOut > 0 && p.isNpc) {
-      p.x = clamp(nx, 0, WORLD.zoneWidth);
-      p.y = clamp(ny, 0, WORLD.zoneHeight);
+      p.x = clamp(nx, 0, ZONE.zoneWidth);
+      p.y = clamp(ny, 0, ZONE.zoneHeight);
       // 경계 닿으면 NPC가 다음 결정 다시 — 안 막힘
       p.nextDecisionAt = 0;
     } else if (maxOut > 0) {
-      if (outW === maxOut && ZONE.west) {
+      // 14.46-a: abs 좌표 lookup으로 핸드오프 대상 결정 (이웃 포인터 X)
+      // 클램프된 exit 좌표를 abs로 변환 → findZoneAt → 해당 zone에 핸드오프.
+      const absExitX = ZONE.worldOffsetX + nx;
+      const absExitY = ZONE.worldOffsetY + ny;
+      const target = findZoneAt(absExitX, absExitY);
+      if (target && target.id !== ZONE_ID) {
         p.x = nx; p.y = ny;
-        fireHandoff(p, ZONE.west, WORLD.zoneWidth + nx, clamp(ny, 0, WORLD.zoneHeight));
-      } else if (outE === maxOut && ZONE.east) {
-        p.x = nx; p.y = ny;
-        fireHandoff(p, ZONE.east, nx - WORLD.zoneWidth, clamp(ny, 0, WORLD.zoneHeight));
-      } else if (outN === maxOut && ZONE.north) {
-        p.x = nx; p.y = ny;
-        fireHandoff(p, ZONE.north, clamp(nx, 0, WORLD.zoneWidth), WORLD.zoneHeight + ny);
-      } else if (outS === maxOut && ZONE.south) {
-        p.x = nx; p.y = ny;
-        fireHandoff(p, ZONE.south, clamp(nx, 0, WORLD.zoneWidth), ny - WORLD.zoneHeight);
+        const localX = absExitX - target.worldOffsetX;
+        const localY = absExitY - target.worldOffsetY;
+        fireHandoff(p, target.id, localX, localY);
       } else {
-        // 이웃 없는 방향 — clamp
-        p.x = clamp(nx, 0, WORLD.zoneWidth);
-        p.y = clamp(ny, 0, WORLD.zoneHeight);
+        // 경계 밖인데 zone 없음 (월드 가장자리) → clamp
+        p.x = clamp(nx, 0, ZONE.zoneWidth);
+        p.y = clamp(ny, 0, ZONE.zoneHeight);
       }
     } else {
       p.x = nx;
@@ -3033,10 +3062,11 @@ setInterval(() => {
       // 길든 mob은 이동만 처리하고 일반 AI 스킵
       let nx = m.x + m.vx * dt;
       let ny = m.y + m.vy * dt;
-      nx = clamp(nx, 0, WORLD.zoneWidth);
-      ny = clamp(ny, 0, WORLD.zoneHeight);
+      nx = clamp(nx, 0, ZONE.zoneWidth);
+      ny = clamp(ny, 0, ZONE.zoneHeight);
       if (isBlockedByWall(nx, m.y, m.x, m.y, 0)) nx = m.x;
       if (isBlockedByWall(m.x, ny, m.x, m.y, 0)) ny = m.y;
+      if (isInIceBand(ny) && !isInIceBand(m.y)) ny = m.y; // 14.45
       if (Math.abs(nx - m.x) + Math.abs(ny - m.y) > 2) m.dirty = true;
       m.x = nx; m.y = ny;
       chunkManager.updateMobChunk(m);
@@ -3110,10 +3140,11 @@ setInterval(() => {
     }
     let nx = m.x + m.vx * dt;
     let ny = m.y + m.vy * dt;
-    nx = clamp(nx, 0, WORLD.zoneWidth);
-    ny = clamp(ny, 0, WORLD.zoneHeight);
+    nx = clamp(nx, 0, ZONE.zoneWidth);
+    ny = clamp(ny, 0, ZONE.zoneHeight);
     if (isBlockedByWall(nx, m.y, m.x, m.y, 0)) nx = m.x;
     if (isBlockedByWall(m.x, ny, m.x, m.y, 0)) ny = m.y;
+    if (isInIceBand(ny) && !isInIceBand(m.y)) ny = m.y; // 14.45
     // 의미 있는 이동(>2px)일 때만 dirty 마크 — 영속화 부담 최소화
     if (Math.abs(nx - m.x) + Math.abs(ny - m.y) > 2) m.dirty = true;
     m.x = nx; m.y = ny;
@@ -3198,8 +3229,8 @@ async function fireHandoff(player, targetZoneId, newX, newY) {
   player.handingOff = true;
   player.vx = 0;
   player.vy = 0;
-  player.x = Math.max(0, Math.min(WORLD.zoneWidth, player.x));
-  player.y = Math.max(0, Math.min(WORLD.zoneHeight, player.y));
+  player.x = Math.max(0, Math.min(ZONE.zoneWidth, player.x));
+  player.y = Math.max(0, Math.min(ZONE.zoneHeight, player.y));
   const target = ZONES[targetZoneId];
   if (!target) { player.handingOff = false; return; }
   savePlayer(player, { last_zone: targetZoneId, last_x: newX, last_y: newY });
@@ -3311,21 +3342,19 @@ function zonePublicMeta() {
     biome: ZONE.biome,
     groundColor: ZONE.groundColor,
     tintColor: ZONE.tintColor,
-    width: WORLD.zoneWidth,
-    height: WORLD.zoneHeight,
+    width: ZONE.zoneWidth,
+    height: ZONE.zoneHeight,
     tileSize: WORLD.tileSize,
     worldOffsetX: ZONE.worldOffsetX,
     worldOffsetY: ZONE.worldOffsetY,
-    west: ZONE.west,
-    east: ZONE.east,
-    north: ZONE.north,
-    south: ZONE.south,
+    isOcean: !!ZONE.isOcean,
+    mainSquare: ZONE.mainSquare || null,
   };
 }
 
 server.listen(PORT, () => {
   console.log(`[${ZONE_ID}] 🌏 zone server up on :${PORT}  latency=${LATENCY_MS}ms (RTT≈${LATENCY_MS*2}ms)`);
-  console.log(`        biome=${ZONE.biome}  W=${ZONE.west||'∅'}  E=${ZONE.east||'∅'}  N=${ZONE.north||'∅'}  S=${ZONE.south||'∅'}`);
+  console.log(`        biome=${ZONE.biome}  rect=(${ZONE.worldOffsetX},${ZONE.worldOffsetY},${ZONE.zoneWidth}x${ZONE.zoneHeight})  neighbors=W:${NEIGHBOR.hasWest?'✓':'∅'} E:${NEIGHBOR.hasEast?'✓':'∅'} N:${NEIGHBOR.hasNorth?'✓':'∅'} S:${NEIGHBOR.hasSouth?'✓':'∅'}`);
 });
 
 // === Graceful shutdown — 종료 직전 모든 mob/플레이어 상태 flush ===

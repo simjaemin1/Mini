@@ -146,22 +146,17 @@ function seedRand(zoneId, cx, cy, n) {
 
 const RESOURCE_HP_TABLE = { tree: 3, rock: 4, berry_bush: 2, water_pool: 999, herb: 1, ore: 5 };
 
-// Phase 14.1+14.3: biome별 자원 강한 편재 + herb/ore 추가
-// 설계 문서 §2.2: "지역마다 편재" — 우리 맵에 적용:
-//   - korea (mountains): rock·ore 압도 → 광물 지대
-//   - russia (forest): tree 압도 → 목재 지대
-//   - usa/china (plains): berry·herb 많음 → 농경/약초 지대
+// Phase 14.1+14.3+14.46-a: biome별 자원 강한 편재.
+// biome 종류: plains, mountain, forest, taiga, tundra, desert, jungle, savanna, archipelago, ocean
 function pickResourceType(biome, r) {
   if (biome === 'plains') {
-    // 평원: berry 50, herb 25, tree 20, rock 4, water 1
     if (r < 0.50) return 'berry_bush';
     if (r < 0.75) return 'herb';
     if (r < 0.95) return 'tree';
     if (r < 0.99) return 'rock';
     return 'water_pool';
   }
-  if (biome === 'mountains') {
-    // 산악: rock 55, ore 20, tree 10, herb 8, berry 5, water 2
+  if (biome === 'mountain' || biome === 'mountains') {
     if (r < 0.55) return 'rock';
     if (r < 0.75) return 'ore';
     if (r < 0.85) return 'tree';
@@ -169,7 +164,65 @@ function pickResourceType(biome, r) {
     if (r < 0.98) return 'berry_bush';
     return 'water_pool';
   }
-  // forest: tree 70, berry 15, herb 8, rock 5, water 2
+  if (biome === 'forest') {
+    if (r < 0.70) return 'tree';
+    if (r < 0.85) return 'berry_bush';
+    if (r < 0.93) return 'herb';
+    if (r < 0.98) return 'rock';
+    return 'water_pool';
+  }
+  if (biome === 'taiga') {
+    // 침엽수림: tree 압도, 약간 ore + rock
+    if (r < 0.78) return 'tree';
+    if (r < 0.90) return 'rock';
+    if (r < 0.96) return 'ore';
+    return 'water_pool';
+  }
+  if (biome === 'tundra') {
+    // 동토: 자원 희박
+    if (r < 0.40) return 'rock';
+    if (r < 0.55) return 'ore';
+    if (r < 0.70) return 'tree';
+    if (r < 0.85) return 'herb';
+    return 'water_pool';
+  }
+  if (biome === 'desert') {
+    // 사막: rock·ore 중심, 식물 희박
+    if (r < 0.55) return 'rock';
+    if (r < 0.78) return 'ore';
+    if (r < 0.88) return 'herb';
+    if (r < 0.94) return 'berry_bush';
+    return 'water_pool';
+  }
+  if (biome === 'jungle') {
+    // 정글: tree 매우 많고 herb·berry 풍부
+    if (r < 0.55) return 'tree';
+    if (r < 0.75) return 'herb';
+    if (r < 0.90) return 'berry_bush';
+    if (r < 0.96) return 'rock';
+    return 'water_pool';
+  }
+  if (biome === 'savanna') {
+    // 초원/사바나: 풀+드문 나무
+    if (r < 0.45) return 'berry_bush';
+    if (r < 0.70) return 'herb';
+    if (r < 0.88) return 'tree';
+    if (r < 0.96) return 'rock';
+    return 'water_pool';
+  }
+  if (biome === 'archipelago') {
+    // 군도: 식물 중심, 약간 광물, 물 많음
+    if (r < 0.40) return 'tree';
+    if (r < 0.65) return 'berry_bush';
+    if (r < 0.80) return 'herb';
+    if (r < 0.92) return 'rock';
+    return 'water_pool';
+  }
+  if (biome === 'ocean') {
+    // 해양 — 자원 거의 없음. 14.46-b에서 물고기 추가 예정.
+    return 'water_pool';
+  }
+  // fallback (모를 때): forest 기본
   if (r < 0.70) return 'tree';
   if (r < 0.85) return 'berry_bush';
   if (r < 0.93) return 'herb';
@@ -202,4 +255,62 @@ function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet) 
   return result;
 }
 
-module.exports = { Chunk, ChunkManager, CHUNK_SIZE, generateChunkResources, seedRand };
+// === Phase 14.46-a: 마을 자동 생성 ===
+// biome별 음절 표를 조합해서 마을 이름 + 위치를 zone당 N개 결정.
+// 시드 기반이라 zone마다 같은 입력 → 같은 출력 (재시작해도 동일).
+
+const VILLAGE_NAME_TABLES = {
+  // 각 biome마다 "어울리는" 음절을 골라 마을 이름 생성 (2~3 음절)
+  forest:      { syl1: ['그린','우드','릴','파인','오크','애쉬','글렌','벨','로지','케른'],     syl2: ['데일','우드','글로','홀로','부르크','보로','베일','셰어','크로프트',''] },
+  taiga:       { syl1: ['스나','코트','이르','콜드','노보','한스','우슈','피요르','오스','코페'], syl2: ['스크','후스','뷔크','달','네스','보르그','쇠르','베르겐','블린','홀름'] },
+  tundra:      { syl1: ['이글','얀','베르호','노렐','이르쿠','마가단','워르쿠','노릴','수르구','얌부'], syl2: ['스크','곤','버그','드','단','이','네츠','얀',''] },
+  plains:      { syl1: ['그래스','월드','선','크라이','롤링','오크','휘트','메도우','매든','애머'],   syl2: ['랜드','필드','데일','뷰','크릭','로지','튼','보로','버그',''] },
+  desert:      { syl1: ['오아','사르','두니','카이','타브','메르사','파르','오르','시르','자그'],   syl2: ['시스','로','만','라','즈','쿠','와','루','벤','시'] },
+  jungle:      { syl1: ['마노','이파','우루','카주','시바','일라','쿠르','벤투','파라','만나'],     syl2: ['스','쿠','마','로','이','우스','우','네','라','시'] },
+  savanna:     { syl1: ['크루','나로','음바','잘란','오트','다카','케리','루카','드라','사부'],     syl2: ['거','베','네','로','자','시','와','우','크',''] },
+  archipelago: { syl1: ['발리','자카','부키','마닐','수마','셀레','보르네','루손','쿠팡','데보'],   syl2: ['타라','스타','노','반','뜨라','베스','우','이','파',''] },
+  mountain:    { syl1: ['카토','노라','히마','마트','타카','지옹','이즈','후지','쿠라','네코'],     syl2: ['야마','사키','다','노','자','이','쿠','네','마','로'] },
+  ocean:       { syl1: [], syl2: [] }, // 해양은 마을 없음
+};
+
+function makeVillageName(biome, rand) {
+  const t = VILLAGE_NAME_TABLES[biome] || VILLAGE_NAME_TABLES.forest;
+  if (!t.syl1.length) return null;
+  const s1 = t.syl1[Math.floor(rand * t.syl1.length) % t.syl1.length];
+  const r2 = (rand * 7919) % 1;
+  const s2 = t.syl2[Math.floor(r2 * t.syl2.length) % t.syl2.length];
+  return (s1 + s2).trim();
+}
+
+// 마을 좌표 — zone 안 골고루. 빙하 띠는 피함 (y < 800 또는 y > zoneHeight-800).
+// margin 안 쪽으로 마을 spawn.
+function generateVillagesForZone(zone) {
+  const villages = [];
+  if (zone.isOcean) return villages;
+  if (!zone.villageCount || zone.villageCount <= 0) return villages;
+  const seed = zone.villageSeed || 1;
+  const margin = 600;
+  const safeTop = 900;
+  const safeBot = zone.zoneHeight - 900;
+  const usedNames = new Set();
+  for (let i = 0; i < zone.villageCount; i++) {
+    let name = null;
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const rn = seedRand(zone.displayName || 'z', seed + i, attempt, 0);
+      const candidate = makeVillageName(zone.biome, rn);
+      if (candidate && !usedNames.has(candidate)) { name = candidate; break; }
+    }
+    if (!name) name = `${zone.biome[0]}-${i}`;
+    usedNames.add(name);
+    const rx = seedRand(zone.displayName || 'z', seed + i, 1, 0);
+    const ry = seedRand(zone.displayName || 'z', seed + i, 2, 0);
+    const x = margin + rx * (zone.zoneWidth - margin * 2);
+    let y = safeTop + ry * (safeBot - safeTop);
+    if (y < safeTop) y = safeTop;
+    if (y > safeBot) y = safeBot;
+    villages.push({ name, x, y });
+  }
+  return villages;
+}
+
+module.exports = { Chunk, ChunkManager, CHUNK_SIZE, generateChunkResources, seedRand, generateVillagesForZone, makeVillageName };

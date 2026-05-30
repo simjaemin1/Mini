@@ -18,7 +18,7 @@
 const { DatabaseSync } = require('node:sqlite');
 const path = require('path');
 
-const ZONE_ID = process.env.ZONE_ID || 'korea';
+const ZONE_ID = process.env.ZONE_ID || 'hanbando';
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', `world-${ZONE_ID}.db`);
 const db = new DatabaseSync(DB_PATH);
 

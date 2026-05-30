@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.43-zombie-recover + 14.44-wasd-screen ===
-console.log('%c[durango-mini] client build = 14.43-zombie-recover + 14.44-wasd-screen', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.46-a-mega-map-24zones ===
+console.log('%c[durango-mini] client build = 14.46-a-mega-map-24zones', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -66,6 +66,28 @@ console.log('%c[durango-mini] client build = 14.43-zombie-recover + 14.44-wasd-s
   // Phase 14.42-a: home zone (영구 부활 fallback)
   let myHomeZone = null;
   let myHomeX = null, myHomeY = null;
+
+  // === Phase 14.45: 위도 biome — 극지 빙하 + 툰드라 그라데이션 ===
+  // 서버 ICE_BAND_PX와 일치. 그 바깥 TUNDRA_BAND_PX까지 보간.
+  const ICE_BAND_PX = 800;
+  const TUNDRA_BAND_PX = 1800;
+  const ICE_COLOR = '#dde8f0'; // 약간 푸르스름한 흰색
+  function _h2i(c) { return parseInt(c.slice(1), 16); }
+  function _mixHex(a, b, t) {
+    const pa = _h2i(a), pb = _h2i(b);
+    const r = Math.round(((pa>>16)&255) * (1-t) + ((pb>>16)&255) * t);
+    const g = Math.round(((pa>>8)&255)  * (1-t) + ((pb>>8)&255)  * t);
+    const bl = Math.round((pa&255)      * (1-t) + (pb&255)      * t);
+    return '#' + ((r<<16)|(g<<8)|bl).toString(16).padStart(6, '0');
+  }
+  // 절대 월드 y에 따라 색 보정. totalHeight = 전체 월드 높이 (남북 합).
+  function latitudeColor(absY, totalH, baseColor) {
+    const distFromPole = Math.min(absY, totalH - absY);
+    if (distFromPole >= TUNDRA_BAND_PX) return baseColor;
+    if (distFromPole <= ICE_BAND_PX)    return ICE_COLOR;
+    const t = (distFromPole - ICE_BAND_PX) / (TUNDRA_BAND_PX - ICE_BAND_PX);
+    return _mixHex(ICE_COLOR, baseColor, t);
+  }
 
   // Phase 14.39: 시야 cone 헬퍼
   // 지형: 뒤쪽도 보임 (0.55) — 탐험한 곳 윤곽
@@ -1320,10 +1342,15 @@ console.log('%c[durango-mini] client build = 14.43-zombie-recover + 14.44-wasd-s
         if (visibility <= 0.02) continue;
 
         const n = ((wx * 73 + wy * 31) >>> 0) % 17 / 17;
+        // 14.45: 위도에 따라 base color 빙하/툰드라 블렌딩
+        const tileColor = latitudeColor(wy + TS/2, worldHeight, zMeta.groundColor);
+        // 빙하 안 (distFromPole <= ICE_BAND_PX)은 tintColor 노이즈도 약하게
+        const distFromPole = Math.min(wy + TS/2, worldHeight - (wy + TS/2));
+        const isIce = distFromPole <= ICE_BAND_PX;
         ctx.globalAlpha = visibility;
-        drawDiamond(s.x, s.y, TS, zMeta.groundColor);
-        ctx.globalAlpha = visibility * (0.08 + n * 0.1);
-        drawDiamond(s.x, s.y, TS, zMeta.tintColor);
+        drawDiamond(s.x, s.y, TS, tileColor);
+        ctx.globalAlpha = visibility * (isIce ? 0.04 + n * 0.05 : 0.08 + n * 0.1);
+        drawDiamond(s.x, s.y, TS, isIce ? '#9bb5cc' : zMeta.tintColor);
         ctx.globalAlpha = 1;
       }
     }
