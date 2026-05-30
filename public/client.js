@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.49-fix3 (계단 PZ식 사선 ramp) ===
-console.log('%c[durango-mini] client build = 14.49-fix3 (계단 사선)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.49-d (PZ식 계단 WASD + dir + 늑대 추격) ===
+console.log('%c[durango-mini] client build = 14.49-d (PZ식 계단)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -381,7 +381,14 @@ console.log('%c[durango-mini] client build = 14.49-fix3 (계단 사선)', 'color
     else if (k === 'x') { myBuildFloor = Math.max(0, myBuildFloor - 1); showNotice(`건축 층: ${myBuildFloor}F`); updateHud(); }
     else if (k === ',') sendPrimary({ type: 'change_floor', direction: 'down' });
     else if (k === '.') sendPrimary({ type: 'change_floor', direction: 'up' });
-    else if (k === 'u') sendPrimary({ type: 'build', buildType: 'stair', floor: myBuildFloor });
+    else if (k === 'u') {
+      // 14.49-d: 빌드 시 player facing(myFacingVx/Vy)으로 stair dir 결정
+      let bdir = 'N';
+      const fx = myFacingVx || 0, fy = myFacingVy || 0;
+      if (Math.abs(fx) > Math.abs(fy)) bdir = fx > 0 ? 'E' : 'W';
+      else if (fy !== 0) bdir = fy > 0 ? 'S' : 'N';
+      sendPrimary({ type: 'build', buildType: 'stair', floor: myBuildFloor, dir: bdir });
+    }
     else if (k === 'm') toggleMarketplace();
     else if (k === 'k') toggleCraft();
     else if (k === 'r' && e.shiftKey) sendPrimary({ type: 'repair_building' }); // Phase 14.34 수리
@@ -937,6 +944,8 @@ console.log('%c[durango-mini] client build = 14.49-fix3 (계단 사선)', 'color
           c.others.set(pp.pid, {
             pid: pp.pid,
             x: pp.x, y: pp.y,
+            z: pp.z || 0, // 14.49-d: 계단 위 z
+            floor: pp.floor || 0,
             vx: vxNow, vy: vyNow,
             _fvx: fvxKeep, _fvy: fvyKeep, // Phase 14.37: 마지막 facing
             name: pp.name ?? prev?.name ?? '?',
@@ -970,6 +979,7 @@ console.log('%c[durango-mini] client build = 14.49-fix3 (계단 사선)', 'color
           c.mobs.set(m.mid, {
             mid: m.mid,
             x: m.x, y: m.y,
+            z: m.z || 0, floor: m.floor || 0, // 14.49-d
             vx: mvx, vy: mvy,
             _fvx: (mvx !== 0 || mvy !== 0) ? mvx : (prev?._fvx || 1),
             _fvy: (mvx !== 0 || mvy !== 0) ? mvy : (prev?._fvy || 0),
@@ -1532,7 +1542,10 @@ console.log('%c[durango-mini] client build = 14.49-fix3 (계단 사선)', 'color
         const pos = sampleAt(m.buf, renderT, m.x, m.y);
         const ax = ox + pos.x, ay = oy + pos.y;
         if (Math.abs(ax - worldCx) > VIEW_RADIUS || Math.abs(ay - worldCy) > VIEW_RADIUS) continue;
-        const iso = w2i(ax, ay);
+        // 14.49-d: mob도 floor*FLOOR_HEIGHT + z 적용 (계단 위 추격 시 위로 솟음)
+        const mFloor = m.floor || 0;
+        const mZ = mFloor * FLOOR_HEIGHT + (m.z || 0);
+        const iso = w2i(ax, ay, mZ);
         renderables.push({ z: iso.y, kind: 'mob', m, iso, ax, ay });
       }
       for (const o of c.others.values()) {
@@ -1542,7 +1555,7 @@ console.log('%c[durango-mini] client build = 14.49-fix3 (계단 사선)', 'color
         const iso = w2i(ax, ay);
         const displayName = o.tribeName ? `[${o.tribeName}] ${o.name}` : o.name;
         const oFloor = o.floor || 0;
-        const oZ = oFloor * FLOOR_HEIGHT;
+        const oZ = oFloor * FLOOR_HEIGHT + (o.z || 0); // 14.49-d: 계단 위 z 포함
         const isoF = w2i(ax, ay, oZ);
         renderables.push({ z: (ax + ay) * 0.5 + oFloor * 1000 + 500, kind: 'player', pid: o.pid, name: displayName, color: o.color || '#5a9ae0', hp: o.hp, maxHp: o.maxHp, iso: isoF, ax, ay, lastAttackAt: o.lastAttackAt, vx: o.vx, vy: o.vy, _fvx: o._fvx, _fvy: o._fvy });
       }
@@ -1913,18 +1926,32 @@ console.log('%c[durango-mini] client build = 14.49-fix3 (계단 사선)', 'color
       ctx.beginPath(); ctx.moveTo(x - 9, y - 7); ctx.lineTo(x + 9, y - 7); ctx.stroke();
     } else if (type === 'stair') {
       // === PZ식 isometric 사선 ramp ===
-      // S(앞)에서 N(뒤)로 z 0→32 올라가는 wedge. 측면 삼각형 2개 + 뒷면 사다리꼴 2개 + 사선 top + step 선.
+      // dir 방향이 "위로 가는 방향" — 그 방향 corner가 가장 높음, 반대 corner가 z=0.
       const H = 32;
-      // 바닥 4 corner (z=0)
-      const sb = { x: x,      y: y + 8 };  // S 바닥
-      const wb = { x: x - 16, y: y };      // W 바닥
-      const nb = { x: x,      y: y - 8 };  // N 바닥
-      const eb = { x: x + 16, y: y };      // E 바닥
-      // top 4 corner: S=z0, W=zH/2(16), N=zH(32), E=zH/2
-      const sT = { x: x,      y: y + 8 };       // = sb (S top z=0)
-      const wT = { x: x - 16, y: y - 16 };      // W top
-      const nT = { x: x,      y: y - 40 };      // N top
-      const eT = { x: x + 16, y: y - 16 };      // E top
+      const dir = building?.data?.dir || 'N';
+      // 4 corner 위치 (z=0)
+      const corners = {
+        N: { x: x,      y: y - 8 },
+        E: { x: x + 16, y: y },
+        S: { x: x,      y: y + 8 },
+        W: { x: x - 16, y: y },
+      };
+      // 각 corner의 top z (dir=가장 높음=H, 반대=0, 옆 두 개=H/2)
+      const opp = { N: 'S', S: 'N', E: 'W', W: 'E' };
+      const side1 = dir === 'N' || dir === 'S' ? 'E' : 'N';
+      const side2 = opp[side1];
+      const zMap = { [dir]: H, [opp[dir]]: 0, [side1]: H/2, [side2]: H/2 };
+      // 4 corner의 top 위치
+      function topOf(d) { return { x: corners[d].x, y: corners[d].y - zMap[d] }; }
+      const lowCorner = opp[dir]; // 낮은 쪽 (입구)
+      const sb = corners[lowCorner];   // 낮은 corner 바닥
+      const wb = corners[side1];       // 옆 corner 바닥 1
+      const nb = corners[dir];         // 높은 corner 바닥
+      const eb = corners[side2];       // 옆 corner 바닥 2
+      const sT = topOf(lowCorner);     // 낮은 corner top (= sb)
+      const wT = topOf(side1);
+      const nT = topOf(dir);
+      const eT = topOf(side2);
       // 그림자
       ctx.fillStyle = 'rgba(0,0,0,0.4)';
       ctx.beginPath(); ctx.ellipse(x, y + 6, 16, 5, 0, 0, Math.PI * 2); ctx.fill();

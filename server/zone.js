@@ -423,7 +423,7 @@ function spawnMob(type, opts = {}) {
   const dbId = opts.dbId ?? db.insertMob({ type, x, y, hp, max_hp: def.maxHp });
   const m = {
     mid, dbId, type,
-    x, y,
+    x, y, z: 0, floor: 0, // 14.49-d: mob도 floor + z 추적 (계단으로 추격)
     homeX: opts.homeX ?? x, homeY: opts.homeY ?? y, // 스폰 위치 = home (팩이면 리더 위치 공유)
     packId: opts.packId || null, // 같은 packId = 같은 무리. 어그로 공유.
     vx: 0, vy: 0,
@@ -583,10 +583,10 @@ function spawnNpc(opts = {}) {
     buildings.set(id, building);
     chunkManager.insertBuilding(building);
   }
-  function addBlock(cellCx, cellCy, type, floor) {
+  function addBlock(cellCx, cellCy, type, floor, extra = {}) {
     const bx = cellCx * BUILDING_SIZE + BUILDING_SIZE / 2;
     const by = cellCy * BUILDING_SIZE + BUILDING_SIZE / 2;
-    const data = { floor };
+    const data = { floor, ...extra };
     const dbId = db.insertBuilding({ type, owner_id: npcId, owner_name: name, x: bx, y: by, data: JSON.stringify(data) });
     const id = `b${nextBid++}`;
     const building = { id, dbId, type, ownerId: npcId, ownerName: name, x: bx, y: by, data, floor };
@@ -609,8 +609,8 @@ function spawnNpc(opts = {}) {
   }
   // 1F 바닥 (3x3) — 천장
   for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) addBlock(houseCx + i, houseCy + j, 'floor', 1);
-  // 옆 계단
-  addBlock(houseCx + 2, houseCy, 'stair', 0);
+  // 옆 계단 — 서쪽(W) 방향으로 올라가야 집(1F)로 진입 가능
+  addBlock(houseCx + 2, houseCy, 'stair', 0, { dir: 'W' });
 
   console.log(`[${ZONE_ID}] 🤖 NPC 스폰: ${name} @ (${cx.toFixed(0)},${cy.toFixed(0)}) + PZ식 집`);
   return player;
@@ -1764,7 +1764,18 @@ function handlePlayerInput(player, raw) {
       text, t: Date.now(),
     });
     console.log(`[${ZONE_ID}] 💬 ${player.name}: ${text}`);
-  } else if (msg.type === 'build') { metrics.builds++; tryBuild(player, msg.buildType, msg.floor || 0, msg.side || null, msg.atX, msg.atY); }
+  } else if (msg.type === 'build') {
+    metrics.builds++;
+    // 14.49-d: stair 빌드 시 player facing으로 dir 결정 (클라가 보낸 dir 우선)
+    let buildDir = msg.dir;
+    if (msg.buildType === 'stair' && !buildDir) {
+      const vx = player.vx || 0, vy = player.vy || 0;
+      if (Math.abs(vx) > Math.abs(vy)) buildDir = vx > 0 ? 'E' : 'W';
+      else if (vy !== 0) buildDir = vy > 0 ? 'S' : 'N';
+      else buildDir = 'N'; // 정지 중이면 기본 N
+    }
+    tryBuild(player, msg.buildType, msg.floor || 0, msg.side || null, msg.atX, msg.atY, buildDir);
+  }
   else if (msg.type === 'chest_put') tryChestPut(player, msg.buildingId, msg.item, +msg.amount || 1);
   else if (msg.type === 'chest_take') tryChestTake(player, msg.buildingId, msg.item, +msg.amount || 1);
   else if (msg.type === 'attack') { metrics.attacks++; tryAttack(player); }
@@ -2356,7 +2367,7 @@ function tryTrade(player, msg) {
 }
 
 // === 건축 ===
-function tryBuild(player, type, floor = 0, side = null, atX, atY) {
+function tryBuild(player, type, floor = 0, side = null, atX, atY, dir = null) {
   // Phase 14.30: atX/atY 주어지면 사용자 거리 160px 안에서 그 위치에 빌드
   if (typeof atX === 'number' && typeof atY === 'number') {
     const d = Math.hypot(atX - player.x, atY - player.y);
@@ -2364,14 +2375,14 @@ function tryBuild(player, type, floor = 0, side = null, atX, atY) {
       // 임시로 player.x/y override → tryBuild 본문은 player.x/y로 cell 계산
       const oldX = player.x, oldY = player.y;
       player.x = atX; player.y = atY;
-      try { _tryBuildAt(player, type, floor, side); }
+      try { _tryBuildAt(player, type, floor, side, dir); }
       finally { player.x = oldX; player.y = oldY; }
       return;
     }
   }
-  _tryBuildAt(player, type, floor, side);
+  _tryBuildAt(player, type, floor, side, dir);
 }
-function _tryBuildAt(player, type, floor = 0, side = null) {
+function _tryBuildAt(player, type, floor = 0, side = null, dir = null) {
   floor = Math.max(0, Math.min(5, floor | 0));
   if (!BUILDING_COST[type]) {
     send(player.ws, { type: 'notice', text: '알 수 없는 건축물' }); return;
@@ -2478,6 +2489,7 @@ function _tryBuildAt(player, type, floor = 0, side = null) {
   let initialData = null;
   if (type === 'chest') initialData = { wood: 0, stone: 0 };
   else if (type === 'farmland') initialData = { cropType: 'berry', plantedAt: Date.now(), readyAt: Date.now() + CROP_GROW_MS, ready: false };
+  else if (type === 'stair') initialData = { dir: dir || 'N' }; // 14.49-d
   // 14.5 siege_camp 제거 — 임시 사유지로 대체 (14.18)
   // floor 정보는 data JSON에 합쳐 저장 (DB 스키마 변경 회피)
   const dataWithFloor = { ...(initialData || {}), floor };
@@ -2486,7 +2498,7 @@ function _tryBuildAt(player, type, floor = 0, side = null) {
     x: gx, y: gy, data: JSON.stringify(dataWithFloor),
   });
   const id = `b${nextBid++}`;
-  const building = { id, dbId, type, ownerId: player.playerId, ownerName: player.name, x: gx, y: gy, data: initialData, floor };
+  const building = { id, dbId, type, ownerId: player.playerId, ownerName: player.name, x: gx, y: gy, data: dataWithFloor, floor };
   buildings.set(id, building);
   chunkManager.insertBuilding(building);
   send(player.ws, { type: 'inventory', inventory: player.inventory });
@@ -3126,25 +3138,100 @@ setInterval(() => {
     }
   }
 
-  // === Phase 14.49-c: PZ식 계단 — z 시각 효과만 (자동 floor 변경 일시 중단) ===
-  // 14.49-fix2: 자동 floor 변경이 NPC 마을 stair에 우연히 걸려 0F 벽들이 무력화되는 버그.
-  // 임시: stair 위에 서있을 때만 z 살짝 올라감 (PZ 느낌). floor 변경은 ,/. 키로만.
-  for (const p of players.values()) {
-    if (p.handingOff || p.isNpc || p.isDown) continue;
-    const cx = Math.floor(p.x / BUILDING_SIZE);
-    const cy = Math.floor(p.y / BUILDING_SIZE);
-    let onStair = false;
-    const nearbyB = qtBuildings ? qtBuildings.queryCircle(cx * BUILDING_SIZE + 16, cy * BUILDING_SIZE + 16, 40) : Array.from(buildings.values());
-    for (const b of nearbyB) {
+  // === Phase 14.49-d: PZ식 계단 — WASD만으로 자동 ascent/descent ===
+  // entity(player/NPC/mob)가 stair 위 + vx/vy가 stair.dir과 같은 방향 → ascent (위 floor)
+  //                                  + vx/vy가 반대 방향 → descent (아래 floor, 단 위 floor에 있을 때)
+  // 멈추거나 옆으로 가면 progress 멈춤. 100% 도달 시 floor 변경 + dir 방향으로 한 칸 nudge.
+  // 핵심 안전장치: floor 변경은 progress=1 도달했을 때만. 우연한 접촉으로 변경 X.
+  function dirVec(dir) {
+    if (dir === 'N') return { x: 0, y: -1 };
+    if (dir === 'S') return { x: 0, y: 1 };
+    if (dir === 'E') return { x: 1, y: 0 };
+    if (dir === 'W') return { x: -1, y: 0 };
+    return { x: 0, y: -1 };
+  }
+  function findStairAt(absLocalX, absLocalY) {
+    const cx = Math.floor(absLocalX / BUILDING_SIZE);
+    const cy = Math.floor(absLocalY / BUILDING_SIZE);
+    const near = qtBuildings ? qtBuildings.queryCircle(cx * BUILDING_SIZE + 16, cy * BUILDING_SIZE + 16, 40) : Array.from(buildings.values());
+    for (const b of near) {
       if (b.type !== 'stair') continue;
       const bcx = Math.floor(b.x / BUILDING_SIZE);
       const bcy = Math.floor(b.y / BUILDING_SIZE);
-      if (bcx === cx && bcy === cy && (b.floor || 0) === (p.floor || 0)) { onStair = true; break; }
+      if (bcx === cx && bcy === cy) return b;
     }
-    // z lerp — 계단 위에 있으면 16px까지 부드럽게, 벗어나면 0으로
-    const targetZ = onStair ? 16 : 0;
-    p.z = (p.z || 0) + (targetZ - (p.z || 0)) * Math.min(1, dt * 4);
-    if (Math.abs(p.z - targetZ) < 0.5) p.z = targetZ;
+    return null;
+  }
+  function stepStairFor(entity) {
+    const stair = findStairAt(entity.x, entity.y);
+    if (!stair) {
+      // 계단 벗어남 — 진행중이던 traversal 중단, z 부드럽게 0 복귀
+      if (entity.onStairId) entity.onStairId = null;
+      if ((entity.z || 0) > 0) entity.z = Math.max(0, (entity.z || 0) - 80 * dt);
+      return;
+    }
+    const stairFloor = stair.floor || 0;
+    const sd = stair.data?.dir || 'N';
+    const dv = dirVec(sd);
+    const vx = entity.vx || 0, vy = entity.vy || 0;
+    const moveLen = Math.hypot(vx, vy);
+    // dir과 vx/vy의 정렬도 (-1 ~ 1). 양수=ascent 방향, 음수=descent 방향.
+    const align = moveLen > 1 ? ((vx * dv.x + vy * dv.y) / moveLen) : 0;
+    const entityFloor = entity.floor || 0;
+    const canAscend = entityFloor === stairFloor;       // 아래 floor → 위로 갈 수 있음
+    const canDescend = entityFloor === stairFloor + 1;  // 위 floor → 아래로 갈 수 있음
+    if (!canAscend && !canDescend) {
+      // 이 stair는 사용 가능 floor 아님 (다른 층). traversal 안 함.
+      if (entity.onStairId) entity.onStairId = null;
+      entity.z = 0;
+      return;
+    }
+    // 진입 또는 진행 중
+    if (entity.onStairId !== stair.id) {
+      entity.onStairId = stair.id;
+      entity.stairProgress = canAscend ? 0 : 1; // ascent 시작=0, descent 시작=1
+    }
+    const SPEED = 1 / 0.7; // 0.7초 traverse
+    if (canAscend && align > 0.3) {
+      entity.stairProgress = Math.min(1, (entity.stairProgress || 0) + dt * SPEED * align);
+    } else if (canDescend && align < -0.3) {
+      entity.stairProgress = Math.max(0, (entity.stairProgress || 1) - dt * SPEED * (-align));
+    } else if (canAscend) {
+      // ascent 중 안 누름 / 옆으로 → z만 progress 따라 표시 (그대로 유지). 너무 뒤로 굴러내림 X.
+    }
+    entity.z = (entity.stairProgress || 0) * 32;
+    // commit: 끝까지 도달했을 때만 floor 변경
+    if (canAscend && entity.stairProgress >= 1) {
+      entity.floor = Math.min(5, stairFloor + 1);
+      entity.x += dv.x * BUILDING_SIZE;
+      entity.y += dv.y * BUILDING_SIZE;
+      entity.z = 0;
+      entity.onStairId = null;
+      entity.stairProgress = 0;
+      if (entity.ws) {
+        send(entity.ws, { type: 'floor_changed', floor: entity.floor });
+        broadcast({ type: 'player_floor_changed', pid: entity.pid, floor: entity.floor });
+      }
+    } else if (canDescend && entity.stairProgress <= 0) {
+      entity.floor = Math.max(0, stairFloor);
+      entity.x -= dv.x * BUILDING_SIZE;
+      entity.y -= dv.y * BUILDING_SIZE;
+      entity.z = 0;
+      entity.onStairId = null;
+      entity.stairProgress = 0;
+      if (entity.ws) {
+        send(entity.ws, { type: 'floor_changed', floor: entity.floor });
+        broadcast({ type: 'player_floor_changed', pid: entity.pid, floor: entity.floor });
+      }
+    }
+  }
+  for (const p of players.values()) {
+    if (p.handingOff || p.isDown) continue;
+    stepStairFor(p);
+  }
+  for (const m of mobs.values()) {
+    if (m.hp <= 0) continue;
+    stepStairFor(m);
   }
 
   // === 생존 게이지: hunger/thirst 감소 + 0이면 HP 페널티 + vp decay ===
@@ -3227,8 +3314,8 @@ setInterval(() => {
       let ny = m.y + m.vy * dt;
       nx = clamp(nx, 0, ZONE.zoneWidth);
       ny = clamp(ny, 0, ZONE.zoneHeight);
-      if (isBlockedByWall(nx, m.y, m.x, m.y, 0)) nx = m.x;
-      if (isBlockedByWall(m.x, ny, m.x, m.y, 0)) ny = m.y;
+      if (isBlockedByWall(nx, m.y, m.x, m.y, m.floor || 0)) nx = m.x;
+      if (isBlockedByWall(m.x, ny, m.x, m.y, m.floor || 0)) ny = m.y;
       if (isInIceBand(ny) && !isInIceBand(m.y)) ny = m.y; // 14.45
       // 14.46-b-mini: 물 타일 진입 차단
       if (isWaterTileLocal(nx, m.y) && !isWaterTileLocal(m.x, m.y)) nx = m.x;
@@ -3239,31 +3326,31 @@ setInterval(() => {
       continue;
     }
 
-    // 어그로 타겟 검증 — 타겟 죽음/실종/시야 밖/다른 floor면 해제. 늑대는 영역 너무 벗어났을 때도 해제.
+    // 어그로 타겟 검증 — 타겟 죽음/실종/시야 밖면 해제. 늑대는 영역 너무 벗어났을 때도 해제.
+    // 14.49-d: 다른 floor라도 어그로 유지 (계단으로 추격). 너무 멀거나 죽었을 때만 해제.
     if (m.aggroTarget) {
       const t = players.get(m.aggroTarget);
-      const tooFarFromTarget = !t || t.hp <= 0 || Math.hypot(t.x - m.x, t.y - m.y) > sight * 1.5;
-      const differentFloor   = t && (t.floor || 0) !== 0; // mob은 항상 0F. 다른 층 캐릭터는 못 잡음.
+      const tooFarFromTarget = !t || t.hp <= 0 || Math.hypot(t.x - m.x, t.y - m.y) > sight * 2.0;
       const tooFarFromHome   = m.type === 'wolf' && Math.hypot(m.x - m.homeX, m.y - m.homeY) > WOLF_TERRITORY_RADIUS;
-      if (tooFarFromTarget || differentFloor || tooFarFromHome) m.aggroTarget = null;
+      if (tooFarFromTarget || tooFarFromHome) m.aggroTarget = null;
     }
     // 늑대만: 시야 안 플레이어 어그로. 단 영역 안에서만 사냥 시작.
     if (m.type === 'wolf' && !m.aggroTarget) {
       const homeDist = Math.hypot(m.x - m.homeX, m.y - m.homeY);
       if (homeDist < WOLF_TERRITORY_RADIUS) {
-        // quadtree로 sight 안 플레이어만 추림 (늑대 영역 안에 있으면 시야 안 player 무조건 어그로)
         const nearby = qtPlayers ? qtPlayers.queryCircle(m.x, m.y, sight) : Array.from(players.values());
         let best = null, bestD = sight;
         for (const p of nearby) {
           if (p.hp <= 0) continue;
-          if (p.isDown) continue; // Phase 14.41: 다운된 플레이어는 어그로 안 함
-          if ((p.floor || 0) !== 0) continue; // 다른 floor 캐릭터 못 잡음
+          if (p.isDown) continue;
+          // 다른 floor 어그로 시작은 안 함 (어그로 후엔 따라감)
+          if ((p.floor || 0) !== (m.floor || 0)) continue;
           const d = Math.hypot(p.x - m.x, p.y - m.y);
           if (d < bestD) { best = p; bestD = d; }
         }
         if (best) {
           m.aggroTarget = best.pid;
-          aggroPackmates(m, best.pid); // 팩 동료들 동시 어그로
+          aggroPackmates(m, best.pid);
         }
       }
     }
@@ -3272,15 +3359,53 @@ setInterval(() => {
       const t = players.get(m.aggroTarget);
       if (t && t.isDown) { m.aggroTarget = null; } // Phase 14.41: 다운되면 어그로 풀림
       else if (t) {
-        const dx = t.x - m.x, dy = t.y - m.y;
+        // 14.49-d: 다른 floor면 가장 가까운 stair로 향함 (state machine이 자동 ascent)
+        let targetX = t.x, targetY = t.y;
+        if ((t.floor || 0) !== (m.floor || 0)) {
+          // mob 현재 floor에서 target floor로 가는 stair 검색
+          // ascent: stair.floor === m.floor (위로 가야 함, t가 위층)
+          // descent: stair.floor === m.floor-1 (아래로 가야 함, stair는 m 아래층)
+          let bestStair = null, bestStairD = Infinity;
+          const needAscend = (t.floor || 0) > (m.floor || 0);
+          const stairFloorWanted = needAscend ? (m.floor || 0) : (m.floor || 0) - 1;
+          for (const b of buildings.values()) {
+            if (b.type !== 'stair') continue;
+            if ((b.floor || 0) !== stairFloorWanted) continue;
+            const sd = Math.hypot(b.x - m.x, b.y - m.y);
+            if (sd < bestStairD) { bestStair = b; bestStairD = sd; }
+          }
+          if (bestStair) {
+            // stair의 "낮은 쪽 입구"로 향함 (dir 반대 방향에서 진입해야 ascent 됨)
+            const sdir = bestStair.data?.dir || 'N';
+            const dvx = sdir === 'E' ? 1 : sdir === 'W' ? -1 : 0;
+            const dvy = sdir === 'S' ? 1 : sdir === 'N' ? -1 : 0;
+            if (needAscend) {
+              targetX = bestStair.x - dvx * BUILDING_SIZE;
+              targetY = bestStair.y - dvy * BUILDING_SIZE;
+            } else {
+              targetX = bestStair.x + dvx * BUILDING_SIZE;
+              targetY = bestStair.y + dvy * BUILDING_SIZE;
+            }
+            // stair tile에 들어왔으면 stair 중심으로 (그리고 dir 방향으로 계속 누름)
+            const onStair = Math.floor(m.x / BUILDING_SIZE) === Math.floor(bestStair.x / BUILDING_SIZE)
+                         && Math.floor(m.y / BUILDING_SIZE) === Math.floor(bestStair.y / BUILDING_SIZE);
+            if (onStair) {
+              targetX = bestStair.x + dvx * BUILDING_SIZE * (needAscend ? 1 : -1);
+              targetY = bestStair.y + dvy * BUILDING_SIZE * (needAscend ? 1 : -1);
+            }
+          }
+        }
+        const dx = targetX - m.x, dy = targetY - m.y;
         const d = Math.hypot(dx, dy);
         if (d > 30) {
           m.vx = (dx / d) * def.speed;
           m.vy = (dy / d) * def.speed;
         } else {
-          // 공격 범위 — 데미지 (밤이면 강화)
+          // 공격 범위 — 14.49-d: 같은 floor + 실제 player까지 30px 이내일 때만
           m.vx = 0; m.vy = 0;
-          if (now - m.lastAttackAt > 1000) {
+          const sameFloor = (t.floor || 0) === (m.floor || 0);
+          const realDist = Math.hypot(t.x - m.x, t.y - m.y);
+          if (sameFloor && realDist < 50 && now - m.lastAttackAt > 1000) {
             m.lastAttackAt = now;
             damagePlayer(t, Math.round(def.damage * dmgMult), `mob:${m.type}`);
           }
@@ -3308,8 +3433,8 @@ setInterval(() => {
     let ny = m.y + m.vy * dt;
     nx = clamp(nx, 0, ZONE.zoneWidth);
     ny = clamp(ny, 0, ZONE.zoneHeight);
-    if (isBlockedByWall(nx, m.y, m.x, m.y, 0)) nx = m.x;
-    if (isBlockedByWall(m.x, ny, m.x, m.y, 0)) ny = m.y;
+    if (isBlockedByWall(nx, m.y, m.x, m.y, m.floor || 0)) nx = m.x;
+    if (isBlockedByWall(m.x, ny, m.x, m.y, m.floor || 0)) ny = m.y;
     if (isInIceBand(ny) && !isInIceBand(m.y)) ny = m.y; // 14.45
     // 14.46-b-mini: 물 타일 진입 차단
     if (isWaterTileLocal(nx, m.y) && !isWaterTileLocal(m.x, m.y)) nx = m.x;
@@ -3331,13 +3456,16 @@ setInterval(() => {
     if (kind === 'player') {
       // Phase 14.35: 걷기 모션 동기화 — vx/vy 포함 (이동 중인지 클라가 판단)
       // Phase 14.41: isDown — 다운된 플레이어는 클라에서 누워있게 렌더
+      // 14.49-d: z (계단 위 0~32)도 매 tick 전송
       const e = { pid: o.pid, x: o.x, y: o.y, hp: o.hp, floor: o.floor || 0, vx: o.vx | 0, vy: o.vy | 0 };
+      if (o.z) e.z = Math.round(o.z);
       if (o.isDown) e.isDown = 1;
       if (isNew) { e.name = o.name; e.color = o.color; e.maxHp = o.maxHp; e.tribeName = o.tribeName || null; }
       return e;
     }
-    // Phase 14.38: mob facing — vx/vy 포함
-    const e = { mid: o.mid, x: o.x, y: o.y, hp: o.hp, vx: (o.vx || 0) | 0, vy: (o.vy || 0) | 0 };
+    // Phase 14.38: mob facing — vx/vy 포함. 14.49-d: floor + z
+    const e = { mid: o.mid, x: o.x, y: o.y, hp: o.hp, vx: (o.vx || 0) | 0, vy: (o.vy || 0) | 0, floor: o.floor || 0 };
+    if (o.z) e.z = Math.round(o.z);
     if (isNew) { e.type = o.type; e.maxHp = o.maxHp; e.tameOwner = o.tameOwner || null; e.tameOwnerName = o.tameOwnerName || null; }
     return e;
   }
