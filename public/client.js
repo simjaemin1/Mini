@@ -679,7 +679,7 @@ console.log('%c[durango-mini] client build = 14.46-b-smooth (해안선 부드럽
     }, 1000);
 
     refreshHealth();
-    setInterval(refreshHealth, 3000);
+    healthInterval = setInterval(refreshHealth, 3000);
 
     // Phase 14.30: 캔버스 mousemove → placement cursor 갱신
     canvas.addEventListener('mousemove', (e) => {
@@ -777,14 +777,27 @@ console.log('%c[durango-mini] client build = 14.46-b-smooth (해안선 부드럽
     document.getElementById('chestTakeStone')?.addEventListener('click', () => { if (openChestId) sendPrimary({type:'chest_take', buildingId: openChestId, item: 'stone', amount: 1}); });
   }
 
+  // 14.46-b-smooth-fix: health 폴링 실패 시 자동 중단 (TLS/HTTPS 강제 환경에서 콘솔 도배 방지)
+  let healthFailCount = 0;
+  let healthInterval = null;
   async function refreshHealth() {
     try {
       const r = await fetch('/health');
       const h = await r.json();
+      healthFailCount = 0;
       const lines = Object.entries(h).map(([id, s]) =>
         `${id}: ${s.up ? '🟢 ' + (s.players ?? 0) + '명' : '🔴 down'}`);
       document.getElementById('health').innerText = lines.join('  ');
-    } catch (e) { /* ignore */ }
+    } catch (e) {
+      healthFailCount++;
+      if (healthFailCount >= 3 && healthInterval) {
+        clearInterval(healthInterval);
+        healthInterval = null;
+        console.warn('[health] fetch 3회 실패 → 폴링 중단 (HTTPS 강제 환경)');
+        const el = document.getElementById('health');
+        if (el) el.innerText = '(health 폴링 비활성)';
+      }
+    }
   }
 
   // === 연결 관리 ===
@@ -1201,14 +1214,20 @@ console.log('%c[durango-mini] client build = 14.46-b-smooth (해안선 부드럽
       }
     }
     // 멀리 떨어진 옛 observer 정리 (zone 중심과 거리)
+    // 14.46-b-smooth-fix2: zone마다 크기 다름. 이웃 zone 자기 크기 기준으로 임계 계산.
+    // 옛 코드는 primary zoneW 기준이라, 큰 이웃 zone은 매 프레임 open→close 사이클 도는 버그.
     for (const [zid, c] of conns) {
       if (zid === primaryZoneId) continue;
       const zm = zonesMeta[zid];
       if (!zm) continue;
-      const cx = zm.worldOffsetX + zoneW / 2;
-      const cy = (zm.worldOffsetY || 0) + zoneH / 2;
-      const dist = Math.hypot(cx - myAbsPredicted.x, cy - myAbsPredicted.y);
-      if (dist > zoneW * 1.7) closeConnection(zid);
+      const nZoneW = zm.zoneWidth || 1024;
+      const nZoneH = zm.zoneHeight || 1024;
+      // 이웃 zone의 가장 가까운 변(엣지)까지 거리
+      const edgeDistX = Math.max(0, Math.max(zm.worldOffsetX - myAbsPredicted.x, myAbsPredicted.x - (zm.worldOffsetX + nZoneW)));
+      const edgeDistY = Math.max(0, Math.max((zm.worldOffsetY || 0) - myAbsPredicted.y, myAbsPredicted.y - ((zm.worldOffsetY || 0) + nZoneH)));
+      const edgeDist = Math.hypot(edgeDistX, edgeDistY);
+      // 이웃 zone 엣지에서 PEEK_THRESHOLD*1.6 이상 멀어졌으면 정리 (직접 이웃 hysteresis와 일치)
+      if (edgeDist > PEEK_THRESHOLD * 1.6) closeConnection(zid);
     }
   }
 
