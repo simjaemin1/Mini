@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.49-e3-perf2 (stair cache TDZ fix) ===
-console.log('%c[durango-mini] client build = 14.49-e3-perf2 (TDZ fix)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.49-e3-perf3 (클라 stair cache → 끊김 fix) ===
+console.log('%c[durango-mini] client build = 14.49-e3-perf3 (클라 cache)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -224,7 +224,7 @@ console.log('%c[durango-mini] client build = 14.49-e3-perf2 (TDZ fix)', 'color:#
     }
     return false;
   }
-  // 14.49-e3: 계단 측면 진입 차단 (서버 isBlockedByStairSide와 동일 로직)
+  // 14.49-e3-perf2: 계단 측면 진입 차단 + 클라 stair cell 캐시 (O(1))
   function clDirVec(dir) {
     if (dir === 'N') return { x: 0, y: -1 };
     if (dir === 'S') return { x: 0, y: 1 };
@@ -232,13 +232,16 @@ console.log('%c[durango-mini] client build = 14.49-e3-perf2 (TDZ fix)', 'color:#
     if (dir === 'W') return { x: -1, y: 0 };
     return { x: 0, y: -1 };
   }
-  function clFindStairForCell(cx, cy) {
+  // 전역 abs cell key → { stairRef, step }. building 추가/제거 시 dirty 마킹.
+  const clStairCellCache = new Map();
+  let clStairCacheBuildAt = 0;
+  function clRebuildStairCellCache() {
+    clStairCellCache.clear();
     for (const [zid, c] of conns) {
       const zm = c.meta || zonesMeta[zid];
       if (!zm) continue;
-      const ox = zm.worldOffsetX || 0, oy = zm.worldOffsetY || 0;
-      const localCx = cx - Math.floor(ox / CL_BUILDING_SIZE);
-      const localCy = cy - Math.floor(oy / CL_BUILDING_SIZE);
+      const oxCells = Math.floor((zm.worldOffsetX || 0) / CL_BUILDING_SIZE);
+      const oyCells = Math.floor((zm.worldOffsetY || 0) / CL_BUILDING_SIZE);
       for (const b of c.buildings.values()) {
         if (b.type !== 'stair') continue;
         const dir = b.data?.dir || 'N';
@@ -246,11 +249,18 @@ console.log('%c[durango-mini] client build = 14.49-e3-perf2 (TDZ fix)', 'color:#
         const acx = Math.floor(b.x / CL_BUILDING_SIZE);
         const acy = Math.floor(b.y / CL_BUILDING_SIZE);
         for (let s = 0; s <= 2; s++) {
-          if (acx + dv.x * s === localCx && acy + dv.y * s === localCy) return { stair: b, step: s };
+          const absCx = oxCells + acx + dv.x * s;
+          const absCy = oyCells + acy + dv.y * s;
+          clStairCellCache.set(`${absCx}_${absCy}`, { stair: b, step: s });
         }
       }
     }
-    return null;
+    clStairCacheBuildAt = performance.now();
+  }
+  function clFindStairForCell(cx, cy) {
+    // 0.5초마다 lazy rebuild (building add/remove broadcast가 자주 안 옴)
+    if (performance.now() - clStairCacheBuildAt > 500) clRebuildStairCellCache();
+    return clStairCellCache.get(`${cx}_${cy}`) || null;
   }
   function clientIsBlockedByWall(newX, newY, oldX, oldY, playerFloor = 0) {
     const oc = clCellOf(oldX, oldY);
@@ -1056,7 +1066,10 @@ console.log('%c[durango-mini] client build = 14.49-e3-perf2 (TDZ fix)', 'color:#
       c.claims.delete(msg.id);
     } else if (msg.type === 'building_added') {
       c.buildings.set(msg.building.id, msg.building);
+      if (msg.building.type === 'stair') clStairCacheBuildAt = 0; // 14.49-e3-perf2: 캐시 invalidate
     } else if (msg.type === 'building_removed') {
+      const b = c.buildings.get(msg.id);
+      if (b?.type === 'stair') clStairCacheBuildAt = 0;
       c.buildings.delete(msg.id);
     } else if (msg.type === 'ground_item_added') {
       if (c.groundItems) c.groundItems.set(msg.gi.id, msg.gi);
