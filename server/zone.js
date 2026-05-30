@@ -593,6 +593,7 @@ function spawnNpc(opts = {}) {
     const building = { id, dbId, type, ownerId: npcId, ownerName: name, x: bx, y: by, data, floor };
     buildings.set(id, building);
     chunkManager.insertBuilding(building);
+    if (type === 'stair') stairCellDirty = true; // 14.49-e3-perf
   }
   // 14.49-e2: 5x5 영역. cell 범위 (cx-2, cy-2) ~ (cx+2, cy+2). 계단 내부로 옮김.
   for (const f of [0, 1]) {
@@ -2504,6 +2505,7 @@ function _tryBuildAt(player, type, floor = 0, side = null, dir = null) {
   const building = { id, dbId, type, ownerId: player.playerId, ownerName: player.name, x: gx, y: gy, data: dataWithFloor, floor };
   buildings.set(id, building);
   chunkManager.insertBuilding(building);
+  if (type === 'stair') stairCellDirty = true; // 14.49-e3-perf
   send(player.ws, { type: 'inventory', inventory: player.inventory });
   savePlayer(player);
   broadcast({ type: 'building_added', building });
@@ -3001,21 +3003,31 @@ function dirVecForCollider(dir) {
   if (dir === 'W') return { x: -1, y: 0 };
   return { x: 0, y: -1 };
 }
-function findStairBuildingForCell(cx, cy) {
-  const px = cx * BUILDING_SIZE + 16;
-  const py = cy * BUILDING_SIZE + 16;
-  const near = qtBuildings ? qtBuildings.queryCircle(px, py, BUILDING_SIZE * 3) : Array.from(buildings.values());
-  for (const b of near) {
+// 14.49-e3-perf: stair cell 캐시 — O(1) lookup. 매 collider check마다 quadtree 쿼리하는 부담 제거.
+const stairCellCache = new Map(); // "cx_cy" → { stairId, step }
+let stairCellDirty = true;
+function rebuildStairCellCache() {
+  stairCellCache.clear();
+  for (const b of buildings.values()) {
     if (b.type !== 'stair') continue;
     const dir = b.data?.dir || 'N';
     const dv = dirVecForCollider(dir);
     const acx = Math.floor(b.x / BUILDING_SIZE);
     const acy = Math.floor(b.y / BUILDING_SIZE);
     for (let s = 0; s <= 2; s++) {
-      if (acx + dv.x * s === cx && acy + dv.y * s === cy) return { stair: b, step: s };
+      const k = `${acx + dv.x * s}_${acy + dv.y * s}`;
+      stairCellCache.set(k, { stairId: b.id, step: s });
     }
   }
-  return null;
+  stairCellDirty = false;
+}
+function findStairBuildingForCell(cx, cy) {
+  if (stairCellDirty) rebuildStairCellCache();
+  const entry = stairCellCache.get(`${cx}_${cy}`);
+  if (!entry) return null;
+  const stair = buildings.get(entry.stairId);
+  if (!stair) { stairCellDirty = true; return null; } // 이미 삭제된 stair
+  return { stair, step: entry.step };
 }
 function isBlockedByStairSide(newX, newY, oldX, oldY) {
   const oc = cellOf(oldX, oldY);

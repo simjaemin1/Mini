@@ -13,6 +13,26 @@
 
 ---
 
+## 2026-05-31 · 계단 측면 차단 collider가 매 호출마다 quadtree query → 직진 중 snap-back
+
+**증상**: 직선으로 쭉 걸어가는데 자꾸 뒤로 짧게 순간이동되며 버벅임. PVE 평지에서 계속.
+
+**잘못된 가설**: 14.49-fix 평지 보정 임계가 또 빡빡한가? 네트워크 RTT 지터?
+
+**진짜 원인**: 14.49-e3에서 추가한 `isBlockedByStairSide` 함수가 stair 위치 확인을 위해 매번 `qtBuildings.queryCircle()` 호출. 이 함수는 `isBlockedByWall`에서 매번 불림. player 이동 시 3회/tick, mob 200마리 × 2축 × 30Hz = 12,000 호출/초. 각 호출이 quadtree 쿼리 + 빌딩 iterate = ms 단위 지연. 누적되어 server tick이 33ms 한도 초과 → 클라 예측이 server 보다 앞서감 → snapshot 도착 시 server 위치(뒤)로 보정 → snap-back.
+
+**수정 (14.49-e3-perf)**: `stairCellCache` Map 도입.
+- `"cx_cy"` → `{stairId, step}` 미리 계산
+- `findStairBuildingForCell` = O(1) Map lookup
+- dirty flag로 stair 추가될 때만 rebuild
+
+**교훈**:
+- **새 collider 검사 추가할 때 호출 빈도 = entity 수 × tick 빈도 × 축 수.** ms 단위 함수도 1000× 호출되면 초 단위 부담.
+- **Quadtree query는 cheap 아님.** O(log n) 이상 + JS object 할당. hot path엔 캐시 필수.
+- **"왜 평지에서 뒤로 밀려?"의 원인은 평지 자체가 아님.** server CPU 부담이 원인 → 모든 곳에서 균등하게 snap-back 발생.
+
+---
+
 ## 2026-05-31 · 계단 그림 BUILDING_SIZE ReferenceError — 모든 빌딩 렌더링 중단
 
 **증상**: `[Error] ReferenceError: Can't find variable: BUILDING_SIZE at drawBuildingIso`. 한 줄 에러로 전체 빌딩 그림이 안 그려져서 맵이 거의 비어 보임.
