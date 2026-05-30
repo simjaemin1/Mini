@@ -2814,7 +2814,7 @@ function tryRescue(rescuer, downedPid) {
 // === Phase 14.45: 극지방 빙하 콜라이더 ===
 // 북쪽 이웃 없는 zone(russia/usa)은 y < ICE_BAND 차단
 // 남쪽 이웃 없는 zone(korea/china)은 y > zoneHeight - ICE_BAND 차단
-const ICE_BAND_PX = 800;
+const ICE_BAND_PX = 1500; // v8: 양극 빙하 두께 800→1500
 function isInIceBand(y) {
   if (!NEIGHBOR.hasNorth && y < ICE_BAND_PX) return true;
   if (!NEIGHBOR.hasSouth && y > ZONE.zoneHeight - ICE_BAND_PX) return true;

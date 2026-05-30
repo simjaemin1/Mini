@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.47-handoff-ghost-fix + 14.48 minimap-2d ===
-console.log('%c[durango-mini] client build = 14.47-handoff-ghost-fix + 14.48 minimap-2d', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.46-a-v8 (26 zone, 한반도 91M, 게이밍 인구 비례) ===
+console.log('%c[durango-mini] client build = 14.46-a-v8 (26 zone, 한반도 91M)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -69,8 +69,8 @@ console.log('%c[durango-mini] client build = 14.47-handoff-ghost-fix + 14.48 min
 
   // === Phase 14.45: 위도 biome — 극지 빙하 + 툰드라 그라데이션 ===
   // 서버 ICE_BAND_PX와 일치. 그 바깥 TUNDRA_BAND_PX까지 보간.
-  const ICE_BAND_PX = 800;
-  const TUNDRA_BAND_PX = 1800;
+  const ICE_BAND_PX = 1500; // v8: 800→1500
+  const TUNDRA_BAND_PX = 2500;
   const ICE_COLOR = '#dde8f0'; // 약간 푸르스름한 흰색
   function _h2i(c) { return parseInt(c.slice(1), 16); }
   function _mixHex(a, b, t) {

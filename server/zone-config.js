@@ -1,20 +1,12 @@
-// === Phase 14.46-a: 대지각변동 (위도 정확화) ===
-// 24개 zone, 가변 직사각형 (per-zone width/height), wrap-ready.
-// 각 zone은 (worldOffsetX, worldOffsetY, zoneWidth, zoneHeight) 사각형. 핸드오프는 abs 좌표 lookup.
+// === Phase 14.46-a v8: 26 zone, 게이밍 인구 비례 + 지리 사실성 ===
+// 한반도가 가장 크게 (91M, Korean dev 우선). 인기 zone 모두 mid-north에 13000 height로.
+// 러시아 가로띠 (시바라+베링), 한·일 북쪽 = 러시아, 호주·NZ 통합, 양극 ICE_BAND 1500.
 //
-// 좌표계 (Mercator-ish):
-//   X: 0 (서, 아메리카) → 61000 (동, 태평양)
-//   Y: 0 (북, 북극 빙하) → 38000 (남, 남극 빙하)
+// 좌표계: X 0~61000 (서→동), Y 0~38000 (북→남)
+// 컬럼: c0(11000) c1(5000) c2(9000) c3(6000) c4(10000) c5(7000) c6(5000) c7(8000)
+// 행:   r0(5000) r1(13000) r2(6000) r3(7000) r4(7000)
 //
-// 위도 매핑 (실제 지구):
-//   Row "Arctic"  y=0~6000      → 60~90°N (캐나디아, 노르단, 시바라, 베링)
-//   Row "MidN"    y=6000~16000  → 30~60°N (누비아노, 유로파, 중아세아, 중원북, 한반도)
-//   Row "Tropics" y=16000~24000 → 0~30°N  (마야안, 사하르, 힌드강, 중원남, 닛폰)
-//   Row "MidS"    y=24000~32000 → 0~30°S  (아마조니아, 콩그우림, 인도양, 남양제도, 오세니아)
-//   Row "South"   y=32000~38000 → 30~60°S (파타고나, 케이프, 남빙양, 즈일랜드)
-//
-// 한반도(중위도) + 닛폰(중위도, Korea보다 약간 남쪽) + 베링(NE Russia, 북극).
-// 한·중·일 분리 (각 다른 VPS 호스팅 가능).
+// MEMO: 현재 단일 VPS. zone 1개=컨테이너 1개. multi-zone host는 Stage 2 (Task #192 참조).
 
 function hostFromEnv(zoneId, fallback) {
   const k = `ZONE_HOST_${zoneId.toUpperCase()}`;
@@ -31,212 +23,222 @@ function hostFromEnv(zoneId, fallback) {
 const WS_PROTO = process.env.WS_PROTO || 'ws';
 const HTTP_PROTO = process.env.HTTP_PROTO || 'http';
 
-// Column X 경계:
-//   c0(아메리카):   0      ~ 12000  (w=12000)
-//   c1(대서양):     12000  ~ 18000  (w=6000)
-//   c2(유럽+아프리카): 18000 ~ 28000 (w=10000)
-//   c3(중앙Eurasia+인도양): 28000 ~ 36000 (w=8000)
-//   c4(중원+동남아):    36000 ~ 46000 (w=10000)
-//   c5(한반도+닛폰+오세니아): 46000 ~ 54000 (w=8000)
-//   c6(태평양):     54000  ~ 61000  (w=7000)
-
 const ZONES_BASE = {
-  // === c0: 아메리카 ===
+  // === c0: 아메리카 (11000w) ===
   canadia: {
     port: 3001, biome: 'taiga', displayName: '캐나디아 (NA 북부)',
     groundColor: '#5a7c4a', tintColor: '#3a6a2a',
-    worldOffsetX: 0, worldOffsetY: 0, zoneWidth: 12000, zoneHeight: 6000,
+    worldOffsetX: 0, worldOffsetY: 0, zoneWidth: 11000, zoneHeight: 5000,
     villageSeed: 1001, villageCount: 6,
-    mainSquare: { x: 6000, y: 3000, name: '카나디 광장' },
+    mainSquare: { x: 5500, y: 2500, name: '카나디 광장' },
   },
   nubiano: {
     port: 3002, biome: 'plains', displayName: '누비아노 (USA)',
     groundColor: '#bca56a', tintColor: '#8a6a3a',
-    worldOffsetX: 0, worldOffsetY: 6000, zoneWidth: 12000, zoneHeight: 10000,
-    villageSeed: 1002, villageCount: 20,
-    mainSquare: { x: 6000, y: 5000, name: '뉴아크 광장' },
+    worldOffsetX: 0, worldOffsetY: 5000, zoneWidth: 11000, zoneHeight: 13000,
+    villageSeed: 1002, villageCount: 25,
+    mainSquare: { x: 5500, y: 6500, name: '뉴아크 광장' },
   },
   mayan: {
     port: 3003, biome: 'jungle', displayName: '마야안 (중미)',
     groundColor: '#4a7c3a', tintColor: '#2a5a1a',
-    worldOffsetX: 0, worldOffsetY: 16000, zoneWidth: 12000, zoneHeight: 8000,
+    worldOffsetX: 0, worldOffsetY: 18000, zoneWidth: 11000, zoneHeight: 6000,
     villageSeed: 1003, villageCount: 10,
-    mainSquare: { x: 6000, y: 4000, name: '치치카 광장' },
+    mainSquare: { x: 5500, y: 3000, name: '치치카 광장' },
   },
   amazonia: {
     port: 3004, biome: 'jungle', displayName: '아마조니아 (브라질)',
     groundColor: '#3a6a2a', tintColor: '#1a4a0a',
-    worldOffsetX: 0, worldOffsetY: 24000, zoneWidth: 12000, zoneHeight: 8000,
+    worldOffsetX: 0, worldOffsetY: 24000, zoneWidth: 11000, zoneHeight: 7000,
     villageSeed: 1004, villageCount: 14,
-    mainSquare: { x: 6000, y: 4000, name: '마나스 광장' },
+    mainSquare: { x: 5500, y: 3500, name: '마나스 광장' },
   },
   patagona: {
     port: 3005, biome: 'plains', displayName: '파타고나 (남미 남단)',
     groundColor: '#7a8a6a', tintColor: '#5a6a4a',
-    worldOffsetX: 0, worldOffsetY: 32000, zoneWidth: 12000, zoneHeight: 6000,
+    worldOffsetX: 0, worldOffsetY: 31000, zoneWidth: 11000, zoneHeight: 7000,
     villageSeed: 1005, villageCount: 6,
-    mainSquare: { x: 6000, y: 3000, name: '바리로체 광장' },
+    mainSquare: { x: 5500, y: 3500, name: '바리로체 광장' },
   },
 
-  // === c1: 대서양 (세로 전체 1 zone) ===
+  // === c1: 대서양 (5000w, 세로 전체) ===
   atlantic: {
     port: 3006, biome: 'ocean', displayName: '대서양',
     groundColor: '#2a4a7c', tintColor: '#1a3a6a',
-    worldOffsetX: 12000, worldOffsetY: 0, zoneWidth: 6000, zoneHeight: 38000,
+    worldOffsetX: 11000, worldOffsetY: 0, zoneWidth: 5000, zoneHeight: 38000,
     villageSeed: 0, villageCount: 0,
-    mainSquare: { x: 3000, y: 19000, name: '대서양 중심' },
+    mainSquare: { x: 2500, y: 19000, name: '대서양 중심' },
     isOcean: true,
   },
 
-  // === c2: 유럽 + 아프리카 ===
+  // === c2: 유럽 + 아프리카 (9000w) ===
   nordan: {
     port: 3007, biome: 'taiga', displayName: '노르단 (스칸디)',
     groundColor: '#6a8a5a', tintColor: '#4a6a3a',
-    worldOffsetX: 18000, worldOffsetY: 0, zoneWidth: 10000, zoneHeight: 6000,
+    worldOffsetX: 16000, worldOffsetY: 0, zoneWidth: 9000, zoneHeight: 5000,
     villageSeed: 1007, villageCount: 8,
-    mainSquare: { x: 5000, y: 3000, name: '오스로 광장' },
+    mainSquare: { x: 4500, y: 2500, name: '오스로 광장' },
   },
   europa: {
     port: 3008, biome: 'forest', displayName: '유로파 (유럽)',
     groundColor: '#5a8a4a', tintColor: '#3a6a2a',
-    worldOffsetX: 18000, worldOffsetY: 6000, zoneWidth: 10000, zoneHeight: 10000,
-    villageSeed: 1008, villageCount: 20,
-    mainSquare: { x: 5000, y: 5000, name: '파리시 광장' },
+    worldOffsetX: 16000, worldOffsetY: 5000, zoneWidth: 9000, zoneHeight: 13000,
+    villageSeed: 1008, villageCount: 25,
+    mainSquare: { x: 4500, y: 6500, name: '파리시 광장' },
   },
   sahar: {
     port: 3009, biome: 'desert', displayName: '사하르 (북아프리카)',
     groundColor: '#d4b97a', tintColor: '#a89460',
-    worldOffsetX: 18000, worldOffsetY: 16000, zoneWidth: 10000, zoneHeight: 8000,
+    worldOffsetX: 16000, worldOffsetY: 18000, zoneWidth: 9000, zoneHeight: 6000,
     villageSeed: 1009, villageCount: 8,
-    mainSquare: { x: 5000, y: 4000, name: '카이르 광장' },
+    mainSquare: { x: 4500, y: 3000, name: '카이르 광장' },
   },
-  // 콩그우림 + 케이프 통합 (남부 아프리카)
   kongra: {
     port: 3030, biome: 'savanna', displayName: '콩그·케이프 (남아프리카)',
     groundColor: '#8a8a5a', tintColor: '#6a6a3a',
-    worldOffsetX: 18000, worldOffsetY: 24000, zoneWidth: 10000, zoneHeight: 14000,
+    worldOffsetX: 16000, worldOffsetY: 24000, zoneWidth: 9000, zoneHeight: 14000,
     villageSeed: 1010, villageCount: 10,
-    mainSquare: { x: 5000, y: 7000, name: '나로비 광장' },
+    mainSquare: { x: 4500, y: 7000, name: '나로비 광장' },
   },
 
-  // === c3: 중앙 Eurasia + 인도양 ===
-  sibara: {
-    port: 3011, biome: 'tundra', displayName: '시바라 (시베리아)',
-    groundColor: '#7a8a8a', tintColor: '#5a6a6a',
-    worldOffsetX: 28000, worldOffsetY: 0, zoneWidth: 8000, zoneHeight: 6000,
-    villageSeed: 1011, villageCount: 5,
-    mainSquare: { x: 4000, y: 3000, name: '노보 광장' },
-  },
+  // === c3: 중앙 Eurasia + 인도양 (6000w) — sibara/centaria/hindgang/indoyang ===
+  // sibara는 c3+c4 row 0 wide → 별도 정의 (아래)
   centaria: {
     port: 3012, biome: 'plains', displayName: '중아세아',
     groundColor: '#a89460', tintColor: '#806e44',
-    worldOffsetX: 28000, worldOffsetY: 6000, zoneWidth: 8000, zoneHeight: 10000,
-    villageSeed: 1012, villageCount: 12,
-    mainSquare: { x: 4000, y: 5000, name: '아스나 광장' },
+    worldOffsetX: 25000, worldOffsetY: 5000, zoneWidth: 6000, zoneHeight: 13000,
+    villageSeed: 1012, villageCount: 14,
+    mainSquare: { x: 3000, y: 6500, name: '아스나 광장' },
   },
   hindgang: {
     port: 3013, biome: 'jungle', displayName: '힌드강 (인도)',
     groundColor: '#5a8a3a', tintColor: '#3a6a1a',
-    worldOffsetX: 28000, worldOffsetY: 16000, zoneWidth: 8000, zoneHeight: 8000,
-    villageSeed: 1013, villageCount: 18,
-    mainSquare: { x: 4000, y: 4000, name: '델리아 광장' },
+    worldOffsetX: 25000, worldOffsetY: 18000, zoneWidth: 6000, zoneHeight: 6000,
+    villageSeed: 1013, villageCount: 16,
+    mainSquare: { x: 3000, y: 3000, name: '델리아 광장' },
   },
-  // 인도양 — 인도 남쪽 + 호주 서쪽 사이 (확장)
   indoyang: {
     port: 3014, biome: 'ocean', displayName: '인도양',
     groundColor: '#2a5a8a', tintColor: '#1a4a7a',
-    worldOffsetX: 28000, worldOffsetY: 24000, zoneWidth: 8000, zoneHeight: 14000,
+    worldOffsetX: 25000, worldOffsetY: 24000, zoneWidth: 6000, zoneHeight: 14000,
     villageSeed: 0, villageCount: 0,
-    mainSquare: { x: 4000, y: 7000, name: '인도양 중심' },
+    mainSquare: { x: 3000, y: 7000, name: '인도양 중심' },
     isOcean: true,
   },
 
-  // === c4: 중원(중국) + 동남아 ===
-  bering: {
-    port: 3015, biome: 'tundra', displayName: '베링 (NE 시베리아)',
+  // === Russia 가로띠 (row 0, c3+c4 wide) ===
+  sibara: {
+    port: 3011, biome: 'tundra', displayName: '시바라 (Siberia 西·中)',
     groundColor: '#8a9a9a', tintColor: '#6a7a7a',
-    worldOffsetX: 36000, worldOffsetY: 0, zoneWidth: 10000, zoneHeight: 6000,
-    villageSeed: 1015, villageCount: 4,
-    mainSquare: { x: 5000, y: 3000, name: '아나디 광장' },
+    worldOffsetX: 25000, worldOffsetY: 0, zoneWidth: 16000, zoneHeight: 5000,
+    villageSeed: 1011, villageCount: 8,
+    mainSquare: { x: 8000, y: 2500, name: '노보 광장' },
   },
+
+  // === c4: 중원 + 동남아 (10000w) ===
   jungwon_n: {
     port: 3016, biome: 'plains', displayName: '중원북 (中北)',
     groundColor: '#9aa860', tintColor: '#7a8a40',
-    worldOffsetX: 36000, worldOffsetY: 6000, zoneWidth: 10000, zoneHeight: 10000,
-    villageSeed: 1016, villageCount: 20,
-    mainSquare: { x: 5000, y: 5000, name: '베이장 광장' },
+    worldOffsetX: 31000, worldOffsetY: 5000, zoneWidth: 10000, zoneHeight: 13000,
+    villageSeed: 1016, villageCount: 25,
+    mainSquare: { x: 5000, y: 6500, name: '베이장 광장' },
   },
   jungwon_s: {
     port: 3017, biome: 'plains', displayName: '중원남 (中南)',
     groundColor: '#8aa860', tintColor: '#6a8840',
-    worldOffsetX: 36000, worldOffsetY: 16000, zoneWidth: 10000, zoneHeight: 8000,
-    villageSeed: 1017, villageCount: 18,
-    mainSquare: { x: 5000, y: 4000, name: '샹하 광장' },
+    worldOffsetX: 31000, worldOffsetY: 18000, zoneWidth: 10000, zoneHeight: 6000,
+    villageSeed: 1017, villageCount: 16,
+    mainSquare: { x: 5000, y: 3000, name: '샹하 광장' },
   },
   nanyang: {
     port: 3018, biome: 'archipelago', displayName: '남양제도 (동남아)',
     groundColor: '#4a8a5a', tintColor: '#2a6a3a',
-    worldOffsetX: 36000, worldOffsetY: 24000, zoneWidth: 10000, zoneHeight: 8000,
-    villageSeed: 1018, villageCount: 12,
-    mainSquare: { x: 5000, y: 4000, name: '발리 광장' },
-  },
-  // 남빙양 — c3+c4 통합 (가로 길게, 맨 아래)
-  nambingyang: {
-    port: 3019, biome: 'ocean', displayName: '남빙양',
-    groundColor: '#3a6a9a', tintColor: '#2a5a8a',
-    worldOffsetX: 36000, worldOffsetY: 32000, zoneWidth: 10000, zoneHeight: 6000,
-    villageSeed: 0, villageCount: 0,
-    mainSquare: { x: 5000, y: 3000, name: '남빙양 중심' },
-    isOcean: true,
+    worldOffsetX: 31000, worldOffsetY: 24000, zoneWidth: 10000, zoneHeight: 7000,
+    villageSeed: 1018, villageCount: 14,
+    mainSquare: { x: 5000, y: 3500, name: '발리 광장' },
   },
 
-  // === c5: 한반도 + 닛폰 + 오세니아 + 즈일랜드 ===
-  // 한반도: y=0~10000 (북극+중북 통합. 인구밀도 높아서 크게)
+  // === Russia 가로띠 (row 0, c5+c6+half_c7 wide) ===
+  bering: {
+    port: 3015, biome: 'tundra', displayName: '베링 (NE 러시아)',
+    groundColor: '#7a8a8a', tintColor: '#5a6a6a',
+    worldOffsetX: 41000, worldOffsetY: 0, zoneWidth: 16000, zoneHeight: 5000,
+    villageSeed: 1015, villageCount: 4,
+    mainSquare: { x: 8000, y: 2500, name: '아나디 광장' },
+  },
+
+  // === c5: 한반도 컬럼 (7000w) ===
   hanbando: {
     port: 3020, biome: 'forest', displayName: '한반도',
     groundColor: '#9a9670', tintColor: '#7a8a4a',
-    worldOffsetX: 46000, worldOffsetY: 0, zoneWidth: 8000, zoneHeight: 10000,
-    villageSeed: 1020, villageCount: 15,
-    mainSquare: { x: 4000, y: 5000, name: '한양 광장' },
+    worldOffsetX: 41000, worldOffsetY: 5000, zoneWidth: 7000, zoneHeight: 13000,
+    villageSeed: 1020, villageCount: 20,
+    mainSquare: { x: 3500, y: 6500, name: '한양 광장' },
   },
-  // 닛폰: y=10000~18000 (중북~열대 위쪽, Japan 위도와 일치)
+  east_sea_s: {
+    port: 3026, biome: 'ocean', displayName: '동중국해',
+    groundColor: '#2a5a8a', tintColor: '#1a4a7a',
+    worldOffsetX: 41000, worldOffsetY: 18000, zoneWidth: 7000, zoneHeight: 6000,
+    villageSeed: 0, villageCount: 0,
+    mainSquare: { x: 3500, y: 3000, name: '동중국해 중심' },
+    isOcean: true,
+  },
+  oseania: {
+    port: 3022, biome: 'savanna', displayName: '오세니아 (호주+NZ)',
+    groundColor: '#c4a05a', tintColor: '#a08040',
+    worldOffsetX: 41000, worldOffsetY: 24000, zoneWidth: 7000, zoneHeight: 7000,
+    villageSeed: 1022, villageCount: 10,
+    mainSquare: { x: 3500, y: 3500, name: '시디니 광장' },
+  },
+
+  // === c6: 닛폰 컬럼 (5000w) ===
   nippon: {
     port: 3021, biome: 'mountain', displayName: '닛폰 (日本)',
     groundColor: '#7a8a5a', tintColor: '#5a6a3a',
-    worldOffsetX: 46000, worldOffsetY: 10000, zoneWidth: 8000, zoneHeight: 8000,
-    villageSeed: 1021, villageCount: 15,
-    mainSquare: { x: 4000, y: 4000, name: '도카이 광장' },
+    worldOffsetX: 48000, worldOffsetY: 5000, zoneWidth: 5000, zoneHeight: 13000,
+    villageSeed: 1021, villageCount: 16,
+    mainSquare: { x: 2500, y: 6500, name: '도카이 광장' },
   },
-  // 오세니아: y=18000~28000 (열대~중남, Australia 위도)
-  oseania: {
-    port: 3022, biome: 'savanna', displayName: '오세니아 (호주)',
-    groundColor: '#c4a05a', tintColor: '#a08040',
-    worldOffsetX: 46000, worldOffsetY: 18000, zoneWidth: 8000, zoneHeight: 10000,
-    villageSeed: 1022, villageCount: 10,
-    mainSquare: { x: 4000, y: 5000, name: '시디니 광장' },
-  },
-  // 즈일랜드: y=28000~38000 (중남~남극)
-  zealandi: {
-    port: 3023, biome: 'forest', displayName: '즈일랜드 (NZ)',
-    groundColor: '#5a8a5a', tintColor: '#3a6a3a',
-    worldOffsetX: 46000, worldOffsetY: 28000, zoneWidth: 8000, zoneHeight: 10000,
-    villageSeed: 1023, villageCount: 6,
-    mainSquare: { x: 4000, y: 5000, name: '울링톤 광장' },
+  japan_pacific: {
+    port: 3028, biome: 'ocean', displayName: '필리핀해+일본남해',
+    groundColor: '#2a5a8a', tintColor: '#1a4a7a',
+    worldOffsetX: 48000, worldOffsetY: 18000, zoneWidth: 5000, zoneHeight: 13000,
+    villageSeed: 0, villageCount: 0,
+    mainSquare: { x: 2500, y: 6500, name: '필리핀해 중심' },
+    isOcean: true,
   },
 
-  // === c6: 태평양 (세로 전체 1 zone) ===
-  // wrap 도입 시 동쪽 끝이 캐나디아/누비아노 서쪽과 연결됨
+  // === 남빙양 (row 4 가로, c4+c5+c6 통합) ===
+  nambingyang: {
+    port: 3019, biome: 'ocean', displayName: '남빙양',
+    groundColor: '#3a6a9a', tintColor: '#2a5a8a',
+    worldOffsetX: 31000, worldOffsetY: 31000, zoneWidth: 22000, zoneHeight: 7000,
+    villageSeed: 0, villageCount: 0,
+    mainSquare: { x: 11000, y: 3500, name: '남빙양 중심' },
+    isOcean: true,
+  },
+
+  // === c7: 태평양 (8000w) ===
+  // bering이 c7 절반(53000~57000) row 0 차지. pacific_arctic은 동쪽 corner 작은 ocean.
+  pacific_arctic: {
+    port: 3027, biome: 'ocean', displayName: '북태평양 corner',
+    groundColor: '#1a3a7a', tintColor: '#0a2a5a',
+    worldOffsetX: 57000, worldOffsetY: 0, zoneWidth: 4000, zoneHeight: 5000,
+    villageSeed: 0, villageCount: 0,
+    mainSquare: { x: 2000, y: 2500, name: '북태평양 NE' },
+    isOcean: true,
+  },
   pacific: {
     port: 3024, biome: 'ocean', displayName: '태평양',
     groundColor: '#1a3a7a', tintColor: '#0a2a5a',
-    worldOffsetX: 54000, worldOffsetY: 0, zoneWidth: 7000, zoneHeight: 38000,
+    worldOffsetX: 53000, worldOffsetY: 5000, zoneWidth: 8000, zoneHeight: 33000,
     villageSeed: 0, villageCount: 0,
-    mainSquare: { x: 3500, y: 19000, name: '태평양 중심' },
+    mainSquare: { x: 4000, y: 16500, name: '태평양 중심' },
     isOcean: true,
   },
 };
 
-// host 채우기 + ENABLED_ZONES 적용 — 비활성 zone은 ZONES에서 제외
+// host 채우기 + ENABLED_ZONES 적용
 const _enabledStr = process.env.ENABLED_ZONES;
 const _enabled = _enabledStr ? new Set(_enabledStr.split(',').map(s => s.trim())) : null;
 const ZONES = {};
@@ -250,11 +252,10 @@ for (const [id, z] of Object.entries(ZONES_BASE)) {
 
 const CENTRAL = {
   host: process.env.CENTRAL_HOST || 'localhost',
-  port: parseInt(process.env.CENTRAL_PORT || '3000', 10),
+  port: parseInt(process.env.CENTRAL_PORT || '3010', 10),
   proto: HTTP_PROTO,
 };
 
-// === 월드 전체 크기 (자동 산정) ===
 let _maxX = 0, _maxY = 0;
 for (const z of Object.values(ZONES_BASE)) {
   _maxX = Math.max(_maxX, z.worldOffsetX + z.zoneWidth);
@@ -267,8 +268,7 @@ const WORLD = {
   dayLengthMs: 10 * 60 * 1000,
   dayPhaseRatio: 0.7,
   worldEpoch: 0,
-  zoneWidth: 10000,   // 옛 코드 fallback
-  zoneHeight: 10000,
+  zoneWidth: 10000, zoneHeight: 10000, // 옛 호환
 };
 
 function worldPhase(nowMs = Date.now()) {
@@ -286,7 +286,6 @@ function darknessLevel(nowMs = Date.now()) {
   return 1;
 }
 
-// === abs 좌표 → zone lookup (핸드오프용, wrap-ready) ===
 function findZoneAt(absX, absY) {
   for (const [id, z] of Object.entries(ZONES_BASE)) {
     if (absX >= z.worldOffsetX && absX < z.worldOffsetX + z.zoneWidth &&
@@ -297,8 +296,7 @@ function findZoneAt(absX, absY) {
   return null;
 }
 
-// === wrap-ready 거리 헬퍼 ===
-const WRAP_X = null; // null이면 wrap 안 함. 나중에 WORLD.worldWidth로 활성화.
+const WRAP_X = null;
 function worldDeltaX(a, b) {
   let dx = b - a;
   if (WRAP_X !== null) {
@@ -339,7 +337,6 @@ function publicZoneMap(fallbackHost = 'localhost') {
       simulatedLatencyMs: z.simulatedLatencyMs || 0,
       mainSquare: z.mainSquare || null,
       isOcean: !!z.isOcean,
-      // 14.46-a — 옛 클라 호환용: 각 변 중앙에 닿는 zone 1개
       north: _findNeighborSide(id, 'N'),
       south: _findNeighborSide(id, 'S'),
       east:  _findNeighborSide(id, 'E'),
