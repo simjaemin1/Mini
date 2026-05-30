@@ -189,6 +189,13 @@ const BUILDING_COST = {
 const CROP_GROW_MS = 60 * 1000;
 const BLOCKING_BUILDINGS = new Set(['wall', 'fence']);
 const BUILDING_HEIGHT = { wall: 32, floor: 4, fence: 24, chest: 24, campfire: 20, farmland: 4, stair: 32 };
+// Phase 14.25: chest 저장 가능 아이템 (모든 자원 + 도구 + 음식)
+const CHEST_ALLOWED_ITEMS = new Set([
+  'wood', 'stone', 'ore', 'herb',
+  'berry', 'fiber', 'meat_raw', 'meat_cooked', 'hide',
+  'berry_jam', 'water_bottle', 'seed_berry',
+  'axe', 'pickaxe', 'sword',
+]);
 // Phase 14.14: 건축물 maxHp — 손상=상태 전이 (영구파괴 X, 수리 가능)
 const BUILDING_MAX_HP = { wall: 80, fence: 30, chest: 50, campfire: 20, farmland: 10, stair: 60, floor: 40 };
 const FLOOR_HEIGHT = 32;
@@ -2171,13 +2178,17 @@ function tryChestPut(player, buildingId, item, amount) {
   if (Math.hypot(b.x - player.x, b.y - player.y) > 64) {
     send(player.ws, { type: 'notice', text: '상자에서 너무 멀리 있습니다' }); return;
   }
-  if (item !== 'wood' && item !== 'stone') return;
+  // Phase 14.25: 모든 아이템 저장 허용 (white-list)
+  if (!CHEST_ALLOWED_ITEMS.has(item)) {
+    send(player.ws, { type: 'notice', text: `${item}은 상자에 못 넣음` }); return;
+  }
   amount = Math.max(1, Math.min(99, amount | 0));
   if ((player.inventory[item] || 0) < amount) {
     send(player.ws, { type: 'notice', text: `${item} 부족` }); return;
   }
   player.inventory[item] -= amount;
-  b.data = b.data || { wood: 0, stone: 0 };
+  b.data = b.data || {};
+  // 기존 wood/stone만 초기화되어 있던 chest는 다른 키 보존
   b.data[item] = (b.data[item] || 0) + amount;
   db.updateBuildingData(b.dbId, JSON.stringify(b.data));
   savePlayer(player);
@@ -2191,7 +2202,9 @@ async function tryChestTake(player, buildingId, item, amount) {
   if (Math.hypot(b.x - player.x, b.y - player.y) > 64) {
     send(player.ws, { type: 'notice', text: '상자에서 너무 멀리 있습니다' }); return;
   }
-  if (item !== 'wood' && item !== 'stone') return;
+  if (!CHEST_ALLOWED_ITEMS.has(item)) {
+    send(player.ws, { type: 'notice', text: `${item}은 인출 불가` }); return;
+  }
   amount = Math.max(1, Math.min(99, amount | 0));
 
   // Phase 14.20: public chest는 자유 인출

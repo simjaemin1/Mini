@@ -204,6 +204,7 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
     if (keys.has(k)) return;
     keys.add(k);
     if (k === 'e') sendPrimary({ type: 'gather' });
+    else if (k === 'c' && e.shiftKey) sendPrimary({ type: 'claim', kind: 'guild' });  // 길드 영토 (Shift+C)
     else if (k === 'c') sendPrimary({ type: 'claim', kind: 'personal' });  // 개인 사유지 (1 grid)
     else if (k === 't' && !e.shiftKey) sendPrimary({ type: 'claim', kind: 'temporary' });  // 임시 사유지 (1 grid)
     else if (k === 't') sendPrimary({ type: 'trade_offer', give: 'wood' });
@@ -2152,6 +2153,7 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
           <div class="hint" style="margin-top:6px">⚖️ 길드 명성: <b style="color:${tierColor}">${vp.toFixed(0)}/200 · ${tierLabel}</b></div>
           <div class="hint" style="font-size:11px;opacity:0.7">청정=침략 시 약함·침략자 +대량적대감 / 악성=토벌 대상</div>
           <div class="hint" style="margin-top:6px">🏦 길드 금고: <b>${trItems}</b></div>
+          <div class="hint" style="margin-top:6px">🏛️ 사유지 슬롯 (Phase 14.18): <b>${countMyClaimsClient()}</b><br/><span style="font-size:10px;opacity:0.7">C=개인 (길드영토 안만) · T=임시 (어디든) · Shift+C=길드영토 (멤버만)</span></div>
           ${warsHtml}
           ${declareHtml}
           <div class="hint" style="margin-top:8px">멤버 목록:</div>
@@ -2396,6 +2398,20 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
     openInv();
   };
 
+  // Phase 14.25: 내 사유지 카운트 (kind별)
+  function countMyClaimsClient() {
+    let p = 0, t = 0, g = 0;
+    for (const c of conns.values()) {
+      for (const cl of c.claims.values()) {
+        if (cl.ownerPid !== myUsername) continue;
+        if (cl.kind === 'temporary') t++;
+        else if (cl.kind === 'guild') g++;
+        else p++;
+      }
+    }
+    return `개인 ${p}/9 · 임시 ${t}/4 · 길드영토 ${g}/50`;
+  }
+
   // 근처 ground items (80px 반경) — 바닥 pseudo-container 내용
   function nearbyGroundItems() {
     const list = [];
@@ -2515,11 +2531,7 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
         sendPrimary({ type: 'drop_item', item, amount: 1 });
         return;
       }
-      // chest로/에서 — wood/stone만 (현재 서버 제약)
-      if (item !== 'wood' && item !== 'stone') {
-        showNotice(`${ITEM_LABEL[item] || item}은 상자에 못 넣음 (바닥에 떨어뜨리세요 — 우측 🌍 탭)`);
-        return;
-      }
+      // chest로/에서 — 모든 아이템 (Phase 14.25)
       if (kind === 'mine') sendPrimary({ type: 'chest_put', buildingId: cid, item, amount: 1 });
       else sendPrimary({ type: 'chest_take', buildingId: cid, item, amount: 1 });
     });
@@ -2604,10 +2616,7 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
       return;
     }
     if (kind === 'mine' && target && target !== 'ground' && target !== 'mine') {
-      if (item !== 'wood' && item !== 'stone') {
-        showNotice(`${ITEM_LABEL[item] || item}은 상자에 못 넣음 (wood/stone만 지원)`);
-        return;
-      }
+      // Phase 14.25: 모든 아이템 상자 OK
       sendPrimary({ type: 'chest_put', buildingId: target, item, amount });
       return;
     }
