@@ -3108,6 +3108,21 @@ setInterval(() => {
   const dt = Math.min(0.2, (now - lastTick) / 1000);
   lastTick = now;
 
+  // === 14.49-e3-perf5: idle zone skip ===
+  // 사람 player(isNpc=false) + observer 모두 0명이면 tick 풀 처리 skip.
+  // 5초마다 한 번씩만 가벼운 maintenance (NPC 마을 시뮬레이션은 별도 setInterval(60s)라 영향 없음).
+  let hasHuman = false;
+  for (const p of players.values()) { if (!p.isNpc) { hasHuman = true; break; } }
+  const hasObserver = observers.size > 0;
+  if (!hasHuman && !hasObserver) {
+    // idle zone: 5초마다만 가벼운 작업. 26 zone 중 25개가 idle이면 CPU 거의 0.
+    if (!global._idleSkipAt || now - global._idleSkipAt > 5000) {
+      global._idleSkipAt = now;
+      // 입력 타임아웃 정리만 (NPC AI·이동·broadcast 모두 skip)
+    }
+    return;
+  }
+
   // === 활성 청크 갱신 (player·observer 위치 기반) ===
   updateActiveChunks();
 

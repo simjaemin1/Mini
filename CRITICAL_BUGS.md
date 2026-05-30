@@ -33,6 +33,32 @@
 
 ---
 
+## 2026-05-31 · 26 컨테이너 × 30Hz × 1 vCPU → load 14, 직진 끊김의 진짜 원인
+
+**증상**: stair cache 4번 깔아도 직진 walk 끊김 계속. e3-perf 시리즈 모두 적용 후에도.
+
+**잘못된 가설** (네 단계 거침):
+1. observer flap (e3 fix2): 사실이지만 그 후에도 끊김 → 다른 원인 있음
+2. server stair check quadtree (e3-perf): 사실. cache로 mob 부담 1/100. 그래도 끊김
+3. 클라 stair check (e3-perf3): 사실. cache로 client 부담 1/100. 그래도 끊김
+4. findStairStepFor 별도 함수 (e3-perf4): 사실. 통합. 그래도 끊김
+
+**진짜 원인 (실측)**: `docker stats` + `uptime`으로 봤더니 **load average 14.47/13.45/11.89 on 1 vCPU**. 한반도 컨테이너 자체는 3.7%인데, **26 zone × 평균 3-5% = 100%+ 합산**. OS scheduler가 컨테이너들 round-robin 처리 중 직진 player의 tick latency 발생 → 클라 snap-back.
+
+stair 캐시는 한 컨테이너당 1-2% 줄여줬지만, **전체 26 컨테이너 합산이 1 vCPU 한계 넘는다는 구조 문제는 그대로**. e3-perf 4번을 깔아도 load 14 → 12 정도. 여전히 12배 과부하.
+
+**진짜 수정 (e3-perf5)**: idle zone tick skip.
+- 사람 player (isNpc=false) + observer 모두 0명인 zone은 매 tick 풀 처리 skip
+- 사용자 한 명이 canada에 있으면 다른 25 zone은 거의 idle → 1 vCPU 부담 1/25 수준
+
+**교훈**:
+- **"성능 문제"를 가설로 추측하지 말고 즉시 실측.** `docker stats`, `top`, `uptime` 한 번이면 의미 없는 fix 4번 안 만들었을 거.
+- **OS-level metric (load avg)을 application-level metric (per-container CPU)보다 먼저 확인.** load 14 = 명백한 CPU 포화. 개별 컨테이너 3.7%만 봤으면 "괜찮은데?" 오판.
+- **micro-optimization (cache)와 architectural fix (idle skip)는 다른 부류.** 컨테이너가 너무 많으면 cache 아무리 해도 한계. 호출 빈도 자체를 줄이거나 (idle skip), 컨테이너 수 줄이거나 (Stage 2 multi-zone host), 코어 늘리거나 (vCPU 업그레이드).
+- **유료 인프라 (vCPU 업그레이드)는 무료 코드 fix 다 시도 후에만.** 단, 무료 fix가 효과 없으면 미루지 말고.
+
+---
+
 ## 2026-05-31 · stair cache TDZ — 모든 zone 컨테이너 부팅 실패 (TDZ 두 번째)
 
 **증상**: 14.49-e3-perf 배포 직후 모든 zone 컨테이너에 WS 연결 실패 ("Could not connect to the server"). 클라가 ws://...:3001 등 어떤 zone에도 못 붙음.
