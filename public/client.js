@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.49-e2-hotfix (BUILDING_SIZE ReferenceError 수정) ===
-console.log('%c[durango-mini] client build = 14.49-e2-hotfix (계단 그림 fix)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.49-e3 (계단 측면 차단 + 5x5 NPC 집 + 내부 계단) ===
+console.log('%c[durango-mini] client build = 14.49-e3 (계단 입구 + 5x5)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -224,10 +224,52 @@ console.log('%c[durango-mini] client build = 14.49-e2-hotfix (계단 그림 fix)
     }
     return false;
   }
+  // 14.49-e3: 계단 측면 진입 차단 (서버 isBlockedByStairSide와 동일 로직)
+  function clDirVec(dir) {
+    if (dir === 'N') return { x: 0, y: -1 };
+    if (dir === 'S') return { x: 0, y: 1 };
+    if (dir === 'E') return { x: 1, y: 0 };
+    if (dir === 'W') return { x: -1, y: 0 };
+    return { x: 0, y: -1 };
+  }
+  function clFindStairForCell(cx, cy) {
+    for (const [zid, c] of conns) {
+      const zm = c.meta || zonesMeta[zid];
+      if (!zm) continue;
+      const ox = zm.worldOffsetX || 0, oy = zm.worldOffsetY || 0;
+      const localCx = cx - Math.floor(ox / CL_BUILDING_SIZE);
+      const localCy = cy - Math.floor(oy / CL_BUILDING_SIZE);
+      for (const b of c.buildings.values()) {
+        if (b.type !== 'stair') continue;
+        const dir = b.data?.dir || 'N';
+        const dv = clDirVec(dir);
+        const acx = Math.floor(b.x / CL_BUILDING_SIZE);
+        const acy = Math.floor(b.y / CL_BUILDING_SIZE);
+        for (let s = 0; s <= 2; s++) {
+          if (acx + dv.x * s === localCx && acy + dv.y * s === localCy) return { stair: b, step: s };
+        }
+      }
+    }
+    return null;
+  }
   function clientIsBlockedByWall(newX, newY, oldX, oldY, playerFloor = 0) {
     const oc = clCellOf(oldX, oldY);
     const nc = clCellOf(newX, newY);
     if (oc.cx === nc.cx && oc.cy === nc.cy) return false;
+    // 14.49-e3: 계단 측면 진입 차단
+    const enteringStair = clFindStairForCell(nc.cx, nc.cy);
+    if (enteringStair) {
+      const fromStair = clFindStairForCell(oc.cx, oc.cy);
+      const sameStair = fromStair && fromStair.stair.id === enteringStair.stair.id;
+      if (!sameStair) {
+        const dir = enteringStair.stair.data?.dir || 'N';
+        const dv = clDirVec(dir);
+        const moveX = nc.cx - oc.cx, moveY = nc.cy - oc.cy;
+        const lowEntry = enteringStair.step === 0 && moveX === dv.x && moveY === dv.y;
+        const highEntry = enteringStair.step === 2 && moveX === -dv.x && moveY === -dv.y;
+        if (!lowEntry && !highEntry) return true; // 측면 진입 차단
+      }
+    }
     let blocked = false, reason = '';
     if (nc.cx > oc.cx && clHasWallAt(oldX, oldY, oc.cx, oc.cy, 'E', playerFloor)) { blocked = true; reason = 'E'; }
     else if (nc.cx < oc.cx && clHasWallAt(newX, newY, nc.cx, nc.cy, 'E', playerFloor)) { blocked = true; reason = 'W'; }

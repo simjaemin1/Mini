@@ -594,26 +594,26 @@ function spawnNpc(opts = {}) {
     buildings.set(id, building);
     chunkManager.insertBuilding(building);
   }
-  // 3x3 영역의 외곽 edge 4면. cell 범위 (cx-1, cy-1) ~ (cx+1, cy+1).
+  // 14.49-e2: 5x5 영역. cell 범위 (cx-2, cy-2) ~ (cx+2, cy+2). 계단 내부로 옮김.
   for (const f of [0, 1]) {
-    // 북쪽 변 (cy-1의 N)
-    for (let i = -1; i <= 1; i++) addWall(houseCx + i, houseCy - 1, 'N', f);
-    // 남쪽 변 (cy+1의 S = cy+2의 N) — 입구 (가운데) 0F만 비움
-    for (let i = -1; i <= 1; i++) {
+    // 북쪽 변 (cy-2의 N)
+    for (let i = -2; i <= 2; i++) addWall(houseCx + i, houseCy - 2, 'N', f);
+    // 남쪽 변 (cy+2의 S = cy+3의 N) — 입구 (가운데) 0F만 비움
+    for (let i = -2; i <= 2; i++) {
       if (f === 0 && i === 0) continue; // 0F 입구
-      addWall(houseCx + i, houseCy + 2, 'N', f);
+      addWall(houseCx + i, houseCy + 3, 'N', f);
     }
-    // 동쪽 변 (cx+1의 E)
-    for (let j = -1; j <= 1; j++) addWall(houseCx + 1, houseCy + j, 'E', f);
-    // 서쪽 변 (cx-1의 W = cx-2의 E)
-    for (let j = -1; j <= 1; j++) addWall(houseCx - 2, houseCy + j, 'E', f);
+    // 동쪽 변 (cx+2의 E)
+    for (let j = -2; j <= 2; j++) addWall(houseCx + 2, houseCy + j, 'E', f);
+    // 서쪽 변 (cx-2의 W = cx-3의 E)
+    for (let j = -2; j <= 2; j++) addWall(houseCx - 3, houseCy + j, 'E', f);
   }
-  // 1F 바닥 (3x3) — 천장
-  for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) addBlock(houseCx + i, houseCy + j, 'floor', 1);
-  // 옆 계단 (14.49-e: 3 cell 구조) — anchor=가장 동쪽(낮음), dir='W'로 집을 향해 올라감.
-  // 점유 cells: (houseCx+4, houseCy), (houseCx+3, houseCy), (houseCx+2, houseCy)
-  // anchor=houseCx+4 (낮은 발판). step 0~2가 W 방향으로 진행.
-  addBlock(houseCx + 4, houseCy, 'stair', 0, { dir: 'W' });
+  // 1F 바닥 (5x5) — 천장
+  for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) addBlock(houseCx + i, houseCy + j, 'floor', 1);
+  // 계단 — 집 내부, dir='N' (남쪽에서 들어와 북쪽으로 올라감).
+  // anchor=낮은 입구=(houseCx, houseCy+1), step 1=(houseCx, houseCy), step 2=(houseCx, houseCy-1)
+  // 1F 도착=(houseCx, houseCy-2) 위. 5x5 1F 바닥 안.
+  addBlock(houseCx, houseCy + 1, 'stair', 0, { dir: 'N' });
 
   console.log(`[${ZONE_ID}] 🤖 NPC 스폰: ${name} @ (${cx.toFixed(0)},${cy.toFixed(0)}) + PZ식 집`);
   return player;
@@ -2993,11 +2993,56 @@ function findEdgeWall(cx, cy, side, floor) {
   }
   return false;
 }
+// 14.49-e2: 계단 측면 진입 차단 — 계단의 -dir(낮은 입구) 또는 +dir(높은 입구) 쪽만 통과 허용
+function dirVecForCollider(dir) {
+  if (dir === 'N') return { x: 0, y: -1 };
+  if (dir === 'S') return { x: 0, y: 1 };
+  if (dir === 'E') return { x: 1, y: 0 };
+  if (dir === 'W') return { x: -1, y: 0 };
+  return { x: 0, y: -1 };
+}
+function findStairBuildingForCell(cx, cy) {
+  const px = cx * BUILDING_SIZE + 16;
+  const py = cy * BUILDING_SIZE + 16;
+  const near = qtBuildings ? qtBuildings.queryCircle(px, py, BUILDING_SIZE * 3) : Array.from(buildings.values());
+  for (const b of near) {
+    if (b.type !== 'stair') continue;
+    const dir = b.data?.dir || 'N';
+    const dv = dirVecForCollider(dir);
+    const acx = Math.floor(b.x / BUILDING_SIZE);
+    const acy = Math.floor(b.y / BUILDING_SIZE);
+    for (let s = 0; s <= 2; s++) {
+      if (acx + dv.x * s === cx && acy + dv.y * s === cy) return { stair: b, step: s };
+    }
+  }
+  return null;
+}
+function isBlockedByStairSide(newX, newY, oldX, oldY) {
+  const oc = cellOf(oldX, oldY);
+  const nc = cellOf(newX, newY);
+  if (oc.cx === nc.cx && oc.cy === nc.cy) return false;
+  const enteringStair = findStairBuildingForCell(nc.cx, nc.cy);
+  if (!enteringStair) return false; // not entering stair tile — no constraint
+  // already on same stair → allowed (moving between stair cells)
+  const fromStair = findStairBuildingForCell(oc.cx, oc.cy);
+  if (fromStair && fromStair.stair.id === enteringStair.stair.id) return false;
+  // outside → stair entry — only allowed at low end (step 0, from -dir side) or high end (step 2, from +dir side)
+  const dir = enteringStair.stair.data?.dir || 'N';
+  const dv = dirVecForCollider(dir);
+  const moveX = nc.cx - oc.cx;
+  const moveY = nc.cy - oc.cy;
+  if (enteringStair.step === 0 && moveX === dv.x && moveY === dv.y) return false; // low entry
+  if (enteringStair.step === 2 && moveX === -dv.x && moveY === -dv.y) return false; // high entry
+  return true; // 측면 진입 등 — 차단
+}
+
 function isBlockedByWall(newX, newY, oldX, oldY, playerFloor = 0, traceName = null) {
   // 같은 cell 안 이동 — wall 가로지르지 않음
   const oc = cellOf(oldX, oldY);
   const nc = cellOf(newX, newY);
   if (oc.cx === nc.cx && oc.cy === nc.cy) return false;
+  // 14.49-e2: 계단 측면 진입 차단 (먼저 검사 — 빠르고 우선순위 높음)
+  if (isBlockedByStairSide(newX, newY, oldX, oldY)) return true;
   let blocked = false;
   let reason = '';
   // 동쪽 이동 (cx 증가): oc.E edge (= nc.W = (oc.cx+1, oc.cy).W = oc.E)
