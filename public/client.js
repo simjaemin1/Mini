@@ -50,6 +50,9 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
   let myPvpEnabled = false;
   let myBuildFloor = 0; // 2.5D — 현재 건축 층 (Z=위, X=아래)
   let myFloor = 0;      // 캐릭터가 현재 있는 층 (계단으로 이동)
+  // Phase 14.30: 건축 placement mode
+  let placementMode = null; // null 또는 { type, floor }
+  let placementCursor = { wx: 0, wy: 0 }; // 마우스 따라가는 abs 좌표
 
   // === 클라 사이드 wall edge 콜라이더 (server isBlockedByWall 미러) ===
   // wall은 cell edge에 (data.side ∈ {N, E}). BUILDING_SIZE=32 서버와 동일.
@@ -228,6 +231,7 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
     else if (k === 'u') sendPrimary({ type: 'build', buildType: 'stair', floor: myBuildFloor });
     else if (k === 'm') toggleMarketplace();
     else if (k === 'k') toggleCraft();
+    else if (k === 'r' && e.shiftKey) sendPrimary({ type: 'repair_building' }); // Phase 14.34 수리
     else if (k === 'r') toggleCookPanel();
     else if (k === '1') sendPrimary({ type: 'equip', tool: 'axe' });
     else if (k === '2') sendPrimary({ type: 'equip', tool: 'pickaxe' });
@@ -416,6 +420,19 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
     refreshHealth();
     setInterval(refreshHealth, 3000);
 
+    // Phase 14.30: 캔버스 mousemove → placement cursor 갱신
+    canvas.addEventListener('mousemove', (e) => {
+      if (!placementMode) return;
+      const rect = canvas.getBoundingClientRect();
+      const px = (e.clientX - rect.left) * (canvas.width / rect.width);
+      const py = (e.clientY - rect.top) * (canvas.height / rect.height);
+      const myIso = w2i(myAbsPredicted.x, myAbsPredicted.y);
+      const ix = px - W/2 + myIso.x;
+      const iy = py - H/2 + myIso.y;
+      placementCursor.wx = ix * 0.5 + iy;
+      placementCursor.wy = iy - ix * 0.5;
+    });
+
     // Phase 14.22: 캔버스 클릭 → screen → world 좌표 변환 → chest bbox hit-test
     canvas.addEventListener('click', (e) => {
       const rect = canvas.getBoundingClientRect();
@@ -429,6 +446,18 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
       // iso 역변환: wx = ix/2 + iy, wy = iy - ix/2
       const clickWx = ix * 0.5 + iy;
       const clickWy = iy - ix * 0.5;
+      // Phase 14.30: placement mode 우선 — 그 위치에 빌드
+      if (placementMode) {
+        // 사용자 위치에서 거리 체크 (160px)
+        const distMe = Math.hypot(clickWx - myAbsPredicted.x, clickWy - myAbsPredicted.y);
+        if (distMe > 160) { showNotice('너무 멀어서 거기에 못 지음 (160px)'); return; }
+        // server는 player.x/y 기준으로 빌드. teleport는 없어서 일단 사용자 위치 그대로 빌드 (cell 정렬은 서버)
+        // TODO: 클릭 위치에 빌드하려면 서버 메시지 확장 필요. 지금은 사용자 위치 정렬.
+        sendPrimary({ type: 'build', buildType: placementMode.type, floor: placementMode.floor, atX: clickWx, atY: clickWy });
+        // 모드 종료 안 함 — Shift 누른 채면 연속 빌드, 평소엔 한 번
+        if (!e.shiftKey) { placementMode = null; showNotice('배치 모드 종료'); }
+        return;
+      }
       // 1) ground item hit-test 우선 (작은 거 위에 클릭)
       let hitGi = null;
       for (const c of conns.values()) {
@@ -683,6 +712,13 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
       if (c.groundItems) c.groundItems.set(msg.gi.id, msg.gi);
     } else if (msg.type === 'ground_item_removed') {
       if (c.groundItems) c.groundItems.delete(msg.id);
+    } else if (msg.type === 'building_damaged') {
+      const b = c.buildings.get(msg.id);
+      if (b) {
+        b.data = b.data || {};
+        b.data.hp = msg.hp;
+        b.data.damaged = msg.damaged;
+      }
     } else if (msg.type === 'mob_damaged') {
       const m = c.mobs.get(msg.mid); if (m) m.hp = msg.hp;
     } else if (msg.type === 'mob_removed') {
@@ -1358,14 +1394,12 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
       return;
     }
     if (type === 'wall') {
-      // PZ식 edge wall — cell edge에 정확히 배치.
-      // 핵심: wall 바닥 = cell edge (z=0), 윗면 = cell edge 위 H (z=H).
-      // N wall: cell N edge (TL ↘ TR). E wall: cell E edge (TR ↙ BR).
-      // 좌표계: wall 중심 (x, y)는 cell edge 중점 + z=H/2 보정 — render z에서 미리 H만큼 빼서 보냄.
-      // 단순화: render 좌표 (x, y)는 cell edge 중점에 z=0 그대로. 평행사변형 직접 계산.
       const H = WALL_HEIGHT;
       const side = building?.data?.side || 'N';
-      ctx.strokeStyle = '#3a3a3a'; ctx.lineWidth = 0.5;
+      const damaged = !!building?.data?.damaged; // Phase 14.33
+      ctx.strokeStyle = damaged ? '#5a2a2a' : '#3a3a3a';
+      ctx.lineWidth = 0.5;
+      if (damaged) ctx.globalAlpha = 0.45; // 부서진 wall은 반투명
       if (side === 'N') {
         // cell N edge: 좌상 (x-16, y-8) → 우하 (x+16, y+8). 바닥선.
         // 윗면(z=H): 좌상 (x-16, y-8-H) → 우하 (x+16, y+8-H).
@@ -1402,6 +1436,7 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
         ctx.closePath();
         ctx.fillStyle = '#b8a075'; ctx.fill(); ctx.stroke();
       }
+      ctx.globalAlpha = 1; // Phase 14.33: damaged wall 반투명 복원
     } else if (type === 'floor') {
       // 바닥 — 평평한 다이아 (입체감 약간만)
       const data = building?.data || {};
@@ -2328,6 +2363,7 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
   // Esc 처리
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
+      if (placementMode) { placementMode = null; showNotice('배치 모드 취소'); e.stopPropagation(); return; }
       if (invOpen) { closeInv(); e.stopPropagation(); }
       else if (activeSide) { closeSide(); e.stopPropagation(); }
     }
@@ -2340,14 +2376,55 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
     if (k === 'i') { toggleInv(); e.preventDefault(); }
     else if (k === 'k') { toggleSide('craft'); e.preventDefault(); }
     else if (k === 'b' && e.shiftKey) { toggleSide('build'); e.preventDefault(); }
+    else if (k === 'y') { toggleSide('claims'); e.preventDefault(); }
   });
 
   function renderSide(name) {
     const body = document.getElementById('spBody');
     if (name === 'craft') renderCraftPanel2(body);
     else if (name === 'build') renderBuildPanel(body);
+    else if (name === 'claims') renderClaimsPanel(body);
     else if (name === 'tribe') { body.innerHTML = '<div id="tribeBody"></div>'; renderTribePanel(); }
     else if (name === 'market') renderMarketPanel(body);
+  }
+
+  // Phase 14.26: 사유지 패널 — 내 claim 목록 + 해제 + 위치 텔레포트 안내
+  function renderClaimsPanel(body) {
+    const KIND_ICON = { personal: '🏠', temporary: '⛺', guild: '🏛️' };
+    const KIND_NAME = { personal: '개인', temporary: '임시', guild: '길드영토' };
+    const my = [];
+    for (const c of conns.values()) {
+      for (const cl of c.claims.values()) {
+        if (cl.ownerPid !== myUsername) continue;
+        my.push(cl);
+      }
+    }
+    my.sort((a, b) => (a.kind || 'z').localeCompare(b.kind || 'z') || (a.createdAt - b.createdAt));
+    const counts = { personal: 0, temporary: 0, guild: 0 };
+    for (const cl of my) counts[cl.kind || 'personal']++;
+    const list = my.length === 0
+      ? '<div style="color:#6c7686;padding:14px;text-align:center">설치한 사유지가 없습니다</div>'
+      : my.map(cl => {
+          const k = cl.kind || 'personal';
+          return `<div class="sp-list-row">
+            <span>${KIND_ICON[k]} ${KIND_NAME[k]} @ (${cl.x},${cl.y})</span>
+            <button class="craft-btn" data-unclaim="${cl.id}" style="background:#b03030;padding:3px 8px">해제</button>
+          </div>`;
+        }).join('');
+    body.innerHTML = `
+      <div class="hint">슬롯 사용: 개인 ${counts.personal}/9 · 임시 ${counts.temporary}/4 · 길드영토 ${counts.guild}/50</div>
+      <div class="hint" style="font-size:11px;opacity:0.7;margin-bottom:10px">
+        <b>C</b>=개인 사유지 (길드 영토 안만) · <b>T</b>=임시 (어디든) · <b>Shift+C</b>=길드 영토 (멤버만)<br/>
+        해제하면 슬롯 회수. 자원은 환불 안 됨. 다른 위치 가서 다시 설치 가능.
+      </div>
+      <div class="inv-col-head">내 사유지 목록 (${my.length}개)</div>
+      ${list}
+    `;
+    body.querySelectorAll('[data-unclaim]').forEach(btn => btn.onclick = () => {
+      if (!confirm('이 사유지를 해제하시겠습니까? (자원 환불 X)')) return;
+      sendPrimary({ type: 'unclaim', claimId: btn.dataset.unclaim });
+      setTimeout(() => renderClaimsPanel(body), 200);
+    });
   }
 
   // Phase 14.20: 깜빡 fix — 패널 갱신 빈도 3초로 (이전 1초). content hash 비교는 다음 sprint.
@@ -2714,8 +2791,11 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
       </div>`;
     body.querySelectorAll('[data-build]').forEach(c => c.onclick = () => {
       const type = c.dataset.build;
-      const fl = type === 'siege_camp' ? 0 : myBuildFloor;
-      sendPrimary({ type: 'build', buildType: type, floor: fl });
+      const fl = myBuildFloor;
+      // Phase 14.30: placement mode. 마우스 따라 ghost cell + 클릭으로 그 위치에 빌드
+      placementMode = { type, floor: fl };
+      showNotice(`🏗️ ${type} 배치 모드 — 캔버스 클릭으로 빌드, Esc로 취소`);
+      closeSide(); // 패널 닫고 캔버스 보이게
     });
   }
 

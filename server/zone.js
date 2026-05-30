@@ -1482,6 +1482,7 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'claim') tryClaim(player, msg.kind || 'personal');
   else if (msg.type === 'drop_item') tryDropItem(player, msg.item, msg.amount || 1);
   else if (msg.type === 'pickup_item') tryPickupItem(player, msg.giId);
+  else if (msg.type === 'repair_building') tryRepairBuilding(player);
   else if (msg.type === 'unclaim') tryUnclaim(player, msg.claimId);
   else if (msg.type === 'trade_offer') tryTrade(player, msg);
   else if (msg.type === 'ping') send(ws, { type: 'pong', t: msg.t });
@@ -1505,7 +1506,7 @@ function handlePlayerInput(player, raw) {
       text, t: Date.now(),
     });
     console.log(`[${ZONE_ID}] 💬 ${player.name}: ${text}`);
-  } else if (msg.type === 'build') { metrics.builds++; tryBuild(player, msg.buildType, msg.floor || 0, msg.side || null); }
+  } else if (msg.type === 'build') { metrics.builds++; tryBuild(player, msg.buildType, msg.floor || 0, msg.side || null, msg.atX, msg.atY); }
   else if (msg.type === 'chest_put') tryChestPut(player, msg.buildingId, msg.item, +msg.amount || 1);
   else if (msg.type === 'chest_take') tryChestTake(player, msg.buildingId, msg.item, +msg.amount || 1);
   else if (msg.type === 'attack') { metrics.attacks++; tryAttack(player); }
@@ -1971,6 +1972,46 @@ function tryDropItem(player, item, amount) {
   broadcast({ type: 'ground_item_added', gi });
 }
 
+// Phase 14.34: 건축물 수리 — 가까운 손상 building 찾아서 HP 회복
+function tryRepairBuilding(player) {
+  const RANGE = 64;
+  let best = null, bestD = RANGE;
+  for (const b of buildings.values()) {
+    if (!b.data?.damaged && (b.data?.hp ?? Infinity) >= (BUILDING_MAX_HP[b.type] || 50)) continue;
+    const d = Math.hypot(b.x - player.x, b.y - player.y);
+    if (d < bestD) { best = b; bestD = d; }
+  }
+  if (!best) { send(player.ws, { type: 'notice', text: '근처에 수리할 건축물 없음' }); return; }
+  // 본인 또는 같은 길드 건축물만 수리 가능
+  let ownerTribe = null;
+  if (best.ownerId !== player.playerId) {
+    for (const p of players.values()) {
+      if (p.playerId === best.ownerId) { ownerTribe = p.tribeId; break; }
+    }
+    if (!player.tribeId || ownerTribe !== player.tribeId) {
+      send(player.ws, { type: 'notice', text: '내/우리 길드 건축물만 수리 가능' }); return;
+    }
+  }
+  // 비용 — 건축 비용 절반 (반올림 올림)
+  const cost = BUILDING_COST[best.type] || { wood: 1, stone: 1 };
+  const wNeed = Math.ceil((cost.wood || 0) / 2), sNeed = Math.ceil((cost.stone || 0) / 2);
+  if ((player.inventory.wood || 0) < wNeed || (player.inventory.stone || 0) < sNeed) {
+    send(player.ws, { type: 'notice', text: `수리 비용 부족 (나무 ${wNeed}, 돌 ${sNeed})` });
+    return;
+  }
+  player.inventory.wood -= wNeed;
+  player.inventory.stone -= sNeed;
+  const maxHp = BUILDING_MAX_HP[best.type] || 50;
+  best.data = best.data || {};
+  best.data.hp = Math.min(maxHp, (best.data.hp || 0) + 25);
+  if (best.data.hp >= maxHp / 2) best.data.damaged = false; // 절반 이상 회복 시 다시 작동
+  try { db.updateBuildingData(best.dbId, JSON.stringify(best.data)); } catch (e) {}
+  send(player.ws, { type: 'inventory', inventory: player.inventory });
+  send(player.ws, { type: 'notice', text: `🔧 ${best.type} 수리 (${best.data.hp}/${maxHp})${best.data.damaged ? '' : ' ✅ 복구'}` });
+  broadcast({ type: 'building_damaged', id: best.id, hp: best.data.hp, maxHp, damaged: !!best.data.damaged });
+  savePlayer(player);
+}
+
 function tryPickupItem(player, gid) {
   const gi = groundItems.get(gid);
   if (!gi) return;
@@ -2044,7 +2085,22 @@ function tryTrade(player, msg) {
 }
 
 // === 건축 ===
-function tryBuild(player, type, floor = 0, side = null) {
+function tryBuild(player, type, floor = 0, side = null, atX, atY) {
+  // Phase 14.30: atX/atY 주어지면 사용자 거리 160px 안에서 그 위치에 빌드
+  if (typeof atX === 'number' && typeof atY === 'number') {
+    const d = Math.hypot(atX - player.x, atY - player.y);
+    if (d <= 160) {
+      // 임시로 player.x/y override → tryBuild 본문은 player.x/y로 cell 계산
+      const oldX = player.x, oldY = player.y;
+      player.x = atX; player.y = atY;
+      try { _tryBuildAt(player, type, floor, side); }
+      finally { player.x = oldX; player.y = oldY; }
+      return;
+    }
+  }
+  _tryBuildAt(player, type, floor, side);
+}
+function _tryBuildAt(player, type, floor = 0, side = null) {
   floor = Math.max(0, Math.min(5, floor | 0));
   if (!BUILDING_COST[type]) {
     send(player.ws, { type: 'notice', text: '알 수 없는 건축물' }); return;
@@ -2170,9 +2226,18 @@ function tryBuild(player, type, floor = 0, side = null) {
 function tryChestPut(player, buildingId, item, amount) {
   const b = buildings.get(buildingId);
   if (!b || b.type !== 'chest') return;
-  // Phase 14.20: public chest는 누구나 입출
-  if (b.ownerId !== player.playerId && b.ownerId !== 'public') {
-    send(player.ws, { type: 'notice', text: '내 상자가 아닙니다' }); return;
+  // Phase 14.20+14.28: public 또는 본인 또는 같은 길드 멤버
+  const isOwn = b.ownerId === player.playerId;
+  const isPublic = b.ownerId === 'public';
+  let isGuildmate = false;
+  if (!isOwn && !isPublic && player.tribeId) {
+    // chest owner의 tribeId 알기 — 메모리에서 player 찾기
+    for (const p of players.values()) {
+      if (p.playerId === b.ownerId) { isGuildmate = (p.tribeId === player.tribeId); break; }
+    }
+  }
+  if (!isOwn && !isPublic && !isGuildmate) {
+    send(player.ws, { type: 'notice', text: '내 상자/길드 상자가 아닙니다' }); return;
   }
   // 가까이 있어야 (64px)
   if (Math.hypot(b.x - player.x, b.y - player.y) > 64) {
@@ -2211,9 +2276,16 @@ async function tryChestTake(player, buildingId, item, amount) {
   const isPublic = (b.ownerId === 'public');
   // Phase 14.13: 약탈 분기 — 본인 chest가 아니면 적 길드 chest인지 확인
   const isOwn = (b.ownerId === player.playerId);
+  // Phase 14.28: 같은 길드 멤버 chest는 인출 자유
+  let isGuildmate = false;
+  if (!isOwn && !isPublic && player.tribeId) {
+    for (const p of players.values()) {
+      if (p.playerId === b.ownerId) { isGuildmate = (p.tribeId === player.tribeId); break; }
+    }
+  }
   let isLoot = false;
   let lootRate = 0;
-  if (!isOwn && !isPublic) {
+  if (!isOwn && !isPublic && !isGuildmate) {
     // 적 길드 chest? — owner의 tribeId 알아내야. owner도 player일 수 있고 NPC일 수도.
     // 일단 buildings는 owner_name이 있고 ownerId가 player_id. zone players 메모리에서 찾기.
     let ownerTribeId = null;
@@ -2332,30 +2404,25 @@ async function tryAttack(player) {
     const d = Math.hypot(p.x - player.x, p.y - player.y);
     if (d < bestPDist) { bestPlayer = p; bestPDist = d; }
   }
+  // Phase 14.33 fix: player 공격 불가면 wall로 fallback (return X)
+  let playerAttackBlocked = false;
   if (bestPlayer) {
-    // 같은 길드 — 절대 공격 불가
     if (player.tribeId && bestPlayer.tribeId === player.tribeId) {
-      send(player.ws, { type: 'notice', text: '같은 길드 멤버는 공격 불가' });
-      return;
-    }
-    // PvP 비활성 — 공격 차단
-    if (!player.pvpEnabled) {
-      send(player.ws, { type: 'notice', text: 'PvP 비활성화 상태 (V 키로 켜기)' });
-      return;
-    }
-    // Phase 14.18.c — 보호 강도 다이얼
-    // 피해자가 자기 길드의 길드 영토 안에 있을 때:
-    //   전쟁 중이면 → 공격 가능 (다이얼 적용)
-    //   전쟁 중 아니면 → 공격 불가 (강보호)
-    // 피해자가 personal/temporary 사유지 안: kind별로 다름 (TODO: 14.18.d)
-    const victimGuildArea = findGuildClaimContaining(bestPlayer.x, bestPlayer.y, bestPlayer.tribeId);
-    if (victimGuildArea) {
-      const atWar = await isAtWar(player.tribeId, bestPlayer.tribeId);
-      if (!atWar) {
-        send(player.ws, { type: 'notice', text: '🛡️ 길드 영토 보호 — 전쟁 중이어야 공격 가능' });
-        return;
+      playerAttackBlocked = true; // 같은 길드 — 조용히 wall 시도
+    } else if (!player.pvpEnabled) {
+      playerAttackBlocked = true;
+    } else {
+      const victimGuildArea = findGuildClaimContaining(bestPlayer.x, bestPlayer.y, bestPlayer.tribeId);
+      if (victimGuildArea) {
+        const atWar = await isAtWar(player.tribeId, bestPlayer.tribeId);
+        if (!atWar) {
+          // 길드 영토 보호 — player 공격 X, 단 wall은 공격 가능 (공성)
+          playerAttackBlocked = true;
+        }
       }
     }
+  }
+  if (bestPlayer && !playerAttackBlocked) {
     damagePlayer(bestPlayer, atk, `player:${player.name}`);
     // === Phase 14.8: 명분 다이얼 — 개인 vp + 길드 vp ===
     // 피해자 길드 명성에 따라 가산량 조절 (설계 §5.2):
@@ -2364,6 +2431,38 @@ async function tryAttack(player) {
     //   피해자 악성 → 면제 (정의구현, 개인 ×0.5, 길드 0)
     // War 체크는 14.9 — 전쟁 중이면 면제
     applyPvpAttackPenalty(player, bestPlayer);
+    return;
+  }
+  // Phase 14.33: player/mob 없으면 근처 wall 공격 (적 길드 wall 한정)
+  const nearbyBs = qtBuildings ? qtBuildings.queryCircle(player.x, player.y, PLAYER_ATTACK_RANGE) : Array.from(buildings.values());
+  let bestWall = null, bestWallDist = PLAYER_ATTACK_RANGE;
+  for (const b of nearbyBs) {
+    if (!BLOCKING_BUILDINGS.has(b.type) && b.type !== 'chest') continue;
+    if (b.data?.damaged) continue; // 이미 부서진 거
+    const d = Math.hypot(b.x - player.x, b.y - player.y);
+    if (d < bestWallDist) { bestWall = b; bestWallDist = d; }
+  }
+  if (bestWall) {
+    // 본인 길드 wall은 공격 X
+    let ownerTribe = null;
+    for (const p of players.values()) {
+      if (p.playerId === bestWall.ownerId) { ownerTribe = p.tribeId; break; }
+    }
+    if (player.tribeId && ownerTribe === player.tribeId) {
+      send(player.ws, { type: 'notice', text: '내 길드 건축물은 공격 못 함' }); return;
+    }
+    const maxHp = BUILDING_MAX_HP[bestWall.type] || 50;
+    if (typeof bestWall.data !== 'object' || bestWall.data === null) bestWall.data = {};
+    bestWall.data.hp = (bestWall.data.hp ?? maxHp) - atk;
+    if (bestWall.data.hp <= 0) {
+      bestWall.data.damaged = true;
+      bestWall.data.hp = 0;
+      send(player.ws, { type: 'notice', text: `💥 ${bestWall.type} 손상! 통과 가능 (수리하면 복구)` });
+    } else {
+      send(player.ws, { type: 'notice', text: `${bestWall.type} 공격 (${bestWall.data.hp}/${maxHp})` });
+    }
+    try { db.updateBuildingData(bestWall.dbId, JSON.stringify(bestWall.data)); } catch (e) {}
+    broadcast({ type: 'building_damaged', id: bestWall.id, hp: bestWall.data.hp, maxHp, damaged: !!bestWall.data.damaged });
   }
 }
 
@@ -2485,6 +2584,7 @@ function findEdgeWall(cx, cy, side, floor) {
   for (const b of nearby) {
     if (!BLOCKING_BUILDINGS.has(b.type)) continue;
     if ((b.floor || 0) !== floor) continue;
+    if (b.data?.damaged) continue; // Phase 14.33: 손상된 wall은 콜라이더 무효 (통과 가능)
     const bSide = b.data?.side;
     const bcx = Math.floor(b.x / BUILDING_SIZE);
     const bcy = Math.floor(b.y / BUILDING_SIZE);
