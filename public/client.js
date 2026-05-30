@@ -56,6 +56,32 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
   let myLastAttackAt = 0; // Phase 14.35: 공격 모션
   let myFacingVx = 1, myFacingVy = 0; // Phase 14.37: 본인 마지막 facing (기본 동쪽)
 
+  // Phase 14.39: 시야 cone 헬퍼
+  // 지형: 뒤쪽도 보임 (0.55) — 탐험한 곳 윤곽
+  function coneMultGround(dwx, dwy, dist) {
+    if (dist < 40) return 1;
+    if (myFacingVx === 0 && myFacingVy === 0) return 1;
+    const flen = Math.hypot(myFacingVx, myFacingVy) || 1;
+    const fx = myFacingVx / flen, fy = myFacingVy / flen;
+    const ux = dwx / dist, uy = dwy / dist;
+    const dot = fx * ux + fy * uy;
+    if (dot > 0) return 1;
+    if (dot > -0.5) return 1 - (-dot) * 0.5; // 1.0 → 0.75
+    return 0.55; // 뒤 — 살짝 어두움
+  }
+  // entity (player/mob/item): 뒤쪽 완전 차단 (PZ식)
+  function coneMultEntity(dwx, dwy, dist) {
+    if (dist < 50) return 1;
+    if (myFacingVx === 0 && myFacingVy === 0) return 1;
+    const flen = Math.hypot(myFacingVx, myFacingVy) || 1;
+    const fx = myFacingVx / flen, fy = myFacingVy / flen;
+    const ux = dwx / dist, uy = dwy / dist;
+    const dot = fx * ux + fy * uy;
+    if (dot > 0.1) return 1;
+    if (dot > -0.2) return (dot + 0.2) / 0.3; // fade
+    return 0; // 뒤쪽 안 보임
+  }
+
   // === 클라 사이드 wall edge 콜라이더 (server isBlockedByWall 미러) ===
   // wall은 cell edge에 (data.side ∈ {N, E}). BUILDING_SIZE=32 서버와 동일.
   const CL_BUILDING_SIZE = 32;
@@ -1096,19 +1122,8 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
         const cellWy = wy + TS/2 - worldCy;
         const dist = Math.hypot(cellWx, cellWy);
         let visibility = Math.max(0, 1 - Math.pow(dist / VIEW_RADIUS, 1.4));
-        // Phase 14.37: 시야 cone — 바라보는 방향 ±60도(120도)만 정상, 뒷쪽 어두움
-        if (dist > 40 && (myFacingVx !== 0 || myFacingVy !== 0)) {
-          const flen = Math.hypot(myFacingVx, myFacingVy) || 1;
-          const fx = myFacingVx / flen, fy = myFacingVy / flen;
-          const ux = cellWx / dist, uy = cellWy / dist;
-          const dot = fx * ux + fy * uy; // -1=뒤, 1=앞
-          // dot > 0 (앞): 정상. dot < -0.5 (60도 뒤): 0.15 어두움. 중간: lerp
-          let coneMult;
-          if (dot > 0) coneMult = 1;
-          else if (dot > -0.5) coneMult = 1 - (-dot) * 1.4; // 0~-0.5 → 1~0.3
-          else coneMult = 0.15;
-          visibility *= coneMult;
-        }
+        // Phase 14.39: 지형은 PZ식 — 시야 밖도 살짝만 어둡게 (탐험한 곳 회색)
+        visibility *= coneMultGround(cellWx, cellWy, dist);
         if (visibility <= 0.02) continue;
 
         const n = ((wx * 73 + wy * 31) >>> 0) % 17 / 17;
@@ -1233,7 +1248,10 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
       } else if (item.kind === 'resource') {
         const s = toScreen(item.iso.x, item.iso.y);
         const d = Math.hypot(item.ax - worldCx, item.ay - worldCy);
-        const vis = Math.max(0.1, 1 - Math.pow(d / VIEW_RADIUS, 1.4));
+        // Phase 14.39: 자원도 entity — 시야 뒤면 안 보임. 단 거리 vignette는 부드럽게.
+        let vis = Math.max(0.15, 1 - Math.pow(d / VIEW_RADIUS, 1.4));
+        vis *= coneMultEntity(item.ax - worldCx, item.ay - worldCy, d);
+        if (vis < 0.05) continue;
         ctx.globalAlpha = vis;
         if (item.r.type === 'tree') drawTreeIso(s.x, s.y);
         else if (item.r.type === 'rock') drawRockIso(s.x, s.y);
@@ -1250,6 +1268,11 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
       } else if (item.kind === 'ground_item') {
         const s = toScreen(item.iso.x, item.iso.y);
         const gi = item.gi;
+        // Phase 14.39: 바닥 아이템도 entity cone
+        const d = Math.hypot(item.ax - worldCx, item.ay - worldCy);
+        const vis = coneMultEntity(item.ax - worldCx, item.ay - worldCy, d);
+        if (vis < 0.05) continue;
+        ctx.globalAlpha = vis;
         const icon = (ITEM_ICONS && ITEM_ICONS[gi.item]) || ({wood:'🪵',stone:'🪨'}[gi.item]) || '📦';
         // 그림자
         ctx.fillStyle = 'rgba(0,0,0,0.4)';
@@ -1265,10 +1288,16 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
           ctx.fillText(`×${gi.count}`, s.x + 9, s.y + 5);
         }
         ctx.textAlign = 'start'; ctx.textBaseline = 'alphabetic';
+        ctx.globalAlpha = 1;
       } else if (item.kind === 'player') {
         const s = toScreen(item.iso.x, item.iso.y);
         const d = Math.hypot(item.ax - worldCx, item.ay - worldCy);
-        const vis = item.isMe ? 1 : Math.max(0.15, 1 - Math.pow(d / VIEW_RADIUS, 1.4));
+        let vis = item.isMe ? 1 : Math.max(0.15, 1 - Math.pow(d / VIEW_RADIUS, 1.4));
+        // Phase 14.39: 본인 외 player는 시야 뒤면 안 보임
+        if (!item.isMe) {
+          vis *= coneMultEntity(item.ax - worldCx, item.ay - worldCy, d);
+          if (vis < 0.05) continue;
+        }
         ctx.globalAlpha = vis;
         // Phase 14.35+14.37: 본인은 키입력/lastAttack/facing, 다른 player는 vx/vy/lastAttackAt
         const now = performance.now();
@@ -1312,7 +1341,9 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
       } else if (item.kind === 'mob') {
         const s = toScreen(item.iso.x, item.iso.y);
         const d = Math.hypot(item.ax - worldCx, item.ay - worldCy);
-        const vis = Math.max(0.15, 1 - Math.pow(d / VIEW_RADIUS, 1.4));
+        let vis = Math.max(0.15, 1 - Math.pow(d / VIEW_RADIUS, 1.4));
+        vis *= coneMultEntity(item.ax - worldCx, item.ay - worldCy, d);
+        if (vis < 0.05) continue;
         ctx.globalAlpha = vis;
         drawMobIso(s.x, s.y, item.m);
         ctx.globalAlpha = 1;
