@@ -863,18 +863,37 @@ setInterval(() => {
 registerVillageGuilds().catch(e => console.warn(`[${ZONE_ID}] village guild register error:`, e.message));
 spawnVillagers();
 
-// === Phase 14.20: 한반도 스폰 (5120,5120) 옆에 디버그 public chest 3개 ===
-// owner='public' — 누구나 자유 입출. 사용자가 디버그·테스트용으로 쉽게 자원 가져갈 수 있게.
+// === Phase 14.20+14.22: 한반도 스폰 옆 public chest 3개 + chest 진단/정리 ===
 if (ZONE_ID === 'korea') {
-  // 옛 public chest 정리
+  // 1) 메모리 + DB 모두 정리: public 또는 debug_chest owner chest 전부 제거
+  let removedMem = 0;
+  for (const [id, b] of buildings) {
+    if (b.type !== 'chest') continue;
+    if (b.ownerId === 'public' || b.ownerId === 'debug_chest') {
+      buildings.delete(id);
+      chunkManager.removeBuilding(b);
+      removedMem++;
+    }
+  }
   try {
-    const r = db.db.prepare("DELETE FROM buildings WHERE owner_id = 'public'").run();
-    if (r.changes > 0) console.log(`[${ZONE_ID}] DB wipe: 옛 public chest ${r.changes}개`);
+    const r = db.db.prepare("DELETE FROM buildings WHERE type='chest' AND (owner_id = 'public' OR owner_id = 'debug_chest')").run();
+    if (r.changes > 0 || removedMem > 0) console.log(`[${ZONE_ID}] DB+mem wipe: public/debug chest ${r.changes}/${removedMem}개`);
   } catch (e) {}
+  // 2) 진단: 현재 모든 chest 분포 출력
+  try {
+    const allChests = db.db.prepare("SELECT owner_id, owner_name, COUNT(*) AS cnt FROM buildings WHERE type='chest' GROUP BY owner_id").all();
+    if (allChests.length > 0) {
+      console.log(`[${ZONE_ID}] 📦 chest 분포:`);
+      for (const r of allChests) console.log(`  owner=${r.owner_id} (${r.owner_name}) — ${r.cnt}개`);
+    } else {
+      console.log(`[${ZONE_ID}] 📦 DB에 chest 0개`);
+    }
+  } catch (e) {}
+  // 3) 디버그 public chest 3개 새로 추가
   const debugChests = [
-    { x: 5152 + 16, y: 5120 + 16, data: { wood: 50, stone: 50, floor: 0 } },  // 스폰 동쪽 옆 cell
-    { x: 5184 + 16, y: 5120 + 16, data: { wood: 30, stone: 30, floor: 0 } },  // 더 동쪽
-    { x: 5152 + 16, y: 5152 + 16, data: { wood: 20, stone: 80, floor: 0 } },  // 동남쪽
+    { x: 5152 + 16, y: 5120 + 16, data: { wood: 50, stone: 50, floor: 0 } },
+    { x: 5184 + 16, y: 5120 + 16, data: { wood: 30, stone: 30, floor: 0 } },
+    { x: 5152 + 16, y: 5152 + 16, data: { wood: 20, stone: 80, floor: 0 } },
   ];
   for (const cdef of debugChests) {
     const dbId = db.insertBuilding({
@@ -886,7 +905,7 @@ if (ZONE_ID === 'korea') {
     buildings.set(id, b);
     chunkManager.insertBuilding(b);
   }
-  console.log(`[${ZONE_ID}] 📦 디버그 public chest 3개 @ (5120,5120) 옆 — wood/stone 채워둠`);
+  console.log(`[${ZONE_ID}] 📦 디버그 public chest 3개 @ (5120,5120) 옆`);
 }
 
 // Phase 12.2.e: 자원 respawn 제거 — 청크 활성화 시 시드로 자동 생성됨

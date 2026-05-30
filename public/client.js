@@ -415,19 +415,41 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
     refreshHealth();
     setInterval(refreshHealth, 3000);
 
-    // Phase 14.21: 캔버스 클릭 → 가까운 상자 있으면 인벤 패널 open + 그 상자 active
-    canvas.addEventListener('click', () => {
-      let best = null, bestD = 80;
+    // Phase 14.22: 캔버스 클릭 → screen → world 좌표 변환 → chest bbox hit-test
+    canvas.addEventListener('click', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      // 캔버스 안 픽셀 좌표 (canvas.width/height와 css width/height 다를 수 있으니 스케일)
+      const px = (e.clientX - rect.left) * (canvas.width / rect.width);
+      const py = (e.clientY - rect.top) * (canvas.height / rect.height);
+      // toScreen 역: ix = px - W/2 + camX; iy = py - H/2 + camY
+      const myIso = w2i(myAbsPredicted.x, myAbsPredicted.y);
+      const ix = px - W/2 + myIso.x;
+      const iy = py - H/2 + myIso.y;
+      // iso 역변환: wx = ix/2 + iy, wy = iy - ix/2
+      const clickWx = ix * 0.5 + iy;
+      const clickWy = iy - ix * 0.5;
+      // chest bbox hit-test (chest는 32×32 cell, b.x/b.y가 cell 중심)
+      let hitChest = null;
       for (const c of conns.values()) {
         if (!c.meta) continue;
-        const ox = c.meta.worldOffsetX, oy = c.meta.worldOffsetY || 0;
+        const ox = c.meta.worldOffsetX || 0, oy = c.meta.worldOffsetY || 0;
         for (const b of c.buildings.values()) {
           if (b.type !== 'chest') continue;
-          const d = Math.hypot((ox + b.x) - myAbsPredicted.x, (oy + b.y) - myAbsPredicted.y);
-          if (d < bestD) { best = b; bestD = d; }
+          const absX = ox + b.x, absY = oy + b.y;
+          if (Math.abs(absX - clickWx) <= 20 && Math.abs(absY - clickWy) <= 20) {
+            hitChest = b; break;
+          }
         }
+        if (hitChest) break;
       }
-      if (best && typeof openInvWithContainer === 'function') openInvWithContainer(best.id);
+      // 추가 조건: 사용자가 너무 멀면 (160px) 무시 (멀리서 클릭으로 약탈 방지)
+      if (hitChest) {
+        const c = conns.get(primaryZoneId);
+        const ox = c?.meta?.worldOffsetX || 0, oy = c?.meta?.worldOffsetY || 0;
+        const distToMe = Math.hypot((ox + hitChest.x) - myAbsPredicted.x, (oy + hitChest.y) - myAbsPredicted.y);
+        if (distToMe > 160) { showNotice('너무 멀리 있어 손이 안 닿습니다'); return; }
+        if (typeof openInvWithContainer === 'function') openInvWithContainer(hitChest.id);
+      }
     });
 
     // 거래소·상자 패널 이벤트
