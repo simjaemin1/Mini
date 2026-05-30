@@ -53,6 +53,8 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
   // Phase 14.30: 건축 placement mode
   let placementMode = null; // null 또는 { type, floor }
   let placementCursor = { wx: 0, wy: 0 }; // 마우스 따라가는 abs 좌표
+  let myLastAttackAt = 0; // Phase 14.35: 공격 모션
+  let myFacingVx = 1, myFacingVy = 0; // Phase 14.37: 본인 마지막 facing (기본 동쪽)
 
   // === 클라 사이드 wall edge 콜라이더 (server isBlockedByWall 미러) ===
   // wall은 cell edge에 (data.side ∈ {N, E}). BUILDING_SIZE=32 서버와 동일.
@@ -212,7 +214,7 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
     else if (k === 't' && !e.shiftKey) sendPrimary({ type: 'claim', kind: 'temporary' });  // 임시 사유지 (1 grid)
     else if (k === 't') sendPrimary({ type: 'trade_offer', give: 'wood' });
     else if (k === 'y') sendPrimary({ type: 'trade_offer', give: 'stone' });
-    else if (k === 'f') sendPrimary({ type: 'attack' });
+    else if (k === 'f') { sendPrimary({ type: 'attack' }); myLastAttackAt = performance.now(); }
     else if (k === 'b') sendPrimary({ type: 'build', buildType: 'wall', floor: myBuildFloor });
     else if (k === 'h') sendPrimary({ type: 'build', buildType: 'chest', floor: myBuildFloor });
     else if (k === 'j') sendPrimary({ type: 'build', buildType: 'campfire', floor: myBuildFloor });
@@ -650,9 +652,14 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
           const prev = c.others.get(pp.pid);
           const buf = prev?.buf || [];
           pushSample(buf, now, pp.x, pp.y);
+          const vxNow = pp.vx || 0, vyNow = pp.vy || 0;
+          const fvxKeep = (vxNow !== 0 || vyNow !== 0) ? vxNow : (prev?._fvx || 1);
+          const fvyKeep = (vxNow !== 0 || vyNow !== 0) ? vyNow : (prev?._fvy || 0);
           c.others.set(pp.pid, {
             pid: pp.pid,
             x: pp.x, y: pp.y,
+            vx: vxNow, vy: vyNow,
+            _fvx: fvxKeep, _fvy: fvyKeep, // Phase 14.37: 마지막 facing
             name: pp.name ?? prev?.name ?? '?',
             color: pp.color ?? prev?.color ?? '#5a9ae0',
             hp: pp.hp,
@@ -661,6 +668,7 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
             buf,
             lastX: prev?.x ?? pp.x, lastY: prev?.y ?? pp.y,
             lastT: now,
+            lastAttackAt: prev?.lastAttackAt || 0,
           });
         }
       }
@@ -674,9 +682,13 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
           const prev = c.mobs.get(m.mid);
           const buf = prev?.buf || [];
           pushSample(buf, now, m.x, m.y);
+          const mvx = m.vx || 0, mvy = m.vy || 0;
           c.mobs.set(m.mid, {
             mid: m.mid,
             x: m.x, y: m.y,
+            vx: mvx, vy: mvy,
+            _fvx: (mvx !== 0 || mvy !== 0) ? mvx : (prev?._fvx || 1),
+            _fvy: (mvx !== 0 || mvy !== 0) ? mvy : (prev?._fvy || 0),
             hp: m.hp,
             type: m.type ?? prev?.type ?? 'deer',
             maxHp: m.maxHp ?? prev?.maxHp ?? 10,
@@ -712,6 +724,12 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
       if (c.groundItems) c.groundItems.set(msg.gi.id, msg.gi);
     } else if (msg.type === 'ground_item_removed') {
       if (c.groundItems) c.groundItems.delete(msg.id);
+    } else if (msg.type === 'player_attacked') {
+      // Phase 14.35: 다른 player 공격 모션 — others에서 그 pid 찾아 lastAttackAt 저장
+      for (const con of conns.values()) {
+        const o = con.others?.get(msg.pid);
+        if (o) o.lastAttackAt = performance.now();
+      }
     } else if (msg.type === 'building_damaged') {
       const b = c.buildings.get(msg.id);
       if (b) {
@@ -1074,8 +1092,23 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
         if (!zMeta) continue;
         const iso = w2i(wx + TS / 2, wy + TS / 2);
         const s = toScreen(iso.x, iso.y);
-        const dist = Math.hypot(wx + TS/2 - worldCx, wy + TS/2 - worldCy);
-        const visibility = Math.max(0, 1 - Math.pow(dist / VIEW_RADIUS, 1.4));
+        const cellWx = wx + TS/2 - worldCx;
+        const cellWy = wy + TS/2 - worldCy;
+        const dist = Math.hypot(cellWx, cellWy);
+        let visibility = Math.max(0, 1 - Math.pow(dist / VIEW_RADIUS, 1.4));
+        // Phase 14.37: 시야 cone — 바라보는 방향 ±60도(120도)만 정상, 뒷쪽 어두움
+        if (dist > 40 && (myFacingVx !== 0 || myFacingVy !== 0)) {
+          const flen = Math.hypot(myFacingVx, myFacingVy) || 1;
+          const fx = myFacingVx / flen, fy = myFacingVy / flen;
+          const ux = cellWx / dist, uy = cellWy / dist;
+          const dot = fx * ux + fy * uy; // -1=뒤, 1=앞
+          // dot > 0 (앞): 정상. dot < -0.5 (60도 뒤): 0.15 어두움. 중간: lerp
+          let coneMult;
+          if (dot > 0) coneMult = 1;
+          else if (dot > -0.5) coneMult = 1 - (-dot) * 1.4; // 0~-0.5 → 1~0.3
+          else coneMult = 0.15;
+          visibility *= coneMult;
+        }
         if (visibility <= 0.02) continue;
 
         const n = ((wx * 73 + wy * 31) >>> 0) % 17 / 17;
@@ -1148,7 +1181,7 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
         const oFloor = o.floor || 0;
         const oZ = oFloor * FLOOR_HEIGHT;
         const isoF = w2i(ax, ay, oZ);
-        renderables.push({ z: (ax + ay) * 0.5 + oFloor * 1000 + 500, kind: 'player', pid: o.pid, name: displayName, color: o.color || '#5a9ae0', hp: o.hp, maxHp: o.maxHp, iso: isoF, ax, ay });
+        renderables.push({ z: (ax + ay) * 0.5 + oFloor * 1000 + 500, kind: 'player', pid: o.pid, name: displayName, color: o.color || '#5a9ae0', hp: o.hp, maxHp: o.maxHp, iso: isoF, ax, ay, lastAttackAt: o.lastAttackAt, vx: o.vx, vy: o.vy, _fvx: o._fvx, _fvy: o._fvy });
       }
     }
     {
@@ -1237,7 +1270,25 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
         const d = Math.hypot(item.ax - worldCx, item.ay - worldCy);
         const vis = item.isMe ? 1 : Math.max(0.15, 1 - Math.pow(d / VIEW_RADIUS, 1.4));
         ctx.globalAlpha = vis;
-        drawPlayerIso(s.x, s.y, item.name, item.color, item.isMe);
+        // Phase 14.35+14.37: 본인은 키입력/lastAttack/facing, 다른 player는 vx/vy/lastAttackAt
+        const now = performance.now();
+        let moving = false, attackPhase = 0, fvx = 0, fvy = 0;
+        if (item.isMe) {
+          const { wx, wy } = worldKeysDir();
+          moving = (wx !== 0 || wy !== 0);
+          if (moving) { myFacingVx = wx; myFacingVy = wy; }
+          fvx = myFacingVx; fvy = myFacingVy;
+          const dt = now - myLastAttackAt;
+          if (dt < 300) attackPhase = 1 - dt / 300;
+        } else {
+          const ovx = item.vx || 0, ovy = item.vy || 0;
+          moving = (Math.abs(ovx) + Math.abs(ovy)) > 5;
+          // 다른 player facing — others에 lastFvx/Fvy 캐시 필요. 일단 현재 vx/vy 또는 prev
+          if (moving) { fvx = ovx; fvy = ovy; }
+          else { fvx = item._fvx || 1; fvy = item._fvy || 0; }
+          if (item.lastAttackAt && now - item.lastAttackAt < 300) attackPhase = 1 - (now - item.lastAttackAt) / 300;
+        }
+        drawPlayerIso(s.x, s.y, item.name, item.color, item.isMe, { moving, attackPhase, fvx, fvy });
         // HP bar for others
         if (!item.isMe) {
           const o = item.hp !== undefined ? item : null;
@@ -1560,6 +1611,13 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
 
   function drawMobIso(x, y, mob) {
     const isWolf = mob.type === 'wolf';
+    // Phase 14.38: mob facing (world vx/vy → iso 방향)
+    const fvx = mob._fvx ?? 1, fvy = mob._fvy ?? 0;
+    const fdx = fvx - fvy, fdy = (fvx + fvy) * 0.5;
+    const flen = Math.hypot(fdx, fdy) || 1;
+    const facingX = fdx / flen, facingY = fdy / flen;
+    // 머리 위치: 몸통 중심에서 facing 방향으로 6px 앞
+    const headOX = facingX * 6, headOY = facingY * 3 - 4; // y는 살짝 위
     ctx.fillStyle = 'rgba(0,0,0,0.4)';
     ctx.beginPath(); ctx.ellipse(x, y + 5, 11, 4, 0, 0, Math.PI * 2); ctx.fill();
     if (isWolf) {
@@ -1567,22 +1625,23 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
       ctx.fillStyle = '#666';
       ctx.beginPath();
       ctx.ellipse(x, y - 2, 9, 5, 0, 0, Math.PI * 2); ctx.fill();
-      // 머리
-      ctx.beginPath(); ctx.arc(x + 6, y - 4, 3, 0, Math.PI * 2); ctx.fillStyle = '#555'; ctx.fill();
-      // 눈
+      // 머리 (facing 방향)
+      ctx.beginPath(); ctx.arc(x + headOX, y + headOY, 3, 0, Math.PI * 2); ctx.fillStyle = '#555'; ctx.fill();
+      // 눈 (머리 위 facing 방향)
       ctx.fillStyle = '#f00';
-      ctx.fillRect(x + 7, y - 5, 1, 1);
+      ctx.fillRect(x + headOX + facingX * 1.5 - 0.5, y + headOY + facingY * 1.5 - 0.5, 1, 1);
     } else {
       // 갈색 사슴
       ctx.fillStyle = '#a07050';
       ctx.beginPath();
       ctx.ellipse(x, y - 3, 8, 5, 0, 0, Math.PI * 2); ctx.fill();
-      // 머리
-      ctx.beginPath(); ctx.arc(x + 5, y - 7, 3, 0, Math.PI * 2); ctx.fillStyle = '#8a5a3a'; ctx.fill();
-      // 뿔
+      // 머리 (facing 방향)
+      const dhx = x + headOX, dhy = y + headOY - 3;
+      ctx.beginPath(); ctx.arc(dhx, dhy, 3, 0, Math.PI * 2); ctx.fillStyle = '#8a5a3a'; ctx.fill();
+      // 뿔 (facing 방향, 짧게 두 가닥)
       ctx.strokeStyle = '#5a3a1c'; ctx.lineWidth = 1.2;
-      ctx.beginPath(); ctx.moveTo(x + 4, y - 9); ctx.lineTo(x + 3, y - 12); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(x + 6, y - 9); ctx.lineTo(x + 7, y - 12); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(dhx - 1, dhy - 2); ctx.lineTo(dhx - 2, dhy - 5); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(dhx + 1, dhy - 2); ctx.lineTo(dhx + 2, dhy - 5); ctx.stroke();
     }
     // HP bar
     if (mob.hp < mob.maxHp) {
@@ -1749,15 +1808,84 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
     ctx.textAlign = 'start';
   }
 
-  function drawPlayerIso(x, y, name, color, isMe = false) {
+  // Phase 14.35: 걷기 + 공격 모션
+  // - moving: walking bob (sin wave) + 다리 교차
+  // - attackPhase 0~1: 무기 휘두름 (앞으로 lunge + 회복)
+  function drawPlayerIso(x, y, name, color, isMe = false, opts = {}) {
+    const t = performance.now() * 0.01;
+    const moving = opts.moving || false;
+    const attackP = Math.max(0, opts.attackPhase || 0); // 0=쉼, 1=시작, 0.5=중간
+    // Phase 14.37: facing — vx/vy를 iso 화면 방향으로 변환
+    // world(vx,vy) → iso 화면 dx,dy: dx = vx-vy, dy = (vx+vy)/2
+    const fvx = opts.fvx || 0, fvy = opts.fvy || 0;
+    const fdx = fvx - fvy;
+    const fdy = (fvx + fvy) * 0.5;
+    const flen = Math.hypot(fdx, fdy) || 1;
+    const facingX = fdx / flen, facingY = fdy / flen; // 화면상 방향 unit vector
+    // walk bob (위아래 살짝)
+    const bob = moving ? Math.sin(t * 1.3) * 1.6 : 0;
+    // attack lunge (앞으로 살짝 — 화면상 동남 방향)
+    const lungeAmt = Math.sin(attackP * Math.PI) * 5;
+    const lx = x + lungeAmt * 0.5;
+    const ly = y + lungeAmt * 0.3;
+
+    // 그림자 — 발이 움직일 때도 그림자 고정
     ctx.fillStyle = 'rgba(0,0,0,0.45)';
     ctx.beginPath(); ctx.ellipse(x, y + 6, 8, 3, 0, 0, Math.PI * 2); ctx.fill();
+
+    // 다리 (걷기 시 좌우 교차)
+    const legSwing = moving ? Math.sin(t * 1.8) * 2 : 0;
+    ctx.fillStyle = '#3a2a1a';
+    ctx.fillRect(lx - 4, ly + 3, 3, 5 - legSwing);
+    ctx.fillRect(lx + 1, ly + 3, 3, 5 + legSwing);
+
+    // 몸통 (bob 적용)
     ctx.fillStyle = color;
-    ctx.fillRect(x - 5, y - 6, 10, 12);
+    ctx.fillRect(lx - 5, ly - 6 + bob, 10, 12);
     ctx.strokeStyle = '#000'; ctx.lineWidth = 1;
-    ctx.strokeRect(x - 5, y - 6, 10, 12);
-    ctx.beginPath(); ctx.arc(x, y - 11, 5, 0, Math.PI * 2);
-    ctx.fillStyle = '#f0d8b8'; ctx.fill(); ctx.stroke();
+    ctx.strokeRect(lx - 5, ly - 6 + bob, 10, 12);
+
+    // 팔 + 슬래시 (공격 시 앞쪽으로 휘두름)
+    if (attackP > 0) {
+      // 팔
+      ctx.strokeStyle = '#f0d8b8'; ctx.lineWidth = 2;
+      const swing = Math.sin(attackP * Math.PI);
+      const armX = lx + facingX * 8 + swing * facingX * 6;
+      const armY = ly - 2 + bob + facingY * 4 + swing * facingY * 3;
+      ctx.beginPath();
+      ctx.moveTo(lx + facingX * 2, ly + bob + facingY * 1);
+      ctx.lineTo(armX, armY);
+      ctx.stroke();
+      // Phase 14.38: 슬래시 호 — facing 방향 앞쪽에 짧은 흰 arc (반투명)
+      const slashR = 16;
+      const slashCx = lx + facingX * 10;
+      const slashCy = ly + bob + facingY * 6;
+      const baseAng = Math.atan2(facingY, facingX);
+      // 호 각도: attackP 0→1 진행 따라 -π/3 → +π/3 회전 (휘두름)
+      const sweep = (attackP - 0.5) * (Math.PI * 0.8);
+      ctx.strokeStyle = `rgba(255, 255, 255, ${attackP * 0.7})`;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(slashCx, slashCy, slashR, baseAng + sweep - 0.4, baseAng + sweep + 0.4);
+      ctx.stroke();
+    }
+
+    // 머리 (bob 적용)
+    const hx = lx, hy = ly - 11 + bob;
+    ctx.beginPath(); ctx.arc(hx, hy, 5, 0, Math.PI * 2);
+    ctx.fillStyle = '#f0d8b8'; ctx.fill();
+    ctx.strokeStyle = '#000'; ctx.lineWidth = 1; ctx.stroke();
+    // Phase 14.37: 눈 (facing 방향) — 작은 검은 점 2개
+    if (fvx !== 0 || fvy !== 0) {
+      const eyeOX = facingX * 2.5, eyeOY = facingY * 1.5;
+      // 두 눈 (좌우 분리) — facing에 수직인 방향
+      const perpX = -facingY, perpY = facingX;
+      ctx.fillStyle = '#000';
+      ctx.beginPath(); ctx.arc(hx + eyeOX + perpX * 1.5, hy + eyeOY + perpY * 1.5, 0.9, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(hx + eyeOX - perpX * 1.5, hy + eyeOY - perpY * 1.5, 0.9, 0, Math.PI*2); ctx.fill();
+    }
+
+    // 이름표
     ctx.font = '11px sans-serif';
     ctx.textAlign = 'center';
     ctx.fillStyle = isMe ? '#fff' : '#cdd6e3';

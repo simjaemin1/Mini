@@ -2422,6 +2422,8 @@ async function tryAttack(player) {
       }
     }
   }
+  // 14.35: 공격 동작 broadcast (메인 공격이든 wall 공격이든 일단 시작 시)
+  broadcast({ type: 'player_attacked', pid: player.pid, t: Date.now() });
   if (bestPlayer && !playerAttackBlocked) {
     damagePlayer(bestPlayer, atk, `player:${player.name}`);
     // === Phase 14.8: 명분 다이얼 — 개인 vp + 길드 vp ===
@@ -2897,11 +2899,13 @@ setInterval(() => {
   // 이미 본 것은 위치/HP만. payload ~70% 감소.
   function makeEntry(o, isNew, kind) {
     if (kind === 'player') {
-      const e = { pid: o.pid, x: o.x, y: o.y, hp: o.hp, floor: o.floor || 0 };
+      // Phase 14.35: 걷기 모션 동기화 — vx/vy 포함 (이동 중인지 클라가 판단)
+      const e = { pid: o.pid, x: o.x, y: o.y, hp: o.hp, floor: o.floor || 0, vx: o.vx | 0, vy: o.vy | 0 };
       if (isNew) { e.name = o.name; e.color = o.color; e.maxHp = o.maxHp; e.tribeName = o.tribeName || null; }
       return e;
     }
-    const e = { mid: o.mid, x: o.x, y: o.y, hp: o.hp };
+    // Phase 14.38: mob facing — vx/vy 포함
+    const e = { mid: o.mid, x: o.x, y: o.y, hp: o.hp, vx: (o.vx || 0) | 0, vy: (o.vy || 0) | 0 };
     if (isNew) { e.type = o.type; e.maxHp = o.maxHp; e.tameOwner = o.tameOwner || null; e.tameOwnerName = o.tameOwnerName || null; }
     return e;
   }
