@@ -269,6 +269,10 @@ let nextPid = 1;
 let nextRid = 1;
 let nextBid = 1;
 let nextClaimId = 1;
+// Phase 14.23: 바닥 아이템 (좀보이드식 world item — 누구나 보이고 누구나 픽업)
+let nextGiId = 1;
+const groundItems = new Map(); // id → { id, x, y, item, count, droppedAt }
+const GROUND_ITEM_LIFETIME_MS = 10 * 60 * 1000; // 10분 자동 소멸
 
 function generateToken() {
   return Math.random().toString(36).slice(2, 12) + Date.now().toString(36).slice(-6);
@@ -1375,6 +1379,7 @@ wss.on('connection', async (ws, req) => {
     resources: Array.from(resources.values()),
     claims: Array.from(claims.values()),
     buildings: Array.from(buildings.values()),
+    groundItems: Array.from(groundItems.values()), // Phase 14.23
     mobs: Array.from(mobs.values()).map(m => ({ mid: m.mid, type: m.type, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, tameOwner: m.tameOwner || null, tameOwnerName: m.tameOwnerName || null })),
     inventory: player.inventory,
     tools: player.tools, equipped: player.equipped,
@@ -1418,6 +1423,8 @@ function handlePlayerInput(player, raw) {
     }
   } else if (msg.type === 'gather') tryGather(player);
   else if (msg.type === 'claim') tryClaim(player, msg.kind || 'personal');
+  else if (msg.type === 'drop_item') tryDropItem(player, msg.item, msg.amount || 1);
+  else if (msg.type === 'pickup_item') tryPickupItem(player, msg.giId);
   else if (msg.type === 'unclaim') tryUnclaim(player, msg.claimId);
   else if (msg.type === 'trade_offer') tryTrade(player, msg);
   else if (msg.type === 'ping') send(ws, { type: 'pong', t: msg.t });
@@ -1841,6 +1848,59 @@ function tryUnclaim(player, claimId) {
   send(player.ws, { type: 'notice', text: `사유지 해제 (자원은 환불 X)` });
   broadcast({ type: 'claim_removed', id: claimId });
 }
+
+// === Phase 14.23: 바닥 아이템 (좀보이드 world item) ===
+function tryDropItem(player, item, amount) {
+  amount = Math.max(1, Math.min(99, parseInt(amount, 10) || 1));
+  const have = player.inventory[item] || 0;
+  if (have < amount) {
+    send(player.ws, { type: 'notice', text: `${ITEM_LABEL_SERVER[item] || item} 부족` }); return;
+  }
+  player.inventory[item] = have - amount;
+  // 위치: 사용자 발 옆 (살짝 랜덤 offset)
+  const ox = (Math.random() - 0.5) * 16, oy = 8 + Math.random() * 8;
+  const gid = `g${nextGiId++}`;
+  const gi = { id: gid, x: player.x + ox, y: player.y + oy, item, count: amount, droppedAt: Date.now() };
+  groundItems.set(gid, gi);
+  send(player.ws, { type: 'inventory', inventory: player.inventory });
+  savePlayer(player);
+  broadcast({ type: 'ground_item_added', gi });
+}
+
+function tryPickupItem(player, gid) {
+  const gi = groundItems.get(gid);
+  if (!gi) return;
+  const dist = Math.hypot(gi.x - player.x, gi.y - player.y);
+  if (dist > 80) {
+    send(player.ws, { type: 'notice', text: '바닥 아이템에서 너무 멀리 있습니다' }); return;
+  }
+  player.inventory[gi.item] = (player.inventory[gi.item] || 0) + gi.count;
+  groundItems.delete(gid);
+  send(player.ws, { type: 'inventory', inventory: player.inventory });
+  send(player.ws, { type: 'notice', text: `🤚 ${ITEM_LABEL_SERVER[gi.item] || gi.item} ×${gi.count} 주움` });
+  savePlayer(player);
+  broadcast({ type: 'ground_item_removed', id: gid });
+}
+
+// 라벨 (notice용)
+const ITEM_LABEL_SERVER = {
+  wood: '나무', stone: '돌', berry: '베리', fiber: '풀',
+  meat_raw: '날고기', meat_cooked: '구운고기', hide: '가죽',
+  berry_jam: '베리잼', water_bottle: '물병', seed_berry: '베리씨앗',
+  herb: '약초', ore: '광물',
+  axe: '도끼', pickaxe: '곡괭이', sword: '검',
+};
+
+// === 자동 decay: 10분 이상된 ground item 정리 (5초마다 체크) ===
+setInterval(() => {
+  const now = Date.now();
+  for (const [gid, gi] of groundItems) {
+    if (now - gi.droppedAt > GROUND_ITEM_LIFETIME_MS) {
+      groundItems.delete(gid);
+      broadcast({ type: 'ground_item_removed', id: gid });
+    }
+  }
+}, 5000);
 
 function tryTrade(player, msg) {
   // 가장 가까운 다른 플레이어에게 trade_request 전달

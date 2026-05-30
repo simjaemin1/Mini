@@ -428,7 +428,28 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
       // iso 역변환: wx = ix/2 + iy, wy = iy - ix/2
       const clickWx = ix * 0.5 + iy;
       const clickWy = iy - ix * 0.5;
-      // chest bbox hit-test (chest는 32×32 cell, b.x/b.y가 cell 중심)
+      // 1) ground item hit-test 우선 (작은 거 위에 클릭)
+      let hitGi = null;
+      for (const c of conns.values()) {
+        if (!c.meta || !c.groundItems) continue;
+        const ox = c.meta.worldOffsetX || 0, oy = c.meta.worldOffsetY || 0;
+        for (const gi of c.groundItems.values()) {
+          const absX = ox + gi.x, absY = oy + gi.y;
+          if (Math.abs(absX - clickWx) <= 14 && Math.abs(absY - clickWy) <= 14) {
+            hitGi = gi; break;
+          }
+        }
+        if (hitGi) break;
+      }
+      if (hitGi) {
+        const c = conns.get(primaryZoneId);
+        const ox = c?.meta?.worldOffsetX || 0, oy = c?.meta?.worldOffsetY || 0;
+        const distToMe = Math.hypot((ox + hitGi.x) - myAbsPredicted.x, (oy + hitGi.y) - myAbsPredicted.y);
+        if (distToMe > 100) { showNotice('너무 멀리 있어 손이 안 닿습니다'); return; }
+        sendPrimary({ type: 'pickup_item', giId: hitGi.id });
+        return;
+      }
+      // 2) chest bbox hit-test (chest는 32×32 cell, b.x/b.y가 cell 중심)
       let hitChest = null;
       for (const c of conns.values()) {
         if (!c.meta) continue;
@@ -442,7 +463,6 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
         }
         if (hitChest) break;
       }
-      // 추가 조건: 사용자가 너무 멀면 (160px) 무시 (멀리서 클릭으로 약탈 방지)
       if (hitChest) {
         const c = conns.get(primaryZoneId);
         const ox = c?.meta?.worldOffsetX || 0, oy = c?.meta?.worldOffsetY || 0;
@@ -515,6 +535,7 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
       claims: new Map(),
       buildings: new Map(),
       mobs: new Map(),
+      groundItems: new Map(), // Phase 14.23 — 바닥 떨어진 아이템
       others: new Map(),
     };
     conns.set(zoneId, c);
@@ -538,10 +559,12 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
     if (msg.type === 'welcome') {
       c.meta = msg.zone;
       c.resources.clear(); c.claims.clear(); c.buildings.clear(); c.mobs.clear();
+      if (c.groundItems) c.groundItems.clear();
       for (const r of (msg.resources || [])) c.resources.set(r.id, r);
       for (const cl of (msg.claims || [])) c.claims.set(cl.id, cl);
       for (const b of (msg.buildings || [])) c.buildings.set(b.id, b);
       for (const m of (msg.mobs || [])) c.mobs.set(m.mid, m);
+      for (const gi of (msg.groundItems || [])) c.groundItems.set(gi.id, gi);
       // 월드 시계 동기화 — 서버 now와 클라 now 차이를 보정해서 동일 phase 계산
       if (msg.worldClock) {
         worldClock = {
@@ -655,6 +678,10 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
       c.buildings.set(msg.building.id, msg.building);
     } else if (msg.type === 'building_removed') {
       c.buildings.delete(msg.id);
+    } else if (msg.type === 'ground_item_added') {
+      if (c.groundItems) c.groundItems.set(msg.gi.id, msg.gi);
+    } else if (msg.type === 'ground_item_removed') {
+      if (c.groundItems) c.groundItems.delete(msg.id);
     } else if (msg.type === 'mob_damaged') {
       const m = c.mobs.get(msg.mid); if (m) m.hp = msg.hp;
     } else if (msg.type === 'mob_removed') {
@@ -1036,6 +1063,15 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
         const iso = w2i(ax, ay);
         renderables.push({ z: iso.y, kind: 'resource', r, iso, ax, ay });
       }
+      // Phase 14.23: ground item 렌더
+      if (c.groundItems) {
+        for (const gi of c.groundItems.values()) {
+          const ax = ox + gi.x, ay = oy + gi.y;
+          if (Math.abs(ax - worldCx) > VIEW_RADIUS || Math.abs(ay - worldCy) > VIEW_RADIUS) continue;
+          const iso = w2i(ax, ay);
+          renderables.push({ z: iso.y + 5, kind: 'ground_item', gi, iso, ax, ay });
+        }
+      }
       for (const cl of c.claims.values()) {
         renderables.push({ z: w2i(ox + cl.x + cl.w/2, oy + cl.y + cl.h/2).y - 400, kind: 'claim', cl, off: ox, offY: oy });
       }
@@ -1119,6 +1155,24 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
           ctx.fillStyle = '#9adb6e'; ctx.fillRect(s.x - 10, s.y - 28, 20 * pct, 3);
         }
         ctx.globalAlpha = 1;
+      } else if (item.kind === 'ground_item') {
+        const s = toScreen(item.iso.x, item.iso.y);
+        const gi = item.gi;
+        const icon = (ITEM_ICONS && ITEM_ICONS[gi.item]) || ({wood:'🪵',stone:'🪨'}[gi.item]) || '📦';
+        // 그림자
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.beginPath(); ctx.ellipse(s.x, s.y + 3, 8, 3, 0, 0, Math.PI * 2); ctx.fill();
+        // 아이콘
+        ctx.font = '16px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(icon, s.x, s.y - 4);
+        // 개수 ×N (>1일 때)
+        if (gi.count > 1) {
+          ctx.font = '9px sans-serif'; ctx.fillStyle = '#fff';
+          ctx.strokeStyle = 'rgba(0,0,0,0.85)'; ctx.lineWidth = 2;
+          ctx.strokeText(`×${gi.count}`, s.x + 9, s.y + 5);
+          ctx.fillText(`×${gi.count}`, s.x + 9, s.y + 5);
+        }
+        ctx.textAlign = 'start'; ctx.textBaseline = 'alphabetic';
       } else if (item.kind === 'player') {
         const s = toScreen(item.iso.x, item.iso.y);
         const d = Math.hypot(item.ax - worldCx, item.ay - worldCy);
@@ -2320,12 +2374,29 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
     openInv();
   };
 
+  // 근처 ground items (80px 반경) — 바닥 pseudo-container 내용
+  function nearbyGroundItems() {
+    const list = [];
+    if (!primaryZoneId) return list;
+    const pc = conns.get(primaryZoneId);
+    if (!pc || !pc.meta || !pc.groundItems) return list;
+    const ox = pc.meta.worldOffsetX || 0, oy = pc.meta.worldOffsetY || 0;
+    for (const gi of pc.groundItems.values()) {
+      const absX = ox + gi.x, absY = oy + gi.y;
+      const d = Math.hypot(absX - myAbsPredicted.x, absY - myAbsPredicted.y);
+      if (d <= 100) list.push({ gi, d });
+    }
+    list.sort((a, b) => a.d - b.d);
+    return list;
+  }
+
   function renderInvPanel(body) {
     const conts = nearbyContainers();
-    // 활성 컨테이너 검증 — 사라졌으면 가장 가까운 거로
-    if (activeContainerId && !conts.find(c => c.b.id === activeContainerId)) activeContainerId = null;
-    if (!activeContainerId && conts.length > 0) activeContainerId = conts[0].b.id;
-    const activeC = activeContainerId ? conts.find(c => c.b.id === activeContainerId)?.b : null;
+    // 바닥 탭 항상 마지막에. activeContainerId === 'ground' 면 바닥 표시
+    if (activeContainerId && activeContainerId !== 'ground' && !conts.find(c => c.b.id === activeContainerId)) activeContainerId = null;
+    if (!activeContainerId) activeContainerId = conts.length > 0 ? conts[0].b.id : 'ground';
+    const activeC = (activeContainerId !== 'ground' && activeContainerId) ? conts.find(c => c.b.id === activeContainerId)?.b : null;
+    const isGround = (activeContainerId === 'ground');
 
     const rowsHtml = (inv, kind, chestId) => {
       const entries = Object.entries(inv).filter(([k, v]) => v > 0).sort((a, b) => {
@@ -2347,20 +2418,40 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
     };
 
     const myCount = Object.values(inventory).filter(v => v > 0).length;
-    const myTable = `<div class="inv-col">
+    // 좌: 내 인벤
+    const myTable = `<div class="inv-col" data-drop-target="mine">
       <div class="inv-col-head">🎒 내 인벤토리<span class="col-count">(${myCount}종)</span></div>
       <div style="flex:1;overflow:auto;background:#0e1217;border-radius:4px">
         <table class="inv-table">
           <thead><tr><th></th><th>아이템</th><th>분류</th><th></th></tr></thead>
-          <tbody>${rowsHtml(inventory, 'mine', activeC ? activeC.id : null)}</tbody>
+          <tbody>${rowsHtml(inventory, 'mine', activeC ? activeC.id : (isGround ? 'ground' : null))}</tbody>
         </table>
       </div></div>`;
 
     // 가운데: 활성 컨테이너 내용
     let chestTable;
-    if (activeC) {
+    if (isGround) {
+      // 바닥 — ground items 다 모아 보여줌 (각 행이 별도 gi)
+      const gItems = nearbyGroundItems();
+      const giRows = gItems.length === 0
+        ? `<tr><td colspan="4" style="color:#6c7686;text-align:center;padding:20px">(바닥에 아이템 없음 — 드롭하면 여기에 표시됩니다)</td></tr>`
+        : gItems.map(({ gi }) => {
+            const icon = (ITEM_ICONS[gi.item]) || ({wood:'🪵',stone:'🪨'}[gi.item]) || '📦';
+            const label = (ITEM_LABEL[gi.item]) || gi.item;
+            const cat = ITEM_CAT[gi.item] || '기타';
+            return `<tr><td class="it-icon">${icon}</td><td class="it-name">${label} <span class="it-count">×${gi.count}</span></td><td class="it-cat">${cat}</td><td class="it-action"><button data-pickup="${gi.id}">↑</button></td></tr>`;
+          }).join('');
+      chestTable = `<div class="inv-col" data-drop-target="ground">
+        <div class="inv-col-head">🌍 바닥 (근처 ${gItems.length}개)</div>
+        <div style="flex:1;overflow:auto;background:#0e1217;border-radius:4px">
+          <table class="inv-table">
+            <thead><tr><th></th><th>아이템</th><th>분류</th><th></th></tr></thead>
+            <tbody>${giRows}</tbody>
+          </table>
+        </div></div>`;
+    } else if (activeC) {
       const chestCount = Object.values(activeC.data || {}).filter(v => v > 0).length;
-      chestTable = `<div class="inv-col">
+      chestTable = `<div class="inv-col" data-drop-target="${activeC.id}">
         <div class="inv-col-head">📦 ${activeC.ownerName || '?'}<span class="col-count">(${chestCount}종)</span></div>
         <div style="flex:1;overflow:auto;background:#0e1217;border-radius:4px">
           <table class="inv-table">
@@ -2369,44 +2460,134 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
           </table>
         </div></div>`;
     } else {
-      chestTable = `<div class="inv-col">
-        <div class="inv-col-head">📦 근처 컨테이너</div>
-        <div class="id-empty">상자(📦) 가까이 (120px) 가면 자동 표시됩니다</div>
-      </div>`;
+      chestTable = `<div class="inv-col"><div class="inv-col-head">컨테이너</div><div style="flex:1"></div></div>`;
     }
 
-    // 우측: 컨테이너 탭 (각 chest 버튼)
-    const tabs = conts.length === 0
-      ? `<div style="color:#6c7686;font-size:10px;text-align:center;padding:10px">근처에<br/>상자<br/>없음</div>`
-      : conts.map(({ b, d }) => {
-          const total = Object.values(b.data || {}).reduce((s, v) => s + v, 0);
-          const isActive = b.id === activeContainerId ? 'active' : '';
-          return `<div class="cont-tab ${isActive}" data-cid="${b.id}" title="${b.ownerName || '?'} · ${d.toFixed(0)}px">
-            <div class="ct-icon">📦</div>
-            <div class="ct-count">${total}</div>
-          </div>`;
-        }).join('');
-    const tabsCol = `<div class="cont-tabs">${tabs}</div>`;
+    // 우측 탭 — chest들 + 바닥 (항상)
+    const chestTabs = conts.map(({ b, d }) => {
+      const total = Object.values(b.data || {}).reduce((s, v) => s + v, 0);
+      const isActive = b.id === activeContainerId ? 'active' : '';
+      return `<div class="cont-tab ${isActive}" data-cid="${b.id}" title="${b.ownerName || '?'} · ${d.toFixed(0)}px">
+        <div class="ct-icon">📦</div>
+        <div class="ct-count">${total}</div>
+      </div>`;
+    }).join('');
+    const gCount = nearbyGroundItems().length;
+    const groundTab = `<div class="cont-tab ${isGround ? 'active' : ''}" data-cid="ground" title="근처 바닥 아이템">
+      <div class="ct-icon">🌍</div>
+      <div class="ct-count">${gCount}</div>
+    </div>`;
+    const tabsCol = `<div class="cont-tabs">${chestTabs}${groundTab}</div>`;
 
     body.innerHTML = `<div class="inv-three-col" style="height:100%">${myTable}${chestTable}${tabsCol}</div>`;
 
+    // 액션 버튼 (↑ ↓ 픽업)
     body.querySelectorAll('[data-move]').forEach(btn => btn.onclick = () => {
       const kind = btn.dataset.move;
       const item = btn.dataset.item;
       const cid = btn.dataset.cid;
       if (!cid) return;
+      // 바닥으로 → drop_item
+      if (cid === 'ground') {
+        if (kind !== 'mine') return; // 바닥→mine은 픽업 버튼 따로
+        sendPrimary({ type: 'drop_item', item, amount: 1 });
+        return;
+      }
+      // chest로/에서 — wood/stone만 (현재 서버 제약)
       if (item !== 'wood' && item !== 'stone') {
-        showNotice(`${ITEM_LABEL[item] || item}은 상자에 넣을 수 없습니다 (wood/stone만)`);
+        showNotice(`${ITEM_LABEL[item] || item}은 상자에 못 넣음 (바닥에 떨어뜨리세요 — 우측 🌍 탭)`);
         return;
       }
       if (kind === 'mine') sendPrimary({ type: 'chest_put', buildingId: cid, item, amount: 1 });
       else sendPrimary({ type: 'chest_take', buildingId: cid, item, amount: 1 });
     });
+    body.querySelectorAll('[data-pickup]').forEach(btn => btn.onclick = () => {
+      sendPrimary({ type: 'pickup_item', giId: btn.dataset.pickup });
+    });
     body.querySelectorAll('[data-cid]').forEach(t => {
       if (!t.classList.contains('cont-tab')) return;
       t.onclick = () => { activeContainerId = t.dataset.cid; renderInvPanel(body); };
     });
+
+    // === Phase 14.23: HTML5 드래그 (인벤 row → 컨테이너 탭/바닥/빈화면) ===
+    body.querySelectorAll('tr[draggable], .inv-table tbody tr').forEach(tr => {
+      const btn = tr.querySelector('[data-move]');
+      if (!btn) return;
+      tr.setAttribute('draggable', 'true');
+      tr.addEventListener('dragstart', (e) => {
+        const payload = { kind: btn.dataset.move, item: btn.dataset.item, cid: btn.dataset.cid };
+        e.dataTransfer.setData('text/plain', JSON.stringify(payload));
+        e.dataTransfer.effectAllowed = 'move';
+      });
+    });
+    // drop targets: 컨테이너 탭 + 바닥 탭 + 빈화면(canvas)
+    body.querySelectorAll('.cont-tab').forEach(t => {
+      t.addEventListener('dragover', (e) => { e.preventDefault(); t.style.borderColor = '#f0c674'; });
+      t.addEventListener('dragleave', () => { t.style.borderColor = ''; });
+      t.addEventListener('drop', (e) => {
+        e.preventDefault(); t.style.borderColor = '';
+        try {
+          const payload = JSON.parse(e.dataTransfer.getData('text/plain'));
+          const targetCid = t.dataset.cid;
+          handleDrop(payload, targetCid);
+        } catch (err) {}
+      });
+    });
+    body.querySelectorAll('[data-drop-target]').forEach(col => {
+      col.addEventListener('dragover', (e) => { e.preventDefault(); });
+      col.addEventListener('drop', (e) => {
+        e.preventDefault();
+        try {
+          const payload = JSON.parse(e.dataTransfer.getData('text/plain'));
+          const target = col.dataset.dropTarget;
+          handleDrop(payload, target);
+        } catch (err) {}
+      });
+    });
   }
+
+  // 드래그 결과 처리: payload(원본) → target(목적지)
+  function handleDrop(payload, target) {
+    const { kind, item, cid: srcCid } = payload;
+    // 같은 곳이면 무시
+    if (kind === 'mine' && target === 'mine') return;
+    if (kind === 'chest' && target === srcCid) return;
+    // mine → ground: drop_item
+    if (kind === 'mine' && target === 'ground') {
+      sendPrimary({ type: 'drop_item', item, amount: 1 });
+      return;
+    }
+    // mine → chest
+    if (kind === 'mine' && target && target !== 'ground' && target !== 'mine') {
+      if (item !== 'wood' && item !== 'stone') {
+        showNotice(`${ITEM_LABEL[item] || item}은 상자에 못 넣음 (wood/stone만 지원)`);
+        return;
+      }
+      sendPrimary({ type: 'chest_put', buildingId: target, item, amount: 1 });
+      return;
+    }
+    // chest → mine
+    if (kind === 'chest' && target === 'mine') {
+      sendPrimary({ type: 'chest_take', buildingId: srcCid, item, amount: 1 });
+      return;
+    }
+    // chest → ground: take then drop (서버에서 직접 처리는 미구현, 2단계)
+    if (kind === 'chest' && target === 'ground') {
+      sendPrimary({ type: 'chest_take', buildingId: srcCid, item, amount: 1 });
+      setTimeout(() => sendPrimary({ type: 'drop_item', item, amount: 1 }), 100);
+      return;
+    }
+  }
+
+  // 빈 화면(canvas) drop → 바닥에 떨어뜨리기
+  canvas.addEventListener('dragover', (e) => { e.preventDefault(); });
+  canvas.addEventListener('drop', (e) => {
+    e.preventDefault();
+    try {
+      const payload = JSON.parse(e.dataTransfer.getData('text/plain'));
+      handleDrop(payload, 'ground');
+    } catch (err) {}
+  });
 
   // === 제작창 (카테고리 + 레시피) ===
   let craftCat = 'tool';
