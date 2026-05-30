@@ -234,7 +234,8 @@ const BUILDING_COST = {
 };
 const CROP_GROW_MS = 60 * 1000;
 const BLOCKING_BUILDINGS = new Set(['wall', 'fence']);
-const BUILDING_HEIGHT = { wall: 32, floor: 4, fence: 24, chest: 24, campfire: 20, farmland: 4, stair: 32 };
+// 14.49-e2: 층 높이 2배 (32 → 64). 벽·계단도 같이 2배.
+const BUILDING_HEIGHT = { wall: 64, floor: 4, fence: 36, chest: 24, campfire: 20, farmland: 4, stair: 64 };
 // Phase 14.25: chest 저장 가능 아이템 (모든 자원 + 도구 + 음식)
 const CHEST_ALLOWED_ITEMS = new Set([
   'wood', 'stone', 'ore', 'herb',
@@ -244,7 +245,7 @@ const CHEST_ALLOWED_ITEMS = new Set([
 ]);
 // Phase 14.14: 건축물 maxHp — 손상=상태 전이 (영구파괴 X, 수리 가능)
 const BUILDING_MAX_HP = { wall: 80, fence: 30, chest: 50, campfire: 20, farmland: 10, stair: 60, floor: 40 };
-const FLOOR_HEIGHT = 32;
+const FLOOR_HEIGHT = 64; // 14.49-e2: 32 → 64
 
 // === 위반 점수 (vp) — PvP 공격·타인 사유지 침범 시 누적, 시간당 감소 ===
 const VP_TRESPASS_GATHER = 3;   // 남 영지 자원 채집 시도
@@ -3216,10 +3217,9 @@ setInterval(() => {
       }
       return;
     }
-    // stair 위에 있음 — 14.49-e: 6 sub-step (cell당 2칸씩 이등분)
+    // stair 위에 있음 — 14.49-e2: 24 sub-step (cell당 8칸), 연속 z 보간
     const { stair, step } = cur;
     if (entity.onStairId !== stair.id) entity.onStairId = stair.id;
-    // 현재 cell 안에서의 dir-축 진행도 (0~1) 계산 → sub-step 0/1
     const dir = stair.data?.dir || 'N';
     const dv = dirVec(dir);
     const acx = Math.floor(stair.x / BUILDING_SIZE);
@@ -3228,22 +3228,24 @@ setInterval(() => {
     const cellCy = acy + dv.y * step;
     const cellCenterX = cellCx * BUILDING_SIZE + BUILDING_SIZE / 2;
     const cellCenterY = cellCy * BUILDING_SIZE + BUILDING_SIZE / 2;
-    // entity의 cell 내 dir 축 위치 (-0.5 ~ +0.5)
+    // entity의 dir 축 위치: 어디까지 진행했나 (0~3 cell = 0~96 px along dir)
+    // anchor의 cell 0 low edge = position 0, cell 2의 high edge = position 96
     const localDX = entity.x - cellCenterX;
     const localDY = entity.y - cellCenterY;
-    const projDir = (localDX * dv.x + localDY * dv.y) / BUILDING_SIZE; // -0.5~+0.5
-    // sub-step: cell 절반 단위 (0 = -0.5~0, 1 = 0~+0.5)
-    const subInCell = projDir >= 0 ? 1 : 0;
-    // 전체 sub-step (0~5)
-    const subStep = step * 2 + subInCell;
+    const projInCell = localDX * dv.x + localDY * dv.y; // -16~+16 (cell 내 dir축 위치)
+    // 전체 stair 진행도 (0 ~ 96 픽셀). cell 시작 = step*32, 거기에 (projInCell + 16) 더함.
+    const totalProj = step * BUILDING_SIZE + (projInCell + BUILDING_SIZE / 2);
+    const totalLen = 3 * BUILDING_SIZE; // 96 px
+    const f = Math.max(0, Math.min(1, totalProj / totalLen));
+    // 24 sub-step으로 discrete snap (등분). f * 24 = 0~24, floor → 0~24 정수 (실제 0~23)
+    const sub24 = Math.max(0, Math.min(24, Math.floor(f * 24)));
+    const targetZ = (sub24 / 24) * FLOOR_HEIGHT; // 0 ~ FLOOR_HEIGHT
     entity.stairStep = step;
-    entity.stairSubStep = subStep;
-    // z 매핑: subStep 0~5 → z 0~32 (5 간격으로 균등)
-    const targetZ = (subStep / 5) * 32;
+    entity.stairSubStep = sub24;
     const cur_z = entity.z || 0;
-    const lerpT = Math.min(1, dt * 10);
+    const lerpT = Math.min(1, dt * 14); // 빠른 lerp (24단계라 변화 자주 일어남)
     entity.z = cur_z + (targetZ - cur_z) * lerpT;
-    if (Math.abs(entity.z - targetZ) < 0.3) entity.z = targetZ;
+    if (Math.abs(entity.z - targetZ) < 0.5) entity.z = targetZ;
   }
   for (const p of players.values()) {
     if (p.handingOff || p.isDown) continue;
@@ -3256,6 +3258,95 @@ setInterval(() => {
     const moving = (m.vx || 0) !== 0 || (m.vy || 0) !== 0;
     if (!moving && !m.onStairId) continue;
     stepStairFor(m);
+  }
+
+  // === 14.49-e2: 낙하 (falling) — 위층에서 받침 floor 없는 곳으로 walk-off ===
+  // player.floor > 0인데 그 cell에 자기 floor 받침 (floor 빌딩)이 없고, stair도 아니면 → fall.
+  // fallVz = -120 px/s (중력). z 감소. 0층까지 도달하면 floor 0로 정착. 낙하 거리에 비례한 데미지.
+  function hasFloorSupportAt(absX, absY, floor) {
+    if (floor === 0) return true; // 0층은 항상 땅
+    const cx = Math.floor(absX / BUILDING_SIZE);
+    const cy = Math.floor(absY / BUILDING_SIZE);
+    const near = qtBuildings ? qtBuildings.queryCircle(absX, absY, BUILDING_SIZE) : Array.from(buildings.values());
+    for (const b of near) {
+      if (b.type !== 'floor' && b.type !== 'stair') continue;
+      const bcx = Math.floor(b.x / BUILDING_SIZE);
+      const bcy = Math.floor(b.y / BUILDING_SIZE);
+      // floor 빌딩은 단일 cell, 자기 floor가 player floor와 같으면 support
+      if (b.type === 'floor' && bcx === cx && bcy === cy && (b.floor || 0) === floor) return true;
+      // stair는 3 cell 점유, stair.floor가 floor-1이면 위쪽 floor에서 받침 역할
+      if (b.type === 'stair' && (b.floor || 0) === floor - 1) {
+        const dir = b.data?.dir || 'N';
+        const dv = dirVec(dir);
+        for (let s = 0; s <= 2; s++) {
+          if (bcx + dv.x * s === cx && bcy + dv.y * s === cy) return true;
+        }
+      }
+    }
+    return false;
+  }
+  function processFalling(entity) {
+    if ((entity.floor || 0) === 0) {
+      // 0층 — 낙하 없음, falling 상태 정리
+      if (entity.falling) { entity.falling = false; entity.fallVz = 0; }
+      return;
+    }
+    if (entity.onStairId) {
+      // 계단 위 — 안 떨어짐
+      if (entity.falling) { entity.falling = false; entity.fallVz = 0; }
+      return;
+    }
+    if (hasFloorSupportAt(entity.x, entity.y, entity.floor)) {
+      if (entity.falling) { entity.falling = false; entity.fallVz = 0; }
+      return;
+    }
+    // 받침 없음 — 낙하 시작/계속
+    if (!entity.falling) {
+      entity.falling = true;
+      entity.fallStartFloor = entity.floor;
+      entity.fallStartZ = (entity.floor || 0) * FLOOR_HEIGHT;
+      entity.fallVz = 0;
+      entity._fallTopZ = entity.fallStartZ;
+    }
+    entity.fallVz = (entity.fallVz || 0) - 400 * dt; // 중력
+    entity.z = (entity.z || 0) + entity.fallVz * dt;
+    // 현재 위치의 절대 z = floor * FLOOR_HEIGHT + entity.z
+    // (entity.z는 floor 위 추가 높이로 해석)
+    // 한 층씩 떨어지면 floor 감소
+    while (entity.z < -FLOOR_HEIGHT && entity.floor > 0) {
+      entity.z += FLOOR_HEIGHT;
+      entity.floor -= 1;
+      if (entity.ws) {
+        send(entity.ws, { type: 'floor_changed', floor: entity.floor });
+        broadcast({ type: 'player_floor_changed', pid: entity.pid, floor: entity.floor });
+      }
+    }
+    // 0F 도달 — 착지
+    if (entity.floor === 0 && entity.z <= 0) {
+      entity.z = 0;
+      entity.fallVz = 0;
+      entity.falling = false;
+      // 낙하 데미지 — fallStartFloor 기준
+      const fallFloors = entity.fallStartFloor - 0;
+      if (fallFloors >= 1 && entity.hp !== undefined) {
+        const dmg = fallFloors * 25; // 1층 fall = 25 HP, 2층 = 50, ...
+        if (entity.ws) {
+          damagePlayer(entity, dmg, 'fall');
+        } else {
+          entity.hp = Math.max(0, entity.hp - dmg);
+        }
+      }
+      entity.fallStartFloor = 0;
+    }
+  }
+  for (const p of players.values()) {
+    if (p.handingOff || p.isDown) continue;
+    processFalling(p);
+  }
+  for (const m of mobs.values()) {
+    if (m.hp <= 0) continue;
+    if (!isPositionActive(m.x, m.y)) continue;
+    processFalling(m);
   }
 
   // === 생존 게이지: hunger/thirst 감소 + 0이면 HP 페널티 + vp decay ===

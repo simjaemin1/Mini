@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.49-e (3-cell 6-subStep 계단) ===
-console.log('%c[durango-mini] client build = 14.49-e (3칸 6단 계단)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.49-e2 (층 2배 + 24단 + 낙하) ===
+console.log('%c[durango-mini] client build = 14.49-e2 (층2배+24단+낙하)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -21,7 +21,7 @@ console.log('%c[durango-mini] client build = 14.49-e (3칸 6단 계단)', 'color
   // worldX,worldY (픽셀) → 화면상 iso 픽셀. z(높이)는 화면 y에서 빼서 위로 올림.
   // (1,0,0) → (1, 0.5), (0,1,0) → (-1, 0.5), (0,0,1) → (0, -1) 형태.
   // 모든 호출자는 z=0 기본 — Phase 13.2에서 건물/계단에 z>0 도입.
-  const FLOOR_HEIGHT = 32; // 한 층 = 32px (정육면체 비율로 사람 키와 자연스러움)
+  const FLOOR_HEIGHT = 64; // 14.49-e2: 32 → 64 (한 층 2배)
   function w2i(wx, wy, wz = 0) {
     return { x: (wx - wy), y: (wx + wy) * 0.5 - wz };
   }
@@ -1799,7 +1799,7 @@ console.log('%c[durango-mini] client build = 14.49-e (3칸 6단 계단)', 'color
     ctx.fillStyle = color; ctx.fill();
   }
 
-  const WALL_HEIGHT = 32; // FLOOR_HEIGHT와 같음 — 1F가 0F에 딱 쌓임
+  const WALL_HEIGHT = 64; // 14.49-e2: FLOOR_HEIGHT(64)와 같음
   function drawBuildingIso(x, y, type, building) {
     if (type === 'farmland') {
       // 갈색 흙 다이아 + 작물
@@ -1925,11 +1925,11 @@ console.log('%c[durango-mini] client build = 14.49-e (3칸 6단 계단)', 'color
       ctx.beginPath(); ctx.moveTo(x - 9, y - 2); ctx.lineTo(x + 9, y - 2); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(x - 9, y - 7); ctx.lineTo(x + 9, y - 7); ctx.stroke();
     } else if (type === 'stair') {
-      // === PZ식 3-cell 6-subStep 계단 ===
+      // === PZ식 3-cell 24-subStep 계단 (14.49-e2) ===
       // anchor (this draw 좌표 x, y) = cell 0 (낮은 발판) 중심. dir 방향으로 cell 1, 2 추가.
-      // 총 6 sub-step (각 cell당 2 sub-step), z = subStep * 6.4 (0~32).
-      // 시각: 6개 평평한 step 슬랩 + 슬랩 사이 vertical riser. PZ식 진짜 계단 모양.
-      const H = 32;
+      // 총 24 sub-step (각 cell당 8 sub-step), z = subStep * (FLOOR_HEIGHT/24) (0~64).
+      // 시각: 24개 평평한 step tread + 사이 vertical riser. 진짜 미세 계단 모양.
+      const H = FLOOR_HEIGHT; // 64
       const dir = building?.data?.dir || 'N';
       // dir별 단위벡터 (world 좌표계)
       const dv = dir === 'E' ? { x: 1, y: 0 } : dir === 'W' ? { x: -1, y: 0 } : dir === 'S' ? { x: 0, y: 1 } : { x: 0, y: -1 };
@@ -1959,56 +1959,46 @@ console.log('%c[durango-mini] client build = 14.49-e (3칸 6단 계단)', 'color
       //     subStep 4 (cell 2 low half) 중심 = anchor + dv * 56
       //     subStep 5 (cell 2 high half) 중심 = anchor + dv * 72
       // 각 슬랩 두께: dv 방향 16, perpendicular 32.
-      // 각 sub-step 슬랩 그리기 — 낮은 z부터 (back-to-front 정렬을 위해)
-      for (let S = 0; S < 6; S++) {
-        const z = (S / 5) * H;
-        const centerW = { x: dv.x * (S * 16 - 32), y: dv.y * (S * 16 - 32) };
-        // wait, S * 16 - 32 = -32, -16, 0, 16, 32, 48 — 이게 어디서 나왔지?
-        // subStep 0 ~ 5: 중심 = anchor + dv * (S - 2) * 16
-        //   S=0: -32, S=1: -16, S=2: 0, S=3: 16, S=4: 32, S=5: 48
-        // anchor = cell 0 중심. 그러면 cell 0 low half (S=0) 중심 = anchor + dv*(-32)? 너무 멀다.
-        // 다시: cell N의 중심 (world) = anchor + dv * N * 32. cell N의 low half 중심 = cell center - dv*8. high half 중심 = cell center + dv*8.
-        //   subStep S, cellN = S>>1, isHigh = S&1
-        //   center = anchor + dv * (cellN * 32 + (isHigh ? 8 : -8))
-        const cellN = S >> 1;
-        const isHigh = S & 1;
-        const w = cellN * 32 + (isHigh ? 8 : -8);
-        const s = worldOffToScreen(dv.x * w, dv.y * w, z);
-        const cx = x + s.x;
-        const cy = y + s.y;
-        // 슬랩 그리기 — 16(dv) × 32(perp) 평평한 isometric 작은 평행사변형
-        // 4 corner (sub-step 평평한 윗면, z 동일)
-        const halfDV = 8;  // dv 방향 절반 (slab 16 길이)
-        const halfPV = 16; // perpendicular 방향 절반 (slab 32 폭)
-        // 4 corner의 world offset (anchor 기준) - 다 같은 z
+      // 각 sub-step 슬랩 — cell 0 (S=0~7), cell 1 (S=8~15), cell 2 (S=16~23). 총 24개.
+      // cell N 중심 = anchor + dv * N * 32. cell 안에서 sub-step S_in_cell (0~7) 중심 = cell_center + dv * ((S_in_cell - 3.5) * 4)
+      // (각 sub-step 너비 = 32/8 = 4 px along dir)
+      const SUB_PER_CELL = 8;
+      const SUB_TOTAL = 24;
+      const SUB_WIDTH = BUILDING_SIZE / SUB_PER_CELL; // = 4 px
+      for (let S = 0; S < SUB_TOTAL; S++) {
+        const cellN = Math.floor(S / SUB_PER_CELL);
+        const subInCell = S % SUB_PER_CELL;
+        const w = cellN * BUILDING_SIZE + (subInCell - 3.5) * SUB_WIDTH;
+        const z = (S / (SUB_TOTAL - 1)) * H; // 0 ~ H
+        const halfDV = SUB_WIDTH / 2;
+        const halfPV = BUILDING_SIZE / 2;
         function corner(dvSign, pvSign) {
           const wx = dv.x * (w + halfDV * dvSign) + pv.x * halfPV * pvSign;
           const wy = dv.y * (w + halfDV * dvSign) + pv.y * halfPV * pvSign;
           const sc = worldOffToScreen(wx, wy, z);
           return { x: x + sc.x, y: y + sc.y };
         }
-        const c1 = corner(-1, -1); // low-dv, neg-pv
-        const c2 = corner( 1, -1); // high-dv, neg-pv
-        const c3 = corner( 1,  1); // high-dv, pos-pv
-        const c4 = corner(-1,  1); // low-dv, pos-pv
-        // 옆면 (riser) — slab 앞쪽 (low-dv) 면을 그 아래까지. 이전 sub-step z(또는 0)까지.
-        const prevZ = S === 0 ? 0 : ((S - 1) / 5) * H;
+        const c1 = corner(-1, -1);
+        const c2 = corner( 1, -1);
+        const c3 = corner( 1,  1);
+        const c4 = corner(-1,  1);
+        // riser — 이전 sub-step과 z 차이만큼
+        const prevZ = S === 0 ? 0 : ((S - 1) / (SUB_TOTAL - 1)) * H;
         if (z > prevZ) {
-          // low-dv 면 (앞면) — riser. 4 corner: c1 (z), c4 (z), 그리고 그 두 점의 prevZ 버전
           const c1d = { x: c1.x, y: c1.y + (z - prevZ) };
           const c4d = { x: c4.x, y: c4.y + (z - prevZ) };
-          ctx.fillStyle = '#4a2a14'; // 어두운 riser
+          ctx.fillStyle = '#4a2a14';
           ctx.strokeStyle = '#2a1808';
-          ctx.lineWidth = 0.8;
+          ctx.lineWidth = 0.6;
           ctx.beginPath();
           ctx.moveTo(c1.x, c1.y); ctx.lineTo(c4.x, c4.y);
           ctx.lineTo(c4d.x, c4d.y); ctx.lineTo(c1d.x, c1d.y);
           ctx.closePath(); ctx.fill(); ctx.stroke();
         }
-        // 윗면 (tread) — slab 평평한 top
+        // tread
         ctx.fillStyle = '#b08858';
         ctx.strokeStyle = '#5a3818';
-        ctx.lineWidth = 0.8;
+        ctx.lineWidth = 0.4;
         ctx.beginPath();
         ctx.moveTo(c1.x, c1.y); ctx.lineTo(c2.x, c2.y);
         ctx.lineTo(c3.x, c3.y); ctx.lineTo(c4.x, c4.y);
@@ -2016,8 +2006,9 @@ console.log('%c[durango-mini] client build = 14.49-e (3칸 6단 계단)', 'color
       }
       // ↑ 화살표 (가장 높은 sub-step 위)
       const topZ = H;
-      const topW = 5 * 16 - 32 + 8 + 16; // S=5 high edge
-      const topS = worldOffToScreen(dv.x * topW, dv.y * topW, topZ);
+      const tcell = 2, tsub = 7;
+      const tw = tcell * BUILDING_SIZE + (tsub - 3.5) * SUB_WIDTH;
+      const topS = worldOffToScreen(dv.x * tw, dv.y * tw, topZ);
       ctx.fillStyle = '#cdd6e3';
       ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.lineWidth = 2;
       ctx.beginPath();
