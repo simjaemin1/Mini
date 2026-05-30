@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.46-a-fix (정확한 위도 + 즉시 stop) ===
-console.log('%c[durango-mini] client build = 14.46-a-fix (정확한 위도 + 즉시 stop)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.46-a-fix2 (WASD=월드 방향 복귀) ===
+console.log('%c[durango-mini] client build = 14.46-a-fix2 (WASD=월드 방향 복귀)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -1130,27 +1130,18 @@ console.log('%c[durango-mini] client build = 14.46-a-fix (정확한 위도 + 즉
     }
   }
 
-  // === Phase 14.44: WASD = 화면 기준 (PZ식) ===
-  // W = 화면상 "위" (월드로는 NW), D = 화면상 "오른쪽" (월드로는 NE) 등.
-  // iso 투영 w2i(wx,wy) = (wx-wy, (wx+wy)/2) 의 역변환으로 화면 방향을 월드 방향으로 매핑.
-  //   sx = wx - wy
-  //   sy = (wx + wy) / 2
-  //   → wx = sy + sx/2,  wy = sy - sx/2
-  // 결과: W alone → NW, D alone → NE, W+D → 월드 N (화면상 ↑→ 사선) 등 자연스러움.
+  // === WASD = 월드 방향 ===
+  // W=북, A=서, S=남, D=동. iso 시점이라 W 단독은 화면상 ↗(우상단)으로 보이지만
+  // W+A 같은 조합은 정확히 NW(월드 -0.71, -0.71) 깔끔한 비율로 떨어짐.
+  // 속도 벡터 표시(맵 좌표)도 키 입력과 1:1 대응.
   function worldKeysDir() {
-    let sx = 0, sy = 0; // screen-space 방향 (sy: +1 = 화면 아래)
-    if (keys.has('w') || keys.has('arrowup'))    sy -= 1;
-    if (keys.has('s') || keys.has('arrowdown'))  sy += 1;
-    if (keys.has('a') || keys.has('arrowleft'))  sx -= 1;
-    if (keys.has('d') || keys.has('arrowright')) sx += 1;
-    const slen = Math.hypot(sx, sy);
-    if (slen === 0) return { wx: 0, wy: 0 };
-    sx /= slen; sy /= slen;
-    // 화면 → 월드 역변환
-    let wx = sy + sx * 0.5;
-    let wy = sy - sx * 0.5;
-    const wlen = Math.hypot(wx, wy);
-    if (wlen > 0) { wx /= wlen; wy /= wlen; }
+    let wx = 0, wy = 0;
+    if (keys.has('w') || keys.has('arrowup'))    wy -= 1; // 북
+    if (keys.has('s') || keys.has('arrowdown'))  wy += 1; // 남
+    if (keys.has('a') || keys.has('arrowleft'))  wx -= 1; // 서
+    if (keys.has('d') || keys.has('arrowright')) wx += 1; // 동
+    const len = Math.hypot(wx, wy);
+    if (len > 0) { wx /= len; wy /= len; }
     return { wx, wy };
   }
 
