@@ -55,4 +55,23 @@ async function updatePlayer(playerId, patch) {
   return r.data;
 }
 
-module.exports = { authenticate, checkUsernameTaken, getPlayer, updatePlayer, request };
+// Phase 14.2 — 길드 vp/treasury/npc upsert
+async function tribeAddVp(tribeId, amount, reason) {
+  const r = await request('POST', '/tribe/add_vp', { tribe_id: tribeId, amount, reason });
+  return r.data;
+}
+async function tribeTreasury(tribeId, delta) {
+  const r = await request('POST', '/tribe/treasury', { tribe_id: tribeId, delta });
+  return r.data;
+}
+async function tribeNpcUpsert(name, tier) {
+  const r = await request('POST', '/tribe/npc_upsert', { name, tier });
+  return r.data;
+}
+async function getTribe(id) {
+  const r = await request('GET', `/tribe/${id}`);
+  return r.status === 200 ? r.data : null;
+}
+
+module.exports = { authenticate, checkUsernameTaken, getPlayer, updatePlayer, request,
+  tribeAddVp, tribeTreasury, tribeNpcUpsert, getTribe };

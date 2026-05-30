@@ -203,6 +203,7 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
     else if (k === 'b') sendPrimary({ type: 'build', buildType: 'wall', floor: myBuildFloor });
     else if (k === 'h') sendPrimary({ type: 'build', buildType: 'chest', floor: myBuildFloor });
     else if (k === 'j') sendPrimary({ type: 'build', buildType: 'campfire', floor: myBuildFloor });
+    else if (k === 'q') sendPrimary({ type: 'build', buildType: 'siege_camp', floor: 0 }); // Phase 14.5
     else if (k === 'l') sendPrimary({ type: 'build', buildType: 'fence', floor: myBuildFloor });
     else if (k === 'i') sendPrimary({ type: 'build', buildType: 'floor', floor: myBuildFloor });
     else if (k === 'p') sendPrimary({ type: 'build', buildType: 'farmland', floor: myBuildFloor });
@@ -271,6 +272,7 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
       else if (a === 'build_wall') sendPrimary({ type: 'build', buildType: 'wall', floor: myBuildFloor });
       else if (a === 'build_chest') sendPrimary({ type: 'build', buildType: 'chest', floor: myBuildFloor });
       else if (a === 'build_campfire') sendPrimary({ type: 'build', buildType: 'campfire', floor: myBuildFloor });
+      else if (a === 'build_siege') sendPrimary({ type: 'build', buildType: 'siege_camp', floor: 0 });
       else if (a === 'build_fence') sendPrimary({ type: 'build', buildType: 'fence', floor: myBuildFloor });
       else if (a === 'build_farmland') sendPrimary({ type: 'build', buildType: 'farmland', floor: myBuildFloor });
       else if (a === 'build_stair') sendPrimary({ type: 'build', buildType: 'stair', floor: myBuildFloor });
@@ -1375,6 +1377,41 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
       ctx.quadraticCurveTo(x + flicker, y - 9, x + 1, y - 13);
       ctx.quadraticCurveTo(x + 3 + flicker, y - 8, x + 3, y - 2);
       ctx.closePath(); ctx.fill();
+    } else if (type === 'siege_camp') {
+      // Phase 14.5 — 공성 캠프: 텐트(삼각 천막)
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      ctx.beginPath(); ctx.ellipse(x, y + 5, 16, 5, 0, 0, Math.PI * 2); ctx.fill();
+      // 텐트 본체 (삼각)
+      ctx.beginPath();
+      ctx.moveTo(x, y - 20);
+      ctx.lineTo(x + 16, y + 4);
+      ctx.lineTo(x - 16, y + 4);
+      ctx.closePath();
+      ctx.fillStyle = '#7a5a3a'; ctx.fill();
+      ctx.strokeStyle = '#3a2818'; ctx.lineWidth = 1; ctx.stroke();
+      // 입구 (어두운 사다리꼴)
+      ctx.beginPath();
+      ctx.moveTo(x - 4, y + 4);
+      ctx.lineTo(x + 4, y + 4);
+      ctx.lineTo(x + 2, y - 8);
+      ctx.lineTo(x - 2, y - 8);
+      ctx.closePath();
+      ctx.fillStyle = '#2a1a0a'; ctx.fill();
+      // 깃발 — 상단
+      ctx.strokeStyle = '#888'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x, y - 20); ctx.lineTo(x, y - 28); ctx.stroke();
+      ctx.fillStyle = '#c83a3a';
+      ctx.beginPath();
+      ctx.moveTo(x, y - 28); ctx.lineTo(x + 7, y - 25); ctx.lineTo(x, y - 22); ctx.closePath();
+      ctx.fill();
+      // 만료까지 남은 시간 (작은 게이지)
+      const exp = building?.data?.expiresAt;
+      if (exp) {
+        const remain = Math.max(0, exp - Date.now());
+        const pct = Math.min(1, remain / (10 * 60 * 1000));
+        ctx.fillStyle = '#222'; ctx.fillRect(x - 12, y + 8, 24, 2);
+        ctx.fillStyle = pct > 0.3 ? '#9adb6e' : '#c83a3a'; ctx.fillRect(x - 12, y + 8, 24 * pct, 2);
+      }
     }
   }
 
@@ -1961,13 +1998,73 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
         const members = (data.members || []).map(m =>
           `<div class="craft-row"><span style="background:${m.color};display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px"></span>${m.name}${m.player_id === data.tribe.leader_id ? ' 👑' : ''}</div>`
         ).join('');
+        // Phase 14.2 — 길드 vp + treasury + behavior_tier
+        const vp = data.tribe.vp || 0;
+        let tierLabel, tierColor;
+        if (vp < 30) { tierLabel = '청정 (clean)'; tierColor = '#9adb6e'; }
+        else if (vp < 80) { tierLabel = '보통 (normal)'; tierColor = '#e8c878'; }
+        else { tierLabel = '악성 (evil)'; tierColor = '#e85040'; }
+        const treasury = data.treasury || {};
+        const trItems = Object.entries(treasury).filter(([k,v]) => v > 0)
+          .map(([k,v]) => `${ITEM_ICONS[k]||k} ${v}`).join(' · ') || '(비어있음)';
+        const isNpc = data.tribe.is_npc;
+        const tierBadge = isNpc ? `<span class="badge" style="background:#5a7aa8">NPC길드 (${data.tribe.behavior_tier})</span>` : '';
+        // Phase 14.9 — 전쟁 선포 대상 목록 (내 길드 X, 이미 전쟁중 X)
+        let warsHtml = '';
+        let declareHtml = '';
+        try {
+          const wr = await fetch('/wars/active');
+          const wd = await wr.json();
+          const myWars = (wd.wars || []).filter(w => w.attacker_guild_id === myTribeId || w.defender_guild_id === myTribeId);
+          if (myWars.length > 0) {
+            warsHtml = '<div class="hint" style="margin-top:8px">⚔️ 진행 중 전쟁:</div>' + myWars.map(w => {
+              const other = w.attacker_guild_id === myTribeId ? `→ [${w.defender_name}] (공격)` : `← [${w.attacker_name}] (방어)`;
+              return `<div class="craft-row"><div class="craft-info"><div class="craft-name">${other}</div><div class="craft-cost">tier=${w.tier} · loot=${(w.loot_rate*100).toFixed(0)}% · damage=${(w.damage_rate*100).toFixed(0)}%</div></div><button class="craft-btn" data-end-war="${w.id}">종전</button></div>`;
+            }).join('');
+          }
+          // 선포 대상 — NPC 길드 우선 (플레이어 길드끼리도 가능)
+          const allR = await fetch('/tribes');
+          const allD = await allR.json();
+          const candidates = (allD.tribes || []).filter(t => t.id !== myTribeId &&
+            !(wd.wars || []).some(w => (w.attacker_guild_id === myTribeId && w.defender_guild_id === t.id) || (w.defender_guild_id === myTribeId && w.attacker_guild_id === t.id))
+          );
+          if (candidates.length > 0) {
+            declareHtml = '<div class="hint" style="margin-top:8px">🗡️ 선전포고 대상:</div>' + candidates.slice(0, 10).map(t => {
+              const v = t.vp || 0;
+              const tag = v < 30 ? '청정 (침략시 벌점↑)' : v < 80 ? '보통' : '악성 (토벌!)';
+              return `<div class="craft-row"><div class="craft-info"><div class="craft-name">[${t.name}]${t.is_npc?' 🤖':''}</div><div class="craft-cost">${tag} vp=${v.toFixed(0)}</div></div><button class="craft-btn" data-declare="${t.id}">선포</button></div>`;
+            }).join('');
+          }
+        } catch (e) {}
         body.innerHTML = `
-          <div class="hint">소속 길드: <b>[${myTribeName}]</b> (멤버 ${data.members.length}명)</div>
+          <div class="hint">소속 길드: <b>[${myTribeName}]</b> (멤버 ${data.members.length}명) ${tierBadge}</div>
+          <div class="hint" style="margin-top:6px">⚖️ 길드 명성: <b style="color:${tierColor}">${vp.toFixed(0)}/200 · ${tierLabel}</b></div>
+          <div class="hint" style="font-size:11px;opacity:0.7">청정=침략 시 약함·침략자 +대량벌점 / 악성=토벌 대상</div>
+          <div class="hint" style="margin-top:6px">🏦 길드 금고: <b>${trItems}</b></div>
+          ${warsHtml}
+          ${declareHtml}
           <div class="hint" style="margin-top:8px">멤버 목록:</div>
           ${members}
           <div class="hint" style="margin-top:8px">길드 채팅: <b>Enter → /t 메시지</b></div>
           <button class="craft-btn" id="tribeLeaveBtn" style="margin-top:12px;background:#b03030">길드 탈퇴</button>
         `;
+        // 선포 버튼 핸들러
+        body.querySelectorAll('[data-declare]').forEach(b => b.onclick = async () => {
+          const did = parseInt(b.dataset.declare, 10);
+          if (!confirm('선전포고하면 침략자 벌점이 부과될 수 있어요. 진행할까요?')) return;
+          const r = await fetch('/war/declare', { method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ attacker_guild_id: myTribeId, defender_guild_id: did, declared_by: myUsername }) });
+          const d = await r.json();
+          if (d.ok) { showNotice(`⚔️ 전쟁 선포! tier=${d.tier} loot=${(d.loot_rate*100).toFixed(0)}%`); renderTribePanel(); }
+          else alert(d.error || '선포 실패');
+        });
+        body.querySelectorAll('[data-end-war]').forEach(b => b.onclick = async () => {
+          const wid = parseInt(b.dataset.endWar, 10);
+          const r = await fetch('/war/end', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ war_id: wid }) });
+          const d = await r.json();
+          if (d.ok) { showNotice('🕊️ 전쟁 종료'); renderTribePanel(); }
+          else alert(d.error || '종전 실패');
+        });
         document.getElementById('tribeLeaveBtn').onclick = async () => {
           if (!confirm('정말 탈퇴하시겠습니까?')) return;
           const r = await fetch('/tribe/leave', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ player_id: myUsername }) });
@@ -1983,9 +2080,25 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
       try {
         const r = await fetch('/tribes');
         const data = await r.json();
-        const list = (data.tribes || []).map(t =>
-          `<div class="craft-row"><div class="craft-info"><div class="craft-name">[${t.name}]</div><div class="craft-cost">멤버 ${t.member_count}</div></div><button class="craft-btn" data-join="${t.id}">가입</button></div>`
-        ).join('');
+        const list = (data.tribes || []).map(t => {
+          const vp = t.vp || 0;
+          let tag, col;
+          if (vp < 30) { tag = '청정'; col = '#9adb6e'; }
+          else if (vp < 80) { tag = '보통'; col = '#e8c878'; }
+          else { tag = '악성'; col = '#e85040'; }
+          const npcBadge = t.is_npc ? ' 🤖' : '';
+          return `<div class="craft-row"><div class="craft-info"><div class="craft-name">[${t.name}]${npcBadge}</div><div class="craft-cost">멤버 ${t.member_count} · <span style="color:${col}">${tag} ${vp.toFixed(0)}</span></div></div><button class="craft-btn" data-join="${t.id}">가입</button></div>`;
+        }).join('');
+        // Phase 14.9 — 전쟁 활성 목록 표시
+        let warsHtml = '';
+        try {
+          const wr = await fetch('/wars/active');
+          const wd = await wr.json();
+          if ((wd.wars || []).length > 0) {
+            warsHtml = '<div class="hint" style="margin-top:12px">⚔️ 활성 전쟁:</div>' +
+              wd.wars.map(w => `<div class="craft-row" style="font-size:12px"><div class="craft-info">[${w.attacker_name}] → [${w.defender_name}] (${w.tier})</div></div>`).join('');
+          }
+        } catch (e) {}
         body.innerHTML = `
           <div class="hint">새 길드 만들기:</div>
           <div style="display:flex;gap:6px;margin:4px 0 12px">
@@ -1994,6 +2107,7 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
           </div>
           <div class="hint">또는 기존 길드 가입:</div>
           ${list || '<div class="hint">(길드 없음)</div>'}
+          ${warsHtml}
         `;
         document.getElementById('tribeCreateBtn').onclick = async () => {
           const name = document.getElementById('tribeNameInput').value.trim();
@@ -2007,7 +2121,12 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
           const tid = parseInt(b.dataset.join, 10);
           const r = await fetch('/tribe/join', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ player_id: myUsername, tribe_id: tid }) });
           const d = await r.json();
-          if (d.ok) { myTribeId = d.tribe_id; myTribeName = d.name; sendPrimary({ type: 'tribe_set', tribeId: d.tribe_id, tribeName: d.name }); renderTribePanel(); }
+          if (d.ok) {
+            myTribeId = d.tribe_id; myTribeName = d.name;
+            sendPrimary({ type: 'tribe_set', tribeId: d.tribe_id, tribeName: d.name });
+            if (d.promoted) showNotice(`👑 [${d.name}] 길드 운영권 인수! 당신이 새 리더입니다`);
+            renderTribePanel();
+          }
           else alert(d.error || '가입 실패');
         });
       } catch (e) {
