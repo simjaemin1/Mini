@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.46-b-smooth (해안선 smooth noise) ===
-console.log('%c[durango-mini] client build = 14.46-b-smooth (해안선 부드럽게)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.49 (NPC A* + PZ식 계단) ===
+console.log('%c[durango-mini] client build = 14.49 (A* + 계단)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -50,6 +50,7 @@ console.log('%c[durango-mini] client build = 14.46-b-smooth (해안선 부드럽
   let myPvpEnabled = false;
   let myBuildFloor = 0; // 2.5D — 현재 건축 층 (Z=위, X=아래)
   let myFloor = 0;      // 캐릭터가 현재 있는 층 (계단으로 이동)
+  let myStairZ = 0;     // 14.49-c: 계단 위 z 보간 (서버 발 z, 0~32)
   // Phase 14.30: 건축 placement mode
   let placementMode = null; // null 또는 { type, floor }
   let placementCursor = { wx: 0, wy: 0 }; // 마우스 따라가는 abs 좌표
@@ -915,6 +916,8 @@ console.log('%c[durango-mini] client build = 14.46-b-smooth (해안선 부드럽
       if (c.role === 'primary') {
         if (lastTickAt) lastServerPingMs = now - lastTickAt;
         lastTickAt = now;
+        // 14.49-c: 계단 z (0~32) — 서버 권위 값을 클라가 부드럽게 따라감
+        if (typeof msg.selfZ === 'number') myStairZ = msg.selfZ;
       }
       for (const pp of msg.players) {
         if (pp.pid === myPid && c.role === 'primary') {
@@ -1547,7 +1550,7 @@ console.log('%c[durango-mini] client build = 14.46-b-smooth (해안선 부드럽
     {
       const iso = w2i(myAbsPredicted.x, myAbsPredicted.y);
       const myDisplay = myTribeName ? `[${myTribeName}] ${myName}` : myName;
-      const myZ = myFloor * FLOOR_HEIGHT;
+      const myZ = myFloor * FLOOR_HEIGHT + (myStairZ || 0); // 14.49-c: 계단 z 추가
       const isoMe = w2i(myAbsPredicted.x, myAbsPredicted.y, myZ);
       renderables.push({ z: (myAbsPredicted.x + myAbsPredicted.y) * 0.5 + myFloor * 1000 + 500, kind: 'player', pid: myPid, name: myDisplay, color: myColor, hp: myHp, maxHp: myMaxHp, iso: isoMe, ax: myAbsPredicted.x, ay: myAbsPredicted.y, isMe: true });
     }

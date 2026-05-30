@@ -11,6 +11,7 @@ const db = require('./zone-local-db'); // 로컬 zone DB — players 없음
 const central = require('./central-client'); // central HTTP 클라이언트
 const { Quadtree } = require('./quadtree'); // spatial index — O(N²) 검색 회피
 const { ChunkManager, CHUNK_SIZE, generateChunkResources, generateVillagesForZone, generateCoastlineWaterTiles } = require('./chunk'); // 청크 단위 entity 분류 + procedural + 해안선
+const { findPath: pfFindPath } = require('./pathfind'); // Phase 14.49-b: NPC A* pathfinding
 const harvestedSeeds = new Set(); // 채집된 시드 자원 (DB에서 load)
 
 // === 활성 청크 (12.2.b) — 사람 player + observer 위치 주변 청크만 시뮬레이션 ===
@@ -809,8 +810,79 @@ function decideNpcBehavior(npc, now) {
   }
 }
 
+// === Phase 14.49-a/b: NPC pathfinding 헬퍼 ===
+// path 계산 (npc.targetX/Y 기준). 실패하면 null. 너무 자주 호출하면 비싸니 캐시.
+function computeNpcPath(npc) {
+  if (typeof npc.targetX !== 'number' || typeof npc.targetY !== 'number') return null;
+  // 매우 가까우면 path 필요 없음 (beeline)
+  const d = Math.hypot(npc.targetX - npc.x, npc.targetY - npc.y);
+  if (d < 48) return [{ x: npc.targetX, y: npc.targetY }];
+  return pfFindPath(npc.x, npc.y, npc.targetX, npc.targetY, {
+    floor: npc.floor || 0,
+    isBlockedFn: isBlockedByWall,
+    isWaterFn: isWaterTileLocal,
+    maxCells: 1500,        // ~38ms 한도 (TICK 33ms 안에 들어와야 함)
+    searchRadiusCells: 48, // 1536px 범위
+  });
+}
+// npc.path를 따라 다음 waypoint 향해 vx/vy 설정. 도착했으면 다음 waypoint로.
+// 반환: true면 path 완료 (목표 도달), false면 진행 중
+function followNpcPath(npc, speedMult) {
+  if (!npc.path || npc.pathIndex >= npc.path.length) return true;
+  const wp = npc.path[npc.pathIndex];
+  const dx = wp.x - npc.x, dy = wp.y - npc.y;
+  const dd = Math.hypot(dx, dy);
+  if (dd < 10) {
+    npc.pathIndex++;
+    if (npc.pathIndex >= npc.path.length) {
+      npc.vx = 0; npc.vy = 0;
+      return true;
+    }
+    return false;
+  }
+  const speed = MOVE_SPEED * (speedMult || 0.6);
+  npc.vx = (dx / dd) * speed;
+  npc.vy = (dy / dd) * speed;
+  return false;
+}
+// stuck 감지: lastPos·lastPosAt 비교. 1.5s간 5px도 못 움직였으면 stuck.
+function detectStuck(npc, now) {
+  if (!npc._stuckPos) {
+    npc._stuckPos = { x: npc.x, y: npc.y, at: now };
+    return false;
+  }
+  const moved = Math.hypot(npc.x - npc._stuckPos.x, npc.y - npc._stuckPos.y);
+  if (moved > 5) {
+    npc._stuckPos = { x: npc.x, y: npc.y, at: now };
+    return false;
+  }
+  if (now - npc._stuckPos.at > 1500) {
+    npc._stuckPos = { x: npc.x, y: npc.y, at: now }; // reset
+    return true;
+  }
+  return false;
+}
+// stuck 해소: path·target 비우고 짧은 wander 방향 + 다음 decide 트리거
+function unstuckNpc(npc, now) {
+  npc.path = null;
+  npc.pathIndex = 0;
+  // 작은 회피 — 랜덤 방향으로 짧게 비킨다
+  const ang = Math.random() * Math.PI * 2;
+  npc.targetX = npc.x + Math.cos(ang) * 80;
+  npc.targetY = npc.y + Math.sin(ang) * 80;
+  npc.nextDecisionAt = now + 800; // 잠깐 wander 후 다시 결정
+  npc.behavior = 'wander';
+  npc.vx = 0; npc.vy = 0;
+}
+
 function npcStep(npc, dt, now) {
   decideNpcBehavior(npc, now);
+
+  // stuck 감지 — 모든 모드 공통. fight 모드 중엔 무시 (멈춰서 공격 중일 수 있음)
+  if (npc.behavior !== 'fight' && detectStuck(npc, now)) {
+    unstuckNpc(npc, now);
+    return;
+  }
 
   // === fight 모드: 늑대 직접 공격 (target 사라지면 자동 해제) ===
   if (npc.behavior === 'fight') {
@@ -860,15 +932,30 @@ function npcStep(npc, dt, now) {
     return;
   }
 
-  // 목표 방향으로 이동
-  const dx = npc.targetX - npc.x, dy = npc.targetY - npc.y;
-  const dd = Math.hypot(dx, dy);
-  if (dd > 8) {
-    const speed = npc.behavior === 'flee' ? MOVE_SPEED * 1.0 : MOVE_SPEED * 0.6;
-    npc.vx = (dx / dd) * speed;
-    npc.vy = (dy / dd) * speed;
-  } else {
-    npc.vx = 0; npc.vy = 0;
+  // 목표 방향으로 이동 — A* path 따라가기. path 없으면 새로 계산.
+  // path가 만료(목표 바뀜)되거나 너무 오래(>3초) 됐으면 재계산.
+  const speedMult = npc.behavior === 'flee' ? 1.0 : 0.6;
+  if (!npc.path || npc.pathIndex >= npc.path.length ||
+      npc._pathFor !== `${npc.targetX|0}_${npc.targetY|0}` ||
+      (npc._pathAt && now - npc._pathAt > 3000)) {
+    const p = computeNpcPath(npc);
+    if (p) {
+      npc.path = p;
+      npc.pathIndex = 0;
+      npc._pathFor = `${npc.targetX|0}_${npc.targetY|0}`;
+      npc._pathAt = now;
+    } else {
+      // path 못 찾음 — beeline fallback (작은 거리거나 막힐 만한 게 없을 때)
+      npc.path = [{ x: npc.targetX, y: npc.targetY }];
+      npc.pathIndex = 0;
+      npc._pathFor = `${npc.targetX|0}_${npc.targetY|0}`;
+      npc._pathAt = now;
+    }
+  }
+  const arrived = followNpcPath(npc, speedMult);
+  if (!arrived) return;
+  // arrived: 목표 행동 실행 (gather/plant/harvest)
+  {
     // 목표 도달 시 행동 실행
     if (npc.behavior === 'gather' && npc.gatherTarget) {
       const r = resources.get(npc.gatherTarget);
@@ -3012,6 +3099,66 @@ setInterval(() => {
     }
   }
 
+  // === Phase 14.49-c: PZ식 계단 — 자동 ascent/descent + z 보간 ===
+  // 계단 tile에 진입하면 자동으로 다음 층으로. cooldown으로 ping-pong 방지.
+  for (const p of players.values()) {
+    if (p.handingOff || p.isNpc || p.isDown) continue;
+    // cooldown 중이면 z만 부드럽게 0으로 복원
+    if (p.stairCooldownUntil && now < p.stairCooldownUntil) {
+      if (p.z > 0) p.z = Math.max(0, p.z - 80 * dt);
+      continue;
+    }
+    // 발 밑 계단 찾기 (player floor와 같거나 한 층 아래)
+    const cx = Math.floor(p.x / BUILDING_SIZE);
+    const cy = Math.floor(p.y / BUILDING_SIZE);
+    let stairUnder = null;
+    const nearbyB = qtBuildings ? qtBuildings.queryCircle(cx * BUILDING_SIZE + 16, cy * BUILDING_SIZE + 16, 40) : Array.from(buildings.values());
+    for (const b of nearbyB) {
+      if (b.type !== 'stair') continue;
+      const bcx = Math.floor(b.x / BUILDING_SIZE);
+      const bcy = Math.floor(b.y / BUILDING_SIZE);
+      if (bcx !== cx || bcy !== cy) continue;
+      const bf = b.floor || 0;
+      // player가 stair floor 또는 stair floor+1에 있을 때 사용 가능
+      if (bf === (p.floor || 0) || bf + 1 === (p.floor || 0)) {
+        stairUnder = b; break;
+      }
+    }
+    if (!stairUnder) {
+      // 계단 벗어남 — 진행 중이던 transition 취소, z 복원
+      if (p.onStairId) {
+        p.onStairId = null;
+        p.stairProgress = 0;
+        p.z = 0;
+      }
+      continue;
+    }
+    // 계단 위 — 진입 또는 진행 중
+    const stairFloor = stairUnder.floor || 0;
+    const goingUp = (p.floor || 0) === stairFloor; // 계단 아래층 → 위로
+    if (!p.onStairId || p.onStairId !== stairUnder.id) {
+      p.onStairId = stairUnder.id;
+      p.stairProgress = 0;
+      p.stairGoingUp = goingUp;
+    }
+    p.stairProgress += dt / 0.7; // 0.7초 traverse
+    if (p.stairGoingUp) {
+      p.z = Math.min(32, p.stairProgress * 32);
+    } else {
+      p.z = Math.max(0, 32 - p.stairProgress * 32);
+    }
+    if (p.stairProgress >= 1) {
+      p.floor = p.stairGoingUp ? (stairFloor + 1) : stairFloor;
+      p.floor = Math.max(0, Math.min(5, p.floor));
+      p.z = 0;
+      p.onStairId = null;
+      p.stairProgress = 0;
+      p.stairCooldownUntil = now + 1500;
+      send(p.ws, { type: 'floor_changed', floor: p.floor });
+      broadcast({ type: 'player_floor_changed', pid: p.pid, floor: p.floor });
+    }
+  }
+
   // === 생존 게이지: hunger/thirst 감소 + 0이면 HP 페널티 + vp decay ===
   for (const p of players.values()) {
     if (p.hp <= 0 || p.isDown) continue;
@@ -3245,6 +3392,8 @@ setInterval(() => {
       type: 'tick', t: now,
       players: visiblePlayers(p.x, p.y, p.pid, p.viewerState),
       mobs: visibleMobs(p.x, p.y, p.viewerState),
+      // 14.49-c: 계단 위에서의 본인 z (0~32). 매 tick 보내야 부드럽게 lerp 보임.
+      selfZ: p.z || 0,
     });
   }
   for (const [ws, data] of observers) {
