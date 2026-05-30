@@ -810,19 +810,49 @@ function decideNpcBehavior(npc, now) {
   }
 }
 
-// === Phase 14.49-a/b: NPC pathfinding 헬퍼 ===
-// path 계산 (npc.targetX/Y 기준). 실패하면 null. 너무 자주 호출하면 비싸니 캐시.
-function computeNpcPath(npc) {
+// === Phase 14.49-a/b: NPC pathfinding 헬퍼 (14.49-fix: 성능 대폭 축소) ===
+// 한반도 같은 zone은 NPC 200+ 마리라 무차별 A*는 CPU 폭발. 다음 가드 적용:
+// - wander/flee 모드: A* 안 함 (beeline) — 짧은 거리·target 매번 바뀜
+// - gather/plant/harvest: A* 사용, 단 NPC당 최소 2초 간격
+// - maxCells 200으로 축소 (~4ms 한도)
+// - 직선 raycast로 막힘 없으면 A* 스킵
+function straightPathClear(x0, y0, x1, y1, floor) {
+  // 32px씩 샘플링하며 벽·물 체크
+  const dx = x1 - x0, dy = y1 - y0;
+  const dist = Math.hypot(dx, dy);
+  const steps = Math.ceil(dist / 32);
+  if (steps === 0) return true;
+  const sx = dx / steps, sy = dy / steps;
+  let px = x0, py = y0;
+  for (let i = 0; i < steps; i++) {
+    const nx = px + sx, ny = py + sy;
+    if (isBlockedByWall(nx, ny, px, py, floor)) return false;
+    if (isWaterTileLocal(nx, ny)) return false;
+    px = nx; py = ny;
+  }
+  return true;
+}
+function computeNpcPath(npc, now) {
   if (typeof npc.targetX !== 'number' || typeof npc.targetY !== 'number') return null;
-  // 매우 가까우면 path 필요 없음 (beeline)
   const d = Math.hypot(npc.targetX - npc.x, npc.targetY - npc.y);
   if (d < 48) return [{ x: npc.targetX, y: npc.targetY }];
+  // wander/flee는 A* 안 씀 — beeline path (벽 만나면 stuck 감지가 fallback)
+  if (npc.behavior === 'wander' || npc.behavior === 'flee') {
+    return [{ x: npc.targetX, y: npc.targetY }];
+  }
+  // 직선이 깨끗하면 A* 스킵 (cheap raycast)
+  if (straightPathClear(npc.x, npc.y, npc.targetX, npc.targetY, npc.floor || 0)) {
+    return [{ x: npc.targetX, y: npc.targetY }];
+  }
+  // A* — NPC당 최소 2초 간격
+  if (npc._lastAStarAt && now - npc._lastAStarAt < 2000) return null;
+  npc._lastAStarAt = now;
   return pfFindPath(npc.x, npc.y, npc.targetX, npc.targetY, {
     floor: npc.floor || 0,
     isBlockedFn: isBlockedByWall,
     isWaterFn: isWaterTileLocal,
-    maxCells: 1500,        // ~38ms 한도 (TICK 33ms 안에 들어와야 함)
-    searchRadiusCells: 48, // 1536px 범위
+    maxCells: 200,         // ~4ms 한도 (TICK 33ms에 여유)
+    searchRadiusCells: 24, // 768px 범위
   });
 }
 // npc.path를 따라 다음 waypoint 향해 vx/vy 설정. 도착했으면 다음 waypoint로.
@@ -935,22 +965,16 @@ function npcStep(npc, dt, now) {
   // 목표 방향으로 이동 — A* path 따라가기. path 없으면 새로 계산.
   // path가 만료(목표 바뀜)되거나 너무 오래(>3초) 됐으면 재계산.
   const speedMult = npc.behavior === 'flee' ? 1.0 : 0.6;
-  if (!npc.path || npc.pathIndex >= npc.path.length ||
-      npc._pathFor !== `${npc.targetX|0}_${npc.targetY|0}` ||
-      (npc._pathAt && now - npc._pathAt > 3000)) {
-    const p = computeNpcPath(npc);
-    if (p) {
-      npc.path = p;
-      npc.pathIndex = 0;
-      npc._pathFor = `${npc.targetX|0}_${npc.targetY|0}`;
-      npc._pathAt = now;
-    } else {
-      // path 못 찾음 — beeline fallback (작은 거리거나 막힐 만한 게 없을 때)
-      npc.path = [{ x: npc.targetX, y: npc.targetY }];
-      npc.pathIndex = 0;
-      npc._pathFor = `${npc.targetX|0}_${npc.targetY|0}`;
-      npc._pathAt = now;
-    }
+  const targetKey = `${npc.targetX|0}_${npc.targetY|0}`;
+  const needPath = !npc.path || npc.pathIndex >= npc.path.length ||
+                   npc._pathFor !== targetKey ||
+                   (npc._pathAt && now - npc._pathAt > 5000);
+  if (needPath) {
+    const p = computeNpcPath(npc, now);
+    npc.path = p || [{ x: npc.targetX, y: npc.targetY }]; // 못 찾으면 beeline
+    npc.pathIndex = 0;
+    npc._pathFor = targetKey;
+    npc._pathAt = now;
   }
   const arrived = followNpcPath(npc, speedMult);
   if (!arrived) return;
@@ -3029,6 +3053,8 @@ setInterval(() => {
     const npc = players.get(pid);
     if (!npc || npc.hp <= 0) continue;
     if (!isPositionActive(npc.x, npc.y)) { npc.vx = 0; npc.vy = 0; continue; }
+    // 14.49-fix: tick 시간 예산 — 15ms 넘으면 나머지 NPC는 다음 tick에. player 처리 시간 확보.
+    if ((Date.now() - now) > 15) break;
     npcStep(npc, dt, now);
   }
   // 농지 ready 마크 (시간 지남) — 한 번 ready되면 그대로

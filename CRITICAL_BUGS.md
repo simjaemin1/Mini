@@ -13,6 +13,29 @@
 
 ---
 
+## 2026-05-30 · NPC A* pathfinding이 한반도 zone CPU 폭발
+
+**증상**: 14.49 배포 후 한반도(NPC 많은 zone) 컨테이너가 hang. 클라 콘솔에 `WebSocket failed: Could not connect` + `[recover] primary 재연결` 폭주. 자원·NPC 다 멈춤. 추가로 집 벽 콜라이더도 작동 안 함 (= 서버가 tick 못 돌려서 isBlockedByWall 검사 못 함).
+
+**잘못된 가설**: WS 핸드셰이크 자체 문제 / 자원 broadcast 문제.
+
+**진짜 원인**: A* pathfinding 비용 미산정. NPC ~200마리 × TICK 30Hz × A* maxCells=1500 expansion × 각 expansion당 quadtree 쿼리 = **분당 ~5억 quadtree 호출**. 컨테이너 CPU 100% 도달 → tick 완료 못 함 → WS keepalive 못 응답 → 클라 끊김.
+
+**수정 (14.49-fix)**:
+1. wander/flee 모드는 A* 안 함 (beeline). 짧은 거리·random target에 A* 낭비.
+2. **straightPathClear raycast 먼저** — 직선이 깨끗하면 A* 스킵 (압도적 다수 케이스).
+3. NPC당 A* 호출 최소 2초 간격 (per-NPC throttle).
+4. maxCells 1500 → 200, searchRadius 48 → 24 cell.
+5. NPC AI 루프에 **시간 예산 15ms** — 넘으면 남은 NPC는 다음 tick.
+
+**교훈**:
+- **새 알고리즘 추가할 때 "전체 부하 = 단가 × 호출 수" 항상 계산.** 단가 4ms도 200회면 800ms로 tick 33ms 한참 넘김.
+- **MMO에서 무차별 A*는 죽음.** 직선 raycast 같은 cheap fast-path 먼저, 비싼 A*는 정말 필요할 때만.
+- **CPU 포화 = 모든 게 망가짐.** 콜라이더 검사가 안 돌면 클라가 벽 통과 (= 본 적 없는 망가짐). 단일 원인이 다중 증상 만듦.
+- **시간 예산 가드는 안전망.** "이론적으로 빠른 코드"가 어쩌다 폭주해도 tick은 살리기.
+
+---
+
 ## 2026-05-30 · observer WS open/close flap → "자원이 갑자기 사라짐"
 
 **증상**: 한반도 zone에서 한참 놀다 보면 갑자기 근처 나무·돌·mob이 다 사라짐. "서버 끊긴 거 아냐?"
