@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.46-b-mini (해안선 water tiles + ocean 진입 차단) ===
-console.log('%c[durango-mini] client build = 14.46-b-mini (해안선)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.46-b-smooth (해안선 smooth noise) ===
+console.log('%c[durango-mini] client build = 14.46-b-smooth (해안선 부드럽게)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -96,6 +96,16 @@ console.log('%c[durango-mini] client build = 14.46-b-mini (해안선)', 'color:#
     for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
     return (((h * 9301 + 49297) >>> 0) % 1000) / 1000;
   }
+  function _coastSmoothNoise(side, zoneId, t) {
+    const STEP = 8;
+    const t0 = Math.floor(t / STEP) * STEP;
+    const t1 = t0 + STEP;
+    const n0 = _coastNoise(`${side}_${zoneId}_${t0}`);
+    const n1 = _coastNoise(`${side}_${zoneId}_${t1}`);
+    const frac = (t - t0) / STEP;
+    const u = frac * frac * (3 - 2 * frac);
+    return n0 * (1 - u) + n1 * u;
+  }
   function clientFindZoneAt(absX, absY) {
     for (const z of Object.values(zonesMeta)) {
       if (absX >= z.worldOffsetX && absX < z.worldOffsetX + z.zoneWidth &&
@@ -121,19 +131,19 @@ console.log('%c[durango-mini] client build = 14.46-b-mini (해안선)', 'color:#
         const distW = tx * tileSize, distE = (cols - 1 - tx) * tileSize;
         if (Math.min(distW, distE, distN, distS) > maxDist) continue;
         if (distW < maxDist && isOceanAt(zone.worldOffsetX - 1, absY)) {
-          const n = _coastNoise(`W_${zone.id}_${ty}`) * COASTLINE_NOISE;
+          const n = _coastSmoothNoise('W', zone.id, ty) * COASTLINE_NOISE;
           if (distW < COASTLINE_BASE + n) { waterTiles.add(`${tx}_${ty}`); continue; }
         }
         if (distE < maxDist && isOceanAt(zone.worldOffsetX + zone.zoneWidth + 1, absY)) {
-          const n = _coastNoise(`E_${zone.id}_${ty}`) * COASTLINE_NOISE;
+          const n = _coastSmoothNoise('E', zone.id, ty) * COASTLINE_NOISE;
           if (distE < COASTLINE_BASE + n) { waterTiles.add(`${tx}_${ty}`); continue; }
         }
         if (distN < maxDist && isOceanAt(absX, zone.worldOffsetY - 1)) {
-          const n = _coastNoise(`N_${zone.id}_${tx}`) * COASTLINE_NOISE;
+          const n = _coastSmoothNoise('N', zone.id, tx) * COASTLINE_NOISE;
           if (distN < COASTLINE_BASE + n) { waterTiles.add(`${tx}_${ty}`); continue; }
         }
         if (distS < maxDist && isOceanAt(absX, zone.worldOffsetY + zone.zoneHeight + 1)) {
-          const n = _coastNoise(`S_${zone.id}_${tx}`) * COASTLINE_NOISE;
+          const n = _coastSmoothNoise('S', zone.id, tx) * COASTLINE_NOISE;
           if (distS < COASTLINE_BASE + n) { waterTiles.add(`${tx}_${ty}`); continue; }
         }
       }
@@ -1346,10 +1356,10 @@ console.log('%c[durango-mini] client build = 14.46-b-mini (해안선)', 'color:#
   let chatSetup = false;
 
   // === 서버 권위 좌표 → 클라 예측 보정 ===
-  // Phase 14.15: 임계 100 → 16 (cell 절반). wall 두께 0이라 작은 desync도 즉시 lerp.
-  // wall에 막혔는데 client만 자유 이동하면 server position 따라 lerp되어야 함.
-  // - <16px: 무시 (정상 lag 드리프트)
-  // - 16~500px: 짧은 lerp (80ms — wall 막힘 sync 빠르게)
+  // Phase 14.46-b-smooth: 임계 16 → 48 (1.5 tile). 평지에서 RTT 지터로 인한 작은 드리프트는 무시.
+  // 너무 빡빡하면 walking 중 자주 짧게 뒤로 밀려나는 느낌 발생. wall stuck은 50~100px 차이라 여전히 감지됨.
+  // - <48px: 무시 (정상 lag 드리프트)
+  // - 48~500px: lerp (150ms — 부드럽게)
   // - >500px: 즉시 snap
   function applyServerCorrection(absX, absY) {
     const ex = absX - myAbsPredicted.x, ey = absY - myAbsPredicted.y;
@@ -1358,8 +1368,8 @@ console.log('%c[durango-mini] client build = 14.46-b-mini (해안선)', 'color:#
       myAbsPredicted = { x: absX, y: absY };
       correctionVel = { x: 0, y: 0 };
       correctionUntil = 0;
-    } else if (dist > 16) {
-      const T = 0.08; // 80ms — wall stick 빠르게
+    } else if (dist > 48) {
+      const T = 0.15; // 150ms — 부드러운 보정
       correctionVel.x = ex / T;
       correctionVel.y = ey / T;
       correctionUntil = performance.now() + T * 1000;

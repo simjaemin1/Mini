@@ -2923,10 +2923,12 @@ setInterval(() => {
   // === Spatial index 재구축 — 모든 nearest-search가 이걸 씀 ===
   rebuildSpatialIndex();
 
-  // 입력 타임아웃 — 1초 동안 입력 없으면 정지
+  // 입력 타임아웃 — 2.5초 동안 입력 없으면 정지
+  // 14.46-b-smooth: 1000 → 2500. 평지에서 짧은 네트워크 hiccup으로 server가 멈췄다가 클라 예측이 앞서면
+  // 다음 snapshot으로 사용자가 뒤로 밀려나는 느낌 받음. 2.5초로 늘려서 잠깐 끊겨도 server는 계속 이동.
   for (const p of players.values()) {
     if (p.handingOff) continue;
-    if (now - p.lastSeen > 1000) { p.vx = 0; p.vy = 0; }
+    if (now - p.lastSeen > 2500) { p.vx = 0; p.vy = 0; }
   }
 
   // === NPC 행동 결정 (사람 player는 input으로 vx/vy 받지만 NPC는 직접 결정) ===

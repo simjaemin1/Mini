@@ -325,6 +325,17 @@ function _coastNoise(s) {
   for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
   return (((h * 9301 + 49297) >>> 0) % 1000) / 1000;
 }
+// Smooth noise: 8 타일마다 sample + smoothstep 보간. 인접 타일은 거의 같은 값 → 톱니 X
+function _coastSmoothNoise(side, zoneId, t) {
+  const STEP = 8;
+  const t0 = Math.floor(t / STEP) * STEP;
+  const t1 = t0 + STEP;
+  const n0 = _coastNoise(`${side}_${zoneId}_${t0}`);
+  const n1 = _coastNoise(`${side}_${zoneId}_${t1}`);
+  const frac = (t - t0) / STEP;
+  const u = frac * frac * (3 - 2 * frac); // smoothstep
+  return n0 * (1 - u) + n1 * u;
+}
 
 // zone: { id, isOcean, worldOffsetX, worldOffsetY, zoneWidth, zoneHeight }
 // tileSize: pixels per tile (보통 32)
@@ -357,22 +368,22 @@ function generateCoastlineWaterTiles(zone, tileSize, findZoneAtFn) {
 
       // West edge — ocean이 인접하면 water
       if (distW < maxDist && isOceanAt(zone.worldOffsetX - 1, absY)) {
-        const n = _coastNoise(`W_${zone.id}_${ty}`) * COASTLINE_NOISE;
+        const n = _coastSmoothNoise('W', zone.id, ty) * COASTLINE_NOISE;
         if (distW < COASTLINE_BASE + n) { waterTiles.add(`${tx}_${ty}`); continue; }
       }
       // East
       if (distE < maxDist && isOceanAt(zone.worldOffsetX + zone.zoneWidth + 1, absY)) {
-        const n = _coastNoise(`E_${zone.id}_${ty}`) * COASTLINE_NOISE;
+        const n = _coastSmoothNoise('E', zone.id, ty) * COASTLINE_NOISE;
         if (distE < COASTLINE_BASE + n) { waterTiles.add(`${tx}_${ty}`); continue; }
       }
       // North
       if (distN < maxDist && isOceanAt(absX, zone.worldOffsetY - 1)) {
-        const n = _coastNoise(`N_${zone.id}_${tx}`) * COASTLINE_NOISE;
+        const n = _coastSmoothNoise('N', zone.id, tx) * COASTLINE_NOISE;
         if (distN < COASTLINE_BASE + n) { waterTiles.add(`${tx}_${ty}`); continue; }
       }
       // South
       if (distS < maxDist && isOceanAt(absX, zone.worldOffsetY + zone.zoneHeight + 1)) {
-        const n = _coastNoise(`S_${zone.id}_${tx}`) * COASTLINE_NOISE;
+        const n = _coastSmoothNoise('S', zone.id, tx) * COASTLINE_NOISE;
         if (distS < COASTLINE_BASE + n) { waterTiles.add(`${tx}_${ty}`); continue; }
       }
     }
