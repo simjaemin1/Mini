@@ -196,7 +196,8 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
     if (keys.has(k)) return;
     keys.add(k);
     if (k === 'e') sendPrimary({ type: 'gather' });
-    else if (k === 'c') sendPrimary({ type: 'claim' });
+    else if (k === 'c') sendPrimary({ type: 'claim', kind: 'personal' });  // 개인 사유지 (1 grid)
+    else if (k === 't' && !e.shiftKey) sendPrimary({ type: 'claim', kind: 'temporary' });  // 임시 사유지 (1 grid)
     else if (k === 't') sendPrimary({ type: 'trade_offer', give: 'wood' });
     else if (k === 'y') sendPrimary({ type: 'trade_offer', give: 'stone' });
     else if (k === 'f') sendPrimary({ type: 'attack' });
