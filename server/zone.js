@@ -609,8 +609,10 @@ function spawnNpc(opts = {}) {
   }
   // 1F 바닥 (3x3) — 천장
   for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) addBlock(houseCx + i, houseCy + j, 'floor', 1);
-  // 옆 계단 — 서쪽(W) 방향으로 올라가야 집(1F)로 진입 가능
-  addBlock(houseCx + 2, houseCy, 'stair', 0, { dir: 'W' });
+  // 옆 계단 (14.49-e: 3 cell 구조) — anchor=가장 동쪽(낮음), dir='W'로 집을 향해 올라감.
+  // 점유 cells: (houseCx+4, houseCy), (houseCx+3, houseCy), (houseCx+2, houseCy)
+  // anchor=houseCx+4 (낮은 발판). step 0~2가 W 방향으로 진행.
+  addBlock(houseCx + 4, houseCy, 'stair', 0, { dir: 'W' });
 
   console.log(`[${ZONE_ID}] 🤖 NPC 스폰: ${name} @ (${cx.toFixed(0)},${cy.toFixed(0)}) + PZ식 집`);
   return player;
@@ -3138,11 +3140,12 @@ setInterval(() => {
     }
   }
 
-  // === Phase 14.49-d: PZ식 계단 — WASD만으로 자동 ascent/descent ===
-  // entity(player/NPC/mob)가 stair 위 + vx/vy가 stair.dir과 같은 방향 → ascent (위 floor)
-  //                                  + vx/vy가 반대 방향 → descent (아래 floor, 단 위 floor에 있을 때)
-  // 멈추거나 옆으로 가면 progress 멈춤. 100% 도달 시 floor 변경 + dir 방향으로 한 칸 nudge.
-  // 핵심 안전장치: floor 변경은 progress=1 도달했을 때만. 우연한 접촉으로 변경 X.
+  // === Phase 14.49-e: PZ식 다단 계단 — 3 cell 점유 + step별 z + walk-off로 floor 전환 ===
+  // stair (b) — anchor (b.x, b.y) = 낮은 발판. dir = 위로 가는 방향.
+  // 3 cells 점유: anchor (step 0, z=0), anchor+dir (step 1, z=16), anchor+2*dir (step 2, z=32)
+  // 계단 위 어디든 서있을 수 있음. WASD로 dir 방향 누르면 한 칸씩 이동 = 자연스럽게 올라감.
+  // dir 방향으로 stair 벗어남 (step 2에서 한 칸 더) → 위층 도착.
+  // 반대 방향으로 stair 벗어남 (step 0에서 한 칸 더) → 아래층 도착.
   function dirVec(dir) {
     if (dir === 'N') return { x: 0, y: -1 };
     if (dir === 'S') return { x: 0, y: 1 };
@@ -3150,80 +3153,97 @@ setInterval(() => {
     if (dir === 'W') return { x: -1, y: 0 };
     return { x: 0, y: -1 };
   }
-  function findStairAt(absLocalX, absLocalY) {
-    const cx = Math.floor(absLocalX / BUILDING_SIZE);
-    const cy = Math.floor(absLocalY / BUILDING_SIZE);
-    const near = qtBuildings ? qtBuildings.queryCircle(cx * BUILDING_SIZE + 16, cy * BUILDING_SIZE + 16, 40) : Array.from(buildings.values());
+  // 어떤 stair의 어떤 step에 entity가 있는지 찾음. 없으면 null.
+  function findStairStepFor(entity) {
+    const ex = Math.floor(entity.x / BUILDING_SIZE);
+    const ey = Math.floor(entity.y / BUILDING_SIZE);
+    const near = qtBuildings ? qtBuildings.queryCircle(entity.x, entity.y, BUILDING_SIZE * 3) : Array.from(buildings.values());
     for (const b of near) {
       if (b.type !== 'stair') continue;
-      const bcx = Math.floor(b.x / BUILDING_SIZE);
-      const bcy = Math.floor(b.y / BUILDING_SIZE);
-      if (bcx === cx && bcy === cy) return b;
+      const dir = b.data?.dir || 'N';
+      const dv = dirVec(dir);
+      const acx = Math.floor(b.x / BUILDING_SIZE);
+      const acy = Math.floor(b.y / BUILDING_SIZE);
+      for (let step = 0; step <= 2; step++) {
+        const ccx = acx + dv.x * step;
+        const ccy = acy + dv.y * step;
+        if (ex === ccx && ey === ccy) return { stair: b, step };
+      }
     }
     return null;
   }
   function stepStairFor(entity) {
-    const stair = findStairAt(entity.x, entity.y);
-    if (!stair) {
-      // 계단 벗어남 — 진행중이던 traversal 중단, z 부드럽게 0 복귀
-      if (entity.onStairId) entity.onStairId = null;
-      if ((entity.z || 0) > 0) entity.z = Math.max(0, (entity.z || 0) - 80 * dt);
+    const cur = findStairStepFor(entity);
+    if (!cur) {
+      // stair 벗어남 — 어느 방향으로 벗어났는지 보고 floor 결정
+      if (entity.onStairId) {
+        const stair = buildings.get(entity.onStairId);
+        if (stair) {
+          const sd = stair.data?.dir || 'N';
+          const dv = dirVec(sd);
+          const lastStep = entity.stairStep ?? 0;
+          const stairFloor = stair.floor || 0;
+          const vx = entity.vx || 0, vy = entity.vy || 0;
+          const align = vx * dv.x + vy * dv.y;
+          if (lastStep === 2 && align > 0) {
+            // 위쪽 끝에서 dir 방향으로 walk-off = 위층 도착
+            entity.floor = Math.min(5, stairFloor + 1);
+            entity.z = 0;
+            if (entity.ws) {
+              send(entity.ws, { type: 'floor_changed', floor: entity.floor });
+              broadcast({ type: 'player_floor_changed', pid: entity.pid, floor: entity.floor });
+            }
+          } else if (lastStep === 0 && align < 0) {
+            // 아래쪽 끝에서 dir 반대로 walk-off = 아래층 도착 (이미 stair.floor)
+            entity.floor = Math.max(0, stairFloor);
+            entity.z = 0;
+            if (entity.ws) {
+              send(entity.ws, { type: 'floor_changed', floor: entity.floor });
+              broadcast({ type: 'player_floor_changed', pid: entity.pid, floor: entity.floor });
+            }
+          } else {
+            // 옆으로 떨어짐 등 — z만 0으로 복귀, floor 유지
+            entity.z = 0;
+          }
+        } else {
+          entity.z = 0;
+        }
+        entity.onStairId = null;
+        entity.stairStep = 0;
+      } else {
+        // 평지 — z 천천히 0으로
+        if ((entity.z || 0) > 0) entity.z = Math.max(0, (entity.z || 0) - 80 * dt);
+      }
       return;
     }
-    const stairFloor = stair.floor || 0;
-    const sd = stair.data?.dir || 'N';
-    const dv = dirVec(sd);
-    const vx = entity.vx || 0, vy = entity.vy || 0;
-    const moveLen = Math.hypot(vx, vy);
-    // dir과 vx/vy의 정렬도 (-1 ~ 1). 양수=ascent 방향, 음수=descent 방향.
-    const align = moveLen > 1 ? ((vx * dv.x + vy * dv.y) / moveLen) : 0;
-    const entityFloor = entity.floor || 0;
-    const canAscend = entityFloor === stairFloor;       // 아래 floor → 위로 갈 수 있음
-    const canDescend = entityFloor === stairFloor + 1;  // 위 floor → 아래로 갈 수 있음
-    if (!canAscend && !canDescend) {
-      // 이 stair는 사용 가능 floor 아님 (다른 층). traversal 안 함.
-      if (entity.onStairId) entity.onStairId = null;
-      entity.z = 0;
-      return;
-    }
-    // 진입 또는 진행 중
-    if (entity.onStairId !== stair.id) {
-      entity.onStairId = stair.id;
-      entity.stairProgress = canAscend ? 0 : 1; // ascent 시작=0, descent 시작=1
-    }
-    const SPEED = 1 / 0.7; // 0.7초 traverse
-    if (canAscend && align > 0.3) {
-      entity.stairProgress = Math.min(1, (entity.stairProgress || 0) + dt * SPEED * align);
-    } else if (canDescend && align < -0.3) {
-      entity.stairProgress = Math.max(0, (entity.stairProgress || 1) - dt * SPEED * (-align));
-    } else if (canAscend) {
-      // ascent 중 안 누름 / 옆으로 → z만 progress 따라 표시 (그대로 유지). 너무 뒤로 굴러내림 X.
-    }
-    entity.z = (entity.stairProgress || 0) * 32;
-    // commit: 끝까지 도달했을 때만 floor 변경
-    if (canAscend && entity.stairProgress >= 1) {
-      entity.floor = Math.min(5, stairFloor + 1);
-      entity.x += dv.x * BUILDING_SIZE;
-      entity.y += dv.y * BUILDING_SIZE;
-      entity.z = 0;
-      entity.onStairId = null;
-      entity.stairProgress = 0;
-      if (entity.ws) {
-        send(entity.ws, { type: 'floor_changed', floor: entity.floor });
-        broadcast({ type: 'player_floor_changed', pid: entity.pid, floor: entity.floor });
-      }
-    } else if (canDescend && entity.stairProgress <= 0) {
-      entity.floor = Math.max(0, stairFloor);
-      entity.x -= dv.x * BUILDING_SIZE;
-      entity.y -= dv.y * BUILDING_SIZE;
-      entity.z = 0;
-      entity.onStairId = null;
-      entity.stairProgress = 0;
-      if (entity.ws) {
-        send(entity.ws, { type: 'floor_changed', floor: entity.floor });
-        broadcast({ type: 'player_floor_changed', pid: entity.pid, floor: entity.floor });
-      }
-    }
+    // stair 위에 있음 — 14.49-e: 6 sub-step (cell당 2칸씩 이등분)
+    const { stair, step } = cur;
+    if (entity.onStairId !== stair.id) entity.onStairId = stair.id;
+    // 현재 cell 안에서의 dir-축 진행도 (0~1) 계산 → sub-step 0/1
+    const dir = stair.data?.dir || 'N';
+    const dv = dirVec(dir);
+    const acx = Math.floor(stair.x / BUILDING_SIZE);
+    const acy = Math.floor(stair.y / BUILDING_SIZE);
+    const cellCx = acx + dv.x * step;
+    const cellCy = acy + dv.y * step;
+    const cellCenterX = cellCx * BUILDING_SIZE + BUILDING_SIZE / 2;
+    const cellCenterY = cellCy * BUILDING_SIZE + BUILDING_SIZE / 2;
+    // entity의 cell 내 dir 축 위치 (-0.5 ~ +0.5)
+    const localDX = entity.x - cellCenterX;
+    const localDY = entity.y - cellCenterY;
+    const projDir = (localDX * dv.x + localDY * dv.y) / BUILDING_SIZE; // -0.5~+0.5
+    // sub-step: cell 절반 단위 (0 = -0.5~0, 1 = 0~+0.5)
+    const subInCell = projDir >= 0 ? 1 : 0;
+    // 전체 sub-step (0~5)
+    const subStep = step * 2 + subInCell;
+    entity.stairStep = step;
+    entity.stairSubStep = subStep;
+    // z 매핑: subStep 0~5 → z 0~32 (5 간격으로 균등)
+    const targetZ = (subStep / 5) * 32;
+    const cur_z = entity.z || 0;
+    const lerpT = Math.min(1, dt * 10);
+    entity.z = cur_z + (targetZ - cur_z) * lerpT;
+    if (Math.abs(entity.z - targetZ) < 0.3) entity.z = targetZ;
   }
   for (const p of players.values()) {
     if (p.handingOff || p.isDown) continue;
@@ -3231,6 +3251,10 @@ setInterval(() => {
   }
   for (const m of mobs.values()) {
     if (m.hp <= 0) continue;
+    // 14.49-e perf: 비활성 chunk mob은 skip. 정지 mob은 onStairId 있을 때만 (방향 변경 가능)
+    if (!isPositionActive(m.x, m.y)) continue;
+    const moving = (m.vx || 0) !== 0 || (m.vy || 0) !== 0;
+    if (!moving && !m.onStairId) continue;
     stepStairFor(m);
   }
 
@@ -3359,12 +3383,11 @@ setInterval(() => {
       const t = players.get(m.aggroTarget);
       if (t && t.isDown) { m.aggroTarget = null; } // Phase 14.41: 다운되면 어그로 풀림
       else if (t) {
-        // 14.49-d: 다른 floor면 가장 가까운 stair로 향함 (state machine이 자동 ascent)
+        // 14.49-e: 다른 floor면 가장 가까운 stair의 "반대 끝"으로 향함.
+        // ascent: anchor 너머(위층 발판 너머)로 target → 자연스럽게 3 cell 다 거쳐 위층 도착
+        // descent: anchor 너머(아래층 발판 너머)로 target → 위층 발판 진입 → 3 cell 거쳐 아래층
         let targetX = t.x, targetY = t.y;
         if ((t.floor || 0) !== (m.floor || 0)) {
-          // mob 현재 floor에서 target floor로 가는 stair 검색
-          // ascent: stair.floor === m.floor (위로 가야 함, t가 위층)
-          // descent: stair.floor === m.floor-1 (아래로 가야 함, stair는 m 아래층)
           let bestStair = null, bestStairD = Infinity;
           const needAscend = (t.floor || 0) > (m.floor || 0);
           const stairFloorWanted = needAscend ? (m.floor || 0) : (m.floor || 0) - 1;
@@ -3375,23 +3398,17 @@ setInterval(() => {
             if (sd < bestStairD) { bestStair = b; bestStairD = sd; }
           }
           if (bestStair) {
-            // stair의 "낮은 쪽 입구"로 향함 (dir 반대 방향에서 진입해야 ascent 됨)
             const sdir = bestStair.data?.dir || 'N';
             const dvx = sdir === 'E' ? 1 : sdir === 'W' ? -1 : 0;
             const dvy = sdir === 'S' ? 1 : sdir === 'N' ? -1 : 0;
             if (needAscend) {
-              targetX = bestStair.x - dvx * BUILDING_SIZE;
-              targetY = bestStair.y - dvy * BUILDING_SIZE;
+              // 위층으로: 위 발판(anchor + 2*dir) 더 너머로 target → step 0→1→2 자연 진행
+              targetX = bestStair.x + dvx * BUILDING_SIZE * 4;
+              targetY = bestStair.y + dvy * BUILDING_SIZE * 4;
             } else {
-              targetX = bestStair.x + dvx * BUILDING_SIZE;
-              targetY = bestStair.y + dvy * BUILDING_SIZE;
-            }
-            // stair tile에 들어왔으면 stair 중심으로 (그리고 dir 방향으로 계속 누름)
-            const onStair = Math.floor(m.x / BUILDING_SIZE) === Math.floor(bestStair.x / BUILDING_SIZE)
-                         && Math.floor(m.y / BUILDING_SIZE) === Math.floor(bestStair.y / BUILDING_SIZE);
-            if (onStair) {
-              targetX = bestStair.x + dvx * BUILDING_SIZE * (needAscend ? 1 : -1);
-              targetY = bestStair.y + dvy * BUILDING_SIZE * (needAscend ? 1 : -1);
+              // 아래층으로: 아래 발판(anchor) 더 너머로 target → step 2→1→0 자연 진행
+              targetX = bestStair.x - dvx * BUILDING_SIZE * 2;
+              targetY = bestStair.y - dvy * BUILDING_SIZE * 2;
             }
           }
         }

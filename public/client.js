@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.49-d (PZ식 계단 WASD + dir + 늑대 추격) ===
-console.log('%c[durango-mini] client build = 14.49-d (PZ식 계단)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.49-e (3-cell 6-subStep 계단) ===
+console.log('%c[durango-mini] client build = 14.49-e (3칸 6단 계단)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -1925,33 +1925,107 @@ console.log('%c[durango-mini] client build = 14.49-d (PZ식 계단)', 'color:#5a
       ctx.beginPath(); ctx.moveTo(x - 9, y - 2); ctx.lineTo(x + 9, y - 2); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(x - 9, y - 7); ctx.lineTo(x + 9, y - 7); ctx.stroke();
     } else if (type === 'stair') {
-      // === PZ식 isometric 사선 ramp ===
-      // dir 방향이 "위로 가는 방향" — 그 방향 corner가 가장 높음, 반대 corner가 z=0.
+      // === PZ식 3-cell 6-subStep 계단 ===
+      // anchor (this draw 좌표 x, y) = cell 0 (낮은 발판) 중심. dir 방향으로 cell 1, 2 추가.
+      // 총 6 sub-step (각 cell당 2 sub-step), z = subStep * 6.4 (0~32).
+      // 시각: 6개 평평한 step 슬랩 + 슬랩 사이 vertical riser. PZ식 진짜 계단 모양.
       const H = 32;
       const dir = building?.data?.dir || 'N';
-      // 4 corner 위치 (z=0)
-      const corners = {
-        N: { x: x,      y: y - 8 },
-        E: { x: x + 16, y: y },
-        S: { x: x,      y: y + 8 },
-        W: { x: x - 16, y: y },
-      };
-      // 각 corner의 top z (dir=가장 높음=H, 반대=0, 옆 두 개=H/2)
-      const opp = { N: 'S', S: 'N', E: 'W', W: 'E' };
-      const side1 = dir === 'N' || dir === 'S' ? 'E' : 'N';
-      const side2 = opp[side1];
-      const zMap = { [dir]: H, [opp[dir]]: 0, [side1]: H/2, [side2]: H/2 };
-      // 4 corner의 top 위치
-      function topOf(d) { return { x: corners[d].x, y: corners[d].y - zMap[d] }; }
-      const lowCorner = opp[dir]; // 낮은 쪽 (입구)
-      const sb = corners[lowCorner];   // 낮은 corner 바닥
-      const wb = corners[side1];       // 옆 corner 바닥 1
-      const nb = corners[dir];         // 높은 corner 바닥
-      const eb = corners[side2];       // 옆 corner 바닥 2
-      const sT = topOf(lowCorner);     // 낮은 corner top (= sb)
-      const wT = topOf(side1);
-      const nT = topOf(dir);
-      const eT = topOf(side2);
+      // dir별 단위벡터 (world 좌표계)
+      const dv = dir === 'E' ? { x: 1, y: 0 } : dir === 'W' ? { x: -1, y: 0 } : dir === 'S' ? { x: 0, y: 1 } : { x: 0, y: -1 };
+      // dir 수직 (perpendicular) 단위벡터 — 어느 쪽이든 한 방향으로 잡음
+      const pv = { x: -dv.y, y: dv.x };
+      // world offset (픽셀, cell 0 anchor 기준) → 스크린 offset
+      function worldOffToScreen(wx, wy, wz) {
+        return { x: (wx - wy), y: (wx + wy) * 0.5 - wz };
+      }
+      // 그림자 (3 cell 전체 길이)
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.beginPath();
+      const midC = { wx: dv.x * 32, wy: dv.y * 32 }; // cell 1 중심
+      const midS = worldOffToScreen(midC.wx, midC.wy, 0);
+      ctx.ellipse(x + midS.x, y + midS.y + 4, 36, 12, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // 6 sub-step 그리기. 각 sub-step:
+      //   - 시작 wx,wy = anchor 중심 + dv * (subStep - 2.5) * 16 (subStep 0 = -2.5×16 = -40, ...)
+      //     wait — anchor center가 cell 0 중심임. cell 0 안 sub-step 0의 중심 = anchor - dv*8 (반쪽 뒤로)
+      //     subStep S의 중심 (world): anchor + dv * (S - 2.5) * 16
+      //     이러면 S=0: anchor - 40, S=5: anchor + 40. cell 0 (S=0,1) = -40~-8, cell 1 (S=2,3) = 8~40, cell 2 (S=4,5) = 56~88...
+      //     아니다. cell 0 중심 = anchor, cell 1 중심 = anchor + dv*32, cell 2 중심 = anchor + dv*64.
+      //     subStep 0 (cell 0 low half) 중심 = anchor + dv * (-8) = anchor - dv*8
+      //     subStep 1 (cell 0 high half) 중심 = anchor + dv * 8
+      //     subStep 2 (cell 1 low half) 중심 = anchor + dv * 24
+      //     subStep 3 (cell 1 high half) 중심 = anchor + dv * 40
+      //     subStep 4 (cell 2 low half) 중심 = anchor + dv * 56
+      //     subStep 5 (cell 2 high half) 중심 = anchor + dv * 72
+      // 각 슬랩 두께: dv 방향 16, perpendicular 32.
+      // 각 sub-step 슬랩 그리기 — 낮은 z부터 (back-to-front 정렬을 위해)
+      for (let S = 0; S < 6; S++) {
+        const z = (S / 5) * H;
+        const centerW = { x: dv.x * (S * 16 - 32), y: dv.y * (S * 16 - 32) };
+        // wait, S * 16 - 32 = -32, -16, 0, 16, 32, 48 — 이게 어디서 나왔지?
+        // subStep 0 ~ 5: 중심 = anchor + dv * (S - 2) * 16
+        //   S=0: -32, S=1: -16, S=2: 0, S=3: 16, S=4: 32, S=5: 48
+        // anchor = cell 0 중심. 그러면 cell 0 low half (S=0) 중심 = anchor + dv*(-32)? 너무 멀다.
+        // 다시: cell N의 중심 (world) = anchor + dv * N * 32. cell N의 low half 중심 = cell center - dv*8. high half 중심 = cell center + dv*8.
+        //   subStep S, cellN = S>>1, isHigh = S&1
+        //   center = anchor + dv * (cellN * 32 + (isHigh ? 8 : -8))
+        const cellN = S >> 1;
+        const isHigh = S & 1;
+        const w = cellN * 32 + (isHigh ? 8 : -8);
+        const s = worldOffToScreen(dv.x * w, dv.y * w, z);
+        const cx = x + s.x;
+        const cy = y + s.y;
+        // 슬랩 그리기 — 16(dv) × 32(perp) 평평한 isometric 작은 평행사변형
+        // 4 corner (sub-step 평평한 윗면, z 동일)
+        const halfDV = 8;  // dv 방향 절반 (slab 16 길이)
+        const halfPV = 16; // perpendicular 방향 절반 (slab 32 폭)
+        // 4 corner의 world offset (anchor 기준) - 다 같은 z
+        function corner(dvSign, pvSign) {
+          const wx = dv.x * (w + halfDV * dvSign) + pv.x * halfPV * pvSign;
+          const wy = dv.y * (w + halfDV * dvSign) + pv.y * halfPV * pvSign;
+          const sc = worldOffToScreen(wx, wy, z);
+          return { x: x + sc.x, y: y + sc.y };
+        }
+        const c1 = corner(-1, -1); // low-dv, neg-pv
+        const c2 = corner( 1, -1); // high-dv, neg-pv
+        const c3 = corner( 1,  1); // high-dv, pos-pv
+        const c4 = corner(-1,  1); // low-dv, pos-pv
+        // 옆면 (riser) — slab 앞쪽 (low-dv) 면을 그 아래까지. 이전 sub-step z(또는 0)까지.
+        const prevZ = S === 0 ? 0 : ((S - 1) / 5) * H;
+        if (z > prevZ) {
+          // low-dv 면 (앞면) — riser. 4 corner: c1 (z), c4 (z), 그리고 그 두 점의 prevZ 버전
+          const c1d = { x: c1.x, y: c1.y + (z - prevZ) };
+          const c4d = { x: c4.x, y: c4.y + (z - prevZ) };
+          ctx.fillStyle = '#4a2a14'; // 어두운 riser
+          ctx.strokeStyle = '#2a1808';
+          ctx.lineWidth = 0.8;
+          ctx.beginPath();
+          ctx.moveTo(c1.x, c1.y); ctx.lineTo(c4.x, c4.y);
+          ctx.lineTo(c4d.x, c4d.y); ctx.lineTo(c1d.x, c1d.y);
+          ctx.closePath(); ctx.fill(); ctx.stroke();
+        }
+        // 윗면 (tread) — slab 평평한 top
+        ctx.fillStyle = '#b08858';
+        ctx.strokeStyle = '#5a3818';
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.moveTo(c1.x, c1.y); ctx.lineTo(c2.x, c2.y);
+        ctx.lineTo(c3.x, c3.y); ctx.lineTo(c4.x, c4.y);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+      }
+      // ↑ 화살표 (가장 높은 sub-step 위)
+      const topZ = H;
+      const topW = 5 * 16 - 32 + 8 + 16; // S=5 high edge
+      const topS = worldOffToScreen(dv.x * topW, dv.y * topW, topZ);
+      ctx.fillStyle = '#cdd6e3';
+      ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x + topS.x, y + topS.y - 8);
+      ctx.lineTo(x + topS.x - 5, y + topS.y - 2);
+      ctx.lineTo(x + topS.x + 5, y + topS.y - 2);
+      ctx.closePath(); ctx.stroke(); ctx.fill();
+      return; // 끝 — 옛 사선 ramp 그림 코드 skip
       // 그림자
       ctx.fillStyle = 'rgba(0,0,0,0.4)';
       ctx.beginPath(); ctx.ellipse(x, y + 6, 16, 5, 0, 0, Math.PI * 2); ctx.fill();
