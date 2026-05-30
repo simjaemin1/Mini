@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.46-a-v8 (26 zone, 한반도 91M, 게이밍 인구 비례) ===
-console.log('%c[durango-mini] client build = 14.46-a-v8 (26 zone, 한반도 91M)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.46-b-mini (해안선 water tiles + ocean 진입 차단) ===
+console.log('%c[durango-mini] client build = 14.46-b-mini (해안선)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -87,6 +87,76 @@ console.log('%c[durango-mini] client build = 14.46-a-v8 (26 zone, 한반도 91M)
     if (distFromPole <= ICE_BAND_PX)    return ICE_COLOR;
     const t = (distFromPole - ICE_BAND_PX) / (TUNDRA_BAND_PX - ICE_BAND_PX);
     return _mixHex(ICE_COLOR, baseColor, t);
+  }
+
+  // === Phase 14.46-b-mini: 해안선 water tiles (서버 chunk.js generateCoastlineWaterTiles와 동일 알고리즘) ===
+  const COASTLINE_BASE = 600, COASTLINE_NOISE = 400;
+  function _coastNoise(s) {
+    let h = 5381;
+    for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
+    return (((h * 9301 + 49297) >>> 0) % 1000) / 1000;
+  }
+  function clientFindZoneAt(absX, absY) {
+    for (const z of Object.values(zonesMeta)) {
+      if (absX >= z.worldOffsetX && absX < z.worldOffsetX + z.zoneWidth &&
+          absY >= z.worldOffsetY && absY < z.worldOffsetY + z.zoneHeight) return z;
+    }
+    return null;
+  }
+  function computeCoastlineWaterTiles(zone, tileSize) {
+    const waterTiles = new Set();
+    if (zone.isOcean) return waterTiles;
+    const cols = Math.ceil(zone.zoneWidth / tileSize);
+    const rows = Math.ceil(zone.zoneHeight / tileSize);
+    const maxDist = COASTLINE_BASE + COASTLINE_NOISE;
+    function isOceanAt(absX, absY) {
+      const z = clientFindZoneAt(absX, absY);
+      return !!(z && z.isOcean);
+    }
+    for (let ty = 0; ty < rows; ty++) {
+      const absY = zone.worldOffsetY + ty * tileSize;
+      const distN = ty * tileSize, distS = (rows - 1 - ty) * tileSize;
+      for (let tx = 0; tx < cols; tx++) {
+        const absX = zone.worldOffsetX + tx * tileSize;
+        const distW = tx * tileSize, distE = (cols - 1 - tx) * tileSize;
+        if (Math.min(distW, distE, distN, distS) > maxDist) continue;
+        if (distW < maxDist && isOceanAt(zone.worldOffsetX - 1, absY)) {
+          const n = _coastNoise(`W_${zone.id}_${ty}`) * COASTLINE_NOISE;
+          if (distW < COASTLINE_BASE + n) { waterTiles.add(`${tx}_${ty}`); continue; }
+        }
+        if (distE < maxDist && isOceanAt(zone.worldOffsetX + zone.zoneWidth + 1, absY)) {
+          const n = _coastNoise(`E_${zone.id}_${ty}`) * COASTLINE_NOISE;
+          if (distE < COASTLINE_BASE + n) { waterTiles.add(`${tx}_${ty}`); continue; }
+        }
+        if (distN < maxDist && isOceanAt(absX, zone.worldOffsetY - 1)) {
+          const n = _coastNoise(`N_${zone.id}_${tx}`) * COASTLINE_NOISE;
+          if (distN < COASTLINE_BASE + n) { waterTiles.add(`${tx}_${ty}`); continue; }
+        }
+        if (distS < maxDist && isOceanAt(absX, zone.worldOffsetY + zone.zoneHeight + 1)) {
+          const n = _coastNoise(`S_${zone.id}_${tx}`) * COASTLINE_NOISE;
+          if (distS < COASTLINE_BASE + n) { waterTiles.add(`${tx}_${ty}`); continue; }
+        }
+      }
+    }
+    return waterTiles;
+  }
+  // zonesMeta 받으면 모든 zone water tiles 미리 계산. zonesMeta 갱신 시 다시 호출.
+  const waterTilesByZone = {}; // { zoneId: Set("tx_ty") }
+  function precomputeAllWaterTiles() {
+    const TS = 32;
+    for (const z of Object.values(zonesMeta)) {
+      waterTilesByZone[z.id] = computeCoastlineWaterTiles(z, TS);
+    }
+  }
+  // 절대 좌표에서 물 여부 판정 (콜라이더 + 렌더용)
+  function isWaterAtAbs(absX, absY) {
+    const z = clientFindZoneAt(absX, absY);
+    if (!z) return false;
+    if (z.isOcean) return true;
+    const tx = Math.floor((absX - z.worldOffsetX) / 32);
+    const ty = Math.floor((absY - z.worldOffsetY) / 32);
+    const set = waterTilesByZone[z.id];
+    return !!(set && set.has(`${tx}_${ty}`));
   }
 
   // Phase 14.39: 시야 cone 헬퍼
@@ -397,6 +467,8 @@ console.log('%c[durango-mini] client build = 14.46-a-v8 (26 zone, 한반도 91M)
     const data = await res.json();
     zonesMeta = data.zones;
     marketplaceUrl = data.marketplaceUrl || '';
+    // Phase 14.46-b-mini: 모든 zone water tiles 사전 계산 (~수만 tiles, ~100ms)
+    try { precomputeAllWaterTiles(); } catch (e) { console.warn('water tile compute fail:', e); }
 
     // 2D 그리드 월드 크기 계산
     worldWidth = 0;
@@ -1217,6 +1289,10 @@ console.log('%c[durango-mini] client build = 14.46-a-v8 (26 zone, 한반도 91M)
       if (clientIsBlockedByWall(nx, myAbsPredicted.y, myAbsPredicted.x, myAbsPredicted.y, myFloor)) nx = myAbsPredicted.x;
       if (clientIsBlockedByWall(myAbsPredicted.x, ny, myAbsPredicted.x, myAbsPredicted.y, myFloor)) ny = myAbsPredicted.y;
       if (clientIsBlockedByWall(nx, ny, myAbsPredicted.x, myAbsPredicted.y, myFloor)) { nx = myAbsPredicted.x; ny = myAbsPredicted.y; }
+      // 14.46-b-mini: 물 타일 진입 차단 (보트 없을 때)
+      if (isWaterAtAbs(nx, myAbsPredicted.y) && !isWaterAtAbs(myAbsPredicted.x, myAbsPredicted.y)) nx = myAbsPredicted.x;
+      if (isWaterAtAbs(myAbsPredicted.x, ny) && !isWaterAtAbs(myAbsPredicted.x, myAbsPredicted.y)) ny = myAbsPredicted.y;
+      if (isWaterAtAbs(nx, ny) && !isWaterAtAbs(myAbsPredicted.x, myAbsPredicted.y)) { nx = myAbsPredicted.x; ny = myAbsPredicted.y; }
       myAbsPredicted.x = nx;
       myAbsPredicted.y = ny;
     }
@@ -1351,15 +1427,26 @@ console.log('%c[durango-mini] client build = 14.46-a-v8 (26 zone, 한반도 91M)
         if (visibility <= 0.02) continue;
 
         const n = ((wx * 73 + wy * 31) >>> 0) % 17 / 17;
-        // 14.45: 위도에 따라 base color 빙하/툰드라 블렌딩
-        const tileColor = latitudeColor(wy + TS/2, worldHeight, zMeta.groundColor);
-        // 빙하 안 (distFromPole <= ICE_BAND_PX)은 tintColor 노이즈도 약하게
-        const distFromPole = Math.min(wy + TS/2, worldHeight - (wy + TS/2));
-        const isIce = distFromPole <= ICE_BAND_PX;
+        // 14.46-b-mini: 물 타일 (ocean zone or 해안선) — 파란색 우선
+        const isWater = isWaterAtAbs(wx + TS/2, wy + TS/2);
+        let tileColor, tintColor, tintStrength;
+        if (isWater) {
+          // 물 — biome/위도 무시하고 깊은 파랑. zone groundColor가 이미 파란 ocean이면 그대로 사용.
+          tileColor = zMeta.isOcean ? zMeta.groundColor : '#2a5a8a';
+          tintColor = zMeta.isOcean ? zMeta.tintColor : '#1a4a7a';
+          tintStrength = 0.04 + n * 0.06;
+        } else {
+          // 14.45: 위도에 따라 base color 빙하/툰드라 블렌딩
+          tileColor = latitudeColor(wy + TS/2, worldHeight, zMeta.groundColor);
+          const distFromPole = Math.min(wy + TS/2, worldHeight - (wy + TS/2));
+          const isIce = distFromPole <= ICE_BAND_PX;
+          tintColor = isIce ? '#9bb5cc' : zMeta.tintColor;
+          tintStrength = isIce ? 0.04 + n * 0.05 : 0.08 + n * 0.1;
+        }
         ctx.globalAlpha = visibility;
         drawDiamond(s.x, s.y, TS, tileColor);
-        ctx.globalAlpha = visibility * (isIce ? 0.04 + n * 0.05 : 0.08 + n * 0.1);
-        drawDiamond(s.x, s.y, TS, isIce ? '#9bb5cc' : zMeta.tintColor);
+        ctx.globalAlpha = visibility * tintStrength;
+        drawDiamond(s.x, s.y, TS, tintColor);
         ctx.globalAlpha = 1;
       }
     }

@@ -10,7 +10,7 @@ const { ZONES, WORLD, isNight, worldPhase, darknessLevel, findZoneAt, worldDista
 const db = require('./zone-local-db'); // 로컬 zone DB — players 없음
 const central = require('./central-client'); // central HTTP 클라이언트
 const { Quadtree } = require('./quadtree'); // spatial index — O(N²) 검색 회피
-const { ChunkManager, CHUNK_SIZE, generateChunkResources, generateVillagesForZone } = require('./chunk'); // 청크 단위 entity 분류 + procedural
+const { ChunkManager, CHUNK_SIZE, generateChunkResources, generateVillagesForZone, generateCoastlineWaterTiles } = require('./chunk'); // 청크 단위 entity 분류 + procedural + 해안선
 const harvestedSeeds = new Set(); // 채집된 시드 자원 (DB에서 load)
 
 // === 활성 청크 (12.2.b) — 사람 player + observer 위치 주변 청크만 시뮬레이션 ===
@@ -151,6 +151,22 @@ const NEIGHBOR = {
 // Phase 14.46-a: 마을 자동 생성 — 모듈 로드 시 mob spawn 등이 isNearVillage를 호출하므로 일찍 정의해야 함.
 const VILLAGES = generateVillagesForZone(ZONE);
 const VILLAGE_SAFE_RADIUS = 600; // 늑대 이 안에 spawn X (마을 안전구역). isNearVillage()도 이거 씀.
+
+// Phase 14.46-b-mini: 해안선 water tiles — ocean 인접 가장자리에 물 strip.
+// ocean zone은 빈 set 받고 isOcean flag로 처리. 육지 zone만 실제 water tiles 보유.
+const WATER_TILES = generateCoastlineWaterTiles(
+  { ...ZONE, id: ZONE_ID },
+  BUILDING_SIZE,
+  findZoneAt
+);
+console.log(`[${ZONE_ID}] 🌊 해안선: ${WATER_TILES.size} water tiles (ocean=${ZONE.isOcean?'전체':'edge only'})`);
+function isWaterTileLocal(localX, localY) {
+  if (ZONE.isOcean) return true;
+  if (localX < 0 || localY < 0 || localX >= ZONE.zoneWidth || localY >= ZONE.zoneHeight) return false;
+  const tx = Math.floor(localX / BUILDING_SIZE);
+  const ty = Math.floor(localY / BUILDING_SIZE);
+  return WATER_TILES.has(`${tx}_${ty}`);
+}
 // 메트릭 카운터
 const metrics = {
   startedAt: Date.now(),
@@ -2941,8 +2957,12 @@ setInterval(() => {
     if (isBlockedByWall(nx, p.y, p.x, p.y, pf, trace)) nx = p.x;
     if (isBlockedByWall(p.x, ny, p.x, p.y, pf, trace)) ny = p.y;
     if (isBlockedByWall(nx, ny, p.x, p.y, pf, trace)) { nx = p.x; ny = p.y; }
-    // 14.45: 빙하 콜라이더 — y가 극지방 진입하면 ny 무효. nx는 그대로 → 빙하 경계 따라 좌우 슬라이드 가능.
+    // 14.45: 빙하 콜라이더 — y가 극지방 진입하면 ny 무효
     if (isInIceBand(ny) && !isInIceBand(p.y)) ny = p.y;
+    // 14.46-b-mini: 물 타일 진입 차단 (보트 시스템 전까지). 각 축별 slide.
+    if (isWaterTileLocal(nx, p.y) && !isWaterTileLocal(p.x, p.y)) nx = p.x;
+    if (isWaterTileLocal(p.x, ny) && !isWaterTileLocal(p.x, p.y)) ny = p.y;
+    if (isWaterTileLocal(nx, ny) && !isWaterTileLocal(p.x, p.y)) { nx = p.x; ny = p.y; }
 
     // 4방향 경계 처리 — 새 위치가 zone 밖으로 나가면 이웃으로 핸드오프
     // 우선순위: 가장 큰 초과 축. 모서리에서 두 방향 동시에 초과돼도 한 zone으로만.
@@ -2964,17 +2984,17 @@ setInterval(() => {
       p.nextDecisionAt = 0;
     } else if (maxOut > 0) {
       // 14.46-a: abs 좌표 lookup으로 핸드오프 대상 결정 (이웃 포인터 X)
-      // 클램프된 exit 좌표를 abs로 변환 → findZoneAt → 해당 zone에 핸드오프.
+      // 14.46-b-mini: ocean zone으로의 핸드오프는 차단 (보트 없으면 바다 진입 불가).
       const absExitX = ZONE.worldOffsetX + nx;
       const absExitY = ZONE.worldOffsetY + ny;
       const target = findZoneAt(absExitX, absExitY);
-      if (target && target.id !== ZONE_ID) {
+      if (target && target.id !== ZONE_ID && !target.isOcean) {
         p.x = nx; p.y = ny;
         const localX = absExitX - target.worldOffsetX;
         const localY = absExitY - target.worldOffsetY;
         fireHandoff(p, target.id, localX, localY);
       } else {
-        // 경계 밖인데 zone 없음 (월드 가장자리) → clamp
+        // 경계 밖인데 zone 없음 (월드 가장자리) OR ocean zone → clamp
         p.x = clamp(nx, 0, ZONE.zoneWidth);
         p.y = clamp(ny, 0, ZONE.zoneHeight);
       }
@@ -3067,6 +3087,9 @@ setInterval(() => {
       if (isBlockedByWall(nx, m.y, m.x, m.y, 0)) nx = m.x;
       if (isBlockedByWall(m.x, ny, m.x, m.y, 0)) ny = m.y;
       if (isInIceBand(ny) && !isInIceBand(m.y)) ny = m.y; // 14.45
+      // 14.46-b-mini: 물 타일 진입 차단
+      if (isWaterTileLocal(nx, m.y) && !isWaterTileLocal(m.x, m.y)) nx = m.x;
+      if (isWaterTileLocal(m.x, ny) && !isWaterTileLocal(m.x, m.y)) ny = m.y;
       if (Math.abs(nx - m.x) + Math.abs(ny - m.y) > 2) m.dirty = true;
       m.x = nx; m.y = ny;
       chunkManager.updateMobChunk(m);
@@ -3145,6 +3168,9 @@ setInterval(() => {
     if (isBlockedByWall(nx, m.y, m.x, m.y, 0)) nx = m.x;
     if (isBlockedByWall(m.x, ny, m.x, m.y, 0)) ny = m.y;
     if (isInIceBand(ny) && !isInIceBand(m.y)) ny = m.y; // 14.45
+    // 14.46-b-mini: 물 타일 진입 차단
+    if (isWaterTileLocal(nx, m.y) && !isWaterTileLocal(m.x, m.y)) nx = m.x;
+    if (isWaterTileLocal(m.x, ny) && !isWaterTileLocal(m.x, m.y)) ny = m.y;
     // 의미 있는 이동(>2px)일 때만 dirty 마크 — 영속화 부담 최소화
     if (Math.abs(nx - m.x) + Math.abs(ny - m.y) > 2) m.dirty = true;
     m.x = nx; m.y = ny;

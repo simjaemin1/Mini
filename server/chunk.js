@@ -313,4 +313,71 @@ function generateVillagesForZone(zone) {
   return villages;
 }
 
-module.exports = { Chunk, ChunkManager, CHUNK_SIZE, generateChunkResources, seedRand, generateVillagesForZone, makeVillageName };
+// === Phase 14.46-b-mini: 해안선 (Coastline water tiles) ===
+// 육지 zone의 가장자리 중 ocean 인접 부분에 물 타일 strip을 organic noise로 생성.
+// ocean zone은 전체가 물 (별도 처리, 이 함수에선 빈 set 반환).
+// Korea↔Japan 같은 직접 land 인접은 자동으로 land (그 변엔 ocean이 없으니 water tile 0).
+const COASTLINE_BASE = 600;   // 기본 해안선 폭 (px)
+const COASTLINE_NOISE = 400;  // 곡선 변동량 (px)
+
+function _coastNoise(s) {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
+  return (((h * 9301 + 49297) >>> 0) % 1000) / 1000;
+}
+
+// zone: { id, isOcean, worldOffsetX, worldOffsetY, zoneWidth, zoneHeight }
+// tileSize: pixels per tile (보통 32)
+// findZoneAtFn: (absX, absY) => zone-like object with .isOcean
+// returns Set of "tx_ty" keys (local tile coords)
+function generateCoastlineWaterTiles(zone, tileSize, findZoneAtFn) {
+  const waterTiles = new Set();
+  if (zone.isOcean) return waterTiles; // ocean zone은 전체 물 — 별도 처리
+
+  const cols = Math.ceil(zone.zoneWidth / tileSize);
+  const rows = Math.ceil(zone.zoneHeight / tileSize);
+  const maxDist = COASTLINE_BASE + COASTLINE_NOISE;
+
+  function isOceanAt(absX, absY) {
+    const z = findZoneAtFn(absX, absY);
+    return !!(z && z.isOcean);
+  }
+
+  for (let ty = 0; ty < rows; ty++) {
+    const absY = zone.worldOffsetY + ty * tileSize;
+    const distN = ty * tileSize;
+    const distS = (rows - 1 - ty) * tileSize;
+    for (let tx = 0; tx < cols; tx++) {
+      const absX = zone.worldOffsetX + tx * tileSize;
+      const distW = tx * tileSize;
+      const distE = (cols - 1 - tx) * tileSize;
+
+      // 어느 변과도 너무 멀면 skip
+      if (Math.min(distW, distE, distN, distS) > maxDist) continue;
+
+      // West edge — ocean이 인접하면 water
+      if (distW < maxDist && isOceanAt(zone.worldOffsetX - 1, absY)) {
+        const n = _coastNoise(`W_${zone.id}_${ty}`) * COASTLINE_NOISE;
+        if (distW < COASTLINE_BASE + n) { waterTiles.add(`${tx}_${ty}`); continue; }
+      }
+      // East
+      if (distE < maxDist && isOceanAt(zone.worldOffsetX + zone.zoneWidth + 1, absY)) {
+        const n = _coastNoise(`E_${zone.id}_${ty}`) * COASTLINE_NOISE;
+        if (distE < COASTLINE_BASE + n) { waterTiles.add(`${tx}_${ty}`); continue; }
+      }
+      // North
+      if (distN < maxDist && isOceanAt(absX, zone.worldOffsetY - 1)) {
+        const n = _coastNoise(`N_${zone.id}_${tx}`) * COASTLINE_NOISE;
+        if (distN < COASTLINE_BASE + n) { waterTiles.add(`${tx}_${ty}`); continue; }
+      }
+      // South
+      if (distS < maxDist && isOceanAt(absX, zone.worldOffsetY + zone.zoneHeight + 1)) {
+        const n = _coastNoise(`S_${zone.id}_${tx}`) * COASTLINE_NOISE;
+        if (distS < COASTLINE_BASE + n) { waterTiles.add(`${tx}_${ty}`); continue; }
+      }
+    }
+  }
+  return waterTiles;
+}
+
+module.exports = { Chunk, ChunkManager, CHUNK_SIZE, generateChunkResources, seedRand, generateVillagesForZone, makeVillageName, generateCoastlineWaterTiles };
