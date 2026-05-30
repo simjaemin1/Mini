@@ -1073,7 +1073,11 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
         }
       }
       for (const cl of c.claims.values()) {
-        renderables.push({ z: w2i(ox + cl.x + cl.w/2, oy + cl.y + cl.h/2).y - 400, kind: 'claim', cl, off: ox, offY: oy });
+        // guild claim은 가장 배경(z 가장 작게)으로 — 너무 많아서 다른 거 가리지 않게
+        const cax = ox + cl.x + cl.w/2, cay = oy + cl.y + cl.h/2;
+        if (Math.abs(cax - worldCx) > VIEW_RADIUS + 200 || Math.abs(cay - worldCy) > VIEW_RADIUS + 200) continue;
+        const baseZ = cl.kind === 'guild' ? -800 : -400;
+        renderables.push({ z: w2i(cax, cay).y + baseZ, kind: 'claim', cl, off: ox, offY: oy });
       }
       for (const b of c.buildings.values()) {
         // wall은 cell edge 좌표 (b.x, b.y = cell 좌상단). 다른 건축은 cell 중심.
@@ -1133,11 +1137,29 @@ console.log('%c[durango-mini] client build = 13.9.a-pz-edge-wall', 'color:#5a9ae
         ctx.beginPath();
         ctx.moveTo(s1.x, s1.y); ctx.lineTo(s2.x, s2.y);
         ctx.lineTo(s3.x, s3.y); ctx.lineTo(s4.x, s4.y); ctx.closePath();
-        ctx.fillStyle = 'rgba(240, 198, 116, 0.14)'; ctx.fill();
-        ctx.strokeStyle = 'rgba(240, 198, 116, 0.75)';
-        ctx.lineWidth = 1.5; ctx.setLineDash([6, 4]); ctx.stroke(); ctx.setLineDash([]);
-        ctx.fillStyle = '#f0c674'; ctx.font = '11px sans-serif';
-        ctx.fillText(`🏠 ${cl.ownerName}`, s1.x + 6, s1.y + 14);
+        // Phase 14.18.b: kind별 색상 — guild(파랑)/personal(노랑)/temporary(주황)
+        let fill, stroke, label;
+        if (cl.kind === 'guild') {
+          fill = 'rgba(90, 154, 224, 0.10)'; stroke = 'rgba(90, 154, 224, 0.45)';
+          label = `🏛️ ${cl.guildTribeName || cl.ownerName}`;
+        } else if (cl.kind === 'temporary') {
+          fill = 'rgba(220, 130, 60, 0.16)'; stroke = 'rgba(220, 130, 60, 0.7)';
+          label = `⛺ ${cl.ownerName}`;
+        } else { // personal
+          fill = 'rgba(240, 198, 116, 0.18)'; stroke = 'rgba(240, 198, 116, 0.8)';
+          label = `🏠 ${cl.ownerName}`;
+        }
+        ctx.fillStyle = fill; ctx.fill();
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = 1.2;
+        if (cl.kind === 'guild') ctx.setLineDash([]); // 길드 = 실선
+        else ctx.setLineDash([6, 4]);
+        ctx.stroke(); ctx.setLineDash([]);
+        // 라벨은 guild는 너무 많아서 생략, personal/temporary만
+        if (cl.kind !== 'guild') {
+          ctx.fillStyle = stroke; ctx.font = '11px sans-serif';
+          ctx.fillText(label, s1.x + 6, s1.y + 14);
+        }
       } else if (item.kind === 'resource') {
         const s = toScreen(item.iso.x, item.iso.y);
         const d = Math.hypot(item.ax - worldCx, item.ay - worldCy);

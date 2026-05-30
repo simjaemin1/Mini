@@ -598,11 +598,52 @@ async function registerVillageGuilds() {
     } catch (e) { console.warn(`[${ZONE_ID}] NPC 길드 등록 실패 [${village.name}]:`, e.message); }
   }
 }
+// Phase 14.18.b — 각 마을 중심에 길드 사유지 (공용 영토) 자동 생성
+// 마을 = NPC 길드. central tribe_id를 받아와서 guildTribeId로 연결.
+function spawnGuildClaimsForVillage(village, centralTribeId) {
+  if (!centralTribeId) return;
+  // 마을 중심 주변 N×N 그리드 (1 cell = 32px). 25 cell = 5×5 = 160×160 영역.
+  const SZ = BUILDING_SIZE;
+  const RADIUS_CELLS = 12; // 12 cell 반경 → 24×24 = 576 cells 길드 영토
+  const npcOwnerId = `village_${village.name}`;
+  // 옛 거 정리 (메모리 + DB)
+  for (const [id, c] of claims) {
+    if (c.kind === 'guild' && c.ownerPid === npcOwnerId) {
+      if (c.dbId) { try { db.db.prepare('DELETE FROM claims WHERE id = ?').run(c.dbId); } catch (e) {} }
+      claims.delete(id);
+    }
+  }
+  let created = 0;
+  for (let dy = -RADIUS_CELLS; dy <= RADIUS_CELLS; dy++) {
+    for (let dx = -RADIUS_CELLS; dx <= RADIUS_CELLS; dx++) {
+      const dist = Math.hypot(dx, dy);
+      if (dist > RADIUS_CELLS) continue; // 원형
+      const cx = Math.floor(village.x / SZ) * SZ + dx * SZ;
+      const cy = Math.floor(village.y / SZ) * SZ + dy * SZ;
+      const id = `c${nextClaimId++}`;
+      const claim = {
+        id, ownerPid: npcOwnerId, ownerName: `${village.name} 길드 영토`,
+        x: cx, y: cy, w: SZ, h: SZ, kind: 'guild',
+        guildTribeId: centralTribeId,
+        guildTribeName: village.name,
+        createdAt: Date.now(),
+      };
+      claims.set(id, claim);
+      broadcast({ type: 'claim_added', claim });
+      created++;
+    }
+  }
+  console.log(`[${ZONE_ID}] 🏛️ 길드 영토 [${village.name}] ${created}칸 생성 (반경 ${RADIUS_CELLS} cells)`);
+}
+
 function spawnVillagers() {
   for (let v = 0; v < VILLAGES.length; v++) {
     const village = VILLAGES[v];
     const villageId = `village_${ZONE_ID}_${v}`;
     console.log(`[${ZONE_ID}] 🏘️ 마을 [${village.name}] @ (${village.x},${village.y}) — ${NPC_PER_VILLAGE}명`);
+    // 14.18.b: 길드 영토 (central tribe_id는 비동기로 받음. 지금 시점에 villageGuildIds에 있을 수도/없을 수도)
+    const tribeId = villageGuildIds.get(village.name);
+    if (tribeId) spawnGuildClaimsForVillage(village, tribeId);
     for (let i = 0; i < NPC_PER_VILLAGE; i++) {
       const ang = (Math.PI * 2 * i / NPC_PER_VILLAGE) + Math.random() * 0.3;
       const r = 200 + Math.random() * 300;
@@ -611,6 +652,15 @@ function spawnVillagers() {
       spawnNpc({ x: npcX, y: npcY, villageId, villageName: village.name });
     }
   }
+  // 길드 영토는 spawnVillagers와 별도로 registerVillageGuilds 완료 후 다시 호출 (race condition fix)
+  setTimeout(() => {
+    for (const v of VILLAGES) {
+      const tribeId = villageGuildIds.get(v.name);
+      if (tribeId && ![...claims.values()].some(c => c.kind === 'guild' && c.guildTribeId === tribeId)) {
+        spawnGuildClaimsForVillage(v, tribeId);
+      }
+    }
+  }, 3000);
 }
 
 // 좌표가 마을 안전구역 안인지 체크 (늑대 spawn 위치 검증용)
@@ -1769,28 +1819,54 @@ function tryGather(player) {
 // === Phase 14.18: 1 grid 사유지 (32×32) + kind 시스템 ===
 // 개인 사유지(personal): 길드 사유지 안에만, 강보호 (전쟁 외 공격 X)
 // 임시 사유지(temporary): 어디든, 약보호 (벌점 시스템만)
-// 시작 슬롯: 개인 9 + 임시 4
+// 길드 사유지(guild): 길드 리더만, 1 grid 단위 도시 영토 — 개인 사유지의 부모
+// 시작 슬롯: 개인 9 + 임시 4 + 길드 50 (리더만)
 const CLAIM_SLOT_PERSONAL_START = 9;
 const CLAIM_SLOT_TEMPORARY_START = 4;
-const CLAIM_COST = { personal: { wood: 3, stone: 2 }, temporary: { wood: 1, stone: 0 } };
+const CLAIM_SLOT_GUILD_START = 50;
+const CLAIM_COST = {
+  personal: { wood: 3, stone: 2 },
+  temporary: { wood: 1, stone: 0 },
+  guild:    { wood: 5, stone: 5 },
+};
 
 function countMyClaims(playerId) {
-  let p = 0, t = 0;
+  let p = 0, t = 0, g = 0;
   for (const c of claims.values()) {
     if (c.ownerPid !== playerId) continue;
-    if (c.kind === 'temporary') t++; else p++;
+    if (c.kind === 'temporary') t++;
+    else if (c.kind === 'guild') g++;
+    else p++;
   }
-  return { personal: p, temporary: t };
+  return { personal: p, temporary: t, guild: g };
+}
+
+// 14.18.b — guild_tribe_id 기준 영토 검색. 위치가 내 길드 영토 안인지.
+function findGuildClaimContaining(x, y, tribeId) {
+  if (!tribeId) return null;
+  for (const c of claims.values()) {
+    if (c.kind !== 'guild') continue;
+    if (c.guildTribeId !== tribeId) continue;
+    if (x >= c.x && x < c.x + c.w && y >= c.y && y < c.y + c.h) return c;
+  }
+  return null;
 }
 
 function tryClaim(player, kind = 'personal') {
-  if (!['personal', 'temporary'].includes(kind)) kind = 'personal';
+  if (!['personal', 'temporary', 'guild'].includes(kind)) kind = 'personal';
   const cost = CLAIM_COST[kind];
+  // 길드 사유지: 리더만 + 길드 소속 필수
+  if (kind === 'guild') {
+    if (!player.tribeId) { send(player.ws, { type: 'notice', text: '길드 소속이 아닙니다 — 길드 영토 만들 수 없음' }); return; }
+    // leader 체크는 central 호출 필요. 일단 단순화: 길드원이면 누구나 (TODO: leader만)
+  }
   // 슬롯 한도 체크
   const used = countMyClaims(player.playerId);
-  const max = kind === 'temporary' ? CLAIM_SLOT_TEMPORARY_START : CLAIM_SLOT_PERSONAL_START;
-  if ((kind === 'personal' ? used.personal : used.temporary) >= max) {
-    send(player.ws, { type: 'notice', text: `${kind === 'personal' ? '개인' : '임시'} 사유지 슬롯 한도 (${max}) 초과` });
+  const usedCount = kind === 'temporary' ? used.temporary : (kind === 'guild' ? used.guild : used.personal);
+  const max = kind === 'temporary' ? CLAIM_SLOT_TEMPORARY_START : (kind === 'guild' ? CLAIM_SLOT_GUILD_START : CLAIM_SLOT_PERSONAL_START);
+  if (usedCount >= max) {
+    const kName = { personal: '개인', temporary: '임시', guild: '길드' }[kind];
+    send(player.ws, { type: 'notice', text: `${kName} 사유지 슬롯 한도 (${max}) 초과` });
     return;
   }
   if ((player.inventory.wood || 0) < cost.wood || (player.inventory.stone || 0) < cost.stone) {
@@ -1802,16 +1878,35 @@ function tryClaim(player, kind = 'personal') {
   const cx = Math.floor(player.x / SZ) * SZ;
   const cy = Math.floor(player.y / SZ) * SZ;
 
-  // 기존 claim과 겹침 체크
+  // 기존 claim과 겹침 체크 — 단, personal/temporary는 guild claim과 겹쳐도 OK (nested)
   for (const c of claims.values()) {
+    const sameKind = c.kind === kind;
+    const isGuildContainer = c.kind === 'guild' && (kind === 'personal' || kind === 'temporary');
+    const isPersonalInGuild = kind === 'guild' && (c.kind === 'personal' || c.kind === 'temporary');
+    if (sameKind && rectsOverlap(cx, cy, SZ, SZ, c.x, c.y, c.w, c.h)) {
+      send(player.ws, { type: 'notice', text: '이미 같은 종류의 사유지가 있습니다' });
+      return;
+    }
+    // 다른 종류 — guild claim 안에 personal/temporary 또는 그 반대는 허용
+    if (isGuildContainer || isPersonalInGuild) continue;
     if (rectsOverlap(cx, cy, SZ, SZ, c.x, c.y, c.w, c.h)) {
-      send(player.ws, { type: 'notice', text: '이미 사유지가 있습니다 (또는 다른 사람 영지와 겹침)' });
+      send(player.ws, { type: 'notice', text: '다른 영지와 겹칩니다' });
       return;
     }
   }
 
-  // 개인 사유지는 길드 사유지 안에만 (Phase 14.18.b 시행) — 일단 임시로 허용
-  // TODO: guild_claim 안에 위치하는지 체크
+  // 개인 사유지(personal)는 자기 길드의 길드 영토 안에만 설치 가능
+  if (kind === 'personal') {
+    if (!player.tribeId) {
+      send(player.ws, { type: 'notice', text: '개인 사유지는 길드 영토 안에만 설치 가능 (길드 가입 또는 임시 사유지 T 사용)' });
+      return;
+    }
+    const myGuildArea = findGuildClaimContaining(cx + SZ/2, cy + SZ/2, player.tribeId);
+    if (!myGuildArea) {
+      send(player.ws, { type: 'notice', text: '내 길드 영토 안에서만 개인 사유지 설치 가능' });
+      return;
+    }
+  }
 
   player.inventory.wood -= cost.wood;
   player.inventory.stone -= cost.stone;
@@ -1820,10 +1915,11 @@ function tryClaim(player, kind = 'personal') {
   const claim = {
     id, ownerPid: player.playerId, ownerName: player.name,
     x: cx, y: cy, w: SZ, h: SZ, kind,
+    guildTribeId: kind === 'guild' ? player.tribeId : null,
+    guildTribeName: kind === 'guild' ? player.tribeName : null,
     createdAt: Date.now(),
   };
   claims.set(id, claim);
-  // DB 영속화 (kind은 data JSON으로)
   const dbId = db.insertClaim({
     owner_id: player.playerId,
     owner_name: player.name,
@@ -1832,7 +1928,8 @@ function tryClaim(player, kind = 'personal') {
   claim.dbId = dbId;
   savePlayer(player);
   send(player.ws, { type: 'inventory', inventory: player.inventory });
-  send(player.ws, { type: 'notice', text: `${kind === 'personal' ? '🏠 개인' : '⛺ 임시'} 사유지 설치 (${used[kind === 'personal' ? 'personal' : 'temporary'] + 1}/${max})` });
+  const kIcon = { personal: '🏠 개인', temporary: '⛺ 임시', guild: '🏛️ 길드' }[kind];
+  send(player.ws, { type: 'notice', text: `${kIcon} 사유지 설치 (${usedCount + 1}/${max})` });
   broadcast({ type: 'claim_added', claim });
 }
 
