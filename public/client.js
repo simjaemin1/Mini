@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.49-e7n3 (fog of war iso diamond single path) ===
-console.log('%c[durango-mini] client build = 14.49-e7n3 (fog diamond)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.49-e7o (3-state 깔끔 + blur + 중심원 180 + 아래층 dim) ===
+console.log('%c[durango-mini] client build = 14.49-e7o (PZ 정리)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -1906,11 +1906,13 @@ console.log('%c[durango-mini] client build = 14.49-e7n3 (fog diamond)', 'color:#
         ctx.textAlign = 'start'; ctx.textBaseline = 'alphabetic';
         ctx.globalAlpha = 1;
       } else if (item.kind === 'player') {
-        // 14.49-e7n: 위층 player 안 그림 (본인 제외)
-        if (!item.isMe && (item.floor || 0) > myFloor) continue;
+        // 14.49-e7o: 위층 player 안 그림 (본인 제외). 아래층은 살짝 어둡게.
+        const pFloor = item.floor || 0;
+        if (!item.isMe && pFloor > myFloor) continue;
         const s = toScreen(item.iso.x, item.iso.y);
         const d = Math.hypot(item.ax - worldCx, item.ay - worldCy);
         let vis = item.isMe ? 1 : Math.max(0.15, 1 - Math.pow(d / VIEW_RADIUS, 1.4));
+        if (!item.isMe && pFloor < myFloor) vis *= 0.55; // 아래층 어둡게
         // Phase 14.39: 본인 외 player는 시야 뒤면 안 보임
         if (!item.isMe) {
           vis *= entityVisibility(item.ax, item.ay, d);
@@ -1955,8 +1957,12 @@ console.log('%c[durango-mini] client build = 14.49-e7n3 (fog diamond)', 'color:#
         const s = toScreen(item.iso.x, item.iso.y);
         const bf = item.b.floor || 0;
         const bType = item.b.type;
+        // 14.49-e7o: 아래층은 정상 렌더 (단, 시야 안 닿으므로 살짝 어둡게 — fog of war가 추가 dim)
+        if (bf < myFloor) {
+          ctx.globalAlpha = 0.55;
+        }
         // 14.49-e7n: 위층 (myFloor + 1 이상) — 외벽 + 지붕(floor)만 렌더
-        if (bf > myFloor) {
+        else if (bf > myFloor) {
           if (bType === 'floor') {
             ctx.globalAlpha = 0.55; // 지붕 역할 (위층 바닥 = 아래층 천장)
           } else if (bType === 'wall' || bType === 'fence') {
@@ -2008,7 +2014,7 @@ console.log('%c[durango-mini] client build = 14.49-e7n3 (fog diamond)', 'color:#
         drawBuildingIso(s.x, s.y, item.b.type, item.b);
         ctx.globalAlpha = 1;
       } else if (item.kind === 'mob') {
-        // 14.49-e7n: 위층 mob 안 그림
+        // 14.49-e7o: 위층 mob 안 그림. 아래층은 살짝 어둡게.
         const mFloor = item.m.floor || 0;
         if (mFloor > myFloor) continue;
         const s = toScreen(item.iso.x, item.iso.y);
@@ -2016,41 +2022,14 @@ console.log('%c[durango-mini] client build = 14.49-e7n3 (fog diamond)', 'color:#
         let vis = Math.max(0.15, 1 - Math.pow(d / VIEW_RADIUS, 1.4));
         vis *= entityVisibility(item.ax, item.ay, d);
         if (vis < 0.05) continue;
+        if (mFloor < myFloor) vis *= 0.55; // 아래층 어둡게
         ctx.globalAlpha = vis;
         drawMobIso(s.x, s.y, item.m);
         ctx.globalAlpha = 1;
       }
     }
 
-    // === 4) 14.49-e7f: PZ식 부드러운 시야 비네팅 + directional shadow (둘 다 픽셀 단위) ===
-    // 4-a) 중앙 원형 vignette
-    const grad = ctx.createRadialGradient(W/2, H/2, 90, W/2, H/2, Math.max(W, H) * 0.55);
-    grad.addColorStop(0, 'rgba(0,0,0,0)');
-    grad.addColorStop(0.25, 'rgba(0,0,0,0.05)');
-    grad.addColorStop(0.55, 'rgba(0,0,0,0.35)');
-    grad.addColorStop(0.85, 'rgba(0,0,0,0.75)');
-    grad.addColorStop(1, 'rgba(0,0,0,0.92)');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, W, H);
-    // 4-b) 등 뒤 미세 darken (radial gradient 중심을 플레이어 뒤로 offset)
-    if (myFacingVx !== 0 || myFacingVy !== 0) {
-      const flen = Math.hypot(myFacingVx, myFacingVy) || 1;
-      const fxn = myFacingVx / flen, fyn = myFacingVy / flen;
-      // facing world (fxn, fyn) → screen (fxn-fyn, (fxn+fyn)*0.5)
-      const sxRaw = fxn - fyn;
-      const syRaw = (fxn + fyn) * 0.5;
-      const slen = Math.hypot(sxRaw, syRaw) || 1;
-      const sxU = sxRaw / slen, syU = syRaw / slen;
-      // shadow 중심 = player 화면 위치 - facing 방향 (= 뒤로)
-      const shadowCx = W/2 - sxU * 200;
-      const shadowCy = H/2 - syU * 200;
-      const dirGrad = ctx.createRadialGradient(shadowCx, shadowCy, 80, shadowCx, shadowCy, 450);
-      dirGrad.addColorStop(0, 'rgba(0,0,0,0.18)'); // 뒤 약간 어두움
-      dirGrad.addColorStop(0.5, 'rgba(0,0,0,0.08)');
-      dirGrad.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = dirGrad;
-      ctx.fillRect(0, 0, W, H);
-    }
+    // === 14.49-e7o: 옛 vignette/directional shadow 제거 — fog of war가 시야 전담 (3-state 깔끔) ===
 
     // === 4-c) 14.49-e7j: PZ식 visibility polygon (정석 알고리즘) ===
     // 1) 시야 범위 내 wall 수집 + 경계 박스
@@ -2166,15 +2145,16 @@ console.log('%c[durango-mini] client build = 14.49-e7n3 (fog diamond)', 'color:#
       mctx.fillStyle = 'rgba(0,0,0,1.0)';
       mctx.fillRect(0, 0, W, H);
 
-      // (ii) seen cell들: alpha 0.5 subtract → 회색 (= memory)
-      // iso diamond를 single path에 add → fill 한 번 (overlap 누적 X, 균일 alpha 0.5)
-      // 셀이 마름모니까 diamond로 그려야 자연스러움. expand 1px로 인접 cell gap 메움.
+      // (ii) seen cell들: alpha 0.2 subtract → 살짝만 어둠 (directional shadow 정도)
+      // + blur filter로 cell stairstep smooth (한 번도 안 가본 곳 경계도 부드럽게)
+      mctx.save();
+      mctx.filter = 'blur(6px)'; // cell 경계 smoothing
       mctx.globalCompositeOperation = 'destination-out';
-      mctx.fillStyle = 'rgba(0,0,0,0.5)';
+      mctx.fillStyle = 'rgba(0,0,0,0.22)';
       mctx.beginPath();
-      const FOG_DRAW_RANGE = 30;
-      const halfW = 32, halfH = 16; // iso cell half size (32 world → 64x32 screen diamond)
-      const expand = 1; // 인접 diamond gap 메움 (single fill이라 overlap 누적 X)
+      const FOG_DRAW_RANGE = 32;
+      const halfW = 32, halfH = 16;
+      const expand = 2; // 인접 diamond gap 메움
       for (const key of seenCells) {
         const parts = key.split('_');
         if (+parts[2] !== myFloor) continue;
@@ -2185,18 +2165,23 @@ console.log('%c[durango-mini] client build = 14.49-e7n3 (fog diamond)', 'color:#
         const wyC = (cy + 0.5) * CL_BUILDING_SIZE;
         const sxC = w2sx(wxC, wyC);
         const syC = w2sy(wxC, wyC);
-        // iso diamond 4 corner (좌 → 위 → 우 → 아래)
         mctx.moveTo(sxC - halfW - expand, syC);
         mctx.lineTo(sxC, syC - halfH - expand);
         mctx.lineTo(sxC + halfW + expand, syC);
         mctx.lineTo(sxC, syC + halfH + expand);
         mctx.closePath();
       }
-      mctx.fill(); // 한 번 — 균일 alpha 0.5
+      mctx.fill();
+      mctx.restore(); // filter 복원
 
-      // (iii) visibility polygon hole — 현재 보고 있는 곳 fully transparent
+      // (iii) visibility polygon hole + 플레이어 중심 원 (radius 180) — 현재 시야
+      mctx.globalCompositeOperation = 'destination-out';
       mctx.fillStyle = 'rgba(255,255,255,1)';
       mctx.fill(polyPath);
+      // 플레이어 주위 항상 보이는 원
+      mctx.beginPath();
+      mctx.arc(W/2, H/2, 180, 0, Math.PI * 2);
+      mctx.fill();
       mctx.globalCompositeOperation = 'source-over';
 
       // 6) main에 합성 — entity 보존
