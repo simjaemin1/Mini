@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.49-e7k (visibility polygon — ray range 화면 2배 + alpha 0.55) ===
-console.log('%c[durango-mini] client build = 14.49-e7k (vis poly fix)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.49-e7l (off-screen mask canvas — entity 보존하며 dark 합성) ===
+console.log('%c[durango-mini] client build = 14.49-e7l (off-screen mask)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -2080,22 +2080,32 @@ console.log('%c[durango-mini] client build = 14.49-e7k (vis poly fix)', 'color:#
       }
       // 4) 각도순 정렬
       hits.sort((u, v) => u.a - v.a);
-      // 5) Render: 어두운 overlay → polygon 안만 destination-out
-      ctx.save();
-      ctx.fillStyle = 'rgba(0,0,0,0.55)'; // 벽 너머 어둠 — 너무 진하지 않게
-      ctx.fillRect(0, 0, W, H);
-      ctx.globalCompositeOperation = 'destination-out';
-      ctx.beginPath();
-      if (hits.length > 0) {
-        ctx.moveTo(w2sx(hits[0].x, hits[0].y), w2sy(hits[0].x, hits[0].y));
-        for (let i = 1; i < hits.length; i++) {
-          ctx.lineTo(w2sx(hits[i].x, hits[i].y), w2sy(hits[i].x, hits[i].y));
-        }
-        ctx.closePath();
+      // 5) Off-screen mask canvas — entity 보존 위해 별도 canvas 사용
+      //    main에 'destination-out' 하면 entity도 같이 지워짐. mask canvas 합성으로 회피.
+      if (!window._shadowMask || window._shadowMask.width !== W || window._shadowMask.height !== H) {
+        window._shadowMask = document.createElement('canvas');
+        window._shadowMask.width = W;
+        window._shadowMask.height = H;
       }
-      ctx.fillStyle = 'rgba(255,255,255,1)';
-      ctx.fill();
-      ctx.restore();
+      const mc = window._shadowMask;
+      const mctx = mc.getContext('2d');
+      mctx.clearRect(0, 0, W, H);
+      mctx.fillStyle = 'rgba(0,0,0,0.55)';
+      mctx.fillRect(0, 0, W, H);
+      mctx.globalCompositeOperation = 'destination-out';
+      mctx.beginPath();
+      if (hits.length > 0) {
+        mctx.moveTo(w2sx(hits[0].x, hits[0].y), w2sy(hits[0].x, hits[0].y));
+        for (let i = 1; i < hits.length; i++) {
+          mctx.lineTo(w2sx(hits[i].x, hits[i].y), w2sy(hits[i].x, hits[i].y));
+        }
+        mctx.closePath();
+      }
+      mctx.fillStyle = 'rgba(255,255,255,1)';
+      mctx.fill();
+      mctx.globalCompositeOperation = 'source-over';
+      // 합성 — entity 픽셀 보존하면서 darkness만 덮음
+      ctx.drawImage(mc, 0, 0);
     }
 
     // === 4-1) 밤 어두움 오버레이 — 푸른 톤, 시야는 더 좁아짐 ===
