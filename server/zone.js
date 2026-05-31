@@ -615,10 +615,10 @@ function spawnNpc(opts = {}) {
   }
   // 1F 바닥 (5x5) — 천장
   for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) addBlock(houseCx + i, houseCy + j, 'floor', 1);
-  // 계단 — 집 내부, dir='N' (남쪽에서 들어와 북쪽으로 올라감).
-  // anchor=낮은 입구=(houseCx, houseCy+1), step 1=(houseCx, houseCy), step 2=(houseCx, houseCy-1)
-  // 1F 도착=(houseCx, houseCy-2) 위. 5x5 1F 바닥 안.
-  addBlock(houseCx, houseCy + 1, 'stair', 0, { dir: 'N' });
+  // 계단 — 집 내부, 동쪽 벽에 붙음. dir='N' (남쪽에서 들어와 북쪽으로 올라감).
+  // anchor=낮은 입구=(houseCx+2, houseCy+1) [동쪽 벽 옆], step 1=(houseCx+2, houseCy), step 2=(houseCx+2, houseCy-1)
+  // 1F 도착=(houseCx+2, houseCy-2) 위. 동쪽 벽 따라서 올라감.
+  addBlock(houseCx + 2, houseCy + 1, 'stair', 0, { dir: 'N' });
 
   console.log(`[${ZONE_ID}] 🤖 NPC 스폰: ${name} @ (${cx.toFixed(0)},${cy.toFixed(0)}) + PZ식 집`);
   return player;
