@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.49-e7an (스킬 패널 프로토타입) ===
-console.log('%c[durango-mini] client build = 14.49-e7an (skills UI)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.50 (목공 — 통나무→판자, 톱/망치, 문, 울타리 cell) ===
+console.log('%c[durango-mini] client build = 14.50 (목공 시작)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -42,6 +42,7 @@ console.log('%c[durango-mini] client build = 14.49-e7an (skills UI)', 'color:#5a
   let tools = {};     // { axe: 1, pickaxe: 0, sword: 2, ... }
   let equipped = null; // 'axe' | 'pickaxe' | 'sword' | null
   let recipes = {};   // 서버에서 받은 도구 레시피
+  let itemRecipes = {}; // 14.50: 아이템 가공 레시피 (plank 등)
   let cookRecipes = {}; // 서버에서 받은 요리 레시피
   let foodEffects = {}; // 서버에서 받은 음식 효과 정보 (표시용)
   let myHunger = 100, myThirst = 100, myVp = 0;
@@ -236,6 +237,37 @@ console.log('%c[durango-mini] client build = 14.49-e7an (skills UI)', 'color:#5a
   // wall은 cell edge에 (data.side ∈ {N, E}). BUILDING_SIZE=32 서버와 동일.
   const CL_BUILDING_SIZE = 32;
   function clCellOf(x, y) { return { cx: Math.floor(x / CL_BUILDING_SIZE), cy: Math.floor(y / CL_BUILDING_SIZE) }; }
+  // 14.50: player 80px 안 가장 가까운 door (toggle용)
+  function findNearestDoor(px, py, floor) {
+    let best = null, bestD = 80;
+    for (const c of conns.values()) {
+      const ox = c.meta?.worldOffsetX || 0, oy = c.meta?.worldOffsetY || 0;
+      for (const b of c.buildings.values()) {
+        if (b.type !== 'door') continue;
+        if ((b.floor || 0) !== floor) continue;
+        const ax = ox + b.x, ay = oy + b.y;
+        const d = Math.hypot(ax - px, ay - py);
+        if (d < bestD) { bestD = d; best = b; }
+      }
+    }
+    return best;
+  }
+  function clHasFenceAt(cellCx, cellCy, floor) {
+    for (const [zid, c] of conns) {
+      const zm = c.meta || zonesMeta[zid];
+      if (!zm) continue;
+      const oxCells = Math.floor((zm.worldOffsetX || 0) / CL_BUILDING_SIZE);
+      const oyCells = Math.floor((zm.worldOffsetY || 0) / CL_BUILDING_SIZE);
+      for (const b of c.buildings.values()) {
+        if (b.type !== 'fence') continue;
+        if ((b.floor || 0) !== floor) continue;
+        const bcx = Math.floor(b.x / CL_BUILDING_SIZE);
+        const bcy = Math.floor(b.y / CL_BUILDING_SIZE);
+        if (oxCells + bcx === cellCx && oyCells + bcy === cellCy) return true;
+      }
+    }
+    return false;
+  }
   function clHasWallAt(absX, absY, cellCx, cellCy, side, floor) {
     // 모든 zone conns의 buildings 다 검색 (zone 경계 cross 시 이웃 zone wall도 적용)
     for (const [zid, c] of conns) {
@@ -289,7 +321,8 @@ console.log('%c[durango-mini] client build = 14.49-e7an (skills UI)', 'color:#5a
         const bcx = Math.floor(b.x / CL_BUILDING_SIZE);
         const bcy = Math.floor(b.y / CL_BUILDING_SIZE);
         const f = b.floor || 0;
-        if (b.type === 'wall') {
+        if (b.type === 'wall' || (b.type === 'door' && !b.data?.open)) {
+          // 14.50: 닫힌 door도 wall처럼 시야/collider 차단
           const side = b.data?.side;
           if (!side) continue;
           if (b.data?.damaged) continue;
@@ -507,6 +540,8 @@ console.log('%c[durango-mini] client build = 14.49-e7an (skills UI)', 'color:#5a
     const oc = clCellOf(oldX, oldY);
     const nc = clCellOf(newX, newY);
     if (oc.cx === nc.cx && oc.cy === nc.cy) return false;
+    // 14.50: fence cell 진입 차단 (cell 전체 차지)
+    if (clHasFenceAt(nc.cx, nc.cy, playerFloor)) return true;
     // 14.49-e3: 계단 측면 진입 차단. 14.49-e7am: floor check 추가 (server와 일치).
     const enteringStair = clFindStairForCell(nc.cx, nc.cy);
     if (enteringStair) {
@@ -653,7 +688,12 @@ console.log('%c[durango-mini] client build = 14.49-e7an (skills UI)', 'color:#5a
       // 다운 중엔 어떤 행동도 안 함 — 부활 패널에서만 클릭
       return;
     }
-    if (k === 'e') sendPrimary({ type: 'gather' });
+    if (k === 'e') {
+      // 14.50: E 키 — 주변 door가 있으면 toggle, 없으면 gather
+      const nearDoor = findNearestDoor(myAbsPredicted.x, myAbsPredicted.y, myFloor);
+      if (nearDoor) sendPrimary({ type: 'door_toggle', buildingId: nearDoor.id });
+      else sendPrimary({ type: 'gather' });
+    }
     else if (k === 'c' && e.shiftKey) sendPrimary({ type: 'claim', kind: 'guild' });  // 길드 영토 (Shift+C)
     else if (k === 'c') sendPrimary({ type: 'claim', kind: 'personal' });  // 개인 사유지 (1 grid)
     else if (k === 't' && !e.shiftKey) sendPrimary({ type: 'claim', kind: 'temporary' });  // 임시 사유지 (1 grid)
@@ -755,6 +795,7 @@ console.log('%c[durango-mini] client build = 14.49-e7an (skills UI)', 'color:#5a
       else if (a === 'build_campfire') sendPrimary({ type: 'build', buildType: 'campfire', floor: myBuildFloor });
       // build_siege 제거 — 임시 사유지로 대체 (14.18)
       else if (a === 'build_fence') sendPrimary({ type: 'build', buildType: 'fence', floor: myBuildFloor });
+      else if (a === 'build_door') sendPrimary({ type: 'build', buildType: 'door', floor: myBuildFloor });
       else if (a === 'build_farmland') sendPrimary({ type: 'build', buildType: 'farmland', floor: myBuildFloor });
       else if (a === 'build_stair') sendPrimary({ type: 'build', buildType: 'stair', floor: myBuildFloor });
       else if (a === 'build_floor') sendPrimary({ type: 'build', buildType: 'floor', floor: myBuildFloor });
@@ -1186,6 +1227,7 @@ console.log('%c[durango-mini] client build = 14.49-e7an (skills UI)', 'color:#5a
         if (msg.tools) tools = msg.tools;
         if (msg.equipped !== undefined) equipped = msg.equipped;
         if (msg.recipes) recipes = msg.recipes;
+        if (msg.itemRecipes) itemRecipes = msg.itemRecipes;
         if (msg.cookRecipes) cookRecipes = msg.cookRecipes;
         if (msg.foodEffects) foodEffects = msg.foodEffects;
         if (msg.self.hp !== undefined) { myHp = msg.self.hp; myMaxHp = msg.self.maxHp; }
@@ -1341,6 +1383,13 @@ console.log('%c[durango-mini] client build = 14.49-e7an (skills UI)', 'color:#5a
         }
       }
       c.buildings.delete(msg.id);
+    } else if (msg.type === 'building_updated') {
+      // 14.50: door open/close 등 building data 변경. wall cache 무효화 (door state 영향).
+      const b = c.buildings.get(msg.building.id);
+      if (b) {
+        b.data = msg.building.data;
+        if (b.type === 'door') clWallMapBuiltAt = 0; // door state 변경 → cache 재빌드
+      }
     } else if (msg.type === 'ground_item_added') {
       if (c.groundItems) c.groundItems.set(msg.gi.id, msg.gi);
     } else if (msg.type === 'ground_item_removed') {
@@ -2600,6 +2649,39 @@ console.log('%c[durango-mini] client build = 14.49-e7an (skills UI)', 'color:#5a
       else if (fl === 2) fillCol = '#e63a3a'; // 3층 — 빨강
       ctx.fillStyle = fillCol; ctx.fill();
       ctx.strokeStyle = '#5a3a1c'; ctx.lineWidth = 0.5; ctx.stroke();
+    } else if (type === 'door') {
+      // 14.50: 문 — wall과 비슷한 sprite, 색 다름. open이면 반투명 + 짧게.
+      const H = WALL_HEIGHT;
+      const side = building?.data?.side || 'N';
+      const open = !!building?.data?.open;
+      const drawH = open ? H * 0.25 : H; // 열림: 1/4 높이
+      const col = open ? 'rgba(140, 100, 60, 0.4)' : '#6a4a2a'; // 닫힘: 진한 갈색, 열림: 반투명
+      ctx.strokeStyle = open ? 'rgba(60,40,20,0.5)' : '#3a2010';
+      ctx.lineWidth = 0.6;
+      ctx.fillStyle = col;
+      if (side === 'N') {
+        ctx.beginPath();
+        ctx.moveTo(x - 16, y - 8);
+        ctx.lineTo(x + 16, y + 8);
+        ctx.lineTo(x + 16, y + 8 - drawH);
+        ctx.lineTo(x - 16, y - 8 - drawH);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+      } else {
+        ctx.beginPath();
+        ctx.moveTo(x + 16, y - 8);
+        ctx.lineTo(x - 16, y + 8);
+        ctx.lineTo(x - 16, y + 8 - drawH);
+        ctx.lineTo(x + 16, y - 8 - drawH);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+      }
+      // 닫힘 시 손잡이 점
+      if (!open) {
+        ctx.fillStyle = '#f0c674';
+        ctx.beginPath();
+        if (side === 'N') ctx.arc(x + 8, y - H/2, 1.5, 0, Math.PI * 2);
+        else              ctx.arc(x - 8, y - H/2, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
     } else if (type === 'chest') {
       // 나무상자
       ctx.fillStyle = 'rgba(0,0,0,0.4)';
@@ -2621,17 +2703,51 @@ console.log('%c[durango-mini] client build = 14.49-e7an (skills UI)', 'color:#5a
       ctx.fillStyle = '#f0c674';
       ctx.fillRect(x - 2, y - 2, 4, 4);
     } else if (type === 'fence') {
-      // 나무 울타리 — 세로 막대 2개 + 가로 두 줄
-      ctx.fillStyle = 'rgba(0,0,0,0.35)';
-      ctx.beginPath(); ctx.ellipse(x, y + 5, 14, 4, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = '#6a4828'; ctx.lineWidth = 2;
-      // 두 세로 막대
-      ctx.beginPath(); ctx.moveTo(x - 10, y + 3); ctx.lineTo(x - 8, y - 10); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(x + 10, y + 3); ctx.lineTo(x + 8, y - 10); ctx.stroke();
-      // 가로 두 줄
-      ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.moveTo(x - 9, y - 2); ctx.lineTo(x + 9, y - 2); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(x - 9, y - 7); ctx.lineTo(x + 9, y - 7); ctx.stroke();
+      // 14.50: 울타리 — cell 전체 차지, 절반 높이, orientation (EW/NS)로 막대 방향만 다름
+      const fH = WALL_HEIGHT * 0.5;
+      const half = CL_BUILDING_SIZE / 2; // 16
+      const ori = building?.data?.orientation || 'NS';
+      // 4 모서리 (top 평면)
+      const tl = { x: x + (-half - (-half)), y: y + ((-half) + (-half)) * 0.5 - fH };
+      const tr = { x: x + (half - (-half)), y: y + (half + (-half)) * 0.5 - fH };
+      const br = { x: x + (half - half), y: y + (half + half) * 0.5 - fH };
+      const bl = { x: x + (-half - half), y: y + (-half + half) * 0.5 - fH };
+      // 4 모서리 (bottom 평면) — z=0
+      const tlB = { x: tl.x, y: tl.y + fH };
+      const trB = { x: tr.x, y: tr.y + fH };
+      const brB = { x: br.x, y: br.y + fH };
+      const blB = { x: bl.x, y: bl.y + fH };
+      // 그림자
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.beginPath();
+      ctx.moveTo(tlB.x, tlB.y); ctx.lineTo(trB.x, trB.y);
+      ctx.lineTo(brB.x, brB.y); ctx.lineTo(blB.x, blB.y); ctx.closePath();
+      ctx.fill();
+      // 측면 (오른쪽 두 면) — fill
+      ctx.fillStyle = '#6a4828';
+      ctx.beginPath(); ctx.moveTo(tr.x, tr.y); ctx.lineTo(br.x, br.y); ctx.lineTo(brB.x, brB.y); ctx.lineTo(trB.x, trB.y); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#5a3e22';
+      ctx.beginPath(); ctx.moveTo(br.x, br.y); ctx.lineTo(bl.x, bl.y); ctx.lineTo(blB.x, blB.y); ctx.lineTo(brB.x, brB.y); ctx.closePath(); ctx.fill();
+      // 상단 평면
+      ctx.fillStyle = '#7c5a32';
+      ctx.beginPath(); ctx.moveTo(tl.x, tl.y); ctx.lineTo(tr.x, tr.y); ctx.lineTo(br.x, br.y); ctx.lineTo(bl.x, bl.y); ctx.closePath(); ctx.fill();
+      // orientation 표시 — 막대 라인 (EW: 동서로 가로지름, NS: 남북으로)
+      ctx.strokeStyle = '#3a2a18'; ctx.lineWidth = 1.5;
+      if (ori === 'EW') {
+        // 동(우)서(좌) — iso상 가로축 = 화면상 (dx=±1, dy=0) → 화면 x ±32
+        ctx.beginPath();
+        const ax = x - 16, bx = x + 16;
+        ctx.moveTo(ax, y - fH); ctx.lineTo(bx, y - fH); ctx.stroke();
+      } else {
+        // 남북 — iso (dx=0, dy=±1) → 화면 (0, ±16)
+        ctx.beginPath();
+        const ay = y - fH - 16, by = y - fH + 16;
+        ctx.moveTo(x, ay); ctx.lineTo(x, by); ctx.stroke();
+      }
+      // 윤곽
+      ctx.strokeStyle = '#3a2a18'; ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(tl.x, tl.y); ctx.lineTo(tr.x, tr.y); ctx.lineTo(br.x, br.y); ctx.lineTo(bl.x, bl.y); ctx.closePath(); ctx.stroke();
     } else if (type === 'stair') {
       // === PZ식 3-cell 24-subStep 계단 (14.49-e2) ===
       // anchor (this draw 좌표 x, y) = cell 0 (낮은 발판) 중심. dir 방향으로 cell 1, 2 추가.
@@ -3161,15 +3277,20 @@ console.log('%c[durango-mini] client build = 14.49-e7an (skills UI)', 'color:#5a
     berry: '🫐', fiber: '🌾', meat_raw: '🥩', meat_cooked: '🍗',
     hide: '🦌', berry_jam: '🍯', water_bottle: '🥤',
     seed_berry: '🌱', herb: '🌿', ore: '⛏️',
+    // 14.50: 목공 자원
+    wood: '🪵', plank: '🪚', stone: '🪨',
   };
   const ITEM_LABEL = {
     berry: '베리', fiber: '풀', meat_raw: '날고기', meat_cooked: '구운고기',
     hide: '가죽', berry_jam: '베리잼', water_bottle: '물병',
     seed_berry: '베리씨앗', herb: '약초', ore: '광물',
+    wood: '통나무', plank: '판자', stone: '돌',
   };
 
   function updateHud() {
     document.getElementById('invWood').textContent = inventory.wood || 0;
+    const plankEl = document.getElementById('invPlank');
+    if (plankEl) plankEl.textContent = inventory.plank || 0;
     document.getElementById('invStone').textContent = inventory.stone || 0;
     const eqEl = document.getElementById('equippedBadge');
     if (eqEl) {
@@ -3470,6 +3591,33 @@ console.log('%c[durango-mini] client build = 14.49-e7an (skills UI)', 'color:#5a
       const t = b.dataset.equip;
       sendPrimary({ type: 'equip', tool: equipped === t ? null : t });
     });
+    // 14.50: 아이템 가공 (plank — 통나무→판자, 톱 필요)
+    if (itemRecipes && Object.keys(itemRecipes).length) {
+      const hdr = document.createElement('div');
+      hdr.className = 'hint';
+      hdr.style.cssText = 'margin-top:12px;padding-top:8px;border-top:1px solid #333;font-weight:bold';
+      hdr.textContent = '— 아이템 가공 (목공) —';
+      list.appendChild(hdr);
+      for (const [name, ir] of Object.entries(itemRecipes)) {
+        const hasTool = !ir.requiresTool || (tools && tools[ir.requiresTool]);
+        const canCraft = hasTool && Object.entries(ir.from).every(([k, v]) => (inventory[k] || 0) >= v);
+        const fromStr = Object.entries(ir.from).map(([k, v]) => `${ITEM_ICONS[k]||k} ${v}`).join(' · ');
+        const toStr = Object.entries(ir.to).map(([k, v]) => `${ITEM_ICONS[k]||k} ×${v}`).join(' ');
+        const toolStr = ir.requiresTool ? ` (${ir.requiresTool} 필요)` : '';
+        const row = document.createElement('div');
+        row.className = 'craft-row';
+        row.innerHTML = `
+          <div class="craft-icon">🪚</div>
+          <div class="craft-info">
+            <div class="craft-name">${ir.label}${toolStr}</div>
+            <div class="craft-cost">${fromStr} → ${toStr}</div>
+          </div>
+          <button class="craft-btn" data-craftitem="${name}" ${canCraft ? '' : 'disabled'}>가공</button>
+        `;
+        list.appendChild(row);
+      }
+      list.querySelectorAll('[data-craftitem]').forEach(b => b.onclick = () => sendPrimary({ type: 'craft_item', recipe: b.dataset.craftitem }));
+    }
   }
   function renderChestUi(id, data) {
     if (id !== openChestId) return;
@@ -4300,15 +4448,16 @@ console.log('%c[durango-mini] client build = 14.49-e7an (skills UI)', 'color:#5a
 
   // === 건축 메뉴 (카테고리별 카드) ===
   function renderBuildPanel(body) {
+    // 14.50: 목공 (plank+망치). 일부 기존 자원 (campfire 통나무).
     const items = [
-      { id: 'wall',      icon: '🧱', name: '벽',       cost: '🪵2 🪨1', key: 'B' },
-      { id: 'floor',     icon: '⬜', name: '바닥',     cost: '🪵1',      key: '-' },
-      { id: 'stair',     icon: '🪜', name: '계단',     cost: '🪵4 🪨2', key: 'U' },
-      { id: 'fence',     icon: '🪵', name: '울타리',  cost: '🪵1',      key: 'L' },
-      { id: 'chest',     icon: '📦', name: '상자',     cost: '🪵5 🪨2', key: 'H' },
-      { id: 'campfire',  icon: '🔥', name: '모닥불',  cost: '🪵3 🪨2', key: 'J' },
+      { id: 'wall',      icon: '🧱', name: '벽',       cost: '🪵🪵+🔨', key: 'B' },
+      { id: 'floor',     icon: '⬜', name: '바닥',     cost: '🪵+🔨',     key: '-' },
+      { id: 'door',      icon: '🚪', name: '문',       cost: '🪵🪵+🔨', key: '-' },
+      { id: 'fence',     icon: '🪵', name: '울타리',  cost: '🪵+🔨',     key: 'L' },
+      { id: 'stair',     icon: '🪜', name: '계단',     cost: '🪵🪵🪵🪵+🔨', key: 'U' },
+      { id: 'chest',     icon: '📦', name: '상자',     cost: '🪵🪵🪵🪵+🔨', key: 'H' },
+      { id: 'campfire',  icon: '🔥', name: '모닥불',  cost: '통나무3 🪨2', key: 'J' },
       { id: 'farmland',  icon: '🌱', name: '농지',     cost: '🌱1',      key: 'P' },
-      // 공성캠프 제거 — 임시 사유지(claim) 시스템으로 대체 예정 (Phase 14.18)
     ];
     body.innerHTML = `
       <div style="font-size:11px;color:#8a93a0;margin-bottom:8px">건축물 카드 클릭 → 현재 위치(${0}F=${0}, 1F=${1}, ...)에 즉시 설치 · 층 변경: <b>Z/X</b></div>

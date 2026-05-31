@@ -28,7 +28,7 @@
       <div id="authError" class="auth-error hidden"></div>
       <div class="hint">
         <b>WASD/화살표</b> = 화면 기준. W=↑, D=→, S=↓, A=←. 조합 시 정북/정동/정남/정서.<br/>
-        <b>Enter</b> 채팅 · <b>E</b> 채집 · <b>F</b> 공격 · <b>C</b> 토지 · <b>B/H</b> 벽/상자 · <b>Q</b> 공성캠프 · <b>K</b> 제작 · <b>M</b> 시장 · <b>1~3</b> 도구장착
+        <b>Enter</b> 채팅 · <b>E</b> 채집/문 · <b>F</b> 공격 · <b>C</b> 토지 · <b>B/H</b> 벽/상자 · <b>K</b> 제작(목공 — 통나무→판자, 망치 필요) · <b>M</b> 시장 · <b>1~3</b> 도구장착
       </div>
       <div id="health"></div>
     </div>
@@ -98,7 +98,8 @@
         <span class="badge" id="pvpBadge" title="PvP 토글 (V)">🕊️ PvP OFF</span>
       </div>
       <div class="hud-row" id="invRow">
-        <span class="inv">🪵 <b id="invWood">0</b></span>
+        <span class="inv" title="통나무 (나무에서 채집, 톱으로 판자 가공)">🪵 <b id="invWood">0</b></span>
+        <span class="inv" title="판자 (통나무 1 → 판자 2, 톱 필요). 망치로 건축 가능">🪚 <b id="invPlank">0</b></span>
         <span class="inv">🪨 <b id="invStone">0</b></span>
         <span class="inv">🔧 <b id="equippedBadge">맨손</b></span>
       </div>
@@ -109,6 +110,7 @@
         <button data-action="claim">토지 (C)</button>
         <button data-action="attack">공격 (F)</button>
         <button data-action="build_wall">벽 (B)</button>
+        <button data-action="build_door">문</button>
         <button data-action="build_fence">울타리 (L)</button>
         <button data-action="build_chest">상자 (H)</button>
         <button data-action="build_campfire">모닥불 (J)</button>
