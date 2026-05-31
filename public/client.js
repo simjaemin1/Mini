@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.49-e7i (PZ식 polygon shadow casting) ===
-console.log('%c[durango-mini] client build = 14.49-e7i (polygon shadow)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.49-e7j (정석 visibility polygon — 모든 wall endpoint에 3 ray cast) ===
+console.log('%c[durango-mini] client build = 14.49-e7j (visibility polygon)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -2010,52 +2010,90 @@ console.log('%c[durango-mini] client build = 14.49-e7i (polygon shadow)', 'color
       ctx.fillRect(0, 0, W, H);
     }
 
-    // === 4-c) 14.49-e7i: PZ식 polygon shadow casting (벽 너머 가려진 영역) ===
-    // 각 벽 edge를 player 시점에서 멀리 projection → shadow polygon. 셀 단위 X (smooth).
+    // === 4-c) 14.49-e7j: PZ식 visibility polygon (정석 알고리즘) ===
+    // 1) 시야 범위 내 wall 수집 + 경계 박스
+    // 2) 각 endpoint마다 3 ray (theta-ε, theta, theta+ε) cast
+    // 3) 각 ray와 가장 가까운 wall 교점
+    // 4) 교점 각도순 정렬 → visibility polygon
+    // 5) 화면 dark fill → destination-out으로 polygon 안 투명하게
     {
       const px = myAbsPredicted.x, py = myAbsPredicted.y;
       const myCx = Math.floor(px / CL_BUILDING_SIZE);
       const myCy = Math.floor(py / CL_BUILDING_SIZE);
-      const SHADOW_RANGE_CELLS = 16; // 16 cell 안 벽만 shadow 캐스팅 (perf)
-      ctx.fillStyle = 'rgba(0,0,0,0.65)';
-      const FAR = 2000; // shadow projection 거리 (충분히 화면 밖까지)
-      // wall edge → world endpoints. side='N': cell의 북변 (y=cy*32 라인). side='E': 동변 (x=(cx+1)*32 라인).
+      const SHADOW_RANGE_CELLS = 14;
+      const MAX_RANGE = SHADOW_RANGE_CELLS * CL_BUILDING_SIZE;
       ensureWallMap();
+      function w2sx(wx, wy) { return (wx - wy) - (px - py) + W/2; }
+      function w2sy(wx, wy) { return (wx + wy) * 0.5 - (px + py) * 0.5 + H/2; }
+      // 1) 벽 수집
+      const segs = [];
       for (const key of clWallCellMap.keys()) {
         const [cxs, cys, side, fs] = key.split('_');
         const cx = +cxs, cy = +cys, f = +fs;
         if (f !== myFloor) continue;
         if (Math.abs(cx - myCx) > SHADOW_RANGE_CELLS) continue;
         if (Math.abs(cy - myCy) > SHADOW_RANGE_CELLS) continue;
-        // wall endpoints (world coords)
-        let ax, ay, bx, by;
         if (side === 'N') {
-          ax = cx * CL_BUILDING_SIZE;       ay = cy * CL_BUILDING_SIZE;
-          bx = (cx + 1) * CL_BUILDING_SIZE; by = cy * CL_BUILDING_SIZE;
-        } else { // E
-          ax = (cx + 1) * CL_BUILDING_SIZE; ay = cy * CL_BUILDING_SIZE;
-          bx = (cx + 1) * CL_BUILDING_SIZE; by = (cy + 1) * CL_BUILDING_SIZE;
+          segs.push({ ax: cx * CL_BUILDING_SIZE, ay: cy * CL_BUILDING_SIZE,
+                      bx: (cx + 1) * CL_BUILDING_SIZE, by: cy * CL_BUILDING_SIZE });
+        } else {
+          segs.push({ ax: (cx + 1) * CL_BUILDING_SIZE, ay: cy * CL_BUILDING_SIZE,
+                      bx: (cx + 1) * CL_BUILDING_SIZE, by: (cy + 1) * CL_BUILDING_SIZE });
         }
-        // player → endpoint 방향. far point = endpoint + dir * FAR
-        const da = { x: ax - px, y: ay - py };
-        const db = { x: bx - px, y: by - py };
-        const lA = Math.hypot(da.x, da.y) || 1;
-        const lB = Math.hypot(db.x, db.y) || 1;
-        const faX = ax + (da.x / lA) * FAR, faY = ay + (da.y / lA) * FAR;
-        const fbX = bx + (db.x / lB) * FAR, fbY = by + (db.y / lB) * FAR;
-        // world coords → screen
-        const oxw = px - W/2, oyw = py - H/2; // (안 씀, 그냥 w2i+toScreen 직접)
-        function w2sx(wx, wy) { return (wx - wy) - (px - py) + W/2; }
-        function w2sy(wx, wy) { return (wx + wy) * 0.5 - (px + py) * 0.5 + H/2; }
-        // shadow polygon: A → B → fB → fA (clockwise from player POV)
-        ctx.beginPath();
-        ctx.moveTo(w2sx(ax, ay), w2sy(ax, ay));
-        ctx.lineTo(w2sx(bx, by), w2sy(bx, by));
-        ctx.lineTo(w2sx(fbX, fbY), w2sy(fbX, fbY));
-        ctx.lineTo(w2sx(faX, faY), w2sy(faX, faY));
-        ctx.closePath();
-        ctx.fill();
       }
+      // 경계 박스 4변 (ray 종료점)
+      const bMin = MAX_RANGE + 8;
+      segs.push({ ax: px - bMin, ay: py - bMin, bx: px + bMin, by: py - bMin });
+      segs.push({ ax: px + bMin, ay: py - bMin, bx: px + bMin, by: py + bMin });
+      segs.push({ ax: px + bMin, ay: py + bMin, bx: px - bMin, by: py + bMin });
+      segs.push({ ax: px - bMin, ay: py + bMin, bx: px - bMin, by: py - bMin });
+      // 2) endpoints + angles
+      const eps = 0.0001;
+      const angles = [];
+      for (const s of segs) {
+        const a1 = Math.atan2(s.ay - py, s.ax - px);
+        const a2 = Math.atan2(s.by - py, s.bx - px);
+        angles.push(a1 - eps, a1, a1 + eps, a2 - eps, a2, a2 + eps);
+      }
+      // ray-segment intersection. returns t (ray param) or null.
+      function rsi(dx, dy, s) {
+        const sx = s.bx - s.ax, sy = s.by - s.ay;
+        const den = dx * sy - dy * sx;
+        if (Math.abs(den) < 1e-10) return null;
+        const t = ((s.ax - px) * sy - (s.ay - py) * sx) / den;
+        const u = ((s.ax - px) * dy - (s.ay - py) * dx) / den;
+        if (t > 0 && u >= 0 && u <= 1) return t;
+        return null;
+      }
+      // 3) 각 각도마다 closest hit
+      const hits = [];
+      for (const a of angles) {
+        const dx = Math.cos(a), dy = Math.sin(a);
+        let best = MAX_RANGE;
+        for (const s of segs) {
+          const t = rsi(dx, dy, s);
+          if (t !== null && t < best) best = t;
+        }
+        hits.push({ a, x: px + dx * best, y: py + dy * best });
+      }
+      // 4) 각도순 정렬
+      hits.sort((u, v) => u.a - v.a);
+      // 5) Render: 어두운 overlay → polygon 안만 destination-out
+      ctx.save();
+      ctx.fillStyle = 'rgba(0,0,0,0.85)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.beginPath();
+      if (hits.length > 0) {
+        ctx.moveTo(w2sx(hits[0].x, hits[0].y), w2sy(hits[0].x, hits[0].y));
+        for (let i = 1; i < hits.length; i++) {
+          ctx.lineTo(w2sx(hits[i].x, hits[i].y), w2sy(hits[i].x, hits[i].y));
+        }
+        ctx.closePath();
+      }
+      ctx.fillStyle = 'rgba(255,255,255,1)';
+      ctx.fill();
+      ctx.restore();
     }
 
     // === 4-1) 밤 어두움 오버레이 — 푸른 톤, 시야는 더 좁아짐 ===
