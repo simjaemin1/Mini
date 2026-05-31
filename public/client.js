@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.49-e7n (fog of war + 거리 cutaway + 위층 외벽만) ===
-console.log('%c[durango-mini] client build = 14.49-e7n (PZ 3종)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.49-e7n2 (fog of war 체크무늬 fix — single path + bbox rect) ===
+console.log('%c[durango-mini] client build = 14.49-e7n2 (fog uniform)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -2167,8 +2167,11 @@ console.log('%c[durango-mini] client build = 14.49-e7n (PZ 3종)', 'color:#5a9ae
       mctx.fillRect(0, 0, W, H);
 
       // (ii) seen cell들: alpha 0.5 subtract → 회색 (= memory)
+      // 모든 cell rect를 single path에 add 후 한 번에 fill (overlap 누적 X, 균일 alpha)
+      // iso bbox(64x32 rect)로 fill — 인접 cell과 자연스럽게 overlap, 체크무늬 X
       mctx.globalCompositeOperation = 'destination-out';
       mctx.fillStyle = 'rgba(0,0,0,0.5)';
+      mctx.beginPath();
       const FOG_DRAW_RANGE = 30;
       for (const key of seenCells) {
         const parts = key.split('_');
@@ -2176,26 +2179,16 @@ console.log('%c[durango-mini] client build = 14.49-e7n (PZ 3종)', 'color:#5a9ae
         const cx = +parts[0], cy = +parts[1];
         if (Math.abs(cx - myCx) > FOG_DRAW_RANGE) continue;
         if (Math.abs(cy - myCy) > FOG_DRAW_RANGE) continue;
-        // iso diamond cell — 약간 overlap 시켜서 sub-cell gap 방지
-        const wx = cx * CL_BUILDING_SIZE;
-        const wy = cy * CL_BUILDING_SIZE;
-        const pad = 1; // 살짝 키워서 인접 cell 사이 line gap 방지
-        const p1x = w2sx(wx - pad, wy + CL_BUILDING_SIZE/2);
-        const p1y = w2sy(wx - pad, wy + CL_BUILDING_SIZE/2);
-        const p2x = w2sx(wx + CL_BUILDING_SIZE/2, wy - pad);
-        const p2y = w2sy(wx + CL_BUILDING_SIZE/2, wy - pad);
-        const p3x = w2sx(wx + CL_BUILDING_SIZE + pad, wy + CL_BUILDING_SIZE/2);
-        const p3y = w2sy(wx + CL_BUILDING_SIZE + pad, wy + CL_BUILDING_SIZE/2);
-        const p4x = w2sx(wx + CL_BUILDING_SIZE/2, wy + CL_BUILDING_SIZE + pad);
-        const p4y = w2sy(wx + CL_BUILDING_SIZE/2, wy + CL_BUILDING_SIZE + pad);
-        mctx.beginPath();
-        mctx.moveTo(p1x, p1y);
-        mctx.lineTo(p2x, p2y);
-        mctx.lineTo(p3x, p3y);
-        mctx.lineTo(p4x, p4y);
-        mctx.closePath();
-        mctx.fill();
+        // iso cell center → screen
+        const wxC = (cx + 0.5) * CL_BUILDING_SIZE;
+        const wyC = (cy + 0.5) * CL_BUILDING_SIZE;
+        const sxC = w2sx(wxC, wyC);
+        const syC = w2sy(wxC, wyC);
+        // axis-aligned bbox of iso diamond (64 wide x 32 tall)
+        // 인접 cell rect와 32x16 overlap → gap 없음
+        mctx.rect(sxC - 32, syC - 16, 64, 32);
       }
+      mctx.fill(); // 한 번의 fill — overlap 영역도 단일 alpha 0.5
 
       // (iii) visibility polygon hole — 현재 보고 있는 곳 fully transparent
       mctx.fillStyle = 'rgba(255,255,255,1)';
