@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.49-e7 (NPC 집 0F/1F/2F 바닥 다 깔음) ===
-console.log('%c[durango-mini] client build = 14.49-e7 (집 3층 바닥)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.49-e7e (floor 타일 셀 꽉 채움 + 등 뒤 미세) ===
+console.log('%c[durango-mini] client build = 14.49-e7e (floor 셀 꽉)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -596,8 +596,7 @@ console.log('%c[durango-mini] client build = 14.49-e7 (집 3층 바닥)', 'color
     else if (k === 'v') sendPrimary({ type: 'pvp_set', enabled: !myPvpEnabled });
     else if (k === 'z') { myBuildFloor = Math.min(5, myBuildFloor + 1); showNotice(`건축 층: ${myBuildFloor}F`); updateHud(); }
     else if (k === 'x') { myBuildFloor = Math.max(0, myBuildFloor - 1); showNotice(`건축 층: ${myBuildFloor}F`); updateHud(); }
-    else if (k === ',') sendPrimary({ type: 'change_floor', direction: 'down' });
-    else if (k === '.') sendPrimary({ type: 'change_floor', direction: 'up' });
+    // 14.49-e7b: ,/. 키 제거 (자동 계단 도입 후 불필요)
     else if (k === 'u') {
       // 14.49-d: 빌드 시 player facing(myFacingVx/Vy)으로 stair dir 결정
       let bdir = 'N';
@@ -1730,8 +1729,16 @@ console.log('%c[durango-mini] client build = 14.49-e7 (집 3층 바닥)', 'color
           const tileCx = Math.floor((wx + TS/2) / CL_BUILDING_SIZE);
           const tileCy = Math.floor((wy + TS/2) / CL_BUILDING_SIZE);
           if (!hasLineOfSight(myCx, myCy, tileCx, tileCy, myFloor)) {
-            visibility = 0.1; // 벽 너머 — 어둡게 (radial overlay 위에서 더 어두워짐)
+            visibility = 0.1; // 벽 너머 — 어둡게
           }
+        }
+        // 14.49-e7c: 등 뒤 darken (PZ식 directional cone). 본인 80px 안은 cone 무시.
+        if (visibility > 0.15 && dist >= 80 && (myFacingVx !== 0 || myFacingVy !== 0)) {
+          const flen = Math.hypot(myFacingVx, myFacingVy) || 1;
+          const fx = myFacingVx / flen, fy = myFacingVy / flen;
+          const ux = cellWx / dist, uy = cellWy / dist;
+          const dot = fx * ux + fy * uy; // -1=뒤 ~ +1=앞
+          visibility *= 0.95 + 0.05 * dot; // 앞=1.0, 뒤=0.90 (미세하게)
         }
 
         const n = ((wx * 73 + wy * 31) >>> 0) % 17 / 17;
@@ -2165,13 +2172,14 @@ console.log('%c[durango-mini] client build = 14.49-e7 (집 3층 바닥)', 'color
       }
       ctx.globalAlpha = 1; // Phase 14.33: damaged wall 반투명 복원
     } else if (type === 'floor') {
-      // 바닥 — 평평한 다이아 (입체감 약간만)
-      const data = building?.data || {};
-      ctx.fillStyle = 'rgba(0,0,0,0.2)';
-      ctx.beginPath(); ctx.ellipse(x, y + 2, 16, 4, 0, 0, Math.PI * 2); ctx.fill();
+      // 14.49-e7e: 바닥 — 셀 꽉 채우는 isometric 다이아 (TS=32 ground tile과 동일 크기).
+      // 64 wide × 32 tall iso diamond. 셀 중심 (x, y)에서 그림.
       ctx.beginPath();
-      ctx.moveTo(x, y - 16); ctx.lineTo(x + 16, y - 8);
-      ctx.lineTo(x, y); ctx.lineTo(x - 16, y - 8); ctx.closePath();
+      ctx.moveTo(x, y - 16);          // top
+      ctx.lineTo(x + 32, y);          // right
+      ctx.lineTo(x, y + 16);          // bottom
+      ctx.lineTo(x - 32, y);          // left
+      ctx.closePath();
       ctx.fillStyle = '#8a6a4a'; ctx.fill();
       ctx.strokeStyle = '#5a3a1c'; ctx.lineWidth = 0.5; ctx.stroke();
     } else if (type === 'chest') {
@@ -2351,13 +2359,7 @@ console.log('%c[durango-mini] client build = 14.49-e7 (집 3층 바닥)', 'color
       ctx.beginPath();
       ctx.moveTo(aX, aY - 5); ctx.lineTo(aX - 5, aY + 2); ctx.lineTo(aX + 5, aY + 2);
       ctx.closePath(); ctx.stroke(); ctx.fill();
-      // 라벨 (',/. 층 이동')
-      ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
-      ctx.fillStyle = '#e8d8a8';
-      ctx.strokeStyle = 'rgba(0,0,0,0.85)'; ctx.lineWidth = 2;
-      ctx.strokeText(',/.', x, y + 22);
-      ctx.fillText(',/.', x, y + 22);
-      ctx.textAlign = 'start';
+      // 14.49-e7b: 라벨 제거 (자동 계단이라 키 안내 불필요)
     } else if (type === 'campfire') {
       // 모닥불 — 통나무 + 흔들리는 불꽃
       ctx.fillStyle = 'rgba(0,0,0,0.4)';

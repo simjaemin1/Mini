@@ -1807,24 +1807,7 @@ function handlePlayerInput(player, raw) {
     send(player.ws, { type: 'pvp_state', enabled: player.pvpEnabled });
     send(player.ws, { type: 'notice', text: player.pvpEnabled ? '⚔️ PvP 활성화' : '🕊️ PvP 비활성화' });
   }
-  else if (msg.type === 'change_floor') {
-    // 계단 근처 (80px 안)에서만 가능. direction: 'up'|'down'.
-    let nearStair = false;
-    const nearby = qtBuildings ? qtBuildings.queryCircle(player.x, player.y, 80) : Array.from(buildings.values());
-    for (const b of nearby) {
-      if (b.type !== 'stair') continue;
-      if (Math.hypot(b.x - player.x, b.y - player.y) < 64) { nearStair = true; break; }
-    }
-    if (!nearStair) { send(player.ws, { type: 'notice', text: '계단 옆에서만 층 이동 가능' }); return; }
-    const dir = msg.direction;
-    if (dir === 'up') {
-      player.floor = Math.min(5, (player.floor || 0) + 1);
-    } else if (dir === 'down') {
-      player.floor = Math.max(0, (player.floor || 0) - 1);
-    } else return;
-    send(player.ws, { type: 'floor_changed', floor: player.floor });
-    send(player.ws, { type: 'notice', text: `${player.floor}F 이동` });
-  }
+  // 14.49-e7b: change_floor 메시지 핸들러 제거 (자동 계단으로 대체)
 }
 
 // === 부족 채팅 라우팅 ===
