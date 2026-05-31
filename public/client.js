@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.49-e7q (PZ식 cell bitmap + bilinear) ===
-console.log('%c[durango-mini] client build = 14.49-e7q (PZ bitmap)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.49-e7s (등 뒤도 seen 처리 — visibility = polygon AND cone) ===
+console.log('%c[durango-mini] client build = 14.49-e7s (cone 통합)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -2141,7 +2141,14 @@ console.log('%c[durango-mini] client build = 14.49-e7q (PZ bitmap)', 'color:#5a9
       const originCellX = myCx - half;
       const originCellY = myCy - half;
 
-      // bitmap fill — 각 cell마다 visibility 판정 + seenCells 갱신
+      // visibility = polygon AND facing cone — 등 뒤도 "seen"으로 통합 (별도 darken X)
+      const facingLen = Math.hypot(myFacingVx, myFacingVy);
+      const hasFacing = facingLen > 0.001;
+      const fxn = hasFacing ? myFacingVx / facingLen : 0;
+      const fyn = hasFacing ? myFacingVy / facingLen : 0;
+      const CONE_COS = -0.34; // cos(110°) → 전체 ~220° cone (PZ 비슷)
+      const CLOSE_R2 = 128 * 128; // 4 cell 안은 cone 무관 visible
+
       const imageData = fogCtx.createImageData(FOG_BITMAP_SIZE, FOG_BITMAP_SIZE);
       const idata = imageData.data;
       for (let py = 0; py < FOG_BITMAP_SIZE; py++) {
@@ -2152,17 +2159,28 @@ console.log('%c[durango-mini] client build = 14.49-e7q (PZ bitmap)', 'color:#5a9
           const wyC = (cy + 0.5) * CL_BUILDING_SIZE;
           const sxC = w2sx(wxC, wyC);
           const syC = w2sy(wxC, wyC);
-          const isVis = mctx.isPointInPath(polyPath, sxC, syC);
+          let isVis = mctx.isPointInPath(polyPath, sxC, syC);
+          // facing cone 적용 (등 뒤 cone 밖이면 visible X)
+          if (isVis && hasFacing) {
+            const ddx = wxC - px;
+            const ddy = wyC - py;
+            const d2 = ddx * ddx + ddy * ddy;
+            if (d2 > CLOSE_R2) {
+              const dlen = Math.sqrt(d2);
+              const dot = (ddx * fxn + ddy * fyn) / dlen;
+              if (dot < CONE_COS) isVis = false;
+            }
+          }
           const idx = (py * FOG_BITMAP_SIZE + pxi) * 4;
           if (isVis) {
             seenCells.add(`${cx}_${cy}_${myFloor}`);
             idata[idx] = 255; idata[idx+1] = 255; idata[idx+2] = 255;
-            idata[idx+3] = 255; // 다 빼기 → mask 완전 transparent → 밝음
+            idata[idx+3] = 255;
           } else if (seenCells.has(`${cx}_${cy}_${myFloor}`)) {
             idata[idx] = 255; idata[idx+1] = 255; idata[idx+2] = 255;
-            idata[idx+3] = 204; // 80% 빼기 → mask alpha 0.2 남음 → 살짝 어둠
+            idata[idx+3] = 204; // 살짝 어둠
           } else {
-            idata[idx+3] = 0; // 안 빼기 → mask alpha 1.0 그대로 → 검은색
+            idata[idx+3] = 0; // 검은색
           }
         }
       }
@@ -2189,6 +2207,7 @@ console.log('%c[durango-mini] client build = 14.49-e7q (PZ bitmap)', 'color:#5a9
       mctx.setTransform(32, 16, -32, 16, isoOriginSX, isoOriginSY);
       mctx.drawImage(fogCanvas, 0, 0);
       mctx.restore();
+      // 등 뒤 별도 darken 제거 — cone으로 통합 (등 뒤 = seen 처리)
 
       // 6) main에 합성 — entity 보존
       ctx.drawImage(mc, 0, 0);
