@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.49-e7ab (cutaway 범위 8~14 + 머리 위 building BFS cutaway) ===
-console.log('%c[durango-mini] client build = 14.49-e7ab (above BFS cutaway)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.49-e7ac (wall edge 방향성 기반 cutaway: 가로 dy, 세로 dx) ===
+console.log('%c[durango-mini] client build = 14.49-e7ac (edge-aware cutaway)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -2034,16 +2034,20 @@ console.log('%c[durango-mini] client build = 14.49-e7ab (above BFS cutaway)', 'c
             continue; // 위층 chest, farmland, scarecrow 등 모두 skip
           }
         }
-        // 14.49-e7n: 거리 기반 wall cutaway — S/E 벽이 가까울수록 투명
-        // 4 cell 이내 = 최대 투명, 7 cell 너머 = 정상
+        // 14.49-e7ac: wall edge 방향성 기반 cutaway
+        // 가로 wall (side='N'): dy로 판정. dy > 8 = S 벽 → cutaway.
+        // 세로 wall (side='E'): dx로 판정. dx > 8 = E 벽 → cutaway.
         else if ((bType === 'wall' || bType === 'fence') && bf === myFloor) {
           const dx = item.ax - myAbsPredicted.x;
           const dy = item.ay - myAbsPredicted.y;
-          // 카메라쪽(S/E) 벽만 (player 동남쪽에 있는 벽 = 화면에서 player 가리는 벽)
-          if (dx > -8 && dy > -8 && (dx > 8 || dy > 8)) {
+          const side = item.b.data?.side;
+          let isCutaway = false;
+          if (side === 'N' && dy > 8) isCutaway = true;
+          else if (side === 'E' && dx > 8) isCutaway = true;
+          if (isCutaway) {
             const dist = Math.hypot(dx, dy);
-            const NEAR = 8 * CL_BUILDING_SIZE; // 8 cell
-            const FAR  = 14 * CL_BUILDING_SIZE; // 14 cell
+            const NEAR = 8 * CL_BUILDING_SIZE;
+            const FAR  = 14 * CL_BUILDING_SIZE;
             const minA = bType === 'fence' ? 0.3 : 0.05;
             if (dist < NEAR) {
               ctx.globalAlpha = minA;
@@ -2318,10 +2322,14 @@ console.log('%c[durango-mini] client build = 14.49-e7ab (above BFS cutaway)', 'c
         // alpha 계산 (1차 render와 동일)
         let alpha = 1.0;
         if (bf < myFloor) alpha = 0.55;
-        else { // bf === myFloor: 거리 기반 S/E cutaway
+        else { // bf === myFloor: edge 방향성 기반 cutaway
           const dx = item.ax - myAbsPredicted.x;
           const dy = item.ay - myAbsPredicted.y;
-          if (dx > -8 && dy > -8 && (dx > 8 || dy > 8)) {
+          const side = item.b.data?.side;
+          let isCutaway = false;
+          if (side === 'N' && dy > 8) isCutaway = true;
+          else if (side === 'E' && dx > 8) isCutaway = true;
+          if (isCutaway) {
             const dist = Math.hypot(dx, dy);
             const NEAR = 8 * CL_BUILDING_SIZE;
             const FAR  = 14 * CL_BUILDING_SIZE;
