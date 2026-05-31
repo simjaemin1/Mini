@@ -613,8 +613,10 @@ function spawnNpc(opts = {}) {
     // 서쪽 변 (cx-2의 W = cx-3의 E)
     for (let j = -2; j <= 2; j++) addWall(houseCx - 3, houseCy + j, 'E', f);
   }
-  // 1F 바닥 (5x5) — 천장
+  // 14.49-e7: 0F 바닥 (집 안 바닥 타일) + 1F 바닥 (천장) + 2F 바닥 (지붕)
+  for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) addBlock(houseCx + i, houseCy + j, 'floor', 0);
   for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) addBlock(houseCx + i, houseCy + j, 'floor', 1);
+  for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) addBlock(houseCx + i, houseCy + j, 'floor', 2);
   // 계단 — 집 내부, 동쪽 벽에 붙음. dir='N' (남쪽에서 들어와 북쪽으로 올라감).
   // anchor=낮은 입구=(houseCx+2, houseCy+1) [동쪽 벽 옆], step 1=(houseCx+2, houseCy), step 2=(houseCx+2, houseCy-1)
   // 1F 도착=(houseCx+2, houseCy-2) 위. 동쪽 벽 따라서 올라감.
