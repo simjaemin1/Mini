@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.49-e7j (정석 visibility polygon — 모든 wall endpoint에 3 ray cast) ===
-console.log('%c[durango-mini] client build = 14.49-e7j (visibility polygon)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.49-e7k (visibility polygon — ray range 화면 2배 + alpha 0.55) ===
+console.log('%c[durango-mini] client build = 14.49-e7k (vis poly fix)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -2020,8 +2020,10 @@ console.log('%c[durango-mini] client build = 14.49-e7j (visibility polygon)', 'c
       const px = myAbsPredicted.x, py = myAbsPredicted.y;
       const myCx = Math.floor(px / CL_BUILDING_SIZE);
       const myCy = Math.floor(py / CL_BUILDING_SIZE);
-      const SHADOW_RANGE_CELLS = 14;
-      const MAX_RANGE = SHADOW_RANGE_CELLS * CL_BUILDING_SIZE;
+      // wall iteration radius (벽 수집 범위) vs ray cast range (광선 닿는 거리)
+      // ray range는 화면 너비보다 충분히 커야 화면 가장자리까지 시야 정상
+      const SHADOW_RANGE_CELLS = 16; // 벽 수집은 16 cell만 (perf)
+      const MAX_RANGE = Math.max(W, H) * 2; // ray range는 화면 2배 (시야 화면 전체 커버)
       ensureWallMap();
       function w2sx(wx, wy) { return (wx - wy) - (px - py) + W/2; }
       function w2sy(wx, wy) { return (wx + wy) * 0.5 - (px + py) * 0.5 + H/2; }
@@ -2041,8 +2043,8 @@ console.log('%c[durango-mini] client build = 14.49-e7j (visibility polygon)', 'c
                       bx: (cx + 1) * CL_BUILDING_SIZE, by: (cy + 1) * CL_BUILDING_SIZE });
         }
       }
-      // 경계 박스 4변 (ray 종료점)
-      const bMin = MAX_RANGE + 8;
+      // 경계 박스 4변 (ray 종료점) — MAX_RANGE 큰 박스
+      const bMin = MAX_RANGE;
       segs.push({ ax: px - bMin, ay: py - bMin, bx: px + bMin, by: py - bMin });
       segs.push({ ax: px + bMin, ay: py - bMin, bx: px + bMin, by: py + bMin });
       segs.push({ ax: px + bMin, ay: py + bMin, bx: px - bMin, by: py + bMin });
@@ -2080,7 +2082,7 @@ console.log('%c[durango-mini] client build = 14.49-e7j (visibility polygon)', 'c
       hits.sort((u, v) => u.a - v.a);
       // 5) Render: 어두운 overlay → polygon 안만 destination-out
       ctx.save();
-      ctx.fillStyle = 'rgba(0,0,0,0.85)';
+      ctx.fillStyle = 'rgba(0,0,0,0.55)'; // 벽 너머 어둠 — 너무 진하지 않게
       ctx.fillRect(0, 0, W, H);
       ctx.globalCompositeOperation = 'destination-out';
       ctx.beginPath();
