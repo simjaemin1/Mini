@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.49-e7z (close 영역도 360° ray cast로 wall clip) ===
-console.log('%c[durango-mini] client build = 14.49-e7z (close wall clip)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.49-e7aa (mask 위에 wall 다시 그림, unseen wall skip) ===
+console.log('%c[durango-mini] client build = 14.49-e7aa (wall above mask)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -2248,6 +2248,54 @@ console.log('%c[durango-mini] client build = 14.49-e7z (close wall clip)', 'colo
 
       // 6) main에 합성 — entity 보존
       ctx.drawImage(mc, 0, 0);
+
+      // 14.49-e7aa: mask 위에 wall 다시 그림 — unseen 영역 wall은 skip
+      // 양쪽 cell 중 하나라도 seenCells에 있으면 그림. 둘 다 unseen이면 mask가 가린 채.
+      for (const item of renderables) {
+        if (item.kind !== 'building') continue;
+        const bType = item.b.type;
+        if (bType !== 'wall' && bType !== 'fence') continue;
+        const bf = item.b.floor || 0;
+        if (bf > myFloor) continue; // 위층 wall은 1차 render에 맡김
+
+        const side = item.b.data?.side || 'N';
+        let absCx1, absCy1, absCx2, absCy2;
+        if (side === 'N') {
+          absCx1 = Math.floor(item.ax / CL_BUILDING_SIZE);
+          absCy1 = Math.floor(item.ay / CL_BUILDING_SIZE);
+          absCx2 = absCx1; absCy2 = absCy1 - 1;
+        } else {
+          absCx1 = Math.floor(item.ax / CL_BUILDING_SIZE) - 1;
+          absCy1 = Math.floor(item.ay / CL_BUILDING_SIZE);
+          absCx2 = absCx1 + 1; absCy2 = absCy1;
+        }
+        const seen1 = seenCells.has(`${absCx1}_${absCy1}_${bf}`);
+        const seen2 = seenCells.has(`${absCx2}_${absCy2}_${bf}`);
+        if (!seen1 && !seen2) continue; // 둘 다 unseen → mask가 가린 채
+
+        // alpha 계산 (1차 render와 동일)
+        let alpha = 1.0;
+        if (bf < myFloor) alpha = 0.55;
+        else { // bf === myFloor: 거리 기반 S/E cutaway
+          const dx = item.ax - myAbsPredicted.x;
+          const dy = item.ay - myAbsPredicted.y;
+          if (dx > -8 && dy > -8 && (dx > 8 || dy > 8)) {
+            const dist = Math.hypot(dx, dy);
+            const NEAR = 4 * CL_BUILDING_SIZE;
+            const FAR = 7 * CL_BUILDING_SIZE;
+            const minA = bType === 'fence' ? 0.3 : 0.05;
+            if (dist < NEAR) alpha = minA;
+            else if (dist < FAR) {
+              const t = (dist - NEAR) / (FAR - NEAR);
+              alpha = minA + (1 - minA) * t;
+            }
+          }
+        }
+        const s = toScreen(item.iso.x, item.iso.y);
+        ctx.globalAlpha = alpha;
+        drawBuildingIso(s.x, s.y, bType, item.b);
+        ctx.globalAlpha = 1;
+      }
     }
 
     // === 4-1) 밤 어두움 오버레이 — 푸른 톤, 시야는 더 좁아짐 ===
