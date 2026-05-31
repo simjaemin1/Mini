@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.49-e5 (PZ식 wall cutaway) ===
-console.log('%c[durango-mini] client build = 14.49-e5 (벽 cutaway)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.49-e5b (PZ식 wall cutaway 제대로) ===
+console.log('%c[durango-mini] client build = 14.49-e5b (벽 cutaway 재구현)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -223,6 +223,34 @@ console.log('%c[durango-mini] client build = 14.49-e5 (벽 cutaway)', 'color:#5a
       }
     }
     return false;
+  }
+  // 14.49-e5b: 실내 detect — 같은 floor에 가까운 N or W 벽이 있으면 indoor.
+  // frame당 1번만 계산 (벽마다 호출 X — O(N²) 방지)
+  let _indoorCachedAt = 0;
+  let _indoorCached = false;
+  function playerIsIndoors() {
+    const now = performance.now();
+    if (now - _indoorCachedAt < 100) return _indoorCached; // 100ms TTL
+    _indoorCachedAt = now;
+    const px = myAbsPredicted.x, py = myAbsPredicted.y;
+    let found = false;
+    outer: for (const [zid, c] of conns) {
+      const zm = c.meta || zonesMeta[zid];
+      if (!zm) continue;
+      const ox = zm.worldOffsetX || 0, oy = zm.worldOffsetY || 0;
+      for (const b of c.buildings.values()) {
+        if (b.type !== 'wall') continue;
+        if ((b.floor || 0) !== myFloor) continue;
+        const ax = ox + b.x, ay = oy + b.y;
+        const dx = px - ax, dy = py - ay;
+        if ((dx > 8 || dy > 8) && Math.abs(dx) < 128 && Math.abs(dy) < 128) {
+          found = true;
+          break outer;
+        }
+      }
+    }
+    _indoorCached = found;
+    return found;
   }
   // 14.49-e3-perf2: 계단 측면 진입 차단 + 클라 stair cell 캐시 (O(1))
   function clDirVec(dir) {
@@ -1754,16 +1782,19 @@ console.log('%c[durango-mini] client build = 14.49-e5 (벽 cutaway)', 'color:#5a
         const bf = item.b.floor || 0;
         // 천장 투명 — 캐릭터 floor보다 높은 건물은 흐릿하게
         if (bf > myFloor) ctx.globalAlpha = 0.3;
-        // 14.49-e5: PZ식 cutaway — 카메라(NE)와 플레이어 사이 벽은 반투명.
-        // 같은 floor + 플레이어의 SE 쪽 (wall.ax > my.ax OR wall.ay > my.ay) + 가까운 범위.
-        // wall만 적용 (천장·계단·체스트는 그대로).
-        else if (item.b.type === 'wall' && bf === myFloor) {
+        // 14.49-e5b: PZ식 wall cutaway — 실내일 때 플레이어의 S/E 방향 벽 전부 투명.
+        // N/W 벽은 절대 안 투명 (뒷쪽이라 카메라 안 가림).
+        // 실내 = 플레이어 같은 floor에 가까운 N or W 벽 존재 (= 어떤 건물 안에 있다는 신호).
+        else if (item.b.type === 'wall' && bf === myFloor && playerIsIndoors()) {
+          // wall은 cell의 N edge(side='N') 또는 E edge(side='E')에 위치.
+          // S 벽 = 플레이어 cell 남쪽 변 = 플레이어보다 wall ay가 큼 (= wall이 화면 아래쪽)
+          // E 벽 = 플레이어 cell 동쪽 변 = 플레이어보다 wall ax가 큼 (= 화면 오른쪽)
           const dx = item.ax - myAbsPredicted.x;
           const dy = item.ay - myAbsPredicted.y;
-          // SE 방향 (dx > 0 or dy > 0)이고 충분히 가까운 (~5 cell 안) 벽은 cutaway
-          const isInFront = (dx > -16 && dy > -16) && (dx + dy > -16);
-          const dist = Math.hypot(dx, dy);
-          if (isInFront && dist < 160) ctx.globalAlpha = 0.18;
+          // SE 방향 — 플레이어 기준 어느 한 축이라도 + 면. (단 둘 다 음수면 NW, 안 투명)
+          if (dx > -8 && dy > -8 && (dx > 8 || dy > 8)) {
+            ctx.globalAlpha = 0.1; // 거의 투명 (윤곽만 흐릿)
+          }
         }
         drawBuildingIso(s.x, s.y, item.b.type, item.b);
         ctx.globalAlpha = 1;
