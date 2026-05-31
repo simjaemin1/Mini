@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.49-e7l (off-screen mask canvas — entity 보존하며 dark 합성) ===
-console.log('%c[durango-mini] client build = 14.49-e7l (off-screen mask)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.49-e7n (fog of war + 거리 cutaway + 위층 외벽만) ===
+console.log('%c[durango-mini] client build = 14.49-e7n (PZ 3종)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -1812,7 +1812,7 @@ console.log('%c[durango-mini] client build = 14.49-e7l (off-screen mask)', 'colo
         const oFloor = o.floor || 0;
         const oZ = oFloor * FLOOR_HEIGHT + (o.z || 0); // 14.49-d: 계단 위 z 포함
         const isoF = w2i(ax, ay, oZ);
-        renderables.push({ z: (ax + ay) * 0.5 + oFloor * 1000 + 500, kind: 'player', pid: o.pid, name: displayName, color: o.color || '#5a9ae0', hp: o.hp, maxHp: o.maxHp, iso: isoF, ax, ay, lastAttackAt: o.lastAttackAt, vx: o.vx, vy: o.vy, _fvx: o._fvx, _fvy: o._fvy });
+        renderables.push({ z: (ax + ay) * 0.5 + oFloor * 1000 + 500, kind: 'player', pid: o.pid, name: displayName, color: o.color || '#5a9ae0', hp: o.hp, maxHp: o.maxHp, iso: isoF, ax, ay, floor: oFloor, lastAttackAt: o.lastAttackAt, vx: o.vx, vy: o.vy, _fvx: o._fvx, _fvy: o._fvy });
       }
     }
     {
@@ -1906,6 +1906,8 @@ console.log('%c[durango-mini] client build = 14.49-e7l (off-screen mask)', 'colo
         ctx.textAlign = 'start'; ctx.textBaseline = 'alphabetic';
         ctx.globalAlpha = 1;
       } else if (item.kind === 'player') {
+        // 14.49-e7n: 위층 player 안 그림 (본인 제외)
+        if (!item.isMe && (item.floor || 0) > myFloor) continue;
         const s = toScreen(item.iso.x, item.iso.y);
         const d = Math.hypot(item.ax - worldCx, item.ay - worldCy);
         let vis = item.isMe ? 1 : Math.max(0.15, 1 - Math.pow(d / VIEW_RADIUS, 1.4));
@@ -1952,23 +1954,63 @@ console.log('%c[durango-mini] client build = 14.49-e7l (off-screen mask)', 'colo
       } else if (item.kind === 'building') {
         const s = toScreen(item.iso.x, item.iso.y);
         const bf = item.b.floor || 0;
-        // 14.49-e6e: 위 floor 건물 — wall은 잘 보이게(0.7), 그 외 천장/floor는 흐리게(0.35)
+        const bType = item.b.type;
+        // 14.49-e7n: 위층 (myFloor + 1 이상) — 외벽 + 지붕(floor)만 렌더
         if (bf > myFloor) {
-          ctx.globalAlpha = (item.b.type === 'wall' || item.b.type === 'fence') ? 0.7 : 0.35;
+          if (bType === 'floor') {
+            ctx.globalAlpha = 0.55; // 지붕 역할 (위층 바닥 = 아래층 천장)
+          } else if (bType === 'wall' || bType === 'fence') {
+            // 외벽 판정 — wall이 outdoor cell과 인접하면 외벽
+            const side = item.b.data?.side || 'N';
+            // wall ax/ay → abs cell (cx, cy)
+            // N wall: ax = cx*32 + 16, ay = cy*32
+            // E wall: ax = (cx+1)*32, ay = cy*32 + 16
+            let absCx, absCy, cx2, cy2;
+            if (side === 'N') {
+              absCx = Math.floor(item.ax / CL_BUILDING_SIZE);
+              absCy = Math.floor(item.ay / CL_BUILDING_SIZE);
+              cx2 = absCx; cy2 = absCy - 1;
+            } else {
+              absCx = Math.floor(item.ax / CL_BUILDING_SIZE) - 1;
+              absCy = Math.floor(item.ay / CL_BUILDING_SIZE);
+              cx2 = absCx + 1; cy2 = absCy;
+            }
+            ensureWallMap();
+            const r1 = cellRoomCache.get(`${absCx}_${absCy}_${bf}`);
+            const r2 = cellRoomCache.get(`${cx2}_${cy2}_${bf}`);
+            // 한쪽이라도 outdoor (또는 cache miss → outdoor 가정) = 외벽
+            const isOuter = (!r1 || !r1.isIndoor) || (!r2 || !r2.isIndoor);
+            if (!isOuter) continue; // 위층 내벽은 안 그림
+            ctx.globalAlpha = 0.85;
+          } else {
+            continue; // 위층 chest, farmland, scarecrow 등 모두 skip
+          }
         }
-        // 14.49-e5c: PZ식 wall cutaway — 실내일 때 플레이어의 S/E 방향 벽 투명.
-        // wall = 거의 완전 투명 (alpha 0.02). fence = 반투명 (alpha 0.4, 창문 느낌).
-        // N/W 벽은 절대 안 투명.
-        else if ((item.b.type === 'wall' || item.b.type === 'fence') && bf === myFloor && playerIsIndoors()) {
+        // 14.49-e7n: 거리 기반 wall cutaway — S/E 벽이 가까울수록 투명
+        // 4 cell 이내 = 최대 투명, 7 cell 너머 = 정상
+        else if ((bType === 'wall' || bType === 'fence') && bf === myFloor) {
           const dx = item.ax - myAbsPredicted.x;
           const dy = item.ay - myAbsPredicted.y;
+          // 카메라쪽(S/E) 벽만 (player 동남쪽에 있는 벽 = 화면에서 player 가리는 벽)
           if (dx > -8 && dy > -8 && (dx > 8 || dy > 8)) {
-            ctx.globalAlpha = item.b.type === 'fence' ? 0.4 : 0.02;
+            const dist = Math.hypot(dx, dy);
+            const NEAR = 4 * CL_BUILDING_SIZE; // 4 cell = 128px
+            const FAR  = 7 * CL_BUILDING_SIZE; // 7 cell = 224px
+            const minA = bType === 'fence' ? 0.3 : 0.05;
+            if (dist < NEAR) {
+              ctx.globalAlpha = minA;
+            } else if (dist < FAR) {
+              const t = (dist - NEAR) / (FAR - NEAR);
+              ctx.globalAlpha = minA + (1 - minA) * t;
+            }
           }
         }
         drawBuildingIso(s.x, s.y, item.b.type, item.b);
         ctx.globalAlpha = 1;
       } else if (item.kind === 'mob') {
+        // 14.49-e7n: 위층 mob 안 그림
+        const mFloor = item.m.floor || 0;
+        if (mFloor > myFloor) continue;
         const s = toScreen(item.iso.x, item.iso.y);
         const d = Math.hypot(item.ax - worldCx, item.ay - worldCy);
         let vis = Math.max(0.15, 1 - Math.pow(d / VIEW_RADIUS, 1.4));
@@ -2080,31 +2122,87 @@ console.log('%c[durango-mini] client build = 14.49-e7l (off-screen mask)', 'colo
       }
       // 4) 각도순 정렬
       hits.sort((u, v) => u.a - v.a);
-      // 5) Off-screen mask canvas — entity 보존 위해 별도 canvas 사용
-      //    main에 'destination-out' 하면 entity도 같이 지워짐. mask canvas 합성으로 회피.
+      // 5) Off-screen mask canvas — fog of war 적용
+      //    - unseen (한 번도 못 봤음): 완전 검은색 alpha 1.0
+      //    - seen (한 번 봤지만 현재 시야 밖): 어둠 alpha 0.5
+      //    - visible (지금 보고 있음): hole (alpha 0)
       if (!window._shadowMask || window._shadowMask.width !== W || window._shadowMask.height !== H) {
         window._shadowMask = document.createElement('canvas');
         window._shadowMask.width = W;
         window._shadowMask.height = H;
       }
+      if (!window._seenCells) window._seenCells = new Set();
+      const seenCells = window._seenCells;
       const mc = window._shadowMask;
       const mctx = mc.getContext('2d');
-      mctx.clearRect(0, 0, W, H);
-      mctx.fillStyle = 'rgba(0,0,0,0.55)';
-      mctx.fillRect(0, 0, W, H);
-      mctx.globalCompositeOperation = 'destination-out';
-      mctx.beginPath();
+
+      // visibility polygon → Path2D (재사용)
+      const polyPath = new Path2D();
       if (hits.length > 0) {
-        mctx.moveTo(w2sx(hits[0].x, hits[0].y), w2sy(hits[0].x, hits[0].y));
+        polyPath.moveTo(w2sx(hits[0].x, hits[0].y), w2sy(hits[0].x, hits[0].y));
         for (let i = 1; i < hits.length; i++) {
-          mctx.lineTo(w2sx(hits[i].x, hits[i].y), w2sy(hits[i].x, hits[i].y));
+          polyPath.lineTo(w2sx(hits[i].x, hits[i].y), w2sy(hits[i].x, hits[i].y));
         }
-        mctx.closePath();
+        polyPath.closePath();
       }
+
+      // 5a) visibility polygon 안 cell들 seenCells에 add
+      const FOG_RANGE = SHADOW_RANGE_CELLS + 2;
+      for (let cx = myCx - FOG_RANGE; cx <= myCx + FOG_RANGE; cx++) {
+        for (let cy = myCy - FOG_RANGE; cy <= myCy + FOG_RANGE; cy++) {
+          const wxC = (cx + 0.5) * CL_BUILDING_SIZE;
+          const wyC = (cy + 0.5) * CL_BUILDING_SIZE;
+          const sxC = w2sx(wxC, wyC);
+          const syC = w2sy(wxC, wyC);
+          if (mctx.isPointInPath(polyPath, sxC, syC)) {
+            seenCells.add(`${cx}_${cy}_${myFloor}`);
+          }
+        }
+      }
+
+      // 5b) Render mask
+      mctx.clearRect(0, 0, W, H);
+      // (i) 전체 완전 검은색 (unseen 기본)
+      mctx.fillStyle = 'rgba(0,0,0,1.0)';
+      mctx.fillRect(0, 0, W, H);
+
+      // (ii) seen cell들: alpha 0.5 subtract → 회색 (= memory)
+      mctx.globalCompositeOperation = 'destination-out';
+      mctx.fillStyle = 'rgba(0,0,0,0.5)';
+      const FOG_DRAW_RANGE = 30;
+      for (const key of seenCells) {
+        const parts = key.split('_');
+        if (+parts[2] !== myFloor) continue;
+        const cx = +parts[0], cy = +parts[1];
+        if (Math.abs(cx - myCx) > FOG_DRAW_RANGE) continue;
+        if (Math.abs(cy - myCy) > FOG_DRAW_RANGE) continue;
+        // iso diamond cell — 약간 overlap 시켜서 sub-cell gap 방지
+        const wx = cx * CL_BUILDING_SIZE;
+        const wy = cy * CL_BUILDING_SIZE;
+        const pad = 1; // 살짝 키워서 인접 cell 사이 line gap 방지
+        const p1x = w2sx(wx - pad, wy + CL_BUILDING_SIZE/2);
+        const p1y = w2sy(wx - pad, wy + CL_BUILDING_SIZE/2);
+        const p2x = w2sx(wx + CL_BUILDING_SIZE/2, wy - pad);
+        const p2y = w2sy(wx + CL_BUILDING_SIZE/2, wy - pad);
+        const p3x = w2sx(wx + CL_BUILDING_SIZE + pad, wy + CL_BUILDING_SIZE/2);
+        const p3y = w2sy(wx + CL_BUILDING_SIZE + pad, wy + CL_BUILDING_SIZE/2);
+        const p4x = w2sx(wx + CL_BUILDING_SIZE/2, wy + CL_BUILDING_SIZE + pad);
+        const p4y = w2sy(wx + CL_BUILDING_SIZE/2, wy + CL_BUILDING_SIZE + pad);
+        mctx.beginPath();
+        mctx.moveTo(p1x, p1y);
+        mctx.lineTo(p2x, p2y);
+        mctx.lineTo(p3x, p3y);
+        mctx.lineTo(p4x, p4y);
+        mctx.closePath();
+        mctx.fill();
+      }
+
+      // (iii) visibility polygon hole — 현재 보고 있는 곳 fully transparent
       mctx.fillStyle = 'rgba(255,255,255,1)';
-      mctx.fill();
+      mctx.fill(polyPath);
       mctx.globalCompositeOperation = 'source-over';
-      // 합성 — entity 픽셀 보존하면서 darkness만 덮음
+
+      // 6) main에 합성 — entity 보존
       ctx.drawImage(mc, 0, 0);
     }
 
