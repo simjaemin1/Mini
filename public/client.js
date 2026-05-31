@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.49-e7aa (mask 위에 wall 다시 그림, unseen wall skip) ===
-console.log('%c[durango-mini] client build = 14.49-e7aa (wall above mask)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.49-e7ab (cutaway 범위 8~14 + 머리 위 building BFS cutaway) ===
+console.log('%c[durango-mini] client build = 14.49-e7ab (above BFS cutaway)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -269,6 +269,7 @@ console.log('%c[durango-mini] client build = 14.49-e7aa (wall above mask)', 'col
   // 이 결과는 wall cutaway에만 사용. 시야와는 무관.
   const clWallCellMap = new Map(); // "cx_cy_side_floor" → true (절대 cell)
   const cellRoomCache = new Map(); // "cx_cy_floor" → roomData
+  const clFloorCellMap = new Map(); // "cx_cy_floor" → true (위층 BFS cutaway용)
   let nextRoomId = 1;
   let clWallMapBuiltAt = 0;
   const ROOM_INDOOR_MAX = 200; // BFS 200 cell 이내에 escape 못 하면 indoor. 200 cell 넘으면 outdoor.
@@ -276,26 +277,63 @@ console.log('%c[durango-mini] client build = 14.49-e7aa (wall above mask)', 'col
   function clRebuildWallCellMap() {
     clWallCellMap.clear();
     cellRoomCache.clear(); // wall 다 다시 → room도 다시
+    clFloorCellMap.clear();
     for (const [zid, c] of conns) {
       const zm = c.meta || zonesMeta[zid];
       if (!zm) continue;
       const oxCells = Math.floor((zm.worldOffsetX || 0) / CL_BUILDING_SIZE);
       const oyCells = Math.floor((zm.worldOffsetY || 0) / CL_BUILDING_SIZE);
       for (const b of c.buildings.values()) {
-        if (b.type !== 'wall') continue;
-        const side = b.data?.side;
-        if (!side) continue;
-        if (b.data?.damaged) continue; // damaged wall = 시각상 wall이지만 통과 가능
         const bcx = Math.floor(b.x / CL_BUILDING_SIZE);
         const bcy = Math.floor(b.y / CL_BUILDING_SIZE);
         const f = b.floor || 0;
-        clWallCellMap.set(`${oxCells + bcx}_${oyCells + bcy}_${side}_${f}`, true);
+        if (b.type === 'wall') {
+          const side = b.data?.side;
+          if (!side) continue;
+          if (b.data?.damaged) continue;
+          clWallCellMap.set(`${oxCells + bcx}_${oyCells + bcy}_${side}_${f}`, true);
+        } else if (b.type === 'floor') {
+          clFloorCellMap.set(`${oxCells + bcx}_${oyCells + bcy}_${f}`, true);
+        }
       }
     }
     clWallMapBuiltAt = performance.now();
   }
   function ensureWallMap() {
     if (clWallMapBuiltAt === 0 || performance.now() - clWallMapBuiltAt > 5000) clRebuildWallCellMap();
+  }
+  // 14.49-e7ab: 위층 BFS cutaway — 머리 위 floor tile에서 BFS로 연결된 building의 모든 wall 완전 투명
+  function computeAboveCutawayWalls(myCx, myCy, myFloor) {
+    const result = new Set();
+    ensureWallMap();
+    const aboveFloor = myFloor + 1;
+    if (!clFloorCellMap.has(`${myCx}_${myCy}_${aboveFloor}`)) return result;
+    const visited = new Set();
+    const queue = [[myCx, myCy]];
+    visited.add(`${myCx}_${myCy}`);
+    const MAX_BFS = 500;
+    while (queue.length > 0 && visited.size < MAX_BFS) {
+      const [cx, cy] = queue.shift();
+      for (const [dx, dy] of [[0,1],[0,-1],[1,0],[-1,0]]) {
+        const nx = cx + dx, ny = cy + dy;
+        const k = `${nx}_${ny}`;
+        if (visited.has(k)) continue;
+        if (clFloorCellMap.has(`${nx}_${ny}_${aboveFloor}`)) {
+          visited.add(k);
+          queue.push([nx, ny]);
+        }
+      }
+    }
+    // building cells의 4 edge wall key 생성
+    for (const k of visited) {
+      const [cxs, cys] = k.split('_');
+      const cx = +cxs, cy = +cys;
+      result.add(`${cx}_${cy}_N_${aboveFloor}`);   // N edge
+      result.add(`${cx}_${cy}_E_${aboveFloor}`);   // E edge
+      result.add(`${cx}_${cy+1}_N_${aboveFloor}`); // S edge = 인접 cell의 N
+      result.add(`${cx-1}_${cy}_E_${aboveFloor}`); // W edge = 인접 cell의 E
+    }
+    return result;
   }
   // 인접 cell (cx, cy) → (cx+dx, cy+dy) 사이 벽 있나? dx,dy는 ±1만 (cardinal)
   function clHasWallBetween(cx, cy, dx, dy, floor) {
@@ -1825,6 +1863,11 @@ console.log('%c[durango-mini] client build = 14.49-e7aa (wall above mask)', 'col
 
     renderables.sort((a, b) => a.z - b.z);
 
+    // 14.49-e7ab: 위층 BFS cutaway — 머리 위 floor tile → 연결된 building의 모든 wall 완전 투명
+    const _renderMyCx = Math.floor(myAbsPredicted.x / CL_BUILDING_SIZE);
+    const _renderMyCy = Math.floor(myAbsPredicted.y / CL_BUILDING_SIZE);
+    const aboveCutawayWalls = computeAboveCutawayWalls(_renderMyCx, _renderMyCy, myFloor);
+
     // === 3) 엔티티 그리기 ===
     for (const item of renderables) {
       if (item.kind === 'claim') {
@@ -1968,9 +2011,6 @@ console.log('%c[durango-mini] client build = 14.49-e7aa (wall above mask)', 'col
           } else if (bType === 'wall' || bType === 'fence') {
             // 외벽 판정 — wall이 outdoor cell과 인접하면 외벽
             const side = item.b.data?.side || 'N';
-            // wall ax/ay → abs cell (cx, cy)
-            // N wall: ax = cx*32 + 16, ay = cy*32
-            // E wall: ax = (cx+1)*32, ay = cy*32 + 16
             let absCx, absCy, cx2, cy2;
             if (side === 'N') {
               absCx = Math.floor(item.ax / CL_BUILDING_SIZE);
@@ -1981,12 +2021,14 @@ console.log('%c[durango-mini] client build = 14.49-e7aa (wall above mask)', 'col
               absCy = Math.floor(item.ay / CL_BUILDING_SIZE);
               cx2 = absCx + 1; cy2 = absCy;
             }
+            // 14.49-e7ab: 머리 위 building wall이면 완전 투명 (skip)
+            const wallKey = `${absCx}_${absCy}_${side}_${bf}`;
+            if (aboveCutawayWalls.has(wallKey)) continue;
             ensureWallMap();
             const r1 = cellRoomCache.get(`${absCx}_${absCy}_${bf}`);
             const r2 = cellRoomCache.get(`${cx2}_${cy2}_${bf}`);
-            // 한쪽이라도 outdoor (또는 cache miss → outdoor 가정) = 외벽
             const isOuter = (!r1 || !r1.isIndoor) || (!r2 || !r2.isIndoor);
-            if (!isOuter) continue; // 위층 내벽은 안 그림
+            if (!isOuter) continue;
             ctx.globalAlpha = 0.85;
           } else {
             continue; // 위층 chest, farmland, scarecrow 등 모두 skip
@@ -2000,8 +2042,8 @@ console.log('%c[durango-mini] client build = 14.49-e7aa (wall above mask)', 'col
           // 카메라쪽(S/E) 벽만 (player 동남쪽에 있는 벽 = 화면에서 player 가리는 벽)
           if (dx > -8 && dy > -8 && (dx > 8 || dy > 8)) {
             const dist = Math.hypot(dx, dy);
-            const NEAR = 4 * CL_BUILDING_SIZE; // 4 cell = 128px
-            const FAR  = 7 * CL_BUILDING_SIZE; // 7 cell = 224px
+            const NEAR = 8 * CL_BUILDING_SIZE; // 8 cell
+            const FAR  = 14 * CL_BUILDING_SIZE; // 14 cell
             const minA = bType === 'fence' ? 0.3 : 0.05;
             if (dist < NEAR) {
               ctx.globalAlpha = minA;
@@ -2281,8 +2323,8 @@ console.log('%c[durango-mini] client build = 14.49-e7aa (wall above mask)', 'col
           const dy = item.ay - myAbsPredicted.y;
           if (dx > -8 && dy > -8 && (dx > 8 || dy > 8)) {
             const dist = Math.hypot(dx, dy);
-            const NEAR = 4 * CL_BUILDING_SIZE;
-            const FAR = 7 * CL_BUILDING_SIZE;
+            const NEAR = 8 * CL_BUILDING_SIZE;
+            const FAR  = 14 * CL_BUILDING_SIZE;
             const minA = bType === 'fence' ? 0.3 : 0.05;
             if (dist < NEAR) alpha = minA;
             else if (dist < FAR) {
