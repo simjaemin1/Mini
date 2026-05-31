@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.49-e7am (client clientIsBlockedByWall에도 floor check 추가) ===
-console.log('%c[durango-mini] client build = 14.49-e7am (client stair floor)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.49-e7an (스킬 패널 프로토타입) ===
+console.log('%c[durango-mini] client build = 14.49-e7an (skills UI)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -3763,6 +3763,7 @@ console.log('%c[durango-mini] client build = 14.49-e7am (client stair floor)', '
     document.querySelectorAll('.sb-icon').forEach(t => t.classList.toggle('active', t.dataset.side === name));
     document.getElementById('spTitle').textContent = ({
       craft: '🔨 제작', build: '🏗️ 건축', tribe: '🛡️ 길드', market: '🏪 거래소',
+      skills: '📚 스킬', claims: '🏛️ 사유지',
     })[name] || name;
     renderSide(name);
   }
@@ -3835,6 +3836,7 @@ console.log('%c[durango-mini] client build = 14.49-e7am (client stair floor)', '
     else if (k === 'k') { toggleSide('craft'); e.preventDefault(); }
     else if (k === 'b' && e.shiftKey) { toggleSide('build'); e.preventDefault(); }
     else if (k === 'y') { toggleSide('claims'); e.preventDefault(); }
+    else if (k === 'p') { toggleSide('skills'); e.preventDefault(); }
   });
 
   function renderSide(name) {
@@ -3844,6 +3846,77 @@ console.log('%c[durango-mini] client build = 14.49-e7am (client stair floor)', '
     else if (name === 'claims') renderClaimsPanel(body);
     else if (name === 'tribe') { body.innerHTML = '<div id="tribeBody"></div>'; renderTribePanel(); }
     else if (name === 'market') renderMarketPanel(body);
+    else if (name === 'skills') renderSkillsPanel(body);
+  }
+
+  // 14.49-e7an: 스킬 패널 프로토타입 (UI only, hardcoded values)
+  const PROTO_SKILLS = {
+    production: [
+      { id: 'farming',   name: '농사', icon: '🌾', level: 1, exp: 0 },
+      { id: 'foraging',  name: '채집', icon: '🌿', level: 1, exp: 0 },
+      { id: 'fishing',   name: '낚시', icon: '🎣', level: 1, exp: 0 },
+      { id: 'mining',    name: '채광', icon: '⛏️', level: 1, exp: 0 },
+      { id: 'carpentry', name: '목공', icon: '🪚', level: 1, exp: 0 },
+      { id: 'medicine',  name: '의료', icon: '💊', level: 1, exp: 0 },
+    ],
+    combat: [
+      { id: 'sword',  name: '검술', icon: '⚔️', level: 1, exp: 0 },
+      { id: 'spear',  name: '창술', icon: '🔱', level: 1, exp: 0 },
+      { id: 'bow',    name: '궁술', icon: '🏹', level: 1, exp: 0 },
+      { id: 'axe',    name: '도끼', icon: '🪓', level: 1, exp: 0 },
+      { id: 'shield', name: '방패', icon: '🛡️', level: 1, exp: 0 },
+    ],
+  };
+  const PROTO_TALENT = { used: 0, max: 30 };
+
+  function expForLevel(lv) { return 50 + lv * lv * 25; } // 1→100, 2→200, 3→375...
+
+  function renderSkillsPanel(body) {
+    const totalLevel = [...PROTO_SKILLS.production, ...PROTO_SKILLS.combat].reduce((s, k) => s + k.level, 0);
+    function skillRow(s) {
+      const need = expForLevel(s.level);
+      const pct = Math.min(100, Math.floor(s.exp / need * 100));
+      return `<div class="skill-row">
+        <span class="skill-icon">${s.icon}</span>
+        <span class="skill-name">${s.name}</span>
+        <span class="skill-lv">Lv ${s.level}</span>
+        <div class="skill-bar"><div class="skill-bar-fill" style="width:${pct}%"></div><span class="skill-bar-text">${s.exp}/${need}</span></div>
+        <button class="skill-talent-btn" data-skill="${s.id}" title="특성 (분야 ${s.level}개까지 가능)">⭐ 0/${s.level}</button>
+      </div>`;
+    }
+    body.innerHTML = `
+      <style>
+        .skill-section-head { color:#f0c674; font-size:13px; font-weight:bold; padding:8px 4px 4px; }
+        .skill-row { display:flex; align-items:center; gap:6px; padding:5px 4px; border-bottom:1px solid #2a3038; }
+        .skill-icon { font-size:18px; width:24px; text-align:center; }
+        .skill-name { width:46px; color:#cfd6dd; font-size:12px; }
+        .skill-lv { width:42px; color:#8a93a0; font-size:11px; }
+        .skill-bar { flex:1; height:14px; background:#1a1f25; border:1px solid #2a3038; position:relative; overflow:hidden; border-radius:2px; }
+        .skill-bar-fill { height:100%; background:linear-gradient(90deg,#3a7a3a,#5aa55a); transition:width 0.3s; }
+        .skill-bar-text { position:absolute; top:0; left:0; right:0; bottom:0; text-align:center; color:#cfd6dd; font-size:10px; line-height:14px; text-shadow:0 0 2px #000; }
+        .skill-talent-btn { background:#2a3038; color:#cfd6dd; border:1px solid #3a4048; padding:2px 6px; font-size:10px; cursor:pointer; border-radius:2px; }
+        .skill-talent-btn:hover { background:#3a4048; }
+        .skill-pool { background:#1a1f25; padding:8px; border:1px solid #2a3038; border-radius:3px; margin:8px 4px; text-align:center; }
+        .skill-pool-bar { height:10px; background:#0a0e12; border:1px solid #2a3038; margin-top:4px; border-radius:2px; overflow:hidden; }
+        .skill-pool-fill { height:100%; background:linear-gradient(90deg,#5a7ad8,#9aafe0); }
+        .skill-hint { color:#6c7686; font-size:10px; padding:4px; text-align:center; }
+      </style>
+      <div class="skill-pool">
+        <div style="color:#cfd6dd;font-weight:bold">⭐ 특성 포인트 ${PROTO_TALENT.used}/${PROTO_TALENT.max}</div>
+        <div class="skill-pool-bar"><div class="skill-pool-fill" style="width:${PROTO_TALENT.used/PROTO_TALENT.max*100}%"></div></div>
+        <div style="color:#8a93a0;font-size:10px;margin-top:3px">총 레벨 ${totalLevel}</div>
+      </div>
+      <div class="skill-section-head">🛠️ 생산</div>
+      ${PROTO_SKILLS.production.map(skillRow).join('')}
+      <div class="skill-section-head" style="margin-top:8px">⚔️ 전투</div>
+      ${PROTO_SKILLS.combat.map(skillRow).join('')}
+      <div class="skill-hint">프로토타입 — 활동 시 자동으로 exp 쌓이는 시스템은 다음 단계</div>
+    `;
+    body.querySelectorAll('.skill-talent-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        showNotice(`${btn.dataset.skill} 특성 트리 — 다음 단계에서 구현`);
+      });
+    });
   }
 
   // Phase 14.26: 사유지 패널 — 내 claim 목록 + 해제 + 위치 텔레포트 안내
