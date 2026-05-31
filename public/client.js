@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.49-e7v (cone sort 버그 fix — facing 기준 normalized angle) ===
-console.log('%c[durango-mini] client build = 14.49-e7v (cone sort fix)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.49-e7y (visible polygon + seen cells, cumulative 폐기) ===
+console.log('%c[durango-mini] client build = 14.49-e7y (cell-aligned fog)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -2178,29 +2178,54 @@ console.log('%c[durango-mini] client build = 14.49-e7v (cone sort fix)', 'color:
       visibleWorldPath.moveTo(px + CLOSE_RADIUS, py);
       visibleWorldPath.arc(px, py, CLOSE_RADIUS, 0, Math.PI * 2);
 
-      // cumulative seen path (world coord, 영구 누적)
-      if (!window._seenWorldPath) window._seenWorldPath = new Path2D();
-      const seenWorldPath = window._seenWorldPath;
-      seenWorldPath.addPath(visibleWorldPath);
+      // 14.49-e7y: cumulative polygon 폐기. visible polygon 안 cell들을 seenCells에 add.
+      // seen ↔ unseen 경계 = cell boundary (cell-aligned). visible ↔ seen = polygon.
+      // perf: 시간 무관, viewport 안 cell loop만.
+      mctx.setTransform(1, 0, 0, 1, 0, 0);
+      const FOG_RANGE = SHADOW_RANGE_CELLS + 2;
+      for (let cx = myCx - FOG_RANGE; cx <= myCx + FOG_RANGE; cx++) {
+        for (let cy = myCy - FOG_RANGE; cy <= myCy + FOG_RANGE; cy++) {
+          const wxC = (cx + 0.5) * CL_BUILDING_SIZE;
+          const wyC = (cy + 0.5) * CL_BUILDING_SIZE;
+          if (mctx.isPointInPath(visibleWorldPath, wxC, wyC)) {
+            seenCells.add(`${cx}_${cy}_${myFloor}`);
+          }
+        }
+      }
 
       // mask render
-      mctx.setTransform(1, 0, 0, 1, 0, 0); // identity 복원
       mctx.clearRect(0, 0, W, H);
       mctx.fillStyle = 'rgba(0,0,0,1.0)';
       mctx.fillRect(0, 0, W, H);
 
-      // world → screen iso transform: world (x, y) → screen (x-y+ex, (x+y)/2+ey)
-      // setTransform(a, b, c, d, e, f) → x'=a*x+c*y+e, y'=b*x+d*y+f
-      // → a=1, c=-1, b=0.5, d=0.5
-      // player world (px, py) → screen (W/2, H/2):
-      // e = W/2 - (px - py), f = H/2 - (px + py)/2
+      // (i) seen cells: iso diamond single path → destination-out alpha 0.8 (살짝 어둠)
+      mctx.globalCompositeOperation = 'destination-out';
+      mctx.fillStyle = 'rgba(0,0,0,0.8)';
+      mctx.beginPath();
+      const halfW = 32, halfH = 16, expand = 1;
+      const FOG_DRAW_RANGE = 35;
+      for (const key of seenCells) {
+        const parts = key.split('_');
+        if (+parts[2] !== myFloor) continue;
+        const cxs = +parts[0], cys = +parts[1];
+        if (Math.abs(cxs - myCx) > FOG_DRAW_RANGE) continue;
+        if (Math.abs(cys - myCy) > FOG_DRAW_RANGE) continue;
+        const wxC = (cxs + 0.5) * CL_BUILDING_SIZE;
+        const wyC = (cys + 0.5) * CL_BUILDING_SIZE;
+        const sxC = w2sx(wxC, wyC);
+        const syC = w2sy(wxC, wyC);
+        if (sxC < -64 || sxC > W + 64 || syC < -32 || syC > H + 32) continue;
+        mctx.moveTo(sxC - halfW - expand, syC);
+        mctx.lineTo(sxC, syC - halfH - expand);
+        mctx.lineTo(sxC + halfW + expand, syC);
+        mctx.lineTo(sxC, syC + halfH + expand);
+        mctx.closePath();
+      }
+      mctx.fill();
+
+      // (ii) visible polygon: world → screen iso transform → destination-out alpha 1.0 (밝음)
       mctx.save();
       mctx.setTransform(1, 0.5, -1, 0.5, W/2 - (px - py), H/2 - (px + py)/2);
-      mctx.globalCompositeOperation = 'destination-out';
-      // seen 영역 살짝 어둠 (alpha 0.8 빼기 → mask alpha 0.2 남음)
-      mctx.fillStyle = 'rgba(0,0,0,0.8)';
-      mctx.fill(seenWorldPath);
-      // visible 영역 완전 밝음 (alpha 1.0 빼기)
       mctx.fillStyle = 'rgba(0,0,0,1.0)';
       mctx.fill(visibleWorldPath);
       mctx.restore();
