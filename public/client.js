@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.49-e7t (loop counter py/px 변수 충돌 fix — outer player 좌표 가려짐) ===
-console.log('%c[durango-mini] client build = 14.49-e7t (py 충돌 fix)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.49-e7u (cumulative polygon 복원 — cell stairstep 0) ===
+console.log('%c[durango-mini] client build = 14.49-e7u (polygon fog)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -2088,9 +2088,32 @@ console.log('%c[durango-mini] client build = 14.49-e7t (py 충돌 fix)', 'color:
         if (t > 0 && u >= 0 && u <= 1) return t;
         return null;
       }
+      // 14.49-e7u: facing cone 적용. cone 안 angle만 ray cast → fan polygon
+      const facingLen = Math.hypot(myFacingVx, myFacingVy);
+      const hasFacing = facingLen > 0.001;
+      const fxn = hasFacing ? myFacingVx / facingLen : 0;
+      const fyn = hasFacing ? myFacingVy / facingLen : 0;
+      const CONE_COS = -0.34; // cos(110°)
+      const halfCone = Math.acos(CONE_COS);
+      const facingAngle = hasFacing ? Math.atan2(fyn, fxn) : 0;
+      function angleInCone(a) {
+        if (!hasFacing) return true;
+        let diff = a - facingAngle;
+        while (diff > Math.PI) diff -= 2 * Math.PI;
+        while (diff < -Math.PI) diff += 2 * Math.PI;
+        return Math.abs(diff) <= halfCone;
+      }
+      // cone boundary ray도 추가
+      const filteredAngles = [];
+      if (hasFacing) {
+        filteredAngles.push(facingAngle - halfCone + 0.001, facingAngle + halfCone - 0.001);
+      }
+      for (const a of angles) {
+        if (angleInCone(a)) filteredAngles.push(a);
+      }
       // 3) 각 각도마다 closest hit
       const hits = [];
-      for (const a of angles) {
+      for (const a of filteredAngles) {
         const dx = Math.cos(a), dy = Math.sin(a);
         let best = MAX_RANGE;
         for (const s of segs) {
@@ -2115,100 +2138,62 @@ console.log('%c[durango-mini] client build = 14.49-e7t (py 충돌 fix)', 'color:
       const mc = window._shadowMask;
       const mctx = mc.getContext('2d');
 
-      // visibility polygon → Path2D (재사용)
-      const polyPath = new Path2D();
+      // 14.49-e7u: cumulative polygon 방식 (cell stairstep 0, polygon 직선)
+      // - visible polygon = fan-shape (cone 안 ray cast 결과)
+      // - + 플레이어 중심 small circle (cone 무관 항상 보이는 가까운 원)
+      // - cumulative seen path = visible polygon들의 누적 union (world coord)
+      // - mask: 검은색 → seen alpha 0.8 빼기 → visible alpha 1.0 빼기 → 합성
+
+      // visible polygon (world coord) — fan + close circle
+      const visibleWorldPath = new Path2D();
+      const CLOSE_RADIUS = 128; // 4 cell, cone 무관 visible
       if (hits.length > 0) {
-        polyPath.moveTo(w2sx(hits[0].x, hits[0].y), w2sy(hits[0].x, hits[0].y));
-        for (let i = 1; i < hits.length; i++) {
-          polyPath.lineTo(w2sx(hits[i].x, hits[i].y), w2sy(hits[i].x, hits[i].y));
-        }
-        polyPath.closePath();
-      }
-
-      // 14.49-e7q: PZ식 cell bitmap + bilinear interpolation
-      // - 각 cell 1 pixel: unseen=alpha 0, seen=alpha 204, visible=alpha 255 (source alpha = mask 빼기 양)
-      // - bitmap을 iso transform으로 stretch drawImage → browser bilinear → 픽셀 단위 부드러움
-      // - 플레이어 원 별도 X (visibility polygon이 player 둘러쌈, 벽 가까이면 polygon이 좁아짐 = PZ 정상)
-      const FOG_BITMAP_SIZE = 96; // 96x96 cell 범위 (player 중심 +- 48)
-      if (!window._fogBitmap || window._fogBitmap.width !== FOG_BITMAP_SIZE) {
-        window._fogBitmap = document.createElement('canvas');
-        window._fogBitmap.width = FOG_BITMAP_SIZE;
-        window._fogBitmap.height = FOG_BITMAP_SIZE;
-      }
-      const fogCanvas = window._fogBitmap;
-      const fogCtx = fogCanvas.getContext('2d');
-      const half = FOG_BITMAP_SIZE >> 1;
-      const originCellX = myCx - half;
-      const originCellY = myCy - half;
-
-      // visibility = polygon AND facing cone — 등 뒤도 "seen"으로 통합 (별도 darken X)
-      const facingLen = Math.hypot(myFacingVx, myFacingVy);
-      const hasFacing = facingLen > 0.001;
-      const fxn = hasFacing ? myFacingVx / facingLen : 0;
-      const fyn = hasFacing ? myFacingVy / facingLen : 0;
-      const CONE_COS = -0.34; // cos(110°) → 전체 ~220° cone (PZ 비슷)
-      const CLOSE_R2 = 128 * 128; // 4 cell 안은 cone 무관 visible
-
-      const imageData = fogCtx.createImageData(FOG_BITMAP_SIZE, FOG_BITMAP_SIZE);
-      const idata = imageData.data;
-      // 14.49-e7t: bitmap loop counter를 by/bx로 (outer scope의 py=player.y, px=player.x와 충돌 방지)
-      for (let by = 0; by < FOG_BITMAP_SIZE; by++) {
-        const cy = originCellY + by;
-        for (let bx = 0; bx < FOG_BITMAP_SIZE; bx++) {
-          const cx = originCellX + bx;
-          const wxC = (cx + 0.5) * CL_BUILDING_SIZE;
-          const wyC = (cy + 0.5) * CL_BUILDING_SIZE;
-          const sxC = w2sx(wxC, wyC);
-          const syC = w2sy(wxC, wyC);
-          let isVis = mctx.isPointInPath(polyPath, sxC, syC);
-          // facing cone 적용 (등 뒤 cone 밖이면 visible X)
-          if (isVis && hasFacing) {
-            const ddx = wxC - px;
-            const ddy = wyC - py;
-            const d2 = ddx * ddx + ddy * ddy;
-            if (d2 > CLOSE_R2) {
-              const dlen = Math.sqrt(d2);
-              const dot = (ddx * fxn + ddy * fyn) / dlen;
-              if (dot < CONE_COS) isVis = false;
-            }
+        if (hasFacing) {
+          // fan: player center → sorted hits → back to player
+          visibleWorldPath.moveTo(px, py);
+          for (const h of hits) {
+            visibleWorldPath.lineTo(h.x, h.y);
           }
-          const idx = (by * FOG_BITMAP_SIZE + bx) * 4;
-          if (isVis) {
-            seenCells.add(`${cx}_${cy}_${myFloor}`);
-            idata[idx] = 255; idata[idx+1] = 255; idata[idx+2] = 255;
-            idata[idx+3] = 255;
-          } else if (seenCells.has(`${cx}_${cy}_${myFloor}`)) {
-            idata[idx] = 255; idata[idx+1] = 255; idata[idx+2] = 255;
-            idata[idx+3] = 204; // 살짝 어둠
-          } else {
-            idata[idx+3] = 0; // 검은색
+          visibleWorldPath.lineTo(px, py);
+        } else {
+          // full 360°
+          visibleWorldPath.moveTo(hits[0].x, hits[0].y);
+          for (let i = 1; i < hits.length; i++) {
+            visibleWorldPath.lineTo(hits[i].x, hits[i].y);
           }
+          visibleWorldPath.closePath();
         }
       }
-      fogCtx.putImageData(imageData, 0, 0);
+      // + 가까운 원 (cone 무관)
+      visibleWorldPath.moveTo(px + CLOSE_RADIUS, py);
+      visibleWorldPath.arc(px, py, CLOSE_RADIUS, 0, Math.PI * 2);
+
+      // cumulative seen path (world coord, 영구 누적)
+      if (!window._seenWorldPath) window._seenWorldPath = new Path2D();
+      const seenWorldPath = window._seenWorldPath;
+      seenWorldPath.addPath(visibleWorldPath);
 
       // mask render
+      mctx.setTransform(1, 0, 0, 1, 0, 0); // identity 복원
       mctx.clearRect(0, 0, W, H);
       mctx.fillStyle = 'rgba(0,0,0,1.0)';
       mctx.fillRect(0, 0, W, H);
 
-      // bitmap을 iso transform으로 stretch drawImage
-      // bitmap (0,0) = world cell (originCellX, originCellY) top-left
-      const originWX = originCellX * CL_BUILDING_SIZE;
-      const originWY = originCellY * CL_BUILDING_SIZE;
-      const isoOriginSX = w2sx(originWX, originWY);
-      const isoOriginSY = w2sy(originWX, originWY);
-      // bitmap pixel (1,0) = world (+32, 0) = iso screen (+32, +16)
-      // bitmap pixel (0,1) = world (0, +32) = iso screen (-32, +16)
-      // transform matrix: [a=32, b=16, c=-32, d=16, e=isoOriginSX, f=isoOriginSY]
+      // world → screen iso transform: world (x, y) → screen (x-y+ex, (x+y)/2+ey)
+      // setTransform(a, b, c, d, e, f) → x'=a*x+c*y+e, y'=b*x+d*y+f
+      // → a=1, c=-1, b=0.5, d=0.5
+      // player world (px, py) → screen (W/2, H/2):
+      // e = W/2 - (px - py), f = H/2 - (px + py)/2
       mctx.save();
+      mctx.setTransform(1, 0.5, -1, 0.5, W/2 - (px - py), H/2 - (px + py)/2);
       mctx.globalCompositeOperation = 'destination-out';
-      mctx.imageSmoothingEnabled = true;
-      mctx.imageSmoothingQuality = 'high';
-      mctx.setTransform(32, 16, -32, 16, isoOriginSX, isoOriginSY);
-      mctx.drawImage(fogCanvas, 0, 0);
+      // seen 영역 살짝 어둠 (alpha 0.8 빼기 → mask alpha 0.2 남음)
+      mctx.fillStyle = 'rgba(0,0,0,0.8)';
+      mctx.fill(seenWorldPath);
+      // visible 영역 완전 밝음 (alpha 1.0 빼기)
+      mctx.fillStyle = 'rgba(0,0,0,1.0)';
+      mctx.fill(visibleWorldPath);
       mctx.restore();
-      // 등 뒤 별도 darken 제거 — cone으로 통합 (등 뒤 = seen 처리)
 
       // 6) main에 합성 — entity 보존
       ctx.drawImage(mc, 0, 0);
