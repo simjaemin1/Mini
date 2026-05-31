@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.49-e7ae (entity mask 위로 + z-sort floor*0.5) ===
-console.log('%c[durango-mini] client build = 14.49-e7ae (entity above mask)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.49-e7af (위층 floor skip + seen cells 모든 floor 통합) ===
+console.log('%c[durango-mini] client build = 14.49-e7af (lower floor visible)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -2008,10 +2008,10 @@ console.log('%c[durango-mini] client build = 14.49-e7ae (entity above mask)', 'c
         if (bf < myFloor) {
           ctx.globalAlpha = 1.0;
         }
-        // 14.49-e7n: 위층 (myFloor + 1 이상) — 외벽 + 지붕(floor)만 렌더
+        // 14.49-e7af: 위층 (myFloor + 1 이상) — 외벽만 렌더. floor(=천장) 완전 투명(skip)
         else if (bf > myFloor) {
           if (bType === 'floor') {
-            ctx.globalAlpha = 0.55; // 지붕 역할 (위층 바닥 = 아래층 천장)
+            continue; // 위층 바닥 = 천장 = 완전 투명
           } else if (bType === 'wall' || bType === 'fence') {
             // 외벽 판정 — wall이 outdoor cell과 인접하면 외벽
             const side = item.b.data?.side || 'N';
@@ -2271,7 +2271,7 @@ console.log('%c[durango-mini] client build = 14.49-e7ae (entity above mask)', 'c
       const FOG_DRAW_RANGE = 35;
       for (const key of seenCells) {
         const parts = key.split('_');
-        if (+parts[2] !== myFloor) continue;
+        // 14.49-e7af: floor 체크 제거 — 다른 floor에서 본 cell도 seen 처리 (위층 갔을 때 1층 seen 영역 보임)
         const cxs = +parts[0], cys = +parts[1];
         if (Math.abs(cxs - myCx) > FOG_DRAW_RANGE) continue;
         if (Math.abs(cys - myCy) > FOG_DRAW_RANGE) continue;
