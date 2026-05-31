@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.49-e7ad (아래층 정상 alpha — z-sort로 위층 우선) ===
-console.log('%c[durango-mini] client build = 14.49-e7ad (lower floor full)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.49-e7ae (entity mask 위로 + z-sort floor*0.5) ===
+console.log('%c[durango-mini] client build = 14.49-e7ae (entity above mask)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -1829,7 +1829,7 @@ console.log('%c[durango-mini] client build = 14.49-e7ad (lower floor full)', 'co
         if (Math.abs(ax - worldCx) > VIEW_RADIUS || Math.abs(ay - worldCy) > VIEW_RADIUS) continue;
         const bZ = (b.floor || 0) * FLOOR_HEIGHT;
         const iso = w2i(ax, ay, bZ);
-        renderables.push({ z: (ax + ay) * 0.5 + (b.floor || 0) * 1000, kind: 'building', b, iso, ax, ay });
+        renderables.push({ z: (ax + ay) * 0.5 + (b.floor || 0) * 0.5, kind: 'building', b, iso, ax, ay });
       }
       for (const m of c.mobs.values()) {
         const pos = sampleAt(m.buf, renderT, m.x, m.y);
@@ -1850,7 +1850,7 @@ console.log('%c[durango-mini] client build = 14.49-e7ad (lower floor full)', 'co
         const oFloor = o.floor || 0;
         const oZ = oFloor * FLOOR_HEIGHT + (o.z || 0); // 14.49-d: 계단 위 z 포함
         const isoF = w2i(ax, ay, oZ);
-        renderables.push({ z: (ax + ay) * 0.5 + oFloor * 1000 + 500, kind: 'player', pid: o.pid, name: displayName, color: o.color || '#5a9ae0', hp: o.hp, maxHp: o.maxHp, iso: isoF, ax, ay, floor: oFloor, lastAttackAt: o.lastAttackAt, vx: o.vx, vy: o.vy, _fvx: o._fvx, _fvy: o._fvy });
+        renderables.push({ z: (ax + ay) * 0.5 + oFloor * 0.5 + 500, kind: 'player', pid: o.pid, name: displayName, color: o.color || '#5a9ae0', hp: o.hp, maxHp: o.maxHp, iso: isoF, ax, ay, floor: oFloor, lastAttackAt: o.lastAttackAt, vx: o.vx, vy: o.vy, _fvx: o._fvx, _fvy: o._fvy });
       }
     }
     {
@@ -1858,7 +1858,7 @@ console.log('%c[durango-mini] client build = 14.49-e7ad (lower floor full)', 'co
       const myDisplay = myTribeName ? `[${myTribeName}] ${myName}` : myName;
       const myZ = myFloor * FLOOR_HEIGHT + (myStairZ || 0); // 14.49-c: 계단 z 추가
       const isoMe = w2i(myAbsPredicted.x, myAbsPredicted.y, myZ);
-      renderables.push({ z: (myAbsPredicted.x + myAbsPredicted.y) * 0.5 + myFloor * 1000 + 500, kind: 'player', pid: myPid, name: myDisplay, color: myColor, hp: myHp, maxHp: myMaxHp, iso: isoMe, ax: myAbsPredicted.x, ay: myAbsPredicted.y, isMe: true });
+      renderables.push({ z: (myAbsPredicted.x + myAbsPredicted.y) * 0.5 + myFloor * 0.5 + 500, kind: 'player', pid: myPid, name: myDisplay, color: myColor, hp: myHp, maxHp: myMaxHp, iso: isoMe, ax: myAbsPredicted.x, ay: myAbsPredicted.y, isMe: true });
     }
 
     renderables.sort((a, b) => a.z - b.z);
@@ -1867,6 +1867,11 @@ console.log('%c[durango-mini] client build = 14.49-e7ad (lower floor full)', 'co
     const _renderMyCx = Math.floor(myAbsPredicted.x / CL_BUILDING_SIZE);
     const _renderMyCy = Math.floor(myAbsPredicted.y / CL_BUILDING_SIZE);
     const aboveCutawayWalls = computeAboveCutawayWalls(_renderMyCx, _renderMyCy, myFloor);
+
+    // 14.49-e7ae: mask composite를 entity render 전으로 (entity가 mask 위에 = mask 영향 X)
+    // mask 자체는 entity render 후에 만들어짐 (현재 위치 그대로). 즉 1 frame 지연.
+    // window._shadowMask가 persistent canvas라 이전 frame mask가 보존됨. 첫 frame은 빈 mc (transparent).
+    if (window._shadowMask) ctx.drawImage(window._shadowMask, 0, 0);
 
     // === 3) 엔티티 그리기 ===
     for (const item of renderables) {
@@ -2290,60 +2295,8 @@ console.log('%c[durango-mini] client build = 14.49-e7ad (lower floor full)', 'co
       mctx.fill(visibleWorldPath);
       mctx.restore();
 
-      // 6) main에 합성 — entity 보존
-      ctx.drawImage(mc, 0, 0);
-
-      // 14.49-e7aa: mask 위에 wall 다시 그림 — unseen 영역 wall은 skip
-      // 양쪽 cell 중 하나라도 seenCells에 있으면 그림. 둘 다 unseen이면 mask가 가린 채.
-      for (const item of renderables) {
-        if (item.kind !== 'building') continue;
-        const bType = item.b.type;
-        if (bType !== 'wall' && bType !== 'fence') continue;
-        const bf = item.b.floor || 0;
-        if (bf > myFloor) continue; // 위층 wall은 1차 render에 맡김
-
-        const side = item.b.data?.side || 'N';
-        let absCx1, absCy1, absCx2, absCy2;
-        if (side === 'N') {
-          absCx1 = Math.floor(item.ax / CL_BUILDING_SIZE);
-          absCy1 = Math.floor(item.ay / CL_BUILDING_SIZE);
-          absCx2 = absCx1; absCy2 = absCy1 - 1;
-        } else {
-          absCx1 = Math.floor(item.ax / CL_BUILDING_SIZE) - 1;
-          absCy1 = Math.floor(item.ay / CL_BUILDING_SIZE);
-          absCx2 = absCx1 + 1; absCy2 = absCy1;
-        }
-        const seen1 = seenCells.has(`${absCx1}_${absCy1}_${bf}`);
-        const seen2 = seenCells.has(`${absCx2}_${absCy2}_${bf}`);
-        if (!seen1 && !seen2) continue; // 둘 다 unseen → mask가 가린 채
-
-        // alpha 계산 (1차 render와 동일)
-        let alpha = 1.0;
-        if (bf < myFloor) alpha = 1.0; // 아래층 정상 alpha
-        else { // bf === myFloor: edge 방향성 기반 cutaway
-          const dx = item.ax - myAbsPredicted.x;
-          const dy = item.ay - myAbsPredicted.y;
-          const side = item.b.data?.side;
-          let isCutaway = false;
-          if (side === 'N' && dy > 8) isCutaway = true;
-          else if (side === 'E' && dx > 8) isCutaway = true;
-          if (isCutaway) {
-            const dist = Math.hypot(dx, dy);
-            const NEAR = 8 * CL_BUILDING_SIZE;
-            const FAR  = 14 * CL_BUILDING_SIZE;
-            const minA = bType === 'fence' ? 0.3 : 0.05;
-            if (dist < NEAR) alpha = minA;
-            else if (dist < FAR) {
-              const t = (dist - NEAR) / (FAR - NEAR);
-              alpha = minA + (1 - minA) * t;
-            }
-          }
-        }
-        const s = toScreen(item.iso.x, item.iso.y);
-        ctx.globalAlpha = alpha;
-        drawBuildingIso(s.x, s.y, bType, item.b);
-        ctx.globalAlpha = 1;
-      }
+      // 14.49-e7ae: mask composite는 다음 frame entity render 전에 합성 (entity가 mask 위)
+      // wall 2차 render 폐기 — entity가 mask 위에 그려지므로 mask 가림 X
     }
 
     // === 4-1) 밤 어두움 오버레이 — 푸른 톤, 시야는 더 좁아짐 ===
