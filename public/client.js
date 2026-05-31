@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.49-e7e (floor 타일 셀 꽉 채움 + 등 뒤 미세) ===
-console.log('%c[durango-mini] client build = 14.49-e7e (floor 셀 꽉)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.49-e7f (per-tile cone 진짜 제거 + 픽셀 directional shadow) ===
+console.log('%c[durango-mini] client build = 14.49-e7f (셀 stairstep 진짜 0)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -1732,14 +1732,7 @@ console.log('%c[durango-mini] client build = 14.49-e7e (floor 셀 꽉)', 'color:
             visibility = 0.1; // 벽 너머 — 어둡게
           }
         }
-        // 14.49-e7c: 등 뒤 darken (PZ식 directional cone). 본인 80px 안은 cone 무시.
-        if (visibility > 0.15 && dist >= 80 && (myFacingVx !== 0 || myFacingVy !== 0)) {
-          const flen = Math.hypot(myFacingVx, myFacingVy) || 1;
-          const fx = myFacingVx / flen, fy = myFacingVy / flen;
-          const ux = cellWx / dist, uy = cellWy / dist;
-          const dot = fx * ux + fy * uy; // -1=뒤 ~ +1=앞
-          visibility *= 0.95 + 0.05 * dot; // 앞=1.0, 뒤=0.90 (미세하게)
-        }
+        // 14.49-e7f: per-tile cone 제거 (셀 stairstep 진짜 원인). directional shadow는 vignette 단계에서 픽셀 단위.
 
         const n = ((wx * 73 + wy * 31) >>> 0) % 17 / 17;
         // 14.46-b-mini: 물 타일 (ocean zone or 해안선) — 파란색 우선
@@ -1998,9 +1991,8 @@ console.log('%c[durango-mini] client build = 14.49-e7e (floor 셀 꽉)', 'color:
       }
     }
 
-    // === 4) 14.49-e6d: PZ식 부드러운 시야 비네팅 ===
-    // inner 90px = 항상 완전 밝음 (중앙 원형 vision). 끝부분 = 거의 까맣게.
-    // pixel 단위 보간이라 셀 stairstep 안 생김.
+    // === 4) 14.49-e7f: PZ식 부드러운 시야 비네팅 + directional shadow (둘 다 픽셀 단위) ===
+    // 4-a) 중앙 원형 vignette
     const grad = ctx.createRadialGradient(W/2, H/2, 90, W/2, H/2, Math.max(W, H) * 0.55);
     grad.addColorStop(0, 'rgba(0,0,0,0)');
     grad.addColorStop(0.25, 'rgba(0,0,0,0.05)');
@@ -2009,6 +2001,25 @@ console.log('%c[durango-mini] client build = 14.49-e7e (floor 셀 꽉)', 'color:
     grad.addColorStop(1, 'rgba(0,0,0,0.92)');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, W, H);
+    // 4-b) 등 뒤 미세 darken (radial gradient 중심을 플레이어 뒤로 offset)
+    if (myFacingVx !== 0 || myFacingVy !== 0) {
+      const flen = Math.hypot(myFacingVx, myFacingVy) || 1;
+      const fxn = myFacingVx / flen, fyn = myFacingVy / flen;
+      // facing world (fxn, fyn) → screen (fxn-fyn, (fxn+fyn)*0.5)
+      const sxRaw = fxn - fyn;
+      const syRaw = (fxn + fyn) * 0.5;
+      const slen = Math.hypot(sxRaw, syRaw) || 1;
+      const sxU = sxRaw / slen, syU = syRaw / slen;
+      // shadow 중심 = player 화면 위치 - facing 방향 (= 뒤로)
+      const shadowCx = W/2 - sxU * 200;
+      const shadowCy = H/2 - syU * 200;
+      const dirGrad = ctx.createRadialGradient(shadowCx, shadowCy, 80, shadowCx, shadowCy, 450);
+      dirGrad.addColorStop(0, 'rgba(0,0,0,0.18)'); // 뒤 약간 어두움
+      dirGrad.addColorStop(0.5, 'rgba(0,0,0,0.08)');
+      dirGrad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = dirGrad;
+      ctx.fillRect(0, 0, W, H);
+    }
 
     // === 4-1) 밤 어두움 오버레이 — 푸른 톤, 시야는 더 좁아짐 ===
     const dk = darknessLevel();
