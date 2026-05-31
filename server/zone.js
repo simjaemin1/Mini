@@ -3022,23 +3022,25 @@ function findStairBuildingForCell(cx, cy) {
   if (!stair) { stairCellDirty = true; return null; } // 이미 삭제된 stair
   return { stair, step: entry.step };
 }
-function isBlockedByStairSide(newX, newY, oldX, oldY) {
+function isBlockedByStairSide(newX, newY, oldX, oldY, entityFloor = 0) {
   const oc = cellOf(oldX, oldY);
   const nc = cellOf(newX, newY);
   if (oc.cx === nc.cx && oc.cy === nc.cy) return false;
   const enteringStair = findStairBuildingForCell(nc.cx, nc.cy);
-  if (!enteringStair) return false; // not entering stair tile — no constraint
-  // already on same stair → allowed (moving between stair cells)
+  if (!enteringStair) return false;
   const fromStair = findStairBuildingForCell(oc.cx, oc.cy);
   if (fromStair && fromStair.stair.id === enteringStair.stair.id) return false;
-  // outside → stair entry — only allowed at low end (step 0, from -dir side) or high end (step 2, from +dir side)
+  // outside → stair entry. player floor check: 1층 입구는 1층 player만, 2층 입구는 2층 player만.
   const dir = enteringStair.stair.data?.dir || 'N';
   const dv = dirVecForCollider(dir);
   const moveX = nc.cx - oc.cx;
   const moveY = nc.cy - oc.cy;
-  if (enteringStair.step === 0 && moveX === dv.x && moveY === dv.y) return false; // low entry
-  if (enteringStair.step === 2 && moveX === -dv.x && moveY === -dv.y) return false; // high entry
-  return true; // 측면 진입 등 — 차단
+  const stairFloor = enteringStair.stair.floor || 0;
+  // step 0 = stair.floor 입구 (예: 1층 stair = floor 0 entry). player floor must match.
+  if (enteringStair.step === 0 && moveX === dv.x && moveY === dv.y && entityFloor === stairFloor) return false;
+  // step 2 = stair.floor + 1 입구 (예: 2층 stair top). player floor must match.
+  if (enteringStair.step === 2 && moveX === -dv.x && moveY === -dv.y && entityFloor === stairFloor + 1) return false;
+  return true;
 }
 
 function isBlockedByWall(newX, newY, oldX, oldY, playerFloor = 0, traceName = null) {
@@ -3046,8 +3048,8 @@ function isBlockedByWall(newX, newY, oldX, oldY, playerFloor = 0, traceName = nu
   const oc = cellOf(oldX, oldY);
   const nc = cellOf(newX, newY);
   if (oc.cx === nc.cx && oc.cy === nc.cy) return false;
-  // 14.49-e2: 계단 측면 진입 차단 (먼저 검사 — 빠르고 우선순위 높음)
-  if (isBlockedByStairSide(newX, newY, oldX, oldY)) return true;
+  // 14.49-e2: 계단 측면 진입 차단 (먼저 검사 — 빠르고 우선순위 높음). 14.49-e7al: floor check 추가
+  if (isBlockedByStairSide(newX, newY, oldX, oldY, playerFloor)) return true;
   let blocked = false;
   let reason = '';
   // 동쪽 이동 (cx 증가): oc.E edge (= nc.W = (oc.cx+1, oc.cy).W = oc.E)

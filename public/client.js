@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.49-e7ak DEBUG: floor 별 색 (2층 주황, 3층 빨강) ===
-console.log('%c[durango-mini] client build = 14.49-e7ak (debug floor color)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.49-e7al (stair entry floor check + BFS에 stair cell 포함) ===
+console.log('%c[durango-mini] client build = 14.49-e7al (stair floor check + BFS stair)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -340,12 +340,22 @@ console.log('%c[durango-mini] client build = 14.49-e7ak (debug floor color)', 'c
     }
     return result;
   }
-  // 14.49-e7ag: 머리 위 BFS cutaway — visited cells (cell key set) return
+  // 14.49-e7ag/al: 머리 위 BFS cutaway — floor tile OR stair cell 인 곳도 expand
+  // stair는 그 위치에 floor tile 없어도 BFS 연속 (사용자 요구)
   function computeAboveCutawayCells(myCx, myCy, myFloor) {
     const result = new Set();
     ensureWallMap();
     const aboveFloor = myFloor + 1;
     if (!clFloorCellMap.has(`${myCx}_${myCy}_${aboveFloor}`)) return result;
+    function isCellInBuilding(cx, cy) {
+      // floor tile at aboveFloor OR stair cell (stair.floor === myFloor, 위층은 stair 위)
+      if (clFloorCellMap.has(`${cx}_${cy}_${aboveFloor}`)) return true;
+      if (clStairCellCache && clStairCellCache.has(`${cx}_${cy}`)) {
+        const entry = clStairCellCache.get(`${cx}_${cy}`);
+        if (entry && entry.stair && (entry.stair.floor || 0) === myFloor) return true;
+      }
+      return false;
+    }
     const queue = [[myCx, myCy]];
     result.add(`${myCx}_${myCy}`);
     const MAX_BFS = 500;
@@ -355,7 +365,7 @@ console.log('%c[durango-mini] client build = 14.49-e7ak (debug floor color)', 'c
         const nx = cx + dx, ny = cy + dy;
         const k = `${nx}_${ny}`;
         if (result.has(k)) continue;
-        if (clFloorCellMap.has(`${nx}_${ny}_${aboveFloor}`)) {
+        if (isCellInBuilding(nx, ny)) {
           result.add(k);
           queue.push([nx, ny]);
         }
