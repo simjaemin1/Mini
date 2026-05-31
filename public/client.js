@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.49-e7p (seen alpha 거꾸로 fix + blur 12 + iso 타원 시야) ===
-console.log('%c[durango-mini] client build = 14.49-e7p (alpha+ellipse fix)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.49-e7q (PZ식 cell bitmap + bilinear) ===
+console.log('%c[durango-mini] client build = 14.49-e7q (PZ bitmap)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -2125,66 +2125,70 @@ console.log('%c[durango-mini] client build = 14.49-e7p (alpha+ellipse fix)', 'co
         polyPath.closePath();
       }
 
-      // 5a) visibility polygon 안 cell들 seenCells에 add
-      const FOG_RANGE = SHADOW_RANGE_CELLS + 2;
-      for (let cx = myCx - FOG_RANGE; cx <= myCx + FOG_RANGE; cx++) {
-        for (let cy = myCy - FOG_RANGE; cy <= myCy + FOG_RANGE; cy++) {
+      // 14.49-e7q: PZ식 cell bitmap + bilinear interpolation
+      // - 각 cell 1 pixel: unseen=alpha 0, seen=alpha 204, visible=alpha 255 (source alpha = mask 빼기 양)
+      // - bitmap을 iso transform으로 stretch drawImage → browser bilinear → 픽셀 단위 부드러움
+      // - 플레이어 원 별도 X (visibility polygon이 player 둘러쌈, 벽 가까이면 polygon이 좁아짐 = PZ 정상)
+      const FOG_BITMAP_SIZE = 96; // 96x96 cell 범위 (player 중심 +- 48)
+      if (!window._fogBitmap || window._fogBitmap.width !== FOG_BITMAP_SIZE) {
+        window._fogBitmap = document.createElement('canvas');
+        window._fogBitmap.width = FOG_BITMAP_SIZE;
+        window._fogBitmap.height = FOG_BITMAP_SIZE;
+      }
+      const fogCanvas = window._fogBitmap;
+      const fogCtx = fogCanvas.getContext('2d');
+      const half = FOG_BITMAP_SIZE >> 1;
+      const originCellX = myCx - half;
+      const originCellY = myCy - half;
+
+      // bitmap fill — 각 cell마다 visibility 판정 + seenCells 갱신
+      const imageData = fogCtx.createImageData(FOG_BITMAP_SIZE, FOG_BITMAP_SIZE);
+      const idata = imageData.data;
+      for (let py = 0; py < FOG_BITMAP_SIZE; py++) {
+        const cy = originCellY + py;
+        for (let pxi = 0; pxi < FOG_BITMAP_SIZE; pxi++) {
+          const cx = originCellX + pxi;
           const wxC = (cx + 0.5) * CL_BUILDING_SIZE;
           const wyC = (cy + 0.5) * CL_BUILDING_SIZE;
           const sxC = w2sx(wxC, wyC);
           const syC = w2sy(wxC, wyC);
-          if (mctx.isPointInPath(polyPath, sxC, syC)) {
+          const isVis = mctx.isPointInPath(polyPath, sxC, syC);
+          const idx = (py * FOG_BITMAP_SIZE + pxi) * 4;
+          if (isVis) {
             seenCells.add(`${cx}_${cy}_${myFloor}`);
+            idata[idx] = 255; idata[idx+1] = 255; idata[idx+2] = 255;
+            idata[idx+3] = 255; // 다 빼기 → mask 완전 transparent → 밝음
+          } else if (seenCells.has(`${cx}_${cy}_${myFloor}`)) {
+            idata[idx] = 255; idata[idx+1] = 255; idata[idx+2] = 255;
+            idata[idx+3] = 204; // 80% 빼기 → mask alpha 0.2 남음 → 살짝 어둠
+          } else {
+            idata[idx+3] = 0; // 안 빼기 → mask alpha 1.0 그대로 → 검은색
           }
         }
       }
+      fogCtx.putImageData(imageData, 0, 0);
 
-      // 5b) Render mask
+      // mask render
       mctx.clearRect(0, 0, W, H);
-      // (i) 전체 완전 검은색 (unseen 기본)
       mctx.fillStyle = 'rgba(0,0,0,1.0)';
       mctx.fillRect(0, 0, W, H);
 
-      // (ii) seen cell들: 살짝만 어둠 = mask alpha 0.2만 남기기 = source alpha 0.8로 빼기
-      // + blur 12px로 cell stairstep smooth (강하게)
+      // bitmap을 iso transform으로 stretch drawImage
+      // bitmap (0,0) = world cell (originCellX, originCellY) top-left
+      const originWX = originCellX * CL_BUILDING_SIZE;
+      const originWY = originCellY * CL_BUILDING_SIZE;
+      const isoOriginSX = w2sx(originWX, originWY);
+      const isoOriginSY = w2sy(originWX, originWY);
+      // bitmap pixel (1,0) = world (+32, 0) = iso screen (+32, +16)
+      // bitmap pixel (0,1) = world (0, +32) = iso screen (-32, +16)
+      // transform matrix: [a=32, b=16, c=-32, d=16, e=isoOriginSX, f=isoOriginSY]
       mctx.save();
-      mctx.filter = 'blur(12px)';
       mctx.globalCompositeOperation = 'destination-out';
-      mctx.fillStyle = 'rgba(0,0,0,0.8)';
-      mctx.beginPath();
-      const FOG_DRAW_RANGE = 32;
-      const halfW = 32, halfH = 16;
-      const expand = 2; // 인접 diamond gap 메움
-      for (const key of seenCells) {
-        const parts = key.split('_');
-        if (+parts[2] !== myFloor) continue;
-        const cx = +parts[0], cy = +parts[1];
-        if (Math.abs(cx - myCx) > FOG_DRAW_RANGE) continue;
-        if (Math.abs(cy - myCy) > FOG_DRAW_RANGE) continue;
-        const wxC = (cx + 0.5) * CL_BUILDING_SIZE;
-        const wyC = (cy + 0.5) * CL_BUILDING_SIZE;
-        const sxC = w2sx(wxC, wyC);
-        const syC = w2sy(wxC, wyC);
-        mctx.moveTo(sxC - halfW - expand, syC);
-        mctx.lineTo(sxC, syC - halfH - expand);
-        mctx.lineTo(sxC + halfW + expand, syC);
-        mctx.lineTo(sxC, syC + halfH + expand);
-        mctx.closePath();
-      }
-      mctx.fill();
-      mctx.restore(); // filter 복원
-
-      // (iii) visibility polygon hole + 플레이어 주위 world 원 (iso 변환 → 타원)
-      mctx.globalCompositeOperation = 'destination-out';
-      mctx.fillStyle = 'rgba(255,255,255,1)';
-      mctx.fill(polyPath);
-      // world circle radius R → iso 변환하면 가로 R, 세로 R/2 타원 (iso 2:1 비율)
-      // R = 200 world px (player 주위 ~6 cell)
-      const WORLD_R = 200;
-      mctx.beginPath();
-      mctx.ellipse(W/2, H/2, WORLD_R, WORLD_R / 2, 0, 0, Math.PI * 2);
-      mctx.fill();
-      mctx.globalCompositeOperation = 'source-over';
+      mctx.imageSmoothingEnabled = true;
+      mctx.imageSmoothingQuality = 'high';
+      mctx.setTransform(32, 16, -32, 16, isoOriginSX, isoOriginSY);
+      mctx.drawImage(fogCanvas, 0, 0);
+      mctx.restore();
 
       // 6) main에 합성 — entity 보존
       ctx.drawImage(mc, 0, 0);
