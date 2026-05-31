@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.49-e7al (stair entry floor check + BFS에 stair cell 포함) ===
-console.log('%c[durango-mini] client build = 14.49-e7al (stair floor check + BFS stair)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.49-e7am (client clientIsBlockedByWall에도 floor check 추가) ===
+console.log('%c[durango-mini] client build = 14.49-e7am (client stair floor)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -507,7 +507,7 @@ console.log('%c[durango-mini] client build = 14.49-e7al (stair floor check + BFS
     const oc = clCellOf(oldX, oldY);
     const nc = clCellOf(newX, newY);
     if (oc.cx === nc.cx && oc.cy === nc.cy) return false;
-    // 14.49-e3: 계단 측면 진입 차단
+    // 14.49-e3: 계단 측면 진입 차단. 14.49-e7am: floor check 추가 (server와 일치).
     const enteringStair = clFindStairForCell(nc.cx, nc.cy);
     if (enteringStair) {
       const fromStair = clFindStairForCell(oc.cx, oc.cy);
@@ -516,9 +516,10 @@ console.log('%c[durango-mini] client build = 14.49-e7al (stair floor check + BFS
         const dir = enteringStair.stair.data?.dir || 'N';
         const dv = clDirVec(dir);
         const moveX = nc.cx - oc.cx, moveY = nc.cy - oc.cy;
-        const lowEntry = enteringStair.step === 0 && moveX === dv.x && moveY === dv.y;
-        const highEntry = enteringStair.step === 2 && moveX === -dv.x && moveY === -dv.y;
-        if (!lowEntry && !highEntry) return true; // 측면 진입 차단
+        const stairFloor = enteringStair.stair.floor || 0;
+        const lowEntry = enteringStair.step === 0 && moveX === dv.x && moveY === dv.y && playerFloor === stairFloor;
+        const highEntry = enteringStair.step === 2 && moveX === -dv.x && moveY === -dv.y && playerFloor === stairFloor + 1;
+        if (!lowEntry && !highEntry) return true;
       }
     }
     let blocked = false, reason = '';
