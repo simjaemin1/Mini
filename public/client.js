@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.49-e5b (PZ식 wall cutaway 제대로) ===
-console.log('%c[durango-mini] client build = 14.49-e5b (벽 cutaway 재구현)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.49-e5c (cutaway type별 alpha) ===
+console.log('%c[durango-mini] client build = 14.49-e5c (벽 vs 창문)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -1782,18 +1782,14 @@ console.log('%c[durango-mini] client build = 14.49-e5b (벽 cutaway 재구현)',
         const bf = item.b.floor || 0;
         // 천장 투명 — 캐릭터 floor보다 높은 건물은 흐릿하게
         if (bf > myFloor) ctx.globalAlpha = 0.3;
-        // 14.49-e5b: PZ식 wall cutaway — 실내일 때 플레이어의 S/E 방향 벽 전부 투명.
-        // N/W 벽은 절대 안 투명 (뒷쪽이라 카메라 안 가림).
-        // 실내 = 플레이어 같은 floor에 가까운 N or W 벽 존재 (= 어떤 건물 안에 있다는 신호).
-        else if (item.b.type === 'wall' && bf === myFloor && playerIsIndoors()) {
-          // wall은 cell의 N edge(side='N') 또는 E edge(side='E')에 위치.
-          // S 벽 = 플레이어 cell 남쪽 변 = 플레이어보다 wall ay가 큼 (= wall이 화면 아래쪽)
-          // E 벽 = 플레이어 cell 동쪽 변 = 플레이어보다 wall ax가 큼 (= 화면 오른쪽)
+        // 14.49-e5c: PZ식 wall cutaway — 실내일 때 플레이어의 S/E 방향 벽 투명.
+        // wall = 거의 완전 투명 (alpha 0.02). fence = 반투명 (alpha 0.4, 창문 느낌).
+        // N/W 벽은 절대 안 투명.
+        else if ((item.b.type === 'wall' || item.b.type === 'fence') && bf === myFloor && playerIsIndoors()) {
           const dx = item.ax - myAbsPredicted.x;
           const dy = item.ay - myAbsPredicted.y;
-          // SE 방향 — 플레이어 기준 어느 한 축이라도 + 면. (단 둘 다 음수면 NW, 안 투명)
           if (dx > -8 && dy > -8 && (dx > 8 || dy > 8)) {
-            ctx.globalAlpha = 0.1; // 거의 투명 (윤곽만 흐릿)
+            ctx.globalAlpha = item.b.type === 'fence' ? 0.4 : 0.02;
           }
         }
         drawBuildingIso(s.x, s.y, item.b.type, item.b);
