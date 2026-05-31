@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.49-e7ai (stair z player floor 보정 + stair cells에 floor tile X) ===
-console.log('%c[durango-mini] client build = 14.49-e7ai (stair z fix + no floor on stair)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.49-e7aj (stair x/y fix +16 제거, 2층만 stair cells 비움) ===
+console.log('%c[durango-mini] client build = 14.49-e7aj (stair pos fix)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -1853,10 +1853,11 @@ console.log('%c[durango-mini] client build = 14.49-e7ai (stair z fix + no floor 
           else /* E */     { ax = ox + b.x + 32; ay = oy + b.y + 16; }
         } else if (b.type === 'stair') {
           // 14.49-e7ah: stair는 3 cell 분할 push. 각 cell이 자기 z로 sort.
+          // 14.49-e7aj: b.x/b.y는 이미 cell 중심 (addBlock에서 +16). +16 추가 X.
           const dir = b.data?.dir || 'N';
           const dv = dir === 'E' ? { x: 1, y: 0 } : dir === 'W' ? { x: -1, y: 0 } : dir === 'S' ? { x: 0, y: 1 } : { x: 0, y: -1 };
-          const baseAx = ox + b.x + 16; // cell 0 center
-          const baseAy = oy + b.y + 16;
+          const baseAx = ox + b.x; // cell 0 center (b.x already cell center)
+          const baseAy = oy + b.y;
           const bZ = (b.floor || 0) * FLOOR_HEIGHT;
           for (let cellN = 0; cellN < 3; cellN++) {
             const cAx = baseAx + dv.x * cellN * CL_BUILDING_SIZE;

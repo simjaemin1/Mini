@@ -613,8 +613,7 @@ function spawnNpc(opts = {}) {
     // 서쪽 변 (cx-2의 W = cx-3의 E)
     for (let j = -2; j <= 2; j++) addWall(houseCx - 3, houseCy + j, 'E', f);
   }
-  // 14.49-e7ai: stair 3 cell 위치는 floor tile 없음 (사용자 요구: "2층에 그 3칸 바닥 없어야")
-  // stair anchor=(houseCx+2, houseCy+1) dir='N' → 3 cells = (cx+2, cy+1), (cx+2, cy), (cx+2, cy-1)
+  // 14.49-e7aj: stair는 floor=0 (1층→2층). 2층(floor=1)만 stair 3 cell 비움. 1층(0)+3층(2) 정상.
   const stairCells = new Set([
     `${houseCx + 2}_${houseCy + 1}`,
     `${houseCx + 2}_${houseCy}`,
@@ -622,10 +621,9 @@ function spawnNpc(opts = {}) {
   ]);
   for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) {
     const cx = houseCx + i, cy = houseCy + j;
-    if (stairCells.has(`${cx}_${cy}`)) continue;
-    addBlock(cx, cy, 'floor', 0);
-    addBlock(cx, cy, 'floor', 1);
-    addBlock(cx, cy, 'floor', 2);
+    addBlock(cx, cy, 'floor', 0); // 1층 (game) — 정상
+    if (!stairCells.has(`${cx}_${cy}`)) addBlock(cx, cy, 'floor', 1); // 2층 — stair cells 비움
+    addBlock(cx, cy, 'floor', 2); // 3층 (지붕) — 정상
   }
   // 계단 — 집 내부, 동쪽 벽에 붙음. dir='N' (남쪽에서 들어와 북쪽으로 올라감).
   addBlock(houseCx + 2, houseCy + 1, 'stair', 0, { dir: 'N' });
