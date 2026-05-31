@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.49-e7ac (wall edge 방향성 기반 cutaway: 가로 dy, 세로 dx) ===
-console.log('%c[durango-mini] client build = 14.49-e7ac (edge-aware cutaway)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.49-e7ad (아래층 정상 alpha — z-sort로 위층 우선) ===
+console.log('%c[durango-mini] client build = 14.49-e7ad (lower floor full)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -1949,13 +1949,12 @@ console.log('%c[durango-mini] client build = 14.49-e7ac (edge-aware cutaway)', '
         ctx.textAlign = 'start'; ctx.textBaseline = 'alphabetic';
         ctx.globalAlpha = 1;
       } else if (item.kind === 'player') {
-        // 14.49-e7o: 위층 player 안 그림 (본인 제외). 아래층은 살짝 어둡게.
+        // 14.49-e7ad: 위층 player 안 그림 (본인 제외). 아래층은 정상 alpha.
         const pFloor = item.floor || 0;
         if (!item.isMe && pFloor > myFloor) continue;
         const s = toScreen(item.iso.x, item.iso.y);
         const d = Math.hypot(item.ax - worldCx, item.ay - worldCy);
         let vis = item.isMe ? 1 : Math.max(0.15, 1 - Math.pow(d / VIEW_RADIUS, 1.4));
-        if (!item.isMe && pFloor < myFloor) vis *= 0.55; // 아래층 어둡게
         // Phase 14.39: 본인 외 player는 시야 뒤면 안 보임
         if (!item.isMe) {
           vis *= entityVisibility(item.ax, item.ay, d);
@@ -2000,9 +1999,9 @@ console.log('%c[durango-mini] client build = 14.49-e7ac (edge-aware cutaway)', '
         const s = toScreen(item.iso.x, item.iso.y);
         const bf = item.b.floor || 0;
         const bType = item.b.type;
-        // 14.49-e7o: 아래층은 정상 렌더 (단, 시야 안 닿으므로 살짝 어둡게 — fog of war가 추가 dim)
+        // 14.49-e7ad: 아래층 정상 alpha 1.0 (사용자 요구). z-sort로 위층이 우선 덮음.
         if (bf < myFloor) {
-          ctx.globalAlpha = 0.55;
+          ctx.globalAlpha = 1.0;
         }
         // 14.49-e7n: 위층 (myFloor + 1 이상) — 외벽 + 지붕(floor)만 렌더
         else if (bf > myFloor) {
@@ -2060,7 +2059,7 @@ console.log('%c[durango-mini] client build = 14.49-e7ac (edge-aware cutaway)', '
         drawBuildingIso(s.x, s.y, item.b.type, item.b);
         ctx.globalAlpha = 1;
       } else if (item.kind === 'mob') {
-        // 14.49-e7o: 위층 mob 안 그림. 아래층은 살짝 어둡게.
+        // 14.49-e7ad: 위층 mob 안 그림. 아래층은 정상 alpha.
         const mFloor = item.m.floor || 0;
         if (mFloor > myFloor) continue;
         const s = toScreen(item.iso.x, item.iso.y);
@@ -2068,7 +2067,6 @@ console.log('%c[durango-mini] client build = 14.49-e7ac (edge-aware cutaway)', '
         let vis = Math.max(0.15, 1 - Math.pow(d / VIEW_RADIUS, 1.4));
         vis *= entityVisibility(item.ax, item.ay, d);
         if (vis < 0.05) continue;
-        if (mFloor < myFloor) vis *= 0.55; // 아래층 어둡게
         ctx.globalAlpha = vis;
         drawMobIso(s.x, s.y, item.m);
         ctx.globalAlpha = 1;
@@ -2321,7 +2319,7 @@ console.log('%c[durango-mini] client build = 14.49-e7ac (edge-aware cutaway)', '
 
         // alpha 계산 (1차 render와 동일)
         let alpha = 1.0;
-        if (bf < myFloor) alpha = 0.55;
+        if (bf < myFloor) alpha = 1.0; // 아래층 정상 alpha
         else { // bf === myFloor: edge 방향성 기반 cutaway
           const dx = item.ax - myAbsPredicted.x;
           const dy = item.ay - myAbsPredicted.y;
