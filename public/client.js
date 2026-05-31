@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.49-e7f (per-tile cone 진짜 제거 + 픽셀 directional shadow) ===
-console.log('%c[durango-mini] client build = 14.49-e7f (셀 stairstep 진짜 0)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.49-e7i (PZ식 polygon shadow casting) ===
+console.log('%c[durango-mini] client build = 14.49-e7i (polygon shadow)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -1717,39 +1717,28 @@ console.log('%c[durango-mini] client build = 14.49-e7f (셀 stairstep 진짜 0)'
         let visibility = 1;
         if (dist > TILE_RENDER_RADIUS) continue;
         if (!zMeta) {
-          // 알 수 없는 zone — 어두운 회색 placeholder (vignette가 더 어둡게 함)
-          ctx.globalAlpha = 0.4;
-          drawDiamond(s.x, s.y, TS, '#222a33');
-          ctx.globalAlpha = 1;
+          // 14.49-e7g: primary zone groundColor로 placeholder (색 차이 stairstep 제거)
+          const fallback = (primaryZoneId && zonesMeta[primaryZoneId]?.groundColor) || '#3a5a3a';
+          drawDiamond(s.x, s.y, TS, fallback);
           continue;
         }
-        if (dist > 32) {
-          const myCx = Math.floor(myAbsPredicted.x / CL_BUILDING_SIZE);
-          const myCy = Math.floor(myAbsPredicted.y / CL_BUILDING_SIZE);
-          const tileCx = Math.floor((wx + TS/2) / CL_BUILDING_SIZE);
-          const tileCy = Math.floor((wy + TS/2) / CL_BUILDING_SIZE);
-          if (!hasLineOfSight(myCx, myCy, tileCx, tileCy, myFloor)) {
-            visibility = 0.1; // 벽 너머 — 어둡게
-          }
-        }
-        // 14.49-e7f: per-tile cone 제거 (셀 stairstep 진짜 원인). directional shadow는 vignette 단계에서 픽셀 단위.
+        // 14.49-e7g: LoS shadow도 일단 끔 (셀 stairstep 원인 후보). vignette만으로 시야 제어.
+        // (벽 너머 가시성은 추후 polygon shadow로 재구현 필요)
+        // 14.49-e7f: per-tile cone 제거됨. directional shadow는 vignette 단계에서 픽셀 단위.
 
-        const n = ((wx * 73 + wy * 31) >>> 0) % 17 / 17;
-        // 14.46-b-mini: 물 타일 (ocean zone or 해안선) — 파란색 우선
+        // 14.49-e7h: per-tile noise variation 제거 (셀 mosaic = stairstep 원인). 단조하지만 깔끔.
         const isWater = isWaterAtAbs(wx + TS/2, wy + TS/2);
         let tileColor, tintColor, tintStrength;
         if (isWater) {
-          // 물 — biome/위도 무시하고 깊은 파랑. zone groundColor가 이미 파란 ocean이면 그대로 사용.
           tileColor = zMeta.isOcean ? zMeta.groundColor : '#2a5a8a';
           tintColor = zMeta.isOcean ? zMeta.tintColor : '#1a4a7a';
-          tintStrength = 0.04 + n * 0.06;
+          tintStrength = 0.07; // 고정 (옛 0.04~0.10 → 평균)
         } else {
-          // 14.45: 위도에 따라 base color 빙하/툰드라 블렌딩
           tileColor = latitudeColor(wy + TS/2, worldHeight, zMeta.groundColor);
           const distFromPole = Math.min(wy + TS/2, worldHeight - (wy + TS/2));
           const isIce = distFromPole <= ICE_BAND_PX;
           tintColor = isIce ? '#9bb5cc' : zMeta.tintColor;
-          tintStrength = isIce ? 0.04 + n * 0.05 : 0.08 + n * 0.1;
+          tintStrength = isIce ? 0.06 : 0.13; // 고정 (옛 평균값)
         }
         ctx.globalAlpha = visibility;
         drawDiamond(s.x, s.y, TS, tileColor);
@@ -2019,6 +2008,54 @@ console.log('%c[durango-mini] client build = 14.49-e7f (셀 stairstep 진짜 0)'
       dirGrad.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = dirGrad;
       ctx.fillRect(0, 0, W, H);
+    }
+
+    // === 4-c) 14.49-e7i: PZ식 polygon shadow casting (벽 너머 가려진 영역) ===
+    // 각 벽 edge를 player 시점에서 멀리 projection → shadow polygon. 셀 단위 X (smooth).
+    {
+      const px = myAbsPredicted.x, py = myAbsPredicted.y;
+      const myCx = Math.floor(px / CL_BUILDING_SIZE);
+      const myCy = Math.floor(py / CL_BUILDING_SIZE);
+      const SHADOW_RANGE_CELLS = 16; // 16 cell 안 벽만 shadow 캐스팅 (perf)
+      ctx.fillStyle = 'rgba(0,0,0,0.65)';
+      const FAR = 2000; // shadow projection 거리 (충분히 화면 밖까지)
+      // wall edge → world endpoints. side='N': cell의 북변 (y=cy*32 라인). side='E': 동변 (x=(cx+1)*32 라인).
+      ensureWallMap();
+      for (const key of clWallCellMap.keys()) {
+        const [cxs, cys, side, fs] = key.split('_');
+        const cx = +cxs, cy = +cys, f = +fs;
+        if (f !== myFloor) continue;
+        if (Math.abs(cx - myCx) > SHADOW_RANGE_CELLS) continue;
+        if (Math.abs(cy - myCy) > SHADOW_RANGE_CELLS) continue;
+        // wall endpoints (world coords)
+        let ax, ay, bx, by;
+        if (side === 'N') {
+          ax = cx * CL_BUILDING_SIZE;       ay = cy * CL_BUILDING_SIZE;
+          bx = (cx + 1) * CL_BUILDING_SIZE; by = cy * CL_BUILDING_SIZE;
+        } else { // E
+          ax = (cx + 1) * CL_BUILDING_SIZE; ay = cy * CL_BUILDING_SIZE;
+          bx = (cx + 1) * CL_BUILDING_SIZE; by = (cy + 1) * CL_BUILDING_SIZE;
+        }
+        // player → endpoint 방향. far point = endpoint + dir * FAR
+        const da = { x: ax - px, y: ay - py };
+        const db = { x: bx - px, y: by - py };
+        const lA = Math.hypot(da.x, da.y) || 1;
+        const lB = Math.hypot(db.x, db.y) || 1;
+        const faX = ax + (da.x / lA) * FAR, faY = ay + (da.y / lA) * FAR;
+        const fbX = bx + (db.x / lB) * FAR, fbY = by + (db.y / lB) * FAR;
+        // world coords → screen
+        const oxw = px - W/2, oyw = py - H/2; // (안 씀, 그냥 w2i+toScreen 직접)
+        function w2sx(wx, wy) { return (wx - wy) - (px - py) + W/2; }
+        function w2sy(wx, wy) { return (wx + wy) * 0.5 - (px + py) * 0.5 + H/2; }
+        // shadow polygon: A → B → fB → fA (clockwise from player POV)
+        ctx.beginPath();
+        ctx.moveTo(w2sx(ax, ay), w2sy(ax, ay));
+        ctx.lineTo(w2sx(bx, by), w2sy(bx, by));
+        ctx.lineTo(w2sx(fbX, fbY), w2sy(fbX, fbY));
+        ctx.lineTo(w2sx(faX, faY), w2sy(faX, faY));
+        ctx.closePath();
+        ctx.fill();
+      }
     }
 
     // === 4-1) 밤 어두움 오버레이 — 푸른 톤, 시야는 더 좁아짐 ===
