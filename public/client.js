@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.49-e7y (visible polygon + seen cells, cumulative 폐기) ===
-console.log('%c[durango-mini] client build = 14.49-e7y (cell-aligned fog)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.49-e7y2 (mctx globalCompositeOperation 매 frame 명시) ===
+console.log('%c[durango-mini] client build = 14.49-e7y2 (mode fix)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -2193,7 +2193,8 @@ console.log('%c[durango-mini] client build = 14.49-e7y (cell-aligned fog)', 'col
         }
       }
 
-      // mask render
+      // mask render — 매 frame mode 명시 (이전 frame destination-out 상태 잔존 방지)
+      mctx.globalCompositeOperation = 'source-over';
       mctx.clearRect(0, 0, W, H);
       mctx.fillStyle = 'rgba(0,0,0,1.0)';
       mctx.fillRect(0, 0, W, H);
