@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.49-e7n2 (fog of war 체크무늬 fix — single path + bbox rect) ===
-console.log('%c[durango-mini] client build = 14.49-e7n2 (fog uniform)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.49-e7n3 (fog of war iso diamond single path) ===
+console.log('%c[durango-mini] client build = 14.49-e7n3 (fog diamond)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -2167,28 +2167,32 @@ console.log('%c[durango-mini] client build = 14.49-e7n2 (fog uniform)', 'color:#
       mctx.fillRect(0, 0, W, H);
 
       // (ii) seen cell들: alpha 0.5 subtract → 회색 (= memory)
-      // 모든 cell rect를 single path에 add 후 한 번에 fill (overlap 누적 X, 균일 alpha)
-      // iso bbox(64x32 rect)로 fill — 인접 cell과 자연스럽게 overlap, 체크무늬 X
+      // iso diamond를 single path에 add → fill 한 번 (overlap 누적 X, 균일 alpha 0.5)
+      // 셀이 마름모니까 diamond로 그려야 자연스러움. expand 1px로 인접 cell gap 메움.
       mctx.globalCompositeOperation = 'destination-out';
       mctx.fillStyle = 'rgba(0,0,0,0.5)';
       mctx.beginPath();
       const FOG_DRAW_RANGE = 30;
+      const halfW = 32, halfH = 16; // iso cell half size (32 world → 64x32 screen diamond)
+      const expand = 1; // 인접 diamond gap 메움 (single fill이라 overlap 누적 X)
       for (const key of seenCells) {
         const parts = key.split('_');
         if (+parts[2] !== myFloor) continue;
         const cx = +parts[0], cy = +parts[1];
         if (Math.abs(cx - myCx) > FOG_DRAW_RANGE) continue;
         if (Math.abs(cy - myCy) > FOG_DRAW_RANGE) continue;
-        // iso cell center → screen
         const wxC = (cx + 0.5) * CL_BUILDING_SIZE;
         const wyC = (cy + 0.5) * CL_BUILDING_SIZE;
         const sxC = w2sx(wxC, wyC);
         const syC = w2sy(wxC, wyC);
-        // axis-aligned bbox of iso diamond (64 wide x 32 tall)
-        // 인접 cell rect와 32x16 overlap → gap 없음
-        mctx.rect(sxC - 32, syC - 16, 64, 32);
+        // iso diamond 4 corner (좌 → 위 → 우 → 아래)
+        mctx.moveTo(sxC - halfW - expand, syC);
+        mctx.lineTo(sxC, syC - halfH - expand);
+        mctx.lineTo(sxC + halfW + expand, syC);
+        mctx.lineTo(sxC, syC + halfH + expand);
+        mctx.closePath();
       }
-      mctx.fill(); // 한 번의 fill — overlap 영역도 단일 alpha 0.5
+      mctx.fill(); // 한 번 — 균일 alpha 0.5
 
       // (iii) visibility polygon hole — 현재 보고 있는 곳 fully transparent
       mctx.fillStyle = 'rgba(255,255,255,1)';
