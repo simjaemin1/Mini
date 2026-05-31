@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.49-e5c (cutaway type별 alpha) ===
-console.log('%c[durango-mini] client build = 14.49-e5c (벽 vs 창문)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.49-e5d (indoor detect primary만 + 디버그 expose) ===
+console.log('%c[durango-mini] client build = 14.49-e5d (indoor 최적화)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -224,34 +224,36 @@ console.log('%c[durango-mini] client build = 14.49-e5c (벽 vs 창문)', 'color:
     }
     return false;
   }
-  // 14.49-e5b: 실내 detect — 같은 floor에 가까운 N or W 벽이 있으면 indoor.
-  // frame당 1번만 계산 (벽마다 호출 X — O(N²) 방지)
+  // 14.49-e5c-perf: 실내 detect 최적화 — primary zone만 스캔, 200ms TTL.
   let _indoorCachedAt = 0;
   let _indoorCached = false;
   function playerIsIndoors() {
     const now = performance.now();
-    if (now - _indoorCachedAt < 100) return _indoorCached; // 100ms TTL
+    if (now - _indoorCachedAt < 200) return _indoorCached;
     _indoorCachedAt = now;
-    const px = myAbsPredicted.x, py = myAbsPredicted.y;
     let found = false;
-    outer: for (const [zid, c] of conns) {
-      const zm = c.meta || zonesMeta[zid];
-      if (!zm) continue;
-      const ox = zm.worldOffsetX || 0, oy = zm.worldOffsetY || 0;
-      for (const b of c.buildings.values()) {
-        if (b.type !== 'wall') continue;
-        if ((b.floor || 0) !== myFloor) continue;
-        const ax = ox + b.x, ay = oy + b.y;
-        const dx = px - ax, dy = py - ay;
-        if ((dx > 8 || dy > 8) && Math.abs(dx) < 128 && Math.abs(dy) < 128) {
-          found = true;
-          break outer;
+    if (primaryZoneId) {
+      const c = conns.get(primaryZoneId);
+      const zm = c?.meta;
+      if (c && zm) {
+        const ox = zm.worldOffsetX || 0, oy = zm.worldOffsetY || 0;
+        const px = myAbsPredicted.x, py = myAbsPredicted.y;
+        for (const b of c.buildings.values()) {
+          if (b.type !== 'wall') continue;
+          if ((b.floor || 0) !== myFloor) continue;
+          const dx = px - (ox + b.x), dy = py - (oy + b.y);
+          // N or W에 벽 + 가까운 (2 cell 안만 — 더 엄격하게)
+          if ((dx > 8 || dy > 8) && Math.abs(dx) < 96 && Math.abs(dy) < 96) {
+            found = true;
+            break;
+          }
         }
       }
     }
     _indoorCached = found;
     return found;
   }
+  window.playerIsIndoors = playerIsIndoors; // 디버그 노출
   // 14.49-e3-perf2: 계단 측면 진입 차단 + 클라 stair cell 캐시 (O(1))
   function clDirVec(dir) {
     if (dir === 'N') return { x: 0, y: -1 };
