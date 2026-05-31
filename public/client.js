@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.49-e7s (등 뒤도 seen 처리 — visibility = polygon AND cone) ===
-console.log('%c[durango-mini] client build = 14.49-e7s (cone 통합)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.49-e7t (loop counter py/px 변수 충돌 fix — outer player 좌표 가려짐) ===
+console.log('%c[durango-mini] client build = 14.49-e7t (py 충돌 fix)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -2151,10 +2151,11 @@ console.log('%c[durango-mini] client build = 14.49-e7s (cone 통합)', 'color:#5
 
       const imageData = fogCtx.createImageData(FOG_BITMAP_SIZE, FOG_BITMAP_SIZE);
       const idata = imageData.data;
-      for (let py = 0; py < FOG_BITMAP_SIZE; py++) {
-        const cy = originCellY + py;
-        for (let pxi = 0; pxi < FOG_BITMAP_SIZE; pxi++) {
-          const cx = originCellX + pxi;
+      // 14.49-e7t: bitmap loop counter를 by/bx로 (outer scope의 py=player.y, px=player.x와 충돌 방지)
+      for (let by = 0; by < FOG_BITMAP_SIZE; by++) {
+        const cy = originCellY + by;
+        for (let bx = 0; bx < FOG_BITMAP_SIZE; bx++) {
+          const cx = originCellX + bx;
           const wxC = (cx + 0.5) * CL_BUILDING_SIZE;
           const wyC = (cy + 0.5) * CL_BUILDING_SIZE;
           const sxC = w2sx(wxC, wyC);
@@ -2171,7 +2172,7 @@ console.log('%c[durango-mini] client build = 14.49-e7s (cone 통합)', 'color:#5
               if (dot < CONE_COS) isVis = false;
             }
           }
-          const idx = (py * FOG_BITMAP_SIZE + pxi) * 4;
+          const idx = (by * FOG_BITMAP_SIZE + bx) * 4;
           if (isVis) {
             seenCells.add(`${cx}_${cy}_${myFloor}`);
             idata[idx] = 255; idata[idx+1] = 255; idata[idx+2] = 255;
