@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.49-e7o (3-state 깔끔 + blur + 중심원 180 + 아래층 dim) ===
-console.log('%c[durango-mini] client build = 14.49-e7o (PZ 정리)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.49-e7p (seen alpha 거꾸로 fix + blur 12 + iso 타원 시야) ===
+console.log('%c[durango-mini] client build = 14.49-e7p (alpha+ellipse fix)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -2145,12 +2145,12 @@ console.log('%c[durango-mini] client build = 14.49-e7o (PZ 정리)', 'color:#5a9
       mctx.fillStyle = 'rgba(0,0,0,1.0)';
       mctx.fillRect(0, 0, W, H);
 
-      // (ii) seen cell들: alpha 0.2 subtract → 살짝만 어둠 (directional shadow 정도)
-      // + blur filter로 cell stairstep smooth (한 번도 안 가본 곳 경계도 부드럽게)
+      // (ii) seen cell들: 살짝만 어둠 = mask alpha 0.2만 남기기 = source alpha 0.8로 빼기
+      // + blur 12px로 cell stairstep smooth (강하게)
       mctx.save();
-      mctx.filter = 'blur(6px)'; // cell 경계 smoothing
+      mctx.filter = 'blur(12px)';
       mctx.globalCompositeOperation = 'destination-out';
-      mctx.fillStyle = 'rgba(0,0,0,0.22)';
+      mctx.fillStyle = 'rgba(0,0,0,0.8)';
       mctx.beginPath();
       const FOG_DRAW_RANGE = 32;
       const halfW = 32, halfH = 16;
@@ -2174,13 +2174,15 @@ console.log('%c[durango-mini] client build = 14.49-e7o (PZ 정리)', 'color:#5a9
       mctx.fill();
       mctx.restore(); // filter 복원
 
-      // (iii) visibility polygon hole + 플레이어 중심 원 (radius 180) — 현재 시야
+      // (iii) visibility polygon hole + 플레이어 주위 world 원 (iso 변환 → 타원)
       mctx.globalCompositeOperation = 'destination-out';
       mctx.fillStyle = 'rgba(255,255,255,1)';
       mctx.fill(polyPath);
-      // 플레이어 주위 항상 보이는 원
+      // world circle radius R → iso 변환하면 가로 R, 세로 R/2 타원 (iso 2:1 비율)
+      // R = 200 world px (player 주위 ~6 cell)
+      const WORLD_R = 200;
       mctx.beginPath();
-      mctx.arc(W/2, H/2, 180, 0, Math.PI * 2);
+      mctx.ellipse(W/2, H/2, WORLD_R, WORLD_R / 2, 0, 0, Math.PI * 2);
       mctx.fill();
       mctx.globalCompositeOperation = 'source-over';
 
