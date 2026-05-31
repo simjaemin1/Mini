@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.49-e7af (위층 floor skip + seen cells 모든 floor 통합) ===
-console.log('%c[durango-mini] client build = 14.49-e7af (lower floor visible)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.49-e7ag (max floor만 + BFS cutaway 머리 위 building 전체 skip) ===
+console.log('%c[durango-mini] client build = 14.49-e7ag (max floor + BFS)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -270,6 +270,7 @@ console.log('%c[durango-mini] client build = 14.49-e7af (lower floor visible)', 
   const clWallCellMap = new Map(); // "cx_cy_side_floor" → true (절대 cell)
   const cellRoomCache = new Map(); // "cx_cy_floor" → roomData
   const clFloorCellMap = new Map(); // "cx_cy_floor" → true (위층 BFS cutaway용)
+  const clMaxFloorMap = new Map(); // "cx_cy" → max floor (가장 위쪽 floor tile)
   let nextRoomId = 1;
   let clWallMapBuiltAt = 0;
   const ROOM_INDOOR_MAX = 200; // BFS 200 cell 이내에 escape 못 하면 indoor. 200 cell 넘으면 outdoor.
@@ -278,6 +279,7 @@ console.log('%c[durango-mini] client build = 14.49-e7af (lower floor visible)', 
     clWallCellMap.clear();
     cellRoomCache.clear(); // wall 다 다시 → room도 다시
     clFloorCellMap.clear();
+    clMaxFloorMap.clear();
     for (const [zid, c] of conns) {
       const zm = c.meta || zonesMeta[zid];
       if (!zm) continue;
@@ -293,7 +295,10 @@ console.log('%c[durango-mini] client build = 14.49-e7af (lower floor visible)', 
           if (b.data?.damaged) continue;
           clWallCellMap.set(`${oxCells + bcx}_${oyCells + bcy}_${side}_${f}`, true);
         } else if (b.type === 'floor') {
-          clFloorCellMap.set(`${oxCells + bcx}_${oyCells + bcy}_${f}`, true);
+          const absKey = `${oxCells + bcx}_${oyCells + bcy}`;
+          clFloorCellMap.set(`${absKey}_${f}`, true);
+          const curMax = clMaxFloorMap.get(absKey);
+          if (curMax === undefined || curMax < f) clMaxFloorMap.set(absKey, f);
         }
       }
     }
@@ -332,6 +337,29 @@ console.log('%c[durango-mini] client build = 14.49-e7af (lower floor visible)', 
       result.add(`${cx}_${cy}_E_${aboveFloor}`);   // E edge
       result.add(`${cx}_${cy+1}_N_${aboveFloor}`); // S edge = 인접 cell의 N
       result.add(`${cx-1}_${cy}_E_${aboveFloor}`); // W edge = 인접 cell의 E
+    }
+    return result;
+  }
+  // 14.49-e7ag: 머리 위 BFS cutaway — visited cells (cell key set) return
+  function computeAboveCutawayCells(myCx, myCy, myFloor) {
+    const result = new Set();
+    ensureWallMap();
+    const aboveFloor = myFloor + 1;
+    if (!clFloorCellMap.has(`${myCx}_${myCy}_${aboveFloor}`)) return result;
+    const queue = [[myCx, myCy]];
+    result.add(`${myCx}_${myCy}`);
+    const MAX_BFS = 500;
+    while (queue.length > 0 && result.size < MAX_BFS) {
+      const [cx, cy] = queue.shift();
+      for (const [dx, dy] of [[0,1],[0,-1],[1,0],[-1,0]]) {
+        const nx = cx + dx, ny = cy + dy;
+        const k = `${nx}_${ny}`;
+        if (result.has(k)) continue;
+        if (clFloorCellMap.has(`${nx}_${ny}_${aboveFloor}`)) {
+          result.add(k);
+          queue.push([nx, ny]);
+        }
+      }
     }
     return result;
   }
@@ -1863,10 +1891,11 @@ console.log('%c[durango-mini] client build = 14.49-e7af (lower floor visible)', 
 
     renderables.sort((a, b) => a.z - b.z);
 
-    // 14.49-e7ab: 위층 BFS cutaway — 머리 위 floor tile → 연결된 building의 모든 wall 완전 투명
+    // 14.49-e7ab/ag: 위층 BFS cutaway
     const _renderMyCx = Math.floor(myAbsPredicted.x / CL_BUILDING_SIZE);
     const _renderMyCy = Math.floor(myAbsPredicted.y / CL_BUILDING_SIZE);
     const aboveCutawayWalls = computeAboveCutawayWalls(_renderMyCx, _renderMyCy, myFloor);
+    const aboveCutawayCells = computeAboveCutawayCells(_renderMyCx, _renderMyCy, myFloor);
 
     // 14.49-e7ae: mask composite를 entity render 전으로 (entity가 mask 위에 = mask 영향 X)
     // mask 자체는 entity render 후에 만들어짐 (현재 위치 그대로). 즉 1 frame 지연.
@@ -2008,12 +2037,20 @@ console.log('%c[durango-mini] client build = 14.49-e7af (lower floor visible)', 
         if (bf < myFloor) {
           ctx.globalAlpha = 1.0;
         }
-        // 14.49-e7af: 위층 (myFloor + 1 이상) — 외벽만 렌더. floor(=천장) 완전 투명(skip)
+        // 14.49-e7ag: 위층 처리
+        // - floor: 가장 위쪽(max floor)만 그림. BFS cutaway 안이면 skip.
+        // - wall: 외벽만. BFS cutaway 안이면 skip.
+        // - 그 외 (chest, farmland): BFS cutaway 안이면 skip. 그 외는 기존대로 skip.
         else if (bf > myFloor) {
           if (bType === 'floor') {
-            continue; // 위층 바닥 = 천장 = 완전 투명
+            const cx = Math.floor(item.ax / CL_BUILDING_SIZE);
+            const cy = Math.floor(item.ay / CL_BUILDING_SIZE);
+            const cellKey = `${cx}_${cy}`;
+            if (aboveCutawayCells.has(cellKey)) continue; // BFS cutaway
+            const maxF = clMaxFloorMap.get(cellKey);
+            if (maxF !== undefined && bf !== maxF) continue; // 가장 위쪽 아님
+            ctx.globalAlpha = 1.0;
           } else if (bType === 'wall' || bType === 'fence') {
-            // 외벽 판정 — wall이 outdoor cell과 인접하면 외벽
             const side = item.b.data?.side || 'N';
             let absCx, absCy, cx2, cy2;
             if (side === 'N') {
@@ -2025,9 +2062,8 @@ console.log('%c[durango-mini] client build = 14.49-e7af (lower floor visible)', 
               absCy = Math.floor(item.ay / CL_BUILDING_SIZE);
               cx2 = absCx + 1; cy2 = absCy;
             }
-            // 14.49-e7ab: 머리 위 building wall이면 완전 투명 (skip)
-            const wallKey = `${absCx}_${absCy}_${side}_${bf}`;
-            if (aboveCutawayWalls.has(wallKey)) continue;
+            // BFS cutaway: 양쪽 cell 중 하나라도 in BFS면 skip
+            if (aboveCutawayCells.has(`${absCx}_${absCy}`) || aboveCutawayCells.has(`${cx2}_${cy2}`)) continue;
             ensureWallMap();
             const r1 = cellRoomCache.get(`${absCx}_${absCy}_${bf}`);
             const r2 = cellRoomCache.get(`${cx2}_${cy2}_${bf}`);
@@ -2035,7 +2071,7 @@ console.log('%c[durango-mini] client build = 14.49-e7af (lower floor visible)', 
             if (!isOuter) continue;
             ctx.globalAlpha = 0.85;
           } else {
-            continue; // 위층 chest, farmland, scarecrow 등 모두 skip
+            continue;
           }
         }
         // 14.49-e7ac: wall edge 방향성 기반 cutaway
