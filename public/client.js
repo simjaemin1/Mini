@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.49-e7y2 (mctx globalCompositeOperation 매 frame 명시) ===
-console.log('%c[durango-mini] client build = 14.49-e7y2 (mode fix)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.49-e7z (close 영역도 360° ray cast로 wall clip) ===
+console.log('%c[durango-mini] client build = 14.49-e7z (close wall clip)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -2174,9 +2174,24 @@ console.log('%c[durango-mini] client build = 14.49-e7y2 (mode fix)', 'color:#5a9
           visibleWorldPath.closePath();
         }
       }
-      // + 가까운 원 (cone 무관)
-      visibleWorldPath.moveTo(px + CLOSE_RADIUS, py);
-      visibleWorldPath.arc(px, py, CLOSE_RADIUS, 0, Math.PI * 2);
+      // + 가까운 영역 (cone 무관, full 360°) — 벽 막힘 ray cast로 wall clip
+      const CLOSE_RAYS = 36;
+      const closeHits = [];
+      for (let i = 0; i < CLOSE_RAYS; i++) {
+        const a = (i / CLOSE_RAYS) * Math.PI * 2;
+        const dx = Math.cos(a), dy = Math.sin(a);
+        let best = CLOSE_RADIUS;
+        for (const s of segs) {
+          const t = rsi(dx, dy, s);
+          if (t !== null && t < best) best = t;
+        }
+        closeHits.push({ x: px + dx * best, y: py + dy * best });
+      }
+      visibleWorldPath.moveTo(closeHits[0].x, closeHits[0].y);
+      for (let i = 1; i < closeHits.length; i++) {
+        visibleWorldPath.lineTo(closeHits[i].x, closeHits[i].y);
+      }
+      visibleWorldPath.closePath();
 
       // 14.49-e7y: cumulative polygon 폐기. visible polygon 안 cell들을 seenCells에 add.
       // seen ↔ unseen 경계 = cell boundary (cell-aligned). visible ↔ seen = polygon.
