@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.49-e4 (NPC 집 계단 동쪽 벽 옆) ===
-console.log('%c[durango-mini] client build = 14.49-e4 (계단 벽 옆)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.49-e5 (PZ식 wall cutaway) ===
+console.log('%c[durango-mini] client build = 14.49-e5 (벽 cutaway)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -1751,9 +1751,20 @@ console.log('%c[durango-mini] client build = 14.49-e4 (계단 벽 옆)', 'color:
         }
       } else if (item.kind === 'building') {
         const s = toScreen(item.iso.x, item.iso.y);
-        // 천장 투명 — 캐릭터 floor보다 높은 건물은 흐릿하게 (안에 들어간 느낌)
         const bf = item.b.floor || 0;
+        // 천장 투명 — 캐릭터 floor보다 높은 건물은 흐릿하게
         if (bf > myFloor) ctx.globalAlpha = 0.3;
+        // 14.49-e5: PZ식 cutaway — 카메라(NE)와 플레이어 사이 벽은 반투명.
+        // 같은 floor + 플레이어의 SE 쪽 (wall.ax > my.ax OR wall.ay > my.ay) + 가까운 범위.
+        // wall만 적용 (천장·계단·체스트는 그대로).
+        else if (item.b.type === 'wall' && bf === myFloor) {
+          const dx = item.ax - myAbsPredicted.x;
+          const dy = item.ay - myAbsPredicted.y;
+          // SE 방향 (dx > 0 or dy > 0)이고 충분히 가까운 (~5 cell 안) 벽은 cutaway
+          const isInFront = (dx > -16 && dy > -16) && (dx + dy > -16);
+          const dist = Math.hypot(dx, dy);
+          if (isInFront && dist < 160) ctx.globalAlpha = 0.18;
+        }
         drawBuildingIso(s.x, s.y, item.b.type, item.b);
         ctx.globalAlpha = 1;
       } else if (item.kind === 'mob') {
