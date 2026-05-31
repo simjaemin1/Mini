@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.49-e7ag (max floor만 + BFS cutaway 머리 위 building 전체 skip) ===
-console.log('%c[durango-mini] client build = 14.49-e7ag (max floor + BFS)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.49-e7ai (stair z player floor 보정 + stair cells에 floor tile X) ===
+console.log('%c[durango-mini] client build = 14.49-e7ai (stair z fix + no floor on stair)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -1851,6 +1851,24 @@ console.log('%c[durango-mini] client build = 14.49-e7ag (max floor + BFS)', 'col
           // edge 중간점 — N: 북쪽 변 중간, E: 동쪽 변 중간
           if (side === 'N') { ax = ox + b.x + 16; ay = oy + b.y; }
           else /* E */     { ax = ox + b.x + 32; ay = oy + b.y + 16; }
+        } else if (b.type === 'stair') {
+          // 14.49-e7ah: stair는 3 cell 분할 push. 각 cell이 자기 z로 sort.
+          const dir = b.data?.dir || 'N';
+          const dv = dir === 'E' ? { x: 1, y: 0 } : dir === 'W' ? { x: -1, y: 0 } : dir === 'S' ? { x: 0, y: 1 } : { x: 0, y: -1 };
+          const baseAx = ox + b.x + 16; // cell 0 center
+          const baseAy = oy + b.y + 16;
+          const bZ = (b.floor || 0) * FLOOR_HEIGHT;
+          for (let cellN = 0; cellN < 3; cellN++) {
+            const cAx = baseAx + dv.x * cellN * CL_BUILDING_SIZE;
+            const cAy = baseAy + dv.y * cellN * CL_BUILDING_SIZE;
+            if (Math.abs(cAx - worldCx) > VIEW_RADIUS || Math.abs(cAy - worldCy) > VIEW_RADIUS) continue;
+            const iso = w2i(cAx, cAy, bZ);
+            renderables.push({
+              z: (cAx + cAy) * 0.5 + (b.floor || 0) * 0.5,
+              kind: 'stair_cell', b, iso, ax: cAx, ay: cAy, cellN, dv,
+            });
+          }
+          continue;
         } else {
           ax = ox + b.x; ay = oy + b.y;
         }
@@ -2099,6 +2117,14 @@ console.log('%c[durango-mini] client build = 14.49-e7ag (max floor + BFS)', 'col
         }
         drawBuildingIso(s.x, s.y, item.b.type, item.b);
         ctx.globalAlpha = 1;
+      } else if (item.kind === 'stair_cell') {
+        // 14.49-e7ah: stair cell N의 8 sub-step만 그림. z-sort 정확.
+        const s = toScreen(item.iso.x, item.iso.y);
+        const bf = item.b.floor || 0;
+        const cx = Math.floor(item.ax / CL_BUILDING_SIZE);
+        const cy = Math.floor(item.ay / CL_BUILDING_SIZE);
+        if (bf > myFloor && aboveCutawayCells.has(`${cx}_${cy}`)) continue;
+        drawStairCellPart(s.x, s.y, item.cellN, item.b);
       } else if (item.kind === 'mob') {
         // 14.49-e7ad: 위층 mob 안 그림. 아래층은 정상 alpha.
         const mFloor = item.m.floor || 0;
@@ -2414,6 +2440,57 @@ console.log('%c[durango-mini] client build = 14.49-e7ag (max floor + BFS)', 'col
   }
 
   const WALL_HEIGHT = 64; // 14.49-e2: FLOOR_HEIGHT(64)와 같음
+  // 14.49-e7ah: stair cell N의 8 sub-step만 그림. anchor (x, y) = cell N center.
+  function drawStairCellPart(x, y, cellN, building) {
+    const H = FLOOR_HEIGHT;
+    const dir = building?.data?.dir || 'N';
+    const dv = dir === 'E' ? { x: 1, y: 0 } : dir === 'W' ? { x: -1, y: 0 } : dir === 'S' ? { x: 0, y: 1 } : { x: 0, y: -1 };
+    const pv = { x: -dv.y, y: dv.x };
+    function worldOffToScreen(wx, wy, wz) {
+      return { x: (wx - wy), y: (wx + wy) * 0.5 - wz };
+    }
+    const SUB_PER_CELL = 8;
+    const SUB_TOTAL = 24;
+    const SUB_WIDTH = CL_BUILDING_SIZE / SUB_PER_CELL;
+    for (let subInCell = 0; subInCell < SUB_PER_CELL; subInCell++) {
+      const S = cellN * SUB_PER_CELL + subInCell;
+      // cell N 중심 기준 (anchor가 cell N center): subInCell offset
+      const w = (subInCell - 3.5) * SUB_WIDTH;
+      const z = (S / (SUB_TOTAL - 1)) * H;
+      const halfDV = SUB_WIDTH / 2;
+      const halfPV = CL_BUILDING_SIZE / 2;
+      function corner(dvSign, pvSign) {
+        const wx = dv.x * (w + halfDV * dvSign) + pv.x * halfPV * pvSign;
+        const wy = dv.y * (w + halfDV * dvSign) + pv.y * halfPV * pvSign;
+        const sc = worldOffToScreen(wx, wy, z);
+        return { x: x + sc.x, y: y + sc.y };
+      }
+      const c1 = corner(-1, -1);
+      const c2 = corner( 1, -1);
+      const c3 = corner( 1,  1);
+      const c4 = corner(-1,  1);
+      const prevZ = S === 0 ? 0 : ((S - 1) / (SUB_TOTAL - 1)) * H;
+      if (z > prevZ) {
+        const c1d = { x: c1.x, y: c1.y + (z - prevZ) };
+        const c4d = { x: c4.x, y: c4.y + (z - prevZ) };
+        ctx.fillStyle = '#4a2a14';
+        ctx.strokeStyle = '#2a1808';
+        ctx.lineWidth = 0.6;
+        ctx.beginPath();
+        ctx.moveTo(c1.x, c1.y); ctx.lineTo(c4.x, c4.y);
+        ctx.lineTo(c4d.x, c4d.y); ctx.lineTo(c1d.x, c1d.y);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+      }
+      ctx.fillStyle = '#b08858';
+      ctx.strokeStyle = '#5a3818';
+      ctx.lineWidth = 0.4;
+      ctx.beginPath();
+      ctx.moveTo(c1.x, c1.y); ctx.lineTo(c2.x, c2.y);
+      ctx.lineTo(c3.x, c3.y); ctx.lineTo(c4.x, c4.y);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+    }
+  }
+
   function drawBuildingIso(x, y, type, building) {
     if (type === 'farmland') {
       // 갈색 흙 다이아 + 작물

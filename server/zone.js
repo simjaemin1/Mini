@@ -613,13 +613,21 @@ function spawnNpc(opts = {}) {
     // 서쪽 변 (cx-2의 W = cx-3의 E)
     for (let j = -2; j <= 2; j++) addWall(houseCx - 3, houseCy + j, 'E', f);
   }
-  // 14.49-e7: 0F 바닥 (집 안 바닥 타일) + 1F 바닥 (천장) + 2F 바닥 (지붕)
-  for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) addBlock(houseCx + i, houseCy + j, 'floor', 0);
-  for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) addBlock(houseCx + i, houseCy + j, 'floor', 1);
-  for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) addBlock(houseCx + i, houseCy + j, 'floor', 2);
+  // 14.49-e7ai: stair 3 cell 위치는 floor tile 없음 (사용자 요구: "2층에 그 3칸 바닥 없어야")
+  // stair anchor=(houseCx+2, houseCy+1) dir='N' → 3 cells = (cx+2, cy+1), (cx+2, cy), (cx+2, cy-1)
+  const stairCells = new Set([
+    `${houseCx + 2}_${houseCy + 1}`,
+    `${houseCx + 2}_${houseCy}`,
+    `${houseCx + 2}_${houseCy - 1}`,
+  ]);
+  for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) {
+    const cx = houseCx + i, cy = houseCy + j;
+    if (stairCells.has(`${cx}_${cy}`)) continue;
+    addBlock(cx, cy, 'floor', 0);
+    addBlock(cx, cy, 'floor', 1);
+    addBlock(cx, cy, 'floor', 2);
+  }
   // 계단 — 집 내부, 동쪽 벽에 붙음. dir='N' (남쪽에서 들어와 북쪽으로 올라감).
-  // anchor=낮은 입구=(houseCx+2, houseCy+1) [동쪽 벽 옆], step 1=(houseCx+2, houseCy), step 2=(houseCx+2, houseCy-1)
-  // 1F 도착=(houseCx+2, houseCy-2) 위. 동쪽 벽 따라서 올라감.
   addBlock(houseCx + 2, houseCy + 1, 'stair', 0, { dir: 'N' });
 
   console.log(`[${ZONE_ID}] 🤖 NPC 스폰: ${name} @ (${cx.toFixed(0)},${cy.toFixed(0)}) + PZ식 집`);
@@ -3286,13 +3294,20 @@ setInterval(() => {
     const f = Math.max(0, Math.min(1, totalProj / totalLen));
     // 24 sub-step으로 discrete snap (등분). f * 24 = 0~24, floor → 0~24 정수 (실제 0~23)
     const sub24 = Math.max(0, Math.min(24, Math.floor(f * 24)));
-    const targetZ = (sub24 / 24) * FLOOR_HEIGHT; // 0 ~ FLOOR_HEIGHT
+    const stairTopZ = (sub24 / 24) * FLOOR_HEIGHT; // 0 ~ FLOOR_HEIGHT (stair entity 기준)
+    // 14.49-e7ai: player floor 보정 — stair absolute z = stair.floor*64 + stairTopZ
+    //   entity.z (relative) = stairAbsZ - entity.floor*64
+    //   2층에서 stair top 도달 시: stair.floor=0, sub24=24, stairTopZ=64, stairAbsZ=64.
+    //   player.floor=1 → entity.z = 64 - 64 = 0. 절대 z = 64 + 0 = 64. (튀어 오름 없음)
+    //   1층에서 stair top 도달 시: player.floor=0 → entity.z = 64. 절대 z = 0 + 64 = 64. (위층 입구 z)
+    const stairAbsZ = (stair.floor || 0) * FLOOR_HEIGHT + stairTopZ;
+    const targetRelZ = stairAbsZ - (entity.floor || 0) * FLOOR_HEIGHT;
     entity.stairStep = step;
     entity.stairSubStep = sub24;
     const cur_z = entity.z || 0;
-    const lerpT = Math.min(1, dt * 14); // 빠른 lerp (24단계라 변화 자주 일어남)
-    entity.z = cur_z + (targetZ - cur_z) * lerpT;
-    if (Math.abs(entity.z - targetZ) < 0.5) entity.z = targetZ;
+    const lerpT = Math.min(1, dt * 14);
+    entity.z = cur_z + (targetRelZ - cur_z) * lerpT;
+    if (Math.abs(entity.z - targetRelZ) < 0.5) entity.z = targetRelZ;
   }
   for (const p of players.values()) {
     if (p.handingOff || p.isDown) continue;
