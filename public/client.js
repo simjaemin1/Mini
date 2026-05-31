@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.49-e6d (per-tile cone 제거 + 부드러운 vignette) ===
-console.log('%c[durango-mini] client build = 14.49-e6d (vignette 부드러움)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.49-e6e (tile render 범위 확대 + 위층 wall alpha 0.7) ===
+console.log('%c[durango-mini] client build = 14.49-e6e (시야 stairstep + 위층 벽)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -371,15 +371,24 @@ console.log('%c[durango-mini] client build = 14.49-e6d (vignette 부드러움)',
     }
   }
   window.playerIsIndoors = playerIsIndoors;
-  window.dbg = () => ({
-    pos: { ...myAbsPredicted },
-    cell: { cx: Math.floor(myAbsPredicted.x/CL_BUILDING_SIZE), cy: Math.floor(myAbsPredicted.y/CL_BUILDING_SIZE) },
-    floor: myFloor,
-    indoors: playerIsIndoors(),
-    wallCells: clWallCellMap.size,
-    rooms: new Set([...cellRoomCache.values()]).size,
-    cachedCells: cellRoomCache.size,
-  });
+  window.dbg = () => {
+    ensureWallMap();
+    const floors = {};
+    for (const k of clWallCellMap.keys()) {
+      const f = k.split('_')[3];
+      floors[f] = (floors[f] || 0) + 1;
+    }
+    return {
+      pos: { ...myAbsPredicted },
+      cell: { cx: Math.floor(myAbsPredicted.x/CL_BUILDING_SIZE), cy: Math.floor(myAbsPredicted.y/CL_BUILDING_SIZE) },
+      floor: myFloor,
+      indoors: playerIsIndoors(),
+      wallCells: clWallCellMap.size,
+      wallsByFloor: floors,
+      rooms: new Set([...cellRoomCache.values()]).size,
+      cachedCells: cellRoomCache.size,
+    };
+  };
   // 14.49-e3-perf2: 계단 측면 진입 차단 + 클라 stair cell 캐시 (O(1))
   function clDirVec(dir) {
     if (dir === 'N') return { x: 0, y: -1 };
@@ -1681,12 +1690,15 @@ console.log('%c[durango-mini] client build = 14.49-e6d (vignette 부드러움)',
     const TS = pConn.meta.tileSize;
     const worldCx = myAbsPredicted.x, worldCy = myAbsPredicted.y;
     const VIEW_RADIUS = 650;
+    // 14.49-e6e: 타일은 화면 전체 덮는 더 큰 범위로 그림 (1500px).
+    // 그래야 vignette 가장자리가 셀 stairstep 안 보임 (타일 없는 빈 영역의 boundary가 hard edge).
+    const TILE_RENDER_RADIUS = 1500;
 
     // === 1) 지면 다이아몬드 타일 ===
-    const t0WX = Math.floor((worldCx - VIEW_RADIUS) / TS) * TS;
-    const t1WX = Math.ceil((worldCx + VIEW_RADIUS) / TS) * TS;
-    const t0WY = Math.floor((worldCy - VIEW_RADIUS) / TS) * TS;
-    const t1WY = Math.ceil((worldCy + VIEW_RADIUS) / TS) * TS;
+    const t0WX = Math.floor((worldCx - TILE_RENDER_RADIUS) / TS) * TS;
+    const t1WX = Math.ceil((worldCx + TILE_RENDER_RADIUS) / TS) * TS;
+    const t0WY = Math.floor((worldCy - TILE_RENDER_RADIUS) / TS) * TS;
+    const t1WY = Math.ceil((worldCy + TILE_RENDER_RADIUS) / TS) * TS;
 
     for (let wx = t0WX; wx < t1WX; wx += TS) {
       for (let wy = t0WY; wy < t1WY; wy += TS) {
@@ -1703,10 +1715,9 @@ console.log('%c[durango-mini] client build = 14.49-e6d (vignette 부드러움)',
         const cellWx = wx + TS/2 - worldCx;
         const cellWy = wy + TS/2 - worldCy;
         const dist = Math.hypot(cellWx, cellWy);
-        // 14.49-e6d: per-tile vignette 제거 (radial gradient overlay가 처리).
-        // 타일은 full bright. LoS 차단만 per-tile.
+        // 14.49-e6e: 타일은 full bright. LoS 차단만 per-tile. 그릴 범위는 1500px (vignette가 가림).
         let visibility = 1;
-        if (dist > VIEW_RADIUS * 1.2) continue; // 너무 멀면 skip
+        if (dist > TILE_RENDER_RADIUS) continue;
         if (dist > 32) {
           const myCx = Math.floor(myAbsPredicted.x / CL_BUILDING_SIZE);
           const myCy = Math.floor(myAbsPredicted.y / CL_BUILDING_SIZE);
@@ -1946,8 +1957,10 @@ console.log('%c[durango-mini] client build = 14.49-e6d (vignette 부드러움)',
       } else if (item.kind === 'building') {
         const s = toScreen(item.iso.x, item.iso.y);
         const bf = item.b.floor || 0;
-        // 천장 투명 — 캐릭터 floor보다 높은 건물은 흐릿하게
-        if (bf > myFloor) ctx.globalAlpha = 0.3;
+        // 14.49-e6e: 위 floor 건물 — wall은 잘 보이게(0.7), 그 외 천장/floor는 흐리게(0.35)
+        if (bf > myFloor) {
+          ctx.globalAlpha = (item.b.type === 'wall' || item.b.type === 'fence') ? 0.7 : 0.35;
+        }
         // 14.49-e5c: PZ식 wall cutaway — 실내일 때 플레이어의 S/E 방향 벽 투명.
         // wall = 거의 완전 투명 (alpha 0.02). fence = 반투명 (alpha 0.4, 창문 느낌).
         // N/W 벽은 절대 안 투명.
