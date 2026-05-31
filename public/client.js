@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.49-e5d (indoor detect primary만 + 디버그 expose) ===
-console.log('%c[durango-mini] client build = 14.49-e5d (indoor 최적화)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.49-e6 (z 표시 + BFS room + 시야 LoS) ===
+console.log('%c[durango-mini] client build = 14.49-e6 (z+BFS+LoS)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -170,22 +170,21 @@ console.log('%c[durango-mini] client build = 14.49-e5d (indoor 최적화)', 'col
     return !!(set && set.has(`${tx}_${ty}`));
   }
 
-  // Phase 14.39: 시야 cone 헬퍼
-  // 지형: 뒤쪽도 보임 (0.55) — 탐험한 곳 윤곽
+  // 14.49-e6-c: 시야 재구성
+  // 지형: 중앙 80px 원 = 항상 full bright. 뒤쪽 = 0.85 (덜 어둡게).
+  // dot 보간 연속 (cos-like) → 부드러움.
   function coneMultGround(dwx, dwy, dist) {
-    if (dist < 40) return 1;
-    if (myFacingVx === 0 && myFacingVy === 0) return 1;
+    if (dist < 80) return 1; // PZ식 중앙 원형 vision
+    if (myFacingVx === 0 && myFacingVy === 0) return 0.95;
     const flen = Math.hypot(myFacingVx, myFacingVy) || 1;
     const fx = myFacingVx / flen, fy = myFacingVy / flen;
     const ux = dwx / dist, uy = dwy / dist;
-    const dot = fx * ux + fy * uy;
-    if (dot > 0) return 1;
-    if (dot > -0.5) return 1 - (-dot) * 0.5; // 1.0 → 0.75
-    return 0.55; // 뒤 — 살짝 어두움
+    const dot = fx * ux + fy * uy; // -1 ~ 1
+    return 0.925 + 0.075 * dot; // 앞=1.0, 뒤=0.85 (덜 어둡게)
   }
-  // entity (player/mob/item): 뒤쪽 완전 차단 (PZ식)
+  // entity (player/mob/item): 중앙 원형 + 뒤쪽 완전 차단 (PZ식)
   function coneMultEntity(dwx, dwy, dist) {
-    if (dist < 50) return 1;
+    if (dist < 80) return 1; // 가까이면 무조건 보임
     if (myFacingVx === 0 && myFacingVy === 0) return 1;
     const flen = Math.hypot(myFacingVx, myFacingVy) || 1;
     const fx = myFacingVx / flen, fy = myFacingVy / flen;
@@ -193,7 +192,41 @@ console.log('%c[durango-mini] client build = 14.49-e5d (indoor 최적화)', 'col
     const dot = fx * ux + fy * uy;
     if (dot > 0.1) return 1;
     if (dot > -0.2) return (dot + 0.2) / 0.3; // fade
-    return 0; // 뒤쪽 안 보임
+    return 0; // 뒤 안 보임
+  }
+  // 14.49-e6-c: entity 가시성 = cone × LoS (벽 너머 mob/player 안 보임)
+  function entityVisibility(ax, ay, dist) {
+    let vis = coneMultEntity(ax - worldCx, ay - worldCy, dist);
+    if (vis > 0.01 && dist > 32) {
+      const myCx = Math.floor(myAbsPredicted.x / CL_BUILDING_SIZE);
+      const myCy = Math.floor(myAbsPredicted.y / CL_BUILDING_SIZE);
+      const tCx = Math.floor(ax / CL_BUILDING_SIZE);
+      const tCy = Math.floor(ay / CL_BUILDING_SIZE);
+      if (!hasLineOfSight(myCx, myCy, tCx, tCy, myFloor)) vis = 0;
+    }
+    return vis;
+  }
+  // 14.49-e6-c: 벽 line-of-sight — fromCell → toCell 사이 wall edge로 막혔나
+  // cell-by-cell Bresenham-style traversal. wallCellMap 사용 (O(1) 체크).
+  function hasLineOfSight(fromCx, fromCy, toCx, toCy, floor) {
+    if (fromCx === toCx && fromCy === toCy) return true;
+    let cx = fromCx, cy = fromCy;
+    let steps = 0;
+    const MAX = 30;
+    while ((cx !== toCx || cy !== toCy) && steps < MAX) {
+      steps++;
+      const dx = toCx - cx, dy = toCy - cy;
+      if (Math.abs(dx) >= Math.abs(dy) && dx !== 0) {
+        const sx = dx > 0 ? 1 : -1;
+        if (clHasWallBetween(cx, cy, sx, 0, floor)) return false;
+        cx += sx;
+      } else if (dy !== 0) {
+        const sy = dy > 0 ? 1 : -1;
+        if (clHasWallBetween(cx, cy, 0, sy, floor)) return false;
+        cy += sy;
+      } else break;
+    }
+    return true;
   }
 
   // === 클라 사이드 wall edge 콜라이더 (server isBlockedByWall 미러) ===
@@ -224,36 +257,126 @@ console.log('%c[durango-mini] client build = 14.49-e5d (indoor 최적화)', 'col
     }
     return false;
   }
-  // 14.49-e5c-perf: 실내 detect 최적화 — primary zone만 스캔, 200ms TTL.
-  let _indoorCachedAt = 0;
-  let _indoorCached = false;
-  function playerIsIndoors() {
-    const now = performance.now();
-    if (now - _indoorCachedAt < 200) return _indoorCached;
-    _indoorCachedAt = now;
-    let found = false;
-    if (primaryZoneId) {
-      const c = conns.get(primaryZoneId);
-      const zm = c?.meta;
-      if (c && zm) {
-        const ox = zm.worldOffsetX || 0, oy = zm.worldOffsetY || 0;
-        const px = myAbsPredicted.x, py = myAbsPredicted.y;
-        for (const b of c.buildings.values()) {
-          if (b.type !== 'wall') continue;
-          if ((b.floor || 0) !== myFloor) continue;
-          const dx = px - (ox + b.x), dy = py - (oy + b.y);
-          // N or W에 벽 + 가까운 (2 cell 안만 — 더 엄격하게)
-          if ((dx > 8 || dy > 8) && Math.abs(dx) < 96 && Math.abs(dy) < 96) {
-            found = true;
-            break;
-          }
-        }
+  // === 14.49-e6-b: BFS room flood fill — RimWorld식 정확한 indoor 판정 ===
+  // 1) clWallCellMap: 모든 wall edge 위치 O(1) lookup (절대 cell + side + floor)
+  // 2) cellRoomCache: 셀 → roomData (한 영역의 모든 cell이 같은 roomData 공유)
+  //    roomData = { id, cells: Set, isIndoor }
+  // BFS는 영역 단위 1번. 같은 영역의 모든 cell이 같이 cache됨.
+  // wall 변경 broadcast 시 양옆 cell BFS 즉시 재계산 (eager invalidate).
+  // 이 결과는 wall cutaway에만 사용. 시야와는 무관.
+  const clWallCellMap = new Map(); // "cx_cy_side_floor" → true (절대 cell)
+  const cellRoomCache = new Map(); // "cx_cy_floor" → roomData
+  let nextRoomId = 1;
+  let clWallMapBuiltAt = 0;
+  const ROOM_INDOOR_MAX = 200; // BFS 200 cell 이내에 escape 못 하면 indoor. 200 cell 넘으면 outdoor.
+
+  function clRebuildWallCellMap() {
+    clWallCellMap.clear();
+    cellRoomCache.clear(); // wall 다 다시 → room도 다시
+    for (const [zid, c] of conns) {
+      const zm = c.meta || zonesMeta[zid];
+      if (!zm) continue;
+      const oxCells = Math.floor((zm.worldOffsetX || 0) / CL_BUILDING_SIZE);
+      const oyCells = Math.floor((zm.worldOffsetY || 0) / CL_BUILDING_SIZE);
+      for (const b of c.buildings.values()) {
+        if (b.type !== 'wall') continue;
+        const side = b.data?.side;
+        if (!side) continue;
+        if (b.data?.damaged) continue; // damaged wall = 시각상 wall이지만 통과 가능
+        const bcx = Math.floor(b.x / CL_BUILDING_SIZE);
+        const bcy = Math.floor(b.y / CL_BUILDING_SIZE);
+        const f = b.floor || 0;
+        clWallCellMap.set(`${oxCells + bcx}_${oyCells + bcy}_${side}_${f}`, true);
       }
     }
-    _indoorCached = found;
-    return found;
+    clWallMapBuiltAt = performance.now();
   }
-  window.playerIsIndoors = playerIsIndoors; // 디버그 노출
+  function ensureWallMap() {
+    if (clWallMapBuiltAt === 0 || performance.now() - clWallMapBuiltAt > 5000) clRebuildWallCellMap();
+  }
+  // 인접 cell (cx, cy) → (cx+dx, cy+dy) 사이 벽 있나? dx,dy는 ±1만 (cardinal)
+  function clHasWallBetween(cx, cy, dx, dy, floor) {
+    if (dx === 1)  return clWallCellMap.has(`${cx}_${cy}_E_${floor}`);
+    if (dx === -1) return clWallCellMap.has(`${cx-1}_${cy}_E_${floor}`);
+    if (dy === 1)  return clWallCellMap.has(`${cx}_${cy+1}_N_${floor}`);
+    if (dy === -1) return clWallCellMap.has(`${cx}_${cy}_N_${floor}`);
+    return false;
+  }
+  // BFS from (cx, cy): 영역 fill. 200 cell 미만이면 indoor, 넘으면 outdoor.
+  // 같은 영역의 모든 cell이 같은 roomData 공유.
+  function computeRoom(cx, cy, floor) {
+    ensureWallMap();
+    const visited = new Set();
+    const queue = [[cx, cy]];
+    const startKey = `${cx}_${cy}_${floor}`;
+    visited.add(`${cx}_${cy}`);
+    let capped = false;
+    while (queue.length > 0) {
+      if (visited.size >= ROOM_INDOOR_MAX) { capped = true; break; }
+      const [x, y] = queue.shift();
+      for (const [dx, dy] of [[0,-1],[0,1],[-1,0],[1,0]]) {
+        if (clHasWallBetween(x, y, dx, dy, floor)) continue;
+        const nx = x + dx, ny = y + dy;
+        const k = `${nx}_${ny}`;
+        if (visited.has(k)) continue;
+        visited.add(k);
+        queue.push([nx, ny]);
+      }
+    }
+    const room = {
+      id: nextRoomId++,
+      cells: visited,
+      isIndoor: !capped, // BFS가 cap 안 닿고 끝났으면 enclosed = indoor
+    };
+    // 영역 안의 모든 cell에 같은 roomData 박음
+    for (const k of visited) {
+      cellRoomCache.set(`${k}_${floor}`, room);
+    }
+    return room;
+  }
+  function isCellIndoor(cx, cy, floor) {
+    ensureWallMap();
+    const key = `${cx}_${cy}_${floor}`;
+    const cached = cellRoomCache.get(key);
+    if (cached) return cached.isIndoor;
+    const room = computeRoom(cx, cy, floor);
+    return room.isIndoor;
+  }
+  function playerIsIndoors() {
+    const cx = Math.floor(myAbsPredicted.x / CL_BUILDING_SIZE);
+    const cy = Math.floor(myAbsPredicted.y / CL_BUILDING_SIZE);
+    return isCellIndoor(cx, cy, myFloor);
+  }
+  // Eager invalidate: 양옆 cell이 속한 room 전체 invalidate + 즉시 BFS 다시.
+  function invalidateRoomsAroundWall(absCx, absCy, side, floor) {
+    // wall side='N' on (cx,cy) → 양옆 cell = (cx, cy)와 (cx, cy-1)
+    // wall side='E' on (cx,cy) → 양옆 cell = (cx, cy)와 (cx+1, cy)
+    const pairs = side === 'E'
+      ? [[absCx, absCy], [absCx + 1, absCy]]
+      : [[absCx, absCy], [absCx, absCy - 1]];
+    const roomsToInvalidate = new Set();
+    for (const [cx, cy] of pairs) {
+      const r = cellRoomCache.get(`${cx}_${cy}_${floor}`);
+      if (r) roomsToInvalidate.add(r);
+    }
+    for (const r of roomsToInvalidate) {
+      for (const k of r.cells) cellRoomCache.delete(`${k}_${floor}`);
+    }
+    // 새로 BFS — 양옆 cell 둘 다 (같은 room이면 두 번째는 cache hit으로 skip됨)
+    for (const [cx, cy] of pairs) {
+      computeRoom(cx, cy, floor);
+    }
+  }
+  window.playerIsIndoors = playerIsIndoors;
+  window.dbg = () => ({
+    pos: { ...myAbsPredicted },
+    cell: { cx: Math.floor(myAbsPredicted.x/CL_BUILDING_SIZE), cy: Math.floor(myAbsPredicted.y/CL_BUILDING_SIZE) },
+    floor: myFloor,
+    indoors: playerIsIndoors(),
+    wallCells: clWallCellMap.size,
+    rooms: new Set([...cellRoomCache.values()]).size,
+    cachedCells: cellRoomCache.size,
+  });
   // 14.49-e3-perf2: 계단 측면 진입 차단 + 클라 stair cell 캐시 (O(1))
   function clDirVec(dir) {
     if (dir === 'N') return { x: 0, y: -1 };
@@ -1096,10 +1219,39 @@ console.log('%c[durango-mini] client build = 14.49-e5d (indoor 최적화)', 'col
       c.claims.delete(msg.id);
     } else if (msg.type === 'building_added') {
       c.buildings.set(msg.building.id, msg.building);
-      if (msg.building.type === 'stair') clStairCacheBuildAt = 0; // 14.49-e3-perf2: 캐시 invalidate
+      if (msg.building.type === 'stair') clStairCacheBuildAt = 0;
+      if (msg.building.type === 'wall') {
+        // 14.49-e6-b: wall 위치 cache에 즉시 추가 + 양옆 room invalidate + 즉시 BFS
+        const b = msg.building;
+        const side = b.data?.side;
+        if (side) {
+          const zm = c.meta || zonesMeta[primaryZoneId];
+          const ox = Math.floor((zm?.worldOffsetX || 0) / CL_BUILDING_SIZE);
+          const oy = Math.floor((zm?.worldOffsetY || 0) / CL_BUILDING_SIZE);
+          const absCx = ox + Math.floor(b.x / CL_BUILDING_SIZE);
+          const absCy = oy + Math.floor(b.y / CL_BUILDING_SIZE);
+          const f = b.floor || 0;
+          clWallCellMap.set(`${absCx}_${absCy}_${side}_${f}`, true);
+          invalidateRoomsAroundWall(absCx, absCy, side, f);
+        }
+      }
     } else if (msg.type === 'building_removed') {
       const b = c.buildings.get(msg.id);
       if (b?.type === 'stair') clStairCacheBuildAt = 0;
+      if (b?.type === 'wall') {
+        // 14.49-e6-b: wall 위치 cache에서 즉시 제거 + 양옆 room invalidate + 즉시 BFS
+        const side = b.data?.side;
+        if (side) {
+          const zm = c.meta || zonesMeta[primaryZoneId];
+          const ox = Math.floor((zm?.worldOffsetX || 0) / CL_BUILDING_SIZE);
+          const oy = Math.floor((zm?.worldOffsetY || 0) / CL_BUILDING_SIZE);
+          const absCx = ox + Math.floor(b.x / CL_BUILDING_SIZE);
+          const absCy = oy + Math.floor(b.y / CL_BUILDING_SIZE);
+          const f = b.floor || 0;
+          clWallCellMap.delete(`${absCx}_${absCy}_${side}_${f}`);
+          invalidateRoomsAroundWall(absCx, absCy, side, f);
+        }
+      }
       c.buildings.delete(msg.id);
     } else if (msg.type === 'ground_item_added') {
       if (c.groundItems) c.groundItems.set(msg.gi.id, msg.gi);
@@ -1549,8 +1701,18 @@ console.log('%c[durango-mini] client build = 14.49-e5d (indoor 최적화)', 'col
         const cellWy = wy + TS/2 - worldCy;
         const dist = Math.hypot(cellWx, cellWy);
         let visibility = Math.max(0, 1 - Math.pow(dist / VIEW_RADIUS, 1.4));
-        // Phase 14.39: 지형은 PZ식 — 시야 밖도 살짝만 어둡게 (탐험한 곳 회색)
+        // 14.49-e6-c: 부드러운 cone (앞 1.0, 뒤 0.85)
         visibility *= coneMultGround(cellWx, cellWy, dist);
+        // 14.49-e6-c: 벽 line-of-sight — 막혔으면 거의 까맣게
+        if (dist > 32) { // 너무 가까운 tile은 LoS 체크 skip (perf)
+          const myCx = Math.floor(myAbsPredicted.x / CL_BUILDING_SIZE);
+          const myCy = Math.floor(myAbsPredicted.y / CL_BUILDING_SIZE);
+          const tileCx = Math.floor((wx + TS/2) / CL_BUILDING_SIZE);
+          const tileCy = Math.floor((wy + TS/2) / CL_BUILDING_SIZE);
+          if (!hasLineOfSight(myCx, myCy, tileCx, tileCy, myFloor)) {
+            visibility *= 0.08; // 벽 너머 = 거의 까맣게
+          }
+        }
         if (visibility <= 0.02) continue;
 
         const n = ((wx * 73 + wy * 31) >>> 0) % 17 / 17;
@@ -1696,7 +1858,7 @@ console.log('%c[durango-mini] client build = 14.49-e5d (indoor 최적화)', 'col
         const d = Math.hypot(item.ax - worldCx, item.ay - worldCy);
         // Phase 14.39: 자원도 entity — 시야 뒤면 안 보임. 단 거리 vignette는 부드럽게.
         let vis = Math.max(0.15, 1 - Math.pow(d / VIEW_RADIUS, 1.4));
-        vis *= coneMultEntity(item.ax - worldCx, item.ay - worldCy, d);
+        vis *= entityVisibility(item.ax, item.ay, d);
         if (vis < 0.05) continue;
         ctx.globalAlpha = vis;
         if (item.r.type === 'tree') drawTreeIso(s.x, s.y);
@@ -1716,7 +1878,7 @@ console.log('%c[durango-mini] client build = 14.49-e5d (indoor 최적화)', 'col
         const gi = item.gi;
         // Phase 14.39: 바닥 아이템도 entity cone
         const d = Math.hypot(item.ax - worldCx, item.ay - worldCy);
-        const vis = coneMultEntity(item.ax - worldCx, item.ay - worldCy, d);
+        const vis = entityVisibility(item.ax, item.ay, d);
         if (vis < 0.05) continue;
         ctx.globalAlpha = vis;
         const icon = (ITEM_ICONS && ITEM_ICONS[gi.item]) || ({wood:'🪵',stone:'🪨'}[gi.item]) || '📦';
@@ -1741,7 +1903,7 @@ console.log('%c[durango-mini] client build = 14.49-e5d (indoor 최적화)', 'col
         let vis = item.isMe ? 1 : Math.max(0.15, 1 - Math.pow(d / VIEW_RADIUS, 1.4));
         // Phase 14.39: 본인 외 player는 시야 뒤면 안 보임
         if (!item.isMe) {
-          vis *= coneMultEntity(item.ax - worldCx, item.ay - worldCy, d);
+          vis *= entityVisibility(item.ax, item.ay, d);
           if (vis < 0.05) continue;
         }
         ctx.globalAlpha = vis;
@@ -1800,7 +1962,7 @@ console.log('%c[durango-mini] client build = 14.49-e5d (indoor 최적화)', 'col
         const s = toScreen(item.iso.x, item.iso.y);
         const d = Math.hypot(item.ax - worldCx, item.ay - worldCy);
         let vis = Math.max(0.15, 1 - Math.pow(d / VIEW_RADIUS, 1.4));
-        vis *= coneMultEntity(item.ax - worldCx, item.ay - worldCy, d);
+        vis *= entityVisibility(item.ax, item.ay, d);
         if (vis < 0.05) continue;
         ctx.globalAlpha = vis;
         drawMobIso(s.x, s.y, item.m);
@@ -2659,8 +2821,10 @@ console.log('%c[durango-mini] client build = 14.49-e5d (indoor 최적화)', 'col
       const zm = zonesMeta[primaryZoneId];
       const lx = myAbsPredicted.x - zm.worldOffsetX;
       const ly = myAbsPredicted.y - (zm.worldOffsetY || 0);
+      // 14.49-e6-a: z 좌표 표시 (floor*FLOOR_HEIGHT + stair z)
+      const totalZ = myFloor * FLOOR_HEIGHT + (myStairZ || 0);
       document.getElementById('coordBadge').textContent =
-        `월드(${Math.round(myAbsPredicted.x)}, ${Math.round(myAbsPredicted.y)}) · 로컬(${Math.round(lx)}, ${Math.round(ly)})`;
+        `월드(${Math.round(myAbsPredicted.x)}, ${Math.round(myAbsPredicted.y)}, z=${Math.round(totalZ)}) · 로컬(${Math.round(lx)}, ${Math.round(ly)}) · ${myFloor}F`;
     }
     const { wx, wy } = worldKeysDir();
     const dir = (wx === 0 && wy === 0) ? '정지' :
