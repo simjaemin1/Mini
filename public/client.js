@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.49-e7aj (stair x/y fix +16 제거, 2층만 stair cells 비움) ===
-console.log('%c[durango-mini] client build = 14.49-e7aj (stair pos fix)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.49-e7ak DEBUG: floor 별 색 (2층 주황, 3층 빨강) ===
+console.log('%c[durango-mini] client build = 14.49-e7ak (debug floor color)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -2576,14 +2576,18 @@ console.log('%c[durango-mini] client build = 14.49-e7aj (stair pos fix)', 'color
       ctx.globalAlpha = 1; // Phase 14.33: damaged wall 반투명 복원
     } else if (type === 'floor') {
       // 14.49-e7e: 바닥 — 셀 꽉 채우는 isometric 다이아 (TS=32 ground tile과 동일 크기).
-      // 64 wide × 32 tall iso diamond. 셀 중심 (x, y)에서 그림.
+      // 14.49-e7ak DEBUG: floor 별 색 (1층 기본, 2층 주황, 3층 빨강)
       ctx.beginPath();
-      ctx.moveTo(x, y - 16);          // top
-      ctx.lineTo(x + 32, y);          // right
-      ctx.lineTo(x, y + 16);          // bottom
-      ctx.lineTo(x - 32, y);          // left
+      ctx.moveTo(x, y - 16);
+      ctx.lineTo(x + 32, y);
+      ctx.lineTo(x, y + 16);
+      ctx.lineTo(x - 32, y);
       ctx.closePath();
-      ctx.fillStyle = '#8a6a4a'; ctx.fill();
+      const fl = building?.floor ?? building?.data?.floor ?? 0;
+      let fillCol = '#8a6a4a';   // 1층 (floor=0) 기본
+      if (fl === 1) fillCol = '#ff8a3c';     // 2층 — 주황
+      else if (fl === 2) fillCol = '#e63a3a'; // 3층 — 빨강
+      ctx.fillStyle = fillCol; ctx.fill();
       ctx.strokeStyle = '#5a3a1c'; ctx.lineWidth = 0.5; ctx.stroke();
     } else if (type === 'chest') {
       // 나무상자
