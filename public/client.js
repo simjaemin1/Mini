@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.49-e7u (cumulative polygon 복원 — cell stairstep 0) ===
-console.log('%c[durango-mini] client build = 14.49-e7u (polygon fog)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.49-e7v (cone sort 버그 fix — facing 기준 normalized angle) ===
+console.log('%c[durango-mini] client build = 14.49-e7v (cone sort fix)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -2122,8 +2122,18 @@ console.log('%c[durango-mini] client build = 14.49-e7u (polygon fog)', 'color:#5
         }
         hits.push({ a, x: px + dx * best, y: py + dy * best });
       }
-      // 4) 각도순 정렬
-      hits.sort((u, v) => u.a - v.a);
+      // 4) facing 기준 normalized angle로 정렬 (cone이 atan2 wrap 가로지를 때 sort 잘못 방지)
+      function normalizedDiff(a) {
+        let d = a - facingAngle;
+        while (d > Math.PI) d -= 2 * Math.PI;
+        while (d < -Math.PI) d += 2 * Math.PI;
+        return d;
+      }
+      if (hasFacing) {
+        hits.sort((u, v) => normalizedDiff(u.a) - normalizedDiff(v.a));
+      } else {
+        hits.sort((u, v) => u.a - v.a);
+      }
       // 5) Off-screen mask canvas — fog of war 적용
       //    - unseen (한 번도 못 봤음): 완전 검은색 alpha 1.0
       //    - seen (한 번 봤지만 현재 시야 밖): 어둠 alpha 0.5
