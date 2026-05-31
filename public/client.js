@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.49-e6-hotfix (entityVisibility scope fix) ===
-console.log('%c[durango-mini] client build = 14.49-e6-hotfix (scope fix)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.49-e6d (per-tile cone 제거 + 부드러운 vignette) ===
+console.log('%c[durango-mini] client build = 14.49-e6d (vignette 부드러움)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -1703,20 +1703,19 @@ console.log('%c[durango-mini] client build = 14.49-e6-hotfix (scope fix)', 'colo
         const cellWx = wx + TS/2 - worldCx;
         const cellWy = wy + TS/2 - worldCy;
         const dist = Math.hypot(cellWx, cellWy);
-        let visibility = Math.max(0, 1 - Math.pow(dist / VIEW_RADIUS, 1.4));
-        // 14.49-e6-c: 부드러운 cone (앞 1.0, 뒤 0.85)
-        visibility *= coneMultGround(cellWx, cellWy, dist);
-        // 14.49-e6-c: 벽 line-of-sight — 막혔으면 거의 까맣게
-        if (dist > 32) { // 너무 가까운 tile은 LoS 체크 skip (perf)
+        // 14.49-e6d: per-tile vignette 제거 (radial gradient overlay가 처리).
+        // 타일은 full bright. LoS 차단만 per-tile.
+        let visibility = 1;
+        if (dist > VIEW_RADIUS * 1.2) continue; // 너무 멀면 skip
+        if (dist > 32) {
           const myCx = Math.floor(myAbsPredicted.x / CL_BUILDING_SIZE);
           const myCy = Math.floor(myAbsPredicted.y / CL_BUILDING_SIZE);
           const tileCx = Math.floor((wx + TS/2) / CL_BUILDING_SIZE);
           const tileCy = Math.floor((wy + TS/2) / CL_BUILDING_SIZE);
           if (!hasLineOfSight(myCx, myCy, tileCx, tileCy, myFloor)) {
-            visibility *= 0.08; // 벽 너머 = 거의 까맣게
+            visibility = 0.1; // 벽 너머 — 어둡게 (radial overlay 위에서 더 어두워짐)
           }
         }
-        if (visibility <= 0.02) continue;
 
         const n = ((wx * 73 + wy * 31) >>> 0) % 17 / 17;
         // 14.46-b-mini: 물 타일 (ocean zone or 해안선) — 파란색 우선
@@ -1973,11 +1972,15 @@ console.log('%c[durango-mini] client build = 14.49-e6-hotfix (scope fix)', 'colo
       }
     }
 
-    // === 4) 시야 비네팅 (다이아몬드 페이드) ===
-    const grad = ctx.createRadialGradient(W/2, H/2, 100, W/2, H/2, Math.max(W, H) * 0.6);
+    // === 4) 14.49-e6d: PZ식 부드러운 시야 비네팅 ===
+    // inner 90px = 항상 완전 밝음 (중앙 원형 vision). 끝부분 = 거의 까맣게.
+    // pixel 단위 보간이라 셀 stairstep 안 생김.
+    const grad = ctx.createRadialGradient(W/2, H/2, 90, W/2, H/2, Math.max(W, H) * 0.55);
     grad.addColorStop(0, 'rgba(0,0,0,0)');
-    grad.addColorStop(0.6, 'rgba(0,0,0,0.2)');
-    grad.addColorStop(1, 'rgba(0,0,0,0.8)');
+    grad.addColorStop(0.25, 'rgba(0,0,0,0.05)');
+    grad.addColorStop(0.55, 'rgba(0,0,0,0.35)');
+    grad.addColorStop(0.85, 'rgba(0,0,0,0.75)');
+    grad.addColorStop(1, 'rgba(0,0,0,0.92)');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, W, H);
 
@@ -2824,10 +2827,10 @@ console.log('%c[durango-mini] client build = 14.49-e6-hotfix (scope fix)', 'colo
       const zm = zonesMeta[primaryZoneId];
       const lx = myAbsPredicted.x - zm.worldOffsetX;
       const ly = myAbsPredicted.y - (zm.worldOffsetY || 0);
-      // 14.49-e6-a: z 좌표 표시 (floor*FLOOR_HEIGHT + stair z)
+      // 14.49-e6-a: z 좌표 = floor*FLOOR_HEIGHT + stair z (실제 픽셀 높이)
       const totalZ = myFloor * FLOOR_HEIGHT + (myStairZ || 0);
       document.getElementById('coordBadge').textContent =
-        `월드(${Math.round(myAbsPredicted.x)}, ${Math.round(myAbsPredicted.y)}, z=${Math.round(totalZ)}) · 로컬(${Math.round(lx)}, ${Math.round(ly)}) · ${myFloor}F`;
+        `월드(x=${Math.round(myAbsPredicted.x)}, y=${Math.round(myAbsPredicted.y)}, z=${Math.round(totalZ)}px) · 로컬(${Math.round(lx)}, ${Math.round(ly)})`;
     }
     const { wx, wy } = worldKeysDir();
     const dir = (wx === 0 && wy === 0) ? '정지' :
