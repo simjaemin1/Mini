@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.49-e6 (z 표시 + BFS room + 시야 LoS) ===
-console.log('%c[durango-mini] client build = 14.49-e6 (z+BFS+LoS)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.49-e6-hotfix (entityVisibility scope fix) ===
+console.log('%c[durango-mini] client build = 14.49-e6-hotfix (scope fix)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -195,8 +195,11 @@ console.log('%c[durango-mini] client build = 14.49-e6 (z+BFS+LoS)', 'color:#5a9a
     return 0; // 뒤 안 보임
   }
   // 14.49-e6-c: entity 가시성 = cone × LoS (벽 너머 mob/player 안 보임)
+  // worldCx === myAbsPredicted.x (카메라 = 플레이어 중심) — 직접 사용해도 안전.
   function entityVisibility(ax, ay, dist) {
-    let vis = coneMultEntity(ax - worldCx, ay - worldCy, dist);
+    const dwx = ax - myAbsPredicted.x;
+    const dwy = ay - myAbsPredicted.y;
+    let vis = coneMultEntity(dwx, dwy, dist);
     if (vis > 0.01 && dist > 32) {
       const myCx = Math.floor(myAbsPredicted.x / CL_BUILDING_SIZE);
       const myCy = Math.floor(myAbsPredicted.y / CL_BUILDING_SIZE);
