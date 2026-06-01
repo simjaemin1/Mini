@@ -10,7 +10,7 @@ cd "$REPO_DIR"
 echo "[1/4] git pull"
 git pull
 
-cd "$REPO_DIR/durango-mini"
+# Dockerfile은 repo root (/opt/Mini)에 직접 있음 — durango-mini 서브폴더 X.
 echo "[2/4] docker build"
 docker build -f Dockerfile.central -t durango-central .
 docker build -f Dockerfile.zone -t durango-zone .
