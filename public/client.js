@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.51 (건축물 아이템화 — 제작 → 인벤 → B키 건축 모드 → 클릭 배치) ===
-console.log('%c[durango-mini] client build = 14.51 (건축 아이템화)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.52 (도구 내구도 + 건축물 비용 plank/wood만) ===
+console.log('%c[durango-mini] client build = 14.52 (도구 내구도)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -39,8 +39,24 @@ console.log('%c[durango-mini] client build = 14.51 (건축 아이템화)', 'colo
   let primaryZoneId = null;
   let myPid = null;
   let inventory = { wood: 0, stone: 0 };
-  let tools = {};     // { axe: 1, pickaxe: 0, sword: 2, ... }
+  let tools = {};     // 14.52: { axe: {d, max}, ... } (옛: number)
   let equipped = null; // 'axe' | 'pickaxe' | 'sword' | null
+  // 14.52: 도구 보유 + 내구도 양수인지 체크 (옛 number 형식도 호환)
+  function hasToolAlive(name) {
+    const t = tools && tools[name];
+    if (!t) return false;
+    if (typeof t === 'number') return t > 0;
+    if (typeof t === 'object') return (t.d > 0);
+    return false;
+  }
+  // 14.52: 도구 내구도 텍스트 (UI 표시용)
+  function toolDurStr(name) {
+    const t = tools && tools[name];
+    if (!t) return '';
+    if (typeof t === 'number') return '';
+    if (typeof t === 'object' && typeof t.d === 'number') return `${t.d}/${t.max||100}`;
+    return '';
+  }
   let recipes = {};   // 서버에서 받은 도구 레시피
   let itemRecipes = {}; // 14.50: 아이템 가공 레시피 (plank 등)
   let buildingRecipes = {}; // 14.51: 건축물 제작 레시피 (제작창에서 만들면 인벤 아이템)
@@ -1453,10 +1469,18 @@ console.log('%c[durango-mini] client build = 14.51 (건축 아이템화)', 'colo
       }
     } else if (msg.type === 'inventory') {
       inventory = msg.inventory; updateHud(); renderCraftPanel(); if (cookOpen) renderCookPanel();
-    } else if (msg.type === 'tools_update') {
+    } else if (msg.type === 'tools_update' || msg.type === 'tools') {
+      // 14.52: tools 갱신 (내구도 변경 포함)
       if (msg.tools) tools = msg.tools;
       if (msg.equipped !== undefined) equipped = msg.equipped;
       updateHud(); renderCraftPanel();
+      // 좌측 sidePanel craft 열려있으면 갱신
+      const sp = document.getElementById('sidePanel');
+      if (sp && sp.classList.contains('open')) {
+        const spBody = document.getElementById('spBody');
+        if (spBody && typeof renderCraftPanel2 === 'function') renderCraftPanel2(spBody);
+      }
+      if (invOpen) renderInvPanel(document.getElementById('invBody'));
     } else if (msg.type === 'resource_removed') {
       c.resources.delete(msg.id);
     } else if (msg.type === 'resource_update') {
@@ -3482,7 +3506,9 @@ console.log('%c[durango-mini] client build = 14.51 (건축 아이템화)', 'colo
     const eqEl = document.getElementById('equippedBadge');
     if (eqEl) {
       const icons = { axe: '🪓', pickaxe: '⛏️', sword: '⚔️' };
-      eqEl.textContent = equipped ? `${icons[equipped] || ''} ${equipped}` : '맨손';
+      // 14.52: 내구도 표시
+      const dur = toolDurStr(equipped);
+      eqEl.textContent = equipped ? `${icons[equipped] || ''} ${equipped}${dur ? ' ' + dur : ''}` : '맨손';
     }
     const hpEl = document.getElementById('hpFill');
     if (hpEl) {
@@ -3757,8 +3783,8 @@ console.log('%c[durango-mini] client build = 14.51 (건축 아이템화)', 'colo
     const eqEl = document.getElementById('equippedNow');
     if (eqEl) eqEl.textContent = eqLabel;
     for (const [name, r] of Object.entries(recipes)) {
-      const have = tools[name] || 0;
-      const canCraft = (inventory.wood || 0) >= r.wood && (inventory.stone || 0) >= r.stone;
+      const have = hasToolAlive(name) ? 1 : 0;
+      const canCraft = !hasToolAlive(name) && (inventory.wood || 0) >= r.wood && (inventory.stone || 0) >= r.stone;
       const isEq = equipped === name;
       const row = document.createElement('div');
       row.className = 'craft-row' + (isEq ? ' eq' : '');
@@ -3786,7 +3812,7 @@ console.log('%c[durango-mini] client build = 14.51 (건축 아이템화)', 'colo
       hdr.textContent = '— 아이템 가공 (목공) —';
       list.appendChild(hdr);
       for (const [name, ir] of Object.entries(itemRecipes)) {
-        const hasTool = !ir.requiresTool || (tools && tools[ir.requiresTool]);
+        const hasTool = !ir.requiresTool || hasToolAlive(ir.requiresTool);
         const canCraft = hasTool && Object.entries(ir.from).every(([k, v]) => (inventory[k] || 0) >= v);
         const fromStr = Object.entries(ir.from).map(([k, v]) => `${ITEM_ICONS[k]||k} ${v}`).join(' · ');
         const toStr = Object.entries(ir.to).map(([k, v]) => `${ITEM_ICONS[k]||k} ×${v}`).join(' ');
@@ -3813,7 +3839,7 @@ console.log('%c[durango-mini] client build = 14.51 (건축 아이템화)', 'colo
       hdr.textContent = '— 건축물 제작 (만들면 인벤 → 건축 모드에서 배치) —';
       list.appendChild(hdr);
       for (const [name, br] of Object.entries(buildingRecipes)) {
-        const hasHammer = !br._needHammer || (tools && tools.hammer);
+        const hasHammer = !br._needHammer && !br._useHammer || hasToolAlive('hammer');
         const cost = {};
         for (const [k, v] of Object.entries(br)) {
           if (k.startsWith('_') || k === 'label') continue;
@@ -4656,7 +4682,8 @@ console.log('%c[durango-mini] client build = 14.51 (건축 아이템화)', 'colo
         id, msgType: 'craft', icon: TOOL_ICON[id] || '🔧',
         name: r.label || id,
         cost: { wood: r.wood || 0, stone: r.stone || 0 },
-        have: tools[id] || 0,
+        have: hasToolAlive(id) ? 1 : 0,
+        durStr: toolDurStr(id),
       }));
     } else if (craftCat === 'building') {
       // 14.51 buildingRecipes — 제작 → 인벤 → 건축 모드에서 배치
@@ -4713,8 +4740,8 @@ console.log('%c[durango-mini] client build = 14.51 (건축 아이템화)', 'colo
           ${items.length === 0 ? '<div style="color:#8a93a0;padding:20px;text-align:center">레시피 없음</div>' : items.map(r => {
             // need 체크
             const costOK = Object.entries(r.cost).every(([k,v]) => (inventory[k]||0) >= v);
-            const hammerOK = !r.needHammer || (tools && tools.hammer);
-            const toolOK = !r.needTool || (tools && tools[r.needTool]);
+            const hammerOK = !r.needHammer || hasToolAlive('hammer');
+            const toolOK = !r.needTool || hasToolAlive(r.needTool);
             const canMake = costOK && hammerOK && toolOK;
             const costStr = Object.entries(r.cost).map(([k,v]) => `${(ITEM_ICONS&&ITEM_ICONS[k])||k} ${v}`).join(' · ') || '-';
             const flags = [];
@@ -4725,7 +4752,11 @@ console.log('%c[durango-mini] client build = 14.51 (건축 아이템화)', 'colo
               const prodStr = Object.entries(r.produces).map(([k,v]) => `${(ITEM_ICONS&&ITEM_ICONS[k])||k}×${v}`).join(' ');
               flags.push(`→ ${prodStr}`);
             }
-            const haveBadge = (typeof r.have === 'number') ? ` <span style="color:#8fc8ff;font-weight:normal">×${r.have}</span>` : '';
+            const haveBadge = (typeof r.have === 'number')
+              ? (r.durStr
+                  ? ` <span style="color:#7cd97c;font-weight:normal">[${r.durStr}]</span>`
+                  : ` <span style="color:#8fc8ff;font-weight:normal">×${r.have}</span>`)
+              : '';
             return `<div class="craft-recipe ${canMake?'can-make':'cant-make'}">
               <div class="cr-icon">${r.icon}</div>
               <div class="cr-info"><div class="cr-name">${r.name}${haveBadge}</div><div class="cr-cost">${costStr}${flags.length?' · '+flags.join(' · '):''}</div></div>

@@ -226,15 +226,16 @@ const DEBUG_COLLIDER = process.env.DEBUG_COLLIDER === '1'; // 명시적으로 �
 //   wood = log (의미 변경). plank는 새 자원.
 //   목공 type (wall/floor/fence/door)는 plank만 사용 + hammer 필수.
 //   기타 type (chest/campfire/farmland/stair)은 기존 호환 유지.
+// 14.52: 재료는 plank/wood만 (stone 제거). 망치/톱은 재료 아닌 "도구" — 내구도 소비.
 const BUILDING_COST = {
   wall:     { plank: 2, _needHammer: true },                       // 판자 2 + 망치
   floor:    { plank: 1, _needHammer: true },                       // 판자 1 + 망치
   fence:    { plank: 1, _needHammer: true },                       // 판자 1 + 망치 (cell 전체, 시야 통과)
-  door:     { plank: 2, _needHammer: true },                       // 판자 2 + 망치 (열고닫기, 닫힘=벽)
-  chest:    { plank: 4, wood: 0, stone: 1, _needHammer: true },    // 판자 4 + 돌 1
-  campfire: { wood: 3, stone: 2 },                                 // 통나무 (목공 X)
-  farmland: { wood: 0, stone: 0, seed: 'seed_berry' },             // 씨앗
-  stair:    { plank: 4, wood: 2, stone: 2, _needHammer: true },    // 판자 + 통나무 (구조재)
+  door:     { plank: 2, _needHammer: true },                       // 판자 2 + 망치
+  chest:    { plank: 4, _needHammer: true },                       // 판자 4 + 망치
+  campfire: { wood: 3 },                                           // 통나무 3 (목공 X)
+  farmland: { seed: 'seed_berry' },                                // 씨앗
+  stair:    { plank: 4, _needHammer: true },                       // 판자 4 + 망치
 };
 const CROP_GROW_MS = 60 * 1000;
 // 14.50: door도 닫혔을 때 blocking. fence는 cell 차지하지만 통과 가능 (사용자 의도: 시야는 통과, collider만 차단).
@@ -300,18 +301,46 @@ const RECIPES = {
 const ITEM_RECIPES = {
   plank:   { from: { wood: 1 }, to: { plank: 2 }, requiresTool: 'saw', label: '판자 (통나무 1 → 판자 2)' },
 };
-// 14.51: 건축물 = 인벤 아이템. 제작창에서 만들면 인벤에 들어가고, 건축 모드에서 배치한다.
-// item_* 키는 inventory에 그대로 저장됨. _buildType은 실제 건축물 타입 (BUILDING_COST와 매핑).
+// 14.51/14.52: 건축물 = 인벤 아이템. 제작창에서 만들면 인벤에 들어가고, 건축 모드에서 배치한다.
+// 14.52: 재료는 plank/wood만 (stone 제외). 망치/톱은 재료가 아닌 "도구" — 내구도 소비.
+// _buildType = 실제 건축물 타입 (BUILDING_COST와 매핑). _useHammer = true면 hammer 내구도 1 소비.
 const BUILDING_RECIPES = {
-  item_wall:     { plank: 2,                _needHammer: true, _buildType: 'wall',     label: '벽 (Wall)' },
-  item_floor:    { plank: 1,                _needHammer: true, _buildType: 'floor',    label: '바닥 (Floor)' },
-  item_door:     { plank: 2,                _needHammer: true, _buildType: 'door',     label: '문 (Door)' },
-  item_fence:    { plank: 1,                _needHammer: true, _buildType: 'fence',    label: '울타리 (Fence)' },
-  item_stair:    { plank: 4, wood: 2, stone: 2, _needHammer: true, _buildType: 'stair', label: '계단 (Stair)' },
-  item_chest:    { plank: 4, stone: 1,      _needHammer: true, _buildType: 'chest',    label: '상자 (Chest)' },
-  item_campfire: { wood: 3, stone: 2,                            _buildType: 'campfire', label: '모닥불 (Campfire)' },
-  item_farmland: { seed_berry: 1,                                _buildType: 'farmland', label: '농지 (Farmland)' },
+  item_wall:     { plank: 2,          _useHammer: true, _buildType: 'wall',     label: '벽 (Wall)' },
+  item_floor:    { plank: 1,          _useHammer: true, _buildType: 'floor',    label: '바닥 (Floor)' },
+  item_door:     { plank: 2,          _useHammer: true, _buildType: 'door',     label: '문 (Door)' },
+  item_fence:    { plank: 1,          _useHammer: true, _buildType: 'fence',    label: '울타리 (Fence)' },
+  item_stair:    { plank: 4,          _useHammer: true, _buildType: 'stair',    label: '계단 (Stair)' },
+  item_chest:    { plank: 4,          _useHammer: true, _buildType: 'chest',    label: '상자 (Chest)' },
+  item_campfire: { wood: 3,                              _buildType: 'campfire', label: '모닥불 (Campfire)' },
+  item_farmland: { seed_berry: 1,                        _buildType: 'farmland', label: '농지 (Farmland)' },
 };
+// 14.52: 모든 도구의 최대 내구도 (제작 시 부여, 사용 시 1씩 감소, 0 되면 인벤서 제거)
+const TOOL_MAX_DURABILITY = {
+  axe:     100,
+  pickaxe: 100,
+  sword:   80,
+  saw:     120, // 톱은 가공 전용이라 좀 길게
+  hammer:  150, // 망치는 건축 전용이라 가장 길게
+};
+// 14.52: helper — 도구 존재 + 내구도 양수 체크
+function hasTool(player, toolName) {
+  const t = player.tools && player.tools[toolName];
+  return !!(t && typeof t === 'object' && t.d > 0);
+}
+// 14.52: helper — 도구 내구도 소비. 0 이하면 인벤서 제거 + notice. 반환: 성공 여부.
+function consumeToolDurability(player, toolName, amount = 1) {
+  const t = player.tools && player.tools[toolName];
+  if (!t || typeof t !== 'object' || t.d <= 0) return false;
+  t.d -= amount;
+  if (t.d <= 0) {
+    delete player.tools[toolName];
+    if (player.equipped === toolName) player.equipped = null;
+    send(player.ws, { type: 'notice', text: `${toolName} 깨짐 (내구도 0)` });
+  }
+  // tools 갱신 broadcast (인벤만큼 잦지는 않음)
+  send(player.ws, { type: 'tools', tools: player.tools, equipped: player.equipped });
+  return true;
+}
 // 역매핑: building type → item key (분해 시 사용)
 const BUILDING_TYPE_TO_ITEM = {};
 for (const [item, r] of Object.entries(BUILDING_RECIPES)) {
@@ -1602,10 +1631,21 @@ wss.on('connection', async (ws, req) => {
       inventory = { wood: result.player.wood | 0, stone: result.player.stone | 0, ...extInv };
       try { tools = result.player.tools_json ? JSON.parse(result.player.tools_json) : {}; }
       catch (e) { tools = {}; }
+      // 14.52: 옛 number 형식 → 새 {d, max} 형식 변환 (자동 마이그레이션)
+      for (const tn of Object.keys(tools)) {
+        if (typeof tools[tn] === 'number') {
+          const mx = TOOL_MAX_DURABILITY[tn] || 100;
+          tools[tn] = { d: mx, max: mx };
+        } else if (tools[tn] && typeof tools[tn] === 'object' && typeof tools[tn].d !== 'number') {
+          const mx = TOOL_MAX_DURABILITY[tn] || 100;
+          tools[tn] = { d: mx, max: mx };
+        }
+      }
       // 14.50: 시작 도구 (목공 시작 enable). 이미 있으면 변경 X.
-      if (!tools.saw) tools.saw = 1;
-      if (!tools.hammer) tools.hammer = 1;
-      if (!tools.axe) tools.axe = 1;
+      const newTool = (tn) => ({ d: TOOL_MAX_DURABILITY[tn] || 100, max: TOOL_MAX_DURABILITY[tn] || 100 });
+      if (!tools.saw) tools.saw = newTool('saw');
+      if (!tools.hammer) tools.hammer = newTool('hammer');
+      if (!tools.axe) tools.axe = newTool('axe');
       if (!inventory.plank) inventory.plank = 10; // 시작 판자 약간
       equipped = result.player.equipped || null;
       initHunger = (typeof result.player.hunger === 'number') ? result.player.hunger : HUNGER_MAX;
@@ -2017,8 +2057,9 @@ function doCraftItem(player, recipeName) {
   if (!recipe) {
     send(player.ws, { type: 'notice', text: `알 수 없는 가공 레시피: ${recipeName}` }); return;
   }
-  if (recipe.requiresTool && !(player.tools && player.tools[recipe.requiresTool])) {
-    send(player.ws, { type: 'notice', text: `${recipe.requiresTool} 필요` }); return;
+  // 14.52: requiresTool은 도구 — 내구도 양수 체크
+  if (recipe.requiresTool && !hasTool(player, recipe.requiresTool)) {
+    send(player.ws, { type: 'notice', text: `${recipe.requiresTool} 없거나 깨짐` }); return;
   }
   for (const [it, amt] of Object.entries(recipe.from)) {
     if ((player.inventory[it] || 0) < amt) {
@@ -2031,6 +2072,8 @@ function doCraftItem(player, recipeName) {
   for (const [it, amt] of Object.entries(recipe.to)) {
     player.inventory[it] = (player.inventory[it] || 0) + amt;
   }
+  // 14.52: 도구 내구도 -1
+  if (recipe.requiresTool) consumeToolDurability(player, recipe.requiresTool, 1);
   send(player.ws, { type: 'inventory', inventory: player.inventory });
   send(player.ws, { type: 'notice', text: `${recipe.label} 완료` });
   if (!player.playerId.startsWith('anon_')) savePlayer(player);
@@ -2042,8 +2085,9 @@ function doCraftBuilding(player, recipeName) {
   if (!recipe) {
     send(player.ws, { type: 'notice', text: `알 수 없는 건축물 레시피: ${recipeName}` }); return;
   }
-  if (recipe._needHammer && !(player.tools && player.tools.hammer)) {
-    send(player.ws, { type: 'notice', text: '망치가 필요합니다' }); return;
+  // 14.52: 망치는 "도구" — 내구도 양수 체크 (재료 아님)
+  if (recipe._useHammer && !hasTool(player, 'hammer')) {
+    send(player.ws, { type: 'notice', text: '망치가 없거나 깨졌습니다' }); return;
   }
   // cost = recipe의 _가 안 붙은 모든 key
   const cost = {};
@@ -2058,6 +2102,8 @@ function doCraftBuilding(player, recipeName) {
   }
   for (const [k, v] of Object.entries(cost)) player.inventory[k] -= v;
   player.inventory[recipeName] = (player.inventory[recipeName] || 0) + 1;
+  // 14.52: 망치 내구도 -1
+  if (recipe._useHammer) consumeToolDurability(player, 'hammer', 1);
   send(player.ws, { type: 'inventory', inventory: player.inventory });
   send(player.ws, { type: 'notice', text: `${recipe.label} 제작 완료 (인벤에 추가됨)` });
   if (!player.playerId.startsWith('anon_')) savePlayer(player);
@@ -2143,14 +2189,21 @@ function doCraft(player, recipeName) {
     send(player.ws, { type: 'notice', text: `${recipe.label} 제작에는 나무 ${recipe.wood}, 돌 ${recipe.stone} 필요` });
     return;
   }
+  // 14.52: 이미 가지고 있으면 거부 (낭비 방지)
+  if (hasTool(player, recipeName)) {
+    send(player.ws, { type: 'notice', text: `${recipe.label} 이미 보유 중 (깨질 때까지 새로 못 만듦)` });
+    return;
+  }
   player.inventory.wood -= recipe.wood;
   player.inventory.stone -= recipe.stone;
-  player.tools[recipeName] = (player.tools[recipeName] || 0) + 1;
+  // 14.52: 새 도구 = 풀 내구도
+  const mx = TOOL_MAX_DURABILITY[recipeName] || 100;
+  player.tools[recipeName] = { d: mx, max: mx };
   // 처음 만든 도구면 자동 장착
   if (!player.equipped) player.equipped = recipeName;
   send(player.ws, { type: 'inventory', inventory: player.inventory });
-  send(player.ws, { type: 'tools_update', tools: player.tools, equipped: player.equipped });
-  send(player.ws, { type: 'notice', text: `${recipe.label} 제작 완료` });
+  send(player.ws, { type: 'tools', tools: player.tools, equipped: player.equipped });
+  send(player.ws, { type: 'notice', text: `${recipe.label} 제작 완료 (내구도 ${mx})` });
   if (!player.playerId.startsWith('anon_')) {
     savePlayer(player);
   }
@@ -2162,7 +2215,7 @@ function doEquip(player, toolName) {
     player.equipped = null;
   } else {
     if (!RECIPES[toolName]) return;
-    if (!(player.tools[toolName] > 0)) {
+    if (!hasTool(player, toolName)) {
       send(player.ws, { type: 'notice', text: `${RECIPES[toolName].label} 보유 없음` });
       return;
     }
@@ -2221,14 +2274,19 @@ function tryGather(player) {
     return;
   }
 
-  // 도구 효과: tree면 axe 보너스, rock이면 pickaxe 보너스
-  const eff = player.equipped ? TOOL_EFFECTS[player.equipped] : null;
+  // 도구 효과: tree면 axe 보너스, rock이면 pickaxe 보너스 (장착된 도구가 살아있어야)
+  const equipped = player.equipped;
+  const eff = (equipped && hasTool(player, equipped)) ? TOOL_EFFECTS[equipped] : null;
   let dmg = 1;
   if (eff) {
     if (best.type === 'tree') dmg = eff.gatherWoodMult;
     else if (best.type === 'rock') dmg = eff.gatherStoneMult;
   }
   best.hp -= dmg;
+  // 14.52: 도구 내구도 소비 (장착된 도구로 채집 시)
+  if (equipped && hasTool(player, equipped)) {
+    consumeToolDurability(player, equipped, 1);
+  }
   if (best.hp <= 0) {
     // 자원 종류별 산출물
     let loot = {};
@@ -2569,7 +2627,7 @@ function _tryBuildAt(player, type, floor = 0, side = null, dir = null, opts = nu
   }
   // 14.50: 망치 체크 (목공 type) — skipCost일 때도 망치 체크는 유지 (이미 만들 때 한 번 했으니 제외 가능하지만, 보수적으로)
   // 14.51: place는 이미 만들어둔 거니 망치 체크 skip
-  if (!skipCost && BUILDING_COST[type]._needHammer && !(player.tools && player.tools.hammer)) {
+  if (!skipCost && BUILDING_COST[type]._needHammer && !hasTool(player, 'hammer')) {
     send(player.ws, { type: 'notice', text: '망치가 필요합니다' }); return false;
   }
   // wall과 door는 cell edge에 (PZ식). side가 안 주어졌으면 player 위치에서 가장 가까운 edge 결정.
@@ -2834,9 +2892,14 @@ async function tryAttack(player) {
   if (now - player.lastAttackAt < PLAYER_ATTACK_COOLDOWN_MS) return;
   player.lastAttackAt = now;
 
-  // 무기 효과 — 검 장착 시 데미지 배수
-  const eff = player.equipped ? TOOL_EFFECTS[player.equipped] : null;
+  // 무기 효과 — 장착 도구 살아있어야 적용
+  const equipped = player.equipped;
+  const eff = (equipped && hasTool(player, equipped)) ? TOOL_EFFECTS[equipped] : null;
   const atk = Math.round(PLAYER_ATTACK_DAMAGE * (eff ? eff.attackMult : 1));
+  // 14.52: 공격 시 도구 내구도 소비 (장착 도구가 있을 때만)
+  if (equipped && hasTool(player, equipped)) {
+    consumeToolDurability(player, equipped, 1);
+  }
 
   // 가장 가까운 mob을 범위 안에서 — quadtree
   const nearbyMobs = qtMobs ? qtMobs.queryCircle(player.x, player.y, PLAYER_ATTACK_RANGE) : Array.from(mobs.values());
