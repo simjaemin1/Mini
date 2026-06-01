@@ -4647,36 +4647,89 @@ console.log('%c[durango-mini] client build = 14.51 (건축 아이템화)', 'colo
   // === 제작창 (카테고리 + 레시피) ===
   let craftCat = 'tool';
   function renderCraftPanel2(body) {
-    const recipes = {
-      tool: [
-        { id: 'axe',     icon: '🪓', name: '도끼',     cost: { wood: 2, stone: 1 }, equip: 1 },
-        { id: 'pickaxe', icon: '⛏️', name: '곡괭이',  cost: { wood: 2, stone: 2 }, equip: 2 },
-        { id: 'sword',   icon: '⚔️', name: '검',       cost: { wood: 1, stone: 3 }, equip: 3 },
-      ],
-      food: [
-        { id: 'cook_meat', icon: '🍗', name: '고기 굽기', cost: { meat_raw: 1 }, needCampfire: true },
-        { id: 'berry_jam', icon: '🍯', name: '베리잼',    cost: { berry: 3 } },
-        { id: 'water_bottle', icon: '🥤', name: '물병', cost: { fiber: 2 } },
-      ],
-    };
+    // 14.50/14.51: 서버에서 받은 동적 recipes 사용 (axe/saw/hammer + 건축물 + 가공)
+    const TOOL_ICON = { axe: '🪓', pickaxe: '⛏️', sword: '⚔️', saw: '🪚', hammer: '🔨' };
+    let items = [];
+    if (craftCat === 'tool') {
+      // recipes = { axe: {wood,stone,label}, ... } (server에서 받음)
+      items = Object.entries(recipes || {}).map(([id, r]) => ({
+        id, msgType: 'craft', icon: TOOL_ICON[id] || '🔧',
+        name: r.label || id,
+        cost: { wood: r.wood || 0, stone: r.stone || 0 },
+        have: tools[id] || 0,
+      }));
+    } else if (craftCat === 'building') {
+      // 14.51 buildingRecipes — 제작 → 인벤 → 건축 모드에서 배치
+      items = Object.entries(buildingRecipes || {}).map(([id, r]) => {
+        const cost = {};
+        for (const [k, v] of Object.entries(r)) {
+          if (k.startsWith('_') || k === 'label') continue;
+          cost[k] = v;
+        }
+        return {
+          id, msgType: 'craft_building', icon: ITEM_ICONS[id] || '🏗️',
+          name: r.label || id,
+          cost, needHammer: !!r._needHammer,
+          have: inventory[id] || 0,
+        };
+      });
+    } else if (craftCat === 'item') {
+      // 14.50 itemRecipes — 통나무→판자 등
+      items = Object.entries(itemRecipes || {}).map(([id, r]) => ({
+        id, msgType: 'craft_item', icon: ITEM_ICONS[id] || '🪚',
+        name: r.label || id,
+        cost: r.from || {},
+        produces: r.to || {},
+        needTool: r.requiresTool,
+      }));
+    } else if (craftCat === 'food') {
+      // cookRecipes (server) 또는 hardcoded fallback
+      const cr = cookRecipes || {};
+      if (Object.keys(cr).length === 0) {
+        items = [
+          { id: 'meat_cooked', msgType: 'cook', icon: '🍗', name: '고기 굽기', cost: { meat_raw: 1 }, needCampfire: true },
+          { id: 'berry_jam', msgType: 'cook', icon: '🍯', name: '베리잼', cost: { berry: 3 }, needCampfire: true },
+          { id: 'water_bottle', msgType: 'cook', icon: '🥤', name: '물병', cost: { fiber: 2 }, needCampfire: true },
+        ];
+      } else {
+        items = Object.entries(cr).map(([id, r]) => ({
+          id, msgType: 'cook', icon: ITEM_ICONS[id] || '🍳',
+          name: r.label || id, cost: r.cost || {}, needCampfire: true,
+        }));
+      }
+    }
     const cats = [
-      { id: 'tool', label: '🔧 도구' },
-      { id: 'food', label: '🍖 음식/요리' },
+      { id: 'tool',     label: '🔧 도구' },
+      { id: 'building', label: '🏗️ 건축물' },
+      { id: 'item',     label: '🪚 가공' },
+      { id: 'food',     label: '🍖 음식/요리' },
     ];
-    const items = recipes[craftCat] || [];
     body.innerHTML = `
       <div class="craft-layout">
         <div class="craft-cats">
           ${cats.map(c => `<div class="craft-cat ${c.id===craftCat?'active':''}" data-cat="${c.id}">${c.label}</div>`).join('')}
         </div>
         <div class="craft-items">
-          ${items.map(r => {
-            const canMake = Object.entries(r.cost).every(([k,v]) => (inventory[k]||0) >= v);
-            const costStr = Object.entries(r.cost).map(([k,v]) => `${(ITEM_ICONS&&ITEM_ICONS[k])||k} ${v}`).join(' · ');
+          ${items.length === 0 ? '<div style="color:#8a93a0;padding:20px;text-align:center">레시피 없음</div>' : items.map(r => {
+            // need 체크
+            const costOK = Object.entries(r.cost).every(([k,v]) => (inventory[k]||0) >= v);
+            const hammerOK = !r.needHammer || (tools && tools.hammer);
+            const toolOK = !r.needTool || (tools && tools[r.needTool]);
+            const canMake = costOK && hammerOK && toolOK;
+            const costStr = Object.entries(r.cost).map(([k,v]) => `${(ITEM_ICONS&&ITEM_ICONS[k])||k} ${v}`).join(' · ') || '-';
+            const flags = [];
+            if (r.needHammer) flags.push('🔨');
+            if (r.needTool) flags.push(r.needTool);
+            if (r.needCampfire) flags.push('🔥');
+            if (r.produces) {
+              const prodStr = Object.entries(r.produces).map(([k,v]) => `${(ITEM_ICONS&&ITEM_ICONS[k])||k}×${v}`).join(' ');
+              flags.push(`→ ${prodStr}`);
+            }
+            const haveBadge = (typeof r.have === 'number') ? ` <span style="color:#8fc8ff;font-weight:normal">×${r.have}</span>` : '';
             return `<div class="craft-recipe ${canMake?'can-make':'cant-make'}">
               <div class="cr-icon">${r.icon}</div>
-              <div class="cr-info"><div class="cr-name">${r.name}</div><div class="cr-cost">${costStr}${r.needCampfire?' · 🔥 필요':''}</div></div>
-              <button data-craft="${r.id}" ${canMake?'':'disabled'}>제작</button>
+              <div class="cr-info"><div class="cr-name">${r.name}${haveBadge}</div><div class="cr-cost">${costStr}${flags.length?' · '+flags.join(' · '):''}</div></div>
+              <button data-craft="${r.id}" data-msg="${r.msgType}" ${canMake?'':'disabled'}>제작</button>
             </div>`;
           }).join('')}
         </div>
@@ -4684,44 +4737,40 @@ console.log('%c[durango-mini] client build = 14.51 (건축 아이템화)', 'colo
     body.querySelectorAll('[data-cat]').forEach(c => c.onclick = () => { craftCat = c.dataset.cat; renderCraftPanel2(body); });
     body.querySelectorAll('[data-craft]').forEach(b => b.onclick = () => {
       const id = b.dataset.craft;
-      if (id === 'axe' || id === 'pickaxe' || id === 'sword') sendPrimary({ type: 'craft', recipe: id });
-      else if (id === 'cook_meat') sendPrimary({ type: 'cook', recipe: 'meat_cooked' });
-      else if (id === 'berry_jam') sendPrimary({ type: 'cook', recipe: 'berry_jam' });
-      else if (id === 'water_bottle') sendPrimary({ type: 'cook', recipe: 'water_bottle' });
+      const msgType = b.dataset.msg;
+      sendPrimary({ type: msgType, recipe: id });
     });
   }
 
-  // === 건축 메뉴 (카테고리별 카드) ===
+  // === 건축 모드 패널 (14.51 신 시스템 안내 + ON/OFF 토글) ===
   function renderBuildPanel(body) {
-    // 14.50: 목공 (plank+망치). 일부 기존 자원 (campfire 통나무).
-    const items = [
-      { id: 'wall',      icon: '🧱', name: '벽',       cost: '🪵🪵+🔨', key: 'B' },
-      { id: 'floor',     icon: '⬜', name: '바닥',     cost: '🪵+🔨',     key: '-' },
-      { id: 'door',      icon: '🚪', name: '문',       cost: '🪵🪵+🔨', key: '-' },
-      { id: 'fence',     icon: '🪵', name: '울타리',  cost: '🪵+🔨',     key: 'L' },
-      { id: 'stair',     icon: '🪜', name: '계단',     cost: '🪵🪵🪵🪵+🔨', key: 'U' },
-      { id: 'chest',     icon: '📦', name: '상자',     cost: '🪵🪵🪵🪵+🔨', key: 'H' },
-      { id: 'campfire',  icon: '🔥', name: '모닥불',  cost: '통나무3 🪨2', key: 'J' },
-      { id: 'farmland',  icon: '🌱', name: '농지',     cost: '🌱1',      key: 'P' },
-    ];
+    const status = buildMode ? '<span style="color:#7cd97c">ON</span>' : '<span style="color:#ff7c7c">OFF</span>';
     body.innerHTML = `
-      <div style="font-size:11px;color:#8a93a0;margin-bottom:8px">건축물 카드 클릭 → 현재 위치(${0}F=${0}, 1F=${1}, ...)에 즉시 설치 · 층 변경: <b>Z/X</b></div>
-      <div class="build-grid">
-        ${items.map(i => `<div class="build-card" data-build="${i.id}">
-          <div class="bc-icon">${i.icon}</div>
-          <div class="bc-name">${i.name}</div>
-          <div class="bc-cost">${i.cost}</div>
-          <div class="bc-key">단축키 ${i.key}</div>
-        </div>`).join('')}
+      <div style="padding:12px;color:#cfd6e0;line-height:1.6;font-size:13px">
+        <h3 style="margin:0 0 12px 0;color:#f0c674">🏗️ 건축 모드 ${status}</h3>
+        <button id="buildToggleBtn" style="width:100%;padding:10px;background:${buildMode?'#7cd97c':'#3a4a5a'};color:#fff;border:none;border-radius:4px;font-size:14px;font-weight:bold;cursor:pointer;margin-bottom:12px">
+          ${buildMode ? '⏹ 건축 모드 끄기' : '▶ 건축 모드 켜기'} (B키)
+        </button>
+        <div style="background:#1a1f25;padding:10px;border-radius:4px;font-size:12px;color:#8a93a0">
+          <p style="margin:0 0 8px 0;color:#f0c674;font-weight:bold">📋 사용법</p>
+          <p style="margin:0 0 6px 0">① 🔨 <b>제작</b> 패널에서 "건축물" 탭 → 벽/바닥 제작 (자원+망치 소비) → 인벤에 들어감</p>
+          <p style="margin:0 0 6px 0">② <b>B키</b>로 건축 모드 ON</p>
+          <p style="margin:0 0 6px 0">③ <b>I</b>로 인벤 → 건축물 아이템 클릭 → placement 모드</p>
+          <p style="margin:0 0 6px 0">④ 맵 좌클릭 → <b>3초 progress</b> → 배치 (이동 시 취소)</p>
+          <p style="margin:0 0 6px 0">⑤ 우클릭 = 회전 · ESC = placement 종료</p>
+          <p style="margin:0 0 0 0">⑥ 건축물에 마우스 hover → 좌클릭 → <b>3초 progress</b> → 분해 (인벤 +1)</p>
+        </div>
+        <div style="background:#2a1f15;padding:10px;border-radius:4px;font-size:12px;color:#c89070;margin-top:8px">
+          ⚠️ 옛 즉시 빌드 시스템은 제거됨. 모든 건축물 = 제작→인벤→배치.
+        </div>
       </div>`;
-    body.querySelectorAll('[data-build]').forEach(c => c.onclick = () => {
-      const type = c.dataset.build;
-      const fl = myBuildFloor;
-      // Phase 14.30: placement mode. 마우스 따라 ghost cell + 클릭으로 그 위치에 빌드
-      placementMode = { type, floor: fl };
-      showNotice(`🏗️ ${type} 배치 모드 — 캔버스 클릭으로 빌드, Esc로 취소`);
-      closeSide(); // 패널 닫고 캔버스 보이게
-    });
+    document.getElementById('buildToggleBtn').onclick = () => {
+      buildMode = !buildMode;
+      if (!buildMode) placementMode = null;
+      showNotice(buildMode ? '🏗️ 건축 모드 ON' : '건축 모드 OFF');
+      renderBuildPanel(body);
+      if (invOpen) renderInvPanel(document.getElementById('invBody'));
+    };
   }
 
   // === 거래소 패널 (기존 modal 코드 재활용) ===
