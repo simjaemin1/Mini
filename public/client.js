@@ -1195,10 +1195,13 @@ console.log('%c[durango-mini] client build = 14.53 (도구 instance + 1번 슬�
       if (placementMode && placementMode.itemType) {
         e.preventDefault();
         const it = placementMode.itemType;
-        if (it === 'item_wall' || it === 'item_door' || it === 'item_stair') {
+        if (it === 'item_wall' || it === 'item_door') {
           const seq = ['N', 'E', 'S', 'W'];
           const i = seq.indexOf(placementMode.dir || 'N');
           placementMode.dir = seq[(i + delta + 4) % 4];
+        } else if (it === 'item_stair') {
+          // 14.54-c2: 계단은 N(남→북) 또는 W(동→서) 2방향만
+          placementMode.dir = (placementMode.dir === 'N') ? 'W' : 'N';
         } else if (it === 'item_fence') {
           placementMode.dir = (placementMode.dir === 'EW') ? 'NS' : 'EW';
         }
@@ -2078,7 +2081,7 @@ console.log('%c[durango-mini] client build = 14.53 (도구 instance + 1번 슬�
       const start = -16;    // dir 축 시작
       const end = 80;       // dir 축 끝 (cell 2 끝)
       const half = HALF;    // perp ±
-      const zBot = 0, zTop = H_FLOOR * 2;
+      const zBot = 0, zTop = H_FLOOR; // 14.54-c2: 1 floor 높이
       // 8 corner: [near/far][left/right][bot/top]
       const c = (along, perp, z) => o2s(dv.x * along + pv.x * perp, dv.y * along + pv.y * perp, z);
       const ftl = c(end,   -half, zTop);
@@ -2111,11 +2114,11 @@ console.log('%c[durango-mini] client build = 14.53 (도구 instance + 1번 슬�
       ctx.moveTo(ntl.x, ntl.y); ctx.lineTo(fbl.x, fbl.y);
       ctx.moveTo(ntr.x, ntr.y); ctx.lineTo(fbr.x, fbr.y);
       ctx.stroke();
-      // auto floor 박스 (cell 3, floor+1)
+      // auto floor 박스 (cell 3, floor+1) — stair 박스 위층 끝 옆에 붙음
       const autoFloorId = b.data?._autoFloorId;
       if (autoFloorId) {
         const fStart = 80,  fEnd = 80 + 32; // cell 3 (along dir axis)
-        const afBot = H_FLOOR, afTop = H_FLOOR + 8; // 살짝 두께
+        const afBot = H_FLOOR, afTop = H_FLOOR + 6; // 위층 floor 두께
         const af_ntl = c(fStart, -half, afTop), af_ntr = c(fStart, half, afTop);
         const af_ftl = c(fEnd,  -half, afTop), af_ftr = c(fEnd,  half, afTop);
         const af_nbl = c(fStart, -half, afBot), af_nbr = c(fStart, half, afBot);
@@ -2221,13 +2224,12 @@ console.log('%c[durango-mini] client build = 14.53 (도구 instance + 1번 슬�
       ctx.closePath();
       ctx.fill(); ctx.stroke();
     } else if (it === 'item_stair') {
-      // 14.54-c: stair ghost — 3×1×2 박스 + auto floor 1 cell 박스. dir로 방향 결정.
-      const dv = (dir === 'E') ? { x: 1, y: 0 } : (dir === 'W') ? { x: -1, y: 0 }
-               : (dir === 'S') ? { x: 0, y: 1 } : { x: 0, y: -1 };
+      // 14.54-c: stair ghost — 3×1×1 박스 + auto floor. dir = N 또는 W만.
+      const dv = (dir === 'W') ? { x: -1, y: 0 } : { x: 0, y: -1 }; // N 또는 W만
       const pv = { x: -dv.y, y: dv.x };
       const cc = (along, perp, z) => o2s(dv.x * along + pv.x * perp, dv.y * along + pv.y * perp, z);
       const start = -16, end = 80, half = HALF;
-      const zBot = 0, zTop = H_FLOOR * 2;
+      const zBot = 0, zTop = H_FLOOR;
       const ftl = cc(end, -half, zTop), ftr = cc(end, half, zTop);
       const fbl = cc(end, -half, zBot), fbr = cc(end, half, zBot);
       const ntl = cc(start, -half, zTop), ntr = cc(start, half, zTop);
@@ -2251,7 +2253,7 @@ console.log('%c[durango-mini] client build = 14.53 (도구 instance + 1번 슬�
       ctx.stroke();
       // auto floor cell 3, floor+1
       const fStart = 80, fEnd = 80 + 32;
-      const afBot = H_FLOOR, afTop = H_FLOOR + 8;
+      const afBot = H_FLOOR, afTop = H_FLOOR + 6;
       const af_ntl = cc(fStart, -half, afTop), af_ntr = cc(fStart, half, afTop);
       const af_ftl = cc(fEnd, -half, afTop), af_ftr = cc(fEnd, half, afTop);
       const af_nbl = cc(fStart, -half, afBot), af_nbr = cc(fStart, half, afBot);
@@ -5135,6 +5137,7 @@ console.log('%c[durango-mini] client build = 14.53 (도구 instance + 1번 슬�
           // 기본 dir 결정
           let dir = 'N';
           if (item === 'item_fence') dir = 'NS';
+          // 14.54-c2: stair는 N 또는 W만
           // 14.53-h: 항상 현재 player floor에서만 배치 (다른 층 설치 차단)
           placementMode = { itemType: item, floor: myFloor, dir };
           placingDir = dir;

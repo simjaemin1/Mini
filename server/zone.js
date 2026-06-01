@@ -2922,10 +2922,25 @@ function _tryBuildAt(player, type, floor = 0, side = null, dir = null, opts = nu
   chunkManager.insertBuilding(building);
   if (type === 'stair') stairCellDirty = true; // 14.49-e3-perf
 
-  // 14.54-a: stair는 cell 3 (auto floor 자리) 비어있나 사전 체크 + auto floor 같이 만들기
+  // 14.54-a/c2: stair dir 검증 — N(남→북) 또는 W(동→서)만 허용
   let autoFloorBuilding = null;
   if (type === 'stair') {
     const sd = dataWithFloor.dir || 'N';
+    if (sd !== 'N' && sd !== 'W') {
+      // 잘못된 dir — stair rollback
+      buildings.delete(id);
+      if (chunkManager.removeBuilding) chunkManager.removeBuilding(building);
+      db.deleteBuilding(dbId);
+      send(player.ws, { type: 'notice', text: '계단은 남→북(N) 또는 동→서(W) 방향만 가능' });
+      if (!skipCost) {
+        if (cost.plank) player.inventory.plank += cost.plank;
+        if (cost.wood) player.inventory.wood += cost.wood;
+        if (cost.stone) player.inventory.stone += cost.stone;
+        send(player.ws, { type: 'inventory', inventory: player.inventory });
+      }
+      stairCellDirty = true;
+      return false;
+    }
     const sdv = (sd === 'E') ? { x: 1, y: 0 } : (sd === 'W') ? { x: -1, y: 0 }
               : (sd === 'S') ? { x: 0, y: 1 } : { x: 0, y: -1 };
     const autoFx = gx + sdv.x * 3 * BUILDING_SIZE;
