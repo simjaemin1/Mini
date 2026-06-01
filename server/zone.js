@@ -300,6 +300,23 @@ const RECIPES = {
 const ITEM_RECIPES = {
   plank:   { from: { wood: 1 }, to: { plank: 2 }, requiresTool: 'saw', label: '판자 (통나무 1 → 판자 2)' },
 };
+// 14.51: 건축물 = 인벤 아이템. 제작창에서 만들면 인벤에 들어가고, 건축 모드에서 배치한다.
+// item_* 키는 inventory에 그대로 저장됨. _buildType은 실제 건축물 타입 (BUILDING_COST와 매핑).
+const BUILDING_RECIPES = {
+  item_wall:     { plank: 2,                _needHammer: true, _buildType: 'wall',     label: '벽 (Wall)' },
+  item_floor:    { plank: 1,                _needHammer: true, _buildType: 'floor',    label: '바닥 (Floor)' },
+  item_door:     { plank: 2,                _needHammer: true, _buildType: 'door',     label: '문 (Door)' },
+  item_fence:    { plank: 1,                _needHammer: true, _buildType: 'fence',    label: '울타리 (Fence)' },
+  item_stair:    { plank: 4, wood: 2, stone: 2, _needHammer: true, _buildType: 'stair', label: '계단 (Stair)' },
+  item_chest:    { plank: 4, stone: 1,      _needHammer: true, _buildType: 'chest',    label: '상자 (Chest)' },
+  item_campfire: { wood: 3, stone: 2,                            _buildType: 'campfire', label: '모닥불 (Campfire)' },
+  item_farmland: { seed_berry: 1,                                _buildType: 'farmland', label: '농지 (Farmland)' },
+};
+// 역매핑: building type → item key (분해 시 사용)
+const BUILDING_TYPE_TO_ITEM = {};
+for (const [item, r] of Object.entries(BUILDING_RECIPES)) {
+  BUILDING_TYPE_TO_ITEM[r._buildType] = item;
+}
 // 요리 레시피: campfire 근처에서만 가능. cost = 인벤토리 소비, produces = 인벤토리 산출 (item: count)
 const COOK_RECIPES = {
   meat_cooked: { cost: { meat_raw: 1 }, produces: { meat_cooked: 1 }, label: '구운 고기' },
@@ -1478,6 +1495,7 @@ wss.on('connection', async (ws, req) => {
           tools: player.tools, equipped: player.equipped,
           recipes: RECIPES,
           itemRecipes: ITEM_RECIPES,
+          buildingRecipes: BUILDING_RECIPES,
           cookRecipes: COOK_RECIPES,
           foodEffects: FOOD_EFFECTS,
           self: { x: player.x, y: player.y, hp: player.hp, maxHp: player.maxHp,
@@ -1818,6 +1836,10 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'craft') doCraft(player, msg.recipe);
   else if (msg.type === 'craft_item') doCraftItem(player, msg.recipe);
   else if (msg.type === 'door_toggle') doDoorToggle(player, msg.buildingId);
+  // 14.51: 건축물 아이템화 시스템
+  else if (msg.type === 'craft_building') doCraftBuilding(player, msg.recipe);
+  else if (msg.type === 'place_building') doPlaceBuilding(player, msg.itemType, msg.atX, msg.atY, msg.floor, msg.dir, msg.side);
+  else if (msg.type === 'dismantle_building') doDismantleBuilding(player, msg.buildingId);
   else if (msg.type === 'equip') doEquip(player, msg.tool);
   else if (msg.type === 'eat') doEat(player, msg.item);
   else if (msg.type === 'cook') doCook(player, msg.recipe);
@@ -2009,6 +2031,88 @@ function doCraftItem(player, recipeName) {
   }
   send(player.ws, { type: 'inventory', inventory: player.inventory });
   send(player.ws, { type: 'notice', text: `${recipe.label} 완료` });
+  if (!player.playerId.startsWith('anon_')) savePlayer(player);
+}
+
+// 14.51: 건축물 = 인벤 아이템. craft 패널에서 만들면 인벤 추가.
+function doCraftBuilding(player, recipeName) {
+  const recipe = BUILDING_RECIPES[recipeName];
+  if (!recipe) {
+    send(player.ws, { type: 'notice', text: `알 수 없는 건축물 레시피: ${recipeName}` }); return;
+  }
+  if (recipe._needHammer && !(player.tools && player.tools.hammer)) {
+    send(player.ws, { type: 'notice', text: '망치가 필요합니다' }); return;
+  }
+  // cost = recipe의 _가 안 붙은 모든 key
+  const cost = {};
+  for (const [k, v] of Object.entries(recipe)) {
+    if (k.startsWith('_') || k === 'label') continue;
+    cost[k] = v;
+  }
+  for (const [k, v] of Object.entries(cost)) {
+    if ((player.inventory[k] || 0) < v) {
+      send(player.ws, { type: 'notice', text: `${k} ${v}개 필요` }); return;
+    }
+  }
+  for (const [k, v] of Object.entries(cost)) player.inventory[k] -= v;
+  player.inventory[recipeName] = (player.inventory[recipeName] || 0) + 1;
+  send(player.ws, { type: 'inventory', inventory: player.inventory });
+  send(player.ws, { type: 'notice', text: `${recipe.label} 제작 완료 (인벤에 추가됨)` });
+  if (!player.playerId.startsWith('anon_')) savePlayer(player);
+}
+
+// 14.51: 건축 모드에서 인벤 아이템 → 월드 배치. 자원 소비는 없고 인벤 1개만 차감.
+function doPlaceBuilding(player, itemType, atX, atY, floor, dir, side) {
+  const recipe = BUILDING_RECIPES[itemType];
+  if (!recipe) {
+    send(player.ws, { type: 'notice', text: `알 수 없는 건축물 아이템: ${itemType}` }); return;
+  }
+  if ((player.inventory[itemType] || 0) < 1) {
+    send(player.ws, { type: 'notice', text: `${recipe.label} 인벤에 없음` }); return;
+  }
+  // _tryBuildAt 호출 (자원 소비 skip). 빌드 성공 시에만 인벤 차감.
+  const result = _tryBuildAt(player, recipe._buildType, floor || 0, side || null, dir || null, { skipCost: true, atX, atY });
+  if (result === true) {
+    player.inventory[itemType] -= 1;
+    send(player.ws, { type: 'inventory', inventory: player.inventory });
+    if (!player.playerId.startsWith('anon_')) savePlayer(player);
+  }
+}
+
+// 14.51: 건축 모드에서 건축물 분해. 거리 체크 + 인벤에 +1 환원.
+function doDismantleBuilding(player, buildingId) {
+  const b = buildings.get(buildingId);
+  if (!b) {
+    send(player.ws, { type: 'notice', text: '건축물 없음' }); return;
+  }
+  const d = Math.hypot(b.x - player.x, b.y - player.y);
+  if (d > 80) {
+    send(player.ws, { type: 'notice', text: '건축물이 너무 멉니다' }); return;
+  }
+  // 소유자 체크 (자기 길드 영지 안이면 OK)
+  // — 일단 누구든 가능 (PZ 스타일). 추후 chest 등은 잠금 체크 필요할 수도.
+  const itemType = BUILDING_TYPE_TO_ITEM[b.type];
+  if (itemType) {
+    player.inventory[itemType] = (player.inventory[itemType] || 0) + 1;
+  }
+  // chest는 내용물도 반환 (간단히 inventory로 합침)
+  if (b.type === 'chest' && b.data) {
+    for (const [k, v] of Object.entries(b.data)) {
+      if (typeof v === 'number' && v > 0) {
+        player.inventory[k] = (player.inventory[k] || 0) + v;
+      }
+    }
+  }
+  // 건축물 제거
+  buildings.delete(buildingId);
+  if (chunkManager && chunkManager.removeBuilding) chunkManager.removeBuilding(b);
+  if (b.dbId) db.deleteBuilding(b.dbId);
+  // 14.49-e3-perf3: stair/wall cache 무효화
+  if (typeof stairCellCacheBuiltAt !== 'undefined') stairCellCacheBuiltAt = 0;
+  if (typeof wallCellCacheBuiltAt !== 'undefined') wallCellCacheBuiltAt = 0;
+  send(player.ws, { type: 'inventory', inventory: player.inventory });
+  send(player.ws, { type: 'notice', text: `${itemType ? BUILDING_RECIPES[itemType].label : b.type} 분해 → 인벤 환원` });
+  broadcast({ type: 'building_removed', id: buildingId });
   if (!player.playerId.startsWith('anon_')) savePlayer(player);
 }
 
@@ -2443,14 +2547,28 @@ function tryBuild(player, type, floor = 0, side = null, atX, atY, dir = null) {
   }
   _tryBuildAt(player, type, floor, side, dir);
 }
-function _tryBuildAt(player, type, floor = 0, side = null, dir = null) {
+function _tryBuildAt(player, type, floor = 0, side = null, dir = null, opts = null) {
+  // 14.51: opts.skipCost = 인벤 차감 없이 빌드만 (place_building에서 사용). atX/atY = 위치 override.
+  const skipCost = !!(opts && opts.skipCost);
+  if (opts && typeof opts.atX === 'number' && typeof opts.atY === 'number') {
+    const d = Math.hypot(opts.atX - player.x, opts.atY - player.y);
+    if (d <= 160) {
+      const _ox = player.x, _oy = player.y;
+      player.x = opts.atX; player.y = opts.atY;
+      try { return _tryBuildAt(player, type, floor, side, dir, { skipCost }); }
+      finally { player.x = _ox; player.y = _oy; }
+    } else {
+      send(player.ws, { type: 'notice', text: '너무 멉니다' }); return false;
+    }
+  }
   floor = Math.max(0, Math.min(5, floor | 0));
   if (!BUILDING_COST[type]) {
-    send(player.ws, { type: 'notice', text: '알 수 없는 건축물' }); return;
+    send(player.ws, { type: 'notice', text: '알 수 없는 건축물' }); return false;
   }
-  // 14.50: 망치 체크 (목공 type)
-  if (BUILDING_COST[type]._needHammer && !(player.tools && player.tools.hammer)) {
-    send(player.ws, { type: 'notice', text: '망치가 필요합니다' }); return;
+  // 14.50: 망치 체크 (목공 type) — skipCost일 때도 망치 체크는 유지 (이미 만들 때 한 번 했으니 제외 가능하지만, 보수적으로)
+  // 14.51: place는 이미 만들어둔 거니 망치 체크 skip
+  if (!skipCost && BUILDING_COST[type]._needHammer && !(player.tools && player.tools.hammer)) {
+    send(player.ws, { type: 'notice', text: '망치가 필요합니다' }); return false;
   }
   // wall과 door는 cell edge에 (PZ식). side가 안 주어졌으면 player 위치에서 가장 가까운 edge 결정.
   // S/W → 인접 cell의 N/E로 정규화. 결과는 'N' or 'E'.
@@ -2475,22 +2593,24 @@ function _tryBuildAt(player, type, floor = 0, side = null, dir = null) {
     else if (side === 'W') { useCx = cx - 1; useCy = cy; useSide = 'E'; }
     // 중복 wall/door 체크 (같은 edge에 wall 또는 door 있나)
     if (findEdgeWall(useCx, useCy, useSide, floor)) {
-      send(player.ws, { type: 'notice', text: '이미 벽/문이 있습니다' }); return;
+      send(player.ws, { type: 'notice', text: '이미 벽/문이 있습니다' }); return false;
     }
     const cost = BUILDING_COST[type];
-    // 비용 모두 확인 (plank, wood, stone)
-    if (cost.plank && (player.inventory.plank || 0) < cost.plank) {
-      send(player.ws, { type: 'notice', text: `판자 ${cost.plank}개 필요` }); return;
+    if (!skipCost) {
+      // 비용 모두 확인 (plank, wood, stone)
+      if (cost.plank && (player.inventory.plank || 0) < cost.plank) {
+        send(player.ws, { type: 'notice', text: `판자 ${cost.plank}개 필요` }); return false;
+      }
+      if (cost.wood && (player.inventory.wood || 0) < cost.wood) {
+        send(player.ws, { type: 'notice', text: `통나무 ${cost.wood}개 필요` }); return false;
+      }
+      if (cost.stone && (player.inventory.stone || 0) < cost.stone) {
+        send(player.ws, { type: 'notice', text: `돌 ${cost.stone}개 필요` }); return false;
+      }
+      if (cost.plank) player.inventory.plank -= cost.plank;
+      if (cost.wood) player.inventory.wood -= cost.wood;
+      if (cost.stone) player.inventory.stone -= cost.stone;
     }
-    if (cost.wood && (player.inventory.wood || 0) < cost.wood) {
-      send(player.ws, { type: 'notice', text: `통나무 ${cost.wood}개 필요` }); return;
-    }
-    if (cost.stone && (player.inventory.stone || 0) < cost.stone) {
-      send(player.ws, { type: 'notice', text: `돌 ${cost.stone}개 필요` }); return;
-    }
-    if (cost.plank) player.inventory.plank -= cost.plank;
-    if (cost.wood) player.inventory.wood -= cost.wood;
-    if (cost.stone) player.inventory.stone -= cost.stone;
     const wx = useCx * BUILDING_SIZE;
     const wy = useCy * BUILDING_SIZE;
     // door는 open state 추가. 기본 닫힘.
@@ -2503,24 +2623,26 @@ function _tryBuildAt(player, type, floor = 0, side = null, dir = null) {
     send(player.ws, { type: 'inventory', inventory: player.inventory });
     savePlayer(player);
     broadcast({ type: 'building_added', building });
-    return;
+    return true;
   }
   const cost = BUILDING_COST[type];
-  // 14.50: plank/wood/stone 분리 비용
-  if (cost.plank && (player.inventory.plank || 0) < cost.plank) {
-    send(player.ws, { type: 'notice', text: `판자 ${cost.plank}개 필요` }); return;
-  }
-  if (cost.wood && (player.inventory.wood || 0) < cost.wood) {
-    send(player.ws, { type: 'notice', text: `통나무 ${cost.wood}개 필요` }); return;
-  }
-  if (cost.stone && (player.inventory.stone || 0) < cost.stone) {
-    send(player.ws, { type: 'notice', text: `돌 ${cost.stone}개 필요` }); return;
-  }
-  if (cost.seed && (player.inventory[cost.seed] || 0) < 1) {
-    send(player.ws, { type: 'notice', text: `${cost.seed} 1개 필요` }); return;
-  }
-  if (cost.fiber && (player.inventory.fiber || 0) < cost.fiber) {
-    send(player.ws, { type: 'notice', text: `섬유 ${cost.fiber}개 필요` }); return;
+  if (!skipCost) {
+    // 14.50: plank/wood/stone 분리 비용
+    if (cost.plank && (player.inventory.plank || 0) < cost.plank) {
+      send(player.ws, { type: 'notice', text: `판자 ${cost.plank}개 필요` }); return false;
+    }
+    if (cost.wood && (player.inventory.wood || 0) < cost.wood) {
+      send(player.ws, { type: 'notice', text: `통나무 ${cost.wood}개 필요` }); return false;
+    }
+    if (cost.stone && (player.inventory.stone || 0) < cost.stone) {
+      send(player.ws, { type: 'notice', text: `돌 ${cost.stone}개 필요` }); return false;
+    }
+    if (cost.seed && (player.inventory[cost.seed] || 0) < 1) {
+      send(player.ws, { type: 'notice', text: `${cost.seed} 1개 필요` }); return false;
+    }
+    if (cost.fiber && (player.inventory.fiber || 0) < cost.fiber) {
+      send(player.ws, { type: 'notice', text: `섬유 ${cost.fiber}개 필요` }); return false;
+    }
   }
   // 격자에 스냅 (32 단위)
   const gx = Math.floor(player.x / BUILDING_SIZE) * BUILDING_SIZE + BUILDING_SIZE / 2;
@@ -2535,7 +2657,7 @@ function _tryBuildAt(player, type, floor = 0, side = null, dir = null) {
     }
   }
   if (!inOwnClaim) {
-    send(player.ws, { type: 'notice', text: '자기 영지 안에서만 건축 가능' }); return;
+    send(player.ws, { type: 'notice', text: '자기 영지 안에서만 건축 가능' }); return false;
   }
 
   // 같은 (x,y,floor)에 다른 건축물 없는지 — quadtree + floor 일치만 체크
@@ -2543,7 +2665,7 @@ function _tryBuildAt(player, type, floor = 0, side = null, dir = null) {
   for (const b of nearBuilds) {
     if ((b.floor || 0) !== floor) continue; // 다른 층은 OK (위/아래 가능)
     if (Math.abs(b.x - gx) < BUILDING_SIZE && Math.abs(b.y - gy) < BUILDING_SIZE) {
-      send(player.ws, { type: 'notice', text: `이미 ${floor}F에 건축물이 있습니다` }); return;
+      send(player.ws, { type: 'notice', text: `이미 ${floor}F에 건축물이 있습니다` }); return false;
     }
   }
   // 위층(floor > 0) 건축은 아래층에 wall 또는 floor 있어야 (지지)
@@ -2555,14 +2677,16 @@ function _tryBuildAt(player, type, floor = 0, side = null, dir = null) {
         supported = true; break;
       }
     }
-    if (!supported) { send(player.ws, { type: 'notice', text: `${floor}F 짓려면 ${floor-1}F에 벽/바닥 필요` }); return; }
+    if (!supported) { send(player.ws, { type: 'notice', text: `${floor}F 짓려면 ${floor-1}F에 벽/바닥 필요` }); return false; }
   }
 
-  if (cost.plank) player.inventory.plank -= cost.plank;
-  if (cost.wood) player.inventory.wood -= cost.wood;
-  if (cost.stone) player.inventory.stone -= cost.stone;
-  if (cost.seed) player.inventory[cost.seed] -= 1;
-  if (cost.fiber) player.inventory.fiber -= cost.fiber;
+  if (!skipCost) {
+    if (cost.plank) player.inventory.plank -= cost.plank;
+    if (cost.wood) player.inventory.wood -= cost.wood;
+    if (cost.stone) player.inventory.stone -= cost.stone;
+    if (cost.seed) player.inventory[cost.seed] -= 1;
+    if (cost.fiber) player.inventory.fiber -= cost.fiber;
+  }
   let initialData = null;
   if (type === 'chest') initialData = { wood: 0, stone: 0 };
   else if (type === 'farmland') initialData = { cropType: 'berry', plantedAt: Date.now(), readyAt: Date.now() + CROP_GROW_MS, ready: false };
@@ -2584,6 +2708,7 @@ function _tryBuildAt(player, type, floor = 0, side = null, dir = null) {
   send(player.ws, { type: 'inventory', inventory: player.inventory });
   savePlayer(player);
   broadcast({ type: 'building_added', building });
+  return true;
 }
 
 function tryChestPut(player, buildingId, item, amount) {

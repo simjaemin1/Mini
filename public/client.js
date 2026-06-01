@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.50 (목공 — 통나무→판자, 톱/망치, 문, 울타리 cell) ===
-console.log('%c[durango-mini] client build = 14.50 (목공 시작)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.51 (건축물 아이템화 — 제작 → 인벤 → B키 건축 모드 → 클릭 배치) ===
+console.log('%c[durango-mini] client build = 14.51 (건축 아이템화)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -43,6 +43,7 @@ console.log('%c[durango-mini] client build = 14.50 (목공 시작)', 'color:#5a9
   let equipped = null; // 'axe' | 'pickaxe' | 'sword' | null
   let recipes = {};   // 서버에서 받은 도구 레시피
   let itemRecipes = {}; // 14.50: 아이템 가공 레시피 (plank 등)
+  let buildingRecipes = {}; // 14.51: 건축물 제작 레시피 (제작창에서 만들면 인벤 아이템)
   let cookRecipes = {}; // 서버에서 받은 요리 레시피
   let foodEffects = {}; // 서버에서 받은 음식 효과 정보 (표시용)
   let myHunger = 100, myThirst = 100, myVp = 0;
@@ -53,8 +54,19 @@ console.log('%c[durango-mini] client build = 14.50 (목공 시작)', 'color:#5a9
   let myFloor = 0;      // 캐릭터가 현재 있는 층 (계단으로 이동)
   let myStairZ = 0;     // 14.49-c: 계단 위 z 보간 (서버 발 z, 0~32)
   // Phase 14.30: 건축 placement mode
-  let placementMode = null; // null 또는 { type, floor }
+  // 14.51: placementMode = { itemType, floor, dir } — itemType 'item_wall' 등 (제작창에서 만든 아이템).
+  //        옛 호환: { type, floor } — 직접 빌드용 (deprecated). itemType이 있으면 place_building 송신.
+  let placementMode = null;
   let placementCursor = { wx: 0, wy: 0 }; // 마우스 따라가는 abs 좌표
+  // 14.51: 건축 모드 (B 토글)
+  let buildMode = false;
+  // 14.51: placement 회전 (wall/door = N/E, fence = NS/EW, stair = N/E/S/W)
+  let placingDir = 'N';
+  // 14.51: 진행 중 작업 (3초). { kind:'place'|'dismantle', startedAt, durationMs, payload }
+  let buildAction = null;
+  // 14.51: 건축 모드 hover (분해 대상 건축물)
+  let hoverBuildingId = null;
+  let lastMouseSx = 0, lastMouseSy = 0; // 캔버스 좌표 (px)
   let myLastAttackAt = 0; // Phase 14.35: 공격 모션
   let myFacingVx = 1, myFacingVy = 0; // Phase 14.37: 본인 마지막 facing (기본 동쪽)
   // Phase 14.40: Shift 달리기
@@ -237,6 +249,48 @@ console.log('%c[durango-mini] client build = 14.50 (목공 시작)', 'color:#5a9
   // wall은 cell edge에 (data.side ∈ {N, E}). BUILDING_SIZE=32 서버와 동일.
   const CL_BUILDING_SIZE = 32;
   function clCellOf(x, y) { return { cx: Math.floor(x / CL_BUILDING_SIZE), cy: Math.floor(y / CL_BUILDING_SIZE) }; }
+  // 14.51: 3초 progress 작업 시작 (place 또는 dismantle)
+  function startBuildAction(kind, payload) {
+    if (buildAction) { showNotice('이미 작업 중'); return; }
+    const durationMs = 3000;
+    buildAction = { kind, startedAt: performance.now(), durationMs, payload, startPx: lastMouseSx, startPy: lastMouseSy };
+    showNotice(kind === 'place' ? '🏗️ 배치 중... (3초)' : '🔧 분해 중... (3초)');
+  }
+  function cancelBuildAction(reason) {
+    if (!buildAction) return;
+    buildAction = null;
+    if (reason) showNotice(reason);
+  }
+  // 매 frame 호출 — 작업 진행 + 완료 시 송신
+  function updateBuildAction() {
+    if (!buildAction) return;
+    const now = performance.now();
+    const elapsed = now - buildAction.startedAt;
+    // 이동 중이면 취소 (PZ식 — 정지 상태에서만 작업)
+    if (Math.abs(myAbsPredicted.vx || 0) > 1 || Math.abs(myAbsPredicted.vy || 0) > 1) {
+      cancelBuildAction('이동으로 작업 취소'); return;
+    }
+    if (elapsed >= buildAction.durationMs) {
+      // 완료 → 송신
+      const { kind, payload } = buildAction;
+      if (kind === 'place') {
+        sendPrimary({
+          type: 'place_building',
+          itemType: payload.itemType,
+          floor: payload.floor,
+          dir: payload.dir,
+          atX: payload.atX, atY: payload.atY,
+        });
+        // 인벤 0 되면 placement 종료
+        if ((inventory[payload.itemType] || 0) <= 1) {
+          placementMode = null; showNotice('인벤 떨어짐 — 배치 종료');
+        }
+      } else if (kind === 'dismantle') {
+        sendPrimary({ type: 'dismantle_building', buildingId: payload.buildingId });
+      }
+      buildAction = null;
+    }
+  }
   // 14.50: player 80px 안 가장 가까운 door (toggle용)
   function findNearestDoor(px, py, floor) {
     let best = null, bestD = 80;
@@ -700,7 +754,13 @@ console.log('%c[durango-mini] client build = 14.50 (목공 시작)', 'color:#5a9
     else if (k === 't') sendPrimary({ type: 'trade_offer', give: 'wood' });
     else if (k === 'y') sendPrimary({ type: 'trade_offer', give: 'stone' });
     else if (k === 'f') { sendPrimary({ type: 'attack' }); myLastAttackAt = performance.now(); }
-    else if (k === 'b') sendPrimary({ type: 'build', buildType: 'wall', floor: myBuildFloor });
+    else if (k === 'b') {
+      // 14.51: B 키 = 건축 모드 토글 (옛 즉시 wall build 폐기)
+      buildMode = !buildMode;
+      if (!buildMode) { placementMode = null; }
+      showNotice(buildMode ? '🏗️ 건축 모드 ON (인벤에서 건축물 클릭)' : '건축 모드 OFF');
+      if (invOpen) renderInvPanel(document.getElementById('invBody')); // 재렌더 (강조 갱신)
+    }
     else if (k === 'h') sendPrimary({ type: 'build', buildType: 'chest', floor: myBuildFloor });
     else if (k === 'j') sendPrimary({ type: 'build', buildType: 'campfire', floor: myBuildFloor });
     // Q 단축키 제거 — 공성캠프는 임시 사유지로 대체 예정 (Phase 14.18)
@@ -1023,19 +1083,55 @@ console.log('%c[durango-mini] client build = 14.50 (목공 시작)', 'color:#5a9
     refreshHealth();
     healthInterval = setInterval(refreshHealth, 3000);
 
-    // Phase 14.30: 캔버스 mousemove → placement cursor 갱신
+    // Phase 14.30 + 14.51: 캔버스 mousemove → placement cursor + hover building
     canvas.addEventListener('mousemove', (e) => {
-      if (!placementMode) return;
       const rect = canvas.getBoundingClientRect();
       const px = (e.clientX - rect.left) * (canvas.width / rect.width);
       const py = (e.clientY - rect.top) * (canvas.height / rect.height);
+      lastMouseSx = px; lastMouseSy = py;
       const myIso = w2i(myAbsPredicted.x, myAbsPredicted.y);
       const ix = px - W/2 + myIso.x;
       const iy = py - H/2 + myIso.y;
-      placementCursor.wx = ix * 0.5 + iy;
-      placementCursor.wy = iy - ix * 0.5;
+      const wx = ix * 0.5 + iy;
+      const wy = iy - ix * 0.5;
+      if (placementMode) {
+        placementCursor.wx = wx;
+        placementCursor.wy = wy;
+      }
+      // 14.51: 건축 모드 + placement 아닐 때 hover building 갱신
+      if (buildMode && !placementMode) {
+        let bestId = null, bestD = 24;
+        for (const c of conns.values()) {
+          const ox = c.meta?.worldOffsetX || 0, oy = c.meta?.worldOffsetY || 0;
+          for (const b of c.buildings.values()) {
+            if ((b.floor || 0) !== myFloor) continue;
+            const ax = ox + b.x, ay = oy + b.y;
+            const d = Math.hypot(ax - wx, ay - wy);
+            if (d < bestD) { bestD = d; bestId = b.id; }
+          }
+        }
+        hoverBuildingId = bestId;
+      } else {
+        hoverBuildingId = null;
+      }
     });
 
+    // 14.51: 우클릭 = placement 회전 (wall/door = N/E, fence = NS/EW, stair = N/E/S/W). 기본 우클릭 메뉴 차단.
+    canvas.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      if (!placementMode || !placementMode.itemType) return;
+      const it = placementMode.itemType;
+      if (it === 'item_wall' || it === 'item_door') {
+        placementMode.dir = (placementMode.dir === 'N') ? 'E' : 'N';
+      } else if (it === 'item_fence') {
+        placementMode.dir = (placementMode.dir === 'EW') ? 'NS' : 'EW';
+      } else if (it === 'item_stair') {
+        const seq = ['N', 'E', 'S', 'W'];
+        const i = seq.indexOf(placementMode.dir || 'N');
+        placementMode.dir = seq[(i + 1) % 4];
+      }
+      showNotice(`회전: ${placementMode.dir}`);
+    });
     // Phase 14.22: 캔버스 클릭 → screen → world 좌표 변환 → chest bbox hit-test
     canvas.addEventListener('click', (e) => {
       const rect = canvas.getBoundingClientRect();
@@ -1049,17 +1145,40 @@ console.log('%c[durango-mini] client build = 14.50 (목공 시작)', 'color:#5a9
       // iso 역변환: wx = ix/2 + iy, wy = iy - ix/2
       const clickWx = ix * 0.5 + iy;
       const clickWy = iy - ix * 0.5;
-      // Phase 14.30: placement mode 우선 — 그 위치에 빌드
+      // Phase 14.30 / 14.51: placement mode 우선 — 그 위치에 3초 progress → 빌드
       if (placementMode) {
         // 사용자 위치에서 거리 체크 (160px)
         const distMe = Math.hypot(clickWx - myAbsPredicted.x, clickWy - myAbsPredicted.y);
         if (distMe > 160) { showNotice('너무 멀어서 거기에 못 지음 (160px)'); return; }
-        // server는 player.x/y 기준으로 빌드. teleport는 없어서 일단 사용자 위치 그대로 빌드 (cell 정렬은 서버)
-        // TODO: 클릭 위치에 빌드하려면 서버 메시지 확장 필요. 지금은 사용자 위치 정렬.
-        sendPrimary({ type: 'build', buildType: placementMode.type, floor: placementMode.floor, atX: clickWx, atY: clickWy });
-        // 모드 종료 안 함 — Shift 누른 채면 연속 빌드, 평소엔 한 번
-        if (!e.shiftKey) { placementMode = null; showNotice('배치 모드 종료'); }
+        if (placementMode.itemType) {
+          // 14.51: 3초 progress 시작 → 완료 시 server 송신 + 인벤 차감 (server 측에서)
+          startBuildAction('place', {
+            itemType: placementMode.itemType,
+            floor: placementMode.floor || 0,
+            dir: placementMode.dir || 'N',
+            atX: clickWx, atY: clickWy,
+          });
+        } else {
+          // 옛 호환 (즉시)
+          sendPrimary({ type: 'build', buildType: placementMode.type, floor: placementMode.floor, atX: clickWx, atY: clickWy });
+          if (!e.shiftKey) { placementMode = null; showNotice('배치 모드 종료'); }
+        }
         return;
+      }
+      // 14.51: 건축 모드 + hover building → 3초 progress 분해
+      if (buildMode && hoverBuildingId && !buildAction) {
+        // 거리 체크
+        let target = null, ox = 0, oy = 0;
+        for (const c of conns.values()) {
+          const b = c.buildings.get(hoverBuildingId);
+          if (b) { target = b; ox = c.meta?.worldOffsetX||0; oy = c.meta?.worldOffsetY||0; break; }
+        }
+        if (target) {
+          const d = Math.hypot((ox + target.x) - myAbsPredicted.x, (oy + target.y) - myAbsPredicted.y);
+          if (d > 160) { showNotice('너무 멀어서 분해 못함 (160px)'); return; }
+          startBuildAction('dismantle', { buildingId: hoverBuildingId });
+          return;
+        }
       }
       // 1) ground item hit-test 우선 (작은 거 위에 클릭)
       let hitGi = null;
@@ -1228,6 +1347,7 @@ console.log('%c[durango-mini] client build = 14.50 (목공 시작)', 'color:#5a9
         if (msg.equipped !== undefined) equipped = msg.equipped;
         if (msg.recipes) recipes = msg.recipes;
         if (msg.itemRecipes) itemRecipes = msg.itemRecipes;
+        if (msg.buildingRecipes) buildingRecipes = msg.buildingRecipes;
         if (msg.cookRecipes) cookRecipes = msg.cookRecipes;
         if (msg.foodEffects) foodEffects = msg.foodEffects;
         if (msg.self.hp !== undefined) { myHp = msg.self.hp; myMaxHp = msg.self.maxHp; }
@@ -1725,8 +1845,68 @@ console.log('%c[durango-mini] client build = 14.50 (목공 시작)', 'color:#5a9
     checkOrphan();
     manageNeighborSubscriptions();
     render();
+    drawBuildOverlay(); // 14.51: hover outline + placement ghost (canvas 직접)
+    updateBuildProgressEl(); // 14.51: 3초 progress bar (DOM)
     updateMinimap();
     requestAnimationFrame(loop);
+  }
+  // 14.51: 건축 모드 overlay — hover outline (위로 글로우)
+  function drawBuildOverlay() {
+    if (!buildMode || !hoverBuildingId || placementMode) return;
+    let b = null, ox = 0, oy = 0;
+    for (const c of conns.values()) {
+      b = c.buildings.get(hoverBuildingId);
+      if (b) { ox = c.meta?.worldOffsetX||0; oy = c.meta?.worldOffsetY||0; break; }
+    }
+    if (!b) return;
+    const wx = ox + b.x, wy = oy + b.y;
+    const iso = w2i(wx, wy);
+    const myIso = w2i(myAbsPredicted.x, myAbsPredicted.y);
+    const sx = iso.x - myIso.x + W/2;
+    const sy = iso.y - myIso.y + H/2 - (b.floor || 0) * 32;
+    const t = (Date.now() % 800) / 800;
+    const glow = 0.4 + 0.6 * Math.abs(Math.sin(t * Math.PI));
+    ctx.save();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = `rgba(240,198,116,${0.5 + glow * 0.5})`;
+    // iso diamond outline
+    ctx.beginPath();
+    ctx.moveTo(sx, sy - 18);
+    ctx.lineTo(sx + 32, sy);
+    ctx.lineTo(sx, sy + 18);
+    ctx.lineTo(sx - 32, sy);
+    ctx.closePath();
+    ctx.stroke();
+    ctx.fillStyle = `rgba(240,198,116,${0.08 + glow * 0.1})`;
+    ctx.fill();
+    // 라벨
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.textAlign = 'center';
+    const label = (ITEM_LABEL['item_' + b.type] || b.type);
+    ctx.fillText(`🔧 ${label} 분해 (클릭, 3초)`, sx, sy - 28);
+    ctx.restore();
+  }
+  // 14.51: 3초 progress bar (DOM overlay)
+  function ensureBuildProgressEl() {
+    let el = document.getElementById('buildProgress');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'buildProgress';
+      el.style.cssText = 'position:fixed;left:50%;top:60%;transform:translate(-50%,-50%);background:rgba(20,25,30,0.92);color:#fff;padding:10px 20px;border-radius:8px;border:2px solid #f0c674;z-index:9999;display:none;font-size:14px;pointer-events:none;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.4)';
+      el.innerHTML = '<div class="bp-text" style="margin-bottom:6px;font-weight:bold">작업 중...</div><div style="width:240px;height:10px;background:#333;border-radius:5px;overflow:hidden"><div class="bp-fill" style="height:100%;background:linear-gradient(90deg,#f0c674,#ffd88a);width:0%"></div></div>';
+      document.body.appendChild(el);
+    }
+    return el;
+  }
+  function updateBuildProgressEl() {
+    const el = ensureBuildProgressEl();
+    if (!buildAction) { el.style.display = 'none'; return; }
+    el.style.display = 'block';
+    const elapsed = performance.now() - buildAction.startedAt;
+    const pct = Math.min(100, (elapsed / buildAction.durationMs) * 100);
+    el.querySelector('.bp-fill').style.width = pct.toFixed(1) + '%';
+    el.querySelector('.bp-text').textContent = buildAction.kind === 'place' ? '🏗️ 배치 중... (이동 시 취소)' : '🔧 분해 중... (이동 시 취소)';
   }
 
   // === Primary WS가 죽으면 자동 재연결 (predicted 위치 그대로) ===
@@ -1803,6 +1983,8 @@ console.log('%c[durango-mini] client build = 14.50 (목공 시작)', 'color:#5a9
     if (!primaryZoneId) return;
     const pConn = conns.get(primaryZoneId);
     if (!pConn || !pConn.meta) return;
+    // 14.51: 진행 중 build/dismantle 작업 갱신 (3초 timer)
+    updateBuildAction();
 
     const myIso = w2i(myAbsPredicted.x, myAbsPredicted.y);
     const camX = myIso.x, camY = myIso.y;
@@ -3279,12 +3461,17 @@ console.log('%c[durango-mini] client build = 14.50 (목공 시작)', 'color:#5a9
     seed_berry: '🌱', herb: '🌿', ore: '⛏️',
     // 14.50: 목공 자원
     wood: '🪵', plank: '🪚', stone: '🪨',
+    // 14.51: 건축물 아이템 (인벤에 들어가는 형태)
+    item_wall: '🧱', item_floor: '⬜', item_door: '🚪', item_fence: '🪵',
+    item_stair: '🪜', item_chest: '📦', item_campfire: '🔥', item_farmland: '🌱',
   };
   const ITEM_LABEL = {
     berry: '베리', fiber: '풀', meat_raw: '날고기', meat_cooked: '구운고기',
     hide: '가죽', berry_jam: '베리잼', water_bottle: '물병',
     seed_berry: '베리씨앗', herb: '약초', ore: '광물',
     wood: '통나무', plank: '판자', stone: '돌',
+    item_wall: '벽', item_floor: '바닥', item_door: '문', item_fence: '울타리',
+    item_stair: '계단', item_chest: '상자', item_campfire: '모닥불', item_farmland: '농지',
   };
 
   function updateHud() {
@@ -3617,6 +3804,38 @@ console.log('%c[durango-mini] client build = 14.50 (목공 시작)', 'color:#5a9
         list.appendChild(row);
       }
       list.querySelectorAll('[data-craftitem]').forEach(b => b.onclick = () => sendPrimary({ type: 'craft_item', recipe: b.dataset.craftitem }));
+    }
+    // 14.51: 건축물 제작 (제작 → 인벤 → 건축 모드에서 배치)
+    if (buildingRecipes && Object.keys(buildingRecipes).length) {
+      const hdr = document.createElement('div');
+      hdr.className = 'hint';
+      hdr.style.cssText = 'margin-top:12px;padding-top:8px;border-top:1px solid #333;font-weight:bold';
+      hdr.textContent = '— 건축물 제작 (만들면 인벤 → 건축 모드에서 배치) —';
+      list.appendChild(hdr);
+      for (const [name, br] of Object.entries(buildingRecipes)) {
+        const hasHammer = !br._needHammer || (tools && tools.hammer);
+        const cost = {};
+        for (const [k, v] of Object.entries(br)) {
+          if (k.startsWith('_') || k === 'label') continue;
+          cost[k] = v;
+        }
+        const canCraft = hasHammer && Object.entries(cost).every(([k, v]) => (inventory[k] || 0) >= v);
+        const costStr = Object.entries(cost).map(([k, v]) => `${ITEM_ICONS[k]||k} ${v}`).join(' · ');
+        const hammerStr = br._needHammer ? ' 🔨' : '';
+        const have = inventory[name] || 0;
+        const row = document.createElement('div');
+        row.className = 'craft-row';
+        row.innerHTML = `
+          <div class="craft-icon">${ITEM_ICONS[name] || '🏗️'}</div>
+          <div class="craft-info">
+            <div class="craft-name">${br.label} <span class="craft-have">×${have}</span>${hammerStr}</div>
+            <div class="craft-cost">${costStr || '-'}</div>
+          </div>
+          <button class="craft-btn" data-craftbuild="${name}" ${canCraft ? '' : 'disabled'}>제작</button>
+        `;
+        list.appendChild(row);
+      }
+      list.querySelectorAll('[data-craftbuild]').forEach(b => b.onclick = () => sendPrimary({ type: 'craft_building', recipe: b.dataset.craftbuild }));
     }
   }
   function renderChestUi(id, data) {
@@ -4298,6 +4517,32 @@ console.log('%c[durango-mini] client build = 14.50 (목공 시작)', 'color:#5a9
       if (!t.classList.contains('cont-tab')) return;
       t.onclick = () => { activeContainerId = t.dataset.cid; renderInvPanel(body); };
     });
+
+    // 14.51: 건축 모드 ON일 때 — 내 인벤의 건축물 row 강조 + 클릭 시 placement mode 진입
+    if (buildMode) {
+      body.querySelectorAll('.inv-col[data-drop-target="mine"] .inv-table tbody tr').forEach(tr => {
+        const btn = tr.querySelector('[data-move][data-item]');
+        if (!btn) return;
+        const item = btn.dataset.item;
+        if (!item || !item.startsWith('item_')) return;
+        // 강조 스타일
+        tr.style.cursor = 'pointer';
+        tr.style.outline = '2px solid #f0c674';
+        tr.style.background = 'rgba(240,198,116,0.1)';
+        tr.title = '클릭 → 건축 모드에서 배치';
+        tr.onclick = (e) => {
+          // ↑↓ 버튼 클릭은 기존 동작 유지
+          if (e.target.tagName === 'BUTTON') return;
+          // 기본 dir 결정
+          let dir = 'N';
+          if (item === 'item_fence') dir = 'NS';
+          placementMode = { itemType: item, floor: myBuildFloor, dir };
+          placingDir = dir;
+          showNotice(`📍 ${ITEM_LABEL[item] || item} 배치 모드 — 좌클릭=배치, 우클릭=회전, ESC=취소`);
+          // 인벤은 그대로 열어 두어도 OK. 닫고 싶으면 toggleInv() 호출.
+        };
+      });
+    }
 
     // === Phase 14.24: HTML5 드래그 + 폴리시 ===
     body.querySelectorAll('.inv-table tbody tr').forEach(tr => {
