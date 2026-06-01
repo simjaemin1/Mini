@@ -1890,7 +1890,7 @@ console.log('%c[durango-mini] client build = 14.53 (도구 instance + 1번 슬�
     updateMinimap();
     requestAnimationFrame(loop);
   }
-  // 14.51: 건축 모드 overlay — hover outline (위로 글로우)
+  // 14.51 + 14.53-e: 건축 모드 overlay — building 형태별 outline
   function drawBuildOverlay() {
     if (!buildMode || !hoverBuildingId || placementMode) return;
     let b = null, ox = 0, oy = 0;
@@ -1909,22 +1909,102 @@ console.log('%c[durango-mini] client build = 14.53 (도구 instance + 1번 슬�
     ctx.save();
     ctx.lineWidth = 3;
     ctx.strokeStyle = `rgba(240,198,116,${0.5 + glow * 0.5})`;
-    // iso diamond outline
-    ctx.beginPath();
-    ctx.moveTo(sx, sy - 18);
-    ctx.lineTo(sx + 32, sy);
-    ctx.lineTo(sx, sy + 18);
-    ctx.lineTo(sx - 32, sy);
-    ctx.closePath();
-    ctx.stroke();
     ctx.fillStyle = `rgba(240,198,116,${0.08 + glow * 0.1})`;
-    ctx.fill();
+
+    const H_FLOOR = 64; // 벽/문 높이
+    const HALF = 16;    // cell 반쪽 (iso 좌표 단위 — TS/2)
+    // iso 변환 helper (local cell offset → screen)
+    const o2s = (dx, dy, dz = 0) => ({ x: sx + (dx - dy), y: sy + (dx + dy) * 0.5 - dz });
+
+    if (b.type === 'wall' || b.type === 'door') {
+      // wall edge: side 'N' = cell 북쪽 변 (y- 쪽), 'E' = 동쪽 변 (x+ 쪽). 세로 박스.
+      const side = b.data?.side || 'N';
+      const h = H_FLOOR;
+      // edge endpoint 두 개 (cell 모서리). N: (-HALF, -HALF) ~ (HALF, -HALF). E: (HALF, -HALF) ~ (HALF, HALF).
+      let p1, p2;
+      if (side === 'N') { p1 = { dx: -HALF, dy: -HALF }; p2 = { dx: HALF, dy: -HALF }; }
+      else              { p1 = { dx: HALF,  dy: -HALF }; p2 = { dx: HALF, dy: HALF }; }
+      // 4 corner (top + bottom)
+      const a_top = o2s(p1.dx, p1.dy, h);
+      const b_top = o2s(p2.dx, p2.dy, h);
+      const a_bot = o2s(p1.dx, p1.dy, 0);
+      const b_bot = o2s(p2.dx, p2.dy, 0);
+      ctx.beginPath();
+      ctx.moveTo(a_top.x, a_top.y);
+      ctx.lineTo(b_top.x, b_top.y);
+      ctx.lineTo(b_bot.x, b_bot.y);
+      ctx.lineTo(a_bot.x, a_bot.y);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+    } else if (b.type === 'fence') {
+      // cell 전체, 절반 높이
+      const h = H_FLOOR * 0.5;
+      const tl = o2s(-HALF, -HALF, h);
+      const tr = o2s( HALF, -HALF, h);
+      const br = o2s( HALF,  HALF, h);
+      const bl = o2s(-HALF,  HALF, h);
+      const tlB = o2s(-HALF, -HALF, 0);
+      const trB = o2s( HALF, -HALF, 0);
+      const brB = o2s( HALF,  HALF, 0);
+      const blB = o2s(-HALF,  HALF, 0);
+      // top
+      ctx.beginPath();
+      ctx.moveTo(tl.x, tl.y); ctx.lineTo(tr.x, tr.y);
+      ctx.lineTo(br.x, br.y); ctx.lineTo(bl.x, bl.y); ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      // bottom
+      ctx.beginPath();
+      ctx.moveTo(tlB.x, tlB.y); ctx.lineTo(trB.x, trB.y);
+      ctx.lineTo(brB.x, brB.y); ctx.lineTo(blB.x, blB.y); ctx.closePath();
+      ctx.stroke();
+      // vertical edges
+      ctx.beginPath();
+      ctx.moveTo(tl.x, tl.y); ctx.lineTo(tlB.x, tlB.y);
+      ctx.moveTo(tr.x, tr.y); ctx.lineTo(trB.x, trB.y);
+      ctx.moveTo(br.x, br.y); ctx.lineTo(brB.x, brB.y);
+      ctx.moveTo(bl.x, bl.y); ctx.lineTo(blB.x, blB.y);
+      ctx.stroke();
+    } else if (b.type === 'floor') {
+      // cell 평면 다이아몬드 (얇은 floor)
+      ctx.beginPath();
+      ctx.moveTo(o2s(-HALF, -HALF).x, o2s(-HALF, -HALF).y);
+      ctx.lineTo(o2s( HALF, -HALF).x, o2s( HALF, -HALF).y);
+      ctx.lineTo(o2s( HALF,  HALF).x, o2s( HALF,  HALF).y);
+      ctx.lineTo(o2s(-HALF,  HALF).x, o2s(-HALF,  HALF).y);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+    } else {
+      // chest/campfire/farmland 등 — cell 정사각 wireframe (3D 박스)
+      const h = 24;
+      const tl = o2s(-HALF, -HALF, h);
+      const tr = o2s( HALF, -HALF, h);
+      const br = o2s( HALF,  HALF, h);
+      const bl = o2s(-HALF,  HALF, h);
+      const tlB = o2s(-HALF, -HALF, 0);
+      const trB = o2s( HALF, -HALF, 0);
+      const brB = o2s( HALF,  HALF, 0);
+      const blB = o2s(-HALF,  HALF, 0);
+      ctx.beginPath();
+      ctx.moveTo(tl.x, tl.y); ctx.lineTo(tr.x, tr.y);
+      ctx.lineTo(br.x, br.y); ctx.lineTo(bl.x, bl.y); ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(tlB.x, tlB.y); ctx.lineTo(trB.x, trB.y);
+      ctx.lineTo(brB.x, brB.y); ctx.lineTo(blB.x, blB.y); ctx.closePath();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(tl.x, tl.y); ctx.lineTo(tlB.x, tlB.y);
+      ctx.moveTo(tr.x, tr.y); ctx.lineTo(trB.x, trB.y);
+      ctx.moveTo(br.x, br.y); ctx.lineTo(brB.x, brB.y);
+      ctx.moveTo(bl.x, bl.y); ctx.lineTo(blB.x, blB.y);
+      ctx.stroke();
+    }
     // 라벨
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 12px sans-serif';
     ctx.textAlign = 'center';
     const label = (ITEM_LABEL['item_' + b.type] || b.type);
-    ctx.fillText(`🔧 ${label} 분해 (클릭, 3초)`, sx, sy - 28);
+    ctx.fillText(`🔧 ${label} 분해 (클릭, 3초)`, sx, sy - 60);
     ctx.restore();
   }
   // 14.51: 3초 progress bar (DOM overlay)
@@ -4571,6 +4651,12 @@ console.log('%c[durango-mini] client build = 14.53 (도구 instance + 1번 슬�
   }
 
   function renderInvPanel(body) {
+    // 14.53-e: 재렌더 전 각 컬럼의 scrollTop 저장 (mine + chest)
+    const _savedScroll = {};
+    body.querySelectorAll('.inv-col [style*="overflow:auto"]').forEach((el, i) => {
+      const tgt = el.closest('.inv-col')?.dataset.dropTarget || `c${i}`;
+      _savedScroll[tgt] = el.scrollTop;
+    });
     const conts = nearbyContainers();
     // 바닥 탭 항상 마지막에. activeContainerId === 'ground' 면 바닥 표시
     if (activeContainerId && activeContainerId !== 'ground' && !conts.find(c => c.b.id === activeContainerId)) activeContainerId = null;
@@ -4684,6 +4770,11 @@ console.log('%c[durango-mini] client build = 14.53 (도구 instance + 1번 슬�
     const tabsCol = `<div class="cont-tabs">${chestTabs}${groundTab}</div>`;
 
     body.innerHTML = `<div class="inv-three-col" style="height:100%">${myTable}${chestTable}${tabsCol}</div>`;
+    // 14.53-e: scrollTop 복원
+    body.querySelectorAll('.inv-col [style*="overflow:auto"]').forEach((el, i) => {
+      const tgt = el.closest('.inv-col')?.dataset.dropTarget || `c${i}`;
+      if (typeof _savedScroll[tgt] === 'number') el.scrollTop = _savedScroll[tgt];
+    });
 
     // 액션 버튼 (↑ ↓ 픽업)
     body.querySelectorAll('[data-move]').forEach(btn => btn.onclick = () => {
