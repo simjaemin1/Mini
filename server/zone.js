@@ -2236,6 +2236,13 @@ function doDismantleBuilding(player, buildingId) {
   if ((b.floor || 0) !== playerFloor) {
     send(player.ws, { type: 'notice', text: `현재 ${playerFloor}F에 있음 — 다른 층 건물 분해 불가` }); return;
   }
+  // 14.54-d: 다른 사람 사유지 건물 분해 불가
+  for (const c of claims.values()) {
+    if (c.ownerPid !== player.playerId &&
+        b.x >= c.x && b.x < c.x + c.w && b.y >= c.y && b.y < c.y + c.h) {
+      send(player.ws, { type: 'notice', text: '다른 사람 사유지 건물은 분해 불가' }); return;
+    }
+  }
   const d = Math.hypot(b.x - player.x, b.y - player.y);
   if (d > 80) {
     send(player.ws, { type: 'notice', text: '건축물이 너무 멉니다' }); return;
@@ -2864,16 +2871,17 @@ function _tryBuildAt(player, type, floor = 0, side = null, dir = null, opts = nu
   const gx = Math.floor(player.x / BUILDING_SIZE) * BUILDING_SIZE + BUILDING_SIZE / 2;
   const gy = Math.floor(player.y / BUILDING_SIZE) * BUILDING_SIZE + BUILDING_SIZE / 2;
 
-  // 자기 claim 안에서만 (개인 사유지든 임시 사유지든)
-  let inOwnClaim = false;
+  // 14.54-d: 다른 사람 claim 안에서만 차단. 자기 claim/빈 땅 다 OK.
+  let inOtherClaim = false;
   for (const c of claims.values()) {
-    if (c.ownerPid === player.playerId &&
+    if (c.ownerPid !== player.playerId &&
         gx >= c.x && gx < c.x + c.w && gy >= c.y && gy < c.y + c.h) {
-      inOwnClaim = true; break;
+      inOtherClaim = true; break;
     }
   }
+  const inOwnClaim = !inOtherClaim; // 호환용 변수 (아래 코드가 참조)
   if (!inOwnClaim) {
-    send(player.ws, { type: 'notice', text: '자기 영지 안에서만 건축 가능' }); return false;
+    send(player.ws, { type: 'notice', text: '다른 사람의 사유지엔 못 지음' }); return false;
   }
 
   // 같은 (x,y,floor)에 다른 건축물 없는지 — quadtree + floor 일치만 체크
