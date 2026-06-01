@@ -1127,10 +1127,9 @@ console.log('%c[durango-mini] client build = 14.53 (도구 instance + 1번 슬�
         placementCursor.wx = wx;
         placementCursor.wy = wy;
       }
-      // 14.51 + 14.53-e + 14.53-g: hover list — 마우스가 있는 정확히 같은 cell 안 건물만
+      // 14.51 + 14.53-e + 14.53-g/i: hover list. wall/door는 양쪽 cell 모두에서 후보 (edge 공유).
       if (buildMode && !placementMode) {
         const candidates = [];
-        // 마우스 위치의 cell index
         const mouseCx = Math.floor(wx / 32);
         const mouseCy = Math.floor(wy / 32);
         for (const c of conns.values()) {
@@ -1139,11 +1138,22 @@ console.log('%c[durango-mini] client build = 14.53 (도구 instance + 1번 슬�
             if ((b.floor || 0) !== myFloor) continue;
             const isEdge = (b.type === 'wall' || b.type === 'door');
             const bAbsX = ox + b.x, bAbsY = oy + b.y;
-            // building의 cell index — wall은 좌상단, 나머지는 cell center. floor 후 같음.
             const bCx = Math.floor(bAbsX / 32);
             const bCy = Math.floor(bAbsY / 32);
-            if (bCx !== mouseCx || bCy !== mouseCy) continue;
-            // 거리는 정렬용
+            let match = false;
+            if (isEdge) {
+              // wall 저장: N → cell (bCx, bCy)의 윗 edge = cell (bCx, bCy-1)의 아래 edge
+              // E → cell (bCx, bCy)의 우측 edge = cell (bCx+1, bCy)의 좌측 edge
+              const side = b.data?.side || 'N';
+              if (side === 'N') {
+                match = (mouseCx === bCx) && (mouseCy === bCy || mouseCy === bCy - 1);
+              } else if (side === 'E') {
+                match = (mouseCy === bCy) && (mouseCx === bCx || mouseCx === bCx + 1);
+              }
+            } else {
+              match = (bCx === mouseCx && bCy === mouseCy);
+            }
+            if (!match) continue;
             const ax = bAbsX + (isEdge ? 16 : 0);
             const ay = bAbsY + (isEdge ? 16 : 0);
             const d = Math.hypot(ax - wx, ay - wy);
@@ -1167,13 +1177,29 @@ console.log('%c[durango-mini] client build = 14.53 (도구 instance + 1번 슬�
       }
     });
 
-    // 14.53-g: 건축 모드 마우스 휠 — hover 대상 cycle (cell에 여러 건물 겹친 경우)
+    // 14.53-g/i: 건축 모드 마우스 휠 — placement 중이면 회전, hover 중이면 cycle
     canvas.addEventListener('wheel', (e) => {
-      if (!buildMode || placementMode || hoverList.length <= 1) return;
-      e.preventDefault();
+      if (!buildMode) return;
       const delta = (e.deltaY > 0) ? 1 : -1;
-      hoverIndex = ((hoverIndex + delta) % hoverList.length + hoverList.length) % hoverList.length;
-      hoverBuildingId = hoverList[hoverIndex];
+      // placement 중 → 회전 (wall/door = N→E→S→W, fence = NS↔EW, stair = N→E→S→W)
+      if (placementMode && placementMode.itemType) {
+        e.preventDefault();
+        const it = placementMode.itemType;
+        if (it === 'item_wall' || it === 'item_door' || it === 'item_stair') {
+          const seq = ['N', 'E', 'S', 'W'];
+          const i = seq.indexOf(placementMode.dir || 'N');
+          placementMode.dir = seq[(i + delta + 4) % 4];
+        } else if (it === 'item_fence') {
+          placementMode.dir = (placementMode.dir === 'EW') ? 'NS' : 'EW';
+        }
+        return;
+      }
+      // hover cycle
+      if (hoverList.length > 1) {
+        e.preventDefault();
+        hoverIndex = ((hoverIndex + delta) % hoverList.length + hoverList.length) % hoverList.length;
+        hoverBuildingId = hoverList[hoverIndex];
+      }
     }, { passive: false });
     // 14.51: 우클릭 = placement 회전 (wall/door = N/E, fence = NS/EW, stair = N/E/S/W). 기본 우클릭 메뉴 차단.
     canvas.addEventListener('contextmenu', (e) => {
@@ -1921,7 +1947,8 @@ console.log('%c[durango-mini] client build = 14.53 (도구 instance + 1번 슬�
     checkOrphan();
     manageNeighborSubscriptions();
     render();
-    drawBuildOverlay(); // 14.51: hover outline + placement ghost (canvas 직접)
+    drawBuildOverlay(); // 14.51: hover outline
+    drawPlacementGhost(); // 14.53-i: placement 시 실루엣 미리보기
     updateBuildProgressEl(); // 14.51: 3초 progress bar (DOM)
     updateMinimap();
     requestAnimationFrame(loop);
@@ -2047,6 +2074,76 @@ console.log('%c[durango-mini] client build = 14.53 (도구 instance + 1번 슬�
     const label = (ITEM_LABEL['item_' + b.type] || b.type);
     const cycleHint = hoverList.length > 1 ? ` [${hoverIndex+1}/${hoverList.length}] 휠로 변경` : '';
     ctx.fillText(`🔧 ${label} 분해 (클릭, 3초)${cycleHint}`, sx, sy - 60);
+    ctx.restore();
+  }
+  // 14.53-i: placement ghost — 마우스 위치에 실루엣 미리보기
+  function drawPlacementGhost() {
+    if (!placementMode || !placementMode.itemType) return;
+    const wx = placementCursor.wx, wy = placementCursor.wy;
+    const cx = Math.floor(wx / 32), cy = Math.floor(wy / 32);
+    const dir = placementMode.dir || 'N';
+    const it = placementMode.itemType;
+    let cellCx, cellCy, side;
+    if (it === 'item_wall' || it === 'item_door') {
+      if      (dir === 'N') { cellCx = cx; cellCy = cy;     side = 'N'; }
+      else if (dir === 'S') { cellCx = cx; cellCy = cy + 1; side = 'N'; }
+      else if (dir === 'E') { cellCx = cx; cellCy = cy;     side = 'E'; }
+      else                  { cellCx = cx - 1; cellCy = cy; side = 'E'; }
+    }
+    const centerCx = (it === 'item_wall' || it === 'item_door') ? (cellCx * 32 + 16) : (cx * 32 + 16);
+    const centerCy = (it === 'item_wall' || it === 'item_door') ? (cellCy * 32 + 16) : (cy * 32 + 16);
+    const iso = w2i(centerCx, centerCy);
+    const myIso = w2i(myAbsPredicted.x, myAbsPredicted.y);
+    const sx = iso.x - myIso.x + W/2;
+    const sy = iso.y - myIso.y + H/2 - (myFloor || 0) * FLOOR_HEIGHT;
+    const HALF = 16, H_FLOOR = 64;
+    const o2s = (dx, dy, dz = 0) => ({ x: sx + (dx - dy), y: sy + (dx + dy) * 0.5 - dz });
+    ctx.save();
+    const t = (Date.now() % 1000) / 1000;
+    const a = 0.35 + 0.25 * Math.abs(Math.sin(t * Math.PI));
+    ctx.fillStyle = `rgba(120,200,255,${a})`;
+    ctx.strokeStyle = `rgba(180,230,255,${a + 0.3})`;
+    ctx.lineWidth = 2;
+    if (it === 'item_wall' || it === 'item_door') {
+      let p1, p2;
+      if (side === 'N') { p1 = { dx: -HALF, dy: -HALF }; p2 = { dx: HALF, dy: -HALF }; }
+      else              { p1 = { dx: HALF,  dy: -HALF }; p2 = { dx: HALF, dy: HALF }; }
+      const a_top = o2s(p1.dx, p1.dy, H_FLOOR);
+      const b_top = o2s(p2.dx, p2.dy, H_FLOOR);
+      const a_bot = o2s(p1.dx, p1.dy, 0);
+      const b_bot = o2s(p2.dx, p2.dy, 0);
+      ctx.beginPath();
+      ctx.moveTo(a_top.x, a_top.y); ctx.lineTo(b_top.x, b_top.y);
+      ctx.lineTo(b_bot.x, b_bot.y); ctx.lineTo(a_bot.x, a_bot.y);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+    } else if (it === 'item_fence') {
+      const h = H_FLOOR * 0.5;
+      const tl = o2s(-HALF, -HALF, h), tr = o2s(HALF, -HALF, h);
+      const br = o2s(HALF, HALF, h), bl = o2s(-HALF, HALF, h);
+      ctx.beginPath(); ctx.moveTo(tl.x, tl.y); ctx.lineTo(tr.x, tr.y);
+      ctx.lineTo(br.x, br.y); ctx.lineTo(bl.x, bl.y); ctx.closePath();
+      ctx.fill(); ctx.stroke();
+    } else if (it === 'item_floor') {
+      ctx.beginPath();
+      ctx.moveTo(o2s(-HALF, -HALF).x, o2s(-HALF, -HALF).y);
+      ctx.lineTo(o2s(HALF, -HALF).x, o2s(HALF, -HALF).y);
+      ctx.lineTo(o2s(HALF, HALF).x, o2s(HALF, HALF).y);
+      ctx.lineTo(o2s(-HALF, HALF).x, o2s(-HALF, HALF).y);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+    } else {
+      const h = (it === 'item_stair') ? H_FLOOR : 24;
+      const tl = o2s(-HALF, -HALF, h), tr = o2s(HALF, -HALF, h);
+      const br = o2s(HALF, HALF, h), bl = o2s(-HALF, HALF, h);
+      ctx.beginPath(); ctx.moveTo(tl.x, tl.y); ctx.lineTo(tr.x, tr.y);
+      ctx.lineTo(br.x, br.y); ctx.lineTo(bl.x, bl.y); ctx.closePath();
+      ctx.fill(); ctx.stroke();
+    }
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`${ITEM_LABEL[it] || it} (${dir}) · 휠=회전 · 좌클릭=배치`, sx, sy - 60);
     ctx.restore();
   }
   // 14.51: 3초 progress bar (DOM overlay)

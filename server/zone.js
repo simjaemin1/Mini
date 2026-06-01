@@ -2213,8 +2213,11 @@ function doPlaceBuilding(player, itemType, atX, atY, floor, dir, side) {
   if ((floor || 0) !== playerFloor) {
     send(player.ws, { type: 'notice', text: `현재 ${playerFloor}F에 있음 — 다른 층 설치 불가` }); return;
   }
+  // 14.53-i: wall/door는 dir이 side 의미 (N/S/E/W). 일반 building은 dir이 회전.
+  const isEdgeBuild = (recipe._buildType === 'wall' || recipe._buildType === 'door');
+  const realSide = isEdgeBuild ? (dir || side || 'N') : (side || null);
   // _tryBuildAt 호출 (자원 소비 skip). 빌드 성공 시에만 인벤 차감.
-  const result = _tryBuildAt(player, recipe._buildType, floor || 0, side || null, dir || null, { skipCost: true, atX, atY });
+  const result = _tryBuildAt(player, recipe._buildType, floor || 0, realSide, dir || null, { skipCost: true, atX, atY });
   if (result === true) {
     player.inventory[itemType] -= 1;
     send(player.ws, { type: 'inventory', inventory: player.inventory });
@@ -3567,9 +3570,22 @@ setInterval(() => {
   // 이동 + 경계 처리 + 벽 충돌
   for (const p of players.values()) {
     if (p.handingOff) continue;
-    // NPC는 zone 핸드오프 안 함 (사유지에 묶임). 경계 넘으면 그냥 클램프.
-    let nx = p.x + p.vx * dt;
-    let ny = p.y + p.vy * dt;
+    // 14.53-j: 계단 위(onStairId 있음)면 dir 축으로만 이동 허용 — 옆으로 빠져나가는 버그 차단
+    let stepVx = p.vx, stepVy = p.vy;
+    if (p.onStairId) {
+      const stair = buildings.get(p.onStairId);
+      if (stair) {
+        const dir = stair.data?.dir || 'N';
+        const dv = (dir === 'E') ? { x: 1, y: 0 } : (dir === 'W') ? { x: -1, y: 0 }
+                 : (dir === 'S') ? { x: 0, y: 1 } : { x: 0, y: -1 };
+        // dir 축에 projection (성분만 남김)
+        const proj = stepVx * dv.x + stepVy * dv.y;
+        stepVx = proj * dv.x;
+        stepVy = proj * dv.y;
+      }
+    }
+    let nx = p.x + stepVx * dt;
+    let ny = p.y + stepVy * dt;
 
     // PZ식 edge 콜라이더 — 각 축 별로 따로 처리해서 slide 가능. player floor만.
     const pf = p.floor || 0;
