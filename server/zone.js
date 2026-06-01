@@ -2208,6 +2208,11 @@ function doPlaceBuilding(player, itemType, atX, atY, floor, dir, side) {
   if ((player.inventory[itemType] || 0) < 1) {
     send(player.ws, { type: 'notice', text: `${recipe.label} 인벤에 없음` }); return;
   }
+  // 14.53-h: player 자신의 floor에서만 배치 가능 (다른 층 차단)
+  const playerFloor = player.floor || 0;
+  if ((floor || 0) !== playerFloor) {
+    send(player.ws, { type: 'notice', text: `현재 ${playerFloor}F에 있음 — 다른 층 설치 불가` }); return;
+  }
   // _tryBuildAt 호출 (자원 소비 skip). 빌드 성공 시에만 인벤 차감.
   const result = _tryBuildAt(player, recipe._buildType, floor || 0, side || null, dir || null, { skipCost: true, atX, atY });
   if (result === true) {
@@ -2222,6 +2227,11 @@ function doDismantleBuilding(player, buildingId) {
   const b = buildings.get(buildingId);
   if (!b) {
     send(player.ws, { type: 'notice', text: '건축물 없음' }); return;
+  }
+  // 14.53-h: 같은 floor 건물만 분해 가능
+  const playerFloor = player.floor || 0;
+  if ((b.floor || 0) !== playerFloor) {
+    send(player.ws, { type: 'notice', text: `현재 ${playerFloor}F에 있음 — 다른 층 건물 분해 불가` }); return;
   }
   const d = Math.hypot(b.x - player.x, b.y - player.y);
   if (d > 80) {
