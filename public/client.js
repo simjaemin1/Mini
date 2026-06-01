@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: 14.52 (도구 내구도 + 건축물 비용 plank/wood만) ===
-console.log('%c[durango-mini] client build = 14.52 (도구 내구도)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: 14.53 (도구 instance 시스템 + hotkey 슬롯 1번) ===
+console.log('%c[durango-mini] client build = 14.53 (도구 instance + 1번 슬롯)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -39,23 +39,29 @@ console.log('%c[durango-mini] client build = 14.52 (도구 내구도)', 'color:#
   let primaryZoneId = null;
   let myPid = null;
   let inventory = { wood: 0, stone: 0 };
-  let tools = {};     // 14.52: { axe: {d, max}, ... } (옛: number)
-  let equipped = null; // 'axe' | 'pickaxe' | 'sword' | null
-  // 14.52: 도구 보유 + 내구도 양수인지 체크 (옛 number 형식도 호환)
-  function hasToolAlive(name) {
-    const t = tools && tools[name];
-    if (!t) return false;
-    if (typeof t === 'number') return t > 0;
-    if (typeof t === 'object') return (t.d > 0);
-    return false;
+  let tools = {};     // 14.52 옛 호환 (사용 X)
+  // 14.53: 도구 instance 리스트 + equipped는 toolItemId + hotkey1 슬롯
+  let toolItems = [];   // [{id, type, d, max}]
+  let equipped = null;  // toolItemId (null = 맨손)
+  let hotkey1 = null;   // 1번 슬롯 toolItemId
+  // 14.53 helpers
+  function findToolInstance(id) {
+    return toolItems.find(t => t.id === id) || null;
   }
-  // 14.52: 도구 내구도 텍스트 (UI 표시용)
+  function hasToolTypeAlive(type) {
+    return toolItems.some(t => t.type === type && t.d > 0);
+  }
+  function getEquippedInstance() {
+    return equipped ? findToolInstance(equipped) : null;
+  }
+  // 옛 API 호환 (renderCraftPanel 등 옛 코드용)
+  function hasToolAlive(name) { return hasToolTypeAlive(name); }
   function toolDurStr(name) {
-    const t = tools && tools[name];
-    if (!t) return '';
-    if (typeof t === 'number') return '';
-    if (typeof t === 'object' && typeof t.d === 'number') return `${t.d}/${t.max||100}`;
-    return '';
+    // type 이름일 수도, instance id일 수도
+    let inst = findToolInstance(name);
+    if (!inst) inst = toolItems.find(t => t.type === name && t.d > 0);
+    if (!inst) return '';
+    return `${inst.d}/${inst.max}`;
   }
   let recipes = {};   // 서버에서 받은 도구 레시피
   let itemRecipes = {}; // 14.50: 아이템 가공 레시피 (plank 등)
@@ -764,6 +770,10 @@ console.log('%c[durango-mini] client build = 14.52 (도구 내구도)', 'color:#
       if (nearDoor) sendPrimary({ type: 'door_toggle', buildingId: nearDoor.id });
       else sendPrimary({ type: 'gather' });
     }
+    // 14.53: 1키 = hotkey1 슬롯 토글 (착용 ↔ 해제)
+    if (k === '1') {
+      sendPrimary({ type: 'toggle_hotkey' });
+    }
     else if (k === 'c' && e.shiftKey) sendPrimary({ type: 'claim', kind: 'guild' });  // 길드 영토 (Shift+C)
     else if (k === 'c') sendPrimary({ type: 'claim', kind: 'personal' });  // 개인 사유지 (1 grid)
     else if (k === 't' && !e.shiftKey) sendPrimary({ type: 'claim', kind: 'temporary' });  // 임시 사유지 (1 grid)
@@ -1360,7 +1370,10 @@ console.log('%c[durango-mini] client build = 14.52 (도구 내구도)', 'color:#
         myPid = msg.pid;
         inventory = msg.inventory;
         if (msg.tools) tools = msg.tools;
+        if (Array.isArray(msg.toolItems)) toolItems = msg.toolItems;
         if (msg.equipped !== undefined) equipped = msg.equipped;
+        if (msg.hotkey1 !== undefined) hotkey1 = msg.hotkey1;
+        setTimeout(() => { try { updateHotkeyBar(); } catch(e){} }, 100);
         if (msg.recipes) recipes = msg.recipes;
         if (msg.itemRecipes) itemRecipes = msg.itemRecipes;
         if (msg.buildingRecipes) buildingRecipes = msg.buildingRecipes;
@@ -1470,9 +1483,12 @@ console.log('%c[durango-mini] client build = 14.52 (도구 내구도)', 'color:#
     } else if (msg.type === 'inventory') {
       inventory = msg.inventory; updateHud(); renderCraftPanel(); if (cookOpen) renderCookPanel();
     } else if (msg.type === 'tools_update' || msg.type === 'tools') {
-      // 14.52: tools 갱신 (내구도 변경 포함)
-      if (msg.tools) tools = msg.tools;
+      // 14.53: toolItems 리스트 + equipped (instance id) + hotkey1
+      if (Array.isArray(msg.toolItems)) toolItems = msg.toolItems;
+      if (msg.tools) tools = msg.tools; // 옛 호환
       if (msg.equipped !== undefined) equipped = msg.equipped;
+      if (msg.hotkey1 !== undefined) hotkey1 = msg.hotkey1;
+      updateHotkeyBar();
       updateHud(); renderCraftPanel();
       // 좌측 sidePanel craft 열려있으면 갱신
       const sp = document.getElementById('sidePanel');
@@ -3498,6 +3514,89 @@ console.log('%c[durango-mini] client build = 14.52 (도구 내구도)', 'color:#
     item_stair: '계단', item_chest: '상자', item_campfire: '모닥불', item_farmland: '농지',
   };
 
+  // 14.53: 화면 하단 중앙 hotkey 슬롯 (1번). 드래그로 도구 등록 + 1키로 토글.
+  function ensureHotkeyBar() {
+    let bar = document.getElementById('hotkeyBar');
+    if (bar) return bar;
+    bar = document.createElement('div');
+    bar.id = 'hotkeyBar';
+    bar.style.cssText = 'position:fixed;left:50%;bottom:10px;transform:translateX(-50%);z-index:500;display:flex;gap:8px;pointer-events:none';
+    bar.innerHTML = `
+      <div id="hkSlot1" data-slot="1" style="pointer-events:auto;width:64px;height:64px;background:rgba(15,18,22,0.92);border:2px solid #444;border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;position:relative;user-select:none">
+        <div style="position:absolute;top:2px;left:4px;font-size:10px;color:#8a93a0;font-weight:bold">1</div>
+        <div class="hk-icon" style="font-size:24px;line-height:1">·</div>
+        <div class="hk-label" style="font-size:9px;color:#6c7686;margin-top:1px">비어있음</div>
+      </div>
+    `;
+    document.body.appendChild(bar);
+    const slot = bar.querySelector('#hkSlot1');
+    // 드래그 받기
+    slot.addEventListener('dragover', (e) => {
+      const types = e.dataTransfer.types;
+      if (types && (Array.from(types).includes('text/x-tool-instance'))) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+        slot.style.borderColor = '#f0c674';
+      }
+    });
+    slot.addEventListener('dragleave', () => {
+      slot.style.borderColor = (equipped && equipped === hotkey1) ? '#7cd97c' : '#444';
+    });
+    slot.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const id = e.dataTransfer.getData('text/x-tool-instance');
+      if (id) sendPrimary({ type: 'set_hotkey', toolItemId: id });
+    });
+    // 클릭 = 토글 (1키와 동일)
+    slot.addEventListener('click', () => {
+      if (!hotkey1) { showNotice('인벤에서 도구를 드래그하세요'); return; }
+      sendPrimary({ type: 'toggle_hotkey' });
+    });
+    // 우클릭 = 슬롯 비우기
+    slot.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      if (hotkey1) {
+        sendPrimary({ type: 'set_hotkey', toolItemId: null });
+        showNotice('1번 슬롯 비움');
+      }
+    });
+    return bar;
+  }
+  function updateHotkeyBar() {
+    const bar = ensureHotkeyBar();
+    const slot = bar.querySelector('#hkSlot1');
+    if (!slot) return;
+    const TOOL_ICON_MAP = { axe: '🪓', pickaxe: '⛏️', sword: '⚔️', saw: '🪚', hammer: '🔨' };
+    const iconEl = slot.querySelector('.hk-icon');
+    const labelEl = slot.querySelector('.hk-label');
+    if (hotkey1) {
+      const inst = toolItems.find(t => t.id === hotkey1);
+      if (inst) {
+        iconEl.textContent = TOOL_ICON_MAP[inst.type] || '🔧';
+        const dur = `${inst.d}/${inst.max}`;
+        const isEq = (equipped === inst.id);
+        labelEl.textContent = isEq ? '✓착용 중' : '대기';
+        labelEl.style.color = isEq ? '#7cd97c' : '#8fc8ff';
+        slot.style.borderColor = isEq ? '#7cd97c' : '#5a7ab0';
+        slot.style.background = isEq ? 'rgba(40,80,40,0.92)' : 'rgba(15,18,22,0.92)';
+        slot.title = `${inst.type} (${dur}) — 1키 또는 클릭 = 토글, 우클릭 = 슬롯 비우기`;
+      } else {
+        // hotkey instance 사라짐 (서버에서 cleanup될 거임)
+        iconEl.textContent = '·';
+        labelEl.textContent = '깨짐';
+        labelEl.style.color = '#e07060';
+        slot.style.borderColor = '#444';
+        slot.style.background = 'rgba(15,18,22,0.92)';
+      }
+    } else {
+      iconEl.textContent = '·';
+      labelEl.textContent = '비어있음';
+      labelEl.style.color = '#6c7686';
+      slot.style.borderColor = '#444';
+      slot.style.background = 'rgba(15,18,22,0.92)';
+      slot.title = '인벤에서 도구를 드래그해서 등록 (1키로 토글)';
+    }
+  }
   function updateHud() {
     document.getElementById('invWood').textContent = inventory.wood || 0;
     const plankEl = document.getElementById('invPlank');
@@ -3506,9 +3605,14 @@ console.log('%c[durango-mini] client build = 14.52 (도구 내구도)', 'color:#
     const eqEl = document.getElementById('equippedBadge');
     if (eqEl) {
       const icons = { axe: '🪓', pickaxe: '⛏️', sword: '⚔️' };
-      // 14.52: 내구도 표시
-      const dur = toolDurStr(equipped);
-      eqEl.textContent = equipped ? `${icons[equipped] || ''} ${equipped}${dur ? ' ' + dur : ''}` : '맨손';
+      // 14.53: equipped = toolItemId → instance 찾아 type 표시
+      const inst = equipped ? findToolInstance(equipped) : null;
+      if (inst) {
+        const TOOL_ICON_MAP2 = { axe: '🪓', pickaxe: '⛏️', sword: '⚔️', saw: '🪚', hammer: '🔨' };
+        eqEl.textContent = `${TOOL_ICON_MAP2[inst.type] || ''} ${inst.type} ${inst.d}/${inst.max}`;
+      } else {
+        eqEl.textContent = '맨손';
+      }
     }
     const hpEl = document.getElementById('hpFill');
     if (hpEl) {
@@ -4456,14 +4560,38 @@ console.log('%c[durango-mini] client build = 14.52 (도구 내구도)', 'color:#
       }).join('');
     };
 
-    const myCount = Object.values(inventory).filter(v => v > 0).length;
-    // 좌: 내 인벤
+    const myCount = Object.values(inventory).filter(v => v > 0).length + (toolItems ? toolItems.length : 0);
+    // 14.53: toolItems row (각 instance 별 행)
+    const TOOL_ICON_MAP = { axe: '🪓', pickaxe: '⛏️', sword: '⚔️', saw: '🪚', hammer: '🔨' };
+    const toolRowsHtml = () => {
+      if (!toolItems || toolItems.length === 0) return '';
+      return toolItems.map(t => {
+        const isEq = (equipped === t.id);
+        const isHot = (hotkey1 === t.id);
+        const icon = TOOL_ICON_MAP[t.type] || '🔧';
+        const durColor = t.d > t.max * 0.5 ? '#7cd97c' : (t.d > t.max * 0.2 ? '#e0c060' : '#e07060');
+        const eqBadge = isEq ? '<span style="color:#7cd97c;font-weight:bold">✓장착</span>' : '';
+        const hotBadge = isHot ? '<span style="color:#f0c674">⌨1</span>' : '';
+        return `<tr draggable="true" data-toolid="${t.id}" data-tooltype="${t.type}" style="cursor:grab;${isEq?'background:rgba(124,217,124,0.08)':''}">
+          <td class="it-icon">${icon}</td>
+          <td class="it-name">
+            <div>${t.type} ${eqBadge} ${hotBadge}</div>
+            <div style="font-size:10px;color:${durColor}">내구도 ${t.d}/${t.max}</div>
+          </td>
+          <td class="it-cat">도구</td>
+          <td class="it-action">
+            <button data-equiptool="${t.id}" title="${isEq?'해제':'착용'}">${isEq?'해제':'착용'}</button>
+          </td>
+        </tr>`;
+      }).join('');
+    };
+    // 좌: 내 인벤 (toolItems 먼저, 그다음 자원)
     const myTable = `<div class="inv-col" data-drop-target="mine">
       <div class="inv-col-head">🎒 내 인벤토리<span class="col-count">(${myCount}종)</span></div>
       <div style="flex:1;overflow:auto;background:#0e1217;border-radius:4px">
         <table class="inv-table">
           <thead><tr><th></th><th>아이템</th><th>분류</th><th></th></tr></thead>
-          <tbody>${rowsHtml(inventory, 'mine', activeC ? activeC.id : (isGround ? 'ground' : null))}</tbody>
+          <tbody>${toolRowsHtml()}${rowsHtml(inventory, 'mine', activeC ? activeC.id : (isGround ? 'ground' : null))}</tbody>
         </table>
       </div></div>`;
 
@@ -4538,6 +4666,20 @@ console.log('%c[durango-mini] client build = 14.52 (도구 내구도)', 'color:#
     });
     body.querySelectorAll('[data-pickup]').forEach(btn => btn.onclick = () => {
       sendPrimary({ type: 'pickup_item', giId: btn.dataset.pickup });
+    });
+    // 14.53: 도구 instance 착용/해제 + 드래그 (hotkey 등록)
+    body.querySelectorAll('[data-equiptool]').forEach(btn => btn.onclick = (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.equiptool;
+      // 이미 장착이면 해제, 아니면 장착
+      if (equipped === id) sendPrimary({ type: 'equip', toolItemId: null });
+      else sendPrimary({ type: 'equip', toolItemId: id });
+    });
+    body.querySelectorAll('tr[data-toolid]').forEach(tr => {
+      tr.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('text/x-tool-instance', tr.dataset.toolid);
+        e.dataTransfer.effectAllowed = 'copy';
+      });
     });
     body.querySelectorAll('[data-cid]').forEach(t => {
       if (!t.classList.contains('cont-tab')) return;

@@ -122,7 +122,12 @@ function savePlayer(player, extra = {}) {
     violation_points: Math.round(player.vp ?? 0),
     tribe_id: player.tribeId ?? null,
     floor: player.floor || 0,
-    tools_json: JSON.stringify(player.tools || {}),
+    // 14.53: 새 format — { toolItems, hotkey1, equipped } 전체 직렬화
+    tools_json: JSON.stringify({
+      toolItems: player.toolItems || [],
+      hotkey1: player.hotkey1 || null,
+      equipped: player.equipped || null,
+    }),
     equipped: player.equipped || null,
     last_zone: extra.last_zone ?? null, // 명시적으로 넘긴 zone만 변경
     last_x: extra.last_x ?? player.x,
@@ -322,23 +327,62 @@ const TOOL_MAX_DURABILITY = {
   saw:     120, // 톱은 가공 전용이라 좀 길게
   hammer:  150, // 망치는 건축 전용이라 가장 길게
 };
-// 14.52: helper — 도구 존재 + 내구도 양수 체크
+// 14.53: 도구는 instance 기반. player.toolItems = [{id, type, d, max}].
+// 같은 종류 여러 개 OK, 각각 다른 내구도. equipped = toolItemId.
+let _nextToolId = 1;
+function genToolId() { return `t${Date.now().toString(36)}${(_nextToolId++).toString(36)}`; }
+
+// 14.53: 도구 type 보유 + 살아있는 instance 있나
 function hasTool(player, toolName) {
-  const t = player.tools && player.tools[toolName];
-  return !!(t && typeof t === 'object' && t.d > 0);
+  if (!player.toolItems) return false;
+  return player.toolItems.some(t => t.type === toolName && t.d > 0);
 }
-// 14.52: helper — 도구 내구도 소비. 0 이하면 인벤서 제거 + notice. 반환: 성공 여부.
-function consumeToolDurability(player, toolName, amount = 1) {
-  const t = player.tools && player.tools[toolName];
-  if (!t || typeof t !== 'object' || t.d <= 0) return false;
+// 14.53: 현재 장착 instance 찾기
+function getEquippedTool(player) {
+  if (!player.equipped || !player.toolItems) return null;
+  return player.toolItems.find(t => t.id === player.equipped) || null;
+}
+// 14.53: 장착 instance 내구도 소비. 0 되면 toolItems에서 제거, equipped/hotkey1 cleanup.
+function consumeEquippedDurability(player, amount = 1) {
+  const t = getEquippedTool(player);
+  if (!t) return false;
   t.d -= amount;
   if (t.d <= 0) {
-    delete player.tools[toolName];
-    if (player.equipped === toolName) player.equipped = null;
-    send(player.ws, { type: 'notice', text: `${toolName} 깨짐 (내구도 0)` });
+    const idx = player.toolItems.indexOf(t);
+    if (idx >= 0) player.toolItems.splice(idx, 1);
+    const breakName = t.type;
+    if (player.equipped === t.id) player.equipped = null;
+    if (player.hotkey1 === t.id) player.hotkey1 = null;
+    send(player.ws, { type: 'notice', text: `${breakName} 깨짐` });
   }
-  // tools 갱신 broadcast (인벤만큼 잦지는 않음)
-  send(player.ws, { type: 'tools', tools: player.tools, equipped: player.equipped });
+  // 클라에 toolItems + equipped 갱신
+  send(player.ws, { type: 'tools', toolItems: player.toolItems, equipped: player.equipped, hotkey1: player.hotkey1 });
+  return true;
+}
+// 14.53: type 지정 내구도 소비 (장착 안 했어도 사용 — saw 가공, hammer 건축처럼)
+// 가장 내구도 낮은 instance 우선 사용 (소진 빨리).
+function consumeToolByType(player, toolName, amount = 1) {
+  if (!player.toolItems) return false;
+  // 장착된 게 type이면 그거 우선
+  const eq = getEquippedTool(player);
+  let target = (eq && eq.type === toolName) ? eq : null;
+  if (!target) {
+    // 내구도 가장 낮은 instance (소진 빨리)
+    const candidates = player.toolItems.filter(t => t.type === toolName && t.d > 0);
+    candidates.sort((a, b) => a.d - b.d);
+    target = candidates[0] || null;
+  }
+  if (!target) return false;
+  target.d -= amount;
+  if (target.d <= 0) {
+    const idx = player.toolItems.indexOf(target);
+    if (idx >= 0) player.toolItems.splice(idx, 1);
+    const breakName = target.type;
+    if (player.equipped === target.id) player.equipped = null;
+    if (player.hotkey1 === target.id) player.hotkey1 = null;
+    send(player.ws, { type: 'notice', text: `${breakName} 깨짐` });
+  }
+  send(player.ws, { type: 'tools', toolItems: player.toolItems, equipped: player.equipped, hotkey1: player.hotkey1 });
   return true;
 }
 // 역매핑: building type → item key (분해 시 사용)
@@ -1521,7 +1565,8 @@ wss.on('connection', async (ws, req) => {
           buildings: Array.from(buildings.values()),
           mobs: Array.from(mobs.values()).map(m => ({ mid: m.mid, type: m.type, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, tameOwner: m.tameOwner || null, tameOwnerName: m.tameOwnerName || null })),
           inventory: player.inventory,
-          tools: player.tools, equipped: player.equipped,
+          toolItems: player.toolItems || [], hotkey1: player.hotkey1 || null, equipped: player.equipped || null,
+    tools: player.tools, // 옛 호환 (사용 X)
           recipes: RECIPES,
           itemRecipes: ITEM_RECIPES,
           buildingRecipes: BUILDING_RECIPES,
@@ -1631,21 +1676,48 @@ wss.on('connection', async (ws, req) => {
       inventory = { wood: result.player.wood | 0, stone: result.player.stone | 0, ...extInv };
       try { tools = result.player.tools_json ? JSON.parse(result.player.tools_json) : {}; }
       catch (e) { tools = {}; }
-      // 14.52: 옛 number 형식 → 새 {d, max} 형식 변환 (자동 마이그레이션)
-      for (const tn of Object.keys(tools)) {
-        if (typeof tools[tn] === 'number') {
-          const mx = TOOL_MAX_DURABILITY[tn] || 100;
-          tools[tn] = { d: mx, max: mx };
-        } else if (tools[tn] && typeof tools[tn] === 'object' && typeof tools[tn].d !== 'number') {
-          const mx = TOOL_MAX_DURABILITY[tn] || 100;
-          tools[tn] = { d: mx, max: mx };
+      // 14.53: 옛 tools (object 또는 number 형식) → 새 toolItems list 변환
+      // tools_json 안에 옛 형식 또는 새 형식 {toolItems, equipped, hotkey1} 둘 다 처리
+      let toolItems = [];
+      let hotkey1 = null;
+      if (tools && typeof tools === 'object') {
+        if (Array.isArray(tools.toolItems)) {
+          // 새 형식 — 그대로
+          toolItems = tools.toolItems;
+          hotkey1 = tools.hotkey1 || null;
+          if (typeof tools.equipped === 'string') equipped = tools.equipped;
+        } else {
+          // 옛 형식 — { axe: number|{d,max} } → instance 변환
+          for (const [tn, val] of Object.entries(tools)) {
+            if (tn === 'hotkey1' || tn === 'toolItems' || tn === 'equipped') continue;
+            const mx = TOOL_MAX_DURABILITY[tn] || 100;
+            let d = mx;
+            if (typeof val === 'number' && val > 0) d = mx;
+            else if (val && typeof val === 'object' && typeof val.d === 'number') d = val.d;
+            if (d > 0) toolItems.push({ id: genToolId(), type: tn, d, max: mx });
+          }
+          equipped = null; // 옛 equipped 이름 → instance id로 매핑 불가, 그냥 해제
         }
       }
-      // 14.50: 시작 도구 (목공 시작 enable). 이미 있으면 변경 X.
-      const newTool = (tn) => ({ d: TOOL_MAX_DURABILITY[tn] || 100, max: TOOL_MAX_DURABILITY[tn] || 100 });
-      if (!tools.saw) tools.saw = newTool('saw');
-      if (!tools.hammer) tools.hammer = newTool('hammer');
-      if (!tools.axe) tools.axe = newTool('axe');
+      tools = toolItems; // 호환용 — 아래에서 player.toolItems로 저장
+      // 14.50: 시작 도구 (목공 시작 enable). 한 번도 만들지 않은 신규 player에게 1개씩.
+      const ensureStart = (tn) => {
+        if (!toolItems.some(t => t.type === tn)) {
+          const mx = TOOL_MAX_DURABILITY[tn] || 100;
+          toolItems.push({ id: genToolId(), type: tn, d: mx, max: mx });
+        }
+      };
+      if (toolItems.length === 0) {
+        ensureStart('saw');
+        ensureStart('hammer');
+        ensureStart('axe');
+      }
+      // 저장용: 임시 wrap 객체 (savePlayer가 tools_json으로 직렬화)
+      // — 실제 player.toolItems / player.hotkey1 / player.equipped는 player 생성 시 할당됨 (아래)
+      // 임시 변수에 저장
+      const _toolItems = toolItems;
+      const _hotkey1 = hotkey1;
+      tools = { __toolItems: _toolItems, __hotkey1: _hotkey1 }; // 임시 컨테이너 (player 만들 때 풀어줌)
       if (!inventory.plank) inventory.plank = 10; // 시작 판자 약간
       equipped = result.player.equipped || null;
       initHunger = (typeof result.player.hunger === 'number') ? result.player.hunger : HUNGER_MAX;
@@ -1727,12 +1799,18 @@ wss.on('connection', async (ws, req) => {
   }
 
   const pid = `p${nextPid++}`;
+  // 14.53: tools 임시 컨테이너에서 toolItems/hotkey1 풀기
+  const _toolItems = (tools && tools.__toolItems) ? tools.__toolItems : (Array.isArray(tools) ? tools : []);
+  const _hotkey1 = (tools && tools.__hotkey1) || null;
   const player = {
     pid, playerId, ws, name, color,
     x: sx, y: sy,
     vx: ivx, vy: ivy,
     inventory,
-    tools, equipped,
+    tools: {},                  // 옛 호환용 (사용 X)
+    toolItems: _toolItems,      // 14.53: instance 리스트
+    equipped,                   // 14.53: toolItemId
+    hotkey1: _hotkey1,          // 14.53: 1번 슬롯 toolItemId
     hp: PLAYER_MAX_HP, maxHp: PLAYER_MAX_HP,
     hunger: initHunger, thirst: initThirst, vp: initVp,
     tribeId: initTribeId, tribeName: initTribeName,
@@ -1768,7 +1846,8 @@ wss.on('connection', async (ws, req) => {
     groundItems: Array.from(groundItems.values()), // Phase 14.23
     mobs: Array.from(mobs.values()).map(m => ({ mid: m.mid, type: m.type, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, tameOwner: m.tameOwner || null, tameOwnerName: m.tameOwnerName || null })),
     inventory: player.inventory,
-    tools: player.tools, equipped: player.equipped,
+    toolItems: player.toolItems || [], hotkey1: player.hotkey1 || null, equipped: player.equipped || null,
+    tools: player.tools, // 옛 호환 (사용 X)
     recipes: RECIPES,
     itemRecipes: ITEM_RECIPES,         // 14.50
     buildingRecipes: BUILDING_RECIPES, // 14.51
@@ -1882,7 +1961,18 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'craft_building') doCraftBuilding(player, msg.recipe);
   else if (msg.type === 'place_building') doPlaceBuilding(player, msg.itemType, msg.atX, msg.atY, msg.floor, msg.dir, msg.side);
   else if (msg.type === 'dismantle_building') doDismantleBuilding(player, msg.buildingId);
-  else if (msg.type === 'equip') doEquip(player, msg.tool);
+  // 14.53: equip은 이제 toolItemId 기반 (옛 msg.tool도 호환 — type 이름이면 첫 instance)
+  else if (msg.type === 'equip') {
+    let id = msg.toolItemId || msg.tool || null;
+    // 옛 클라가 type 이름 보내면 첫 instance로
+    if (id && player.toolItems && !player.toolItems.find(t => t.id === id)) {
+      const inst = player.toolItems.find(t => t.type === id && t.d > 0);
+      id = inst ? inst.id : null;
+    }
+    doEquip(player, id);
+  }
+  else if (msg.type === 'set_hotkey') doSetHotkey(player, msg.toolItemId || null);
+  else if (msg.type === 'toggle_hotkey') doToggleHotkey(player);
   else if (msg.type === 'eat') doEat(player, msg.item);
   else if (msg.type === 'cook') doCook(player, msg.recipe);
   else if (msg.type === 'harvest') tryHarvest(player);
@@ -2072,8 +2162,8 @@ function doCraftItem(player, recipeName) {
   for (const [it, amt] of Object.entries(recipe.to)) {
     player.inventory[it] = (player.inventory[it] || 0) + amt;
   }
-  // 14.52: 도구 내구도 -1
-  if (recipe.requiresTool) consumeToolDurability(player, recipe.requiresTool, 1);
+  // 14.53: 도구 instance 내구도 -1 (saw 등)
+  if (recipe.requiresTool) consumeToolByType(player, recipe.requiresTool, 1);
   send(player.ws, { type: 'inventory', inventory: player.inventory });
   send(player.ws, { type: 'notice', text: `${recipe.label} 완료` });
   if (!player.playerId.startsWith('anon_')) savePlayer(player);
@@ -2102,8 +2192,8 @@ function doCraftBuilding(player, recipeName) {
   }
   for (const [k, v] of Object.entries(cost)) player.inventory[k] -= v;
   player.inventory[recipeName] = (player.inventory[recipeName] || 0) + 1;
-  // 14.52: 망치 내구도 -1
-  if (recipe._useHammer) consumeToolDurability(player, 'hammer', 1);
+  // 14.53: 망치 instance 내구도 -1
+  if (recipe._useHammer) consumeToolByType(player, 'hammer', 1);
   send(player.ws, { type: 'inventory', inventory: player.inventory });
   send(player.ws, { type: 'notice', text: `${recipe.label} 제작 완료 (인벤에 추가됨)` });
   if (!player.playerId.startsWith('anon_')) savePlayer(player);
@@ -2189,42 +2279,75 @@ function doCraft(player, recipeName) {
     send(player.ws, { type: 'notice', text: `${recipe.label} 제작에는 나무 ${recipe.wood}, 돌 ${recipe.stone} 필요` });
     return;
   }
-  // 14.52: 이미 가지고 있으면 거부 (낭비 방지)
-  if (hasTool(player, recipeName)) {
-    send(player.ws, { type: 'notice', text: `${recipe.label} 이미 보유 중 (깨질 때까지 새로 못 만듦)` });
-    return;
-  }
   player.inventory.wood -= recipe.wood;
   player.inventory.stone -= recipe.stone;
-  // 14.52: 새 도구 = 풀 내구도
+  // 14.53: 새 instance 추가 (자동 장착 X — 사용자가 인벤에서 직접 착용)
+  if (!player.toolItems) player.toolItems = [];
   const mx = TOOL_MAX_DURABILITY[recipeName] || 100;
-  player.tools[recipeName] = { d: mx, max: mx };
-  // 처음 만든 도구면 자동 장착
-  if (!player.equipped) player.equipped = recipeName;
+  const inst = { id: genToolId(), type: recipeName, d: mx, max: mx };
+  player.toolItems.push(inst);
   send(player.ws, { type: 'inventory', inventory: player.inventory });
-  send(player.ws, { type: 'tools', tools: player.tools, equipped: player.equipped });
-  send(player.ws, { type: 'notice', text: `${recipe.label} 제작 완료 (내구도 ${mx})` });
+  send(player.ws, { type: 'tools', toolItems: player.toolItems, equipped: player.equipped, hotkey1: player.hotkey1 || null });
+  send(player.ws, { type: 'notice', text: `${recipe.label} 제작 완료 (인벤에 추가)` });
   if (!player.playerId.startsWith('anon_')) {
     savePlayer(player);
   }
 }
 
-function doEquip(player, toolName) {
-  // null/빈 문자열이면 장착 해제
-  if (!toolName) {
+// 14.53: equip은 toolItemId 기반. null = 해제. 다른 거 들면 옛 거 자동 해제 (1개만 장착).
+function doEquip(player, toolItemId) {
+  if (!toolItemId) {
     player.equipped = null;
   } else {
-    if (!RECIPES[toolName]) return;
-    if (!hasTool(player, toolName)) {
-      send(player.ws, { type: 'notice', text: `${RECIPES[toolName].label} 보유 없음` });
+    const inst = player.toolItems && player.toolItems.find(t => t.id === toolItemId);
+    if (!inst) {
+      send(player.ws, { type: 'notice', text: '해당 도구 없음' });
       return;
     }
-    player.equipped = toolName;
+    if (inst.d <= 0) {
+      send(player.ws, { type: 'notice', text: '깨진 도구' });
+      return;
+    }
+    player.equipped = inst.id; // 옛 거 자동 해제 (한 번에 1개)
   }
-  send(player.ws, { type: 'tools_update', tools: player.tools, equipped: player.equipped });
-  if (!player.playerId.startsWith('anon_')) {
-    savePlayer(player);
+  send(player.ws, { type: 'tools', toolItems: player.toolItems, equipped: player.equipped, hotkey1: player.hotkey1 || null });
+  if (!player.playerId.startsWith('anon_')) savePlayer(player);
+}
+
+// 14.53: hotkey1 슬롯에 도구 등록. null이면 슬롯 비움.
+function doSetHotkey(player, toolItemId) {
+  if (!toolItemId) {
+    player.hotkey1 = null;
+  } else {
+    const inst = player.toolItems && player.toolItems.find(t => t.id === toolItemId);
+    if (!inst) {
+      send(player.ws, { type: 'notice', text: '해당 도구 없음' });
+      return;
+    }
+    player.hotkey1 = inst.id;
   }
+  send(player.ws, { type: 'tools', toolItems: player.toolItems, equipped: player.equipped, hotkey1: player.hotkey1 || null });
+  if (!player.playerId.startsWith('anon_')) savePlayer(player);
+}
+
+// 14.53: 1키 = hotkey1 등록 도구 토글 (착용 ↔ 해제)
+function doToggleHotkey(player) {
+  if (!player.hotkey1) return;
+  // 슬롯 도구가 이미 장착 중이면 해제, 아니면 장착
+  if (player.equipped === player.hotkey1) {
+    player.equipped = null;
+  } else {
+    // 슬롯 도구 instance가 살아있나 확인
+    const inst = player.toolItems && player.toolItems.find(t => t.id === player.hotkey1);
+    if (!inst || inst.d <= 0) {
+      // 깨졌으면 슬롯 비움
+      player.hotkey1 = null;
+    } else {
+      player.equipped = inst.id;
+    }
+  }
+  send(player.ws, { type: 'tools', toolItems: player.toolItems, equipped: player.equipped, hotkey1: player.hotkey1 || null });
+  if (!player.playerId.startsWith('anon_')) savePlayer(player);
 }
 
 function tryGather(player) {
@@ -2274,19 +2397,17 @@ function tryGather(player) {
     return;
   }
 
-  // 도구 효과: tree면 axe 보너스, rock이면 pickaxe 보너스 (장착된 도구가 살아있어야)
-  const equipped = player.equipped;
-  const eff = (equipped && hasTool(player, equipped)) ? TOOL_EFFECTS[equipped] : null;
+  // 14.53: 장착 instance 기반 도구 효과
+  const eqInst = getEquippedTool(player);
+  const eff = eqInst ? TOOL_EFFECTS[eqInst.type] : null;
   let dmg = 1;
   if (eff) {
     if (best.type === 'tree') dmg = eff.gatherWoodMult;
     else if (best.type === 'rock') dmg = eff.gatherStoneMult;
   }
   best.hp -= dmg;
-  // 14.52: 도구 내구도 소비 (장착된 도구로 채집 시)
-  if (equipped && hasTool(player, equipped)) {
-    consumeToolDurability(player, equipped, 1);
-  }
+  // 장착 도구 내구도 -1
+  if (eqInst) consumeEquippedDurability(player, 1);
   if (best.hp <= 0) {
     // 자원 종류별 산출물
     let loot = {};
@@ -2892,14 +3013,11 @@ async function tryAttack(player) {
   if (now - player.lastAttackAt < PLAYER_ATTACK_COOLDOWN_MS) return;
   player.lastAttackAt = now;
 
-  // 무기 효과 — 장착 도구 살아있어야 적용
-  const equipped = player.equipped;
-  const eff = (equipped && hasTool(player, equipped)) ? TOOL_EFFECTS[equipped] : null;
+  // 14.53: 장착 instance 기반 무기 효과
+  const eqInst = getEquippedTool(player);
+  const eff = eqInst ? TOOL_EFFECTS[eqInst.type] : null;
   const atk = Math.round(PLAYER_ATTACK_DAMAGE * (eff ? eff.attackMult : 1));
-  // 14.52: 공격 시 도구 내구도 소비 (장착 도구가 있을 때만)
-  if (equipped && hasTool(player, equipped)) {
-    consumeToolDurability(player, equipped, 1);
-  }
+  if (eqInst) consumeEquippedDurability(player, 1);
 
   // 가장 가까운 mob을 범위 안에서 — quadtree
   const nearbyMobs = qtMobs ? qtMobs.queryCircle(player.x, player.y, PLAYER_ATTACK_RANGE) : Array.from(mobs.values());
