@@ -2254,16 +2254,38 @@ function doDismantleBuilding(player, buildingId) {
       }
     }
   }
+  // 14.54-a: stair ↔ auto floor cascade
+  let cascadeIds = [];
+  if (b.type === 'stair' && b.data?._autoFloorId) {
+    cascadeIds.push(b.data._autoFloorId);
+  } else if (b.type === 'floor' && b.data?._parentStairId) {
+    cascadeIds.push(b.data._parentStairId);
+  }
   // 건축물 제거
   buildings.delete(buildingId);
   if (chunkManager && chunkManager.removeBuilding) chunkManager.removeBuilding(b);
   if (b.dbId) db.deleteBuilding(b.dbId);
+  broadcast({ type: 'building_removed', id: buildingId });
+  // cascade로 함께 제거 (재귀 호출 X — 직접)
+  for (const cid of cascadeIds) {
+    const cb = buildings.get(cid);
+    if (!cb) continue;
+    buildings.delete(cid);
+    if (chunkManager && chunkManager.removeBuilding) chunkManager.removeBuilding(cb);
+    if (cb.dbId) db.deleteBuilding(cb.dbId);
+    broadcast({ type: 'building_removed', id: cid });
+    // cascade한 stair도 인벤 환원? 사용자 의도: floor 해체 시 stair도 해체. 그러면 stair 인벤 환원해야.
+    const cascItemType = BUILDING_TYPE_TO_ITEM[cb.type];
+    if (cascItemType) {
+      player.inventory[cascItemType] = (player.inventory[cascItemType] || 0) + 1;
+    }
+  }
   // 14.49-e3-perf3: stair/wall cache 무효화
   if (typeof stairCellCacheBuiltAt !== 'undefined') stairCellCacheBuiltAt = 0;
   if (typeof wallCellCacheBuiltAt !== 'undefined') wallCellCacheBuiltAt = 0;
+  stairCellDirty = true;
   send(player.ws, { type: 'inventory', inventory: player.inventory });
   send(player.ws, { type: 'notice', text: `${itemType ? BUILDING_RECIPES[itemType].label : b.type} 분해 → 인벤 환원` });
-  broadcast({ type: 'building_removed', id: buildingId });
   if (!player.playerId.startsWith('anon_')) savePlayer(player);
 }
 
@@ -2899,9 +2921,61 @@ function _tryBuildAt(player, type, floor = 0, side = null, dir = null, opts = nu
   buildings.set(id, building);
   chunkManager.insertBuilding(building);
   if (type === 'stair') stairCellDirty = true; // 14.49-e3-perf
+
+  // 14.54-a: stair는 cell 3 (auto floor 자리) 비어있나 사전 체크 + auto floor 같이 만들기
+  let autoFloorBuilding = null;
+  if (type === 'stair') {
+    const sd = dataWithFloor.dir || 'N';
+    const sdv = (sd === 'E') ? { x: 1, y: 0 } : (sd === 'W') ? { x: -1, y: 0 }
+              : (sd === 'S') ? { x: 0, y: 1 } : { x: 0, y: -1 };
+    const autoFx = gx + sdv.x * 3 * BUILDING_SIZE;
+    const autoFy = gy + sdv.y * 3 * BUILDING_SIZE;
+    const autoFloorFloor = floor + 1;
+    const nb = qtBuildings ? qtBuildings.queryCircle(autoFx, autoFy, BUILDING_SIZE * 0.6) : Array.from(buildings.values());
+    let conflict = false;
+    for (const b of nb) {
+      if ((b.floor || 0) !== autoFloorFloor) continue;
+      if (Math.abs(b.x - autoFx) < BUILDING_SIZE && Math.abs(b.y - autoFy) < BUILDING_SIZE) {
+        conflict = true; break;
+      }
+    }
+    if (conflict) {
+      // stair rollback
+      buildings.delete(id);
+      if (chunkManager.removeBuilding) chunkManager.removeBuilding(building);
+      db.deleteBuilding(dbId);
+      send(player.ws, { type: 'notice', text: '위층 입구에 이미 건축물 있음 — 계단 못 지음' });
+      // 자원 환원
+      if (!skipCost) {
+        if (cost.plank) player.inventory.plank += cost.plank;
+        if (cost.wood) player.inventory.wood += cost.wood;
+        if (cost.stone) player.inventory.stone += cost.stone;
+        send(player.ws, { type: 'inventory', inventory: player.inventory });
+      }
+      stairCellDirty = true;
+      return false;
+    }
+    // auto floor 생성 (broadcast는 stair 다음에)
+    const floorData = { _parentStairId: id, floor: autoFloorFloor };
+    const floorDbId = db.insertBuilding({
+      type: 'floor', owner_id: player.playerId, owner_name: player.name,
+      x: autoFx, y: autoFy, data: JSON.stringify(floorData),
+    });
+    const floorId = `b${nextBid++}`;
+    autoFloorBuilding = { id: floorId, dbId: floorDbId, type: 'floor',
+      ownerId: player.playerId, ownerName: player.name,
+      x: autoFx, y: autoFy, data: floorData, floor: autoFloorFloor };
+    buildings.set(floorId, autoFloorBuilding);
+    chunkManager.insertBuilding(autoFloorBuilding);
+    // stair에 _autoFloorId 저장 + db 갱신 (broadcast 전에)
+    building.data._autoFloorId = floorId;
+    db.updateBuildingData(dbId, JSON.stringify(building.data));
+  }
+
   send(player.ws, { type: 'inventory', inventory: player.inventory });
   savePlayer(player);
   broadcast({ type: 'building_added', building });
+  if (autoFloorBuilding) broadcast({ type: 'building_added', building: autoFloorBuilding });
   return true;
 }
 
