@@ -1730,6 +1730,8 @@ wss.on('connection', async (ws, req) => {
     inventory: player.inventory,
     tools: player.tools, equipped: player.equipped,
     recipes: RECIPES,
+    itemRecipes: ITEM_RECIPES,         // 14.50
+    buildingRecipes: BUILDING_RECIPES, // 14.51
     cookRecipes: COOK_RECIPES,
     foodEffects: FOOD_EFFECTS,
     self: { x: player.x, y: player.y, hp: player.hp, maxHp: player.maxHp,
