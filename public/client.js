@@ -1118,8 +1118,9 @@ console.log('%c[durango-mini] client build = 14.53 (도구 instance + 1번 슬�
       const py = (e.clientY - rect.top) * (canvas.height / rect.height);
       lastMouseSx = px; lastMouseSy = py;
       const myIso = w2i(myAbsPredicted.x, myAbsPredicted.y);
+      // 14.53-g fix: 2층 이상 player일 때, 마우스 py에 floor*FLOOR_HEIGHT 더해 그 층의 plane으로 투영
       const ix = px - W/2 + myIso.x;
-      const iy = py - H/2 + myIso.y;
+      const iy = (py + (myFloor || 0) * FLOOR_HEIGHT) - H/2 + myIso.y;
       const wx = ix * 0.5 + iy;
       const wy = iy - ix * 0.5;
       if (placementMode) {
@@ -1197,9 +1198,10 @@ console.log('%c[durango-mini] client build = 14.53 (도구 instance + 1번 슬�
       const px = (e.clientX - rect.left) * (canvas.width / rect.width);
       const py = (e.clientY - rect.top) * (canvas.height / rect.height);
       // toScreen 역: ix = px - W/2 + camX; iy = py - H/2 + camY
+      // 14.53-g fix: 2층+ player일 때 py에 floor*FLOOR_HEIGHT 더해 그 층 plane으로 투영
       const myIso = w2i(myAbsPredicted.x, myAbsPredicted.y);
       const ix = px - W/2 + myIso.x;
-      const iy = py - H/2 + myIso.y;
+      const iy = (py + (myFloor || 0) * FLOOR_HEIGHT) - H/2 + myIso.y;
       // iso 역변환: wx = ix/2 + iy, wy = iy - ix/2
       const clickWx = ix * 0.5 + iy;
       const clickWy = iy - ix * 0.5;
