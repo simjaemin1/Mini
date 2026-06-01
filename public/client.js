@@ -2067,47 +2067,67 @@ console.log('%c[durango-mini] client build = 14.53 (도구 instance + 1번 슬�
       ctx.closePath();
       ctx.fill(); ctx.stroke();
     } else if (b.type === 'stair') {
-      // 14.54-b: 3 cell ramp 형태 (cell 0~2 동시 강조). dir 따라 dv 결정.
+      // 14.54-c: 3×1×2 박스 (3 cell long × 1 cell wide × 2 floor tall) + auto floor 1 cell 박스
       const dir = b.data?.dir || 'N';
       const dv = (dir === 'E') ? { x: 1, y: 0 } : (dir === 'W') ? { x: -1, y: 0 }
                : (dir === 'S') ? { x: 0, y: 1 } : { x: 0, y: -1 };
-      // 3 cell 각각 그리기. cellN 중심 = anchor + dv * N * 32 (world)
-      // sx,sy는 stair anchor (cell 0) 중심. 각 cell N의 o2s 보정 = dv * N * 32.
-      for (let n = 0; n <= 2; n++) {
-        const offX = dv.x * n * 32, offY = dv.y * n * 32;
-        const h = (n / 2) * H_FLOOR; // cell 0 = 0, cell 2 = full height
-        const corners = [
-          o2s(offX - HALF, offY - HALF, h),
-          o2s(offX + HALF, offY - HALF, h),
-          o2s(offX + HALF, offY + HALF, h),
-          o2s(offX - HALF, offY + HALF, h),
-        ];
-        ctx.beginPath();
-        ctx.moveTo(corners[0].x, corners[0].y);
-        for (let i = 1; i < 4; i++) ctx.lineTo(corners[i].x, corners[i].y);
-        ctx.closePath();
-        ctx.fill(); ctx.stroke();
-      }
-      // 14.54-b: auto floor (cell 3, floor+1)도 같이 강조
+      // dir 수직 (cell width)
+      const pv = { x: -dv.y, y: dv.x };
+      // 박스 8 corner. cell 0 중심 = (0,0). cell 0 시작 = dv * -16, cell 2 끝 = dv * (2*32 + 16) = dv * 80.
+      // perpendicular: ±16
+      const start = -16;    // dir 축 시작
+      const end = 80;       // dir 축 끝 (cell 2 끝)
+      const half = HALF;    // perp ±
+      const zBot = 0, zTop = H_FLOOR * 2;
+      // 8 corner: [near/far][left/right][bot/top]
+      const c = (along, perp, z) => o2s(dv.x * along + pv.x * perp, dv.y * along + pv.y * perp, z);
+      const ftl = c(end,   -half, zTop);
+      const ftr = c(end,    half, zTop);
+      const fbl = c(end,   -half, zBot);
+      const fbr = c(end,    half, zBot);
+      const ntl = c(start, -half, zTop);
+      const ntr = c(start,  half, zTop);
+      const nbl = c(start, -half, zBot);
+      const nbr = c(start,  half, zBot);
+      // top face
+      ctx.beginPath();
+      ctx.moveTo(ntl.x, ntl.y); ctx.lineTo(ntr.x, ntr.y);
+      ctx.lineTo(ftr.x, ftr.y); ctx.lineTo(ftl.x, ftl.y); ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      // bottom face (윤곽만)
+      ctx.beginPath();
+      ctx.moveTo(nbl.x, nbl.y); ctx.lineTo(nbr.x, nbr.y);
+      ctx.lineTo(fbr.x, fbr.y); ctx.lineTo(fbl.x, fbl.y); ctx.closePath();
+      ctx.stroke();
+      // 4 vertical edges
+      ctx.beginPath();
+      ctx.moveTo(ntl.x, ntl.y); ctx.lineTo(nbl.x, nbl.y);
+      ctx.moveTo(ntr.x, ntr.y); ctx.lineTo(nbr.x, nbr.y);
+      ctx.moveTo(ftl.x, ftl.y); ctx.lineTo(fbl.x, fbl.y);
+      ctx.moveTo(ftr.x, ftr.y); ctx.lineTo(fbr.x, fbr.y);
+      ctx.stroke();
+      // ramp 사선 (옆면 위→아래 시각)
+      ctx.beginPath();
+      ctx.moveTo(ntl.x, ntl.y); ctx.lineTo(fbl.x, fbl.y);
+      ctx.moveTo(ntr.x, ntr.y); ctx.lineTo(fbr.x, fbr.y);
+      ctx.stroke();
+      // auto floor 박스 (cell 3, floor+1)
       const autoFloorId = b.data?._autoFloorId;
       if (autoFloorId) {
-        const autoF = (function(){ for (const c of conns.values()) { const x = c.buildings.get(autoFloorId); if (x) return x; } return null; })();
-        if (autoF) {
-          const offX = dv.x * 3 * 32, offY = dv.y * 3 * 32;
-          // floor+1 — sy 추가로 FLOOR_HEIGHT 위로
-          const fz = H_FLOOR;
-          const corners = [
-            o2s(offX - HALF, offY - HALF, fz),
-            o2s(offX + HALF, offY - HALF, fz),
-            o2s(offX + HALF, offY + HALF, fz),
-            o2s(offX - HALF, offY + HALF, fz),
-          ];
-          ctx.beginPath();
-          ctx.moveTo(corners[0].x, corners[0].y);
-          for (let i = 1; i < 4; i++) ctx.lineTo(corners[i].x, corners[i].y);
-          ctx.closePath();
-          ctx.fill(); ctx.stroke();
-        }
+        const fStart = 80,  fEnd = 80 + 32; // cell 3 (along dir axis)
+        const afBot = H_FLOOR, afTop = H_FLOOR + 8; // 살짝 두께
+        const af_ntl = c(fStart, -half, afTop), af_ntr = c(fStart, half, afTop);
+        const af_ftl = c(fEnd,  -half, afTop), af_ftr = c(fEnd,  half, afTop);
+        const af_nbl = c(fStart, -half, afBot), af_nbr = c(fStart, half, afBot);
+        const af_fbl = c(fEnd,  -half, afBot), af_fbr = c(fEnd,  half, afBot);
+        ctx.beginPath();
+        ctx.moveTo(af_ntl.x, af_ntl.y); ctx.lineTo(af_ntr.x, af_ntr.y);
+        ctx.lineTo(af_ftr.x, af_ftr.y); ctx.lineTo(af_ftl.x, af_ftl.y); ctx.closePath();
+        ctx.fill(); ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(af_nbl.x, af_nbl.y); ctx.lineTo(af_nbr.x, af_nbr.y);
+        ctx.lineTo(af_fbr.x, af_fbr.y); ctx.lineTo(af_fbl.x, af_fbl.y); ctx.closePath();
+        ctx.stroke();
       }
     } else {
       // chest/campfire/farmland 등 — cell 정사각 wireframe (3D 박스)
@@ -2200,8 +2220,52 @@ console.log('%c[durango-mini] client build = 14.53 (도구 instance + 1번 슬�
       ctx.lineTo(o2s(-HALF, HALF).x, o2s(-HALF, HALF).y);
       ctx.closePath();
       ctx.fill(); ctx.stroke();
+    } else if (it === 'item_stair') {
+      // 14.54-c: stair ghost — 3×1×2 박스 + auto floor 1 cell 박스. dir로 방향 결정.
+      const dv = (dir === 'E') ? { x: 1, y: 0 } : (dir === 'W') ? { x: -1, y: 0 }
+               : (dir === 'S') ? { x: 0, y: 1 } : { x: 0, y: -1 };
+      const pv = { x: -dv.y, y: dv.x };
+      const cc = (along, perp, z) => o2s(dv.x * along + pv.x * perp, dv.y * along + pv.y * perp, z);
+      const start = -16, end = 80, half = HALF;
+      const zBot = 0, zTop = H_FLOOR * 2;
+      const ftl = cc(end, -half, zTop), ftr = cc(end, half, zTop);
+      const fbl = cc(end, -half, zBot), fbr = cc(end, half, zBot);
+      const ntl = cc(start, -half, zTop), ntr = cc(start, half, zTop);
+      const nbl = cc(start, -half, zBot), nbr = cc(start, half, zBot);
+      ctx.beginPath();
+      ctx.moveTo(ntl.x, ntl.y); ctx.lineTo(ntr.x, ntr.y);
+      ctx.lineTo(ftr.x, ftr.y); ctx.lineTo(ftl.x, ftl.y); ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(nbl.x, nbl.y); ctx.lineTo(nbr.x, nbr.y);
+      ctx.lineTo(fbr.x, fbr.y); ctx.lineTo(fbl.x, fbl.y); ctx.closePath();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(ntl.x, ntl.y); ctx.lineTo(nbl.x, nbl.y);
+      ctx.moveTo(ntr.x, ntr.y); ctx.lineTo(nbr.x, nbr.y);
+      ctx.moveTo(ftl.x, ftl.y); ctx.lineTo(fbl.x, fbl.y);
+      ctx.moveTo(ftr.x, ftr.y); ctx.lineTo(fbr.x, fbr.y);
+      // ramp 사선
+      ctx.moveTo(ntl.x, ntl.y); ctx.lineTo(fbl.x, fbl.y);
+      ctx.moveTo(ntr.x, ntr.y); ctx.lineTo(fbr.x, fbr.y);
+      ctx.stroke();
+      // auto floor cell 3, floor+1
+      const fStart = 80, fEnd = 80 + 32;
+      const afBot = H_FLOOR, afTop = H_FLOOR + 8;
+      const af_ntl = cc(fStart, -half, afTop), af_ntr = cc(fStart, half, afTop);
+      const af_ftl = cc(fEnd, -half, afTop), af_ftr = cc(fEnd, half, afTop);
+      const af_nbl = cc(fStart, -half, afBot), af_nbr = cc(fStart, half, afBot);
+      const af_fbl = cc(fEnd, -half, afBot), af_fbr = cc(fEnd, half, afBot);
+      ctx.beginPath();
+      ctx.moveTo(af_ntl.x, af_ntl.y); ctx.lineTo(af_ntr.x, af_ntr.y);
+      ctx.lineTo(af_ftr.x, af_ftr.y); ctx.lineTo(af_ftl.x, af_ftl.y); ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(af_nbl.x, af_nbl.y); ctx.lineTo(af_nbr.x, af_nbr.y);
+      ctx.lineTo(af_fbr.x, af_fbr.y); ctx.lineTo(af_fbl.x, af_fbl.y); ctx.closePath();
+      ctx.stroke();
     } else {
-      const h = (it === 'item_stair') ? H_FLOOR : 24;
+      const h = 24;
       const tl = o2s(-HALF, -HALF, h), tr = o2s(HALF, -HALF, h);
       const br = o2s(HALF, HALF, h), bl = o2s(-HALF, HALF, h);
       ctx.beginPath(); ctx.moveTo(tl.x, tl.y); ctx.lineTo(tr.x, tr.y);
