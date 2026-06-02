@@ -275,7 +275,7 @@ const VP_MAX             = 100;
 
 const MOB_DEFS = {
   deer: { maxHp: 10, speed: 80,  aggroRange: 0, damage: 0, sightRange: 0,   loot: { meat_raw: 1, hide: 1 }, tameFood: 'berry',    tameNeed: 3 },
-  wolf: { maxHp: 30, speed: 140, aggroRange: 250, damage: 5, sightRange: 300, loot: { meat_raw: 2, hide: 1 }, tameFood: 'meat_raw', tameNeed: 5 },
+  wolf: { maxHp: 30, speed: 140, aggroRange: 0,   damage: 5, sightRange: 0,   loot: { meat_raw: 2, hide: 1 }, tameFood: 'meat_raw', tameNeed: 5 }, // TEMP: 공격성 비활성 (사용자 요청)
 };
 const TAME_FOLLOW_DIST = 200; // 주인이 이만큼 멀어지면 따라옴
 const TAME_FOLLOW_STOP = 80;  // 이만큼 가까우면 정지

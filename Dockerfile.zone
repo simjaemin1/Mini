@@ -18,6 +18,7 @@ RUN npm install --omit=dev
 # 소스
 COPY server ./server
 COPY public ./public
+COPY sim ./sim
 
 # 기본 환경
 ENV NODE_ENV=production

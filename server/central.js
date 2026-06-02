@@ -51,9 +51,9 @@ const canadiaWorld = economy.createWorld({
 //   타원형 배치 (zone이 가로로 길쭉).
 function spreadCanadiaCoords() {
   const cx = 5500;  // 마을광장 위치
-  const cy = 2500;
+  const cy = 3100;  // 북쪽 극지방(빙하) 회피 — 광장보다 살짝 남쪽
   const rx = 4200; // x 반경
-  const ry = 1700; // y 반경
+  const ry = 1100; // y 반경 (북쪽 빙하 영역 회피, y 2000~4200 안전권)
   for (let i = 0; i < canadiaWorld.villages.length; i++) {
     const v = canadiaWorld.villages[i];
     const angle = (i / canadiaWorld.villages.length) * Math.PI * 2;
