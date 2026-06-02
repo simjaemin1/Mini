@@ -405,6 +405,32 @@ const server = http.createServer(async (req, res) => {
       }));
       return jsonResp(res, 200, { day: canadiaWorld.day, villages: out });
     }
+    // Phase 4d-3: 캐러밴 위치 (이동 중인 행상) — 좌표 보간해서 반환
+    if (req.url === '/economy/canadia/caravans' && req.method === 'GET') {
+      const day = canadiaWorld.day;
+      const out = (canadiaWorld.caravans || []).map(c => {
+        let from, to, denom, num;
+        if (c.state === 'outbound') {
+          from = c.from.coord; to = c.to.coord;
+          denom = Math.max(1, c.arriveDay - c.departDay);
+          num = day - c.departDay;
+        } else { // 'inbound' = 귀환
+          from = c.to.coord; to = c.from.coord;
+          denom = Math.max(1, c.returnArriveDay - c.arriveDay);
+          num = day - c.arriveDay;
+        }
+        const t = Math.max(0, Math.min(1, num / denom));
+        return {
+          x: from.x + (to.x - from.x) * t,
+          y: from.y + (to.y - from.y) * t,
+          from: c.from.name, to: c.to.name,
+          escort: c.escort,
+          giveRes: c.giveRes, wantRes: c.wantRes,
+          state: c.state,
+        };
+      });
+      return jsonResp(res, 200, { day, caravans: out });
+    }
     // === Economy: 모든 마을 가격 (시세 비교용) ===
     if (req.url === '/economy/prices' && req.method === 'GET') {
       const out = economyWorld.villages.map(v => ({
