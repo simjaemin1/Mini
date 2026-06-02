@@ -23,6 +23,53 @@ const crypto = require('crypto');
 const { DatabaseSync } = require('node:sqlite');
 const { ZONES, publicZoneMap } = require('./zone-config');
 const httpClient = require('http');
+const economy = require('../sim/economy-sim');
+
+// === Economy 시뮬 — 중앙 거시 경제. 현실 3초 = 게임 1일.
+const ECONOMY_TICK_MS = 3000;
+const economyWorld = economy.createWorld({
+  seed: parseInt(process.env.ECONOMY_SEED || '42'),
+  villageCount: parseInt(process.env.ECONOMY_VILLAGES || '20'),
+});
+console.log(`[economy] world 초기화: ${economyWorld.villages.length} 마을`);
+setInterval(() => {
+  try { economy.tickWorld(economyWorld); }
+  catch (e) { console.error('[economy] tick error:', e.message); }
+}, ECONOMY_TICK_MS);
+
+// === Phase 4a: Canadia 전용 economy world — 게임 통합 prototype.
+//   캐나다 zone 안에 7개 마을 좌표 분산. 좌표는 zone 크기 (10240 × 10240) 기준.
+const CANADIA_VILLAGES = 7;
+const CANADIA_NAMES = ['단풍', '늑대골', '얼음호수', '검은숲', '강철광산', '연어강', '대평원'];
+// economy module 새 world 생성. seed 다르게 (다른 마을 분포)
+const canadiaWorld = economy.createWorld({
+  seed: 4242,
+  villageCount: CANADIA_VILLAGES,
+  namePool: CANADIA_NAMES,
+});
+// 좌표 — 캐나디아 zone 11000×5000 안에 분산. 가장자리 800 margin.
+//   타원형 배치 (zone이 가로로 길쭉).
+function spreadCanadiaCoords() {
+  const cx = 5500;  // 마을광장 위치
+  const cy = 2500;
+  const rx = 4200; // x 반경
+  const ry = 1700; // y 반경
+  for (let i = 0; i < canadiaWorld.villages.length; i++) {
+    const v = canadiaWorld.villages[i];
+    const angle = (i / canadiaWorld.villages.length) * Math.PI * 2;
+    v.coord = {
+      x: cx + Math.cos(angle) * rx,
+      y: cy + Math.sin(angle) * ry,
+    };
+  }
+}
+spreadCanadiaCoords();
+console.log(`[canadia-econ] ${canadiaWorld.villages.length}개 마을 좌표 부여:`);
+canadiaWorld.villages.forEach(v => console.log(`  ${v.name} (${v.coord.x.toFixed(0)}, ${v.coord.y.toFixed(0)})`));
+setInterval(() => {
+  try { economy.tickWorld(canadiaWorld); }
+  catch (e) { console.error('[canadia-econ] tick error:', e.message); }
+}, ECONOMY_TICK_MS);
 
 // === zone 인구 캐시 — 5초마다 각 zone의 /health fetch ===
 const zonePopulation = {}; // zoneId -> { humans, cap, observers, ts }
@@ -324,6 +371,50 @@ const server = http.createServer(async (req, res) => {
         players: stmtCountPlayers.get().cnt,
         uptime: process.uptime(),
       });
+    }
+    // === Economy: 전체 마을 상태 ===
+    if (req.url === '/economy/villages' && req.method === 'GET') {
+      return jsonResp(res, 200, economy.serializeWorld(economyWorld));
+    }
+    // === Economy: 특정 마을의 가격표 ===
+    if (req.url.startsWith('/economy/prices/') && req.method === 'GET') {
+      const name = decodeURIComponent(req.url.slice('/economy/prices/'.length));
+      const v = economyWorld.villages.find(x => x.name === name);
+      if (!v) return jsonResp(res, 404, { error: 'village not found' });
+      return jsonResp(res, 200, {
+        village: name,
+        coord: v.coord,
+        pop: v.npcs.length,
+        guild: { taxRate: v.guild.taxRate },
+        prices: economy.computeVillagePrices(v),
+      });
+    }
+    // === Phase 4a: Canadia 전용 마을 데이터 — zone canadia 서버가 fetch ===
+    if (req.url === '/economy/canadia/villages' && req.method === 'GET') {
+      return jsonResp(res, 200, economy.serializeWorld(canadiaWorld));
+    }
+    if (req.url === '/economy/canadia/prices' && req.method === 'GET') {
+      const out = canadiaWorld.villages.map(v => ({
+        name: v.name,
+        coord: v.coord,
+        pop: v.npcs.length,
+        guild: { taxRate: v.guild.taxRate },
+        prices: economy.computeVillagePrices(v),
+        storage: v.storage,
+        treasury: v.treasury,
+      }));
+      return jsonResp(res, 200, { day: canadiaWorld.day, villages: out });
+    }
+    // === Economy: 모든 마을 가격 (시세 비교용) ===
+    if (req.url === '/economy/prices' && req.method === 'GET') {
+      const out = economyWorld.villages.map(v => ({
+        name: v.name,
+        coord: v.coord,
+        pop: v.npcs.length,
+        guild: { taxRate: v.guild.taxRate },
+        prices: economy.computeVillagePrices(v),
+      }));
+      return jsonResp(res, 200, { day: economyWorld.day, villages: out });
     }
     // === 클라용: zone 목록 ===
     // dispatcher 역할도 겸함. 클라가 시작할 때 호출.

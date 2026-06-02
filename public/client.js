@@ -4714,7 +4714,7 @@ console.log('%c[durango-mini] client build = 14.53 (도구 instance + 1번 슬�
     document.getElementById('sidePanel').classList.add('open');
     document.querySelectorAll('.sb-icon').forEach(t => t.classList.toggle('active', t.dataset.side === name));
     document.getElementById('spTitle').textContent = ({
-      craft: '🔨 제작', build: '🏗️ 건축', tribe: '🛡️ 길드', market: '🏪 거래소',
+      craft: '🔨 제작', build: '🏗️ 건축', tribe: '🛡️ 길드', market: '🏪 시세',
       skills: '📚 스킬', claims: '🏛️ 사유지',
     })[name] || name;
     renderSide(name);
@@ -4789,6 +4789,7 @@ console.log('%c[durango-mini] client build = 14.53 (도구 instance + 1번 슬�
     else if (k === 'b' && e.shiftKey) { toggleSide('build'); e.preventDefault(); }
     else if (k === 'y') { toggleSide('claims'); e.preventDefault(); }
     else if (k === 'p') { toggleSide('skills'); e.preventDefault(); }
+    else if (k === 'q') { toggleSide('market'); e.preventDefault(); }
   });
 
   function renderSide(name) {
@@ -5446,37 +5447,61 @@ console.log('%c[durango-mini] client build = 14.53 (도구 instance + 1번 슬�
     };
   }
 
-  // === 거래소 패널 (기존 modal 코드 재활용) ===
+  // === 시세 패널 — 중앙 economy 모듈에서 마을별 가격 fetch + 비교 ===
+  const RES_ICON = {
+    food: '🌾', fish: '🐟', meat: '🥩', cooked_food: '🍲',
+    wood: '🪵', stone: '🪨', ore: '⛏️', tool: '⚒️',
+    fruit: '🍎', vegetable: '🥬', mushroom: '🍄', twig: '🌿', pebble: '🪨', hide: '🦴',
+  };
+  let _marketSel = null;
   function renderMarketPanel(body) {
-    body.innerHTML = `
-      <div class="market-form">
-        <label>아이템:
-          <select id="m2Item"><option value="wood">🪵 나무</option><option value="stone">🪨 돌</option></select>
-        </label>
-        <label>수량: <input id="m2Amount" type="number" value="1" min="1" max="99" /></label>
-        <label>개당 가격: <input id="m2Price" type="number" value="1" min="1" max="99" /></label>
-        <button id="m2Buy" class="buy">구매</button>
-        <button id="m2Sell" class="sell">판매</button>
-      </div>
-      <div class="market-hint">반대 통화로 거래 (나무 거래는 돌로, 돌 거래는 나무로). 게스트 불가.</div>
-      <div id="m2Orders" style="margin-top:12px"></div>`;
-    document.getElementById('m2Buy').onclick = () => {
-      const item = document.getElementById('m2Item').value;
-      const amount = parseInt(document.getElementById('m2Amount').value, 10);
-      const price = parseInt(document.getElementById('m2Price').value, 10);
-      sendPrimary({ type: 'market_order', side: 'buy', item, amount, price });
-    };
-    document.getElementById('m2Sell').onclick = () => {
-      const item = document.getElementById('m2Item').value;
-      const amount = parseInt(document.getElementById('m2Amount').value, 10);
-      const price = parseInt(document.getElementById('m2Price').value, 10);
-      sendPrimary({ type: 'market_order', side: 'sell', item, amount, price });
-    };
-    // 활성 주문
-    fetch('/market/orders').then(r => r.json()).then(d => {
-      const orders = d.orders || [];
-      document.getElementById('m2Orders').innerHTML = '<div class="inv-col-head">활성 주문</div>' +
-        (orders.length ? orders.map(o => `<div class="sp-list-row">${o.side==='buy'?'🟢 구매':'🔴 판매'} ${o.item} ×${o.amount} @ ${o.price}</div>`).join('') : '<div style="color:#6c7686;padding:10px">(주문 없음)</div>');
-    }).catch(() => {});
+    body.innerHTML = `<div style="padding:10px;color:#8a93a0">시세 데이터 로딩 중…</div>`;
+    fetch('/economy/prices').then(r => r.json()).then(d => {
+      const villages = d.villages || [];
+      villages.sort((a, b) => b.pop - a.pop);
+      if (!_marketSel) _marketSel = villages[0]?.name;
+      const sel = villages.find(v => v.name === _marketSel) || villages[0];
+      let html = `<div style="padding:8px;color:#8fc8ff">📅 Day ${d.day} · ${villages.length}개 마을</div>`;
+      html += `<select id="mkSel" style="margin:6px;padding:4px;font-size:13px">`;
+      villages.forEach(v => {
+        const tax = (v.guild.taxRate * 100).toFixed(1);
+        html += `<option value="${v.name}" ${v.name === sel.name ? 'selected' : ''}>${v.name} (인구 ${v.pop}, 세율 ${tax}%)</option>`;
+      });
+      html += `</select>`;
+      if (sel) {
+        html += `<div style="padding:8px;border-top:1px solid #2a3340"><b>🏪 ${sel.name} 시세</b> <span style="color:#8a93a0">(인구 ${sel.pop}, 세율 ${(sel.guild.taxRate*100).toFixed(1)}%)</span></div>`;
+        html += `<table style="width:100%;font-size:12px;border-collapse:collapse">`;
+        html += `<tr style="color:#8a93a0;border-bottom:1px solid #2a3340"><th align="left" style="padding:4px">자원</th><th align="right">여기</th>`;
+        // 비교 마을 — 상위 4개 (선택 마을 제외)
+        const compareTowns = villages.filter(v => v.name !== sel.name).slice(0, 4);
+        compareTowns.forEach(v => { html += `<th align="right" style="color:#5a9ae0">${v.name.slice(0,3)}</th>`; });
+        html += `<th align="right" style="color:#8a93a0">최저</th><th align="right" style="color:#8a93a0">최고</th></tr>`;
+        Object.keys(sel.prices).forEach(r => {
+          const myPrice = sel.prices[r];
+          const allPrices = villages.map(v => v.prices[r]);
+          const minP = Math.min(...allPrices);
+          const maxP = Math.max(...allPrices);
+          const icon = RES_ICON[r] || '·';
+          html += `<tr style="border-bottom:1px solid #1a1f28">`;
+          html += `<td style="padding:3px">${icon} ${r}</td>`;
+          html += `<td align="right" style="color:#fff">${myPrice.toFixed(2)}</td>`;
+          compareTowns.forEach(v => {
+            const p = v.prices[r];
+            const color = p < myPrice * 0.7 ? '#f08080' : p > myPrice * 1.5 ? '#80f080' : '#8a93a0';
+            html += `<td align="right" style="color:${color}">${p.toFixed(2)}</td>`;
+          });
+          html += `<td align="right" style="color:#80f080">${minP.toFixed(2)}</td>`;
+          html += `<td align="right" style="color:#f08080">${maxP.toFixed(2)}</td>`;
+          html += `</tr>`;
+        });
+        html += `</table>`;
+        html += `<div style="padding:6px;color:#8a93a0;font-size:11px">🟢 여기보다 쌈 · 🔴 여기보다 비쌈 · 최저/최고 = 전 마을 가격 범위</div>`;
+      }
+      body.innerHTML = html;
+      const selEl = document.getElementById('mkSel');
+      if (selEl) selEl.onchange = (e) => { _marketSel = e.target.value; renderMarketPanel(body); };
+    }).catch(err => {
+      body.innerHTML = `<div style="padding:10px;color:#f08080">시세 로드 실패: ${err.message}</div>`;
+    });
   }
 })();

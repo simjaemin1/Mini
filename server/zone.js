@@ -158,7 +158,11 @@ const NEIGHBOR = {
   hasEast:  !!findZoneAt(ZONE.worldOffsetX + ZONE.zoneWidth + 1, ZONE.worldOffsetY + ZONE.zoneHeight/2),
 };
 // Phase 14.46-a: 마을 자동 생성 — 모듈 로드 시 mob spawn 등이 isNearVillage를 호출하므로 일찍 정의해야 함.
-const VILLAGES = generateVillagesForZone(ZONE);
+// Phase 4b: canadia는 시뮬 통합 모드 — 자동 마을 비활성화 (시뮬에서 마을 받음)
+const VILLAGES = (ZONE_ID === 'canadia')
+  ? []
+  : generateVillagesForZone(ZONE);
+if (ZONE_ID === 'canadia') console.log(`[canadia] 자동 마을 비활성 (Phase 4b 시뮬 통합 모드)`);
 const VILLAGE_SAFE_RADIUS = 600; // 늑대 이 안에 spawn X (마을 안전구역). isNearVillage()도 이거 씀.
 
 // Phase 14.46-b-mini: 해안선 water tiles — ocean 인접 가장자리에 물 strip.
@@ -703,6 +707,11 @@ function spawnNpc(opts = {}) {
     chunkManager.insertBuilding(building);
     if (type === 'stair') stairCellDirty = true; // 14.49-e3-perf
   }
+  // Phase 4c: skipHouse 옵션 — canadia 통합 NPC는 집 안 만듦 (성능)
+  if (opts.skipHouse) {
+    console.log(`[${ZONE_ID}] 🤖 NPC 스폰: ${name} @ (${cx.toFixed(0)},${cy.toFixed(0)}) (집 없음)`);
+    return player;
+  }
   // 14.49-e2: 5x5 영역. cell 범위 (cx-2, cy-2) ~ (cx+2, cy+2). 계단 내부로 옮김.
   for (const f of [0, 1]) {
     // 북쪽 변 (cy-2의 N)
@@ -852,6 +861,11 @@ function isNearVillage(x, y) {
 // NPC 행동 결정 — tick 안에서 호출
 function decideNpcBehavior(npc, now) {
   if (now < npc.nextDecisionAt) return;
+  // Phase 4c: canadia 통합 NPC — 단순 work↔chest 왕복
+  if (npc.canadiaVillage) {
+    decideCanadiaBehavior(npc, now);
+    return;
+  }
   npc.nextDecisionAt = now + 500 + Math.random() * 1000;
   // ① 늑대 시야 안이면 도망 — quadtree로 후보 추리고 종류 필터
   const nearbyMobs = qtMobs ? qtMobs.queryCircle(npc.x, npc.y, NPC_FLEE_RANGE) : Array.from(mobs.values());
@@ -4388,3 +4402,217 @@ function gracefulShutdown(signal) {
 }
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT',  () => gracefulShutdown('SIGINT'));
+
+// =============================================================================
+// Phase 4b: Canadia 시뮬 통합 prototype — chest + 사유지만 (NPC 다음 단계)
+// =============================================================================
+if (ZONE_ID === 'canadia') {
+  setTimeout(() => initCanadiaPrototype().catch(e => console.error('[canadia] init 실패:', e.message, e.stack)), 5000);
+}
+
+const canadiaState = {
+  villages: [],
+  chestByVillage: new Map(),  // villageName → chest id
+  setupDone: new Set(),       // villageName 셋업 완료된 마을
+};
+
+async function initCanadiaPrototype() {
+  console.log(`[canadia] Phase 4b init 시작`);
+  // 1) 옛 마을 chest + claim wipe (이전 run에서 만든 거)
+  try {
+    const cRes = db.db.prepare("DELETE FROM claims WHERE owner_id LIKE 'village_%'").run();
+    const bRes = db.db.prepare("DELETE FROM buildings WHERE owner_id LIKE 'village_%'").run();
+    if (cRes.changes || bRes.changes) {
+      console.log(`[canadia] wipe: 옛 마을 claim ${cRes.changes}, building ${bRes.changes}`);
+    }
+  } catch (e) { console.warn(`[canadia] wipe error:`, e.message); }
+  // 메모리에서도 제거
+  for (const [id, c] of [...claims]) {
+    if (c.ownerPid?.startsWith('village_')) { claims.delete(id); broadcast({ type: 'claim_removed', id }); }
+  }
+  for (const [id, b] of [...buildings]) {
+    if (b.ownerId?.startsWith('village_')) { buildings.delete(id); broadcast({ type: 'building_removed', id }); }
+  }
+  // 2) 첫 sync
+  await syncCanadiaEconomy();
+  // 3) 매 6초마다 sync (가격 + 인구 변화)
+  setInterval(() => syncCanadiaEconomy().catch(e => console.error('[canadia] sync 실패:', e.message)), 6000);
+}
+
+const canadiaNpcsByVillage = new Map();  // villageName → Set of pids
+
+async function syncCanadiaEconomy() {
+  const { request: centralRequest } = require('./central-client');
+  let data;
+  try {
+    const r = await centralRequest('GET', '/economy/canadia/villages');
+    if (r.status !== 200) { console.warn('[canadia] central 응답:', r.status); return; }
+    data = r.data;
+  } catch (e) { console.warn('[canadia] fetch 실패:', e.message); return; }
+  if (!data || !data.villages) return;
+  canadiaState.villages = data.villages;
+  for (const village of data.villages) {
+    if (!canadiaState.setupDone.has(village.name)) {
+      setupCanadiaVillage(village);
+      canadiaState.setupDone.add(village.name);
+    }
+    syncCanadiaNpcs(village);
+  }
+}
+
+const NPC_CAP_PER_VILLAGE = 15;  // 마을당 최대 NPC entity (성능 보호)
+function syncCanadiaNpcs(village) {
+  if (!canadiaNpcsByVillage.has(village.name)) canadiaNpcsByVillage.set(village.name, new Set());
+  const set = canadiaNpcsByVillage.get(village.name);
+  const targetPop = Math.min(village.pop || 0, NPC_CAP_PER_VILLAGE);
+  // 시뮬 직업 분포 따라 list
+  const jobs = village.jobs || {};
+  const jobList = [];
+  for (const [j, n] of Object.entries(jobs)) for (let k = 0; k < n; k++) jobList.push(j);
+  // 추가
+  const chestId = canadiaState.chestByVillage.get(village.name);
+  const chest = chestId ? buildings.get(chestId) : null;
+  if (!chest) return;
+  while (set.size < targetPop) {
+    const job = jobList[set.size % Math.max(1, jobList.length)] || 'farmer';
+    const ang = Math.random() * Math.PI * 2;
+    const r = 60 + Math.random() * 100;
+    const sx = chest.x + Math.cos(ang) * r;
+    const sy = chest.y + Math.sin(ang) * r;
+    const player = spawnNpc({
+      x: sx, y: sy,
+      villageName: village.name,
+      villageId: `canadia_${village.name}`,
+      skipHouse: true,
+    });
+    if (!player) break;
+    player.canadiaVillage = village.name;
+    player.canadiaJob = job;
+    player.canadiaChestX = chest.x;
+    player.canadiaChestY = chest.y;
+    assignCanadiaWorkArea(player);
+    player.canadiaTask = 'going_to_work';
+    set.add(player.pid);
+  }
+  // 제거 (인구 감소 시)
+  while (set.size > targetPop) {
+    const pid = set.values().next().value;
+    set.delete(pid);
+    const p = players.get(pid);
+    if (p) {
+      players.delete(pid);
+      npcs.delete(pid);
+      broadcast({ type: 'player_left', pid });
+    }
+  }
+}
+
+// 직업별 work area — 거래소 chest 기준 방향/거리
+const JOB_WORK_OFFSET = {
+  farmer:     { angle: 0,                  dist: 280, label: '농지' },
+  fisher:     { angle: Math.PI * 0.5,      dist: 280, label: '낚시터' },
+  hunter:     { angle: Math.PI,            dist: 280, label: '사냥터' },
+  forager:    { angle: Math.PI * 1.5,      dist: 280, label: '채집장' },
+  lumberjack: { angle: Math.PI * 0.25,     dist: 280, label: '벌목장' },
+  miner:      { angle: Math.PI * 0.75,     dist: 280, label: '광산' },
+  prospector: { angle: Math.PI * 1.25,     dist: 280, label: '광맥' },
+  smith:      { angle: Math.PI * 1.75,     dist: 100, label: '대장간' },
+  cook:       { angle: Math.PI * 0.125,    dist: 100, label: '주방' },
+  merchant:   { angle: Math.PI * 0.875,    dist: 100, label: '시장' },
+  warrior:    { angle: Math.PI * 1.625,    dist: 100, label: '훈련장' },
+};
+function assignCanadiaWorkArea(npc) {
+  const off = JOB_WORK_OFFSET[npc.canadiaJob] || JOB_WORK_OFFSET.farmer;
+  // 약간의 무작위 (직업이 같아도 NPC마다 살짝 다른 자리)
+  const a = off.angle + (Math.random() - 0.5) * 0.4;
+  const d = off.dist + (Math.random() - 0.5) * 60;
+  npc.canadiaWorkX = npc.canadiaChestX + Math.cos(a) * d;
+  npc.canadiaWorkY = npc.canadiaChestY + Math.sin(a) * d;
+}
+
+function decideCanadiaBehavior(npc, now) {
+  if (!npc.canadiaTask) npc.canadiaTask = 'going_to_work';
+  npc.behavior = 'wander';
+  if (npc.canadiaTask === 'going_to_work') {
+    npc.targetX = npc.canadiaWorkX;
+    npc.targetY = npc.canadiaWorkY;
+    const d = Math.hypot(npc.x - npc.canadiaWorkX, npc.y - npc.canadiaWorkY);
+    if (d < 40) {
+      npc.canadiaTask = 'working';
+      npc.canadiaTaskEndAt = now + 6000 + Math.random() * 4000;  // 6~10초
+    }
+  } else if (npc.canadiaTask === 'working') {
+    // 일하기 — 그 근처서 살짝 움직임
+    npc.targetX = npc.canadiaWorkX + (Math.random() - 0.5) * 30;
+    npc.targetY = npc.canadiaWorkY + (Math.random() - 0.5) * 30;
+    if (now >= npc.canadiaTaskEndAt) npc.canadiaTask = 'going_to_chest';
+  } else if (npc.canadiaTask === 'going_to_chest') {
+    npc.targetX = npc.canadiaChestX;
+    npc.targetY = npc.canadiaChestY;
+    const d = Math.hypot(npc.x - npc.canadiaChestX, npc.y - npc.canadiaChestY);
+    if (d < 40) {
+      npc.canadiaTask = 'at_chest';
+      npc.canadiaTaskEndAt = now + 2000 + Math.random() * 2000;
+    }
+  } else if (npc.canadiaTask === 'at_chest') {
+    npc.targetX = npc.canadiaChestX + (Math.random() - 0.5) * 20;
+    npc.targetY = npc.canadiaChestY + (Math.random() - 0.5) * 20;
+    if (now >= npc.canadiaTaskEndAt) {
+      assignCanadiaWorkArea(npc);   // 일하러 갈 자리 새로 (직업 같음)
+      npc.canadiaTask = 'going_to_work';
+    }
+  }
+  npc.nextDecisionAt = now + 400 + Math.random() * 300;
+}
+
+function setupCanadiaVillage(village) {
+  const cx = Math.round(village.coord.x);
+  const cy = Math.round(village.coord.y);
+  // === 거래소 chest 1개 (마을 중앙) ===
+  const chestData = { wood: 0, stone: 0, isExchange: true, village: village.name, floor: 0 };
+  let dbId = null;
+  try {
+    dbId = db.insertBuilding({
+      type: 'chest',
+      owner_id: `village_${village.name}`,
+      owner_name: `${village.name} 거래소`,
+      x: cx, y: cy,
+      data: JSON.stringify(chestData),
+    });
+  } catch (e) { console.warn(`[canadia] chest insert 실패 [${village.name}]:`, e.message); return; }
+  const id = `b${nextBid++}`;
+  const b = {
+    id, dbId, type: 'chest',
+    ownerId: `village_${village.name}`, ownerName: `${village.name} 거래소`,
+    x: cx, y: cy, data: chestData, floor: 0,
+  };
+  buildings.set(id, b);
+  try { chunkManager.insertBuilding(b); } catch (e) {}
+  broadcast({ type: 'building_added', building: b });
+  canadiaState.chestByVillage.set(village.name, id);
+
+  // === 길드 사유지 (12 cell 반경 원형) ===
+  const SZ = BUILDING_SIZE;
+  const R = 12;
+  let claimCount = 0;
+  for (let dy = -R; dy <= R; dy++) {
+    for (let dx = -R; dx <= R; dx++) {
+      if (Math.hypot(dx, dy) > R) continue;
+      const claim = {
+        id: `c${nextClaimId++}`,
+        ownerPid: `village_${village.name}`,
+        ownerName: `${village.name} 영토`,
+        x: Math.floor(cx / SZ) * SZ + dx * SZ,
+        y: Math.floor(cy / SZ) * SZ + dy * SZ,
+        w: SZ, h: SZ, kind: 'guild',
+        guildTribeName: village.name,
+        createdAt: Date.now(),
+      };
+      claims.set(claim.id, claim);
+      broadcast({ type: 'claim_added', claim });
+      claimCount++;
+    }
+  }
+  console.log(`[canadia] 🏘️ ${village.name} 셋업: 거래소 (${cx},${cy}) + 영토 ${claimCount} cells`);
+}
+
