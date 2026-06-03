@@ -1,8 +1,20 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: Phase 4d-14e (길드 금고 NaN fix — 자원별 + cash 분해 표시) ===
-console.log('%c[durango-mini] client build = Phase 4d-14e (길드 금고 표시 fix)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: Phase 4d-16-bcd (NPC 사유지 + 직업별 facility emoji + forge 연기) ===
+console.log('%c[durango-mini] client build = Phase 4d-16-bcd (사유지·facility·동작)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+
+// Phase 4d-16-c: facility 종류별 emoji
+const FACILITY_EMOJI = {
+  house: '🏠',
+  farmland: '🌾',
+  forge: '🔥',
+  hide_rack: '🟫',
+  workshop: '⚒️',
+  kitchen: '🍲',
+  training: '⚔️',
+  cart: '🛒',
+};
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -1609,6 +1621,9 @@ console.log('%c[durango-mini] client build = Phase 4d-14e (길드 금고 표시 
       c.resources.set(msg.resource.id, msg.resource);
     } else if (msg.type === 'claim_added') {
       c.claims.set(msg.claim.id, msg.claim);
+    } else if (msg.type === 'claim_updated') {
+      // Phase 4d-16-a: 영토 cell sub-type 변경 (예: NPC personal 분배)
+      c.claims.set(msg.claim.id, msg.claim);
     } else if (msg.type === 'claim_removed') {
       c.claims.delete(msg.id);
     } else if (msg.type === 'building_added') {
@@ -2658,10 +2673,17 @@ console.log('%c[durango-mini] client build = Phase 4d-14e (길드 금고 표시 
         ctx.moveTo(s1.x, s1.y); ctx.lineTo(s2.x, s2.y);
         ctx.lineTo(s3.x, s3.y); ctx.lineTo(s4.x, s4.y); ctx.closePath();
         // Phase 14.18.b: kind별 색상 — guild(파랑)/personal(노랑)/temporary(주황)
+        // Phase 4d-16-a: NPC 사유지 분배된 guild cell은 더 짙은 호박색 (개인 영역 시각화)
         let fill, stroke, label;
         if (cl.kind === 'guild') {
-          fill = 'rgba(90, 154, 224, 0.10)'; stroke = 'rgba(90, 154, 224, 0.45)';
-          label = `🏛️ ${cl.guildTribeName || cl.ownerName}`;
+          if (cl.personalAssigned) {
+            // NPC 사유지 (마을 영토 안의 개인 영역) — 노란빛 파랑
+            fill = 'rgba(180, 160, 100, 0.22)'; stroke = 'rgba(220, 200, 140, 0.7)';
+            label = `🏠 ${cl.ownerName}`;
+          } else {
+            fill = 'rgba(90, 154, 224, 0.10)'; stroke = 'rgba(90, 154, 224, 0.45)';
+            label = `🏛️ ${cl.guildTribeName || cl.ownerName}`;
+          }
         } else if (cl.kind === 'temporary') {
           fill = 'rgba(220, 130, 60, 0.16)'; stroke = 'rgba(220, 130, 60, 0.7)';
           label = `⛺ ${cl.ownerName}`;
@@ -2679,6 +2701,27 @@ console.log('%c[durango-mini] client build = Phase 4d-14e (길드 금고 표시 
         if (cl.kind !== 'guild') {
           ctx.fillStyle = stroke; ctx.font = '11px sans-serif';
           ctx.fillText(label, s1.x + 6, s1.y + 14);
+        }
+        // Phase 4d-16-c: NPC 사유지 cell에 facility sprite (emoji)
+        if (cl.facilityType) {
+          const cs = toScreen(w2i(off + cl.x + cl.w/2, offY + cl.y + cl.h/2).x, w2i(off + cl.x + cl.w/2, offY + cl.y + cl.h/2).y);
+          const emoji = FACILITY_EMOJI[cl.facilityType] || '';
+          if (emoji) {
+            ctx.font = '14px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = 'rgba(255, 230, 180, 0.9)';
+            ctx.fillText(emoji, cs.x, cs.y);
+            ctx.textAlign = 'start';
+            ctx.textBaseline = 'alphabetic';
+            // Phase 4d-16-d: forge 가끔 연기 파티클 (시각 동작 — client only, deterministic by time)
+            if (cl.facilityType === 'forge' && Math.sin((Date.now() + (cl.x + cl.y) * 13) * 0.001) > 0.8) {
+              ctx.fillStyle = 'rgba(160, 80, 40, 0.5)';
+              ctx.beginPath();
+              ctx.arc(cs.x, cs.y - 8, 3, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
         }
       } else if (item.kind === 'resource') {
         const s = toScreen(item.iso.x, item.iso.y);
@@ -5712,111 +5755,148 @@ console.log('%c[durango-mini] client build = Phase 4d-14e (길드 금고 표시 
     _vmpVillage = null;
     if (_vmpInterval) { clearInterval(_vmpInterval); _vmpInterval = null; }
   }
+  // Phase 4d-14f: 깜빡임 없는 부분 갱신. 첫 호출 시 구조 build, 그 후 cell.textContent만 update.
+  let _vmpStructFor = null;        // 마지막 build된 villageName (다르면 rebuild)
+  let _vmpAllResources = null;     // 첫 호출 시 결정된 자원 목록 (이후 stable)
   function renderVillageMarket(villageName) {
     const sumEl = document.getElementById('vmpSummary');
     const priceEl = document.getElementById('vmpPrices');
     if (!sumEl || !priceEl) return;
-    sumEl.innerHTML = '<div style="color:#888">시뮬 데이터 로드 중…</div>';
-    priceEl.innerHTML = '';
-    fetch('/economy/canadia/villages').then(r => r.json()).then(world => {
+    const needRebuild = _vmpStructFor !== villageName;
+    if (needRebuild) {
+      sumEl.innerHTML = '<div style="color:#888">시뮬 데이터 로드 중…</div>';
+      priceEl.innerHTML = '';
+      _vmpAllResources = null;
+    }
+    // 두 fetch 병렬 → 모두 끝나면 한 번에 update (깜빡임 최소화)
+    Promise.all([
+      fetch('/economy/canadia/villages').then(r => r.json()),
+      fetch('/economy/canadia/prices').then(r => r.json()),
+    ]).then(([world, pd]) => {
       const me = world.villages.find(v => v.name === villageName);
-      if (!me) { sumEl.innerHTML = `<div style="color:#f88">${villageName} 마을을 찾을 수 없습니다.</div>`; return; }
-      // 요약
-      const jobs = Object.entries(me.jobs || {}).filter(([,n]) => n > 0).map(([j,n]) => `${JOB_KR(j)} ${n}`).join(' · ');
-      const taxPct = ((me.taxRate || 0.03) * 100).toFixed(1);
-      sumEl.innerHTML = `
-        <b>${me.name}</b> · Day ${world.day}<br/>
-        👥 인구 <b>${me.pop || 0}</b> · 💰 거래소세 <b>${taxPct}%</b><br/>
-        💼 직업: ${jobs || '(없음)'}
-      `;
-      // 가격표 — 모든 마을의 모든 자원, 우리 마을 가격과 비교
-      fetch('/economy/canadia/prices').then(r => r.json()).then(pd => {
-        const myEntry = pd.villages.find(v => v.name === villageName);
-        if (!myEntry) { priceEl.innerHTML = '<div style="color:#f88">가격 데이터 없음</div>'; return; }
-        const myPrices = myEntry.prices || {};
-        // === Phase 4d-12: 거래소 chest 안 — 실제 시뮬 village.storage 내용물 ===
-        const storage = myEntry.storage || {};
-        const stoEntries = Object.entries(storage)
-          .filter(([k, v]) => v > 0)
-          .sort((a, b) => b[1] - a[1]);
-        let stoHtml = '<div style="margin-top:10px;padding:10px;background:#1a2a3a;border-radius:4px">';
-        stoHtml += '<div style="color:#fc8;font-weight:bold;margin-bottom:6px">📦 거래소 보유 자원 (시뮬 village.storage)</div>';
-        if (!stoEntries.length) {
-          stoHtml += '<div style="color:#888">(비어있음)</div>';
-        } else {
-          stoHtml += '<div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));gap:4px">';
-          for (const [k, v] of stoEntries) {
-            stoHtml += `<div style="padding:4px 6px;background:#0e1822;border-radius:3px">${ITEM_KR(k)} <b>${Math.floor(v)}</b></div>`;
-          }
-          stoHtml += '</div>';
-        }
-        // Phase 4d-14e: v2 treasury는 객체 ({food, wood, stone, _cash}). 자원별 + 현금 분해 표시.
-        const treasury = myEntry.treasury || {};
-        const treasuryRes = Object.entries(treasury)
-          .filter(([k, v]) => k !== '_cash' && v > 0.1)
-          .sort((a, b) => b[1] - a[1])
-          .map(([k, v]) => `${ITEM_KR(k)} ${Math.floor(v)}`)
-          .join(' · ');
-        const cash = treasury._cash || 0;
-        stoHtml += `<div style="margin-top:6px;color:#aaa;font-size:11px">💰 길드 금고 자원: ${treasuryRes || '(비어있음)'}</div>`;
-        if (cash > 0) {
-          stoHtml += `<div style="color:#aaa;font-size:11px">📒 거래 회계 (cash): <b style="color:#fc8">${Math.floor(cash)}</b></div>`;
-        }
-        stoHtml += '</div>';
-        sumEl.innerHTML += stoHtml;
-        const items = Object.keys(myPrices).sort();
-        let html = '<table style="width:100%;border-collapse:collapse">';
-        html += '<tr style="background:#222"><th style="text-align:left;padding:6px">자원</th>';
-        html += `<th style="padding:6px;background:#2a3a4a">${villageName} (여기)</th>`;
-        for (const v of pd.villages) {
-          if (v.name === villageName) continue;
-          html += `<th style="padding:6px;font-size:11px">${v.name}</th>`;
-        }
-        html += '</tr>';
-        for (const item of items) {
-          const myP = myPrices[item];
-          if (!myP || myP <= 0) continue;
-          html += `<tr style="border-top:1px solid #333"><td style="padding:6px"><b>${ITEM_KR(item)}</b></td>`;
-          html += `<td style="padding:6px;background:#2a3a4a;text-align:center"><b>${fmtPrice(myP)}</b></td>`;
-          for (const v of pd.villages) {
-            if (v.name === villageName) continue;
-            const p = (v.prices || {})[item];
-            if (!p || p <= 0) { html += '<td style="padding:6px;text-align:center;color:#666">-</td>'; continue; }
-            const diff = p - myP;
-            const pct = ((diff / myP) * 100).toFixed(0);
-            const color = diff > 0 ? '#7c7' : (diff < 0 ? '#f77' : '#aaa');
-            const sign = diff > 0 ? '+' : '';
-            html += `<td style="padding:6px;text-align:center;color:${color}">${fmtPrice(p)} <span style="font-size:10px">(${sign}${pct}%)</span></td>`;
-          }
-          html += '</tr>';
-        }
-        html += '</table>';
-        priceEl.innerHTML = html;
-      }).catch(e => { priceEl.innerHTML = `<div style="color:#f88">가격 로드 실패: ${e.message}</div>`; });
+      const myEntry = pd.villages.find(v => v.name === villageName);
+      if (!me || !myEntry) { sumEl.innerHTML = `<div style="color:#f88">${villageName} 마을을 찾을 수 없습니다.</div>`; return; }
+      const myPrices = myEntry.prices || {};
+      const storage = myEntry.storage || {};
+      const treasury = myEntry.treasury || {};
+
+      // 자원 목록은 첫 build 시 결정 (16종 다 포함, 추후 stable)
+      if (!_vmpAllResources) {
+        const allRes = new Set();
+        for (const v of pd.villages) for (const r of Object.keys(v.prices || {})) allRes.add(r);
+        _vmpAllResources = [...allRes].sort();
+      }
+
+      if (needRebuild) {
+        buildVmpStructure(sumEl, priceEl, villageName, world, pd, _vmpAllResources);
+        _vmpStructFor = villageName;
+      }
+      updateVmpData(sumEl, priceEl, villageName, world, me, myPrices, storage, treasury, pd, _vmpAllResources);
     }).catch(e => { sumEl.innerHTML = `<div style="color:#f88">로드 실패: ${e.message}</div>`; });
-    // Phase 4d-3: 거래 로그 fetch + 표시 (이 마을 관련 거래만 필터)
+    // 거래 로그 — 다른 마을 변경 시만 통째, 그 외엔 textContent만 update
     const logEl = document.getElementById('vmpTradeLog');
     if (logEl) {
       fetch('/economy/canadia/tradelog').then(r => r.json()).then(d => {
         const trades = (d.trades || []).filter(t => t.a === villageName || t.b === villageName).slice(0, 12);
-        if (!trades.length) {
-          logEl.innerHTML = '<div style="color:#888;padding:6px">📜 아직 이 마을 관련 거래 없음 (시뮬상 자급자족 또는 거래 미시작)</div>';
-          return;
-        }
-        let html = '<div style="color:#fc8;font-weight:bold;margin-bottom:6px">📜 최근 거래 (이 마을 관련)</div>';
-        html += '<div style="max-height:160px;overflow-y:auto">';
-        for (const t of trades) {
-          const dir = t.a === villageName ? '→' : '←';
-          const other = t.a === villageName ? t.b : t.a;
-          const gave = t.a === villageName ? t.aGave : t.bGave;
-          const got = t.a === villageName ? t.bGave : t.aGave;
-          const raid = t.raided ? ' <span style="color:#f66">⚠️약탈</span>' : '';
-          html += `<div style="padding:3px 4px;border-bottom:1px solid #222">Day ${t.day} · ${dir} <b>${other}</b>: 보냄 ${ITEM_KR(gave.res)} ${gave.amt}, 받음 ${ITEM_KR(got.res)} ${got.amt} <span style="color:#888">(거리 ${t.distance}, 호위 ${t.escort})</span>${raid}</div>`;
-        }
-        html += '</div>';
-        logEl.innerHTML = html;
+        renderVmpTradeLog(logEl, villageName, trades, needRebuild);
       }).catch(e => { logEl.innerHTML = `<div style="color:#f88">로그 로드 실패: ${e.message}</div>`; });
     }
+  }
+  // 첫 호출 시 표 구조 build (data attribute로 cell 매핑)
+  function buildVmpStructure(sumEl, priceEl, villageName, world, pd, items) {
+    sumEl.innerHTML = `
+      <div data-vmp="header"><b data-vmp-name></b> · Day <span data-vmp-day></span></div>
+      <div>👥 인구 <b data-vmp-pop></b> · 💰 거래소세 <b data-vmp-tax></b></div>
+      <div>💼 직업: <span data-vmp-jobs></span></div>
+      <div data-vmp-storage style="margin-top:10px;padding:10px;background:#1a2a3a;border-radius:4px"></div>
+    `;
+    // 가격표 구조
+    let html = '<table style="width:100%;border-collapse:collapse">';
+    html += '<tr style="background:#222"><th style="text-align:left;padding:6px">자원</th>';
+    html += `<th style="padding:6px;background:#2a3a4a">${villageName} (여기)</th>`;
+    for (const v of pd.villages) {
+      if (v.name === villageName) continue;
+      html += `<th style="padding:6px;font-size:11px">${v.name}</th>`;
+    }
+    html += '</tr>';
+    for (const item of items) {
+      html += `<tr style="border-top:1px solid #333" data-vmp-row="${item}"><td style="padding:6px"><b>${ITEM_KR(item)}</b></td>`;
+      html += `<td style="padding:6px;background:#2a3a4a;text-align:center"><b data-vmp-cell="my:${item}">-</b></td>`;
+      for (const v of pd.villages) {
+        if (v.name === villageName) continue;
+        html += `<td style="padding:6px;text-align:center" data-vmp-cell="p:${v.name}:${item}">-</td>`;
+      }
+      html += '</tr>';
+    }
+    html += '</table>';
+    priceEl.innerHTML = html;
+  }
+  // 매 갱신마다 cell.textContent만 update (깜빡임 X)
+  function updateVmpData(sumEl, priceEl, villageName, world, me, myPrices, storage, treasury, pd, items) {
+    const setText = (sel, val) => { const el = sumEl.querySelector(sel); if (el) el.textContent = val; };
+    setText('[data-vmp-name]', me.name);
+    setText('[data-vmp-day]', world.day);
+    setText('[data-vmp-pop]', me.pop || 0);
+    setText('[data-vmp-tax]', `${((me.taxRate || 0.03) * 100).toFixed(1)}%`);
+    const jobs = Object.entries(me.jobs || {}).filter(([,n]) => n > 0).map(([j,n]) => `${JOB_KR(j)} ${n}`).join(' · ');
+    setText('[data-vmp-jobs]', jobs || '(없음)');
+    // storage·treasury 영역 — innerHTML로 갱신 (작아서 깜빡임 미미). 다만 자주 변동.
+    const stoEntries = Object.entries(storage).filter(([k, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+    const treasuryRes = Object.entries(treasury).filter(([k, v]) => k !== '_cash' && v > 0.1)
+      .sort((a, b) => b[1] - a[1]).map(([k, v]) => `${ITEM_KR(k)} ${Math.floor(v)}`).join(' · ');
+    const cash = treasury._cash || 0;
+    let stoHtml = '<div style="color:#fc8;font-weight:bold;margin-bottom:6px">📦 거래소 보유 자원</div>';
+    if (!stoEntries.length) stoHtml += '<div style="color:#888">(비어있음)</div>';
+    else {
+      stoHtml += '<div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));gap:4px">';
+      for (const [k, v] of stoEntries) stoHtml += `<div style="padding:4px 6px;background:#0e1822;border-radius:3px">${ITEM_KR(k)} <b>${Math.floor(v)}</b></div>`;
+      stoHtml += '</div>';
+    }
+    stoHtml += `<div style="margin-top:6px;color:#aaa;font-size:11px">💰 길드 금고 자원: ${treasuryRes || '(비어있음)'}</div>`;
+    if (cash > 0) stoHtml += `<div style="color:#aaa;font-size:11px">📒 거래 회계 (cash): <b style="color:#fc8">${Math.floor(cash)}</b></div>`;
+    const sto = sumEl.querySelector('[data-vmp-storage]');
+    if (sto && sto.innerHTML !== stoHtml) sto.innerHTML = stoHtml;
+    // 가격표 — 각 cell textContent만 update (깜빡 X)
+    for (const item of items) {
+      const myP = myPrices[item];
+      const myCell = priceEl.querySelector(`[data-vmp-cell="my:${item}"]`);
+      if (myCell) myCell.textContent = (myP && myP > 0) ? fmtPrice(myP) : '-';
+      for (const v of pd.villages) {
+        if (v.name === villageName) continue;
+        const cell = priceEl.querySelector(`[data-vmp-cell="p:${v.name}:${item}"]`);
+        if (!cell) continue;
+        const p = (v.prices || {})[item];
+        if (!p || p <= 0 || !myP) { cell.textContent = '-'; cell.style.color = '#666'; continue; }
+        const diff = p - myP, pct = ((diff / myP) * 100).toFixed(0);
+        const color = diff > 0 ? '#7c7' : (diff < 0 ? '#f77' : '#aaa');
+        const sign = diff > 0 ? '+' : '';
+        cell.textContent = `${fmtPrice(p)} (${sign}${pct}%)`;
+        cell.style.color = color;
+      }
+    }
+  }
+  let _vmpTradeLastKey = null;
+  function renderVmpTradeLog(logEl, villageName, trades, force) {
+    // 거래 로그 — trades 첫 항목 키로 변경 감지. 없으면 update X
+    const key = villageName + ':' + (trades[0]?.day || '') + ':' + trades.length;
+    if (!force && key === _vmpTradeLastKey) return;
+    _vmpTradeLastKey = key;
+    if (!trades.length) {
+      logEl.innerHTML = '<div style="color:#888;padding:6px">📜 아직 이 마을 관련 거래 없음</div>';
+      return;
+    }
+    let html = '<div style="color:#fc8;font-weight:bold;margin-bottom:6px">📜 최근 거래</div>';
+    html += '<div style="max-height:160px;overflow-y:auto">';
+    for (const t of trades) {
+      const dir = t.a === villageName ? '→' : '←';
+      const other = t.a === villageName ? t.b : t.a;
+      const gave = t.a === villageName ? t.aGave : t.bGave;
+      const got = t.a === villageName ? t.bGave : t.aGave;
+      const raid = t.raided ? ' <span style="color:#f66">⚠️약탈</span>' : '';
+      html += `<div style="padding:3px 4px;border-bottom:1px solid #222">Day ${t.day} · ${dir} <b>${other}</b>: 보냄 ${ITEM_KR(gave.res)} ${gave.amt}, 받음 ${ITEM_KR(got.res)} ${got.amt} <span style="color:#888">(거리 ${t.distance}, 호위 ${t.escort})</span>${raid}</div>`;
+    }
+    html += '</div>';
+    logEl.innerHTML = html;
   }
   function JOB_KR(j) {
     const M = { farmer:'농부', fisher:'어부', hunter:'사냥꾼', lumberjack:'벌목꾼', miner:'광부', prospector:'탐사꾼', smith:'대장장이', forager:'채집꾼', cook:'요리사', warrior:'전사', merchant:'상인' };

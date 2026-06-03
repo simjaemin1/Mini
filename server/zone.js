@@ -4444,6 +4444,143 @@ async function initCanadiaPrototype() {
   await syncCanadiaEconomy();
   // 3) 매 1초마다 sync — 상인 NPC가 caravan 위치 따라 부드럽게 텔레포트 (5일=5초)
   setInterval(() => syncCanadiaEconomy().catch(e => console.error('[canadia] sync 실패:', e.message)), 1000);
+  // 4) 매 30초마다 영토 sync — 시뮬 size 변화에 따라 zone claim cell 추가 (Phase 4d-15)
+  setInterval(() => { try { syncCanadiaTerritories(); } catch (e) { console.error('[canadia] territory sync 실패:', e.message); } }, 30000);
+}
+
+// Phase 4d-15: 시뮬 v.land.size → zone claim cells 동기화.
+//   초기 size 49~78 → 12 cell 반경 (≈ 452 cells). 매핑: cells = size × 8 (안전 cap 1500).
+//   매 30초마다 부족분만큼 외곽 cell 추가 (이미 있는 거 유지).
+function syncCanadiaTerritories() {
+  if (!canadiaState.villages.length) return;
+  const SZ = BUILDING_SIZE;
+  const CELLS_PER_SIZE = 8;
+  const MAX_CELLS = 1500;  // 마을 간 거리 1500+ 기준 영토 겹침 방지
+  for (const village of canadiaState.villages) {
+    const simSize = (village.land && village.land.size) || 49;
+    const targetCells = Math.min(MAX_CELLS, Math.floor(simSize * CELLS_PER_SIZE));
+    // 현재 이 마을 cells 수 + 좌표 set
+    const currentClaims = [];
+    const usedKeys = new Set();
+    const guildId = `village_${village.name}`;
+    for (const c of claims.values()) {
+      if (c.ownerPid !== guildId) continue;
+      currentClaims.push(c);
+      const gx = Math.floor(c.x / SZ), gy = Math.floor(c.y / SZ);
+      usedKeys.add(`${gx},${gy}`);
+    }
+    if (currentClaims.length >= targetCells) continue;  // 이미 충분
+    const cx = village.coord.x, cy = village.coord.y;
+    const cellCx = Math.floor(cx / SZ), cellCy = Math.floor(cy / SZ);
+    const need = targetCells - currentClaims.length;
+    const targetRadius = Math.ceil(Math.sqrt(targetCells / Math.PI) + 1);
+    let added = 0;
+    // 안쪽부터 spiral — 가까운 외곽 cells 우선 채움
+    for (let r = 1; r <= targetRadius && added < need; r++) {
+      for (let dy = -r; dy <= r && added < need; dy++) {
+        for (let dx = -r; dx <= r && added < need; dx++) {
+          const dist = Math.hypot(dx, dy);
+          if (dist > targetRadius || dist <= r - 1) continue; // 현재 ring만
+          const key = `${cellCx + dx},${cellCy + dy}`;
+          if (usedKeys.has(key)) continue;
+          const claim = {
+            id: `c${nextClaimId++}`,
+            ownerPid: guildId,
+            ownerName: `${village.name} 영토`,
+            x: (cellCx + dx) * SZ,
+            y: (cellCy + dy) * SZ,
+            w: SZ, h: SZ, kind: 'guild',
+            guildTribeName: village.name,
+            createdAt: Date.now(),
+          };
+          claims.set(claim.id, claim);
+          usedKeys.add(key);
+          broadcast({ type: 'claim_added', claim });
+          added++;
+        }
+      }
+    }
+    if (added > 0) {
+      console.log(`[canadia] 🏗️ ${village.name} 영토 확장: +${added} cells (size ${simSize} → ${currentClaims.length + added}/${targetCells})`);
+    }
+  }
+  // Phase 4d-16-a: NPC 1명당 4 cells를 'personal' sub-type으로 분배 (시각 차별)
+  for (const village of canadiaState.villages) {
+    const npcSet = canadiaNpcsByVillage.get(village.name);
+    if (!npcSet) continue;
+    const npcCount = npcSet.size;
+    if (!npcCount) continue;
+    const targetPersonalCells = npcCount * 4;
+    // 이 마을 cells (외곽 우선 personal로 변환)
+    const guildId = `village_${village.name}`;
+    const villageCells = [];
+    let currentPersonalCount = 0;
+    for (const c of claims.values()) {
+      if (c.ownerPid !== guildId) continue;
+      if (c.personalAssigned) currentPersonalCount++;
+      else villageCells.push(c);
+    }
+    if (currentPersonalCount >= targetPersonalCells) continue;
+    // 거래소 중심에서 거리순 정렬 → 외곽부터 personal
+    const cx = village.coord.x, cy = village.coord.y;
+    villageCells.sort((a, b) => {
+      const da = Math.hypot(a.x - cx, a.y - cy);
+      const db = Math.hypot(b.x - cx, b.y - cy);
+      return db - da; // 먼 거 우선
+    });
+    const need = targetPersonalCells - currentPersonalCount;
+    // 직업 분포 → facility 분배 비율
+    const jobCounts = {};
+    for (const pid of npcSet) {
+      const p = players.get(pid);
+      if (p && p.canadiaJob) jobCounts[p.canadiaJob] = (jobCounts[p.canadiaJob] || 0) + 1;
+    }
+    const facilities = computeFacilityDistribution(jobCounts, need);
+    // NPC 1명당 4 cell — 첫 cell house, 나머지 3 cell facility
+    let converted = 0;
+    let facilityIdx = 0;
+    for (let i = 0; i < villageCells.length && converted < need; i++) {
+      const c = villageCells[i];
+      c.personalAssigned = true;
+      c.ownerName = `${village.name} 농가`;
+      // 4 cell 단위 (집 + 마당 3): 첫 cell 'house', 나머지 facility
+      if (i % 4 === 0) {
+        c.facilityType = 'house';
+      } else {
+        c.facilityType = facilities[facilityIdx % facilities.length] || 'workshop';
+        facilityIdx++;
+      }
+      broadcast({ type: 'claim_updated', claim: c });
+      converted++;
+    }
+    if (converted > 0) {
+      console.log(`[canadia] 🏠 ${village.name} NPC 사유지 분배: +${converted} cells (NPC ${npcCount}명 × 4)`);
+    }
+  }
+}
+
+// Phase 4d-16-c: 직업 분포 → facility 종류 배열 (마당 cell에 분배)
+//   farmer → farmland, hunter → hide_rack, smith류 → forge, merchant → cart, 기타 → workshop
+const JOB_TO_FACILITY = {
+  farmer: 'farmland', fisher: 'workshop', hunter: 'hide_rack',
+  lumberjack: 'workshop', miner: 'workshop', prospector: 'workshop',
+  smith: 'forge', weaponsmith: 'forge', armorsmith: 'forge',
+  forager: 'workshop', cook: 'kitchen', warrior: 'training',
+  merchant: 'cart',
+};
+function computeFacilityDistribution(jobCounts, totalSlots) {
+  // 각 NPC 1명당 3 facility cell 가정. 직업 비율 따라.
+  const facilities = [];
+  for (const [job, n] of Object.entries(jobCounts)) {
+    const f = JOB_TO_FACILITY[job] || 'workshop';
+    for (let i = 0; i < n * 3; i++) facilities.push(f);
+  }
+  // shuffle (마을마다 다양하게 보이도록)
+  for (let i = facilities.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [facilities[i], facilities[j]] = [facilities[j], facilities[i]];
+  }
+  return facilities;
 }
 
 const canadiaNpcsByVillage = new Map();  // villageName → Set of pids
