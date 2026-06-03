@@ -860,12 +860,13 @@ function isNearVillage(x, y) {
 
 // NPC 행동 결정 — tick 안에서 호출
 function decideNpcBehavior(npc, now) {
-  if (now < npc.nextDecisionAt) return;
-  // Phase 4c: canadia 통합 NPC — 단순 work↔chest 왕복
+  // Phase 4d-9 fix: canadia NPC는 nextDecisionAt 무시 (어디서 22일 미래값으로 set되는 origin 불명확)
+  //   매 tick decideCanadiaBehavior 호출 — 80 NPC × 30Hz = 가벼움
   if (npc.canadiaVillage) {
     decideCanadiaBehavior(npc, now);
     return;
   }
+  if (now < npc.nextDecisionAt) return;
   npc.nextDecisionAt = now + 500 + Math.random() * 1000;
   // ① 늑대 시야 안이면 도망 — quadtree로 후보 추리고 종류 필터
   const nearbyMobs = qtMobs ? qtMobs.queryCircle(npc.x, npc.y, NPC_FLEE_RANGE) : Array.from(mobs.values());
