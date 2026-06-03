@@ -387,8 +387,8 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
       const ox = zm.worldOffsetX || 0, oy = zm.worldOffsetY || 0;
       // absX/Y → 이 zone의 local 좌표
       const lx = absX - ox, ly = absY - oy;
-      if (lx < -64 || lx > (zm.zoneWidth || 10240) + 64) continue;
-      if (ly < -64 || ly > (zm.zoneHeight || 10240) + 64) continue;
+      if (lx < -64 || lx > (zm.zoneWidth || 1000000) + 64) continue;
+      if (ly < -64 || ly > (zm.zoneHeight || 1000000) + 64) continue;
       const targetCx = cellCx - Math.floor(ox / CL_BUILDING_SIZE);
       const targetCy = cellCy - Math.floor(oy / CL_BUILDING_SIZE);
       for (const b of c.buildings.values()) {
@@ -947,8 +947,8 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     worldWidth = 0;
     worldHeight = 0;
     for (const z of Object.values(zonesMeta)) {
-      worldWidth = Math.max(worldWidth, z.worldOffsetX + (z.zoneWidth || 1024));
-      worldHeight = Math.max(worldHeight, (z.worldOffsetY || 0) + (z.zoneHeight || 1024));
+      worldWidth = Math.max(worldWidth, z.worldOffsetX + (z.zoneWidth || 100000));
+      worldHeight = Math.max(worldHeight, (z.worldOffsetY || 0) + (z.zoneHeight || 100000));
     }
 
     // localStorage에서 이전 프로필 복원 (패스워드는 저장 안 함 — 매번 입력)
@@ -1134,7 +1134,7 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
         if (c.role !== 'observer' || c.ws.readyState !== 1) continue;
         const zm = zonesMeta[zid];
         if (!zm) continue;
-        const zW = zm.zoneWidth || 1024, zH = zm.zoneHeight || 1024;
+        const zW = zm.zoneWidth || 100000, zH = zm.zoneHeight || 100000;
         const localX = Math.max(0, Math.min(zW, myAbsPredicted.x - zm.worldOffsetX));
         const localY = Math.max(0, Math.min(zH, myAbsPredicted.y - (zm.worldOffsetY||0)));
         c.ws.send(JSON.stringify({ type: 'viewport_update', x: localX, y: localY }));
@@ -1421,7 +1421,7 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
       // observer는 자기 viewport(예측 좌표를 해당 zone-local로 변환) 전송
       const meta2 = zonesMeta[zoneId];
       if (meta2) {
-        const zW2 = meta2.zoneWidth || 1024, zH2 = meta2.zoneHeight || 1024;
+        const zW2 = meta2.zoneWidth || 100000, zH2 = meta2.zoneHeight || 100000;
         params.set('vx', Math.max(0, Math.min(zW2, myAbsPredicted.x - meta2.worldOffsetX)));
         params.set('vy', Math.max(0, Math.min(zH2, myAbsPredicted.y - (meta2.worldOffsetY||0))));
       }
@@ -1862,7 +1862,7 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     const pmeta = zonesMeta[primaryZoneId];
     if (!pmeta) return;
     const pMeta = zonesMeta[primaryZoneId];
-    const zoneW = pMeta?.zoneWidth || 1024, zoneH = pMeta?.zoneHeight || 1024;
+    const zoneW = pMeta?.zoneWidth || 100000, zoneH = pMeta?.zoneHeight || 100000;
     const localX = myAbsPredicted.x - pmeta.worldOffsetX;
     const localY = myAbsPredicted.y - (pmeta.worldOffsetY || 0);
     // 4방향 이웃 거리 계산
@@ -1888,8 +1888,8 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
       if (zid === primaryZoneId) continue;
       const zm = zonesMeta[zid];
       if (!zm) continue;
-      const nZoneW = zm.zoneWidth || 1024;
-      const nZoneH = zm.zoneHeight || 1024;
+      const nZoneW = zm.zoneWidth || 100000;
+      const nZoneH = zm.zoneHeight || 100000;
       // 이웃 zone의 가장 가까운 변(엣지)까지 거리
       const edgeDistX = Math.max(0, Math.max(zm.worldOffsetX - myAbsPredicted.x, myAbsPredicted.x - (zm.worldOffsetX + nZoneW)));
       const edgeDistY = Math.max(0, Math.max((zm.worldOffsetY || 0) - myAbsPredicted.y, myAbsPredicted.y - ((zm.worldOffsetY || 0) + nZoneH)));
@@ -2511,7 +2511,7 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
         let zMeta = null;
         for (const zm of Object.values(zonesMeta)) {
           const ox = zm.worldOffsetX, oy = zm.worldOffsetY || 0;
-          const zW3 = zm.zoneWidth || 1024, zH3 = zm.zoneHeight || 1024;
+          const zW3 = zm.zoneWidth || 100000, zH3 = zm.zoneHeight || 100000;
           if (wx >= ox && wx < ox + zW3 && wy >= oy && wy < oy + zH3) { zMeta = zm; break; }
         }
         const iso = w2i(wx + TS / 2, wy + TS / 2);

@@ -10,7 +10,9 @@
 //   cm.getChunksInRadius(x, y, radius); // 활성 청크 계산용
 //   cm.allChunks();
 
-const CHUNK_SIZE = 256;
+// Phase 5-3: 청크 size 256 → 1024 (zone 100배 확장 시 청크 수 폭증 방지).
+// 1024 px = 32 cells. zone 110K × 50K → 5,243 청크 (이전 256px면 84K, 무리).
+const CHUNK_SIZE = 1024;
 
 class Chunk {
   constructor(cx, cy) {
@@ -317,8 +319,9 @@ function generateVillagesForZone(zone) {
 // 육지 zone의 가장자리 중 ocean 인접 부분에 물 타일 strip을 organic noise로 생성.
 // ocean zone은 전체가 물 (별도 처리, 이 함수에선 빈 set 반환).
 // Korea↔Japan 같은 직접 land 인접은 자동으로 land (그 변엔 ocean이 없으니 water tile 0).
-const COASTLINE_BASE = 600;   // 기본 해안선 폭 (px)
-const COASTLINE_NOISE = 400;  // 곡선 변동량 (px)
+// Phase 5-3: zone 100배 확장에 비례. ×10.
+const COASTLINE_BASE = 6000;   // 기본 해안선 폭 (px)
+const COASTLINE_NOISE = 4000;  // 곡선 변동량 (px)
 
 function _coastNoise(s) {
   let h = 5381;

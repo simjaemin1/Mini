@@ -238,6 +238,21 @@ const ZONES_BASE = {
   },
 };
 
+// ── Phase 5-3: world scale ────────────────────────────────────────
+// 좌표·크기 일괄 배율. SCALE=1이면 옛 크기, SCALE=10이면 가로세로 10배 (면적 100배, PZ급).
+// 환경변수 WORLD_SCALE로 운영 중 변경 가능.
+const WORLD_SCALE = parseFloat(process.env.WORLD_SCALE || '10');
+for (const z of Object.values(ZONES_BASE)) {
+  z.worldOffsetX = Math.round(z.worldOffsetX * WORLD_SCALE);
+  z.worldOffsetY = Math.round(z.worldOffsetY * WORLD_SCALE);
+  z.zoneWidth = Math.round(z.zoneWidth * WORLD_SCALE);
+  z.zoneHeight = Math.round(z.zoneHeight * WORLD_SCALE);
+  if (z.mainSquare) {
+    z.mainSquare.x = Math.round(z.mainSquare.x * WORLD_SCALE);
+    z.mainSquare.y = Math.round(z.mainSquare.y * WORLD_SCALE);
+  }
+}
+
 // host 채우기 + ENABLED_ZONES 적용
 const _enabledStr = process.env.ENABLED_ZONES;
 const _enabled = _enabledStr ? new Set(_enabledStr.split(',').map(s => s.trim())) : null;
@@ -268,7 +283,7 @@ const WORLD = {
   dayLengthMs: 10 * 60 * 1000,
   dayPhaseRatio: 0.7,
   worldEpoch: 0,
-  zoneWidth: 10000, zoneHeight: 10000, // 옛 호환
+  zoneWidth: 100000, zoneHeight: 100000, // 옛 호환 (Phase 5-3에서 ×10)
 };
 
 function worldPhase(nowMs = Date.now()) {
