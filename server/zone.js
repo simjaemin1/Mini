@@ -4446,6 +4446,23 @@ async function initCanadiaPrototype() {
   setInterval(() => syncCanadiaEconomy().catch(e => console.error('[canadia] sync 실패:', e.message)), 1000);
   // 4) 매 30초마다 영토 sync — 시뮬 size 변화에 따라 zone claim cell 추가 (Phase 4d-15)
   setInterval(() => { try { syncCanadiaTerritories(); } catch (e) { console.error('[canadia] territory sync 실패:', e.message); } }, 30000);
+  // 5) 매 20초마다 농지 stage cycle (씨→자람→익음→수확→씨)
+  setInterval(() => { try { tickFarmlandStages(); } catch (e) { console.error('[canadia] farm stage 실패:', e.message); } }, 20000);
+}
+
+// Phase 4d-16-d: 농지 stage 사이클. 4단계 반복 — 0(씨) → 1(어린싹) → 2(자람) → 3(익음) → 0 (수확 후 재파종)
+function tickFarmlandStages() {
+  let updated = 0;
+  for (const c of claims.values()) {
+    if (c.facilityType !== 'farmland') continue;
+    c.farmStage = ((c.farmStage || 0) + 1) % 4;
+    broadcast({ type: 'claim_updated', claim: c });
+    updated++;
+  }
+  if (updated > 0 && Math.random() < 0.1) {
+    // 가끔만 로그 (노이즈 축소)
+    console.log(`[canadia] 🌾 farmland stage cycle: ${updated} cells`);
+  }
 }
 
 // Phase 4d-15: 시뮬 v.land.size → zone claim cells 동기화.
@@ -4521,31 +4538,41 @@ function syncCanadiaTerritories() {
       else villageCells.push(c);
     }
     if (currentPersonalCount >= targetPersonalCells) continue;
-    // 거래소 중심에서 거리순 정렬 → 외곽부터 personal
     const cx = village.coord.x, cy = village.coord.y;
     villageCells.sort((a, b) => {
       const da = Math.hypot(a.x - cx, a.y - cy);
       const db = Math.hypot(b.x - cx, b.y - cy);
-      return db - da; // 먼 거 우선
+      return db - da;
     });
     const need = targetPersonalCells - currentPersonalCount;
-    // 직업 분포 → facility 분배 비율
     const jobCounts = {};
+    const npcArr = [];
     for (const pid of npcSet) {
       const p = players.get(pid);
-      if (p && p.canadiaJob) jobCounts[p.canadiaJob] = (jobCounts[p.canadiaJob] || 0) + 1;
+      if (p && p.canadiaJob) {
+        jobCounts[p.canadiaJob] = (jobCounts[p.canadiaJob] || 0) + 1;
+        npcArr.push(p);
+      }
     }
     const facilities = computeFacilityDistribution(jobCounts, need);
-    // NPC 1명당 4 cell — 첫 cell house, 나머지 3 cell facility
+    // Phase 4d-16-b: NPC pid → home cell 매핑. 4 cell 단위 (집 + 마당 3)
     let converted = 0;
     let facilityIdx = 0;
+    let npcMappingIdx = 0;
     for (let i = 0; i < villageCells.length && converted < need; i++) {
       const c = villageCells[i];
       c.personalAssigned = true;
       c.ownerName = `${village.name} 농가`;
-      // 4 cell 단위 (집 + 마당 3): 첫 cell 'house', 나머지 facility
       if (i % 4 === 0) {
         c.facilityType = 'house';
+        // 이 4-cell 그룹을 NPC 한 명에 매핑 (있으면)
+        const npc = npcArr[npcMappingIdx];
+        if (npc) {
+          npc.canadiaHomeX = c.x + c.w / 2;
+          npc.canadiaHomeY = c.y + c.h / 2;
+          c.ownerNpcPid = npc.pid;
+        }
+        npcMappingIdx++;
       } else {
         c.facilityType = facilities[facilityIdx % facilities.length] || 'workshop';
         facilityIdx++;
@@ -4554,7 +4581,7 @@ function syncCanadiaTerritories() {
       converted++;
     }
     if (converted > 0) {
-      console.log(`[canadia] 🏠 ${village.name} NPC 사유지 분배: +${converted} cells (NPC ${npcCount}명 × 4)`);
+      console.log(`[canadia] 🏠 ${village.name} NPC 사유지: +${converted} cells, NPC ${Math.min(npcMappingIdx, npcArr.length)}명에 집 매핑`);
     }
   }
 }
@@ -4619,7 +4646,23 @@ async function syncCanadiaEconomy() {
 }
 
 const NPC_CAP_PER_VILLAGE = 15;
-const JOB_KR_NPC = { farmer:'농부', fisher:'어부', hunter:'사냥꾼', lumberjack:'벌목꾼', miner:'광부', prospector:'탐사꾼', smith:'대장장이', forager:'채집꾼', cook:'요리사', warrior:'전사', merchant:'상인' };
+const JOB_KR_NPC = { farmer:'농부', fisher:'어부', hunter:'사냥꾼', lumberjack:'벌목꾼', miner:'광부', prospector:'탐사꾼', smith:'대장장이', forager:'채집꾼', cook:'요리사', warrior:'전사', merchant:'상인', weaponsmith:'무공', armorsmith:'갑공' };
+// Phase 4d-16-e: 직업별 NPC 색깔 (캐릭터 sprite tint)
+const JOB_NPC_COLOR = {
+  farmer:     '#8b7d4a',  // 짙은 갈색 (밀짚모자)
+  fisher:     '#4a7da0',  // 청회색 (어부)
+  hunter:     '#5a6f3c',  // 카키 녹색
+  lumberjack: '#7a4f2a',  // 나무 갈색
+  miner:      '#6a6a6a',  // 회색
+  prospector: '#5a5a7a',  // 진남색
+  smith:      '#9a5a2a',  // 구릿빛
+  weaponsmith:'#8a4a4a',  // 적갈색 (무기)
+  armorsmith: '#5a5a5a',  // 강철
+  forager:    '#7a9a5a',  // 연녹색 (채집)
+  cook:       '#c8855a',  // 주황
+  warrior:    '#aa3030',  // 빨강
+  merchant:   '#c8aa3a',  // 황금색 (상인)
+};
 
 // Phase 4d-11 재설계: NPC pool = 시뮬 jobs 분포 정확 sync
 //   기존 버그: NPC pool이 첫 spawn 시점 분포로 고정. 시뮬 jobs 변경되어도 zone 반영 X
@@ -4702,6 +4745,7 @@ function syncCanadiaNpcs(village) {
       player.canadiaJob = j;
       player.canadiaChestX = chest.x;
       player.canadiaChestY = chest.y;
+      player.color = JOB_NPC_COLOR[j] || '#888';  // Phase 4d-16-e: 직업별 색깔
       if (player.name && !player.name.includes('[')) {
         player.name = `${player.name}[${JOB_KR_NPC[j]||j}]`;
       }
@@ -4786,8 +4830,15 @@ const JOB_WORK_OFFSET = {
   warrior:    { angle: Math.PI * 1.625,    dist: 100, label: '훈련장' },
 };
 function assignCanadiaWorkArea(npc) {
+  // Phase 4d-16-b: NPC home (사유지 cell) 있으면 그 근처에서 working. 외곽 직업도 마당에서.
+  if (npc.canadiaHomeX != null && npc.canadiaHomeY != null) {
+    // 집 주변 ±60px (4 cell 사유지 안)
+    npc.canadiaWorkX = npc.canadiaHomeX + (Math.random() - 0.5) * 80;
+    npc.canadiaWorkY = npc.canadiaHomeY + (Math.random() - 0.5) * 80;
+    return;
+  }
+  // home 없으면 fallback — 직업별 거래소 offset
   const off = JOB_WORK_OFFSET[npc.canadiaJob] || JOB_WORK_OFFSET.farmer;
-  // 약간의 무작위 (직업이 같아도 NPC마다 살짝 다른 자리)
   const a = off.angle + (Math.random() - 0.5) * 0.4;
   const d = off.dist + (Math.random() - 0.5) * 60;
   npc.canadiaWorkX = npc.canadiaChestX + Math.cos(a) * d;

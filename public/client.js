@@ -1,13 +1,13 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: Phase 4d-16-bcd (NPC 사유지 + 직업별 facility emoji + forge 연기) ===
-console.log('%c[durango-mini] client build = Phase 4d-16-bcd (사유지·facility·동작)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: Phase 4d-16-e (농지 stage cycle + NPC home working + 직업별 색) ===
+console.log('%c[durango-mini] client build = Phase 4d-16-e (농지·home·직업색)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 // Phase 4d-16-c: facility 종류별 emoji
 const FACILITY_EMOJI = {
   house: '🏠',
-  farmland: '🌾',
+  farmland: '🌾',  // default — farmStage 있으면 override
   forge: '🔥',
   hide_rack: '🟫',
   workshop: '⚒️',
@@ -15,6 +15,8 @@ const FACILITY_EMOJI = {
   training: '⚔️',
   cart: '🛒',
 };
+// Phase 4d-16-d: farmland stage별 emoji (0=씨, 1=어린싹, 2=자람, 3=익음)
+const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -2705,7 +2707,11 @@ const FACILITY_EMOJI = {
         // Phase 4d-16-c: NPC 사유지 cell에 facility sprite (emoji)
         if (cl.facilityType) {
           const cs = toScreen(w2i(off + cl.x + cl.w/2, offY + cl.y + cl.h/2).x, w2i(off + cl.x + cl.w/2, offY + cl.y + cl.h/2).y);
-          const emoji = FACILITY_EMOJI[cl.facilityType] || '';
+          // farmland는 stage별 emoji 사용
+          let emoji = FACILITY_EMOJI[cl.facilityType] || '';
+          if (cl.facilityType === 'farmland' && cl.farmStage != null) {
+            emoji = FARM_STAGE_EMOJI[cl.farmStage] || '🌾';
+          }
           if (emoji) {
             ctx.font = '14px sans-serif';
             ctx.textAlign = 'center';
