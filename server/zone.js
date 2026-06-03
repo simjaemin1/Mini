@@ -4478,7 +4478,11 @@ function syncCanadiaNpcs(village) {
   const chest = chestId ? buildings.get(chestId) : null;
   if (!chest) return;
   while (set.size < targetPop) {
-    const job = jobList[set.size % Math.max(1, jobList.length)] || 'farmer';
+    // Phase 4d-9 fix: 분포 비례 random sampling (jobs object 순서 영향 제거)
+    //   이전 버그: jobList 앞쪽이 모두 merchant라 첫 N명이 다 상인으로 spawn됨
+    const job = jobList.length > 0
+      ? jobList[Math.floor(Math.random() * jobList.length)]
+      : 'farmer';
     const ang = Math.random() * Math.PI * 2;
     const r = 60 + Math.random() * 100;
     const sx = chest.x + Math.cos(ang) * r;
