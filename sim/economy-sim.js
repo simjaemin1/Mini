@@ -808,7 +808,8 @@ function tickTrade(world, day) {
       if (stock < reserve * 1.2) demand[r] = Math.max(0, reserve * 1.2 - stock);
     }
     const merchantCount = v.counts.merchant || 0;
-    const capacity = merchantCount * 100;  // merchant 1명당 매주 100 단위 운반
+    // Phase 4d-4: 인구 기반 최소 capacity 보장 (merchant 없는 마을도 거래 가능 — 마을이 자체로 운반)
+    const capacity = Math.max(N * 10, merchantCount * 100);
     data.push({ v, prices, offer, demand, capacity, used: 0 });
   }
 
