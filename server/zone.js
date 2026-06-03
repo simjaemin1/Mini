@@ -4438,8 +4438,8 @@ async function initCanadiaPrototype() {
   }
   // 2) 첫 sync
   await syncCanadiaEconomy();
-  // 3) 매 6초마다 sync (가격 + 인구 변화)
-  setInterval(() => syncCanadiaEconomy().catch(e => console.error('[canadia] sync 실패:', e.message)), 6000);
+  // 3) 매 1초마다 sync — 상인 NPC가 caravan 위치 따라 부드럽게 텔레포트 (5일=5초)
+  setInterval(() => syncCanadiaEconomy().catch(e => console.error('[canadia] sync 실패:', e.message)), 1000);
 }
 
 const canadiaNpcsByVillage = new Map();  // villageName → Set of pids
@@ -4601,10 +4601,13 @@ function syncCanadiaCaravans(caravans) {
       npc = chosen;
       canadiaCaravanNpcs.set(key, npc.pid);
     }
-    // NPC를 traveling state로 + caravan 좌표를 목적지로
+    // NPC를 traveling state로 + 좌표 직접 텔레포트 (sim caravan 위치 따라 부드럽게 이동 = 빠른 상인)
     npc.canadiaTask = 'traveling';
     npc.canadiaTaskAt = Date.now();
     npc.canadiaTaskEndAt = 0;
+    npc.x = c.x;  // 직접 좌표 set — mover 느림 우회
+    npc.y = c.y;
+    npc.vx = 0; npc.vy = 0;
     npc.targetX = c.x;
     npc.targetY = c.y;
     npc.canadiaCaravanKey = key;

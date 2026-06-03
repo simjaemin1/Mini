@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: Phase 4d-11 (통째 재설계: NPC 직접 이동, caravan→NPC 매핑, 마차 시각화 제거) ===
-console.log('%c[durango-mini] client build = Phase 4d-11 (통째 재설계 — NPC 직접 이동 + pool 시뮬 sync)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: Phase 4d-12 (상인 NPC 직접 텔레포트 5일=5초 + 거래소 chest 실제 storage 표시) ===
+console.log('%c[durango-mini] client build = Phase 4d-12 (상인 가속 + 거래소 chest = sim storage)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -5734,6 +5734,26 @@ console.log('%c[durango-mini] client build = Phase 4d-11 (통째 재설계 — N
         const myEntry = pd.villages.find(v => v.name === villageName);
         if (!myEntry) { priceEl.innerHTML = '<div style="color:#f88">가격 데이터 없음</div>'; return; }
         const myPrices = myEntry.prices || {};
+        // === Phase 4d-12: 거래소 chest 안 — 실제 시뮬 village.storage 내용물 ===
+        const storage = myEntry.storage || {};
+        const stoEntries = Object.entries(storage)
+          .filter(([k, v]) => v > 0)
+          .sort((a, b) => b[1] - a[1]);
+        let stoHtml = '<div style="margin-top:10px;padding:10px;background:#1a2a3a;border-radius:4px">';
+        stoHtml += '<div style="color:#fc8;font-weight:bold;margin-bottom:6px">📦 거래소 보유 자원 (시뮬 village.storage)</div>';
+        if (!stoEntries.length) {
+          stoHtml += '<div style="color:#888">(비어있음)</div>';
+        } else {
+          stoHtml += '<div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));gap:4px">';
+          for (const [k, v] of stoEntries) {
+            stoHtml += `<div style="padding:4px 6px;background:#0e1822;border-radius:3px">${ITEM_KR(k)} <b>${Math.floor(v)}</b></div>`;
+          }
+          stoHtml += '</div>';
+        }
+        const treasury = myEntry.treasury || 0;
+        stoHtml += `<div style="margin-top:6px;color:#aaa;font-size:11px">💰 길드 금고: <b style="color:#fc8">${Math.floor(treasury)}</b></div>`;
+        stoHtml += '</div>';
+        sumEl.innerHTML += stoHtml;
         const items = Object.keys(myPrices).sort();
         let html = '<table style="width:100%;border-collapse:collapse">';
         html += '<tr style="background:#222"><th style="text-align:left;padding:6px">자원</th>';

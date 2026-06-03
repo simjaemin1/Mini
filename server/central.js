@@ -437,7 +437,12 @@ const server = http.createServer(async (req, res) => {
           escort: c.escort,
           giveRes: c.giveRes, wantRes: c.wantRes,
           state: c.state,
-          // Phase 4d-5: 빌려온 NPC 정보 (이름/직업)
+          // Phase 4d-11: zone에서 보간용으로 from/to 좌표 + 일자
+          fromX: from.x, fromY: from.y,
+          toX: to.x, toY: to.y,
+          departDay: c.state === 'outbound' ? c.departDay : c.arriveDay,
+          arriveDay: c.state === 'outbound' ? c.arriveDay : c.returnArriveDay,
+          currentDay: day,
           npcName: c.npcName || null,
           npcJob: c.npcJob || null,
         };
