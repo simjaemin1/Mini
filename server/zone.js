@@ -4542,11 +4542,24 @@ function assignCanadiaWorkArea(npc) {
 // 임시 진단 — 30초마다 한 번 NPC 1마리 상태 로그
 let _canadiaDiagAt = 0;
 function decideCanadiaBehavior(npc, now) {
-  if (!npc.canadiaTask) npc.canadiaTask = 'going_to_work';
+  if (!npc.canadiaTask) { npc.canadiaTask = 'going_to_work'; npc.canadiaTaskAt = now; }
   npc.behavior = 'wander';
   if (now - _canadiaDiagAt > 30000) {
     _canadiaDiagAt = now;
-    console.log(`[canadia/diag] ${npc.name} task=${npc.canadiaTask} pos=(${npc.x|0},${npc.y|0}) target=(${(npc.targetX||0)|0},${(npc.targetY||0)|0}) work=(${(npc.canadiaWorkX||0)|0},${(npc.canadiaWorkY||0)|0}) chest=(${npc.canadiaChestX|0},${npc.canadiaChestY|0}) vx=${(npc.vx||0).toFixed(1)} vy=${(npc.vy||0).toFixed(1)}`);
+    console.log(`[canadia/diag] ${npc.name} task=${npc.canadiaTask} pos=(${npc.x|0},${npc.y|0}) target=(${(npc.targetX||0)|0},${(npc.targetY||0)|0}) work=(${(npc.canadiaWorkX||0)|0},${(npc.canadiaWorkY||0)|0}) chest=(${npc.canadiaChestX|0},${npc.canadiaChestY|0}) vx=${(npc.vx||0).toFixed(1)} vy=${(npc.vy||0).toFixed(1)} endIn=${((npc.canadiaTaskEndAt||0) - now)|0}ms`);
+  }
+  // 안전장치: 같은 task 30초 이상 머물면 강제 다음 state (canadiaTaskEndAt이 NaN/Infinity 등 모든 케이스 커버)
+  if (npc.canadiaTaskAt && now - npc.canadiaTaskAt > 30000) {
+    const old = npc.canadiaTask;
+    if (old === 'going_to_work' || old === 'working') {
+      npc.canadiaTask = 'going_to_chest';
+    } else if (old === 'going_to_chest' || old === 'at_chest') {
+      assignCanadiaWorkArea(npc);
+      npc.canadiaTask = 'going_to_work';
+    }
+    npc.canadiaTaskAt = now;
+    npc.canadiaTaskEndAt = 0;
+    console.log(`[canadia/timeout] ${npc.name} ${old}→${npc.canadiaTask} (30s 초과)`);
   }
   if (npc.canadiaTask === 'going_to_work') {
     npc.targetX = npc.canadiaWorkX;
@@ -4554,27 +4567,30 @@ function decideCanadiaBehavior(npc, now) {
     const d = Math.hypot(npc.x - npc.canadiaWorkX, npc.y - npc.canadiaWorkY);
     if (d < 40) {
       npc.canadiaTask = 'working';
+      npc.canadiaTaskAt = now;
       npc.canadiaTaskEndAt = now + 6000 + Math.random() * 4000;  // 6~10초
     }
   } else if (npc.canadiaTask === 'working') {
     // 일하기 — 그 근처서 살짝 움직임
     npc.targetX = npc.canadiaWorkX + (Math.random() - 0.5) * 30;
     npc.targetY = npc.canadiaWorkY + (Math.random() - 0.5) * 30;
-    if (now >= npc.canadiaTaskEndAt) npc.canadiaTask = 'going_to_chest';
+    if (now >= (npc.canadiaTaskEndAt || 0)) { npc.canadiaTask = 'going_to_chest'; npc.canadiaTaskAt = now; }
   } else if (npc.canadiaTask === 'going_to_chest') {
     npc.targetX = npc.canadiaChestX;
     npc.targetY = npc.canadiaChestY;
     const d = Math.hypot(npc.x - npc.canadiaChestX, npc.y - npc.canadiaChestY);
     if (d < 40) {
       npc.canadiaTask = 'at_chest';
+      npc.canadiaTaskAt = now;
       npc.canadiaTaskEndAt = now + 2000 + Math.random() * 2000;
     }
   } else if (npc.canadiaTask === 'at_chest') {
     npc.targetX = npc.canadiaChestX + (Math.random() - 0.5) * 20;
     npc.targetY = npc.canadiaChestY + (Math.random() - 0.5) * 20;
-    if (now >= npc.canadiaTaskEndAt) {
+    if (now >= (npc.canadiaTaskEndAt || 0)) {
       assignCanadiaWorkArea(npc);   // 일하러 갈 자리 새로 (직업 같음)
       npc.canadiaTask = 'going_to_work';
+      npc.canadiaTaskAt = now;
     }
   }
   npc.nextDecisionAt = now + 400 + Math.random() * 300;
