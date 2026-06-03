@@ -26,7 +26,7 @@ const httpClient = require('http');
 const economy = require('../sim/economy-sim');
 
 // === Economy 시뮬 — 중앙 거시 경제. 현실 3초 = 게임 1일.
-const ECONOMY_TICK_MS = 1500; // Phase 4d-2: 가속 (3초→1.5초/day, 더 활발한 변동)
+const ECONOMY_TICK_MS = 1000; // Phase 4d-3: 더 빠른 변동 (1초/day)
 const economyWorld = economy.createWorld({
   seed: parseInt(process.env.ECONOMY_SEED || '42'),
   villageCount: parseInt(process.env.ECONOMY_VILLAGES || '20'),
@@ -404,6 +404,12 @@ const server = http.createServer(async (req, res) => {
         treasury: v.treasury,
       }));
       return jsonResp(res, 200, { day: canadiaWorld.day, villages: out });
+    }
+    // Phase 4d-3: 최근 거래 로그 (캐러밴 도착 시 기록됨)
+    if (req.url === '/economy/canadia/tradelog' && req.method === 'GET') {
+      const log = canadiaWorld.tradeLog || [];
+      const recent = log.slice(-30).reverse(); // 최신 30개
+      return jsonResp(res, 200, { day: canadiaWorld.day, trades: recent });
     }
     // Phase 4d-3: 캐러밴 위치 (이동 중인 행상) — 좌표 보간해서 반환
     if (req.url === '/economy/canadia/caravans' && req.method === 'GET') {

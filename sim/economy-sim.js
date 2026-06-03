@@ -1298,8 +1298,8 @@ function computeVillagePrices(v) {
   for (const r of Object.keys(RESERVE)) {
     const reserve = (RESERVE[r] || 1) * N;
     const stock = v.storage[r] || 0;
-    const ratio = Math.max(-0.9, Math.min(2.0, (reserve - stock) / Math.max(1, reserve)));
-    const adj = Math.max(0.1, 1 + ratio * 2);
+    const ratio = Math.max(-0.85, Math.min(2.0, (reserve - stock) / Math.max(1, reserve)));
+    const adj = Math.max(0.3, 1 + ratio * 2); // Phase 4d-3: 가격 floor 0.1→0.3 (식량 폭락 완화)
     prices[r] = (BASE_VALUE[r] || 1) * adj;
   }
   return prices;

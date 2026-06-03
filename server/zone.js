@@ -4490,6 +4490,11 @@ function syncCanadiaNpcs(village) {
     player.canadiaJob = job;
     player.canadiaChestX = chest.x;
     player.canadiaChestY = chest.y;
+    // Phase 4d-3: 이름 머리 위 직업 라벨 (NPC 이름 끝에 [직업])
+    const JOB_KR_NPC = { farmer:'농부', fisher:'어부', hunter:'사냥꾼', lumberjack:'벌목꾼', miner:'광부', prospector:'탐사꾼', smith:'대장장이', forager:'채집꾼', cook:'요리사', warrior:'전사', merchant:'상인' };
+    if (player.name && !player.name.includes('[')) {
+      player.name = `${player.name}[${JOB_KR_NPC[job]||job}]`;
+    }
     assignCanadiaWorkArea(player);
     player.canadiaTask = 'going_to_work';
     set.add(player.pid);
@@ -4530,9 +4535,15 @@ function assignCanadiaWorkArea(npc) {
   npc.canadiaWorkY = npc.canadiaChestY + Math.sin(a) * d;
 }
 
+// 임시 진단 — 30초마다 한 번 NPC 1마리 상태 로그
+let _canadiaDiagAt = 0;
 function decideCanadiaBehavior(npc, now) {
   if (!npc.canadiaTask) npc.canadiaTask = 'going_to_work';
   npc.behavior = 'wander';
+  if (now - _canadiaDiagAt > 30000) {
+    _canadiaDiagAt = now;
+    console.log(`[canadia/diag] ${npc.name} task=${npc.canadiaTask} pos=(${npc.x|0},${npc.y|0}) target=(${(npc.targetX||0)|0},${(npc.targetY||0)|0}) work=(${(npc.canadiaWorkX||0)|0},${(npc.canadiaWorkY||0)|0}) chest=(${npc.canadiaChestX|0},${npc.canadiaChestY|0}) vx=${(npc.vx||0).toFixed(1)} vy=${(npc.vy||0).toFixed(1)}`);
+  }
   if (npc.canadiaTask === 'going_to_work') {
     npc.targetX = npc.canadiaWorkX;
     npc.targetY = npc.canadiaWorkY;
