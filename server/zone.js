@@ -4463,65 +4463,98 @@ async function syncCanadiaEconomy() {
   }
 }
 
-const NPC_CAP_PER_VILLAGE = 15;  // 마을당 최대 NPC entity (성능 보호)
+const NPC_CAP_PER_VILLAGE = 15;
+const JOB_KR_NPC = { farmer:'농부', fisher:'어부', hunter:'사냥꾼', lumberjack:'벌목꾼', miner:'광부', prospector:'탐사꾼', smith:'대장장이', forager:'채집꾼', cook:'요리사', warrior:'전사', merchant:'상인' };
+
+// Phase 4d-11 재설계: NPC pool = 시뮬 jobs 분포 정확 sync
+//   기존 버그: NPC pool이 첫 spawn 시점 분포로 고정. 시뮬 jobs 변경되어도 zone 반영 X
+//   새 디자인: 매 호출시 (1) 시뮬 분포에서 cap 비율로 목표 분포 계산
+//             (2) 직업별 잉여 NPC 제거 + 부족 NPC spawn
 function syncCanadiaNpcs(village) {
   if (!canadiaNpcsByVillage.has(village.name)) canadiaNpcsByVillage.set(village.name, new Set());
   const set = canadiaNpcsByVillage.get(village.name);
-  // Phase 4d-3 fix: stale pid cleanup (NPC가 핸드오프/kick으로 사라졌는데 set에 남은 경우)
-  for (const pid of [...set]) {
-    if (!players.has(pid)) set.delete(pid);
-  }
-  const targetPop = Math.min(village.pop || 0, NPC_CAP_PER_VILLAGE);
-  // 시뮬 직업 분포 따라 list
-  const jobs = village.jobs || {};
-  const jobList = [];
-  for (const [j, n] of Object.entries(jobs)) for (let k = 0; k < n; k++) jobList.push(j);
-  // 추가
   const chestId = canadiaState.chestByVillage.get(village.name);
   const chest = chestId ? buildings.get(chestId) : null;
   if (!chest) return;
-  // Phase 4d-10: stale job 청소 코드 제거 (시뮬에서 NPC 안 빼게 변경 → jobs 분포 안정)
-  while (set.size < targetPop) {
-    // Phase 4d-9 fix: 분포 비례 random sampling (jobs object 순서 영향 제거)
-    //   이전 버그: jobList 앞쪽이 모두 merchant라 첫 N명이 다 상인으로 spawn됨
-    const job = jobList.length > 0
-      ? jobList[Math.floor(Math.random() * jobList.length)]
-      : 'farmer';
-    const ang = Math.random() * Math.PI * 2;
-    const r = 60 + Math.random() * 100;
-    const sx = chest.x + Math.cos(ang) * r;
-    const sy = chest.y + Math.sin(ang) * r;
-    const player = spawnNpc({
-      x: sx, y: sy,
-      villageName: village.name,
-      villageId: `canadia_${village.name}`,
-      skipHouse: true,
-    });
-    if (!player) break;
-    player.canadiaVillage = village.name;
-    player.canadiaJob = job;
-    player.canadiaChestX = chest.x;
-    player.canadiaChestY = chest.y;
-    // Phase 4d-3: 이름 머리 위 직업 라벨 (NPC 이름 끝에 [직업])
-    const JOB_KR_NPC = { farmer:'농부', fisher:'어부', hunter:'사냥꾼', lumberjack:'벌목꾼', miner:'광부', prospector:'탐사꾼', smith:'대장장이', forager:'채집꾼', cook:'요리사', warrior:'전사', merchant:'상인' };
-    if (player.name && !player.name.includes('[')) {
-      player.name = `${player.name}[${JOB_KR_NPC[job]||job}]`;
-    }
-    assignCanadiaWorkArea(player);
-    player.canadiaTask = 'going_to_work';
-    player.canadiaTaskAt = Date.now();   // Phase 4d-9 fix: 30s timeout 안전장치 작동하도록 초기화
-    player.canadiaTaskEndAt = 0;
-    set.add(player.pid);
+  // stale pid cleanup
+  for (const pid of [...set]) {
+    if (!players.has(pid)) set.delete(pid);
   }
-  // 제거 (인구 감소 시)
-  while (set.size > targetPop) {
-    const pid = set.values().next().value;
-    set.delete(pid);
+  const N = village.pop || 0;
+  if (N === 0) return;
+  const targetPop = Math.min(N, NPC_CAP_PER_VILLAGE);
+  const jobs = village.jobs || {};
+  // 목표 분포: 시뮬 jobs × (cap/N) 비례. 합이 targetPop과 같아야 (반올림 보정).
+  const targetByJob = {};
+  let sumTarget = 0;
+  for (const [j, n] of Object.entries(jobs)) {
+    if (n > 0) {
+      targetByJob[j] = Math.max(0, Math.round(n * targetPop / N));
+      sumTarget += targetByJob[j];
+    }
+  }
+  // 반올림 차이 보정 — 가장 많은 직업에서 ±1
+  const sortedJobs = Object.keys(targetByJob).sort((a,b) => targetByJob[b] - targetByJob[a]);
+  while (sumTarget < targetPop && sortedJobs.length > 0) { targetByJob[sortedJobs[0]]++; sumTarget++; }
+  while (sumTarget > targetPop && sortedJobs.length > 0) {
+    const j = sortedJobs.find(x => targetByJob[x] > 0);
+    if (!j) break;
+    targetByJob[j]--; sumTarget--;
+  }
+  // 현재 NPC 직업 분포
+  const currentByJob = {};
+  for (const pid of set) {
     const p = players.get(pid);
-    if (p) {
-      players.delete(pid);
-      npcs.delete(pid);
-      broadcast({ type: 'player_left', pid });
+    if (p && p.canadiaJob) {
+      currentByJob[p.canadiaJob] = (currentByJob[p.canadiaJob] || 0) + 1;
+    }
+  }
+  // 잉여 직업 NPC 제거 (currentByJob > targetByJob)
+  for (const [j, cnt] of Object.entries(currentByJob)) {
+    const target = targetByJob[j] || 0;
+    let surplus = cnt - target;
+    if (surplus <= 0) continue;
+    for (const pid of [...set]) {
+      if (surplus <= 0) break;
+      const p = players.get(pid);
+      if (p && p.canadiaJob === j) {
+        set.delete(pid);
+        players.delete(pid);
+        npcs.delete(pid);
+        broadcast({ type: 'player_left', pid });
+        surplus--;
+      }
+    }
+  }
+  // 부족 직업 spawn (targetByJob > currentByJob)
+  for (const [j, target] of Object.entries(targetByJob)) {
+    const cur = (currentByJob[j] || 0);
+    let need = target - cur;
+    if (need <= 0) continue;
+    for (let k = 0; k < need; k++) {
+      const ang = Math.random() * Math.PI * 2;
+      const r = 60 + Math.random() * 100;
+      const sx = chest.x + Math.cos(ang) * r;
+      const sy = chest.y + Math.sin(ang) * r;
+      const player = spawnNpc({
+        x: sx, y: sy,
+        villageName: village.name,
+        villageId: `canadia_${village.name}`,
+        skipHouse: true,
+      });
+      if (!player) break;
+      player.canadiaVillage = village.name;
+      player.canadiaJob = j;
+      player.canadiaChestX = chest.x;
+      player.canadiaChestY = chest.y;
+      if (player.name && !player.name.includes('[')) {
+        player.name = `${player.name}[${JOB_KR_NPC[j]||j}]`;
+      }
+      assignCanadiaWorkArea(player);
+      player.canadiaTask = 'going_to_work';
+      player.canadiaTaskAt = Date.now();
+      player.canadiaTaskEndAt = 0;
+      set.add(player.pid);
     }
   }
 }
