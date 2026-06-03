@@ -1009,9 +1009,8 @@ function tickTrade(world, day) {
           }
           if (pickIdx < 0) continue;
           const caravanNpc = a.v.npcs[pickIdx];
-          a.v.npcs.splice(pickIdx, 1);  // 마을에서 NPC 빠짐
-          // counts 캐시 업데이트 (jobCounts incremental)
-          if (a.v.counts && caravanNpc.currentJob) a.v.counts[caravanNpc.currentJob] = Math.max(0, (a.v.counts[caravanNpc.currentJob] || 0) - 1);
+          // Phase 4d-10: NPC 빼지 않음 — sim 인구·counts 그대로 (zone entity가 직접 이동 시각화 가져감)
+          //   사용자 의도: 상인이 떠나도 마을에 "출장" 상태로 유지. 식량 소비 정상.
           // Phase 4d-6: tradeStats 기록
           if (a.v.tradeStats) {
             a.v.tradeStats.caravansSent++;
@@ -1177,11 +1176,7 @@ function tickCaravans(world, day) {
       if (c.from.tradeStats && (c.wantRes === 'food' || c.wantRes === 'cooked_food' || c.wantRes === 'fish' || c.wantRes === 'meat')) {
         c.from.tradeStats.foodImported += received;
       }
-      // Phase 4d-5: 빌려간 NPC 마을로 복귀
-      if (c.npc) {
-        c.from.npcs.push(c.npc);
-        if (c.from.counts && c.npc.currentJob) c.from.counts[c.npc.currentJob] = (c.from.counts[c.npc.currentJob] || 0) + 1;
-      }
+      // Phase 4d-10: NPC 안 빼고 안 빼니 복귀 코드도 제거 (sim 인구·counts 변동 X)
       c._done = true;
     }
   }

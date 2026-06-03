@@ -4478,6 +4478,7 @@ function syncCanadiaNpcs(village) {
   const chestId = canadiaState.chestByVillage.get(village.name);
   const chest = chestId ? buildings.get(chestId) : null;
   if (!chest) return;
+  // Phase 4d-10: stale job 청소 코드 제거 (시뮬에서 NPC 안 빼게 변경 → jobs 분포 안정)
   while (set.size < targetPop) {
     // Phase 4d-9 fix: 분포 비례 random sampling (jobs object 순서 영향 제거)
     //   이전 버그: jobList 앞쪽이 모두 merchant라 첫 N명이 다 상인으로 spawn됨
