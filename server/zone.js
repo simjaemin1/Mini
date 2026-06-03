@@ -3662,29 +3662,13 @@ setInterval(() => {
 
   // === NPC 행동 결정 (사람 player는 input으로 vx/vy 받지만 NPC는 직접 결정) ===
   // 비활성 청크 NPC는 멈춤 (CPU 절약). 가까이 player 오면 자동 재개.
-  // Phase 4d-9 디버그: canadia NPC step 진단 카운터 (10초마다 출력)
-  let _dbgCanadiaInActive = 0, _dbgCanadiaOutActive = 0, _dbgCanadiaNoHP = 0, _dbgCanadiaSkipBudget = 0;
   for (const pid of npcs) {
     const npc = players.get(pid);
-    if (!npc || npc.hp <= 0) { if (npc?.canadiaVillage) _dbgCanadiaNoHP++; continue; }
-    if (!isPositionActive(npc.x, npc.y)) {
-      npc.vx = 0; npc.vy = 0;
-      if (npc.canadiaVillage) _dbgCanadiaOutActive++;
-      continue;
-    }
-    if ((Date.now() - now) > 15) {
-      if (npc.canadiaVillage) _dbgCanadiaSkipBudget++;
-      break;
-    }
-    if (npc.canadiaVillage) _dbgCanadiaInActive++;
+    if (!npc || npc.hp <= 0) continue;
+    // Phase 4d-9 fix: canadia NPC는 active chunk 체크 우회 (모든 마을 동시 시뮬)
+    if (!npc.canadiaVillage && !isPositionActive(npc.x, npc.y)) { npc.vx = 0; npc.vy = 0; continue; }
+    if ((Date.now() - now) > 15) break;
     npcStep(npc, dt, now);
-  }
-  // 10초마다 진단 로그
-  if (!global._dbgLastCanadiaTickLog || now - global._dbgLastCanadiaTickLog > 10000) {
-    global._dbgLastCanadiaTickLog = now;
-    if (_dbgCanadiaInActive + _dbgCanadiaOutActive + _dbgCanadiaNoHP + _dbgCanadiaSkipBudget > 0) {
-      console.log(`[canadia/tick] npcs total=${npcs.size} canadia: stepped=${_dbgCanadiaInActive} outOfActive=${_dbgCanadiaOutActive} dead=${_dbgCanadiaNoHP} skipBudget=${_dbgCanadiaSkipBudget}`);
-    }
   }
   // 농지 ready 마크 (시간 지남) — 한 번 ready되면 그대로
   for (const b of buildings.values()) {
