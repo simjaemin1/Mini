@@ -3958,6 +3958,8 @@ setInterval(() => {
   // === 생존 게이지: hunger/thirst 감소 + 0이면 HP 페널티 + vp decay ===
   for (const p of players.values()) {
     if (p.hp <= 0 || p.isDown) continue;
+    // Phase 4d-10 fix: canadia NPC는 hunger/thirst skip (sim에서 식량 소비 처리, zone 자동 식사 없음)
+    if (p.canadiaVillage) { p.hunger = HUNGER_MAX; p.thirst = THIRST_MAX; continue; }
     // Phase 14.40: 달리는 중이면 1.5× 빠르게 감소 (실제로 이동 중일 때만)
     const moving = Math.hypot(p.vx || 0, p.vy || 0) > 1;
     const drainMult = (p.sprint && moving) ? SPRINT_DRAIN_MULT : 1.0;
