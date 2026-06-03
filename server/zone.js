@@ -1042,8 +1042,8 @@ function unstuckNpc(npc, now) {
 function npcStep(npc, dt, now) {
   decideNpcBehavior(npc, now);
 
-  // stuck 감지 — 모든 모드 공통. fight 모드 중엔 무시 (멈춰서 공격 중일 수 있음)
-  if (npc.behavior !== 'fight' && detectStuck(npc, now)) {
+  // stuck 감지 — 모든 모드 공통. fight 모드 / canadia NPC는 자체 state machine 있어서 제외
+  if (npc.behavior !== 'fight' && !npc.canadiaVillage && detectStuck(npc, now)) {
     unstuckNpc(npc, now);
     return;
   }
@@ -4464,6 +4464,10 @@ const NPC_CAP_PER_VILLAGE = 15;  // 마을당 최대 NPC entity (성능 보호)
 function syncCanadiaNpcs(village) {
   if (!canadiaNpcsByVillage.has(village.name)) canadiaNpcsByVillage.set(village.name, new Set());
   const set = canadiaNpcsByVillage.get(village.name);
+  // Phase 4d-3 fix: stale pid cleanup (NPC가 핸드오프/kick으로 사라졌는데 set에 남은 경우)
+  for (const pid of [...set]) {
+    if (!players.has(pid)) set.delete(pid);
+  }
   const targetPop = Math.min(village.pop || 0, NPC_CAP_PER_VILLAGE);
   // 시뮬 직업 분포 따라 list
   const jobs = village.jobs || {};
