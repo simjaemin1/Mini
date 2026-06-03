@@ -24,6 +24,7 @@ const { DatabaseSync } = require('node:sqlite');
 const { ZONES, publicZoneMap } = require('./zone-config');
 const httpClient = require('http');
 const economy = require('../sim/economy-sim');
+const economyV2 = require('../sim/economy-sim-v2');  // Phase 4d-13: canadia world 전용 — 진짜 부분균형 시장 모델
 
 // === Economy 시뮬 — 중앙 거시 경제. 현실 3초 = 게임 1일.
 const ECONOMY_TICK_MS = 1000; // Phase 4d-3: 더 빠른 변동 (1초/day)
@@ -42,14 +43,14 @@ setInterval(() => {
 //   캐나다 zone 안에 7개 마을 좌표 분산. 좌표는 zone 크기 (10240 × 10240) 기준.
 const CANADIA_VILLAGES = 7;
 const CANADIA_NAMES = ['단풍', '늑대골', '얼음호수', '검은숲', '강철광산', '연어강', '대평원'];
-// economy module 새 world 생성. seed 다르게 (다른 마을 분포)
-const canadiaWorld = economy.createWorld({
+// Phase 4d-13: canadia world는 v2 (진짜 부분균형 시장 모델 — Lewis·Heckscher-Ohlin·Solow + 무역 자본)
+const canadiaWorld = economyV2.createWorldV2({
   seed: 4242,
   villageCount: CANADIA_VILLAGES,
   namePool: CANADIA_NAMES,
-  infoRange: 5000, // Phase 4d-4: 캐나디아 zone 좌표 스케일 (마을 간 거리 1800~3500px)
-  raidPer100: 0.005, // 거리 큰 만큼 raid 비례식 축소 (3000px → 약탈 18% 정도)
-  picker: 'rational', // Phase 4d-6: 합리적 의사결정 (시뮬 검증: 마을 생존 6배, 광물 도시 살아남음)
+  infoRange: 5000,
+  raidPer100: 0.005,
+  picker: 'rational',
 });
 // 좌표 — 캐나디아 zone 11000×5000 안에 분산. 가장자리 800 margin.
 //   타원형 배치 (zone이 가로로 길쭉).
@@ -71,7 +72,7 @@ spreadCanadiaCoords();
 console.log(`[canadia-econ] ${canadiaWorld.villages.length}개 마을 좌표 부여:`);
 canadiaWorld.villages.forEach(v => console.log(`  ${v.name} (${v.coord.x.toFixed(0)}, ${v.coord.y.toFixed(0)})`));
 setInterval(() => {
-  try { economy.tickWorld(canadiaWorld); }
+  try { economyV2.tickWorldV2(canadiaWorld); }  // Phase 4d-13: v2 tick
   catch (e) { console.error('[canadia-econ] tick error:', e.message); }
 }, ECONOMY_TICK_MS);
 
@@ -403,7 +404,7 @@ const server = http.createServer(async (req, res) => {
         coord: v.coord,
         pop: v.npcs.length,
         guild: { taxRate: v.guild.taxRate },
-        prices: economy.computeVillagePrices(v),
+        prices: economyV2.computeShadowPrices(v),  // Phase 4d-13: v2 shadow price
         storage: v.storage,
         treasury: v.treasury,
       }));
@@ -431,13 +432,13 @@ const server = http.createServer(async (req, res) => {
         }
         const t = Math.max(0, Math.min(1, num / denom));
         return {
+          id: c.id,  // Phase 4d-13: caravan unique id (재routing 시 to 변경되어도 추적)
           x: from.x + (to.x - from.x) * t,
           y: from.y + (to.y - from.y) * t,
           from: c.from.name, to: c.to.name,
           escort: c.escort,
-          giveRes: c.giveRes, wantRes: c.wantRes,
+          giveRes: c.giveRes, wantRes: c.wantRes || c.returnRes || null,
           state: c.state,
-          // Phase 4d-11: zone에서 보간용으로 from/to 좌표 + 일자
           fromX: from.x, fromY: from.y,
           toX: to.x, toY: to.y,
           departDay: c.state === 'outbound' ? c.departDay : c.arriveDay,
@@ -445,6 +446,8 @@ const server = http.createServer(async (req, res) => {
           currentDay: day,
           npcName: c.npcName || null,
           npcJob: c.npcJob || null,
+          rerouted: c._rerouted || 0,
+          abandoned: !!c._abandoned,
         };
       });
       return jsonResp(res, 200, { day, caravans: out });

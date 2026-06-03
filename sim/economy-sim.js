@@ -84,13 +84,13 @@ const JOBS = {
     inputs: { wood: 0.5, stone: 0.3 },
   },
   // Phase 4d-7: 무기/갑옷 제작 — warrior 호위력 보너스. ore + hide + pebble 소비처 마련.
-  weaponsmith: {            // 무기 제작 (ore + wood + stone)
-    field: 'smithing', output: 'weapon', base: 0.25,
+  weaponsmith: {            // 무기 제작 (ore + wood + stone). v2: 만성 부족 완화 위해 산출 ↑
+    field: 'smithing', output: 'weapon', base: 0.45,
     landBoost: () => 1.0, toolDependent: false,
     inputs: { ore: 0.4, wood: 0.3, stone: 0.2 },
   },
-  armorsmith: {             // 갑옷 제작 (stone + hide + ore) — pebble 의존 제거 (cascade failure 방지)
-    field: 'smithing', output: 'armor', base: 0.2,
+  armorsmith: {             // 갑옷 제작 (stone + hide + ore). v2: 산출 ↑
+    field: 'smithing', output: 'armor', base: 0.35,
     landBoost: () => 1.0, toolDependent: false,
     inputs: { stone: 0.5, hide: 0.4, ore: 0.2 },
   },
@@ -224,7 +224,7 @@ const POP_MIN = 1;                         // 마을 인구 하한
 const POP_MAX = 1000;                      // 마을당 인구 상한 (N² 폭발 방지)
 
 // 세금 + 영토
-const TAX_RATE = 0.08;                    // 일일 산출의 8%
+const TAX_RATE = 0.03;                    // 일일 산출의 3% (사용자 의도: default 3% + 길드마스터 조정)
 const BASE_EXPAND_COST = { food: 80, wood: 40, stone: 25 };
 const EXPAND_COST_EXP = 1.3;              // (size/baseSize)^1.3 — 점진 증가
 const EXPAND_CHECK_INTERVAL = 7;          // 매 7일 영토 확장 검사
@@ -627,9 +627,22 @@ function tickVillage(v, day) {
   v.surplusEMA.food = 0.95 * v.surplusEMA.food + 0.05 * dailySurplus;
 
   // 4) K (수용 한계) — 식량 자리 합. 영토 확장으로 자리 ↑ = K ↑
-  //    실제 산출 K_prod도 함께 보고 둘 중 작은 값.
+  //    실제 산출 K_prod = (자체 생산 + 외부 import) / 소비.
+  //    v2 r11: import 포함 — 작은 마을이 외부 거래로 부양되는 진짜 시장 동학 반영.
   const slotK = totalFoodSlots(v);
-  const prodK = dailyFoodProd / DAILY_FOOD_CONSUMPTION;
+  // 외부 import EMA: tradeStats.foodImported 누적을 평균화 (최근 100일치 추정)
+  if (v.tradeStats && v._lastImportSnapshot === undefined) {
+    v._lastImportSnapshot = 0;
+    v._importEMA = 0;
+  }
+  if (v.tradeStats) {
+    const recentImport = (v.tradeStats.foodImported || 0) - (v._lastImportSnapshot || 0);
+    v._lastImportSnapshot = v.tradeStats.foodImported || 0;
+    // EMA — 100일 시간상수
+    v._importEMA = 0.99 * (v._importEMA || 0) + 0.01 * recentImport;
+  }
+  const dailyImport = v._importEMA || 0;
+  const prodK = (dailyFoodProd + dailyImport) / DAILY_FOOD_CONSUMPTION;
   const Kraw = Math.min(slotK, prodK);
   const K = Math.max(POP_MIN, Kraw);
 
@@ -684,9 +697,17 @@ function tickVillage(v, day) {
     v._dPAccum += 1;
   }
 
-  // 7) 직업 자율 전환 (매 7일)
-  if (day % 7 === 0) {
-    autoSwitchJob(v, day, v._world);
+  // 7) 직업 자율 전환 — 평소 21일 1명. 식량 위기면 빈도 ↑ + 다수 전환.
+  //    foodEquiv < N*30 = 위기. picker가 farmer 강제. 매 5일 1명 (4배 빠름).
+  //    foodEquiv < N*10 = 즉시 위기. 매 day 1명 (21배 빠름) + 2명 동시.
+  const N_pop = v.npcs.length;
+  const foodEquiv_for_switch = totalFoodEquivalent(v);
+  let switchInterval = (v._world && v._world.autoSwitchInterval) || 7;
+  let multiSwitch = 1;
+  if (foodEquiv_for_switch < N_pop * 10) { switchInterval = 1; multiSwitch = 2; }
+  else if (foodEquiv_for_switch < N_pop * 30) { switchInterval = 5; multiSwitch = 1; }
+  if (day % switchInterval === 0) {
+    for (let i = 0; i < multiSwitch; i++) autoSwitchJob(v, day, v._world);
   }
 
   // 8) age
@@ -794,8 +815,9 @@ function pickDeficitJob_rational(v, world) {
   const foodEquiv = totalFoodEquivalent(v);
   const forageLandMean = Math.max(0.3, (v.land.fertility + v.land.wood + v.land.stone) / 3);
 
-  // 진짜 기근 (food < N*3일치) — 무조건 식량 직업 (안전장치)
-  if (foodEquiv < N * 3) {
+  // 진짜 기근 (food < N*30일치) — 무조건 식량 직업 (안전망).
+  //   v2 r9: picker w cap 풀면 농부 폭락 위험 → 30일치 보장. Lewis 모델 안전판.
+  if (foodEquiv < N * 30) {
     const foodOpts = [
       ['farmer',  v.land.fertility * 1.5],
       ['fisher',  v.land.water     * 1.2],
@@ -817,6 +839,11 @@ function pickDeficitJob_rational(v, world) {
   const caravansSeen = Math.max(0.5, ts.caravansSent);
   const raidRate = Math.min(0.9, ts.caravansRaided / caravansSeen);
   const avgCargo = ts.cargoSent / caravansSeen || 30;
+  // v2 hook: world.priceFn 있으면 가격 가중치로 한계가치 조정 (긴 공급 탄력성).
+  //   v2 r9: cap 풀기 (0.05~200). 진짜 시장 — 가격 폭락 자원의 직업은 거의 매력 0,
+  //   가격 폭등 자원은 압도적 매력. Lewis 모델식 노동 이동.
+  const priceTbl = (world && typeof world.priceFn === 'function') ? world.priceFn(v) : null;
+  const w = priceTbl ? (r => Math.max(0.05, Math.min(200, (priceTbl[r] || 1) / 1.0))) : (_ => 1.0);
 
   // 인근 마을 식량 공급 — world.villages에서 infoRange 안의 마을 jobs.farmer 합계
   let nearbyFoodCapacity = 0;
@@ -829,41 +856,48 @@ function pickDeficitJob_rational(v, world) {
       nearbyFoodCapacity += (o.counts?.farmer || 0) * o.land.fertility * 0.4;
     }
   }
-  // (1) 농부 한계가치 — 우리 토지의 farmer 1명당 생산
-  const farmerGain = v.land.fertility * 0.4 * period * FOOD_VALUE;
-  // (2) 광부 한계가치 — 광물 1명당 생산 (food 환산: 거래로 식량 사올 수 있는 양)
-  //     광물 1단위 → 식량 가격비 1배 가정 (단순화)
-  const minerGain = v.land.stone * 0.3 * period * 0.5 * FOOD_VALUE;
-  // (3) 상인 한계가치 — 새 캐러밴 1대 capacity 추가 (대신 식량/100일)
-  //     상인 추가하면 추가 거래량 → 식량 import 증가
+  // (1) 농부 한계가치 — 우리 토지의 farmer 1명당 생산 × food 가격
+  const farmerGain = v.land.fertility * 0.4 * period * FOOD_VALUE * w('food');
+  // (2) 광부 한계가치 — stone 생산 × stone 가격
+  const minerGain = v.land.stone * 0.3 * period * w('stone');
+  // (3) 상인 한계가치 — 새 캐러밴 1대 capacity 추가
   const expectedNewTrade = avgCargo * (period / 7) * (1 - raidRate);
-  const merchantGain = nearbyFoodCapacity > 0 ? expectedNewTrade * 0.3 * FOOD_VALUE : 0;
+  const merchantGain = nearbyFoodCapacity > 0 ? expectedNewTrade * 0.3 * FOOD_VALUE * w('food') : 0;
   // (4) 전사 한계가치 — sqrt 체감, 약탈 손실 줄임
   const curEscort = counts.warrior || 0;
   const dProtection = (Math.sqrt(curEscort + 1) - Math.sqrt(curEscort)) * 0.08;
   const warriorGain = caravansSeen * (period / Math.max(1, ts.windowStartDay ? 100 : 100)) *
-                      avgCargo * dProtection * FOOD_VALUE;
+                      avgCargo * dProtection * FOOD_VALUE * w('food');
 
-  // 선택지 빌딩
+  // 선택지 빌딩 — v2 hook: 모든 산출에 가격 가중치
   const candidates = [];
   if (hasSlot(v, 'farmer', cap, counts))     candidates.push(['farmer',     farmerGain]);
   if (hasSlot(v, 'miner', cap, counts))      candidates.push(['miner',      minerGain]);
-  if (hasSlot(v, 'lumberjack', cap, counts)) candidates.push(['lumberjack', v.land.wood * 0.3 * period * 0.4]);
-  if (hasSlot(v, 'fisher', cap, counts))     candidates.push(['fisher',     v.land.water * 1.2 * period * FOOD_VALUE]);
-  if (hasSlot(v, 'hunter', cap, counts))     candidates.push(['hunter',     v.land.game * 0.7 * period * FOOD_VALUE]);
-  if (hasSlot(v, 'prospector', cap, counts)) candidates.push(['prospector', v.land.ore * 0.2 * period * 0.5]);
+  if (hasSlot(v, 'lumberjack', cap, counts)) candidates.push(['lumberjack', v.land.wood * 0.3 * period * w('wood')]);
+  if (hasSlot(v, 'fisher', cap, counts))     candidates.push(['fisher',     v.land.water * 1.2 * period * w('fish')]);
+  if (hasSlot(v, 'hunter', cap, counts))     candidates.push(['hunter',     v.land.game * 0.7 * period * (w('meat') + 0.3 * w('hide'))]);
+  if (hasSlot(v, 'prospector', cap, counts)) candidates.push(['prospector', v.land.ore * 0.2 * period * w('ore')]);
   if (hasSlot(v, 'merchant', cap, counts) && nearbyFoodCapacity > 0)
     candidates.push(['merchant', merchantGain]);
-  // 전사는 이미 캐러밴 보내는 마을만 의미
-  if (hasSlot(v, 'warrior', cap, counts) && caravansSeen > 1 && raidRate > 0.05)
-    candidates.push(['warrior', warriorGain]);
-  if (hasSlot(v, 'smith', cap, counts) && _toolDeps > 0 && v.storage.tool / _toolDeps < 2)
-    candidates.push(['smith', 0.5 * period]);  // 적당히 (도구 충분하면 가치 작음)
-  // Phase 4d-7: weaponsmith/armorsmith — warrior 보조용
-  if (hasSlot(v, 'weaponsmith', cap, counts) && (counts.warrior || 0) >= 1 && v.storage.ore > N * 0.5)
-    candidates.push(['weaponsmith', (counts.warrior || 0) * 5 * FOOD_VALUE]);  // warrior 1명당 보조 가치 5
-  if (hasSlot(v, 'armorsmith', cap, counts) && (counts.warrior || 0) >= 1 && v.storage.hide > N * 0.3)
-    candidates.push(['armorsmith', (counts.warrior || 0) * 4 * FOOD_VALUE]);
+  // warrior — 약탈 자주 일어나는 마을에서만 의미. 추가로 weapon/armor 가용성이 호위 효과 결정.
+  //   장비 비싸면 호위 운용 어려움 (가격에 음 반응) + stock 적으면 운용 어려움.
+  if (hasSlot(v, 'warrior', cap, counts) && caravansSeen > 1 && raidRate > 0.05) {
+    const curWarrior = counts.warrior || 0;
+    const equipStock = (v.storage.weapon || 0) + (v.storage.armor || 0);
+    const equipReady = Math.min(1, equipStock / Math.max(1, (curWarrior + 1) * 2));
+    // 가격 비쌀수록 신규 무장 부담 (1/sqrt(price))
+    const equipCostMult = 1 / Math.sqrt(Math.max(1, (w('weapon') + w('armor')) / 2));
+    const adjustedWarriorGain = warriorGain * (0.3 + 0.7 * equipReady) * equipCostMult;
+    candidates.push(['warrior', adjustedWarriorGain]);
+  }
+  // 대장장이 — tool 가격이 매력 결정 (예전 hardcoded 0.5 → 가격 기반)
+  if (hasSlot(v, 'smith', cap, counts))
+    candidates.push(['smith', 0.4 * period * w('tool')]);
+  // weaponsmith/armorsmith — 가격이 비싼 마을일수록 매력 ↑
+  if (hasSlot(v, 'weaponsmith', cap, counts) && v.storage.ore > N * 0.3)
+    candidates.push(['weaponsmith', 0.3 * period * w('weapon')]);
+  if (hasSlot(v, 'armorsmith', cap, counts) && v.storage.hide > N * 0.3)
+    candidates.push(['armorsmith', 0.3 * period * w('armor')]);
 
   candidates.sort((a, b) => b[1] - a[1]);
   if (candidates.length > 0) return candidates[0][0];
@@ -1523,8 +1557,21 @@ module.exports = {
   tickWorld,
   serializeWorld,
   computeVillagePrices,
+  computeDailyConsumption,
   JOB_NAMES,
   FIELDS,
   RESOURCES,
   BASE_VALUE,
+  JOBS,
+  // v2 시뮬용 빌려쓰기
+  createVillage,
+  createNPC,
+  tickVillage,
+  adjustGuildTax,
+  tickMigration,
+  processEvents,
+  jobCounts,
+  villageDist,
+  setSeed,
+  srand: () => srand(),
 };

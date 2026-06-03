@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: Phase 4d-12 (상인 NPC 직접 텔레포트 5일=5초 + 거래소 chest 실제 storage 표시) ===
-console.log('%c[durango-mini] client build = Phase 4d-12 (상인 가속 + 거래소 chest = sim storage)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: Phase 4d-13 (economy-sim-v2 zone 통합 — 진짜 부분균형 시장) ===
+console.log('%c[durango-mini] client build = Phase 4d-13 (v2 시장 모델 zone 통합)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -5767,7 +5767,7 @@ console.log('%c[durango-mini] client build = Phase 4d-12 (상인 가속 + 거래
           const myP = myPrices[item];
           if (!myP || myP <= 0) continue;
           html += `<tr style="border-top:1px solid #333"><td style="padding:6px"><b>${ITEM_KR(item)}</b></td>`;
-          html += `<td style="padding:6px;background:#2a3a4a;text-align:center"><b>${myP.toFixed(2)}</b></td>`;
+          html += `<td style="padding:6px;background:#2a3a4a;text-align:center"><b>${fmtPrice(myP)}</b></td>`;
           for (const v of pd.villages) {
             if (v.name === villageName) continue;
             const p = (v.prices || {})[item];
@@ -5776,7 +5776,7 @@ console.log('%c[durango-mini] client build = Phase 4d-12 (상인 가속 + 거래
             const pct = ((diff / myP) * 100).toFixed(0);
             const color = diff > 0 ? '#7c7' : (diff < 0 ? '#f77' : '#aaa');
             const sign = diff > 0 ? '+' : '';
-            html += `<td style="padding:6px;text-align:center;color:${color}">${p.toFixed(2)} <span style="font-size:10px">(${sign}${pct}%)</span></td>`;
+            html += `<td style="padding:6px;text-align:center;color:${color}">${fmtPrice(p)} <span style="font-size:10px">(${sign}${pct}%)</span></td>`;
           }
           html += '</tr>';
         }
@@ -5815,6 +5815,14 @@ console.log('%c[durango-mini] client build = Phase 4d-12 (상인 가속 + 거래
   function ITEM_KR(i) {
     const M = { food:'🍞 식량', wood:'🪵 나무', stone:'🪨 돌', ore:'⛏️ 광석', metal:'⚙️ 금속', forage:'🌿 채집물', cooked:'🍲 요리', fish:'🐟 생선', meat:'🥩 고기' };
     return M[i] || i;
+  }
+  // Phase 4d-13: v2 가격 폭 (0.01 ~ 1000)에 적응형 포맷
+  function fmtPrice(p) {
+    if (p == null) return '-';
+    if (p >= 100) return p.toFixed(0);
+    if (p >= 10) return p.toFixed(1);
+    if (p >= 1) return p.toFixed(2);
+    return p.toFixed(3);
   }
   // Phase 4d-3: 캐러밴 polling (1초 = 시뮬 1day와 동기화)
   setInterval(() => {

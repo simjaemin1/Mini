@@ -4448,7 +4448,9 @@ const canadiaCaravanNpcs = new Map();
 // 현재 활성 caravan key set (이번 polling에서 사라진 caravan = 귀환 완료)
 let canadiaActiveCaravans = new Set();
 
-function caravanKey(c) { return `${c.from}|${c.to}|${c.departDay}`; }
+// Phase 4d-13: caravan id 우선 (v2: 재routing 시 to 변경되어도 같은 caravan 추적).
+//   id 없으면 fallback (구버전 호환).
+function caravanKey(c) { return c.id != null ? `id:${c.id}` : `${c.from}|${c.to}|${c.departDay}`; }
 
 async function syncCanadiaEconomy() {
   const { request: centralRequest } = require('./central-client');
