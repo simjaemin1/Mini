@@ -4574,10 +4574,16 @@ function decideCanadiaBehavior(npc, now) {
       npc.canadiaTaskEndAt = now + 6000 + Math.random() * 4000;  // 6~10초
     }
   } else if (npc.canadiaTask === 'working') {
-    // 일하기 — 그 근처서 살짝 움직임
-    npc.targetX = npc.canadiaWorkX + (Math.random() - 0.5) * 30;
-    npc.targetY = npc.canadiaWorkY + (Math.random() - 0.5) * 30;
-    if (now >= (npc.canadiaTaskEndAt || 0)) { npc.canadiaTask = 'going_to_chest'; npc.canadiaTaskAt = now; }
+    // Phase 4d-10 fix: 매 tick 변경 X — 2~4초마다 서브 타겟 변경 (떨림 방지)
+    if (!npc._canadiaSubAt || now > npc._canadiaSubAt) {
+      npc.targetX = npc.canadiaWorkX + (Math.random() - 0.5) * 30;
+      npc.targetY = npc.canadiaWorkY + (Math.random() - 0.5) * 30;
+      npc._canadiaSubAt = now + 2000 + Math.random() * 2000;
+    }
+    if (now >= (npc.canadiaTaskEndAt || 0)) {
+      npc.canadiaTask = 'going_to_chest'; npc.canadiaTaskAt = now;
+      npc._canadiaSubAt = 0;
+    }
   } else if (npc.canadiaTask === 'going_to_chest') {
     npc.targetX = npc.canadiaChestX;
     npc.targetY = npc.canadiaChestY;
@@ -4586,14 +4592,19 @@ function decideCanadiaBehavior(npc, now) {
       npc.canadiaTask = 'at_chest';
       npc.canadiaTaskAt = now;
       npc.canadiaTaskEndAt = now + 2000 + Math.random() * 2000;
+      npc._canadiaSubAt = 0;
     }
   } else if (npc.canadiaTask === 'at_chest') {
-    npc.targetX = npc.canadiaChestX + (Math.random() - 0.5) * 20;
-    npc.targetY = npc.canadiaChestY + (Math.random() - 0.5) * 20;
+    if (!npc._canadiaSubAt || now > npc._canadiaSubAt) {
+      npc.targetX = npc.canadiaChestX + (Math.random() - 0.5) * 20;
+      npc.targetY = npc.canadiaChestY + (Math.random() - 0.5) * 20;
+      npc._canadiaSubAt = now + 1500 + Math.random() * 1500;
+    }
     if (now >= (npc.canadiaTaskEndAt || 0)) {
-      assignCanadiaWorkArea(npc);   // 일하러 갈 자리 새로 (직업 같음)
+      assignCanadiaWorkArea(npc);
       npc.canadiaTask = 'going_to_work';
       npc.canadiaTaskAt = now;
+      npc._canadiaSubAt = 0;
     }
   }
   npc.nextDecisionAt = now + 400 + Math.random() * 300;
