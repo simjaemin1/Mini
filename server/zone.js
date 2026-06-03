@@ -4544,9 +4544,9 @@ let _canadiaDiagAt = 0;
 function decideCanadiaBehavior(npc, now) {
   if (!npc.canadiaTask) { npc.canadiaTask = 'going_to_work'; npc.canadiaTaskAt = now; }
   npc.behavior = 'wander';
-  if (now - _canadiaDiagAt > 30000) {
+  if (now - _canadiaDiagAt > 300000) { // 5분마다 한 번 (노이즈 축소)
     _canadiaDiagAt = now;
-    console.log(`[canadia/diag] ${npc.name} task=${npc.canadiaTask} pos=(${npc.x|0},${npc.y|0}) target=(${(npc.targetX||0)|0},${(npc.targetY||0)|0}) work=(${(npc.canadiaWorkX||0)|0},${(npc.canadiaWorkY||0)|0}) chest=(${npc.canadiaChestX|0},${npc.canadiaChestY|0}) vx=${(npc.vx||0).toFixed(1)} vy=${(npc.vy||0).toFixed(1)} endIn=${((npc.canadiaTaskEndAt||0) - now)|0}ms`);
+    console.log(`[canadia/diag] ${npc.name} task=${npc.canadiaTask} pos=(${npc.x|0},${npc.y|0}) target=(${(npc.targetX||0)|0},${(npc.targetY||0)|0}) endIn=${((npc.canadiaTaskEndAt||0) - now)|0}ms`);
   }
   // 안전장치: 같은 task 30초 이상 머물면 강제 다음 state (canadiaTaskEndAt이 NaN/Infinity 등 모든 케이스 커버)
   if (npc.canadiaTaskAt && now - npc.canadiaTaskAt > 30000) {

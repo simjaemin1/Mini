@@ -46,6 +46,8 @@ const canadiaWorld = economy.createWorld({
   seed: 4242,
   villageCount: CANADIA_VILLAGES,
   namePool: CANADIA_NAMES,
+  infoRange: 5000, // Phase 4d-4: 캐나디아 zone 좌표 스케일 (마을 간 거리 1800~3500px)
+  raidPer100: 0.005, // 거리 큰 만큼 raid 비례식 축소 (3000px → 약탈 18% 정도)
 });
 // 좌표 — 캐나디아 zone 11000×5000 안에 분산. 가장자리 800 margin.
 //   타원형 배치 (zone이 가로로 길쭉).

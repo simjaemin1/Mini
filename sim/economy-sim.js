@@ -822,7 +822,8 @@ function tickTrade(world, day) {
       if (a === b) continue;
       // 거리 필터 — 시세 정보 도달 범위 안만 매칭 후보
       const d = villageDist(a.v, b.v);
-      if (d > INFO_RANGE) continue;
+      const infoR = world.infoRange || INFO_RANGE;
+      if (d > infoR) continue;
       // A의 offer 중 B의 demand인 것
       for (const giveRes of Object.keys(a.offer)) {
         if (!b.demand[giveRes] || a.offer[giveRes] <= 0) continue;
@@ -903,7 +904,8 @@ function tickMigration(world, day) {
     for (const dst of world.villages) {
       if (dst === src) continue;
       const distD = villageDist(src, dst);
-      if (distD > INFO_RANGE * 1.5) continue;  // 이주는 정보 범위보다 좀 더
+      const infoR = world.infoRange || INFO_RANGE;
+      if (distD > infoR * 1.5) continue;  // 이주는 정보 범위보다 좀 더
       const dstN = dst.npcs.length;
       if (dstN >= POP_MAX) continue;
       const dstSurplus = dst.surplusEMA.food;
@@ -969,7 +971,7 @@ function tickCaravans(world, day) {
       // 약탈 확률 — 거리 비례, 호위 보너스
       const protection = Math.sqrt(c.escort) * 0.08;
       const raidProb = Math.max(0.01,
-        Math.min(RAID_MAX, RAID_BASE + (c.distance / 100) * RAID_PER_100 - protection));
+        Math.min(RAID_MAX, RAID_BASE + (c.distance / 100) * (world.raidPer100 || RAID_PER_100) - protection));
       let outboundLoss = 0;
       if (srand() < raidProb) {
         outboundLoss = 0.3 + srand() * 0.4;
@@ -999,7 +1001,7 @@ function tickCaravans(world, day) {
     else if (c.state === 'inbound' && day >= c.returnArriveDay) {
       const protection = Math.sqrt(c.escort) * 0.08;
       const raidProb = Math.max(0.01,
-        Math.min(RAID_MAX, RAID_BASE + (c.distance / 100) * RAID_PER_100 - protection));
+        Math.min(RAID_MAX, RAID_BASE + (c.distance / 100) * (world.raidPer100 || RAID_PER_100) - protection));
       let inboundLoss = 0;
       if (srand() < raidProb) {
         inboundLoss = 0.3 + srand() * 0.4;
@@ -1237,6 +1239,8 @@ function createWorld(opts = {}) {
     events: opts.events || [],
     caravans: [],
     day: 0,
+    infoRange: opts.infoRange || INFO_RANGE,  // Phase 4d-4: 마을 좌표 스케일별 정보 도달 거리
+    raidPer100: opts.raidPer100 || RAID_PER_100, // 거리 100당 약탈 추가 확률 (대규모 zone 보정)
   };
 }
 
