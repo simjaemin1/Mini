@@ -43,6 +43,7 @@ function pickWeighted(weights) {
 const RESOURCES = [
   'food', 'fish', 'meat', 'hide', 'cooked_food',
   'wood', 'stone', 'ore', 'tool',
+  'weapon', 'armor',  // Phase 4d-7: 무기/갑옷
   'fruit', 'vegetable', 'mushroom', 'pebble', 'twig',
 ];
 
@@ -77,10 +78,21 @@ const JOBS = {
     field: 'mining', output: 'ore', base: 0.5,
     landBoost: (v) => v.land.ore, toolDependent: true, inputs: {},
   },
-  smith: {                  // 도구 제작 (wood + stone). hide도 약간 소모 (가죽 끈/손잡이)
+  smith: {                  // 도구 제작 (wood + stone) — pebble 의존 제거 (cascade failure 방지)
     field: 'smithing', output: 'tool', base: 0.4,
     landBoost: () => 1.0, toolDependent: false,
     inputs: { wood: 0.5, stone: 0.3 },
+  },
+  // Phase 4d-7: 무기/갑옷 제작 — warrior 호위력 보너스. ore + hide + pebble 소비처 마련.
+  weaponsmith: {            // 무기 제작 (ore + wood + stone)
+    field: 'smithing', output: 'weapon', base: 0.25,
+    landBoost: () => 1.0, toolDependent: false,
+    inputs: { ore: 0.4, wood: 0.3, stone: 0.2 },
+  },
+  armorsmith: {             // 갑옷 제작 (stone + hide + ore) — pebble 의존 제거 (cascade failure 방지)
+    field: 'smithing', output: 'armor', base: 0.2,
+    landBoost: () => 1.0, toolDependent: false,
+    inputs: { stone: 0.5, hide: 0.4, ore: 0.2 },
   },
   forager: {                // 채집 — 다중 산출
     field: 'foraging', output: null, base: 1.0,
@@ -115,6 +127,8 @@ const BASE_VALUE = {
   stone:       2.14,   // 광부 0.7/day
   ore:         3.0,    // 광물 0.5/day. 더 귀함.
   tool:        5.0,    // 0.4/day + wood/stone 투입
+  weapon:      8.0,    // Phase 4d-7: 무기 — warrior 공격력
+  armor:       8.0,    // 갑옷 — warrior 방어력
   fruit:       1.5,    // 채집물
   vegetable:   1.5,
   mushroom:    1.5,
@@ -265,10 +279,12 @@ function jobCapacity(v) {
     miner:      Math.floor(s * v.land.stone     * 0.30),
     prospector: Math.floor(s * v.land.ore       * 0.20),
     forager:    Math.floor(s * 0.30),
-    smith:      Math.max(1, Math.floor(v.npcs.length * 0.10)),
-    cook:       Math.max(1, Math.floor(v.npcs.length * 0.10)),
-    warrior:    Math.max(1, Math.floor(v.npcs.length * 0.08)),
-    merchant:   Math.max(1, Math.floor(v.npcs.length * 0.08)),  // 상업 자리
+    smith:       Math.max(1, Math.floor(v.npcs.length * 0.10)),
+    weaponsmith: Math.max(1, Math.floor(v.npcs.length * 0.06)),  // Phase 4d-7
+    armorsmith:  Math.max(1, Math.floor(v.npcs.length * 0.06)),  // Phase 4d-7
+    cook:        Math.max(1, Math.floor(v.npcs.length * 0.10)),
+    warrior:     Math.max(1, Math.floor(v.npcs.length * 0.08)),
+    merchant:    Math.max(1, Math.floor(v.npcs.length * 0.08)),  // 상업 자리
   };
   return c;
 }
@@ -415,6 +431,15 @@ function createVillage(opts) {
     isolated: false,
     isolatedUntilDay: 0,
     history: [],
+    // Phase 4d-6: 합리적 의사결정용 stats
+    tradeStats: {
+      caravansSent: 0,        // 누적 출발 캐러밴 수
+      caravansRaided: 0,      // 누적 약탈당한 수
+      cargoSent: 0,           // 누적 화물량 (give+want)
+      cargoLost: 0,           // 약탈 손실
+      windowStartDay: 0,      // 통계 윈도우 시작 (100일 단위로 리셋)
+      foodImported: 0,        // 윈도우 동안 수입한 food (귀환 시 받은 양)
+    },
   };
   // 초기 인구 — 토지 자급력에 비례. 척박 마을은 작게 시작.
   //   자급 가능한 최대 NPC 생산력 (1명이 만들 수 있는 일일 식량)
@@ -424,21 +449,26 @@ function createVillage(opts) {
     v.land.game      * 0.7,
     Math.max(0.3, (v.land.fertility + v.land.wood + v.land.stone) / 3) * 0.25
   );
-  // 자급 가능한 최대 인구 = maxFoodPerNPC × 4 (식량 직업 비율 + 인구 자라남 여유)
-  const sustainable = Math.max(2, Math.floor(maxFoodPerNPC * 4));
-  const requested = opts.initialPop || 8;
-  const initN = Math.min(requested, sustainable);
+  // Phase 4d-7: sustainable cap 제거 — 비자급 마을도 정상 인구로 시작 (초기 식량 비축으로 교역 시간 확보)
+  const initN = opts.initialPop || 8;
   for (let i = 0; i < initN; i++) {
-    const job = pickInitialJob(v);
+    let job;
+    if (i === 0) {
+      // 첫 NPC는 무조건 merchant — 거래 시작 보장
+      job = 'merchant';
+    } else {
+      job = pickInitialJob(v);
+    }
     const npc = createNPC({ job });
     v.npcs.push(npc);
     v.counts[job] = (v.counts[job] || 0) + 1;
   }
-  // 초기 식량 300일치 — 광산 도시 같은 비자급 마을이 교역 시작할 시간 확보
-  v.storage.food = initN * 300;
-  v.storage.tool = initN * 2;
-  v.storage.wood = initN * 5;
-  v.storage.stone = initN * 3;
+  // 초기 비축 — 비자급 마을(광물/사막)도 교역 시작할 충분한 시간
+  v.storage.food = initN * 300;       // 300일치
+  v.storage.tool = initN * 3;         // 도구 충분
+  v.storage.wood = initN * 8;         // 거래 교환용 + smith input
+  v.storage.stone = initN * 6;        // 거래 교환용 + smith input
+  v.storage.ore = Math.floor(initN * v.land.ore * 5);  // 광물 도시는 ore 잉여로 시작
   return v;
 }
 
@@ -627,7 +657,8 @@ function tickVillage(v, day) {
       break;
     }
     // 출생: 부족 직군으로 배정. 자리 없으면 출생 보류
-    const newJob = pickDeficitJob(v);
+    const picker = v._world && v._world.picker === 'rational' ? pickDeficitJob_rational : pickDeficitJob;
+    const newJob = picker(v, v._world);
     if (!newJob) {
       v._dPAccum = Math.min(v._dPAccum, 0.9);
       break;
@@ -655,7 +686,7 @@ function tickVillage(v, day) {
 
   // 7) 직업 자율 전환 (매 7일)
   if (day % 7 === 0) {
-    autoSwitchJob(v, day);
+    autoSwitchJob(v, day, v._world);
   }
 
   // 8) age
@@ -696,8 +727,9 @@ function pickDeficitJob(v) {
   const toolPer = v.storage.tool / Math.max(1, _toolDeps);
   if (toolPer < 1.5 && hasSlot(v, 'smith', cap, counts)) return 'smith';
 
-  // 3) 식량 자리 70% 미만이면 식량 직업 우선 양성
-  if (foodFillRatio < 0.7) {
+  // 3) 식량 자리 70% 미만 + 식량 잉여 적당 → 식량 직업 우선
+  //   Phase 4d-6 fix: food storage가 N*20일치 이상 풍부하면 식량 게이트 우회 (자원 직업으로)
+  if (foodFillRatio < 0.7 && foodEquiv < N * 20) {
     const open = foodOpts.filter(([j]) => hasSlot(v, j, cap, counts));
     open.sort((a, b) => b[1] - a[1]);
     if (open.length > 0) return open[0][0];
@@ -723,6 +755,16 @@ function pickDeficitJob(v) {
       hasSlot(v, 'warrior', cap, counts)) {
     return 'warrior';
   }
+  // Phase 4d-7: weaponsmith — warrior 있고 ore 잉여인 마을
+  if ((counts.warrior || 0) >= 1 && v.storage.ore > N * 1 && v.storage.weapon < N * 0.5 &&
+      hasSlot(v, 'weaponsmith', cap, counts)) {
+    return 'weaponsmith';
+  }
+  // Phase 4d-7: armorsmith — warrior 있고 hide 있는 마을
+  if ((counts.warrior || 0) >= 1 && v.storage.hide > N * 0.5 && v.storage.armor < N * 0.5 &&
+      hasSlot(v, 'armorsmith', cap, counts)) {
+    return 'armorsmith';
+  }
 
   // 7) 풍부 토지 분야 — 비교우위. 분업 마을이 여기서 광부/목수 등으로 빠짐.
   const landBoosts = [
@@ -740,10 +782,99 @@ function pickDeficitJob(v) {
   return null;
 }
 
+// =============================================================================
+// Phase 4d-6: 합리적 의사결정 picker (위험 조정 + 한계효용 비교)
+//   - 농부 vs 광부 vs 상인 vs 전사 각 직업 1명 추가 시 기대 가치 비교
+//   - 인근 마을 식량 공급 + 우리 캐러밴 약탈률 + sqrt 한계효용
+// =============================================================================
+function pickDeficitJob_rational(v, world) {
+  const N = v.npcs.length || 1;
+  const cap = jobCapacity(v);
+  const counts = jobCounts(v);
+  const foodEquiv = totalFoodEquivalent(v);
+  const forageLandMean = Math.max(0.3, (v.land.fertility + v.land.wood + v.land.stone) / 3);
+
+  // 진짜 기근 (food < N*3일치) — 무조건 식량 직업 (안전장치)
+  if (foodEquiv < N * 3) {
+    const foodOpts = [
+      ['farmer',  v.land.fertility * 1.5],
+      ['fisher',  v.land.water     * 1.2],
+      ['hunter',  v.land.game      * 0.7],
+      ['forager', forageLandMean   * 0.25],
+    ].filter(([j]) => hasSlot(v, j, cap, counts));
+    foodOpts.sort((a, b) => b[1] - a[1]);
+    if (foodOpts.length > 0) return foodOpts[0][0];
+  }
+  // 도구 절박 부족
+  let _toolDeps = 0;
+  for (const j of JOB_NAMES) if (JOBS[j].toolDependent) _toolDeps += (counts[j] || 0);
+  if (v.storage.tool / Math.max(1, _toolDeps) < 1.0 && hasSlot(v, 'smith', cap, counts)) return 'smith';
+
+  // === 한계 효용 계산 — 각 직업 1명 추가 시 기대 가치 (식량 환산 단위) ===
+  const period = 100;  // 평가 윈도우 100일
+  const FOOD_VALUE = 1;
+  const ts = v.tradeStats || { caravansSent: 0, caravansRaided: 0, cargoSent: 0, foodImported: 0 };
+  const caravansSeen = Math.max(0.5, ts.caravansSent);
+  const raidRate = Math.min(0.9, ts.caravansRaided / caravansSeen);
+  const avgCargo = ts.cargoSent / caravansSeen || 30;
+
+  // 인근 마을 식량 공급 — world.villages에서 infoRange 안의 마을 jobs.farmer 합계
+  let nearbyFoodCapacity = 0;
+  if (world && world.villages) {
+    const infoR = world.infoRange || INFO_RANGE;
+    for (const o of world.villages) {
+      if (o === v) continue;
+      const d = villageDist(v, o);
+      if (d > infoR) continue;
+      nearbyFoodCapacity += (o.counts?.farmer || 0) * o.land.fertility * 0.4;
+    }
+  }
+  // (1) 농부 한계가치 — 우리 토지의 farmer 1명당 생산
+  const farmerGain = v.land.fertility * 0.4 * period * FOOD_VALUE;
+  // (2) 광부 한계가치 — 광물 1명당 생산 (food 환산: 거래로 식량 사올 수 있는 양)
+  //     광물 1단위 → 식량 가격비 1배 가정 (단순화)
+  const minerGain = v.land.stone * 0.3 * period * 0.5 * FOOD_VALUE;
+  // (3) 상인 한계가치 — 새 캐러밴 1대 capacity 추가 (대신 식량/100일)
+  //     상인 추가하면 추가 거래량 → 식량 import 증가
+  const expectedNewTrade = avgCargo * (period / 7) * (1 - raidRate);
+  const merchantGain = nearbyFoodCapacity > 0 ? expectedNewTrade * 0.3 * FOOD_VALUE : 0;
+  // (4) 전사 한계가치 — sqrt 체감, 약탈 손실 줄임
+  const curEscort = counts.warrior || 0;
+  const dProtection = (Math.sqrt(curEscort + 1) - Math.sqrt(curEscort)) * 0.08;
+  const warriorGain = caravansSeen * (period / Math.max(1, ts.windowStartDay ? 100 : 100)) *
+                      avgCargo * dProtection * FOOD_VALUE;
+
+  // 선택지 빌딩
+  const candidates = [];
+  if (hasSlot(v, 'farmer', cap, counts))     candidates.push(['farmer',     farmerGain]);
+  if (hasSlot(v, 'miner', cap, counts))      candidates.push(['miner',      minerGain]);
+  if (hasSlot(v, 'lumberjack', cap, counts)) candidates.push(['lumberjack', v.land.wood * 0.3 * period * 0.4]);
+  if (hasSlot(v, 'fisher', cap, counts))     candidates.push(['fisher',     v.land.water * 1.2 * period * FOOD_VALUE]);
+  if (hasSlot(v, 'hunter', cap, counts))     candidates.push(['hunter',     v.land.game * 0.7 * period * FOOD_VALUE]);
+  if (hasSlot(v, 'prospector', cap, counts)) candidates.push(['prospector', v.land.ore * 0.2 * period * 0.5]);
+  if (hasSlot(v, 'merchant', cap, counts) && nearbyFoodCapacity > 0)
+    candidates.push(['merchant', merchantGain]);
+  // 전사는 이미 캐러밴 보내는 마을만 의미
+  if (hasSlot(v, 'warrior', cap, counts) && caravansSeen > 1 && raidRate > 0.05)
+    candidates.push(['warrior', warriorGain]);
+  if (hasSlot(v, 'smith', cap, counts) && _toolDeps > 0 && v.storage.tool / _toolDeps < 2)
+    candidates.push(['smith', 0.5 * period]);  // 적당히 (도구 충분하면 가치 작음)
+  // Phase 4d-7: weaponsmith/armorsmith — warrior 보조용
+  if (hasSlot(v, 'weaponsmith', cap, counts) && (counts.warrior || 0) >= 1 && v.storage.ore > N * 0.5)
+    candidates.push(['weaponsmith', (counts.warrior || 0) * 5 * FOOD_VALUE]);  // warrior 1명당 보조 가치 5
+  if (hasSlot(v, 'armorsmith', cap, counts) && (counts.warrior || 0) >= 1 && v.storage.hide > N * 0.3)
+    candidates.push(['armorsmith', (counts.warrior || 0) * 4 * FOOD_VALUE]);
+
+  candidates.sort((a, b) => b[1] - a[1]);
+  if (candidates.length > 0) return candidates[0][0];
+  return null;
+}
+
 // 자율 직업 전환 — 매 7일 1명만
-function autoSwitchJob(v, day) {
+function autoSwitchJob(v, day, world) {
   if (v.npcs.length < 3) return;
-  const need = pickDeficitJob(v);
+  const picker = world && world.picker === 'rational' ? pickDeficitJob_rational : pickDeficitJob;
+  const need = picker(v, world);
   if (!need) return;  // 자리 없으면 전환 불가
   const counts = jobCounts(v);
   const N = v.npcs.length;
@@ -781,6 +912,7 @@ function tickTrade(world, day) {
   const RESERVE = {
     food: 30, fish: 10, meat: 8, cooked_food: 5,
     wood: 5, stone: 3, ore: 1, tool: 1.5,
+    weapon: 0.5, armor: 0.5,  // Phase 4d-7: warrior 1명당 1개 (수요)
     fruit: 2, vegetable: 2, mushroom: 1, twig: 2, pebble: 1, hide: 1,
   };
   const TRADABLE = Object.keys(RESERVE);
@@ -790,20 +922,18 @@ function tickTrade(world, day) {
   for (const v of world.villages) {
     if (v.isolated && day < v.isolatedUntilDay) continue;   // 봉쇄 = 교역 차단
     const N = v.npcs.length || 1;
+    // Phase 4d-8: 동적 수요 계산
+    const cons = computeDailyConsumption(v);
     const prices = {};
     const offer  = {};
     const demand = {};
     for (const r of TRADABLE) {
-      const reserve = (RESERVE[r] || 1) * N;
+      const reserve = computeDynReserve(v, cons, r, RESERVE[r]);
       const stock = v.storage[r] || 0;
-      // 부족도 비율: 부족=+, 잉여=-. clamp(-0.9, 2.0).
       const ratio = Math.max(-0.9, Math.min(2.0, (reserve - stock) / Math.max(1, reserve)));
-      // 가격 = BASE × (1 + ratio×2). 잉여 → 가격 10%까지 떨어짐, 부족 → 5배.
       const adj = Math.max(0.1, 1 + ratio * 2);
       prices[r] = (BASE_VALUE[r] || 1) * adj;
-      // 잉여 등록 — reserve 50% 초과면 매물.
-      // demand 임계 완화 — reserve 1.2배까지도 추가 demand (자급 마을도 추가 구매 의향)
-      //   → 사막 광물 사고 싶어하는 마을 ↑
+      // offer/demand 임계도 동적 reserve 기준
       if (stock > reserve * 0.5) offer[r] = Math.max(0, stock - reserve * 0.3);
       if (stock < reserve * 1.2) demand[r] = Math.max(0, reserve * 1.2 - stock);
     }
@@ -867,8 +997,28 @@ function tickTrade(world, day) {
           // warrior 호위 — 화물량 비례 요청, 마을 warrior 수만큼 최대
           const requested = Math.ceil((actualGive + actualWant) / ESCORT_PER_CARGO);
           const escort = Math.min(a.v.counts.warrior || 0, requested);
-          // caravan 객체 생성 (이동 시작)
-          const travelDays = Math.max(1, Math.ceil(d / CARAVAN_SPEED));
+          // Phase 4d-5: 마을 NPC 1명을 캐러밴에 부착 (실제 인구 -1)
+          //   우선순위: merchant > warrior > 그 외 (단 필수직군 농부/요리사 등은 마지막)
+          //   pop이 너무 적으면(<=3) 출발 안 함 (마을 붕괴 방지)
+          if (a.v.npcs.length <= 3) continue;
+          let pickIdx = -1;
+          const PRIO = ['merchant', 'warrior', 'hunter', 'forager', 'prospector', 'lumberjack', 'miner', 'fisher', 'smith', 'cook', 'farmer'];
+          for (const j of PRIO) {
+            pickIdx = a.v.npcs.findIndex(n => n.currentJob === j);
+            if (pickIdx >= 0) break;
+          }
+          if (pickIdx < 0) continue;
+          const caravanNpc = a.v.npcs[pickIdx];
+          a.v.npcs.splice(pickIdx, 1);  // 마을에서 NPC 빠짐
+          // counts 캐시 업데이트 (jobCounts incremental)
+          if (a.v.counts && caravanNpc.currentJob) a.v.counts[caravanNpc.currentJob] = Math.max(0, (a.v.counts[caravanNpc.currentJob] || 0) - 1);
+          // Phase 4d-6: tradeStats 기록
+          if (a.v.tradeStats) {
+            a.v.tradeStats.caravansSent++;
+            a.v.tradeStats.cargoSent += actualGive + actualWant;
+          }
+          // caravan 객체 생성 (이동 시작) — 5일 고정 + npc 동행
+          const travelDays = 5;
           world.caravans.push({
             from: a.v, to: b.v,
             giveRes, wantRes,
@@ -878,6 +1028,9 @@ function tickTrade(world, day) {
             arriveDay: day + travelDays,
             returnArriveDay: day + travelDays * 2,
             state: 'outbound',
+            npc: caravanNpc,           // 빌려온 NPC
+            npcName: caravanNpc.name,  // 시각화용
+            npcJob: caravanNpc.job,
           });
           if (a.used >= a.capacity) break;
         }
@@ -970,12 +1123,17 @@ function tickCaravans(world, day) {
     // 도착 시점 — 거래 처리 + 약탈 1차
     if (c.state === 'outbound' && day >= c.arriveDay) {
       // 약탈 확률 — 거리 비례, 호위 보너스
-      const protection = Math.sqrt(c.escort) * 0.08;
+      // Phase 4d-7: warrior 호위력 = sqrt(escort) × (0.08 + weapon ratio × 0.05 + armor ratio × 0.05)
+      //   무기/갑옷 비율: 마을 storage에서 호위 수 만큼 소비
+      const wReady = Math.min(1, (c.from.storage.weapon || 0) / Math.max(1, c.escort));
+      const aReady = Math.min(1, (c.from.storage.armor  || 0) / Math.max(1, c.escort));
+      const protection = Math.sqrt(c.escort) * (0.08 + wReady * 0.05 + aReady * 0.05);
       const raidProb = Math.max(0.01,
         Math.min(RAID_MAX, RAID_BASE + (c.distance / 100) * (world.raidPer100 || RAID_PER_100) - protection));
       let outboundLoss = 0;
       if (srand() < raidProb) {
         outboundLoss = 0.3 + srand() * 0.4;
+        if (c.from.tradeStats) { c.from.tradeStats.caravansRaided++; c.from.tradeStats.cargoLost += c.giveAmt * outboundLoss; }
         console.log(`  💀 Day ${day}: 캐러밴 약탈 (가는 길) → ${c.from.name} → ${c.to.name} (${c.giveRes} ${(c.giveAmt * outboundLoss).toFixed(1)} 손실, 호위 ${c.escort}명)`);
       }
       const deliveredGive = c.giveAmt * (1 - outboundLoss);
@@ -1000,15 +1158,30 @@ function tickCaravans(world, day) {
     }
     // 귀환 시점 — A chest에 받은 자원 입금. 귀환 길 약탈 2차.
     else if (c.state === 'inbound' && day >= c.returnArriveDay) {
-      const protection = Math.sqrt(c.escort) * 0.08;
+      // Phase 4d-7: warrior 호위력 = sqrt(escort) × (0.08 + weapon ratio × 0.05 + armor ratio × 0.05)
+      //   무기/갑옷 비율: 마을 storage에서 호위 수 만큼 소비
+      const wReady = Math.min(1, (c.from.storage.weapon || 0) / Math.max(1, c.escort));
+      const aReady = Math.min(1, (c.from.storage.armor  || 0) / Math.max(1, c.escort));
+      const protection = Math.sqrt(c.escort) * (0.08 + wReady * 0.05 + aReady * 0.05);
       const raidProb = Math.max(0.01,
         Math.min(RAID_MAX, RAID_BASE + (c.distance / 100) * (world.raidPer100 || RAID_PER_100) - protection));
       let inboundLoss = 0;
       if (srand() < raidProb) {
         inboundLoss = 0.3 + srand() * 0.4;
+        if (c.from.tradeStats) { c.from.tradeStats.caravansRaided++; c.from.tradeStats.cargoLost += c._received * inboundLoss; }
         console.log(`  💀 Day ${day}: 캐러밴 약탈 (귀환) → ${c.to.name} → ${c.from.name} (${c.wantRes} ${(c._received * inboundLoss).toFixed(1)} 손실, 호위 ${c.escort}명)`);
       }
-      c.from.storage[c.wantRes] = (c.from.storage[c.wantRes] || 0) + c._received * (1 - inboundLoss);
+      const received = c._received * (1 - inboundLoss);
+      c.from.storage[c.wantRes] = (c.from.storage[c.wantRes] || 0) + received;
+      // Phase 4d-6: 식량 수입 기록 (food/cooked_food/fish/meat)
+      if (c.from.tradeStats && (c.wantRes === 'food' || c.wantRes === 'cooked_food' || c.wantRes === 'fish' || c.wantRes === 'meat')) {
+        c.from.tradeStats.foodImported += received;
+      }
+      // Phase 4d-5: 빌려간 NPC 마을로 복귀
+      if (c.npc) {
+        c.from.npcs.push(c.npc);
+        if (c.from.counts && c.npc.currentJob) c.from.counts[c.npc.currentJob] = (c.from.counts[c.npc.currentJob] || 0) + 1;
+      }
       c._done = true;
     }
   }
@@ -1234,7 +1407,7 @@ function createWorld(opts = {}) {
       fertility: fert, wood, stone, ore, water, game, size, initialPop: initPop,
     }));
   }
-  return {
+  const world = {
     villages,
     tradeLog: [],
     events: opts.events || [],
@@ -1242,7 +1415,11 @@ function createWorld(opts = {}) {
     day: 0,
     infoRange: opts.infoRange || INFO_RANGE,  // Phase 4d-4: 마을 좌표 스케일별 정보 도달 거리
     raidPer100: opts.raidPer100 || RAID_PER_100, // 거리 100당 약탈 추가 확률 (대규모 zone 보정)
+    picker: opts.picker || 'legacy',           // Phase 4d-6: 'legacy' | 'rational'
   };
+  // 마을 → 월드 백참조 (rational picker에서 world 접근용)
+  for (const v of world.villages) v._world = world;
+  return world;
 }
 
 // 매 game day 진행. central에서 setInterval로 호출.
@@ -1291,20 +1468,56 @@ function serializeWorld(world) {
   };
 }
 
+// Phase 4d-8: 마을의 자원별 일일 소비량 계산 (NPC 식사 + job input)
+//   가격 책정 + 거래 demand 계산에 사용. 동적 수요 반영.
+function computeDailyConsumption(v) {
+  const cons = {};
+  // 1) NPC 식사 — 매일 1 food/명 (또는 food_equiv 대체 — fish/meat/cooked_food)
+  //    단순화: food만 카운트. fish/meat는 자체적으로 stock 풍부하면 식사용.
+  cons.food = v.npcs.length * 1;
+  // 2) job input 소비 (smith의 wood/stone, weaponsmith의 ore/wood/stone 등)
+  for (const npc of v.npcs) {
+    const jdef = JOBS[npc.currentJob];
+    if (!jdef.inputs || Object.keys(jdef.inputs).length === 0) continue;
+    const skillLvl = npc.skills[jdef.field] || 0;
+    const skillMul = 1 + skillLvl * 0.05;
+    const landBoost = jdef.landBoost(v);
+    // 도구 효과는 마을 평균으로 추정 (1.2 가정)
+    const toolBoost = jdef.toolDependent ? 1.2 : 1.0;
+    const estDailyProd = jdef.base * landBoost * skillMul * toolBoost;
+    for (const [inp, perOut] of Object.entries(jdef.inputs)) {
+      cons[inp] = (cons[inp] || 0) + estDailyProd * perOut;
+    }
+  }
+  return cons;
+}
+
+// Phase 4d-8: 동적 reserve = max(baseline 인구 비례, 30일 소비량)
+//   소비 0인 자원도 인구 비례 최소 baseline 유지 (시장 미발달 보호)
+function computeDynReserve(v, cons, resourceKey, defaultPerPop) {
+  const N = v.npcs.length || 1;
+  const baseline = (defaultPerPop || 1) * N * 0.3;  // 인구 비례 최소 (RESERVE 의 30%)
+  const dailyCons = cons[resourceKey] || 0;
+  return Math.max(baseline, dailyCons * 30);  // 30일치 비축
+}
+
 // 마을 시세 (가격표) 계산 — 다른 마을 시세 비교용
 function computeVillagePrices(v) {
   const N = v.npcs.length || 1;
   const RESERVE = {
     food: 30, fish: 10, meat: 8, cooked_food: 5,
     wood: 5, stone: 3, ore: 1, tool: 1.5,
+    weapon: 0.5, armor: 0.5,
     fruit: 2, vegetable: 2, mushroom: 1, twig: 2, pebble: 1, hide: 1,
   };
+  // Phase 4d-8: 동적 수요 계산
+  const cons = computeDailyConsumption(v);
   const prices = {};
   for (const r of Object.keys(RESERVE)) {
-    const reserve = (RESERVE[r] || 1) * N;
+    const reserve = computeDynReserve(v, cons, r, RESERVE[r]);
     const stock = v.storage[r] || 0;
     const ratio = Math.max(-0.85, Math.min(2.0, (reserve - stock) / Math.max(1, reserve)));
-    const adj = Math.max(0.3, 1 + ratio * 2); // Phase 4d-3: 가격 floor 0.1→0.3 (식량 폭락 완화)
+    const adj = Math.max(0.3, 1 + ratio * 2);
     prices[r] = (BASE_VALUE[r] || 1) * adj;
   }
   return prices;

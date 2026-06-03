@@ -30,6 +30,7 @@ const ECONOMY_TICK_MS = 1000; // Phase 4d-3: 더 빠른 변동 (1초/day)
 const economyWorld = economy.createWorld({
   seed: parseInt(process.env.ECONOMY_SEED || '42'),
   villageCount: parseInt(process.env.ECONOMY_VILLAGES || '20'),
+  picker: 'rational', // Phase 4d-6: 위험 조정 + 한계효용 기반 직업 의사결정
 });
 console.log(`[economy] world 초기화: ${economyWorld.villages.length} 마을`);
 setInterval(() => {
@@ -48,6 +49,7 @@ const canadiaWorld = economy.createWorld({
   namePool: CANADIA_NAMES,
   infoRange: 5000, // Phase 4d-4: 캐나디아 zone 좌표 스케일 (마을 간 거리 1800~3500px)
   raidPer100: 0.005, // 거리 큰 만큼 raid 비례식 축소 (3000px → 약탈 18% 정도)
+  picker: 'rational', // Phase 4d-6: 합리적 의사결정 (시뮬 검증: 마을 생존 6배, 광물 도시 살아남음)
 });
 // 좌표 — 캐나디아 zone 11000×5000 안에 분산. 가장자리 800 margin.
 //   타원형 배치 (zone이 가로로 길쭉).
@@ -435,6 +437,9 @@ const server = http.createServer(async (req, res) => {
           escort: c.escort,
           giveRes: c.giveRes, wantRes: c.wantRes,
           state: c.state,
+          // Phase 4d-5: 빌려온 NPC 정보 (이름/직업)
+          npcName: c.npcName || null,
+          npcJob: c.npcJob || null,
         };
       });
       return jsonResp(res, 200, { day, caravans: out });

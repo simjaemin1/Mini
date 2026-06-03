@@ -3204,6 +3204,14 @@ console.log('%c[durango-mini] client build = 14.53 (도구 instance + 1번 슬�
         const txt = `${c.from} ${arrow} ${c.to}`;
         ctx.strokeText(txt, s.x, s.y - 22);
         ctx.fillText(txt, s.x, s.y - 22);
+        // Phase 4d-5: 빌려온 NPC 이름
+        if (c.npcName) {
+          ctx.font = '9px sans-serif';
+          ctx.fillStyle = '#cce';
+          const npcTxt = `🚶 ${c.npcName}`;
+          ctx.strokeText(npcTxt, s.x, s.y - 33);
+          ctx.fillText(npcTxt, s.x, s.y - 33);
+        }
         ctx.textAlign = 'start';
       }
     }
