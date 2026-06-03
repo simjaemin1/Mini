@@ -4585,12 +4585,11 @@ function syncCanadiaCaravans(caravans) {
     let pid = canadiaCaravanNpcs.get(key);
     let npc = pid ? players.get(pid) : null;
     if (!npc) {
-      // 새 caravan — from 마을의 merchant 또는 임의 NPC 1명 골라 부여
+      // 새 caravan — merchant 또는 warrior(호위)만 허용. 농부·사냥꾼 등은 자기 일.
       const fromSet = canadiaNpcsByVillage.get(c.from);
       if (!fromSet) continue;
-      // merchant 우선, 없으면 아무 NPC
       let chosen = null;
-      for (const tryJob of ['merchant', 'warrior', 'hunter', 'forager', 'lumberjack', 'miner', 'farmer', 'fisher']) {
+      for (const tryJob of ['merchant', 'warrior']) {
         for (const p2id of fromSet) {
           const p = players.get(p2id);
           if (p && p.canadiaJob === tryJob && p.canadiaTask !== 'traveling') {
@@ -4599,20 +4598,19 @@ function syncCanadiaCaravans(caravans) {
         }
         if (chosen) break;
       }
-      if (!chosen) continue;
+      if (!chosen) continue;  // merchant·warrior 없으면 시각상 caravan X (시뮬은 그대로)
       npc = chosen;
       canadiaCaravanNpcs.set(key, npc.pid);
     }
-    // NPC를 traveling state로 + 좌표 직접 텔레포트 (sim caravan 위치 따라 부드럽게 이동 = 빠른 상인)
+    // Phase 4d-14: NPC가 진짜 걸어가도록 — targetX/Y만 set, mover가 vx/vy 계산.
+    //   속도 boost flag로 caravan NPC만 빠르게 (평균 5일 = 5초 도착에 맞춤).
     npc.canadiaTask = 'traveling';
     npc.canadiaTaskAt = Date.now();
     npc.canadiaTaskEndAt = 0;
-    npc.x = c.x;  // 직접 좌표 set — mover 느림 우회
-    npc.y = c.y;
-    npc.vx = 0; npc.vy = 0;
-    npc.targetX = c.x;
+    npc.targetX = c.x;       // caravan 현재 위치 (보간된 시뮬 좌표) 향해
     npc.targetY = c.y;
     npc.canadiaCaravanKey = key;
+    npc.canadiaCaravanBoost = true;  // mover가 속도 ×N 적용
   }
   // 사라진 caravan = 귀환 완료 → NPC 자기 마을 복귀
   for (const [key, pid] of [...canadiaCaravanNpcs]) {
@@ -4660,9 +4658,21 @@ let _canadiaDiagAt = 0;
 function decideCanadiaBehavior(npc, now) {
   if (!npc.canadiaTask) { npc.canadiaTask = 'going_to_work'; npc.canadiaTaskAt = now; }
   npc.behavior = 'wander';
-  // Phase 4d-11: traveling state — caravan polling이 target update. 그쪽으로 가기만.
+  // Phase 4d-14: traveling state — 진짜 걸어가는 시각.
+  //   targetX/Y 향해 vx/vy 직접 계산. 평균 5일=5초 = 마을 평균 거리 2500px ÷ 5s = 500 px/s.
+  //   일반 NPC ~150 px/s. caravan은 ×3.3 boost.
   if (npc.canadiaTask === 'traveling') {
-    return; // target은 syncCanadiaCaravans에서 직접 set. AI는 이동 mover만.
+    const CARAVAN_SPEED = 500; // px/s
+    const dx = (npc.targetX || npc.x) - npc.x;
+    const dy = (npc.targetY || npc.y) - npc.y;
+    const d = Math.hypot(dx, dy);
+    if (d > 5) {
+      npc.vx = (dx / d) * CARAVAN_SPEED;
+      npc.vy = (dy / d) * CARAVAN_SPEED;
+    } else {
+      npc.vx = 0; npc.vy = 0;
+    }
+    return; // target은 syncCanadiaCaravans가 매 1초 update (시뮬 caravan 위치 따라감)
   }
   if (now - _canadiaDiagAt > 300000) { // 5분마다 한 번 (노이즈 축소)
     _canadiaDiagAt = now;
