@@ -4421,7 +4421,26 @@ const canadiaState = {
   villages: [],
   chestByVillage: new Map(),  // villageName → chest id
   setupDone: new Set(),       // villageName 셋업 완료된 마을
+  houses: new Map(),          // Phase 4d-18: villageName → House[]
+  //   House = { slotIdx, cx, cy (cell 중심), entranceX, entranceY, floors, residents: Set<pid>, buildingIds: [bId, ...] }
 };
+
+// ── Phase 4d-18-A: 거주 zone 슬롯 grid ─────────────────────────────────
+// 마을 중심 좌표 기준 cell offset. 5x5 집 + 1 cell gap = 6 cells 단위.
+// 4x4 grid - 광장 1칸 제외 = 15 집 슬롯.
+const HOUSE_FLOOR_CAPACITY = 6;        // 1층당 거주 NPC 수
+const HOUSE_SLOT_SPACING_CELLS = 6;    // 슬롯 간 cell 간격 (5x5 집 + 1 gap)
+const HOUSE_CENTER_SLOT = 5;           // 4x4 grid의 (1,1) 슬롯 = 마을 광장
+const VILLAGE_HOUSE_SLOTS = (() => {
+  const slots = [];
+  for (let j = 0; j < 4; j++) for (let i = 0; i < 4; i++) {
+    // cell offset: -2,-2 ~ +1,+1 (4x4 grid 중심을 마을 중심에)
+    const dx = (i - 1.5) * HOUSE_SLOT_SPACING_CELLS;
+    const dy = (j - 1.5) * HOUSE_SLOT_SPACING_CELLS;
+    slots.push({ idx: j * 4 + i, dxCells: dx, dyCells: dy });
+  }
+  return slots;
+})();
 
 async function initCanadiaPrototype() {
   console.log(`[canadia] Phase 4b init 시작`);
@@ -4438,10 +4457,28 @@ async function initCanadiaPrototype() {
     if (c.ownerPid?.startsWith('village_')) { claims.delete(id); broadcast({ type: 'claim_removed', id }); }
   }
   for (const [id, b] of [...buildings]) {
-    if (b.ownerId?.startsWith('village_')) { buildings.delete(id); broadcast({ type: 'building_removed', id }); }
+    if (b.ownerId?.startsWith('village_')) {
+      buildings.delete(id);
+      if (chunkManager && chunkManager.removeBuilding) chunkManager.removeBuilding(b);
+      broadcast({ type: 'building_removed', id });
+    }
   }
+  // Phase 4d-18-F: 메모리 캐시 reset (재시작 시 옛 house 데이터 초기화)
+  canadiaState.houses.clear();
+  stairCellDirty = true;  // stair cache 무효화
   // 2) 첫 sync
   await syncCanadiaEconomy();
+  // Phase 4d-18-D: 영토 + 거주 집 즉시 sync (NPC spawn 직후 집 build 보장)
+  try { syncCanadiaTerritories(); } catch (e) { console.error('[canadia] 초기 territory sync 실패:', e.message); }
+  // NPC들 이번에 build된 집에 배정 (spawn 시점엔 집 없었음)
+  for (const village of canadiaState.villages) {
+    const set = canadiaNpcsByVillage.get(village.name);
+    if (!set) continue;
+    for (const pid of set) {
+      const p = players.get(pid);
+      if (p && p.canadiaHouseSlot == null) assignNpcToHouse(village.name, p);
+    }
+  }
   // 3) 매 1초마다 sync — 상인 NPC가 caravan 위치 따라 부드럽게 텔레포트 (5일=5초)
   setInterval(() => syncCanadiaEconomy().catch(e => console.error('[canadia] sync 실패:', e.message)), 1000);
   // 4) 매 30초마다 영토 sync — 시뮬 size 변화에 따라 zone claim cell 추가 (Phase 4d-15)
@@ -4471,119 +4508,201 @@ function tickFarmlandStages() {
 function syncCanadiaTerritories() {
   if (!canadiaState.villages.length) return;
   const SZ = BUILDING_SIZE;
+  // ── 거주 zone 반경 (cell 단위) ────────────────────────────────────
+  // 4x4 slot grid × 6 cells = 24x24 cells. 중심 ±12 cell.
+  const INNER_HALF = 12;   // 거주 zone half-width (cells)
+  // ── 외곽 영토 (시뮬 size 따라 확장) ──────────────────────────────
   const CELLS_PER_SIZE = 8;
-  const MAX_CELLS = 1500;  // 마을 간 거리 1500+ 기준 영토 겹침 방지
+  const MAX_RADIUS = 22;   // 외곽 최대 반경 (cells). 마을 간 거리 1500/32 ≈ 46 → 절반 미만 안전.
+
   for (const village of canadiaState.villages) {
-    const simSize = (village.land && village.land.size) || 49;
-    const targetCells = Math.min(MAX_CELLS, Math.floor(simSize * CELLS_PER_SIZE));
-    // 현재 이 마을 cells 수 + 좌표 set
-    const currentClaims = [];
+    const guildId = `village_${village.name}`;
+    const cx = village.coord.x, cy = village.coord.y;
+    const cellCx = Math.round(cx / SZ), cellCy = Math.round(cy / SZ);
+
+    // 현재 이 마을의 cell key set
     const usedKeys = new Set();
-    const guildId = `village_${village.name}`;
     for (const c of claims.values()) {
       if (c.ownerPid !== guildId) continue;
-      currentClaims.push(c);
-      const gx = Math.floor(c.x / SZ), gy = Math.floor(c.y / SZ);
-      usedKeys.add(`${gx},${gy}`);
+      usedKeys.add(`${Math.floor(c.x / SZ)},${Math.floor(c.y / SZ)}`);
     }
-    if (currentClaims.length >= targetCells) continue;  // 이미 충분
-    const cx = village.coord.x, cy = village.coord.y;
-    const cellCx = Math.floor(cx / SZ), cellCy = Math.floor(cy / SZ);
-    const need = targetCells - currentClaims.length;
-    const targetRadius = Math.ceil(Math.sqrt(targetCells / Math.PI) + 1);
-    let added = 0;
-    // 안쪽부터 spiral — 가까운 외곽 cells 우선 채움
-    for (let r = 1; r <= targetRadius && added < need; r++) {
-      for (let dy = -r; dy <= r && added < need; dy++) {
-        for (let dx = -r; dx <= r && added < need; dx++) {
-          const dist = Math.hypot(dx, dy);
-          if (dist > targetRadius || dist <= r - 1) continue; // 현재 ring만
-          const key = `${cellCx + dx},${cellCy + dy}`;
-          if (usedKeys.has(key)) continue;
-          const claim = {
-            id: `c${nextClaimId++}`,
-            ownerPid: guildId,
-            ownerName: `${village.name} 영토`,
-            x: (cellCx + dx) * SZ,
-            y: (cellCy + dy) * SZ,
-            w: SZ, h: SZ, kind: 'guild',
-            guildTribeName: village.name,
-            createdAt: Date.now(),
-          };
-          claims.set(claim.id, claim);
-          usedKeys.add(key);
-          broadcast({ type: 'claim_added', claim });
-          added++;
-        }
+
+    function addClaim(gx, gy, facilityType) {
+      const key = `${gx},${gy}`;
+      if (usedKeys.has(key)) return false;
+      const claim = {
+        id: `c${nextClaimId++}`,
+        ownerPid: guildId,
+        ownerName: `${village.name} 영토`,
+        x: gx * SZ, y: gy * SZ, w: SZ, h: SZ, kind: 'guild',
+        guildTribeName: village.name,
+        createdAt: Date.now(),
+      };
+      if (facilityType) claim.facilityType = facilityType;
+      if (facilityType === 'farmland') claim.farmStage = Math.floor(Math.random() * 4);
+      claims.set(claim.id, claim);
+      usedKeys.add(key);
+      broadcast({ type: 'claim_added', claim });
+      return true;
+    }
+
+    // ── (1) 거주 zone — 항상 채워짐 (집·광장·작업장) ──────────────
+    let innerAdded = 0;
+    for (let dx = -INNER_HALF; dx <= INNER_HALF; dx++) {
+      for (let dy = -INNER_HALF; dy <= INNER_HALF; dy++) {
+        if (addClaim(cellCx + dx, cellCy + dy, null)) innerAdded++;
       }
     }
-    if (added > 0) {
-      console.log(`[canadia] 🏗️ ${village.name} 영토 확장: +${added} cells (size ${simSize} → ${currentClaims.length + added}/${targetCells})`);
-    }
-  }
-  // Phase 4d-16-a: NPC 1명당 4 cells를 'personal' sub-type으로 분배 (시각 차별)
-  for (const village of canadiaState.villages) {
-    const npcSet = canadiaNpcsByVillage.get(village.name);
-    if (!npcSet) continue;
-    const npcCount = npcSet.size;
-    if (!npcCount) continue;
-    const targetPersonalCells = npcCount * 4;
-    // 이 마을 cells (외곽 우선 personal로 변환)
-    const guildId = `village_${village.name}`;
-    const villageCells = [];
-    let currentPersonalCount = 0;
-    for (const c of claims.values()) {
-      if (c.ownerPid !== guildId) continue;
-      if (c.personalAssigned) currentPersonalCount++;
-      else villageCells.push(c);
-    }
-    if (currentPersonalCount >= targetPersonalCells) continue;
-    const cx = village.coord.x, cy = village.coord.y;
-    villageCells.sort((a, b) => {
-      const da = Math.hypot(a.x - cx, a.y - cy);
-      const db = Math.hypot(b.x - cx, b.y - cy);
-      return db - da;
-    });
-    const need = targetPersonalCells - currentPersonalCount;
-    const jobCounts = {};
-    const npcArr = [];
-    for (const pid of npcSet) {
-      const p = players.get(pid);
-      if (p && p.canadiaJob) {
-        jobCounts[p.canadiaJob] = (jobCounts[p.canadiaJob] || 0) + 1;
-        npcArr.push(p);
+
+    // ── (2) 외곽 ring — size 따라 확장. default = farmland ──────
+    const simSize = (village.land && village.land.size) || 49;
+    const outerRadius = Math.min(MAX_RADIUS, Math.ceil(INNER_HALF + Math.sqrt(simSize * CELLS_PER_SIZE / Math.PI)));
+    let outerAdded = 0;
+    for (let dx = -outerRadius; dx <= outerRadius; dx++) {
+      for (let dy = -outerRadius; dy <= outerRadius; dy++) {
+        if (Math.abs(dx) <= INNER_HALF && Math.abs(dy) <= INNER_HALF) continue;  // inner skip
+        if (Math.hypot(dx, dy) > outerRadius) continue;  // circular
+        // 모서리 cluster: forge (북서 모서리), hide_rack (남동 모서리)
+        let ft = 'farmland';
+        if (dx < -outerRadius + 3 && dy < -outerRadius + 3) ft = 'forge';
+        else if (dx > outerRadius - 3 && dy > outerRadius - 3) ft = 'hide_rack';
+        if (addClaim(cellCx + dx, cellCy + dy, ft)) outerAdded++;
       }
     }
-    const facilities = computeFacilityDistribution(jobCounts, need);
-    // Phase 4d-16-b: NPC pid → home cell 매핑. 4 cell 단위 (집 + 마당 3)
-    let converted = 0;
-    let facilityIdx = 0;
-    let npcMappingIdx = 0;
-    for (let i = 0; i < villageCells.length && converted < need; i++) {
-      const c = villageCells[i];
-      c.personalAssigned = true;
-      c.ownerName = `${village.name} 농가`;
-      if (i % 4 === 0) {
-        c.facilityType = 'house';
-        // 이 4-cell 그룹을 NPC 한 명에 매핑 (있으면)
-        const npc = npcArr[npcMappingIdx];
-        if (npc) {
-          npc.canadiaHomeX = c.x + c.w / 2;
-          npc.canadiaHomeY = c.y + c.h / 2;
-          c.ownerNpcPid = npc.pid;
-        }
-        npcMappingIdx++;
+    if (innerAdded + outerAdded > 0) {
+      console.log(`[canadia] 🏗️ ${village.name} 영토: inner +${innerAdded}, outer +${outerAdded} (size ${simSize}, R ${outerRadius})`);
+    }
+
+    // ── (3) 인구 vs capacity → 집 build / extend ────────────────────
+    if (!canadiaState.houses.has(village.name)) canadiaState.houses.set(village.name, []);
+    const houses = canadiaState.houses.get(village.name);
+    const pop = village.pop || 0;
+    const capacity = houses.reduce((s, h) => s + h.floors * HOUSE_FLOOR_CAPACITY, 0);
+    let deficit = pop - capacity;
+    let built = 0, extended = 0;
+    while (deficit > 0) {
+      // 빈 슬롯 있으면 새 1층 집
+      const occupied = new Set(houses.map(h => h.slotIdx));
+      const freeSlot = VILLAGE_HOUSE_SLOTS.find(s => s.idx !== HOUSE_CENTER_SLOT && !occupied.has(s.idx));
+      if (freeSlot) {
+        const h = buildHouseAt(village, freeSlot);
+        houses.push(h);
+        built++;
+        deficit -= HOUSE_FLOOR_CAPACITY;
       } else {
-        c.facilityType = facilities[facilityIdx % facilities.length] || 'workshop';
-        facilityIdx++;
+        // 모든 슬롯 차 있음 → 가장 낮은 집 증축
+        houses.sort((a, b) => a.floors - b.floors);
+        extendHouse(village, houses[0]);
+        extended++;
+        deficit -= HOUSE_FLOOR_CAPACITY;
       }
-      broadcast({ type: 'claim_updated', claim: c });
-      converted++;
+      if (built + extended >= 10) break;  // 한 번에 너무 많이 build 방지
     }
-    if (converted > 0) {
-      console.log(`[canadia] 🏠 ${village.name} NPC 사유지: +${converted} cells, NPC ${Math.min(npcMappingIdx, npcArr.length)}명에 집 매핑`);
+    if (built + extended > 0) {
+      const totalFloors = houses.reduce((s, h) => s + h.floors, 0);
+      console.log(`[canadia] 🏠 ${village.name} 집: 신축 ${built}, 증축 ${extended}, total ${houses.length}채/${totalFloors}층 (pop ${pop}, cap ${houses.reduce((s, h) => s + h.floors * HOUSE_FLOOR_CAPACITY, 0)})`);
     }
   }
+}
+
+// ── Phase 4d-18-B: 마을 거주 집 build / extend ──────────────────────────
+// 5x5 cell PZ식 집 (둘레 wall + floor + stair).
+// 마을 단위 ownerId = `village_${village.name}_house_${slotIdx}`.
+// 시각만 — NPC 거주는 House.residents 매핑으로.
+function _addBuildingForHouse(ownerId, ownerName, x, y, type, dataExtra, floor, house) {
+  const data = { ...dataExtra, floor };
+  const dbId = db.insertBuilding({
+    type, owner_id: ownerId, owner_name: ownerName,
+    x, y, data: JSON.stringify(data),
+  });
+  const id = `b${nextBid++}`;
+  const building = { id, dbId, type, ownerId, ownerName, x, y, data, floor };
+  buildings.set(id, building);
+  chunkManager.insertBuilding(building);
+  if (type === 'stair') stairCellDirty = true;
+  broadcast({ type: 'building_added', building });
+  if (house) house.buildingIds.push(id);
+}
+function _buildHouseFloor(house, ownerId, ownerName, floor) {
+  // 5x5 cell 영역. cell 범위 (cx-2, cy-2) ~ (cx+2, cy+2). 동쪽 변에 계단.
+  const cx = house.cx, cy = house.cy;
+  const SZ = BUILDING_SIZE;
+  // 외곽 wall — 북·남·동·서 변. 0F만 남쪽 가운데 입구.
+  for (let i = -2; i <= 2; i++) {
+    _addBuildingForHouse(ownerId, ownerName, (cx + i) * SZ, (cy - 2) * SZ, 'wall', { side: 'N' }, floor, house);
+  }
+  for (let i = -2; i <= 2; i++) {
+    if (floor === 0 && i === 0) continue;  // 1층 입구
+    _addBuildingForHouse(ownerId, ownerName, (cx + i) * SZ, (cy + 3) * SZ, 'wall', { side: 'N' }, floor, house);
+  }
+  for (let j = -2; j <= 2; j++) {
+    _addBuildingForHouse(ownerId, ownerName, (cx + 2) * SZ, (cy + j) * SZ, 'wall', { side: 'E' }, floor, house);
+  }
+  for (let j = -2; j <= 2; j++) {
+    _addBuildingForHouse(ownerId, ownerName, (cx - 3) * SZ, (cy + j) * SZ, 'wall', { side: 'E' }, floor, house);
+  }
+  // 바닥 — 5x5. 단 2층(floor=1)일 때만 stair cell 3개 비움 (계단 위로 올라가는 공간).
+  const stairCells = new Set([
+    `${cx + 2}_${cy + 1}`, `${cx + 2}_${cy}`, `${cx + 2}_${cy - 1}`,
+  ]);
+  for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) {
+    if (floor === 1 && stairCells.has(`${cx + i}_${cy + j}`)) continue;
+    _addBuildingForHouse(ownerId, ownerName,
+      (cx + i) * SZ + SZ / 2, (cy + j) * SZ + SZ / 2,
+      'floor', {}, floor, house);
+  }
+  // 계단 — 이 floor에서 다음 floor로 올라가는. 0F → 1F, 1F → 2F, ...
+  // 동쪽 벽 옆, dir='N' (남쪽 입장→북쪽 진행).
+  _addBuildingForHouse(ownerId, ownerName,
+    (cx + 2) * SZ + SZ / 2, (cy + 1) * SZ + SZ / 2,
+    'stair', { dir: 'N' }, floor, house);
+}
+// 새 집 1층 build.
+function buildHouseAt(village, slot) {
+  const ownerId = `village_${village.name}_house_${slot.idx}`;
+  const ownerName = `${village.name} 가옥 ${slot.idx + 1}`;
+  // 마을 좌표 → cell 좌표. slot offset 적용.
+  const cx = Math.round(village.coord.x / BUILDING_SIZE) + Math.round(slot.dxCells);
+  const cy = Math.round(village.coord.y / BUILDING_SIZE) + Math.round(slot.dyCells);
+  const house = {
+    slotIdx: slot.idx, cx, cy,
+    entranceX: (cx) * BUILDING_SIZE + BUILDING_SIZE / 2,  // 1층 입구 (남쪽 가운데, cell cy+3의 wall 안쪽)
+    entranceY: (cy + 2) * BUILDING_SIZE + BUILDING_SIZE / 2,
+    floors: 1,
+    residents: new Set(),
+    buildingIds: [],
+    ownerId,
+  };
+  _buildHouseFloor(house, ownerId, ownerName, 0);
+  return house;
+}
+// 기존 집에 위층 1개 추가 (floors → floors+1).
+function extendHouse(village, house) {
+  const ownerName = `${village.name} 가옥 ${house.slotIdx + 1}`;
+  _buildHouseFloor(house, house.ownerId, ownerName, house.floors);
+  house.floors++;
+  return house;
+}
+// NPC를 마을 집 중 가장 한산한 곳(residents 수 최소) 에 배정.
+//   집이 아직 없으면 home 없이 둠 (다음 syncCanadiaTerritories에서 build됨).
+function assignNpcToHouse(villageName, player) {
+  const houses = canadiaState.houses.get(villageName);
+  if (!houses || !houses.length) return false;
+  // 이미 배정돼있으면 skip
+  if (player.canadiaHouseSlot != null) return true;
+  // 한산도 = residents.size / capacity
+  let best = null, bestRatio = Infinity;
+  for (const h of houses) {
+    const cap = h.floors * HOUSE_FLOOR_CAPACITY;
+    const ratio = h.residents.size / cap;
+    if (ratio < bestRatio) { best = h; bestRatio = ratio; }
+  }
+  if (!best) return false;
+  best.residents.add(player.pid);
+  player.canadiaHouseSlot = best.slotIdx;
+  player.canadiaHomeX = best.entranceX;
+  player.canadiaHomeY = best.entranceY;
+  return true;
 }
 
 // Phase 4d-16-c: 직업 분포 → facility 종류 배열 (마당 cell에 분배)
@@ -4645,7 +4764,7 @@ async function syncCanadiaEconomy() {
   }
 }
 
-const NPC_CAP_PER_VILLAGE = 15;
+const NPC_CAP_PER_VILLAGE = Infinity;  // Phase 4d-17: 무제한 (시뮬 인구 그대로 spawn)
 const JOB_KR_NPC = { farmer:'농부', fisher:'어부', hunter:'사냥꾼', lumberjack:'벌목꾼', miner:'광부', prospector:'탐사꾼', smith:'대장장이', forager:'채집꾼', cook:'요리사', warrior:'전사', merchant:'상인', weaponsmith:'무공', armorsmith:'갑공' };
 // Phase 4d-16-e: 직업별 NPC 색깔 (캐릭터 sprite tint)
 const JOB_NPC_COLOR = {
@@ -4716,6 +4835,14 @@ function syncCanadiaNpcs(village) {
       if (surplus <= 0) break;
       const p = players.get(pid);
       if (p && p.canadiaJob === j && p.canadiaTask !== 'traveling') {
+        // Phase 4d-18-D: 집 resident에서도 제거
+        if (p.canadiaHouseSlot != null) {
+          const houses = canadiaState.houses.get(village.name);
+          if (houses) {
+            const h = houses.find(hh => hh.slotIdx === p.canadiaHouseSlot);
+            if (h) h.residents.delete(pid);
+          }
+        }
         set.delete(pid);
         players.delete(pid);
         npcs.delete(pid);
@@ -4749,6 +4876,8 @@ function syncCanadiaNpcs(village) {
       if (player.name && !player.name.includes('[')) {
         player.name = `${player.name}[${JOB_KR_NPC[j]||j}]`;
       }
+      // Phase 4d-18-D: NPC를 마을 집의 resident로 등록 (빈 자리 우선 적은 집부터)
+      assignNpcToHouse(village.name, player);
       assignCanadiaWorkArea(player);
       player.canadiaTask = 'going_to_work';
       player.canadiaTaskAt = Date.now();
