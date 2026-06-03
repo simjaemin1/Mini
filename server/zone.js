@@ -1043,6 +1043,10 @@ function unstuckNpc(npc, now) {
 function npcStep(npc, dt, now) {
   decideNpcBehavior(npc, now);
 
+  // Phase 4d-14d: canadia caravan traveling — decideCanadiaBehavior가 직접 vx/vy(500 px/s) 설정.
+  //   followNpcPath가 덮어쓰지 않도록 일찍 return. (A* path도 skip → 직선 이동, 마을 사이 진동 X)
+  if (npc.canadiaTask === 'traveling') return;
+
   // stuck 감지 — 모든 모드 공통. fight 모드 / canadia NPC는 자체 state machine 있어서 제외
   if (npc.behavior !== 'fight' && !npc.canadiaVillage && detectStuck(npc, now)) {
     unstuckNpc(npc, now);
@@ -4602,15 +4606,15 @@ function syncCanadiaCaravans(caravans) {
       npc = chosen;
       canadiaCaravanNpcs.set(key, npc.pid);
     }
-    // Phase 4d-14: NPC가 진짜 걸어가도록 — targetX/Y만 set, mover가 vx/vy 계산.
-    //   속도 boost flag로 caravan NPC만 빠르게 (평균 5일 = 5초 도착에 맞춤).
+    // Phase 4d-14b: NPC가 caravan 종점(toX/toY) 향해 직진. 속도 = 시뮬 phase 속도 = 거리/시간.
+    //   caravan 좌표 보간은 시뮬용. NPC는 끝점만 향해 → 도착 전 거꾸로 X.
     npc.canadiaTask = 'traveling';
     npc.canadiaTaskAt = Date.now();
     npc.canadiaTaskEndAt = 0;
-    npc.targetX = c.x;       // caravan 현재 위치 (보간된 시뮬 좌표) 향해
-    npc.targetY = c.y;
+    npc.targetX = c.toX != null ? c.toX : c.x;   // 이 phase의 종점 (outbound 도착지·inbound 출발지)
+    npc.targetY = c.toY != null ? c.toY : c.y;
+    npc.canadiaCaravanSpeed = c.npcSpeed || 500; // px/sec — 시뮬과 동기화
     npc.canadiaCaravanKey = key;
-    npc.canadiaCaravanBoost = true;  // mover가 속도 ×N 적용
   }
   // 사라진 caravan = 귀환 완료 → NPC 자기 마을 복귀
   for (const [key, pid] of [...canadiaCaravanNpcs]) {
@@ -4658,21 +4662,19 @@ let _canadiaDiagAt = 0;
 function decideCanadiaBehavior(npc, now) {
   if (!npc.canadiaTask) { npc.canadiaTask = 'going_to_work'; npc.canadiaTaskAt = now; }
   npc.behavior = 'wander';
-  // Phase 4d-14: traveling state — 진짜 걸어가는 시각.
-  //   targetX/Y 향해 vx/vy 직접 계산. 평균 5일=5초 = 마을 평균 거리 2500px ÷ 5s = 500 px/s.
-  //   일반 NPC ~150 px/s. caravan은 ×3.3 boost.
+  // Phase 4d-14b: traveling — caravan별 속도로 종점 직진. 시뮬과 정확히 동기화.
   if (npc.canadiaTask === 'traveling') {
-    const CARAVAN_SPEED = 500; // px/s
+    const speed = npc.canadiaCaravanSpeed || 500;
     const dx = (npc.targetX || npc.x) - npc.x;
     const dy = (npc.targetY || npc.y) - npc.y;
     const d = Math.hypot(dx, dy);
     if (d > 5) {
-      npc.vx = (dx / d) * CARAVAN_SPEED;
-      npc.vy = (dy / d) * CARAVAN_SPEED;
+      npc.vx = (dx / d) * speed;
+      npc.vy = (dy / d) * speed;
     } else {
       npc.vx = 0; npc.vy = 0;
     }
-    return; // target은 syncCanadiaCaravans가 매 1초 update (시뮬 caravan 위치 따라감)
+    return; // target은 syncCanadiaCaravans가 매 1초 update (state 변경 시 종점도 자동 변경)
   }
   if (now - _canadiaDiagAt > 300000) { // 5분마다 한 번 (노이즈 축소)
     _canadiaDiagAt = now;
