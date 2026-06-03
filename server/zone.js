@@ -4527,7 +4527,8 @@ const JOB_WORK_OFFSET = {
   prospector: { angle: Math.PI * 1.25,     dist: 280, label: '광맥' },
   smith:      { angle: Math.PI * 1.75,     dist: 100, label: '대장간' },
   cook:       { angle: Math.PI * 0.125,    dist: 100, label: '주방' },
-  merchant:   { angle: Math.PI * 0.875,    dist: 100, label: '시장' },
+  // merchant: 거래소 자체에 머무름 (캐러밴으로 떠나기 전 대기). 별도 작업장 X.
+  merchant:   { angle: 0,                  dist: 20,  label: '거래소' },
   warrior:    { angle: Math.PI * 1.625,    dist: 100, label: '훈련장' },
 };
 function assignCanadiaWorkArea(npc) {

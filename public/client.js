@@ -53,7 +53,7 @@ console.log('%c[durango-mini] client build = 14.53 (도구 instance + 1번 슬�
     prospector: { angle: Math.PI * 1.25,     dist: 280, emoji: '🔍', color: '#7a7a78', label: '광맥' },
     smith:      { angle: Math.PI * 1.75,     dist: 100, emoji: '⚒️', color: '#a04020', label: '대장간' },
     cook:       { angle: Math.PI * 0.125,    dist: 100, emoji: '🍳', color: '#c04040', label: '주방' },
-    merchant:   { angle: Math.PI * 0.875,    dist: 100, emoji: '💰', color: '#c0a040', label: '시장' },
+    // merchant는 거래소 자체에 머무름 — 별도 patch 안 그림 (skip)
     warrior:    { angle: Math.PI * 1.625,    dist: 100, emoji: '⚔️', color: '#703040', label: '훈련장' },
   };
   let inventory = { wood: 0, stone: 0 };
