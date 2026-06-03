@@ -106,13 +106,12 @@ function seasonOf(day) {
   return 'winter';
 }
 
-// === 이동시간 — 거리 비례 (min 3일 ~ max 7일 안에서 선형 보간) ===
-const TRAVEL_DIST_MIN_REF = 800;   // 이 거리 이하면 3일
-const TRAVEL_DIST_MAX_REF = 5000;  // 이 거리 이상이면 7일
+// === 이동시간 — 모든 caravan 같은 속도 (NPC_SPEED). 시간 = 거리/속도 (시뮬 1초=1day).
+//   평균 마을 거리 ~2500px → 평균 5일. 거리 800~5000 → 시간 자연 결정.
+//   사용자 의도: 모든 행상 같은 속도로 걷는 시각.
+const NPC_SPEED = 500; // px/sec (= px/시뮬-day)
 function travelDaysForDistance(dist) {
-  const r = (dist - TRAVEL_DIST_MIN_REF) / (TRAVEL_DIST_MAX_REF - TRAVEL_DIST_MIN_REF);
-  const days = Math.round(TRAVEL_DAY_MIN + (TRAVEL_DAY_MAX - TRAVEL_DAY_MIN) * r);
-  return Math.max(TRAVEL_DAY_MIN, Math.min(TRAVEL_DAY_MAX, days));
+  return Math.max(1, Math.round(dist / NPC_SPEED));
 }
 
 // 이동 시간 범위 (일) — 거리 무관 3~7일 random (사용자 요청)

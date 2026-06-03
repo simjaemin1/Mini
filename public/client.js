@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: Phase 4d-14 (행상 NPC 직업 제한 merchant·warrior + 진짜 걷기 boost) ===
-console.log('%c[durango-mini] client build = Phase 4d-14 (행상 = merchant·warrior만 + 걷기 시각)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: Phase 4d-14c (모든 행상 같은 속도 500 px/s, 시뮬·NPC 정확 동기화) ===
+console.log('%c[durango-mini] client build = Phase 4d-14c (모든 행상 같은 속도)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 (() => {
   const canvas = document.getElementById('canvas');

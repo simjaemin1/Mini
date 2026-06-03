@@ -431,8 +431,11 @@ const server = http.createServer(async (req, res) => {
           num = day - c.arriveDay;
         }
         const t = Math.max(0, Math.min(1, num / denom));
+        // Phase 4d-14c: 모든 caravan 같은 속도 500 px/sec. 시뮬 시간 = 거리/500.
+        //   시뮬·NPC 정확 동기화 (시뮬 1초=1day = NPC 500px 이동).
+        const npcSpeed = 500;
         return {
-          id: c.id,  // Phase 4d-13: caravan unique id (재routing 시 to 변경되어도 추적)
+          id: c.id,
           x: from.x + (to.x - from.x) * t,
           y: from.y + (to.y - from.y) * t,
           from: c.from.name, to: c.to.name,
@@ -444,6 +447,7 @@ const server = http.createServer(async (req, res) => {
           departDay: c.state === 'outbound' ? c.departDay : c.arriveDay,
           arriveDay: c.state === 'outbound' ? c.arriveDay : c.returnArriveDay,
           currentDay: day,
+          npcSpeed,        // Phase 4d-14b: NPC가 사용할 속도 (px/sec)
           npcName: c.npcName || null,
           npcJob: c.npcJob || null,
           rerouted: c._rerouted || 0,
