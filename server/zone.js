@@ -3662,13 +3662,29 @@ setInterval(() => {
 
   // === NPC 행동 결정 (사람 player는 input으로 vx/vy 받지만 NPC는 직접 결정) ===
   // 비활성 청크 NPC는 멈춤 (CPU 절약). 가까이 player 오면 자동 재개.
+  // Phase 4d-9 디버그: canadia NPC step 진단 카운터 (10초마다 출력)
+  let _dbgCanadiaInActive = 0, _dbgCanadiaOutActive = 0, _dbgCanadiaNoHP = 0, _dbgCanadiaSkipBudget = 0;
   for (const pid of npcs) {
     const npc = players.get(pid);
-    if (!npc || npc.hp <= 0) continue;
-    if (!isPositionActive(npc.x, npc.y)) { npc.vx = 0; npc.vy = 0; continue; }
-    // 14.49-fix: tick 시간 예산 — 15ms 넘으면 나머지 NPC는 다음 tick에. player 처리 시간 확보.
-    if ((Date.now() - now) > 15) break;
+    if (!npc || npc.hp <= 0) { if (npc?.canadiaVillage) _dbgCanadiaNoHP++; continue; }
+    if (!isPositionActive(npc.x, npc.y)) {
+      npc.vx = 0; npc.vy = 0;
+      if (npc.canadiaVillage) _dbgCanadiaOutActive++;
+      continue;
+    }
+    if ((Date.now() - now) > 15) {
+      if (npc.canadiaVillage) _dbgCanadiaSkipBudget++;
+      break;
+    }
+    if (npc.canadiaVillage) _dbgCanadiaInActive++;
     npcStep(npc, dt, now);
+  }
+  // 10초마다 진단 로그
+  if (!global._dbgLastCanadiaTickLog || now - global._dbgLastCanadiaTickLog > 10000) {
+    global._dbgLastCanadiaTickLog = now;
+    if (_dbgCanadiaInActive + _dbgCanadiaOutActive + _dbgCanadiaNoHP + _dbgCanadiaSkipBudget > 0) {
+      console.log(`[canadia/tick] npcs total=${npcs.size} canadia: stepped=${_dbgCanadiaInActive} outOfActive=${_dbgCanadiaOutActive} dead=${_dbgCanadiaNoHP} skipBudget=${_dbgCanadiaSkipBudget}`);
+    }
   }
   // 농지 ready 마크 (시간 지남) — 한 번 ready되면 그대로
   for (const b of buildings.values()) {
@@ -4549,21 +4565,13 @@ function decideCanadiaBehavior(npc, now) {
   npc.behavior = 'wander';
   if (now - _canadiaDiagAt > 300000) { // 5분마다 한 번 (노이즈 축소)
     _canadiaDiagAt = now;
-    console.log(`[canadia/diag] ${npc.name} task=${npc.canadiaTask} pos=(${npc.x|0},${npc.y|0}) target=(${(npc.targetX||0)|0},${(npc.targetY||0)|0}) endIn=${((npc.canadiaTaskEndAt||0) - now)|0}ms`);
+    const nextIn = (npc.nextDecisionAt || 0) - now;
+    const endIn = (npc.canadiaTaskEndAt || 0) - now;
+    const taskAge = now - (npc.canadiaTaskAt || now);
+    console.log(`[canadia/diag] ${npc.name} task=${npc.canadiaTask} pos=(${npc.x|0},${npc.y|0}) target=(${(npc.targetX||0)|0},${(npc.targetY||0)|0}) endIn=${endIn|0}ms nextIn=${nextIn|0}ms taskAge=${taskAge|0}ms canadiaVillage=${npc.canadiaVillage} behavior=${npc.behavior} vx=${(npc.vx||0).toFixed(1)} vy=${(npc.vy||0).toFixed(1)}`);
   }
-  // 안전장치: 같은 task 30초 이상 머물면 강제 다음 state (canadiaTaskEndAt이 NaN/Infinity 등 모든 케이스 커버)
-  if (npc.canadiaTaskAt && now - npc.canadiaTaskAt > 30000) {
-    const old = npc.canadiaTask;
-    if (old === 'going_to_work' || old === 'working') {
-      npc.canadiaTask = 'going_to_chest';
-    } else if (old === 'going_to_chest' || old === 'at_chest') {
-      assignCanadiaWorkArea(npc);
-      npc.canadiaTask = 'going_to_work';
-    }
-    npc.canadiaTaskAt = now;
-    npc.canadiaTaskEndAt = 0;
-    console.log(`[canadia/timeout] ${npc.name} ${old}→${npc.canadiaTask} (30s 초과)`);
-  }
+  // 안전장치 제거 (텔레포트는 hack). 진짜 원인 진단 우선.
+  if (!npc.canadiaTaskAt) npc.canadiaTaskAt = now;
   if (npc.canadiaTask === 'going_to_work') {
     npc.targetX = npc.canadiaWorkX;
     npc.targetY = npc.canadiaWorkY;
