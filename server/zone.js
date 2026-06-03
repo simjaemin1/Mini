@@ -4443,14 +4443,22 @@ async function initCanadiaPrototype() {
 }
 
 const canadiaNpcsByVillage = new Map();  // villageName → Set of pids
+// Phase 4d-11: 캐러밴 → NPC 매핑. caravan key (from+to+departDay) → npc pid
+const canadiaCaravanNpcs = new Map();
+// 현재 활성 caravan key set (이번 polling에서 사라진 caravan = 귀환 완료)
+let canadiaActiveCaravans = new Set();
+
+function caravanKey(c) { return `${c.from}|${c.to}|${c.departDay}`; }
 
 async function syncCanadiaEconomy() {
   const { request: centralRequest } = require('./central-client');
-  let data;
+  let data, caravansData;
   try {
     const r = await centralRequest('GET', '/economy/canadia/villages');
     if (r.status !== 200) { console.warn('[canadia] central 응답:', r.status); return; }
     data = r.data;
+    const r2 = await centralRequest('GET', '/economy/canadia/caravans');
+    if (r2.status === 200) caravansData = r2.data;
   } catch (e) { console.warn('[canadia] fetch 실패:', e.message); return; }
   if (!data || !data.villages) return;
   canadiaState.villages = data.villages;
@@ -4460,6 +4468,10 @@ async function syncCanadiaEconomy() {
       canadiaState.setupDone.add(village.name);
     }
     syncCanadiaNpcs(village);
+  }
+  // Phase 4d-11: 캐러밴 NPC 처리
+  if (caravansData && caravansData.caravans) {
+    syncCanadiaCaravans(caravansData.caravans);
   }
 }
 
@@ -4509,7 +4521,7 @@ function syncCanadiaNpcs(village) {
       currentByJob[p.canadiaJob] = (currentByJob[p.canadiaJob] || 0) + 1;
     }
   }
-  // 잉여 직업 NPC 제거 (currentByJob > targetByJob)
+  // 잉여 직업 NPC 제거 (currentByJob > targetByJob) — 단 traveling NPC는 보호
   for (const [j, cnt] of Object.entries(currentByJob)) {
     const target = targetByJob[j] || 0;
     let surplus = cnt - target;
@@ -4517,7 +4529,7 @@ function syncCanadiaNpcs(village) {
     for (const pid of [...set]) {
       if (surplus <= 0) break;
       const p = players.get(pid);
-      if (p && p.canadiaJob === j) {
+      if (p && p.canadiaJob === j && p.canadiaTask !== 'traveling') {
         set.delete(pid);
         players.delete(pid);
         npcs.delete(pid);
@@ -4559,6 +4571,61 @@ function syncCanadiaNpcs(village) {
   }
 }
 
+// Phase 4d-11: 캐러밴 = NPC 직접 이동.
+//   시뮬 caravan 객체 보고 → from 마을 NPC 1명 골라 traveling state로
+//   매 polling에서 caravan.x/y 좌표를 NPC 목적지로 update
+//   caravan 사라지면 (귀환 완료) NPC를 자기 마을로 복귀시킴
+function syncCanadiaCaravans(caravans) {
+  const newActive = new Set();
+  for (const c of caravans) {
+    const key = caravanKey(c);
+    newActive.add(key);
+    let pid = canadiaCaravanNpcs.get(key);
+    let npc = pid ? players.get(pid) : null;
+    if (!npc) {
+      // 새 caravan — from 마을의 merchant 또는 임의 NPC 1명 골라 부여
+      const fromSet = canadiaNpcsByVillage.get(c.from);
+      if (!fromSet) continue;
+      // merchant 우선, 없으면 아무 NPC
+      let chosen = null;
+      for (const tryJob of ['merchant', 'warrior', 'hunter', 'forager', 'lumberjack', 'miner', 'farmer', 'fisher']) {
+        for (const p2id of fromSet) {
+          const p = players.get(p2id);
+          if (p && p.canadiaJob === tryJob && p.canadiaTask !== 'traveling') {
+            chosen = p; break;
+          }
+        }
+        if (chosen) break;
+      }
+      if (!chosen) continue;
+      npc = chosen;
+      canadiaCaravanNpcs.set(key, npc.pid);
+    }
+    // NPC를 traveling state로 + caravan 좌표를 목적지로
+    npc.canadiaTask = 'traveling';
+    npc.canadiaTaskAt = Date.now();
+    npc.canadiaTaskEndAt = 0;
+    npc.targetX = c.x;
+    npc.targetY = c.y;
+    npc.canadiaCaravanKey = key;
+  }
+  // 사라진 caravan = 귀환 완료 → NPC 자기 마을 복귀
+  for (const [key, pid] of [...canadiaCaravanNpcs]) {
+    if (!newActive.has(key)) {
+      const npc = players.get(pid);
+      if (npc) {
+        npc.canadiaTask = 'going_to_work';
+        npc.canadiaTaskAt = Date.now();
+        npc.canadiaTaskEndAt = 0;
+        npc.canadiaCaravanKey = null;
+        assignCanadiaWorkArea(npc);
+      }
+      canadiaCaravanNpcs.delete(key);
+    }
+  }
+  canadiaActiveCaravans = newActive;
+}
+
 // 직업별 work area — 거래소 chest 기준 방향/거리
 const JOB_WORK_OFFSET = {
   farmer:     { angle: 0,                  dist: 280, label: '농지' },
@@ -4588,6 +4655,10 @@ let _canadiaDiagAt = 0;
 function decideCanadiaBehavior(npc, now) {
   if (!npc.canadiaTask) { npc.canadiaTask = 'going_to_work'; npc.canadiaTaskAt = now; }
   npc.behavior = 'wander';
+  // Phase 4d-11: traveling state — caravan polling이 target update. 그쪽으로 가기만.
+  if (npc.canadiaTask === 'traveling') {
+    return; // target은 syncCanadiaCaravans에서 직접 set. AI는 이동 mover만.
+  }
   if (now - _canadiaDiagAt > 300000) { // 5분마다 한 번 (노이즈 축소)
     _canadiaDiagAt = now;
     const nextIn = (npc.nextDecisionAt || 0) - now;
