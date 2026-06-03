@@ -4501,6 +4501,8 @@ function syncCanadiaNpcs(village) {
     }
     assignCanadiaWorkArea(player);
     player.canadiaTask = 'going_to_work';
+    player.canadiaTaskAt = Date.now();   // Phase 4d-9 fix: 30s timeout 안전장치 작동하도록 초기화
+    player.canadiaTaskEndAt = 0;
     set.add(player.pid);
   }
   // 제거 (인구 감소 시)
