@@ -6239,6 +6239,32 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
             ctx.fillText(name, cx, cy);
           }
         }
+
+        // Phase 5-C-client: 마을 emoji + 이름
+        const VILLAGE_ICON = {
+          riverside: '🌊', mining: '⛏️', mountain: '⛰️', forest: '🌲', plain: '🏘️',
+        };
+        if (zoom > 0.003) {
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          for (const [zid, z] of Object.entries(zm)) {
+            if (!z.villages || z.villages.length === 0) continue;
+            const ox = z.worldOffsetX || 0, oy = z.worldOffsetY || 0;
+            for (const v of z.villages) {
+              const dx = (ox + v.x) * zoom + panX;
+              const dy = (oy + v.y) * zoom + panY;
+              if (dx < -20 || dx > canvas.width + 20 || dy < -20 || dy > canvas.height + 20) continue;
+              const icon = VILLAGE_ICON[v.type] || '🏘️';
+              ctx.font = (zoom > 0.015 ? '14px' : '10px') + ' sans-serif';
+              ctx.fillText(icon, dx, dy);
+              if (zoom > 0.015) {
+                ctx.fillStyle = 'rgba(255,255,200,0.85)';
+                ctx.font = '10px sans-serif';
+                ctx.fillText(v.name, dx, dy + 12);
+              }
+            }
+          }
+        }
       }
 
       // 본인 위치

@@ -4539,6 +4539,8 @@ function zonePublicMeta() {
     worldOffsetY: ZONE.worldOffsetY,
     isOcean: !!ZONE.isOcean,
     mainSquare: ZONE.mainSquare || null,
+    // Phase 5-C: 마을 list (이름·좌표·type) — 클라가 미니맵 등에 표시
+    villages: VILLAGES.map(v => ({ name: v.name, x: v.x, y: v.y, type: v.type || 'plain' })),
   };
 }
 
