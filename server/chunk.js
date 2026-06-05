@@ -234,10 +234,21 @@ function pickResourceType(biome, r) {
 
 // 청크 안 자원 시드 생성. harvestedSet에 있는 건 제외.
 // 청크당 자원 N개 (기본 5개) — 청크 면적 256² = 65536. zone 4096이면 16×16=256 청크. 총 자원 1280.
+// Phase 5-1: terrain (forest·mountain·ore·water) 반영.
 const RESOURCES_PER_CHUNK = 5;
+const terrain = require('./terrain');
 function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet) {
   const result = [];
-  for (let n = 0; n < RESOURCES_PER_CHUNK; n++) {
+  // 청크당 자원 수 — forest/mountain 영역이면 ↑ (대표 점 sample)
+  const sampleX = cx * chunkSize + chunkSize / 2;
+  const sampleY = cy * chunkSize + chunkSize / 2;
+  const forestMult = terrain.getForestMultiplier(zoneId, sampleX, sampleY);
+  const stoneMult = terrain.getStoneMultiplier(zoneId, sampleX, sampleY);
+  const oreCluster = terrain.isOreClusterAt(zoneId, sampleX, sampleY);
+  // 최종 자원 수 = base × max(forest, mountain, 1)
+  const baseCount = Math.round(RESOURCES_PER_CHUNK * Math.max(forestMult, stoneMult, 1.0));
+  const count = oreCluster ? baseCount + 3 : baseCount;  // ore cluster: 추가 stone
+  for (let n = 0; n < count; n++) {
     const seedKey = `${cx}_${cy}_${n}`;
     if (harvestedSet && harvestedSet.has(seedKey)) continue;
     const r1 = seedRand(zoneId, cx, cy, n * 3);
@@ -245,7 +256,22 @@ function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet) 
     const r3 = seedRand(zoneId, cx, cy, n * 3 + 2);
     const x = cx * chunkSize + 16 + r1 * (chunkSize - 32);
     const y = cy * chunkSize + 16 + r2 * (chunkSize - 32);
-    const type = pickResourceType(biome, r3);
+    // water cell에는 spawn 차단
+    if (terrain.isWaterCellLocal(zoneId, x, y)) continue;
+    // 자원 type — terrain 영향:
+    //   ore cluster 안 → stone/iron 우세
+    //   forest 영역 → tree 우세
+    //   mountain 영역 → stone 우세
+    let type;
+    if (oreCluster && r3 < 0.7) {
+      type = 'stone';  // ore cluster: 70% stone
+    } else if (forestMult > 1.5 && r3 < 0.7) {
+      type = 'tree';  // forest: 70% tree
+    } else if (stoneMult > 1.5 && r3 < 0.5) {
+      type = 'stone';  // mountain: 50% stone
+    } else {
+      type = pickResourceType(biome, r3);
+    }
     const maxHp = RESOURCE_HP_TABLE[type] || 3;
     result.push({
       id: `s_${cx}_${cy}_${n}`,
@@ -347,6 +373,24 @@ function _coastSmoothNoise(side, zoneId, t) {
 function generateCoastlineWaterTiles(zone, tileSize, findZoneAtFn) {
   const waterTiles = new Set();
   if (zone.isOcean) return waterTiles; // ocean zone은 전체 물 — 별도 처리
+  // Phase 5-1: inland water (강·호수) — terrain 데이터 기반
+  const tCfg = terrain.ZONE_TERRAIN[zone.id];
+  if (tCfg) {
+    const cols = Math.ceil(zone.zoneWidth / tileSize);
+    const rows = Math.ceil(zone.zoneHeight / tileSize);
+    for (let ty = 0; ty < rows; ty++) {
+      for (let tx = 0; tx < cols; tx++) {
+        const cellX = tx * tileSize + tileSize / 2;
+        const cellY = ty * tileSize + tileSize / 2;
+        if (terrain.isWaterCellLocal(zone.id, cellX, cellY)) {
+          waterTiles.add(`${tx}_${ty}`);
+        }
+      }
+    }
+    if (waterTiles.size > 0) {
+      console.log(`[${zone.id}] 🌊 inland water tiles: ${waterTiles.size} (강+호수)`);
+    }
+  }
 
   const cols = Math.ceil(zone.zoneWidth / tileSize);
   const rows = Math.ceil(zone.zoneHeight / tileSize);

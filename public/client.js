@@ -42,6 +42,8 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
 
   // === 상태 ===
   let zonesMeta = {};
+  // Phase 5-2-mini: 미니맵 IIFE에서 access 가능하게 노출
+  window.__getZonesMeta = () => zonesMeta;
   let marketplaceUrl = '';
   let myName = '여행자';
   let myUsername = '';
@@ -50,6 +52,8 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
   let myColor = '#f0c674';
   let myAbsPos = { x: 0, y: 0 };
   let myAbsPredicted = { x: 0, y: 0 };
+  // Phase 5-2-mini: 미니맵에서 access
+  window.__getMyAbs = () => myAbsPredicted;
   let primaryZoneId = null;
   let myPid = null;
   // Phase 4d-3: 캐나디아 캐러밴 (행상) 시각화 cache
@@ -843,7 +847,7 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
       else if (fy !== 0) bdir = fy > 0 ? 'S' : 'N';
       sendPrimary({ type: 'build', buildType: 'stair', floor: myBuildFloor, dir: bdir });
     }
-    else if (k === 'm') toggleMarketplace();
+    else if (k === 'm') { if (window.bigMap) window.bigMap.toggle(); }  // Phase 5-2-mini: M = 지도 (시장은 사이드바 클릭)
     else if (k === 'k') toggleCraft();
     else if (k === 'r' && e.shiftKey) sendPrimary({ type: 'repair_building' }); // Phase 14.34 수리
     else if (k === 'r') {
@@ -5944,4 +5948,252 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
       if (e.key === 'Escape' && !document.getElementById('villageMarketPanel')?.classList.contains('hidden')) closeVillageMarket();
     });
   });
+})();
+
+// ============================================================
+// Phase 5-2-mini: 상세 미니맵 (cell 단위 zoom/pan)
+// ============================================================
+(() => {
+  const panel = document.getElementById('bigMapPanel');
+  const canvas = document.getElementById('bigMapCanvas');
+  if (!panel || !canvas) return;
+  const ctx = canvas.getContext('2d');
+  const zoomLabel = document.getElementById('bigMapZoomLabel');
+  const coordLabel = document.getElementById('bigMapCoordLabel');
+  const closeBtn = document.getElementById('bigMapCloseBtn');
+  const fitBtn = document.getElementById('bigMapFitBtn');
+  const meBtn = document.getElementById('bigMapMeBtn');
+
+  // 표시 변수
+  let zoom = 0.01;   // world px → display px 배율 (작을수록 zoom-out)
+  let panX = 0, panY = 0;
+  let dragging = false, dragStartX = 0, dragStartY = 0, dragPanX = 0, dragPanY = 0;
+  let visible = false;
+  let needsRedraw = true;
+
+  const TILE_COLORS = {
+    water:    '#2e6fa8',
+    forest:   '#2a5a2a',
+    mountain: '#8a8a8a',
+    ore:      '#c4682a',
+    plain:    null,    // groundColor 사용
+  };
+  const OCEAN_COLOR = '#1a3a6a';
+
+  function resize() {
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = Math.floor(rect.width);
+    canvas.height = Math.floor(rect.height);
+    needsRedraw = true;
+  }
+
+  function show() {
+    panel.classList.remove('hidden');
+    visible = true;
+    setTimeout(() => { resize(); fitAll(); }, 30);
+    requestAnimationFrame(draw);
+  }
+  function hide() {
+    panel.classList.add('hidden');
+    visible = false;
+  }
+  function toggle() { if (visible) hide(); else show(); }
+  window.bigMap = { show, hide, toggle };
+
+  function getZonesMeta() {
+    return (typeof window.__getZonesMeta === 'function') ? window.__getZonesMeta() : null;
+  }
+  function getMyAbs() {
+    return (typeof window.__getMyAbs === 'function') ? window.__getMyAbs() : null;
+  }
+
+  function fitAll() {
+    const zm = getZonesMeta();
+    if (!zm) return;
+    let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
+    for (const z of Object.values(zm)) {
+      const ox = z.worldOffsetX || 0, oy = z.worldOffsetY || 0;
+      const zw = z.zoneWidth || 0, zh = z.zoneHeight || 0;
+      if (zw === 0) continue;
+      minX = Math.min(minX, ox);
+      minY = Math.min(minY, oy);
+      maxX = Math.max(maxX, ox + zw);
+      maxY = Math.max(maxY, oy + zh);
+    }
+    if (minX === Infinity) return;
+    const worldW = maxX - minX;
+    const worldH = maxY - minY;
+    zoom = Math.min(canvas.width / worldW, canvas.height / worldH) * 0.92;
+    panX = (canvas.width - worldW * zoom) / 2 - minX * zoom;
+    panY = (canvas.height - worldH * zoom) / 2 - minY * zoom;
+    needsRedraw = true;
+  }
+
+  function centerOnMe() {
+    const me = getMyAbs();
+    if (!me) return;
+    panX = canvas.width / 2 - me.x * zoom;
+    panY = canvas.height / 2 - me.y * zoom;
+    needsRedraw = true;
+  }
+
+  function draw() {
+    if (!visible) return;
+    if (needsRedraw) {
+      ctx.fillStyle = '#0a0e14';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const zm = getZonesMeta();
+      const Terrain = window.Terrain;
+      if (zm) {
+        const CELL = 32;
+        // 1 display px = (1/zoom) world px = (1/zoom/CELL) cells
+        const cellsPerDispPx = 1 / (zoom * CELL);
+        // sampleStep: 1 display px당 1~여러 cell 샘플. zoom-out 클수록 sampleStep 큼
+        const sampleStep = Math.max(1, Math.round(cellsPerDispPx));
+        const sampleStepWorld = sampleStep * CELL;
+        // viewport world bounds
+        const viewMinX = -panX / zoom;
+        const viewMaxX = (canvas.width - panX) / zoom;
+        const viewMinY = -panY / zoom;
+        const viewMaxY = (canvas.height - panY) / zoom;
+
+        for (const [zid, z] of Object.entries(zm)) {
+          const zox = z.worldOffsetX || 0, zoy = z.worldOffsetY || 0;
+          const zw = z.zoneWidth || 0, zh = z.zoneHeight || 0;
+          if (zw === 0) continue;
+          // viewport 밖 zone skip
+          if (zox + zw < viewMinX || zox > viewMaxX) continue;
+          if (zoy + zh < viewMinY || zoy > viewMaxY) continue;
+
+          // base ground fill (zone 전체)
+          const dx0 = zox * zoom + panX;
+          const dy0 = zoy * zoom + panY;
+          const dw = zw * zoom, dh = zh * zoom;
+          ctx.fillStyle = z.isOcean ? OCEAN_COLOR : (z.groundColor || '#5a7c4a');
+          ctx.fillRect(dx0, dy0, dw, dh);
+          if (z.isOcean) continue;
+
+          // terrain cell sample (zone 안만)
+          if (Terrain) {
+            const startX = Math.max(zox, viewMinX);
+            const endX = Math.min(zox + zw, viewMaxX);
+            const startY = Math.max(zoy, viewMinY);
+            const endY = Math.min(zoy + zh, viewMaxY);
+            const sx0 = Math.floor(startX / sampleStepWorld) * sampleStepWorld;
+            const sy0 = Math.floor(startY / sampleStepWorld) * sampleStepWorld;
+            const drawSize = Math.max(1, sampleStepWorld * zoom);
+            for (let wy = sy0; wy < endY; wy += sampleStepWorld) {
+              for (let wx = sx0; wx < endX; wx += sampleStepWorld) {
+                const lx = wx - zox, ly = wy - zoy;
+                if (lx < 0 || ly < 0 || lx >= zw || ly >= zh) continue;
+                const type = Terrain.getTileType(zid, lx, ly);
+                const color = TILE_COLORS[type];
+                if (!color) continue;  // plain → base ground
+                ctx.fillStyle = color;
+                ctx.fillRect(wx * zoom + panX, wy * zoom + panY, drawSize, drawSize);
+              }
+            }
+          }
+        }
+
+        // zone 경계
+        ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+        ctx.lineWidth = 1;
+        for (const z of Object.values(zm)) {
+          const ox = z.worldOffsetX || 0, oy = z.worldOffsetY || 0;
+          const zw = z.zoneWidth || 0, zh = z.zoneHeight || 0;
+          if (zw === 0) continue;
+          ctx.strokeRect(ox * zoom + panX, oy * zoom + panY, zw * zoom, zh * zoom);
+        }
+
+        // zone 이름 (zoom 클 때만)
+        if (zoom > 0.005) {
+          ctx.fillStyle = 'rgba(255,255,255,0.7)';
+          ctx.font = '11px sans-serif';
+          ctx.textAlign = 'center';
+          for (const [zid, z] of Object.entries(zm)) {
+            const ox = z.worldOffsetX || 0, oy = z.worldOffsetY || 0;
+            const zw = z.zoneWidth || 0, zh = z.zoneHeight || 0;
+            const cx = (ox + zw / 2) * zoom + panX;
+            const cy = (oy + zh / 2) * zoom + panY;
+            if (cx < 0 || cx > canvas.width) continue;
+            const name = z.displayName || zid;
+            ctx.fillText(name, cx, cy);
+          }
+        }
+      }
+
+      // 본인 위치
+      const me = getMyAbs();
+      if (me && typeof me.x === 'number') {
+        const mx = me.x * zoom + panX;
+        const my = me.y * zoom + panY;
+        ctx.fillStyle = '#ff3344';
+        ctx.beginPath();
+        ctx.arc(mx, my, 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+
+      if (zoomLabel) zoomLabel.textContent = (zoom * 100).toFixed(2) + '%';
+      needsRedraw = false;
+    }
+    if (visible) requestAnimationFrame(draw);
+  }
+
+  // 휠 zoom
+  canvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    const wx = (mx - panX) / zoom;
+    const wy = (my - panY) / zoom;
+    const factor = e.deltaY > 0 ? 0.82 : 1.22;
+    const newZoom = Math.max(0.0005, Math.min(3.0, zoom * factor));
+    if (newZoom !== zoom) {
+      zoom = newZoom;
+      panX = mx - wx * zoom;
+      panY = my - wy * zoom;
+      needsRedraw = true;
+    }
+  }, { passive: false });
+
+  // 드래그 pan
+  canvas.addEventListener('mousedown', (e) => {
+    dragging = true;
+    dragStartX = e.clientX;
+    dragStartY = e.clientY;
+    dragPanX = panX; dragPanY = panY;
+    canvas.style.cursor = 'grabbing';
+  });
+  canvas.addEventListener('mousemove', (e) => {
+    if (dragging) {
+      panX = dragPanX + (e.clientX - dragStartX);
+      panY = dragPanY + (e.clientY - dragStartY);
+      needsRedraw = true;
+    }
+    const rect = canvas.getBoundingClientRect();
+    const wx = Math.round((e.clientX - rect.left - panX) / zoom);
+    const wy = Math.round((e.clientY - rect.top - panY) / zoom);
+    if (coordLabel) coordLabel.textContent = `(${wx},${wy})`;
+  });
+  canvas.addEventListener('mouseup', () => { dragging = false; canvas.style.cursor = 'grab'; });
+  canvas.addEventListener('mouseleave', () => { dragging = false; canvas.style.cursor = 'grab'; });
+
+  // 버튼
+  closeBtn?.addEventListener('click', hide);
+  fitBtn?.addEventListener('click', () => { fitAll(); });
+  meBtn?.addEventListener('click', () => { zoom = 0.5; centerOnMe(); needsRedraw = true; });
+
+  // resize
+  window.addEventListener('resize', () => { if (visible) resize(); });
+
+  // Esc 닫기 (M 키 토글은 기존 input handler에서 — line 846)
+  window.addEventListener('keydown', (e) => {
+    if (visible && e.key === 'Escape') { e.preventDefault(); hide(); }
+  }, true);
 })();
