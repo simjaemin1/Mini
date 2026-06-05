@@ -7,3 +7,4 @@
 *.log
 .fuse_hidden*
 *.bak
+sim/_*.js
