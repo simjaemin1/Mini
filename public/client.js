@@ -240,7 +240,14 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     const tx = Math.floor((absX - z.worldOffsetX) / 32);
     const ty = Math.floor((absY - z.worldOffsetY) / 32);
     const set = waterTilesByZone[z.id];
-    return !!(set && set.has(`${tx}_${ty}`));
+    if (set && set.has(`${tx}_${ty}`)) return true;
+    // Phase 5-2-mini: inland water (강·호수) — terrain.js 동적 검사
+    if (window.Terrain) {
+      const lx = absX - z.worldOffsetX;
+      const ly = absY - z.worldOffsetY;
+      if (window.Terrain.isWaterCellLocal(z.id, lx, ly)) return true;
+    }
+    return false;
   }
 
   // 14.49-e6-c: 시야 재구성
