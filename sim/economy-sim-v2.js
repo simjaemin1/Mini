@@ -89,6 +89,41 @@ const DECAY_V2 = {
   food: 0.001,
 };
 
+// === Phase 5-5-econ-a: specialty.js 195 자원 통합 ===
+//   옛 자원(17종) 호환 유지. 새 자원은 category 따라 elasticity 자동 부여.
+try {
+  const { RESOURCES: SPECIALTY } = require('../server/specialty');
+  for (const [id, r] of Object.entries(SPECIALTY)) {
+    if (!(id in ELASTICITY)) {
+      // category별 elasticity 자동
+      if (r.category === 'agri' || r.category === 'aqua') ELASTICITY[id] = 1.2;
+      else if (r.category === 'mineral') ELASTICITY[id] = 0.9;
+      else if (r.category === 'gem') ELASTICITY[id] = 0.6;
+      else if (r.category === 'spice' || r.category === 'craft') ELASTICITY[id] = 0.7;
+      else if (r.category === 'livestock') ELASTICITY[id] = 1.1;
+      else if (r.category === 'forest' || r.category === 'forage') ELASTICITY[id] = 1.0;
+      else ELASTICITY[id] = 1.0;
+      TRADABLE.push(id);
+    }
+    if (!(id in BASE_VALUE_V2)) BASE_VALUE_V2[id] = r.baseValue || 1;
+    if (!(id in UTILITY_WEIGHT)) UTILITY_WEIGHT[id] = r.utility || 0.1;
+    // contributes.subsistence 기반 자동 SUBSISTENCE
+    if (r.contributes?.subsistence && !(id in SUBSISTENCE_PER_NPC)) {
+      SUBSISTENCE_PER_NPC[id] = 0.05 * r.contributes.subsistence;
+    }
+    // DECAY 자동 — 부패성 자원 (농산물·수산물·꺽채취)
+    if (!(id in DECAY_V2)) {
+      if (r.category === 'agri' || r.category === 'aqua' || r.category === 'forage') DECAY_V2[id] = 0.001;
+      else if (r.category === 'livestock') DECAY_V2[id] = 0.0008;
+      else if (r.category === 'spice') DECAY_V2[id] = 0.0002;  // 향신료 보존 잘됨
+      else DECAY_V2[id] = 0.0002;
+    }
+  }
+  console.log(`[econ-sim-v2] specialty.js 통합: ${Object.keys(SPECIALTY).length}종 → 총 ${TRADABLE.length} TRADABLE`);
+} catch (e) {
+  console.warn('[econ-sim-v2] specialty.js 로드 실패 (옛 17종만 사용):', e.message);
+}
+
 // === 계절 시스템 ===
 //   v2 r7: 진폭 축소 — 인구 cycle 진동 완화. 평년 평균 = 1.0 유지.
 const SEASONS = ['spring', 'summer', 'autumn', 'winter'];
@@ -776,10 +811,33 @@ function main() {
 
 if (require.main === module) main();
 
+// === Phase 5-5-econ-c: 마을 stat 5종 (specialty.contributes 기반) ===
+//   마을이 보유한 자원을 보고 subsistence/happiness/health/prestige/defense 산출.
+//   인구당 정규화 — per_npc 2.0까지 만족도 누적 (그 이상은 잉여).
+//   stat 값 [0, ∞) — 마을 정책·인구 성장률·이주에 활용 가능.
+function computeVillageStats(v) {
+  const stats = { subsistence: 0, happiness: 0, health: 0, prestige: 0, defense: 0 };
+  let SPECIALTY;
+  try { SPECIALTY = require('../server/specialty').RESOURCES; } catch { return stats; }
+  const pop = Math.max(1, v.pop || v.population || 1);
+  const storage = v.storage || v.stock || {};
+  for (const [id, qty] of Object.entries(storage)) {
+    const r = SPECIALTY[id];
+    if (!r || !r.contributes || qty <= 0) continue;
+    const per_npc = qty / pop;
+    const satisfaction = Math.min(1.0, per_npc / 2.0);  // 1인당 2단위까지 누적
+    for (const [stat, w] of Object.entries(r.contributes)) {
+      if (stats[stat] !== undefined) stats[stat] += w * satisfaction;
+    }
+  }
+  return stats;
+}
+
 module.exports = {
   createWorldV2,
   tickWorldV2,
   computeShadowPrices,
+  computeVillageStats,
   ELASTICITY,
   TAU,
   SUBSISTENCE_PER_NPC,
