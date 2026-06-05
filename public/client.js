@@ -241,11 +241,12 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     const ty = Math.floor((absY - z.worldOffsetY) / 32);
     const set = waterTilesByZone[z.id];
     if (set && set.has(`${tx}_${ty}`)) return true;
-    // Phase 5-2-mini: inland water (강·호수) — terrain.js 동적 검사
+    // Phase 5-2-mini: inland water (강·호수) — terrain.js 동적 검사.
+    // cell center로 검사 (시각과 콜라이더 일치).
     if (window.Terrain) {
-      const lx = absX - z.worldOffsetX;
-      const ly = absY - z.worldOffsetY;
-      if (window.Terrain.isWaterCellLocal(z.id, lx, ly)) return true;
+      const cellLx = tx * 32 + 16;
+      const cellLy = ty * 32 + 16;
+      if (window.Terrain.isWaterCellLocal(z.id, cellLx, cellLy)) return true;
     }
     return false;
   }
