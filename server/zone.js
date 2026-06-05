@@ -340,10 +340,21 @@ const VP_DECAY_PER_SEC   = 10 / 3600; // 시간당 -10
 const VP_THRESHOLD       = 50;  // 이 이상이면 본인 사유지 보호 해제
 const VP_MAX             = 100;
 
-const MOB_DEFS = {
-  deer: { maxHp: 10, speed: 80,  aggroRange: 0, damage: 0, sightRange: 0,   loot: { meat_raw: 1, hide: 1 }, tameFood: 'berry',    tameNeed: 3 },
-  wolf: { maxHp: 30, speed: 140, aggroRange: 0,   damage: 5, sightRange: 0,   loot: { meat_raw: 2, hide: 1 }, tameFood: 'meat_raw', tameNeed: 5 }, // TEMP: 공격성 비활성 (사용자 요청)
-};
+// Phase 5-6b: MOB_DEFS를 ANIMALS catalog에서 동적 생성 (36종 다 zone에 spawn 가능)
+const MOB_DEFS = {};
+for (const [id, a] of Object.entries(ANIMALS)) {
+  MOB_DEFS[id] = {
+    maxHp: a.hp || 10,
+    speed: (a.speed || 3) * 30,            // animals.speed 5 → 150 px/sec
+    aggroRange: a.aggressive ? 100 : 0,
+    damage: a.aggressive ? Math.max(2, Math.floor(a.hp / 20)) : 0,
+    sightRange: a.aggressive ? 200 : 0,
+    loot: a.drops && Object.keys(a.drops).length ? a.drops : { meat_game: 1 },
+    pack: a.pack || 1,
+    tameFood: a.breeding ? (a.feed || 'wheat') : null,
+    tameNeed: a.breeding ? 3 : null,
+  };
+}
 const TAME_FOLLOW_DIST = 200; // 주인이 이만큼 멀어지면 따라옴
 const TAME_FOLLOW_STOP = 80;  // 이만큼 가까우면 정지
 const WOLF_TERRITORY_RADIUS = 700; // 늑대가 home에서 이만큼 벗어나면 추적 중단
@@ -637,17 +648,33 @@ function spawnMob(type, opts = {}) {
     // 14.46-b에서 fish 추가 예정.
     console.log(`[${ZONE_ID}] 🌊 ocean zone — mob spawn skip`);
   } else {
-    const isHostile = ZONE.biome === 'mountains' || ZONE.biome === 'mountain' || ZONE.biome === 'forest' || ZONE.biome === 'taiga';
-    // 면적 100배지만 mob도 메모리 차지 — 적당히 50배 (비활성 청크는 AI skip)
-    const deerCount = isHostile ? 200 : 400;
-    const wolfCount = isHostile ? 250 : 100;
-    for (let i = 0; i < deerCount; i++) spawnMob('deer');
-    // 늑대는 팩으로 묶음 — 2~3마리씩. home은 마을 근처 피해서.
+    // Phase 5-6b: zone biome 따라 huntableInBiome 활용. 사냥감 36종 다 활성.
+    const { huntableInBiome } = require('./animals');
+    const huntable = huntableInBiome(ZONE.biome);
+    const peaceful = huntable.filter(id => !ANIMALS[id].aggressive);
+    const aggressive = huntable.filter(id => ANIMALS[id].aggressive);
+    const TOTAL_PEACEFUL = 300;
+    const TOTAL_AGGRESSIVE = 150;
+    // peaceful — density 비례 분배
+    if (peaceful.length > 0) {
+      const totalDensity = peaceful.reduce((s, id) => s + (ANIMALS[id].spawn_density || 0.03), 0);
+      for (const id of peaceful) {
+        const dens = ANIMALS[id].spawn_density || 0.03;
+        const cnt = Math.max(1, Math.round(TOTAL_PEACEFUL * dens / totalDensity));
+        for (let i = 0; i < cnt; i++) spawnMob(id);
+      }
+    } else {
+      // fallback (해양 zone 등) — sheep 만
+      for (let i = 0; i < 50; i++) spawnMob('sheep');
+    }
+    // aggressive — 무리. wolf/jackal/hyena 같은 pack
     let spawned = 0, packNum = 0;
-    while (spawned < wolfCount) {
-      const packSize = Math.min(2 + Math.floor(Math.random() * 2), wolfCount - spawned); // 2 또는 3
+    while (aggressive.length > 0 && spawned < TOTAL_AGGRESSIVE) {
+      const id = aggressive[Math.floor(Math.random() * aggressive.length)];
+      const def = ANIMALS[id];
+      const targetSize = def.pack || 1;
+      const packSize = Math.min(targetSize, TOTAL_AGGRESSIVE - spawned);
       const packId = `pack_${ZONE_ID}_${packNum++}_${Math.random().toString(36).slice(2,6)}`;
-      // 팩의 home — 마을 안전구역 밖에서만 (20회 재시도)
       let homeX, homeY;
       for (let att = 0; att < 20; att++) {
         homeX = 200 + Math.random() * (ZONE.zoneWidth - 400);
@@ -655,17 +682,16 @@ function spawnMob(type, opts = {}) {
         if (!isNearVillage(homeX, homeY)) break;
       }
       for (let i = 0; i < packSize; i++) {
-        // 멤버는 home 주변 50px 안에 spawn
         const ang = Math.random() * Math.PI * 2;
         const r = Math.random() * 50;
-        spawnMob('wolf', {
+        spawnMob(id, {
           x: homeX + Math.cos(ang) * r,
           y: homeY + Math.sin(ang) * r,
           homeX, homeY, packId,
         });
         spawned++;
       }
-      console.log(`[${ZONE_ID}] 🐺 늑대 팩 ${packId.slice(-6)}: ${packSize}마리 @ (${homeX.toFixed(0)},${homeY.toFixed(0)})`);
+      if (packSize > 1) console.log(`[${ZONE_ID}] 🐺 ${def.ko} 팩: ${packSize}마리 @ (${homeX.toFixed(0)},${homeY.toFixed(0)})`);
     }
     console.log(`[${ZONE_ID}] 새 mob 스폰: 사슴 ${deerCount}, 늑대 ${wolfCount}`);
   }
@@ -2483,6 +2509,61 @@ function doToggleHotkey(player) {
 }
 
 function tryGather(player) {
+  // Phase 5-9: 물 채취 — 강/호수 인접 시 thirst 회복 + 어업 (Phase 5-11)
+  for (const [dx, dy] of [[32, 0], [-32, 0], [0, 32], [0, -32]]) {
+    if (isWaterTileLocal(player.x + dx, player.y + dy)) {
+      const before = player.thirst || 0;
+      player.thirst = Math.min(100, before + 30);
+      let msg = `💧 물 마심 (+${Math.round(player.thirst - before)})`;
+      // Phase 5-11: 어업 — 50% 확률로 자원 획득 (zone biome에 따라 종류)
+      if (Math.random() < 0.5) {
+        const biome = ZONE.biome;
+        let fishList;
+        if (biome === 'taiga' || biome === 'tundra') fishList = ['salmon', 'cod', 'herring', 'trout', 'pollock'];
+        else if (biome === 'forest' || biome === 'plains') fishList = ['trout', 'carp', 'pollock'];
+        else if (biome === 'jungle' || biome === 'savanna') fishList = ['carp', 'shrimp', 'crab'];
+        else if (biome === 'desert') fishList = ['carp'];
+        else if (biome === 'archipelago' || biome === 'ocean') fishList = ['cod', 'herring', 'sardine', 'anchovy', 'shrimp', 'crab', 'oyster', 'octopus', 'squid', 'seaweed'];
+        else if (biome === 'mountain') fishList = ['trout'];
+        else fishList = ['carp', 'trout'];
+        const fish = fishList[Math.floor(Math.random() * fishList.length)];
+        player.inventory[fish] = (player.inventory[fish] || 0) + 1;
+        send(player.ws, { type: 'inventory', inventory: player.inventory });
+        msg += ` + 🐟 ${fish}`;
+      }
+      send(player.ws, { type: 'notice', text: msg });
+      send(player.ws, { type: 'self_stat', thirst: Math.round(player.thirst) });
+      savePlayer(player);
+      return;
+    }
+  }
+  // Phase 5-10: 가축 사육 — tame한 mob 인접 시 produces 자원 획득 (우유/양털)
+  if (qtMobs) {
+    const nearMobs = qtMobs.queryCircle(player.x, player.y, 60);
+    for (const m of nearMobs) {
+      if (m.tameOwner !== player.playerId) continue;
+      const def = ANIMALS[m.type];
+      if (!def || !def.produces || !Object.keys(def.produces).length) continue;
+      // 일일 한도 — m.lastHarvestAt 추적
+      const now = Date.now();
+      const HARVEST_COOLDOWN = 5 * 60 * 1000;  // 5분 cooldown
+      if (m.lastHarvestAt && now - m.lastHarvestAt < HARVEST_COOLDOWN) {
+        send(player.ws, { type: 'notice', text: `${def.ko} — 아직 자원 안 채워짐` });
+        return;
+      }
+      m.lastHarvestAt = now;
+      const parts = [];
+      for (const [item, amt] of Object.entries(def.produces)) {
+        const got = Math.max(1, Math.floor(amt));
+        player.inventory[item] = (player.inventory[item] || 0) + got;
+        parts.push(`${item} ${got}`);
+      }
+      send(player.ws, { type: 'inventory', inventory: player.inventory });
+      send(player.ws, { type: 'notice', text: `${def.ko} +${parts.join(', ')}` });
+      savePlayer(player);
+      return;
+    }
+  }
   // 가까운 자원 — quadtree로 O(log N)
   const nearby = qtResources ? qtResources.queryCircle(player.x, player.y, GATHER_RANGE) : Array.from(resources.values());
   let best = null;

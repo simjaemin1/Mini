@@ -2777,7 +2777,7 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
         vis *= entityVisibility(item.ax, item.ay, d);
         if (vis < 0.05) continue;
         ctx.globalAlpha = vis;
-        if (item.r.type === 'tree') drawTreeIso(s.x, s.y);
+        if (item.r.type === 'tree') drawTreeIso(s.x, s.y, item.r.r || 8, item.r.h || 60);
         else if (item.r.type === 'rock') drawRockIso(s.x, s.y);
         else if (item.r.type === 'berry_bush') drawBerryBushIso(s.x, s.y);
         else if (item.r.type === 'water_pool') drawWaterPoolIso(s.x, s.y);
@@ -2999,6 +2999,28 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
         } else {
           segs.push({ ax: (cx + 1) * CL_BUILDING_SIZE, ay: cy * CL_BUILDING_SIZE,
                       bx: (cx + 1) * CL_BUILDING_SIZE, by: (cy + 1) * CL_BUILDING_SIZE });
+        }
+      }
+      // Phase 5-8: 나무도 시야 차단 — 6각형으로 근사
+      const pc = conns.get(primaryZoneId);
+      if (pc) {
+        const oxz = pc.meta?.worldOffsetX || 0, oyz = pc.meta?.worldOffsetY || 0;
+        const SHADOW_RANGE_PX = SHADOW_RANGE_CELLS * CL_BUILDING_SIZE;
+        for (const r of pc.resources.values()) {
+          if (r.type !== 'tree' || !r.r) continue;
+          const tx = r.x + oxz, ty = r.y + oyz;
+          if (Math.abs(tx - px) > SHADOW_RANGE_PX) continue;
+          if (Math.abs(ty - py) > SHADOW_RANGE_PX) continue;
+          const N = 6;
+          const tr = r.r;
+          for (let i = 0; i < N; i++) {
+            const a1 = (i / N) * Math.PI * 2;
+            const a2 = ((i + 1) / N) * Math.PI * 2;
+            segs.push({
+              ax: tx + Math.cos(a1) * tr, ay: ty + Math.sin(a1) * tr,
+              bx: tx + Math.cos(a2) * tr, by: ty + Math.sin(a2) * tr,
+            });
+          }
         }
       }
       // 경계 박스 4변 (ray 종료점) — MAX_RANGE 큰 박스
@@ -3877,6 +3899,36 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
   }
 
   function drawMobIso(x, y, mob) {
+    // Phase 5-6b: 36 mob 종류 — emoji fallback (옛 deer/wolf 외)
+    if (mob.type !== 'deer' && mob.type !== 'wolf') {
+      const animal = window.Animals?.ANIMALS?.[mob.type];
+      if (animal) {
+        // 그림자
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.beginPath();
+        const sz = animal.size === 'tiny' ? 0.5 : animal.size === 'small' ? 0.7 : animal.size === 'medium' ? 1.0 : animal.size === 'large' ? 1.3 : 1.6;
+        ctx.ellipse(x, y + 6 * sz, 10 * sz, 4 * sz, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // emoji
+        ctx.font = `${Math.round(24 * sz)}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(animal.emoji, x, y);
+        // hp bar
+        if (mob.hp != null && mob.hp < mob.maxHp) {
+          const pct = mob.hp / mob.maxHp;
+          ctx.fillStyle = '#222'; ctx.fillRect(x - 12, y - 18 * sz, 24, 3);
+          ctx.fillStyle = '#c83a3a'; ctx.fillRect(x - 12, y - 18 * sz, 24 * pct, 3);
+        }
+        // tame 표시
+        if (mob.tameOwner) {
+          ctx.font = '10px sans-serif';
+          ctx.fillStyle = '#ffdd44';
+          ctx.fillText('🏠', x, y + 14 * sz);
+        }
+        return;
+      }
+    }
     const isWolf = mob.type === 'wolf';
     // Phase 14.38: mob facing (world vx/vy → iso 방향)
     const fvx = mob._fvx ?? 1, fvy = mob._fvy ?? 0;
@@ -3925,17 +3977,33 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     ctx.textAlign = 'start';
   }
 
-  function drawTreeIso(x, y) {
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
-    ctx.beginPath(); ctx.ellipse(x, y + 4, 12, 5, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#3a2818';
-    ctx.fillRect(x - 2, y - 4, 4, 10);
+  // Phase 5-8: 입체 나무 — r(반경) + h(높이) 사용. 사실적 줄기+캐노피.
+  function drawTreeIso(x, y, r, h) {
+    r = r || 8;  // 반경 4~15
+    h = h || 60; // 높이 50~150
+    // 그림자 (지면)
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
     ctx.beginPath();
-    ctx.ellipse(x, y - 12, 11, 14, 0, 0, Math.PI * 2);
+    ctx.ellipse(x, y + r * 0.4, r * 1.4, r * 0.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // 줄기 — 갈색 직사각형. 높이 h, 너비 r×0.4
+    const trunkW = Math.max(3, r * 0.4);
+    ctx.fillStyle = '#3a2818';
+    ctx.fillRect(x - trunkW / 2, y - h * 0.6, trunkW, h * 0.6);
+    ctx.strokeStyle = '#1a1008'; ctx.lineWidth = 1;
+    ctx.strokeRect(x - trunkW / 2, y - h * 0.6, trunkW, h * 0.6);
+    // 캐노피 — 잎. 줄기 위. 사이즈 r × h 비례
+    const canopyR = r * 1.6;
+    const canopyH = h * 0.55;
+    const cy = y - h * 0.6 - canopyH * 0.5;
+    ctx.beginPath();
+    ctx.ellipse(x, cy, canopyR, canopyH, 0, 0, Math.PI * 2);
     ctx.fillStyle = '#2d5a2a'; ctx.fill();
-    ctx.strokeStyle = '#1a3a18'; ctx.lineWidth = 1; ctx.stroke();
-    ctx.beginPath(); ctx.ellipse(x - 3, y - 16, 4, 5, 0, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(255,255,255,0.14)'; ctx.fill();
+    ctx.strokeStyle = '#1a3a18'; ctx.lineWidth = 1.5; ctx.stroke();
+    // 하이라이트
+    ctx.beginPath();
+    ctx.ellipse(x - canopyR * 0.3, cy - canopyH * 0.3, canopyR * 0.3, canopyH * 0.3, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.fill();
   }
 
   function drawRockIso(x, y) {
