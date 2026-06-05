@@ -242,14 +242,20 @@ const ZONES_BASE = {
 // 좌표·크기 일괄 배율. SCALE=1이면 옛 크기, SCALE=10이면 가로세로 10배 (면적 100배, PZ급).
 // 환경변수 WORLD_SCALE로 운영 중 변경 가능.
 const WORLD_SCALE = parseFloat(process.env.WORLD_SCALE || '10');
-for (const z of Object.values(ZONES_BASE)) {
+for (const [id, z] of Object.entries(ZONES_BASE)) {
   z.worldOffsetX = Math.round(z.worldOffsetX * WORLD_SCALE);
   z.worldOffsetY = Math.round(z.worldOffsetY * WORLD_SCALE);
   z.zoneWidth = Math.round(z.zoneWidth * WORLD_SCALE);
   z.zoneHeight = Math.round(z.zoneHeight * WORLD_SCALE);
   if (z.mainSquare) {
-    z.mainSquare.x = Math.round(z.mainSquare.x * WORLD_SCALE);
-    z.mainSquare.y = Math.round(z.mainSquare.y * WORLD_SCALE);
+    // canadia는 시뮬 마을 좌표(1k~10k px)에 마을이 몰려있으므로 spawn은 시뮬 영역에.
+    // (시뮬 마을 좌표 ×10 fix는 별도 task)
+    if (id === 'canadia') {
+      // 시뮬 마을 평균 좌표 (5500, 2500) 그대로
+    } else {
+      z.mainSquare.x = Math.round(z.mainSquare.x * WORLD_SCALE);
+      z.mainSquare.y = Math.round(z.mainSquare.y * WORLD_SCALE);
+    }
   }
 }
 
