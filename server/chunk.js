@@ -373,24 +373,10 @@ function _coastSmoothNoise(side, zoneId, t) {
 function generateCoastlineWaterTiles(zone, tileSize, findZoneAtFn) {
   const waterTiles = new Set();
   if (zone.isOcean) return waterTiles; // ocean zone은 전체 물 — 별도 처리
-  // Phase 5-1: inland water (강·호수) — terrain 데이터 기반
-  const tCfg = terrain.ZONE_TERRAIN[zone.id];
-  if (tCfg) {
-    const cols = Math.ceil(zone.zoneWidth / tileSize);
-    const rows = Math.ceil(zone.zoneHeight / tileSize);
-    for (let ty = 0; ty < rows; ty++) {
-      for (let tx = 0; tx < cols; tx++) {
-        const cellX = tx * tileSize + tileSize / 2;
-        const cellY = ty * tileSize + tileSize / 2;
-        if (terrain.isWaterCellLocal(zone.id, cellX, cellY)) {
-          waterTiles.add(`${tx}_${ty}`);
-        }
-      }
-    }
-    if (waterTiles.size > 0) {
-      console.log(`[${zone.id}] 🌊 inland water tiles: ${waterTiles.size} (강+호수)`);
-    }
-  }
+  // Phase 5-1 fix: inland water (강·호수)는 zone start 시 pre-compute 안 함.
+  //   PZ급 zone에서 수백만 cell × 검사 = 수십 초 → healthcheck timeout.
+  //   대신 isWaterTileLocal 동적 호출 시 terrain.isWaterCellLocal로 검사 (콜라이더용).
+  //   클라 시각도 isWaterAtAbs에서 동적으로.
 
   const cols = Math.ceil(zone.zoneWidth / tileSize);
   const rows = Math.ceil(zone.zoneHeight / tileSize);

@@ -174,12 +174,17 @@ const WATER_TILES = generateCoastlineWaterTiles(
   findZoneAt
 );
 console.log(`[${ZONE_ID}] 🌊 해안선: ${WATER_TILES.size} water tiles (ocean=${ZONE.isOcean?'전체':'edge only'})`);
+// Phase 5-1-fix: inland water (강·호수)는 zone start pre-compute 안 함 (수 분 timeout).
+// 콜라이더 호출 시 terrain.isWaterCellLocal로 동적 검사 — call당 ~25 ops, NPC tick 부담 가벼움.
+const _terrain = require('./terrain');
 function isWaterTileLocal(localX, localY) {
   if (ZONE.isOcean) return true;
   if (localX < 0 || localY < 0 || localX >= ZONE.zoneWidth || localY >= ZONE.zoneHeight) return false;
   const tx = Math.floor(localX / 32);
   const ty = Math.floor(localY / 32);
-  return WATER_TILES.has(`${tx}_${ty}`);
+  if (WATER_TILES.has(`${tx}_${ty}`)) return true;
+  // inland water 동적 검사
+  return _terrain.isWaterCellLocal(ZONE_ID, localX, localY);
 }
 // 메트릭 카운터
 const metrics = {
