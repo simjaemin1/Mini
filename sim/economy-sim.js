@@ -18,6 +18,34 @@
 
 'use strict';
 
+// === Phase 5-5-econ-d: 마을 stat 계산 (specialty.contributes 기반) ===
+//   인구당 정규화한 자원 만족도로 5 stat 산출.
+//   순환 import 방지를 위해 lazy specialty require.
+let _SPECIALTY;
+function _getSpecialty() {
+  if (_SPECIALTY === undefined) {
+    try { _SPECIALTY = require('../server/specialty').RESOURCES; }
+    catch { _SPECIALTY = null; }
+  }
+  return _SPECIALTY;
+}
+function _computeVillageStats(v, N) {
+  const SP = _getSpecialty();
+  if (!SP) return null;
+  const stats = { subsistence: 0, happiness: 0, health: 0, prestige: 0, defense: 0 };
+  const pop = Math.max(1, N);
+  for (const [id, qty] of Object.entries(v.storage || {})) {
+    const r = SP[id];
+    if (!r || !r.contributes || qty <= 0) continue;
+    const per_npc = qty / pop;
+    const sat = Math.min(1.0, per_npc / 2.0);
+    for (const [stat, w] of Object.entries(r.contributes)) {
+      if (stats[stat] !== undefined) stats[stat] += w * sat;
+    }
+  }
+  return stats;
+}
+
 // =============================================================================
 // 0. RNG (재현 가능한 seeded random)
 // =============================================================================
@@ -657,6 +685,18 @@ function tickVillage(v, day) {
   if (foodGap > 0) {
     dP -= 0.5 * foodGap;
   }
+  // Phase 5-5-econ-d: 마을 stat 기반 인구·이주 보정
+  const stats = _computeVillageStats(v, N);
+  if (stats) {
+    // happiness: 0.5 기준. >0.5 보너스, <0.5 페널티 (불행 → 이주·자살 등)
+    const happyMod = (stats.happiness - 0.5) * 0.6;
+    dP += happyMod * N * POP_GROWTH_RATE;
+    // health: 0.5 기준 (질병·약초 부족)
+    const healthMod = (stats.health - 0.5) * 0.4;
+    dP += healthMod * N * POP_GROWTH_RATE;
+    // 기록 (외부에서 활용 가능)
+    v.lastStats = stats;
+  }
   // ΔP 상한
   const maxDelta = N * POP_MAX_DELTA_PCT;
   dP = Math.max(-maxDelta, Math.min(maxDelta, dP));
@@ -1160,7 +1200,9 @@ function tickCaravans(world, day) {
       //   무기/갑옷 비율: 마을 storage에서 호위 수 만큼 소비
       const wReady = Math.min(1, (c.from.storage.weapon || 0) / Math.max(1, c.escort));
       const aReady = Math.min(1, (c.from.storage.armor  || 0) / Math.max(1, c.escort));
-      const protection = Math.sqrt(c.escort) * (0.08 + wReady * 0.05 + aReady * 0.05);
+      // Phase 5-5-econ-d: defense stat 가산 (무기/갑옷 외 마을 자체 방어력)
+      const defenseBonus = (c.from.lastStats && c.from.lastStats.defense) ? c.from.lastStats.defense * 0.12 : 0;
+      const protection = Math.sqrt(c.escort) * (0.08 + wReady * 0.05 + aReady * 0.05) + defenseBonus;
       const raidProb = Math.max(0.01,
         Math.min(RAID_MAX, RAID_BASE + (c.distance / 100) * (world.raidPer100 || RAID_PER_100) - protection));
       let outboundLoss = 0;
@@ -1195,7 +1237,9 @@ function tickCaravans(world, day) {
       //   무기/갑옷 비율: 마을 storage에서 호위 수 만큼 소비
       const wReady = Math.min(1, (c.from.storage.weapon || 0) / Math.max(1, c.escort));
       const aReady = Math.min(1, (c.from.storage.armor  || 0) / Math.max(1, c.escort));
-      const protection = Math.sqrt(c.escort) * (0.08 + wReady * 0.05 + aReady * 0.05);
+      // Phase 5-5-econ-d: defense stat 가산 (무기/갑옷 외 마을 자체 방어력)
+      const defenseBonus = (c.from.lastStats && c.from.lastStats.defense) ? c.from.lastStats.defense * 0.12 : 0;
+      const protection = Math.sqrt(c.escort) * (0.08 + wReady * 0.05 + aReady * 0.05) + defenseBonus;
       const raidProb = Math.max(0.01,
         Math.min(RAID_MAX, RAID_BASE + (c.distance / 100) * (world.raidPer100 || RAID_PER_100) - protection));
       let inboundLoss = 0;

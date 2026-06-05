@@ -278,10 +278,12 @@ function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet) 
       seedKey, isSeed: true,
       x, y, type, hp: maxHp, maxHp,
     };
-    // Phase 5-8: tree는 입체 — radius 추가 (콜라이더 + 시야 차단)
+    // Phase 5-8: tree는 입체 — radius + height (콜라이더 + 시야 차단 + 시각)
     if (type === 'tree') {
-      // sub-pixel size: 지름 8~30px (반경 4~15px, 단 1 cell=32px 미만)
-      entity.r = 4 + (r3 * 11);  // 4~15
+      // sub-pixel 지름 8~30px (반경 4~15px, 단 1 cell=32px 미만)
+      entity.r = 4 + (r3 * 11);  // 반경 4~15
+      // 높이 — 사실적으로. 작은 나무 50px(~7m) 큰 나무 150px(~20m)
+      entity.h = 50 + (r3 * 100);  // 50~150
     }
     result.push(entity);
   }
@@ -321,11 +323,32 @@ function generateVillagesForZone(zone) {
   const villages = [];
   if (zone.isOcean) return villages;
   if (!zone.villageCount || zone.villageCount <= 0) return villages;
+  // Phase 5-C: terrain 활용 — 마을 type 결정 (riverside/mountain/plain)
+  let terrain = null;
+  try { terrain = require('./terrain'); } catch {}
   const seed = zone.villageSeed || 1;
   const margin = 600;
   const safeTop = 900;
   const safeBot = zone.zoneHeight - 900;
   const usedNames = new Set();
+  // 마을 type 결정 helper — 좌표 주변 검사
+  function decideVillageType(x, y) {
+    if (!terrain) return 'plain';
+    // 강·호수 200px 내 — riverside (어업·교역 핵심)
+    const D = 220;
+    if (terrain.isWaterCellLocal(zone.id, x - D, y) ||
+        terrain.isWaterCellLocal(zone.id, x + D, y) ||
+        terrain.isWaterCellLocal(zone.id, x, y - D) ||
+        terrain.isWaterCellLocal(zone.id, x, y + D)) return 'riverside';
+    // 산 — stoneMultiplier > 2.0 (광맥·채석)
+    if (terrain.getStoneMultiplier(zone.id, x, y) > 2.0) return 'mountain';
+    // 광맥 cluster 위 — mining 마을
+    if (terrain.isOreClusterAt(zone.id, x, y)) return 'mining';
+    // 깊은 숲 — forest 마을 (사냥·임업)
+    if (terrain.getForestMultiplier(zone.id, x, y) > 2.0) return 'forest';
+    return 'plain';
+  }
+  // 마을 위치 시도 — 강 옆 선호 (50% 이상이 riverside 되도록 시도)
   for (let i = 0; i < zone.villageCount; i++) {
     let name = null;
     for (let attempt = 0; attempt < 10; attempt++) {
@@ -335,13 +358,26 @@ function generateVillagesForZone(zone) {
     }
     if (!name) name = `${zone.biome[0]}-${i}`;
     usedNames.add(name);
-    const rx = seedRand(zone.displayName || 'z', seed + i, 1, 0);
-    const ry = seedRand(zone.displayName || 'z', seed + i, 2, 0);
-    const x = margin + rx * (zone.zoneWidth - margin * 2);
-    let y = safeTop + ry * (safeBot - safeTop);
-    if (y < safeTop) y = safeTop;
-    if (y > safeBot) y = safeBot;
-    villages.push({ name, x, y });
+    // 후보 좌표 5번 시도 — 강 옆이거나 산 옆이면 즉시 채택. 아니면 마지막 후보.
+    let bestX = 0, bestY = 0, bestType = 'plain';
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const rx = seedRand(zone.displayName || 'z', seed + i, 1, attempt);
+      const ry = seedRand(zone.displayName || 'z', seed + i, 2, attempt);
+      const x = margin + rx * (zone.zoneWidth - margin * 2);
+      let y = safeTop + ry * (safeBot - safeTop);
+      if (y < safeTop) y = safeTop;
+      if (y > safeBot) y = safeBot;
+      const type = decideVillageType(x, y);
+      // riverside·mining 발견 시 즉시 채택 (가장 가치 있음)
+      if (type === 'riverside' || type === 'mining') {
+        bestX = x; bestY = y; bestType = type; break;
+      }
+      // mountain·forest는 후보로 저장, plain은 마지막 옵션
+      if (attempt === 0 || (bestType === 'plain' && type !== 'plain')) {
+        bestX = x; bestY = y; bestType = type;
+      }
+    }
+    villages.push({ name, x: bestX, y: bestY, type: bestType });
   }
   return villages;
 }
