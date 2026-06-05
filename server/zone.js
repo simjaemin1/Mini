@@ -12,6 +12,7 @@ const central = require('./central-client'); // central HTTP 클라이언트
 const { Quadtree } = require('./quadtree'); // spatial index — O(N²) 검색 회피
 const { ChunkManager, CHUNK_SIZE, generateChunkResources, generateVillagesForZone, generateCoastlineWaterTiles } = require('./chunk'); // 청크 단위 entity 분류 + procedural + 해안선
 const { findPath: pfFindPath } = require('./pathfind'); // Phase 14.49-b: NPC A* pathfinding
+const { ANIMALS } = require('./animals');  // Phase 5-6: 동물 mob 36종 catalog
 const harvestedSeeds = new Set(); // 채집된 시드 자원 (DB에서 load)
 
 // === 활성 청크 (12.2.b) — 사람 player + observer 위치 주변 청크만 시뮬레이션 ===
@@ -237,6 +238,64 @@ const AOI_RADIUS = 800;         // 클라 VIEW_RADIUS(650) + 여유. 이 안의 
 const claims = new Map();
 const buildings = new Map();    // id -> { id, dbId, type, ownerId, ownerName, x, y, data }
 const mobs = new Map();         // mid -> { mid, type, x, y, vx, vy, hp, maxHp, aggroTarget, lastAttackAt, wanderUntil }
+
+// Phase 5-7: 동물 사체 + 도살 시스템
+const corpses = new Map();      // cid -> { cid, mobType, x, y, drops, spawnTime, killerPid }
+let nextCorpseId = 1;
+const CORPSE_DECAY_MS = 5 * 60 * 1000;  // 5분 후 부패
+
+function spawnCorpse(mob, killerPid) {
+  const cid = `c${nextCorpseId++}`;
+  const def = ANIMALS[mob.type];
+  const drops = (def && def.drops) ? def.drops : { meat_game: 1, leather: 1 };  // fallback (옛 mob)
+  const corpse = {
+    cid, mobType: mob.type,
+    x: mob.x, y: mob.y,
+    drops, spawnTime: Date.now(),
+    killerPid,
+  };
+  corpses.set(cid, corpse);
+  broadcast({ type: 'corpse_added', corpse: { cid, mobType: corpse.mobType, x: corpse.x, y: corpse.y, drops: corpse.drops } });
+  return corpse;
+}
+
+function butcherCorpse(player, cid) {
+  const corpse = corpses.get(cid);
+  if (!corpse) { send(player.ws, { type: 'notice', text: '사체 없음' }); return; }
+  const dist = Math.hypot(player.x - corpse.x, player.y - corpse.y);
+  if (dist > 80) { send(player.ws, { type: 'notice', text: '너무 멀어' }); return; }
+  // drop → 인벤
+  const parts = [];
+  for (const [item, amt] of Object.entries(corpse.drops)) {
+    player.inventory[item] = (player.inventory[item] || 0) + amt;
+    parts.push(`${item} ${amt}`);
+  }
+  const def = ANIMALS[corpse.mobType];
+  const koName = def?.ko || corpse.mobType;
+  send(player.ws, { type: 'inventory', inventory: player.inventory });
+  send(player.ws, { type: 'notice', text: `${koName} 도살 +${parts.join(', ')}` });
+  savePlayer(player);
+  corpses.delete(cid);
+  broadcast({ type: 'corpse_removed', cid });
+}
+
+// welcome 후 player에게 기존 corpses 전송
+function sendCorpsesInit(ws) {
+  if (corpses.size === 0) return;
+  const arr = [...corpses.values()].map(c => ({ cid: c.cid, mobType: c.mobType, x: c.x, y: c.y, drops: c.drops }));
+  send(ws, { type: 'corpses_init', corpses: arr });
+}
+
+// 부패 cleanup — 30초마다
+setInterval(() => {
+  const now = Date.now();
+  for (const [cid, c] of corpses) {
+    if (now - c.spawnTime > CORPSE_DECAY_MS) {
+      corpses.delete(cid);
+      broadcast({ type: 'corpse_removed', cid });
+    }
+  }
+}, 30000);
 const BUILDING_SIZE = 32;
 const DEBUG_COLLIDER = process.env.DEBUG_COLLIDER === '1'; // 명시적으로 켤 때만 (env DEBUG_COLLIDER=1)
 // 14.50: 목공 사슬 — log(통나무) → plank(판자, saw 필요) → 벽/바닥/문/울타리 (hammer 필요)
@@ -1507,6 +1566,7 @@ wss.on('connection', async (ws, req) => {
         serverNow: Date.now(),
       },
     });
+    sendCorpsesInit(ws);
     // 초기 tick — AOI 필터 적용
     const obs = observers.get(ws);
     send(ws, {
@@ -1611,6 +1671,7 @@ wss.on('connection', async (ws, req) => {
             dayPhaseRatio: WORLD.dayPhaseRatio, serverNow: Date.now(),
           },
         });
+        sendCorpsesInit(ws);
 
         // 핸들러 교체 — observer → player
         attachPlayerHandlers(ws, player);
@@ -1895,6 +1956,7 @@ wss.on('connection', async (ws, req) => {
       serverNow: Date.now(), // 클라가 자기 시계 보정용으로 씀
     },
   });
+  sendCorpsesInit(ws);
 
   // ws에 player input/close 핸들러 attach
   attachPlayerHandlers(ws, player);
@@ -1938,7 +2000,8 @@ function handlePlayerInput(player, raw) {
   } else if (msg.type === 'rescue_request') {
     // Phase 14.41: 같은 길드원이 다운된 동료를 R 키로 구조
     tryRescue(player, msg.pid);
-  } else if (msg.type === 'gather') tryGather(player);
+  } else if (msg.type === 'butcher') butcherCorpse(player, msg.cid);  // Phase 5-7
+  else if (msg.type === 'gather') tryGather(player);
   else if (msg.type === 'claim') tryClaim(player, msg.kind || 'personal');
   else if (msg.type === 'drop_item') tryDropItem(player, msg.item, msg.amount || 1);
   else if (msg.type === 'pickup_item') tryPickupItem(player, msg.giId);
@@ -3183,20 +3246,15 @@ async function tryAttack(player) {
       send(player.ws, { type: 'notice', text: `${bestMob.tameOwnerName}의 동물 공격 (위반 +${VP_ATTACK_PLAYER})` });
     }
     if (bestMob.hp <= 0) {
-      // 사망 — 드롭 처리
-      const def = MOB_DEFS[bestMob.type];
-      for (const [item, amt] of Object.entries(def.loot)) {
-        player.inventory[item] = (player.inventory[item] || 0) + amt;
-      }
-      send(player.ws, { type: 'inventory', inventory: player.inventory });
-      send(player.ws, { type: 'notice', text: `${bestMob.type === 'deer' ? '사슴' : '늑대'} 사냥 +${Object.entries(def.loot).map(([k,v])=>`${k} ${v}`).join(', ')}` });
-      savePlayer(player);
-      // DB + chunk에서 제거
+      // Phase 5-7: 사체 entity 생성 (즉시 인벤 X. 도살 액션 필요).
+      spawnCorpse(bestMob, player.playerId);
+      send(player.ws, { type: 'notice', text: `${ANIMALS[bestMob.type]?.ko || bestMob.type} 사냥 — 사체 도살 (E)` });
+      // DB + chunk에서 mob 제거
       if (bestMob.dbId) { try { db.deleteMob(bestMob.dbId); } catch (e) {} }
       chunkManager.removeMob(bestMob);
       mobs.delete(bestMob.mid);
       broadcast({ type: 'mob_removed', mid: bestMob.mid });
-      // 일정 시간 후 리스폰 (새 DB row 생성됨)
+      // 일정 시간 후 리스폰
       const respawnType = bestMob.type;
       setTimeout(() => {
         const m = spawnMob(respawnType);
@@ -3584,6 +3642,19 @@ function isBlockedByStairSide(newX, newY, oldX, oldY, entityFloor = 0) {
   return true;
 }
 
+// Phase 5-8: tree 입체 콜라이더 — 원형. radius 검사.
+const PLAYER_BODY_R = 6;
+function isBlockedByTree(x, y) {
+  if (!qtResources) return false;
+  const nearby = qtResources.queryCircle(x, y, 24);  // max tree r 15 + player 6 + margin
+  for (const item of nearby) {
+    const r = item.ref || item;
+    if (r.type !== 'tree' || !r.r) continue;
+    if (Math.hypot(r.x - x, r.y - y) < r.r + PLAYER_BODY_R) return true;
+  }
+  return false;
+}
+
 function isBlockedByWall(newX, newY, oldX, oldY, playerFloor = 0, traceName = null) {
   // 같은 cell 안 이동 — wall 가로지르지 않음
   const oc = cellOf(oldX, oldY);
@@ -3717,6 +3788,12 @@ setInterval(() => {
     if (isBlockedByWall(nx, p.y, p.x, p.y, pf, trace)) nx = p.x;
     if (isBlockedByWall(p.x, ny, p.x, p.y, pf, trace)) ny = p.y;
     if (isBlockedByWall(nx, ny, p.x, p.y, pf, trace)) { nx = p.x; ny = p.y; }
+    // Phase 5-8: tree 입체 콜라이더 (1층만, 위층은 통과)
+    if (pf === 0) {
+      if (isBlockedByTree(nx, p.y)) nx = p.x;
+      if (isBlockedByTree(p.x, ny)) ny = p.y;
+      if (isBlockedByTree(nx, ny)) { nx = p.x; ny = p.y; }
+    }
     // 14.45: 빙하 콜라이더 — y가 극지방 진입하면 ny 무효
     if (isInIceBand(ny) && !isInIceBand(p.y)) ny = p.y;
     // 14.46-b-mini: 물 타일 진입 차단 (보트 시스템 전까지). 각 축별 slide.

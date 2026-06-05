@@ -273,12 +273,17 @@ function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet) 
       type = pickResourceType(biome, r3);
     }
     const maxHp = RESOURCE_HP_TABLE[type] || 3;
-    result.push({
+    const entity = {
       id: `s_${cx}_${cy}_${n}`,
-      seedKey, // 채집 시 DB 기록용
-      isSeed: true,
+      seedKey, isSeed: true,
       x, y, type, hp: maxHp, maxHp,
-    });
+    };
+    // Phase 5-8: tree는 입체 — radius 추가 (콜라이더 + 시야 차단)
+    if (type === 'tree') {
+      // sub-pixel size: 지름 8~30px (반경 4~15px, 단 1 cell=32px 미만)
+      entity.r = 4 + (r3 * 11);  // 4~15
+    }
+    result.push(entity);
   }
   return result;
 }

@@ -812,10 +812,23 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
       return;
     }
     if (k === 'e') {
-      // 14.50: E 키 — 주변 door가 있으면 toggle, 없으면 gather
+      // 14.50: E 키 — 주변 door 토글, 없으면 사체 도살, 없으면 gather
       const nearDoor = findNearestDoor(myAbsPredicted.x, myAbsPredicted.y, myFloor);
       if (nearDoor) sendPrimary({ type: 'door_toggle', buildingId: nearDoor.id });
-      else sendPrimary({ type: 'gather' });
+      else {
+        // Phase 5-7: 근처 사체 찾기
+        let nearestCorpse = null, nearestDist = 80;
+        const pc = conns.get(primaryZoneId);
+        if (pc) {
+          const ox = pc.meta?.worldOffsetX || 0, oy = pc.meta?.worldOffsetY || 0;
+          for (const co of pc.corpses.values()) {
+            const d = Math.hypot(co.x + ox - myAbsPredicted.x, co.y + oy - myAbsPredicted.y);
+            if (d < nearestDist) { nearestDist = d; nearestCorpse = co; }
+          }
+        }
+        if (nearestCorpse) sendPrimary({ type: 'butcher', cid: nearestCorpse.cid });
+        else sendPrimary({ type: 'gather' });
+      }
     }
     // 14.53: 1키 = hotkey1 슬롯 토글 (착용 ↔ 해제)
     if (k === '1') {
@@ -1458,6 +1471,7 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
       mobs: new Map(),
       groundItems: new Map(), // Phase 14.23 — 바닥 떨어진 아이템
       others: new Map(),
+      corpses: new Map(),     // Phase 5-7 — 동물 사체
     };
     conns.set(zoneId, c);
     if (role === 'primary') primaryZoneId = zoneId;
@@ -1704,6 +1718,13 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
       const m = c.mobs.get(msg.mid); if (m) m.hp = msg.hp;
     } else if (msg.type === 'mob_removed') {
       c.mobs.delete(msg.mid);
+    } else if (msg.type === 'corpses_init') {
+      // Phase 5-7
+      for (const co of msg.corpses) c.corpses.set(co.cid, co);
+    } else if (msg.type === 'corpse_added') {
+      c.corpses.set(msg.corpse.cid, msg.corpse);
+    } else if (msg.type === 'corpse_removed') {
+      c.corpses.delete(msg.cid);
     } else if (msg.type === 'mob_spawn') {
       c.mobs.set(msg.mob.mid, msg.mob);
     } else if (msg.type === 'mob_tamed') {
@@ -2640,6 +2661,13 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
         const iso = w2i(ax, ay, mZ);
         renderables.push({ z: iso.y, kind: 'mob', m, iso, ax, ay });
       }
+      // Phase 5-7: 사체
+      for (const co of c.corpses.values()) {
+        const ax = ox + co.x, ay = oy + co.y;
+        if (Math.abs(ax - worldCx) > VIEW_RADIUS || Math.abs(ay - worldCy) > VIEW_RADIUS) continue;
+        const iso = w2i(ax, ay, 0);
+        renderables.push({ z: iso.y, kind: 'corpse', co, iso, ax, ay });
+      }
       for (const o of c.others.values()) {
         const pos = sampleAt(o.buf, renderT, o.x, o.y);
         const ax = ox + pos.x, ay = oy + pos.y;
@@ -2921,6 +2949,19 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
         if (vis < 0.05) continue;
         ctx.globalAlpha = vis;
         drawMobIso(s.x, s.y, item.m);
+        ctx.globalAlpha = 1;
+      } else if (item.kind === 'corpse') {
+        // Phase 5-7: 사체 — emoji
+        const s = toScreen(item.iso.x, item.iso.y);
+        const d = Math.hypot(item.ax - worldCx, item.ay - worldCy);
+        let vis = Math.max(0.15, 1 - Math.pow(d / VIEW_RADIUS, 1.4));
+        vis *= entityVisibility(item.ax, item.ay, d);
+        if (vis < 0.05) continue;
+        ctx.globalAlpha = vis;
+        ctx.font = '24px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('💀', s.x, s.y);
         ctx.globalAlpha = 1;
       }
     }
