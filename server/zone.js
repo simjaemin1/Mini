@@ -768,6 +768,12 @@ function spawnNpc(opts = {}) {
   // Phase 14.18: NPC 개별 사유지 폐기. 마을 = 길드 사유지(공용 영토)에 거주.
   // 길드 사유지 개념은 14.18.b에서 도입 — 우선 NPC는 사유지 없이 집(wall)만.
   player.myClaim = null;
+  // Phase 5-F: 직업·작업장 (시각 출퇴근용)
+  player.npcJob = opts.npcJob || null;
+  player.npcHomeX = opts.npcHomeX != null ? opts.npcHomeX : null;
+  player.npcHomeY = opts.npcHomeY != null ? opts.npcHomeY : null;
+  player.npcWorkX = opts.npcWorkX != null ? opts.npcWorkX : null;
+  player.npcWorkY = opts.npcWorkY != null ? opts.npcWorkY : null;
   players.set(pid, player);
   npcs.add(pid);
 
@@ -916,11 +922,48 @@ function spawnGuildClaimsForVillage(village, centralTribeId) {
   console.log(`[${ZONE_ID}] 🏛️ 길드 영토 [${village.name}] ${created}칸 생성 (반경 ${RADIUS_CELLS} cells)`);
 }
 
+// Phase 5-F: NPC 직업 분배 — 마을 type 가중치 반영
+const NPC_JOB_PROBS_BASE = {
+  farmer: 0.30, miner: 0.12, lumberjack: 0.12, hunter: 0.10,
+  fisher: 0.10, forager: 0.10, smith: 0.05, weaponsmith: 0.03,
+  armorsmith: 0.03, cook: 0.03, warrior: 0.02,
+};
+function _pickNpcJob(villageType) {
+  // 마을 type 따라 직업 비중 보정
+  const probs = { ...NPC_JOB_PROBS_BASE };
+  if (villageType === 'mining') { probs.miner = 0.45; probs.farmer = 0.15; }
+  else if (villageType === 'riverside') { probs.fisher = 0.30; probs.farmer = 0.25; }
+  else if (villageType === 'forest') { probs.lumberjack = 0.30; probs.forager = 0.20; }
+  else if (villageType === 'mountain') { probs.miner = 0.30; probs.hunter = 0.15; }
+  // 정규화
+  const sum = Object.values(probs).reduce((a, b) => a + b, 0);
+  let r = Math.random() * sum;
+  for (const [job, p] of Object.entries(probs)) {
+    if (r < p) return job;
+    r -= p;
+  }
+  return 'farmer';
+}
+// Phase 5-F: 직업별 작업장 결정 (zone terrain cluster 활용)
+function _findNpcWorkSite(vx, vy, job) {
+  if (job === 'miner' || job === 'prospector') {
+    return _findNearestTerrainCluster(ZONE_ID, vx, vy, 'ore');
+  } else if (job === 'lumberjack' || job === 'forager') {
+    return _findNearestTerrainCluster(ZONE_ID, vx, vy, 'forest');
+  } else if (job === 'fisher') {
+    return _findNearestTerrainCluster(ZONE_ID, vx, vy, 'water');
+  } else if (job === 'hunter') {
+    const t = _findNearestTerrainCluster(ZONE_ID, vx, vy, 'forest');
+    if (t) return { x: t.x + (Math.random() - 0.5) * 600, y: t.y + (Math.random() - 0.5) * 600 };
+  }
+  return null; // farmer/cook/smith/warrior — 마을 안에서 작업
+}
+
 function spawnVillagers() {
   for (let v = 0; v < VILLAGES.length; v++) {
     const village = VILLAGES[v];
     const villageId = `village_${ZONE_ID}_${v}`;
-    console.log(`[${ZONE_ID}] 🏘️ 마을 [${village.name}] @ (${village.x},${village.y}) — ${NPC_PER_VILLAGE}명`);
+    console.log(`[${ZONE_ID}] 🏘️ 마을 [${village.name}] @ (${village.x},${village.y}) type=${village.type || 'plain'} — ${NPC_PER_VILLAGE}명`);
     // 14.18.b: 길드 영토 (central tribe_id는 비동기로 받음. 지금 시점에 villageGuildIds에 있을 수도/없을 수도)
     const tribeId = villageGuildIds.get(village.name);
     if (tribeId) spawnGuildClaimsForVillage(village, tribeId);
@@ -929,7 +972,16 @@ function spawnVillagers() {
       const r = 200 + Math.random() * 300;
       const npcX = village.x + Math.cos(ang) * r;
       const npcY = village.y + Math.sin(ang) * r;
-      spawnNpc({ x: npcX, y: npcY, villageId, villageName: village.name });
+      const job = _pickNpcJob(village.type);
+      const ws = _findNpcWorkSite(village.x, village.y, job);
+      spawnNpc({
+        x: npcX, y: npcY,
+        villageId, villageName: village.name,
+        npcJob: job,
+        npcHomeX: village.x, npcHomeY: village.y,
+        npcWorkX: ws ? ws.x : village.x + (Math.random() - 0.5) * 200,
+        npcWorkY: ws ? ws.y : village.y + (Math.random() - 0.5) * 200,
+      });
     }
   }
   // 길드 영토는 spawnVillagers와 별도로 registerVillageGuilds 완료 후 다시 호출 (race condition fix)
@@ -1026,9 +1078,21 @@ function decideNpcBehavior(npc, now) {
     npc.gatherTarget = bestRes.id;
     return;
   }
-  // ⑤ 배회 — 사유지 안에서 랜덤
+  // ⑤ 배회 — Phase 5-F: 직업 있으면 작업장(workSite) 근처에서 배회
   npc.behavior = 'wander';
-  if (npc.myClaim) {
+  if (npc.npcWorkX != null && npc.npcWorkY != null) {
+    // 사용자가 day/night 분리 X → 일단 workSite에서 idle (출퇴근 시각화 1단계)
+    // 거리 멀 때만 workSite로 이동, 가까우면 주변 idle
+    const distToWork = Math.hypot(npc.x - npc.npcWorkX, npc.y - npc.npcWorkY);
+    if (distToWork > 200) {
+      npc.targetX = npc.npcWorkX + (Math.random() - 0.5) * 100;
+      npc.targetY = npc.npcWorkY + (Math.random() - 0.5) * 100;
+    } else {
+      // 작업장 근처 — 80px 내 idle wander
+      npc.targetX = npc.npcWorkX + (Math.random() - 0.5) * 160;
+      npc.targetY = npc.npcWorkY + (Math.random() - 0.5) * 160;
+    }
+  } else if (npc.myClaim) {
     const cl = npc.myClaim;
     npc.targetX = cl.x + Math.random() * cl.w;
     npc.targetY = cl.y + Math.random() * cl.h;
@@ -5126,15 +5190,76 @@ const JOB_WORK_OFFSET = {
   merchant:   { angle: 0,                  dist: 20,  label: '거래소' },
   warrior:    { angle: Math.PI * 1.625,    dist: 100, label: '훈련장' },
 };
+// Phase 5-F: zone terrain의 가장 가까운 cluster 찾기 (ore/forest/water)
+function _findNearestTerrainCluster(zoneId, mx, my, kind) {
+  const t = _terrain.ZONE_TERRAIN[zoneId];
+  if (!t) return null;
+  let list, getCenter;
+  if (kind === 'ore') { list = t.ores || []; getCenter = c => c.center; }
+  else if (kind === 'forest') { list = t.forests || []; getCenter = c => [(c.rect[0]+c.rect[2])/2, (c.rect[1]+c.rect[3])/2]; }
+  else if (kind === 'water') {
+    // 호수 또는 강 path 첫 point. 가장 가까운 것
+    list = [];
+    for (const lk of (t.lakes || [])) {
+      const c = lk.center || (lk.circles && lk.circles[0]?.center);
+      if (c) list.push({ center: c });
+    }
+    for (const rv of (t.rivers || [])) {
+      if (rv.path && rv.path[Math.floor(rv.path.length/2)]) {
+        const mid = rv.path[Math.floor(rv.path.length/2)].pos;
+        list.push({ center: mid });
+      }
+    }
+    getCenter = c => c.center;
+  }
+  else { return null; }
+  let best = null, bestD = Infinity;
+  for (const c of list) {
+    const ctr = getCenter(c);
+    const d = Math.hypot(mx - ctr[0], my - ctr[1]);
+    if (d < bestD) { bestD = d; best = { x: ctr[0], y: ctr[1] }; }
+  }
+  return best;
+}
+
 function assignCanadiaWorkArea(npc) {
-  // Phase 4d-16-b: NPC home (사유지 cell) 있으면 그 근처에서 working. 외곽 직업도 마당에서.
+  // Phase 5-F: 직업별 cluster 출퇴근. 마을 위치 기준 가장 가까운 곳.
+  // canadiaChestX/Y = 마을 광장 좌표 (NPC 마을). 그걸 기준.
+  const villX = npc.canadiaChestX || npc.canadiaHomeX || npc.x;
+  const villY = npc.canadiaChestY || npc.canadiaHomeY || npc.y;
+  const job = npc.canadiaJob;
+  let target = null;
+
+  if (job === 'miner' || job === 'prospector') {
+    target = _findNearestTerrainCluster(ZONE_ID, villX, villY, 'ore');
+  } else if (job === 'lumberjack') {
+    target = _findNearestTerrainCluster(ZONE_ID, villX, villY, 'forest');
+  } else if (job === 'forager') {
+    target = _findNearestTerrainCluster(ZONE_ID, villX, villY, 'forest');
+  } else if (job === 'fisher') {
+    target = _findNearestTerrainCluster(ZONE_ID, villX, villY, 'water');
+  } else if (job === 'hunter') {
+    // 사냥꾼 — 가까운 forest 또는 zone 무작위 지점
+    target = _findNearestTerrainCluster(ZONE_ID, villX, villY, 'forest');
+    if (target) {
+      // forest 바깥쪽 (사냥감 spawn 가능 지역)
+      target.x += (Math.random() - 0.5) * 600;
+      target.y += (Math.random() - 0.5) * 600;
+    }
+  }
+  // farmer/cook/smith/warrior/merchant — 마을 안에서 작업 (집·광장)
+  if (target) {
+    npc.canadiaWorkX = target.x + (Math.random() - 0.5) * 200;
+    npc.canadiaWorkY = target.y + (Math.random() - 0.5) * 200;
+    return;
+  }
+  // 4d-16-b 옛 동작: home 있으면 집 옆
   if (npc.canadiaHomeX != null && npc.canadiaHomeY != null) {
-    // 집 주변 ±60px (4 cell 사유지 안)
     npc.canadiaWorkX = npc.canadiaHomeX + (Math.random() - 0.5) * 80;
     npc.canadiaWorkY = npc.canadiaHomeY + (Math.random() - 0.5) * 80;
     return;
   }
-  // home 없으면 fallback — 직업별 거래소 offset
+  // 마지막 fallback — 직업별 거래소 offset
   const off = JOB_WORK_OFFSET[npc.canadiaJob] || JOB_WORK_OFFSET.farmer;
   const a = off.angle + (Math.random() - 0.5) * 0.4;
   const d = off.dist + (Math.random() - 0.5) * 60;
