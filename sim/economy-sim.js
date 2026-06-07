@@ -101,28 +101,39 @@ const JOBS = {
   farmer: {
     field: 'farming', output: 'food', base: 1.5,
     landBoost: (v) => v.land.fertility, toolDependent: true, inputs: {},
+    // Phase 5-5-econ-b: 작물 다양화 (wheat·rice·barley·cotton·flax·hemp)
+    byproduct: { wheat: 0.25, rice: 0.20, barley: 0.15, cotton: 0.08, flax: 0.06, hemp: 0.05 },
   },
   fisher: {
     field: 'fishing', output: 'fish', base: 1.2,
     landBoost: (v) => v.land.water, toolDependent: true, inputs: {},
+    // Phase 5-5-econ-b: 어종 다양화 부산물 (salmon·shrimp·crab·oyster·seaweed)
+    byproduct: { salmon: 0.15, shrimp: 0.10, crab: 0.08, oyster: 0.06, seaweed: 0.12 },
   },
-  hunter: {                 // 사냥꾼 — meat + hide 동시 산출
+  hunter: {                 // 사냥꾼 — meat + hide + 새 자원 부산물
     field: 'hunting', output: 'meat', base: 0.7,
     landBoost: (v) => v.land.game, toolDependent: true,
     inputs: {},
-    byproduct: { hide: 0.4 },  // meat 1당 hide 0.4
+    // Phase 5-5-econ-b: specialty.js hunting 부산물 추가
+    byproduct: { hide: 0.4, fur: 0.15, leather: 0.10, bone: 0.20, feather: 0.10 },
   },
   lumberjack: {
     field: 'woodworking', output: 'wood', base: 0.9,
     landBoost: (v) => v.land.wood, toolDependent: true, inputs: {},
+    // Phase 5-5-econ-b: 통나무 종류 + 부산물 (oak·pine·resin·bark·acorn)
+    byproduct: { oak_log: 0.20, pine_log: 0.15, resin: 0.08, bark: 0.10, acorn: 0.06 },
   },
   miner: {
     field: 'mining', output: 'stone', base: 0.7,
     landBoost: (v) => v.land.stone, toolDependent: true, inputs: {},
+    // Phase 5-5-econ-b: 광맥 부산물 (석탄·소금·기본 광물)
+    byproduct: { coal: 0.10, salt: 0.05, clay: 0.08 },
   },
   prospector: {
     field: 'mining', output: 'ore', base: 0.5,
     landBoost: (v) => v.land.ore, toolDependent: true, inputs: {},
+    // Phase 5-5-econ-b: 희귀 광맥 (iron·copper·tin·silver·gold·gem)
+    byproduct: { iron: 0.30, copper: 0.20, tin: 0.10, silver: 0.05, gold: 0.02, gem: 0.01 },
   },
   smith: {                  // 도구 제작 (wood + stone) — pebble 의존 제거 (cascade failure 방지)
     field: 'smithing', output: 'tool', base: 0.4,
@@ -185,17 +196,26 @@ const JOB_NAMES = Object.keys(JOBS);
 const FIELDS = [...new Set(JOB_NAMES.map(j => JOBS[j].field))];
 
 // forager 토지별 산출 가중치 — 어떤 채집물이 더 많이 나오나
+// Phase 5-5-econ-b: specialty.js 새 자원 추가 (chestnut·walnut·honey·medicinal_herb·grape·wildflower)
 function foragerYieldsFor(v) {
-  // 평원/비옥지 → fruit/vegetable 우세
-  // 삼림 → mushroom/twig
-  // 산악 → pebble/mushroom
+  // 평원/비옥지 → fruit/vegetable/grape/wildflower
+  // 삼림 → mushroom/twig/chestnut/walnut/honey
+  // 산악 → pebble/medicinal_herb
   const fert = v.land.fertility, wood = v.land.wood, stone = v.land.stone;
   return {
+    // 옛 자원 (유지)
     fruit:     fert * 0.6 + 0.2,
     vegetable: fert * 0.5 + 0.2,
     mushroom:  wood * 0.4 + stone * 0.2 + 0.1,
     twig:      wood * 0.5 + 0.2,
     pebble:    stone * 0.5 + 0.1,
+    // 새 자원 (specialty.js의 foraging) — 가중치 작게 (옛 자원 우선)
+    chestnut:  wood * 0.18,           // 견과 — 숲
+    walnut:    wood * 0.15,           // 견과 — 숲
+    honey:     wood * 0.20,           // 꿀 — 숲 (벌집)
+    medicinal_herb: fert * 0.10 + stone * 0.10,  // 약초 — 다양 환경
+    wildflower: fert * 0.25,          // 야생화 — 평원
+    grape:     fert * 0.15,           // 산포도 — 평원
   };
 }
 
