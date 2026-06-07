@@ -29,17 +29,35 @@ function _getSpecialty() {
   }
   return _SPECIALTY;
 }
+// 옛 시뮬 자원 → stat 매핑 (specialty.js에 없는 자원도 stat 부여)
+const LEGACY_CONTRIBUTES = {
+  food:        { subsistence: 1.0 },
+  cooked_food: { subsistence: 1.0, happiness: 0.5 },
+  fruit:       { subsistence: 0.4, health: 0.3, happiness: 0.2 },
+  vegetable:   { subsistence: 0.5, health: 0.3 },
+  mushroom:    { subsistence: 0.4, health: 0.2 },
+  meat:        { subsistence: 0.8, health: 0.3 },
+  fish:        { subsistence: 0.8, health: 0.4 },
+  hide:        { defense: 0.2 },
+  weapon:      { defense: 1.0 },
+  armor:       { defense: 0.8 },
+  tool:        { production: 0.5 },
+  wood:        { production: 0.3 },
+  stone:       { production: 0.3, defense: 0.2 },
+  ore:         { production: 0.4 },
+};
 function _computeVillageStats(v, N) {
   const SP = _getSpecialty();
-  if (!SP) return null;
-  const stats = { subsistence: 0, happiness: 0, health: 0, prestige: 0, defense: 0 };
+  const stats = { subsistence: 0, happiness: 0, health: 0, prestige: 0, defense: 0, production: 0 };
   const pop = Math.max(1, N);
   for (const [id, qty] of Object.entries(v.storage || {})) {
-    const r = SP[id];
-    if (!r || !r.contributes || qty <= 0) continue;
+    if (qty <= 0) continue;
+    // specialty.js 우선, 없으면 LEGACY
+    const contributes = (SP && SP[id] && SP[id].contributes) || LEGACY_CONTRIBUTES[id] || null;
+    if (!contributes) continue;
     const per_npc = qty / pop;
     const sat = Math.min(1.0, per_npc / 2.0);
-    for (const [stat, w] of Object.entries(r.contributes)) {
+    for (const [stat, w] of Object.entries(contributes)) {
       if (stats[stat] !== undefined) stats[stat] += w * sat;
     }
   }
