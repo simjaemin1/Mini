@@ -6113,6 +6113,16 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
   // 표시 변수
   let zoom = 0.01;   // world px → display px 배율 (작을수록 zoom-out)
   let panX = 0, panY = 0;
+
+  // Phase 5-G: zoom을 cell이 정수 px이 되도록 snap (grid line align 완벽)
+  // cellPx = 32 * zoom. cellPx >= 1이면 round해서 정수로.
+  const CELL_SIZE = 32;
+  function snapZoom(z) {
+    const cellPx = z * CELL_SIZE;
+    if (cellPx >= 1) return Math.round(cellPx) / CELL_SIZE;
+    // sub-cell zoom (zoom-out)는 그대로
+    return z;
+  }
   let dragging = false, dragStartX = 0, dragStartY = 0, dragPanX = 0, dragPanY = 0;
   let visible = false;
   let needsRedraw = true;
@@ -6290,12 +6300,14 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     cx.fillRect(0, 0, W, H);
 
     // cache origin = 현재 viewport center 기준 양쪽 margin 만큼 펼침
+    // sub-pixel align: origin을 sampleStepWorld 배수로 snap (cell grid 완벽 align)
     const vpCenterWX = (canvas.width / 2 - panX) / currentZoom;
     const vpCenterWY = (canvas.height / 2 - panY) / currentZoom;
     const cacheW_world = W / currentZoom;
     const cacheH_world = H / currentZoom;
-    const originX = vpCenterWX - cacheW_world / 2;
-    const originY = vpCenterWY - cacheH_world / 2;
+    const _sampleStep = Math.max(1, Math.round(1 / (currentZoom * CELL_SIZE))) * CELL_SIZE;
+    const originX = Math.floor((vpCenterWX - cacheW_world / 2) / _sampleStep) * _sampleStep;
+    const originY = Math.floor((vpCenterWY - cacheH_world / 2) / _sampleStep) * _sampleStep;
 
     const CELL = 32;
     const sampleStep = Math.max(1, Math.round(1 / (currentZoom * CELL)));
@@ -6409,17 +6421,17 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     if (minX === Infinity) return;
     const worldW = maxX - minX;
     const worldH = maxY - minY;
-    zoom = Math.min(canvas.width / worldW, canvas.height / worldH) * 0.92;
-    panX = (canvas.width - worldW * zoom) / 2 - minX * zoom;
-    panY = (canvas.height - worldH * zoom) / 2 - minY * zoom;
+    zoom = snapZoom(Math.min(canvas.width / worldW, canvas.height / worldH) * 0.92);
+    panX = Math.round((canvas.width - worldW * zoom) / 2 - minX * zoom);
+    panY = Math.round((canvas.height - worldH * zoom) / 2 - minY * zoom);
     needsRedraw = true;
   }
 
   function centerOnMe() {
     const me = getMyAbs();
     if (!me) return;
-    panX = canvas.width / 2 - me.x * zoom;
-    panY = canvas.height / 2 - me.y * zoom;
+    panX = Math.round(canvas.width / 2 - me.x * zoom);
+    panY = Math.round(canvas.height / 2 - me.y * zoom);
     needsRedraw = true;
   }
 
@@ -6557,11 +6569,13 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     const wx = (mx - panX) / zoom;
     const wy = (my - panY) / zoom;
     const factor = e.deltaY > 0 ? 0.82 : 1.22;
-    const newZoom = Math.max(0.0005, Math.min(3.0, zoom * factor));
+    const rawZoom = Math.max(0.0005, Math.min(3.0, zoom * factor));
+    const newZoom = snapZoom(rawZoom);
     if (newZoom !== zoom) {
       zoom = newZoom;
-      panX = mx - wx * zoom;
-      panY = my - wy * zoom;
+      // panX/Y도 정수로 (sub-pixel rendering 방지)
+      panX = Math.round(mx - wx * zoom);
+      panY = Math.round(my - wy * zoom);
       needsRedraw = true;
     }
   }, { passive: false });
@@ -6591,7 +6605,7 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
   // 버튼
   closeBtn?.addEventListener('click', hide);
   fitBtn?.addEventListener('click', () => { fitAll(); });
-  meBtn?.addEventListener('click', () => { zoom = 0.5; centerOnMe(); needsRedraw = true; });
+  meBtn?.addEventListener('click', () => { zoom = snapZoom(0.5); centerOnMe(); needsRedraw = true; });
 
   // resize
   window.addEventListener('resize', () => { if (visible) resize(); });
