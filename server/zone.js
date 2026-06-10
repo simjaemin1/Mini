@@ -659,6 +659,9 @@ function spawnMob(type, opts = {}) {
     // 14.46-a: 해양 zone — mob 생성 안 함 (사슴/늑대 바다에 떠있으면 이상함).
     // 14.46-b에서 fish 추가 예정.
     console.log(`[${ZONE_ID}] 🌊 ocean zone — mob spawn skip`);
+  } else if (ZONE.cleanZone) {
+    // Phase 5-G: cleanZone (한반도 강·호수 검증) — mob spawn 안 함
+    console.log(`[${ZONE_ID}] 🧹 cleanZone — mob spawn skip`);
   } else {
     // Phase 5-6b: zone biome 따라 huntableInBiome 활용. 사냥감 36종 다 활성.
     const { huntableInBiome } = require('./animals');
