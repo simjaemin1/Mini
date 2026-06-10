@@ -6300,7 +6300,8 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     const CELL = 32;
     const sampleStep = Math.max(1, Math.round(1 / (currentZoom * CELL)));
     const sampleStepWorld = sampleStep * CELL;
-    const drawSize = Math.max(1, sampleStepWorld * currentZoom);
+    // sub-pixel 갭 방지: drawSize 올림 + 1 px overlap
+    const drawSize = Math.max(1, Math.ceil(sampleStepWorld * currentZoom) + 1);
 
     for (const [zid, zone] of Object.entries(zm)) {
       const zox = zone.worldOffsetX || 0, zoy = zone.worldOffsetY || 0;
@@ -6312,10 +6313,13 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
       const y1 = Math.max(zoy, originY);
       const y2 = Math.min(zoy + zh, originY + cacheH_world);
       if (x2 <= x1 || y2 <= y1) continue;
-      // base ground (cache canvas 좌표)
+      // base ground (cache canvas 좌표) — 좌표 floor + size ceil
+      const bgX = Math.floor((x1 - originX) * currentZoom);
+      const bgY = Math.floor((y1 - originY) * currentZoom);
+      const bgW = Math.ceil((x2 - x1) * currentZoom) + 1;
+      const bgH = Math.ceil((y2 - y1) * currentZoom) + 1;
       cx.fillStyle = zone.isOcean ? OCEAN_COLOR : (zone.groundColor || '#5a7c4a');
-      cx.fillRect((x1 - originX) * currentZoom, (y1 - originY) * currentZoom,
-                  (x2 - x1) * currentZoom, (y2 - y1) * currentZoom);
+      cx.fillRect(bgX, bgY, bgW, bgH);
       if (zone.isOcean) continue;
       if (!Terrain) continue;
       // cell sample (water 포함, getTileType 호출)
@@ -6330,7 +6334,12 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
           const color = TILE_COLORS[t];
           if (!color) continue;
           cx.fillStyle = color;
-          cx.fillRect((wx - originX) * currentZoom, (wy - originY) * currentZoom, drawSize, drawSize);
+          // sub-pixel 갭 방지: 좌표 floor
+          cx.fillRect(
+            Math.floor((wx - originX) * currentZoom),
+            Math.floor((wy - originY) * currentZoom),
+            drawSize, drawSize
+          );
         }
       }
     }
