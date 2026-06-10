@@ -6323,11 +6323,13 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
       cx.fillRect(bgX, bgY, bgW, bgH);
       if (zone.isOcean) continue;
       if (!Terrain) continue;
-      // cell sample — gap 없이 fillRect (인접 같은 색 cell은 단색으로)
+      // cell sample — width = next start - current start (sub-pixel aliasing 정확 fix)
       const sx0 = Math.floor(x1 / sampleStepWorld) * sampleStepWorld;
       const sy0 = Math.floor(y1 / sampleStepWorld) * sampleStepWorld;
-      const cellFillSize = cellPxSize + 1; // sub-pixel 갭 방지
       for (let wy = sy0; wy < y2; wy += sampleStepWorld) {
+        const startPy = Math.floor((wy - originY) * currentZoom);
+        const nextPy = Math.floor((wy + sampleStepWorld - originY) * currentZoom);
+        const cellH = nextPy - startPy;
         for (let wx = sx0; wx < x2; wx += sampleStepWorld) {
           const lx = wx - zox, ly = wy - zoy;
           if (lx < 0 || ly < 0 || lx >= zw || ly >= zh) continue;
@@ -6335,12 +6337,10 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
           if (!t || t === 'plain') continue;
           const color = TILE_COLORS[t];
           if (!color) continue;
+          const startPx = Math.floor((wx - originX) * currentZoom);
+          const nextPx = Math.floor((wx + sampleStepWorld - originX) * currentZoom);
           cx.fillStyle = color;
-          cx.fillRect(
-            Math.floor((wx - originX) * currentZoom),
-            Math.floor((wy - originY) * currentZoom),
-            cellFillSize, cellFillSize
-          );
+          cx.fillRect(startPx, startPy, nextPx - startPx, cellH);
         }
       }
       // grid line overlay (alpha 1px stroke — 두께 일정, cell 크기 무관)
