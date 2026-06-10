@@ -6219,8 +6219,8 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
           ctx.fillRect(dx0, dy0, dw, dh);
           if (z.isOcean) continue;
 
-          // Phase 5-G: 한반도는 cleanZone — cell sample 건너뛰고 강·호수 path 직접 그리기 (수백만 cell → ~400 strokes)
-          if (zid === 'hanbando' && Terrain) {
+          // Phase 5-G: 모든 zone에 강·호수는 path/ellipse 직접 그리기 (cell 순회 가장 비싼 부분 제거)
+          if (Terrain) {
             const td = Terrain.ZONE_TERRAIN[zid];
             const waterColor = TILE_COLORS.water || '#3a6a8a';
             if (td) {
@@ -6257,8 +6257,8 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
                 }
               }
             }
-          } else if (Terrain) {
-            // 기존 cell sample (다른 zone)
+            // forest/mountain/ore 는 cell sample (water 검사 skip — 위에서 path로 그렸음)
+            // 한반도(cleanZone)는 forests/mountains/ores=0이라 빠르게 return
             const startX = Math.max(zox, viewMinX);
             const endX = Math.min(zox + zw, viewMaxX);
             const startY = Math.max(zoy, viewMinY);
@@ -6270,8 +6270,11 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
               for (let wx = sx0; wx < endX; wx += sampleStepWorld) {
                 const lx = wx - zox, ly = wy - zoy;
                 if (lx < 0 || ly < 0 || lx >= zw || ly >= zh) continue;
-                const type = Terrain.getTileType(zid, lx, ly);
-                const color = TILE_COLORS[type];
+                // water 검사 skip (path로 이미 그림) — ore/mountain/forest 순서
+                let color = null;
+                if (Terrain.isOreClusterAt && Terrain.isOreClusterAt(zid, lx, ly)) color = TILE_COLORS.ore;
+                else if (Terrain.getStoneMultiplier && Terrain.getStoneMultiplier(zid, lx, ly) > 1.5) color = TILE_COLORS.mountain;
+                else if (Terrain.getForestMultiplier && Terrain.getForestMultiplier(zid, lx, ly) > 1.5) color = TILE_COLORS.forest;
                 if (!color) continue;
                 ctx.fillStyle = color;
                 ctx.fillRect(wx * zoom + panX, wy * zoom + panY, drawSize, drawSize);

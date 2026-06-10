@@ -31,9 +31,11 @@ ZH="{${HOSTS%,}}"
 echo "[redeploy-hanbando-5] central=$CENTRAL_IP, 재시작 대상=$(echo $TARGET_ZONES | wc -w) zone"
 
 # 이미지 재빌드 (terrain.js + hanbando-terrain.json 포함)
-PROJ_DIR="${PROJ_DIR:-/opt/Mini/durango-mini}"
+# 스크립트 위치에서 상위 (= 프로젝트 root) 자동 인식
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJ_DIR="${PROJ_DIR:-$(dirname "$SCRIPT_DIR")}"
 cd "$PROJ_DIR"
-echo "[build] durango-zone 이미지 재빌드..."
+echo "[build] durango-zone 이미지 재빌드... ($PROJ_DIR)"
 docker build -f Dockerfile.zone -t durango-zone . >/dev/null
 echo "[build] 완료"
 
