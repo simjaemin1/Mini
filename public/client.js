@@ -1476,15 +1476,27 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     conns.set(zoneId, c);
     if (role === 'primary') primaryZoneId = zoneId;
     ws.onmessage = (ev) => handleMessage(zoneId, JSON.parse(ev.data));
-    ws.onclose = () => { if (conns.get(zoneId) === c) conns.delete(zoneId); };
-    ws.onerror = () => {};
+    ws.onclose = (ev) => {
+      if (conns.get(zoneId) === c) conns.delete(zoneId);
+      _lastCloseAt.set(zoneId, performance.now()); // cooldown 기록
+      // Phase 5-G trace: close 이유 진단
+      console.warn('[ws] close', zoneId, 'role=' + role, 'code=' + ev.code, 'reason=' + (ev.reason || '(empty)'), 'wasClean=' + ev.wasClean);
+    };
+    ws.onerror = (ev) => {
+      console.warn('[ws] error', zoneId, 'role=' + role);
+    };
   }
+
+  // Phase 5-G: observer 연결 fail 시 cooldown — 매 frame retry storm 방지
+  const _lastCloseAt = new Map(); // zoneId -> performance.now() at close
+  const RECONNECT_COOLDOWN_MS = 5000;
 
   function closeConnection(zoneId) {
     const c = conns.get(zoneId);
     if (!c) return;
     try { c.ws.close(); } catch (e) {}
     conns.delete(zoneId);
+    _lastCloseAt.set(zoneId, performance.now());
   }
 
   function handleMessage(zoneId, msg) {
@@ -1916,6 +1928,10 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     for (const { id, d } of dirs) {
       if (!id) continue;
       if (d < PEEK_THRESHOLD && !conns.has(id)) {
+        // Phase 5-G: 최근 close 후 cooldown — storm 방지
+        const lastClose = _lastCloseAt.get(id) || 0;
+        if (performance.now() - lastClose < RECONNECT_COOLDOWN_MS) continue;
+        console.log('[neighbor] connect observer', id, 'd=', d, 'localXY=', myAbsPredicted.x - pmeta.worldOffsetX, myAbsPredicted.y - (pmeta.worldOffsetY || 0));
         connect(id, 'observer', null);
       } else if (d > PEEK_THRESHOLD * 1.6) {
         const c = conns.get(id);
