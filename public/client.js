@@ -1509,6 +1509,7 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
       const _zid = c.zoneId || (msg.zone && (msg.zone.id || msg.zone.zoneId)) || c.id;
       if (msg.hardcodedTerrain && window.Terrain && window.Terrain.setHardcoded && _zid) {
         window.Terrain.setHardcoded(_zid, msg.hardcodedTerrain);
+        if (typeof window.__invalidateMinimapCache === 'function') window.__invalidateMinimapCache();
         console.log('[terrain] hardcoded applied:', _zid, 'rivers=' + msg.hardcodedTerrain.rivers.length, 'lakes=' + msg.hardcodedTerrain.lakes.length);
       } else if (msg.hardcodedTerrain) {
         console.warn('[terrain] hardcoded received but skipped — zid=' + _zid + ' Terrain=' + !!window.Terrain + ' setHardcoded=' + !!(window.Terrain && window.Terrain.setHardcoded));
@@ -6125,6 +6126,122 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
   };
   const OCEAN_COLOR = '#1a3a6a';
 
+  // ===== Phase 5-G perf: zone별 offscreen canvas cache (LOD pyramid) =====
+  // zoom level을 정해진 stop으로 snap → 같은 level이면 cache 재사용
+  // drag/pan은 cache를 drawImage로 옮기기만 → 0 cell sample, 0렉
+  // cache 빌드는 vector primitive만 (rect/arc/stroke) — ms 단위
+  const ZOOM_LEVELS = [0.0005, 0.0015, 0.005, 0.015, 0.05, 0.15, 0.5, 1.5];
+  const MAX_CACHE_PX = 1024;   // cache canvas 한 변 최대 (메모리 cap)
+  const MIN_CACHE_PX = 16;
+  const zoneCacheMap = new Map(); // zid -> { level, canvas, cw, ch }
+  let cacheTerrainVersion = 0;    // hardcoded terrain 변경 시 bump
+
+  function pickZoomLevel(z) {
+    for (const lv of ZOOM_LEVELS) {
+      if (lv >= z) return lv;
+    }
+    return ZOOM_LEVELS[ZOOM_LEVELS.length - 1];
+  }
+
+  function invalidateAllCaches() {
+    zoneCacheMap.clear();
+    needsRedraw = true;
+  }
+  // terrain.setHardcoded 후 외부에서 호출
+  window.__invalidateMinimapCache = invalidateAllCaches;
+
+  function buildZoneCache(zid, zone, level) {
+    const zw = zone.zoneWidth || 0, zh = zone.zoneHeight || 0;
+    if (zw === 0) return null;
+    // cache 해상도 = zone 크기 * level, max cap 적용 (큰 zone일수록 픽셀 손실)
+    let cw = zw * level, ch = zh * level;
+    const cap = Math.min(1, MAX_CACHE_PX / Math.max(cw, ch));
+    cw = Math.max(MIN_CACHE_PX, Math.ceil(cw * cap));
+    ch = Math.max(MIN_CACHE_PX, Math.ceil(ch * cap));
+    const c = document.createElement('canvas');
+    c.width = cw; c.height = ch;
+    const cx = c.getContext('2d');
+
+    // 1. base ground
+    cx.fillStyle = zone.isOcean ? OCEAN_COLOR : (zone.groundColor || '#5a7c4a');
+    cx.fillRect(0, 0, cw, ch);
+    if (zone.isOcean) return { level, canvas: c, cw, ch };
+
+    const Terrain = window.Terrain;
+    const td = Terrain && Terrain.ZONE_TERRAIN[zid];
+    if (!td) return { level, canvas: c, cw, ch };
+
+    const sxr = cw / zw, syr = ch / zh; // world px → cache px
+    const waterColor = TILE_COLORS.water;
+
+    // 2. forest rect (균일 색, 한 번 fillRect)
+    if (td.forests && TILE_COLORS.forest) {
+      cx.fillStyle = TILE_COLORS.forest;
+      for (const f of td.forests) {
+        if (!f.rect || (f.densityMult || 0) <= 1.5) continue;
+        const [x1,y1,x2,y2] = f.rect;
+        cx.fillRect(x1*sxr, y1*syr, (x2-x1)*sxr, (y2-y1)*syr);
+      }
+    }
+    // 3. mountain rect
+    if (td.mountains && TILE_COLORS.mountain) {
+      cx.fillStyle = TILE_COLORS.mountain;
+      for (const m of td.mountains) {
+        if (!m.rect || (m.stoneMult || 0) <= 1.5) continue;
+        const [x1,y1,x2,y2] = m.rect;
+        cx.fillRect(x1*sxr, y1*syr, (x2-x1)*sxr, (y2-y1)*syr);
+      }
+    }
+    // 4. ore arc (원형)
+    if (td.ores && TILE_COLORS.ore) {
+      cx.fillStyle = TILE_COLORS.ore;
+      for (const o of td.ores) {
+        if (!o.center) continue;
+        cx.beginPath();
+        cx.arc(o.center[0]*sxr, o.center[1]*syr, (o.radius||0)*sxr, 0, Math.PI*2);
+        cx.fill();
+      }
+    }
+    // 5. lake arc (water가 mountain/forest/ore보다 우선)
+    cx.fillStyle = waterColor;
+    for (const lake of (td.lakes || [])) {
+      if (!lake.center) continue;
+      cx.beginPath();
+      cx.arc(lake.center[0]*sxr, lake.center[1]*syr, (lake.radius||0)*sxr, 0, Math.PI*2);
+      cx.fill();
+    }
+    // 6. river path stroke
+    cx.strokeStyle = waterColor;
+    cx.lineCap = 'round';
+    for (const river of (td.rivers || [])) {
+      const path = river.path || [];
+      if (path.length < 2) continue;
+      for (let i = 0; i < path.length - 1; i++) {
+        const p1 = path[i], p2 = path[i+1];
+        const x1 = p1.pos ? p1.pos[0] : p1[0];
+        const y1 = p1.pos ? p1.pos[1] : p1[1];
+        const x2 = p2.pos ? p2.pos[0] : p2[0];
+        const y2 = p2.pos ? p2.pos[1] : p2[1];
+        const w = ((p1.width||200) + (p2.width||200)) / 2;
+        cx.lineWidth = Math.max(1, w * sxr);
+        cx.beginPath();
+        cx.moveTo(x1*sxr, y1*syr);
+        cx.lineTo(x2*sxr, y2*syr);
+        cx.stroke();
+      }
+    }
+    return { level, canvas: c, cw, ch };
+  }
+
+  function getZoneCache(zid, zone, currentZoom) {
+    const targetLevel = pickZoomLevel(currentZoom);
+    const ex = zoneCacheMap.get(zid);
+    if (ex && ex.level === targetLevel) return ex;
+    const built = buildZoneCache(zid, zone, targetLevel);
+    if (built) zoneCacheMap.set(zid, built);
+    return built;
+  }
+
   function resize() {
     const rect = canvas.getBoundingClientRect();
     canvas.width = Math.floor(rect.width);
@@ -6189,20 +6306,17 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       const zm = getZonesMeta();
-      const Terrain = window.Terrain;
       if (zm) {
-        const CELL = 32;
-        // 1 display px = (1/zoom) world px = (1/zoom/CELL) cells
-        const cellsPerDispPx = 1 / (zoom * CELL);
-        // sampleStep: 1 display px당 1~여러 cell 샘플. zoom-out 클수록 sampleStep 큼
-        const sampleStep = Math.max(1, Math.round(cellsPerDispPx));
-        const sampleStepWorld = sampleStep * CELL;
-        // viewport world bounds (+ 50% margin — 드래그 즉시 보이도록 화면 밖도 미리 그림)
-        const marginPx = Math.max(canvas.width, canvas.height) * 0.5;
+        // viewport world bounds (+ 25% margin — drag 즉시 반응)
+        const marginPx = Math.max(canvas.width, canvas.height) * 0.25;
         const viewMinX = (-panX - marginPx) / zoom;
         const viewMaxX = (canvas.width - panX + marginPx) / zoom;
         const viewMinY = (-panY - marginPx) / zoom;
         const viewMaxY = (canvas.height - panY + marginPx) / zoom;
+
+        // pixel grid 느낌 (zoom-in 시 cache blow-up 대신 nearest-neighbor로 픽셀 보임)
+        const prevSmooth = ctx.imageSmoothingEnabled;
+        ctx.imageSmoothingEnabled = false;
 
         for (const [zid, z] of Object.entries(zm)) {
           const zox = z.worldOffsetX || 0, zoy = z.worldOffsetY || 0;
@@ -6212,84 +6326,24 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
           if (zox + zw < viewMinX || zox > viewMaxX) continue;
           if (zoy + zh < viewMinY || zoy > viewMaxY) continue;
 
-          // base ground fill (zone 전체)
-          const dx0 = zox * zoom + panX;
-          const dy0 = zoy * zoom + panY;
-          const dw = zw * zoom, dh = zh * zoom;
-          ctx.fillStyle = z.isOcean ? OCEAN_COLOR : (z.groundColor || '#5a7c4a');
-          ctx.fillRect(dx0, dy0, dw, dh);
-          if (z.isOcean) continue;
-
-          // Phase 5-G: hybrid by zoom
-          //   zoom < CELL_ZOOM_THRESHOLD (멀리 봄): 강·호수 path/ellipse stroke (cell 안 보임)
-          //   zoom >= CELL_ZOOM_THRESHOLD (가까이 봄): cell sample로 water 포함 픽셀 그리드 (정통 미니맵)
-          // sampleStep=1 (1 cell = 1+ display px)이면 cell 단위 보임 → 그때부터 cell sample
-          const CELL_ZOOM_THRESHOLD = 1 / CELL; // zoom*CELL >= 1, 즉 sampleStep=1 시작 지점
-          const useCellSample = zoom >= CELL_ZOOM_THRESHOLD;
-
-          if (Terrain) {
-            const td = Terrain.ZONE_TERRAIN[zid];
-            const waterColor = TILE_COLORS.water || '#3a6a8a';
-
-            if (!useCellSample && td) {
-              // === zoom-out: 강·호수를 vector로 빠르게 그림 ===
-              ctx.fillStyle = waterColor;
-              for (const lake of (td.lakes || [])) {
-                if (!lake.center) continue;
-                const cx = (zox + lake.center[0]) * zoom + panX;
-                const cy = (zoy + lake.center[1]) * zoom + panY;
-                const r = (lake.radius || 0) * zoom;
-                if (r < 0.5) continue;
-                ctx.beginPath();
-                ctx.arc(cx, cy, r, 0, Math.PI * 2);
-                ctx.fill();
-              }
-              ctx.strokeStyle = waterColor;
-              ctx.lineCap = 'round';
-              for (const river of (td.rivers || [])) {
-                const path = river.path || [];
-                if (path.length < 2) continue;
-                for (let i = 0; i < path.length - 1; i++) {
-                  const p1 = path[i], p2 = path[i + 1];
-                  const x1 = p1.pos ? p1.pos[0] : p1[0];
-                  const y1 = p1.pos ? p1.pos[1] : p1[1];
-                  const x2 = p2.pos ? p2.pos[0] : p2[0];
-                  const y2 = p2.pos ? p2.pos[1] : p2[1];
-                  const w = ((p1.width || 200) + (p2.width || 200)) / 2;
-                  ctx.lineWidth = Math.max(1, w * zoom);
-                  ctx.beginPath();
-                  ctx.moveTo((zox + x1) * zoom + panX, (zoy + y1) * zoom + panY);
-                  ctx.lineTo((zox + x2) * zoom + panX, (zoy + y2) * zoom + panY);
-                  ctx.stroke();
-                }
-              }
-            }
-
-            // === cell sample (zoom-out: forest/mountain/ore만 / zoom-in: water 포함 전부) ===
-            const startX = Math.max(zox, viewMinX);
-            const endX = Math.min(zox + zw, viewMaxX);
-            const startY = Math.max(zoy, viewMinY);
-            const endY = Math.min(zoy + zh, viewMaxY);
-            const sx0 = Math.floor(startX / sampleStepWorld) * sampleStepWorld;
-            const sy0 = Math.floor(startY / sampleStepWorld) * sampleStepWorld;
-            const drawSize = Math.max(1, sampleStepWorld * zoom);
-            for (let wy = sy0; wy < endY; wy += sampleStepWorld) {
-              for (let wx = sx0; wx < endX; wx += sampleStepWorld) {
-                const lx = wx - zox, ly = wy - zoy;
-                if (lx < 0 || ly < 0 || lx >= zw || ly >= zh) continue;
-                let color = null;
-                // zoom-in 시에만 water 검사 (zoom-out은 위에서 path로 그렸음)
-                if (useCellSample && Terrain.isWaterCellLocal && Terrain.isWaterCellLocal(zid, lx, ly)) color = waterColor;
-                else if (Terrain.isOreClusterAt && Terrain.isOreClusterAt(zid, lx, ly)) color = TILE_COLORS.ore;
-                else if (Terrain.getStoneMultiplier && Terrain.getStoneMultiplier(zid, lx, ly) > 1.5) color = TILE_COLORS.mountain;
-                else if (Terrain.getForestMultiplier && Terrain.getForestMultiplier(zid, lx, ly) > 1.5) color = TILE_COLORS.forest;
-                if (!color) continue;
-                ctx.fillStyle = color;
-                ctx.fillRect(wx * zoom + panX, wy * zoom + panY, drawSize, drawSize);
-              }
-            }
+          // ocean은 cache 안 만들고 단순 fill (가장 자주 viewport에 들어와서)
+          if (z.isOcean) {
+            ctx.fillStyle = OCEAN_COLOR;
+            ctx.fillRect(zox * zoom + panX, zoy * zoom + panY, zw * zoom, zh * zoom);
+            continue;
           }
+
+          // 정통 LOD: zoom level에 snap된 cache canvas를 그대로 그림
+          const cache = getZoneCache(zid, z, zoom);
+          if (!cache) continue;
+          ctx.drawImage(
+            cache.canvas,
+            0, 0, cache.cw, cache.ch,
+            zox * zoom + panX, zoy * zoom + panY,
+            zw * zoom, zh * zoom
+          );
         }
+        ctx.imageSmoothingEnabled = prevSmooth;
 
         // zone 경계
         ctx.strokeStyle = 'rgba(255,255,255,0.18)';
