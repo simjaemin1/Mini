@@ -230,6 +230,16 @@ const PLAYER_CAP = parseInt(process.env.PLAYER_CAP || '150', 10);
 const GATHER_RANGE = 48;
 const MAX_RESOURCES = 0; // Phase 12.2.e: procedural — 청크 활성화 시 lazy 생성. 이 변수 더 안 씀.
 
+// Phase 5-G: hardcoded terrain (한반도·인접 zone)을 클라에 welcome으로 전달
+function getHardcodedTerrainForZone() {
+  try {
+    const _terrain = require('./terrain');
+    const _all = _terrain._getHardcoded && _terrain._getHardcoded();
+    if (_all && _all[ZONE_ID]) return _all[ZONE_ID];
+  } catch {}
+  return null;
+}
+
 // === 상태 ===
 const players = new Map();      // pid -> { ws, x, y, vx, vy, name, inventory, handingOff }
 const observers = new Map();    // ws -> { viewerX, viewerY, lastSeen }
@@ -1646,6 +1656,7 @@ wss.on('connection', async (ws, req) => {
       type: 'welcome',
       observer: true,
       zone: zonePublicMeta(),
+      hardcodedTerrain: getHardcodedTerrainForZone(),
       resources: Array.from(resources.values()),
       claims: Array.from(claims.values()),
       buildings: Array.from(buildings.values()),
@@ -1737,6 +1748,7 @@ wss.on('connection', async (ws, req) => {
           type: 'welcome',
           pid,
           zone: zonePublicMeta(),
+          hardcodedTerrain: getHardcodedTerrainForZone(),
           resources: Array.from(resources.values()),
           claims: Array.from(claims.values()),
           buildings: Array.from(buildings.values()),
@@ -2014,18 +2026,11 @@ wss.on('connection', async (ws, req) => {
   console.log(`[${ZONE_ID}] + ${name} (${pid}) @ (${sx.toFixed(0)}, ${sy.toFixed(0)})  total=${players.size}`);
 
   // 환영 메시지 — 존 정보와 현재 상태 모두 전달
-  // Phase 5-G: hardcoded terrain (한반도·인접 zone) — 클라가 새 강·호수 표시용
-  let _hcTerrain = null;
-  try {
-    const _terrain = require('./terrain');
-    const _all = _terrain._getHardcoded && _terrain._getHardcoded();
-    if (_all && _all[ZONE_ID]) _hcTerrain = _all[ZONE_ID];
-  } catch {}
   send(ws, {
     type: 'welcome',
     pid,
     zone: zonePublicMeta(),
-    hardcodedTerrain: _hcTerrain,
+    hardcodedTerrain: getHardcodedTerrainForZone(),
     resources: Array.from(resources.values()),
     claims: Array.from(claims.values()),
     buildings: Array.from(buildings.values()),

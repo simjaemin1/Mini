@@ -1494,8 +1494,12 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     if (msg.type === 'welcome') {
       c.meta = msg.zone;
       // Phase 5-G: 서버에서 받은 hardcoded terrain (한반도 새 강·호수) — 미니맵 표시용
-      if (msg.hardcodedTerrain && window.Terrain && window.Terrain.setHardcoded) {
-        window.Terrain.setHardcoded(c.zoneId || msg.zone && msg.zone.id, msg.hardcodedTerrain);
+      const _zid = c.zoneId || (msg.zone && (msg.zone.id || msg.zone.zoneId)) || c.id;
+      if (msg.hardcodedTerrain && window.Terrain && window.Terrain.setHardcoded && _zid) {
+        window.Terrain.setHardcoded(_zid, msg.hardcodedTerrain);
+        console.log('[terrain] hardcoded applied:', _zid, 'rivers=' + msg.hardcodedTerrain.rivers.length, 'lakes=' + msg.hardcodedTerrain.lakes.length);
+      } else if (msg.hardcodedTerrain) {
+        console.warn('[terrain] hardcoded received but skipped — zid=' + _zid + ' Terrain=' + !!window.Terrain + ' setHardcoded=' + !!(window.Terrain && window.Terrain.setHardcoded));
       }
       c.resources.clear(); c.claims.clear(); c.buildings.clear(); c.mobs.clear();
       if (c.groundItems) c.groundItems.clear();
