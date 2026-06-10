@@ -28,6 +28,14 @@
 const _generated = new Map();
 let _zonesMetaCache = null;
 
+// === Hardcoded terrain (Phase 5-G — server welcome에서 받은 한반도·인접 강·호수) ===
+let _hardcodedCache = {};
+function setHardcoded(zoneId, data) {
+  if (!zoneId) return;
+  _hardcodedCache[zoneId] = data || null;
+  _generated.delete(zoneId);
+}
+
 function _getZonesMeta() {
   if (_zonesMetaCache) return _zonesMetaCache;
   // 서버 측 — zone-config 자동 require (한 번 cache)
@@ -59,6 +67,17 @@ function _getZoneTerrain(zoneId) {
   catch { gen = (typeof window !== 'undefined') ? window.TerrainGen : null; }
   if (!gen) return null;
   const data = gen.generateZoneTerrain(zoneId, meta);
+  // hardcoded override (한반도는 강·호수 모두 교체, 나머지는 추가)
+  const hc = _hardcodedCache[zoneId];
+  if (hc) {
+    if (zoneId === 'hanbando') {
+      data.rivers = hc.rivers || [];
+      data.lakes  = hc.lakes  || [];
+    } else {
+      if (hc.rivers && hc.rivers.length) data.rivers = [...(data.rivers || []), ...hc.rivers];
+      if (hc.lakes  && hc.lakes.length)  data.lakes  = [...(data.lakes  || []), ...hc.lakes];
+    }
+  }
   _generated.set(zoneId, data);
   return data;
 }
@@ -214,6 +233,7 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     ZONE_TERRAIN,
     setZonesMeta,
+    setHardcoded,
     isWaterCellLocal,
     getTerrainWaterTilesForChunk,
     getForestMultiplier,
@@ -226,6 +246,7 @@ if (typeof window !== 'undefined') {
   window.Terrain = {
     ZONE_TERRAIN,
     setZonesMeta,
+    setHardcoded,
     isWaterCellLocal,
     getTerrainWaterTilesForChunk,
     getForestMultiplier,

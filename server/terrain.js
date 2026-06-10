@@ -59,6 +59,14 @@ function setZonesMeta(metas) {
   _generated.clear();
 }
 
+// 클라가 zone welcome에서 받은 hardcoded terrain을 설정 (server에서 broadcast된 data)
+function setHardcoded(zoneId, data) {
+  if (!_hardcodedCache || typeof _hardcodedCache !== 'object') _hardcodedCache = {};
+  if (data) _hardcodedCache[zoneId] = data;
+  // 해당 zone cache 무효화 → 다음 access 시 새 데이터로 재생성
+  _generated.delete(zoneId);
+}
+
 function _getZoneTerrain(zoneId) {
   if (_generated.has(zoneId)) return _generated.get(zoneId);
   const metas = _getZonesMeta();
@@ -242,6 +250,8 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     ZONE_TERRAIN,
     setZonesMeta,
+    setHardcoded,
+    _getHardcoded,
     isWaterCellLocal,
     getTerrainWaterTilesForChunk,
     getForestMultiplier,
@@ -254,6 +264,7 @@ if (typeof window !== 'undefined') {
   window.Terrain = {
     ZONE_TERRAIN,
     setZonesMeta,
+    setHardcoded,
     isWaterCellLocal,
     getTerrainWaterTilesForChunk,
     getForestMultiplier,

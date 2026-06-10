@@ -1493,6 +1493,10 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
 
     if (msg.type === 'welcome') {
       c.meta = msg.zone;
+      // Phase 5-G: 서버에서 받은 hardcoded terrain (한반도 새 강·호수) — 미니맵 표시용
+      if (msg.hardcodedTerrain && window.Terrain && window.Terrain.setHardcoded) {
+        window.Terrain.setHardcoded(c.zoneId || msg.zone && msg.zone.id, msg.hardcodedTerrain);
+      }
       c.resources.clear(); c.claims.clear(); c.buildings.clear(); c.mobs.clear();
       if (c.groundItems) c.groundItems.clear();
       for (const r of (msg.resources || [])) c.resources.set(r.id, r);

@@ -2014,10 +2014,18 @@ wss.on('connection', async (ws, req) => {
   console.log(`[${ZONE_ID}] + ${name} (${pid}) @ (${sx.toFixed(0)}, ${sy.toFixed(0)})  total=${players.size}`);
 
   // 환영 메시지 — 존 정보와 현재 상태 모두 전달
+  // Phase 5-G: hardcoded terrain (한반도·인접 zone) — 클라가 새 강·호수 표시용
+  let _hcTerrain = null;
+  try {
+    const _terrain = require('./terrain');
+    const _all = _terrain._getHardcoded && _terrain._getHardcoded();
+    if (_all && _all[ZONE_ID]) _hcTerrain = _all[ZONE_ID];
+  } catch {}
   send(ws, {
     type: 'welcome',
     pid,
     zone: zonePublicMeta(),
+    hardcodedTerrain: _hcTerrain,
     resources: Array.from(resources.values()),
     claims: Array.from(claims.values()),
     buildings: Array.from(buildings.values()),
