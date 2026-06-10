@@ -28,6 +28,17 @@
 const _generated = new Map();
 let _zonesMetaCache = null;
 
+// === Hardcoded terrain override (한반도 + 인접 STRIP 영역) ===
+// hanbando-terrain.json (SVG에서 export)에 정의된 zone은 강·호수가 hardcoded로 교체됨.
+// 나머지 (산·숲·광맥) procedural 그대로.
+let _hardcodedCache = null;
+function _getHardcoded() {
+  if (_hardcodedCache !== null) return _hardcodedCache;
+  try { _hardcodedCache = require('./hanbando-terrain.json') || {}; }
+  catch { _hardcodedCache = {}; }
+  return _hardcodedCache;
+}
+
 function _getZonesMeta() {
   if (_zonesMetaCache) return _zonesMetaCache;
   // 서버 측 — zone-config 자동 require (한 번 cache)
@@ -59,6 +70,23 @@ function _getZoneTerrain(zoneId) {
   catch { gen = (typeof window !== 'undefined') ? window.TerrainGen : null; }
   if (!gen) return null;
   const data = gen.generateZoneTerrain(zoneId, meta);
+  // hardcoded override — hanbando·bering·jungwon_n·nippon에 SVG 강·호수 적용
+  // hanbando는 강·호수 모두 교체 (procedural 무시).
+  // bering·jungwon_n·nippon은 STRIP 영역만 hardcoded라 procedural에 추가.
+  const hc = _getHardcoded();
+  if (hc[zoneId]) {
+    if (zoneId === 'hanbando') {
+      data.rivers = hc[zoneId].rivers || [];
+      data.lakes  = hc[zoneId].lakes  || [];
+    } else {
+      if (hc[zoneId].rivers && hc[zoneId].rivers.length > 0) {
+        data.rivers = [...(data.rivers || []), ...hc[zoneId].rivers];
+      }
+      if (hc[zoneId].lakes && hc[zoneId].lakes.length > 0) {
+        data.lakes = [...(data.lakes || []), ...hc[zoneId].lakes];
+      }
+    }
+  }
   _generated.set(zoneId, data);
   return data;
 }
