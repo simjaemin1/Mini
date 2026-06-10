@@ -71,8 +71,12 @@ function _getZoneTerrain(zoneId) {
   const hc = _hardcodedCache[zoneId];
   if (hc) {
     if (zoneId === 'hanbando') {
-      data.rivers = hc.rivers || [];
-      data.lakes  = hc.lakes  || [];
+      // Phase 5-G: cleanZone — 강·호수만, 숲·산·광맥 제거
+      data.rivers    = hc.rivers || [];
+      data.lakes     = hc.lakes  || [];
+      data.forests   = [];
+      data.mountains = [];
+      data.ores      = [];
     } else {
       if (hc.rivers && hc.rivers.length) data.rivers = [...(data.rivers || []), ...hc.rivers];
       if (hc.lakes  && hc.lakes.length)  data.lakes  = [...(data.lakes  || []), ...hc.lakes];
