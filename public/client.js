@@ -6197,11 +6197,12 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
         // sampleStep: 1 display px당 1~여러 cell 샘플. zoom-out 클수록 sampleStep 큼
         const sampleStep = Math.max(1, Math.round(cellsPerDispPx));
         const sampleStepWorld = sampleStep * CELL;
-        // viewport world bounds
-        const viewMinX = -panX / zoom;
-        const viewMaxX = (canvas.width - panX) / zoom;
-        const viewMinY = -panY / zoom;
-        const viewMaxY = (canvas.height - panY) / zoom;
+        // viewport world bounds (+ 50% margin — 드래그 즉시 보이도록 화면 밖도 미리 그림)
+        const marginPx = Math.max(canvas.width, canvas.height) * 0.5;
+        const viewMinX = (-panX - marginPx) / zoom;
+        const viewMaxX = (canvas.width - panX + marginPx) / zoom;
+        const viewMinY = (-panY - marginPx) / zoom;
+        const viewMaxY = (canvas.height - panY + marginPx) / zoom;
 
         for (const [zid, z] of Object.entries(zm)) {
           const zox = z.worldOffsetX || 0, zoy = z.worldOffsetY || 0;
@@ -6219,12 +6220,19 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
           ctx.fillRect(dx0, dy0, dw, dh);
           if (z.isOcean) continue;
 
-          // Phase 5-G: 모든 zone에 강·호수는 path/ellipse 직접 그리기 (cell 순회 가장 비싼 부분 제거)
+          // Phase 5-G: hybrid by zoom
+          //   zoom < CELL_ZOOM_THRESHOLD (멀리 봄): 강·호수 path/ellipse stroke (cell 안 보임)
+          //   zoom >= CELL_ZOOM_THRESHOLD (가까이 봄): cell sample로 water 포함 픽셀 그리드 (정통 미니맵)
+          // sampleStep=1 (1 cell = 1+ display px)이면 cell 단위 보임 → 그때부터 cell sample
+          const CELL_ZOOM_THRESHOLD = 1 / CELL; // zoom*CELL >= 1, 즉 sampleStep=1 시작 지점
+          const useCellSample = zoom >= CELL_ZOOM_THRESHOLD;
+
           if (Terrain) {
             const td = Terrain.ZONE_TERRAIN[zid];
             const waterColor = TILE_COLORS.water || '#3a6a8a';
-            if (td) {
-              // 호수 (ellipse)
+
+            if (!useCellSample && td) {
+              // === zoom-out: 강·호수를 vector로 빠르게 그림 ===
               ctx.fillStyle = waterColor;
               for (const lake of (td.lakes || [])) {
                 if (!lake.center) continue;
@@ -6236,7 +6244,6 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
                 ctx.arc(cx, cy, r, 0, Math.PI * 2);
                 ctx.fill();
               }
-              // 강 path (segment마다 stroke)
               ctx.strokeStyle = waterColor;
               ctx.lineCap = 'round';
               for (const river of (td.rivers || [])) {
@@ -6257,8 +6264,8 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
                 }
               }
             }
-            // forest/mountain/ore 는 cell sample (water 검사 skip — 위에서 path로 그렸음)
-            // 한반도(cleanZone)는 forests/mountains/ores=0이라 빠르게 return
+
+            // === cell sample (zoom-out: forest/mountain/ore만 / zoom-in: water 포함 전부) ===
             const startX = Math.max(zox, viewMinX);
             const endX = Math.min(zox + zw, viewMaxX);
             const startY = Math.max(zoy, viewMinY);
@@ -6270,9 +6277,10 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
               for (let wx = sx0; wx < endX; wx += sampleStepWorld) {
                 const lx = wx - zox, ly = wy - zoy;
                 if (lx < 0 || ly < 0 || lx >= zw || ly >= zh) continue;
-                // water 검사 skip (path로 이미 그림) — ore/mountain/forest 순서
                 let color = null;
-                if (Terrain.isOreClusterAt && Terrain.isOreClusterAt(zid, lx, ly)) color = TILE_COLORS.ore;
+                // zoom-in 시에만 water 검사 (zoom-out은 위에서 path로 그렸음)
+                if (useCellSample && Terrain.isWaterCellLocal && Terrain.isWaterCellLocal(zid, lx, ly)) color = waterColor;
+                else if (Terrain.isOreClusterAt && Terrain.isOreClusterAt(zid, lx, ly)) color = TILE_COLORS.ore;
                 else if (Terrain.getStoneMultiplier && Terrain.getStoneMultiplier(zid, lx, ly) > 1.5) color = TILE_COLORS.mountain;
                 else if (Terrain.getForestMultiplier && Terrain.getForestMultiplier(zid, lx, ly) > 1.5) color = TILE_COLORS.forest;
                 if (!color) continue;
