@@ -6145,6 +6145,7 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
 
   function invalidateAllCaches() {
     zoneCacheMap.clear();
+    vpCache = null;
     needsRedraw = true;
   }
   // terrain.setHardcoded 후 외부에서 호출
@@ -6242,6 +6243,100 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     return built;
   }
 
+  // ===== Phase 5-G perf: viewport-cache (zoom-in 시 cell-level sample) =====
+  // zone-cache가 cap 1024 때문에 cell 디테일 못 살림. zoom >= 0.3이면 screen-space cache로 전환.
+  // cache는 viewport + 50% margin. drag로 cache 영역 벗어나면 lazy 재빌드.
+  // zoom-in 시는 viewport 안 cell 수가 적어서 (수만~수십만) cell sample 빠름.
+  const ZOOM_VIEWPORT_THRESHOLD = 0.3;
+  const VP_CACHE_MARGIN_FACTOR = 0.5; // 화면 절반만큼 양쪽 margin
+  let vpCache = null; // { zoom, originX, originY, cw, ch, canvas }
+
+  function invalidateVpCache() { vpCache = null; }
+
+  function isVpCacheValid(currentZoom) {
+    if (!vpCache || vpCache.zoom !== currentZoom) return false;
+    // 현재 viewport world bounds
+    const vpX0 = -panX / currentZoom;
+    const vpX1 = (canvas.width - panX) / currentZoom;
+    const vpY0 = -panY / currentZoom;
+    const vpY1 = (canvas.height - panY) / currentZoom;
+    // cache world bounds (canvas px 단위로 cache, zoom 같음)
+    const cX0 = vpCache.originX;
+    const cY0 = vpCache.originY;
+    const cX1 = vpCache.originX + vpCache.cw / currentZoom;
+    const cY1 = vpCache.originY + vpCache.ch / currentZoom;
+    // inner safety margin (drag로 살짝 빠지면 일찌감치 재빌드)
+    const innerM = (Math.min(canvas.width, canvas.height) * 0.1) / currentZoom;
+    return (vpX0 >= cX0 + innerM && vpX1 <= cX1 - innerM
+         && vpY0 >= cY0 + innerM && vpY1 <= cY1 - innerM);
+  }
+
+  function buildVpCache(currentZoom) {
+    const zm = getZonesMeta();
+    if (!zm) return;
+    const Terrain = window.Terrain;
+    const marginPx = Math.max(canvas.width, canvas.height) * VP_CACHE_MARGIN_FACTOR;
+    const W = Math.ceil(canvas.width + marginPx * 2);
+    const H = Math.ceil(canvas.height + marginPx * 2);
+    let cnv;
+    if (vpCache && vpCache.canvas.width === W && vpCache.canvas.height === H) {
+      cnv = vpCache.canvas;
+    } else {
+      cnv = document.createElement('canvas');
+      cnv.width = W; cnv.height = H;
+    }
+    const cx = cnv.getContext('2d');
+    cx.fillStyle = '#0a0e14';
+    cx.fillRect(0, 0, W, H);
+
+    // cache origin = 현재 viewport center 기준 양쪽 margin 만큼 펼침
+    const vpCenterWX = (canvas.width / 2 - panX) / currentZoom;
+    const vpCenterWY = (canvas.height / 2 - panY) / currentZoom;
+    const cacheW_world = W / currentZoom;
+    const cacheH_world = H / currentZoom;
+    const originX = vpCenterWX - cacheW_world / 2;
+    const originY = vpCenterWY - cacheH_world / 2;
+
+    const CELL = 32;
+    const sampleStep = Math.max(1, Math.round(1 / (currentZoom * CELL)));
+    const sampleStepWorld = sampleStep * CELL;
+    const drawSize = Math.max(1, sampleStepWorld * currentZoom);
+
+    for (const [zid, zone] of Object.entries(zm)) {
+      const zox = zone.worldOffsetX || 0, zoy = zone.worldOffsetY || 0;
+      const zw = zone.zoneWidth || 0, zh = zone.zoneHeight || 0;
+      if (zw === 0) continue;
+      // 교집합 (world)
+      const x1 = Math.max(zox, originX);
+      const x2 = Math.min(zox + zw, originX + cacheW_world);
+      const y1 = Math.max(zoy, originY);
+      const y2 = Math.min(zoy + zh, originY + cacheH_world);
+      if (x2 <= x1 || y2 <= y1) continue;
+      // base ground (cache canvas 좌표)
+      cx.fillStyle = zone.isOcean ? OCEAN_COLOR : (zone.groundColor || '#5a7c4a');
+      cx.fillRect((x1 - originX) * currentZoom, (y1 - originY) * currentZoom,
+                  (x2 - x1) * currentZoom, (y2 - y1) * currentZoom);
+      if (zone.isOcean) continue;
+      if (!Terrain) continue;
+      // cell sample (water 포함, getTileType 호출)
+      const sx0 = Math.floor(x1 / sampleStepWorld) * sampleStepWorld;
+      const sy0 = Math.floor(y1 / sampleStepWorld) * sampleStepWorld;
+      for (let wy = sy0; wy < y2; wy += sampleStepWorld) {
+        for (let wx = sx0; wx < x2; wx += sampleStepWorld) {
+          const lx = wx - zox, ly = wy - zoy;
+          if (lx < 0 || ly < 0 || lx >= zw || ly >= zh) continue;
+          const t = Terrain.getTileType ? Terrain.getTileType(zid, lx, ly) : null;
+          if (!t || t === 'plain') continue;
+          const color = TILE_COLORS[t];
+          if (!color) continue;
+          cx.fillStyle = color;
+          cx.fillRect((wx - originX) * currentZoom, (wy - originY) * currentZoom, drawSize, drawSize);
+        }
+      }
+    }
+    vpCache = { zoom: currentZoom, originX, originY, cw: W, ch: H, canvas: cnv };
+  }
+
   function resize() {
     const rect = canvas.getBoundingClientRect();
     canvas.width = Math.floor(rect.width);
@@ -6307,41 +6402,47 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
 
       const zm = getZonesMeta();
       if (zm) {
-        // viewport world bounds (+ 25% margin — drag 즉시 반응)
-        const marginPx = Math.max(canvas.width, canvas.height) * 0.25;
-        const viewMinX = (-panX - marginPx) / zoom;
-        const viewMaxX = (canvas.width - panX + marginPx) / zoom;
-        const viewMinY = (-panY - marginPx) / zoom;
-        const viewMaxY = (canvas.height - panY + marginPx) / zoom;
-
-        // pixel grid 느낌 (zoom-in 시 cache blow-up 대신 nearest-neighbor로 픽셀 보임)
         const prevSmooth = ctx.imageSmoothingEnabled;
         ctx.imageSmoothingEnabled = false;
 
-        for (const [zid, z] of Object.entries(zm)) {
-          const zox = z.worldOffsetX || 0, zoy = z.worldOffsetY || 0;
-          const zw = z.zoneWidth || 0, zh = z.zoneHeight || 0;
-          if (zw === 0) continue;
-          // viewport 밖 zone skip
-          if (zox + zw < viewMinX || zox > viewMaxX) continue;
-          if (zoy + zh < viewMinY || zoy > viewMaxY) continue;
-
-          // ocean은 cache 안 만들고 단순 fill (가장 자주 viewport에 들어와서)
-          if (z.isOcean) {
-            ctx.fillStyle = OCEAN_COLOR;
-            ctx.fillRect(zox * zoom + panX, zoy * zoom + panY, zw * zoom, zh * zoom);
-            continue;
+        if (zoom >= ZOOM_VIEWPORT_THRESHOLD) {
+          // === zoom-in: viewport-cache (cell-level sample) ===
+          if (!isVpCacheValid(zoom)) buildVpCache(zoom);
+          if (vpCache) {
+            ctx.drawImage(
+              vpCache.canvas,
+              vpCache.originX * zoom + panX,
+              vpCache.originY * zoom + panY,
+              vpCache.cw, vpCache.ch
+            );
           }
-
-          // 정통 LOD: zoom level에 snap된 cache canvas를 그대로 그림
-          const cache = getZoneCache(zid, z, zoom);
-          if (!cache) continue;
-          ctx.drawImage(
-            cache.canvas,
-            0, 0, cache.cw, cache.ch,
-            zox * zoom + panX, zoy * zoom + panY,
-            zw * zoom, zh * zoom
-          );
+        } else {
+          // === zoom-out: per-zone LOD cache (vector primitives) ===
+          const marginPx = Math.max(canvas.width, canvas.height) * 0.25;
+          const viewMinX = (-panX - marginPx) / zoom;
+          const viewMaxX = (canvas.width - panX + marginPx) / zoom;
+          const viewMinY = (-panY - marginPx) / zoom;
+          const viewMaxY = (canvas.height - panY + marginPx) / zoom;
+          for (const [zid, z] of Object.entries(zm)) {
+            const zox = z.worldOffsetX || 0, zoy = z.worldOffsetY || 0;
+            const zw = z.zoneWidth || 0, zh = z.zoneHeight || 0;
+            if (zw === 0) continue;
+            if (zox + zw < viewMinX || zox > viewMaxX) continue;
+            if (zoy + zh < viewMinY || zoy > viewMaxY) continue;
+            if (z.isOcean) {
+              ctx.fillStyle = OCEAN_COLOR;
+              ctx.fillRect(zox * zoom + panX, zoy * zoom + panY, zw * zoom, zh * zoom);
+              continue;
+            }
+            const cache = getZoneCache(zid, z, zoom);
+            if (!cache) continue;
+            ctx.drawImage(
+              cache.canvas,
+              0, 0, cache.cw, cache.ch,
+              zox * zoom + panX, zoy * zoom + panY,
+              zw * zoom, zh * zoom
+            );
+          }
         }
         ctx.imageSmoothingEnabled = prevSmooth;
 
