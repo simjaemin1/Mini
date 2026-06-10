@@ -849,6 +849,9 @@ const server = http.createServer(async (req, res) => {
     // 정적 파일 — index.html, client.js, style.css (dispatcher가 하던 일)
     if (req.method === 'GET') {
       let urlPath = req.url === '/' ? '/index.html' : req.url;
+      // Phase 5-G: cache busting query string (?v=xxx) 제거 — 파일 경로에 포함되면 404
+      const qIdx = urlPath.indexOf('?');
+      if (qIdx !== -1) urlPath = urlPath.substring(0, qIdx);
       // /zones, /auth 등은 위에서 처리됨. 여기는 정적.
       const filePath = path.join(__dirname, '..', 'public', urlPath);
       if (filePath.startsWith(path.join(__dirname, '..', 'public')) && fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
