@@ -6301,8 +6301,8 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     const sampleStep = Math.max(1, Math.round(1 / (currentZoom * CELL)));
     const sampleStepWorld = sampleStep * CELL;
     const cellPxSize = Math.max(1, Math.floor(sampleStepWorld * currentZoom));
-    // cell 단위 그리드: cell이 4px 이상이면 1px gap (base ground가 grid line처럼 비침)
-    const cellDrawSize = cellPxSize >= 4 ? cellPxSize - 1 : cellPxSize;
+    // cell이 6px 이상일 때만 grid line 표시 (그 미만은 line이 cell 가림)
+    const drawGrid = cellPxSize >= 6;
 
     for (const [zid, zone] of Object.entries(zm)) {
       const zox = zone.worldOffsetX || 0, zoy = zone.worldOffsetY || 0;
@@ -6323,9 +6323,10 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
       cx.fillRect(bgX, bgY, bgW, bgH);
       if (zone.isOcean) continue;
       if (!Terrain) continue;
-      // cell sample — cell마다 1 px gap (그리드 효과)
+      // cell sample — gap 없이 fillRect (인접 같은 색 cell은 단색으로)
       const sx0 = Math.floor(x1 / sampleStepWorld) * sampleStepWorld;
       const sy0 = Math.floor(y1 / sampleStepWorld) * sampleStepWorld;
+      const cellFillSize = cellPxSize + 1; // sub-pixel 갭 방지
       for (let wy = sy0; wy < y2; wy += sampleStepWorld) {
         for (let wx = sx0; wx < x2; wx += sampleStepWorld) {
           const lx = wx - zox, ly = wy - zoy;
@@ -6338,9 +6339,28 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
           cx.fillRect(
             Math.floor((wx - originX) * currentZoom),
             Math.floor((wy - originY) * currentZoom),
-            cellDrawSize, cellDrawSize
+            cellFillSize, cellFillSize
           );
         }
+      }
+      // grid line overlay (alpha 1px stroke — 두께 일정, cell 크기 무관)
+      if (drawGrid) {
+        cx.strokeStyle = 'rgba(0,0,0,0.12)';
+        cx.lineWidth = 1;
+        cx.beginPath();
+        // vertical lines
+        for (let wx = sx0; wx <= x2; wx += sampleStepWorld) {
+          const px = Math.floor((wx - originX) * currentZoom) + 0.5;
+          cx.moveTo(px, bgY);
+          cx.lineTo(px, bgY + bgH);
+        }
+        // horizontal lines
+        for (let wy = sy0; wy <= y2; wy += sampleStepWorld) {
+          const py = Math.floor((wy - originY) * currentZoom) + 0.5;
+          cx.moveTo(bgX, py);
+          cx.lineTo(bgX + bgW, py);
+        }
+        cx.stroke();
       }
     }
     vpCache = { zoom: currentZoom, originX, originY, cw: W, ch: H, canvas: cnv };
