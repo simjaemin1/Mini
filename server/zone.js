@@ -66,6 +66,8 @@ function updateActiveChunks() {
 // 14.46-b-smooth-fix: water tile에 떨어진 자원(나무·돌·약초 등)은 스킵.
 //   기존: 해안선 water tile 위에 나무·돌 spawn → 바다에 떠 있는 모양 버그.
 function activateChunk(cx, cy) {
+  // Phase 5-G: cleanZone (한반도 강·호수 검증용) — 자원 spawn skip
+  if (ZONE.cleanZone) return;
   const seedResources = generateChunkResources(ZONE_ID, ZONE.biome, cx, cy, chunkManager.chunkSize, harvestedSeeds);
   for (const r of seedResources) {
     if (isWaterTileLocal(r.x, r.y)) continue; // 바다 위 자원 차단

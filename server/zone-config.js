@@ -174,8 +174,9 @@ const ZONES_BASE = {
     port: 3020, biome: 'forest', displayName: '한반도',
     groundColor: '#9a9670', tintColor: '#7a8a4a',
     worldOffsetX: 41000, worldOffsetY: 5000, zoneWidth: 7000, zoneHeight: 13000,
-    villageSeed: 1020, villageCount: 20,
+    villageSeed: 1020, villageCount: 0, // Phase 5-G: 강·호수만 검증용 (마을·자원·NPC 모두 제거)
     mainSquare: { x: 3500, y: 6500, name: '한양 광장' },
+    cleanZone: true, // 자원 procedural spawn도 skip
   },
   east_sea_s: {
     port: 3026, biome: 'ocean', displayName: '동중국해',
