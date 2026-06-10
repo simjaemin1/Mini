@@ -17,6 +17,8 @@ function hostFromEnv(zoneId, fallback) {
       if (map[zoneId]) return map[zoneId];
     } catch (e) {}
   }
+  // Phase 5-G: PUBLIC_HOST 단일 변수로 모든 zone host 채움 (단일 VPS 배포)
+  if (process.env.PUBLIC_HOST) return process.env.PUBLIC_HOST;
   return fallback;
 }
 
