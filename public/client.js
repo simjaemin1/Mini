@@ -1918,6 +1918,10 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     const zoneW = pMeta?.zoneWidth || 100000, zoneH = pMeta?.zoneHeight || 100000;
     const localX = myAbsPredicted.x - pmeta.worldOffsetX;
     const localY = myAbsPredicted.y - (pmeta.worldOffsetY || 0);
+    // Phase 5-G fix: player 위치 초기화 안 됨 (myAbsPredicted=0,0 → localXY 음수) → 모든 인접 zone에 storm connect
+    // primary zone 안이 아닌 경우 (localXY 음수 또는 zone 밖) skip
+    if (!isFinite(localX) || !isFinite(localY)) return;
+    if (localX < 0 || localY < 0 || localX > zoneW || localY > zoneH) return;
     // 4방향 이웃 거리 계산
     const dirs = [
       { id: pmeta.east,  d: zoneW - localX },
