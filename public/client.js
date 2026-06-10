@@ -1,8 +1,8 @@
 // 클라이언트 — 아이소메트릭 렌더링 + 다중 존 동시 구독 + 끊김 없는 핸드오프
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
-// === CLIENT BUILD: Phase 4d-16-e (농지 stage cycle + NPC home working + 직업별 색) ===
-console.log('%c[durango-mini] client build = Phase 4d-16-e (농지·home·직업색)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+// === CLIENT BUILD: Phase 5-G (한반도 강·호수 hardcoded + observer storm fix) ===
+console.log('%c[durango-mini] client build = Phase 5-G (한반도 강·호수 + observer fix)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 // Phase 4d-16-c: facility 종류별 emoji
 const FACILITY_EMOJI = {
@@ -6219,8 +6219,46 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
           ctx.fillRect(dx0, dy0, dw, dh);
           if (z.isOcean) continue;
 
-          // terrain cell sample (zone 안만)
-          if (Terrain) {
+          // Phase 5-G: 한반도는 cleanZone — cell sample 건너뛰고 강·호수 path 직접 그리기 (수백만 cell → ~400 strokes)
+          if (zid === 'hanbando' && Terrain) {
+            const td = Terrain.ZONE_TERRAIN[zid];
+            const waterColor = TILE_COLORS.water || '#3a6a8a';
+            if (td) {
+              // 호수 (ellipse)
+              ctx.fillStyle = waterColor;
+              for (const lake of (td.lakes || [])) {
+                if (!lake.center) continue;
+                const cx = (zox + lake.center[0]) * zoom + panX;
+                const cy = (zoy + lake.center[1]) * zoom + panY;
+                const r = (lake.radius || 0) * zoom;
+                if (r < 0.5) continue;
+                ctx.beginPath();
+                ctx.arc(cx, cy, r, 0, Math.PI * 2);
+                ctx.fill();
+              }
+              // 강 path (segment마다 stroke)
+              ctx.strokeStyle = waterColor;
+              ctx.lineCap = 'round';
+              for (const river of (td.rivers || [])) {
+                const path = river.path || [];
+                if (path.length < 2) continue;
+                for (let i = 0; i < path.length - 1; i++) {
+                  const p1 = path[i], p2 = path[i + 1];
+                  const x1 = p1.pos ? p1.pos[0] : p1[0];
+                  const y1 = p1.pos ? p1.pos[1] : p1[1];
+                  const x2 = p2.pos ? p2.pos[0] : p2[0];
+                  const y2 = p2.pos ? p2.pos[1] : p2[1];
+                  const w = ((p1.width || 200) + (p2.width || 200)) / 2;
+                  ctx.lineWidth = Math.max(1, w * zoom);
+                  ctx.beginPath();
+                  ctx.moveTo((zox + x1) * zoom + panX, (zoy + y1) * zoom + panY);
+                  ctx.lineTo((zox + x2) * zoom + panX, (zoy + y2) * zoom + panY);
+                  ctx.stroke();
+                }
+              }
+            }
+          } else if (Terrain) {
+            // 기존 cell sample (다른 zone)
             const startX = Math.max(zox, viewMinX);
             const endX = Math.min(zox + zw, viewMaxX);
             const startY = Math.max(zoy, viewMinY);
@@ -6234,7 +6272,7 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
                 if (lx < 0 || ly < 0 || lx >= zw || ly >= zh) continue;
                 const type = Terrain.getTileType(zid, lx, ly);
                 const color = TILE_COLORS[type];
-                if (!color) continue;  // plain → base ground
+                if (!color) continue;
                 ctx.fillStyle = color;
                 ctx.fillRect(wx * zoom + panX, wy * zoom + panY, drawSize, drawSize);
               }
