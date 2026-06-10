@@ -1630,6 +1630,14 @@ wss.on('connection', async (ws, req) => {
   metrics.ws_connects++;
   const url = new URL(req.url, `http://localhost:${PORT}`);
   const isObserver = url.searchParams.get('observer') === '1';
+  // Phase 5-G trace: observer 연결 진단용
+  console.log(`[${ZONE_ID}] WS CONN attempt: observer=${isObserver} url=${req.url} from=${req.socket.remoteAddress}`);
+  ws.on('close', (code, reason) => {
+    console.log(`[${ZONE_ID}] WS CLOSE: observer=${isObserver} code=${code} reason=${reason ? reason.toString() : '(empty)'}`);
+  });
+  ws.on('error', (err) => {
+    console.log(`[${ZONE_ID}] WS ERROR: observer=${isObserver} msg=${err.message}`);
+  });
 
   // === Player cap 체크 (observer는 부담 적으니 제한 안 함) ===
   if (!isObserver) {
