@@ -6570,10 +6570,23 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     const wy = (my - panY) / zoom;
     const factor = e.deltaY > 0 ? 0.82 : 1.22;
     const rawZoom = Math.max(0.0005, Math.min(3.0, zoom * factor));
-    const newZoom = snapZoom(rawZoom);
+    let newZoom = snapZoom(rawZoom);
+    // snap 결과가 현재와 같으면 (cellPx 1, 2 등 작은 값에서 흔함) cellPx ±1 step
+    if (newZoom === zoom) {
+      const curCellPx = zoom * CELL_SIZE;
+      if (curCellPx >= 1) {
+        const curInt = Math.round(curCellPx);
+        const target = e.deltaY > 0 ? curInt - 1 : curInt + 1;
+        if (target >= 1) {
+          newZoom = Math.min(3.0, target / CELL_SIZE);
+        } else {
+          // cellPx 1 미만으로 내려가면 sub-cell zoom (snap 해제)
+          newZoom = Math.max(0.0005, zoom * factor);
+        }
+      }
+    }
     if (newZoom !== zoom) {
       zoom = newZoom;
-      // panX/Y도 정수로 (sub-pixel rendering 방지)
       panX = Math.round(mx - wx * zoom);
       panY = Math.round(my - wy * zoom);
       needsRedraw = true;
