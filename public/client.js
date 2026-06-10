@@ -6300,8 +6300,9 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     const CELL = 32;
     const sampleStep = Math.max(1, Math.round(1 / (currentZoom * CELL)));
     const sampleStepWorld = sampleStep * CELL;
-    // sub-pixel 갭 방지: drawSize 올림 + 1 px overlap
-    const drawSize = Math.max(1, Math.ceil(sampleStepWorld * currentZoom) + 1);
+    const cellPxSize = Math.max(1, Math.floor(sampleStepWorld * currentZoom));
+    // cell 단위 그리드: cell이 4px 이상이면 1px gap (base ground가 grid line처럼 비침)
+    const cellDrawSize = cellPxSize >= 4 ? cellPxSize - 1 : cellPxSize;
 
     for (const [zid, zone] of Object.entries(zm)) {
       const zox = zone.worldOffsetX || 0, zoy = zone.worldOffsetY || 0;
@@ -6313,7 +6314,7 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
       const y1 = Math.max(zoy, originY);
       const y2 = Math.min(zoy + zh, originY + cacheH_world);
       if (x2 <= x1 || y2 <= y1) continue;
-      // base ground (cache canvas 좌표) — 좌표 floor + size ceil
+      // base ground — 정수 좌표 + 1 px overlap으로 zone 간 갭 방지
       const bgX = Math.floor((x1 - originX) * currentZoom);
       const bgY = Math.floor((y1 - originY) * currentZoom);
       const bgW = Math.ceil((x2 - x1) * currentZoom) + 1;
@@ -6322,7 +6323,7 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
       cx.fillRect(bgX, bgY, bgW, bgH);
       if (zone.isOcean) continue;
       if (!Terrain) continue;
-      // cell sample (water 포함, getTileType 호출)
+      // cell sample — cell마다 1 px gap (그리드 효과)
       const sx0 = Math.floor(x1 / sampleStepWorld) * sampleStepWorld;
       const sy0 = Math.floor(y1 / sampleStepWorld) * sampleStepWorld;
       for (let wy = sy0; wy < y2; wy += sampleStepWorld) {
@@ -6334,11 +6335,10 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
           const color = TILE_COLORS[t];
           if (!color) continue;
           cx.fillStyle = color;
-          // sub-pixel 갭 방지: 좌표 floor
           cx.fillRect(
             Math.floor((wx - originX) * currentZoom),
             Math.floor((wy - originY) * currentZoom),
-            drawSize, drawSize
+            cellDrawSize, cellDrawSize
           );
         }
       }
