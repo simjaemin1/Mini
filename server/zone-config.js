@@ -245,11 +245,21 @@ const ZONES_BASE = {
 // 좌표·크기 일괄 배율. SCALE=1이면 옛 크기, SCALE=10이면 가로세로 10배 (면적 100배, PZ급).
 // 환경변수 WORLD_SCALE로 운영 중 변경 가능.
 const WORLD_SCALE = parseFloat(process.env.WORLD_SCALE || '10');
+// 타일 그리드 정렬: zone 경계(offset, offset+size)를 32px 배수로 floor 스냅.
+// offset이 32 배수가 아니면 zone 로컬 그리드(벽·물 콜라이더)가 클라 절대 타일 그리드와
+// 반 셀(16px) 어긋남 (예: 한반도 410000 mod 32 = 16 → 남동쪽 0.5셀 shift 버그).
+// 경계선 자체를 스냅하므로 인접 zone끼리 이음새(겹침/틈) 없음.
+const TILE = 32;
+const _snap = (v) => Math.floor(v / TILE) * TILE;
 for (const [id, z] of Object.entries(ZONES_BASE)) {
-  z.worldOffsetX = Math.round(z.worldOffsetX * WORLD_SCALE);
-  z.worldOffsetY = Math.round(z.worldOffsetY * WORLD_SCALE);
-  z.zoneWidth = Math.round(z.zoneWidth * WORLD_SCALE);
-  z.zoneHeight = Math.round(z.zoneHeight * WORLD_SCALE);
+  const rawX = z.worldOffsetX * WORLD_SCALE;
+  const rawY = z.worldOffsetY * WORLD_SCALE;
+  const rawR = rawX + z.zoneWidth * WORLD_SCALE;   // right
+  const rawB = rawY + z.zoneHeight * WORLD_SCALE;  // bottom
+  z.worldOffsetX = _snap(rawX);
+  z.worldOffsetY = _snap(rawY);
+  z.zoneWidth = _snap(rawR) - z.worldOffsetX;
+  z.zoneHeight = _snap(rawB) - z.worldOffsetY;
   if (z.mainSquare) {
     // canadia는 시뮬 마을 좌표(1k~10k px)에 마을이 몰려있으므로 spawn은 시뮬 영역에.
     // (시뮬 마을 좌표 ×10 fix는 별도 task)

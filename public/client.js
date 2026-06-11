@@ -54,6 +54,18 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
   let myAbsPredicted = { x: 0, y: 0 };
   // Phase 5-2-mini: 미니맵에서 access
   window.__getMyAbs = () => myAbsPredicted;
+  // Phase 5-G debug: 미니맵에서 wall 위치 검증용
+  window.__getAllWalls = () => {
+    const walls = [];
+    for (const c of conns.values()) {
+      const ox = c.meta?.worldOffsetX || 0, oy = c.meta?.worldOffsetY || 0;
+      for (const b of c.buildings.values()) {
+        if (b.type !== 'wall') continue;
+        walls.push({ wx: ox + b.x, wy: oy + b.y, side: b.data?.side || 'N' });
+      }
+    }
+    return walls;
+  };
   let primaryZoneId = null;
   let myPid = null;
   // Phase 4d-3: 캐나디아 캐러밴 (행상) 시각화 cache
@@ -6476,6 +6488,33 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
         cx.stroke();
       }
       cx.restore();
+    }
+    // Phase 5-G debug: wall 위치 표시 (top-down red line, cell border 검증)
+    if (typeof window.__getAllWalls === 'function') {
+      const walls = window.__getAllWalls();
+      cx.strokeStyle = '#ff3344';
+      cx.lineWidth = 2;
+      cx.beginPath();
+      for (const w of walls) {
+        // wall N: cell의 위쪽 변 → world (w.wx, w.wy) ~ (w.wx+32, w.wy)
+        // wall E: cell의 오른쪽 변 → world (w.wx+32, w.wy) ~ (w.wx+32, w.wy+32)
+        if (w.side === 'N') {
+          const x0 = (w.wx - originX) * currentZoom;
+          const x1 = (w.wx + 32 - originX) * currentZoom;
+          const y0 = (w.wy - originY) * currentZoom;
+          if (x1 < 0 || x0 > cnv.width || y0 < 0 || y0 > cnv.height) continue;
+          cx.moveTo(x0, y0);
+          cx.lineTo(x1, y0);
+        } else if (w.side === 'E') {
+          const x0 = (w.wx + 32 - originX) * currentZoom;
+          const y0 = (w.wy - originY) * currentZoom;
+          const y1 = (w.wy + 32 - originY) * currentZoom;
+          if (x0 < 0 || x0 > cnv.width || y1 < 0 || y0 > cnv.height) continue;
+          cx.moveTo(x0, y0);
+          cx.lineTo(x0, y1);
+        }
+      }
+      cx.stroke();
     }
     vpCache = { zoom: currentZoom, originX, originY, cw: W, ch: H, canvas: cnv };
   }
