@@ -2066,9 +2066,19 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
       if (clientIsBlockedByWall(nx, myAbsPredicted.y, myAbsPredicted.x, myAbsPredicted.y, myFloor)) nx = myAbsPredicted.x;
       if (clientIsBlockedByWall(myAbsPredicted.x, ny, myAbsPredicted.x, myAbsPredicted.y, myFloor)) ny = myAbsPredicted.y;
       if (clientIsBlockedByWall(nx, ny, myAbsPredicted.x, myAbsPredicted.y, myFloor)) { nx = myAbsPredicted.x; ny = myAbsPredicted.y; }
-      // 14.46-b-mini: 물 타일 진입 차단 (보트 없을 때)
-      if (isWaterAtAbs(nx, myAbsPredicted.y) && !isWaterAtAbs(myAbsPredicted.x, myAbsPredicted.y)) nx = myAbsPredicted.x;
-      if (isWaterAtAbs(myAbsPredicted.x, ny) && !isWaterAtAbs(myAbsPredicted.x, myAbsPredicted.y)) ny = myAbsPredicted.y;
+      // 14.46-b-mini + Phase 5-G: 물 타일 진입 차단 + cell border snap (서버 zone.js와 동일)
+      if (isWaterAtAbs(nx, myAbsPredicted.y) && !isWaterAtAbs(myAbsPredicted.x, myAbsPredicted.y)) {
+        const tx = Math.floor(myAbsPredicted.x / 32);
+        if (nx > myAbsPredicted.x) nx = (tx + 1) * 32 - 1;
+        else if (nx < myAbsPredicted.x) nx = tx * 32;
+        else nx = myAbsPredicted.x;
+      }
+      if (isWaterAtAbs(myAbsPredicted.x, ny) && !isWaterAtAbs(myAbsPredicted.x, myAbsPredicted.y)) {
+        const ty = Math.floor(myAbsPredicted.y / 32);
+        if (ny > myAbsPredicted.y) ny = (ty + 1) * 32 - 1;
+        else if (ny < myAbsPredicted.y) ny = ty * 32;
+        else ny = myAbsPredicted.y;
+      }
       if (isWaterAtAbs(nx, ny) && !isWaterAtAbs(myAbsPredicted.x, myAbsPredicted.y)) { nx = myAbsPredicted.x; ny = myAbsPredicted.y; }
       myAbsPredicted.x = nx;
       myAbsPredicted.y = ny;

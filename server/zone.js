@@ -3983,8 +3983,19 @@ setInterval(() => {
     // 14.45: 빙하 콜라이더 — y가 극지방 진입하면 ny 무효
     if (isInIceBand(ny) && !isInIceBand(p.y)) ny = p.y;
     // 14.46-b-mini: 물 타일 진입 차단 (보트 시스템 전까지). 각 축별 slide.
-    if (isWaterTileLocal(nx, p.y) && !isWaterTileLocal(p.x, p.y)) nx = p.x;
-    if (isWaterTileLocal(p.x, ny) && !isWaterTileLocal(p.x, p.y)) ny = p.y;
+    // Phase 5-G: cell border까지 정확히 snap (tick step 가변·east/west 비대칭 fix)
+    if (isWaterTileLocal(nx, p.y) && !isWaterTileLocal(p.x, p.y)) {
+      const tx = Math.floor(p.x / 32);
+      if (nx > p.x) nx = (tx + 1) * 32 - 1;       // 동쪽: cell의 마지막 정수 px
+      else if (nx < p.x) nx = tx * 32;            // 서쪽: cell의 시작 px
+      else nx = p.x;
+    }
+    if (isWaterTileLocal(p.x, ny) && !isWaterTileLocal(p.x, p.y)) {
+      const ty = Math.floor(p.y / 32);
+      if (ny > p.y) ny = (ty + 1) * 32 - 1;
+      else if (ny < p.y) ny = ty * 32;
+      else ny = p.y;
+    }
     if (isWaterTileLocal(nx, ny) && !isWaterTileLocal(p.x, p.y)) { nx = p.x; ny = p.y; }
 
     // 4방향 경계 처리 — 새 위치가 zone 밖으로 나가면 이웃으로 핸드오프
@@ -4315,9 +4326,19 @@ setInterval(() => {
       if (isBlockedByWall(nx, m.y, m.x, m.y, m.floor || 0)) nx = m.x;
       if (isBlockedByWall(m.x, ny, m.x, m.y, m.floor || 0)) ny = m.y;
       if (isInIceBand(ny) && !isInIceBand(m.y)) ny = m.y; // 14.45
-      // 14.46-b-mini: 물 타일 진입 차단
-      if (isWaterTileLocal(nx, m.y) && !isWaterTileLocal(m.x, m.y)) nx = m.x;
-      if (isWaterTileLocal(m.x, ny) && !isWaterTileLocal(m.x, m.y)) ny = m.y;
+      // 14.46-b-mini + Phase 5-G: 물 타일 진입 차단 + cell border snap
+      if (isWaterTileLocal(nx, m.y) && !isWaterTileLocal(m.x, m.y)) {
+        const tx = Math.floor(m.x / 32);
+        if (nx > m.x) nx = (tx + 1) * 32 - 1;
+        else if (nx < m.x) nx = tx * 32;
+        else nx = m.x;
+      }
+      if (isWaterTileLocal(m.x, ny) && !isWaterTileLocal(m.x, m.y)) {
+        const ty = Math.floor(m.y / 32);
+        if (ny > m.y) ny = (ty + 1) * 32 - 1;
+        else if (ny < m.y) ny = ty * 32;
+        else ny = m.y;
+      }
       if (Math.abs(nx - m.x) + Math.abs(ny - m.y) > 2) m.dirty = true;
       m.x = nx; m.y = ny;
       chunkManager.updateMobChunk(m);
@@ -4427,9 +4448,19 @@ setInterval(() => {
     if (isBlockedByWall(nx, m.y, m.x, m.y, m.floor || 0)) nx = m.x;
     if (isBlockedByWall(m.x, ny, m.x, m.y, m.floor || 0)) ny = m.y;
     if (isInIceBand(ny) && !isInIceBand(m.y)) ny = m.y; // 14.45
-    // 14.46-b-mini: 물 타일 진입 차단
-    if (isWaterTileLocal(nx, m.y) && !isWaterTileLocal(m.x, m.y)) nx = m.x;
-    if (isWaterTileLocal(m.x, ny) && !isWaterTileLocal(m.x, m.y)) ny = m.y;
+    // 14.46-b-mini + Phase 5-G: 물 타일 진입 차단 + cell border snap
+    if (isWaterTileLocal(nx, m.y) && !isWaterTileLocal(m.x, m.y)) {
+      const tx = Math.floor(m.x / 32);
+      if (nx > m.x) nx = (tx + 1) * 32 - 1;
+      else if (nx < m.x) nx = tx * 32;
+      else nx = m.x;
+    }
+    if (isWaterTileLocal(m.x, ny) && !isWaterTileLocal(m.x, m.y)) {
+      const ty = Math.floor(m.y / 32);
+      if (ny > m.y) ny = (ty + 1) * 32 - 1;
+      else if (ny < m.y) ny = ty * 32;
+      else ny = m.y;
+    }
     // 의미 있는 이동(>2px)일 때만 dirty 마크 — 영속화 부담 최소화
     if (Math.abs(nx - m.x) + Math.abs(ny - m.y) > 2) m.dirty = true;
     m.x = nx; m.y = ny;
