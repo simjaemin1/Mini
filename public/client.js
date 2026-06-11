@@ -6140,7 +6140,8 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
   // zoom level을 정해진 stop으로 snap → 같은 level이면 cache 재사용
   // drag/pan은 cache를 drawImage로 옮기기만 → 0 cell sample, 0렉
   // cache 빌드는 vector primitive만 (rect/arc/stroke) — ms 단위
-  const ZOOM_LEVELS = [0.0005, 0.0015, 0.005, 0.015, 0.05, 0.15, 0.5, 1.5];
+  // 더 미세한 LOD step (2~3배 간격, nearest neighbor 정보 손실 최소화)
+  const ZOOM_LEVELS = [0.0005, 0.001, 0.002, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.5];
   const MAX_CACHE_PX = 1024;   // cache canvas 한 변 최대 (메모리 cap)
   const MIN_CACHE_PX = 16;
   const zoneCacheMap = new Map(); // zid -> { level, canvas, cw, ch }
@@ -6227,7 +6228,7 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
       cx.arc(lake.center[0]*sxr, lake.center[1]*syr, r, 0, Math.PI*2);
       cx.fill();
     }
-    // 6. river path stroke
+    // 6. river path stroke (cache 안 최소 1.5 px — 작은 cache에서도 강 보이게)
     cx.strokeStyle = waterColor;
     cx.lineCap = 'round';
     for (const river of (td.rivers || [])) {
@@ -6240,7 +6241,7 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
         const x2 = p2.pos ? p2.pos[0] : p2[0];
         const y2 = p2.pos ? p2.pos[1] : p2[1];
         const w = ((p1.width||200) + (p2.width||200)) / 2;
-        cx.lineWidth = Math.max(1, w * sxr);
+        cx.lineWidth = Math.max(1.5, w * sxr);
         cx.beginPath();
         cx.moveTo(x1*sxr, y1*syr);
         cx.lineTo(x2*sxr, y2*syr);
@@ -6586,12 +6587,17 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
             }
             const cache = getZoneCache(zid, z, zoom);
             if (!cache) continue;
+            const destW = zw * zoom;
+            // cache가 dest보다 크면 압축 → bilinear smoothing (nearest는 정보 손실로 강 사라짐)
+            // cache가 dest보다 작으면 확대 → nearest (cell 픽셀 그리드 살리기)
+            ctx.imageSmoothingEnabled = destW < cache.cw * 0.95;
             ctx.drawImage(
               cache.canvas,
               0, 0, cache.cw, cache.ch,
               zox * zoom + panX, zoy * zoom + panY,
-              zw * zoom, zh * zoom
+              destW, zh * zoom
             );
+            ctx.imageSmoothingEnabled = false;
           }
         }
         ctx.imageSmoothingEnabled = prevSmooth;
