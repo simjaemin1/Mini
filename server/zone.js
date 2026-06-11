@@ -1426,15 +1426,16 @@ setInterval(() => {
 registerVillageGuilds().catch(e => console.warn(`[${ZONE_ID}] village guild register error:`, e.message));
 spawnVillagers();
 
-// === Phase 5-G debug: 한반도 spawn 근처에 1-cell water + 4면 벽 방 (콜라이더 테스트) ===
+// === Phase 5-G debug: 한반도 spawn 근처에 1-cell water + 5x5 벽 방 (콜라이더 테스트, NPC 집과 동일 패턴) ===
 if (ZONE_ID === 'hanbando' && ZONE.mainSquare) {
   const tx_sp = Math.floor(ZONE.mainSquare.x / 32);
   const ty_sp = Math.floor(ZONE.mainSquare.y / 32);
   // spawn 동쪽 한 칸 → water cell
   const dwx = tx_sp + 1, dwy = ty_sp;
   WATER_TILES.add(`${dwx}_${dwy}`);
-  // water 북쪽 한 칸 → 4면 벽 방 (입구 없음)
-  const rcx = dwx, rcy = dwy - 1;
+  // 5x5 방 중심: spawn 동북쪽 3 cells (방 영역과 water cell 안 겹치게)
+  const rcx = tx_sp + 3, rcy = ty_sp - 3;
+  const HR = 2; // half-room (5x5 → ±2)
   // 옛 디버그 wall 먼저 wipe (메모리 + DB 모두)
   let removedDbg = 0;
   for (const [id, b] of buildings) {
@@ -1453,11 +1454,16 @@ if (ZONE_ID === 'hanbando' && ZONE.mainSquare) {
     buildings.set(id, building);
     chunkManager.insertBuilding(building);
   }
-  addDbgWall(rcx, rcy, 'N');         // 북쪽 변 (cell의 위쪽)
-  addDbgWall(rcx, rcy + 1, 'N');     // 남쪽 변 (아래 cell의 N = 이 방 남쪽 = water cell의 북변)
-  addDbgWall(rcx, rcy, 'E');         // 동쪽 변 (cell의 오른쪽)
-  addDbgWall(rcx - 1, rcy, 'E');     // 서쪽 변 (왼쪽 cell의 E)
-  console.log(`[${ZONE_ID}] 🧪 디버그 셋업: spawn cell (${tx_sp},${ty_sp}) | water cell (${dwx},${dwy}) | 4면 벽 방 (${rcx},${rcy})`);
+  // NPC 집 5x5 패턴과 동일
+  // 북쪽 변: (rcy - HR)의 N edge
+  for (let i = -HR; i <= HR; i++) addDbgWall(rcx + i, rcy - HR, 'N');
+  // 남쪽 변: (rcy + HR + 1)의 N edge = (rcy + HR)의 S
+  for (let i = -HR; i <= HR; i++) addDbgWall(rcx + i, rcy + HR + 1, 'N');
+  // 동쪽 변: (rcx + HR)의 E edge
+  for (let j = -HR; j <= HR; j++) addDbgWall(rcx + HR, rcy + j, 'E');
+  // 서쪽 변: (rcx - HR - 1)의 E edge = (rcx - HR)의 W
+  for (let j = -HR; j <= HR; j++) addDbgWall(rcx - HR - 1, rcy + j, 'E');
+  console.log(`[${ZONE_ID}] 🧪 디버그 셋업: spawn cell (${tx_sp},${ty_sp}) | water cell (${dwx},${dwy}) | 5x5 방 중심 (${rcx},${rcy}) 영역 (${rcx-HR},${rcy-HR})~(${rcx+HR},${rcy+HR})`);
 }
 
 // === Phase 14.20+14.22: 한반도 스폰 옆 public chest 3개 + chest 진단/정리 ===
