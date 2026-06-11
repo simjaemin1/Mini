@@ -6278,13 +6278,13 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     return built;
   }
 
-  // ===== Phase 5-G perf: viewport-cache (zoom-in 시 정밀 vector primitive) =====
-  // zone-cache가 cap 1024 때문에 cell 디테일 stretch될 때 screen-space cache로 전환.
-  // cache는 viewport + 50% margin. drag로 cache 영역 벗어나면 lazy 재빌드.
-  // 빌드는 cell sample 없이 vector primitive만 사용 (zone-cache와 동일 방식, 다른 해상도)
-  //   → 빌드 비용 ~5ms (cell sample 시 ~500ms 대비 100배 빠름)
-  //   → drag 시 cache 영역 안이면 drawImage만 → 0렉
-  const ZOOM_VIEWPORT_THRESHOLD = 0.5;
+  // ===== Phase 5-G perf: viewport-cache (zoom-in 시 cell-accurate water) =====
+  // zoom >= 1.0에서 cell sample로 water 판정 — game collider (zone.js isWaterTileLocal)와 정확히 일치
+  //   - 각 cell 중심점 (lx+16, ly+16) 기준 isWaterCellLocal 검사 → cell 전체 water/plain
+  //   - 강 cell 단위 jagged border로 보이지만 실제 콜라이더와 같음
+  // forest/mountain/ore는 vector primitive 그대로 (rect/arc — cell 단위 의미 없음)
+  // drag 영역 벗어나면 lazy 재빌드 (~60ms in zoom=1.0, ~5ms in zoom=3.0)
+  const ZOOM_VIEWPORT_THRESHOLD = 1.0;
   const VP_CACHE_MARGIN_FACTOR = 0.5; // 화면 절반만큼 양쪽 margin
   let vpCache = null; // { zoom, originX, originY, cw, ch, canvas }
 
@@ -6417,42 +6417,30 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
           cx.fill();
         }
       }
-      // 4. lake arc
-      cx.fillStyle = waterColor;
-      for (const lake of (td.lakes || [])) {
-        if (!lake.center) continue;
-        const wcx = zox + lake.center[0], wcy = zoy + lake.center[1];
-        const wr = lake.radius || 0;
-        if (wcx + wr < x1 || wcx - wr > x2 || wcy + wr < y1 || wcy - wr > y2) continue;
-        const r = Math.max(0.5, wr * currentZoom);
-        cx.beginPath();
-        cx.arc(toX(wcx), toY(wcy), r, 0, Math.PI*2);
-        cx.fill();
-      }
-      // 5. river path stroke
-      cx.strokeStyle = waterColor;
-      cx.lineCap = 'round';
-      for (const river of (td.rivers || [])) {
-        const path = river.path || [];
-        if (path.length < 2) continue;
-        for (let i = 0; i < path.length - 1; i++) {
-          const p1 = path[i], p2 = path[i+1];
-          const lx1 = p1.pos ? p1.pos[0] : p1[0];
-          const ly1 = p1.pos ? p1.pos[1] : p1[1];
-          const lx2 = p2.pos ? p2.pos[0] : p2[0];
-          const ly2 = p2.pos ? p2.pos[1] : p2[1];
-          const wx1 = zox + lx1, wy1 = zoy + ly1;
-          const wx2 = zox + lx2, wy2 = zoy + ly2;
-          // segment bounding box로 viewport cull
-          const minX = Math.min(wx1, wx2), maxX = Math.max(wx1, wx2);
-          const minY = Math.min(wy1, wy2), maxY = Math.max(wy1, wy2);
-          const w = ((p1.width||200) + (p2.width||200)) / 2;
-          if (maxX + w < x1 || minX - w > x2 || maxY + w < y1 || minY - w > y2) continue;
-          cx.lineWidth = Math.max(1, w * currentZoom);
-          cx.beginPath();
-          cx.moveTo(toX(wx1), toY(wy1));
-          cx.lineTo(toX(wx2), toY(wy2));
-          cx.stroke();
+      // 4+5. water cell sample (cell-accurate — game collider isWaterTileLocal와 정확히 일치)
+      //   - 각 cell의 중심점 (lx+16, ly+16) 기준 isWaterCellLocal 검사
+      //   - water면 fillRect — cell 32 world px 단위 사각형
+      const hasWater = (td.rivers && td.rivers.length > 0) || (td.lakes && td.lakes.length > 0);
+      if (hasWater && Terrain.isWaterCellLocal) {
+        cx.fillStyle = waterColor;
+        // viewport 안 cell 범위 (32 배수로 align)
+        const csx0 = Math.floor(x1 / CELL_SIZE) * CELL_SIZE;
+        const csy0 = Math.floor(y1 / CELL_SIZE) * CELL_SIZE;
+        for (let wy = csy0; wy < y2; wy += CELL_SIZE) {
+          const ly = wy - zoy;
+          if (ly < 0 || ly >= zh) continue;
+          const startPy = Math.floor((wy - originY) * currentZoom);
+          const nextPy = Math.floor((wy + CELL_SIZE - originY) * currentZoom);
+          const cellH = nextPy - startPy;
+          for (let wx = csx0; wx < x2; wx += CELL_SIZE) {
+            const lx = wx - zox;
+            if (lx < 0 || lx >= zw) continue;
+            // game collider와 동일: cell 중심점 (lx+16, ly+16) 기준
+            if (!Terrain.isWaterCellLocal(zid, lx + 16, ly + 16)) continue;
+            const startPx = Math.floor((wx - originX) * currentZoom);
+            const nextPx = Math.floor((wx + CELL_SIZE - originX) * currentZoom);
+            cx.fillRect(startPx, startPy, nextPx - startPx, cellH);
+          }
         }
       }
       // 6. grid line overlay (모든 cell — plain 포함, cell border 표시)
