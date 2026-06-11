@@ -6185,13 +6185,15 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     const sxr = cw / zw, syr = ch / zh; // world px → cache px
     const waterColor = TILE_COLORS.water;
 
-    // 2. forest rect (균일 색, 한 번 fillRect)
+    // 2. forest rect (작은 rect도 최소 1 px로 보이게)
     if (td.forests && TILE_COLORS.forest) {
       cx.fillStyle = TILE_COLORS.forest;
       for (const f of td.forests) {
         if (!f.rect || (f.densityMult || 0) <= 1.5) continue;
         const [x1,y1,x2,y2] = f.rect;
-        cx.fillRect(x1*sxr, y1*syr, (x2-x1)*sxr, (y2-y1)*syr);
+        const rw = Math.max(1, (x2-x1)*sxr);
+        const rh = Math.max(1, (y2-y1)*syr);
+        cx.fillRect(x1*sxr, y1*syr, rw, rh);
       }
     }
     // 3. mountain rect
@@ -6200,16 +6202,19 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
       for (const m of td.mountains) {
         if (!m.rect || (m.stoneMult || 0) <= 1.5) continue;
         const [x1,y1,x2,y2] = m.rect;
-        cx.fillRect(x1*sxr, y1*syr, (x2-x1)*sxr, (y2-y1)*syr);
+        const rw = Math.max(1, (x2-x1)*sxr);
+        const rh = Math.max(1, (y2-y1)*syr);
+        cx.fillRect(x1*sxr, y1*syr, rw, rh);
       }
     }
-    // 4. ore arc (원형)
+    // 4. ore arc (원형, 최소 0.5 px radius)
     if (td.ores && TILE_COLORS.ore) {
       cx.fillStyle = TILE_COLORS.ore;
       for (const o of td.ores) {
         if (!o.center) continue;
+        const r = Math.max(0.5, (o.radius||0) * sxr);
         cx.beginPath();
-        cx.arc(o.center[0]*sxr, o.center[1]*syr, (o.radius||0)*sxr, 0, Math.PI*2);
+        cx.arc(o.center[0]*sxr, o.center[1]*syr, r, 0, Math.PI*2);
         cx.fill();
       }
     }
@@ -6217,8 +6222,9 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     cx.fillStyle = waterColor;
     for (const lake of (td.lakes || [])) {
       if (!lake.center) continue;
+      const r = Math.max(0.5, (lake.radius||0) * sxr);
       cx.beginPath();
-      cx.arc(lake.center[0]*sxr, lake.center[1]*syr, (lake.radius||0)*sxr, 0, Math.PI*2);
+      cx.arc(lake.center[0]*sxr, lake.center[1]*syr, r, 0, Math.PI*2);
       cx.fill();
     }
     // 6. river path stroke
@@ -6241,6 +6247,24 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
         cx.stroke();
       }
     }
+    // 7. grid line — cache 안에서 cell(32 world px)이 6 cache px 이상일 때만
+    const cellCachePx = 32 * sxr;
+    if (cellCachePx >= 6) {
+      cx.strokeStyle = 'rgba(0,0,0,0.12)';
+      cx.lineWidth = 1;
+      cx.beginPath();
+      for (let wx = 0; wx <= zw; wx += 32) {
+        const px = Math.floor(wx * sxr) + 0.5;
+        cx.moveTo(px, 0);
+        cx.lineTo(px, ch);
+      }
+      for (let wy = 0; wy <= zh; wy += 32) {
+        const py = Math.floor(wy * syr) + 0.5;
+        cx.moveTo(0, py);
+        cx.lineTo(cw, py);
+      }
+      cx.stroke();
+    }
     return { level, canvas: c, cw, ch };
   }
 
@@ -6253,11 +6277,13 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     return built;
   }
 
-  // ===== Phase 5-G perf: viewport-cache (zoom-in 시 cell-level sample) =====
-  // zone-cache가 cap 1024 때문에 cell 디테일 못 살림. zoom >= 0.3이면 screen-space cache로 전환.
+  // ===== Phase 5-G perf: viewport-cache (zoom-in 시 정밀 vector primitive) =====
+  // zone-cache가 cap 1024 때문에 cell 디테일 stretch될 때 screen-space cache로 전환.
   // cache는 viewport + 50% margin. drag로 cache 영역 벗어나면 lazy 재빌드.
-  // zoom-in 시는 viewport 안 cell 수가 적어서 (수만~수십만) cell sample 빠름.
-  const ZOOM_VIEWPORT_THRESHOLD = 0.3;
+  // 빌드는 cell sample 없이 vector primitive만 사용 (zone-cache와 동일 방식, 다른 해상도)
+  //   → 빌드 비용 ~5ms (cell sample 시 ~500ms 대비 100배 빠름)
+  //   → drag 시 cache 영역 안이면 drawImage만 → 0렉
+  const ZOOM_VIEWPORT_THRESHOLD = 0.5;
   const VP_CACHE_MARGIN_FACTOR = 0.5; // 화면 절반만큼 양쪽 margin
   let vpCache = null; // { zoom, originX, originY, cw, ch, canvas }
 
@@ -6300,33 +6326,29 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     cx.fillRect(0, 0, W, H);
 
     // cache origin = 현재 viewport center 기준 양쪽 margin 만큼 펼침
-    // sub-pixel align: origin을 sampleStepWorld 배수로 snap (cell grid 완벽 align)
+    // sub-pixel align: origin을 CELL_SIZE(32) 배수로 snap (cell grid 완벽 align)
     const vpCenterWX = (canvas.width / 2 - panX) / currentZoom;
     const vpCenterWY = (canvas.height / 2 - panY) / currentZoom;
     const cacheW_world = W / currentZoom;
     const cacheH_world = H / currentZoom;
-    const _sampleStep = Math.max(1, Math.round(1 / (currentZoom * CELL_SIZE))) * CELL_SIZE;
-    const originX = Math.floor((vpCenterWX - cacheW_world / 2) / _sampleStep) * _sampleStep;
-    const originY = Math.floor((vpCenterWY - cacheH_world / 2) / _sampleStep) * _sampleStep;
+    const originX = Math.floor((vpCenterWX - cacheW_world / 2) / CELL_SIZE) * CELL_SIZE;
+    const originY = Math.floor((vpCenterWY - cacheH_world / 2) / CELL_SIZE) * CELL_SIZE;
 
-    const CELL = 32;
-    const sampleStep = Math.max(1, Math.round(1 / (currentZoom * CELL)));
-    const sampleStepWorld = sampleStep * CELL;
-    const cellPxSize = Math.max(1, Math.floor(sampleStepWorld * currentZoom));
-    // cell이 6px 이상일 때만 grid line 표시 (그 미만은 line이 cell 가림)
+    const cellPxSize = Math.max(1, Math.floor(CELL_SIZE * currentZoom));
     const drawGrid = cellPxSize >= 6;
+    const waterColor = TILE_COLORS.water;
 
     for (const [zid, zone] of Object.entries(zm)) {
       const zox = zone.worldOffsetX || 0, zoy = zone.worldOffsetY || 0;
       const zw = zone.zoneWidth || 0, zh = zone.zoneHeight || 0;
       if (zw === 0) continue;
-      // 교집합 (world)
+      // viewport 교집합
       const x1 = Math.max(zox, originX);
       const x2 = Math.min(zox + zw, originX + cacheW_world);
       const y1 = Math.max(zoy, originY);
       const y2 = Math.min(zoy + zh, originY + cacheH_world);
       if (x2 <= x1 || y2 <= y1) continue;
-      // base ground — 정수 좌표 + 1 px overlap으로 zone 간 갭 방지
+      // base ground — 정수 좌표 + 1 px overlap
       const bgX = Math.floor((x1 - originX) * currentZoom);
       const bgY = Math.floor((y1 - originY) * currentZoom);
       const bgW = Math.ceil((x2 - x1) * currentZoom) + 1;
@@ -6335,53 +6357,140 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
       cx.fillRect(bgX, bgY, bgW, bgH);
       if (zone.isOcean) continue;
       if (!Terrain) continue;
-      // cell sample — width = next start - current start (sub-pixel aliasing 정확 fix)
-      const sx0 = Math.floor(x1 / sampleStepWorld) * sampleStepWorld;
-      const sy0 = Math.floor(y1 / sampleStepWorld) * sampleStepWorld;
-      for (let wy = sy0; wy < y2; wy += sampleStepWorld) {
-        const startPy = Math.floor((wy - originY) * currentZoom);
-        const nextPy = Math.floor((wy + sampleStepWorld - originY) * currentZoom);
-        const cellH = nextPy - startPy;
-        for (let wx = sx0; wx < x2; wx += sampleStepWorld) {
-          const lx = wx - zox, ly = wy - zoy;
-          if (lx < 0 || ly < 0 || lx >= zw || ly >= zh) continue;
-          const t = Terrain.getTileType ? Terrain.getTileType(zid, lx, ly) : null;
-          if (!t || t === 'plain') continue;
-          const color = TILE_COLORS[t];
-          if (!color) continue;
-          const startPx = Math.floor((wx - originX) * currentZoom);
-          const nextPx = Math.floor((wx + sampleStepWorld - originX) * currentZoom);
-          cx.fillStyle = color;
-          cx.fillRect(startPx, startPy, nextPx - startPx, cellH);
+      const td = Terrain.ZONE_TERRAIN[zid];
+      if (!td) continue;
+
+      // viewport 영역 clip (zone 안의 vector primitive를 cache 좌표로 변환)
+      cx.save();
+      cx.beginPath();
+      cx.rect(bgX, bgY, bgW, bgH);
+      cx.clip();
+
+      // 좌표 변환 헬퍼: world (zone-local) → cache px
+      // wpx = zox + lx → cache px = (wpx - originX) * zoom
+      const toX = wpx => (wpx - originX) * currentZoom;
+      const toY = wpy => (wpy - originY) * currentZoom;
+
+      // 1. forest rect
+      if (td.forests && TILE_COLORS.forest) {
+        cx.fillStyle = TILE_COLORS.forest;
+        for (const f of td.forests) {
+          if (!f.rect || (f.densityMult || 0) <= 1.5) continue;
+          const [rx1,ry1,rx2,ry2] = f.rect;
+          const wx1 = zox + rx1, wy1 = zoy + ry1;
+          const wx2 = zox + rx2, wy2 = zoy + ry2;
+          // viewport 밖 skip
+          if (wx2 < x1 || wx1 > x2 || wy2 < y1 || wy1 > y2) continue;
+          const px1 = toX(wx1), py1 = toY(wy1);
+          const pw = Math.max(1, toX(wx2) - px1);
+          const ph = Math.max(1, toY(wy2) - py1);
+          cx.fillRect(px1, py1, pw, ph);
         }
       }
-      // grid line overlay (alpha 1px stroke — 두께 일정, cell 크기 무관)
+      // 2. mountain rect
+      if (td.mountains && TILE_COLORS.mountain) {
+        cx.fillStyle = TILE_COLORS.mountain;
+        for (const m of td.mountains) {
+          if (!m.rect || (m.stoneMult || 0) <= 1.5) continue;
+          const [rx1,ry1,rx2,ry2] = m.rect;
+          const wx1 = zox + rx1, wy1 = zoy + ry1;
+          const wx2 = zox + rx2, wy2 = zoy + ry2;
+          if (wx2 < x1 || wx1 > x2 || wy2 < y1 || wy1 > y2) continue;
+          const px1 = toX(wx1), py1 = toY(wy1);
+          const pw = Math.max(1, toX(wx2) - px1);
+          const ph = Math.max(1, toY(wy2) - py1);
+          cx.fillRect(px1, py1, pw, ph);
+        }
+      }
+      // 3. ore arc
+      if (td.ores && TILE_COLORS.ore) {
+        cx.fillStyle = TILE_COLORS.ore;
+        for (const o of td.ores) {
+          if (!o.center) continue;
+          const wcx = zox + o.center[0], wcy = zoy + o.center[1];
+          const wr = o.radius || 0;
+          if (wcx + wr < x1 || wcx - wr > x2 || wcy + wr < y1 || wcy - wr > y2) continue;
+          const r = Math.max(0.5, wr * currentZoom);
+          cx.beginPath();
+          cx.arc(toX(wcx), toY(wcy), r, 0, Math.PI*2);
+          cx.fill();
+        }
+      }
+      // 4. lake arc
+      cx.fillStyle = waterColor;
+      for (const lake of (td.lakes || [])) {
+        if (!lake.center) continue;
+        const wcx = zox + lake.center[0], wcy = zoy + lake.center[1];
+        const wr = lake.radius || 0;
+        if (wcx + wr < x1 || wcx - wr > x2 || wcy + wr < y1 || wcy - wr > y2) continue;
+        const r = Math.max(0.5, wr * currentZoom);
+        cx.beginPath();
+        cx.arc(toX(wcx), toY(wcy), r, 0, Math.PI*2);
+        cx.fill();
+      }
+      // 5. river path stroke
+      cx.strokeStyle = waterColor;
+      cx.lineCap = 'round';
+      for (const river of (td.rivers || [])) {
+        const path = river.path || [];
+        if (path.length < 2) continue;
+        for (let i = 0; i < path.length - 1; i++) {
+          const p1 = path[i], p2 = path[i+1];
+          const lx1 = p1.pos ? p1.pos[0] : p1[0];
+          const ly1 = p1.pos ? p1.pos[1] : p1[1];
+          const lx2 = p2.pos ? p2.pos[0] : p2[0];
+          const ly2 = p2.pos ? p2.pos[1] : p2[1];
+          const wx1 = zox + lx1, wy1 = zoy + ly1;
+          const wx2 = zox + lx2, wy2 = zoy + ly2;
+          // segment bounding box로 viewport cull
+          const minX = Math.min(wx1, wx2), maxX = Math.max(wx1, wx2);
+          const minY = Math.min(wy1, wy2), maxY = Math.max(wy1, wy2);
+          const w = ((p1.width||200) + (p2.width||200)) / 2;
+          if (maxX + w < x1 || minX - w > x2 || maxY + w < y1 || minY - w > y2) continue;
+          cx.lineWidth = Math.max(1, w * currentZoom);
+          cx.beginPath();
+          cx.moveTo(toX(wx1), toY(wy1));
+          cx.lineTo(toX(wx2), toY(wy2));
+          cx.stroke();
+        }
+      }
+      // 6. grid line overlay (모든 cell — plain 포함, cell border 표시)
       if (drawGrid) {
         cx.strokeStyle = 'rgba(0,0,0,0.12)';
         cx.lineWidth = 1;
         cx.beginPath();
-        // vertical lines
-        for (let wx = sx0; wx <= x2; wx += sampleStepWorld) {
+        const sx0 = Math.floor(x1 / CELL_SIZE) * CELL_SIZE;
+        const sy0 = Math.floor(y1 / CELL_SIZE) * CELL_SIZE;
+        for (let wx = sx0; wx <= x2; wx += CELL_SIZE) {
           const px = Math.floor((wx - originX) * currentZoom) + 0.5;
           cx.moveTo(px, bgY);
           cx.lineTo(px, bgY + bgH);
         }
-        // horizontal lines
-        for (let wy = sy0; wy <= y2; wy += sampleStepWorld) {
+        for (let wy = sy0; wy <= y2; wy += CELL_SIZE) {
           const py = Math.floor((wy - originY) * currentZoom) + 0.5;
           cx.moveTo(bgX, py);
           cx.lineTo(bgX + bgW, py);
         }
         cx.stroke();
       }
+      cx.restore();
     }
     vpCache = { zoom: currentZoom, originX, originY, cw: W, ch: H, canvas: cnv };
   }
 
   function resize() {
+    // viewport center 보존 — resize 후에도 같은 world point가 화면 중앙에 오도록
+    const oldW = canvas.width, oldH = canvas.height;
+    const oldCenterWX = oldW > 0 ? (oldW / 2 - panX) / zoom : 0;
+    const oldCenterWY = oldH > 0 ? (oldH / 2 - panY) / zoom : 0;
     const rect = canvas.getBoundingClientRect();
     canvas.width = Math.floor(rect.width);
     canvas.height = Math.floor(rect.height);
+    if (oldW > 0 && oldH > 0) {
+      panX = Math.round(canvas.width / 2 - oldCenterWX * zoom);
+      panY = Math.round(canvas.height / 2 - oldCenterWY * zoom);
+    }
+    vpCache = null; // viewport 크기 변경 → cache 재빌드
     needsRedraw = true;
   }
 
