@@ -958,6 +958,9 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     const c = conns.get(primaryZoneId);
     if (c && c.ws.readyState === 1) c.ws.send(JSON.stringify(obj));
   }
+  // 미니맵 등 외부에서 호출 가능하게 노출
+  window.__sendPrimary = sendPrimary;
+  window.__getPrimaryZoneId = () => primaryZoneId;
 
   // === 부트 ===
   async function boot() {
@@ -6717,6 +6720,49 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
   });
   canvas.addEventListener('mouseup', () => { dragging = false; canvas.style.cursor = 'grab'; });
   canvas.addEventListener('mouseleave', () => { dragging = false; canvas.style.cursor = 'grab'; });
+
+  // Phase 5-G debug: 더블클릭 텔레포트 (같은 zone 내만)
+  canvas.addEventListener('dblclick', (e) => {
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    const wx = Math.round((mx - panX) / zoom);
+    const wy = Math.round((my - panY) / zoom);
+    // 어느 zone인지 찾기
+    const zm = getZonesMeta();
+    if (!zm) return;
+    let targetZone = null;
+    for (const [zid, z] of Object.entries(zm)) {
+      const zox = z.worldOffsetX || 0, zoy = z.worldOffsetY || 0;
+      const zw = z.zoneWidth || 0, zh = z.zoneHeight || 0;
+      if (wx >= zox && wx < zox + zw && wy >= zoy && wy < zoy + zh) {
+        if (z.isOcean) {
+          alert('🌊 바다는 텔레포트 불가');
+          return;
+        }
+        targetZone = zid;
+        break;
+      }
+    }
+    if (!targetZone) {
+      alert('zone 밖 좌표입니다');
+      return;
+    }
+    const myZone = typeof window.__getPrimaryZoneId === 'function' ? window.__getPrimaryZoneId() : null;
+    if (targetZone !== myZone) {
+      alert(`다른 zone (${targetZone}) 텔레포트는 핸드오프 필요 — 일단 같은 zone만 지원`);
+      return;
+    }
+    // 서버에 텔레포트 요청 (zone-local 좌표)
+    const zone = zm[targetZone];
+    const localX = wx - (zone.worldOffsetX || 0);
+    const localY = wy - (zone.worldOffsetY || 0);
+    if (typeof window.__sendPrimary === 'function') {
+      window.__sendPrimary({ type: 'teleport_debug', x: localX, y: localY });
+      console.log(`[teleport] -> ${targetZone} local(${localX},${localY})`);
+    }
+  });
 
   // 버튼
   closeBtn?.addEventListener('click', hide);

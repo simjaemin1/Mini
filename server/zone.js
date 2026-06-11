@@ -2125,6 +2125,21 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'unclaim') tryUnclaim(player, msg.claimId);
   else if (msg.type === 'trade_offer') tryTrade(player, msg);
   else if (msg.type === 'ping') { player.lastSeen = Date.now(); send(ws, { type: 'pong', t: msg.t }); }
+  else if (msg.type === 'teleport_debug') {
+    // 디버그: zone-local 좌표로 워프. zone 안 + water cell 아닌 곳만 허용.
+    const tx = Math.max(0, Math.min(ZONE.zoneWidth  - 1, msg.x | 0));
+    const ty = Math.max(0, Math.min(ZONE.zoneHeight - 1, msg.y | 0));
+    if (typeof isWaterTileLocal === 'function' && isWaterTileLocal(tx, ty)) {
+      send(ws, { type: 'notice', text: '🌊 강·바다 위로는 텔레포트 불가' });
+      return;
+    }
+    player.x = tx;
+    player.y = ty;
+    player.vx = 0; player.vy = 0;
+    player.dirty = true;
+    console.log(`[${ZONE_ID}] 🌀 teleport ${player.name} → (${tx},${ty})`);
+    send(ws, { type: 'notice', text: `🌀 텔레포트 → (${tx},${ty})` });
+  }
   else if (msg.type === 'chat') {
     const text = (msg.text || '').slice(0, 200);
     if (!text.trim()) return;
