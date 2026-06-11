@@ -1426,6 +1426,40 @@ setInterval(() => {
 registerVillageGuilds().catch(e => console.warn(`[${ZONE_ID}] village guild register error:`, e.message));
 spawnVillagers();
 
+// === Phase 5-G debug: 한반도 spawn 근처에 1-cell water + 4면 벽 방 (콜라이더 테스트) ===
+if (ZONE_ID === 'hanbando' && ZONE.mainSquare) {
+  const tx_sp = Math.floor(ZONE.mainSquare.x / 32);
+  const ty_sp = Math.floor(ZONE.mainSquare.y / 32);
+  // spawn 동쪽 한 칸 → water cell
+  const dwx = tx_sp + 1, dwy = ty_sp;
+  WATER_TILES.add(`${dwx}_${dwy}`);
+  // water 북쪽 한 칸 → 4면 벽 방 (입구 없음)
+  const rcx = dwx, rcy = dwy - 1;
+  // 옛 디버그 wall 먼저 wipe (메모리 + DB 모두)
+  let removedDbg = 0;
+  for (const [id, b] of buildings) {
+    if (b.ownerId === 'debug_room') { buildings.delete(id); removedDbg++; }
+  }
+  try {
+    const r = db.db.prepare("DELETE FROM buildings WHERE owner_id = 'debug_room'").run();
+    if (r.changes > 0 || removedDbg > 0) console.log(`[${ZONE_ID}] 🧪 옛 디버그 wall wipe: mem=${removedDbg} db=${r.changes}`);
+  } catch {}
+  function addDbgWall(cellCx, cellCy, side) {
+    const wpx = cellCx * 32, wpy = cellCy * 32;
+    const data = { side, floor: 0 };
+    const dbId = db.insertBuilding({ type: 'wall', owner_id: 'debug_room', owner_name: 'DEBUG', x: wpx, y: wpy, data: JSON.stringify(data) });
+    const id = `b${nextBid++}`;
+    const building = { id, dbId, type: 'wall', ownerId: 'debug_room', ownerName: 'DEBUG', x: wpx, y: wpy, data, floor: 0 };
+    buildings.set(id, building);
+    chunkManager.insertBuilding(building);
+  }
+  addDbgWall(rcx, rcy, 'N');         // 북쪽 변 (cell의 위쪽)
+  addDbgWall(rcx, rcy + 1, 'N');     // 남쪽 변 (아래 cell의 N = 이 방 남쪽 = water cell의 북변)
+  addDbgWall(rcx, rcy, 'E');         // 동쪽 변 (cell의 오른쪽)
+  addDbgWall(rcx - 1, rcy, 'E');     // 서쪽 변 (왼쪽 cell의 E)
+  console.log(`[${ZONE_ID}] 🧪 디버그 셋업: spawn cell (${tx_sp},${ty_sp}) | water cell (${dwx},${dwy}) | 4면 벽 방 (${rcx},${rcy})`);
+}
+
 // === Phase 14.20+14.22: 한반도 스폰 옆 public chest 3개 + chest 진단/정리 ===
 if (ZONE_ID === 'hanbando') {
   // 1) 메모리 + DB 모두 정리: public 또는 debug_chest owner chest 전부 제거
