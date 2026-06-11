@@ -692,16 +692,43 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
         if (!lowEntry && !highEntry) return true;
       }
     }
+    // 셀 단위 경로 추적 (server isBlockedByWall rewrite 미러 — 코너 컷·멀티셀 터널링 방지)
     let blocked = false, reason = '';
-    if (nc.cx > oc.cx && clHasWallAt(oldX, oldY, oc.cx, oc.cy, 'E', playerFloor)) { blocked = true; reason = 'E'; }
-    else if (nc.cx < oc.cx && clHasWallAt(newX, newY, nc.cx, nc.cy, 'E', playerFloor)) { blocked = true; reason = 'W'; }
-    else if (nc.cy > oc.cy && clHasWallAt(newX, newY, nc.cx, nc.cy, 'N', playerFloor)) { blocked = true; reason = 'S'; }
-    else if (nc.cy < oc.cy && clHasWallAt(oldX, oldY, oc.cx, oc.cy, 'N', playerFloor)) { blocked = true; reason = 'N'; }
+    let cx = oc.cx, cy = oc.cy;
+    let steps = 0;
+    while (cx !== nc.cx || cy !== nc.cy) {
+      if (++steps > 64) { blocked = true; reason = 'MAX'; break; }
+      const dx = nc.cx - cx, dy = nc.cy - cy;
+      const sx = dx > 0 ? 1 : dx < 0 ? -1 : 0;
+      const sy = dy > 0 ? 1 : dy < 0 ? -1 : 0;
+      if (sx !== 0 && sy !== 0) {
+        // 대각 한 칸: x먼저 / y먼저 L-경로 중 하나라도 열려 있어야 통과 (코너 컷 방지)
+        const viaX = !clEdgeBlockedStep(cx, cy, sx, 0, playerFloor) && !clEdgeBlockedStep(cx + sx, cy, 0, sy, playerFloor);
+        const viaY = !clEdgeBlockedStep(cx, cy, 0, sy, playerFloor) && !clEdgeBlockedStep(cx, cy + sy, sx, 0, playerFloor);
+        if (!viaX && !viaY) { blocked = true; reason = `DIAG@(${cx},${cy})`; break; }
+        cx += sx; cy += sy;
+      } else if (sx !== 0) {
+        if (clEdgeBlockedStep(cx, cy, sx, 0, playerFloor)) { blocked = true; reason = sx > 0 ? 'E' : 'W'; break; }
+        cx += sx;
+      } else {
+        if (clEdgeBlockedStep(cx, cy, 0, sy, playerFloor)) { blocked = true; reason = sy > 0 ? 'S' : 'N'; break; }
+        cy += sy;
+      }
+    }
     // DEBUG — 클라가 어떤 cell→cell 시도하는지, 막힘/통과 결과까지
     if (window._collDbg !== false) {
       console.log(`[coll] cell ${oc.cx},${oc.cy}→${nc.cx},${nc.cy} f${playerFloor} ${blocked ? 'BLOCKED:' + reason : 'pass'} (zones: ${Array.from(conns.keys()).map(k => k + ':' + (conns.get(k).buildings?.size||0)).join(',')})`);
     }
     return blocked;
+  }
+  // 인접 cell (cx,cy) → (cx+sx, cy+sy) cardinal 한 칸 이동이 wall edge로 막히나 (clientIsBlockedByWall용)
+  function clEdgeBlockedStep(cx, cy, sx, sy, floor) {
+    const ax = (cx + 0.5) * CL_BUILDING_SIZE, ay = (cy + 0.5) * CL_BUILDING_SIZE;
+    if (sx === 1)  return clHasWallAt(ax, ay, cx, cy, 'E', floor);
+    if (sx === -1) return clHasWallAt(ax - CL_BUILDING_SIZE, ay, cx - 1, cy, 'E', floor);
+    if (sy === 1)  return clHasWallAt(ax, ay + CL_BUILDING_SIZE, cx, cy + 1, 'N', floor);
+    if (sy === -1) return clHasWallAt(ax, ay, cx, cy, 'N', floor);
+    return false;
   }
   window._collDbg = false; // 콘솔에서 window._collDbg = true로 켤 수 있음 (기본 OFF)
   let lastServerPingMs = 0;

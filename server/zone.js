@@ -3885,6 +3885,19 @@ function isBlockedByTree(x, y) {
   return false;
 }
 
+// 인접 cell (cx,cy) → (cx+sx, cy+sy)로의 cardinal 한 칸 이동이 wall/door edge로 막히나
+function edgeBlockedStep(cx, cy, sx, sy, floor) {
+  if (sx === 1)  return findEdgeWall(cx, cy, 'E', floor);
+  if (sx === -1) return findEdgeWall(cx - 1, cy, 'E', floor);
+  if (sy === 1)  return findEdgeWall(cx, cy + 1, 'N', floor);
+  if (sy === -1) return findEdgeWall(cx, cy, 'N', floor);
+  return false;
+}
+// 셀 단위 경로 추적 충돌 판정 (코너 컷·멀티셀 터널링 방지 rewrite)
+// - 옛 버전은 else-if 체인으로 edge 1개만 검사 → 대각 이동 시 N/S 누락 (방 모서리 뚫림),
+//   한 틱에 2칸 이상 이동 시 중간 벽 통과 (터널링).
+// - 대각 한 칸: 두 L-경로(x먼저/y먼저)가 모두 막혀 있으면 차단 (코너 컷 방지).
+// - 멀티셀: 목적지까지 셀씩 걸으며 매 crossing·진입 cell 검사.
 function isBlockedByWall(newX, newY, oldX, oldY, playerFloor = 0, traceName = null) {
   // 같은 cell 안 이동 — wall 가로지르지 않음
   const oc = cellOf(oldX, oldY);
@@ -3892,18 +3905,34 @@ function isBlockedByWall(newX, newY, oldX, oldY, playerFloor = 0, traceName = nu
   if (oc.cx === nc.cx && oc.cy === nc.cy) return false;
   // 14.49-e2: 계단 측면 진입 차단 (먼저 검사 — 빠르고 우선순위 높음). 14.49-e7al: floor check 추가
   if (isBlockedByStairSide(newX, newY, oldX, oldY, playerFloor)) return true;
-  // 14.50: fence cell 진입 차단 (다른 cell로 이동하는 경우만)
-  if (findCellFence(nc.cx, nc.cy, playerFloor)) return true;
   let blocked = false;
   let reason = '';
-  // 동쪽 이동 (cx 증가): oc.E edge (= nc.W = (oc.cx+1, oc.cy).W = oc.E)
-  if (nc.cx > oc.cx && findEdgeWall(oc.cx, oc.cy, 'E', playerFloor)) { blocked = true; reason = `E@(${oc.cx},${oc.cy})`; }
-  // 서쪽 이동: nc.E edge
-  else if (nc.cx < oc.cx && findEdgeWall(nc.cx, nc.cy, 'E', playerFloor)) { blocked = true; reason = `W@(${nc.cx},${nc.cy})`; }
-  // 남쪽 이동 (cy 증가): oc.S = (oc.cx, oc.cy+1).N = nc.N
-  else if (nc.cy > oc.cy && findEdgeWall(nc.cx, nc.cy, 'N', playerFloor)) { blocked = true; reason = `S@(${nc.cx},${nc.cy}).N`; }
-  // 북쪽 이동: oc.N edge
-  else if (nc.cy < oc.cy && findEdgeWall(oc.cx, oc.cy, 'N', playerFloor)) { blocked = true; reason = `N@(${oc.cx},${oc.cy})`; }
+  let cx = oc.cx, cy = oc.cy;
+  let steps = 0;
+  const MAX_STEPS = 64; // 한 틱 이동으로는 도달 불가한 거리 — 초과 시 안전하게 차단
+  while (cx !== nc.cx || cy !== nc.cy) {
+    if (++steps > MAX_STEPS) { blocked = true; reason = 'MAX_STEPS'; break; }
+    const dx = nc.cx - cx, dy = nc.cy - cy;
+    const sx = dx > 0 ? 1 : dx < 0 ? -1 : 0;
+    const sy = dy > 0 ? 1 : dy < 0 ? -1 : 0;
+    let nxc = cx, nyc = cy;
+    if (sx !== 0 && sy !== 0) {
+      // 대각 한 칸: x먼저 / y먼저 L-경로 중 하나라도 열려 있어야 통과
+      const viaX = !edgeBlockedStep(cx, cy, sx, 0, playerFloor) && !edgeBlockedStep(cx + sx, cy, 0, sy, playerFloor);
+      const viaY = !edgeBlockedStep(cx, cy, 0, sy, playerFloor) && !edgeBlockedStep(cx, cy + sy, sx, 0, playerFloor);
+      if (!viaX && !viaY) { blocked = true; reason = `DIAG@(${cx},${cy})`; break; }
+      nxc = cx + sx; nyc = cy + sy;
+    } else if (sx !== 0) {
+      if (edgeBlockedStep(cx, cy, sx, 0, playerFloor)) { blocked = true; reason = `${sx > 0 ? 'E' : 'W'}@(${cx},${cy})`; break; }
+      nxc = cx + sx;
+    } else {
+      if (edgeBlockedStep(cx, cy, 0, sy, playerFloor)) { blocked = true; reason = `${sy > 0 ? 'S' : 'N'}@(${cx},${cy})`; break; }
+      nyc = cy + sy;
+    }
+    // 14.50: fence cell 진입 차단 — 경로상 진입하는 모든 cell 검사 (옛 버전은 목적지만)
+    if (findCellFence(nxc, nyc, playerFloor)) { blocked = true; reason = `FENCE@(${nxc},${nyc})`; break; }
+    cx = nxc; cy = nyc;
+  }
   // DEBUG — traceName 있을 때만 (player만, NPC spam 방지)
   if (DEBUG_COLLIDER && traceName) {
     console.log(`[${ZONE_ID}/coll] ${traceName} (${oldX.toFixed(0)},${oldY.toFixed(0)})→(${newX.toFixed(0)},${newY.toFixed(0)}) cell ${oc.cx},${oc.cy}→${nc.cx},${nc.cy} f${playerFloor} ${blocked ? 'BLOCKED:' + reason : 'pass'}`);
