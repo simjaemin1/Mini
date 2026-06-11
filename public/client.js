@@ -2753,7 +2753,28 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     // 14.49-e7ae: mask composite를 entity render 전으로 (entity가 mask 위에 = mask 영향 X)
     // mask 자체는 entity render 후에 만들어짐 (현재 위치 그대로). 즉 1 frame 지연.
     // window._shadowMask가 persistent canvas라 이전 frame mask가 보존됨. 첫 frame은 빈 mc (transparent).
-    if (window._shadowMask) ctx.drawImage(window._shadowMask, 0, 0);
+    // 카메라 델타 보정: mask는 만들 당시 위치(p0) 기준 스크린 좌표라, 이동 중엔 어둠 경계가
+    // 이동방향으로 frame당 이동량만큼 돌출해 보임 → p0→현재 iso 스크린 델타만큼 밀어서 합성.
+    if (window._shadowMask) {
+      let mdx = 0, mdy = 0;
+      if (window._shadowMaskPx !== undefined) {
+        const p0x = window._shadowMaskPx, p0y = window._shadowMaskPy;
+        const p1x = myAbsPredicted.x, p1y = myAbsPredicted.y;
+        mdx = (p0x - p0y) - (p1x - p1y);
+        mdy = ((p0x + p0y) - (p1x + p1y)) / 2;
+        // teleport/zone 이동 등 큰 점프면 보정 의미 없음 — 그냥 그대로 (1 frame glitch는 기존과 동일)
+        if (Math.abs(mdx) + Math.abs(mdy) > 200) { mdx = 0; mdy = 0; }
+      }
+      ctx.drawImage(window._shadowMask, mdx, mdy);
+      // shift로 비는 가장자리 strip은 unseen(검정)으로 채움
+      if (mdx !== 0 || mdy !== 0) {
+        ctx.fillStyle = '#000';
+        if (mdx > 0) ctx.fillRect(0, 0, mdx, H);
+        else if (mdx < 0) ctx.fillRect(W + mdx, 0, -mdx, H);
+        if (mdy > 0) ctx.fillRect(0, 0, W, mdy);
+        else if (mdy < 0) ctx.fillRect(0, H + mdy, W, -mdy);
+      }
+    }
 
     // === 3) 엔티티 그리기 ===
     for (const item of renderables) {
@@ -3258,6 +3279,10 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
       mctx.fillStyle = 'rgba(0,0,0,1.0)';
       mctx.fill(visibleWorldPath);
       mctx.restore();
+
+      // mask 생성 시점의 플레이어 위치 기록 — 다음 frame 합성 시 카메라 델타 보정용
+      window._shadowMaskPx = px;
+      window._shadowMaskPy = py;
 
       // 14.49-e7ae: mask composite는 다음 frame entity render 전에 합성 (entity가 mask 위)
       // wall 2차 render 폐기 — entity가 mask 위에 그려지므로 mask 가림 X
