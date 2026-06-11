@@ -2039,6 +2039,10 @@ wss.on('connection', async (ws, req) => {
       const fb = ZONE.mainSquare || { x: ZONE.zoneWidth/2, y: ZONE.zoneHeight/2 };
       sx = fb.x; sy = fb.y;
     }
+    // Phase 5-G: spawn 좌표를 cell center에 정확히 snap (시각 NE 16px 치우침 fix)
+    // cell center = cellTile * 32 + 16. 모든 entity가 cell 격자에 align되어 보임.
+    sx = Math.floor(sx / 32) * 32 + 16;
+    sy = Math.floor(sy / 32) * 32 + 16;
   }
 
   const pid = `p${nextPid++}`;
