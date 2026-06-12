@@ -2125,19 +2125,16 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     // 서버 권위 좌표로의 부드러운 보정 (snap 대신 lerp)
     // fix: 보정 이동도 벽 검사 — lerp 직선이 방 모서리를 관통해 예측 위치가
     // 벽 안으로 끌려 들어가는 버그 (이후 48px dead zone 때문에 안에 갇힌 채 유지됨).
-    // 벽에 막히면 lerp 포기하고 서버 위치로 즉시 snap (서버가 권위).
+    // 이동 로직과 동일한 축 분리 슬라이드: 막힌 축만 죽임 (snap 없음 — 러버밴딩 방지).
+    // 진짜 큰 desync는 applyServerCorrection의 500px 초과 하드 snap이 처리.
     if (now < correctionUntil) {
-      const cnx = myAbsPredicted.x + correctionVel.x * dt;
-      const cny = myAbsPredicted.y + correctionVel.y * dt;
-      if (clientIsBlockedByWall(cnx, cny, myAbsPredicted.x, myAbsPredicted.y, myFloor)) {
-        myAbsPredicted.x = myAbsPos.x;
-        myAbsPredicted.y = myAbsPos.y;
-        correctionVel = { x: 0, y: 0 };
-        correctionUntil = 0;
-      } else {
-        myAbsPredicted.x = cnx;
-        myAbsPredicted.y = cny;
-      }
+      let cnx = myAbsPredicted.x + correctionVel.x * dt;
+      let cny = myAbsPredicted.y + correctionVel.y * dt;
+      if (clientIsBlockedByWall(cnx, myAbsPredicted.y, myAbsPredicted.x, myAbsPredicted.y, myFloor)) cnx = myAbsPredicted.x;
+      if (clientIsBlockedByWall(myAbsPredicted.x, cny, myAbsPredicted.x, myAbsPredicted.y, myFloor)) cny = myAbsPredicted.y;
+      if (clientIsBlockedByWall(cnx, cny, myAbsPredicted.x, myAbsPredicted.y, myFloor)) { cnx = myAbsPredicted.x; cny = myAbsPredicted.y; }
+      myAbsPredicted.x = cnx;
+      myAbsPredicted.y = cny;
     }
     // 전체 월드 그리드 안으로만 clamp (2x2면 0~2048)
     myAbsPredicted.x = Math.max(0, Math.min(worldWidth - 1, myAbsPredicted.x));
