@@ -3225,8 +3225,8 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
         window._shadowMask.width = W;
         window._shadowMask.height = H;
       }
-      if (!window._seenCells) window._seenCells = new Set();
-      const seenCells = window._seenCells;
+      if (!window._seenChunks) window._seenChunks = new Map(); // "chX_chY" → Set(packed cx*65536+cy)
+      const seenChunks = window._seenChunks;
       const mc = window._shadowMask;
       const mctx = mc.getContext('2d');
 
@@ -3275,18 +3275,33 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
       }
       visibleWorldPath.closePath();
 
-      // 14.49-e7y: cumulative polygon 폐기. visible polygon 안 cell들을 seenCells에 add.
-      // seen ↔ unseen 경계 = cell boundary (cell-aligned). visible ↔ seen = polygon.
-      // perf: 시간 무관, viewport 안 cell loop만.
-      mctx.setTransform(1, 0, 0, 1, 0, 0);
-      const FOG_RANGE = SHADOW_RANGE_CELLS + 2;
-      for (let cx = myCx - FOG_RANGE; cx <= myCx + FOG_RANGE; cx++) {
-        for (let cy = myCy - FOG_RANGE; cy <= myCy + FOG_RANGE; cy++) {
-          const wxC = (cx + 0.5) * CL_BUILDING_SIZE;
-          const wyC = (cy + 0.5) * CL_BUILDING_SIZE;
-          if (mctx.isPointInPath(visibleWorldPath, wxC, wyC)) {
-            seenCells.add(`${cx}_${cy}_${myFloor}`);
-          }
+      // 14.49-e7y → rewrite: visible polygon을 1px=1cell 미니 캔버스에 rasterize해서 seen 마킹.
+      // 옛 isPointInPath(셀 중심 1점, FOG_RANGE 18셀) 방식의 빈틈 수정:
+      //   1) 화면에 보이는 먼 영역(~47셀)이 seen으로 기록 안 돼 "봤는데 새까만" 버그
+      //   2) 부분만 보인 셀(시야 부채꼴 가장자리)이 기록 안 됨 → 커버리지 ≥25%면 seen
+      const FOG_MARK_RANGE = 48; // TILE_RENDER_RADIUS(1500px)/32 ≈ 47셀
+      const G = FOG_MARK_RANGE * 2 + 1;
+      if (!window._fogGridCv || window._fogGridCv.width !== G) {
+        window._fogGridCv = document.createElement('canvas');
+        window._fogGridCv.width = G; window._fogGridCv.height = G;
+      }
+      const gctx = window._fogGridCv.getContext('2d', { willReadFrequently: true });
+      gctx.setTransform(1, 0, 0, 1, 0, 0);
+      gctx.clearRect(0, 0, G, G);
+      // world px → grid px: scale 1/32, 원점 = cell (myCx-R, myCy-R)
+      gctx.setTransform(1 / 32, 0, 0, 1 / 32, -(myCx - FOG_MARK_RANGE), -(myCy - FOG_MARK_RANGE));
+      gctx.fillStyle = '#fff';
+      gctx.fill(visibleWorldPath);
+      const gdata = gctx.getImageData(0, 0, G, G).data;
+      for (let gj = 0; gj < G; gj++) {
+        for (let gi = 0; gi < G; gi++) {
+          if (gdata[(gj * G + gi) * 4 + 3] < 64) continue; // 커버리지 < 25%
+          const scx = myCx - FOG_MARK_RANGE + gi;
+          const scy = myCy - FOG_MARK_RANGE + gj;
+          const chKey = `${scx >> 4}_${scy >> 4}`;
+          let chSet = seenChunks.get(chKey);
+          if (!chSet) { chSet = new Set(); seenChunks.set(chKey, chSet); }
+          chSet.add(scx * 65536 + scy); // packed int (cx<19100, cy<11900 — 안전)
         }
       }
 
@@ -3297,27 +3312,33 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
       mctx.fillRect(0, 0, W, H);
 
       // (i) seen cells: iso diamond single path → destination-out alpha 0.8 (살짝 어둠)
+      // 청크(16셀) 단위 저장 — 탐험으로 seen이 수만 개로 늘어도 viewport 주변 청크만 순회
+      mctx.setTransform(1, 0, 0, 1, 0, 0);
       mctx.globalCompositeOperation = 'destination-out';
       mctx.fillStyle = 'rgba(0,0,0,0.8)';
       mctx.beginPath();
       const halfW = 32, halfH = 16, expand = 1;
-      const FOG_DRAW_RANGE = 35;
-      for (const key of seenCells) {
-        const parts = key.split('_');
-        // 14.49-e7af: floor 체크 제거 — 다른 floor에서 본 cell도 seen 처리 (위층 갔을 때 1층 seen 영역 보임)
-        const cxs = +parts[0], cys = +parts[1];
-        if (Math.abs(cxs - myCx) > FOG_DRAW_RANGE) continue;
-        if (Math.abs(cys - myCy) > FOG_DRAW_RANGE) continue;
-        const wxC = (cxs + 0.5) * CL_BUILDING_SIZE;
-        const wyC = (cys + 0.5) * CL_BUILDING_SIZE;
-        const sxC = w2sx(wxC, wyC);
-        const syC = w2sy(wxC, wyC);
-        if (sxC < -64 || sxC > W + 64 || syC < -32 || syC > H + 32) continue;
-        mctx.moveTo(sxC - halfW - expand, syC);
-        mctx.lineTo(sxC, syC - halfH - expand);
-        mctx.lineTo(sxC + halfW + expand, syC);
-        mctx.lineTo(sxC, syC + halfH + expand);
-        mctx.closePath();
+      const FOG_DRAW_RANGE = 52; // 화면 끝까지 (옛 35는 가장자리 누락)
+      const ch0x = (myCx - FOG_DRAW_RANGE) >> 4, ch1x = (myCx + FOG_DRAW_RANGE) >> 4;
+      const ch0y = (myCy - FOG_DRAW_RANGE) >> 4, ch1y = (myCy + FOG_DRAW_RANGE) >> 4;
+      for (let chx = ch0x; chx <= ch1x; chx++) {
+        for (let chy = ch0y; chy <= ch1y; chy++) {
+          const chSet = seenChunks.get(`${chx}_${chy}`);
+          if (!chSet) continue;
+          for (const packed of chSet) {
+            const cxs = Math.floor(packed / 65536), cys = packed % 65536;
+            const wxC = (cxs + 0.5) * CL_BUILDING_SIZE;
+            const wyC = (cys + 0.5) * CL_BUILDING_SIZE;
+            const sxC = w2sx(wxC, wyC);
+            const syC = w2sy(wxC, wyC);
+            if (sxC < -64 || sxC > W + 64 || syC < -32 || syC > H + 32) continue;
+            mctx.moveTo(sxC - halfW - expand, syC);
+            mctx.lineTo(sxC, syC - halfH - expand);
+            mctx.lineTo(sxC + halfW + expand, syC);
+            mctx.lineTo(sxC, syC + halfH + expand);
+            mctx.closePath();
+          }
+        }
       }
       mctx.fill();
 
