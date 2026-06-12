@@ -2802,6 +2802,8 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     // 카메라 델타 보정: mask는 만들 당시 위치(p0) 기준 스크린 좌표라, 이동 중엔 어둠 경계가
     // 이동방향으로 frame당 이동량만큼 돌출해 보임 → p0→현재 iso 스크린 델타만큼 밀어서 합성.
     if (window._shadowMask) {
+      // mask canvas는 화면보다 사방 64px 큼 (FOG_MASK_M) — 델타만큼 밀어도 빈 띠 없음
+      const _maskM = 64; // mask 생성부 FOG_MASK_M과 동일해야 함
       let mdx = 0, mdy = 0;
       if (window._shadowMaskPx !== undefined) {
         const p0x = window._shadowMaskPx, p0y = window._shadowMaskPy;
@@ -2810,18 +2812,10 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
         // 강제해 프레임 드랍 + 마스크 경계가 매 frame 흐릿하게 떨리는 원인이 됨.
         mdx = Math.round((p0x - p0y) - (p1x - p1y));
         mdy = Math.round(((p0x + p0y) - (p1x + p1y)) / 2);
-        // teleport/zone 이동 등 큰 점프면 보정 의미 없음 — 그냥 그대로 (1 frame glitch는 기존과 동일)
-        if (Math.abs(mdx) + Math.abs(mdy) > 200) { mdx = 0; mdy = 0; }
+        // margin 초과 점프(teleport/zone 이동 등)면 보정 포기 — 1 frame glitch는 기존과 동일
+        if (Math.abs(mdx) > _maskM || Math.abs(mdy) > _maskM) { mdx = 0; mdy = 0; }
       }
-      ctx.drawImage(window._shadowMask, mdx, mdy);
-      // shift로 비는 가장자리 strip은 unseen(검정)으로 채움
-      if (mdx !== 0 || mdy !== 0) {
-        ctx.fillStyle = '#000';
-        if (mdx > 0) ctx.fillRect(0, 0, mdx, H);
-        else if (mdx < 0) ctx.fillRect(W + mdx, 0, -mdx, H);
-        if (mdy > 0) ctx.fillRect(0, 0, W, mdy);
-        else if (mdy < 0) ctx.fillRect(0, H + mdy, W, -mdy);
-      }
+      ctx.drawImage(window._shadowMask, mdx - _maskM, mdy - _maskM);
     }
 
     // === 3) 엔티티 그리기 ===
@@ -3220,10 +3214,13 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
       //    - unseen (한 번도 못 봤음): 완전 검은색 alpha 1.0
       //    - seen (한 번 봤지만 현재 시야 밖): 어둠 alpha 0.5
       //    - visible (지금 보고 있음): hole (alpha 0)
-      if (!window._shadowMask || window._shadowMask.width !== W || window._shadowMask.height !== H) {
+      // FOG_MASK_M: 화면보다 사방 64px 크게 — 다음 frame 합성 시 카메라 델타만큼 밀어도
+      // 가장자리에 빈 띠(검은 strip 깜빡임)가 안 생기게 하는 여유분.
+      const FOG_MASK_M = 64;
+      if (!window._shadowMask || window._shadowMask.width !== W + FOG_MASK_M * 2 || window._shadowMask.height !== H + FOG_MASK_M * 2) {
         window._shadowMask = document.createElement('canvas');
-        window._shadowMask.width = W;
-        window._shadowMask.height = H;
+        window._shadowMask.width = W + FOG_MASK_M * 2;
+        window._shadowMask.height = H + FOG_MASK_M * 2;
       }
       if (!window._seenChunks) window._seenChunks = new Map(); // "chX_chY" → Set(packed cx*65536+cy)
       const seenChunks = window._seenChunks;
@@ -3307,9 +3304,9 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
 
       // mask render — 매 frame mode 명시 (이전 frame destination-out 상태 잔존 방지)
       mctx.globalCompositeOperation = 'source-over';
-      mctx.clearRect(0, 0, W, H);
+      mctx.clearRect(0, 0, mc.width, mc.height);
       mctx.fillStyle = 'rgba(0,0,0,1.0)';
-      mctx.fillRect(0, 0, W, H);
+      mctx.fillRect(0, 0, mc.width, mc.height);
 
       // (i) seen cells: iso diamond single path → destination-out alpha 0.8 (살짝 어둠)
       // 청크(16셀) 단위 저장 — 탐험으로 seen이 수만 개로 늘어도 viewport 주변 청크만 순회
@@ -3329,9 +3326,10 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
             const cxs = Math.floor(packed / 65536), cys = packed % 65536;
             const wxC = (cxs + 0.5) * CL_BUILDING_SIZE;
             const wyC = (cys + 0.5) * CL_BUILDING_SIZE;
-            const sxC = w2sx(wxC, wyC);
-            const syC = w2sy(wxC, wyC);
-            if (sxC < -64 || sxC > W + 64 || syC < -32 || syC > H + 32) continue;
+            // mask canvas는 화면보다 +FOG_MASK_M 큼 — 좌표를 M만큼 평행이동
+            const sxC = w2sx(wxC, wyC) + FOG_MASK_M;
+            const syC = w2sy(wxC, wyC) + FOG_MASK_M;
+            if (sxC < -64 || sxC > mc.width + 64 || syC < -32 || syC > mc.height + 32) continue;
             mctx.moveTo(sxC - halfW - expand, syC);
             mctx.lineTo(sxC, syC - halfH - expand);
             mctx.lineTo(sxC + halfW + expand, syC);
@@ -3344,7 +3342,7 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
 
       // (ii) visible polygon: world → screen iso transform → destination-out alpha 1.0 (밝음)
       mctx.save();
-      mctx.setTransform(1, 0.5, -1, 0.5, W/2 - (px - py), H/2 - (px + py)/2);
+      mctx.setTransform(1, 0.5, -1, 0.5, W/2 - (px - py) + FOG_MASK_M, H/2 - (px + py)/2 + FOG_MASK_M);
       mctx.fillStyle = 'rgba(0,0,0,1.0)';
       mctx.fill(visibleWorldPath);
       mctx.restore();
