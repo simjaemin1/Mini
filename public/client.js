@@ -2796,8 +2796,10 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
       if (window._shadowMaskPx !== undefined) {
         const p0x = window._shadowMaskPx, p0y = window._shadowMaskPy;
         const p1x = myAbsPredicted.x, p1y = myAbsPredicted.y;
-        mdx = (p0x - p0y) - (p1x - p1y);
-        mdy = ((p0x + p0y) - (p1x + p1y)) / 2;
+        // 정수로 반올림 — subpixel drawImage는 Safari에서 풀스크린 canvas 리샘플링을
+        // 강제해 프레임 드랍 + 마스크 경계가 매 frame 흐릿하게 떨리는 원인이 됨.
+        mdx = Math.round((p0x - p0y) - (p1x - p1y));
+        mdy = Math.round(((p0x + p0y) - (p1x + p1y)) / 2);
         // teleport/zone 이동 등 큰 점프면 보정 의미 없음 — 그냥 그대로 (1 frame glitch는 기존과 동일)
         if (Math.abs(mdx) + Math.abs(mdy) > 200) { mdx = 0; mdy = 0; }
       }
