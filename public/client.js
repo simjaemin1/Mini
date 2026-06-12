@@ -238,29 +238,38 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
   }
   // zonesMeta 받으면 모든 zone water tiles 미리 계산. zonesMeta 갱신 시 다시 호출.
   const waterTilesByZone = {}; // { zoneId: Set("tx_ty") }
+  const _waterCellCache = new Map(); // "zid_tx_ty" → bool (isWaterAtAbs perf 캐시)
   function precomputeAllWaterTiles() {
     const TS = 32;
+    _waterCellCache.clear(); // zonesMeta 갱신 — 셀 단위 water 캐시 무효화
     for (const z of Object.values(zonesMeta)) {
       waterTilesByZone[z.id] = computeCoastlineWaterTiles(z, TS);
     }
   }
   // 절대 좌표에서 물 여부 판정 (콜라이더 + 렌더용)
+  // perf fix: 셀 단위 캐시 — 타일 루프가 매 프레임 ~9천 타일 × hardcoded 강 251 세그먼트
+  // 점-선분 거리 계산을 반복해서 fps 10까지 떨어지던 문제. 지형은 정적이라 캐시 안전.
+  // (terrain 갱신 — setHardcoded/zonesMeta 변경 — 시 _waterCellCache.clear() 필수)
   function isWaterAtAbs(absX, absY) {
     const z = clientFindZoneAt(absX, absY);
     if (!z) return false;
     if (z.isOcean) return true;
     const tx = Math.floor((absX - z.worldOffsetX) / 32);
     const ty = Math.floor((absY - z.worldOffsetY) / 32);
+    const key = z.id + '_' + tx + '_' + ty;
+    const hit = _waterCellCache.get(key);
+    if (hit !== undefined) return hit;
+    let v = false;
     const set = waterTilesByZone[z.id];
-    if (set && set.has(`${tx}_${ty}`)) return true;
+    if (set && set.has(`${tx}_${ty}`)) v = true;
     // Phase 5-2-mini: inland water (강·호수) — terrain.js 동적 검사.
     // cell center로 검사 (시각과 콜라이더 일치).
-    if (window.Terrain) {
-      const cellLx = tx * 32 + 16;
-      const cellLy = ty * 32 + 16;
-      if (window.Terrain.isWaterCellLocal(z.id, cellLx, cellLy)) return true;
+    else if (window.Terrain) {
+      v = window.Terrain.isWaterCellLocal(z.id, tx * 32 + 16, ty * 32 + 16);
     }
-    return false;
+    if (_waterCellCache.size > 300000) _waterCellCache.clear(); // 메모리 가드 (~15MB 상한)
+    _waterCellCache.set(key, v);
+    return v;
   }
 
   // 14.49-e6-c: 시야 재구성
@@ -1551,6 +1560,7 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
       const _zid = c.zoneId || (msg.zone && (msg.zone.id || msg.zone.zoneId)) || c.id;
       if (msg.hardcodedTerrain && window.Terrain && window.Terrain.setHardcoded && _zid) {
         window.Terrain.setHardcoded(_zid, msg.hardcodedTerrain);
+        _waterCellCache.clear(); // terrain 변경 — 셀 단위 water 캐시 무효화
         if (typeof window.__invalidateMinimapCache === 'function') window.__invalidateMinimapCache();
         console.log('[terrain] hardcoded applied:', _zid, 'rivers=' + msg.hardcodedTerrain.rivers.length, 'lakes=' + msg.hardcodedTerrain.lakes.length);
       } else if (msg.hardcodedTerrain) {
