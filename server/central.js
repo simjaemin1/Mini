@@ -846,6 +846,16 @@ const server = http.createServer(async (req, res) => {
       return jsonResp(res, 200, { ok: true });
     }
 
+    // Phase 5-G+: hardcoded terrain 전체 제공 — 클라가 미접속 zone의 강·호수도
+    // bigMap/타일에 그릴 수 있게 (welcome은 접속 zone 것만 줘서 경계에서 강이 끊겨 보임)
+    if (req.method === 'GET' && req.url.split('?')[0] === '/terrain.json') {
+      const tPath = path.join(__dirname, 'hanbando-terrain.json');
+      if (fs.existsSync(tPath)) {
+        res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' });
+        return fs.createReadStream(tPath).pipe(res);
+      }
+    }
+
     // 정적 파일 — index.html, client.js, style.css (dispatcher가 하던 일)
     if (req.method === 'GET') {
       let urlPath = req.url === '/' ? '/index.html' : req.url;

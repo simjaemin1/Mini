@@ -239,6 +239,20 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
   // zonesMeta 받으면 모든 zone water tiles 미리 계산. zonesMeta 갱신 시 다시 호출.
   const waterTilesByZone = {}; // { zoneId: Set("tx_ty") }
   const _waterCellCache = new Map(); // "zid_tx_ty" → bool (isWaterAtAbs perf 캐시)
+  // Phase 5-G+: 전체 hardcoded terrain 선로딩 — welcome은 접속 zone 것만 줘서
+  // bigMap에서 미접속 이웃 zone의 강이 procedural로 그려져 경계에서 끊겨 보이는 문제 해결
+  (async () => {
+    try {
+      const r = await fetch('/terrain.json');
+      if (!r.ok) return;
+      const all = await r.json();
+      if (!window.Terrain || !window.Terrain.setHardcoded) return;
+      for (const [zid, data] of Object.entries(all)) window.Terrain.setHardcoded(zid, data);
+      _waterCellCache.clear();
+      if (typeof window.__invalidateMinimapCache === 'function') window.__invalidateMinimapCache();
+      console.log('[terrain] 전체 hardcoded 선로딩:', Object.keys(all).join(','));
+    } catch (e) { console.warn('[terrain] preload 실패:', e.message); }
+  })();
   function precomputeAllWaterTiles() {
     const TS = 32;
     _waterCellCache.clear(); // zonesMeta 갱신 — 셀 단위 water 캐시 무효화
