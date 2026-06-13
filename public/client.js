@@ -249,13 +249,15 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
       if (!window.Terrain || !window.Terrain.setHardcoded) return;
       for (const [zid, data] of Object.entries(all)) window.Terrain.setHardcoded(zid, data);
       _waterCellCache.clear();
+      _rockCellCache.clear();
       if (typeof window.__invalidateMinimapCache === 'function') window.__invalidateMinimapCache();
       console.log('[terrain] 전체 hardcoded 선로딩:', Object.keys(all).join(','));
     } catch (e) { console.warn('[terrain] preload 실패:', e.message); }
   })();
   function precomputeAllWaterTiles() {
     const TS = 32;
-    _waterCellCache.clear(); // zonesMeta 갱신 — 셀 단위 water 캐시 무효화
+    _waterCellCache.clear(); // zonesMeta 갱신 — 셀 단위 캐시 무효화
+    _rockCellCache.clear();
     for (const z of Object.values(zonesMeta)) {
       waterTilesByZone[z.id] = computeCoastlineWaterTiles(z, TS);
     }
@@ -285,6 +287,26 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     _waterCellCache.set(key, v);
     return v;
   }
+  // Phase 5-H: 산맥 바위 셀 — 통행 불가 + 회색 렌더. 물과 동일 구조 (셀 캐시).
+  const _rockCellCache = new Map();
+  function isRockAtAbs(absX, absY) {
+    const z = clientFindZoneAt(absX, absY);
+    if (!z || z.isOcean) return false;
+    const tx = Math.floor((absX - z.worldOffsetX) / 32);
+    const ty = Math.floor((absY - z.worldOffsetY) / 32);
+    const key = z.id + '_' + tx + '_' + ty;
+    const hit = _rockCellCache.get(key);
+    if (hit !== undefined) return hit;
+    let v = false;
+    if (window.Terrain && window.Terrain.isRockCellLocal) {
+      v = window.Terrain.isRockCellLocal(z.id, tx * 32 + 16, ty * 32 + 16);
+    }
+    if (_rockCellCache.size > 300000) _rockCellCache.clear();
+    _rockCellCache.set(key, v);
+    return v;
+  }
+  // 지형 차단 통합 (물+바위) — 이동 예측용
+  function isTerrainBlockedAtAbs(x, y) { return isWaterAtAbs(x, y) || isRockAtAbs(x, y); }
 
   // 14.49-e6-c: 시야 재구성
   // 지형: 중앙 80px 원 = 항상 full bright. 뒤쪽 = 0.85 (덜 어둡게).
@@ -902,6 +924,16 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     else if (k === 't') sendPrimary({ type: 'trade_offer', give: 'wood' });
     else if (k === 'y') sendPrimary({ type: 'trade_offer', give: 'stone' });
     else if (k === 'f') { sendPrimary({ type: 'attack' }); myLastAttackAt = performance.now(); }
+    else if (k === 'g') {
+      // Phase 5-I: 원거리 공격 — 마우스 방향으로 화살. aim은 primary zone-local 좌표.
+      const pc = conns.get(primaryZoneId);
+      if (pc && pc.meta && window._lastMouseWx !== undefined) {
+        const aimX = window._lastMouseWx - (pc.meta.worldOffsetX || 0);
+        const aimY = window._lastMouseWy - (pc.meta.worldOffsetY || 0);
+        sendPrimary({ type: 'ranged_attack', aimX, aimY });
+        myLastAttackAt = performance.now();
+      }
+    }
     else if (k === 'b') {
       // 14.51: B 키 = 건축 모드 토글 (옛 즉시 wall build 폐기)
       buildMode = !buildMode;
@@ -1246,6 +1278,7 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
       const iy = (py + (myFloor || 0) * FLOOR_HEIGHT) - H/2 + myIso.y;
       const wx = ix * 0.5 + iy;
       const wy = iy - ix * 0.5;
+      window._lastMouseWx = wx; window._lastMouseWy = wy; // Phase 5-I: 원거리 조준용 (절대 월드)
       if (placementMode) {
         placementCursor.wx = wx;
         placementCursor.wy = wy;
@@ -1574,7 +1607,8 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
       const _zid = c.zoneId || (msg.zone && (msg.zone.id || msg.zone.zoneId)) || c.id;
       if (msg.hardcodedTerrain && window.Terrain && window.Terrain.setHardcoded && _zid) {
         window.Terrain.setHardcoded(_zid, msg.hardcodedTerrain);
-        _waterCellCache.clear(); // terrain 변경 — 셀 단위 water 캐시 무효화
+        _waterCellCache.clear(); // terrain 변경 — 셀 단위 캐시 무효화
+        _rockCellCache.clear();
         if (typeof window.__invalidateMinimapCache === 'function') window.__invalidateMinimapCache();
         console.log('[terrain] hardcoded applied:', _zid, 'rivers=' + msg.hardcodedTerrain.rivers.length, 'lakes=' + msg.hardcodedTerrain.lakes.length);
       } else if (msg.hardcodedTerrain) {
@@ -1801,6 +1835,13 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
         b.data.hp = msg.hp;
         b.data.damaged = msg.damaged;
       }
+    } else if (msg.type === 'arrow_spawn') {
+      // Phase 5-I: 화살 발사체 — 절대좌표로 저장, 클라가 등속 외삽 (서버는 spawn/remove만 보냄)
+      if (!window._arrows) window._arrows = new Map();
+      const ox = c.meta?.worldOffsetX || 0, oy = c.meta?.worldOffsetY || 0;
+      window._arrows.set(msg.aid, { ax: ox + msg.x, ay: oy + msg.y, vx: msg.vx, vy: msg.vy, t0: performance.now() });
+    } else if (msg.type === 'arrow_removed') {
+      if (window._arrows) window._arrows.delete(msg.aid);
     } else if (msg.type === 'mob_damaged') {
       const m = c.mobs.get(msg.mid); if (m) m.hp = msg.hp;
     } else if (msg.type === 'mob_removed') {
@@ -2130,19 +2171,19 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
       if (clientIsBlockedByWall(myAbsPredicted.x, ny, myAbsPredicted.x, myAbsPredicted.y, myFloor)) ny = myAbsPredicted.y;
       if (clientIsBlockedByWall(nx, ny, myAbsPredicted.x, myAbsPredicted.y, myFloor)) { nx = myAbsPredicted.x; ny = myAbsPredicted.y; }
       // 14.46-b-mini + Phase 5-G: 물 타일 진입 차단 + cell border snap (서버 zone.js와 동일)
-      if (isWaterAtAbs(nx, myAbsPredicted.y) && !isWaterAtAbs(myAbsPredicted.x, myAbsPredicted.y)) {
+      if (isTerrainBlockedAtAbs(nx, myAbsPredicted.y) && !isTerrainBlockedAtAbs(myAbsPredicted.x, myAbsPredicted.y)) {
         const tx = Math.floor(myAbsPredicted.x / 32);
         if (nx > myAbsPredicted.x) nx = (tx + 1) * 32 - 1;
         else if (nx < myAbsPredicted.x) nx = tx * 32;
         else nx = myAbsPredicted.x;
       }
-      if (isWaterAtAbs(myAbsPredicted.x, ny) && !isWaterAtAbs(myAbsPredicted.x, myAbsPredicted.y)) {
+      if (isTerrainBlockedAtAbs(myAbsPredicted.x, ny) && !isTerrainBlockedAtAbs(myAbsPredicted.x, myAbsPredicted.y)) {
         const ty = Math.floor(myAbsPredicted.y / 32);
         if (ny > myAbsPredicted.y) ny = (ty + 1) * 32 - 1;
         else if (ny < myAbsPredicted.y) ny = ty * 32;
         else ny = myAbsPredicted.y;
       }
-      if (isWaterAtAbs(nx, ny) && !isWaterAtAbs(myAbsPredicted.x, myAbsPredicted.y)) { nx = myAbsPredicted.x; ny = myAbsPredicted.y; }
+      if (isTerrainBlockedAtAbs(nx, ny) && !isTerrainBlockedAtAbs(myAbsPredicted.x, myAbsPredicted.y)) { nx = myAbsPredicted.x; ny = myAbsPredicted.y; }
       myAbsPredicted.x = nx;
       myAbsPredicted.y = ny;
     }
@@ -2681,11 +2722,16 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
 
         // 14.49-e7h: per-tile noise variation 제거 (셀 mosaic = stairstep 원인). 단조하지만 깔끔.
         const isWater = isWaterAtAbs(wx + TS/2, wy + TS/2);
+        const isRock = !isWater && isRockAtAbs(wx + TS/2, wy + TS/2); // Phase 5-H: 산맥
         let tileColor, tintColor, tintStrength;
         if (isWater) {
           tileColor = zMeta.isOcean ? zMeta.groundColor : '#2a5a8a';
           tintColor = zMeta.isOcean ? zMeta.tintColor : '#1a4a7a';
           tintStrength = 0.07; // 고정 (옛 0.04~0.10 → 평균)
+        } else if (isRock) {
+          tileColor = '#6e6356';
+          tintColor = '#4a4138';
+          tintStrength = 0.12;
         } else {
           tileColor = latitudeColor(wy + TS/2, worldHeight, zMeta.groundColor);
           const distFromPole = Math.min(wy + TS/2, worldHeight - (wy + TS/2));
@@ -3367,6 +3413,27 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
 
       // 14.49-e7ae: mask composite는 다음 frame entity render 전에 합성 (entity가 mask 위)
       // wall 2차 render 폐기 — entity가 mask 위에 그려지므로 mask 가림 X
+    }
+
+    // === Phase 5-I: 화살 발사체 렌더 (절대좌표 → 등속 외삽 → iso 화면) ===
+    if (window._arrows && window._arrows.size) {
+      const tnow = performance.now();
+      for (const [aid, ar] of window._arrows) {
+        const dt = (tnow - ar.t0) / 1000;
+        if (dt > 4.5) { window._arrows.delete(aid); continue; } // 안전 만료
+        const ax = ar.ax + ar.vx * dt, ay = ar.ay + ar.vy * dt;
+        const iso = w2i(ax, ay);
+        const myIso = w2i(myAbsPredicted.x, myAbsPredicted.y);
+        const sx = iso.x - myIso.x + W / 2, sy = iso.y - myIso.y + H / 2;
+        if (sx < -50 || sx > W + 50 || sy < -50 || sy > H + 50) continue;
+        // 화살: 진행 방향 짧은 선 + 촉
+        const vlen = Math.hypot(ar.vx, ar.vy) || 1;
+        const ex = (ar.vx / vlen) * 18, ey = (ar.vy / vlen) * 9; // iso 기울임 근사
+        ctx.strokeStyle = '#3a2a18'; ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.moveTo(sx - ex, sy - ey); ctx.lineTo(sx + ex, sy + ey); ctx.stroke();
+        ctx.fillStyle = '#d8d0c0';
+        ctx.beginPath(); ctx.arc(sx + ex, sy + ey, 2.5, 0, Math.PI * 2); ctx.fill();
+      }
     }
 
     // === 4-1) 밤 어두움 오버레이 — 푸른 톤, 시야는 더 좁아짐 ===
@@ -6260,6 +6327,7 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
 
   const TILE_COLORS = {
     water:    '#2e6fa8',
+    rock:     '#6e6356', // Phase 5-H: 산맥 바위
     forest:   '#2a5a2a',
     mountain: '#8a8a8a',
     ore:      '#c4682a',
@@ -6552,8 +6620,8 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
       //   - 각 cell의 중심점 (lx+16, ly+16) 기준 isWaterCellLocal 검사
       //   - water면 fillRect — cell 32 world px 단위 사각형
       const hasWater = (td.rivers && td.rivers.length > 0) || (td.lakes && td.lakes.length > 0);
-      if (hasWater && Terrain.isWaterCellLocal) {
-        cx.fillStyle = waterColor;
+      const hasRock = td.ridges && td.ridges.length > 0; // Phase 5-H: 산맥
+      if ((hasWater || hasRock) && Terrain.isWaterCellLocal) {
         // viewport 안 cell 범위 (32 배수로 align)
         const csx0 = Math.floor(x1 / CELL_SIZE) * CELL_SIZE;
         const csy0 = Math.floor(y1 / CELL_SIZE) * CELL_SIZE;
@@ -6566,8 +6634,12 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
           for (let wx = csx0; wx < x2; wx += CELL_SIZE) {
             const lx = wx - zox;
             if (lx < 0 || lx >= zw) continue;
-            // game collider와 동일: cell 중심점 (lx+16, ly+16) 기준
-            if (!Terrain.isWaterCellLocal(zid, lx + 16, ly + 16)) continue;
+            // game collider와 동일: cell 중심점 (lx+16, ly+16) 기준. 물 > 바위 우선.
+            let col = null;
+            if (hasWater && Terrain.isWaterCellLocal(zid, lx + 16, ly + 16)) col = waterColor;
+            else if (hasRock && Terrain.isRockCellLocal && Terrain.isRockCellLocal(zid, lx + 16, ly + 16)) col = TILE_COLORS.rock;
+            if (!col) continue;
+            cx.fillStyle = col;
             const startPx = Math.floor((wx - originX) * currentZoom);
             const nextPx = Math.floor((wx + CELL_SIZE - originX) * currentZoom);
             cx.fillRect(startPx, startPy, nextPx - startPx, cellH);

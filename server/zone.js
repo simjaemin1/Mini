@@ -70,7 +70,7 @@ function activateChunk(cx, cy) {
   if (ZONE.cleanZone) return;
   const seedResources = generateChunkResources(ZONE_ID, ZONE.biome, cx, cy, chunkManager.chunkSize, harvestedSeeds);
   for (const r of seedResources) {
-    if (isWaterTileLocal(r.x, r.y)) continue; // 바다 위 자원 차단
+    if (isTerrainBlockedLocal(r.x, r.y)) continue; // 바다 위 자원 차단
     resources.set(r.id, r);
     chunkManager.insertResource(r);
     broadcast({ type: 'resource_spawn', resource: r });
@@ -192,6 +192,16 @@ function isWaterTileLocal(localX, localY) {
   const cellCy = ty * 32 + 16;
   return _terrain.isWaterCellLocal(ZONE_ID, cellCx, cellCy);
 }
+// Phase 5-H: 산맥 바위 셀 — 통행 불가. 물 > 바위 우선·고개 처리는 terrain.isRockCellLocal에서.
+function isRockTileLocal(localX, localY) {
+  if (ZONE.isOcean) return false;
+  if (localX < 0 || localY < 0 || localX >= ZONE.zoneWidth || localY >= ZONE.zoneHeight) return false;
+  const tx = Math.floor(localX / 32);
+  const ty = Math.floor(localY / 32);
+  return typeof _terrain.isRockCellLocal === 'function' && _terrain.isRockCellLocal(ZONE_ID, tx * 32 + 16, ty * 32 + 16);
+}
+// 지형 차단 통합 (물 + 바위) — 이동·스폰·경로·텔레포트 검증 공용
+function isTerrainBlockedLocal(x, y) { return isWaterTileLocal(x, y) || isRockTileLocal(x, y); }
 // 메트릭 카운터
 const metrics = {
   startedAt: Date.now(),
@@ -250,6 +260,15 @@ const AOI_RADIUS = 800;         // 클라 VIEW_RADIUS(650) + 여유. 이 안의 
 const claims = new Map();
 const buildings = new Map();    // id -> { id, dbId, type, ownerId, ownerName, x, y, data }
 const mobs = new Map();         // mid -> { mid, type, x, y, vx, vy, hp, maxHp, aggroTarget, lastAttackAt, wanderUntil }
+// Phase 5-I: 경계 전투 — 이웃 zone 플레이어 ghost(절대좌표) + 화살 발사체
+const ghostPlayers = new Map(); // playerId -> { ax, ay, vx, vy, name, srcZone, recvAt } (절대좌표, 이웃 zone이 동기화)
+const arrows = new Map();       // aid -> { aid, x, y, vx, vy, ownerPid, ownerId, dmg, ttl } (자기 zone 권위, local 좌표)
+let nextArrowId = 1;
+const ARROW_SPEED = 600;        // px/s (sim과 동일)
+const ARROW_HIT_R = 40;
+const ARROW_DMG = 25;
+const ARROW_TTL_MS = 4000;
+const GHOST_TTL_MS = 1500;      // 이 시간 넘게 갱신 안 된 ghost 제거
 
 // Phase 5-7: 동물 사체 + 도살 시스템
 const corpses = new Map();      // cid -> { cid, mobType, x, y, drops, spawnTime, killerPid }
@@ -616,7 +635,7 @@ function spawnMob(type, opts = {}) {
     for (let att = 0; att < 30; att++) {
       x = 32 + Math.random() * (ZONE.zoneWidth - 64);
       y = 32 + Math.random() * (ZONE.zoneHeight - 64);
-      const inWater = typeof isWaterTileLocal === 'function' && isWaterTileLocal(x, y);
+      const inWater = typeof isTerrainBlockedLocal === 'function' && isTerrainBlockedLocal(x, y);
       if (inWater) continue;
       if (type !== 'wolf' || !(typeof isNearVillage === 'function' && isNearVillage(x, y))) break;
     }
@@ -1134,7 +1153,7 @@ function straightPathClear(x0, y0, x1, y1, floor) {
   for (let i = 0; i < steps; i++) {
     const nx = px + sx, ny = py + sy;
     if (isBlockedByWall(nx, ny, px, py, floor)) return false;
-    if (isWaterTileLocal(nx, ny)) return false;
+    if (isTerrainBlockedLocal(nx, ny)) return false;
     px = nx; py = ny;
   }
   return true;
@@ -1157,7 +1176,7 @@ function computeNpcPath(npc, now) {
   return pfFindPath(npc.x, npc.y, npc.targetX, npc.targetY, {
     floor: npc.floor || 0,
     isBlockedFn: isBlockedByWall,
-    isWaterFn: isWaterTileLocal,
+    isWaterFn: isTerrainBlockedLocal,
     maxCells: 200,         // ~4ms 한도 (TICK 33ms에 여유)
     searchRadiusCells: 24, // 768px 범위
   });
@@ -1557,6 +1576,33 @@ const server = http.createServer((req, res) => {
       `durango_ws_closes_total ${metrics.ws_closes}`,
     ];
     res.end(lines.join('\n') + '\n');
+    return;
+  }
+  // === Phase 5-I: 경계 전투 — 이웃 zone이 보낸 ghost 스냅샷 수신 ===
+  if (req.url === '/ghost_sync' && req.method === 'POST') {
+    let body = ''; req.on('data', c => body += c);
+    req.on('end', () => {
+      try {
+        const data = JSON.parse(body);
+        const now = Date.now();
+        for (const s of data.players || []) ghostPlayers.set(s.playerId, { ax: s.ax, ay: s.ay, vx: s.vx || 0, vy: s.vy || 0, name: s.name, srcZone: data.srcZone, recvAt: now });
+      } catch (e) {}
+      res.writeHead(200, { 'Content-Type': 'application/json' }); res.end('{"ok":true}');
+    });
+    return;
+  }
+  // === Phase 5-I: 발사자 zone이 위임한 cross-zone 데미지 (내 플레이어가 경계 너머에서 맞음) ===
+  if (req.url === '/cross_damage' && req.method === 'POST') {
+    let body = ''; req.on('data', c => body += c);
+    req.on('end', () => {
+      try {
+        const data = JSON.parse(body);
+        let target = null;
+        for (const p of players.values()) if (p.playerId === data.targetId) { target = p; break; }
+        if (target) damagePlayer(target, data.dmg, `arrow:${data.attackerId}`);
+      } catch (e) {}
+      res.writeHead(200, { 'Content-Type': 'application/json' }); res.end('{"ok":true}');
+    });
     return;
   }
   // === 다른 zone 서버가 보내는 핸드오프 준비 요청 ===
@@ -2173,7 +2219,7 @@ function handlePlayerInput(player, raw) {
     // 디버그: zone-local 좌표로 워프. zone 안 + water cell 아닌 곳만 허용.
     const tx = Math.max(0, Math.min(ZONE.zoneWidth  - 1, msg.x | 0));
     const ty = Math.max(0, Math.min(ZONE.zoneHeight - 1, msg.y | 0));
-    if (typeof isWaterTileLocal === 'function' && isWaterTileLocal(tx, ty)) {
+    if (typeof isTerrainBlockedLocal === 'function' && isTerrainBlockedLocal(tx, ty)) {
       send(ws, { type: 'notice', text: '🌊 강·바다 위로는 텔레포트 불가' });
       return;
     }
@@ -2219,6 +2265,7 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'chest_put') tryChestPut(player, msg.buildingId, msg.item, +msg.amount || 1);
   else if (msg.type === 'chest_take') tryChestTake(player, msg.buildingId, msg.item, +msg.amount || 1);
   else if (msg.type === 'attack') { metrics.attacks++; tryAttack(player); }
+  else if (msg.type === 'ranged_attack') { metrics.attacks++; tryRangedAttack(player, +msg.aimX, +msg.aimY); }
   else if (msg.type === 'craft') doCraft(player, msg.recipe);
   else if (msg.type === 'craft_item') doCraftItem(player, msg.recipe);
   else if (msg.type === 'door_toggle') doDoorToggle(player, msg.buildingId);
@@ -3436,6 +3483,86 @@ async function tryChestTake(player, buildingId, item, amount) {
 }
 
 // === 전투 ===
+// === Phase 5-I: 원거리 공격 (화살) — 발사자 zone 권위 (favor-the-shooter) ===
+// 클라가 조준점(zone-local aimX/aimY)을 보냄. 화살 엔티티 생성 → broadcast(observer 통해 이웃도 봄).
+// 화살 tick(게임루프)에서 자기 player/mob + ghost(이웃 player) 히트 검사.
+function tryRangedAttack(player, aimX, aimY) {
+  if (player.isDown) return;
+  const now = Date.now();
+  if (now - (player.lastRangedAt || 0) < 600) return; // 쿨다운
+  // 활 장착 확인 (간이: equipped가 'bow'면). 무기 시스템 확장 전까지 관대하게 허용.
+  player.lastRangedAt = now;
+  const dx = aimX - player.x, dy = aimY - player.y, L = Math.hypot(dx, dy) || 1;
+  const aid = `${ZONE_ID}_ar${nextArrowId++}`;
+  const arrow = {
+    aid, x: player.x, y: player.y,
+    vx: dx / L * ARROW_SPEED, vy: dy / L * ARROW_SPEED,
+    ownerPid: player.pid, ownerId: player.playerId, dmg: ARROW_DMG, ttl: ARROW_TTL_MS,
+  };
+  arrows.set(aid, arrow);
+  broadcast({ type: 'arrow_spawn', aid, x: arrow.x, y: arrow.y, vx: arrow.vx, vy: arrow.vy, ownerPid: player.pid });
+}
+
+// 화살 물리 + 히트 (게임 tick에서 dt초마다 호출)
+function stepArrows(dt) {
+  for (const a of arrows.values()) {
+    a.x += a.vx * dt; a.y += a.vy * dt; a.ttl -= dt * 1000;
+    let hit = false;
+    // 1) 자기 zone player (PvP)
+    for (const p of players.values()) {
+      if (p.pid === a.ownerPid || p.isDown || p.isNpc) continue;
+      if (Math.hypot(p.x - a.x, p.y - a.y) < ARROW_HIT_R) {
+        damagePlayer(p, a.dmg, `arrow:${a.ownerId}`); hit = true; break;
+      }
+    }
+    // 2) 자기 zone mob
+    if (!hit) for (const m of mobs.values()) {
+      if (Math.hypot(m.x - a.x, m.y - a.y) < ARROW_HIT_R) {
+        m.hp = Math.max(0, m.hp - a.dmg);
+        broadcast({ type: 'mob_damaged', mid: m.mid, hp: m.hp });
+        if (m.hp <= 0) { spawnCorpse(m, a.ownerId); chunkManager.removeMob?.(m); mobs.delete(m.mid); broadcast({ type: 'mob_removed', mid: m.mid }); }
+        hit = true; break;
+      }
+    }
+    // 3) 이웃 zone ghost player (경계 너머) → cross_damage 위임
+    if (!hit) {
+      const aax = ZONE.worldOffsetX + a.x, aay = ZONE.worldOffsetY + a.y;
+      for (const [gid, g] of ghostPlayers) {
+        if (Math.hypot(g.ax - aax, g.ay - aay) < ARROW_HIT_R) {
+          const tz = ZONES[g.srcZone];
+          if (tz) postJSON(tz.host, tz.port, '/cross_damage', { targetId: gid, dmg: a.dmg, attackerId: a.ownerId }).catch(() => {});
+          hit = true; break;
+        }
+      }
+    }
+    if (hit || a.ttl <= 0) { arrows.delete(a.aid); broadcast({ type: 'arrow_removed', aid: a.aid }); }
+  }
+}
+
+// 이웃 zone에 보낼 ghost 스냅샷 (경계 AOI 안 player) — 주기 송신
+function syncGhostsToNeighbors() {
+  // 경계에서 GHOST_REACH 안에 있는 자기 player를 이웃 zone에 절대좌표로 송신
+  const GHOST_REACH = 1200;
+  const ox = ZONE.worldOffsetX, oy = ZONE.worldOffsetY, zw = ZONE.zoneWidth, zh = ZONE.zoneHeight;
+  const byZone = {}; // targetZoneId -> [snap]
+  for (const p of players.values()) {
+    if (p.isNpc || p.handingOff) continue;
+    const near = [];
+    if (p.x < GHOST_REACH) near.push(findZoneAt(ox - 1, oy + p.y));
+    if (p.x > zw - GHOST_REACH) near.push(findZoneAt(ox + zw + 1, oy + p.y));
+    if (p.y < GHOST_REACH) near.push(findZoneAt(ox + p.x, oy - 1));
+    if (p.y > zh - GHOST_REACH) near.push(findZoneAt(ox + p.x, oy + zh + 1));
+    for (const tz of near) {
+      if (!tz || tz.id === ZONE_ID || tz.isOcean) continue;
+      (byZone[tz.id] = byZone[tz.id] || []).push({ playerId: p.playerId, name: p.name, ax: ox + p.x, ay: oy + p.y, vx: p.vx, vy: p.vy });
+    }
+  }
+  for (const [zid, snaps] of Object.entries(byZone)) {
+    const tz = ZONES[zid];
+    postJSON(tz.host, tz.port, '/ghost_sync', { srcZone: ZONE_ID, players: snaps }).catch(() => {});
+  }
+}
+
 async function tryAttack(player) {
   // Phase 14.41: 다운 중엔 공격 불가
   if (player.isDown) return;
@@ -4021,6 +4148,10 @@ setInterval(() => {
     }
   }
 
+  // Phase 5-I: 화살 물리/히트 + 만료된 ghost 정리
+  stepArrows(dt);
+  { const now2 = Date.now(); for (const [gid, g] of ghostPlayers) if (now2 - g.recvAt > GHOST_TTL_MS) ghostPlayers.delete(gid); }
+
   // 이동 + 경계 처리 + 벽 충돌
   for (const p of players.values()) {
     if (p.handingOff) continue;
@@ -4057,19 +4188,19 @@ setInterval(() => {
     if (isInIceBand(ny) && !isInIceBand(p.y)) ny = p.y;
     // 14.46-b-mini: 물 타일 진입 차단 (보트 시스템 전까지). 각 축별 slide.
     // Phase 5-G: cell border까지 정확히 snap (tick step 가변·east/west 비대칭 fix)
-    if (isWaterTileLocal(nx, p.y) && !isWaterTileLocal(p.x, p.y)) {
+    if (isTerrainBlockedLocal(nx, p.y) && !isTerrainBlockedLocal(p.x, p.y)) {
       const tx = Math.floor(p.x / 32);
       if (nx > p.x) nx = (tx + 1) * 32 - 1;       // 동쪽: cell의 마지막 정수 px
       else if (nx < p.x) nx = tx * 32;            // 서쪽: cell의 시작 px
       else nx = p.x;
     }
-    if (isWaterTileLocal(p.x, ny) && !isWaterTileLocal(p.x, p.y)) {
+    if (isTerrainBlockedLocal(p.x, ny) && !isTerrainBlockedLocal(p.x, p.y)) {
       const ty = Math.floor(p.y / 32);
       if (ny > p.y) ny = (ty + 1) * 32 - 1;
       else if (ny < p.y) ny = ty * 32;
       else ny = p.y;
     }
-    if (isWaterTileLocal(nx, ny) && !isWaterTileLocal(p.x, p.y)) { nx = p.x; ny = p.y; }
+    if (isTerrainBlockedLocal(nx, ny) && !isTerrainBlockedLocal(p.x, p.y)) { nx = p.x; ny = p.y; }
 
     // 4방향 경계 처리 — 새 위치가 zone 밖으로 나가면 이웃으로 핸드오프
     // 우선순위: 가장 큰 초과 축. 모서리에서 두 방향 동시에 초과돼도 한 zone으로만.
@@ -4400,13 +4531,13 @@ setInterval(() => {
       if (isBlockedByWall(m.x, ny, m.x, m.y, m.floor || 0)) ny = m.y;
       if (isInIceBand(ny) && !isInIceBand(m.y)) ny = m.y; // 14.45
       // 14.46-b-mini + Phase 5-G: 물 타일 진입 차단 + cell border snap
-      if (isWaterTileLocal(nx, m.y) && !isWaterTileLocal(m.x, m.y)) {
+      if (isTerrainBlockedLocal(nx, m.y) && !isTerrainBlockedLocal(m.x, m.y)) {
         const tx = Math.floor(m.x / 32);
         if (nx > m.x) nx = (tx + 1) * 32 - 1;
         else if (nx < m.x) nx = tx * 32;
         else nx = m.x;
       }
-      if (isWaterTileLocal(m.x, ny) && !isWaterTileLocal(m.x, m.y)) {
+      if (isTerrainBlockedLocal(m.x, ny) && !isTerrainBlockedLocal(m.x, m.y)) {
         const ty = Math.floor(m.y / 32);
         if (ny > m.y) ny = (ty + 1) * 32 - 1;
         else if (ny < m.y) ny = ty * 32;
@@ -4522,13 +4653,13 @@ setInterval(() => {
     if (isBlockedByWall(m.x, ny, m.x, m.y, m.floor || 0)) ny = m.y;
     if (isInIceBand(ny) && !isInIceBand(m.y)) ny = m.y; // 14.45
     // 14.46-b-mini + Phase 5-G: 물 타일 진입 차단 + cell border snap
-    if (isWaterTileLocal(nx, m.y) && !isWaterTileLocal(m.x, m.y)) {
+    if (isTerrainBlockedLocal(nx, m.y) && !isTerrainBlockedLocal(m.x, m.y)) {
       const tx = Math.floor(m.x / 32);
       if (nx > m.x) nx = (tx + 1) * 32 - 1;
       else if (nx < m.x) nx = tx * 32;
       else nx = m.x;
     }
-    if (isWaterTileLocal(m.x, ny) && !isWaterTileLocal(m.x, m.y)) {
+    if (isTerrainBlockedLocal(m.x, ny) && !isTerrainBlockedLocal(m.x, m.y)) {
       const ty = Math.floor(m.y / 32);
       if (ny > m.y) ny = (ty + 1) * 32 - 1;
       else if (ny < m.y) ny = ty * 32;
@@ -4616,6 +4747,9 @@ setInterval(() => {
     });
   }
 }, TICK_MS);
+
+// Phase 5-I: 이웃 zone에 ghost 스냅샷 주기 송신 (10Hz — 경계 전투 표적 위치 공유)
+setInterval(() => { try { syncGhostsToNeighbors(); } catch (e) {} }, 100);
 
 // === 핸드오프 fire (HTTP POST + 토큰 발급) ===
 async function fireHandoff(player, targetZoneId, newX, newY) {
