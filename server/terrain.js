@@ -85,8 +85,11 @@ function _getZoneTerrain(zoneId) {
   if (hc[zoneId]) {
     if (zoneId === 'hanbando') {
       // Phase 5-G: cleanZone — 강·호수만 두고 숲·산·광맥 모두 제거
+      // Phase 5-H: hardcoded 산맥(ridges)·고개(passes)는 적용
       data.rivers   = hc[zoneId].rivers || [];
       data.lakes    = hc[zoneId].lakes  || [];
+      data.ridges   = hc[zoneId].ridges || [];
+      data.passes   = hc[zoneId].passes || [];
       data.forests   = [];
       data.mountains = [];
       data.ores      = [];
@@ -96,6 +99,12 @@ function _getZoneTerrain(zoneId) {
       }
       if (hc[zoneId].lakes && hc[zoneId].lakes.length > 0) {
         data.lakes = [...(data.lakes || []), ...hc[zoneId].lakes];
+      }
+      if (hc[zoneId].ridges && hc[zoneId].ridges.length > 0) {
+        data.ridges = [...(data.ridges || []), ...hc[zoneId].ridges];
+      }
+      if (hc[zoneId].passes && hc[zoneId].passes.length > 0) {
+        data.passes = [...(data.passes || []), ...hc[zoneId].passes];
       }
     }
   }
@@ -185,6 +194,26 @@ function isWaterCellLocal(zoneId, localX, localY) {
   return false;
 }
 
+// === Phase 5-H: 산맥(바위) 셀 판정 — 통행 불가 ===
+// ridge는 강과 동일한 path+width 형식. 우선순위: 고개(pass) > 물 > 바위.
+//   - pass radius 안 = 통행 가능 (고개)
+//   - 물과 겹치면 물 (강이 협곡으로 관통 — 셀은 water로 렌더·판정)
+function isRockCellLocal(zoneId, localX, localY) {
+  const t = ZONE_TERRAIN[zoneId];
+  if (!t || !t.ridges || t.ridges.length === 0) return false;
+  let inRidge = false;
+  for (const ridge of t.ridges) {
+    if (_isPointInRiver(localX, localY, ridge)) { inRidge = true; break; }
+  }
+  if (!inRidge) return false;
+  for (const q of t.passes || []) {
+    const dx = localX - q.pos[0], dy = localY - q.pos[1];
+    if (dx * dx + dy * dy < q.radius * q.radius) return false;
+  }
+  if (isWaterCellLocal(zoneId, localX, localY)) return false;
+  return true;
+}
+
 function getTerrainWaterTilesForChunk(zoneId, cx, cy, chunkSize) {
   const tiles = new Set();
   const t = ZONE_TERRAIN[zoneId];
@@ -243,6 +272,7 @@ function isOreClusterAt(zoneId, x, y) {
 // 우선순위: water > ore > mountain > forest > plain
 function getTileType(zoneId, x, y) {
   if (isWaterCellLocal(zoneId, x, y)) return 'water';
+  if (isRockCellLocal(zoneId, x, y)) return 'rock';
   if (isOreClusterAt(zoneId, x, y)) return 'ore';
   if (getStoneMultiplier(zoneId, x, y) > 1.5) return 'mountain';
   if (getForestMultiplier(zoneId, x, y) > 1.5) return 'forest';
@@ -257,6 +287,7 @@ if (typeof module !== 'undefined' && module.exports) {
     setHardcoded,
     _getHardcoded,
     isWaterCellLocal,
+    isRockCellLocal,
     getTerrainWaterTilesForChunk,
     getForestMultiplier,
     getStoneMultiplier,
@@ -270,6 +301,7 @@ if (typeof window !== 'undefined') {
     setZonesMeta,
     setHardcoded,
     isWaterCellLocal,
+    isRockCellLocal,
     getTerrainWaterTilesForChunk,
     getForestMultiplier,
     getStoneMultiplier,

@@ -750,12 +750,26 @@ function normalizeToTree(rivers, tree, zoneSize) {
     deloop(r.path);
   }
 }
-console.log('지형 빌드 v3 (트리):');
+// Phase 5-J: OPEN_BORDERS=1 — 경계 은폐 모드 (A 방식).
+//   경계 정렬 장벽(경계 강 + 경계 능선)을 제거해 경계를 평범한 땅으로 → 유저가 경계 인지 못함.
+//   경계 횡단 상호작용은 핸드오프 + cross-zone 전투(Phase 5-I)가 담당.
+const OPEN_BORDERS = process.env.OPEN_BORDERS === '1';
+const BOUNDARY_RIDGES = ['동해산맥', '백서산괴']; // 경계 정렬 능선
+console.log(`지형 빌드 v3 (트리)${OPEN_BORDERS ? ' [OPEN_BORDERS=경계 평지화]' : ''}:`);
 const d = JSON.parse(fs.readFileSync(SRC_JSON, 'utf8'));
 for (const z of Object.keys(d)) {
   d[z].rivers = (d[z].rivers || []).filter(r => !r._mirroredFrom).map(r => { const c = { ...r }; delete c._smoothed; return c; });
   d[z].lakes  = (d[z].lakes  || []).filter(l => !l._mirroredFrom && !l._extra);
   delete d[z].ridges; delete d[z].passes; delete d[z].forests;
+}
+if (OPEN_BORDERS) {
+  // 경계 강 제거 (사행 전 직선 기준). 트리는 이후 재추론되어 내부 수계로 재편.
+  for (const [z, cfg] of Object.entries(ZONES)) {
+    if (!d[z]) continue;
+    const before = d[z].rivers.length;
+    d[z].rivers = d[z].rivers.filter(r => !isBoundaryRiver(r, cfg.size));
+    if (before !== d[z].rivers.length) console.log(`  [${z}] 경계 강 제거: ${before - d[z].rivers.length}개`);
+  }
 }
 for (const [z, cfg] of Object.entries(ZONES)) {
   if (!d[z]) continue;
@@ -805,8 +819,10 @@ for (const [z, cfg] of Object.entries(ZONES)) {
 }
 for (const mod of DATA_MODULES) {
   const z = mod.zone;
-  const spineDef = (mod.ridges || []).find(r => r.name === '백두대간');
-  const otherDefs = (mod.ridges || []).filter(r => r !== spineDef);
+  let ridgeDefs = (mod.ridges || []);
+  if (OPEN_BORDERS) ridgeDefs = ridgeDefs.filter(r => !BOUNDARY_RIDGES.includes(r.name)); // 경계 능선 제거
+  const spineDef = ridgeDefs.find(r => r.name === '백두대간');
+  const otherDefs = ridgeDefs.filter(r => r !== spineDef);
   const processed = []; let spineProc = null;
   if (spineDef) { spineProc = processRidge(spineDef, d[z].rivers); processed.push(spineProc); }
   for (const def of otherDefs) {

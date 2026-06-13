@@ -74,12 +74,16 @@ function _getZoneTerrain(zoneId) {
       // Phase 5-G: cleanZone — 강·호수만, 숲·산·광맥 제거
       data.rivers    = hc.rivers || [];
       data.lakes     = hc.lakes  || [];
+      data.ridges    = hc.ridges || []; // Phase 5-H: 산맥
+      data.passes    = hc.passes || [];
       data.forests   = [];
       data.mountains = [];
       data.ores      = [];
     } else {
       if (hc.rivers && hc.rivers.length) data.rivers = [...(data.rivers || []), ...hc.rivers];
       if (hc.lakes  && hc.lakes.length)  data.lakes  = [...(data.lakes  || []), ...hc.lakes];
+      if (hc.ridges && hc.ridges.length) data.ridges = [...(data.ridges || []), ...hc.ridges];
+      if (hc.passes && hc.passes.length) data.passes = [...(data.passes || []), ...hc.passes];
     }
   }
   _generated.set(zoneId, data);
@@ -224,8 +228,26 @@ function isOreClusterAt(zoneId, x, y) {
 
 // === 미니맵용 — cell 종류 결정 ===
 // 우선순위: water > ore > mountain > forest > plain
+// === Phase 5-H: 산맥(바위) 셀 판정 — 통행 불가. 고개(pass) > 물 > 바위 우선. ===
+function isRockCellLocal(zoneId, localX, localY) {
+  const t = ZONE_TERRAIN[zoneId];
+  if (!t || !t.ridges || t.ridges.length === 0) return false;
+  let inRidge = false;
+  for (const ridge of t.ridges) {
+    if (_isPointInRiver(localX, localY, ridge)) { inRidge = true; break; }
+  }
+  if (!inRidge) return false;
+  for (const q of t.passes || []) {
+    const dx = localX - q.pos[0], dy = localY - q.pos[1];
+    if (dx * dx + dy * dy < q.radius * q.radius) return false;
+  }
+  if (isWaterCellLocal(zoneId, localX, localY)) return false;
+  return true;
+}
+
 function getTileType(zoneId, x, y) {
   if (isWaterCellLocal(zoneId, x, y)) return 'water';
+  if (isRockCellLocal(zoneId, x, y)) return 'rock';
   if (isOreClusterAt(zoneId, x, y)) return 'ore';
   if (getStoneMultiplier(zoneId, x, y) > 1.5) return 'mountain';
   if (getForestMultiplier(zoneId, x, y) > 1.5) return 'forest';
@@ -239,6 +261,7 @@ if (typeof module !== 'undefined' && module.exports) {
     setZonesMeta,
     setHardcoded,
     isWaterCellLocal,
+    isRockCellLocal,
     getTerrainWaterTilesForChunk,
     getForestMultiplier,
     getStoneMultiplier,
@@ -252,6 +275,7 @@ if (typeof window !== 'undefined') {
     setZonesMeta,
     setHardcoded,
     isWaterCellLocal,
+    isRockCellLocal,
     getTerrainWaterTilesForChunk,
     getForestMultiplier,
     getStoneMultiplier,

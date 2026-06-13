@@ -256,8 +256,9 @@ function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet) 
     const r3 = seedRand(zoneId, cx, cy, n * 3 + 2);
     const x = cx * chunkSize + 16 + r1 * (chunkSize - 32);
     const y = cy * chunkSize + 16 + r2 * (chunkSize - 32);
-    // water cell에는 spawn 차단
+    // water/rock cell에는 spawn 차단 (Phase 5-H: 산맥 바위)
     if (terrain.isWaterCellLocal(zoneId, x, y)) continue;
+    if (typeof terrain.isRockCellLocal === 'function' && terrain.isRockCellLocal(zoneId, x, y)) continue;
     // 자원 type — terrain 영향:
     //   ore cluster 안 → stone/iron 우세
     //   forest 영역 → tree 우세

@@ -262,6 +262,7 @@ const buildings = new Map();    // id -> { id, dbId, type, ownerId, ownerName, x
 const mobs = new Map();         // mid -> { mid, type, x, y, vx, vy, hp, maxHp, aggroTarget, lastAttackAt, wanderUntil }
 // Phase 5-I: 경계 전투 — 이웃 zone 플레이어 ghost(절대좌표) + 화살 발사체
 const ghostPlayers = new Map(); // playerId -> { ax, ay, vx, vy, name, srcZone, recvAt } (절대좌표, 이웃 zone이 동기화)
+const ghostBuildings = new Map(); // key "srcZone:id" -> { acx, acy, side, type, floor } (절대 cell, 경계 너머 벽 콜라이더)
 const arrows = new Map();       // aid -> { aid, x, y, vx, vy, ownerPid, ownerId, dmg, ttl } (자기 zone 권위, local 좌표)
 let nextArrowId = 1;
 const ARROW_SPEED = 600;        // px/s (sim과 동일)
@@ -1586,6 +1587,12 @@ const server = http.createServer((req, res) => {
         const data = JSON.parse(body);
         const now = Date.now();
         for (const s of data.players || []) ghostPlayers.set(s.playerId, { ax: s.ax, ay: s.ay, vx: s.vx || 0, vy: s.vy || 0, name: s.name, srcZone: data.srcZone, recvAt: now });
+        // 건물 미러: 이 srcZone이 보낸 건물로 교체 (제거 반영 위해 prefix 클리어 후 재설정)
+        if (Array.isArray(data.buildings)) {
+          const prefix = data.srcZone + ':';
+          for (const k of ghostBuildings.keys()) if (k.startsWith(prefix)) ghostBuildings.delete(k);
+          for (const b of data.buildings) ghostBuildings.set(prefix + b.id, { acx: b.acx, acy: b.acy, side: b.side, type: b.type, floor: b.floor, recvAt: now });
+        }
       } catch (e) {}
       res.writeHead(200, { 'Content-Type': 'application/json' }); res.end('{"ok":true}');
     });
@@ -3557,9 +3564,28 @@ function syncGhostsToNeighbors() {
       (byZone[tz.id] = byZone[tz.id] || []).push({ playerId: p.playerId, name: p.name, ax: ox + p.x, ay: oy + p.y, vx: p.vx, vy: p.vy });
     }
   }
-  for (const [zid, snaps] of Object.entries(byZone)) {
+  // 경계 근처 벽/문/펜스를 이웃 zone에 (콜라이더 미러). 절대 cell + side.
+  const bByZone = {};
+  for (const b of buildings.values()) {
+    if (b.type !== 'wall' && b.type !== 'door' && b.type !== 'fence') continue;
+    if (b.data?.damaged) continue;
+    const near = [];
+    if (b.x < GHOST_REACH) near.push(findZoneAt(ox - 1, oy + b.y));
+    if (b.x > zw - GHOST_REACH) near.push(findZoneAt(ox + zw + 1, oy + b.y));
+    if (b.y < GHOST_REACH) near.push(findZoneAt(ox + b.x, oy - 1));
+    if (b.y > zh - GHOST_REACH) near.push(findZoneAt(ox + b.x, oy + zh + 1));
+    for (const tz of near) {
+      if (!tz || tz.id === ZONE_ID || tz.isOcean) continue;
+      (bByZone[tz.id] = bByZone[tz.id] || []).push({
+        id: b.id, type: b.type, side: b.data?.side || null, floor: b.floor || 0,
+        acx: Math.floor((ox + b.x) / 32), acy: Math.floor((oy + b.y) / 32),
+      });
+    }
+  }
+  const allTargets = new Set([...Object.keys(byZone), ...Object.keys(bByZone)]);
+  for (const zid of allTargets) {
     const tz = ZONES[zid];
-    postJSON(tz.host, tz.port, '/ghost_sync', { srcZone: ZONE_ID, players: snaps }).catch(() => {});
+    postJSON(tz.host, tz.port, '/ghost_sync', { srcZone: ZONE_ID, players: byZone[zid] || [], buildings: bByZone[zid] || [] }).catch(() => {});
   }
 }
 
@@ -3930,6 +3956,16 @@ function findEdgeWall(cx, cy, side, floor) {
     const bcy = Math.floor(b.y / BUILDING_SIZE);
     if (bcx === cx && bcy === cy && bSide === side) return true;
   }
+  // Phase 5-K: 경계 너머 ghost 벽 (이웃 zone 건물 미러) — local cell → 절대 cell 비교
+  if (ghostBuildings.size) {
+    const acx = cx + Math.floor(ZONE.worldOffsetX / BUILDING_SIZE);
+    const acy = cy + Math.floor(ZONE.worldOffsetY / BUILDING_SIZE);
+    for (const g of ghostBuildings.values()) {
+      if ((g.floor || 0) !== floor) continue;
+      if (g.type === 'fence') continue; // fence는 findCellFence에서
+      if (g.acx === acx && g.acy === acy && g.side === side) return true;
+    }
+  }
   return false;
 }
 // 14.50: fence는 cell 위치 (edge 아님). cell 자체 진입 차단.
@@ -4150,7 +4186,10 @@ setInterval(() => {
 
   // Phase 5-I: 화살 물리/히트 + 만료된 ghost 정리
   stepArrows(dt);
-  { const now2 = Date.now(); for (const [gid, g] of ghostPlayers) if (now2 - g.recvAt > GHOST_TTL_MS) ghostPlayers.delete(gid); }
+  { const now2 = Date.now();
+    for (const [gid, g] of ghostPlayers) if (now2 - g.recvAt > GHOST_TTL_MS) ghostPlayers.delete(gid);
+    for (const [bid, g] of ghostBuildings) if (now2 - g.recvAt > GHOST_TTL_MS) ghostBuildings.delete(bid);
+  }
 
   // 이동 + 경계 처리 + 벽 충돌
   for (const p of players.values()) {
