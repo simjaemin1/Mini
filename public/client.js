@@ -2,7 +2,7 @@
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
 // === CLIENT BUILD: Phase 5-G (한반도 강·호수 hardcoded + observer storm fix) ===
-console.log('%c[durango-mini] client build = Phase 5-K2 (경계 히스테리시스 — 핑퐁 제거)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+console.log('%c[durango-mini] client build = Phase 5-K2 (히스테리시스 + 핸드오프 끊김 측정)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 // Phase 4d-16-c: facility 종류별 emoji
 const FACILITY_EMOJI = {
@@ -1603,6 +1603,13 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     if (!c) return;
 
     if (msg.type === 'welcome') {
+      // 끊김 측정: promote 보낸 뒤 welcome 도착까지 걸린 시간 + welcome 처리 시간
+      const _wStart = performance.now();
+      if (c._promoteSentAt) {
+        console.log('[handoff] ⏱ promote→welcome gap =', (_wStart - c._promoteSentAt).toFixed(0), 'ms',
+          '| entities res=' + (msg.resources?.length||0), 'bld=' + (msg.buildings?.length||0), 'mob=' + (msg.mobs?.length||0));
+        c._promoteSentAt = 0;
+      }
       c.meta = msg.zone;
       // Phase 5-G: 서버에서 받은 hardcoded terrain (한반도 새 강·호수) — 미니맵 표시용
       const _zid = c.zoneId || (msg.zone && (msg.zone.id || msg.zone.zoneId)) || c.id;
@@ -1673,6 +1680,10 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
         }
         lastTickWithMyPidAt = performance.now();
         updateHud();
+      }
+      if (typeof _wStart === 'number') {
+        const _proc = performance.now() - _wStart;
+        if (_proc > 5) console.log('[handoff] ⏱ welcome 처리 =', _proc.toFixed(0), 'ms');
       }
     } else if (msg.type === 'tick') {
       const now = performance.now();
@@ -1939,6 +1950,7 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
       const existingTarget = conns.get(target);
       if (existingTarget && existingTarget.role === 'observer' && existingTarget.ws.readyState === 1) {
         console.log('[handoff] ✨ promote existing observer ws');
+        existingTarget._promoteSentAt = performance.now(); // 끊김 측정용
         existingTarget.ws.send(JSON.stringify({ type: 'promote_to_primary', token }));
         existingTarget.role = 'primary';
         // server가 welcome 보낼 거 — 기존 handleMessage('welcome')에서 처리
