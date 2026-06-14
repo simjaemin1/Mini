@@ -1705,11 +1705,17 @@ const server = http.createServer((req, res) => {
           if (p) {
             players.delete(entry.pid);
             broadcast({ type: 'player_left', pid: entry.pid });
-            // ws.close()는 0.5초 지연 — 클라가 새 zone welcome 받기까지 broadcast 계속
-            // 그동안 자기 player는 이미 삭제됐으니 input 와도 무시됨
-            const wsToClose = p.ws;
-            setTimeout(() => { try { wsToClose.close(); } catch (e) {} }, 500);
-            console.log(`[${ZONE_ID}] ✓ ACK token=${data.token.slice(0,8)} — ${p.name} 정상 인계됨`);
+            // Phase 5-K3: ws를 닫지 않고 observer로 전환 — 클라가 이 zone을 fresh observer로
+            // 재구독하면 observer welcome이 건물 전체를 다시 보내 끊김 발생. 연결을 유지하면
+            // 재구독·full welcome이 없어지고, 이 observer ws는 promote 핸들러를 가지므로
+            // 되돌아올 때도 즉시 promote = 끊김 없는 재크로싱.
+            if (p.ws && p.ws.readyState === 1) {
+              observers.set(p.ws, { viewerX: p.x, viewerY: p.y, lastSeen: Date.now() });
+              attachObserverHandlers(p.ws);
+              console.log(`[${ZONE_ID}] ✓ ACK token=${data.token.slice(0,8)} — ${p.name} 인계됨 → observer 전환(연결 유지)`);
+            } else {
+              console.log(`[${ZONE_ID}] ✓ ACK token=${data.token.slice(0,8)} — ${p.name} 인계됨 (ws 이미 닫힘)`);
+            }
           }
         }
         res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -1787,117 +1793,7 @@ wss.on('connection', async (ws, req) => {
         .filter(p => Math.hypot(p.x - obs.viewerX, p.y - obs.viewerY) < AOI_RADIUS)
         .map(p => ({ pid: p.pid, x: p.x, y: p.y, name: p.name, color: p.color })),
     });
-    function handleObsIncoming(raw) {
-      let msg; try { msg = JSON.parse(raw.toString()); } catch (e) { return; }
-      if (msg.type === 'ping') {
-        const d = observers.get(ws); if (d) d.lastSeen = Date.now();
-        send(ws, { type: 'pong', t: msg.t });
-      }
-      else if (msg.type === 'viewport_update') {
-        const data = observers.get(ws);
-        if (!data) return;
-        data.viewerX = Math.max(0, Math.min(ZONE.zoneWidth, +msg.x || 0));
-        data.viewerY = Math.max(0, Math.min(ZONE.zoneHeight, +msg.y || 0));
-        data.lastSeen = Date.now();
-      }
-      else if (msg.type === 'promote_to_primary' && msg.token && pendingHandoffs.has(msg.token)) {
-        // === Observer→Primary in-place 승격 ===
-        // 새 ws 안 만들고 기존 observer ws 재사용 → 끊김 거의 0
-        const pending = pendingHandoffs.get(msg.token);
-        pendingHandoffs.delete(msg.token);
-
-        // 중복 player 정리 (한 ws에 두 명 막기)
-        for (const [oldPid, p] of players) {
-          if (p.playerId === pending.player_id && p.ws !== ws) {
-            console.log(`[${ZONE_ID}] promote: 기존 ${oldPid} 정리`);
-            send(p.ws, { type: 'kicked', reason: 'promoted_elsewhere' });
-            players.delete(oldPid);
-            broadcast({ type: 'player_left', pid: oldPid });
-            setTimeout(() => { try { p.ws.close(); } catch (e) {} }, 200);
-          }
-        }
-
-        observers.delete(ws);
-        const pid = `p${nextPid++}`;
-        const player = {
-          pid, playerId: pending.player_id, ws,
-          name: pending.name, color: pending.color,
-          x: pending.x, y: pending.y,
-          vx: pending.vx || 0, vy: pending.vy || 0,
-          inventory: pending.inventory || { wood: 0, stone: 0 },
-          tools: pending.tools || {},
-          equipped: pending.equipped || null,
-          hp: PLAYER_MAX_HP, maxHp: PLAYER_MAX_HP,
-          hunger: typeof pending.hunger === 'number' ? pending.hunger : HUNGER_MAX,
-          thirst: typeof pending.thirst === 'number' ? pending.thirst : THIRST_MAX,
-          vp: typeof pending.vp === 'number' ? pending.vp : 0,
-          tribeId: pending.tribeId || null, tribeName: pending.tribeName || null,
-          pvpEnabled: !!pending.pvpEnabled,
-          floor: pending.floor || 0,
-          // 14.42-a: home carryover
-          _homeZone: pending.home_zone || null,
-          _homeX: typeof pending.home_x === 'number' ? pending.home_x : null,
-          _homeY: typeof pending.home_y === 'number' ? pending.home_y : null,
-          lastAttackAt: 0, lastDamagedAt: 0,
-          handingOff: false, lastSeen: Date.now(), _arrivedAt: Date.now(),
-        };
-        players.set(pid, player);
-
-        // 활성 청크 갱신 — promote 직후 청크 자원 보장
-        updateActiveChunks();
-
-        // source zone에 ACK
-        if (pending.source_zone && ZONES[pending.source_zone]) {
-          const src = ZONES[pending.source_zone];
-          postJSON(src.host, src.port, '/handoff_ack', { token: msg.token })
-            .catch(e => console.warn(`[${ZONE_ID}] promote ACK 실패:`, e.message));
-        }
-
-        // welcome 전송 (클라가 자기 player 알게)
-        send(ws, {
-          type: 'welcome',
-          // Phase 5-K2: promote는 observer ws 재사용 — 이 연결은 이미 observer welcome으로
-          // resources/claims/buildings를 받았고 실시간 갱신 중. 다시 보내면 건물 수천 개를
-          // 매 핸드오프마다 직렬화·전송·파싱해 0.5초 끊김 발생. promoted=true로 알리고 생략.
-          promoted: true,
-          pid,
-          zone: zonePublicMeta(),
-          hardcodedTerrain: getHardcodedTerrainForZone(),
-          // resources/claims/buildings 생략 — 클라가 observer 상태 유지 (promoted 분기)
-          mobs: Array.from(mobs.values()).map(m => ({ mid: m.mid, type: m.type, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, tameOwner: m.tameOwner || null, tameOwnerName: m.tameOwnerName || null })),
-          inventory: player.inventory,
-          toolItems: player.toolItems || [], hotkey1: player.hotkey1 || null, equipped: player.equipped || null,
-    tools: player.tools, // 옛 호환 (사용 X)
-          recipes: RECIPES,
-          itemRecipes: ITEM_RECIPES,
-          buildingRecipes: BUILDING_RECIPES,
-          cookRecipes: COOK_RECIPES,
-          foodEffects: FOOD_EFFECTS,
-          self: { x: player.x, y: player.y, hp: player.hp, maxHp: player.maxHp,
-                  hunger: Math.round(player.hunger), thirst: Math.round(player.thirst),
-                  vp: Math.round(player.vp ?? 0),
-                  tribeId: player.tribeId || null, tribeName: player.tribeName || null,
-                  floor: player.floor || 0,
-                  homeZone: player._homeZone || null,
-                  homeX: player._homeX, homeY: player._homeY },
-          worldClock: {
-            epoch: WORLD.worldEpoch, dayLengthMs: WORLD.dayLengthMs,
-            dayPhaseRatio: WORLD.dayPhaseRatio, serverNow: Date.now(),
-          },
-        });
-        sendCorpsesInit(ws);
-
-        // 핸들러 교체 — observer → player
-        attachPlayerHandlers(ws, player);
-        console.log(`[${ZONE_ID}] ✨ promote observer→primary ${player.name} token=${msg.token.slice(0,8)} v=(${player.vx},${player.vy})`);
-      }
-    }
-    ws.on('message', (raw) => {
-      if (LATENCY_MS > 0) setTimeout(() => handleObsIncoming(raw), LATENCY_MS);
-      else handleObsIncoming(raw);
-    });
-    ws.on('close', () => observers.delete(ws));
-    ws.on('error', () => observers.delete(ws));
+    attachObserverHandlers(ws);
     return;
   }
 
@@ -2449,6 +2345,109 @@ function doCook(player, recipeName) {
   send(player.ws, { type: 'inventory', inventory: player.inventory });
   send(player.ws, { type: 'notice', text: `${recipe.label} 완성` });
   savePlayer(player);
+}
+
+// Phase 5-K3: observer 메시지 핸들러 — 일반 observer 연결 + 핸드오프 후 primary→observer 전환 공용.
+// (옛 인라인 클로저를 모듈 스코프로 승격. ws를 인자로 받음.)
+function handleObserverMessage(ws, raw) {
+  let msg; try { msg = JSON.parse(raw.toString()); } catch (e) { return; }
+  if (msg.type === 'ping') {
+    const d = observers.get(ws); if (d) d.lastSeen = Date.now();
+    send(ws, { type: 'pong', t: msg.t });
+  }
+  else if (msg.type === 'viewport_update') {
+    const data = observers.get(ws);
+    if (!data) return;
+    data.viewerX = Math.max(0, Math.min(ZONE.zoneWidth, +msg.x || 0));
+    data.viewerY = Math.max(0, Math.min(ZONE.zoneHeight, +msg.y || 0));
+    data.lastSeen = Date.now();
+  }
+  else if (msg.type === 'promote_to_primary' && msg.token && pendingHandoffs.has(msg.token)) {
+    // === Observer→Primary in-place 승격 ===
+    const pending = pendingHandoffs.get(msg.token);
+    pendingHandoffs.delete(msg.token);
+    // 중복 player 정리 (한 ws에 두 명 막기)
+    for (const [oldPid, p] of players) {
+      if (p.playerId === pending.player_id && p.ws !== ws) {
+        console.log(`[${ZONE_ID}] promote: 기존 ${oldPid} 정리`);
+        send(p.ws, { type: 'kicked', reason: 'promoted_elsewhere' });
+        players.delete(oldPid);
+        broadcast({ type: 'player_left', pid: oldPid });
+        setTimeout(() => { try { p.ws.close(); } catch (e) {} }, 200);
+      }
+    }
+    observers.delete(ws);
+    const pid = `p${nextPid++}`;
+    const player = {
+      pid, playerId: pending.player_id, ws,
+      name: pending.name, color: pending.color,
+      x: pending.x, y: pending.y,
+      vx: pending.vx || 0, vy: pending.vy || 0,
+      inventory: pending.inventory || { wood: 0, stone: 0 },
+      tools: pending.tools || {},
+      equipped: pending.equipped || null,
+      hp: PLAYER_MAX_HP, maxHp: PLAYER_MAX_HP,
+      hunger: typeof pending.hunger === 'number' ? pending.hunger : HUNGER_MAX,
+      thirst: typeof pending.thirst === 'number' ? pending.thirst : THIRST_MAX,
+      vp: typeof pending.vp === 'number' ? pending.vp : 0,
+      tribeId: pending.tribeId || null, tribeName: pending.tribeName || null,
+      pvpEnabled: !!pending.pvpEnabled,
+      floor: pending.floor || 0,
+      _homeZone: pending.home_zone || null,
+      _homeX: typeof pending.home_x === 'number' ? pending.home_x : null,
+      _homeY: typeof pending.home_y === 'number' ? pending.home_y : null,
+      lastAttackAt: 0, lastDamagedAt: 0,
+      handingOff: false, lastSeen: Date.now(), _arrivedAt: Date.now(),
+    };
+    players.set(pid, player);
+    updateActiveChunks();
+    if (pending.source_zone && ZONES[pending.source_zone]) {
+      const src = ZONES[pending.source_zone];
+      postJSON(src.host, src.port, '/handoff_ack', { token: msg.token })
+        .catch(e => console.warn(`[${ZONE_ID}] promote ACK 실패:`, e.message));
+    }
+    send(ws, {
+      type: 'welcome',
+      // promote는 observer ws 재사용 — resources/claims/buildings는 이미 보유·실시간 갱신 중이라 생략.
+      promoted: true,
+      pid,
+      zone: zonePublicMeta(),
+      hardcodedTerrain: getHardcodedTerrainForZone(),
+      mobs: Array.from(mobs.values()).map(m => ({ mid: m.mid, type: m.type, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, tameOwner: m.tameOwner || null, tameOwnerName: m.tameOwnerName || null })),
+      inventory: player.inventory,
+      toolItems: player.toolItems || [], hotkey1: player.hotkey1 || null, equipped: player.equipped || null,
+      tools: player.tools,
+      recipes: RECIPES,
+      itemRecipes: ITEM_RECIPES,
+      buildingRecipes: BUILDING_RECIPES,
+      cookRecipes: COOK_RECIPES,
+      foodEffects: FOOD_EFFECTS,
+      self: { x: player.x, y: player.y, hp: player.hp, maxHp: player.maxHp,
+              hunger: Math.round(player.hunger), thirst: Math.round(player.thirst),
+              vp: Math.round(player.vp ?? 0),
+              tribeId: player.tribeId || null, tribeName: player.tribeName || null,
+              floor: player.floor || 0,
+              homeZone: player._homeZone || null,
+              homeX: player._homeX, homeY: player._homeY },
+      worldClock: {
+        epoch: WORLD.worldEpoch, dayLengthMs: WORLD.dayLengthMs,
+        dayPhaseRatio: WORLD.dayPhaseRatio, serverNow: Date.now(),
+      },
+    });
+    sendCorpsesInit(ws);
+    attachPlayerHandlers(ws, player);
+    console.log(`[${ZONE_ID}] ✨ promote observer→primary ${player.name} token=${msg.token.slice(0,8)} v=(${player.vx},${player.vy})`);
+  }
+}
+function attachObserverHandlers(ws) {
+  ws.removeAllListeners('message');
+  ws.removeAllListeners('close');
+  ws.on('message', (raw) => {
+    if (LATENCY_MS > 0) setTimeout(() => handleObserverMessage(ws, raw), LATENCY_MS);
+    else handleObserverMessage(ws, raw);
+  });
+  ws.on('close', () => observers.delete(ws));
+  ws.on('error', () => observers.delete(ws));
 }
 
 function attachPlayerHandlers(ws, player) {
