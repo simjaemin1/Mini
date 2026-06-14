@@ -2,7 +2,7 @@
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
 // === CLIENT BUILD: Phase 5-G (한반도 강·호수 hardcoded + observer storm fix) ===
-console.log('%c[durango-mini] client build = Phase 5-K2 (히스테리시스 + 핸드오프 끊김 측정)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+console.log('%c[durango-mini] client build = Phase 5-K3 (promote welcome 경량화 — 끊김 제거)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 // Phase 4d-16-c: facility 종류별 emoji
 const FACILITY_EMOJI = {
@@ -1628,13 +1628,20 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
       } else if (msg.hardcodedTerrain) {
         console.warn('[terrain] hardcoded received but skipped — zid=' + _zid + ' Terrain=' + !!window.Terrain + ' setHardcoded=' + !!(window.Terrain && window.Terrain.setHardcoded));
       }
-      c.resources.clear(); c.claims.clear(); c.buildings.clear(); c.mobs.clear();
-      if (c.groundItems) c.groundItems.clear();
-      for (const r of (msg.resources || [])) c.resources.set(r.id, r);
-      for (const cl of (msg.claims || [])) c.claims.set(cl.id, cl);
-      for (const b of (msg.buildings || [])) c.buildings.set(b.id, b);
-      for (const m of (msg.mobs || [])) c.mobs.set(m.mid, m);
-      for (const gi of (msg.groundItems || [])) c.groundItems.set(gi.id, gi);
+      if (msg.promoted) {
+        // Phase 5-K2: observer ws 재사용 promote — resources/claims/buildings는 이 연결이
+        // observer로 이미 받아 실시간 갱신 중이므로 유지(clear 안 함). mobs만 서버가 다시 줌.
+        c.mobs.clear();
+        for (const m of (msg.mobs || [])) c.mobs.set(m.mid, m);
+      } else {
+        c.resources.clear(); c.claims.clear(); c.buildings.clear(); c.mobs.clear();
+        if (c.groundItems) c.groundItems.clear();
+        for (const r of (msg.resources || [])) c.resources.set(r.id, r);
+        for (const cl of (msg.claims || [])) c.claims.set(cl.id, cl);
+        for (const b of (msg.buildings || [])) c.buildings.set(b.id, b);
+        for (const m of (msg.mobs || [])) c.mobs.set(m.mid, m);
+        for (const gi of (msg.groundItems || [])) c.groundItems.set(gi.id, gi);
+      }
       // 월드 시계 동기화 — 서버 now와 클라 now 차이를 보정해서 동일 phase 계산
       if (msg.worldClock) {
         worldClock = {

@@ -1856,12 +1856,14 @@ wss.on('connection', async (ws, req) => {
         // welcome 전송 (클라가 자기 player 알게)
         send(ws, {
           type: 'welcome',
+          // Phase 5-K2: promote는 observer ws 재사용 — 이 연결은 이미 observer welcome으로
+          // resources/claims/buildings를 받았고 실시간 갱신 중. 다시 보내면 건물 수천 개를
+          // 매 핸드오프마다 직렬화·전송·파싱해 0.5초 끊김 발생. promoted=true로 알리고 생략.
+          promoted: true,
           pid,
           zone: zonePublicMeta(),
           hardcodedTerrain: getHardcodedTerrainForZone(),
-          resources: Array.from(resources.values()),
-          claims: Array.from(claims.values()),
-          buildings: Array.from(buildings.values()),
+          // resources/claims/buildings 생략 — 클라가 observer 상태 유지 (promoted 분기)
           mobs: Array.from(mobs.values()).map(m => ({ mid: m.mid, type: m.type, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, tameOwner: m.tameOwner || null, tameOwnerName: m.tameOwnerName || null })),
           inventory: player.inventory,
           toolItems: player.toolItems || [], hotkey1: player.hotkey1 || null, equipped: player.equipped || null,
