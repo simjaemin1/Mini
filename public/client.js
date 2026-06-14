@@ -2,7 +2,7 @@
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
 // === CLIENT BUILD: Phase 5-G (한반도 강·호수 hardcoded + observer storm fix) ===
-console.log('%c[durango-mini] client build = Phase 5-G (한반도 강·호수 + observer fix)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+console.log('%c[durango-mini] client build = Phase 5-K (핸드오프 핑퐁/경계 렉 fix)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 // Phase 4d-16-c: facility 종류별 emoji
 const FACILITY_EMOJI = {
@@ -239,6 +239,7 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
   // zonesMeta 받으면 모든 zone water tiles 미리 계산. zonesMeta 갱신 시 다시 호출.
   const waterTilesByZone = {}; // { zoneId: Set("tx_ty") }
   const _waterCellCache = new Map(); // "zid_tx_ty" → bool (isWaterAtAbs perf 캐시)
+  const _terrainAppliedZones = new Set(); // Phase 5-K: hardcoded terrain 이미 적용한 zone — welcome 재적용/캐시클리어 스킵
   // Phase 5-G+: 전체 hardcoded terrain 선로딩 — welcome은 접속 zone 것만 줘서
   // bigMap에서 미접속 이웃 zone의 강이 procedural로 그려져 경계에서 끊겨 보이는 문제 해결
   (async () => {
@@ -1606,11 +1607,17 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
       // Phase 5-G: 서버에서 받은 hardcoded terrain (한반도 새 강·호수) — 미니맵 표시용
       const _zid = c.zoneId || (msg.zone && (msg.zone.id || msg.zone.zoneId)) || c.id;
       if (msg.hardcodedTerrain && window.Terrain && window.Terrain.setHardcoded && _zid) {
-        window.Terrain.setHardcoded(_zid, msg.hardcodedTerrain);
-        _waterCellCache.clear(); // terrain 변경 — 셀 단위 캐시 무효화
-        _rockCellCache.clear();
-        if (typeof window.__invalidateMinimapCache === 'function') window.__invalidateMinimapCache();
-        console.log('[terrain] hardcoded applied:', _zid, 'rivers=' + msg.hardcodedTerrain.rivers.length, 'lakes=' + msg.hardcodedTerrain.lakes.length);
+        // Phase 5-K: terrain은 zone별 정적이고 시작 시 전체 선로딩됨.
+        // 매 welcome(=매 핸드오프)마다 캐시를 비우면 경계 크로싱 때 fps가 뚝 떨어진다(강 거리 셀마다 재계산).
+        // 이미 적용한 zone이면 재적용·캐시 클리어를 스킵 — 경계 크로싱 렉 제거.
+        if (!_terrainAppliedZones.has(_zid)) {
+          window.Terrain.setHardcoded(_zid, msg.hardcodedTerrain);
+          _waterCellCache.clear(); // 최초 1회만 — 셀 단위 캐시 무효화
+          _rockCellCache.clear();
+          if (typeof window.__invalidateMinimapCache === 'function') window.__invalidateMinimapCache();
+          _terrainAppliedZones.add(_zid);
+          console.log('[terrain] hardcoded applied:', _zid, 'rivers=' + msg.hardcodedTerrain.rivers.length, 'lakes=' + msg.hardcodedTerrain.lakes.length);
+        }
       } else if (msg.hardcodedTerrain) {
         console.warn('[terrain] hardcoded received but skipped — zid=' + _zid + ' Terrain=' + !!window.Terrain + ' setHardcoded=' + !!(window.Terrain && window.Terrain.setHardcoded));
       }
