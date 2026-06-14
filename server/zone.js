@@ -1835,7 +1835,7 @@ wss.on('connection', async (ws, req) => {
           _homeX: typeof pending.home_x === 'number' ? pending.home_x : null,
           _homeY: typeof pending.home_y === 'number' ? pending.home_y : null,
           lastAttackAt: 0, lastDamagedAt: 0,
-          handingOff: false, lastSeen: Date.now(),
+          handingOff: false, lastSeen: Date.now(), _arrivedAt: Date.now(),
         };
         players.set(pid, player);
 
@@ -2124,6 +2124,8 @@ wss.on('connection', async (ws, req) => {
     lastDamagedAt: 0,
     handingOff: false,
     lastSeen: Date.now(),
+    _arrivedAt: Date.now(), // Phase 5-K: 핸드오프 직후 재핸드오프 쿨다운 기준
+
   };
   players.set(pid, player);
 
@@ -4259,6 +4261,11 @@ setInterval(() => {
       p.y = clamp(ny, 0, ZONE.zoneHeight);
       // 경계 닿으면 NPC가 다음 결정 다시 — 안 막힘
       p.nextDecisionAt = 0;
+    } else if (maxOut > 0 && (now - (p._arrivedAt || 0) < 900)) {
+      // Phase 5-K: 핸드오프 도착 직후 900ms는 재핸드오프 금지 — 경계 왕복 핑퐁(→스폰 버그) 차단.
+      // 경계 밖으로 가도 클램프만. 이 시간 동안 player가 안쪽으로 들어오거나 멈춤.
+      p.x = clamp(nx, 0, ZONE.zoneWidth);
+      p.y = clamp(ny, 0, ZONE.zoneHeight);
     } else if (maxOut > 0) {
       // 14.46-a: abs 좌표 lookup으로 핸드오프 대상 결정 (이웃 포인터 X)
       // 14.46-b-mini: ocean zone으로의 핸드오프는 차단 (보트 없으면 바다 진입 불가).
