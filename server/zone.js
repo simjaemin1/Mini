@@ -4267,8 +4267,10 @@ setInterval(() => {
       const target = findZoneAt(absExitX, absExitY);
       if (target && target.id !== ZONE_ID && !target.isOcean) {
         p.x = nx; p.y = ny;
-        const localX = absExitX - target.worldOffsetX;
-        const localY = absExitY - target.worldOffsetY;
+        // 진입 좌표를 도착 zone 경계에서 안쪽 HANDOFF_MARGIN px로 — 경계 밀착 시 즉시 되넘는 핑퐁 방지.
+        const HM = 64;
+        const localX = Math.min(target.zoneWidth - HM, Math.max(HM, absExitX - target.worldOffsetX));
+        const localY = Math.min(target.zoneHeight - HM, Math.max(HM, absExitY - target.worldOffsetY));
         fireHandoff(p, target.id, localX, localY);
       } else {
         // 경계 밖인데 zone 없음 (월드 가장자리) OR ocean zone → clamp
@@ -4796,15 +4798,21 @@ async function fireHandoff(player, targetZoneId, newX, newY) {
   if (player.lastHandoffFailAt && Date.now() - player.lastHandoffFailAt < 2000) return;
   // 핸드오프 시점의 vx/vy를 새 zone에 그대로 전달 — 새 zone에서 즉시 이어 이동
   // 그래야 클라가 새 ws OPEN하고 input 보내기까지의 갭에도 player가 멈추지 않음
-  const carryVx = player.vx;
-  const carryVy = player.vy;
+  let carryVx = player.vx;
+  let carryVy = player.vy;
+  const target = ZONES[targetZoneId];
+  if (!target) { player.handingOff = false; return; }
+  // 핑퐁 방지: 막 넘어온 경계 쪽으로 향하는 속도 성분 제거 (도착 직후 즉시 되넘김 차단).
+  const HM = 64;
+  if (newX <= HM + 1 && carryVx < 0) carryVx = 0;                       // 서쪽 경계 진입 + 서쪽 속도
+  if (newX >= target.zoneWidth - HM - 1 && carryVx > 0) carryVx = 0;    // 동쪽 경계 진입 + 동쪽 속도
+  if (newY <= HM + 1 && carryVy < 0) carryVy = 0;                       // 북쪽
+  if (newY >= target.zoneHeight - HM - 1 && carryVy > 0) carryVy = 0;   // 남쪽
   player.handingOff = true;
   player.vx = 0;
   player.vy = 0;
   player.x = Math.max(0, Math.min(ZONE.zoneWidth, player.x));
   player.y = Math.max(0, Math.min(ZONE.zoneHeight, player.y));
-  const target = ZONES[targetZoneId];
-  if (!target) { player.handingOff = false; return; }
   savePlayer(player, { last_zone: targetZoneId, last_x: newX, last_y: newY });
   const token = generateToken();
   try {
