@@ -2413,7 +2413,7 @@ function handleObserverMessage(ws, raw) {
       pid,
       zone: zonePublicMeta(),
       hardcodedTerrain: getHardcodedTerrainForZone(),
-      mobs: Array.from(mobs.values()).map(m => ({ mid: m.mid, type: m.type, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, tameOwner: m.tameOwner || null, tameOwnerName: m.tameOwnerName || null })),
+      // Phase 5-K4: mobs도 생략 — observer가 tick(visibleMobs)으로 이미 받고 갱신 중.
       inventory: player.inventory,
       toolItems: player.toolItems || [], hotkey1: player.hotkey1 || null, equipped: player.equipped || null,
       tools: player.tools,

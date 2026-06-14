@@ -2,7 +2,7 @@
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
 // === CLIENT BUILD: Phase 5-G (한반도 강·호수 hardcoded + observer storm fix) ===
-console.log('%c[durango-mini] client build = Phase 5-K4 (떠난 zone observer 전환 — 재구독 끊김 제거)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+console.log('%c[durango-mini] client build = Phase 5-K5 (promote 페이로드 0 — 몹까지 생략)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 // Phase 4d-16-c: facility 종류별 emoji
 const FACILITY_EMOJI = {
@@ -1629,10 +1629,8 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
         console.warn('[terrain] hardcoded received but skipped — zid=' + _zid + ' Terrain=' + !!window.Terrain + ' setHardcoded=' + !!(window.Terrain && window.Terrain.setHardcoded));
       }
       if (msg.promoted) {
-        // Phase 5-K2: observer ws 재사용 promote — resources/claims/buildings는 이 연결이
-        // observer로 이미 받아 실시간 갱신 중이므로 유지(clear 안 함). mobs만 서버가 다시 줌.
-        c.mobs.clear();
-        for (const m of (msg.mobs || [])) c.mobs.set(m.mid, m);
+        // Phase 5-K4: observer ws 재사용 promote — resources/claims/buildings/mobs 전부
+        // observer로 이미 받아 실시간 갱신(tick) 중이므로 그대로 유지. clear/rebuild 안 함 → 끊김 0.
       } else {
         c.resources.clear(); c.claims.clear(); c.buildings.clear(); c.mobs.clear();
         if (c.groundItems) c.groundItems.clear();
