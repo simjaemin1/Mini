@@ -270,6 +270,10 @@ const ARROW_HIT_R = 40;
 const ARROW_DMG = 25;
 const ARROW_TTL_MS = 4000;
 const GHOST_TTL_MS = 1500;      // 이 시간 넘게 갱신 안 된 ghost 제거
+// Phase 5-K2: 경계 핸드오프 히스테리시스. 경계를 살짝 스치는 정도(0~COMMIT)로는 안 넘김.
+// 이웃 zone으로 COMMIT px 이상 확실히 들어갔을 때만 핸드오프 → 경계에서 왔다갔다 해도
+// 핑퐁 안 남(시간 쿨다운 불필요). 도착도 경계에서 이만큼 안쪽이라 즉시 되넘김 불가.
+const HANDOFF_COMMIT = 256;     // px — 경계 양쪽 이 거리의 "겹침 띠"는 자유 이동
 
 // Phase 5-7: 동물 사체 + 도살 시스템
 const corpses = new Map();      // cid -> { cid, mobType, x, y, drops, spawnTime, killerPid }
@@ -4255,38 +4259,40 @@ setInterval(() => {
       p._dbgT = now;
       console.log(`[${ZONE_ID}/dbg] ${p.name} pos=(${nx.toFixed(0)},${ny.toFixed(0)}) v=(${p.vx.toFixed(0)},${p.vy.toFixed(0)}) maxOut=${maxOut.toFixed(0)} handingOff=${p.handingOff}`);
     }
-    // NPC는 zone 핸드오프 안 함 — 항상 클램프
-    if (maxOut > 0 && p.isNpc) {
+    // Phase 5-K2: 히스테리시스 핸드오프 — 시간 쿨다운 대신 "겹침 띠" 방식.
+    //   maxOut <= 0           : zone 안 — 그냥 이동.
+    //   0 < maxOut <= COMMIT  : 경계를 살짝 넘었지만 아직 이 zone 소유 (겹침 띠). 클램프 X, 자유 이동.
+    //   maxOut > COMMIT       : 이웃으로 확실히 진입 → 핸드오프 (도착은 경계에서 그만큼 안쪽).
+    // 이래야 경계에서 왔다갔다 해도 양쪽 COMMIT px 띠 안에선 핸드오프가 안 일어나 핑퐁/렉이 없다.
+    if (maxOut <= 0) {
+      p.x = nx; p.y = ny;
+    } else if (p.isNpc) {
+      // NPC는 zone 핸드오프 안 함 — 항상 클램프
       p.x = clamp(nx, 0, ZONE.zoneWidth);
       p.y = clamp(ny, 0, ZONE.zoneHeight);
-      // 경계 닿으면 NPC가 다음 결정 다시 — 안 막힘
       p.nextDecisionAt = 0;
-    } else if (maxOut > 0 && (now - (p._arrivedAt || 0) < 900)) {
-      // Phase 5-K: 핸드오프 도착 직후 900ms는 재핸드오프 금지 — 경계 왕복 핑퐁(→스폰 버그) 차단.
-      // 경계 밖으로 가도 클램프만. 이 시간 동안 player가 안쪽으로 들어오거나 멈춤.
-      p.x = clamp(nx, 0, ZONE.zoneWidth);
-      p.y = clamp(ny, 0, ZONE.zoneHeight);
-    } else if (maxOut > 0) {
-      // 14.46-a: abs 좌표 lookup으로 핸드오프 대상 결정 (이웃 포인터 X)
-      // 14.46-b-mini: ocean zone으로의 핸드오프는 차단 (보트 없으면 바다 진입 불가).
+    } else {
+      // 14.46-a: abs 좌표 lookup으로 핸드오프 대상 결정. ocean/월드끝은 클램프.
       const absExitX = ZONE.worldOffsetX + nx;
       const absExitY = ZONE.worldOffsetY + ny;
       const target = findZoneAt(absExitX, absExitY);
       if (target && target.id !== ZONE_ID && !target.isOcean) {
-        p.x = nx; p.y = ny;
-        // 진입 좌표를 도착 zone 경계에서 안쪽 HANDOFF_MARGIN px로 — 경계 밀착 시 즉시 되넘는 핑퐁 방지.
-        const HM = 64;
-        const localX = Math.min(target.zoneWidth - HM, Math.max(HM, absExitX - target.worldOffsetX));
-        const localY = Math.min(target.zoneHeight - HM, Math.max(HM, absExitY - target.worldOffsetY));
-        fireHandoff(p, target.id, localX, localY);
+        if (maxOut > HANDOFF_COMMIT) {
+          // 확실히 넘어감 → 핸드오프. 진입 좌표 = 실제 abs 위치(경계에서 COMMIT 안쪽이라 즉시 되넘김 불가).
+          p.x = nx; p.y = ny;
+          const HM = 80;
+          const localX = Math.min(target.zoneWidth - HM, Math.max(HM, absExitX - target.worldOffsetX));
+          const localY = Math.min(target.zoneHeight - HM, Math.max(HM, absExitY - target.worldOffsetY));
+          fireHandoff(p, target.id, localX, localY);
+        } else {
+          // 겹침 띠 — 아직 이 zone 소유. 자유 이동 (클램프 안 함).
+          p.x = nx; p.y = ny;
+        }
       } else {
-        // 경계 밖인데 zone 없음 (월드 가장자리) OR ocean zone → clamp
+        // 이웃이 바다/월드 끝 → 클램프
         p.x = clamp(nx, 0, ZONE.zoneWidth);
         p.y = clamp(ny, 0, ZONE.zoneHeight);
       }
-    } else {
-      p.x = nx;
-      p.y = ny;
     }
   }
 
