@@ -6,13 +6,9 @@
   "scripts": {
     "central": "node --experimental-sqlite server/central.js",
     "dispatcher": "node server/dispatcher.js",
-    "zone:france": "ZONE_ID=france PORT=3004 node --experimental-sqlite server/zone.js",
-    "zone:china": "ZONE_ID=china  PORT=3001 node --experimental-sqlite server/zone.js",
-    "zone:korea": "ZONE_ID=korea  PORT=3002 node --experimental-sqlite server/zone.js",
-    "zone:japan": "ZONE_ID=japan  PORT=3003 node --experimental-sqlite server/zone.js",
-    "zone:usa": "ZONE_ID=usa    PORT=3005 node --experimental-sqlite server/zone.js",
     "marketplace": "node --experimental-sqlite server/marketplace.js",
-    "start": "concurrently -n CTR,DISP,FR,CN,KR,JP,US -c yellow,blue,magenta,red,green,cyan,white \"npm run central\" \"sleep 2 && npm run dispatcher\" \"sleep 2 && npm run zone:france\" \"sleep 2 && npm run zone:china\" \"sleep 2 && npm run zone:korea\" \"sleep 2 && npm run zone:japan\" \"sleep 2 && npm run zone:usa\""
+    "start": "node scripts/launch-all.js",
+    "start:drawn": "ENABLED_ZONES=nordan,europa,sahar,centaria,hindgang,sibara,jungwon_n,jungwon_s,bering,hanbando,nippon node scripts/launch-all.js"
   },
   "dependencies": {
     "express": "^4.19.2",

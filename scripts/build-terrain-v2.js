@@ -298,6 +298,7 @@ function mirrorAll(d) {
       }
     }
     for (const q of d[srcZ].passes || []) {
+      if (q._mirroredFrom) continue; // 이미 미러된 고개 재미러 방지 (역미러 중복 버그)
       for (const [dstZ, dstCfg] of Object.entries(ZONES)) {
         if (dstZ === srcZ || !d[dstZ] || !(d[dstZ].ridges || []).length) continue;
         const [dox, doy] = dstCfg.off, [dw, dh] = dstCfg.size;

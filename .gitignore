@@ -8,3 +8,9 @@
 .fuse_hidden*
 *.bak
 sim/_*.js
+
+# sqlite runtime
+*.db
+*.db-journal
+*.db-wal
+*.db-shm

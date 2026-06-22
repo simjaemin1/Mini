@@ -388,33 +388,41 @@ function generateVillagesForZone(zone) {
 // ocean zone은 전체가 물 (별도 처리, 이 함수에선 빈 set 반환).
 // Korea↔Japan 같은 직접 land 인접은 자동으로 land (그 변엔 ocean이 없으니 water tile 0).
 // Phase 5-3: zone 100배 확장에 비례. ×10.
-const COASTLINE_BASE = 6000;   // 기본 해안선 폭 (px)
-const COASTLINE_NOISE = 4000;  // 곡선 변동량 (px)
+const COASTLINE_BASE = 6000;   // 기본 해안선 폭 (px) — 평균 깊이
+const COASTLINE_NOISE = 5000;  // 굴곡 변동량 (px, ±) — 중심정렬: 깊이 1000~11000
 
 function _coastNoise(s) {
   let h = 5381;
   for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
   return (((h * 9301 + 49297) >>> 0) % 1000) / 1000;
 }
-// Smooth noise: 8 타일마다 sample + smoothstep 보간. 인접 타일은 거의 같은 값 → 톱니 X
-function _coastSmoothNoise(side, zoneId, t) {
-  const STEP = 8;
-  const t0 = Math.floor(t / STEP) * STEP;
-  const t1 = t0 + STEP;
-  const n0 = _coastNoise(`${side}_${zoneId}_${t0}`);
-  const n1 = _coastNoise(`${side}_${zoneId}_${t1}`);
-  const frac = (t - t0) / STEP;
+// 한 옥타브 smooth noise — t는 '월드' 타일좌표 (존 무관 → 경계서 해안선 연속)
+function _smoothN(side, t, step, oct) {
+  const t0 = Math.floor(t / step) * step;
+  const t1 = t0 + step;
+  const n0 = _coastNoise(`${side}_${oct}_${t0}`);
+  const n1 = _coastNoise(`${side}_${oct}_${t1}`);
+  const frac = (t - t0) / step;
   const u = frac * frac * (3 - 2 * frac); // smoothstep
   return n0 * (1 - u) + n1 * u;
 }
+// 다중 옥타브(fBm): 큰 만(灣) + 중간 굴곡 + 잔 들쭉날쭉 → 자연스러운 해안. 반환 0~1.
+function _coastFbm(side, t) {
+  return _smoothN(side, t, 100, 1) * 0.50   // 큰 만/곶 (≈3200px 주기)
+       + _smoothN(side, t, 30,  2) * 0.32   // 중간 굴곡 (≈960px)
+       + _smoothN(side, t, 10,  3) * 0.18;  // 잔 들쭉날쭉 (≈320px)
+}
+// 중심정렬 깊이 노이즈: -1~1 (육지 곶 ↔ 바다 만 양방향)
+function _coastSmoothNoise(side, t) { return (_coastFbm(side, t) - 0.5) * 2; }
 
 // zone: { id, isOcean, worldOffsetX, worldOffsetY, zoneWidth, zoneHeight }
 // tileSize: pixels per tile (보통 32)
 // findZoneAtFn: (absX, absY) => zone-like object with .isOcean
 // returns Set of "tx_ty" keys (local tile coords)
-function generateCoastlineWaterTiles(zone, tileSize, findZoneAtFn) {
+function generateCoastlineWaterTiles(zone, tileSize, findZoneAtFn, oceanRects) {
   const waterTiles = new Set();
   if (zone.isOcean) return waterTiles; // ocean zone은 전체 물 — 별도 처리
+  if (!oceanRects || !oceanRects.length) return waterTiles;
   // Phase 5-1 fix: inland water (강·호수)는 zone start 시 pre-compute 안 함.
   //   PZ급 zone에서 수백만 cell × 검사 = 수십 초 → healthcheck timeout.
   //   대신 isWaterTileLocal 동적 호출 시 terrain.isWaterCellLocal로 검사 (콜라이더용).
@@ -423,44 +431,43 @@ function generateCoastlineWaterTiles(zone, tileSize, findZoneAtFn) {
   const cols = Math.ceil(zone.zoneWidth / tileSize);
   const rows = Math.ceil(zone.zoneHeight / tileSize);
   const maxDist = COASTLINE_BASE + COASTLINE_NOISE;
-
-  function isOceanAt(absX, absY) {
-    const z = findZoneAtFn(absX, absY);
-    return !!(z && z.isOcean);
-  }
+  const maxDist2 = maxDist * maxDist;
 
   for (let ty = 0; ty < rows; ty++) {
     const absY = zone.worldOffsetY + ty * tileSize;
+    const wty = Math.floor(absY / tileSize);   // 월드 타일좌표(세로)
     const distN = ty * tileSize;
     const distS = (rows - 1 - ty) * tileSize;
     for (let tx = 0; tx < cols; tx++) {
       const absX = zone.worldOffsetX + tx * tileSize;
+      const wtx = Math.floor(absX / tileSize);   // 월드 타일좌표(가로)
       const distW = tx * tileSize;
       const distE = (cols - 1 - tx) * tileSize;
 
-      // 어느 변과도 너무 멀면 skip
+      // 변 근처가 아니면 skip (해안선은 가장자리 근처에만)
       if (Math.min(distW, distE, distN, distS) > maxDist) continue;
 
-      // West edge — ocean이 인접하면 water
-      if (distW < maxDist && isOceanAt(zone.worldOffsetX - 1, absY)) {
-        const n = _coastSmoothNoise('W', zone.id, ty) * COASTLINE_NOISE;
-        if (distW < COASTLINE_BASE + n) { waterTiles.add(`${tx}_${ty}`); continue; }
+      // === 가장 가까운 바다까지의 거리 기반 (변 + 꼭짓점 모두 자연스럽게) ===
+      const ax = absX + tileSize / 2, ay = absY + tileSize / 2;
+      let bd2 = maxDist2, bdx = 0, bdy = 0, hit = false;
+      for (let oi = 0; oi < oceanRects.length; oi++) {
+        const O = oceanRects[oi];
+        const nx = ax < O.x0 ? O.x0 : (ax > O.x1 ? O.x1 : ax);
+        const ny = ay < O.y0 ? O.y0 : (ay > O.y1 ? O.y1 : ay);
+        const dx = ax - nx, dy = ay - ny, d2 = dx * dx + dy * dy;
+        if (d2 < bd2) { bd2 = d2; bdx = dx; bdy = dy; hit = true; }
       }
-      // East
-      if (distE < maxDist && isOceanAt(zone.worldOffsetX + zone.zoneWidth + 1, absY)) {
-        const n = _coastSmoothNoise('E', zone.id, ty) * COASTLINE_NOISE;
-        if (distE < COASTLINE_BASE + n) { waterTiles.add(`${tx}_${ty}`); continue; }
+      if (!hit) continue;
+      const dist = Math.sqrt(bd2);
+      let depth;
+      if (bdy === 0) depth = COASTLINE_BASE + (bdx > 0 ? _coastSmoothNoise('W', wty) : _coastSmoothNoise('E', wty)) * COASTLINE_NOISE;
+      else if (bdx === 0) depth = COASTLINE_BASE + (bdy > 0 ? _coastSmoothNoise('N', wtx) : _coastSmoothNoise('S', wtx)) * COASTLINE_NOISE;
+      else {
+        const nh = bdx > 0 ? _coastSmoothNoise('W', wty) : _coastSmoothNoise('E', wty);
+        const nv = bdy > 0 ? _coastSmoothNoise('N', wtx) : _coastSmoothNoise('S', wtx);
+        depth = COASTLINE_BASE + (nh + nv) * 0.5 * COASTLINE_NOISE; // 꼭짓점 = 두 변 평균
       }
-      // North
-      if (distN < maxDist && isOceanAt(absX, zone.worldOffsetY - 1)) {
-        const n = _coastSmoothNoise('N', zone.id, tx) * COASTLINE_NOISE;
-        if (distN < COASTLINE_BASE + n) { waterTiles.add(`${tx}_${ty}`); continue; }
-      }
-      // South
-      if (distS < maxDist && isOceanAt(absX, zone.worldOffsetY + zone.zoneHeight + 1)) {
-        const n = _coastSmoothNoise('S', zone.id, tx) * COASTLINE_NOISE;
-        if (distS < COASTLINE_BASE + n) { waterTiles.add(`${tx}_${ty}`); continue; }
-      }
+      if (dist < depth) waterTiles.add(`${tx}_${ty}`);
     }
   }
   return waterTiles;

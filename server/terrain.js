@@ -83,30 +83,17 @@ function _getZoneTerrain(zoneId) {
   // bering·jungwon_n·nippon은 STRIP 영역만 hardcoded라 procedural에 추가.
   const hc = _getHardcoded();
   if (hc[zoneId]) {
-    if (zoneId === 'hanbando') {
-      // Phase 5-G: cleanZone — 강·호수만 두고 숲·산·광맥 모두 제거
-      // Phase 5-H: hardcoded 산맥(ridges)·고개(passes)는 적용
-      data.rivers   = hc[zoneId].rivers || [];
-      data.lakes    = hc[zoneId].lakes  || [];
-      data.ridges   = hc[zoneId].ridges || [];
-      data.passes   = hc[zoneId].passes || [];
-      data.forests   = [];
-      data.mountains = [];
-      data.ores      = [];
-    } else {
-      if (hc[zoneId].rivers && hc[zoneId].rivers.length > 0) {
-        data.rivers = [...(data.rivers || []), ...hc[zoneId].rivers];
-      }
-      if (hc[zoneId].lakes && hc[zoneId].lakes.length > 0) {
-        data.lakes = [...(data.lakes || []), ...hc[zoneId].lakes];
-      }
-      if (hc[zoneId].ridges && hc[zoneId].ridges.length > 0) {
-        data.ridges = [...(data.ridges || []), ...hc[zoneId].ridges];
-      }
-      if (hc[zoneId].passes && hc[zoneId].passes.length > 0) {
-        data.passes = [...(data.passes || []), ...hc[zoneId].passes];
-      }
-    }
+    // 완전 교체 (world v7 빌드) — 하드코딩 지형이 있는 그려진 존은 손 지형만 사용.
+    //   강·호수·산맥·고개·숲 = 손으로 그린 것으로 교체.
+    //   절차 산(mountains) 제거 — 산맥(ridges)이 대신함.
+    //   광맥(ores)은 에디터에서 그릴 수 없으므로 절차생성 유지 (제거하면 채광 0).
+    data.rivers    = hc[zoneId].rivers  || [];
+    data.lakes     = hc[zoneId].lakes   || [];
+    data.ridges    = hc[zoneId].ridges  || [];
+    data.passes    = hc[zoneId].passes  || [];
+    data.forests   = hc[zoneId].forests || [];
+    data.mountains = [];
+    // data.ores 는 절차생성 그대로 둔다.
   }
   _generated.set(zoneId, data);
   return data;
@@ -240,8 +227,17 @@ function getForestMultiplier(zoneId, x, y) {
   if (!t || !t.forests) return 1.0;
   let m = 1.0;
   for (const f of t.forests) {
-    const [x1, y1, x2, y2] = f.rect;
-    if (x >= x1 && x <= x2 && y >= y1 && y <= y2 && f.densityMult > m) m = f.densityMult;
+    let inside = false;
+    if (f.rect) {                                  // 절차생성 숲 (사각형)
+      const [x1, y1, x2, y2] = f.rect;
+      inside = x >= x1 && x <= x2 && y >= y1 && y <= y2;
+    } else if (f.center) {                          // 손으로 그린 숲 (타원 center/rx/ry)
+      const rx = f.rx || f.a || 1, ry = f.ry || f.b || 1;
+      const dx = (x - f.center[0]) / rx, dy = (y - f.center[1]) / ry;
+      inside = dx * dx + dy * dy <= 1;
+    }
+    const dm = f.densityMult || f.density || 1.0;
+    if (inside && dm > m) m = dm;
   }
   return m;
 }

@@ -176,22 +176,21 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
   }
 
   // === Phase 14.46-b-mini: 해안선 water tiles (서버 chunk.js generateCoastlineWaterTiles와 동일 알고리즘) ===
-  const COASTLINE_BASE = 600, COASTLINE_NOISE = 400;
+  const COASTLINE_BASE = 6000, COASTLINE_NOISE = 5000;
   function _coastNoise(s) {
     let h = 5381;
     for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
     return (((h * 9301 + 49297) >>> 0) % 1000) / 1000;
   }
-  function _coastSmoothNoise(side, zoneId, t) {
-    const STEP = 8;
-    const t0 = Math.floor(t / STEP) * STEP;
-    const t1 = t0 + STEP;
-    const n0 = _coastNoise(`${side}_${zoneId}_${t0}`);
-    const n1 = _coastNoise(`${side}_${zoneId}_${t1}`);
-    const frac = (t - t0) / STEP;
-    const u = frac * frac * (3 - 2 * frac);
+  // 월드 타일좌표 t 기준 다중 옥타브 (존 무관 → 경계 연속). 서버 chunk.js와 동일.
+  function _smoothN(side, t, step, oct) {
+    const t0 = Math.floor(t / step) * step, t1 = t0 + step;
+    const n0 = _coastNoise(`${side}_${oct}_${t0}`), n1 = _coastNoise(`${side}_${oct}_${t1}`);
+    const f = (t - t0) / step, u = f * f * (3 - 2 * f);
     return n0 * (1 - u) + n1 * u;
   }
+  function _coastFbm(side, t) { return _smoothN(side, t, 100, 1) * 0.50 + _smoothN(side, t, 30, 2) * 0.32 + _smoothN(side, t, 10, 3) * 0.18; }
+  function _coastSmoothNoise(side, t) { return (_coastFbm(side, t) - 0.5) * 2; }
   function clientFindZoneAt(absX, absY) {
     for (const z of Object.values(zonesMeta)) {
       if (absX >= z.worldOffsetX && absX < z.worldOffsetX + z.zoneWidth &&
@@ -202,36 +201,37 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
   function computeCoastlineWaterTiles(zone, tileSize) {
     const waterTiles = new Set();
     if (zone.isOcean) return waterTiles;
+    const oceanRects = Object.values(zonesMeta).filter(z => z.isOcean).map(z => ({ x0: z.worldOffsetX, y0: z.worldOffsetY, x1: z.worldOffsetX + z.zoneWidth, y1: z.worldOffsetY + z.zoneHeight }));
+    if (!oceanRects.length) return waterTiles;
     const cols = Math.ceil(zone.zoneWidth / tileSize);
     const rows = Math.ceil(zone.zoneHeight / tileSize);
-    const maxDist = COASTLINE_BASE + COASTLINE_NOISE;
-    function isOceanAt(absX, absY) {
-      const z = clientFindZoneAt(absX, absY);
-      return !!(z && z.isOcean);
-    }
+    const maxDist = COASTLINE_BASE + COASTLINE_NOISE, maxDist2 = maxDist * maxDist;
     for (let ty = 0; ty < rows; ty++) {
       const absY = zone.worldOffsetY + ty * tileSize;
+      const wty = Math.floor(absY / tileSize);
       const distN = ty * tileSize, distS = (rows - 1 - ty) * tileSize;
       for (let tx = 0; tx < cols; tx++) {
         const absX = zone.worldOffsetX + tx * tileSize;
+        const wtx = Math.floor(absX / tileSize);
         const distW = tx * tileSize, distE = (cols - 1 - tx) * tileSize;
         if (Math.min(distW, distE, distN, distS) > maxDist) continue;
-        if (distW < maxDist && isOceanAt(zone.worldOffsetX - 1, absY)) {
-          const n = _coastSmoothNoise('W', zone.id, ty) * COASTLINE_NOISE;
-          if (distW < COASTLINE_BASE + n) { waterTiles.add(`${tx}_${ty}`); continue; }
+        // 가장 가까운 바다까지의 거리 기반 (변 + 꼭짓점)
+        const ax = absX + tileSize / 2, ay = absY + tileSize / 2;
+        let bd2 = maxDist2, bdx = 0, bdy = 0, hit = false;
+        for (let oi = 0; oi < oceanRects.length; oi++) {
+          const O = oceanRects[oi];
+          const nx = ax < O.x0 ? O.x0 : (ax > O.x1 ? O.x1 : ax);
+          const ny = ay < O.y0 ? O.y0 : (ay > O.y1 ? O.y1 : ay);
+          const dx = ax - nx, dy = ay - ny, d2 = dx * dx + dy * dy;
+          if (d2 < bd2) { bd2 = d2; bdx = dx; bdy = dy; hit = true; }
         }
-        if (distE < maxDist && isOceanAt(zone.worldOffsetX + zone.zoneWidth + 1, absY)) {
-          const n = _coastSmoothNoise('E', zone.id, ty) * COASTLINE_NOISE;
-          if (distE < COASTLINE_BASE + n) { waterTiles.add(`${tx}_${ty}`); continue; }
-        }
-        if (distN < maxDist && isOceanAt(absX, zone.worldOffsetY - 1)) {
-          const n = _coastSmoothNoise('N', zone.id, tx) * COASTLINE_NOISE;
-          if (distN < COASTLINE_BASE + n) { waterTiles.add(`${tx}_${ty}`); continue; }
-        }
-        if (distS < maxDist && isOceanAt(absX, zone.worldOffsetY + zone.zoneHeight + 1)) {
-          const n = _coastSmoothNoise('S', zone.id, tx) * COASTLINE_NOISE;
-          if (distS < COASTLINE_BASE + n) { waterTiles.add(`${tx}_${ty}`); continue; }
-        }
+        if (!hit) continue;
+        const dist = Math.sqrt(bd2);
+        let depth;
+        if (bdy === 0) depth = COASTLINE_BASE + (bdx > 0 ? _coastSmoothNoise('W', wty) : _coastSmoothNoise('E', wty)) * COASTLINE_NOISE;
+        else if (bdx === 0) depth = COASTLINE_BASE + (bdy > 0 ? _coastSmoothNoise('N', wtx) : _coastSmoothNoise('S', wtx)) * COASTLINE_NOISE;
+        else { const nh = bdx > 0 ? _coastSmoothNoise('W', wty) : _coastSmoothNoise('E', wty); const nv = bdy > 0 ? _coastSmoothNoise('N', wtx) : _coastSmoothNoise('S', wtx); depth = COASTLINE_BASE + (nh + nv) * 0.5 * COASTLINE_NOISE; }
+        if (dist < depth) waterTiles.add(`${tx}_${ty}`);
       }
     }
     return waterTiles;
@@ -6350,7 +6350,7 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
   let needsRedraw = true;
 
   const TILE_COLORS = {
-    water:    '#2e6fa8',
+    water:    '#1a3a6a', // 강·호수도 바다(OCEAN_COLOR)와 동일색 — 플레이어는 색으로 강·바다 구분 불가 (구분은 시스템 내부 데이터만)
     rock:     '#6e6356', // Phase 5-H: 산맥 바위
     forest:   '#2a5a2a',
     mountain: '#8a8a8a',
