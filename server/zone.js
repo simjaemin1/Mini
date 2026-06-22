@@ -5538,7 +5538,7 @@ function _findNearestTerrainCluster(zoneId, mx, my, kind) {
   if (!t) return null;
   let list, getCenter;
   if (kind === 'ore') { list = t.ores || []; getCenter = c => c.center; }
-  else if (kind === 'forest') { list = t.forests || []; getCenter = c => [(c.rect[0]+c.rect[2])/2, (c.rect[1]+c.rect[3])/2]; }
+  else if (kind === 'forest') { list = t.forests || []; getCenter = c => c.rect ? [(c.rect[0]+c.rect[2])/2, (c.rect[1]+c.rect[3])/2] : (c.center || [0, 0]); }
   else if (kind === 'water') {
     // 호수 또는 강 path 첫 point. 가장 가까운 것
     list = [];
