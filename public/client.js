@@ -2681,7 +2681,7 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     if (!primaryZoneId || lastTickWithMyPidAt === 0) return;
     if (performance.now() - lastTickWithMyPidAt > 2000) {
       console.warn('[recover] 내 pid가 2초간 tick에 없음 - primary 재연결');
-      lastTickWithMyPidAt = performance.now(); // 무한루프 방지
+      lastTickWithMyPidAt = 0; // 0으로 리셋 — 재연결 WS가 첫 틱 받을 때까지 orphan 검사 비활성. now()로 두면 느린 연결(사파리/Private Relay)에서 establishing 중인 WS를 2초마다 죽여 무한루프가 됨.
       if (conns.has(primaryZoneId)) closeConnection(primaryZoneId);
       // ensurePrimaryConnection이 다음 프레임에 재연결
     }
