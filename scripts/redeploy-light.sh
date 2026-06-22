@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
-# === redeploy-light.sh — 1GB VM용 경량 재배포 ===
-# central은 건드리지 않고, RUN_ZONES 에 지정한 존만 "한 번에 하나씩" 재생성한다.
-#   - 나머지 존은 정지(+auto-restart 끔) → RAM 회수.
-#   - 존 부팅이 무거워서(해안선 수십만 타일) 동시에 띄우면 1GB가 스왑 지옥에 빠짐 → sleep 으로 직렬화.
-#   - ZONE_HOSTS/ENABLED_ZONES 는 전체 26존 기준으로 넣어 핸드오프 라우팅은 유지.
+# === redeploy-light.sh — 존 직렬 재생성 (부팅 폭주 방지) ===
+# central은 건드리지 않고, RUN_ZONES 의 존만 "한 번에 하나씩" 재생성한다(고친 이미지 적용).
+#   - 존 부팅이 무거워서(해안선 수십만 타일) 26존을 동시에 띄우면 부팅 폭주로 박스가 멈춤 → sleep 으로 직렬화.
+#   - 기본은 멀쩡한 다른 존(canadia 등)은 그대로 둠. STOP_OTHERS=1 줘야 정지(저RAM 모드).
+#   - ZONE_HOSTS/ENABLED_ZONES 는 전체 26존 기준으로 넣어 핸드오프 라우팅 유지.
 # 사용:
-#   bash scripts/redeploy-light.sh                         # 기본: 그려진 11존
-#   RUN_ZONES="hanbando jungwon_n nippon" bash scripts/redeploy-light.sh   # 더 적게
+#   bash scripts/redeploy-light.sh                          # 그려진 11존만 고친 이미지로 직렬 재생성
+#   STOP_OTHERS=1 bash scripts/redeploy-light.sh            # 나머지 존은 정지(저RAM)
+#   RUN_ZONES="hanbando jungwon_n nippon" bash scripts/redeploy-light.sh   # 일부만
 set -euo pipefail
 CENTRAL_IP="${CENTRAL_IP:-141.164.35.114}"
 PLAYER_CAP="${PLAYER_CAP:-150}"
@@ -35,14 +36,16 @@ for Z in $ALL; do PORT[${Z%:*}]=${Z#*:}; done
 echo "[light] 띄울 존($(echo $RUN_ZONES | wc -w)개): $RUN_ZONES"
 echo "[light] central=$CENTRAL_IP  부팅간격=${BOOT_GAP}s"
 
-# 1) RUN_ZONES 외 존 정지 — RAM 회수 + 크래시루프 차단
-echo "[light] 불필요 존 정지(RAM 회수)…"
-for Z in $ALL; do ID=${Z%:*}
-  if ! printf ' %s ' $RUN_ZONES | grep -q " $ID "; then
-    docker update --restart=no "durango-zone-$ID" >/dev/null 2>&1 || true
-    docker stop "durango-zone-$ID" >/dev/null 2>&1 || true
-  fi
-done
+# 1) (선택) RUN_ZONES 외 존 정지 — RAM 더 쥐어짜야 할 때만. 기본은 멀쩡한 존 그대로 둠.
+if [ "${STOP_OTHERS:-0}" = "1" ]; then
+  echo "[light] STOP_OTHERS=1 — RUN_ZONES 외 존 정지(RAM 회수)…"
+  for Z in $ALL; do ID=${Z%:*}
+    if ! printf ' %s ' $RUN_ZONES | grep -q " $ID "; then
+      docker update --restart=no "durango-zone-$ID" >/dev/null 2>&1 || true
+      docker stop "durango-zone-$ID" >/dev/null 2>&1 || true
+    fi
+  done
+fi
 
 # 2) RUN_ZONES 직렬 재생성
 for ID in $RUN_ZONES; do
