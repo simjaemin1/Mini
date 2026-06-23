@@ -4203,6 +4203,25 @@ setInterval(() => {
   // 이동 + 경계 처리 + 벽 충돌
   for (const p of players.values()) {
     if (p.handingOff) continue;
+    // === auto-eject: 어떤 이유로든(핸드오프 착지·지형변경·관통) 중심이 물/바위에 빠졌으면,
+    //   "자유이동(escape valve)" 대신 가장 가까운 통행가능 셀로 밀어낸다 → 강 안에서 헤엄치는 버그 차단.
+    if (isTerrainBlockedLocal(p.x, p.y)) {
+      let ejX = 0, ejY = 0, found = false;
+      for (let r = 32; r <= 32 * 16 && !found; r += 32) {
+        for (const d of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,1],[1,-1],[-1,-1]]) {
+          if (!isTerrainBlockedLocal(p.x + d[0] * r, p.y + d[1] * r)) { ejX = d[0]; ejY = d[1]; found = true; break; }
+        }
+      }
+      if (found) {
+        const len = Math.hypot(ejX, ejY) || 1;
+        const push = MOVE_SPEED * dt * 1.8;
+        p.x += (ejX / len) * push;
+        p.y += (ejY / len) * push;
+        p.dirty = true;
+      }
+      p.vx = 0; p.vy = 0;
+      continue; // 이 tick은 일반 이동 skip — 밀려나는 중
+    }
     // 14.53-j: 계단 위(onStairId 있음)면 dir 축으로만 이동 허용 — 옆으로 빠져나가는 버그 차단
     let stepVx = p.vx, stepVy = p.vy;
     if (p.onStairId) {
