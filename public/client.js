@@ -2189,28 +2189,44 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
           mwy = proj * dv.y;
         }
       }
-      let nx = myAbsPredicted.x + mwx * speed * dt;
-      let ny = myAbsPredicted.y + mwy * speed * dt;
-      // 각 축 별로 wall check (slide 가능)
-      if (clientIsBlockedByWall(nx, myAbsPredicted.y, myAbsPredicted.x, myAbsPredicted.y, myFloor)) nx = myAbsPredicted.x;
-      if (clientIsBlockedByWall(myAbsPredicted.x, ny, myAbsPredicted.x, myAbsPredicted.y, myFloor)) ny = myAbsPredicted.y;
-      if (clientIsBlockedByWall(nx, ny, myAbsPredicted.x, myAbsPredicted.y, myFloor)) { nx = myAbsPredicted.x; ny = myAbsPredicted.y; }
-      // 14.46-b-mini + Phase 5-G: 물 타일 진입 차단 + cell border snap (서버 zone.js와 동일)
-      if (isTerrainBlockedAtAbs(nx, myAbsPredicted.y) && !isTerrainBlockedAtAbs(myAbsPredicted.x, myAbsPredicted.y)) {
-        const tx = Math.floor(myAbsPredicted.x / 32);
-        if (nx > myAbsPredicted.x) nx = (tx + 1) * 32 - 1;
-        else if (nx < myAbsPredicted.x) nx = tx * 32;
-        else nx = myAbsPredicted.x;
+      // auto-eject: 서버 zone.js와 동일 — 중심이 물/바위에 빠졌으면 자유이동 대신 가장 가까운 통행가능 셀로 밀어냄.
+      if (isTerrainBlockedAtAbs(myAbsPredicted.x, myAbsPredicted.y)) {
+        let ejX = 0, ejY = 0, found = false;
+        for (let r = 32; r <= 32 * 16 && !found; r += 32) {
+          for (const d of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,1],[1,-1],[-1,-1]]) {
+            if (!isTerrainBlockedAtAbs(myAbsPredicted.x + d[0] * r, myAbsPredicted.y + d[1] * r)) { ejX = d[0]; ejY = d[1]; found = true; break; }
+          }
+        }
+        if (found) {
+          const len = Math.hypot(ejX, ejY) || 1;
+          const push = speed * dt * 1.8;
+          myAbsPredicted.x += (ejX / len) * push;
+          myAbsPredicted.y += (ejY / len) * push;
+        }
+      } else {
+        let nx = myAbsPredicted.x + mwx * speed * dt;
+        let ny = myAbsPredicted.y + mwy * speed * dt;
+        // 각 축 별로 wall check (slide 가능)
+        if (clientIsBlockedByWall(nx, myAbsPredicted.y, myAbsPredicted.x, myAbsPredicted.y, myFloor)) nx = myAbsPredicted.x;
+        if (clientIsBlockedByWall(myAbsPredicted.x, ny, myAbsPredicted.x, myAbsPredicted.y, myFloor)) ny = myAbsPredicted.y;
+        if (clientIsBlockedByWall(nx, ny, myAbsPredicted.x, myAbsPredicted.y, myFloor)) { nx = myAbsPredicted.x; ny = myAbsPredicted.y; }
+        // 물 타일 진입 차단 + cell border snap (서버 zone.js와 동일). 현재 비-물이므로 가드 불필요.
+        if (isTerrainBlockedAtAbs(nx, myAbsPredicted.y)) {
+          const tx = Math.floor(myAbsPredicted.x / 32);
+          if (nx > myAbsPredicted.x) nx = (tx + 1) * 32 - 1;
+          else if (nx < myAbsPredicted.x) nx = tx * 32;
+          else nx = myAbsPredicted.x;
+        }
+        if (isTerrainBlockedAtAbs(myAbsPredicted.x, ny)) {
+          const ty = Math.floor(myAbsPredicted.y / 32);
+          if (ny > myAbsPredicted.y) ny = (ty + 1) * 32 - 1;
+          else if (ny < myAbsPredicted.y) ny = ty * 32;
+          else ny = myAbsPredicted.y;
+        }
+        if (isTerrainBlockedAtAbs(nx, ny)) { nx = myAbsPredicted.x; ny = myAbsPredicted.y; }
+        myAbsPredicted.x = nx;
+        myAbsPredicted.y = ny;
       }
-      if (isTerrainBlockedAtAbs(myAbsPredicted.x, ny) && !isTerrainBlockedAtAbs(myAbsPredicted.x, myAbsPredicted.y)) {
-        const ty = Math.floor(myAbsPredicted.y / 32);
-        if (ny > myAbsPredicted.y) ny = (ty + 1) * 32 - 1;
-        else if (ny < myAbsPredicted.y) ny = ty * 32;
-        else ny = myAbsPredicted.y;
-      }
-      if (isTerrainBlockedAtAbs(nx, ny) && !isTerrainBlockedAtAbs(myAbsPredicted.x, myAbsPredicted.y)) { nx = myAbsPredicted.x; ny = myAbsPredicted.y; }
-      myAbsPredicted.x = nx;
-      myAbsPredicted.y = ny;
     }
     // 서버 권위 좌표로의 부드러운 보정 (snap 대신 lerp)
     // fix: 보정 이동도 벽 검사 — lerp 직선이 방 모서리를 관통해 예측 위치가
