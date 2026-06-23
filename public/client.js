@@ -3033,7 +3033,7 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
         vis *= entityVisibility(item.ax, item.ay, d);
         if (vis < 0.05) continue;
         ctx.globalAlpha = vis;
-        if (item.r.type === 'tree') drawTreeIso(s.x, s.y, item.r.r || 8, item.r.h || 60);
+        if (item.r.type === 'tree') drawTreeIso(s.x, s.y, item.r.r || 8, item.r.h || 60, item.ax, item.ay);
         else if (item.r.type === 'rock') drawRockIso(s.x, s.y);
         else if (item.r.type === 'berry_bush') drawBerryBushIso(s.x, s.y);
         else if (item.r.type === 'water_pool') drawWaterPoolIso(s.x, s.y);
@@ -4298,32 +4298,102 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
   }
 
   // Phase 5-8: 입체 나무 — r(반경) + h(높이) 사용. 사실적 줄기+캐노피.
-  function drawTreeIso(x, y, r, h) {
-    r = r || 8;  // 반경 4~15
-    h = h || 60; // 높이 50~150
-    // 그림자 (지면)
-    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+  // 나무 색 변주 팔레트 [어두운잎, 밝은잎] + 잎뭉치 오프셋 — 모듈 1회 생성(매 프레임 재생성 X)
+  const _TREE_GREENS = [
+    ['#2f6b39', '#5aa85e'],   // 기본
+    ['#357a3d', '#67b566'],   // 밝은
+    ['#27602f', '#4d9a50'],   // 어두운
+    ['#3f6e2b', '#74ad49'],   // 누런 (가을 직전)
+    ['#2c6647', '#50a878'],   // 청록
+  ];
+  const _CANOPY_BLOBS = [      // [dx, dy, scale] (canopyR 기준) — 유기적 실루엣
+    [0.0,   0.12, 1.00],
+    [-0.60, 0.20, 0.60],
+    [0.60,  0.20, 0.60],
+    [-0.32, -0.42, 0.64],
+    [0.36,  -0.40, 0.60],
+    [0.0,   -0.34, 0.74],
+  ];
+  function _treeHash(sx, sy) {  // 위치 기반 결정적 해시(0~1) — 나무마다 일정한 색/형태(깜빡임 없음)
+    let h = (Math.floor(sx) * 73856093) ^ (Math.floor(sy) * 19349663);
+    h = (h ^ (h >>> 13)) >>> 0;
+    return (h % 997) / 997;
+  }
+  // 나무 스프라이트 (Kenney Nature Kit, 초록 recolor) — public/assets/trees/. 로드되면 벡터 대신 사용.
+  const TREE_SPRITES = [];
+  let _treeSpritesLoaded = 0;
+  for (let _ti = 1; _ti <= 12; _ti++) {
+    const _img = new Image();
+    _img.onload = () => { _treeSpritesLoaded++; };
+    _img.src = '/assets/trees/tree' + String(_ti).padStart(2, '0') + '.png';
+    TREE_SPRITES.push(_img);
+  }
+  const TREE_SPRITE_SCALE = 1.3;   // 나무 h 대비 스프라이트 높이 배수
+
+  function drawTreeIso(x, y, r, h, seedX, seedY) {
+    r = r || 8;
+    h = h || 60;
+    const hsh = _treeHash(seedX != null ? seedX : x, seedY != null ? seedY : y);
+    // 스프라이트 로드됐으면 그걸로 — 해시로 종류 고정, 줄기 밑면을 (x,y)에 앵커, h로 스케일
+    if (_treeSpritesLoaded > 0) {
+      const _img = TREE_SPRITES[(hsh * TREE_SPRITES.length) | 0];
+      if (_img && _img.complete && _img.naturalHeight) {
+        ctx.fillStyle = 'rgba(0,0,0,0.18)';
+        ctx.beginPath(); ctx.ellipse(x, y, r * 1.5, r * 0.5, 0, 0, Math.PI * 2); ctx.fill();
+        const _dh = h * TREE_SPRITE_SCALE;
+        const _dw = _dh * (_img.naturalWidth / _img.naturalHeight);
+        ctx.drawImage(_img, x - _dw / 2, y - _dh, _dw, _dh);
+        return;
+      }
+    }
+    // 1) 지면 그림자 — 부드럽게
+    ctx.fillStyle = 'rgba(0,0,0,0.20)';
     ctx.beginPath();
-    ctx.ellipse(x, y + r * 0.4, r * 1.4, r * 0.6, 0, 0, Math.PI * 2);
+    ctx.ellipse(x, y + r * 0.35, r * 1.5, r * 0.5, 0, 0, Math.PI * 2);
     ctx.fill();
-    // 줄기 — 갈색 직사각형. 높이 h, 너비 r×0.4
-    const trunkW = Math.max(3, r * 0.4);
-    ctx.fillStyle = '#3a2818';
-    ctx.fillRect(x - trunkW / 2, y - h * 0.6, trunkW, h * 0.6);
-    ctx.strokeStyle = '#1a1008'; ctx.lineWidth = 1;
-    ctx.strokeRect(x - trunkW / 2, y - h * 0.6, trunkW, h * 0.6);
-    // 캐노피 — 잎. 줄기 위. 사이즈 r × h 비례
-    const canopyR = r * 1.6;
-    const canopyH = h * 0.55;
-    const cy = y - h * 0.6 - canopyH * 0.5;
+    // 2) 줄기 — 아래가 넓은 테이퍼 + 나무마다 살짝 다른 기울기
+    const trunkH = h * 0.55;
+    const baseW = Math.max(3.5, r * 0.5);
+    const topW = Math.max(2.2, r * 0.3);
+    const tX = x + (hsh - 0.5) * r * 0.3, tY = y - trunkH;
+    ctx.fillStyle = '#5b3d23';
     ctx.beginPath();
-    ctx.ellipse(x, cy, canopyR, canopyH, 0, 0, Math.PI * 2);
-    ctx.fillStyle = '#2d5a2a'; ctx.fill();
-    ctx.strokeStyle = '#1a3a18'; ctx.lineWidth = 1.5; ctx.stroke();
-    // 하이라이트
+    ctx.moveTo(x - baseW / 2, y);
+    ctx.lineTo(x + baseW / 2, y);
+    ctx.lineTo(tX + topW / 2, tY);
+    ctx.lineTo(tX - topW / 2, tY);
+    ctx.closePath(); ctx.fill();
+    // 줄기 그늘(오른쪽 절반)
+    ctx.fillStyle = '#422c17';
     ctx.beginPath();
-    ctx.ellipse(x - canopyR * 0.3, cy - canopyH * 0.3, canopyR * 0.3, canopyH * 0.3, 0, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.fill();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + baseW / 2, y);
+    ctx.lineTo(tX + topW / 2, tY);
+    ctx.lineTo(tX, tY);
+    ctx.closePath(); ctx.fill();
+    // 3) 캐노피 — 여러 잎뭉치(유기적). 2톤 + 나무별 색 변주
+    const pal = _TREE_GREENS[(hsh * _TREE_GREENS.length) | 0];
+    const canopyR = r * 1.5;
+    const ccx = tX, ccy = tY - canopyR * 0.5;
+    // base(어두운 톤) — 모든 뭉치 한 번에 fill (같은 색이라 겹쳐도 매끈하게 합쳐짐)
+    ctx.fillStyle = pal[0];
+    ctx.beginPath();
+    for (let i = 0; i < _CANOPY_BLOBS.length; i++) {
+      const b = _CANOPY_BLOBS[i];
+      const bx = ccx + b[0] * canopyR, by = ccy + b[1] * canopyR, br = b[2] * canopyR;
+      ctx.moveTo(bx + br, by); ctx.arc(bx, by, br, 0, Math.PI * 2);
+    }
+    ctx.fill();
+    // highlight(밝은 톤) — 위쪽 뭉치만 살짝 위/왼쪽으로 (햇빛)
+    ctx.fillStyle = pal[1];
+    ctx.beginPath();
+    for (let i = 0; i < _CANOPY_BLOBS.length; i++) {
+      const b = _CANOPY_BLOBS[i];
+      if (b[1] > -0.1) continue;
+      const bx = ccx + b[0] * canopyR - canopyR * 0.1, by = ccy + b[1] * canopyR - canopyR * 0.14, br = b[2] * canopyR * 0.8;
+      ctx.moveTo(bx + br, by); ctx.arc(bx, by, br, 0, Math.PI * 2);
+    }
+    ctx.fill();
   }
 
   function drawRockIso(x, y) {
