@@ -6402,6 +6402,8 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
   // terrain.setHardcoded 후 외부에서 호출
   window.__invalidateMinimapCache = invalidateAllCaches;
 
+  const _rgbCache = {};
+  function _hexRgb(h) { if (_rgbCache[h]) return _rgbCache[h]; const n = parseInt((h || '#000').slice(1), 16); return _rgbCache[h] = [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
   function buildZoneCache(zid, zone, level) {
     const zw = zone.zoneWidth || 0, zh = zone.zoneHeight || 0;
     if (zw === 0) return null;
@@ -6426,90 +6428,41 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     const sxr = cw / zw, syr = ch / zh; // world px → cache px
     const waterColor = TILE_COLORS.water;
 
-    // 2. forest rect (작은 rect도 최소 1 px로 보이게)
-    if (td.forests && TILE_COLORS.forest) {
-      cx.fillStyle = TILE_COLORS.forest;
-      for (const f of td.forests) {
-        if (!f.rect || (f.densityMult || 0) <= 1.5) continue;
-        const [x1,y1,x2,y2] = f.rect;
-        const rw = Math.max(1, (x2-x1)*sxr);
-        const rh = Math.max(1, (y2-y1)*syr);
-        cx.fillRect(x1*sxr, y1*syr, rw, rh);
-      }
-    }
-    // 3. mountain rect
-    if (td.mountains && TILE_COLORS.mountain) {
-      cx.fillStyle = TILE_COLORS.mountain;
-      for (const m of td.mountains) {
-        if (!m.rect || (m.stoneMult || 0) <= 1.5) continue;
-        const [x1,y1,x2,y2] = m.rect;
-        const rw = Math.max(1, (x2-x1)*sxr);
-        const rh = Math.max(1, (y2-y1)*syr);
-        cx.fillRect(x1*sxr, y1*syr, rw, rh);
-      }
-    }
-    // 4. ore arc (원형, 최소 0.5 px radius)
-    if (td.ores && TILE_COLORS.ore) {
-      cx.fillStyle = TILE_COLORS.ore;
-      for (const o of td.ores) {
-        if (!o.center) continue;
-        const r = Math.max(0.5, (o.radius||0) * sxr);
-        cx.beginPath();
-        cx.arc(o.center[0]*sxr, o.center[1]*syr, r, 0, Math.PI*2);
-        cx.fill();
-      }
-    }
-    // 5. lake arc (water가 mountain/forest/ore보다 우선)
-    cx.fillStyle = waterColor;
-    for (const lake of (td.lakes || [])) {
-      if (!lake.center) continue;
-      const rr = (lake.radius != null) ? lake.radius : (((lake.a||0)+(lake.b||0))/2); // 타원 호수(a/b)도 표시
-      const r = Math.max(0.5, rr * sxr);
-      cx.beginPath();
-      cx.arc(lake.center[0]*sxr, lake.center[1]*syr, r, 0, Math.PI*2);
-      cx.fill();
-    }
-    // 5.5. ridge(산맥) path stroke — rock 색. river보다 먼저 그려 교차 시 강이 위로(water>rock).
-    if (td.ridges && td.ridges.length && TILE_COLORS.rock) {
-      cx.strokeStyle = TILE_COLORS.rock;
-      cx.lineCap = 'round';
-      for (const ridge of td.ridges) {
-        const path = ridge.path || [];
-        if (path.length < 2) continue;
-        for (let i = 0; i < path.length - 1; i++) {
-          const p1 = path[i], p2 = path[i+1];
-          const x1 = p1.pos ? p1.pos[0] : p1[0];
-          const y1 = p1.pos ? p1.pos[1] : p1[1];
-          const x2 = p2.pos ? p2.pos[0] : p2[0];
-          const y2 = p2.pos ? p2.pos[1] : p2[1];
-          const w = ((p1.width||300) + (p2.width||300)) / 2;
-          cx.lineWidth = Math.max(1.5, w * sxr);
-          cx.beginPath();
-          cx.moveTo(x1*sxr, y1*syr);
-          cx.lineTo(x2*sxr, y2*syr);
-          cx.stroke();
+    // 2~6. 셀별 렌더 (게임과 동일한 셀 판정) — forest/mountain/ore/lake/river/ridge를 한 번에.
+    //   각 픽셀을 셀중심(32px)으로 스냅해 cellType 샘플 → 존경계 솔기 없음 + 호수 wobble·손그림 숲 그대로.
+    //   STEP 샘플 + 셀결과 캐시로 줌 무관 ~2.4만 샘플 제한. 우선순위: water > rock > ore > forest > plain.
+    {
+      const isW = Terrain.isWaterCellLocal, isR = Terrain.isRockCellLocal,
+            fmul = Terrain.getForestMultiplier, oreAt = Terrain.isOreClusterAt;
+      const cW = _hexRgb(waterColor), cR = _hexRgb(TILE_COLORS.rock),
+            cF = _hexRgb(TILE_COLORS.forest), cO = _hexRgb(TILE_COLORS.ore);
+      let STEP = 1; while (Math.ceil(cw / STEP) * Math.ceil(ch / STEP) > 24000) STEP++;
+      const img = cx.getImageData(0, 0, cw, ch), dat = img.data;
+      const cellRgb = new Map();
+      for (let py = 0; py < ch; py += STEP) {
+        const wyc = Math.floor(((py + 0.5) / syr) / 32) * 32 + 16;
+        const yEnd = Math.min(ch, py + STEP);
+        for (let px = 0; px < cw; px += STEP) {
+          const wxc = Math.floor(((px + 0.5) / sxr) / 32) * 32 + 16;
+          const key = wxc * 200000 + wyc;
+          let rgb = cellRgb.get(key);
+          if (rgb === undefined) {
+            if (isW(zid, wxc, wyc)) rgb = cW;
+            else if (isR && isR(zid, wxc, wyc)) rgb = cR;
+            else if (oreAt && oreAt(zid, wxc, wyc)) rgb = cO;
+            else if (fmul && fmul(zid, wxc, wyc) > 1.5) rgb = cF;
+            else rgb = null;
+            cellRgb.set(key, rgb);
+          }
+          if (!rgb) continue; // plain — base ground 유지
+          const xEnd = Math.min(cw, px + STEP);
+          for (let yy = py; yy < yEnd; yy++) {
+            let i = (yy * cw + px) * 4;
+            for (let xx = px; xx < xEnd; xx++, i += 4) { dat[i] = rgb[0]; dat[i + 1] = rgb[1]; dat[i + 2] = rgb[2]; dat[i + 3] = 255; }
+          }
         }
       }
-    }
-    // 6. river path stroke (cache 안 최소 1.5 px — 작은 cache에서도 강 보이게)
-    cx.strokeStyle = waterColor;
-    cx.lineCap = 'round';
-    for (const river of (td.rivers || [])) {
-      const path = river.path || [];
-      if (path.length < 2) continue;
-      for (let i = 0; i < path.length - 1; i++) {
-        const p1 = path[i], p2 = path[i+1];
-        const x1 = p1.pos ? p1.pos[0] : p1[0];
-        const y1 = p1.pos ? p1.pos[1] : p1[1];
-        const x2 = p2.pos ? p2.pos[0] : p2[0];
-        const y2 = p2.pos ? p2.pos[1] : p2[1];
-        const w = ((p1.width||200) + (p2.width||200)) / 2;
-        cx.lineWidth = Math.max(1.5, w * sxr);
-        cx.beginPath();
-        cx.moveTo(x1*sxr, y1*syr);
-        cx.lineTo(x2*sxr, y2*syr);
-        cx.stroke();
-      }
+      cx.putImageData(img, 0, 0);
     }
     // 7. grid line — cache 안에서 cell(32 world px)이 6 cache px 이상일 때만
     const cellCachePx = 32 * sxr;
