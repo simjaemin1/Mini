@@ -718,6 +718,29 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     if (performance.now() - clStairCacheBuildAt > 500) clRebuildStairCellCache();
     return clStairCellCache.get(`${cx}_${cy}`) || null;
   }
+  // 나무 콜라이더 — 서버 zone.js isBlockedByTree 미러. (resources는 zone-local 좌표 → abs로 변환)
+  const PLAYER_BODY_R = 6;  // 서버와 동일
+  function clientNearbyTrees(ax, ay) {
+    const pc = conns.get(primaryZoneId);
+    if (!pc || !pc.resources) return null;
+    const ox = pc.meta?.worldOffsetX || 0, oy = pc.meta?.worldOffsetY || 0;
+    let out = null;
+    for (const r of pc.resources.values()) {
+      if (r.type !== 'tree' || !r.r) continue;
+      const tx = r.x + ox, ty = r.y + oy;
+      if (Math.abs(tx - ax) > 32 || Math.abs(ty - ay) > 32) continue;  // 근처만 (서버 queryCircle 24 + 이동여유)
+      (out || (out = [])).push({ tx, ty, r: r.r });
+    }
+    return out;
+  }
+  function clientIsBlockedByTree(x, y, trees) {
+    if (!trees) return false;
+    for (const t of trees) {
+      if (Math.hypot(t.tx - x, t.ty - y) < t.r + PLAYER_BODY_R) return true;
+    }
+    return false;
+  }
+
   function clientIsBlockedByWall(newX, newY, oldX, oldY, playerFloor = 0) {
     const oc = clCellOf(oldX, oldY);
     const nc = clCellOf(newX, newY);
@@ -2216,6 +2239,15 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
         if (clientIsBlockedByWall(nx, myAbsPredicted.y, myAbsPredicted.x, myAbsPredicted.y, myFloor)) nx = myAbsPredicted.x;
         if (clientIsBlockedByWall(myAbsPredicted.x, ny, myAbsPredicted.x, myAbsPredicted.y, myFloor)) ny = myAbsPredicted.y;
         if (clientIsBlockedByWall(nx, ny, myAbsPredicted.x, myAbsPredicted.y, myFloor)) { nx = myAbsPredicted.x; ny = myAbsPredicted.y; }
+        // === 나무 콜라이더 (서버 zone.js와 동일: floor 0만, 축별 슬라이드) — 예측에도 적용해 러버밴딩 제거 ===
+        if (myFloor === 0 && (mwx || mwy)) {
+          const trees = clientNearbyTrees(myAbsPredicted.x, myAbsPredicted.y);
+          if (trees) {
+            if (clientIsBlockedByTree(nx, myAbsPredicted.y, trees)) nx = myAbsPredicted.x;
+            if (clientIsBlockedByTree(myAbsPredicted.x, ny, trees)) ny = myAbsPredicted.y;
+            if (clientIsBlockedByTree(nx, ny, trees)) { nx = myAbsPredicted.x; ny = myAbsPredicted.y; }
+          }
+        }
         // 물 타일 진입 차단 + cell border snap (서버 zone.js와 동일). 현재 비-물이므로 가드 불필요.
         if (isTerrainBlockedAtAbs(nx, myAbsPredicted.y)) {
           const tx = Math.floor(myAbsPredicted.x / 32);
