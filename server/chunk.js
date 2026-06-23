@@ -280,9 +280,9 @@ function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet) 
     // Phase 5-8: tree는 입체 — radius + height (콜라이더 + 시야 차단 + 시각)
     if (type === 'tree') {
       // sub-pixel 지름 8~30px (반경 4~15px, 단 1 cell=32px 미만)
-      entity.r = 4 + (r3 * 11);  // 반경 4~15
-      // 높이 — 사실적으로. 작은 나무 50px(~7m) 큰 나무 150px(~20m)
-      entity.h = 50 + (r3 * 100);  // 50~150
+      entity.r = 4 + (r3 * 16);  // 반경 4~20 (forest 그리드와 동일 범위)
+      // 높이 — 크기에 비례
+      entity.h = 46 + (r3 * 120);  // 46~166
     }
     result.push(entity);
   }
@@ -317,10 +317,12 @@ function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet) 
         if (typeof terrain.isRockCellLocal === 'function' && terrain.isRockCellLocal(zoneId, x, y)) continue;
         const seedKey = `${cx}_${cy}_ft${gx}_${gy}`;
         if (harvestedSet && harvestedSet.has(seedKey)) continue;
+        const sz = seedRand(zoneId, cx, cy, 91000000 + gi);  // 크기(0~1) — 위치와 독립
         result.push({
           id: `s_${seedKey}`, seedKey, isSeed: true,
           x, y, type: 'tree', hp: 3, maxHp: 3,
-          r: 4 + (j1 * 11), h: 50 + (j2 * 100),
+          r: 4 + sz * 16,            // 반경 4~20 (제각각)
+          h: 46 + sz * 120,          // 키도 크기에 비례 (46~166)
         });
       }
     }

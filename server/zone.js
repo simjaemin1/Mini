@@ -1341,7 +1341,7 @@ function npcStep(npc, dt, now) {
         r.hp -= 1;
         if (r.hp <= 0) {
           let loot = {};
-          if (r.type === 'tree') loot = { wood: 1 };
+          if (r.type === 'tree') loot = { wood: 3 + Math.floor((r.r || 8) / 3) };  // 크기 비례
           else if (r.type === 'rock') loot = { stone: 1 };
           else if (r.type === 'berry_bush') { loot = { berry: 2, fiber: 1 }; if (Math.random() < 0.3) loot.seed_berry = 1; }
           else if (r.type === 'herb') loot = { herb: 2 };
@@ -2853,7 +2853,7 @@ function tryGather(player) {
   if (best.hp <= 0) {
     // 자원 종류별 산출물
     let loot = {};
-    if (best.type === 'tree')        loot = { wood: 1 };
+    if (best.type === 'tree')        loot = { wood: 3 + Math.floor((best.r || 8) / 3) };  // 크기 비례: r4~20 → wood 4~9
     else if (best.type === 'rock')   loot = { stone: 1 };
     else if (best.type === 'berry_bush') {
       loot = { berry: 2, fiber: 1 };

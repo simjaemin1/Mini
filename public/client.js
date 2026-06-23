@@ -728,7 +728,7 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     for (const r of pc.resources.values()) {
       if (r.type !== 'tree' || !r.r) continue;
       const tx = r.x + ox, ty = r.y + oy;
-      if (Math.abs(tx - ax) > 32 || Math.abs(ty - ay) > 32) continue;  // 근처만 (서버 queryCircle 24 + 이동여유)
+      if (Math.abs(tx - ax) > 40 || Math.abs(ty - ay) > 40) continue;  // 근처만 (나무 r최대20 + body6 + 이동여유)
       (out || (out = [])).push({ tx, ty, r: r.r });
     }
     return out;
@@ -3265,21 +3265,24 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
       if (pc) {
         const oxz = pc.meta?.worldOffsetX || 0, oyz = pc.meta?.worldOffsetY || 0;
         const SHADOW_RANGE_PX = SHADOW_RANGE_CELLS * CL_BUILDING_SIZE;
-        const MAX_TREE_OCCLUDERS = 16;   // 시야 막는 나무 최대 수 (밀도 무관 비용 상한)
+        const MAX_TREE_OCCLUDERS = 22;   // 시야 막는 나무 최대 수 (밀도 무관 비용 상한)
         const treeOcc = [];
         for (const r of pc.resources.values()) {
           if (r.type !== 'tree' || !r.r) continue;
           const tx = r.x + oxz, ty = r.y + oyz;
           const ddx = tx - px, ddy = ty - py;
           if (Math.abs(ddx) > SHADOW_RANGE_PX || Math.abs(ddy) > SHADOW_RANGE_PX) continue;
-          treeOcc.push({ tx, ty, tr: r.r, d2: ddx * ddx + ddy * ddy });
+          const d2 = ddx * ddx + ddy * ddy;
+          const occR = r.r * 1.7;
+          if (d2 < occR * occR) continue;   // 나무 바로 밑(캐노피 안)이면 제외 — 사방 블랙아웃 방지
+          treeOcc.push({ tx, ty, tr: r.r, d2 });
         }
         if (treeOcc.length > MAX_TREE_OCCLUDERS) {
           treeOcc.sort((a, b) => a.d2 - b.d2);   // 가까운 순
           treeOcc.length = MAX_TREE_OCCLUDERS;
         }
         for (const t of treeOcc) {
-          const N = 6, tr = t.tr;
+          const N = 6, tr = t.tr * 1.7;   // 캐노피 크기로 시야 차단 (줄기 r보다 크게 → 더 많이 가림, 크기 비례)
           for (let i = 0; i < N; i++) {
             const a1 = (i / N) * Math.PI * 2;
             const a2 = ((i + 1) / N) * Math.PI * 2;
