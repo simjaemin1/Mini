@@ -3225,24 +3225,35 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
                       bx: (cx + 1) * CL_BUILDING_SIZE, by: (cy + 1) * CL_BUILDING_SIZE });
         }
       }
-      // Phase 5-8: 나무도 시야 차단 — 6각형으로 근사
+      // Phase 5-8: 나무도 시야 차단 — 6각형으로 근사.
+      // 시야 알고리즘이 O(6 × 선분²)라, 밀집 숲(나무 수백)에선 선분 수천 개 → 프레임당 수백만~천만 교차 검사로
+      // 메인스레드가 멈춤(→ 서버 tick 못 읽어 orphan). 그래서 '가까운 N그루'만 시야를 막게 상한을 둔다.
+      //   가까운 나무가 어차피 먼 나무를 가리므로 시각적 차이는 거의 없고, 비용은 O(상한²)로 고정.
       const pc = conns.get(primaryZoneId);
       if (pc) {
         const oxz = pc.meta?.worldOffsetX || 0, oyz = pc.meta?.worldOffsetY || 0;
         const SHADOW_RANGE_PX = SHADOW_RANGE_CELLS * CL_BUILDING_SIZE;
+        const MAX_TREE_OCCLUDERS = 16;   // 시야 막는 나무 최대 수 (밀도 무관 비용 상한)
+        const treeOcc = [];
         for (const r of pc.resources.values()) {
           if (r.type !== 'tree' || !r.r) continue;
           const tx = r.x + oxz, ty = r.y + oyz;
-          if (Math.abs(tx - px) > SHADOW_RANGE_PX) continue;
-          if (Math.abs(ty - py) > SHADOW_RANGE_PX) continue;
-          const N = 6;
-          const tr = r.r;
+          const ddx = tx - px, ddy = ty - py;
+          if (Math.abs(ddx) > SHADOW_RANGE_PX || Math.abs(ddy) > SHADOW_RANGE_PX) continue;
+          treeOcc.push({ tx, ty, tr: r.r, d2: ddx * ddx + ddy * ddy });
+        }
+        if (treeOcc.length > MAX_TREE_OCCLUDERS) {
+          treeOcc.sort((a, b) => a.d2 - b.d2);   // 가까운 순
+          treeOcc.length = MAX_TREE_OCCLUDERS;
+        }
+        for (const t of treeOcc) {
+          const N = 6, tr = t.tr;
           for (let i = 0; i < N; i++) {
             const a1 = (i / N) * Math.PI * 2;
             const a2 = ((i + 1) / N) * Math.PI * 2;
             segs.push({
-              ax: tx + Math.cos(a1) * tr, ay: ty + Math.sin(a1) * tr,
-              bx: tx + Math.cos(a2) * tr, by: ty + Math.sin(a2) * tr,
+              ax: t.tx + Math.cos(a1) * tr, ay: t.ty + Math.sin(a1) * tr,
+              bx: t.tx + Math.cos(a2) * tr, by: t.ty + Math.sin(a2) * tr,
             });
           }
         }
