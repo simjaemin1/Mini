@@ -391,29 +391,35 @@ function generateVillagesForZone(zone) {
 const COASTLINE_BASE = 6000;   // 기본 해안선 폭 (px) — 평균 깊이
 const COASTLINE_NOISE = 5000;  // 굴곡 변동량 (px, ±) — 중심정렬: 깊이 1000~11000
 
-function _coastNoise(s) {
+// === 2D 월드좌표 value noise ===
+//   변별(W/E/N/S) 1D 노이즈는 해안이 방향을 바꾸거나 바다배치가 달라지는 지점에서 시드가 달라져
+//   존 경계/꼭짓점에 솔기가 생김. 대신 "가장 가까운 바다점"의 월드좌표로 2D 연속노이즈를 샘플하면
+//   어느 방향의 해안이든, 존을 넘어가든 깊이가 매끈하게 이어진다.
+function _coastHash2(ix, iy, oct) {
   let h = 5381;
-  for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
+  h = ((h * 33) ^ ix) >>> 0;
+  h = ((h * 33) ^ iy) >>> 0;
+  h = ((h * 33) ^ oct) >>> 0;
   return (((h * 9301 + 49297) >>> 0) % 1000) / 1000;
 }
-// 한 옥타브 smooth noise — t는 '월드' 타일좌표 (존 무관 → 경계서 해안선 연속)
-function _smoothN(side, t, step, oct) {
-  const t0 = Math.floor(t / step) * step;
-  const t1 = t0 + step;
-  const n0 = _coastNoise(`${side}_${oct}_${t0}`);
-  const n1 = _coastNoise(`${side}_${oct}_${t1}`);
-  const frac = (t - t0) / step;
-  const u = frac * frac * (3 - 2 * frac); // smoothstep
-  return n0 * (1 - u) + n1 * u;
+function _vnoise2(x, y, step, oct) {
+  const gx = x / step, gy = y / step;
+  const ix = Math.floor(gx), iy = Math.floor(gy);
+  const fx = gx - ix, fy = gy - iy;
+  const ux = fx * fx * (3 - 2 * fx), uy = fy * fy * (3 - 2 * fy); // smoothstep
+  const n00 = _coastHash2(ix, iy, oct),     n10 = _coastHash2(ix + 1, iy, oct);
+  const n01 = _coastHash2(ix, iy + 1, oct), n11 = _coastHash2(ix + 1, iy + 1, oct);
+  const a = n00 * (1 - ux) + n10 * ux, b = n01 * (1 - ux) + n11 * ux;
+  return a * (1 - uy) + b * uy;
 }
-// 다중 옥타브(fBm): 큰 만(灣) + 중간 굴곡 + 잔 들쭉날쭉 → 자연스러운 해안. 반환 0~1.
-function _coastFbm(side, t) {
-  return _smoothN(side, t, 100, 1) * 0.50   // 큰 만/곶 (≈3200px 주기)
-       + _smoothN(side, t, 30,  2) * 0.32   // 중간 굴곡 (≈960px)
-       + _smoothN(side, t, 10,  3) * 0.18;  // 잔 들쭉날쭉 (≈320px)
+// fBm: 큰 만(灣) + 중간 굴곡 + 잔 들쭉날쭉. step는 월드 px. 반환 0~1.
+function _coastFbm2D(x, y) {
+  return _vnoise2(x, y, 3200, 1) * 0.50
+       + _vnoise2(x, y, 960,  2) * 0.32
+       + _vnoise2(x, y, 320,  3) * 0.18;
 }
-// 중심정렬 깊이 노이즈: -1~1 (육지 곶 ↔ 바다 만 양방향)
-function _coastSmoothNoise(side, t) { return (_coastFbm(side, t) - 0.5) * 2; }
+// 중심정렬 -1~1 (육지 곶 ↔ 바다 만)
+function _coastSmoothNoise2D(x, y) { return (_coastFbm2D(x, y) - 0.5) * 2; }
 
 // zone: { id, isOcean, worldOffsetX, worldOffsetY, zoneWidth, zoneHeight }
 // tileSize: pixels per tile (보통 32)
@@ -447,26 +453,20 @@ function generateCoastlineWaterTiles(zone, tileSize, findZoneAtFn, oceanRects) {
       // 변 근처가 아니면 skip (해안선은 가장자리 근처에만)
       if (Math.min(distW, distE, distN, distS) > maxDist) continue;
 
-      // === 가장 가까운 바다까지의 거리 기반 (변 + 꼭짓점 모두 자연스럽게) ===
+      // === 가장 가까운 바다점 (변 + 꼭짓점 모두) ===
       const ax = absX + tileSize / 2, ay = absY + tileSize / 2;
-      let bd2 = maxDist2, bdx = 0, bdy = 0, hit = false;
+      let bd2 = maxDist2, bnx = 0, bny = 0, hit = false;
       for (let oi = 0; oi < oceanRects.length; oi++) {
         const O = oceanRects[oi];
         const nx = ax < O.x0 ? O.x0 : (ax > O.x1 ? O.x1 : ax);
         const ny = ay < O.y0 ? O.y0 : (ay > O.y1 ? O.y1 : ay);
         const dx = ax - nx, dy = ay - ny, d2 = dx * dx + dy * dy;
-        if (d2 < bd2) { bd2 = d2; bdx = dx; bdy = dy; hit = true; }
+        if (d2 < bd2) { bd2 = d2; bnx = nx; bny = ny; hit = true; }
       }
       if (!hit) continue;
       const dist = Math.sqrt(bd2);
-      let depth;
-      if (bdy === 0) depth = COASTLINE_BASE + (bdx > 0 ? _coastSmoothNoise('W', wty) : _coastSmoothNoise('E', wty)) * COASTLINE_NOISE;
-      else if (bdx === 0) depth = COASTLINE_BASE + (bdy > 0 ? _coastSmoothNoise('N', wtx) : _coastSmoothNoise('S', wtx)) * COASTLINE_NOISE;
-      else {
-        const nh = bdx > 0 ? _coastSmoothNoise('W', wty) : _coastSmoothNoise('E', wty);
-        const nv = bdy > 0 ? _coastSmoothNoise('N', wtx) : _coastSmoothNoise('S', wtx);
-        depth = COASTLINE_BASE + (nh + nv) * 0.5 * COASTLINE_NOISE; // 꼭짓점 = 두 변 평균
-      }
+      // 깊이 노이즈를 "가장 가까운 바다 경계점(bnx,bny)" 월드좌표에서 샘플 → 변·꼭짓점·존경계 솔기 없음.
+      const depth = COASTLINE_BASE + _coastSmoothNoise2D(bnx, bny) * COASTLINE_NOISE;
       if (dist < depth) waterTiles.add(`${tx}_${ty}`);
     }
   }

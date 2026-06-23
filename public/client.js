@@ -177,20 +177,24 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
 
   // === Phase 14.46-b-mini: 해안선 water tiles (서버 chunk.js generateCoastlineWaterTiles와 동일 알고리즘) ===
   const COASTLINE_BASE = 6000, COASTLINE_NOISE = 5000;
-  function _coastNoise(s) {
+  // 2D 월드좌표 value noise — 서버 chunk.js와 동일. "가장 가까운 바다점"에서 샘플 → 변/꼭짓점/존경계 솔기 없음.
+  function _coastHash2(ix, iy, oct) {
     let h = 5381;
-    for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
+    h = ((h * 33) ^ ix) >>> 0; h = ((h * 33) ^ iy) >>> 0; h = ((h * 33) ^ oct) >>> 0;
     return (((h * 9301 + 49297) >>> 0) % 1000) / 1000;
   }
-  // 월드 타일좌표 t 기준 다중 옥타브 (존 무관 → 경계 연속). 서버 chunk.js와 동일.
-  function _smoothN(side, t, step, oct) {
-    const t0 = Math.floor(t / step) * step, t1 = t0 + step;
-    const n0 = _coastNoise(`${side}_${oct}_${t0}`), n1 = _coastNoise(`${side}_${oct}_${t1}`);
-    const f = (t - t0) / step, u = f * f * (3 - 2 * f);
-    return n0 * (1 - u) + n1 * u;
+  function _vnoise2(x, y, step, oct) {
+    const gx = x / step, gy = y / step;
+    const ix = Math.floor(gx), iy = Math.floor(gy);
+    const fx = gx - ix, fy = gy - iy;
+    const ux = fx * fx * (3 - 2 * fx), uy = fy * fy * (3 - 2 * fy);
+    const n00 = _coastHash2(ix, iy, oct), n10 = _coastHash2(ix + 1, iy, oct);
+    const n01 = _coastHash2(ix, iy + 1, oct), n11 = _coastHash2(ix + 1, iy + 1, oct);
+    const a = n00 * (1 - ux) + n10 * ux, b = n01 * (1 - ux) + n11 * ux;
+    return a * (1 - uy) + b * uy;
   }
-  function _coastFbm(side, t) { return _smoothN(side, t, 100, 1) * 0.50 + _smoothN(side, t, 30, 2) * 0.32 + _smoothN(side, t, 10, 3) * 0.18; }
-  function _coastSmoothNoise(side, t) { return (_coastFbm(side, t) - 0.5) * 2; }
+  function _coastFbm2D(x, y) { return _vnoise2(x, y, 3200, 1) * 0.50 + _vnoise2(x, y, 960, 2) * 0.32 + _vnoise2(x, y, 320, 3) * 0.18; }
+  function _coastSmoothNoise2D(x, y) { return (_coastFbm2D(x, y) - 0.5) * 2; }
   function clientFindZoneAt(absX, absY) {
     for (const z of Object.values(zonesMeta)) {
       if (absX >= z.worldOffsetX && absX < z.worldOffsetX + z.zoneWidth &&
@@ -215,22 +219,19 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
         const wtx = Math.floor(absX / tileSize);
         const distW = tx * tileSize, distE = (cols - 1 - tx) * tileSize;
         if (Math.min(distW, distE, distN, distS) > maxDist) continue;
-        // 가장 가까운 바다까지의 거리 기반 (변 + 꼭짓점)
+        // 가장 가까운 바다점 (변 + 꼭짓점)
         const ax = absX + tileSize / 2, ay = absY + tileSize / 2;
-        let bd2 = maxDist2, bdx = 0, bdy = 0, hit = false;
+        let bd2 = maxDist2, bnx = 0, bny = 0, hit = false;
         for (let oi = 0; oi < oceanRects.length; oi++) {
           const O = oceanRects[oi];
           const nx = ax < O.x0 ? O.x0 : (ax > O.x1 ? O.x1 : ax);
           const ny = ay < O.y0 ? O.y0 : (ay > O.y1 ? O.y1 : ay);
           const dx = ax - nx, dy = ay - ny, d2 = dx * dx + dy * dy;
-          if (d2 < bd2) { bd2 = d2; bdx = dx; bdy = dy; hit = true; }
+          if (d2 < bd2) { bd2 = d2; bnx = nx; bny = ny; hit = true; }
         }
         if (!hit) continue;
         const dist = Math.sqrt(bd2);
-        let depth;
-        if (bdy === 0) depth = COASTLINE_BASE + (bdx > 0 ? _coastSmoothNoise('W', wty) : _coastSmoothNoise('E', wty)) * COASTLINE_NOISE;
-        else if (bdx === 0) depth = COASTLINE_BASE + (bdy > 0 ? _coastSmoothNoise('N', wtx) : _coastSmoothNoise('S', wtx)) * COASTLINE_NOISE;
-        else { const nh = bdx > 0 ? _coastSmoothNoise('W', wty) : _coastSmoothNoise('E', wty); const nv = bdy > 0 ? _coastSmoothNoise('N', wtx) : _coastSmoothNoise('S', wtx); depth = COASTLINE_BASE + (nh + nv) * 0.5 * COASTLINE_NOISE; }
+        const depth = COASTLINE_BASE + _coastSmoothNoise2D(bnx, bny) * COASTLINE_NOISE; // 바다점 월드좌표 2D 노이즈 → 솔기 없음
         if (dist < depth) waterTiles.add(`${tx}_${ty}`);
       }
     }

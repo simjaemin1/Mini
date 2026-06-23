@@ -130,26 +130,41 @@ function _pointToSegmentDist(px, py, x1, y1, x2, y2) {
   return { dist: Math.hypot(px - projX, py - projY), t };
 }
 
+// 호수 경계 각도별 wobble — 완벽한 원/타원 대신 살짝 울퉁불퉁. 중심좌표 시드로 호수마다 고유·결정론적.
+function _lakeWobble(center, ang) {
+  const s = center[0] * 0.0131 + center[1] * 0.0237;
+  return 1 + 0.13 * Math.sin(ang * 3 + s)
+           + 0.08 * Math.sin(ang * 5 - s * 1.7)
+           + 0.05 * Math.sin(ang * 7 + s * 0.6);
+}
 function _isPointInLake(x, y, lake) {
   if (lake.shape === 'multi') {
     for (const c of lake.circles) {
       const dx = x - c.center[0], dy = y - c.center[1];
-      if (dx * dx + dy * dy < c.radius * c.radius) return true;
+      const R = c.radius * 1.3;
+      if (dx < -R || dx > R || dy < -R || dy > R) continue; // bbox 조기기각(atan2 회피)
+      const w = _lakeWobble(c.center, Math.atan2(dy, dx)) * c.radius;
+      if (dx * dx + dy * dy < w * w) return true;
     }
     return false;
   }
   if (lake.shape === 'ellipse') {
-    const cx = lake.center[0], cy = lake.center[1];
+    const dx = x - lake.center[0], dy = y - lake.center[1];
+    const R = (lake.a > lake.b ? lake.a : lake.b) * 1.3;
+    if (dx < -R || dx > R || dy < -R || dy > R) return false;
     const rot = lake.rotation || 0;
-    const dx = x - cx, dy = y - cy;
     const cos = Math.cos(rot), sin = Math.sin(rot);
     const lx = dx * cos + dy * sin;
     const ly = -dx * sin + dy * cos;
-    return (lx * lx) / (lake.a * lake.a) + (ly * ly) / (lake.b * lake.b) < 1;
+    const w = _lakeWobble(lake.center, Math.atan2(ly, lx));
+    return (lx * lx) / (lake.a * lake.a) + (ly * ly) / (lake.b * lake.b) < w * w;
   }
   // default: circle
   const dx = x - lake.center[0], dy = y - lake.center[1];
-  return dx * dx + dy * dy < lake.radius * lake.radius;
+  const R = lake.radius * 1.3;
+  if (dx < -R || dx > R || dy < -R || dy > R) return false;
+  const w = _lakeWobble(lake.center, Math.atan2(dy, dx)) * lake.radius;
+  return dx * dx + dy * dy < w * w;
 }
 
 function _isPointInRiver(x, y, river) {
