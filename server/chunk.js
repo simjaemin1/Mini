@@ -300,8 +300,8 @@ function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet) 
   if (fCov > 1.5) {
     // 나무 간격(px) — 밀도(densityMult) 클수록 촘촘. ↓이 숫자(FOREST_SPACING_BASE)가 밀도 조절 손잡이.
     //   작게=더 빽빽(부하↑), 크게=듬성. 92 → 큰숲 ~51px·청크당 ~340그루.
-    const FOREST_SPACING_BASE = 92;
-    const SP = Math.max(48, Math.min(72, Math.round(FOREST_SPACING_BASE / Math.sqrt(fCov))));
+    const FOREST_SPACING_BASE = 120;
+    const SP = Math.max(60, Math.min(96, Math.round(FOREST_SPACING_BASE / Math.sqrt(fCov))));
     const cs = chunkSize;
     let gi = 0;
     for (let gy = 0; gy < cs; gy += SP) {

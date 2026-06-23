@@ -1792,6 +1792,12 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
       const r = c.resources.get(msg.id); if (r) r.hp = msg.hp;
     } else if (msg.type === 'resource_spawn') {
       c.resources.set(msg.resource.id, msg.resource);
+    } else if (msg.type === 'resources_spawn') {        // 배치 — 숲 청크 활성화 시 수백 그루 한 번에
+      const arr = msg.resources || [];
+      for (let i = 0; i < arr.length; i++) c.resources.set(arr[i].id, arr[i]);
+    } else if (msg.type === 'resources_removed') {      // 배치 제거 — 청크 비활성화
+      const ids = msg.ids || [];
+      for (let i = 0; i < ids.length; i++) c.resources.delete(ids[i]);
     } else if (msg.type === 'claim_added') {
       c.claims.set(msg.claim.id, msg.claim);
     } else if (msg.type === 'claim_updated') {

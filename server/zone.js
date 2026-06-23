@@ -69,11 +69,16 @@ function activateChunk(cx, cy) {
   // Phase 5-G: cleanZone (한반도 강·호수 검증용) — 자원 spawn skip
   if (ZONE.cleanZone) return;
   const seedResources = generateChunkResources(ZONE_ID, ZONE.biome, cx, cy, chunkManager.chunkSize, harvestedSeeds);
+  const spawned = [];
   for (const r of seedResources) {
     if (isTerrainBlockedLocal(r.x, r.y)) continue; // 바다 위 자원 차단
     resources.set(r.id, r);
     chunkManager.insertResource(r);
-    broadcast({ type: 'resource_spawn', resource: r });
+    spawned.push(r);
+  }
+  if (spawned.length) {
+    resourcesDirty = true;
+    broadcast({ type: 'resources_spawn', resources: spawned });  // 배치 — 숲 수백 그루를 개별로 안 보냄
   }
 }
 
@@ -83,11 +88,15 @@ function deactivateChunk(cx, cy) {
   if (!c) return;
   const toRemove = [];
   for (const r of c.resources.values()) if (r.isSeed) toRemove.push(r);
+  if (!toRemove.length) return;
+  const ids = [];
   for (const r of toRemove) {
     resources.delete(r.id);
     chunkManager.removeResource(r);
-    broadcast({ type: 'resource_removed', id: r.id });
+    ids.push(r.id);
   }
+  resourcesDirty = true;
+  broadcast({ type: 'resources_removed', ids });  // 배치 제거
 }
 function isChunkActiveKey(key) { return activeChunkKeys.has(key); }
 function isPositionActive(x, y) {
@@ -99,16 +108,22 @@ function isPositionActive(x, y) {
 // 모든 nearest-search (visiblePlayers, tryGather 등)에서 사용. message handler에서도
 // stale 33ms 정도는 OK (다음 tick에 재구축).
 let qtPlayers, qtMobs, qtResources, qtBuildings;
+let resourcesDirty = true;  // 자원(나무·돌)은 static — 변경됐을 때만 quadtree 재구축
 function rebuildSpatialIndex() {
   const W = ZONE.zoneWidth, H = ZONE.zoneHeight;
   qtPlayers   = new Quadtree(0, 0, W, H);
   qtMobs      = new Quadtree(0, 0, W, H);
-  qtResources = new Quadtree(0, 0, W, H);
   qtBuildings = new Quadtree(0, 0, W, H);
   for (const p of players.values())    qtPlayers.insert({ x: p.x, y: p.y, ref: p });
   for (const m of mobs.values())       qtMobs.insert({ x: m.x, y: m.y, ref: m });
-  for (const r of resources.values())  qtResources.insert({ x: r.x, y: r.y, ref: r });
   for (const b of buildings.values())  qtBuildings.insert({ x: b.x, y: b.y, ref: b });
+  // 자원은 안 움직임 — 매 tick 재삽입하면 숲 수천 그루를 30Hz로 재구축해 1 vCPU가 죽음.
+  // 청크 활성/비활성·채집으로 바뀐 경우(resourcesDirty)에만 다시 만든다.
+  if (resourcesDirty || !qtResources) {
+    qtResources = new Quadtree(0, 0, W, H);
+    for (const r of resources.values()) qtResources.insert({ x: r.x, y: r.y, ref: r });
+    resourcesDirty = false;
+  }
 }
 
 // 플레이어 변경을 central에 fire-and-forget 저장
@@ -603,6 +618,7 @@ function spawnOneResource() {
   const r = { id, dbId, x, y, type, hp: maxHp, maxHp };
   resources.set(id, r);
   chunkManager.insertResource(r);
+  resourcesDirty = true;
   return r;
 }
 
@@ -1333,6 +1349,7 @@ function npcStep(npc, dt, now) {
           for (const [k, v] of Object.entries(loot)) npc.inventory[k] = (npc.inventory[k] || 0) + v;
           resources.delete(r.id);
           chunkManager.removeResource(r);
+          resourcesDirty = true;
           if (r.isSeed && r.seedKey) {
             harvestedSeeds.add(r.seedKey);
             try { db.insertHarvestedSeed(r.seedKey); } catch (e) {}
@@ -2849,6 +2866,7 @@ function tryGather(player) {
     }
     resources.delete(best.id);
     chunkManager.removeResource(best);
+    resourcesDirty = true;
     if (best.isSeed && best.seedKey) {
       harvestedSeeds.add(best.seedKey);
       try { db.insertHarvestedSeed(best.seedKey); } catch (e) {}
