@@ -226,8 +226,17 @@ function getForestMultiplier(zoneId, x, y) {
   if (!t || !t.forests) return 1.0;
   let m = 1.0;
   for (const f of t.forests) {
-    const [x1, y1, x2, y2] = f.rect;
-    if (x >= x1 && x <= x2 && y >= y1 && y <= y2 && f.densityMult > m) m = f.densityMult;
+    let inside = false;
+    if (f.rect) {                                  // 절차생성 숲 (사각형)
+      const [x1, y1, x2, y2] = f.rect;
+      inside = x >= x1 && x <= x2 && y >= y1 && y <= y2;
+    } else if (f.center) {                          // 손으로 그린 숲 (타원 center/rx/ry) — 서버 terrain.js와 동일
+      const rx = f.rx || f.a || 1, ry = f.ry || f.b || 1;
+      const dx = (x - f.center[0]) / rx, dy = (y - f.center[1]) / ry;
+      inside = dx * dx + dy * dy <= 1;
+    }
+    const dm = f.densityMult || f.density || 1.0;
+    if (inside && dm > m) m = dm;
   }
   return m;
 }
