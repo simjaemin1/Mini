@@ -145,6 +145,23 @@ function _isPointInLake(x, y, lake) {
 
 function _isPointInRiver(x, y, river) {
   if (!river.path || river.path.length < 2) return false;
+  // bbox 조기 기각 — v7 스무딩으로 강 path점이 ~15배 폭증(296→4599). 셀마다 전체 path를 스캔하면
+  //   물·바위 판정이 느려지고, welcome마다 캐시를 비우면 재계산이 메인 루프를 멈춰 orphan 재연결 루프를 유발.
+  //   path bbox(+최대폭) 밖이면 즉시 false → 대부분의 강을 O(1)로 건너뜀.
+  let bb = river._bbox;
+  if (bb === undefined) {
+    let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity, maxW = 0;
+    for (const _p of river.path) {
+      const px = _p.pos ? _p.pos[0] : _p[0], py = _p.pos ? _p.pos[1] : _p[1];
+      const w = (_p.width != null) ? _p.width : (river.width || 200);
+      if (px < bx0) bx0 = px; if (px > bx1) bx1 = px;
+      if (py < by0) by0 = py; if (py > by1) by1 = py;
+      if (w > maxW) maxW = w;
+    }
+    const m = maxW / 2 + 1;
+    bb = river._bbox = [bx0 - m, by0 - m, bx1 + m, by1 + m];
+  }
+  if (x < bb[0] || x > bb[2] || y < bb[1] || y > bb[3]) return false;
   for (let i = 0; i < river.path.length - 1; i++) {
     const p1 = river.path[i], p2 = river.path[i + 1];
     const x1 = p1.pos ? p1.pos[0] : p1[0];
