@@ -4064,13 +4064,16 @@ function isBlockedByStairSide(newX, newY, oldX, oldY, entityFloor = 0) {
 
 // Phase 5-8: tree 입체 콜라이더 — 원형. radius 검사.
 const PLAYER_BODY_R = 6;
+const TRUNK_COLLIDER_MAX = 9;   // 줄기 충돌 반경 상한 — 캐노피가 커도 줄기는 가늘다(스프라이트 줄기와 정합). r은 occlusion용(최대 20).
 function isBlockedByTree(x, y) {
   if (!qtResources) return false;
-  const nearby = qtResources.queryCircle(x, y, 24);  // max tree r 15 + player 6 + margin
+  // 검색 반경 28 = 최대 충돌(TRUNK_COLLIDER_MAX 9 + PLAYER_BODY_R 6 = 15)보다 충분히 큼. 클라 스캔(40)과 함께 둘 다 모든 차단 나무 포함 → 일관.
+  const nearby = qtResources.queryCircle(x, y, 28);
   for (const item of nearby) {
     const r = item.ref || item;
     if (r.type !== 'tree' || !r.r) continue;
-    if (Math.hypot(r.x - x, r.y - y) < r.r + PLAYER_BODY_R) return true;
+    const tr = Math.min(r.r, TRUNK_COLLIDER_MAX);   // 줄기 반경 (캐노피 r 아님)
+    if (Math.hypot(r.x - x, r.y - y) < tr + PLAYER_BODY_R) return true;
   }
   return false;
 }

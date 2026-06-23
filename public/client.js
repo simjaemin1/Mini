@@ -720,6 +720,7 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
   }
   // 나무 콜라이더 — 서버 zone.js isBlockedByTree 미러. (resources는 zone-local 좌표 → abs로 변환)
   const PLAYER_BODY_R = 6;  // 서버와 동일
+  const TRUNK_COLLIDER_MAX = 9;  // 서버와 동일 — 줄기 충돌 반경 상한
   function clientNearbyTrees(ax, ay) {
     const pc = conns.get(primaryZoneId);
     if (!pc || !pc.resources) return null;
@@ -736,7 +737,8 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
   function clientIsBlockedByTree(x, y, trees) {
     if (!trees) return false;
     for (const t of trees) {
-      if (Math.hypot(t.tx - x, t.ty - y) < t.r + PLAYER_BODY_R) return true;
+      const tr = Math.min(t.r, TRUNK_COLLIDER_MAX);   // 줄기 반경 (서버와 동일)
+      if (Math.hypot(t.tx - x, t.ty - y) < tr + PLAYER_BODY_R) return true;
     }
     return false;
   }
