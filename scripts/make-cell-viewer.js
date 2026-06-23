@@ -53,11 +53,11 @@ const COL={water:[60,165,224], sea:[22,56,79], rock:[110,110,116], forest:[47,12
 function hex(h){h=h.replace('#','');return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];}
 const GROUND={}; for(const z in Z) GROUND[z]=hex(Z[z].g);
 
-// ---- 해안선 노이즈 (chunk.js와 동일 — t는 월드 타일좌표, 존 무관 → 경계 연속) ----
-function cnoise(s){let h=5381;for(let i=0;i<s.length;i++)h=((h*33)^s.charCodeAt(i))>>>0;return(((h*9301+49297)>>>0)%1000)/1000;}
-function sm(side,t,step,oct){const t0=Math.floor(t/step)*step,t1=t0+step;const n0=cnoise(side+'_'+oct+'_'+t0),n1=cnoise(side+'_'+oct+'_'+t1);const f=(t-t0)/step,u=f*f*(3-2*f);return n0*(1-u)+n1*u;}
-function fbm(side,t){return sm(side,t,100,1)*0.5+sm(side,t,30,2)*0.32+sm(side,t,10,3)*0.18;}
-function coastDepth(side,t){return CBASE+((fbm(side,t)-0.5)*2)*CNOISE;}
+// ---- 해안선 2D 노이즈 (chunk.js와 동일 — 가장 가까운 바다점 월드좌표에서 샘플 → 존경계 솔기 없음) ----
+function ch2(ix,iy,oct){let h=5381;h=((h*33)^ix)>>>0;h=((h*33)^iy)>>>0;h=((h*33)^oct)>>>0;return(((h*9301+49297)>>>0)%1000)/1000;}
+function vn2(x,y,step,oct){const gx=x/step,gy=y/step,ix=Math.floor(gx),iy=Math.floor(gy),fx=gx-ix,fy=gy-iy,ux=fx*fx*(3-2*fx),uy=fy*fy*(3-2*fy);const a=ch2(ix,iy,oct)*(1-ux)+ch2(ix+1,iy,oct)*ux,b=ch2(ix,iy+1,oct)*(1-ux)+ch2(ix+1,iy+1,oct)*ux;return a*(1-uy)+b*uy;}
+function coastSN2(x,y){return((vn2(x,y,3200,1)*0.5+vn2(x,y,960,2)*0.32+vn2(x,y,320,3)*0.18)-0.5)*2;}
+function lakeWob(cx,cy,ang){const s=cx*0.0131+cy*0.0237;return 1+0.13*Math.sin(ang*3+s)+0.08*Math.sin(ang*5-s*1.7)+0.05*Math.sin(ang*7+s*0.6);}
 
 // ---- zoneAt ----
 const ZIDS=Object.keys(Z);
@@ -66,9 +66,7 @@ function zoneAt(x,y){for(const id of ZIDS){const z=Z[id];if(x>=z.ox&&x<z.ox+z.w&
 const OCEANS=ZIDS.filter(id=>Z[id].ocean).map(id=>Z[id]);
 let WMX=0,WMY=0; for(const id in Z){const z=Z[id];if(z.ox+z.w>WMX)WMX=z.ox+z.w;if(z.oy+z.h>WMY)WMY=z.oy+z.h;}
 const NTY=(WMY>>5)+2, NTX=(WMX>>5)+2;
-const DW=new Float32Array(NTY),DE=new Float32Array(NTY),DN=new Float32Array(NTX),DS=new Float32Array(NTX);
-for(let t=0;t<NTY;t++){DW[t]=coastDepth('W',t);DE[t]=coastDepth('E',t);}
-for(let t=0;t<NTX;t++){DN[t]=coastDepth('N',t);DS[t]=coastDepth('S',t);}
+// (변별 깊이 룩업 제거 — 2D 노이즈 coastSN2가 대체)
 const MAXD=CBASE+CNOISE, MAXD2=MAXD*MAXD;
 
 // ---- 공간 버킷 (강·산맥 세그먼트 + 호수·숲 영역) ----
@@ -89,20 +87,17 @@ function cellType(wx,wy){
   const z=Z[id]; if(z.ocean) return ['sea',null];
   const lx=wx-z.ox, ly=wy-z.oy;
   // 해안선 — 가장 가까운 바다까지의 거리 기반 (변+꼭짓점 모두 자연스럽게)
-  let bd2=MAXD2,bdx=0,bdy=0,hit=false;
-  for(const O of OCEANS){const nx=wx<O.ox?O.ox:(wx>O.ox+O.w?O.ox+O.w:wx),ny=wy<O.oy?O.oy:(wy>O.oy+O.h?O.oy+O.h:wy);const dx=wx-nx,dy=wy-ny,d2=dx*dx+dy*dy;if(d2<bd2){bd2=d2;bdx=dx;bdy=dy;hit=true;}}
-  if(hit){const dist=Math.sqrt(bd2),wty=wy>>5,wtx=wx>>5;let depth;
-    if(bdy===0)depth=bdx>0?DW[wty]:DE[wty];
-    else if(bdx===0)depth=bdy>0?DN[wtx]:DS[wtx];
-    else depth=((bdx>0?DW[wty]:DE[wty])+(bdy>0?DN[wtx]:DS[wtx]))*0.5; // 꼭짓점=두 변 평균
-    if(dist<depth) return ['sea',id];
-  }
+  let bd2=MAXD2,bnx=0,bny=0,hit=false;
+  for(const O of OCEANS){const nx=wx<O.ox?O.ox:(wx>O.ox+O.w?O.ox+O.w:wx),ny=wy<O.oy?O.oy:(wy>O.oy+O.h?O.oy+O.h:wy);const dx=wx-nx,dy=wy-ny,d2=dx*dx+dy*dy;if(d2<bd2){bd2=d2;bnx=nx;bny=ny;hit=true;}}
+  if(hit){const dist=Math.sqrt(bd2);const depth=CBASE+coastSN2(bnx,bny)*CNOISE; if(dist<depth) return['sea',id];} // 바다점 2D노이즈 → 솔기 없음
   const map=BK[id]; if(!map) return ['plain',id]; // 안 그린 존 = 평지(절차생성 미표시)
   const bx=Math.floor(lx/BS),by=Math.floor(ly/BS); let rock=false,forest=false;
   for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++){const a=map.get(bkey(bx+dx,by+dy));if(!a)continue;
     for(const it of a){
       if(it.t<=2){ if(segDist2(lx,ly,it)<it.hw*it.hw){ if(it.t===1) return['water',id]; rock=true; } }
-      else { const ux=(lx-it.cx)/it.ex,uy=(ly-it.cy)/it.ey; if(ux*ux+uy*uy<=1){ if(it.t===3) return['water',id]; forest=true; } }
+      else { const dx2=lx-it.cx,dy2=ly-it.cy,ux=dx2/it.ex,uy=dy2/it.ey;
+        if(it.t===3){ const w=lakeWob(it.cx,it.cy,Math.atan2(dy2,dx2)); if(ux*ux+uy*uy<w*w) return['water',id]; } // 호수 wobble
+        else if(ux*ux+uy*uy<=1) forest=true; }
     } }
   if(rock) return['rock',id];
   if(forest) return['forest',id];

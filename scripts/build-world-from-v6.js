@@ -14,11 +14,13 @@ const Z = {};
 for (const id in ZONES) Z[id] = { off: [ZONES[id].worldOffsetX, ZONES[id].worldOffsetY], size: [ZONES[id].zoneWidth, ZONES[id].zoneHeight] };
 const DRAWN = new Set(['nordan','europa','sahar','centaria','hindgang','sibara','jungwon_n','jungwon_s','bering','hanbando','nippon']);
 const zoneAt = (x, y) => { for (const id in Z){ const o=Z[id].off, s=Z[id].size; if (x>=o[0]&&x<o[0]+s[0]&&y>=o[1]&&y<o[1]+s[1]) return id; } return null; };
+// 존 사각형을 margin만큼 확장해서 포함 판정 — 강·산맥의 '폭'이 경계 너머로 걸치는 경우 이웃 존에도 저장(경계 클리핑 방지).
+const inZoneExp = (x, y, zone, m) => { const o=Z[zone].off, s=Z[zone].size; return x>=o[0]-m && x<o[0]+s[0]+m && y>=o[1]-m && y<o[1]+s[1]+m; };
 const cen = f => f.center ? [f.center.x, f.center.y] : [f.path[0].x, f.path[0].y];
 const nameFor = (f, zone) => { if (f.names && f.names.length){ const m=f.names.find(n=>n.zone===zone); return (m&&m.name) || f.names[0].name; } return f.name || ''; };
 
-function runsInZone(p, zone){
-  const inb = i => i>=0 && i<p.length && zoneAt(p[i].x, p[i].y)===zone;
+function runsInZone(p, zone, halfW){
+  const inb = i => i>=0 && i<p.length && inZoneExp(p[i].x, p[i].y, zone, halfW || 0);
   const inc = p.map((_, i) => inb(i) || inb(i-1) || inb(i+1));
   const runs = []; let cur = [];
   for (let i=0;i<p.length;i++){ if (inc[i]) cur.push(p[i]); else { if (cur.length>=2) runs.push(cur); cur=[]; } }
@@ -34,11 +36,13 @@ const ens = z => (out[z] = out[z] || { rivers:[], lakes:[], ridges:[], passes:[]
 let nR=0,nG=0,nL=0,nP=0,nF=0,split=0;
 for (const f of F){
   if (f.type==='river' || f.type==='ridge'){
-    // 이 path가 닿는 drawn 존들
-    const zones = new Set(f.path.map(p=>zoneAt(p.x,p.y)).filter(z=>z&&DRAWN.has(z)));
+    // 폭(반폭)을 고려해 닿는 drawn 존들 — 중심선이 옆 존이어도 폭이 이 존에 걸치면 포함(경계 클리핑 방지).
+    let halfW = 150; for (const p of f.path){ const hw=(p.w||300)/2; if (hw>halfW) halfW=hw; }
+    const zones = new Set();
+    for (const p of f.path) for (const z of DRAWN) if (inZoneExp(p.x, p.y, z, halfW)) zones.add(z);
     for (const zone of zones){
       const o = Z[zone].off;
-      const runs = runsInZone(f.path, zone);
+      const runs = runsInZone(f.path, zone, halfW);
       if (runs.length>1) split++;
       for (const run of runs){
         const pathL = run.map(p => ({ pos:[Math.round(p.x-o[0]), Math.round(p.y-o[1])], width: p.w||300 }));
