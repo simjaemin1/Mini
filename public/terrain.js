@@ -67,24 +67,19 @@ function _getZoneTerrain(zoneId) {
   catch { gen = (typeof window !== 'undefined') ? window.TerrainGen : null; }
   if (!gen) return null;
   const data = gen.generateZoneTerrain(zoneId, meta);
-  // hardcoded override (한반도는 강·호수 모두 교체, 나머지는 추가)
+  // hardcoded override — 완전 교체 (world v7). server/terrain.js와 동일.
+  //   그려진 존은 손 지형만 사용: 절차 강·호수·산맥·고개·숲을 v7으로 "교체"(추가 X).
+  //   이전엔 한반도만 교체하고 나머지 존은 절차 강에 추가해서, 절차 계단강이 v7강과 같이 남았었음.
+  //   절차 산(mountains) 제거 — 산맥(ridges)이 대신. 광맥(ores)은 에디터로 못 그려 절차생성 유지.
   const hc = _hardcodedCache[zoneId];
   if (hc) {
-    if (zoneId === 'hanbando') {
-      // Phase 5-G: cleanZone — 강·호수만, 숲·산·광맥 제거
-      data.rivers    = hc.rivers || [];
-      data.lakes     = hc.lakes  || [];
-      data.ridges    = hc.ridges || []; // Phase 5-H: 산맥
-      data.passes    = hc.passes || [];
-      data.forests   = [];
-      data.mountains = [];
-      data.ores      = [];
-    } else {
-      if (hc.rivers && hc.rivers.length) data.rivers = [...(data.rivers || []), ...hc.rivers];
-      if (hc.lakes  && hc.lakes.length)  data.lakes  = [...(data.lakes  || []), ...hc.lakes];
-      if (hc.ridges && hc.ridges.length) data.ridges = [...(data.ridges || []), ...hc.ridges];
-      if (hc.passes && hc.passes.length) data.passes = [...(data.passes || []), ...hc.passes];
-    }
+    data.rivers    = hc.rivers  || [];
+    data.lakes     = hc.lakes   || [];
+    data.ridges    = hc.ridges  || [];
+    data.passes    = hc.passes  || [];
+    data.forests   = hc.forests || [];
+    data.mountains = [];
+    // data.ores 는 절차생성 그대로 둔다.
   }
   _generated.set(zoneId, data);
   return data;
