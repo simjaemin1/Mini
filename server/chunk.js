@@ -259,15 +259,18 @@ function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet) 
     // water/rock cell에는 spawn 차단 (Phase 5-H: 산맥 바위)
     if (terrain.isWaterCellLocal(zoneId, x, y)) continue;
     if (typeof terrain.isRockCellLocal === 'function' && terrain.isRockCellLocal(zoneId, x, y)) continue;
+    // 숲 판정은 청크중심이 아니라 '이 나무 위치(x,y)'에서 — 그린 타원 모양 그대로 나무가 박힘
+    // (존 경계·청크 격자 무관. 타원 밖이면 일반 biome.)
+    const localForest = terrain.getForestMultiplier(zoneId, x, y);
     // 자원 type — terrain 영향:
     //   ore cluster 안 → stone/iron 우세
-    //   forest 영역 → tree 우세
+    //   forest 영역 → tree 우세 (위치별)
     //   mountain 영역 → stone 우세
     let type;
     if (oreCluster && r3 < 0.7) {
       type = 'stone';  // ore cluster: 70% stone
-    } else if (forestMult > 1.5 && r3 < 0.7) {
-      type = 'tree';  // forest: 70% tree
+    } else if (localForest > 1.5 && r3 < 0.85) {
+      type = 'tree';  // forest: 85% tree (그린 타원 안에서만)
     } else if (stoneMult > 1.5 && r3 < 0.5) {
       type = 'stone';  // mountain: 50% stone
     } else {
