@@ -245,8 +245,8 @@ function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet) 
   const forestMult = terrain.getForestMultiplier(zoneId, sampleX, sampleY);
   const stoneMult = terrain.getStoneMultiplier(zoneId, sampleX, sampleY);
   const oreCluster = terrain.isOreClusterAt(zoneId, sampleX, sampleY);
-  // 최종 자원 수 = base × max(forest, mountain, 1)
-  const baseCount = Math.round(RESOURCES_PER_CHUNK * Math.max(forestMult, stoneMult, 1.0));
+  // 일반 자원 수 = base × max(mountain, 1). 숲 밀도는 아래 전용 나무 그리드가 담당.
+  const baseCount = Math.round(RESOURCES_PER_CHUNK * Math.max(stoneMult, 1.0));
   const count = oreCluster ? baseCount + 3 : baseCount;  // ore cluster: 추가 stone
   for (let n = 0; n < count; n++) {
     const seedKey = `${cx}_${cy}_${n}`;
@@ -259,18 +259,13 @@ function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet) 
     // water/rock cell에는 spawn 차단 (Phase 5-H: 산맥 바위)
     if (terrain.isWaterCellLocal(zoneId, x, y)) continue;
     if (typeof terrain.isRockCellLocal === 'function' && terrain.isRockCellLocal(zoneId, x, y)) continue;
-    // 숲 판정은 청크중심이 아니라 '이 나무 위치(x,y)'에서 — 그린 타원 모양 그대로 나무가 박힘
-    // (존 경계·청크 격자 무관. 타원 밖이면 일반 biome.)
-    const localForest = terrain.getForestMultiplier(zoneId, x, y);
     // 자원 type — terrain 영향:
     //   ore cluster 안 → stone/iron 우세
-    //   forest 영역 → tree 우세 (위치별)
     //   mountain 영역 → stone 우세
+    //   (숲 나무는 아래 전용 그리드에서 빽빽하게 깔림 — 여기선 일반 biome 배경만)
     let type;
     if (oreCluster && r3 < 0.7) {
       type = 'stone';  // ore cluster: 70% stone
-    } else if (localForest > 1.5 && r3 < 0.85) {
-      type = 'tree';  // forest: 85% tree (그린 타원 안에서만)
     } else if (stoneMult > 1.5 && r3 < 0.5) {
       type = 'stone';  // mountain: 50% stone
     } else {
@@ -290,6 +285,45 @@ function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet) 
       entity.h = 50 + (r3 * 100);  // 50~150
     }
     result.push(entity);
+  }
+
+  // === 숲 나무 — 빽빽한 지터드 그리드 (그린 타원 안에만 쫙 깔림) ===
+  // 청크가 숲에 걸치는지 + 밀도 — 중심/4모서리 중 max (경계 청크도 빽빽하게)
+  const qd = chunkSize * 0.3;
+  const fCov = Math.max(
+    forestMult,
+    terrain.getForestMultiplier(zoneId, sampleX - qd, sampleY - qd),
+    terrain.getForestMultiplier(zoneId, sampleX + qd, sampleY - qd),
+    terrain.getForestMultiplier(zoneId, sampleX - qd, sampleY + qd),
+    terrain.getForestMultiplier(zoneId, sampleX + qd, sampleY + qd)
+  );
+  if (fCov > 1.5) {
+    // 나무 간격(px) — 밀도(densityMult) 클수록 촘촘. ↓이 숫자(FOREST_SPACING_BASE)가 밀도 조절 손잡이.
+    //   작게=더 빽빽(부하↑), 크게=듬성. 92 → 큰숲 ~51px·청크당 ~340그루.
+    const FOREST_SPACING_BASE = 92;
+    const SP = Math.max(48, Math.min(72, Math.round(FOREST_SPACING_BASE / Math.sqrt(fCov))));
+    const cs = chunkSize;
+    let gi = 0;
+    for (let gy = 0; gy < cs; gy += SP) {
+      for (let gx = 0; gx < cs; gx += SP, gi++) {
+        const j1 = seedRand(zoneId, cx, cy, 90000 + gi * 2);
+        const j2 = seedRand(zoneId, cx, cy, 90000 + gi * 2 + 1);
+        if (j2 > 0.9) continue;                 // 10% 빈자리 — 자연스러움
+        const x = cx * cs + gx + j1 * SP;
+        const y = cy * cs + gy + j2 * SP;
+        // 그린 타원 안에서만 (존 경계·청크 무관, 모양 그대로)
+        if (terrain.getForestMultiplier(zoneId, x, y) <= 1.5) continue;
+        if (terrain.isWaterCellLocal(zoneId, x, y)) continue;
+        if (typeof terrain.isRockCellLocal === 'function' && terrain.isRockCellLocal(zoneId, x, y)) continue;
+        const seedKey = `${cx}_${cy}_ft${gx}_${gy}`;
+        if (harvestedSet && harvestedSet.has(seedKey)) continue;
+        result.push({
+          id: `s_${seedKey}`, seedKey, isSeed: true,
+          x, y, type: 'tree', hp: 3, maxHp: 3,
+          r: 4 + (j1 * 11), h: 50 + (j2 * 100),
+        });
+      }
+    }
   }
   return result;
 }
