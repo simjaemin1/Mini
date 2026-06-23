@@ -6463,10 +6463,33 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     cx.fillStyle = waterColor;
     for (const lake of (td.lakes || [])) {
       if (!lake.center) continue;
-      const r = Math.max(0.5, (lake.radius||0) * sxr);
+      const rr = (lake.radius != null) ? lake.radius : (((lake.a||0)+(lake.b||0))/2); // 타원 호수(a/b)도 표시
+      const r = Math.max(0.5, rr * sxr);
       cx.beginPath();
       cx.arc(lake.center[0]*sxr, lake.center[1]*syr, r, 0, Math.PI*2);
       cx.fill();
+    }
+    // 5.5. ridge(산맥) path stroke — rock 색. river보다 먼저 그려 교차 시 강이 위로(water>rock).
+    if (td.ridges && td.ridges.length && TILE_COLORS.rock) {
+      cx.strokeStyle = TILE_COLORS.rock;
+      cx.lineCap = 'round';
+      for (const ridge of td.ridges) {
+        const path = ridge.path || [];
+        if (path.length < 2) continue;
+        for (let i = 0; i < path.length - 1; i++) {
+          const p1 = path[i], p2 = path[i+1];
+          const x1 = p1.pos ? p1.pos[0] : p1[0];
+          const y1 = p1.pos ? p1.pos[1] : p1[1];
+          const x2 = p2.pos ? p2.pos[0] : p2[0];
+          const y2 = p2.pos ? p2.pos[1] : p2[1];
+          const w = ((p1.width||300) + (p2.width||300)) / 2;
+          cx.lineWidth = Math.max(1.5, w * sxr);
+          cx.beginPath();
+          cx.moveTo(x1*sxr, y1*syr);
+          cx.lineTo(x2*sxr, y2*syr);
+          cx.stroke();
+        }
+      }
     }
     // 6. river path stroke (cache 안 최소 1.5 px — 작은 cache에서도 강 보이게)
     cx.strokeStyle = waterColor;
