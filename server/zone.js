@@ -147,7 +147,9 @@ function rebuildSpatialIndex() {
     qtPlayers.insert({ x: p.x, y: p.y, ref: p });
   }
   for (const m of mobs.values())       qtMobs.insert({ x: m.x, y: m.y, ref: m });
-  for (const b of buildings.values())  qtBuildings.insert({ x: b.x, y: b.y, ref: b });
+  // qtBuildings — 활성청크 건물만 인덱싱. queryCircle은 전부 플레이어 주변(활성청크)이라 충분.
+  //   집 ON이면 전 존 건물 3만+채 → 매틱 전체 재삽입은 ~7ms(22% CPU). 활성청크만이면 ~수백채.
+  for (const k of activeChunkKeys) { const c = chunkManager.chunks.get(k); if (c) for (const b of c.buildings.values()) qtBuildings.insert({ x: b.x, y: b.y, ref: b }); }
   // 자원은 안 움직임 — 매 tick 재삽입하면 숲 수천 그루를 30Hz로 재구축해 1 vCPU가 죽음.
   // 청크 활성/비활성·채집으로 바뀐 경우(resourcesDirty)에만 다시 만든다.
   // ★ 추가: 마을 NPC 채집·이동으로 resourcesDirty가 매틱 떠도, 전체 재구축은 자원 수만큼 비쌈
@@ -1130,8 +1132,9 @@ function decideNpcBehavior(npc, now) {
     npc.targetY = npc.y + (dy/dd) * 200;
     return;
   }
-  // ② 자기 농지 익었으면 수확
-  for (const b of buildings.values()) {
+  // ② 자기 농지 익었으면 수확 — 근처(qtBuildings)만 (집 ON이면 전 건물 3만+채 순회 방지)
+  const _nearBld = qtBuildings ? qtBuildings.queryCircle(npc.x, npc.y, 700) : [];
+  for (const b of _nearBld) {
     if (b.type !== 'farmland' || b.ownerId !== npc.playerId) continue;
     if (b.data?.ready || (b.data?.readyAt && now >= b.data.readyAt)) {
       npc.behavior = 'harvest';
@@ -1144,7 +1147,7 @@ function decideNpcBehavior(npc, now) {
   if ((npc.inventory.seed_berry || 0) >= 1 && npc.myClaim) {
     const cl = npc.myClaim;
     let myFarmCount = 0;
-    for (const b of buildings.values()) if (b.type === 'farmland' && b.ownerId === npc.playerId) myFarmCount++;
+    for (const b of _nearBld) if (b.type === 'farmland' && b.ownerId === npc.playerId) myFarmCount++;
     if (myFarmCount < 3) {
       // 사유지 안 빈 자리 (대충 중심에서 약간 어긋난 곳)
       npc.behavior = 'plant';
@@ -4313,11 +4316,10 @@ setInterval(() => {
     if ((Date.now() - now) > 15) break;
     npcStep(npc, dt, now);
   }
-  // 농지 ready 마크 (시간 지남) — 한 번 ready되면 그대로
-  for (const b of buildings.values()) {
-    if (b.type === 'farmland' && b.data && !b.data.ready && now >= b.data.readyAt) {
-      b.data.ready = true;
-      // broadcast 안 함 — 클라가 시간 보고 자체 판단
+  // 농지 ready 마크 (시간 지남) — 활성청크만 (집 ON이면 전 건물 3만+채 매틱 순회 방지)
+  for (const k of activeChunkKeys) { const c = chunkManager.chunks.get(k); if (!c) continue;
+    for (const b of c.buildings.values()) {
+      if (b.type === 'farmland' && b.data && !b.data.ready && now >= b.data.readyAt) b.data.ready = true;
     }
   }
 
@@ -4956,6 +4958,7 @@ setInterval(() => {
       mobs: visibleMobs(data.viewerX, data.viewerY, data.viewerState),
     });
   }
+  { const _td = Date.now() - now; global._tt = (global._tt||0)+_td; global._tn = (global._tn||0)+1; if (_td > (global._tmx||0)) global._tmx = _td; }
 }, TICK_MS);
 
 // Phase 5-I: 이웃 zone에 ghost 스냅샷 주기 송신 (10Hz — 경계 전투 표적 위치 공유)
@@ -4966,7 +4969,8 @@ setInterval(() => {
   let hasH = false; for (const p of players.values()) { if (!p.isNpc) { hasH = true; break; } }
   if (!hasH && observers.size === 0) return;
   let act = 0; for (const pid of npcs) { const n = players.get(pid); if (n && isPositionActive(n.x, n.y)) act++; }
-  console.log(`[${ZONE_ID}] diag res=${resources.size} activeChunks=${activeChunkKeys ? activeChunkKeys.size : 0} npc=${npcs.size}/act${act} mob=${mobs.size} obs=${observers.size} claims=${claims.size}`);
+  console.log(`[${ZONE_ID}] diag tick_avg=${global._tn?(global._tt/global._tn).toFixed(1):0}ms tick_max=${global._tmx||0}ms | bld=${buildings.size} res=${resources.size} npc=${npcs.size}/act${act} mob=${mobs.size} claims=${claims.size}`);
+  global._tt = 0; global._tn = 0; global._tmx = 0;
 }, 10000);
 
 // === 핸드오프 fire (HTTP POST + 토큰 발급) ===
