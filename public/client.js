@@ -1823,6 +1823,14 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     } else if (msg.type === 'resources_removed') {      // 배치 제거 — 청크 비활성화
       const ids = msg.ids || [];
       for (let i = 0; i < ids.length; i++) c.resources.delete(ids[i]);
+    } else if (msg.type === 'buildings_spawn') {        // 배치 — 청크 활성화 시 NPC 집 등 한 번에 (welcome 폭주 방지)
+      const arr = msg.buildings || [];
+      for (let i = 0; i < arr.length; i++) c.buildings.set(arr[i].id, arr[i]);
+      clWallMapBuiltAt = 0; clStairCacheBuildAt = 0;   // wall/stair 캐시 재빌드 강제 (다음 프레임)
+    } else if (msg.type === 'buildings_removed') {      // 배치 제거 — 청크 비활성화 (서버는 메모리 유지)
+      const ids = msg.ids || [];
+      for (let i = 0; i < ids.length; i++) c.buildings.delete(ids[i]);
+      clWallMapBuiltAt = 0; clStairCacheBuildAt = 0;
     } else if (msg.type === 'claim_added') {
       c.claims.set(msg.claim.id, msg.claim);
     } else if (msg.type === 'claim_updated') {

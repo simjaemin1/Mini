@@ -80,12 +80,17 @@ function activateChunk(cx, cy) {
     resourcesDirty = true;
     broadcast({ type: 'resources_spawn', resources: spawned });  // 배치 — 숲 수백 그루를 개별로 안 보냄
   }
+  // AOI 건물: 이 청크 건물(NPC 집 등)을 활성화 시 전송 (welcome엔 전 존 건물 안 실음)
+  const _ch = chunkManager.chunks.get(chunkManager.keyOf(cx, cy));
+  if (_ch && _ch.buildings.size) broadcast({ type: 'buildings_spawn', buildings: Array.from(_ch.buildings.values()) });
 }
 
 // 비활성화 — 그 청크의 시드 자원만 제거 (수동 자원은 안 건드림)
 function deactivateChunk(cx, cy) {
   const c = chunkManager.chunks.get(chunkManager.keyOf(cx, cy));
   if (!c) return;
+  // AOI 건물: 비활성화 시 클라에서 제거 (서버 메모리는 유지 — 재활성 시 다시 buildings_spawn)
+  if (c.buildings.size) broadcast({ type: 'buildings_removed', ids: Array.from(c.buildings.keys()) });
   const toRemove = [];
   for (const r of c.resources.values()) if (r.isSeed) toRemove.push(r);
   if (!toRemove.length) return;
@@ -102,6 +107,13 @@ function isChunkActiveKey(key) { return activeChunkKeys.has(key); }
 function isPositionActive(x, y) {
   const { cx, cy } = chunkManager.chunkXY(x, y);
   return activeChunkKeys.has(chunkManager.keyOf(cx, cy));
+}
+// AOI: 활성 청크 안 건물만 (welcome용). 전 존 건물을 한 번에 안 보냄 — NPC 집 수만개로 welcome 폭주 방지.
+//   나머지는 청크 활성/비활성 시 buildings_spawn / buildings_removed 로 점점 전송 (자원과 동일).
+function activeChunkBuildings() {
+  const out = [];
+  for (const k of activeChunkKeys) { const c = chunkManager.chunks.get(k); if (c) for (const b of c.buildings.values()) out.push(b); }
+  return out;
 }
 
 // === Spatial index — 매 tick 재구축 ===
@@ -1807,7 +1819,7 @@ wss.on('connection', async (ws, req) => {
       hardcodedTerrain: getHardcodedTerrainForZone(),
       resources: Array.from(resources.values()),
       claims: Array.from(claims.values()),
-      buildings: Array.from(buildings.values()),
+      buildings: activeChunkBuildings(),
       worldClock: {
         epoch: WORLD.worldEpoch,
         dayLengthMs: WORLD.dayLengthMs,
@@ -2079,7 +2091,7 @@ wss.on('connection', async (ws, req) => {
     hardcodedTerrain: getHardcodedTerrainForZone(),
     resources: Array.from(resources.values()),
     claims: Array.from(claims.values()),
-    buildings: Array.from(buildings.values()),
+    buildings: activeChunkBuildings(),
     groundItems: Array.from(groundItems.values()), // Phase 14.23
     mobs: Array.from(mobs.values()).map(m => ({ mid: m.mid, type: m.type, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, tameOwner: m.tameOwner || null, tameOwnerName: m.tameOwnerName || null })),
     inventory: player.inventory,
