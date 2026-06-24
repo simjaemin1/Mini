@@ -4261,6 +4261,7 @@ setInterval(() => {
 
   // === Spatial index 재구축 — 모든 nearest-search가 이걸 씀 ===
   rebuildSpatialIndex();
+  const _pfReb = Date.now() - now;  // PROFILE: activeChunks+rebuild 누적
 
   // 입력 타임아웃 — 2.5초 동안 입력 없으면 정지
   // 14.46-b-smooth: 1000 → 2500. 평지에서 짧은 네트워크 hiccup으로 server가 멈췄다가 클라 예측이 앞서면
@@ -4851,6 +4852,7 @@ setInterval(() => {
   // === AOI 필터링: per-viewer tick ===
   // 각 viewer(player+observer)에 자기 시야(AOI_RADIUS) 안 player만 송신.
   // 대역폭 절감 + observer를 통한 정보 누출 차단.
+  const _pfMid = Date.now() - now;  // PROFILE: rebuild~여기(NPC AI+이동+생존+mob) 누적
   const allPlayers = Array.from(players.values());
   const allMobs = Array.from(mobs.values());
   // viewer별 "이전 tick에 본 entity pid/mid" 추적 — 새로 보이는 것만 메타 포함
@@ -4923,6 +4925,17 @@ setInterval(() => {
       players: visiblePlayers(data.viewerX, data.viewerY, null, data.viewerState),
       mobs: visibleMobs(data.viewerX, data.viewerY, data.viewerState),
     });
+  }
+  // PROFILE: 틱 구간 측정 — 5초마다 avg/max + 엔티티 수
+  { const _tot = Date.now() - now;
+    const g = (global._pf = global._pf || { n:0, tot:0, reb:0, mid:0, snap:0, max:0 });
+    g.n++; g.tot += _tot; g.reb += _pfReb; g.mid += (_pfMid - _pfReb); g.snap += (_tot - _pfMid); if (_tot > g.max) g.max = _tot;
+    if (!global._pfAt || now - global._pfAt > 5000) {
+      global._pfAt = now;
+      let act = 0; for (const pid of npcs) { const nn = players.get(pid); if (nn && isPositionActive(nn.x, nn.y)) act++; }
+      console.log(`[${ZONE_ID}] TICK avg=${(g.tot/g.n).toFixed(1)}ms max=${g.max}ms | reb=${(g.reb/g.n).toFixed(1)} aiMoveMob=${(g.mid/g.n).toFixed(1)} snap=${(g.snap/g.n).toFixed(1)} | npc=${npcs.size}/act${act} res=${resources.size} mob=${mobs.size} bld=${buildings.size} clm=${claims.size} obs=${observers.size} ppl=${players.size}`);
+      global._pf = { n:0, tot:0, reb:0, mid:0, snap:0, max:0 };
+    }
   }
 }, TICK_MS);
 
