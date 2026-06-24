@@ -953,7 +953,7 @@ function spawnGuildClaimsForVillage(village, centralTribeId) {
   if (!centralTribeId) return;
   // 마을 중심 주변 N×N 그리드 (1 cell = 32px). 25 cell = 5×5 = 160×160 영역.
   const SZ = BUILDING_SIZE;
-  const RADIUS_CELLS = 12; // 12 cell 반경 → 24×24 = 576 cells 길드 영토
+  const RADIUS_CELLS = 3; // 3 cell 반경 → ~28 cells 길드 영토. (이전 12=마을당 ~452칸 × 50마을 = 22,600 claim → welcome 4.5MB 폭주로 WS 접속 불가. 16× 축소. 영토 확장은 sim/길드로 후속)
   const npcOwnerId = `village_${village.name}`;
   // 옛 거 정리 (메모리 + DB)
   for (const [id, c] of claims) {
