@@ -175,6 +175,7 @@ const ZONES_BASE = {
     groundColor: '#9a9670', tintColor: '#7a8a4a',
     worldOffsetX: 41000, worldOffsetY: 5000, zoneWidth: 7000, zoneHeight: 13000,
     villageSeed: 1020, villageCount: 0, // procedural 마을 0 — 하드코딩(hanbando-terrain.json villages, 에디터 v9) 사용
+    useHardcodedVillages: true, // v9 마을 50개 사용. (qtResources throttle 수정으로 재활성)
     npcPerVillage: 6, // 50 하드코딩 마을 × 6 = 300 NPC (1코어 안전선). dormancy로 액티브만 처리.
     mainSquare: { x: 3500, y: 6500, name: '한양 광장' },
     // Phase 5-K: cleanZone 해제 — 자원·몹 spawn 켜짐 (건축 재료 공급). 산맥·강은 hardcoded 차단 유지.

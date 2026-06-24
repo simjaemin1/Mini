@@ -109,6 +109,7 @@ function isPositionActive(x, y) {
 // stale 33ms 정도는 OK (다음 tick에 재구축).
 let qtPlayers, qtMobs, qtResources, qtBuildings;
 let resourcesDirty = true;  // 자원(나무·돌)은 static — 변경됐을 때만 quadtree 재구축
+let _lastResRebuild = 0;    // qtResources 전체 재구축 throttle (5Hz 상한)
 function rebuildSpatialIndex() {
   const W = ZONE.zoneWidth, H = ZONE.zoneHeight;
   qtPlayers   = new Quadtree(0, 0, W, H);
@@ -122,10 +123,14 @@ function rebuildSpatialIndex() {
   for (const b of buildings.values())  qtBuildings.insert({ x: b.x, y: b.y, ref: b });
   // 자원은 안 움직임 — 매 tick 재삽입하면 숲 수천 그루를 30Hz로 재구축해 1 vCPU가 죽음.
   // 청크 활성/비활성·채집으로 바뀐 경우(resourcesDirty)에만 다시 만든다.
-  if (resourcesDirty || !qtResources) {
+  // ★ 추가: 마을 NPC 채집·이동으로 resourcesDirty가 매틱 떠도, 전체 재구축은 자원 수만큼 비쌈
+  //   (5만 그루 ≈ 18ms, 10만 ≈ 59ms). 그래서 dirty여도 200ms(5Hz) 상한으로 throttle.
+  //   자원 검색·트리 충돌은 200ms staleness 무해(채집 후보가 한 박자 늦게 갱신될 뿐).
+  if (!qtResources || (resourcesDirty && Date.now() - _lastResRebuild >= 200)) {
     qtResources = new Quadtree(0, 0, W, H);
     for (const r of resources.values()) qtResources.insert({ x: r.x, y: r.y, ref: r });
     resourcesDirty = false;
+    _lastResRebuild = Date.now();
   }
 }
 
@@ -4928,6 +4933,14 @@ setInterval(() => {
 
 // Phase 5-I: 이웃 zone에 ghost 스냅샷 주기 송신 (10Hz — 경계 전투 표적 위치 공유)
 setInterval(() => { try { syncGhostsToNeighbors(); } catch (e) {} }, 100);
+
+// 진단: 자원·활성 규모 (러버밴딩 원인 = qtResources 재구축 비용 확인용). 10초마다, 사람/observer 있을 때만.
+setInterval(() => {
+  let hasH = false; for (const p of players.values()) { if (!p.isNpc) { hasH = true; break; } }
+  if (!hasH && observers.size === 0) return;
+  let act = 0; for (const pid of npcs) { const n = players.get(pid); if (n && isPositionActive(n.x, n.y)) act++; }
+  console.log(`[${ZONE_ID}] diag res=${resources.size} activeChunks=${activeChunkKeys ? activeChunkKeys.size : 0} npc=${npcs.size}/act${act} mob=${mobs.size} obs=${observers.size} claims=${claims.size}`);
+}, 10000);
 
 // === 핸드오프 fire (HTTP POST + 토큰 발급) ===
 async function fireHandoff(player, targetZoneId, newX, newY) {
