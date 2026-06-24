@@ -76,6 +76,12 @@ db.exec(`
     seed_key      TEXT PRIMARY KEY,
     harvested_at  INTEGER NOT NULL
   );
+  -- 광맥 셀 번영도 (lazy: prosperity + last_t timestamp). 만땅 회복 시 레코드 삭제 → 테이블 작게 유지.
+  CREATE TABLE IF NOT EXISTS mined_cells (
+    cell_key    TEXT PRIMARY KEY,
+    prosperity  REAL NOT NULL,
+    last_t      INTEGER NOT NULL
+  );
 `);
 
 // === resources ===
@@ -158,6 +164,14 @@ const stmtGetAllHarvested = db.prepare('SELECT seed_key FROM harvested_seeds');
 function insertHarvestedSeed(key) { stmtInsertHarvested.run(key, Date.now()); }
 function getAllHarvestedSeeds() { return stmtGetAllHarvested.all().map(r => r.seed_key); }
 
+// === mined_cells (광맥 셀 번영도 — lazy refill) ===
+const stmtUpsertMined = db.prepare('INSERT INTO mined_cells (cell_key, prosperity, last_t) VALUES (?, ?, ?) ON CONFLICT(cell_key) DO UPDATE SET prosperity=excluded.prosperity, last_t=excluded.last_t');
+const stmtGetAllMined = db.prepare('SELECT cell_key, prosperity, last_t FROM mined_cells');
+const stmtDeleteMined = db.prepare('DELETE FROM mined_cells WHERE cell_key = ?');
+function upsertMinedCell(key, prosperity, lastT) { stmtUpsertMined.run(key, prosperity, lastT); }
+function getAllMinedCells() { return stmtGetAllMined.all(); }
+function deleteMinedCell(key) { stmtDeleteMined.run(key); }
+
 console.log(`[${ZONE_ID}/db] 로컬 zone DB 준비됨: ${DB_PATH}`);
 
 module.exports = {
@@ -167,4 +181,5 @@ module.exports = {
   getMobs, insertMob, updateMobState, deleteMob,
   getClaims, insertClaim,
   insertHarvestedSeed, getAllHarvestedSeeds,
+  upsertMinedCell, getAllMinedCells, deleteMinedCell,
 };

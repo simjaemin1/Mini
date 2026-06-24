@@ -2737,6 +2737,72 @@ function doToggleHotkey(player) {
   if (!player.playerId.startsWith('anon_')) savePlayer(player);
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// 광맥 채굴 — 셀별 번영도 (lazy timestamp refill). 틱 없음, 채굴 시에만 계산.
+// ═══════════════════════════════════════════════════════════════════
+const Specialty = require('./specialty');
+const minedCells = new Map();   // "cx_cy" → { prosperity, lastT }. 안 판 셀은 암묵적으로 max(저장X).
+
+{ // 부팅: DB에서 파인 셀 로드
+  try {
+    for (const r of db.getAllMinedCells()) minedCells.set(r.cell_key, { prosperity: r.prosperity, lastT: r.last_t });
+    if (minedCells.size) console.log(`[${ZONE_ID}] 광맥 파인 셀 ${minedCells.size}개 로드`);
+  } catch (e) { console.log(`[${ZONE_ID}] mined_cells 로드 실패: ${e.message}`); }
+}
+
+{ // 부팅: 광맥 클러스터에 광물 배정 (v8 미지정이면 biome+위치 해시로)
+  const t = _terrain.ZONE_TERRAIN[ZONE_ID];
+  if (t && t.ores && t.ores.length) {
+    for (const o of t.ores) {
+      if (!o.mineral) o.mineral = Specialty.pickMineral(ZONE.biome, Math.round(o.center[0]*0.131 + o.center[1]*0.237));
+    }
+    console.log(`[${ZONE_ID}] 광맥 ${t.ores.length}개 — ${t.ores.map(o=>o.mineral).join(', ')}`);
+  }
+}
+
+// 곡괭이 장착 + 현재 셀이 광맥 구역이면: 번영도 깎고 확률 드롭. 처리했으면 true.
+function mineOreCell(player) {
+  const eq = getEquippedTool(player);
+  if (!eq || eq.type !== 'pickaxe') return false;
+  const cx = Math.floor(player.x / 32), cy = Math.floor(player.y / 32);
+  const cluster = _terrain.isOreClusterAt(ZONE_ID, cx * 32 + 16, cy * 32 + 16);
+  if (!cluster) return false;
+  const mineral = cluster.mineral || 'iron';
+  const mp = Specialty.miningParams(mineral);
+  const key = cx + '_' + cy;
+  const now = Date.now();
+  const rec = minedCells.get(key) || { prosperity: mp.max, lastT: now };
+  const refilled = Math.floor((now - rec.lastT) / mp.refillMs);   // lazy 리필
+  if (refilled > 0) { rec.prosperity = Math.min(mp.max, rec.prosperity + refilled); rec.lastT += refilled * mp.refillMs; }
+  if (rec.prosperity < mp.cost) { send(player.ws, { type: 'notice', text: '⛏ 고갈됨 — 회복 대기중' }); return true; }
+  rec.prosperity -= mp.cost;
+  consumeEquippedDurability(player, 1);
+  let extra = '';
+  if (Math.random() < mp.dropChance) {
+    player.inventory[mineral] = (player.inventory[mineral] || 0) + 1;
+    extra = ` +${(Specialty.RESOURCES[mineral] || {}).ko || mineral}`;
+    send(player.ws, { type: 'inventory', inventory: player.inventory });
+  }
+  if (rec.prosperity >= mp.max) { minedCells.delete(key); try { db.deleteMinedCell(key); } catch (e) {} }
+  else { minedCells.set(key, rec); try { db.upsertMinedCell(key, rec.prosperity, rec.lastT); } catch (e) {} }
+  send(player.ws, { type: 'notice', text: `⛏ 채굴 (번영 ${Math.round(rec.prosperity)})${extra}` });
+  savePlayer(player);
+  return true;
+}
+
+// 주기적 정리 (15분) — 만땅 회복된 셀 레코드 제거. minedCells만 순회(파인 셀, 한정적)라 가벼움.
+setInterval(() => {
+  if (minedCells.size === 0) return;
+  const now = Date.now();
+  for (const [key, rec] of minedCells) {
+    const [cx, cy] = key.split('_').map(Number);
+    const cl = _terrain.isOreClusterAt(ZONE_ID, cx * 32 + 16, cy * 32 + 16);
+    const mp = Specialty.miningParams(cl ? (cl.mineral || 'iron') : 'iron');
+    const refilled = Math.floor((now - rec.lastT) / mp.refillMs);
+    if (rec.prosperity + refilled >= mp.max) { minedCells.delete(key); try { db.deleteMinedCell(key); } catch (e) {} }
+  }
+}, 15 * 60 * 1000);
+
 function tryGather(player) {
   // Phase 5-9: 물 채취 — 강/호수 인접 시 thirst 회복 + 어업 (Phase 5-11)
   for (const [dx, dy] of [[32, 0], [-32, 0], [0, 32], [0, -32]]) {
@@ -2793,6 +2859,8 @@ function tryGather(player) {
       return;
     }
   }
+  // 광맥 셀 채굴 (곡괭이 장착 + 현재 셀이 광맥 구역) — 자원 entity 채집보다 우선
+  if (mineOreCell(player)) return;
   // 가까운 자원 — quadtree로 O(log N)
   const nearby = qtResources ? qtResources.queryCircle(player.x, player.y, GATHER_RANGE) : Array.from(resources.values());
   let best = null;

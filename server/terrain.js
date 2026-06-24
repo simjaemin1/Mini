@@ -93,7 +93,9 @@ function _getZoneTerrain(zoneId) {
     data.passes    = hc[zoneId].passes  || [];
     data.forests   = hc[zoneId].forests || [];
     data.mountains = [];
-    // data.ores 는 절차생성 그대로 둔다.
+    // 광맥(ores): 손그림(v8)이 있으면 그걸로 교체. 광물 종류는 zone.js가 biome 보고 배정.
+    if (hc[zoneId].ores && hc[zoneId].ores.length) data.ores = hc[zoneId].ores;
+    // 없으면 절차 ores 유지.
   }
   _generated.set(zoneId, data);
   return data;

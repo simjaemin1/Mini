@@ -277,8 +277,35 @@ function _byHarvest() {
   return m;
 }
 
+// === 채굴 파라미터 (광물 가치 tier별) — 광맥 셀 번영도 시스템 ===
+const _HOUR = 3600 * 1000;
+function miningParams(mineralId) {
+  const r = RESOURCES[mineralId];
+  const v = r ? r.baseValue : 5;
+  if (v <= 5)  return { tier: 'common', cost: 10, refillMs: 1  * _HOUR, dropChance: 0.7,  max: 100 }; // 흔함: +1/시간
+  if (v <= 50) return { tier: 'mid',    cost: 12, refillMs: 4  * _HOUR, dropChance: 0.45, max: 100 }; // 중간: +1/4시간
+  return                { tier: 'rare',   cost: 15, refillMs: 24 * _HOUR, dropChance: 0.25, max: 100 }; // 귀함: +1/하루
+}
+
+// === biome별 광물 풀 (가중치 = 중복) — 광맥에 mineral 미지정 시 위치 해시로 자동 배정 ===
+const ORE_POOLS = {
+  mountain:    ['iron','iron','copper','copper','silver','gold','sulfur','obsidian','tungsten'],
+  desert:      ['salt','salt','sulfur','phosphate','nitrate','sand','gold','copper'],
+  tundra:      ['nickel','cobalt','iron','iron','silver','diamond','coal'],
+  taiga:       ['iron','iron','nickel','copper','coal','coal','granite'],
+  forest:      ['iron','iron','gold','tungsten','marble','jade_raw','coal','copper'],
+  plains:      ['coal','coal','iron','iron','copper','limestone','clay','tin','zinc'],
+  jungle:      ['iron','gold','copper','diamond','ruby','emerald','bauxite'],
+  savanna:     ['iron','copper','gold','manganese','phosphate','salt'],
+  archipelago: ['copper','tin','gold','obsidian','salt'],
+};
+function pickMineral(biome, seedNum) {
+  const pool = (ORE_POOLS[biome] || ORE_POOLS.plains).filter(id => RESOURCES[id]);
+  return pool[Math.abs(seedNum) % pool.length] || 'iron';
+}
+
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { RESOURCES, _summary, _byHarvest };
+  module.exports = { RESOURCES, _summary, _byHarvest, miningParams, pickMineral, ORE_POOLS };
 }
 if (typeof window !== 'undefined') {
   window.Specialty = { RESOURCES };
