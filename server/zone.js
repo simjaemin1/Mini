@@ -21,6 +21,11 @@ const CHUNK_ACTIVE_RADIUS = 1200; // 시야(650) + AOI(800) + 약간 마진
 let activeChunkKeys = new Set();
 // 청크 활성/비활성 transition 감지 + procedural 자원 spawn/despawn
 let prevActiveChunkKeys = new Set();
+// 건물 broadcast 스태거 — 텔포/고속이동 시 한 마을 집(벽 수백채)이 한 틱에 다 가면 클라가 멈춤.
+//   활성청크 건물을 큐에 넣고 틱당 BUILDING_SEND_PER_TICK채만 buildings_spawn. (건물 단위라 한 청크에
+//   집 여러채여도 분산됨. 걷는 속도면 큐가 안 쌓여 즉시.)
+let _buildingSendQueue = [];
+const BUILDING_SEND_PER_TICK = 120;
 function updateActiveChunks() {
   const newActive = new Set();
   // 사람 player 시야 기반 활성 청크
@@ -44,14 +49,14 @@ function updateActiveChunks() {
       newActive.add(chunkManager.keyOf(cx, cy));
     }
   }
-  // transition: 새로 활성된 청크 → procedural 자원 spawn
+  // transition: 새로 활성된 청크 → 즉시 activate (자원 spawn 즉시, 건물은 activateChunk 안에서 큐로)
   for (const k of newActive) {
     if (!prevActiveChunkKeys.has(k)) {
       const [cx, cy] = k.split('_').map(Number);
       activateChunk(cx, cy);
     }
   }
-  // transition: 비활성된 청크 → 시드 자원 despawn (메모리/quadtree에서 제거)
+  // transition: 비활성된 청크 → 시드 자원 despawn (즉시 — 가벼움)
   for (const k of prevActiveChunkKeys) {
     if (!newActive.has(k)) {
       const [cx, cy] = k.split('_').map(Number);
@@ -60,6 +65,12 @@ function updateActiveChunks() {
   }
   prevActiveChunkKeys = newActive;
   activeChunkKeys = newActive;
+  // 건물 broadcast 큐 드레인 — 틱당 BUILDING_SEND_PER_TICK채만. 텔포로 한 마을 수백채가 큐에 쌓여도
+  //   틱당 120채씩 나눠 보내 클라가 안 멈춤. 걷는 속도면 큐가 비어있어 영향 없음.
+  if (_buildingSendQueue.length) {
+    const batch = _buildingSendQueue.splice(0, BUILDING_SEND_PER_TICK);
+    broadcast({ type: 'buildings_spawn', buildings: batch });
+  }
 }
 
 // 활성화 — 그 청크의 시드 자원 생성
@@ -80,9 +91,9 @@ function activateChunk(cx, cy) {
     resourcesDirty = true;
     broadcast({ type: 'resources_spawn', resources: spawned });  // 배치 — 숲 수백 그루를 개별로 안 보냄
   }
-  // AOI 건물: 이 청크 건물(NPC 집 등)을 활성화 시 전송 (welcome엔 전 존 건물 안 실음)
+  // AOI 건물: 이 청크 건물(NPC 집 등)을 broadcast 큐에 (틱당 일부씩 — 텔포 폭주 방지)
   const _ch = chunkManager.chunks.get(chunkManager.keyOf(cx, cy));
-  if (_ch && _ch.buildings.size) broadcast({ type: 'buildings_spawn', buildings: Array.from(_ch.buildings.values()) });
+  if (_ch && _ch.buildings.size) for (const b of _ch.buildings.values()) _buildingSendQueue.push(b);
 }
 
 // 비활성화 — 그 청크의 시드 자원만 제거 (수동 자원은 안 건드림)
@@ -90,7 +101,11 @@ function deactivateChunk(cx, cy) {
   const c = chunkManager.chunks.get(chunkManager.keyOf(cx, cy));
   if (!c) return;
   // AOI 건물: 비활성화 시 클라에서 제거 (서버 메모리는 유지 — 재활성 시 다시 buildings_spawn)
-  if (c.buildings.size) broadcast({ type: 'buildings_removed', ids: Array.from(c.buildings.keys()) });
+  if (c.buildings.size) {
+    broadcast({ type: 'buildings_removed', ids: Array.from(c.buildings.keys()) });
+    // 아직 안 보낸 큐의 이 청크 건물은 빼기 (보내자마자 제거되는 낭비·불일치 방지)
+    if (_buildingSendQueue.length) { const _k = chunkManager.keyOf(cx, cy); _buildingSendQueue = _buildingSendQueue.filter(b => b._chunkKey !== _k); }
+  }
   const toRemove = [];
   for (const r of c.resources.values()) if (r.isSeed) toRemove.push(r);
   if (!toRemove.length) return;
@@ -917,8 +932,6 @@ function spawnNpc(opts = {}) {
   }
   // 계단 — 집 내부, 동쪽 벽에 붙음. dir='N' (남쪽에서 들어와 북쪽으로 올라감).
   addBlock(houseCx + 2, houseCy + 1, 'stair', 0, { dir: 'N' });
-
-  console.log(`[${ZONE_ID}] 🤖 NPC 스폰: ${name} @ (${cx.toFixed(0)},${cy.toFixed(0)}) + PZ식 집`);
   return player;
 }
 

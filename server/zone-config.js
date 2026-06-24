@@ -176,7 +176,7 @@ const ZONES_BASE = {
     worldOffsetX: 41000, worldOffsetY: 5000, zoneWidth: 7000, zoneHeight: 13000,
     villageSeed: 1020, villageCount: 0, // procedural 마을 0 — 하드코딩(hanbando-terrain.json villages, 에디터 v9) 사용
     useHardcodedVillages: true, // v9 마을 50개 사용.
-    npcVillageHouses: false,    // NPC 집 OFF — 집이 벽 수백개로 지어져 클라 벽맵·room BFS가 마을 근처에서 멈춤(텔포 시 ws좀비). 경량 '집 마커' 건물타입 구현 후 재활성.
+    npcVillageHouses: true,     // NPC 집 ON (벽집 유지). 텔포 폭주는 청크 활성화 스태거(updateActiveChunks 건물예산)로 방지.
     npcVillageTerritory: true,  // 길드영토 ON — claims는 welcome에 1회(텔포와 무관, 접속 OK 확인됨).
     npcPerVillage: 6, // 50 하드코딩 마을 × 6 = 300 NPC (1코어 안전선). dormancy로 액티브만 처리.
     mainSquare: { x: 3500, y: 6500, name: '한양 광장' },
