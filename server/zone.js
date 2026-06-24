@@ -4267,6 +4267,7 @@ setInterval(() => {
   // 다음 snapshot으로 사용자가 뒤로 밀려나는 느낌 받음. 2.5초로 늘려서 잠깐 끊겨도 server는 계속 이동.
   for (const p of players.values()) {
     if (p.handingOff) continue;
+    if (p.isNpc) continue;  // NPC는 입력 타임아웃 무관 (npcStep이 vx/vy 관리) — 600명 순회 절약
     if (now - p.lastSeen > 2500) { p.vx = 0; p.vy = 0; }
   }
 
@@ -4609,6 +4610,7 @@ setInterval(() => {
   }
   for (const p of players.values()) {
     if (p.handingOff || p.isDown) continue;
+    if (p.isNpc && !p.canadiaVillage && !isPositionActive(p.x, p.y)) continue;  // dormant NPC 낙하 스킵
     processFalling(p);
   }
   for (const m of mobs.values()) {
@@ -4620,6 +4622,7 @@ setInterval(() => {
   // === 생존 게이지: hunger/thirst 감소 + 0이면 HP 페널티 + vp decay ===
   for (const p of players.values()) {
     if (p.hp <= 0 || p.isDown) continue;
+    if (p.isNpc && !p.canadiaVillage && !isPositionActive(p.x, p.y)) continue;  // dormant NPC 허기/갈증 스킵
     // Phase 4d-10 fix: canadia NPC는 hunger/thirst skip (sim에서 식량 소비 처리, zone 자동 식사 없음)
     if (p.canadiaVillage) { p.hunger = HUNGER_MAX; p.thirst = THIRST_MAX; continue; }
     // Phase 14.40: 달리는 중이면 1.5× 빠르게 감소 (실제로 이동 중일 때만)
@@ -4645,6 +4648,7 @@ setInterval(() => {
 
   // === HP 회복 (out-of-combat 1초 후) — 단 hunger/thirst 모두 0이상일 때만 ===
   for (const p of players.values()) {
+    if (p.isNpc && !p.canadiaVillage && !isPositionActive(p.x, p.y)) continue;  // dormant NPC HP회복 스킵
     if (p.hp > 0 && p.hp < p.maxHp && now - p.lastDamagedAt > 1000) {
       if ((p.hunger ?? HUNGER_MAX) > 10 && (p.thirst ?? THIRST_MAX) > 10) {
         p.hp = Math.min(p.maxHp, p.hp + 2 * dt * 5); // 초당 ~10hp
@@ -4654,6 +4658,7 @@ setInterval(() => {
 
   // === 게이지 변화 주기 broadcast (1초 간격, self에만) ===
   for (const p of players.values()) {
+    if (p.isNpc) continue;  // NPC는 클라(ws) 없음 — 게이지 전송 불필요. 600명 순회·메시지 생성 절약
     if (!p._lastGaugeSentAt || now - p._lastGaugeSentAt > 1000) {
       p._lastGaugeSentAt = now;
       send(p.ws, {
@@ -4897,6 +4902,7 @@ setInterval(() => {
     return result;
   }
   for (const p of allPlayers) {
+    if (p.isNpc) continue;  // NPC는 클라(ws) 없음 — 시야계산(queryCircle)·tick 송신 불필요. 600 NPC × queryCircle 핫스팟 제거 (러버밴딩 주원인)
     if (!p.viewerState) p.viewerState = { seenPlayers: new Set(), seenMobs: new Set() };
     // 14.47: 핸드오프 중인 player에겐 tick 보내지 않음.
     //  이유: 클라가 이미 새 zone으로 넘어가서 myPid가 새 pid로 바뀌었는데,
