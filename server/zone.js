@@ -114,7 +114,10 @@ function rebuildSpatialIndex() {
   qtPlayers   = new Quadtree(0, 0, W, H);
   qtMobs      = new Quadtree(0, 0, W, H);
   qtBuildings = new Quadtree(0, 0, W, H);
-  for (const p of players.values())    qtPlayers.insert({ x: p.x, y: p.y, ref: p });
+  for (const p of players.values()) {
+    if (p.isNpc && !p.canadiaVillage && !isPositionActive(p.x, p.y)) continue;  // dormant NPC(플레이어 먼 비활성 청크) — 인덱싱 스킵 → 1000명 확장
+    qtPlayers.insert({ x: p.x, y: p.y, ref: p });
+  }
   for (const m of mobs.values())       qtMobs.insert({ x: m.x, y: m.y, ref: m });
   for (const b of buildings.values())  qtBuildings.insert({ x: b.x, y: b.y, ref: b });
   // 자원은 안 움직임 — 매 tick 재삽입하면 숲 수천 그루를 30Hz로 재구축해 1 vCPU가 죽음.
@@ -905,7 +908,9 @@ function spawnNpc(opts = {}) {
 // 중요: DB 로드는 라인 836+에서 일어남. 그래서 메모리 기반 cleanup은 의미 X.
 // 여기서 DB에 직접 DELETE 쿼리로 wipe — DB 로드 시 이미 사라져 있음.
 // VILLAGES + VILLAGE_SAFE_RADIUS는 위 ~150줄에서 정의됨 (모듈 로드 hoisting 문제로)
-const NPC_PER_VILLAGE = VILLAGES.length > 0 ? Math.floor(NPC_COUNT_PER_ZONE / VILLAGES.length) : 0;
+// 마을당 NPC 수 — 존 총량 나누기(옛 방식, 마을 늘리면 작아짐) → 마을당 고정 크기. 총량 = 마을수 × 이값.
+// dormant NPC는 spatial·이동·AI에서 스킵(active-only)이라 총 1000명도 안전 (근처 active만 비용).
+const NPC_PER_VILLAGE = ZONE.npcPerVillage || 12;
 {
   try {
     const npcClaimRes = db.db.prepare("DELETE FROM claims WHERE owner_id LIKE 'npc_%'").run();
@@ -4292,6 +4297,7 @@ setInterval(() => {
   // 이동 + 경계 처리 + 벽 충돌
   for (const p of players.values()) {
     if (p.handingOff) continue;
+    if (p.isNpc && !p.canadiaVillage && !isPositionActive(p.x, p.y)) continue;  // dormant NPC — 이동 처리 스킵 (안 움직임) → 1000명 확장
     // === auto-eject: 어떤 이유로든(핸드오프 착지·지형변경·관통) 중심이 물/바위에 빠졌으면,
     //   "자유이동(escape valve)" 대신 가장 가까운 통행가능 셀로 밀어낸다 → 강 안에서 헤엄치는 버그 차단.
     if (isTerrainBlockedLocal(p.x, p.y)) {

@@ -247,7 +247,7 @@ function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet) 
   const oreCluster = terrain.isOreClusterAt(zoneId, sampleX, sampleY);
   // 일반 자원 수 = base × max(mountain, 1). 숲 밀도는 아래 전용 나무 그리드가 담당.
   const baseCount = Math.round(RESOURCES_PER_CHUNK * Math.max(stoneMult, 1.0));
-  const count = oreCluster ? baseCount + 3 : baseCount;  // ore cluster: 추가 stone
+  const count = oreCluster ? baseCount + 3 : baseCount;  // ore cluster: 광물 노드 추가
   for (let n = 0; n < count; n++) {
     const seedKey = `${cx}_${cy}_${n}`;
     if (harvestedSet && harvestedSet.has(seedKey)) continue;
@@ -265,9 +265,9 @@ function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet) 
     //   (숲 나무는 아래 전용 그리드에서 빽빽하게 깔림 — 여기선 일반 biome 배경만)
     let type;
     if (oreCluster && r3 < 0.7) {
-      type = 'stone';  // ore cluster: 70% stone
+      type = 'ore';   // ore cluster: 70% 광물 (이전 'stone'은 loot 핸들러가 없어 산출 0이던 버그)
     } else if (stoneMult > 1.5 && r3 < 0.5) {
-      type = 'stone';  // mountain: 50% stone
+      type = 'rock';  // mountain: 50% 바위(돌 산출) (이전 'stone' 깡통 버그 수정)
     } else {
       type = pickResourceType(biome, r3);
     }
