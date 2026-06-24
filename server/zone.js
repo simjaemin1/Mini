@@ -1034,7 +1034,7 @@ function spawnVillagers() {
     console.log(`[${ZONE_ID}] 🏘️ 마을 [${village.name}] @ (${village.x},${village.y}) type=${village.type || 'plain'} — ${NPC_PER_VILLAGE}명`);
     // 14.18.b: 길드 영토 (central tribe_id는 비동기로 받음. 지금 시점에 villageGuildIds에 있을 수도/없을 수도)
     const tribeId = villageGuildIds.get(village.name);
-    if (tribeId) spawnGuildClaimsForVillage(village, tribeId);
+    if (tribeId && ZONE.npcVillageTerritory) spawnGuildClaimsForVillage(village, tribeId); // 영토 OFF 기본 (welcome·broadcast 폭주 방지)
     for (let i = 0; i < NPC_PER_VILLAGE; i++) {
       const ang = (Math.PI * 2 * i / NPC_PER_VILLAGE) + Math.random() * 0.3;
       const r = 200 + Math.random() * 300;
@@ -1049,6 +1049,7 @@ function spawnVillagers() {
         npcHomeX: village.x, npcHomeY: village.y,
         npcWorkX: ws ? ws.x : village.x + (Math.random() - 0.5) * 200,
         npcWorkY: ws ? ws.y : village.y + (Math.random() - 0.5) * 200,
+        skipHouse: !ZONE.npcVillageHouses, // 집 OFF 기본 — NPC 집(wall 수십개)×300 = welcome 5.4MB로 클라 멈춤. 집은 AOI 청크 송신 구현 후 재활성.
       });
     }
   }
@@ -1056,7 +1057,7 @@ function spawnVillagers() {
   setTimeout(() => {
     for (const v of VILLAGES) {
       const tribeId = villageGuildIds.get(v.name);
-      if (tribeId && ![...claims.values()].some(c => c.kind === 'guild' && c.guildTribeId === tribeId)) {
+      if (ZONE.npcVillageTerritory && tribeId && ![...claims.values()].some(c => c.kind === 'guild' && c.guildTribeId === tribeId)) {
         spawnGuildClaimsForVillage(v, tribeId);
       }
     }
@@ -1477,7 +1478,8 @@ setInterval(() => {
 
 // === NPC 마을 spawn — DB 로드 후 (중복 방지) ===
 // Phase 14.4: central에 NPC 길드 등록 (비동기 — 실패해도 진행)
-registerVillageGuilds().catch(e => console.warn(`[${ZONE_ID}] village guild register error:`, e.message));
+// 길드영토 OFF면 central 등록(50콜) 스킵 → 부팅 빠름. (영토는 후속 기능, NPC 작동엔 불필요)
+if (ZONE.npcVillageTerritory) registerVillageGuilds().catch(e => console.warn(`[${ZONE_ID}] village guild register error:`, e.message));
 spawnVillagers();
 
 // === Phase 5-G debug: 한반도 spawn 근처에 1-cell water + 5x5 벽 방 (콜라이더 테스트, NPC 집과 동일 패턴) ===
