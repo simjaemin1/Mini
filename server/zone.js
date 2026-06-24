@@ -182,7 +182,8 @@ const NEIGHBOR = {
 // Phase 4b: canadia는 시뮬 통합 모드 — 자동 마을 비활성화 (시뮬에서 마을 받음)
 const VILLAGES = (ZONE_ID === 'canadia')
   ? []
-  : generateVillagesForZone(ZONE);
+  : (require('./terrain').getZoneVillages(ZONE_ID) || generateVillagesForZone(ZONE));
+{ const _hv = require('./terrain').getZoneVillages(ZONE_ID); if (_hv) console.log(`[${ZONE_ID}] 하드코딩 마을 ${_hv.length}개 사용 (에디터 v9 배치)`); }
 if (ZONE_ID === 'canadia') console.log(`[canadia] 자동 마을 비활성 (Phase 4b 시뮬 통합 모드)`);
 const VILLAGE_SAFE_RADIUS = 600; // 늑대 이 안에 spawn X (마을 안전구역). isNearVillage()도 이거 씀.
 

@@ -31,9 +31,10 @@ function runsInZone(p, zone, halfW){
 const j = JSON.parse(fs.readFileSync(IN, 'utf8'));
 const F = j.mf;
 const out = {};
-const ens = z => (out[z] = out[z] || { rivers:[], lakes:[], ridges:[], passes:[], forests:[], ores:[] });
+const ens = z => (out[z] = out[z] || { rivers:[], lakes:[], ridges:[], passes:[], forests:[], ores:[], villages:[] });
+const VILLAGE_TYPE_MAP = { '광산':'mining', '어촌':'riverside', '임업':'forest', '농촌':'plain' };
 
-let nR=0,nG=0,nL=0,nP=0,nF=0,nO=0,split=0;
+let nR=0,nG=0,nL=0,nP=0,nF=0,nO=0,nV=0,split=0;
 for (const f of F){
   if (f.type==='river' || f.type==='ridge'){
     // 폭(반폭)을 고려해 닿는 drawn 존들 — 중심선이 옆 존이어도 폭이 이 존에 걸치면 포함(경계 클리핑 방지).
@@ -74,11 +75,12 @@ for (const f of F){
       } else if (f.type==='pass'){ ens(zone).passes.push({ name:nameFor(f,zone), pos:lc, radius:f.radius||1200 }); nP++; }
       else if (f.type==='forest'){ ens(zone).forests.push({ name:nameFor(f,zone), center:lc, rx:f.rx||4000, ry:f.ry||3000, densityMult:f.density||2 }); nF++; }
       else if (f.type==='ore'){ ens(zone).ores.push({ name:nameFor(f,zone), center:lc, radius:f.radius||700, mineral:f.mineral||null }); nO++; }
+      else if (f.type==='village'){ const vn=nameFor(f,zone); const vt=VILLAGE_TYPE_MAP[(vn||'').replace(/[0-9]/g,'')]||'plain'; ens(zone).villages.push({ name:vn, x:lc[0], y:lc[1], type:vt }); nV++; }
     }
   }
 }
 
 fs.writeFileSync(OUT, JSON.stringify(out));
 console.log('빌드 완료 →', OUT);
-console.log(`  존 ${Object.keys(out).length}개 | 강 ${nR} 산맥 ${nG} 호수 ${nL} 고개 ${nP} 숲 ${nF} 광맥 ${nO} (경계분할 ${split}건)`);
-for (const z of Object.keys(out)){ const d=out[z]; console.log(`   ${z.padEnd(11)} 강${d.rivers.length} 산맥${d.ridges.length} 호수${d.lakes.length} 고개${d.passes.length} 숲${d.forests.length} 광맥${d.ores.length}`); }
+console.log(`  존 ${Object.keys(out).length}개 | 강 ${nR} 산맥 ${nG} 호수 ${nL} 고개 ${nP} 숲 ${nF} 광맥 ${nO} 마을 ${nV} (경계분할 ${split}건)`);
+for (const z of Object.keys(out)){ const d=out[z]; console.log(`   ${z.padEnd(11)} 강${d.rivers.length} 산맥${d.ridges.length} 호수${d.lakes.length} 고개${d.passes.length} 숲${d.forests.length} 광맥${d.ores.length} 마을${(d.villages||[]).length}`); }

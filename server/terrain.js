@@ -39,6 +39,13 @@ function _getHardcoded() {
   return _hardcodedCache;
 }
 
+// 하드코딩 마을 (한반도 — 에디터 v9에서 주입). 있으면 zone.js가 procedural 대신 사용.
+// 형식: [{ name, x, y, type }] — generateVillagesForZone 출력과 동일.
+function getZoneVillages(zoneId) {
+  const hc = _getHardcoded();
+  return (hc[zoneId] && Array.isArray(hc[zoneId].villages) && hc[zoneId].villages.length) ? hc[zoneId].villages : null;
+}
+
 function _getZonesMeta() {
   if (_zonesMetaCache) return _zonesMetaCache;
   // 서버 측 — zone-config 자동 require (한 번 cache)
@@ -316,6 +323,7 @@ if (typeof module !== 'undefined' && module.exports) {
     setZonesMeta,
     setHardcoded,
     _getHardcoded,
+    getZoneVillages,
     isWaterCellLocal,
     isRockCellLocal,
     getTerrainWaterTilesForChunk,
