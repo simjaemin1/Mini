@@ -2,7 +2,7 @@
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
 // === CLIENT BUILD: Phase 5-G (한반도 강·호수 hardcoded + observer storm fix) ===
-console.log('%c[durango-mini] client build = Phase 5-K21 (시야 fog도 보간 위치로 — 부채꼴 경계 떨림 제거)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+console.log('%c[durango-mini] client build = Phase 5-K22 (fog 마스크 재투영 델타도 _camAbs로 — 부채꼴 경계 떨림 제거)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 // Phase 4d-16-c: facility 종류별 emoji
 const FACILITY_EMOJI = {
@@ -3027,7 +3027,7 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
       let mdx = 0, mdy = 0;
       if (window._shadowMaskPx !== undefined) {
         const p0x = window._shadowMaskPx, p0y = window._shadowMaskPy;
-        const p1x = myAbsPredicted.x, p1y = myAbsPredicted.y;
+        const p1x = _camAbs.x, p1y = _camAbs.y; // K22: 마스크 빌드/저장과 동일 기준(_camAbs). myAbsPredicted(계단) 쓰면 델타가 30Hz로 떨려 부채꼴 경계 떨림
         // 정수로 반올림 — subpixel drawImage는 Safari에서 풀스크린 canvas 리샘플링을
         // 강제해 프레임 드랍 + 마스크 경계가 매 frame 흐릿하게 떨리는 원인이 됨.
         mdx = Math.round((p0x - p0y) - (p1x - p1y));
