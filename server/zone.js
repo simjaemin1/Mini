@@ -389,6 +389,16 @@ setInterval(() => {
 }, 30000);
 const BUILDING_SIZE = 32;
 const DEBUG_COLLIDER = process.env.DEBUG_COLLIDER === '1'; // 명시적으로 켤 때만 (env DEBUG_COLLIDER=1)
+// === 틱 스파이크 원인 진단: GC 정지 관측 (>30ms major GC면 로그) ===
+try {
+  const { PerformanceObserver } = require('perf_hooks');
+  const _gcObs = new PerformanceObserver((list) => {
+    for (const e of list.getEntries()) {
+      if (e.duration > 30) console.log(`[${ZONE_ID}] ⚠️ GC 정지 ${e.duration.toFixed(0)}ms (kind=${e.detail?.kind ?? '?'})`);
+    }
+  });
+  _gcObs.observe({ entryTypes: ['gc'] });
+} catch (e) { /* perf_hooks 없으면 skip */ }
 // 14.50: 목공 사슬 — log(통나무) → plank(판자, saw 필요) → 벽/바닥/문/울타리 (hammer 필요)
 //   wood = log (의미 변경). plank는 새 자원.
 //   목공 type (wall/floor/fence/door)는 plank만 사용 + hammer 필수.
@@ -1443,13 +1453,16 @@ function npcStep(npc, dt, now) {
 // 주기적으로 mob 위치/HP 저장 (10초 간격) — dirty 플래그 켜진 것만
 setInterval(() => {
   let saved = 0;
-  for (const m of mobs.values()) {
-    if (m.dirty && m.dbId) {
-      try { db.updateMobState(m.dbId, m.x, m.y, m.hp, m.tameOwner, m.tameOwnerName); saved++; m.dirty = false; }
-      catch (e) { /* lock 잡혔으면 다음 라운드 */ }
-    }
-  }
-  if (saved > 0) console.log(`[${ZONE_ID}] mob 상태 저장 ${saved}건`);
+  // 트랜잭션으로 묶어 1회 fsync (이전: dirty마다 개별 동기 쓰기 → 이벤트루프 수십~수백ms 블록 = 틱 지연 = 클라 텔포)
+  try {
+    const txn = db.db.transaction(() => {
+      for (const m of mobs.values()) {
+        if (m.dirty && m.dbId) { db.updateMobState(m.dbId, m.x, m.y, m.hp, m.tameOwner, m.tameOwnerName); saved++; m.dirty = false; }
+      }
+    });
+    txn();
+  } catch (e) { /* lock 잡혔으면 다음 라운드 */ }
+  if (saved > 0) console.log(`[${ZONE_ID}] mob 상태 저장 ${saved}건 (txn)`);
 }, 10000);
 
 // === Phase 14.43: 좀비 ws 청소 ===
