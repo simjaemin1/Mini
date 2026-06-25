@@ -2,7 +2,7 @@
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
 // === CLIENT BUILD: Phase 5-G (한반도 강·호수 hardcoded + observer storm fix) ===
-console.log('%c[durango-mini] client build = Phase 5-K12 (60fps 복원 + 보정 벽신호 기반: 지연오프셋 안싸움, 벽어긋남만 슬라이드)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+console.log('%c[durango-mini] client build = Phase 5-K13 (보정이 절대 벽 안 뚫음 — 집 박힘 차단)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 // Phase 4d-16-c: facility 종류별 emoji
 const FACILITY_EMOJI = {
@@ -2716,19 +2716,19 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
       const stair = clFindStairForCell(pc.cx, pc.cy) ? 1 : 0;
       console.log(`[desync] dist=${dist.toFixed(0)} pred=${pc.cx},${pc.cy}(${myAbsPredicted.x.toFixed(0)},${myAbsPredicted.y.toFixed(0)}) srv=${sc.cx},${sc.cy} f${myFloor} stairCell=${stair} wallBetween=${wallBetween?1:0}`);
     }
-    if (dist > 500) {
-      // 극단(텔포·존이동) — 즉시 스냅
+    if (wallBetween) {
+      // 서버가 벽 너머에 있음 = 서버 충돌 오류이거나 일시적 어긋남.
+      // 벽을 뚫고 따라가지 않음(닫힌 집에 박히는 버그 방지) — 클라 충돌을 신뢰하고 보정 보류.
+      // 서버가 정상(벽 바깥) 위치로 오거나 플레이어가 떨어지면 자연 수렴.
+      correctionVel = { x: 0, y: 0 };
+      correctionUntil = 0;
+      correctionIgnoreWall = false;
+    } else if (dist > 500) {
+      // 극단(텔포·존이동) — 벽 없는 경로에서만 도달(위에서 wallBetween 먼저 걸러짐) → 즉시 스냅 안전.
       myAbsPredicted = { x: absX, y: absY };
       correctionVel = { x: 0, y: 0 };
       correctionUntil = 0;
       correctionIgnoreWall = false;
-    } else if (wallBetween) {
-      // 진짜 벽 어긋남(클라/서버가 벽 양쪽) — 90ms 벽-무시 슬라이드로 부드럽게 권위 위치로.
-      const T = 0.09;
-      correctionVel.x = ex / T;
-      correctionVel.y = ey / T;
-      correctionUntil = performance.now() + T * 1000;
-      correctionIgnoreWall = true;
     } else if (dist > 150) {
       // 벽 없는데 큰 오차(드문 desync) — 정상 lerp.
       const T = 0.15;
