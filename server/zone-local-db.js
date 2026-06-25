@@ -82,6 +82,8 @@ db.exec(`
     prosperity  REAL NOT NULL,
     last_t      INTEGER NOT NULL
   );
+  -- 건물 lazy-load: 청크(좌표 범위)별 조회용 인덱스. activateChunk가 (x,y) 범위로 SELECT.
+  CREATE INDEX IF NOT EXISTS idx_buildings_xy ON buildings(x, y);
 `);
 
 // === resources ===
@@ -102,6 +104,11 @@ function deleteResource(id) { stmtDeleteResource.run(id); }
 
 // === buildings ===
 const stmtGetBuildings = db.prepare('SELECT * FROM buildings');
+// 건물 lazy-load: 청크 좌표 범위 [x0,x1) × [y0,y1) 안 건물만. half-open이라 청크 경계 건물이
+//   정확히 한 청크에만 속함(중복/누락 없음). idx_buildings_xy 인덱스로 빠름.
+const stmtGetBuildingsInRect = db.prepare(
+  'SELECT * FROM buildings WHERE x >= ? AND x < ? AND y >= ? AND y < ?'
+);
 const stmtInsertBuilding = db.prepare(
   'INSERT INTO buildings (type, owner_id, owner_name, x, y, data, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
 );
@@ -109,6 +116,7 @@ const stmtUpdateBuildingData = db.prepare('UPDATE buildings SET data = ? WHERE i
 const stmtDeleteBuilding = db.prepare('DELETE FROM buildings WHERE id = ?');
 
 function getBuildings() { return stmtGetBuildings.all(); }
+function getBuildingsInRect(x0, y0, x1, y1) { return stmtGetBuildingsInRect.all(x0, x1, y0, y1); }
 function insertBuilding(b) {
   const result = stmtInsertBuilding.run(b.type, b.owner_id, b.owner_name, b.x, b.y, b.data || null, Date.now());
   return result.lastInsertRowid;
@@ -177,7 +185,7 @@ console.log(`[${ZONE_ID}/db] 로컬 zone DB 준비됨: ${DB_PATH}`);
 module.exports = {
   db,
   getResources, insertResource, updateResourceHp, deleteResource,
-  getBuildings, insertBuilding, updateBuildingData, deleteBuilding,
+  getBuildings, getBuildingsInRect, insertBuilding, updateBuildingData, deleteBuilding,
   getMobs, insertMob, updateMobState, deleteMob,
   getClaims, insertClaim,
   insertHarvestedSeed, getAllHarvestedSeeds,

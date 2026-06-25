@@ -73,10 +73,45 @@ function updateActiveChunks() {
   }
 }
 
+// === 건물 lazy-load (GC 폭주 수정) ===
+// 건물(NPC 집 3.3만채 등)은 DB(SQLite=C heap)에만 상주. 활성 청크 건물만 JS 객체로 materialize.
+//   → 매 틱 살아있는 building 객체가 활성청크 수백채로 줄어 minor/major GC 정지 제거.
+// id는 DB rowid 기반 결정값('b'+dbId) — deactivate→reactivate·재시작에도 클라 참조 안정.
+//   dedupe: 같은 청크에 이미 같은 id(=같은 dbId)가 있으면(방금 놓은 플레이어 건물 등) skip → 중복 없음.
+function materializeBuildingsInChunk(cx, cy) {
+  const cs = chunkManager.chunkSize;
+  const x0 = cx * cs, x1 = (cx + 1) * cs;
+  const y0 = cy * cs, y1 = (cy + 1) * cs;
+  let rows;
+  try { rows = db.getBuildingsInRect(x0, y0, x1, y1); } catch (e) { return; }
+  let stairAdded = false;
+  for (const row of rows) {
+    const id = `b${row.id}`;
+    if (buildings.has(id)) continue; // 이미 메모리에 있음(플레이어 방금 건축 등) — 중복 방지
+    const parsed = row.data ? JSON.parse(row.data) : null;
+    const floor = (parsed && typeof parsed.floor === 'number') ? parsed.floor : 0;
+    const b = {
+      id, dbId: row.id,
+      type: row.type,
+      ownerId: row.owner_id,
+      ownerName: row.owner_name,
+      x: row.x, y: row.y,
+      data: parsed,
+      floor,
+    };
+    buildings.set(id, b);
+    chunkManager.insertBuilding(b); // b._chunkKey 셋 (insertBuilding 내부)
+    if (row.type === 'stair') stairAdded = true;
+  }
+  if (stairAdded) stairCellDirty = true; // stair cache 재구축 트리거 (active 건물만 인덱싱)
+}
+
 // 활성화 — 그 청크의 시드 자원 생성
 // 14.46-b-smooth-fix: water tile에 떨어진 자원(나무·돌·약초 등)은 스킵.
 //   기존: 해안선 water tile 위에 나무·돌 spawn → 바다에 떠 있는 모양 버그.
 function activateChunk(cx, cy) {
+  // 건물 lazy-load: 이 청크 건물을 DB에서 메모리로 (cleanZone보다 먼저 — cleanZone엔 건물 0이라 무해).
+  materializeBuildingsInChunk(cx, cy);
   // Phase 5-G: cleanZone (한반도 강·호수 검증용) — 자원 spawn skip
   if (ZONE.cleanZone) return;
   const seedResources = generateChunkResources(ZONE_ID, ZONE.biome, cx, cy, chunkManager.chunkSize, harvestedSeeds);
@@ -100,11 +135,22 @@ function activateChunk(cx, cy) {
 function deactivateChunk(cx, cy) {
   const c = chunkManager.chunks.get(chunkManager.keyOf(cx, cy));
   if (!c) return;
-  // AOI 건물: 비활성화 시 클라에서 제거 (서버 메모리는 유지 — 재활성 시 다시 buildings_spawn)
+  // AOI 건물: 비활성화 시 클라에서 제거 + 서버 메모리에서도 해제 (GC 폭주 수정).
+  //   DB엔 그대로 남음 → 재활성 시 materializeBuildingsInChunk가 다시 로드(buildings_spawn).
+  //   플레이어가 놓은 건물도 메모리에서만 내림(DB 보존) — 비활성 청크라 곁에 사람 없음.
   if (c.buildings.size) {
     broadcast({ type: 'buildings_removed', ids: Array.from(c.buildings.keys()) });
     // 아직 안 보낸 큐의 이 청크 건물은 빼기 (보내자마자 제거되는 낭비·불일치 방지)
     if (_buildingSendQueue.length) { const _k = chunkManager.keyOf(cx, cy); _buildingSendQueue = _buildingSendQueue.filter(b => b._chunkKey !== _k); }
+    // 실제 메모리 해제 — buildings Map + chunk에서 제거. (snapshot 후 순회: removeBuilding이 c.buildings 변형)
+    let stairRemoved = false;
+    const _bs = Array.from(c.buildings.values());
+    for (const b of _bs) {
+      if (b.type === 'stair') stairRemoved = true;
+      buildings.delete(b.id);
+      chunkManager.removeBuilding(b);
+    }
+    if (stairRemoved) stairCellDirty = true; // stair cache 무효화 (active 건물만 인덱싱)
   }
   const toRemove = [];
   for (const r of c.resources.values()) if (r.isSeed) toRemove.push(r);
@@ -612,7 +658,7 @@ const pendingHandoffs = new Map(); // token -> { source_zone, name, x, y, vx, vy
 const outgoingHandoffs = new Map(); // token -> { pid, timeoutHandle } (송신측 — ACK 대기 중)
 let nextPid = 1;
 let nextRid = 1;
-let nextBid = 1;
+// nextBid 제거: 건물 id는 dbId 기반 결정값('b'+dbId)로 통일 (lazy-load materialize와 dedupe·재활성 안정).
 let nextClaimId = 1;
 // Phase 14.23: 바닥 아이템 (좀보이드식 world item — 누구나 보이고 누구나 픽업)
 let nextGiId = 1;
@@ -890,26 +936,21 @@ function spawnNpc(opts = {}) {
   // cell 좌표 (houseCx, houseCy) 기준 -1..+1 범위.
   const houseCx = Math.floor(cx / BUILDING_SIZE);
   const houseCy = Math.floor(cy / BUILDING_SIZE);
+  // 건물 lazy-load: NPC 집 벽/바닥/계단은 DB에만 저장(JS heap에 안 올림).
+  //   → 부팅 직후 NPC 건물 3.3만채가 메모리에 없음 = GC 폭주 제거. 플레이어가 그 청크를
+  //   활성화하면 materializeBuildingsInChunk가 'b'+dbId id로 다시 올림(콜라이더·송신 동일).
+  //   transient 객체를 안 만들어 GC 부담 최소화. NPC는 집 building 객체를 참조하지 않음(좌표만).
   function addWall(cellCx, cellCy, side, floor) {
     const wx = cellCx * BUILDING_SIZE;
     const wy = cellCy * BUILDING_SIZE;
     const data = { side, floor };
-    const dbId = db.insertBuilding({ type: 'wall', owner_id: npcId, owner_name: name, x: wx, y: wy, data: JSON.stringify(data) });
-    const id = `b${nextBid++}`;
-    const building = { id, dbId, type: 'wall', ownerId: npcId, ownerName: name, x: wx, y: wy, data, floor };
-    buildings.set(id, building);
-    chunkManager.insertBuilding(building);
+    db.insertBuilding({ type: 'wall', owner_id: npcId, owner_name: name, x: wx, y: wy, data: JSON.stringify(data) });
   }
   function addBlock(cellCx, cellCy, type, floor, extra = {}) {
     const bx = cellCx * BUILDING_SIZE + BUILDING_SIZE / 2;
     const by = cellCy * BUILDING_SIZE + BUILDING_SIZE / 2;
     const data = { floor, ...extra };
-    const dbId = db.insertBuilding({ type, owner_id: npcId, owner_name: name, x: bx, y: by, data: JSON.stringify(data) });
-    const id = `b${nextBid++}`;
-    const building = { id, dbId, type, ownerId: npcId, ownerName: name, x: bx, y: by, data, floor };
-    buildings.set(id, building);
-    chunkManager.insertBuilding(building);
-    if (type === 'stair') stairCellDirty = true; // 14.49-e3-perf
+    db.insertBuilding({ type, owner_id: npcId, owner_name: name, x: bx, y: by, data: JSON.stringify(data) });
   }
   // Phase 4c: skipHouse 옵션 — canadia 통합 NPC는 집 안 만듦 (성능)
   if (opts.skipHouse) {
@@ -1426,7 +1467,7 @@ function npcStep(npc, dt, now) {
           npc.inventory.seed_berry -= 1;
           const data = { cropType: 'berry', plantedAt: Date.now(), readyAt: Date.now() + CROP_GROW_MS, ready: false };
           const dbId = db.insertBuilding({ type: 'farmland', owner_id: npc.playerId, owner_name: npc.name, x: gx, y: gy, data: JSON.stringify(data) });
-          const id = `b${nextBid++}`;
+          const id = `b${dbId}`; // 건물 lazy-load: id는 dbId 기반 결정값 (deactivate→reactivate 안정 + materialize dedupe)
           const building = { id, dbId, type: 'farmland', ownerId: npc.playerId, ownerName: npc.name, x: gx, y: gy, data };
           buildings.set(id, building);
           chunkManager.insertBuilding(building);
@@ -1495,26 +1536,15 @@ setInterval(() => {
   if (kicked > 0) console.log(`[${ZONE_ID}] 좀비 ws ${kicked}개 정리`);
 }, 5000);
 
-// === DB에서 건축물 로드 ===
+// === DB 건축물 — lazy-load (부팅 시 메모리에 안 올림) ===
+// 건물 lazy-load(GC 폭주 수정): 부팅 때 전 건물을 buildings/chunkManager에 instantiate하지 않음.
+//   각 청크는 플레이어가 다가와 activateChunk될 때 materializeBuildingsInChunk가 'b'+dbId id로 로드.
+//   → 매 틱 살아있는 building 객체가 활성청크 수백채로 줄어 minor/major GC 정지 제거.
+//   (아래 부팅 cleanup의 buildings.delete(...)는 빈 Map이라 no-op — DB DELETE만 유효, 의도된 동작.)
 {
-  const rows = db.getBuildings();
-  for (const row of rows) {
-    const id = `b${nextBid++}`;
-    const parsed = row.data ? JSON.parse(row.data) : null;
-    const floor = (parsed && typeof parsed.floor === 'number') ? parsed.floor : 0;
-    const b = {
-      id, dbId: row.id,
-      type: row.type,
-      ownerId: row.owner_id,
-      ownerName: row.owner_name,
-      x: row.x, y: row.y,
-      data: parsed,
-      floor,
-    };
-    buildings.set(id, b);
-    chunkManager.insertBuilding(b);
-  }
-  console.log(`[${ZONE_ID}] DB에서 건축물 ${rows.length}개 로드`);
+  let n = -1;
+  try { n = db.db.prepare('SELECT COUNT(*) AS c FROM buildings').get().c; } catch (e) {}
+  console.log(`[${ZONE_ID}] DB 건축물 ${n}개 (lazy-load — 활성청크 진입 시 메모리로 올림)`);
 }
 
 // === NPC 마을 spawn — DB 로드 후 (중복 방지) ===
@@ -1546,7 +1576,7 @@ if (ZONE_ID === 'hanbando' && ZONE.mainSquare) {
     const wpx = cellCx * 32, wpy = cellCy * 32;
     const data = { side, floor: 0 };
     const dbId = db.insertBuilding({ type: 'wall', owner_id: 'debug_room', owner_name: 'DEBUG', x: wpx, y: wpy, data: JSON.stringify(data) });
-    const id = `b${nextBid++}`;
+    const id = `b${dbId}`; // 건물 lazy-load: id는 dbId 기반 (재활성 시 materialize와 dedupe)
     const building = { id, dbId, type: 'wall', ownerId: 'debug_room', ownerName: 'DEBUG', x: wpx, y: wpy, data, floor: 0 };
     buildings.set(id, building);
     chunkManager.insertBuilding(building);
@@ -1600,7 +1630,7 @@ if (ZONE_ID === 'hanbando') {
       type: 'chest', owner_id: 'public', owner_name: '공용 상자',
       x: cdef.x, y: cdef.y, data: JSON.stringify(cdef.data),
     });
-    const id = `b${nextBid++}`;
+    const id = `b${dbId}`; // 건물 lazy-load: id는 dbId 기반 (재활성 시 materialize와 dedupe)
     const b = { id, dbId, type: 'chest', ownerId: 'public', ownerName: '공용 상자', x: cdef.x, y: cdef.y, data: cdef.data, floor: 0 };
     buildings.set(id, b);
     chunkManager.insertBuilding(b);
@@ -3362,7 +3392,7 @@ function _tryBuildAt(player, type, floor = 0, side = null, dir = null, opts = nu
     // door는 open state 추가. 기본 닫힘.
     const initData = type === 'door' ? { side: useSide, floor, open: false } : { side: useSide, floor };
     const dbId = db.insertBuilding({ type, owner_id: player.playerId, owner_name: player.name, x: wx, y: wy, data: JSON.stringify(initData) });
-    const id = `b${nextBid++}`;
+    const id = `b${dbId}`; // 건물 lazy-load: id는 dbId 기반 결정값 (deactivate→reactivate 안정 + materialize dedupe)
     const building = { id, dbId, type, ownerId: player.playerId, ownerName: player.name, x: wx, y: wy, data: initData, floor };
     buildings.set(id, building);
     chunkManager.insertBuilding(building);
@@ -3447,7 +3477,7 @@ function _tryBuildAt(player, type, floor = 0, side = null, dir = null, opts = nu
     type, owner_id: player.playerId, owner_name: player.name,
     x: gx, y: gy, data: JSON.stringify(dataWithFloor),
   });
-  const id = `b${nextBid++}`;
+  const id = `b${dbId}`; // 건물 lazy-load: id는 dbId 기반 결정값 (deactivate→reactivate 안정 + materialize dedupe)
   const building = { id, dbId, type, ownerId: player.playerId, ownerName: player.name, x: gx, y: gy, data: dataWithFloor, floor };
   buildings.set(id, building);
   chunkManager.insertBuilding(building);
@@ -3507,7 +3537,7 @@ function _tryBuildAt(player, type, floor = 0, side = null, dir = null, opts = nu
       type: 'floor', owner_id: player.playerId, owner_name: player.name,
       x: autoFx, y: autoFy, data: JSON.stringify(floorData),
     });
-    const floorId = `b${nextBid++}`;
+    const floorId = `b${floorDbId}`; // 건물 lazy-load: id는 dbId 기반 (stair의 _autoFloorId 참조도 재활성 후 유효)
     autoFloorBuilding = { id: floorId, dbId: floorDbId, type: 'floor',
       ownerId: player.playerId, ownerName: player.name,
       x: autoFx, y: autoFy, data: floorData, floor: autoFloorFloor };
@@ -5369,7 +5399,7 @@ function _addBuildingForHouse(ownerId, ownerName, x, y, type, dataExtra, floor, 
     type, owner_id: ownerId, owner_name: ownerName,
     x, y, data: JSON.stringify(data),
   });
-  const id = `b${nextBid++}`;
+  const id = `b${dbId}`; // 건물 lazy-load: id는 dbId 기반 (house.buildingIds 참조도 재활성 후 유효)
   const building = { id, dbId, type, ownerId, ownerName, x, y, data, floor };
   buildings.set(id, building);
   chunkManager.insertBuilding(building);
@@ -5878,7 +5908,7 @@ function setupCanadiaVillage(village) {
       data: JSON.stringify(chestData),
     });
   } catch (e) { console.warn(`[canadia] chest insert 실패 [${village.name}]:`, e.message); return; }
-  const id = `b${nextBid++}`;
+  const id = `b${dbId}`; // 건물 lazy-load: id는 dbId 기반 (chestByVillage 참조도 재활성 후 유효)
   const b = {
     id, dbId, type: 'chest',
     ownerId: `village_${village.name}`, ownerName: `${village.name} 거래소`,
