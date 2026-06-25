@@ -2,7 +2,7 @@
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
 // === CLIENT BUILD: Phase 5-G (한반도 강·호수 hardcoded + observer storm fix) ===
-console.log('%c[durango-mini] client build = Phase 5-K16 (서버 리컨실리에이션 — 입력 리플레이로 어긋남 0, 60fps 보간)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+console.log('%c[durango-mini] client build = Phase 5-K17 (리컨실리에이션 — keydown/keyup 즉시send 제거로 스텝 규칙화)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 // Phase 4d-16-c: facility 종류별 emoji
 const FACILITY_EMOJI = {
@@ -895,10 +895,8 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     if (k === ' ' || k.startsWith('arrow') || k === 'tab') e.preventDefault();
     if (keys.has(k)) return;
     keys.add(k);
-    // Phase 14.46-a-fix: 이동 키 누르는 즉시도 송신 (시작 지연도 줄임)
-    if (k === 'w' || k === 'a' || k === 's' || k === 'd' || k.startsWith('arrow')) {
-      sendInput();
-    }
+    // 리컨실리에이션: 입력 전송은 루프의 고정 스텝이 전담(≤33ms). keydown 즉시-send 제거 —
+    //   즉시-send가 스텝/accumulator를 불규칙하게 건드려 이동이 버벅거렸음. 시작 지연 ≤33ms로 무시 가능.
     // Phase 14.41: 다운 중엔 행동 키 차단 (R 키 구조 시도만 별도 처리 — 본인이 다운 아닐 때만)
     if (myIsDown) {
       // 다운 중엔 어떤 행동도 안 함 — 부활 패널에서만 클릭
@@ -989,11 +987,7 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     if (e.key === 'Shift' && mySprint) { mySprint = false; updateHud(); }
     const k = normalizeKey(e);
     keys.delete(k);
-    // Phase 14.46-a-fix: WASD/Arrow를 떼면 즉시 input 송신 (vx=0,vy=0) — 33ms 인터벌 기다리지 말고.
-    // 이게 빠지면 ping이 200ms일 때 키 뗀 뒤 ~250ms간 더 걷는 현상 발생.
-    if (k === 'w' || k === 'a' || k === 's' || k === 'd' || k.startsWith('arrow')) {
-      sendInput();
-    }
+    // 정지도 루프 고정 스텝이 ≤33ms 내 전송 (즉시-send 제거 — 스텝/accumulator 불규칙 건드림이 버벅 원인이었음).
   });
   // blur 이벤트로 keys 초기화 안 함 — 콘솔 열기/탭 전환 등 사소한 이유로 키가 reset돼서
   // 사용자가 "막힌 느낌" 받는 원인. 진짜 화면 떠나면 어차피 keyup 자연스럽게 일어남.
