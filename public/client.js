@@ -2,7 +2,7 @@
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
 // === CLIENT BUILD: Phase 5-G (한반도 강·호수 hardcoded + observer storm fix) ===
-console.log('%c[durango-mini] client build = Phase 5-K22 (fog 마스크 재투영 델타도 _camAbs로 — 부채꼴 경계 떨림 제거)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+console.log('%c[durango-mini] client build = Phase 5-K23 (정밀검사 정리: coll/minimap 로그 게이팅)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 // Phase 4d-16-c: facility 종류별 emoji
 const FACILITY_EMOJI = {
@@ -769,8 +769,8 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
         cy += sy;
       }
     }
-    // DEBUG — 클라가 어떤 cell→cell 시도하는지, 막힘/통과 결과까지
-    if (window._collDbg !== false) {
+    // DEBUG — 클라가 어떤 cell→cell 시도하는지, 막힘/통과 결과까지 (기본 OFF; 콘솔에서 _collDbg=true로 켜기)
+    if (window._collDbg === true) {
       console.log(`[coll] cell ${oc.cx},${oc.cy}→${nc.cx},${nc.cy} f${playerFloor} ${blocked ? 'BLOCKED:' + reason : 'pass'} (zones: ${Array.from(conns.keys()).map(k => k + ':' + (conns.get(k).buildings?.size||0)).join(',')})`);
     }
     return blocked;
@@ -7103,8 +7103,8 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
 
       if (zoomLabel) zoomLabel.textContent = (zoom * 100).toFixed(2) + '%';
       { const _rd = performance.now() - _rT0; window._rAcc = (window._rAcc||0)+_rd; window._rN = (window._rN||0)+1; if (_rd > (window._rMax||0)) window._rMax = _rd;
-        if (window._rN >= 30) { let _bn=0; for (const c of conns.values()) _bn += c.buildings.size;
-          console.log(`[render] avg=${(window._rAcc/window._rN).toFixed(1)}ms max=${window._rMax.toFixed(0)}ms bld=${_bn}`); window._rAcc=0; window._rN=0; window._rMax=0; } }
+        if (window._rN >= 30) { if (window._renderDbg) { let _bn=0; for (const c of conns.values()) _bn += c.buildings.size;
+          console.log(`[minimap] avg=${(window._rAcc/window._rN).toFixed(1)}ms max=${window._rMax.toFixed(0)}ms bld=${_bn}`); } window._rAcc=0; window._rN=0; window._rMax=0; } }
       needsRedraw = false;
     }
     if (visible) requestAnimationFrame(draw);

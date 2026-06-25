@@ -2173,9 +2173,11 @@ function handlePlayerInput(player, raw) {
     // 리컨실리에이션: 입력을 즉시 적용하지 않고 큐에 버퍼 → tick이 '받은 순서대로 1개씩' 적용(applyQueuedInput).
     //   즉시-적용은 '틱당 최신 것'이 되어 클라 고정스텝 순서와 어긋나 매 틱 보정→떨림. 큐로 순서·타이밍 일치 → 보정 0.
     if (!player.inputQueue) player.inputQueue = [];
+    // NaN 가드: 변조/누락 패킷의 vx/vy가 NaN이면 clamp(NaN)=NaN → p.x += NaN → 좌표 영구 오염.
+    //   Number(...)||0 으로 비유한수는 0(정지)으로 안전 강등.
     player.inputQueue.push({
       seq: (typeof msg.seq === 'number') ? msg.seq : 0,
-      vx: clamp(msg.vx, -1, 1), vy: clamp(msg.vy, -1, 1), sprint: !!msg.sprint,
+      vx: clamp(Number(msg.vx) || 0, -1, 1), vy: clamp(Number(msg.vy) || 0, -1, 1), sprint: !!msg.sprint,
     });
     if (player.inputQueue.length > 120) player.inputQueue.shift(); // 4초 안전상한. GC로 밀린 버스트도 드롭 안 함(구동 루프가 틱당 8개 흡수)
     player.lastSeen = Date.now();
