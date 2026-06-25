@@ -2177,7 +2177,7 @@ function handlePlayerInput(player, raw) {
       seq: (typeof msg.seq === 'number') ? msg.seq : 0,
       vx: clamp(msg.vx, -1, 1), vy: clamp(msg.vy, -1, 1), sprint: !!msg.sprint,
     });
-    if (player.inputQueue.length > 12) player.inputQueue.shift(); // burst 상한 (리컨실리에이션이 보정)
+    if (player.inputQueue.length > 120) player.inputQueue.shift(); // 4초 안전상한. GC로 밀린 버스트도 드롭 안 함(구동 루프가 틱당 8개 흡수)
     player.lastSeen = Date.now();
   } else if (msg.type === 'respawn_choice') {
     // Phase 14.41: 사망 후 부활 위치 선택 (personal | temporary)
@@ -4314,19 +4314,8 @@ setInterval(() => {
   for (const p of players.values()) {
     if (p.handingOff) continue;
     if (p.isNpc) continue;  // NPC는 입력 타임아웃 무관 (npcStep이 vx/vy 관리) — 600명 순회 절약
-    // 입력 큐 — 틱당 1개씩 받은 순서대로 적용 (클라 고정스텝과 일치 → 리컨실리에이션 보정 0).
-    //   비었으면 last vx/vy 유지(키 계속 누름 가정). ackSeq = 마지막으로 '적용'한 seq.
-    if (p.inputQueue && p.inputQueue.length) {
-      const inp = p.inputQueue.shift();
-      const canSprint = (p.hunger ?? HUNGER_MAX) > SPRINT_MIN_GAUGE && (p.thirst ?? THIRST_MAX) > SPRINT_MIN_GAUGE;
-      p.sprint = inp.sprint && canSprint;
-      const spMult = p.sprint ? SPRINT_MULT : 1.0;
-      const hyp = Math.hypot(inp.vx, inp.vy), len = hyp || 1;
-      p.vx = (inp.vx / len) * MOVE_SPEED * Math.min(1, hyp) * spMult;
-      p.vy = (inp.vy / len) * MOVE_SPEED * Math.min(1, hyp) * spMult;
-      p.lastInputSeq = inp.seq;
-    }
-    if (now - p.lastSeen > 2500) { p.vx = 0; p.vy = 0; }
+    // 입력 큐 적용은 아래 '입력 큐 구동' 루프(입력 1개=1스텝)에서. 여기선 끊김 감지만.
+    if (now - p.lastSeen > 2500) { p.vx = 0; p.vy = 0; if (p.inputQueue) p.inputQueue.length = 0; }
   }
 
   // === NPC 행동 결정 (사람 player는 input으로 vx/vy 받지만 NPC는 직접 결정) ===
@@ -4353,10 +4342,9 @@ setInterval(() => {
     for (const [bid, g] of ghostBuildings) if (now2 - g.recvAt > GHOST_TTL_MS) ghostBuildings.delete(bid);
   }
 
-  // 이동 + 경계 처리 + 벽 충돌
-  for (const p of players.values()) {
-    if (p.handingOff) continue;
-    if (p.isNpc && !p.canadiaVillage && !isPositionActive(p.x, p.y)) continue;  // dormant NPC — 이동 처리 스킵 (안 움직임) → 1000명 확장
+  // 이동 1스텝 — 입력 1개 = 1스텝 (클라 predictStep과 1:1 일치). 호출측이 handingOff/dormant 판정.
+  //   moveDt 는 tick 클로저에서 캡처. 핸드오프 발생 시 내부에서 p.handingOff=true 세팅.
+  function movePlayerStep(p) {
     // === auto-eject: 어떤 이유로든(핸드오프 착지·지형변경·관통) 중심이 물/바위에 빠졌으면,
     //   "자유이동(escape valve)" 대신 가장 가까운 통행가능 셀로 밀어낸다 → 강 안에서 헤엄치는 버그 차단.
     if (isTerrainBlockedLocal(p.x, p.y)) {
@@ -4374,7 +4362,7 @@ setInterval(() => {
         p.dirty = true;
       }
       p.vx = 0; p.vy = 0;
-      continue; // 이 tick은 일반 이동 skip — 밀려나는 중
+      return; // 이 스텝은 일반 이동 skip — 밀려나는 중
     }
     // 14.53-j: 계단 위(onStairId 있음)면 dir 축으로만 이동 허용 — 옆으로 빠져나가는 버그 차단
     let stepVx = p.vx, stepVy = p.vy;
@@ -4430,11 +4418,6 @@ setInterval(() => {
     const outN = -ny;                              // 북쪽 초과량
     const outS = ny - ZONE.zoneHeight;            // 남쪽 초과량
     const maxOut = Math.max(outW, outE, outN, outS);
-    // DEBUG — 1초마다 1회만
-    if ((p.vy !== 0 || p.vx !== 0) && (!p._dbgT || now - p._dbgT > 1000)) {
-      p._dbgT = now;
-      console.log(`[${ZONE_ID}/dbg] ${p.name} pos=(${nx.toFixed(0)},${ny.toFixed(0)}) v=(${p.vx.toFixed(0)},${p.vy.toFixed(0)}) maxOut=${maxOut.toFixed(0)} handingOff=${p.handingOff}`);
-    }
     // Phase 5-K2: 히스테리시스 핸드오프 — 시간 쿨다운 대신 "겹침 띠" 방식.
     //   maxOut <= 0           : zone 안 — 그냥 이동.
     //   0 < maxOut <= COMMIT  : 경계를 살짝 넘었지만 아직 이 zone 소유 (겹침 띠). 클램프 X, 자유 이동.
@@ -4469,6 +4452,33 @@ setInterval(() => {
         p.x = clamp(nx, 0, ZONE.zoneWidth);
         p.y = clamp(ny, 0, ZONE.zoneHeight);
       }
+    }
+  } // ← movePlayerStep 함수 끝
+
+  // === 입력 큐 구동 — 사람: 입력 1개=1스텝(밀린 만큼 따라잡기), NPC: 틱당 1스텝 ===
+  //   클라가 보낸 입력을 받은 순서대로 그대로 재생 → 서버 위치(seq=k) = 클라 예측(seq=k) → 리컨실리에이션 보정 0.
+  //   빈 틱(입력 없음)엔 안 움직여 '유령 이동' 제거. GC로 밀린 입력은 틱당 최대 8개까지 흡수(catch-up).
+  for (const p of players.values()) {
+    if (p.handingOff) continue;
+    if (p.isNpc) {
+      if (!p.canadiaVillage && !isPositionActive(p.x, p.y)) continue; // dormant NPC skip
+      movePlayerStep(p);
+    } else {
+      let consumed = 0;
+      while (p.inputQueue && p.inputQueue.length && consumed < 8) {
+        const inp = p.inputQueue.shift();
+        const canSprint = (p.hunger ?? HUNGER_MAX) > SPRINT_MIN_GAUGE && (p.thirst ?? THIRST_MAX) > SPRINT_MIN_GAUGE;
+        p.sprint = inp.sprint && canSprint;
+        const spMult = p.sprint ? SPRINT_MULT : 1.0;
+        const hyp = Math.hypot(inp.vx, inp.vy), len = hyp || 1;
+        p.vx = (inp.vx / len) * MOVE_SPEED * Math.min(1, hyp) * spMult;
+        p.vy = (inp.vy / len) * MOVE_SPEED * Math.min(1, hyp) * spMult;
+        p.lastInputSeq = inp.seq;
+        movePlayerStep(p);
+        consumed++;
+        if (p.handingOff) break; // 핸드오프 발생 → 이 zone에선 더 안 움직임
+      }
+      if (consumed === 0) { p.vx = 0; p.vy = 0; } // 입력 없는 틱 — 정지 (유령 이동 방지)
     }
   }
 
@@ -5143,7 +5153,7 @@ function zonePublicMeta() {
 }
 
 server.listen(PORT, () => {
-  console.log(`[${ZONE_ID}] 🌏 zone server up on :${PORT}  latency=${LATENCY_MS}ms (RTT≈${LATENCY_MS*2}ms)`);
+  console.log(`[${ZONE_ID}] 🌏 zone server up on :${PORT}  latency=${LATENCY_MS}ms (RTT≈${LATENCY_MS*2}ms)  [netcode=K19 입력1개=1스텝]`);
   console.log(`        biome=${ZONE.biome}  rect=(${ZONE.worldOffsetX},${ZONE.worldOffsetY},${ZONE.zoneWidth}x${ZONE.zoneHeight})  neighbors=W:${NEIGHBOR.hasWest?'✓':'∅'} E:${NEIGHBOR.hasEast?'✓':'∅'} N:${NEIGHBOR.hasNorth?'✓':'∅'} S:${NEIGHBOR.hasSouth?'✓':'∅'}`);
 });
 
