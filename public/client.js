@@ -2,7 +2,7 @@
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
 // === CLIENT BUILD: Phase 5-G (한반도 강·호수 hardcoded + observer storm fix) ===
-console.log('%c[durango-mini] client build = Phase 5-K18 (렌더 지수평활 — 보정 점프 흡수로 떨림 제거)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+console.log('%c[durango-mini] client build = Phase 5-K20 (렌더 스텝보간 복귀 — 30Hz 카메라 펄싱 제거; 서버 K19와 함께)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 // Phase 4d-16-c: facility 종류별 emoji
 const FACILITY_EMOJI = {
@@ -2334,9 +2334,12 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     //   lerp(prev,curr)는 리컨실리에이션이 스텝 사이 myAbsPredicted를 ±수십px 보정하면 스텝 경계에서 점프로 받아 떨림.
     //   매 프레임 일정 비율로 당기는 평활은 그 점프를 여러 프레임에 분산 흡수 → 떨림 제거. (워프는 reconcile에서 직접 snap.)
     if (_renderReady) {
-      const S = 0.35;
-      myAbsRender.x += (myAbsPredicted.x - myAbsRender.x) * S;
-      myAbsRender.y += (myAbsPredicted.y - myAbsRender.y) * S;
+      // K20: 스텝 보간 복귀. self 예측은 30Hz 계단(myAbsPredicted). 직전 스텝(_renderPrev)↔현재 스텝(_renderCurr)을
+      //   누적비율 a=_predAccum/PRED_STEP 로 lerp → 60fps에서 등속으로 흘러 카메라 30Hz 펄싱 제거.
+      //   K18 지수평활은 계단을 못 펴 미세 펄싱했음. K19로 리컨실리에이션 보정이 ~0 → 보간 끝점이 안정 → 보간이 다시 부드러움.
+      const a = _predAccum / PRED_STEP;   // while 루프 뒤라 0..1 보장
+      myAbsRender.x = _renderPrev.x + (_renderCurr.x - _renderPrev.x) * a;
+      myAbsRender.y = _renderPrev.y + (_renderCurr.y - _renderPrev.y) * a;
     } else {
       myAbsRender = { x: myAbsPredicted.x, y: myAbsPredicted.y };
       _renderReady = true;
