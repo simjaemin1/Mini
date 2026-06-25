@@ -4292,6 +4292,9 @@ let lastTick = Date.now();
 setInterval(() => {
   const now = Date.now();
   const dt = Math.min(0.2, (now - lastTick) / 1000);
+  // 플레이어/NPC 이동은 클라 예측(고정 PRED_STEP=1/TICK_HZ)과 '동일한 고정 dt'로 — 리컨실리에이션 어긋남 0(떨림 제거).
+  //   (가변 dt면 서버 위치가 매 틱 클라 고정스텝과 ±몇px 달라져 30Hz 떨림.) 다른 시스템(타이머·물리)은 실시간 dt 유지.
+  const moveDt = 1 / TICK_HZ;
   lastTick = now;
 
   // === 14.49-e3-perf5: idle zone skip ===
@@ -4363,7 +4366,7 @@ setInterval(() => {
       }
       if (found) {
         const len = Math.hypot(ejX, ejY) || 1;
-        const push = MOVE_SPEED * dt * 1.8;
+        const push = MOVE_SPEED * moveDt * 1.8;
         p.x += (ejX / len) * push;
         p.y += (ejY / len) * push;
         p.dirty = true;
@@ -4385,8 +4388,8 @@ setInterval(() => {
         stepVy = proj * dv.y;
       }
     }
-    let nx = p.x + stepVx * dt;
-    let ny = p.y + stepVy * dt;
+    let nx = p.x + stepVx * moveDt;
+    let ny = p.y + stepVy * moveDt;
 
     // PZ식 edge 콜라이더 — 각 축 별로 따로 처리해서 slide 가능. player floor만.
     const pf = p.floor || 0;
