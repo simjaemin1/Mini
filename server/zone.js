@@ -1553,44 +1553,17 @@ setInterval(() => {
 if (ZONE.npcVillageTerritory) registerVillageGuilds().catch(e => console.warn(`[${ZONE_ID}] village guild register error:`, e.message));
 spawnVillagers();
 
-// === Phase 5-G debug: 한반도 spawn 근처에 1-cell water + 5x5 벽 방 (콜라이더 테스트, NPC 집과 동일 패턴) ===
-if (ZONE_ID === 'hanbando' && ZONE.mainSquare) {
-  const tx_sp = Math.floor(ZONE.mainSquare.x / 32);
-  const ty_sp = Math.floor(ZONE.mainSquare.y / 32);
-  // spawn 동쪽 한 칸 → water cell
-  const dwx = tx_sp + 1, dwy = ty_sp;
-  WATER_TILES.add(`${dwx}_${dwy}`);
-  // 5x5 방 중심: spawn 동북쪽 3 cells (방 영역과 water cell 안 겹치게)
-  const rcx = tx_sp + 3, rcy = ty_sp - 3;
-  const HR = 2; // half-room (5x5 → ±2)
-  // 옛 디버그 wall 먼저 wipe (메모리 + DB 모두)
-  let removedDbg = 0;
-  for (const [id, b] of buildings) {
-    if (b.ownerId === 'debug_room') { buildings.delete(id); removedDbg++; }
-  }
+// === 디버그 충돌 테스트 방 제거됨 ===
+// 옛 5x5 'debug_room' 벽은 부팅 시 buildings에 직접 올려져 lazy-load 활성/비활성·dedupe와 어긋나
+//   클라/서버 벽 상태 불일치 → 코너 튕김 유발. 테스트 잔재라 제거. 기존 벽도 DB에서 정리(재부팅 materialize 방지).
+if (ZONE_ID === 'hanbando') {
   try {
     const r = db.db.prepare("DELETE FROM buildings WHERE owner_id = 'debug_room'").run();
-    if (r.changes > 0 || removedDbg > 0) console.log(`[${ZONE_ID}] 🧪 옛 디버그 wall wipe: mem=${removedDbg} db=${r.changes}`);
+    if (r.changes > 0) console.log(`[${ZONE_ID}] 🧹 옛 디버그 방 벽 ${r.changes}개 DB에서 제거`);
   } catch {}
-  function addDbgWall(cellCx, cellCy, side) {
-    const wpx = cellCx * 32, wpy = cellCy * 32;
-    const data = { side, floor: 0 };
-    const dbId = db.insertBuilding({ type: 'wall', owner_id: 'debug_room', owner_name: 'DEBUG', x: wpx, y: wpy, data: JSON.stringify(data) });
-    const id = `b${dbId}`; // 건물 lazy-load: id는 dbId 기반 (재활성 시 materialize와 dedupe)
-    const building = { id, dbId, type: 'wall', ownerId: 'debug_room', ownerName: 'DEBUG', x: wpx, y: wpy, data, floor: 0 };
-    buildings.set(id, building);
-    chunkManager.insertBuilding(building);
+  for (const [id, b] of buildings) {
+    if (b.ownerId === 'debug_room') { buildings.delete(id); if (chunkManager.removeBuilding) chunkManager.removeBuilding(b); }
   }
-  // NPC 집 5x5 패턴과 동일
-  // 북쪽 변: (rcy - HR)의 N edge
-  for (let i = -HR; i <= HR; i++) addDbgWall(rcx + i, rcy - HR, 'N');
-  // 남쪽 변: (rcy + HR + 1)의 N edge = (rcy + HR)의 S
-  for (let i = -HR; i <= HR; i++) addDbgWall(rcx + i, rcy + HR + 1, 'N');
-  // 동쪽 변: (rcx + HR)의 E edge
-  for (let j = -HR; j <= HR; j++) addDbgWall(rcx + HR, rcy + j, 'E');
-  // 서쪽 변: (rcx - HR - 1)의 E edge = (rcx - HR)의 W
-  for (let j = -HR; j <= HR; j++) addDbgWall(rcx - HR - 1, rcy + j, 'E');
-  console.log(`[${ZONE_ID}] 🧪 디버그 셋업: spawn cell (${tx_sp},${ty_sp}) | water cell (${dwx},${dwy}) | 5x5 방 중심 (${rcx},${rcy}) 영역 (${rcx-HR},${rcy-HR})~(${rcx+HR},${rcy+HR})`);
 }
 
 // === Phase 14.20+14.22: 한반도 스폰 옆 public chest 3개 + chest 진단/정리 ===
