@@ -2,7 +2,7 @@
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
 // === CLIENT BUILD: Phase 5-G (한반도 강·호수 hardcoded + observer storm fix) ===
-console.log('%c[durango-mini] client build = Phase 5-K20 (렌더 스텝보간 복귀 — 30Hz 카메라 펄싱 제거; 서버 K19와 함께)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+console.log('%c[durango-mini] client build = Phase 5-K21 (시야 fog도 보간 위치로 — 부채꼴 경계 떨림 제거)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 // Phase 4d-16-c: facility 종류별 emoji
 const FACILITY_EMOJI = {
@@ -3312,7 +3312,9 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     // 4) 교점 각도순 정렬 → visibility polygon
     // 5) 화면 dark fill → destination-out으로 polygon 안 투명하게
     {
-      const px = myAbsPredicted.x, py = myAbsPredicted.y;
+      // K21: fog도 카메라와 같은 보간 위치(_camAbs=myAbsRender) 기준. myAbsPredicted(30Hz 계단)을 쓰면
+      //   땅은 myAbsRender로 매끄럽게 흐르는데 부채꼴만 30Hz로 어긋나 경계가 떨림. 같은 기준으로 묶어 떨림 제거.
+      const px = _camAbs.x, py = _camAbs.y;
       const myCx = Math.floor(px / CL_BUILDING_SIZE);
       const myCy = Math.floor(py / CL_BUILDING_SIZE);
       // wall iteration radius (벽 수집 범위) vs ray cast range (광선 닿는 거리)
