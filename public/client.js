@@ -435,44 +435,14 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     return best;
   }
   function clHasFenceAt(cellCx, cellCy, floor) {
-    for (const [zid, c] of conns) {
-      const zm = c.meta || zonesMeta[zid];
-      if (!zm) continue;
-      const oxCells = Math.floor((zm.worldOffsetX || 0) / CL_BUILDING_SIZE);
-      const oyCells = Math.floor((zm.worldOffsetY || 0) / CL_BUILDING_SIZE);
-      for (const b of c.buildings.values()) {
-        if (b.type !== 'fence') continue;
-        if ((b.floor || 0) !== floor) continue;
-        const bcx = Math.floor(b.x / CL_BUILDING_SIZE);
-        const bcy = Math.floor(b.y / CL_BUILDING_SIZE);
-        if (oxCells + bcx === cellCx && oyCells + bcy === cellCy) return true;
-      }
-    }
-    return false;
+    // O(1) — clFenceCellMap 조회 (이전 전체 건물 순회 O(n) 제거)
+    ensureWallMap();
+    return clFenceCellMap.has(`${cellCx}_${cellCy}_${floor}`);
   }
   function clHasWallAt(absX, absY, cellCx, cellCy, side, floor) {
-    // 모든 zone conns의 buildings 다 검색 (zone 경계 cross 시 이웃 zone wall도 적용)
-    for (const [zid, c] of conns) {
-      const zm = c.meta || zonesMeta[zid];
-      if (!zm) continue;
-      const ox = zm.worldOffsetX || 0, oy = zm.worldOffsetY || 0;
-      // absX/Y → 이 zone의 local 좌표
-      const lx = absX - ox, ly = absY - oy;
-      if (lx < -64 || lx > (zm.zoneWidth || 1000000) + 64) continue;
-      if (ly < -64 || ly > (zm.zoneHeight || 1000000) + 64) continue;
-      const targetCx = cellCx - Math.floor(ox / CL_BUILDING_SIZE);
-      const targetCy = cellCy - Math.floor(oy / CL_BUILDING_SIZE);
-      for (const b of c.buildings.values()) {
-        if (b.type !== 'wall' && b.type !== 'fence') continue;
-        if ((b.floor || 0) !== floor) continue;
-        const bSide = b.data?.side;
-        if (!bSide) continue; // 옛 큐브 wall은 무시
-        const bcx = Math.floor(b.x / CL_BUILDING_SIZE);
-        const bcy = Math.floor(b.y / CL_BUILDING_SIZE);
-        if (bcx === targetCx && bcy === targetCy && bSide === side) return true;
-      }
-    }
-    return false;
+    // O(1) — clWallCellMap(절대 cell+side+floor) 조회. (이전엔 전체 건물 순회 O(n) → 마을 672채서 매 프레임 폭발)
+    ensureWallMap();
+    return clWallCellMap.has(`${cellCx}_${cellCy}_${side}_${floor}`);
   }
   // === 14.49-e6-b: BFS room flood fill — RimWorld식 정확한 indoor 판정 ===
   // 1) clWallCellMap: 모든 wall edge 위치 O(1) lookup (절대 cell + side + floor)
@@ -484,6 +454,7 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
   const clWallCellMap = new Map(); // "cx_cy_side_floor" → true (절대 cell)
   const cellRoomCache = new Map(); // "cx_cy_floor" → roomData
   const clFloorCellMap = new Map(); // "cx_cy_floor" → true (위층 BFS cutaway용)
+  const clFenceCellMap = new Map(); // "cx_cy_floor" → true (fence cell — clHasFenceAt O(1)용)
   const clMaxFloorMap = new Map(); // "cx_cy" → max floor (가장 위쪽 floor tile)
   let nextRoomId = 1;
   let clWallMapBuiltAt = 0;
@@ -493,6 +464,7 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     clWallCellMap.clear();
     cellRoomCache.clear(); // wall 다 다시 → room도 다시
     clFloorCellMap.clear();
+    clFenceCellMap.clear();
     clMaxFloorMap.clear();
     for (const [zid, c] of conns) {
       const zm = c.meta || zonesMeta[zid];
@@ -514,6 +486,8 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
           clFloorCellMap.set(`${absKey}_${f}`, true);
           const curMax = clMaxFloorMap.get(absKey);
           if (curMax === undefined || curMax < f) clMaxFloorMap.set(absKey, f);
+        } else if (b.type === 'fence') {
+          clFenceCellMap.set(`${oxCells + bcx}_${oyCells + bcy}_${f}`, true);
         }
       }
     }
@@ -6906,6 +6880,7 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
   function draw() {
     if (!visible) return;
     if (needsRedraw) {
+      const _rT0 = performance.now();
       ctx.fillStyle = '#0a0e14';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -7028,6 +7003,9 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
       }
 
       if (zoomLabel) zoomLabel.textContent = (zoom * 100).toFixed(2) + '%';
+      { const _rd = performance.now() - _rT0; window._rAcc = (window._rAcc||0)+_rd; window._rN = (window._rN||0)+1; if (_rd > (window._rMax||0)) window._rMax = _rd;
+        if (window._rN >= 30) { let _bn=0; for (const c of conns.values()) _bn += c.buildings.size;
+          console.log(`[render] avg=${(window._rAcc/window._rN).toFixed(1)}ms max=${window._rMax.toFixed(0)}ms bld=${_bn}`); window._rAcc=0; window._rN=0; window._rMax=0; } }
       needsRedraw = false;
     }
     if (visible) requestAnimationFrame(draw);
