@@ -2169,20 +2169,15 @@ function handlePlayerInput(player, raw) {
 
   if (msg.type === 'input') {
     // Phase 14.41: 다운(사망) 중이면 입력 무시
-    if (player.isDown) { player.vx = 0; player.vy = 0; return; }
-    const vx = clamp(msg.vx, -1, 1);
-    const vy = clamp(msg.vy, -1, 1);
-    const len = Math.hypot(vx, vy) || 1;
-    // Phase 14.40: Shift = 달리기. hunger/thirst가 너무 낮으면 자동 해제.
-    const wantSprint = !!msg.sprint;
-    const canSprint = (player.hunger ?? HUNGER_MAX) > SPRINT_MIN_GAUGE
-                   && (player.thirst ?? THIRST_MAX) > SPRINT_MIN_GAUGE;
-    player.sprint = wantSprint && canSprint;
-    const spMult = player.sprint ? SPRINT_MULT : 1.0;
-    player.vx = (vx / len) * MOVE_SPEED * Math.min(1, Math.hypot(vx, vy)) * spMult;
-    player.vy = (vy / len) * MOVE_SPEED * Math.min(1, Math.hypot(vx, vy)) * spMult;
-    // 클라 사이드 예측+리컨실리에이션: 마지막으로 적용한 입력 seq를 기록 → tick에 ackSeq로 회신.
-    player.lastInputSeq = (typeof msg.seq === 'number') ? msg.seq : (player.lastInputSeq || 0);
+    if (player.isDown) { player.vx = 0; player.vy = 0; if (player.inputQueue) player.inputQueue.length = 0; return; }
+    // 리컨실리에이션: 입력을 즉시 적용하지 않고 큐에 버퍼 → tick이 '받은 순서대로 1개씩' 적용(applyQueuedInput).
+    //   즉시-적용은 '틱당 최신 것'이 되어 클라 고정스텝 순서와 어긋나 매 틱 보정→떨림. 큐로 순서·타이밍 일치 → 보정 0.
+    if (!player.inputQueue) player.inputQueue = [];
+    player.inputQueue.push({
+      seq: (typeof msg.seq === 'number') ? msg.seq : 0,
+      vx: clamp(msg.vx, -1, 1), vy: clamp(msg.vy, -1, 1), sprint: !!msg.sprint,
+    });
+    if (player.inputQueue.length > 12) player.inputQueue.shift(); // burst 상한 (리컨실리에이션이 보정)
     player.lastSeen = Date.now();
     player._inputCnt = (player._inputCnt || 0) + 1;
     if (!player._inputLogAt || Date.now() - player._inputLogAt > 1000) {
@@ -4324,6 +4319,18 @@ setInterval(() => {
   for (const p of players.values()) {
     if (p.handingOff) continue;
     if (p.isNpc) continue;  // NPC는 입력 타임아웃 무관 (npcStep이 vx/vy 관리) — 600명 순회 절약
+    // 입력 큐 — 틱당 1개씩 받은 순서대로 적용 (클라 고정스텝과 일치 → 리컨실리에이션 보정 0).
+    //   비었으면 last vx/vy 유지(키 계속 누름 가정). ackSeq = 마지막으로 '적용'한 seq.
+    if (p.inputQueue && p.inputQueue.length) {
+      const inp = p.inputQueue.shift();
+      const canSprint = (p.hunger ?? HUNGER_MAX) > SPRINT_MIN_GAUGE && (p.thirst ?? THIRST_MAX) > SPRINT_MIN_GAUGE;
+      p.sprint = inp.sprint && canSprint;
+      const spMult = p.sprint ? SPRINT_MULT : 1.0;
+      const hyp = Math.hypot(inp.vx, inp.vy), len = hyp || 1;
+      p.vx = (inp.vx / len) * MOVE_SPEED * Math.min(1, hyp) * spMult;
+      p.vy = (inp.vy / len) * MOVE_SPEED * Math.min(1, hyp) * spMult;
+      p.lastInputSeq = inp.seq;
+    }
     if (now - p.lastSeen > 2500) { p.vx = 0; p.vy = 0; }
   }
 
