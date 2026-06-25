@@ -2,7 +2,7 @@
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
 // === CLIENT BUILD: Phase 5-G (한반도 강·호수 hardcoded + observer storm fix) ===
-console.log('%c[durango-mini] client build = Phase 5-K8 (desync probe + render-log silenced)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+console.log('%c[durango-mini] client build = Phase 5-K9 (rubber-band fix: snap on wall-separated correction)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 // Phase 4d-16-c: facility 종류별 emoji
 const FACILITY_EMOJI = {
@@ -2723,10 +2723,19 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
       correctionVel = { x: 0, y: 0 };
       correctionUntil = 0;
     } else if (dist > 48) {
-      const T = 0.15; // 150ms — 부드러운 보정
-      correctionVel.x = ex / T;
-      correctionVel.y = ey / T;
-      correctionUntil = performance.now() + T * 1000;
+      // 14.x fix: 클라 예측과 서버 권위가 벽을 사이에 두고 갈렸으면(opposite sides),
+      // lerp 보정은 벽을 존중해 막혀서 영영 못 따라잡음 → 누적되다 500px 하드snap으로 벽 관통(=심한 텔포).
+      // 벽이 사이에 있으면 그 즉시 서버 위치로 스냅 — 48px에서 작게 끝내 누적 차단.
+      if (clientIsBlockedByWall(absX, absY, myAbsPredicted.x, myAbsPredicted.y, myFloor)) {
+        myAbsPredicted = { x: absX, y: absY };
+        correctionVel = { x: 0, y: 0 };
+        correctionUntil = 0;
+      } else {
+        const T = 0.15; // 150ms — 부드러운 보정
+        correctionVel.x = ex / T;
+        correctionVel.y = ey / T;
+        correctionUntil = performance.now() + T * 1000;
+      }
     } else {
       correctionVel = { x: 0, y: 0 };
       correctionUntil = 0;
