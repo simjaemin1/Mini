@@ -2181,6 +2181,8 @@ function handlePlayerInput(player, raw) {
     const spMult = player.sprint ? SPRINT_MULT : 1.0;
     player.vx = (vx / len) * MOVE_SPEED * Math.min(1, Math.hypot(vx, vy)) * spMult;
     player.vy = (vy / len) * MOVE_SPEED * Math.min(1, Math.hypot(vx, vy)) * spMult;
+    // 클라 사이드 예측+리컨실리에이션: 마지막으로 적용한 입력 seq를 기록 → tick에 ackSeq로 회신.
+    player.lastInputSeq = (typeof msg.seq === 'number') ? msg.seq : (player.lastInputSeq || 0);
     player.lastSeen = Date.now();
     player._inputCnt = (player._inputCnt || 0) + 1;
     if (!player._inputLogAt || Date.now() - player._inputLogAt > 1000) {
@@ -4964,6 +4966,8 @@ setInterval(() => {
       mobs: visibleMobs(p.x, p.y, p.viewerState),
       // 14.49-c: 계단 위에서의 본인 z (0~32). 매 tick 보내야 부드럽게 lerp 보임.
       selfZ: p.z || 0,
+      // 클라 리컨실리에이션: 마지막으로 처리한 입력 seq. 클라가 이 seq 이하 입력을 drop하고 나머지만 replay.
+      ackSeq: p.lastInputSeq || 0,
     });
   }
   for (const [ws, data] of observers) {

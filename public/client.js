@@ -2,7 +2,7 @@
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
 // === CLIENT BUILD: Phase 5-G (한반도 강·호수 hardcoded + observer storm fix) ===
-console.log('%c[durango-mini] client build = Phase 5-K15 (벽 갈림 시 서버로 통일 수렴 — 스턱/텔포 제거, desync로그 기본OFF)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+console.log('%c[durango-mini] client build = Phase 5-K16 (서버 리컨실리에이션 — 입력 리플레이로 어긋남 0, 60fps 보간)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 // Phase 4d-16-c: facility 종류별 emoji
 const FACILITY_EMOJI = {
@@ -1685,11 +1685,16 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
         const absX = msg.zone.worldOffsetX + msg.self.x;
         const absY = (msg.zone.worldOffsetY || 0) + msg.self.y;
         myAbsPos = { x: absX, y: absY };
+        // welcome = 풀 권위 리싱크(재연결/존이동) → 텔포처럼 취급: 미ack 입력 비우고 앵커.
+        pendingInputs.length = 0;
+        _predAccum = 0;
+        myAbsPredicted = { x: absX, y: absY };
+        _renderPrev = { x: absX, y: absY };
+        _renderCurr = { x: absX, y: absY };
+        myAbsRender = { x: absX, y: absY };
+        _renderReady = true;
         if (!initialWelcomeReceived) {
-          myAbsPredicted = { x: absX, y: absY };
           initialWelcomeReceived = true;
-        } else {
-          applyServerCorrection(absX, absY);
         }
         lastTickWithMyPidAt = performance.now();
         updateHud();
@@ -1711,7 +1716,8 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
           const absX = c.meta.worldOffsetX + pp.x;
           const absY = (c.meta.worldOffsetY || 0) + pp.y;
           myAbsPos = { x: absX, y: absY };
-          applyServerCorrection(absX, absY);
+          // 리컨실리에이션: 권위 위치 + ackSeq(tick top-level)로 미ack 입력 replay
+          applyServerCorrection(absX, absY, msg.ackSeq);
           lastTickWithMyPidAt = now;
         } else {
           // 서버가 메타 필드(name/color/maxHp/tribeName)를 첫 visible 때만 보냄. 나머진 prev 캐시 유지.
@@ -1924,6 +1930,13 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
           myAbsPredicted = { x: absX, y: absY };
           correctionVel = { x: 0, y: 0 };
           correctionUntil = 0;
+          // 부활 = 텔포 → 미ack 입력 비우고 렌더 앵커 리싱크 (카메라가 텔포 구간 lerp 방지)
+          pendingInputs.length = 0;
+          _predAccum = 0;
+          _renderPrev = { x: absX, y: absY };
+          _renderCurr = { x: absX, y: absY };
+          myAbsRender = { x: absX, y: absY };
+          _renderReady = true;
         }
         updateHud();
       } else {
@@ -2137,22 +2150,49 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     return { wx, wy };
   }
 
+  // === 클라 사이드 예측: 고정 스텝(30Hz) + 입력 히스토리 + 서버 리컨실리에이션 ===
+  // (Gabriel Gambetta "Fast-Paced Multiplayer" 모델)
+  // 한 스텝 = 한 input seq = 서버 한 tick의 이동. predictStep(아래)은 서버 per-tick player move와
+  // 수학적으로 동일해야 replay가 서버를 정확히 재현함 (옛 인라인 블록을 그대로 옮긴 것).
+  // sendInput/loop/applyServerCorrection 보다 먼저 선언 — TDZ 회피.
+  let _predAccum = 0;
+  const PRED_STEP = 1 / 30;           // 서버 TICK_HZ=30 과 동일
+  let inputSeq = 0;
+  const pendingInputs = [];           // [{seq, wx, wy, sprint}] — ack 안 된 입력 (replay용)
+  // 렌더 보간(60fps): 직전 스텝 위치 ↔ 현재 스텝 위치 사이를 _predAccum 비율로 lerp.
+  let _renderPrev = { x: 0, y: 0 };
+  let _renderCurr = { x: 0, y: 0 };
+  let myAbsRender = { x: 0, y: 0 };   // 카메라/본인 스프라이트가 쓰는 보간 위치
+  let _renderReady = false;           // 첫 스텝 전엔 myAbsPredicted 로 fallback
+
   // === 입력 전송 ===
   let lastInputSentAt = 0;
+  // 이동키 down/up 즉시 송신용 — 시작/정지 지연을 줄임.
+  // 리컨실리에이션 불변식 유지: "보낸 입력은 모두 seq를 갖고 pendingInputs에 기록되며 predictStep으로 시뮬"됨.
+  // 즉시 1 스텝을 처리하고 accumulator에서 그만큼 차감 → 다음 loop while가 중복 적용 안 함.
+  // (down 시: 위치 1/30 전진 + 기록. up/idle 시: zero-input → predictStep no-op이라 위치 불변, 기록만.)
   function sendInput() {
     if (!primaryZoneId) return;
     const c = conns.get(primaryZoneId);
     if (!c || c.ws.readyState !== 1) return;
-    // Phase 14.41: 다운 중이면 입력 전송 X (서버도 무시하지만 트래픽 줄임)
+    // 다운 중: 기록/시뮬 없이 zero-input만 (서버 정지용). seq 포함.
     if (myIsDown) {
-      c.ws.send(JSON.stringify({ type: 'input', vx: 0, vy: 0, sprint: false }));
-      lastInputSentAt = performance.now();
+      inputSeq++;
+      sendStepInput(inputSeq, 0, 0, false);
       return;
     }
     const { wx, wy } = worldKeysDir();
-    // Phase 14.40: Shift = sprint. 게이지 너무 낮으면 서버에서 자동 거부.
-    c.ws.send(JSON.stringify({ type: 'input', vx: wx, vy: wy, sprint: !!mySprint }));
-    lastInputSentAt = performance.now();
+    const sp = !!mySprint;
+    inputSeq++;
+    pendingInputs.push({ seq: inputSeq, wx, wy, sprint: sp });
+    if (pendingInputs.length > 200) pendingInputs.shift();
+    sendStepInput(inputSeq, wx, wy, sp);
+    // 이 즉시 스텝만큼 미리 시뮬 + accumulator 차감 (loop while 중복 방지)
+    if (_renderReady) _renderPrev = { x: myAbsPredicted.x, y: myAbsPredicted.y };
+    predictStep(PRED_STEP, wx, wy, sp);
+    if (_renderReady) { _renderCurr = { x: myAbsPredicted.x, y: myAbsPredicted.y }; }
+    _predAccum -= PRED_STEP;
+    if (_predAccum < 0) _predAccum = 0;
   }
 
   // Phase 14.41: 근처 다운된 같은 길드원 찾기 (RESCUE_RANGE_PX = 80)
@@ -2173,6 +2213,85 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     return best;
   }
 
+  // (예측/리컨실리에이션 상태 변수는 위 sendInput 직전에 선언됨 — TDZ 회피)
+
+  // 고정 스텝 1회 이동 — myAbsPredicted 를 직접 변형.
+  // sprint 인자: live는 mySprint, replay는 각 입력의 sprint 상태를 넘김 (속도에 영향).
+  function predictStep(dt, wx, wy, sprint) {
+    if (myIsDown || (wx === 0 && wy === 0)) return;
+    const canSprintClient = sprint && myHunger > 5 && myThirst > 5;
+    const speed = 220 * (canSprintClient ? 1.6 : 1);
+    let mwx = wx, mwy = wy;
+    {
+      const curCx = Math.floor(myAbsPredicted.x / CL_BUILDING_SIZE);
+      const curCy = Math.floor(myAbsPredicted.y / CL_BUILDING_SIZE);
+      const stairHit = clFindStairForCell(curCx, curCy);
+      if (stairHit) {
+        const dir = stairHit.stair.data?.dir || 'N';
+        const dv = (dir === 'E') ? { x: 1, y: 0 } : (dir === 'W') ? { x: -1, y: 0 }
+                 : (dir === 'S') ? { x: 0, y: 1 } : { x: 0, y: -1 };
+        const proj = mwx * dv.x + mwy * dv.y;
+        mwx = proj * dv.x;
+        mwy = proj * dv.y;
+      }
+    }
+    if (isTerrainBlockedAtAbs(myAbsPredicted.x, myAbsPredicted.y)) {
+      let ejX = 0, ejY = 0, found = false;
+      for (let r = 32; r <= 32 * 16 && !found; r += 32) {
+        for (const d of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,1],[1,-1],[-1,-1]]) {
+          if (!isTerrainBlockedAtAbs(myAbsPredicted.x + d[0] * r, myAbsPredicted.y + d[1] * r)) { ejX = d[0]; ejY = d[1]; found = true; break; }
+        }
+      }
+      if (found) {
+        const len = Math.hypot(ejX, ejY) || 1;
+        const push = speed * dt * 1.8;
+        myAbsPredicted.x += (ejX / len) * push;
+        myAbsPredicted.y += (ejY / len) * push;
+      }
+    } else {
+      let nx = myAbsPredicted.x + mwx * speed * dt;
+      let ny = myAbsPredicted.y + mwy * speed * dt;
+      if (clientIsBlockedByWall(nx, myAbsPredicted.y, myAbsPredicted.x, myAbsPredicted.y, myFloor)) nx = myAbsPredicted.x;
+      if (clientIsBlockedByWall(myAbsPredicted.x, ny, myAbsPredicted.x, myAbsPredicted.y, myFloor)) ny = myAbsPredicted.y;
+      if (clientIsBlockedByWall(nx, ny, myAbsPredicted.x, myAbsPredicted.y, myFloor)) { nx = myAbsPredicted.x; ny = myAbsPredicted.y; }
+      if (myFloor === 0 && (mwx || mwy)) {
+        const trees = clientNearbyTrees(myAbsPredicted.x, myAbsPredicted.y);
+        if (trees) {
+          if (clientIsBlockedByTree(nx, myAbsPredicted.y, trees)) nx = myAbsPredicted.x;
+          if (clientIsBlockedByTree(myAbsPredicted.x, ny, trees)) ny = myAbsPredicted.y;
+          if (clientIsBlockedByTree(nx, ny, trees)) { nx = myAbsPredicted.x; ny = myAbsPredicted.y; }
+        }
+      }
+      if (isTerrainBlockedAtAbs(nx, myAbsPredicted.y)) {
+        const tx = Math.floor(myAbsPredicted.x / 32);
+        if (nx > myAbsPredicted.x) nx = (tx + 1) * 32 - 1;
+        else if (nx < myAbsPredicted.x) nx = tx * 32;
+        else nx = myAbsPredicted.x;
+      }
+      if (isTerrainBlockedAtAbs(myAbsPredicted.x, ny)) {
+        const ty = Math.floor(myAbsPredicted.y / 32);
+        if (ny > myAbsPredicted.y) ny = (ty + 1) * 32 - 1;
+        else if (ny < myAbsPredicted.y) ny = ty * 32;
+        else ny = myAbsPredicted.y;
+      }
+      if (isTerrainBlockedAtAbs(nx, ny)) { nx = myAbsPredicted.x; ny = myAbsPredicted.y; }
+      myAbsPredicted.x = nx;
+      myAbsPredicted.y = ny;
+    }
+    // 전체 월드 그리드 안으로만 clamp (서버도 동일 — 옛 인라인은 loop 끝에서 했으나 스텝마다 적용해야 replay 일치)
+    myAbsPredicted.x = Math.max(0, Math.min(worldWidth - 1, myAbsPredicted.x));
+    myAbsPredicted.y = Math.max(0, Math.min(worldHeight - 1, myAbsPredicted.y));
+  }
+
+  // 고정 스텝마다 입력 1개를 서버로 전송 (seq 포함). sendInput 의 send 경로 재사용.
+  function sendStepInput(seq, wx, wy, sprint) {
+    if (!primaryZoneId) return;
+    const c = conns.get(primaryZoneId);
+    if (!c || c.ws.readyState !== 1) return;
+    c.ws.send(JSON.stringify({ type: 'input', seq, vx: wx, vy: wy, sprint: !!sprint }));
+    lastInputSentAt = performance.now();
+  }
+
   // === 메인 루프 ===
   let prevT = performance.now();
   function loop() {
@@ -2180,7 +2299,8 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     const dt = Math.min(0.1, (now - prevT) / 1000);
     prevT = now;
 
-    if (now - lastInputSentAt > 33) sendInput();
+    // 입력 전송은 이제 고정 스텝(아래 while)마다 1개씩 — 옛 33ms 게이트 sendInput() 제거.
+    // 다운/멈춤일 때만 서버가 멈추도록 주기적 zero-input 전송.
 
     // === 클라 사이드 wall edge 콜라이더 (server isBlockedByWall 미러) ===
     // primary zone의 buildings + 이웃 zone들도 검사 (zone 경계 cross 시).
@@ -2188,89 +2308,45 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     // BUILDING_SIZE = 32 (server와 동일).
     // 인라인 함수 X — 매 프레임 만들기 비싸서 위에 한 번 정의함
 
-    // 클라이언트 예측: 입력으로 즉시 반응 (60fps 부드러움)
+    // === 클라이언트 예측: 고정 30Hz 스텝 + 입력 기록/전송 ===
+    // 한 스텝 = 한 input seq = 서버 한 tick. predictStep 이 myAbsPredicted 를 변형.
+    // 서버 리컨실리에이션(applyServerCorrection)이 매 tick 권위 위치에 anchor 후 미ack 입력을 replay.
     const { wx, wy } = worldKeysDir();
-    if (!myIsDown && (wx !== 0 || wy !== 0)) {
-      const canSprintClient = mySprint && myHunger > 5 && myThirst > 5;
-      const speed = 220 * (canSprintClient ? 1.6 : 1);
-      let mwx = wx, mwy = wy;
-      {
-        const curCx = Math.floor(myAbsPredicted.x / CL_BUILDING_SIZE);
-        const curCy = Math.floor(myAbsPredicted.y / CL_BUILDING_SIZE);
-        const stairHit = clFindStairForCell(curCx, curCy);
-        if (stairHit) {
-          const dir = stairHit.stair.data?.dir || 'N';
-          const dv = (dir === 'E') ? { x: 1, y: 0 } : (dir === 'W') ? { x: -1, y: 0 }
-                   : (dir === 'S') ? { x: 0, y: 1 } : { x: 0, y: -1 };
-          const proj = mwx * dv.x + mwy * dv.y;
-          mwx = proj * dv.x;
-          mwy = proj * dv.y;
-        }
-      }
-      if (isTerrainBlockedAtAbs(myAbsPredicted.x, myAbsPredicted.y)) {
-        let ejX = 0, ejY = 0, found = false;
-        for (let r = 32; r <= 32 * 16 && !found; r += 32) {
-          for (const d of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,1],[1,-1],[-1,-1]]) {
-            if (!isTerrainBlockedAtAbs(myAbsPredicted.x + d[0] * r, myAbsPredicted.y + d[1] * r)) { ejX = d[0]; ejY = d[1]; found = true; break; }
-          }
-        }
-        if (found) {
-          const len = Math.hypot(ejX, ejY) || 1;
-          const push = speed * dt * 1.8;
-          myAbsPredicted.x += (ejX / len) * push;
-          myAbsPredicted.y += (ejY / len) * push;
-        }
-      } else {
-        let nx = myAbsPredicted.x + mwx * speed * dt;
-        let ny = myAbsPredicted.y + mwy * speed * dt;
-        if (clientIsBlockedByWall(nx, myAbsPredicted.y, myAbsPredicted.x, myAbsPredicted.y, myFloor)) nx = myAbsPredicted.x;
-        if (clientIsBlockedByWall(myAbsPredicted.x, ny, myAbsPredicted.x, myAbsPredicted.y, myFloor)) ny = myAbsPredicted.y;
-        if (clientIsBlockedByWall(nx, ny, myAbsPredicted.x, myAbsPredicted.y, myFloor)) { nx = myAbsPredicted.x; ny = myAbsPredicted.y; }
-        if (myFloor === 0 && (mwx || mwy)) {
-          const trees = clientNearbyTrees(myAbsPredicted.x, myAbsPredicted.y);
-          if (trees) {
-            if (clientIsBlockedByTree(nx, myAbsPredicted.y, trees)) nx = myAbsPredicted.x;
-            if (clientIsBlockedByTree(myAbsPredicted.x, ny, trees)) ny = myAbsPredicted.y;
-            if (clientIsBlockedByTree(nx, ny, trees)) { nx = myAbsPredicted.x; ny = myAbsPredicted.y; }
-          }
-        }
-        if (isTerrainBlockedAtAbs(nx, myAbsPredicted.y)) {
-          const tx = Math.floor(myAbsPredicted.x / 32);
-          if (nx > myAbsPredicted.x) nx = (tx + 1) * 32 - 1;
-          else if (nx < myAbsPredicted.x) nx = tx * 32;
-          else nx = myAbsPredicted.x;
-        }
-        if (isTerrainBlockedAtAbs(myAbsPredicted.x, ny)) {
-          const ty = Math.floor(myAbsPredicted.y / 32);
-          if (ny > myAbsPredicted.y) ny = (ty + 1) * 32 - 1;
-          else if (ny < myAbsPredicted.y) ny = ty * 32;
-          else ny = myAbsPredicted.y;
-        }
-        if (isTerrainBlockedAtAbs(nx, ny)) { nx = myAbsPredicted.x; ny = myAbsPredicted.y; }
-        myAbsPredicted.x = nx;
-        myAbsPredicted.y = ny;
-      }
+    const moving = !myIsDown && (wx !== 0 || wy !== 0);
+    _predAccum += dt;                       // dt는 loop에서 이미 0.1 cap
+    if (_predAccum > 0.1) _predAccum = 0.1;
+    let _stepped = false;
+    while (_predAccum >= PRED_STEP) {
+      if (!_stepped) { _renderPrev = { x: myAbsPredicted.x, y: myAbsPredicted.y }; _stepped = true; }
+      inputSeq++;
+      const sp = !!mySprint;
+      // 적용 전에 기록 — replay가 그대로 재현하도록.
+      pendingInputs.push({ seq: inputSeq, wx, wy, sprint: sp });
+      if (pendingInputs.length > 200) pendingInputs.shift();
+      sendStepInput(inputSeq, wx, wy, sp);
+      predictStep(PRED_STEP, wx, wy, sp);   // moving=false 면 내부에서 early-return (위치 불변)
+      _predAccum -= PRED_STEP;
     }
-    // 서버 권위 좌표로의 부드러운 보정 (snap 대신 lerp)
-    // fix: 보정 이동도 벽 검사 — lerp 직선이 방 모서리를 관통해 예측 위치가
-    // 벽 안으로 끌려 들어가는 버그 (이후 48px dead zone 때문에 안에 갇힌 채 유지됨).
-    // 이동 로직과 동일한 축 분리 슬라이드: 막힌 축만 죽임 (snap 없음 — 러버밴딩 방지).
-    // 진짜 큰 desync는 applyServerCorrection의 500px 초과 하드 snap이 처리.
-    if (now < correctionUntil) {
-      let cnx = myAbsPredicted.x + correctionVel.x * dt;
-      let cny = myAbsPredicted.y + correctionVel.y * dt;
-      // 벽 사이 갈림 보정(correctionIgnoreWall)은 벽 검사 생략 — 권위 위치로 부드럽게 건너가게.
-      if (!correctionIgnoreWall) {
-        if (clientIsBlockedByWall(cnx, myAbsPredicted.y, myAbsPredicted.x, myAbsPredicted.y, myFloor)) cnx = myAbsPredicted.x;
-        if (clientIsBlockedByWall(myAbsPredicted.x, cny, myAbsPredicted.x, myAbsPredicted.y, myFloor)) cny = myAbsPredicted.y;
-        if (clientIsBlockedByWall(cnx, cny, myAbsPredicted.x, myAbsPredicted.y, myFloor)) { cnx = myAbsPredicted.x; cny = myAbsPredicted.y; }
-      }
-      myAbsPredicted.x = cnx;
-      myAbsPredicted.y = cny;
+    if (_stepped) {
+      _renderCurr = { x: myAbsPredicted.x, y: myAbsPredicted.y };
+      _renderReady = true;
     }
-    // 전체 월드 그리드 안으로만 clamp (2x2면 0~2048)
-    myAbsPredicted.x = Math.max(0, Math.min(worldWidth - 1, myAbsPredicted.x));
-    myAbsPredicted.y = Math.max(0, Math.min(worldHeight - 1, myAbsPredicted.y));
+    // 멈춤/다운: 스텝이 입력을 안 보내는 구간 — 서버가 멈추도록 주기적 zero-input 전송 (seq 포함).
+    if (!moving && (now - lastInputSentAt > 33)) {
+      inputSeq++;
+      sendStepInput(inputSeq, 0, 0, false);
+    }
+    // 렌더 보간 위치 — 직전 스텝 ↔ 현재 스텝 사이를 누적 잔여비율로 lerp (60fps 부드러움).
+    // 스텝이 안 돈 프레임도 잔여 accum 비율로 계속 보간 → 30Hz 끊김 제거.
+    if (_renderReady) {
+      const a = Math.max(0, Math.min(1, _predAccum / PRED_STEP));
+      myAbsRender = {
+        x: _renderPrev.x + (_renderCurr.x - _renderPrev.x) * a,
+        y: _renderPrev.y + (_renderCurr.y - _renderPrev.y) * a,
+      };
+    } else {
+      myAbsRender = { x: myAbsPredicted.x, y: myAbsPredicted.y };
+    }
 
     ensurePrimaryConnection();
     checkOrphan();
@@ -2698,51 +2774,47 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
   let loopStarted = false;
   let chatSetup = false;
 
-  // === 서버 권위 좌표 → 클라 예측 보정 ===
-  // Phase 14.46-b-smooth: 임계 16 → 48 (1.5 tile). 평지에서 RTT 지터로 인한 작은 드리프트는 무시.
-  // 너무 빡빡하면 walking 중 자주 짧게 뒤로 밀려나는 느낌 발생. wall stuck은 50~100px 차이라 여전히 감지됨.
-  // - <48px: 무시 (정상 lag 드리프트)
-  // - 48~500px: lerp (150ms — 부드럽게)
-  // - >500px: 즉시 snap
-  function applyServerCorrection(absX, absY) {
+  // === 서버 권위 좌표 → 클라 예측 리컨실리에이션 (input replay) ===
+  // Gabriel Gambetta 모델: 서버 권위 self pos + ackSeq 받으면
+  //   1) myAbsPredicted 를 권위 위치에 anchor
+  //   2) ack 된(seq <= ackSeq) 입력은 pendingInputs 에서 drop
+  //   3) 남은 미ack 입력을 predictStep 으로 replay → 드리프트 없이 재현된 예측 위치
+  // predictStep 이 서버 per-tick move 와 동일하므로 replay 결과 == 서버가 곧 도달할 위치.
+  // 매 tick anchor+replay 라 어긋남이 누적되지 않음 → 벽에서 스턱/슬립 없음.
+  // 옛 correctionVel/Until/IgnoreWall lerp 머신은 리컨실리에이션이 완전 대체 — 항상 0/false 로 비워둠.
+  function applyServerCorrection(absX, absY, ackSeq) {
     const ex = absX - myAbsPredicted.x, ey = absY - myAbsPredicted.y;
     const dist = Math.hypot(ex, ey);
-    // 클라 예측과 서버 사이에 벽이 끼어 있나 (진짜 어긋남 vs 단순 지연 오프셋 구분의 핵심 신호)
-    const wallBetween = dist > 24 && clientIsBlockedByWall(absX, absY, myAbsPredicted.x, myAbsPredicted.y, myFloor);
     // === 러버밴딩 계측 (기본 OFF — window._desyncDbg=true로 켬) ===
     if (dist > 48 && window._desyncDbg === true) {
+      const wallBetween = clientIsBlockedByWall(absX, absY, myAbsPredicted.x, myAbsPredicted.y, myFloor);
       const pc = clCellOf(myAbsPredicted.x, myAbsPredicted.y);
       const sc = clCellOf(absX, absY);
       const stair = clFindStairForCell(pc.cx, pc.cy) ? 1 : 0;
       console.log(`[desync] dist=${dist.toFixed(0)} pred=${pc.cx},${pc.cy}(${myAbsPredicted.x.toFixed(0)},${myAbsPredicted.y.toFixed(0)}) srv=${sc.cx},${sc.cy} f${myFloor} stairCell=${stair} wallBetween=${wallBetween?1:0}`);
     }
-    if (dist > 800) {
-      // 극단(존이동 등) — 즉시 스냅.
+    // lerp 머신은 항상 비활성 (리컨실리에이션이 대체)
+    correctionVel = { x: 0, y: 0 };
+    correctionUntil = 0;
+    correctionIgnoreWall = false;
+    const ack = (typeof ackSeq === 'number') ? ackSeq : 0;
+    // Edge guard: 권위와의 차이가 거대(존 핸드오프/텔포)면 replay 하지 않고 즉시 snap + 입력 비움.
+    if (dist > 2000) {
       myAbsPredicted = { x: absX, y: absY };
-      correctionVel = { x: 0, y: 0 };
-      correctionUntil = 0;
-      correctionIgnoreWall = false;
-    } else if (wallBetween) {
-      // 벽을 사이에 두고 갈림 → 서버 권위로 통일. 벽 무시하고 부드럽게 수렴(120ms).
-      //   벽 존중하면 영영 못 따라잡아 스턱/영구어긋남(=네가 본 그 버그). 서버가 authoritative라 그 위치로 합친다.
-      //   매 틱 수렴해서 어긋남이 쌓이지 않음 → 텔포처럼 크게 튀지도 않음.
-      const T = 0.12;
-      correctionVel.x = ex / T;
-      correctionVel.y = ey / T;
-      correctionUntil = performance.now() + T * 1000;
-      correctionIgnoreWall = true;
-    } else if (dist > 120) {
-      // 벽 없는 큰 어긋남 — 정상 lerp (벽 존중).
-      const T = 0.15;
-      correctionVel.x = ex / T;
-      correctionVel.y = ey / T;
-      correctionUntil = performance.now() + T * 1000;
-      correctionIgnoreWall = false;
-    } else {
-      // 벽 없는 소·중 어긋남(≤120px) = 지연 오프셋 — 보정 안 함 (입력과 안 싸움).
-      correctionVel = { x: 0, y: 0 };
-      correctionUntil = 0;
+      pendingInputs.length = 0;
+      // 텔포 — 렌더 보간 앵커도 즉시 권위로 (카메라가 텔포 구간을 lerp 하지 않게)
+      _renderPrev = { x: absX, y: absY };
+      _renderCurr = { x: absX, y: absY };
+      myAbsRender = { x: absX, y: absY };
+      _predAccum = 0;
+      return;
     }
+    // 1) 권위에 anchor
+    myAbsPredicted = { x: absX, y: absY };
+    // 2) ack 된 입력 drop
+    while (pendingInputs.length && pendingInputs[0].seq <= ack) pendingInputs.shift();
+    // 3) 남은 미ack 입력 replay (각 입력의 sprint 상태로 — 속도 재현)
+    for (const ip of pendingInputs) predictStep(PRED_STEP, ip.wx, ip.wy, ip.sprint);
   }
 
   // === Orphan 감지 — 서버에서 내 플레이어가 사라졌는데 클라는 모르는 경우 ===
@@ -2766,7 +2838,10 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     // 14.51: 진행 중 build/dismantle 작업 갱신 (3초 timer)
     updateBuildAction();
 
-    const myIso = w2i(myAbsPredicted.x, myAbsPredicted.y);
+    // 카메라/본인 스프라이트는 보간 위치(myAbsRender)를 사용 → 30Hz 예측을 60fps로 부드럽게.
+    // (충돌/로직은 계속 myAbsPredicted 사용 — render 좌표만 보간.)
+    const _camAbs = (_renderReady ? myAbsRender : myAbsPredicted);
+    const myIso = w2i(_camAbs.x, _camAbs.y);
     const camX = myIso.x, camY = myIso.y;
     const toScreen = (ix, iy) => ({ x: ix - camX + W / 2, y: iy - camY + H / 2 });
 
@@ -2775,7 +2850,8 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     ctx.fillRect(0, 0, W, H);
 
     const TS = pConn.meta.tileSize;
-    const worldCx = myAbsPredicted.x, worldCy = myAbsPredicted.y;
+    // 타일/엔티티 컬링 중심도 카메라(보간) 위치 기준 → 화면 중심과 일치.
+    const worldCx = _camAbs.x, worldCy = _camAbs.y;
     const VIEW_RADIUS = 650;
     // 14.49-e6e: 타일은 화면 전체 덮는 더 큰 범위로 그림 (1500px).
     // 그래야 vignette 가장자리가 셀 stairstep 안 보임 (타일 없는 빈 영역의 boundary가 hard edge).
@@ -2928,11 +3004,11 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
       }
     }
     {
-      const iso = w2i(myAbsPredicted.x, myAbsPredicted.y);
+      // 본인 스프라이트도 카메라(보간) 위치 사용 → 항상 화면 중앙 + 60fps 부드러운 스크롤.
       const myDisplay = myTribeName ? `[${myTribeName}] ${myName}` : myName;
       const myZ = myFloor * FLOOR_HEIGHT + (myStairZ || 0); // 14.49-c: 계단 z 추가
-      const isoMe = w2i(myAbsPredicted.x, myAbsPredicted.y, myZ);
-      renderables.push({ z: (myAbsPredicted.x + myAbsPredicted.y) * 0.5 + myFloor * 0.5 + 500, kind: 'player', pid: myPid, name: myDisplay, color: myColor, hp: myHp, maxHp: myMaxHp, iso: isoMe, ax: myAbsPredicted.x, ay: myAbsPredicted.y, isMe: true });
+      const isoMe = w2i(_camAbs.x, _camAbs.y, myZ);
+      renderables.push({ z: (_camAbs.x + _camAbs.y) * 0.5 + myFloor * 0.5 + 500, kind: 'player', pid: myPid, name: myDisplay, color: myColor, hp: myHp, maxHp: myMaxHp, iso: isoMe, ax: _camAbs.x, ay: _camAbs.y, isMe: true });
     }
 
     renderables.sort((a, b) => a.z - b.z);
