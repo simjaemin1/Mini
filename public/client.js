@@ -2,7 +2,7 @@
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
 // === CLIENT BUILD: Phase 5-G (한반도 강·호수 hardcoded + observer storm fix) ===
-console.log('%c[durango-mini] client build = Phase 5-K17 (리컨실리에이션 — keydown/keyup 즉시send 제거로 스텝 규칙화)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+console.log('%c[durango-mini] client build = Phase 5-K18 (렌더 지수평활 — 보정 점프 흡수로 떨림 제거)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 // Phase 4d-16-c: facility 종류별 emoji
 const FACILITY_EMOJI = {
@@ -2330,16 +2330,16 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
       inputSeq++;
       sendStepInput(inputSeq, 0, 0, false);
     }
-    // 렌더 보간 위치 — 직전 스텝 ↔ 현재 스텝 사이를 누적 잔여비율로 lerp (60fps 부드러움).
-    // 스텝이 안 돈 프레임도 잔여 accum 비율로 계속 보간 → 30Hz 끊김 제거.
+    // 렌더 위치 — myAbsPredicted(30Hz 예측 + 매 틱 리컨실리에이션 보정)로 '지수평활' 수렴(60fps).
+    //   lerp(prev,curr)는 리컨실리에이션이 스텝 사이 myAbsPredicted를 ±수십px 보정하면 스텝 경계에서 점프로 받아 떨림.
+    //   매 프레임 일정 비율로 당기는 평활은 그 점프를 여러 프레임에 분산 흡수 → 떨림 제거. (워프는 reconcile에서 직접 snap.)
     if (_renderReady) {
-      const a = Math.max(0, Math.min(1, _predAccum / PRED_STEP));
-      myAbsRender = {
-        x: _renderPrev.x + (_renderCurr.x - _renderPrev.x) * a,
-        y: _renderPrev.y + (_renderCurr.y - _renderPrev.y) * a,
-      };
+      const S = 0.35;
+      myAbsRender.x += (myAbsPredicted.x - myAbsRender.x) * S;
+      myAbsRender.y += (myAbsPredicted.y - myAbsRender.y) * S;
     } else {
       myAbsRender = { x: myAbsPredicted.x, y: myAbsPredicted.y };
+      _renderReady = true;
     }
 
     ensurePrimaryConnection();
