@@ -2,7 +2,7 @@
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
 // === CLIENT BUILD: Phase 5-G (한반도 강·호수 hardcoded + observer storm fix) ===
-console.log('%c[durango-mini] client build = Phase 5-K9 (rubber-band fix: snap on wall-separated correction)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+console.log('%c[durango-mini] client build = Phase 5-K11 (ROOT fix: fixed-timestep prediction = server 30Hz, no wall drift)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 // Phase 4d-16-c: facility 종류별 emoji
 const FACILITY_EMOJI = {
@@ -2175,6 +2175,72 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
 
   // === 메인 루프 ===
   let prevT = performance.now();
+  let _predAccum = 0;          // 고정 타임스텝 예측 누적 (초)
+  const PRED_STEP = 1 / 30;    // 33.33ms — 서버 TICK_HZ(30)와 동일 스텝
+  // 한 스텝 예측 — 서버 zone.js 플레이어 이동과 '동일 dt·동일 로직'으로 돌려
+  // 충돌 해소가 스텝 크기에 안 흔들리게 → 클라/서버 경로 일치 → 벽 드리프트(러버밴딩) 제거.
+  function predictStep(dt, wx, wy) {
+    if (myIsDown || (wx === 0 && wy === 0)) return;
+    const canSprintClient = mySprint && myHunger > 5 && myThirst > 5;
+    const speed = 220 * (canSprintClient ? 1.6 : 1);
+    let mwx = wx, mwy = wy;
+    {
+      const curCx = Math.floor(myAbsPredicted.x / CL_BUILDING_SIZE);
+      const curCy = Math.floor(myAbsPredicted.y / CL_BUILDING_SIZE);
+      const stairHit = clFindStairForCell(curCx, curCy);
+      if (stairHit) {
+        const dir = stairHit.stair.data?.dir || 'N';
+        const dv = (dir === 'E') ? { x: 1, y: 0 } : (dir === 'W') ? { x: -1, y: 0 }
+                 : (dir === 'S') ? { x: 0, y: 1 } : { x: 0, y: -1 };
+        const proj = mwx * dv.x + mwy * dv.y;
+        mwx = proj * dv.x;
+        mwy = proj * dv.y;
+      }
+    }
+    if (isTerrainBlockedAtAbs(myAbsPredicted.x, myAbsPredicted.y)) {
+      let ejX = 0, ejY = 0, found = false;
+      for (let r = 32; r <= 32 * 16 && !found; r += 32) {
+        for (const d of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,1],[1,-1],[-1,-1]]) {
+          if (!isTerrainBlockedAtAbs(myAbsPredicted.x + d[0] * r, myAbsPredicted.y + d[1] * r)) { ejX = d[0]; ejY = d[1]; found = true; break; }
+        }
+      }
+      if (found) {
+        const len = Math.hypot(ejX, ejY) || 1;
+        const push = speed * dt * 1.8;
+        myAbsPredicted.x += (ejX / len) * push;
+        myAbsPredicted.y += (ejY / len) * push;
+      }
+      return;
+    }
+    let nx = myAbsPredicted.x + mwx * speed * dt;
+    let ny = myAbsPredicted.y + mwy * speed * dt;
+    if (clientIsBlockedByWall(nx, myAbsPredicted.y, myAbsPredicted.x, myAbsPredicted.y, myFloor)) nx = myAbsPredicted.x;
+    if (clientIsBlockedByWall(myAbsPredicted.x, ny, myAbsPredicted.x, myAbsPredicted.y, myFloor)) ny = myAbsPredicted.y;
+    if (clientIsBlockedByWall(nx, ny, myAbsPredicted.x, myAbsPredicted.y, myFloor)) { nx = myAbsPredicted.x; ny = myAbsPredicted.y; }
+    if (myFloor === 0 && (mwx || mwy)) {
+      const trees = clientNearbyTrees(myAbsPredicted.x, myAbsPredicted.y);
+      if (trees) {
+        if (clientIsBlockedByTree(nx, myAbsPredicted.y, trees)) nx = myAbsPredicted.x;
+        if (clientIsBlockedByTree(myAbsPredicted.x, ny, trees)) ny = myAbsPredicted.y;
+        if (clientIsBlockedByTree(nx, ny, trees)) { nx = myAbsPredicted.x; ny = myAbsPredicted.y; }
+      }
+    }
+    if (isTerrainBlockedAtAbs(nx, myAbsPredicted.y)) {
+      const tx = Math.floor(myAbsPredicted.x / 32);
+      if (nx > myAbsPredicted.x) nx = (tx + 1) * 32 - 1;
+      else if (nx < myAbsPredicted.x) nx = tx * 32;
+      else nx = myAbsPredicted.x;
+    }
+    if (isTerrainBlockedAtAbs(myAbsPredicted.x, ny)) {
+      const ty = Math.floor(myAbsPredicted.y / 32);
+      if (ny > myAbsPredicted.y) ny = (ty + 1) * 32 - 1;
+      else if (ny < myAbsPredicted.y) ny = ty * 32;
+      else ny = myAbsPredicted.y;
+    }
+    if (isTerrainBlockedAtAbs(nx, ny)) { nx = myAbsPredicted.x; ny = myAbsPredicted.y; }
+    myAbsPredicted.x = nx;
+    myAbsPredicted.y = ny;
+  }
   function loop() {
     const now = performance.now();
     const dt = Math.min(0.1, (now - prevT) / 1000);
@@ -2188,75 +2254,14 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     // BUILDING_SIZE = 32 (server와 동일).
     // 인라인 함수 X — 매 프레임 만들기 비싸서 위에 한 번 정의함
 
-    // 클라이언트 예측: 입력으로 즉시 반응 (시각 부드러움)
-    // Phase 13.9.a: wall edge 콜라이더 클라 사이드 복제 — 서버와 동일 로직
+    // 클라이언트 예측 — 서버와 동일한 고정 33ms 스텝으로 누적 처리 (충돌 해소가 스텝크기에 안 흔들려 벽 드리프트 제거).
+    // dt는 이미 0.1s 상한 → 랙 스파이크 시 최대 3스텝 (spiral 방지).
     const { wx, wy } = worldKeysDir();
-    if (!myIsDown && (wx !== 0 || wy !== 0)) {
-      // Phase 14.40: Shift 달리기 — 클라 예측도 1.6× (게이지 5 이하면 자동 해제)
-      const canSprintClient = mySprint && myHunger > 5 && myThirst > 5;
-      const speed = 220 * (canSprintClient ? 1.6 : 1);
-      // 14.53-j: stair cell 안이면 dir 축으로 projection (server와 동일 — 떨림 차단)
-      let mwx = wx, mwy = wy;
-      {
-        const curCx = Math.floor(myAbsPredicted.x / CL_BUILDING_SIZE);
-        const curCy = Math.floor(myAbsPredicted.y / CL_BUILDING_SIZE);
-        const stairHit = clFindStairForCell(curCx, curCy);
-        if (stairHit) {
-          const dir = stairHit.stair.data?.dir || 'N';
-          const dv = (dir === 'E') ? { x: 1, y: 0 } : (dir === 'W') ? { x: -1, y: 0 }
-                   : (dir === 'S') ? { x: 0, y: 1 } : { x: 0, y: -1 };
-          const proj = mwx * dv.x + mwy * dv.y;
-          mwx = proj * dv.x;
-          mwy = proj * dv.y;
-        }
-      }
-      // auto-eject: 서버 zone.js와 동일 — 중심이 물/바위에 빠졌으면 자유이동 대신 가장 가까운 통행가능 셀로 밀어냄.
-      if (isTerrainBlockedAtAbs(myAbsPredicted.x, myAbsPredicted.y)) {
-        let ejX = 0, ejY = 0, found = false;
-        for (let r = 32; r <= 32 * 16 && !found; r += 32) {
-          for (const d of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,1],[1,-1],[-1,-1]]) {
-            if (!isTerrainBlockedAtAbs(myAbsPredicted.x + d[0] * r, myAbsPredicted.y + d[1] * r)) { ejX = d[0]; ejY = d[1]; found = true; break; }
-          }
-        }
-        if (found) {
-          const len = Math.hypot(ejX, ejY) || 1;
-          const push = speed * dt * 1.8;
-          myAbsPredicted.x += (ejX / len) * push;
-          myAbsPredicted.y += (ejY / len) * push;
-        }
-      } else {
-        let nx = myAbsPredicted.x + mwx * speed * dt;
-        let ny = myAbsPredicted.y + mwy * speed * dt;
-        // 각 축 별로 wall check (slide 가능)
-        if (clientIsBlockedByWall(nx, myAbsPredicted.y, myAbsPredicted.x, myAbsPredicted.y, myFloor)) nx = myAbsPredicted.x;
-        if (clientIsBlockedByWall(myAbsPredicted.x, ny, myAbsPredicted.x, myAbsPredicted.y, myFloor)) ny = myAbsPredicted.y;
-        if (clientIsBlockedByWall(nx, ny, myAbsPredicted.x, myAbsPredicted.y, myFloor)) { nx = myAbsPredicted.x; ny = myAbsPredicted.y; }
-        // === 나무 콜라이더 (서버 zone.js와 동일: floor 0만, 축별 슬라이드) — 예측에도 적용해 러버밴딩 제거 ===
-        if (myFloor === 0 && (mwx || mwy)) {
-          const trees = clientNearbyTrees(myAbsPredicted.x, myAbsPredicted.y);
-          if (trees) {
-            if (clientIsBlockedByTree(nx, myAbsPredicted.y, trees)) nx = myAbsPredicted.x;
-            if (clientIsBlockedByTree(myAbsPredicted.x, ny, trees)) ny = myAbsPredicted.y;
-            if (clientIsBlockedByTree(nx, ny, trees)) { nx = myAbsPredicted.x; ny = myAbsPredicted.y; }
-          }
-        }
-        // 물 타일 진입 차단 + cell border snap (서버 zone.js와 동일). 현재 비-물이므로 가드 불필요.
-        if (isTerrainBlockedAtAbs(nx, myAbsPredicted.y)) {
-          const tx = Math.floor(myAbsPredicted.x / 32);
-          if (nx > myAbsPredicted.x) nx = (tx + 1) * 32 - 1;
-          else if (nx < myAbsPredicted.x) nx = tx * 32;
-          else nx = myAbsPredicted.x;
-        }
-        if (isTerrainBlockedAtAbs(myAbsPredicted.x, ny)) {
-          const ty = Math.floor(myAbsPredicted.y / 32);
-          if (ny > myAbsPredicted.y) ny = (ty + 1) * 32 - 1;
-          else if (ny < myAbsPredicted.y) ny = ty * 32;
-          else ny = myAbsPredicted.y;
-        }
-        if (isTerrainBlockedAtAbs(nx, ny)) { nx = myAbsPredicted.x; ny = myAbsPredicted.y; }
-        myAbsPredicted.x = nx;
-        myAbsPredicted.y = ny;
-      }
+    _predAccum += dt;
+    if (_predAccum > 0.1) _predAccum = 0.1;
+    while (_predAccum >= PRED_STEP) {
+      predictStep(PRED_STEP, wx, wy);
+      _predAccum -= PRED_STEP;
     }
     // 서버 권위 좌표로의 부드러운 보정 (snap 대신 lerp)
     // fix: 보정 이동도 벽 검사 — lerp 직선이 방 모서리를 관통해 예측 위치가
@@ -2266,9 +2271,12 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     if (now < correctionUntil) {
       let cnx = myAbsPredicted.x + correctionVel.x * dt;
       let cny = myAbsPredicted.y + correctionVel.y * dt;
-      if (clientIsBlockedByWall(cnx, myAbsPredicted.y, myAbsPredicted.x, myAbsPredicted.y, myFloor)) cnx = myAbsPredicted.x;
-      if (clientIsBlockedByWall(myAbsPredicted.x, cny, myAbsPredicted.x, myAbsPredicted.y, myFloor)) cny = myAbsPredicted.y;
-      if (clientIsBlockedByWall(cnx, cny, myAbsPredicted.x, myAbsPredicted.y, myFloor)) { cnx = myAbsPredicted.x; cny = myAbsPredicted.y; }
+      // 벽 사이 갈림 보정(correctionIgnoreWall)은 벽 검사 생략 — 권위 위치로 부드럽게 건너가게.
+      if (!correctionIgnoreWall) {
+        if (clientIsBlockedByWall(cnx, myAbsPredicted.y, myAbsPredicted.x, myAbsPredicted.y, myFloor)) cnx = myAbsPredicted.x;
+        if (clientIsBlockedByWall(myAbsPredicted.x, cny, myAbsPredicted.x, myAbsPredicted.y, myFloor)) cny = myAbsPredicted.y;
+        if (clientIsBlockedByWall(cnx, cny, myAbsPredicted.x, myAbsPredicted.y, myFloor)) { cnx = myAbsPredicted.x; cny = myAbsPredicted.y; }
+      }
       myAbsPredicted.x = cnx;
       myAbsPredicted.y = cny;
     }
@@ -2695,6 +2703,7 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
   // 부드러운 서버 보정 — snap 대신 150ms에 걸쳐 lerp
   let correctionVel = { x: 0, y: 0 };
   let correctionUntil = 0;
+  let correctionIgnoreWall = false; // 벽 사이 갈림 보정 — 벽 무시하고 부드럽게 슬라이드(권위 위치는 항상 유효)
   // kicked 상태에선 자동 재연결 안 함
   let kicked = false;
   // loop/setupChat 중복 시작 방지
@@ -2727,14 +2736,18 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
       // lerp 보정은 벽을 존중해 막혀서 영영 못 따라잡음 → 누적되다 500px 하드snap으로 벽 관통(=심한 텔포).
       // 벽이 사이에 있으면 그 즉시 서버 위치로 스냅 — 48px에서 작게 끝내 누적 차단.
       if (clientIsBlockedByWall(absX, absY, myAbsPredicted.x, myAbsPredicted.y, myFloor)) {
-        myAbsPredicted = { x: absX, y: absY };
-        correctionVel = { x: 0, y: 0 };
-        correctionUntil = 0;
+        // 벽 사이 갈림: 즉시 스냅(=미세 텔포) 대신 90ms 벽-무시 슬라이드로 부드럽게 권위 위치로.
+        const T = 0.09;
+        correctionVel.x = ex / T;
+        correctionVel.y = ey / T;
+        correctionUntil = performance.now() + T * 1000;
+        correctionIgnoreWall = true;
       } else {
         const T = 0.15; // 150ms — 부드러운 보정
         correctionVel.x = ex / T;
         correctionVel.y = ey / T;
         correctionUntil = performance.now() + T * 1000;
+        correctionIgnoreWall = false;
       }
     } else {
       correctionVel = { x: 0, y: 0 };
