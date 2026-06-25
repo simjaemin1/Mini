@@ -470,6 +470,7 @@ const CHEST_ALLOWED_ITEMS = new Set([
   'wood', 'stone', 'ore', 'herb',
   'berry', 'fiber', 'meat_raw', 'meat_cooked', 'hide',
   'berry_jam', 'water_bottle', 'seed_berry',
+  'fish', 'fish_cooked',            // Phase 5-econ-game-2: 어부 어획물
   'axe', 'pickaxe', 'sword',
 ]);
 // Phase 14.14: 건축물 maxHp — 손상=상태 전이 (영구파괴 X, 수리 가능)
@@ -3220,6 +3221,7 @@ function tryPickupItem(player, gid) {
 // 라벨 (notice용)
 const ITEM_LABEL_SERVER = {
   wood: '나무', stone: '돌', berry: '베리', fiber: '풀',
+  fish: '생선', fish_cooked: '구운생선',
   meat_raw: '날고기', meat_cooked: '구운고기', hide: '가죽',
   berry_jam: '베리잼', water_bottle: '물병', seed_berry: '베리씨앗',
   herb: '약초', ore: '광물',
@@ -4261,18 +4263,90 @@ function biomeProduction(biome) {
   // forest
   return { wood: 4, berry: 1, herb: 1 };
 }
+// === Phase 5-econ-game-1: NPC 직업 기반 마을 생산 ===
+//   옛 biomeProduction(고정 번들·모든 마을 동일)을 대체. "누가 무슨 직업인가"가 생산을 결정.
+//   마을 NPC를 직업별 집계 → 직업 산출 합산 → 마을 길드 금고(central treasury)에 누적.
+//   miner는 zone biome의 ORE_POOL에서 광물 산출 (한반도=철·구리·석탄·텅스텐·대리석·옥·금). tier별 dropChance.
+//   소수 산출은 마을별 carry로 이월 → 작은 마을도 결국 누적. 입력소비·시장가는 후속(marketplace) 단계.
+const JOB_YIELD = {                  // NPC 1명당 1사이클(60s) '추상' 산출 (유효 game item id)
+  forager:    { herb: 0.6, fiber: 0.6 },
+  lumberjack: { wood: 1.2 },
+  hunter:     { meat_raw: 0.8, hide: 0.3 },
+  cook:       { meat_cooked: 0.5 },  // v1: 입력 무소비 순생산. 입력연동은 후속.
+  weaponsmith:{ sword: 0.15 },
+  // miner: ORE_POOL 특수처리. fisher: 실제 낚시(addRealYield)로 산출 → 추상에서 제외.
+  //   smith/armorsmith: 후속(전용 소비아이템). warrior/merchant: 서비스(무생산).
+};
+const _prodCarry = new Map();        // villageName -> { item: 소수 carry }
+// 실제 작업 산출(어부 낚시·농부 수확 등) — 마을별 버퍼. 60초 생산틱이 금고로 flush(중앙호출 배치).
+const _realYield = new Map();        // villageName -> { item: qty }
+function addRealYield(village, item, qty) {
+  if (!village || !item || !qty) return;
+  let y = _realYield.get(village);
+  if (!y) { y = {}; _realYield.set(village, y); }
+  y[item] = (y[item] || 0) + qty;
+}
+
+// 마을별 NPC 직업 집계. 활성·비활성 무관(오프라인 경제) — 60s마다 NPC 전수 1회 순회(값쌈).
+function tallyVillageJobs() {
+  const tally = new Map();           // villageName -> { job: count }
+  for (const pid of npcs) {
+    const npc = players.get(pid);
+    if (!npc || npc.hp <= 0) continue;
+    // 라이브 canadia NPC는 canadiaJob/canadiaVillage를, legacy spawnVillagers NPC는 npcJob/tribeName을 씀 — 둘 다 지원.
+    const job = npc.canadiaJob || npc.npcJob;
+    const vn = npc.canadiaVillage || npc.tribeName;
+    if (!job || !vn) continue;
+    let t = tally.get(vn);
+    if (!t) { t = {}; tally.set(vn, t); }
+    t[job] = (t[job] || 0) + 1;
+  }
+  return tally;
+}
+
+function villageProduction(villageName, jobCounts) {
+  const carry = _prodCarry.get(villageName) || {};
+  const acc = {};
+  const add = (item, q) => { if (q) acc[item] = (acc[item] || 0) + q; };
+  const orePool = Specialty.ORE_POOLS[ZONE.biome] || Specialty.ORE_POOLS.plains;
+  for (const [job, n] of Object.entries(jobCounts)) {
+    if (job === 'miner') {
+      for (let i = 0; i < n; i++) {  // NPC별 광물 1회 시도 — tier dropChance (흔함0.7/중간0.45/귀함0.25)
+        const mineral = orePool[(Math.random() * orePool.length) | 0];
+        const mp = Specialty.miningParams(mineral);
+        if (Math.random() < mp.dropChance) add(mineral, 1);
+      }
+      continue;
+    }
+    const y = JOB_YIELD[job];
+    if (y) for (const [item, rate] of Object.entries(y)) add(item, rate * n);
+  }
+  const prod = {};                   // carry 합산 → 정수만 산출, 나머지 이월
+  for (const item of new Set([...Object.keys(acc), ...Object.keys(carry)])) {
+    const total = (acc[item] || 0) + (carry[item] || 0);
+    const whole = Math.floor(total);
+    if (whole > 0) prod[item] = whole;
+    const rem = total - whole;
+    if (rem > 1e-9) carry[item] = rem; else delete carry[item];
+  }
+  _prodCarry.set(villageName, carry);
+  return prod;
+}
+
 setInterval(async () => {
   if (villageGuildIds.size === 0) return;
-  const prod = biomeProduction(ZONE.biome);
+  const tally = tallyVillageJobs();
+  const zoneSum = {};
   for (const [villageName, tribeId] of villageGuildIds) {
-    try {
-      await central.tribeTreasury(tribeId, prod);
-    } catch (e) { /* central down 무시 */ }
+    const prod = villageProduction(villageName, tally.get(villageName) || {});
+    const real = _realYield.get(villageName);          // 실제 작업 산출(어부·농부) flush
+    if (real) { for (const [k, v] of Object.entries(real)) prod[k] = (prod[k] || 0) + v; _realYield.delete(villageName); }
+    if (!Object.keys(prod).length) continue;
+    try { await central.tribeTreasury(tribeId, prod); } catch (e) { /* central down 무시 */ }
+    for (const [k, v] of Object.entries(prod)) zoneSum[k] = (zoneSum[k] || 0) + v;
   }
-  if (villageGuildIds.size > 0) {
-    const pStr = Object.entries(prod).map(([k,v]) => `${k}+${v}`).join(' ');
-    console.log(`[${ZONE_ID}] 🏭 마을 생산 (${villageGuildIds.size}곳): ${pStr}`);
-  }
+  const pStr = Object.entries(zoneSum).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k}+${v}`).join(' ');
+  console.log(`[${ZONE_ID}] 🏭 마을 생산 (${villageGuildIds.size}곳·직업기반): ${pStr || '(carry 축적중)'}`);
 }, 60 * 1000);
 
 // 14.5 siege_camp decay tick 제거 — 임시 사유지(claim)로 대체 (Phase 14.18)
@@ -5265,18 +5339,24 @@ async function initCanadiaPrototype() {
   setInterval(() => { try { tickFarmlandStages(); } catch (e) { console.error('[canadia] farm stage 실패:', e.message); } }, 20000);
 }
 
-// Phase 4d-16-d: 농지 stage 사이클. 4단계 반복 — 0(씨) → 1(어린싹) → 2(자람) → 3(익음) → 0 (수확 후 재파종)
+// Phase 5-econ-game-2: 농지 = 농부가 심어야 자람 (시간성장). 안 심은 셀은 fallow(0).
+//   farmStage: 0빈 → 1씨 → 2자람 → 3익음. 농부가 sow(0→1), 시간이 1→2→3, 농부가 harvest(3→0).
+const FARM_GROW_MS = 90000;          // 90초에 익음 (농부 왕복 ~2회)
+function pickFarmCellForVillage(village, pid) {
+  const cells = [];
+  for (const c of claims.values()) if (c.facilityType === 'farmland' && c.guildTribeName === village) cells.push(c);
+  if (!cells.length) return null;
+  let h = 0; for (let i = 0; i < (pid || '').length; i++) h = (h * 31 + pid.charCodeAt(i)) | 0;  // pid 해시로 농부 분산 배정
+  return cells[Math.abs(h) % cells.length];
+}
 function tickFarmlandStages() {
-  let updated = 0;
+  const now = Date.now();
   for (const c of claims.values()) {
     if (c.facilityType !== 'farmland') continue;
-    c.farmStage = ((c.farmStage || 0) + 1) % 4;
-    broadcast({ type: 'claim_updated', claim: c });
-    updated++;
-  }
-  if (updated > 0 && Math.random() < 0.1) {
-    // 가끔만 로그 (노이즈 축소)
-    console.log(`[canadia] 🌾 farmland stage cycle: ${updated} cells`);
+    if (!c.sownAt) { if (c.farmStage) { c.farmStage = 0; broadcast({ type: 'claim_updated', claim: c }); } continue; } // 안 심음 = fallow
+    const elapsed = now - c.sownAt;
+    const stage = elapsed >= FARM_GROW_MS ? 3 : (elapsed >= FARM_GROW_MS * 0.5 ? 2 : 1);
+    if (stage !== c.farmStage) { c.farmStage = stage; broadcast({ type: 'claim_updated', claim: c }); }
   }
 }
 
@@ -5317,7 +5397,7 @@ function syncCanadiaTerritories() {
         createdAt: Date.now(),
       };
       if (facilityType) claim.facilityType = facilityType;
-      if (facilityType === 'farmland') claim.farmStage = Math.floor(Math.random() * 4);
+      if (facilityType === 'farmland') claim.farmStage = 0; // fallow — 농부가 심어야 자람(econ-game-2)
       claims.set(claim.id, claim);
       usedKeys.add(key);
       broadcast({ type: 'claim_added', claim });
@@ -5793,7 +5873,16 @@ function assignCanadiaWorkArea(npc) {
       target.y += (Math.random() - 0.5) * 600;
     }
   }
-  // farmer/cook/smith/warrior/merchant — 마을 안에서 작업 (집·광장)
+  // 농부 — 자기 영토 farmland 셀을 고정 배정 → 거기서 씨뿌리고 수확 (econ-game-2)
+  if (job === 'farmer') {
+    let claim = npc.farmClaimId ? claims.get(npc.farmClaimId) : null;
+    if (!claim || claim.facilityType !== 'farmland') {
+      claim = pickFarmCellForVillage(npc.canadiaVillage, npc.pid);
+      npc.farmClaimId = claim ? claim.id : null;
+    }
+    if (claim) { npc.canadiaWorkX = claim.x + BUILDING_SIZE / 2; npc.canadiaWorkY = claim.y + BUILDING_SIZE / 2; return; }
+  }
+  // cook/smith/warrior/merchant (또는 farmland 없는 농부) — 마을 안에서 작업 (집·광장)
   if (target) {
     npc.canadiaWorkX = target.x + (Math.random() - 0.5) * 200;
     npc.canadiaWorkY = target.y + (Math.random() - 0.5) * 200;
@@ -5811,6 +5900,34 @@ function assignCanadiaWorkArea(npc) {
   const d = off.dist + (Math.random() - 0.5) * 60;
   npc.canadiaWorkX = npc.canadiaChestX + Math.cos(a) * d;
   npc.canadiaWorkY = npc.canadiaChestY + Math.sin(a) * d;
+}
+
+// Phase 5-econ-game-2: 작업 1세션 완료 시 직업별 '실제' 산출 → 마을 _realYield 버퍼.
+//   어부: 물가(canadiaWorkX/Y=water cluster)에서 낚시 → 물고기. 농부: 후속(영토 farmland 셀 sow/harvest).
+//   그 외 직업은 추상 JOB_YIELD(60초 생산틱)가 담당 — 여기서 중복 안 함.
+function canadiaWorkProduce(npc, now) {
+  const village = npc.canadiaVillage;
+  if (!village) return;
+  if (npc.canadiaJob === 'fisher') {
+    addRealYield(village, 'fish', 1);            // 한 세션 = 물고기 1
+    npc._caughtFish = (npc._caughtFish || 0) + 1;
+  } else if (npc.canadiaJob === 'farmer') {
+    const c = npc.farmClaimId ? claims.get(npc.farmClaimId) : null;
+    if (c && c.facilityType === 'farmland') {
+      if (c.farmStage >= 3) {                     // 익음 → 수확
+        addRealYield(village, 'berry', 3);
+        c.sownAt = null; c.farmStage = 0;
+        broadcast({ type: 'claim_updated', claim: c });
+      } else if (c.sownAt == null) {              // 빈 밭 → 씨뿌리기
+        c.sownAt = now; c.farmStage = 1;
+        broadcast({ type: 'claim_updated', claim: c });
+      }
+      // 자라는 중(1~2)이면 대기 — 다음 방문에 수확
+    } else {
+      addRealYield(village, 'berry', 1);          // 밭 셀 없는 농부 — 소규모 텃밭 fallback (굶음 방지)
+    }
+  }
+  // 그 외 직업: 추상 JOB_YIELD(60초 생산틱)가 담당.
 }
 
 // 임시 진단 — 30초마다 한 번 NPC 1마리 상태 로그
@@ -5858,6 +5975,7 @@ function decideCanadiaBehavior(npc, now) {
       npc._canadiaSubAt = now + 2000 + Math.random() * 2000;
     }
     if (now >= (npc.canadiaTaskEndAt || 0)) {
+      canadiaWorkProduce(npc, now);   // 작업 1세션 완료 → 직업별 실제 산출 (어부=물고기 등)
       npc.canadiaTask = 'going_to_chest'; npc.canadiaTaskAt = now;
       npc._canadiaSubAt = 0;
     }
