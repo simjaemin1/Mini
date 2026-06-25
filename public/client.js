@@ -2,7 +2,7 @@
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
 // === CLIENT BUILD: Phase 5-G (한반도 강·호수 hardcoded + observer storm fix) ===
-console.log('%c[durango-mini] client build = Phase 5-K11 (ROOT fix: fixed-timestep prediction = server 30Hz, no wall drift)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+console.log('%c[durango-mini] client build = Phase 5-K12 (60fps 복원 + 보정 벽신호 기반: 지연오프셋 안싸움, 벽어긋남만 슬라이드)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 // Phase 4d-16-c: facility 종류별 emoji
 const FACILITY_EMOJI = {
@@ -2175,72 +2175,6 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
 
   // === 메인 루프 ===
   let prevT = performance.now();
-  let _predAccum = 0;          // 고정 타임스텝 예측 누적 (초)
-  const PRED_STEP = 1 / 30;    // 33.33ms — 서버 TICK_HZ(30)와 동일 스텝
-  // 한 스텝 예측 — 서버 zone.js 플레이어 이동과 '동일 dt·동일 로직'으로 돌려
-  // 충돌 해소가 스텝 크기에 안 흔들리게 → 클라/서버 경로 일치 → 벽 드리프트(러버밴딩) 제거.
-  function predictStep(dt, wx, wy) {
-    if (myIsDown || (wx === 0 && wy === 0)) return;
-    const canSprintClient = mySprint && myHunger > 5 && myThirst > 5;
-    const speed = 220 * (canSprintClient ? 1.6 : 1);
-    let mwx = wx, mwy = wy;
-    {
-      const curCx = Math.floor(myAbsPredicted.x / CL_BUILDING_SIZE);
-      const curCy = Math.floor(myAbsPredicted.y / CL_BUILDING_SIZE);
-      const stairHit = clFindStairForCell(curCx, curCy);
-      if (stairHit) {
-        const dir = stairHit.stair.data?.dir || 'N';
-        const dv = (dir === 'E') ? { x: 1, y: 0 } : (dir === 'W') ? { x: -1, y: 0 }
-                 : (dir === 'S') ? { x: 0, y: 1 } : { x: 0, y: -1 };
-        const proj = mwx * dv.x + mwy * dv.y;
-        mwx = proj * dv.x;
-        mwy = proj * dv.y;
-      }
-    }
-    if (isTerrainBlockedAtAbs(myAbsPredicted.x, myAbsPredicted.y)) {
-      let ejX = 0, ejY = 0, found = false;
-      for (let r = 32; r <= 32 * 16 && !found; r += 32) {
-        for (const d of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,1],[1,-1],[-1,-1]]) {
-          if (!isTerrainBlockedAtAbs(myAbsPredicted.x + d[0] * r, myAbsPredicted.y + d[1] * r)) { ejX = d[0]; ejY = d[1]; found = true; break; }
-        }
-      }
-      if (found) {
-        const len = Math.hypot(ejX, ejY) || 1;
-        const push = speed * dt * 1.8;
-        myAbsPredicted.x += (ejX / len) * push;
-        myAbsPredicted.y += (ejY / len) * push;
-      }
-      return;
-    }
-    let nx = myAbsPredicted.x + mwx * speed * dt;
-    let ny = myAbsPredicted.y + mwy * speed * dt;
-    if (clientIsBlockedByWall(nx, myAbsPredicted.y, myAbsPredicted.x, myAbsPredicted.y, myFloor)) nx = myAbsPredicted.x;
-    if (clientIsBlockedByWall(myAbsPredicted.x, ny, myAbsPredicted.x, myAbsPredicted.y, myFloor)) ny = myAbsPredicted.y;
-    if (clientIsBlockedByWall(nx, ny, myAbsPredicted.x, myAbsPredicted.y, myFloor)) { nx = myAbsPredicted.x; ny = myAbsPredicted.y; }
-    if (myFloor === 0 && (mwx || mwy)) {
-      const trees = clientNearbyTrees(myAbsPredicted.x, myAbsPredicted.y);
-      if (trees) {
-        if (clientIsBlockedByTree(nx, myAbsPredicted.y, trees)) nx = myAbsPredicted.x;
-        if (clientIsBlockedByTree(myAbsPredicted.x, ny, trees)) ny = myAbsPredicted.y;
-        if (clientIsBlockedByTree(nx, ny, trees)) { nx = myAbsPredicted.x; ny = myAbsPredicted.y; }
-      }
-    }
-    if (isTerrainBlockedAtAbs(nx, myAbsPredicted.y)) {
-      const tx = Math.floor(myAbsPredicted.x / 32);
-      if (nx > myAbsPredicted.x) nx = (tx + 1) * 32 - 1;
-      else if (nx < myAbsPredicted.x) nx = tx * 32;
-      else nx = myAbsPredicted.x;
-    }
-    if (isTerrainBlockedAtAbs(myAbsPredicted.x, ny)) {
-      const ty = Math.floor(myAbsPredicted.y / 32);
-      if (ny > myAbsPredicted.y) ny = (ty + 1) * 32 - 1;
-      else if (ny < myAbsPredicted.y) ny = ty * 32;
-      else ny = myAbsPredicted.y;
-    }
-    if (isTerrainBlockedAtAbs(nx, ny)) { nx = myAbsPredicted.x; ny = myAbsPredicted.y; }
-    myAbsPredicted.x = nx;
-    myAbsPredicted.y = ny;
-  }
   function loop() {
     const now = performance.now();
     const dt = Math.min(0.1, (now - prevT) / 1000);
@@ -2254,14 +2188,68 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     // BUILDING_SIZE = 32 (server와 동일).
     // 인라인 함수 X — 매 프레임 만들기 비싸서 위에 한 번 정의함
 
-    // 클라이언트 예측 — 서버와 동일한 고정 33ms 스텝으로 누적 처리 (충돌 해소가 스텝크기에 안 흔들려 벽 드리프트 제거).
-    // dt는 이미 0.1s 상한 → 랙 스파이크 시 최대 3스텝 (spiral 방지).
+    // 클라이언트 예측: 입력으로 즉시 반응 (60fps 부드러움)
     const { wx, wy } = worldKeysDir();
-    _predAccum += dt;
-    if (_predAccum > 0.1) _predAccum = 0.1;
-    while (_predAccum >= PRED_STEP) {
-      predictStep(PRED_STEP, wx, wy);
-      _predAccum -= PRED_STEP;
+    if (!myIsDown && (wx !== 0 || wy !== 0)) {
+      const canSprintClient = mySprint && myHunger > 5 && myThirst > 5;
+      const speed = 220 * (canSprintClient ? 1.6 : 1);
+      let mwx = wx, mwy = wy;
+      {
+        const curCx = Math.floor(myAbsPredicted.x / CL_BUILDING_SIZE);
+        const curCy = Math.floor(myAbsPredicted.y / CL_BUILDING_SIZE);
+        const stairHit = clFindStairForCell(curCx, curCy);
+        if (stairHit) {
+          const dir = stairHit.stair.data?.dir || 'N';
+          const dv = (dir === 'E') ? { x: 1, y: 0 } : (dir === 'W') ? { x: -1, y: 0 }
+                   : (dir === 'S') ? { x: 0, y: 1 } : { x: 0, y: -1 };
+          const proj = mwx * dv.x + mwy * dv.y;
+          mwx = proj * dv.x;
+          mwy = proj * dv.y;
+        }
+      }
+      if (isTerrainBlockedAtAbs(myAbsPredicted.x, myAbsPredicted.y)) {
+        let ejX = 0, ejY = 0, found = false;
+        for (let r = 32; r <= 32 * 16 && !found; r += 32) {
+          for (const d of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,1],[1,-1],[-1,-1]]) {
+            if (!isTerrainBlockedAtAbs(myAbsPredicted.x + d[0] * r, myAbsPredicted.y + d[1] * r)) { ejX = d[0]; ejY = d[1]; found = true; break; }
+          }
+        }
+        if (found) {
+          const len = Math.hypot(ejX, ejY) || 1;
+          const push = speed * dt * 1.8;
+          myAbsPredicted.x += (ejX / len) * push;
+          myAbsPredicted.y += (ejY / len) * push;
+        }
+      } else {
+        let nx = myAbsPredicted.x + mwx * speed * dt;
+        let ny = myAbsPredicted.y + mwy * speed * dt;
+        if (clientIsBlockedByWall(nx, myAbsPredicted.y, myAbsPredicted.x, myAbsPredicted.y, myFloor)) nx = myAbsPredicted.x;
+        if (clientIsBlockedByWall(myAbsPredicted.x, ny, myAbsPredicted.x, myAbsPredicted.y, myFloor)) ny = myAbsPredicted.y;
+        if (clientIsBlockedByWall(nx, ny, myAbsPredicted.x, myAbsPredicted.y, myFloor)) { nx = myAbsPredicted.x; ny = myAbsPredicted.y; }
+        if (myFloor === 0 && (mwx || mwy)) {
+          const trees = clientNearbyTrees(myAbsPredicted.x, myAbsPredicted.y);
+          if (trees) {
+            if (clientIsBlockedByTree(nx, myAbsPredicted.y, trees)) nx = myAbsPredicted.x;
+            if (clientIsBlockedByTree(myAbsPredicted.x, ny, trees)) ny = myAbsPredicted.y;
+            if (clientIsBlockedByTree(nx, ny, trees)) { nx = myAbsPredicted.x; ny = myAbsPredicted.y; }
+          }
+        }
+        if (isTerrainBlockedAtAbs(nx, myAbsPredicted.y)) {
+          const tx = Math.floor(myAbsPredicted.x / 32);
+          if (nx > myAbsPredicted.x) nx = (tx + 1) * 32 - 1;
+          else if (nx < myAbsPredicted.x) nx = tx * 32;
+          else nx = myAbsPredicted.x;
+        }
+        if (isTerrainBlockedAtAbs(myAbsPredicted.x, ny)) {
+          const ty = Math.floor(myAbsPredicted.y / 32);
+          if (ny > myAbsPredicted.y) ny = (ty + 1) * 32 - 1;
+          else if (ny < myAbsPredicted.y) ny = ty * 32;
+          else ny = myAbsPredicted.y;
+        }
+        if (isTerrainBlockedAtAbs(nx, ny)) { nx = myAbsPredicted.x; ny = myAbsPredicted.y; }
+        myAbsPredicted.x = nx;
+        myAbsPredicted.y = ny;
+      }
     }
     // 서버 권위 좌표로의 부드러운 보정 (snap 대신 lerp)
     // fix: 보정 이동도 벽 검사 — lerp 직선이 방 모서리를 관통해 예측 위치가
@@ -2719,37 +2707,38 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
   function applyServerCorrection(absX, absY) {
     const ex = absX - myAbsPredicted.x, ey = absY - myAbsPredicted.y;
     const dist = Math.hypot(ex, ey);
-    // === 러버밴딩 계측: 보정>48px 때마다 어긋남의 정체 한 줄 (기본 ON, window._desyncDbg=false로 끔) ===
+    // 클라 예측과 서버 사이에 벽이 끼어 있나 (진짜 어긋남 vs 단순 지연 오프셋 구분의 핵심 신호)
+    const wallBetween = dist > 24 && clientIsBlockedByWall(absX, absY, myAbsPredicted.x, myAbsPredicted.y, myFloor);
+    // === 러버밴딩 계측 (기본 ON, window._desyncDbg=false로 끔) ===
     if (dist > 48 && window._desyncDbg !== false) {
       const pc = clCellOf(myAbsPredicted.x, myAbsPredicted.y);
       const sc = clCellOf(absX, absY);
       const stair = clFindStairForCell(pc.cx, pc.cy) ? 1 : 0;
-      const wallPath = clientIsBlockedByWall(absX, absY, myAbsPredicted.x, myAbsPredicted.y, myFloor) ? 1 : 0;
-      console.log(`[desync] dist=${dist.toFixed(0)} pred=${pc.cx},${pc.cy}(${myAbsPredicted.x.toFixed(0)},${myAbsPredicted.y.toFixed(0)}) srv=${sc.cx},${sc.cy} f${myFloor} stairCell=${stair} wallBetween=${wallPath}`);
+      console.log(`[desync] dist=${dist.toFixed(0)} pred=${pc.cx},${pc.cy}(${myAbsPredicted.x.toFixed(0)},${myAbsPredicted.y.toFixed(0)}) srv=${sc.cx},${sc.cy} f${myFloor} stairCell=${stair} wallBetween=${wallBetween?1:0}`);
     }
     if (dist > 500) {
+      // 극단(텔포·존이동) — 즉시 스냅
       myAbsPredicted = { x: absX, y: absY };
       correctionVel = { x: 0, y: 0 };
       correctionUntil = 0;
-    } else if (dist > 48) {
-      // 14.x fix: 클라 예측과 서버 권위가 벽을 사이에 두고 갈렸으면(opposite sides),
-      // lerp 보정은 벽을 존중해 막혀서 영영 못 따라잡음 → 누적되다 500px 하드snap으로 벽 관통(=심한 텔포).
-      // 벽이 사이에 있으면 그 즉시 서버 위치로 스냅 — 48px에서 작게 끝내 누적 차단.
-      if (clientIsBlockedByWall(absX, absY, myAbsPredicted.x, myAbsPredicted.y, myFloor)) {
-        // 벽 사이 갈림: 즉시 스냅(=미세 텔포) 대신 90ms 벽-무시 슬라이드로 부드럽게 권위 위치로.
-        const T = 0.09;
-        correctionVel.x = ex / T;
-        correctionVel.y = ey / T;
-        correctionUntil = performance.now() + T * 1000;
-        correctionIgnoreWall = true;
-      } else {
-        const T = 0.15; // 150ms — 부드러운 보정
-        correctionVel.x = ex / T;
-        correctionVel.y = ey / T;
-        correctionUntil = performance.now() + T * 1000;
-        correctionIgnoreWall = false;
-      }
+      correctionIgnoreWall = false;
+    } else if (wallBetween) {
+      // 진짜 벽 어긋남(클라/서버가 벽 양쪽) — 90ms 벽-무시 슬라이드로 부드럽게 권위 위치로.
+      const T = 0.09;
+      correctionVel.x = ex / T;
+      correctionVel.y = ey / T;
+      correctionUntil = performance.now() + T * 1000;
+      correctionIgnoreWall = true;
+    } else if (dist > 150) {
+      // 벽 없는데 큰 오차(드문 desync) — 정상 lerp.
+      const T = 0.15;
+      correctionVel.x = ex / T;
+      correctionVel.y = ey / T;
+      correctionUntil = performance.now() + T * 1000;
+      correctionIgnoreWall = false;
     } else {
+      // 벽 없는 소·중 오차(≤150px) = 네트워크 지연 오프셋. 보정하면 입력과 싸워 떨림(러버밴딩) 발생 →
+      // 보정 안 하고 예측 신뢰. 멈추면 서버가 같은 입력 처리해 자연 수렴.
       correctionVel = { x: 0, y: 0 };
       correctionUntil = 0;
     }
