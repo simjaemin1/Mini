@@ -4969,7 +4969,9 @@ setInterval(() => {
   let hasH = false; for (const p of players.values()) { if (!p.isNpc) { hasH = true; break; } }
   if (!hasH && observers.size === 0) return;
   let act = 0; for (const pid of npcs) { const n = players.get(pid); if (n && isPositionActive(n.x, n.y)) act++; }
-  console.log(`[${ZONE_ID}] diag tick_avg=${global._tn?(global._tt/global._tn).toFixed(1):0}ms tick_max=${global._tmx||0}ms | bld=${buildings.size} res=${resources.size} npc=${npcs.size}/act${act} mob=${mobs.size} claims=${claims.size}`);
+  // 송신버퍼 — 사람 player의 ws.bufferedAmount(보낼 대기 바이트). 크면 서버가 클라보다 빨리 보내 막힌 것.
+  let maxBuf = 0, sumOut = 0; for (const p of players.values()) { if (!p.isNpc && p.ws) { const ba = p.ws.bufferedAmount || 0; if (ba > maxBuf) maxBuf = ba; sumOut += ba; } }
+  console.log(`[${ZONE_ID}] diag tick_avg=${global._tn?(global._tt/global._tn).toFixed(1):0}ms tick_max=${global._tmx||0}ms sendBuf=${(maxBuf/1024).toFixed(0)}KB | bld=${buildings.size} res=${resources.size} npc=${npcs.size}/act${act} mob=${mobs.size} claims=${claims.size}`);
   global._tt = 0; global._tn = 0; global._tmx = 0;
 }, 10000);
 
