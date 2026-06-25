@@ -2,7 +2,7 @@
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
 // === CLIENT BUILD: Phase 5-G (한반도 강·호수 hardcoded + observer storm fix) ===
-console.log('%c[durango-mini] client build = Phase 5-K7 (tile-loop opt: zonelist hoist + zone-hint + tint-blend 1-draw)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+console.log('%c[durango-mini] client build = Phase 5-K8 (desync probe + render-log silenced)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 // Phase 4d-16-c: facility 종류별 emoji
 const FACILITY_EMOJI = {
@@ -2281,8 +2281,8 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     manageNeighborSubscriptions();
     { const _rA = performance.now(); render(); const _rd = performance.now() - _rA;
       window._gAcc = (window._gAcc||0)+_rd; window._gN = (window._gN||0)+1; if (_rd > (window._gMax||0)) window._gMax = _rd;
-      if (window._gN >= 30) { let _bn=0; for (const c of conns.values()) _bn += c.buildings.size;
-        console.log(`[render] avg=${(window._gAcc/window._gN).toFixed(1)}ms tiles=${((window._tileAcc||0)/window._gN).toFixed(1)}ms max=${window._gMax.toFixed(0)}ms bld=${_bn}`); window._gAcc=0; window._gN=0; window._gMax=0; window._tileAcc=0; } }
+      if (window._gN >= 30) { if (window._renderDbg) { let _bn=0; for (const c of conns.values()) _bn += c.buildings.size;
+        console.log(`[render] avg=${(window._gAcc/window._gN).toFixed(1)}ms tiles=${((window._tileAcc||0)/window._gN).toFixed(1)}ms max=${window._gMax.toFixed(0)}ms bld=${_bn}`); } window._gAcc=0; window._gN=0; window._gMax=0; window._tileAcc=0; } }
     drawBuildOverlay(); // 14.51: hover outline
     drawPlacementGhost(); // 14.53-i: placement 시 실루엣 미리보기
     updateBuildProgressEl(); // 14.51: 3초 progress bar (DOM)
@@ -2710,6 +2710,14 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
   function applyServerCorrection(absX, absY) {
     const ex = absX - myAbsPredicted.x, ey = absY - myAbsPredicted.y;
     const dist = Math.hypot(ex, ey);
+    // === 러버밴딩 계측: 보정>48px 때마다 어긋남의 정체 한 줄 (기본 ON, window._desyncDbg=false로 끔) ===
+    if (dist > 48 && window._desyncDbg !== false) {
+      const pc = clCellOf(myAbsPredicted.x, myAbsPredicted.y);
+      const sc = clCellOf(absX, absY);
+      const stair = clFindStairForCell(pc.cx, pc.cy) ? 1 : 0;
+      const wallPath = clientIsBlockedByWall(absX, absY, myAbsPredicted.x, myAbsPredicted.y, myFloor) ? 1 : 0;
+      console.log(`[desync] dist=${dist.toFixed(0)} pred=${pc.cx},${pc.cy}(${myAbsPredicted.x.toFixed(0)},${myAbsPredicted.y.toFixed(0)}) srv=${sc.cx},${sc.cy} f${myFloor} stairCell=${stair} wallBetween=${wallPath}`);
+    }
     if (dist > 500) {
       myAbsPredicted = { x: absX, y: absY };
       correctionVel = { x: 0, y: 0 };
