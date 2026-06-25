@@ -1102,6 +1102,42 @@ function _findNpcWorkSite(vx, vy, job) {
   return null; // farmer/cook/smith/warrior — 마을 안에서 작업
 }
 
+// econ-game-2: 배산임수 집 배치 — 물 위 집 버그 해결 + 물 반대편(landward) 격자.
+function footprintIsLand(x, y) {
+  const SZ = BUILDING_SIZE;   // 5x5 집 footprint 중심+모서리가 모두 LAND(물·바위 아님)인가
+  for (let dx = -2; dx <= 2; dx += 2) for (let dy = -2; dy <= 2; dy += 2) {
+    if (isTerrainBlockedLocal(x + dx * SZ, y + dy * SZ)) return false;
+  }
+  return true;
+}
+function villageHouseSlots(village, count) {
+  const SZ = BUILDING_SIZE;
+  // ① 물 방향 — 중심 주변 샘플 중 water 셀들의 평균 방향
+  let wsx = 0, wsy = 0, wn = 0;
+  for (let r = 2; r <= 16; r += 2) for (let a = 0; a < 8; a++) {
+    const px = village.x + Math.cos(a / 8 * Math.PI * 2) * r * SZ;
+    const py = village.y + Math.sin(a / 8 * Math.PI * 2) * r * SZ;
+    if (isWaterTileLocal(px, py)) { wsx += (px - village.x); wsy += (py - village.y); wn++; }
+  }
+  // ② 집은 물 반대편(landward=배산). 물 없으면(내륙) 북쪽 기본(남향 한옥).
+  const landAng = wn ? Math.atan2(wsy, wsx) + Math.PI : -Math.PI / 2;
+  const ux = Math.cos(landAng), uy = Math.sin(landAng);  // landward
+  const px = -uy, py = ux;                                // 능선 평행(좌우)
+  const SP = 6;                                           // 슬롯 간격(셀) = 5x5 집 + 1 gap
+  const slots = [];
+  for (let ring = 1; slots.length < count && ring <= 9; ring++) {
+    for (let t = -ring; t <= ring && slots.length < count; t++) {
+      const hx = village.x + (ux * ring + px * t * 0.85) * SP * SZ + (Math.random() - 0.5) * SZ;
+      const hy = village.y + (uy * ring + py * t * 0.85) * SP * SZ + (Math.random() - 0.5) * SZ;
+      if (!footprintIsLand(hx, hy)) continue;             // ★ LAND only — 물/바위 위 집 방지
+      let tooClose = false;
+      for (const s of slots) if (Math.hypot(s.x - hx, s.y - hy) < SP * SZ * 0.8) { tooClose = true; break; }
+      if (!tooClose) slots.push({ x: hx, y: hy });
+    }
+  }
+  return slots;
+}
+
 function spawnVillagers() {
   for (let v = 0; v < VILLAGES.length; v++) {
     const village = VILLAGES[v];
@@ -1110,18 +1146,17 @@ function spawnVillagers() {
     // 14.18.b: 길드 영토 (central tribe_id는 비동기로 받음. 지금 시점에 villageGuildIds에 있을 수도/없을 수도)
     const tribeId = villageGuildIds.get(village.name);
     if (tribeId && ZONE.npcVillageTerritory) spawnGuildClaimsForVillage(village, tribeId); // 영토 OFF 기본 (welcome·broadcast 폭주 방지)
+    const _slots = villageHouseSlots(village, NPC_PER_VILLAGE);  // 배산임수 LAND 슬롯 (물 위 집 방지)
     for (let i = 0; i < NPC_PER_VILLAGE; i++) {
-      const ang = (Math.PI * 2 * i / NPC_PER_VILLAGE) + Math.random() * 0.3;
-      const r = 200 + Math.random() * 300;
-      const npcX = village.x + Math.cos(ang) * r;
-      const npcY = village.y + Math.sin(ang) * r;
+      const _s = _slots[i] || _slots[_slots.length - 1] || { x: village.x, y: village.y };
+      const npcX = _s.x, npcY = _s.y;
       const job = _pickNpcJob(village.type);
       const ws = _findNpcWorkSite(village.x, village.y, job);
       spawnNpc({
         x: npcX, y: npcY,
         villageId, villageName: village.name,
         npcJob: job,
-        npcHomeX: village.x, npcHomeY: village.y,
+        npcHomeX: _s.x, npcHomeY: _s.y,
         npcWorkX: ws ? ws.x : village.x + (Math.random() - 0.5) * 200,
         npcWorkY: ws ? ws.y : village.y + (Math.random() - 0.5) * 200,
         skipHouse: !ZONE.npcVillageHouses, // 집 OFF 기본 — NPC 집(wall 수십개)×300 = welcome 5.4MB로 클라 멈춤. 집은 AOI 청크 송신 구현 후 재활성.
@@ -1480,7 +1515,7 @@ function npcStep(npc, dt, now) {
         // 같은 타일 중복 체크
         let occupied = false;
         for (const b of buildings.values()) if (Math.abs(b.x - gx) < BUILDING_SIZE && Math.abs(b.y - gy) < BUILDING_SIZE) { occupied = true; break; }
-        if (!occupied) {
+        if (!occupied && !isTerrainBlockedLocal(gx, gy)) {  // 농지도 LAND에만 (물·바위 위 X)
           npc.inventory.seed_berry -= 1;
           const data = { cropType: 'berry', plantedAt: Date.now(), readyAt: Date.now() + CROP_GROW_MS, ready: false };
           const dbId = db.insertBuilding({ type: 'farmland', owner_id: npc.playerId, owner_name: npc.name, x: gx, y: gy, data: JSON.stringify(data) });
