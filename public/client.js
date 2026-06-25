@@ -2,7 +2,7 @@
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
 // === CLIENT BUILD: Phase 5-G (한반도 강·호수 hardcoded + observer storm fix) ===
-console.log('%c[durango-mini] client build = Phase 5-K14 (보정 항상 부드럽게 추적 — 벽 떨어질 때 텔포 제거)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+console.log('%c[durango-mini] client build = Phase 5-K15 (벽 갈림 시 서버로 통일 수렴 — 스턱/텔포 제거, desync로그 기본OFF)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 // Phase 4d-16-c: facility 종류별 emoji
 const FACILITY_EMOJI = {
@@ -2709,31 +2709,39 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     const dist = Math.hypot(ex, ey);
     // 클라 예측과 서버 사이에 벽이 끼어 있나 (진짜 어긋남 vs 단순 지연 오프셋 구분의 핵심 신호)
     const wallBetween = dist > 24 && clientIsBlockedByWall(absX, absY, myAbsPredicted.x, myAbsPredicted.y, myFloor);
-    // === 러버밴딩 계측 (기본 ON, window._desyncDbg=false로 끔) ===
-    if (dist > 48 && window._desyncDbg !== false) {
+    // === 러버밴딩 계측 (기본 OFF — window._desyncDbg=true로 켬) ===
+    if (dist > 48 && window._desyncDbg === true) {
       const pc = clCellOf(myAbsPredicted.x, myAbsPredicted.y);
       const sc = clCellOf(absX, absY);
       const stair = clFindStairForCell(pc.cx, pc.cy) ? 1 : 0;
       console.log(`[desync] dist=${dist.toFixed(0)} pred=${pc.cx},${pc.cy}(${myAbsPredicted.x.toFixed(0)},${myAbsPredicted.y.toFixed(0)}) srv=${sc.cx},${sc.cy} f${myFloor} stairCell=${stair} wallBetween=${wallBetween?1:0}`);
     }
-    if (dist <= 90) {
-      // 지연 오프셋 tolerance — 보정 안 함 (입력과 안 싸움 = 떨림 없음). 잔여 작은 어긋남은 멈추면 자연 수렴.
-      correctionVel = { x: 0, y: 0 };
-      correctionUntil = 0;
-    } else if (dist > 800 && !wallBetween) {
-      // 극단(존이동 등) + 벽 없는 경로 — 즉시 스냅 (안전, 드묾).
+    if (dist > 800) {
+      // 극단(존이동 등) — 즉시 스냅.
       myAbsPredicted = { x: absX, y: absY };
       correctionVel = { x: 0, y: 0 };
       correctionUntil = 0;
       correctionIgnoreWall = false;
-    } else {
-      // 그 외 전부 — 서버로 '항상 부드럽게 lerp', 벽 존중(절대 안 뚫음·안 튕김).
-      //   hold/defer 없음 → 벽에서 떨어질 때 순간이동 없음. 벽 사이면 슬라이드로 최대한 따라가고 나머진 부드럽게.
-      const T = 0.15; // 150ms
+    } else if (wallBetween) {
+      // 벽을 사이에 두고 갈림 → 서버 권위로 통일. 벽 무시하고 부드럽게 수렴(120ms).
+      //   벽 존중하면 영영 못 따라잡아 스턱/영구어긋남(=네가 본 그 버그). 서버가 authoritative라 그 위치로 합친다.
+      //   매 틱 수렴해서 어긋남이 쌓이지 않음 → 텔포처럼 크게 튀지도 않음.
+      const T = 0.12;
+      correctionVel.x = ex / T;
+      correctionVel.y = ey / T;
+      correctionUntil = performance.now() + T * 1000;
+      correctionIgnoreWall = true;
+    } else if (dist > 120) {
+      // 벽 없는 큰 어긋남 — 정상 lerp (벽 존중).
+      const T = 0.15;
       correctionVel.x = ex / T;
       correctionVel.y = ey / T;
       correctionUntil = performance.now() + T * 1000;
       correctionIgnoreWall = false;
+    } else {
+      // 벽 없는 소·중 어긋남(≤120px) = 지연 오프셋 — 보정 안 함 (입력과 안 싸움).
+      correctionVel = { x: 0, y: 0 };
+      correctionUntil = 0;
     }
   }
 
