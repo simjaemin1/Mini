@@ -2179,11 +2179,6 @@ function handlePlayerInput(player, raw) {
     });
     if (player.inputQueue.length > 12) player.inputQueue.shift(); // burst 상한 (리컨실리에이션이 보정)
     player.lastSeen = Date.now();
-    player._inputCnt = (player._inputCnt || 0) + 1;
-    if (!player._inputLogAt || Date.now() - player._inputLogAt > 1000) {
-      player._inputLogAt = Date.now();
-      console.log(`[${ZONE_ID}/in] ${player.name} input cnt=${player._inputCnt} vx=${vx} vy=${vy} sp=${player.sprint?1:0}`);
-    }
   } else if (msg.type === 'respawn_choice') {
     // Phase 14.41: 사망 후 부활 위치 선택 (personal | temporary)
     tryRespawnChoice(player, msg.kind);
