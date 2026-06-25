@@ -2,7 +2,7 @@
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
 // === CLIENT BUILD: Phase 5-G (한반도 강·호수 hardcoded + observer storm fix) ===
-console.log('%c[durango-mini] client build = Phase 5-K13 (보정이 절대 벽 안 뚫음 — 집 박힘 차단)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+console.log('%c[durango-mini] client build = Phase 5-K14 (보정 항상 부드럽게 추적 — 벽 떨어질 때 텔포 제거)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 // Phase 4d-16-c: facility 종류별 emoji
 const FACILITY_EMOJI = {
@@ -2716,31 +2716,24 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
       const stair = clFindStairForCell(pc.cx, pc.cy) ? 1 : 0;
       console.log(`[desync] dist=${dist.toFixed(0)} pred=${pc.cx},${pc.cy}(${myAbsPredicted.x.toFixed(0)},${myAbsPredicted.y.toFixed(0)}) srv=${sc.cx},${sc.cy} f${myFloor} stairCell=${stair} wallBetween=${wallBetween?1:0}`);
     }
-    if (wallBetween) {
-      // 서버가 벽 너머에 있음 = 서버 충돌 오류이거나 일시적 어긋남.
-      // 벽을 뚫고 따라가지 않음(닫힌 집에 박히는 버그 방지) — 클라 충돌을 신뢰하고 보정 보류.
-      // 서버가 정상(벽 바깥) 위치로 오거나 플레이어가 떨어지면 자연 수렴.
+    if (dist <= 90) {
+      // 지연 오프셋 tolerance — 보정 안 함 (입력과 안 싸움 = 떨림 없음). 잔여 작은 어긋남은 멈추면 자연 수렴.
       correctionVel = { x: 0, y: 0 };
       correctionUntil = 0;
-      correctionIgnoreWall = false;
-    } else if (dist > 500) {
-      // 극단(텔포·존이동) — 벽 없는 경로에서만 도달(위에서 wallBetween 먼저 걸러짐) → 즉시 스냅 안전.
+    } else if (dist > 800 && !wallBetween) {
+      // 극단(존이동 등) + 벽 없는 경로 — 즉시 스냅 (안전, 드묾).
       myAbsPredicted = { x: absX, y: absY };
       correctionVel = { x: 0, y: 0 };
       correctionUntil = 0;
       correctionIgnoreWall = false;
-    } else if (dist > 150) {
-      // 벽 없는데 큰 오차(드문 desync) — 정상 lerp.
-      const T = 0.15;
+    } else {
+      // 그 외 전부 — 서버로 '항상 부드럽게 lerp', 벽 존중(절대 안 뚫음·안 튕김).
+      //   hold/defer 없음 → 벽에서 떨어질 때 순간이동 없음. 벽 사이면 슬라이드로 최대한 따라가고 나머진 부드럽게.
+      const T = 0.15; // 150ms
       correctionVel.x = ex / T;
       correctionVel.y = ey / T;
       correctionUntil = performance.now() + T * 1000;
       correctionIgnoreWall = false;
-    } else {
-      // 벽 없는 소·중 오차(≤150px) = 네트워크 지연 오프셋. 보정하면 입력과 싸워 떨림(러버밴딩) 발생 →
-      // 보정 안 하고 예측 신뢰. 멈추면 서버가 같은 입력 처리해 자연 수렴.
-      correctionVel = { x: 0, y: 0 };
-      correctionUntil = 0;
     }
   }
 
