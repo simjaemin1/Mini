@@ -1035,38 +1035,32 @@ async function registerVillageGuilds() {
 // 마을 = NPC 길드. central tribe_id를 받아와서 guildTribeId로 연결.
 function spawnGuildClaimsForVillage(village, centralTribeId) {
   if (!centralTribeId) return;
-  // 마을 중심 주변 N×N 그리드 (1 cell = 32px). 25 cell = 5×5 = 160×160 영역.
+  // econ-game-2: 마을당 '큰 사각 영토 claim 1개'. 옛 πR² 셀단위 폐기 — 넓혀도 welcome payload는 마을 수(50)만큼만.
+  //   (셀단위 R12 = 마을당 ~452칸 × 50 = 22,600 claim → welcome 4.5MB 폭주였음. 1개/마을로 근본 해결.)
   const SZ = BUILDING_SIZE;
-  const RADIUS_CELLS = 3; // 3 cell 반경 → ~28 cells 길드 영토. (이전 12=마을당 ~452칸 × 50마을 = 22,600 claim → welcome 4.5MB 폭주로 WS 접속 불가. 16× 축소. 영토 확장은 sim/길드로 후속)
+  const HALF_CELLS = 12;            // 반폭 12셀=384px → 768×768px 사각 영토 (NPC 집·농지 다 포함, "상당히 넓게")
   const npcOwnerId = `village_${village.name}`;
-  // 옛 거 정리 (메모리 + DB)
+  // 옛 거 정리 (메모리 + DB + 클라) — 이 마을의 모든 guild claim(옛 셀단위 포함)
   for (const [id, c] of claims) {
     if (c.kind === 'guild' && c.ownerPid === npcOwnerId) {
       if (c.dbId) { try { db.db.prepare('DELETE FROM claims WHERE id = ?').run(c.dbId); } catch (e) {} }
       claims.delete(id);
+      broadcast({ type: 'claim_removed', id });
     }
   }
-  let created = 0;
-  for (let dy = -RADIUS_CELLS; dy <= RADIUS_CELLS; dy++) {
-    for (let dx = -RADIUS_CELLS; dx <= RADIUS_CELLS; dx++) {
-      const dist = Math.hypot(dx, dy);
-      if (dist > RADIUS_CELLS) continue; // 원형
-      const cx = Math.floor(village.x / SZ) * SZ + dx * SZ;
-      const cy = Math.floor(village.y / SZ) * SZ + dy * SZ;
-      const id = `c${nextClaimId++}`;
-      const claim = {
-        id, ownerPid: npcOwnerId, ownerName: `${village.name} 길드 영토`,
-        x: cx, y: cy, w: SZ, h: SZ, kind: 'guild',
-        guildTribeId: centralTribeId,
-        guildTribeName: village.name,
-        createdAt: Date.now(),
-      };
-      claims.set(id, claim);
-      broadcast({ type: 'claim_added', claim });
-      created++;
-    }
-  }
-  console.log(`[${ZONE_ID}] 🏛️ 길드 영토 [${village.name}] ${created}칸 생성 (반경 ${RADIUS_CELLS} cells)`);
+  const cellCx = Math.floor(village.x / SZ), cellCy = Math.floor(village.y / SZ);
+  const id = `c${nextClaimId++}`;
+  const claim = {
+    id, ownerPid: npcOwnerId, ownerName: `${village.name} 길드 영토`,
+    x: (cellCx - HALF_CELLS) * SZ, y: (cellCy - HALF_CELLS) * SZ,
+    w: SZ * HALF_CELLS * 2, h: SZ * HALF_CELLS * 2, kind: 'guild',
+    guildTribeId: centralTribeId,
+    guildTribeName: village.name,
+    createdAt: Date.now(),
+  };
+  claims.set(id, claim);
+  broadcast({ type: 'claim_added', claim });
+  console.log(`[${ZONE_ID}] 🏛️ 길드 영토 [${village.name}] 1개 사각 ${HALF_CELLS*2}×${HALF_CELLS*2}셀(${SZ*HALF_CELLS*2}px)`);
 }
 
 // Phase 5-F: NPC 직업 분배 — 마을 type 가중치 반영
