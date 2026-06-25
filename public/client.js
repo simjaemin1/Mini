@@ -2,7 +2,7 @@
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
 // === CLIENT BUILD: Phase 5-G (한반도 강·호수 hardcoded + observer storm fix) ===
-console.log('%c[durango-mini] client build = Phase 5-K23 (정밀검사 정리: coll/minimap 로그 게이팅)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+console.log('%c[durango-mini] client build = Phase 5-K24 (길드 영토 가시성 ↑ + 라벨 표시)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 // Phase 4d-16-c: facility 종류별 emoji
 const FACILITY_EMOJI = {
@@ -3060,7 +3060,7 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
             fill = 'rgba(180, 160, 100, 0.22)'; stroke = 'rgba(220, 200, 140, 0.7)';
             label = `🏠 ${cl.ownerName}`;
           } else {
-            fill = 'rgba(90, 154, 224, 0.10)'; stroke = 'rgba(90, 154, 224, 0.45)';
+            fill = 'rgba(90, 154, 224, 0.16)'; stroke = 'rgba(120, 175, 235, 0.9)';
             label = `🏛️ ${cl.guildTribeName || cl.ownerName}`;
           }
         } else if (cl.kind === 'temporary') {
@@ -3072,13 +3072,13 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
         }
         ctx.fillStyle = fill; ctx.fill();
         ctx.strokeStyle = stroke;
-        ctx.lineWidth = 1.2;
+        ctx.lineWidth = (cl.kind === 'guild') ? 2.5 : 1.2;
         if (cl.kind === 'guild') ctx.setLineDash([]); // 길드 = 실선
         else ctx.setLineDash([6, 4]);
         ctx.stroke(); ctx.setLineDash([]);
-        // 라벨은 guild는 너무 많아서 생략, personal/temporary만
-        if (cl.kind !== 'guild') {
-          ctx.fillStyle = stroke; ctx.font = '11px sans-serif';
+        // 라벨 — guild도 이제 마을당 1개(큰 사각)라 표시. (옛 셀단위 28개일 땐 생략했음)
+        {
+          ctx.fillStyle = stroke; ctx.font = (cl.kind === 'guild') ? 'bold 13px sans-serif' : '11px sans-serif';
           ctx.fillText(label, s1.x + 6, s1.y + 14);
         }
         // Phase 4d-16-c: NPC 사유지 cell에 facility sprite (emoji)

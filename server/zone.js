@@ -1027,6 +1027,8 @@ async function registerVillageGuilds() {
       if (r && r.tribe_id) {
         villageGuildIds.set(village.name, r.tribe_id);
         console.log(`[${ZONE_ID}] ✅ NPC 길드 등록: ${village.name} → central tribe_id=${r.tribe_id} (passive)`);
+        // 영토 생성은 여기서 — spawn 시점엔 tribeId(async 등록) 없어 skip되던 게 "사유지 안 보임"의 원인.
+        if (ZONE.npcVillageTerritory) spawnGuildClaimsForVillage(village, r.tribe_id);
       }
     } catch (e) { console.warn(`[${ZONE_ID}] NPC 길드 등록 실패 [${village.name}]:`, e.message); }
   }
