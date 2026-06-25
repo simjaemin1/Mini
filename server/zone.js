@@ -1195,16 +1195,36 @@ function decideNpcBehavior(npc, now) {
       return;
     }
   }
-  // ③ seed 있고 사유지에 농지 슬롯 빈 데 → 농사
-  if ((npc.inventory.seed_berry || 0) >= 1 && npc.myClaim) {
+  // ③ seed 있고 농지 슬롯 빈 데 → 농사. 마을 농부는 개인 사유지 없어도 집 근처에 농사 (가시 표현)
+  if ((npc.inventory.seed_berry || 0) >= 1 && (npc.myClaim || npc.npcJob === 'farmer')) {
     const cl = npc.myClaim;
     let myFarmCount = 0;
     for (const b of _nearBld) if (b.type === 'farmland' && b.ownerId === npc.playerId) myFarmCount++;
     if (myFarmCount < 3) {
-      // 사유지 안 빈 자리 (대충 중심에서 약간 어긋난 곳)
       npc.behavior = 'plant';
-      npc.targetX = cl.x + 40 + Math.random() * (cl.w - 80);
-      npc.targetY = cl.y + 40 + Math.random() * (cl.h - 80);
+      if (cl) {                          // 개인 사유지 안 빈 자리
+        npc.targetX = cl.x + 40 + Math.random() * (cl.w - 80);
+        npc.targetY = cl.y + 40 + Math.random() * (cl.h - 80);
+      } else {                           // 마을 농부 — 집 근처 텃밭
+        const hx = npc.npcHomeX != null ? npc.npcHomeX : npc.x;
+        const hy = npc.npcHomeY != null ? npc.npcHomeY : npc.y;
+        npc.targetX = hx + (Math.random() - 0.5) * 220;
+        npc.targetY = hy + (Math.random() - 0.5) * 220;
+      }
+      return;
+    }
+  }
+  // ③-b 어부 — 물가 작업장(npcWorkX/Y=water) 근처면 낚시 (주기적 어획, 가시 표현). 멀면 ⑤가 데려감.
+  if (npc.npcJob === 'fisher' && npc.npcWorkX != null) {
+    const dw = Math.hypot(npc.x - npc.npcWorkX, npc.y - npc.npcWorkY);
+    if (dw < 130) {
+      if (!npc._lastFishAt || now - npc._lastFishAt > 8000) {   // 8초마다 1마리 (인벤=가시 표현; 마을경제는 추상 JOB_YIELD)
+        npc._lastFishAt = now;
+        npc.inventory.fish = (npc.inventory.fish || 0) + 1;
+      }
+      npc.behavior = 'wander';
+      npc.targetX = npc.npcWorkX + (Math.random() - 0.5) * 40;
+      npc.targetY = npc.npcWorkY + (Math.random() - 0.5) * 40;
       return;
     }
   }
@@ -1457,8 +1477,8 @@ function npcStep(npc, dt, now) {
         npc.nextDecisionAt = 0;
       }
     } else if (npc.behavior === 'plant') {
-      // 농지 짓기
-      if ((npc.inventory.seed_berry || 0) >= 1 && npc.myClaim) {
+      // 농지 짓기 — 마을 농부는 개인 사유지 없어도 OK (decide ③와 일치)
+      if ((npc.inventory.seed_berry || 0) >= 1 && (npc.myClaim || npc.npcJob === 'farmer')) {
         const gx = Math.floor(npc.x / BUILDING_SIZE) * BUILDING_SIZE + BUILDING_SIZE / 2;
         const gy = Math.floor(npc.y / BUILDING_SIZE) * BUILDING_SIZE + BUILDING_SIZE / 2;
         // 같은 타일 중복 체크
@@ -4268,14 +4288,16 @@ function biomeProduction(biome) {
 //   마을 NPC를 직업별 집계 → 직업 산출 합산 → 마을 길드 금고(central treasury)에 누적.
 //   miner는 zone biome의 ORE_POOL에서 광물 산출 (한반도=철·구리·석탄·텅스텐·대리석·옥·금). tier별 dropChance.
 //   소수 산출은 마을별 carry로 이월 → 작은 마을도 결국 누적. 입력소비·시장가는 후속(marketplace) 단계.
-const JOB_YIELD = {                  // NPC 1명당 1사이클(60s) '추상' 산출 (유효 game item id)
+const JOB_YIELD = {                  // NPC 1명당 1사이클(60s) 마을 추상 산출 (유효 game item id)
+  // 설계 철학: 마을(=시뮬)이 경제 주체, NPC의 가시 농사/낚시는 '표현'(decideNpcBehavior).
+  farmer:     { berry: 1.2 },
+  fisher:     { fish: 1.0 },
   forager:    { herb: 0.6, fiber: 0.6 },
   lumberjack: { wood: 1.2 },
   hunter:     { meat_raw: 0.8, hide: 0.3 },
-  cook:       { meat_cooked: 0.5 },  // v1: 입력 무소비 순생산. 입력연동은 후속.
+  cook:       { meat_cooked: 0.5 },
   weaponsmith:{ sword: 0.15 },
-  // miner: ORE_POOL 특수처리. fisher: 실제 낚시(addRealYield)로 산출 → 추상에서 제외.
-  //   smith/armorsmith: 후속(전용 소비아이템). warrior/merchant: 서비스(무생산).
+  // miner: ORE_POOL 특수처리. smith/armorsmith: 후속(전용 소비아이템). warrior/merchant: 서비스(무생산).
 };
 const _prodCarry = new Map();        // villageName -> { item: 소수 carry }
 // 실제 작업 산출(어부 낚시·농부 수확 등) — 마을별 버퍼. 60초 생산틱이 금고로 flush(중앙호출 배치).
