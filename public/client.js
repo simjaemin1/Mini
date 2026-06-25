@@ -2,7 +2,7 @@
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
 // === CLIENT BUILD: Phase 5-G (한반도 강·호수 hardcoded + observer storm fix) ===
-console.log('%c[durango-mini] client build = Phase 5-K6 (render-timer + collision O(1))', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+console.log('%c[durango-mini] client build = Phase 5-K7 (tile-loop opt: zonelist hoist + zone-hint + tint-blend 1-draw)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 // Phase 4d-16-c: facility 종류별 emoji
 const FACILITY_EMOJI = {
@@ -166,6 +166,14 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     const bl = Math.round((pa&255)      * (1-t) + (pb&255)      * t);
     return '#' + ((r<<16)|(g<<8)|bl).toString(16).padStart(6, '0');
   }
+  // 타일 틴트 합성색 캐시 — 매 프레임 ~7천 타일 × _mixHex(hex 파싱) 반복 제거. 색 조합 정적.
+  const _tintBlendCache = new Map();
+  function blendTint(base, tint, t) {
+    const k = base + '|' + tint + '|' + t;
+    let c = _tintBlendCache.get(k);
+    if (c === undefined) { c = _mixHex(base, tint, t); _tintBlendCache.set(k, c); }
+    return c;
+  }
   // 절대 월드 y에 따라 색 보정. totalHeight = 전체 월드 높이 (남북 합).
   function latitudeColor(absY, totalH, baseColor) {
     const distFromPole = Math.min(absY, totalH - absY);
@@ -268,8 +276,8 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
   // perf fix: 셀 단위 캐시 — 타일 루프가 매 프레임 ~9천 타일 × hardcoded 강 251 세그먼트
   // 점-선분 거리 계산을 반복해서 fps 10까지 떨어지던 문제. 지형은 정적이라 캐시 안전.
   // (terrain 갱신 — setHardcoded/zonesMeta 변경 — 시 _waterCellCache.clear() 필수)
-  function isWaterAtAbs(absX, absY) {
-    const z = clientFindZoneAt(absX, absY);
+  function isWaterAtAbs(absX, absY, zHint) {
+    const z = zHint || clientFindZoneAt(absX, absY);
     if (!z) return false;
     if (z.isOcean) return true;
     const tx = Math.floor((absX - z.worldOffsetX) / 32);
@@ -291,8 +299,8 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
   }
   // Phase 5-H: 산맥 바위 셀 — 통행 불가 + 회색 렌더. 물과 동일 구조 (셀 캐시).
   const _rockCellCache = new Map();
-  function isRockAtAbs(absX, absY) {
-    const z = clientFindZoneAt(absX, absY);
+  function isRockAtAbs(absX, absY, zHint) {
+    const z = zHint || clientFindZoneAt(absX, absY);
     if (!z || z.isOcean) return false;
     const tx = Math.floor((absX - z.worldOffsetX) / 32);
     const ty = Math.floor((absY - z.worldOffsetY) / 32);
@@ -2271,7 +2279,10 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     ensurePrimaryConnection();
     checkOrphan();
     manageNeighborSubscriptions();
-    render();
+    { const _rA = performance.now(); render(); const _rd = performance.now() - _rA;
+      window._gAcc = (window._gAcc||0)+_rd; window._gN = (window._gN||0)+1; if (_rd > (window._gMax||0)) window._gMax = _rd;
+      if (window._gN >= 30) { let _bn=0; for (const c of conns.values()) _bn += c.buildings.size;
+        console.log(`[render] avg=${(window._gAcc/window._gN).toFixed(1)}ms tiles=${((window._tileAcc||0)/window._gN).toFixed(1)}ms max=${window._gMax.toFixed(0)}ms bld=${_bn}`); window._gAcc=0; window._gN=0; window._gMax=0; window._tileAcc=0; } }
     drawBuildOverlay(); // 14.51: hover outline
     drawPlacementGhost(); // 14.53-i: placement 시 실루엣 미리보기
     updateBuildProgressEl(); // 14.51: 3초 progress bar (DOM)
@@ -2756,60 +2767,53 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     const t0WY = Math.floor((worldCy - TILE_RENDER_RADIUS) / TS) * TS;
     const t1WY = Math.ceil((worldCy + TILE_RENDER_RADIUS) / TS) * TS;
 
+    const _tlT0 = performance.now();
+    const _zlist = Object.values(zonesMeta);   // hoist — 타일마다 배열 재할당하던 것 제거 (GC 폭주 원인)
+    const _halfTS = TS / 2;
     for (let wx = t0WX; wx < t1WX; wx += TS) {
       for (let wy = t0WY; wy < t1WY; wy += TS) {
-        // 2x2 그리드 — 어떤 zone에 속하는지 X·Y 둘 다 확인
+        const cxw = wx + _halfTS, cyw = wy + _halfTS;
+        const dist = Math.hypot(cxw - worldCx, cyw - worldCy);
+        if (dist > TILE_RENDER_RADIUS) continue;   // 원형 컬링 — zone 조회/그리기 전에 모서리 스킵
+        const iso = w2i(cxw, cyw);
+        const s = toScreen(iso.x, iso.y);
+        // 어떤 zone에 속하는지 (hoisted 배열 재사용)
         let zMeta = null;
-        for (const zm of Object.values(zonesMeta)) {
+        for (let zi = 0; zi < _zlist.length; zi++) {
+          const zm = _zlist[zi];
           const ox = zm.worldOffsetX, oy = zm.worldOffsetY || 0;
           const zW3 = zm.zoneWidth || 100000, zH3 = zm.zoneHeight || 100000;
           if (wx >= ox && wx < ox + zW3 && wy >= oy && wy < oy + zH3) { zMeta = zm; break; }
         }
-        const iso = w2i(wx + TS / 2, wy + TS / 2);
-        const s = toScreen(iso.x, iso.y);
-        const cellWx = wx + TS/2 - worldCx;
-        const cellWy = wy + TS/2 - worldCy;
-        const dist = Math.hypot(cellWx, cellWy);
-        // 14.49-e6f: zone 정보 없어도 placeholder dark tile 그림 (canvas 배경 노출 방지 = stairstep 없앰)
-        let visibility = 1;
-        if (dist > TILE_RENDER_RADIUS) continue;
         if (!zMeta) {
-          // 14.49-e7g: primary zone groundColor로 placeholder (색 차이 stairstep 제거)
           const fallback = (primaryZoneId && zonesMeta[primaryZoneId]?.groundColor) || '#3a5a3a';
           drawDiamond(s.x, s.y, TS, fallback);
           continue;
         }
-        // 14.49-e7g: LoS shadow도 일단 끔 (셀 stairstep 원인 후보). vignette만으로 시야 제어.
-        // (벽 너머 가시성은 추후 polygon shadow로 재구현 필요)
-        // 14.49-e7f: per-tile cone 제거됨. directional shadow는 vignette 단계에서 픽셀 단위.
-
-        // 14.49-e7h: per-tile noise variation 제거 (셀 mosaic = stairstep 원인). 단조하지만 깔끔.
-        const isWater = isWaterAtAbs(wx + TS/2, wy + TS/2);
-        const isRock = !isWater && isRockAtAbs(wx + TS/2, wy + TS/2); // Phase 5-H: 산맥
+        const isWater = isWaterAtAbs(cxw, cyw, zMeta);   // zone 힌트 전달 — 중복 clientFindZoneAt 제거
+        const isRock = !isWater && isRockAtAbs(cxw, cyw, zMeta);
         let tileColor, tintColor, tintStrength;
         if (isWater) {
           tileColor = zMeta.isOcean ? zMeta.groundColor : '#2a5a8a';
           tintColor = zMeta.isOcean ? zMeta.tintColor : '#1a4a7a';
-          tintStrength = 0.07; // 고정 (옛 0.04~0.10 → 평균)
+          tintStrength = 0.07;
         } else if (isRock) {
           tileColor = '#6e6356';
           tintColor = '#4a4138';
           tintStrength = 0.12;
         } else {
-          tileColor = latitudeColor(wy + TS/2, worldHeight, zMeta.groundColor);
-          const distFromPole = Math.min(wy + TS/2, worldHeight - (wy + TS/2));
+          tileColor = latitudeColor(cyw, worldHeight, zMeta.groundColor);
+          const distFromPole = Math.min(cyw, worldHeight - cyw);
           const isIce = distFromPole <= ICE_BAND_PX;
           tintColor = isIce ? '#9bb5cc' : zMeta.tintColor;
-          tintStrength = isIce ? 0.06 : 0.13; // 고정 (옛 평균값)
+          tintStrength = isIce ? 0.06 : 0.13;
         }
-        ctx.globalAlpha = visibility;
-        drawDiamond(s.x, s.y, TS, tileColor);
-        ctx.globalAlpha = visibility * tintStrength;
-        drawDiamond(s.x, s.y, TS, tintColor);
-        ctx.globalAlpha = 1;
+        // 틴트를 미리 합성 → drawDiamond 1회 (캔버스 fill 2→1, visibility 항상 1).
+        drawDiamond(s.x, s.y, TS, blendTint(tileColor, tintColor, tintStrength));
       }
     }
 
+    window._tileAcc = (window._tileAcc||0) + (performance.now() - _tlT0);
     // === 2) 엔티티 수집 (depth sort용) ===
     const renderables = [];
     const renderT = performance.now() - INTERP_DELAY_MS;
