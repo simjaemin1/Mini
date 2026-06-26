@@ -2,7 +2,7 @@
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
 // === CLIENT BUILD: Phase 5-G (한반도 강·호수 hardcoded + observer storm fix) ===
-console.log('%c[durango-mini] client build = Phase 5-K24 (길드 영토 가시성 ↑ + 라벨 표시)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+console.log('%c[durango-mini] client build = Phase 5-K25 (길드 영토 유기적 폴리곤 렌더)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 // Phase 4d-16-c: facility 종류별 emoji
 const FACILITY_EMOJI = {
@@ -3049,8 +3049,17 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
         const s1 = toScreen(p1.x, p1.y), s2 = toScreen(p2.x, p2.y);
         const s3 = toScreen(p3.x, p3.y), s4 = toScreen(p4.x, p4.y);
         ctx.beginPath();
-        ctx.moveTo(s1.x, s1.y); ctx.lineTo(s2.x, s2.y);
-        ctx.lineTo(s3.x, s3.y); ctx.lineTo(s4.x, s4.y); ctx.closePath();
+        if (cl.poly && cl.poly.length > 2) {  // econ-game-2: 유기적 영토 폴리곤
+          for (let pi = 0; pi < cl.poly.length; pi++) {
+            const pp = w2i(off + cl.poly[pi][0], offY + cl.poly[pi][1]);
+            const ss = toScreen(pp.x, pp.y);
+            if (pi === 0) ctx.moveTo(ss.x, ss.y); else ctx.lineTo(ss.x, ss.y);
+          }
+          ctx.closePath();
+        } else {
+          ctx.moveTo(s1.x, s1.y); ctx.lineTo(s2.x, s2.y);
+          ctx.lineTo(s3.x, s3.y); ctx.lineTo(s4.x, s4.y); ctx.closePath();
+        }
         // Phase 14.18.b: kind별 색상 — guild(파랑)/personal(노랑)/temporary(주황)
         // Phase 4d-16-a: NPC 사유지 분배된 guild cell은 더 짙은 호박색 (개인 영역 시각화)
         let fill, stroke, label;

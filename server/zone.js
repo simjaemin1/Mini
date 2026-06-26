@@ -1037,12 +1037,11 @@ async function registerVillageGuilds() {
 // 마을 = NPC 길드. central tribe_id를 받아와서 guildTribeId로 연결.
 function spawnGuildClaimsForVillage(village, centralTribeId) {
   if (!centralTribeId) return;
-  // econ-game-2: 마을당 '큰 사각 영토 claim 1개'. 옛 πR² 셀단위 폐기 — 넓혀도 welcome payload는 마을 수(50)만큼만.
-  //   (셀단위 R12 = 마을당 ~452칸 × 50 = 22,600 claim → welcome 4.5MB 폭주였음. 1개/마을로 근본 해결.)
+  // econ-game-2 stage2: 마을당 '유기적 폴리곤' claim 1개 (poly로 송신 — payload 작고 비정사각).
+  //   집 쪽(landward)으로 치우치고, 물에 박히는 꼭짓점은 해안까지 당겨 자연스러운 외곽.
   const SZ = BUILDING_SIZE;
-  const HALF_CELLS = 12;            // 반폭 12셀=384px → 768×768px 사각 영토 (NPC 집·농지 다 포함, "상당히 넓게")
   const npcOwnerId = `village_${village.name}`;
-  // 옛 거 정리 (메모리 + DB + 클라) — 이 마을의 모든 guild claim(옛 셀단위 포함)
+  // 옛 거 정리 (메모리 + DB + 클라)
   for (const [id, c] of claims) {
     if (c.kind === 'guild' && c.ownerPid === npcOwnerId) {
       if (c.dbId) { try { db.db.prepare('DELETE FROM claims WHERE id = ?').run(c.dbId); } catch (e) {} }
@@ -1050,19 +1049,43 @@ function spawnGuildClaimsForVillage(village, centralTribeId) {
       broadcast({ type: 'claim_removed', id });
     }
   }
-  const cellCx = Math.floor(village.x / SZ), cellCy = Math.floor(village.y / SZ);
+  // 물 방향 → landward(배산). 영토 중심을 집 군집 쪽(landward)으로 약간 이동.
+  let wsx = 0, wsy = 0, wn = 0;
+  for (let r = 2; r <= 16; r += 2) for (let a = 0; a < 8; a++) {
+    const px = village.x + Math.cos(a / 8 * Math.PI * 2) * r * SZ;
+    const py = village.y + Math.sin(a / 8 * Math.PI * 2) * r * SZ;
+    if (isWaterTileLocal(px, py)) { wsx += (px - village.x); wsy += (py - village.y); wn++; }
+  }
+  const landAng = wn ? Math.atan2(wsy, wsx) + Math.PI : -Math.PI / 2;
+  const cxw = village.x + Math.cos(landAng) * SZ * 4;   // 영토 중심 = 집쪽으로 약간
+  const cyw = village.y + Math.sin(landAng) * SZ * 4;
+  let sn = 0; for (let i = 0; i < village.name.length; i++) sn = (sn * 31 + village.name.charCodeAt(i)) | 0;
+  // 유기적 폴리곤 — 각도별 radius = base × 노이즈 불규칙 × (landward로 약간 길게). 물이면 해안까지 당김.
+  const STEPS = 18, R0 = SZ * 11;
+  const poly = [];
+  for (let k = 0; k < STEPS; k++) {
+    const a = k / STEPS * Math.PI * 2;
+    const wob = 0.72 + 0.30 * (0.5 + 0.5 * Math.sin(a * 3 + sn * 0.13)) + 0.12 * Math.sin(a * 7 + sn * 0.37);
+    const elong = 1 + 0.18 * Math.cos(a - landAng);
+    let rad = R0 * wob * elong;
+    let vx = cxw + Math.cos(a) * rad, vy = cyw + Math.sin(a) * rad, guard = 0;
+    while (isWaterTileLocal(vx, vy) && guard++ < 14) { rad -= SZ; vx = cxw + Math.cos(a) * rad; vy = cyw + Math.sin(a) * rad; }
+    poly.push([Math.round(vx), Math.round(vy)]);
+  }
+  let minx = 1e9, miny = 1e9, maxx = -1e9, maxy = -1e9;
+  for (const [px, py] of poly) { if (px < minx) minx = px; if (py < miny) miny = py; if (px > maxx) maxx = px; if (py > maxy) maxy = py; }
   const id = `c${nextClaimId++}`;
   const claim = {
     id, ownerPid: npcOwnerId, ownerName: `${village.name} 길드 영토`,
-    x: (cellCx - HALF_CELLS) * SZ, y: (cellCy - HALF_CELLS) * SZ,
-    w: SZ * HALF_CELLS * 2, h: SZ * HALF_CELLS * 2, kind: 'guild',
+    x: minx, y: miny, w: maxx - minx, h: maxy - miny, kind: 'guild',
+    poly,                                   // ← 유기적 외곽 (클라가 이걸로 렌더)
     guildTribeId: centralTribeId,
     guildTribeName: village.name,
     createdAt: Date.now(),
   };
   claims.set(id, claim);
   broadcast({ type: 'claim_added', claim });
-  console.log(`[${ZONE_ID}] 🏛️ 길드 영토 [${village.name}] 1개 사각 ${HALF_CELLS*2}×${HALF_CELLS*2}셀(${SZ*HALF_CELLS*2}px)`);
+  console.log(`[${ZONE_ID}] 🏛️ 길드 영토 [${village.name}] 유기 폴리곤 ${STEPS}각`);
 }
 
 // Phase 5-F: NPC 직업 분배 — 마을 type 가중치 반영
