@@ -1057,35 +1057,38 @@ function spawnGuildClaimsForVillage(village, centralTribeId) {
     if (isWaterTileLocal(px, py)) { wsx += (px - village.x); wsy += (py - village.y); wn++; }
   }
   const landAng = wn ? Math.atan2(wsy, wsx) + Math.PI : -Math.PI / 2;
-  const cxw = village.x + Math.cos(landAng) * SZ * 4;   // 영토 중심 = 집쪽으로 약간
-  const cyw = village.y + Math.sin(landAng) * SZ * 4;
+  const cellCx = Math.floor(village.x / SZ), cellCy = Math.floor(village.y / SZ);
+  const ccx = cellCx + Math.round(Math.cos(landAng) * 4);   // 영토 중심 셀 = 집쪽(landward)으로 약간
+  const ccy = cellCy + Math.round(Math.sin(landAng) * 4);
   let sn = 0; for (let i = 0; i < village.name.length; i++) sn = (sn * 31 + village.name.charCodeAt(i)) | 0;
-  // 유기적 폴리곤 — 각도별 radius = base × 노이즈 불규칙 × (landward로 약간 길게). 물이면 해안까지 당김.
-  const STEPS = 18, R0 = SZ * 11;
-  const poly = [];
-  for (let k = 0; k < STEPS; k++) {
-    const a = k / STEPS * Math.PI * 2;
-    const wob = 0.72 + 0.30 * (0.5 + 0.5 * Math.sin(a * 3 + sn * 0.13)) + 0.12 * Math.sin(a * 7 + sn * 0.37);
-    const elong = 1 + 0.18 * Math.cos(a - landAng);
-    let rad = R0 * wob * elong;
-    let vx = cxw + Math.cos(a) * rad, vy = cyw + Math.sin(a) * rad, guard = 0;
-    while (isWaterTileLocal(vx, vy) && guard++ < 14) { rad -= SZ; vx = cxw + Math.cos(a) * rad; vy = cyw + Math.sin(a) * rad; }
-    poly.push([Math.round(vx), Math.round(vy)]);
+  // 유기적 '셀 집합' — 각도별 radius(노이즈 불규칙 + landward 약간 길게) 안의 LAND 셀만.
+  const cells = [];
+  const HALF = 16;
+  for (let dy = -HALF; dy <= HALF; dy++) for (let dx = -HALF; dx <= HALF; dx++) {
+    const dist = Math.hypot(dx, dy);
+    const ang = Math.atan2(dy, dx);
+    const wob = 0.72 + 0.30 * (0.5 + 0.5 * Math.sin(ang * 3 + sn * 0.13)) + 0.12 * Math.sin(ang * 7 + sn * 0.37);
+    const elong = 1 + 0.18 * Math.cos(ang - landAng);
+    if (dist > 11 * wob * elong) continue;
+    const cx = ccx + dx, cy = ccy + dy;
+    if (isTerrainBlockedLocal(cx * SZ + SZ / 2, cy * SZ + SZ / 2)) continue;   // LAND only (물·바위 제외)
+    cells.push([cx, cy]);
   }
+  if (!cells.length) cells.push([cellCx, cellCy]);   // 안전장치
   let minx = 1e9, miny = 1e9, maxx = -1e9, maxy = -1e9;
-  for (const [px, py] of poly) { if (px < minx) minx = px; if (py < miny) miny = py; if (px > maxx) maxx = px; if (py > maxy) maxy = py; }
+  for (const [cx, cy] of cells) { if (cx < minx) minx = cx; if (cy < miny) miny = cy; if (cx > maxx) maxx = cx; if (cy > maxy) maxy = cy; }
   const id = `c${nextClaimId++}`;
   const claim = {
     id, ownerPid: npcOwnerId, ownerName: `${village.name} 길드 영토`,
-    x: minx, y: miny, w: maxx - minx, h: maxy - miny, kind: 'guild',
-    poly,                                   // ← 유기적 외곽 (클라가 이걸로 렌더)
+    x: minx * SZ, y: miny * SZ, w: (maxx - minx + 1) * SZ, h: (maxy - miny + 1) * SZ, kind: 'guild',
+    cells,                                  // ← 셀 집합 (격자 단위)
     guildTribeId: centralTribeId,
     guildTribeName: village.name,
     createdAt: Date.now(),
   };
   claims.set(id, claim);
   broadcast({ type: 'claim_added', claim });
-  console.log(`[${ZONE_ID}] 🏛️ 길드 영토 [${village.name}] 유기 폴리곤 ${STEPS}각`);
+  console.log(`[${ZONE_ID}] 🏛️ 길드 영토 [${village.name}] ${cells.length}셀(격자)`);
 }
 
 // Phase 5-F: NPC 직업 분배 — 마을 type 가중치 반영

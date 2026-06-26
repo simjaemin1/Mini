@@ -2,7 +2,7 @@
 // 핵심: 절대 월드 좌표를 사용해서 존 경계를 시각적으로 안 보이게.
 //      현재 존에 primary 연결, 인접 존에는 observer 연결로 미리 보기.
 // === CLIENT BUILD: Phase 5-G (한반도 강·호수 hardcoded + observer storm fix) ===
-console.log('%c[durango-mini] client build = Phase 5-K25 (길드 영토 유기적 폴리곤 렌더)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
+console.log('%c[durango-mini] client build = Phase 5-K26 (길드 영토 셀 집합 렌더 — 격자 단위)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
 // Phase 4d-16-c: facility 종류별 emoji
 const FACILITY_EMOJI = {
@@ -3042,54 +3042,47 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     for (const item of renderables) {
       if (item.kind === 'claim') {
         const cl = item.cl, off = item.off, offY = item.offY || 0;
-        const p1 = w2i(off + cl.x,         offY + cl.y);
-        const p2 = w2i(off + cl.x + cl.w,  offY + cl.y);
-        const p3 = w2i(off + cl.x + cl.w,  offY + cl.y + cl.h);
-        const p4 = w2i(off + cl.x,         offY + cl.y + cl.h);
-        const s1 = toScreen(p1.x, p1.y), s2 = toScreen(p2.x, p2.y);
-        const s3 = toScreen(p3.x, p3.y), s4 = toScreen(p4.x, p4.y);
-        ctx.beginPath();
-        if (cl.poly && cl.poly.length > 2) {  // econ-game-2: 유기적 영토 폴리곤
-          for (let pi = 0; pi < cl.poly.length; pi++) {
-            const pp = w2i(off + cl.poly[pi][0], offY + cl.poly[pi][1]);
-            const ss = toScreen(pp.x, pp.y);
-            if (pi === 0) ctx.moveTo(ss.x, ss.y); else ctx.lineTo(ss.x, ss.y);
-          }
-          ctx.closePath();
-        } else {
-          ctx.moveTo(s1.x, s1.y); ctx.lineTo(s2.x, s2.y);
-          ctx.lineTo(s3.x, s3.y); ctx.lineTo(s4.x, s4.y); ctx.closePath();
-        }
-        // Phase 14.18.b: kind별 색상 — guild(파랑)/personal(노랑)/temporary(주황)
-        // Phase 4d-16-a: NPC 사유지 분배된 guild cell은 더 짙은 호박색 (개인 영역 시각화)
+        const sc = (wx, wy) => { const pp = w2i(off + wx, offY + wy); return toScreen(pp.x, pp.y); };
+        const s1 = sc(cl.x, cl.y), s2 = sc(cl.x + cl.w, cl.y), s3 = sc(cl.x + cl.w, cl.y + cl.h), s4 = sc(cl.x, cl.y + cl.h);
+        // kind별 색상
         let fill, stroke, label;
         if (cl.kind === 'guild') {
-          if (cl.personalAssigned) {
-            // NPC 사유지 (마을 영토 안의 개인 영역) — 노란빛 파랑
-            fill = 'rgba(180, 160, 100, 0.22)'; stroke = 'rgba(220, 200, 140, 0.7)';
-            label = `🏠 ${cl.ownerName}`;
-          } else {
-            fill = 'rgba(90, 154, 224, 0.16)'; stroke = 'rgba(120, 175, 235, 0.9)';
-            label = `🏛️ ${cl.guildTribeName || cl.ownerName}`;
+          if (cl.personalAssigned) { fill = 'rgba(180,160,100,0.22)'; stroke = 'rgba(220,200,140,0.7)'; label = `🏠 ${cl.ownerName}`; }
+          else { fill = 'rgba(90,154,224,0.18)'; stroke = 'rgba(120,175,235,0.95)'; label = `🏛️ ${cl.guildTribeName || cl.ownerName}`; }
+        } else if (cl.kind === 'temporary') { fill = 'rgba(220,130,60,0.16)'; stroke = 'rgba(220,130,60,0.7)'; label = `⛺ ${cl.ownerName}`; }
+        else { fill = 'rgba(240,198,116,0.18)'; stroke = 'rgba(240,198,116,0.8)'; label = `🏠 ${cl.ownerName}`; }
+
+        if (cl.cells && cl.cells.length) {
+          // 영토 = 셀 집합 (격자 단위) — 각 셀 채움 + 경계(이웃 안 owned) 외곽선. bbox 화면 밖이면 스킵.
+          const mnx = Math.min(s1.x,s2.x,s3.x,s4.x), mxx = Math.max(s1.x,s2.x,s3.x,s4.x);
+          const mny = Math.min(s1.y,s2.y,s3.y,s4.y), mxy = Math.max(s1.y,s2.y,s3.y,s4.y);
+          if (!(mxx < -60 || mnx > W + 60 || mxy < -60 || mny > H + 60)) {
+            const S = CL_BUILDING_SIZE;
+            const own = cl._cset || (cl._cset = new Set(cl.cells.map(c => c[0] + ',' + c[1])));
+            ctx.fillStyle = fill; ctx.beginPath();
+            for (const [cx, cy] of cl.cells) {
+              const a = sc(cx*S, cy*S), b = sc((cx+1)*S, cy*S), c = sc((cx+1)*S, (cy+1)*S), d = sc(cx*S, (cy+1)*S);
+              ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.lineTo(c.x,c.y); ctx.lineTo(d.x,d.y); ctx.closePath();
+            }
+            ctx.fill();
+            ctx.strokeStyle = stroke; ctx.lineWidth = 2.5; ctx.beginPath();
+            for (const [cx, cy] of cl.cells) {
+              const a = sc(cx*S, cy*S), b = sc((cx+1)*S, cy*S), c = sc((cx+1)*S, (cy+1)*S), d = sc(cx*S, (cy+1)*S);
+              if (!own.has(cx + ',' + (cy-1))) { ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); }
+              if (!own.has((cx+1) + ',' + cy)) { ctx.moveTo(b.x,b.y); ctx.lineTo(c.x,c.y); }
+              if (!own.has(cx + ',' + (cy+1))) { ctx.moveTo(c.x,c.y); ctx.lineTo(d.x,d.y); }
+              if (!own.has((cx-1) + ',' + cy)) { ctx.moveTo(d.x,d.y); ctx.lineTo(a.x,a.y); }
+            }
+            ctx.stroke();
           }
-        } else if (cl.kind === 'temporary') {
-          fill = 'rgba(220, 130, 60, 0.16)'; stroke = 'rgba(220, 130, 60, 0.7)';
-          label = `⛺ ${cl.ownerName}`;
-        } else { // personal
-          fill = 'rgba(240, 198, 116, 0.18)'; stroke = 'rgba(240, 198, 116, 0.8)';
-          label = `🏠 ${cl.ownerName}`;
+        } else {
+          // 단일 사각 (personal/temporary)
+          ctx.beginPath(); ctx.moveTo(s1.x,s1.y); ctx.lineTo(s2.x,s2.y); ctx.lineTo(s3.x,s3.y); ctx.lineTo(s4.x,s4.y); ctx.closePath();
+          ctx.fillStyle = fill; ctx.fill();
+          ctx.strokeStyle = stroke; ctx.lineWidth = (cl.kind === 'guild') ? 2.5 : 1.2;
+          ctx.setLineDash(cl.kind === 'guild' ? [] : [6,4]); ctx.stroke(); ctx.setLineDash([]);
         }
-        ctx.fillStyle = fill; ctx.fill();
-        ctx.strokeStyle = stroke;
-        ctx.lineWidth = (cl.kind === 'guild') ? 2.5 : 1.2;
-        if (cl.kind === 'guild') ctx.setLineDash([]); // 길드 = 실선
-        else ctx.setLineDash([6, 4]);
-        ctx.stroke(); ctx.setLineDash([]);
-        // 라벨 — guild도 이제 마을당 1개(큰 사각)라 표시. (옛 셀단위 28개일 땐 생략했음)
-        {
-          ctx.fillStyle = stroke; ctx.font = (cl.kind === 'guild') ? 'bold 13px sans-serif' : '11px sans-serif';
-          ctx.fillText(label, s1.x + 6, s1.y + 14);
-        }
+        { ctx.fillStyle = stroke; ctx.font = (cl.kind === 'guild') ? 'bold 13px sans-serif' : '11px sans-serif'; ctx.fillText(label, s1.x + 6, s1.y + 14); }
         // Phase 4d-16-c: NPC 사유지 cell에 facility sprite (emoji)
         if (cl.facilityType) {
           const cs = toScreen(w2i(off + cl.x + cl.w/2, offY + cl.y + cl.h/2).x, w2i(off + cl.x + cl.w/2, offY + cl.y + cl.h/2).y);
