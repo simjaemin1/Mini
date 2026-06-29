@@ -532,8 +532,8 @@ function createVillage(opts) {
   // 초기 비축 — 비자급 마을(광물/사막)도 교역 시작할 충분한 시간
   v.storage.food = initN * 300;       // 300일치
   v.storage.tool = initN * 3;         // 도구 충분
-  v.storage.wood = initN * 8;         // 거래 교환용 + smith input
-  v.storage.stone = initN * 6;        // 거래 교환용 + smith input
+  v.storage.wood = initN * 3;         // 거래 교환용 + smith input + 주거(낮춤 → 가격 신호 빨리)
+  v.storage.stone = initN * 3;        // 거래 교환용 + smith input + 주거(낮춤 → 가격 신호 빨리)
   v.storage.ore = Math.floor(initN * v.land.ore * 5);  // 광물 도시는 ore 잉여로 시작
   return v;
 }

@@ -852,8 +852,8 @@ function createVillage(opts) {
   // 초기 비축 — 비자급 마을(광물/사막)도 교역 시작할 충분한 시간
   v.storage.food = initN * 300;       // 300일치
   v.storage.tool = initN * 3;         // 도구 충분
-  v.storage.wood = initN * 8;         // 거래 교환용 + smith input
-  v.storage.stone = initN * 6;        // 거래 교환용 + smith input
+  v.storage.wood = initN * 3;         // 거래 교환용 + smith input + 주거(낮춤 → 가격 신호 빨리)
+  v.storage.stone = initN * 3;        // 거래 교환용 + smith input + 주거(낮춤 → 가격 신호 빨리)
   v.storage.ore = Math.floor(initN * v.land.ore * 5);  // 광물 도시는 ore 잉여로 시작
   return v;
 }
@@ -2031,6 +2031,10 @@ const SUBSISTENCE_PER_NPC = {
   tool: 0.005,
   weapon: 0.002,
   armor: 0.002,
+  // ★주거 수요: 집(한옥)의 건축·보수에 목재·석재 소비. 인구↑(새 집)·유지보수로 지속 수요.
+  //   효과: ① 숲 마을 → 나무꾼 수요 ② 석재 시장 형성 → 산골 마을이 석재 수출로 식량 구입(채광 자립).
+  wood: 0.05,
+  stone: 0.04,
 };
 
 // 거래 수수료 — 양쪽 끝에 부과. 3%면 spread 6%. 사용자 의도: default 3%.
