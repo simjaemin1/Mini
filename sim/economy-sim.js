@@ -294,6 +294,14 @@ const TAX_RATE = 0.03;                    // 일일 산출의 3% (사용자 의�
 const BASE_EXPAND_COST = { food: 80, wood: 40, stone: 25 };
 const EXPAND_COST_EXP = 1.3;              // (size/baseSize)^1.3 — 점진 증가
 const EXPAND_CHECK_INTERVAL = 7;          // 매 7일 영토 확장 검사
+// ★주거(집): 인구 성장은 집 수용력에 막힘. 집은 목재(필수)·석재(있으면)로 짓고 노후화.
+//   집 부족하면 성장만 멈춤(감소 아님). picker가 "집 지을 목재 부족 → 나무꾼" 안전망으로 고리 닫음.
+const HOUSE_WOOD = 1.5;        // 수용력 1인당 목재(한옥=목조)
+const HOUSE_STONE = 0.6;       // 수용력 1인당 석재(주춧돌·구들, 있으면 씀)
+const HOUSE_DECAY = 0.0015;    // 일일 노후화(완만 — 나무꾼 1명이면 유지 가능)
+const HOUSE_BUFFER = 1.15;     // 인구보다 약간 여유 있게(성장 여지)
+const HOUSE_BUILD_MAX = 0.06;  // 하루 최대 증축률(인구 대비)
+const HOUSE_START = 20;        // 정착 초기 집(부트스트랩 — 이 크기까진 자라 나무꾼 산업 형성)
 
 // 식량 부패 — 무한 비축 방지. 음식 종류별로 다름.
 const DECAY_RATES = {
@@ -532,9 +540,10 @@ function createVillage(opts) {
   // 초기 비축 — 비자급 마을(광물/사막)도 교역 시작할 충분한 시간
   v.storage.food = initN * 300;       // 300일치
   v.storage.tool = initN * 3;         // 도구 충분
-  v.storage.wood = initN * 3;         // 거래 교환용 + smith input + 주거(낮춤 → 가격 신호 빨리)
-  v.storage.stone = initN * 3;        // 거래 교환용 + smith input + 주거(낮춤 → 가격 신호 빨리)
+  v.storage.wood = initN * 8;         // 초기 주거 건축 부트스트랩 + 거래 + smith
+  v.storage.stone = initN * 5;        // 초기 석재(주거·거래·smith)
   v.storage.ore = Math.floor(initN * v.land.ore * 5);  // 광물 도시는 ore 잉여로 시작
+  v.housing = Math.max(initN, HOUSE_START);   // ★주거 수용력. K = min(식량,생산) 안에서 인구가 이 값에 막힘(성장 게이트).
   return v;
 }
 
@@ -709,7 +718,19 @@ function tickVillage(v, day) {
   }
   const dailyImport = v._importEMA || 0;
   const prodK = (dailyFoodProd + dailyImport) / DAILY_FOOD_CONSUMPTION;
-  const Kraw = Math.min(slotK, prodK);
+  // ★주거 증축: 집이 인구보다 모자라면 목재(필수)·석재(있으면)로 지음. 노후화로 지속 보수.
+  if (v.housing === undefined) v.housing = N;
+  v.housing *= (1 - HOUSE_DECAY);   // 노후화
+  const houseTarget = N * HOUSE_BUFFER;
+  if (v.housing < houseTarget) {
+    const built = Math.min(houseTarget - v.housing, (v.storage.wood || 0) / HOUSE_WOOD, N * HOUSE_BUILD_MAX);   // 목재가 필수 제약
+    if (built > 0) {
+      v.storage.wood -= built * HOUSE_WOOD;
+      v.storage.stone -= Math.min(v.storage.stone || 0, built * HOUSE_STONE);   // 석재는 있으면 씀(수요 발생), 없어도 건축 진행
+      v.housing += built;
+    }
+  }
+  const Kraw = Math.min(slotK, prodK);   // 식량 한계(주거는 아래 성장 게이트)
   const K = Math.max(POP_MIN, Kraw);
 
   // 5) 인구 로지스틱 갱신
@@ -735,6 +756,8 @@ function tickVillage(v, day) {
     // 기록 (외부에서 활용 가능)
     v.lastStats = stats;
   }
+  // ★주거 성장 게이트: 집이 부족하면(N≥주거) 인구가 더 못 늚. 감소는 식량(famine)만 — 집 부족으론 안 죽음.
+  if (dP > 0 && v.housing !== undefined && N >= v.housing) dP = 0;
   // ΔP 상한
   const maxDelta = N * POP_MAX_DELTA_PCT;
   dP = Math.max(-maxDelta, Math.min(maxDelta, dP));
@@ -909,6 +932,8 @@ function pickDeficitJob_rational(v, world) {
   let _toolDeps = 0;
   for (const j of JOB_NAMES) if (JOBS[j].toolDependent) _toolDeps += (counts[j] || 0);
   if (v.storage.tool / Math.max(1, _toolDeps) < 1.0 && hasSlot(v, 'smith', cap, counts)) return 'smith';
+  // ★주거 압박: 집이 거의 가득(인구 성장 막힘) + 집 지을 목재 부족 → 나무꾼. 집 지어야 인구가 늚 → 고리를 닫는 안전망.
+  if (v.housing !== undefined && N >= v.housing * 0.95 && (v.storage.wood || 0) < N * 2 && hasSlot(v, 'lumberjack', cap, counts)) return 'lumberjack';
 
   // === 한계 효용 계산 — 각 직업 1명 추가 시 기대 가치 (식량 환산 단위) ===
   const period = 100;  // 평가 윈도우 100일
