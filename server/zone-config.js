@@ -25,8 +25,13 @@ function hostFromEnv(zoneId, fallback) {
 const WS_PROTO = process.env.WS_PROTO || 'ws';
 const HTTP_PROTO = process.env.HTTP_PROTO || 'http';
 
+// ⚠️ 아래 worldOffsetX/Y, zoneWidth/zoneHeight, mainSquare는 모두 "BASE 값"이다.
+//    export 시 × WORLD_SCALE(기본 10, 아래 참조) + 32px 스냅이 적용된다.
+//    예) hanbando base 7000×13000 → 실제 70016×130016px ≈ 2188×4063셀 ≈ 8.9M셀.
+//    ⇒ 여기 숫자를 "실제 px"로 읽지 말 것. 실제 크기 = base × WORLD_SCALE.
+//      실제 크기를 바꾸려면 base를 바꾸거나(×10 먹음 주의) WORLD_SCALE을 조절.
 const ZONES_BASE = {
-  // === c0: 아메리카 (11000w) ===
+  // === c0: 아메리카 (11000w base → ×10) ===
   canadia: {
     port: 3001, biome: 'taiga', displayName: '캐나디아 (NA 북부)',
     groundColor: '#5a7c4a', tintColor: '#3a6a2a',
@@ -173,7 +178,7 @@ const ZONES_BASE = {
   hanbando: {
     port: 3020, biome: 'forest', displayName: '한반도',
     groundColor: '#9a9670', tintColor: '#7a8a4a',
-    worldOffsetX: 41000, worldOffsetY: 5000, zoneWidth: 7000, zoneHeight: 13000,
+    worldOffsetX: 41000, worldOffsetY: 5000, zoneWidth: 7000, zoneHeight: 13000, // ← BASE(×10): 실제 70016×130016px ≈ 2188×4063셀 ≈ 8.9M셀
     villageSeed: 1020, villageCount: 0, // procedural 마을 0 — 하드코딩(hanbando-terrain.json villages, 에디터 v9) 사용
     useHardcodedVillages: true, // v9 마을 50개 사용.
     npcVillageHouses: true,     // NPC 집 ON. 진짜 병목은 서버 qtBuildings 매틱 전체재삽입(3.3만채=22%CPU)이었고, 활성청크만 인덱싱으로 수정.

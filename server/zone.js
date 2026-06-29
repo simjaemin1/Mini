@@ -1058,18 +1058,17 @@ function spawnGuildClaimsForVillage(village, centralTribeId) {
   }
   const landAng = wn ? Math.atan2(wsy, wsx) + Math.PI : -Math.PI / 2;
   const cellCx = Math.floor(village.x / SZ), cellCy = Math.floor(village.y / SZ);
-  const ccx = cellCx + Math.round(Math.cos(landAng) * 4);   // 영토 중심 셀 = 집쪽(landward)으로 약간
-  const ccy = cellCy + Math.round(Math.sin(landAng) * 4);
+  const ccx = cellCx, ccy = cellCy;   // 영토 중심 = 마을 중심 (집[landward] + 농지[물쪽] 둘 다 포함)
   let sn = 0; for (let i = 0; i < village.name.length; i++) sn = (sn * 31 + village.name.charCodeAt(i)) | 0;
   // 유기적 '셀 집합' — 각도별 radius(노이즈 불규칙 + landward 약간 길게) 안의 LAND 셀만.
   const cells = [];
-  const HALF = 16;
+  const HALF = 20;
   for (let dy = -HALF; dy <= HALF; dy++) for (let dx = -HALF; dx <= HALF; dx++) {
     const dist = Math.hypot(dx, dy);
     const ang = Math.atan2(dy, dx);
     const wob = 0.72 + 0.30 * (0.5 + 0.5 * Math.sin(ang * 3 + sn * 0.13)) + 0.12 * Math.sin(ang * 7 + sn * 0.37);
     const elong = 1 + 0.18 * Math.cos(ang - landAng);
-    if (dist > 11 * wob * elong) continue;
+    if (dist > 14 * wob * elong) continue;
     const cx = ccx + dx, cy = ccy + dy;
     if (isTerrainBlockedLocal(cx * SZ + SZ / 2, cy * SZ + SZ / 2)) continue;   // LAND only (물·바위 제외)
     cells.push([cx, cy]);
@@ -1164,6 +1163,41 @@ function villageHouseSlots(village, count) {
   return slots;
 }
 
+// econ-game-2 rebuild: 5×5 한옥 (가족 공유 — 1층당 6명 수용). floors 인자로 층수↑ = 수용↑.
+//   owner npc_house_* → 재시작 wipe. 작은 마을은 1채(1층)에 다 거주.
+function buildVillageHouse(ccx, ccy, ownerId, ownerName, floors = 1) {
+  const SZ = BUILDING_SIZE;
+  const wall = (cx, cy, side, f) => db.insertBuilding({ type: 'wall', owner_id: ownerId, owner_name: ownerName, x: cx * SZ, y: cy * SZ, data: JSON.stringify({ side, floor: f }) });
+  const floor = (cx, cy, f) => db.insertBuilding({ type: 'floor', owner_id: ownerId, owner_name: ownerName, x: cx * SZ + SZ / 2, y: cy * SZ + SZ / 2, data: JSON.stringify({ floor: f }) });
+  for (let f = 0; f < floors; f++) {
+    for (let i = -2; i <= 2; i++) { wall(ccx + i, ccy - 2, 'N', f); if (!(f === 0 && i === 0)) wall(ccx + i, ccy + 3, 'N', f); } // 북 / 남(1층 가운데 출입구)
+    for (let j = -2; j <= 2; j++) { wall(ccx + 2, ccy + j, 'E', f); wall(ccx - 3, ccy + j, 'E', f); }                          // 동 / 서
+    for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) floor(ccx + i, ccy + j, f);
+  }
+}
+// 농지 구역 — 물쪽(임수) 골짜기에 grid 플롯 pre-생성 (visible 농지). owner npc_farm_* → wipe.
+function buildVillageFarmland(village, vIdx) {
+  const SZ = BUILDING_SIZE;
+  let wsx = 0, wsy = 0, wn = 0;
+  for (let r = 2; r <= 16; r += 2) for (let a = 0; a < 8; a++) {
+    const px = village.x + Math.cos(a / 8 * Math.PI * 2) * r * SZ, py = village.y + Math.sin(a / 8 * Math.PI * 2) * r * SZ;
+    if (isWaterTileLocal(px, py)) { wsx += px - village.x; wsy += py - village.y; wn++; }
+  }
+  const wAng = wn ? Math.atan2(wsy, wsx) : Math.PI / 2;   // 물쪽(없으면 남)
+  const wx = Math.cos(wAng), wy = Math.sin(wAng), pxv = -wy, pyv = wx;
+  const fcx = village.x + wx * SZ * 5, fcy = village.y + wy * SZ * 5;  // 물쪽 5칸
+  let made = 0;
+  for (let row = 0; row < 3; row++) for (let col = -2; col <= 2; col++) {
+    const gx = Math.floor((fcx + (wx * row + pxv * col) * SZ) / SZ) * SZ + SZ / 2;
+    const gy = Math.floor((fcy + (wy * row + pyv * col) * SZ) / SZ) * SZ + SZ / 2;
+    if (isTerrainBlockedLocal(gx, gy)) continue;          // LAND only
+    const stage = made % 4;
+    const data = { cropType: 'berry', plantedAt: Date.now() - stage * 15000, readyAt: Date.now() + (3 - stage) * 15000, ready: stage >= 3 };
+    try { db.insertBuilding({ type: 'farmland', owner_id: `npc_farm_${ZONE_ID}_${vIdx}`, owner_name: `${village.name} 농지`, x: gx, y: gy, data: JSON.stringify(data) }); made++; } catch (e) {}
+  }
+  return made;
+}
+
 function spawnVillagers() {
   for (let v = 0; v < VILLAGES.length; v++) {
     const village = VILLAGES[v];
@@ -1172,20 +1206,31 @@ function spawnVillagers() {
     // 14.18.b: 길드 영토 (central tribe_id는 비동기로 받음. 지금 시점에 villageGuildIds에 있을 수도/없을 수도)
     const tribeId = villageGuildIds.get(village.name);
     if (tribeId && ZONE.npcVillageTerritory) spawnGuildClaimsForVillage(village, tribeId); // 영토 OFF 기본 (welcome·broadcast 폭주 방지)
-    const _slots = villageHouseSlots(village, NPC_PER_VILLAGE);  // 배산임수 LAND 슬롯 (물 위 집 방지)
+    // 한옥=가족: 작은 집 몇 채(NPC/3명)에 나눠 거주 + 물쪽 농지 구역 (배산임수).
+    // 5×5 한옥 = 1층당 6명. 집은 적게(이상적 1채), 부족하면 층수↑. 작은 마을은 1채 1층에 다 거주.
+    const numHouses = Math.max(1, Math.ceil(NPC_PER_VILLAGE / 18));                                      // 1채=최대 3층×6=18명
+    const floorsPerHouse = Math.min(3, Math.max(1, Math.ceil(NPC_PER_VILLAGE / numHouses / 6)));
+    const _houses = villageHouseSlots(village, numHouses);     // landward 한옥 슬롯
+    if (ZONE.npcVillageHouses) {
+      for (let h = 0; h < _houses.length; h++) {
+        buildVillageHouse(Math.round(_houses[h].x / BUILDING_SIZE), Math.round(_houses[h].y / BUILDING_SIZE), `npc_house_${ZONE_ID}_${v}_${h}`, `${village.name} 한옥`, floorsPerHouse);
+      }
+      const fc = buildVillageFarmland(village, v);             // 물쪽 농지 구역
+      console.log(`[${ZONE_ID}] 🏡 마을 [${village.name}] 한옥 ${_houses.length}채(${floorsPerHouse}층) + 농지 ${fc}칸`);
+    }
     for (let i = 0; i < NPC_PER_VILLAGE; i++) {
-      const _s = _slots[i] || _slots[_slots.length - 1] || { x: village.x, y: village.y };
-      const npcX = _s.x, npcY = _s.y;
+      const home = _houses[i % _houses.length] || { x: village.x, y: village.y };  // 집에 나눠 배정
+      const npcX = home.x + (Math.random() - 0.5) * 50, npcY = home.y + (Math.random() - 0.5) * 50;
       const job = _pickNpcJob(village.type);
       const ws = _findNpcWorkSite(village.x, village.y, job);
       spawnNpc({
         x: npcX, y: npcY,
         villageId, villageName: village.name,
         npcJob: job,
-        npcHomeX: _s.x, npcHomeY: _s.y,
+        npcHomeX: home.x, npcHomeY: home.y,
         npcWorkX: ws ? ws.x : village.x + (Math.random() - 0.5) * 200,
         npcWorkY: ws ? ws.y : village.y + (Math.random() - 0.5) * 200,
-        skipHouse: !ZONE.npcVillageHouses, // 집 OFF 기본 — NPC 집(wall 수십개)×300 = welcome 5.4MB로 클라 멈춤. 집은 AOI 청크 송신 구현 후 재활성.
+        skipHouse: true,   // 집은 위에서 공유 한옥으로 따로 지음
       });
     }
   }

@@ -93,13 +93,16 @@ forager = size × 0.30             smith/cook/warrior/merchant = pop × 6~10%
 
 ## 4. 단계 계획 (점진·검증)
 
-- [ ] **S1. economy-sim 브라우저 이식** — 코어를 브라우저용 단일 모듈로(specialty 데이터 번들, CLI 제외). Node 결과와 동일한지 회귀검증.
-- [ ] **S2. 지형→land params 추출** — 마을 영역의 TR.fert/water/stone/ore/숲 평균 → `land.*`. VillageLayout 영토 칸수 → `land.size`.
-- [ ] **S3. 마을실험실 중복 경제 제거** — 인구·jobCapacity 흉내·캡들 삭제. economy-sim의 village를 단일 마을로 생성, 매일 tickVillage.
-- [ ] **S4. 경제→공간 렌더** — pop·job counts로 NPC 수·직업별 배치(농부=논밭, 어부=물가, 광부=광맥). 곳간·직업분포 UI.
-- [ ] **S5. 상세 농사 연결** — 농부 NPC의 작물 애니(논밭·계절·카탈로그)를 economy-sim farmer output과 일관되게(시각은 상세, 수치는 economy-sim).
-- [ ] **S6. 다(多)마을 + 교역** — 여러 마을 생성, tickTrade로 행상·가격·비교우위 교역. 공간에 행상 이동 렌더.
-- [ ] **S7. 엄밀 회귀검증** — 통합 후 인구·직업·교역이 economy-sim 단독과 일치(공간이 왜곡 안 함) + 비옥도 스프레드·교역 부양 확인.
+- [x] **S1. economy-sim 브라우저 이식** — `sim/economy-engine.browser.js`(빌더 `build-econ-bundle.js`). 회귀검증 8/8 정확 일치(시드4×기간2). 전역 `EconEngine`.
+- [x] **S2. 지형→land params 추출** — `extractLandParams(V,TR)`: 마을 반경 평균 비옥/물/바위 → `land.{fertility,water,stone,ore,wood,game,size}`. ★economy-sim 스케일(정상≈1.0)에 맞춰 리스케일(fert×2.0, water×1.6 등).
+- [x] **S3. 마을실험실 중복 경제 제거 + 엔진 구동** — 내 Malthus/Liebig 블록 삭제. economy-sim이 인구·직업·food 구동. `life.pop=econ.npcs.length`, `life.food=econ.storage.food`.
+  - **★핵심 수정(정밀검사로 발견)**: 단일 `tickVillage`만 돌리면 붕괴(농부 7→1). 원인 = `v._world`(가격·교역 컨텍스트)가 없어 `autoSwitchJob`이 농부를 빼버림. → **5마을 world(`createWorldV2`)에 내 공간마을을 villages[0]로 넣고 `tickWorldV2`로 구동**. 교역 파트너 4 + 내 마을.
+  - 검증(시드7, ~15게임년): 척박 fert0.6→22명(교역의존,곳간106) / 중간 1.1→51명(자급,목표부합) / 비옥 1.6→57명(농부↑·광부분화). 붕괴 0. 결정론적.
+- [x] **S4. 경제→공간 렌더** — `lifeSync`가 매일 `life.agents` 수를 econ.counts에 동기: 농부=`counts.farmer`(논밭), 어부=`counts.fisher`(물가), 그 외 전 직업=`villager` 에이전트(회관 주변, `otRole`로 광부·사냥·채집·대장·상인 등 라벨). 폴백(econ 없을 때 옛 비율) 유지.
+  - 검증(시드7·42 × 비옥0.3/0.55/0.8 = 6런, 정착~12년 35회): `agents.length===npcs.length` & 농부·어부 정확 일치, **불일치 0**. 정착 순간도 일치(lifeInit서 econ 생성 직후 lifeSync).
+- [ ] **S5. 상세 농사 = 농부 output의 시각화** — (대체로 충족) economy-sim이 food 권위(`s.food=econ.storage.food`가 매일 덮어씀 → 공간 수확 `s.food+=`는 장식). 농부 NPC 작물 애니(논밭·계절·카탈로그)는 그대로 시각 표현. 잔여: 죽은 `s.food+=` 정리, 작물 선택을 econ 농부수와 더 묶기(선택).
+- [ ] **S6. 다(多)마을 + 교역 렌더** — world 5마을 이미 경제상 교역 중. 공간에 이웃 마을·행상 이동 렌더(현재는 내 마을만 공간 표현).
+- [ ] **S7. 엄밀 회귀검증** — 통합 후 결정론·생존·비옥도 스프레드·교역 부양 확인(완료). 추가: 공간 NPC 수가 econ pop과 항상 동기.
 
 ---
 
