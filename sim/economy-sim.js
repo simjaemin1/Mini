@@ -143,10 +143,11 @@ const JOBS = {
     produceSpecial: 'smith',
   },
   // Phase 4d-7: 무기/갑옷 제작 — warrior 호위력 보너스. ore + hide + pebble 소비처 마련.
-  weaponsmith: {            // 무기 제작 (ore + wood + stone). v2: 만성 부족 완화 위해 산출 ↑
+  weaponsmith: {            // 무기 제작 — 철 있으면 철칼(고급), 없으면 돌칼. 돌 기반(자급) + 철 광맥전용 업그레이드.
     field: 'smithing', output: 'weapon', base: 0.45,
     landBoost: () => 1.0, toolDependent: false,
-    inputs: { ore: 0.4, wood: 0.3, stone: 0.2 },
+    inputs: { stone: 0.5 },
+    produceSpecial: 'weaponsmith',
   },
   armorsmith: {             // 갑옷 제작 (stone + hide + ore). v2: 산출 ↑
     field: 'smithing', output: 'armor', base: 0.35,
@@ -675,6 +676,18 @@ function tickVillage(v, day) {
         addProduce('tool', amt);
         workNPC(npc);
       }
+    } else if (jdef.produceSpecial === 'weaponsmith') {
+      // ★무기 제작: 철 있으면 철칼(iron+stone), 없으면 돌칼(stone). 전사 양성의 전제(돌칼이나 철칼 필요).
+      const amt = jdef.base * skillMul;
+      if ((v.storage.iron || 0) >= 0.4 && (v.storage.stone || 0) >= 0.2) {
+        v.storage.iron -= 0.4; v.storage.stone -= 0.2;
+        addProduce('weapon', amt);
+        workNPC(npc);
+      } else if ((v.storage.stone || 0) >= 0.5) {
+        v.storage.stone -= 0.5;
+        addProduce('weapon', amt);
+        workNPC(npc);
+      }
     } else if (jdef.output && baseAmt > 0) {
       for (const [inp, need] of Object.entries(jdef.inputs || {})) {
         v.storage[inp] = Math.max(0, v.storage[inp] - need);
@@ -896,9 +909,10 @@ function pickDeficitJob(v) {
     return 'merchant';
   }
 
-  // 6.5) warrior — merchant 있는 교역 마을이 캐러밴 호위 양성. 인구 5%까지.
+  // 6.5) warrior — merchant 있는 교역 마을이 캐러밴 호위 양성. 인구 5%까지. ★무기(돌칼/철칼) 보유 필수.
   if (foodRich && (counts.merchant || 0) >= 2 &&
       (counts.warrior || 0) < Math.max(2, Math.floor(N * 0.05)) &&
+      (v.storage.weapon || 0) >= (counts.warrior || 0) + 1 &&
       hasSlot(v, 'warrior', cap, counts)) {
     return 'warrior';
   }
@@ -989,7 +1003,7 @@ function pickDeficitJob_rational(v, world) {
   if ((v.land.stone || 0) > 0.25 && (v.storage.stone || 0) < N * 1.5 && hasSlot(v, 'miner', cap, counts)) return 'miner';
   // ★호위 안전망: 행상이 도적에게 죽은 적 있고(tradersKilled) 전사 부족 + 식량 여유면 전사 양성.
   //   → 전사가 무기·갑옷 수요 → 광석·석재 수요 → 채광. (도적→전사→광업 사슬을 닫음)
-  if (v.tradeStats && (v.tradeStats.tradersKilled || 0) > 3 && (counts.warrior || 0) < Math.max(1, N * 0.06) && foodEquiv > N * 40 && hasSlot(v, 'warrior', cap, counts)) return 'warrior';
+  if (v.tradeStats && (v.tradeStats.tradersKilled || 0) > 3 && (counts.warrior || 0) < Math.max(1, N * 0.06) && foodEquiv > N * 40 && (v.storage.weapon || 0) >= (counts.warrior || 0) + 1 && hasSlot(v, 'warrior', cap, counts)) return 'warrior';   // ★무기(돌칼/철칼) 있어야 전사
 
   // === 한계 효용 계산 — 각 직업 1명 추가 시 기대 가치 (식량 환산 단위) ===
   const period = 100;  // 평가 윈도우 100일
@@ -1040,7 +1054,8 @@ function pickDeficitJob_rational(v, world) {
     candidates.push(['merchant', merchantGain]);
   // warrior — 약탈 자주 일어나는 마을에서만 의미. 추가로 weapon/armor 가용성이 호위 효과 결정.
   //   장비 비싸면 호위 운용 어려움 (가격에 음 반응) + stock 적으면 운용 어려움.
-  if (hasSlot(v, 'warrior', cap, counts) && caravansSeen > 1 && raidRate > 0.05) {
+  if (hasSlot(v, 'warrior', cap, counts) && caravansSeen > 1 && raidRate > 0.05 &&
+      (v.storage.weapon || 0) >= (counts.warrior || 0) + 1) {   // ★전사 게이트: 1인 1무기(돌칼/철칼) 보유 필수
     const curWarrior = counts.warrior || 0;
     const equipStock = (v.storage.weapon || 0) + (v.storage.armor || 0);
     const equipReady = Math.min(1, equipStock / Math.max(1, (curWarrior + 1) * 2));
@@ -1053,8 +1068,13 @@ function pickDeficitJob_rational(v, world) {
   if (hasSlot(v, 'smith', cap, counts))
     candidates.push(['smith', 0.4 * period * w('tool')]);
   // weaponsmith/armorsmith — 가격이 비싼 마을일수록 매력 ↑
-  if (hasSlot(v, 'weaponsmith', cap, counts) && v.storage.ore > N * 0.3)
-    candidates.push(['weaponsmith', 0.3 * period * w('weapon')]);
+  // weaponsmith — 약탈 위협이 있으면 *선제적으로* 무기 비축(전사 양성 전제). 돌(자급)·철 기반. 전사 유무와 무관(순환 해소).
+  {
+    const raidThreat = raidRate > 0.03 || (v.tradeStats && (v.tradeStats.tradersKilled || 0) > 0);
+    const wantWeapons = Math.max(2, Math.ceil(N * 0.08));   // 인구 8%까지 무장 목표
+    if (hasSlot(v, 'weaponsmith', cap, counts) && raidThreat && (v.storage.stone || 0) > N * 0.3 && (v.storage.weapon || 0) < wantWeapons)
+      candidates.push(['weaponsmith', 0.5 * period * w('weapon')]);
+  }
   if (hasSlot(v, 'armorsmith', cap, counts) && v.storage.hide > N * 0.3)
     candidates.push(['armorsmith', 0.3 * period * w('armor')]);
 

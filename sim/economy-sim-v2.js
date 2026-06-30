@@ -279,6 +279,8 @@ function tickTradeV2(world, day) {
       //   기존엔 15일치만 남겨(< 기근 문턱 30일치) 식량 마을이 수출 후 식량불안 → 비식량 직업 선점. 이젠 36일치 보유.
       const FOODR = { food: 1, fish: 1, meat: 1, cooked_food: 1 };
       const CAPITAL = { tool: 1, iron_tool: 1 };   // ★도구=자본재. 팔아치우면 생산 0.25×로 붕괴 → 1인당 1개 보유 후 잉여만.
+      const WEAPONR = { weapon: 1, armor: 1 };      // ★무기·갑옷=전사 장비. 전사 수만큼 보유(팔면 전사 무장해제).
+      const warN = (a.v.counts && a.v.counts.warrior) || 0;
       const candidates = [];
       for (const r of TRADABLE) {
         const stock = a.v.storage[r] || 0;
@@ -288,6 +290,7 @@ function tickTradeV2(world, day) {
         let keep, thresh;
         if (FOODR[r]) { keep = target * 1.2; thresh = target * 1.4; }       // 식량: 36일치 보유(>기근30), 42일치 초과만 수출
         else if (CAPITAL[r]) { keep = N * 1.2; thresh = N * 1.5; }          // 도구: 1.2개/명 보유, 1.5개/명 초과만 수출(덤핑 금지)
+        else if (WEAPONR[r]) { keep = Math.max(2, warN * 1.3); thresh = keep + N * 0.1; }   // 무기·갑옷: 전사 수×1.3 보유 후 잉여만
         else { keep = target * 0.5; thresh = target * 0.8; }                // 그 외: 15일치
         if (stock > thresh) candidates.push({ res: r, surplus: Math.max(1, stock - keep) });
       }
