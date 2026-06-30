@@ -82,6 +82,7 @@ const UTILITY_WEIGHT = {
   // 유용재 효용(원래값). 철은 야금투입이라 적당히. (부산물 fur·cotton·통나무 등은 의류·직물·건축 대리수요로 정당 → 유지)
   tool: 0.5, weapon: 0.3, armor: 0.3, hide: 0.2,
   wood: 0.9, stone: 0.7, ore: 0.3, iron: 0.4, iron_tool: 0.5,
+  copper: 0.45, tin: 0.55, bronze_tool: 0.6,   // ★청동 투입재(구리·주석)에 실수요. 주석이 희소해 더 높게.
   fruit: 0.1, vegetable: 0.1, mushroom: 0.1, twig: 0.05, pebble: 0.05,
 };
 // ★순수 장식재 — use-value 없음(못 먹고 못 만듦). 화폐/위신재 모델링 전엔 수요 0에 가깝게(가짜 수요 제거).
