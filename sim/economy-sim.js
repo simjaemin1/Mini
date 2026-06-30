@@ -125,17 +125,10 @@ const JOBS = {
     // Phase 5-5-econ-b: 통나무 종류 + 부산물 (oak·pine·resin·bark·acorn)
     byproduct: { oak_log: 0.20, pine_log: 0.15, resin: 0.08, bark: 0.10, acorn: 0.06 },
   },
-  miner: {
-    field: 'mining', output: 'stone', base: 1.5,   // 산출 강화(0.7→1.5): 풍부광맥 마을이 자가소비+수출 잉여 동시 확보
-    landBoost: (v) => v.land.stone, toolDependent: true, inputs: {},
-    // Phase 5-5-econ-b: 광맥 부산물 (석탄·소금·기본 광물)
-    byproduct: { coal: 0.10, salt: 0.05, clay: 0.08 },
-  },
-  prospector: {
-    field: 'mining', output: 'ore', base: 1.2,   // 산출 강화(0.5→1.2): 광석 수출 잉여 → 야금 사슬 공급
-    landBoost: (v) => v.land.ore, toolDependent: true, inputs: {},
-    // Phase 5-5-econ-b: 희귀 광맥 (iron·copper·tin·silver·gold·gem)
-    byproduct: { copper: 0.22, tin: 0.11, iron: 0.08, silver: 0.05, gold: 0.02, gem: 0.01 },   // ★청동기: 구리·주석 주력, 철은 희소(0.30→0.08, 철기 막 시작)
+  miner: {   // ★통일 광부(탐사꾼 통합): 그 땅의 광맥을 캠 — 금속광맥(ore≥stone) 풍부하면 광석+금속(구리·주석·철), 아니면 돌.
+    field: 'mining', output: 'stone', base: 1.5,
+    landBoost: (v) => Math.max(v.land.stone || 0, v.land.ore || 0), toolDependent: true, inputs: {},
+    produceSpecial: 'miner',   // 산출(돌 vs 광석+금속)은 produceSpecial이 토지로 결정. 부산물도 거기서.
   },
   smith: {                  // 대장장이 — 철 있으면 철도구(고효율), 없으면 돌도구. 철은 광맥에서만 나오므로 대장장이가 철도구의 유일 경로.
     field: 'smithing', output: 'tool', base: 0.4,
@@ -356,8 +349,7 @@ function jobCapacity(v) {
     fisher:     Math.floor(s * v.land.water     * 0.25),
     hunter:     Math.floor(s * v.land.game      * 0.30),
     lumberjack: Math.floor(s * v.land.wood      * 0.30),
-    miner:      Math.floor(s * v.land.stone     * 0.30),
-    prospector: Math.floor(s * v.land.ore       * 0.20),
+    miner:      Math.floor(s * Math.max(v.land.stone, v.land.ore) * 0.30),   // 통일 광부: 돌·광석 중 풍부한 쪽 기준
     forager:    Math.floor(s * 0.30),
     smith:       Math.max(1, Math.floor(v.npcs.length * 0.10)),
     weaponsmith: Math.max(1, Math.floor(v.npcs.length * 0.06)),  // Phase 4d-7
@@ -589,8 +581,7 @@ function pickInitialJob(v) {
   const allOpts = [
     ...foodOpts,
     ['lumberjack', v.land.wood  * 0.9],
-    ['miner',      v.land.stone * 0.7],
-    ['prospector', v.land.ore   * 0.5],
+    ['miner',      Math.max(v.land.stone, v.land.ore) * 0.7],   // 통일 광부(돌·광석 중 풍부한 쪽)
   ].filter(([j]) => hasSlot(v, j, cap, counts));
   allOpts.sort((a, b) => b[1] - a[1]);
   if (allOpts.length > 0) return allOpts[0][0];
@@ -698,6 +689,22 @@ function tickVillage(v, day) {
         addProduce('weapon', amt);
         workNPC(npc);
       }
+    } else if (jdef.produceSpecial === 'miner') {
+      // ★통일 광부: 광맥은 광석+버력돌이 같이 나와 — 돌(∝land.stone)과 광석+금속(∝land.ore)을 *둘 다* 캠.
+      //   돌산이면 돌 위주, 금속광맥이면 광석·금속(구리·주석·철)도 함께. (탐사꾼 통합)
+      const toolB = jdef.toolDependent ? toolBoostShared : 1.0;
+      const sAmt = jdef.base * (v.land.stone || 0) * skillMul * toolB;
+      const oAmt = jdef.base * (v.land.ore || 0) * skillMul * toolB;
+      if (sAmt > 0) {
+        addProduce('stone', sAmt);
+        addProduce('coal', sAmt * 0.10); addProduce('salt', sAmt * 0.05); addProduce('clay', sAmt * 0.08);
+      }
+      if (oAmt > 0) {
+        addProduce('ore', oAmt);
+        const bp = { copper: 0.22, tin: 0.11, iron: 0.08, silver: 0.05, gold: 0.02, gem: 0.01 };
+        for (const r in bp) addProduce(r, oAmt * bp[r]);
+      }
+      if (sAmt > 0 || oAmt > 0) workNPC(npc);
     } else if (jdef.output && baseAmt > 0) {
       for (const [inp, need] of Object.entries(jdef.inputs || {})) {
         v.storage[inp] = Math.max(0, v.storage[inp] - need);
@@ -944,9 +951,8 @@ function pickDeficitJob(v) {
 
   // 7) 풍부 토지 분야 — 비교우위. 분업 마을이 여기서 광부/목수 등으로 빠짐.
   const landBoosts = [
-    ['prospector', v.land.ore],
     ['lumberjack', v.land.wood],
-    ['miner',      v.land.stone],
+    ['miner',      Math.max(v.land.stone, v.land.ore)],   // 통일 광부(돌·광석 중 풍부한 쪽)
     ['fisher',     v.land.water * 0.8],
     ['hunter',     v.land.game  * 0.6],
     ['forager',    forageLandMean * 0.5],
@@ -986,19 +992,13 @@ function pickDeficitJob_rational(v, world) {
     //   광산 부얼타운 = 식량 전량 수입. 어로/사냥(직접 식량)이 가능하면 그게 우선, 광맥뿐이면 채굴해 교역.
     //   하드플로어 N*6: 그 아래로 떨어지면 가능한 식량직(어/렵)이라도 풀가동.
     if ((v.land.fertility || 0) < 0.2 && foodEquiv > N * 6) {
-      if ((v.land.ore || 0) > 0.3 && hasSlot(v, 'prospector', cap, counts)) return 'prospector';
-      if ((v.land.stone || 0) > 0.3 && hasSlot(v, 'miner', cap, counts)) return 'miner';
+      if (Math.max(v.land.stone || 0, v.land.ore || 0) > 0.3 && hasSlot(v, 'miner', cap, counts)) return 'miner';   // 통일 광부: 돌이든 광석이든 캐서 교역
     }
-    // ★풍부광맥 예외: 광맥이 매우 풍부(stone/ore>0.5) + 하드기근(18일치) 아님 + 채광노동 상한(8%) 미만이면
-    //   식량 게이트가 소수 광부/탐사를 허용. 광산 취락이 식량 약간 양보하고 광맥을 캐는 역사 패턴.
-    //   상한(8%)+하드플로어(18일)로 붕괴 방지 — 식량 떨어지면 18일선에서 기근게이트 전면 복귀(자기교정).
-    const mineLabor = (counts.miner || 0) + (counts.prospector || 0);
-    const richVein = (v.land.stone || 0) > 0.35 || (v.land.ore || 0) > 0.35;   // 고갈 후에도 유지(바닥 0.6×base)
-    if (richVein && foodEquiv > N * 18 && mineLabor < N * 0.04) {   // 상한 4%(완화): 광업 주변적 유지, 인구·전사 회복
-      if ((v.land.stone || 0) >= (v.land.ore || 0) && hasSlot(v, 'miner', cap, counts)) return 'miner';
-      if (hasSlot(v, 'prospector', cap, counts)) return 'prospector';
-      if (hasSlot(v, 'miner', cap, counts)) return 'miner';
-    }
+    // ★풍부광맥 예외: 광맥이 매우 풍부(stone/ore>0.35) + 하드기근(18일치) 아님 + 채광노동 상한(4%) 미만이면
+    //   식량 게이트가 소수 광부를 허용. 광산 취락이 식량 약간 양보하고 광맥을 캐는 역사 패턴. 상한+하드플로어로 붕괴 방지.
+    const mineLabor = (counts.miner || 0);
+    const richVein = (v.land.stone || 0) > 0.35 || (v.land.ore || 0) > 0.35;
+    if (richVein && foodEquiv > N * 18 && mineLabor < N * 0.04 && hasSlot(v, 'miner', cap, counts)) return 'miner';
     const foodOpts = [
       ['farmer',  v.land.fertility * 1.5],
       ['fisher',  v.land.water     * 1.2],
@@ -1047,7 +1047,7 @@ function pickDeficitJob_rational(v, world) {
   // (1) 농부 한계가치 — 우리 토지의 farmer 1명당 생산 × food 가격
   const farmerGain = v.land.fertility * 0.4 * period * FOOD_VALUE * w('food');
   // (2) 광부 한계가치 — stone 생산 × stone 가격
-  const minerGain = v.land.stone * 0.3 * period * w('stone');
+  const minerGain = Math.max(v.land.stone * w('stone'), v.land.ore * w('ore')) * 0.3 * period;   // 통일 광부: 돌·광석 중 가치 높은 쪽을 캠
   // (3) 상인 한계가치 — 새 캐러밴 1대 capacity 추가
   const expectedNewTrade = avgCargo * (period / 7) * (1 - raidRate);
   const merchantGain = nearbyFoodCapacity > 0 ? expectedNewTrade * 0.3 * FOOD_VALUE * w('food') : 0;
@@ -1064,7 +1064,6 @@ function pickDeficitJob_rational(v, world) {
   if (hasSlot(v, 'lumberjack', cap, counts)) candidates.push(['lumberjack', v.land.wood * 0.3 * period * w('wood')]);
   if (hasSlot(v, 'fisher', cap, counts))     candidates.push(['fisher',     v.land.water * 1.2 * period * w('fish')]);
   if (hasSlot(v, 'hunter', cap, counts))     candidates.push(['hunter',     v.land.game * 0.7 * period * (w('meat') + 0.3 * w('hide'))]);
-  if (hasSlot(v, 'prospector', cap, counts)) candidates.push(['prospector', v.land.ore * 0.2 * period * w('ore')]);
   if (hasSlot(v, 'merchant', cap, counts) && nearbyFoodCapacity > 0)
     candidates.push(['merchant', merchantGain]);
   // warrior — 약탈 자주 일어나는 마을에서만 의미. 추가로 weapon/armor 가용성이 호위 효과 결정.
@@ -1240,7 +1239,7 @@ function tickTrade(world, day) {
           //   pop이 너무 적으면(<=3) 출발 안 함 (마을 붕괴 방지)
           if (a.v.npcs.length <= 3) continue;
           let pickIdx = -1;
-          const PRIO = ['merchant', 'warrior', 'hunter', 'forager', 'prospector', 'lumberjack', 'miner', 'fisher', 'smith', 'cook', 'farmer'];
+          const PRIO = ['merchant', 'warrior', 'hunter', 'forager', 'lumberjack', 'miner', 'fisher', 'smith', 'cook', 'farmer'];
           for (const j of PRIO) {
             pickIdx = a.v.npcs.findIndex(n => n.currentJob === j);
             if (pickIdx >= 0) break;
@@ -1465,7 +1464,7 @@ function printSnapshot(world, day) {
     const N = v.npcs.length;
     const c = jobCounts(v);
     const order = ['farmer', 'fisher', 'hunter', 'forager',
-                   'lumberjack', 'miner', 'prospector', 'smith', 'cook'];
+                   'lumberjack', 'miner', 'smith', 'cook'];
     const jobStr = order.map(j => `${(c[j] || 0)}`).join('/');
     const iso = v.isolated && day < v.isolatedUntilDay ? ' 🚫' : '';
     console.log(
@@ -1492,7 +1491,7 @@ function printFinalSummary(world, days) {
     const cap = jobCapacity(v);
     console.log(`\n${v.name} (인구 ${N}명, size ${v.land.size} ← base ${v.land.baseSize}, 확장 ${v.expansions}회)`);
     console.log(`  땅: fertility=${v.land.fertility.toFixed(2)} wood=${v.land.wood.toFixed(2)} stone=${v.land.stone.toFixed(2)} ore=${v.land.ore.toFixed(2)} water=${v.land.water.toFixed(2)} game=${v.land.game.toFixed(2)}`);
-    console.log(`  자리: farmer=${cap.farmer} fisher=${cap.fisher} hunter=${cap.hunter} forager=${cap.forager} lumber=${cap.lumberjack} miner=${cap.miner} prosp=${cap.prospector}`);
+    console.log(`  자리: farmer=${cap.farmer} fisher=${cap.fisher} hunter=${cap.hunter} forager=${cap.forager} lumber=${cap.lumberjack} miner=${cap.miner}`);
     console.log(`  금고: food=${(v.treasury.food||0).toFixed(0)} wood=${(v.treasury.wood||0).toFixed(0)} stone=${(v.treasury.stone||0).toFixed(0)} (다음 확장 비용: food=${expandCost(v).food.toFixed(0)} wood=${expandCost(v).wood.toFixed(0)} stone=${expandCost(v).stone.toFixed(0)})`);
     console.log(`  직업: ${JOB_NAMES.map(j => `${j}=${c[j] || 0}`).join(', ')}`);
     // HHI 계산 (특화 정도)

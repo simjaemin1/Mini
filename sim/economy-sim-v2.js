@@ -227,8 +227,8 @@ function tickSubsistence(v, day) {
 // ★기회비용(개인 단위 + 숙련 반영): 교역 차출 1순위 = 한계가치가 가장 낮은 생산자 NPC.
 //   한계가치 = 산출계수(JOBS.base) × land[자원] × (1+레벨×0.05) × 그림자가격.
 //   → 글럿 재화 생산자 + *저숙련*일수록 MV 낮음 → 그가 교역 감(명인은 생산에 남음 = 마을 내 비교우위).
-const JOB_LAND = { farmer: 'fertility', fisher: 'water', hunter: 'game', lumberjack: 'wood', miner: 'stone', prospector: 'ore' };
-const JOB_OUT  = { farmer: 'food', fisher: 'fish', hunter: 'meat', lumberjack: 'wood', miner: 'stone', prospector: 'ore' };
+const JOB_LAND = { farmer: 'fertility', fisher: 'water', hunter: 'game', lumberjack: 'wood', miner: 'stone' };   // 통일 광부(탐사꾼 통합)
+const JOB_OUT  = { farmer: 'food', fisher: 'fish', hunter: 'meat', lumberjack: 'wood', miner: 'stone' };
 function lowestProducer(v, prices, day) {
   let best = null, bestMV = Infinity;
   for (const npc of v.npcs) {

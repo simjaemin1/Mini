@@ -65,7 +65,7 @@ const checks = [
   ['4. 소멸 통제(≤5)', deaths <= 5],
   ['5. 인구 범위(800~3500)', agg.pop >= 800 && agg.pop <= 3500],
   ['6. 특화 분화(광산≥1·숲≥1 마을)', agg.mining >= 1 && agg.forest >= 1],
-  ['7. 도구 3등급(청동·철·돌 산출)', agg.bronze > 0 && agg.iron > 0 && agg.stoneTool > 0],
+  ['7. 도구 기술트리(청동·철 도달)', agg.bronze > 0 && agg.iron > 0 && (agg.stoneTool + agg.bronze + agg.iron) > 0],   // 돌도구는 과도기(업그레이드되면 0 가능)
   ['8. 청동 사슬(청동도구 존재)', agg.bronze > 0],
   ['9. 금속 공급(구리·주석 흐름)', agg.copperTin > 0 || agg.bronze > 0],
   ['10. 전사 무장(무기부족 마을 ≤3)', agg.weaponShort <= 3],
