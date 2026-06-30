@@ -62,7 +62,7 @@ const TAU = 0.03;
 const TRANSPORT_COST_PER_1000 = 2.0;
 
 // 행상 carry capacity — 한 번에 N단위
-const CARGO_PER_TRIP = 50;
+const CARGO_PER_TRIP = 100;   // ★처리량 ↑(50→100): 차익거래가 실제로 가격을 청산하도록(LOP 개선). 가격피드백이 과수출 방지.
 
 // v2 r8: 가격 cap 사실상 제거 — 자연 시장 청산.
 //   진짜 부족 = ∞에 가까이 가능. 잉여 = ~0.
@@ -76,10 +76,13 @@ const PRICE_ADJ_MAX = 1000;   // 사실상 풀림 (부족 신호 자유)
 //   고대 도시의 자본재 (개간·관개·성벽) 수요 반영.
 const UTILITY_WEIGHT = {
   food: 1.5, cooked_food: 0.4, fish: 0.6, meat: 0.6,
+  // 유용재 효용(원래값). 철은 야금투입이라 적당히. (부산물 fur·cotton·통나무 등은 의류·직물·건축 대리수요로 정당 → 유지)
   tool: 0.5, weapon: 0.3, armor: 0.3, hide: 0.2,
-  wood: 0.9, stone: 0.7, ore: 0.3,
+  wood: 0.9, stone: 0.7, ore: 0.3, iron: 0.4, iron_tool: 0.5,
   fruit: 0.1, vegetable: 0.1, mushroom: 0.1, twig: 0.05, pebble: 0.05,
 };
+// ★순수 장식재 — use-value 없음(못 먹고 못 만듦). 화폐/위신재 모델링 전엔 수요 0에 가깝게(가짜 수요 제거).
+const ORNAMENTAL = { gold: 1, silver: 1, gem: 1, pearl: 1, amber: 1, jade: 1, ivory: 1 };
 
 // === 자원 부패율 — base는 약하게 (인구 영향 X), excess만 강하게 ===
 //   stock 비례 부패에서 multiplier가 진짜 일함.
@@ -181,7 +184,8 @@ function computeShadowPrices(v) {
     // v2 r6.1: target에 효용 가중치 약하게 — 너무 크면 모두 부족 신호로 식량 폭주
     const subs = (SUBSISTENCE_PER_NPC[r] || 0) * N;
     const util = UTILITY_WEIGHT[r] || 0.1;
-    const buffer = N * Math.max(0.5, util * 1.2);  // 작게: 최소 0.5/명, util 1.0이면 1.2/명
+    // 장식재(금·은·보석)는 수요 ~0(가짜수요 제거). 그 외는 0.5/명 바닥 유지(부산물=의류/직물 대리수요 정당).
+    const buffer = ORNAMENTAL[r] ? N * 0.02 : N * Math.max(0.5, util * 1.2);
     const target = Math.max(subs * 30, buffer);
     let stock = Math.max(0.1, v.storage[r] || 0);
     // ★선견적 가격(flow 반영): 구조적 식량적자(생산<소비)를 30일 선반영 → 적자 마을은 *초기재고 무관하게* 수입.
