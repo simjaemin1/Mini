@@ -617,7 +617,7 @@ const EXPAND_CHECK_INTERVAL = 7;          // 매 7일 영토 확장 검사
 // ★주거(집): 인구 성장은 집 수용력에 막힘. 집은 목재(필수)·석재(있으면)로 짓고 노후화.
 //   집 부족하면 성장만 멈춤(감소 아님). picker가 "집 지을 목재 부족 → 나무꾼" 안전망으로 고리 닫음.
 const HOUSE_WOOD = 1.5;        // 수용력 1인당 목재(한옥=목조)
-const HOUSE_STONE = 0.6;       // 수용력 1인당 석재(주춧돌·구들, 있으면 씀)
+const HOUSE_STONE = 1.2;       // 수용력 1인당 석재(주춧돌·구들·담장, 있으면 씀). ↑로 석재 수요 강화 → 광부 매력↑(목재처럼)
 const HOUSE_DECAY = 0.0015;    // 일일 노후화(완만 — 나무꾼 1명이면 유지 가능)
 const HOUSE_BUFFER = 1.15;     // 인구보다 약간 여유 있게(성장 여지)
 const HOUSE_BUILD_MAX = 0.06;  // 하루 최대 증축률(인구 대비)
@@ -1231,7 +1231,7 @@ function pickDeficitJob_rational(v, world) {
   const foodEquiv = totalFoodEquivalent(v);
   const forageLandMean = Math.max(0.3, (v.land.fertility + v.land.wood + v.land.stone) / 3);
 
-  // 진짜 기근 (food < N*30일치) — 무조건 식량 직업 (안전망).
+  // 진짜 기근 (food < N*30일치) — 무조건 식량 직업 (안전망). 식량 안정의 핵심이라 유지(풀면 마을 붕괴).
   //   v2 r9: picker w cap 풀면 농부 폭락 위험 → 30일치 보장. Lewis 모델 안전판.
   if (foodEquiv < N * 30) {
     const foodOpts = [
@@ -1249,6 +1249,8 @@ function pickDeficitJob_rational(v, world) {
   if (v.storage.tool / Math.max(1, _toolDeps) < 1.0 && hasSlot(v, 'smith', cap, counts)) return 'smith';
   // ★주거 압박: 집이 거의 가득(인구 성장 막힘) + 집 지을 목재 부족 → 나무꾼. 집 지어야 인구가 늚 → 고리를 닫는 안전망.
   if (v.housing !== undefined && N >= v.housing * 0.95 && (v.storage.wood || 0) < N * 2 && hasSlot(v, 'lumberjack', cap, counts)) return 'lumberjack';
+  // ★석재 안전망: 산이 가까운 마을(land.stone 충분)이 석재 부족하면 광부. 집·도구·무기 석재 수요 → 채광. 산 없으면(stone≤0.25) 안 함.
+  if ((v.land.stone || 0) > 0.25 && (v.storage.stone || 0) < N * 1.5 && hasSlot(v, 'miner', cap, counts)) return 'miner';
 
   // === 한계 효용 계산 — 각 직업 1명 추가 시 기대 가치 (식량 환산 단위) ===
   const period = 100;  // 평가 윈도우 100일
