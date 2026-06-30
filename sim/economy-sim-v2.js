@@ -47,8 +47,8 @@ const SUBSISTENCE_PER_NPC = {
   food: 1.0,
   cooked_food: 0.05,
   tool: 0.005,
-  weapon: 0.002,
-  armor: 0.002,
+  // ★무기·갑옷은 *인구당이 아니라 전사(사용자)당* 마모 — tickSubsistence에서 전사 비례 처리.
+  //   (옛 weapon/armor 0.002/명: 280명 마을이 0.56/일 소비 > 무기장 생산 → 전사 무장해제 버그)
   // ★주거 수요: 집(한옥)의 건축·보수에 목재·석재 소비. 인구↑(새 집)·유지보수로 지속 수요.
   //   효과: ① 숲 마을 → 나무꾼 수요 ② 석재 시장 형성 → 산골 마을이 석재 수출로 식량 구입(채광 자립).
   wood: 0.05,
@@ -182,21 +182,42 @@ const RAID_MAX = 0.5;
 function computeShadowPrices(v) {
   const N = v.npcs.length || 1;
   const prices = {};
+  // ★자본재(capital goods) 커버리지 — 도구·무기·갑옷은 *소비재가 아니라 내구 자본*.
+  //   목표재고 = 사용자 1인당 1개(소비재 버퍼 N×0.5 폐지 — 인구 절반을 무기로 두려던 가짜수요).
+  //   • 도구 3종(돌·청동·철)은 *대체재* → 합산 재고로 평가(청동 마을서 돌도구 고갈→가짜 폭등→대장장이 폭주 방지).
+  //   • 무기/갑옷 = 전사 1인당 1개(+선제 비축 바닥). 충원되면(coverage≥1) 추가분 가치 ~0 → 가격 바닥 → 쏠림·과잉생산 해소.
+  const cnt = v.counts || {};
+  let toolDeps = 0;
+  for (const j in cnt) { const jd = v1.JOBS[j]; if (jd && jd.toolDependent) toolDeps += cnt[j] || 0; }
+  const warN = cnt.warrior || 0;
+  const toolStock = (v.storage.tool || 0) + (v.storage.bronze_tool || 0) + (v.storage.iron_tool || 0);
+  const CAP_TARGET = {
+    tool: Math.max(1, toolDeps), bronze_tool: Math.max(1, toolDeps), iron_tool: Math.max(1, toolDeps),
+    weapon: Math.max(2, warN * 1.2), armor: Math.max(1, warN),   // 무기 바닥2 = 약탈위협 선제비축 시드
+  };
+  const CAP_STOCK = { tool: toolStock, bronze_tool: toolStock, iron_tool: toolStock };  // 도구는 *합산* 재고로 희소도 평가
   for (const r of TRADABLE) {
     const base = BASE_VALUE_V2[r] || 1;
     const elast = ELASTICITY[r] || 1.0;
     // v2 r6.1: target에 효용 가중치 약하게 — 너무 크면 모두 부족 신호로 식량 폭주
     const subs = (SUBSISTENCE_PER_NPC[r] || 0) * N;
     const util = UTILITY_WEIGHT[r] || 0.1;
-    // 장식재(금·은·보석)는 수요 ~0(가짜수요 제거). 그 외는 0.5/명 바닥 유지(부산물=의류/직물 대리수요 정당).
-    const buffer = ORNAMENTAL[r] ? N * 0.02 : N * Math.max(0.5, util * 1.2);
-    const target = Math.max(subs * 30, buffer);
-    let stock = Math.max(0.1, v.storage[r] || 0);
-    // ★선견적 가격(flow 반영): 구조적 식량적자(생산<소비)를 30일 선반영 → 적자 마을은 *초기재고 무관하게* 수입.
-    //   재고(stock)만 보면 근시안 — 큰 buffer에 가려 적자가 안 보여 교역이 stock에 휘둘림(경제적 오류).
-    //   surplusEMA.food = 자체생산−소비(수입 제외) → 구조적 비교우위 적자를 정확히 포착.
-    if (r === 'food' && v.surplusEMA && v.surplusEMA.food < 0) {
-      stock = Math.max(0.1, stock + v.surplusEMA.food * 30);
+    let target, stock;
+    if (CAP_TARGET[r] !== undefined) {
+      // 자본재: 커버리지 기반(사용자 1인당 1개). 도구는 합산 재고.
+      target = CAP_TARGET[r];
+      stock = Math.max(0.1, CAP_STOCK[r] !== undefined ? CAP_STOCK[r] : (v.storage[r] || 0));
+    } else {
+      // 장식재(금·은·보석)는 수요 ~0(가짜수요 제거). 그 외는 0.5/명 바닥 유지(부산물=의류/직물 대리수요 정당).
+      const buffer = ORNAMENTAL[r] ? N * 0.02 : N * Math.max(0.5, util * 1.2);
+      target = Math.max(subs * 30, buffer);
+      stock = Math.max(0.1, v.storage[r] || 0);
+      // ★선견적 가격(flow 반영): 구조적 식량적자(생산<소비)를 30일 선반영 → 적자 마을은 *초기재고 무관하게* 수입.
+      //   재고(stock)만 보면 근시안 — 큰 buffer에 가려 적자가 안 보여 교역이 stock에 휘둘림(경제적 오류).
+      //   surplusEMA.food = 자체생산−소비(수입 제외) → 구조적 비교우위 적자를 정확히 포착.
+      if (r === 'food' && v.surplusEMA && v.surplusEMA.food < 0) {
+        stock = Math.max(0.1, stock + v.surplusEMA.food * 30);
+      }
     }
     const scarcity = Math.pow(target / stock, elast);
     // ★효용가중 가격상한: 고효용(식량 util1.5→상한1000)은 격차 자유, 저효용 외래품(util0.1→상한16)은 억제.
@@ -221,6 +242,14 @@ function tickSubsistence(v, day) {
     const take = Math.min(need, have);
     v.storage[r] = have - take;
     // 부족분은 누락 (NPC는 그 자원 없이 살아감 — 효용 손실로 모델링 가능하지만 단순화)
+  }
+  // ★무기·갑옷 마모 = 전사(사용자) 비례 — 인구 전체가 아님(내구 자본). 전사 1명당 0.01/일.
+  //   대장간 1명(≈0.45/일)이 전사 수십까지 충분히 유지 → 전사 무장 안정.
+  const warN = v.counts.warrior || 0;
+  for (const r of ['weapon', 'armor']) {
+    const wear = warN * 0.01;
+    const have = v.storage[r] || 0;
+    v.storage[r] = Math.max(0, have - Math.min(wear, have));
   }
 }
 
@@ -286,7 +315,7 @@ function tickTradeV2(world, day) {
       // 후보 자원 — 잉여. ★식량류(food/fish/meat/cooked_food)는 넉넉히 보유 후 *진짜* 잉여만 수출.
       //   기존엔 15일치만 남겨(< 기근 문턱 30일치) 식량 마을이 수출 후 식량불안 → 비식량 직업 선점. 이젠 36일치 보유.
       const FOODR = { food: 1, fish: 1, meat: 1, cooked_food: 1 };
-      const CAPITAL = { tool: 1, iron_tool: 1 };   // ★도구=자본재. 팔아치우면 생산 0.25×로 붕괴 → 1인당 1개 보유 후 잉여만.
+      const CAPITAL = { tool: 1, bronze_tool: 1, iron_tool: 1 };   // ★도구=자본재(돌·청동·철). 팔아치우면 생산 0.25×로 붕괴 → 1인당 1개 보유 후 잉여만.
       const WEAPONR = { weapon: 1, armor: 1 };      // ★무기·갑옷=전사 장비. 전사 수만큼 보유(팔면 전사 무장해제).
       const warN = (a.v.counts && a.v.counts.warrior) || 0;
       const candidates = [];

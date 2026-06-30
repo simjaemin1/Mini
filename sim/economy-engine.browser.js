@@ -662,6 +662,7 @@ function villageDist(a, b) {
 //   prospector: ore       × 0.25
 //   forager:    (제한 약함)  × 0.5
 //   smith/cook/warrior: 인구 비례 (마을 안에서 자체 결정)
+const UNCAPPED = 1e9;   // 사실상 무제한 — 직업 수는 시장(한계가치/그림자가격)이 결정
 function jobCapacity(v) {
   const s = v.land.size;
   const c = {
@@ -671,11 +672,15 @@ function jobCapacity(v) {
     lumberjack: Math.floor(s * v.land.wood      * 0.30),
     miner:      Math.floor(s * Math.max(v.land.stone, v.land.ore) * 0.30),   // 통일 광부: 돌·광석 중 풍부한 쪽 기준
     forager:    Math.floor(s * 0.30),
-    smith:       Math.max(1, Math.floor(v.npcs.length * 0.10)),
-    weaponsmith: Math.max(1, Math.floor(v.npcs.length * 0.06)),  // Phase 4d-7
-    armorsmith:  Math.max(1, Math.floor(v.npcs.length * 0.06)),  // Phase 4d-7
-    cook:        Math.max(1, Math.floor(v.npcs.length * 0.10)),
-    warrior:     Math.max(1, Math.floor(v.npcs.length * 0.08)),
+    // ★인구비율 정원(하드캡) 전부 폐지 — 직업 수는 한계가치 vs 그림자가격으로 *자연 수렴*.
+    //   대장장이: 도구 쌓이면 도구가격↓→한계가치↓→안 뽑힘 + 글럿 시 차출(opportunityCost=시장가치).
+    //   무기/갑옷장: 무기·갑옷 가격 + 약탈위협 + 가죽 가용이 결정. 전사: 무기 보유 게이트 + sqrt 체감.
+    //   (옛 캡 smith0.10·weapon/armor0.06·cook0.10·warrior0.08 → 인위적 분포 강제라 제거)
+    smith:       UNCAPPED,
+    weaponsmith: UNCAPPED,
+    armorsmith:  UNCAPPED,
+    cook:        UNCAPPED,
+    warrior:     UNCAPPED,
     merchant:    0,  // ★전담 행상 폐지 — 교역은 기본 NPC가 남는 시간에 왕복(tickTradeV2). 정원 0이라 아무도 행상으로 안 뽑힘.
   };
   return c;
@@ -776,10 +781,34 @@ function switchNPCJob(npc, newJob, day, v) {
   npc.lastJobChangeDay = day;
 }
 
-// NPC 기회비용 — 현재 일에 얼마나 투자했나
-function opportunityCost(npc) {
-  const f = npcField(npc);
-  return npc.skills[f] * 2 + npc.traits[f];
+// NPC 기회비용 — ★시장가치(한계생산 × 그림자가격). 픽커 한계가치와 *동일 척도*라
+//   switch-in(부족직)·switch-out(잉여직)이 대칭(Lewis 노동이동). 글럿(가격폭락) 재화
+//   생산자(예: 도구 과잉 마을의 대장장이 → 도구가격↓)는 가치가 낮아 1순위로 차출됨.
+//   w(r) = 그림자가격 가중(없으면 1). 숙련 보너스로 명인은 약간 덜 차출(마을 내 비교우위).
+function opportunityCost(npc, v, w) {
+  w = (typeof w === 'function') ? w : (_ => 1.0);
+  const L = (v && v.land) || {};
+  const sk = 1 + (npc.skills[npcField(npc)] || 0) * 0.05;
+  switch (npc.currentJob) {
+    case 'farmer':      return (L.fertility || 0) * 0.4 * w('food') * sk;
+    case 'fisher':      return (L.water || 0) * 1.2 * w('fish') * sk;
+    case 'hunter':      return (L.game || 0) * 0.7 * (w('meat') + 0.3 * w('hide')) * sk;
+    case 'lumberjack':  return (L.wood || 0) * 0.3 * w('wood') * sk;
+    case 'miner':       return Math.max((L.stone || 0) * w('stone'), (L.ore || 0) * w('ore')) * 0.3 * sk;
+    case 'forager':     return Math.max(0.3, ((L.fertility || 0) + (L.wood || 0) + (L.stone || 0)) / 3) * 0.25 * w('vegetable') * sk;
+    // ★자본재 장인: 노동목표 초과면 0.005(글럿 광부 0.01보다↓ → 1순위 차출), 이내면 50(유지).
+    case 'smith':       return ((v.counts.smith || 0)       > smithTarget(v))       ? 0.005 : 50 * sk;
+    case 'weaponsmith': return ((v.counts.weaponsmith || 0) > weaponsmithTarget(v)) ? 0.005 : 50 * sk;
+    case 'armorsmith':  return ((v.counts.armorsmith || 0)  > armorsmithTarget(v))  ? 0.005 : 50 * sk;
+    case 'cook':        return 0.4 * w('cooked_food') * sk;
+    // ★전사: 무장 가능 수(보유 무기)와 readiness 목표 중 작은 값으로 상한. 무기 없으면 전사 아님 → 동원해제(생산직).
+    //   초과/무장불가면 0.008(글럿 생산자 0.01보다↓ = 최우선 차출), 이내면 유지(방어 비시장가치).
+    case 'warrior': {
+      const wt = Math.min(warriorTarget(v), Math.floor(v.storage.weapon || 0));
+      return ((v.counts.warrior || 0) > wt) ? 0.008 : 100;
+    }
+    default:            return sk;
+  }
 }
 
 // =============================================================================
@@ -1289,6 +1318,50 @@ function pickDeficitJob(v) {
 //   - 농부 vs 광부 vs 상인 vs 전사 각 직업 1명 추가 시 기대 가치 비교
 //   - 인근 마을 식량 공급 + 우리 캐러밴 약탈률 + sqrt 한계효용
 // =============================================================================
+// ★자본재 장인 노동목표(스톡-플로우) — *직업 정원이 아니라* 자본수요에서 파생되는 노동 흐름.
+//   목표재고(사용자 1인당 1개+버퍼) 대비 결손을 catchup일에 메우는 장인 수 + 마모 보충분.
+//   충원되면 0으로 수렴 → 장인 수가 창발적으로 결정(고증: 야금공은 인구의 소수).
+function craftLaborTarget(stock, users, dailyOut, opts) {
+  opts = opts || {};
+  const buffer = (opts.buffer != null) ? opts.buffer : 1.15;
+  const catchup = opts.catchup || 50;
+  const decay = (opts.decay != null) ? opts.decay : 0.001;
+  const minStock = opts.minStock || 0;
+  const desired = Math.max(minStock, users * buffer);
+  const deficit = Math.max(0, desired - stock);
+  const out = Math.max(0.05, dailyOut);
+  const need = deficit / (out * catchup) + (stock * decay) / out;   // 결손 보충 + 마모 보충
+  return (stock < desired) ? Math.max(1, Math.round(need)) : Math.round(need);
+}
+function toolDepCount(v) {
+  let td = 0; for (const j of JOB_NAMES) if (JOBS[j].toolDependent) td += (v.counts[j] || 0);
+  return td;
+}
+function smithTarget(v) {
+  const toolStock = (v.storage.tool || 0) + (v.storage.bronze_tool || 0) + (v.storage.iron_tool || 0);
+  return craftLaborTarget(toolStock, toolDepCount(v), 0.5, { buffer: 1.15, catchup: 50, decay: 0.0008 });
+}
+// ★전사 readiness 목표 — *정원 아님*. 교역 캐러밴 수 × 약탈위협으로 호위 수요 파생.
+//   위협 없으면 0(평시 전사 불필요), 위협 클수록 ↑. 글럿 마을의 전사 과잉(19%) 방지 + 평시 자연 동원해제.
+function warriorTarget(v) {
+  const ts = v.tradeStats || {};
+  const sent = Math.max(1, ts.caravansSent || 0);
+  const raidRate = Math.min(0.9, (ts.caravansRaided || 0) / sent);
+  if (raidRate <= 0.03 && (ts.tradersKilled || 0) === 0) return 0;   // 위협 없으면 전사 0
+  const N = v.npcs.length || 1;
+  const caravans = Math.max(1, Math.floor(N * 0.08));   // 동시 교역 캐러밴 수(호위 대상)
+  return Math.ceil(caravans * (0.5 + raidRate));         // 위협 비례 호위 수
+}
+function weaponsmithTarget(v) {
+  // 무기는 교역으로 새어나가(약탈·전투 소모는 없지만 수출) → 전사 마을은 *상시* 무기장 필요.
+  //   사용자 = 현 전사 + 목표 전사(선제 무장). 누수 대비 buffer·decay 넉넉히.
+  const users = Math.max(v.counts.warrior || 0, warriorTarget(v));
+  return craftLaborTarget(v.storage.weapon || 0, users, 0.5, { buffer: 1.3, catchup: 30, decay: 0.002, minStock: users > 0 ? 2 : 0 });
+}
+function armorsmithTarget(v) {
+  return craftLaborTarget(v.storage.armor || 0, v.counts.warrior || 0, 0.3, { buffer: 1.0, catchup: 60, decay: 0.0004 });
+}
+
 function pickDeficitJob_rational(v, world) {
   const N = v.npcs.length || 1;
   const cap = jobCapacity(v);
@@ -1299,10 +1372,11 @@ function pickDeficitJob_rational(v, world) {
   // ★도구 자본 우선(기근보다 앞): 도구가 치명적으로 부족하면(맨손 0.25× = 식량생산 폭락) 대장간 먼저.
   //   도구는 자본재 — 1명이 도구 만들면 나머지 식량생산이 0.25×→1.0×로 회복(순이득 큼). 단 재료(목·석) 있고 마을 충분히 클 때만.
   //   재료 없으면 아래 식량직(forage가 목·석도 가져옴)으로 자연 회복. 죽음의 나선 방지.
-  if (N >= 6) {
-    let _td = 0; for (const j of JOB_NAMES) if (JOBS[j].toolDependent) _td += (counts[j] || 0);
-    const _cov = ((v.storage.tool || 0) + (v.storage.bronze_tool || 0) + (v.storage.iron_tool || 0)) / Math.max(1, _td);
-    if (_cov < 0.7 && (v.storage.stone || 0) >= 0.6 && hasSlot(v, 'smith', cap, counts)) return 'smith';
+  if (N >= 6 && (v.storage.stone || 0) >= 0.6) {
+    const _td = toolDepCount(v);
+    const _toolStock = (v.storage.tool || 0) + (v.storage.bronze_tool || 0) + (v.storage.iron_tool || 0);
+    // 치명적 도구부족(커버리지<0.7)이고 대장장이가 노동목표 미달이면 기근보다 먼저 대장간.
+    if (_toolStock < _td * 0.7 && (counts.smith || 0) < smithTarget(v)) return 'smith';
   }
 
   // 진짜 기근 (food < N*30일치) — 식량 직업 강제. ★경제적 정당성: 자급경제는 맬서스 상한에서 돌고,
@@ -1328,17 +1402,19 @@ function pickDeficitJob_rational(v, world) {
     foodOpts.sort((a, b) => b[1] - a[1]);
     if (foodOpts.length > 0) return foodOpts[0][0];
   }
-  // 도구 절박 부족
-  let _toolDeps = 0;
-  for (const j of JOB_NAMES) if (JOBS[j].toolDependent) _toolDeps += (counts[j] || 0);
-  if (((v.storage.tool || 0) + (v.storage.bronze_tool || 0) + (v.storage.iron_tool || 0)) / Math.max(1, _toolDeps) < 1.0 && hasSlot(v, 'smith', cap, counts)) return 'smith';
+  // ★자본재 장인 — 스톡-플로우 노동목표(정원 아님). 목표 미달이면 충원, 충족이면 건너뜀(0 수렴).
+  //   재료 게이트: 대장간 돌, 무기장 돌, 갑옷장 가죽 필요. 충원 후엔 marginal 후보에서 빠져 식량·자원직과 경쟁 안 함.
+  let _toolDeps = toolDepCount(v);
+  if ((counts.smith || 0) < smithTarget(v) && (v.storage.stone || 0) >= 0.6) return 'smith';
+  if ((counts.weaponsmith || 0) < weaponsmithTarget(v) && (v.storage.stone || 0) > N * 0.3) return 'weaponsmith';
+  if ((counts.armorsmith || 0) < armorsmithTarget(v) && (v.storage.hide || 0) > N * 0.3) return 'armorsmith';
   // ★주거 압박: 집이 거의 가득(인구 성장 막힘) + 집 지을 목재 부족 → 나무꾼. 집 지어야 인구가 늚 → 고리를 닫는 안전망.
   if (v.housing !== undefined && N >= v.housing * 0.95 && (v.storage.wood || 0) < N * 2 && hasSlot(v, 'lumberjack', cap, counts)) return 'lumberjack';
   // ★석재 안전망: 산이 가까운 마을(land.stone 충분)이 석재 부족하면 광부. 집·도구·무기 석재 수요 → 채광. 산 없으면(stone≤0.25) 안 함.
   if ((v.land.stone || 0) > 0.25 && (v.storage.stone || 0) < N * 1.5 && hasSlot(v, 'miner', cap, counts)) return 'miner';
   // ★호위 안전망: 행상이 도적에게 죽은 적 있고(tradersKilled) 전사 부족 + 식량 여유면 전사 양성.
   //   → 전사가 무기·갑옷 수요 → 광석·석재 수요 → 채광. (도적→전사→광업 사슬을 닫음)
-  if (v.tradeStats && (v.tradeStats.tradersKilled || 0) > 3 && (counts.warrior || 0) < Math.max(1, N * 0.06) && foodEquiv > N * 40 && (v.storage.weapon || 0) >= (counts.warrior || 0) + 1 && hasSlot(v, 'warrior', cap, counts)) return 'warrior';   // ★무기(돌칼/철칼) 있어야 전사
+  if (v.tradeStats && (v.tradeStats.tradersKilled || 0) > 3 && (counts.warrior || 0) < warriorTarget(v) && foodEquiv > N * 40 && (v.storage.weapon || 0) >= (counts.warrior || 0) + 1 && hasSlot(v, 'warrior', cap, counts)) return 'warrior';   // ★무기(돌칼/철칼) 있어야 전사 + readiness 목표 이내
 
   // === 한계 효용 계산 — 각 직업 1명 추가 시 기대 가치 (식량 환산 단위) ===
   const period = 100;  // 평가 윈도우 100일
@@ -1389,6 +1465,7 @@ function pickDeficitJob_rational(v, world) {
   // warrior — 약탈 자주 일어나는 마을에서만 의미. 추가로 weapon/armor 가용성이 호위 효과 결정.
   //   장비 비싸면 호위 운용 어려움 (가격에 음 반응) + stock 적으면 운용 어려움.
   if (hasSlot(v, 'warrior', cap, counts) && caravansSeen > 1 && raidRate > 0.05 &&
+      (counts.warrior || 0) < warriorTarget(v) &&   // ★readiness 목표(약탈률×교역량) 이내 — 글럿 마을 전사 과잉 방지
       (v.storage.weapon || 0) >= (counts.warrior || 0) + 1) {   // ★전사 게이트: 1인 1무기(돌칼/철칼) 보유 필수
     const curWarrior = counts.warrior || 0;
     const equipStock = (v.storage.weapon || 0) + (v.storage.armor || 0);
@@ -1398,20 +1475,8 @@ function pickDeficitJob_rational(v, world) {
     const adjustedWarriorGain = warriorGain * (0.3 + 0.7 * equipReady) * equipCostMult;
     candidates.push(['warrior', adjustedWarriorGain]);
   }
-  // 대장장이 — tool 가격이 매력 결정 (예전 hardcoded 0.5 → 가격 기반)
-  if (hasSlot(v, 'smith', cap, counts))
-    candidates.push(['smith', 0.4 * period * w('tool')]);
-  // weaponsmith/armorsmith — 가격이 비싼 마을일수록 매력 ↑
-  // weaponsmith — 약탈 위협이 있으면 *선제적으로* 무기 비축(전사 양성 전제). 돌(자급)·철 기반. 전사 유무와 무관(순환 해소).
-  {
-    const raidThreat = raidRate > 0.03 || (v.tradeStats && (v.tradeStats.tradersKilled || 0) > 0);
-    const wantWeapons = Math.max(2, Math.ceil(N * 0.08));   // 인구 8%까지 무장 목표
-    if (hasSlot(v, 'weaponsmith', cap, counts) && raidThreat && (v.storage.stone || 0) > N * 0.3 && (v.storage.weapon || 0) < wantWeapons)
-      candidates.push(['weaponsmith', 0.5 * period * w('weapon')]);
-  }
-  if (hasSlot(v, 'armorsmith', cap, counts) && v.storage.hide > N * 0.3)
-    candidates.push(['armorsmith', 0.3 * period * w('armor')]);
-
+  // ★대장장이·무기장·갑옷장은 marginal 후보에서 제외 — 위의 스톡-플로우 노동목표(smithTarget 등)가
+  //   전담 결정. 자본재 장인을 식량·자원직과 한계가치로 경쟁시키면 글럿 마을서 과잉(도구가격 floor 탓).
   candidates.sort((a, b) => b[1] - a[1]);
   if (candidates.length > 0) return candidates[0][0];
   return null;
@@ -1435,24 +1500,35 @@ function autoSwitchJob(v, day, world) {
   if (!need) return;  // 자리 없으면 전환 불가
   const counts = jobCounts(v);
   const N = v.npcs.length;
-  // 이미 충분하면 skip
+  // ★무장불가 전사 우선 동원해제 — need 과포화 가드(아래)에 막히지 않게 전용 처리.
+  //   무기 없는 전사는 전사가 아니라 유휴 인력 → 땅에 맞는 식량직으로(쿨다운 지나면).
+  {
+    const armed = Math.floor(v.storage.weapon || 0);
+    if ((counts.warrior || 0) > armed) {
+      for (const n of v.npcs) {
+        if (n.currentJob !== 'warrior') continue;
+        if (day - n.lastJobChangeDay < 30) continue;
+        const opts = [['farmer', v.land.fertility * 1.5], ['fisher', v.land.water * 1.2], ['hunter', v.land.game * 0.7], ['forager', 0.3]];
+        opts.sort((a, b) => b[1] - a[1]);
+        switchNPCJob(n, opts[0][0], day, v);
+        return;   // 한 번에 1명(churn 억제)
+      }
+    }
+  }
+  // 이미 과포화면 skip (한 직업이 인구의 40% 초과 — 과집중·소형마을 불안정 방지)
   if (counts[need] / N > 0.4) return;
-  // 잉여 직군에서 NPC 1명 — 기회비용 가장 낮은 NPC
+  // 잉여 직군에서 NPC 1명 — ★시장가치(기회비용) 가장 낮은 NPC = 글럿 재화 생산자.
+  //   (옛 surplusBonus[25%미만 보호] 제거 — 그게 도구 글럿에도 10% 대장장이를 고착시킨 원인.
+  //    시장가치가 직접 결정: 도구가격 폭락 → 대장장이 비용 최저 → 부족직으로 전환됨.)
+  const priceTbl = (world && typeof world.priceFn === 'function') ? world.priceFn(v) : null;
+  const w = priceTbl ? (r => Math.max(0.05, Math.min(200, (priceTbl[r] || 1) / 1.0))) : (_ => 1.0);
   let bestIdx = -1, bestCost = Infinity;
   for (let i = 0; i < v.npcs.length; i++) {
     const n = v.npcs[i];
     if (n.currentJob === need) continue;
-    if (day - n.lastJobChangeDay < 30) continue;  // 쿨다운
-    const cost = opportunityCost(n);
-    // 부족한 직군이면 그 직군 NPC는 후보 X
-    // 잉여 직군 (해당 직군이 N의 25% 이상) 우선
-    const myJobRatio = counts[n.currentJob] / N;
-    const surplusBonus = myJobRatio > 0.25 ? 0 : 5;  // 잉여 X면 cost 페널티
-    const finalCost = cost + surplusBonus;
-    if (finalCost < bestCost) {
-      bestCost = finalCost;
-      bestIdx = i;
-    }
+    if (day - n.lastJobChangeDay < 30) continue;  // 쿨다운(개인 단위 churn 억제)
+    const cost = opportunityCost(n, v, w);
+    if (cost < bestCost) { bestCost = cost; bestIdx = i; }
   }
   if (bestIdx >= 0) {
     switchNPCJob(v.npcs[bestIdx], need, day, v);
@@ -2154,8 +2230,8 @@ const SUBSISTENCE_PER_NPC = {
   food: 1.0,
   cooked_food: 0.05,
   tool: 0.005,
-  weapon: 0.002,
-  armor: 0.002,
+  // ★무기·갑옷은 *인구당이 아니라 전사(사용자)당* 마모 — tickSubsistence에서 전사 비례 처리.
+  //   (옛 weapon/armor 0.002/명: 280명 마을이 0.56/일 소비 > 무기장 생산 → 전사 무장해제 버그)
   // ★주거 수요: 집(한옥)의 건축·보수에 목재·석재 소비. 인구↑(새 집)·유지보수로 지속 수요.
   //   효과: ① 숲 마을 → 나무꾼 수요 ② 석재 시장 형성 → 산골 마을이 석재 수출로 식량 구입(채광 자립).
   wood: 0.05,
@@ -2289,21 +2365,42 @@ const RAID_MAX = 0.5;
 function computeShadowPrices(v) {
   const N = v.npcs.length || 1;
   const prices = {};
+  // ★자본재(capital goods) 커버리지 — 도구·무기·갑옷은 *소비재가 아니라 내구 자본*.
+  //   목표재고 = 사용자 1인당 1개(소비재 버퍼 N×0.5 폐지 — 인구 절반을 무기로 두려던 가짜수요).
+  //   • 도구 3종(돌·청동·철)은 *대체재* → 합산 재고로 평가(청동 마을서 돌도구 고갈→가짜 폭등→대장장이 폭주 방지).
+  //   • 무기/갑옷 = 전사 1인당 1개(+선제 비축 바닥). 충원되면(coverage≥1) 추가분 가치 ~0 → 가격 바닥 → 쏠림·과잉생산 해소.
+  const cnt = v.counts || {};
+  let toolDeps = 0;
+  for (const j in cnt) { const jd = v1.JOBS[j]; if (jd && jd.toolDependent) toolDeps += cnt[j] || 0; }
+  const warN = cnt.warrior || 0;
+  const toolStock = (v.storage.tool || 0) + (v.storage.bronze_tool || 0) + (v.storage.iron_tool || 0);
+  const CAP_TARGET = {
+    tool: Math.max(1, toolDeps), bronze_tool: Math.max(1, toolDeps), iron_tool: Math.max(1, toolDeps),
+    weapon: Math.max(2, warN * 1.2), armor: Math.max(1, warN),   // 무기 바닥2 = 약탈위협 선제비축 시드
+  };
+  const CAP_STOCK = { tool: toolStock, bronze_tool: toolStock, iron_tool: toolStock };  // 도구는 *합산* 재고로 희소도 평가
   for (const r of TRADABLE) {
     const base = BASE_VALUE_V2[r] || 1;
     const elast = ELASTICITY[r] || 1.0;
     // v2 r6.1: target에 효용 가중치 약하게 — 너무 크면 모두 부족 신호로 식량 폭주
     const subs = (SUBSISTENCE_PER_NPC[r] || 0) * N;
     const util = UTILITY_WEIGHT[r] || 0.1;
-    // 장식재(금·은·보석)는 수요 ~0(가짜수요 제거). 그 외는 0.5/명 바닥 유지(부산물=의류/직물 대리수요 정당).
-    const buffer = ORNAMENTAL[r] ? N * 0.02 : N * Math.max(0.5, util * 1.2);
-    const target = Math.max(subs * 30, buffer);
-    let stock = Math.max(0.1, v.storage[r] || 0);
-    // ★선견적 가격(flow 반영): 구조적 식량적자(생산<소비)를 30일 선반영 → 적자 마을은 *초기재고 무관하게* 수입.
-    //   재고(stock)만 보면 근시안 — 큰 buffer에 가려 적자가 안 보여 교역이 stock에 휘둘림(경제적 오류).
-    //   surplusEMA.food = 자체생산−소비(수입 제외) → 구조적 비교우위 적자를 정확히 포착.
-    if (r === 'food' && v.surplusEMA && v.surplusEMA.food < 0) {
-      stock = Math.max(0.1, stock + v.surplusEMA.food * 30);
+    let target, stock;
+    if (CAP_TARGET[r] !== undefined) {
+      // 자본재: 커버리지 기반(사용자 1인당 1개). 도구는 합산 재고.
+      target = CAP_TARGET[r];
+      stock = Math.max(0.1, CAP_STOCK[r] !== undefined ? CAP_STOCK[r] : (v.storage[r] || 0));
+    } else {
+      // 장식재(금·은·보석)는 수요 ~0(가짜수요 제거). 그 외는 0.5/명 바닥 유지(부산물=의류/직물 대리수요 정당).
+      const buffer = ORNAMENTAL[r] ? N * 0.02 : N * Math.max(0.5, util * 1.2);
+      target = Math.max(subs * 30, buffer);
+      stock = Math.max(0.1, v.storage[r] || 0);
+      // ★선견적 가격(flow 반영): 구조적 식량적자(생산<소비)를 30일 선반영 → 적자 마을은 *초기재고 무관하게* 수입.
+      //   재고(stock)만 보면 근시안 — 큰 buffer에 가려 적자가 안 보여 교역이 stock에 휘둘림(경제적 오류).
+      //   surplusEMA.food = 자체생산−소비(수입 제외) → 구조적 비교우위 적자를 정확히 포착.
+      if (r === 'food' && v.surplusEMA && v.surplusEMA.food < 0) {
+        stock = Math.max(0.1, stock + v.surplusEMA.food * 30);
+      }
     }
     const scarcity = Math.pow(target / stock, elast);
     // ★효용가중 가격상한: 고효용(식량 util1.5→상한1000)은 격차 자유, 저효용 외래품(util0.1→상한16)은 억제.
@@ -2328,6 +2425,14 @@ function tickSubsistence(v, day) {
     const take = Math.min(need, have);
     v.storage[r] = have - take;
     // 부족분은 누락 (NPC는 그 자원 없이 살아감 — 효용 손실로 모델링 가능하지만 단순화)
+  }
+  // ★무기·갑옷 마모 = 전사(사용자) 비례 — 인구 전체가 아님(내구 자본). 전사 1명당 0.01/일.
+  //   대장간 1명(≈0.45/일)이 전사 수십까지 충분히 유지 → 전사 무장 안정.
+  const warN = v.counts.warrior || 0;
+  for (const r of ['weapon', 'armor']) {
+    const wear = warN * 0.01;
+    const have = v.storage[r] || 0;
+    v.storage[r] = Math.max(0, have - Math.min(wear, have));
   }
 }
 
@@ -2393,7 +2498,7 @@ function tickTradeV2(world, day) {
       // 후보 자원 — 잉여. ★식량류(food/fish/meat/cooked_food)는 넉넉히 보유 후 *진짜* 잉여만 수출.
       //   기존엔 15일치만 남겨(< 기근 문턱 30일치) 식량 마을이 수출 후 식량불안 → 비식량 직업 선점. 이젠 36일치 보유.
       const FOODR = { food: 1, fish: 1, meat: 1, cooked_food: 1 };
-      const CAPITAL = { tool: 1, iron_tool: 1 };   // ★도구=자본재. 팔아치우면 생산 0.25×로 붕괴 → 1인당 1개 보유 후 잉여만.
+      const CAPITAL = { tool: 1, bronze_tool: 1, iron_tool: 1 };   // ★도구=자본재(돌·청동·철). 팔아치우면 생산 0.25×로 붕괴 → 1인당 1개 보유 후 잉여만.
       const WEAPONR = { weapon: 1, armor: 1 };      // ★무기·갑옷=전사 장비. 전사 수만큼 보유(팔면 전사 무장해제).
       const warN = (a.v.counts && a.v.counts.warrior) || 0;
       const candidates = [];

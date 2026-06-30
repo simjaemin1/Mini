@@ -33,7 +33,7 @@ global.__log = _log; console.log = _log;
 // ── 5시드 구동 + 집계 ──
 const SEEDS = [7, 42, 8, 3, 19];
 const agg = { pop: 0, bad: 0, initVil: 0, finalVil: 0, mining: 0, forest: 0, bronze: 0, iron: 0, stoneTool: 0, copperTin: 0,
-  weaponShort: 0, villages: 0, houses: 0, tradeStaple: 0, tradeOrn: 0, crashed: false, seedRows: [] };
+  weaponShort: 0, villages: 0, houses: 0, tradeStaple: 0, tradeOrn: 0, craftBloat: 0, maxCraftFrac: 0, crashed: false, seedRows: [] };
 const STAPLE = new Set(['food', 'fish', 'meat', 'stone', 'ore', 'wood', 'iron', 'copper', 'tin']);
 const ORN = new Set(['gold', 'silver', 'gem']);
 for (const sd of SEEDS) {
@@ -48,6 +48,10 @@ for (const sd of SEEDS) {
     agg.bronze += S.bronze_tool || 0; agg.iron += S.iron_tool || 0; agg.stoneTool += S.tool || 0;
     agg.copperTin += (S.copper || 0) + (S.tin || 0);
     if ((S.weapon || 0) < (c.warrior || 0) * 0.7) agg.weaponShort++;
+    // ★장인 비대 가드 — 야금공(대장+무기장+갑옷장)이 인구의 15% 초과면 정원 제거가 스톡-플로우 없이 폭주한 것.
+    const craftFrac = ((c.smith || 0) + (c.weaponsmith || 0) + (c.armorsmith || 0)) / Math.max(1, n);
+    if (craftFrac > 0.15) agg.craftBloat++;
+    if (craftFrac > agg.maxCraftFrac) agg.maxCraftFrac = craftFrac;
     agg.houses += (v.houses ? v.houses.length : 0);
     sp += n;
   }
@@ -71,6 +75,7 @@ const checks = [
   ['10. 전사 무장(무기부족 마을 ≤3)', agg.weaponShort <= 3],
   ['11. staple 교역 > 0', agg.tradeStaple > 0],
   ['12. 집 성장(>마을수×2)', agg.houses > agg.villages * 2],
+  ['13. 장인 비대 없음(야금공>15% 마을 ≤1)', agg.craftBloat <= 1],   // 정원 제거 후 스톡-플로우가 장인 수를 자연 수렴시키는지
 ];
 console.log('\n=== 회귀 검사 (5시드) ===');
 agg.seedRows.forEach(s => console.log('  ' + s));
