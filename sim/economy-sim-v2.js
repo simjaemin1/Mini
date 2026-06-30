@@ -264,14 +264,19 @@ function tickTradeV2(world, day) {
     while (caravansLaunched < maxTrips && a.sent < capacity) {
       const lp = lowestProducer(a.v, a.prices, day);   // 현재 가장 값싼 생산자 NPC(이미 교역중인 사람 제외)
       if (!lp.npc) break;   // 보낼 생산자가 없으면 중단
-      // 후보 자원 — 잉여
+      // 후보 자원 — 잉여. ★식량류(food/fish/meat/cooked_food)는 넉넉히 보유 후 *진짜* 잉여만 수출.
+      //   기존엔 15일치만 남겨(< 기근 문턱 30일치) 식량 마을이 수출 후 식량불안 → 비식량 직업 선점. 이젠 36일치 보유.
+      const FOODR = { food: 1, fish: 1, meat: 1, cooked_food: 1 };
       const candidates = [];
       for (const r of TRADABLE) {
         const stock = a.v.storage[r] || 0;
         const subs = (SUBSISTENCE_PER_NPC[r] || 0) * N;
         const buffer = N * 0.8;
         const target = Math.max(subs * 30, buffer);
-        if (stock > target * 0.8) candidates.push({ res: r, surplus: Math.max(1, stock - target * 0.5) });
+        const isFood = FOODR[r];
+        const keep = isFood ? target * 1.2 : target * 0.5;     // 식량: 36일치 보유(>기근30) / 그 외: 15일치
+        const thresh = isFood ? target * 1.4 : target * 0.8;   // 식량: 42일치 넘을 때만 수출
+        if (stock > thresh) candidates.push({ res: r, surplus: Math.max(1, stock - keep) });
       }
       if (!candidates.length) break;
 
