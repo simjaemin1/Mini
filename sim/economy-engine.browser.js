@@ -444,13 +444,13 @@ const JOBS = {
     byproduct: { oak_log: 0.20, pine_log: 0.15, resin: 0.08, bark: 0.10, acorn: 0.06 },
   },
   miner: {
-    field: 'mining', output: 'stone', base: 0.7,
+    field: 'mining', output: 'stone', base: 1.5,   // 산출 강화(0.7→1.5): 풍부광맥 마을이 자가소비+수출 잉여 동시 확보
     landBoost: (v) => v.land.stone, toolDependent: true, inputs: {},
     // Phase 5-5-econ-b: 광맥 부산물 (석탄·소금·기본 광물)
     byproduct: { coal: 0.10, salt: 0.05, clay: 0.08 },
   },
   prospector: {
-    field: 'mining', output: 'ore', base: 0.5,
+    field: 'mining', output: 'ore', base: 1.2,   // 산출 강화(0.5→1.2): 광석 수출 잉여 → 야금 사슬 공급
     landBoost: (v) => v.land.ore, toolDependent: true, inputs: {},
     // Phase 5-5-econ-b: 희귀 광맥 (iron·copper·tin·silver·gold·gem)
     byproduct: { iron: 0.30, copper: 0.20, tin: 0.10, silver: 0.05, gold: 0.02, gem: 0.01 },
@@ -617,7 +617,7 @@ const EXPAND_CHECK_INTERVAL = 7;          // 매 7일 영토 확장 검사
 // ★주거(집): 인구 성장은 집 수용력에 막힘. 집은 목재(필수)·석재(있으면)로 짓고 노후화.
 //   집 부족하면 성장만 멈춤(감소 아님). picker가 "집 지을 목재 부족 → 나무꾼" 안전망으로 고리 닫음.
 const HOUSE_WOOD = 1.5;        // 수용력 1인당 목재(한옥=목조)
-const HOUSE_STONE = 1.2;       // 수용력 1인당 석재(주춧돌·구들·담장, 있으면 씀). ↑로 석재 수요 강화 → 광부 매력↑(목재처럼)
+const HOUSE_STONE = 2.5;       // 수용력 1인당 석재(주춧돌·구들·담장). 준-필수(없으면 건축 30%) → 강한 석재 수요 → 광산 교역·광부 매력↑
 const HOUSE_DECAY = 0.0015;    // 일일 노후화(완만 — 나무꾼 1명이면 유지 가능)
 const HOUSE_BUFFER = 1.15;     // 인구보다 약간 여유 있게(성장 여지)
 const HOUSE_BUILD_MAX = 0.06;  // 하루 최대 증축률(인구 대비)
@@ -1038,10 +1038,14 @@ function tickVillage(v, day) {
   v.housing *= (1 - HOUSE_DECAY);   // 노후화
   const houseTarget = N * HOUSE_BUFFER;
   if (v.housing < houseTarget) {
-    const built = Math.min(houseTarget - v.housing, (v.storage.wood || 0) / HOUSE_WOOD, N * HOUSE_BUILD_MAX);   // 목재가 필수 제약
+    let built = Math.min(houseTarget - v.housing, (v.storage.wood || 0) / HOUSE_WOOD, N * HOUSE_BUILD_MAX);   // 목재가 필수 제약
     if (built > 0) {
+      // ★석재 준-필수: 석재 충분하면 정상 건축, 없으면 30%만(주춧돌·구들 없는 임시 가옥). 강한 석재 수요 → 광산 교역 유발.
+      const stoneNeed = built * HOUSE_STONE;
+      const stoneFrac = stoneNeed > 0 ? Math.min(1, (v.storage.stone || 0) / stoneNeed) : 1;
+      built *= 0.3 + 0.7 * stoneFrac;   // 석재 0 → 30% 속도, 충분 → 100%
       v.storage.wood -= built * HOUSE_WOOD;
-      v.storage.stone -= Math.min(v.storage.stone || 0, built * HOUSE_STONE);   // 석재는 있으면 씀(수요 발생), 없어도 건축 진행
+      v.storage.stone = Math.max(0, (v.storage.stone || 0) - built * HOUSE_STONE);   // 실제 건축분만큼 석재 소비
       v.housing += built;
     }
   }
@@ -1234,6 +1238,16 @@ function pickDeficitJob_rational(v, world) {
   // 진짜 기근 (food < N*30일치) — 무조건 식량 직업 (안전망). 식량 안정의 핵심이라 유지(풀면 마을 붕괴).
   //   v2 r9: picker w cap 풀면 농부 폭락 위험 → 30일치 보장. Lewis 모델 안전판.
   if (foodEquiv < N * 30) {
+    // ★풍부광맥 예외: 광맥이 매우 풍부(stone/ore>0.5) + 하드기근(18일치) 아님 + 채광노동 상한(8%) 미만이면
+    //   식량 게이트가 소수 광부/탐사를 허용. 광산 취락이 식량 약간 양보하고 광맥을 캐는 역사 패턴.
+    //   상한(8%)+하드플로어(18일)로 붕괴 방지 — 식량 떨어지면 18일선에서 기근게이트 전면 복귀(자기교정).
+    const mineLabor = (counts.miner || 0) + (counts.prospector || 0);
+    const richVein = (v.land.stone || 0) > 0.35 || (v.land.ore || 0) > 0.35;   // 고갈 후에도 유지(바닥 0.6×base)
+    if (richVein && foodEquiv > N * 18 && mineLabor < N * 0.08) {
+      if ((v.land.stone || 0) >= (v.land.ore || 0) && hasSlot(v, 'miner', cap, counts)) return 'miner';
+      if (hasSlot(v, 'prospector', cap, counts)) return 'prospector';
+      if (hasSlot(v, 'miner', cap, counts)) return 'miner';
+    }
     const foodOpts = [
       ['farmer',  v.land.fertility * 1.5],
       ['fisher',  v.land.water     * 1.2],
@@ -2200,7 +2214,10 @@ function computeShadowPrices(v) {
     const target = Math.max(subs * 30, buffer);
     const stock = Math.max(0.1, v.storage[r] || 0);
     const scarcity = Math.pow(target / stock, elast);
-    const adj = Math.max(PRICE_ADJ_MIN, Math.min(PRICE_ADJ_MAX, scarcity));
+    // ★효용가중 가격상한: 고효용(식량 util1.5→상한1000)은 격차 자유, 저효용 외래품(util0.1→상한16)은 억제.
+    //   외래 부산물이 재고0→550배 폭발해 교역 독식하는 걸 막아 staple(돌·식량) 재분배가 캐러밴을 잡게 함.
+    const maxAdj = Math.min(PRICE_ADJ_MAX, 10 * Math.pow(10, util * 2));
+    const adj = Math.max(PRICE_ADJ_MIN, Math.min(maxAdj, scarcity));
     prices[r] = base * adj;
   }
   return prices;

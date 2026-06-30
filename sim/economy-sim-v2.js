@@ -183,7 +183,10 @@ function computeShadowPrices(v) {
     const target = Math.max(subs * 30, buffer);
     const stock = Math.max(0.1, v.storage[r] || 0);
     const scarcity = Math.pow(target / stock, elast);
-    const adj = Math.max(PRICE_ADJ_MIN, Math.min(PRICE_ADJ_MAX, scarcity));
+    // ★효용가중 가격상한: 고효용(식량 util1.5→상한1000)은 격차 자유, 저효용 외래품(util0.1→상한16)은 억제.
+    //   외래 부산물이 재고0→550배 폭발해 교역 독식하는 걸 막아 staple(돌·식량) 재분배가 캐러밴을 잡게 함.
+    const maxAdj = Math.min(PRICE_ADJ_MAX, 10 * Math.pow(10, util * 2));
+    const adj = Math.max(PRICE_ADJ_MIN, Math.min(maxAdj, scarcity));
     prices[r] = base * adj;
   }
   return prices;
