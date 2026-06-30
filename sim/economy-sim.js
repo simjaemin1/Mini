@@ -532,7 +532,7 @@ function createVillage(opts) {
     v.counts[job] = (v.counts[job] || 0) + 1;
   }
   // 초기 비축 — 비자급 마을(광물/사막)도 교역 시작할 충분한 시간
-  v.storage.food = initN * 300;       // 300일치
+  v.storage.food = initN * 300;       // 300일치(초기 비축 — 부트스트랩용, 균형은 교역이 결정)
   v.storage.tool = initN * 3;         // 도구 충분
   v.storage.wood = initN * 8;         // 초기 주거 건축 부트스트랩 + 거래 + smith
   v.storage.stone = initN * 5;        // 초기 석재(주거·거래·smith)
@@ -918,6 +918,13 @@ function pickDeficitJob_rational(v, world) {
   // 진짜 기근 (food < N*30일치) — 무조건 식량 직업 (안전망). 식량 안정의 핵심이라 유지(풀면 마을 붕괴).
   //   v2 r9: picker w cap 풀면 농부 폭락 위험 → 30일치 보장. Lewis 모델 안전판.
   if (foodEquiv < N * 30) {
+    // ★농사 불가 마을(비옥<0.2): 농부 강제는 무의미(거의 0 산출) → 가치재(금·광석) 채굴로 식량 살 자금 확보.
+    //   광산 부얼타운 = 식량 전량 수입. 어로/사냥(직접 식량)이 가능하면 그게 우선, 광맥뿐이면 채굴해 교역.
+    //   하드플로어 N*6: 그 아래로 떨어지면 가능한 식량직(어/렵)이라도 풀가동.
+    if ((v.land.fertility || 0) < 0.2 && foodEquiv > N * 6) {
+      if ((v.land.ore || 0) > 0.3 && hasSlot(v, 'prospector', cap, counts)) return 'prospector';
+      if ((v.land.stone || 0) > 0.3 && hasSlot(v, 'miner', cap, counts)) return 'miner';
+    }
     // ★풍부광맥 예외: 광맥이 매우 풍부(stone/ore>0.5) + 하드기근(18일치) 아님 + 채광노동 상한(8%) 미만이면
     //   식량 게이트가 소수 광부/탐사를 허용. 광산 취락이 식량 약간 양보하고 광맥을 캐는 역사 패턴.
     //   상한(8%)+하드플로어(18일)로 붕괴 방지 — 식량 떨어지면 18일선에서 기근게이트 전면 복귀(자기교정).

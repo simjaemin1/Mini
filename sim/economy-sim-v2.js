@@ -127,6 +127,10 @@ try {
 } catch (e) {
   console.warn('[econ-sim-v2] specialty.js 로드 실패 (옛 17종만 사용):', e.message);
 }
+// ★[디버그] 금광 실험: 금 가치 폭등 + 유틸 상한 면제 → 미량의 금으로 식량 전량 구매 가능한지 테스트.
+//   순수 특화 광산촌(농사 불가)이 교역만으로 자급할 수 있는가? 를 검증하기 위한 과장된 세팅.
+BASE_VALUE_V2.gold = 50000;
+UTILITY_WEIGHT.gold = 3.0;   // 유틸가중 가격상한 높게 → 금 가격 격차가 캐러밴을 잡게(교역 성사)
 
 // === 계절 시스템 ===
 //   v2 r7: 진폭 축소 — 인구 cycle 진동 완화. 평년 평균 = 1.0 유지.
@@ -181,7 +185,13 @@ function computeShadowPrices(v) {
     const util = UTILITY_WEIGHT[r] || 0.1;
     const buffer = N * Math.max(0.5, util * 1.2);  // 작게: 최소 0.5/명, util 1.0이면 1.2/명
     const target = Math.max(subs * 30, buffer);
-    const stock = Math.max(0.1, v.storage[r] || 0);
+    let stock = Math.max(0.1, v.storage[r] || 0);
+    // ★선견적 가격(flow 반영): 구조적 식량적자(생산<소비)를 30일 선반영 → 적자 마을은 *초기재고 무관하게* 수입.
+    //   재고(stock)만 보면 근시안 — 큰 buffer에 가려 적자가 안 보여 교역이 stock에 휘둘림(경제적 오류).
+    //   surplusEMA.food = 자체생산−소비(수입 제외) → 구조적 비교우위 적자를 정확히 포착.
+    if (r === 'food' && v.surplusEMA && v.surplusEMA.food < 0) {
+      stock = Math.max(0.1, stock + v.surplusEMA.food * 30);
+    }
     const scarcity = Math.pow(target / stock, elast);
     // ★효용가중 가격상한: 고효용(식량 util1.5→상한1000)은 격차 자유, 저효용 외래품(util0.1→상한16)은 억제.
     //   외래 부산물이 재고0→550배 폭발해 교역 독식하는 걸 막아 staple(돌·식량) 재분배가 캐러밴을 잡게 함.
@@ -259,7 +269,7 @@ function tickTradeV2(world, day) {
     const capacity = N * 20;
     if (a.sent >= capacity) continue;
     const currentlyTrading = a.v.npcs.filter(n => n._tradingUntil && n._tradingUntil > day).length;
-    const maxTrips = Math.floor(N * 0.08) - currentlyTrading;   // ★동시 교역 ≤ 인구 8%(노동 보호)
+    const maxTrips = Math.max(1, Math.floor(N * 0.08)) - currentlyTrading;   // ★동시 교역 ≤ 인구 8%(단 최소 1 — 소형 특화촌도 교역 가능)
     if (maxTrips < 1) continue;
     const alreadySent = new Set();   // 이 cycle 중복 (자원,목적지) 방지
     let caravansLaunched = 0;
