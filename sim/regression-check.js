@@ -33,7 +33,8 @@ global.__log = _log; console.log = _log;
 // ── 5시드 구동 + 집계 ──
 const SEEDS = [7, 42, 8, 3, 19];
 const agg = { pop: 0, bad: 0, initVil: 0, finalVil: 0, mining: 0, forest: 0, bronze: 0, iron: 0, stoneTool: 0, copperTin: 0,
-  weaponShort: 0, villages: 0, houses: 0, tradeStaple: 0, tradeOrn: 0, craftBloat: 0, maxCraftFrac: 0, crashed: false, seedRows: [] };
+  weaponShort: 0, villages: 0, houses: 0, tradeStaple: 0, tradeOrn: 0, craftBloat: 0, maxCraftFrac: 0,
+  maxAccumPer: 0, maxVilPop: 0, smithVil: 0, crashed: false, seedRows: [] };
 const STAPLE = new Set(['food', 'fish', 'meat', 'stone', 'ore', 'wood', 'iron', 'copper', 'tin']);
 const ORN = new Set(['gold', 'silver', 'gem']);
 for (const sd of SEEDS) {
@@ -52,6 +53,12 @@ for (const sd of SEEDS) {
     const craftFrac = ((c.smith || 0) + (c.weaponsmith || 0) + (c.armorsmith || 0)) / Math.max(1, n);
     if (craftFrac > 0.15) agg.craftBloat++;
     if (craftFrac > agg.maxCraftFrac) agg.maxCraftFrac = craftFrac;
+    // ★누적 통제 — 무용재(광석)·돌이 1인당 과대면 생산 포만/부패가 안 듣는 것. (예전 ore 201/명·stone 159/명 → 지금 ~10/명)
+    const accumPer = Math.max((S.ore || 0), (S.stone || 0)) / Math.max(1, n);
+    if (accumPer > agg.maxAccumPer) agg.maxAccumPer = accumPer;
+    // ★미니 마을 — K_MAX 천장 작동(폭주 아님). + 대장장이 보유 마을 카운트(소형마을 floor)
+    if (n > agg.maxVilPop) agg.maxVilPop = n;
+    if ((c.smith || 0) >= 1) agg.smithVil++;
     agg.houses += (v.houses ? v.houses.length : 0);
     sp += n;
   }
@@ -76,10 +83,13 @@ const checks = [
   ['11. staple 교역 > 0', agg.tradeStaple > 0],
   ['12. 집 성장(>마을수×2)', agg.houses > agg.villages * 2],
   ['13. 장인 비대 없음(야금공>15% 마을 ≤1)', agg.craftBloat <= 1],   // 정원 제거 후 스톡-플로우가 장인 수를 자연 수렴시키는지
+  ['14. 누적 통제(광석·돌 최대 ≤60/명)', agg.maxAccumPer <= 60],       // 생산 포만+부패가 무한 누적 방지 (예전 ore 201·stone 159/명)
+  ['15. 미니 마을(최대 인구 ≤160)', agg.maxVilPop <= 160],             // K_MAX 천장 작동(θ-로지스틱 수렴 ~100)
+  ['16. 마을 대장장이(보유 마을 ≥70%)', agg.smithVil >= agg.villages * 0.7],   // 소형마을도 대장장이 floor (식량쪼들리는 곳은 순환적이라 70%)
 ];
 console.log('\n=== 회귀 검사 (5시드) ===');
 agg.seedRows.forEach(s => console.log('  ' + s));
-console.log(`\n  [집계] 총인구 ${agg.pop} · 마을 ${agg.finalVil}/${agg.initVil}(소멸 ${deaths}) · 동기 ${agg.bad} · 청동도구 ${agg.bronze.toFixed(0)} · 철도구 ${agg.iron.toFixed(0)} · 집 ${agg.houses} · staple교역 ${agg.tradeStaple.toFixed(0)} · 장식교역 ${agg.tradeOrn.toFixed(0)}`);
+console.log(`\n  [집계] 총인구 ${agg.pop} · 마을 ${agg.finalVil}/${agg.initVil}(소멸 ${deaths}) · 동기 ${agg.bad} · 청동도구 ${agg.bronze.toFixed(0)} · 철도구 ${agg.iron.toFixed(0)} · 집 ${agg.houses} · staple교역 ${agg.tradeStaple.toFixed(0)} · 장식교역 ${agg.tradeOrn.toFixed(0)} · 최대마을 ${agg.maxVilPop} · 광석/돌최대 ${agg.maxAccumPer.toFixed(0)}/명 · 대장장이마을 ${agg.smithVil}/${agg.villages}`);
 console.log('');
 let pass = 0;
 for (const [name, ok] of checks) { console.log(`  ${ok ? '✅' : '❌'} ${name}`); if (ok) pass++; }

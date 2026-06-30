@@ -98,6 +98,10 @@ const DECAY_V2 = {
   twig: 0.001, pebble: 0.0002,
   // food도 명시 (v1엔 있지만 v2 자체식 사용)
   food: 0.001,
+  // ★비축 손실(과잉 더미) — 돌·광석·나무·곡물은 안 썩는다고 두면 성장기 더미가 영구 잔존.
+  //   풍화·흩어짐·도둑·쥐로 *과잉분만* 천천히 손실(excess 가속). 생산은 안 자르니 수출 안전.
+  stone: 0.0003, ore: 0.0008, wood: 0.0003,
+  wheat: 0.0012, rice: 0.0012, barley: 0.0012,
 };
 
 // === Phase 5-5-econ-a: specialty.js 195 자원 통합 ===
@@ -676,6 +680,9 @@ function restoreLand(v) {
 //   비축이 target × 10 이하면 baseRate 그대로.
 //   초과분은 비례 가속 (쥐·곰팡이·도둑 자연 효과).
 //   결과: 1000일치 비축 마을은 1년에 거의 다 부패 → 자연 sink.
+// ★부패성 식량은 과잉 시 빨리 상함(곡식 rot) — excess 임계를 낮게(target×2 ≈ 60일치). 내구재(도구·무기)는 ×10 유지.
+const DECAY_EXCESS_MULT = { food: 2, meat: 2, fish: 2, cooked_food: 2, fruit: 2, vegetable: 2, mushroom: 2, hide: 4,
+  stone: 8, ore: 3, wood: 8, wheat: 4, rice: 4, barley: 4 };   // 비축 더미 cap (target×mult 초과분 가속 손실). 돌·나무는 완만(한계 마을 수출 보호)
 function tickDecay(v) {
   const N = v.npcs.length || 1;
   for (const [r, baseRate] of Object.entries(DECAY_V2)) {
@@ -685,8 +692,9 @@ function tickDecay(v) {
     const util = UTILITY_WEIGHT[r] || 0.1;
     const buffer = N * Math.max(0.5, util * 1.2);
     const target = Math.max(subs * 30, buffer);
-    // excess: target × 10 이상이면 0보다 큼. 1당 5배 부패 가속.
-    const excess = Math.max(0, s / Math.max(1, target * 10) - 1);
+    // excess: target × mult 초과분은 비례 가속(쥐·곰팡이·도둑). 부패성 식량은 mult 낮아 ~60일에서 cap.
+    const xm = DECAY_EXCESS_MULT[r] || 10;
+    const excess = Math.max(0, s / Math.max(1, target * xm) - 1);
     const rate = baseRate * (1 + excess * 5);
     v.storage[r] = s * (1 - rate);
   }
@@ -834,7 +842,8 @@ function createWorldV2(opts = {}) {
   const world = v1.createWorld(opts);
   // v2 핵심: picker에 shadow price 주입 → 가격이 직업 선택에 진짜 영향
   world.priceFn = computeShadowPrices;
-  // 직업 전환 빈도 21일 — 변동 줄여 안정성 ↑ (이전 7일)
+  world.priceBase = BASE_VALUE_V2;   // ★생산 포만(satiation) 판정용 — v1 tickVillage가 adj=가격/기준값으로 글럿 측정
+  // 직업 전환 빈도 21일 — 변동 줄여 안정성 ↑. (30일로 늘리니 반응 느려 기근↑→crisis-mode↑ 역효과 확인, 21 유지)
   world.autoSwitchInterval = 21;
   return world;
 }

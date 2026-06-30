@@ -603,8 +603,13 @@ function totalFoodProductionEquivalent(prod) {
 }
 
 // 인구 동역학
-const POP_GROWTH_RATE = 0.0135;           // r — 일일. 연 ~5%. ★도적에게 죽는 행상 손실을 살짝 보전(0.012→0.0135)
-const POP_MAX_DELTA_PCT = 0.02;           // 일일 변화 상한 (안정화)
+const POP_GROWTH_RATE = 0.04;             // r — 일일. ★초반 폭발성장(빈 땅 정착): N≪K일 때 ~4%/일(배가 ~18일)
+const POP_MAX_DELTA_PCT = 0.06;           // 일일 변화 상한 (초반 빠른 성장 허용)
+const LOGISTIC_THETA = 4;                 // ★θ-로지스틱: dP=r·N·(1−(N/K)^θ). θ>1이라 K의 ~80%까지 빠르다가 급감(사용자 요청 곡선)
+const K_MAX_VILLAGE = 110;                // ★마을 부양력 천장(혼잡·위생·조율비용) — 큰 마을만 ~110로 수렴, 작은 마을은 영향 X. 하드 정지 아님(로지스틱이 부드럽게 접근)
+// ★무용재 — 실수요(use-value)가 ~0이라 수출해도 식량 못 삼. 식량안보와 무관하게 *항상* 생산 포만(성장기 누적까지 차단).
+//   광석(ore): 갑옷에 미량뿐. 장식재(금·은·보석): 화폐화 전엔 수요 0. 돌·금속(구리·주석)은 수요 있어 제외(가치재 수출).
+const SAT_ALWAYS = { ore: 1, gold: 1, silver: 1, gem: 1, pearl: 1, amber: 1, jade: 1, ivory: 1 };
 const POP_MIN = 0;                         // ★인구 하한 0 — 자급 불가 마을은 0명까지 줄어 소멸(척박지엔 마을이 안 남음). 365일 정착 보호 후.
 const POP_MAX = 1000;                      // 마을당 인구 상한 (N² 폭발 방지)
 
@@ -962,6 +967,24 @@ function tickVillage(v, day) {
   }
   // 봉쇄 = 교역만 차단. 산출 자체는 영향 없음 (자급 마을은 영향 X).
   const isBlockaded = v.isolated && day < v.isolatedUntilDay;
+  // ★생산 포만(satiation) — 재고 글럿이면 그 산출 생산을 taper→0(무의미한 잉여 생산·무한 누적 방지 = "여가").
+  //   판정: adj = 그림자가격/기준값. 재고 ≲ 몇×목표면 풀생산, 깊은 글럿(adj→0.04)이면 0.
+  //   식량은 목표(N×30)가 커서 ~150일 넘어야 taper → 성장·기근버퍼 무해. 광석·돌·부산물은 목표가 작아 일찍 멈춤.
+  //   ★안전장치: 식량 불안정(<50일) 마을은 포만 OFF — 풀생산 유지(수출로 식량 확보, 굶지 않게). 여유 마을만 잉여 생산 줄임.
+  const _satP = (v._world && typeof v._world.priceFn === 'function') ? v._world.priceFn(v) : null;
+  const _satB = (v._world && v._world.priceBase) || null;
+  // ★식량안보 *부드러운 ramp*(40→80일치) — 이분법(>50 ON/OFF)이면 식량수입 마을이 경계서 진동→crisis-mode 잦아 churn 폭증.
+  //   secF=0(40일↓): 풀생산(수출로 식량). secF=1(80일↑): 완전 포만(잉여 감산). 가치재만 적용, 무용재는 항상 포만.
+  const _foodDays = totalFoodEquivalent(v) / (v.npcs.length || 1);
+  const _secF = Math.max(0, Math.min(1, (_foodDays - 40) / 40));
+  const satMul = (_satP && _satB)
+    ? (r => {
+        const adj = (_satP[r] || 1) / (_satB[r] || 1);
+        const raw = Math.max(0, Math.min(1, (adj - 0.04) / 0.21));   // 글럿이면 0(감산)
+        const sec = SAT_ALWAYS[r] ? 1 : _secF;                        // 무용재는 항상, 가치재는 식량안보 비례
+        return 1 - sec * (1 - raw);                                   // sec=0→풀생산, sec=1→raw(포만)
+      })
+    : (_ => 1);
   for (const npc of v.npcs) {
     if (npc._tradingUntil && npc._tradingUntil > day) continue;   // ★교역 원정 중 → 생산 안 함(기회비용 실현). 저숙련자라 손실 작음.
     const jdef = JOBS[npc.currentJob];
@@ -980,6 +1003,8 @@ function tickVillage(v, day) {
 
     // produceSpecial 분기 — 각 산출에 대해 세금 떼고 storage로
     const addProduce = (r, amt) => {
+      amt *= satMul(r);   // ★포만: 재고 글럿이면 생산 감소(여가) → 무한 누적 방지
+      if (amt <= 0) return;
       const tax = amt * TAX_RATE;
       v.storage[r] = (v.storage[r] || 0) + (amt - tax);
       v.treasury[r] = (v.treasury[r] || 0) + tax;
@@ -1139,12 +1164,12 @@ function tickVillage(v, day) {
       v.housing += built;
     }
   }
-  const Kraw = Math.min(slotK, prodK);   // 식량 한계(주거는 아래 성장 게이트)
+  const Kraw = Math.min(slotK, prodK, K_MAX_VILLAGE);   // 식량 한계 + 마을 부양력 천장(혼잡). 작은 마을은 식량이 binding이라 천장 영향 X
   const K = Math.max(POP_MIN, Kraw);
 
-  // 5) 인구 로지스틱 갱신
+  // 5) 인구 θ-로지스틱 갱신 — dP = r·N·(1−(N/K)^θ). θ>1: K의 ~80%까지 빠르고 이후 급감(S곡선의 상단을 압축)
   const ratio = N / Math.max(1, K);
-  let dP = POP_GROWTH_RATE * N * (1 - ratio);
+  let dP = POP_GROWTH_RATE * N * (1 - Math.pow(ratio, LOGISTIC_THETA));
   // 굶주림: 흐름 음수 + 창고 식량_equiv 부족
   if (v.surplusEMA.food < 0 && totalFoodEquivalent(v) < N * 3) {
     dP -= 0.3 * Math.abs(v.surplusEMA.food);
@@ -1214,8 +1239,8 @@ function tickVillage(v, day) {
   const foodEquiv_for_switch = totalFoodEquivalent(v);
   let switchInterval = (v._world && v._world.autoSwitchInterval) || 7;
   let multiSwitch = 1;
-  if (foodEquiv_for_switch < N_pop * 10) { switchInterval = 1; multiSwitch = 2; }
-  else if (foodEquiv_for_switch < N_pop * 30) { switchInterval = 5; multiSwitch = 1; }
+  if (foodEquiv_for_switch < N_pop * 10) { switchInterval = 1; multiSwitch = 2; }       // 진짜 기근 — 즉시 다수 전환
+  else if (foodEquiv_for_switch < N_pop * 30) { switchInterval = 10; multiSwitch = 1; }  // 식량 부족 — 가속하되 완만(5→10일, 만성 수입마을 churn 억제)
   if (day % switchInterval === 0) {
     for (let i = 0; i < multiSwitch; i++) autoSwitchJob(v, day, v._world);
   }
@@ -1339,7 +1364,10 @@ function toolDepCount(v) {
 }
 function smithTarget(v) {
   const toolStock = (v.storage.tool || 0) + (v.storage.bronze_tool || 0) + (v.storage.iron_tool || 0);
-  return craftLaborTarget(toolStock, toolDepCount(v), 0.5, { buffer: 1.15, catchup: 50, decay: 0.0008 });
+  const td = toolDepCount(v);
+  const base = craftLaborTarget(toolStock, td, 0.5, { buffer: 1.15, catchup: 50, decay: 0.0008 });
+  // ★소형마을 floor: 도구를 쓰는 마을(도구의존≥4)은 대장장이 최소 1명("마을엔 대장장이가 하나"). 도구 충분하면 포만으로 부분근무.
+  return Math.max(td >= 4 ? 1 : 0, base);
 }
 // ★전사 readiness 목표 — *정원 아님*. 교역 캐러밴 수 × 약탈위협으로 호위 수요 파생.
 //   위협 없으면 0(평시 전사 불필요), 위협 클수록 ↑. 글럿 마을의 전사 과잉(19%) 방지 + 평시 자연 동원해제.
@@ -1531,6 +1559,11 @@ function autoSwitchJob(v, day, world) {
     if (cost < bestCost) { bestCost = cost; bestIdx = i; }
   }
   if (bestIdx >= 0) {
+    // ★히스테리시스(churn 억제): 식량 안정 + 최저비용 노동자도 충분히 생산적(시장가치>0.15)이면 전환 보류.
+    //   평형 상태선 "그냥 최저 1명"을 무조건 바꾸던 게 잔여 churn 원인 → 명백한 저활용(글럿/유휴)만 재배치.
+    //   식량 위기(<30일)면 가드 해제 — 무조건 식량직으로 재배치(생존 우선).
+    const foodSec = totalFoodEquivalent(v) > (v.npcs.length || 1) * 30;
+    if (foodSec && bestCost > 0.15) return;
     switchNPCJob(v.npcs[bestIdx], need, day, v);
   }
 }
@@ -2281,6 +2314,10 @@ const DECAY_V2 = {
   twig: 0.001, pebble: 0.0002,
   // food도 명시 (v1엔 있지만 v2 자체식 사용)
   food: 0.001,
+  // ★비축 손실(과잉 더미) — 돌·광석·나무·곡물은 안 썩는다고 두면 성장기 더미가 영구 잔존.
+  //   풍화·흩어짐·도둑·쥐로 *과잉분만* 천천히 손실(excess 가속). 생산은 안 자르니 수출 안전.
+  stone: 0.0003, ore: 0.0008, wood: 0.0003,
+  wheat: 0.0012, rice: 0.0012, barley: 0.0012,
 };
 
 // === Phase 5-5-econ-a: specialty.js 195 자원 통합 ===
@@ -2859,6 +2896,9 @@ function restoreLand(v) {
 //   비축이 target × 10 이하면 baseRate 그대로.
 //   초과분은 비례 가속 (쥐·곰팡이·도둑 자연 효과).
 //   결과: 1000일치 비축 마을은 1년에 거의 다 부패 → 자연 sink.
+// ★부패성 식량은 과잉 시 빨리 상함(곡식 rot) — excess 임계를 낮게(target×2 ≈ 60일치). 내구재(도구·무기)는 ×10 유지.
+const DECAY_EXCESS_MULT = { food: 2, meat: 2, fish: 2, cooked_food: 2, fruit: 2, vegetable: 2, mushroom: 2, hide: 4,
+  stone: 8, ore: 3, wood: 8, wheat: 4, rice: 4, barley: 4 };   // 비축 더미 cap (target×mult 초과분 가속 손실). 돌·나무는 완만(한계 마을 수출 보호)
 function tickDecay(v) {
   const N = v.npcs.length || 1;
   for (const [r, baseRate] of Object.entries(DECAY_V2)) {
@@ -2868,8 +2908,9 @@ function tickDecay(v) {
     const util = UTILITY_WEIGHT[r] || 0.1;
     const buffer = N * Math.max(0.5, util * 1.2);
     const target = Math.max(subs * 30, buffer);
-    // excess: target × 10 이상이면 0보다 큼. 1당 5배 부패 가속.
-    const excess = Math.max(0, s / Math.max(1, target * 10) - 1);
+    // excess: target × mult 초과분은 비례 가속(쥐·곰팡이·도둑). 부패성 식량은 mult 낮아 ~60일에서 cap.
+    const xm = DECAY_EXCESS_MULT[r] || 10;
+    const excess = Math.max(0, s / Math.max(1, target * xm) - 1);
     const rate = baseRate * (1 + excess * 5);
     v.storage[r] = s * (1 - rate);
   }
@@ -3017,7 +3058,8 @@ function createWorldV2(opts = {}) {
   const world = v1.createWorld(opts);
   // v2 핵심: picker에 shadow price 주입 → 가격이 직업 선택에 진짜 영향
   world.priceFn = computeShadowPrices;
-  // 직업 전환 빈도 21일 — 변동 줄여 안정성 ↑ (이전 7일)
+  world.priceBase = BASE_VALUE_V2;   // ★생산 포만(satiation) 판정용 — v1 tickVillage가 adj=가격/기준값으로 글럿 측정
+  // 직업 전환 빈도 21일 — 변동 줄여 안정성 ↑. (30일로 늘리니 반응 느려 기근↑→crisis-mode↑ 역효과 확인, 21 유지)
   world.autoSwitchInterval = 21;
   return world;
 }
