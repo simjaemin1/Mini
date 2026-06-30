@@ -923,7 +923,7 @@ function pickDeficitJob_rational(v, world) {
     //   상한(8%)+하드플로어(18일)로 붕괴 방지 — 식량 떨어지면 18일선에서 기근게이트 전면 복귀(자기교정).
     const mineLabor = (counts.miner || 0) + (counts.prospector || 0);
     const richVein = (v.land.stone || 0) > 0.35 || (v.land.ore || 0) > 0.35;   // 고갈 후에도 유지(바닥 0.6×base)
-    if (richVein && foodEquiv > N * 18 && mineLabor < N * 0.08) {
+    if (richVein && foodEquiv > N * 18 && mineLabor < N * 0.04) {   // 상한 4%(완화): 광업 주변적 유지, 인구·전사 회복
       if ((v.land.stone || 0) >= (v.land.ore || 0) && hasSlot(v, 'miner', cap, counts)) return 'miner';
       if (hasSlot(v, 'prospector', cap, counts)) return 'prospector';
       if (hasSlot(v, 'miner', cap, counts)) return 'miner';
