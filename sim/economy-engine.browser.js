@@ -604,7 +604,7 @@ function totalFoodProductionEquivalent(prod) {
 }
 
 // 인구 동역학
-const POP_GROWTH_RATE = 0.012;            // r — 일일. 연 환산 ~4.4%
+const POP_GROWTH_RATE = 0.0135;           // r — 일일. 연 ~5%. ★도적에게 죽는 행상 손실을 살짝 보전(0.012→0.0135)
 const POP_MAX_DELTA_PCT = 0.02;           // 일일 변화 상한 (안정화)
 const POP_MIN = 0;                         // ★인구 하한 0 — 자급 불가 마을은 0명까지 줄어 소멸(척박지엔 마을이 안 남음). 365일 정착 보호 후.
 const POP_MAX = 1000;                      // 마을당 인구 상한 (N² 폭발 방지)
@@ -1251,6 +1251,9 @@ function pickDeficitJob_rational(v, world) {
   if (v.housing !== undefined && N >= v.housing * 0.95 && (v.storage.wood || 0) < N * 2 && hasSlot(v, 'lumberjack', cap, counts)) return 'lumberjack';
   // ★석재 안전망: 산이 가까운 마을(land.stone 충분)이 석재 부족하면 광부. 집·도구·무기 석재 수요 → 채광. 산 없으면(stone≤0.25) 안 함.
   if ((v.land.stone || 0) > 0.25 && (v.storage.stone || 0) < N * 1.5 && hasSlot(v, 'miner', cap, counts)) return 'miner';
+  // ★호위 안전망: 행상이 도적에게 죽은 적 있고(tradersKilled) 전사 부족 + 식량 여유면 전사 양성.
+  //   → 전사가 무기·갑옷 수요 → 광석·석재 수요 → 채광. (도적→전사→광업 사슬을 닫음)
+  if (v.tradeStats && (v.tradeStats.tradersKilled || 0) > 3 && (counts.warrior || 0) < Math.max(1, N * 0.06) && foodEquiv > N * 40 && hasSlot(v, 'warrior', cap, counts)) return 'warrior';
 
   // === 한계 효용 계산 — 각 직업 1명 추가 시 기대 가치 (식량 환산 단위) ===
   const period = 100;  // 평가 윈도우 100일
@@ -2362,6 +2365,7 @@ function tickTradeV2(world, day) {
       world._caravanIdCounter = (world._caravanIdCounter || 0) + 1;
       world.caravans.push({
         id: world._caravanIdCounter,  // 재routing 추적용 (zone 시각화 매핑)
+        trader: lp.npc,               // ★교역 나간 NPC — 도적에게 죽으면 마을서 제거
         from: a.v, to: b.v,
         giveRes: cand.res, giveAmt: N_units,
         pFrom_at_depart: pFrom, pTo_at_depart: pTo,
@@ -2382,6 +2386,23 @@ function tickTradeV2(world, day) {
   } // for (const a of data)
 }
 
+// ★도적에게 행상이 살해될 확률(약탈이 일어났을 때). 호위·무기·갑옷이 크게 경감.
+const DEATH_ON_RAID = 0.4;
+//   교역 나간 그 NPC를 마을에서 제거(사망). 들고 있던 화물도 전손.
+function killTrader(c, v) {
+  const t = c.trader;
+  if (t && v.npcs) {
+    const i = v.npcs.indexOf(t);
+    if (i >= 0) { v.npcs.splice(i, 1); if (v.counts) v.counts[t.currentJob] = Math.max(0, (v.counts[t.currentJob] || 0) - 1); }
+  }
+  if (v.tradeStats) v.tradeStats.tradersKilled = (v.tradeStats.tradersKilled || 0) + 1;
+  c._done = true; c._abandoned = true;
+}
+// 약탈 시 사망 판정 — 호위(전사)·무기·갑옷 readiness가 줄임. 죽으면 true.
+function raidKills(c, escort, wReady, aReady, srand) {
+  const reduce = Math.min(0.85, Math.sqrt(escort) * 0.18 + wReady * 0.12 + aReady * 0.12);
+  return srand() < DEATH_ON_RAID * (1 - reduce);
+}
 // =============================================================================
 // 4. tickCaravans v2 — 도착 시 거래 + 양쪽 수수료. 귀환 시 받은 자원 입금.
 // =============================================================================
@@ -2404,7 +2425,13 @@ function tickCaravansV2(world, day) {
           c.from.tradeStats.caravansRaided++;
           c.from.tradeStats.cargoLost += c.giveAmt * outboundLoss;
         }
+        // ★도적이 행상을 죽임 → NPC 사망 + 화물 전손 + 원정 종료(배달 X)
+        if (raidKills(c, c.escort, wReady, aReady, v1.srand)) {
+          if (c.from.tradeStats) c.from.tradeStats.cargoLost += c.giveAmt * (1 - outboundLoss);
+          killTrader(c, c.from);
+        }
       }
+      if (c._done) continue;   // 행상 사망 → 이 캐러밴 종료
       const deliveredGive = c.giveAmt * (1 - outboundLoss);
 
       // 도착 마을 현재 가격으로 매도 검토
@@ -2545,7 +2572,9 @@ function tickCaravansV2(world, day) {
         if (c.from.tradeStats) {
           c.from.tradeStats.caravansRaided++;
         }
+        if (raidKills(c, c.escort, wReady, aReady, v1.srand)) killTrader(c, c.from);   // ★귀환 중 행상 사망 → 가져오던 자원 전손
       }
+      if (c._done) continue;   // 행상 사망 → 캐러밴 종료(자원 입금 X)
 
       if (c._returningRes && c._returningAmt > 0) {
         const received = c._returningAmt * (1 - inboundLoss);

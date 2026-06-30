@@ -348,6 +348,7 @@ function tickTradeV2(world, day) {
       world._caravanIdCounter = (world._caravanIdCounter || 0) + 1;
       world.caravans.push({
         id: world._caravanIdCounter,  // 재routing 추적용 (zone 시각화 매핑)
+        trader: lp.npc,               // ★교역 나간 NPC — 도적에게 죽으면 마을서 제거
         from: a.v, to: b.v,
         giveRes: cand.res, giveAmt: N_units,
         pFrom_at_depart: pFrom, pTo_at_depart: pTo,
@@ -368,6 +369,23 @@ function tickTradeV2(world, day) {
   } // for (const a of data)
 }
 
+// ★도적에게 행상이 살해될 확률(약탈이 일어났을 때). 호위·무기·갑옷이 크게 경감.
+const DEATH_ON_RAID = 0.4;
+//   교역 나간 그 NPC를 마을에서 제거(사망). 들고 있던 화물도 전손.
+function killTrader(c, v) {
+  const t = c.trader;
+  if (t && v.npcs) {
+    const i = v.npcs.indexOf(t);
+    if (i >= 0) { v.npcs.splice(i, 1); if (v.counts) v.counts[t.currentJob] = Math.max(0, (v.counts[t.currentJob] || 0) - 1); }
+  }
+  if (v.tradeStats) v.tradeStats.tradersKilled = (v.tradeStats.tradersKilled || 0) + 1;
+  c._done = true; c._abandoned = true;
+}
+// 약탈 시 사망 판정 — 호위(전사)·무기·갑옷 readiness가 줄임. 죽으면 true.
+function raidKills(c, escort, wReady, aReady, srand) {
+  const reduce = Math.min(0.85, Math.sqrt(escort) * 0.18 + wReady * 0.12 + aReady * 0.12);
+  return srand() < DEATH_ON_RAID * (1 - reduce);
+}
 // =============================================================================
 // 4. tickCaravans v2 — 도착 시 거래 + 양쪽 수수료. 귀환 시 받은 자원 입금.
 // =============================================================================
@@ -390,7 +408,13 @@ function tickCaravansV2(world, day) {
           c.from.tradeStats.caravansRaided++;
           c.from.tradeStats.cargoLost += c.giveAmt * outboundLoss;
         }
+        // ★도적이 행상을 죽임 → NPC 사망 + 화물 전손 + 원정 종료(배달 X)
+        if (raidKills(c, c.escort, wReady, aReady, v1.srand)) {
+          if (c.from.tradeStats) c.from.tradeStats.cargoLost += c.giveAmt * (1 - outboundLoss);
+          killTrader(c, c.from);
+        }
       }
+      if (c._done) continue;   // 행상 사망 → 이 캐러밴 종료
       const deliveredGive = c.giveAmt * (1 - outboundLoss);
 
       // 도착 마을 현재 가격으로 매도 검토
@@ -531,7 +555,9 @@ function tickCaravansV2(world, day) {
         if (c.from.tradeStats) {
           c.from.tradeStats.caravansRaided++;
         }
+        if (raidKills(c, c.escort, wReady, aReady, v1.srand)) killTrader(c, c.from);   // ★귀환 중 행상 사망 → 가져오던 자원 전손
       }
+      if (c._done) continue;   // 행상 사망 → 캐러밴 종료(자원 입금 X)
 
       if (c._returningRes && c._returningAmt > 0) {
         const received = c._returningAmt * (1 - inboundLoss);

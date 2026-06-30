@@ -284,7 +284,7 @@ function totalFoodProductionEquivalent(prod) {
 }
 
 // 인구 동역학
-const POP_GROWTH_RATE = 0.012;            // r — 일일. 연 환산 ~4.4%
+const POP_GROWTH_RATE = 0.0135;           // r — 일일. 연 ~5%. ★도적에게 죽는 행상 손실을 살짝 보전(0.012→0.0135)
 const POP_MAX_DELTA_PCT = 0.02;           // 일일 변화 상한 (안정화)
 const POP_MIN = 0;                         // ★인구 하한 0 — 자급 불가 마을은 0명까지 줄어 소멸(척박지엔 마을이 안 남음). 365일 정착 보호 후.
 const POP_MAX = 1000;                      // 마을당 인구 상한 (N² 폭발 방지)
@@ -931,6 +931,9 @@ function pickDeficitJob_rational(v, world) {
   if (v.housing !== undefined && N >= v.housing * 0.95 && (v.storage.wood || 0) < N * 2 && hasSlot(v, 'lumberjack', cap, counts)) return 'lumberjack';
   // ★석재 안전망: 산이 가까운 마을(land.stone 충분)이 석재 부족하면 광부. 집·도구·무기 석재 수요 → 채광. 산 없으면(stone≤0.25) 안 함.
   if ((v.land.stone || 0) > 0.25 && (v.storage.stone || 0) < N * 1.5 && hasSlot(v, 'miner', cap, counts)) return 'miner';
+  // ★호위 안전망: 행상이 도적에게 죽은 적 있고(tradersKilled) 전사 부족 + 식량 여유면 전사 양성.
+  //   → 전사가 무기·갑옷 수요 → 광석·석재 수요 → 채광. (도적→전사→광업 사슬을 닫음)
+  if (v.tradeStats && (v.tradeStats.tradersKilled || 0) > 3 && (counts.warrior || 0) < Math.max(1, N * 0.06) && foodEquiv > N * 40 && hasSlot(v, 'warrior', cap, counts)) return 'warrior';
 
   // === 한계 효용 계산 — 각 직업 1명 추가 시 기대 가치 (식량 환산 단위) ===
   const period = 100;  // 평가 윈도우 100일
