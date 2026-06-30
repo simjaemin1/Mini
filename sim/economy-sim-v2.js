@@ -205,9 +205,21 @@ function tickSubsistence(v, day) {
   }
 }
 
+// ★기회비용: 마을에서 가장 값싸게 차출할 수 있는 생산자의 일당 가치(= 그 산출의 한계가치).
+//   글럿 재화 생산자는 현지 가격이 낮아 MV가 낮음 → 가장 먼저 교역 원정에 나섬. picker와 같은 계수.
+function minLaborValue(v, prices) {
+  const L = v.land, c = v.counts || {}, opts = [];
+  if ((c.farmer || 0) > 0)     opts.push(L.fertility * 0.4 * (prices.food || 1));
+  if ((c.fisher || 0) > 0)     opts.push(L.water * 1.2 * (prices.fish || 1));
+  if ((c.hunter || 0) > 0)     opts.push(L.game * 0.7 * (prices.meat || 1));
+  if ((c.miner || 0) > 0)      opts.push(L.stone * 0.3 * (prices.stone || 1));
+  if ((c.lumberjack || 0) > 0) opts.push(L.wood * 0.3 * (prices.wood || 1));
+  if ((c.forager || 0) > 0)    opts.push(0.25 * (prices.vegetable || 1));
+  return opts.length ? Math.min(...opts) : 0.5;
+}
 // =============================================================================
-// 3. 행상 의사결정 — LOP arbitrage
-//    각 마을에 대해 (잉여 자원, 목적지) 쌍에서 이익 max 골라 caravan 출발.
+// 3. 교역 의사결정 — LOP arbitrage. ★전담 행상 없음: 기본 NPC가 남는 시간(생산<교역일 때) 왕복.
+//    "남는 시간" = 원정 이익 > 왕복 일수×기회비용(가장 값싼 생산자 일당)일 때. 매 원정 후 가격 갱신(자기제한).
 // =============================================================================
 function tickTradeV2(world, day) {
   if (day % TRADE_INTERVAL !== 0) return;
@@ -227,18 +239,17 @@ function tickTradeV2(world, day) {
   for (const a of data) {
     if (a.v.isolated && day < a.v.isolatedUntilDay) continue;
     if (a.v.npcs.length < 2) continue;
-    const merchantCount = (a.v.counts && a.v.counts.merchant) || 0;
     const N = a.v.npcs.length;
-    // 매 cycle 출장 가능 caravan 수 — merchant 수 (최소 1)
-    const maxCaravans = Math.max(1, merchantCount);
-    const capacity = Math.max(N * 15, merchantCount * 100);
+    // ★전담 행상 제거: 한 사이클 최대 30%만 원정(노동 안전), 가치 상한 N*20.
+    const capacity = N * 20;
     if (a.sent >= capacity) continue;
-
-    // 이 cycle에 이미 출장한 (자원, 목적지) — 중복 방지
-    const alreadySent = new Set();
+    const minLabor = minLaborValue(a.v, a.prices);   // 기회비용(가장 값싼 생산자 일당)
+    const maxTrips = Math.floor(N * 0.08) - (a.v._tradersAway || 0);   // ★동시 교역 ≤ 인구 8%(노동 보호). 이미 나간 만큼 차감.
+    if (maxTrips < 1) continue;
+    const alreadySent = new Set();   // 이 cycle 중복 (자원,목적지) 방지
     let caravansLaunched = 0;
 
-    while (caravansLaunched < maxCaravans && a.sent < capacity) {
+    while (caravansLaunched < maxTrips && a.sent < capacity) {
       // 후보 자원 — 잉여
       const candidates = [];
       for (const r of TRADABLE) {
@@ -283,13 +294,22 @@ function tickTradeV2(world, day) {
         }
       }
       if (!best) break;
+      // ★남는 시간 판정: 원정 이익 > 왕복 일수 × 기회비용일 때만(생산보다 교역이 나을 때). 아니면 생산이 나으니 중단.
+      const tripDays = travelDaysForDistance(best.dist) * 2;
+      if (best.profit <= minLabor * tripDays) break;
       alreadySent.add(best.key);
       caravansLaunched++;
+      a.v._tradersAway = (a.v._tradersAway || 0) + 1;   // 교역 원정자 1명 떠남(귀환 시 감소) → 그만큼 생산 축소
 
       // 출발 — a.v.storage[cand.res] 차감 즉시
       const { cand, b, dist, N_units, pFrom, pTo } = best;
       a.v.storage[cand.res] -= N_units;
       a.sent += N_units * pFrom;
+      // ★가치 변동(자기제한): 수출로 재고↓ → 현지 가격↑ → 다음 원정 이익↓ → 차익거래가 균형까지만.
+      { const r = cand.res, base = BASE_VALUE_V2[r] || 1, elast = ELASTICITY[r] || 1,
+          subs = (SUBSISTENCE_PER_NPC[r] || 0) * N, buf = N * Math.max(0.5, (UTILITY_WEIGHT[r] || 0.1) * 1.2),
+          tg = Math.max(subs * 30, buf), st = Math.max(0.1, a.v.storage[r] || 0);
+        a.prices[r] = base * Math.max(PRICE_ADJ_MIN, Math.min(PRICE_ADJ_MAX, Math.pow(tg / st, elast))); }
 
       // 가져갈 자원 결정
       let bestReturnRes = null, bestReturnRatio = 0;
@@ -515,6 +535,7 @@ function tickCaravansV2(world, day) {
         }
       }
       c._done = true;
+      if (c.from) c.from._tradersAway = Math.max(0, (c.from._tradersAway || 0) - 1);   // 교역 원정자 귀환 → 생산 복귀
     }
   }
   world.caravans = world.caravans.filter(c => !c._done);

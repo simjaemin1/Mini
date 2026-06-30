@@ -358,7 +358,7 @@ function jobCapacity(v) {
     armorsmith:  Math.max(1, Math.floor(v.npcs.length * 0.06)),  // Phase 4d-7
     cook:        Math.max(1, Math.floor(v.npcs.length * 0.10)),
     warrior:     Math.max(1, Math.floor(v.npcs.length * 0.08)),
-    merchant:    Math.max(1, Math.floor(v.npcs.length * 0.08)),  // 상업 자리
+    merchant:    0,  // ★전담 행상 폐지 — 교역은 기본 NPC가 남는 시간에 왕복(tickTradeV2). 정원 0이라 아무도 행상으로 안 뽑힘.
   };
   return c;
 }
@@ -526,13 +526,7 @@ function createVillage(opts) {
   // Phase 4d-7: sustainable cap 제거 — 비자급 마을도 정상 인구로 시작 (초기 식량 비축으로 교역 시간 확보)
   const initN = opts.initialPop || 8;
   for (let i = 0; i < initN; i++) {
-    let job;
-    if (i === 0) {
-      // 첫 NPC는 무조건 merchant — 거래 시작 보장
-      job = 'merchant';
-    } else {
-      job = pickInitialJob(v);
-    }
+    let job = pickInitialJob(v);   // ★전담 행상 폐지: 첫 NPC도 일반 직업(식량 위주). 교역은 잉여 생기면 기본 NPC가.
     const npc = createNPC({ job });
     v.npcs.push(npc);
     v.counts[job] = (v.counts[job] || 0) + 1;
@@ -1009,7 +1003,17 @@ function pickDeficitJob_rational(v, world) {
 
 // 자율 직업 전환 — 매 7일 1명만
 function autoSwitchJob(v, day, world) {
-  if (v.npcs.length < 3) return;
+  if (v.npcs.length < 3) {
+    // ★죽음의 나선 방지: 소수 인구 + 식량위기 + 식량생산자 0이면, 가장 맞는 식량직업으로 강제 전환(회복 보장).
+    const c0 = jobCounts(v);
+    const foodWorkers = (c0.farmer || 0) + (c0.fisher || 0) + (c0.hunter || 0) + (c0.forager || 0);
+    if (foodWorkers === 0 && v.npcs.length >= 1 && totalFoodEquivalent(v) < v.npcs.length * 30) {
+      const opts = [['farmer', v.land.fertility * 1.5], ['fisher', v.land.water * 1.2], ['hunter', v.land.game * 0.7], ['forager', 0.3]];
+      opts.sort((a, b) => b[1] - a[1]);
+      switchNPCJob(v.npcs[0], opts[0][0], day, v);   // 한 명을 농사/어로/사냥 중 땅에 맞는 걸로
+    }
+    return;
+  }
   const picker = world && world.picker === 'rational' ? pickDeficitJob_rational : pickDeficitJob;
   const need = picker(v, world);
   if (!need) return;  // 자리 없으면 전환 불가
