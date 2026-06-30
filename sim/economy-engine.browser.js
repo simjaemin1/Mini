@@ -1088,7 +1088,11 @@ function tickVillage(v, day) {
   v.housing *= (1 - HOUSE_DECAY);   // 노후화
   const houseTarget = N * HOUSE_BUFFER;
   if (v.housing < houseTarget) {
-    let built = Math.min(houseTarget - v.housing, (v.storage.wood || 0) / HOUSE_WOOD, N * HOUSE_BUILD_MAX);   // 목재가 필수 제약
+    // ★노동기반 건설: "시간 남는 NPC가 집을 짓는다" — 여유노동이 건설속도를 결정.
+    //   식량안보(곳간 여유)일수록 잉여노동 많아 건설 빠름. 쪼들리면 정체(노동을 식량에 다 씀).
+    const _fe = totalFoodEquivalent(v);
+    const slack = _fe > N * 40 ? 1.0 : (_fe > N * 25 ? 0.5 : 0.15);
+    let built = Math.min(houseTarget - v.housing, (v.storage.wood || 0) / HOUSE_WOOD, N * HOUSE_BUILD_MAX * slack);   // 목재 필수 + 여유노동 제약
     if (built > 0) {
       // ★석재 준-필수: 석재 충분하면 정상 건축, 없으면 30%만(주춧돌·구들 없는 임시 가옥). 강한 석재 수요 → 광산 교역 유발.
       const stoneNeed = built * HOUSE_STONE;
