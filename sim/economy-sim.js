@@ -286,7 +286,7 @@ function totalFoodProductionEquivalent(prod) {
 // 인구 동역학
 const POP_GROWTH_RATE = 0.012;            // r — 일일. 연 환산 ~4.4%
 const POP_MAX_DELTA_PCT = 0.02;           // 일일 변화 상한 (안정화)
-const POP_MIN = 1;                         // 마을 인구 하한
+const POP_MIN = 0;                         // ★인구 하한 0 — 자급 불가 마을은 0명까지 줄어 소멸(척박지엔 마을이 안 남음). 365일 정착 보호 후.
 const POP_MAX = 1000;                      // 마을당 인구 상한 (N² 폭발 방지)
 
 // 세금 + 영토
