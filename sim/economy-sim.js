@@ -616,7 +616,7 @@ function tickVillage(v, day) {
     const ni = Math.min(toolDeps, v.storage.iron_tool || 0);   // 철도구로 덮인 일꾼
     const ns = Math.min(toolDeps - ni, v.storage.tool || 0);   // 나머지 중 돌도구로 덮인 일꾼
     const nn = toolDeps - ni - ns;                             // 맨손
-    toolBoostShared = (ni * 1.8 + ns * 1.0 + nn * 0.25) / toolDeps;
+    toolBoostShared = (ni * 1.8 + ns * 1.0 + nn * 0.25) / toolDeps;   // 철도구 1.8(되돌림 — 1.5는 인구 과하게 줄임)
   }
   // 봉쇄 = 교역만 차단. 산출 자체는 영향 없음 (자급 마을은 영향 X).
   const isBlockaded = v.isolated && day < v.isolatedUntilDay;
@@ -749,7 +749,7 @@ function tickVillage(v, day) {
   const prodK = (dailyFoodProd + dailyImport) / DAILY_FOOD_CONSUMPTION;
   // ★도구 마모 — 내구재라 천천히 닳음(반감기 ~19년). 인구 성장으로 1인당 도구가 희석되면 대장간이 보충.
   //   (예전 0.2%/일은 반감기 1.4년 = 비현실적으로 빨라 도구 고갈→붕괴 유발)
-  if (v.storage.tool) v.storage.tool *= (1 - 0.0001);
+  if (v.storage.tool) v.storage.tool *= (1 - 0.0001);       // 도구 마모(내구재). ※마모↑(D) 실험: 돌수요 폭증→단일공급자 병목 악화·인구↓ → 0.0001 유지가 최적
   if (v.storage.iron_tool) v.storage.iron_tool *= (1 - 0.00005);
 
   // ★주거 증축: 집이 인구보다 모자라면 목재(필수)·석재(있으면)로 지음. 노후화로 지속 보수.
@@ -964,8 +964,8 @@ function pickDeficitJob_rational(v, world) {
     if (_cov < 0.7 && (v.storage.stone || 0) >= 0.6 && hasSlot(v, 'smith', cap, counts)) return 'smith';
   }
 
-  // 진짜 기근 (food < N*30일치) — 무조건 식량 직업 (안전망). 식량 안정의 핵심이라 유지(풀면 마을 붕괴).
-  //   v2 r9: picker w cap 풀면 농부 폭락 위험 → 30일치 보장. Lewis 모델 안전판.
+  // 진짜 기근 (food < N*30일치) — 식량 직업 강제. ★경제적 정당성: 자급경제는 맬서스 상한에서 돌고,
+  //   강제 30일버퍼가 ①식량안보→특화 노동 해방 ②식량생산 최대화→인구 상한 달성. (게이트 완화 실험 시 인구·특화 둘다 악화 확인)
   if (foodEquiv < N * 30) {
     // ★농사 불가 마을(비옥<0.2): 농부 강제는 무의미(거의 0 산출) → 가치재(금·광석) 채굴로 식량 살 자금 확보.
     //   광산 부얼타운 = 식량 전량 수입. 어로/사냥(직접 식량)이 가능하면 그게 우선, 광맥뿐이면 채굴해 교역.
