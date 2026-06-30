@@ -931,6 +931,7 @@ function tickVillage(v, day) {
   // 봉쇄 = 교역만 차단. 산출 자체는 영향 없음 (자급 마을은 영향 X).
   const isBlockaded = v.isolated && day < v.isolatedUntilDay;
   for (const npc of v.npcs) {
+    if (npc._tradingUntil && npc._tradingUntil > day) continue;   // ★교역 원정 중 → 생산 안 함(기회비용 실현). 저숙련자라 손실 작음.
     const jdef = JOBS[npc.currentJob];
     const f = jdef.field;
     const skillLvl = npc.skills[f];
@@ -2216,17 +2217,29 @@ function tickSubsistence(v, day) {
   }
 }
 
-// ★기회비용: 마을에서 가장 값싸게 차출할 수 있는 생산자의 일당 가치(= 그 산출의 한계가치).
-//   글럿 재화 생산자는 현지 가격이 낮아 MV가 낮음 → 가장 먼저 교역 원정에 나섬. picker와 같은 계수.
-function minLaborValue(v, prices) {
-  const L = v.land, c = v.counts || {}, opts = [];
-  if ((c.farmer || 0) > 0)     opts.push(L.fertility * 0.4 * (prices.food || 1));
-  if ((c.fisher || 0) > 0)     opts.push(L.water * 1.2 * (prices.fish || 1));
-  if ((c.hunter || 0) > 0)     opts.push(L.game * 0.7 * (prices.meat || 1));
-  if ((c.miner || 0) > 0)      opts.push(L.stone * 0.3 * (prices.stone || 1));
-  if ((c.lumberjack || 0) > 0) opts.push(L.wood * 0.3 * (prices.wood || 1));
-  if ((c.forager || 0) > 0)    opts.push(0.25 * (prices.vegetable || 1));
-  return opts.length ? Math.min(...opts) : 0.5;
+// ★기회비용(개인 단위 + 숙련 반영): 교역 차출 1순위 = 한계가치가 가장 낮은 생산자 NPC.
+//   한계가치 = 산출계수(JOBS.base) × land[자원] × (1+레벨×0.05) × 그림자가격.
+//   → 글럿 재화 생산자 + *저숙련*일수록 MV 낮음 → 그가 교역 감(명인은 생산에 남음 = 마을 내 비교우위).
+const JOB_LAND = { farmer: 'fertility', fisher: 'water', hunter: 'game', lumberjack: 'wood', miner: 'stone', prospector: 'ore' };
+const JOB_OUT  = { farmer: 'food', fisher: 'fish', hunter: 'meat', lumberjack: 'wood', miner: 'stone', prospector: 'ore' };
+function lowestProducer(v, prices, day) {
+  let best = null, bestMV = Infinity;
+  for (const npc of v.npcs) {
+    if (npc._tradingUntil && npc._tradingUntil > day) continue;   // 이미 교역 원정 중인 NPC 제외
+    const j = npc.currentJob;
+    let mv;
+    if (j === 'forager') {
+      mv = 1.0 * 0.3 * (1 + (npc.skills.foraging || 0) * 0.05) * (prices.vegetable || 1);
+    } else {
+      const landKey = JOB_LAND[j];
+      if (!landKey) continue;   // 비생산직(대장·요리·전사 등)은 교역 차출 대상 아님
+      const jd = v1.JOBS[j];
+      const skillMul = 1 + (npc.skills[jd.field] || 0) * 0.05;
+      mv = jd.base * (v.land[landKey] || 0) * skillMul * (prices[JOB_OUT[j]] || 1);
+    }
+    if (mv < bestMV) { bestMV = mv; best = npc; }
+  }
+  return { npc: best, mv: bestMV };
 }
 // =============================================================================
 // 3. 교역 의사결정 — LOP arbitrage. ★전담 행상 없음: 기본 NPC가 남는 시간(생산<교역일 때) 왕복.
@@ -2254,13 +2267,15 @@ function tickTradeV2(world, day) {
     // ★전담 행상 제거: 한 사이클 최대 30%만 원정(노동 안전), 가치 상한 N*20.
     const capacity = N * 20;
     if (a.sent >= capacity) continue;
-    const minLabor = minLaborValue(a.v, a.prices);   // 기회비용(가장 값싼 생산자 일당)
-    const maxTrips = Math.floor(N * 0.08) - (a.v._tradersAway || 0);   // ★동시 교역 ≤ 인구 8%(노동 보호). 이미 나간 만큼 차감.
+    const currentlyTrading = a.v.npcs.filter(n => n._tradingUntil && n._tradingUntil > day).length;
+    const maxTrips = Math.floor(N * 0.08) - currentlyTrading;   // ★동시 교역 ≤ 인구 8%(노동 보호)
     if (maxTrips < 1) continue;
     const alreadySent = new Set();   // 이 cycle 중복 (자원,목적지) 방지
     let caravansLaunched = 0;
 
     while (caravansLaunched < maxTrips && a.sent < capacity) {
+      const lp = lowestProducer(a.v, a.prices, day);   // 현재 가장 값싼 생산자 NPC(이미 교역중인 사람 제외)
+      if (!lp.npc) break;   // 보낼 생산자가 없으면 중단
       // 후보 자원 — 잉여
       const candidates = [];
       for (const r of TRADABLE) {
@@ -2305,12 +2320,12 @@ function tickTradeV2(world, day) {
         }
       }
       if (!best) break;
-      // ★남는 시간 판정: 원정 이익 > 왕복 일수 × 기회비용일 때만(생산보다 교역이 나을 때). 아니면 생산이 나으니 중단.
+      // ★남는 시간 판정: 원정 이익 > 왕복 일수 × (그 NPC의 숙련 반영) 기회비용일 때만. 아니면 생산이 나으니 중단.
       const tripDays = travelDaysForDistance(best.dist) * 2;
-      if (best.profit <= minLabor * tripDays) break;
+      if (best.profit <= lp.mv * tripDays) break;
       alreadySent.add(best.key);
       caravansLaunched++;
-      a.v._tradersAway = (a.v._tradersAway || 0) + 1;   // 교역 원정자 1명 떠남(귀환 시 감소) → 그만큼 생산 축소
+      lp.npc._tradingUntil = day + tripDays;   // ★이 저가치·저숙련 NPC가 교역 나감 → 귀환(day+왕복)까지 생산 안 함
 
       // 출발 — a.v.storage[cand.res] 차감 즉시
       const { cand, b, dist, N_units, pFrom, pTo } = best;
@@ -2546,7 +2561,6 @@ function tickCaravansV2(world, day) {
         }
       }
       c._done = true;
-      if (c.from) c.from._tradersAway = Math.max(0, (c.from._tradersAway || 0) - 1);   // 교역 원정자 귀환 → 생산 복귀
     }
   }
   world.caravans = world.caravans.filter(c => !c._done);

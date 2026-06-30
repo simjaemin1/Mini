@@ -611,6 +611,7 @@ function tickVillage(v, day) {
   // 봉쇄 = 교역만 차단. 산출 자체는 영향 없음 (자급 마을은 영향 X).
   const isBlockaded = v.isolated && day < v.isolatedUntilDay;
   for (const npc of v.npcs) {
+    if (npc._tradingUntil && npc._tradingUntil > day) continue;   // ★교역 원정 중 → 생산 안 함(기회비용 실현). 저숙련자라 손실 작음.
     const jdef = JOBS[npc.currentJob];
     const f = jdef.field;
     const skillLvl = npc.skills[f];
