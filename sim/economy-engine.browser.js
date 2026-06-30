@@ -409,6 +409,7 @@ function pickWeighted(weights) {
 const RESOURCES = [
   'food', 'fish', 'meat', 'hide', 'cooked_food',
   'wood', 'stone', 'ore', 'tool',
+  'iron', 'iron_tool',  // ★철(광맥 전용) + 철도구(대장간이 철로 제작, 고효율)
   'weapon', 'armor',  // Phase 4d-7: 무기/갑옷
   'fruit', 'vegetable', 'mushroom', 'pebble', 'twig',
 ];
@@ -455,10 +456,11 @@ const JOBS = {
     // Phase 5-5-econ-b: 희귀 광맥 (iron·copper·tin·silver·gold·gem)
     byproduct: { iron: 0.30, copper: 0.20, tin: 0.10, silver: 0.05, gold: 0.02, gem: 0.01 },
   },
-  smith: {                  // 도구 제작 (wood + stone) — pebble 의존 제거 (cascade failure 방지)
+  smith: {                  // 대장장이 — 철 있으면 철도구(고효율), 없으면 돌도구. 철은 광맥에서만 나오므로 대장장이가 철도구의 유일 경로.
     field: 'smithing', output: 'tool', base: 0.4,
     landBoost: () => 1.0, toolDependent: false,
     inputs: { wood: 0.5, stone: 0.3 },
+    produceSpecial: 'smith',
   },
   // Phase 4d-7: 무기/갑옷 제작 — warrior 호위력 보너스. ore + hide + pebble 소비처 마련.
   weaponsmith: {            // 무기 제작 (ore + wood + stone). v2: 만성 부족 완화 위해 산출 ↑
@@ -529,6 +531,8 @@ function foragerYieldsFor(v) {
     mushroom:  wood * 0.4 + stone * 0.2 + 0.1,
     twig:      wood * 0.5 + 0.2,
     pebble:    stone * 0.5 + 0.1,
+    stone:     stone * 0.12 + 0.04,   // ★채집에서 돌 소량(주워옴). 대량은 광산. → 도구·주거 최소 자급 가능
+
     // 새 자원 (specialty.js의 foraging) — 가중치 작게 (옛 자원 우선)
     chestnut:  wood * 0.18,           // 견과 — 숲
     walnut:    wood * 0.15,           // 견과 — 숲
@@ -922,12 +926,17 @@ function tickVillage(v, day) {
   //    매일 새 객체 만들지 말고 버퍼 재사용 (GC 부하 ↓)
   const dailyProduction = v.dailyProductionBuf;
   for (const r of RESOURCES) dailyProduction[r] = 0;
-  // toolBoost 한 번만 계산. 도구 효과 +20%.
+  // ★도구 등급제: 맨손 0.25×(엄청 느림) / 돌도구 1.0×(보통) / 철도구 1.8×(상당히 빠름). 일꾼은 가진 최선의 도구 사용.
+  //   → 도구가 생산을 좌우 → 대장간·돌·철 수요. 도구 없어도 농어업 가능하나 극도로 느림(사용자 설계).
   let toolDeps = 0;
   for (const n of v.npcs) if (JOBS[n.currentJob].toolDependent) toolDeps++;
-  const toolBoostShared = toolDeps > 0
-    ? (1 + 0.2 * Math.min(1, v.storage.tool / toolDeps))
-    : 1.0;
+  let toolBoostShared = 1.0;
+  if (toolDeps > 0) {
+    const ni = Math.min(toolDeps, v.storage.iron_tool || 0);   // 철도구로 덮인 일꾼
+    const ns = Math.min(toolDeps - ni, v.storage.tool || 0);   // 나머지 중 돌도구로 덮인 일꾼
+    const nn = toolDeps - ni - ns;                             // 맨손
+    toolBoostShared = (ni * 1.8 + ns * 1.0 + nn * 0.25) / toolDeps;
+  }
   // 봉쇄 = 교역만 차단. 산출 자체는 영향 없음 (자급 마을은 영향 X).
   const isBlockaded = v.isolated && day < v.isolatedUntilDay;
   for (const npc of v.npcs) {
@@ -972,6 +981,18 @@ function tickVillage(v, day) {
         v.storage.food -= 1;
         for (const r of usedSides) v.storage[r] -= 0.5;
         addProduce('cooked_food', cooked);
+        workNPC(npc);
+      }
+    } else if (jdef.produceSpecial === 'smith') {
+      // ★대장장이: 철(광맥 전용) 있으면 철도구(고효율), 아니면 돌도구. 도구는 돌 기반(석재 풍부)이라 목재 의존 X → 도구 자급 안정.
+      const amt = jdef.base * skillMul;   // smith는 toolDependent 아님(맨손 페널티 없음)
+      if ((v.storage.iron || 0) >= 0.5 && (v.storage.stone || 0) >= 0.2) {
+        v.storage.iron -= 0.5; v.storage.stone -= 0.2;
+        addProduce('iron_tool', amt);
+        workNPC(npc);
+      } else if ((v.storage.stone || 0) >= 0.6) {
+        v.storage.stone -= 0.6;
+        addProduce('tool', amt);
         workNPC(npc);
       }
     } else if (jdef.output && baseAmt > 0) {
@@ -1033,6 +1054,11 @@ function tickVillage(v, day) {
   }
   const dailyImport = v._importEMA || 0;
   const prodK = (dailyFoodProd + dailyImport) / DAILY_FOOD_CONSUMPTION;
+  // ★도구 마모 — 내구재라 천천히 닳음(반감기 ~19년). 인구 성장으로 1인당 도구가 희석되면 대장간이 보충.
+  //   (예전 0.2%/일은 반감기 1.4년 = 비현실적으로 빨라 도구 고갈→붕괴 유발)
+  if (v.storage.tool) v.storage.tool *= (1 - 0.0001);
+  if (v.storage.iron_tool) v.storage.iron_tool *= (1 - 0.00005);
+
   // ★주거 증축: 집이 인구보다 모자라면 목재(필수)·석재(있으면)로 지음. 노후화로 지속 보수.
   if (v.housing === undefined) v.housing = N;
   v.housing *= (1 - HOUSE_DECAY);   // 노후화
@@ -1165,7 +1191,7 @@ function pickDeficitJob(v) {
   // 2) tool 부족
   let _toolDeps = 0;
   for (const j of JOB_NAMES) if (JOBS[j].toolDependent) _toolDeps += (counts[j] || 0);
-  const toolPer = v.storage.tool / Math.max(1, _toolDeps);
+  const toolPer = ((v.storage.tool || 0) + (v.storage.iron_tool || 0)) / Math.max(1, _toolDeps);
   if (toolPer < 1.5 && hasSlot(v, 'smith', cap, counts)) return 'smith';
 
   // 3) 식량 자리 70% 미만 + 식량 잉여 적당 → 식량 직업 우선
@@ -1235,6 +1261,15 @@ function pickDeficitJob_rational(v, world) {
   const foodEquiv = totalFoodEquivalent(v);
   const forageLandMean = Math.max(0.3, (v.land.fertility + v.land.wood + v.land.stone) / 3);
 
+  // ★도구 자본 우선(기근보다 앞): 도구가 치명적으로 부족하면(맨손 0.25× = 식량생산 폭락) 대장간 먼저.
+  //   도구는 자본재 — 1명이 도구 만들면 나머지 식량생산이 0.25×→1.0×로 회복(순이득 큼). 단 재료(목·석) 있고 마을 충분히 클 때만.
+  //   재료 없으면 아래 식량직(forage가 목·석도 가져옴)으로 자연 회복. 죽음의 나선 방지.
+  if (N >= 6) {
+    let _td = 0; for (const j of JOB_NAMES) if (JOBS[j].toolDependent) _td += (counts[j] || 0);
+    const _cov = ((v.storage.tool || 0) + (v.storage.iron_tool || 0)) / Math.max(1, _td);
+    if (_cov < 0.7 && (v.storage.stone || 0) >= 0.6 && hasSlot(v, 'smith', cap, counts)) return 'smith';
+  }
+
   // 진짜 기근 (food < N*30일치) — 무조건 식량 직업 (안전망). 식량 안정의 핵심이라 유지(풀면 마을 붕괴).
   //   v2 r9: picker w cap 풀면 농부 폭락 위험 → 30일치 보장. Lewis 모델 안전판.
   if (foodEquiv < N * 30) {
@@ -1267,7 +1302,7 @@ function pickDeficitJob_rational(v, world) {
   // 도구 절박 부족
   let _toolDeps = 0;
   for (const j of JOB_NAMES) if (JOBS[j].toolDependent) _toolDeps += (counts[j] || 0);
-  if (v.storage.tool / Math.max(1, _toolDeps) < 1.0 && hasSlot(v, 'smith', cap, counts)) return 'smith';
+  if (((v.storage.tool || 0) + (v.storage.iron_tool || 0)) / Math.max(1, _toolDeps) < 1.0 && hasSlot(v, 'smith', cap, counts)) return 'smith';
   // ★주거 압박: 집이 거의 가득(인구 성장 막힘) + 집 지을 목재 부족 → 나무꾼. 집 지어야 인구가 늚 → 고리를 닫는 안전망.
   if (v.housing !== undefined && N >= v.housing * 0.95 && (v.storage.wood || 0) < N * 2 && hasSlot(v, 'lumberjack', cap, counts)) return 'lumberjack';
   // ★석재 안전망: 산이 가까운 마을(land.stone 충분)이 석재 부족하면 광부. 집·도구·무기 석재 수요 → 채광. 산 없으면(stone≤0.25) 안 함.
@@ -2165,10 +2200,8 @@ try {
 } catch (e) {
   console.warn('[econ-sim-v2] specialty.js 로드 실패 (옛 17종만 사용):', e.message);
 }
-// ★[디버그] 금광 실험: 금 가치 폭등 + 유틸 상한 면제 → 미량의 금으로 식량 전량 구매 가능한지 테스트.
-//   순수 특화 광산촌(농사 불가)이 교역만으로 자급할 수 있는가? 를 검증하기 위한 과장된 세팅.
-BASE_VALUE_V2.gold = 50000;
-UTILITY_WEIGHT.gold = 3.0;   // 유틸가중 가격상한 높게 → 금 가격 격차가 캐러밴을 잡게(교역 성사)
+// ※금 디버그(가치 50000) 제거 — 금은 use-value가 없어 진짜 수요가 없음(사용자 지적).
+//   광산촌은 실제 수요재(ore→대장간, stone→주거)로만 자생해야 경제적으로 옳음.
 
 // === 계절 시스템 ===
 //   v2 r7: 진폭 축소 — 인구 cycle 진동 완화. 평년 평균 = 1.0 유지.
@@ -2318,15 +2351,17 @@ function tickTradeV2(world, day) {
       // 후보 자원 — 잉여. ★식량류(food/fish/meat/cooked_food)는 넉넉히 보유 후 *진짜* 잉여만 수출.
       //   기존엔 15일치만 남겨(< 기근 문턱 30일치) 식량 마을이 수출 후 식량불안 → 비식량 직업 선점. 이젠 36일치 보유.
       const FOODR = { food: 1, fish: 1, meat: 1, cooked_food: 1 };
+      const CAPITAL = { tool: 1, iron_tool: 1 };   // ★도구=자본재. 팔아치우면 생산 0.25×로 붕괴 → 1인당 1개 보유 후 잉여만.
       const candidates = [];
       for (const r of TRADABLE) {
         const stock = a.v.storage[r] || 0;
         const subs = (SUBSISTENCE_PER_NPC[r] || 0) * N;
         const buffer = N * 0.8;
         const target = Math.max(subs * 30, buffer);
-        const isFood = FOODR[r];
-        const keep = isFood ? target * 1.2 : target * 0.5;     // 식량: 36일치 보유(>기근30) / 그 외: 15일치
-        const thresh = isFood ? target * 1.4 : target * 0.8;   // 식량: 42일치 넘을 때만 수출
+        let keep, thresh;
+        if (FOODR[r]) { keep = target * 1.2; thresh = target * 1.4; }       // 식량: 36일치 보유(>기근30), 42일치 초과만 수출
+        else if (CAPITAL[r]) { keep = N * 1.2; thresh = N * 1.5; }          // 도구: 1.2개/명 보유, 1.5개/명 초과만 수출(덤핑 금지)
+        else { keep = target * 0.5; thresh = target * 0.8; }                // 그 외: 15일치
         if (stock > thresh) candidates.push({ res: r, surplus: Math.max(1, stock - keep) });
       }
       if (!candidates.length) break;

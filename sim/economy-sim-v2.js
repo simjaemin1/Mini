@@ -127,10 +127,8 @@ try {
 } catch (e) {
   console.warn('[econ-sim-v2] specialty.js 로드 실패 (옛 17종만 사용):', e.message);
 }
-// ★[디버그] 금광 실험: 금 가치 폭등 + 유틸 상한 면제 → 미량의 금으로 식량 전량 구매 가능한지 테스트.
-//   순수 특화 광산촌(농사 불가)이 교역만으로 자급할 수 있는가? 를 검증하기 위한 과장된 세팅.
-BASE_VALUE_V2.gold = 50000;
-UTILITY_WEIGHT.gold = 3.0;   // 유틸가중 가격상한 높게 → 금 가격 격차가 캐러밴을 잡게(교역 성사)
+// ※금 디버그(가치 50000) 제거 — 금은 use-value가 없어 진짜 수요가 없음(사용자 지적).
+//   광산촌은 실제 수요재(ore→대장간, stone→주거)로만 자생해야 경제적으로 옳음.
 
 // === 계절 시스템 ===
 //   v2 r7: 진폭 축소 — 인구 cycle 진동 완화. 평년 평균 = 1.0 유지.
@@ -280,15 +278,17 @@ function tickTradeV2(world, day) {
       // 후보 자원 — 잉여. ★식량류(food/fish/meat/cooked_food)는 넉넉히 보유 후 *진짜* 잉여만 수출.
       //   기존엔 15일치만 남겨(< 기근 문턱 30일치) 식량 마을이 수출 후 식량불안 → 비식량 직업 선점. 이젠 36일치 보유.
       const FOODR = { food: 1, fish: 1, meat: 1, cooked_food: 1 };
+      const CAPITAL = { tool: 1, iron_tool: 1 };   // ★도구=자본재. 팔아치우면 생산 0.25×로 붕괴 → 1인당 1개 보유 후 잉여만.
       const candidates = [];
       for (const r of TRADABLE) {
         const stock = a.v.storage[r] || 0;
         const subs = (SUBSISTENCE_PER_NPC[r] || 0) * N;
         const buffer = N * 0.8;
         const target = Math.max(subs * 30, buffer);
-        const isFood = FOODR[r];
-        const keep = isFood ? target * 1.2 : target * 0.5;     // 식량: 36일치 보유(>기근30) / 그 외: 15일치
-        const thresh = isFood ? target * 1.4 : target * 0.8;   // 식량: 42일치 넘을 때만 수출
+        let keep, thresh;
+        if (FOODR[r]) { keep = target * 1.2; thresh = target * 1.4; }       // 식량: 36일치 보유(>기근30), 42일치 초과만 수출
+        else if (CAPITAL[r]) { keep = N * 1.2; thresh = N * 1.5; }          // 도구: 1.2개/명 보유, 1.5개/명 초과만 수출(덤핑 금지)
+        else { keep = target * 0.5; thresh = target * 0.8; }                // 그 외: 15일치
         if (stock > thresh) candidates.push({ res: r, surplus: Math.max(1, stock - keep) });
       }
       if (!candidates.length) break;
