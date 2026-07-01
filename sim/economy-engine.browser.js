@@ -632,6 +632,10 @@ const DIVERSITY_HEALTH_W = 0.5;          // 다양성 만점 시 건강 보너�
 const DIVERSITY_FULL = 4;                // 이 군수면 만점(6군 중 4군 = 균형식)
 // ★건강 → 작업량(생산성) — 건강한 마을이 더 생산적(상한 있어 폭주 X). happiness는 인구만(유지).
 const HEALTH_PROD_W = 0.15;              // (health−0.5)×W → ±0.075(상한 클램프 ±0.1). 완만 — 과채광 억제
+// ★공간 농지(논/밭) → 부양력: 논(벼)이 밭보다 고수확 → 유효비옥도 = 기본 × (1 + PADDY_PREMIUM×(개간논비중 − PADDY_BASE)).
+//   논은 물가에 제한(강가 마을이 더 부유 = 고증) + 밭→논 전환이 경제적 이득. v._paddyShare(공간 브리지) 없으면 중립(standalone econ 무영향).
+const PADDY_PREMIUM = 0.4;                // 논 고수확 프리미엄 계수(물대기 노동 감안한 순이득)
+const PADDY_BASE = 0.43;                 // 중립 논비중(지정 평균 ~43%) — 순식량 평형 유지(총식량 변화 시 광산·인구 흔들림). 강가=이득/내륙=손해
 const FOOD_GROUP = { food: 'grain', fish: 'fish', meat: 'meat', fruit: 'fruit', vegetable: 'veg', mushroom: 'forage' };
 // ★무용재 — 실수요(use-value)가 ~0이라 수출해도 식량 못 삼. 식량안보와 무관하게 *항상* 생산 포만(성장기 누적까지 차단).
 //   광석(ore): 갑옷에 미량뿐. 장식재(금·은·보석): 화폐화 전엔 수요 0. 돌·금속(구리·주석)은 수요 있어 제외(가치재 수출).
@@ -1019,6 +1023,8 @@ function tickVillage(v, day) {
   // ★건강 → 작업량(생산성) — 지난 틱 health로 실제 생산 스케일(±10% 상한). 잠재력(dailyProductionPotential)엔 미적용 → K 오염·아사 스파이럴 방지.
   const _hpm = (v.lastStats && typeof v.lastStats.health === 'number')
     ? Math.max(0.9, Math.min(1.1, 1 + (v.lastStats.health - 0.5) * HEALTH_PROD_W)) : 1;
+  // ★논 프리미엄 — 개간 논비중(v._paddyShare)이 높을수록 유효비옥도↑(벼 고수확). 공간 브리지 없으면 중립.
+  const _paddyMul = (v._paddyShare == null) ? 1 : (1 + PADDY_PREMIUM * (v._paddyShare - PADDY_BASE));
   for (const npc of v.npcs) {
     if (npc._tradingUntil && npc._tradingUntil > day) continue;   // ★교역 원정 중 → 생산 안 함(기회비용 실현). 저숙련자라 손실 작음.
     const jdef = JOBS[npc.currentJob];
@@ -1033,7 +1039,7 @@ function tickVillage(v, day) {
     const landBoost = jdef.landBoost(v);
     // skill 효과 — 만렙(10)이면 ×1.5. 분업/교역 의존 강화 위해 효율 ↓.
     const skillMul = 1 + skillLvl * 0.05;
-    const baseAmt = jdef.base * landBoost * skillMul * toolBoost * inputMult;
+    const baseAmt = jdef.base * landBoost * skillMul * toolBoost * inputMult * (f === 'farming' ? _paddyMul : 1);   // ★농사엔 논 프리미엄
 
     // produceSpecial 분기 — 각 산출에 대해 세금 떼고 storage로
     const addProduce = (r, amt) => {

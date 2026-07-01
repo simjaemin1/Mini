@@ -57,8 +57,9 @@ for (const sd of SEEDS) {
     const mine = (e.counts.miner || 0), farm = (e.counts.farmer || 0);
     const st = e.lastStats || {};
     const goldPer = (((S.gold||0)+(S.silver||0)+(S.gem||0)+(S.jade_polished||0)) / n).toFixed(2);
-    const pb=e.dailyProductionBuf||{}; const pr=r=>((pb[r]||0)/n).toFixed(2);
-    _log(`   ${e.name} 인구${n} 건강${(st.health||0).toFixed(2)} 식품군${st.foodGroups||0} | 생산/명 곡${pr('food')} 어${pr('fish')} 육${pr('meat')} 과${pr('fruit')} 채${pr('vegetable')} | 어부${e.counts.fisher||0} 사냥${e.counts.hunter||0} 채집${e.counts.forager||0}`);
+    const nd=(v.potFarm||[]).length, bd=(v.potDry||[]).length, nc=v.nongSet?v.nongSet.size:0, bc=v.batSet?v.batSet.size:0;
+    const pShare=(nd+bd)>0?(nd/(nd+bd)):0;
+    _log(`   ${e.name} 인구${n} fert${(e.land&&e.land.fertility||0).toFixed(2)} | 논지정${nd} 밭지정${bd}(논비중${(pShare*100).toFixed(0)}%) 논개간${nc} 밭개간${bc} | 농부${e.counts.farmer||0} 어부${e.counts.fisher||0}`);
   }
 }
 _log(`\n[집계] 5시드 평균 동시교역비율 ${(globAvgSum / globAvgN * 100).toFixed(2)}% · 전역 peak ${(globMax * 100).toFixed(1)}% · 마을별 peak 중앙값 ${(perVilMaxes.sort((a, b) => a - b)[Math.floor(perVilMaxes.length / 2)] * 100).toFixed(0)}%`);
