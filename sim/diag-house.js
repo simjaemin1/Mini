@@ -34,10 +34,13 @@ for (const sd of [7, 3]) {
     const tset = new Set(terr.map(c => c[0] + ',' + c[1]));
     const cx = v.center.cx, cy = v.center.cy;
     let maxTR = 0; for (const c of terr) { const r = Math.hypot(c[0] - cx, c[1] - cy); if (r > maxTR) maxTR = r; }
-    let out = 0, maxHR = 0, maxOutR = 0;
-    for (const h of (v.houses || [])) { totH++; const hr = Math.hypot(h.cx - cx, h.cy - cy); if (hr > maxHR) maxHR = hr; if (!tset.has(Math.round(h.cx) + ',' + Math.round(h.cy))) { out++; totOut++; if (hr > maxOutR) maxOutR = hr; } }
-    const target = Math.round((1500 + v.econ.npcs.length * 50) * (v._sizeMul || 1.5));
-    _log(`  ${v.econ.name} 인구${v.econ.npcs.length} 영토${terr.length}(목표${target}) maxR${maxTR.toFixed(0)} 집${(v.houses || []).length}(밖${out}, maxR${maxHR.toFixed(0)}, 밖maxR${maxOutR.toFixed(0)}) _terrR${v._sizeMul?'set':'unset'}`);
+    let out = 0, onPot = 0, onClr = 0;
+    for (const h of (v.houses || [])) { totH++; const k = Math.round(h.cx) + ',' + Math.round(h.cy);
+      if (!tset.has(k)) { out++; totOut++; }
+      if (v.potSet && v.potSet.has(k)) onPot++;                          // 지정 농지(논밭 될 곳) 위 집
+      if ((v.nongSet && v.nongSet.has(k)) || (v.batSet && v.batSet.has(k))) onClr++;  // 개간 농지 위 집
+    }
+    _log(`  ${v.econ.name} 인구${v.econ.npcs.length} 집${(v.houses || []).length} | 영토밖${out} · 지정농지위${onPot} · 개간농지위${onClr} | 지정논밭${v.potSet?v.potSet.size:0} 개간${(v.nongSet?v.nongSet.size:0)+(v.batSet?v.batSet.size:0)}`);
   }
 }
 _log(`총 집 ${totH}채 중 영토 밖 ${totOut}채 (${(totOut / Math.max(1, totH) * 100).toFixed(1)}%)`);
