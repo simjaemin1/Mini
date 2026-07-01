@@ -51,6 +51,8 @@ for (const sd of SEEDS) {
   // per-village 최종 상태 — 누적(ore/stone per person)·idleFrac·인구
   for (const v of r.VILS) {
     const e = v.econ, n = e.npcs.length || 1, S = e.storage;
+    const MP = (global.__mp = global.__mp || {});   // 자원별 1인당 최대재고(무한누적 감사)
+    for (const rr in S) { const pc = (S[rr] || 0) / n; if (pc > (MP[rr] || 0)) MP[rr] = pc; }
     const orePer = ((S.ore || 0) / n).toFixed(0), stonePer = ((S.stone || 0) / n).toFixed(0);
     const mine = (e.counts.miner || 0), farm = (e.counts.farmer || 0);
     const st = e.lastStats || {};
@@ -60,3 +62,7 @@ for (const sd of SEEDS) {
   }
 }
 _log(`\n[집계] 5시드 평균 동시교역비율 ${(globAvgSum / globAvgN * 100).toFixed(2)}% · 전역 peak ${(globMax * 100).toFixed(1)}% · 마을별 peak 중앙값 ${(perVilMaxes.sort((a, b) => a - b)[Math.floor(perVilMaxes.length / 2)] * 100).toFixed(0)}%`);
+const MP = global.__mp || {};
+const top = Object.entries(MP).sort((a, b) => b[1] - a[1]).slice(0, 15);
+_log(`\n[누적 감사] 자원별 1인당 최대재고 (top 15):`);
+for (const [r, pc] of top) _log(`   ${r}: ${pc.toFixed(1)}/명`);
