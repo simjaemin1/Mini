@@ -27,10 +27,10 @@ global.frame = function () { global.nowMs += 16; const cb = global.rafCb; global
 const SEED = parseInt(process.argv[2]) || 7, DAYS = parseInt(process.argv[3]) || 70;
 global.eval(PC.replace(/^function pickCenter/, 'global.pickCenter=function') + '\n' + BFS.replace(/^function bfsPath/, 'global.bfsPath=function') + '\n' + SP.replace(/^function setPath/, 'global.setPath=function') + '\n' + TP + '\n' + LIFE +
   "\nglobal.run=function(seed,days){TR=buildTerrain(seed);document.getElementById('seed').value=String(seed);console.log=function(){};lifeInit();lifeGM=L_START*720;lifeLast=0;global.nowMs=0;lifeOn=true;global.rafCb=lifeLoop;" +
-  "var rows=[],lastDay=-1;for(var fr=0;fr<3000;fr++){global.frame();var d=ECON_WORLD.day;if(d!==lastDay&&d<=days){lastDay=d;var v=VILS[0].econ;rows.push({d:d,n:v.npcs.length,food:Math.round(v.storage.food||0),ema:(v.surplusEMA?v.surplusEMA.food:0),house:v.housing!==undefined?Math.round(v.housing*10)/10:'-',farm:(v.counts&&v.counts.farmer)||0,dP:Math.round((v._dPAccum||0)*100)/100});}if(d>days)break;}" +
-  "console.log=global.__log;return {rows:rows,name:VILS[0].econ.name};};");
+  "var rows=[],lastDay=-1;for(var fr=0;fr<3000;fr++){global.frame();var d=ECON_WORLD.day;if(d!==lastDay&&d<=days){lastDay=d;var v=VILS[0].econ;var g=v._dpDebug||{};rows.push({d:d,n:v.npcs.length,role:v.role||'?',K:g.K,logi:g.logi,health:g.health,happy:g.happy,hunger:g.hunger,house:g.housing,gated:g.gated,dP:g.dP});}if(d>days)break;}" +
+  "console.log=global.__log;return {rows:rows,name:VILS[0].econ.name,role:VILS[0].econ.role};};");
 global.__log = _log; console.log = _log;
-_log(`=== 초반 인구 진동 (seed ${SEED}, ${DAYS}일, village[0]) ===`);
 const r = global.run(SEED, DAYS);
-_log(`  일 | 인구 | 식량 | surplusEMA | 주거 | 농부 | dP누적`);
-for (const x of r.rows) _log(`  ${String(x.d).padStart(3)} |  ${String(x.n).padStart(2)}  | ${String(x.food).padStart(4)} | ${x.ema.toFixed(2).padStart(7)} | ${String(x.house).padStart(4)} |  ${String(x.farm).padStart(2)}  | ${x.dP}`);
+_log(`=== 초반 인구 진동 (seed ${SEED}, ${DAYS}일, village[0]=${r.role}) ===`);
+_log(`  일 | 인구 |  K  | logi(로지스틱) | health | happy | 주거 | gated | dP`);
+for (const x of r.rows) _log(`  ${String(x.d).padStart(3)} |  ${String(x.n).padStart(2)}  | ${String(x.K).padStart(4)} | ${String(x.logi).padStart(6)} | ${String(x.health).padStart(6)} | ${String(x.happy).padStart(6)} | ${String(x.house).padStart(4)} | ${x.gated?'Y':'.'} | ${x.dP}`);

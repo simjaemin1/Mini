@@ -567,8 +567,9 @@ function createVillage(opts) {
     v.npcs.push(npc);
     v.counts[job] = (v.counts[job] || 0) + 1;
   }
-  // 초기 비축 — 비자급 마을(광물/사막)도 교역 시작할 충분한 시간
-  v.storage.food = initN * 300;       // 300일치(초기 비축 — 부트스트랩용, 균형은 교역이 결정)
+  // 초기 비축 — 비자급 마을(광물/사막)도 교역 시작할 시간. ★45일치(옛 300일치는 글럿→satiation이 식량생산 억제→
+  //   부양력 오판·농부 이탈로 초반 인구 진동시켰음). 45일이면 satiation 거의 0(secF~0.1) + 교역 부트스트랩 충분.
+  v.storage.food = initN * 45;
   v.storage.tool = initN * 3;         // 도구 충분
   v.storage.wood = initN * 8;         // 초기 주거 건축 부트스트랩 + 거래 + smith
   v.storage.stone = initN * 5;        // 초기 석재(주거·거래·smith)
@@ -672,6 +673,7 @@ function tickVillage(v, day) {
   // ★여유노동 측정 — 포만으로 감산된 생산능력의 비율(_idleFrac). 교역 동시성 상한에 씀(tickTradeV2).
   //   글럿(잉여 폭발)이면 스로틀↑ → 여유노동↑ → 교역 여력↑. 다 needed면 스로틀0 → 교역 자제.
   let _potA = 0, _actA = 0;
+  const dailyProductionPotential = {};   // ★조인 전(잠재) 생산 — 부양력 prodK가 satiation(여가)에 안 속게(창고 많으면 생산 게을러도 부양력은 잠재력 기준)
   for (const npc of v.npcs) {
     if (npc._tradingUntil && npc._tradingUntil > day) continue;   // ★교역 원정 중 → 생산 안 함(기회비용 실현). 저숙련자라 손실 작음.
     const jdef = JOBS[npc.currentJob];
@@ -692,6 +694,7 @@ function tickVillage(v, day) {
     const addProduce = (r, amt) => {
       const sm = satMul(r);
       _potA += amt; _actA += amt * sm;   // 여유노동 측정: 잠재(감산 전) vs 실제(감산 후)
+      dailyProductionPotential[r] = (dailyProductionPotential[r] || 0) + amt;   // 잠재 생산(satMul 적용 전) — prodK용
       amt *= sm;   // ★포만: 재고 글럿이면 생산 감소(여가) → 무한 누적 방지
       if (amt <= 0) return;
       const tax = amt * TAX_RATE;
@@ -828,7 +831,10 @@ function tickVillage(v, day) {
     v._importEMA = 0.99 * (v._importEMA || 0) + 0.01 * recentImport;
   }
   const dailyImport = v._importEMA || 0;
-  const prodK = (dailyFoodProd + dailyImport) / DAILY_FOOD_CONSUMPTION;
+  // ★부양력은 생산 *잠재력*으로 — satiation(창고 글럿 시 여가)이 실제생산을 줄여도 K는 안 낮아짐.
+  //   (옛 실제생산 기준: 초기 300일치 식량 글럿→생산 12%로 조임→prodK≈4→N8>K→로지스틱이 인구 끌어내려 초반 진동)
+  const dailyFoodProdPotential = totalFoodProductionEquivalent(dailyProductionPotential);
+  const prodK = (dailyFoodProdPotential + dailyImport) / DAILY_FOOD_CONSUMPTION;
   // ★도구 마모 — 내구재라 천천히 닳음(반감기 ~19년). 인구 성장으로 1인당 도구가 희석되면 대장간이 보충.
   //   (예전 0.2%/일은 반감기 1.4년 = 비현실적으로 빨라 도구 고갈→붕괴 유발)
   if (v.storage.tool) v.storage.tool *= (1 - 0.0001);       // 도구 마모(내구재). 돌<청동<철 내구.
@@ -860,33 +866,31 @@ function tickVillage(v, day) {
 
   // 5) 인구 θ-로지스틱 갱신 — dP = r·N·(1−(N/K)^θ). θ>1: K의 ~80%까지 빠르고 이후 급감(S곡선의 상단을 압축)
   const ratio = N / Math.max(1, K);
-  let dP = POP_GROWTH_RATE * N * (1 - Math.pow(ratio, LOGISTIC_THETA));
+  const _logiTerm = POP_GROWTH_RATE * N * (1 - Math.pow(ratio, LOGISTIC_THETA));
+  let dP = _logiTerm;
   // 굶주림: 흐름 음수 + 창고 식량_equiv 부족
-  if (v.surplusEMA.food < 0 && totalFoodEquivalent(v) < N * 3) {
-    dP -= 0.3 * Math.abs(v.surplusEMA.food);
-  }
+  let _hungerTerm = 0;
+  if (v.surplusEMA.food < 0 && totalFoodEquivalent(v) < N * 3) _hungerTerm -= 0.3 * Math.abs(v.surplusEMA.food);
   // 굶주림 직격: foodGap이 있으면 그만큼 인구 추가 압박
-  if (foodGap > 0) {
-    dP -= 0.5 * foodGap;
-  }
+  if (foodGap > 0) _hungerTerm -= 0.5 * foodGap;
+  dP += _hungerTerm;
   // Phase 5-5-econ-d: 마을 stat 기반 인구·이주 보정
   const stats = _computeVillageStats(v, N);
+  let _healthTerm = 0, _happyTerm = 0, _prestigeTerm = 0;
   if (stats) {
     // happiness: 0.5 기준. >0.5 보너스, <0.5 페널티 (불행 → 이주·자살 등)
-    const happyMod = (stats.happiness - 0.5) * 0.6;
-    dP += happyMod * N * POP_GROWTH_RATE;
+    _happyTerm = (stats.happiness - 0.5) * 0.6 * N * POP_GROWTH_RATE;
     // health: 0.5 기준 (질병·약초 부족)
-    const healthMod = (stats.health - 0.5) * 0.4;
-    dP += healthMod * N * POP_GROWTH_RATE;
+    _healthTerm = (stats.health - 0.5) * 0.4 * N * POP_GROWTH_RATE;
     // ★위신재(사치)→인구 보너스 — prestige는 순보너스(0 기준, 있으면 +). 사치 수입을 정당화 = 진짜 수요 근거.
-    //   금·옥 보유 마을은 생활수준·매력↑ → 소폭 성장/유입. 없어도 페널티 없음(사치는 선택재).
-    const prestigeMod = Math.min(PRESTIGE_MOD_CAP, (stats.prestige || 0) * PRESTIGE_GROWTH_W);
-    dP += prestigeMod * N * POP_GROWTH_RATE;
-    // 기록 (외부에서 활용 가능)
+    _prestigeTerm = Math.min(PRESTIGE_MOD_CAP, (stats.prestige || 0) * PRESTIGE_GROWTH_W) * N * POP_GROWTH_RATE;
+    dP += _happyTerm + _healthTerm + _prestigeTerm;
     v.lastStats = stats;
   }
   // ★주거 성장 게이트: 집이 부족하면(N≥주거) 인구가 더 못 늚. 감소는 식량(famine)만 — 집 부족으론 안 죽음.
-  if (dP > 0 && v.housing !== undefined && N >= v.housing) dP = 0;
+  const _gated = (dP > 0 && v.housing !== undefined && N >= v.housing);
+  if (_gated) dP = 0;
+  v._dpDebug = { K: +K.toFixed(1), logi: +_logiTerm.toFixed(3), hunger: +_hungerTerm.toFixed(3), health: +_healthTerm.toFixed(3), happy: +_happyTerm.toFixed(3), prestige: +_prestigeTerm.toFixed(3), housing: (v.housing !== undefined ? +(+v.housing).toFixed(1) : null), gated: _gated, dP: +dP.toFixed(3) };
   // ΔP 상한
   const maxDelta = N * POP_MAX_DELTA_PCT;
   dP = Math.max(-maxDelta, Math.min(maxDelta, dP));
