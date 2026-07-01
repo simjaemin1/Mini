@@ -381,6 +381,21 @@ function _computeVillageStats(v, N) {
       if (stats[stat] !== undefined) stats[stat] += w * sat;
     }
   }
+  // ★식량 다양성 보너스 — 갖춘 식품군 수 → 행복·건강. 특화 마을은 교역으로 군을 채워야 함(다양성 수요 창발).
+  const _fg = new Set();
+  for (const [id, qty] of Object.entries(v.storage || {})) {
+    if (qty / pop < 0.4) continue;   // 1인당 0.4↑ 있어야 '먹는다'로 카운트
+    let g = FOOD_GROUP[id];
+    if (!g && SP && SP[id] && SP[id].contributes && (SP[id].contributes.subsistence || SP[id].contributes.health)) {
+      const c = SP[id].category;   // 특산 식량은 카테고리로 군 추정
+      g = c === 'aqua' ? 'fish' : c === 'livestock' ? 'meat' : c === 'agri' ? 'grain' : (c === 'forage' || c === 'forest') ? 'forage' : null;
+    }
+    if (g) _fg.add(g);
+  }
+  const _divN = Math.min(1, _fg.size / DIVERSITY_FULL);
+  stats.happiness += _divN * DIVERSITY_HAPPY_W;
+  stats.health += _divN * DIVERSITY_HEALTH_W;
+  stats.foodGroups = _fg.size;
   return stats;
 }
 
@@ -611,6 +626,14 @@ const K_MAX_VILLAGE = 110;                // ★마을 부양력 천장(혼잡·
 //   사치 수입을 정당화(진짜 수요 근거). cap+작은 계수로 과성장 방지(주거게이트가 추가 안전장치).
 const PRESTIGE_GROWTH_W = 0.2;            // prestige 1당 성장보너스 계수
 const PRESTIGE_MOD_CAP = 0.25;           // 보너스 상한(happyMod ~0.8 대비 작게 — 사치는 부차)
+// ★식량 다양성 — 여러 식품군(곡물·생선·고기·과일·채소·채집)을 먹으면 행복·건강↑(단조 식단=낮음).
+//   특화 마을은 자기 생산만으론 1~2군 → 교역으로 채워야 → "다양성 위한" 식량 수요 창발. 건강→작업량이라 수요가 자기이익.
+const DIVERSITY_HAPPY_W = 0.4;           // 다양성(식품군) 만점 시 행복 보너스
+const DIVERSITY_HEALTH_W = 0.5;          // 다양성 만점 시 건강 보너스(건강이 낮아 더 큰 지렛대)
+const DIVERSITY_FULL = 4;                // 이 군수면 만점(6군 중 4군 = 균형식)
+// ★건강 → 작업량(생산성) — 건강한 마을이 더 생산적(상한 있어 폭주 X). happiness는 인구만(유지).
+const HEALTH_PROD_W = 0.3;               // (health−0.5)×W → ±0.15 상한 클램프
+const FOOD_GROUP = { food: 'grain', fish: 'fish', meat: 'meat', fruit: 'fruit', vegetable: 'veg', mushroom: 'forage' };
 // ★무용재 — 실수요(use-value)가 ~0이라 수출해도 식량 못 삼. 식량안보와 무관하게 *항상* 생산 포만(성장기 누적까지 차단).
 //   광석(ore): 갑옷에 미량뿐. 장식재(금·은·보석): 화폐화 전엔 수요 0. 돌·금속(구리·주석)은 수요 있어 제외(가치재 수출).
 const SAT_ALWAYS = { ore: 1, gold: 1, silver: 1, gem: 1, pearl: 1, amber: 1, jade: 1, ivory: 1 };
@@ -994,6 +1017,9 @@ function tickVillage(v, day) {
   //   글럿(잉여 폭발)이면 스로틀↑ → 여유노동↑ → 교역 여력↑. 다 needed면 스로틀0 → 교역 자제.
   let _potA = 0, _actA = 0;
   const dailyProductionPotential = {};   // ★조인 전(잠재) 생산 — 부양력 prodK가 satiation(여가)에 안 속게(창고 많으면 생산 게을러도 부양력은 잠재력 기준)
+  // ★건강 → 작업량(생산성) — 지난 틱 health로 실제 생산 스케일(±10% 상한). 잠재력(dailyProductionPotential)엔 미적용 → K 오염·아사 스파이럴 방지.
+  const _hpm = (v.lastStats && typeof v.lastStats.health === 'number')
+    ? Math.max(0.9, Math.min(1.1, 1 + (v.lastStats.health - 0.5) * HEALTH_PROD_W)) : 1;
   for (const npc of v.npcs) {
     if (npc._tradingUntil && npc._tradingUntil > day) continue;   // ★교역 원정 중 → 생산 안 함(기회비용 실현). 저숙련자라 손실 작음.
     const jdef = JOBS[npc.currentJob];
@@ -1014,8 +1040,8 @@ function tickVillage(v, day) {
     const addProduce = (r, amt) => {
       const sm = satMul(r);
       _potA += amt; _actA += amt * sm;   // 여유노동 측정: 잠재(감산 전) vs 실제(감산 후)
-      dailyProductionPotential[r] = (dailyProductionPotential[r] || 0) + amt;   // 잠재 생산(satMul 적용 전) — prodK용
-      amt *= sm;   // ★포만: 재고 글럿이면 생산 감소(여가) → 무한 누적 방지
+      dailyProductionPotential[r] = (dailyProductionPotential[r] || 0) + amt;   // 잠재 생산(건강·포만 적용 전) — prodK용
+      amt *= _hpm * sm;   // ★건강→작업량(±10%) × 포만(글럿 시 여가)
       if (amt <= 0) return;
       const tax = amt * TAX_RATE;
       v.storage[r] = (v.storage[r] || 0) + (amt - tax);

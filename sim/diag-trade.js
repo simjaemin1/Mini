@@ -55,7 +55,8 @@ for (const sd of SEEDS) {
     const mine = (e.counts.miner || 0), farm = (e.counts.farmer || 0);
     const st = e.lastStats || {};
     const goldPer = (((S.gold||0)+(S.silver||0)+(S.gem||0)+(S.jade_polished||0)) / n).toFixed(2);
-    _log(`   ${e.name} 인구${n} 행복${(st.happiness||0).toFixed(2)} 건강${(st.health||0).toFixed(2)} 위신${(st.prestige||0).toFixed(2)} 사치보유${goldPer}/명 광부${mine} 농부${farm}`);
+    const foods = ['food','fish','meat','fruit','vegetable','mushroom'].filter(f=>(S[f]||0)/n>=0.4).map(f=>({food:'곡',fish:'어',meat:'육',fruit:'과',vegetable:'채',mushroom:'버'}[f])).join('');
+    _log(`   ${e.name} 인구${n} 행복${(st.happiness||0).toFixed(2)} 건강${(st.health||0).toFixed(2)} 식품군${st.foodGroups||0}[${foods}] 위신${(st.prestige||0).toFixed(2)} 광부${mine} 농부${farm}`);
   }
 }
 _log(`\n[집계] 5시드 평균 동시교역비율 ${(globAvgSum / globAvgN * 100).toFixed(2)}% · 전역 peak ${(globMax * 100).toFixed(1)}% · 마을별 peak 중앙값 ${(perVilMaxes.sort((a, b) => a - b)[Math.floor(perVilMaxes.length / 2)] * 100).toFixed(0)}%`);
