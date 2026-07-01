@@ -2603,9 +2603,12 @@ function tickTradeV2(world, day) {
         }
       }
       if (!best) break;
-      // ★남는 시간 판정: 원정 이익 > 왕복 일수 × (그 NPC의 숙련 반영) 기회비용일 때만. 아니면 생산이 나으니 중단.
+      // ★남는 시간 판정: 원정 이익 > 유효원정일수 × 기회비용일 때만. 아니면 생산이 나으니 중단.
+      //   ★유효일수 = 왕복일수 × (1 − 0.5×slack): 마을에 그날 여유(유휴 노동)가 많으면 기회비용↓ → 여유 있는 날 더 감(사용자 요청).
+      //   slack은 공간층(lifeLoop)이 낮 유휴 비율로 채움. 빨리감기(텔레포트)엔 유휴 없어 slack=0 → 기존과 동일(회귀 무영향).
       const tripDays = travelDaysForDistance(best.dist) * 2;
-      if (best.profit <= lp.mv * tripDays) break;
+      const slack = Math.max(0, Math.min(1, a.v._slack || 0));
+      if (best.profit <= lp.mv * tripDays * (1 - 0.5 * slack)) break;
       alreadySent.add(best.key);
       caravansLaunched++;
       lp.npc._tradingUntil = day + tripDays;   // ★이 저가치·저숙련 NPC가 교역 나감 → 귀환(day+왕복)까지 생산 안 함
