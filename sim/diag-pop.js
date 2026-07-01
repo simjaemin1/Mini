@@ -27,9 +27,9 @@ global.frame = function () { global.nowMs += 16; const cb = global.rafCb; global
 const SEED = parseInt(process.argv[2]) || 7, FRAMES = parseInt(process.argv[3]) || 6000;
 global.eval(PC.replace(/^function pickCenter/, 'global.pickCenter=function') + '\n' + BFS.replace(/^function bfsPath/, 'global.bfsPath=function') + '\n' + SP.replace(/^function setPath/, 'global.setPath=function') + '\n' + TP + '\n' + LIFE +
   "\nglobal.run=function(seed,frames){TR=buildTerrain(seed);document.getElementById('seed').value=String(seed);console.log=function(){};lifeInit();lifeGM=L_START*720;lifeLast=0;global.nowMs=0;lifeOn=true;global.rafCb=lifeLoop;" +
-  "var rows=[];for(var fr=0;fr<frames;fr++){global.frame();if(fr%1000===999||fr===frames-1){var mx=0,tot=0,alive=0;for(var k=0;k<VILS.length;k++){var n=VILS[k].econ.npcs.length;tot+=n;if(n>mx)mx=n;if(n>0)alive++;}rows.push({day:ECON_WORLD.day,mx:mx,tot:tot,alive:alive,nv:VILS.length});}}" +
+  "var rows=[];for(var fr=0;fr<frames;fr++){global.frame();if(fr%1000===999||fr===frames-1){var mx=0,tot=0,alive=0,mfp=0;for(var k=0;k<VILS.length;k++){var n=VILS[k].econ.npcs.length;tot+=n;if(n>mx)mx=n;if(n>0)alive++;var fpp=(VILS[k].econ.storage.food||0)/(n||1);if(fpp>mfp)mfp=fpp;}rows.push({day:ECON_WORLD.day,mx:mx,tot:tot,alive:alive,nv:VILS.length,mfp:mfp});}}" +
   "console.log=global.__log;return rows;};");
 global.__log = _log; console.log = _log;
 _log(`=== 인구 장기 수렴 (seed ${SEED}, ${FRAMES}프레임) ===`);
 const rows = global.run(SEED, FRAMES);
-for (const r of rows) _log(`  ${r.day}일차: 최대마을 ${r.mx}명 · 총 ${r.tot}명 · 생존마을 ${r.alive}/${r.nv}`);
+for (const r of rows) _log(`  ${r.day}일차: 최대마을 ${r.mx}명 · 총 ${r.tot}명 · 생존 ${r.alive}/${r.nv} · 식량최대 ${r.mfp.toFixed(0)}/명`);
