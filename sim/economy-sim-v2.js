@@ -285,24 +285,35 @@ function lowestProducer(v, prices, day) {
 // 3. 교역 의사결정 — LOP arbitrage. ★전담 행상 없음: 기본 NPC가 남는 시간(생산<교역일 때) 왕복.
 //    "남는 시간" = 원정 이익 > 왕복 일수×기회비용(가장 값싼 생산자 일당)일 때. 매 원정 후 가격 갱신(자기제한).
 // =============================================================================
+// ★가격표 캐시 — 마을 시세를 TRADE_INTERVAL일마다만 재계산(매일 전 마을 재계산 방지 = 스케일). 결정 마을은 아래서 fresh로 덮음.
+function pricesFor(v, day) {
+  if (!v._priceCache || (day - (v._priceCacheDay == null ? -99 : v._priceCacheDay)) >= TRADE_INTERVAL) {
+    v._priceCache = computeShadowPrices(v);
+    v._priceCacheDay = day;
+  }
+  return v._priceCache;
+}
 function tickTradeV2(world, day) {
-  if (day % TRADE_INTERVAL !== 0) return;
-
-  // 1) 모든 마을 가격표
-  const data = world.villages.map(v => ({
-    v,
-    prices: computeShadowPrices(v),
+  // ★자정 일괄 폐지 — 매일 실행하되 마을별로 교역일을 분산((day+idx)%INTERVAL). 스파이크·시세 staleness↓.
+  // 1) 가격표(캐시 — 이웃 시세 조회용)
+  const data = world.villages.map((v, i) => ({
+    v, i,
+    prices: pricesFor(v, day),
     sent: 0,
   }));
   const byName = new Map(data.map(d => [d.v.name, d]));
+  const evToData = new Map(data.map(d => [d.v, d]));   // ev → data 조회(top-20 순회용)
 
   // 2) 마을마다 merchant 수만큼 caravan 출장 (최소 1, max merchant + 1).
   //    매 caravan마다 새 best 검색 (이미 출장한 자원·목적지 제외).
   //    출발 의사결정에 forward price 위험 마진 (도착 가격 5% 낮을 가정).
   const FORWARD_PRICE_MARGIN = 0.95; // 도착 시 가격 5% 낮을 거라 가정 (forward discount)
   for (const a of data) {
+    if ((day + a.i) % TRADE_INTERVAL !== 0) continue;   // ★마을별 교역일 분산 — 하루에 ~1/INTERVAL 마을만 결정(스파이크·staleness↓)
     if (a.v.isolated && day < a.v.isolatedUntilDay) continue;
     if (a.v.npcs.length < 2) continue;
+    a.prices = computeShadowPrices(a.v);   // 결정 마을은 자기 시세를 fresh로(이웃은 캐시). 캐시도 갱신.
+    a.v._priceCache = a.prices; a.v._priceCacheDay = day;
     const N = a.v.npcs.length;
     // ★전담 행상 제거: 한 사이클 최대 30%만 원정(노동 안전), 가치 상한 N*20.
     const capacity = N * 20;
@@ -310,6 +321,11 @@ function tickTradeV2(world, day) {
     const currentlyTrading = a.v.npcs.filter(n => n._tradingUntil && n._tradingUntil > day).length;
     const maxTrips = Math.max(1, Math.floor(N * 0.08)) - currentlyTrading;   // ★동시 교역 ≤ 인구 8%(단 최소 1 — 소형 특화촌도 교역 가능)
     if (maxTrips < 1) continue;
+    // ★top-20 최근접 목적지만(마을 정적이라 캐시, 마을수 변할 때만 재계산). 먼 마을은 운반·약탈로 손해라 무해.
+    if (!a.v._near20 || a.v._near20N !== world.villages.length) {
+      a.v._near20 = world.villages.filter(x => x !== a.v).sort((p, q) => v1.villageDist(a.v, p) - v1.villageDist(a.v, q)).slice(0, 20);
+      a.v._near20N = world.villages.length;
+    }
     const alreadySent = new Set();   // 이 cycle 중복 (자원,목적지) 방지
     let caravansLaunched = 0;
 
@@ -340,8 +356,9 @@ function tickTradeV2(world, day) {
       // 최고 이익 (자원, 목적지) 검색 — 이미 출장한 조합 제외
       let best = null;
       for (const cand of candidates) {
-        for (const b of data) {
-          if (a === b) continue;
+        for (const nb of a.v._near20) {   // ★모든 마을 → top-20 근처만
+          const b = evToData.get(nb);
+          if (!b || a === b) continue;
           if (b.v.isolated && day < b.v.isolatedUntilDay) continue;
           const key = `${cand.res}->${b.v.name}`;
           if (alreadySent.has(key)) continue;
