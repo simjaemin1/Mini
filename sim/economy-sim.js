@@ -61,17 +61,13 @@ function _computeVillageStats(v, N) {
       if (stats[stat] !== undefined) stats[stat] += w * sat;
     }
   }
-  // ★식량 다양성 보너스 — 갖춘 식품군 수 → 행복·건강. 특화 마을은 교역으로 군을 채워야 함(다양성 수요 창발).
-  const _fg = new Set();
-  for (const [id, qty] of Object.entries(v.storage || {})) {
-    if (qty / pop < 0.4) continue;   // 1인당 0.4↑ 있어야 '먹는다'로 카운트
-    let g = FOOD_GROUP[id];
-    if (!g && SP && SP[id] && SP[id].contributes && (SP[id].contributes.subsistence || SP[id].contributes.health)) {
-      const c = SP[id].category;   // 특산 식량은 카테고리로 군 추정
-      g = c === 'aqua' ? 'fish' : c === 'livestock' ? 'meat' : c === 'agri' ? 'grain' : (c === 'forage' || c === 'forest') ? 'forage' : null;
-    }
-    if (g) _fg.add(g);
+  // ★식량 다양성 보너스 — 실제 *소비*(식단) 기반. consumeFood가 군별 소비량 기록(_foodEaten).
+  //   자체생산이든 수입이든 "먹은" 군만 카운트 → 수입해서 바로 먹는 마을(광산촌)도 정당히 반영(재고0이어도).
+  const _fg = new Set(), _eaten = v._foodEaten || {};
+  for (const id in FOOD_GROUP) {
+    if ((_eaten[id] || 0) / pop > 0.03) _fg.add(FOOD_GROUP[id]);
   }
+  if ((_eaten.cooked_food || 0) / pop > 0.03) _fg.add('grain');   // 조리식 = 곡물군
   const _divN = Math.min(1, _fg.size / DIVERSITY_FULL);
   stats.happiness += _divN * DIVERSITY_HAPPY_W;
   stats.health += _divN * DIVERSITY_HEALTH_W;
@@ -250,22 +246,25 @@ const DAILY_TOOL_WEAR_PER_OTHER = 0.02;
 // 채집물은 환산비가 낮아 농사보다 끼니로 비효율
 function consumeFood(v, need) {
   let remaining = need;
+  // ★소비량 군별 기록(_foodEaten) — 이게 진짜 식단(자체생산+수입, 신선히 먹은 것 포함). 다양성 판정에 씀.
+  const eaten = v._foodEaten || (v._foodEaten = {});
+  for (const k in eaten) eaten[k] = 0;
   // 1) cooked_food (영양 풍부)
   if (v.storage.cooked_food > 0) {
     const eff = Math.min(remaining / 1.12, v.storage.cooked_food);
-    v.storage.cooked_food -= eff; remaining -= eff * 1.12;
+    v.storage.cooked_food -= eff; remaining -= eff * 1.12; eaten.cooked_food = eff;
   }
   // 2) fish/meat
   for (const r of ['fish', 'meat']) {
     if (remaining > 0 && v.storage[r] > 0) {
       const eff = Math.min(remaining, v.storage[r]);
-      v.storage[r] -= eff; remaining -= eff;
+      v.storage[r] -= eff; remaining -= eff; eaten[r] = eff;
     }
   }
   // 3) 농작물 food
   if (remaining > 0 && v.storage.food > 0) {
     const eff = Math.min(remaining, v.storage.food);
-    v.storage.food -= eff; remaining -= eff;
+    v.storage.food -= eff; remaining -= eff; eaten.food = eff;
   }
   // 4) 채집물 (가장 비효율) — fruit/veg 0.4, mushroom 0.3
   for (const r of Object.keys(FORAGE_FOOD_FACTOR)) {
@@ -275,7 +274,7 @@ function consumeFood(v, need) {
       const unitsNeeded = remaining / f;
       const consumed = Math.min(unitsNeeded, v.storage[r]);
       v.storage[r] -= consumed;
-      remaining -= consumed * f;
+      remaining -= consumed * f; eaten[r] = consumed;
     }
   }
   return remaining;
@@ -312,7 +311,7 @@ const DIVERSITY_HAPPY_W = 0.4;           // 다양성(식품군) 만점 시 행�
 const DIVERSITY_HEALTH_W = 0.5;          // 다양성 만점 시 건강 보너스(건강이 낮아 더 큰 지렛대)
 const DIVERSITY_FULL = 4;                // 이 군수면 만점(6군 중 4군 = 균형식)
 // ★건강 → 작업량(생산성) — 건강한 마을이 더 생산적(상한 있어 폭주 X). happiness는 인구만(유지).
-const HEALTH_PROD_W = 0.3;               // (health−0.5)×W → ±0.15 상한 클램프
+const HEALTH_PROD_W = 0.15;              // (health−0.5)×W → ±0.075(상한 클램프 ±0.1). 완만 — 과채광 억제
 const FOOD_GROUP = { food: 'grain', fish: 'fish', meat: 'meat', fruit: 'fruit', vegetable: 'veg', mushroom: 'forage' };
 // ★무용재 — 실수요(use-value)가 ~0이라 수출해도 식량 못 삼. 식량안보와 무관하게 *항상* 생산 포만(성장기 누적까지 차단).
 //   광석(ore): 갑옷에 미량뿐. 장식재(금·은·보석): 화폐화 전엔 수요 0. 돌·금속(구리·주석)은 수요 있어 제외(가치재 수출).

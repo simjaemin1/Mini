@@ -381,17 +381,13 @@ function _computeVillageStats(v, N) {
       if (stats[stat] !== undefined) stats[stat] += w * sat;
     }
   }
-  // ★식량 다양성 보너스 — 갖춘 식품군 수 → 행복·건강. 특화 마을은 교역으로 군을 채워야 함(다양성 수요 창발).
-  const _fg = new Set();
-  for (const [id, qty] of Object.entries(v.storage || {})) {
-    if (qty / pop < 0.4) continue;   // 1인당 0.4↑ 있어야 '먹는다'로 카운트
-    let g = FOOD_GROUP[id];
-    if (!g && SP && SP[id] && SP[id].contributes && (SP[id].contributes.subsistence || SP[id].contributes.health)) {
-      const c = SP[id].category;   // 특산 식량은 카테고리로 군 추정
-      g = c === 'aqua' ? 'fish' : c === 'livestock' ? 'meat' : c === 'agri' ? 'grain' : (c === 'forage' || c === 'forest') ? 'forage' : null;
-    }
-    if (g) _fg.add(g);
+  // ★식량 다양성 보너스 — 실제 *소비*(식단) 기반. consumeFood가 군별 소비량 기록(_foodEaten).
+  //   자체생산이든 수입이든 "먹은" 군만 카운트 → 수입해서 바로 먹는 마을(광산촌)도 정당히 반영(재고0이어도).
+  const _fg = new Set(), _eaten = v._foodEaten || {};
+  for (const id in FOOD_GROUP) {
+    if ((_eaten[id] || 0) / pop > 0.03) _fg.add(FOOD_GROUP[id]);
   }
+  if ((_eaten.cooked_food || 0) / pop > 0.03) _fg.add('grain');   // 조리식 = 곡물군
   const _divN = Math.min(1, _fg.size / DIVERSITY_FULL);
   stats.happiness += _divN * DIVERSITY_HAPPY_W;
   stats.health += _divN * DIVERSITY_HEALTH_W;
@@ -570,22 +566,25 @@ const DAILY_TOOL_WEAR_PER_OTHER = 0.02;
 // 채집물은 환산비가 낮아 농사보다 끼니로 비효율
 function consumeFood(v, need) {
   let remaining = need;
+  // ★소비량 군별 기록(_foodEaten) — 이게 진짜 식단(자체생산+수입, 신선히 먹은 것 포함). 다양성 판정에 씀.
+  const eaten = v._foodEaten || (v._foodEaten = {});
+  for (const k in eaten) eaten[k] = 0;
   // 1) cooked_food (영양 풍부)
   if (v.storage.cooked_food > 0) {
     const eff = Math.min(remaining / 1.12, v.storage.cooked_food);
-    v.storage.cooked_food -= eff; remaining -= eff * 1.12;
+    v.storage.cooked_food -= eff; remaining -= eff * 1.12; eaten.cooked_food = eff;
   }
   // 2) fish/meat
   for (const r of ['fish', 'meat']) {
     if (remaining > 0 && v.storage[r] > 0) {
       const eff = Math.min(remaining, v.storage[r]);
-      v.storage[r] -= eff; remaining -= eff;
+      v.storage[r] -= eff; remaining -= eff; eaten[r] = eff;
     }
   }
   // 3) 농작물 food
   if (remaining > 0 && v.storage.food > 0) {
     const eff = Math.min(remaining, v.storage.food);
-    v.storage.food -= eff; remaining -= eff;
+    v.storage.food -= eff; remaining -= eff; eaten.food = eff;
   }
   // 4) 채집물 (가장 비효율) — fruit/veg 0.4, mushroom 0.3
   for (const r of Object.keys(FORAGE_FOOD_FACTOR)) {
@@ -595,7 +594,7 @@ function consumeFood(v, need) {
       const unitsNeeded = remaining / f;
       const consumed = Math.min(unitsNeeded, v.storage[r]);
       v.storage[r] -= consumed;
-      remaining -= consumed * f;
+      remaining -= consumed * f; eaten[r] = consumed;
     }
   }
   return remaining;
@@ -632,7 +631,7 @@ const DIVERSITY_HAPPY_W = 0.4;           // 다양성(식품군) 만점 시 행�
 const DIVERSITY_HEALTH_W = 0.5;          // 다양성 만점 시 건강 보너스(건강이 낮아 더 큰 지렛대)
 const DIVERSITY_FULL = 4;                // 이 군수면 만점(6군 중 4군 = 균형식)
 // ★건강 → 작업량(생산성) — 건강한 마을이 더 생산적(상한 있어 폭주 X). happiness는 인구만(유지).
-const HEALTH_PROD_W = 0.3;               // (health−0.5)×W → ±0.15 상한 클램프
+const HEALTH_PROD_W = 0.15;              // (health−0.5)×W → ±0.075(상한 클램프 ±0.1). 완만 — 과채광 억제
 const FOOD_GROUP = { food: 'grain', fish: 'fish', meat: 'meat', fruit: 'fruit', vegetable: 'veg', mushroom: 'forage' };
 // ★무용재 — 실수요(use-value)가 ~0이라 수출해도 식량 못 삼. 식량안보와 무관하게 *항상* 생산 포만(성장기 누적까지 차단).
 //   광석(ore): 갑옷에 미량뿐. 장식재(금·은·보석): 화폐화 전엔 수요 0. 돌·금속(구리·주석)은 수요 있어 제외(가치재 수출).
@@ -2442,6 +2441,10 @@ const TRADE_SPARE_UTIL = 0.11;
 // ★위신재(사치) 수요 — 장식재의 use-value는 물리소비가 아니라 위신·심리(positional good). 1인당 목표 보유로 수요 부여.
 //   없는 마을은 교역으로 수입, 광산촌(부산물로 쟁여둠)은 잉여 수출 → 죽어있던 장식교역이 살아나고 광산촌 수입원 다각화.
 const LUX_TARGET_PC = 0.08;   // 1인당 위신재 목표(각 장식재). 이 근처서 만족(체감), 광산촌은 훨씬 위라 수출.
+// ★식량 다양성 수요 — 자체 생산 못 하는 식품군(생선·고기·과일·채소·버섯)은 소량 수입 수요를 가짐.
+//   "식량 충분해도 한 가지뿐이면 싼 걸 비싼 다른 식량과 바꿔온다"(사용자). 결핍 시 target↑ → 가격↑ → 교역이 채움.
+const VARIETY_FOOD = { fish: 1, meat: 1, fruit: 1, vegetable: 1, mushroom: 1 };
+const VARIETY_TARGET_PC = 0.6;   // 자체생산 못 하는 식품군의 1인당 수입 목표(다양성 문턱 0.4 위 — 소비로 깎여도 유지)
 
 // 정보 도달 거리 — v1과 동일하게 사용 (createWorld opts.infoRange)
 
@@ -2486,6 +2489,12 @@ function computeShadowPrices(v) {
       //   (옛 N×0.02 = 수요 죽임. 이제 위신재를 없는 마을은 수입하고 광산촌은 잉여 수출)
       const buffer = ORNAMENTAL[r] ? N * LUX_TARGET_PC : N * Math.max(0.5, util * 1.2);
       target = Math.max(subs * 30, buffer);
+      // ★식량 다양성 수요 — 자체 생산 못 하는 식품군은 다양성 위해 소량 수입 목표. 자체 생산하면(≥0.05/명) 보너스 없음.
+      //   ★식량안보 게이트: 주식(곡물) 25일치 이상일 때만 — 굶는 마을은 다양성보다 생존(주식) 우선(변방 마을 아사 방지).
+      if (VARIETY_FOOD[r] && (v.dailyProductionBuf ? (v.dailyProductionBuf[r] || 0) / N : 0) < 0.05
+          && (v.storage.food || 0) / N > 25) {
+        target = Math.max(target, N * VARIETY_TARGET_PC);
+      }
       stock = Math.max(0.1, v.storage[r] || 0);
       // ★선견적 가격(flow 반영): 구조적 식량적자(생산<소비)를 30일 선반영 → 적자 마을은 *초기재고 무관하게* 수입.
       //   재고(stock)만 보면 근시안 — 큰 buffer에 가려 적자가 안 보여 교역이 stock에 휘둘림(경제적 오류).

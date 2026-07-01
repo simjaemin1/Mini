@@ -181,6 +181,10 @@ const TRADE_SPARE_UTIL = 0.11;
 // ★위신재(사치) 수요 — 장식재의 use-value는 물리소비가 아니라 위신·심리(positional good). 1인당 목표 보유로 수요 부여.
 //   없는 마을은 교역으로 수입, 광산촌(부산물로 쟁여둠)은 잉여 수출 → 죽어있던 장식교역이 살아나고 광산촌 수입원 다각화.
 const LUX_TARGET_PC = 0.08;   // 1인당 위신재 목표(각 장식재). 이 근처서 만족(체감), 광산촌은 훨씬 위라 수출.
+// ★식량 다양성 수요 — 자체 생산 못 하는 식품군(생선·고기·과일·채소·버섯)은 소량 수입 수요를 가짐.
+//   "식량 충분해도 한 가지뿐이면 싼 걸 비싼 다른 식량과 바꿔온다"(사용자). 결핍 시 target↑ → 가격↑ → 교역이 채움.
+const VARIETY_FOOD = { fish: 1, meat: 1, fruit: 1, vegetable: 1, mushroom: 1 };
+const VARIETY_TARGET_PC = 0.6;   // 자체생산 못 하는 식품군의 1인당 수입 목표(다양성 문턱 0.4 위 — 소비로 깎여도 유지)
 
 // 정보 도달 거리 — v1과 동일하게 사용 (createWorld opts.infoRange)
 
@@ -225,6 +229,12 @@ function computeShadowPrices(v) {
       //   (옛 N×0.02 = 수요 죽임. 이제 위신재를 없는 마을은 수입하고 광산촌은 잉여 수출)
       const buffer = ORNAMENTAL[r] ? N * LUX_TARGET_PC : N * Math.max(0.5, util * 1.2);
       target = Math.max(subs * 30, buffer);
+      // ★식량 다양성 수요 — 자체 생산 못 하는 식품군은 다양성 위해 소량 수입 목표. 자체 생산하면(≥0.05/명) 보너스 없음.
+      //   ★식량안보 게이트: 주식(곡물) 25일치 이상일 때만 — 굶는 마을은 다양성보다 생존(주식) 우선(변방 마을 아사 방지).
+      if (VARIETY_FOOD[r] && (v.dailyProductionBuf ? (v.dailyProductionBuf[r] || 0) / N : 0) < 0.05
+          && (v.storage.food || 0) / N > 25) {
+        target = Math.max(target, N * VARIETY_TARGET_PC);
+      }
       stock = Math.max(0.1, v.storage[r] || 0);
       // ★선견적 가격(flow 반영): 구조적 식량적자(생산<소비)를 30일 선반영 → 적자 마을은 *초기재고 무관하게* 수입.
       //   재고(stock)만 보면 근시안 — 큰 buffer에 가려 적자가 안 보여 교역이 stock에 휘둘림(경제적 오류).
