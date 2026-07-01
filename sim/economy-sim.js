@@ -665,6 +665,9 @@ function tickVillage(v, day) {
         return 1 - sec * (1 - raw);                                   // sec=0→풀생산, sec=1→raw(포만)
       })
     : (_ => 1);
+  // ★여유노동 측정 — 포만으로 감산된 생산능력의 비율(_idleFrac). 교역 동시성 상한에 씀(tickTradeV2).
+  //   글럿(잉여 폭발)이면 스로틀↑ → 여유노동↑ → 교역 여력↑. 다 needed면 스로틀0 → 교역 자제.
+  let _potA = 0, _actA = 0;
   for (const npc of v.npcs) {
     if (npc._tradingUntil && npc._tradingUntil > day) continue;   // ★교역 원정 중 → 생산 안 함(기회비용 실현). 저숙련자라 손실 작음.
     const jdef = JOBS[npc.currentJob];
@@ -683,7 +686,9 @@ function tickVillage(v, day) {
 
     // produceSpecial 분기 — 각 산출에 대해 세금 떼고 storage로
     const addProduce = (r, amt) => {
-      amt *= satMul(r);   // ★포만: 재고 글럿이면 생산 감소(여가) → 무한 누적 방지
+      const sm = satMul(r);
+      _potA += amt; _actA += amt * sm;   // 여유노동 측정: 잠재(감산 전) vs 실제(감산 후)
+      amt *= sm;   // ★포만: 재고 글럿이면 생산 감소(여가) → 무한 누적 방지
       if (amt <= 0) return;
       const tax = amt * TAX_RATE;
       v.storage[r] = (v.storage[r] || 0) + (amt - tax);
@@ -772,6 +777,8 @@ function tickVillage(v, day) {
       workNPC(npc);
     }
   }
+  // ★여유노동 비율 저장 — 교역 동시성 상한(tickTradeV2 spareCap)에서 사용.
+  v._idleFrac = _potA > 0 ? Math.max(0, 1 - _actA / _potA) : 0;
 
   // 1.5) 영토 확장 시도 — 매 EXPAND_CHECK_INTERVAL일
   if (day % EXPAND_CHECK_INTERVAL === 0) {

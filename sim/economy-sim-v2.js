@@ -171,7 +171,13 @@ const TRAVEL_DAY_MIN = 3;
 const TRAVEL_DAY_MAX = 7;
 
 // 거래 사이클
-const TRADE_INTERVAL = 3;
+const TRADE_INTERVAL = 3;   // (구 3일 게이트용. 연속교역 전환 후엔 가격캐시 갱신 주기로만 잔존)
+// ★교역 동시성 = 여유노동(spare labor)에서 창발 — 하드 %캡·3일게이트 없음.
+//   협업·무임금 모델은 1 NPC가 100단위 가치를 날라서 per-NPC 기회비용이 캐러밴 이익에 늘 압도됨
+//   → per-NPC 신호로는 동시성 제어 불가(측정 결과 폭주). 대신 "글럿(포만)된 생산능력 = 여유노동"으로 상한.
+//   spareCap = N × 포만스로틀 × UTIL. 광석 등 SAT_ALWAYS는 늘 포만 신호 → 식량난 광산촌도 교역 가능.
+//   포만스로틀(v._idleFrac) = 1 − 실제생산/잠재생산 (tickVillage에서 누적). UTIL로 안정본 강도(~4%)에 맞춤.
+const TRADE_SPARE_UTIL = 0.11;
 
 // 정보 도달 거리 — v1과 동일하게 사용 (createWorld opts.infoRange)
 
@@ -309,18 +315,17 @@ function tickTradeV2(world, day) {
   //    출발 의사결정에 forward price 위험 마진 (도착 가격 5% 낮을 가정).
   const FORWARD_PRICE_MARGIN = 0.95; // 도착 시 가격 5% 낮을 거라 가정 (forward discount)
   for (const a of data) {
-    if ((day + a.i) % TRADE_INTERVAL !== 0) continue;   // ★마을별 교역일 분산 — 하루에 ~1/INTERVAL 마을만 결정(스파이크·staleness↓)
+    // ★3일 게이트·동시8%·가치상한 전부 폐지 — 매일 검사, 조건 되면 연속 교역.
+    //   실질 제한은 아래 spareCap(여유노동)뿐 — 마을 글럿도에서 창발(하드 %캡 아님).
     if (a.v.isolated && day < a.v.isolatedUntilDay) continue;
     if (a.v.npcs.length < 2) continue;
-    a.prices = computeShadowPrices(a.v);   // 결정 마을은 자기 시세를 fresh로(이웃은 캐시). 캐시도 갱신.
+    a.prices = computeShadowPrices(a.v);   // 매일 fresh 시세로 결정(출발-도착 불일치↓)
     a.v._priceCache = a.prices; a.v._priceCacheDay = day;
     const N = a.v.npcs.length;
-    // ★전담 행상 제거: 한 사이클 최대 30%만 원정(노동 안전), 가치 상한 N*20.
-    const capacity = N * 20;
-    if (a.sent >= capacity) continue;
     const currentlyTrading = a.v.npcs.filter(n => n._tradingUntil && n._tradingUntil > day).length;
-    const maxTrips = Math.max(1, Math.floor(N * 0.08)) - currentlyTrading;   // ★동시 교역 ≤ 인구 8%(단 최소 1 — 소형 특화촌도 교역 가능)
-    if (maxTrips < 1) continue;
+    // ★동시 교역 상한 = 여유노동(글럿된 생산능력). 하드 %캡 아님 — 마을 글럿도(_idleFrac)에서 창발.
+    //   여유 많은 마을(잉여 폭발)은 많이, 빠듯한 마을(다 needed)은 적게 → 자연 자기제한 + 붕괴 방지.
+    const spareCap = Math.max(1, Math.floor(N * (a.v._idleFrac || 0) * TRADE_SPARE_UTIL));
     // ★top-20 최근접 목적지만(마을 정적이라 캐시, 마을수 변할 때만 재계산). 먼 마을은 운반·약탈로 손해라 무해.
     if (!a.v._near20 || a.v._near20N !== world.villages.length) {
       a.v._near20 = world.villages.filter(x => x !== a.v).sort((p, q) => v1.villageDist(a.v, p) - v1.villageDist(a.v, q)).slice(0, 20);
@@ -329,7 +334,7 @@ function tickTradeV2(world, day) {
     const alreadySent = new Set();   // 이 cycle 중복 (자원,목적지) 방지
     let caravansLaunched = 0;
 
-    while (caravansLaunched < maxTrips && a.sent < capacity) {
+    while (caravansLaunched + currentlyTrading < spareCap) {   // 여유노동까지만. 그 안에서 잉여·기회비용이 추가 제약.
       const lp = lowestProducer(a.v, a.prices, day);   // 현재 가장 값싼 생산자 NPC(이미 교역중인 사람 제외)
       if (!lp.npc) break;   // 보낼 생산자가 없으면 중단
       // 후보 자원 — 잉여. ★식량류(food/fish/meat/cooked_food)는 넉넉히 보유 후 *진짜* 잉여만 수출.
@@ -392,6 +397,7 @@ function tickTradeV2(world, day) {
       //   slack은 공간층(lifeLoop)이 낮 유휴 비율로 채움. 빨리감기(텔레포트)엔 유휴 없어 slack=0 → 기존과 동일(회귀 무영향).
       const tripDays = travelDaysForDistance(best.dist) * 2;
       const slack = Math.max(0, Math.min(1, a.v._slack || 0));
+      // 동시성은 spareCap(여유노동)이 제한. 여기선 이 원정 1건의 순이익성만 확인(잉여+차익 > 최저생산자 기회비용).
       if (best.profit <= lp.mv * tripDays * (1 - 0.5 * slack)) break;
       alreadySent.add(best.key);
       caravansLaunched++;
@@ -411,6 +417,11 @@ function tickTradeV2(world, day) {
       let bestReturnRes = null, bestReturnRatio = 0;
       for (const r of TRADABLE) {
         if (r === cand.res) continue;
+        // ★A(수입쪽)가 이미 그 재화 글럿이면 수입 안 함 — 수요 없는 걸 계속 실어와 무한 누적(돌 덤핑)되는 것 방지.
+        //   연속교역으로 거래가 잦아지면 최저가 이웃에서 잉여를 계속 끌어와 쌓이므로, 자기 목표재고 넘으면 후보 제외.
+        const aSubs = (SUBSISTENCE_PER_NPC[r] || 0) * N;
+        const aTarget = Math.max(aSubs * 30, N * Math.max(0.5, (UTILITY_WEIGHT[r] || 0.1) * 1.2));
+        if ((a.v.storage[r] || 0) >= aTarget * 3) continue;   // 극단 글럿(목표 3배 초과)만 차단 — 정상 균형수입은 허용(가치균형 유지)
         const bStock = b.v.storage[r] || 0;
         const bSubs = (SUBSISTENCE_PER_NPC[r] || 0) * b.v.npcs.length;
         const bTarget = Math.max(bSubs * 30, b.v.npcs.length * 0.3);
