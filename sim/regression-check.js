@@ -35,7 +35,7 @@ global.__log = _log; console.log = _log;
 const SEEDS = [7, 42, 8, 3, 19];
 const agg = { pop: 0, bad: 0, initVil: 0, finalVil: 0, mining: 0, forest: 0, bronze: 0, iron: 0, stoneTool: 0, copperTin: 0,
   weaponShort: 0, villages: 0, houses: 0, tradeStaple: 0, tradeOrn: 0, craftBloat: 0, maxCraftFrac: 0,
-  maxAccumPer: 0, maxVilPop: 0, smithVil: 0, crashed: false, seedRows: [] };
+  maxAccumPer: 0, maxVilPop: 0, smithVil: 0, housesTot: 0, housesOut: 0, crashed: false, seedRows: [] };
 const STAPLE = new Set(['food', 'fish', 'meat', 'stone', 'ore', 'wood', 'iron', 'copper', 'tin']);
 const ORN = new Set(['gold', 'silver', 'gem']);
 for (const sd of SEEDS) {
@@ -61,6 +61,11 @@ for (const sd of SEEDS) {
     if (n > agg.maxVilPop) agg.maxVilPop = n;
     if ((c.smith || 0) >= 1) agg.smithVil++;
     agg.houses += (v.houses ? v.houses.length : 0);
+    // ★집이 영토 안인지 — 영토 점진확장(growTerritory)이 집보다 앞서고 집은 그 안에서 생기는지.
+    if (v.V && v.V.territory) {
+      const tset = new Set(v.V.territory.map(cc => cc[0] + ',' + cc[1]));
+      for (const h of (v.houses || [])) { agg.housesTot++; if (!tset.has(Math.round(h.cx) + ',' + Math.round(h.cy))) agg.housesOut++; }
+    }
     sp += n;
   }
   for (const t of (r.world.tradeLog || [])) {
@@ -88,6 +93,7 @@ const checks = [
   ['15. 미니 마을(최대 인구 ≤160)', agg.maxVilPop <= 160],             // K_MAX 천장 작동(θ-로지스틱 수렴 ~100)
   ['16. 마을 대장장이(보유 마을 ≥70%)', agg.smithVil >= agg.villages * 0.7],   // 소형마을도 대장장이 floor (식량쪼들리는 곳은 순환적이라 70%)
   ['17. 위신재 교역 활성(장식 > 100000)', agg.tradeOrn > 100000],   // 사치(금·은·보석)에 행복/prestige 수요 부여 → 죽었던 장식교역 살아남(광산촌 수입다각화)
+  ['18. 집이 영토 안(밖 ≤2%)', agg.housesOut <= agg.housesTot * 0.02],   // 영토 점진확장(growTerritory)이 집보다 앞서고 집은 그 안에서 생김
 ];
 console.log('\n=== 회귀 검사 (5시드) ===');
 agg.seedRows.forEach(s => console.log('  ' + s));

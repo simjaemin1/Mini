@@ -32,7 +32,12 @@ for (const sd of [7, 3]) {
   for (const v of VILS) {
     const terr = v.V && v.V.territory; if (!terr) continue;
     const tset = new Set(terr.map(c => c[0] + ',' + c[1]));
-    let out = 0; for (const h of (v.houses || [])) { totH++; if (!tset.has(Math.round(h.cx) + ',' + Math.round(h.cy))) { out++; totOut++; } }
+    const cx = v.center.cx, cy = v.center.cy;
+    let maxTR = 0; for (const c of terr) { const r = Math.hypot(c[0] - cx, c[1] - cy); if (r > maxTR) maxTR = r; }
+    let out = 0, maxHR = 0, maxOutR = 0;
+    for (const h of (v.houses || [])) { totH++; const hr = Math.hypot(h.cx - cx, h.cy - cy); if (hr > maxHR) maxHR = hr; if (!tset.has(Math.round(h.cx) + ',' + Math.round(h.cy))) { out++; totOut++; if (hr > maxOutR) maxOutR = hr; } }
+    const target = Math.round((1500 + v.econ.npcs.length * 50) * (v._sizeMul || 1.5));
+    _log(`  ${v.econ.name} 인구${v.econ.npcs.length} 영토${terr.length}(목표${target}) maxR${maxTR.toFixed(0)} 집${(v.houses || []).length}(밖${out}, maxR${maxHR.toFixed(0)}, 밖maxR${maxOutR.toFixed(0)}) _terrR${v._sizeMul?'set':'unset'}`);
   }
 }
 _log(`총 집 ${totH}채 중 영토 밖 ${totOut}채 (${(totOut / Math.max(1, totH) * 100).toFixed(1)}%)`);
