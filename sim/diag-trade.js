@@ -53,7 +53,9 @@ for (const sd of SEEDS) {
     const e = v.econ, n = e.npcs.length || 1, S = e.storage;
     const orePer = ((S.ore || 0) / n).toFixed(0), stonePer = ((S.stone || 0) / n).toFixed(0);
     const mine = (e.counts.miner || 0), farm = (e.counts.farmer || 0);
-    _log(`   ${e.name} 인구${n} 광석${orePer}/명 돌${stonePer}/명 idleFrac${((v.econ._idleFrac||0)*100).toFixed(0)}% 광부${mine} 농부${farm} 대장${e.counts.smith||0}`);
+    const st = e.lastStats || {};
+    const goldPer = (((S.gold||0)+(S.silver||0)+(S.gem||0)+(S.jade_polished||0)) / n).toFixed(2);
+    _log(`   ${e.name} 인구${n} 행복${(st.happiness||0).toFixed(2)} 건강${(st.health||0).toFixed(2)} 위신${(st.prestige||0).toFixed(2)} 사치보유${goldPer}/명 광부${mine} 농부${farm}`);
   }
 }
 _log(`\n[집계] 5시드 평균 동시교역비율 ${(globAvgSum / globAvgN * 100).toFixed(2)}% · 전역 peak ${(globMax * 100).toFixed(1)}% · 마을별 peak 중앙값 ${(perVilMaxes.sort((a, b) => a - b)[Math.floor(perVilMaxes.length / 2)] * 100).toFixed(0)}%`);

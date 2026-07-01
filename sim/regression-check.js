@@ -87,6 +87,7 @@ const checks = [
   ['14. 누적 통제(광석·돌 최대 ≤60/명)', agg.maxAccumPer <= 60],       // 생산 포만+부패가 무한 누적 방지 (예전 ore 201·stone 159/명)
   ['15. 미니 마을(최대 인구 ≤160)', agg.maxVilPop <= 160],             // K_MAX 천장 작동(θ-로지스틱 수렴 ~100)
   ['16. 마을 대장장이(보유 마을 ≥70%)', agg.smithVil >= agg.villages * 0.7],   // 소형마을도 대장장이 floor (식량쪼들리는 곳은 순환적이라 70%)
+  ['17. 위신재 교역 활성(장식 > 100000)', agg.tradeOrn > 100000],   // 사치(금·은·보석)에 행복/prestige 수요 부여 → 죽었던 장식교역 살아남(광산촌 수입다각화)
 ];
 console.log('\n=== 회귀 검사 (5시드) ===');
 agg.seedRows.forEach(s => console.log('  ' + s));

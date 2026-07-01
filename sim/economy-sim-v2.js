@@ -178,6 +178,9 @@ const TRADE_INTERVAL = 3;   // (구 3일 게이트용. 연속교역 전환 후�
 //   spareCap = N × 포만스로틀 × UTIL. 광석 등 SAT_ALWAYS는 늘 포만 신호 → 식량난 광산촌도 교역 가능.
 //   포만스로틀(v._idleFrac) = 1 − 실제생산/잠재생산 (tickVillage에서 누적). UTIL로 안정본 강도(~4%)에 맞춤.
 const TRADE_SPARE_UTIL = 0.11;
+// ★위신재(사치) 수요 — 장식재의 use-value는 물리소비가 아니라 위신·심리(positional good). 1인당 목표 보유로 수요 부여.
+//   없는 마을은 교역으로 수입, 광산촌(부산물로 쟁여둠)은 잉여 수출 → 죽어있던 장식교역이 살아나고 광산촌 수입원 다각화.
+const LUX_TARGET_PC = 0.08;   // 1인당 위신재 목표(각 장식재). 이 근처서 만족(체감), 광산촌은 훨씬 위라 수출.
 
 // 정보 도달 거리 — v1과 동일하게 사용 (createWorld opts.infoRange)
 
@@ -218,8 +221,9 @@ function computeShadowPrices(v) {
       target = CAP_TARGET[r];
       stock = Math.max(0.1, CAP_STOCK[r] !== undefined ? CAP_STOCK[r] : (v.storage[r] || 0));
     } else {
-      // 장식재(금·은·보석)는 수요 ~0(가짜수요 제거). 그 외는 0.5/명 바닥 유지(부산물=의류/직물 대리수요 정당).
-      const buffer = ORNAMENTAL[r] ? N * 0.02 : N * Math.max(0.5, util * 1.2);
+      // ★장식재(위신재)에 진짜 수요 부여 — use-value = 위신·심리(prestige). 1인당 LUX_TARGET_PC 목표.
+      //   (옛 N×0.02 = 수요 죽임. 이제 위신재를 없는 마을은 수입하고 광산촌은 잉여 수출)
+      const buffer = ORNAMENTAL[r] ? N * LUX_TARGET_PC : N * Math.max(0.5, util * 1.2);
       target = Math.max(subs * 30, buffer);
       stock = Math.max(0.1, v.storage[r] || 0);
       // ★선견적 가격(flow 반영): 구조적 식량적자(생산<소비)를 30일 선반영 → 적자 마을은 *초기재고 무관하게* 수입.

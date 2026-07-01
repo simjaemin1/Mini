@@ -607,6 +607,10 @@ const POP_GROWTH_RATE = 0.04;             // r — 일일. ★초반 폭발성�
 const POP_MAX_DELTA_PCT = 0.06;           // 일일 변화 상한 (초반 빠른 성장 허용)
 const LOGISTIC_THETA = 4;                 // ★θ-로지스틱: dP=r·N·(1−(N/K)^θ). θ>1이라 K의 ~80%까지 빠르다가 급감(사용자 요청 곡선)
 const K_MAX_VILLAGE = 110;                // ★마을 부양력 천장(혼잡·위생·조율비용) — 큰 마을만 ~110로 수렴, 작은 마을은 영향 X. 하드 정지 아님(로지스틱이 부드럽게 접근)
+// ★위신재(사치) → 인구 소폭 보너스. prestige는 need 아닌 순보너스(없어도 페널티X, 있으면 생활수준↑→매력↑).
+//   사치 수입을 정당화(진짜 수요 근거). cap+작은 계수로 과성장 방지(주거게이트가 추가 안전장치).
+const PRESTIGE_GROWTH_W = 0.2;            // prestige 1당 성장보너스 계수
+const PRESTIGE_MOD_CAP = 0.25;           // 보너스 상한(happyMod ~0.8 대비 작게 — 사치는 부차)
 // ★무용재 — 실수요(use-value)가 ~0이라 수출해도 식량 못 삼. 식량안보와 무관하게 *항상* 생산 포만(성장기 누적까지 차단).
 //   광석(ore): 갑옷에 미량뿐. 장식재(금·은·보석): 화폐화 전엔 수요 0. 돌·금속(구리·주석)은 수요 있어 제외(가치재 수출).
 const SAT_ALWAYS = { ore: 1, gold: 1, silver: 1, gem: 1, pearl: 1, amber: 1, jade: 1, ivory: 1 };
@@ -1194,6 +1198,10 @@ function tickVillage(v, day) {
     // health: 0.5 기준 (질병·약초 부족)
     const healthMod = (stats.health - 0.5) * 0.4;
     dP += healthMod * N * POP_GROWTH_RATE;
+    // ★위신재(사치)→인구 보너스 — prestige는 순보너스(0 기준, 있으면 +). 사치 수입을 정당화 = 진짜 수요 근거.
+    //   금·옥 보유 마을은 생활수준·매력↑ → 소폭 성장/유입. 없어도 페널티 없음(사치는 선택재).
+    const prestigeMod = Math.min(PRESTIGE_MOD_CAP, (stats.prestige || 0) * PRESTIGE_GROWTH_W);
+    dP += prestigeMod * N * POP_GROWTH_RATE;
     // 기록 (외부에서 활용 가능)
     v.lastStats = stats;
   }
@@ -2401,6 +2409,9 @@ const TRADE_INTERVAL = 3;   // (구 3일 게이트용. 연속교역 전환 후�
 //   spareCap = N × 포만스로틀 × UTIL. 광석 등 SAT_ALWAYS는 늘 포만 신호 → 식량난 광산촌도 교역 가능.
 //   포만스로틀(v._idleFrac) = 1 − 실제생산/잠재생산 (tickVillage에서 누적). UTIL로 안정본 강도(~4%)에 맞춤.
 const TRADE_SPARE_UTIL = 0.11;
+// ★위신재(사치) 수요 — 장식재의 use-value는 물리소비가 아니라 위신·심리(positional good). 1인당 목표 보유로 수요 부여.
+//   없는 마을은 교역으로 수입, 광산촌(부산물로 쟁여둠)은 잉여 수출 → 죽어있던 장식교역이 살아나고 광산촌 수입원 다각화.
+const LUX_TARGET_PC = 0.08;   // 1인당 위신재 목표(각 장식재). 이 근처서 만족(체감), 광산촌은 훨씬 위라 수출.
 
 // 정보 도달 거리 — v1과 동일하게 사용 (createWorld opts.infoRange)
 
@@ -2441,8 +2452,9 @@ function computeShadowPrices(v) {
       target = CAP_TARGET[r];
       stock = Math.max(0.1, CAP_STOCK[r] !== undefined ? CAP_STOCK[r] : (v.storage[r] || 0));
     } else {
-      // 장식재(금·은·보석)는 수요 ~0(가짜수요 제거). 그 외는 0.5/명 바닥 유지(부산물=의류/직물 대리수요 정당).
-      const buffer = ORNAMENTAL[r] ? N * 0.02 : N * Math.max(0.5, util * 1.2);
+      // ★장식재(위신재)에 진짜 수요 부여 — use-value = 위신·심리(prestige). 1인당 LUX_TARGET_PC 목표.
+      //   (옛 N×0.02 = 수요 죽임. 이제 위신재를 없는 마을은 수입하고 광산촌은 잉여 수출)
+      const buffer = ORNAMENTAL[r] ? N * LUX_TARGET_PC : N * Math.max(0.5, util * 1.2);
       target = Math.max(subs * 30, buffer);
       stock = Math.max(0.1, v.storage[r] || 0);
       // ★선견적 가격(flow 반영): 구조적 식량적자(생산<소비)를 30일 선반영 → 적자 마을은 *초기재고 무관하게* 수입.
