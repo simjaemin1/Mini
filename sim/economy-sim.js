@@ -215,11 +215,11 @@ function foragerYieldsFor(v) {
   const fert = v.land.fertility, wood = v.land.wood, stone = v.land.stone;
   return {
     // 옛 자원 (유지)
-    fruit:     fert * 0.6 + 0.2,
-    vegetable: fert * 0.5 + 0.2,
+    fruit:     fert * 0.8 + 0.25,   // ★채집 믹스를 채소·과일로 재배치(잡동사니↓) — 다양성 식품 공급↑, 순식량은 거의 불변(안전)
+    vegetable: fert * 0.7 + 0.25,
     mushroom:  wood * 0.4 + stone * 0.2 + 0.1,
-    twig:      wood * 0.5 + 0.2,
-    pebble:    stone * 0.5 + 0.1,
+    twig:      wood * 0.25 + 0.1,   // 잡동사니 감축(비식량)
+    pebble:    stone * 0.25 + 0.05,
     stone:     stone * 0.12 + 0.04,   // ★채집에서 돌 소량(주워옴). 대량은 광산. → 도구·주거 최소 자급 가능
 
     // 새 자원 (specialty.js의 foraging) — 가중치 작게 (옛 자원 우선)
