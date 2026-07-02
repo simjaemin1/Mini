@@ -40,11 +40,12 @@ for (const sd of [7, 3]) {
     const gated = n >= housing ? 'Y' : '.';   // 주거게이트 걸림(집 부족→성장정지)?
     const lj = e.counts.lumberjack||0;
     const ljShare = (lj/n*100).toFixed(0);
-    const fuel = e._fuelCov!==undefined ? (e._fuelCov*100).toFixed(0) : '—';   // 땔감 충당률
-    const dbg = e._dpDebug||{}, hth = (e.lastStats&&e.lastStats.health!==undefined)?e.lastStats.health.toFixed(2):'—';
-    const sz = e.land&&e.land.size!==undefined ? e.land.size : (terr?terr.length:0);
-    const dens = sz>0 ? (n/sz).toFixed(3) : '—';   // 인구밀도(명/토지단위)
-    _log(`  ${e.name} 인구${n} | land.size ${sz} 밀도 ${dens} | 목재잔존 ${(woodF*100).toFixed(0)}% 땔감 ${fuel}% 건강 ${hth} K${dbg.K||'—'}`);
+    const dbg = e._dpDebug||{}, st = e.lastStats||{};
+    const hap = st.happiness!==undefined ? st.happiness.toFixed(2) : '—';   // 총 행복(0.5 기준)
+    const saltPC = (e.storage.salt||0)/n, saltHap = 0.5*Math.min(1,saltPC/2);   // salt의 행복 기여분
+    const saltShare = st.happiness>0 ? (saltHap/st.happiness*100).toFixed(0) : '0';   // salt가 행복의 몇%
+    const fisher = e.counts.fisher||0;   // 어부(해안 지표)
+    _log(`  ${e.name} 인구${n} | 행복 ${hap} (happyΔ${(dbg.happy||0).toFixed(2)}) salt기여 ${saltHap.toFixed(3)}(${saltShare}%) 어부${fisher} | hunger${(dbg.hunger||0).toFixed(2)}`);
   }
 }
 _log(`총 집 ${totH}채 중 영토 밖 ${totOut}채 (${(totOut / Math.max(1, totH) * 100).toFixed(1)}%)`);

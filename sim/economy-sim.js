@@ -804,7 +804,7 @@ function tickVillage(v, day) {
       const oAmt = jdef.base * (v.land.ore || 0) * skillMul * toolB;
       if (sAmt > 0) {
         addProduce('stone', sAmt);
-        addProduce('salt', sAmt * 0.05); addProduce('clay', sAmt * 0.08);   // ★석탄만 제거(청동기 시대착오 — 제련은 숯=나무). 소금은 광산 유지(해안이전 시 내륙 붕괴 — 교역 재분배 준비 후 재시도)
+        addProduce('salt', sAmt * 0.05); addProduce('clay', sAmt * 0.08);   // ★석탄 제거(시대착오). 소금 유지 — 광산 마을의 핵심 교역수출품(빼면 돌·광석 글럿+식량수입 불가로 붕괴). 해안이전은 광산 교역(돌 과잉) 해결 후.
       }
       if (oAmt > 0) {
         addProduce('ore', oAmt);
