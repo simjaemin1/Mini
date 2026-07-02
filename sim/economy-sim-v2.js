@@ -471,6 +471,8 @@ function tickTradeV2(world, day) {
       if (a.v.tradeStats) {
         a.v.tradeStats.caravansSent++;
         a.v.tradeStats.cargoSent += N_units;
+        const eb = a.v.tradeStats.exportBy || (a.v.tradeStats.exportBy = {});
+        eb[cand.res] = (eb[cand.res] || 0) + N_units;   // ★자원별 수출량(감사용) — 광산마을이 뭘 팔아 식량 사는지 진단
       }
     } // while
   } // for (const a of data)

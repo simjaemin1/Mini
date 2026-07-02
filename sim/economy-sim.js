@@ -804,7 +804,7 @@ function tickVillage(v, day) {
       const oAmt = jdef.base * (v.land.ore || 0) * skillMul * toolB;
       if (sAmt > 0) {
         addProduce('stone', sAmt);
-        addProduce('salt', sAmt * 0.05); addProduce('clay', sAmt * 0.08);   // ★석탄 제거(시대착오). 소금 유지 — 광산 마을의 핵심 교역수출품(빼면 돌·광석 글럿+식량수입 불가로 붕괴). 해안이전은 광산 교역(돌 과잉) 해결 후.
+        addProduce('salt', sAmt * 0.05); addProduce('clay', sAmt * 0.08);   // ★소금=완충 교역재(광범위 수요 utility 0.8). 제거 시 교역균형 흔들려 취약 시드 boom-bust→인구 1480→1023·글럿. 고증(소금길)이라 유지.
       }
       if (oAmt > 0) {
         addProduce('ore', oAmt);

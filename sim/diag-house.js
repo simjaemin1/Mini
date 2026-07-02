@@ -40,12 +40,10 @@ for (const sd of [7, 3]) {
     const gated = n >= housing ? 'Y' : '.';   // 주거게이트 걸림(집 부족→성장정지)?
     const lj = e.counts.lumberjack||0;
     const ljShare = (lj/n*100).toFixed(0);
-    const dbg = e._dpDebug||{}, st = e.lastStats||{};
-    const hap = st.happiness!==undefined ? st.happiness.toFixed(2) : '—';   // 총 행복(0.5 기준)
-    const saltPC = (e.storage.salt||0)/n, saltHap = 0.5*Math.min(1,saltPC/2);   // salt의 행복 기여분
-    const saltShare = st.happiness>0 ? (saltHap/st.happiness*100).toFixed(0) : '0';   // salt가 행복의 몇%
-    const fisher = e.counts.fisher||0;   // 어부(해안 지표)
-    _log(`  ${e.name} 인구${n} | 행복 ${hap} (happyΔ${(dbg.happy||0).toFixed(2)}) salt기여 ${saltHap.toFixed(3)}(${saltShare}%) 어부${fisher} | hunger${(dbg.hunger||0).toFixed(2)}`);
+    const ts = e.tradeStats || {}, eb = ts.exportBy || {}, L = e.land || {};
+    const exps = Object.entries(eb).sort((x, y) => y[1] - x[1]).slice(0, 5).map(([r, v]) => `${r}:${v.toFixed(0)}`).join(' ');
+    const type = (L.ore || 0) > (L.fertility || 0) && (L.ore || 0) > 0.3 ? '광산' : (L.water || 0) > 0.5 ? '해안' : '농업';
+    _log(`  ${e.name}[${type}] 인구${n} fert${(L.fertility || 0).toFixed(2)} ore${(L.ore || 0).toFixed(2)} | 식량수입 ${(ts.foodImported || 0).toFixed(0)} | 수출: ${exps}`);
   }
 }
 _log(`총 집 ${totH}채 중 영토 밖 ${totOut}채 (${(totOut / Math.max(1, totH) * 100).toFixed(1)}%)`);
