@@ -643,6 +643,9 @@ const PROD_STAT_CAP = 0.15;              // 상한 +15%(스노볼 방지 — 최
 const PADDY_PREMIUM = 0.4;                // 논 고수확 프리미엄 계수(물대기 노동 감안한 순이득)
 const PADDY_BASE = 0.43;                 // 중립 논비중(지정 평균 ~43%) — 순식량 평형 유지(총식량 변화 시 광산·인구 흔들림). 강가=이득/내륙=손해
 const FOOD_GROUP = { food: 'grain', fish: 'fish', meat: 'meat', fruit: 'fruit', vegetable: 'veg', mushroom: 'forage' };
+// ★곡물 과잉버퍼 직접 감산 대상 — 곡류·조리식. 식량가는 효용↑라 글럿에도 가격이 안 떨어져 raw-taper가 안 걸림 →
+//   버퍼 일수 기준으로 직접 캡(잉여 farming을 여가·교역로). K는 잠재생산 기준이라 불변 → 인구 안정, 낭비만↓. (어·육·채는 다양성이라 제외)
+const FOOD_GLUT_SAT = { food: 1, cooked_food: 1, wheat: 1, rice: 1, barley: 1 };
 // ★무용재 — 실수요(use-value)가 ~0이라 수출해도 식량 못 삼. 식량안보와 무관하게 *항상* 생산 포만(성장기 누적까지 차단).
 //   광석(ore): 갑옷에 미량뿐. 장식재(금·은·보석): 화폐화 전엔 수요 0. 돌·금속(구리·주석)은 수요 있어 제외(가치재 수출).
 const SAT_ALWAYS = { ore: 1, gold: 1, silver: 1, gem: 1, pearl: 1, amber: 1, jade: 1, ivory: 1 };
@@ -1020,12 +1023,17 @@ function tickVillage(v, day) {
   //   secF=0(40일↓): 풀생산(수출로 식량). secF=1(80일↑): 완전 포만(잉여 감산). 가치재만 적용, 무용재는 항상 포만.
   const _foodDays = totalFoodEquivalent(v) / (v.npcs.length || 1);
   const _secF = Math.max(0, Math.min(1, (_foodDays - 40) / 40));
+  // ★식량 과잉버퍼 직접 감산 — 70일치↑ 잉여 곡물생산을 여가·교역·공예로(가격 무관, K는 잠재기준이라 불변).
+  //   효과: 곡물 단작 과잉→다각화(장식교역 +50%). 수입-부양 마을은 지속가능 크기로 정직하게 수렴. 150→~95일치 캡.
+  const _foodGlut = Math.max(0, Math.min(0.8, (_foodDays - 70) / 80));
   const satMul = (_satP && _satB)
     ? (r => {
         const adj = (_satP[r] || 1) / (_satB[r] || 1);
         const raw = Math.max(0, Math.min(1, (adj - 0.04) / 0.21));   // 글럿이면 0(감산)
         const sec = SAT_ALWAYS[r] ? 1 : _secF;                        // 무용재는 항상, 가치재는 식량안보 비례
-        return 1 - sec * (1 - raw);                                   // sec=0→풀생산, sec=1→raw(포만)
+        let m = 1 - sec * (1 - raw);                                  // sec=0→풀생산, sec=1→raw(포만)
+        if (FOOD_GLUT_SAT[r]) m *= (1 - _foodGlut);                   // ★곡물 과잉버퍼 직접 감산(잉여 농사→교역노동). K 불변이라 인구 안전.
+        return m;
       })
     : (_ => 1);
   // ★여유노동 측정 — 포만으로 감산된 생산능력의 비율(_idleFrac). 교역 동시성 상한에 씀(tickTradeV2).
