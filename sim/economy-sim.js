@@ -706,6 +706,9 @@ function tickVillage(v, day) {
   // ★식량 과잉버퍼 직접 감산 — 70일치↑ 잉여 곡물생산을 여가·교역·공예로(가격 무관, K는 잠재기준이라 불변).
   //   효과: 곡물 단작 과잉→다각화(장식교역 +50%). 수입-부양 마을은 지속가능 크기로 정직하게 수렴. 150→~95일치 캡.
   const _foodGlut = Math.max(0, Math.min(0.8, (_foodDays - 70) / 80));
+  // ★돌 과잉버퍼 직접 감산 — 돌도 가격이 안 떨어져(0.46) raw-taper 미발동 → 잉여 채석 낭비. 15/명↑ 감산(건축·도구분은 보존).
+  const _stonePC = (v.storage.stone || 0) / (v.npcs.length || 1);
+  const _stoneGlut = Math.max(0, Math.min(0.7, (_stonePC - 15) / 30));
   const satMul = (_satP && _satB)
     ? (r => {
         const adj = (_satP[r] || 1) / (_satB[r] || 1);
@@ -713,6 +716,7 @@ function tickVillage(v, day) {
         const sec = SAT_ALWAYS[r] ? 1 : _secF;                        // 무용재는 항상, 가치재는 식량안보 비례
         let m = 1 - sec * (1 - raw);                                  // sec=0→풀생산, sec=1→raw(포만)
         if (FOOD_GLUT_SAT[r]) m *= (1 - _foodGlut);                   // ★곡물 과잉버퍼 직접 감산(잉여 농사→교역노동). K 불변이라 인구 안전.
+        if (r === 'stone') m *= (1 - _stoneGlut);                     // ★돌 과잉버퍼 직접 감산(잉여 채석 낭비↓)
         return m;
       })
     : (_ => 1);
