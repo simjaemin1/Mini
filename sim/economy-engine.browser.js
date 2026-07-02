@@ -662,7 +662,8 @@ const HOUSE_START = 20;        // 정착 초기 집(부트스트랩 — 이 크�
 // ★땔감(연료): 집은 목재를 거의 안 먹지만(재고), 요리·난방은 인구에 비례하는 *매일의 흐름*. 이게 숲→인구 상한의 진짜 고리.
 //   큰 마을일수록 매일 대량 소비 → 고갈된 숲(벌목꾼 슬롯·산출↓)은 못 댐 → fuelCov↓ → 건강↓ → 인구·생산성↓(비례=자기교정).
 //   숲 안 베는 작은 마을은 수요 작아 무영향. 역사적으로 마을 크기를 실제 제한한 건 건축목재가 아니라 땔감(연료 고갈).
-const FIREWOOD_PC = 0.1;       // 1인당 일일 땔감(목재). 인구비례 수요 → 숲 규모가 부양 인구 상한 결정(리비히: 식량 vs 연료)
+const FIREWOOD_PC = 0.085;     // 1인당 일일 땔감(요리·난방). 인구비례 흐름 수요 → 숲 규모가 부양 인구 상한(리비히: 식량 vs 연료)
+const SMELT_FUEL_PER = 0.5;    // ★야금공(대장장이·무기장이·갑옷장이) 1인당 제련 연료. 청동 제련은 고온·대량 연료 → 야금촌이 숲을 더 압박(고증)
 const FUEL_HEALTH_W = 0.4;     // 땔감 부족 시 건강 페널티 가중(fuelCov=0 → 건강 -0.4). 비례라 절벽 아님·자기교정
 
 // 식량 부패 — 무한 비축 방지. 음식 종류별로 다름.
@@ -1201,10 +1202,11 @@ function tickVillage(v, day) {
   if (v.storage.bronze_tool) v.storage.bronze_tool *= (1 - 0.00007);
   if (v.storage.iron_tool) v.storage.iron_tool *= (1 - 0.00005);
 
-  // ★땔감 소비 — 요리·난방으로 1인당 매일 목재를 태움(생산 반영된 재고에서 차감). 인구비례 흐름 수요.
+  // ★땔감 소비 — (1)요리·난방=인구비례 (2)제련=야금공 비례(청동 제련은 고온·대량 연료). 생산 반영된 재고에서 차감.
   //   충당률 fuelCov를 저장 → _computeVillageStats가 건강에 비례 페널티로 반영(부족→건강↓→인구·생산성↓).
-  //   재고를 실제로 축내므로 subsistence picker(wood<N×5)가 벌목꾼을 더 배치 → 숲 압박(고갈된 숲은 슬롯·산출이 모자라 못 댐).
-  const fuelNeed = N * FIREWOOD_PC;
+  //   재고를 실제로 축내므로 subsistence picker(wood<N×5)가 벌목꾼을 더 배치 → 숲 압박. 야금촌은 제련연료로 숲을 더 빨리 소진(고증: 제련=삼림파괴 동인).
+  const smelters = (v.counts.smith || 0) + (v.counts.weaponsmith || 0) + (v.counts.armorsmith || 0);
+  const fuelNeed = N * FIREWOOD_PC + smelters * SMELT_FUEL_PER;
   const fuelGot = Math.min(fuelNeed, v.storage.wood || 0);
   v.storage.wood = Math.max(0, (v.storage.wood || 0) - fuelGot);
   v._fuelCov = fuelNeed > 0 ? fuelGot / fuelNeed : 1;
