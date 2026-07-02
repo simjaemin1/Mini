@@ -507,7 +507,9 @@ function tickCaravansV2(world, day) {
       // 약탈 (가는 길)
       const wReady = Math.min(1, (c.from.storage.weapon || 0) / Math.max(1, c.escort));
       const aReady = Math.min(1, (c.from.storage.armor || 0) / Math.max(1, c.escort));
-      const protection = Math.sqrt(c.escort) * (0.08 + wReady * 0.05 + aReady * 0.05);
+      // ★죽은 커플링 연결: defense stat(마을 무장)이 억지력 — 무장한 마을 caravan은 덜 노림(호위와 별개, 상한 클램프).
+      const defDeter = (c.from.lastStats && c.from.lastStats.defense) ? Math.min(0.12, c.from.lastStats.defense * 0.04) : 0;
+      const protection = Math.sqrt(c.escort) * (0.08 + wReady * 0.05 + aReady * 0.05) + defDeter;
       const raidProb = Math.max(0.01, Math.min(RAID_MAX,
         RAID_BASE + (c.distance / 100) * (world.raidPer100 || RAID_PER_100) - protection));
       let outboundLoss = 0;
@@ -655,7 +657,8 @@ function tickCaravansV2(world, day) {
       // 약탈 (귀환)
       const wReady = Math.min(1, (c.from.storage.weapon || 0) / Math.max(1, c.escort));
       const aReady = Math.min(1, (c.from.storage.armor || 0) / Math.max(1, c.escort));
-      const protection = Math.sqrt(c.escort) * (0.08 + wReady * 0.05 + aReady * 0.05);
+      const defDeter = (c.from.lastStats && c.from.lastStats.defense) ? Math.min(0.12, c.from.lastStats.defense * 0.04) : 0;   // ★defense stat 억지력(귀환로)
+      const protection = Math.sqrt(c.escort) * (0.08 + wReady * 0.05 + aReady * 0.05) + defDeter;
       const raidProb = Math.max(0.01, Math.min(RAID_MAX,
         RAID_BASE + (c.distance / 100) * (world.raidPer100 || RAID_PER_100) - protection));
       let inboundLoss = 0;

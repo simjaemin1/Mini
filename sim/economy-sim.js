@@ -315,6 +315,9 @@ const DIVERSITY_HEALTH_W = 0.5;          // 다양성 만점 시 건강 보너�
 const DIVERSITY_FULL = 4;                // 이 군수면 만점(6군 중 4군 = 균형식)
 // ★건강 → 작업량(생산성) — 건강한 마을이 더 생산적(상한 있어 폭주 X). happiness는 인구만(유지).
 const HEALTH_PROD_W = 0.15;              // (health−0.5)×W → ±0.075(상한 클램프 ±0.1). 완만 — 과채광 억제
+// ★죽은 커플링 연결: production stat(자재·도구·금속 비축)이 이제 실제 생산성을 올림 — 잘 갖춰진 작업장이 더 생산적(고증: 도구·설비 = 생산력).
+const PROD_STAT_W = 0.03;                // production stat × W → 생산성 보너스
+const PROD_STAT_CAP = 0.15;              // 상한 +15%(스노볼 방지 — 최후의 보루 클램프)
 // ★공간 농지(논/밭) → 부양력: 논(벼)이 밭보다 고수확 → 유효비옥도 = 기본 × (1 + PADDY_PREMIUM×(개간논비중 − PADDY_BASE)).
 //   논은 물가에 제한(강가 마을이 더 부유 = 고증) + 밭→논 전환이 경제적 이득. v._paddyShare(공간 브리지) 없으면 중립(standalone econ 무영향).
 const PADDY_PREMIUM = 0.4;                // 논 고수확 프리미엄 계수(물대기 노동 감안한 순이득)
@@ -712,6 +715,9 @@ function tickVillage(v, day) {
   // ★건강 → 작업량(생산성) — 지난 틱 health로 실제 생산 스케일(±10% 상한). 잠재력(dailyProductionPotential)엔 미적용 → K 오염·아사 스파이럴 방지.
   const _hpm = (v.lastStats && typeof v.lastStats.health === 'number')
     ? Math.max(0.9, Math.min(1.1, 1 + (v.lastStats.health - 0.5) * HEALTH_PROD_W)) : 1;
+  // ★production stat → 생산성(자재·설비 비축이 실제 생산력↑). 상한 클램프로 스노볼 방지. 잠재력엔 미적용(K 오염 방지).
+  const _prodMul = (v.lastStats && typeof v.lastStats.production === 'number')
+    ? 1 + Math.min(PROD_STAT_CAP, v.lastStats.production * PROD_STAT_W) : 1;
   // ★논 프리미엄 — 개간 논비중(v._paddyShare)이 높을수록 유효비옥도↑(벼 고수확). 공간 브리지 없으면 중립.
   const _paddyMul = (v._paddyShare == null) ? 1 : (1 + PADDY_PREMIUM * (v._paddyShare - PADDY_BASE));
   for (const npc of v.npcs) {
@@ -735,7 +741,7 @@ function tickVillage(v, day) {
       const sm = satMul(r);
       _potA += amt; _actA += amt * sm;   // 여유노동 측정: 잠재(감산 전) vs 실제(감산 후)
       dailyProductionPotential[r] = (dailyProductionPotential[r] || 0) + amt;   // 잠재 생산(건강·포만 적용 전) — prodK용
-      amt *= _hpm * sm;   // ★건강→작업량(±10%) × 포만(글럿 시 여가)
+      amt *= _hpm * _prodMul * sm;   // ★건강→작업량(±10%) × production stat(자재비축→생산성) × 포만(글럿 시 여가)
       if (amt <= 0) return;
       const tax = amt * TAX_RATE;
       v.storage[r] = (v.storage[r] || 0) + (amt - tax);
