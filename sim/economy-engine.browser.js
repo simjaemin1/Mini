@@ -1204,9 +1204,11 @@ function tickVillage(v, day) {
   const prodK = (dailyFoodProdPotential + dailyImport) / DAILY_FOOD_CONSUMPTION;
   // ★도구 마모 — 내구재라 천천히 닳음(반감기 ~19년). 인구 성장으로 1인당 도구가 희석되면 대장간이 보충.
   //   (예전 0.2%/일은 반감기 1.4년 = 비현실적으로 빨라 도구 고갈→붕괴 유발)
-  if (v.storage.tool) v.storage.tool *= (1 - 0.0001);       // 도구 마모(내구재). 돌<청동<철 내구.
-  if (v.storage.bronze_tool) v.storage.bronze_tool *= (1 - 0.00007);
-  if (v.storage.iron_tool) v.storage.iron_tool *= (1 - 0.00005);
+  // ★도구 마모 현실화 — 청동기 도구는 소모품(부러지고 갈아야 함). 돌<청동<철 순 내구(반감기 돌~1.3·청동~2·철~3년).
+  //   예전 0.00007(반감기 19년)은 청동/철도구를 사실상 영구화 → 대장장이 수요 죽어 floor로 땜질. 현실화로 자연 수요 창출.
+  if (v.storage.tool) v.storage.tool *= (1 - 0.0006);       // 돌도구(가장 잘 부러짐)
+  if (v.storage.bronze_tool) v.storage.bronze_tool *= (1 - 0.00035);  // 청동도구(주력)
+  if (v.storage.iron_tool) v.storage.iron_tool *= (1 - 0.00022);      // 철도구(최고 내구)
 
   // ★땔감 소비 — (1)요리·난방=인구비례 (2)제련=야금공 비례(청동 제련은 고온·대량 연료). 생산 반영된 재고에서 차감.
   //   충당률 fuelCov를 저장 → _computeVillageStats가 건강에 비례 페널티로 반영(부족→건강↓→인구·생산성↓).
