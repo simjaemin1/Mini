@@ -83,7 +83,7 @@ const checks = [
   ['5. 인구 범위(800~3500)', agg.pop >= 800 && agg.pop <= 3500],
   ['6. 특화 분화(광산≥1·숲≥1 마을)', agg.mining >= 1 && agg.forest >= 1],
   ['7. 도구 기술트리(청동·철 도달)', agg.bronze > 0 && agg.iron > 0 && (agg.stoneTool + agg.bronze + agg.iron) > 0],   // 돌도구는 과도기(업그레이드되면 0 가능)
-  ['8. 청동 사슬(청동도구 존재)', agg.bronze > 0],
+  ['8. 청동 우위(청동기 고증: 청동도구 > 철도구)', agg.bronze > agg.iron],   // 청동 우선+철 희소 → 청동 지배. 철은 존재하되(#7) 소수
   ['9. 금속 공급(구리·주석 흐름)', agg.copperTin > 0 || agg.bronze > 0],
   ['10. 전사 무장(무기부족 마을 ≤3)', agg.weaponShort <= 3],
   ['11. staple 교역 > 0', agg.tradeStaple > 0],

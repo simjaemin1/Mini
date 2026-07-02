@@ -763,15 +763,16 @@ function tickVillage(v, day) {
         workNPC(npc);
       }
     } else if (jdef.produceSpecial === 'smith') {
-      // ★대장장이: 철(광맥 전용) 있으면 철도구(고효율), 아니면 돌도구. 도구는 돌 기반(석재 풍부)이라 목재 의존 X → 도구 자급 안정.
-      const amt = jdef.base * skillMul;   // smith는 toolDependent 아님(맨손 페널티 없음). 최선의 도구 제작: 철>청동>돌.
-      if ((v.storage.iron || 0) >= 0.5 && (v.storage.stone || 0) >= 0.2) {
-        v.storage.iron -= 0.5; v.storage.stone -= 0.2;
-        addProduce('iron_tool', amt);
-        workNPC(npc);
-      } else if ((v.storage.copper || 0) >= 0.4 && (v.storage.tin || 0) >= 0.15 && (v.storage.stone || 0) >= 0.2) {
+      // ★대장장이(청동기): 청동(구리+주석) *우선* — 청동기 주력. 청동 재료 부족 시에만 철(희소 프리미엄), 최후로 돌.
+      //   (철 우선이면 흔한 철이 청동을 밀어내 시대 위배 → 청동 우선으로 청동 지배·철 잔존. 철은 청동 재료 dip 시 fallback.)
+      const amt = jdef.base * skillMul;   // smith는 toolDependent 아님(맨손 페널티 없음).
+      if ((v.storage.copper || 0) >= 0.4 && (v.storage.tin || 0) >= 0.15 && (v.storage.stone || 0) >= 0.2) {
         v.storage.copper -= 0.4; v.storage.tin -= 0.15; v.storage.stone -= 0.2;   // ★청동=구리+주석 합금(주력 금속)
         addProduce('bronze_tool', amt);
+        workNPC(npc);
+      } else if ((v.storage.iron || 0) >= 0.5 && (v.storage.stone || 0) >= 0.2) {
+        v.storage.iron -= 0.5; v.storage.stone -= 0.2;   // ★철도구=희소 프리미엄(청동 재료 없을 때만). 청동기엔 드묾
+        addProduce('iron_tool', amt);
         workNPC(npc);
       } else if ((v.storage.stone || 0) >= 0.6) {
         v.storage.stone -= 0.6;
@@ -779,14 +780,14 @@ function tickVillage(v, day) {
         workNPC(npc);
       }
     } else if (jdef.produceSpecial === 'weaponsmith') {
-      // ★무기 제작: 철 있으면 철칼(iron+stone), 없으면 돌칼(stone). 전사 양성의 전제(돌칼이나 철칼 필요).
-      const amt = jdef.base * skillMul;   // 최선의 무기: 철검>청동검>돌검.
-      if ((v.storage.iron || 0) >= 0.4 && (v.storage.stone || 0) >= 0.2) {
-        v.storage.iron -= 0.4; v.storage.stone -= 0.2;
+      // ★무기 제작(청동기): 청동검 *우선*(주력 무기) → 청동 재료 부족 시 철검(희소) → 최후 돌칼.
+      const amt = jdef.base * skillMul;
+      if ((v.storage.copper || 0) >= 0.3 && (v.storage.tin || 0) >= 0.12) {
+        v.storage.copper -= 0.3; v.storage.tin -= 0.12;   // ★청동검(청동기 주력 무기)
         addProduce('weapon', amt);
         workNPC(npc);
-      } else if ((v.storage.copper || 0) >= 0.3 && (v.storage.tin || 0) >= 0.12) {
-        v.storage.copper -= 0.3; v.storage.tin -= 0.12;   // ★청동검(청동기 주력 무기)
+      } else if ((v.storage.iron || 0) >= 0.4 && (v.storage.stone || 0) >= 0.2) {
+        v.storage.iron -= 0.4; v.storage.stone -= 0.2;   // ★철검=희소(청동 재료 없을 때만)
         addProduce('weapon', amt);
         workNPC(npc);
       } else if ((v.storage.stone || 0) >= 0.5) {
@@ -806,7 +807,7 @@ function tickVillage(v, day) {
       }
       if (oAmt > 0) {
         addProduce('ore', oAmt);
-        const bp = { copper: 0.22, tin: 0.11, iron: 0.08, silver: 0.05, gold: 0.02, gem: 0.01 };
+        const bp = { copper: 0.22, tin: 0.11, iron: 0.03, silver: 0.05, gold: 0.02, gem: 0.01 };   // ★철 0.08→0.03: 청동기엔 철이 희소(구리·주석보다 귀함). 청동 우선+철 희소=청동 지배
         for (const r in bp) addProduce(r, oAmt * bp[r]);
       }
       if (sAmt > 0 || oAmt > 0) workNPC(npc);
@@ -908,7 +909,7 @@ function tickVillage(v, day) {
       v.housing += built;
     }
   }
-  const Kraw = Math.min(slotK, prodK, K_MAX_VILLAGE);   // 식량 한계 + 마을 부양력 천장(혼잡). 작은 마을은 식량이 binding이라 천장 영향 X
+  const Kraw = Math.min(slotK, prodK, K_MAX_VILLAGE);   // 식량 한계 + 마을 부양력 천장(혼잡·위생 — 최후의 보루 백스톱. 제거하면 비옥마을 225 폭증+연료위기). 작은 마을은 식량이 binding이라 천장 영향 X
   const K = Math.max(POP_MIN, Kraw);
 
   // 5) 인구 θ-로지스틱 갱신 — dP = r·N·(1−(N/K)^θ). θ>1: K의 ~80%까지 빠르고 이후 급감(S곡선의 상단을 압축)
