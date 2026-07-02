@@ -38,7 +38,11 @@ for (const sd of [7, 3]) {
     const woodF = v.baseWood ? (e.land.wood / v.baseWood) : 1;   // 목재 용량 잔존율(숲 고갈)
     const housing = e.housing !== undefined ? e.housing : n;
     const gated = n >= housing ? 'Y' : '.';   // 주거게이트 걸림(집 부족→성장정지)?
-    _log(`  ${e.name} 인구${n} 집${(v.houses || []).length} | 목재잔존 ${(woodF*100).toFixed(0)}%(base${(v.baseWood||0).toFixed(1)}→${(e.land.wood||0).toFixed(1)}) 주거${housing.toFixed(0)} 게이트${gated} 벌목꾼${e.counts.lumberjack||0}`);
+    const lj = e.counts.lumberjack||0;
+    const ljShare = (lj/n*100).toFixed(0);
+    const fuel = e._fuelCov!==undefined ? (e._fuelCov*100).toFixed(0) : '—';   // 땔감 충당률
+    const dbg = e._dpDebug||{}, hth = (e.lastStats&&e.lastStats.health!==undefined)?e.lastStats.health.toFixed(2):'—';
+    _log(`  ${e.name} 인구${n} | 목재잔존 ${(woodF*100).toFixed(0)}% 벌목꾼${lj}(${ljShare}%) | 땔감충당 ${fuel}% 건강 ${hth} K${dbg.K||'—'} 게이트${gated}`);
   }
 }
 _log(`총 집 ${totH}채 중 영토 밖 ${totOut}채 (${(totOut / Math.max(1, totH) * 100).toFixed(1)}%)`);

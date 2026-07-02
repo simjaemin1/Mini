@@ -72,6 +72,9 @@ function _computeVillageStats(v, N) {
   stats.happiness += _divN * DIVERSITY_HAPPY_W;
   stats.health += _divN * DIVERSITY_HEALTH_W;
   stats.foodGroups = _fg.size;
+  // ★땔감 부족 → 건강 페널티(비례). fuelCov=1이면 0, 0이면 -FUEL_HEALTH_W. 큰/숲빈약 마을이 연료를 못 대면 건강↓→인구 억제.
+  if (v._fuelCov !== undefined && v._fuelCov < 1) stats.health += (v._fuelCov - 1) * FUEL_HEALTH_W;
+  stats.fuelCov = (v._fuelCov !== undefined) ? v._fuelCov : 1;
   return stats;
 }
 
@@ -336,6 +339,11 @@ const HOUSE_DECAY = 0.0015;    // 일일 노후화(완만 — 나무꾼 1명이�
 const HOUSE_BUFFER = 1.15;     // 인구보다 약간 여유 있게(성장 여지)
 const HOUSE_BUILD_MAX = 0.06;  // 하루 최대 증축률(인구 대비)
 const HOUSE_START = 20;        // 정착 초기 집(부트스트랩 — 이 크기까진 자라 나무꾼 산업 형성)
+// ★땔감(연료): 집은 목재를 거의 안 먹지만(재고), 요리·난방은 인구에 비례하는 *매일의 흐름*. 이게 숲→인구 상한의 진짜 고리.
+//   큰 마을일수록 매일 대량 소비 → 고갈된 숲(벌목꾼 슬롯·산출↓)은 못 댐 → fuelCov↓ → 건강↓ → 인구·생산성↓(비례=자기교정).
+//   숲 안 베는 작은 마을은 수요 작아 무영향. 역사적으로 마을 크기를 실제 제한한 건 건축목재가 아니라 땔감(연료 고갈).
+const FIREWOOD_PC = 0.1;       // 1인당 일일 땔감(목재). 인구비례 수요 → 숲 규모가 부양 인구 상한 결정(리비히: 식량 vs 연료)
+const FUEL_HEALTH_W = 0.4;     // 땔감 부족 시 건강 페널티 가중(fuelCov=0 → 건강 -0.4). 비례라 절벽 아님·자기교정
 
 // 식량 부패 — 무한 비축 방지. 음식 종류별로 다름.
 const DECAY_RATES = {
@@ -871,6 +879,14 @@ function tickVillage(v, day) {
   if (v.storage.tool) v.storage.tool *= (1 - 0.0001);       // 도구 마모(내구재). 돌<청동<철 내구.
   if (v.storage.bronze_tool) v.storage.bronze_tool *= (1 - 0.00007);
   if (v.storage.iron_tool) v.storage.iron_tool *= (1 - 0.00005);
+
+  // ★땔감 소비 — 요리·난방으로 1인당 매일 목재를 태움(생산 반영된 재고에서 차감). 인구비례 흐름 수요.
+  //   충당률 fuelCov를 저장 → _computeVillageStats가 건강에 비례 페널티로 반영(부족→건강↓→인구·생산성↓).
+  //   재고를 실제로 축내므로 subsistence picker(wood<N×5)가 벌목꾼을 더 배치 → 숲 압박(고갈된 숲은 슬롯·산출이 모자라 못 댐).
+  const fuelNeed = N * FIREWOOD_PC;
+  const fuelGot = Math.min(fuelNeed, v.storage.wood || 0);
+  v.storage.wood = Math.max(0, (v.storage.wood || 0) - fuelGot);
+  v._fuelCov = fuelNeed > 0 ? fuelGot / fuelNeed : 1;
 
   // ★주거 증축: 집이 인구보다 모자라면 목재(필수)·석재(있으면)로 지음. 노후화로 지속 보수.
   if (v.housing === undefined) v.housing = N;
