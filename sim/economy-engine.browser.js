@@ -42,22 +42,10 @@ const RESOURCES = {
   copper:      { ko: '구리',         emoji: '🟠', category: 'mineral', weight: 3.5, baseValue: 4,    utility: 0.4, contributes: { production: 0.8 },           harvest: 'mining' },
   tin:         { ko: '주석',         emoji: '⚪', category: 'mineral', weight: 3.0, baseValue: 4,    utility: 0.4, contributes: { production: 0.6 },           harvest: 'mining' },
   lead:        { ko: '납',           emoji: '⬛', category: 'mineral', weight: 5.0, baseValue: 3,    utility: 0.3, contributes: { production: 0.5 },           harvest: 'mining' },
-  zinc:        { ko: '아연',         emoji: '🪙', category: 'mineral', weight: 3.5, baseValue: 4,    utility: 0.3, contributes: { production: 0.5 },           harvest: 'mining' },
   silver:      { ko: '은',           emoji: '🥈', category: 'mineral', weight: 2.0, baseValue: 30,   utility: 0.4, contributes: { prestige: 0.8 },             harvest: 'mining' },
   gold:        { ko: '금',           emoji: '🥇', category: 'mineral', weight: 2.0, baseValue: 100,  utility: 0.5, contributes: { prestige: 1.5 },             harvest: 'mining' },
-  mercury:     { ko: '수은',         emoji: '💧', category: 'mineral', weight: 4.0, baseValue: 50,   utility: 0.2, contributes: { production: 0.3 },           harvest: 'mining' },
-  nickel:      { ko: '니켈',         emoji: '⚒️', category: 'mineral', weight: 3.5, baseValue: 8,    utility: 0.3, contributes: { production: 0.7 },           harvest: 'mining' },
-  cobalt:      { ko: '코발트',       emoji: '🔵', category: 'mineral', weight: 3.5, baseValue: 40,   utility: 0.2, contributes: { production: 0.5 },           harvest: 'mining' },
-  tungsten:    { ko: '텅스텐',       emoji: '⚫', category: 'mineral', weight: 4.5, baseValue: 50,   utility: 0.3, contributes: { production: 0.9 },           harvest: 'mining' },
-  chromium:    { ko: '크롬',         emoji: '🌫️', category: 'mineral', weight: 4.0, baseValue: 20,   utility: 0.2, contributes: { production: 0.6 },           harvest: 'mining' },
-  manganese:   { ko: '망간',         emoji: '🌑', category: 'mineral', weight: 4.0, baseValue: 8,    utility: 0.2, contributes: { production: 0.4 },           harvest: 'mining' },
-  bauxite:     { ko: '보크사이트',   emoji: '🟫', category: 'mineral', weight: 4.0, baseValue: 5,    utility: 0.2, contributes: { production: 0.4 },           harvest: 'mining' },
   coal:        { ko: '석탄',         emoji: '🪨', category: 'mineral', weight: 3.0, baseValue: 2,    utility: 0.5, contributes: { production: 0.6 },           harvest: 'mining' },
   salt:        { ko: '소금',         emoji: '🧂', category: 'mineral', weight: 1.0, baseValue: 5,    utility: 0.8, contributes: { subsistence: 0.3, happiness: 0.5 }, harvest: 'mining' },
-  sulfur:      { ko: '유황',         emoji: '🌕', category: 'mineral', weight: 2.0, baseValue: 6,    utility: 0.2, contributes: { production: 0.3 },           harvest: 'mining' },
-  nitrate:     { ko: '초석',         emoji: '💥', category: 'mineral', weight: 2.0, baseValue: 15,   utility: 0.2, contributes: { production: 0.3 },           harvest: 'mining' },
-  phosphate:   { ko: '인광석',       emoji: '🦴', category: 'mineral', weight: 4.0, baseValue: 8,    utility: 0.3, contributes: { production: 0.5 },           harvest: 'mining' },
-  magnesite:   { ko: '마그네사이트', emoji: '⚪', category: 'mineral', weight: 3.5, baseValue: 25,   utility: 0.2, contributes: { production: 0.4 },           harvest: 'mining' },
   limestone:   { ko: '석회암',       emoji: '🤍', category: 'mineral', weight: 3.0, baseValue: 1,    utility: 0.4, contributes: { production: 0.5 },           harvest: 'mining' },
   marble:      { ko: '대리석',       emoji: '🪞', category: 'mineral', weight: 5.0, baseValue: 30,   utility: 0.4, contributes: { prestige: 0.6 },             harvest: 'mining' },
   granite:     { ko: '화강암',       emoji: '🔘', category: 'mineral', weight: 6.0, baseValue: 4,    utility: 0.3, contributes: { production: 0.5 },           harvest: 'mining' },
@@ -69,50 +57,22 @@ const RESOURCES = {
   clay:        { ko: '진흙',         emoji: '🟫', category: 'mineral', weight: 3.0, baseValue: 0.5,  utility: 0.5, contributes: { production: 0.5 },           harvest: 'mining' },
   kaolin:      { ko: '고령토',       emoji: '⚪', category: 'mineral', weight: 3.5, baseValue: 8,    utility: 0.3, contributes: { production: 0.6 },           harvest: 'mining' },
   sand:        { ko: '모래',         emoji: '🟡', category: 'mineral', weight: 2.5, baseValue: 0.3,  utility: 0.4, contributes: { production: 0.3 },           harvest: 'mining' },
-  soda_ash:    { ko: '소다재',       emoji: '⚪', category: 'mineral', weight: 1.0, baseValue: 4,    utility: 0.3, contributes: { production: 0.4 },           harvest: 'mining' },
 
   // ═══════════════════════════════════════════════════════════════════
   // 🌾 농산물 43개
   // ═══════════════════════════════════════════════════════════════════
   wheat:       { ko: '밀',       emoji: '🌾', category: 'agri', weight: 0.5, baseValue: 1.0,  utility: 1.0, contributes: { subsistence: 1.0 }, harvest: 'farming' },
   rice:        { ko: '쌀',       emoji: '🍚', category: 'agri', weight: 0.5, baseValue: 1.2,  utility: 1.0, contributes: { subsistence: 1.0 }, harvest: 'farming' },
-  corn:        { ko: '옥수수',   emoji: '🌽', category: 'agri', weight: 0.5, baseValue: 1.0,  utility: 0.9, contributes: { subsistence: 1.0 }, harvest: 'farming' },
   barley:      { ko: '보리',     emoji: '🌿', category: 'agri', weight: 0.5, baseValue: 0.8,  utility: 0.9, contributes: { subsistence: 0.9 }, harvest: 'farming' },
-  oats:        { ko: '귀리',     emoji: '🌾', category: 'agri', weight: 0.5, baseValue: 0.8,  utility: 0.8, contributes: { subsistence: 0.9 }, harvest: 'farming' },
-  rye:         { ko: '호밀',     emoji: '🌾', category: 'agri', weight: 0.5, baseValue: 0.9,  utility: 0.8, contributes: { subsistence: 0.9 }, harvest: 'farming' },
   millet:      { ko: '기장',     emoji: '🌾', category: 'agri', weight: 0.5, baseValue: 0.8,  utility: 0.8, contributes: { subsistence: 0.9 }, harvest: 'farming' },
   sorghum:     { ko: '수수',     emoji: '🌾', category: 'agri', weight: 0.5, baseValue: 0.9,  utility: 0.7, contributes: { subsistence: 0.8 }, harvest: 'farming' },
   buckwheat:   { ko: '메밀',     emoji: '🌾', category: 'agri', weight: 0.5, baseValue: 1.0,  utility: 0.7, contributes: { subsistence: 0.8 }, harvest: 'farming' },
-  potato:      { ko: '감자',     emoji: '🥔', category: 'agri', weight: 0.8, baseValue: 0.7,  utility: 0.9, contributes: { subsistence: 1.0 }, harvest: 'farming' },
-  sweet_potato:{ ko: '고구마',   emoji: '🍠', category: 'agri', weight: 0.8, baseValue: 0.7,  utility: 0.8, contributes: { subsistence: 0.9 }, harvest: 'farming' },
-  cassava:     { ko: '카사바',   emoji: '🥔', category: 'agri', weight: 1.0, baseValue: 0.6,  utility: 0.7, contributes: { subsistence: 0.9 }, harvest: 'farming' },
   yam:         { ko: '마',       emoji: '🥔', category: 'agri', weight: 0.8, baseValue: 0.7,  utility: 0.6, contributes: { subsistence: 0.8 }, harvest: 'farming' },
   soybean:     { ko: '콩',       emoji: '🫘', category: 'agri', weight: 0.4, baseValue: 1.5,  utility: 0.8, contributes: { subsistence: 0.8 }, harvest: 'farming' },
-  chickpea:    { ko: '병아리콩', emoji: '🫘', category: 'agri', weight: 0.4, baseValue: 1.3,  utility: 0.6, contributes: { subsistence: 0.7 }, harvest: 'farming' },
-  lentil:      { ko: '렌즈콩',   emoji: '🫘', category: 'agri', weight: 0.4, baseValue: 1.3,  utility: 0.6, contributes: { subsistence: 0.7 }, harvest: 'farming' },
-  peanut:      { ko: '땅콩',     emoji: '🥜', category: 'agri', weight: 0.4, baseValue: 1.2,  utility: 0.5, contributes: { subsistence: 0.5, happiness: 0.2 }, harvest: 'farming' },
-  cotton:      { ko: '면화',     emoji: '☁️', category: 'agri', weight: 0.3, baseValue: 6,    utility: 0.6, contributes: { production: 0.6 }, harvest: 'farming' },
-  flax:        { ko: '아마',     emoji: '🪢', category: 'agri', weight: 0.4, baseValue: 5,    utility: 0.5, contributes: { production: 0.5 }, harvest: 'farming' },
   hemp:        { ko: '대마',     emoji: '🌿', category: 'agri', weight: 0.4, baseValue: 4,    utility: 0.4, contributes: { production: 0.4 }, harvest: 'farming' },
-  sugarcane:   { ko: '사탕수수', emoji: '🎋', category: 'agri', weight: 1.0, baseValue: 3,    utility: 0.5, contributes: { happiness: 0.5 }, harvest: 'farming' },
-  sugarbeet:   { ko: '사탕무',   emoji: '🥕', category: 'agri', weight: 1.0, baseValue: 3,    utility: 0.5, contributes: { happiness: 0.5 }, harvest: 'farming' },
-  tea:         { ko: '차',       emoji: '🍵', category: 'agri', weight: 0.2, baseValue: 15,   utility: 0.6, contributes: { happiness: 1.0 }, harvest: 'farming' },
-  coffee:      { ko: '커피',     emoji: '☕', category: 'agri', weight: 0.3, baseValue: 20,   utility: 0.6, contributes: { happiness: 1.0 }, harvest: 'farming' },
-  cocoa:       { ko: '카카오',   emoji: '🍫', category: 'agri', weight: 0.3, baseValue: 25,   utility: 0.5, contributes: { happiness: 0.8, prestige: 0.3 }, harvest: 'farming' },
-  tobacco:     { ko: '담배',     emoji: '🌿', category: 'agri', weight: 0.3, baseValue: 10,   utility: 0.4, contributes: { happiness: 0.5 }, harvest: 'farming' },
   grape:       { ko: '포도',     emoji: '🍇', category: 'agri', weight: 0.5, baseValue: 2,    utility: 0.5, contributes: { happiness: 0.4 }, harvest: 'foraging' },
-  olive:       { ko: '올리브',   emoji: '🫒', category: 'agri', weight: 0.5, baseValue: 4,    utility: 0.5, contributes: { subsistence: 0.3, happiness: 0.4 }, harvest: 'foraging' },
-  dates:       { ko: '대추야자', emoji: '🌴', category: 'agri', weight: 0.5, baseValue: 3,    utility: 0.6, contributes: { subsistence: 0.5, happiness: 0.3 }, harvest: 'foraging' },
-  fig:         { ko: '무화과',   emoji: '🫐', category: 'agri', weight: 0.5, baseValue: 4,    utility: 0.4, contributes: { subsistence: 0.3, happiness: 0.3 }, harvest: 'foraging' },
-  banana:      { ko: '바나나',   emoji: '🍌', category: 'agri', weight: 0.8, baseValue: 1.5,  utility: 0.5, contributes: { subsistence: 0.5 }, harvest: 'foraging' },
-  coconut:     { ko: '코코넛',   emoji: '🥥', category: 'agri', weight: 1.5, baseValue: 2,    utility: 0.5, contributes: { subsistence: 0.5 }, harvest: 'foraging' },
-  pineapple:   { ko: '파인애플', emoji: '🍍', category: 'agri', weight: 1.5, baseValue: 3,    utility: 0.4, contributes: { happiness: 0.4 }, harvest: 'foraging' },
-  mango:       { ko: '망고',     emoji: '🥭', category: 'agri', weight: 0.6, baseValue: 3,    utility: 0.4, contributes: { happiness: 0.4 }, harvest: 'foraging' },
-  apple:       { ko: '사과',     emoji: '🍎', category: 'agri', weight: 0.4, baseValue: 1.5,  utility: 0.5, contributes: { subsistence: 0.3, happiness: 0.3 }, harvest: 'foraging' },
-  chili:       { ko: '고추',     emoji: '🌶️', category: 'agri', weight: 0.1, baseValue: 4,    utility: 0.5, contributes: { happiness: 0.6 }, harvest: 'farming' },
   garlic:      { ko: '마늘',     emoji: '🧄', category: 'agri', weight: 0.2, baseValue: 2,    utility: 0.5, contributes: { happiness: 0.4, health: 0.2 }, harvest: 'farming' },
   onion:       { ko: '양파',     emoji: '🧅', category: 'agri', weight: 0.3, baseValue: 1,    utility: 0.5, contributes: { subsistence: 0.2, happiness: 0.3 }, harvest: 'farming' },
-  tomato:      { ko: '토마토',   emoji: '🍅', category: 'agri', weight: 0.3, baseValue: 1.5,  utility: 0.5, contributes: { subsistence: 0.3 }, harvest: 'farming' },
   pumpkin:     { ko: '호박',     emoji: '🎃', category: 'agri', weight: 2.0, baseValue: 1,    utility: 0.4, contributes: { subsistence: 0.5 }, harvest: 'farming' },
   mulberry:    { ko: '뽕나무 잎',emoji: '🌿', category: 'agri', weight: 0.2, baseValue: 2,    utility: 0.3, contributes: { production: 0.3 }, harvest: 'farming' },  // 누에 먹이
   cabbage:     { ko: '배추',     emoji: '🥬', category: 'agri', weight: 0.8, baseValue: 1,    utility: 0.6, contributes: { subsistence: 0.5 }, harvest: 'farming' },
@@ -137,7 +97,6 @@ const RESOURCES = {
   octopus:     { ko: '문어',     emoji: '🐙', category: 'marine', weight: 2.0,  baseValue: 5,  utility: 0.4, contributes: { subsistence: 0.5, happiness: 0.2 }, harvest: 'fishing' },
   squid:       { ko: '오징어',   emoji: '🦑', category: 'marine', weight: 1.0,  baseValue: 3,  utility: 0.4, contributes: { subsistence: 0.5 }, harvest: 'fishing' },
   seaweed:     { ko: '미역·다시마',emoji: '🌿', category: 'marine', weight: 0.3,  baseValue: 2,  utility: 0.5, contributes: { subsistence: 0.4, health: 0.2 }, harvest: 'fishing' },
-  murex_shell: { ko: '자색고둥', emoji: '🐚', category: 'marine', weight: 0.5,  baseValue: 40, utility: 0.3, contributes: { production: 0.5 }, harvest: 'fishing' },  // 자색 염료
 
   // ═══════════════════════════════════════════════════════════════════
   // 🌲 임산물 27개
@@ -147,20 +106,11 @@ const RESOURCES = {
   birch_log:   { ko: '자작나무',       emoji: '🪵', category: 'forest', weight: 4.0, baseValue: 2,   utility: 0.5, contributes: { production: 0.7 }, harvest: 'woodcutting' },
   cedar_log:   { ko: '삼나무',         emoji: '🪵', category: 'forest', weight: 5.0, baseValue: 3,   utility: 0.5, contributes: { production: 0.8 }, harvest: 'woodcutting' },
   bamboo:      { ko: '대나무',         emoji: '🎋', category: 'forest', weight: 1.5, baseValue: 2,   utility: 0.6, contributes: { production: 0.7 }, harvest: 'woodcutting' },
-  teak_log:    { ko: '티크',           emoji: '🪵', category: 'forest', weight: 7.0, baseValue: 8,   utility: 0.4, contributes: { production: 1.2, prestige: 0.3 }, harvest: 'woodcutting' },
-  mahogany_log:{ ko: '마호가니',       emoji: '🪵', category: 'forest', weight: 7.0, baseValue: 12,  utility: 0.4, contributes: { prestige: 0.6 }, harvest: 'woodcutting' },
-  ebony_log:   { ko: '흑단',           emoji: '🪵', category: 'forest', weight: 8.0, baseValue: 20,  utility: 0.3, contributes: { prestige: 0.9 }, harvest: 'woodcutting' },
-  rubber:      { ko: '고무',           emoji: '🟤', category: 'forest', weight: 0.5, baseValue: 6,   utility: 0.4, contributes: { production: 0.5 }, harvest: 'foraging' },
-  cork:        { ko: '코르크',         emoji: '🟫', category: 'forest', weight: 0.2, baseValue: 3,   utility: 0.3, contributes: { production: 0.3 }, harvest: 'foraging' },
   resin:       { ko: '송진',           emoji: '🟡', category: 'forest', weight: 0.3, baseValue: 4,   utility: 0.4, contributes: { production: 0.4 }, harvest: 'foraging' },
   amber_resin: { ko: '호박',           emoji: '🟨', category: 'forest', weight: 0.05,baseValue: 80,  utility: 0.3, contributes: { prestige: 1.0 }, harvest: 'foraging' },
-  latex:       { ko: '라텍스',         emoji: '🌫️', category: 'forest', weight: 0.5, baseValue: 5,   utility: 0.3, contributes: { production: 0.4 }, harvest: 'foraging' },
   ginseng:     { ko: '인삼',           emoji: '🌱', category: 'forest', weight: 0.05,baseValue: 50,  utility: 0.4, contributes: { health: 1.2, prestige: 0.3 }, harvest: 'foraging' },
   wild_ginseng:{ ko: '산삼',           emoji: '🌱', category: 'forest', weight: 0.05,baseValue: 500, utility: 0.2, contributes: { health: 2.0, prestige: 1.5 }, harvest: 'foraging' },
   herbs:       { ko: '약초',           emoji: '🌿', category: 'forest', weight: 0.05,baseValue: 3,   utility: 0.5, contributes: { health: 0.5 }, harvest: 'foraging' },
-  chamomile:   { ko: '카모마일',       emoji: '🌼', category: 'forest', weight: 0.05,baseValue: 4,   utility: 0.4, contributes: { health: 0.4, happiness: 0.2 }, harvest: 'foraging' },
-  sage:        { ko: '세이지',         emoji: '🌿', category: 'forest', weight: 0.05,baseValue: 4,   utility: 0.4, contributes: { health: 0.4, happiness: 0.2 }, harvest: 'foraging' },
-  truffle:     { ko: '송로버섯',       emoji: '🍄', category: 'forest', weight: 0.05,baseValue: 200, utility: 0.3, contributes: { happiness: 1.0, prestige: 1.0 }, harvest: 'foraging' },
   mushroom:    { ko: '버섯',           emoji: '🍄', category: 'forest', weight: 0.1, baseValue: 2,   utility: 0.5, contributes: { subsistence: 0.3, happiness: 0.2 }, harvest: 'foraging' },
   honey:       { ko: '꿀',             emoji: '🍯', category: 'forest', weight: 0.5, baseValue: 5,   utility: 0.6, contributes: { happiness: 0.7, subsistence: 0.3 }, harvest: 'foraging' },
   beeswax:     { ko: '밀랍',           emoji: '🟡', category: 'forest', weight: 0.3, baseValue: 4,   utility: 0.4, contributes: { production: 0.4 }, harvest: 'foraging' },
@@ -175,51 +125,23 @@ const RESOURCES = {
   // ═══════════════════════════════════════════════════════════════════
   meat_beef:   { ko: '쇠고기',     emoji: '🥩', category: 'livestock', weight: 1.0, baseValue: 5,  utility: 0.7, contributes: { subsistence: 0.8, happiness: 0.3 }, harvest: 'breeding' },
   meat_pork:   { ko: '돼지고기',   emoji: '🥩', category: 'livestock', weight: 1.0, baseValue: 4,  utility: 0.7, contributes: { subsistence: 0.8, happiness: 0.3 }, harvest: 'breeding' },
-  meat_mutton: { ko: '양고기',     emoji: '🥩', category: 'livestock', weight: 1.0, baseValue: 4,  utility: 0.6, contributes: { subsistence: 0.7, happiness: 0.2 }, harvest: 'breeding' },
   meat_chicken:{ ko: '닭고기',     emoji: '🍗', category: 'livestock', weight: 0.5, baseValue: 2,  utility: 0.6, contributes: { subsistence: 0.5 }, harvest: 'breeding' },
   meat_game:   { ko: '사슴·들짐승고기', emoji: '🍖', category: 'livestock', weight: 1.0, baseValue: 4, utility: 0.6, contributes: { subsistence: 0.7 }, harvest: 'hunting' },
   fur:         { ko: '모피',       emoji: '🦊', category: 'livestock', weight: 1.0, baseValue: 25, utility: 0.4, contributes: { happiness: 0.5, prestige: 0.6 }, harvest: 'hunting' },
   leather:     { ko: '가죽',       emoji: '🟫', category: 'livestock', weight: 0.5, baseValue: 5,  utility: 0.6, contributes: { production: 0.7 }, harvest: 'hunting' },
-  wool:        { ko: '양털',       emoji: '🧶', category: 'livestock', weight: 0.3, baseValue: 4,  utility: 0.6, contributes: { production: 0.6 }, harvest: 'breeding' },
-  silk_raw:    { ko: '비단 원사',  emoji: '🧵', category: 'livestock', weight: 0.2, baseValue: 30, utility: 0.4, contributes: { production: 0.8 }, harvest: 'breeding' },
-  silkworm:    { ko: '누에',       emoji: '🐛', category: 'livestock', weight: 0.01,baseValue: 5,  utility: 0.2, contributes: { production: 0.2 }, harvest: 'breeding' },
-  linen:       { ko: '리넨',       emoji: '🪢', category: 'livestock', weight: 0.3, baseValue: 5,  utility: 0.4, contributes: { production: 0.5 }, harvest: 'crafting' },  // flax → linen
   feather:     { ko: '깃털',       emoji: '🪶', category: 'livestock', weight: 0.05,baseValue: 3,  utility: 0.3, contributes: { production: 0.3 }, harvest: 'hunting' },
-  ivory:       { ko: '상아',       emoji: '🦴', category: 'livestock', weight: 3.0, baseValue: 80, utility: 0.3, contributes: { prestige: 1.5 }, harvest: 'hunting' },
   bone:        { ko: '뼈',         emoji: '🦴', category: 'livestock', weight: 1.0, baseValue: 2,  utility: 0.4, contributes: { production: 0.4 }, harvest: 'hunting' },
   horn:        { ko: '뿔',         emoji: '🦌', category: 'livestock', weight: 0.5, baseValue: 6,  utility: 0.3, contributes: { production: 0.5 }, harvest: 'hunting' },
-  milk:        { ko: '우유',       emoji: '🥛', category: 'livestock', weight: 1.0, baseValue: 1,  utility: 0.5, contributes: { subsistence: 0.4, health: 0.2 }, harvest: 'breeding' },
-  cheese:      { ko: '치즈',       emoji: '🧀', category: 'livestock', weight: 0.5, baseValue: 5,  utility: 0.5, contributes: { subsistence: 0.4, happiness: 0.4 }, harvest: 'crafting' },  // milk → cheese
   egg:         { ko: '계란',       emoji: '🥚', category: 'livestock', weight: 0.06,baseValue: 1,  utility: 0.6, contributes: { subsistence: 0.5 }, harvest: 'breeding' },
   beef_tallow: { ko: '소기름',     emoji: '🟡', category: 'livestock', weight: 0.5, baseValue: 3,  utility: 0.3, contributes: { production: 0.3 }, harvest: 'hunting' },
-  goat_milk:   { ko: '염소젖',     emoji: '🥛', category: 'livestock', weight: 1.0, baseValue: 1.5, utility: 0.4, contributes: { subsistence: 0.4, health: 0.2 }, harvest: 'breeding' },
   duck_meat:   { ko: '오리고기',   emoji: '🍗', category: 'livestock', weight: 0.5, baseValue: 3,  utility: 0.5, contributes: { subsistence: 0.5, happiness: 0.2 }, harvest: 'breeding' },
 
   // ═══════════════════════════════════════════════════════════════════
   // 🌶️ 향신료 22개 (opium/coca/khat 빼기)
   // ═══════════════════════════════════════════════════════════════════
-  black_pepper:{ ko: '후추',       emoji: '🌶️', category: 'spice', weight: 0.1,  baseValue: 40,  utility: 0.6, contributes: { happiness: 1.2, prestige: 0.3 }, harvest: 'foraging' },
-  cinnamon:    { ko: '계피',       emoji: '🟫', category: 'spice', weight: 0.1,  baseValue: 35,  utility: 0.6, contributes: { happiness: 1.0, prestige: 0.3 }, harvest: 'foraging' },
-  clove:       { ko: '정향',       emoji: '🌑', category: 'spice', weight: 0.05, baseValue: 60,  utility: 0.5, contributes: { happiness: 1.0, prestige: 0.4 }, harvest: 'foraging' },
-  nutmeg:      { ko: '육두구',     emoji: '🌰', category: 'spice', weight: 0.05, baseValue: 50,  utility: 0.5, contributes: { happiness: 0.9, prestige: 0.3 }, harvest: 'foraging' },
   ginger:      { ko: '생강',       emoji: '🫚', category: 'spice', weight: 0.3,  baseValue: 5,   utility: 0.5, contributes: { happiness: 0.5, health: 0.3 }, harvest: 'farming' },
-  turmeric:    { ko: '강황',       emoji: '🟡', category: 'spice', weight: 0.2,  baseValue: 8,   utility: 0.5, contributes: { happiness: 0.4, health: 0.4 }, harvest: 'farming' },
-  cardamom:    { ko: '카다멈',     emoji: '🌿', category: 'spice', weight: 0.05, baseValue: 80,  utility: 0.4, contributes: { happiness: 1.0, prestige: 0.5 }, harvest: 'foraging' },
-  vanilla:     { ko: '바닐라',     emoji: '🟤', category: 'spice', weight: 0.05, baseValue: 100, utility: 0.4, contributes: { happiness: 1.2, prestige: 0.5 }, harvest: 'foraging' },
-  saffron:     { ko: '사프란',     emoji: '🟧', category: 'spice', weight: 0.005,baseValue: 500, utility: 0.3, contributes: { happiness: 1.5, prestige: 1.5 }, harvest: 'foraging' },
-  star_anise:  { ko: '팔각',       emoji: '⭐', category: 'spice', weight: 0.1,  baseValue: 20,  utility: 0.4, contributes: { happiness: 0.7, prestige: 0.2 }, harvest: 'foraging' },
-  coriander:   { ko: '고수',       emoji: '🌿', category: 'spice', weight: 0.1,  baseValue: 5,   utility: 0.4, contributes: { happiness: 0.4 }, harvest: 'farming' },
-  cumin:       { ko: '큐민',       emoji: '🌰', category: 'spice', weight: 0.1,  baseValue: 8,   utility: 0.4, contributes: { happiness: 0.5 }, harvest: 'farming' },
-  paprika:     { ko: '파프리카',   emoji: '🟥', category: 'spice', weight: 0.1,  baseValue: 5,   utility: 0.4, contributes: { happiness: 0.5 }, harvest: 'farming' },
-  basil:       { ko: '바질',       emoji: '🌿', category: 'spice', weight: 0.05, baseValue: 4,   utility: 0.3, contributes: { happiness: 0.4, health: 0.2 }, harvest: 'foraging' },
   mint:        { ko: '박하',       emoji: '🌿', category: 'spice', weight: 0.05, baseValue: 3,   utility: 0.4, contributes: { happiness: 0.4, health: 0.3 }, harvest: 'foraging' },
-  lavender:    { ko: '라벤더',     emoji: '💜', category: 'spice', weight: 0.05, baseValue: 6,   utility: 0.3, contributes: { happiness: 0.6, health: 0.2 }, harvest: 'foraging' },
-  rosemary:    { ko: '로즈마리',   emoji: '🌿', category: 'spice', weight: 0.05, baseValue: 4,   utility: 0.3, contributes: { happiness: 0.4, health: 0.2 }, harvest: 'foraging' },
-  thyme:       { ko: '타임',       emoji: '🌿', category: 'spice', weight: 0.05, baseValue: 4,   utility: 0.3, contributes: { happiness: 0.4, health: 0.2 }, harvest: 'foraging' },
-  sage_herb:   { ko: '세이지 향초',emoji: '🌿', category: 'spice', weight: 0.05, baseValue: 4,   utility: 0.3, contributes: { happiness: 0.4, health: 0.2 }, harvest: 'foraging' },
   musk:        { ko: '사향',       emoji: '🟤', category: 'spice', weight: 0.005,baseValue: 300, utility: 0.2, contributes: { prestige: 2.5 }, harvest: 'hunting' },  // 사향노루
-  frankincense:{ ko: '유향',       emoji: '🟡', category: 'spice', weight: 0.1,  baseValue: 80,  utility: 0.3, contributes: { prestige: 1.5, happiness: 0.5 }, harvest: 'foraging' },
-  myrrh:       { ko: '몰약',       emoji: '🟤', category: 'spice', weight: 0.1,  baseValue: 100, utility: 0.3, contributes: { prestige: 1.5, health: 0.3 }, harvest: 'foraging' },
 
   // ═══════════════════════════════════════════════════════════════════
   // 🏺 가공품 20개 (gunpowder/whiskey/rum/celadon/porcelain 빼기)
@@ -228,7 +150,6 @@ const RESOURCES = {
   stone_brick: { ko: '석재 벽돌',    emoji: '🧱', category: 'goods', weight: 4.0, baseValue: 5,   utility: 0.4, contributes: { production: 0.6, defense: 0.3 }, harvest: 'crafting' },
   clay_brick:  { ko: '진흙 벽돌',    emoji: '🟫', category: 'goods', weight: 3.0, baseValue: 2,   utility: 0.5, contributes: { production: 0.5 }, harvest: 'crafting' },
   pottery:     { ko: '도자기',       emoji: '🏺', category: 'goods', weight: 2.0, baseValue: 15,  utility: 0.4, contributes: { happiness: 0.5, prestige: 0.8 }, harvest: 'crafting' },
-  silk_cloth:  { ko: '비단',         emoji: '🧵', category: 'goods', weight: 0.5, baseValue: 60,  utility: 0.4, contributes: { happiness: 0.5, prestige: 1.5 }, harvest: 'crafting' },
   paper:       { ko: '종이',         emoji: '📜', category: 'goods', weight: 0.3, baseValue: 8,   utility: 0.4, contributes: { prestige: 0.8 }, harvest: 'crafting' },
   ink:         { ko: '먹',           emoji: '🖋️', category: 'goods', weight: 0.2, baseValue: 10,  utility: 0.3, contributes: { prestige: 0.7 }, harvest: 'crafting' },
   brush:       { ko: '붓',           emoji: '🖌️', category: 'goods', weight: 0.1, baseValue: 6,   utility: 0.3, contributes: { prestige: 0.5 }, harvest: 'crafting' },
@@ -236,29 +157,16 @@ const RESOURCES = {
   armor:       { ko: '갑옷',         emoji: '🛡️', category: 'goods', weight: 8.0, baseValue: 100, utility: 0.4, contributes: { defense: 2.0 }, harvest: 'crafting' },
   bow:         { ko: '활',           emoji: '🏹', category: 'goods', weight: 0.8, baseValue: 15,  utility: 0.4, contributes: { defense: 0.8 }, harvest: 'crafting' },
   glass:       { ko: '유리',         emoji: '🪞', category: 'goods', weight: 1.0, baseValue: 10,  utility: 0.4, contributes: { production: 0.5, prestige: 0.4 }, harvest: 'crafting' },
-  perfume:     { ko: '향수',         emoji: '🌸', category: 'goods', weight: 0.1, baseValue: 80,  utility: 0.3, contributes: { happiness: 0.8, prestige: 1.5 }, harvest: 'crafting' },
-  dye_purple:  { ko: '자색 염료',    emoji: '🟣', category: 'goods', weight: 0.05,baseValue: 150, utility: 0.3, contributes: { prestige: 2.0 }, harvest: 'crafting' },
   dye_indigo:  { ko: '인디고',       emoji: '🔵', category: 'goods', weight: 0.05,baseValue: 30,  utility: 0.3, contributes: { prestige: 0.7 }, harvest: 'crafting' },
-  wine:        { ko: '와인',         emoji: '🍷', category: 'goods', weight: 1.0, baseValue: 8,   utility: 0.5, contributes: { happiness: 1.0 }, harvest: 'crafting' },
-  beer:        { ko: '맥주',         emoji: '🍺', category: 'goods', weight: 1.0, baseValue: 3,   utility: 0.5, contributes: { happiness: 0.7 }, harvest: 'crafting' },
   soy_sauce:   { ko: '간장',         emoji: '🟫', category: 'goods', weight: 1.0, baseValue: 5,   utility: 0.4, contributes: { happiness: 0.5 }, harvest: 'crafting' },
   kimchi:      { ko: '김치',         emoji: '🥬', category: 'goods', weight: 1.0, baseValue: 3,   utility: 0.5, contributes: { subsistence: 0.4, happiness: 0.6 }, harvest: 'crafting' },
-  bread:       { ko: '빵',           emoji: '🍞', category: 'goods', weight: 0.5, baseValue: 2,   utility: 0.7, contributes: { subsistence: 0.8 }, harvest: 'crafting' },
 
   // ═══════════════════════════════════════════════════════════════════
   // 💎 보석·진귀품 15개
   // ═══════════════════════════════════════════════════════════════════
-  diamond:     { ko: '다이아몬드',   emoji: '💎', category: 'jewel', weight: 0.005,baseValue: 1000, utility: 0.2, contributes: { prestige: 5.0 }, harvest: 'mining' },
-  ruby:        { ko: '루비',         emoji: '❤️', category: 'jewel', weight: 0.005,baseValue: 500,  utility: 0.2, contributes: { prestige: 3.0 }, harvest: 'mining' },
-  sapphire:    { ko: '사파이어',     emoji: '💙', category: 'jewel', weight: 0.005,baseValue: 400,  utility: 0.2, contributes: { prestige: 2.5 }, harvest: 'mining' },
-  emerald:     { ko: '에메랄드',     emoji: '💚', category: 'jewel', weight: 0.005,baseValue: 600,  utility: 0.2, contributes: { prestige: 3.5 }, harvest: 'mining' },
-  topaz:       { ko: '토파즈',       emoji: '🟡', category: 'jewel', weight: 0.005,baseValue: 80,   utility: 0.2, contributes: { prestige: 1.0 }, harvest: 'mining' },
   amethyst:    { ko: '자수정',       emoji: '💜', category: 'jewel', weight: 0.005,baseValue: 60,   utility: 0.2, contributes: { prestige: 0.8 }, harvest: 'mining' },
-  turquoise:   { ko: '터키석',       emoji: '🩵', category: 'jewel', weight: 0.01, baseValue: 50,   utility: 0.2, contributes: { prestige: 0.7 }, harvest: 'mining' },
   jade_polished:{ ko: '옥 가공품',   emoji: '🟢', category: 'jewel', weight: 0.5,  baseValue: 200,  utility: 0.3, contributes: { prestige: 2.0 }, harvest: 'crafting' },
   amber_polished:{ ko: '호박 가공',  emoji: '🟨', category: 'jewel', weight: 0.1,  baseValue: 150,  utility: 0.3, contributes: { prestige: 1.5 }, harvest: 'crafting' },
-  gold_coin:   { ko: '금화',         emoji: '🪙', category: 'jewel', weight: 0.01, baseValue: 50,   utility: 0.4, contributes: { prestige: 0.3 }, harvest: 'crafting' },
-  silver_coin: { ko: '은화',         emoji: '🪙', category: 'jewel', weight: 0.01, baseValue: 8,    utility: 0.4, contributes: { prestige: 0.1 }, harvest: 'crafting' },
   relic:       { ko: '유물',         emoji: '🗿', category: 'jewel', weight: 5.0,  baseValue: 500,  utility: 0.2, contributes: { prestige: 3.0 }, harvest: 'foraging' },  // 발굴
   scroll:      { ko: '두루마리',     emoji: '📜', category: 'jewel', weight: 0.3,  baseValue: 80,   utility: 0.3, contributes: { prestige: 1.0 }, harvest: 'crafting' },
 
@@ -295,14 +203,14 @@ function miningParams(mineralId) {
 
 // === biome별 광물 풀 (가중치 = 중복) — 광맥에 mineral 미지정 시 위치 해시로 자동 배정 ===
 const ORE_POOLS = {
-  mountain:    ['iron','iron','copper','copper','silver','gold','sulfur','obsidian','tungsten'],
-  desert:      ['salt','salt','sulfur','phosphate','nitrate','sand','gold','copper'],
-  tundra:      ['nickel','cobalt','iron','iron','silver','diamond','coal'],
-  taiga:       ['iron','iron','nickel','copper','coal','coal','granite'],
-  forest:      ['iron','iron','gold','tungsten','marble','jade_raw','coal','copper'],
-  plains:      ['coal','coal','iron','iron','copper','limestone','clay','tin','zinc'],
-  jungle:      ['iron','gold','copper','diamond','ruby','emerald','bauxite'],
-  savanna:     ['iron','copper','gold','manganese','phosphate','salt'],
+  mountain:    ['iron','iron','copper','copper','silver','gold','obsidian'],
+  desert:      ['salt','salt','sand','gold','copper'],
+  tundra:      ['iron','iron','silver','coal'],
+  taiga:       ['iron','iron','copper','coal','coal','granite'],
+  forest:      ['iron','iron','gold','marble','jade_raw','coal','copper'],
+  plains:      ['coal','coal','iron','iron','copper','limestone','clay','tin'],
+  jungle:      ['iron','gold','copper'],
+  savanna:     ['iron','copper','gold','salt'],
   archipelago: ['copper','tin','gold','obsidian','salt'],
 };
 function pickMineral(biome, seedNum) {
@@ -437,8 +345,9 @@ const JOBS = {
   farmer: {
     field: 'farming', output: 'food', base: 1.5,
     landBoost: (v) => v.land.fertility, toolDependent: true, inputs: {},
-    // Phase 5-5-econ-b: 작물 다양화 (wheat·rice·barley·cotton·flax·hemp)
-    byproduct: { wheat: 0.25, rice: 0.20, barley: 0.15, cotton: 0.08, flax: 0.06, hemp: 0.05 },
+    // 곡물 다양화 + 섬유. ★목화(cotton)·아마(flax) 제거 — 목화는 1363년 문익점 도입(청동기 부재), 아마도 한국 전통 아님.
+    //   고대 한반도 섬유는 삼(대마/hemp=삼베)뿐 → 제거분(0.14)을 hemp로 통합(순생산 불변, 고증 정정).
+    byproduct: { wheat: 0.25, rice: 0.20, barley: 0.15, hemp: 0.19 },
   },
   fisher: {
     field: 'fishing', output: 'fish', base: 1.2,
@@ -623,7 +532,16 @@ function totalFoodProductionEquivalent(prod) {
 const POP_GROWTH_RATE = 0.04;             // r — 일일. ★초반 폭발성장(빈 땅 정착): N≪K일 때 ~4%/일(배가 ~18일)
 const POP_MAX_DELTA_PCT = 0.06;           // 일일 변화 상한 (초반 빠른 성장 허용)
 const LOGISTIC_THETA = 4;                 // ★θ-로지스틱: dP=r·N·(1−(N/K)^θ). θ>1이라 K의 ~80%까지 빠르다가 급감(사용자 요청 곡선)
-const K_MAX_VILLAGE = 110;                // ★마을 부양력 천장(혼잡·위생·조율비용) — 큰 마을만 ~110로 수렴, 작은 마을은 영향 X. 하드 정지 아님(로지스틱이 부드럽게 접근)
+// ★K_MAX_VILLAGE(110 하드 천장) 폐지 — 인구 상한은 아래 세 자연 메커니즘의 min에서 창발:
+//   ① slotK: 토지 기반 식량직 자리(유효토지 S_eff — 리카도 한계지 반영)
+//   ② prodK: 식량 흐름(잠재생산+수입EMA)  ③ fuelK: 연료 흐름(리비히 — 온돌·취사 장작, 고증)
+//   그리고 영토확장이 MB/MC 투자결정이라 S_eff가 유한 s*에서 멈춤 → K도 마을별로 자연 수렴.
+const LAND_Q_BETA = 0.105;                // ★리카도 한계지 감쇠(실측): sim/_measure_land_margin.js — 5시드×3마을, growTerritory와
+                                          //   동일 획득규칙(중심 가까운 순)으로 영토 성장시키며 한계 셀 비옥도 측정 → q(s)≈(s/s0)^-0.105.
+                                          //   지형 감쇠는 완만(7배 확장에도 0.74) — 수렴 자체는 MB/MC 확장 게이트가 만든다.
+const EXPAND_PAYBACK_DAYS = 365;          // ★확장 투자 회수기간(할인율 역수) — 개간 투자는 ~1년 내 회수돼야 실행(보즈럽: 개간=노동투자).
+                                          //   임의 천장이 아니라 경제 표준 상수(이자율): 낮추면 s*↓, 높이면 s*↑ — 균형 '수준'은 지형·비옥도가 결정.
+const EXPAND_PRICE_FOODEQ = { wood: 1.67, stone: 2.14 };   // 투자판단용 정적 환산(food=1) — v2 BASE 상대가와 일치
 // ★위신재(사치) → 인구 소폭 보너스. prestige는 need 아닌 순보너스(없어도 페널티X, 있으면 생활수준↑→매력↑).
 //   사치 수입을 정당화(진짜 수요 근거). cap+작은 계수로 과성장 방지(주거게이트가 추가 안전장치).
 const PRESTIGE_GROWTH_W = 0.2;            // prestige 1당 성장보너스 계수
@@ -669,6 +587,9 @@ const HOUSE_START = 20;        // 정착 초기 집(부트스트랩 — 이 크�
 //   큰 마을일수록 매일 대량 소비 → 고갈된 숲(벌목꾼 슬롯·산출↓)은 못 댐 → fuelCov↓ → 건강↓ → 인구·생산성↓(비례=자기교정).
 //   숲 안 베는 작은 마을은 수요 작아 무영향. 역사적으로 마을 크기를 실제 제한한 건 건축목재가 아니라 땔감(연료 고갈).
 const FIREWOOD_PC = 0.085;     // 1인당 일일 땔감(요리·난방). 인구비례 흐름 수요 → 숲 규모가 부양 인구 상한(리비히: 식량 vs 연료)
+const STRAW_FUEL_PER_FOOD = 0.018;   // ★볏짚·왕겨 연료(고증): 평야 농촌은 아궁이에 짚을 땠다. 도출: 1인 연간 곡물 ~260kg→짚 ~300kg→목재 열량환산 ~210kg
+                                     //   vs 연간 연료수요 ~1.2t → 짚이 수요의 ~17% → food 1단위 생산당 0.085×0.2≈0.018 wood-eq. 저장 없이 당일 소진(flow).
+                                     //   효과: 농업촌 연료난 완화(수출작 짚도 남음)·광산촌은 여전히 목재 수입 의존 → 마을 유형별 연료 전략 분화(자연).
 const SMELT_FUEL_PER = 0.5;    // ★야금공(대장장이·무기장이·갑옷장이) 1인당 제련 연료. 청동 제련은 고온·대량 연료 → 야금촌이 숲을 더 압박(고증)
 const FUEL_HEALTH_W = 0.4;     // 땔감 부족 시 건강 페널티 가중(fuelCov=0 → 건강 -0.4). 비례라 절벽 아님·자기교정
 
@@ -713,10 +634,32 @@ function villageDist(a, b) {
 //   forager:    (제한 약함)  × 0.5
 //   smith/cook/warrior: 인구 비례 (마을 안에서 자체 결정)
 const UNCAPPED = 1e9;   // 사실상 무제한 — 직업 수는 시장(한계가치/그림자가격)이 결정
+// ★리카도 한계지: 영토는 좋은 땅부터 먹으므로 한계 땅 품질 q(s)=(s/s0)^-β (실측 β, 위 참조).
+//   랩(공간)이 실측값을 주면(v.land.liveLand) 지형이 진실 — 합성 감쇠는 스탠드얼론 전용.
+function marginalLandQ(v) {
+  if (v.land.marginalQ != null) return v.land.marginalQ;   // 공간 프론티어 실측(있으면 우선)
+  const s0 = v.land.baseSize || 1;
+  return Math.pow(Math.max(1, v.land.size / s0), -LAND_Q_BETA);
+}
+// 유효토지 S_eff = ∫ q du (best-first 누적) — 자리(jobCapacity)는 명목 size가 아니라 이걸로.
+function effectiveLandSize(v) {
+  if (v.land.liveLand) return v.land.size;   // 랩: land.fertility가 실측 평균이라 희석 이미 반영 → 이중적용 금지
+  const s0 = v.land.baseSize || 1, s = v.land.size;
+  if (s <= s0) return s;
+  if (v._effSizeCache && v._effSizeCache.s === s) return v._effSizeCache.val;
+  const b = LAND_Q_BETA;
+  const val = s0 + (s0 / (1 - b)) * (Math.pow(s / s0, 1 - b) - 1);
+  v._effSizeCache = { s, val };
+  return val;
+}
 function jobCapacity(v) {
-  const s = v.land.size;
+  const s = effectiveLandSize(v);
+  // ★비옥도 이중산입 분리: 농부 '자리'=경작지 *면적*(arable, 공간 실측·폴백 min(1,fert)) — 지력(fertility)은 1인 산출에만.
+  //   (옛 s×fert×0.4는 fert가 자리와 산출에 제곱으로 들어가 극비옥지 인구 폭증[250~400]의 뿌리.
+  //    숲·사냥·어장은 밀도=면적이라 이중산입이 의미 있음 — 유지. 광맥도 크기∝노동력 — 유지.)
+  const arable = v.land.arable != null ? v.land.arable : Math.min(1, v.land.fertility);
   const c = {
-    farmer:     Math.floor(s * v.land.fertility * 0.4),
+    farmer:     Math.floor(s * arable * 0.4),
     fisher:     Math.floor(s * v.land.water     * 0.25),
     hunter:     Math.floor(s * v.land.game      * 0.30),
     lumberjack: Math.floor(s * v.land.wood      * 0.30),
@@ -761,6 +704,19 @@ function tryExpandTerritory(v, day) {
   const N = v.npcs.length;
   const slotK = totalFoodSlots(v);
   if (N / Math.max(1, slotK) < 0.85) return;
+  // ★MB/MC 투자 게이트(K_MAX 천장 대체) — 확장은 '금고 차면 무조건'이 아니라 수지 맞을 때만.
+  //   MB = 한계 size 1단위의 일일 식량-eq 잠재산출(q×식량직 자리×자리당 산출) × 회수기간.
+  //   MC = 확장비용(food+wood+stone, 정적 상대가로 food-eq 환산, ^1.3 상승곡선).
+  //   q(s) 하강 × 비용 ^1.3 상승 → 유한 s*에서 자연 정지. s*는 fert·water·game 따라 마을마다 다름(자연 차등).
+  const L = v.land, q = marginalLandQ(v);
+  const _arable = L.arable != null ? L.arable : Math.min(1, L.fertility);
+  const mbDaily = q * (0.4 * _arable * (1.5 * L.fertility)          // 농부: 자리=경작지 면적 × 1인 산출=지력(이중산입 분리)
+                     + 0.25 * (L.water || 0) * (1.2 * (L.water || 0))
+                     + 0.30 * (L.game || 0) * (0.7 * (L.game || 0))
+                     + 0.30 * 0.5 * 0.8);                            // 채집(식량가중 0.5, ~0.8/일)
+  const mcFoodEq = cost.food + cost.wood * EXPAND_PRICE_FOODEQ.wood + cost.stone * EXPAND_PRICE_FOODEQ.stone;
+  v._expandMBMC = { mb: Math.round(mbDaily * EXPAND_PAYBACK_DAYS), mc: Math.round(mcFoodEq) };   // 진단용
+  if (mbDaily * EXPAND_PAYBACK_DAYS < mcFoodEq) return;   // 한계지가 투자가치 없음 → 확장 정지(하드캡 아님: 지형·가격이 결정)
   if (v.treasury.food < cost.food)   return;
   if (v.treasury.wood < cost.wood)   return;
   if (v.treasury.stone < cost.stone) return;
@@ -872,6 +828,7 @@ function createVillage(opts) {
     name: opts.name,
     land: {
       fertility: opts.fertility ?? 1.0,
+      arable: opts.arable,        // ★경작지 비율(0~1, 공간 실측) — 농부 '자리'는 이걸로(면적), fertility는 산출(지력)만. 없으면 min(1,fert) 폴백
       wood: opts.wood ?? 1.0,
       stone: opts.stone ?? 1.0,
       ore: opts.ore ?? 0.5,
@@ -1066,7 +1023,8 @@ function tickVillage(v, day) {
     const landBoost = jdef.landBoost(v);
     // skill 효과 — 만렙(10)이면 ×1.5. 분업/교역 의존 강화 위해 효율 ↓.
     const skillMul = 1 + skillLvl * 0.05;
-    const baseAmt = jdef.base * landBoost * skillMul * toolBoost * inputMult * (f === 'farming' ? _paddyMul : 1);   // ★농사엔 논 프리미엄
+    const baseAmt = jdef.base * landBoost * skillMul * toolBoost * inputMult
+      * (f === 'farming' ? _paddyMul * (v._clearedFrac != null ? v._clearedFrac : 1) : 1);   // ★농사엔 논 프리미엄 × 개간완료율(공간 브리지) — 개간 안 된 밭은 소출 없음. 인구↑→개간목표↑→완료율 일시↓→소출·prodK 눌림→개간이 따라잡으면 회복 = 보즈럽 시차가 K에 실시간 반영(잠재 기준 slotK는 그대로 → 데드락 없음)
 
     // produceSpecial 분기 — 각 산출에 대해 세금 떼고 storage로
     const addProduce = (r, amt) => {
@@ -1075,6 +1033,7 @@ function tickVillage(v, day) {
       dailyProductionPotential[r] = (dailyProductionPotential[r] || 0) + amt;   // 잠재 생산(건강·포만 적용 전) — prodK용
       amt *= _hpm * _prodMul * sm;   // ★건강→작업량(±10%) × production stat(자재비축→생산성) × 포만(글럿 시 여가)
       if (amt <= 0) return;
+      if (r === 'food') v._grainToday = (v._grainToday || 0) + amt;   // ★오늘 곡물 실생산 → 볏짚 연료(아래 연료 블록)
       const tax = amt * TAX_RATE;
       v.storage[r] = (v.storage[r] || 0) + (amt - tax);
       v.treasury[r] = (v.treasury[r] || 0) + tax;
@@ -1213,7 +1172,11 @@ function tickVillage(v, day) {
   // ★부양력은 생산 *잠재력*으로 — satiation(창고 글럿 시 여가)이 실제생산을 줄여도 K는 안 낮아짐.
   //   (옛 실제생산 기준: 초기 300일치 식량 글럿→생산 12%로 조임→prodK≈4→N8>K→로지스틱이 인구 끌어내려 초반 진동)
   const dailyFoodProdPotential = totalFoodProductionEquivalent(dailyProductionPotential);
-  const prodK = (dailyFoodProdPotential + dailyImport) / DAILY_FOOD_CONSUMPTION;
+  // ★prodK 신뢰 관성(EMA ~33일): 날씨 이벤트(가뭄 7~14일)가 K를 직접 때려 θ=4 로지스틱이 과잉반응(대촌 ±100명 스윙)하지 않게.
+  //   진짜 기근은 별도 실시간 항(hunger)이 처리하므로 안전성 손실 없음 — K만 계절·이벤트 노이즈에 둔감해짐.
+  const _prodKraw = (dailyFoodProdPotential + dailyImport) / DAILY_FOOD_CONSUMPTION;
+  v._prodKema = v._prodKema === undefined ? _prodKraw : 0.97 * v._prodKema + 0.03 * _prodKraw;
+  const prodK = v._prodKema;
   // ★도구 마모 — 내구재라 천천히 닳음(반감기 ~19년). 인구 성장으로 1인당 도구가 희석되면 대장간이 보충.
   //   (예전 0.2%/일은 반감기 1.4년 = 비현실적으로 빨라 도구 고갈→붕괴 유발)
   // ★도구 마모 현실화 — 청동기 도구는 소모품(부러지고 갈아야 함). 돌<청동<철 순 내구(반감기 돌~1.3·청동~2·철~3년).
@@ -1227,9 +1190,12 @@ function tickVillage(v, day) {
   //   재고를 실제로 축내므로 subsistence picker(wood<N×5)가 벌목꾼을 더 배치 → 숲 압박. 야금촌은 제련연료로 숲을 더 빨리 소진(고증: 제련=삼림파괴 동인).
   const smelters = (v.counts.smith || 0) + (v.counts.weaponsmith || 0) + (v.counts.armorsmith || 0);
   const fuelNeed = N * FIREWOOD_PC + smelters * SMELT_FUEL_PER;
-  const fuelGot = Math.min(fuelNeed, v.storage.wood || 0);
-  v.storage.wood = Math.max(0, (v.storage.wood || 0) - fuelGot);
-  v._fuelCov = fuelNeed > 0 ? fuelGot / fuelNeed : 1;
+  // ★볏짚 먼저(공짜 부산물, 당일 소진 — 취사·난방용. 제련은 고온이라 목재만) → 부족분만 목재.
+  const strawFuel = Math.min(N * FIREWOOD_PC, (v._grainToday || 0) * STRAW_FUEL_PER_FOOD);
+  v._grainToday = 0;
+  const fuelFromWood = Math.min(Math.max(0, fuelNeed - strawFuel), v.storage.wood || 0);
+  v.storage.wood = Math.max(0, (v.storage.wood || 0) - fuelFromWood);
+  v._fuelCov = fuelNeed > 0 ? (strawFuel + fuelFromWood) / fuelNeed : 1;
 
   // ★주거 증축: 집이 인구보다 모자라면 목재(필수)·석재(있으면)로 지음. 노후화로 지속 보수.
   if (v.housing === undefined) v.housing = N;
@@ -1251,7 +1217,29 @@ function tickVillage(v, day) {
       v.housing += built;
     }
   }
-  const Kraw = Math.min(slotK, prodK, K_MAX_VILLAGE);   // 식량 한계 + 마을 부양력 천장(혼잡·위생 — 최후의 보루 백스톱. 제거하면 비옥마을 225 폭증+연료위기). 작은 마을은 식량이 binding이라 천장 영향 X
+  // ★fuelK(리비히) — 연료도 식량처럼 필수 소비 흐름(온돌·취사, 고증). 숲 용량(벌목 자리×산출)+수입EMA가 부양 가능한 인구.
+  //   식량만 K에 넣으면 비옥·숲빈약 마을이 식량 K까지 성장 후 연료 붕괴(건강 죽음나선) — K가 미리 보게 한다.
+  if (v._woodImpSnap === undefined) { v._woodImpSnap = 0; v._woodImportEMA = 0; }
+  if (v.tradeStats) {
+    const recentWoodImp = (v.tradeStats.woodImported || 0) - v._woodImpSnap;
+    v._woodImpSnap = v.tradeStats.woodImported || 0;
+    v._woodImportEMA = 0.99 * v._woodImportEMA + 0.01 * recentWoodImp;
+  }
+  // 용량 기준(slotK와 동일 가정: 필요 시 자리를 채울 수 있다) — 연료 게이트(picker)가 위기 시 벌목 충원을 보장하므로 정직.
+  //   (실현 흐름 기준은 벌목 인력 스냅샷에 K가 요동 → θ-로지스틱 과격 반응 → K붕괴 나선. 시드42 라 소멸로 확인, 폐기)
+  //   1인 수요엔 제련 연료 포함(fuelNeed = 취사·난방 + 야금) — 야금촌은 연료 부양력↓(고증: 제련=삼림 압박).
+  const _woodCapRaw = (jobCapacity(v).lumberjack || 0) * 0.9 * (v.land.wood || 0);  // 벌목 자리 만충 시 목재 흐름(채굴 능력)
+  const _woodProdCap = v.land.woodSustain != null ? Math.min(_woodCapRaw, v.land.woodSustain) : _woodCapRaw;   // ★MSY: 랩 실측 숲 재생 흐름이 상한 — 스톡 마이닝(감가 자산)을 소득으로 계산하지 않음. 초과 채굴은 가능하되 K는 지속가능선만 믿음
+  const woodCapFlow = _woodProdCap
+                    + (dailyProductionPotential.food || 0) * STRAW_FUEL_PER_FOOD    // + 볏짚(곡물 잠재생산 부산물 — 농업촌 연료 자급분)
+                    + (v._woodImportEMA || 0) + (v.storage.wood || 0) / 90;         // + 수입EMA + 재고 한 계절 완충
+  const fuelNeedPC = N > 0 ? Math.max(FIREWOOD_PC, fuelNeed / N) : FIREWOOD_PC;
+  // ★신뢰 관성(EMA ~50일): 숲 고갈로 용량이 줄 때 K가 절벽 낙하(θ=4 로지스틱 −20%/일 학살)하지 않게 —
+  //   주민의 부양력 인식은 서서히 갱신(고증: 숲이 줄어드는 걸 몇 계절에 걸쳐 체감). 하락도 상승도 완만.
+  const _fuelKraw = woodCapFlow / fuelNeedPC;
+  v._fuelKema = v._fuelKema === undefined ? _fuelKraw : 0.98 * v._fuelKema + 0.02 * _fuelKraw;
+  const fuelK = v._fuelKema;
+  const Kraw = Math.min(slotK, prodK, fuelK);   // ★자연 리비히 min: 식량 자리·식량 흐름·연료 흐름. (옛 K_MAX=110 임의 천장 폐지 — 수준은 지형+MB/MC 확장이 결정)
   const K = Math.max(POP_MIN, Kraw);
 
   // 5) 인구 θ-로지스틱 갱신 — dP = r·N·(1−(N/K)^θ). θ>1: K의 ~80%까지 빠르고 이후 급감(S곡선의 상단을 압축)
@@ -1519,6 +1507,8 @@ function pickDeficitJob_rational(v, world) {
     foodOpts.sort((a, b) => b[1] - a[1]);
     if (foodOpts.length > 0) return foodOpts[0][0];
   }
+  // (연료 게이트 실험 폐기 — 기근 게이트와 노동 쟁탈전으로 시드7 랩 전멸 유발. 벌목 충원은 시장가격
+  //   [wood shadow price↑ → opportunityCost 전환] + 주거 목재 안전망이 이미 담당. fuelK는 K에서 처리.)
   // ★자본재 장인 — 스톡-플로우 노동목표(정원 아님). 목표 미달이면 충원, 충족이면 건너뜀(0 수렴).
   //   재료 게이트: 대장간 돌, 무기장 돌, 갑옷장 가죽 필요. 충원 후엔 marginal 후보에서 빠져 식량·자원직과 경쟁 안 함.
   let _toolDeps = toolDepCount(v);
@@ -1614,6 +1604,7 @@ function autoSwitchJob(v, day, world) {
   }
   const picker = world && world.picker === 'rational' ? pickDeficitJob_rational : pickDeficitJob;
   const need = picker(v, world);
+  v._dbgSwitch = { day, need: need || null, did: null };   // ★진단(_dpDebug 스타일): picker 판단·전환 결과 추적
   if (!need) return;  // 자리 없으면 전환 불가
   const counts = jobCounts(v);
   const N = v.npcs.length;
@@ -1632,8 +1623,10 @@ function autoSwitchJob(v, day, world) {
       }
     }
   }
-  // 이미 과포화면 skip (한 직업이 인구의 40% 초과 — 과집중·소형마을 불안정 방지)
-  if (counts[need] / N > 0.4) return;
+  // ★40% 직업 점유율 가드 폐지 — 잔존 비율 하드캡이었음("직업 정원 폐지" 철학과 모순).
+  //   치명 시나리오(시드7): 기근 게이트가 farmer 요구 → 농부 44%라 차단 → *어떤* 전환도 없이 300일+ 데드락(need는 매번 farmer로 재계산되므로).
+  //   자연 포화는 이미 있음: 자리(jobCapacity·hasSlot=토지), 장인=스톡-플로우 목표, 전사=무기 게이트, churn은 쿨다운·21일 간격·차익거래 히스테리시스가 억제.
+  //   농업촌이 농부 60%인 건 역사적으로 정상 — 비율은 땅이 정하게 둔다.
   // 잉여 직군에서 NPC 1명 — ★시장가치(기회비용) 가장 낮은 NPC = 글럿 재화 생산자.
   //   (옛 surplusBonus[25%미만 보호] 제거 — 그게 도구 글럿에도 10% 대장장이를 고착시킨 원인.
   //    시장가치가 직접 결정: 도구가격 폭락 → 대장장이 비용 최저 → 부족직으로 전환됨.)
@@ -1648,12 +1641,22 @@ function autoSwitchJob(v, day, world) {
     if (cost < bestCost) { bestCost = cost; bestIdx = i; }
   }
   if (bestIdx >= 0) {
-    // ★히스테리시스(churn 억제): 식량 안정 + 최저비용 노동자도 충분히 생산적(시장가치>0.15)이면 전환 보류.
-    //   평형 상태선 "그냥 최저 1명"을 무조건 바꾸던 게 잔여 churn 원인 → 명백한 저활용(글럿/유휴)만 재배치.
-    //   식량 위기(<30일)면 가드 해제 — 무조건 식량직으로 재배치(생존 우선).
+    // ★히스테리시스(churn 억제) — *차익거래 조건*으로: 식량 안정 + 후보가 생산적(>0.15)이어도,
+    //   need 직업의 한계가치가 후보의 현재 가치 ×1.3(전환 마찰)을 넘으면 전환한다.
+    //   (옛 절대 유보(0.15)만으론 '식량은 안보인데 연료·주거가 기아'인 마을에서 벌목 need가 영원히 보류 —
+    //    시드7 농업촌 N=21 고착: 목재 0→주거게이트 dP=0 영구. 부족 재화의 그림자가격이 needValue를 키워 스스로 뚫는다.)
     const foodSec = totalFoodEquivalent(v) > (v.npcs.length || 1) * 30;
-    if (foodSec && bestCost > 0.15) return;
+    if (foodSec && bestCost > 0.15) {
+      const OUT1 = { farmer: 1.5 * (v.land.fertility || 0), fisher: 1.2 * (v.land.water || 0), hunter: 0.7 * (v.land.game || 0),
+        lumberjack: 0.9 * (v.land.wood || 0), miner: 0.7 * Math.max(v.land.stone || 0, v.land.ore || 0), forager: 0.8,
+        smith: 1.0, weaponsmith: 0.8, armorsmith: 0.8, cook: 1.0, warrior: 0.3 };
+      const OUTRES = { farmer: 'food', fisher: 'fish', hunter: 'meat', lumberjack: 'wood', miner: 'stone', forager: 'food',
+        smith: 'bronze_tool', weaponsmith: 'weapon', armorsmith: 'armor', cook: 'cooked_food', warrior: 'weapon' };
+      const needValue = (OUT1[need] || 0.5) * w(OUTRES[need] || 'food');
+      if (needValue < bestCost * 1.3) { v._dbgSwitch.did = 'hold(' + needValue.toFixed(2) + '<' + (bestCost * 1.3).toFixed(2) + ')'; return; }
+    }
     switchNPCJob(v.npcs[bestIdx], need, day, v);
+    v._dbgSwitch.did = v.npcs[bestIdx].currentJob;
   }
 }
 
@@ -2097,7 +2100,7 @@ function main() {
     }
     tickTrade(world, day);
     tickCaravans(world, day);
-    tickMigration(world, day);
+    // tickMigration(world, day);   // ★이주 폐지(사용자 결정 2026-07) — v2 경로는 원래 OFF. 인구압 밸브는 추후 분촌(分村)으로
     // 출력은 총 ~10회만 (대규모 시뮬에서 콘솔 폭주 방지)
     const printEvery = Math.max(100, Math.floor(TOTAL_DAYS / 10));
     if (day % printEvery === 0 || day === TOTAL_DAYS) printSnapshot(world, day);
@@ -2193,7 +2196,7 @@ function tickWorld(world) {
   }
   tickTrade(world, world.day);
   tickCaravans(world, world.day);
-  tickMigration(world, world.day);
+  // tickMigration(world, world.day);   // ★이주 폐지(사용자 결정 2026-07) — 밸브는 추후 분촌으로
   // history 메모리 제한 — 최근 500개만 유지
   for (const v of world.villages) {
     if (v.history.length > 500) v.history.splice(0, v.history.length - 500);
@@ -2989,6 +2992,9 @@ function tickCaravansV2(world, day) {
         if (!c._abandoned && c.from.tradeStats &&
             ['food', 'cooked_food', 'fish', 'meat'].includes(c._returningRes)) {
           c.from.tradeStats.foodImported += received;
+        }
+        if (!c._abandoned && c.from.tradeStats && c._returningRes === 'wood') {
+          c.from.tradeStats.woodImported = (c.from.tradeStats.woodImported || 0) + received;   // ★fuelK(리비히 연료)용 — 목재 수입도 부양력에 반영(교역이 숲빈약 마을 부양)
         }
       }
       c._done = true;

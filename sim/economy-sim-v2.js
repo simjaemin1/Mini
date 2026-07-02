@@ -685,6 +685,9 @@ function tickCaravansV2(world, day) {
             ['food', 'cooked_food', 'fish', 'meat'].includes(c._returningRes)) {
           c.from.tradeStats.foodImported += received;
         }
+        if (!c._abandoned && c.from.tradeStats && c._returningRes === 'wood') {
+          c.from.tradeStats.woodImported = (c.from.tradeStats.woodImported || 0) + received;   // ★fuelK(리비히 연료)용 — 목재 수입도 부양력에 반영(교역이 숲빈약 마을 부양)
+        }
       }
       c._done = true;
     }
