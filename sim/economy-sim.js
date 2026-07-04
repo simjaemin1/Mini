@@ -205,7 +205,7 @@ const BASE_VALUE = {
   pebble:      1.0,
 };
 const JOB_NAMES = Object.keys(JOBS);
-const FIELDS = [...new Set(JOB_NAMES.map(j => JOBS[j].field))];
+const FIELDS = [...new Set([...JOB_NAMES.map(j => JOBS[j].field), 'archery'])];   // ★archery=사냥꾼 제2숙련(활·직업 매핑 없는 무기 필드)
 
 // forager 토지별 산출 가중치 — 어떤 채집물이 더 많이 나오나
 // Phase 5-5-econ-b: specialty.js 새 자원 추가 (chestnut·walnut·honey·medicinal_herb·grape·wildflower)
@@ -524,7 +524,7 @@ function npcField(npc) { return JOBS[npc.currentJob].field; }
 // 일하면 skill xp 증가. 차면 skill +1. skill == trait && skill < 10 이면 trait +1.
 // xp_to_next(skill) = 80 + skill * 30
 function workNPC(npc) {
-  const f = npcField(npc);
+  const f = npc.currentJob === 'hunter' ? ((npc._wAlt = !npc._wAlt) ? 'hunting' : 'archery') : npcField(npc);   // ★사냥꾼 xp 교차 배분(격일 사냥/활) — 총 xp율은 타 직업과 동일
   const skill = npc.skills[f];
   const trait = npc.traits[f];
   // skill 10이면 더 안 늘어남
@@ -566,7 +566,8 @@ function switchNPCJob(npc, newJob, day, v) {
 function opportunityCost(npc, v, w) {
   w = (typeof w === 'function') ? w : (_ => 1.0);
   const L = (v && v.land) || {};
-  const sk = 1 + (npc.skills[npcField(npc)] || 0) * 0.05;
+  const _skv = npc.currentJob === 'hunter' ? ((npc.skills.hunting || 0) + (npc.skills.archery || 0)) / 2 : (npc.skills[npcField(npc)] || 0);
+  const sk = 1 + _skv * 0.05;   // ★사냥꾼=활·사냥 평균(두 숙련이 함께 생산성)
   switch (npc.currentJob) {
     case 'farmer':      return (L.fertility || 0) * 0.4 * w('food') * sk;
     case 'fisher':      return (L.water || 0) * 1.2 * w('fish') * sk;
@@ -803,7 +804,7 @@ function tickVillage(v, day) {
       const sm = satMul(r);
       _potA += amt; _actA += amt * sm;   // 여유노동 측정: 잠재(감산 전) vs 실제(감산 후)
       dailyProductionPotential[r] = (dailyProductionPotential[r] || 0) + amt;   // 잠재 생산(건강·포만 적용 전) — prodK용
-      amt *= _hpm * _prodMul * sm;   // ★건강→작업량(±10%) × production stat(자재비축→생산성) × 포만(글럿 시 여가)
+      amt *= _hpm * _prodMul * sm * (v._laborMul || 1);   // ★건강→작업량(±10%) × production stat × 포만 × 부상노동력(요양=일손 X·부상=효율↓ — 생활층서 계산)
       if (amt <= 0) return;
       if (r === 'food') v._grainToday = (v._grainToday || 0) + amt;   // ★오늘 곡물 실생산 → 볏짚 연료(아래 연료 블록)
       const tax = amt * TAX_RATE;
@@ -1338,7 +1339,10 @@ function pickDeficitJob_rational(v, world) {
   if (hasSlot(v, 'miner', cap, counts))      candidates.push(['miner',      minerGain]);
   if (hasSlot(v, 'lumberjack', cap, counts)) candidates.push(['lumberjack', v.land.wood * 0.3 * period * w('wood')]);
   if (hasSlot(v, 'fisher', cap, counts))     candidates.push(['fisher',     v.land.water * 1.2 * period * w('fish')]);
-  if (hasSlot(v, 'hunter', cap, counts))     candidates.push(['hunter',     v.land.game * 0.7 * period * (w('meat') + 0.3 * w('hide'))]);
+  if (hasSlot(v, 'hunter', cap, counts)) {   // ★사냥 위험 프리미엄(기회비용): 생활층이 관측한 부상·호환 사망으로 학습한 v._huntRisk(0~0.6, 미공급 기본 8%)만큼 기대소득 할인 — 위험한 숲은 사냥꾼 배분↓. (위 기근 게이트의 사냥은 무할인 — 절박하면 위험 감수)
+    const _hr = Math.min(0.6, Math.max(0, v._huntRisk !== undefined ? v._huntRisk : 0.08));
+    candidates.push(['hunter',     v.land.game * 0.7 * period * (w('meat') + 0.3 * w('hide')) * (1 - _hr)]);
+  }
   if (hasSlot(v, 'merchant', cap, counts) && nearbyFoodCapacity > 0)
     candidates.push(['merchant', merchantGain]);
   // warrior — 약탈 자주 일어나는 마을에서만 의미. 추가로 weapon/armor 가용성이 호위 효과 결정.
