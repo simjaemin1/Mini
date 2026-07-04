@@ -20,7 +20,7 @@ global.__run=function(sp,days){
       for(const m of s.mobs){if(m.hp<=0||m.st==='dead')continue;const d=Math.hypot(m.px-a.px,m.py-a.py);if(d<dn){dn=d;nm=m;}}
       const ref=tg||nm,dr=ref?Math.hypot(ref.px-a.px,ref.py-a.py):-1;
       rows.push([t,hi,a.action||'-',a.sneak?1:0,+dr.toFixed(1),ref?(ref.st==='flee'||ref.fcd>0?2:(ref.st==='alert'?1:0)):3,ref?+(ref._spd||0).toFixed(1):-1,+a.px.toFixed(1),+a.py.toFixed(1)]);}}
-  return {rows,shots:s._shots||0,hits:s._hitsN||0,dodge:s._dodgeN||0,kills:s._mobKills||0,lost:s._lostK||0,inj:s._inj||0,hdead:s._hDeadN||0,killT:kills,yld:s._mobYield||0,trail:s._trailN||0,sLv:s._sLv||{},hLv:s._hLv||{},kLv:s._kLv||{},yLv:s._yLv||{}};
+  return {rows,shots:s._shots||0,hits:s._hitsN||0,dodge:s._dodgeN||0,kills:s._mobKills||0,lost:s._lostK||0,inj:s._inj||0,hdead:s._hDeadN||0,killT:kills,yld:s._mobYield||0,trail:s._trailN||0,kAll:s._kAll||0,kA:s._kA||0,kM:s._kM||0,sLv:s._sLv||{},hLv:s._hLv||{},kLv:s._kLv||{},yLv:s._yLv||{}};
 };`;
 eval(js);
 const sp=process.argv[2]||'🦌',days=+(process.argv[3]||10);
@@ -49,4 +49,5 @@ const iv=[];for(let i=1;i<r.killT.length;i++)iv.push((r.killT[i]-r.killT[i-1])/2
 iv.sort((a,b)=>a-b);
 console.log('파이프라인: 발사',r.shots,'→선판정명중',r.hits,'('+(r.shots?Math.round(100*r.hits/r.shots):0)+'%)','→회피',r.dodge,'→수확',r.kills,'· 손실',r.lost,'· 부상',r.inj,'· 사망',r.hdead);
 console.log('레벨별 — '+Object.keys(r.sLv).sort((a,b)=>a-b).map(L=>'Lv'+L+': 발사'+r.sLv[L]+' 명중'+(r.hLv[L]||0)+'('+Math.round(100*(r.hLv[L]||0)/r.sLv[L])+'%) 수확'+(r.kLv[L]||0)+' 수율'+((r.yLv[L]||0).toFixed(1))).join(' · ')+' — 총수율 '+r.yld.toFixed(1));
+console.log('킬 소스 — 총사망',r.kAll,'· 화살',r.kA,'· 근접',r.kM,'· (도살수확',r.kills+')');
 console.log('포획 간격: 중앙값',iv.length?iv[(iv.length/2)|0].toFixed(0):'-','분 · 포획/일',(r.kills/days).toFixed(1),'· 화살/수확',r.kills?(r.shots/r.kills).toFixed(1):'-','· 핏자국추적틱',r.trail);
