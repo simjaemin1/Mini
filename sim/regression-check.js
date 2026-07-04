@@ -82,8 +82,11 @@ if (CHILD_SEED != null) {
         if (gsum / v._initGameTotal < 0.95) p.gameUsed++;
         if (gsum === 0 && v.gameRich.size > 50) p.gameDead++;
       }
+      // ★23: 사냥 산출 — 고기 재고·사냥꾼 총원(붕괴 감시: 2026-07 숙련 분할 때 미측정 갭 발견 → 불변식화)
+      p.meat = (p.meat || 0) + (v.econ && v.econ.storage ? (v.econ.storage.meat || 0) : 0);
+      p.hunterN = (p.hunterN || 0) + (v.econ && v.econ.counts ? Math.round(v.econ.counts.hunter || 0) : 0);
     }
-    p.seedRow = `시드${CHILD_SEED} 인구${p.pop} 마을${r.VILS.length}/${r.initVil} 동기${r.bad} 청동도구${r.VILS.reduce((a, v) => a + (v.econ.storage.bronze_tool || 0), 0).toFixed(0)} 집${p.houses}`;
+    p.seedRow = `시드${CHILD_SEED} 고기${(p.meat||0).toFixed(0)} 사냥꾼${p.hunterN||0} 인구${p.pop} 마을${r.VILS.length}/${r.initVil} 동기${r.bad} 청동도구${r.VILS.reduce((a, v) => a + (v.econ.storage.bronze_tool || 0), 0).toFixed(0)} 집${p.houses}`;
   } catch (e) { p.crashed = true; p.seedRow = `시드${CHILD_SEED} 크래시: ${e.message}`; }
   process.stdout.write('@@RESULT@@' + JSON.stringify(p) + '\n');
   process.exit(0);
@@ -119,10 +122,10 @@ Promise.all(jobs).then(parts => {
   const agg = { pop: 0, bad: 0, initVil: 0, finalVil: 0, mining: 0, forest: 0, bronze: 0, iron: 0, stoneTool: 0, copperTin: 0,
     weaponShort: 0, villages: 0, houses: 0, tradeStaple: 0, tradeOrn: 0, craftBloat: 0, maxCraftFrac: 0,
     maxAccumPer: 0, maxVilPop: 0, smithVil: 0, housesTot: 0, housesOut: 0, terrSync: 0, terrOverlap: 0, gameUsed: 0, gameDead: 0, crashed: false, seedRows: [] };
-  const SUM = ['pop', 'bad', 'initVil', 'finalVil', 'mining', 'forest', 'bronze', 'iron', 'stoneTool', 'copperTin', 'weaponShort', 'villages', 'houses', 'tradeStaple', 'tradeOrn', 'craftBloat', 'smithVil', 'housesTot', 'housesOut', 'terrSync', 'terrOverlap', 'gameUsed', 'gameDead'];
+  const SUM = ['pop', 'bad', 'initVil', 'finalVil', 'mining', 'forest', 'bronze', 'iron', 'stoneTool', 'copperTin', 'weaponShort', 'villages', 'houses', 'tradeStaple', 'tradeOrn', 'craftBloat', 'smithVil', 'housesTot', 'housesOut', 'terrSync', 'terrOverlap', 'gameUsed', 'gameDead', 'meat', 'hunterN'];
   const MAX = ['maxCraftFrac', 'maxAccumPer', 'maxVilPop'];
   for (const q of parts) {
-    for (const k of SUM) agg[k] += q[k] || 0;
+    for (const k of SUM) agg[k] = (agg[k] || 0) + (q[k] || 0);   // 신규 키 안전 합산
     for (const k of MAX) agg[k] = Math.max(agg[k], q[k] || 0);
     agg.crashed = agg.crashed || !!q.crashed;
     agg.seedRows.push(q.seedRow);
@@ -152,6 +155,7 @@ Promise.all(jobs).then(parts => {
     ['20. 영토 = econ size 동기(오차≤60셀, E2c)', agg.terrSync === 0],
     ['21. 마을 간 영토 겹침 0', agg.terrOverlap === 0],
     ['22. 사냥감 생태(압력 발생≥1·서식지 있는 절멸 0)', agg.gameUsed >= 1 && agg.gameDead === 0],   // 로지스틱+확산+사냥압: 고갈은 일어나되 숲이 남은 한 전멸 없음
+    ['23. 사냥 산출(사냥꾼 총원 10~인구40% — 직업 존속=고기 흐름의 시장 증거)', (agg.hunterN || 0) >= 10 && (agg.hunterN || 0) <= agg.pop * 0.4],   // 재고는 즉시소비 균형이라 0이 정상 — 산출 붕괴는 직업 소멸(한계가치→전직)로 나타남. 하한=존속, 상한=폭주 감시
   ];
   console.log('\n=== 회귀 검사 (5시드 병렬) ===');
   agg.seedRows.forEach(s => console.log('  ' + s));

@@ -294,7 +294,7 @@ function lowestProducer(v, prices, day) {
       const landKey = JOB_LAND[j];
       if (!landKey) continue;   // 비생산직(대장·요리·전사 등)은 교역 차출 대상 아님
       const jd = v1.JOBS[j];
-      const skillMul = 1 + (npc.skills[jd.field] || 0) * 0.05;
+      const skillMul = 1 + (j === 'hunter' ? ((npc.skills.hunting || 0) + (npc.skills.archery || 0)) / 2 : (npc.skills[jd.field] || 0)) * 0.05;   // ★사냥꾼=두 숙련 평균(활+사냥)
       mv = jd.base * (v.land[landKey] || 0) * skillMul * (prices[JOB_OUT[j]] || 1);
     }
     if (mv < bestMV) { bestMV = mv; best = npc; }
