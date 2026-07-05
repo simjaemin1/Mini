@@ -20,7 +20,7 @@ if (CHILD_SEED != null) {
   global.vn = (x, y, s) => { const ix = Math.floor(x), iy = Math.floor(y), fx = x - ix, fy = y - iy; const a = hash2(ix, iy, s), b = hash2(ix + 1, iy, s), c = hash2(ix, iy + 1, s), d = hash2(ix + 1, iy + 1, s); const u = smt(fx), v = smt(fy); return (a * (1 - u) + b * u) * (1 - v) + (c * (1 - u) + d * u) * v; };
   global.fbm = (x, y, s) => { let t = 0, a = .5, f = 1; for (let i = 0; i < 4; i++) { t += a * vn(x * f, y * f, s + i * 31); a *= .5; f *= 2; } return t; };
   global.MAX_CELLS = Math.PI * 60 * 60;
-  const vals = { pop: '8', fertV: '0.55', waterV: '0.5', sizeMul: '1.5', compactW: '0', settType: 'nucleated', seed: '7', terrMode: 'auto', simSpeed: '40000', nvil: '3' };
+  const vals = { pop: '8', fertV: '0.55', waterV: '0.5', sizeMul: '1.5', compactW: '0', settType: 'nucleated', seed: '7', terrMode: 'auto', simSpeed: '80000', nvil: '3' };
   const els = {}; global.document = { getElementById: id => els[id] || (els[id] = { value: vals[id] != null ? vals[id] : '0', textContent: '', innerHTML: '', checked: false, addEventListener: () => {} }) };
   global.draw = () => {}; global.V = null; global.TR = null; global.life = null; global.lifeOn = false; global.lifeGM = 0; global.lifeLast = 0; global.lifeSlow = false;
   global.buildWalls = () => new Set(); global.nowMs = 0; global.performance = { now: () => global.nowMs }; global.rafCb = null; global.requestAnimationFrame = cb => { global.rafCb = cb; };
@@ -33,7 +33,7 @@ if (CHILD_SEED != null) {
   global.eval(VL.replace('const VillageLayout=', 'global.VillageLayout='));
   global.frame = function () { global.nowMs += 16; const cb = global.rafCb; global.rafCb = null; if (cb) cb(global.nowMs); };
   global.eval(PC.replace(/^function pickCenter/, 'global.pickCenter=function') + '\n' + BFS.replace(/^function bfsPath/, 'global.bfsPath=function') + '\n' + SP.replace(/^function setPath/, 'global.setPath=function') + '\n' + TP + '\n' + LIFE +
-    "\nglobal.run=function(seed){TR=buildTerrain(seed);document.getElementById('seed').value=String(seed);console.log=function(){};lifeInit();lifeGM=L_START*720;lifeLast=0;global.nowMs=0;lifeOn=true;global.rafCb=lifeLoop;var bad=0,initVil=VILS.length;for(var fr=0;fr<1500;fr++){global.frame();if(fr%300===0)for(var k=0;k<VILS.length;k++)if(VILS[k].agents.length!==VILS[k].econ.npcs.length)bad++;}console.log=global.__log;return {bad:bad,initVil:initVil,VILS:VILS,world:ECON_WORLD};};");
+    "\nglobal.run=function(seed){TR=buildTerrain(seed);document.getElementById('seed').value=String(seed);console.log=function(){};lifeInit();lifeGM=L_START*1440;lifeLast=0;global.nowMs=0;lifeOn=true;global.rafCb=lifeLoop;var bad=0,initVil=VILS.length;for(var fr=0;fr<1500;fr++){global.frame();if(fr%300===0)for(var k=0;k<VILS.length;k++)if(VILS[k].agents.length!==VILS[k].econ.npcs.length)bad++;}console.log=global.__log;return {bad:bad,initVil:initVil,VILS:VILS,world:ECON_WORLD};};");
   global.__log = _log; console.log = _log;
 
   const STAPLE = new Set(['food', 'fish', 'meat', 'stone', 'ore', 'wood', 'iron', 'copper', 'tin']);
