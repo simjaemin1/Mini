@@ -4,7 +4,7 @@ const fs=require('fs'),path=require('path');
 const SRC=fs.readFileSync(path.join(__dirname,'..','..','사냥실험실.html'),'utf8');
 let js=/<script>([\s\S]*?)<\/script>/.exec(SRC)[1].replace("'use strict';","");
 const els={};
-global.document={getElementById:id=>els[id]||(els[id]={value:{nh:'3',cap:'24',spd:'36'}[id]||'0',textContent:'',innerHTML:''}),querySelectorAll:()=>[]};
+global.document={getElementById:id=>els[id]||(els[id]={value:{nh:'3',cap:'24',spd:'36',terr:(process.argv[4]||'초원')}[id]||'0',textContent:'',innerHTML:''}),querySelectorAll:()=>[]};
 global.performance={now:()=>0};global.requestAnimationFrame=()=>{};global.window=global;
 js=js.replace("const cv=document.getElementById('cv'),ctx=cv.getContext('2d');",
 "const cv={getContext:()=>null,addEventListener:()=>{},getBoundingClientRect:()=>({left:0,top:0,width:760,height:760})};const ctx=new Proxy({},{get:()=>()=>{},set:()=>true});global.addEventListener=()=>{};");
@@ -23,7 +23,7 @@ global.__run=function(sp,days){
   return {rows,shots:s._shots||0,hits:s._hitsN||0,dodge:s._dodgeN||0,kills:s._mobKills||0,lost:s._lostK||0,inj:s._inj||0,hdead:s._hDeadN||0,killT:kills,yld:s._mobYield||0,trail:s._trailN||0,kAll:s._kAll||0,kA:s._kA||0,kM:s._kM||0,fW:s._fW||{},sLv:s._sLv||{},hLv:s._hLv||{},kLv:s._kLv||{},yLv:s._yLv||{}};
 };`;
 eval(js);
-const sp=process.argv[2]||'🦌',days=+(process.argv[3]||10);
+const sp=process.argv[2]||'🦌',days=+(process.argv[3]||10);console.log('지형:',process.argv[4]||'초원');
 const r=global.__run(sp,days);
 // ── 분석 ──
 const AL={'🦌':110,'🐇':20,'🐗':45,'🐺':120,'🐯':120}[sp]||110,SNK=Math.min(55,AL*1.2)+30,LC=Math.min(50,AL*1.08);   // ★종별 문턱: 잠행-원거리=개시+30, 도주링=경계×1.08
