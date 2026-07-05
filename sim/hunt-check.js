@@ -4,7 +4,7 @@ const fs=require('fs'),path=require('path');
 const SRC=fs.readFileSync(path.join(__dirname,'..','..','사냥실험실.html'),'utf8');
 let js=/<script>([\s\S]*?)<\/script>/.exec(SRC)[1].replace("'use strict';","");
 const els={};
-global.document={getElementById:id=>els[id]||(els[id]={value:{nh:'3',cap:'24',spd:'36'}[id]||'0',textContent:'',innerHTML:''}),querySelectorAll:()=>[]};
+global.document={getElementById:id=>els[id]||(els[id]={value:{nh:'3',cap:'24',spd:'36',terr:(global.__TERR||'초원')}[id]||'0',textContent:'',innerHTML:''}),querySelectorAll:()=>[]};
 global.performance={now:()=>0};global.requestAnimationFrame=()=>{};global.window=global;
 js=js.replace("const cv=document.getElementById('cv'),ctx=cv.getContext('2d');",
 "const cv={getContext:()=>null,addEventListener:()=>{},getBoundingClientRect:()=>({left:0,top:0,width:760,height:760})};const ctx=new Proxy({},{get:()=>()=>{},set:()=>true});global.addEventListener=()=>{};");
@@ -38,7 +38,9 @@ global.__check=function(days){
     shots:s._shots||0,kills:s._mobKills||0,kA:s._kA||0,kM:s._kM||0,lost:s._lostK||0,dead:s._hDeadN||0,days};
 };`;
 (0,eval)(js);
-const r=global.__check(10);
+const RESULTS=[];
+for(const TERR of ['초원','협곡']){global.__TERR=TERR;els.terr&&(els.terr.value=TERR);const r0=global.__check(TERR==='초원'?10:6);RESULTS.push([TERR,r0]);}
+const r=RESULTS[0][1],rC=RESULTS[1][1];
 const tot=Object.values(r.acts).reduce((a,b)=>a+b,0)||1;
 const pct=k=>100*(r.acts[k]||0)/tot;
 const lockN=r.lock.kill+r.lock.drop+r.lock.sw;
@@ -60,8 +62,9 @@ function med(){const d=r.lock.durs.slice().sort((a,b)=>a-b);return d.length?d[(d
 function stuckOK(){return r.stuckEp<=3&&r.stuckMax<=240;}
 function nightOK(){const d=r.TB.주.k/Math.max(0.1,r.TB.주.h),n=r.TB.취.k/Math.max(0.1,r.TB.취.h);return d<=0?n<=0.5:n<=d*2.5;}
 function tbStr(){return '주'+(r.TB.주.k/Math.max(0.1,r.TB.주.h)).toFixed(2)+'/밤'+(r.TB.밤.k/Math.max(0.1,r.TB.밤.h)).toFixed(2)+'/취'+(r.TB.취.k/Math.max(0.1,r.TB.취.h)).toFixed(2);}
+C.push(['H13 협곡(미로)에서도 사냥 성립(크래시 0·포획/일 ≥3·교착 최장 ≤240분)',!rC.err&&rC.kills/rC.days>=3&&rC.stuckMax<=480,(rC.err?('크래시:'+rC.err):((rC.kills/rC.days).toFixed(1)+'/일·교착최장'+(rC.stuckMax/2).toFixed(0)+'분'))]);
 let pass=0;
-console.log('═══ 사냥실험실 체크리스트 (🦌 10일) ═══');
+console.log('═══ 사냥실험실 체크리스트 (🦌 초원 10일 + 협곡 6일) ═══');
 for(const [name,ok,detail] of C){console.log((ok?'  ✅ ':'  ❌ ')+name+' — '+detail);if(ok)pass++;}
 console.log('  '+pass+'/'+C.length+(pass===C.length?' 전부 통과 ✅':' — ❌ 실패 있음'));
 process.exit(pass===C.length?0:1);
