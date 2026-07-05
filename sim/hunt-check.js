@@ -39,8 +39,8 @@ global.__check=function(days){
 };`;
 (0,eval)(js);
 const RESULTS=[];
-for(const TERR of ['초원','협곡']){global.__TERR=TERR;els.terr&&(els.terr.value=TERR);const r0=global.__check(TERR==='초원'?10:6);RESULTS.push([TERR,r0]);}
-const r=RESULTS[0][1],rC=RESULTS[1][1];
+for(const [TERR,DD] of [['초원',10],['협곡',4],['미로',4]]){global.__TERR=TERR;els.terr&&(els.terr.value=TERR);const r0=global.__check(DD);RESULTS.push([TERR,r0]);}
+const r=RESULTS[0][1],rC=RESULTS[1][1],rM=RESULTS[2][1];
 const tot=Object.values(r.acts).reduce((a,b)=>a+b,0)||1;
 const pct=k=>100*(r.acts[k]||0)/tot;
 const lockN=r.lock.kill+r.lock.drop+r.lock.sw;
@@ -62,9 +62,10 @@ function med(){const d=r.lock.durs.slice().sort((a,b)=>a-b);return d.length?d[(d
 function stuckOK(){return r.stuckEp<=3&&r.stuckMax<=240;}
 function nightOK(){const d=r.TB.주.k/Math.max(0.1,r.TB.주.h),n=r.TB.취.k/Math.max(0.1,r.TB.취.h);return d<=0?n<=0.5:n<=d*2.5;}
 function tbStr(){return '주'+(r.TB.주.k/Math.max(0.1,r.TB.주.h)).toFixed(2)+'/밤'+(r.TB.밤.k/Math.max(0.1,r.TB.밤.h)).toFixed(2)+'/취'+(r.TB.취.k/Math.max(0.1,r.TB.취.h)).toFixed(2);}
-C.push(['H13 협곡(미로)에서도 사냥 성립(크래시 0·포획/일 ≥3·교착 최장 ≤240분)',!rC.err&&rC.kills/rC.days>=3&&rC.stuckMax<=480,(rC.err?('크래시:'+rC.err):((rC.kills/rC.days).toFixed(1)+'/일·교착최장'+(rC.stuckMax/2).toFixed(0)+'분'))]);
+C.push(['H13 협곡에서도 사냥 성립(크래시 0·포획/일 ≥3·교착 ≤240분)',!rC.err&&rC.kills/rC.days>=3&&rC.stuckMax<=480,(rC.err?('크래시:'+rC.err):((rC.kills/rC.days).toFixed(1)+'/일·교착최장'+(rC.stuckMax/2).toFixed(0)+'분'))]);
+C.push(['H14 미로에서도 사냥 성립(크래시 0·포획/일 ≥1.5·교착 ≤240분)',!rM.err&&rM.kills/rM.days>=1.5&&rM.stuckMax<=480,(rM.err?('크래시:'+rM.err):((rM.kills/rM.days).toFixed(1)+'/일·교착최장'+(rM.stuckMax/2).toFixed(0)+'분'))]);
 let pass=0;
-console.log('═══ 사냥실험실 체크리스트 (🦌 초원 10일 + 협곡 6일) ═══');
+console.log('═══ 사냥실험실 체크리스트 (🦌 초원10·협곡4·미로4일) ═══');
 for(const [name,ok,detail] of C){console.log((ok?'  ✅ ':'  ❌ ')+name+' — '+detail);if(ok)pass++;}
 console.log('  '+pass+'/'+C.length+(pass===C.length?' 전부 통과 ✅':' — ❌ 실패 있음'));
 process.exit(pass===C.length?0:1);
