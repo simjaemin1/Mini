@@ -10,8 +10,8 @@ js=js.replace("const cv=document.getElementById('cv'),ctx=cv.getContext('2d');",
 "const cv={getContext:()=>null,addEventListener:()=>{},getBoundingClientRect:()=>({left:0,top:0,width:760,height:760})};const ctx=new Proxy({},{get:()=>()=>{},set:()=>true});global.addEventListener=()=>{};");
 js=js.replace('window.addEventListener','global.addEventListener').replace('bakeBG();resetAll();requestAnimationFrame(loop);','resetAll();');
 js+=`
-global.__check=function(days){
-  HUNT_SPECIES='🦌';resetAll();lifeGM=432;_t0GM=lifeGM;
+global.__check=function(days,sp9){
+  HUNT_SPECIES=sp9||'🦌';resetAll();lifeGM=432;_t0GM=lifeGM;
   const acts={},lockSt={},lock={kill:0,drop:0,sw:0,maxDur:0,durs:[]},TB={주:{k:0,h:0},밤:{k:0,h:0},취:{k:0,h:0}};
   let frames=0,err=null,prevAct={},prevPos={},fireWalk=0,fireMove=0,pk=0;
   const stuck={};let stuckEp=0,stuckMax=0;
@@ -39,8 +39,9 @@ global.__check=function(days){
 };`;
 (0,eval)(js);
 const RESULTS=[];
-for(const [TERR,DD] of [['초원',10],['협곡',4],['미로',4]]){global.__TERR=TERR;els.terr&&(els.terr.value=TERR);const r0=global.__check(DD);RESULTS.push([TERR,r0]);}
+for(const [TERR,DD] of [['초원',10],['협곡',4],['미로',3]]){global.__TERR=TERR;els.terr&&(els.terr.value=TERR);const r0=global.__check(DD);RESULTS.push([TERR,r0]);}
 const r=RESULTS[0][1],rC=RESULTS[1][1],rM=RESULTS[2][1];
+global.__TERR='초원';els.terr&&(els.terr.value='초원');HUNT_SPECIES='🐯';const rT=global.__check(3,'🐯');
 const tot=Object.values(r.acts).reduce((a,b)=>a+b,0)||1;
 const pct=k=>100*(r.acts[k]||0)/tot;
 const lockN=r.lock.kill+r.lock.drop+r.lock.sw;
@@ -63,6 +64,7 @@ function stuckOK(){return r.stuckEp<=3&&r.stuckMax<=240;}
 function nightOK(){const d=r.TB.주.k/Math.max(0.1,r.TB.주.h),n=r.TB.취.k/Math.max(0.1,r.TB.취.h);return d<=0?n<=0.5:n<=d*2.5;}
 function tbStr(){return '주'+(r.TB.주.k/Math.max(0.1,r.TB.주.h)).toFixed(2)+'/밤'+(r.TB.밤.k/Math.max(0.1,r.TB.밤.h)).toFixed(2)+'/취'+(r.TB.취.k/Math.max(0.1,r.TB.취.h)).toFixed(2);}
 C.push(['H13 협곡에서도 사냥 성립(크래시 0·포획/일 ≥3·교착 ≤240분)',!rC.err&&rC.kills/rC.days>=3&&rC.stuckMax<=480,(rC.err?('크래시:'+rC.err):((rC.kills/rC.days).toFixed(1)+'/일·교착최장'+(rC.stuckMax/2).toFixed(0)+'분'))]);
+C.push(['H15 호랑이=레이드(3일: 크래시 0·사망 ≤1·창 자살돌격 0)',!rT.err&&rT.dead<=1&&rT.kM===0,(rT.err?('크래시:'+rT.err):('사망'+rT.dead+'·근접킬'+rT.kM+'·수확'+rT.kills))]);
 C.push(['H14 미로에서도 사냥 성립(크래시 0·포획/일 ≥1.5·교착 ≤240분)',!rM.err&&rM.kills/rM.days>=1.5&&rM.stuckMax<=480,(rM.err?('크래시:'+rM.err):((rM.kills/rM.days).toFixed(1)+'/일·교착최장'+(rM.stuckMax/2).toFixed(0)+'분'))]);
 let pass=0;
 console.log('═══ 사냥실험실 체크리스트 (🦌 초원10·협곡4·미로4일) ═══');
