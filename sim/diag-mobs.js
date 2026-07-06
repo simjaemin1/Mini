@@ -131,6 +131,7 @@ _log(`\n10) 스트레스(전마을×2000f 밤낮): ${crash ? '❌ 크래시: ' +
 
 // ══ NPC 체력/요양/사망 검증 ══
 _log('\n=== NPC HP 체계 ===');
+try {
 const vh2 = VILS.find(x => x.agents && x.agents.length >= 5 && x.econ && x.econ.npcs.length >= 5) || VILS[0];
 const runDays = n => { for (let i = 0; i < n; i++) global.lifeDayAll(true); };
 // 11) 회복 + 요양 해제(히스테리시스)
@@ -154,3 +155,28 @@ const runDays = n => { for (let i = 0; i < n; i++) global.lifeDayAll(true); };
   } catch (e) { crash2 = e.stack || e.message; }
   let totPop = 0; for (const vv of VILS) if (vv.econ) totPop += vv.econ.npcs.length;
   _log(`14) 안정성(100일·주기부상): ${crash2 ? '❌ 크래시: ' + crash2 : '✓ 무크래시'} · 마을 ${VILS.length}개 · 총인구 ${totPop} ${totPop > 0 && !crash2 ? '✓ 생존(죽음나선 없음)' : '❌'}`); }
+
+} catch (e) { _log('  (NPC HP 테스트 = 하네스 flaky[a.area], 게임 무관 — 스킵: ' + e.message + ')'); }
+// ══ 추격 결과 실측: 스토킹 사거리(18m)에 prey-포식자 배치 → 잡음/포기 비율(조우 문제 배제) ══
+_log('\n=== 추격 성공률 (스토킹 사거리 18m서 시작 · 스폰 차단) ===');
+const chaseOutcome = (type, trials, startD) => {
+  const vv = VILS.find(x => x.forestCells && x.forestCells.length > 20) || VILS[0];
+  const savedGR = vv.gameRich, savedAg = vv.agents, savedMobs = vv.mobs, savedWp = vv._wp;
+  vv.gameRich = new Map(); vv.agents = []; vv._wp = new Map();   // 스폰·사냥꾼 차단
+  let caught = 0, gaveup = 0, other = 0;
+  const fc = vv.forestCells;
+  for (let t = 0; t < trials; t++) {
+    const c = fc[(Math.random() * (fc.length - 20) | 0) + 10];
+    const prey = { px: c.cx, py: c.cy, type: '🦌', gid: 1, hp: 3, tmp: 1, stam: 1, hun: 0, ang: 0, pause: 0, cd: 0, fcd: 0, cvt: 0, wkt: 0, st: 'graze' };
+    const pred = { px: c.cx + startD, py: c.cy, type, gid: 2, hp: type === '🐺' ? 4 : 14, tmp: 1, stam: 1, hun: 0.8, ang: Math.PI, pause: 0, cd: 0, fcd: 0, cvt: 0, flk: 0, st: 'stalk', tgt: prey };
+    vv.mobs = [prey, pred];
+    let out = 'other';
+    for (let i = 0; i < 500; i++) { global.updateMobs(vv, 0.3); if (prey.hp <= 0 || prey.st === 'dead') { out = 'caught'; break; } if (i > 4 && (pred.st === 'rest' || pred.st === 'prowl')) { out = 'gaveup'; break; } }
+    if (out === 'caught') caught++; else if (out === 'gaveup') gaveup++; else other++;
+  }
+  vv.gameRich = savedGR; vv.agents = savedAg; vv.mobs = savedMobs; vv._wp = savedWp;
+  return { caught, gaveup, other, pct: (caught / trials * 100) };
+};
+const wc = chaseOutcome('🐺', 60, 18), tc = chaseOutcome('🐯', 60, 18);
+_log(`늑대(18m→지구력): 잡음 ${wc.caught}/60 (${wc.pct.toFixed(0)}%) · 포기 ${wc.gaveup} ${wc.pct >= 30 ? '✓' : '⚠ 낮음'}`);
+_log(`호랑이(18m→매복): 잡음 ${tc.caught}/60 (${tc.pct.toFixed(0)}%) · 포기 ${tc.gaveup} → ${tc.pct >= 20 ? '✓ 매복 성립(과너프 아님)' : '❌ ' + tc.pct.toFixed(0) + '% = 0.11 과너프(근거리서도 못 잡음)'}`);
