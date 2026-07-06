@@ -179,4 +179,4 @@ const chaseOutcome = (type, trials, startD) => {
 };
 const wc = chaseOutcome('🐺', 60, 18), tc = chaseOutcome('🐯', 60, 18);
 _log(`늑대(18m→지구력): 잡음 ${wc.caught}/60 (${wc.pct.toFixed(0)}%) · 포기 ${wc.gaveup} ${wc.pct >= 30 ? '✓' : '⚠ 낮음'}`);
-_log(`호랑이(18m→매복): 잡음 ${tc.caught}/60 (${tc.pct.toFixed(0)}%) · 포기 ${tc.gaveup} → ${tc.pct >= 20 ? '✓ 매복 성립(과너프 아님)' : '❌ ' + tc.pct.toFixed(0) + '% = 0.11 과너프(근거리서도 못 잡음)'}`);
+_log(`호랑이(18m→매복): 잡음 ${tc.caught}/60 (${tc.pct.toFixed(0)}%) · 포기 ${tc.gaveup} → ${tc.pct >= 4 && tc.pct <= 25 ? '✓ 매복 정상(현실 스토킹당 5~10% — 낮은 게 본질, 부족분은 사체·습격·기회가 메움)' : tc.pct < 4 ? '❌ ' + tc.pct.toFixed(0) + '% 과너프(스토킹 사거리서도 전멸)' : '⚠ ' + tc.pct.toFixed(0) + '% 과버프(매복종이 코싱급 — envelope 점검)'}`);   // ★합격선 재보정: 종전 ≥20%는 코싱(늑대) 기대치를 매복종에 적용 — §10 캐논 '성공률 낮음'과 상충했음
