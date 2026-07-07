@@ -1695,7 +1695,8 @@ setInterval(() => {
 //   마을 집합(DB rows가 진실, 시딩 포함)을 먼저 확정해야 해서다. 의존 심볼(spawnNpc·players·claims·
 //   지형 콜라이더)은 이 시점에 전부 준비됨(직후 spawnVillagers가 같은 것을 쓰는 것으로 보증).
 //   ENABLE_VILLAGES=0 → init 즉시 return → isLegacyVillageClaimed 항상 false = 레거시 50곳 전부 유지(기존과 동일).
-SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, isWaterTileLocal });
+// §4-4 Stage 4B: isPositionActive(AOI 상세/보간 분기)·isBlockedByWall(캐러밴 벽 충돌·로컬 재경로) 추가 주입.
+SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, isWaterTileLocal, isPositionActive, isBlockedByWall });
 // Phase 14.4: central에 NPC 길드 등록 (비동기 — 실패해도 진행)
 // 길드영토 OFF면 central 등록(50콜) 스킵 → 부팅 빠름. (영토는 후속 기능, NPC 작동엔 불필요)
 if (ZONE.npcVillageTerritory) registerVillageGuilds().catch(e => console.warn(`[${ZONE_ID}] village guild register error:`, e.message));
@@ -2824,6 +2825,8 @@ function doDismantleBuilding(player, buildingId) {
   if (chunkManager && chunkManager.removeBuilding) chunkManager.removeBuilding(b);
   if (b.dbId) db.deleteBuilding(b.dbId);
   broadcast({ type: 'building_removed', id: buildingId });
+  // §4-4 Stage 4B(§5.5b): 통행 차단형(wall/fence) 철거 = 개통 → 교역 거리행렬·캐러밴 경로 무효화
+  if (b.type === 'wall' || b.type === 'fence') SimVillages.invalidateTradeDistances(Math.floor(b.x / BUILDING_SIZE), Math.floor(b.y / BUILDING_SIZE));
   // cascade로 함께 제거 (재귀 호출 X — 직접)
   for (const cid of cascadeIds) {
     const cb = buildings.get(cid);
@@ -3522,6 +3525,8 @@ function _tryBuildAt(player, type, floor = 0, side = null, dir = null, opts = nu
     send(player.ws, { type: 'inventory', inventory: player.inventory });
     savePlayer(player);
     broadcast({ type: 'building_added', building });
+    // §4-4 Stage 4B(§5.5b): 통행 차단형(wall) 설치 → 교역 거리행렬·캐러밴 경로 무효화(다음 게임일 재계산)
+    if (type === 'wall') SimVillages.invalidateTradeDistances(useCx, useCy);
     return true;
   }
   const cost = BUILDING_COST[type];
@@ -3675,6 +3680,8 @@ function _tryBuildAt(player, type, floor = 0, side = null, dir = null, opts = nu
   savePlayer(player);
   broadcast({ type: 'building_added', building });
   if (autoFloorBuilding) broadcast({ type: 'building_added', building: autoFloorBuilding });
+  // §4-4 Stage 4B(§5.5b): 통행 차단형(fence — cell 진입 차단) 설치 → 교역 거리행렬·캐러밴 경로 무효화
+  if (type === 'fence') SimVillages.invalidateTradeDistances(Math.floor(gx / BUILDING_SIZE), Math.floor(gy / BUILDING_SIZE));
   return true;
 }
 
@@ -4014,6 +4021,8 @@ async function tryAttack(player) {
       bestWall.data.damaged = true;
       bestWall.data.hp = 0;
       send(player.ws, { type: 'notice', text: `💥 ${bestWall.type} 손상! 통과 가능 (수리하면 복구)` });
+      // §4-4 Stage 4B(§5.5b): 벽류 파괴(손상=통과 가능) = 개통 → 교역 거리행렬·캐러밴 경로 무효화
+      if (bestWall.type === 'wall' || bestWall.type === 'fence') SimVillages.invalidateTradeDistances(Math.floor(bestWall.x / BUILDING_SIZE), Math.floor(bestWall.y / BUILDING_SIZE));
     } else {
       send(player.ws, { type: 'notice', text: `${bestWall.type} 공격 (${bestWall.data.hp}/${maxHp})` });
     }
@@ -4697,6 +4706,7 @@ setInterval(() => {
   for (const p of players.values()) {
     if (p.handingOff) continue;
     if (p.isNpc) {
+      if (p.simCaravan) continue; // §4-4 Stage 4B: 캐러밴 실체 NPC — 이동은 villages.js 페이싱(경로 보간+벽 판정)이 전담(이중 이동 방지)
       if (!p.canadiaVillage && !isPositionActive(p.x, p.y)) continue; // dormant NPC skip
       movePlayerStep(p);
     } else {

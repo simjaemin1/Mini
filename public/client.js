@@ -22,6 +22,7 @@ const SIM_JOB_EMOJI = {
   farmer: '🌾', fisher: '🎣', hunter: '🏹', lumberjack: '🪓', miner: '⛏️',
   smith: '🔨', weaponsmith: '⚔️', armorsmith: '🛡️', forager: '🧺',
   cook: '🍲', warrior: '💂', merchant: '💰',
+  caravan: '🐂', // §4-4 Stage 4B: 캐러밴 실체 상인 — 이름에 화물('상단·<자원>') 포함, 마을 사이 실제 도보 이동
 };
 
 (() => {

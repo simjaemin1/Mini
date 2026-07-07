@@ -46,8 +46,32 @@
 //     tallyVillageJobs(zone.js 4419행: canadiaJob||npcJob만 집계)를 오염시키지 않음.
 //   · 레거시 디듀프: isLegacyVillageClaimed(name) — zone.js spawnVillagers가 시뮬이 차지한
 //     하드코딩 마을(이름 유니크 확인됨)을 스킵. ENABLE_VILLAGES=0이면 항상 false(50곳 유지).
-// Stage 4B~5 인계: 캐러밴 실체화(§5.5b — 이동 중 차단 대응은 DESIGN_DOC 참조),
-//   invalidateTradeDistances 정밀화(다리·성벽), econ 직업↔NPC '행동' 연결(어부가 물가로 등), 최적화.
+// Stage 4B (이번 단계 — 캐러밴 실체화, §5.5b "econ이 뇌, 실체가 몸"):
+//   · econ 캐러밴(tickTradeV2 → world.caravans, c.id 유니크)마다 상인 NPC 1명 스폰(기존 spawnNpc,
+//     simJob 'caravan' 🐂 — npcs Set에서 빼 일반 AI 제외, 이동은 여기 30Hz 페이싱이 전담(빙의)).
+//   · 경로 = 거리행렬과 동일 코스 그리드(DIST_STEP=4셀)·동일 지형 판정(ta.isBlocked)의 A*(8방·
+//     코너절단 금지 — 랩 tradePath 규칙) → 마을쌍 캐시. 행렬이 유한이면 경로도 존재(같은 그리드).
+//   · 동기 방식(결정): econ arriveDay/returnArriveDay가 진실(뇌) — 실체는 남은거리/남은시간
+//     페이싱으로 '그 경계에 정확히 도착'(econ 수치 무영향·econ 코드 무변경). 실체가 econ을 미는
+//     유일한 경우 = 차단: ① 로컬 A*(pathfind.js — 활성 청크라 벽 인지) 재경로 → 연장분만큼
+//     arriveDay 지연(도착 임박 가드가 econ의 조기 도착도 차단) ② 완전 고립(재경로 3연속 실패) →
+//     econ '빈손 귀환' 상태로 전이(_returningRes/_abandoned/state='inbound' — 기존 inbound 처리에
+//     위임, 화물 보존)·역경로(걸어온 정점 역순 = 통행 보장) 귀환. 제3마을 재라우팅은 econ이 도착
+//     시점에 이미 수행(가격 손절) — 벽 인지 전역 경로가 없는 현 단계의 정직한 분담(정밀화 인계).
+//   · AOI: 활성 청크(플레이어 시야)에서만 벽 충돌 판정 + vx/vy(걷기 모션), 비활성은 경로 보간만
+//     (dormant 패턴 — 보면 걸어가는 상인, 안 보면 좌표 진행). 원정 중 아사 방지(canadia 패턴 동형).
+//   · 도착 연출: 1게임시간 머묾(linger) 후 귀환. 소멸(완주·killTrader) 시 NPC 회수(player_left).
+//   · invalidateTradeDistances 실동: zone.js 벽류(wall/fence) 설치·철거·파괴 지점이 호출 —
+//     다음 게임일 행렬 재계산 + 경로 캐시 비움. ★한계(주석 의무): 행렬·경로 그리드는 지형만 판정
+//     (벽은 edge 단위 + 비활성 청크 미로드라 코스 셀 점샘플에 안 잡힘) — 벽의 경제 반영은 실체
+//     충돌(위 ①②)이 담당, 벽 인지 행렬은 Stage 5 정밀화 인계.
+// Stage 5 인계: invalidateTradeDistances 정밀화(다리·성벽 — 역인덱스·edge 인지), econ 직업↔NPC
+//   '행동' 연결(어부가 물가로 등), 동물 AI 이식 접점(캐러밴 NPC가 늑대 어그로 대상 — hp 0이면
+//   부활 후 경로 스냅 복귀만, 약탈 '연출'과 econ 약탈 주사위 결합은 도적 시스템에서), 최적화.
+//
+// 테스트 훅(추가 — 운영 무설정): VILLAGE_CARAVAN_MAX(실체 상한, 기본 60 — 초과분은 econ만 진행),
+//   VILLAGE_CARAVAN_BLOCKTEST(1=가상 장애물 1회 → 재경로 로그, 2=강제 고립 1회 → 화물보존 귀환;
+//   둘 다 invalidate 호출로 행렬 재계산 로그까지 확인).
 // =============================================================================
 'use strict';
 
@@ -59,6 +83,15 @@ const VILLAGE_MAX = Math.max(1, parseInt(process.env.VILLAGE_MAX || '20', 10)); 
 const NPC_CAP_PER_VILLAGE = Math.max(1, parseInt(process.env.VILLAGE_NPC_CAP || '40', 10));
 const POP_SYNC_PER_DAY = 2; // 인구 반영은 완만: 게임일당 마을당 ±2명까지 (증가=스폰, 감소=최근 NPC부터)
 const MIN_SPACING_PX = 12000; // 마을 간 최소 간격 — pickSeedVillages 주석 참조
+
+// --- Stage 4B: 캐러밴 실체화 상수 ---
+const PX_PER_ECON = SZ / 2.5;   // econ 좌표(셀×2.5) 1단위 = 12.8px — c.distance↔픽셀 환산(init의 ev.coord 스케일과 동일)
+const CARAVAN_BODY_MAX = Math.max(0, parseInt(process.env.VILLAGE_CARAVAN_MAX || '60', 10)); // 실체 상한 — 초과분은 econ만(canadia '상인 없으면 시각 생략' 선례)
+const CARAVAN_LINGER_DAY_FRAC = 1 / 24;      // 도착 후 머묾 = 1게임시간
+const CARAVAN_REPAIR_COOLDOWN_MS = 2000;     // 로컬 재경로 최소 간격(NPC A* 2초 간격 규칙과 동일)
+const CARAVAN_REPAIR_LOOKAHEAD_PX = 480;     // 차단 시 우회 목표 = 전방 480px(15셀) 경로 정점
+const CARAVAN_ISOLATE_FAILS = 3;             // 재경로 연속 실패 → 완전 고립 판정(§5.5b 2단계)
+const CARAVAN_BLOCKTEST = parseInt(process.env.VILLAGE_CARAVAN_BLOCKTEST || '0', 10); // 테스트 전용(헤더 주석)
 
 const state = {
   ready: false,
@@ -72,6 +105,11 @@ const state = {
   dayMs: 0,
   epoch: 0,
   lastGameDay: -1,
+  // Stage 4B — 캐러밴 실체화
+  caravanBodies: null, // Map<caravanId, body> — body = { pid, c(econ 캐러밴 ref), phase, pts, cum, len, prog, ... }
+  routeCache: null,    // Map<'aDbId_bDbId', pts|null> — 마을쌍 경로 캐시(랩 _tradePaths 동형). invalidate가 비움.
+  pathfind: null,      // require('./pathfind') — init lazy(플래그 off면 로드 없음)
+  _route: null,        // 코스 그리드 A* 스크래치(ensureRouteGrid)
 };
 
 // 게임 절대일 — zone-config WORLD(worldEpoch=0, dayLengthMs=10분)와 같은 시계 원천(Date.now).
@@ -607,6 +645,374 @@ function computeAndInjectDistMatrix(reason) {
 }
 
 // =============================================================================
+// Stage 4B — 캐러밴 실체화 ①: 마을쌍 경로 A* (거리행렬과 동일 코스 그리드·지형 판정 재사용)
+//   · 그리드/판정/스냅/코너 규칙 전부 computeAndInjectDistMatrix와 동일 — 행렬이 유한인 쌍은
+//     여기서도 반드시 경로가 나온다(같은 그래프). 스크래치는 gen-스탬프로 재사용(호출당 fill 없음).
+//   · 반환 pts = [출발px, 코스노드 중심px..., 도착px] — 노드 중심 = 행렬이 샘플한 바로 그 셀 중심.
+// =============================================================================
+function ensureRouteGrid() {
+  if (state._route) return state._route;
+  if (!state._distCtx) return null;
+  const { ta, ZONE } = state._distCtx;
+  const cellsW = Math.ceil(ZONE.zoneWidth / SZ), cellsH = Math.ceil(ZONE.zoneHeight / SZ);
+  const gw = Math.ceil(cellsW / DIST_STEP), gh = Math.ceil(cellsH / DIST_STEP);
+  state._route = {
+    ta, gw, gh, half: DIST_STEP >> 1,
+    blk: new Int8Array(gw * gh),                      // 0=미판정 1=열림 2=차단 (lazy 메모 — invalidate가 리셋)
+    g: new Int32Array(gw * gh), came: new Int32Array(gw * gh),
+    stamp: new Int32Array(gw * gh), gen: 0,           // gen-스탬프: 호출마다 fill 안 함(547×1016 노드)
+  };
+  return state._route;
+}
+function computeRoutePts(x0, y0, x1, y1) {
+  const R = ensureRouteGrid();
+  if (!R) return null;
+  const { gw, gh, half, ta } = R;
+  const isBlk = (gx, gy) => {
+    if (gx < 0 || gy < 0 || gx >= gw || gy >= gh) return true;
+    const i = gy * gw + gx;
+    if (R.blk[i] === 0) R.blk[i] = ta.isBlocked(gx * DIST_STEP + half, gy * DIST_STEP + half) ? 2 : 1;
+    return R.blk[i] === 2;
+  };
+  const snap = (px, py) => { // 행렬 srcNode와 동일 스냅(반경 6노드 나선)
+    const gx0 = Math.min(gw - 1, Math.max(0, Math.round(px / SZ / DIST_STEP)));
+    const gy0 = Math.min(gh - 1, Math.max(0, Math.round(py / SZ / DIST_STEP)));
+    if (!isBlk(gx0, gy0)) return gy0 * gw + gx0;
+    for (let r = 1; r <= 6; r++) for (let a = 0; a < 16; a++) {
+      const nx = Math.round(gx0 + Math.cos(a / 16 * 2 * Math.PI) * r), ny = Math.round(gy0 + Math.sin(a / 16 * 2 * Math.PI) * r);
+      if (nx >= 0 && ny >= 0 && nx < gw && ny < gh && !isBlk(nx, ny)) return ny * gw + nx;
+    }
+    return -1;
+  };
+  const si = snap(x0, y0), ti = snap(x1, y1);
+  if (si < 0 || ti < 0) return null;
+  const tx = ti % gw, ty = (ti / gw) | 0;
+  R.gen++;
+  const { g, came, stamp } = R, gen = R.gen;
+  const H = (x, y) => { const dx = Math.abs(x - tx), dy = Math.abs(y - ty); return dx > dy ? 10 * (dx - dy) + 14 * dy : 10 * (dy - dx) + 14 * dx; }; // octile(10/14 정합·admissible)
+  const heap = []; // {f,g,i} 이진 힙 — 탐색은 회랑 규모(휴리스틱)
+  const hpush = (n) => { heap.push(n); let c = heap.length - 1; while (c > 0) { const p = (c - 1) >> 1; if (heap[p].f <= heap[c].f) break; const t = heap[p]; heap[p] = heap[c]; heap[c] = t; c = p; } };
+  const hpop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let c = 0; for (;;) { const l = 2 * c + 1, r = 2 * c + 2; let m = c; if (l < heap.length && heap[l].f < heap[m].f) m = l; if (r < heap.length && heap[r].f < heap[m].f) m = r; if (m === c) break; const t = heap[m]; heap[m] = heap[c]; heap[c] = t; c = m; } } return top; };
+  g[si] = 0; stamp[si] = gen; came[si] = -1;
+  hpush({ f: H(si % gw, (si / gw) | 0), g: 0, i: si });
+  const DIRS = [[1, 0, 10], [-1, 0, 10], [0, 1, 10], [0, -1, 10], [1, 1, 14], [1, -1, 14], [-1, 1, 14], [-1, -1, 14]];
+  let pops = 0, found = false;
+  while (heap.length) {
+    const cur = hpop();
+    if (stamp[cur.i] === gen && cur.g !== g[cur.i]) continue; // stale(lazy 삭제)
+    if (cur.i === ti) { found = true; break; }
+    if (++pops > 250000) break; // 예산 가드(도달 불능쌍은 행렬이 이미 걸러 정상 케이스 아님)
+    const x = cur.i % gw, y = (cur.i / gw) | 0;
+    for (const [dx, dy, w] of DIRS) {
+      const nx = x + dx, ny = y + dy;
+      if (isBlk(nx, ny)) continue;
+      if (dx && dy && (isBlk(x + dx, y) || isBlk(x, y + dy))) continue; // 대각 코너 절단 금지(행렬·랩과 동일)
+      const ni = ny * gw + nx, ng = cur.g + w;
+      if (stamp[ni] !== gen || ng < g[ni]) { stamp[ni] = gen; g[ni] = ng; came[ni] = cur.i; hpush({ f: ng + H(nx, ny), g: ng, i: ni }); }
+    }
+  }
+  if (!found) return null;
+  const nodes = []; let cur2 = ti;
+  while (cur2 >= 0) { nodes.push(cur2); cur2 = came[cur2]; }
+  nodes.reverse();
+  const pts = [{ x: x0, y: y0 }];
+  for (const i of nodes) pts.push({ x: (i % gw) * DIST_STEP * SZ + half * SZ + SZ / 2, y: ((i / gw) | 0) * DIST_STEP * SZ + half * SZ + SZ / 2 });
+  pts.push({ x: x1, y: y1 });
+  return pts;
+}
+const _routeWarned = new Set();
+function getRoute(aVil, bVil) { // 무방향 쌍 캐시(랩 getTradePath 동형) — null도 캐시(불능쌍 반복 계산 방지)
+  const fwd = aVil.dbId <= bVil.dbId;
+  const key = fwd ? `${aVil.dbId}_${bVil.dbId}` : `${bVil.dbId}_${aVil.dbId}`;
+  let pts = state.routeCache.get(key);
+  if (pts === undefined) {
+    const t0 = Date.now();
+    const [s, t] = fwd ? [aVil, bVil] : [bVil, aVil];
+    pts = computeRoutePts(s.ccx * SZ + SZ / 2, s.ccy * SZ + SZ / 2, t.ccx * SZ + SZ / 2, t.ccy * SZ + SZ / 2);
+    state.routeCache.set(key, pts || null);
+    if (pts) console.log(`[${state.zoneId}] 🐂 교역로 A*: ${s.name}↔${t.name} ${pts.length}정점 ${Date.now() - t0}ms (캐시)`);
+    else if (!_routeWarned.has(key)) { _routeWarned.add(key); console.warn(`[${state.zoneId}] 🐂 교역로 A* 실패: ${s.name}↔${t.name} — 실체 생략(econ은 그대로 진행)`); }
+  }
+  if (!pts) return null;
+  return fwd ? pts.slice() : pts.slice().reverse();
+}
+
+// =============================================================================
+// Stage 4B — 캐러밴 실체화 ②: 실체(body) 수명주기 + 30Hz 페이싱.
+//   econ arriveDay가 진실 — 실체는 '남은거리/남은시간' 속도로 그 경계에 정확히 도착(자기 보정).
+//   실체→econ 역방향은 차단(지연·고립)뿐 — 모듈 헤더 'Stage 4B' 참조.
+// =============================================================================
+function econDayToMs(econDay) { // econ world.day D의 게임일 경계 절대시각(ms) — 앵커: 현 lastGameDay↔world.day 정렬
+  return state.epoch + (state.lastGameDay + (econDay - state.world.day)) * state.dayMs;
+}
+function setBodyPts(body, pts) { // 폴리라인 교체(누적길이 재계산) — prog는 새 경로 기준 0부터
+  body.pts = pts;
+  const cum = new Float64Array(pts.length);
+  let L = 0;
+  for (let i = 1; i < pts.length; i++) { L += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y); cum[i] = L; }
+  body.cum = cum; body.len = L; body.prog = 0; body.segIdx = 0;
+}
+function caravanPointAt(body, prog) { // 폴리라인 위 지점 — segIdx 단조 캐시(뒤로 가면 리셋)
+  const pts = body.pts, cum = body.cum, n = pts.length;
+  if (prog <= 0 || n < 2) return { x: pts[0].x, y: pts[0].y };
+  if (prog >= body.len) return { x: pts[n - 1].x, y: pts[n - 1].y };
+  let s = body.segIdx || 0;
+  if (s > n - 2 || cum[s] > prog) s = 0;
+  while (s < n - 2 && cum[s + 1] < prog) s++;
+  body.segIdx = s;
+  const t = (prog - cum[s]) / Math.max(1e-9, cum[s + 1] - cum[s]);
+  return { x: pts[s].x + (pts[s + 1].x - pts[s].x) * t, y: pts[s].y + (pts[s + 1].y - pts[s].y) * t };
+}
+function despawnCaravanNpc(body) { // canadia 검증 패턴(players/npcs delete + player_left)
+  const { players, npcs, broadcast } = state.deps;
+  if (players.has(body.pid)) {
+    players.delete(body.pid);
+    npcs.delete(body.pid);
+    broadcast({ type: 'player_left', pid: body.pid });
+  }
+}
+function spawnCaravanBody(c, now) {
+  const fromVil = state.byEcon.get(c.from), toVil = state.byEcon.get(c.to);
+  if (!fromVil || !toVil) return false;
+  const outbound = c.state === 'outbound'; // (통상 outbound — inbound 스폰은 상한 이월분 방어)
+  const legA = outbound ? fromVil : toVil, legB = outbound ? toVil : fromVil;
+  const pts = getRoute(legA, legB);
+  if (!pts) return false;
+  const p = state.deps.spawnNpc({
+    x: legA.ccx * SZ + SZ / 2, y: legA.ccy * SZ + SZ / 2,
+    name: `상단·${c.giveRes}`,
+    villageId: `simvil_${fromVil.dbId}`, villageName: fromVil.name,
+    skipHouse: true,
+  });
+  state.deps.npcs.delete(p.pid); // 일반 NPC AI(npcStep 루프)에서 제외 — 이동은 tickCaravanBodies가 전담(빙의)
+  p.simJob = 'caravan';          // 클라 이모지 🐂 (npcPids 밖이라 syncVillageJobs가 안 건드림)
+  p.simCaravan = true;           // zone.js 이동 루프(movePlayerStep) 제외 플래그 — 이중 이동 방지
+  p.simVillageId = fromVil.dbId;
+  const legDays = Math.max(1, outbound ? (c.arriveDay - c.departDay) : (c.returnArriveDay - c.arriveDay));
+  const body = {
+    id: c.id, pid: p.pid, c, phase: outbound ? 'outbound' : 'inbound', toV: c.to,
+    delayedDays: 0, repairFailN: 0, lastRepairAt: 0,
+    pinHunger: p.hunger, pinThirst: p.thirst, // 원정 중 게이지 고정(다게임일 이동 아사 방지 — canadia 동형)
+  };
+  setBodyPts(body, pts);
+  body.departAt = now;
+  body.arriveAt = Math.max(now + 1, econDayToMs(outbound ? c.arriveDay : c.returnArriveDay));
+  body.pxPerDay = body.len / legDays;                        // 지연 환산용 명목 속도(이 캐러밴의 일정에서 역산)
+  body.nomPxMs = body.len / Math.max(1, body.arriveAt - now); // 페이싱 상한(×4)의 기준
+  state.caravanBodies.set(c.id, body);
+  console.log(`[${state.zoneId}] 🐂 캐러밴#${c.id} 출발: ${c.from.name}→${c.to.name} ${c.giveRes}×${Math.round(c.giveAmt)} 호위${c.escort} — 경로 ${pts.length}정점 ${Math.round(body.len)}px ${legDays}게임일(econ d${c.departDay}→d${c.arriveDay})`);
+  return true;
+}
+function startReturnLeg(body, now) { // 도착 머묾(linger) 종료 → 귀환 출발
+  const c = body.c;
+  const homeVil = state.byEcon.get(c.from), hereVil = state.byEcon.get(c.to);
+  let pts = (homeVil && hereVil) ? getRoute(hereVil, homeVil) : null;
+  if (!pts) { // 폴백: 걸어온 정점 역순(경로 캐시가 비었어도 귀환 보장)
+    pts = [];
+    for (let i = body.pts.length - 1; i >= 0; i--) pts.push(body.pts[i]);
+  }
+  setBodyPts(body, pts);
+  body.phase = 'inbound';
+  const legDays = Math.max(1, c.returnArriveDay - state.world.day);
+  body.departAt = now;
+  body.arriveAt = Math.max(now + 1, econDayToMs(c.returnArriveDay));
+  body.pxPerDay = body.len / legDays;
+  body.nomPxMs = body.len / Math.max(1, body.arriveAt - now);
+  console.log(`[${state.zoneId}] 🐂 캐러밴#${c.id} 귀환 출발: ${c.to.name}→${c.from.name}${c._returningRes ? ` ${c._returningRes}×${Math.round(c._returningAmt || 0)}` : ' (빈손)'} — econ d${c.returnArriveDay} 도착 예정`);
+}
+// §5.5b 2단계 — 완전 고립: econ '빈손 귀환(화물 보존)' 상태로 전이(기존 tickCaravansV2 inbound 처리에 위임).
+//   제3 마을 재라우팅은 econ이 도착 시점 가격 손절에서 이미 수행 — 벽 인지 전역 경로가 없는 현 단계에선
+//   유일하게 통행이 보장된 길 = 걸어온 역경로. (벽 인지 행렬은 Stage 5 정밀화 인계 — 모듈 헤더 참조)
+function isolateCaravanReturn(body, p, now) {
+  const c = body.c, world = state.world;
+  c._returningRes = c.giveRes;
+  c._returningAmt = c.giveAmt;   // 화물 보존(아직 미도착 — 매도 전량 회수)
+  c._abandoned = true;
+  c.state = 'inbound';
+  const rev = [{ x: p.x, y: p.y }];
+  for (let i = Math.min(body.segIdx, body.pts.length - 1); i >= 0; i--) rev.push(body.pts[i]);
+  setBodyPts(body, rev);
+  c.distance = body.len / PX_PER_ECON; // 귀환 약탈 확률(거리 비례)에 실경로 반영
+  const days = Math.max(1, Math.ceil(body.len / Math.max(1, body.pxPerDay)));
+  c.returnArriveDay = world.day + days;
+  body.phase = 'inbound';
+  body.departAt = now;
+  body.arriveAt = Math.max(now + 1, econDayToMs(c.returnArriveDay));
+  body.nomPxMs = body.len / Math.max(1, body.arriveAt - now);
+  body.repairFailN = 0;
+  if (world._tradeAudit) world._tradeAudit.isolated = (world._tradeAudit.isolated || 0) + 1; // 감사 확장(additive)
+  world.tradeLog.push({
+    day: world.day, from: c.from.name, to: c.to.name,
+    sent: { res: c.giveRes, amt: +c.giveAmt.toFixed(2), pAtFrom: +c.pFrom_at_depart.toFixed(2), pAtTo: 0 },
+    bought: null, distance: +c.distance.toFixed(0), escort: c.escort, raided: false,
+    travelDays: days, abandoned: true, note: '이동 차단 고립 → 화물 보존 귀환(§5.5b)',
+  });
+  console.log(`[${state.zoneId}] 🐂 캐러밴#${c.id} 완전 고립(재경로 ${CARAVAN_ISOLATE_FAILS}연속 실패) → 화물 보존 귀환: ${c.to.name}→${c.from.name} ${c.giveRes}×${Math.round(c.giveAmt)} ${days}일(econ 위임 — state='inbound')`);
+}
+// §5.5b 1단계 — 이동 중 차단: 로컬 A*(벽 인지 — 활성 청크는 건물이 메모리에 로드됨) 재경로 →
+//   연장분만큼 econ arriveDay 지연. 반복 실패 시 고립 처리.
+function caravanBlockedResponse(body, p, now) {
+  if (now - body.lastRepairAt < CARAVAN_REPAIR_COOLDOWN_MS) return;
+  body.lastRepairAt = now;
+  const c = body.c;
+  // 우회 목표 = 전방 lookahead 지점의 경로 정점(차단 구간 너머)
+  let vi = Math.min(body.segIdx + 1, body.pts.length - 1);
+  const targetProg = Math.min(body.len, body.prog + CARAVAN_REPAIR_LOOKAHEAD_PX);
+  while (vi < body.pts.length - 1 && body.cum[vi] < targetProg) vi++;
+  const tgt = body.pts[vi];
+  const obs = body._testObstacle; // BLOCKTEST 전용 가상 장애물(운영 null)
+  const blockedFn = obs
+    ? (nx, ny, ox, oy, fl) => (Math.hypot(nx - obs.x, ny - obs.y) < obs.r) || state.deps.isBlockedByWall(nx, ny, ox, oy, fl)
+    : state.deps.isBlockedByWall;
+  const rp = state.pathfind ? state.pathfind.findPath(p.x, p.y, tgt.x, tgt.y, {
+    floor: 0, isBlockedFn: blockedFn, isWaterFn: state.deps.isTerrainBlockedLocal,
+    maxCells: 900, searchRadiusCells: 48, // NPC A*(200/24)보다 넉넉히 — 캐러밴은 소수·저빈도
+  }) : null;
+  body._testObstacle = null;
+  if (rp && rp.length) {
+    const oldRemain = body.len - body.prog;
+    const newPts = [{ x: p.x, y: p.y }, ...rp, ...body.pts.slice(vi + 1)];
+    setBodyPts(body, newPts);
+    const extraPx = body.len - oldRemain;
+    let pushed = 0;
+    if (extraPx > body.pxPerDay * 0.05) { // 유의미한 연장만 일 단위 지연(사소한 우회는 페이싱이 흡수)
+      pushed = Math.max(1, Math.ceil(extraPx / Math.max(1, body.pxPerDay)));
+      if (body.phase === 'outbound') { c.arriveDay += pushed; c.returnArriveDay += pushed; }
+      else c.returnArriveDay += pushed;
+      body.arriveAt += pushed * state.dayMs;
+      body.delayedDays += pushed;
+    }
+    body.repairFailN = 0;
+    console.log(`[${state.zoneId}] 🐂 캐러밴#${c.id} 차단 감지 → 로컬 재경로 성공(연장 ${Math.round(extraPx)}px${pushed ? `, econ 도착 +${pushed}일 지연` : ', 지연 없음'}) — §5.5b 1단계`);
+  } else {
+    body.repairFailN++;
+    console.log(`[${state.zoneId}] 🐂 캐러밴#${c.id} 차단 — 로컬 재경로 실패 ${body.repairFailN}/${CARAVAN_ISOLATE_FAILS}`);
+    if (body.repairFailN >= CARAVAN_ISOLATE_FAILS) {
+      if (body.phase === 'outbound' && c.state === 'outbound') isolateCaravanReturn(body, p, now);
+      else { body.repairFailN = 0; console.log(`[${state.zoneId}] 🐂 캐러밴#${c.id} 귀환로 차단 지속 — 대기(도착 임박 가드가 returnArriveDay를 민다)`); }
+    }
+  }
+}
+// 30Hz — 모든 실체 캐러밴 전진. 활성 청크(플레이어 시야)만 벽 충돌 판정, 비활성은 경로 보간(dormant 동형).
+//   idle 존 스킵보다 앞(onGameTick 최상단 호출)이라 무인 존에서도 진행 — econ과 이격 없음.
+function tickCaravanBodies(now) {
+  const bodies = state.caravanBodies;
+  const dtMs = Math.min(500, Math.max(1, now - (state._carTickAt || now)));
+  state._carTickAt = now;
+  if (!bodies || !bodies.size) return;
+  const { players, isPositionActive, isBlockedByWall } = state.deps;
+  for (const body of bodies.values()) {
+    const p = players.get(body.pid);
+    if (!p) continue; // 외부 소실(비정상) — 소멸 동기(syncCaravanBodies)가 회수
+    p.hunger = body.pinHunger; p.thirst = body.pinThirst; // 원정 중 아사 방지(스폰 시점 값 고정)
+    if (p.hp <= 0) { p.vx = 0; p.vy = 0; continue; }      // 늑대 등 사망 — 부활 후 아래 경로 스냅으로 복귀
+    if (body.phase === 'linger') {
+      p.vx = 0; p.vy = 0;
+      if (now >= body.lingerUntil) startReturnLeg(body, now);
+      continue;
+    }
+    const c = body.c;
+    const remainPx = body.len - body.prog;
+    if (remainPx <= 0.5) { p.vx = 0; p.vy = 0; continue; } // 종점 대기 — econ 경계 처리(sync)가 상태 전이/회수
+    // 테스트 훅: 가상 차단 1회(재경로 로그) 또는 강제 고립 1회 — 운영(env 무설정) 완전 무경로
+    if (CARAVAN_BLOCKTEST && !state._blockTested && body.phase === 'outbound' && body.prog > body.len * 0.25) {
+      state._blockTested = true;
+      console.log(`[${state.zoneId}] 🐂 [BLOCKTEST=${CARAVAN_BLOCKTEST}] 캐러밴#${c.id} 강제 차단 시뮬 (prog ${Math.round(body.prog)}/${Math.round(body.len)}px)`);
+      if (CARAVAN_BLOCKTEST === 2) { isolateCaravanReturn(body, p, now); }
+      else {
+        const ahead = caravanPointAt(body, body.prog + 160);
+        body._testObstacle = { x: ahead.x, y: ahead.y, r: 100 };
+        body.lastRepairAt = 0;
+        caravanBlockedResponse(body, p, now);
+      }
+      invalidateTradeDistances(Math.round(p.x / SZ), Math.round(p.y / SZ)); // 차단=무효화 훅 경로도 함께 검증
+      continue;
+    }
+    // 도착 임박 가드 — 실체가 못 갔으면 econ 도착을 뒤로(§5.5b 지연): econ이 몸을 앞지르는 것 차단.
+    //   발동 조건 = '최대 따라잡기 속도(명목×4)로도 남은 시간+2틱 안에 못 닿는 잔여'만 — 페이싱의
+    //   정상 잔여(마지막 1틱 분량)를 지연으로 오인하지 않게(첫 스모크에서 전 캐러밴 +1일 오발 확인·수정).
+    if (now >= body.arriveAt - state.dayMs * 0.02
+        && remainPx > Math.max(64, body.nomPxMs * 4 * (Math.max(0, body.arriveAt - now) + 66))) {
+      const push = Math.max(1, Math.ceil(remainPx / Math.max(1, body.pxPerDay)));
+      if (body.phase === 'outbound') { c.arriveDay += push; c.returnArriveDay += push; }
+      else c.returnArriveDay += push;
+      body.arriveAt += push * state.dayMs;
+      body.delayedDays += push;
+      console.log(`[${state.zoneId}] 🐂 캐러밴#${c.id} econ 도착 +${push}일 지연(잔여 ${Math.round(remainPx)}px — 차단/정체 흡수)`);
+    }
+    // 페이싱: 남은거리/남은시간(자기 보정) — 목표를 경계 2틱 앞으로 당겨 경계 '이전' 도착 보장.
+    //   상한 = 명목 ×4(정체 후 따라잡기 허용·순간이동 방지)
+    const speed = Math.min(remainPx / Math.max(1, body.arriveAt - 66 - now), body.nomPxMs * 4); // px/ms
+    const step = Math.min(remainPx, speed * dtMs);
+    const next = caravanPointAt(body, body.prog + step);
+    if (isPositionActive && isPositionActive(p.x, p.y) && isBlockedByWall && isBlockedByWall(next.x, next.y, p.x, p.y, 0)) {
+      p.vx = 0; p.vy = 0; // 벽(신규 건물)에 막힘 — 전진 보류 + 재경로 시도
+      caravanBlockedResponse(body, p, now);
+      continue;
+    }
+    body.prog += step;
+    p.vx = (next.x - p.x) / dtMs * 1000; p.vy = (next.y - p.y) / dtMs * 1000; // 걷기 모션용(클라 facing)
+    p.x = next.x; p.y = next.y; // 경로가 위치의 진실 — 외부 이탈(부활 등)도 다음 틱에 스냅 복귀
+  }
+}
+// 게임일 경계(econ 틱 직후) — econ 캐러밴 집합과 실체 대조: 스폰/상태 전이/회수.
+function syncCaravanBodies(now) {
+  const world = state.world, bodies = state.caravanBodies;
+  const players = state.deps.players;
+  const seen = new Set();
+  let spawned = 0, arrived = 0, removed = 0;
+  for (const c of world.caravans) {
+    if (c._done) continue;
+    seen.add(c.id);
+    const body = bodies.get(c.id);
+    if (!body) {
+      if (bodies.size < CARAVAN_BODY_MAX && spawnCaravanBody(c, now)) spawned++;
+      continue;
+    }
+    if (body.phase !== 'outbound') continue;
+    if (c.state === 'inbound') {
+      // econ 도착 확정(매도 or 빈손 손절) — 실체는 종점 스냅 + 1게임시간 머묾 후 귀환(§5.5b 연출)
+      const p = players.get(body.pid);
+      const end = caravanPointAt(body, body.len);
+      if (p) { p.x = end.x; p.y = end.y; p.vx = 0; p.vy = 0; }
+      body.prog = body.len;
+      body.phase = 'linger';
+      body.lingerUntil = now + state.dayMs * CARAVAN_LINGER_DAY_FRAC;
+      arrived++;
+      console.log(`[${state.zoneId}] 🐂 캐러밴#${c.id} 도착: ${c.from.name}→${c.to.name} ${c.giveRes}${c._abandoned ? ' (빈손 손절)' : ' 매도'} — 1게임시간 머묾 후 귀환`);
+    } else if (c.to !== body.toV) {
+      // econ 도착 시점 재라우팅(가격 손절 — 기존 로직) — 실체는 현 위치(구 목적지)에서 새 목적지로 재출발
+      const p = players.get(body.pid);
+      const pos = p ? { x: p.x, y: p.y } : caravanPointAt(body, body.prog);
+      const oldToVil = state.byEcon.get(body.toV), newToVil = state.byEcon.get(c.to);
+      let pts = (oldToVil && newToVil) ? getRoute(oldToVil, newToVil) : null;
+      if (pts) pts = [{ x: pos.x, y: pos.y }, ...pts];
+      else if (newToVil) pts = [{ x: pos.x, y: pos.y }, { x: newToVil.ccx * SZ + SZ / 2, y: newToVil.ccy * SZ + SZ / 2 }]; // 경로 실패 폴백: 직선 보간(비활성 수준 — 행렬 유한쌍이라 실사용 희박)
+      else { despawnCaravanNpc(body); bodies.delete(c.id); removed++; continue; } // 대상 마을 미상(방어) — 실체 생략, econ은 계속
+      setBodyPts(body, pts);
+      body.toV = c.to;
+      const legDays = Math.max(1, c.arriveDay - world.day);
+      body.departAt = now;
+      body.arriveAt = Math.max(now + 1, econDayToMs(c.arriveDay));
+      body.pxPerDay = body.len / legDays;
+      body.nomPxMs = body.len / Math.max(1, body.arriveAt - now);
+      console.log(`[${state.zoneId}] 🐂 캐러밴#${c.id} econ 재라우팅 → ${c.to.name} (${legDays}일) — 실체 재출발`);
+    }
+  }
+  // econ에서 사라진 캐러밴(완주 입금 or killTrader) — 실체 회수
+  for (const [id, body] of [...bodies]) {
+    if (seen.has(id)) continue;
+    const c = body.c;
+    const killed = c && c.trader && c.from && Array.isArray(c.from.npcs) && c.from.npcs.indexOf(c.trader) < 0;
+    despawnCaravanNpc(body);
+    bodies.delete(id);
+    removed++;
+    console.log(`[${state.zoneId}] 🐂 캐러밴#${id} ${killed ? '행상 사망(약탈 주사위) — 실체 소멸' : '귀환 완료 — 상인 회수'}${body.delayedDays ? ` (차단 지연 누계 ${body.delayedDays}일)` : ''}`);
+  }
+  return { spawned, arrived, removed };
+}
+
+// =============================================================================
 // 동적 무효화 훅(스텁) — Stage 4 건물 실물화(다리·성벽 설치/파괴)가 호출 예정. 지금 호출부 없음.
 // 단순 구현: 전체 행렬 dirty 플래그 → 다음 게임일 경계(자정 저장 큐 세팅 뒤)에 전쌍 재계산.
 // Stage 4 정밀화 설계(인계 — 주석 계약):
@@ -614,9 +1020,14 @@ function computeAndInjectDistMatrix(reason) {
 //   · 개통(다리 신설·바위 제거): 어떤 쌍이든 짧아질 수 있음 → 전쌍을 틱 분산(예: 1쌍/틱)으로 재계산.
 //   · 주기 안전망: N게임일마다 전쌍 리프레시(역인덱스 누락·드리프트 흡수).
 // (cx, cy) = 변화 셀 좌표 — 스텁에선 미사용(전체 dirty), 정밀화 때 역인덱스 조회 키가 된다.
+// Stage 4B부터 실동: zone.js 벽류(wall/fence) 설치·철거·파괴 지점이 호출(§5.5b 차단·개통) —
+//   다음 게임일 경계에 전쌍 재계산 + 캐러밴 경로 캐시·코스 차단 메모도 비움(다음 캐러밴부터 새 판정).
+//   ★한계: 행렬·경로 그리드의 판정은 지형만(모듈 헤더 Stage 4B 주석) — 벽의 실시간 효과는 실체 충돌이 담당.
 function invalidateTradeDistances(cx, cy) { // eslint-disable-line no-unused-vars
   if (!state.ready) return;
   state.distDirty = true;
+  if (state.routeCache) state.routeCache.clear();
+  if (state._route) state._route.blk.fill(0);
 }
 
 // =============================================================================
@@ -704,7 +1115,12 @@ function init(deps) {
     world.day = maxDay;
     state.world = world;
     state.byDbId = new Map(state.villages.map(v => [v.dbId, v]));
+    state.byEcon = new Map(state.villages.map(v => [v.econ, v])); // Stage 4B: econ 마을 객체 → 공간 마을(캐러밴 from/to 해석)
     state.claimedNames = new Set(state.villages.map(v => v.name)); // 레거시 디듀프 대상(이름 유니크 — 50곳 검증됨)
+    // Stage 4B: 캐러밴 실체 상태 — world.caravans는 비영속(재부팅 시 빈 배열)이라 복원 불필요
+    state.caravanBodies = new Map();
+    state.routeCache = new Map();
+    state.pathfind = require('./pathfind'); // 로컬 재경로(벽 인지) — lazy(플래그 off면 이 줄까지 안 옴)
 
     // --- Stage 4A: 회관·집 실물화 (buildings 테이블 — 부팅 wipe가 지운 자리에 재기록, 1트랜잭션) ---
     {
@@ -780,6 +1196,9 @@ function init(deps) {
 // =============================================================================
 function onGameTick(now) {
   if (!state.ready) return; // 플래그 off·비대상 존·init 실패 전부 여기서 차단
+  // Stage 4B: 캐러밴 실체 30Hz 전진 — zone.js idle 존 스킵보다 앞(호출 위치)이라 무인 존에서도 econ과 동행.
+  //   도착 임박 가드가 아래 경계 econ 틱보다 먼저 돌아 'econ이 몸을 앞지르는' 순서 역전이 없다.
+  try { tickCaravanBodies(now); } catch (e) { console.error(`[${state.zoneId}] 🐂 캐러밴 실체 틱 실패:`, e.message); }
   // ★자정 스파이크 분산: DB 직렬화(마을당 ~10KB JSON — 자정 틱 비용의 주범)는 이후 틱에 1마을/틱씩 배수(drain).
   //   econ 틱 자체는 일괄 유지 — 교역(tickWorldV2)이 마을 간 원자적이라 쪼개면 정합이 깨짐. 30Hz 예산(33ms) 보호.
   if (state.saveQueue && state.saveQueue.length) {
@@ -810,12 +1229,14 @@ function onGameTick(now) {
     //   clientPayload의 pop도 갱신(새 welcome 수신자 최신화). 접속자 0이어도 broadcast는 no-op 수준.
     for (const cv of (state.clientPayload || [])) if (pops[cv.id] != null) cv.pop = pops[cv.id];
     state.deps.broadcast({ type: 'sim_village_day', day: state.world.day, jobs: jobChanges, pops });
+    // Stage 4B: econ 캐러밴 집합 ↔ 실체 동기(스폰·도착 전이·회수) — econ 틱 직후라 상태가 최신
+    const carSync = syncCaravanBodies(now);
     state.saveQueue = state.villages.slice(); // 저장은 다음 틱부터 1마을/틱 — 19마을이면 0.63초에 걸쳐 완료(게임일 600s 대비 무시)
     if (state.distDirty) { // 무효화 훅(스텁) 소비 — 게임일 경계(자정 큐 세팅 뒤) 전쌍 재계산. 건물 변화는 드물어 일 1회면 족함(정밀화는 Stage 4 — 위 훅 주석).
       state.distDirty = false;
       try { computeAndInjectDistMatrix('무효화 재계산'); } catch (e) { console.error(`[${state.zoneId}] 🏘️ BFS 거리행렬 재계산 실패(기존 행렬 유지):`, e.message); }
     }
-    console.log(`[${state.zoneId}] 🏘️ 마을 econ day ${state.world.day}: 인구 ${econPop} · 스폰 NPC ${npcCount} · 저장큐 ${state.saveQueue.length}행 분산 · ${Date.now() - t0}ms`);
+    console.log(`[${state.zoneId}] 🏘️ 마을 econ day ${state.world.day}: 인구 ${econPop} · 스폰 NPC ${npcCount} · 캐러밴 실체 ${state.caravanBodies ? state.caravanBodies.size : 0}/${state.world.caravans.length}(+${carSync.spawned} 도착${carSync.arrived} 회수${carSync.removed}) · 저장큐 ${state.saveQueue.length}행 분산 · ${Date.now() - t0}ms`);
   } catch (e) {
     console.error(`[${state.zoneId}] 🏘️ 마을 econ 틱 실패 (다음 경계에 재시도):`, e.message);
   }
