@@ -75,6 +75,9 @@ function _computeVillageStats(v, N) {
   // ★땔감 부족 → 건강 페널티(비례). fuelCov=1이면 0, 0이면 -FUEL_HEALTH_W. 큰/숲빈약 마을이 연료를 못 대면 건강↓→인구 억제.
   if (v._fuelCov !== undefined && v._fuelCov < 1) stats.health += (v._fuelCov - 1) * FUEL_HEALTH_W;
   stats.fuelCov = (v._fuelCov !== undefined) ? v._fuelCov : 1;
+  // ★약재 일상 복용(§9 2차) — 건강의 세 번째 항: 재고/인구 비례, 상한으로 폭주 방지. 재고는 tickVillage가 매일 소모(흐름).
+  const _herbPC = (v.storage && v.storage.herb > 0) ? v.storage.herb / pop : 0;
+  if (_herbPC > 0) stats.health += Math.min(HERB_HEALTH_CAP, _herbPC * HERB_HEALTH_W);
   return stats;
 }
 
@@ -107,6 +110,7 @@ const RESOURCES = [
   'copper', 'tin', 'bronze_tool',  // ★청동기 주력: 구리+주석→청동(대장간) → 청동도구. 구리·주석에 실수요 부여.
   'weapon', 'armor',  // Phase 4d-7: 무기/갑옷
   'fruit', 'vegetable', 'mushroom', 'pebble', 'twig',
+  'herb',  // ★약재(§9 2차): 채집 부산물(~15%)+호골(호랑이 도축). 요양 단축·일상 복용 → 건강 공급
 ];
 
 // 부재료 set (cook이 variety 계산할 때 사용. food + 이 중 어떤 것이든 1종으로 카운트)
@@ -192,6 +196,7 @@ const BASE_VALUE = {
   meat:        2.14,   // 사냥꾼 0.7/day
   cooked_food: 2.0,    // 요리 + 부재료. 영양 풍부.
   hide:        2.5,    // 사냥 부산물이지만 도구/방어구 재료
+  herb:        4.0,    // ★약재(§9 2차): 희소·노동집약(채집 산출 15%·호골 12). 요양일수 단축 = 회수 노동일이 가격 근거
   wood:        1.67,   // 벌목 0.9/day
   stone:       2.14,   // 광부 0.7/day
   ore:         3.0,    // 광물 0.5/day. 더 귀함.
@@ -227,7 +232,7 @@ function foragerYieldsFor(v) {
     chestnut:  wood * 0.18,           // 견과 — 숲
     walnut:    wood * 0.15,           // 견과 — 숲
     honey:     wood * 0.20,           // 꿀 — 숲 (벌집)
-    medicinal_herb: fert * 0.10 + stone * 0.10,  // 약초 — 다양 환경
+    herb:      fert * 0.25 + wood * 0.20 + stone * 0.15 + 0.15,  // ★약재(§9 2차, 구 medicinal_herb 승격): 산출의 ~15% — 임연부 CPUE·MSY(forageSustain) 상한에 자동 연동
     wildflower: fert * 0.25,          // 야생화 — 평원
     grape:     fert * 0.15,           // 산포도 — 평원
   };
@@ -323,6 +328,12 @@ const PRESTIGE_MOD_CAP = 0.25;           // 보너스 상한(happyMod ~0.8 대�
 const DIVERSITY_HAPPY_W = 0.4;           // 다양성(식품군) 만점 시 행복 보너스
 const DIVERSITY_HEALTH_W = 0.5;          // 다양성 만점 시 건강 보너스(건강이 낮아 더 큰 지렛대)
 const DIVERSITY_FULL = 4;                // 이 군수면 만점(6군 중 4군 = 균형식)
+// ★약재(§9 2차) — 건강 스탯의 세 번째 공급원(식량다양성·연료 다음). "마을이 건강을 올리려 할 수 있는 일".
+//   공급: 채집 산출 ~15%(임연부 CPUE) + 호골(시각층 호랑이 도축=12). 수요: 요양 단축(랩, 일 0.5/요양자·회복×1.6) + 일상 복용(여기).
+//   수요 하드코딩 없음(캐논 §9): 이 항이 인구·생산성으로 되먹임 → 그림자가격이 채집·호랑이 사냥 노동에 값을 매김.
+const HERB_HEALTH_W = 0.5;               // health += min(CAP, herbPC×W). herbPC(재고/인구) 0.3에서 상한 도달
+const HERB_HEALTH_CAP = 0.15;            // 상한(기준 건강 0.17~0.23 → 최대 ~0.38 — 중립 0.5 초과 폭주 방지)
+const HERB_DAILY_PC = 0.01;              // 일상 복용 소모(인구 비례 흐름) — 재고가 있어야 유지되는 흐름
 // ★건강 → 작업량(생산성) — 건강한 마을이 더 생산적(상한 있어 폭주 X). happiness는 인구만(유지).
 const HEALTH_PROD_W = 0.15;              // (health−0.5)×W → ±0.075(상한 클램프 ±0.1). 완만 — 과채광 억제
 // ★죽은 커플링 연결: production stat(자재·도구·금속 비축)이 이제 실제 생산성을 올림 — 잘 갖춰진 작업장이 더 생산적(고증: 도구·설비 = 생산력).
@@ -574,7 +585,7 @@ function opportunityCost(npc, v, w) {
     case 'hunter':      return (L.game || 0) * 0.7 * (w('meat') + 0.3 * w('hide')) * sk;
     case 'lumberjack':  return (L.wood || 0) * 0.3 * w('wood') * sk;
     case 'miner':       return Math.max((L.stone || 0) * w('stone'), (L.ore || 0) * w('ore')) * 0.3 * sk;
-    case 'forager':     return Math.max(0.3, ((L.fertility || 0) + (L.wood || 0) + (L.stone || 0)) / 3) * 0.25 * w('vegetable') * sk;
+    case 'forager':     return Math.max(0.3, ((L.fertility || 0) + (L.wood || 0) + (L.stone || 0)) / 3) * 0.25 * (w('vegetable') + 0.6 * w('herb')) * sk * (v && v._forageScale != null ? v._forageScale : 1);   // ★약재 슬롯(§9): herb 산출 15%/식량계수 0.25 = 0.6 — hunter의 0.3×w('hide') 패턴. ×MSY 포화(임연부 CPUE 하락=한계생산 하락 — 포화 시 차출 허용)
     // ★자본재 장인: 노동목표 초과면 0.005(글럿 광부 0.01보다↓ → 1순위 차출), 이내면 50(유지).
     case 'smith':       return ((v.counts.smith || 0)       > smithTarget(v))       ? 0.005 : 50 * sk;
     case 'weaponsmith': return ((v.counts.weaponsmith || 0) > weaponsmithTarget(v)) ? 0.005 : 50 * sk;
@@ -665,6 +676,7 @@ function createVillage(opts) {
   v.storage.wood = initN * 8;         // 초기 주거 건축 부트스트랩 + 거래 + smith
   v.storage.stone = initN * 5;        // 초기 석재(주거·거래·smith)
   v.storage.ore = Math.floor(initN * v.land.ore * 5);  // 광물 도시는 ore 잉여로 시작
+  v.storage.herb = initN * 0.5;       // ★약재(§9): 정착민 상비약 반 근씩 — 재고0 희소폭등(가격 스파이크→채집 쏠림 과도) 방지 시드
   v.housing = Math.max(initN, HOUSE_START);   // ★주거 수용력. K = min(식량,생산) 안에서 인구가 이 값에 막힘(성장 게이트).
   return v;
 }
@@ -787,6 +799,7 @@ function tickVillage(v, day) {
   const _fishScale = (v.land.fishSustain != null && _fishRaw > 0) ? Math.min(1, v.land.fishSustain / _fishRaw) : 1;
   const _forageRaw = (v.counts.forager || 0) * JOBS.forager.base * JOBS.forager.landBoost(v);
   const _forageScale = (v.land.forageSustain != null && _forageRaw > 0) ? Math.min(1, v.land.forageSustain / _forageRaw) : 1;
+  v._forageScale = _forageScale;   // ★저장(§9): 채집 한계가치(픽커·기회비용)가 임연부 MSY 포화를 보게 — 포화 임연부에 herb 가격이 채집꾼을 무한 유인(공유지 비극)하는 것 차단
   for (const npc of v.npcs) {
     if (npc._tradingUntil && npc._tradingUntil > day) continue;   // ★교역 원정 중 → 생산 안 함(기회비용 실현). 저숙련자라 손실 작음.
     const jdef = JOBS[npc.currentJob];
@@ -921,6 +934,11 @@ function tickVillage(v, day) {
       ? DAILY_TOOL_WEAR_PER_FARMER : DAILY_TOOL_WEAR_PER_OTHER);
   }, 0);
   v.storage.tool = Math.max(0, v.storage.tool - toolWear);
+  // ★약재 일상 복용 소모(§9 2차) — 인구 비례 흐름(재고 내에서만·부족해도 페널티 없음, 건강 보너스만 사라짐). _herbUsed = 유통 진단 누적.
+  if (v.storage.herb > 0) {
+    const _hTake = Math.min(v.storage.herb, N * HERB_DAILY_PC);
+    v.storage.herb -= _hTake; v._herbUsed = (v._herbUsed || 0) + _hTake;
+  }
 
   // 2.5) 식량 부패 — 게임에선 안 쓰기로 했으므로 시뮬에서도 일관되게 제거.
   //      대신 storage 무한 비축은 chest 용량 한계(게임 메커니즘)로 표현될 예정.
@@ -1059,6 +1077,12 @@ function tickVillage(v, day) {
   while (v._dPAccum >= 1) {
     // 인구 cap — N² 폭발 방지
     if (v.npcs.length >= POP_MAX) {
+      v._dPAccum = Math.min(v._dPAccum, 0.9);
+      break;
+    }
+    // ★완공 계약 엄수(§9 회귀 가드): 다중 출생(dP>1)이 침대(주거·_mapBeds)를 넘지 않게 — 게이트는 dP만 0으로 만들고
+    //   같은 날 누적분이 침대를 1~2명 넘던 미시 구멍 봉인(건강 상승으로 dP가 커지며 표면화 — 초과 감시 0 유지).
+    if (_hcap !== Infinity && v.npcs.length >= _hcap) {
       v._dPAccum = Math.min(v._dPAccum, 0.9);
       break;
     }
@@ -1351,6 +1375,8 @@ function pickDeficitJob_rational(v, world) {
     const _hr = Math.min(0.6, Math.max(0, v._huntRisk !== undefined ? v._huntRisk : 0.08));
     candidates.push(['hunter',     v.land.game * 0.7 * period * (w('meat') + 0.3 * w('hide')) * (1 - _hr)]);
   }
+  if (hasSlot(v, 'forager', cap, counts))   // ★약재(§9 2차): 채집꾼 한계가치 — 약초 그림자가격이 채집 노동을 끌어당김(hide 패턴 복제). 0.6 = herb 산출비중 15% / 식량계수 0.25.
+    candidates.push(['forager',    forageLandMean * 0.25 * period * (w('vegetable') + 0.6 * w('herb')) * (v._forageScale != null ? v._forageScale : 1)]);   // ×MSY 포화 — 임연부가 차면(CPUE↓) 한계가치도 함께 하락 → 채집 과잉고용 차단
   if (hasSlot(v, 'merchant', cap, counts) && nearbyFoodCapacity > 0)
     candidates.push(['merchant', merchantGain]);
   // warrior — 약탈 자주 일어나는 마을에서만 의미. 추가로 weapon/armor 가용성이 호위 효과 결정.
@@ -1455,7 +1481,7 @@ function tickTrade(world, day) {
     food: 30, fish: 10, meat: 8, cooked_food: 5,
     wood: 5, stone: 3, ore: 1, tool: 1.5,
     weapon: 0.5, armor: 0.5,  // Phase 4d-7: warrior 1명당 1개 (수요)
-    fruit: 2, vegetable: 2, mushroom: 1, twig: 2, pebble: 1, hide: 1,
+    fruit: 2, vegetable: 2, mushroom: 1, twig: 2, pebble: 1, hide: 1, herb: 0.5,   // ★약재(§9) — v1 레거시 교역로에도 유통
   };
   const TRADABLE = Object.keys(RESERVE);
 
@@ -2049,7 +2075,7 @@ function computeVillagePrices(v) {
     food: 30, fish: 10, meat: 8, cooked_food: 5,
     wood: 5, stone: 3, ore: 1, tool: 1.5,
     weapon: 0.5, armor: 0.5,
-    fruit: 2, vegetable: 2, mushroom: 1, twig: 2, pebble: 1, hide: 1,
+    fruit: 2, vegetable: 2, mushroom: 1, twig: 2, pebble: 1, hide: 1, herb: 0.5,   // ★약재(§9) — v1 레거시 교역로에도 유통
   };
   // Phase 4d-8: 동적 수요 계산
   const cons = computeDailyConsumption(v);

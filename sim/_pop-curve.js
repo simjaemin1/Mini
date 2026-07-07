@@ -86,8 +86,12 @@ if (CHILD_SEED != null) {
       // ★23: 사냥 산출 — 고기 재고·사냥꾼 총원(붕괴 감시: 2026-07 숙련 분할 때 미측정 갭 발견 → 불변식화)
       p.meat = (p.meat || 0) + (v.econ && v.econ.storage ? (v.econ.storage.meat || 0) : 0);
       p.hunterN = (p.hunterN || 0) + (v.econ && v.econ.counts ? Math.round(v.econ.counts.hunter || 0) : 0);
+      // ★약재 유통 진단(§9 2차): 잔고+누적소비(_herbUsed=일상복용+요양) — 0 고착=공급 결함, 소비 0=수요 결함
+      p.herb = (p.herb || 0) + (v.econ && v.econ.storage ? (v.econ.storage.herb || 0) : 0);
+      p.herbUsed = (p.herbUsed || 0) + (v.econ ? (v.econ._herbUsed || 0) : 0);
+      p.foragerN = (p.foragerN || 0) + (v.econ && v.econ.counts ? Math.round(v.econ.counts.forager || 0) : 0);
     }
-    p.curve=global.__curve;p.aud=global.__aud;p.seedRow = `시드${CHILD_SEED} 고기${(p.meat||0).toFixed(0)} 사냥꾼${p.hunterN||0} 인구${p.pop} 마을${r.VILS.length}/${r.initVil} 동기${r.bad} 청동도구${r.VILS.reduce((a, v) => a + (v.econ.storage.bronze_tool || 0), 0).toFixed(0)} 집${p.houses}`;
+    p.curve=global.__curve;p.aud=global.__aud;p.seedRow = `시드${CHILD_SEED} 고기${(p.meat||0).toFixed(0)} 사냥꾼${p.hunterN||0} 인구${p.pop} 마을${r.VILS.length}/${r.initVil} 동기${r.bad} 청동도구${r.VILS.reduce((a, v) => a + (v.econ.storage.bronze_tool || 0), 0).toFixed(0)} 집${p.houses} 약재${(p.herb||0).toFixed(0)}/소비${(p.herbUsed||0).toFixed(0)} 채집꾼${p.foragerN||0}`;
     p.seedRow += ' 초과' + Math.max(0,...r.VILS.map(v=>v.econ._mapBeds!==undefined?(v.econ.npcs.length-v.econ._mapBeds):0)) + ' 침대' + r.VILS.reduce((a,v)=>a+(v.econ._mapBeds||0),0);   // ★완공 계약 감시(상비): 마을별 최대 초과·총 침대
   } catch (e) { p.crashed = true; p.seedRow = `시드${CHILD_SEED} 크래시: ${e.message}`; }
   process.stdout.write('@@RESULT@@' + JSON.stringify(p) + '\n');

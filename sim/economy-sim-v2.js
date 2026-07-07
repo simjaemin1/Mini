@@ -24,7 +24,7 @@ const ELASTICITY = {
   // 생존필수 — 부족시 폭등, 그러나 너무 가파르지 않게
   food: 1.2, fish: 1.2, meat: 1.2, cooked_food: 1.2,
   // 중간재
-  wood: 0.9, stone: 0.9, ore: 0.9, hide: 0.9,
+  wood: 0.9, stone: 0.9, ore: 0.9, hide: 0.9, herb: 0.9,   // ★약재(§9 2차) — 치료·복용재(중간 탄력)
   // 사치/생산수단 — 완만
   tool: 0.7, weapon: 0.6, armor: 0.6,
   // 채집물 — 자체 가치 낮음
@@ -37,6 +37,7 @@ const TRADABLE = Object.keys(ELASTICITY);
 //   원래 v1: weapon=8, tool=5. 너무 anchor가 높아 cap에 박힘.
 const BASE_VALUE_V2 = {
   food: 1.0, fish: 1.25, meat: 2.14, cooked_food: 2.0, hide: 2.0,
+  herb: 4.0,   // ★약재(§9 2차): 채집 산출 ~15%·호골 — 노동집약 anchor(v1 BASE_VALUE와 동일)
   wood: 1.67, stone: 2.14, ore: 3.0,
   tool: 3.0, weapon: 5.0, armor: 5.0,  // 8/5 → 5/3
   fruit: 1.5, vegetable: 1.5, mushroom: 1.5, twig: 1.0, pebble: 1.0,
@@ -80,7 +81,7 @@ const PRICE_ADJ_MAX = 1000;   // 사실상 풀림 (부족 신호 자유)
 const UTILITY_WEIGHT = {
   food: 1.5, cooked_food: 0.4, fish: 0.6, meat: 0.6,
   // 유용재 효용(원래값). 철은 야금투입이라 적당히. (부산물 fur·cotton·통나무 등은 의류·직물·건축 대리수요로 정당 → 유지)
-  tool: 0.5, weapon: 0.3, armor: 0.3, hide: 0.2,
+  tool: 0.5, weapon: 0.3, armor: 0.3, hide: 0.2, herb: 0.3,   // ★약재: 실수요(요양 단축+일상 복용) — target ~0.5/인, maxAdj ~40
   wood: 0.9, stone: 0.7, ore: 0.3, iron: 0.4, iron_tool: 0.5,
   copper: 0.45, tin: 0.55, bronze_tool: 0.6,   // ★청동 투입재(구리·주석)에 실수요. 주석이 희소해 더 높게.
   fruit: 0.1, vegetable: 0.1, mushroom: 0.1, twig: 0.05, pebble: 0.05,
@@ -95,6 +96,7 @@ const DECAY_V2 = {
   fruit: 0.0015, vegetable: 0.0015, mushroom: 0.0015,
   tool: 0.0005, weapon: 0.0002, armor: 0.0002,
   hide: 0.0005,
+  herb: 0.0008,   // ★약재: 말린 약재 — 느린 변질(무한 비축 방지)
   twig: 0.001, pebble: 0.0002,
   // food도 명시 (v1엔 있지만 v2 자체식 사용)
   food: 0.001,
