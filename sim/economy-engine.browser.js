@@ -1916,7 +1916,6 @@ function tickMigration(world, day) {
       if (distD > infoR * 1.5) continue;  // 이주는 정보 범위보다 좀 더
       const dstN = dst.npcs.length;
       if (dstN >= POP_MAX) continue;
-      if (dst._mapBeds !== undefined && dstN >= dst._mapBeds) continue;   // ★완공 계약: 침대 없는 마을로 이주 불가(3사본 동기화)
       const dstSurplus = dst.surplusEMA.food;
       const dstRatio = (dstSurplus + dstN) / Math.max(1, dstN);
       if (dstRatio < 1.5) continue;  // 풍요 X면 안 받음
