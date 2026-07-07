@@ -5,7 +5,7 @@ import io,os
 B=os.path.join(os.path.dirname(__file__),'..','..')
 src=io.open(os.path.join(B,'마을실험실.html'),encoding='utf-8').read()
 blk=src[src.index('// ═══ 야생 몹 생태계'):src.index('const L_CLEAR=')]
-P=[("const t=MOB_PREY[(Math.random()*MOB_PREY.length)|0],D=MOB_DEF[t];","const t=HUNT_SPECIES,D=MOB_DEF[t];/*랩 패치*/"),
+P=[("const t=MOB_PREY[(Math.random()*MOB_PREY.length)|0],D=MOB_DEF[t];","const t=_pickSp(),D=MOB_DEF[t];/*랩 패치: 복수 종 공존 — 선택 집합에서 가중 추첨*/"),
  ("const D=MOB_DEF[m.type];if(!D.pred){preyN++;preyL.push(m);}else{preds.push(m);if(D.pred===1)wolfN++;else tigN++;}",
   "const D=MOB_DEF[m.type];preyN++;/*랩: 전종 집계*/if(!D.pred)preyL.push(m);else{preds.push(m);if(D.pred===1)wolfN++;else tigN++;}"),
  ("if(m&&m.st!=='dead'&&m.st!=='hide'&&!MOB_DEF[m.type].pred){s.mobs.splice(j,1);preyN--;}   /* ★hide는 정리 금지(굴속 대기) */",
