@@ -9,6 +9,7 @@ const http = require('http');
 const { ZONES, WORLD, isNight, worldPhase, darknessLevel, findZoneAt, worldDistance, worldDeltaX } = require('./zone-config');
 const db = require('./zone-local-db'); // 로컬 zone DB — players 없음
 const SimVillages = require('./villages'); // §4-4 NPC 마을 시뮬 — top-level은 상수뿐(실작업은 아래 init 호출, ENABLE_VILLAGES=0이면 완전 no-op)
+const Wildlife = require('./wildlife'); // §4-4 동물 AI 블록(마을실험실 이식) — 야생 5종 생태. ENABLE_WILDLIFE=0 → 완전 no-op
 const central = require('./central-client'); // central HTTP 클라이언트
 const { Quadtree } = require('./quadtree'); // spatial index — O(N²) 검색 회피
 const { ChunkManager, CHUNK_SIZE, generateChunkResources, generateVillagesForZone, generateCoastlineWaterTiles } = require('./chunk'); // 청크 단위 entity 분류 + procedural + 해안선
@@ -1697,6 +1698,17 @@ setInterval(() => {
 //   ENABLE_VILLAGES=0 → init 즉시 return → isLegacyVillageClaimed 항상 false = 레거시 50곳 전부 유지(기존과 동일).
 // §4-4 Stage 4B: isPositionActive(AOI 상세/보간 분기)·isBlockedByWall(캐러밴 벽 충돌·로컬 재경로) 추가 주입.
 SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, isWaterTileLocal, isPositionActive, isBlockedByWall });
+// §4-4 마지막 조각: 동물 AI 블록(마을실험실 야생 5종 🦌🐇🐗🐺🐯) — server/wildlife.js.
+//   뷰(LOD)=활성 청크 bbox, 스폰=서식 밴드(마을 완충 100~250m — SimVillages/레거시 마을 기준),
+//   agents=사람 플레이어+활성 NPC(지각·도주·맹수 위협 대상), 피해=damagePlayer 브리지.
+//   SimVillages.init 뒤: clientVillages(마을 중심)가 준비된 시점. ENABLE_WILDLIFE=0 → init 즉시 return.
+Wildlife.init({
+  ZONE_ID, ZONE, TICK_HZ, chunkManager, mobs, players,
+  isTerrainBlockedLocal, isRockTileLocal, terrainMod: _terrain,
+  getActiveChunkKeys: () => activeChunkKeys, isPositionActive,
+  spawnCorpse, damagePlayer, broadcast, WORLD,
+  simVillages: () => SimVillages.clientVillages(), legacyVillages: VILLAGES,
+});
 // Phase 14.4: central에 NPC 길드 등록 (비동기 — 실패해도 진행)
 // 길드영토 OFF면 central 등록(50콜) 스킵 → 부팅 빠름. (영토는 후속 기능, NPC 작동엔 불필요)
 if (ZONE.npcVillageTerritory) registerVillageGuilds().catch(e => console.warn(`[${ZONE_ID}] village guild register error:`, e.message));
@@ -3836,6 +3848,8 @@ function stepArrows(dt) {
       if (Math.hypot(m.x - a.x, m.y - a.y) < ARROW_HIT_R) {
         m.hp = Math.max(0, m.hp - a.dmg);
         broadcast({ type: 'mob_damaged', mid: m.mid, hp: m.hp });
+        // §4-4 wildlife 브리지: 화살 피격 — 랩 hp 동기 + 놀람/반격(사수가 이 존 플레이어면 반격 표적)
+        if (m.isWild) Wildlife.onMobHit(m, a.dmg, players.get(a.ownerPid) || null);
         if (m.hp <= 0) { spawnCorpse(m, a.ownerId); chunkManager.removeMob?.(m); mobs.delete(m.mid); broadcast({ type: 'mob_removed', mid: m.mid }); }
         hit = true; break;
       }
@@ -3927,6 +3941,8 @@ async function tryAttack(player) {
     bestMob.hp -= atk;
     bestMob.dirty = true;
     broadcast({ type: 'mob_damaged', mid: bestMob.mid, hp: bestMob.hp });
+    // §4-4 wildlife 브리지: 본체 hp(×10 스케일)→랩 hp 동기 + 피격 반응(놀람 도주/멧돼지·늑대 반격 돌진)
+    if (bestMob.isWild) Wildlife.onMobHit(bestMob, atk, player);
     // 늑대는 공격당하면 즉시 어그로 — 단 길든 mob은 어그로 안 가짐. 팩 동료도 같이 어그로.
     if (bestMob.type === 'wolf' && !bestMob.tameOwner) {
       bestMob.aggroTarget = player.pid;
@@ -3946,12 +3962,14 @@ async function tryAttack(player) {
       chunkManager.removeMob(bestMob);
       mobs.delete(bestMob.mid);
       broadcast({ type: 'mob_removed', mid: bestMob.mid });
-      // 일정 시간 후 리스폰
-      const respawnType = bestMob.type;
-      setTimeout(() => {
-        const m = spawnMob(respawnType);
-        broadcast({ type: 'mob_spawn', mob: { mid: m.mid, type: m.type, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp } });
-      }, 15000);
+      // 일정 시간 후 리스폰 — §4-4 wildlife 몹은 제외(개체수는 랩 생태(updateMobs 스폰 target)가 관리)
+      if (!bestMob.isWild) {
+        const respawnType = bestMob.type;
+        setTimeout(() => {
+          const m = spawnMob(respawnType);
+          broadcast({ type: 'mob_spawn', mob: { mid: m.mid, type: m.type, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp } });
+        }, 15000);
+      }
     }
     return;
   }
@@ -4991,6 +5009,8 @@ setInterval(() => {
   for (const m of mobs.values()) {
     // 비활성 청크 mob 멈춤 — CPU 절약
     if (!isChunkActiveKey(m._chunkKey)) { m.vx = 0; m.vy = 0; continue; }
+    // §4-4 wildlife: 이동·AI는 wildlife.js(랩 updateMobs)가 전담 — 레거시 배회/어그로 미적용
+    if (m.isWild) continue;
     const def = MOB_DEFS[m.type];
     const sight = def.sightRange * sightMult;
 
@@ -5160,6 +5180,10 @@ setInterval(() => {
     m.x = nx; m.y = ny;
     chunkManager.updateMobChunk(m);
   }
+
+  // §4-4 동물 AI 블록(마을실험실 이식) — 활성 청크 뷰의 야생 5종. dt=1/TICK_HZ 유닛/틱(=1유닛/초, 환산 계수 1).
+  //   ENABLE_WILDLIFE=0 → no-op. 오류는 존 틱을 죽이지 않게 격리(최초 5회만 로그).
+  try { Wildlife.tick(now); } catch (e) { global._wlErr = (global._wlErr || 0) + 1; if (global._wlErr <= 5) console.error(`[${ZONE_ID}] wildlife tick 오류#${global._wlErr}:`, e); }
 
   // === AOI 필터링: per-viewer tick ===
   // 각 viewer(player+observer)에 자기 시야(AOI_RADIUS) 안 player만 송신.
