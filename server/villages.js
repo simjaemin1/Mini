@@ -136,16 +136,18 @@ function extractLandParamsApprox(ta, ccx, ccy, layout) {
   let rock = 0, forest = 0, n = 0;
   for (let dy = -R; dy <= R; dy += STEP) {
     for (let dx = -R; dx <= R; dx += STEP) {
-      if (dx * dx + dy * dy > R * R) continue;
-      n++;
+      const d2 = dx * dx + dy * dy;
+      if (d2 > R * R) continue;
+      const w9 = 1 - Math.sqrt(d2) / R;   // ★리카도 거리 감쇠(랩 extractLandParams와 동일 규칙): 가까운 산·숲일수록 가치 — 균일 분포는 불변, 뭉친 자원만 원근 차등
+      n += w9;
       const cx = ccx + dx, cy = ccy + dy;
-      if (ta.isRock(cx, cy)) rock++;
-      else if (ta.forestMult(cx, cy) > 1.2) forest++;
+      if (ta.isRock(cx, cy)) rock += w9;
+      else if (ta.forestMult(cx, cy) > 1.2) forest += w9;
     }
   }
   const rockD = n ? rock / n : 0, forD = n ? forest / n : 0;
-  const nd = ta.nearestWaterDist(ccx, ccy, 45);
-  const water = Math.max(0.05, Math.min(1, 1 - nd / 25));
+  const nd = ta.nearestWaterDist(ccx, ccy, 140);   // ★탐색 45→140(랩 자원권 R과 통일 — 100m 강도 어장권)
+  const water = Math.max(0.05, Math.min(1, 1 - nd / 140));   // ★리카도 선형 감쇠: 물가 1.0 → 100m 0.29 → 140m+ 바닥 — '멀리 강 있는 마을은 어부를 뽑되 적게'
   let tw = 0;
   const tn = (layout.territory && layout.territory.length) || 0;
   if (tn) for (const c of layout.territory) if (ta.isWater(c[0], c[1])) tw++;
