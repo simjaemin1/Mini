@@ -1332,6 +1332,7 @@ function tickVillage(v, day) {
   const _fuelKraw = woodCapFlow / fuelNeedPC;
   v._fuelKema = v._fuelKema === undefined ? _fuelKraw : 0.98 * v._fuelKema + 0.02 * _fuelKraw;
   const fuelK = v._fuelKema;
+  v._kDbg = { slot: +slotK.toFixed(1), prod: +prodK.toFixed(1), fuel: +fuelK.toFixed(1) };   // ★K 분해 노출: "이 마을은 뭐에 막혔나"(경작지·식량흐름·연료) — 진단·UI 근거
   const Kraw = Math.min(slotK, prodK, fuelK);   // ★자연 리비히 min: 식량 자리·식량 흐름·연료 흐름. (옛 K_MAX=110 임의 천장 폐지 — 수준은 지형+MB/MC 확장이 결정)
   const K = Math.max(POP_MIN, Kraw);
 
