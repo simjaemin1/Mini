@@ -444,6 +444,12 @@ function init(deps) {
 // =============================================================================
 function onGameTick(now) {
   if (!state.ready) return; // 플래그 off·비대상 존·init 실패 전부 여기서 차단
+  // ★자정 스파이크 분산: DB 직렬화(마을당 ~10KB JSON — 자정 틱 비용의 주범)는 이후 틱에 1마을/틱씩 배수(drain).
+  //   econ 틱 자체는 일괄 유지 — 교역(tickWorldV2)이 마을 간 원자적이라 쪼개면 정합이 깨짐. 30Hz 예산(33ms) 보호.
+  if (state.saveQueue && state.saveQueue.length) {
+    const vil = state.saveQueue.shift();
+    try { state.db.updateVillageState(vil.dbId, serializeEcon(vil.econ), vil.econ.npcs.length, state.world.day); } catch (e) { console.error(`[${state.zoneId}] 🏘️ 마을 저장 실패(재큐):`, e.message); state.saveQueue.push(vil); }
+  }
   const day = gameDayOf(now);
   if (day <= state.lastGameDay) return;
   state.lastGameDay = day;
@@ -457,11 +463,11 @@ function onGameTick(now) {
     let econPop = 0, npcCount = 0;
     for (const vil of state.villages) {
       econPop += vil.econ.npcs.length;
-      state.db.updateVillageState(vil.dbId, serializeEcon(vil.econ), vil.econ.npcs.length, state.world.day);
       syncVillagePop(vil, POP_SYNC_PER_DAY); // 완만 반영: ±POP_SYNC_PER_DAY/일
       npcCount += vil.npcPids.length;
     }
-    console.log(`[${state.zoneId}] 🏘️ 마을 econ day ${state.world.day}: 인구 ${econPop} · 스폰 NPC ${npcCount} · 저장 ${state.villages.length}행 · ${Date.now() - t0}ms`);
+    state.saveQueue = state.villages.slice(); // 저장은 다음 틱부터 1마을/틱 — 19마을이면 0.63초에 걸쳐 완료(게임일 600s 대비 무시)
+    console.log(`[${state.zoneId}] 🏘️ 마을 econ day ${state.world.day}: 인구 ${econPop} · 스폰 NPC ${npcCount} · 저장큐 ${state.saveQueue.length}행 분산 · ${Date.now() - t0}ms`);
   } catch (e) {
     console.error(`[${state.zoneId}] 🏘️ 마을 econ 틱 실패 (다음 경계에 재시도):`, e.message);
   }
