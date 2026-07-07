@@ -8,6 +8,7 @@ const LAB = path.join(ROOT, '마을실험실.html');
 require(path.join(__dirname, 'economy-engine.browser.js'));
 const SEEDS = [7, 42, 8, 3, 19];
 const CHILD_SEED = process.argv[2] === '--seed' ? +process.argv[3] : null;
+const CHILD_FRAMES = process.argv[4] === '--frames' ? +process.argv[5] : 1500;   // ★수동 자식 실행 한정 지평 축소(45초 프로세스 회수 회피용) — 마스터 병렬·기본값은 1500 그대로
 // ★결정론: 하네스 한정 시드 RNG(mulberry32) — H14/H15 문턱 플레이크·시드런 인구 분산(±150)의 원천이던 Math.random 비시드 제거. 브라우저 랩은 비시드 유지.
 {let _s0=(typeof CHILD_SEED!=='undefined'&&CHILD_SEED!=null?CHILD_SEED:7)*2654435761>>>0;Math.random=function(){_s0=_s0+0x6D2B79F5|0;let t=Math.imul(_s0^_s0>>>15,1|_s0);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
 
@@ -37,7 +38,8 @@ if (CHILD_SEED != null) {
   global.eval(VL.replace('const VillageLayout=', 'global.VillageLayout='));
   global.frame = function () { global.nowMs += 16; const cb = global.rafCb; global.rafCb = null; if (cb) cb(global.nowMs); };
   global.eval(PC.replace(/^function pickCenter/, 'global.pickCenter=function') + '\n' + BFS.replace(/^function bfsPath/, 'global.bfsPath=function') + '\n' + SP.replace(/^function setPath/, 'global.setPath=function') + '\n' + TP + '\n' + LIFE +
-    "\nglobal.run=function(seed){TR=buildTerrain(seed);document.getElementById('seed').value=String(seed);console.log=function(){};lifeInit();lifeGM=L_START*1440;lifeLast=0;global.nowMs=0;lifeOn=true;global.rafCb=lifeLoop;var bad=0,initVil=VILS.length;for(var fr=0;fr<1500;fr++){global.frame();if(fr%300===0)for(var k=0;k<VILS.length;k++)if(VILS[k].agents.length!==VILS[k].econ.npcs.length)bad++;}console.log=global.__log;return {bad:bad,initVil:initVil,VILS:VILS,world:ECON_WORLD};};");
+    "\nglobal.run=function(seed){TR=buildTerrain(seed);document.getElementById('seed').value=String(seed);console.log=function(){};lifeInit();lifeGM=L_START*1440;lifeLast=0;global.nowMs=0;lifeOn=true;global.rafCb=lifeLoop;var bad=0,initVil=VILS.length;for(var fr=0;fr<(global.__frames||1500);fr++){global.frame();if(fr%300===0)for(var k=0;k<VILS.length;k++)if(VILS[k].agents.length!==VILS[k].econ.npcs.length)bad++;}console.log=global.__log;return {bad:bad,initVil:initVil,VILS:VILS,world:ECON_WORLD};};");
+  global.__frames = CHILD_FRAMES;
   global.__log = _log; console.log = _log;
 
   const STAPLE = new Set(['food', 'fish', 'meat', 'stone', 'ore', 'wood', 'iron', 'copper', 'tin']);
@@ -103,6 +105,12 @@ if (CHILD_SEED != null) {
     }
     p.seedRow = `시드${CHILD_SEED} 고기${(p.meat||0).toFixed(0)} 사냥꾼${p.hunterN||0} 인구${p.pop} 마을${r.VILS.length}/${r.initVil} 동기${r.bad} 청동도구${r.VILS.reduce((a, v) => a + (v.econ.storage.bronze_tool || 0), 0).toFixed(0)} 집${p.houses} 약재${(p.herb||0).toFixed(0)}/소비${(p.herbUsed||0).toFixed(0)} 채집꾼${p.foragerN||0} 뼈${(p.bone||0).toFixed(0)}/투입${(p.boneUsed||0).toFixed(0)} 활Q${(p.bowQmin==null?1:p.bowQmin).toFixed(2)}~${(p.bowQmax||1).toFixed(2)}(무기장${p.wsmithN||0}) 호피${(p.tigerhide||0).toFixed(1)}/교역${(p.thTrade||0).toFixed(1)}`;
     p.seedRow += ' 초과' + Math.max(0,...r.VILS.map(v=>v.econ._mapBeds!==undefined?(v.econ.npcs.length-v.econ._mapBeds):0)) + ' 침대' + r.VILS.reduce((a,v)=>a+(v.econ._mapBeds||0),0);   // ★완공 계약 감시(상비): 마을별 최대 초과·총 침대
+    // ★도적 관측(§도적 — 하한 없음: 전부 0 = 평화 시드의 정직한 결과): 단 수(峰=피크)·총원·원천(전환/이탈)·약탈 성공·토벌·해산(굶주림 이탈 포함)
+    { const bs = (r.world && r.world._banditStats) || {};
+      p.bGangs = bs.gangs || 0; p.bMemb = bs.members || 0; p.bPeak = bs.peak || 0; p.bConv = bs.conv || 0; p.bExo = bs.exo || 0;
+      p.bLoot = bs.loot || 0; p.bSup = bs.sup || 0; p.bDis = bs.disband || 0; p.bStarve = bs.starve || 0; p.bAmb = bs.amb || 0;
+      p.dDen = bs.dens || 0; p.dOcc = bs.denOcc || 0; p.dClr = bs.denClear || 0; p.dForm = bs.denForm || 0;   // ★원천③ 소굴: 현존/주둔·영구 정리·누적 재결성
+      p.seedRow += ` 도적${p.bGangs}단/${p.bMemb}명(峰${p.bPeak}) 전환${p.bConv}+이탈${p.bExo} 약탈${p.bLoot} 토벌${p.bSup} 해산${p.bDis} 소굴${p.dDen}/${p.dOcc}정리${p.dClr}(결성${p.dForm})`; }
   } catch (e) { p.crashed = true; p.seedRow = `시드${CHILD_SEED} 크래시: ${e.message}`; }
   process.stdout.write('@@RESULT@@' + JSON.stringify(p) + '\n');
   process.exit(0);
