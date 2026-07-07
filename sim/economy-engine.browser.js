@@ -1102,6 +1102,11 @@ function tickVillage(v, day) {
     ? 1 + Math.min(PROD_STAT_CAP, v.lastStats.production * PROD_STAT_W) : 1;
   // ★논 프리미엄 — 개간 논비중(v._paddyShare)이 높을수록 유효비옥도↑(벼 고수확). 공간 브리지 없으면 중립.
   const _paddyMul = (v._paddyShare == null) ? 1 : (1 + PADDY_PREMIUM * (v._paddyShare - PADDY_BASE));
+  // ★어장·임연부 MSY 상한(랩 실측 land.fishSustain/forageSustain) → 어부·채집 총생산 min(raw, sustain). woodSustain(fuelK)과 동형 파이프 — 랩이 물리 어장/임연부 지속수확을 재어 econ 소득 천장을 물림(초과 시 비례 감산). sustain==null(어장/임연부 없음)이면 미적용=현행 보존(제로캡 전멸 방지).
+  const _fishRaw = (v.counts.fisher || 0) * JOBS.fisher.base * (v.land.water || 0) * toolBoostShared;
+  const _fishScale = (v.land.fishSustain != null && _fishRaw > 0) ? Math.min(1, v.land.fishSustain / _fishRaw) : 1;
+  const _forageRaw = (v.counts.forager || 0) * JOBS.forager.base * JOBS.forager.landBoost(v);
+  const _forageScale = (v.land.forageSustain != null && _forageRaw > 0) ? Math.min(1, v.land.forageSustain / _forageRaw) : 1;
   for (const npc of v.npcs) {
     if (npc._tradingUntil && npc._tradingUntil > day) continue;   // ★교역 원정 중 → 생산 안 함(기회비용 실현). 저숙련자라 손실 작음.
     const jdef = JOBS[npc.currentJob];
@@ -1116,7 +1121,8 @@ function tickVillage(v, day) {
     const landBoost = jdef.landBoost(v);
     // skill 효과 — 만렙(10)이면 ×1.5. 분업/교역 의존 강화 위해 효율 ↓.
     const skillMul = 1 + skillLvl * 0.05;
-    const baseAmt = jdef.base * landBoost * skillMul * toolBoost * inputMult
+    const jobScale = npc.currentJob === 'fisher' ? _fishScale : (npc.currentJob === 'forager' ? _forageScale : 1);   // ★어장/임연부 지속수확 상한(위 precompute) — 어부·채집만 스케일, 그 외 1
+    const baseAmt = jdef.base * landBoost * skillMul * toolBoost * inputMult * jobScale
       * (f === 'farming' ? _paddyMul * (v._clearedFrac != null ? v._clearedFrac : 1) : 1);   // ★농사엔 논 프리미엄 × 개간완료율(공간 브리지) — 개간 안 된 밭은 소출 없음. 인구↑→개간목표↑→완료율 일시↓→소출·prodK 눌림→개간이 따라잡으면 회복 = 보즈럽 시차가 K에 실시간 반영(잠재 기준 slotK는 그대로 → 데드락 없음)
 
     // produceSpecial 분기 — 각 산출에 대해 세금 떼고 storage로
