@@ -1,6 +1,8 @@
 // sim/hunt-check.js — 사냥실험실 자동 체크리스트(12 불변식). 사냥실험실.html 수정 시 매번 실행.
 // 사용: node sim/hunt-check.js   (~15초, 🦌 10일 단일 패스에서 전 지표 수집)
 const fs=require('fs'),path=require('path');
+// ★결정론: 하네스 한정 시드 RNG(mulberry32) — H14/H15 문턱 플레이크·시드런 인구 분산(±150)의 원천이던 Math.random 비시드 제거. 브라우저 랩은 비시드 유지.
+{let _s0=(typeof CHILD_SEED!=='undefined'&&CHILD_SEED!=null?CHILD_SEED:7)*2654435761>>>0;Math.random=function(){_s0=_s0+0x6D2B79F5|0;let t=Math.imul(_s0^_s0>>>15,1|_s0);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
 const SRC=fs.readFileSync(path.join(__dirname,'..','..','사냥실험실.html'),'utf8');
 let js=/<script>([\s\S]*?)<\/script>/.exec(SRC)[1].replace("'use strict';","");
 const els={};

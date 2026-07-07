@@ -8,6 +8,9 @@ const LAB = path.join(ROOT, '마을실험실.html');
 require(path.join(__dirname, 'economy-engine.browser.js'));
 const SEEDS = [7, 42, 8, 3, 19];
 const CHILD_SEED = process.argv[2] === '--seed' ? +process.argv[3] : null;
+// ★결정론: 하네스 한정 시드 RNG(mulberry32) — H14/H15 문턱 플레이크·시드런 인구 분산(±150)의 원천이던 Math.random 비시드 제거. 브라우저 랩은 비시드 유지.
+{let _s0=(typeof CHILD_SEED!=='undefined'&&CHILD_SEED!=null?CHILD_SEED:7)*2654435761>>>0;Math.random=function(){_s0=_s0+0x6D2B79F5|0;let t=Math.imul(_s0^_s0>>>15,1|_s0);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+
 
 // ═══════════════ 자식 모드: 시드 1개 구동 + 부분 집계 JSON 출력 ═══════════════
 if (CHILD_SEED != null) {
