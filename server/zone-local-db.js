@@ -180,6 +180,60 @@ function upsertMinedCell(key, prosperity, lastT) { stmtUpsertMined.run(key, pros
 function getAllMinedCells() { return stmtGetAllMined.all(); }
 function deleteMinedCell(key) { stmtDeleteMined.run(key); }
 
+// === §4-4 Stage 1: NPC 마을 시뮬 (server/villages.js) — 추가 전용 스키마 ===
+// 기존 테이블 불변. CREATE TABLE IF NOT EXISTS라 구DB에도 마이그레이션 안전.
+//   villages: 마을 1행 = econ 인스턴스 1개. econ_state = tickVillage 재개에 필요한 전체
+//             직렬화(JSON: npcs·storage·counts·housing·land·guild·treasury 등, villages.js serializeEcon).
+//   village_buildings: village-layout.js generate() 산출(집·논·밭·회관)의 셀 단위 기록.
+//                      cx/cy = 셀 좌표(×32px = 월드). floors: house만 의미(그 외 0).
+// econ 일일 로그 테이블은 이번엔 생략(과설계 방지) — econ_state.history(최근 50 스냅샷)로 충분.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS villages (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    zone        TEXT    NOT NULL,
+    name        TEXT    NOT NULL,
+    cx          INTEGER NOT NULL,
+    cy          INTEGER NOT NULL,
+    population  INTEGER NOT NULL DEFAULT 0,
+    econ_state  TEXT,
+    day         INTEGER NOT NULL DEFAULT 0,
+    created_at  INTEGER NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS village_buildings (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    village_id  INTEGER NOT NULL,
+    type        TEXT    NOT NULL,
+    cx          INTEGER NOT NULL,
+    cy          INTEGER NOT NULL,
+    floors      INTEGER NOT NULL DEFAULT 1,
+    data        TEXT,
+    created_at  INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_villages_zone ON villages(zone);
+  CREATE INDEX IF NOT EXISTS idx_village_buildings_vid ON village_buildings(village_id);
+`);
+const stmtGetVillagesByZone = db.prepare('SELECT * FROM villages WHERE zone = ? ORDER BY id');
+const stmtInsertVillage = db.prepare(
+  'INSERT INTO villages (zone, name, cx, cy, population, econ_state, day, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+);
+const stmtUpdateVillageState = db.prepare('UPDATE villages SET econ_state = ?, population = ?, day = ? WHERE id = ?');
+const stmtInsertVillageBuilding = db.prepare(
+  'INSERT INTO village_buildings (village_id, type, cx, cy, floors, data, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+);
+const stmtGetVillageBuildings = db.prepare('SELECT * FROM village_buildings WHERE village_id = ?');
+
+function getVillagesByZone(zone) { return stmtGetVillagesByZone.all(zone); }
+function insertVillage(v) {
+  const r = stmtInsertVillage.run(v.zone, v.name, v.cx | 0, v.cy | 0, v.population | 0, v.econ_state || null, v.day | 0, Date.now());
+  return r.lastInsertRowid;
+}
+function updateVillageState(id, econState, population, day) { stmtUpdateVillageState.run(econState, population | 0, day | 0, id); }
+function insertVillageBuilding(b) {
+  const r = stmtInsertVillageBuilding.run(b.village_id, b.type, b.cx | 0, b.cy | 0, b.floors | 0, b.data || null, Date.now());
+  return r.lastInsertRowid;
+}
+function getVillageBuildings(villageId) { return stmtGetVillageBuildings.all(villageId); }
+
 console.log(`[${ZONE_ID}/db] 로컬 zone DB 준비됨: ${DB_PATH}`);
 
 module.exports = {
@@ -190,4 +244,6 @@ module.exports = {
   getClaims, insertClaim,
   insertHarvestedSeed, getAllHarvestedSeeds,
   upsertMinedCell, getAllMinedCells, deleteMinedCell,
+  // §4-4 마을 시뮬 (villages.js)
+  getVillagesByZone, insertVillage, updateVillageState, insertVillageBuilding, getVillageBuildings,
 };

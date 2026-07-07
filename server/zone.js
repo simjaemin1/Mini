@@ -1676,6 +1676,10 @@ setInterval(() => {
 if (ZONE.npcVillageTerritory) registerVillageGuilds().catch(e => console.warn(`[${ZONE_ID}] village guild register error:`, e.message));
 spawnVillagers();
 
+// §4-4 Stage 2·3: NPC 마을 시뮬 훅 (server/villages.js) — ENABLE_VILLAGES=0이면 init 내부에서 완전 no-op.
+const SimVillages = require('./villages');
+SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, isWaterTileLocal });
+
 // === 디버그 충돌 테스트 방 제거됨 ===
 // 옛 5x5 'debug_room' 벽은 부팅 시 buildings에 직접 올려져 lazy-load 활성/비활성·dedupe와 어긋나
 //   클라/서버 벽 상태 불일치 → 코너 튕김 유발. 테스트 잔재라 제거. 기존 벽도 DB에서 정리(재부팅 materialize 방지).
@@ -4486,6 +4490,10 @@ setInterval(() => {
   //   (가변 dt면 서버 위치가 매 틱 클라 고정스텝과 ±몇px 달라져 30Hz 떨림.) 다른 시스템(타이머·물리)은 실시간 dt 유지.
   const moveDt = 1 / TICK_HZ;
   lastTick = now;
+
+  // §4-4 Stage 3: 마을 econ 일일 틱 훅 — 게임일 '경계'에서만 동작(평시 O(1) 검사, 30Hz 물리와 분리).
+  //   idle skip보다 앞: 무인 존에서도 마을 경제 진행(오프라인 경제). ENABLE_VILLAGES=0 → no-op.
+  SimVillages.onGameTick(now);
 
   // === 14.49-e3-perf5: idle zone skip ===
   // 사람 player(isNpc=false) + observer 모두 0명이면 tick 풀 처리 skip.
