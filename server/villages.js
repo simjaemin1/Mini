@@ -136,13 +136,11 @@ function extractLandParamsApprox(ta, ccx, ccy, layout) {
   let rock = 0, forest = 0, n = 0;
   for (let dy = -R; dy <= R; dy += STEP) {
     for (let dx = -R; dx <= R; dx += STEP) {
-      const d2 = dx * dx + dy * dy;
-      if (d2 > R * R) continue;
-      const w9 = 1 - Math.sqrt(d2) / R;   // ★리카도 거리 감쇠(랩 extractLandParams와 동일 규칙): 가까운 산·숲일수록 가치 — 균일 분포는 불변, 뭉친 자원만 원근 차등
-      n += w9;
+      if (dx * dx + dy * dy > R * R) continue;
+      n++;   // ★면적 자원 스캔 가중은 A/B로 기각(랩 시드3 인구 -15% — 배산임수상 산·숲이 중립점 밖이라 전 마을 일괄 너프). 거리 차등은 물(최근접 140 감쇠)만
       const cx = ccx + dx, cy = ccy + dy;
-      if (ta.isRock(cx, cy)) rock += w9;
-      else if (ta.forestMult(cx, cy) > 1.2) forest += w9;
+      if (ta.isRock(cx, cy)) rock++;
+      else if (ta.forestMult(cx, cy) > 1.2) forest++;
     }
   }
   const rockD = n ? rock / n : 0, forD = n ? forest / n : 0;
