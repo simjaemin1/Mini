@@ -705,7 +705,7 @@ function createVillage(opts) {
   //   부양력 오판·농부 이탈로 초반 인구 진동시켰음). 45일이면 satiation 거의 0(secF~0.1) + 교역 부트스트랩 충분.
   v.storage.food = initN * 45;
   v.storage.tool = initN * 3;         // 도구 충분
-  v.storage.wood = initN * 4;         // ★초기 주거 부트스트랩 절반(8→4) — 나머지는 벌채 부산물(deforestCell)이 공급: '지고 온 목재 + 첫 개간에서 벤 나무'로 서사 정직화
+  v.storage.wood = initN * 8;         // 초기 주거 건축 부트스트랩(사용자 확정: 원값 유지) + 벌채 부산물(deforestCell)은 별도 소량 보충
   v.storage.stone = initN * 5;        // 초기 석재(주거·거래·smith)
   v.storage.ore = Math.floor(initN * v.land.ore * 5);  // 광물 도시는 ore 잉여로 시작
   v.storage.herb = initN * 0.5;       // ★약재(§9): 정착민 상비약 반 근씩 — 재고0 희소폭등(가격 스파이크→채집 쏠림 과도) 방지 시드
