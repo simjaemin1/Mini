@@ -78,6 +78,9 @@ function _computeVillageStats(v, N) {
   // ★약재 일상 복용(§9 2차) — 건강의 세 번째 항: 재고/인구 비례, 상한으로 폭주 방지. 재고는 tickVillage가 매일 소모(흐름).
   const _herbPC = (v.storage && v.storage.herb > 0) ? v.storage.herb / pop : 0;
   if (_herbPC > 0) stats.health += Math.min(HERB_HEALTH_CAP, _herbPC * HERB_HEALTH_W);
+  // ★호피 위신재(§9 3차) — 보유 자체가 위신(positional good): 소량으로 상한 도달(희소재), 기존 PRESTIGE 항 경유로 인구 소폭 보너스.
+  const _thPC = (v.storage && v.storage.tigerhide > 0) ? v.storage.tigerhide / pop : 0;
+  if (_thPC > 0) stats.prestige += Math.min(TIGERHIDE_PRESTIGE_CAP, _thPC * TIGERHIDE_PRESTIGE_W);
   return stats;
 }
 
@@ -111,6 +114,7 @@ const RESOURCES = [
   'weapon', 'armor',  // Phase 4d-7: 무기/갑옷
   'fruit', 'vegetable', 'mushroom', 'pebble', 'twig',
   'herb',  // ★약재(§9 2차): 채집 부산물(~15%)+호골(호랑이 도축). 요양 단축·일상 복용 → 건강 공급
+  'bone', 'tigerhide',  // ★§9 3차: 뼈(사냥 부산물+시각층 대물 도축 — 무기장 활 티어 투입재) · 호피(호랑이 도축 — 최고가 위신재, 교역 전용)
 ];
 
 // 부재료 set (cook이 variety 계산할 때 사용. food + 이 중 어떤 것이든 1종으로 카운트)
@@ -197,6 +201,8 @@ const BASE_VALUE = {
   cooked_food: 2.0,    // 요리 + 부재료. 영양 풍부.
   hide:        2.5,    // 사냥 부산물이지만 도구/방어구 재료
   herb:        4.0,    // ★약재(§9 2차): 희소·노동집약(채집 산출 15%·호골 12). 요양일수 단축 = 회수 노동일이 가격 근거
+  bone:        1.5,    // ★뼈(§9 3차): 사냥 부산물(0.2/고기)+시각층 대물 도축(+1) — 풍부한 저가재. 가치는 무기장 보조 투입(활 티어)이 매김(수요 하드코딩 없음)
+  tigerhide:   40,     // ★호피(§9 3차): 호랑이 도축 +1 — 최고가 위신재(교역 전용 외생 수요+위신 스탯). "호랑이는 고기가 아니라 명예와 돈"(§8)
   wood:        1.67,   // 벌목 0.9/day
   stone:       2.14,   // 광부 0.7/day
   ore:         3.0,    // 광물 0.5/day. 더 귀함.
@@ -334,6 +340,17 @@ const DIVERSITY_FULL = 4;                // 이 군수면 만점(6군 중 4군 =
 const HERB_HEALTH_W = 0.5;               // health += min(CAP, herbPC×W). herbPC(재고/인구) 0.3에서 상한 도달
 const HERB_HEALTH_CAP = 0.15;            // 상한(기준 건강 0.17~0.23 → 최대 ~0.38 — 중립 0.5 초과 폭주 방지)
 const HERB_DAILY_PC = 0.01;              // 일상 복용 소모(인구 비례 흐름) — 재고가 있어야 유지되는 흐름
+// ★활 티어(§9 3차) — "데미지는 장비(제작 품질) 몫 — 레벨 데미지 없음"(§6 스킬 캐논): 무기장이 bone(활대 심·힘줄 백킹, 각궁 계보)을
+//   보조 투입해 만든 활이 장비 스톡을 서서히 대체(느린 상승)·마모로 희석(완만 감쇠) → v._bowQ(1.0~1.25)가 시각층 사냥 화살 데미지 배수.
+//   수요 하드코딩 없음(캐논 §9): 활 품질↑=사냥 효율↑(발수 보존 검산 — 사슴2·멧돼지3 유지, 호랑이만 7→6발) — bone 한계가치는 이 투입 경로에서 자연 발생.
+const BOW_BONE_PER_WEAPON = 0.3;         // 무기 1단위 제작당 bone 보조 투입(있으면 소비)
+const BOW_Q_SPAN = 0.25;                 // _bowQ = 1 + 투입률EMA×SPAN (1.0~1.25)
+const BOW_Q_UP = 0.02;                   // 상승 EMA(제작일) — 새 활이 스톡을 대체하는 속도(지속 투입 ~100일에 87%)
+const BOW_Q_DOWN = 0.005;                // 하락 EMA(뼈 없는 제작일) — 상질 활의 마모·희석은 더 느림
+const BOW_Q_IDLE = 0.001;                // 무기장 휴업일 감쇠 — 스톡 자체의 노후(반감 ~700일)
+// ★호피 위신재(§9 3차) — 위신 스탯 기여: prestige += min(CAP, 호피PC×W). 마을 내 소비 없음(교역 전용 외생 수요는 v2 ORNAMENTAL+수출규칙).
+const TIGERHIDE_PRESTIGE_W = 4;          // 호피 0.025/인(120명 마을 3장)에서 상한 도달 — 희소재 소량으로 위신 성립
+const TIGERHIDE_PRESTIGE_CAP = 0.1;      // 상한(PRESTIGE_MOD_CAP 0.25 스케일 대비 소폭 — 위신재 한 종의 왜곡 방지)
 // ★건강 → 작업량(생산성) — 건강한 마을이 더 생산적(상한 있어 폭주 X). happiness는 인구만(유지).
 const HEALTH_PROD_W = 0.15;              // (health−0.5)×W → ±0.075(상한 클램프 ±0.1). 완만 — 과채광 억제
 // ★죽은 커플링 연결: production stat(자재·도구·금속 비축)이 이제 실제 생산성을 올림 — 잘 갖춰진 작업장이 더 생산적(고증: 도구·설비 = 생산력).
@@ -677,6 +694,7 @@ function createVillage(opts) {
   v.storage.stone = initN * 5;        // 초기 석재(주거·거래·smith)
   v.storage.ore = Math.floor(initN * v.land.ore * 5);  // 광물 도시는 ore 잉여로 시작
   v.storage.herb = initN * 0.5;       // ★약재(§9): 정착민 상비약 반 근씩 — 재고0 희소폭등(가격 스파이크→채집 쏠림 과도) 방지 시드
+  v.storage.weapon = Math.max(v.storage.weapon || 0, initN * 0.15);   // ★활 시드(§9 3차): 정착민 사냥꾼은 제 활을 들고 옴(~초기 사냥꾼 수) — t=0 무기 결손이 무기장 캐치업·교역을 흔드는 것 방지(herb 패턴)
   v.housing = Math.max(initN, HOUSE_START);   // ★주거 수용력. K = min(식량,생산) 안에서 인구가 이 값에 막힘(성장 게이트).
   return v;
 }
@@ -871,8 +889,20 @@ function tickVillage(v, day) {
       }
     } else if (jdef.produceSpecial === 'weaponsmith') {
       // ★무기 제작(청동기): 청동검 *우선*(주력 무기) → 청동 재료 부족 시 철검(희소) → 최후 돌칼.
+      //   ★활(§9 3차): 무기 사용자 다수가 사냥꾼인 마을은 활 제작 — 활=목재+뼈(활대 심·힘줄 백킹), 청동 아님.
+      //   (실측 교훈: 사냥꾼 무기 수요를 검 레시피로 채우면 도구용 청동을 잠식 — 청동도구 -18%·인구 -33% 회귀. 재료 분리가 §6 "장비 품질" 티어의 물적 기반)
       const amt = jdef.base * skillMul;
-      if ((v.storage.copper || 0) >= 0.3 && (v.storage.tin || 0) >= 0.12) {
+      const _bowUsers = v.counts.hunter || 0, _bladeUsers = v.counts.warrior || 0;
+      if (_bowUsers > _bladeUsers && (v.storage.wood || 0) >= 0.6) {
+        v.storage.wood -= 0.6;   // ★활: 목재 활대(자급 재료 — 검 금속과 비경합)
+        addProduce('weapon', amt);
+        workNPC(npc);
+        // ★활 티어: bone 보조 투입(있으면 0.3/활 소비) → 일 집계는 tickVillage 말미의 EMA(_bowQ)가 흡수. 검 제작은 무관(활 스톡 질만).
+        const _bNeed = amt * BOW_BONE_PER_WEAPON;
+        const _bIn = Math.min(v.storage.bone || 0, _bNeed);
+        if (_bIn > 0) { v.storage.bone -= _bIn; v._boneUsed = (v._boneUsed || 0) + _bIn; }
+        v._bowIn = (v._bowIn || 0) + _bIn; v._bowNeed = (v._bowNeed || 0) + _bNeed;
+      } else if ((v.storage.copper || 0) >= 0.3 && (v.storage.tin || 0) >= 0.12) {
         v.storage.copper -= 0.3; v.storage.tin -= 0.12;   // ★청동검(청동기 주력 무기)
         addProduce('weapon', amt);
         workNPC(npc);
@@ -939,6 +969,14 @@ function tickVillage(v, day) {
     const _hTake = Math.min(v.storage.herb, N * HERB_DAILY_PC);
     v.storage.herb -= _hTake; v._herbUsed = (v._herbUsed || 0) + _hTake;
   }
+  // ★활 품질 EMA(§9 3차) — 오늘 무기 제작분의 bone 투입률이 장비 스톡의 질을 갱신(비대칭: 상승 느림·희석 더 느림). 제작 없는 날은 미세 노후만.
+  if ((v._bowNeed || 0) > 0) {
+    const _br = (v._bowIn || 0) / v._bowNeed;
+    const _ba = _br > (v._bowR || 0) ? BOW_Q_UP : BOW_Q_DOWN;
+    v._bowR = (v._bowR || 0) * (1 - _ba) + _br * _ba;
+  } else if (v._bowR) v._bowR *= (1 - BOW_Q_IDLE);
+  v._bowIn = 0; v._bowNeed = 0;
+  v._bowQ = 1 + BOW_Q_SPAN * (v._bowR || 0);
 
   // 2.5) 식량 부패 — 게임에선 안 쓰기로 했으므로 시뮬에서도 일관되게 제거.
   //      대신 storage 무한 비축은 chest 용량 한계(게임 메커니즘)로 표현될 예정.
@@ -985,7 +1023,7 @@ function tickVillage(v, day) {
   // ★땔감 소비 — (1)요리·난방=인구비례 (2)제련=야금공 비례(청동 제련은 고온·대량 연료). 생산 반영된 재고에서 차감.
   //   충당률 fuelCov를 저장 → _computeVillageStats가 건강에 비례 페널티로 반영(부족→건강↓→인구·생산성↓).
   //   재고를 실제로 축내므로 subsistence picker(wood<N×5)가 벌목꾼을 더 배치 → 숲 압박. 야금촌은 제련연료로 숲을 더 빨리 소진(고증: 제련=삼림파괴 동인).
-  const smelters = (v.counts.smith || 0) + (v.counts.weaponsmith || 0) + (v.counts.armorsmith || 0);
+  const smelters = (v.counts.smith || 0) + ((v.counts.hunter || 0) > (v.counts.warrior || 0) ? 0 : (v.counts.weaponsmith || 0)) + (v.counts.armorsmith || 0);   // ★§9 3차: 활 마을(사냥꾼 다수)의 무기장=궁장(弓匠, 목공) — 노 화로·제련 연료 0(레시피 분기와 동일 조건)
   const fuelNeed = N * FIREWOOD_PC + smelters * SMELT_FUEL_PER;
   // ★볏짚 먼저(공짜 부산물, 당일 소진 — 취사·난방용. 제련은 고온이라 목재만) → 부족분만 목재.
   const strawFuel = Math.min(N * FIREWOOD_PC, (v._grainToday || 0) * STRAW_FUEL_PER_FOOD);
@@ -1194,8 +1232,8 @@ function pickDeficitJob(v) {
       hasSlot(v, 'warrior', cap, counts)) {
     return 'warrior';
   }
-  // Phase 4d-7: weaponsmith — warrior 있고 ore 잉여인 마을
-  if ((counts.warrior || 0) >= 1 && v.storage.ore > N * 1 && v.storage.weapon < N * 0.5 &&
+  // Phase 4d-7: weaponsmith — warrior(검) 또는 hunter 2+(★§9 3차: 활) 있고 ore 잉여인 마을
+  if (((counts.warrior || 0) >= 1 || (counts.hunter || 0) >= 2) && v.storage.ore > N * 1 && v.storage.weapon < N * 0.5 &&
       hasSlot(v, 'weaponsmith', cap, counts)) {
     return 'weaponsmith';
   }
@@ -1264,8 +1302,9 @@ function warriorTarget(v) {
 }
 function weaponsmithTarget(v) {
   // 무기는 교역으로 새어나가(약탈·전투 소모는 없지만 수출) → 전사 마을은 *상시* 무기장 필요.
-  //   사용자 = 현 전사 + 목표 전사(선제 무장). 누수 대비 buffer·decay 넉넉히.
-  const users = Math.max(v.counts.warrior || 0, warriorTarget(v));
+  //   사용자 = 현 전사 + 목표 전사(선제 무장) + ★사냥꾼(§9 3차: 활 — §5.6 "archery는 직업 무관 무기 필드". 활 티어(bone 투입)의 실사용자라
+  //   무기장이 사냥 마을에도 서야 _bowQ가 산다. 실측: 종전(전사만)엔 시드런 무기장 0 = bone 투입 경로 사망).
+  const users = Math.max((v.counts.warrior || 0) + (v.counts.hunter || 0), warriorTarget(v));
   return craftLaborTarget(v.storage.weapon || 0, users, 0.5, { buffer: 1.3, catchup: 30, decay: 0.002, minStock: users > 0 ? 2 : 0 });
 }
 function armorsmithTarget(v) {
@@ -1318,7 +1357,7 @@ function pickDeficitJob_rational(v, world) {
   //   재료 게이트: 대장간 돌, 무기장 돌, 갑옷장 가죽 필요. 충원 후엔 marginal 후보에서 빠져 식량·자원직과 경쟁 안 함.
   let _toolDeps = toolDepCount(v);
   if ((counts.smith || 0) < smithTarget(v) && (v.storage.stone || 0) >= 0.6) return 'smith';
-  if ((counts.weaponsmith || 0) < weaponsmithTarget(v) && (v.storage.stone || 0) > N * 0.3) return 'weaponsmith';
+  if ((counts.weaponsmith || 0) < weaponsmithTarget(v) && ((v.storage.stone || 0) > N * 0.3 || (v.storage.wood || 0) > N * 0.5)) return 'weaponsmith';   // ★§9 3차: 활 마을(사냥꾼 다수)은 목재가 재료 — 돌 없어도 성립
   if ((counts.armorsmith || 0) < armorsmithTarget(v) && (v.storage.hide || 0) > N * 0.3) return 'armorsmith';
   // ★주거 압박: 집이 거의 가득(인구 성장 막힘) + 집 지을 목재 부족 → 나무꾼. 집 지어야 인구가 늚 → 고리를 닫는 안전망.
   if (v.housing !== undefined && N >= v.housing * 0.95 && (v.storage.wood || 0) < N * 2 && hasSlot(v, 'lumberjack', cap, counts)) return 'lumberjack';
@@ -1482,6 +1521,7 @@ function tickTrade(world, day) {
     wood: 5, stone: 3, ore: 1, tool: 1.5,
     weapon: 0.5, armor: 0.5,  // Phase 4d-7: warrior 1명당 1개 (수요)
     fruit: 2, vegetable: 2, mushroom: 1, twig: 2, pebble: 1, hide: 1, herb: 0.5,   // ★약재(§9) — v1 레거시 교역로에도 유통
+    bone: 1, tigerhide: 0.03,   // ★§9 3차 — 뼈(무기장 투입 예비 1/인) · 호피(위신 포화점만 쥐고 잉여 수출)
   };
   const TRADABLE = Object.keys(RESERVE);
 
@@ -2076,6 +2116,7 @@ function computeVillagePrices(v) {
     wood: 5, stone: 3, ore: 1, tool: 1.5,
     weapon: 0.5, armor: 0.5,
     fruit: 2, vegetable: 2, mushroom: 1, twig: 2, pebble: 1, hide: 1, herb: 0.5,   // ★약재(§9) — v1 레거시 교역로에도 유통
+    bone: 1, tigerhide: 0.03,   // ★§9 3차 — 뼈(무기장 투입 예비 1/인) · 호피(위신 포화점만 쥐고 잉여 수출)
   };
   // Phase 4d-8: 동적 수요 계산
   const cons = computeDailyConsumption(v);
@@ -2101,6 +2142,7 @@ module.exports = {
   RESOURCES,
   BASE_VALUE,
   JOBS,
+  TIGERHIDE_PRESTIGE_W, TIGERHIDE_PRESTIGE_CAP,   // ★호피(§9 3차): v2 수출규칙이 위신 포화점(CAP/W)을 유도하도록 단일 진실 공유
   // v2 시뮬용 빌려쓰기
   createVillage,
   createNPC,

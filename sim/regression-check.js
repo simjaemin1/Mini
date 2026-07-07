@@ -41,7 +41,7 @@ if (CHILD_SEED != null) {
   global.__log = _log; console.log = _log;
 
   const STAPLE = new Set(['food', 'fish', 'meat', 'stone', 'ore', 'wood', 'iron', 'copper', 'tin']);
-  const ORN = new Set(['gold', 'silver', 'gem']);
+  const ORN = new Set(['gold', 'silver', 'gem', 'tigerhide']);   // ★호피(§9 3차)=위신재 교역 부류(tradeOrn 집계 편입)
   const p = { seed: CHILD_SEED, pop: 0, bad: 0, initVil: 0, finalVil: 0, mining: 0, forest: 0, bronze: 0, iron: 0, stoneTool: 0, copperTin: 0,
     weaponShort: 0, villages: 0, houses: 0, tradeStaple: 0, tradeOrn: 0, craftBloat: 0, maxCraftFrac: 0,
     maxAccumPer: 0, maxVilPop: 0, smithVil: 0, housesTot: 0, housesOut: 0, terrSync: 0, terrOverlap: 0, gameUsed: 0, gameDead: 0, crashed: false, seedRow: '' };
@@ -73,7 +73,7 @@ if (CHILD_SEED != null) {
       }
     }
     for (const t of (r.world.tradeLog || [])) {
-      for (const side of [t.sent, t.bought]) { if (!side) continue; if (STAPLE.has(side.res)) p.tradeStaple += side.amt || 0; else if (ORN.has(side.res)) p.tradeOrn += side.amt || 0; }
+      for (const side of [t.sent, t.bought]) { if (!side) continue; if (STAPLE.has(side.res)) p.tradeStaple += side.amt || 0; else if (ORN.has(side.res)) p.tradeOrn += side.amt || 0; if (side.res === 'tigerhide') p.thTrade = (p.thTrade || 0) + (side.amt || 0); }
     }
     // ★20/21: 공간 영토 = econ land.size 동기(E2c) + 마을 간 영토 겹침 0(전역 소유맵)
     const _seen = new Map();
@@ -93,8 +93,15 @@ if (CHILD_SEED != null) {
       p.herb = (p.herb || 0) + (v.econ && v.econ.storage ? (v.econ.storage.herb || 0) : 0);
       p.herbUsed = (p.herbUsed || 0) + (v.econ ? (v.econ._herbUsed || 0) : 0);
       p.foragerN = (p.foragerN || 0) + (v.econ && v.econ.counts ? Math.round(v.econ.counts.forager || 0) : 0);
+      // ★활 티어·호피 유통 진단(§9 3차): 뼈 잔고+무기장 투입(_boneUsed — 0=경로 사망, _bowQ 1.0 고착=결함) · 호피 잔고(교역은 tradeLog).
+      p.bone = (p.bone || 0) + (v.econ && v.econ.storage ? (v.econ.storage.bone || 0) : 0);
+      p.boneUsed = (p.boneUsed || 0) + (v.econ ? (v.econ._boneUsed || 0) : 0);
+      p.tigerhide = (p.tigerhide || 0) + (v.econ && v.econ.storage ? (v.econ.storage.tigerhide || 0) : 0);
+      const _bq = (v.econ && v.econ._bowQ) || 1;
+      p.bowQmax = Math.max(p.bowQmax || 1, _bq); p.bowQmin = (p.bowQmin == null || _bq < p.bowQmin) ? _bq : p.bowQmin;
+      p.wsmithN = (p.wsmithN || 0) + (v.econ && v.econ.counts ? Math.round(v.econ.counts.weaponsmith || 0) : 0);
     }
-    p.seedRow = `시드${CHILD_SEED} 고기${(p.meat||0).toFixed(0)} 사냥꾼${p.hunterN||0} 인구${p.pop} 마을${r.VILS.length}/${r.initVil} 동기${r.bad} 청동도구${r.VILS.reduce((a, v) => a + (v.econ.storage.bronze_tool || 0), 0).toFixed(0)} 집${p.houses} 약재${(p.herb||0).toFixed(0)}/소비${(p.herbUsed||0).toFixed(0)} 채집꾼${p.foragerN||0}`;
+    p.seedRow = `시드${CHILD_SEED} 고기${(p.meat||0).toFixed(0)} 사냥꾼${p.hunterN||0} 인구${p.pop} 마을${r.VILS.length}/${r.initVil} 동기${r.bad} 청동도구${r.VILS.reduce((a, v) => a + (v.econ.storage.bronze_tool || 0), 0).toFixed(0)} 집${p.houses} 약재${(p.herb||0).toFixed(0)}/소비${(p.herbUsed||0).toFixed(0)} 채집꾼${p.foragerN||0} 뼈${(p.bone||0).toFixed(0)}/투입${(p.boneUsed||0).toFixed(0)} 활Q${(p.bowQmin==null?1:p.bowQmin).toFixed(2)}~${(p.bowQmax||1).toFixed(2)}(무기장${p.wsmithN||0}) 호피${(p.tigerhide||0).toFixed(1)}/교역${(p.thTrade||0).toFixed(1)}`;
     p.seedRow += ' 초과' + Math.max(0,...r.VILS.map(v=>v.econ._mapBeds!==undefined?(v.econ.npcs.length-v.econ._mapBeds):0)) + ' 침대' + r.VILS.reduce((a,v)=>a+(v.econ._mapBeds||0),0);   // ★완공 계약 감시(상비): 마을별 최대 초과·총 침대
   } catch (e) { p.crashed = true; p.seedRow = `시드${CHILD_SEED} 크래시: ${e.message}`; }
   process.stdout.write('@@RESULT@@' + JSON.stringify(p) + '\n');

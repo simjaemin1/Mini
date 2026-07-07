@@ -25,8 +25,10 @@ const ELASTICITY = {
   food: 1.2, fish: 1.2, meat: 1.2, cooked_food: 1.2,
   // 중간재
   wood: 0.9, stone: 0.9, ore: 0.9, hide: 0.9, herb: 0.9,   // ★약재(§9 2차) — 치료·복용재(중간 탄력)
+  bone: 0.9,   // ★뼈(§9 3차) — 무기장 투입재(중간 탄력, specialty livestock 1.1을 명시 정의로 대체)
   // 사치/생산수단 — 완만
   tool: 0.7, weapon: 0.6, armor: 0.6,
+  tigerhide: 0.6,   // ★호피(§9 3차) — 위신재(사치 완만 — 부족해도 폭등 대신 프리미엄)
   // 채집물 — 자체 가치 낮음
   fruit: 1.0, vegetable: 1.0, mushroom: 1.0, twig: 0.7, pebble: 0.7,
 };
@@ -38,6 +40,7 @@ const TRADABLE = Object.keys(ELASTICITY);
 const BASE_VALUE_V2 = {
   food: 1.0, fish: 1.25, meat: 2.14, cooked_food: 2.0, hide: 2.0,
   herb: 4.0,   // ★약재(§9 2차): 채집 산출 ~15%·호골 — 노동집약 anchor(v1 BASE_VALUE와 동일)
+  bone: 1.5, tigerhide: 40,   // ★§9 3차: 뼈(풍부 저가 투입재) · 호피(최고가 위신재 — 희소 0.3/일 사냥 위험이 anchor 근거, v1 동일)
   wood: 1.67, stone: 2.14, ore: 3.0,
   tool: 3.0, weapon: 5.0, armor: 5.0,  // 8/5 → 5/3
   fruit: 1.5, vegetable: 1.5, mushroom: 1.5, twig: 1.0, pebble: 1.0,
@@ -82,12 +85,14 @@ const UTILITY_WEIGHT = {
   food: 1.5, cooked_food: 0.4, fish: 0.6, meat: 0.6,
   // 유용재 효용(원래값). 철은 야금투입이라 적당히. (부산물 fur·cotton·통나무 등은 의류·직물·건축 대리수요로 정당 → 유지)
   tool: 0.5, weapon: 0.3, armor: 0.3, hide: 0.2, herb: 0.3,   // ★약재: 실수요(요양 단축+일상 복용) — target ~0.5/인, maxAdj ~40
+  bone: 0.25, tigerhide: 0.3,   // ★§9 3차: 뼈=저효용 투입재(specialty 0.4를 명시 대체 — 풍부재 과대 target 방지) · 호피=위신 실수요(maxAdj ~40)
   wood: 0.9, stone: 0.7, ore: 0.3, iron: 0.4, iron_tool: 0.5,
   copper: 0.45, tin: 0.55, bronze_tool: 0.6,   // ★청동 투입재(구리·주석)에 실수요. 주석이 희소해 더 높게.
   fruit: 0.1, vegetable: 0.1, mushroom: 0.1, twig: 0.05, pebble: 0.05,
 };
 // ★순수 장식재 — use-value 없음(못 먹고 못 만듦). 화폐/위신재 모델링 전엔 수요 0에 가깝게(가짜 수요 제거).
-const ORNAMENTAL = { gold: 1, silver: 1, gem: 1, pearl: 1, amber: 1, jade: 1, ivory: 1 };
+//   (예외적으로 LUX_TARGET_PC 목표 보유 수요는 있음 — 아래 computeShadowPrices. ★호피(§9 3차)도 이 장식재 프레임에 편입: 마을 내 소비 없음·교역 전용)
+const ORNAMENTAL = { gold: 1, silver: 1, gem: 1, pearl: 1, amber: 1, jade: 1, ivory: 1, tigerhide: 1 };
 
 // === 자원 부패율 — base는 약하게 (인구 영향 X), excess만 강하게 ===
 //   stock 비례 부패에서 multiplier가 진짜 일함.
@@ -97,6 +102,7 @@ const DECAY_V2 = {
   tool: 0.0005, weapon: 0.0002, armor: 0.0002,
   hide: 0.0005,
   herb: 0.0008,   // ★약재: 말린 약재 — 느린 변질(무한 비축 방지)
+  bone: 0.0008, tigerhide: 0.0003,   // ★§9 3차: 뼈=풍화(무한 축적 방지) · 호피=애장 보존(느린 손실 — 세대 단위 상한)
   twig: 0.001, pebble: 0.0002,
   // food도 명시 (v1엔 있지만 v2 자체식 사용)
   food: 0.001,
@@ -183,6 +189,8 @@ const TRADE_SPARE_UTIL = 0.11;
 // ★위신재(사치) 수요 — 장식재의 use-value는 물리소비가 아니라 위신·심리(positional good). 1인당 목표 보유로 수요 부여.
 //   없는 마을은 교역으로 수입, 광산촌(부산물로 쟁여둠)은 잉여 수출 → 죽어있던 장식교역이 살아나고 광산촌 수입원 다각화.
 const LUX_TARGET_PC = 0.08;   // 1인당 위신재 목표(각 장식재). 이 근처서 만족(체감), 광산촌은 훨씬 위라 수출.
+// ★호피(§9 3차) 수출 유보점 = v1 위신 포화점(CAP/W = 0.025/인)×1.2 — 위신 상한을 채우는 만큼만 쥐고 잉여는 교역재(외생 수요는 ORNAMENTAL·LUX_TARGET_PC가 부여).
+const TIGERHIDE_KEEP_PC = 1.2 * ((v1.TIGERHIDE_PRESTIGE_CAP && v1.TIGERHIDE_PRESTIGE_W) ? v1.TIGERHIDE_PRESTIGE_CAP / v1.TIGERHIDE_PRESTIGE_W : 0.025);
 // ★식량 다양성 수요 — 자체 생산 못 하는 식품군(생선·고기·과일·채소·버섯)은 소량 수입 수요를 가짐.
 //   "식량 충분해도 한 가지뿐이면 싼 걸 비싼 다른 식량과 바꿔온다"(사용자). 결핍 시 target↑ → 가격↑ → 교역이 채움.
 const VARIETY_FOOD = { fish: 1, meat: 1, fruit: 1, vegetable: 1, mushroom: 1 };
@@ -212,7 +220,7 @@ function computeShadowPrices(v) {
   const toolStock = (v.storage.tool || 0) + (v.storage.bronze_tool || 0) + (v.storage.iron_tool || 0);
   const CAP_TARGET = {
     tool: Math.max(1, toolDeps), bronze_tool: Math.max(1, toolDeps), iron_tool: Math.max(1, toolDeps),
-    weapon: Math.max(2, warN * 1.2), armor: Math.max(1, warN),   // 무기 바닥2 = 약탈위협 선제비축 시드
+    weapon: Math.max(2, warN * 1.2), armor: Math.max(1, warN),   // 무기 바닥2 = 약탈위협 선제비축 시드. (★§9 3차 실측: 사냥꾼 포함 시 t=0 전 마을 무기 희소폭등 → 캐러밴이 식량 대신 무기 쏠림 → 시드7 인구 -36%·마을 소멸 — 활 조달은 가격 신호 아닌 마을 내 무기장 노동(weaponsmithTarget)+시드 재고로)
   };
   const CAP_STOCK = { tool: toolStock, bronze_tool: toolStock, iron_tool: toolStock };  // 도구는 *합산* 재고로 희소도 평가
   for (const r of TRADABLE) {
@@ -271,9 +279,11 @@ function tickSubsistence(v, day) {
   }
   // ★무기·갑옷 마모 = 전사(사용자) 비례 — 인구 전체가 아님(내구 자본). 전사 1명당 0.01/일.
   //   대장간 1명(≈0.45/일)이 전사 수십까지 충분히 유지 → 전사 무장 안정.
+  //   ★활(§9 3차): 사냥꾼도 무기(활) 마모 — 전투 무기의 절반(0.005/일, 활 수명 ~200일: 일상 손질 전제). 흐름이 있어야 무기장·bone 투입이 1회성으로 안 죽음.
   const warN = v.counts.warrior || 0;
+  const huntN2 = v.counts.hunter || 0;
   for (const r of ['weapon', 'armor']) {
-    const wear = warN * 0.01;
+    const wear = (r === 'weapon' ? warN + huntN2 * 0.5 : warN) * 0.01;
     const have = v.storage[r] || 0;
     v.storage[r] = Math.max(0, have - Math.min(wear, have));
   }
@@ -359,6 +369,7 @@ function tickTradeV2(world, day) {
       const CAPITAL = { tool: 1, bronze_tool: 1, iron_tool: 1 };   // ★도구=자본재(돌·청동·철). 팔아치우면 생산 0.25×로 붕괴 → 1인당 1개 보유 후 잉여만.
       const WEAPONR = { weapon: 1, armor: 1 };      // ★무기·갑옷=전사 장비. 전사 수만큼 보유(팔면 전사 무장해제).
       const warN = (a.v.counts && a.v.counts.warrior) || 0;
+      const huntN3 = (a.v.counts && a.v.counts.hunter) || 0;   // ★활(§9 3차): 사냥꾼 활도 마을 장비 — 수출 유보에 포함(마을 활을 팔아치우면 사냥 무장해제)
       const candidates = [];
       for (const r of TRADABLE) {
         const stock = a.v.storage[r] || 0;
@@ -368,7 +379,9 @@ function tickTradeV2(world, day) {
         let keep, thresh;
         if (FOODR[r]) { keep = target * 1.2; thresh = target * 1.4; }       // 식량: 36일치 보유(>기근30), 42일치 초과만 수출
         else if (CAPITAL[r]) { keep = N * 1.2; thresh = N * 1.5; }          // 도구: 1.2개/명 보유, 1.5개/명 초과만 수출(덤핑 금지)
-        else if (WEAPONR[r]) { keep = Math.max(2, warN * 1.3); thresh = keep + N * 0.1; }   // 무기·갑옷: 전사 수×1.3 보유 후 잉여만
+        else if (r === 'weapon') { keep = Math.max(2, (warN + huntN3) * 1.3); thresh = keep + N * 0.1; }   // ★무기: 전사+사냥꾼(활 — §9 3차) ×1.3 보유 후 잉여만
+        else if (WEAPONR[r]) { keep = Math.max(2, warN * 1.3); thresh = keep + N * 0.1; }   // 갑옷: 전사 수×1.3 보유 후 잉여만
+        else if (r === 'tigerhide') { keep = Math.max(1, N * TIGERHIDE_KEEP_PC); thresh = Math.max(2, N * TIGERHIDE_KEEP_PC * 1.6); }   // ★호피(§9 3차): 한계 위신 포화점(CAP/W≈0.025/인)×1.2만 쥐고 잉여=순수출재 — 일반칙(0.4N)이면 희소 위신재는 영영 수출 불가. 금·은·보석은 위신 포화(2/인)가 일반칙 위라 기존 규칙 유지
         else { keep = target * 0.5; thresh = target * 0.8; }                // 그 외: 15일치
         if (stock > thresh) candidates.push({ res: r, surplus: Math.max(1, stock - keep) });
       }
