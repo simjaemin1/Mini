@@ -54,8 +54,8 @@
 
     // ── 직업 믹스 = 국소 자원에서 emergent (sim jobCapacity: 농부∝비옥도, 어부∝물). 타입은 강제 X — 우세직업이 라벨.
     const fert = opts.fert != null ? opts.fert : fertScore;                  // 토질
-    let nd = 99, wdx = 0, wdy = 0; for (let r = 1; r < 45 && nd === 99; r++) for (let a = 0; a < 360; a += 20) { const ca = Math.cos(a * Math.PI / 180), sa = Math.sin(a * Math.PI / 180); const x = Math.round(ccx + ca * r), y = Math.round(ccy + sa * r); if (terrain.isWater && terrain.isWater(x, y)) { nd = r; wdx = ca; wdy = sa; break; } }  // wd = 중심→가장가까운물 방향(고정, 배산쪽 결정)
-    const water = opts.water != null ? opts.water : Math.max(0.05, Math.min(1, 1 - nd / 25));  // 어장(물 접근)
+    let nd = 999, wdx = 0, wdy = 0; for (let r = 1; r < 140 && nd === 999; r++) for (let a = 0; a < 360; a += 20) { const ca = Math.cos(a * Math.PI / 180), sa = Math.sin(a * Math.PI / 180); const x = Math.round(ccx + ca * r), y = Math.round(ccy + sa * r); if (terrain.isWater && terrain.isWater(x, y)) { nd = r; wdx = ca; wdy = sa; break; } }  // wd = 중심→가장가까운물 방향(고정, 배산쪽 결정)
+    const water = opts.water != null ? opts.water : Math.max(0.05, Math.min(1, 1 - nd / 140));  // 어장(물 접근) ★리카도: 탐색·감쇠 45/25→140(자원권 R 통일 — 100m 강도 어부를 뽑되 적게. 25셀 절벽이 진짜 원인이었음)
     const wFarm = fert * 0.4, wFish = water * 0.25, wOther = 0.18;            // wOther = 채집·사냥·장인 기본자리
     const wSum = wFarm + wFish + wOther;
     const fShare = wFarm / wSum, hShare = wFish / wSum;                       // 농부·어부 비중
