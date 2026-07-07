@@ -17,6 +17,12 @@ const FACILITY_EMOJI = {
 };
 // Phase 4d-16-d: farmland stage별 emoji (0=씨, 1=어린싹, 2=자람, 3=익음)
 const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
+// §4-4 Stage 4A: 마을 시뮬 NPC 직업(p.simJob — economy-sim JOBS 12종) → 이름 옆 이모지
+const SIM_JOB_EMOJI = {
+  farmer: '🌾', fisher: '🎣', hunter: '🏹', lumberjack: '🪓', miner: '⛏️',
+  smith: '🔨', weaponsmith: '⚔️', armorsmith: '🛡️', forager: '🧺',
+  cook: '🍲', warrior: '💂', merchant: '💰',
+};
 
 (() => {
   const canvas = document.getElementById('canvas');
@@ -1641,6 +1647,8 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
         for (const b of (msg.buildings || [])) c.buildings.set(b.id, b);
         for (const m of (msg.mobs || [])) c.mobs.set(m.mid, m);
         for (const gi of (msg.groundItems || [])) c.groundItems.set(gi.id, gi);
+        // §4-4 Stage 4A: 마을 시뮬 영토(경계 셀 or 반경 근사) — welcome 1회, 이후 sim_village_day가 pop만 갱신
+        c.simVillages = (msg.simVillages && msg.simVillages.length) ? msg.simVillages : null;
       }
       // 월드 시계 동기화 — 서버 now와 클라 now 차이를 보정해서 동일 phase 계산
       if (msg.worldClock) {
@@ -1733,6 +1741,7 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
             hp: pp.hp,
             maxHp: pp.maxHp ?? prev?.maxHp ?? 100,
             tribeName: pp.tribeName !== undefined ? pp.tribeName : prev?.tribeName,
+            simJob: pp.simJob !== undefined ? pp.simJob : prev?.simJob, // §4-4 Stage 4A: 마을 NPC 직업(첫 visible 메타 + sim_village_day 갱신)
             buf,
             lastX: prev?.x ?? pp.x, lastY: prev?.y ?? pp.y,
             lastT: now,
@@ -1820,6 +1829,10 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
       c.claims.set(msg.claim.id, msg.claim);
     } else if (msg.type === 'claim_removed') {
       c.claims.delete(msg.id);
+    } else if (msg.type === 'sim_village_day') {
+      // §4-4 Stage 4A: 게임일 1회 — 마을 인구 라벨 + NPC 직업(simJob) 변경분 갱신
+      if (c.simVillages && msg.pops) for (const v of c.simVillages) { if (msg.pops[v.id] != null) v.pop = msg.pops[v.id]; }
+      if (msg.jobs) for (const [pid, job] of Object.entries(msg.jobs)) { const o = c.others.get(pid); if (o) o.simJob = job; }
     } else if (msg.type === 'building_added') {
       c.buildings.set(msg.building.id, msg.building);
       if (msg.building.type === 'stair') clStairCacheBuildAt = 0;
@@ -2936,6 +2949,15 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
         const baseZ = cl.kind === 'guild' ? -800 : -400;
         renderables.push({ z: w2i(cax, cay).y + baseZ, kind: 'claim', cl, off: ox, offY: oy });
       }
+      // §4-4 Stage 4A: 마을 시뮬 영토 — 경계 셀(b: [dx,dy,mask...]) 반투명 렌더. claim보다 더 배경(-900).
+      if (c.simVillages) {
+        for (const v of c.simVillages) {
+          const vcx = ox + v.cx * CL_BUILDING_SIZE + 16, vcy = oy + v.cy * CL_BUILDING_SIZE + 16;
+          const cullR = (v.r || 1200);
+          if (Math.abs(vcx - worldCx) > VIEW_RADIUS + cullR || Math.abs(vcy - worldCy) > VIEW_RADIUS + cullR) continue;
+          renderables.push({ z: w2i(vcx, vcy).y - 900, kind: 'simvil', v, off: ox, offY: oy });
+        }
+      }
       for (const b of c.buildings.values()) {
         // wall은 cell edge 좌표 (b.x, b.y = cell 좌상단). 다른 건축은 cell 중심.
         let ax, ay;
@@ -2993,7 +3015,9 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
         const ax = ox + pos.x, ay = oy + pos.y;
         if (Math.abs(ax - worldCx) > VIEW_RADIUS || Math.abs(ay - worldCy) > VIEW_RADIUS) continue;
         const iso = w2i(ax, ay);
-        const displayName = o.tribeName ? `[${o.tribeName}] ${o.name}` : o.name;
+        // §4-4 Stage 4A: 마을 NPC 직업 이모지 접두 (simJob — econ 분포와 매 게임일 동기)
+        const _sjEmoji = (o.simJob && SIM_JOB_EMOJI[o.simJob]) || '';
+        const displayName = (_sjEmoji ? _sjEmoji + ' ' : '') + (o.tribeName ? `[${o.tribeName}] ${o.name}` : o.name);
         const oFloor = o.floor || 0;
         const oZ = oFloor * FLOOR_HEIGHT + (o.z || 0); // 14.49-d: 계단 위 z 포함
         const isoF = w2i(ax, ay, oZ);
@@ -3107,6 +3131,50 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
               ctx.fill();
             }
           }
+        }
+      } else if (item.kind === 'simvil') {
+        // §4-4 Stage 4A: 마을 시뮬 영토 — 서버가 경계 셀만 전송(b: [dx,dy,mask...] 중심 상대,
+        //   mask 비트 1=N 2=E 4=S 8=W = 영토 바깥과 맞닿은 변). 반투명 초록(길드 파랑과 구분).
+        const v = item.v, off = item.off, offY = item.offY || 0;
+        const S = CL_BUILDING_SIZE;
+        const sc = (wx, wy) => { const pp = w2i(off + wx, offY + wy); return toScreen(pp.x, pp.y); };
+        const fill = 'rgba(150,205,130,0.13)', stroke = 'rgba(175,225,145,0.9)';
+        if (v.b && v.b.length) {
+          // 경계 셀 은은한 채움 (띠) + 외곽변만 실선 → 정확한 영토 외곽선
+          ctx.fillStyle = fill; ctx.beginPath();
+          for (let i = 0; i < v.b.length; i += 3) {
+            const cx = v.cx + v.b[i], cy = v.cy + v.b[i + 1];
+            const a = sc(cx * S, cy * S), b2 = sc((cx + 1) * S, cy * S), c2 = sc((cx + 1) * S, (cy + 1) * S), d2 = sc(cx * S, (cy + 1) * S);
+            ctx.moveTo(a.x, a.y); ctx.lineTo(b2.x, b2.y); ctx.lineTo(c2.x, c2.y); ctx.lineTo(d2.x, d2.y); ctx.closePath();
+          }
+          ctx.fill();
+          ctx.strokeStyle = stroke; ctx.lineWidth = 2; ctx.beginPath();
+          for (let i = 0; i < v.b.length; i += 3) {
+            const cx = v.cx + v.b[i], cy = v.cy + v.b[i + 1], m = v.b[i + 2];
+            const a = sc(cx * S, cy * S), b2 = sc((cx + 1) * S, cy * S), c2 = sc((cx + 1) * S, (cy + 1) * S), d2 = sc(cx * S, (cy + 1) * S);
+            if (m & 1) { ctx.moveTo(a.x, a.y); ctx.lineTo(b2.x, b2.y); }
+            if (m & 2) { ctx.moveTo(b2.x, b2.y); ctx.lineTo(c2.x, c2.y); }
+            if (m & 4) { ctx.moveTo(c2.x, c2.y); ctx.lineTo(d2.x, d2.y); }
+            if (m & 8) { ctx.moveTo(d2.x, d2.y); ctx.lineTo(a.x, a.y); }
+          }
+          ctx.stroke();
+        } else {
+          // 구DB(경계 미영속) 폴백 — 중심+반경 점선 원 (월드 좌표 24각형 → 투영·줌에 자동 정합)
+          const r = v.r || 800;
+          ctx.strokeStyle = stroke; ctx.lineWidth = 2; ctx.setLineDash([10, 6]);
+          ctx.beginPath();
+          for (let a2 = 0; a2 <= 24; a2++) {
+            const th = a2 / 24 * Math.PI * 2;
+            const p = sc(v.cx * S + 16 + Math.cos(th) * r, v.cy * S + 16 + Math.sin(th) * r);
+            if (a2 === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+          }
+          ctx.stroke(); ctx.setLineDash([]);
+        }
+        { // 라벨 — 회관 위 (길드 라벨과 동급, 인구는 sim_village_day가 갱신)
+          const ctr = sc(v.cx * S + 16, v.cy * S + 16);
+          ctx.fillStyle = stroke; ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center';
+          ctx.fillText(`🏘️ ${v.name}${v.pop != null ? ' · ' + v.pop + '명' : ''}`, ctr.x, ctr.y - 46);
+          ctx.textAlign = 'start';
         }
       } else if (item.kind === 'resource') {
         const s = toScreen(item.iso.x, item.iso.y);
@@ -3867,6 +3935,36 @@ const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
     if (type === 'farmland') {
       // 갈색 흙 다이아 + 작물
       const data = building?.data || {};
+      if (data.sim) {
+        // §4-4 Stage 4A: 마을 시뮬 경작지(비영속 타일) — 논(무논=물빛)·밭(이랑) 정적 렌더.
+        //   성장 게이지·'수확가능' 라벨 없음(마을 소유 — 플레이어 수확 대상 아님). 셀 꽉 채워 띠가 이어져 보임.
+        const dry = !!data.dry;
+        ctx.beginPath();
+        ctx.moveTo(x, y - 8); ctx.lineTo(x + 16, y); ctx.lineTo(x, y + 8); ctx.lineTo(x - 16, y); ctx.closePath();
+        ctx.fillStyle = dry ? '#7c6034' : '#3f5c46'; ctx.fill();
+        ctx.strokeStyle = dry ? '#5e4724' : '#324a38'; ctx.lineWidth = 0.6; ctx.stroke();
+        if (dry) {
+          // 밭이랑 2줄
+          ctx.strokeStyle = 'rgba(94,71,36,0.9)'; ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(x - 8, y - 4); ctx.lineTo(x + 8, y + 4);
+          ctx.moveTo(x - 4, y - 6); ctx.lineTo(x + 12, y + 2);
+          ctx.stroke();
+        } else {
+          // 무논 물 반사 + 모 3포기
+          ctx.fillStyle = 'rgba(130,190,170,0.35)';
+          ctx.beginPath();
+          ctx.moveTo(x, y - 5); ctx.lineTo(x + 10, y); ctx.lineTo(x, y + 5); ctx.lineTo(x - 10, y); ctx.closePath();
+          ctx.fill();
+          ctx.strokeStyle = '#69a05a'; ctx.lineWidth = 1;
+          ctx.beginPath();
+          for (const [oxp, oyp] of [[-6, 0], [0, -2], [6, 1]]) {
+            ctx.moveTo(x + oxp, y + oyp); ctx.lineTo(x + oxp, y + oyp - 5);
+          }
+          ctx.stroke();
+        }
+        return;
+      }
       const readyAt = data.readyAt || 0;
       const now = Date.now();
       const isReady = now >= readyAt;

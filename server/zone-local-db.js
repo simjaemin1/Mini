@@ -103,6 +103,15 @@ function updateResourceHp(id, hp) { stmtUpdateResourceHp.run(hp, id); }
 function deleteResource(id) { stmtDeleteResource.run(id); }
 
 // === buildings ===
+// §4-4 Stage 4A 마이그레이션 — village_id 컬럼(nullable, 추가 전용). 시뮬 마을(villages.js)이
+//   실물화한 회관·집 행에만 채워짐(레거시·플레이어 건물은 전부 NULL — 기존 행 불변).
+try {
+  const bcols = db.prepare('PRAGMA table_info(buildings)').all().map(c => c.name);
+  if (!bcols.includes('village_id')) {
+    db.exec('ALTER TABLE buildings ADD COLUMN village_id INTEGER');
+    console.log(`[${ZONE_ID}/db] buildings.village_id 컬럼 추가됨 (§4-4 Stage 4A)`);
+  }
+} catch (e) {}
 const stmtGetBuildings = db.prepare('SELECT * FROM buildings');
 // 건물 lazy-load: 청크 좌표 범위 [x0,x1) × [y0,y1) 안 건물만. half-open이라 청크 경계 건물이
 //   정확히 한 청크에만 속함(중복/누락 없음). idx_buildings_xy 인덱스로 빠름.
@@ -110,7 +119,7 @@ const stmtGetBuildingsInRect = db.prepare(
   'SELECT * FROM buildings WHERE x >= ? AND x < ? AND y >= ? AND y < ?'
 );
 const stmtInsertBuilding = db.prepare(
-  'INSERT INTO buildings (type, owner_id, owner_name, x, y, data, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+  'INSERT INTO buildings (type, owner_id, owner_name, x, y, data, created_at, village_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
 );
 const stmtUpdateBuildingData = db.prepare('UPDATE buildings SET data = ? WHERE id = ?');
 const stmtDeleteBuilding = db.prepare('DELETE FROM buildings WHERE id = ?');
@@ -118,7 +127,7 @@ const stmtDeleteBuilding = db.prepare('DELETE FROM buildings WHERE id = ?');
 function getBuildings() { return stmtGetBuildings.all(); }
 function getBuildingsInRect(x0, y0, x1, y1) { return stmtGetBuildingsInRect.all(x0, x1, y0, y1); }
 function insertBuilding(b) {
-  const result = stmtInsertBuilding.run(b.type, b.owner_id, b.owner_name, b.x, b.y, b.data || null, Date.now());
+  const result = stmtInsertBuilding.run(b.type, b.owner_id, b.owner_name, b.x, b.y, b.data || null, Date.now(), b.village_id != null ? b.village_id : null);
   return result.lastInsertRowid;
 }
 function updateBuildingData(id, dataJson) { stmtUpdateBuildingData.run(dataJson, id); }
@@ -211,6 +220,8 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_villages_zone ON villages(zone);
   CREATE INDEX IF NOT EXISTS idx_village_buildings_vid ON village_buildings(village_id);
+  -- §4-4 Stage 4A: 청크 materialize가 셀 범위로 농지 타일을 직접 조회(비영속 실물화 — buildings 행 폭발 방지)
+  CREATE INDEX IF NOT EXISTS idx_village_buildings_cell ON village_buildings(cx, cy);
 `);
 const stmtGetVillagesByZone = db.prepare('SELECT * FROM villages WHERE zone = ? ORDER BY id');
 const stmtInsertVillage = db.prepare(
@@ -221,6 +232,11 @@ const stmtInsertVillageBuilding = db.prepare(
   'INSERT INTO village_buildings (village_id, type, cx, cy, floors, data, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
 );
 const stmtGetVillageBuildings = db.prepare('SELECT * FROM village_buildings WHERE village_id = ?');
+// §4-4 Stage 4A: 농지 셀 범위 조회 — 청크 활성화 시 lazy 실물화용. half-open(cx0≤cx<cx1)이라
+//   buildings 렉트 조회와 같은 규약(청크 경계 중복/누락 없음). idx_village_buildings_cell 사용.
+const stmtGetVillageFarmInCellRect = db.prepare(
+  "SELECT * FROM village_buildings WHERE type IN ('farmland','dryfield') AND cx >= ? AND cx < ? AND cy >= ? AND cy < ?"
+);
 
 function getVillagesByZone(zone) { return stmtGetVillagesByZone.all(zone); }
 function insertVillage(v) {
@@ -233,6 +249,7 @@ function insertVillageBuilding(b) {
   return r.lastInsertRowid;
 }
 function getVillageBuildings(villageId) { return stmtGetVillageBuildings.all(villageId); }
+function getVillageFarmInCellRect(cx0, cx1, cy0, cy1) { return stmtGetVillageFarmInCellRect.all(cx0, cx1, cy0, cy1); }
 
 console.log(`[${ZONE_ID}/db] 로컬 zone DB 준비됨: ${DB_PATH}`);
 
@@ -246,4 +263,5 @@ module.exports = {
   upsertMinedCell, getAllMinedCells, deleteMinedCell,
   // §4-4 마을 시뮬 (villages.js)
   getVillagesByZone, insertVillage, updateVillageState, insertVillageBuilding, getVillageBuildings,
+  getVillageFarmInCellRect,
 };

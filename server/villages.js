@@ -30,8 +30,24 @@
 //   VILLAGE_NPC_CAP — 마을당 가시 NPC 상한(기본 40) — econ 인구는 무제한(시뮬 진실),
 //                     스폰 NPC만 캡. dormant NPC 총량 안전선(zone.js 997행, ~1000명) 고려.
 //
-// Stage 4~5 인계: 렌더(village_buildings → 실제 wall/floor/farmland 실물화·영토 claim),
-//   econ 직업 ↔ NPC 시각 직업 연결(npcJob — 아래 '오염 방지' 주석 참조), 최적화.
+// Stage 4A (이번 단계 — 마을 실물화):
+//   · 건물: 회관(9×9 2층)·집(5×5 한옥, floors 반영)을 기존 buildings 테이블(wall/floor 행,
+//     owner 'npc_simvil_<dbId>')로 게임 엔티티화 — 부팅 wipe(zone.js "owner_id LIKE 'npc_%'")가
+//     매 부팅 지우고 여기서 재기록(레거시 한옥과 동일 수명주기 = idempotent·OFF면 잔재 0).
+//     lazy-load(materializeBuildingsInChunk)·콜라이더·cutaway 전부 기존 경로 그대로.
+//   · 농지: 수만 행이라 buildings 행 폭발 금지 — 청크 활성화 때 village_buildings에서 직접
+//     '비영속 시각 타일'(id 'vb<rowid>', dbId=null, sim:true)로 실물화(farmTilesInRect).
+//     DB 쓰기 0, 비활성화 시 메모리 해제, 재활성화 시 재생성(id 결정적이라 클라 참조 안정).
+//   · 영토: 시딩 때 layout.territory의 '경계 셀+외곽변 마스크'만 hall 행 data.bnd로 영속
+//     (2850셀 전체 아님 — 대역폭·저장 절약). welcome에 1회 실림(clientVillages) →
+//     클라가 반투명 경계 렌더. Stage1~3 구DB(bnd 없음)는 반경 원 근사로 폴백.
+//   · 직업 시각화: econ counts 비율로 스폰 NPC에 p.simJob 배정(최대잔여법, 기존 배정 유지
+//     우선) — 매 게임일 재동기 + sim_village_day 브로드캐스트. npcJob과 별도 필드라
+//     tallyVillageJobs(zone.js 4419행: canadiaJob||npcJob만 집계)를 오염시키지 않음.
+//   · 레거시 디듀프: isLegacyVillageClaimed(name) — zone.js spawnVillagers가 시뮬이 차지한
+//     하드코딩 마을(이름 유니크 확인됨)을 스킵. ENABLE_VILLAGES=0이면 항상 false(50곳 유지).
+// Stage 4B~5 인계: 캐러밴 실체화(§5.5b — 이동 중 차단 대응은 DESIGN_DOC 참조),
+//   invalidateTradeDistances 정밀화(다리·성벽), econ 직업↔NPC '행동' 연결(어부가 물가로 등), 최적화.
 // =============================================================================
 'use strict';
 
@@ -261,14 +277,17 @@ function spawnOneNpc(vil) {
   const houses = vil.housesPx.length ? vil.housesPx : [{ x: vil.ccx * SZ + SZ / 2, y: vil.ccy * SZ + SZ / 2 }];
   const home = houses[vil.npcPids.length % houses.length];
   const cxPx = vil.ccx * SZ + SZ / 2, cyPx = vil.ccy * SZ + SZ / 2;
+  // Stage 4A: 작업 지점을 회관 밖 도넛(180~320px)으로 — 회관 9×9(반폭 144px+벽)이 실물화되어
+  //   내부 좌표를 주면 NPC가 벽에 영원히 비비게 됨(레거시엔 중앙 건물이 없어 ±200 균일이 무해했음).
+  const wAng = Math.random() * Math.PI * 2, wR = 180 + Math.random() * 140;
   const p = state.deps.spawnNpc({
     x: home.x + (Math.random() - 0.5) * 60,
     y: home.y + (Math.random() - 0.5) * 60,
     villageId: `simvil_${vil.dbId}`,
     villageName: vil.name,
     npcHomeX: home.x, npcHomeY: home.y,
-    npcWorkX: cxPx + (Math.random() - 0.5) * 200,
-    npcWorkY: cyPx + (Math.random() - 0.5) * 200,
+    npcWorkX: cxPx + Math.cos(wAng) * wR,
+    npcWorkY: cyPx + Math.sin(wAng) * wR,
     // npcJob 의도적 미지정(null): zone.js tallyVillageJobs(4415행)가 npcJob 있는 NPC를
     //   legacy 마을 생산(60s 틱 → central 길드 금고)에 합산한다. econ 마을의 생산은
     //   economy-sim(storage)이 진실이므로 이중 계상 + 기존 50마을 금고 교란을 피한다
@@ -297,6 +316,148 @@ function syncVillagePop(vil, maxDelta) {
   let delta = target - vil.npcPids.length;
   if (delta > 0) for (let i = 0; i < Math.min(delta, maxDelta); i++) spawnOneNpc(vil);
   else if (delta < 0) for (let i = 0; i < Math.min(-delta, maxDelta); i++) removeOneNpc(vil);
+}
+
+// =============================================================================
+// Stage 4A — NPC 직업 시각화: econ 직업 분포(counts) 비율 → 스폰 NPC p.simJob 배정.
+//   · 최대잔여법으로 스폰 수 n에 스케일(합=n 보장) + 기존 배정 유지 우선(교체 최소 — 깜빡임 방지).
+//   · p.simJob은 npcJob과 별도 필드: tallyVillageJobs(zone.js 4419행)는 canadiaJob||npcJob만
+//     집계하므로 legacy 생산(60s 금고 틱)에 절대 안 섞임(이중 계상 가드 유지).
+//   · changedOut(pid→job)에 변경분 축적 — 호출부가 게임일 1회 sim_village_day로 브로드캐스트.
+// =============================================================================
+function syncVillageJobs(vil, changedOut) {
+  const players = state.deps.players;
+  const pids = vil.npcPids.filter(pid => players.has(pid));
+  const n = pids.length;
+  if (!n) return;
+  const counts = vil.econ.counts || {};
+  const jobs = Object.keys(counts).filter(j => (counts[j] | 0) > 0);
+  let total = 0; for (const j of jobs) total += counts[j];
+  if (!total) return;
+  // 목표 분포 — 최대잔여법 (floor 합 + 잔여 큰 순으로 +1)
+  const target = {}; const rem = []; let used = 0;
+  for (const j of jobs) {
+    const exact = counts[j] / total * n;
+    const fl = Math.floor(exact);
+    target[j] = fl; used += fl;
+    rem.push([j, exact - fl]);
+  }
+  rem.sort((a, b) => b[1] - a[1]);
+  for (let i = 0; used < n && rem.length; i = (i + 1) % rem.length, used++) target[rem[i][0]]++;
+  // 기존 배정 유지 우선 → 초과·무배정만 결원 직업으로
+  const deficit = { ...target };
+  const unassigned = [];
+  for (const pid of pids) {
+    const p = players.get(pid);
+    if (p.simJob && deficit[p.simJob] > 0) deficit[p.simJob]--;
+    else unassigned.push(p);
+  }
+  for (const p of unassigned) {
+    let pick = null;
+    for (const j of jobs) if (deficit[j] > 0) { pick = j; deficit[j]--; break; }
+    if (pick && p.simJob !== pick) {
+      p.simJob = pick;
+      if (changedOut) changedOut[p.pid] = pick;
+    }
+  }
+}
+
+// =============================================================================
+// Stage 4A — 건물 실물화 ①: 회관·집 → 기존 buildings 테이블(wall/floor 행).
+//   · owner 'npc_simvil_<dbId>' — zone.js 부팅 wipe("owner_id LIKE 'npc_%'", ~1001행)가 매 부팅
+//     지우므로 여기서 재기록 = idempotent·중복 0·ENABLE_VILLAGES=0 다음 부팅이면 잔재 0.
+//   · village_id 컬럼(Stage 4A 신설, nullable)에 마을 id 기록 — Stage 4B(캐러밴·무효화 정밀화)
+//     의 마을 단위 조회용. 레거시·플레이어 행은 전부 NULL 유지.
+//   · 부팅 시 DB에만 기록(레거시 buildVillageHouse와 동일) — 메모리 객체화는 청크 활성화 때
+//     materializeBuildingsInChunk가 'b<dbId>'로 수행(콜라이더·AOI·cutaway 기존 경로).
+//   · 회관 = 9×9 2층(남쪽 3칸 출입구) '대형 건물', 집 = 레거시와 동일 5×5 한옥(floors 반영).
+// =============================================================================
+function buildStructure(db, vilDbId, ccx, ccy, half, floors, ownerId, ownerName, doorHalf) {
+  let rows = 0;
+  const wall = (cx, cy, side, f) => { db.insertBuilding({ type: 'wall', owner_id: ownerId, owner_name: ownerName, x: cx * SZ, y: cy * SZ, data: JSON.stringify({ side, floor: f }), village_id: vilDbId }); rows++; };
+  const floor = (cx, cy, f) => { db.insertBuilding({ type: 'floor', owner_id: ownerId, owner_name: ownerName, x: cx * SZ + SZ / 2, y: cy * SZ + SZ / 2, data: JSON.stringify({ floor: f }), village_id: vilDbId }); rows++; };
+  for (let f = 0; f < floors; f++) {
+    for (let i = -half; i <= half; i++) {
+      wall(ccx + i, ccy - half, 'N', f);                                       // 북변
+      if (!(f === 0 && Math.abs(i) <= doorHalf)) wall(ccx + i, ccy + half + 1, 'N', f); // 남변(1층 출입구)
+    }
+    for (let j = -half; j <= half; j++) { wall(ccx + half, ccy + j, 'E', f); wall(ccx - half - 1, ccy + j, 'E', f); } // 동·서변
+    for (let i = -half; i <= half; i++) for (let j = -half; j <= half; j++) floor(ccx + i, ccy + j, f);
+  }
+  return rows;
+}
+function materializeVillageStructures(db, vil, bRows) {
+  const ownerId = `npc_simvil_${vil.dbId}`;
+  let rows = 0, houses = 0;
+  // 회관 — 9×9(±4) 2층, 남쪽 3칸 문. 레이아웃 계약(village-layout: 집 r≥8·농지 회관반경 6 제외)상 비겹침.
+  rows += buildStructure(db, vil.dbId, vil.ccx, vil.ccy, 4, 2, ownerId, `${vil.name} 회관`, 1);
+  for (const b of bRows) {
+    if (b.type !== 'house') continue;
+    rows += buildStructure(db, vil.dbId, b.cx, b.cy, 2, Math.max(1, b.floors | 0), ownerId, `${vil.name} 한옥`, 0);
+    houses++;
+  }
+  return { rows, houses };
+}
+
+// =============================================================================
+// Stage 4A — 건물 실물화 ②: 농지(수만 행) → 비영속 시각 타일. 청크 활성화 때 zone.js
+// materializeBuildingsInChunk가 px 렉트로 호출 — village_buildings 셀 인덱스에서 직접 생성.
+//   · id 'vb<rowid>' 결정적(재활성·재부팅 안정) / dbId=null·sim:true — 모든 DB 쓰기 경로는
+//     'if (b.dbId)' 가드(zone.js 전수 확인) + 분해는 sim 가드로 차단(아이템 증식 루프 방지).
+//   · data.dry: 1=밭(이랑) 0=논(무논) — 클라 drawBuildingIso가 sim 플래그로 정적 타일 렌더
+//     (레거시 farmland의 성장/수확 라벨 경로와 분리. readyAt 없음 → 플레이어 수확 불가·무해).
+// =============================================================================
+function farmTilesInRect(x0, y0, x1, y1) {
+  if (!state.ready) return [];
+  const rows = state.db.getVillageFarmInCellRect(Math.floor(x0 / SZ), Math.ceil(x1 / SZ), Math.floor(y0 / SZ), Math.ceil(y1 / SZ));
+  if (!rows.length) return [];
+  const out = [];
+  for (const r of rows) {
+    const vil = state.byDbId && state.byDbId.get(r.village_id);
+    out.push({
+      id: `vb${r.id}`, dbId: null, sim: true,
+      type: 'farmland',
+      ownerId: `npc_simvil_${r.village_id}`,
+      ownerName: vil ? `${vil.name} 경작지` : '마을 경작지',
+      x: r.cx * SZ + SZ / 2, y: r.cy * SZ + SZ / 2,
+      data: { sim: 1, dry: r.type === 'dryfield' ? 1 : 0 },
+      floor: 0,
+      villageId: r.village_id,
+    });
+  }
+  return out;
+}
+
+// =============================================================================
+// Stage 4A — 클라 영토 페이로드(welcome 1회). 경계 셀만(마을당 ~200-400) — 2850셀 전체 금지.
+// bnd 없는 구DB(Stage1~3 시딩분)는 반경 원 근사(approx)로 폴백 — 과제 허용 최소 구현.
+// =============================================================================
+function clientVillages() {
+  if (!state.ready) return null;
+  return state.clientPayload || null;
+}
+function isLegacyVillageClaimed(name) {
+  return !!(state.ready && state.claimedNames && state.claimedNames.has(name));
+}
+
+// =============================================================================
+// Stage 4A — 영토 경계 추출: territory(~2850셀) 중 4방 이웃이 영토 밖인 셀만 + 외곽변 비트마스크.
+// 반환 flat 배열 [dx,dy,mask, dx,dy,mask, ...] (중심 상대 셀 — JSON 소형화. mask: 1=N 2=E 4=S 8=W).
+// 디스크 영토(반경 ~30셀)면 경계 ~200-400셀 → 마을당 수 KB. 클라는 mask 변만 그려 정확한 외곽선.
+// =============================================================================
+function territoryBoundary(territory, ccx, ccy) {
+  const set = new Set();
+  for (const c of territory) set.add(c[0] + ',' + c[1]);
+  const out = [];
+  for (const [x, y] of territory) {
+    let mask = 0;
+    if (!set.has(x + ',' + (y - 1))) mask |= 1;
+    if (!set.has((x + 1) + ',' + y)) mask |= 2;
+    if (!set.has(x + ',' + (y + 1))) mask |= 4;
+    if (!set.has((x - 1) + ',' + y)) mask |= 8;
+    if (mask) out.push(x - ccx, y - ccy, mask);
+  }
+  return out;
 }
 
 // =============================================================================
@@ -331,7 +492,8 @@ function seedVillages(db, terrain, ta, ZONE) {
       });
       db.insertVillageBuilding({
         village_id: dbId, type: 'hall', cx: c.ccx, cy: c.ccy, floors: 1,
-        data: JSON.stringify({ typeLabel: layout.type, dock: layout.dock || null, land: lp, seedType: hv.type }),
+        // Stage 4A: bnd = 영토 경계 셀(중심 상대 [dx,dy,mask] flat) — 클라 영토 렌더용 영속(전체 2850셀 아님)
+        data: JSON.stringify({ typeLabel: layout.type, dock: layout.dock || null, land: lp, seedType: hv.type, bnd: territoryBoundary(layout.territory, c.ccx, c.ccy) }),
       });
       for (const h of layout.houses) db.insertVillageBuilding({ village_id: dbId, type: 'house', cx: h.cx, cy: h.cy, floors: h.floors || 1, data: null });
       for (const f of layout.farmland) db.insertVillageBuilding({ village_id: dbId, type: 'farmland', cx: f.cx, cy: f.cy, floors: 0, data: null });
@@ -518,13 +680,63 @@ function init(deps) {
       maxDay = Math.max(maxDay, row.day | 0);
 
       // NPC 집 위치 — village_buildings의 house 셀(복원 시에도 동일 소스)
-      const housesPx = db.getVillageBuildings(row.id)
-        .filter(b => b.type === 'house')
-        .map(b => ({ x: b.cx * SZ + SZ / 2, y: b.cy * SZ + SZ / 2 }));
-      state.villages.push({ dbId: row.id, name: row.name, ccx: row.cx, ccy: row.cy, housesPx, econ: ev, npcPids: [] });
+      const bRows = db.getVillageBuildings(row.id);
+      const housesPx = [];
+      let farmN = 0, dryN = 0, hallData = null, maxCellR = 4;
+      for (const b of bRows) {
+        const r = Math.hypot(b.cx - row.cx, b.cy - row.cy);
+        if (r > maxCellR) maxCellR = r;
+        if (b.type === 'house') housesPx.push({ x: b.cx * SZ + SZ / 2, y: b.cy * SZ + SZ / 2 });
+        else if (b.type === 'farmland') farmN++;
+        else if (b.type === 'dryfield') dryN++;
+        else if (b.type === 'hall' && b.data) { try { hallData = JSON.parse(b.data); } catch {} }
+      }
+      // Stage 4A: 영토 경계(시딩 때 hall data.bnd로 영속). 구DB(Stage1~3)엔 없음 → 반경 원 근사 폴백.
+      const bnd = (hallData && Array.isArray(hallData.bnd) && hallData.bnd.length) ? hallData.bnd : null;
+      let maxRPx = (maxCellR + 3) * SZ;
+      if (bnd) {
+        let m = 0;
+        for (let i = 0; i < bnd.length; i += 3) { const d = Math.hypot(bnd[i], bnd[i + 1]); if (d > m) m = d; }
+        maxRPx = Math.max(maxRPx, (m + 2) * SZ);
+      }
+      state.villages.push({ dbId: row.id, name: row.name, ccx: row.cx, ccy: row.cy, housesPx, econ: ev, npcPids: [], _bRows: bRows, _bnd: bnd, _maxRPx: Math.round(maxRPx), _farmN: farmN, _dryN: dryN });
     }
     world.day = maxDay;
     state.world = world;
+    state.byDbId = new Map(state.villages.map(v => [v.dbId, v]));
+    state.claimedNames = new Set(state.villages.map(v => v.name)); // 레거시 디듀프 대상(이름 유니크 — 50곳 검증됨)
+
+    // --- Stage 4A: 회관·집 실물화 (buildings 테이블 — 부팅 wipe가 지운 자리에 재기록, 1트랜잭션) ---
+    {
+      const t0 = Date.now();
+      let totalRows = 0, totalHouses = 0, totalFarm = 0;
+      db.db.exec('BEGIN');
+      try {
+        for (const vil of state.villages) {
+          const r = materializeVillageStructures(db, vil, vil._bRows);
+          totalRows += r.rows; totalHouses += r.houses;
+          totalFarm += vil._farmN + vil._dryN;
+        }
+        db.db.exec('COMMIT');
+      } catch (e) {
+        try { db.db.exec('ROLLBACK'); } catch {}
+        console.warn(`[${ZONE_ID}] 🏘️ 건물 실물화 실패(마을은 무건물로 계속):`, e.message);
+      }
+      console.log(`[${ZONE_ID}] 🏘️ Stage4A 실물화: 회관 ${state.villages.length}·한옥 ${totalHouses}채 → buildings ${totalRows}행(wall/floor, owner npc_simvil_*) + 농지 ${totalFarm}칸은 청크 활성화 시 비영속 타일(vb*) · ${Date.now() - t0}ms`);
+    }
+
+    // --- Stage 4A: 클라 영토 페이로드(welcome 1회) — 경계 셀 flat [dx,dy,mask] or 반경 근사 ---
+    state.clientPayload = state.villages.map(v => {
+      const e = { id: v.dbId, name: v.name, cx: v.ccx, cy: v.ccy, pop: v.econ.npcs.length, r: v._maxRPx };
+      if (v._bnd) e.b = v._bnd; else e.approx = 1;
+      return e;
+    });
+    {
+      const bndN = state.villages.filter(v => v._bnd).length;
+      const cells = state.villages.reduce((s, v) => s + (v._bnd ? v._bnd.length / 3 : 0), 0);
+      console.log(`[${ZONE_ID}] 🏘️ Stage4A 영토: 경계 ${bndN}/${state.villages.length}곳(셀 ${cells}, ≈${(JSON.stringify(state.clientPayload).length / 1024).toFixed(0)}KB — welcome 1회) · 원근사 폴백 ${state.villages.length - bndN}곳`);
+    }
+    for (const vil of state.villages) delete vil._bRows; // 수만 행 재참조 방지(메모리)
 
     // --- 교역 거리 행렬(BFS·지형) 계산·주입 — 시딩·복원 공통(지형 정적, 부팅 1회. 소요는 로그에) ---
     state._distCtx = { ta, ZONE };
@@ -541,6 +753,16 @@ function init(deps) {
     for (const vil of state.villages) {
       syncVillagePop(vil, Infinity);
       npcTotal += vil.npcPids.length;
+    }
+    // --- Stage 4A: 직업 배정(부팅 1회 — 클라 접속 전이라 브로드캐스트 불필요, AOI isNew에 실림) ---
+    {
+      const dist = {};
+      for (const vil of state.villages) {
+        syncVillageJobs(vil, null);
+        for (const pid of vil.npcPids) { const p = deps.players.get(pid); if (p && p.simJob) dist[p.simJob] = (dist[p.simJob] || 0) + 1; }
+      }
+      const dStr = Object.entries(dist).sort((a, b) => b[1] - a[1]).map(([j, n]) => `${j}${n}`).join(' ');
+      console.log(`[${ZONE_ID}] 🏘️ Stage4A NPC 직업 배정(simJob — econ counts 비례·npcJob과 분리): ${dStr || '(스폰 0)'}`);
     }
 
     state.lastGameDay = gameDayOf(Date.now()); // 다음 경계부터 틱 (재기동 따라잡기 없음 — 실시간 앵커)
@@ -575,11 +797,19 @@ function onGameTick(now) {
     console.log = () => {};
     try { state.econV2.tickWorldV2(state.world); } finally { console.log = _log; }
     let econPop = 0, npcCount = 0;
+    const jobChanges = {}; // Stage 4A: 이번 게임일 직업 재동기 변경분(pid→job)
+    const pops = {};       // Stage 4A: 마을 econ 인구(영토 라벨 갱신용)
     for (const vil of state.villages) {
       econPop += vil.econ.npcs.length;
       syncVillagePop(vil, POP_SYNC_PER_DAY); // 완만 반영: ±POP_SYNC_PER_DAY/일
+      syncVillageJobs(vil, jobChanges);      // Stage 4A: econ counts 비례 재동기(신규 스폰 포함)
       npcCount += vil.npcPids.length;
+      pops[vil.dbId] = vil.econ.npcs.length;
     }
+    // Stage 4A: 일 1회 브로드캐스트 — 직업 변경분 + 마을 인구(클라 영토 라벨·이름 옆 이모지 갱신).
+    //   clientPayload의 pop도 갱신(새 welcome 수신자 최신화). 접속자 0이어도 broadcast는 no-op 수준.
+    for (const cv of (state.clientPayload || [])) if (pops[cv.id] != null) cv.pop = pops[cv.id];
+    state.deps.broadcast({ type: 'sim_village_day', day: state.world.day, jobs: jobChanges, pops });
     state.saveQueue = state.villages.slice(); // 저장은 다음 틱부터 1마을/틱 — 19마을이면 0.63초에 걸쳐 완료(게임일 600s 대비 무시)
     if (state.distDirty) { // 무효화 훅(스텁) 소비 — 게임일 경계(자정 큐 세팅 뒤) 전쌍 재계산. 건물 변화는 드물어 일 1회면 족함(정밀화는 Stage 4 — 위 훅 주석).
       state.distDirty = false;
@@ -591,4 +821,8 @@ function onGameTick(now) {
   }
 }
 
-module.exports = { init, onGameTick, invalidateTradeDistances };
+module.exports = {
+  init, onGameTick, invalidateTradeDistances,
+  // Stage 4A — zone.js 소비: 농지 lazy 실물화 / welcome 영토 페이로드 / 레거시 디듀프 판정
+  farmTilesInRect, clientVillages, isLegacyVillageClaimed,
+};

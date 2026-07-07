@@ -8,6 +8,7 @@ const WebSocket = require('ws');
 const http = require('http');
 const { ZONES, WORLD, isNight, worldPhase, darknessLevel, findZoneAt, worldDistance, worldDeltaX } = require('./zone-config');
 const db = require('./zone-local-db'); // 로컬 zone DB — players 없음
+const SimVillages = require('./villages'); // §4-4 NPC 마을 시뮬 — top-level은 상수뿐(실작업은 아래 init 호출, ENABLE_VILLAGES=0이면 완전 no-op)
 const central = require('./central-client'); // central HTTP 클라이언트
 const { Quadtree } = require('./quadtree'); // spatial index — O(N²) 검색 회피
 const { ChunkManager, CHUNK_SIZE, generateChunkResources, generateVillagesForZone, generateCoastlineWaterTiles } = require('./chunk'); // 청크 단위 entity 분류 + procedural + 해안선
@@ -104,6 +105,16 @@ function materializeBuildingsInChunk(cx, cy) {
     if (row.type === 'stair') stairAdded = true;
   }
   if (stairAdded) stairCellDirty = true; // stair cache 재구축 트리거 (active 건물만 인덱싱)
+  // §4-4 Stage 4A: 마을 농지 — village_buildings(수만 행)에서 '비영속 시각 타일'로 직접 실물화.
+  //   buildings 테이블에 행을 만들지 않아(행 폭발 방지) DB 쓰기 0. id 'vb<rowid>' 결정적이라
+  //   비활성→재활성·재부팅에도 클라 참조 안정. dbId=null — 모든 DB 쓰기 경로는 if(b.dbId) 가드.
+  //   비활성/AOI/quadtree/충돌은 이 아래 기존 경로가 일반 건물과 동일하게 처리(추가 코드 없음).
+  //   ENABLE_VILLAGES=0 → farmTilesInRect가 [] (state.ready=false) — 완전 no-op.
+  for (const vt of SimVillages.farmTilesInRect(x0, y0, x1, y1)) {
+    if (buildings.has(vt.id)) continue;
+    buildings.set(vt.id, vt);
+    chunkManager.insertBuilding(vt);
+  }
 }
 
 // 활성화 — 그 청크의 시드 자원 생성
@@ -1022,6 +1033,8 @@ const villageGuildIds = new Map(); // villageName → central tribe_id
 async function registerVillageGuilds() {
   for (let v = 0; v < VILLAGES.length; v++) {
     const village = VILLAGES[v];
+    // §4-4 Stage 4A 디듀프: 시뮬 마을은 central 길드 등록·금고·영토 제외 (econ 마을 생산은 economy-sim이 진실)
+    if (SimVillages.isLegacyVillageClaimed(village.name)) continue;
     try {
       const r = await central.tribeNpcUpsert(village.name, 'passive');
       if (r && r.tribe_id) {
@@ -1199,8 +1212,13 @@ function buildVillageFarmland(village, vIdx) {
 }
 
 function spawnVillagers() {
+  // §4-4 Stage 4A 레거시 디듀프: 시뮬 마을(villages.js)이 차지한 하드코딩 마을(이름 유니크)은
+  //   레거시 스폰(NPC 6명·한옥·농지·길드영토) 전체를 스킵 — 같은 자리 이중 마을 방지.
+  //   ENABLE_VILLAGES=0이면 isLegacyVillageClaimed가 항상 false → 기존 50곳 전부 스폰(불변).
+  const _simSkipped = [];
   for (let v = 0; v < VILLAGES.length; v++) {
     const village = VILLAGES[v];
+    if (SimVillages.isLegacyVillageClaimed(village.name)) { _simSkipped.push(village.name); continue; }
     const villageId = `village_${ZONE_ID}_${v}`;
     console.log(`[${ZONE_ID}] 🏘️ 마을 [${village.name}] @ (${village.x},${village.y}) type=${village.type || 'plain'} — ${NPC_PER_VILLAGE}명`);
     // 14.18.b: 길드 영토 (central tribe_id는 비동기로 받음. 지금 시점에 villageGuildIds에 있을 수도/없을 수도)
@@ -1234,9 +1252,11 @@ function spawnVillagers() {
       });
     }
   }
+  if (_simSkipped.length) console.log(`[${ZONE_ID}] 🏘️ 레거시 디듀프(§4-4 Stage4A): 시뮬 마을과 중복 ${_simSkipped.length}곳 스킵 · 레거시 유지 ${VILLAGES.length - _simSkipped.length}곳 — 스킵: ${_simSkipped.join(', ')}`);
   // 길드 영토는 spawnVillagers와 별도로 registerVillageGuilds 완료 후 다시 호출 (race condition fix)
   setTimeout(() => {
     for (const v of VILLAGES) {
+      if (SimVillages.isLegacyVillageClaimed(v.name)) continue; // Stage 4A 디듀프 — 시뮬 마을엔 레거시 영토 X
       const tribeId = villageGuildIds.get(v.name);
       if (ZONE.npcVillageTerritory && tribeId && ![...claims.values()].some(c => c.kind === 'guild' && c.guildTribeId === tribeId)) {
         spawnGuildClaimsForVillage(v, tribeId);
@@ -1671,14 +1691,15 @@ setInterval(() => {
 }
 
 // === NPC 마을 spawn — DB 로드 후 (중복 방지) ===
+// §4-4 Stage 2·3 훅 → Stage 4A에서 spawnVillagers '앞'으로 이동 — 레거시 디듀프가 시뮬이 차지한
+//   마을 집합(DB rows가 진실, 시딩 포함)을 먼저 확정해야 해서다. 의존 심볼(spawnNpc·players·claims·
+//   지형 콜라이더)은 이 시점에 전부 준비됨(직후 spawnVillagers가 같은 것을 쓰는 것으로 보증).
+//   ENABLE_VILLAGES=0 → init 즉시 return → isLegacyVillageClaimed 항상 false = 레거시 50곳 전부 유지(기존과 동일).
+SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, isWaterTileLocal });
 // Phase 14.4: central에 NPC 길드 등록 (비동기 — 실패해도 진행)
 // 길드영토 OFF면 central 등록(50콜) 스킵 → 부팅 빠름. (영토는 후속 기능, NPC 작동엔 불필요)
 if (ZONE.npcVillageTerritory) registerVillageGuilds().catch(e => console.warn(`[${ZONE_ID}] village guild register error:`, e.message));
 spawnVillagers();
-
-// §4-4 Stage 2·3: NPC 마을 시뮬 훅 (server/villages.js) — ENABLE_VILLAGES=0이면 init 내부에서 완전 no-op.
-const SimVillages = require('./villages');
-SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, isWaterTileLocal });
 
 // === 디버그 충돌 테스트 방 제거됨 ===
 // 옛 5x5 'debug_room' 벽은 부팅 시 buildings에 직접 올려져 lazy-load 활성/비활성·dedupe와 어긋나
@@ -1978,6 +1999,7 @@ wss.on('connection', async (ws, req) => {
       hardcodedTerrain: getHardcodedTerrainForZone(),
       resources: Array.from(resources.values()),
       claims: Array.from(claims.values()),
+      simVillages: SimVillages.clientVillages(), // §4-4 Stage 4A: 마을 영토(경계 셀)·이름·인구 — 1회
       buildings: activeChunkBuildings(),
       worldClock: {
         epoch: WORLD.worldEpoch,
@@ -2250,6 +2272,7 @@ wss.on('connection', async (ws, req) => {
     hardcodedTerrain: getHardcodedTerrainForZone(),
     resources: Array.from(resources.values()),
     claims: Array.from(claims.values()),
+    simVillages: SimVillages.clientVillages(), // §4-4 Stage 4A: 마을 영토(경계 셀)·이름·인구 — 1회
     buildings: activeChunkBuildings(),
     groundItems: Array.from(groundItems.values()), // Phase 14.23
     mobs: Array.from(mobs.values()).map(m => ({ mid: m.mid, type: m.type, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, tameOwner: m.tameOwner || null, tameOwnerName: m.tameOwnerName || null })),
@@ -2753,6 +2776,11 @@ function doDismantleBuilding(player, buildingId) {
   const b = buildings.get(buildingId);
   if (!b) {
     send(player.ws, { type: 'notice', text: '건축물 없음' }); return;
+  }
+  // §4-4 Stage 4A: 마을 공용 경작지(비영속 materialize 타일, dbId=null)는 분해 불가 —
+  //   청크 재활성 때 부활하므로 분해 허용 시 아이템 무한 증식 루프가 됨.
+  if (b.sim) {
+    send(player.ws, { type: 'notice', text: '마을 공용 경작지는 분해할 수 없습니다' }); return;
   }
   // 14.53-h: 같은 floor 건물만 분해 가능
   const playerFloor = player.floor || 0;
@@ -5138,7 +5166,8 @@ setInterval(() => {
       const e = { pid: o.pid, x: o.x, y: o.y, hp: o.hp, floor: o.floor || 0, vx: o.vx | 0, vy: o.vy | 0 };
       if (o.z) e.z = Math.round(o.z);
       if (o.isDown) e.isDown = 1;
-      if (isNew) { e.name = o.name; e.color = o.color; e.maxHp = o.maxHp; e.tribeName = o.tribeName || null; }
+      // §4-4 Stage 4A: simJob(마을 시뮬 NPC 직업 — npcJob과 별개)도 메타로 1회. 일중 변경분은 sim_village_day 브로드캐스트가 갱신.
+      if (isNew) { e.name = o.name; e.color = o.color; e.maxHp = o.maxHp; e.tribeName = o.tribeName || null; if (o.simJob) e.simJob = o.simJob; }
       return e;
     }
     // Phase 14.38: mob facing — vx/vy 포함. 14.49-d: floor + z
