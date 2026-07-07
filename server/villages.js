@@ -39,7 +39,7 @@ const ENABLED = process.env.ENABLE_VILLAGES !== '0'; // 기본 켜짐. '0'만 �
 
 const SZ = 32; // 셀 크기(px) — zone.js BUILDING_SIZE(436행)·zone-config 셀과 동일
 const INITIAL_POP = 8; // econ createVillage 초기 인구 기본값(economy-sim.js 697행)과 일치
-const VILLAGE_MAX = Math.max(1, parseInt(process.env.VILLAGE_MAX || '10', 10));
+const VILLAGE_MAX = Math.max(1, parseInt(process.env.VILLAGE_MAX || '20', 10));   // ★기본 20(사용자 밀도 캐논 §2.4·§3b: 한반도 존 마을 12~20 — 10은 1착륙 보수값이었음). 성능 확정은 Stage 5 실측
 const NPC_CAP_PER_VILLAGE = Math.max(1, parseInt(process.env.VILLAGE_NPC_CAP || '40', 10));
 const POP_SYNC_PER_DAY = 2; // 인구 반영은 완만: 게임일당 마을당 ±2명까지 (증가=스폰, 감소=최근 NPC부터)
 const MIN_SPACING_PX = 12000; // 마을 간 최소 간격 — pickSeedVillages 주석 참조
