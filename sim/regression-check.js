@@ -14,13 +14,14 @@ if (CHILD_SEED != null) {
   const H = fs.readFileSync(LAB, 'utf8');
   // ── 헤드리스 브라우저 환경 ──
   const _log = console.log;
-  global.N = 400; global.idx = (x, y) => y * 400 + x; global.inG = (x, y) => x >= 0 && y >= 0 && x < 400 && y < 400;
+  // ★실축 대이행(캐논 §3e) 환경 재캘리브레이션: 헤드리스 하니스가 미러하는 월드 상수 — N 400→1600(1.6×1.6km), 본체 마을실험실.html의 N과 일치해야 함.
+  global.N = 1600; global.idx = (x, y) => y * 1600 + x; global.inG = (x, y) => x >= 0 && y >= 0 && x < 1600 && y < 1600;
   global.smt = t => t * t * (3 - 2 * t);
   global.hash2 = (ix, iy, s) => { let h = ix * 374761393 + iy * 668265263 + s * 1274126177; h = (h ^ (h >>> 13)) * 1274126177; return ((h ^ (h >>> 16)) >>> 0) / 4294967295; };
   global.vn = (x, y, s) => { const ix = Math.floor(x), iy = Math.floor(y), fx = x - ix, fy = y - iy; const a = hash2(ix, iy, s), b = hash2(ix + 1, iy, s), c = hash2(ix, iy + 1, s), d = hash2(ix + 1, iy + 1, s); const u = smt(fx), v = smt(fy); return (a * (1 - u) + b * u) * (1 - v) + (c * (1 - u) + d * u) * v; };
   global.fbm = (x, y, s) => { let t = 0, a = .5, f = 1; for (let i = 0; i < 4; i++) { t += a * vn(x * f, y * f, s + i * 31); a *= .5; f *= 2; } return t; };
-  global.MAX_CELLS = Math.PI * 60 * 60;
-  const vals = { pop: '8', fertV: '0.55', waterV: '0.5', sizeMul: '1.5', compactW: '0', settType: 'nucleated', seed: '7', terrMode: 'auto', simSpeed: '80000', nvil: '3' };
+  global.MAX_CELLS = Math.PI * 135 * 135;   // ★R_MAX_CELLS 60→135(§3b) 미러 — 영토 비상 백스톱(실질 정지는 MB/MC·프론티어가 먼저)
+  const vals = { pop: '8', fertV: '0.55', waterV: '0.5', sizeMul: '1.5', compactW: '0', settType: 'nucleated', seed: '7', terrMode: 'auto', simSpeed: '80000', nvil: '8' };   // ★nvil 3→8(§3e 기본값): 회귀도 신세계 기본 밀도로 검사
   const els = {}; global.document = { getElementById: id => els[id] || (els[id] = { value: vals[id] != null ? vals[id] : '0', textContent: '', innerHTML: '', checked: false, addEventListener: () => {} }) };
   global.draw = () => {}; global.V = null; global.TR = null; global.life = null; global.lifeOn = false; global.lifeGM = 0; global.lifeLast = 0; global.lifeSlow = false;
   global.buildWalls = () => new Set(); global.nowMs = 0; global.performance = { now: () => global.nowMs }; global.rafCb = null; global.requestAnimationFrame = cb => { global.rafCb = cb; };
@@ -136,8 +137,8 @@ Promise.all(jobs).then(parts => {
   const checks = [
     ['2. 크래시 없음', !agg.crashed],
     ['3. 동기(sync) 0', agg.bad === 0],
-    ['4. 소멸 통제(≤5)', deaths <= 5],
-    ['5. 인구 범위(800~3500)', agg.pop >= 800 && agg.pop <= 3500],
+    ['4. 소멸 통제(≤초기 마을 1/3)', deaths <= agg.initVil / 3],   // ★재캘리브레이션(실축 대이행 2026-07-07): 구 한도 5 = 구세계 15마을(nvil3×5시드)의 정확히 1/3 — nvil 8(초기 40마을)로 개수 기준이 낡아 같은 '허용 소멸률 33%'를 비율식으로 고정(15마을이면 ≤5로 동일). 실측: 구 1/15(6.7%) → 신 7/40(17.5%) — 마을 8개 채우기의 뒤순위 한계 입지 정착 실패 증가이지 대량 아사선(경제 의미 변화) 아님. 병리(연쇄 소멸)는 33% 초과로 여전히 검출
+    ['5. 인구 범위(2100~9300)', agg.pop >= 2100 && agg.pop <= 9300],   // ★재캘리브레이션(캐논 §4-3 예고, 2026-07-07): 구 800~3500은 15마을(nvil3) 총합 기준 — nvil 8(40마을)로 ×8/3 스케일(2133~9333 절사). 마을당 밀도는 econ 불변이라 그대로(구 74/마을·신 116/마을 모두 구간 중앙권). 실측 3819
     ['6. 특화 분화(광산≥1·숲≥1 마을)', agg.mining >= 1 && agg.forest >= 1],
     ['7. 도구 기술트리(청동·철 도달)', agg.bronze > 0 && agg.iron > 0 && (agg.stoneTool + agg.bronze + agg.iron) > 0],   // 돌도구는 과도기(업그레이드되면 0 가능)
     ['8. 청동 우위(청동기 고증: 청동도구 > 철도구)', agg.bronze > agg.iron],   // 청동 우선+철 희소 → 청동 지배
