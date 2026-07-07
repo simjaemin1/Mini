@@ -75,7 +75,7 @@ if (CHILD_SEED != null) {
     // ★20/21: 공간 영토 = econ land.size 동기(E2c) + 마을 간 영토 겹침 0(전역 소유맵)
     const _seen = new Map();
     for (const v of r.VILS) {
-      if (v.econ && v.V && v.V.territory && Math.abs(v.econ.land.size * 25 - v.V.territory.length) > 60) p.terrSync++;   // 오차 60셀(확장 진행 지연)
+      if (v.econ && v.V && v.V.territory && (v.econ.land.size * 25 - v.V.territory.length) > 60) p.terrSync++;   // ★재캘리브레이션(완공 계약 2026-07-07): 양방향 |오차|→econ 리드 지연(한방향)만. 주택 압력(_hLots=수용력÷16부지×600셀+코어)이 영토를 econ land×25 너머로 견인하는 게 계약의 설계라 terr>e25는 정상(실측 5시드 31마을: terr 2850~9900 = 주택 부지 목표와 정확히 일치, e25 2850~3525, terr<e25 방향 위반 0). E2c의 원 결함 모드(영토가 econ 투자를 못 따라 조용히 정지 — growTerritory 영구정지 버그 재발)는 동일 임계 60셀로 계속 검출
       if (v.V && v.V.territory) for (const c of v.V.territory) { const k = c[0] + ',' + c[1]; if (_seen.has(k) && _seen.get(k) !== v) p.terrOverlap++; _seen.set(k, v); }
       // ★22: 사냥감 생태 — 압력 실재(개체 감소 발생) + 서식지 남은 전면 절멸 0(로지스틱+확산 회복)
       if (v.gameRich && v._initGameTotal > 1) {
@@ -88,6 +88,7 @@ if (CHILD_SEED != null) {
       p.hunterN = (p.hunterN || 0) + (v.econ && v.econ.counts ? Math.round(v.econ.counts.hunter || 0) : 0);
     }
     p.seedRow = `시드${CHILD_SEED} 고기${(p.meat||0).toFixed(0)} 사냥꾼${p.hunterN||0} 인구${p.pop} 마을${r.VILS.length}/${r.initVil} 동기${r.bad} 청동도구${r.VILS.reduce((a, v) => a + (v.econ.storage.bronze_tool || 0), 0).toFixed(0)} 집${p.houses}`;
+    p.seedRow += ' 초과' + Math.max(0,...r.VILS.map(v=>v.econ._mapBeds!==undefined?(v.econ.npcs.length-v.econ._mapBeds):0)) + ' 침대' + r.VILS.reduce((a,v)=>a+(v.econ._mapBeds||0),0);   // ★완공 계약 감시(상비): 마을별 최대 초과·총 침대
   } catch (e) { p.crashed = true; p.seedRow = `시드${CHILD_SEED} 크래시: ${e.message}`; }
   process.stdout.write('@@RESULT@@' + JSON.stringify(p) + '\n');
   process.exit(0);
@@ -153,7 +154,7 @@ Promise.all(jobs).then(parts => {
     ['17. 위신재 교역 활성(장식 > 100000)', agg.tradeOrn > 100000],
     ['18. 집이 영토 안(밖 ≤2%)', agg.housesOut <= agg.housesTot * 0.02],
     ['19. 장기 자연수렴(3500일: 확장정지 마을≥1·최대≤450·생존≥3·차등≥1.5)', lt.stalled >= 1 && lt.maxN <= 450 && lt.alive >= 3 && lt.spread >= 1.5],
-    ['20. 영토 = econ size 동기(오차≤60셀, E2c)', agg.terrSync === 0],
+    ['20. 영토 ≥ econ size(econ 리드 지연 ≤60셀, E2c — 주택 압력의 초과 확장은 정상)', agg.terrSync === 0],
     ['21. 마을 간 영토 겹침 0', agg.terrOverlap === 0],
     ['22. 사냥감 생태(압력 발생≥1·서식지 있는 절멸 0)', agg.gameUsed >= 1 && agg.gameDead === 0],   // 로지스틱+확산+사냥압: 고갈은 일어나되 숲이 남은 한 전멸 없음
     ['23. 사냥 산출(사냥꾼 총원 10~인구40% — 직업 존속=고기 흐름의 시장 증거)', (agg.hunterN || 0) >= 10 && (agg.hunterN || 0) <= agg.pop * 0.4],   // 재고는 즉시소비 균형이라 0이 정상 — 산출 붕괴는 직업 소멸(한계가치→전직)로 나타남. 하한=존속, 상한=폭주 감시

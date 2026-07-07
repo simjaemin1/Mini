@@ -1359,7 +1359,8 @@ function tickVillage(v, day) {
     v.lastStats = stats;
   }
   // ★주거 성장 게이트: 집이 부족하면(N≥주거) 인구가 더 못 늚. 감소는 식량(famine)만 — 집 부족으론 안 죽음.
-  const _gated = (dP > 0 && v.housing !== undefined && N >= v.housing);
+  const _hcap = Math.min(v.housing !== undefined ? v.housing : Infinity, v._mapBeds !== undefined ? v._mapBeds : Infinity);   // ★완공 계약: 맵 완공 침대(_mapBeds)가 상한(3사본 동기화)
+  const _gated = (dP > 0 && _hcap !== Infinity && N >= _hcap);
   if (_gated) dP = 0;
   v._dpDebug = { K: +K.toFixed(1), logi: +_logiTerm.toFixed(3), hunger: +_hungerTerm.toFixed(3), health: +_healthTerm.toFixed(3), happy: +_happyTerm.toFixed(3), prestige: +_prestigeTerm.toFixed(3), housing: (v.housing !== undefined ? +(+v.housing).toFixed(1) : null), gated: _gated, dP: +dP.toFixed(3) };
   // ΔP 상한
@@ -1915,6 +1916,7 @@ function tickMigration(world, day) {
       if (distD > infoR * 1.5) continue;  // 이주는 정보 범위보다 좀 더
       const dstN = dst.npcs.length;
       if (dstN >= POP_MAX) continue;
+      if (dst._mapBeds !== undefined && dstN >= dst._mapBeds) continue;   // ★완공 계약: 침대 없는 마을로 이주 불가(3사본 동기화)
       const dstSurplus = dst.surplusEMA.food;
       const dstRatio = (dstSurplus + dstN) / Math.max(1, dstN);
       if (dstRatio < 1.5) continue;  // 풍요 X면 안 받음
