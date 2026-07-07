@@ -348,6 +348,116 @@ function seedVillages(db, terrain, ta, ZONE) {
 }
 
 // =============================================================================
+// 교역 거리 행렬(BFS·지형) — villageDist의 유클리드가 강·산 우회를 몰라 운송비·약탈 확률·
+// 이동일(전부 거리 비례)이 왜곡되는 것을 교정. econ은 지형을 모름(계약) — 여기(호스트)서
+// 전쌍 최단거리를 계산해 econ.setDistMatrix(world, matrix)로 주입하면 villageDist가 우선 조회.
+//   · 그리드: 셀 서브샘플(VILLAGE_DIST_STEP=4셀=128px) — 코스 셀 중심 1점을 ta.isBlocked로 판정
+//     (지형 어댑터 그대로 재사용: 물+바위+해안, 지형 수식 복제 없음). 판정은 코스 셀당 1회
+//     lazy-메모(Int8) — 마을 소스 전부가 공유해 지형 판정(콜당 ~5µs·segment 스캔)을 총 1회로.
+//     ★근사(주석 의무): 코스 셀 1점 샘플이라 STEP-1셀보다 좁은 물목·바위 틈은 놓칠 수 있음(거리 근사 용도라 허용).
+//   · 탐색: 8방 정수 Dijkstra(직교 10·대각 14, Dial 버킷 큐 — O(V+E)) + 코너 절단 금지
+//     (랩 tradePath와 동일 규칙). 마을(소스)당 1회, 뒤 인덱스 마을이 전부 확정되면 조기 종료
+//     → M마을 = M회 탐색으로 M(M-1)/2쌍 완성.
+//   · 환산: cost/10 × STEP(셀) × 2.5 = econ 좌표 스케일(ev.coord=셀×2.5와 단위 일치).
+//   · 도달 불능(강 건너 완전 폐색 — 본체엔 아직 다리 없음)=Infinity: v2 top-K 절대 상한이 후보 제외.
+//     전 마을 상호 고립이면 경고 로그(지형 병리 — 교역 전무).
+// =============================================================================
+const DIST_STEP = Math.max(1, parseInt(process.env.VILLAGE_DIST_STEP || '4', 10));
+function computeAndInjectDistMatrix(reason) {
+  const { ta, ZONE } = state._distCtx;
+  const world = state.world;
+  const villages = world.villages;
+  const M = villages.length;
+  const t0 = Date.now();
+  const cellsW = Math.ceil(ZONE.zoneWidth / SZ), cellsH = Math.ceil(ZONE.zoneHeight / SZ);
+  const gw = Math.ceil(cellsW / DIST_STEP), gh = Math.ceil(cellsH / DIST_STEP);
+  const half = DIST_STEP >> 1;
+  const blk = new Int8Array(gw * gh); // 0=미판정 1=열림 2=차단 — 이번 계산 안에서 소스 간 공유(재계산 시엔 새로 — 어댑터가 미래에 건물을 반영해도 안전)
+  let sampled = 0;
+  const isBlk = (gx, gy) => {
+    if (gx < 0 || gy < 0 || gx >= gw || gy >= gh) return true;
+    const i = gy * gw + gx;
+    if (blk[i] === 0) { sampled++; blk[i] = ta.isBlocked(gx * DIST_STEP + half, gy * DIST_STEP + half) ? 2 : 1; }
+    return blk[i] === 2;
+  };
+  // 마을 → 코스 노드. 중심 코스 셀이 차단이면 근방 반경 6노드(=24셀) 나선 스냅(findOpenCenter와 같은 구제).
+  const srcNode = villages.map(v => {
+    const gx0 = Math.min(gw - 1, Math.max(0, Math.round(v.coord.x / 2.5 / DIST_STEP)));
+    const gy0 = Math.min(gh - 1, Math.max(0, Math.round(v.coord.y / 2.5 / DIST_STEP)));
+    if (!isBlk(gx0, gy0)) return gy0 * gw + gx0;
+    for (let r = 1; r <= 6; r++) for (let a = 0; a < 16; a++) {
+      const nx = Math.round(gx0 + Math.cos(a / 16 * 2 * Math.PI) * r), ny = Math.round(gy0 + Math.sin(a / 16 * 2 * Math.PI) * r);
+      if (nx >= 0 && ny >= 0 && nx < gw && ny < gh && !isBlk(nx, ny)) return ny * gw + nx;
+    }
+    return -1; // 구제 불가 — 이 마을은 전쌍 Infinity(아래 로그에 잡힘)
+  });
+  const mat = []; for (let i = 0; i < M; i++) { const row = new Array(M).fill(Infinity); row[i] = 0; mat.push(row); }
+  const dist = new Int32Array(gw * gh);
+  const DIRS = [[1, 0, 10], [-1, 0, 10], [0, 1, 10], [0, -1, 10], [1, 1, 14], [1, -1, 14], [-1, 1, 14], [-1, -1, 14]];
+  for (let s = 0; s < M; s++) {
+    if (srcNode[s] < 0) continue;
+    // 타깃: 뒤 인덱스 마을만(쌍 대칭 — 앞 인덱스와의 쌍은 그쪽 소스가 이미 채움)
+    const nodeToTargets = new Map();
+    for (let j = s + 1; j < M; j++) if (srcNode[j] >= 0) {
+      const arr = nodeToTargets.get(srcNode[j]) || []; arr.push(j); nodeToTargets.set(srcNode[j], arr);
+    }
+    let remaining = 0; for (const arr of nodeToTargets.values()) remaining += arr.length;
+    if (!remaining) continue;
+    dist.fill(-1);
+    dist[srcNode[s]] = 0;
+    const buckets = [[srcNode[s]]]; // Dial: cost(정수 10/14 단위)별 버킷 — 배열이 필요만큼 자람(미로형 장경로도 안전)
+    for (let c = 0; c < buckets.length && remaining > 0; c++) {
+      const q = buckets[c]; if (!q) continue;
+      for (let h = 0; h < q.length; h++) {
+        const i = q[h];
+        if (dist[i] !== c) continue; // stale 항목(더 짧은 경로로 이미 확정) — lazy 삭제
+        const tg = nodeToTargets.get(i);
+        if (tg) {
+          const d = (c / 10) * DIST_STEP * 2.5;
+          for (const j of tg) { mat[s][j] = mat[j][s] = d; remaining--; }
+          nodeToTargets.delete(i);
+          if (!remaining) break;
+        }
+        const x = i % gw, y = (i / gw) | 0;
+        for (const [dx, dy, w] of DIRS) {
+          const nx = x + dx, ny = y + dy;
+          if (isBlk(nx, ny)) continue;
+          if (dx && dy && (isBlk(x + dx, y) || isBlk(x, y + dy))) continue; // 대각 코너 절단 금지(랩 tradePath 3937행과 동일)
+          const ni = ny * gw + nx, nc = c + w;
+          if (dist[ni] < 0 || nc < dist[ni]) { dist[ni] = nc; (buckets[nc] || (buckets[nc] = [])).push(ni); }
+        }
+      }
+      buckets[c] = null; // 처리한 버킷 해제(메모리)
+    }
+  }
+  // 주입 + 로그(유클리드 대비 증가율 — 강·산 우회가 잡히면 일부 쌍이 1.0×보다 커야 함)
+  state.econ.setDistMatrix(world, mat);
+  let pairs = 0, unreach = 0, sumR = 0, maxR = 1, longer = 0, maxD = 0;
+  for (let i = 0; i < M; i++) for (let j = i + 1; j < M; j++) {
+    const d = mat[i][j];
+    if (!isFinite(d)) { unreach++; continue; }
+    const eu = Math.hypot(villages[i].coord.x - villages[j].coord.x, villages[i].coord.y - villages[j].coord.y);
+    const r = d / Math.max(1, eu);
+    pairs++; sumR += r; if (r > maxR) maxR = r; if (r > 1.02) longer++; if (d > maxD) maxD = d;
+  }
+  console.log(`[${state.zoneId}] 🏘️ 교역 BFS 거리행렬${reason ? `(${reason})` : ''}: ${M}마을 ${pairs + unreach}쌍 ${Date.now() - t0}ms (그리드 ${gw}×${gh}·step ${DIST_STEP}셀·지형판정 ${sampled}) — 유클리드 대비 평균 ×${pairs ? (sumR / pairs).toFixed(2) : '-'} 최대 ×${maxR.toFixed(2)} 우회쌍(>1.02배) ${longer} · 최장 ${maxD.toFixed(0)} · 도달불능 ${unreach}쌍`);
+  if (M > 1 && pairs === 0) console.warn(`[${state.zoneId}] 🏘️ ⚠ 전 마을 상호 고립(BFS 도달 불능) — 지형 병리: 교역 전무 예상`);
+}
+
+// =============================================================================
+// 동적 무효화 훅(스텁) — Stage 4 건물 실물화(다리·성벽 설치/파괴)가 호출 예정. 지금 호출부 없음.
+// 단순 구현: 전체 행렬 dirty 플래그 → 다음 게임일 경계(자정 저장 큐 세팅 뒤)에 전쌍 재계산.
+// Stage 4 정밀화 설계(인계 — 주석 계약):
+//   · 차단(성벽 설치·다리 철거): 경로 셀 → 지나는 마을쌍 역인덱스를 만들어 '그 경로 위 쌍만' 재계산.
+//   · 개통(다리 신설·바위 제거): 어떤 쌍이든 짧아질 수 있음 → 전쌍을 틱 분산(예: 1쌍/틱)으로 재계산.
+//   · 주기 안전망: N게임일마다 전쌍 리프레시(역인덱스 누락·드리프트 흡수).
+// (cx, cy) = 변화 셀 좌표 — 스텁에선 미사용(전체 dirty), 정밀화 때 역인덱스 조회 키가 된다.
+function invalidateTradeDistances(cx, cy) { // eslint-disable-line no-unused-vars
+  if (!state.ready) return;
+  state.distDirty = true;
+}
+
+// =============================================================================
 // init — zone.js 부팅 시 1회 (spawnVillagers 직후 훅). 실패해도 존 부팅은 계속(try/catch).
 // =============================================================================
 function init(deps) {
@@ -416,6 +526,10 @@ function init(deps) {
     world.day = maxDay;
     state.world = world;
 
+    // --- 교역 거리 행렬(BFS·지형) 계산·주입 — 시딩·복원 공통(지형 정적, 부팅 1회. 소요는 로그에) ---
+    state._distCtx = { ta, ZONE };
+    try { computeAndInjectDistMatrix(); } catch (e) { console.warn(`[${ZONE_ID}] 🏘️ BFS 거리행렬 실패 — 유클리드 폴백으로 계속:`, e.message); }
+
     // 신규 시딩분의 econ_state 최초 저장 (트랜잭션 밖 — 시딩 자체는 이미 원자적)
     for (const vil of state.villages) {
       const row = dbRows.find(r => r.id === vil.dbId);
@@ -467,10 +581,14 @@ function onGameTick(now) {
       npcCount += vil.npcPids.length;
     }
     state.saveQueue = state.villages.slice(); // 저장은 다음 틱부터 1마을/틱 — 19마을이면 0.63초에 걸쳐 완료(게임일 600s 대비 무시)
+    if (state.distDirty) { // 무효화 훅(스텁) 소비 — 게임일 경계(자정 큐 세팅 뒤) 전쌍 재계산. 건물 변화는 드물어 일 1회면 족함(정밀화는 Stage 4 — 위 훅 주석).
+      state.distDirty = false;
+      try { computeAndInjectDistMatrix('무효화 재계산'); } catch (e) { console.error(`[${state.zoneId}] 🏘️ BFS 거리행렬 재계산 실패(기존 행렬 유지):`, e.message); }
+    }
     console.log(`[${state.zoneId}] 🏘️ 마을 econ day ${state.world.day}: 인구 ${econPop} · 스폰 NPC ${npcCount} · 저장큐 ${state.saveQueue.length}행 분산 · ${Date.now() - t0}ms`);
   } catch (e) {
     console.error(`[${state.zoneId}] 🏘️ 마을 econ 틱 실패 (다음 경계에 재시도):`, e.message);
   }
 }
 
-module.exports = { init, onGameTick };
+module.exports = { init, onGameTick, invalidateTradeDistances };

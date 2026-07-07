@@ -355,8 +355,16 @@ function tickTradeV2(world, day) {
     //   여유 많은 마을(잉여 폭발)은 많이, 빠듯한 마을(다 needed)은 적게 → 자연 자기제한 + 붕괴 방지.
     const spareCap = Math.max(1, Math.floor(N * (a.v._idleFrac || 0) * TRADE_SPARE_UTIL));
     // ★top-20 최근접 목적지만(마을 정적이라 캐시, 마을수 변할 때만 재계산). 먼 마을은 운반·약탈로 손해라 무해.
+    //   ★BFS화(2026-07): 거리 = villageDist(호스트가 _distMatrix 주입 시 지형 최단거리, 아니면 유클리드) 기준 정렬
+    //   + 절대 상한 = 행렬 최대 유한거리(≈존 최원격 쌍=대각선 상당)의 절반 — 존 반대편·강 대우회 원정을 후보에서 제외(스케일 프리).
+    //   Infinity(연결 불가 쌍 — 섬)는 어떤 유한 상한에도 걸려 항상 제외. 전원 탈락 마을은 최근접 '유한' 1곳만 유지(교역 고아 방지).
+    //   행렬 없으면 상한 없음 — 기존 유클리드 top-20 그대로(회귀 무영향). 캐시 무효화는 마을수 변화 + setDistMatrix(_near20=null).
     if (!a.v._near20 || a.v._near20N !== world.villages.length) {
-      a.v._near20 = world.villages.filter(x => x !== a.v).sort((p, q) => v1.villageDist(a.v, p) - v1.villageDist(a.v, q)).slice(0, 20);
+      const sorted = world.villages.filter(x => x !== a.v).sort((p, q) => v1.villageDist(a.v, p) - v1.villageDist(a.v, q));
+      const cap = world._distMatrix ? (world._distMatrixMax != null ? world._distMatrixMax : Infinity) * 0.5 : Infinity;
+      let near = cap === Infinity ? sorted : sorted.filter(x => v1.villageDist(a.v, x) <= cap);
+      if (!near.length && sorted.length && isFinite(v1.villageDist(a.v, sorted[0]))) near = [sorted[0]];
+      a.v._near20 = near.slice(0, 20);
       a.v._near20N = world.villages.length;
     }
     const alreadySent = new Set();   // 이 cycle 중복 (자원,목적지) 방지

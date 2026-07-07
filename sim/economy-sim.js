@@ -435,8 +435,37 @@ const CARAVAN_SPEED = 50;   // 일일 이동 거리 (50 단위/day)
 // warrior 호위 — 약탈 확률 감소. sqrt(escort) × 0.08만큼 차감.
 const ESCORT_PER_CARGO = 20;  // 화물 20당 호위 1명 요청
 
+// ★교역 거리 BFS화(2026-07): 호스트(랩·본체)가 지형 전쌍 최단거리 행렬(_distMatrix)을 주입하면 그걸 우선 조회.
+//   유클리드는 강 건너 마을을 가깝다고 착각 → 운송비·약탈 확률·이동일(전부 거리 비례)이 왜곡되는 것을 교정.
+//   econ은 지형을 모름(계약) — 행렬 계산은 호스트 소관(랩=getTradePath A*, 본체=isBlocked 코스 그리드 BFS),
+//   단위는 호스트가 econ 좌표 스케일(셀×2.5)로 환산해 옴 → 유클리드 폴백과 단위 일치.
+//   Infinity = 연결 불가 쌍(섬 — BFS 도달 불능): infoRange·top-K 상한 필터에서 자연 제외됨.
+//   행렬 없으면(스탠드얼론·CLI·회귀 하네스 장기런) 기존 유클리드 폴백 — 회귀 무영향.
 function villageDist(a, b) {
+  const w = a._world || b._world;
+  const M = w && w._distMatrix;
+  if (M && a._distIdx != null && b._distIdx != null) {
+    const row = M[a._distIdx];
+    if (row) { const d = row[b._distIdx]; if (d != null) return d; }
+  }
   return Math.hypot(a.coord.x - b.coord.x, a.coord.y - b.coord.y);
+}
+// 호스트가 계산한 전쌍 거리 행렬 주입 — matrix[i][j] = 주입 시점 world.villages[i]↔[j] 최단거리(econ 스케일, 불능=Infinity).
+//   여기서 마을에 _distIdx 스탬프(마을이 소멸해 배열이 줄어도 인덱스 불변 → 행렬 조회 계속 유효) +
+//   최대 유한거리 _distMatrixMax(v2 top-K '절대 상한'의 기준 — 존 최원격 쌍≈대각선 상당) 계산 + top-K 캐시 무효화.
+function setDistMatrix(world, matrix) {
+  world._distMatrix = matrix;
+  let mx = 0;
+  for (let i = 0; i < matrix.length; i++) {
+    const row = matrix[i] || [];
+    for (let j = 0; j < row.length; j++) { const d = row[j]; if (d != null && isFinite(d) && d > mx) mx = d; }
+  }
+  world._distMatrixMax = mx;
+  for (let i = 0; i < world.villages.length; i++) {
+    world.villages[i]._distIdx = i;
+    world.villages[i]._near20 = null;   // 거리 기준이 바뀌었으므로 top-K 캐시 재구축 유도
+  }
+  return mx;
 }
 
 // 직업별 자리 — 토지 size × 자원성 × 비율
@@ -2207,6 +2236,7 @@ module.exports = {
   processEvents,
   jobCounts,
   villageDist,
+  setDistMatrix,
   setSeed,
   srand: () => srand(),
 };
