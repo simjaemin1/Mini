@@ -110,6 +110,8 @@ const DECAY_V2 = {
   //   풍화·흩어짐·도둑·쥐로 *과잉분만* 천천히 손실(excess 가속). 생산은 안 자르니 수출 안전.
   stone: 0.0003, ore: 0.0008, wood: 0.0003,
   wheat: 0.0012, rice: 0.0012, barley: 0.0012,
+  // ★유령 박멸(§9): 비-specialty 산출물의 부패 정의 — 견과는 벌레먹고(구황식량 편입분), 꺾은 꽃은 시듦(산출 중단된 잔존 재고 소진용).
+  acorn: 0.001, chestnut: 0.001, walnut: 0.001, wildflower: 0.002,
 };
 
 // === Phase 5-5-econ-a: specialty.js 195 자원 통합 ===
@@ -547,6 +549,8 @@ function tickCaravansV2(world, day) {
       const pricesTo = computeShadowPrices(c.to);
       const pricesFrom = computeShadowPrices(c.from);
       const pTo = pricesTo[c.giveRes] || 1;
+      { const A = world._tradeAudit || (world._tradeAudit = { n: 0, rs: [], bail: 0, reroute: 0 });   // ★교역 가격변동 감사(상비): 도착 실현가/출발 예상가
+        A.n++; const r0 = c.pTo_at_depart > 0 ? pTo / c.pTo_at_depart : 1; if (A.rs.length < 8000) A.rs.push(+r0.toFixed(3)); }
 
       // ====== 도착 시 의사결정: 매도 vs 재routing vs 빈손 귀환 ======
       const expectedRevenue = deliveredGive * pTo * (1 - TAU);
@@ -556,6 +560,7 @@ function tickCaravansV2(world, day) {
       // 손해가 너무 크면 (수익 < 출발 가치의 50%) 재routing 또는 빈손 귀환.
       // 단 재routing 최대 2회 chain 제한 (무한 cascade 방지).
       if (expectedRevenue < sunkCost * 0.5 && rerouted < 2) {
+        if (world._tradeAudit) world._tradeAudit.bail++;
         // 1) 다른 마을 검색 — c.to·c.from 제외, 거리 안에서 best
         let bestAlt = null;
         for (const b of world.villages) {
@@ -574,6 +579,7 @@ function tickCaravansV2(world, day) {
           }
         }
         if (bestAlt) {
+          if (world._tradeAudit) world._tradeAudit.reroute++;
           // ✈️ 재routing — 새 마을로 추가 출장
           const extraDays = travelDaysForDistance(bestAlt.dist);
           c.to = bestAlt.v;
@@ -750,9 +756,23 @@ function restoreLand(v) {
 //   결과: 1000일치 비축 마을은 1년에 거의 다 부패 → 자연 sink.
 // ★부패성 식량은 과잉 시 빨리 상함(곡식 rot) — excess 임계를 낮게(target×2 ≈ 60일치). 내구재(도구·무기)는 ×10 유지.
 const DECAY_EXCESS_MULT = { food: 2, meat: 2, fish: 2, cooked_food: 2, fruit: 2, vegetable: 2, mushroom: 2, hide: 4,
-  stone: 8, ore: 3, wood: 8, wheat: 4, rice: 4, barley: 4 };   // 비축 더미 cap (target×mult 초과분 가속 손실). 돌·나무는 완만(한계 마을 수출 보호)
+  stone: 8, ore: 3, wood: 8, wheat: 4, rice: 4, barley: 4,
+  // ★유령 박멸(§9): 유기 부산물 더미는 빨리 삭음(벌레·풍화·굳음 — hide 4 선례). 반유령 재고의 글럿 평형을 실사용 수준으로 하향.
+  bone: 3, feather: 3, resin: 3, leather: 4, fur: 4, hemp: 4, seaweed: 3, clay: 6, oak_log: 4, pine_log: 4 };
+// ★옹기(유령 박멸·§9 손실 절약형): 진흙(광부 부산물)을 매일 소비(가구 장독 빚기·깨진 독 갈기 — 가내수공, 신규 직업 없음)
+//   → 충족률 EMA(v._potteryR) → 부패성 식량 부패율 ×(1−0.3×충족) — 소비의 대가가 실물 손실 감소(밀폐 저장).
+//   수요 하드코딩 아님(가격 항 없음): 공급 없으면 현행 부패 그대로(페널티 없음), 있으면 절약. 진흙 없는 마을엔 수입 유인 창발.
+const CLAY_DAILY_PC = 0.02;        // 1인당 일일 진흙(장독 유지 — 광산촌 부산물 흐름 스케일)
+const POTTERY_DECAY_SAVE = 0.3;    // 완전 충족 시 부패 −30%(질그릇 밀폐 — 상한)
+const POTTERY_FOODS = { food: 1, cooked_food: 1, fish: 1, meat: 1, fruit: 1, vegetable: 1, mushroom: 1, wheat: 1, rice: 1, barley: 1 };
 function tickDecay(v) {
   const N = v.npcs.length || 1;
+  // 옹기: 진흙 흐름 소비 → 충족률 EMA(~50일 관성 — 독은 한 번 빚으면 오래감)
+  const _cNeed = N * CLAY_DAILY_PC;
+  const _cTake = Math.min(v.storage.clay || 0, _cNeed);
+  if (_cTake > 0) v.storage.clay -= _cTake;
+  v._potteryR = v._potteryR === undefined ? (_cNeed > 0 ? _cTake / _cNeed : 0) : 0.98 * v._potteryR + 0.02 * (_cNeed > 0 ? _cTake / _cNeed : 0);
+  const _potMul = 1 - POTTERY_DECAY_SAVE * Math.min(1, v._potteryR);
   for (const [r, baseRate] of Object.entries(DECAY_V2)) {
     const s = v.storage[r] || 0;
     if (s <= 0) continue;
@@ -763,7 +783,7 @@ function tickDecay(v) {
     // excess: target × mult 초과분은 비례 가속(쥐·곰팡이·도둑). 부패성 식량은 mult 낮아 ~60일에서 cap.
     const xm = DECAY_EXCESS_MULT[r] || 10;
     const excess = Math.max(0, s / Math.max(1, target * xm) - 1);
-    const rate = baseRate * (1 + excess * 5);
+    const rate = baseRate * (1 + excess * 5) * (POTTERY_FOODS[r] ? _potMul : 1);   // ★옹기 절감은 식량군만(장독=곡식·장 저장)
     v.storage[r] = s * (1 - rate);
   }
 }

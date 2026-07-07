@@ -3084,6 +3084,8 @@ function tickCaravansV2(world, day) {
       const pricesTo = computeShadowPrices(c.to);
       const pricesFrom = computeShadowPrices(c.from);
       const pTo = pricesTo[c.giveRes] || 1;
+      { const A = world._tradeAudit || (world._tradeAudit = { n: 0, rs: [], bail: 0, reroute: 0 });   // ★교역 가격변동 감사(상비): 도착 실현가/출발 예상가
+        A.n++; const r0 = c.pTo_at_depart > 0 ? pTo / c.pTo_at_depart : 1; if (A.rs.length < 8000) A.rs.push(+r0.toFixed(3)); }
 
       // ====== 도착 시 의사결정: 매도 vs 재routing vs 빈손 귀환 ======
       const expectedRevenue = deliveredGive * pTo * (1 - TAU);
@@ -3093,6 +3095,7 @@ function tickCaravansV2(world, day) {
       // 손해가 너무 크면 (수익 < 출발 가치의 50%) 재routing 또는 빈손 귀환.
       // 단 재routing 최대 2회 chain 제한 (무한 cascade 방지).
       if (expectedRevenue < sunkCost * 0.5 && rerouted < 2) {
+        if (world._tradeAudit) world._tradeAudit.bail++;
         // 1) 다른 마을 검색 — c.to·c.from 제외, 거리 안에서 best
         let bestAlt = null;
         for (const b of world.villages) {
@@ -3111,6 +3114,7 @@ function tickCaravansV2(world, day) {
           }
         }
         if (bestAlt) {
+          if (world._tradeAudit) world._tradeAudit.reroute++;
           // ✈️ 재routing — 새 마을로 추가 출장
           const extraDays = travelDaysForDistance(bestAlt.dist);
           c.to = bestAlt.v;
