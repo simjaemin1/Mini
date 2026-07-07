@@ -446,8 +446,9 @@ const JOBS = {
     field: 'farming', output: 'food', base: 1.5,
     landBoost: (v) => v.land.fertility, toolDependent: true, inputs: {},
     // 곡물 다양화 + 섬유. ★목화(cotton)·아마(flax) 제거 — 목화는 1363년 문익점 도입(청동기 부재), 아마도 한국 전통 아님.
-    //   고대 한반도 섬유는 삼(대마/hemp=삼베)뿐 → 제거분(0.14)을 hemp로 통합(순생산 불변, 고증 정정).
-    byproduct: { wheat: 0.25, rice: 0.20, barley: 0.15, hemp: 0.19 },
+    //   고대 한반도 섬유는 삼(대마/hemp=삼베)뿐. ★유령 박멸(§9): hemp 0.19→0.06 — 삼은 전용 삼밭 소출이지 전 곡물의
+    //   부산물이 아님(0.19 = 곡물생산의 19% = 실수요[의류 0.004/인+활시위+갑옷끈]의 30배 유령 산출, 시드3 재고 6,429).
+    byproduct: { wheat: 0.25, rice: 0.20, barley: 0.15, hemp: 0.06 },
   },
   fisher: {
     field: 'fishing', output: 'fish', base: 1.2,
@@ -460,13 +461,18 @@ const JOBS = {
     landBoost: (v) => v.land.game, toolDependent: true,
     inputs: {},
     // Phase 5-5-econ-b: specialty.js hunting 부산물 추가
-    byproduct: { hide: 0.4, fur: 0.15, leather: 0.10, bone: 0.20, feather: 0.10 },
+    // ★유령 박멸(§9): 부산물 채집률을 실수요 스케일로 정렬 — 사냥꾼은 팔리지 않는 것을 등짐에 지고 오지 않는다.
+    //   fur 0.15→0.05(모피짐승은 사냥감 일부 — 의류 소비 0.005/인 스케일) · bone 0.20→0.10(캐논 §9 후속: 20배 글럿 → 하향.
+    //   활 투입 0.3/자루는 여전히 10배 여유) · feather 0.10→0.03(조류 비중 현실화 — 수요는 화살 깃뿐).
+    byproduct: { hide: 0.4, fur: 0.05, leather: 0.10, bone: 0.10, feather: 0.03 },
   },
   lumberjack: {
     field: 'woodworking', output: 'wood', base: 0.9,
     landBoost: (v) => v.land.wood, toolDependent: true, inputs: {},
-    // Phase 5-5-econ-b: 통나무 종류 + 부산물 (oak·pine·resin·bark·acorn)
-    byproduct: { oak_log: 0.20, pine_log: 0.15, resin: 0.08, bark: 0.10, acorn: 0.06 },
+    // ★유령 박멸(§9): oak_log·pine_log 산출 중단 — 목재는 'wood' 단일 계상인데 통나무 SKU가 같은 나무를 이중 계상
+    //   (0.35/일 유령 목재 — 소비처 전무, 시드3 재고 9,430). specialty 정의는 유지(타 존 특산·교역 유입 대상).
+    //   resin(활 접착 투입)·bark(하급 연료)·acorn(구황식량)은 소비처 연결로 존치.
+    byproduct: { resin: 0.08, bark: 0.10, acorn: 0.06 },
   },
   miner: {   // ★통일 광부(탐사꾼 통합): 그 땅의 광맥을 캠 — 금속광맥(ore≥stone) 풍부하면 광석+금속(구리·주석·철), 아니면 돌.
     field: 'mining', output: 'stone', base: 1.5,
@@ -490,6 +496,8 @@ const JOBS = {
     field: 'smithing', output: 'armor', base: 0.35,
     landBoost: () => 1.0, toolDependent: false,
     inputs: { stone: 0.5, hide: 0.4, ore: 0.2 },
+    // ★유령 박멸(§9): 보조 투입 — 삼끈(갑옷 엮음)·모피(방한 안감, hide와 별개 슬롯). 있으면 소비, 없어도 제작 성립(게이트 아님).
+    aux: { hemp: 0.1, fur: 0.1 },
   },
   forager: {                // 채집 — 다중 산출
     field: 'foraging', output: null, base: 1.0,
@@ -559,8 +567,9 @@ function foragerYieldsFor(v) {
     walnut:    wood * 0.15,           // 견과 — 숲
     honey:     wood * 0.20,           // 꿀 — 숲 (벌집)
     herb:      fert * 0.25 + wood * 0.20 + stone * 0.15 + 0.15,  // ★약재(§9 2차, 구 medicinal_herb 승격): 산출의 ~15% — 임연부 CPUE·MSY(forageSustain) 상한에 자동 연동
-    wildflower: fert * 0.25,          // 야생화 — 평원
-    grape:     fert * 0.15,           // 산포도 — 평원
+    // ★유령 박멸(§9): wildflower 산출 중단 — 꺾은 꽃은 며칠에 시들어 저장·교역재가 못 됨(장식재 편입=가짜 수요).
+    //   소비처 부재 → 산출을 끊는다(시드3 재고 5,246 동결 확인). 잔존 재고는 v2 부패(시듦)로 소진.
+    grape:     fert * 0.15,           // 산포도 — 평원(구황식량 — FORAGE_FOOD_FACTOR 편입)
   };
 }
 
@@ -570,7 +579,11 @@ function foragerYieldsFor(v) {
 //          예) fertility 1.0, skill 0, toolBoost 1.0
 //              farmer    → 1.5 food/day
 //              forager   → 1.0 × 0.67 × 1 = 0.67 산출, food_equiv 약 0.16 (~11%)
-const FORAGE_FOOD_FACTOR = { fruit: 0.4, vegetable: 0.4, mushroom: 0.3 };
+const FORAGE_FOOD_FACTOR = { fruit: 0.4, vegetable: 0.4, mushroom: 0.3,
+  // ★유령 박멸(§9): 식량형 축적재의 구황식량 편입 — 견과·해조·산과일이 먹히지도 K에 잡히지도 않고 수천 단위 축적되던 것을
+  //   식량 환산(totalFoodEquivalent)과 소비(consumeFood 4단계 — 삽입 순서=소비 후순위: 주식 우선 보존)에 산입.
+  //   계수 보수적(≤0.5): 견과=고칼로리 0.5, 도토리=침출 노동 감안 0.25, 해조=저열량 0.25, 산포도 0.3.
+  chestnut: 0.5, walnut: 0.5, acorn: 0.25, seaweed: 0.25, grape: 0.3 };
 
 // 소비 (일일 1인당)
 const DAILY_FOOD_CONSUMPTION = 1.0;
@@ -711,6 +724,8 @@ const STRAW_FUEL_PER_FOOD = 0.018;   // ★볏짚·왕겨 연료(고증): 평야
                                      //   vs 연간 연료수요 ~1.2t → 짚이 수요의 ~17% → food 1단위 생산당 0.085×0.2≈0.018 wood-eq. 저장 없이 당일 소진(flow).
                                      //   효과: 농업촌 연료난 완화(수출작 짚도 남음)·광산촌은 여전히 목재 수입 의존 → 마을 유형별 연료 전략 분화(자연).
 const SMELT_FUEL_PER = 0.5;    // ★야금공(대장장이·무기장이·갑옷장이) 1인당 제련 연료. 청동 제련은 고온·대량 연료 → 야금촌이 숲을 더 압박(고증)
+const LOW_FUEL_EQ = 0.3;       // ★유령 박멸(§9): 잔가지·나무껍질 = 하급 연료(wood 0.3 등가). 취사·난방에서 장작보다 먼저 소진(검불 먼저 때는 게 상식) → 목재 실절약(손실 절약형 소비). 제련(고온)은 straw와 동일하게 불가 단순화.
+const PEBBLE_STONE_EQ = 0.5;   // ★유령 박멸(§9): 자갈 = 건축 석재 하급 대체(0.5 등가, 기초·구들 채움 한정 ≤절반) — 석재 실절약. 주춧돌·벽체는 여전히 석재(광산 수요 기둥 보존).
 const FUEL_HEALTH_W = 0.4;     // 땔감 부족 시 건강 페널티 가중(fuelCov=0 → 건강 -0.4). 비례라 절벽 아님·자기교정
 
 // 식량 부패 — 무한 비축 방지. 음식 종류별로 다름.
@@ -927,7 +942,7 @@ function opportunityCost(npc, v, w) {
     case 'smith':       return ((v.counts.smith || 0)       > smithTarget(v))       ? 0.005 : 50 * sk;
     case 'weaponsmith': return ((v.counts.weaponsmith || 0) > weaponsmithTarget(v)) ? 0.005 : 50 * sk;
     case 'armorsmith':  return ((v.counts.armorsmith || 0)  > armorsmithTarget(v))  ? 0.005 : 50 * sk;
-    case 'cook':        return 0.4 * w('cooked_food') * sk;
+    case 'cook':        return ((v.counts.cook || 0) > cookTarget(v)) ? 0.005 : 0.4 * w('cooked_food') * sk;   // ★유령 박멸 #4: 목표 초과 요리사=1순위 차출(장인 대칭 — 조리식은 흐름재라 재고가격이 못 끌어내림)
     // ★전사: 무장 가능 수(보유 무기)와 readiness 목표 중 작은 값으로 상한. 무기 없으면 전사 아님 → 동원해제(생산직).
     //   초과/무장불가면 0.008(글럿 생산자 0.01보다↓ = 최우선 차출), 이내면 유지(방어 비시장가치).
     case 'warrior': {
@@ -1010,7 +1025,7 @@ function createVillage(opts) {
   //   부양력 오판·농부 이탈로 초반 인구 진동시켰음). 45일이면 satiation 거의 0(secF~0.1) + 교역 부트스트랩 충분.
   v.storage.food = initN * 45;
   v.storage.tool = initN * 3;         // 도구 충분
-  v.storage.wood = initN * 8;         // 초기 주거 건축 부트스트랩 + 거래 + smith
+  v.storage.wood = initN * 4;         // ★초기 주거 부트스트랩 절반(8→4) — 나머지는 벌채 부산물(deforestCell)이 공급: '지고 온 목재 + 첫 개간에서 벤 나무'로 서사 정직화
   v.storage.stone = initN * 5;        // 초기 석재(주거·거래·smith)
   v.storage.ore = Math.floor(initN * v.land.ore * 5);  // 광물 도시는 ore 잉여로 시작
   v.storage.herb = initN * 0.5;       // ★약재(§9): 정착민 상비약 반 근씩 — 재고0 희소폭등(가격 스파이크→채집 쏠림 과도) 방지 시드
@@ -1078,6 +1093,7 @@ function tickVillage(v, day) {
   // 1) 각 NPC 일하기 → 산출물 storage에 + skill xp
   //    매일 새 객체 만들지 말고 버퍼 재사용 (GC 부하 ↓)
   const dailyProduction = v.dailyProductionBuf;
+  for (const r in dailyProduction) dailyProduction[r] = 0;   // ★NaN 가드: specialty 부산물 키(동적 추가분)까지 전부 리셋 — 어제 값 잔존·NaN 오염 방지
   for (const r of RESOURCES) dailyProduction[r] = 0;
   // ★도구 등급제: 맨손 0.25×(엄청 느림) / 돌도구 1.0×(보통) / 철도구 1.8×(상당히 빠름). 일꾼은 가진 최선의 도구 사용.
   //   → 도구가 생산을 좌우 → 대장간·돌·철 수요. 도구 없어도 농어업 가능하나 극도로 느림(사용자 설계).
@@ -1167,7 +1183,7 @@ function tickVillage(v, day) {
       const tax = amt * TAX_RATE;
       v.storage[r] = (v.storage[r] || 0) + (amt - tax);
       v.treasury[r] = (v.treasury[r] || 0) + tax;
-      dailyProduction[r] += amt;
+      dailyProduction[r] = (dailyProduction[r] || 0) + amt;   // ★NaN 가드(유령 감사서 발견): 버퍼 리셋은 v1 RESOURCES 키만 돌아 specialty 부산물(wheat 등)이 undefined+amt=NaN 영구 오염 — 흐름 진단·식량환산 편입의 지뢰였음
     };
     if (jdef.produceSpecial === 'forager') {
       if (baseAmt > 0) {
@@ -1222,6 +1238,12 @@ function tickVillage(v, day) {
         const _bIn = Math.min(v.storage.bone || 0, _bNeed);
         if (_bIn > 0) { v.storage.bone -= _bIn; v._boneUsed = (v._boneUsed || 0) + _bIn; }
         v._bowIn = (v._bowIn || 0) + _bIn; v._bowNeed = (v._bowNeed || 0) + _bNeed;
+        // ★유령 박멸(§9): 활 재료 다양화 — 깃(화살 fletching) 0.2 · 송진(활대 접착) 0.1 · 삼(시위) 0.1 / 활.
+        //   bone 0.3 패턴 그대로: 있으면 소비, 없어도 제작 성립. _bowQ 산식 불변(bone만 품질 반영 — 재료 소비처 연결만).
+        for (const _fx of [['feather', 0.2], ['resin', 0.1], ['hemp', 0.1]]) {
+          const _fi = Math.min(v.storage[_fx[0]] || 0, amt * _fx[1]);
+          if (_fi > 0) v.storage[_fx[0]] -= _fi;
+        }
       } else if ((v.storage.copper || 0) >= 0.3 && (v.storage.tin || 0) >= 0.12) {
         v.storage.copper -= 0.3; v.storage.tin -= 0.12;   // ★청동검(청동기 주력 무기)
         addProduce('weapon', amt);
@@ -1254,6 +1276,11 @@ function tickVillage(v, day) {
     } else if (jdef.output && baseAmt > 0) {
       for (const [inp, need] of Object.entries(jdef.inputs || {})) {
         v.storage[inp] = Math.max(0, v.storage[inp] - need);
+      }
+      // ★유령 박멸(§9): 보조 투입(aux) — 있으면 소비, 없어도 제작 성립(inputs와 달리 게이트 아님 — 마감·안감재).
+      for (const [inp, per] of Object.entries(jdef.aux || {})) {
+        const _t = Math.min(v.storage[inp] || 0, per);
+        if (_t > 0) v.storage[inp] -= _t;
       }
       addProduce(jdef.output, baseAmt);
       if (jdef.byproduct) {
@@ -1348,9 +1375,19 @@ function tickVillage(v, day) {
   // ★볏짚 먼저(공짜 부산물, 당일 소진 — 취사·난방용. 제련은 고온이라 목재만) → 부족분만 목재.
   const strawFuel = Math.min(N * FIREWOOD_PC, (v._grainToday || 0) * STRAW_FUEL_PER_FOOD);
   v._grainToday = 0;
-  const fuelFromWood = Math.min(Math.max(0, fuelNeed - strawFuel), v.storage.wood || 0);
+  // ★유령 박멸(§9): 하급 연료 — 잔가지(twig)·껍질(bark)을 장작보다 먼저 땜(LOW_FUEL_EQ eq). 취사·난방분만(제련 제외 = straw와 동일).
+  //   채집 잔가지·벌목 껍질의 자연 소비처(연료 등가 편입) — 목재 소비 실절감.
+  const _cookHeatNeed = Math.max(0, N * FIREWOOD_PC - strawFuel);   // 하급 연료가 감당 가능한 몫(제련 제외)
+  let _lowFuel = 0;
+  for (const _lf of ['twig', 'bark']) {
+    const _rem = _cookHeatNeed - _lowFuel;
+    if (_rem <= 0) break;
+    const _u = Math.min(v.storage[_lf] || 0, _rem / LOW_FUEL_EQ);
+    if (_u > 0) { v.storage[_lf] -= _u; _lowFuel += _u * LOW_FUEL_EQ; }
+  }
+  const fuelFromWood = Math.min(Math.max(0, fuelNeed - strawFuel - _lowFuel), v.storage.wood || 0);
   v.storage.wood = Math.max(0, (v.storage.wood || 0) - fuelFromWood);
-  v._fuelCov = fuelNeed > 0 ? (strawFuel + fuelFromWood) / fuelNeed : 1;
+  v._fuelCov = fuelNeed > 0 ? (strawFuel + _lowFuel + fuelFromWood) / fuelNeed : 1;
 
   // ★주거 증축: 집이 인구보다 모자라면 목재(필수)·석재(있으면)로 지음. 노후화로 지속 보수.
   if (v.housing === undefined) v.housing = N;
@@ -1368,7 +1405,11 @@ function tickVillage(v, day) {
       const stoneFrac = stoneNeed > 0 ? Math.min(1, (v.storage.stone || 0) / stoneNeed) : 1;
       built *= 0.3 + 0.7 * stoneFrac;   // 석재 0 → 30% 속도, 충분 → 100%
       v.storage.wood -= built * HOUSE_WOOD;
-      v.storage.stone = Math.max(0, (v.storage.stone || 0) - built * HOUSE_STONE);   // 실제 건축분만큼 석재 소비
+      // ★유령 박멸(§9): 자갈 기초 — 기초·구들 채움(석재 수요의 ≤절반)은 채집 자갈이 하급 대체(PEBBLE_STONE_EQ). 석재 실절약.
+      const _needS = built * HOUSE_STONE;
+      const _pebUse = Math.min(v.storage.pebble || 0, (_needS * 0.5) / PEBBLE_STONE_EQ);
+      if (_pebUse > 0) v.storage.pebble -= _pebUse;
+      v.storage.stone = Math.max(0, (v.storage.stone || 0) - Math.max(0, _needS - _pebUse * PEBBLE_STONE_EQ));   // 실제 건축분만큼 석재 소비(자갈 대체분 차감)
       v.housing += built;
     }
   }
@@ -1630,6 +1671,19 @@ function weaponsmithTarget(v) {
 function armorsmithTarget(v) {
   return craftLaborTarget(v.storage.armor || 0, v.counts.warrior || 0, 0.3, { buffer: 1.0, catchup: 60, decay: 0.0004 });
 }
+// ★요리사 노동목표(유령 박멸 #4) — cooked_food가 rational 픽커에서 죽어 있던 결함 수정(픽커 후보에 cook 부재 → 요리사 0 →
+//   조리식 산출 0 영구). 부뚜막 자리는 부재료 유입 흐름이 부양(토지캡과 동형 — 재료 없는 부엌은 0명, 쿼터 아님).
+//   경제 근거(§9 — 가격 항 없음): 조리식은 1.12× 흡수 효율(같은 곡물로 더 부양 = 노동 절약) + 식단 다양성(행복·건강 실효)
+//   + 채집·부산물 더미(과일·채소·버섯)의 자연 소비처. 식량 불안 마을은 부엌이 사치(게이트).
+function cookTarget(v) {
+  const N = v.npcs.length || 1;
+  if (totalFoodEquivalent(v) < N * 35 || (v.storage.food || 0) < N * 8) return 0;   // 식량 안보 게이트
+  const dp = v.dailyProductionBuf || {};
+  let sideFlow = 0, sideStock = 0;
+  for (const r of COOK_SIDE_INGREDIENTS) { sideFlow += dp[r] || 0; sideStock += v.storage[r] || 0; }
+  if (sideStock < N * 1.5) return 0;   // 곳간에 부재료 없으면 안 섬
+  return Math.min(Math.floor(sideFlow / 3), Math.floor(N * 0.06));   // 부재료 흐름이 정원(1인 ~2.5/일 소비) · 6% 안전 클램프(최후 보루)
+}
 
 function pickDeficitJob_rational(v, world) {
   const N = v.npcs.length || 1;
@@ -1679,6 +1733,7 @@ function pickDeficitJob_rational(v, world) {
   if ((counts.smith || 0) < smithTarget(v) && (v.storage.stone || 0) >= 0.6) return 'smith';
   if ((counts.weaponsmith || 0) < weaponsmithTarget(v) && ((v.storage.stone || 0) > N * 0.3 || (v.storage.wood || 0) > N * 0.5)) return 'weaponsmith';   // ★§9 3차: 활 마을(사냥꾼 다수)은 목재가 재료 — 돌 없어도 성립
   if ((counts.armorsmith || 0) < armorsmithTarget(v) && (v.storage.hide || 0) > N * 0.3) return 'armorsmith';
+  if ((counts.cook || 0) < cookTarget(v)) return 'cook';   // ★유령 박멸 #4: 요리사 — 스톡-플로우 노동목표(장인 패턴). 잉여 마을만(cookTarget 내 게이트)
   // ★주거 압박: 집이 거의 가득(인구 성장 막힘) + 집 지을 목재 부족 → 나무꾼. 집 지어야 인구가 늚 → 고리를 닫는 안전망.
   if (v.housing !== undefined && N >= v.housing * 0.95 && (v.storage.wood || 0) < N * 2 && hasSlot(v, 'lumberjack', cap, counts)) return 'lumberjack';
   // ★석재 안전망: 산이 가까운 마을(land.stone 충분)이 석재 부족하면 광부. 집·도구·무기 석재 수요 → 채광. 산 없으면(stone≤0.25) 안 함.
@@ -2590,6 +2645,8 @@ const DECAY_V2 = {
   //   풍화·흩어짐·도둑·쥐로 *과잉분만* 천천히 손실(excess 가속). 생산은 안 자르니 수출 안전.
   stone: 0.0003, ore: 0.0008, wood: 0.0003,
   wheat: 0.0012, rice: 0.0012, barley: 0.0012,
+  // ★유령 박멸(§9): 비-specialty 산출물의 부패 정의 — 견과는 벌레먹고(구황식량 편입분), 꺾은 꽃은 시듦(산출 중단된 잔존 재고 소진용).
+  acorn: 0.001, chestnut: 0.001, walnut: 0.001, wildflower: 0.002,
 };
 
 // === Phase 5-5-econ-a: specialty.js 195 자원 통합 ===
@@ -3230,9 +3287,23 @@ function restoreLand(v) {
 //   결과: 1000일치 비축 마을은 1년에 거의 다 부패 → 자연 sink.
 // ★부패성 식량은 과잉 시 빨리 상함(곡식 rot) — excess 임계를 낮게(target×2 ≈ 60일치). 내구재(도구·무기)는 ×10 유지.
 const DECAY_EXCESS_MULT = { food: 2, meat: 2, fish: 2, cooked_food: 2, fruit: 2, vegetable: 2, mushroom: 2, hide: 4,
-  stone: 8, ore: 3, wood: 8, wheat: 4, rice: 4, barley: 4 };   // 비축 더미 cap (target×mult 초과분 가속 손실). 돌·나무는 완만(한계 마을 수출 보호)
+  stone: 8, ore: 3, wood: 8, wheat: 4, rice: 4, barley: 4,
+  // ★유령 박멸(§9): 유기 부산물 더미는 빨리 삭음(벌레·풍화·굳음 — hide 4 선례). 반유령 재고의 글럿 평형을 실사용 수준으로 하향.
+  bone: 3, feather: 3, resin: 3, leather: 4, fur: 4, hemp: 4, seaweed: 3, clay: 6, oak_log: 4, pine_log: 4 };
+// ★옹기(유령 박멸·§9 손실 절약형): 진흙(광부 부산물)을 매일 소비(가구 장독 빚기·깨진 독 갈기 — 가내수공, 신규 직업 없음)
+//   → 충족률 EMA(v._potteryR) → 부패성 식량 부패율 ×(1−0.3×충족) — 소비의 대가가 실물 손실 감소(밀폐 저장).
+//   수요 하드코딩 아님(가격 항 없음): 공급 없으면 현행 부패 그대로(페널티 없음), 있으면 절약. 진흙 없는 마을엔 수입 유인 창발.
+const CLAY_DAILY_PC = 0.02;        // 1인당 일일 진흙(장독 유지 — 광산촌 부산물 흐름 스케일)
+const POTTERY_DECAY_SAVE = 0.3;    // 완전 충족 시 부패 −30%(질그릇 밀폐 — 상한)
+const POTTERY_FOODS = { food: 1, cooked_food: 1, fish: 1, meat: 1, fruit: 1, vegetable: 1, mushroom: 1, wheat: 1, rice: 1, barley: 1 };
 function tickDecay(v) {
   const N = v.npcs.length || 1;
+  // 옹기: 진흙 흐름 소비 → 충족률 EMA(~50일 관성 — 독은 한 번 빚으면 오래감)
+  const _cNeed = N * CLAY_DAILY_PC;
+  const _cTake = Math.min(v.storage.clay || 0, _cNeed);
+  if (_cTake > 0) v.storage.clay -= _cTake;
+  v._potteryR = v._potteryR === undefined ? (_cNeed > 0 ? _cTake / _cNeed : 0) : 0.98 * v._potteryR + 0.02 * (_cNeed > 0 ? _cTake / _cNeed : 0);
+  const _potMul = 1 - POTTERY_DECAY_SAVE * Math.min(1, v._potteryR);
   for (const [r, baseRate] of Object.entries(DECAY_V2)) {
     const s = v.storage[r] || 0;
     if (s <= 0) continue;
@@ -3243,7 +3314,7 @@ function tickDecay(v) {
     // excess: target × mult 초과분은 비례 가속(쥐·곰팡이·도둑). 부패성 식량은 mult 낮아 ~60일에서 cap.
     const xm = DECAY_EXCESS_MULT[r] || 10;
     const excess = Math.max(0, s / Math.max(1, target * xm) - 1);
-    const rate = baseRate * (1 + excess * 5);
+    const rate = baseRate * (1 + excess * 5) * (POTTERY_FOODS[r] ? _potMul : 1);   // ★옹기 절감은 식량군만(장독=곡식·장 저장)
     v.storage[r] = s * (1 - rate);
   }
 }
