@@ -72,6 +72,13 @@ function _computeVillageStats(v, N) {
   stats.happiness += _divN * DIVERSITY_HAPPY_W;
   stats.health += _divN * DIVERSITY_HEALTH_W;
   stats.foodGroups = _fg.size;
+  // ★여가→행복(§노동): 포만으로 감산된 노동(_idleFrac)만큼 쉼 — 부유·수입촌은 반나절 노동으로 행복↑, 개척·궁핍촌은 idle 0이라 무보너스.
+  //   교역 기회비용(사용자 질문의 실물화): 원정 나간 인원(_tradingN, v2 발행)은 생산도 쉼도 못 하므로 여가에서 차감 —
+  //   "쉬는 대신 교역"의 비용이 행복 회계에 실재. 문턱엔 안 넣음(실측: 캐러밴 이익/일이 개인 mv를 3~4자릿수 압도 → 영원히 안 물림.
+  //   교역 vs 휴식의 실배분 노브는 TRADE_SPARE_UTIL=0.11 — 여유노동의 11%만 원정, 89%는 쉼).
+  const _leis = Math.max(0, (v._idleFrac || 0) - (v._tradingN || 0) / pop);
+  stats.happiness += LEISURE_HAPPY_W * _leis;
+  stats.leisure = _leis;
   // ★땔감 부족 → 건강 페널티(비례). fuelCov=1이면 0, 0이면 -FUEL_HEALTH_W. 큰/숲빈약 마을이 연료를 못 대면 건강↓→인구 억제.
   if (v._fuelCov !== undefined && v._fuelCov < 1) stats.health += (v._fuelCov - 1) * FUEL_HEALTH_W;
   stats.fuelCov = (v._fuelCov !== undefined) ? v._fuelCov : 1;
@@ -347,6 +354,11 @@ const PRESTIGE_MOD_CAP = 0.25;           // 보너스 상한(happyMod ~0.8 대�
 const DIVERSITY_HAPPY_W = 0.4;           // 다양성(식품군) 만점 시 행복 보너스
 const DIVERSITY_HEALTH_W = 0.5;          // 다양성 만점 시 건강 보너스(건강이 낮아 더 큰 지렛대)
 const DIVERSITY_FULL = 4;                // 이 군수면 만점(6군 중 4군 = 균형식)
+// ★여가→행복(§노동) — 포만 여유노동(_idleFrac)이 곧 쉼: "일찍 끝내고 쉬는" 마을이 더 행복.
+//   idle은 식량 불안(secF=0)이면 자동 0(포만 OFF)이라 별도 게이트 불요. 교역 결합은 창발로 충족:
+//   수입→재고 커버리지↑→포만↑→여가↑→행복↑ (명시적 수입 프리미엄은 희소 그림자가격과 이중계상이라 뺌).
+//   캐러밴 인력도 같은 idle에서 나옴(상인=쉬는 손) — 마을당 소수라 행복 항에서 차감 안 함.
+const LEISURE_HAPPY_W = 0.25;            // idle 100%(이론상)일 때 +0.25. 실측 성숙촌 idle 0~56% → +0~0.14
 // ★약재(§9 2차) — 건강 스탯의 세 번째 공급원(식량다양성·연료 다음). "마을이 건강을 올리려 할 수 있는 일".
 //   공급: 채집 산출 ~15%(임연부 CPUE) + 호골(시각층 호랑이 도축=12). 수요: 요양 단축(랩, 일 0.5/요양자·회복×1.6) + 일상 복용(여기).
 //   수요 하드코딩 없음(캐논 §9): 이 항이 인구·생산성으로 되먹임 → 그림자가격이 채집·호랑이 사냥 노동에 값을 매김.

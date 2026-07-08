@@ -351,6 +351,7 @@ function tickTradeV2(world, day) {
     a.v._priceCache = a.prices; a.v._priceCacheDay = day;
     const N = a.v.npcs.length;
     const currentlyTrading = a.v.npcs.filter(n => n._tradingUntil && n._tradingUntil > day).length;
+    a.v._tradingN = currentlyTrading;   // ★교역 인원 발행 → v1 여가 행복 항이 차감(원정 = 생산도 쉼도 못 함: 여가 기회비용의 실물화)
     // ★동시 교역 상한 = 여유노동(글럿된 생산능력). 하드 %캡 아님 — 마을 글럿도(_idleFrac)에서 창발.
     //   여유 많은 마을(잉여 폭발)은 많이, 빠듯한 마을(다 needed)은 적게 → 자연 자기제한 + 붕괴 방지.
     const spareCap = Math.max(1, Math.floor(N * (a.v._idleFrac || 0) * TRADE_SPARE_UTIL));
@@ -413,7 +414,10 @@ function tickTradeV2(world, day) {
           const pTo = b.prices[cand.res] * FORWARD_PRICE_MARGIN; // 위험 마진
           const N_units = Math.min(cand.surplus, CARGO_PER_TRIP);
           const transportCostPerUnit = (TRANSPORT_COST_PER_1000 * dist / 1000);
-          const raidProb = Math.min(RAID_MAX, RAID_BASE + (dist / 100) * (world.raidPer100 || RAID_PER_100));
+          // ★도적 길목(§도적): 호스트(지형층)가 '이 마을쌍 경로 30m 내 도적단' 위험을 주입 — econ은 지형을 모름(계약).
+          //   상인이 기대손실에 반영 → 위험한 길은 이익↓(기피·호위 강화가 창발). 훅 미설치(서버/단독)면 0 — 기존과 동일.
+          const banditX0 = world.banditRouteRisk ? (world.banditRouteRisk(a.v, b.v) || 0) : 0;
+          const raidProb = Math.min(RAID_MAX, RAID_BASE + banditX0 + (dist / 100) * (world.raidPer100 || RAID_PER_100));
           const expectedLossRatio = raidProb * 0.5;
           const revenuePerUnit = pTo * (1 - TAU);
           const costPerUnit = pFrom * (1 + TAU) + transportCostPerUnit;
@@ -473,7 +477,9 @@ function tickTradeV2(world, day) {
       }
 
       // 호위 — 화물량 비례. merchant 본인은 caravan에 동행 가정 (시뮬은 마을 평균)
-      const requested = Math.ceil(N_units / 20);
+      //   ★도적 위험 학습(§도적): 호스트가 관측 피해로 채우는 v._banditRisk(EMA, huntRisk 동형 0~0.6) → 호위 요청 가중
+      //   → 전사 수요·1인1무기 게이트로 무기 수요 연쇄. 미설치면 ×1(기존과 동일).
+      const requested = Math.ceil((N_units / 20) * (1 + 2 * Math.min(0.6, a.v._banditRisk || 0)));
       const escort = Math.min((a.v.counts && a.v.counts.warrior) || 0, requested);
       const travelDays = travelDaysForDistance(dist);
 
@@ -535,8 +541,10 @@ function tickCaravansV2(world, day) {
       // ★죽은 커플링 연결: defense stat(마을 무장)이 억지력 — 무장한 마을 caravan은 덜 노림(호위와 별개, 상한 클램프).
       const defDeter = (c.from.lastStats && c.from.lastStats.defense) ? Math.min(0.12, c.from.lastStats.defense * 0.04) : 0;
       const protection = Math.sqrt(c.escort) * (0.08 + wReady * 0.05 + aReady * 0.05) + defDeter;
+      // ★도적 길목 가산(§도적): 호스트 주입 — 경로 30m 내 은거지 있으면 +0.15. 미설치면 0(기존과 동일).
+      const banditX = world.banditRouteRisk ? (world.banditRouteRisk(c.from, c.to) || 0) : 0;
       const raidProb = Math.max(0.01, Math.min(RAID_MAX,
-        RAID_BASE + (c.distance / 100) * (world.raidPer100 || RAID_PER_100) - protection));
+        RAID_BASE + banditX + (c.distance / 100) * (world.raidPer100 || RAID_PER_100) - protection));
       let outboundLoss = 0;
       if (v1.srand() < raidProb) {
         outboundLoss = 0.3 + v1.srand() * 0.4;
@@ -544,11 +552,14 @@ function tickCaravansV2(world, day) {
           c.from.tradeStats.caravansRaided++;
           c.from.tradeStats.cargoLost += c.giveAmt * outboundLoss;
         }
+        let _bLoot = c.giveAmt * outboundLoss;   // ★길목 도적단 장물(스톡 충전은 호스트 훅이 처리 — 유령 수입 금지: 손실은 이미 위에서 장부 처리됨)
         // ★도적이 행상을 죽임 → NPC 사망 + 화물 전손 + 원정 종료(배달 X)
         if (raidKills(c, c.escort, wReady, aReady, v1.srand)) {
           if (c.from.tradeStats) c.from.tradeStats.cargoLost += c.giveAmt * (1 - outboundLoss);
+          _bLoot = c.giveAmt;
           killTrader(c, c.from);
         }
+        if (banditX > 0 && world.onBanditLoot) world.onBanditLoot(c.from, c.to, c.giveRes, _bLoot, day);
       }
       if (c._done) continue;   // 행상 사망 → 이 캐러밴 종료
       const deliveredGive = c.giveAmt * (1 - outboundLoss);
@@ -688,15 +699,19 @@ function tickCaravansV2(world, day) {
       const aReady = Math.min(1, (c.from.storage.armor || 0) / Math.max(1, c.escort));
       const defDeter = (c.from.lastStats && c.from.lastStats.defense) ? Math.min(0.12, c.from.lastStats.defense * 0.04) : 0;   // ★defense stat 억지력(귀환로)
       const protection = Math.sqrt(c.escort) * (0.08 + wReady * 0.05 + aReady * 0.05) + defDeter;
+      const banditX = world.banditRouteRisk ? (world.banditRouteRisk(c.from, c.to) || 0) : 0;   // ★도적 길목 가산(귀환로 — 왕복 같은 길)
       const raidProb = Math.max(0.01, Math.min(RAID_MAX,
-        RAID_BASE + (c.distance / 100) * (world.raidPer100 || RAID_PER_100) - protection));
+        RAID_BASE + banditX + (c.distance / 100) * (world.raidPer100 || RAID_PER_100) - protection));
       let inboundLoss = 0;
       if (v1.srand() < raidProb) {
         inboundLoss = 0.3 + v1.srand() * 0.4;
         if (c.from.tradeStats) {
           c.from.tradeStats.caravansRaided++;
         }
-        if (raidKills(c, c.escort, wReady, aReady, v1.srand)) killTrader(c, c.from);   // ★귀환 중 행상 사망 → 가져오던 자원 전손
+        let _bKilled = false;
+        if (raidKills(c, c.escort, wReady, aReady, v1.srand)) { _bKilled = true; killTrader(c, c.from); }   // ★귀환 중 행상 사망 → 가져오던 자원 전손
+        if (banditX > 0 && world.onBanditLoot && c._returningRes && c._returningAmt > 0)
+          world.onBanditLoot(c.from, c.to, c._returningRes, c._returningAmt * (_bKilled ? 1 : inboundLoss), day);
       }
       if (c._done) continue;   // 행상 사망 → 캐러밴 종료(자원 입금 X)
 
@@ -993,7 +1008,7 @@ function tickForceEvacuation(world, day) {
     // counts 재계산은 다음 tick에서 jobCounts가 알아서 함 — incremental cache invalidate
     if (v._countsCache) v._countsCache = null;
     if (target._countsCache) target._countsCache = null;
-    console.log(`  ⚰️  Day ${day}: 강제소개 → ${v.name}(land ${landMean.toFixed(2)}, ${count}명) → ${target.name}`);
+    console.log(`  ⚰️  Day ${day}: 강제소개 → ${v.name}(land ${foodLand.toFixed(2)}, ${count}명) → ${target.name}`);   // ★landMean 미정의 ReferenceError 지뢰 수정(현재 OFF 경로지만 로그 인자는 호출 전 평가됨)
   }
 }
 
