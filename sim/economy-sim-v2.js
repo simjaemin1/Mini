@@ -28,6 +28,8 @@ const ELASTICITY = {
   bone: 0.9,   // ★뼈(§9 3차) — 무기장 투입재(중간 탄력, specialty livestock 1.1을 명시 정의로 대체)
   // 사치/생산수단 — 완만
   tool: 0.7, weapon: 0.6, armor: 0.6,
+  obsidian: 0.9, jade: 0.6,   // ★S5 흑요석(광물 탄력) · 옥(위세재 완만 탄력)
+  bronze_tool: 0.7, iron_tool: 0.7,   // ★도구 대체재(청동·철) — tool과 동일 탄력. 누락 시 satiation taper 미발동 → 글럿에도 대장장이 무한 생산(인구당 무한↑) 버그.
   tigerhide: 0.6,   // ★호피(§9 3차) — 위신재(사치 완만 — 부족해도 폭등 대신 프리미엄)
   // 채집물 — 자체 가치 낮음
   fruit: 1.0, vegetable: 1.0, mushroom: 1.0, twig: 0.7, pebble: 0.7,
@@ -43,7 +45,9 @@ const BASE_VALUE_V2 = {
   bone: 1.5, tigerhide: 40,   // ★§9 3차: 뼈(풍부 저가 투입재) · 호피(최고가 위신재 — 희소 0.3/일 사냥 위험이 anchor 근거, v1 동일)
   wood: 1.67, stone: 2.14, ore: 3.0,
   tool: 3.0, weapon: 5.0, armor: 5.0,  // 8/5 → 5/3
+  bronze_tool: 3.0, iron_tool: 3.0,   // ★도구 대체재(청동·철) — tool과 동일 anchor. satiation 판정용 기준값(누락 시 adj=1 고정→taper 무발동).
   fruit: 1.5, vegetable: 1.5, mushroom: 1.5, twig: 1.0, pebble: 1.0,
+  obsidian: 15, jade: 80,   // ★S5 흑요석(예리 교역재, 화살촉·소형칼날) · 옥(위세품 교역재 — 고가). 비교우위 특산.
 };
 
 // NPC 1인당 일일 subsistence — 자급 인출량. price-inelastic.
@@ -89,6 +93,7 @@ const UTILITY_WEIGHT = {
   wood: 0.9, stone: 0.7, ore: 0.3, iron: 0.4, iron_tool: 0.5,
   copper: 0.45, tin: 0.55, bronze_tool: 0.6,   // ★청동 투입재(구리·주석)에 실수요. 주석이 희소해 더 높게.
   fruit: 0.1, vegetable: 0.1, mushroom: 0.1, twig: 0.05, pebble: 0.05,
+  obsidian: 0.35, jade: 0.4,   // ★S5 흑요석(화살촉·소형칼날 실수요) · 옥(위세재 — ORNAMENTAL LUX_TARGET_PC가 수요 부여)
 };
 // ★순수 장식재 — use-value 없음(못 먹고 못 만듦). 화폐/위신재 모델링 전엔 수요 0에 가깝게(가짜 수요 제거).
 //   (예외적으로 LUX_TARGET_PC 목표 보유 수요는 있음 — 아래 computeShadowPrices. ★호피(§9 3차)도 이 장식재 프레임에 편입: 마을 내 소비 없음·교역 전용)
@@ -109,6 +114,7 @@ const DECAY_V2 = {
   // ★비축 손실(과잉 더미) — 돌·광석·나무·곡물은 안 썩는다고 두면 성장기 더미가 영구 잔존.
   //   풍화·흩어짐·도둑·쥐로 *과잉분만* 천천히 손실(excess 가속). 생산은 안 자르니 수출 안전.
   stone: 0.0003, ore: 0.0008, wood: 0.0003,
+  obsidian: 0.0003, jade: 0.0002,   // ★S5 석재류 — 거의 안 썩음(과잉 더미만 느린 손실)
   wheat: 0.0012, rice: 0.0012, barley: 0.0012,
   // ★유령 박멸(§9): 비-specialty 산출물의 부패 정의 — 견과는 벌레먹고(구황식량 편입분), 꺾은 꽃은 시듦(산출 중단된 잔존 재고 소진용).
   acorn: 0.001, chestnut: 0.001, walnut: 0.001, wildflower: 0.002,
@@ -197,6 +203,12 @@ const TIGERHIDE_KEEP_PC = 1.2 * ((v1.TIGERHIDE_PRESTIGE_CAP && v1.TIGERHIDE_PRES
 //   "식량 충분해도 한 가지뿐이면 싼 걸 비싼 다른 식량과 바꿔온다"(사용자). 결핍 시 target↑ → 가격↑ → 교역이 채움.
 const VARIETY_FOOD = { fish: 1, meat: 1, fruit: 1, vegetable: 1, mushroom: 1 };
 const VARIETY_TARGET_PC = 0.6;   // 자체생산 못 하는 식품군의 1인당 수입 목표(다양성 문턱 0.4 위 — 소비로 깎여도 유지)
+// ★청동 희소성: 주석 수출 규칙 — 산지 마을이 전략 비축(자체 청동 독점·위세) 후 얇은 잉여만 수출. 무산지 마을은 만성 주석 부족(청동 편중 유지).
+//   keep 크게(1인당) + surplus 얇게 → 소수 교역 마을만 간헐적 청동, 대다수는 석기. TIN_DEPOSIT_RATE·YIELD와 함께 청동무기/명 목표(~0.2) 튜닝 레버.
+const TIN_EXPORT_KEEP_PC = 1.2;      // 산지 마을 주석 비축(1인당) — 이만큼 쥐고(자체 청동 병기고 + 위세) 잉여만 수출. 높게=산지 청동 안정+수출 억제(교역 편중 변동↓).
+const TIN_EXPORT_SURPLUS_PC = 0.3;   // 이 초과분(1인당)만 수출 후보 — 얇게(전략재 소량 유통). 산지 편차(지리·연결)로 인한 청동 홍수 변동을 억제 → 소수 허브만 청동.
+// ★return-glut-cap 배수 — 귀환 마을이 목표재고의 이 배수 이상이면 그 재화는 안 실어옴. 무기(청동검·활)의 과잉 귀환·비축을 차단(청동 수입은 소량만).
+const WEAPON_RETURN_GLUT_MULT = 1.3;   // 무기/일반재 공통. 1.3 = 목표(사용자×1.3 등)의 1.3배까지만 허용 → 청동검 소수 수입, 과잉 시 자국 석기로 자급 유도
 
 // 정보 도달 거리 — v1과 동일하게 사용 (createWorld opts.infoRange)
 
@@ -393,6 +405,7 @@ function tickTradeV2(world, day) {
         else if (r === 'weapon') { keep = Math.max(2, (warN + huntN3) * 1.3); thresh = keep + N * 0.1; }   // ★무기: 전사+사냥꾼(활 — §9 3차) ×1.3 보유 후 잉여만
         else if (WEAPONR[r]) { keep = Math.max(2, warN * 1.3); thresh = keep + N * 0.1; }   // 갑옷: 전사 수×1.3 보유 후 잉여만
         else if (r === 'tigerhide') { keep = Math.max(1, N * TIGERHIDE_KEEP_PC); thresh = Math.max(2, N * TIGERHIDE_KEEP_PC * 1.6); }   // ★호피(§9 3차): 한계 위신 포화점(CAP/W≈0.025/인)×1.2만 쥐고 잉여=순수출재 — 일반칙(0.4N)이면 희소 위신재는 영영 수출 불가. 금·은·보석은 위신 포화(2/인)가 일반칙 위라 기존 규칙 유지
+        else if (r === 'tin') { keep = Math.max(3, N * TIN_EXPORT_KEEP_PC); thresh = keep + N * TIN_EXPORT_SURPLUS_PC; }   // ★청동 희소성: 주석=전략재. 산지 마을이 대량 비축(자체 청동 독점 + 위세) 후 얇은 잉여만 수출 → 무산지 마을은 만성 주석 기근(청동 편중 유지, 무산지는 석기)
         else { keep = target * 0.5; thresh = target * 0.8; }                // 그 외: 15일치
         if (stock > thresh) candidates.push({ res: r, surplus: Math.max(1, stock - keep) });
       }
@@ -463,8 +476,11 @@ function tickTradeV2(world, day) {
         // ★A(수입쪽)가 이미 그 재화 글럿이면 수입 안 함 — 수요 없는 걸 계속 실어와 무한 누적(돌 덤핑)되는 것 방지.
         //   연속교역으로 거래가 잦아지면 최저가 이웃에서 잉여를 계속 끌어와 쌓이므로, 자기 목표재고 넘으면 후보 제외.
         const aSubs = (SUBSISTENCE_PER_NPC[r] || 0) * N;
-        const aTarget = Math.max(aSubs * 30, N * Math.max(0.5, (UTILITY_WEIGHT[r] || 0.1) * 1.2));
-        if ((a.v.storage[r] || 0) >= aTarget * 3) continue;   // 극단 글럿(목표 3배 초과)만 차단 — 정상 균형수입은 허용(가치균형 유지)
+        let aTarget = Math.max(aSubs * 30, N * Math.max(0.5, (UTILITY_WEIGHT[r] || 0.1) * 1.2));
+        // ★무기·갑옷 자본재 목표=사용자(전사+사냥꾼)×1.3 — 일반칙(N×0.5)은 전사 적은 마을서 과대 → 청동검 과잉 귀환 허용하던 원인.
+        if (r === 'weapon') aTarget = Math.max(2, (((a.v.counts && a.v.counts.warrior) || 0) + ((a.v.counts && a.v.counts.hunter) || 0)) * 1.3);
+        else if (r === 'armor') aTarget = Math.max(1, ((a.v.counts && a.v.counts.warrior) || 0) * 1.3);
+        if ((a.v.storage[r] || 0) >= aTarget * WEAPON_RETURN_GLUT_MULT) continue;   // ★return-glut-cap: 무기는 사용자×1.3×배수 넘으면 안 실어옴(청동검 소량 수입). 그 외 극단 글럿 차단
         const bStock = b.v.storage[r] || 0;
         const bSubs = (SUBSISTENCE_PER_NPC[r] || 0) * b.v.npcs.length;
         const bTarget = Math.max(bSubs * 30, b.v.npcs.length * 0.3);
@@ -649,14 +665,26 @@ function tickCaravansV2(world, day) {
       c.to.treasury._cash = (c.to.treasury._cash || 0) + taxTo;
 
       // 가져올 자원 결정 — 출발시 후보 또는 새로 best
+      // ★return-glut-cap(청동 희소성 검증 항목): 귀환 마을(c.from)이 이미 그 재화 글럿이면 실어오지 않음 — 출발 leg(L474)엔 있으나
+      //   재선택(returnRes 무효 시 best 재탐색)엔 없어 무기(청동검·활)가 무한 귀환·누적하던 누수(측정: 나 5전사에 무기 121 과잉비축). 출발 leg와 동일 규칙 적용.
+      const _fromN = c.from.npcs.length || 1;
+      const _returnGlutted = (r) => {
+        const subs = (SUBSISTENCE_PER_NPC[r] || 0) * _fromN;
+        let target = Math.max(subs * 30, _fromN * Math.max(0.5, (UTILITY_WEIGHT[r] || 0.1) * 1.2));
+        // ★무기·갑옷은 자본재 — 목표=사용자(전사+사냥꾼)×1.3(활 포함). 일반칙(N×0.5)은 전사 적은 마을서 과대 → 무기 과잉비축 허용하던 원인.
+        if (r === 'weapon') target = Math.max(2, ((c.from.counts && c.from.counts.warrior || 0) + (c.from.counts && c.from.counts.hunter || 0)) * 1.3);
+        else if (r === 'armor') target = Math.max(1, (c.from.counts && c.from.counts.warrior || 0) * 1.3);
+        return (c.from.storage[r] || 0) >= target * WEAPON_RETURN_GLUT_MULT;
+      };
       let returnRes = c.returnRes;
-      if (!returnRes || !((c.to.storage[returnRes] || 0) > 1)) {
-        // 다시 best 찾기
+      if (!returnRes || !((c.to.storage[returnRes] || 0) > 1) || _returnGlutted(returnRes)) {
+        // 다시 best 찾기 — 귀환 마을 글럿 재화는 제외
         let bestR = null, bestRatio = 0;
         for (const r of TRADABLE) {
           if (r === c.giveRes) continue;
           const bStock = c.to.storage[r] || 0;
           if (bStock <= 1) continue;
+          if (_returnGlutted(r)) continue;   // ★return-glut-cap
           const ratio = (pricesFrom[r] || 1) / (pricesTo[r] || 1);
           if (ratio > bestRatio) { bestRatio = ratio; bestR = r; }
         }
@@ -974,7 +1002,7 @@ function tickRecovery(world, day) {
       ['hunter', v.land.game * 0.7],
     ].sort((a, b) => b[1] - a[1]);
     const bestJob = opts[0][0];
-    const npc = v1.createNPC({ job: bestJob });
+    const npc = v1.createNPC({ job: bestJob, inheritSkill: v1.apprenticeInherit ? v1.apprenticeInherit(v, bestJob) : null });   // ★S4 명장 견습
     v.npcs.push(npc);
     v.counts = v.counts || {};
     v.counts[bestJob] = (v.counts[bestJob] || 0) + 1;

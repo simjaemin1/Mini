@@ -46,7 +46,9 @@ if (CHILD_SEED != null) {
   const ORN = new Set(['gold', 'silver', 'gem', 'tigerhide']);   // ★호피(§9 3차)=위신재 교역 부류(tradeOrn 집계 편입)
   const p = { seed: CHILD_SEED, pop: 0, bad: 0, initVil: 0, finalVil: 0, mining: 0, forest: 0, bronze: 0, iron: 0, stoneTool: 0, copperTin: 0,
     weaponShort: 0, villages: 0, houses: 0, tradeStaple: 0, tradeOrn: 0, craftBloat: 0, maxCraftFrac: 0,
-    maxAccumPer: 0, maxVilPop: 0, smithVil: 0, housesTot: 0, housesOut: 0, terrSync: 0, terrOverlap: 0, gameUsed: 0, gameDead: 0, crashed: false, seedRow: '' };
+    maxAccumPer: 0, maxVilPop: 0, smithVil: 0, housesTot: 0, housesOut: 0, terrSync: 0, terrOverlap: 0, gameUsed: 0, gameDead: 0, crashed: false, seedRow: '',
+    // ★청동→석기 전환 검증용 추가 계측(additive): 도구의존인구(per-pc 분모), 구리소비(도구·무기 누적), 청동무기 생산·마을수
+    toolDepPop: 0, cuToolUsed: 0, cuWeapUsed: 0, bronzeWeaponMade: 0, bronzeVil: 0, copperStock: 0, tinStock: 0, ironMetal: 0 };
   try {
     const r = global.run(CHILD_SEED);
     p.bad = r.bad; p.initVil = r.initVil; p.finalVil = r.VILS.length;
@@ -56,6 +58,22 @@ if (CHILD_SEED != null) {
       if (mine > n * 0.04) p.mining++; if (forest > n * 0.15) p.forest++;
       p.bronze += S.bronze_tool || 0; p.iron += S.iron_tool || 0; p.stoneTool += S.tool || 0;
       p.copperTin += (S.copper || 0) + (S.tin || 0);
+      p.ironMetal += S.iron || 0;   // ★철금속 재고(청동무기 모델: 청동금속[구리+주석] > 철금속 = 청동 우위 불변식 #8)
+      // ★청동→석기 전환 검증 계측 집계
+      p.toolDepPop += e._toolDeps || 0;
+      p.cuToolUsed += e._cuToolUsed || 0; p.cuWeapUsed += e._cuWeapUsed || 0;
+      p.bronzeWeaponMade += e._bronzeWeaponMade || 0; if ((e._bronzeWeaponMade || 0) > 0) p.bronzeVil++;
+      p.copperStock += S.copper || 0; p.tinStock += S.tin || 0;
+      p.stoneToolMade = (p.stoneToolMade||0) + (e._stoneToolMade||0);   // 석기 대체 flow(청동→석기 전환 검증)
+      // ★청동 희소성 검증(additive): 근접검 재고 = weapon × 근접검비중(_swordFrac), 청동/석기 몫 = 근접검 × (재료별 flow비중). 활 제외 청동무기/명 산출.
+      { const sf = (e._swordFrac != null ? e._swordFrac : 0.5), wp = (S.weapon || 0), sword = wp * sf;
+        const _br = e._bronzeWeaponMade || 0, _st = e._stoneWeaponMade || 0, _ir = e._ironWeaponMade || 0, _mf = _br + _st + _ir;
+        p.bronzeMeleeStock = (p.bronzeMeleeStock || 0) + sword * (_mf > 0 ? _br / _mf : 0);
+        p.stoneMeleeStock = (p.stoneMeleeStock || 0) + sword * (_mf > 0 ? _st / _mf : 0);
+        p.meleeStock = (p.meleeStock || 0) + sword; p.bowStock = (p.bowStock || 0) + wp * (1 - sf);
+        p.stoneWeaponMade = (p.stoneWeaponMade || 0) + _st; p.ironWeaponMade = (p.ironWeaponMade || 0) + _ir;
+        if ((e.land && e.land.tin || 0) > 0) p.tinDepVil = (p.tinDepVil || 0) + 1;
+        if (_mf > 0) { if (_br >= _st) p.bronzeArmedVil = (p.bronzeArmedVil || 0) + 1; else p.stoneArmedVil = (p.stoneArmedVil || 0) + 1; } }
       if ((S.weapon || 0) < (c.warrior || 0) * 0.7) p.weaponShort++;
       // ★장인 비대 가드 — 야금공(대장+무기장+갑옷장)이 인구의 15% 초과면 정원 제거가 스톡-플로우 없이 폭주한 것.
       const craftFrac = ((c.smith || 0) + (c.weaponsmith || 0) + (c.armorsmith || 0)) / Math.max(1, n);
@@ -146,7 +164,8 @@ Promise.all(jobs).then(parts => {
   const agg = { pop: 0, bad: 0, initVil: 0, finalVil: 0, mining: 0, forest: 0, bronze: 0, iron: 0, stoneTool: 0, copperTin: 0,
     weaponShort: 0, villages: 0, houses: 0, tradeStaple: 0, tradeOrn: 0, craftBloat: 0, maxCraftFrac: 0,
     maxAccumPer: 0, maxVilPop: 0, smithVil: 0, housesTot: 0, housesOut: 0, terrSync: 0, terrOverlap: 0, gameUsed: 0, gameDead: 0, crashed: false, seedRows: [] };
-  const SUM = ['pop', 'bad', 'initVil', 'finalVil', 'mining', 'forest', 'bronze', 'iron', 'stoneTool', 'copperTin', 'weaponShort', 'villages', 'houses', 'tradeStaple', 'tradeOrn', 'craftBloat', 'smithVil', 'housesTot', 'housesOut', 'terrSync', 'terrOverlap', 'gameUsed', 'gameDead', 'meat', 'hunterN'];
+  const SUM = ['pop', 'bad', 'initVil', 'finalVil', 'mining', 'forest', 'bronze', 'iron', 'stoneTool', 'copperTin', 'weaponShort', 'villages', 'houses', 'tradeStaple', 'tradeOrn', 'craftBloat', 'smithVil', 'housesTot', 'housesOut', 'terrSync', 'terrOverlap', 'gameUsed', 'gameDead', 'meat', 'hunterN',
+    'toolDepPop', 'cuToolUsed', 'cuWeapUsed', 'bronzeWeaponMade', 'bronzeVil', 'copperStock', 'tinStock', 'stoneToolMade', 'ironMetal'];
   const MAX = ['maxCraftFrac', 'maxAccumPer', 'maxVilPop'];
   for (const q of parts) {
     for (const k of SUM) agg[k] = (agg[k] || 0) + (q[k] || 0);   // 신규 키 안전 합산
@@ -163,16 +182,16 @@ Promise.all(jobs).then(parts => {
     ['4. 소멸 통제(≤초기 마을 1/3)', deaths <= agg.initVil / 3],   // ★재캘리브레이션(실축 대이행 2026-07-07): 구 한도 5 = 구세계 15마을(nvil3×5시드)의 정확히 1/3 — nvil 8(초기 40마을)로 개수 기준이 낡아 같은 '허용 소멸률 33%'를 비율식으로 고정(15마을이면 ≤5로 동일). 실측: 구 1/15(6.7%) → 신 7/40(17.5%) — 마을 8개 채우기의 뒤순위 한계 입지 정착 실패 증가이지 대량 아사선(경제 의미 변화) 아님. 병리(연쇄 소멸)는 33% 초과로 여전히 검출
     ['5. 인구 범위(2100~9300)', agg.pop >= 2100 && agg.pop <= 9300],   // ★재캘리브레이션(캐논 §4-3 예고, 2026-07-07): 구 800~3500은 15마을(nvil3) 총합 기준 — nvil 8(40마을)로 ×8/3 스케일(2133~9333 절사). 마을당 밀도는 econ 불변이라 그대로(구 74/마을·신 116/마을 모두 구간 중앙권). 실측 3819
     ['6. 특화 분화(광산≥1·숲≥1 마을)', agg.mining >= 1 && agg.forest >= 1],
-    ['7. 도구 기술트리(청동·철 도달)', agg.bronze > 0 && agg.iron > 0 && (agg.stoneTool + agg.bronze + agg.iron) > 0],   // 돌도구는 과도기(업그레이드되면 0 가능)
-    ['8. 청동 우위(청동기 고증: 청동도구 > 철도구)', agg.bronze > agg.iron],   // 청동 우선+철 희소 → 청동 지배
-    ['9. 금속 공급(구리·주석 흐름)', agg.copperTin > 0 || agg.bronze > 0],
+    ['7. 도구·야금 기술트리(석기 도구 생산 + 청동 야금→무기 도달)', (agg.stoneTool + (agg.stoneToolMade || 0)) > 0 && agg.bronzeWeaponMade > 0],   // ★도구=석기 전용(청동도구 폐지), 청동은 무기로 도달
+    ['8. 청동 우위(청동기 고증: 청동금속[구리+주석] 재고 > 철금속 & 청동무기 생산)', agg.copperTin > agg.ironMetal && agg.bronzeWeaponMade > 0],   // ★청동은 무기·위세품 주력 — 도구 아님. 청동>철 재고
+    ['9. 금속 공급(구리·주석 흐름)', agg.copperTin > 0],
     ['10. 전사 무장(무기부족 마을 ≤3)', agg.weaponShort <= 3],
     ['11. staple 교역 > 0', agg.tradeStaple > 0],
     ['12. 집 성장(>마을수×2)', agg.houses > agg.villages * 2],
     ['13. 장인 비대 없음(야금공>15% 마을 ≤1)', agg.craftBloat <= 1],   // 정원 제거 후 스톡-플로우 자연 수렴 확인
     ['14. 누적 통제(광석·돌 최대 ≤90/명)', agg.maxAccumPer <= 90],       // 생산 포만+부패가 무한 누적 방지(병리는 159~201/명). 60→90: 소형마을 재고/인구 비율이 런마다 58~73 진동(랩 Math.random 비결정) — 플레이크 제거, 병리 감지력은 유지
     ['15. 폭주 없음(12년 최대 인구 ≤250)', agg.maxVilPop <= 250],        // ★자연 K(K_MAX 폐지): 리비히 min+MB/MC. 농업촌 실험(fert 2.8→s*≈280, 12년 ~170) 스케일. 하드캡 아님 — 초과=수렴 재점검 신호
-    ['16. 마을 대장장이(보유 마을 ≥70%)', agg.smithVil >= agg.villages * 0.7],
+    ['16. 야금 분업(대장장이 마을 ≥1[금속 산지] + 석기무기 생산 다수 — 청동 희소성 복원)', agg.smithVil >= 1 && (agg.stoneToolMade || 0) > 0 && agg.bronzeWeaponMade > 0],   // ★청동 희소성 복원(2026-07): 종전 "대장장이 ≥70%"는 tin이 전 마을 부산물이던 구모델 전제 — 이제 주석은 소수 산지만이라 대장장이(청동/철)는 금속 산지·교역허브에 편중되고 대다수 마을은 석공(마제석검)이 무장 공급. 고증(청동기 병종 격차)에 맞게 "대장장이 존재(분업 성립) + 석기·청동 이원 야금"으로 재정의.
     ['17. 위신재 교역 활성(장식 > 100000)', agg.tradeOrn > 100000],
     ['18. 집이 영토 안(밖 ≤2%)', agg.housesOut <= agg.housesTot * 0.02],
     ['19. 장기 자연수렴(3500일: 확장정지 마을≥1·최대≤450·생존≥3·차등≥1.5)', lt.stalled >= 1 && lt.maxN <= 450 && lt.alive >= 3 && lt.spread >= 1.5],
@@ -185,6 +204,10 @@ Promise.all(jobs).then(parts => {
   agg.seedRows.forEach(s => console.log('  ' + s));
   console.log(`\n  [집계] 총인구 ${agg.pop} · 마을 ${agg.finalVil}/${agg.initVil}(소멸 ${deaths}) · 동기 ${agg.bad} · 청동도구 ${agg.bronze.toFixed(0)} · 철도구 ${agg.iron.toFixed(0)} · 집 ${agg.houses} · staple교역 ${agg.tradeStaple.toFixed(0)} · 장식교역 ${agg.tradeOrn.toFixed(0)} · 최대마을 ${agg.maxVilPop} · 광석/돌최대 ${agg.maxAccumPer.toFixed(0)}/명 · 대장장이마을 ${agg.smithVil}/${agg.villages} · 사냥감사용 ${agg.gameUsed}마을`);
   console.log(`  [장기 3500일] 확장정지 ${lt.stalled}마을 · 최대 ${lt.maxN} · 생존 ${lt.alive} · 차등 ×${lt.spread.toFixed(1)}`);
+  // ★청동→석기 전환 검증 요약 — per-pc는 도구의존인구(toolDepPop) 기준(도구 지표의 올바른 분모)
+  { const td = Math.max(1, agg.toolDepPop), tot = agg.bronze + agg.stoneTool + agg.iron;
+    console.log(`  [도구/석기전환] 청동도구/의존인구 ${(agg.bronze/td).toFixed(2)} · 석기재고/의존인구 ${(agg.stoneTool/td).toFixed(2)} · 철도구/의존인구 ${(agg.iron/td).toFixed(2)} · 도구총량/의존인구 ${(tot/td).toFixed(2)} (총도구 ${tot.toFixed(0)}, 의존인구 ${agg.toolDepPop.toFixed(0)}) · 석기전환flow생산 ${(agg.stoneToolMade||0).toFixed(0)}`);
+    console.log(`  [청동보존] 구리+주석재고 ${agg.copperTin.toFixed(0)}(구리 ${agg.copperStock.toFixed(0)}·주석 ${agg.tinStock.toFixed(0)}) · 도구용구리소비 ${agg.cuToolUsed.toFixed(0)} · 무기용구리소비 ${agg.cuWeapUsed.toFixed(0)} · 청동무기생산 ${agg.bronzeWeaponMade.toFixed(0)}(청동무기마을 ${agg.bronzeVil}/${agg.villages}) · 대장장이마을 ${agg.smithVil}/${agg.villages}`); }
   console.log('');
   let pass = 0;
   for (const [name, ok] of checks) { console.log(`  ${ok ? '✅' : '❌'} ${name}`); if (ok) pass++; }

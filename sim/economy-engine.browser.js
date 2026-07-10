@@ -365,6 +365,8 @@ const LEGACY_CONTRIBUTES = {
   wood:        { production: 0.3 },
   stone:       { production: 0.3, defense: 0.2 },
   ore:         { production: 0.4 },
+  obsidian:    { defense: 0.4, production: 0.2 },   // ★S5 흑요석: 예리(화살촉·소형칼날) → 방어·사냥 보조
+  jade:        { prestige: 1.2 },                   // ★S5 옥: 위세품(prestige)
 };
 function _computeVillageStats(v, N) {
   const SP = _getSpecialty();
@@ -380,6 +382,16 @@ function _computeVillageStats(v, N) {
     for (const [stat, w] of Object.entries(contributes)) {
       if (stats[stat] !== undefined) stats[stat] += w * sat;
     }
+  }
+  // ★S3 무기 품질(_weapQ) → defense·prestige 배수: 고품질(청동·명장) 무기가 방어·위세↑, 저품질(막석검) 무기는 낮음.
+  //   기본 defense 기여(1.0×sat)에 (1 + SPAN×(_weapQ−0.5)) 추가분. _weapQ 0.5(석검)=중립, 1.0(명장청동)=+SPAN×0.5.
+  if ((v.storage.weapon || 0) > 0 && v._weapQ != null) {
+    const _wsat = Math.min(1.0, (v.storage.weapon || 0) / pop / 2.0);
+    const _wbonus = WEAP_DEFENSE_SPAN * (v._weapQ - 0.5);   // −0.3(막석검 하한)~+0.3(명장청동)
+    stats.defense += 1.0 * _wsat * _wbonus;
+    // ★청동 위세품화(청동 희소성 복원) — 청동검(_weapQ>TH 고품질)은 방어뿐 아니라 *엘리트 표지*(위세). 주석 희소로 청동검=귀한 위세재라 가중↑(0.3→W).
+    //   막석검·철검은 문턱(TH=0.7) 미달 → 위세 0. 청동 무장 마을(소수 산지·교역)만 위세 획득 → 병종 격차의 사회적 표현.
+    if (v._weapQ > WEAP_BRONZE_PRESTIGE_TH) stats.prestige += WEAP_BRONZE_PRESTIGE_W * _wsat * (v._weapQ - WEAP_BRONZE_PRESTIGE_TH);   // 청동검=위세품(고품질만)
   }
   // ★식량 다양성 보너스 — 실제 *소비*(식단) 기반. consumeFood가 군별 소비량 기록(_foodEaten).
   //   자체생산이든 수입이든 "먹은" 군만 카운트 → 수입해서 바로 먹는 마을(광산촌)도 정당히 반영(재고0이어도).
@@ -436,12 +448,13 @@ function pickWeighted(weights) {
 const RESOURCES = [
   'food', 'fish', 'meat', 'hide', 'cooked_food',
   'wood', 'stone', 'ore', 'tool',
-  'iron', 'iron_tool',  // ★철(광맥 전용, 희소) + 철도구(후기 업그레이드, 최고효율)
-  'copper', 'tin', 'bronze_tool',  // ★청동기 주력: 구리+주석→청동(대장간) → 청동도구. 구리·주석에 실수요 부여.
+  'iron', 'iron_tool',  // ★철(광맥 전용, 희소). iron_tool=레거시: 도구는 석기 전용으로 폐지 — 신규 생산 0, 기존 재고만 감가 소멸(키 유지=참조 안전).
+  'copper', 'tin', 'bronze_tool',  // ★청동(구리+주석)=무기·위세품 전용(weaponsmith 청동검). bronze_tool=레거시: 청동은 연질이라 도구 부적합 — 신규 생산 0, 감가 소멸.
   'weapon', 'armor',  // Phase 4d-7: 무기/갑옷
   'fruit', 'vegetable', 'mushroom', 'pebble', 'twig',
   'herb',  // ★약재(§9 2차): 채집 부산물(~15%)+호골(호랑이 도축). 요양 단축·일상 복용 → 건강 공급
   'bone', 'tigerhide',  // ★§9 3차: 뼈(사냥 부산물+시각층 대물 도축 — 무기장 활 티어 투입재) · 호피(호랑이 도축 — 최고가 위신재, 교역 전용)
+  'obsidian', 'jade',  // ★S5: 흑요석(특수 산지 — 예리 → 화살촉/소형칼날, 사냥·방어 보조 교역재) · 옥(특수 산지 — 위세품 교역재). 광부가 특수 산지에서 채굴.
 ];
 
 // 부재료 set (cook이 variety 계산할 때 사용. food + 이 중 어떤 것이든 1종으로 카운트)
@@ -481,22 +494,34 @@ const JOBS = {
     //   resin(활 접착 투입)·bark(하급 연료)·acorn(구황식량)은 소비처 연결로 존치.
     byproduct: { resin: 0.08, bark: 0.10, acorn: 0.06 },
   },
-  miner: {   // ★통일 광부(탐사꾼 통합): 그 땅의 광맥을 캠 — 금속광맥(ore≥stone) 풍부하면 광석+금속(구리·주석·철), 아니면 돌.
-    field: 'mining', output: 'stone', base: 1.5,
-    landBoost: (v) => Math.max(v.land.stone || 0, v.land.ore || 0), toolDependent: true, inputs: {},
-    produceSpecial: 'miner',   // 산출(돌 vs 광석+금속)은 produceSpecial이 토지로 결정. 부산물도 거기서.
+  miner: {   // ★S1 광부=금속·특수석재 전담: 금속광맥(land.ore) + ★S5 특수 산지(흑요석·옥). 돌은 안 캠(→foraging).
+    field: 'mining', output: 'ore', base: 1.5,
+    landBoost: (v) => Math.max(v.land.ore || 0, v.land.obsidian || 0, v.land.jade || 0, v.land.tin || 0), toolDependent: true, inputs: {},   // ★청동 희소성: 주석 산지(land.tin)도 광부 매력(청동검 수출 특산)
+    produceSpecial: 'miner',   // 산출(광석+금속·특수석재[흑요석·옥·주석])은 produceSpecial이 토지로 결정. 부산물도 거기서.
   },
-  smith: {                  // 대장장이 — 철 있으면 철도구(고효율), 없으면 돌도구. 철은 광맥에서만 나오므로 대장장이가 철도구의 유일 경로.
-    field: 'smithing', output: 'tool', base: 0.4,
+  // ★S2 석공(mason) 신설 — 석기(간돌 도구) 전담 + 마제석검(석기 무기) + 활(목재/뼈). 새 스킬 masonry.
+  //   기본 막석기는 누구나 급할 때 자급(낮은 노동, produceSpecial 폴백은 아님 — 농부 자급은 별도 안전망),
+  //   정교 석기·마제석검은 석공(전문·고숙련=고품질). 재료: 돌(+활은 목재).
+  mason: {
+    field: 'masonry', output: 'tool', base: 0.4,
     landBoost: () => 1.0, toolDependent: false,
-    inputs: { wood: 0.5, stone: 0.3 },
-    produceSpecial: 'smith',
+    inputs: {},   // 재료(돌)는 produceSpecial 핸들러가 직접 소비
+    produceSpecial: 'mason',
   },
-  // Phase 4d-7: 무기/갑옷 제작 — warrior 호위력 보너스. ore + hide + pebble 소비처 마련.
-  weaponsmith: {            // 무기 제작 — 철 있으면 철칼(고급), 없으면 돌칼. 돌 기반(자급) + 철 광맥전용 업그레이드.
+  // ★S2 대장장이(smith) = 청동·철 무기 *전용*(도구 제작에서 손 뗌 — 도구는 석공[석기]). 기존 weaponsmith 로직 통합.
+  //   청동검(구리+주석) 우선 → 철검(희소). 돌칼·활은 석공(mason) 담당. 레벨↑=품질↑(무기 공격력·내구, S3).
+  smith: {
     field: 'smithing', output: 'weapon', base: 0.45,
     landBoost: () => 1.0, toolDependent: false,
-    inputs: { stone: 0.5 },
+    inputs: {},   // 재료(구리·주석·철)는 produceSpecial 핸들러가 직접 소비
+    produceSpecial: 'smith',
+  },
+  // ★S2 weaponsmith = 대장장이(smith)로 통합·폐지. 키는 참조안전 위해 유지(capacity·target 0 → 아무도 안 뽑힘).
+  //   생산 핸들러는 남기되 도달 불가(capacity 0). 기존 재고·전환 로직 안전.
+  weaponsmith: {
+    field: 'smithing', output: 'weapon', base: 0.45,
+    landBoost: () => 1.0, toolDependent: false,
+    inputs: {},
     produceSpecial: 'weaponsmith',
   },
   armorsmith: {             // 갑옷 제작 (stone + hide + ore). v2: 산출 ↑
@@ -567,7 +592,8 @@ function foragerYieldsFor(v) {
     mushroom:  wood * 0.4 + stone * 0.2 + 0.1,
     twig:      wood * 0.25 + 0.1,   // 잡동사니 감축(비식량)
     pebble:    stone * 0.25 + 0.05,
-    stone:     stone * 0.12 + 0.04,   // ★채집에서 돌 소량(주워옴). 대량은 광산. → 도구·주거 최소 자급 가능
+    // ★S1: stone은 정규화 믹스에서 제외 — 대신 채집꾼 stone 부산물(아래 forager 핸들러)로 *가산* 산출.
+    //   (믹스에 넣으면 식량 산출을 잠식 — 돌밭 채집꾼이 식량을 못 가져와 부양력↓. hide(사냥 부산물) 패턴으로 분리.)
 
     // 새 자원 (specialty.js의 foraging) — 가중치 작게 (옛 자원 우선)
     chestnut:  wood * 0.18,           // 견과 — 숲
@@ -594,8 +620,11 @@ const FORAGE_FOOD_FACTOR = { fruit: 0.4, vegetable: 0.4, mushroom: 0.3,
 
 // 소비 (일일 1인당)
 const DAILY_FOOD_CONSUMPTION = 1.0;
-const DAILY_TOOL_WEAR_PER_FARMER = 0.04;  // 농부가 도구 마모
-const DAILY_TOOL_WEAR_PER_OTHER = 0.02;
+// ★도구 사용마모(storage.tool=석기에만 적용, line ~1047). 도구=석기 전용 전환으로 석기가 유일 자본재가 됨 →
+//   종전 값(농부 0.04·기타 0.02)은 석기가 "희생 풀"(청동/철도구가 실 자본)이던 시절 калиб — 이제 이 마모를 대장장이가 다 메워야 하는데
+//   throughput(0.4/일·인) 대비 과대(90인 마을 ~2.5/일 소모 → 대장장이 7~8명 필요, 저커버리지 poverty-trap→아사). 절반으로 하향 = 석기를 내구 자본재로 취급.
+const DAILY_TOOL_WEAR_PER_FARMER = 0.02;  // 농부가 도구 마모(석기)
+const DAILY_TOOL_WEAR_PER_OTHER = 0.01;
 
 // 식량 소비 우선순위 — cooked_food > fish/meat > food > 채집물(fruit/veg/mushroom)
 // 채집물은 환산비가 낮아 농사보다 끼니로 비효율
@@ -685,14 +714,95 @@ const LEISURE_HAPPY_W = 0.25;            // idle 100%(이론상)일 때 +0.25. �
 const HERB_HEALTH_W = 0.5;               // health += min(CAP, herbPC×W). herbPC(재고/인구) 0.3에서 상한 도달
 const HERB_HEALTH_CAP = 0.15;            // 상한(기준 건강 0.17~0.23 → 최대 ~0.38 — 중립 0.5 초과 폭주 방지)
 const HERB_DAILY_PC = 0.01;              // 일상 복용 소모(인구 비례 흐름) — 재고가 있어야 유지되는 흐름
-// ★활 티어(§9 3차) — "데미지는 장비(제작 품질) 몫 — 레벨 데미지 없음"(§6 스킬 캐논): 무기장이 bone(활대 심·힘줄 백킹, 각궁 계보)을
-//   보조 투입해 만든 활이 장비 스톡을 서서히 대체(느린 상승)·마모로 희석(완만 감쇠) → v._bowQ(1.0~1.25)가 시각층 사냥 화살 데미지 배수.
+// ★활 티어(§9 3차) — "데미지는 장비(제작 품질) 몫 — 레벨 데미지 없음"(§6 스킬 캐논): 사냥꾼이 bone(활대 심·힘줄 백킹, 각궁 계보)을
+//   보조 투입해 만든 활이 장비 스톡을 서서히 대체(느린 상승)·마모로 희석(완만 감쇠) → v._bowQ(1.0~1.3+)가 시각층 사냥 화살 데미지 배수.
 //   수요 하드코딩 없음(캐논 §9): 활 품질↑=사냥 효율↑(발수 보존 검산 — 사슴2·멧돼지3 유지, 호랑이만 7→6발) — bone 한계가치는 이 투입 경로에서 자연 발생.
+//   ★수정3 흑요석 화살촉 — obsidian(예리)도 활/화살 품질 보조 투입. bone(활대 심)과 합산된 투입률이 _bowQ를 견인 → 흑요석 산지 마을은 "예리한 화살촉"으로 사냥 데미지 이점(별도 arrow 아이템 없음: 화살은 활에 흡수·마모 추상).
 const BOW_BONE_PER_WEAPON = 0.3;         // 무기 1단위 제작당 bone 보조 투입(있으면 소비)
-const BOW_Q_SPAN = 0.25;                 // _bowQ = 1 + 투입률EMA×SPAN (1.0~1.25)
+const BOW_OBSIDIAN_PER_WEAPON = 0.15;    // ★수정3: 활 1자루당 흑요석(화살촉) 보조 투입 — bone의 절반 스케일(화살촉은 소량 예리 석편). 있으면 소비, _bowQ에 기여.
+const BOW_OBSIDIAN_Q_W = 0.5;            // ★수정3: 흑요석 투입률의 품질 가중(예리 보너스) — bone 충족(1.0)에 흑요석 충족(≤1.0)×0.5 추가 → 흑요석+bone 완비 산지는 투입률 최대 1.5.
+const BOW_R_MAX = 1.4;                    // ★수정3: 활 품질 투입률 상한(bone 1.0 + 흑요석 보너스). _bowQ 최대 ≈ 1+0.25×1.4 = 1.35(예리 화살촉 상한, 종전 bone전용 1.25 대비 산지 이점).
+const BOW_Q_SPAN = 0.25;                 // _bowQ = 1 + 투입률EMA×SPAN. bone만 만렙 1.0→1.25, +흑요석 산지는 투입률>1 가능 → 1.25 상회(예리 화살촉 이점)
 const BOW_Q_UP = 0.02;                   // 상승 EMA(제작일) — 새 활이 스톡을 대체하는 속도(지속 투입 ~100일에 87%)
 const BOW_Q_DOWN = 0.005;                // 하락 EMA(뼈 없는 제작일) — 상질 활의 마모·희석은 더 느림
 const BOW_Q_IDLE = 0.001;                // 무기장 휴업일 감쇠 — 스톡 자체의 노후(반감 ~700일)
+// ★S3 레벨=품질(해금 아님): 석공·대장장이 숙련↑ → 만드는 *종류는 동일*, 결과물 *품질*(도구효율·무기 공격력·내구)만 ↑.
+//   품질 = 재료등급 × 스킬함수. 장인 스킬(masonry/smithing)의 마을 최고치를 EMA로 추종(_toolQ/_weapQ) — 새 티어 부여 아님.
+//   ★칼리브 보존: 석기 도구 boost는 종전 고정 1.4× 기준. 품질을 그 *중심*에 걸어(막석기 1.25×, 명장석기 1.55×) 평균 ~1.4 유지 → 부양력 불변.
+const TOOL_Q_BASE = 1.25;                // 막석기(저숙련 석공/자급) 생산 boost — 종전 1.4보다 낮음(품질 하한)
+const TOOL_Q_SPAN = 0.30;               // 숙련 만렙 석공 석기 = TOOL_Q_BASE + SPAN = 1.55× (품질 상한). skill 5(중숙련)≈1.40(종전값)
+const TOOL_Q_EMA = 0.06;                // 도구 품질 EMA(제작일) — 새 고품질 도구가 스톡을 대체(제작량 가중이라 명장이 빠르게 스톡 질 견인)
+const TOOL_Q_IDLE = 0.001;             // 석공 휴업일 품질 감쇠(재고 노후 — 느림)
+// ★무기 품질(_weapQ) — 재료등급(청동 1.0 > 철 0.85 > 마제석검 0.5) × 스킬(0~1). 무기 defense 기여 배수(위세·방어).
+const WEAP_Q_BRONZE = 1.0;              // 청동검 재료등급(주력·최고 위세)
+const WEAP_Q_IRON = 0.85;              // 철검 재료등급(청동기엔 제련 미숙 — 청동보다 낮게)
+const WEAP_Q_STONE = 0.5;              // 마제석검 재료등급(자급 저티어)
+const WEAP_Q_SKILL_SPAN = 0.6;         // 스킬 기여 폭: q = 재료등급 × (1 − SPAN + SPAN×skill/10) → 명장이 최대 1.0배 발현
+const WEAP_Q_EMA = 0.06;               // 무기 품질 EMA(제작일) — 제작량 가중이라 명장 대장장이가 빠르게 스톡 질 견인
+const WEAP_Q_IDLE = 0.001;             // 무기장 휴업일 품질 감쇠(재고 노후 — 느림)
+const WEAP_DEFENSE_SPAN = 0.6;         // 무기 defense 기여 = base × (1 + SPAN×(_weapQ−0.5)) — 고품질 무기가 방어·위세↑
+// ★S3 무기 제작 노동 = 도구보다 훨씬 큼(스펙 7) — 무기 1자루가 도구보다 3배 노동. 산출을 1/3로(제작 시간 3배).
+//   효과: 무기는 전문 장인의 느린 작업 = 희소 유지. 농부는 무기 자급 안 함(자급은 막석기 도구만, 아래 자급 안전망).
+const WEAPON_LABOR_MULT = 1 / 3;       // 무기 산출 배수(도구 대비) — 제작 노동 3배
+// ★S3 막석기 자급 안전망 — 도구가 치명적으로 부족(커버리지<0.5)한데 석공이 없거나 못 따라가면,
+//   도구의존 노동자(농부 등)가 급할 때 막석기를 *스스로* 소량 자급(낮은 노동). 정교 석기·석검은 석공 전담.
+const SELF_TOOL_RATE = 0.02;           // 1인당 일일 막석기 자급 산출(석공 0.4/일의 5% — "급할 때 손수 깬 돌")
+const SELF_TOOL_COV = 0.5;             // 이 커버리지 미만일 때만 발동(치명 부족 — 생산붕괴 방지 하한)
+const SELF_TOOL_Q = 1.1;               // 막석기 품질(막 깬 돌 — 석공 막석기 1.25보다도 낮음)
+// ★활 사냥꾼 자가제작 안전망 — 활은 사냥꾼 본인 장비(활대 목재 + 뼈·힘줄·깃·수지). 석공(석기)이 아니라 사냥꾼이 archery 숙련으로 손수 제작.
+//   막석기 자급과 동형: 활 재고(=사냥꾼용 무기)가 부족하면 사냥꾼이 저노동으로 자급. 청동/철 활은 없음(활은 저티어 자급 무기), 대장장이 청동검은 전사·잉여 무장에 별도 기여.
+//   품질(_bowQ)은 bone/obsidian 투입률(EMA)로 결정 — 아래 EMA 블록. 산출률은 사냥꾼 수 비례(석공 개입 없음).
+const SELF_BOW_RATE = 0.04;            // 사냥꾼 1인 일일 활 자급 산출(활은 도구보다 손 많이 가지만 본인 장비라 우선순위↑ — 막석기 0.02의 2배). 무기 노동 3배는 산출률에 이미 반영된 저율.
+const SELF_BOW_COV = 1.2;              // 활 커버리지(활 재고/사냥꾼) 이 값 미만이면 자급 발동(1인 1활 + 여유). 넘으면 포만(여가).
+const SELF_BOW_WOOD = 0.6;             // 활 1자루당 목재(활대) — 기존 석공 활 레시피 동일
+const BOW_Q_STONE = WEAP_Q_STONE;      // 활 무기품질 기여 등급(석재등급과 동일 저티어 — _weapQ EMA 재료등급 입력용)
+// ★청동 희소성 복원(청동기 고증) — 주석(tin)은 *소수 산지 마을*만 산출. 나머지 마을은 tin=0 → 청동 불가 → 석기 무장.
+//   근본 원인 교정: 종전엔 tin이 *모든* ore 광맥의 부산물(0.11/ore)이라 전 마을이 청동 자급 → 청동 보편재(근접무기 99% 청동, 석검 0). 실게임 맵(specialty.js/zone.js)은 tin 광맥을 이미 희귀(4.9%)하게 뒀으나 경제 시뮬만 이 고증을 잃었음.
+//   설계: (1) tin을 ore 부산물에서 제거 (2) 마을 생성 시 *결정론적*(name 해시)으로 TIN_DEPOSIT_RATE 비율만 land.tin>0 산지 지정
+//         (3) 산지 마을만 광부가 tin 채굴 → 청동검 수출 (4) 무산지 마을은 석공이 마제석검·석창 공급(주력) (5) 청동검=위세품(엘리트 표지).
+// ★주석 산지 선정 — *광맥 부존(ore) 주도* + 이름 해시 지터. 주석(cassiterite)은 금속 광맥에서 나므로 ore 풍부 마을(광산촌)이 산지.
+//   score = ore × (0.5 + hash) ≥ 문턱이면 산지. ore↑면 확실, 평균 ore는 미달 → 소수 광산촌만 산지(고증 + 소규모 월드서 산지 0 방지).
+//   순수 이름 해시는 특정 8개 이름이 전부 미달/초과할 수 있어 취약 → ore 주도로 견고화. ore는 두 하네스(CLI 랜덤·랩 지형실측) 모두 제공 → 이식성.
+const TIN_DEPOSIT_ORE_SCORE = 1.28;    // 산지 문턱(score=ore×(0.8+0.4×hash)) — ore~1.5 광산촌(1.2~1.5) 대부분 산지, ore≤1.0은 대체로 미달. 광산촌 위주 소수만 산지 ⇒ ~10-20%(청동 편중). 청동/명 주 레버(랩 마을3=ore1.5 산지 보장 하한).
+// ★주석 산출 = 마을 규모·광부 수 무관 *정량*(광량=land.tin이 결정). 광부 1명만 있으면 정량 채굴 → 대형/소형 산지 간 편차 제거(청동/명 시드 변동의 근본 차단).
+//   종전 per-miner×YIELD는 대형 산지(광부 24명)가 소형(3명)의 8배 tin을 캐 청동/명이 0.03~0.45로 요동쳤음. 정량화로 수렴.
+const TIN_DEPOSIT_YIELD_FLAT = 0.46;   // 산지 일일 tin 산출(× land.tin). 부존 ~1.0 마을이 ~0.46/일 → 자체 청동 병기고 + 소량 수출. 청동 총량의 주 레버.
+const TIN_DEPOSIT_STRENGTH_LO = 0.6;   // 산지 부존 하한(land.tin ∈ [LO, LO+SPAN]) — 광부 매력 스케일(obsidian/jade 부존과 동형)
+const TIN_DEPOSIT_STRENGTH_SPAN = 0.8; // 산지 부존 폭
+// ★청동 경제 자격(_bronzeCapable) — 청동검을 *지속* 생산할 수 있는 마을만 청동 무장. 그 외(트레이스 주석뿐)는 석기 무장(마제석검).
+//   자격 = 주석 산지(land.tin>0) OR 대량 주석 비축(N×PC 이상 — 진짜 교역 허브만. 흘러든 소량으론 자격 미달 → 석기 유지).
+//   근거: 주석 희소로 무산지 마을은 간헐 소량 수입뿐 → 청동 상비 불가. 이 게이트가 "청동은 산지·교역 마을 편중"을 강제(무산지=석기).
+const BRONZE_TIN_MIN_PC = 0.95;        // 교역 허브 자격 문턱(1인당 주석 재고) — 이 이상 *지속* 비축해야 청동 상비. 주석 희소로 소수 교역 허브만 도달(간헐 수입은 미달 → 석기 유지).
+const BRONZE_TIN_MIN_ABS = 13;         // 절대 하한(소형 마을 보호 — N 작아도 최소 이만큼은 있어야 청동 상비)
+// ★철검 희소화(청동기 고증: "철이 청동보다 귀함") — 철도 트레이스 축적(부산물 0.03/ore)만으론 무기화 불가.
+//   철검은 철이 *풍부한* 마을만(제련 노하우·광량). 그 외는 석공 마제석검. 이게 없으면 무산지 마을이 축적 철로 철검을 만들어 석기가 사라짐(측정: 철검 35%).
+const IRON_WEAPON_MIN_PC = 1.5;        // 철검 자격 문턱(1인당 철 재고) — 청동보다 높게(철=최희소). 이 이상이라야 철검 상비.
+const IRON_WEAPON_MIN_ABS = 20;        // 절대 하한(소형 마을 보호)
+// ★근접무기(검·창) vs 활 분리 — weapon 풀은 전사 근접무기와 사냥꾼 활을 *공유*. 재고 자체는 못 쪼개도(교역 혼합), *생산 결정*은 분리해야 정확:
+//   전사 무장 판정=근접검 재고, 사냥꾼 활 자급 판정=활 재고. 안 나누면 (a) 활이 pool을 채워 전사가 돌검 못 받고(석검 0) (b) 검이 채우면 사냥꾼이 활 못 만듦.
+//   해법: 생산 가중 EMA로 pool의 *근접검 비중*(_swordFrac) 추정 → swordStock≈weapon×frac, bowStock≈weapon×(1−frac). 교역·부패는 양쪽 비례라 비중 근사 유지.
+const SWORD_FRAC_EMA = 0.04;           // 근접검 비중 EMA 속도(제작 가중) — _weapQ EMA(0.06)보다 완만(비중은 더 관성)
+const SWORD_FRAC_INIT = 0.5;           // 초기 비중(시드 무기 = 검·활 반반 가정)
+const MELEE_COV_BUFFER = 1.2;          // 전사 1인 근접검 최소 커버리지(하한 — 전사 무장 게이트).
+// ★근접검 병기고(armory) 목표 — 마을이 유지하는 근접검 재고(1인당). 전사 수 자체는 적으나(≈5%) 마을은 유사시 대비·교역용으로 병기고를 유지(고증: 무기고).
+//   청동 자격 마을은 이 병기고를 *청동검*으로, 무산지 마을은 *마제석검*으로 채움 → 청동/석기 병종 격차가 재고에 발현. 목표 0.2/명(청동)은 청동마을 병기고×청동인구비중으로 달성.
+//   ★이게 "청동무기 0.77/명" 베이스라인(병기고 규모)의 규모를 유지하되 재료를 석기 다수로 뒤집는 핵심 — 병기고를 없애면 청동 0.2/명 목표 자체가 성립 불가(전사 실수요는 0.06/명뿐).
+const MELEE_ARMORY_PC = 0.72;          // 근접검 병기고 목표(1인당). 석기마을은 전량 마제석검, 청동마을은 아래 FRAC까지만 청동+나머지 석기. (≥0.72 필수: 무기 재고=교역 호위·전사 무장 공급원 — 취약 교역의존 시드[19]는 이 미만서 호위 부족→교역붕괴→아사. 측정으로 확정된 생존 하한.)
+const MELEE_ARMORY_HYST = 0.85;        // 이력(재제작 재개 문턱) — 재고가 목표×이 값 미만이면 보충(잦은 on/off 방지)
+const MELEE_ARMORY_SECF = 0.45;        // 병기고(비긴급 비축) 축적 최소 식량안보(secF) — 이 이상 *잘 먹는* 마을만 병기고 확충. 취약·기근 마을은 식량·도구 우선(인구 유지 — 낮추면 취약 시드[19·8] 붕괴). 긴급 전사무장은 secF 무관.
+// ★청동 병기고 비중 상한 — *청동 자격 마을에서도* 병기고의 이 비율까지만 청동, 나머지는 석기(마제석검). 청동 = 마을 내 소수 엘리트 무장.
+//   효과: (1) "대다수 전사는 석기"를 마을 단위로 강제(청동마을도 석기 다수) (2) tin 풍부 시드서 청동 폭주 억제(재고 변동↓) (3) 청동/명 목표를 청동마을 수 변동에 덜 민감하게.
+//   청동/명 ≈ (청동마을 인구비중) × MELEE_ARMORY_PC × 이 값. 튜닝 주 레버 중 하나.
+const BRONZE_ARMORY_FRAC = 0.45;       // 청동 자격 마을 병기고 중 청동 최대 비중(나머지 ≥55%는 석기). 청동마을도 석기 다수 — 청동 위세 엘리트 표지, 석기 다수 보장. (병기고 총량 MELEE_ARMORY_PC와 독립 — 생존 무관, 청동:석기 비율만 결정. 청동/명 미세조정 레버.)
+const DECAY_MELEE_MAINT = 0.0004;      // 병기고 유지보수 계수(노동목표 마모항) — 무기 부패(DECAY_V2.weapon 0.0002)의 ~2배(사용마모 포함). 병기고 규모 유지에 필요한 지속 노동.
+// ★청동 위세품화 — 청동검은 방어뿐 아니라 *위세*(엘리트 표지). 종전에도 _weapQ>0.7 위세 기여가 있었으나(약함) 청동 희소화로
+//   청동검 보유 마을=소수 엘리트가 되도록 위세 가중을 명시 상수화(주석 희소 반영: 청동검은 귀한 위세재).
+const WEAP_BRONZE_PRESTIGE_W = 0.5;    // 청동검(_weapQ>0.7 고품질) 위세 기여 계수 — 종전 하드코딩 0.3 → 0.5(주석 희소 프리미엄)
+const WEAP_BRONZE_PRESTIGE_TH = 0.7;   // 위세 발동 품질 문턱(막석검·철검은 미달 — 청동검 전용 엘리트 표지)
+// ★S4 명장 견습(세대 전승) — 새 인구가 직업 배정될 때 시작 숙련 = 마을 내 그 직업 *최고 숙련자(명장)* × 상속률.
+//   명장 없으면 0(독학). 전 직업 적용. 개별 부모 추적 불가(인구=식 기반)라 마을 최댓값 기준.
+//   효과: 특화 마을은 숙련이 세대로 승계돼 비교우위 지속(경로의존) — 명장 있는 마을이 계속 명장을 배출.
+const MASTER_INHERIT_RATE = 0.45;      // 상속률(0.4~0.5) — 견습이 명장 숙련의 45%에서 시작
 // ★호피 위신재(§9 3차) — 위신 스탯 기여: prestige += min(CAP, 호피PC×W). 마을 내 소비 없음(교역 전용 외생 수요는 v2 ORNAMENTAL+수출규칙).
 const TIGERHIDE_PRESTIGE_W = 4;          // 호피 0.025/인(120명 마을 3장)에서 상한 도달 — 희소재 소량으로 위신 성립
 const TIGERHIDE_PRESTIGE_CAP = 0.1;      // 상한(PRESTIGE_MOD_CAP 0.25 스케일 대비 소폭 — 위신재 한 종의 왜곡 방지)
@@ -712,6 +822,12 @@ const FOOD_GLUT_SAT = { food: 1, cooked_food: 1, wheat: 1, rice: 1, barley: 1 };
 // ★무용재 — 실수요(use-value)가 ~0이라 수출해도 식량 못 삼. 식량안보와 무관하게 *항상* 생산 포만(성장기 누적까지 차단).
 //   광석(ore): 갑옷에 미량뿐. 장식재(금·은·보석): 화폐화 전엔 수요 0. 돌·금속(구리·주석)은 수요 있어 제외(가치재 수출).
 const SAT_ALWAYS = { ore: 1, gold: 1, silver: 1, gem: 1, pearl: 1, amber: 1, jade: 1, ivory: 1 };
+// ★e2 도구(석기) 글럿 임계 — 대장장이 산출·원료소비를 커버리지(도구재고/도구의존인구)로 taper.
+//   커버리지 ≤ X면 풀생산, X~(X+RAMP) 구간서 선형 감산, ≥(X+RAMP)면 0(정지). 재고는 X 부근 수렴(완전수렴 1로 안 감).
+//   도구는 석기(간돌) 단일 자본재 → X는 석기 재고 버퍼(포화선 1.0의 약 2.5배). RAMP=1.0(부드러운 감산, 진동 방지).
+//   ★e2는 "총 도구(석기) 과잉 시 산출 자체 감산"만 담당. 종전 청동↔석기 재료전환(BRONZE_TOOL_SKIP_X)은 청동 도구 폐지로 제거.
+const TOOL_GLUT_X = 2.5;
+const TOOL_GLUT_RAMP = 1.0;
 const POP_MIN = 0;                         // ★인구 하한 0 — 자급 불가 마을은 0명까지 줄어 소멸(척박지엔 마을이 안 남음). 365일 정착 보호 후.
 const POP_MAX = 1000;                      // 마을당 인구 상한 (N² 폭발 방지)
 
@@ -839,14 +955,15 @@ function jobCapacity(v) {
     fisher:     Math.floor(s * v.land.water     * 0.25),
     hunter:     Math.floor(s * v.land.game      * 0.30),
     lumberjack: Math.floor(s * v.land.wood      * 0.30),
-    miner:      Math.floor(s * Math.max(v.land.stone, v.land.ore) * 0.30),   // 통일 광부: 돌·광석 중 풍부한 쪽 기준
+    miner:      Math.floor(s * Math.max(v.land.ore || 0, v.land.obsidian || 0, v.land.jade || 0, v.land.tin || 0) * 0.30),   // ★S1 광부=금속 전담: 광맥(ore) ★S5 +특수산지(흑요석·옥) ★청동 희소성 +주석산지
     forager:    Math.floor(s * 0.30),
     // ★인구비율 정원(하드캡) 전부 폐지 — 직업 수는 한계가치 vs 그림자가격으로 *자연 수렴*.
     //   대장장이: 도구 쌓이면 도구가격↓→한계가치↓→안 뽑힘 + 글럿 시 차출(opportunityCost=시장가치).
     //   무기/갑옷장: 무기·갑옷 가격 + 약탈위협 + 가죽 가용이 결정. 전사: 무기 보유 게이트 + sqrt 체감.
     //   (옛 캡 smith0.10·weapon/armor0.06·cook0.10·warrior0.08 → 인위적 분포 강제라 제거)
-    smith:       UNCAPPED,
-    weaponsmith: UNCAPPED,
+    mason:       UNCAPPED,   // ★S2 석공(석기·석검·활) — 스톡-플로우 노동목표(masonTarget)가 결정
+    smith:       UNCAPPED,   // ★S2 대장장이(청동·철 무기) — smithTarget(무기수요)이 결정
+    weaponsmith: 0,          // ★S2 폐지(smith로 통합) — 아무도 안 뽑힘(참조안전 키만 유지)
     armorsmith:  UNCAPPED,
     cook:        UNCAPPED,
     warrior:     UNCAPPED,
@@ -910,7 +1027,7 @@ function tryExpandTerritory(v, day) {
 let _nextNpcId = 1;
 function createNPC(opts = {}) {
   const job = opts.job || 'farmer';
-  return {
+  const npc = {
     id: 'n' + (_nextNpcId++),
     age: 16 + Math.floor(srand() * 20),
     currentJob: job,
@@ -920,6 +1037,38 @@ function createNPC(opts = {}) {
     spentTraits: 0,                          // 0~30
     lastJobChangeDay: -999,                  // 쿨다운용
   };
+  // ★S4 명장 견습: 배정 직업 field의 시작 숙련(+아이 aptitude=trait)을 명장 상속분으로 세팅.
+  //   skill≤trait여야 xp로 더 성장하므로 trait도 같이 세팅(견습이 스승 수준 기반 위에서 더 자람).
+  //   spentTraits에 반영(30점 예산 소진분) — 상속받은 만큼 자유 배분 여지는 줄어듦(공짜 아님).
+  if (opts.inheritSkill) {
+    for (const [f, lv] of Object.entries(opts.inheritSkill)) {
+      const s = Math.max(0, Math.min(10, Math.floor(lv)));
+      if (s > 0 && npc.skills[f] !== undefined) {
+        npc.skills[f] = s; npc.traits[f] = s; npc.spentTraits += s;
+      }
+    }
+  }
+  return npc;
+}
+// ★S4 마을 명장 숙련 — 그 직업 field에서 마을 내 최고 숙련(견습 상속의 기준). hunter는 hunting/archery 중 최고.
+function villageMasterSkill(v, job) {
+  const jd = JOBS[job]; if (!jd) return 0;
+  const fields = (job === 'hunter') ? ['hunting', 'archery'] : [jd.field];
+  let mx = 0;
+  for (const n of v.npcs) for (const f of fields) { const s = n.skills[f] || 0; if (s > mx) mx = s; }
+  return mx;
+}
+// ★S4 견습 상속 숙련맵 — 배정 직업의 명장 숙련 × 상속률(내림). 명장 없으면 {}(독학=0).
+function apprenticeInherit(v, job) {
+  const jd = JOBS[job]; if (!jd) return null;
+  if (v._world && v._world._noApprentice) return null;   // ★A/B 검증용 스위치(기본 미설정=승계 ON)
+  const rate = (v._world && v._world._inheritRate != null) ? v._world._inheritRate : MASTER_INHERIT_RATE;
+  const master = villageMasterSkill(v, job);
+  if (master <= 0) return null;
+  const start = Math.floor(master * rate);
+  if (start <= 0) return null;
+  if (job === 'hunter') return { hunting: start, archery: start };   // 사냥꾼=사냥·활 둘 다 승계
+  return { [jd.field]: start };
 }
 
 // 현재 직업의 field
@@ -977,11 +1126,12 @@ function opportunityCost(npc, v, w) {
     case 'fisher':      return (L.water || 0) * 1.2 * w('fish') * sk;
     case 'hunter':      return (L.game || 0) * 0.7 * (w('meat') + 0.3 * w('hide')) * sk;
     case 'lumberjack':  return (L.wood || 0) * 0.3 * w('wood') * sk;
-    case 'miner':       return Math.max((L.stone || 0) * w('stone'), (L.ore || 0) * w('ore')) * 0.3 * sk;
-    case 'forager':     return Math.max(0.3, ((L.fertility || 0) + (L.wood || 0) + (L.stone || 0)) / 3) * 0.25 * (w('vegetable') + 0.6 * w('herb')) * sk * (v && v._forageScale != null ? v._forageScale : 1);   // ★약재 슬롯(§9): herb 산출 15%/식량계수 0.25 = 0.6 — hunter의 0.3×w('hide') 패턴. ×MSY 포화(임연부 CPUE 하락=한계생산 하락 — 포화 시 차출 허용)
+    case 'miner':       return Math.max((L.ore || 0) * w('ore') * (1 - (v && v._metalGlut || 0)), (L.obsidian || 0) * w('obsidian'), (L.jade || 0) * w('jade'), (L.tin || 0) * TIN_DEPOSIT_YIELD_FLAT * w('tin') * (1 - (v && v._tinGlut || 0))) * 0.3 * sk;   // ★S1 광부=금속 전담(돌 안 캠) ★S5 흑요석·옥 ★청동 희소성 +주석산지(귀재 tin 가격이 광부 매력)
+    case 'forager':     return (Math.max(0.3, ((L.fertility || 0) + (L.wood || 0) + (L.stone || 0)) / 3) * 0.25 * (w('vegetable') + 0.6 * w('herb')) + (L.stone || 0) * 0.9 * w('stone')) * sk * (v && v._forageScale != null ? v._forageScale : 1);   // ★약재 슬롯(§9): herb 산출 15%/식량계수 0.25 = 0.6. ★S1: +돌 채집 가치(land.stone×0.9×돌가격) — 돌밭 채집꾼 매력. ×MSY 포화
     // ★자본재 장인: 노동목표 초과면 0.005(글럿 광부 0.01보다↓ → 1순위 차출), 이내면 50(유지).
-    case 'smith':       return ((v.counts.smith || 0)       > smithTarget(v))       ? 0.005 : 50 * sk;
-    case 'weaponsmith': return ((v.counts.weaponsmith || 0) > weaponsmithTarget(v)) ? 0.005 : 50 * sk;
+    case 'mason':       return ((v.counts.mason || 0)       > masonTarget(v))       ? 0.005 : 50 * sk;   // ★S2 석공(석기·석검·활)
+    case 'smith':       return ((v.counts.smith || 0)       > smithTarget(v))       ? 0.005 : 50 * sk;   // ★S2 대장장이(청동·철 무기)
+    case 'weaponsmith': return 0.004;   // ★S2 폐지(smith 통합) — 항상 최우선 차출(잔존 weaponsmith → 다른 직업으로)
     case 'armorsmith':  return ((v.counts.armorsmith || 0)  > armorsmithTarget(v))  ? 0.005 : 50 * sk;
     case 'cook':        return ((v.counts.cook || 0) > cookTarget(v)) ? 0.005 : 0.4 * w('cooked_food') * sk;   // ★유령 박멸 #4: 목표 초과 요리사=1순위 차출(장인 대칭 — 조리식은 흐름재라 재고가격이 못 끌어내림)
     // ★전사: 무장 가능 수(보유 무기)와 readiness 목표 중 작은 값으로 상한. 무기 없으면 전사 아님 → 동원해제(생산직).
@@ -998,6 +1148,46 @@ function opportunityCost(npc, v, w) {
 // 3. 마을
 // =============================================================================
 let _nextVillageId = 1;
+// ★주석 산지 결정론 — 마을 이름(안정 키)의 해시로 TIN_DEPOSIT_RATE 비율만 산지 지정.
+//   name 기반(≠ _nextVillageId): id 카운터는 프로세스 전역 누적이라 byte-match(--check가 Orig·Bundle을 같은 프로세스서 연속 생성)서 두 사본이 다른 id→다른 산지 패턴이 됨. 이름은 동일 세계면 동일(가·나·다… / 마을1·2…)이라 결정론·사본일치.
+//   Math.random 미사용(관례 준수) — 순수 해시라 시드 무관 결정론.
+function _hashStr(s) {
+  let h = 2166136261 >>> 0;   // FNV-1a
+  s = String(s == null ? '' : s);
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  // ★avalanche 마감(murmur3 finalizer) — FNV만으론 순차명("마을1"·"마을2"…)이 상위비트에 뭉쳐 [0,1) 값이 근접(측정: 0.828~0.855)
+  //   → 산지 선정이 naming 스킴에 취약(전 마을 미산지 또는 전 마을 산지). 강한 믹싱으로 순차명도 균등 분포시켜 TIN_DEPOSIT_RATE 비율 보장.
+  h ^= h >>> 16; h = Math.imul(h, 2246822507) >>> 0;
+  h ^= h >>> 13; h = Math.imul(h, 3266489909) >>> 0;
+  h ^= h >>> 16;
+  return (h >>> 0) / 4294967296;   // [0,1)
+}
+// 산지 부존 반환 — opts.tin 명시되면 그대로, 아니면 ore 주도 결정론 산지 지정(주석=광맥 광물).
+//   score = ore × (0.5 + hash) ≥ TIN_DEPOSIT_ORE_SCORE 이면 산지. ore↑(광산촌)일수록 확실 → 소수 광산촌만 산지.
+//   결정론(같은 이름·같은 ore → 같은 결과, byte-match 보존). 두 하네스(CLI·랩) 모두 ore 제공 → 이식성(순수 이름 해시의 소표본 취약성 해소).
+function _tinDepositFor(opts) {
+  if (opts.tin != null) return opts.tin;
+  const ore = opts.ore != null ? opts.ore : 0.5;
+  const r = _hashStr('tin|' + (opts.name != null ? opts.name : ''));   // [0,1) 결정론 지터(소량)
+  // ★ore 주도(지터 소량): score = ore × (0.8 + 0.4×hash). ore~1.5(광산촌)=1.2~1.5(항상 문턱↑), ore~0.5(평균)=0.4~0.5(항상 미달).
+  //   → 랩의 광산촌(ore 1.5 고정)은 이름 무관 확실히 산지 + CLI 고ore 마을도 산지 + 평균 마을은 무산지. 소표본 취약성 제거.
+  const score = ore * (0.8 + 0.4 * r);
+  if (score < TIN_DEPOSIT_ORE_SCORE) return 0;   // 미달 = 무산지(대다수)
+  // 산지 부존 세기 — 광량(ore)·초과분 반영. 부존이 클수록 광부 매력·채굴 정량↑(TIN_DEPOSIT_YIELD_FLAT × land.tin).
+  const over = Math.min(1, (score - TIN_DEPOSIT_ORE_SCORE) / 0.6);   // 문턱 초과분 [0,1]
+  return +(TIN_DEPOSIT_STRENGTH_LO + over * TIN_DEPOSIT_STRENGTH_SPAN).toFixed(3);
+}
+// ★청동 경제 자격 — 청동검 지속 생산 가능 마을만 true(주석 산지 OR 대량 주석 비축=교역 허브). 나머지=석기 무장.
+function _bronzeCapable(v) {
+  if ((v.land && v.land.tin || 0) > 0) return true;                       // 주석 산지 — 자체 청동
+  const N = v.npcs ? v.npcs.length : 1;
+  return (v.storage && v.storage.tin || 0) >= Math.max(BRONZE_TIN_MIN_ABS, N * BRONZE_TIN_MIN_PC);   // 교역 허브(대량 주석 비축)만
+}
+// ★철검 자격 — 철이 풍부한 마을만(청동기엔 철=최희소). 트레이스 축적(부산물)만으론 미달 → 석공 마제석검.
+function _ironWeaponCapable(v) {
+  const N = v.npcs ? v.npcs.length : 1;
+  return (v.storage && v.storage.iron || 0) >= Math.max(IRON_WEAPON_MIN_ABS, N * IRON_WEAPON_MIN_PC);
+}
 function createVillage(opts) {
   const baseSize = opts.size ?? 50;
   const v = {
@@ -1011,6 +1201,9 @@ function createVillage(opts) {
       ore: opts.ore ?? 0.5,
       water: opts.water ?? 0.3,
       game: opts.game ?? 0.6,
+      obsidian: opts.obsidian ?? 0,   // ★S5 흑요석 특수 산지(0~1, 대부분 마을 0 — 화산지대만). 광부가 채굴 → 화살촉/소형칼날 교역재.
+      jade: opts.jade ?? 0,           // ★S5 옥 특수 산지(0~1, 극소수 마을만). 광부가 채굴 → 위세품 교역재.
+      tin: _tinDepositFor(opts),      // ★청동 희소성: 주석 산지(0=무산지 대다수, >0=소수 산지). 산지만 tin 채굴→청동. name 해시 결정론(TIN_DEPOSIT_RATE 비율).
       size: baseSize,
       baseSize,                                                   // 확장 비용 계산 기준
     },
@@ -1117,13 +1310,13 @@ function pickInitialJob(v) {
   const allOpts = [
     ...foodOpts,
     ['lumberjack', v.land.wood  * 0.9],
-    ['miner',      Math.max(v.land.stone, v.land.ore) * 0.7],   // 통일 광부(돌·광석 중 풍부한 쪽)
+    ['miner',      Math.max(v.land.ore || 0, v.land.tin || 0) * 0.7],   // ★S1 광부=금속 전담(광맥 기준) ★청동 희소성 +주석산지
   ].filter(([j]) => hasSlot(v, j, cap, counts));
   allOpts.sort((a, b) => b[1] - a[1]);
   if (allOpts.length > 0) return allOpts[0][0];
 
   // fallback
-  const fallback = ['smith', 'cook', 'merchant', 'forager'].find(j => hasSlot(v, j, cap, counts));
+  const fallback = ['mason', 'cook', 'merchant', 'forager'].find(j => hasSlot(v, j, cap, counts));   // ★S2 석공(석기) 우선
   return fallback || 'forager';
 }
 
@@ -1136,17 +1329,21 @@ function tickVillage(v, day) {
   const dailyProduction = v.dailyProductionBuf;
   for (const r in dailyProduction) dailyProduction[r] = 0;   // ★NaN 가드: specialty 부산물 키(동적 추가분)까지 전부 리셋 — 어제 값 잔존·NaN 오염 방지
   for (const r of RESOURCES) dailyProduction[r] = 0;
+  v._tinToday = 0;   // ★청동 희소성: 마을 일일 주석 채굴 누적(마을 규모 무관 절대 상한용 — 대형 산지 마을의 tin 홍수 방지)
   // ★도구 등급제: 맨손 0.25×(엄청 느림) / 돌도구 1.0×(보통) / 철도구 1.8×(상당히 빠름). 일꾼은 가진 최선의 도구 사용.
   //   → 도구가 생산을 좌우 → 대장간·돌·철 수요. 도구 없어도 농어업 가능하나 극도로 느림(사용자 설계).
   let toolDeps = 0;
   for (const n of v.npcs) if (JOBS[n.currentJob].toolDependent) toolDeps++;
+  v._toolDeps = toolDeps;   // (계측 전용, 로직 무관) per-pc 도구 지표의 분모(도구의존인구) 노출
   let toolBoostShared = 1.0;
+  // ★S3 석기 품질 boost: 마을 석기 품질 EMA(_toolQ, 석공 최고숙련 추종). 첫 틱/미설정 시 종전 1.4로 폴백(칼리브 보존).
+  const _stoneToolBoost = (v._toolQ != null) ? v._toolQ : 1.4;
   if (toolDeps > 0) {
-    const ni = Math.min(toolDeps, v.storage.iron_tool || 0);            // 철도구(1.8×, 후기 최고급)
-    const nb = Math.min(toolDeps - ni, v.storage.bronze_tool || 0);     // 청동도구(1.4×, 청동기 주력)
-    const ns = Math.min(toolDeps - ni - nb, v.storage.tool || 0);       // 돌도구(1.0×)
+    const ni = Math.min(toolDeps, v.storage.iron_tool || 0);            // 철도구(1.8×, 레거시 잔재만 — 신규 생산 0)
+    const nb = Math.min(toolDeps - ni, v.storage.bronze_tool || 0);     // 청동도구(1.4×, 레거시 잔재만 — 신규 생산 0)
+    const ns = Math.min(toolDeps - ni - nb, v.storage.tool || 0);       // ★석기(간돌) — S3: 품질(_toolQ) 배수. 막석기 1.25× ~ 명장석기 1.55×(중심 ~1.4 = 종전 칼리브).
     const nn = toolDeps - ni - nb - ns;                                 // 맨손(0.25×)
-    toolBoostShared = (ni * 1.8 + nb * 1.4 + ns * 1.0 + nn * 0.25) / toolDeps;
+    toolBoostShared = (ni * 1.8 + nb * 1.4 + ns * _stoneToolBoost + nn * 0.25) / toolDeps;
   }
   // 봉쇄 = 교역만 차단. 산출 자체는 영향 없음 (자급 마을은 영향 X).
   const isBlockaded = v.isolated && day < v.isolatedUntilDay;
@@ -1166,6 +1363,26 @@ function tickVillage(v, day) {
   // ★돌 과잉버퍼 직접 감산 — 돌도 가격이 안 떨어져(0.46) raw-taper 미발동 → 잉여 채석 낭비. 15/명↑ 감산(건축·도구분은 보존).
   const _stonePC = (v.storage.stone || 0) / (v.npcs.length || 1);
   const _stoneGlut = Math.max(0, Math.min(0.7, (_stonePC - 15) / 30));
+  // ★도구 과잉버퍼(e2) 직접 감산 — 커버리지(도구재고/도구의존인구)가 임계 X배↑면 초과분만큼 대장장이 산출·원료소비 동시 감산.
+  //   근거: toolBoostShared는 커버리지 1.0에서 포화(그 이상 생산 기여 0) → 초과 도구 생산은 무의미 잉여 + 구리/주석 낭비(_stoneGlut 동형).
+  //   임계 X를 floor로 삼아 재고가 X 부근에 수렴(완전수렴 1로 안 감 — 도구는 생산자본재라 포화선 아래는 생산붕괴). tf=0이면 원료 차감도 정지.
+  const _toolStockG = (v.storage.tool || 0) + (v.storage.bronze_tool || 0) + (v.storage.iron_tool || 0);
+  const _toolCov = _toolStockG / Math.max(1, toolDeps);
+  const _toolGlut = Math.max(0, Math.min(1, (_toolCov - TOOL_GLUT_X) / TOOL_GLUT_RAMP));
+  const _toolTaper = 1 - _toolGlut;   // 대장장이 산출·원료소비 공통 배율(1=풀생산, 0=정지)
+  // ★S2 금속 과잉버퍼 직접 감산 — 구리/주석은 청동검(희소)만 소비 → 광산 마을에서 무한 축적(가격 taper로도 ~수천서 겨우 멈춤).
+  //   1인당 버퍼(N×4) 초과분을 선형 감산(RAMP N×4) → 재고가 그 부근 수렴. 광부의 *금속 부산물만* 감산(광석 채굴 자체·돌은 무관).
+  const _cuPC = (v.storage.copper || 0) / (v.npcs.length || 1);
+  const _metalGlut = Math.max(0, Math.min(0.9, (_cuPC - 4) / 4));
+  v._metalGlut = _metalGlut;   // ★저장: 광부 한계가치(픽커·기회비용)가 금속 글럿을 보게 → 글럿이면 광부 차출(무의미 채굴 방지)
+  // ★청동 희소성: 주석 글럿 — 산지 마을이 tin을 과축적하지 않게(청동검·수출로 소진). 버퍼 낮게(tin=귀재): tin_pc~1.0서 채굴 감산 → 한 산지가 전 마을을 청동화하는 과잉 방지.
+  const _tinPC = (v.storage.tin || 0) / (v.npcs.length || 1);
+  const _tinGlut = Math.max(0, Math.min(0.9, (_tinPC - 1.0) / 1.5));
+  // ★S5 흑요석/옥 글럿 감산 — 특수 산지 마을이 채굴재를 무한 축적하지 않게(수출 교역재라 국내 수요는 소량). 재고 초과분 선형 감산.
+  const _obPC = (v.storage.obsidian || 0) / (v.npcs.length || 1);
+  const _obsGlut = Math.max(0, Math.min(0.9, (_obPC - 3) / 4));
+  const _jaPC = (v.storage.jade || 0) / (v.npcs.length || 1);
+  const _jadeGlut = Math.max(0, Math.min(0.9, (_jaPC - 2) / 3));   // 옥=위세품, 국내 소비 더 적음(낮은 버퍼)
   const satMul = (_satP && _satB)
     ? (r => {
         const adj = (_satP[r] || 1) / (_satB[r] || 1);
@@ -1233,6 +1450,11 @@ function tickVillage(v, day) {
         for (const [r, w] of Object.entries(yields)) {
           addProduce(r, baseAmt * (w / sumW));
         }
+        // ★S1 돌=채집 자원(광부 아님): 강가/돌밭(land.stone) 채집꾼이 돌을 *주 산출*로 가져옴(식량 믹스와 별개 가산).
+        //   계수 0.9 ≈ 옛 광부(base1.5×land.stone) 스케일에 근접 → 돌밭 마을은 채집꾼만으로 돌 풍족(병목 없음).
+        //   채집 스킬(foraging)이 효율을 높이고, 임연부 MSY(_forageScale)에 연동(공유지 비극 방지). 돌은 흔하니 누구나(스킬↑) 조달.
+        const stoneYield = (v.land.stone || 0) * skillMul * _forageScale * 0.9;
+        if (stoneYield > 0) addProduce('stone', stoneYield);
         workNPC(npc);
       }
     } else if (jdef.produceSpecial === 'cook') {
@@ -1247,46 +1469,93 @@ function tickVillage(v, day) {
         addProduce('cooked_food', cooked);
         workNPC(npc);
       }
-    } else if (jdef.produceSpecial === 'smith') {
-      // ★대장장이(청동기): 청동(구리+주석) *우선* — 청동기 주력. 청동 재료 부족 시에만 철(희소 프리미엄), 최후로 돌.
-      //   (철 우선이면 흔한 철이 청동을 밀어내 시대 위배 → 청동 우선으로 청동 지배·철 잔존. 철은 청동 재료 dip 시 fallback.)
-      const amt = jdef.base * skillMul;   // smith는 toolDependent 아님(맨손 페널티 없음).
-      if ((v.storage.copper || 0) >= 0.4 && (v.storage.tin || 0) >= 0.15 && (v.storage.stone || 0) >= 0.2) {
-        v.storage.copper -= 0.4; v.storage.tin -= 0.15; v.storage.stone -= 0.2;   // ★청동=구리+주석 합금(주력 금속)
-        addProduce('bronze_tool', amt);
-        workNPC(npc);
-      } else if ((v.storage.iron || 0) >= 0.5 && (v.storage.stone || 0) >= 0.2) {
-        v.storage.iron -= 0.5; v.storage.stone -= 0.2;   // ★철도구=희소 프리미엄(청동 재료 없을 때만). 청동기엔 드묾
-        addProduce('iron_tool', amt);
-        workNPC(npc);
-      } else if ((v.storage.stone || 0) >= 0.6) {
-        v.storage.stone -= 0.6;
-        addProduce('tool', amt);
-        workNPC(npc);
-      }
-    } else if (jdef.produceSpecial === 'weaponsmith') {
-      // ★무기 제작(청동기): 청동검 *우선*(주력 무기) → 청동 재료 부족 시 철검(희소) → 최후 돌칼.
-      //   ★활(§9 3차): 무기 사용자 다수가 사냥꾼인 마을은 활 제작 — 활=목재+뼈(활대 심·힘줄 백킹), 청동 아님.
-      //   (실측 교훈: 사냥꾼 무기 수요를 검 레시피로 채우면 도구용 청동을 잠식 — 청동도구 -18%·인구 -33% 회귀. 재료 분리가 §6 "장비 품질" 티어의 물적 기반)
+    } else if (jdef.produceSpecial === 'mason') {
+      // ★S2 석공(masonry) — 석기(간돌 도구) 전담 + 마제석검(돌 무기, 전사용). 도구는 자본재라 *우선* 제작,
+      //   도구 충분하면 무기 수요(전사) 있을 때 마제석검 제작. ★활은 석공 소관 아님 — 사냥꾼 자가제작(archery)로 이관(활=목재·뼈·힘줄·깃 재료라 석기 장인 부적합, 아래 사냥꾼 자가 안전망 참조).
+      // ★S3 레벨=품질: 도구·석검 품질 = 재료등급 × 스킬(masonry). 무기는 노동 3배(WEAPON_LABOR_MULT)라 산출↓(희소).
       const amt = jdef.base * skillMul;
-      const _bowUsers = v.counts.hunter || 0, _bladeUsers = v.counts.warrior || 0;
-      if (_bowUsers > _bladeUsers && (v.storage.wood || 0) >= 0.6) {
-        v.storage.wood -= 0.6;   // ★활: 목재 활대(자급 재료 — 검 금속과 비경합)
+      const _stCost = 0.2 * _toolTaper;
+      const _qSkill = 1 - WEAP_Q_SKILL_SPAN + WEAP_Q_SKILL_SPAN * (skillLvl / 10);   // 스킬 기여(0.4~1.0)
+      // ★청동 희소성: 전사 근접무장은 *근접검 재고*로 판정(활 제외). swordStock ≈ weapon × 근접검비중(_swordFrac) → 활이 pool을 채워도 전사가 마제석검을 받음.
+      const _bladeUsers = v.counts.warrior || 0;
+      const _swordStock = (v.storage.weapon || 0) * (v._swordFrac != null ? v._swordFrac : SWORD_FRAC_INIT);
+      // ★마제석검으로 *병기고*(armory)를 채움 — 전사 실수요(×BUFFER)를 넘어 마을 유사시 대비·교역 재고까지.
+      //   ★청동 자격 마을도 마제석검 topup 허용: 대장장이 청동검은 tin(희소)에 묶여 병기고를 다 못 채움 → 석공이 *나머지*를 마제석검으로.
+      //   → 청동은 tin 가용분까지만(자연 상한), 병기고 잔여는 석기 → 청동 자격 마을에서도 청동은 소수·석기 다수(주석 병목이 청동 비중을 결정). 홍수 시드서도 청동 폭주 억제.
+      const _armoryTarget = (v.npcs.length || 0) * MELEE_ARMORY_PC;
+      const _bronzeArmoryCap = _armoryTarget * BRONZE_ARMORY_FRAC;   // 청동 병기고 한도(나머지는 석기 몫)
+      const _meleeUrgent = _bladeUsers > 0 && _swordStock < _bladeUsers * MELEE_COV_BUFFER;   // 전사 무장 결손(긴급)
+      // ★청동 우선권 + 비중 상한: 대장장이 청동검은 병기고의 BRONZE_ARMORY_FRAC까지. 그 한도 도달 또는 tin 고갈이면 석공이 *나머지*를 마제석검으로.
+      //   → 청동마을도 석기 다수(청동은 한도까지만). 무산지 마을은 항상 석공 마제석검(청동 불가).
+      const _bronzeNow = _bronzeCapable(v) && _swordStock < _bronzeArmoryCap && (v.storage.copper || 0) >= 0.3 && (v.storage.tin || 0) >= 0.12;   // 지금 청동 제작 몫 남음(한도·tin)
+      const _needStoneSword = _meleeUrgent && !_bronzeNow && (v.storage.stone || 0) >= 0.5;   // 긴급 무장인데 청동 몫 없음 → 마제석검(방어 최우선, 식량무관)
+      // ★병기고(비긴급 비축)는 *식량 안보(secF 충분)일 때만* — 척박·기근 마을이 병기고 비축에 노동을 돌려 식량생산이 밀려 쇠퇴하는 것 방지(랩 취약 시드 인구 유지).
+      const _armoryShort = _secF > MELEE_ARMORY_SECF && _swordStock < _armoryTarget * MELEE_ARMORY_HYST && !_bronzeNow && (v.storage.stone || 0) >= 0.5;   // 병기고 결손 + 청동 몫 없음(한도·tin 고갈) + 식량안보 → 석기 backfill
+      const wAmt = amt * WEAPON_LABOR_MULT;   // ★무기 노동 3배 → 산출 1/3
+      if (_needStoneSword) {
+        // (0) 마제석검 우선 — 전사 근접무장 결손(무산지 마을 주력 무기).
+        v.storage.stone -= 0.5;   // ★마제석검(간돌 검) — 청동 자격 없는 마을의 주력 자급 무기(저품질, 전사용)
+        v._stoneWeaponMade = (v._stoneWeaponMade || 0) + wAmt;
+        v._swordMadeToday = (v._swordMadeToday || 0) + wAmt;   // ★근접검 비중 EMA 입력(검 제작)
+        const wq = WEAP_Q_STONE * _qSkill;   // 마제석검 품질 = 석재등급(0.5) × 스킬
+        v._weapQnum = (v._weapQnum || 0) + wq * wAmt; v._weapQden = (v._weapQden || 0) + wAmt;
+        addProduce('weapon', wAmt); workNPC(npc);
+      } else if (_toolTaper > 0 && (v.storage.stone || 0) >= _stCost) {
+        // (a) 석기 도구 — 커버리지 부족분(e2 taper). _toolTaper>0이고 돌 있으면 제작.
+        const tAmt = amt * _toolTaper;
+        v.storage.stone -= _stCost; v._stoneToolMade = (v._stoneToolMade || 0) + tAmt;
+        // ★S3 도구 품질 = 막석기(TOOL_Q_BASE) + 숙련폭(TOOL_Q_SPAN×skill/10) → 막석기 1.25× ~ 명장석기 1.55×.
+        const tq = TOOL_Q_BASE + TOOL_Q_SPAN * (skillLvl / 10);
+        v._toolQnum = (v._toolQnum || 0) + tq * tAmt; v._toolQden = (v._toolQden || 0) + tAmt;
+        addProduce('tool', tAmt); workNPC(npc);
+      } else if (_armoryShort) {
+        // (a2) 도구 포화 → 마제석검으로 마을 병기고 축적(무산지 마을 주력 무기 재고). 청동 자격 마을은 대장장이 청동검이 담당(여기 미해당).
+        v.storage.stone -= 0.5;
+        v._stoneWeaponMade = (v._stoneWeaponMade || 0) + wAmt;
+        v._swordMadeToday = (v._swordMadeToday || 0) + wAmt;
+        const wq = WEAP_Q_STONE * _qSkill;
+        v._weapQnum = (v._weapQnum || 0) + wq * wAmt; v._weapQden = (v._weapQden || 0) + wAmt;
+        addProduce('weapon', wAmt); workNPC(npc);
+      } else {
+        // (b) 도구·병기고 다 충분(또는 청동 자격) → 여가(포만). 청동 자격 마을 무기는 대장장이 청동검이 담당.
+      }
+    } else if (jdef.produceSpecial === 'smith') {
+      // ★S2 대장장이(smithing) = 청동·철 *무기* 전용(도구 제작 폐지 → 석공). 청동검(구리+주석) 우선 → 철검(희소).
+      // ★S3 레벨=품질: 무기 공격력·내구 = 재료등급(청동>철) × 스킬(smithing). 신규 티어 해금 아님. 무기 노동 3배(산출↓=희소).
+      const amt = jdef.base * skillMul * WEAPON_LABOR_MULT;   // ★무기 노동 3배 → 산출 1/3
+      const _qSkill = 1 - WEAP_Q_SKILL_SPAN + WEAP_Q_SKILL_SPAN * (skillLvl / 10);   // 스킬 기여(0.4~1.0)
+      // ★청동 병기고 비중 상한 — 청동은 병기고의 BRONZE_ARMORY_FRAC까지만(나머지 석기). swordStock이 그 한도 미만일 때만 청동 제작 → 청동마을도 석기 다수·청동 소수(엘리트).
+      //   ★식량 안보 게이트: 잘 먹는 마을만 병기고까지 청동 확충, 취약 마을은 전사 실수요(BUFFER)까지만(식량·생존 우선).
+      const _smSwordStock = (v.storage.weapon || 0) * (v._swordFrac != null ? v._swordFrac : SWORD_FRAC_INIT);
+      const _bronzeArmoryCap = (_secF > MELEE_ARMORY_SECF)
+        ? (v.npcs.length || 0) * MELEE_ARMORY_PC * BRONZE_ARMORY_FRAC
+        : Math.max(2, (v.counts.warrior || 0) * MELEE_COV_BUFFER);   // 취약 마을 = 전사 커버리지만
+      // ★청동 희소성: 청동검은 *청동 경제 자격* 마을(주석 산지·교역 허브)만 + 병기고 청동 한도 미만일 때. 흘러든 트레이스 주석뿐이거나 청동 한도 도달 마을은 석공 마제석검.
+      if (_bronzeCapable(v) && _smSwordStock < _bronzeArmoryCap && (v.storage.copper || 0) >= 0.3 && (v.storage.tin || 0) >= 0.12) {
+        v.storage.copper -= 0.3; v.storage.tin -= 0.12;   // ★청동검(청동기 주력 무기)
+        v._cuWeapUsed = (v._cuWeapUsed || 0) + 0.3;   // (계측 전용) 무기용 구리 누적 소비
+        v._bronzeWeaponMade = (v._bronzeWeaponMade || 0) + amt;
+        v._swordMadeToday = (v._swordMadeToday || 0) + amt;   // ★근접검 비중 EMA(청동검=근접)
+        const wq = WEAP_Q_BRONZE * _qSkill;   // 청동검 품질 = 청동등급(1.0) × 스킬(명장이 최고품질)
+        v._weapQnum = (v._weapQnum || 0) + wq * amt; v._weapQden = (v._weapQden || 0) + amt;
         addProduce('weapon', amt);
         workNPC(npc);
-        // ★활 티어: bone 보조 투입(있으면 0.3/활 소비) → 일 집계는 tickVillage 말미의 EMA(_bowQ)가 흡수. 검 제작은 무관(활 스톡 질만).
-        const _bNeed = amt * BOW_BONE_PER_WEAPON;
-        const _bIn = Math.min(v.storage.bone || 0, _bNeed);
-        if (_bIn > 0) { v.storage.bone -= _bIn; v._boneUsed = (v._boneUsed || 0) + _bIn; }
-        v._bowIn = (v._bowIn || 0) + _bIn; v._bowNeed = (v._bowNeed || 0) + _bNeed;
-        // ★유령 박멸(§9): 활 재료 다양화 — 깃(화살 fletching) 0.2 · 송진(활대 접착) 0.1 · 삼(시위) 0.1 / 활.
-        //   bone 0.3 패턴 그대로: 있으면 소비, 없어도 제작 성립. _bowQ 산식 불변(bone만 품질 반영 — 재료 소비처 연결만).
-        for (const _fx of [['feather', 0.2], ['resin', 0.1], ['hemp', 0.1]]) {
-          const _fi = Math.min(v.storage[_fx[0]] || 0, amt * _fx[1]);
-          if (_fi > 0) v.storage[_fx[0]] -= _fi;
-        }
-      } else if ((v.storage.copper || 0) >= 0.3 && (v.storage.tin || 0) >= 0.12) {
-        v.storage.copper -= 0.3; v.storage.tin -= 0.12;   // ★청동검(청동기 주력 무기)
+      } else if (_ironWeaponCapable(v) && (v.storage.iron || 0) >= 0.4 && (v.storage.stone || 0) >= 0.2) {
+        v.storage.iron -= 0.4; v.storage.stone -= 0.2;   // ★철검=최희소(청동 자격 없고 철이 *풍부*할 때만). 트레이스 축적으론 미발동 → 석공 마제석검.
+        v._ironWeaponMade = (v._ironWeaponMade || 0) + amt;
+        v._swordMadeToday = (v._swordMadeToday || 0) + amt;   // ★근접검 비중 EMA(철검=근접)
+        const wq = WEAP_Q_IRON * _qSkill;   // 철검 품질 = 철등급(0.85) × 스킬
+        v._weapQnum = (v._weapQnum || 0) + wq * amt; v._weapQden = (v._weapQden || 0) + amt;
+        addProduce('weapon', amt);
+        workNPC(npc);
+      }
+      // 청동/철 자격 없으면 오늘 제작 없음(돌칼은 대장장이가 안 만듦 — 석공 담당). 교역으로 청동 자격 갖추면 재개.
+    } else if (jdef.produceSpecial === 'weaponsmith') {
+      // ★S2 weaponsmith = 대장장이(smith)로 통합·폐지(capacity 0 → 도달 불가). 아래는 잔존 안전코드(만약 남은 weaponsmith가 있으면 청동검만).
+      const amt = jdef.base * skillMul;
+      if ((v.storage.copper || 0) >= 0.3 && (v.storage.tin || 0) >= 0.12) {
+        v.storage.copper -= 0.3; v.storage.tin -= 0.12;
+        v._bronzeWeaponMade = (v._bronzeWeaponMade || 0) + amt;
         addProduce('weapon', amt);
         workNPC(npc);
       } else if ((v.storage.iron || 0) >= 0.4 && (v.storage.stone || 0) >= 0.2) {
@@ -1299,21 +1568,35 @@ function tickVillage(v, day) {
         workNPC(npc);
       }
     } else if (jdef.produceSpecial === 'miner') {
-      // ★통일 광부: 광맥은 광석+버력돌이 같이 나와 — 돌(∝land.stone)과 광석+금속(∝land.ore)을 *둘 다* 캠.
-      //   돌산이면 돌 위주, 금속광맥이면 광석·금속(구리·주석·철)도 함께. (탐사꾼 통합)
+      // ★S1 광부=금속·특수석재 전담(돌은 안 캠): 광부는 금속광맥(land.ore)에서 광석+금속(구리·주석·철)만 캔다.
+      //   돌(stone)은 채집(foraging)으로 이관 — 돌은 흔한 채집자원이라 어느 마을이든 강가/돌밭에서 조달(병목 없음).
+      //   광맥 없는 마을은 광부를 둘 이유가 없다(landBoost=land.ore → 광맥 마을만 광부 매력). (탐사꾼 통합 유지)
       const toolB = jdef.toolDependent ? toolBoostShared : 1.0;
-      const sAmt = jdef.base * (v.land.stone || 0) * skillMul * toolB;
-      const oAmt = jdef.base * (v.land.ore || 0) * skillMul * toolB;
-      if (sAmt > 0) {
-        addProduce('stone', sAmt);
-        addProduce('salt', sAmt * 0.05); addProduce('clay', sAmt * 0.08);   // ★소금=완충 교역재(광범위 수요 utility 0.8). 제거 시 교역균형 흔들려 취약 시드 boom-bust→인구 1480→1023·글럿. 고증(소금길)이라 유지.
-      }
+      // ★S2 금속 글럿 감산: 구리 과잉이면 광부가 광맥 채굴 자체를 줄임(무의미한 금속 축적 방지 = 여가). 광석·금속·부산물 공통 배율.
+      const oAmt = jdef.base * (v.land.ore || 0) * skillMul * toolB * (1 - _metalGlut);
       if (oAmt > 0) {
         addProduce('ore', oAmt);
-        const bp = { copper: 0.22, tin: 0.11, iron: 0.03, silver: 0.05, gold: 0.02, gem: 0.01 };   // ★철 0.08→0.03: 청동기엔 철이 희소(구리·주석보다 귀함). 청동 우선+철 희소=청동 지배
+        // ★청동 희소성 복원: tin을 부산물에서 *제거*. 종전 { copper:0.22, tin:0.11, ... } → tin은 전 마을 자동산출 = 청동 보편재의 근본 원인.
+        //   이제 tin은 산지(land.tin>0)만 아래 별도 채굴. copper/iron/장식재는 종전대로 모든 광맥 부산물(청동기: 구리는 흔하되 주석이 병목).
+        const bp = { copper: 0.22, iron: 0.03, silver: 0.05, gold: 0.02, gem: 0.01 };   // ★철 0.03: 청동기엔 철이 희소. tin 제거(산지 전용) — 구리는 흔해도 주석 병목이 청동을 희소화.
         for (const r in bp) addProduce(r, oAmt * bp[r]);
+        addProduce('salt', oAmt * 0.05); addProduce('clay', oAmt * 0.08);   // ★소금=완충 교역재(광범위 수요 utility 0.8). 제거 시 교역균형 흔들려 취약 시드 boom-bust. 고증(소금길). 이제 광맥 채굴 부산물로 산출(돌 채석과 분리).
       }
-      if (sAmt > 0 || oAmt > 0) workNPC(npc);
+      // ★청동 희소성: 주석 채굴 — *산지 마을(land.tin>0)만*. 대부분 마을은 land.tin=0 → tin 산출 0 → 청동 불가(석기 무장).
+      //   주석(cassiterite)은 자체 광상 → land.ore와 독립(obsidian/jade 동형: 부존만으로 채굴). 산지 마을이 청동검을 만들고 수출(교역 특산).
+      // ★산출을 *마을 규모·광부 수 무관* 정량(광량 = land.tin이 결정)으로 — 대형/소형 산지 마을 간 tin 산출 편차(→청동/명 시드 변동)를 차단.
+      //   첫 광부가 마을 일일 정량(TIN_DEPOSIT_YIELD_FLAT × land.tin)을 1회 산출(이후 광부는 tin 안 캠 — 광석·구리는 계속). _tinGlut로 과축적 시 감산.
+      if ((v.land.tin || 0) > 0 && (v._tinToday || 0) === 0) {
+        const tinAmt = TIN_DEPOSIT_YIELD_FLAT * (v.land.tin || 0) * (1 - _tinGlut);
+        if (tinAmt > 0) { addProduce('tin', tinAmt); v._tinMined = (v._tinMined || 0) + tinAmt; v._tinToday = (v._tinToday || 0) + tinAmt; }
+      }
+      // ★S5 특수 산지 채굴 — 흑요석(화산지대)·옥(옥 산지). 광부가 광석과 별개로 채굴(비교우위 교역재).
+      //   흑요석=예리(화살촉·소형칼날 → 사냥·방어 보조), 옥=위세품. 채굴량 ∝ land 부존. 부존 0이면 산출 0(대부분 마을).
+      const obAmt = jdef.base * (v.land.obsidian || 0) * skillMul * toolB * (1 - _obsGlut);
+      if (obAmt > 0) addProduce('obsidian', obAmt);
+      const jaAmt = jdef.base * (v.land.jade || 0) * skillMul * toolB * (1 - _jadeGlut);
+      if (jaAmt > 0) addProduce('jade', jaAmt);
+      if (oAmt > 0 || obAmt > 0 || jaAmt > 0) workNPC(npc);
     } else if (jdef.output && baseAmt > 0) {
       for (const [inp, need] of Object.entries(jdef.inputs || {})) {
         v.storage[inp] = Math.max(0, v.storage[inp] - need);
@@ -1334,6 +1617,61 @@ function tickVillage(v, day) {
   }
   // ★여유노동 비율 저장 — 교역 동시성 상한(tickTradeV2 spareCap)에서 사용.
   v._idleFrac = _potA > 0 ? Math.max(0, 1 - _actA / _potA) : 0;
+
+  // ★S3 막석기 자급 안전망 — 도구(석기)가 치명적으로 부족(커버리지<SELF_TOOL_COV)하면 도구의존 노동자가 급할 때 막석기를 손수 자급.
+  //   "농부는 도구만 급할 때 자급"(스펙 8) — 무기는 자급 안 함(석공·대장장이 전담). 낮은 노동(0.02/인), 돌 있을 때만. 정교 석기는 석공.
+  if (toolDeps > 0) {
+    const _tcov = ((v.storage.tool || 0) + (v.storage.bronze_tool || 0) + (v.storage.iron_tool || 0)) / toolDeps;
+    if (_tcov < SELF_TOOL_COV && (v.storage.stone || 0) >= 0.2) {
+      const _self = Math.min(toolDeps * SELF_TOOL_RATE, (v.storage.stone || 0) / 0.2 * 0.2);
+      if (_self > 0) {
+        v.storage.stone -= _self * 0.2 / 0.4;   // 막석기 재료비(석공보다 비효율 — 막 깬 돌)
+        v.storage.tool = (v.storage.tool || 0) + _self;
+        v._selfToolMade = (v._selfToolMade || 0) + _self;
+        v._toolQnum = (v._toolQnum || 0) + SELF_TOOL_Q * _self; v._toolQden = (v._toolQden || 0) + _self;   // 막석기 저품질
+      }
+    }
+  }
+
+  // ★활 사냥꾼 자가제작 — 활은 사냥꾼 본인 장비(목재 활대 + 뼈·힘줄·깃·수지). 석공(석기 장인) 소관 아님 → 사냥꾼이 archery 숙련으로 손수 제작(막석기 자급과 동형 안전망).
+  //   활 재고(=사냥꾼용 무기)가 커버리지(SELF_BOW_COV) 미만이면 자급. 산출률 = 사냥꾼 수 비례(저노동, 무기 노동 3배는 저율에 반영). 재료는 목재만 게이트(뼈·깃·수지·힘줄은 보조 — 있으면 품질↑).
+  //   품질: 활 무기품질(_weapQ)에 석재등급 저티어로 기여 + 활 데미지 배수(_bowQ)는 bone/obsidian 투입 EMA(아래 EMA 블록). archery 숙련이 높을수록 마감 품질↑.
+  {
+    const _huntN = v.counts.hunter || 0;
+    // ★활 자급 판정 = *활 재고*(근접검 제외). bowStock ≈ weapon × (1 − 근접검비중). 안 나누면 수입/자급 검이 pool을 채워 사냥꾼이 활을 못 만듦(사냥 무장해제).
+    const _bowStock = (v.storage.weapon || 0) * (1 - (v._swordFrac != null ? v._swordFrac : SWORD_FRAC_INIT));
+    const _bowCov = _huntN > 0 ? _bowStock / _huntN : 99;
+    if (_huntN > 0 && _bowCov < SELF_BOW_COV && (v.storage.wood || 0) >= SELF_BOW_WOOD) {
+      // 사냥꾼 최고 archery 숙련 → 마감 품질(막석기 자급과 달리 전문 사냥꾼이 자기 활을 만듦: 숙련폭 반영).
+      let _maxArch = 0; for (const n of v.npcs) if (n.currentJob === 'hunter') { const s = n.skills.archery || 0; if (s > _maxArch) _maxArch = s; }
+      const _qSkill = 1 - WEAP_Q_SKILL_SPAN + WEAP_Q_SKILL_SPAN * (_maxArch / 10);   // 스킬 기여(0.4~1.0)
+      // 산출: 사냥꾼 수 × 저율, 단 목재 재고로 상한(활대 1자루 0.6목재).
+      const _bAmt = Math.min(_huntN * SELF_BOW_RATE, (v.storage.wood || 0) / SELF_BOW_WOOD);
+      if (_bAmt > 0) {
+        v.storage.wood -= _bAmt * SELF_BOW_WOOD;   // 목재 활대
+        v.storage.weapon = (v.storage.weapon || 0) + _bAmt;
+        v._bowMade = (v._bowMade || 0) + _bAmt;   // (계측) 사냥꾼 자가 활 누적
+        v._bowMadeToday = (v._bowMadeToday || 0) + _bAmt;   // ★근접검 비중 EMA 입력(활 제작 → 비중↓)
+        const _wq = BOW_Q_STONE * _qSkill;   // 활 무기품질 = 저티어 재료등급 × archery 숙련
+        v._weapQnum = (v._weapQnum || 0) + _wq * _bAmt; v._weapQden = (v._weapQden || 0) + _bAmt;
+        // 활 데미지 품질(_bowQ) 투입: bone(활대 심·힘줄 백킹) + obsidian(예리 화살촉) — 있으면 소비, 품질 EMA에 기여(아래).
+        const _bNeed = _bAmt * BOW_BONE_PER_WEAPON;
+        const _bIn = Math.min(v.storage.bone || 0, _bNeed);
+        if (_bIn > 0) { v.storage.bone -= _bIn; v._boneUsed = (v._boneUsed || 0) + _bIn; }
+        v._bowIn = (v._bowIn || 0) + _bIn; v._bowNeed = (v._bowNeed || 0) + _bNeed;
+        // ★흑요석 화살촉(수정3) — 예리한 화살촉 보조 투입. 산지 마을은 obsidian 재고가 있어 활/화살 품질↑(bone과 합산 투입률).
+        const _obNeed = _bAmt * BOW_OBSIDIAN_PER_WEAPON;
+        const _obIn = Math.min(v.storage.obsidian || 0, _obNeed);
+        if (_obIn > 0) { v.storage.obsidian -= _obIn; v._obsUsed = (v._obsUsed || 0) + _obIn; }
+        v._bowObIn = (v._bowObIn || 0) + _obIn; v._bowObNeed = (v._bowObNeed || 0) + _obNeed;
+        // 마감 보조재(깃·수지·힘줄) — 있으면 소비(게이트 아님).
+        for (const _fx of [['feather', 0.2], ['resin', 0.1], ['hemp', 0.1]]) {
+          const _fi = Math.min(v.storage[_fx[0]] || 0, _bAmt * _fx[1]);
+          if (_fi > 0) v.storage[_fx[0]] -= _fi;
+        }
+      }
+    }
+  }
 
   // 1.5) 영토 확장 시도 — 매 EXPAND_CHECK_INTERVAL일
   if (day % EXPAND_CHECK_INTERVAL === 0) {
@@ -1357,14 +1695,57 @@ function tickVillage(v, day) {
     const _hTake = Math.min(v.storage.herb, N * HERB_DAILY_PC);
     v.storage.herb -= _hTake; v._herbUsed = (v._herbUsed || 0) + _hTake;
   }
-  // ★활 품질 EMA(§9 3차) — 오늘 무기 제작분의 bone 투입률이 장비 스톡의 질을 갱신(비대칭: 상승 느림·희석 더 느림). 제작 없는 날은 미세 노후만.
+  // ★활 품질 EMA(§9 3차) — 오늘 활 제작분의 bone(활대 심) + ★흑요석(예리 화살촉, 수정3) 투입률이 장비 스톡의 질을 갱신(비대칭: 상승 느림·희석 더 느림). 제작 없는 날은 미세 노후만.
+  //   투입률 = bone충족률 + 흑요석충족률×OB_W(예리 보너스, 상한 BOW_R_MAX). 흑요석 산지 마을은 bone만인 마을보다 _bowQ↑ → 사냥 데미지 이점("예리한 화살촉"). 별도 arrow 아이템 없음.
   if ((v._bowNeed || 0) > 0) {
-    const _br = (v._bowIn || 0) / v._bowNeed;
+    const _brBone = (v._bowIn || 0) / v._bowNeed;
+    const _brObs = (v._bowObNeed || 0) > 0 ? (v._bowObIn || 0) / v._bowObNeed : 0;
+    const _br = Math.min(BOW_R_MAX, _brBone + _brObs * BOW_OBSIDIAN_Q_W);   // bone 기본 + 흑요석 예리 보너스(합산, 상한)
     const _ba = _br > (v._bowR || 0) ? BOW_Q_UP : BOW_Q_DOWN;
     v._bowR = (v._bowR || 0) * (1 - _ba) + _br * _ba;
   } else if (v._bowR) v._bowR *= (1 - BOW_Q_IDLE);
-  v._bowIn = 0; v._bowNeed = 0;
+  v._bowIn = 0; v._bowNeed = 0; v._bowObIn = 0; v._bowObNeed = 0;
   v._bowQ = 1 + BOW_Q_SPAN * (v._bowR || 0);
+
+  // ★S3 도구·무기 품질 EMA — 오늘 제작분의 (재료등급×스킬) 가중평균이 마을 장비 스톡의 질을 서서히 갱신(bowQ 패턴).
+  //   레벨=품질(해금 아님): 숙련 석공/대장장이가 있는 마을일수록 스톡 품질↑ → 도구효율·무기 defense↑(feed into stats·boost).
+  //   ★S3 능력기반 품질: 마을 장인(최고숙련 석공·대장장이) + 가용 최고 재료가 스톡 품질을 결정 → "레벨=품질" 직접 구현.
+  //   throughput 무관(수요 적어 명장이 쉬어도, 그가 만드는 것은 명작) — EMA는 장인 교체·재료 변화의 완만 반영용.
+  //   장인 없으면(석공 0) 막석기 자급 하한으로 감쇠(도구), 무기는 없으면 유지.
+  {
+    // 도구: 마을 최고 masonry 숙련. 석공 없으면 자급 막석기(SELF_TOOL_Q)로 서서히 하강.
+    let maxMasonSk = -1;
+    for (const n of v.npcs) if (n.currentJob === 'mason') { const s = n.skills.masonry || 0; if (s > maxMasonSk) maxMasonSk = s; }
+    let toolTarget;
+    if (maxMasonSk >= 0) toolTarget = TOOL_Q_BASE + TOOL_Q_SPAN * (maxMasonSk / 10);   // 석공 품질(막석기~명장석기)
+    else toolTarget = SELF_TOOL_Q;   // 석공 없음 → 막석기 자급 품질
+    v._toolQ = (v._toolQ != null ? v._toolQ : 1.4) * (1 - TOOL_Q_EMA) + toolTarget * TOOL_Q_EMA;
+    // 무기: 최고 재료등급(청동>철>석검 — 현 재고 가용성) × 최고 무기장(smith)·석공(석검) 숙련.
+    let maxSmithSk = -1, maxMasonSkW = -1;
+    for (const n of v.npcs) { if (n.currentJob === 'smith') { const s = n.skills.smithing || 0; if (s > maxSmithSk) maxSmithSk = s; } if (n.currentJob === 'mason') { const s = n.skills.masonry || 0; if (s > maxMasonSkW) maxMasonSkW = s; } }
+    let weapTarget = null;
+    if (maxSmithSk >= 0 && ((v.storage.copper || 0) >= 0.3 && (v.storage.tin || 0) >= 0.12)) {
+      weapTarget = WEAP_Q_BRONZE * (1 - WEAP_Q_SKILL_SPAN + WEAP_Q_SKILL_SPAN * (maxSmithSk / 10));   // 청동검(명장)
+    } else if (maxSmithSk >= 0 && (v.storage.iron || 0) >= 0.4) {
+      weapTarget = WEAP_Q_IRON * (1 - WEAP_Q_SKILL_SPAN + WEAP_Q_SKILL_SPAN * (maxSmithSk / 10));   // 철검
+    } else if (maxMasonSkW >= 0) {
+      weapTarget = WEAP_Q_STONE * (1 - WEAP_Q_SKILL_SPAN + WEAP_Q_SKILL_SPAN * (maxMasonSkW / 10));   // 마제석검/활
+    }
+    if (weapTarget != null) v._weapQ = (v._weapQ != null ? v._weapQ : WEAP_Q_STONE) * (1 - WEAP_Q_EMA) + weapTarget * WEAP_Q_EMA;
+    // 장인 없고 무기 스톡만 있으면 현 품질 유지(감쇠 없음 — 남은 무기는 그대로).
+  }
+  // ★근접검 비중(_swordFrac) EMA — 오늘 제작(검 vs 활) 가중으로 pool의 근접검 비중 추종. 검 제작일↑비중, 활 제작일↓비중. 제작 없으면 유지.
+  {
+    const _sw = v._swordMadeToday || 0, _bw = v._bowMadeToday || 0, _tot = _sw + _bw;
+    if (_tot > 0) {
+      const _fracToday = _sw / _tot;
+      v._swordFrac = (v._swordFrac != null ? v._swordFrac : SWORD_FRAC_INIT) * (1 - SWORD_FRAC_EMA) + _fracToday * SWORD_FRAC_EMA;
+    } else if (v._swordFrac == null) {
+      v._swordFrac = SWORD_FRAC_INIT;
+    }
+    v._swordMadeToday = 0; v._bowMadeToday = 0;
+  }
+  v._toolQnum = 0; v._toolQden = 0; v._weapQnum = 0; v._weapQden = 0;
 
   // 2.5) 식량 부패 — 게임에선 안 쓰기로 했으므로 시뮬에서도 일관되게 제거.
   //      대신 storage 무한 비축은 chest 용량 한계(게임 메커니즘)로 표현될 예정.
@@ -1404,14 +1785,15 @@ function tickVillage(v, day) {
   //   (예전 0.2%/일은 반감기 1.4년 = 비현실적으로 빨라 도구 고갈→붕괴 유발)
   // ★도구 마모 현실화 — 청동기 도구는 소모품(부러지고 갈아야 함). 돌<청동<철 순 내구(반감기 돌~1.3·청동~2·철~3년).
   //   예전 0.00007(반감기 19년)은 청동/철도구를 사실상 영구화 → 대장장이 수요 죽어 floor로 땜질. 현실화로 자연 수요 창출.
-  if (v.storage.tool) v.storage.tool *= (1 - 0.0006);       // 돌도구(가장 잘 부러짐)
-  if (v.storage.bronze_tool) v.storage.bronze_tool *= (1 - 0.00035);  // 청동도구(주력)
-  if (v.storage.iron_tool) v.storage.iron_tool *= (1 - 0.00022);      // 철도구(최고 내구)
+  if (v.storage.tool) v.storage.tool *= (1 - 0.0006);       // 돌도구(도구 자본재 — 유일 생산 품목)
+  if (v.storage.bronze_tool) v.storage.bronze_tool *= (1 - 0.00035);  // 청동도구=레거시(신규 생산 0): 감가로 기존 재고만 자연 소멸
+  if (v.storage.iron_tool) v.storage.iron_tool *= (1 - 0.00022);      // 철도구=레거시(신규 생산 0): 감가로 기존 재고만 자연 소멸
 
   // ★땔감 소비 — (1)요리·난방=인구비례 (2)제련=야금공 비례(청동 제련은 고온·대량 연료). 생산 반영된 재고에서 차감.
   //   충당률 fuelCov를 저장 → _computeVillageStats가 건강에 비례 페널티로 반영(부족→건강↓→인구·생산성↓).
   //   재고를 실제로 축내므로 subsistence picker(wood<N×5)가 벌목꾼을 더 배치 → 숲 압박. 야금촌은 제련연료로 숲을 더 빨리 소진(고증: 제련=삼림파괴 동인).
-  const smelters = (v.counts.smith || 0) + ((v.counts.hunter || 0) > (v.counts.warrior || 0) ? 0 : (v.counts.weaponsmith || 0)) + (v.counts.armorsmith || 0);   // ★§9 3차: 활 마을(사냥꾼 다수)의 무기장=궁장(弓匠, 목공) — 노 화로·제련 연료 0(레시피 분기와 동일 조건)
+  // ★S2 야금공(제련 고온·대량 연료) = 대장장이(청동·철 무기) + 갑옷장이. 석공(mason)은 석기·목공(간돌·활)이라 제련 연료 0(고온 화로 없음).
+  const smelters = (v.counts.smith || 0) + (v.counts.weaponsmith || 0) + (v.counts.armorsmith || 0);
   const fuelNeed = N * FIREWOOD_PC + smelters * SMELT_FUEL_PER;
   // ★볏짚 먼저(공짜 부산물, 당일 소진 — 취사·난방용. 제련은 고온이라 목재만) → 부족분만 목재.
   const strawFuel = Math.min(N * FIREWOOD_PC, (v._grainToday || 0) * STRAW_FUEL_PER_FOOD);
@@ -1533,7 +1915,7 @@ function tickVillage(v, day) {
       v._dPAccum = Math.min(v._dPAccum, 0.9);
       break;
     }
-    const npc = createNPC({ job: newJob });
+    const npc = createNPC({ job: newJob, inheritSkill: apprenticeInherit(v, newJob) });   // ★S4 명장 견습(세대 전승)
     v.npcs.push(npc);
     v.counts[newJob] = (v.counts[newJob] || 0) + 1;
     v._dPAccum -= 1;
@@ -1603,7 +1985,7 @@ function pickDeficitJob(v) {
   let _toolDeps = 0;
   for (const j of JOB_NAMES) if (JOBS[j].toolDependent) _toolDeps += (counts[j] || 0);
   const toolPer = ((v.storage.tool || 0) + (v.storage.bronze_tool || 0) + (v.storage.iron_tool || 0)) / Math.max(1, _toolDeps);
-  if (toolPer < 1.5 && hasSlot(v, 'smith', cap, counts)) return 'smith';
+  if (toolPer < 1.5 && hasSlot(v, 'mason', cap, counts)) return 'mason';   // ★S2 도구=석기 → 석공
 
   // 3) 식량 자리 70% 미만 + 식량 잉여 적당 → 식량 직업 우선
   //   Phase 4d-6 fix: food storage가 N*20일치 이상 풍부하면 식량 게이트 우회 (자원 직업으로)
@@ -1615,7 +1997,7 @@ function pickDeficitJob(v) {
 
   // 4) wood/stone 부족
   if (v.storage.wood < N * 5 && hasSlot(v, 'lumberjack', cap, counts)) return 'lumberjack';
-  if (v.storage.stone < N * 3 && hasSlot(v, 'miner', cap, counts)) return 'miner';
+  if (v.storage.stone < N * 3 && hasSlot(v, 'forager', cap, counts)) return 'forager';   // ★S1: 돌은 채집(foraging)으로 조달 — 부족 시 채집꾼(광부 아님)
 
   // 5) cook — 부재료 있을 때
   const foodRich = v.storage.food > N * 8;
@@ -1634,10 +2016,11 @@ function pickDeficitJob(v) {
       hasSlot(v, 'warrior', cap, counts)) {
     return 'warrior';
   }
-  // Phase 4d-7: weaponsmith — warrior(검) 또는 hunter 2+(★§9 3차: 활) 있고 ore 잉여인 마을
-  if (((counts.warrior || 0) >= 1 || (counts.hunter || 0) >= 2) && v.storage.ore > N * 1 && v.storage.weapon < N * 0.5 &&
-      hasSlot(v, 'weaponsmith', cap, counts)) {
-    return 'weaponsmith';
+  // ★S2 무기 부족 — 금속(구리+주석) 있으면 대장장이(청동검), 없으면 석공(마제석검). ★전사 기준(석공·대장장이는 전사 무장 담당) — 사냥꾼 활은 자가제작(archery)로 자급하므로 여기서 석공을 강제하지 않음.
+  if ((counts.warrior || 0) >= 1 && (v.storage.weapon || 0) < N * 0.5) {
+    const _hasMetal = (v.storage.copper || 0) >= 0.3 && (v.storage.tin || 0) >= 0.12;
+    if (_hasMetal && hasSlot(v, 'smith', cap, counts)) return 'smith';
+    if (hasSlot(v, 'mason', cap, counts)) return 'mason';
   }
   // Phase 4d-7: armorsmith — warrior 있고 hide 있는 마을
   if ((counts.warrior || 0) >= 1 && v.storage.hide > N * 0.5 && v.storage.armor < N * 0.5 &&
@@ -1648,7 +2031,7 @@ function pickDeficitJob(v) {
   // 7) 풍부 토지 분야 — 비교우위. 분업 마을이 여기서 광부/목수 등으로 빠짐.
   const landBoosts = [
     ['lumberjack', v.land.wood],
-    ['miner',      Math.max(v.land.stone, v.land.ore)],   // 통일 광부(돌·광석 중 풍부한 쪽)
+    ['miner',      Math.max(v.land.ore || 0, v.land.tin || 0)],   // ★S1 광부=금속 전담(광맥 기준) ★청동 희소성 +주석산지
     ['fisher',     v.land.water * 0.8],
     ['hunter',     v.land.game  * 0.6],
     ['forager',    forageLandMean * 0.5],
@@ -1684,12 +2067,62 @@ function toolDepCount(v) {
   let td = 0; for (const j of JOB_NAMES) if (JOBS[j].toolDependent) td += (v.counts[j] || 0);
   return td;
 }
-function smithTarget(v) {
+// ★S2 석공(mason) 노동목표 = *도구 수요 + 무기 수요*(스펙 8: "석공 수요=도구+무기 수요"). 스톡-플로우.
+//   도구(석기) 수요: 사용마모+감가를 메우는 흐름(구 smithTarget 로직) — 인구·도구의존 비례.
+//   무기 수요: 청동/철 없는 마을(금속 미보유)에서 전사·사냥꾼용 마제석검·활을 석공이 공급(저티어 자급 무기).
+//   석공 있으면 도구·무기 대량 공급 → 농부가 자급에 시간 안 써 농사 전념(분업).
+function masonTarget(v) {
+  const N = v.npcs.length || 1;
   const toolStock = (v.storage.tool || 0) + (v.storage.bronze_tool || 0) + (v.storage.iron_tool || 0);
   const td = toolDepCount(v);
-  const base = craftLaborTarget(toolStock, td, 0.5, { buffer: 1.15, catchup: 50, decay: 0.0008 });
-  // ★소형마을 floor: 도구를 쓰는 마을(도구의존≥4)은 대장장이 최소 1명("마을엔 대장장이가 하나"). 도구 충분하면 포만으로 부분근무.
+  const farmerTD = v.counts.farmer || 0;
+  const otherTD = Math.max(0, td - farmerTD);
+  const wearPerDay = farmerTD * DAILY_TOOL_WEAR_PER_FARMER + otherTD * DAILY_TOOL_WEAR_PER_OTHER
+    + (v.npcs.length || 0) * 0.005 + toolStock * 0.0006;   // 사용마모 + subsistence(0.005/인, v2) + 재고감가
+  const perMasonOut = 0.5;   // 석공 1인 일일 석기 산출(≈base 0.4×숙련) 근사
+  const desired = td * 1.15;   // 목표 도구재고(커버리지 1 + 버퍼)
+  const deficit = Math.max(0, desired - toolStock);
+  let need = wearPerDay / perMasonOut + deficit / (perMasonOut * 50);   // 도구: 마모 보충 + 결손 catchup(50일)
+  // ★무기 수요분 — 금속(구리/주석/철) *없는* 마을만 석공이 무기 공급(있으면 대장장이가 청동검). ★전사만 1.2배 목표(석공=전사 마제석검 담당). 사냥꾼 활은 자가제작(archery)으로 자급하므로 석공 노동목표서 제외.
+  //   ★S3: 무기 노동 3배(WEAPON_LABOR_MULT) → 석공 1인 무기 산출 ≈ 0.17/일. 목표 노동에 반영(과소충원 방지).
+  // ★청동 희소성: 청동 자격(주석 산지·교역 허브) 없는 마을은 석공이 마제석검 공급(무산지=석기 무장). 자격 있으면 대장장이 청동검.
+  // ★석공이 마제석검 병기고 유지 — 무산지=전량 석기, 청동 자격=대장장이 청동검이 못 채운 잔여(tin 고갈분)를 석기로 backfill.
+  //   노동목표엔 병기고 결손 전량 반영(과소충원 방지). 청동 자격 마을서 대장장이가 청동으로 채우면 석공은 자연히 여가(produceSpecial 게이트가 tin 있을 때 석기 억제).
+  {
+    const perWeapOut = perMasonOut * WEAPON_LABOR_MULT;   // ≈0.17
+    // ★근접검 재고 = weapon × 근접검비중(_swordFrac) → 활이 채운 재고에 가려 석검 노동목표가 0이 되지 않게.
+    const _swordStock = (v.storage.weapon || 0) * (v._swordFrac != null ? v._swordFrac : SWORD_FRAC_INIT);
+    // ★식량 안보 게이트(produceSpecial 병기고 게이트와 정합): 잘 먹는 마을만 병기고 노동목표, 취약 마을은 전사 실수요만(석공 과충원→식량노동 잠식 방지).
+    const _foodDays = totalFoodEquivalent(v) / N;
+    const _secF = Math.max(0, Math.min(1, (_foodDays - 40) / 40));
+    const _armoryTarget = (_secF > MELEE_ARMORY_SECF) ? N * MELEE_ARMORY_PC : Math.max(2, (v.counts.warrior || 0) * MELEE_COV_BUFFER);
+    const wDeficit = Math.max(0, _armoryTarget - _swordStock);
+    need += wDeficit / (perWeapOut * 50) + _armoryTarget * 0.5 * DECAY_MELEE_MAINT / perWeapOut;   // 병기고 결손 catchup(50일) + 재고 마모 보충
+  }
+  const base = (toolStock < desired) ? Math.max(1, Math.round(need)) : Math.round(need);
+  // ★소형마을 floor: 도구를 쓰는 마을(도구의존≥4)은 석공 최소 1명("마을엔 석공이 하나"). 도구 충분하면 포만으로 부분근무.
   return Math.max(td >= 4 ? 1 : 0, base);
+}
+// ★S2 대장장이(smith) 노동목표 = *청동·철 무기* 수요. 금속(구리/주석 또는 철) 있어야 성립(없으면 0 → 석공이 저티어 무기).
+//   무기는 교역으로 수출 → 금속 있는 전사·사냥꾼 마을은 상시 대장장이. 청동 희소(금속=광맥/교역)라 대장장이도 금속 마을 위주.
+function smithTarget(v) {
+  // ★청동 희소성: 청동은 *청동 자격* 마을만(주석 산지·교역 허브). 트레이스 주석뿐인 마을은 청동 생산 안 함(석공이 마제석검).
+  const hasBronze = _bronzeCapable(v) && (v.storage.copper || 0) >= 0.3 && (v.storage.tin || 0) >= 0.12;
+  const hasIron = _ironWeaponCapable(v);   // ★철검=최희소: 철 풍부 마을만(트레이스 축적 미달 → 석공 마제석검)
+  if (!hasBronze && !hasIron) return 0;   // 금속 없으면 대장장이 불필요(무기는 석공 담당)
+  // ★청동 희소성: 청동 자격 마을은 대장장이가 청동검 *병기고*를 채움(무산지 석기 병기고의 청동판). 재고=근접검(_swordFrac) → 활이 채운 pool에 가려 청동검 노동목표가 죽지 않음.
+  //   병기고 목표(N×MELEE_ARMORY_PC) — 전사 실수요를 넘어 마을 청동검 재고(청동 무기 0.2/명 목표의 공급원). 청동 자격 아니면(철만) 전사 커버리지만.
+  const N0 = v.npcs.length || 1;
+  const _swordStock = (v.storage.weapon || 0) * (v._swordFrac != null ? v._swordFrac : SWORD_FRAC_INIT);
+  const _armoryTarget = hasBronze ? N0 * MELEE_ARMORY_PC : Math.max(2, (v.counts.warrior || 0) * MELEE_COV_BUFFER);   // 청동 자격=병기고, 철만=전사 커버리지
+  const local = craftLaborTarget(_swordStock, _armoryTarget, 0.5 * WEAPON_LABOR_MULT, { buffer: 1.0, catchup: 40, decay: DECAY_MELEE_MAINT, minStock: 2 });   // ★S3 무기 노동 3배 → dailyOut≈0.17. 근접검 병기고 기준(활 제외).
+  // ★S2 비교우위(광산=청동검): 구리 잉여 마을은 대장장이 1명이 청동검을 *수출용*으로 소량 제작 → 교역 특산(광산=청동검).
+  //   과잉 방지: 무기 재고가 얇을 때만(수출로 빠져나가야 재개) + 인구 3% 상한. 청동검은 희소 위세 교역재로 유지.
+  const N = v.npcs.length || 1;
+  const cuRich = (v.storage.copper || 0) > N * 3;
+  const weapThin = (v.storage.weapon || 0) < N * 0.8;   // 무기 재고 얇음(수출로 소진) → 특산 제작 재개
+  const exportSmiths = (hasBronze && cuRich && weapThin) ? Math.max(1, Math.floor(N * 0.03)) : 0;
+  return Math.max(local, exportSmiths);
 }
 // ★전사 readiness 목표 — *정원 아님*. 교역 캐러밴 수 × 약탈위협으로 호위 수요 파생.
 //   위협 없으면 0(평시 전사 불필요), 위협 클수록 ↑. 글럿 마을의 전사 과잉(19%) 방지 + 평시 자연 동원해제.
@@ -1703,11 +2136,7 @@ function warriorTarget(v) {
   return Math.ceil(caravans * (0.5 + raidRate));         // 위협 비례 호위 수
 }
 function weaponsmithTarget(v) {
-  // 무기는 교역으로 새어나가(약탈·전투 소모는 없지만 수출) → 전사 마을은 *상시* 무기장 필요.
-  //   사용자 = 현 전사 + 목표 전사(선제 무장) + ★사냥꾼(§9 3차: 활 — §5.6 "archery는 직업 무관 무기 필드". 활 티어(bone 투입)의 실사용자라
-  //   무기장이 사냥 마을에도 서야 _bowQ가 산다. 실측: 종전(전사만)엔 시드런 무기장 0 = bone 투입 경로 사망).
-  const users = Math.max((v.counts.warrior || 0) + (v.counts.hunter || 0), warriorTarget(v));
-  return craftLaborTarget(v.storage.weapon || 0, users, 0.5, { buffer: 1.3, catchup: 30, decay: 0.002, minStock: users > 0 ? 2 : 0 });
+  return 0;   // ★S2 폐지 — 대장장이(smith)로 통합. 무기 노동목표는 smith(금속)·mason(석기/활)이 담당.
 }
 function armorsmithTarget(v) {
   return craftLaborTarget(v.storage.armor || 0, v.counts.warrior || 0, 0.3, { buffer: 1.0, catchup: 60, decay: 0.0004 });
@@ -1733,14 +2162,14 @@ function pickDeficitJob_rational(v, world) {
   const foodEquiv = totalFoodEquivalent(v);
   const forageLandMean = Math.max(0.3, (v.land.fertility + v.land.wood + v.land.stone) / 3);
 
-  // ★도구 자본 우선(기근보다 앞): 도구가 치명적으로 부족하면(맨손 0.25× = 식량생산 폭락) 대장간 먼저.
-  //   도구는 자본재 — 1명이 도구 만들면 나머지 식량생산이 0.25×→1.0×로 회복(순이득 큼). 단 재료(목·석) 있고 마을 충분히 클 때만.
-  //   재료 없으면 아래 식량직(forage가 목·석도 가져옴)으로 자연 회복. 죽음의 나선 방지.
-  if (N >= 6 && (v.storage.stone || 0) >= 0.6) {
+  // ★S2 도구 자본 우선(기근보다 앞): 도구(석기)가 치명적으로 부족하면(맨손 0.25× = 식량생산 폭락) 석공 먼저.
+  //   도구는 자본재 — 1명이 도구 만들면 나머지 식량생산이 0.25×→1.0×로 회복(순이득 큼). 단 재료(돌) 있고 마을 충분히 클 때만.
+  //   재료 없으면 아래 식량직(forage가 돌도 가져옴)으로 자연 회복. 죽음의 나선 방지.
+  if (N >= 6 && (v.storage.stone || 0) >= 0.2) {   // 석기 재료비(0.2/tool)에 맞춘 문턱
     const _td = toolDepCount(v);
     const _toolStock = (v.storage.tool || 0) + (v.storage.bronze_tool || 0) + (v.storage.iron_tool || 0);
-    // 치명적 도구부족(커버리지<0.7)이고 대장장이가 노동목표 미달이면 기근보다 먼저 대장간.
-    if (_toolStock < _td * 0.7 && (counts.smith || 0) < smithTarget(v)) return 'smith';
+    // 치명적 도구부족(커버리지<0.7)이고 석공이 노동목표 미달이면 기근보다 먼저 석공.
+    if (_toolStock < _td * 0.7 && (counts.mason || 0) < masonTarget(v)) return 'mason';
   }
 
   // 진짜 기근 (food < N*30일치) — 식량 직업 강제. ★경제적 정당성: 자급경제는 맬서스 상한에서 돌고,
@@ -1750,12 +2179,12 @@ function pickDeficitJob_rational(v, world) {
     //   광산 부얼타운 = 식량 전량 수입. 어로/사냥(직접 식량)이 가능하면 그게 우선, 광맥뿐이면 채굴해 교역.
     //   하드플로어 N*6: 그 아래로 떨어지면 가능한 식량직(어/렵)이라도 풀가동.
     if ((v.land.fertility || 0) < 0.2 && foodEquiv > N * 6) {
-      if (Math.max(v.land.stone || 0, v.land.ore || 0) > 0.3 && hasSlot(v, 'miner', cap, counts)) return 'miner';   // 통일 광부: 돌이든 광석이든 캐서 교역
+      if (Math.max(v.land.ore || 0, v.land.obsidian || 0, v.land.jade || 0) > 0.3 && hasSlot(v, 'miner', cap, counts)) return 'miner';   // ★S1 광부=금속 전담 ★S5 흑요석·옥 산지도 채굴해 교역(부얼타운 자금)
     }
-    // ★풍부광맥 예외: 광맥이 매우 풍부(stone/ore>0.35) + 하드기근(18일치) 아님 + 채광노동 상한(4%) 미만이면
+    // ★풍부광맥 예외: 광맥이 매우 풍부(ore>0.35) + 하드기근(18일치) 아님 + 채광노동 상한(4%) 미만이면
     //   식량 게이트가 소수 광부를 허용. 광산 취락이 식량 약간 양보하고 광맥을 캐는 역사 패턴. 상한+하드플로어로 붕괴 방지.
     const mineLabor = (counts.miner || 0);
-    const richVein = (v.land.stone || 0) > 0.35 || (v.land.ore || 0) > 0.35;
+    const richVein = Math.max(v.land.ore || 0, v.land.obsidian || 0, v.land.jade || 0, v.land.tin || 0) > 0.35;   // ★S1 광맥(ore) ★S5 +특수산지(흑요석·옥) ★청동 희소성 +주석산지
     if (richVein && foodEquiv > N * 18 && mineLabor < N * 0.04 && hasSlot(v, 'miner', cap, counts)) return 'miner';
     const foodOpts = [
       ['farmer',  v.land.fertility * 1.5],
@@ -1771,14 +2200,16 @@ function pickDeficitJob_rational(v, world) {
   // ★자본재 장인 — 스톡-플로우 노동목표(정원 아님). 목표 미달이면 충원, 충족이면 건너뜀(0 수렴).
   //   재료 게이트: 대장간 돌, 무기장 돌, 갑옷장 가죽 필요. 충원 후엔 marginal 후보에서 빠져 식량·자원직과 경쟁 안 함.
   let _toolDeps = toolDepCount(v);
-  if ((counts.smith || 0) < smithTarget(v) && (v.storage.stone || 0) >= 0.6) return 'smith';
-  if ((counts.weaponsmith || 0) < weaponsmithTarget(v) && ((v.storage.stone || 0) > N * 0.3 || (v.storage.wood || 0) > N * 0.5)) return 'weaponsmith';   // ★§9 3차: 활 마을(사냥꾼 다수)은 목재가 재료 — 돌 없어도 성립
+  // ★S2 석공(석기 도구 + 저티어 무기[마제석검·활]) — 돌 있으면 충원. masonTarget이 도구+무기 수요 통합.
+  if ((counts.mason || 0) < masonTarget(v) && ((v.storage.stone || 0) >= 0.2 || (v.storage.wood || 0) > N * 0.5)) return 'mason';
+  // ★S2 대장장이(청동·철 무기) — 청동 자격(주석 산지·교역 허브) OR 철 풍부해야. smithTarget이 자격 없으면 0 반환 → 자연 스킵.
+  if ((counts.smith || 0) < smithTarget(v) && ((_bronzeCapable(v) && (v.storage.copper || 0) >= 0.3 && (v.storage.tin || 0) >= 0.12) || _ironWeaponCapable(v))) return 'smith';
   if ((counts.armorsmith || 0) < armorsmithTarget(v) && (v.storage.hide || 0) > N * 0.3) return 'armorsmith';
   if ((counts.cook || 0) < cookTarget(v)) return 'cook';   // ★유령 박멸 #4: 요리사 — 스톡-플로우 노동목표(장인 패턴). 잉여 마을만(cookTarget 내 게이트)
   // ★주거 압박: 집이 거의 가득(인구 성장 막힘) + 집 지을 목재 부족 → 나무꾼. 집 지어야 인구가 늚 → 고리를 닫는 안전망.
   if (v.housing !== undefined && N >= v.housing * 0.95 && (v.storage.wood || 0) < N * 2 && hasSlot(v, 'lumberjack', cap, counts)) return 'lumberjack';
-  // ★석재 안전망: 산이 가까운 마을(land.stone 충분)이 석재 부족하면 광부. 집·도구·무기 석재 수요 → 채광. 산 없으면(stone≤0.25) 안 함.
-  if ((v.land.stone || 0) > 0.25 && (v.storage.stone || 0) < N * 1.5 && hasSlot(v, 'miner', cap, counts)) return 'miner';
+  // ★S1 석재 안전망: 돌은 채집자원 — 돌밭/강가(land.stone 충분) 마을이 석재 부족하면 채집꾼(광부 아님). 집·도구 석재 수요 → 채집. 돌 없으면(stone≤0.25) 안 함(교역 의존).
+  if ((v.land.stone || 0) > 0.25 && (v.storage.stone || 0) < N * 1.5 && hasSlot(v, 'forager', cap, counts)) return 'forager';
   // ★호위 안전망: 행상이 도적에게 죽은 적 있고(tradersKilled) 전사 부족 + 식량 여유면 전사 양성.
   //   → 전사가 무기·갑옷 수요 → 광석·석재 수요 → 채광. (도적→전사→광업 사슬을 닫음)
   if (v.tradeStats && (v.tradeStats.tradersKilled || 0) > 3 && (counts.warrior || 0) < warriorTarget(v) && foodEquiv > N * 40 && (v.storage.weapon || 0) >= (counts.warrior || 0) + 1 && hasSlot(v, 'warrior', cap, counts)) return 'warrior';   // ★무기(돌칼/철칼) 있어야 전사 + readiness 목표 이내
@@ -1810,7 +2241,7 @@ function pickDeficitJob_rational(v, world) {
   // (1) 농부 한계가치 — 우리 토지의 farmer 1명당 생산 × food 가격
   const farmerGain = v.land.fertility * 0.4 * period * FOOD_VALUE * w('food');
   // (2) 광부 한계가치 — stone 생산 × stone 가격
-  const minerGain = Math.max(v.land.stone * w('stone'), v.land.ore * w('ore')) * 0.3 * period;   // 통일 광부: 돌·광석 중 가치 높은 쪽을 캠
+  const minerGain = Math.max((v.land.ore || 0) * w('ore') * (1 - (v._metalGlut || 0)), (v.land.obsidian || 0) * w('obsidian'), (v.land.jade || 0) * w('jade'), (v.land.tin || 0) * TIN_DEPOSIT_YIELD_FLAT * w('tin') * (1 - (v._tinGlut || 0))) * 0.3 * period;   // ★S1 광부=금속 전담 ★S2 금속글럿↓ ★S5 흑요석·옥 ★청동 희소성 +주석산지
   // (3) 상인 한계가치 — 새 캐러밴 1대 capacity 추가
   const expectedNewTrade = avgCargo * (period / 7) * (1 - raidRate);
   const merchantGain = nearbyFoodCapacity > 0 ? expectedNewTrade * 0.3 * FOOD_VALUE * w('food') : 0;
@@ -1830,8 +2261,8 @@ function pickDeficitJob_rational(v, world) {
     const _hr = Math.min(0.6, Math.max(0, v._huntRisk !== undefined ? v._huntRisk : 0.08));
     candidates.push(['hunter',     v.land.game * 0.7 * period * (w('meat') + 0.3 * w('hide')) * (1 - _hr)]);
   }
-  if (hasSlot(v, 'forager', cap, counts))   // ★약재(§9 2차): 채집꾼 한계가치 — 약초 그림자가격이 채집 노동을 끌어당김(hide 패턴 복제). 0.6 = herb 산출비중 15% / 식량계수 0.25.
-    candidates.push(['forager',    forageLandMean * 0.25 * period * (w('vegetable') + 0.6 * w('herb')) * (v._forageScale != null ? v._forageScale : 1)]);   // ×MSY 포화 — 임연부가 차면(CPUE↓) 한계가치도 함께 하락 → 채집 과잉고용 차단
+  if (hasSlot(v, 'forager', cap, counts))   // ★약재(§9 2차): 채집꾼 한계가치 — 약초 그림자가격이 채집 노동을 끌어당김(hide 패턴 복제). 0.6 = herb 산출비중 15% / 식량계수 0.25. ★S1: +돌 채집 가치(돌밭 마을 채집꾼 매력·석재 조달).
+    candidates.push(['forager',    (forageLandMean * 0.25 * (w('vegetable') + 0.6 * w('herb')) + (v.land.stone || 0) * 0.9 * w('stone')) * period * (v._forageScale != null ? v._forageScale : 1)]);   // ×MSY 포화 — 임연부가 차면(CPUE↓) 한계가치도 함께 하락 → 채집 과잉고용 차단
   if (hasSlot(v, 'merchant', cap, counts) && nearbyFoodCapacity > 0)
     candidates.push(['merchant', merchantGain]);
   // warrior — 약탈 자주 일어나는 마을에서만 의미. 추가로 weapon/armor 가용성이 호위 효과 결정.
@@ -1913,10 +2344,10 @@ function autoSwitchJob(v, day, world) {
     const foodSec = totalFoodEquivalent(v) > (v.npcs.length || 1) * 30;
     if (foodSec && bestCost > 0.15) {
       const OUT1 = { farmer: 1.5 * (v.land.fertility || 0), fisher: 1.2 * (v.land.water || 0), hunter: 0.7 * (v.land.game || 0),
-        lumberjack: 0.9 * (v.land.wood || 0), miner: 0.7 * Math.max(v.land.stone || 0, v.land.ore || 0), forager: 0.8,
-        smith: 1.0, weaponsmith: 0.8, armorsmith: 0.8, cook: 1.0, warrior: 0.3 };
-      const OUTRES = { farmer: 'food', fisher: 'fish', hunter: 'meat', lumberjack: 'wood', miner: 'stone', forager: 'food',
-        smith: 'bronze_tool', weaponsmith: 'weapon', armorsmith: 'armor', cook: 'cooked_food', warrior: 'weapon' };
+        lumberjack: 0.9 * (v.land.wood || 0), miner: 0.7 * (v.land.ore || 0), forager: 0.8,
+        mason: 1.0, smith: 0.9, weaponsmith: 0.8, armorsmith: 0.8, cook: 1.0, warrior: 0.3 };
+      const OUTRES = { farmer: 'food', fisher: 'fish', hunter: 'meat', lumberjack: 'wood', miner: 'ore', forager: 'food',
+        mason: 'tool', smith: 'weapon', weaponsmith: 'weapon', armorsmith: 'armor', cook: 'cooked_food', warrior: 'weapon' };   // ★S2 mason 산출=석기(tool) · smith 산출=청동/철 무기(weapon)
       const needValue = (OUT1[need] || 0.5) * w(OUTRES[need] || 'food');
       if (needValue < bestCost * 1.3) { v._dbgSwitch.did = 'hold(' + needValue.toFixed(2) + '<' + (bestCost * 1.3).toFixed(2) + ')'; return; }
     }
@@ -2026,7 +2457,7 @@ function tickTrade(world, day) {
           //   pop이 너무 적으면(<=3) 출발 안 함 (마을 붕괴 방지)
           if (a.v.npcs.length <= 3) continue;
           let pickIdx = -1;
-          const PRIO = ['merchant', 'warrior', 'hunter', 'forager', 'lumberjack', 'miner', 'fisher', 'smith', 'cook', 'farmer'];
+          const PRIO = ['merchant', 'warrior', 'hunter', 'forager', 'lumberjack', 'miner', 'fisher', 'smith', 'mason', 'cook', 'farmer'];
           for (const j of PRIO) {
             pickIdx = a.v.npcs.findIndex(n => n.currentJob === j);
             if (pickIdx >= 0) break;
@@ -2329,9 +2760,14 @@ function main() {
     const game  = 0.10 + srand() * 1.8;
     const size = 35 + Math.floor(srand() * 45);
     const initPop = 6 + Math.floor(srand() * 5);
+    // ★S5 특수 산지(흑요석·옥) — CLI 러너도 동일 부존 규칙(비교우위 특산지)
+    const _obR = srand(), _jaR = srand();
+    const obsidian = _obR < 0.25 ? 0.6 + srand() * 1.2 : 0;
+    const jade     = _jaR < 0.15 ? 0.5 + srand() * 1.0 : 0;
     villages.push(createVillage({
       name: namePool[i] || `마을${i+1}`,
       fertility: fert, wood, stone, ore, water, game, size, initialPop: initPop,
+      obsidian, jade,
     }));
   }
 
@@ -2425,9 +2861,14 @@ function createWorld(opts = {}) {
     const game  = 0.10 + srand() * 1.8;
     const size = 35 + Math.floor(srand() * 45);
     const initPop = 6 + Math.floor(srand() * 5);
+    // ★S5 특수 산지 — 희소 부존(대부분 마을 0). 흑요석(화산지대 ~25%)·옥(옥산지 ~15%). 비교우위 특산지 창발.
+    const _obR = srand(), _jaR = srand();
+    const obsidian = _obR < 0.25 ? 0.6 + srand() * 1.2 : 0;
+    const jade     = _jaR < 0.15 ? 0.5 + srand() * 1.0 : 0;
     villages.push(createVillage({
       name: namePool[i] || `마을${i+1}`,
       fertility: fert, wood, stone, ore, water, game, size, initialPop: initPop,
+      obsidian, jade,
     }));
   }
   const world = {
@@ -2571,6 +3012,10 @@ module.exports = {
   setDistMatrix,
   setSeed,
   srand: () => srand(),
+  // ★S2 계측/랩 노출 — 노동목표 함수(석공·대장장이)
+  masonTarget, smithTarget, weaponsmithTarget, armorsmithTarget, warriorTarget,
+  // ★S4 명장 견습(세대 전승)
+  apprenticeInherit, villageMasterSkill,
 };
 
 ;return module.exports;})();
@@ -2605,6 +3050,8 @@ const ELASTICITY = {
   bone: 0.9,   // ★뼈(§9 3차) — 무기장 투입재(중간 탄력, specialty livestock 1.1을 명시 정의로 대체)
   // 사치/생산수단 — 완만
   tool: 0.7, weapon: 0.6, armor: 0.6,
+  obsidian: 0.9, jade: 0.6,   // ★S5 흑요석(광물 탄력) · 옥(위세재 완만 탄력)
+  bronze_tool: 0.7, iron_tool: 0.7,   // ★도구 대체재(청동·철) — tool과 동일 탄력. 누락 시 satiation taper 미발동 → 글럿에도 대장장이 무한 생산(인구당 무한↑) 버그.
   tigerhide: 0.6,   // ★호피(§9 3차) — 위신재(사치 완만 — 부족해도 폭등 대신 프리미엄)
   // 채집물 — 자체 가치 낮음
   fruit: 1.0, vegetable: 1.0, mushroom: 1.0, twig: 0.7, pebble: 0.7,
@@ -2620,7 +3067,9 @@ const BASE_VALUE_V2 = {
   bone: 1.5, tigerhide: 40,   // ★§9 3차: 뼈(풍부 저가 투입재) · 호피(최고가 위신재 — 희소 0.3/일 사냥 위험이 anchor 근거, v1 동일)
   wood: 1.67, stone: 2.14, ore: 3.0,
   tool: 3.0, weapon: 5.0, armor: 5.0,  // 8/5 → 5/3
+  bronze_tool: 3.0, iron_tool: 3.0,   // ★도구 대체재(청동·철) — tool과 동일 anchor. satiation 판정용 기준값(누락 시 adj=1 고정→taper 무발동).
   fruit: 1.5, vegetable: 1.5, mushroom: 1.5, twig: 1.0, pebble: 1.0,
+  obsidian: 15, jade: 80,   // ★S5 흑요석(예리 교역재, 화살촉·소형칼날) · 옥(위세품 교역재 — 고가). 비교우위 특산.
 };
 
 // NPC 1인당 일일 subsistence — 자급 인출량. price-inelastic.
@@ -2666,6 +3115,7 @@ const UTILITY_WEIGHT = {
   wood: 0.9, stone: 0.7, ore: 0.3, iron: 0.4, iron_tool: 0.5,
   copper: 0.45, tin: 0.55, bronze_tool: 0.6,   // ★청동 투입재(구리·주석)에 실수요. 주석이 희소해 더 높게.
   fruit: 0.1, vegetable: 0.1, mushroom: 0.1, twig: 0.05, pebble: 0.05,
+  obsidian: 0.35, jade: 0.4,   // ★S5 흑요석(화살촉·소형칼날 실수요) · 옥(위세재 — ORNAMENTAL LUX_TARGET_PC가 수요 부여)
 };
 // ★순수 장식재 — use-value 없음(못 먹고 못 만듦). 화폐/위신재 모델링 전엔 수요 0에 가깝게(가짜 수요 제거).
 //   (예외적으로 LUX_TARGET_PC 목표 보유 수요는 있음 — 아래 computeShadowPrices. ★호피(§9 3차)도 이 장식재 프레임에 편입: 마을 내 소비 없음·교역 전용)
@@ -2686,6 +3136,7 @@ const DECAY_V2 = {
   // ★비축 손실(과잉 더미) — 돌·광석·나무·곡물은 안 썩는다고 두면 성장기 더미가 영구 잔존.
   //   풍화·흩어짐·도둑·쥐로 *과잉분만* 천천히 손실(excess 가속). 생산은 안 자르니 수출 안전.
   stone: 0.0003, ore: 0.0008, wood: 0.0003,
+  obsidian: 0.0003, jade: 0.0002,   // ★S5 석재류 — 거의 안 썩음(과잉 더미만 느린 손실)
   wheat: 0.0012, rice: 0.0012, barley: 0.0012,
   // ★유령 박멸(§9): 비-specialty 산출물의 부패 정의 — 견과는 벌레먹고(구황식량 편입분), 꺾은 꽃은 시듦(산출 중단된 잔존 재고 소진용).
   acorn: 0.001, chestnut: 0.001, walnut: 0.001, wildflower: 0.002,
@@ -2774,6 +3225,12 @@ const TIGERHIDE_KEEP_PC = 1.2 * ((v1.TIGERHIDE_PRESTIGE_CAP && v1.TIGERHIDE_PRES
 //   "식량 충분해도 한 가지뿐이면 싼 걸 비싼 다른 식량과 바꿔온다"(사용자). 결핍 시 target↑ → 가격↑ → 교역이 채움.
 const VARIETY_FOOD = { fish: 1, meat: 1, fruit: 1, vegetable: 1, mushroom: 1 };
 const VARIETY_TARGET_PC = 0.6;   // 자체생산 못 하는 식품군의 1인당 수입 목표(다양성 문턱 0.4 위 — 소비로 깎여도 유지)
+// ★청동 희소성: 주석 수출 규칙 — 산지 마을이 전략 비축(자체 청동 독점·위세) 후 얇은 잉여만 수출. 무산지 마을은 만성 주석 부족(청동 편중 유지).
+//   keep 크게(1인당) + surplus 얇게 → 소수 교역 마을만 간헐적 청동, 대다수는 석기. TIN_DEPOSIT_RATE·YIELD와 함께 청동무기/명 목표(~0.2) 튜닝 레버.
+const TIN_EXPORT_KEEP_PC = 1.2;      // 산지 마을 주석 비축(1인당) — 이만큼 쥐고(자체 청동 병기고 + 위세) 잉여만 수출. 높게=산지 청동 안정+수출 억제(교역 편중 변동↓).
+const TIN_EXPORT_SURPLUS_PC = 0.3;   // 이 초과분(1인당)만 수출 후보 — 얇게(전략재 소량 유통). 산지 편차(지리·연결)로 인한 청동 홍수 변동을 억제 → 소수 허브만 청동.
+// ★return-glut-cap 배수 — 귀환 마을이 목표재고의 이 배수 이상이면 그 재화는 안 실어옴. 무기(청동검·활)의 과잉 귀환·비축을 차단(청동 수입은 소량만).
+const WEAPON_RETURN_GLUT_MULT = 1.3;   // 무기/일반재 공통. 1.3 = 목표(사용자×1.3 등)의 1.3배까지만 허용 → 청동검 소수 수입, 과잉 시 자국 석기로 자급 유도
 
 // 정보 도달 거리 — v1과 동일하게 사용 (createWorld opts.infoRange)
 
@@ -2970,6 +3427,7 @@ function tickTradeV2(world, day) {
         else if (r === 'weapon') { keep = Math.max(2, (warN + huntN3) * 1.3); thresh = keep + N * 0.1; }   // ★무기: 전사+사냥꾼(활 — §9 3차) ×1.3 보유 후 잉여만
         else if (WEAPONR[r]) { keep = Math.max(2, warN * 1.3); thresh = keep + N * 0.1; }   // 갑옷: 전사 수×1.3 보유 후 잉여만
         else if (r === 'tigerhide') { keep = Math.max(1, N * TIGERHIDE_KEEP_PC); thresh = Math.max(2, N * TIGERHIDE_KEEP_PC * 1.6); }   // ★호피(§9 3차): 한계 위신 포화점(CAP/W≈0.025/인)×1.2만 쥐고 잉여=순수출재 — 일반칙(0.4N)이면 희소 위신재는 영영 수출 불가. 금·은·보석은 위신 포화(2/인)가 일반칙 위라 기존 규칙 유지
+        else if (r === 'tin') { keep = Math.max(3, N * TIN_EXPORT_KEEP_PC); thresh = keep + N * TIN_EXPORT_SURPLUS_PC; }   // ★청동 희소성: 주석=전략재. 산지 마을이 대량 비축(자체 청동 독점 + 위세) 후 얇은 잉여만 수출 → 무산지 마을은 만성 주석 기근(청동 편중 유지, 무산지는 석기)
         else { keep = target * 0.5; thresh = target * 0.8; }                // 그 외: 15일치
         if (stock > thresh) candidates.push({ res: r, surplus: Math.max(1, stock - keep) });
       }
@@ -3040,8 +3498,11 @@ function tickTradeV2(world, day) {
         // ★A(수입쪽)가 이미 그 재화 글럿이면 수입 안 함 — 수요 없는 걸 계속 실어와 무한 누적(돌 덤핑)되는 것 방지.
         //   연속교역으로 거래가 잦아지면 최저가 이웃에서 잉여를 계속 끌어와 쌓이므로, 자기 목표재고 넘으면 후보 제외.
         const aSubs = (SUBSISTENCE_PER_NPC[r] || 0) * N;
-        const aTarget = Math.max(aSubs * 30, N * Math.max(0.5, (UTILITY_WEIGHT[r] || 0.1) * 1.2));
-        if ((a.v.storage[r] || 0) >= aTarget * 3) continue;   // 극단 글럿(목표 3배 초과)만 차단 — 정상 균형수입은 허용(가치균형 유지)
+        let aTarget = Math.max(aSubs * 30, N * Math.max(0.5, (UTILITY_WEIGHT[r] || 0.1) * 1.2));
+        // ★무기·갑옷 자본재 목표=사용자(전사+사냥꾼)×1.3 — 일반칙(N×0.5)은 전사 적은 마을서 과대 → 청동검 과잉 귀환 허용하던 원인.
+        if (r === 'weapon') aTarget = Math.max(2, (((a.v.counts && a.v.counts.warrior) || 0) + ((a.v.counts && a.v.counts.hunter) || 0)) * 1.3);
+        else if (r === 'armor') aTarget = Math.max(1, ((a.v.counts && a.v.counts.warrior) || 0) * 1.3);
+        if ((a.v.storage[r] || 0) >= aTarget * WEAPON_RETURN_GLUT_MULT) continue;   // ★return-glut-cap: 무기는 사용자×1.3×배수 넘으면 안 실어옴(청동검 소량 수입). 그 외 극단 글럿 차단
         const bStock = b.v.storage[r] || 0;
         const bSubs = (SUBSISTENCE_PER_NPC[r] || 0) * b.v.npcs.length;
         const bTarget = Math.max(bSubs * 30, b.v.npcs.length * 0.3);
@@ -3226,14 +3687,26 @@ function tickCaravansV2(world, day) {
       c.to.treasury._cash = (c.to.treasury._cash || 0) + taxTo;
 
       // 가져올 자원 결정 — 출발시 후보 또는 새로 best
+      // ★return-glut-cap(청동 희소성 검증 항목): 귀환 마을(c.from)이 이미 그 재화 글럿이면 실어오지 않음 — 출발 leg(L474)엔 있으나
+      //   재선택(returnRes 무효 시 best 재탐색)엔 없어 무기(청동검·활)가 무한 귀환·누적하던 누수(측정: 나 5전사에 무기 121 과잉비축). 출발 leg와 동일 규칙 적용.
+      const _fromN = c.from.npcs.length || 1;
+      const _returnGlutted = (r) => {
+        const subs = (SUBSISTENCE_PER_NPC[r] || 0) * _fromN;
+        let target = Math.max(subs * 30, _fromN * Math.max(0.5, (UTILITY_WEIGHT[r] || 0.1) * 1.2));
+        // ★무기·갑옷은 자본재 — 목표=사용자(전사+사냥꾼)×1.3(활 포함). 일반칙(N×0.5)은 전사 적은 마을서 과대 → 무기 과잉비축 허용하던 원인.
+        if (r === 'weapon') target = Math.max(2, ((c.from.counts && c.from.counts.warrior || 0) + (c.from.counts && c.from.counts.hunter || 0)) * 1.3);
+        else if (r === 'armor') target = Math.max(1, (c.from.counts && c.from.counts.warrior || 0) * 1.3);
+        return (c.from.storage[r] || 0) >= target * WEAPON_RETURN_GLUT_MULT;
+      };
       let returnRes = c.returnRes;
-      if (!returnRes || !((c.to.storage[returnRes] || 0) > 1)) {
-        // 다시 best 찾기
+      if (!returnRes || !((c.to.storage[returnRes] || 0) > 1) || _returnGlutted(returnRes)) {
+        // 다시 best 찾기 — 귀환 마을 글럿 재화는 제외
         let bestR = null, bestRatio = 0;
         for (const r of TRADABLE) {
           if (r === c.giveRes) continue;
           const bStock = c.to.storage[r] || 0;
           if (bStock <= 1) continue;
+          if (_returnGlutted(r)) continue;   // ★return-glut-cap
           const ratio = (pricesFrom[r] || 1) / (pricesTo[r] || 1);
           if (ratio > bestRatio) { bestRatio = ratio; bestR = r; }
         }
@@ -3551,7 +4024,7 @@ function tickRecovery(world, day) {
       ['hunter', v.land.game * 0.7],
     ].sort((a, b) => b[1] - a[1]);
     const bestJob = opts[0][0];
-    const npc = v1.createNPC({ job: bestJob });
+    const npc = v1.createNPC({ job: bestJob, inheritSkill: v1.apprenticeInherit ? v1.apprenticeInherit(v, bestJob) : null });   // ★S4 명장 견습
     v.npcs.push(npc);
     v.counts = v.counts || {};
     v.counts[bestJob] = (v.counts[bestJob] || 0) + 1;
