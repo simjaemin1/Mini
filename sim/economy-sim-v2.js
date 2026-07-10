@@ -358,6 +358,7 @@ function tickTradeV2(world, day) {
     // ★3일 게이트·동시8%·가치상한 전부 폐지 — 매일 검사, 조건 되면 연속 교역.
     //   실질 제한은 아래 spareCap(여유노동)뿐 — 마을 글럿도에서 창발(하드 %캡 아님).
     if (a.v.isolated && day < a.v.isolatedUntilDay) continue;
+    if (a.v._siegeBlock) continue;   // ★[포위 봉쇄 훅] 호스트(전쟁 레이어)가 세우면 이 마을 발 캐러밴 파견 금지 — 미설치(undefined)=무해(기존 경로 그대로)
     if (a.v.npcs.length < 2) continue;
     a.prices = computeShadowPrices(a.v);   // 매일 fresh 시세로 결정(출발-도착 불일치↓)
     a.v._priceCache = a.prices; a.v._priceCacheDay = day;
@@ -418,6 +419,7 @@ function tickTradeV2(world, day) {
           const b = evToData.get(nb);
           if (!b || a === b) continue;
           if (b.v.isolated && day < b.v.isolatedUntilDay) continue;
+          if (b.v._siegeBlock) continue;   // ★[포위 봉쇄 훅] 포위된 마을은 목적지로도 제외(성문 봉쇄 — 들어가는 길이 없음). 미설치=무해
           const key = `${cand.res}->${b.v.name}`;
           if (alreadySent.has(key)) continue;
           const dist = v1.villageDist(a.v, b.v);
@@ -601,6 +603,7 @@ function tickCaravansV2(world, day) {
         for (const b of world.villages) {
           if (b === c.to || b === c.from) continue;
           if (b.isolated && day < b.isolatedUntilDay) continue;
+          if (b._siegeBlock) continue;   // ★[포위 봉쇄 훅] 재routing 목적지에서도 포위 마을 제외. 미설치=무해
           const distFromHere = v1.villageDist(c.to, b);
           const infoR = world.infoRange || 400;
           if (distFromHere > infoR) continue;

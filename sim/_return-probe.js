@@ -120,8 +120,12 @@ if (IS_PLAYER) {
   if (PW.phase !== 'muster' || !PW.march) { _log('❌ 선포 실패'); process.exit(1); }
   setSpeed(600);
   let resultAt = -1, retSeen = 0, battleSeen = false, gmAtResult = 0;
+  // ★[작전 층 갱신 사유] 자동 개전 폐지(교전=결단 전용) — 링(WAR_SIEGE_R) 도착 시 [돌격] 결단을 눌러야 전투가 열림(구 '50m 자동 개전' 가정 제거).
+  //   방어 태세 3택(응전/버티기)이 hold(농성)로 빠지면 이 프로브의 '양측 실개체 도보 귀환' 표적이 성립 안 함 → respond 강제(태세·봉쇄·항복 검증은 sim/_siege-probe.js 소관).
+  B._defPolicy = 'respond';
   for (let k = 0; k < 560 && frames < 780; k++) {
     step();
+    if ((PW.op === 'camp' || PW.op === 'siege') && G._pwAssault) quiet(() => G._pwAssault());   // 도착 즉시 돌격 결단(UI 버튼과 동일 경로)
     if (PW.phase === 'battle') battleSeen = true;
     if (PW.phase === 'result' && resultAt < 0) { resultAt = frames; gmAtResult = G.getGM(); }
     retSeen = Math.max(retSeen, G.RET_GROUPS.length);
@@ -160,6 +164,10 @@ if (!declared) {   // 기대효용 게이트 무관하게 기계 검증이 목�
   declared = true;
 }
 _log(`  선전포고: ${A.name}→${B.name} 거리 ${bd.toFixed(0)}셀 (WARS=${G.getWARS().length})`);
+// ★[작전 층 갱신 사유] 자동 개전 폐지 — 링 도착 시 EU 결단이 siege/withdraw로 갈 수 있어, '결전(교전→결판→양측 도보 귀환) 기계' 검증이 목적인
+//   이 프로브는 돌격 정책·응전 태세를 강제한다(작전 결단·봉쇄·항복·자동 개전 0 자체는 sim/_siege-probe.js가 검증).
+{ const w = G.getWARS().find(x => x.atk === A); if (w) w._opPolicy = 'assault'; }
+B._defPolicy = 'respond';
 
 // ── 2) 접근 행군(관찰 속도) — 교역로 추종 + 물 0 측정 ──
 setSpeed(600);

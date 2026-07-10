@@ -232,6 +232,10 @@ const JOBS = {
   },
 };
 
+// ★[포위 봉쇄 훅] 야외 직업 집합 — 호스트(전쟁 레이어)가 v._siegeOutMul을 세우면 이들 생산만 감산(성 밖 노동 차단).
+//   실내(mason·smith·weaponsmith·armorsmith·cook·warrior·merchant)=불변. 훅 미설치=경로 무변(마을실험실 궤적 보존 계약).
+const SIEGE_OUTDOOR_JOBS = { farmer: 1, fisher: 1, hunter: 1, lumberjack: 1, miner: 1, forager: 1 };
+
 // 자원별 base value — 노동시간(생산 1단위에 드는 표준 일) 역수의 근사.
 //   교역 가격의 anchor. 마을 부족도가 여기 곱해져서 실제 가격 형성.
 const BASE_VALUE = {
@@ -1109,13 +1113,16 @@ function tickVillage(v, day) {
     const jobScale = npc.currentJob === 'fisher' ? _fishScale : (npc.currentJob === 'forager' ? _forageScale : 1);   // ★어장/임연부 지속수확 상한(위 precompute) — 어부·채집만 스케일, 그 외 1
     const baseAmt = jdef.base * landBoost * skillMul * toolBoost * inputMult * jobScale
       * (f === 'farming' ? _paddyMul * (v._clearedFrac != null ? v._clearedFrac : 1) : 1);   // ★농사엔 논 프리미엄 × 개간완료율(공간 브리지) — 개간 안 된 밭은 소출 없음. 인구↑→개간목표↑→완료율 일시↓→소출·prodK 눌림→개간이 따라잡으면 회복 = 보즈럽 시차가 K에 실시간 반영(잠재 기준 slotK는 그대로 → 데드락 없음)
+    // ★[포위 봉쇄 훅] 야외 직업(농부·어부·사냥·벌목·광부·채집)만 v._siegeOutMul(호스트 설치 시)로 감산 — 성 밖 노동이 끊김(잠행 노동 잔존).
+    //   실내 직업(석공·대장장이·요리사 등)=불변. 잠재(dailyProductionPotential)엔 미적용(_laborMul과 동형 — K 오염·아사 스파이럴 방지). 미설치(undefined)=1(무해).
+    const _siegeM = (v._siegeOutMul != null && SIEGE_OUTDOOR_JOBS[npc.currentJob]) ? v._siegeOutMul : 1;
 
     // produceSpecial 분기 — 각 산출에 대해 세금 떼고 storage로
     const addProduce = (r, amt) => {
       const sm = satMul(r);
       _potA += amt; _actA += amt * sm;   // 여유노동 측정: 잠재(감산 전) vs 실제(감산 후)
       dailyProductionPotential[r] = (dailyProductionPotential[r] || 0) + amt;   // 잠재 생산(건강·포만 적용 전) — prodK용
-      amt *= _hpm * _prodMul * sm * (v._laborMul || 1);   // ★건강→작업량(±10%) × production stat × 포만 × 부상노동력(요양=일손 X·부상=효율↓ — 생활층서 계산)
+      amt *= _hpm * _prodMul * sm * (v._laborMul || 1) * _siegeM;   // ★건강→작업량(±10%) × production stat × 포만 × 부상노동력(요양=일손 X·부상=효율↓ — 생활층서 계산) × 포위 봉쇄(야외 직업만, 미설치=1)
       if (amt <= 0) return;
       if (r === 'food') v._grainToday = (v._grainToday || 0) + amt;   // ★오늘 곡물 실생산 → 볏짚 연료(아래 연료 블록)
       const tax = amt * TAX_RATE;
