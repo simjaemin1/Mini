@@ -81,7 +81,7 @@ const SRC = [
   grab(/function _muTickMarch\(g, dDays, dir\)\{[\s\S]*?\n  return false;\n\}/, '_muTickMarch'),
   grab(/function _muTickDefHold\(g, dDays, atkCmd\)\{[\s\S]*?\n\}/, '_muTickDefHold'),
   grab(/function _muProgress\(g\)\{[\s\S]*?done\/tot\)\); \}/, '_muProgress'),
-  grab(/function _muBuildDefense\(defV, atkArrival, seed\)\{[\s\S]*?\n  return g;\n\}/, '_muBuildDefense'),
+  grab(/function _muBuildDefense\(defV, atkArrival, seed, standoff\)\{[\s\S]*?\n  return g;\n\}/, '_muBuildDefense'),   // ★[유령 박멸] standoff 선택 인자 추가(긴급 소집 집결지=회관 앞) — 3인자 호출 의미론 불변(기본 WAR_DEF_STANDOFF)
   grab(/function _muRng\(seed\)\{[^\n]*\}/, '_muRng'),
   grab(/function _warEnsureDefense\(holder, defVil, atkCmd, seedBase\)\{[\s\S]*?\n  return true;\n\}/, '_warEnsureDefense'),
   grab(/function _warTickDefense\(dg, dDays, atkCmd\)\{[\s\S]*?_muTickDefHold\(dg, dDays, atkCmd\); \} \}/, '_warTickDefense'),
