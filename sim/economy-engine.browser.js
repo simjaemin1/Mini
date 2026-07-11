@@ -842,9 +842,11 @@ const POP_MAX = 1000;                      // 마을당 인구 상한 (N² 폭�
 
 // 세금 + 영토
 const TAX_RATE = 0.03;                    // 일일 산출의 3% (사용자 의도: default 3% + 길드마스터 조정)
-const BASE_EXPAND_COST = { food: 80, wood: 40, stone: 25 };
-const EXPAND_COST_EXP = 1.3;              // (size/baseSize)^1.3 — 점진 증가
-const EXPAND_CHECK_INTERVAL = 7;          // 매 7일 영토 확장 검사
+const BASE_EXPAND_COST = { food: 80, wood: 40, stone: 25 };   // 슬롯(size 1.0 = 25셀) 명목 비용 — 실지불은 셀 단위(÷25)
+const EXPAND_COST_EXP = 1.3;              // (size/baseSize)^1.3 — 점진 증가(소수 size에서 연속 평가)
+const EXPAND_CHECK_INTERVAL = 1;          // ★셀 단위 확장(사용자 승인 2026-07-12): 주 1회 슬롯 일괄 → 매일 셀 구매 검사
+const EXPAND_CELLS_PER_SLOT = 25;         // land.size 1.0 = 25셀 — 맵층 목표(size×25)와 단일 진실. 셀당 비용 = 슬롯 공식/25
+const EXPAND_CELLS_PER_DAY = 4;           // 일일 최대 구매 셀 — 맵 크립 6시간/1셀=4셀/일과 정합(≈구 25셀/주 페이스)
 // ★주거(집): 인구 성장은 집 수용력에 막힘. 집은 목재(필수)·석재(있으면)로 짓고 노후화.
 //   집 부족하면 성장만 멈춤(감소 아님). picker가 "집 지을 목재 부족 → 나무꾼" 안전망으로 고리 닫음.
 const HOUSE_WOOD = 1.5;        // 수용력 1인당 목재(한옥=목조)
@@ -999,35 +1001,42 @@ function expandCost(v) {
   };
 }
 
-// 길드 금고로 영토 확장 시도. 가능하면 size +1, 자원 차감.
+// 길드 금고로 영토 확장 시도 — ★셀 단위(사용자 승인 2026-07-12): 하루 최대 EXPAND_CELLS_PER_DAY셀 구매 루프.
+//   셀당 비용 = 슬롯 공식/25(현재 소수 size에서 ^1.3 연속 평가 — 주 80 뭉텅 지불이 일 ~3.2×n 스며듦으로).
+//   land.size는 소수 누적(+1/25). MB/MC는 셀마다 재평가(비율 비교라 단위 무관) — 금고 부족 or MB<MC면 그날 중단
+//   → 정지점이 25셀 양자화 없이 소수 크기 s*에서 잡힘. v.expansions는 이제 '구매 셀 수'(구: 슬롯 횟수).
 function tryExpandTerritory(v, day) {
-  const cost = expandCost(v);
   // 인구가 K(식량 자리)의 85% 이상 차야 확장 시도. 그 전엔 길드 자본만 축적.
   const N = v.npcs.length;
   const slotK = totalFoodSlots(v);
   if (N / Math.max(1, slotK) < 0.85) return;
-  // ★MB/MC 투자 게이트(K_MAX 천장 대체) — 확장은 '금고 차면 무조건'이 아니라 수지 맞을 때만.
-  //   MB = 한계 size 1단위의 일일 식량-eq 잠재산출(q×식량직 자리×자리당 산출) × 회수기간.
-  //   MC = 확장비용(food+wood+stone, 정적 상대가로 food-eq 환산, ^1.3 상승곡선).
-  //   q(s) 하강 × 비용 ^1.3 상승 → 유한 s*에서 자연 정지. s*는 fert·water·game 따라 마을마다 다름(자연 차등).
-  const L = v.land, q = marginalLandQ(v);
-  const _arable = L.arable != null ? L.arable : Math.min(1, L.fertility);
-  const mbDaily = q * (0.4 * _arable * (1.5 * L.fertility)          // 농부: 자리=경작지 면적 × 1인 산출=지력(이중산입 분리)
-                     + 0.25 * (L.water || 0) * (1.2 * (L.water || 0))
-                     + 0.30 * (L.game || 0) * (0.7 * (L.game || 0))
-                     + 0.30 * 0.5 * 0.8);                            // 채집(식량가중 0.5, ~0.8/일)
-  const mcFoodEq = cost.food + cost.wood * EXPAND_PRICE_FOODEQ.wood + cost.stone * EXPAND_PRICE_FOODEQ.stone;
-  v._expandMBMC = { mb: Math.round(mbDaily * EXPAND_PAYBACK_DAYS), mc: Math.round(mcFoodEq) };   // 진단용
-  if (mbDaily * EXPAND_PAYBACK_DAYS < mcFoodEq) return;   // 한계지가 투자가치 없음 → 확장 정지(하드캡 아님: 지형·가격이 결정)
-  if (v.treasury.food < cost.food)   return;
-  if (v.treasury.wood < cost.wood)   return;
-  if (v.treasury.stone < cost.stone) return;
-  v.treasury.food  -= cost.food;
-  v.treasury.wood  -= cost.wood;
-  v.treasury.stone -= cost.stone;
-  v.land.size += 1;
-  v.expansions += 1;
-  v.lastExpansionDay = day;
+  for (let ci = 0; ci < EXPAND_CELLS_PER_DAY; ci++) {
+    const cost = expandCost(v);   // 슬롯(size +1) 명목 비용 — 셀 지불은 아래서 ÷25
+    // ★MB/MC 투자 게이트(K_MAX 천장 대체) — 확장은 '금고 차면 무조건'이 아니라 수지 맞을 때만.
+    //   MB = 한계 size 1단위의 일일 식량-eq 잠재산출(q×식량직 자리×자리당 산출) × 회수기간.
+    //   MC = 확장비용(food+wood+stone, 정적 상대가로 food-eq 환산, ^1.3 상승곡선).
+    //   q(s) 하강 × 비용 ^1.3 상승 → 유한 s*에서 자연 정지. s*는 fert·water·game 따라 마을마다 다름(자연 차등).
+    //   슬롯 단위 값으로 발행(회귀 #19 lt.stalled = mb<mc가 봄) — 셀 단위로 나눠도 비율 동일이라 판정 불변.
+    const L = v.land, q = marginalLandQ(v);
+    const _arable = L.arable != null ? L.arable : Math.min(1, L.fertility);
+    const mbDaily = q * (0.4 * _arable * (1.5 * L.fertility)          // 농부: 자리=경작지 면적 × 1인 산출=지력(이중산입 분리)
+                       + 0.25 * (L.water || 0) * (1.2 * (L.water || 0))
+                       + 0.30 * (L.game || 0) * (0.7 * (L.game || 0))
+                       + 0.30 * 0.5 * 0.8);                            // 채집(식량가중 0.5, ~0.8/일)
+    const mcFoodEq = cost.food + cost.wood * EXPAND_PRICE_FOODEQ.wood + cost.stone * EXPAND_PRICE_FOODEQ.stone;
+    v._expandMBMC = { mb: Math.round(mbDaily * EXPAND_PAYBACK_DAYS), mc: Math.round(mcFoodEq) };   // 진단용(슬롯 단위 유지)
+    if (mbDaily * EXPAND_PAYBACK_DAYS < mcFoodEq) return;   // 한계지가 투자가치 없음 → 확장 정지(하드캡 아님: 지형·가격이 결정)
+    const cellFood  = cost.food  / EXPAND_CELLS_PER_SLOT;
+    const cellWood  = cost.wood  / EXPAND_CELLS_PER_SLOT;
+    const cellStone = cost.stone / EXPAND_CELLS_PER_SLOT;
+    if (v.treasury.food < cellFood || v.treasury.wood < cellWood || v.treasury.stone < cellStone) return;   // 금고 부족 — 그날 중단
+    v.treasury.food  -= cellFood;
+    v.treasury.wood  -= cellWood;
+    v.treasury.stone -= cellStone;
+    v.land.size += 1 / EXPAND_CELLS_PER_SLOT;   // 소수 누적(셀 1개 = +0.04)
+    v.expansions += 1;                          // ★셀 단위 카운트
+    v.lastExpansionDay = day;
+  }
 }
 
 // =============================================================================
@@ -1687,7 +1696,7 @@ function tickVillage(v, day) {
     }
   }
 
-  // 1.5) 영토 확장 시도 — 매 EXPAND_CHECK_INTERVAL일
+  // 1.5) 영토 확장 시도 — ★셀 단위: 매일(EXPAND_CHECK_INTERVAL=1) 최대 EXPAND_CELLS_PER_DAY셀 구매
   if (day % EXPAND_CHECK_INTERVAL === 0) {
     tryExpandTerritory(v, day);
   }
@@ -2704,8 +2713,8 @@ function printSnapshot(world, day) {
     console.log(
       pad(v.name, 12) +
       padR(N, 5) +
-      padR(v.land.size, 6) +
-      padR(v.expansions || 0, 4) +
+      padR(v.land.size.toFixed(2), 6) +          // ★셀 단위 확장으로 size 소수 허용 — 표 정렬용 2자리
+      padR(v.expansions || 0, 4) +               //   (Ex = 누적 구매 '셀' 수)
       padR(totalFoodEquivalent(v).toFixed(0), 8) +
       padR((v.treasury.food || 0).toFixed(0), 7) +
       padR((v.treasury.wood || 0).toFixed(0), 6) +
@@ -2723,10 +2732,10 @@ function printFinalSummary(world, days) {
     const N = v.npcs.length;
     const c = jobCounts(v);
     const cap = jobCapacity(v);
-    console.log(`\n${v.name} (인구 ${N}명, size ${v.land.size} ← base ${v.land.baseSize}, 확장 ${v.expansions}회)`);
+    console.log(`\n${v.name} (인구 ${N}명, size ${v.land.size.toFixed(2)} ← base ${v.land.baseSize}, 확장 ${v.expansions}셀)`);
     console.log(`  땅: fertility=${v.land.fertility.toFixed(2)} wood=${v.land.wood.toFixed(2)} stone=${v.land.stone.toFixed(2)} ore=${v.land.ore.toFixed(2)} water=${v.land.water.toFixed(2)} game=${v.land.game.toFixed(2)}`);
     console.log(`  자리: farmer=${cap.farmer} fisher=${cap.fisher} hunter=${cap.hunter} forager=${cap.forager} lumber=${cap.lumberjack} miner=${cap.miner}`);
-    console.log(`  금고: food=${(v.treasury.food||0).toFixed(0)} wood=${(v.treasury.wood||0).toFixed(0)} stone=${(v.treasury.stone||0).toFixed(0)} (다음 확장 비용: food=${expandCost(v).food.toFixed(0)} wood=${expandCost(v).wood.toFixed(0)} stone=${expandCost(v).stone.toFixed(0)})`);
+    console.log(`  금고: food=${(v.treasury.food||0).toFixed(0)} wood=${(v.treasury.wood||0).toFixed(0)} stone=${(v.treasury.stone||0).toFixed(0)} (다음 1셀 비용: food=${(expandCost(v).food/EXPAND_CELLS_PER_SLOT).toFixed(1)} wood=${(expandCost(v).wood/EXPAND_CELLS_PER_SLOT).toFixed(1)} stone=${(expandCost(v).stone/EXPAND_CELLS_PER_SLOT).toFixed(1)})`);
     console.log(`  직업: ${JOB_NAMES.map(j => `${j}=${c[j] || 0}`).join(', ')}`);
     // HHI 계산 (특화 정도)
     const shares = JOB_NAMES.map(j => (c[j] || 0) / N);
