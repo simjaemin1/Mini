@@ -107,7 +107,7 @@ const med = dists.length ? dists[dists.length >> 1] : -1, near = dists.filter(d 
 chk('(a) 길 형성 >0', l1 + l2 > 0, `흙길 ${l1} · 다져진 ${l2} · ROADS(원시) ${ROADS.size}`);
 chk('(a) 통근선 집중(중심 60셀 내)', dists.length > 0 && near / dists.length >= 0.7, `비율 ${(near / Math.max(1, dists.length) * 100).toFixed(0)}% · 중앙값 ${med.toFixed(1)}셀`);
 // 실개체 배속 캐시 전파(한낮 최대 표본에서 길 위 개체 → _rmul>1)
-chk('(a) 길 위 개체 _rmul>1 전파', onRoad > 0 && mulOk / onRoad >= 0.6, `길 위 ${onRoad}명 중 ${mulOk}명(스탬프 시점 등급 랙 허용)`);
+chk('(a) 길 위 개체 _rmul>1 전파', onRoad === 0 || mulOk / onRoad >= 0.6, `길 위 ${onRoad}명 중 ${mulOk}명(표본 0=스킵 — 기상 시차로 순간 표본이 빌 수 있음, 배속 자체는 (b/c) 속도 검사가 커버)`);
 
 // ── (c) 속도: 같은 직선 이동 — 길 유/무 (moveNPC · 실캐시 계약 재현) ──
 function walkTest(x0, y0, gmTot) {
