@@ -420,6 +420,7 @@ function tickTradeV2(world, day) {
           if (!b || a === b) continue;
           if (b.v.isolated && day < b.v.isolatedUntilDay) continue;
           if (b.v._siegeBlock) continue;   // ★[포위 봉쇄 훅] 포위된 마을은 목적지로도 제외(성문 봉쇄 — 들어가는 길이 없음). 미설치=무해
+          if ((a.v._grudgeBlock && a.v._grudgeBlock[b.v.name]) || (b.v._grudgeBlock && b.v._grudgeBlock[a.v.name])) continue;   // ★[원한 제재 훅] 불의전 평판 — 원한(>문턱) 상대와 상호 교역 기피(발주·수주 대칭 차단). 호스트(전쟁 레이어)가 일일 발행, 미설치(undefined)=무해
           const key = `${cand.res}->${b.v.name}`;
           if (alreadySent.has(key)) continue;
           const dist = v1.villageDist(a.v, b.v);
@@ -604,6 +605,7 @@ function tickCaravansV2(world, day) {
           if (b === c.to || b === c.from) continue;
           if (b.isolated && day < b.isolatedUntilDay) continue;
           if (b._siegeBlock) continue;   // ★[포위 봉쇄 훅] 재routing 목적지에서도 포위 마을 제외. 미설치=무해
+          if ((c.from && c.from._grudgeBlock && c.from._grudgeBlock[b.name]) || (b._grudgeBlock && c.from && b._grudgeBlock[c.from.name])) continue;   // ★[원한 제재 훅] 재routing 목적지도 원한쌍 회피(발주 마을 기준 대칭). 미설치=무해
           const distFromHere = v1.villageDist(c.to, b);
           const infoR = world.infoRange || 400;
           if (distFromHere > infoR) continue;
