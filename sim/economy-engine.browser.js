@@ -423,6 +423,8 @@ function _computeVillageStats(v, N) {
     stats.happiness += COLD_CLOTHED_HAPPY_W * v._coldStress * _cc;
   }
   stats.clothCov = v._clothCov != null ? v._clothCov : 1;
+  // ★가죽제품 comfort(2026-07-13) — 신발·깔개·주머니 갖춤 = 생활수준↑(건강·행복 소폭). 없어도 페널티 0(comfort·필수 아님 → 수입 강제 없음·잉여 마을만 향유). hide 글럿의 실사용처.
+  if ((v._lgCov || 0) > 0) { stats.health += LG_HEALTH_W * v._lgCov; stats.happiness += LG_HAPPY_W * v._lgCov; }
   // ★약재 일상 복용(§9 2차) — 건강의 세 번째 항: 재고/인구 비례, 상한으로 폭주 방지. 재고는 tickVillage가 매일 소모(흐름).
   const _herbPC = (v.storage && v.storage.herb > 0) ? v.storage.herb / pop : 0;
   if (_herbPC > 0) stats.health += Math.min(HERB_HEALTH_CAP, _herbPC * HERB_HEALTH_W);
@@ -901,6 +903,16 @@ const FUEL_HEALTH_W = 0.4;     // 땔감 부족 시 건강 페널티 가중(fuel
 const CLOTH_MATS = { fur: 1.5, hide: 1.0, leather: 1.0, hemp: 0.6, ramie: 0.55 };   // 보온-eq/단위(모시=고급이나 서늘한 여름지 — 보온은 삼베 이하. 품질[고운 마감] 차등은 _clothQ[의복 3]에서)
 const RAMIE_BOOT_PC = 0.1;   // ★모시 수요-캡 부트스트랩 floor(/인) — 소비EMA가 0인 초기에 재봉이 쓸 최소 재고만 확보(잉여 아님). 이후 수요(flowT=소비EMA×30)가 상한을 견인
 const RAMIE_MIN_POP = 40;    // ★모시 성숙 게이트 — 고급 직물은 정착 완료·잉여 공동체가 짠다(개척기 프론티어는 식량 사활). 개척 취약 궤적(콜로니 250~450f) 무교란 = 505 knife-edge 보호(고증: 잉여사회 고급 직물). ※60 시도는 202 chaos로 오히려 −(571→527) 기각
+// ★가죽 제품(2026-07-13 — 감사 v2 hide 글럿 *진짜* sink·사용자 "제대로 고증 살려서"): 잉여 hide → 무두질 → 가죽제품(신·주머니·깔개·끈).
+//   핵심: hide↔leather는 동warmth CLOTH_MAT(1.0)라 hide→leather 전환은 form 변환(순소비 불변, 글럿 미해소). *진짜* sink는 의류·갑옷 *밖의* ADDITIVE 소비 = 가죽제품 실사용(고증: 청동기 가죽은 옷·갑옷 외 신발·용기·침구·끈 다용).
+//   ★가죽제품 = *마을 필드*(v._leatherGoods, 비교역 comfort) — 신규 교역재 아님 → 모시·무두질을 무너뜨린 knife-edge 수입 드레인 원천 부재. 잉여-구동(hide>floor)+comfort 보너스(없어도 페널티 0)+성숙 게이트.
+const LEATHER_GOODS_TARGET = 0.8;   // 1인 가죽제품 목표 스톡(신발·주머니·깔개·끈 — 생활 필수품 커버리지)
+const LEATHER_GOODS_WEAR = 0.005;   // 1인 일 마모 — ~160일 수명(신발 닳음·깔개 교체). 이 흐름이 hide 실드레인의 지속률(글럿 평형을 끌어내림)
+const LG_HEALTH_W = 0.035;          // 가죽제품 comfort 건강 보너스(coverage 1 시) — 발 보호·보온 깔개(고증). ※0.06+0.06은 s7 +71% 인구폭(건강·행복 둘다 성장 견인)이라 완화 — comfort는 소폭이어야(#15 maxVil·@1500 폭 주의)
+const LG_HAPPY_W = 0.025;           // 가죽제품 comfort 행복 보너스(건강 우선 — 물리적 편의)
+const TAN_HIDE_MIN = 3.0;           // 무두질 하한 hide(/인) — 이 아래는 안 태움(505 'hide-저축 맵' 수출자본·갑옷재[armorsmith hide 0.4] 보존, 명백한 잉여만 제품화). 글럿(~4/N)을 이 선까지 sink
+const TAN_DAILY_PC = 0.06;          // 1인 일 무두질 처리량 — 고증 뇌유 무두질=고노동
+const TAN_YIELD = 0.85;             // 무두질 수율 — 생가죽→가죽제품 무게 손실(다듬기·재단)
 const CLOTH_MAT_WARMTH_PER = 3.0;   // 옷 1벌 재료(보온-eq) — 가죽 ~3장 상당. (5.0/마모.006 강화 A/B는 s8 붕괴[pop439→38]로 기각 — 한계 맵에 과중. 가죽 잔여 글럿의 다음 레버는 사냥 부산물율)
 const CLOTH_WEAR_PC = 0.004;        // 1인 일 마모(온화 ~250일 수명, 한랭 ×3 → ~80일)
 const CLOTH_TARGET_PC = 1.2;        // 목표 보유(1인 1벌 + 여벌 0.2) — v2 CAP_TARGET·CAPITAL keep과 동기
@@ -1817,6 +1829,22 @@ function tickVillage(v, day) {
         if (_rTake > 0) { v.storage[_rr] -= _rTake; v._riteUsed = (v._riteUsed || 0) + _rTake; _cons(v, _rr, _rTake); }   // ★flow-EMA(봉헌 실수요)
       }
     }
+  }
+  // ★가죽 제품(2026-07-13 — 감사 v2 hide 글럿 진짜 sink·사용자 "제대로 고증"): 잉여 hide → 무두질 → 가죽제품(신발·주머니·깔개·끈). 신규 직업 없음(가내수공, 옹기 동형).
+  //   ADDITIVE 소비(의류·갑옷 밖 실사용) = form 전환 아닌 실 hide 소멸(글럿 sink). 마을 필드(비교역 comfort) → 신규 교역재 아님 = knife-edge 수입 드레인 없음.
+  //   잉여-구동(hide>floor에서만 → 수출자본·갑옷재 보존) + comfort 보너스(coverage, 없어도 페널티 0 → 수입 강제 없음). 성숙 게이트(개척기 무교란 = 505 보호).
+  if (N >= RAMIE_MIN_POP) {
+    v._leatherGoods = Math.max(0, (v._leatherGoods || 0) - N * LEATHER_GOODS_WEAR);   // 마모(신발 닳음·깔개 교체 — hide 실드레인의 지속 흐름)
+    const _lgGap = N * LEATHER_GOODS_TARGET - (v._leatherGoods || 0);
+    const _hideSpare = (v.storage.hide || 0) - N * TAN_HIDE_MIN;                      // 명백한 잉여 hide만(floor 아래는 보존)
+    if (_lgGap > 0 && _hideSpare > 0) {
+      const _make = Math.min(_lgGap, N * TAN_DAILY_PC, _hideSpare * TAN_YIELD);       // 제품 산출량(부족분·일처리량·잉여 중 최소)
+      const _hideUsed = _make / TAN_YIELD;
+      v.storage.hide -= _hideUsed; _cons(v, 'hide', _hideUsed);                       // ★실 hide 소비(additive 소멸 = 글럿 sink, form 전환 아님)
+      v._leatherGoods = (v._leatherGoods || 0) + _make;
+      v._tanned = (v._tanned || 0) + _hideUsed;                                       // (계측)
+    }
+    v._lgCov = Math.min(1, (v._leatherGoods || 0) / Math.max(1, N * LEATHER_GOODS_TARGET));   // 커버리지 → comfort 보너스(stats)
   }
   // ★활 품질 EMA(§9 3차) — 오늘 활 제작분의 bone(활대 심) + ★흑요석(예리 화살촉, 수정3) 투입률이 장비 스톡의 질을 갱신(비대칭: 상승 느림·희석 더 느림). 제작 없는 날은 미세 노후만.
   //   투입률 = bone충족률 + 흑요석충족률×OB_W(예리 보너스, 상한 BOW_R_MAX). 흑요석 산지 마을은 bone만인 마을보다 _bowQ↑ → 사냥 데미지 이점("예리한 화살촉"). 별도 arrow 아이템 없음.
