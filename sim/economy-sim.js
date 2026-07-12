@@ -497,7 +497,7 @@ const TIN_DEPOSIT_STRENGTH_SPAN = 0.8; // 산지 부존 폭
 // ★청동 경제 자격(_bronzeCapable) — 청동검을 *지속* 생산할 수 있는 마을만 청동 무장. 그 외(트레이스 주석뿐)는 석기 무장(마제석검).
 //   자격 = 주석 산지(land.tin>0) OR 대량 주석 비축(N×PC 이상 — 진짜 교역 허브만. 흘러든 소량으론 자격 미달 → 석기 유지).
 //   근거: 주석 희소로 무산지 마을은 간헐 소량 수입뿐 → 청동 상비 불가. 이 게이트가 "청동은 산지·교역 마을 편중"을 강제(무산지=석기).
-const BRONZE_TIN_MIN_PC = 0.95;        // 교역 허브 자격 문턱(1인당 주석 재고) — 이 이상 *지속* 비축해야 청동 상비. 주석 희소로 소수 교역 허브만 도달(간헐 수입은 미달 → 석기 유지).
+const BRONZE_TIN_MIN_PC = 0.95;        // 교역 허브 자격 문턱(1인당 주석 재고) — 이 이상 *지속* 비축해야 청동 상비. 주석 희소로 소수 교역 허브만 도달(간헐 수입은 미달 → 석기 유지). ※candidate F(2026-07-13) 1.2 시도: 청동 volume −28%(184→132)이나 concentration 불변(5/5)+#8 리스크라 기각. 진짜 concentration 레버=TIN_EXPORT_KEEP_PC↑(산지 비축↑→무산지 tin 기근). 현 상태 #8/#16 통과라 리팩터 불요.
 const BRONZE_TIN_MIN_ABS = 13;         // 절대 하한(소형 마을 보호 — N 작아도 최소 이만큼은 있어야 청동 상비)
 // ★철검 희소화(청동기 고증: "철이 청동보다 귀함") — 철도 트레이스 축적(부산물 0.03/ore)만으론 무기화 불가.
 //   철검은 철이 *풍부한* 마을만(제련 노하우·광량). 그 외는 석공 마제석검. 이게 없으면 무산지 마을이 축적 철로 철검을 만들어 석기가 사라짐(측정: 철검 35%).
@@ -607,6 +607,9 @@ const CLOTH_Q_EMA = 0.06;          // 의복 품질 EMA(제작일 가중) — �
 const CLOTH_Q_BASE = 0.6;          // 기본 품질(재봉 없음·거친 옷)
 const CLOTH_Q_HEALTH_W = 0.08;     // 고품질 방한 건강 보너스(coldStress·coverage·품질 비례 — 겨울 전용 계절 보너스라 always-on 아님)
 const CLOTH_Q_HAPPY_W = 0.08;      // 고품질 방한 행복 보너스(따뜻하고 고운 겨울옷)
+// ★요리 품질 _cookQ(2026-07-13 — candidate G, 사용자 "요리도 마찬가지"): 마을 최고 cook 숙련 → 조리식 질 EMA(_weapQ 동형).
+//   ★NPC econ 효과 없음(econ-중립 훅) — 플레이어 요리 인스턴스(candidate E §6·생활층_인계훅)가 이 마을 _cookQ를 샘플해 버프 품질/뿌듯함 수치를 결정한다.
+//   NPC 조리식 건강/행복 보너스는 A/B로 기각(스위트 −22%: 0.04 소폭 보너스도 knife-edge 궤적을 chaos 증폭 — _clothQ/가죽제품은 계절/moderate라 통과했으나 조리식은 상시라 과교란). 요리의 '뿌듯함'은 플레이어층 몫, NPC 경제엔 다양성·건강이 이미 충분.
 const CLOTH_MAT_WARMTH_PER = 3.0;   // 옷 1벌 재료(보온-eq) — 가죽 ~3장 상당. (5.0/마모.006 강화 A/B는 s8 붕괴[pop439→38]로 기각 — 한계 맵에 과중. 가죽 잔여 글럿의 다음 레버는 사냥 부산물율)
 const CLOTH_WEAR_PC = 0.004;        // 1인 일 마모(온화 ~250일 수명, 한랭 ×3 → ~80일)
 const CLOTH_TARGET_PC = 1.2;        // 목표 보유(1인 1벌 + 여벌 0.2) — v2 CAP_TARGET·CAPITAL keep과 동기
@@ -1605,6 +1608,15 @@ function tickVillage(v, day) {
       v._clothQ = (v._clothQ != null ? v._clothQ : CLOTH_Q_BASE) * (1 - CLOTH_Q_EMA) + _cqT * CLOTH_Q_EMA;
     }
     // 장인 없고 무기 스톡만 있으면 현 품질 유지(감쇠 없음 — 남은 무기는 그대로).
+  }
+  // ★요리 품질 _cookQ EMA(2026-07-13 — candidate G) — 마을 최고 cook 숙련 → 조리식 질(_weapQ 동형 target-EMA). 요리사 있는 날만 갱신, 없으면 유지.
+  {
+    let maxCookSk = -1;
+    for (const n of v.npcs) if (n.currentJob === 'cook') { const s = n.skills.cooking || 0; if (s > maxCookSk) maxCookSk = s; }
+    if (maxCookSk >= 0) {
+      const _cqT = 1 - CLOTH_Q_SKILL_SPAN + CLOTH_Q_SKILL_SPAN * (maxCookSk / 10);   // 0.4~1.0 (숙련 기여, 재봉 SPAN 재사용)
+      v._cookQ = (v._cookQ != null ? v._cookQ : CLOTH_Q_BASE) * (1 - CLOTH_Q_EMA) + _cqT * CLOTH_Q_EMA;
+    }
   }
   // ★근접검 비중(_swordFrac) EMA — 오늘 제작(검 vs 활) 가중으로 pool의 근접검 비중 추종. 검 제작일↑비중, 활 제작일↓비중. 제작 없으면 유지.
   {
