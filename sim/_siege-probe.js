@@ -234,7 +234,9 @@ else if (SC === 'b') {
   // 실내 통근 대조: 옥내 고정작업장 직업(요리·야금)이 있을 때만 요구 — 수렵/임업 특화 마을(cook/smith 0)은 통근 실내직이 없어 표본 0이 정상.
   //   '낮 배차 살아있음'은 n농성(야외 아침 출근이 봉쇄 게이트로 전환된 표본)이 이미 증명 → 실내 대조는 해당 직군 존재 시 부가 확인(픽스처 강건화: B가 마을7=hunter19/lumber6/farmer5/mason2류로 뽑히면 옥내 통근직 0).
   const _dc = D.counts || {}; const inCommute = Math.round((_dc.cook || 0) + (_dc.smith || 0) + (_dc.weaponsmith || 0) + (_dc.armorsmith || 0));
-  if (siegeVis) ok(siegeVis.n농성 >= 1 && siegeVis.n야외출근 === 0 && (siegeVis.n실내출근 >= 1 || inCommute === 0), `화면 출근 게이트: 야외 '농성' ${siegeVis.n농성}표본 · 야외 출근 ${siegeVis.n야외출근}(=0) · 실내 출근 ${siegeVis.n실내출근}표본(옥내 통근직 ${inCommute}명 — ${inCommute === 0 ? '없음: 농성 표본이 배차 증명' : '대조'})`);
+  // ★강건화 2(2026-07-12, 의복 도입 궤적 이동으로 노출): 옥내 통근직 1명뿐이면 관측창에 휴식·교역 원정으로 표본 0이 정상 —
+  //   대조는 ≥2명일 때만 요구(1명=통계 근거 없음). 낮 배차 증명은 어차피 n농성 표본이 담당.
+  if (siegeVis) ok(siegeVis.n농성 >= 1 && siegeVis.n야외출근 === 0 && (siegeVis.n실내출근 >= 1 || inCommute <= 1), `화면 출근 게이트: 야외 '농성' ${siegeVis.n농성}표본 · 야외 출근 ${siegeVis.n야외출근}(=0) · 실내 출근 ${siegeVis.n실내출근}표본(옥내 통근직 ${inCommute}명 — ${inCommute <= 1 ? '≤1: 농성 표본이 배차 증명' : '대조'})`);
   else fail('저속 관측 구간 미도달(농성 게이트 미확인)');
   const s1 = stSnap();
   ok(s1.withdraw - st0.withdraw === 1 && wdAt > 0, `군량 소진 → 철수 결단(frame ${wdAt}, 잔량 ${packEnd != null ? packEnd.toFixed(1) : '?'}일 < ${G.WAR_PACK_CRIT || 3})`);

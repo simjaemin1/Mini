@@ -229,6 +229,7 @@ const RESOURCES = {
   clay_brick:  { ko: '진흙 벽돌',    emoji: '🟫', category: 'goods', weight: 3.0, baseValue: 2,   utility: 0.5, contributes: { production: 0.5 }, harvest: 'crafting' },
   pottery:     { ko: '도자기',       emoji: '🏺', category: 'goods', weight: 2.0, baseValue: 15,  utility: 0.4, contributes: { happiness: 0.5, prestige: 0.8 }, harvest: 'crafting' },
   silk_cloth:  { ko: '비단',         emoji: '🧵', category: 'goods', weight: 0.5, baseValue: 60,  utility: 0.4, contributes: { happiness: 0.5, prestige: 1.5 }, harvest: 'crafting' },
+  clothes:     { ko: '옷',           emoji: '🧥', category: 'goods', weight: 0.5, baseValue: 8,   utility: 0.8, contributes: { happiness: 0.2 }, harvest: 'crafting' },  // ★의복(2026-07-12): 1인 1벌 자본재 — 한랭 건강 효과는 커버리지 로직(econ v1)이 처리(contributes 이중계상 방지, 소폭 행복만)
   paper:       { ko: '종이',         emoji: '📜', category: 'goods', weight: 0.3, baseValue: 8,   utility: 0.4, contributes: { prestige: 0.8 }, harvest: 'crafting' },
   ink:         { ko: '먹',           emoji: '🖋️', category: 'goods', weight: 0.2, baseValue: 10,  utility: 0.3, contributes: { prestige: 0.7 }, harvest: 'crafting' },
   brush:       { ko: '붓',           emoji: '🖌️', category: 'goods', weight: 0.1, baseValue: 6,   utility: 0.3, contributes: { prestige: 0.5 }, harvest: 'crafting' },
@@ -414,6 +415,14 @@ function _computeVillageStats(v, N) {
   // ★땔감 부족 → 건강 페널티(비례). fuelCov=1이면 0, 0이면 -FUEL_HEALTH_W. 큰/숲빈약 마을이 연료를 못 대면 건강↓→인구 억제.
   if (v._fuelCov !== undefined && v._fuelCov < 1) stats.health += (v._fuelCov - 1) * FUEL_HEALTH_W;
   stats.fuelCov = (v._fuelCov !== undefined) ? v._fuelCov : 1;
+  // ★한랭×의복(2026-07-12) — 겨울 야간 한랭(v2 기온 모델의 coldStress)에 옷이 없으면 건강 페널티(연료 동형·비례),
+  //   갖췄으면 소폭 행복(따뜻한 겨울). coldStress 미설치(구 호스트)=0 → 무해.
+  if ((v._coldStress || 0) > 0) {
+    const _cc = Math.min(1, v._clothCov || 0);
+    stats.health -= COLD_HEALTH_W * v._coldStress * (1 - _cc);
+    stats.happiness += COLD_CLOTHED_HAPPY_W * v._coldStress * _cc;
+  }
+  stats.clothCov = v._clothCov != null ? v._clothCov : 1;
   // ★약재 일상 복용(§9 2차) — 건강의 세 번째 항: 재고/인구 비례, 상한으로 폭주 방지. 재고는 tickVillage가 매일 소모(흐름).
   const _herbPC = (v.storage && v.storage.herb > 0) ? v.storage.herb / pop : 0;
   if (_herbPC > 0) stats.health += Math.min(HERB_HEALTH_CAP, _herbPC * HERB_HEALTH_W);
@@ -530,6 +539,11 @@ const JOBS = {
     inputs: { stone: 0.5, hide: 0.4, ore: 0.2 },
     // ★유령 박멸(§9): 보조 투입 — 삼끈(갑옷 엮음)·모피(방한 안감, hide와 별개 슬롯). 있으면 소비, 없어도 제작 성립(게이트 아님).
     aux: { hemp: 0.1, fur: 0.1 },
+  },
+  tailor: {                 // ★의복(2026-07-12): 재봉사 — 옷감(모피·유피·가죽·삼베)→옷. 한랭(겨울) 수요·1인 1벌 자본재.
+    field: 'tailoring', output: 'clothes', base: 0.5,
+    landBoost: () => 1.0, toolDependent: false, inputs: {},
+    produceSpecial: 'tailor',   // 재료는 핸들러가 보온 가중·재고 비례로 직접 소비(대체 투입이라 inputs 고정맵 불가)
   },
   forager: {                // 채집 — 다중 산출
     field: 'foraging', output: null, base: 1.0,
@@ -866,6 +880,17 @@ const SMELT_FUEL_PER = 0.5;    // ★야금공(대장장이·무기장이·갑�
 const LOW_FUEL_EQ = 0.3;       // ★유령 박멸(§9): 잔가지·나무껍질 = 하급 연료(wood 0.3 등가). 취사·난방에서 장작보다 먼저 소진(검불 먼저 때는 게 상식) → 목재 실절약(손실 절약형 소비). 제련(고온)은 straw와 동일하게 불가 단순화.
 const PEBBLE_STONE_EQ = 0.5;   // ★유령 박멸(§9): 자갈 = 건축 석재 하급 대체(0.5 등가, 기초·구들 채움 한정 ≤절반) — 석재 실절약. 주춧돌·벽체는 여전히 석재(광산 수요 기둥 보존).
 const FUEL_HEALTH_W = 0.4;     // 땔감 부족 시 건강 페널티 가중(fuelCov=0 → 건강 -0.4). 비례라 절벽 아님·자기교정
+// ★의복(2026-07-12 — 겨울·재봉): 옷=1인 1벌 자본재(착용 마모 소모). 옷감 보온 가중(고증: 모피>유피·가죽>삼베).
+//   과잉생산 수사(가죽 ×15~22 부패 평형)의 자연 소비처 — 수요 하드코딩 아님: 마모 흐름+한랭 페널티가 수요를 만들고
+//   가격(재고 함수)이 옷감 수입 유인을 창발. wool/linen/flax는 생산 경로 미구현(목축·방직 후속) — CLOTH_MATS에 추가만 하면 됨.
+const CLOTH_MATS = { fur: 1.5, hide: 1.0, leather: 1.0, hemp: 0.6 };   // 보온-eq/단위
+const CLOTH_MAT_WARMTH_PER = 3.0;   // 옷 1벌 재료(보온-eq) — 가죽 ~3장 상당. (5.0/마모.006 강화 A/B는 s8 붕괴[pop439→38]로 기각 — 한계 맵에 과중. 가죽 잔여 글럿의 다음 레버는 사냥 부산물율)
+const CLOTH_WEAR_PC = 0.004;        // 1인 일 마모(온화 ~250일 수명, 한랭 ×3 → ~80일)
+const CLOTH_TARGET_PC = 1.2;        // 목표 보유(1인 1벌 + 여벌 0.2) — v2 CAP_TARGET·CAPITAL keep과 동기
+const COLD_HEALTH_W = 0.35;         // 한랭 무의복 건강 페널티(연료 0.4 동형·비례 — 옷 없인 떨지만 불이 더 치명)
+const COLD_CLOTHED_HAPPY_W = 0.15;  // 한랭기 의복 충족 행복(따뜻한 겨울)
+const FUEL_COLD_W = 0.6;            // 한랭 난방 연료 가중(겨울 취사+난방 ≈ ×1.6) — 계절 연료 수요의 실물화
+const STONE_MAINT_PC = 0.02;        // ★돌 감산 자연화(2026-07-12): 건축 유지 석재 실소비/인/일(담장·구들·바닥·숫돌 — FIREWOOD_PC 동형 물리 수요)
 
 // 식량 부패 — 무한 비축 방지. 음식 종류별로 다름.
 const DECAY_RATES = {
@@ -976,6 +1001,7 @@ function jobCapacity(v) {
     smith:       UNCAPPED,   // ★S2 대장장이(청동·철 무기) — smithTarget(무기수요)이 결정
     weaponsmith: 0,          // ★S2 폐지(smith로 통합) — 아무도 안 뽑힘(참조안전 키만 유지)
     armorsmith:  UNCAPPED,
+    tailor:      UNCAPPED,   // ★의복 — 스톡-플로우 노동목표(tailorTarget)가 결정
     cook:        UNCAPPED,
     warrior:     UNCAPPED,
     merchant:    0,  // ★전담 행상 폐지 — 교역은 기본 NPC가 남는 시간에 왕복(tickTradeV2). 정원 0이라 아무도 행상으로 안 뽑힘.
@@ -1151,6 +1177,7 @@ function opportunityCost(npc, v, w) {
     case 'smith':       return ((v.counts.smith || 0)       > smithTarget(v))       ? 0.005 : 50 * sk;   // ★S2 대장장이(청동·철 무기)
     case 'weaponsmith': return 0.004;   // ★S2 폐지(smith 통합) — 항상 최우선 차출(잔존 weaponsmith → 다른 직업으로)
     case 'armorsmith':  return ((v.counts.armorsmith || 0)  > armorsmithTarget(v))  ? 0.005 : 50 * sk;
+    case 'tailor':      return ((v.counts.tailor || 0)      > tailorTarget(v))      ? 0.005 : 50 * sk;   // ★의복(재봉 노동목표 — 갑옷장이 동형)
     case 'cook':        return ((v.counts.cook || 0) > cookTarget(v)) ? 0.005 : 0.4 * w('cooked_food') * sk;   // ★유령 박멸 #4: 목표 초과 요리사=1순위 차출(장인 대칭 — 조리식은 흐름재라 재고가격이 못 끌어내림)
     // ★전사: 무장 가능 수(보유 무기)와 readiness 목표 중 작은 값으로 상한. 무기 없으면 전사 아님 → 동원해제(생산직).
     //   초과/무장불가면 0.008(글럿 생산자 0.01보다↓ = 최우선 차출), 이내면 유지(방어 비시장가치).
@@ -1277,6 +1304,7 @@ function createVillage(opts) {
   //   부양력 오판·농부 이탈로 초반 인구 진동시켰음). 45일이면 satiation 거의 0(secF~0.1) + 교역 부트스트랩 충분.
   v.storage.food = initN * 45;
   v.storage.tool = initN * 3;         // 도구 충분
+  v.storage.clothes = initN * 1.1;    // ★의복(2026-07-12): 정착민은 입고 온다(1인 1벌+α) — 옷 0벌 창설이 첫 겨울(day270) 한랭 나선을 만들던 부트스트랩 구멍 봉합(herb·활 시드 동형). 정상상태 수요는 마모(CLOTH_WEAR_PC)가 유지
   v.storage.wood = initN * 8;         // 초기 주거 건축 부트스트랩(사용자 확정: 원값 유지) + 벌채 부산물(deforestCell)은 별도 소량 보충
   v.storage.stone = initN * 5;        // 초기 석재(주거·거래·smith)
   v.storage.ore = Math.floor(initN * v.land.ore * 5);  // 광물 도시는 ore 잉여로 시작
@@ -1377,10 +1405,10 @@ function tickVillage(v, day) {
   const _secF = Math.max(0, Math.min(1, (_foodDays - 40) / 40));
   // ★식량 과잉버퍼 직접 감산 — 70일치↑ 잉여 곡물생산을 여가·교역·공예로(가격 무관, K는 잠재기준이라 불변).
   //   효과: 곡물 단작 과잉→다각화(장식교역 +50%). 수입-부양 마을은 지속가능 크기로 정직하게 수렴. 150→~95일치 캡.
-  const _foodGlut = Math.max(0, Math.min(0.8, (_foodDays - 70) / 80));
+  const _foodGlut = 0;   // ★자연화(2026-07-12, 사용자 결정): 식량 70일치↑ 직접 감산 제거 — 잉여 농노동의 자연 소비처(재봉·공예 전직 via 한계가치)+의복 마모 수요가 대체. 종전식 Math.max(0,Math.min(0.8,(_foodDays-70)/80)) — 병리 재발 시 복원 지점(항은 보존)
   // ★돌 과잉버퍼 직접 감산 — 돌도 가격이 안 떨어져(0.46) raw-taper 미발동 → 잉여 채석 낭비. 15/명↑ 감산(건축·도구분은 보존).
   const _stonePC = (v.storage.stone || 0) / (v.npcs.length || 1);
-  const _stoneGlut = Math.max(0, Math.min(0.7, (_stonePC - 15) / 30));
+  const _stoneGlut = 0;   // ★자연화(2026-07-12, 사용자 결정): 돌 직접 감산 제거 — 건축 유지 실소비(STONE_MAINT_PC, 담장·구들·숫돌 마모)가 실수요로 대체. 종전식 Math.max(0,Math.min(0.7,(_stonePC-15)/30)) — 병리 재발 시 복원 지점
   // ★도구 과잉버퍼(e2) 직접 감산 — 커버리지(도구재고/도구의존인구)가 임계 X배↑면 초과분만큼 대장장이 산출·원료소비 동시 감산.
   //   근거: toolBoostShared는 커버리지 1.0에서 포화(그 이상 생산 기여 0) → 초과 도구 생산은 무의미 잉여 + 구리/주석 낭비(_stoneGlut 동형).
   //   임계 X를 floor로 삼아 재고가 X 부근에 수렴(완전수렴 1로 안 감 — 도구는 생산자본재라 포화선 아래는 생산붕괴). tf=0이면 원료 차감도 정지.
@@ -1434,7 +1462,7 @@ function tickVillage(v, day) {
     if (npc._tradingUntil && npc._tradingUntil > day) continue;   // ★교역 원정 중 → 생산 안 함(기회비용 실현). 저숙련자라 손실 작음.
     const jdef = JOBS[npc.currentJob];
     const f = jdef.field;
-    const skillLvl = npc.skills[f];
+    const skillLvl = npc.skills[f] || 0;   // ★신설 필드(tailoring) 구세계 NPC 호환 — undefined면 0(NaN 전염 방지)
     const toolBoost = jdef.toolDependent ? toolBoostShared : 1.0;
     // input 자원 부족 시 생산 0
     let inputMult = 1;
@@ -1588,6 +1616,21 @@ function tickVillage(v, day) {
       } else if ((v.storage.stone || 0) >= 0.5) {
         v.storage.stone -= 0.5;
         addProduce('weapon', amt);
+        workNPC(npc);
+      }
+    } else if (jdef.produceSpecial === 'tailor') {
+      // ★의복(2026-07-12): 재봉 — 옷감을 보온 가중·재고 비례로 소비(대체 투입: 모피 있으면 모피, 없으면 삼베).
+      //   절반이라도 있으면 부분 제작(frac) — 옷감 반입이 끊긴 마을은 산출이 자연 감소(게이트 절벽 없음).
+      const amt = jdef.base * skillMul;
+      const needW = amt * CLOTH_MAT_WARMTH_PER;
+      let haveW = 0; for (const m in CLOTH_MATS) haveW += (v.storage[m] || 0) * CLOTH_MATS[m];
+      if (haveW >= needW * 0.5) {
+        const frac = Math.min(1, haveW / needW);
+        for (const m in CLOTH_MATS) {
+          const take = (v.storage[m] || 0) * (needW * frac / haveW);
+          if (take > 0) v.storage[m] = Math.max(0, (v.storage[m] || 0) - take);
+        }
+        addProduce('clothes', amt * frac);
         workNPC(npc);
       }
     } else if (jdef.produceSpecial === 'miner') {
@@ -1817,7 +1860,14 @@ function tickVillage(v, day) {
   //   재고를 실제로 축내므로 subsistence picker(wood<N×5)가 벌목꾼을 더 배치 → 숲 압박. 야금촌은 제련연료로 숲을 더 빨리 소진(고증: 제련=삼림파괴 동인).
   // ★S2 야금공(제련 고온·대량 연료) = 대장장이(청동·철 무기) + 갑옷장이. 석공(mason)은 석기·목공(간돌·활)이라 제련 연료 0(고온 화로 없음).
   const smelters = (v.counts.smith || 0) + (v.counts.weaponsmith || 0) + (v.counts.armorsmith || 0);
-  const fuelNeed = N * FIREWOOD_PC + smelters * SMELT_FUEL_PER;
+  // ★의복 마모(2026-07-12) — 입던 옷이 해짐: 기본 + 한랭 가중(겨울 험한 사용·겹쳐 입음). 커버리지는 스탯 항이 소비.
+  const _wear = N * CLOTH_WEAR_PC * (1 + 2 * (v._coldStress || 0));
+  v.storage.clothes = Math.max(0, (v.storage.clothes || 0) - _wear);
+  v._clothCov = Math.min(1.5, (v.storage.clothes || 0) / Math.max(1, N));
+  // ★건축 유지(2026-07-12 — 돌 감산 자연화): 담장·구들·바닥·숫돌이 닳는다 — 인구 비례 석재 실소비(연료 동형 물리 수요).
+  const _maintS = Math.min(v.storage.stone || 0, N * STONE_MAINT_PC);
+  if (_maintS > 0) v.storage.stone -= _maintS;
+  const fuelNeed = N * FIREWOOD_PC * (1 + FUEL_COLD_W * (v._coldStress || 0)) + smelters * SMELT_FUEL_PER;   // ★한랭 난방 가중(2026-07-12) — 겨울 연료 수요 실물화
   // ★볏짚 먼저(공짜 부산물, 당일 소진 — 취사·난방용. 제련은 고온이라 목재만) → 부족분만 목재.
   const strawFuel = Math.min(N * FIREWOOD_PC, (v._grainToday || 0) * STRAW_FUEL_PER_FOOD);
   v._grainToday = 0;
@@ -2164,6 +2214,13 @@ function weaponsmithTarget(v) {
 function armorsmithTarget(v) {
   return craftLaborTarget(v.storage.armor || 0, v.counts.warrior || 0, 0.3, { buffer: 1.0, catchup: 60, decay: 0.0004 });
 }
+// ★의복(2026-07-12): 재봉 노동목표 — 옷 재고를 1인 CLOTH_TARGET_PC벌로 스톡-플로우 유지(갑옷장이 동형).
+//   마모(한랭 가중)가 흐름 수요. 옷감 없는 마을은 재봉사 0(재료 게이트 — 옷감 수입 유인은 가격이 만든다).
+function tailorTarget(v) {
+  let haveW = 0; for (const m in CLOTH_MATS) haveW += (v.storage[m] || 0) * CLOTH_MATS[m];
+  if (haveW < 1) return 0;
+  return craftLaborTarget(v.storage.clothes || 0, v.npcs.length || 1, 0.5, { buffer: CLOTH_TARGET_PC, catchup: 60, decay: CLOTH_WEAR_PC * (1 + 2 * (v._coldStress || 0)) });
+}
 // ★요리사 노동목표(유령 박멸 #4) — cooked_food가 rational 픽커에서 죽어 있던 결함 수정(픽커 후보에 cook 부재 → 요리사 0 →
 //   조리식 산출 0 영구). 부뚜막 자리는 부재료 유입 흐름이 부양(토지캡과 동형 — 재료 없는 부엌은 0명, 쿼터 아님).
 //   경제 근거(§9 — 가격 항 없음): 조리식은 1.12× 흡수 효율(같은 곡물로 더 부양 = 노동 절약) + 식단 다양성(행복·건강 실효)
@@ -2229,6 +2286,7 @@ function pickDeficitJob_rational(v, world) {
   if ((counts.smith || 0) < smithTarget(v) && ((_bronzeCapable(v) && (v.storage.copper || 0) >= 0.3 && (v.storage.tin || 0) >= 0.12) || _ironWeaponCapable(v))) return 'smith';
   if ((counts.armorsmith || 0) < armorsmithTarget(v) && (v.storage.hide || 0) > N * 0.3) return 'armorsmith';
   if ((counts.cook || 0) < cookTarget(v)) return 'cook';   // ★유령 박멸 #4: 요리사 — 스톡-플로우 노동목표(장인 패턴). 잉여 마을만(cookTarget 내 게이트)
+  if ((counts.tailor || 0) < tailorTarget(v)) return 'tailor';   // ★의복(2026-07-12): 재봉사 — 스톡-플로우 노동목표(장인 패턴). 옷감 게이트는 tailorTarget 내(옷감 보온-eq<1 → 0 — 요리사 결함[픽커 후보 부재] 재발 방지로 여기 명시 등록)
   // ★주거 압박: 집이 거의 가득(인구 성장 막힘) + 집 지을 목재 부족 → 나무꾼. 집 지어야 인구가 늚 → 고리를 닫는 안전망.
   if (v.housing !== undefined && N >= v.housing * 0.95 && (v.storage.wood || 0) < N * 2 && hasSlot(v, 'lumberjack', cap, counts)) return 'lumberjack';
   // ★S1 석재 안전망: 돌은 채집자원 — 돌밭/강가(land.stone 충분) 마을이 석재 부족하면 채집꾼(광부 아님). 집·도구 석재 수요 → 채집. 돌 없으면(stone≤0.25) 안 함(교역 의존).
@@ -3075,6 +3133,7 @@ const ELASTICITY = {
   bone: 0.9,   // ★뼈(§9 3차) — 무기장 투입재(중간 탄력, specialty livestock 1.1을 명시 정의로 대체)
   // 사치/생산수단 — 완만
   tool: 0.7, weapon: 0.6, armor: 0.6,
+  clothes: 0.7,   // ★의복(2026-07-12) — 내구 자본재(도구 동형 탄력). 1인 1벌 커버리지·한랭 수요는 v1 스탯/마모가 처리
   obsidian: 0.9, jade: 0.6,   // ★S5 흑요석(광물 탄력) · 옥(위세재 완만 탄력)
   bronze_tool: 0.7, iron_tool: 0.7,   // ★도구 대체재(청동·철) — tool과 동일 탄력. 누락 시 satiation taper 미발동 → 글럿에도 대장장이 무한 생산(인구당 무한↑) 버그.
   tigerhide: 0.6,   // ★호피(§9 3차) — 위신재(사치 완만 — 부족해도 폭등 대신 프리미엄)
@@ -3152,6 +3211,7 @@ const DECAY_V2 = {
   meat: 0.0005, fish: 0.0005, cooked_food: 0.001,
   fruit: 0.0015, vegetable: 0.0015, mushroom: 0.0015,
   tool: 0.0005, weapon: 0.0002, armor: 0.0002,
+  clothes: 0.0008,   // ★의복: 보관 손실(좀·습기) — 착용 마모는 v1 tickVillage의 CLOTH_WEAR가 별도(주 소모)
   hide: 0.0005,
   herb: 0.0008,   // ★약재: 말린 약재 — 느린 변질(무한 비축 방지)
   bone: 0.0008, tigerhide: 0.0003,   // ★§9 3차: 뼈=풍화(무한 축적 방지) · 호피=애장 보존(느린 손실 — 세대 단위 상한)
@@ -3221,6 +3281,19 @@ function seasonOf(day) {
   return 'winter';
 }
 
+// === 기온 모델(2026-07-12 — 의복·겨울) ===
+//   실축(1셀=1m, 존 1.6km)에서 존 *내부* 기온차는 위도가 아니라 고도가 지배(감률 −6.5℃/km) —
+//   위도는 존 단위 상수(zoneLatBase — 북방존은 낮게, 존 생성 시 오버라이드). 사계 위상 정합:
+//   최한 = 동절 중간(doy 315; seasonOf winter=270~365) · 연교차 ±annualAmp · 일교차 ±diurnalAmp.
+//   econ(일 틱)은 일평균·야간최저만 소비 — 시간 곡선(hourFrac: 0=자정 최저, 0.5=정오 최고)은 생활층(밤낮) 인계용 노출.
+const CLIMATE = { zoneLatBase: 12, annualAmp: 12, diurnalAmp: 5, lapsePerKm: 6.5, coldRef: 5 };
+function temperatureAt(day, hourFrac, elevKm) {
+  const doy = ((day % 365) + 365) % 365;
+  const annual = -Math.cos(2 * Math.PI * (doy - 315) / 365);   // doy315=−1(최한) · doy~132=+1(최난)
+  const diurnal = hourFrac == null ? 0 : -Math.cos(2 * Math.PI * hourFrac);
+  return CLIMATE.zoneLatBase + CLIMATE.annualAmp * annual + CLIMATE.diurnalAmp * diurnal - CLIMATE.lapsePerKm * (elevKm || 0);
+}
+
 // === 이동시간 — 모든 caravan 같은 속도 (NPC_SPEED). 시간 = 거리/속도 (시뮬 1초=1day).
 //   평균 마을 거리 ~2500px → 평균 5일. 거리 800~5000 → 시간 자연 결정.
 //   사용자 의도: 모든 행상 같은 속도로 걷는 시각.
@@ -3284,6 +3357,7 @@ function computeShadowPrices(v) {
   const CAP_TARGET = {
     tool: Math.max(1, toolDeps), bronze_tool: Math.max(1, toolDeps), iron_tool: Math.max(1, toolDeps),
     weapon: Math.max(2, warN * 1.2), armor: Math.max(1, warN),   // 무기 바닥2 = 약탈위협 선제비축 시드. (★§9 3차 실측: 사냥꾼 포함 시 t=0 전 마을 무기 희소폭등 → 캐러밴이 식량 대신 무기 쏠림 → 시드7 인구 -36%·마을 소멸 — 활 조달은 가격 신호 아닌 마을 내 무기장 노동(weaponsmithTarget)+시드 재고로)
+    clothes: Math.max(2, N * 1.2),   // ★의복(2026-07-12): 1인 1벌+여벌 — 자본재 커버리지(도구 동형)
   };
   const CAP_STOCK = { tool: toolStock, bronze_tool: toolStock, iron_tool: toolStock };  // 도구는 *합산* 재고로 희소도 평가
   for (const r of TRADABLE) {
@@ -3352,6 +3426,7 @@ function _priceParamsV2(v, r) {
     stock = Math.max(0.1, (v.storage.tool || 0) + (v.storage.bronze_tool || 0) + (v.storage.iron_tool || 0));
   } else if (r === 'weapon') { target = Math.max(2, (cnt.warrior || 0) * 1.2); stock = Math.max(0.1, v.storage[r] || 0); }
   else if (r === 'armor') { target = Math.max(1, cnt.warrior || 0); stock = Math.max(0.1, v.storage[r] || 0); }
+  else if (r === 'clothes') { target = Math.max(2, N * 1.2); stock = Math.max(0.1, v.storage[r] || 0); }   // ★의복(동기 계약: computeShadowPrices CAP_TARGET와 동일)
   else {
     const subs = (SUBSISTENCE_PER_NPC[r] || 0) * N;
     const buffer = ORNAMENTAL[r] ? N * LUX_TARGET_PC : N * Math.max(0.5, util * 1.2);
@@ -3516,7 +3591,7 @@ function tickTradeV2(world, day) {
       // 후보 자원 — 잉여. ★식량류(food/fish/meat/cooked_food)는 넉넉히 보유 후 *진짜* 잉여만 수출.
       //   기존엔 15일치만 남겨(< 기근 문턱 30일치) 식량 마을이 수출 후 식량불안 → 비식량 직업 선점. 이젠 36일치 보유.
       const FOODR = { food: 1, fish: 1, meat: 1, cooked_food: 1 };
-      const CAPITAL = { tool: 1, bronze_tool: 1, iron_tool: 1 };   // ★도구=자본재(돌·청동·철). 팔아치우면 생산 0.25×로 붕괴 → 1인당 1개 보유 후 잉여만.
+      const CAPITAL = { tool: 1, bronze_tool: 1, iron_tool: 1, clothes: 1 };   // ★도구=자본재(돌·청동·철). 팔아치우면 생산 0.25×로 붕괴 → 1인당 1개 보유 후 잉여만. ★의복도 자본재(1인 1벌 — 팔면 동상)
       const WEAPONR = { weapon: 1, armor: 1 };      // ★무기·갑옷=전사 장비. 전사 수만큼 보유(팔면 전사 무장해제).
       const warN = (a.v.counts && a.v.counts.warrior) || 0;
       const huntN3 = (a.v.counts && a.v.counts.hunter) || 0;   // ★활(§9 3차): 사냥꾼 활도 마을 장비 — 수출 유보에 포함(마을 활을 팔아치우면 사냥 무장해제)
@@ -4033,6 +4108,13 @@ function tickWorldV2(world) {
   const season = seasonOf(world.day);
   const useSeason = world._dbg?.season !== false;
   for (const v of world.villages) {
+    if (world._dbg?.climate !== false) {
+      // ★기온(2026-07-12): 야간최저 기준 한랭 스트레스(0~1) — 의복 커버리지 페널티·연료 가중·마모 가중이 소비(v1).
+      const _elev = (v.land && v.land.elev) || 0;   // 호스트(지형층) 고도 주입 훅 — 미설치=0(해수면) 무해
+      v._tempDay = temperatureAt(world.day, null, _elev);
+      v._tempNight = v._tempDay - CLIMATE.diurnalAmp;
+      v._coldStress = Math.max(0, Math.min(1, (CLIMATE.coldRef - v._tempNight) / 15));
+    }
     if (useSeason) applyLandModifiers(v, season, world);
     v1.tickVillage(v, world.day);
     if (useSeason) restoreLand(v);
@@ -4252,6 +4334,8 @@ module.exports = {
   SUBSISTENCE_PER_NPC,
   // 시장 충격 정산 헬퍼(1b) — 프로브·자가검증용 노출
   _priceParamsV2, _impactSegs, _impactF, _impactBuyV2, _impactSellV2,
+  // 기온 모델(2026-07-12) — 생활층(밤낮 시간 곡선)·프로브용 노출
+  temperatureAt, CLIMATE,
 };
 
 ;return module.exports;})();

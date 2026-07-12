@@ -28,6 +28,7 @@ const ELASTICITY = {
   bone: 0.9,   // ★뼈(§9 3차) — 무기장 투입재(중간 탄력, specialty livestock 1.1을 명시 정의로 대체)
   // 사치/생산수단 — 완만
   tool: 0.7, weapon: 0.6, armor: 0.6,
+  clothes: 0.7,   // ★의복(2026-07-12) — 내구 자본재(도구 동형 탄력). 1인 1벌 커버리지·한랭 수요는 v1 스탯/마모가 처리
   obsidian: 0.9, jade: 0.6,   // ★S5 흑요석(광물 탄력) · 옥(위세재 완만 탄력)
   bronze_tool: 0.7, iron_tool: 0.7,   // ★도구 대체재(청동·철) — tool과 동일 탄력. 누락 시 satiation taper 미발동 → 글럿에도 대장장이 무한 생산(인구당 무한↑) 버그.
   tigerhide: 0.6,   // ★호피(§9 3차) — 위신재(사치 완만 — 부족해도 폭등 대신 프리미엄)
@@ -105,6 +106,7 @@ const DECAY_V2 = {
   meat: 0.0005, fish: 0.0005, cooked_food: 0.001,
   fruit: 0.0015, vegetable: 0.0015, mushroom: 0.0015,
   tool: 0.0005, weapon: 0.0002, armor: 0.0002,
+  clothes: 0.0008,   // ★의복: 보관 손실(좀·습기) — 착용 마모는 v1 tickVillage의 CLOTH_WEAR가 별도(주 소모)
   hide: 0.0005,
   herb: 0.0008,   // ★약재: 말린 약재 — 느린 변질(무한 비축 방지)
   bone: 0.0008, tigerhide: 0.0003,   // ★§9 3차: 뼈=풍화(무한 축적 방지) · 호피=애장 보존(느린 손실 — 세대 단위 상한)
@@ -174,6 +176,19 @@ function seasonOf(day) {
   return 'winter';
 }
 
+// === 기온 모델(2026-07-12 — 의복·겨울) ===
+//   실축(1셀=1m, 존 1.6km)에서 존 *내부* 기온차는 위도가 아니라 고도가 지배(감률 −6.5℃/km) —
+//   위도는 존 단위 상수(zoneLatBase — 북방존은 낮게, 존 생성 시 오버라이드). 사계 위상 정합:
+//   최한 = 동절 중간(doy 315; seasonOf winter=270~365) · 연교차 ±annualAmp · 일교차 ±diurnalAmp.
+//   econ(일 틱)은 일평균·야간최저만 소비 — 시간 곡선(hourFrac: 0=자정 최저, 0.5=정오 최고)은 생활층(밤낮) 인계용 노출.
+const CLIMATE = { zoneLatBase: 12, annualAmp: 12, diurnalAmp: 5, lapsePerKm: 6.5, coldRef: 5 };
+function temperatureAt(day, hourFrac, elevKm) {
+  const doy = ((day % 365) + 365) % 365;
+  const annual = -Math.cos(2 * Math.PI * (doy - 315) / 365);   // doy315=−1(최한) · doy~132=+1(최난)
+  const diurnal = hourFrac == null ? 0 : -Math.cos(2 * Math.PI * hourFrac);
+  return CLIMATE.zoneLatBase + CLIMATE.annualAmp * annual + CLIMATE.diurnalAmp * diurnal - CLIMATE.lapsePerKm * (elevKm || 0);
+}
+
 // === 이동시간 — 모든 caravan 같은 속도 (NPC_SPEED). 시간 = 거리/속도 (시뮬 1초=1day).
 //   평균 마을 거리 ~2500px → 평균 5일. 거리 800~5000 → 시간 자연 결정.
 //   사용자 의도: 모든 행상 같은 속도로 걷는 시각.
@@ -237,6 +252,7 @@ function computeShadowPrices(v) {
   const CAP_TARGET = {
     tool: Math.max(1, toolDeps), bronze_tool: Math.max(1, toolDeps), iron_tool: Math.max(1, toolDeps),
     weapon: Math.max(2, warN * 1.2), armor: Math.max(1, warN),   // 무기 바닥2 = 약탈위협 선제비축 시드. (★§9 3차 실측: 사냥꾼 포함 시 t=0 전 마을 무기 희소폭등 → 캐러밴이 식량 대신 무기 쏠림 → 시드7 인구 -36%·마을 소멸 — 활 조달은 가격 신호 아닌 마을 내 무기장 노동(weaponsmithTarget)+시드 재고로)
+    clothes: Math.max(2, N * 1.2),   // ★의복(2026-07-12): 1인 1벌+여벌 — 자본재 커버리지(도구 동형)
   };
   const CAP_STOCK = { tool: toolStock, bronze_tool: toolStock, iron_tool: toolStock };  // 도구는 *합산* 재고로 희소도 평가
   for (const r of TRADABLE) {
@@ -305,6 +321,7 @@ function _priceParamsV2(v, r) {
     stock = Math.max(0.1, (v.storage.tool || 0) + (v.storage.bronze_tool || 0) + (v.storage.iron_tool || 0));
   } else if (r === 'weapon') { target = Math.max(2, (cnt.warrior || 0) * 1.2); stock = Math.max(0.1, v.storage[r] || 0); }
   else if (r === 'armor') { target = Math.max(1, cnt.warrior || 0); stock = Math.max(0.1, v.storage[r] || 0); }
+  else if (r === 'clothes') { target = Math.max(2, N * 1.2); stock = Math.max(0.1, v.storage[r] || 0); }   // ★의복(동기 계약: computeShadowPrices CAP_TARGET와 동일)
   else {
     const subs = (SUBSISTENCE_PER_NPC[r] || 0) * N;
     const buffer = ORNAMENTAL[r] ? N * LUX_TARGET_PC : N * Math.max(0.5, util * 1.2);
@@ -469,7 +486,7 @@ function tickTradeV2(world, day) {
       // 후보 자원 — 잉여. ★식량류(food/fish/meat/cooked_food)는 넉넉히 보유 후 *진짜* 잉여만 수출.
       //   기존엔 15일치만 남겨(< 기근 문턱 30일치) 식량 마을이 수출 후 식량불안 → 비식량 직업 선점. 이젠 36일치 보유.
       const FOODR = { food: 1, fish: 1, meat: 1, cooked_food: 1 };
-      const CAPITAL = { tool: 1, bronze_tool: 1, iron_tool: 1 };   // ★도구=자본재(돌·청동·철). 팔아치우면 생산 0.25×로 붕괴 → 1인당 1개 보유 후 잉여만.
+      const CAPITAL = { tool: 1, bronze_tool: 1, iron_tool: 1, clothes: 1 };   // ★도구=자본재(돌·청동·철). 팔아치우면 생산 0.25×로 붕괴 → 1인당 1개 보유 후 잉여만. ★의복도 자본재(1인 1벌 — 팔면 동상)
       const WEAPONR = { weapon: 1, armor: 1 };      // ★무기·갑옷=전사 장비. 전사 수만큼 보유(팔면 전사 무장해제).
       const warN = (a.v.counts && a.v.counts.warrior) || 0;
       const huntN3 = (a.v.counts && a.v.counts.hunter) || 0;   // ★활(§9 3차): 사냥꾼 활도 마을 장비 — 수출 유보에 포함(마을 활을 팔아치우면 사냥 무장해제)
@@ -986,6 +1003,13 @@ function tickWorldV2(world) {
   const season = seasonOf(world.day);
   const useSeason = world._dbg?.season !== false;
   for (const v of world.villages) {
+    if (world._dbg?.climate !== false) {
+      // ★기온(2026-07-12): 야간최저 기준 한랭 스트레스(0~1) — 의복 커버리지 페널티·연료 가중·마모 가중이 소비(v1).
+      const _elev = (v.land && v.land.elev) || 0;   // 호스트(지형층) 고도 주입 훅 — 미설치=0(해수면) 무해
+      v._tempDay = temperatureAt(world.day, null, _elev);
+      v._tempNight = v._tempDay - CLIMATE.diurnalAmp;
+      v._coldStress = Math.max(0, Math.min(1, (CLIMATE.coldRef - v._tempNight) / 15));
+    }
     if (useSeason) applyLandModifiers(v, season, world);
     v1.tickVillage(v, world.day);
     if (useSeason) restoreLand(v);
@@ -1205,4 +1229,6 @@ module.exports = {
   SUBSISTENCE_PER_NPC,
   // 시장 충격 정산 헬퍼(1b) — 프로브·자가검증용 노출
   _priceParamsV2, _impactSegs, _impactF, _impactBuyV2, _impactSellV2,
+  // 기온 모델(2026-07-12) — 생활층(밤낮 시간 곡선)·프로브용 노출
+  temperatureAt, CLIMATE,
 };
