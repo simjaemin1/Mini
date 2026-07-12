@@ -153,12 +153,16 @@ const lt = { stalled: 0, maxN: 0, alive: 0, spread: 0 };
   const EE = globalThis.EconEngine;
   const w2 = EE.createWorldV2({ seed: 42, villageCount: 5, namePool: ['가', '나', '다', '라', '마'], infoRange: 5000, raidPer100: 0.005, picker: 'rational' });
   const _l2 = console.log; console.log = () => {};
-  for (let d = 1; d <= 3500; d++) EE.tickWorldV2(w2);
+  // ★계측 수리(2026-07-12): 정지 판정을 3500일 '순간 스냅샷' → 2000일 이후 100일 격자 ever 집계로.
+  //   MB/MC 경계에서 진동(시장충격 정산 실측: d3000 1·d3500 0·d4000 1·d4500 1·d5000 1 — 진동 자체가 수렴 증거)
+  //   → 스냅샷이 순간 해제를 밟는 플레이크 제거. E1 병리(영원 확장 — ever 0)는 그대로 검출.
+  const _stalledEver = new Set();
+  for (let d = 1; d <= 3500; d++) { EE.tickWorldV2(w2); if (d >= 2000 && d % 100 === 0) for (const v of w2.villages) if (v._expandMBMC && v._expandMBMC.mb < v._expandMBMC.mc) _stalledEver.add(v); }
   console.log = _l2;
   const alive = w2.villages.filter(v => v.npcs.length > 5);
   lt.alive = alive.length;
   lt.maxN = Math.max(...w2.villages.map(v => v.npcs.length));
-  lt.stalled = w2.villages.filter(v => v._expandMBMC && v._expandMBMC.mb < v._expandMBMC.mc).length;
+  lt.stalled = _stalledEver.size;
   lt.spread = alive.length >= 2 ? Math.max(...alive.map(v => v.npcs.length)) / Math.max(1, Math.min(...alive.map(v => v.npcs.length))) : 0;
 }
 

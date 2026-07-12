@@ -3267,6 +3267,8 @@ const RAID_MAX = 0.5;
 // =============================================================================
 // 1. shadow price — hyperbolic scarcity
 // =============================================================================
+// ★동기 계약(2026-07-12): 자원별 산식(target·stock·maxAdj·elast)은 _priceParamsV2(아래 1b. 시장 충격 정산)와
+//   동일 유지해야 함 — 수정 시 반드시 양쪽 동기(결정층 가격과 정산층 적분의 일물일가).
 function computeShadowPrices(v) {
   const N = v.npcs.length || 1;
   const prices = {};
@@ -3322,6 +3324,83 @@ function computeShadowPrices(v) {
     prices[r] = base * adj;
   }
   return prices;
+}
+
+// =============================================================================
+// 1b. 시장 충격 정산(price-impact settlement) — 2026-07-12 (b00c9f4 50% 하드캡의 창발 대체)
+//   종전 정산은 '그날 스냅샷 flat × 수량' — 대량 거래가 호가를 안 움직여 글럿 마을 곳간 전량
+//   매입이 헐값에 가능(시드7 마을7 1862→0, 5f55850 수사). 이제 정산은 재고 함수
+//   p(s)=base·clamp(ADJ_MIN, maxAdj, (target/s)^e)의 적분:
+//     매수 비용 = ∫[s−Q→s]p(u)du (파고들수록 비쌈) · 매도 수익 = ∫[s→s+Q]p(u)du (덤핑이 가격을 누름)
+//   멱법칙+클램프 3구간 piecewise 닫힌형 → O(1)(루프·수치적분 없음). e>1(식량 1.2)은 재고→0에서
+//   비용 발산(천장 클램프 구간만 유한·1000×) — 잉여(바닥 클램프 구간)는 헐값에 흐르되 유보 스케일
+//   (target 근방)부터 시장이 스스로 방어(창발). 절대 플로어·하드캡 없음(빈곤맵 재분배 생존 —
+//   카오스 컨트롤·신선 앙상블 4/4 근거는 CHECKLIST 2026-07-12). 순수 float — 결정론.
+//   출발 EV(totalProfit)는 flat+0.95 마진 휴리스틱 유지 — 기대는 근사, 정산은 진실(후속 정합 후보).
+// =============================================================================
+function _priceParamsV2(v, r) {
+  const N = v.npcs.length || 1;
+  const cnt = v.counts || {};
+  const base = BASE_VALUE_V2[r] || 1;
+  const e = ELASTICITY[r] || 1.0;
+  const util = UTILITY_WEIGHT[r] || 0.1;
+  let target, stock;
+  if (r === 'tool' || r === 'bronze_tool' || r === 'iron_tool') {
+    let toolDeps = 0;
+    for (const j in cnt) { const jd = v1.JOBS[j]; if (jd && jd.toolDependent) toolDeps += cnt[j] || 0; }
+    target = Math.max(1, toolDeps);
+    stock = Math.max(0.1, (v.storage.tool || 0) + (v.storage.bronze_tool || 0) + (v.storage.iron_tool || 0));
+  } else if (r === 'weapon') { target = Math.max(2, (cnt.warrior || 0) * 1.2); stock = Math.max(0.1, v.storage[r] || 0); }
+  else if (r === 'armor') { target = Math.max(1, cnt.warrior || 0); stock = Math.max(0.1, v.storage[r] || 0); }
+  else {
+    const subs = (SUBSISTENCE_PER_NPC[r] || 0) * N;
+    const buffer = ORNAMENTAL[r] ? N * LUX_TARGET_PC : N * Math.max(0.5, util * 1.2);
+    target = Math.max(subs * 30, buffer);
+    if (VARIETY_FOOD[r] && (v.dailyProductionBuf ? (v.dailyProductionBuf[r] || 0) / N : 0) < 0.05
+        && (v.storage.food || 0) / N > 25) target = Math.max(target, N * VARIETY_TARGET_PC);
+    stock = Math.max(0.1, v.storage[r] || 0);
+    if (r === 'food' && v.surplusEMA && v.surplusEMA.food < 0) stock = Math.max(0.1, stock + v.surplusEMA.food * 30);
+  }
+  const maxAdj = Math.min(PRICE_ADJ_MAX, 10 * Math.pow(10, util * 2));
+  return { base, e, target, sEff: stock, physical: Math.max(0, v.storage[r] || 0), maxAdj };
+}
+// 가격 3구간 경계(유효재고 좌표): s≤sLo 천장 flat(base·maxAdj) · [sLo,sHi] 멱법칙 k·s^−e · s≥sHi 바닥 flat(base·ADJ_MIN)
+function _impactSegs(P) {
+  return { sLo: P.target * Math.pow(P.maxAdj, -1 / P.e), sHi: P.target * Math.pow(PRICE_ADJ_MIN, -1 / P.e),
+    pLo: P.base * P.maxAdj, pHi: P.base * PRICE_ADJ_MIN, k: P.base * Math.pow(P.target, P.e) };
+}
+// 부정적분 F(s)=∫[0→s]p(u)du — 연속·순증(구간 경계에서 가격 일치: k·sLo^−e=base·maxAdj, k·sHi^−e=base·ADJ_MIN)
+function _impactF(P, S, s) {
+  if (s <= 0) return 0;
+  if (s <= S.sLo) return S.pLo * s;
+  const b = Math.min(s, S.sHi), e = P.e;
+  const pw = Math.abs(e - 1) < 1e-9 ? S.k * Math.log(b / S.sLo)
+    : S.k * (Math.pow(b, 1 - e) - Math.pow(S.sLo, 1 - e)) / (1 - e);
+  return S.pLo * S.sLo + pw + (s > S.sHi ? S.pHi * (s - S.sHi) : 0);
+}
+// 매수: 예산 C로 재고를 s0→s1까지 파고듦 — F(s1)=F(s0)−C 구간별 닫힌형 역산. 물리 재고 상한.
+function _impactBuyV2(v, r, budget) {
+  const P = _priceParamsV2(v, r);
+  if (!(budget > 0) || P.physical <= 0) return { qty: 0, cost: 0 };
+  const S = _impactSegs(P), s0 = P.sEff, F0 = _impactF(P, S, s0);
+  const Ft = F0 - budget;
+  let s1;
+  if (Ft <= 0) s1 = 0;
+  else if (Ft <= S.pLo * S.sLo) s1 = Ft / S.pLo;
+  else if (Ft <= _impactF(P, S, S.sHi)) {
+    const g = Ft - S.pLo * S.sLo, e = P.e;
+    s1 = Math.abs(e - 1) < 1e-9 ? S.sLo * Math.exp(g / S.k)
+      : Math.pow(Math.pow(S.sLo, 1 - e) + g * (1 - e) / S.k, 1 / (1 - e));
+  } else s1 = S.sHi + (Ft - _impactF(P, S, S.sHi)) / S.pHi;
+  const qty = Math.min(Math.max(0, s0 - s1), P.physical);
+  if (qty <= 0) return { qty: 0, cost: 0 };
+  return { qty, cost: F0 - _impactF(P, S, s0 - qty) };
+}
+// 매도: qty를 시장에 투하 — 수익 = F(s0+qty)−F(s0) < flat×qty. 반드시 재고 가산 '전'에 호출.
+function _impactSellV2(v, r, qty) {
+  if (!(qty > 0)) return 0;
+  const P = _priceParamsV2(v, r), S = _impactSegs(P);
+  return _impactF(P, S, P.sEff + qty) - _impactF(P, S, P.sEff);
 }
 
 // =============================================================================
@@ -3482,6 +3561,11 @@ function tickTradeV2(world, day) {
           const banditX0 = world.banditRouteRisk ? (world.banditRouteRisk(a.v, b.v) || 0) : 0;
           const raidProb = Math.min(RAID_MAX, RAID_BASE + banditX0 + (dist / 100) * (world.raidPer100 || RAID_PER_100));
           const expectedLossRatio = raidProb * 0.5;
+          // ★출발 EV는 의도적으로 flat×수량 유지(정산은 적분 — 1b 참조). 2026-07-12 정합 시도 A/B로 기각:
+          //   EV를 적분으로 정합하면 체계적 과소 발진(교역 s7 −37%·s101 −60%, s8 pop657→7 붕괴 실측).
+          //   원인 — EV는 출발 leg만 계산하고 귀환 leg 차익(도착지 저가 매입)은 미계상인데, flat의 낙관
+          //   편향이 그 미계상 가치의 대리물이었음. 편향만 제거하면 순이익 원정이 게이트에서 탈락.
+          //   진짜 정합은 '귀환 leg 기대가치 모델링'과 세트(후속 설계 후보) — 그 전까지 기대는 근사, 정산은 진실.
           const revenuePerUnit = pTo * (1 - TAU);
           const costPerUnit = pFrom * (1 + TAU) + transportCostPerUnit;
           const profitPerUnit = revenuePerUnit * (1 - expectedLossRatio) - costPerUnit;
@@ -3707,10 +3791,12 @@ function tickCaravansV2(world, day) {
       }
 
       // ====== 평소: 매도·매수·복귀 ======
+      // ★시장 충격 정산(2026-07-12): 매도 수익 = ∫p(s)ds(재고 증가 방향) — 대량 투하는 가격을 스스로
+      //   누름(종전 flat deliveredGive×pTo는 호가 불변 가정 → 소시장 덤핑 과대수익). 재고 가산 '전' 계산.
+      //   pTo는 결정·로그용 스냅샷으로 유지.
+      const grossCredit = _impactSellV2(c.to, c.giveRes, deliveredGive);
       // 도착 마을 chest에 들어옴 (거래 후)
       c.to.storage[c.giveRes] = (c.to.storage[c.giveRes] || 0) + deliveredGive;
-      // 매도 수익 (credit, 회계 단위) — 도착 마을 수수료 차감
-      const grossCredit = deliveredGive * pTo;
       const taxTo = grossCredit * TAU;
       const netCreditAfterArrival = grossCredit - taxTo;
       // 도착 마을 treasury (자원으로 누적 X — 회계가치만 합산해 numeric treasury)
@@ -3744,25 +3830,18 @@ function tickCaravansV2(world, day) {
       }
 
       if (returnRes) {
-        const pToReturn = pricesTo[returnRes] || 1;
-        // credit으로 살 수 있는 양 — 출발 마을 수수료도 미리 차감 (귀환시 부과되지만 caravan은 알고 사야)
-        // 단순화: 도착 마을 매수에는 도착 측 수수료 또 한 번 (= 매수도 그 길드 거래소 이용).
-        // 따라서 actual amount = netCreditAfterArrival / (pToReturn × (1+TAU))
-        const taxToOnBuy = (netCreditAfterArrival / (pToReturn * (1 + TAU))) * pToReturn * TAU;
-        const amountBought = netCreditAfterArrival / (pToReturn * (1 + TAU));
-        // ★식량 귀환매입 비례 캡(2026-07-12, _siege b 수사 5f55850 후속): 종전 min(구매력, 재고 전량)이라
-        //   글럿(저가) 마을에 캐러밴 1대가 곳간 전량 매입 → 1틱 0화(시드7 마을7 1862→0 인터셉터 실측).
-        //   절대 유보 플로어(keep 20/12일)는 A/B로 기각 — 전 마을이 플로어 미달인 초반에 식량 재분배가
-        //   전면 정지해 식량빈곤 맵 붕괴(시드19 pop789→3·시드8 pop390→9). → 재고의 50%/캐러밴 상한:
-        //   전량 소진 원천 불가(0.5^k>0, 잔고 줄수록 시세↑ 자연 브레이크) + 플로어 없어 초반·빈곤맵 재분배 생존.
-        //   식량류 한정(무기·금속·주석 캘리브 무접촉 — 불변식 #8·#16 보전).
-        const _isFoodRet = returnRes === 'food' || returnRes === 'fish' || returnRes === 'meat' || returnRes === 'cooked_food' || returnRes === 'vegetable';
-        const _retStock = c.to.storage[returnRes] || 0;
-        const amountAvailable = Math.min(amountBought, _isFoodRet ? _retStock * 0.5 : _retStock);
-        c.to.storage[returnRes] -= amountAvailable;
-        c.to.treasury._cash = (c.to.treasury._cash || 0) + taxToOnBuy;
+        // ★시장 충격 정산(2026-07-12, b00c9f4의 50% 하드캡을 창발 기제로 대체): 매수량 = 예산 역산(닫힌형)
+        //   — credit이 재고를 파고들수록 상승분을 지불. 글럿 잉여(바닥 클램프 구간)는 여전히 헐값에 흐르되
+        //   유보 스케일(target 근방 멱법칙 구간)부터 비용 급증(식량 e=1.2>1 → 재고 0 접근 시 발산, 천장
+        //   클램프 구간만 유한·1000×) — 전량 소진이 '경제적으로' 불가. 하드캡·플로어 없음(빈곤맵 재분배 생존).
+        //   매수세: 시장 실지불 C×(1+TAU)=netCredit → C=netCredit/(1+TAU), 세금=C×TAU
+        //   (종전 taxToOnBuy는 재고 부족으로 못 산 미체결분까지 과세하던 결함 — 함께 수리).
+        const _budget = netCreditAfterArrival / (1 + TAU);
+        const _buy = _impactBuyV2(c.to, returnRes, _budget);
+        c.to.storage[returnRes] = (c.to.storage[returnRes] || 0) - _buy.qty;
+        c.to.treasury._cash = (c.to.treasury._cash || 0) + _buy.cost * TAU;
         c._returningRes = returnRes;
-        c._returningAmt = amountAvailable;
+        c._returningAmt = _buy.qty;
       } else {
         c._returningRes = null;
         c._returningAmt = 0;
@@ -4171,6 +4250,8 @@ module.exports = {
   ELASTICITY,
   TAU,
   SUBSISTENCE_PER_NPC,
+  // 시장 충격 정산 헬퍼(1b) — 프로브·자가검증용 노출
+  _priceParamsV2, _impactSegs, _impactF, _impactBuyV2, _impactSellV2,
 };
 
 ;return module.exports;})();
