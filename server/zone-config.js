@@ -313,6 +313,20 @@ const WORLD = {
   worldEpoch: 0,
   zoneWidth: 100000, zoneHeight: 100000, // 옛 호환 (Phase 5-3에서 ×10)
 };
+// ═══════════ ★[§19 4파 — 절대 타임스탬프 시계 설계 예약(주석+상수만, 동작 무변경)] ═══════════
+// 캐논(설계_실축화_1셀1m.md §19): 게임시각 = (실UTC ms − REAL_EPOCH) × GAME_TIME_SCALE + GAME_EPOCH — 순수 함수.
+//   · 드리프트 0(서버 재시작·존 간 동기 공짜) · 클라 표시 위임 안전(조작=자기 화면만) · DST/윤초 금지(UTC epoch만).
+//   · ★필수 분리: '시각'(표시·일출몰·일과)은 공식이 소유, '세계 상태'(econ·자원)는 틱이 소유 — 서버 정지 중에도
+//     시계는 흐르므로 econ은 공식 날짜를 따라잡는 캐치업(일틱 ~ms/마을이라 실현 가능)이 별도 설계 세션 몫.
+//   · 채택 시 이행: worldPhase/isNight/gameDayOf가 아래 상수 기반 공식으로 대체되고 worldEpoch(상대 앵커)는 폐기.
+//     경도 오프셋(§19)은 +(x/W)×(하루의 4.5%) 게임초 — villages._lonOff와 동일 공식(이미 4파 배선).
+//   · 현행 유지 이유: 전 존·central 영향(캐치업·저장 마이그레이션) — 별도 웨이브(계획서 §3-4파 5항).
+const ABS_CLOCK_DESIGN = {
+  GAME_TIME_SCALE: 60,                      // 1실초 = 60게임초(캐논 §1 시간 60×)
+  REAL_EPOCH_UTC: Date.UTC(2026, 0, 1),     // 실세계 기준점(예시 — 채택 세션에서 확정·불변 계약)
+  GAME_EPOCH_DAYS: 0,                       // 게임력 기점(예: '기원전 150년' 달력 매핑은 표시 층 몫)
+  ADOPTED: false,                            // ★미채택 — 어떤 코드도 이 블록을 읽지 않는다(설계 예약 전용)
+};
 
 function worldPhase(nowMs = Date.now()) {
   const t = (nowMs - WORLD.worldEpoch) % WORLD.dayLengthMs;
@@ -403,6 +417,7 @@ function _findNeighborSide(zoneId, side) {
 }
 
 module.exports = {
+  ABS_CLOCK_DESIGN, // §19 절대 시계 설계 예약(미채택 — 관측·문서용)
   ZONES, WORLD, ZONE_ORDER, CENTRAL, WS_PROTO, HTTP_PROTO,
   publicZoneMap, worldPhase, isNight, darknessLevel,
   findZoneAt, worldDistance, worldDeltaX, WRAP_X,

@@ -11,6 +11,8 @@ const db = require('./zone-local-db'); // 로컬 zone DB — players 없음
 const SimVillages = require('./villages'); // §4-4 NPC 마을 시뮬 — top-level은 상수뿐(실작업은 아래 init 호출, ENABLE_VILLAGES=0이면 완전 no-op)
 const Wildlife = require('./wildlife'); // §4-4 동물 AI 블록(마을실험실 이식) — 야생 5종 생태. ENABLE_WILDLIFE=0 → 완전 no-op
 const Bandits = require('./bandits'); // §11 도적 캐논 1파(경제·수명주기 — 소굴·해체 전환·econ 약탈 훅). ENABLE_BANDITS=0 → 완전 no-op, ENABLE_VILLAGES=0이면 자동 휴면
+const Roads = require('./roads'); // §16 답압 길 4파(희소맵·게으른 감쇠·DB 영속·A* 할인). ENABLE_ROADS=0 → 완전 no-op
+const SIM_LON_ON = process.env.VILLAGE_LON !== '0'; // §19 경도 로컬 태양시(마을 NPC 야간 귀가) 게이트 — 기본 켜짐
 const central = require('./central-client'); // central HTTP 클라이언트
 const { Quadtree } = require('./quadtree'); // spatial index — O(N²) 검색 회피
 const { ChunkManager, CHUNK_SIZE, generateChunkResources, generateVillagesForZone, generateCoastlineWaterTiles } = require('./chunk'); // 청크 단위 entity 분류 + procedural + 해안선
@@ -1510,6 +1512,19 @@ function unstuckNpc(npc, now) {
 function npcStep(npc, dt, now) {
   decideNpcBehavior(npc, now);
 
+  // ★[§15 2파·비전투원 대피] 전투·긴급 소집 중 마을 주민(villages.js가 simEvacUntil 소프트 TTL 설정) —
+  //   행동 목표를 자택으로 고정(취침·출근 대신 '대피'). TTL 만료(전투 종결)면 자동 해제. fight(교전)는 예외.
+  if (npc.simEvacUntil && now < npc.simEvacUntil && npc.behavior !== 'fight' && npc.npcHomeX != null) {
+    npc.behavior = 'wander'; npc.targetX = npc.npcHomeX; npc.targetY = npc.npcHomeY; npc.gatherTarget = null;
+  }
+  // ★[§19 4파·경도 로컬 태양시] 마을 시뮬 NPC 야간 귀가(동쪽 마을이 먼저 자고 먼저 깬다 — 원통 세계 대비).
+  //   인간 일과만 로컬 fv=(전역 phase+마을 _lonOff)%1 — 야생·도적·econ 일 경계는 전역 유지(랩 5351 블록 계약).
+  //   VILLAGE_LON=0 게이트. 서버 NPC 일과 모델이 얕아(§2 매트릭스) 야간 자택 대기가 첫 스케줄 소비처(최소 실체).
+  else if (SIM_LON_ON && npc.simLonOff != null && npc.npcHomeX != null && npc.behavior !== 'fight') {
+    const fv = (worldPhase(now) + npc.simLonOff) % 1;
+    if (fv > WORLD.dayPhaseRatio) { npc.behavior = 'wander'; npc.targetX = npc.npcHomeX + (Math.random() - 0.5) * 40; npc.targetY = npc.npcHomeY + (Math.random() - 0.5) * 40; npc.gatherTarget = null; }
+  }
+
   // Phase 4d-14d: canadia caravan traveling — decideCanadiaBehavior가 직접 vx/vy(500 px/s) 설정.
   //   followNpcPath가 덮어쓰지 않도록 일찍 return. (A* path도 skip → 직선 이동, 마을 사이 진동 X)
   if (npc.canadiaTask === 'traveling') return;
@@ -1719,6 +1734,8 @@ setInterval(() => {
 SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, isWaterTileLocal, isPositionActive, isBlockedByWall, anyViewerNear });
 // §11 도적 1파 — SimVillages.init 직후(banditHost 준비 시점): 소굴 스캔/복원 + econ 훅(banditRouteRisk/onBanditLoot) 배선.
 Bandits.init();
+// §16 답압 길 4파 — 존 셀 치수·게임일 시계로 독립 부팅(villages와 무관 — 스탬프는 이동 루프 편승).
+Roads.init({ zoneId: ZONE_ID, cellsW: Math.ceil(ZONE.zoneWidth / 32), cellsH: Math.ceil(ZONE.zoneHeight / 32), epoch: WORLD.worldEpoch || 0, dayMs: parseInt(process.env.VILLAGE_DAY_MS || '', 10) || WORLD.dayLengthMs, broadcast });
 // §4-4 마지막 조각: 동물 AI 블록(마을실험실 야생 5종 🦌🐇🐗🐺🐯) — server/wildlife.js.
 //   뷰(LOD)=활성 청크 bbox, 스폰=서식 밴드(마을 완충 100~250m — SimVillages/레거시 마을 기준),
 //   agents=사람 플레이어+활성 NPC(지각·도주·맹수 위협 대상), 피해=damagePlayer 브리지.
@@ -2037,6 +2054,7 @@ wss.on('connection', async (ws, req) => {
       claims: Array.from(claims.values()),
       simVillages: SimVillages.clientVillages(), // §4-4 Stage 4A: 마을 영토(경계 셀)·이름·인구 — 1회
       banditCamps: Bandits.clientCamps(), // §11 도적: 소굴·야영 마커 1종 — 이후 bandit_camps가 변경분 방송
+      roads: Roads.clientRoads(), // §16 답압 길: 등급 셀 flat [cx,cy,lv,...] — 이후 road_cells가 변경분 방송
       buildings: activeChunkBuildings(),
       worldClock: {
         epoch: WORLD.worldEpoch,
@@ -2311,6 +2329,7 @@ wss.on('connection', async (ws, req) => {
     claims: Array.from(claims.values()),
     simVillages: SimVillages.clientVillages(), // §4-4 Stage 4A: 마을 영토(경계 셀)·이름·인구 — 1회
     banditCamps: Bandits.clientCamps(), // §11 도적: 소굴·야영 마커 1종 — 이후 bandit_camps가 변경분 방송
+    roads: Roads.clientRoads(), // §16 답압 길: 등급 셀 flat [cx,cy,lv,...] — 이후 road_cells가 변경분 방송
     buildings: activeChunkBuildings(),
     groundItems: Array.from(groundItems.values()), // Phase 14.23
     mobs: Array.from(mobs.values()).map(m => ({ mid: m.mid, type: m.type, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, tameOwner: m.tameOwner || null, tameOwnerName: m.tameOwnerName || null })),
@@ -4595,6 +4614,8 @@ setInterval(() => {
   SimVillages.onGameTick(now);
   // §11 도적 일일 훅 — villages 옆(econ 틱이 world.day를 민 직후 같은 경계에서 데일리 1회). 평시 O(1) 정수 비교.
   Bandits.onGameTick(now);
+  // §16 답압 길 — 게임일 경계 dirty 플러시·coarse 재구축·클라 변경분(평시 O(1) 비교)
+  Roads.onGameTick(now);
 
   // === 14.49-e3-perf5: idle zone skip ===
   // 사람 player(isNpc=false) + observer 모두 0명이면 tick 풀 처리 skip.
@@ -4675,6 +4696,9 @@ setInterval(() => {
     }
     // 14.53-j: 계단 위(onStairId 있음)면 dir 축으로만 이동 허용 — 옆으로 빠져나가는 버그 차단
     let stepVx = p.vx, stepVy = p.vy;
+    // §16 답압 길: NPC 보행 배속 ×1.10/1.15(셀 변경 시 캐시 p._rdMul — 스탬프가 갱신). ★플레이어 제외(의도적 차이):
+    //   클라 이동 예측이 길 배속을 모름 → 서버만 빨리 가면 리컨실리에이션 러버밴딩. 랩은 전 개체 — 본체 클라 예측 제약.
+    if (p.isNpc && p._rdMul && p._rdMul !== 1) { stepVx *= p._rdMul; stepVy *= p._rdMul; }
     if (p.onStairId) {
       const stair = buildings.get(p.onStairId);
       if (stair) {
@@ -4734,6 +4758,7 @@ setInterval(() => {
     // 이래야 경계에서 왔다갔다 해도 양쪽 COMMIT px 띠 안에선 핸드오프가 안 일어나 핑퐁/렉이 없다.
     if (maxOut <= 0) {
       p.x = nx; p.y = ny;
+      Roads.stampEntityPx(p, p.x, p.y);   // §16 답압(전 개체 — NPC·플레이어. 셀 변경 시만·비활성=no-op)
     } else if (p.isNpc) {
       // NPC는 zone 핸드오프 안 함 — 항상 클램프
       p.x = clamp(nx, 0, ZONE.zoneWidth);
@@ -5250,6 +5275,8 @@ setInterval(() => {
       // §4-4 P3: 실체 전쟁 병사 전투 메타 — 매틱 br(궤주 비트, 위치·hp는 위에 이미 포함), 최초가시분만 bt(병종 int)·bs(진영 0/1)·bc(지휘관 비트).
       //   villages.js 실체 전쟁(행군 대형·전투유닛 미러)이 o._muster/_bt/_bside/_bcmd/_brout 세팅. 기존 메타 패턴(최초=정적·매틱=동적) 준수.
       if (o._muster) { e.br = o._brout ? 1 : 0; if (isNew) { e.bt = o._bt | 0; e.bs = o._bside | 0; e.bc = o._bcmd ? 1 : 0; } }
+      // §18 3파: 포로 표식(회색 테두리·밧줄) — 동적 1비트(호송 전환·해제가 일중 일어남: br 패턴)
+      if (o.simCaptive) e.cap = 1;
       // §4-4 Stage 4A: simJob(마을 시뮬 NPC 직업 — npcJob과 별개)도 메타로 1회. 일중 변경분은 sim_village_day 브로드캐스트가 갱신.
       if (isNew) { e.name = o.name; e.color = o.color; e.maxHp = o.maxHp; e.tribeName = o.tribeName || null; if (o.simJob) e.simJob = o.simJob; }
       return e;

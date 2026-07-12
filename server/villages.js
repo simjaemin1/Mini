@@ -351,6 +351,7 @@ function spawnOneNpc(vil) {
     skipHouse: true, // 집은 village_buildings(레이아웃)가 진실 — NPC별 5×5 자동집 금지
   });
   p.simVillageId = vil.dbId; // NPC↔마을 연결(메모리 — players 컬럼 추가보다 저침습)
+  p.simLonOff = vil._lonOff || 0; // §19 경도: 이 마을 로컬 태양시(zone.js npcStep 야간 귀가 게이트가 소비)
   vil.npcPids.push(p.pid);
   return p;
 }
@@ -715,13 +716,14 @@ function computeRoutePts(x0, y0, x1, y1) {
   const tx = ti % gw, ty = (ti / gw) | 0;
   R.gen++;
   const { g, came, stamp } = R, gen = R.gen;
-  const H = (x, y) => { const dx = Math.abs(x - tx), dy = Math.abs(y - ty); return dx > dy ? 10 * (dx - dy) + 14 * dy : 10 * (dy - dx) + 14 * dx; }; // octile(10/14 정합·admissible)
+  const H = (x, y) => { const dx = Math.abs(x - tx), dy = Math.abs(y - ty); return (dx > dy ? 10 * (dx - dy) + 14 * dy : 10 * (dy - dx) + 14 * dx) * 10; }; // octile ×10(할인 정수화 스케일. ★§16 할인<1로 h 소폭 비허용 — 랩 5007 '교역로는 근사로 충분' 계약 승계)
   const heap = []; // {f,g,i} 이진 힙 — 탐색은 회랑 규모(휴리스틱)
   const hpush = (n) => { heap.push(n); let c = heap.length - 1; while (c > 0) { const p = (c - 1) >> 1; if (heap[p].f <= heap[c].f) break; const t = heap[p]; heap[p] = heap[c]; heap[c] = t; c = p; } };
   const hpop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let c = 0; for (;;) { const l = 2 * c + 1, r = 2 * c + 2; let m = c; if (l < heap.length && heap[l].f < heap[m].f) m = l; if (r < heap.length && heap[r].f < heap[m].f) m = r; if (m === c) break; const t = heap[m]; heap[m] = heap[c]; heap[c] = t; c = m; } } return top; };
   g[si] = 0; stamp[si] = gen; came[si] = -1;
   hpush({ f: H(si % gw, (si / gw) | 0), g: 0, i: si });
-  const DIRS = [[1, 0, 10], [-1, 0, 10], [0, 1, 10], [0, -1, 10], [1, 1, 14], [1, -1, 14], [-1, 1, 14], [-1, -1, 14]];
+  const DIRS = [[1, 0, 100], [-1, 0, 100], [0, 1, 100], [0, -1, 100], [1, 1, 140], [1, -1, 140], [-1, 1, 140], [-1, -1, 140]];   // ×10 스케일(§16 할인 정수화 — 93/87·130/122)
+  const RD = state.roads;   // §16 답압 길 A* 스텝 할인(코스 그리드 coarse 등급 — 길 없으면 전부 ×1 = 기존 경로 그대로)
   let pops = 0, found = false;
   while (heap.length) {
     const cur = hpop();
@@ -733,7 +735,7 @@ function computeRoutePts(x0, y0, x1, y1) {
       const nx = x + dx, ny = y + dy;
       if (isBlk(nx, ny)) continue;
       if (dx && dy && (isBlk(x + dx, y) || isBlk(x, y + dy))) continue; // 대각 코너 절단 금지(행렬·랩과 동일)
-      const ni = ny * gw + nx, ng = cur.g + w;
+      const ni = ny * gw + nx, ng = cur.g + (RD ? Math.round(w * RD.courseCostMul(nx, ny)) : w);
       if (stamp[ni] !== gen || ng < g[ni]) { stamp[ni] = gen; g[ni] = ng; came[ni] = cur.i; hpush({ f: ng + H(nx, ny), g: ng, i: ni }); }
     }
   }
@@ -979,6 +981,7 @@ function tickCaravanBodies(now) {
     body.prog += step;
     p.vx = (next.x - p.x) / dtMs * 1000; p.vy = (next.y - p.y) / dtMs * 1000; // 걷기 모션용(클라 facing)
     p.x = next.x; p.y = next.y; // 경로가 위치의 진실 — 외부 이탈(부활 등)도 다음 틱에 스냅 복귀
+    if (state.roads) state.roads.stampEntityPx(p, p.x, p.y);   // §16 답압(캐러밴 — 셀 변경 시만. 교역로가 길이 된다)
   }
 }
 // 게임일 경계(econ 틱 직후) — econ 캐러밴 집합과 실체 대조: 스폰/상태 전이/회수.
@@ -1150,6 +1153,11 @@ function init(deps) {
     state.caravanBodies = new Map();
     state.routeCache = new Map();
     state.pathfind = require('./pathfind'); // 로컬 재경로(벽 인지) — lazy(플래그 off면 이 줄까지 안 옴)
+    state.roads = require('./roads');        // §16 답압 길(4파) — 캐러밴·행군 스탬프 + 교역 A* 할인(ENABLE_ROADS=0이면 내부 no-op)
+    // §19 경도 로컬 시각(4파): 마을별 _lonOff = (ccx/셀폭)×0.045 — 인간 일과(마을 NPC 취침)만 로컬 태양시.
+    //   econ 일 경계·야생·도적은 전역 유지(블록 계약 — 랩 L_LON_SPREAD 5351행 verbatim).
+    { const _cw = Math.ceil(ZONE.zoneWidth / SZ); for (const vil of state.villages) vil._lonOff = +((vil.ccx / _cw) * 0.045).toFixed(4);
+      const _lo = state.villages.map(v => v._lonOff); if (_lo.length) console.log(`[${state.zoneId}] 🕐 경도 시차(§19): 마을 ${_lo.length}곳 스프레드 ${(Math.min(..._lo) * 1440).toFixed(0)}~${(Math.max(..._lo) * 1440).toFixed(0)}분/일(0.045 상수 — 동쪽이 먼저 잔다)`); }
 
     // --- P1: NPC 마을 전쟁 econ 층 배선 (tickWorldV2 후 daily 구동) ---
     //   전쟁 상태는 전부 vil.econ(plain object)에 저장 → serializeEcon 이 자동 영속(_grudge/_warTrauma/
@@ -1165,6 +1173,24 @@ function init(deps) {
       centerOf: v => ({ cx: v.ccx, cy: v.ccy }),
       territoryOf: v => (v.econ.land && v.econ.land.size ? v.econ.land.size * 25 : 2800),
       log: null,   // 조용(warStats().log 에 500줄 순환 버퍼로 적재 — 요약만 일 1회)
+      // ★[2파 작전층] 실체 개전 훅 — assault/sortie '결단' 시점에만 호출(자동 개전 폐지). 관측자 근접이면
+      //   몸·징발·포진·강제 교전으로 LiveBattle 승격(true → w.phase='battle', 되먹임은 war-live onResolved).
+      //   구 warLodResolveSweep(eta 도달 즉시 승격)를 대체 — 한 전쟁=정확히 1경로 계약은 그대로.
+      onEngage: (w, day, why) => {
+        try {
+          if (!state.warLive) return false;
+          const anyViewerNear = state.deps && state.deps.anyViewerNear;
+          if (typeof anyViewerNear !== 'function') return false;
+          if (!anyViewerNear(warDefCenterPx(w), WAR_LOD_VIEW_PX)) return false;   // 무관측자 → headless(호출측)
+          const now = state._warTickAt || Date.now();
+          let body = state.warBodies.get(w.id);
+          if (!body) { if (state.warBodies.size >= WAR_BODY_MAX) return false; body = _warEnsureBody(w, now); if (!body) return false; }
+          _warPaceCommander(body, now, 1); _warInstantiateAttackers(body); _warEnsureDefense(body);
+          const ok = _warTryEngage(body, true);   // 성공 → phase='battle'(daily headless 선점)
+          if (ok) state._warPhysToday = (state._warPhysToday || 0) + 1;
+          return ok;
+        } catch (_) { return false; }
+      },
     });
     state.war.rebuildFromEcon();   // 재부팅 복원: econ._warTribOut → world TRIBUTES 재구성
 
@@ -1207,6 +1233,8 @@ function init(deps) {
     state.clientPayload = state.villages.map(v => {
       const e = { id: v.dbId, name: v.name, cx: v.ccx, cy: v.ccy, pop: v.econ.npcs.length, r: v._maxRPx };
       if (v._bnd) e.b = v._bnd; else e.approx = 1;
+      e.lon = v._lonOff;   // §19 경도(클라 로컬 태양시 표시 공식용)
+      e.tr = Math.round(Math.sqrt(((v.econ.land && v.econ.land.size ? v.econ.land.size * 25 : 2800)) / Math.PI) * SZ);   // §19/§2 영토 크립: econ 영토 등가 반경(px) — 매일 갱신(bnd는 시딩 스냅샷·시각 부채)
       return e;
     });
     {
@@ -1344,6 +1372,7 @@ function _warPaceCommander(body, now, dtMs) {
   if (remainPx > 0.5) { const speed = Math.min(remainPx / Math.max(1, body.arriveAt - now), body.nomPxMs * 4); body.prog += Math.min(remainPx, speed * dtMs); }
   const c = caravanPointAt(body, body.prog); body.cmd = { cx: c.x / SZ, cy: c.y / SZ };
   body.heading = Math.atan2(body.w.def.ccy - body.cmd.cy, body.w.def.ccx - body.cmd.cx);
+  if (state.roads) state.roads.stampEntityPx(body, c.x, c.y);   // §16 답압(행군 — 지휘관 선. 대형 전체 통행의 근사·병사 개별 스탬프는 movePlayerStep 비경유라 생략 기록)
 }
 // 공격군 인스턴스화 — 표본 comp 징발 → 대형 빌드 → 슬롯 스냅. instantiated 게이트(1회).
 function _warInstantiateAttackers(body) {
@@ -1357,25 +1386,43 @@ function _warInstantiateAttackers(body) {
   body.atkGroup = g; body.pids = d.pids; _warSnapToSlots(g); _warSyncSoldiers(body, g, 0, false);
 }
 // 방어 사전 포진(WAR_ALERT_R) — 공격 지휘관이 방어 마을권 진입 시 conscript(defense) 표본 징발 → 마을 앞 standoff 포진.
+//   ★[2파 작전층·유령 박멸] 방어 3택 게이팅: 태세 hold(버티기)=사전 소집 억제 — assault 결단 적군이 마을권
+//   (max(영토반경+40, 경보×0.5)) 진입 시에만 긴급 소집(scramble — 집결지=회관 앞 12셀, 랩 WAR_SCRAM_STANDOFF).
+//   respond(응전)=기존 경보 반경 사전 포진 그대로. WAR_OPS=0(P1 폴백)이면 태세 없음 → 구 무조건 포진.
+const WAR_SCRAM_STANDOFF = 12;   // 긴급 소집 집결지 = 회관 앞(공격 방향 12셀) — 랩 7919 verbatim
 function _warEnsureDefense(body) {
   if (body.defBuilt) return;
   const w = body.w, WL = state.warLive, dc = { cx: w.def.ccx, cy: w.def.ccy };
-  if (Math.hypot(body.cmd.cx - dc.cx, body.cmd.cy - dc.cy) > WL.WAR_ALERT_R) return;   // 아직 경보 밖
+  const dCmd = Math.hypot(body.cmd.cx - dc.cx, body.cmd.cy - dc.cy);
+  let scram = false;
+  if (state.war && state.war.OPS_ON && w._defMode === 'hold') {
+    if (w.op !== 'assault') return;   // 버티기: 결단 전엔 소집 안 함(농성 — 경제 지속)
+    const terrCells = (w.def.econ && w.def.econ.land && w.def.econ.land.size) ? w.def.econ.land.size * 25 : 2800;
+    const R = Math.max(Math.sqrt(terrCells / Math.PI) + 40, WL.WAR_ALERT_R * 0.5);
+    if (dCmd > R) return;             // 아직 마을권 밖 — 돌격이 임박해야 기상·집결
+    scram = true;
+  } else if (dCmd > WL.WAR_ALERT_R) return;   // (respond·폴백) 아직 경보 밖
   body.defBuilt = true;
   let dcomp = null; try { const r = state.war.conscript(w.def, 'full', { defense: true }) || state.war.conscript(w.def, 'raid', { defense: true }); dcomp = r && r.composition; } catch (_) { }
   if (!dcomp) return;
   const comp = _warSampleComp(dcomp, WL.MU.NPC_SAMPLE); comp.form = comp.form || WL.MU.DEF_FORM;
   const seed = (((w.id || 1) * 911 + ((w.born || 0) | 0) * 17 + 29) >>> 0);
-  const d = _warDraftPids(w.def, comp, seed); if (!d) return;   // 주민 0 → 무저항(startLiveBattle 표준배치 폴백)
-  const th = Math.atan2(body.cmd.cy - dc.cy, body.cmd.cx - dc.cx), so = WL.WAR_DEF_STANDOFF;
+  const d = _warDraftPids(w.def, comp, seed); if (!d) return;   // 주민 0 → 무저항(war-core walkover가 경제 처리 — 표준배치 유령 없음)
+  const th = Math.atan2(body.cmd.cy - dc.cy, body.cmd.cx - dc.cx), so = scram ? WAR_SCRAM_STANDOFF : WL.WAR_DEF_STANDOFF;
   const rally = { cx: dc.cx + Math.cos(th) * so, cy: dc.cy + Math.sin(th) * so };
   const g = WL.buildGroup(d.units, comp.form, rally, th, seed); if (!g) return;
   g.holdPt = { cx: rally.cx, cy: rally.cy };
-  body.defGroup = g; body.defPids = d.pids; _warSnapToSlots(g); _warSyncSoldiers(body, g, 1, false);
+  g._scram = scram;   // ★긴급 소집 표식(대열 미완 개전 = 위치 산개에서 창발 — 특례 코드 없음)
+  if (scram) console.log(`[${state.zoneId}] ⚔️ ${w.def.name} ★긴급 소집(scramble) — 적 돌격 임박(거리 ${dCmd.toFixed(0)}셀): 주민 ${d.pids.length}명 회관 앞 집결(정렬 미완이면 그 자리 그대로 개전)`);
+  body.defGroup = g; body.defPids = d.pids;
+  if (!scram) _warSnapToSlots(g);   // ★scramble은 스냅 금지 — 자택·작업지에서 집결지로 실이동(_muStepFollow), 공격이 빠르면 산개 개전
+  _warSyncSoldiers(body, g, 1, false);
 }
-// 교전 판정(두 대형 지휘관 WAR_ENGAGE_R) → startLiveBattle(위치승계·origin=중간). force=eta 강제.
+// 교전 판정(두 대형 지휘관 WAR_ENGAGE_R) → startLiveBattle(위치승계·origin=중간). force=결단 강제.
+//   ★[2파 작전층·자동 개전 폐지] ops 모드에선 assault 결단 없이는 접근만으로 개전하지 않음(랩 8278 교전 게이트).
 function _warTryEngage(body, force) {
   const w = body.w, WL = state.warLive;
+  if (!force && state.war && state.war.OPS_ON && w.op !== 'assault') return false;   // 결단 전 = 대치만
   if (!body.instantiated || !body.atkGroup) return false;
   const engaged = body.defGroup ? (WL._muCmdDist(body.atkGroup, body.defGroup) <= WL.WAR_ENGAGE_R)
     : (Math.hypot(body.cmd.cx - w.def.ccx, body.cmd.cy - w.def.ccy) <= WL.WAR_ENGAGE_R);
@@ -1415,17 +1462,41 @@ function _warOnResolved(lb) {
   const w = lb.war, body = state.warBodies.get(w.id);
   const mirror = state.warLive.syncMirror(lb) || [];
   const players = state.deps.players;
-  const atkSurv = [], defSurv = [];
+  const atkSurv = [], defSurv = [], deadA = [], deadB = [];
   for (const mm of mirror) { if (!players.has(mm.pid)) continue;
-    if (mm.dead) _warDespawnPid(mm.pid);                          // ★사상=샘플 pid despawn(econ 전량은 war-core warKill 소유 — 종전 후 syncVillagePop 재수렴)
+    if (mm.dead) (mm.side === 'A' ? deadA : deadB).push(mm.pid);   // despawn은 포로 전환 뒤(아래) — econ 전량은 war-core warKill 소유
     else (mm.side === 'A' ? atkSurv : defSurv).push(mm.pid);
   }
+  // ★[3파 포로 §18 — 호송 표본] warResolveBattle이 남긴 _capResolve(포로 econ 이전 완료분)를 화면 층으로:
+  //   패자측 '사상 미러' pid 중 포로 수만큼 despawn 대신 승자 마을로 이관(npcPids·simVillageId — econ 이전과 방향 일치)
+  //   + simCaptive(회색 링). 승자=공격이면 귀환 그룹에 동반 도보. ※표본 근사(정직): pid는 econ npc와 1:1이 아니라
+  //   '수'만 일치시킴 — 이후 탈출·동화·몸값의 화면 반영은 syncVillagePop 재수렴이 흡수(고아 없음).
+  const escort = [];
+  if (w._capResolve && w._capResolve.npcs && w._capResolve.npcs.length) {
+    const loserDead = (w._capResolve.side === 'A') ? deadA : deadB;
+    const winnerVil = (w._capResolve.side === 'A') ? w.def : w.atk;
+    const n = Math.min(w._capResolve.npcs.length, loserDead.length);
+    for (let k = 0; k < n; k++) {
+      const pid = loserDead.pop(); const p = players.get(pid); if (!p) continue;
+      p.simCaptive = 1; p._brout = false; p.hp = Math.max(1, Math.round((p.maxHp || 100) * 0.4));   // 기절→끌려감(빈사 회복)
+      const oldVil = (p.simVillageId != null) ? state.byDbId.get(p.simVillageId) : null;
+      if (oldVil) { const kk = oldVil.npcPids.indexOf(pid); if (kk >= 0) oldVil.npcPids.splice(kk, 1); }
+      p.simVillageId = winnerVil.dbId; winnerVil.npcPids.push(pid);
+      escort.push(pid);
+    }
+    w._capResolve = null;   // 소비(1회)
+  }
+  for (const pid of deadA) _warDespawnPid(pid);   // ★사상=샘플 pid despawn(종전 후 syncVillagePop 재수렴)
+  for (const pid of deadB) _warDespawnPid(pid);
   try { const ac = state.warLive.aliveCounts(lb), o = lb.mapOrigin || { cx: w.def.ccx, cy: w.def.ccy };
     state.deps.broadcast({ type: 'war_battle', id: lb.id, origin: { x: o.cx * SZ, y: o.cy * SZ }, atk: w.atk.name, def: w.def.name, casus: w.casus, aliveA: ac.aliveA, aliveB: ac.aliveB, phase: 'resolved' }); } catch (_) { }
-  if (!body) { for (const pid of atkSurv) _warReleasePid(pid); for (const pid of defSurv) _warReleasePid(pid); return; }
+  const atkWon = !(lb._resWinner && lb._resWinner !== 'A');
+  const atkParty = atkWon ? atkSurv.concat(escort) : atkSurv;    // 공격승=포로가 공격 귀환에 동반(호송)
+  if (!body) { for (const pid of atkParty) _warReleasePid(pid); for (const pid of defSurv) _warReleasePid(pid); if (!atkWon) for (const pid of escort) _warReleasePid(pid); return; }
   for (const pid of defSurv) _warReleasePid(pid);   // 방어 생존 = 마을 앞 → 즉시 해제(일상 복귀)
+  if (!atkWon) for (const pid of escort) _warReleasePid(pid);    // 방어승=포로(공격병 출신)는 방어 마을에서 그 자리 해제(억류 — cap 링 유지)
   body.defGroup = null; body.defPids = [];
-  if (atkSurv.length) _warSetupReturn(body, atkSurv, lb, (lb._resWinner && lb._resWinner !== 'A'));   // 공격 생존 = 도보 귀환(패=궤주)
+  if (atkParty.length) _warSetupReturn(body, atkParty, lb, !atkWon);   // 공격 생존(+호송 포로) = 도보 귀환(패=궤주)
   else _warCleanupBody(body, false);
 }
 // 공격 생존자 귀환(도보) 설정 — 반환 route(def→atk)·marchDays 페이싱·산개(open) 그룹.
@@ -1451,6 +1522,7 @@ function _warPaceReturn(body, now, dtMs) {
   body.prog += Math.min(remainPx, speed * dtMs);
   const c = caravanPointAt(body, body.prog); body.cmd = { cx: c.x / SZ, cy: c.y / SZ };
   body.heading = Math.atan2(body.w.atk.ccy - body.cmd.cy, body.w.atk.ccx - body.cmd.cx);
+  if (state.roads) state.roads.stampEntityPx(body, c.x, c.y);   // §16 답압(귀환 행군)
   body.retGroup.cmd = { cx: body.cmd.cx, cy: body.cmd.cy }; body.retGroup.heading = body.heading;
   state.warLive._muStepFollow(body.retGroup, state.warLive.MU.FOLLOW_CAP);
   _warSyncSoldiers(body, body.retGroup, 0, body._retRout);
@@ -1514,20 +1586,31 @@ function tickWarBodies(now) {
     if (body.instantiated && body.atkGroup) {
       body.atkGroup.cmd = { cx: body.cmd.cx, cy: body.cmd.cy }; body.atkGroup.heading = body.heading;
       WL._muStepFollow(body.atkGroup, WL.MU.FOLLOW_CAP); _warSyncSoldiers(body, body.atkGroup, 0, false);
-      if (body.defGroup) { WL._muDefHold(body.defGroup, body.atkGroup.cmd); _warSyncSoldiers(body, body.defGroup, 1, false); }
+      if (body.defGroup) { WL._muDefHold(body.defGroup, body.atkGroup.cmd); _warSyncSoldiers(body, body.defGroup, 1, false); if (body.defGroup._scram) _warEvacVillage(w.def, now); }   // ★긴급 소집 중 비전투원 대피
       _warTryEngage(body, false);
     }
   }
   // 2) 진행 전투 스텝(실dt) → 결판(onResolved 훅) · 미러 + broadcast(전이·throttle)
   if (WL.count) {
     WL.stepLiveBattles(dtMs / 1000);
-    for (const body of state.warBodies.values()) { if (body.phase === 'battle' && body.live && WL.hasLive(body.w)) _warSyncBattleMirror(body, now); }
+    for (const body of state.warBodies.values()) { if (body.phase === 'battle' && body.live && WL.hasLive(body.w)) { _warSyncBattleMirror(body, now); _warEvacVillage(body.w.def, now); } }
   }
   // 3) 귀환 페이싱 + 고아(WARS 이탈 비귀환) 정리
   for (const body of [...state.warBodies.values()]) {
     if (body.phase === 'return') { _warPaceReturn(body, now, dtMs); continue; }
+    // ★[2파 작전층] 전투 없이 종결(철수·무혈 항복·무저항 함락 — war.phase='return')된 몸: 병사 그 자리 해제 →
+    //   일상 AI 도보 귀가(npcHome 경로 — 서버판 '전투 없는 도보 귀환'. 랩 _retFromMarchGroup 대형 행군은 실체 부채로 기록).
+    if (body.phase !== 'battle' && body.w.phase === 'return') { _warCleanupBody(body, true); continue; }
     if (body.w.id != null && !liveWid.has(body.w.id) && body.phase !== 'battle') _warCleanupBody(body, true);   // war 종결·이탈 — 잔존 해제
   }
+}
+// ★[2파·비전투원 대피 _evac 최소판] 전투·긴급 소집 중 방어 마을의 비징발 주민 = 귀가·자택 대기.
+//   소프트 TTL(5초) 집합 대사 — 매 프레임 재설정이라 누수 0, 종결 시 자동 해제(랩 _warEvacTick 계약).
+//   실행 지점은 zone.js npcStep(simEvacUntil 게이트 1줄 — 목표를 자택으로 고정). econ 무접촉(화면 게이트 전용).
+function _warEvacVillage(vil, now) {
+  if (!vil || !vil.npcPids) return;
+  const players = state.deps.players;
+  for (const pid of vil.npcPids) { const p = players.get(pid); if (!p || p._muster) continue; p.simEvacUntil = now + 5000; }
 }
 // warLodResolveSweep — econ 경계에서 eta 도달 march 전쟁을 physical XOR headless 로 분기. ★반드시 daily() 앞.
 //   관측자 근접이면 여기서 실체 개전(몸·징발·포진·교전 강제) → w.phase='battle'로 daily headless 선점. 아니면 phase='march' 유지 → daily headless(war-core 불변).
@@ -1573,18 +1656,35 @@ function onGameTick(now) {
   state.lastGameDay = day;
   try {
     const t0 = Date.now();
+    // ★[2파 테스트 훅] WAR_FIXTURE — 운영 무설정. WAR_FIXTURE_DAY(기본 1)≥ 첫 경계에 1회(침묵 창 밖 — 로그 가시·당일 daily가 소비).
+    if (process.env.WAR_FIXTURE && !state._warFixtured && state.war && state.world.day >= (parseInt(process.env.WAR_FIXTURE_DAY || '', 10) || 1)) {
+      state._warFixtured = true;
+      try { _applyWarFixture(process.env.WAR_FIXTURE); } catch (e) { console.error(`[${state.zoneId}] ⚔️ [FIXTURE] 실패:`, e.message); }
+    }
     // econ 1일 틱 — tickWorldV2 내부 로그(캐러밴·회복 등)는 침묵시키고 아래 요약 1줄만.
     //   (헤드리스 하네스 regression-check 126행과 같은 검증된 패턴)
     const _log = console.log;
     console.log = () => {};
     try {
       state.econV2.tickWorldV2(state.world);
-      // P2 LOD: eta 도달 march 전쟁 결판 분기 — 반드시 war.daily 앞. 관측자 근접이면 실체 전투로 승격(headless 선점),
-      //   아니면 phase='march' 유지 → daily 가 headless 즉시. 한 전쟁=정확히 1경로(physical XOR headless).
-      if (state.warLive) { const lr = warLodResolveSweep(); if (lr.physical) state._warPhysToday = (state._warPhysToday || 0) + lr.physical; }
+      // P2 LOD: ★[2파 작전층] ops 모드에선 eta 스윕 폐지(자동 개전 폐지) — 실체 승격은 daily 안의 onEngage 훅이
+      //   assault/sortie '결단' 시점에만 수행. WAR_OPS=0 폴백일 때만 구 스윕(eta 도달 즉시 승격) 유지.
+      if (state.warLive && !(state.war && state.war.OPS_ON)) { const lr = warLodResolveSweep(); if (lr.physical) state._warPhysToday = (state._warPhysToday || 0) + lr.physical; }
       // P1: 전쟁 econ 층 — tickWorldV2 직후 구동(오늘 세운 동원정지/봉쇄/원한제재가 내일 틱에 반영). phase='battle'는 skip(실체 진행 중).
       if (state.war) state.war.daily(state.world.day);
     } finally { console.log = _log; }
+    // ★[2파] 전쟁 링 버퍼 드레인(테스트 훅 — VILLAGE_WAR_LOG=1): 침묵 창(tickWorldV2 스왑) 안에서 적재된
+    //   작전층 이벤트(도착·결단·포위·항복·함락)를 게임일 1회 방출. 운영 기본 무설정=기존 요약 1줄 그대로.
+    if (process.env.VILLAGE_WAR_LOG === '1' && state.war) {
+      const wl = state.war.stats().log; const from = state._warLogN || 0;
+      for (let li = from; li < wl.length; li++) console.log(`[${state.zoneId}] ⚔️ ${wl[li]}`);
+      state._warLogN = wl.length;
+      if (state._warFixtureDef) { // 봉쇄 econ 효과 관측(픽스처 방어 마을 곳간·훅 상태 — 테스트 전용)
+        const D = state._warFixtureDef.econ, S2 = D.storage || {};
+        const fd = ((S2.food || 0) + (S2.fish || 0) + (S2.meat || 0) + (S2.cooked_food || 0) + (S2.vegetable || 0)) / Math.max(1, D.npcs.length);
+        console.log(`[${state.zoneId}] ⚔️ [관측] D${state.world.day} ${state._warFixtureDef.name}: 곳간 ${fd.toFixed(1)}일치 · 봉쇄=${D._siegeBlock ? 'ON' : 'off'} · 야외×${D._siegeOutMul != null ? D._siegeOutMul : 1} · 인구 ${D.npcs.length}`);
+      }
+    }
     let econPop = 0, npcCount = 0;
     const jobChanges = {}; // Stage 4A: 이번 게임일 직업 재동기 변경분(pid→job)
     const pops = {};       // Stage 4A: 마을 econ 인구(영토 라벨 갱신용)
@@ -1597,8 +1697,10 @@ function onGameTick(now) {
     }
     // Stage 4A: 일 1회 브로드캐스트 — 직업 변경분 + 마을 인구(클라 영토 라벨·이름 옆 이모지 갱신).
     //   clientPayload의 pop도 갱신(새 welcome 수신자 최신화). 접속자 0이어도 broadcast는 no-op 수준.
-    for (const cv of (state.clientPayload || [])) if (pops[cv.id] != null) cv.pop = pops[cv.id];
-    state.deps.broadcast({ type: 'sim_village_day', day: state.world.day, jobs: jobChanges, pops });
+    const terr = {};   // §19/§2 영토 크립(4파): econ land.size는 매일 자람(1셀 단위 구매) — 등가 반경(px)을 클라에 동기.
+    for (const vil of state.villages) terr[vil.dbId] = Math.round(Math.sqrt(((vil.econ.land && vil.econ.land.size ? vil.econ.land.size * 25 : 2800)) / Math.PI) * SZ);
+    for (const cv of (state.clientPayload || [])) { if (pops[cv.id] != null) cv.pop = pops[cv.id]; if (terr[cv.id] != null) cv.tr = terr[cv.id]; }
+    state.deps.broadcast({ type: 'sim_village_day', day: state.world.day, jobs: jobChanges, pops, terr });
     // Stage 4B: econ 캐러밴 집합 ↔ 실체 동기(스폰·도착 전이·회수) — econ 틱 직후라 상태가 최신
     const carSync = syncCaravanBodies(now);
     state.saveQueue = state.villages.slice(); // 저장은 다음 틱부터 1마을/틱 — 19마을이면 0.63초에 걸쳐 완료(게임일 600s 대비 무시)
@@ -1612,6 +1714,35 @@ function onGameTick(now) {
   } catch (e) {
     console.error(`[${state.zoneId}] 🏘️ 마을 econ 틱 실패 (다음 경계에 재시도):`, e.message);
   }
+}
+
+// =============================================================================
+// ★[2파 테스트 훅 — 운영 무설정] WAR_FIXTURE=siege|assault|auto: 첫 여건(day≥2)에 최대 마을→최근접 이웃
+//   선전포고를 강제(공격측 전사·군량·무기 보정 + 방어측 시나리오 세팅) — 작전층 상태기계 실발화 스모크 전용(/tmp DB).
+//   실경로 그대로(warMobilize→march→camp 결단→siege/assault→항복/전투/철수) — 우회 주입 없음.
+// =============================================================================
+function _applyWarFixture(kind) {
+  const vils = state.villages.filter(v => v.econ && v.econ.npcs.length >= 6);
+  if (vils.length < 2) { console.log(`[${state.zoneId}] ⚔️ [FIXTURE] 마을 부족(6명+ ${vils.length}곳) — 스킵`); return; }
+  // 사거리(520셀) 내 최근접 쌍 — 공격=쌍 중 다수 인구 쪽(도달 가능 전쟁 보장)
+  let V = null, U = null, bd = 1e18;
+  for (let i = 0; i < vils.length; i++) for (let j = i + 1; j < vils.length; j++) {
+    const d = Math.hypot(vils[i].ccx - vils[j].ccx, vils[i].ccy - vils[j].ccy);
+    if (d < bd) { bd = d; V = vils[i]; U = vils[j]; }
+  }
+  if (!V || bd > 520) { console.log(`[${state.zoneId}] ⚔️ [FIXTURE] 사거리(520셀) 내 쌍 없음(최근접 ${bd | 0}셀) — 스킵`); return; }
+  if (U.econ.npcs.length > V.econ.npcs.length) { const t = V; V = U; U = t; }
+  const e = V.econ;
+  const mkWar = (ee, n) => { let mk = 0; for (const npc of ee.npcs) { if (mk >= n) break; if (npc.currentJob !== 'warrior') { if (ee.counts) { ee.counts[npc.currentJob] = Math.max(0, (ee.counts[npc.currentJob] || 0) - 1); ee.counts.warrior = (ee.counts.warrior || 0) + 1; } npc.currentJob = 'warrior'; } mk++; } };
+  mkWar(e, 6); // 전사 확보(counts 정합 유지 — 다음 픽커 틱이 재조정해도 개전은 즉시라 무해)
+  e.storage.food = (e.storage.food || 0) + 900; e.storage.weapon = (e.storage.weapon || 0) + 20; e.storage.armor = (e.storage.armor || 0) + 8;
+  if (kind === 'assault' || kind === 'auto') { const D = U.econ; mkWar(D, 4); D.storage.weapon = (D.storage.weapon || 0) + 10; } // 본격전 규모(목표배수 역산이 병력을 키움 — 사상·포로 발화)
+  if (kind === 'siege') { const D = U.econ; for (const r of ['food', 'fish', 'meat', 'cooked_food', 'vegetable']) if (D.storage[r]) D.storage[r] = 0; U._defPolicy = 'hold'; } // 곳간 바닥+농성 → 봉쇄·항복 경로
+  if (kind === 'siegehold') { U.econ.storage.food = (U.econ.storage.food || 0) + 900; U._defPolicy = 'hold'; } // 곳간 넉넉+농성 → 항복 없음 → 팩 소진 철수 경로
+  const ok = state.war.warMobilize(V, U, 'trade', bd, state.world.day);
+  if (ok && kind !== 'auto') { const w = state.war.WARS[state.war.WARS.length - 1]; if (w && w.atk === V) w._opPolicy = (kind === 'assault') ? 'assault' : 'siege'; }
+  state._warFixtureDef = U;
+  console.log(`[${state.zoneId}] ⚔️ [FIXTURE=${kind}] ${V.name}(${e.npcs.length}명)→${U.name}(${U.econ.npcs.length}명) 선포 ${ok ? '성공' : '실패(plan 미달)'} · 거리 ${bd | 0}셀`);
 }
 
 // =============================================================================
@@ -1644,6 +1775,10 @@ function banditHost() {
     ta: state._distCtx && state._distCtx.ta,         // 지형 어댑터(isBlocked/forestMult — 셀 단위)
     getRoute,                                        // 마을쌍 경로 pts(px) — 캐러밴 A*·캐시 재사용(랩 getTradePath 동형)
     broadcast: state.deps && state.deps.broadcast,
+    // ★[2파 도적 실체] 소굴 배회 NPC용 — 기존 스폰/제거 경로 재사용(발명 금지·캐러밴 관례)
+    spawnNpc: state.deps && state.deps.spawnNpc,
+    players: state.deps && state.deps.players,
+    npcs: state.deps && state.deps.npcs,
     seed: state.villageSeed || 1020,
     cellsW: ZONE ? Math.ceil(ZONE.zoneWidth / SZ) : 0,
     cellsH: ZONE ? Math.ceil(ZONE.zoneHeight / SZ) : 0,

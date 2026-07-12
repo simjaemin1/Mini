@@ -382,6 +382,7 @@ const _proxies = new Map();         // pid → agent 프록시 (지속 객체 �
 const _shadows = new Map();         // mid → 본체 mobs 브리지(shadow)
 const _gidSeen = new Set();         // 무리 스폰 로그 1회용
 let _nextWid = 1, _tickAgents = []; // _tickAgents: 이번 틱 프록시 스냅샷(reapDead splice와 무관하게 피해 정산)
+let _warProxyPool = null;           // §4-4 P3: 실체 전쟁 병사 위협 프록시 풀(warThreats 주입 — GC 최소, index 재사용)
 const _stats = { ms: 0, peak: 0, ticks: 0, spawned: 0, deaths: 0, hits: 0, charges: 0, flees: 0, maxSpd: {} };
 let _lastStatLog = 0;
 
@@ -558,6 +559,7 @@ function tick(now) {
   S.agents.length = 0; _tickAgents.length = 0;
   for (const p of H.players.values()) {
     if (p.hp <= 0 || p.isDown || p.handingOff) continue;
+    if (p.simWar) continue;   // §4-4 P3: 출정(징발) 병사 — 위협 등록은 아래 warThreats() 단일 채널(_buildWarThreats 서버판)이 전담(이중 등록 방지). 피해 정산도 여기서 제외(전투는 battle-core 소유).
     if (!H.isPositionActive(p.x, p.y)) continue;
     let pr = _proxies.get(p.pid);
     if (!pr) { pr = { job: 'hunter', state: 'idle', home: { cx: 0, cy: 0 }, _arm: 0 }; _proxies.set(p.pid, pr); }
@@ -566,6 +568,20 @@ function tick(now) {
     pr.hp = p.hp; pr._hp0 = p.hp; pr._real = p; pr._dead = 0; pr.action = ''; pr.state = 'idle';
     pr._sp2 = Math.hypot(p.vx || 0, p.vy || 0) / 32;   // 실속도 m/s — 본체 걷기 6.9m/s는 랩 '달리기' 소음대(>3)로 지각됨(정지=조용)
     S.agents.push(pr); _tickAgents.push(pr);
+  }
+  // §4-4 P3: 실체 전쟁 병사(행군·전투·귀환) pid 위치를 야생 위협원으로 주입 — 전쟁실험실 _buildWarThreats → agrid 병합 패턴.
+  //   deps 확장(H.warThreats)만 — updateMobs 몹 로직 무수정. 공간 전용 프록시(job='soldier'=지각 가중 1·평범한 위협). 피해 미정산(_real 없음 → 전투는 battle-core 소유).
+  if (typeof H.warThreats === 'function') {
+    let wt = null; try { wt = H.warThreats(); } catch (e) { }
+    if (wt && wt.length) {
+      if (!_warProxyPool) _warProxyPool = [];
+      for (let i = 0; i < wt.length; i++) {
+        const t = wt[i]; if (!t) continue;
+        let pr = _warProxyPool[i]; if (!pr) { pr = { job: 'soldier', state: 'idle', home: { cx: 0, cy: 0 }, _arm: 0, _real: null }; _warProxyPool[i] = pr; }
+        pr.px = t.x / 32; pr.py = t.y / 32; pr.state = 'idle'; pr.hp = 1; pr._dead = 0; pr._sp2 = 0;
+        S.agents.push(pr);   // ★agrid(updateMobs 117행) 위협원 — 전 종이 즉시 반응(토끼 flee 등)
+      }
+    }
   }
   if (_proxies.size > S.agents.length * 2 + 64) {   // 떠난 플레이어 프록시 청소(몹 tgt 안전: hp=0 → 블록이 표적 해제)
     const live = new Set(); for (const pr of S.agents) live.add(pr);

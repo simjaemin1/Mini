@@ -463,6 +463,57 @@ function broadcastCampsIfChanged() {
 }
 
 // =============================================================================
+// ★[2파 도적 실체 최소] 소굴·은거지 배회 NPC — 단(gang)당 min(3, n)명을 은거지 주변에 실체화.
+//   경제 효과 0(연출 전용 — 약탈·위험은 econ 주사위가 전부, 이중계상 금지 계약). 이동은 기존 npcStep
+//   배회 AI(홈=은거지·워크=은거지 둘레)에 위임 — dormant 패턴(캐러밴·마을 NPC와 동일 수명주기).
+//   비영속: pid는 저장 안 함(부팅 시 단 상태에서 재실체화). BANDIT_BODIES=0 → 완전 생략(무해).
+//   보류(계획서 판단): 캐러밴 요격 연출·고립 NPC 습격·토벌 실파견 — 수치 등가(econ 소유)라 후속 웨이브.
+// =============================================================================
+const BODIES_ON = process.env.BANDIT_BODIES !== '0';
+const BDT_BODY_PER_GANG = 3;   // 단당 실체 상한(랩 '소굴 마커 주변 2~3명' — 규모 미니 유지)
+function despawnBody(pid) {
+  const { players, npcs, broadcast } = S.host;
+  if (players && players.has(pid)) { players.delete(pid); npcs.delete(pid); try { broadcast({ type: 'player_left', pid }); } catch (_) { } }
+}
+function syncBodies() {
+  if (!BODIES_ON || !S.host || !S.host.spawnNpc || !S.host.players) return;
+  const players = S.host.players;
+  if (!S.bodies) S.bodies = new Map(); // gangId → [pid,...]
+  const liveG = new Map(S.GANGS.map(g => [g.id, g]));
+  for (const [gid, pids] of [...S.bodies]) { // 단 소멸·축소 회수 + stale 청소
+    const g = liveG.get(gid);
+    for (let i = pids.length - 1; i >= 0; i--) { if (!players.has(pids[i])) pids.splice(i, 1); }
+    const want = g ? Math.min(BDT_BODY_PER_GANG, g.n) : 0;
+    while (pids.length > want) despawnBody(pids.pop());
+    if (!g && !pids.length) S.bodies.delete(gid);
+  }
+  for (const g of S.GANGS) { // 신규·증원
+    const pids = S.bodies.get(g.id) || [];
+    const want = Math.min(BDT_BODY_PER_GANG, g.n);
+    const cx = g.camp.cx * SZ + SZ / 2, cy = g.camp.cy * SZ + SZ / 2;
+    while (pids.length < want) {
+      const a = Math.random() * Math.PI * 2, r = 40 + Math.random() * 80; // 홈=은거지 곁(±셀 몇), 워크=둘레 도넛(~2~15셀) — 배회 반경
+      const wa = Math.random() * Math.PI * 2, wr = 80 + Math.random() * 400;
+      let p = null;
+      try {
+        p = S.host.spawnNpc({
+          x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r,
+          name: '도적', villageId: 'bandit_den', villageName: '도적 은거지',
+          npcHomeX: cx, npcHomeY: cy, npcWorkX: cx + Math.cos(wa) * wr, npcWorkY: cy + Math.sin(wa) * wr,
+          skipHouse: true,
+        });
+      } catch (_) { break; }
+      if (!p) break;
+      p.simJob = 'bandit';   // 클라 이모지·구분(마을 simJob 경로 재사용 — npcPids 밖이라 마을 로직 무접촉)
+      pids.push(p.pid);
+    }
+    if (pids.length) S.bodies.set(g.id, pids);
+  }
+  let tot = 0; for (const pids of S.bodies.values()) tot += pids.length;
+  if (tot !== S._bodyN) { S._bodyN = tot; console.log(`[${S.zoneId}] 🏴 [도적] 배회 실체 ${tot}명(단 ${S.GANGS.length}곳 — 연출 전용·econ 무접촉)`); }
+}
+
+// =============================================================================
 // init / onGameTick — zone.js 배선 2줄(부팅 init + gameLoop 훅, villages 옆).
 // =============================================================================
 function bindHost() {
@@ -484,6 +535,7 @@ function bindHost() {
   S.lastDay = host.world.day; // 다음 econ 경계부터 데일리(재부팅 당일 이중 실행 방지)
   S.ready = true;
   save(host.world.day);
+  syncBodies();   // ★[2파] 부팅 실체화(복원 단 포함 — pid 비영속이라 여기서 재스폰)
   console.log(`[${S.zoneId}] 🏴 도적 시뮬 준비(§11 1파: 경제·수명주기): 소굴 ${S.DENS.filter(d => !d.cleared).length}곳 · 도적단 ${S.GANGS.length} · econ 훅(banditRouteRisk/onBanditLoot) 설치 · day ${host.world.day}${FIXTURE ? ` [FIXTURE=${FIXTURE}]` : ''}${BDT_MIN_DAY !== 365 ? ` [MINDAY=${BDT_MIN_DAY}]` : ''}`);
   return true;
 }
@@ -506,6 +558,7 @@ function onGameTick() {
     daily(day);
     save(day);
     broadcastCampsIfChanged();
+    syncBodies();   // ★[2파] 소굴 배회 NPC 재동기(단 결성·해산·증감 반영 — 비영속·연출 전용)
     if (S.GANGS.length || S.stats.denClear) {
       console.log(`[${S.zoneId}] 🏴 도적 day ${day}: 단 ${S.stats.gangs}(총원 ${S.stats.members}) · 소굴 ${S.stats.denOcc}/${S.stats.dens} 점유 · 약탈 누계 ${S.stats.loot} · 길목쌍 ${S.pairs.size} · ${Date.now() - t0}ms`);
     }

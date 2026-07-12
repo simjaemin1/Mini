@@ -23,6 +23,7 @@ const SIM_JOB_EMOJI = {
   smith: '🔨', weaponsmith: '⚔️', armorsmith: '🛡️', forager: '🧺',
   cook: '🍲', warrior: '💂', merchant: '💰',
   caravan: '🐂', // §4-4 Stage 4B: 캐러밴 실체 상인 — 이름에 화물('상단·<자원>') 포함, 마을 사이 실제 도보 이동
+  bandit: '🏴', // §11 2파: 소굴 배회 도적 실체(연출 전용 — 경제 효과는 econ 주사위 소유)
 };
 
 (() => {
@@ -807,13 +808,16 @@ const SIM_JOB_EMOJI = {
   // serverNow = clientNow + serverNowOffset 으로 보정한 timestamp 기준 phase 계산.
   // 모든 zone이 동일한 epoch+dayLength 쓰니까 클라/서버 시계 차이만 보정하면 동일 phase.
   let worldClock = null;
+  let _lonView = 0; // §19 4파: 뷰(카메라) 경도 오프셋(하루 비율 0~0.045) — render가 매 프레임 갱신, worldPhase가 가산
   function worldNow() {
     return Date.now() + (worldClock ? worldClock.serverNowOffset : 0);
   }
   function worldPhase() {
     if (!worldClock) return 0.2; // 기본: 한낮
     const t = (worldNow() - worldClock.epoch) % worldClock.dayLengthMs;
-    return t / worldClock.dayLengthMs;
+    // §19 4파 경도 로컬 태양시(표시 공식): 뷰(카메라) 경도 오프셋 가산 — 동쪽이 먼저 밝고 먼저 어두워짐.
+    //   시계·밤 오버레이·(밤) 라벨이 전부 이 로컬 phase를 소비(클라 표시 전용 — 서버 econ 일 경계는 전역).
+    return (t / worldClock.dayLengthMs + _lonView) % 1;
   }
   function isNight() {
     if (!worldClock) return false;
@@ -1665,6 +1669,9 @@ const SIM_JOB_EMOJI = {
         c.simVillages = (msg.simVillages && msg.simVillages.length) ? msg.simVillages : null;
         // §11 도적: 소굴·야영 마커(welcome 1회, 이후 bandit_camps가 변경분 방송)
         c.banditCamps = (msg.banditCamps && msg.banditCamps.length) ? msg.banditCamps : null;
+        // §16 답압 길: 등급 셀 flat [cx,cy,lv,...](welcome 1회, 이후 road_cells가 변경분 방송)
+        c.roads = new Map();
+        if (msg.roads) for (let i = 0; i < msg.roads.length; i += 3) c.roads.set(msg.roads[i] + ',' + msg.roads[i + 1], msg.roads[i + 2]);
       }
       // 월드 시계 동기화 — 서버 now와 클라 now 차이를 보정해서 동일 phase 계산
       if (msg.worldClock) {
@@ -1766,6 +1773,7 @@ const SIM_JOB_EMOJI = {
             maxHp: pp.maxHp ?? prev?.maxHp ?? 100,
             tribeName: pp.tribeName !== undefined ? pp.tribeName : prev?.tribeName,
             simJob: pp.simJob !== undefined ? pp.simJob : prev?.simJob, // §4-4 Stage 4A: 마을 NPC 직업(첫 visible 메타 + sim_village_day 갱신)
+            cap: pp.cap | 0, // §18 3파: 포로 표식(동적 1비트 — 회색 테두리 렌더)
             buf,
             lastX: prev?.x ?? pp.x, lastY: prev?.y ?? pp.y,
             lastT: now,
@@ -1854,12 +1862,17 @@ const SIM_JOB_EMOJI = {
     } else if (msg.type === 'claim_removed') {
       c.claims.delete(msg.id);
     } else if (msg.type === 'sim_village_day') {
-      // §4-4 Stage 4A: 게임일 1회 — 마을 인구 라벨 + NPC 직업(simJob) 변경분 갱신
-      if (c.simVillages && msg.pops) for (const v of c.simVillages) { if (msg.pops[v.id] != null) v.pop = msg.pops[v.id]; }
+      // §4-4 Stage 4A: 게임일 1회 — 마을 인구 라벨 + NPC 직업(simJob) 변경분 + §19 영토 크립 반경(tr) 갱신
+      if (c.simVillages && msg.pops) for (const v of c.simVillages) { if (msg.pops[v.id] != null) v.pop = msg.pops[v.id]; if (msg.terr && msg.terr[v.id] != null) v.tr = msg.terr[v.id]; }
       if (msg.jobs) for (const [pid, job] of Object.entries(msg.jobs)) { const o = c.others.get(pid); if (o) o.simJob = job; }
     } else if (msg.type === 'bandit_camps') {
       // §11 도적: 소굴·야영 마커 갱신(서버가 변경 시에만 방송)
       c.banditCamps = (msg.camps && msg.camps.length) ? msg.camps : null;
+    } else if (msg.type === 'road_cells') {
+      // §16 답압 길: 게임일 1회 변경분(등급 전이 셀만) — lv 0=풀 복귀(삭제)
+      if (!c.roads) c.roads = new Map();
+      const rc = msg.cells || [];
+      for (let i = 0; i < rc.length; i += 3) { const k = rc[i] + ',' + rc[i + 1]; if (rc[i + 2]) c.roads.set(k, rc[i + 2]); else c.roads.delete(k); }
     } else if (msg.type === 'war_battle') {
       // §4-4 P4: 진행 전투 집계(2Hz+전이) — 스펙테이터 HUD·화면밖 지시자·관전 카메라 레지스트리.
       //   origin은 해당 존 로컬 px(o.cx*32) → 존 worldOffset 더해 절대 px(병사 pp.x 국지화와 동일).
@@ -2912,6 +2925,8 @@ const SIM_JOB_EMOJI = {
       if (k >= 1) _warSpec.returning = false;
     }
     _lastCamAbs = { x: _camAbs.x, y: _camAbs.y };   // 트윈 출발점 캡처(관전 진입/복귀 공용)
+    // §19 4파: 뷰(카메라) 경도 오프셋 갱신 — 존 폭 대비 0~4.5%(하루 비율). worldPhase()가 로컬 태양시로 소비.
+    { const _lz = clientFindZoneAt(_camAbs.x, _camAbs.y); _lonView = _lz ? ((_camAbs.x - _lz.worldOffsetX) / Math.max(1, _lz.zoneWidth)) * 0.045 : 0; }
     const myIso = w2i(_camAbs.x, _camAbs.y);
     const camX = myIso.x, camY = myIso.y;
     const toScreen = (ix, iy) => ({ x: ix - camX + W / 2, y: iy - camY + H / 2 });
@@ -3010,6 +3025,15 @@ const SIM_JOB_EMOJI = {
         const baseZ = cl.kind === 'guild' ? -800 : -400;
         renderables.push({ z: w2i(cax, cay).y + baseZ, kind: 'claim', cl, off: ox, offY: oy });
       }
+      // §16 답압 길: 등급 셀 바닥 틴트(베이크 무접촉 오버레이 — 흙길/다져진 길). 시야 내만 push.
+      if (c.roads && c.roads.size) {
+        for (const [rk, lv] of c.roads) {
+          const ci = rk.indexOf(','); const rcx = +rk.slice(0, ci), rcy = +rk.slice(ci + 1);
+          const rax = ox + rcx * CL_BUILDING_SIZE + 16, ray = oy + rcy * CL_BUILDING_SIZE + 16;
+          if (Math.abs(rax - worldCx) > VIEW_RADIUS || Math.abs(ray - worldCy) > VIEW_RADIUS) continue;
+          renderables.push({ z: w2i(rax, ray).y - 950, kind: 'road', rcx: rax - 16, rcy: ray - 16, lv });
+        }
+      }
       // §4-4 Stage 4A: 마을 시뮬 영토 — 경계 셀(b: [dx,dy,mask...]) 반투명 렌더. claim보다 더 배경(-900).
       if (c.simVillages) {
         for (const v of c.simVillages) {
@@ -3090,7 +3114,7 @@ const SIM_JOB_EMOJI = {
         const oFloor = o.floor || 0;
         const oZ = oFloor * FLOOR_HEIGHT + (o.z || 0); // 14.49-d: 계단 위 z 포함
         const isoF = w2i(ax, ay, oZ);
-        renderables.push({ z: (ax + ay) * 0.5 + oFloor * 0.5 + 500, kind: 'player', pid: o.pid, name: displayName, color: o.color || '#5a9ae0', hp: o.hp, maxHp: o.maxHp, iso: isoF, ax, ay, floor: oFloor, lastAttackAt: o.lastAttackAt, vx: o.vx, vy: o.vy, _fvx: o._fvx, _fvy: o._fvy, _war: o._war, bt: o.bt, bs: o.bs, bc: o.bc, br: o.br });
+        renderables.push({ z: (ax + ay) * 0.5 + oFloor * 0.5 + 500, kind: 'player', pid: o.pid, name: displayName, color: o.color || '#5a9ae0', hp: o.hp, maxHp: o.maxHp, iso: isoF, ax, ay, floor: oFloor, lastAttackAt: o.lastAttackAt, vx: o.vx, vy: o.vy, _fvx: o._fvx, _fvy: o._fvy, _war: o._war, bt: o.bt, bs: o.bs, bc: o.bc, br: o.br, cap: o.cap });
       }
     }
     {
@@ -3201,6 +3225,14 @@ const SIM_JOB_EMOJI = {
             }
           }
         }
+      } else if (item.kind === 'road') {
+        // §16 답압 길 — 셀 다이아몬드 틴트: lv1 흙길(옅음)·lv2 다져진 길(짙음). 지면 위·모든 것 아래(-950).
+        const a = toScreen(w2i(item.rcx, item.rcy).x, w2i(item.rcx, item.rcy).y);
+        const b2 = toScreen(w2i(item.rcx + 32, item.rcy).x, w2i(item.rcx + 32, item.rcy).y);
+        const c2 = toScreen(w2i(item.rcx + 32, item.rcy + 32).x, w2i(item.rcx + 32, item.rcy + 32).y);
+        const d2 = toScreen(w2i(item.rcx, item.rcy + 32).x, w2i(item.rcx, item.rcy + 32).y);
+        ctx.fillStyle = item.lv >= 2 ? 'rgba(168,134,88,0.42)' : 'rgba(150,124,86,0.26)';
+        ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b2.x, b2.y); ctx.lineTo(c2.x, c2.y); ctx.lineTo(d2.x, d2.y); ctx.closePath(); ctx.fill();
       } else if (item.kind === 'simvil') {
         // §4-4 Stage 4A: 마을 시뮬 영토 — 서버가 경계 셀만 전송(b: [dx,dy,mask...] 중심 상대,
         //   mask 비트 1=N 2=E 4=S 8=W = 영토 바깥과 맞닿은 변). 반투명 초록(길드 파랑과 구분).
@@ -3237,6 +3269,14 @@ const SIM_JOB_EMOJI = {
             const p = sc(v.cx * S + 16 + Math.cos(th) * r, v.cy * S + 16 + Math.sin(th) * r);
             if (a2 === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
           }
+          ctx.stroke(); ctx.setLineDash([]);
+        }
+        // §19/§2 4파: 영토 크립 링 — econ land.size(매일 1셀 단위 성장)의 등가 반경(호박색 점선·sim_village_day 갱신).
+        //   공간 실물화(bnd)는 시딩 스냅샷(부채 — 계획서 §2) — 이 링이 경제 영토의 '현재 크기'를 정직 표시.
+        if (v.tr) {
+          ctx.strokeStyle = 'rgba(222,202,132,0.5)'; ctx.lineWidth = 1.5; ctx.setLineDash([6, 8]);
+          ctx.beginPath();
+          for (let a2 = 0; a2 <= 28; a2++) { const th = a2 / 28 * Math.PI * 2; const p = sc(v.cx * S + 16 + Math.cos(th) * v.tr, v.cy * S + 16 + Math.sin(th) * v.tr); if (a2 === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y); }
           ctx.stroke(); ctx.setLineDash([]);
         }
         { // 라벨 — 회관 위 (길드 라벨과 동급, 인구는 sim_village_day가 갱신)
@@ -3335,7 +3375,7 @@ const SIM_JOB_EMOJI = {
         }
         // Phase 14.41: 다운 상태 — 본인은 myIsDown, 다른 사람은 downStates Map
         const downFlag = item.isMe ? myIsDown : !!downStates.get(item.pid);
-        drawPlayerIso(s.x, s.y, item.name, item.color, item.isMe, { moving, attackPhase, fvx, fvy, isDown: downFlag, war: item._war, bt: item.bt, bs: item.bs, bc: item.bc, br: item.br });
+        drawPlayerIso(s.x, s.y, item.name, item.color, item.isMe, { moving, attackPhase, fvx, fvy, isDown: downFlag, war: item._war, bt: item.bt, bs: item.bs, bc: item.bc, br: item.br, cap: item.cap });
         // HP bar for others (전쟁 병사는 만피여도 항상 표시 + 진영색 테두리)
         if (!item.isMe) {
           const o = item.hp !== undefined ? item : null;
@@ -4933,6 +4973,8 @@ const SIM_JOB_EMOJI = {
     const moving = opts.moving || false;
     const isDown = !!opts.isDown; // Phase 14.41
     const attackP = Math.max(0, opts.attackPhase || 0); // 0=쉼, 1=시작, 0.5=중간
+    // §18 3파: 포로 표식 — 발치 회색 테두리 링(호송·억류. 서버 makeEntry cap 1비트)
+    if (opts.cap) { ctx.strokeStyle = 'rgba(200,200,200,0.85)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(x, y + 4, 11, 4.5, 0, 0, Math.PI * 2); ctx.stroke(); }
     // Phase 14.41: 다운 — 누워있는 모습 (옆으로 길게)
     if (isDown) {
       // 그림자 크게

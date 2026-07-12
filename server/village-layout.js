@@ -16,7 +16,7 @@
 // =============================================================================
 (function () {
   const HOUSE_HALF = 2;        // 5×5 한옥 (중심 ±2)
-  const HOUSE_CAP_PER_FLOOR = 6;
+  const HOUSE_CAP_PER_FLOOR = 8;   // ★[4파 §19 움집 재동기] 6→8 — 랩 L_FLOORCAP=8과 쌍둥이(대형 수혈주거 확대가족 상한 추상: 침대 앵커 4곳 2인 밀집 취침 고증). 신규 시딩만 영향(econ housing과 무관 — 레이아웃 생성 산식 전용)
 
   // 5×5 footprint가 전부 LAND인가
   function footprintLand(terrain, cx, cy) {
@@ -106,7 +106,7 @@
     const dMax = hasWater ? Math.max(8, dwC - 10) : 999;                    // 논은 회관에서 10칸 앞까지만(버퍼=동네) → 회관이 논에 안 파묻힘
     const D = hasWater ? Math.min(Math.round(terrR * 0.5), dMax) : 999;     // 논 띠 두께 ∝ 영토반경 → 논 비율 일정(작은 마을=얇은 띠/큰 마을=두꺼운 띠). dMax(회관 직전)서 cap
 
-    const CAP = HOUSE_CAP_PER_FLOOR, MAX_FLOORS = 4, SPACE_MIN = 16;         // CAP=층당 수용. SPACE_MIN=새 집 짓는 maximin 임계: 그 이상 여유면 새 집(가로), 미만이면 층↑(세로 밀집)
+    const CAP = HOUSE_CAP_PER_FLOOR, MAX_FLOORS = 1, SPACE_MIN = 16;         // ★[4파 §19 움집] MAX_FLOORS 4→1 — 다층 주거 폐지(랩 L_MAXFL=1·VL MAX_FLOORS=1 쌍둥이 동기: 초기철기에도 주거는 수혈 압도적 주류). densify 사실상 봉인 — 수용 압력은 전부 집터 확산·영토로. ★기존 DB 마을 마이그레이션: floors>1 행은 유지(materialize가 floors 그대로 실물화 — 인구 결박 방지), 신축(재시딩 존)만 단층
     const fpInTerr = (cx, cy) => { for (let dx = -HOUSE_HALF; dx <= HOUSE_HALF; dx++) for (let dy = -HOUSE_HALF; dy <= HOUSE_HALF; dy++) if (terrain.isBlocked(cx + dx, cy + dy) || !own.has(key(cx + dx, cy + dy))) return false; return true; };
     const farFromWater = (cx, cy) => { for (let dx = -4; dx <= 4; dx++) for (let dy = -4; dy <= 4; dy++) if (terrain.isWater && terrain.isWater(cx + dx, cy + dy)) return false; return true; };
 
@@ -139,8 +139,13 @@
     const densify = () => { let t = null; for (const h of houses) if (h.floors < MAX_FLOORS && (!t || h.floors < t.floors)) t = h; if (t) { t.floors++; return true; } return false; };
     const shrink = () => { while (houses.length > 2 && cap() - houses[houses.length - 1].floors * CAP >= pop) houses.pop(); };
     if (layout === 'shore') {
+      // ★[4파 §19 물가 회피 부지 재동기 — 랩 W_PEN_K/wDist 이식] 부지 가장자리~물 최소 체비셰프 거리 → K/d² 연속 페널티
+      //   (2셀 500·5셀 80·20셀 5점 — 문턱 없음): 강안 늘어서기는 유지하되 최전선일수록 급격히 비싸짐(침수 회피·자연제방 고증).
+      //   하드 한계(+2셀 링 물 금지)는 기존 farFromWater(±4 = 발자국 ±2 + 2링)가 이미 소유 — 여기는 연속 비용만 추가.
+      const W_PEN_K = 2000;   // 랩 5353 verbatim
+      const wDist = (x, y) => { let m = 99; if (!terrain.isWater) return m; for (let dx = -10; dx <= 10; dx++) for (let dy = -10; dy <= 10; dy++) if (terrain.isWater(x + dx, y + dy)) { const d = Math.max(Math.abs(dx), Math.abs(dy)) - HOUSE_HALF; if (d < m) m = d; } return m; };
       const cand = [];
-      for (const k of own) { const [x, y] = k.split(',').map(Number); if (Math.abs(x - ccx) <= 6 && Math.abs(y - ccy) <= 6) continue; if (!fpInTerr(x, y)) continue; const inland = Math.abs((x - ccx) * w.x + (y - ccy) * w.y), along = Math.abs((x - ccx) * perp.x + (y - ccy) * perp.y); cand.push({ cx: x, cy: y, d: inland * 3 + along }); }
+      for (const k of own) { const [x, y] = k.split(',').map(Number); if (Math.abs(x - ccx) <= 6 && Math.abs(y - ccy) <= 6) continue; if (!fpInTerr(x, y)) continue; const inland = Math.abs((x - ccx) * w.x + (y - ccy) * w.y), along = Math.abs((x - ccx) * perp.x + (y - ccy) * perp.y); const wdv = wDist(x, y); cand.push({ cx: x, cy: y, d: inland * 3 + along + (wdv < 99 ? W_PEN_K / Math.max(1, wdv * wdv) : 0) }); }
       cand.sort((a, b) => a.d - b.d);
       for (const h of (opts.existingHouses || [])) houses.push({ cx: h.cx, cy: h.cy, floors: h.floors || 1 });
       let ci = 0, guard = 0;

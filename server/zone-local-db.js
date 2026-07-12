@@ -249,6 +249,24 @@ db.exec(`
     updated_at INTEGER NOT NULL
   );
 `);
+// === §16 답압 길(server/roads.js) — 밟힌 셀만(희소·게으른 감쇠), 게임일 1회 dirty 배치 플러시 ===
+// villages/bandit 관례(추가 전용·CREATE TABLE IF NOT EXISTS — 구DB 마이그레이션 안전). ENABLE_ROADS=0이면 행 0.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS roads (
+    zone       TEXT    NOT NULL,
+    cell_key   INTEGER NOT NULL,
+    v          REAL    NOT NULL,
+    d          INTEGER NOT NULL,
+    PRIMARY KEY (zone, cell_key)
+  );
+`);
+const stmtGetRoadCells = db.prepare('SELECT cell_key, v, d FROM roads WHERE zone = ?');
+const stmtUpsertRoadCell = db.prepare('INSERT INTO roads (zone, cell_key, v, d) VALUES (?, ?, ?, ?) ON CONFLICT(zone, cell_key) DO UPDATE SET v = excluded.v, d = excluded.d');
+const stmtDeleteRoadCell = db.prepare('DELETE FROM roads WHERE zone = ? AND cell_key = ?');
+function getRoadCells(zone) { return stmtGetRoadCells.all(zone); }
+function upsertRoadCell(zone, key, v, d) { stmtUpsertRoadCell.run(zone, key | 0, v, d | 0); }
+function deleteRoadCell(zone, key) { stmtDeleteRoadCell.run(zone, key | 0); }
+
 const stmtGetBanditState = db.prepare('SELECT * FROM bandit_state WHERE zone = ?');
 const stmtUpsertBanditState = db.prepare(
   'INSERT INTO bandit_state (zone, data, day, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(zone) DO UPDATE SET data = excluded.data, day = excluded.day, updated_at = excluded.updated_at'
@@ -284,4 +302,6 @@ module.exports = {
   getVillageFarmInCellRect,
   // §11 도적 (bandits.js)
   getBanditState, upsertBanditState,
+  // §16 답압 길 (roads.js)
+  getRoadCells, upsertRoadCell, deleteRoadCell,
 };
