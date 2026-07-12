@@ -618,6 +618,13 @@ const STONE_MAINT_PC = 0.02;        // ★돌 감산 자연화(2026-07-12): 건�
 //   봉헌검(weapon)은 제외: A/B로 병기고 드레인이 s8 붕괴 유발 — 무기 수요는 전쟁층(호전 성격)과 세트로 후속.
 const RITE_PC = { jade: 0.0012, gold: 0.0006, silver: 0.0008, gem: 0.0004, amber: 0.0004, obsidian: 0.0008 };
 const RITE_KEEP_PC = 0.15;          // 수출 자본 유보(1인당) — 이 아래로는 안 태움(빈곤·산지 마을 교역 자본 불가침)
+// ★호전 마을 성격 + 봉헌검(2026-07-13 — 마을 문화 다양성·고증: 취락별 상무 기질 편차 + 청동기 의례적 동검 매납/부장):
+//   해시 결정론으로 일부 마을이 호전적 → 위협 시 더 강한 동원(warriorTarget ×) + 잉여 청동검 매납(봉헌 v2가 무기 드레인[s8 붕괴]으로 미룬 것 — 호전 성격의 무기 잉여 생산이 offset·세트).
+const WARLIKE_THRESH = 0.72;        // 해시 > 이 값이면 호전 마을(~28%)
+const WARLIKE_WT_MULT = 1.6;        // 호전 마을 위협 동원 배수(warriorTarget — 평시 무비, 위협 시만 강화라 안전)
+const WEAPON_RITE_PC = 0.0008;      // 호전 마을 봉헌검 요율(/인/일, 식량여유·잉여 비례) — 위세재 봉헌 동형
+const WEAPON_RITE_KEEP = 3;         // 봉헌검 유보 — 전사 수 + 이 버퍼 초과 *잉여*만 매납(병기고 불가침 = 무장해제 방지)
+function _warlikeMult(v) { return _hashStr('warlike|' + (v.name || '')) > WARLIKE_THRESH ? WARLIKE_WT_MULT : 1.0; }
 
 // 식량 부패 — 무한 비축 방지. 음식 종류별로 다름.
 const DECAY_RATES = {
@@ -1528,6 +1535,13 @@ function tickVillage(v, day) {
         const _rTake = Math.min(_avail, N * RITE_PC[_rr] * _rSec);
         if (_rTake > 0) { v.storage[_rr] -= _rTake; v._riteUsed = (v._riteUsed || 0) + _rTake; _cons(v, _rr, _rTake); }   // ★flow-EMA(봉헌 실수요)
       }
+      // ★봉헌검(2026-07-13 — 호전 마을 매납 청동검·고증: 청동기 의례적 동검 부장/매납): 잉여(전사+버퍼 초과) 청동검을 의례로 묻음.
+      //   호전 마을만(_warlikeMult>1) — 무기 잉여 생산이 offset이라 병기고 드레인(s8 붕괴) 회피. 식량여유(_rSec)·잉여만 = 봉헌 v2 동형 안전 게이트.
+      if (_warlikeMult(v) > 1) {
+        const _wSurplus = (v.storage.weapon || 0) - ((v.counts.warrior || 0) + WEAPON_RITE_KEEP);
+        const _wTake = Math.min(Math.max(0, _wSurplus), N * WEAPON_RITE_PC * _rSec);
+        if (_wTake > 0) { v.storage.weapon -= _wTake; v._riteWeapon = (v._riteWeapon || 0) + _wTake; _cons(v, 'weapon', _wTake); }   // ★flow-EMA(봉헌검 실수요 — 전쟁층 무기 순환)
+      }
     }
   }
   // ★가죽 제품(2026-07-13 — 감사 v2 hide 글럿 진짜 sink·사용자 "제대로 고증"): 잉여 hide → 무두질 → 가죽제품(신발·주머니·깔개·끈). 신규 직업 없음(가내수공, 옹기 동형).
@@ -2003,7 +2017,7 @@ function warriorTarget(v) {
   if (raidRate <= 0.03 && (ts.tradersKilled || 0) === 0) return 0;   // 위협 없으면 전사 0
   const N = v.npcs.length || 1;
   const caravans = Math.max(1, Math.floor(N * 0.08));   // 동시 교역 캐러밴 수(호위 대상)
-  return Math.ceil(caravans * (0.5 + raidRate));         // 위협 비례 호위 수
+  return Math.ceil(caravans * (0.5 + raidRate) * _warlikeMult(v));   // ★호전 성격: 위협 시 더 강한 동원(평시 무비 유지 — 위협 게이트 상단, 안전)
 }
 function weaponsmithTarget(v) {
   return 0;   // ★S2 폐지 — 대장장이(smith)로 통합. 무기 노동목표는 smith(금속)·mason(석기/활)이 담당.
