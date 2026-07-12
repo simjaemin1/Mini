@@ -269,8 +269,17 @@ function computeShadowPrices(v) {
     } else {
       // ★장식재(위신재)에 진짜 수요 부여 — use-value = 위신·심리(prestige). 1인당 LUX_TARGET_PC 목표.
       //   (옛 N×0.02 = 수요 죽임. 이제 위신재를 없는 마을은 수입하고 광산촌은 잉여 수출)
-      const buffer = ORNAMENTAL[r] ? N * LUX_TARGET_PC : N * Math.max(0.5, util * 1.2);
-      target = Math.max(subs * 30, buffer);
+      // ★flow-EMA target(2026-07-12, CHECKLIST 154 해소): 유령 보유 하한 max(0.5,·) 제거 — 소비재 수요는
+      //   실소비 흐름 flowT(=_consEMA×30, v1 _cons 계측 16사이트)가 만든다. 잡화 롱테일(util 0.1)의 가짜 보유
+      //   수요 소멸, 실소비 재화(연료·옷감·투입재·식단·봉헌)는 흐름이 target을 정직 견인 — 신규 재화는 소비처에
+      //   _cons 한 줄이면 끝(CAP_TARGET·시드·글럿가드·감산 4종 수동 통합 부채 해소).
+      //   동기 계약: _priceParamsV2·tickDecay 동일 공식. 분별 프로브(하한 제거 비치명)·A/B 근거 CHECKLIST 참조.
+      // ★subs 가드(A/B 실측): SUBSISTENCE_PER_NPC 등재 재화(주식·연료·석재·의류 사슬)는 subs×30이 이미 손튜닝
+      //   흐름 target — flowT 중복 적용 시 실측(한랭 연료 등)이 캘리브를 2~3배 덮어써 시장 전체 유보 인플레
+      //   (s505 576→17 붕괴 실측). flowT는 손튜닝 없는 롱테일 전용.
+      const flowT = SUBSISTENCE_PER_NPC[r] ? 0 : ((v._consEMA || {})[r] || 0) * 30;
+      const buffer = ORNAMENTAL[r] ? N * LUX_TARGET_PC : N * (util * 1.2);
+      target = Math.max(subs * 30, buffer, flowT);
       // ★식량 다양성 수요 — 자체 생산 못 하는 식품군은 다양성 위해 소량 수입 목표. 자체 생산하면(≥0.05/명) 보너스 없음.
       //   ★식량안보 게이트: 주식(곡물) 25일치 이상일 때만 — 굶는 마을은 다양성보다 생존(주식) 우선(변방 마을 아사 방지).
       if (VARIETY_FOOD[r] && (v.dailyProductionBuf ? (v.dailyProductionBuf[r] || 0) / N : 0) < 0.05
@@ -324,8 +333,9 @@ function _priceParamsV2(v, r) {
   else if (r === 'clothes') { target = Math.max(2, N * 1.2); stock = Math.max(0.1, v.storage[r] || 0); }   // ★의복(동기 계약: computeShadowPrices CAP_TARGET와 동일)
   else {
     const subs = (SUBSISTENCE_PER_NPC[r] || 0) * N;
-    const buffer = ORNAMENTAL[r] ? N * LUX_TARGET_PC : N * Math.max(0.5, util * 1.2);
-    target = Math.max(subs * 30, buffer);
+    const flowT = SUBSISTENCE_PER_NPC[r] ? 0 : ((v._consEMA || {})[r] || 0) * 30;   // ★flow-EMA(동기 계약: computeShadowPrices와 동일 공식·subs 가드)
+    const buffer = ORNAMENTAL[r] ? N * LUX_TARGET_PC : N * (util * 1.2);
+    target = Math.max(subs * 30, buffer, flowT);
     if (VARIETY_FOOD[r] && (v.dailyProductionBuf ? (v.dailyProductionBuf[r] || 0) / N : 0) < 0.05
         && (v.storage.food || 0) / N > 25) target = Math.max(target, N * VARIETY_TARGET_PC);
     stock = Math.max(0.1, v.storage[r] || 0);
@@ -930,7 +940,7 @@ function tickDecay(v) {
   // 옹기: 진흙 흐름 소비 → 충족률 EMA(~50일 관성 — 독은 한 번 빚으면 오래감)
   const _cNeed = N * CLAY_DAILY_PC;
   const _cTake = Math.min(v.storage.clay || 0, _cNeed);
-  if (_cTake > 0) v.storage.clay -= _cTake;
+  if (_cTake > 0) { v.storage.clay -= _cTake; v1._cons(v, 'clay', _cTake); }   // ★flow-EMA(옹기 진흙)
   v._potteryR = v._potteryR === undefined ? (_cNeed > 0 ? _cTake / _cNeed : 0) : 0.98 * v._potteryR + 0.02 * (_cNeed > 0 ? _cTake / _cNeed : 0);
   const _potMul = 1 - POTTERY_DECAY_SAVE * Math.min(1, v._potteryR);
   for (const [r, baseRate] of Object.entries(DECAY_V2)) {
@@ -938,8 +948,9 @@ function tickDecay(v) {
     if (s <= 0) continue;
     const subs = (SUBSISTENCE_PER_NPC[r] || 0) * N;
     const util = UTILITY_WEIGHT[r] || 0.1;
-    const buffer = N * Math.max(0.5, util * 1.2);
-    const target = Math.max(subs * 30, buffer);
+    const flowT = SUBSISTENCE_PER_NPC[r] ? 0 : ((v._consEMA || {})[r] || 0) * 30;   // ★flow-EMA(동기 계약·subs 가드) — 롱테일 작업 재고는 과잉부패에서 보호
+    const buffer = N * (util * 1.2);
+    const target = Math.max(subs * 30, buffer, flowT);
     // excess: target × mult 초과분은 비례 가속(쥐·곰팡이·도둑). 부패성 식량은 mult 낮아 ~60일에서 cap.
     const xm = DECAY_EXCESS_MULT[r] || 10;
     const excess = Math.max(0, s / Math.max(1, target * xm) - 1);

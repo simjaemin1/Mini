@@ -653,6 +653,12 @@ const DAILY_FOOD_CONSUMPTION = 1.0;
 const DAILY_TOOL_WEAR_PER_FARMER = 0.02;  // 농부가 도구 마모(석기)
 const DAILY_TOOL_WEAR_PER_OTHER = 0.01;
 
+// ★flow-EMA 소비 계측(2026-07-12, CHECKLIST 154 부채 해소): 실소비를 v._consDay에 기록 → tickVillage 일 경계에서
+//   v._consEMA(30일 관성)로 폴드 → v2 가격 target의 flowT(=EMA×30)가 됨. 유령 보유 하한(N×0.5) 제거의 보상 —
+//   소비재 수요는 실측 흐름이 만든다(신규 재화는 소비처에 _cons 한 줄 = CAP_TARGET·시드·글럿가드·감산 4종 수동 통합 불요).
+//   plain number만 기록(serializeEcon 계약). RNG 무접촉 — 결정론 보존.
+function _cons(v, r, amt) { if (!(amt > 0)) return; const d = v._consDay || (v._consDay = {}); d[r] = (d[r] || 0) + amt; }
+
 // 식량 소비 우선순위 — cooked_food > fish/meat > food > 채집물(fruit/veg/mushroom)
 // 채집물은 환산비가 낮아 농사보다 끼니로 비효율
 function consumeFood(v, need) {
@@ -688,6 +694,9 @@ function consumeFood(v, need) {
       remaining -= consumed * f; eaten[r] = consumed;
     }
   }
+  // ★flow-EMA 제외(설계 판단·A/B 실측): 식단은 *가용성 기반 대체 소비*(cooked>어육>곡>채집 사다리 — 있는 걸 먹음)라
+  //   flowT에 폴드하면 우연히 먹은 믹스가 30일 보유 수요로 고착 → 빈곤 마을이 제 채집물·생선 잉여를 못 팔게 됨(수출 억압).
+  //   실측: 식단 폴드 포함 시 s101 245→27 붕괴(2026-07-12). 식량 수요는 기존 기구(subs×30·VARIETY·surplusEMA)가 전담.
   return remaining;
 }
 
@@ -1378,6 +1387,16 @@ function pickInitialJob(v) {
 function tickVillage(v, day) {
   if (v.npcs.length === 0) return;
 
+  // ★flow-EMA 일 경계 폴드(2026-07-12): 어제 _consDay → _consEMA(α=1/30, ~30일 관성 — prodK EMA 동형).
+  //   오늘 소비는 이 아래 각 소비처의 _cons가 다시 쌓음(폴드가 항상 하루 전 완결분만 봄 — 순서 일관).
+  {
+    const d = v._consDay, e = v._consEMA || (v._consEMA = {});
+    if (d) {
+      for (const r in e) if (!(r in d)) e[r] *= (29 / 30);   // 오늘 키 없는 재화도 감쇠(소비 중단 → 수요 자연 소멸)
+      for (const r in d) { e[r] = (e[r] || 0) * (29 / 30) + d[r] * (1 / 30); d[r] = 0; }
+    }
+  }
+
   // 1) 각 NPC 일하기 → 산출물 storage에 + skill xp
   //    매일 새 객체 만들지 말고 버퍼 재사용 (GC 부하 ↓)
   const dailyProduction = v.dailyProductionBuf;
@@ -1592,6 +1611,7 @@ function tickVillage(v, day) {
       // ★청동 희소성: 청동검은 *청동 경제 자격* 마을(주석 산지·교역 허브)만 + 병기고 청동 한도 미만일 때. 흘러든 트레이스 주석뿐이거나 청동 한도 도달 마을은 석공 마제석검.
       if (_bronzeCapable(v) && _smSwordStock < _bronzeArmoryCap && (v.storage.copper || 0) >= 0.3 && (v.storage.tin || 0) >= 0.12) {
         v.storage.copper -= 0.3; v.storage.tin -= 0.12;   // ★청동검(청동기 주력 무기)
+        _cons(v, 'copper', 0.3); _cons(v, 'tin', 0.12);   // ★flow-EMA
         v._cuWeapUsed = (v._cuWeapUsed || 0) + 0.3;   // (계측 전용) 무기용 구리 누적 소비
         v._bronzeWeaponMade = (v._bronzeWeaponMade || 0) + amt;
         v._swordMadeToday = (v._swordMadeToday || 0) + amt;   // ★근접검 비중 EMA(청동검=근접)
@@ -1601,6 +1621,7 @@ function tickVillage(v, day) {
         workNPC(npc);
       } else if (_ironWeaponCapable(v) && (v.storage.iron || 0) >= 0.4 && (v.storage.stone || 0) >= 0.2) {
         v.storage.iron -= 0.4; v.storage.stone -= 0.2;   // ★철검=최희소(청동 자격 없고 철이 *풍부*할 때만). 트레이스 축적으론 미발동 → 석공 마제석검.
+        _cons(v, 'iron', 0.4); _cons(v, 'stone', 0.2);   // ★flow-EMA
         v._ironWeaponMade = (v._ironWeaponMade || 0) + amt;
         v._swordMadeToday = (v._swordMadeToday || 0) + amt;   // ★근접검 비중 EMA(철검=근접)
         const wq = WEAP_Q_IRON * _qSkill;   // 철검 품질 = 철등급(0.85) × 스킬
@@ -1613,7 +1634,7 @@ function tickVillage(v, day) {
       // ★S2 weaponsmith = 대장장이(smith)로 통합·폐지(capacity 0 → 도달 불가). 아래는 잔존 안전코드(만약 남은 weaponsmith가 있으면 청동검만).
       const amt = jdef.base * skillMul;
       if ((v.storage.copper || 0) >= 0.3 && (v.storage.tin || 0) >= 0.12) {
-        v.storage.copper -= 0.3; v.storage.tin -= 0.12;
+        v.storage.copper -= 0.3; v.storage.tin -= 0.12; _cons(v, 'copper', 0.3); _cons(v, 'tin', 0.12);   // ★flow-EMA
         v._bronzeWeaponMade = (v._bronzeWeaponMade || 0) + amt;
         addProduce('weapon', amt);
         workNPC(npc);
@@ -1636,7 +1657,7 @@ function tickVillage(v, day) {
         const frac = Math.min(1, haveW / needW);
         for (const m in CLOTH_MATS) {
           const take = (v.storage[m] || 0) * (needW * frac / haveW);
-          if (take > 0) v.storage[m] = Math.max(0, (v.storage[m] || 0) - take);
+          if (take > 0) { v.storage[m] = Math.max(0, (v.storage[m] || 0) - take); _cons(v, m, take); }   // ★flow-EMA(옷감 실수요 — 모피·유피·가죽·삼베)
         }
         addProduce('clothes', amt * frac);
         workNPC(npc);
@@ -1673,12 +1694,13 @@ function tickVillage(v, day) {
       if (oAmt > 0 || obAmt > 0 || jaAmt > 0) workNPC(npc);
     } else if (jdef.output && baseAmt > 0) {
       for (const [inp, need] of Object.entries(jdef.inputs || {})) {
+        _cons(v, inp, Math.min(v.storage[inp] || 0, need));   // ★flow-EMA(실차감분)
         v.storage[inp] = Math.max(0, v.storage[inp] - need);
       }
       // ★유령 박멸(§9): 보조 투입(aux) — 있으면 소비, 없어도 제작 성립(inputs와 달리 게이트 아님 — 마감·안감재).
       for (const [inp, per] of Object.entries(jdef.aux || {})) {
         const _t = Math.min(v.storage[inp] || 0, per);
-        if (_t > 0) v.storage[inp] -= _t;
+        if (_t > 0) { v.storage[inp] -= _t; _cons(v, inp, _t); }   // ★flow-EMA
       }
       addProduce(jdef.output, baseAmt);
       if (jdef.byproduct) {
@@ -1700,6 +1722,7 @@ function tickVillage(v, day) {
       const _self = Math.min(toolDeps * SELF_TOOL_RATE, (v.storage.stone || 0) / 0.2 * 0.2);
       if (_self > 0) {
         v.storage.stone -= _self * 0.2 / 0.4;   // 막석기 재료비(석공보다 비효율 — 막 깬 돌)
+        _cons(v, 'stone', _self * 0.2 / 0.4);   // ★flow-EMA(자급 인출)
         v.storage.tool = (v.storage.tool || 0) + _self;
         v._selfToolMade = (v._selfToolMade || 0) + _self;
         v._toolQnum = (v._toolQnum || 0) + SELF_TOOL_Q * _self; v._toolQden = (v._toolQden || 0) + _self;   // 막석기 저품질
@@ -1731,7 +1754,7 @@ function tickVillage(v, day) {
         // 활 데미지 품질(_bowQ) 투입: bone(활대 심·힘줄 백킹) + obsidian(예리 화살촉) — 있으면 소비, 품질 EMA에 기여(아래).
         const _bNeed = _bAmt * BOW_BONE_PER_WEAPON;
         const _bIn = Math.min(v.storage.bone || 0, _bNeed);
-        if (_bIn > 0) { v.storage.bone -= _bIn; v._boneUsed = (v._boneUsed || 0) + _bIn; }
+        if (_bIn > 0) { v.storage.bone -= _bIn; v._boneUsed = (v._boneUsed || 0) + _bIn; _cons(v, 'bone', _bIn); }   // ★flow-EMA
         v._bowIn = (v._bowIn || 0) + _bIn; v._bowNeed = (v._bowNeed || 0) + _bNeed;
         // ★흑요석 화살촉(수정3) — 예리한 화살촉 보조 투입. 산지 마을은 obsidian 재고가 있어 활/화살 품질↑(bone과 합산 투입률).
         const _obNeed = _bAmt * BOW_OBSIDIAN_PER_WEAPON;
@@ -1767,7 +1790,7 @@ function tickVillage(v, day) {
   // ★약재 일상 복용 소모(§9 2차) — 인구 비례 흐름(재고 내에서만·부족해도 페널티 없음, 건강 보너스만 사라짐). _herbUsed = 유통 진단 누적.
   if (v.storage.herb > 0) {
     const _hTake = Math.min(v.storage.herb, N * HERB_DAILY_PC);
-    v.storage.herb -= _hTake; v._herbUsed = (v._herbUsed || 0) + _hTake;
+    v.storage.herb -= _hTake; v._herbUsed = (v._herbUsed || 0) + _hTake; _cons(v, 'herb', _hTake);   // ★flow-EMA
   }
   // ★제례·부장 봉헌 v2(2026-07-12 — 위세재 반복 실수요): 위세재는 의례로 '소비 파괴'된다(매납 청동검·부장 옥 고증).
   //   v1 실패의 교훈(A/B: flat 요율이 빈곤 마을 자신의 수출 자본까지 태워 s8 16/3): ①식량 여유(_secF) 비례 —
@@ -1779,7 +1802,7 @@ function tickVillage(v, day) {
       for (const _rr in RITE_PC) {
         const _avail = Math.max(0, (v.storage[_rr] || 0) - N * RITE_KEEP_PC);
         const _rTake = Math.min(_avail, N * RITE_PC[_rr] * _rSec);
-        if (_rTake > 0) { v.storage[_rr] -= _rTake; v._riteUsed = (v._riteUsed || 0) + _rTake; }
+        if (_rTake > 0) { v.storage[_rr] -= _rTake; v._riteUsed = (v._riteUsed || 0) + _rTake; _cons(v, _rr, _rTake); }   // ★flow-EMA(봉헌 실수요)
       }
     }
   }
@@ -1884,11 +1907,12 @@ function tickVillage(v, day) {
   const smelters = (v.counts.smith || 0) + (v.counts.weaponsmith || 0) + (v.counts.armorsmith || 0);
   // ★의복 마모(2026-07-12) — 입던 옷이 해짐: 기본 + 한랭 가중(겨울 험한 사용·겹쳐 입음). 커버리지는 스탯 항이 소비.
   const _wear = N * CLOTH_WEAR_PC * (1 + 2 * (v._coldStress || 0));
+  _cons(v, 'clothes', Math.min(v.storage.clothes || 0, _wear));   // ★flow-EMA(마모 실차감)
   v.storage.clothes = Math.max(0, (v.storage.clothes || 0) - _wear);
   v._clothCov = Math.min(1.5, (v.storage.clothes || 0) / Math.max(1, N));
   // ★건축 유지(2026-07-12 — 돌 감산 자연화): 담장·구들·바닥·숫돌이 닳는다 — 인구 비례 석재 실소비(연료 동형 물리 수요).
   const _maintS = Math.min(v.storage.stone || 0, N * STONE_MAINT_PC);
-  if (_maintS > 0) v.storage.stone -= _maintS;
+  if (_maintS > 0) { v.storage.stone -= _maintS; _cons(v, 'stone', _maintS); }   // ★flow-EMA
   const fuelNeed = N * FIREWOOD_PC * (1 + FUEL_COLD_W * (v._coldStress || 0)) + smelters * SMELT_FUEL_PER;   // ★한랭 난방 가중(2026-07-12) — 겨울 연료 수요 실물화
   // ★볏짚 먼저(공짜 부산물, 당일 소진 — 취사·난방용. 제련은 고온이라 목재만) → 부족분만 목재.
   const strawFuel = Math.min(N * FIREWOOD_PC, (v._grainToday || 0) * STRAW_FUEL_PER_FOOD);
@@ -1901,10 +1925,11 @@ function tickVillage(v, day) {
     const _rem = _cookHeatNeed - _lowFuel;
     if (_rem <= 0) break;
     const _u = Math.min(v.storage[_lf] || 0, _rem / LOW_FUEL_EQ);
-    if (_u > 0) { v.storage[_lf] -= _u; _lowFuel += _u * LOW_FUEL_EQ; }
+    if (_u > 0) { v.storage[_lf] -= _u; _lowFuel += _u * LOW_FUEL_EQ; }   // ★flow-EMA 제외(식단 사다리 동형): 하급 연료는 *가용성 기반 대체 소비* — 폴드하면 궁핍기 잔가지 사용이 target ×수십 고착(EQ 역수 증폭, s202 붕괴 채널 의심)
   }
   const fuelFromWood = Math.min(Math.max(0, fuelNeed - strawFuel - _lowFuel), v.storage.wood || 0);
   v.storage.wood = Math.max(0, (v.storage.wood || 0) - fuelFromWood);
+  _cons(v, 'wood', fuelFromWood);   // ★flow-EMA(연료 목재)
   v._fuelCov = fuelNeed > 0 ? (strawFuel + _lowFuel + fuelFromWood) / fuelNeed : 1;
 
   // ★주거 증축: 집이 인구보다 모자라면 목재(필수)·석재(있으면)로 지음. 노후화로 지속 보수.
@@ -1923,11 +1948,14 @@ function tickVillage(v, day) {
       const stoneFrac = stoneNeed > 0 ? Math.min(1, (v.storage.stone || 0) / stoneNeed) : 1;
       built *= 0.3 + 0.7 * stoneFrac;   // 석재 0 → 30% 속도, 충분 → 100%
       v.storage.wood -= built * HOUSE_WOOD;
+      _cons(v, 'wood', built * HOUSE_WOOD);   // ★flow-EMA(주거 목재)
       // ★유령 박멸(§9): 자갈 기초 — 기초·구들 채움(석재 수요의 ≤절반)은 채집 자갈이 하급 대체(PEBBLE_STONE_EQ). 석재 실절약.
       const _needS = built * HOUSE_STONE;
       const _pebUse = Math.min(v.storage.pebble || 0, (_needS * 0.5) / PEBBLE_STONE_EQ);
-      if (_pebUse > 0) v.storage.pebble -= _pebUse;
+      if (_pebUse > 0) v.storage.pebble -= _pebUse;   // ★flow-EMA 제외: 자갈 기초도 석재의 가용성 대체 소비(잔가지 동형)
+      const _stUse = Math.min(v.storage.stone || 0, Math.max(0, _needS - _pebUse * PEBBLE_STONE_EQ));
       v.storage.stone = Math.max(0, (v.storage.stone || 0) - Math.max(0, _needS - _pebUse * PEBBLE_STONE_EQ));   // 실제 건축분만큼 석재 소비(자갈 대체분 차감)
+      _cons(v, 'stone', _stUse);   // ★flow-EMA(주거 석재)
       v.housing += built;
     }
   }
@@ -3109,6 +3137,7 @@ module.exports = {
   createVillage,
   createNPC,
   tickVillage,
+  _cons,   // ★flow-EMA 소비 계측(v2 옹기 진흙 등 v2 소재 소비처용)
   adjustGuildTax,
   tickMigration,
   processEvents,
@@ -3396,8 +3425,17 @@ function computeShadowPrices(v) {
     } else {
       // ★장식재(위신재)에 진짜 수요 부여 — use-value = 위신·심리(prestige). 1인당 LUX_TARGET_PC 목표.
       //   (옛 N×0.02 = 수요 죽임. 이제 위신재를 없는 마을은 수입하고 광산촌은 잉여 수출)
-      const buffer = ORNAMENTAL[r] ? N * LUX_TARGET_PC : N * Math.max(0.5, util * 1.2);
-      target = Math.max(subs * 30, buffer);
+      // ★flow-EMA target(2026-07-12, CHECKLIST 154 해소): 유령 보유 하한 max(0.5,·) 제거 — 소비재 수요는
+      //   실소비 흐름 flowT(=_consEMA×30, v1 _cons 계측 16사이트)가 만든다. 잡화 롱테일(util 0.1)의 가짜 보유
+      //   수요 소멸, 실소비 재화(연료·옷감·투입재·식단·봉헌)는 흐름이 target을 정직 견인 — 신규 재화는 소비처에
+      //   _cons 한 줄이면 끝(CAP_TARGET·시드·글럿가드·감산 4종 수동 통합 부채 해소).
+      //   동기 계약: _priceParamsV2·tickDecay 동일 공식. 분별 프로브(하한 제거 비치명)·A/B 근거 CHECKLIST 참조.
+      // ★subs 가드(A/B 실측): SUBSISTENCE_PER_NPC 등재 재화(주식·연료·석재·의류 사슬)는 subs×30이 이미 손튜닝
+      //   흐름 target — flowT 중복 적용 시 실측(한랭 연료 등)이 캘리브를 2~3배 덮어써 시장 전체 유보 인플레
+      //   (s505 576→17 붕괴 실측). flowT는 손튜닝 없는 롱테일 전용.
+      const flowT = SUBSISTENCE_PER_NPC[r] ? 0 : ((v._consEMA || {})[r] || 0) * 30;
+      const buffer = ORNAMENTAL[r] ? N * LUX_TARGET_PC : N * (util * 1.2);
+      target = Math.max(subs * 30, buffer, flowT);
       // ★식량 다양성 수요 — 자체 생산 못 하는 식품군은 다양성 위해 소량 수입 목표. 자체 생산하면(≥0.05/명) 보너스 없음.
       //   ★식량안보 게이트: 주식(곡물) 25일치 이상일 때만 — 굶는 마을은 다양성보다 생존(주식) 우선(변방 마을 아사 방지).
       if (VARIETY_FOOD[r] && (v.dailyProductionBuf ? (v.dailyProductionBuf[r] || 0) / N : 0) < 0.05
@@ -3451,8 +3489,9 @@ function _priceParamsV2(v, r) {
   else if (r === 'clothes') { target = Math.max(2, N * 1.2); stock = Math.max(0.1, v.storage[r] || 0); }   // ★의복(동기 계약: computeShadowPrices CAP_TARGET와 동일)
   else {
     const subs = (SUBSISTENCE_PER_NPC[r] || 0) * N;
-    const buffer = ORNAMENTAL[r] ? N * LUX_TARGET_PC : N * Math.max(0.5, util * 1.2);
-    target = Math.max(subs * 30, buffer);
+    const flowT = SUBSISTENCE_PER_NPC[r] ? 0 : ((v._consEMA || {})[r] || 0) * 30;   // ★flow-EMA(동기 계약: computeShadowPrices와 동일 공식·subs 가드)
+    const buffer = ORNAMENTAL[r] ? N * LUX_TARGET_PC : N * (util * 1.2);
+    target = Math.max(subs * 30, buffer, flowT);
     if (VARIETY_FOOD[r] && (v.dailyProductionBuf ? (v.dailyProductionBuf[r] || 0) / N : 0) < 0.05
         && (v.storage.food || 0) / N > 25) target = Math.max(target, N * VARIETY_TARGET_PC);
     stock = Math.max(0.1, v.storage[r] || 0);
@@ -4057,7 +4096,7 @@ function tickDecay(v) {
   // 옹기: 진흙 흐름 소비 → 충족률 EMA(~50일 관성 — 독은 한 번 빚으면 오래감)
   const _cNeed = N * CLAY_DAILY_PC;
   const _cTake = Math.min(v.storage.clay || 0, _cNeed);
-  if (_cTake > 0) v.storage.clay -= _cTake;
+  if (_cTake > 0) { v.storage.clay -= _cTake; v1._cons(v, 'clay', _cTake); }   // ★flow-EMA(옹기 진흙)
   v._potteryR = v._potteryR === undefined ? (_cNeed > 0 ? _cTake / _cNeed : 0) : 0.98 * v._potteryR + 0.02 * (_cNeed > 0 ? _cTake / _cNeed : 0);
   const _potMul = 1 - POTTERY_DECAY_SAVE * Math.min(1, v._potteryR);
   for (const [r, baseRate] of Object.entries(DECAY_V2)) {
@@ -4065,8 +4104,9 @@ function tickDecay(v) {
     if (s <= 0) continue;
     const subs = (SUBSISTENCE_PER_NPC[r] || 0) * N;
     const util = UTILITY_WEIGHT[r] || 0.1;
-    const buffer = N * Math.max(0.5, util * 1.2);
-    const target = Math.max(subs * 30, buffer);
+    const flowT = SUBSISTENCE_PER_NPC[r] ? 0 : ((v._consEMA || {})[r] || 0) * 30;   // ★flow-EMA(동기 계약·subs 가드) — 롱테일 작업 재고는 과잉부패에서 보호
+    const buffer = N * (util * 1.2);
+    const target = Math.max(subs * 30, buffer, flowT);
     // excess: target × mult 초과분은 비례 가속(쥐·곰팡이·도둑). 부패성 식량은 mult 낮아 ~60일에서 cap.
     const xm = DECAY_EXCESS_MULT[r] || 10;
     const excess = Math.max(0, s / Math.max(1, target * xm) - 1);

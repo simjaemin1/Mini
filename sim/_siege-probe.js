@@ -160,7 +160,10 @@ if (SC === 'a') {
   ok(s1.battle - st0.battle === 0 && s1.cas - st0.cas === 0, `전투 0회 · 사상 0 (battle Δ${s1.battle - st0.battle}, cas Δ${s1.cas - st0.cas})`);
   const trib = G.getTRIB().find(t => t.payer === B && t.payee === A);
   ok(G.getTRIB().length - trib0 === 1 && !!trib, `조공 계약 성립(TRIBUTES: ${B.name}→${A.name})`);
-  ok(G.warFE(B.econ) <= bFood0, `곳간 공납(방어 식량 ${bFood0.toFixed(0)}→${G.warFE(B.econ).toFixed(0)})`);
+  // ★flow-EMA 강건화(2026-07-12): 종전 '종료 곳간 ≤ 개시 곳간'은 전후 회복이 개시를 못 넘는다는 픽스처 가정 —
+  //   flow-EMA(빈곤 마을 식량 물류 개선)에서 항복 후 수일 내 회복이 개시를 추월(133→220 실측)해 가짜 실패.
+  //   공납 실증 = (i)항복 시점 곳간 <5일(봉쇄 카운트다운 도달) (ii)≥0(공납 음수 역이전 가드) (iii)조공 계약(위 단정) — 종전 후 회복은 정상(econ 개선).
+  ok(fdAtSurr >= 0 && fdAtSurr < 5, `곳간 공납(항복 시점 ${fdAtSurr.toFixed(1)}일 ∈ [0,5) — 종료 후 회복 정상, 개시 ${bFood0.toFixed(0)}→종료 ${G.warFE(B.econ).toFixed(0)})`);
   ok(B.econ._siegeBlock === undefined && B.econ._siegeOutMul === undefined && B._siege === undefined, '포위 해제 — 봉쇄 훅 삭제(_siegeBlock/_siegeOutMul/_siege)');
   ok(retMade >= 1 && G.RET_GROUPS.length === 0, `공격군 도보 귀환(RET_GROUPS 생성 ${retMade}건 → 완주 0 잔여)`);
   ok(G.getWARS().length === 0, '전쟁 종결(WARS 정리)');
