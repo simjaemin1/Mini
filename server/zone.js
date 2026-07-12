@@ -10,6 +10,7 @@ const { ZONES, WORLD, isNight, worldPhase, darknessLevel, findZoneAt, worldDista
 const db = require('./zone-local-db'); // 로컬 zone DB — players 없음
 const SimVillages = require('./villages'); // §4-4 NPC 마을 시뮬 — top-level은 상수뿐(실작업은 아래 init 호출, ENABLE_VILLAGES=0이면 완전 no-op)
 const Wildlife = require('./wildlife'); // §4-4 동물 AI 블록(마을실험실 이식) — 야생 5종 생태. ENABLE_WILDLIFE=0 → 완전 no-op
+const Bandits = require('./bandits'); // §11 도적 캐논 1파(경제·수명주기 — 소굴·해체 전환·econ 약탈 훅). ENABLE_BANDITS=0 → 완전 no-op, ENABLE_VILLAGES=0이면 자동 휴면
 const central = require('./central-client'); // central HTTP 클라이언트
 const { Quadtree } = require('./quadtree'); // spatial index — O(N²) 검색 회피
 const { ChunkManager, CHUNK_SIZE, generateChunkResources, generateVillagesForZone, generateCoastlineWaterTiles } = require('./chunk'); // 청크 단위 entity 분류 + procedural + 해안선
@@ -339,10 +340,10 @@ if (!ZONE) {
 const LATENCY_MS = parseInt(process.env.LATENCY_MS || String(ZONE.simulatedLatencyMs || 0), 10);
 
 const TICK_HZ = 30;
-const MOVE_SPEED = 220; // px/sec
-// Phase 14.40 — Shift 달리기: 1.6× 속도, hunger/thirst 1.5× 빠른 감소.
+const MOVE_SPEED = 64; // px/sec — ★2m/s(32px=1m). 마을실험실 정본(2셀/초)과 통일. 무기 든 전투 유닛은 이보다 느림(행군<2·돌격<5)
+// Phase 14.40 — Shift 달리기: 2.5× 속도(걷기2 × 2.5 = 5m/s, 고증 달리기), hunger/thirst 1.5× 빠른 감소.
 // 단 hunger/thirst가 5 이하면 자동 해제 (지쳐서 못 뜀).
-const SPRINT_MULT = 1.6;
+const SPRINT_MULT = 2.5;
 const SPRINT_DRAIN_MULT = 1.5;
 const SPRINT_MIN_GAUGE = 5;
 // Phase 14.41 — 사망/구조: downed 상태 유지 시간, 구조 가능 윈도우.
@@ -373,6 +374,23 @@ const AOI_RADIUS = 800;         // 클라 VIEW_RADIUS(650) + 여유. 이 안의 
 const claims = new Map();
 const buildings = new Map();    // id -> { id, dbId, type, ownerId, ownerName, x, y, data }
 const mobs = new Map();         // mid -> { mid, type, x, y, vx, vy, hp, maxHp, aggroTarget, lastAttackAt, wanderUntil }
+// §4-4 P2 LOD 결판(근처만 실체화): 방어 마을권에 '관측자'(사람 player 또는 스펙테이터)가 반경 r(px) 안에 있나.
+//   villages.js 가 eta 도달 전쟁을 physical(battle-core 실시간) XOR headless 로 분기하는 판정자. center·r 모두 px(player 좌표계).
+//   사람 player만(isNpc 제외 — 마을 NPC·캐러밴은 관측자 아님) + 스펙테이터(observers) 포함. AOI_RADIUS(800)와 동일 척도로 호출됨.
+function anyViewerNear(center, r) {
+  if (!center) return false;
+  const r2 = r * r;
+  for (const p of players.values()) {
+    if (p.isNpc) continue;
+    const dx = p.x - center.x, dy = p.y - center.y;
+    if (dx * dx + dy * dy <= r2) return true;
+  }
+  for (const d of observers.values()) {
+    const dx = d.viewerX - center.x, dy = d.viewerY - center.y;
+    if (dx * dx + dy * dy <= r2) return true;
+  }
+  return false;
+}
 // Phase 5-I: 경계 전투 — 이웃 zone 플레이어 ghost(절대좌표) + 화살 발사체
 const ghostPlayers = new Map(); // playerId -> { ax, ay, vx, vy, name, srcZone, recvAt } (절대좌표, 이웃 zone이 동기화)
 const ghostBuildings = new Map(); // key "srcZone:id" -> { acx, acy, side, type, floor } (절대 cell, 경계 너머 벽 콜라이더)
@@ -1552,7 +1570,7 @@ function npcStep(npc, dt, now) {
 
   // 목표 방향으로 이동 — A* path 따라가기. path 없으면 새로 계산.
   // path가 만료(목표 바뀜)되거나 너무 오래(>3초) 됐으면 재계산.
-  const speedMult = npc.behavior === 'flee' ? 1.0 : 0.6;
+  const speedMult = npc.behavior === 'flee' ? 2.5 : 0.6;   // ★도주=달리기 5m/s(맨몸이라 전투 유닛 돌격보다 빠름 → 추격 어려움, 고증). 배회=1.2
   const targetKey = `${npc.targetX|0}_${npc.targetY|0}`;
   const needPath = !npc.path || npc.pathIndex >= npc.path.length ||
                    npc._pathFor !== targetKey ||
@@ -1697,7 +1715,10 @@ setInterval(() => {
 //   지형 콜라이더)은 이 시점에 전부 준비됨(직후 spawnVillagers가 같은 것을 쓰는 것으로 보증).
 //   ENABLE_VILLAGES=0 → init 즉시 return → isLegacyVillageClaimed 항상 false = 레거시 50곳 전부 유지(기존과 동일).
 // §4-4 Stage 4B: isPositionActive(AOI 상세/보간 분기)·isBlockedByWall(캐러밴 벽 충돌·로컬 재경로) 추가 주입.
-SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, isWaterTileLocal, isPositionActive, isBlockedByWall });
+// §4-4 P2 LOD: anyViewerNear(defCenterPx, r) 추가 주입 — villages.js 가 전쟁 eta 결판을 physical/headless 로 분기(서버 내부 스텝만, broadcast·렌더 없음).
+SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, isWaterTileLocal, isPositionActive, isBlockedByWall, anyViewerNear });
+// §11 도적 1파 — SimVillages.init 직후(banditHost 준비 시점): 소굴 스캔/복원 + econ 훅(banditRouteRisk/onBanditLoot) 배선.
+Bandits.init();
 // §4-4 마지막 조각: 동물 AI 블록(마을실험실 야생 5종 🦌🐇🐗🐺🐯) — server/wildlife.js.
 //   뷰(LOD)=활성 청크 bbox, 스폰=서식 밴드(마을 완충 100~250m — SimVillages/레거시 마을 기준),
 //   agents=사람 플레이어+활성 NPC(지각·도주·맹수 위협 대상), 피해=damagePlayer 브리지.
@@ -1708,6 +1729,8 @@ Wildlife.init({
   getActiveChunkKeys: () => activeChunkKeys, isPositionActive,
   spawnCorpse, damagePlayer, broadcast, WORLD,
   simVillages: () => SimVillages.clientVillages(), legacyVillages: VILLAGES,
+  // §4-4 P3: 실체 전쟁 병사 pid 위치(px)를 야생 위협원으로 주입(_buildWarThreats 서버판 — 행군/전투 병사를 몹이 인지·회피).
+  warThreats: () => SimVillages.warThreats(),
 });
 // Phase 14.4: central에 NPC 길드 등록 (비동기 — 실패해도 진행)
 // 길드영토 OFF면 central 등록(50콜) 스킵 → 부팅 빠름. (영토는 후속 기능, NPC 작동엔 불필요)
@@ -2013,6 +2036,7 @@ wss.on('connection', async (ws, req) => {
       resources: Array.from(resources.values()),
       claims: Array.from(claims.values()),
       simVillages: SimVillages.clientVillages(), // §4-4 Stage 4A: 마을 영토(경계 셀)·이름·인구 — 1회
+      banditCamps: Bandits.clientCamps(), // §11 도적: 소굴·야영 마커 1종 — 이후 bandit_camps가 변경분 방송
       buildings: activeChunkBuildings(),
       worldClock: {
         epoch: WORLD.worldEpoch,
@@ -2286,6 +2310,7 @@ wss.on('connection', async (ws, req) => {
     resources: Array.from(resources.values()),
     claims: Array.from(claims.values()),
     simVillages: SimVillages.clientVillages(), // §4-4 Stage 4A: 마을 영토(경계 셀)·이름·인구 — 1회
+    banditCamps: Bandits.clientCamps(), // §11 도적: 소굴·야영 마커 1종 — 이후 bandit_camps가 변경분 방송
     buildings: activeChunkBuildings(),
     groundItems: Array.from(groundItems.values()), // Phase 14.23
     mobs: Array.from(mobs.values()).map(m => ({ mid: m.mid, type: m.type, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, tameOwner: m.tameOwner || null, tameOwnerName: m.tameOwnerName || null })),
@@ -2359,6 +2384,25 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'unclaim') tryUnclaim(player, msg.claimId);
   else if (msg.type === 'trade_offer') tryTrade(player, msg);
   else if (msg.type === 'ping') { player.lastSeen = Date.now(); send(ws, { type: 'pong', t: msg.t }); }
+  else if (msg.type === 'war_command_join') {
+    // §4-4 P4: 플레이어 전투 지휘 참가 요청(client.js 송신). warId=null → 지휘 해제.
+    //   근접 검증 = 활동 중 전쟁 병사(SimVillages.warThreats, 존-로컬 px) 반경 안인지(WAR_CMD_R=320px≈10셀).
+    //   ★[인계] 진영 소속 검증 + 실제 커맨더 바인딩(그 player vx/vy → battle-core 지휘관)은 villages.js/war-live
+    //     (P3 무수정)에 훅 필요 → 여기선 의사표시 기록(player._warCmdBind)+ack만. villages._warSyncBattleMirror 가
+    //     "이 pid=커맨더면 player.vx/vy로 g.cmd 구동"을 소비하도록 확장하면 완결(현재 dormant).
+    player.lastSeen = Date.now();
+    const warId = (msg.warId == null) ? null : String(msg.warId);
+    if (warId == null) { player._warCmdBind = null; send(ws, { type: 'war_command_ack', warId: null, ok: true }); return; }
+    let near = false;
+    try {
+      const th = SimVillages.warThreats();
+      if (th) { const R2 = 320 * 320; for (const t of th) { const dx = t.x - player.x, dy = t.y - player.y; if (dx * dx + dy * dy <= R2) { near = true; break; } } }
+    } catch (_) {}
+    if (!near) { send(ws, { type: 'war_command_ack', warId, ok: false, reason: '전장에서 너무 멉니다' }); return; }
+    player._warCmdBind = warId;
+    console.log(`[${ZONE_ID}] 🎖️ war_command_join ${player.name} → ${warId} (근접 채택·바인딩 훅 대기)`);
+    send(ws, { type: 'war_command_ack', warId, ok: true });
+  }
   else if (msg.type === 'teleport_debug') {
     // 디버그: zone-local 좌표로 워프. zone 안 + water cell 아닌 곳만 허용.
     const tx = Math.max(0, Math.min(ZONE.zoneWidth  - 1, msg.x | 0));
@@ -4549,6 +4593,8 @@ setInterval(() => {
   // §4-4 Stage 3: 마을 econ 일일 틱 훅 — 게임일 '경계'에서만 동작(평시 O(1) 검사, 30Hz 물리와 분리).
   //   idle skip보다 앞: 무인 존에서도 마을 경제 진행(오프라인 경제). ENABLE_VILLAGES=0 → no-op.
   SimVillages.onGameTick(now);
+  // §11 도적 일일 훅 — villages 옆(econ 틱이 world.day를 민 직후 같은 경계에서 데일리 1회). 평시 O(1) 정수 비교.
+  Bandits.onGameTick(now);
 
   // === 14.49-e3-perf5: idle zone skip ===
   // 사람 player(isNpc=false) + observer 모두 0명이면 tick 풀 처리 skip.
@@ -4725,6 +4771,7 @@ setInterval(() => {
     if (p.handingOff) continue;
     if (p.isNpc) {
       if (p.simCaravan) continue; // §4-4 Stage 4B: 캐러밴 실체 NPC — 이동은 villages.js 페이싱(경로 보간+벽 판정)이 전담(이중 이동 방지)
+      if (p.simWar) continue;     // §4-4 P3: 출정(징발) 병사 — 이동은 villages.js 실체 전쟁(행군 대형 페이싱·전투유닛 미러)이 전담(이중 이동 방지)
       if (!p.canadiaVillage && !isPositionActive(p.x, p.y)) continue; // dormant NPC skip
       movePlayerStep(p);
     } else {
@@ -5200,6 +5247,9 @@ setInterval(() => {
       const e = { pid: o.pid, x: o.x, y: o.y, hp: o.hp, floor: o.floor || 0, vx: o.vx | 0, vy: o.vy | 0 };
       if (o.z) e.z = Math.round(o.z);
       if (o.isDown) e.isDown = 1;
+      // §4-4 P3: 실체 전쟁 병사 전투 메타 — 매틱 br(궤주 비트, 위치·hp는 위에 이미 포함), 최초가시분만 bt(병종 int)·bs(진영 0/1)·bc(지휘관 비트).
+      //   villages.js 실체 전쟁(행군 대형·전투유닛 미러)이 o._muster/_bt/_bside/_bcmd/_brout 세팅. 기존 메타 패턴(최초=정적·매틱=동적) 준수.
+      if (o._muster) { e.br = o._brout ? 1 : 0; if (isNew) { e.bt = o._bt | 0; e.bs = o._bside | 0; e.bc = o._bcmd ? 1 : 0; } }
       // §4-4 Stage 4A: simJob(마을 시뮬 NPC 직업 — npcJob과 별개)도 메타로 1회. 일중 변경분은 sim_village_day 브로드캐스트가 갱신.
       if (isNew) { e.name = o.name; e.color = o.color; e.maxHp = o.maxHp; e.tribeName = o.tribeName || null; if (o.simJob) e.simJob = o.simJob; }
       return e;

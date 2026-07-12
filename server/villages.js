@@ -93,6 +93,18 @@ const CARAVAN_REPAIR_LOOKAHEAD_PX = 480;     // 차단 시 우회 목표 = 전�
 const CARAVAN_ISOLATE_FAILS = 3;             // 재경로 연속 실패 → 완전 고립 판정(§5.5b 2단계)
 const CARAVAN_BLOCKTEST = parseInt(process.env.VILLAGE_CARAVAN_BLOCKTEST || '0', 10); // 테스트 전용(헤더 주석)
 
+// --- P2: LOD 결판(근처만 실체화) 상수 ---
+//   한 전쟁=정확히 1경로(physical XOR headless). eta 도달 시 방어 마을권에 사람 player(관측자)가 AOI 안이면
+//   battle-core 실체 전투(server/war-live 실시간 30Hz 스텝) → econ 되먹임 1회. 아니면 기존 headless(war.daily).
+const WAR_LOD_VIEW_PX = Math.max(1, parseInt(process.env.VILLAGE_WAR_VIEW_PX || '', 10) || 800);   // 관측자 근접 반경(px) — zone.js AOI_RADIUS(800) 정합. 테스트 오버라이드.
+
+// --- P3: 실체 전쟁(집결→행군→전투→궤주) 상수 ---
+//   한 전쟁=정확히 1경로(physical XOR headless). 관측자 근접 시 지휘관 econ 페이싱(캐러밴 dormant 동형)·전 병사 pid 인스턴스화·
+//   접근(WAR_ENGAGE_R) 교전·battle-core 실시간 스텝·전투유닛→pid 미러·궤주 도보 귀환. 무관측자=기존 headless(daily).
+const WAR_BODY_MAX = Math.max(0, parseInt(process.env.VILLAGE_WAR_BODY_MAX || '32', 10)); // 동시 실체 행군/전투 상한(초과분은 headless 폴백 — LiveBattle LB_MAX_BATTLES 와 별개, 행군 포함)
+const WAR_BC_MS = 500;                     // war_battle 집계 broadcast throttle(2Hz + phase 전이)
+const SZ2 = 32;                            // 셀→px 스케일(SZ 별칭 — 전쟁 좌표 변환 가독)
+
 const state = {
   ready: false,
   zoneId: null,
@@ -110,6 +122,12 @@ const state = {
   routeCache: null,    // Map<'aDbId_bDbId', pts|null> — 마을쌍 경로 캐시(랩 _tradePaths 동형). invalidate가 비움.
   pathfind: null,      // require('./pathfind') — init lazy(플래그 off면 로드 없음)
   _route: null,        // 코스 그리드 A* 스크래치(ensureRouteGrid)
+  // P2 — LOD 결판(실체 전투)
+  war: null,           // war-core createWar() 인스턴스(econ 전쟁 층)
+  warLive: null,       // war-live createWarLive() 인스턴스(실체 전투 상태머신 — 관측자 근접 시 physical 경로)
+  _warTickAt: 0,       // war-live 실dt 스텝 앵커(30Hz)
+  warBodies: null,     // P3: Map<w.id, wbody> — 실체 행군/전투/귀환 몸(캐러밴 body 동형). pid 병사·대형·econ 페이싱 소유.
+  _warThreatBuf: null, // P3: warThreats() 재사용 버퍼(야생 agrid 주입 — GC 최소)
 };
 
 // 게임 절대일 — zone-config WORLD(worldEpoch=0, dayLengthMs=10분)와 같은 시계 원천(Date.now).
@@ -338,9 +356,15 @@ function spawnOneNpc(vil) {
 }
 function removeOneNpc(vil) {
   const { players, npcs, broadcast } = state.deps;
-  while (vil.npcPids.length) {
-    const pid = vil.npcPids.pop(); // 가장 최근 스폰부터 (완만 감소)
-    if (!players.has(pid)) continue; // stale(핸드오프 등) — 스킵
+  // 가장 최근 스폰부터(완만 감소). ★[P3 삼중 코히런스] 출정(징발·_muster) 중 병사는 인구감소 대상에서 제외 —
+  //   캐러밴(simCaravan) 동형: 전쟁 실체가 소유한 pid는 syncVillagePop이 안 건드림(사상 despawn은 _warOnResolved가
+  //   샘플 타겟, 생존은 귀환 그룹이 해제). war 종결 후 syncVillagePop이 econ 진실로 재수렴.
+  for (let i = vil.npcPids.length - 1; i >= 0; i--) {
+    const pid = vil.npcPids[i];
+    if (!players.has(pid)) { vil.npcPids.splice(i, 1); continue; } // stale(핸드오프 등) 청소
+    const p = players.get(pid);
+    if (p && p._muster) continue; // ★출정 병사 보호(위 주석)
+    vil.npcPids.splice(i, 1);
     players.delete(pid);
     npcs.delete(pid);
     broadcast({ type: 'player_left', pid });
@@ -349,11 +373,13 @@ function removeOneNpc(vil) {
   return false;
 }
 function syncVillagePop(vil, maxDelta) {
-  vil.npcPids = vil.npcPids.filter(pid => state.deps.players.has(pid)); // stale 청소
+  // stale 청소 — ★_muster(출정 중) pid는 players 에 남아 있어 필터 통과(제외 안 됨). 감소(removeOneNpc)도 _muster 스킵.
+  //   목표 인구는 econ.npcs.length(진실) 추종: 출정 병사도 npcPids 에 남아 카운트되므로 전쟁 중 스폰 폭주 없음.
+  vil.npcPids = vil.npcPids.filter(pid => state.deps.players.has(pid));
   const target = Math.min(vil.econ.npcs.length, NPC_CAP_PER_VILLAGE);
   let delta = target - vil.npcPids.length;
   if (delta > 0) for (let i = 0; i < Math.min(delta, maxDelta); i++) spawnOneNpc(vil);
-  else if (delta < 0) for (let i = 0; i < Math.min(-delta, maxDelta); i++) removeOneNpc(vil);
+  else if (delta < 0) for (let i = 0; i < Math.min(-delta, maxDelta); i++) { if (!removeOneNpc(vil)) break; } // 남은 게 전부 _muster면 중단(reconverge는 종전 후)
 }
 
 // =============================================================================
@@ -1044,6 +1070,7 @@ function init(deps) {
     const { ZONES, WORLD } = require('./zone-config');
     const ZONE = ZONES[ZONE_ID];
     if (!ZONE) return;
+    state.villageSeed = ZONE.villageSeed || 1020; // §11 도적(bandits.js) 결정론 RNG 공유(war-core seed와 동일 원천)
     state.dayMs = parseInt(process.env.VILLAGE_DAY_MS || '', 10) || WORLD.dayLengthMs; // VILLAGE_DAY_MS는 테스트 전용
     state.epoch = WORLD.worldEpoch || 0;
 
@@ -1064,7 +1091,9 @@ function init(deps) {
     // --- Stage 3: econ 모듈 + world 조립 (마을실험실 4799·4803행과 동일 배선) ---
     const econ = require('../sim/economy-sim');       // v1: createVillage/tickVillage/RESOURCES
     const econV2 = require('../sim/economy-sim-v2');  // v2: createWorldV2/tickWorldV2 (priceFn 주입)
-    state.econ = econ; state.econV2 = econV2;
+    const warCore = require('../sim/war-core');        // P1: NPC 마을 전쟁 econ 층(명분·원한·징집·headless 판정·되먹임)
+    const warLive = require('./war-live');              // P2: LOD 실체 전투 상태머신(관측자 근접 시 battle-core 실시간 스텝)
+    state.econ = econ; state.econV2 = econV2; state.warCore = warCore; state.warLive_mod = warLive;
     const world = econV2.createWorldV2({
       seed: ZONE.villageSeed || 1020,
       villageCount: dbRows.length,          // 슬롯만 확보 — 아래서 전부 실지형 마을로 교체
@@ -1121,6 +1150,39 @@ function init(deps) {
     state.caravanBodies = new Map();
     state.routeCache = new Map();
     state.pathfind = require('./pathfind'); // 로컬 재경로(벽 인지) — lazy(플래그 off면 이 줄까지 안 옴)
+
+    // --- P1: NPC 마을 전쟁 econ 층 배선 (tickWorldV2 후 daily 구동) ---
+    //   전쟁 상태는 전부 vil.econ(plain object)에 저장 → serializeEcon 이 자동 영속(_grudge/_warTrauma/
+    //   _warFatigue/_palisade/_warMobUntil/_warTribOut 등). 세력 간 조공(TRIBUTES)은 payer econ._warTribOut
+    //   미러로 영속 → 재부팅 시 rebuildFromEcon() 이 world 목록 재구성. 진행 중 WARS(march)는 캐러밴과
+    //   동형(비영속·다음 판정까지 짧음). center=맵 셀(ccx/ccy), 영토=econ.land.size×25(랩 warTerrR 정합).
+    //   결정론: war-core 는 Math.random 미사용 — (villageSeed, world.day) 시드 rng 만. econ srand 스트림 불간섭.
+    state.war = warCore.createWar({
+      villages: state.villages,
+      world,
+      seed: (ZONE.villageSeed || 1020),
+      infoRange: 5000,
+      centerOf: v => ({ cx: v.ccx, cy: v.ccy }),
+      territoryOf: v => (v.econ.land && v.econ.land.size ? v.econ.land.size * 25 : 2800),
+      log: null,   // 조용(warStats().log 에 500줄 순환 버퍼로 적재 — 요약만 일 1회)
+    });
+    state.war.rebuildFromEcon();   // 재부팅 복원: econ._warTribOut → world TRIBUTES 재구성
+
+    // --- P2: LOD 실체 전투(server/war-live) 배선 — 관측자 근접 시 physical 경로 ---
+    //   한 전쟁=1경로: warResolveBattle 3인자(precomputedRes)로 되먹임(headless byte불변). resolveBattle 는
+    //   createWar 반환 클로저(WARS·warKill·TRIBUTES 상태 소유)를 그대로 넘겨 econ 확정선 유지. dayOf=world.day.
+    state.warBodies = new Map();   // P3: 실체 행군/전투/귀환 몸(비영속 — 재부팅 시 빈 Map, 캐러밴 동형)
+    state.warLive = warLive.createWarLive({
+      BC: require('../sim/battle-core'),
+      toBattleSpec: state.war.toBattleSpec,
+      resolveBattle: (w, day, pre) => state.war.warResolveBattle(w, day, pre),   // war-core 3인자 되먹임(1회)
+      centerOf: v => ({ cx: v.ccx, cy: v.ccy }),                                  // 맵 셀(centerOf 정합)
+      dayOf: () => state.world.day,
+      // P3: 결판 훅(splice 전) — 최종 미러로 사상 despawn·생존 귀환(궤주) · 콜라이더 물/바위 진입 금지(셀→px isTerrainBlockedLocal)
+      onResolved: (lb) => { try { _warOnResolved(lb); } catch (e) { console.error(`[${state.zoneId}] ⚔️ onResolved 실패:`, e.message); } },
+      blockedCell: (cx, cy) => { try { return deps.isTerrainBlockedLocal(cx * SZ + SZ / 2, cy * SZ + SZ / 2); } catch (_) { return false; } },
+      log: null,
+    });
 
     // --- Stage 4A: 회관·집 실물화 (buildings 테이블 — 부팅 wipe가 지운 자리에 재기록, 1트랜잭션) ---
     {
@@ -1191,6 +1253,305 @@ function init(deps) {
 }
 
 // =============================================================================
+// P3 — 실체 전쟁(집결→행군→전투→궤주) + pid 브릿지 + broadcast + 삼중 코히런스.
+//   한 전쟁=정확히 1경로(physical XOR headless). 관측자 근접 시: 지휘관 econDayToMs 페이싱(캐러밴 dormant 동형)·
+//   전 병사 pid 인스턴스화(징발=상태전환)·행군 대형(_mu*)·방어 사전 포진(WAR_ALERT_R)·접근 교전(WAR_ENGAGE_R)·
+//   battle-core 실시간 스텝·전투유닛→pid 미러(_lbSyncAgents 서버판)·궤주 도보 귀환. 무관측자=headless(war-core daily, 불변).
+//   좌표: 마을·대형·지휘관=맵 셀(cx/cy) · pid player=px(×SZ) · 행군로=px(getRoute 재사용).
+// =============================================================================
+function warCenterPx(vil) { return { x: vil.ccx * SZ + SZ / 2, y: vil.ccy * SZ + SZ / 2 }; }
+function warDefCenterPx(w) { return warCenterPx(w.def); }
+function _warCmdPx(body) { return { x: body.cmd.cx * SZ, y: body.cmd.cy * SZ }; }   // 지휘관 셀(fractional)→px
+
+// 병종 선발 선호도(랩 _muDraftResidents pref — simJob 도구→병종 매핑 정합).
+function _warPref(job, type) {
+  if (type === 'archer') return (job === 'hunter' ? 100 : 0) + (job === 'warrior' ? 30 : 0) + (job === 'forager' ? 8 : 0) + 3;
+  if (type === 'slinger') return (job === 'forager' ? 100 : 0) + (job === 'hunter' ? 30 : 0) + 3;
+  if (type === 'greataxe') return (job === 'lumberjack' ? 100 : 0) + 3;
+  if (type === 'militia') return (job === 'cook' ? 60 : 0) + (job === 'merchant' ? 60 : 0) + (job === 'farmer' ? 20 : 0) + 3;
+  if (type === 'champion' || type === 'dagger') return (job === 'warrior' ? 100 : 0) + (job === 'smith' ? 40 : 0) + (job === 'weaponsmith' ? 40 : 0) + (job === 'farmer' ? 12 : 0) + 3;
+  return (job === 'fisher' ? 100 : 0) + (job === 'miner' ? 90 : 0) + (job === 'mason' ? 90 : 0) + (job === 'farmer' ? 70 : 0) + (job === 'warrior' ? 40 : 0) + 3;   // spear/pike
+}
+// composition 표본 축소(NPC_SAMPLE 상한 — 물리=샘플, econ 되먹임=war-core 전량).
+function _warSampleComp(comp, cap) {
+  const MU_TYPES = state.warLive.MU_TYPES; const o = {}; let tot = 0;
+  for (const k of MU_TYPES) { o[k] = Math.round(comp[k] || 0); tot += o[k]; }
+  if (tot > cap && tot > 0) { const r = cap / tot; for (const k of MU_TYPES) o[k] = Math.round((comp[k] || 0) * r); }
+  return o;
+}
+// ★[징발=상태전환] 마을 pid 에서 병종 선호로 선발 → _muster/_muType/simWar/npcs.delete(AI 정지). units[{type,pid,x,y(셀)}].
+//   드래프트 실패(주민 0)=null → 호출측이 표준배치 폴백 or 무저항. ★삼중 코히런스: pid 는 npcPids 에 유지(카운트),
+//   simWar 로 movePlayerStep·npcStep(npcs.delete) 제외 · syncVillagePop removeOneNpc 도 _muster 스킵.
+function _warDraftPids(vil, comp, seed) {
+  const { players, npcs } = state.deps;
+  const pool = [];
+  for (const pid of vil.npcPids) { const p = players.get(pid); if (!p || p._muster || (p.hp != null && p.hp <= 0)) continue; pool.push(p); }
+  if (!pool.length) return null;
+  const taken = new Set(); const units = []; const pids = [];
+  const order = ['archer', 'slinger', 'champion', 'dagger', 'greataxe', 'spear', 'pike', 'militia'];
+  for (const type of order) {
+    let need = Math.round(comp[type] || 0); if (need <= 0) continue;
+    const cand = []; for (let i = 0; i < pool.length; i++) { if (taken.has(i)) continue; cand.push([i, _warPref(pool[i].simJob, type)]); }
+    cand.sort((a, b) => b[1] - a[1] || a[0] - b[0]);
+    for (let s = 0; s < need && s < cand.length; s++) {
+      const i = cand[s][0]; taken.add(i); const p = pool[i];
+      p._muster = true; p._muType = type; p.simWar = true; npcs.delete(p.pid);   // ★AI 정지 + 이동 제외
+      units.push({ type, pid: p.pid, x: p.x / SZ, y: p.y / SZ }); pids.push(p.pid);
+    }
+  }
+  return units.length ? { units, pids } : null;
+}
+// 대형 슬롯으로 즉시 스냅(인스턴스화 순간 그 자리 대형화 — 집을 나온 병사가 행군 열로 나타남).
+function _warSnapToSlots(g) {
+  if (!g || !g.units) return;
+  for (const u of g.units) { if (u.cmd) { u.x = g.cmd.cx; u.y = g.cmd.cy; continue; } const s = state.warLive._muSlotXY(g, u); u.x = s[0]; u.y = s[1]; }
+}
+// 대형 유닛 맵셀 → pid player 위치(px)·전투 broadcast 메타 갱신. side 0=공격 1=방어. rout=궤주 비트.
+function _warSyncSoldiers(body, g, side, rout) {
+  if (!g || !g.units) return;
+  const players = state.deps.players, MTI = state.warLive.MU_TYPE_INT;
+  for (const u of g.units) {
+    const p = players.get(u.pid); if (!p) continue;
+    const nx = u.x * SZ, ny = u.y * SZ;
+    let dvx = (nx - p.x) * 30, dvy = (ny - p.y) * 30; const m = Math.hypot(dvx, dvy); if (m > 400) { dvx = dvx / m * 400; dvy = dvy / m * 400; }
+    p.vx = dvx; p.vy = dvy; p.x = nx; p.y = ny;
+    p._muType = u.type; p._bt = MTI[u.type] || 0; p._bside = side; p._bcmd = !!u.cmd; p._brout = !!rout;
+  }
+}
+// 몸 생성(캐러밴 body 동형) — 행군로(px)·econ 페이싱(born→eta)·초기 prog(경과 비율). 지휘관 셀=atk center.
+function _warEnsureBody(w, now) {
+  let body = state.warBodies.get(w.id); if (body) return body;
+  if (!w.atk || !w.def) return null;
+  let pts = null; try { pts = getRoute(w.atk, w.def); } catch (_) { }
+  if (!pts) pts = [{ x: warCenterPx(w.atk).x, y: warCenterPx(w.atk).y }, { x: warCenterPx(w.def).x, y: warCenterPx(w.def).y }];
+  body = { w, phase: 'march', pids: [], defPids: [], atkGroup: null, defGroup: null, retGroup: null,
+    instantiated: false, defBuilt: false, live: null, _bcAt: 0, _bcPhase: null, _retRout: false,
+    heading: Math.atan2(w.def.ccy - w.atk.ccy, w.def.ccx - w.atk.ccx), cmd: { cx: w.atk.ccx, cy: w.atk.ccy } };
+  setBodyPts(body, pts);
+  const born = (w.born != null ? w.born : state.world.day), eta = (w.eta != null ? w.eta : state.world.day + 1);
+  const legDays = Math.max(1, eta - born);
+  body.departAt = now; body.arriveAt = Math.max(now + 1, econDayToMs(eta));
+  body.pxPerDay = body.len / legDays; body.nomPxMs = body.len / Math.max(1, body.arriveAt - now);
+  const bornMs = econDayToMs(born); const frac = Math.max(0, Math.min(1, (now - bornMs) / Math.max(1, body.arriveAt - bornMs)));
+  body.prog = body.len * frac;   // 재부팅·늦게 본 행군은 경과 비율만큼 앞서 있음
+  const c = caravanPointAt(body, body.prog); body.cmd = { cx: c.x / SZ, cy: c.y / SZ };
+  state.warBodies.set(w.id, body);
+  return body;
+}
+// 지휘관 econ 페이싱(캐러밴 페이싱 동형) — 남은거리/남은시간, 상한 명목×4. 셀 갱신 + heading(→목적지).
+function _warPaceCommander(body, now, dtMs) {
+  const remainPx = body.len - body.prog;
+  if (remainPx > 0.5) { const speed = Math.min(remainPx / Math.max(1, body.arriveAt - now), body.nomPxMs * 4); body.prog += Math.min(remainPx, speed * dtMs); }
+  const c = caravanPointAt(body, body.prog); body.cmd = { cx: c.x / SZ, cy: c.y / SZ };
+  body.heading = Math.atan2(body.w.def.ccy - body.cmd.cy, body.w.def.ccx - body.cmd.cx);
+}
+// 공격군 인스턴스화 — 표본 comp 징발 → 대형 빌드 → 슬롯 스냅. instantiated 게이트(1회).
+function _warInstantiateAttackers(body) {
+  if (body.instantiated) return; body.instantiated = true;
+  const w = body.w, WL = state.warLive;
+  const comp = _warSampleComp(w.composition || { dagger: Math.max(1, (w.force || 2)) }, WL.MU.NPC_SAMPLE);
+  const seed = (((w.id || 1) * 911 + ((w.born || 0) | 0) * 17 + 3) >>> 0);
+  const d = _warDraftPids(w.atk, comp, seed); if (!d) return;   // 주민 0 → atkGroup 없음(교전 폴백 or headless)
+  const g = WL.buildGroup(d.units, WL._muCompForm(w.composition), { cx: body.cmd.cx, cy: body.cmd.cy }, body.heading, seed);
+  if (!g) return; g.cmd = { cx: body.cmd.cx, cy: body.cmd.cy }; g.heading = body.heading;
+  body.atkGroup = g; body.pids = d.pids; _warSnapToSlots(g); _warSyncSoldiers(body, g, 0, false);
+}
+// 방어 사전 포진(WAR_ALERT_R) — 공격 지휘관이 방어 마을권 진입 시 conscript(defense) 표본 징발 → 마을 앞 standoff 포진.
+function _warEnsureDefense(body) {
+  if (body.defBuilt) return;
+  const w = body.w, WL = state.warLive, dc = { cx: w.def.ccx, cy: w.def.ccy };
+  if (Math.hypot(body.cmd.cx - dc.cx, body.cmd.cy - dc.cy) > WL.WAR_ALERT_R) return;   // 아직 경보 밖
+  body.defBuilt = true;
+  let dcomp = null; try { const r = state.war.conscript(w.def, 'full', { defense: true }) || state.war.conscript(w.def, 'raid', { defense: true }); dcomp = r && r.composition; } catch (_) { }
+  if (!dcomp) return;
+  const comp = _warSampleComp(dcomp, WL.MU.NPC_SAMPLE); comp.form = comp.form || WL.MU.DEF_FORM;
+  const seed = (((w.id || 1) * 911 + ((w.born || 0) | 0) * 17 + 29) >>> 0);
+  const d = _warDraftPids(w.def, comp, seed); if (!d) return;   // 주민 0 → 무저항(startLiveBattle 표준배치 폴백)
+  const th = Math.atan2(body.cmd.cy - dc.cy, body.cmd.cx - dc.cx), so = WL.WAR_DEF_STANDOFF;
+  const rally = { cx: dc.cx + Math.cos(th) * so, cy: dc.cy + Math.sin(th) * so };
+  const g = WL.buildGroup(d.units, comp.form, rally, th, seed); if (!g) return;
+  g.holdPt = { cx: rally.cx, cy: rally.cy };
+  body.defGroup = g; body.defPids = d.pids; _warSnapToSlots(g); _warSyncSoldiers(body, g, 1, false);
+}
+// 교전 판정(두 대형 지휘관 WAR_ENGAGE_R) → startLiveBattle(위치승계·origin=중간). force=eta 강제.
+function _warTryEngage(body, force) {
+  const w = body.w, WL = state.warLive;
+  if (!body.instantiated || !body.atkGroup) return false;
+  const engaged = body.defGroup ? (WL._muCmdDist(body.atkGroup, body.defGroup) <= WL.WAR_ENGAGE_R)
+    : (Math.hypot(body.cmd.cx - w.def.ccx, body.cmd.cy - w.def.ccy) <= WL.WAR_ENGAGE_R);
+  if (!engaged && !force) return false;
+  if (state.warLive.startLiveBattle(w, { atkGroup: body.atkGroup, defGroup: body.defGroup })) {
+    body.phase = 'battle'; body.live = w._live; w.phase = 'battle'; return true;
+  }
+  return false;
+}
+// war_battle 집계 broadcast(throttle 2Hz + phase 전이) — 스펙테이터 HUD·화면밖 지시자.
+function _warBroadcastBattle(body, now, phase) {
+  const lb = body.live, w = body.w; if (!lb) return;
+  const ac = state.warLive.aliveCounts(lb), o = lb.mapOrigin || { cx: w.def.ccx, cy: w.def.ccy };
+  state.deps.broadcast({ type: 'war_battle', id: lb.id, origin: { x: o.cx * SZ, y: o.cy * SZ },
+    atk: w.atk.name, def: w.def.name, casus: w.casus, aliveA: ac.aliveA, aliveB: ac.aliveB, phase: phase || 'battle' });
+  body._bcAt = now; body._bcPhase = phase || 'battle';
+}
+// 전투유닛→pid 미러(매 프레임) + war_battle throttle broadcast.
+function _warSyncBattleMirror(body, now) {
+  const lb = body.live; if (!lb) return;
+  const mirror = state.warLive.syncMirror(lb);
+  if (mirror) {
+    const players = state.deps.players, MTI = state.warLive.MU_TYPE_INT;
+    for (const mm of mirror) {
+      const p = players.get(mm.pid); if (!p) continue;
+      const nx = mm.cx * SZ, ny = mm.cy * SZ;
+      let dvx = (nx - p.x) * 30, dvy = (ny - p.y) * 30; const mag = Math.hypot(dvx, dvy); if (mag > 400) { dvx = dvx / mag * 400; dvy = dvy / mag * 400; }
+      p.vx = dvx; p.vy = dvy; p.x = nx; p.y = ny;
+      p.hp = mm.dead ? 0 : Math.max(1, Math.round((mm.hp / Math.max(1, mm.hpMax)) * (p.maxHp || 100)));   // 전투 hp 비율→player maxHp (maxHp 불변)
+      p._muType = mm.type; p._bt = MTI[mm.type] || 0; p._bside = (mm.side === 'A' ? 0 : 1); p._bcmd = !!mm.cmd; p._brout = !!mm.rout;
+    }
+  }
+  if (now - body._bcAt >= WAR_BC_MS || body._bcPhase !== 'battle') _warBroadcastBattle(body, now, 'battle');
+}
+// 결판 훅(war-live onResolved, splice 전) — 최종 미러로 사상 despawn(샘플 타겟)·방어 생존 해제·공격 생존 귀환(궤주) 설정.
+function _warOnResolved(lb) {
+  const w = lb.war, body = state.warBodies.get(w.id);
+  const mirror = state.warLive.syncMirror(lb) || [];
+  const players = state.deps.players;
+  const atkSurv = [], defSurv = [];
+  for (const mm of mirror) { if (!players.has(mm.pid)) continue;
+    if (mm.dead) _warDespawnPid(mm.pid);                          // ★사상=샘플 pid despawn(econ 전량은 war-core warKill 소유 — 종전 후 syncVillagePop 재수렴)
+    else (mm.side === 'A' ? atkSurv : defSurv).push(mm.pid);
+  }
+  try { const ac = state.warLive.aliveCounts(lb), o = lb.mapOrigin || { cx: w.def.ccx, cy: w.def.ccy };
+    state.deps.broadcast({ type: 'war_battle', id: lb.id, origin: { x: o.cx * SZ, y: o.cy * SZ }, atk: w.atk.name, def: w.def.name, casus: w.casus, aliveA: ac.aliveA, aliveB: ac.aliveB, phase: 'resolved' }); } catch (_) { }
+  if (!body) { for (const pid of atkSurv) _warReleasePid(pid); for (const pid of defSurv) _warReleasePid(pid); return; }
+  for (const pid of defSurv) _warReleasePid(pid);   // 방어 생존 = 마을 앞 → 즉시 해제(일상 복귀)
+  body.defGroup = null; body.defPids = [];
+  if (atkSurv.length) _warSetupReturn(body, atkSurv, lb, (lb._resWinner && lb._resWinner !== 'A'));   // 공격 생존 = 도보 귀환(패=궤주)
+  else _warCleanupBody(body, false);
+}
+// 공격 생존자 귀환(도보) 설정 — 반환 route(def→atk)·marchDays 페이싱·산개(open) 그룹.
+function _warSetupReturn(body, survPids, lb, isRout) {
+  const w = body.w, WL = state.warLive, players = state.deps.players;
+  body.phase = 'return'; body.pids = survPids.slice(); body.live = null; body._retRout = !!isRout; body.atkGroup = null;
+  let pts = null; try { pts = getRoute(w.def, w.atk); } catch (_) { }
+  if (!pts) { pts = []; for (let i = body.pts.length - 1; i >= 0; i--) pts.push(body.pts[i]); }
+  setBodyPts(body, pts);
+  const now = state._warTickAt || Date.now(), legDays = Math.max(1, w.marchDays || 1);   // ★단일 시계원(tickWarBodies 앵커) — onResolved 은 now 인자 없어 여기서 최신 틱 시각 참조(운영=Date.now, 테스트=sim now 일관)
+  body.departAt = now; body.arriveAt = Math.max(now + 1, econDayToMs(state.world.day + legDays));
+  body.pxPerDay = body.len / legDays; body.nomPxMs = body.len / Math.max(1, body.arriveAt - now);
+  const c = caravanPointAt(body, 0); body.cmd = { cx: c.x / SZ, cy: c.y / SZ }; body.heading = Math.atan2(w.atk.ccy - body.cmd.cy, w.atk.ccx - body.cmd.cx);
+  const units = []; for (const pid of survPids) { const p = players.get(pid); if (!p) continue; units.push({ type: p._muType || 'militia', pid, x: p.x / SZ, y: p.y / SZ }); }
+  body.retGroup = units.length ? WL.buildGroup(units, 'open', { cx: body.cmd.cx, cy: body.cmd.cy }, body.heading, (w.id || 1) * 523 + 7) : null;
+  if (body.retGroup) _warSyncSoldiers(body, body.retGroup, 0, isRout);
+}
+// 귀환 페이싱 + 도착 시 해제·정리.
+function _warPaceReturn(body, now, dtMs) {
+  const remainPx = body.len - body.prog;
+  if (remainPx <= 0.5 || !body.retGroup) { _warCleanupBody(body, true); return; }
+  const speed = Math.min(remainPx / Math.max(1, body.arriveAt - now), body.nomPxMs * 4);
+  body.prog += Math.min(remainPx, speed * dtMs);
+  const c = caravanPointAt(body, body.prog); body.cmd = { cx: c.x / SZ, cy: c.y / SZ };
+  body.heading = Math.atan2(body.w.atk.ccy - body.cmd.cy, body.w.atk.ccx - body.cmd.cx);
+  body.retGroup.cmd = { cx: body.cmd.cx, cy: body.cmd.cy }; body.retGroup.heading = body.heading;
+  state.warLive._muStepFollow(body.retGroup, state.warLive.MU.FOLLOW_CAP);
+  _warSyncSoldiers(body, body.retGroup, 0, body._retRout);
+}
+// 사상 pid despawn(샘플 타겟) — players/npcs delete + npcPids 제거 + player_left(canadia 패턴).
+function _warDespawnPid(pid) {
+  const { players, npcs, broadcast } = state.deps; const p = players.get(pid);
+  players.delete(pid); npcs.delete(pid);
+  if (p && p.simVillageId != null) { const vil = state.byDbId.get(p.simVillageId); if (vil) { const k = vil.npcPids.indexOf(pid); if (k >= 0) vil.npcPids.splice(k, 1); } }
+  broadcast({ type: 'player_left', pid });
+}
+// 출정 해제(생존 귀환·해산) — _muster/simWar 해제 + npcs.add(AI 복귀) + hp 회복. pid 는 npcPids 유지(syncVillagePop 재수렴).
+function _warReleasePid(pid) {
+  const { players, npcs } = state.deps; const p = players.get(pid); if (!p) return;
+  p._muster = false; p._muType = null; p.simWar = false; p._brout = false; p._bcmd = false; p._bt = undefined; p._bside = undefined;
+  p.hp = p.maxHp || 100; p.vx = 0; p.vy = 0; npcs.add(pid);
+}
+// 몸 정리(귀환 완료·고아) — 잔존 pid 해제 후 삭제.
+function _warCleanupBody(body, releaseRemaining) {
+  if (releaseRemaining) { for (const pid of (body.pids || [])) _warReleasePid(pid); for (const pid of (body.defPids || [])) _warReleasePid(pid); }
+  state.warBodies.delete(body.w.id);
+}
+
+// ★[야생 전역위협] warThreats() — 활동 중(행군·전투·귀환) 실체 병사 pid 위치(px) 수집 → wildlife agrid 주입.
+//   전쟁실험실 _buildWarThreats 서버판. wildlife.js:117 '플레이어 push=전 종 반응' 인터페이스에 Wildlife.init(warThreats) 로 연결.
+function warThreats() {
+  if (!state.ready || !state.warBodies || !state.warBodies.size) return null;
+  const players = state.deps.players;
+  const buf = state._warThreatBuf || (state._warThreatBuf = []); buf.length = 0;
+  for (const body of state.warBodies.values()) {
+    const add = (pids) => { if (!pids) return; for (const pid of pids) { const p = players.get(pid); if (p && (p.hp == null || p.hp > 0)) buf.push({ x: p.x, y: p.y }); } };
+    add(body.pids); add(body.defPids);
+  }
+  return buf.length ? buf : null;
+}
+
+// tickWarBodies — 30Hz: 행군 몸 페이싱·인스턴스화·방어 포진·교전 + 진행 전투 스텝·미러·broadcast + 귀환.
+//   idle 존 스킵보다 앞(onGameTick 최상단)이라 무인 존에서도 완주(관측자 떠나도 서버가 결판까지). 캐러밴 tickBodies 동형.
+function tickWarBodies(now) {
+  if (!state.war || !state.warLive) { state._warTickAt = now; return; }
+  const dtMs = Math.min(500, Math.max(1, now - (state._warTickAt || now)));   // 슬립·히치 dt 상한(캐러밴 규칙 동형)
+  state._warTickAt = now;
+  const WARS = state.war.WARS;
+  if (!WARS.length && !state.warBodies.size) return;   // 조용(전쟁·몸 없음)
+  const anyViewerNear = state.deps && state.deps.anyViewerNear;
+  const nearFn = (typeof anyViewerNear === 'function') ? anyViewerNear : (() => false);
+  const WL = state.warLive, liveWid = new Set();
+  // 1) march 전쟁: 몸 페이싱·관측자 근접 인스턴스화·방어 포진·교전
+  for (const w of WARS) {
+    if (w.id != null) liveWid.add(w.id);
+    if (w.phase !== 'march') continue;
+    let body = state.warBodies.get(w.id);
+    if (!body) {   // 몸 없음 — 관측자 근접(양 끝 마을) 시에만 생성(LOD·상한). 아니면 무실체(headless는 eta sweep/daily).
+      let near = false; try { near = nearFn(warCenterPx(w.atk), WAR_LOD_VIEW_PX) || nearFn(warCenterPx(w.def), WAR_LOD_VIEW_PX); } catch (_) { }
+      if (!near || state.warBodies.size >= WAR_BODY_MAX) continue;
+      body = _warEnsureBody(w, now); if (!body) continue;
+    }
+    _warPaceCommander(body, now, dtMs);
+    let near = false; try { near = nearFn(_warCmdPx(body), WAR_LOD_VIEW_PX) || nearFn(warCenterPx(w.def), WAR_LOD_VIEW_PX); } catch (_) { }
+    if (near) { _warInstantiateAttackers(body); _warEnsureDefense(body); }
+    if (body.instantiated && body.atkGroup) {
+      body.atkGroup.cmd = { cx: body.cmd.cx, cy: body.cmd.cy }; body.atkGroup.heading = body.heading;
+      WL._muStepFollow(body.atkGroup, WL.MU.FOLLOW_CAP); _warSyncSoldiers(body, body.atkGroup, 0, false);
+      if (body.defGroup) { WL._muDefHold(body.defGroup, body.atkGroup.cmd); _warSyncSoldiers(body, body.defGroup, 1, false); }
+      _warTryEngage(body, false);
+    }
+  }
+  // 2) 진행 전투 스텝(실dt) → 결판(onResolved 훅) · 미러 + broadcast(전이·throttle)
+  if (WL.count) {
+    WL.stepLiveBattles(dtMs / 1000);
+    for (const body of state.warBodies.values()) { if (body.phase === 'battle' && body.live && WL.hasLive(body.w)) _warSyncBattleMirror(body, now); }
+  }
+  // 3) 귀환 페이싱 + 고아(WARS 이탈 비귀환) 정리
+  for (const body of [...state.warBodies.values()]) {
+    if (body.phase === 'return') { _warPaceReturn(body, now, dtMs); continue; }
+    if (body.w.id != null && !liveWid.has(body.w.id) && body.phase !== 'battle') _warCleanupBody(body, true);   // war 종결·이탈 — 잔존 해제
+  }
+}
+// warLodResolveSweep — econ 경계에서 eta 도달 march 전쟁을 physical XOR headless 로 분기. ★반드시 daily() 앞.
+//   관측자 근접이면 여기서 실체 개전(몸·징발·포진·교전 강제) → w.phase='battle'로 daily headless 선점. 아니면 phase='march' 유지 → daily headless(war-core 불변).
+//   징발 실패(주민 0/샘플 공백)면 phase='march' 유지 → daily headless 폴백(1경로 보장).
+function warLodResolveSweep() {
+  if (!state.war || !state.warLive) return { physical: 0, considered: 0 };
+  const anyViewerNear = state.deps && state.deps.anyViewerNear;
+  const now = state._warTickAt || Date.now();   // ★단일 시계원(tickWarBodies 30Hz 앵커) — 같은 onGameTick 틱의 now 계승(econ 페이싱 일관)
+  let physical = 0, considered = 0;
+  for (const w of state.war.WARS) {
+    if (w.phase !== 'march' || state.world.day < w.eta || w._live) continue;   // eta 미도달·이미 실체는 스킵
+    considered++;
+    if (typeof anyViewerNear !== 'function') continue;   // dep 없으면 전부 headless(daily)
+    let near = false; try { near = anyViewerNear(warDefCenterPx(w), WAR_LOD_VIEW_PX); } catch (_) { near = false; }
+    if (!near) continue;                                  // 무관측자 → headless(daily 경로)
+    let body = state.warBodies.get(w.id);
+    if (!body) { if (state.warBodies.size >= WAR_BODY_MAX) continue; body = _warEnsureBody(w, now); if (!body) continue; }
+    _warPaceCommander(body, now, 1); _warInstantiateAttackers(body); _warEnsureDefense(body);
+    if (_warTryEngage(body, true)) physical++;   // 성공 → phase='battle'(daily skip). 실패(주민0) → phase='march' 유지(daily headless)
+  }
+  return { physical, considered };
+}
+
+// =============================================================================
 // onGameTick — gameLoop(30Hz)에서 매 틱 호출되는 훅. 게임일 경계에서만 일함.
 // 평시 비용: ready/정수 비교 O(1). 경계 갭>1(서버 슬립)이어도 1틱만 — 실시간 앵커.
 // =============================================================================
@@ -1199,6 +1560,8 @@ function onGameTick(now) {
   // Stage 4B: 캐러밴 실체 30Hz 전진 — zone.js idle 존 스킵보다 앞(호출 위치)이라 무인 존에서도 econ과 동행.
   //   도착 임박 가드가 아래 경계 econ 틱보다 먼저 돌아 'econ이 몸을 앞지르는' 순서 역전이 없다.
   try { tickCaravanBodies(now); } catch (e) { console.error(`[${state.zoneId}] 🐂 캐러밴 실체 틱 실패:`, e.message); }
+  // P2: 실체 전투 30Hz 스텝 — 캐러밴 직후(설계 위치). 무인 존에서도 진행 중 전투 완주(idle 스킵보다 앞).
+  try { tickWarBodies(now); } catch (e) { console.error(`[${state.zoneId}] ⚔️ 실체 전투 틱 실패:`, e.message); }
   // ★자정 스파이크 분산: DB 직렬화(마을당 ~10KB JSON — 자정 틱 비용의 주범)는 이후 틱에 1마을/틱씩 배수(drain).
   //   econ 틱 자체는 일괄 유지 — 교역(tickWorldV2)이 마을 간 원자적이라 쪼개면 정합이 깨짐. 30Hz 예산(33ms) 보호.
   if (state.saveQueue && state.saveQueue.length) {
@@ -1214,7 +1577,14 @@ function onGameTick(now) {
     //   (헤드리스 하네스 regression-check 126행과 같은 검증된 패턴)
     const _log = console.log;
     console.log = () => {};
-    try { state.econV2.tickWorldV2(state.world); } finally { console.log = _log; }
+    try {
+      state.econV2.tickWorldV2(state.world);
+      // P2 LOD: eta 도달 march 전쟁 결판 분기 — 반드시 war.daily 앞. 관측자 근접이면 실체 전투로 승격(headless 선점),
+      //   아니면 phase='march' 유지 → daily 가 headless 즉시. 한 전쟁=정확히 1경로(physical XOR headless).
+      if (state.warLive) { const lr = warLodResolveSweep(); if (lr.physical) state._warPhysToday = (state._warPhysToday || 0) + lr.physical; }
+      // P1: 전쟁 econ 층 — tickWorldV2 직후 구동(오늘 세운 동원정지/봉쇄/원한제재가 내일 틱에 반영). phase='battle'는 skip(실체 진행 중).
+      if (state.war) state.war.daily(state.world.day);
+    } finally { console.log = _log; }
     let econPop = 0, npcCount = 0;
     const jobChanges = {}; // Stage 4A: 이번 게임일 직업 재동기 변경분(pid→job)
     const pops = {};       // Stage 4A: 마을 econ 인구(영토 라벨 갱신용)
@@ -1237,13 +1607,57 @@ function onGameTick(now) {
       try { computeAndInjectDistMatrix('무효화 재계산'); } catch (e) { console.error(`[${state.zoneId}] 🏘️ BFS 거리행렬 재계산 실패(기존 행렬 유지):`, e.message); }
     }
     console.log(`[${state.zoneId}] 🏘️ 마을 econ day ${state.world.day}: 인구 ${econPop} · 스폰 NPC ${npcCount} · 캐러밴 실체 ${state.caravanBodies ? state.caravanBodies.size : 0}/${state.world.caravans.length}(+${carSync.spawned} 도착${carSync.arrived} 회수${carSync.removed}) · 저장큐 ${state.saveQueue.length}행 분산 · ${Date.now() - t0}ms`);
+    // P1: 전쟁 활동 요약(활동 있을 때만 1줄 — 선포·전투·조공·활성전쟁) + P2 실체 전투(진행 중·오늘 승격 수)
+    if (state.war) { const ws = state.war.stats(); const live = state.warLive ? state.warLive.count : 0; const physToday = state._warPhysToday || 0; if (ws && (ws.active || live || (ws.log && ws.log.length))) { const bc = ws.byCasus || {}; console.log(`[${state.zoneId}] ⚔️ 전쟁 day ${state.world.day}: 선포 ${ws.decl}[교역${bc.trade || 0}·영토${bc.territory || 0}·위신${bc.prestige || 0}·응징${bc.feud || 0}] 전투 ${ws.battle}(공승${ws.atkWin}/방승${ws.defWin}) 사상 ${ws.cas} 노획 ${ws.weaponLoot || 0} · 활성 ${ws.active} 조공 ${ws.tributes} · 실체 진행 ${live}${physToday ? ' 오늘승격 ' + physToday : ''}`); } state._warPhysToday = 0; }
   } catch (e) {
     console.error(`[${state.zoneId}] 🏘️ 마을 econ 틱 실패 (다음 경계에 재시도):`, e.message);
   }
+}
+
+// =============================================================================
+// P3 헤드리스 검증 훅(테스트 전용·additive — 운영 경로 무영향). 실제 오케스트레이션 함수(tickWarBodies/
+//   warLodResolveSweep/warThreats/syncVillagePop/removeOneNpc/spawnOneNpc/_warOnResolved…)를 in-memory 목
+//   state 로 구동해 pid 브릿지·삼중 코히런스·접근교전·broadcast 구조를 헤드리스로 검증. sim/_p3-war-probe.js 사용.
+//   (운영 부팅 경로는 init()만 호출하므로 이 함수는 절대 실행되지 않음 — 순수 export.)
+// =============================================================================
+function __p3Bind(mock) {
+  Object.assign(state, mock);
+  return {
+    state, tickWarBodies, warLodResolveSweep, warThreats, syncVillagePop, removeOneNpc, spawnOneNpc,
+    _warOnResolved, _warDraftPids, _warReleasePid, econDayToMs, _warEnsureBody, _warSampleComp,
+  };
+}
+
+// =============================================================================
+// §11 도적(server/bandits.js) — 좁은 접점(추가 전용·행동 무변경): 도적 모듈이 재사용하는
+//   마을 목록(econ 포함)·econ world(훅 설치 대상)·지형 어댑터·교역로 A*(getRoute — 캐러밴과
+//   동일 코스그리드·캐시 공유)·존 시드. villages 준비 전엔 null(도적은 lazy 대기).
+//   ENABLE_VILLAGES=0 → state.ready=false → 항상 null = 도적 자동 휴면(마을 없이 도적 정의 불가).
+// =============================================================================
+function banditHost() {
+  if (!state.ready) return null;
+  const ZONE = state._distCtx && state._distCtx.ZONE;
+  return {
+    zoneId: state.zoneId,
+    villages: state.villages,                        // [{dbId,name,ccx,ccy,econ,...}] — world.villages와 같은 순서(거리행렬 인덱스 정합)
+    world: state.world,                              // econ world — banditRouteRisk/onBanditLoot 설치 대상(_distMatrix 조회)
+    ta: state._distCtx && state._distCtx.ta,         // 지형 어댑터(isBlocked/forestMult — 셀 단위)
+    getRoute,                                        // 마을쌍 경로 pts(px) — 캐러밴 A*·캐시 재사용(랩 getTradePath 동형)
+    broadcast: state.deps && state.deps.broadcast,
+    seed: state.villageSeed || 1020,
+    cellsW: ZONE ? Math.ceil(ZONE.zoneWidth / SZ) : 0,
+    cellsH: ZONE ? Math.ceil(ZONE.zoneHeight / SZ) : 0,
+  };
 }
 
 module.exports = {
   init, onGameTick, invalidateTradeDistances,
   // Stage 4A — zone.js 소비: 농지 lazy 실물화 / welcome 영토 페이로드 / 레거시 디듀프 판정
   farmTilesInRect, clientVillages, isLegacyVillageClaimed,
+  // §11 도적 — server/bandits.js 소비(좁은 접점, 추가 전용)
+  banditHost,
+  // P3 — zone.js Wildlife.init 소비: 실체 전쟁 병사 pid 위치(px)를 야생 agrid 위협원으로 주입
+  warThreats,
+  // P3 — 헤드리스 검증 훅(테스트 전용)
+  __p3Bind,
 };

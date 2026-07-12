@@ -843,6 +843,19 @@ const SIM_JOB_EMOJI = {
   //   conns[zoneId] = { ws, role: 'primary'|'observer', meta, resources, claims, others }
   const conns = new Map();
 
+  // ═══ P4 전쟁 전투 렌더·관전·지휘 (서버 broadcast: tick bt/bs/bc/br + war_battle 채널) ═══
+  //   병종 int(bt 0~7) 직접 인덱스 색 — war-live.MU_TYPE_INT 순서(champion..militia) = 랩 MU_TYPE_COL verbatim.
+  const WAR_BT_COL  = ['#c8862e','#b5563a','#5a8ad0','#57a8a8','#9a9488','#5fbf6a','#c9a24b','#8a7a5a'];
+  const WAR_BT_NAME = ['챔피언','대부병','창병','장창병','단검병','궁수','투석병','민병'];
+  const WAR_SIDE_COL = ['#7ab0ff','#ff8a7a'];   // [0]=공격(A·battle-core SIDE_COL.A), [1]=방어(B·SIDE_COL.B)
+  const warBattles = new Map();                 // id → {id, ox, oy(절대 px), atk, def, casus, aliveA, aliveB, phase, seenAt, resolvedAt}
+  // 관전 카메라 트윈(랩 focusCameraOnBattle 정합·0.6s smoothstep) — active=전투 focus, returning=본체 복귀.
+  const _warSpec = { active: false, returning: false, id: null, from: null, to: null, t0: 0, dur: 600 };
+  let _warCmdId = null;                          // 지휘 참가 중 warId (null=관전만/미참가)
+  let _warCmdMsg = '';                           // war_command_ack 상태 문구(HUD)
+  let _lastCamAbs = { x: 0, y: 0 };              // 매 프레임 실제 카메라 abs(트윈 출발점 캡처용)
+  let _warHudEl = null;                          // 스펙테이터 HUD DOM(지연 생성)
+
   // === Entity interpolation (다른 플레이어/mob 부드러운 움직임) ===
   // 서버 tick(10Hz, 100ms 간격) 위치를 timestamped buffer에 쌓고, 렌더는 (now - INTERP_DELAY_MS)
   // 시점의 위치를 양옆 두 샘플 사이 선형 보간으로 그린다. 60fps에서 연속적으로 흐름.
@@ -1650,6 +1663,8 @@ const SIM_JOB_EMOJI = {
         for (const gi of (msg.groundItems || [])) c.groundItems.set(gi.id, gi);
         // §4-4 Stage 4A: 마을 시뮬 영토(경계 셀 or 반경 근사) — welcome 1회, 이후 sim_village_day가 pop만 갱신
         c.simVillages = (msg.simVillages && msg.simVillages.length) ? msg.simVillages : null;
+        // §11 도적: 소굴·야영 마커(welcome 1회, 이후 bandit_camps가 변경분 방송)
+        c.banditCamps = (msg.banditCamps && msg.banditCamps.length) ? msg.banditCamps : null;
       }
       // 월드 시계 동기화 — 서버 now와 클라 now 차이를 보정해서 동일 phase 계산
       if (msg.worldClock) {
@@ -1730,6 +1745,9 @@ const SIM_JOB_EMOJI = {
           const vxNow = pp.vx || 0, vyNow = pp.vy || 0;
           const fvxKeep = (vxNow !== 0 || vyNow !== 0) ? vxNow : (prev?._fvx || 1);
           const fvyKeep = (vxNow !== 0 || vyNow !== 0) ? vyNow : (prev?._fvy || 0);
+          // §4-4 P4: 전쟁 병사 전투 메타 — 서버는 muster 병사에만 br(궤주 비트) 매틱 송신 → 전투유닛 신호.
+          //   bt(병종)·bs(진영)·bc(지휘관)은 최초가시분만 → prev 승계(0=champion/공격이라 !==undefined 판별).
+          const _isWar = pp.br !== undefined;
           c.others.set(pp.pid, {
             pid: pp.pid,
             x: pp.x, y: pp.y,
@@ -1737,6 +1755,11 @@ const SIM_JOB_EMOJI = {
             floor: pp.floor || 0,
             vx: vxNow, vy: vyNow,
             _fvx: fvxKeep, _fvy: fvyKeep, // Phase 14.37: 마지막 facing
+            _war: _isWar,
+            bt: (pp.bt !== undefined) ? pp.bt : prev?.bt,
+            bs: (pp.bs !== undefined) ? pp.bs : prev?.bs,
+            bc: (pp.bc !== undefined) ? pp.bc : prev?.bc,
+            br: _isWar ? (pp.br | 0) : 0,
             name: pp.name ?? prev?.name ?? '?',
             color: pp.color ?? prev?.color ?? '#5a9ae0',
             hp: pp.hp,
@@ -1834,6 +1857,31 @@ const SIM_JOB_EMOJI = {
       // §4-4 Stage 4A: 게임일 1회 — 마을 인구 라벨 + NPC 직업(simJob) 변경분 갱신
       if (c.simVillages && msg.pops) for (const v of c.simVillages) { if (msg.pops[v.id] != null) v.pop = msg.pops[v.id]; }
       if (msg.jobs) for (const [pid, job] of Object.entries(msg.jobs)) { const o = c.others.get(pid); if (o) o.simJob = job; }
+    } else if (msg.type === 'bandit_camps') {
+      // §11 도적: 소굴·야영 마커 갱신(서버가 변경 시에만 방송)
+      c.banditCamps = (msg.camps && msg.camps.length) ? msg.camps : null;
+    } else if (msg.type === 'war_battle') {
+      // §4-4 P4: 진행 전투 집계(2Hz+전이) — 스펙테이터 HUD·화면밖 지시자·관전 카메라 레지스트리.
+      //   origin은 해당 존 로컬 px(o.cx*32) → 존 worldOffset 더해 절대 px(병사 pp.x 국지화와 동일).
+      const conn = conns.get(zoneId);
+      const ox = (conn && conn.meta && conn.meta.worldOffsetX) || 0;
+      const oy = (conn && conn.meta && conn.meta.worldOffsetY) || 0;
+      const b = warBattles.get(msg.id) || { id: msg.id };
+      b.ox = ox + ((msg.origin && msg.origin.x) || 0);
+      b.oy = oy + ((msg.origin && msg.origin.y) || 0);
+      b.atk = msg.atk; b.def = msg.def; b.casus = msg.casus;
+      b.aliveA = msg.aliveA | 0; b.aliveB = msg.aliveB | 0;
+      b.phase = msg.phase || 'battle';
+      b.seenAt = performance.now();
+      if (b.phase === 'resolved') b.resolvedAt = b.seenAt;
+      warBattles.set(msg.id, b);
+      if (_warSpec.active && _warSpec.id === msg.id) _warSpec.to = { x: b.ox, y: b.oy };   // 관전 중이면 목표 추종(전투 origin 미세 이동)
+      updateWarHud();
+    } else if (msg.type === 'war_command_ack') {
+      // §4-4 P4: 지휘 참가 응답(서버 진영·근접 검증). 거절 시 관전만 유지.
+      if (!msg.ok && _warCmdId === msg.warId) _warCmdId = null;
+      _warCmdMsg = msg.ok ? '지휘 수락됨 — WASD로 부대 지휘' : ('지휘 거절: ' + (msg.reason || '조건 불충족'));
+      updateWarHud();
     } else if (msg.type === 'building_added') {
       c.buildings.set(msg.building.id, msg.building);
       if (msg.building.type === 'stair') clStairCacheBuildAt = 0;
@@ -2228,7 +2276,7 @@ const SIM_JOB_EMOJI = {
   function predictStep(dt, wx, wy, sprint) {
     if (myIsDown || (wx === 0 && wy === 0)) return;
     const canSprintClient = sprint && myHunger > 5 && myThirst > 5;
-    const speed = 220 * (canSprintClient ? 1.6 : 1);
+    const speed = 64 * (canSprintClient ? 2.5 : 1);   // ★서버 MOVE_SPEED=64·SPRINT_MULT=2.5와 일치(불일치 시 예측 오버슈트→러버밴딩)
     let mwx = wx, mwy = wy;
     {
       const curCx = Math.floor(myAbsPredicted.x / CL_BUILDING_SIZE);
@@ -2321,6 +2369,8 @@ const SIM_JOB_EMOJI = {
     // 서버 리컨실리에이션(applyServerCorrection)이 매 tick 권위 위치에 anchor 후 미ack 입력을 replay.
     const { wx, wy } = worldKeysDir();
     const moving = !myIsDown && (wx !== 0 || wy !== 0);
+    // §4-4 P4: 관전 중(비지휘) 이동 입력 시 자동 복귀. 지휘 중엔 WASD=부대 지휘라 카메라 유지(관전 지속).
+    if (_warSpec.active && !_warCmdId && (wx !== 0 || wy !== 0)) stopSpectate();
     _predAccum += dt;                       // dt는 loop에서 이미 0.1 cap
     if (_predAccum > 0.1) _predAccum = 0.1;
     let _stepped = false;
@@ -2851,7 +2901,17 @@ const SIM_JOB_EMOJI = {
 
     // 카메라/본인 스프라이트는 보간 위치(myAbsRender)를 사용 → 30Hz 예측을 60fps로 부드럽게.
     // (충돌/로직은 계속 myAbsPredicted 사용 — render 좌표만 보간.)
-    const _camAbs = (_renderReady ? myAbsRender : myAbsPredicted);
+    let _camAbs = (_renderReady ? myAbsRender : myAbsPredicted);
+    // §4-4 P4: 전투 관전 카메라(랩 focusCameraOnBattle 정합·0.6s smoothstep). active=전투 focus 유지, returning=본체 복귀 트윈.
+    if (_warSpec.active && _warSpec.to && _warSpec.from) {
+      const k = Math.min(1, (performance.now() - _warSpec.t0) / _warSpec.dur), s = k * k * (3 - 2 * k);
+      _camAbs = { x: _warSpec.from.x + (_warSpec.to.x - _warSpec.from.x) * s, y: _warSpec.from.y + (_warSpec.to.y - _warSpec.from.y) * s };
+    } else if (_warSpec.returning && _warSpec.from) {
+      const k = Math.min(1, (performance.now() - _warSpec.t0) / _warSpec.dur), s = k * k * (3 - 2 * k);
+      _camAbs = { x: _warSpec.from.x + (_camAbs.x - _warSpec.from.x) * s, y: _warSpec.from.y + (_camAbs.y - _warSpec.from.y) * s };
+      if (k >= 1) _warSpec.returning = false;
+    }
+    _lastCamAbs = { x: _camAbs.x, y: _camAbs.y };   // 트윈 출발점 캡처(관전 진입/복귀 공용)
     const myIso = w2i(_camAbs.x, _camAbs.y);
     const camX = myIso.x, camY = myIso.y;
     const toScreen = (ix, iy) => ({ x: ix - camX + W / 2, y: iy - camY + H / 2 });
@@ -2959,6 +3019,14 @@ const SIM_JOB_EMOJI = {
           renderables.push({ z: w2i(vcx, vcy).y - 900, kind: 'simvil', v, off: ox, offY: oy });
         }
       }
+      // §11 도적: 소굴·야영 마커 1종(서버 bandit_camps) — 점유 단은 진하게, 빈 소굴은 흐리게
+      if (c.banditCamps) {
+        for (const bc of c.banditCamps) {
+          const bx = ox + bc.x, by = oy + bc.y;
+          if (Math.abs(bx - worldCx) > VIEW_RADIUS + 200 || Math.abs(by - worldCy) > VIEW_RADIUS + 200) continue;
+          renderables.push({ z: w2i(bx, by).y - 300, kind: 'banditcamp', bc, off: ox, offY: oy });
+        }
+      }
       for (const b of c.buildings.values()) {
         // wall은 cell edge 좌표 (b.x, b.y = cell 좌상단). 다른 건축은 cell 중심.
         let ax, ay;
@@ -3022,7 +3090,7 @@ const SIM_JOB_EMOJI = {
         const oFloor = o.floor || 0;
         const oZ = oFloor * FLOOR_HEIGHT + (o.z || 0); // 14.49-d: 계단 위 z 포함
         const isoF = w2i(ax, ay, oZ);
-        renderables.push({ z: (ax + ay) * 0.5 + oFloor * 0.5 + 500, kind: 'player', pid: o.pid, name: displayName, color: o.color || '#5a9ae0', hp: o.hp, maxHp: o.maxHp, iso: isoF, ax, ay, floor: oFloor, lastAttackAt: o.lastAttackAt, vx: o.vx, vy: o.vy, _fvx: o._fvx, _fvy: o._fvy });
+        renderables.push({ z: (ax + ay) * 0.5 + oFloor * 0.5 + 500, kind: 'player', pid: o.pid, name: displayName, color: o.color || '#5a9ae0', hp: o.hp, maxHp: o.maxHp, iso: isoF, ax, ay, floor: oFloor, lastAttackAt: o.lastAttackAt, vx: o.vx, vy: o.vy, _fvx: o._fvx, _fvy: o._fvy, _war: o._war, bt: o.bt, bs: o.bs, bc: o.bc, br: o.br });
       }
     }
     {
@@ -3177,6 +3245,19 @@ const SIM_JOB_EMOJI = {
           ctx.fillText(`🏘️ ${v.name}${v.pop != null ? ' · ' + v.pop + '명' : ''}`, ctr.x, ctr.y - 46);
           ctx.textAlign = 'start';
         }
+      } else if (item.kind === 'banditcamp') {
+        // §11 도적: 소굴·야영 마커 1종 — 검은 막사+🏴(랩 렌더 동형 최소판). n>0=점유 단(인원 라벨), n=0=빈 소굴(재결성 대기, 흐림).
+        const bc = item.bc, boff = item.off, boffY = item.offY || 0;
+        const bp = w2i(boff + bc.x, boffY + bc.y);
+        const sp = toScreen(bp.x, bp.y);
+        ctx.globalAlpha = bc.n > 0 ? 0.95 : 0.4;
+        ctx.fillStyle = '#241d18';
+        ctx.beginPath(); ctx.moveTo(sp.x - 14, sp.y + 8); ctx.lineTo(sp.x, sp.y - 10); ctx.lineTo(sp.x + 14, sp.y + 8); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = 'rgba(200,80,60,0.85)'; ctx.lineWidth = 1.5; ctx.stroke();
+        ctx.font = '13px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText('🏴', sp.x, sp.y - 12);
+        if (bc.n > 0) { ctx.fillStyle = '#e8b0a0'; ctx.font = 'bold 11px sans-serif'; ctx.fillText('도적 ' + bc.n + '명', sp.x, sp.y + 22); }
+        ctx.textAlign = 'start'; ctx.globalAlpha = 1;
       } else if (item.kind === 'resource') {
         const s = toScreen(item.iso.x, item.iso.y);
         const d = Math.hypot(item.ax - worldCx, item.ay - worldCy);
@@ -3254,13 +3335,14 @@ const SIM_JOB_EMOJI = {
         }
         // Phase 14.41: 다운 상태 — 본인은 myIsDown, 다른 사람은 downStates Map
         const downFlag = item.isMe ? myIsDown : !!downStates.get(item.pid);
-        drawPlayerIso(s.x, s.y, item.name, item.color, item.isMe, { moving, attackPhase, fvx, fvy, isDown: downFlag });
-        // HP bar for others
+        drawPlayerIso(s.x, s.y, item.name, item.color, item.isMe, { moving, attackPhase, fvx, fvy, isDown: downFlag, war: item._war, bt: item.bt, bs: item.bs, bc: item.bc, br: item.br });
+        // HP bar for others (전쟁 병사는 만피여도 항상 표시 + 진영색 테두리)
         if (!item.isMe) {
           const o = item.hp !== undefined ? item : null;
-          if (o && o.hp !== undefined && o.maxHp && o.hp < o.maxHp) {
+          if (o && o.hp !== undefined && o.maxHp && (o.hp < o.maxHp || item._war)) {
             ctx.fillStyle = '#222'; ctx.fillRect(s.x - 14, s.y - 30, 28, 4);
-            ctx.fillStyle = '#d85a5a'; ctx.fillRect(s.x - 14, s.y - 30, 28 * (o.hp / o.maxHp), 4);
+            ctx.fillStyle = item._war ? (WAR_SIDE_COL[item.bs | 0] || '#d85a5a') : '#d85a5a';
+            ctx.fillRect(s.x - 14, s.y - 30, 28 * Math.max(0, Math.min(1, o.hp / o.maxHp)), 4);
           }
         }
         ctx.globalAlpha = 1;
@@ -3819,6 +3901,8 @@ const SIM_JOB_EMOJI = {
     drawNeighborArrow(pConn.meta.west, '서');
     drawNeighborArrow(pConn.meta.north, '북');
     drawNeighborArrow(pConn.meta.south, '남');
+    // === 5b) §4-4 P4: 진행 전투 지시자(화면 안=교전 마커, 화면 밖=방향 화살) ===
+    drawBattleIndicators(toScreen);
   }
 
   function drawNeighborArrow(neighborId, label) {
@@ -3865,6 +3949,130 @@ const SIM_JOB_EMOJI = {
     ctx.strokeText(text, labelX, labelY);
     ctx.fillText(text, labelX, labelY);
     ctx.textAlign = 'start';
+  }
+
+  // ═══════════ §4-4 P4: 전쟁 전투 관전·지휘·지시자 (랩 focusCameraOnBattle·drawNeighborArrow 정합) ═══════════
+  // 레지스트리 만료 — 2Hz broadcast 끊김(종전·시야밖) 6s, 종료 표식 5s 잔류 후 제거.
+  function pruneWarBattles() {
+    const now = performance.now(); let changed = false;
+    for (const [id, b] of warBattles) {
+      if ((now - (b.seenAt || 0)) > 6000 || (b.resolvedAt && (now - b.resolvedAt) > 5000)) {
+        warBattles.delete(id); changed = true;
+        if (_warSpec.id === id) stopSpectate();
+        if (_warCmdId === id) _warCmdId = null;
+      }
+    }
+    return changed;
+  }
+  // 화면 안=교전 마커(atk A:B def), 화면 밖=가장자리 방향 화살(drawNeighborArrow 패턴).
+  function drawBattleIndicators(toScreen) {
+    if (!warBattles.size) return;
+    if (pruneWarBattles()) updateWarHud();
+    for (const b of warBattles.values()) {
+      const iso = w2i(b.ox, b.oy), s = toScreen(iso.x, iso.y), m = 46;
+      const off = (s.x < m || s.x > W - m || s.y < m || s.y > H - m);
+      const col = (b.phase === 'resolved') ? '#c9c04b' : (_warSpec.id === b.id ? '#ffe14d' : '#ff8a5a');
+      if (off) {
+        const dx = s.x - W / 2, dy = s.y - H / 2, ang = Math.atan2(dy, dx), r = Math.min(W, H) * 0.42;
+        const ax = W / 2 + Math.cos(ang) * r, ay = H / 2 + Math.sin(ang) * r;
+        ctx.save(); ctx.translate(ax, ay); ctx.rotate(ang);
+        ctx.fillStyle = col; ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(15, 0); ctx.lineTo(-7, 9); ctx.lineTo(-2, 0); ctx.lineTo(-7, -9); ctx.closePath();
+        ctx.fill(); ctx.stroke(); ctx.restore();
+        const lxp = W / 2 + Math.cos(ang) * (r - 26), lyp = H / 2 + Math.sin(ang) * (r - 26);
+        ctx.font = '11px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = col;
+        ctx.strokeStyle = 'rgba(0,0,0,0.85)'; ctx.lineWidth = 3;
+        const txt = `⚔️ ${b.aliveA}:${b.aliveB}`;
+        ctx.strokeText(txt, lxp, lyp); ctx.fillText(txt, lxp, lyp); ctx.textAlign = 'start';
+      } else {
+        ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = col;
+        ctx.strokeStyle = 'rgba(0,0,0,0.85)'; ctx.lineWidth = 3;
+        const txt = (b.phase === 'resolved')
+          ? `⚑ ${b.atk || ''} vs ${b.def || ''} 종료`
+          : `⚔️ ${b.atk || ''} ${b.aliveA} : ${b.aliveB} ${b.def || ''}`;
+        ctx.strokeText(txt, s.x, s.y - 44); ctx.fillText(txt, s.x, s.y - 44); ctx.textAlign = 'start';
+      }
+    }
+  }
+  // 관전 카메라 — 현재 카메라(_lastCamAbs)에서 전투 origin(abs px)으로 0.6s 트윈(render가 구동).
+  function focusCameraOnBattle(b) {
+    if (!b) return;
+    _warSpec.active = true; _warSpec.returning = false; _warSpec.id = b.id;
+    _warSpec.from = { x: _lastCamAbs.x, y: _lastCamAbs.y };
+    _warSpec.to = { x: b.ox, y: b.oy }; _warSpec.t0 = performance.now();
+  }
+  function spectateBattle(id) { const b = warBattles.get(id); if (b) { focusCameraOnBattle(b); updateWarHud(); } }
+  function stopSpectate() {
+    if (_warSpec.active) { _warSpec.returning = true; _warSpec.from = { x: _lastCamAbs.x, y: _lastCamAbs.y }; _warSpec.t0 = performance.now(); }
+    _warSpec.active = false; _warSpec.id = null; _warSpec.to = null;
+    updateWarHud();
+  }
+  // 지휘 참가/해제 — war_command_join 송신(서버 진영·근접 검증). 기존 input 채널(WASD) 그대로 재사용. id=null=해제.
+  function setCommand(id) {
+    _warCmdId = id; _warCmdMsg = id ? '지휘 요청 중…' : '';
+    sendPrimary({ type: 'war_command_join', warId: id });
+    if (id) { const b = warBattles.get(id); if (b) focusCameraOnBattle(b); }
+    updateWarHud();
+  }
+  function toggleCommand(id) { setCommand(_warCmdId === id ? null : id); }
+  // 스펙테이터 HUD DOM — 진행 전투 목록·A/B 카운트·casus·phase + 관전/지휘 버튼.
+  function _warBtnCss(bg) {
+    return 'flex:1;padding:3px 6px;font:11px sans-serif;color:#e6ebf2;background:' + bg
+      + ';border:1px solid rgba(255,255,255,0.2);border-radius:4px;cursor:pointer;';
+  }
+  function ensureWarHud() {
+    if (_warHudEl) return _warHudEl;
+    const host = document.getElementById('game') || document.body;
+    const el = document.createElement('div');
+    el.id = 'warHud';
+    el.style.cssText = 'position:absolute;top:64px;right:12px;z-index:40;width:236px;max-height:60vh;overflow:auto;'
+      + 'background:rgba(16,20,26,0.88);border:1px solid rgba(255,138,90,0.5);border-radius:8px;'
+      + 'padding:8px 10px;font:12px/1.5 sans-serif;color:#e6ebf2;box-shadow:0 4px 16px rgba(0,0,0,0.5);display:none;';
+    host.appendChild(el); _warHudEl = el; return el;
+  }
+  function updateWarHud() {
+    const el = ensureWarHud(), list = [...warBattles.values()];
+    if (!list.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
+    el.style.display = 'block'; el.innerHTML = '';
+    const head = document.createElement('div');
+    head.style.cssText = 'font-weight:bold;color:#ff9a6a;margin-bottom:6px;';
+    head.textContent = `⚔️ 진행 전투 ${list.length}`; el.appendChild(head);
+    for (const b of list) {
+      const row = document.createElement('div');
+      row.style.cssText = 'border-top:1px solid rgba(255,255,255,0.08);padding:5px 0;';
+      const title = document.createElement('div');
+      title.innerHTML = `<span style="color:${WAR_SIDE_COL[0]}">${b.atk || '?'}</span> vs `
+        + `<span style="color:${WAR_SIDE_COL[1]}">${b.def || '?'}</span>`;
+      row.appendChild(title);
+      const stat = document.createElement('div');
+      stat.style.cssText = 'color:#9fb0c4;font-size:11px;';
+      stat.textContent = `A ${b.aliveA} · B ${b.aliveB} · ${b.casus || ''} · ${b.phase === 'resolved' ? '종료' : '교전'}`;
+      row.appendChild(stat);
+      if (b.phase !== 'resolved') {
+        const btns = document.createElement('div');
+        btns.style.cssText = 'margin-top:4px;display:flex;gap:6px;';
+        const bSpec = document.createElement('button');
+        bSpec.textContent = (_warSpec.id === b.id) ? '관전중' : '관전';
+        bSpec.style.cssText = _warBtnCss((_warSpec.id === b.id) ? '#356b3a' : '#2a3340');
+        bSpec.addEventListener('click', () => spectateBattle(b.id)); btns.appendChild(bSpec);
+        const bCmd = document.createElement('button');
+        bCmd.textContent = (_warCmdId === b.id) ? '지휘 해제' : '지휘';
+        bCmd.style.cssText = _warBtnCss((_warCmdId === b.id) ? '#8a4a2a' : '#2a3340');
+        bCmd.addEventListener('click', () => toggleCommand(b.id)); btns.appendChild(bCmd);
+        row.appendChild(btns);
+      }
+      el.appendChild(row);
+    }
+    if (_warSpec.active || _warSpec.returning || _warCmdId) {
+      const foot = document.createElement('div');
+      foot.style.cssText = 'margin-top:6px;border-top:1px solid rgba(255,255,255,0.12);padding-top:5px;';
+      if (_warCmdMsg) { const mm = document.createElement('div'); mm.style.cssText = 'color:#ffd27a;font-size:11px;margin-bottom:4px;'; mm.textContent = _warCmdMsg; foot.appendChild(mm); }
+      const bStop = document.createElement('button');
+      bStop.textContent = '관전/지휘 종료 → 내 캐릭터';
+      bStop.style.cssText = _warBtnCss('#4a4432');
+      bStop.addEventListener('click', () => { if (_warCmdId) setCommand(null); stopSpectate(); }); foot.appendChild(bStop);
+      el.appendChild(foot);
+    }
   }
 
   // === 그리기 헬퍼 ===
@@ -4752,6 +4960,12 @@ const SIM_JOB_EMOJI = {
       ctx.textAlign = 'start';
       return;
     }
+    // §4-4 P4: 전쟁 병사 전투 스타일 — 기존 휴머노이드 경로(서버 위치 보간·걷기)를 유지하고
+    //   병종색(bt)·진영 테두리(bs)·궤주 반투명(br)·지휘관 금테(bc)만 덧입힘("전투 스타일 분기만 추가").
+    const isWar = !!opts.war;
+    const bodyColor = isWar ? (WAR_BT_COL[opts.bt | 0] || color) : color;
+    const _aSave = ctx.globalAlpha;
+    if (isWar && opts.br) ctx.globalAlpha = _aSave * 0.45;   // 궤주=반투명
     // Phase 14.37: facing — vx/vy를 iso 화면 방향으로 변환
     // world(vx,vy) → iso 화면 dx,dy: dx = vx-vy, dy = (vx+vy)/2
     const fvx = opts.fvx || 0, fvy = opts.fvy || 0;
@@ -4776,11 +4990,12 @@ const SIM_JOB_EMOJI = {
     ctx.fillRect(lx - 4, ly + 3, 3, 5 - legSwing);
     ctx.fillRect(lx + 1, ly + 3, 3, 5 + legSwing);
 
-    // 몸통 (bob 적용)
-    ctx.fillStyle = color;
+    // 몸통 (bob 적용) — 전쟁 병사는 병종색
+    ctx.fillStyle = bodyColor;
     ctx.fillRect(lx - 5, ly - 6 + bob, 10, 12);
     ctx.strokeStyle = '#000'; ctx.lineWidth = 1;
     ctx.strokeRect(lx - 5, ly - 6 + bob, 10, 12);
+    if (isWar) { ctx.strokeStyle = WAR_SIDE_COL[opts.bs | 0] || '#fff'; ctx.lineWidth = 2; ctx.strokeRect(lx - 6, ly - 7 + bob, 12, 14); }   // 진영 테두리(0공격 파랑·1방어 빨강)
 
     // 팔 + 슬래시 (공격 시 앞쪽으로 휘두름)
     if (attackP > 0) {
@@ -4821,6 +5036,15 @@ const SIM_JOB_EMOJI = {
       ctx.beginPath(); ctx.arc(hx + eyeOX + perpX * 1.5, hy + eyeOY + perpY * 1.5, 0.9, 0, Math.PI*2); ctx.fill();
       ctx.beginPath(); ctx.arc(hx + eyeOX - perpX * 1.5, hy + eyeOY - perpY * 1.5, 0.9, 0, Math.PI*2); ctx.fill();
     }
+
+    // §4-4 P4: 지휘관 금테 + ★ (bc) — 발치 금색 링 + 머리 위 별.
+    if (isWar && opts.bc) {
+      ctx.strokeStyle = '#ffe14d'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.ellipse(lx, ly + 6, 11, 5, 0, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = '#ffe14d'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText('★', hx, hy - 8); ctx.textAlign = 'start';
+    }
+    if (isWar) ctx.globalAlpha = _aSave;   // 알파 복원 — 이름표는 정상 가시(궤주여도 라벨 판독)
 
     // 이름표
     ctx.font = '11px sans-serif';

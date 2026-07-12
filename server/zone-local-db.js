@@ -238,6 +238,24 @@ const stmtGetVillageFarmInCellRect = db.prepare(
   "SELECT * FROM village_buildings WHERE type IN ('farmland','dryfield') AND cx >= ? AND cx < ? AND cy >= ? AND cy < ?"
 );
 
+// === §11 도적(server/bandits.js) — 소굴·도적단 상태(존당 1행 JSON — 규모 미니: 소굴≤3·단 소수) ===
+// villages 패턴(추가 전용·CREATE TABLE IF NOT EXISTS — 구DB 마이그레이션 안전). ENABLE_BANDITS=0이어도
+// 테이블 생성 자체는 무해(villages 테이블 관례와 동일 — 행은 도적 모듈만 쓴다).
+db.exec(`
+  CREATE TABLE IF NOT EXISTS bandit_state (
+    zone       TEXT PRIMARY KEY,
+    data       TEXT NOT NULL,
+    day        INTEGER NOT NULL DEFAULT 0,
+    updated_at INTEGER NOT NULL
+  );
+`);
+const stmtGetBanditState = db.prepare('SELECT * FROM bandit_state WHERE zone = ?');
+const stmtUpsertBanditState = db.prepare(
+  'INSERT INTO bandit_state (zone, data, day, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(zone) DO UPDATE SET data = excluded.data, day = excluded.day, updated_at = excluded.updated_at'
+);
+function getBanditState(zone) { return stmtGetBanditState.get(zone) || null; }
+function upsertBanditState(zone, dataJson, day) { stmtUpsertBanditState.run(zone, dataJson, day | 0, Date.now()); }
+
 function getVillagesByZone(zone) { return stmtGetVillagesByZone.all(zone); }
 function insertVillage(v) {
   const r = stmtInsertVillage.run(v.zone, v.name, v.cx | 0, v.cy | 0, v.population | 0, v.econ_state || null, v.day | 0, Date.now());
@@ -264,4 +282,6 @@ module.exports = {
   // §4-4 마을 시뮬 (villages.js)
   getVillagesByZone, insertVillage, updateVillageState, insertVillageBuilding, getVillageBuildings,
   getVillageFarmInCellRect,
+  // §11 도적 (bandits.js)
+  getBanditState, upsertBanditState,
 };
