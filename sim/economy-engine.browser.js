@@ -474,10 +474,11 @@ const JOBS = {
   farmer: {
     field: 'farming', output: 'food', base: 1.5,
     landBoost: (v) => v.land.fertility, toolDependent: true, inputs: {},
-    // 곡물 다양화 + 섬유. ★목화(cotton)·아마(flax) 제거 — 목화는 1363년 문익점 도입(청동기 부재), 아마도 한국 전통 아님.
-    //   고대 한반도 섬유는 삼(대마/hemp=삼베)뿐. ★유령 박멸(§9): hemp 0.19→0.06 — 삼은 전용 삼밭 소출이지 전 곡물의
-    //   부산물이 아님(0.19 = 곡물생산의 19% = 실수요[의류 0.004/인+활시위+갑옷끈]의 30배 유령 산출, 시드3 재고 6,429).
-    byproduct: { wheat: 0.25, rice: 0.20, barley: 0.15, hemp: 0.06 },
+    // 곡물 다양화 + 섬유(삼밭·모시밭). ★목화(cotton)·아마(flax) 제거 유지 — 목화는 1363년 문익점 도입(청동기 부재), 아마(flax)도 한국 전통 아님(서구 bast).
+    //   고대 한반도 섬유 = 삼(대마/hemp=삼베) + 모시(저마/ramie — 한국 전통 bast, 삼국~ 실증이나 flax/cotton과 범주 다름). ★유령 박멸(§9): hemp 0.19→0.06 —
+    //   삼은 전용 삼밭 소출이지 전 곡물의 부산물이 아님(0.19 = 실수요의 30배 유령 산출). ★삼밭·모시밭 복원(2026-07-13): hemp 0.06→0.08(전용재배)·ramie 0.05 신설.
+    //   둘 다 addProduce의 satMul(자기 그림자가격) 게이트로 *수요응답* 산출(글럿이면 taper=여가) → 고정 부산물의 글럿 병리 없음(flow-EMA가 target 관리, 유령 0.19의 재발 아님).
+    byproduct: { wheat: 0.25, rice: 0.20, barley: 0.15, hemp: 0.06, ramie: 0.05 },   // ★ramie는 byproduct 루프에서 수요-캡(짜는 만큼만) — rate는 충전속도만, 상한은 수요(아래 루프)
   },
   fisher: {
     field: 'fishing', output: 'fish', base: 1.2,
@@ -893,10 +894,13 @@ const SMELT_FUEL_PER = 0.5;    // ★야금공(대장장이·무기장이·갑�
 const LOW_FUEL_EQ = 0.3;       // ★유령 박멸(§9): 잔가지·나무껍질 = 하급 연료(wood 0.3 등가). 취사·난방에서 장작보다 먼저 소진(검불 먼저 때는 게 상식) → 목재 실절약(손실 절약형 소비). 제련(고온)은 straw와 동일하게 불가 단순화.
 const PEBBLE_STONE_EQ = 0.5;   // ★유령 박멸(§9): 자갈 = 건축 석재 하급 대체(0.5 등가, 기초·구들 채움 한정 ≤절반) — 석재 실절약. 주춧돌·벽체는 여전히 석재(광산 수요 기둥 보존).
 const FUEL_HEALTH_W = 0.4;     // 땔감 부족 시 건강 페널티 가중(fuelCov=0 → 건강 -0.4). 비례라 절벽 아님·자기교정
-// ★의복(2026-07-12 — 겨울·재봉): 옷=1인 1벌 자본재(착용 마모 소모). 옷감 보온 가중(고증: 모피>유피·가죽>삼베).
+// ★의복(2026-07-12 — 겨울·재봉): 옷=1인 1벌 자본재(착용 마모 소모). 옷감 보온 가중(고증: 모피>유피·가죽>삼베≳모시).
 //   과잉생산 수사(가죽 ×15~22 부패 평형)의 자연 소비처 — 수요 하드코딩 아님: 마모 흐름+한랭 페널티가 수요를 만들고
-//   가격(재고 함수)이 옷감 수입 유인을 창발. wool/linen/flax는 생산 경로 미구현(목축·방직 후속) — CLOTH_MATS에 추가만 하면 됨.
-const CLOTH_MATS = { fur: 1.5, hide: 1.0, leather: 1.0, hemp: 0.6 };   // 보온-eq/단위
+//   가격(재고 함수)이 옷감 수입 유인을 창발. ★모시(ramie) 편입(2026-07-13) — flow-EMA 첫 수혜: CLOTH_MATS 추가 한 줄로 재봉 _cons가 수요 자동 등록(수동 4종[CAP_TARGET·시드·글럿가드·감산] 불요).
+//   wool은 목축 보류 캐논(청동기 보조적)·flax/cotton은 고증 제외(위 farmer:156, 서구/조선 도입)라 한국 전통 bast 섬유 모시로 확장.
+const CLOTH_MATS = { fur: 1.5, hide: 1.0, leather: 1.0, hemp: 0.6, ramie: 0.55 };   // 보온-eq/단위(모시=고급이나 서늘한 여름지 — 보온은 삼베 이하. 품질[고운 마감] 차등은 _clothQ[의복 3]에서)
+const RAMIE_BOOT_PC = 0.1;   // ★모시 수요-캡 부트스트랩 floor(/인) — 소비EMA가 0인 초기에 재봉이 쓸 최소 재고만 확보(잉여 아님). 이후 수요(flowT=소비EMA×30)가 상한을 견인
+const RAMIE_MIN_POP = 40;    // ★모시 성숙 게이트 — 고급 직물은 정착 완료·잉여 공동체가 짠다(개척기 프론티어는 식량 사활). 개척 취약 궤적(콜로니 250~450f) 무교란 = 505 knife-edge 보호(고증: 잉여사회 고급 직물). ※60 시도는 202 chaos로 오히려 −(571→527) 기각
 const CLOTH_MAT_WARMTH_PER = 3.0;   // 옷 1벌 재료(보온-eq) — 가죽 ~3장 상당. (5.0/마모.006 강화 A/B는 s8 붕괴[pop439→38]로 기각 — 한계 맵에 과중. 가죽 잔여 글럿의 다음 레버는 사냥 부산물율)
 const CLOTH_WEAR_PC = 0.004;        // 1인 일 마모(온화 ~250일 수명, 한랭 ×3 → ~80일)
 const CLOTH_TARGET_PC = 1.2;        // 목표 보유(1인 1벌 + 여벌 0.2) — v2 CAP_TARGET·CAPITAL keep과 동기
@@ -1705,6 +1709,14 @@ function tickVillage(v, day) {
       addProduce(jdef.output, baseAmt);
       if (jdef.byproduct) {
         for (const [r, rate] of Object.entries(jdef.byproduct)) {
+          // ★모시(ramie) 수요-캡 공급(2026-07-13, 사용자 결정 — 교역 무교란): 재고가 수요(flowT=소비EMA×30, +부트스트랩 floor N×RAMIE_BOOT_PC) 이상이면 산출 스킵.
+          //   '짜는 만큼만 짠다' — 잉여 0 → satMul taper 없음 → 유휴노동(_idleFrac) 인플레 0 → 캐러밴 폭증·식량드레인 없음.
+          //   고정 byproduct(잉여→taper→교역폭발)가 신선 짝비교서 505 knife-edge 605→19 붕괴시킨 진범(rate 0.01·util 0.05로도)이라 공급 자체를 수요에 묶음.
+          //   ★addProduce를 *스킵*해야 _potA(잠재생산) 미오염 — satMul taper만으론 잠재가 idle로 잡혀 부족. 삼베(hemp)·곡물은 기존 경로 불변(의류 사슬 재튜닝 금지 준수).
+          if (r === 'ramie') {
+            if (v.npcs.length < RAMIE_MIN_POP) continue;   // 미성숙 마을(개척기) 모시 안 짬 — 콜로니 취약 궤적 무교란
+            if ((v.storage.ramie || 0) >= Math.max(v.npcs.length * RAMIE_BOOT_PC, ((v._consEMA || {}).ramie || 0) * 30)) continue;   // 수요 충족 → 스킵(잉여 0)
+          }
           addProduce(r, baseAmt * rate);
         }
       }
@@ -3185,6 +3197,7 @@ const ELASTICITY = {
   // 사치/생산수단 — 완만
   tool: 0.7, weapon: 0.6, armor: 0.6,
   clothes: 0.7,   // ★의복(2026-07-12) — 내구 자본재(도구 동형 탄력). 1인 1벌 커버리지·한랭 수요는 v1 스탯/마모가 처리
+  ramie: 0.9,   // ★모시(저마·苧麻, 2026-07-13) — 고급 식물섬유(재봉 CLOTH_MATS). flax(아마)·cotton(목화)은 고증 제외(economy-sim.js:156 — 서구/조선 도입) → 한국 전통 bast 섬유 모시로 대체. subs 미등재 = flowT 수요(flow-EMA 첫 수혜: 재봉 _cons가 수요 자동 등록). bone/tigerhide 선례로 v2 명시 정의(specialty.js 불변)
   obsidian: 0.9, jade: 0.6,   // ★S5 흑요석(광물 탄력) · 옥(위세재 완만 탄력)
   bronze_tool: 0.7, iron_tool: 0.7,   // ★도구 대체재(청동·철) — tool과 동일 탄력. 누락 시 satiation taper 미발동 → 글럿에도 대장장이 무한 생산(인구당 무한↑) 버그.
   tigerhide: 0.6,   // ★호피(§9 3차) — 위신재(사치 완만 — 부족해도 폭등 대신 프리미엄)
@@ -3200,6 +3213,7 @@ const BASE_VALUE_V2 = {
   food: 1.0, fish: 1.25, meat: 2.14, cooked_food: 2.0, hide: 2.0,
   herb: 4.0,   // ★약재(§9 2차): 채집 산출 ~15%·호골 — 노동집약 anchor(v1 BASE_VALUE와 동일)
   bone: 1.5, tigerhide: 40,   // ★§9 3차: 뼈(풍부 저가 투입재) · 호피(최고가 위신재 — 희소 0.3/일 사냥 위험이 anchor 근거, v1 동일)
+  ramie: 6,   // ★모시(2026-07-13) — 고급 직물 앵커(거친 삼베 hemp 4보다↑·cotton 6급): 저마 방적·표백이 노동집약(한산모시 고증). 산지=고가 수출 특산
   wood: 1.67, stone: 2.14, ore: 3.0,
   tool: 3.0, weapon: 5.0, armor: 5.0,  // 8/5 → 5/3
   bronze_tool: 3.0, iron_tool: 3.0,   // ★도구 대체재(청동·철) — tool과 동일 anchor. satiation 판정용 기준값(누락 시 adj=1 고정→taper 무발동).
@@ -3247,6 +3261,7 @@ const UTILITY_WEIGHT = {
   // 유용재 효용(원래값). 철은 야금투입이라 적당히. (부산물 fur·cotton·통나무 등은 의류·직물·건축 대리수요로 정당 → 유지)
   tool: 0.5, weapon: 0.3, armor: 0.3, hide: 0.2, herb: 0.3,   // ★약재: 실수요(요양 단축+일상 복용) — target ~0.5/인, maxAdj ~40
   bone: 0.25, tigerhide: 0.3,   // ★§9 3차: 뼈=저효용 투입재(specialty 0.4를 명시 대체 — 풍부재 과대 target 방지) · 호피=위신 실수요(maxAdj ~40)
+  ramie: 0.05,   // ★모시(2026-07-13) — 순수 flow-EMA 수요재: buffer=N×util×1.2를 최소화(0.24N→0.06N). util 0.2는 전 마을에 0.24N 보유수요→비생산 마을이 모시를 *수입*(식량 구매력 소모)→신선 짝비교 s505 605→19 붕괴(식량 드레인)의 진범. 모시는 잉여 산지가 짜서 *수출*하는 고급 직물이지 만인이 쟁여두는 재화 아님 — 수요는 재봉 _cons(flowT)만
   wood: 0.9, stone: 0.7, ore: 0.3, iron: 0.4, iron_tool: 0.5,
   copper: 0.45, tin: 0.55, bronze_tool: 0.6,   // ★청동 투입재(구리·주석)에 실수요. 주석이 희소해 더 높게.
   fruit: 0.1, vegetable: 0.1, mushroom: 0.1, twig: 0.05, pebble: 0.05,
@@ -3274,6 +3289,7 @@ const DECAY_V2 = {
   stone: 0.0003, ore: 0.0008, wood: 0.0003,
   obsidian: 0.0003, jade: 0.0002,   // ★S5 석재류 — 거의 안 썩음(과잉 더미만 느린 손실)
   wheat: 0.0012, rice: 0.0012, barley: 0.0012,
+  ramie: 0.001,   // ★모시(2026-07-13) — 식물섬유(농산 등가 부패). ramie는 specialty 미등재라 자동 부패 루프 밖 → 명시 필수(누락 시 무부패 무한축적)
   // ★유령 박멸(§9): 비-specialty 산출물의 부패 정의 — 견과는 벌레먹고(구황식량 편입분), 꺾은 꽃은 시듦(산출 중단된 잔존 재고 소진용).
   acorn: 0.001, chestnut: 0.001, walnut: 0.001, wildflower: 0.002,
 };
@@ -4084,7 +4100,7 @@ function restoreLand(v) {
 const DECAY_EXCESS_MULT = { food: 2, meat: 2, fish: 2, cooked_food: 2, fruit: 2, vegetable: 2, mushroom: 2, hide: 4,   // ★hide xm은 4 유지(3 시도는 base 0.0015와 세트로 s505 붕괴 — 절충안은 base만 0.001)
   stone: 8, ore: 3, wood: 8, wheat: 4, rice: 4, barley: 4,
   // ★유령 박멸(§9): 유기 부산물 더미는 빨리 삭음(벌레·풍화·굳음 — hide 4 선례). 반유령 재고의 글럿 평형을 실사용 수준으로 하향.
-  bone: 3, feather: 3, resin: 3, leather: 4, fur: 4, hemp: 4, seaweed: 3, clay: 6, oak_log: 4, pine_log: 4 };
+  bone: 3, feather: 3, resin: 3, leather: 4, fur: 4, hemp: 4, ramie: 4, seaweed: 3, clay: 6, oak_log: 4, pine_log: 4 };   // ★모시(2026-07-13): 유기 섬유 더미 삭음(hemp 4 동형)
 // ★옹기(유령 박멸·§9 손실 절약형): 진흙(광부 부산물)을 매일 소비(가구 장독 빚기·깨진 독 갈기 — 가내수공, 신규 직업 없음)
 //   → 충족률 EMA(v._potteryR) → 부패성 식량 부패율 ×(1−0.3×충족) — 소비의 대가가 실물 손실 감소(밀폐 저장).
 //   수요 하드코딩 아님(가격 항 없음): 공급 없으면 현행 부패 그대로(페널티 없음), 있으면 절약. 진흙 없는 마을엔 수입 유인 창발.

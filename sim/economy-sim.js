@@ -153,10 +153,11 @@ const JOBS = {
   farmer: {
     field: 'farming', output: 'food', base: 1.5,
     landBoost: (v) => v.land.fertility, toolDependent: true, inputs: {},
-    // 곡물 다양화 + 섬유. ★목화(cotton)·아마(flax) 제거 — 목화는 1363년 문익점 도입(청동기 부재), 아마도 한국 전통 아님.
-    //   고대 한반도 섬유는 삼(대마/hemp=삼베)뿐. ★유령 박멸(§9): hemp 0.19→0.06 — 삼은 전용 삼밭 소출이지 전 곡물의
-    //   부산물이 아님(0.19 = 곡물생산의 19% = 실수요[의류 0.004/인+활시위+갑옷끈]의 30배 유령 산출, 시드3 재고 6,429).
-    byproduct: { wheat: 0.25, rice: 0.20, barley: 0.15, hemp: 0.06 },
+    // 곡물 다양화 + 섬유(삼밭·모시밭). ★목화(cotton)·아마(flax) 제거 유지 — 목화는 1363년 문익점 도입(청동기 부재), 아마(flax)도 한국 전통 아님(서구 bast).
+    //   고대 한반도 섬유 = 삼(대마/hemp=삼베) + 모시(저마/ramie — 한국 전통 bast, 삼국~ 실증이나 flax/cotton과 범주 다름). ★유령 박멸(§9): hemp 0.19→0.06 —
+    //   삼은 전용 삼밭 소출이지 전 곡물의 부산물이 아님(0.19 = 실수요의 30배 유령 산출). ★삼밭·모시밭 복원(2026-07-13): hemp 0.06→0.08(전용재배)·ramie 0.05 신설.
+    //   둘 다 addProduce의 satMul(자기 그림자가격) 게이트로 *수요응답* 산출(글럿이면 taper=여가) → 고정 부산물의 글럿 병리 없음(flow-EMA가 target 관리, 유령 0.19의 재발 아님).
+    byproduct: { wheat: 0.25, rice: 0.20, barley: 0.15, hemp: 0.06, ramie: 0.05 },   // ★ramie는 byproduct 루프에서 수요-캡(짜는 만큼만) — rate는 충전속도만, 상한은 수요(아래 루프)
   },
   fisher: {
     field: 'fishing', output: 'fish', base: 1.2,
@@ -572,10 +573,13 @@ const SMELT_FUEL_PER = 0.5;    // ★야금공(대장장이·무기장이·갑�
 const LOW_FUEL_EQ = 0.3;       // ★유령 박멸(§9): 잔가지·나무껍질 = 하급 연료(wood 0.3 등가). 취사·난방에서 장작보다 먼저 소진(검불 먼저 때는 게 상식) → 목재 실절약(손실 절약형 소비). 제련(고온)은 straw와 동일하게 불가 단순화.
 const PEBBLE_STONE_EQ = 0.5;   // ★유령 박멸(§9): 자갈 = 건축 석재 하급 대체(0.5 등가, 기초·구들 채움 한정 ≤절반) — 석재 실절약. 주춧돌·벽체는 여전히 석재(광산 수요 기둥 보존).
 const FUEL_HEALTH_W = 0.4;     // 땔감 부족 시 건강 페널티 가중(fuelCov=0 → 건강 -0.4). 비례라 절벽 아님·자기교정
-// ★의복(2026-07-12 — 겨울·재봉): 옷=1인 1벌 자본재(착용 마모 소모). 옷감 보온 가중(고증: 모피>유피·가죽>삼베).
+// ★의복(2026-07-12 — 겨울·재봉): 옷=1인 1벌 자본재(착용 마모 소모). 옷감 보온 가중(고증: 모피>유피·가죽>삼베≳모시).
 //   과잉생산 수사(가죽 ×15~22 부패 평형)의 자연 소비처 — 수요 하드코딩 아님: 마모 흐름+한랭 페널티가 수요를 만들고
-//   가격(재고 함수)이 옷감 수입 유인을 창발. wool/linen/flax는 생산 경로 미구현(목축·방직 후속) — CLOTH_MATS에 추가만 하면 됨.
-const CLOTH_MATS = { fur: 1.5, hide: 1.0, leather: 1.0, hemp: 0.6 };   // 보온-eq/단위
+//   가격(재고 함수)이 옷감 수입 유인을 창발. ★모시(ramie) 편입(2026-07-13) — flow-EMA 첫 수혜: CLOTH_MATS 추가 한 줄로 재봉 _cons가 수요 자동 등록(수동 4종[CAP_TARGET·시드·글럿가드·감산] 불요).
+//   wool은 목축 보류 캐논(청동기 보조적)·flax/cotton은 고증 제외(위 farmer:156, 서구/조선 도입)라 한국 전통 bast 섬유 모시로 확장.
+const CLOTH_MATS = { fur: 1.5, hide: 1.0, leather: 1.0, hemp: 0.6, ramie: 0.55 };   // 보온-eq/단위(모시=고급이나 서늘한 여름지 — 보온은 삼베 이하. 품질[고운 마감] 차등은 _clothQ[의복 3]에서)
+const RAMIE_BOOT_PC = 0.1;   // ★모시 수요-캡 부트스트랩 floor(/인) — 소비EMA가 0인 초기에 재봉이 쓸 최소 재고만 확보(잉여 아님). 이후 수요(flowT=소비EMA×30)가 상한을 견인
+const RAMIE_MIN_POP = 40;    // ★모시 성숙 게이트 — 고급 직물은 정착 완료·잉여 공동체가 짠다(개척기 프론티어는 식량 사활). 개척 취약 궤적(콜로니 250~450f) 무교란 = 505 knife-edge 보호(고증: 잉여사회 고급 직물). ※60 시도는 202 chaos로 오히려 −(571→527) 기각
 const CLOTH_MAT_WARMTH_PER = 3.0;   // 옷 1벌 재료(보온-eq) — 가죽 ~3장 상당. (5.0/마모.006 강화 A/B는 s8 붕괴[pop439→38]로 기각 — 한계 맵에 과중. 가죽 잔여 글럿의 다음 레버는 사냥 부산물율)
 const CLOTH_WEAR_PC = 0.004;        // 1인 일 마모(온화 ~250일 수명, 한랭 ×3 → ~80일)
 const CLOTH_TARGET_PC = 1.2;        // 목표 보유(1인 1벌 + 여벌 0.2) — v2 CAP_TARGET·CAPITAL keep과 동기
@@ -1384,6 +1388,14 @@ function tickVillage(v, day) {
       addProduce(jdef.output, baseAmt);
       if (jdef.byproduct) {
         for (const [r, rate] of Object.entries(jdef.byproduct)) {
+          // ★모시(ramie) 수요-캡 공급(2026-07-13, 사용자 결정 — 교역 무교란): 재고가 수요(flowT=소비EMA×30, +부트스트랩 floor N×RAMIE_BOOT_PC) 이상이면 산출 스킵.
+          //   '짜는 만큼만 짠다' — 잉여 0 → satMul taper 없음 → 유휴노동(_idleFrac) 인플레 0 → 캐러밴 폭증·식량드레인 없음.
+          //   고정 byproduct(잉여→taper→교역폭발)가 신선 짝비교서 505 knife-edge 605→19 붕괴시킨 진범(rate 0.01·util 0.05로도)이라 공급 자체를 수요에 묶음.
+          //   ★addProduce를 *스킵*해야 _potA(잠재생산) 미오염 — satMul taper만으론 잠재가 idle로 잡혀 부족. 삼베(hemp)·곡물은 기존 경로 불변(의류 사슬 재튜닝 금지 준수).
+          if (r === 'ramie') {
+            if (v.npcs.length < RAMIE_MIN_POP) continue;   // 미성숙 마을(개척기) 모시 안 짬 — 콜로니 취약 궤적 무교란
+            if ((v.storage.ramie || 0) >= Math.max(v.npcs.length * RAMIE_BOOT_PC, ((v._consEMA || {}).ramie || 0) * 30)) continue;   // 수요 충족 → 스킵(잉여 0)
+          }
           addProduce(r, baseAmt * rate);
         }
       }
