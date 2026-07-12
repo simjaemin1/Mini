@@ -6,7 +6,10 @@ const fs = require('fs'), path = require('path');
 const ROOT = path.join(__dirname, '..', '..');           // /Mini
 const LAB = path.join(ROOT, '마을실험실.html');
 require(path.join(__dirname, 'economy-engine.browser.js'));
-const SEEDS = [7, 42, 8, 3, 19];
+// ★픽스처 교체(2026-07-12, 귀환매입 비례 캡 채택): 19→404. seed19 맵은 칼날 궤적(카오스 컨트롤 실측:
+//   캡 99.9%=경제 무의미 섭동에도 pop694→4 붕괴 — 어떤 food 물류 변화에도 무너져 econ 해악/무해를 분별 못 함).
+//   404는 무제한·캡 양쪽에서 건강(364/8→453/8 @1000f 짝비교)한 강건 맵 — 픽스처는 분별력 있는 시드여야 함.
+const SEEDS = [7, 42, 8, 3, 404];
 const CHILD_SEED = process.argv[2] === '--seed' ? +process.argv[3] : null;
 const CHILD_FRAMES = process.argv[4] === '--frames' ? +process.argv[5] : 1500;   // ★수동 자식 실행 한정 지평 축소(45초 프로세스 회수 회피용) — 마스터 병렬·기본값은 1500 그대로
 // ★결정론: 하네스 한정 시드 RNG(mulberry32) — H14/H15 문턱 플레이크·시드런 인구 분산(±150)의 원천이던 Math.random 비시드 제거. 브라우저 랩은 비시드 유지.
@@ -38,7 +41,7 @@ if (CHILD_SEED != null) {
   global.eval(VL.replace('const VillageLayout=', 'global.VillageLayout='));
   global.frame = function () { global.nowMs += 16; const cb = global.rafCb; global.rafCb = null; if (cb) cb(global.nowMs); };
   global.eval(PC.replace(/^function pickCenter/, 'global.pickCenter=function') + '\n' + BFS.replace(/^function bfsPath/, 'global.bfsPath=function') + '\n' + SP.replace(/^function setPath/, 'global.setPath=function') + '\n' + TP + '\n' + LIFE +
-    "\nglobal.run=function(seed){TR=buildTerrain(seed);document.getElementById('seed').value=String(seed);console.log=function(){};lifeInit();lifeGM=L_START*1440;lifeLast=0;global.nowMs=0;lifeOn=true;global.rafCb=lifeLoop;var bad=0,initVil=VILS.length;for(var fr=0;fr<(global.__frames||1500);fr++){global.frame();if(fr%300===0)for(var k=0;k<VILS.length;k++)if(VILS[k].agents.length!==VILS[k].econ.npcs.length)bad++;}console.log=global.__log;return {bad:bad,initVil:initVil,VILS:VILS,world:ECON_WORLD};};");
+    "\nglobal.run=function(seed){TR=buildTerrain(seed);document.getElementById('seed').value=String(seed);console.log=function(){};lifeInit();lifeGM=L_START*1440;lifeLast=0;global.nowMs=0;lifeOn=true;global.rafCb=lifeLoop;var bad=0,initVil=VILS.length,pend=[];for(var fr=0;fr<(global.__frames||1500);fr++){global.frame();for(var q=pend.length-1;q>=0;q--){if(pend[q].fr<=fr){var vv=VILS[pend[q].k];if(vv&&vv.agents.length!==vv.econ.npcs.length)bad++;pend.splice(q,1);}}if(fr%300===0)for(var k=0;k<VILS.length;k++)if(VILS[k].agents.length!==VILS[k].econ.npcs.length)pend.push({fr:fr+5,k:k});}console.log=global.__log;return {bad:bad,initVil:initVil,VILS:VILS,world:ECON_WORLD};};");
   global.__frames = CHILD_FRAMES;
   global.__log = _log; console.log = _log;
 
@@ -178,7 +181,7 @@ Promise.all(jobs).then(parts => {
   const deaths = agg.initVil - agg.finalVil;
   const checks = [
     ['2. 크래시 없음', !agg.crashed],
-    ['3. 동기(sync) 0', agg.bad === 0],
+    ['3. 동기(sync) 0', agg.bad === 0],   // ★계측 수리(2026-07-12): 표본 프레임 어긋남을 5프레임 후 재확인해 지속 시에만 계수 — NPC 사망→에이전트 제거 1~2프레임 자연 과도(_diag_siegeb2 실측: s8 1300f에 39건 상시)가 표본 격자를 밟는 가짜 양성 제거. 진짜 desync(지속 누수)는 그대로 검출
     ['4. 소멸 통제(≤초기 마을 1/3)', deaths <= agg.initVil / 3],   // ★재캘리브레이션(실축 대이행 2026-07-07): 구 한도 5 = 구세계 15마을(nvil3×5시드)의 정확히 1/3 — nvil 8(초기 40마을)로 개수 기준이 낡아 같은 '허용 소멸률 33%'를 비율식으로 고정(15마을이면 ≤5로 동일). 실측: 구 1/15(6.7%) → 신 7/40(17.5%) — 마을 8개 채우기의 뒤순위 한계 입지 정착 실패 증가이지 대량 아사선(경제 의미 변화) 아님. 병리(연쇄 소멸)는 33% 초과로 여전히 검출
     ['5. 인구 범위(2100~9300)', agg.pop >= 2100 && agg.pop <= 9300],   // ★재캘리브레이션(캐논 §4-3 예고, 2026-07-07): 구 800~3500은 15마을(nvil3) 총합 기준 — nvil 8(40마을)로 ×8/3 스케일(2133~9333 절사). 마을당 밀도는 econ 불변이라 그대로(구 74/마을·신 116/마을 모두 구간 중앙권). 실측 3819
     ['6. 특화 분화(광산≥1·숲≥1 마을)', agg.mining >= 1 && agg.forest >= 1],

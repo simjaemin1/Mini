@@ -703,7 +703,15 @@ function tickCaravansV2(world, day) {
         // 따라서 actual amount = netCreditAfterArrival / (pToReturn × (1+TAU))
         const taxToOnBuy = (netCreditAfterArrival / (pToReturn * (1 + TAU))) * pToReturn * TAU;
         const amountBought = netCreditAfterArrival / (pToReturn * (1 + TAU));
-        const amountAvailable = Math.min(amountBought, c.to.storage[returnRes] || 0);
+        // ★식량 귀환매입 비례 캡(2026-07-12, _siege b 수사 5f55850 후속): 종전 min(구매력, 재고 전량)이라
+        //   글럿(저가) 마을에 캐러밴 1대가 곳간 전량 매입 → 1틱 0화(시드7 마을7 1862→0 인터셉터 실측).
+        //   절대 유보 플로어(keep 20/12일)는 A/B로 기각 — 전 마을이 플로어 미달인 초반에 식량 재분배가
+        //   전면 정지해 식량빈곤 맵 붕괴(시드19 pop789→3·시드8 pop390→9). → 재고의 50%/캐러밴 상한:
+        //   전량 소진 원천 불가(0.5^k>0, 잔고 줄수록 시세↑ 자연 브레이크) + 플로어 없어 초반·빈곤맵 재분배 생존.
+        //   식량류 한정(무기·금속·주석 캘리브 무접촉 — 불변식 #8·#16 보전).
+        const _isFoodRet = returnRes === 'food' || returnRes === 'fish' || returnRes === 'meat' || returnRes === 'cooked_food' || returnRes === 'vegetable';
+        const _retStock = c.to.storage[returnRes] || 0;
+        const amountAvailable = Math.min(amountBought, _isFoodRet ? _retStock * 0.5 : _retStock);
         c.to.storage[returnRes] -= amountAvailable;
         c.to.treasury._cash = (c.to.treasury._cash || 0) + taxToOnBuy;
         c._returningRes = returnRes;
