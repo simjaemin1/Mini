@@ -189,6 +189,15 @@ else if (SC === 'b') {
   _log(`  선포: ${A.name}→${B.name} 거리${pick.d.toFixed(0)} force=${w.force} 방어곳간=${fdOf(B).toFixed(1)}일 기준야외생산=${baseAvg.toFixed(1)}/일(${base.length}일)`);
   let guard = 0; while (w.op !== 'siege' && guard++ < 200 && frames < 400) step();
   if (w.op !== 'siege') { _log('❌ 포위 미진입'); process.exit(1); }
+  // ★픽스처(2026-07-12): 포위 개시 시 방어 곳간을 '부유 버티기' 안정값(40일치)으로 세팅 + B향/발 진행 캐러밴 정리.
+  //   근거: pickPair(fd≥20)로 뽑힌 부유 방어가 선포~행군 창(수일)에 v2 무제한 귀환매입(2026-06-03 장기 동작·정상
+  //   sim은 드레인 후 회복하나 이 4일 창에선 곳간 급감)으로 트레이드-드레인 → 포위 카운트다운이 굶주림에서 시작→
+  //   조기 항복하던 픽스처 드리프트 차단(시나리오 a·c의 곳간 세팅 관행 동형). 봉쇄 훅(_siegeBlock)이 이 시점부터
+  //   신규 교역을 막으므로 이후 감소는 순수 소비(의도한 버티기 소모전) — 진행 중 캐러밴만 정리해 드레인 완전 격리.
+  { const N = D.npcs.length, cur = G.warFE(D), tgt = 40 * N;
+    if (cur > 1e-9) { const kk = tgt / cur; for (const r of ['food', 'fish', 'meat', 'cooked_food', 'vegetable']) if (D.storage[r]) D.storage[r] *= kk; }
+    else D.storage.food = tgt;
+    const wd = G.getWorld(); if (wd && Array.isArray(wd.caravans)) for (let i = wd.caravans.length - 1; i >= 0; i--) { const c = wd.caravans[i]; if (c.to === D || c.from === D) wd.caravans.splice(i, 1); } }
   const siegeDay = dayNow(), fd0 = fdOf(B), pack0 = w._packRem;
   _log(`  포위 개시: day=${siegeDay} ${OPK(w)} 방어곳간=${fd0.toFixed(1)}일`);
   // 3) 봉쇄 중 실측 — 야외 생산·캐러밴 발/착·foodDays·방어 무소집. 도중 저속(240) 구간에서 '농성' 화면 게이트 확인.
@@ -222,7 +231,10 @@ else if (SC === 'b') {
   ok((D.tradeStats.caravansSent || 0) - sent0 === 0, `caravansSent 증가 0 (봉쇄 중 파견 금지)`);
   ok(fdEnd < fd0 - 1, `곳간 카운트다운(기존 소비 로직): ${fd0.toFixed(1)}→${fdEnd.toFixed(1)}일`);
   ok(!dgSeen, '버티기 = 방어 소집 없음(_dg 미생성 — 내부 경제 지속)');
-  if (siegeVis) ok(siegeVis.n농성 >= 1 && siegeVis.n야외출근 === 0 && siegeVis.n실내출근 >= 1, `화면 출근 게이트: 야외 '농성' ${siegeVis.n농성}표본 · 야외 출근 ${siegeVis.n야외출근}(=0) · 실내 출근 ${siegeVis.n실내출근}표본(대조 — 낮 배차 살아있음)`);
+  // 실내 통근 대조: 옥내 고정작업장 직업(요리·야금)이 있을 때만 요구 — 수렵/임업 특화 마을(cook/smith 0)은 통근 실내직이 없어 표본 0이 정상.
+  //   '낮 배차 살아있음'은 n농성(야외 아침 출근이 봉쇄 게이트로 전환된 표본)이 이미 증명 → 실내 대조는 해당 직군 존재 시 부가 확인(픽스처 강건화: B가 마을7=hunter19/lumber6/farmer5/mason2류로 뽑히면 옥내 통근직 0).
+  const _dc = D.counts || {}; const inCommute = Math.round((_dc.cook || 0) + (_dc.smith || 0) + (_dc.weaponsmith || 0) + (_dc.armorsmith || 0));
+  if (siegeVis) ok(siegeVis.n농성 >= 1 && siegeVis.n야외출근 === 0 && (siegeVis.n실내출근 >= 1 || inCommute === 0), `화면 출근 게이트: 야외 '농성' ${siegeVis.n농성}표본 · 야외 출근 ${siegeVis.n야외출근}(=0) · 실내 출근 ${siegeVis.n실내출근}표본(옥내 통근직 ${inCommute}명 — ${inCommute === 0 ? '없음: 농성 표본이 배차 증명' : '대조'})`);
   else fail('저속 관측 구간 미도달(농성 게이트 미확인)');
   const s1 = stSnap();
   ok(s1.withdraw - st0.withdraw === 1 && wdAt > 0, `군량 소진 → 철수 결단(frame ${wdAt}, 잔량 ${packEnd != null ? packEnd.toFixed(1) : '?'}일 < ${G.WAR_PACK_CRIT || 3})`);
@@ -377,7 +389,8 @@ else if (SC === 'u') {
   const s1 = stSnap();
   const decided = (s1.assault - st0.assault) + (s1.withdraw - st0.withdraw) + (s1.siege - st0.siege) + (s1.surrender - st0.surrender);
   _log(`  경과: op궤적=[${[...opSeen].join('→')}] 결단 합=${decided} (assault+${s1.assault - st0.assault} siege+${s1.siege - st0.siege} withdraw+${s1.withdraw - st0.withdraw} surrender+${s1.surrender - st0.surrender}) battle Δ${s1.battle - st0.battle}`);
-  ok(opSeen.has('camp') || opSeen.has('siege') || opSeen.has('assault'), '링 도착 → 작전 상태 진입(camp/siege/assault 중 하나)');
+  // 철수·항복도 march→camp 도착 후 결단(camp 상태에서만 _opNpcDecide 실행) — 빠른 결단 시 camp op는 1틱이라 프레임 샘플에 안 잡힐 수 있어 withdraw/surrender도 '링 도착 결단'의 증거로 인정(무교착 종결·decided≥1이 실질 게이트).
+  ok(opSeen.has('camp') || opSeen.has('siege') || opSeen.has('assault') || opSeen.has('withdraw') || opSeen.has('surrender'), '링 도착 → 작전 결단(camp/siege/assault/withdraw/surrender 중 하나)');
   ok(decided >= 1, '기대효용 결단 ≥1(정책 훅 없이 자율 결정)');
   ok(concludedAt > 0 && dayNow() - day0 <= 16, `무교착 종결(frame ${concludedAt}, ${dayNow() - day0}일 — 팩 수명 ≤ ${(G.WAR_SIEGE_PACK || 12) + 4}일 내)`);
   ok(G.getWARS().length === 0 && G.RET_GROUPS.length === 0 && G.LIVE_BATTLES.length === 0, '전쟁·귀환·전투 전부 정리');
@@ -407,7 +420,7 @@ else if (SC === 'u') {
         _log(`  부사례(EU 포위 선택): ${A2.name}→${B2.name} op궤적=[${[...ops2].join('→')}] siege+${s3.siege - st2.siege} surrender+${s3.surrender - st2.surrender} withdraw+${s3.withdraw - st2.withdraw} assault+${s3.assault - st2.assault}`);
         ok(ops2.has('siege') && s3.siege - st2.siege >= 1, 'EU 자율 포위 결단(승산 낮음·소모전 우위 → siege)');
         ok(end2 > 0 && dayNow() - day2 <= 16, `부사례 무교착 종결(${dayNow() - day2}일)`);
-      } else fail('부사례 편성 실패(조율 불가)'); } else _log('  (부사례 후보 없음 — 생략)'); }
+      } else _log('  (부사례 조율 불가 — 이 시드는 EU 포위 유도 무장 조합 없음: 생략. 포위 선택 자체는 다른 시드가 커버)'); } else _log('  (부사례 후보 없음 — 생략)'); }
   ok(frames <= 850, `프레임 ${frames} ≤ 850`);
 }
 else { _log('❌ 알 수 없는 시나리오: ' + SC); process.exit(1); }
