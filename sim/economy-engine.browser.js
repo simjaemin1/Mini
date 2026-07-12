@@ -421,6 +421,13 @@ function _computeVillageStats(v, N) {
     const _cc = Math.min(1, v._clothCov || 0);
     stats.health -= COLD_HEALTH_W * v._coldStress * (1 - _cc);
     stats.happiness += COLD_CLOTHED_HAPPY_W * v._coldStress * _cc;
+    // ★의복 품질 방한(2026-07-13 — _clothQ 채널): 기존 relief 불변(비회귀) + 잘 지은 옷일수록 *추가* 한랭 완화(품질×coverage×한랭). 재봉 숙련·고운 재료(모피·모시)가 겨울을 따뜻하게. 계절(coldStress) 전용.
+    //   ★성숙 게이트(가죽제품 동형) — 개척기 취약 궤적 무교란(505 knife-edge: 무게이트 시 605→22 붕괴 실측). 정착 마을만 품질 방한 향유(개척기는 옷 있는 것만으로 족).
+    if (N >= RAMIE_MIN_POP) {
+      const _cq = (v._clothQ != null ? v._clothQ : CLOTH_Q_BASE);
+      stats.health += CLOTH_Q_HEALTH_W * v._coldStress * _cc * _cq;
+      stats.happiness += CLOTH_Q_HAPPY_W * v._coldStress * _cc * _cq;
+    }
   }
   stats.clothCov = v._clothCov != null ? v._clothCov : 1;
   // ★가죽제품 comfort(2026-07-13) — 신발·깔개·주머니 갖춤 = 생활수준↑(건강·행복 소폭). 없어도 페널티 0(comfort·필수 아님 → 수입 강제 없음·잉여 마을만 향유). hide 글럿의 실사용처.
@@ -913,6 +920,14 @@ const LG_HAPPY_W = 0.025;           // 가죽제품 comfort 행복 보너스(건
 const TAN_HIDE_MIN = 3.0;           // 무두질 하한 hide(/인) — 이 아래는 안 태움(505 'hide-저축 맵' 수출자본·갑옷재[armorsmith hide 0.4] 보존, 명백한 잉여만 제품화). 글럿(~4/N)을 이 선까지 sink
 const TAN_DAILY_PC = 0.06;          // 1인 일 무두질 처리량 — 고증 뇌유 무두질=고노동
 const TAN_YIELD = 0.85;             // 무두질 수율 — 생가죽→가죽제품 무게 손실(다듬기·재단)
+// ★의복 품질 _clothQ(2026-07-13 — 인계 설계 방향[CHECKLIST]: _weapQ 동형 마을 EMA·방한 우선·방어 비권장): 재봉 숙련×재료 믹스 등급 → 생산분 품질 → EMA.
+//   효과 = 방한(coldStress 완화 *추가* 보너스 — 기존 relief 불변이라 비회귀·잘 지은 옷일수록 겨울 따뜻). 내구(마모÷품질)는 hide 역상호작용 재캘리브 세트라 별건(미구현). 모시(0.9)=고급 직물 = item1 품질 payoff.
+const CLOTH_Q_MAT = { fur: 1.0, ramie: 0.9, leather: 0.85, hide: 0.65, hemp: 0.6 };   // 재료 등급(품질·고증: 모피>모시>유피>생가죽>삼베)
+const CLOTH_Q_SKILL_SPAN = 0.6;    // 재봉 숙련 기여 폭(WEAP_Q 동형): q = 재료등급 × (1−SPAN+SPAN×skill/10) → 명장 재봉사 최대 1.0 발현
+const CLOTH_Q_EMA = 0.06;          // 의복 품질 EMA(제작일 가중) — 명장이 스톡 질 견인
+const CLOTH_Q_BASE = 0.6;          // 기본 품질(재봉 없음·거친 옷)
+const CLOTH_Q_HEALTH_W = 0.08;     // 고품질 방한 건강 보너스(coldStress·coverage·품질 비례 — 겨울 전용 계절 보너스라 always-on 아님)
+const CLOTH_Q_HAPPY_W = 0.08;      // 고품질 방한 행복 보너스(따뜻하고 고운 겨울옷)
 const CLOTH_MAT_WARMTH_PER = 3.0;   // 옷 1벌 재료(보온-eq) — 가죽 ~3장 상당. (5.0/마모.006 강화 A/B는 s8 붕괴[pop439→38]로 기각 — 한계 맵에 과중. 가죽 잔여 글럿의 다음 레버는 사냥 부산물율)
 const CLOTH_WEAR_PC = 0.004;        // 1인 일 마모(온화 ~250일 수명, 한랭 ×3 → ~80일)
 const CLOTH_TARGET_PC = 1.2;        // 목표 보유(1인 1벌 + 여벌 0.2) — v2 CAP_TARGET·CAPITAL keep과 동기
@@ -1671,11 +1686,17 @@ function tickVillage(v, day) {
       let haveW = 0; for (const m in CLOTH_MATS) haveW += (v.storage[m] || 0) * CLOTH_MATS[m];
       if (haveW >= needW * 0.5) {
         const frac = Math.min(1, haveW / needW);
+        let _qNum = 0, _qDen = 0;   // ★의복 품질: 소비 재료 믹스 등급(무게 가중)
         for (const m in CLOTH_MATS) {
           const take = (v.storage[m] || 0) * (needW * frac / haveW);
-          if (take > 0) { v.storage[m] = Math.max(0, (v.storage[m] || 0) - take); _cons(v, m, take); }   // ★flow-EMA(옷감 실수요 — 모피·유피·가죽·삼베)
+          if (take > 0) { v.storage[m] = Math.max(0, (v.storage[m] || 0) - take); _cons(v, m, take); _qNum += take * (CLOTH_Q_MAT[m] || CLOTH_Q_BASE); _qDen += take; }   // ★flow-EMA(옷감 실수요) + 품질 등급 누적
         }
-        addProduce('clothes', amt * frac);
+        // ★의복 품질(2026-07-13): 재봉 숙련 × 재료 믹스 등급 → 생산분 품질 누적(EMA는 tickVillage finalize·_weapQ 동형)
+        const _cqSkill = 1 - CLOTH_Q_SKILL_SPAN + CLOTH_Q_SKILL_SPAN * ((npc.skills.tailoring || 0) / 10);
+        const _made = amt * frac;
+        v._clothQnum = (v._clothQnum || 0) + _cqSkill * (_qDen > 0 ? _qNum / _qDen : CLOTH_Q_BASE) * _made;
+        v._clothQden = (v._clothQden || 0) + _made;
+        addProduce('clothes', _made);
         workNPC(npc);
       }
     } else if (jdef.produceSpecial === 'miner') {
@@ -1883,6 +1904,13 @@ function tickVillage(v, day) {
       weapTarget = WEAP_Q_STONE * (1 - WEAP_Q_SKILL_SPAN + WEAP_Q_SKILL_SPAN * (maxMasonSkW / 10));   // 마제석검/활
     }
     if (weapTarget != null) v._weapQ = (v._weapQ != null ? v._weapQ : WEAP_Q_STONE) * (1 - WEAP_Q_EMA) + weapTarget * WEAP_Q_EMA;
+  }
+  // ★의복 품질 EMA(2026-07-13) — 오늘 재봉분(숙련×재료 믹스)이 마을 의복 스톡 질을 서서히 갱신(_weapQ 동형). 방한(coldStress 완화 보너스, _computeVillageStats)에 반영. 제작 없는 날은 유지.
+  {
+    if ((v._clothQden || 0) > 0) {
+      const _cqT = v._clothQnum / v._clothQden;
+      v._clothQ = (v._clothQ != null ? v._clothQ : CLOTH_Q_BASE) * (1 - CLOTH_Q_EMA) + _cqT * CLOTH_Q_EMA;
+    }
     // 장인 없고 무기 스톡만 있으면 현 품질 유지(감쇠 없음 — 남은 무기는 그대로).
   }
   // ★근접검 비중(_swordFrac) EMA — 오늘 제작(검 vs 활) 가중으로 pool의 근접검 비중 추종. 검 제작일↑비중, 활 제작일↓비중. 제작 없으면 유지.
@@ -1896,7 +1924,7 @@ function tickVillage(v, day) {
     }
     v._swordMadeToday = 0; v._bowMadeToday = 0;
   }
-  v._toolQnum = 0; v._toolQden = 0; v._weapQnum = 0; v._weapQden = 0;
+  v._toolQnum = 0; v._toolQden = 0; v._weapQnum = 0; v._weapQden = 0; v._clothQnum = 0; v._clothQden = 0;
 
   // 2.5) 식량 부패 — 게임에선 안 쓰기로 했으므로 시뮬에서도 일관되게 제거.
   //      대신 storage 무한 비축은 chest 용량 한계(게임 메커니즘)로 표현될 예정.
