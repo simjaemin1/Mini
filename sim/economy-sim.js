@@ -570,6 +570,10 @@ const COLD_HEALTH_W = 0.35;         // 한랭 무의복 건강 페널티(연료 
 const COLD_CLOTHED_HAPPY_W = 0.15;  // 한랭기 의복 충족 행복(따뜻한 겨울)
 const FUEL_COLD_W = 0.6;            // 한랭 난방 연료 가중(겨울 취사+난방 ≈ ×1.6) — 계절 연료 수요의 실물화
 const STONE_MAINT_PC = 0.02;        // ★돌 감산 자연화(2026-07-12): 건축 유지 석재 실소비/인/일(담장·구들·바닥·숫돌 — FIREWOOD_PC 동형 물리 수요)
+// ★제례·부장 봉헌율(/인/일, 식량여유 ×_secF 비례·수출 유보 초과분만) — 위세재 반복 실수요(매납·부장 고증).
+//   봉헌검(weapon)은 제외: A/B로 병기고 드레인이 s8 붕괴 유발 — 무기 수요는 전쟁층(호전 성격)과 세트로 후속.
+const RITE_PC = { jade: 0.0012, gold: 0.0006, silver: 0.0008, gem: 0.0004, amber: 0.0004, obsidian: 0.0008 };
+const RITE_KEEP_PC = 0.15;          // 수출 자본 유보(1인당) — 이 아래로는 안 태움(빈곤·산지 마을 교역 자본 불가침)
 
 // 식량 부패 — 무한 비축 방지. 음식 종류별로 다름.
 const DECAY_RATES = {
@@ -1439,6 +1443,20 @@ function tickVillage(v, day) {
   if (v.storage.herb > 0) {
     const _hTake = Math.min(v.storage.herb, N * HERB_DAILY_PC);
     v.storage.herb -= _hTake; v._herbUsed = (v._herbUsed || 0) + _hTake;
+  }
+  // ★제례·부장 봉헌 v2(2026-07-12 — 위세재 반복 실수요): 위세재는 의례로 '소비 파괴'된다(매납 청동검·부장 옥 고증).
+  //   v1 실패의 교훈(A/B: flat 요율이 빈곤 마을 자신의 수출 자본까지 태워 s8 16/3): ①식량 여유(_secF) 비례 —
+  //   잉여 사회만 성대히 묻는다(기근 마을 봉헌 0) ②수출 유보(N×RITE_KEEP_PC) 초과분만 — 교역 자본 불가침.
+  //   효과: 부유 마을이 위세재를 태워 재수입 → 산지 마을 반복 수출 소득(수요는 부유층에서, 소득은 산지로).
+  {
+    const _rSec = Math.max(0, Math.min(1, (totalFoodEquivalent(v) / Math.max(1, N) - 40) / 40));   // 식량 40~80일 램프(생산 포만 secF 동형)
+    if (_rSec > 0) {
+      for (const _rr in RITE_PC) {
+        const _avail = Math.max(0, (v.storage[_rr] || 0) - N * RITE_KEEP_PC);
+        const _rTake = Math.min(_avail, N * RITE_PC[_rr] * _rSec);
+        if (_rTake > 0) { v.storage[_rr] -= _rTake; v._riteUsed = (v._riteUsed || 0) + _rTake; }
+      }
+    }
   }
   // ★활 품질 EMA(§9 3차) — 오늘 활 제작분의 bone(활대 심) + ★흑요석(예리 화살촉, 수정3) 투입률이 장비 스톡의 질을 갱신(비대칭: 상승 느림·희석 더 느림). 제작 없는 날은 미세 노후만.
   //   투입률 = bone충족률 + 흑요석충족률×OB_W(예리 보너스, 상한 BOW_R_MAX). 흑요석 산지 마을은 bone만인 마을보다 _bowQ↑ → 사냥 데미지 이점("예리한 화살촉"). 별도 arrow 아이템 없음.
