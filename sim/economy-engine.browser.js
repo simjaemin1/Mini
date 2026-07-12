@@ -3263,7 +3263,7 @@ const DECAY_V2 = {
   fruit: 0.0015, vegetable: 0.0015, mushroom: 0.0015,
   tool: 0.0005, weapon: 0.0002, armor: 0.0002,
   clothes: 0.0008,   // ★의복: 보관 손실(좀·습기) — 착용 마모는 v1 tickVillage의 CLOTH_WEAR가 별도(주 소모)
-  hide: 0.0005,
+  hide: 0.001,   // ★생가죽 부패 고증 상향(2026-07-12 수급 감사 v2, 절충 0.0015→0.001): 무두질 없는 생가죽은 빨리 상함 — 0.0005는 호피(애장 0.0003)급 보존이었음(글럿 평형 ~1272/村의 근원). ★0.0015+xm3은 앙상블 기각: s505 623→21 붕괴(널 ×1/1000=636/8 생존 → 칼날 아닌 실기제 — hide 더미가 저축[수출 자본]인 마을의 기반 소각). 잔여 글럿은 무두질(leather 전환, 가치 보존 싱크) 사슬로
   herb: 0.0008,   // ★약재: 말린 약재 — 느린 변질(무한 비축 방지)
   bone: 0.0008, tigerhide: 0.0003,   // ★§9 3차: 뼈=풍화(무한 축적 방지) · 호피=애장 보존(느린 손실 — 세대 단위 상한)
   twig: 0.001, pebble: 0.0002,
@@ -4081,7 +4081,7 @@ function restoreLand(v) {
 //   초과분은 비례 가속 (쥐·곰팡이·도둑 자연 효과).
 //   결과: 1000일치 비축 마을은 1년에 거의 다 부패 → 자연 sink.
 // ★부패성 식량은 과잉 시 빨리 상함(곡식 rot) — excess 임계를 낮게(target×2 ≈ 60일치). 내구재(도구·무기)는 ×10 유지.
-const DECAY_EXCESS_MULT = { food: 2, meat: 2, fish: 2, cooked_food: 2, fruit: 2, vegetable: 2, mushroom: 2, hide: 4,
+const DECAY_EXCESS_MULT = { food: 2, meat: 2, fish: 2, cooked_food: 2, fruit: 2, vegetable: 2, mushroom: 2, hide: 4,   // ★hide xm은 4 유지(3 시도는 base 0.0015와 세트로 s505 붕괴 — 절충안은 base만 0.001)
   stone: 8, ore: 3, wood: 8, wheat: 4, rice: 4, barley: 4,
   // ★유령 박멸(§9): 유기 부산물 더미는 빨리 삭음(벌레·풍화·굳음 — hide 4 선례). 반유령 재고의 글럿 평형을 실사용 수준으로 하향.
   bone: 3, feather: 3, resin: 3, leather: 4, fur: 4, hemp: 4, seaweed: 3, clay: 6, oak_log: 4, pine_log: 4 };
