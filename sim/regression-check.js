@@ -127,7 +127,15 @@ if (CHILD_SEED != null) {
       const _bq = (v.econ && v.econ._bowQ) || 1;
       p.bowQmax = Math.max(p.bowQmax || 1, _bq); p.bowQmin = (p.bowQmin == null || _bq < p.bowQmin) ? _bq : p.bowQmin;
       p.wsmithN = (p.wsmithN || 0) + (v.econ && v.econ.counts ? Math.round(v.econ.counts.weaponsmith || 0) : 0);
+      // ★24~27(2026-07-13 스위트 확장 — 사용자 지시 "대폭 확장"): 전수 축적·무두질 순환·약탈 반응 계측
+      if (v.econ.npcs.length >= 10) { for (const _r in v.econ.storage) { const _pc = (v.econ.storage[_r] || 0) / v.econ.npcs.length; if (_pc > (p.maxAnyPC || 0)) { p.maxAnyPC = _pc; p.maxAnyPCLabel = _r + '@' + v.econ.name; } } }
+      p.tannedSum = (p.tannedSum || 0) + (v.econ._tannedTrade || 0);
+      p.warriorsTot = (p.warriorsTot || 0) + Math.round((v.econ.counts && v.econ.counts.warrior) || 0);
+      p.raidSent = (p.raidSent || 0) + ((v.econ.tradeStats && v.econ.tradeStats.caravansSent) || 0);
+      p.raidRaided = (p.raidRaided || 0) + ((v.econ.tradeStats && v.econ.tradeStats.caravansRaided) || 0);
     }
+    // ★26: pull 대금 계측(위기 발주촌 귀환재의 식량류 비율 — economy-sim-v2 world._pullStats)
+    { const _ps = (r.world && r.world._pullStats) || {}; p.pullCrisis = _ps.crisisReturns || 0; p.pullFood = _ps.crisisFoodReturns || 0; }
     p.seedRow = `시드${CHILD_SEED} 고기${(p.meat||0).toFixed(0)} 사냥꾼${p.hunterN||0} 인구${p.pop} 마을${r.VILS.length}/${r.initVil} 동기${r.bad} 청동도구${r.VILS.reduce((a, v) => a + (v.econ.storage.bronze_tool || 0), 0).toFixed(0)} 집${p.houses} 약재${(p.herb||0).toFixed(0)}/소비${(p.herbUsed||0).toFixed(0)} 채집꾼${p.foragerN||0} 뼈${(p.bone||0).toFixed(0)}/투입${(p.boneUsed||0).toFixed(0)} 활Q${(p.bowQmin==null?1:p.bowQmin).toFixed(2)}~${(p.bowQmax||1).toFixed(2)}(무기장${p.wsmithN||0}) 호피${(p.tigerhide||0).toFixed(1)}/교역${(p.thTrade||0).toFixed(1)}`;
     p.seedRow += ' 초과' + Math.max(0,...r.VILS.map(v=>v.econ._mapBeds!==undefined?(v.econ.npcs.length-v.econ._mapBeds):0)) + ' 침대' + r.VILS.reduce((a,v)=>a+(v.econ._mapBeds||0),0);   // ★완공 계약 감시(상비): 마을별 최대 초과·총 침대
     // ★도적 관측(§도적 — 하한 없음: 전부 0 = 평화 시드의 정직한 결과): 단 수(峰=피크)·총원·원천(전환/이탈)·약탈 성공·토벌·해산(굶주림 이탈 포함)
@@ -176,11 +184,13 @@ Promise.all(jobs).then(parts => {
     weaponShort: 0, villages: 0, houses: 0, tradeStaple: 0, tradeOrn: 0, craftBloat: 0, maxCraftFrac: 0,
     maxAccumPer: 0, maxVilPop: 0, smithVil: 0, housesTot: 0, housesOut: 0, terrSync: 0, terrOverlap: 0, gameUsed: 0, gameDead: 0, crashed: false, seedRows: [] };
   const SUM = ['pop', 'bad', 'initVil', 'finalVil', 'mining', 'forest', 'bronze', 'iron', 'stoneTool', 'copperTin', 'weaponShort', 'villages', 'houses', 'tradeStaple', 'tradeOrn', 'craftBloat', 'smithVil', 'housesTot', 'housesOut', 'terrSync', 'terrOverlap', 'gameUsed', 'gameDead', 'meat', 'hunterN',
-    'toolDepPop', 'cuToolUsed', 'cuWeapUsed', 'bronzeWeaponMade', 'bronzeVil', 'copperStock', 'tinStock', 'stoneToolMade', 'ironMetal'];
-  const MAX = ['maxCraftFrac', 'maxAccumPer', 'maxVilPop'];
+    'toolDepPop', 'cuToolUsed', 'cuWeapUsed', 'bronzeWeaponMade', 'bronzeVil', 'copperStock', 'tinStock', 'stoneToolMade', 'ironMetal',
+    'tannedSum', 'warriorsTot', 'raidSent', 'raidRaided', 'pullCrisis', 'pullFood'];
+  const MAX = ['maxCraftFrac', 'maxAccumPer', 'maxVilPop', 'maxAnyPC'];
   for (const q of parts) {
     for (const k of SUM) agg[k] = (agg[k] || 0) + (q[k] || 0);   // 신규 키 안전 합산
-    for (const k of MAX) agg[k] = Math.max(agg[k], q[k] || 0);
+    for (const k of MAX) agg[k] = Math.max(agg[k] || 0, q[k] || 0);
+    if ((q.maxAnyPC || 0) >= (agg.maxAnyPC || 0) && q.maxAnyPCLabel) agg.maxAnyPCLabel = q.maxAnyPCLabel;
     agg.crashed = agg.crashed || !!q.crashed;
     agg.seedRows.push(q.seedRow);
   }
@@ -210,11 +220,17 @@ Promise.all(jobs).then(parts => {
     ['21. 마을 간 영토 겹침 0', agg.terrOverlap === 0],
     ['22. 사냥감 생태(압력 발생≥1·서식지 있는 절멸 0)', agg.gameUsed >= 1 && agg.gameDead === 0],   // 로지스틱+확산+사냥압: 고갈은 일어나되 숲이 남은 한 전멸 없음
     ['23. 사냥 산출(사냥꾼 총원 10~인구40% — 직업 존속=고기 흐름의 시장 증거)', (agg.hunterN || 0) >= 10 && (agg.hunterN || 0) <= agg.pop * 0.4],   // 재고는 즉시소비 균형이라 0이 정상 — 산출 붕괴는 직업 소멸(한계가치→전직)로 나타남. 하한=존속, 상한=폭주 감시
+    // ★24~27(2026-07-13 확장 — 식량 pull·무두질 웨이브의 회귀 감시): 임계는 @1000 실측 기반 보수 설정, @1500 실측 후 재캘리브 후보(#17 선례)
+    ['24. 전수 축적 통제(전 재화 마을 인당 ≤150, N≥10)', (agg.maxAnyPC || 0) <= 150],   // 실측 최고 food 곳간 46/명·약초 산지 ~43/명 — 3× 여유. 병리(무한축적)는 수백~수천/명. #14(광석·돌 90)의 전 재화 일반화
+    ['25. 무두질 순환(hide→leather 전환 합 > 100)', (agg.tannedSum || 0) > 100],   // 가치밀도화 생존 감시 — 실측 s42 단독 3,287 @1000(30× 여유). 0 = 사슬 사망(_tanSec 게이트 고착·플로어 과대 등)
+    ['26. 위기 대금 pull(위기 귀환 식량률 ≥8%, 표본≥100)', (agg.pullCrisis || 0) < 100 || (agg.pullFood / Math.max(1, agg.pullCrisis)) >= 0.08],   // pull 채널 존재 증명 — 실측 26~46%(채널 사망 세계 0~7%). 표본 게이트로 평화 시드 플레이크 방지. @1500 실측 후 상향 재캘리브 후보
+    ['27. 약탈 반응(피습≥30이면 전사 ≥3)', (agg.raidRaided || 0) < 30 || (agg.warriorsTot || 0) >= 3],   // warriorTarget(약탈률×교역) 배선 감시 — 실측 피습 148 → 전사 37
   ];
   console.log('\n=== 회귀 검사 (5시드 병렬) ===');
   agg.seedRows.forEach(s => console.log('  ' + s));
   console.log(`\n  [집계] 총인구 ${agg.pop} · 마을 ${agg.finalVil}/${agg.initVil}(소멸 ${deaths}) · 동기 ${agg.bad} · 청동도구 ${agg.bronze.toFixed(0)} · 철도구 ${agg.iron.toFixed(0)} · 집 ${agg.houses} · staple교역 ${agg.tradeStaple.toFixed(0)} · 장식교역 ${agg.tradeOrn.toFixed(0)} · 최대마을 ${agg.maxVilPop} · 광석/돌최대 ${agg.maxAccumPer.toFixed(0)}/명 · 대장장이마을 ${agg.smithVil}/${agg.villages} · 사냥감사용 ${agg.gameUsed}마을`);
   console.log(`  [장기 3500일] 확장정지 ${lt.stalled}마을 · 최대 ${lt.maxN} · 생존 ${lt.alive} · 차등 ×${lt.spread.toFixed(1)}`);
+  console.log(`  [교역 체질] 무두질 ${(agg.tannedSum||0).toFixed(0)} · 위기대금 식량률 ${(100*(agg.pullFood||0)/Math.max(1,agg.pullCrisis||0)).toFixed(0)}%(위기귀환 ${agg.pullCrisis||0}건) · 피습률 ${(100*(agg.raidRaided||0)/Math.max(1,agg.raidSent||0)).toFixed(1)}%(${agg.raidRaided||0}/${agg.raidSent||0}) · 전사 ${agg.warriorsTot||0} · 축적최대 ${(agg.maxAnyPC||0).toFixed(0)}/명(${agg.maxAnyPCLabel||'—'})`);
   // ★청동→석기 전환 검증 요약 — per-pc는 도구의존인구(toolDepPop) 기준(도구 지표의 올바른 분모)
   { const td = Math.max(1, agg.toolDepPop), tot = agg.bronze + agg.stoneTool + agg.iron;
     console.log(`  [도구/석기전환] 청동도구/의존인구 ${(agg.bronze/td).toFixed(2)} · 석기재고/의존인구 ${(agg.stoneTool/td).toFixed(2)} · 철도구/의존인구 ${(agg.iron/td).toFixed(2)} · 도구총량/의존인구 ${(tot/td).toFixed(2)} (총도구 ${tot.toFixed(0)}, 의존인구 ${agg.toolDepPop.toFixed(0)}) · 석기전환flow생산 ${(agg.stoneToolMade||0).toFixed(0)}`);

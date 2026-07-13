@@ -920,6 +920,7 @@ const LG_HAPPY_W = 0.025;           // 가죽제품 comfort 행복 보너스(건
 const TAN_HIDE_MIN = 3.0;           // 무두질 하한 hide(/인) — 이 아래는 안 태움(505 'hide-저축 맵' 수출자본·갑옷재[armorsmith hide 0.4] 보존, 명백한 잉여만 제품화). 글럿(~4/N)을 이 선까지 sink
 const TAN_DAILY_PC = 0.06;          // 1인 일 무두질 처리량 — 고증 뇌유 무두질=고노동
 const TAN_YIELD = 0.85;             // 무두질 수율 — 생가죽→가죽제품 무게 손실(다듬기·재단)
+const TAN_TRADE_PC = 0.06;          // ★무두질 저축(2026-07-13): 가죽제품 충족 후 잔여 잉여 hide→leather(저장·교역형 저축) 전환 상한(/인/일) — hide 수요-캡(candidate N)의 고증 정밀형 대체(사냥꾼은 가죽을 챙긴다·재산은 무두질 가죽으로·초과 생가죽은 부패)
 // ★의복 품질 _clothQ(2026-07-13 — 인계 설계 방향[CHECKLIST]: _weapQ 동형 마을 EMA·방한 우선·방어 비권장): 재봉 숙련×재료 믹스 등급 → 생산분 품질 → EMA.
 //   효과 = 방한(coldStress 완화 *추가* 보너스 — 기존 relief 불변이라 비회귀·잘 지은 옷일수록 겨울 따뜻). 내구(마모÷품질)는 hide 역상호작용 재캘리브 세트라 별건(미구현). 모시(0.9)=고급 직물 = item1 품질 payoff.
 const CLOTH_Q_MAT = { fur: 1.0, ramie: 0.9, leather: 0.85, hide: 0.65, hemp: 0.6 };   // 재료 등급(품질·고증: 모피>모시>유피>생가죽>삼베)
@@ -1881,6 +1882,21 @@ function tickVillage(v, day) {
       v.storage.hide -= _hideUsed; _cons(v, 'hide', _hideUsed);                       // ★실 hide 소비(additive 소멸 = 글럿 sink, form 전환 아님)
       v._leatherGoods = (v._leatherGoods || 0) + _make;
       v._tanned = (v._tanned || 0) + _hideUsed;                                       // (계측)
+    }
+    // ★무두질 저축 hide→leather(2026-07-13 — hide 수요-캡[candidate N]의 고증 정밀형 대체): 가죽제품 충족 후에도 남는
+    //   잉여 생가죽은 유한 무두질 노동이 leather(저장·교역형 저축, 가치밀도 ×2)로 전환. 고증: 사냥사회는 가죽이 흔하고
+    //   (부산물 0.4 정당 — 157 판정) 생가죽은 못 쌓음(수일 부패) — 재산은 무두질 가죽으로(162 감사 처방 "잔여 글럿은 무두질 사슬로").
+    //   ★169 무두질 초안(202 571→48)의 사인 = 교역성(신규 교역재의 생명선 탈취)은 식량 pull 채널이 방어(합격시험 2).
+    //   직접 storage(비 addProduce) = _potA(유휴 게이지) 무오염(가죽제품·마을필드 동형). leather는 기존 교역재(subs 0.008 실수요).
+    const _tanSpare = (v.storage.hide || 0) - N * TAN_HIDE_MIN;
+    // ★식량 여유 게이트(봉헌 v2 156 동형 40~80일 램프): 빠듯한 마을은 무두질에 노동·자산을 안 돌림(고증: 기근엔 사냥이 먼저)
+    //   — 무게이트 0.06은 505(hide 덤핑 생명선 맵) 8→7촌 실측(널 ×1/1000=705/8 → 크기 효과), 게이트가 취약 궤적 보호.
+    const _tanSec = Math.max(0, Math.min(1, (totalFoodEquivalent(v) / Math.max(1, N) - 40) / 40));
+    if (_tanSpare > 0 && _tanSec > 0) {
+      const _tanAmt = Math.min(_tanSpare, N * TAN_TRADE_PC * _tanSec);
+      v.storage.hide -= _tanAmt; _cons(v, 'hide', _tanAmt);                           // ★flow-EMA(무두질 실수요)
+      v.storage.leather = (v.storage.leather || 0) + _tanAmt;
+      v._tannedTrade = (v._tannedTrade || 0) + _tanAmt;                               // (계측)
     }
     v._lgCov = Math.min(1, (v._leatherGoods || 0) / Math.max(1, N * LEATHER_GOODS_TARGET));   // 커버리지 → comfort 보너스(stats)
   }
@@ -3221,6 +3237,7 @@ module.exports = {
   serializeWorld,
   computeVillagePrices,
   computeDailyConsumption,
+  FORAGE_FOOD_FACTOR,   // ★식량 pull(v2 FOOD_CLASSES 파생용 단일 진실 — 구황·해산물 식용 등가)
   JOB_NAMES,
   FIELDS,
   RESOURCES,
@@ -3468,6 +3485,12 @@ const TRADE_SPARE_UTIL = 0.11;
 //   적자 마을에 한해 유휴노동 밖 노동을 소폭 교역에 동원 — 하단 기회비용 게이트가 각 원정 순이익성을 여전히
 //   검증하므로 "살 식량이 근방에 있을 때만" 실발주(지역 흉작이면 헛 원정 자동차단). 자기-차익거래(빠진 시장청산력) 주입.
 const CRISIS_TRADE_PC = 0.015;   // 적자 마을 위기 동원 상한 = N×0.015 캐러밴(0.03서 하향 — 과동원 제로섬 마을사망 억제 시도)
+const FOOD_PULL_TOL = 0.7;   // ★식량 pull(P2): 위기 마을 목적지 관용 — best 이익의 70% 이상이면 식량 잉여 목적지 우선(랭킹 크기 비왜곡)
+const FOOD_CLASSES = { food: 1, fish: 1, meat: 1, cooked_food: 1 };   // ★식량 pull: 대금으로 인정하는 칼로리류
+// ★식용 등가 전체 편입(스트레스 시험이 잡은 구멍): 실제 칼로리 순환은 연어·해조·견과 등 구황·해산물로도 돈다(158 유령 해산물).
+//   staple 4종만으론 위기 마을이 '연어로 대금 받기'를 못 해 고가치 신상품에 생명선을 내줌(synthC 스트레스 505 21/3촌 실측).
+//   단일 진실 = v1.FORAGE_FOOD_FACTOR(식량 환산과 동일 집합 — 밀·보리·쌀은 비식용 품종재라 자동 제외).
+for (const _fk in (v1.FORAGE_FOOD_FACTOR || {})) FOOD_CLASSES[_fk] = 1;
 // ★위신재(사치) 수요 — 장식재의 use-value는 물리소비가 아니라 위신·심리(positional good). 1인당 목표 보유로 수요 부여.
 //   없는 마을은 교역으로 수입, 광산촌(부산물로 쟁여둠)은 잉여 수출 → 죽어있던 장식교역이 살아나고 광산촌 수입원 다각화.
 const LUX_TARGET_PC = 0.08;   // 1인당 위신재 목표(각 장식재). 이 근처서 만족(체감), 광산촌은 훨씬 위라 수출.
@@ -3783,7 +3806,10 @@ function tickTradeV2(world, day) {
       if (!candidates.length) break;
 
       // 최고 이익 (자원, 목적지) 검색 — 이미 출장한 조합 제외
-      let best = null;
+      const _crisisA = !!(a.v.surplusEMA && a.v.surplusEMA.food < 0);   // ★식량 pull 게이트(K L488과 동일 신호)
+      const _fsMemo = new Map();   // ★P2: 목적지 식량 잉여 여부(4류 중 1이라도 출발게이트 통과) 메모
+      const _destHasFood = (bd) => { if (_fsMemo.has(bd)) return _fsMemo.get(bd); const bn = bd.v.npcs.length; let ok = false; for (const fr in FOOD_CLASSES) { const bs = bd.v.storage[fr] || 0; const bt = Math.max((SUBSISTENCE_PER_NPC[fr] || 0) * bn * 30, bn * 0.3); if (bs > bt) { ok = true; break; } } _fsMemo.set(bd, ok); return ok; };
+      let best = null, bestF = null;
       for (const cand of candidates) {
         for (const nb of a.v._near20) {   // ★모든 마을 → top-20 근처만
           const b = evToData.get(nb);
@@ -3823,9 +3849,15 @@ function tickTradeV2(world, day) {
               key,
             };
           }
+          // ★식량 pull(P2): 식량 잉여 목적지 중 최고 이익 병행 추적(위기 마을 한정)
+          if (_crisisA && _destHasFood(b) && (!bestF || totalProfit > bestF.profit)) {
+            bestF = { profit: totalProfit, profitPerUnit, cand, b, dist, N_units, pFrom, pTo, transportCostPerUnit, key };
+          }
         }
       }
       if (!best) break;
+      // ★식량 pull(P2): 위기 마을은 이익 관용범위 내에서 '식량 잉여 목적지' 우선 — 175 전역가중(랭킹 곱)과 달리 크기 비왜곡, 게이트는 실이익.
+      if (_crisisA && bestF && bestF !== best && bestF.profit >= best.profit * FOOD_PULL_TOL) best = bestF;
       // ★남는 시간 판정: 원정 이익 > 유효원정일수 × 기회비용일 때만. 아니면 생산이 나으니 중단.
       //   ★유효일수 = 왕복일수 × (1 − 0.5×slack): 마을에 그날 여유(유휴 노동)가 많으면 기회비용↓ → 여유 있는 날 더 감(사용자 요청).
       //   slack은 공간층(lifeLoop)이 낮 유휴 비율로 채움. 빨리감기(텔레포트)엔 유휴 없어 slack=0 → 기존과 동일(회귀 무영향).
@@ -3849,7 +3881,10 @@ function tickTradeV2(world, day) {
 
       // 가져갈 자원 결정
       let bestReturnRes = null, bestReturnRatio = 0;
+      // ★식량 pull(P1): 위기 마을의 귀환재(=대금)는 식량류 1차 콘테스트, 게이트 못 넘으면 전체 폴백.
+      for (const _foodOnly of (_crisisA ? [true, false] : [false])) {
       for (const r of TRADABLE) {
+        if (_foodOnly && !FOOD_CLASSES[r]) continue;
         if (r === cand.res) continue;
         // ★A(수입쪽)가 이미 그 재화 글럿이면 수입 안 함 — 수요 없는 걸 계속 실어와 무한 누적(돌 덤핑)되는 것 방지.
         //   연속교역으로 거래가 잦아지면 최저가 이웃에서 잉여를 계속 끌어와 쌓이므로, 자기 목표재고 넘으면 후보 제외.
@@ -3868,6 +3903,8 @@ function tickTradeV2(world, day) {
           bestReturnRatio = ratio;
           bestReturnRes = r;
         }
+      }
+      if (bestReturnRes) break;
       }
 
       // 호위 — 화물량 비례. merchant 본인은 caravan에 동행 가정 (시뮬은 마을 평균)
@@ -4059,6 +4096,18 @@ function tickCaravansV2(world, day) {
         return (c.from.storage[r] || 0) >= target * WEAPON_RETURN_GLUT_MULT;
       };
       let returnRes = c.returnRes;
+      // ★식량 pull(P1b): 위기 발주촌은 도착 시 대금을 식량류로 전환 시도 — 출발 게이트(잉여 30일치)에 막혔어도 도착지 실재(>1)하면 산다.
+      if (c.from.surplusEMA && c.from.surplusEMA.food < 0 && !(returnRes && FOOD_CLASSES[returnRes])) {
+        let _bfR = null, _bfRatio = 0;
+        for (const r in FOOD_CLASSES) {
+          if (r === c.giveRes) continue;
+          if (!((c.to.storage[r] || 0) > 1)) continue;
+          if (_returnGlutted(r)) continue;
+          const ratio = (pricesFrom[r] || 1) / (pricesTo[r] || 1);
+          if (ratio > _bfRatio) { _bfRatio = ratio; _bfR = r; }
+        }
+        if (_bfR) returnRes = _bfR;
+      }
       if (!returnRes || !((c.to.storage[returnRes] || 0) > 1) || _returnGlutted(returnRes)) {
         // 다시 best 찾기 — 귀환 마을 글럿 재화는 제외
         let bestR = null, bestRatio = 0;
@@ -4071,6 +4120,11 @@ function tickCaravansV2(world, day) {
           if (ratio > bestRatio) { bestRatio = ratio; bestR = r; }
         }
         returnRes = bestR;
+      }
+      // ★pull 계측(#26 — 행동 무영향 카운터): 위기 발주촌 대금 구성(식량류 비율). 회귀 불변식이 pull 채널의 조용한 회귀를 감시.
+      if (c.from.surplusEMA && c.from.surplusEMA.food < 0) {
+        const _ps = world._pullStats || (world._pullStats = { crisisReturns: 0, crisisFoodReturns: 0 });
+        _ps.crisisReturns++; if (returnRes && FOOD_CLASSES[returnRes]) _ps.crisisFoodReturns++;
       }
 
       if (returnRes) {

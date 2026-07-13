@@ -599,6 +599,7 @@ const LG_HAPPY_W = 0.025;           // 가죽제품 comfort 행복 보너스(건
 const TAN_HIDE_MIN = 3.0;           // 무두질 하한 hide(/인) — 이 아래는 안 태움(505 'hide-저축 맵' 수출자본·갑옷재[armorsmith hide 0.4] 보존, 명백한 잉여만 제품화). 글럿(~4/N)을 이 선까지 sink
 const TAN_DAILY_PC = 0.06;          // 1인 일 무두질 처리량 — 고증 뇌유 무두질=고노동
 const TAN_YIELD = 0.85;             // 무두질 수율 — 생가죽→가죽제품 무게 손실(다듬기·재단)
+const TAN_TRADE_PC = 0.06;          // ★무두질 저축(2026-07-13): 가죽제품 충족 후 잔여 잉여 hide→leather(저장·교역형 저축) 전환 상한(/인/일) — hide 수요-캡(candidate N)의 고증 정밀형 대체(사냥꾼은 가죽을 챙긴다·재산은 무두질 가죽으로·초과 생가죽은 부패)
 // ★의복 품질 _clothQ(2026-07-13 — 인계 설계 방향[CHECKLIST]: _weapQ 동형 마을 EMA·방한 우선·방어 비권장): 재봉 숙련×재료 믹스 등급 → 생산분 품질 → EMA.
 //   효과 = 방한(coldStress 완화 *추가* 보너스 — 기존 relief 불변이라 비회귀·잘 지은 옷일수록 겨울 따뜻). 내구(마모÷품질)는 hide 역상호작용 재캘리브 세트라 별건(미구현). 모시(0.9)=고급 직물 = item1 품질 payoff.
 const CLOTH_Q_MAT = { fur: 1.0, ramie: 0.9, leather: 0.85, hide: 0.65, hemp: 0.6 };   // 재료 등급(품질·고증: 모피>모시>유피>생가죽>삼베)
@@ -1560,6 +1561,21 @@ function tickVillage(v, day) {
       v.storage.hide -= _hideUsed; _cons(v, 'hide', _hideUsed);                       // ★실 hide 소비(additive 소멸 = 글럿 sink, form 전환 아님)
       v._leatherGoods = (v._leatherGoods || 0) + _make;
       v._tanned = (v._tanned || 0) + _hideUsed;                                       // (계측)
+    }
+    // ★무두질 저축 hide→leather(2026-07-13 — hide 수요-캡[candidate N]의 고증 정밀형 대체): 가죽제품 충족 후에도 남는
+    //   잉여 생가죽은 유한 무두질 노동이 leather(저장·교역형 저축, 가치밀도 ×2)로 전환. 고증: 사냥사회는 가죽이 흔하고
+    //   (부산물 0.4 정당 — 157 판정) 생가죽은 못 쌓음(수일 부패) — 재산은 무두질 가죽으로(162 감사 처방 "잔여 글럿은 무두질 사슬로").
+    //   ★169 무두질 초안(202 571→48)의 사인 = 교역성(신규 교역재의 생명선 탈취)은 식량 pull 채널이 방어(합격시험 2).
+    //   직접 storage(비 addProduce) = _potA(유휴 게이지) 무오염(가죽제품·마을필드 동형). leather는 기존 교역재(subs 0.008 실수요).
+    const _tanSpare = (v.storage.hide || 0) - N * TAN_HIDE_MIN;
+    // ★식량 여유 게이트(봉헌 v2 156 동형 40~80일 램프): 빠듯한 마을은 무두질에 노동·자산을 안 돌림(고증: 기근엔 사냥이 먼저)
+    //   — 무게이트 0.06은 505(hide 덤핑 생명선 맵) 8→7촌 실측(널 ×1/1000=705/8 → 크기 효과), 게이트가 취약 궤적 보호.
+    const _tanSec = Math.max(0, Math.min(1, (totalFoodEquivalent(v) / Math.max(1, N) - 40) / 40));
+    if (_tanSpare > 0 && _tanSec > 0) {
+      const _tanAmt = Math.min(_tanSpare, N * TAN_TRADE_PC * _tanSec);
+      v.storage.hide -= _tanAmt; _cons(v, 'hide', _tanAmt);                           // ★flow-EMA(무두질 실수요)
+      v.storage.leather = (v.storage.leather || 0) + _tanAmt;
+      v._tannedTrade = (v._tannedTrade || 0) + _tanAmt;                               // (계측)
     }
     v._lgCov = Math.min(1, (v._leatherGoods || 0) / Math.max(1, N * LEATHER_GOODS_TARGET));   // 커버리지 → comfort 보너스(stats)
   }
@@ -2900,6 +2916,7 @@ module.exports = {
   serializeWorld,
   computeVillagePrices,
   computeDailyConsumption,
+  FORAGE_FOOD_FACTOR,   // ★식량 pull(v2 FOOD_CLASSES 파생용 단일 진실 — 구황·해산물 식용 등가)
   JOB_NAMES,
   FIELDS,
   RESOURCES,
