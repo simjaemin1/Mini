@@ -3109,10 +3109,20 @@ function doRepairEquipment(player, id, material) {
 // 장비 효과 발현(설계 §8-3): 무기 attack→전투·도구 efficiency→노동. 장비 미장착 시 기존 행동 불변(additive).
 const WEAPON_EQUIP_ATK_SCALE = 0.2;  // weapon attack(24~100) → 데미지 +5~+20 (기본10 대비 명장 무기 실감)
 const TOOL_EQUIP_EFF_SCALE = 0.03;   // tool efficiency(24~100) → 채집 dmg +1~+3 (노동 절약)
+// 밤 추위(설계: 옷 방한→coldStress 완화의 플레이어층 아날로그 — econ coldStress는 NPC 전용이라 별개 신설). 방한·모닥불이 완화.
+const COLD_WARMTH_FULL = 50;      // 방한 50↑ = 완전 보온(추위 0)
+const COLD_NIGHT_EXTRA = 0.6;     // 맨몸 밤 = 허기 드레인 +60%(에너지 소모↑)
+const COLD_CLOTH_WEAR_MS = 30000; // 추위 노출 시 옷 마모 간격(30초당 내구 1 — 서서히)
 // 슬롯에 장착된 장비 인스턴스 조회
 function getEquippedEquipment(player, slot) {
   if (!player.equipSlots || !player.equipSlots[slot]) return null;
   return (player.equipment || []).find(e => e.id === player.equipSlots[slot]) || null;
+}
+// 모닥불 근처(100px)면 따뜻 — 밤 추위 완화. qtBuildings 사용(비싸지 않게).
+function isNearCampfire(p) {
+  const near = qtBuildings ? qtBuildings.queryCircle(p.x, p.y, 100) : Array.from(buildings.values());
+  for (const b of near) { if (b.type === 'campfire' && Math.hypot(b.x - p.x, b.y - p.y) < 100) return true; }
+  return false;
 }
 // 장비 사용 마모(설계 §5: 인스턴스별이라 econ 전역 피드백 0). 파손 시 자동 해제·알림. wear마다 저장 안 함(도구 레거시 동형 — 성능).
 function wearEquipment(player, slot, amount) {
@@ -5237,7 +5247,19 @@ setInterval(() => {
     // Phase 14.40: 달리는 중이면 1.5× 빠르게 감소 (실제로 이동 중일 때만)
     const moving = Math.hypot(p.vx || 0, p.vy || 0) > 1;
     const drainMult = (p.sprint && moving) ? SPRINT_DRAIN_MULT : 1.0;
-    p.hunger = Math.max(0, (p.hunger ?? HUNGER_MAX) - HUNGER_DRAIN_PER_SEC * dt * drainMult);
+    // 밤 추위: 방한 없으면 허기 가속(추울수록 에너지 소모). 옷 방한·모닥불이 완화. econ 무접촉·순 플레이어층.
+    let coldMult = 1.0; p._cold = false;
+    if (!p.isNpc && isNight(now)) {
+      const clothes = getEquippedEquipment(p, 'clothes');
+      const warmth = (clothes && clothes.attrs && clothes.attrs.warmth) || 0;
+      const coldFactor = Math.max(0, 1 - warmth / COLD_WARMTH_FULL); // 0(완전방한)~1(맨몸)
+      if (coldFactor > 0 && !isNearCampfire(p)) {
+        coldMult = 1 + COLD_NIGHT_EXTRA * coldFactor;
+        p._cold = true;
+        if (clothes && now - (p._coldWearAt || 0) > COLD_CLOTH_WEAR_MS) { p._coldWearAt = now; wearEquipment(p, 'clothes', 1); }
+      }
+    }
+    p.hunger = Math.max(0, (p.hunger ?? HUNGER_MAX) - HUNGER_DRAIN_PER_SEC * dt * drainMult * coldMult);
     p.thirst = Math.max(0, (p.thirst ?? THIRST_MAX) - THIRST_DRAIN_PER_SEC * dt * drainMult);
     // 게이지가 sprint 하한 밑으로 떨어지면 자동 해제
     if (p.sprint && (p.hunger <= SPRINT_MIN_GAUGE || p.thirst <= SPRINT_MIN_GAUGE)) {
@@ -5275,6 +5297,7 @@ setInterval(() => {
         hunger: Math.round(p.hunger ?? HUNGER_MAX),
         thirst: Math.round(p.thirst ?? THIRST_MAX),
         vp: Math.round(p.vp ?? 0),
+        cold: !!p._cold,  // 밤 추위(방한 부족) — 클라 표시
       });
     }
   }

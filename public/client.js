@@ -130,6 +130,7 @@ const SIM_JOB_EMOJI = {
   let craftEquipSel = {}; // UI: 유형별 선택 재료 {clothes:'hide',...}
   let dishes = []; // 요리 인스턴스(신선도·버프) — [{id,label,q,nutrition,buff,freshness}]
   let myHunger = 100, myThirst = 100, myVp = 0;
+  let myCold = false; // 밤 추위(방한 부족) — HUD 표시
   const VP_THRESHOLD = 50; // 클라 표시용 — 서버와 동일해야 함
   let myTribeId = null, myTribeName = null;
   let myPvpEnabled = false;
@@ -2069,6 +2070,7 @@ const SIM_JOB_EMOJI = {
       if (typeof msg.hunger === 'number') myHunger = msg.hunger;
       if (typeof msg.thirst === 'number') myThirst = msg.thirst;
       if (typeof msg.vp === 'number') myVp = msg.vp;
+      if (typeof msg.cold === 'boolean') myCold = msg.cold;
       updateHud();
     } else if (msg.type === 'pvp_state') {
       myPvpEnabled = !!msg.enabled;
@@ -5297,7 +5299,7 @@ const SIM_JOB_EMOJI = {
     const hungerEl = document.getElementById('hungerFill');
     if (hungerEl) {
       hungerEl.style.width = `${Math.max(0, myHunger)}%`;
-      document.getElementById('hungerText').textContent = `🍖 ${Math.round(myHunger)}`;
+      document.getElementById('hungerText').textContent = `🍖 ${Math.round(myHunger)}${myCold ? ' 🥶추움' : ''}`;
     }
     const thirstEl = document.getElementById('thirstFill');
     if (thirstEl) {
