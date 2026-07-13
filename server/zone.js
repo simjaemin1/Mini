@@ -686,7 +686,19 @@ function ensurePlayerItems(p) {
   if (!Array.isArray(p.equipment)) p.equipment = [];
   if (!p.equipSlots || typeof p.equipSlots !== 'object') p.equipSlots = {};
   if (!p.craftSkill || typeof p.craftSkill !== 'object') p.craftSkill = {};
+  if (!Array.isArray(p.dishes)) p.dishes = []; // 요리 인스턴스(신선도·버프) — 소모품이라 세션 전용(비영속)
   return p;
+}
+// 요리 신선도: 실시간 감쇠(제작 후 FRESH_WINDOW_MS 지나면 0). 갓 지은 요리 > 식은 요리(설계 §6).
+const FRESH_WINDOW_MS = 12 * 60 * 1000; // 12분 실시간 = 신선도 100→0
+function dishFreshness(inst) {
+  if (!inst || !inst.craftedAtMs) return 100;
+  const age = Date.now() - inst.craftedAtMs;
+  return Math.max(0, Math.min(100, Math.round(100 * (1 - age / FRESH_WINDOW_MS))));
+}
+function sendDishes(player) {
+  const list = (player.dishes || []).map(d => ({ id: d.id, label: d.label, q: d.q, nutrition: d.attrs.nutrition, buff: d.attrs.buff, freshness: dishFreshness(d) }));
+  send(player.ws, { type: 'dishes', dishes: list });
 }
 let _nextEquipId = 1;
 function genEquipId() { return `e${Date.now().toString(36)}${(_nextEquipId++).toString(36)}`; }
@@ -2545,6 +2557,7 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'toggle_hotkey') doToggleHotkey(player);
   else if (msg.type === 'eat') doEat(player, msg.item);
   else if (msg.type === 'cook') doCook(player, msg.recipe);
+  else if (msg.type === 'eat_dish') doEatDish(player, msg.id);
   else if (msg.type === 'harvest') tryHarvest(player);
   else if (msg.type === 'feed') tryFeed(player);
   else if (msg.type === 'tribe_set') {
@@ -2686,12 +2699,40 @@ function doCook(player, recipeName) {
   for (const [item, amt] of Object.entries(recipe.cost)) {
     player.inventory[item] -= amt;
   }
-  for (const [item, amt] of Object.entries(recipe.produces)) {
-    player.inventory[item] = (player.inventory[item] || 0) + amt;
-  }
+  // 요리 인스턴스 생성(신선도·버프 — 설계 §6). 스칼라 산출 대신 품질 인스턴스(cook숙련×재료). 갓 지은 요리 > 식은 요리.
+  ensurePlayerItems(player);
+  const cookLvl = playerCraftLevel(player, 'cooking');
+  const dish = PlayerItems.craftItem('food', cookLvl, recipe.cost);
+  dish.id = genEquipId();
+  dish.label = recipe.label;
+  dish.craftedAtMs = Date.now();
+  player.dishes.push(dish);
+  player.craftSkill.cooking = (player.craftSkill.cooking || 0) + 1; // cooking 숙련 xp(유효 완성품)
+  const newCookLvl = playerCraftLevel(player, 'cooking');
   send(player.ws, { type: 'inventory', inventory: player.inventory });
-  send(player.ws, { type: 'notice', text: `${recipe.label} 완성` });
+  sendDishes(player);
+  const cookUp = newCookLvl > cookLvl ? ` — cooking Lv${newCookLvl}!` : '';
+  send(player.ws, { type: 'notice', text: `${recipe.label} 완성 [영양 ${dish.attrs.nutrition} · 버프 ${Math.round(dish.attrs.buff * 100)}% · 갓 지음]${cookUp}` });
   savePlayer(player);
+}
+// 요리 섭취: 신선도로 영양·버프 스케일(갓 지은 요리 최고). 버프 = 즉시 HP 회복(웰빙).
+function doEatDish(player, id) {
+  ensurePlayerItems(player);
+  const idx = (player.dishes || []).findIndex(d => d.id === id);
+  if (idx < 0) { send(player.ws, { type: 'notice', text: '해당 요리 없음' }); return; }
+  const dish = player.dishes[idx];
+  const fresh = dishFreshness(dish);
+  const nutrition = Math.round((dish.attrs.nutrition || 0) * fresh / 100); // 식으면 영양↓
+  const hpBuff = Math.round((dish.attrs.buff || 0) * 15 * fresh / 100);    // 버프 = 신선·고품질일수록 큰 HP 회복
+  player.hunger = Math.min(HUNGER_MAX, (player.hunger ?? HUNGER_MAX) + nutrition);
+  if (hpBuff > 0) {
+    player.hp = Math.max(0, Math.min(player.maxHp, player.hp + hpBuff));
+    broadcast({ type: 'player_damaged', pid: player.pid, hp: player.hp });
+  }
+  player.dishes.splice(idx, 1);
+  sendDishes(player);
+  send(player.ws, { type: 'gauges', hunger: Math.round(player.hunger), thirst: Math.round(player.thirst) });
+  send(player.ws, { type: 'notice', text: `${dish.label} 섭취 (+허기 ${nutrition}${hpBuff ? ` · +HP ${hpBuff}` : ''}${fresh < 40 ? ' · 식음' : ''})` });
 }
 
 // Phase 5-K3: observer 메시지 핸들러 — 일반 observer 연결 + 핸드오프 후 primary→observer 전환 공용.
@@ -4035,12 +4076,19 @@ function tryRangedAttack(player, aimX, aimY) {
   if (now - (player.lastRangedAt || 0) < 600) return; // 쿨다운
   // 활 장착 확인 (간이: equipped가 'bow'면). 무기 시스템 확장 전까지 관대하게 허용.
   player.lastRangedAt = now;
+  // 장착 무기 장비(품질 attack) → 화살 데미지 가산 + 마모 (근접 tryAttack과 동형·미장착 시 불변)
+  let arrowDmg = ARROW_DMG;
+  const wpnEq = getEquippedEquipment(player, 'weapon');
+  if (wpnEq && wpnEq.attrs && wpnEq.attrs.attack) {
+    arrowDmg += Math.round(wpnEq.attrs.attack * WEAPON_EQUIP_ATK_SCALE);
+    wearEquipment(player, 'weapon', 1);
+  }
   const dx = aimX - player.x, dy = aimY - player.y, L = Math.hypot(dx, dy) || 1;
   const aid = `${ZONE_ID}_ar${nextArrowId++}`;
   const arrow = {
     aid, x: player.x, y: player.y,
     vx: dx / L * ARROW_SPEED, vy: dy / L * ARROW_SPEED,
-    ownerPid: player.pid, ownerId: player.playerId, dmg: ARROW_DMG, ttl: ARROW_TTL_MS,
+    ownerPid: player.pid, ownerId: player.playerId, dmg: arrowDmg, ttl: ARROW_TTL_MS,
   };
   arrows.set(aid, arrow);
   broadcast({ type: 'arrow_spawn', aid, x: arrow.x, y: arrow.y, vx: arrow.vx, vy: arrow.vy, ownerPid: player.pid });

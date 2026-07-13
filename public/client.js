@@ -128,6 +128,7 @@ const SIM_JOB_EMOJI = {
   let equipmentRecipes = {}, equipmentMeta = null; // 장비 제작 레시피·미리보기 메타(서버 공식 단일진실)
   let equipment = [], equipSlots = {}, craftSkill = {}; // 장비 인스턴스·장착 슬롯·제작 숙련 xp
   let craftEquipSel = {}; // UI: 유형별 선택 재료 {clothes:'hide',...}
+  let dishes = []; // 요리 인스턴스(신선도·버프) — [{id,label,q,nutrition,buff,freshness}]
   let myHunger = 100, myThirst = 100, myVp = 0;
   const VP_THRESHOLD = 50; // 클라 표시용 — 서버와 동일해야 함
   let myTribeId = null, myTribeName = null;
@@ -1841,6 +1842,14 @@ const SIM_JOB_EMOJI = {
         if (spBody2 && typeof renderCraftPanel2 === 'function') renderCraftPanel2(spBody2);
       }
       if (invOpen) renderInvPanel(document.getElementById('invBody'));
+    } else if (msg.type === 'dishes') {
+      dishes = Array.isArray(msg.dishes) ? msg.dishes : [];
+      if (cookOpen) renderCookPanel();
+      const sp3 = document.getElementById('sidePanel');
+      if (sp3 && sp3.classList.contains('open')) {
+        const spBody3 = document.getElementById('spBody');
+        if (spBody3 && craftCat === 'food' && typeof renderCraftPanel2 === 'function') renderCraftPanel2(spBody3);
+      }
     } else if (msg.type === 'tools_update' || msg.type === 'tools') {
       // 14.53: toolItems 리스트 + equipped (instance id) + hotkey1
       if (Array.isArray(msg.toolItems)) toolItems = msg.toolItems;
@@ -5626,6 +5635,27 @@ const SIM_JOB_EMOJI = {
     });
     root.querySelectorAll('[data-eqrepair]').forEach(b => b.onclick = () => sendPrimary({ type: 'repair_equipment', id: b.dataset.eqrepair }));
   }
+  // 요리 인스턴스 목록(신선도·버프). 갓 지은 것 우선 — 식으면 신선도·효과↓.
+  function dishesListHtml() {
+    if (!dishes || !dishes.length) return '';
+    let h = '<div class="hint" style="margin-top:10px;font-weight:bold">— 내 요리 (신선할 때 먹자) —</div>';
+    for (const d of dishes) {
+      const fresh = d.freshness;
+      const fcol = fresh > 60 ? '#5c5' : (fresh > 30 ? '#dd5' : '#e55');
+      h += `<div class="craft-recipe can-make">
+        <div class="cr-icon">🍲</div>
+        <div class="cr-info">
+          <div class="cr-name">${d.label} <span style="color:#8a93a0;font-weight:normal">품질 ${Math.round((d.q || 0) * 100)}%</span></div>
+          <div class="cr-cost">영양 ${d.nutrition} · 버프 ${Math.round((d.buff || 0) * 100)}% · <span style="color:${fcol}">신선도 ${fresh}</span></div>
+        </div>
+        <button data-eatdish="${d.id}">먹기</button>
+      </div>`;
+    }
+    return h;
+  }
+  function wireDishHandlers(root) {
+    root.querySelectorAll('[data-eatdish]').forEach(b => b.onclick = () => sendPrimary({ type: 'eat_dish', id: b.dataset.eatdish }));
+  }
   function renderCraftPanel() {
     const list = document.getElementById('craftList');
     if (!list) return;
@@ -5769,6 +5799,13 @@ const SIM_JOB_EMOJI = {
       list.appendChild(row);
     }
     list.querySelectorAll('[data-cook]').forEach(b => b.onclick = () => sendPrimary({ type: 'cook', recipe: b.dataset.cook }));
+    // 요리 인스턴스(신선도·버프) 목록
+    if (dishes && dishes.length) {
+      const dwrap = document.createElement('div');
+      dwrap.innerHTML = dishesListHtml();
+      list.appendChild(dwrap);
+      wireDishHandlers(list);
+    }
   }
   // 인벤토리 바뀌면 패널 열려있을 때 갱신
   function rerenderPanelsIfOpen() {
@@ -6711,6 +6748,7 @@ const SIM_JOB_EMOJI = {
               <button data-craft="${r.id}" data-msg="${r.msgType}" ${canMake?'':'disabled'}>제작</button>
             </div>`;
           }).join(''))}
+          ${craftCat === 'food' ? dishesListHtml() : ''}
         </div>
       </div>`;
     body.querySelectorAll('[data-cat]').forEach(c => c.onclick = () => { craftCat = c.dataset.cat; renderCraftPanel2(body); });
@@ -6720,6 +6758,7 @@ const SIM_JOB_EMOJI = {
       sendPrimary({ type: msgType, recipe: id });
     });
     if (craftCat === 'equip') wireEquipmentHandlers(body, () => renderCraftPanel2(body));
+    if (craftCat === 'food') wireDishHandlers(body);
   }
 
   // === 건축 모드 패널 (14.51 신 시스템 안내 + ON/OFF 토글) ===
