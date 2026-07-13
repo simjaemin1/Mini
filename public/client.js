@@ -129,6 +129,7 @@ const SIM_JOB_EMOJI = {
   let equipment = [], equipSlots = {}, craftSkill = {}; // 장비 인스턴스·장착 슬롯·제작 숙련 xp
   let craftEquipSel = {}; // UI: 유형별 선택 재료 {clothes:'hide',...}
   let dishes = []; // 요리 인스턴스(신선도·버프) — [{id,label,q,nutrition,buff,freshness}]
+  let shopVillage = null; // 거래: 가까운 마을 품질 EMA(shop_info 응답)
   let myHunger = 100, myThirst = 100, myVp = 0;
   let myCold = false; // 밤 추위(방한 부족) — HUD 표시
   const VP_THRESHOLD = 50; // 클라 표시용 — 서버와 동일해야 함
@@ -1843,6 +1844,13 @@ const SIM_JOB_EMOJI = {
         if (spBody2 && typeof renderCraftPanel2 === 'function') renderCraftPanel2(spBody2);
       }
       if (invOpen) renderInvPanel(document.getElementById('invBody'));
+    } else if (msg.type === 'shop_info') {
+      shopVillage = msg.village || null;
+      const spS = document.getElementById('sidePanel');
+      if (spS && spS.classList.contains('open')) {
+        const spB = document.getElementById('spBody');
+        if (spB && craftCat === 'trade' && typeof renderCraftPanel2 === 'function') renderCraftPanel2(spB);
+      }
     } else if (msg.type === 'dishes') {
       dishes = Array.isArray(msg.dishes) ? msg.dishes : [];
       if (cookOpen) renderCookPanel();
@@ -5658,6 +5666,57 @@ const SIM_JOB_EMOJI = {
   function wireDishHandlers(root) {
     root.querySelectorAll('[data-eatdish]').forEach(b => b.onclick = () => sendPrimary({ type: 'eat_dish', id: b.dataset.eatdish }));
   }
+  // 마을 거래(구매=마을 품질 실체화·판매=용해). shopVillage = shop_info 응답.
+  const TRADE_QKEY = { clothes: 'clothQ', weapon: 'weapQ', armor: 'weapQ', tool: 'toolQ' };
+  function tradeSectionHtml() {
+    const v = shopVillage;
+    if (!v) return '<div class="hint" style="padding:12px">마을광장 근처에서 열면 마을 장인의 품질이 표시됩니다.<br>(거래 반경 밖이면 비어 있음 — 마을로 가까이)</div>';
+    let h = `<div class="hint" style="margin:6px 0;font-weight:bold">🏪 ${v.name} <span style="color:#8a93a0;font-weight:normal">· ${v.dist}px${v.pop != null ? ` · 인구 ${v.pop}` : ''}</span></div>`;
+    if (equipmentRecipes && equipmentMeta) {
+      for (const [type, rc] of Object.entries(equipmentRecipes)) {
+        const vq = v[TRADE_QKEY[type]];
+        const owned = rc.accepts.filter(m => (inventory[m] || 0) > 0);
+        let sel = craftEquipSel[type];
+        if (!owned.includes(sel)) sel = owned[0] || rc.accepts[0];
+        craftEquipSel[type] = sel;
+        const canBuy = (inventory[sel] || 0) >= rc.qty;
+        const qStr = (vq != null) ? `마을품질 ${Math.round(vq * 100)}%` : '이 마을은 아직 안 만듦';
+        const matBtns = rc.accepts.map(m => {
+          const has = (inventory[m] || 0), on = (m === sel);
+          const st = 'margin:2px 3px 0 0;padding:1px 6px;border-radius:4px;font-size:11px;cursor:pointer;border:1px solid ' + (on ? '#8bd' : '#444') + ';background:' + (on ? '#245' : '#222') + ';color:' + (has > 0 ? '#eee' : '#666');
+          return `<button data-eqtype="${type}" data-eqmat="${m}" ${has > 0 ? '' : 'disabled'} style="${st}">${ITEM_ICONS[m] || m}${has ? ` ${has}` : ''}</button>`;
+        }).join('');
+        h += `<div class="craft-recipe ${canBuy ? 'can-make' : 'cant-make'}">
+          <div class="cr-icon">${EQUIP_ICONS[type] || '🎽'}</div>
+          <div class="cr-info">
+            <div class="cr-name">${rc.label} <span style="color:#8fc8ff;font-weight:normal">${qStr}</span></div>
+            <div class="cr-cost">재료 ${sel ? (ITEM_ICONS[sel] || sel) : '?'} ×${rc.qty} 지불</div>
+            <div style="margin-top:3px">${matBtns}</div>
+          </div>
+          <button data-buy="${type}" ${canBuy && vq != null ? '' : 'disabled'}>구매</button>
+        </div>`;
+      }
+    }
+    if (equipment && equipment.length) {
+      h += '<div class="hint" style="margin-top:10px;font-weight:bold">— 판매(용해) —</div>';
+      for (const inst of equipment) {
+        const rc = equipmentRecipes[inst.type] || {};
+        const refund = rc.qty ? Math.max(1, Math.floor(rc.qty / 2)) : 1;
+        h += `<div class="craft-recipe">
+          <div class="cr-icon">${EQUIP_ICONS[inst.type] || '🎒'}</div>
+          <div class="cr-info"><div class="cr-name">${rc.label || inst.type} <span style="color:#8a93a0;font-weight:normal">Lv${inst.craftedSkill || 0}</span></div>
+          <div class="cr-cost">용해 → ${inst.mat ? (ITEM_ICONS[inst.mat] || inst.mat) : '재료'} ×${refund} 회수</div></div>
+          <button data-sell="${inst.id}">판매</button>
+        </div>`;
+      }
+    }
+    return h;
+  }
+  function wireTradeHandlers(root, rerender) {
+    root.querySelectorAll('[data-eqmat]').forEach(b => b.onclick = () => { craftEquipSel[b.dataset.eqtype] = b.dataset.eqmat; if (rerender) rerender(); });
+    root.querySelectorAll('[data-buy]').forEach(b => b.onclick = () => sendPrimary({ type: 'craft_buy', itemType: b.dataset.buy, material: craftEquipSel[b.dataset.buy] }));
+    root.querySelectorAll('[data-sell]').forEach(b => b.onclick = () => sendPrimary({ type: 'craft_sell', id: b.dataset.sell }));
+  }
   function renderCraftPanel() {
     const list = document.getElementById('craftList');
     if (!list) return;
@@ -6714,6 +6773,7 @@ const SIM_JOB_EMOJI = {
     const cats = [
       { id: 'tool',     label: '🔧 도구' },
       { id: 'equip',    label: '🧥 장비' },
+      { id: 'trade',    label: '🏪 거래' },
       { id: 'building', label: '🏗️ 건축물' },
       { id: 'item',     label: '🪚 가공' },
       { id: 'food',     label: '🍖 음식/요리' },
@@ -6724,7 +6784,7 @@ const SIM_JOB_EMOJI = {
           ${cats.map(c => `<div class="craft-cat ${c.id===craftCat?'active':''}" data-cat="${c.id}">${c.label}</div>`).join('')}
         </div>
         <div class="craft-items">
-          ${craftCat === 'equip' ? equipmentSectionHtml() : (items.length === 0 ? '<div style="color:#8a93a0;padding:20px;text-align:center">레시피 없음</div>' : items.map(r => {
+          ${craftCat === 'equip' ? equipmentSectionHtml() : craftCat === 'trade' ? tradeSectionHtml() : (items.length === 0 ? '<div style="color:#8a93a0;padding:20px;text-align:center">레시피 없음</div>' : items.map(r => {
             // need 체크
             const costOK = Object.entries(r.cost).every(([k,v]) => (inventory[k]||0) >= v);
             const hammerOK = !r.needHammer || hasToolAlive('hammer');
@@ -6753,7 +6813,7 @@ const SIM_JOB_EMOJI = {
           ${craftCat === 'food' ? dishesListHtml() : ''}
         </div>
       </div>`;
-    body.querySelectorAll('[data-cat]').forEach(c => c.onclick = () => { craftCat = c.dataset.cat; renderCraftPanel2(body); });
+    body.querySelectorAll('[data-cat]').forEach(c => c.onclick = () => { craftCat = c.dataset.cat; if (craftCat === 'trade') sendPrimary({ type: 'shop_info' }); renderCraftPanel2(body); });
     body.querySelectorAll('[data-craft]').forEach(b => b.onclick = () => {
       const id = b.dataset.craft;
       const msgType = b.dataset.msg;
@@ -6761,6 +6821,7 @@ const SIM_JOB_EMOJI = {
     });
     if (craftCat === 'equip') wireEquipmentHandlers(body, () => renderCraftPanel2(body));
     if (craftCat === 'food') wireDishHandlers(body);
+    if (craftCat === 'trade') wireTradeHandlers(body, () => renderCraftPanel2(body));
   }
 
   // === 건축 모드 패널 (14.51 신 시스템 안내 + ON/OFF 토글) ===

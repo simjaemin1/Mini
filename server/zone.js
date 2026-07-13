@@ -2538,6 +2538,10 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'equip_item') doEquipItem(player, msg.id);
   else if (msg.type === 'unequip_item') doUnequipItem(player, msg.slot);
   else if (msg.type === 'repair_equipment') doRepairEquipment(player, msg.id, msg.material);
+  // 구매/판매 경계계약(마을 품질 EMA — 읽기전용 샘플/용해, econ 무접촉)
+  else if (msg.type === 'shop_info') doShopInfo(player);
+  else if (msg.type === 'craft_buy') doShopBuy(player, msg.itemType, msg.material);
+  else if (msg.type === 'craft_sell') doShopSell(player, msg.id);
   else if (msg.type === 'door_toggle') doDoorToggle(player, msg.buildingId);
   // 14.51: 건축물 아이템화 시스템
   else if (msg.type === 'craft_building') doCraftBuilding(player, msg.recipe);
@@ -3135,6 +3139,57 @@ function wearEquipment(player, slot, amount) {
     if (!player.playerId.startsWith('anon_')) savePlayer(player);
   }
   sendEquipment(player);
+}
+
+// ── 플레이어 구매/판매 경계계약 (마을 품질 EMA 샘플/용해 — 설계 §4) ──
+const SHOP_RANGE_PX = 260;   // 마을 중심 이 반경 안이어야 거래(마을광장 근처)
+const EQUIP_TYPE_QKEY = { clothes: 'clothQ', weapon: 'weapQ', armor: 'weapQ', tool: 'toolQ' };
+function nearestVillageQ(player) {
+  try { return SimVillages.villageQualityAt(player.x, player.y, SHOP_RANGE_PX); } catch (e) { return null; }
+}
+function doShopInfo(player) {
+  send(player.ws, { type: 'shop_info', village: nearestVillageQ(player) });
+}
+// 구매: 마을 장인에게 재료 맡겨 *마을 품질*로 제작받음(마을 EMA ±소분산 실체화 — 설계 §4). 마을이 나보다 숙련되면 이득.
+function doShopBuy(player, itemType, material) {
+  ensurePlayerItems(player);
+  const recipe = EQUIPMENT_RECIPES[itemType];
+  if (!recipe) { send(player.ws, { type: 'notice', text: `알 수 없는 장비: ${itemType}` }); return; }
+  const vq = nearestVillageQ(player);
+  if (!vq) { send(player.ws, { type: 'notice', text: '거래하려면 마을 근처(마을광장)로 가세요' }); return; }
+  if (!recipe.accepts.includes(material)) { send(player.ws, { type: 'notice', text: `${recipe.label}에 못 쓰는 재료` }); return; }
+  const have = player.inventory[material] || 0;
+  if (have < recipe.qty) { send(player.ws, { type: 'notice', text: `재료 부족: ${material} ${recipe.qty} 필요` }); return; }
+  const qkey = EQUIP_TYPE_QKEY[itemType];
+  const villageQ = (vq[qkey] != null ? vq[qkey] : 0.6);   // 마을 품질 EMA(없으면 기본)
+  let inst;
+  try { inst = PlayerItems.materializeFromVillage(itemType, villageQ, Math.random); }
+  catch (e) { send(player.ws, { type: 'notice', text: `구매 실패: ${e.message}` }); return; }
+  inst.id = genEquipId(); inst.mat = material;
+  player.inventory[material] = have - recipe.qty;
+  player.equipment.push(inst);
+  send(player.ws, { type: 'inventory', inventory: player.inventory });
+  sendEquipment(player);
+  send(player.ws, { type: 'notice', text: `${vq.name} 장인 구매: ${PlayerItems.displayItem(inst)}` });
+  if (!player.playerId.startsWith('anon_')) savePlayer(player);
+}
+// 판매: 장비 용해 → 재료 절반 회수(설계 §4 판매=용해). ★마을 EMA 넛지(sellNudge)는 econ write라 @1500 검증 후 별도 배선 — 현재 미적용(econ 무접촉 유지).
+function doShopSell(player, id) {
+  ensurePlayerItems(player);
+  const idx = player.equipment.findIndex(e => e.id === id);
+  if (idx < 0) { send(player.ws, { type: 'notice', text: '해당 장비 없음' }); return; }
+  const inst = player.equipment[idx];
+  const recipe = EQUIPMENT_RECIPES[inst.type];
+  const mat = inst.mat || (recipe && recipe.accepts[0]);
+  const refund = recipe ? Math.max(1, Math.floor(recipe.qty / 2)) : 1;
+  const slot = recipe ? recipe.slot : inst.type;
+  if (player.equipSlots[slot] === id) delete player.equipSlots[slot];   // 장착 중이면 해제
+  player.equipment.splice(idx, 1);
+  if (mat) player.inventory[mat] = (player.inventory[mat] || 0) + refund;
+  send(player.ws, { type: 'inventory', inventory: player.inventory });
+  sendEquipment(player);
+  send(player.ws, { type: 'notice', text: `용해: ${(recipe && recipe.label) || inst.type} → ${mat || '재료'} ×${refund}` });
+  if (!player.playerId.startsWith('anon_')) savePlayer(player);
 }
 
 function doCraft(player, recipeName) {

@@ -495,6 +495,27 @@ function farmTilesInRect(x0, y0, x1, y1) {
 
 // =============================================================================
 // Stage 4A — 클라 영토 페이로드(welcome 1회). 경계 셀만(마을당 ~200-400) — 2850셀 전체 금지.
+// 읽기전용: 좌표(px)에서 가장 가까운 마을의 품질 EMA(_clothQ 등) — 플레이어 구매/판매 경계계약용.
+// ★econ 무접촉·순수 읽기 — econ 틱(tickEconV2)이 아니라 zone.js 플레이어 메시지 핸들러에서만 호출되므로
+//   econ 궤적/회귀(regression-check 랩 하네스)에 절대 무영향. 마을 EMA를 인스턴스 샘플로 노출만 함.
+function villageQualityAt(px, py, maxDistPx) {
+  if (!state.ready) return null;
+  let best = null, bestD = (maxDistPx != null ? maxDistPx : Infinity);
+  for (const v of state.villages) {
+    if (!v.econ) continue;
+    const cx = v.ccx * SZ + SZ / 2, cy = v.ccy * SZ + SZ / 2;
+    const d = Math.hypot(cx - px, cy - py);
+    if (d < bestD) { bestD = d; best = v; }
+  }
+  if (!best) return null;
+  const e = best.econ || {};
+  const num = x => (typeof x === 'number' ? +x.toFixed(3) : null);
+  return {
+    name: best.name, dist: Math.round(bestD),
+    clothQ: num(e._clothQ), weapQ: num(e._weapQ), cookQ: num(e._cookQ), toolQ: num(e._toolQ), bowQ: num(e._bowQ),
+    pop: (typeof e.pop === 'number' ? Math.round(e.pop) : (e.npcs ? e.npcs.length : null)),
+  };
+}
 // bnd 없는 구DB(Stage1~3 시딩분)는 반경 원 근사(approx)로 폴백 — 과제 허용 최소 구현.
 // =============================================================================
 function clientVillages() {
@@ -1789,6 +1810,8 @@ module.exports = {
   init, onGameTick, invalidateTradeDistances,
   // Stage 4A — zone.js 소비: 농지 lazy 실물화 / welcome 영토 페이로드 / 레거시 디듀프 판정
   farmTilesInRect, clientVillages, isLegacyVillageClaimed,
+  // 플레이어 구매/판매 경계계약(읽기전용 마을 품질 EMA — econ 무접촉)
+  villageQualityAt,
   // §11 도적 — server/bandits.js 소비(좁은 접점, 추가 전용)
   banditHost,
   // P3 — zone.js Wildlife.init 소비: 실체 전쟁 병사 pid 위치(px)를 야생 agrid 위협원으로 주입
