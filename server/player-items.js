@@ -106,7 +106,7 @@ function displayItem(inst) {
   return def.label + ' [' + parts.join(' · ') + ']' + (inst.craftedSkill != null ? ' — Lv' + inst.craftedSkill + ' 제작' : '');
 }
 
-module.exports = { MAT_GRADE, ITEM_TYPES, qSkill, matGrade, craftItem, wearItem, repairItem, decayFreshness, materializeFromVillage, sellNudge, displayItem };
+module.exports = { MAT_GRADE, ITEM_TYPES, Q_SKILL_SPAN, DURA_SPAN, qSkill, matGrade, craftItem, wearItem, repairItem, decayFreshness, materializeFromVillage, sellNudge, displayItem };
 
 // ── 자가검증 (node server/player-items.js) ──
 if (require.main === module) {

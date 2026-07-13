@@ -124,6 +124,10 @@ const SIM_JOB_EMOJI = {
   let buildingRecipes = {}; // 14.51: 건축물 제작 레시피 (제작창에서 만들면 인벤 아이템)
   let cookRecipes = {}; // 서버에서 받은 요리 레시피
   let foodEffects = {}; // 서버에서 받은 음식 효과 정보 (표시용)
+  // 플레이어 장비(품질·속성·내구 인스턴스) — econ 무접촉·본체 서버층
+  let equipmentRecipes = {}, equipmentMeta = null; // 장비 제작 레시피·미리보기 메타(서버 공식 단일진실)
+  let equipment = [], equipSlots = {}, craftSkill = {}; // 장비 인스턴스·장착 슬롯·제작 숙련 xp
+  let craftEquipSel = {}; // UI: 유형별 선택 재료 {clothes:'hide',...}
   let myHunger = 100, myThirst = 100, myVp = 0;
   const VP_THRESHOLD = 50; // 클라 표시용 — 서버와 동일해야 함
   let myTribeId = null, myTribeName = null;
@@ -1696,6 +1700,12 @@ const SIM_JOB_EMOJI = {
         if (msg.buildingRecipes) buildingRecipes = msg.buildingRecipes;
         if (msg.cookRecipes) cookRecipes = msg.cookRecipes;
         if (msg.foodEffects) foodEffects = msg.foodEffects;
+        // 플레이어 장비
+        if (msg.equipmentRecipes) equipmentRecipes = msg.equipmentRecipes;
+        if (msg.equipmentMeta) equipmentMeta = msg.equipmentMeta;
+        if (Array.isArray(msg.equipment)) equipment = msg.equipment;
+        if (msg.equipSlots) equipSlots = msg.equipSlots;
+        if (msg.craftSkill) craftSkill = msg.craftSkill;
         if (msg.self.hp !== undefined) { myHp = msg.self.hp; myMaxHp = msg.self.maxHp; }
         if (typeof msg.self.hunger === 'number') myHunger = msg.self.hunger;
         if (typeof msg.self.thirst === 'number') myThirst = msg.self.thirst;
@@ -1819,6 +1829,18 @@ const SIM_JOB_EMOJI = {
       }
     } else if (msg.type === 'inventory') {
       inventory = msg.inventory; updateHud(); renderCraftPanel(); if (cookOpen) renderCookPanel();
+    } else if (msg.type === 'equipment') {
+      // 플레이어 장비 인스턴스·장착 슬롯·제작 숙련 갱신
+      if (Array.isArray(msg.equipment)) equipment = msg.equipment;
+      if (msg.equipSlots) equipSlots = msg.equipSlots;
+      if (msg.craftSkill) craftSkill = msg.craftSkill;
+      renderCraftPanel();
+      const sp2 = document.getElementById('sidePanel');
+      if (sp2 && sp2.classList.contains('open')) {
+        const spBody2 = document.getElementById('spBody');
+        if (spBody2 && typeof renderCraftPanel2 === 'function') renderCraftPanel2(spBody2);
+      }
+      if (invOpen) renderInvPanel(document.getElementById('invBody'));
     } else if (msg.type === 'tools_update' || msg.type === 'tools') {
       // 14.53: toolItems 리스트 + equipped (instance id) + hotkey1
       if (Array.isArray(msg.toolItems)) toolItems = msg.toolItems;
@@ -5522,6 +5544,88 @@ const SIM_JOB_EMOJI = {
   }
   const TOOL_ICONS = { axe: '🪓', pickaxe: '⛏️', sword: '⚔️' };
   const TOOL_LABELS = { axe: '도끼', pickaxe: '곡괭이', sword: '검' };
+  // 플레이어 장비 아이콘·미리보기(서버 EQUIPMENT_META와 동일 공식 = 단일진실)
+  const EQUIP_ICONS = { clothes: '🧥', armor: '🛡️', weapon: '⚔️', tool: '🔧' };
+  function equipSkillLevel(skill) {
+    const xp = (craftSkill && craftSkill[skill]) || 0;
+    const per = (equipmentMeta && equipmentMeta.xpPerLevel) || 6;
+    return Math.max(0, Math.min(10, Math.floor(xp / per)));
+  }
+  function equipPreview(itemType, material, skill) {
+    if (!equipmentMeta) return null;
+    const t = equipmentMeta.types[itemType]; if (!t) return null;
+    const g = equipmentMeta.matGrade[material];
+    const grade = (g == null ? 0.6 : g); // 미등록 재료 = 삼베급 폴백(서버 matGrade 동일)
+    const span = equipmentMeta.qSkillSpan;
+    const qSkill = 1 - span + span * (Math.max(0, Math.min(10, skill)) / 10);
+    const q = qSkill * grade;
+    return { attr: Math.round(t.attrScale * q), dura: Math.round(t.baseDura * (1 + equipmentMeta.duraSpan * q)), attrLabel: t.attr };
+  }
+  // 장비 제작+보유목록 HTML(양쪽 크래프트 패널 공유). 미리보기 = 서버 공식과 동일.
+  function equipmentSectionHtml() {
+    if (!equipmentRecipes || !Object.keys(equipmentRecipes).length || !equipmentMeta) return '<div class="hint">장비 데이터 로딩 중…</div>';
+    let html = '';
+    for (const [type, rc] of Object.entries(equipmentRecipes)) {
+      const lvl = equipSkillLevel(rc.skill);
+      const owned = rc.accepts.filter(m => (inventory[m] || 0) > 0);
+      let sel = craftEquipSel[type];
+      if (!owned.includes(sel)) sel = owned[0] || rc.accepts[0];
+      craftEquipSel[type] = sel;
+      const pv = equipPreview(type, sel, lvl);
+      const canCraft = (inventory[sel] || 0) >= rc.qty;
+      const matBtns = rc.accepts.map(m => {
+        const has = (inventory[m] || 0), on = (m === sel);
+        const st = 'margin:2px 3px 0 0;padding:1px 6px;border-radius:4px;font-size:11px;cursor:pointer;border:1px solid ' + (on ? '#8bd' : '#444') + ';background:' + (on ? '#245' : '#222') + ';color:' + (has > 0 ? '#eee' : '#666');
+        return `<button data-eqtype="${type}" data-eqmat="${m}" ${has > 0 ? '' : 'disabled'} style="${st}" title="${m} 보유 ${has}">${ITEM_ICONS[m] || m}${has ? ` ${has}` : ''}</button>`;
+      }).join('');
+      const pvStr = pv ? `<b style="color:#8fc8ff">${pv.attrLabel} ${pv.attr} · 내구 ${pv.dura}</b>` : '';
+      html += `<div class="craft-recipe ${canCraft ? 'can-make' : 'cant-make'}">
+        <div class="cr-icon">${EQUIP_ICONS[type] || '🎽'}</div>
+        <div class="cr-info">
+          <div class="cr-name">${rc.label} <span style="color:#7cd97c;font-weight:normal">${rc.skill} Lv${lvl}</span></div>
+          <div class="cr-cost">${sel ? (ITEM_ICONS[sel] || sel) : '?'} ×${rc.qty} → ${pvStr}</div>
+          <div style="margin-top:3px">${matBtns}</div>
+        </div>
+        <button data-eqcraft="${type}" ${canCraft ? '' : 'disabled'}>제작</button>
+      </div>`;
+    }
+    if (equipment && equipment.length) {
+      html += '<div class="hint" style="margin-top:10px;font-weight:bold">— 내 장비 —</div>';
+      for (const inst of equipment) {
+        const rc = equipmentRecipes[inst.type] || {};
+        const slot = rc.slot || inst.type;
+        const isEq = equipSlots[slot] === inst.id;
+        const broken = inst.broken || inst.dura === 0;
+        const durPct = (inst.durMax ? Math.round(100 * inst.dura / inst.durMax) : 100);
+        const durCol = durPct > 50 ? '#5c5' : (durPct > 20 ? '#dd5' : '#e55');
+        const attrParts = [];
+        for (const a in (inst.attrs || {})) attrParts.push(`${(equipmentMeta.types[inst.type] && equipmentMeta.types[inst.type].attr) || a} ${inst.attrs[a]}`);
+        const durBar = inst.durMax ? `<div style="height:4px;background:#333;border-radius:2px;margin-top:3px;overflow:hidden"><div style="height:100%;width:${durPct}%;background:${durCol}"></div></div>` : '';
+        const repairBtn = (inst.durMax && inst.dura < inst.durMax) ? `<button data-eqrepair="${inst.id}" style="margin-left:4px">수선</button>` : '';
+        html += `<div class="craft-recipe ${isEq ? 'can-make' : ''}">
+          <div class="cr-icon">${EQUIP_ICONS[inst.type] || '🎒'}</div>
+          <div class="cr-info">
+            <div class="cr-name">${rc.label || inst.type} ${broken ? '<span style="color:#e66">✖파손</span>' : ''}<span style="color:#8a93a0;font-weight:normal"> · Lv${inst.craftedSkill || 0} 제작</span></div>
+            <div class="cr-cost">${attrParts.join(' · ')}${inst.dura != null ? ` · 내구 ${inst.dura}/${inst.durMax}` : ''}</div>
+            ${durBar}
+          </div>
+          <button data-eqtoggle="${inst.id}" data-slot="${slot}" ${broken ? 'disabled' : ''}>${isEq ? '해제' : '장착'}</button>${repairBtn}
+        </div>`;
+      }
+    }
+    return html;
+  }
+  // 장비 섹션 버튼 핸들러(root 안에서). rerender = 재료 선택 후 다시 그릴 함수.
+  function wireEquipmentHandlers(root, rerender) {
+    root.querySelectorAll('[data-eqmat]').forEach(b => b.onclick = () => { craftEquipSel[b.dataset.eqtype] = b.dataset.eqmat; if (rerender) rerender(); });
+    root.querySelectorAll('[data-eqcraft]').forEach(b => b.onclick = () => sendPrimary({ type: 'craft_equipment', itemType: b.dataset.eqcraft, material: craftEquipSel[b.dataset.eqcraft] }));
+    root.querySelectorAll('[data-eqtoggle]').forEach(b => b.onclick = () => {
+      const id = b.dataset.eqtoggle, slot = b.dataset.slot;
+      if (equipSlots[slot] === id) sendPrimary({ type: 'unequip_item', slot });
+      else sendPrimary({ type: 'equip_item', id });
+    });
+    root.querySelectorAll('[data-eqrepair]').forEach(b => b.onclick = () => sendPrimary({ type: 'repair_equipment', id: b.dataset.eqrepair }));
+  }
   function renderCraftPanel() {
     const list = document.getElementById('craftList');
     if (!list) return;
@@ -5609,6 +5713,18 @@ const SIM_JOB_EMOJI = {
         list.appendChild(row);
       }
       list.querySelectorAll('[data-craftbuild]').forEach(b => b.onclick = () => sendPrimary({ type: 'craft_building', recipe: b.dataset.craftbuild }));
+    }
+    // ── 플레이어 장비 제작 (숙련·재료로 품질↑ — "방한 62·내구 85" 미리보기) ──
+    if (equipmentRecipes && Object.keys(equipmentRecipes).length && equipmentMeta) {
+      const hdr = document.createElement('div');
+      hdr.className = 'hint';
+      hdr.style.cssText = 'margin-top:12px;padding-top:8px;border-top:1px solid #333;font-weight:bold';
+      hdr.textContent = '— 장비 제작 (숙련·재료로 품질↑) —';
+      list.appendChild(hdr);
+      const wrap = document.createElement('div');
+      wrap.innerHTML = equipmentSectionHtml();
+      list.appendChild(wrap);
+      wireEquipmentHandlers(list, renderCraftPanel);
     }
   }
   function renderChestUi(id, data) {
@@ -6558,6 +6674,7 @@ const SIM_JOB_EMOJI = {
     }
     const cats = [
       { id: 'tool',     label: '🔧 도구' },
+      { id: 'equip',    label: '🧥 장비' },
       { id: 'building', label: '🏗️ 건축물' },
       { id: 'item',     label: '🪚 가공' },
       { id: 'food',     label: '🍖 음식/요리' },
@@ -6568,7 +6685,7 @@ const SIM_JOB_EMOJI = {
           ${cats.map(c => `<div class="craft-cat ${c.id===craftCat?'active':''}" data-cat="${c.id}">${c.label}</div>`).join('')}
         </div>
         <div class="craft-items">
-          ${items.length === 0 ? '<div style="color:#8a93a0;padding:20px;text-align:center">레시피 없음</div>' : items.map(r => {
+          ${craftCat === 'equip' ? equipmentSectionHtml() : (items.length === 0 ? '<div style="color:#8a93a0;padding:20px;text-align:center">레시피 없음</div>' : items.map(r => {
             // need 체크
             const costOK = Object.entries(r.cost).every(([k,v]) => (inventory[k]||0) >= v);
             const hammerOK = !r.needHammer || hasToolAlive('hammer');
@@ -6593,7 +6710,7 @@ const SIM_JOB_EMOJI = {
               <div class="cr-info"><div class="cr-name">${r.name}${haveBadge}</div><div class="cr-cost">${costStr}${flags.length?' · '+flags.join(' · '):''}</div></div>
               <button data-craft="${r.id}" data-msg="${r.msgType}" ${canMake?'':'disabled'}>제작</button>
             </div>`;
-          }).join('')}
+          }).join(''))}
         </div>
       </div>`;
     body.querySelectorAll('[data-cat]').forEach(c => c.onclick = () => { craftCat = c.dataset.cat; renderCraftPanel2(body); });
@@ -6602,6 +6719,7 @@ const SIM_JOB_EMOJI = {
       const msgType = b.dataset.msg;
       sendPrimary({ type: msgType, recipe: id });
     });
+    if (craftCat === 'equip') wireEquipmentHandlers(body, () => renderCraftPanel2(body));
   }
 
   // === 건축 모드 패널 (14.51 신 시스템 안내 + ON/OFF 토글) ===

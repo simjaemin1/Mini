@@ -18,6 +18,7 @@ const { Quadtree } = require('./quadtree'); // spatial index — O(N²) 검색 �
 const { ChunkManager, CHUNK_SIZE, generateChunkResources, generateVillagesForZone, generateCoastlineWaterTiles } = require('./chunk'); // 청크 단위 entity 분류 + procedural + 해안선
 const { findPath: pfFindPath } = require('./pathfind'); // Phase 14.49-b: NPC A* pathfinding
 const { ANIMALS } = require('./animals');  // Phase 5-6: 동물 mob 36종 catalog
+const PlayerItems = require('./player-items'); // 플레이어 아이템 인스턴스(품질·속성·내구) — econ 무접촉·본체 서버층(설계: 플레이어_아이템_속성_설계.md)
 const harvestedSeeds = new Set(); // 채집된 시드 자원 (DB에서 load)
 
 // === 활성 청크 (12.2.b) — 사람 player + observer 위치 주변 청크만 시뮬레이션 ===
@@ -243,6 +244,9 @@ function savePlayer(player, extra = {}) {
       toolItems: player.toolItems || [],
       hotkey1: player.hotkey1 || null,
       equipped: player.equipped || null,
+      equipment: player.equipment || [],   // 플레이어 아이템 인스턴스 영속(품질·속성·내구)
+      equipSlots: player.equipSlots || {},  // 장착 슬롯
+      craftSkill: player.craftSkill || {},  // 제작 숙련 xp
     }),
     equipped: player.equipped || null,
     last_zone: extra.last_zone ?? null, // 명시적으로 넘긴 zone만 변경
@@ -657,6 +661,35 @@ const COOK_RECIPES = {
   meat_cooked: { cost: { meat_raw: 1 }, produces: { meat_cooked: 1 }, label: '구운 고기' },
   berry_jam:   { cost: { berry: 3 },    produces: { berry_jam: 1 },   label: '베리잼' },
 };
+
+// ── 플레이어 장비 제작 (플레이어_아이템_속성_설계.md — econ 무접촉·본체 서버층) ──
+// PlayerItems.craftItem(type, 숙련레벨, materials) → 품질(숙련×재료등급)·속성·내구 인스턴스. 재료는 인벤 스택 차감.
+// accepts = 이 유형에 쓰는 재료(인벤 키), qty = 소비량, skill = 숙련 분야, slot = 장착 슬롯.
+const EQUIPMENT_RECIPES = {
+  clothes: { label: '옷',   slot: 'clothes', skill: 'tailoring',  qty: 3, accepts: ['fur','ramie','leather','hide','fiber','hemp'] },
+  armor:   { label: '갑옷', slot: 'armor',   skill: 'smithing',   qty: 4, accepts: ['bronze','iron','leather','hide'] },
+  weapon:  { label: '무기', slot: 'weapon',  skill: 'smithing',   qty: 3, accepts: ['bronze','iron','stone','wood','bone','obsidian'] },
+  tool:    { label: '도구', slot: 'tool',    skill: 'toolmaking', qty: 3, accepts: ['bronze','iron','stone','wood','bone'] },
+};
+// 제작 숙련: xp → 레벨(0~10). 유효 완성품 1개당 +1 xp(설계 §3 xp 원칙). 초반 빠르고 만렙 완만 — "레벨업하면 다음 제작품 수치가 오른다" 가시화.
+const CRAFT_XP_PER_LEVEL = 6; // 레벨당 6개 → 만렙 ~60개(플레이 스케일; econ NPC 2150노동일과 별개 척도).
+function craftLevel(xp) { return Math.max(0, Math.min(10, Math.floor((xp || 0) / CRAFT_XP_PER_LEVEL))); }
+function playerCraftLevel(player, skill) { return craftLevel(player.craftSkill && player.craftSkill[skill]); }
+// 클라 미리보기용 메타(단일 진실 — PlayerItems 엔진 상수 그대로 노출). 클라가 "방한 62·내구 85"를 서버와 동일 공식으로 계산.
+const EQUIPMENT_META = { matGrade: PlayerItems.MAT_GRADE, qSkillSpan: PlayerItems.Q_SKILL_SPAN, duraSpan: PlayerItems.DURA_SPAN, xpPerLevel: CRAFT_XP_PER_LEVEL, types: {} };
+for (const _t of ['clothes','armor','weapon','tool']) {
+  const _d = PlayerItems.ITEM_TYPES[_t]; const _ak = Object.keys(_d.attrs)[0];
+  EQUIPMENT_META.types[_t] = { attr: _d.attrs[_ak], attrScale: _d.attrScale || 100, baseDura: _d.baseDura, recipe: EQUIPMENT_RECIPES[_t] };
+}
+// 플레이어 아이템 필드 안전 초기화(모든 생성 경로 방어 — 미설정 시 빈 컨테이너).
+function ensurePlayerItems(p) {
+  if (!Array.isArray(p.equipment)) p.equipment = [];
+  if (!p.equipSlots || typeof p.equipSlots !== 'object') p.equipSlots = {};
+  if (!p.craftSkill || typeof p.craftSkill !== 'object') p.craftSkill = {};
+  return p;
+}
+let _nextEquipId = 1;
+function genEquipId() { return `e${Date.now().toString(36)}${(_nextEquipId++).toString(36)}`; }
 // 음식 효과: hunger/thirst 회복량. 'eat' 메시지로 소비.
 const FOOD_EFFECTS = {
   berry:        { hunger: 6,  thirst: 4 },
@@ -937,6 +970,8 @@ function spawnNpc(opts = {}) {
     x: cx, y: cy, vx: 0, vy: 0,
     inventory: { wood: 0, stone: 0, berry: 0, fiber: 0, meat_raw: 0, hide: 0, seed_berry: 2 },
     tools: {}, equipped: null,
+    equipment: [], equipSlots: {}, craftSkill: {}, // 플레이어 아이템: NPC는 빈 컨테이너(인스턴스 미생성 — econ 스칼라 유지)
+
     hp: PLAYER_MAX_HP, maxHp: PLAYER_MAX_HP,
     hunger: HUNGER_MAX, thirst: THIRST_MAX, vp: 0,
     // NPC끼리 같은 마을 = 같은 길드 (zone 안 메모리 길드 — central 등록 X, 시각상만)
@@ -2081,6 +2116,7 @@ wss.on('connection', async (ws, req) => {
   const handoffToken = url.searchParams.get('handoff_token');
   let playerId, name, sx, sy, ivx = 0, ivy = 0, inventory = { wood: 0, stone: 0 }, color = '#5a9ae0';
   let tools = {}, equipped = null;
+  let _loadEquipment = [], _loadEquipSlots = {}, _loadCraftSkill = {}; // 플레이어 아이템(품질·속성·내구·숙련) 복원 버퍼 — tools_json blob piggyback
   let initHunger = HUNGER_MAX, initThirst = THIRST_MAX, initVp = 0;
   let initTribeId = null, initTribeName = null;
   let initFloor = 0;
@@ -2154,6 +2190,10 @@ wss.on('connection', async (ws, req) => {
       inventory = { wood: result.player.wood | 0, stone: result.player.stone | 0, ...extInv };
       try { tools = result.player.tools_json ? JSON.parse(result.player.tools_json) : {}; }
       catch (e) { tools = {}; }
+      // 플레이어 아이템(장비 인스턴스·장착 슬롯·제작 숙련) 복원 — tools_json blob에 piggyback(스키마 무변경). tools가 아래서 재대입되므로 여기서 캡처.
+      if (tools && Array.isArray(tools.equipment)) _loadEquipment = tools.equipment;
+      if (tools && tools.equipSlots && typeof tools.equipSlots === 'object') _loadEquipSlots = tools.equipSlots;
+      if (tools && tools.craftSkill && typeof tools.craftSkill === 'object') _loadCraftSkill = tools.craftSkill;
       // 14.53: 옛 tools (object 또는 number 형식) → 새 toolItems list 변환
       // tools_json 안에 옛 형식 또는 새 형식 {toolItems, equipped, hotkey1} 둘 다 처리
       let toolItems = [];
@@ -2293,6 +2333,9 @@ wss.on('connection', async (ws, req) => {
     toolItems: _toolItems,      // 14.53: instance 리스트
     equipped,                   // 14.53: toolItemId
     hotkey1: _hotkey1,          // 14.53: 1번 슬롯 toolItemId
+    equipment: _loadEquipment,  // 플레이어 아이템: 장비 인스턴스 [{type,q,attrs,dura...}]
+    equipSlots: _loadEquipSlots,// 슬롯→인스턴스 id (clothes/armor/weapon/tool)
+    craftSkill: _loadCraftSkill,// 제작 숙련 xp {tailoring,smithing,toolmaking,cooking}
     hp: PLAYER_MAX_HP, maxHp: PLAYER_MAX_HP,
     hunger: initHunger, thirst: initThirst, vp: initVp,
     tribeId: initTribeId, tribeName: initTribeName,
@@ -2335,9 +2378,12 @@ wss.on('connection', async (ws, req) => {
     mobs: Array.from(mobs.values()).map(m => ({ mid: m.mid, type: m.type, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, tameOwner: m.tameOwner || null, tameOwnerName: m.tameOwnerName || null })),
     inventory: player.inventory,
     toolItems: player.toolItems || [], hotkey1: player.hotkey1 || null, equipped: player.equipped || null,
+    equipment: player.equipment || [], craftSkill: player.craftSkill || {}, // 플레이어 아이템 인스턴스·숙련
     tools: player.tools, // 옛 호환 (사용 X)
     recipes: RECIPES,
     itemRecipes: ITEM_RECIPES,         // 14.50
+    equipmentRecipes: EQUIPMENT_RECIPES, // 플레이어 장비 제작 레시피(유형·재료·숙련 분야)
+    equipmentMeta: EQUIPMENT_META,       // 미리보기 계산용(재료등급·품질/내구 폭 — 서버와 동일 공식)
     buildingRecipes: BUILDING_RECIPES, // 14.51
     cookRecipes: COOK_RECIPES,
     foodEffects: FOOD_EFFECTS,
@@ -2475,6 +2521,11 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'ranged_attack') { metrics.attacks++; tryRangedAttack(player, +msg.aimX, +msg.aimY); }
   else if (msg.type === 'craft') doCraft(player, msg.recipe);
   else if (msg.type === 'craft_item') doCraftItem(player, msg.recipe);
+  // 플레이어 장비(품질·속성·내구 인스턴스) — econ 무접촉
+  else if (msg.type === 'craft_equipment') doCraftEquipment(player, msg.itemType, msg.material);
+  else if (msg.type === 'equip_item') doEquipItem(player, msg.id);
+  else if (msg.type === 'unequip_item') doUnequipItem(player, msg.slot);
+  else if (msg.type === 'repair_equipment') doRepairEquipment(player, msg.id, msg.material);
   else if (msg.type === 'door_toggle') doDoorToggle(player, msg.buildingId);
   // 14.51: 건축물 아이템화 시스템
   else if (msg.type === 'craft_building') doCraftBuilding(player, msg.recipe);
@@ -2682,6 +2733,7 @@ function handleObserverMessage(ws, raw) {
       inventory: pending.inventory || { wood: 0, stone: 0 },
       tools: pending.tools || {},
       equipped: pending.equipped || null,
+      equipment: [], equipSlots: {}, craftSkill: {}, // 플레이어 아이템: promote 경로는 빈 초기화(존 핸드오프 캐리는 후속)
       hp: PLAYER_MAX_HP, maxHp: PLAYER_MAX_HP,
       hunger: typeof pending.hunger === 'number' ? pending.hunger : HUNGER_MAX,
       thirst: typeof pending.thirst === 'number' ? pending.thirst : THIRST_MAX,
@@ -2712,9 +2764,12 @@ function handleObserverMessage(ws, raw) {
       // Phase 5-K4: mobs도 생략 — observer가 tick(visibleMobs)으로 이미 받고 갱신 중.
       inventory: player.inventory,
       toolItems: player.toolItems || [], hotkey1: player.hotkey1 || null, equipped: player.equipped || null,
+      equipment: player.equipment || [], craftSkill: player.craftSkill || {}, // 플레이어 아이템 인스턴스·숙련
       tools: player.tools,
       recipes: RECIPES,
       itemRecipes: ITEM_RECIPES,
+      equipmentRecipes: EQUIPMENT_RECIPES, // 플레이어 장비 제작 레시피
+      equipmentMeta: EQUIPMENT_META,       // 미리보기 계산용
       buildingRecipes: BUILDING_RECIPES,
       cookRecipes: COOK_RECIPES,
       foodEffects: FOOD_EFFECTS,
@@ -2938,6 +2993,77 @@ function doDoorToggle(player, buildingId) {
   b.data.open = !b.data.open;
   db.updateBuildingData(b.dbId, JSON.stringify(b.data));
   broadcast({ type: 'building_updated', building: b });
+}
+
+// ══ 플레이어 장비: 제작·장착·수선 (econ 무접촉·본체 서버층. 엔진 = server/player-items.js) ══
+function findEquip(player, id) { return (player.equipment || []).find(e => e.id === id) || null; }
+function sendEquipment(player) {
+  send(player.ws, { type: 'equipment', equipment: player.equipment || [], equipSlots: player.equipSlots || {}, craftSkill: player.craftSkill || {} });
+}
+// 장비 제작: 유형+재료 → 품질(숙련×재료등급) 인스턴스. 재료 스택 차감, 숙련 xp+.
+function doCraftEquipment(player, itemType, material) {
+  ensurePlayerItems(player);
+  const recipe = EQUIPMENT_RECIPES[itemType];
+  if (!recipe) { send(player.ws, { type: 'notice', text: `알 수 없는 장비: ${itemType}` }); return; }
+  if (!recipe.accepts.includes(material)) { send(player.ws, { type: 'notice', text: `${recipe.label}에 못 쓰는 재료: ${material}` }); return; }
+  const have = player.inventory[material] || 0;
+  if (have < recipe.qty) { send(player.ws, { type: 'notice', text: `재료 부족: ${material} ${recipe.qty} 필요 (보유 ${have})` }); return; }
+  const lvl = playerCraftLevel(player, recipe.skill);
+  let inst;
+  try { inst = PlayerItems.craftItem(itemType, lvl, { [material]: recipe.qty }); }
+  catch (e) { send(player.ws, { type: 'notice', text: `제작 실패: ${e.message}` }); return; }
+  inst.id = genEquipId();
+  inst.mat = material;   // 대표 재료(수선·표시용)
+  player.inventory[material] = have - recipe.qty;
+  player.equipment.push(inst);
+  player.craftSkill[recipe.skill] = (player.craftSkill[recipe.skill] || 0) + 1; // 유효 완성품 = xp(설계 §3)
+  const newLvl = playerCraftLevel(player, recipe.skill);
+  send(player.ws, { type: 'inventory', inventory: player.inventory });
+  sendEquipment(player);
+  const lvlUp = newLvl > lvl ? ` — ${recipe.skill} Lv${newLvl} 달성!` : '';
+  send(player.ws, { type: 'notice', text: `${PlayerItems.displayItem(inst)} 제작${lvlUp}` });
+  if (!player.playerId.startsWith('anon_')) savePlayer(player);
+}
+// 장착: 슬롯당 1개(교체). 파손 불가.
+function doEquipItem(player, id) {
+  ensurePlayerItems(player);
+  const inst = findEquip(player, id);
+  if (!inst) { send(player.ws, { type: 'notice', text: '해당 장비 없음' }); return; }
+  if (inst.broken || inst.dura === 0) { send(player.ws, { type: 'notice', text: '파손된 장비 — 수선 필요' }); return; }
+  const def = EQUIPMENT_RECIPES[inst.type];
+  const slot = def ? def.slot : inst.type;
+  player.equipSlots[slot] = inst.id;
+  sendEquipment(player);
+  if (!player.playerId.startsWith('anon_')) savePlayer(player);
+}
+// 해제: 슬롯 비움.
+function doUnequipItem(player, slot) {
+  ensurePlayerItems(player);
+  if (player.equipSlots[slot]) {
+    delete player.equipSlots[slot];
+    sendEquipment(player);
+    if (!player.playerId.startsWith('anon_')) savePlayer(player);
+  }
+}
+// 수선: 재료(절반)+숙련으로 내구 회복(설계 §5 — 인스턴스별이라 econ 전역 피드백 0).
+function doRepairEquipment(player, id, material) {
+  ensurePlayerItems(player);
+  const inst = findEquip(player, id);
+  if (!inst || inst.dura == null) { send(player.ws, { type: 'notice', text: '수선 불가' }); return; }
+  const def = EQUIPMENT_RECIPES[inst.type];
+  if (!def) { send(player.ws, { type: 'notice', text: '수선 불가' }); return; }
+  const mat = material || inst.mat;
+  if (!def.accepts.includes(mat)) { send(player.ws, { type: 'notice', text: '수선에 못 쓰는 재료' }); return; }
+  const cost = Math.max(1, Math.floor(def.qty / 2));
+  const have = player.inventory[mat] || 0;
+  if (have < cost) { send(player.ws, { type: 'notice', text: `수선 재료 부족: ${mat} ${cost} 필요` }); return; }
+  const lvl = playerCraftLevel(player, def.skill);
+  player.inventory[mat] = have - cost;
+  PlayerItems.repairItem(inst, lvl, { [mat]: cost });
+  send(player.ws, { type: 'inventory', inventory: player.inventory });
+  sendEquipment(player);
+  send(player.ws, { type: 'notice', text: `${PlayerItems.displayItem(inst)} 수선` });
+  if (!player.playerId.startsWith('anon_')) savePlayer(player);
 }
 
 function doCraft(player, recipeName) {
