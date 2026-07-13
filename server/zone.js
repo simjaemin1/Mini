@@ -3065,6 +3065,26 @@ function doRepairEquipment(player, id, material) {
   send(player.ws, { type: 'notice', text: `${PlayerItems.displayItem(inst)} 수선` });
   if (!player.playerId.startsWith('anon_')) savePlayer(player);
 }
+// 장비 효과 발현(설계 §8-3): 무기 attack→전투·도구 efficiency→노동. 장비 미장착 시 기존 행동 불변(additive).
+const WEAPON_EQUIP_ATK_SCALE = 0.2;  // weapon attack(24~100) → 데미지 +5~+20 (기본10 대비 명장 무기 실감)
+const TOOL_EQUIP_EFF_SCALE = 0.03;   // tool efficiency(24~100) → 채집 dmg +1~+3 (노동 절약)
+// 슬롯에 장착된 장비 인스턴스 조회
+function getEquippedEquipment(player, slot) {
+  if (!player.equipSlots || !player.equipSlots[slot]) return null;
+  return (player.equipment || []).find(e => e.id === player.equipSlots[slot]) || null;
+}
+// 장비 사용 마모(설계 §5: 인스턴스별이라 econ 전역 피드백 0). 파손 시 자동 해제·알림. wear마다 저장 안 함(도구 레거시 동형 — 성능).
+function wearEquipment(player, slot, amount) {
+  const inst = getEquippedEquipment(player, slot);
+  if (!inst || inst.dura == null) return;
+  PlayerItems.wearItem(inst, amount || 1);
+  if (inst.broken || inst.dura === 0) {
+    delete player.equipSlots[slot];   // 파손 시 자동 해제(수선 전까지 재장착 불가)
+    send(player.ws, { type: 'notice', text: `${(EQUIPMENT_RECIPES[inst.type] && EQUIPMENT_RECIPES[inst.type].label) || inst.type} 파손 — 수선 필요` });
+    if (!player.playerId.startsWith('anon_')) savePlayer(player);
+  }
+  sendEquipment(player);
+}
 
 function doCraft(player, recipeName) {
   const recipe = RECIPES[recipeName];
@@ -3324,6 +3344,12 @@ function tryGather(player) {
   if (eff) {
     if (best.type === 'tree') dmg = eff.gatherWoodMult;
     else if (best.type === 'rock') dmg = eff.gatherStoneMult;
+  }
+  // 장착 도구 장비(품질 efficiency 속성) 채집 가산 + 사용 마모 — 미장착 시 기존 행동 불변
+  const toolEq = getEquippedEquipment(player, 'tool');
+  if (toolEq && toolEq.attrs && toolEq.attrs.efficiency) {
+    dmg += Math.round(toolEq.attrs.efficiency * TOOL_EQUIP_EFF_SCALE);
+    wearEquipment(player, 'tool', 1);
   }
   best.hp -= dmg;
   // 장착 도구 내구도 -1
@@ -4111,8 +4137,14 @@ async function tryAttack(player) {
   // 14.53: 장착 instance 기반 무기 효과
   const eqInst = getEquippedTool(player);
   const eff = eqInst ? TOOL_EFFECTS[eqInst.type] : null;
-  const atk = Math.round(PLAYER_ATTACK_DAMAGE * (eff ? eff.attackMult : 1));
+  let atk = Math.round(PLAYER_ATTACK_DAMAGE * (eff ? eff.attackMult : 1));
   if (eqInst) consumeEquippedDurability(player, 1);
+  // 장착 무기 장비(품질 attack 속성) 데미지 가산 + 사용 마모 — 미장착 시 기존 행동 불변
+  const wpnEq = getEquippedEquipment(player, 'weapon');
+  if (wpnEq && wpnEq.attrs && wpnEq.attrs.attack) {
+    atk += Math.round(wpnEq.attrs.attack * WEAPON_EQUIP_ATK_SCALE);
+    wearEquipment(player, 'weapon', 1);
+  }
 
   // 가장 가까운 mob을 범위 안에서 — quadtree
   const nearbyMobs = qtMobs ? qtMobs.queryCircle(player.x, player.y, PLAYER_ATTACK_RANGE) : Array.from(mobs.values());
