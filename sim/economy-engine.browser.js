@@ -3463,6 +3463,11 @@ const TRADE_INTERVAL = 3;   // (구 3일 게이트용. 연속교역 전환 후�
 //   spareCap = N × 포만스로틀 × UTIL. 광석 등 SAT_ALWAYS는 늘 포만 신호 → 식량난 광산촌도 교역 가능.
 //   포만스로틀(v._idleFrac) = 1 − 실제생산/잠재생산 (tickVillage에서 누적). UTIL로 안정본 강도(~4%)에 맞춤.
 const TRADE_SPARE_UTIL = 0.11;
+// ★위기 교역 동원(2026-07-13 실험 K): 식량 적자 마을(surplusEMA.food<0)은 포만 유휴노동(_idleFrac)이
+//   ~0이라 spareCap=1로 묶여, 글럿된 자산(가죽 등)을 식량과 바꿀 캐러밴을 못 냄(묶인 재산=Sen 자격 붕괴의 기계적 원인).
+//   적자 마을에 한해 유휴노동 밖 노동을 소폭 교역에 동원 — 하단 기회비용 게이트가 각 원정 순이익성을 여전히
+//   검증하므로 "살 식량이 근방에 있을 때만" 실발주(지역 흉작이면 헛 원정 자동차단). 자기-차익거래(빠진 시장청산력) 주입.
+const CRISIS_TRADE_PC = 0.015;   // 적자 마을 위기 동원 상한 = N×0.015 캐러밴(0.03서 하향 — 과동원 제로섬 마을사망 억제 시도)
 // ★위신재(사치) 수요 — 장식재의 use-value는 물리소비가 아니라 위신·심리(positional good). 1인당 목표 보유로 수요 부여.
 //   없는 마을은 교역으로 수입, 광산촌(부산물로 쟁여둠)은 잉여 수출 → 죽어있던 장식교역이 살아나고 광산촌 수입원 다각화.
 const LUX_TARGET_PC = 0.08;   // 1인당 위신재 목표(각 장식재). 이 근처서 만족(체감), 광산촌은 훨씬 위라 수출.
@@ -3727,7 +3732,12 @@ function tickTradeV2(world, day) {
     a.v._tradingN = currentlyTrading;   // ★교역 인원 발행 → v1 여가 행복 항이 차감(원정 = 생산도 쉼도 못 함: 여가 기회비용의 실물화)
     // ★동시 교역 상한 = 여유노동(글럿된 생산능력). 하드 %캡 아님 — 마을 글럿도(_idleFrac)에서 창발.
     //   여유 많은 마을(잉여 폭발)은 많이, 빠듯한 마을(다 needed)은 적게 → 자연 자기제한 + 붕괴 방지.
-    const spareCap = Math.max(1, Math.floor(N * (a.v._idleFrac || 0) * TRADE_SPARE_UTIL));
+    let spareCap = Math.max(1, Math.floor(N * (a.v._idleFrac || 0) * TRADE_SPARE_UTIL));
+    // ★위기 교역 동원(실험 K): 식량 적자 마을은 유휴노동 밖 노동도 소폭 동원(묶인 자산→식량 자기-차익거래).
+    //   기회비용 게이트(하단 line ~579)가 순이익성 검증 유지 → 살 식량 없으면(지역 흉작) 실발주 0.
+    if (a.v.surplusEMA && a.v.surplusEMA.food < 0) {
+      spareCap = Math.max(spareCap, Math.ceil(N * CRISIS_TRADE_PC));
+    }
     // ★top-20 최근접 목적지만(마을 정적이라 캐시, 마을수 변할 때만 재계산). 먼 마을은 운반·약탈로 손해라 무해.
     //   ★BFS화(2026-07): 거리 = villageDist(호스트가 _distMatrix 주입 시 지형 최단거리, 아니면 유클리드) 기준 정렬
     //   + 절대 상한 = 행렬 최대 유한거리(≈존 최원격 쌍=대각선 상당)의 절반 — 존 반대편·강 대우회 원정을 후보에서 제외(스케일 프리).
