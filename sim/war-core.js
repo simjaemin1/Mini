@@ -46,7 +46,7 @@ const WAR_CAS_BASE = 0.18, WAR_LOOT = 0.3, WAR_LOOT_PREST = 0.5, WAR_TRIB_YRS = 
 const WAR_J_CASUS = { feud: 1.0, territory: 0.7, trade: 0.6, prestige: 0.4 };
 const WAR_J_LOOT0 = 0.12, WAR_J_LOOT1 = 0.28;
 const WAR_J_PREST0 = 0.3, WAR_J_PREST1 = 0.7;
-const WAR_J_BURN = 3.5;
+const WAR_J_BURN = 3.5;   // ★[감사 2026-07-14] 방화 = 랩 관찰층 전용(walkover builtFloors--) — 서버는 집이 econ 비결합이라 미배선(엔티티 부채 §6.1). export만 존재·서버 미참조(死상수 — 삭제 대신 랩 계약 보존).
 const WAR_J_FAT = 0.3;
 const WAR_REP_TH = 0.5, WAR_REP_K = 0.35;
 const WAR_GRUDGE_BLOCK_TH = 0.45;

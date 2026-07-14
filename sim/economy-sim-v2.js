@@ -685,10 +685,39 @@ function killTrader(c, v) {
   if (v.tradeStats) v.tradeStats.tradersKilled = (v.tradeStats.tradersKilled || 0) + 1;
   c._done = true; c._abandoned = true;
 }
-// 약탈 시 사망 판정 — 호위(전사)·무기·갑옷 readiness가 줄임. 죽으면 true.
+// 약탈 시 사망 판정 — 호위(전사)·무기·갑옷 readiness가 줄임. 죽으면 true. (★구 추상 경로 — de-abstract 후 미사용, 정의만 보존)
 function raidKills(c, escort, wReady, aReady, srand) {
   const reduce = Math.min(0.85, Math.sqrt(escort) * 0.18 + wReady * 0.12 + aReady * 0.12);
   return srand() < DEATH_ON_RAID * (1 - reduce);
+}
+// ★[de-abstract] 약탈 = per-entity 실전투(주사위 제거). 호위 전사 + 상인 vs 도적 갱 — hp100·atk=10+무기×0.2·Lanchester.
+//   조우 여부는 호스트 banditGang(기하: 길목 실재 갱)이 정하고, 결과는 이 엔티티 대결이 정한다. 랜덤은 표적선정뿐(승패 아님).
+function _escAtk(v) { return 10 + Math.round((((v && v._weapQ) || 0.42)) * 20); }   // 마을 무기품질 → 호위 근접 atk
+function _raidScrum(escN, escAtk, gangN) {
+  const bA = 19, A = [], B = [];   // bA=도적 스킬3 근접 atk
+  for (let i = 0; i < Math.max(0, escN | 0); i++) A.push({ h: 100, w: true });   // 호위 전사
+  A.push({ h: 100, w: false });   // 상인 1
+  for (let i = 0; i < Math.max(1, gangN | 0); i++) B.push(100);   // 갱원
+  const live = (arr, hp) => { const o = []; for (let i = 0; i < arr.length; i++) if ((hp ? arr[i] : arr[i].h) > 0) o.push(i); return o; };
+  for (let r = 0; r < 400; r++) {
+    const aL = live(A, 0), bL = live(B, 1); if (!aL.length || !bL.length) break;
+    const dA = A.map(() => 0), dB = B.map(() => 0);
+    for (const i of aL) dB[bL[(v1.srand() * bL.length) | 0]] += (A[i].w ? escAtk : 10);
+    for (const i of bL) dA[aL[(v1.srand() * aL.length) | 0]] += bA;
+    for (let i = 0; i < A.length; i++) if (A[i].h > 0) A[i].h -= dA[i];
+    for (let i = 0; i < B.length; i++) if (B[i] > 0) B[i] -= dB[i];
+  }
+  const banditsKilled = B.length - B.filter(h => h > 0).length, aAlive = A.filter(u => u.h > 0).length;
+  const warriorDeaths = A.filter(u => u.w && u.h <= 0).length;
+  return { repel: banditsKilled >= B.length && aAlive > 0, banditsKilled, warriorDeaths };
+}
+// 호위 전사 사상 → 마을 전사 실제 감소(엔티티 상호작용 반영)
+function _killWarriors(v, n) {
+  if (!v.npcs || n <= 0) return;
+  for (let z = 0; z < n; z++) {
+    let idx = -1; for (let i = 0; i < v.npcs.length; i++) if (v.npcs[i].currentJob === 'warrior') { idx = i; break; }
+    if (idx < 0) break; v.npcs.splice(idx, 1); if (v.counts) v.counts.warrior = Math.max(0, (v.counts.warrior || 0) - 1);
+  }
 }
 // =============================================================================
 // 4. tickCaravans v2 — 도착 시 거래 + 양쪽 수수료. 귀환 시 받은 자원 입금.
@@ -699,31 +728,19 @@ function tickCaravansV2(world, day) {
     if (c._done) continue;
 
     if (c.state === 'outbound' && day >= c.arriveDay) {
-      // 약탈 (가는 길)
-      const wReady = Math.min(1, (c.from.storage.weapon || 0) / Math.max(1, c.escort));
-      const aReady = Math.min(1, (c.from.storage.armor || 0) / Math.max(1, c.escort));
-      // ★죽은 커플링 연결: defense stat(마을 무장)이 억지력 — 무장한 마을 caravan은 덜 노림(호위와 별개, 상한 클램프).
-      const defDeter = (c.from.lastStats && c.from.lastStats.defense) ? Math.min(0.12, c.from.lastStats.defense * 0.04) : 0;
-      const protection = Math.sqrt(c.escort) * (0.08 + wReady * 0.05 + aReady * 0.05) + defDeter;
-      // ★도적 길목 가산(§도적): 호스트 주입 — 경로 30m 내 은거지 있으면 +0.15. 미설치면 0(기존과 동일).
-      const banditX = world.banditRouteRisk ? (world.banditRouteRisk(c.from, c.to) || 0) : 0;
-      const raidProb = Math.max(0.01, Math.min(RAID_MAX,
-        RAID_BASE + banditX + (c.distance / 100) * (world.raidPer100 || RAID_PER_100) - protection));
+      // ★[de-abstract] 약탈 (가는 길) = per-entity 실전투(주사위 제거): 길목에 실제 갱 있으면 호위+상인 vs 갱 라운드 스크럼
+      const gangO = world.banditGang ? world.banditGang(c.from, c.to) : null;
       let outboundLoss = 0;
-      if (v1.srand() < raidProb) {
-        outboundLoss = 0.3 + v1.srand() * 0.4;
-        if (c.from.tradeStats) {
-          c.from.tradeStats.caravansRaided++;
-          c.from.tradeStats.cargoLost += c.giveAmt * outboundLoss;
-        }
-        let _bLoot = c.giveAmt * outboundLoss;   // ★길목 도적단 장물(스톡 충전은 호스트 훅이 처리 — 유령 수입 금지: 손실은 이미 위에서 장부 처리됨)
-        // ★도적이 행상을 죽임 → NPC 사망 + 화물 전손 + 원정 종료(배달 X)
-        if (raidKills(c, c.escort, wReady, aReady, v1.srand)) {
-          if (c.from.tradeStats) c.from.tradeStats.cargoLost += c.giveAmt * (1 - outboundLoss);
-          _bLoot = c.giveAmt;
+      if (gangO && gangO.n > 0) {
+        const R = _raidScrum(c.escort, _escAtk(c.from), gangO.n);
+        gangO.n = Math.max(0, gangO.n - R.banditsKilled);   // 도적 사상 반영(엔티티 대결 결과)
+        if (R.warriorDeaths > 0) _killWarriors(c.from, R.warriorDeaths);   // 호위 전사 사상 → 마을 전사 실제 감소
+        if (!R.repel) {   // 호위 전멸 → 화물 전손 + 행상 사망
+          outboundLoss = 1;
+          if (c.from.tradeStats) { c.from.tradeStats.caravansRaided++; c.from.tradeStats.cargoLost += c.giveAmt; }
+          if (world.onBanditLoot) world.onBanditLoot(c.from, c.to, c.giveRes, c.giveAmt, day);
           killTrader(c, c.from);
-        }
-        if (banditX > 0 && world.onBanditLoot) world.onBanditLoot(c.from, c.to, c.giveRes, _bLoot, day);
+        } else if (c.from.tradeStats) { c.from.tradeStats.banditsRepelled = (c.from.tradeStats.banditsRepelled || 0) + 1; }   // 격퇴
       }
       if (c._done) continue;   // 행상 사망 → 이 캐러밴 종료
       const deliveredGive = c.giveAmt * (1 - outboundLoss);
@@ -892,24 +909,19 @@ function tickCaravansV2(world, day) {
     }
 
     else if (c.state === 'inbound' && day >= c.returnArriveDay) {
-      // 약탈 (귀환)
-      const wReady = Math.min(1, (c.from.storage.weapon || 0) / Math.max(1, c.escort));
-      const aReady = Math.min(1, (c.from.storage.armor || 0) / Math.max(1, c.escort));
-      const defDeter = (c.from.lastStats && c.from.lastStats.defense) ? Math.min(0.12, c.from.lastStats.defense * 0.04) : 0;   // ★defense stat 억지력(귀환로)
-      const protection = Math.sqrt(c.escort) * (0.08 + wReady * 0.05 + aReady * 0.05) + defDeter;
-      const banditX = world.banditRouteRisk ? (world.banditRouteRisk(c.from, c.to) || 0) : 0;   // ★도적 길목 가산(귀환로 — 왕복 같은 길)
-      const raidProb = Math.max(0.01, Math.min(RAID_MAX,
-        RAID_BASE + banditX + (c.distance / 100) * (world.raidPer100 || RAID_PER_100) - protection));
+      // ★[de-abstract] 약탈 (귀환) = per-entity 실전투: 왕복 같은 길목 갱 vs 호위+상인
+      const gangI = world.banditGang ? world.banditGang(c.from, c.to) : null;
       let inboundLoss = 0;
-      if (v1.srand() < raidProb) {
-        inboundLoss = 0.3 + v1.srand() * 0.4;
-        if (c.from.tradeStats) {
-          c.from.tradeStats.caravansRaided++;
-        }
-        let _bKilled = false;
-        if (raidKills(c, c.escort, wReady, aReady, v1.srand)) { _bKilled = true; killTrader(c, c.from); }   // ★귀환 중 행상 사망 → 가져오던 자원 전손
-        if (banditX > 0 && world.onBanditLoot && c._returningRes && c._returningAmt > 0)
-          world.onBanditLoot(c.from, c.to, c._returningRes, c._returningAmt * (_bKilled ? 1 : inboundLoss), day);
+      if (gangI && gangI.n > 0) {
+        const R = _raidScrum(c.escort, _escAtk(c.from), gangI.n);
+        gangI.n = Math.max(0, gangI.n - R.banditsKilled);
+        if (R.warriorDeaths > 0) _killWarriors(c.from, R.warriorDeaths);
+        if (!R.repel) {   // 호위 전멸 → 가져오던 자원 전손 + 행상 사망
+          inboundLoss = 1;
+          if (c.from.tradeStats) c.from.tradeStats.caravansRaided++;
+          if (world.onBanditLoot && c._returningRes && c._returningAmt > 0) world.onBanditLoot(c.from, c.to, c._returningRes, c._returningAmt, day);
+          killTrader(c, c.from);
+        } else if (c.from.tradeStats) { c.from.tradeStats.banditsRepelled = (c.from.tradeStats.banditsRepelled || 0) + 1; }
       }
       if (c._done) continue;   // 행상 사망 → 캐러밴 종료(자원 입금 X)
 

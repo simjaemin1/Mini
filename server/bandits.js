@@ -264,6 +264,12 @@ function installHooks() { // econ 계약 훅(★v2 주사위는 이미 서버 �
     const k = va.name < vb.name ? va.name + '|' + vb.name : vb.name + '|' + va.name;
     return S.pairs.has(k) ? BDT_RT_X : 0;
   };
+  world.banditGang = (va, vb) => {   // ★[de-abstract] 길목 실재 갱 반환 → econ v2가 per-entity 약탈 전투에 사용(주사위 대체·랩 동형)
+    if (!S.GANGS.length) return null;
+    const k = va.name < vb.name ? va.name + '|' + vb.name : vb.name + '|' + va.name;
+    const gs = S.pairs.get(k);
+    return gs && gs.length ? gs[0] : null;
+  };
   world.onBanditLoot = (victim, other, res, amt, day) => {
     if (!(amt > 0)) return;
     const k = victim.name < other.name ? victim.name + '|' + other.name : other.name + '|' + victim.name;
@@ -372,22 +378,39 @@ function daily(day) { // 하루 1회(villages econ 틱 직후): 위기 추적→
     if (g._sup && day >= g._sup.eta) { // 토벌 교전(추상 판정 — 랩 동형 계수): 무장 원정대 우세, 도적 드물게 반격 전사
       const F = g._sup;
       const fvil = host.villages.find(v => v.dbId === F.vilDbId) || null;
-      const kills = Math.max(1, Math.min(g.n, Math.round(F.force * (0.7 + 0.5 * F.wep) + Math.random() * 1.5 - g.n * 0.12)));
-      g.n -= kills;
+      // ★[de-abstract] 토벌 = per-entity 실전투(추상 주사위 제거): 원정대 vs 갱 — hp100·atk=10+무기×0.2·Lanchester (랩 banditDaily 동형)
+      const _eA = 10 + Math.round((((fvil && fvil.econ && fvil.econ._weapQ) || 0.42)) * 20), _bA = 19; // 원정 무장 atk / 도적 스킬3 atk≈19
+      const _A = [], _B = [];
+      for (let z = 0; z < Math.max(1, F.force); z++) _A.push(100);
+      for (let z = 0; z < Math.max(1, g.n | 0); z++) _B.push(100);
+      for (let rr = 0; rr < 400; rr++) {
+        const _aL = [], _bL = [];
+        for (let z = 0; z < _A.length; z++) if (_A[z] > 0) _aL.push(z);
+        for (let z = 0; z < _B.length; z++) if (_B[z] > 0) _bL.push(z);
+        if (!_aL.length || !_bL.length) break;
+        const _dA = _A.map(() => 0), _dB = _B.map(() => 0);
+        for (const z of _aL) _dB[_bL[(Math.random() * _bL.length) | 0]] += _eA;
+        for (const z of _bL) _dA[_aL[(Math.random() * _aL.length) | 0]] += _bA;
+        for (let z = 0; z < _A.length; z++) if (_A[z] > 0) _A[z] -= _dA[z];
+        for (let z = 0; z < _B.length; z++) if (_B[z] > 0) _B[z] -= _dB[z];
+      }
+      const kills = (g.n | 0) - _B.filter(h => h > 0).length, _ed = Math.max(1, F.force) - _A.filter(h => h > 0).length; // 도적 사살·원정 전사(실전투 결과)
+      g.n = Math.max(0, g.n - kills);
       g._supKill = g.n < BDT_GMIN ? 1 : 0; // 이 교전이 3명 미만으로 깎았는가(소굴 철거 인과)
       S.stats.sup++;
       let vd = '';
-      if (fvil && Math.random() < 0.1 + 0.03 * Math.max(0, g.n)) {
+      if (fvil) {
         const ev = fvil.econ;
-        if (ev && ev.npcs.length > 3) {
+        for (let z = 0; z < _ed && ev && ev.npcs.length > 3; z++) { // 원정 전사 = 실제 사상만큼 마을 NPC 사망
           const k = (Math.random() * ev.npcs.length) | 0;
           const npc = ev.npcs.splice(k, 1)[0];
           if (ev.counts && npc && npc.currentJob) ev.counts[npc.currentJob] = Math.max(0, (ev.counts[npc.currentJob] || 0) - 1);
-          S.stats.supDead++; vd = ' · 원정 1명 전사';
+          S.stats.supDead++;
         }
+        if (_ed > 0) vd = ` · 원정 ${_ed}명 전사`;
       }
       if (fvil && fvil.econ) fvil.econ._banditRisk = Math.max(0, (fvil.econ._banditRisk || 0) * 0.4); // 토벌 후 안도
-      log(day, `토벌: ${fvil ? fvil.name : '(소멸 마을)'} 원정대(${F.force}명) → 도적단#${g.id} ${kills}명 사살${vd}(${Math.max(0, g.n)}명 잔존)`);
+      log(day, `토벌⚔: ${fvil ? fvil.name : '(소멸 마을)'} 원정대(${F.force}명) vs 도적단#${g.id} → ${kills}명 사살${vd}(${Math.max(0, g.n)}명 잔존)`);
       g._sup = null;
     }
     if (g.n < BDT_GMIN) { // 3명 미만 해산 + ★원천③ 해산 원인 분기: 토벌 격멸=영구 철거 / 자연 해산=존속
@@ -412,7 +435,8 @@ function daily(day) { // 하루 1회(villages econ 틱 직후): 위기 추적→
     let bg = null, bd = 1e18;
     for (const g of S.GANGS) { if (g._sup) continue; const d = Math.hypot(g.camp.cx - vil.ccx, g.camp.cy - vil.ccy); if (d < bd) { bd = d; bg = g; } }
     if (!bg || bd > BDT_SUP_R) continue;
-    const fN = Math.min(6, force), wep = Math.min(1, ((e.storage && e.storage.weapon) || 0) / Math.max(1, fN));
+    if (force < bg.n) { e._bdtSupCd = day + 10; continue; }   // ★[튜닝] per-entity 실전투: 열세면 자살행군 회피 — 전력 보강 대기(10일 후 재검)
+    const fN = Math.min(force, Math.max(BDT_SUP_N, Math.ceil(bg.n * 1.5))), wep = Math.min(1, ((e.storage && e.storage.weapon) || 0) / Math.max(1, fN));   // ★[튜닝] 갱 1.5배 파견(per-entity 격퇴 확보)
     bg._sup = { vilDbId: vil.dbId, eta: day + Math.max(1, Math.ceil(bd / 240)), force: fN, wep }; // 도보 강행군 ~240셀/일
     e._bdtSupCd = day + BDT_SUP_CD;
     log(day, `${vil.name} 토벌대 ${fN}명 파견 → 도적단#${bg.id}(거리 ${bd | 0}셀)`);
