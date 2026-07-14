@@ -54,7 +54,7 @@ const BDT_DIS_FALL = 5, BDT_DIS_FOOD = 3;                      // 해체: 순감
 const BDT_MIN_DAY = parseInt(process.env.BANDIT_MINDAY || '', 10) || 365; // 정착 보호기(BANDIT_MINDAY는 테스트 전용)
 const BDT_EXO_D = 15, BDT_EXO_GAP = 30;                        // 절망 이탈: 양동이 15+ → 30일마다 1명
 const BDT_UPKEEP = 0.5, BDT_STARVE = 10, BDT_CAP = 60;         // 일 소비 0.5/명·스톡0 10일→아사·비축 상한 60/명
-const BDT_RT_R = 30, BDT_RT_X = 0.15;                          // 교역로 30셀 내 은거지 = 길목(raidProb +0.15)
+const BDT_RT_R = 30, BDT_RT_X = 0.15, BDT_RAID_R = 450;                          // 교역로 30셀=길목(배치 점수) · ★BDT_RAID_R=450 약탈 사정거리(소굴서 원정 — 위험인지 발주가 흡수). 토벌 BDT_SUP_R=400 초과 → 원거리 소굴은 호위로 관리
 const BDT_CAMP_BUF = 40, BDT_FENCE_F = 0.5, BDT_FENCE_G = 0.25;// 은거지 완충(영토반경+40) · 장물 환산(식량류 50%/잡화 25%)
 const BDT_RISK_UP = 0.15, BDT_RISK_DK = 0.985;                 // _banditRisk: 피해 +0.15, 일 ×0.985(~46일 기억)
 const BDT_SUP_TH = 0.3, BDT_SUP_N = 3, BDT_SUP_CD = 40, BDT_SUP_R = 400; // 토벌: 위험≥0.3·전사+사냥꾼≥3·400셀·쿨 40일
@@ -246,7 +246,7 @@ function pairSync() { // 은거지↔마을쌍 경로 인접(30셀) 매핑 — �
         let hit = false;
         for (let k = 0; k < p.length; k++) {
           const dx = p[k].x / SZ - b.camp.cx, dy = p[k].y / SZ - b.camp.cy;
-          if (dx * dx + dy * dy <= BDT_RT_R * BDT_RT_R) { hit = true; break; }
+          if (dx * dx + dy * dy <= BDT_RAID_R * BDT_RAID_R) { hit = true; break; }   // ★약탈 사정거리(소굴서 원정)
         }
         if (hit) gs.push(b);
       }
