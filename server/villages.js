@@ -801,14 +801,15 @@ function setBodyPts(body, pts) { // 폴리라인 교체(누적길이 재계산) 
   for (let i = 1; i < pts.length; i++) { L += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y); cum[i] = L; }
   body.cum = cum; body.len = L; body.prog = 0; body.segIdx = 0;
 }
-function caravanPointAt(body, prog) { // 폴리라인 위 지점 — segIdx 단조 캐시(뒤로 가면 리셋)
+function caravanPointAt(body, prog, st) { // 폴리라인 위 지점 — segIdx 단조 캐시(뒤로 가면 리셋). ★st=캐시 보유자(기본 body — 호위는 각자 캐시로 단조 유지)
   const pts = body.pts, cum = body.cum, n = pts.length;
   if (prog <= 0 || n < 2) return { x: pts[0].x, y: pts[0].y };
   if (prog >= body.len) return { x: pts[n - 1].x, y: pts[n - 1].y };
-  let s = body.segIdx || 0;
+  st = st || body;
+  let s = st.segIdx || 0;
   if (s > n - 2 || cum[s] > prog) s = 0;
   while (s < n - 2 && cum[s + 1] < prog) s++;
-  body.segIdx = s;
+  st.segIdx = s;
   const t = (prog - cum[s]) / Math.max(1e-9, cum[s + 1] - cum[s]);
   return { x: pts[s].x + (pts[s + 1].x - pts[s].x) * t, y: pts[s].y + (pts[s + 1].y - pts[s].y) * t };
 }
@@ -818,6 +819,13 @@ function despawnCaravanNpc(body) { // canadia 검증 패턴(players/npcs delete 
     players.delete(body.pid);
     npcs.delete(body.pid);
     broadcast({ type: 'player_left', pid: body.pid });
+  }
+  if (body.escorts) for (const e of body.escorts) {   // ★[convoy 호위 실체] 호위 몸체 동반 회수(상인과 동일 패턴)
+    if (players.has(e.pid)) {
+      players.delete(e.pid);
+      npcs.delete(e.pid);
+      broadcast({ type: 'player_left', pid: e.pid });
+    }
   }
 }
 function spawnCaravanBody(c, now) {
@@ -848,8 +856,29 @@ function spawnCaravanBody(c, now) {
   body.arriveAt = Math.max(now + 1, econDayToMs(outbound ? c.arriveDay : c.returnArriveDay));
   body.pxPerDay = body.len / legDays;                        // 지연 환산용 명목 속도(이 캐러밴의 일정에서 역산)
   body.nomPxMs = body.len / Math.max(1, body.arriveAt - now); // 페이싱 상한(×4)의 기준
+  // ★[convoy 물리 행군 — 랩 dispatchTrades 동형(2026-07-16)] 호위 전사 실체 스폰: econ이 위험인지 pooling으로 산정한
+  //   c.escort만큼(시각 상한 5 — 랩 동형) 몸체를 상단 뒤 종대로 동행시킨다. econ 무접촉(전사 counts는 econ 소유 —
+  //   몸체는 아바타. 상인 빙의(Phase 4d-10)와 동일 패턴). 포식자 배선(host.getCaravans().escorts) 전제 몸체이기도 함.
+  //   평화 마을=escort 0=단독(현행 무변) · 위협 마을=대열(창발). 이동은 tickCaravanBodies._escortMarch(경로 추종 종대).
+  body.escorts = [];
+  {
+    const escN = Math.min(5, Math.max(0, c.escort | 0));
+    for (let ei = 0; ei < escN; ei++) {
+      const ep = state.deps.spawnNpc({
+        x: legA.ccx * SZ + SZ / 2, y: legA.ccy * SZ + SZ / 2,
+        name: '호위·전사',
+        villageId: `simvil_${fromVil.dbId}`, villageName: fromVil.name,
+        skipHouse: true,
+      });
+      state.deps.npcs.delete(ep.pid); // 일반 NPC AI 제외(빙의 — 상인 동형)
+      ep.simJob = 'warrior';          // 클라 표기(§4A simJob 메타)
+      ep.simCaravan = true;           // zone 이동루프 제외 — 이중 이동 방지(상인 동형)
+      ep.simVillageId = fromVil.dbId;
+      body.escorts.push({ pid: ep.pid, segIdx: 0, pinH: ep.hunger, pinT: ep.thirst });
+    }
+  }
   state.caravanBodies.set(c.id, body);
-  console.log(`[${state.zoneId}] 🐂 캐러밴#${c.id} 출발: ${c.from.name}→${c.to.name} ${c.giveRes}×${Math.round(c.giveAmt)} 호위${c.escort} — 경로 ${pts.length}정점 ${Math.round(body.len)}px ${legDays}게임일(econ d${c.departDay}→d${c.arriveDay})`);
+  console.log(`[${state.zoneId}] 🐂 캐러밴#${c.id} 출발: ${c.from.name}→${c.to.name} ${c.giveRes}×${Math.round(c.giveAmt)} 호위${c.escort}(실체 ${body.escorts.length}) — 경로 ${pts.length}정점 ${Math.round(body.len)}px ${legDays}게임일(econ d${c.departDay}→d${c.arriveDay})`);
   return true;
 }
 function startReturnLeg(body, now) { // 도착 머묾(linger) 종료 → 귀환 출발
@@ -957,12 +986,13 @@ function tickCaravanBodies(now) {
     if (p.hp <= 0) { p.vx = 0; p.vy = 0; continue; }      // 늑대 등 사망 — 부활 후 아래 경로 스냅으로 복귀
     if (body.phase === 'linger') {
       p.vx = 0; p.vy = 0;
+      _escortMarch(body, dtMs, players);   // ★[convoy] 머묾 중에도 호위는 후미 정위치로 수렴·정지
       if (now >= body.lingerUntil) startReturnLeg(body, now);
       continue;
     }
     const c = body.c;
     const remainPx = body.len - body.prog;
-    if (remainPx <= 0.5) { p.vx = 0; p.vy = 0; continue; } // 종점 대기 — econ 경계 처리(sync)가 상태 전이/회수
+    if (remainPx <= 0.5) { p.vx = 0; p.vy = 0; _escortMarch(body, dtMs, players); continue; } // 종점 대기 — econ 경계 처리(sync)가 상태 전이/회수
     // 테스트 훅: 가상 차단 1회(재경로 로그) 또는 강제 고립 1회 — 운영(env 무설정) 완전 무경로
     if (CARAVAN_BLOCKTEST && !state._blockTested && body.phase === 'outbound' && body.prog > body.len * 0.25) {
       state._blockTested = true;
@@ -1003,6 +1033,24 @@ function tickCaravanBodies(now) {
     p.vx = (next.x - p.x) / dtMs * 1000; p.vy = (next.y - p.y) / dtMs * 1000; // 걷기 모션용(클라 facing)
     p.x = next.x; p.y = next.y; // 경로가 위치의 진실 — 외부 이탈(부활 등)도 다음 틱에 스냅 복귀
     if (state.roads) state.roads.stampEntityPx(p, p.x, p.y);   // §16 답압(캐러밴 — 셀 변경 시만. 교역로가 길이 된다)
+    _escortMarch(body, dtMs, players);   // ★[convoy] 호위 종대 갱신(상단 진행도 기준 후미 추종)
+  }
+}
+// ★[convoy 물리 행군 — 랩 동형] 호위 종대: 상단 진행도 뒤 20px(≈0.6칸) 간격으로 같은 경로를 추종(단일 종대 — 좁은 길 고증).
+//   각자 segIdx 캐시(e)로 caravanPointAt 단조 스캔 유지(O(1) 상각 — 상인 캐시 공유 시 매 틱 리셋 스캔이라 분리).
+//   진행도가 20(i+1)px 미만이면 출발점 대기 → 상단이 앞서 나가며 한 명씩 뒤따라 나감(회관 집결→순차 출발 연출이 공짜로 창발).
+//   경로가 위치의 진실(상인 동형): 재라우팅·귀환(setBodyPts)도 진행도 추종이라 추가 처리 불요. 사망(늑대 등)=정지, 부활 후 스냅 복귀.
+function _escortMarch(body, dtMs, players) {
+  const list = body.escorts;
+  if (!list || !list.length) return;
+  for (let i = 0; i < list.length; i++) {
+    const e = list[i], ep = players.get(e.pid);
+    if (!ep) continue;
+    ep.hunger = e.pinH; ep.thirst = e.pinT;   // 원정 중 게이지 고정(상인 pinHunger 동형)
+    if (ep.hp <= 0) { ep.vx = 0; ep.vy = 0; continue; }
+    const tp = caravanPointAt(body, Math.max(0, body.prog - 20 * (i + 1)), e);
+    ep.vx = (tp.x - ep.x) / dtMs * 1000; ep.vy = (tp.y - ep.y) / dtMs * 1000;   // 걷기 모션(클라 facing)
+    ep.x = tp.x; ep.y = tp.y;
   }
 }
 // 게임일 경계(econ 틱 직후) — econ 캐러밴 집합과 실체 대조: 스폰/상태 전이/회수.
