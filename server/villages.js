@@ -88,6 +88,7 @@ const MIN_SPACING_PX = 12000; // 마을 간 최소 간격 — pickSeedVillages �
 const PX_PER_ECON = SZ / 2.5;   // econ 좌표(셀×2.5) 1단위 = 12.8px — c.distance↔픽셀 환산(init의 ev.coord 스케일과 동일)
 const CARAVAN_BODY_MAX = Math.max(0, parseInt(process.env.VILLAGE_CARAVAN_MAX || '60', 10)); // 실체 상한 — 초과분은 econ만(canadia '상인 없으면 시각 생략' 선례)
 const CARAVAN_LINGER_DAY_FRAC = 1 / 24;      // 도착 후 머묾 = 1게임시간
+let PathCore = null;   // ★[경로 통일 2026-07-17] sim/path-core.js 정본(랩·서버 공용) — 첫 교역로 계산 때 lazy require(sim/* 로드 규약 준수)
 const CARAVAN_REPAIR_COOLDOWN_MS = 2000;     // 로컬 재경로 최소 간격(NPC A* 2초 간격 규칙과 동일)
 const CARAVAN_REPAIR_LOOKAHEAD_PX = 480;     // 차단 시 우회 목표 = 전방 480px(15셀) 경로 정점
 const CARAVAN_ISOLATE_FAILS = 3;             // 재경로 연속 실패 → 완전 고립 판정(§5.5b 2단계)
@@ -145,7 +146,12 @@ function makeTerrainAdapter(terrain, ZONE, deps) {
   const isBlocked = (cx, cy) => {
     const x = px(cx), y = px(cy);
     if (x < 0 || y < 0 || x >= W || y >= H) return true;
-    return deps.isTerrainBlockedLocal(x, y); // 물+바위+해안 water tiles (zone.js 305행)
+    if (!deps.isTerrainBlockedLocal(x, y)) return false; // 물+바위+해안 water tiles (zone.js 305행)
+    // ★[경로 통일 규칙 2026-07-17] 물 = 차단 + 다리 칸만 통행(다리는 맵에 만들어두는 사물 — 사용자 확정).
+    //   차단 사유가 '물'이고 그 칸이 다리면 통행 — 바위는 다리로 못 덮음. deps.isBridgeLocal은 다리 층이
+    //   생기면 zone.js가 주입(현재 미주입=기존과 완전 동일 동작). 교역로·거리행렬·레이아웃이 전부 이 훅 하나를 공유.
+    if (deps.isBridgeLocal && deps.isWaterTileLocal(x, y) && deps.isBridgeLocal(x, y)) return false;
+    return true;
   };
   const isWater = (cx, cy) => {
     const x = px(cx), y = px(cy);
@@ -734,38 +740,21 @@ function computeRoutePts(x0, y0, x1, y1) {
   };
   const si = snap(x0, y0), ti = snap(x1, y1);
   if (si < 0 || ti < 0) return null;
-  const tx = ti % gw, ty = (ti / gw) | 0;
-  R.gen++;
-  const { g, came, stamp } = R, gen = R.gen;
-  const H = (x, y) => { const dx = Math.abs(x - tx), dy = Math.abs(y - ty); return (dx > dy ? 10 * (dx - dy) + 14 * dy : 10 * (dy - dx) + 14 * dx) * 10; }; // octile ×10(할인 정수화 스케일. ★§16 할인<1로 h 소폭 비허용 — 랩 5007 '교역로는 근사로 충분' 계약 승계)
-  const heap = []; // {f,g,i} 이진 힙 — 탐색은 회랑 규모(휴리스틱)
-  const hpush = (n) => { heap.push(n); let c = heap.length - 1; while (c > 0) { const p = (c - 1) >> 1; if (heap[p].f <= heap[c].f) break; const t = heap[p]; heap[p] = heap[c]; heap[c] = t; c = p; } };
-  const hpop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let c = 0; for (;;) { const l = 2 * c + 1, r = 2 * c + 2; let m = c; if (l < heap.length && heap[l].f < heap[m].f) m = l; if (r < heap.length && heap[r].f < heap[m].f) m = r; if (m === c) break; const t = heap[m]; heap[m] = heap[c]; heap[c] = t; c = m; } } return top; };
-  g[si] = 0; stamp[si] = gen; came[si] = -1;
-  hpush({ f: H(si % gw, (si / gw) | 0), g: 0, i: si });
-  const DIRS = [[1, 0, 100], [-1, 0, 100], [0, 1, 100], [0, -1, 100], [1, 1, 140], [1, -1, 140], [-1, 1, 140], [-1, -1, 140]];   // ×10 스케일(§16 할인 정수화 — 93/87·130/122)
+  // ★[경로 통일 2026-07-17] 탐색 본체 = sim/path-core.js routePath(랩 tradePath와 같은 정본 — 직선 편향·코너컷 금지·100/140).
+  //   기존 계약 전부 유지: isBlk lazy 메모(R.blk) · §16 답압 할인 costMul('근사로 충분' — h 무할인 octile) ·
+  //   gen-스탬프 재사용 버퍼(R의 g/came/stamp를 scratch로 그대로 공유) · maxPops 250000 예산 가드.
+  if (!PathCore) PathCore = require('../sim/path-core.js');
+  if (!R.sc) R.sc = { w: gw, h: gh, g: R.g, came: R.came, stamp: R.stamp, gen: R.gen | 0 };
   const RD = state.roads;   // §16 답압 길 A* 스텝 할인(코스 그리드 coarse 등급 — 길 없으면 전부 ×1 = 기존 경로 그대로)
-  let pops = 0, found = false;
-  while (heap.length) {
-    const cur = hpop();
-    if (stamp[cur.i] === gen && cur.g !== g[cur.i]) continue; // stale(lazy 삭제)
-    if (cur.i === ti) { found = true; break; }
-    if (++pops > 250000) break; // 예산 가드(도달 불능쌍은 행렬이 이미 걸러 정상 케이스 아님)
-    const x = cur.i % gw, y = (cur.i / gw) | 0;
-    for (const [dx, dy, w] of DIRS) {
-      const nx = x + dx, ny = y + dy;
-      if (isBlk(nx, ny)) continue;
-      if (dx && dy && (isBlk(x + dx, y) || isBlk(x, y + dy))) continue; // 대각 코너 절단 금지(행렬·랩과 동일)
-      const ni = ny * gw + nx, ng = cur.g + (RD ? Math.round(w * RD.courseCostMul(nx, ny)) : w);
-      if (stamp[ni] !== gen || ng < g[ni]) { stamp[ni] = gen; g[ni] = ng; came[ni] = cur.i; hpush({ f: ng + H(nx, ny), g: ng, i: ni }); }
-    }
-  }
-  if (!found) return null;
-  const nodes = []; let cur2 = ti;
-  while (cur2 >= 0) { nodes.push(cur2); cur2 = came[cur2]; }
-  nodes.reverse();
+  const nodesP = PathCore.routePath(si % gw, (si / gw) | 0, ti % gw, (ti / gw) | 0, {
+    blocked: isBlk,
+    costMul: RD ? ((x, y) => RD.courseCostMul(x, y)) : null,
+    maxPops: 250000,
+    scratch: R.sc,
+  });
+  if (!nodesP) return null;
   const pts = [{ x: x0, y: y0 }];
-  for (const i of nodes) pts.push({ x: (i % gw) * DIST_STEP * SZ + half * SZ + SZ / 2, y: ((i / gw) | 0) * DIST_STEP * SZ + half * SZ + SZ / 2 });
+  for (const n of nodesP) pts.push({ x: n.x * DIST_STEP * SZ + half * SZ + SZ / 2, y: n.y * DIST_STEP * SZ + half * SZ + SZ / 2 });
   pts.push({ x: x1, y: y1 });
   return pts;
 }

@@ -44,6 +44,7 @@ if (CHILD_SEED != null) {
   global.eval('global.buildTerrain=' + BT.replace(/^function buildTerrain/, 'function'));
   global.eval(VL.replace('const VillageLayout=', 'global.VillageLayout='));
   global.frame = function () { global.nowMs += 16; const cb = global.rafCb; global.rafCb = null; if (cb) cb(global.nowMs); };
+  global.PathCore = require('./path-core.js');   // ★[경로 통일] 랩 bfsPath/tradePath가 위임하는 정본 — 그랩 블록엔 인라인(PATH-CORE 마커) 미포함이라 여기서 주입
   global.eval(PC.replace(/^function pickCenter/, 'global.pickCenter=function') + '\n' + BFS.replace(/^function bfsPath/, 'global.bfsPath=function') + '\n' + SP.replace(/^function setPath/, 'global.setPath=function') + '\n' + TP + '\n' + LIFE +
     "\nglobal.run=function(seed){TR=buildTerrain(seed);document.getElementById('seed').value=String(seed);console.log=function(){};lifeInit();lifeGM=L_START*1440;lifeLast=0;global.nowMs=0;lifeOn=true;global.rafCb=lifeLoop;var bad=0,initVil=VILS.length,pend=[];for(var fr=0;fr<(global.__frames||1500);fr++){global.frame();for(var q=pend.length-1;q>=0;q--){if(pend[q].fr<=fr){var vv=VILS[pend[q].k];if(vv&&vv.agents.length!==vv.econ.npcs.length)bad++;pend.splice(q,1);}}if(fr%300===0)for(var k=0;k<VILS.length;k++)if(VILS[k].agents.length!==VILS[k].econ.npcs.length)pend.push({fr:fr+5,k:k});}console.log=global.__log;return {bad:bad,initVil:initVil,VILS:VILS,world:ECON_WORLD};};");
   global.__frames = CHILD_FRAMES;
