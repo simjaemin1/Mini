@@ -116,5 +116,26 @@ const shape = p => { let s = ''; for (let i = 1; i < p.length; i++) { const dx =
   const onRoad = pr ? pr.filter(n => n.y === 0).length : 0, onRoad0 = p0 ? p0.filter(n => n.y === 0).length : 0;
   ok(onRoad >= 9 && onRoad > onRoad0, '길 스냅(길 위 ' + onRoad0 + '→' + onRoad + '노드): ' + shape(pr));
 }
+// [10] ★왕복 대칭(질의 정규화 — 사용자 지적): a→b == reverse(b→a) 완전 일치, 랜덤 장애물 지형 포함
+{
+  let mism = 0;
+  for (let t = 0; t < 150; t++) {
+    const W = 26, blk = new Set(); const rnd = (() => { let s = t * 48611 + 3; return () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296; })();
+    for (let i = 0; i < 100; i++) blk.add(((rnd() * W) | 0) + ',' + ((rnd() * W) | 0));
+    const ax = 1 + ((rnd() * 5) | 0), ay = 1 + ((rnd() * 5) | 0), bx = W - 2 - ((rnd() * 5) | 0), by = W - 2 - ((rnd() * 5) | 0);
+    blk.delete(ax + ',' + ay); blk.delete(bx + ',' + by);
+    const bs = (fx, fy, tx, ty) => tx < 0 || ty < 0 || tx >= W || ty >= W || blk.has(tx + ',' + ty);
+    const B = (x, y) => x < 0 || y < 0 || x >= W || y >= W || blk.has(x + ',' + y);
+    const eq = (p, q) => (p === null && q === null) || (p && q && p.length === q.length && p.every((n, i) => n.x === q[i].x && n.y === q[i].y));
+    const rev = p => p ? p.slice().reverse() : null;
+    if (!eq(PC.localPath(ax, ay, bx, by, { blockedStep: bs }), rev(PC.localPath(bx, by, ax, ay, { blockedStep: bs })))) mism++;
+    if (!eq(PC.routePath(ax, ay, bx, by, { blocked: B }), rev(PC.routePath(bx, by, ax, ay, { blocked: B })))) mism++;
+  }
+  ok(mism === 0, '왕복 대칭 300쌍 불일치 ' + mism);
+  const go = PC.localPath(0, 0, 5, 5, { blockedStep: () => false }), back = PC.localPath(5, 5, 0, 0, { blockedStep: () => false });
+  const ks = p => new Set(p.map(n => n.x + ',' + n.y));
+  let common = 0; for (const x of ks(go)) if (ks(back).has(x)) common++;
+  ok(common === go.length, '45° 왕복 완전 동일 칸(' + common + '/' + go.length + ')');
+}
 console.log(fail === 0 ? `PASS ${pass}/${pass + fail}` : `FAIL ${fail}/${pass + fail}`);
 process.exit(fail === 0 ? 0 : 1);

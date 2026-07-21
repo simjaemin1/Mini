@@ -48,6 +48,11 @@ function _perp(x, y, sx, sy, gx, gy, invLen) {   // 시작→목표 직선까지
 // ── localPath: 4방 균일비용 A*(맨해튼×100 + 직선 편향) ──
 //   랩 bfsPath(L자)·서버 findPath(계단)를 대체 — 길이는 동일 최단, 모양만 직선 근사로 통일.
 function localPath(sx, sy, gx, gy, opts) {
+  // ★[왕복 대칭 — 사용자 지적 "돌아올 땐 같은 경로여야"] 질의 정규화: 끝점을 사전순(x, 다음 y)으로 정렬해
+  //   항상 한 방향으로만 계산 후 필요시 뒤집기 → A→B와 B→A가 동률·장애물 불문 항상 정확히 같은 칸.
+  //   (진행방향 기준 타이브레이크는 왕복이 거울상 복도가 되는 결함 — 정규화가 근본 해소. 답압 수렴도 왕복 2배 가속.)
+  //   전제: blockedStep·prefer가 방향대칭(현 호출자 전부 셀/벽 기반 = 충족). 일방통행 간선이 생기면 재검토.
+  if (gx < sx || (gx === sx && gy < sy)) { const p = localPath(gx, gy, sx, sy, opts); return p ? p.reverse() : null; }
   opts = opts || {};
   const blockedStep = opts.blockedStep || (() => false);
   const prefer = opts.prefer || null;
@@ -92,6 +97,9 @@ function localPath(sx, sy, gx, gy, opts) {
 // ── routePath: 8방 100/140 A*(octile + 직선 편향 + costMul) — 코너컷 금지 ──
 //   랩 tradePath(√2·물22배)·서버 computeRoutePts(140/100·답압)를 대체. 물·다리·답압은 콜백 소관.
 function routePath(sx, sy, gx, gy, opts) {
+  // ★[왕복 대칭] localPath와 동일한 질의 정규화 — 방향 무관 동일 회랑(서버 getRoute·랩 getTradePath의 쌍 캐시와도 정합:
+  //   캐시가 한 방향만 저장·역방향은 reverse하는 기존 계약이 이제 캐시 없이 불러도 성립).
+  if (gx < sx || (gx === sx && gy < sy)) { const p = routePath(gx, gy, sx, sy, opts); return p ? p.reverse() : null; }
   opts = opts || {};
   const blocked = opts.blocked || (() => false);
   const costMul = opts.costMul || null;
