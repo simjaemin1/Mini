@@ -137,5 +137,30 @@ const shape = p => { let s = ''; for (let i = 1; i < p.length; i++) { const dx =
   let common = 0; for (const x of ks(go)) if (ks(back).has(x)) common++;
   ok(common === go.length, '45° 왕복 완전 동일 칸(' + common + '/' + go.length + ')');
 }
+// [11] smoothPath(이동 직선화): 열린 지형 1세그먼트·장애물 꺾임 보존·앵커 경유·왕복 대칭·통행 합법성
+{
+  const open4 = (x, y) => false;
+  const pass_ = (blk) => (ax, ay, bx, by) => { const n = Math.max(Math.abs(bx - ax), Math.abs(by - ay)) | 0; for (let i = 1; i <= n; i++) { const x = Math.round(ax + (bx - ax) * i / n), y = Math.round(ay + (by - ay) * i / n); if (blk(x, y)) return false; } return true; };
+  // 열린 지형: (0,0)→(3,6) 계단 → 웨이포인트 2개(직선 하나)
+  const st = PC.localPath(0, 0, 3, 6, { blockedStep: () => false });
+  const sm = PC.smoothPath(st, pass_(() => false));
+  ok(sm.length === 2 && sm[0].x === 0 && sm[1].x === 3 && sm[1].y === 6, '열린 지형 1세그먼트(' + sm.length + '웨이포인트)');
+  // 장애물: 세로벽 x=5(y<=8 틈 y=9) — 꺾임 보존 + 각 세그먼트 통행 합법
+  const blk = (x, y) => x === 5 && y <= 8;
+  const st2 = PC.localPath(0, 0, 10, 0, { blockedStep: (f, fy, tx, ty) => tx < -2 || ty < -2 || tx > 14 || ty > 14 || blk(tx, ty) });
+  const cp = pass_((x, y) => blk(x, y));
+  const sm2 = PC.smoothPath(st2, cp);
+  let legal = sm2.length >= 3;
+  for (let i = 1; i < sm2.length; i++) if (!cp(sm2[i - 1].x, sm2[i - 1].y, sm2[i].x, sm2[i].y)) legal = false;
+  ok(legal && sm2.length < st2.length, '장애물 꺾임 보존·세그먼트 합법(' + st2.length + '→' + sm2.length + ')');
+  // 앵커(길): y=0 행 길 → 길 노드 전부 보존
+  const st3 = PC.localPath(0, 0, 8, 0, { blockedStep: () => false, prefer: (x, y) => (y === 0 ? 1 : 0) });
+  const sm3 = PC.smoothPath(st3, pass_(() => false), { keep: (x, y) => y === 0 });
+  ok(sm3.length === st3.length, '길 앵커 전부 경유(밀집 유지 ' + sm3.length + '=' + st3.length + ')');
+  // 왕복 대칭: smooth(a→b) == reverse(smooth(b→a))
+  const f1 = PC.smoothPath(st2, cp), b1 = PC.smoothPath(st2.slice().reverse(), cp);
+  const eqr = f1.length === b1.length && f1.every((n, i) => n.x === b1[b1.length - 1 - i].x && n.y === b1[b1.length - 1 - i].y);
+  ok(eqr, 'smooth 왕복 대칭');
+}
 console.log(fail === 0 ? `PASS ${pass}/${pass + fail}` : `FAIL ${fail}/${pass + fail}`);
 process.exit(fail === 0 ? 0 : 1);

@@ -149,6 +149,32 @@ function routePath(sx, sy, gx, gy, opts) {
   });
 }
 
-const PathCore = { localPath, routePath, ORTHO, DIAG };
+// ── smoothPath: 이동 직선화(스트링 풀링) — 격자 경로 → 몸이 걷는 웨이포인트만 직선 병합 ──
+//   ★[사용자 지적 "계단식으로 움직이는 거 아냐?"] 탐색·다리개통·답압쌍 같은 소비자는 밀집 경로를 그대로 쓰고,
+//   에이전트에게 주는 걷기 경로만 이걸로 병합 → (1,2) 방향 ENNENN 계단이 열린 지형에선 세그먼트 1개(진짜 사선 벡터)가 된다.
+//   canPass(ax,ay,bx,by) — 직선 통행 판정(호출측 lineClear — 기존 직진 허용 게이트와 동일 규칙 = 일관성).
+//   opts.keep(x,y) — true 노드는 병합 앵커(반드시 경유): 길 칸에 쓰면 길 구간은 길 모양대로 걷는다(배속 ×1.10/1.15·답압 강화 루프 유지).
+//   ★왕복 대칭: 끝점 사전순 정규화 프레임에서 병합 → smooth(a→b) == reverse(smooth(b→a)) 항상.
+function smoothPath(path, canPass, opts) {
+  if (!path || path.length < 3) return path ? path.slice() : path;
+  opts = opts || {};
+  const keep = opts.keep || null;
+  const a0 = path[0], b0 = path[path.length - 1];
+  const rev = (b0.x < a0.x || (b0.x === a0.x && b0.y < a0.y));
+  const p = rev ? path.slice().reverse() : path.slice();
+  const out = [p[0]];
+  let i = 0;
+  while (i < p.length - 1) {
+    let lim = p.length - 1;
+    if (keep) { for (let k = i + 1; k < p.length - 1; k++) { if (keep(p[k].x, p[k].y)) { lim = k; break; } } }   // 다음 앵커까지가 병합 상한(앵커엔 정확히 착지)
+    let j = i + 1;
+    while (j < lim && canPass(p[i].x, p[i].y, p[j + 1].x, p[j + 1].y)) j++;
+    out.push(p[j]);
+    i = j;
+  }
+  return rev ? out.reverse() : out;
+}
+
+const PathCore = { localPath, routePath, smoothPath, ORTHO, DIAG };
 if (typeof module !== 'undefined' && module.exports) module.exports = PathCore;
 if (typeof window !== 'undefined') window.PathCore = PathCore;
