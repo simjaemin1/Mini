@@ -412,6 +412,30 @@ function _makeHandle(ctx){
     get terrain(){return ctx.terrain;}, get playerMode(){return ctx.playerMode;}, get keys(){return ctx.keys;},
     // setter(ctx에)
     setKeys(k){ctx.keys=k||{};}, setCmdHeading(h){ctx.cmdHeading=h;}, setPlayerMode(v){ctx.playerMode=!!v;},
+    // ★[제3자 참전 삽입 구조 — 사용자 지시 "중립 난입·원군을 언제든지 꽂을 수 있게"] addUnits(side, list, quality?):
+    //   진행 중 전투에 유닛 증원. list=[{type,x,y,face?,agent?,cmd?}] 로컬좌표(0~130). 반환=투입 수.
+    //   start·화살/돌 보급·챔프 플래그 동기(사상비·궤주 분모 정합). 결판 후(result)면 0. additive —
+    //   이 API를 안 부르는 기존 전투는 비트 동일(골든마스터 무영향). '적대 인식'은 측 선택으로 표현:
+    //   중립이 A를 공격하면 B측으로 투입(그 역도 동일) — 3진영 FFA는 battle-core 구조 확장(별도 설계).
+    addUnits(side, list, quality){
+      if((side!=='A'&&side!=='B')||!Array.isArray(list)||!list.length||ctx.result)return 0;
+      const CL=v=>v<0.5?0.5:(v>WORLD_W-0.5?WORLD_W-0.5:v);
+      const form=(ctx.sides[side]&&ctx.sides[side].form)||'line';
+      let n=0;
+      for(const it of list){ if(!it||!UNITS[it.type])continue;
+        spawn(ctx,side,it.type,CL(+it.x),CL(+it.y),form,quality||null);
+        const u=ctx.units[ctx.units.length-1];
+        if(it.face!=null)u.face=+it.face;
+        if(it.agent)u.agent=it.agent;
+        if(it.cmd)u.cmd=true;
+        ctx.sides[side].start++;
+        if(it.type==='archer')ctx.sides[side].arrows=(ctx.sides[side].arrows||0)+ARROWS_PER;
+        if(it.type==='slinger')ctx.sides[side].stones=(ctx.sides[side].stones||0)+STONES_PER;
+        if(it.type==='champion')ctx.sides[side].hadChamp=true;
+        n++;
+      }
+      return n;
+    },
   };
 }
 // createBattle(spec,opts) — 독립 인스턴스 생성. opts.rng/origin/heading 적용 → buildArmies → 핸들.
