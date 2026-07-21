@@ -1040,6 +1040,7 @@ function _escortMarch(body, dtMs, players) {
     const tp = caravanPointAt(body, Math.max(0, body.prog - 20 * (i + 1)), e);
     ep.vx = (tp.x - ep.x) / dtMs * 1000; ep.vy = (tp.y - ep.y) / dtMs * 1000;   // 걷기 모션(클라 facing)
     ep.x = tp.x; ep.y = tp.y;
+    if (state.roads) state.roads.stampEntityPx(ep, ep.x, ep.y);   // §16 답압(★호위도 길을 밟는다 — 상인 동형. 대열 5명이면 답압 5배 = 교역로가 더 빨리 길이 됨)
   }
 }
 // 게임일 경계(econ 틱 직후) — econ 캐러밴 집합과 실체 대조: 스폰/상태 전이/회수.
