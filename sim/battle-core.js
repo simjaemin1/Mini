@@ -207,6 +207,7 @@ const BC_KEY={champ:'champion', axe:'greataxe', spear:'spear', pike:'pike', dagg
 //   _grid·_cen 은 ctx 소속(동시 구동 시 격리). buildGrid/nearestEnemy/screened/frontBlocked/hurt 는 ctx 인자화.
 function dist2(a,b){const dx=a.x-b.x,dy=a.y-b.y;return dx*dx+dy*dy;}
 const BK=2.5;
+const SEP_CORE=0.5;   // ★[몸=단단한 하한 0.5m — 고증(성인 어깨폭)] 랩 정본 NPC_BODY와 수동 동기(battle-core는 독립 파일). 1.0m는 몸이 아니라 전투 간격(행동) — 압착 시 몸까지 압축, 그 밑은 불가
 function gkey(x,y){return ((Math.floor(x/BK)+256)*8192)+(Math.floor(y/BK)+256);}
 function buildGrid(ctx){ctx._grid.clear(); let ax=0,ay=0,an=0,bxx=0,byy=0,bn=0,aM=1e9,bM=1e9;
   for(const u of ctx.units){if(u.hp<=0)continue; const k=gkey(u.x,u.y); const c=ctx._grid.get(k); if(c)c.push(u); else ctx._grid.set(k,[u]);
@@ -365,10 +366,12 @@ function shoot(ctx,u,e){const D=UNITS[u.type]; const dist=Math.hypot(e.x-u.x,e.y
   const ang=Math.atan2(ly-u.y,lx-u.x)+(ctx.rng()-0.5)*2*scatter;
   const aDmg=u.atk!=null?u.atk:D.atk;   // ★궁수 품질: u.atk 설정 시 화살 피해 반영, 미설정이면 D.atk(전투실험실 동일)
   ctx.arrows.push({x:u.x,y:u.y,px:u.x,py:u.y,vx:Math.cos(ang)*D.arrowV,vy:Math.sin(ang)*D.arrowV,dmg:aDmg,side:u.side,range:D.ranged*1.5,trav:0,sh:u});}
-function sep(ctx,u,dt){let sx=0,sy=0,n=0; const bx=Math.floor(u.x/BK),by=Math.floor(u.y/BK);
+function sep(ctx,u,dt){let sx=0,sy=0,n=0,hxx=0,hyy=0,hn=0; const bx=Math.floor(u.x/BK),by=Math.floor(u.y/BK);
   for(let ix=bx-1;ix<=bx+1;ix++)for(let iy=by-1;iy<=by+1;iy++){const c=ctx._grid.get(((ix+256)*8192)+(iy+256)); if(!c)continue;
-    for(const o of c){if(o===u||o.hp<=0)continue; const dx=u.x-o.x,dy=u.y-o.y,d2=dx*dx+dy*dy; if(d2<1.0*1.0&&d2>1e-4){const d=Math.sqrt(d2);sx+=dx/d;sy+=dy/d;n++;}}}
+    for(const o of c){if(o===u||o.hp<=0)continue; const dx=u.x-o.x,dy=u.y-o.y,d2=dx*dx+dy*dy; if(d2<1.0*1.0&&d2>1e-4){const d=Math.sqrt(d2);sx+=dx/d;sy+=dy/d;n++;
+      if(d<SEP_CORE){hxx+=dx/d*(SEP_CORE-d)*0.5;hyy+=dy/d*(SEP_CORE-d)*0.5;hn++;}}}}   // ★[몸 하한] 지름 0.5m 침범 위치보정 누적(1.0m 소프트 간격과 별개 층)
   if(n){u.x+=sx/n*1.0*dt; u.y+=sy/n*1.0*dt;}
+  if(hn){const hl=Math.hypot(hxx,hyy); if(hl>1e-9){const hk=Math.min(1,Math.max(1.0*dt,0.08)/hl); u.x+=hxx*hk; u.y+=hyy*hk;}}   // 몸 겹침 해소 — dt 무관 최소 0.08m/스텝(압착에도 관통 불가), 나무·건물 클램프가 뒤에서 지형 보정
   if(ctx.trees.length)for(const t of ctx.trees){const dx=u.x-t.x,dy=u.y-t.y,d2=dx*dx+dy*dy,rr=t.r+0.5; if(d2<rr*rr&&d2>1e-4){const d=Math.sqrt(d2);u.x=t.x+dx/d*rr;u.y=t.y+dy/d*rr;}}
   if(ctx.buildings.length)for(const b of ctx.buildings){const dx=u.x-b.x,dy=u.y-b.y,hx=b.w/2+0.45,hy=b.h/2+0.45; if(Math.abs(dx)<hx&&Math.abs(dy)<hy){const ox=hx-Math.abs(dx),oy=hy-Math.abs(dy);
     const gx=(u.tgt&&u.tgt.hp>0)?u.tgt.x:u.x, gy=(u.tgt&&u.tgt.hp>0)?u.tgt.y:u.y;
