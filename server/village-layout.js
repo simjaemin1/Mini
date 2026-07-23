@@ -16,7 +16,8 @@
 // =============================================================================
 (function () {
   const HOUSE_HALF = 2;        // 5×5 한옥 (중심 ±2)
-  const HOUSE_CAP_PER_FLOOR = 8;   // ★[4파 §19 움집 재동기] 6→8 — 랩 L_FLOORCAP=8과 쌍둥이(대형 수혈주거 확대가족 상한 추상: 침대 앵커 4곳 2인 밀집 취침 고증). 신규 시딩만 영향(econ housing과 무관 — 레이아웃 생성 산식 전용)
+  const HOUSE_CAP_PER_FLOOR = 8;   // ★[4파 §19 움집 재동기] 6→8 — 신규 시딩만 영향(econ housing과 무관 — 레이아웃 생성 산식 전용). ※랩은 고증 v2로 6명/채 선행(단층·침대 6) — 서버 6 재동기는 부지 12×12·침대·문 이관과 한 묶음(백로그)
+  const LAND_PER_HOUSE = 400;      // ★채당 영토 배분 400셀(구 '인당 50셀'=8명/채 시절의 400/채와 동치) — 영토 공식의 유일 정본: 채당 수용이 바뀌어도 취락:영토 비율 불변(랩 6명/채 전환 때 인구 기준 공식이 여유띠를 붕괴시킨 것의 서버 측 예방 동기)
 
   // 5×5 footprint가 전부 LAND인가
   function footprintLand(terrain, cx, cy) {
@@ -69,8 +70,8 @@
 
     // ── 논 = 농부 경작지 (sim jobCapacity.farmer 역산). 영토 = 논 + 동네 + 공유지. 크기 emergent.
     // ── 영토 = land.size(확장이 키움) × 스케일. 비옥도 무관 — 비옥도는 K(수용력)·산출만 올림. landSize 없으면 인구 비례 근사.
-    const target = Math.round(Math.min((1500 + pop * 50) * sizeMul, opts.maxCells || 1e9));  // 영토 = base 1500 + pop*50 (sublinear), 단 maxCells(R_max 도보거리)에서 cap → 그 뒤엔 층↑(밀집).
-    const numHousesEst = Math.max(2, Math.min(Math.round(pop / 5), Math.round(target / 560)));  // 집 부지 예약 = 영토로 saturate(밀집=수직이라 집 수는 영토에 한정, pop/5로 무한↑ X → 인구 늘어도 농지 안 깎임)
+    const target = Math.round(Math.min((1500 + Math.ceil(pop / HOUSE_CAP_PER_FLOOR) * LAND_PER_HOUSE) * sizeMul, opts.maxCells || 1e9));  // 영토 = base 1500 + 필요 채수×LAND_PER_HOUSE(현행 8명/채선 구 pop×50과 동치 — ceil 잔차만), 단 maxCells(R_max 도보거리)에서 cap → 그 뒤엔 층↑(밀집).
+    const numHousesEst = Math.max(2, Math.min(Math.ceil(pop / HOUSE_CAP_PER_FLOOR), Math.round(target / 560)));  // 집 부지 예약 = 실제 필요 채수(구 pop/5 추정 폐기 — 용량 자동 연동)
     // 논 = 경작지 = 농업비중(fShare) × 가용영토. (비옥도는 논 '면적'이 아니라 같은 논의 '산출'을 올림)
     const farmTarget = Math.max(0, Math.round(fShare * (target - numHousesEst * 60) * 0.9));
 
@@ -227,7 +228,7 @@
     return best;
   }
 
-  const API = { generate, footprintLand, axisAt, nearestBank, HOUSE_HALF, HOUSE_CAP_PER_FLOOR };
+  const API = { generate, footprintLand, axisAt, nearestBank, HOUSE_HALF, HOUSE_CAP_PER_FLOOR, LAND_PER_HOUSE };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   if (typeof window !== 'undefined') window.VillageLayout = API;
 })();
