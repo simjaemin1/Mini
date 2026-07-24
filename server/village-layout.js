@@ -139,12 +139,12 @@
     const cap = () => houses.reduce((s, h) => s + h.floors * CAP, 0);
     const densify = () => { let t = null; for (const h of houses) if (h.floors < MAX_FLOORS && (!t || h.floors < t.floors)) t = h; if (t) { t.floors++; return true; } return false; };
     const shrink = () => { while (houses.length > 2 && cap() - houses[houses.length - 1].floors * CAP >= pop) houses.pop(); };
+    // ★[4파 §19 물가 회피 부지 재동기 — 랩 W_PEN_K/wDist 이식] 부지 가장자리~물 최소 체비셰프 거리 → K/d² 연속 페널티
+    //   (2셀 500·5셀 80·20셀 5점 — 문턱 없음): 하드 한계(+2셀 링 물 금지)는 farFromWater가 이미 소유 — 여기는 연속 비용만.
+    //   ★집촌 분기도 공용(랩 통일 동기): 구 방향 투영 2×toWater는 물 '방향'이면 강을 지나 멀어져도 계속 비싸져 물쪽 반구 전체에서 집이 지워지던 결함(집이 반대 반구에만 몰림).
+    const W_PEN_K = 2000;   // 랩 verbatim
+    const wDist = (x, y) => { let m = 99; if (!terrain.isWater) return m; for (let dx = -10; dx <= 10; dx++) for (let dy = -10; dy <= 10; dy++) if (terrain.isWater(x + dx, y + dy)) { const d = Math.max(Math.abs(dx), Math.abs(dy)) - HOUSE_HALF; if (d < m) m = d; } return m; };
     if (layout === 'shore') {
-      // ★[4파 §19 물가 회피 부지 재동기 — 랩 W_PEN_K/wDist 이식] 부지 가장자리~물 최소 체비셰프 거리 → K/d² 연속 페널티
-      //   (2셀 500·5셀 80·20셀 5점 — 문턱 없음): 강안 늘어서기는 유지하되 최전선일수록 급격히 비싸짐(침수 회피·자연제방 고증).
-      //   하드 한계(+2셀 링 물 금지)는 기존 farFromWater(±4 = 발자국 ±2 + 2링)가 이미 소유 — 여기는 연속 비용만 추가.
-      const W_PEN_K = 2000;   // 랩 5353 verbatim
-      const wDist = (x, y) => { let m = 99; if (!terrain.isWater) return m; for (let dx = -10; dx <= 10; dx++) for (let dy = -10; dy <= 10; dy++) if (terrain.isWater(x + dx, y + dy)) { const d = Math.max(Math.abs(dx), Math.abs(dy)) - HOUSE_HALF; if (d < m) m = d; } return m; };
       const cand = [];
       for (const k of own) { const [x, y] = k.split(',').map(Number); if (Math.abs(x - ccx) <= 6 && Math.abs(y - ccy) <= 6) continue; if (!fpInTerr(x, y)) continue; const inland = Math.abs((x - ccx) * w.x + (y - ccy) * w.y), along = Math.abs((x - ccx) * perp.x + (y - ccy) * perp.y); const wdv = wDist(x, y); cand.push({ cx: x, cy: y, d: inland * 3 + along + (wdv < 99 ? W_PEN_K / Math.max(1, wdv * wdv) : 0) }); }
       cand.sort((a, b) => a.d - b.d);
@@ -175,10 +175,10 @@
       }
       shrink();
     } else {
-      // 집촌(集村): 회관 둘레 컴팩트 취락. 물(논) 반대쪽(뭍쪽)으로 우선 확장 → 동네가 논 쪽으로 안 자람(배산임수: 논 앞, 동네 뒤).
+      // 집촌(集村): 회관 둘레 컴팩트 취락. 물가만 K/d²로 비쌈(방향 무관, 랩 통일) — 논·강변 회피는 연속 비용, 배산임수는 지형에서 창발.
       const SETT_GAP = opts.settGap != null ? opts.settGap : 11;   // 집 중심 최소 간격(겹침 방지 + 컴팩트)
       const hc = [];
-      for (const k of own) { const [x, y] = k.split(',').map(Number); if ((x & 1) || (y & 1)) continue; const r = Math.hypot(x - ccx, y - ccy); if (r < 8) continue; if (onField(x, y) || !fpInTerr(x, y) || !farFromWater(x, y)) continue; const toWater = Math.max(0, (x - ccx) * wdx + (y - ccy) * wdy); hc.push([x, y, r + 2 * toWater]); }   // 회관(3×3)+집마당과 안 겹치게 8칸 띄움. 농지 회피 + 물쪽 약한 패널티. 반경 제한 없음 → 집 계속 늘어남.
+      for (const k of own) { const [x, y] = k.split(',').map(Number); if ((x & 1) || (y & 1)) continue; const r = Math.hypot(x - ccx, y - ccy); if (r < 8) continue; if (onField(x, y) || !fpInTerr(x, y) || !farFromWater(x, y)) continue; const wdv = wDist(x, y); hc.push([x, y, r + (wdv < 99 ? W_PEN_K / Math.max(1, wdv * wdv) : 0)]); }   // 회관(3×3)+집마당과 안 겹치게 8칸 띄움. 농지 회피 + ★물가 연속 페널티 K/d²(랩 집촌과 통일 — 방향 투영 결함 제거). 반경 제한 없음 → 집 계속 늘어남.
       hc.sort((a, b) => a[2] - b[2]);   // (물반대·회관근접) 우선
       const spaced = (x, y) => { for (const h of houses) if (Math.hypot(h.cx - x, h.cy - y) < SETT_GAP) return false; return true; };
       for (const h of (opts.existingHouses || [])) if (fpInTerr(h.cx, h.cy)) houses.push({ cx: h.cx, cy: h.cy, floors: h.floors || 1 });   // 기존 집 유지(안 옮김)
