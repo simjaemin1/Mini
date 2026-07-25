@@ -460,7 +460,7 @@ function buildStructure(db, vilDbId, ccx, ccy, half, floors, ownerId, ownerName,
 function materializeVillageStructures(db, vil, bRows) {
   const ownerId = `npc_simvil_${vil.dbId}`;
   let rows = 0, houses = 0;
-  // 회관 — 9×9(±4) 2층, 남쪽 3칸 문. 레이아웃 계약(village-layout: 집 r≥8·농지 회관반경 6 제외)상 비겹침.
+  // 회관 — 9×9(±4) 2층, 남쪽 3칸 문. 레이아웃 계약(village-layout ★전부 원 정본: 집 HALL_CLEAR=16.5·농지 hallFarmBlock r12 제외 — 회관 9×9는 마당 원 r10 안)상 비겹침.
   rows += buildStructure(db, vil.dbId, vil.ccx, vil.ccy, 4, 2, ownerId, `${vil.name} 회관`, 1);
   for (const b of bRows) {
     if (b.type !== 'house') continue;
