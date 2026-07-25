@@ -500,7 +500,7 @@ const CROP_GROW_MS = 60 * 1000;
 // 14.50: door도 닫혔을 때 blocking. fence는 cell 차지하지만 통과 가능 (사용자 의도: 시야는 통과, collider만 차단).
 const BLOCKING_BUILDINGS = new Set(['wall', 'fence', 'door']);
 // 14.49-e2: 층 높이 2배 (32 → 64). 벽·계단도 같이 2배.
-const BUILDING_HEIGHT = { wall: 64, floor: 4, fence: 32, door: 64, chest: 24, campfire: 20, farmland: 4, stair: 64, vtile: 2, guild_granary: 40, granary: 40 };   // ★실체화 동기: 지면 타일·곳간
+const BUILDING_HEIGHT = { wall: 64, floor: 4, fence: 32, door: 64, chest: 24, campfire: 20, farmland: 4, stair: 64, vtile: 2, guild_granary: 40, granary: 40, hut_site: 4, hut: 40 };   // ★실체화 동기: 지면 타일·곳간·움집터
 // Phase 14.25: chest 저장 가능 아이템 (모든 자원 + 도구 + 음식)
 const CHEST_ALLOWED_ITEMS = new Set([
   'wood', 'stone', 'ore', 'herb',
@@ -508,6 +508,7 @@ const CHEST_ALLOWED_ITEMS = new Set([
   'berry_jam', 'water_bottle', 'seed_berry',
   'fish', 'fish_cooked',            // Phase 5-econ-game-2: 어부 어획물
   'axe', 'pickaxe', 'sword',
+  'plank', 'pillar', 'rafter', 'thatch',   // ★건축재(판자는 기존 누락 보수 — 조합법 체계와 함께 저장 허용)
 ]);
 // Phase 14.14: 건축물 maxHp — 손상=상태 전이 (영구파괴 X, 수리 가능)
 const BUILDING_MAX_HP = { wall: 80, fence: 30, chest: 50, campfire: 20, farmland: 10, stair: 60, floor: 40 };
@@ -571,6 +572,10 @@ const RECIPES = {
 // 14.50: 자원 변환 레시피 (도구 필요). saw로 통나무→판자.
 const ITEM_RECIPES = {
   plank:   { from: { wood: 1 }, to: { plank: 2 }, requiresTool: 'saw', label: '판자 (통나무 1 → 판자 2)' },
+  // ★[사용자 확정 — 건축 조합법 고증] 움집(수혈주거) 축조 중간재: 발굴 근거 자재 체계(굴립주·서까래·이엉).
+  pillar:  { from: { wood: 3 }, to: { pillar: 1 },  requiresTool: 'axe', label: '기둥 (통나무 3 → 굴립주 기둥 1)' },
+  rafter:  { from: { wood: 1 }, to: { rafter: 2 },  requiresTool: 'axe', label: '서까래 (통나무 1 → 서까래 2)' },
+  thatch:  { from: { fiber: 4 }, to: { thatch: 1 },                      label: '이엉 (풀 4 → 이엉 1 — 맨손 엮기)' },
 };
 // 14.51/14.52: 건축물 = 인벤 아이템. 제작창에서 만들면 인벤에 들어가고, 건축 모드에서 배치한다.
 // 14.52: 재료는 plank/wood만 (stone 제외). 망치/톱은 재료가 아닌 "도구" — 내구도 소비.
@@ -2530,6 +2535,8 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'chest_put') tryChestPut(player, msg.buildingId, msg.item, +msg.amount || 1);
   else if (msg.type === 'chest_take') tryChestTake(player, msg.buildingId, msg.item, +msg.amount || 1);
   else if (msg.type === 'build_guild_granary') tryBuildGuildGranary(player);   // ★길드 곳간 실물화[사용자 확정]
+  else if (msg.type === 'hut_start') tryHutStart(player);                       // ★움집 고증 건축 ①굴착
+  else if (msg.type === 'hut_advance') tryHutAdvance(player, msg.buildingId);   // ★움집 고증 건축 ②~④
   else if (msg.type === 'attack') { metrics.attacks++; tryAttack(player); }
   else if (msg.type === 'ranged_attack') { metrics.attacks++; tryRangedAttack(player, +msg.aimX, +msg.aimY); }
   else if (msg.type === 'craft') doCraft(player, msg.recipe);
@@ -3711,7 +3718,7 @@ function tryPickupItem(player, gid) {
 
 // 라벨 (notice용)
 const ITEM_LABEL_SERVER = {
-  wood: '나무', stone: '돌', berry: '베리', fiber: '풀',
+  wood: '나무', stone: '돌', berry: '베리', fiber: '풀', pillar: '기둥', rafter: '서까래', thatch: '이엉',
   fish: '생선', fish_cooked: '구운생선',
   meat_raw: '날고기', meat_cooked: '구운고기', hide: '가죽',
   berry_jam: '베리잼', water_bottle: '물병', seed_berry: '베리씨앗',
@@ -4023,6 +4030,94 @@ function _tryBuildAt(player, type, floor = 0, side = null, dir = null, opts = nu
 //   조건: 길드 리더 · 자기 길드영토(kind guild claim) 안 · 5×3+테두리 부지 무결 · 판자 12+돌 8 · 길드당 1동(존 기준).
 //   상호작용=기존 chest 경로(put/take 공용) — 멤버 자유 입출, 적은 전쟁 중에만 loot_rate 약탈(물리 약탈 목표 1단).
 //   배치=플레이어 북쪽 3칸(발자국 [gx-2..gx+2]×[gy-4..gy-2] — 시전자가 벽 안에 갇히지 않게). 밀폐 벽(사다리 출입 고증).
+// ★공용: 실물 건물 행 생성(DB+메모리+청크) — 곳간·움집 완공이 공용(유일 경로)
+function _liveBuildRow(type, x, y, data, ownerId, ownerName, made) {
+  const dbId = db.insertBuilding({ type, owner_id: ownerId, owner_name: ownerName, x, y, data: JSON.stringify(data) });
+  const bo = { id: `b${dbId}`, dbId, type, ownerId, ownerName, x, y, data, floor: 0 };
+  buildings.set(bo.id, bo); chunkManager.insertBuilding(bo); if (made) made.push(bo);
+  return bo;
+}
+// ★[사용자 확정 "건축 순서 고증"] 움집 다단계 건축 — 수혈주거 축조 공정(발굴 순서):
+//   ① 수혈 굴착(곡괭이 — 깊이 반지하 터파기) → ② 굴립주 기둥 6주(도끼 다듬은 통나무) → ③ 도리·서까래 골조(풀 결속) → ④ 이엉 지붕 잇기 → 완공.
+//   완공 실체 = NPC 움집과 동일 6×4(벽=변·남벽 2칸 문·바닥). 발자국 [gx-3..gx+2]×[gy-4..gy-1](시전자 북쪽 — 갇힘 방지), 문 = 남벽 중앙 2칸.
+const HUT_STAGES = [
+  { need: {},                        tool: 'pickaxe', wear: 3, label: '① 수혈 굴착(터파기)' },
+  { need: { pillar: 6 },                                       label: '② 굴립주 기둥 세우기(기둥 6)' },
+  { need: { rafter: 8, fiber: 6 },                             label: '③ 도리·서까래 골조(서까래 8·풀 6)' },
+  { need: { thatch: 8 },                                       label: '④ 이엉 지붕 잇기(이엉 8)' },
+];
+function tryHutStart(player) {
+  const SZg = BUILDING_SIZE;
+  const gx = Math.round(player.x / SZg), gy = Math.round(player.y / SZg);
+  const x0 = gx - 3, y0 = gy - 4, x1 = gx + 2, y1 = gy - 1;
+  const st = HUT_STAGES[0];
+  if (!hasTool(player, st.tool)) { send(player.ws, { type: 'notice', text: `${st.label} — 곡괭이 필요` }); return; }
+  for (let x = x0 - 1; x <= x1 + 1; x++) for (let y = y0 - 1; y <= y1 + 1; y++) {
+    const px = x * SZg + SZg / 2, py = y * SZg + SZg / 2;
+    if (isTerrainBlockedLocal(px, py)) { send(player.ws, { type: 'notice', text: '물·바위를 피해서 파야 합니다' }); return; }
+    for (const c of claims.values()) {
+      if (c.ownerPid !== player.playerId && px >= c.x && px < c.x + c.w && py >= c.y && py < c.y + c.h) {
+        send(player.ws, { type: 'notice', text: '다른 사람의 사유지엔 못 지음' }); return;
+      }
+    }
+  }
+  const nearB = qtBuildings ? qtBuildings.queryCircle(gx * SZg, (gy - 2) * SZg, SZg * 6) : Array.from(buildings.values());
+  for (const b of nearB) {
+    const bcx = Math.round((b.x - (b.type === 'wall' ? 0 : SZg / 2)) / SZg), bcy = Math.round((b.y - (b.type === 'wall' ? 0 : SZg / 2)) / SZg);
+    if (bcx >= x0 - 1 && bcx <= x1 + 1 && bcy >= y0 - 1 && bcy <= y1 + 1 && (b.floor || 0) === 0) {
+      send(player.ws, { type: 'notice', text: '자리에 다른 건축물이 있습니다' }); return;
+    }
+  }
+  consumeToolByType(player, st.tool, st.wear || 1);
+  const data = { stage: 1, x0, y0, x1, y1, owner: player.playerId, floor: 0 };
+  const bo = _liveBuildRow('hut_site', gx * SZg + SZg / 2, (gy - 2) * SZg + SZg / 2, data, player.playerId, `${player.name}의 움집터`, null);
+  broadcast({ type: 'building_added', building: bo });
+  send(player.ws, { type: 'notice', text: `⛏️ ${st.label} 완료 — 다음: ${HUT_STAGES[1].label} (움집터 클릭)` });
+  console.log(`[${ZONE_ID}] ⛏️ ${player.name} 움집터 굴착 @(${gx},${gy})`);
+}
+function tryHutAdvance(player, buildingId) {
+  const b = buildings.get(buildingId);
+  if (!b || b.type !== 'hut_site') return;
+  if (Math.hypot(b.x - player.x, b.y - player.y) > 120) { send(player.ws, { type: 'notice', text: '움집터에서 너무 멀리 있습니다' }); return; }
+  if (b.data.owner !== player.playerId) { send(player.ws, { type: 'notice', text: '내 움집터가 아닙니다' }); return; }
+  const stage = b.data.stage | 0;
+  const st = HUT_STAGES[stage];
+  if (!st) return;
+  for (const [it, amt] of Object.entries(st.need)) {
+    if ((player.inventory[it] || 0) < amt) {
+      const needStr = Object.entries(st.need).map(([k, v]) => `${ITEM_LABEL_SERVER[k] || k} ${player.inventory[k] || 0}/${v}`).join(' · ');
+      send(player.ws, { type: 'notice', text: `${st.label} — 재료 부족: ${needStr}` }); return;
+    }
+  }
+  for (const [it, amt] of Object.entries(st.need)) player.inventory[it] -= amt;
+  if (stage < 3) {
+    b.data.stage = stage + 1;
+    db.updateBuildingData(b.dbId, JSON.stringify(b.data));
+    broadcast({ type: 'building_added', building: b });
+    send(player.ws, { type: 'notice', text: `${st.label} 완료 — 다음: ${HUT_STAGES[stage + 1].label}` });
+  } else {
+    // ④ 완공 — 터 제거 + NPC 정본 6×4 실체화(벽=변·남벽 2칸 문·바닥·앵커)
+    const { x0, y0, x1, y1 } = b.data;
+    buildings.delete(b.id); if (chunkManager.removeBuilding) chunkManager.removeBuilding(b); db.deleteBuilding(b.dbId);
+    broadcast({ type: 'building_removed', id: b.id });
+    const SZg = BUILDING_SIZE, made = [];
+    const doorXs = new Set([x0 + 2, x0 + 3]);   // 남벽 중앙 2칸(NPC 움집 문 규약 동형)
+    const oid = player.playerId, onm = `${player.name}의 움집`;
+    for (let x = x0; x <= x1; x++) {
+      _liveBuildRow('wall', x * SZg, y0 * SZg, { side: 'N', floor: 0 }, oid, onm, made);
+      if (!doorXs.has(x)) _liveBuildRow('wall', x * SZg, (y1 + 1) * SZg, { side: 'N', floor: 0 }, oid, onm, made);
+    }
+    for (let y = y0; y <= y1; y++) { _liveBuildRow('wall', x1 * SZg, y * SZg, { side: 'E', floor: 0 }, oid, onm, made); _liveBuildRow('wall', (x0 - 1) * SZg, y * SZg, { side: 'E', floor: 0 }, oid, onm, made); }
+    for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) _liveBuildRow('floor', x * SZg + SZg / 2, y * SZg + SZg / 2, { floor: 0 }, oid, onm, made);
+    _liveBuildRow('hut', ((x0 + x1 + 1) / 2) * SZg, ((y0 + y1 + 1) / 2) * SZg, { owner: player.playerId, floor: 0 }, oid, onm, made);
+    broadcast({ type: 'buildings_spawn', buildings: made });
+    send(player.ws, { type: 'notice', text: '🏠 움집 완공! (수혈 굴착→굴립주→골조→이엉 — 고증 공정 완주)' });
+    console.log(`[${ZONE_ID}] 🏠 ${player.name} 움집 완공 @(${x0}..${x1},${y0}..${y1})`);
+  }
+  savePlayer(player);
+  send(player.ws, { type: 'inventory', inventory: player.inventory });
+}
+
 const GRANARY_COST = { plank: 12, stone: 8 };
 async function tryBuildGuildGranary(player) {
   if (!player.tribeId) { send(player.ws, { type: 'notice', text: '길드 소속이 아닙니다' }); return; }
@@ -4071,12 +4166,7 @@ async function tryBuildGuildGranary(player) {
   // 실물 생성: 밀폐 벽 16변 + 바닥 15 + 앵커 1 (DB+메모리+청크+일괄 방송)
   const ownerId = `tribe_${player.tribeId}`, ownerName = `[${player.tribeName || '길드'}] 곳간`;
   const made = [];
-  const mk = (type, x, y, data) => {
-    const dbId = db.insertBuilding({ type, owner_id: ownerId, owner_name: ownerName, x, y, data: JSON.stringify(data) });
-    const bo = { id: `b${dbId}`, dbId, type, ownerId, ownerName, x, y, data, floor: 0 };
-    buildings.set(bo.id, bo); chunkManager.insertBuilding(bo); made.push(bo);
-    return bo;
-  };
+  const mk = (type, x, y, data) => _liveBuildRow(type, x, y, data, ownerId, ownerName, made);
   for (let x = gx - 2; x <= gx + 2; x++) { mk('wall', x * SZg, (gy - 1) * SZg, { side: 'N', floor: 0 }); mk('wall', x * SZg, (gy + 2) * SZg, { side: 'N', floor: 0 }); }
   for (let y = gy - 1; y <= gy + 1; y++) { mk('wall', (gx + 2) * SZg, y * SZg, { side: 'E', floor: 0 }); mk('wall', (gx - 3) * SZg, y * SZg, { side: 'E', floor: 0 }); }
   for (let x = gx - 2; x <= gx + 2; x++) for (let y = gy - 1; y <= gy + 1; y++) mk('floor', x * SZg + SZg / 2, y * SZg + SZg / 2, { floor: 0 });

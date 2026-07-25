@@ -1073,6 +1073,7 @@ const SIM_JOB_EMOJI = {
       else if (a === 'build_farmland') sendPrimary({ type: 'build', buildType: 'farmland', floor: myBuildFloor });
       else if (a === 'build_stair') sendPrimary({ type: 'build', buildType: 'stair', floor: myBuildFloor });
       else if (a === 'build_floor') sendPrimary({ type: 'build', buildType: 'floor', floor: myBuildFloor });
+      else if (a === 'hut_start') { sendPrimary({ type: 'hut_start' }); showNotice('⛏️ 수혈 굴착 시도 — 곡괭이 필요, 내 위치 북쪽 6×4'); }   // ★움집 고증 건축
       else if (a === 'harvest') sendPrimary({ type: 'harvest' });
       else if (a === 'feed') sendPrimary({ type: 'feed' });
       else if (a === 'tribe') toggleTribePanel();
@@ -1496,6 +1497,21 @@ const SIM_JOB_EMOJI = {
         if (distToMe > 100) { showNotice('너무 멀리 있어 손이 안 닿습니다'); return; }
         sendPrimary({ type: 'pickup_item', giId: hitGi.id });
         return;
+      }
+      // 1.5) 움집터 클릭 → 다음 단계 시공 시도
+      {
+        let hitSite = null;
+        for (const c of conns.values()) {
+          if (!c.meta) continue;
+          const ox = c.meta.worldOffsetX || 0, oy = c.meta.worldOffsetY || 0;
+          for (const b of c.buildings.values()) {
+            if (b.type !== 'hut_site') continue;
+            const absX = ox + b.x, absY = oy + b.y;
+            if (Math.abs(absX - clickWx) <= 48 && Math.abs(absY - clickWy) <= 40) { hitSite = b; break; }
+          }
+          if (hitSite) break;
+        }
+        if (hitSite) { sendPrimary({ type: 'hut_advance', buildingId: hitSite.id }); return; }
       }
       // 2) chest bbox hit-test (chest는 32×32 cell, b.x/b.y가 cell 중심)
       let hitChest = null;
@@ -4240,6 +4256,27 @@ const SIM_JOB_EMOJI = {
       }
       return;
     }
+    if (type === 'hut_site') {
+      // ★움집터 — 수혈 구덩이 + 단계 진행(점선 골조 느낌). stage 1=구덩이, 2=기둥, 3=골조
+      const st = (building?.data?.stage) | 0;
+      ctx.beginPath();
+      ctx.moveTo(x, y - 14); ctx.lineTo(x + 30, y); ctx.lineTo(x, y + 14); ctx.lineTo(x - 30, y); ctx.closePath();
+      ctx.fillStyle = 'rgba(74,58,40,0.55)'; ctx.fill();
+      ctx.setLineDash([4, 3]); ctx.strokeStyle = '#9a7a4a'; ctx.lineWidth = 1.2; ctx.stroke(); ctx.setLineDash([]);
+      if (st >= 2) { ctx.fillStyle = '#7a5a30'; for (const [px2, py2] of [[-18, 0], [0, -9], [18, 0], [0, 9], [-9, -4], [9, 4]]) ctx.fillRect(x + px2 - 1.5, y + py2 - 5, 3, 7); }
+      if (st >= 3) { ctx.strokeStyle = '#8a6a3e'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x - 18, y); ctx.lineTo(x, y - 12); ctx.lineTo(x + 18, y); ctx.stroke(); }
+      ctx.font = 'bold 10px sans-serif'; ctx.fillStyle = '#ffe9b0'; ctx.textAlign = 'center';
+      ctx.fillText(`움집터 ${st}/4단계 (클릭=시공)`, x, y - 18);
+      ctx.textAlign = 'left';
+      return;
+    }
+    if (type === 'hut') {
+      // 완공 앵커 — 몸체(벽·바닥)는 기존 경로가 그림. 라벨만.
+      ctx.font = 'bold 10px sans-serif'; ctx.fillStyle = '#e8d8b0'; ctx.textAlign = 'center';
+      ctx.fillText('움집', x, y - 6);
+      ctx.textAlign = 'left';
+      return;
+    }
     if (type === 'guild_granary' || type === 'granary') {
       // ★고상곳간 앵커(몸체=벽·바닥이 그림): 마루 표석 + 라벨
       ctx.beginPath();
@@ -5172,6 +5209,7 @@ const SIM_JOB_EMOJI = {
   // === HUD ===
   // 음식 아이콘 매핑 (인벤토리 표시 + 클릭 시 'eat' 송신)
   const ITEM_ICONS = {
+    pillar: '🪵', rafter: '🥢', thatch: '🌾',   // ★건축 중간재(움집 고증 공정)
     berry: '🫐', fiber: '🌾', meat_raw: '🥩', meat_cooked: '🍗',
     hide: '🦌', berry_jam: '🍯', water_bottle: '🥤',
     seed_berry: '🌱', herb: '🌿', ore: '⛏️',
@@ -5182,6 +5220,7 @@ const SIM_JOB_EMOJI = {
     item_stair: '🪜', item_chest: '📦', item_campfire: '🔥', item_farmland: '🌱',
   };
   const ITEM_LABEL = {
+    pillar: '기둥', rafter: '서까래', thatch: '이엉',   // ★건축 중간재
     berry: '베리', fiber: '풀', meat_raw: '날고기', meat_cooked: '구운고기',
     hide: '가죽', berry_jam: '베리잼', water_bottle: '물병',
     seed_berry: '베리씨앗', herb: '약초', ore: '광물',
@@ -6362,7 +6401,7 @@ const SIM_JOB_EMOJI = {
 
   // === Phase 14.21: 좀보이드 정통 인벤 — 좌(내인벤) | 가운데(활성 컨테이너) | 우(컨테이너 탭) ===
   const ITEM_CAT = {
-    wood: '자재', stone: '자재', ore: '자재',
+    wood: '자재', stone: '자재', ore: '자재', pillar: '자재', rafter: '자재', thatch: '자재',
     berry: '음식', meat_raw: '음식', meat_cooked: '음식', berry_jam: '음식', herb: '약초',
     water_bottle: '음료',
     fiber: '잡화', seed_berry: '씨앗', hide: '잡화',
