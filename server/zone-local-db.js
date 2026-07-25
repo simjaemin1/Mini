@@ -235,7 +235,7 @@ const stmtGetVillageBuildings = db.prepare('SELECT * FROM village_buildings WHER
 // §4-4 Stage 4A: 농지 셀 범위 조회 — 청크 활성화 시 lazy 실물화용. half-open(cx0≤cx<cx1)이라
 //   buildings 렉트 조회와 같은 규약(청크 경계 중복/누락 없음). idx_village_buildings_cell 사용.
 const stmtGetVillageFarmInCellRect = db.prepare(
-  "SELECT * FROM village_buildings WHERE type IN ('farmland','dryfield') AND cx >= ? AND cx < ? AND cy >= ? AND cy < ?"
+  "SELECT * FROM village_buildings WHERE type IN ('farmland','dryfield','yard','plaza','garden') AND cx >= ? AND cx < ? AND cy >= ? AND cy < ?"   // ★실체화 동기: 부지(yard)·광장(plaza)·텃밭(garden) 지면 타일 추가(랩 정본 — 비영속 시각 타일, farmland 패턴)
 );
 
 // === §11 도적(server/bandits.js) — 소굴·도적단 상태(존당 1행 JSON — 규모 미니: 소굴≤3·단 소수) ===

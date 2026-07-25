@@ -500,7 +500,7 @@ const CROP_GROW_MS = 60 * 1000;
 // 14.50: door도 닫혔을 때 blocking. fence는 cell 차지하지만 통과 가능 (사용자 의도: 시야는 통과, collider만 차단).
 const BLOCKING_BUILDINGS = new Set(['wall', 'fence', 'door']);
 // 14.49-e2: 층 높이 2배 (32 → 64). 벽·계단도 같이 2배.
-const BUILDING_HEIGHT = { wall: 64, floor: 4, fence: 32, door: 64, chest: 24, campfire: 20, farmland: 4, stair: 64 };
+const BUILDING_HEIGHT = { wall: 64, floor: 4, fence: 32, door: 64, chest: 24, campfire: 20, farmland: 4, stair: 64, vtile: 2, guild_granary: 40, granary: 40 };   // ★실체화 동기: 지면 타일·곳간
 // Phase 14.25: chest 저장 가능 아이템 (모든 자원 + 도구 + 음식)
 const CHEST_ALLOWED_ITEMS = new Set([
   'wood', 'stone', 'ore', 'herb',
@@ -2529,6 +2529,7 @@ function handlePlayerInput(player, raw) {
   }
   else if (msg.type === 'chest_put') tryChestPut(player, msg.buildingId, msg.item, +msg.amount || 1);
   else if (msg.type === 'chest_take') tryChestTake(player, msg.buildingId, msg.item, +msg.amount || 1);
+  else if (msg.type === 'build_guild_granary') tryBuildGuildGranary(player);   // ★길드 곳간 실물화[사용자 확정]
   else if (msg.type === 'attack') { metrics.attacks++; tryAttack(player); }
   else if (msg.type === 'ranged_attack') { metrics.attacks++; tryRangedAttack(player, +msg.aimX, +msg.aimY); }
   else if (msg.type === 'craft') doCraft(player, msg.recipe);
@@ -4018,14 +4019,89 @@ function _tryBuildAt(player, type, floor = 0, side = null, dir = null, opts = nu
   return true;
 }
 
+// ★[사용자 확정] 길드 곳간 실물화 — 금고(JSON) 대신 공간에 실재하는 공유 창고(일관성 원칙: 아이템=공간 실체).
+//   조건: 길드 리더 · 자기 길드영토(kind guild claim) 안 · 5×3+테두리 부지 무결 · 판자 12+돌 8 · 길드당 1동(존 기준).
+//   상호작용=기존 chest 경로(put/take 공용) — 멤버 자유 입출, 적은 전쟁 중에만 loot_rate 약탈(물리 약탈 목표 1단).
+//   배치=플레이어 북쪽 3칸(발자국 [gx-2..gx+2]×[gy-4..gy-2] — 시전자가 벽 안에 갇히지 않게). 밀폐 벽(사다리 출입 고증).
+const GRANARY_COST = { plank: 12, stone: 8 };
+async function tryBuildGuildGranary(player) {
+  if (!player.tribeId) { send(player.ws, { type: 'notice', text: '길드 소속이 아닙니다' }); return; }
+  // 리더 검사(central)
+  try {
+    const tr = await central.request('GET', `/tribe/${player.tribeId}`);
+    const leaderId = tr?.data?.tribe?.leader_id;
+    if (leaderId && leaderId !== player.playerId) { send(player.ws, { type: 'notice', text: '길드 곳간은 리더만 지을 수 있습니다' }); return; }
+  } catch (e) { /* central 불가 시 관용(리더 검사 생략) */ }
+  // 길드당 1동 — DB 전수(비활성 청크 포함)
+  try {
+    const rows = db.db.prepare("SELECT data FROM buildings WHERE type='guild_granary'").all();
+    for (const r of rows) { try { const d = JSON.parse(r.data || '{}'); if (d.tribe_id === player.tribeId) { send(player.ws, { type: 'notice', text: '길드 곳간은 이미 있습니다 (길드당 1동)' }); return; } } catch (_) {} }
+  } catch (e) {}
+  const SZg = BUILDING_SIZE;
+  const gx = Math.round(player.x / SZg), gy = Math.round(player.y / SZg) - 3;   // 앵커=북쪽 3칸
+  // 길드영토 안(발자국 네 모서리 전부) — claim 사각 bbox 판정
+  const inMyGuildClaim = (px, py) => {
+    for (const c of claims.values()) {
+      if (c.kind !== 'guild' || c.guildTribeId !== player.tribeId) continue;
+      if (px >= c.x && px <= c.x + c.w && py >= c.y && py <= c.y + c.h) return true;
+    }
+    return false;
+  };
+  for (const [ex, ey] of [[gx - 2, gy - 1], [gx + 2, gy - 1], [gx - 2, gy + 1], [gx + 2, gy + 1]]) {
+    if (!inMyGuildClaim(ex * SZg + SZg / 2, ey * SZg + SZg / 2)) { send(player.ws, { type: 'notice', text: '길드영토(Shift+C) 안에서만 지을 수 있습니다' }); return; }
+  }
+  // 부지 무결: 발자국+테두리 1칸 — 지형(물·바위)·기존 건물 없음
+  for (let dx = -3; dx <= 3; dx++) for (let dy = -2; dy <= 2; dy++) {
+    const px = (gx + dx) * SZg + SZg / 2, py = (gy + dy) * SZg + SZg / 2;
+    if (isTerrainBlockedLocal(px, py)) { send(player.ws, { type: 'notice', text: '물·바위를 피해서 지어야 합니다' }); return; }
+  }
+  const nearB = qtBuildings ? qtBuildings.queryCircle(gx * SZg, gy * SZg, SZg * 5) : Array.from(buildings.values());
+  for (const b of nearB) {
+    const bcx = Math.round((b.x - (b.type === 'wall' ? 0 : SZg / 2)) / SZg), bcy = Math.round((b.y - (b.type === 'wall' ? 0 : SZg / 2)) / SZg);
+    if (bcx >= gx - 3 && bcx <= gx + 3 && bcy >= gy - 2 && bcy <= gy + 2 && (b.floor || 0) === 0) {
+      send(player.ws, { type: 'notice', text: '자리에 다른 건축물이 있습니다' }); return;
+    }
+  }
+  // 비용
+  const inv = player.inventory || {};
+  if ((inv.plank || 0) < GRANARY_COST.plank || (inv.stone || 0) < GRANARY_COST.stone) {
+    send(player.ws, { type: 'notice', text: `재료 부족 — 판자 ${GRANARY_COST.plank}·돌 ${GRANARY_COST.stone}` }); return;
+  }
+  inv.plank -= GRANARY_COST.plank; inv.stone -= GRANARY_COST.stone;
+  // 실물 생성: 밀폐 벽 16변 + 바닥 15 + 앵커 1 (DB+메모리+청크+일괄 방송)
+  const ownerId = `tribe_${player.tribeId}`, ownerName = `[${player.tribeName || '길드'}] 곳간`;
+  const made = [];
+  const mk = (type, x, y, data) => {
+    const dbId = db.insertBuilding({ type, owner_id: ownerId, owner_name: ownerName, x, y, data: JSON.stringify(data) });
+    const bo = { id: `b${dbId}`, dbId, type, ownerId, ownerName, x, y, data, floor: 0 };
+    buildings.set(bo.id, bo); chunkManager.insertBuilding(bo); made.push(bo);
+    return bo;
+  };
+  for (let x = gx - 2; x <= gx + 2; x++) { mk('wall', x * SZg, (gy - 1) * SZg, { side: 'N', floor: 0 }); mk('wall', x * SZg, (gy + 2) * SZg, { side: 'N', floor: 0 }); }
+  for (let y = gy - 1; y <= gy + 1; y++) { mk('wall', (gx + 2) * SZg, y * SZg, { side: 'E', floor: 0 }); mk('wall', (gx - 3) * SZg, y * SZg, { side: 'E', floor: 0 }); }
+  for (let x = gx - 2; x <= gx + 2; x++) for (let y = gy - 1; y <= gy + 1; y++) mk('floor', x * SZg + SZg / 2, y * SZg + SZg / 2, { floor: 0 });
+  mk('guild_granary', gx * SZg + SZg / 2, gy * SZg + SZg / 2, { tribe_id: player.tribeId, floor: 0 });
+  broadcast({ type: 'buildings_spawn', buildings: made });
+  savePlayer(player);
+  send(player.ws, { type: 'inventory', inventory: player.inventory });
+  send(player.ws, { type: 'notice', text: `🏚️ 길드 곳간 완공! (E로 입출고 — 멤버 공유, 전쟁 시 약탈 목표가 됩니다)` });
+  console.log(`[${ZONE_ID}] 🏚️ ${player.name} 길드 곳간 건설 tribe=${player.tribeId} @(${gx},${gy})`);
+}
+
 function tryChestPut(player, buildingId, item, amount) {
   const b = buildings.get(buildingId);
-  if (!b || b.type !== 'chest') return;
+  if (!b || (b.type !== 'chest' && b.type !== 'guild_granary')) return;
+  // ★길드 곳간[실물화]: 소유=길드 자체(data.tribe_id) — 멤버=자유 입출, 적=전쟁 중 약탈(아래 공용 경로)
+  if (b.type === 'guild_granary') {
+    if (!(player.tribeId && b.data && b.data.tribe_id === player.tribeId)) {
+      send(player.ws, { type: 'notice', text: '길드 곳간 — 소속 길드원만 넣을 수 있습니다' }); return;
+    }
+  }
   // Phase 14.20+14.28: public 또는 본인 또는 같은 길드 멤버
   const isOwn = b.ownerId === player.playerId;
   const isPublic = b.ownerId === 'public';
-  let isGuildmate = false;
-  if (!isOwn && !isPublic && player.tribeId) {
+  let isGuildmate = (b.type === 'guild_granary');
+  if (!isOwn && !isPublic && !isGuildmate && player.tribeId) {
     // chest owner의 tribeId 알기 — 메모리에서 player 찾기
     for (const p of players.values()) {
       if (p.playerId === b.ownerId) { isGuildmate = (p.tribeId === player.tribeId); break; }
@@ -4058,8 +4134,8 @@ function tryChestPut(player, buildingId, item, amount) {
 
 async function tryChestTake(player, buildingId, item, amount) {
   const b = buildings.get(buildingId);
-  if (!b || b.type !== 'chest') return;
-  if (Math.hypot(b.x - player.x, b.y - player.y) > 64) {
+  if (!b || (b.type !== 'chest' && b.type !== 'guild_granary')) return;
+  if (Math.hypot(b.x - player.x, b.y - player.y) > (b.type === 'guild_granary' ? 96 : 64)) {   // 곳간 5×3이라 도달 반경 넉넉히(인접 상호작용)
     send(player.ws, { type: 'notice', text: '상자에서 너무 멀리 있습니다' }); return;
   }
   if (!CHEST_ALLOWED_ITEMS.has(item)) {
@@ -4071,9 +4147,11 @@ async function tryChestTake(player, buildingId, item, amount) {
   const isPublic = (b.ownerId === 'public');
   // Phase 14.13: 약탈 분기 — 본인 chest가 아니면 적 길드 chest인지 확인
   const isOwn = (b.ownerId === player.playerId);
-  // Phase 14.28: 같은 길드 멤버 chest는 인출 자유
+  // Phase 14.28: 같은 길드 멤버 chest는 인출 자유. ★길드 곳간: 소속 길드원=자유(소유가 길드 자체 — data.tribe_id)
   let isGuildmate = false;
-  if (!isOwn && !isPublic && player.tribeId) {
+  if (b.type === 'guild_granary') {
+    isGuildmate = !!(player.tribeId && b.data && b.data.tribe_id === player.tribeId);
+  } else if (!isOwn && !isPublic && player.tribeId) {
     for (const p of players.values()) {
       if (p.playerId === b.ownerId) { isGuildmate = (p.tribeId === player.tribeId); break; }
     }
@@ -4082,9 +4160,10 @@ async function tryChestTake(player, buildingId, item, amount) {
   let lootRate = 0;
   if (!isOwn && !isPublic && !isGuildmate) {
     // 적 길드 chest? — owner의 tribeId 알아내야. owner도 player일 수 있고 NPC일 수도.
-    // 일단 buildings는 owner_name이 있고 ownerId가 player_id. zone players 메모리에서 찾기.
+    // ★길드 곳간은 소유 길드가 data에 박제 — 즉시. (전쟁 시 약탈 물리 목표[사용자 확정]: loot-raid-vision 파이프라인의 1단)
     let ownerTribeId = null;
-    for (const p of players.values()) {
+    if (b.type === 'guild_granary') ownerTribeId = (b.data && b.data.tribe_id) || null;
+    if (ownerTribeId === null) for (const p of players.values()) {
       if (p.playerId === b.ownerId) { ownerTribeId = p.tribeId; break; }
     }
     // 메모리에 없으면 central 조회 (다른 zone 멤버)

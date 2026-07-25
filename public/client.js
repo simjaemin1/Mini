@@ -1503,7 +1503,7 @@ const SIM_JOB_EMOJI = {
         if (!c.meta) continue;
         const ox = c.meta.worldOffsetX || 0, oy = c.meta.worldOffsetY || 0;
         for (const b of c.buildings.values()) {
-          if (b.type !== 'chest') continue;
+          if (b.type !== 'chest' && b.type !== 'guild_granary') continue;   // ★길드 곳간 클릭=컨테이너 열기
           const absX = ox + b.x, absY = oy + b.y;
           if (Math.abs(absX - clickWx) <= 20 && Math.abs(absY - clickWy) <= 20) {
             hitChest = b; break;
@@ -4222,6 +4222,35 @@ const SIM_JOB_EMOJI = {
   }
 
   function drawBuildingIso(x, y, type, building) {
+    if (type === 'vtile') {
+      // ★[실체화 동기 — 랩 정본] 마을 지면 타일: yard=부지 원판(다짐 흙), plaza=큰집 마당 광장, garden=텃밭(이랑)
+      const kind = (building?.data?.kind) || 'yard';
+      ctx.beginPath();
+      ctx.moveTo(x, y - 8); ctx.lineTo(x + 16, y); ctx.lineTo(x, y + 8); ctx.lineTo(x - 16, y); ctx.closePath();
+      if (kind === 'plaza') ctx.fillStyle = 'rgba(158,128,82,0.62)';
+      else if (kind === 'garden') ctx.fillStyle = '#5e7038';
+      else ctx.fillStyle = 'rgba(122,88,54,0.5)';
+      ctx.fill();
+      if (kind === 'garden') {
+        ctx.strokeStyle = 'rgba(58,82,34,0.85)'; ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x - 8, y - 4); ctx.lineTo(x + 8, y + 4);
+        ctx.moveTo(x - 4, y - 6); ctx.lineTo(x + 12, y + 2);
+        ctx.stroke();
+      }
+      return;
+    }
+    if (type === 'guild_granary' || type === 'granary') {
+      // ★고상곳간 앵커(몸체=벽·바닥이 그림): 마루 표석 + 라벨
+      ctx.beginPath();
+      ctx.moveTo(x, y - 10); ctx.lineTo(x + 14, y - 3); ctx.lineTo(x, y + 4); ctx.lineTo(x - 14, y - 3); ctx.closePath();
+      ctx.fillStyle = '#a5813f'; ctx.fill();
+      ctx.strokeStyle = '#4a3520'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.font = 'bold 10px sans-serif'; ctx.fillStyle = '#ffe9b0'; ctx.textAlign = 'center';
+      ctx.fillText(type === 'guild_granary' ? '길드 곳간' : '곳간', x, y - 14);
+      ctx.textAlign = 'left';
+      return;
+    }
     if (type === 'farmland') {
       // 갈색 흙 다이아 + 작물
       const data = building?.data || {};
@@ -6001,6 +6030,8 @@ const SIM_JOB_EMOJI = {
           <div class="hint" style="font-size:11px;opacity:0.7">청정=침략 시 약함·침략자 +대량적대감 / 악성=토벌 대상</div>
           <div class="hint" style="margin-top:6px">🏦 길드 금고: <b>${trItems}</b></div>
           <div class="hint" style="margin-top:6px">🏛️ 사유지 슬롯 (Phase 14.18): <b>${countMyClaimsClient()}</b><br/><span style="font-size:10px;opacity:0.7">C=개인 (길드영토 안만) · T=임시 (어디든) · Shift+C=길드영토 (멤버만)</span></div>
+          <button class="craft-btn" id="tribeGranaryBtn" style="margin-top:8px;background:#7a5a2a">🏚️ 길드 곳간 건설 (판자12·돌8 — 길드영토 안, 리더)</button>
+          <div class="hint" style="font-size:10px;opacity:0.7">내 위치 북쪽 3칸에 5×3 밀폐 곳간 — 멤버 공유 창고, 전쟁 시 약탈 목표</div>
           ${warsHtml}
           ${declareHtml}
           <div class="hint" style="margin-top:8px">멤버 목록:</div>
@@ -6025,6 +6056,8 @@ const SIM_JOB_EMOJI = {
           if (d.ok) { showNotice('🕊️ 전쟁 종료'); renderTribePanel(); }
           else alert(d.error || '종전 실패');
         });
+        const grBtn = document.getElementById('tribeGranaryBtn');
+        if (grBtn) grBtn.onclick = () => { sendPrimary({ type: 'build_guild_granary' }); showNotice('길드 곳간 건설 시도...'); };
         document.getElementById('tribeLeaveBtn').onclick = async () => {
           if (!confirm('정말 탈퇴하시겠습니까?')) return;
           const r = await fetch('/tribe/leave', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ player_id: myUsername }) });
@@ -6344,7 +6377,7 @@ const SIM_JOB_EMOJI = {
     if (!pc || !pc.meta) return list;
     const ox = pc.meta.worldOffsetX || 0, oy = pc.meta.worldOffsetY || 0;
     for (const b of pc.buildings.values()) {
-      if (b.type !== 'chest') continue;
+      if (b.type !== 'chest' && b.type !== 'guild_granary') continue;   // ★길드 곳간=대형 공유 컨테이너(chest 경로 공용)
       const absX = ox + b.x, absY = oy + b.y;
       const d = Math.hypot(absX - myAbsPredicted.x, absY - myAbsPredicted.y);
       if (d <= 120) list.push({ b, d, absX, absY });
@@ -6406,7 +6439,7 @@ const SIM_JOB_EMOJI = {
     const isGround = (activeContainerId === 'ground');
 
     const rowsHtml = (inv, kind, chestId) => {
-      const entries = Object.entries(inv).filter(([k, v]) => v > 0).sort((a, b) => {
+      const entries = Object.entries(inv).filter(([k, v]) => v > 0 && k !== 'floor' && k !== 'tribe_id' && k !== 'sim' && k !== 'kind').sort((a, b) => {   // ★메타키(층·길드id)는 아이템 아님
         const ca = ITEM_CAT[a[0]] || 'zzz', cb = ITEM_CAT[b[0]] || 'zzz';
         return ca.localeCompare(cb) || a[0].localeCompare(b[0]);
       });
@@ -6481,7 +6514,7 @@ const SIM_JOB_EMOJI = {
           </table>
         </div></div>`;
     } else if (activeC) {
-      const chestCount = Object.values(activeC.data || {}).filter(v => v > 0).length;
+      const chestCount = Object.entries(activeC.data || {}).filter(([k, v]) => v > 0 && k !== 'floor' && k !== 'tribe_id').length;
       chestTable = `<div class="inv-col" data-drop-target="${activeC.id}">
         <div class="inv-col-head">📦 ${activeC.ownerName || '?'}<span class="col-count">(${chestCount}종)</span></div>
         <div style="flex:1;overflow:auto;background:#0e1217;border-radius:4px">

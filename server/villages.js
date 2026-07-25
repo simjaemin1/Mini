@@ -441,7 +441,7 @@ function syncVillageJobs(vil, changedOut) {
 //     의 마을 단위 조회용. 레거시·플레이어 행은 전부 NULL 유지.
 //   · 부팅 시 DB에만 기록(레거시 buildVillageHouse와 동일) — 메모리 객체화는 청크 활성화 때
 //     materializeBuildingsInChunk가 'b<dbId>'로 수행(콜라이더·AOI·cutaway 기존 경로).
-//   · 회관 = 9×9 2층(남쪽 3칸 출입구) '대형 건물', 집 = 레거시와 동일 5×5 한옥(floors 반영).
+//   · ★실체화 동기(랩 정본): 큰집 = 8×8 단층(남벽 2칸 문), 움집 = 6×4 단층([cx-5..cx+0]×[cy-5..cy-2], 남벽 2칸 문), 곳간 = 5×3 밀폐. 구 9×9 회관·5×5 한옥 폐지.
 // =============================================================================
 function buildStructure(db, vilDbId, ccx, ccy, half, floors, ownerId, ownerName, doorHalf) {
   let rows = 0;
@@ -457,17 +457,66 @@ function buildStructure(db, vilDbId, ccx, ccy, half, floors, ownerId, ownerName,
   }
   return rows;
 }
+// ★[실체화 동기 — 랩 정본, 사용자 확정] 짝수변 직사각 건물(변 좌표계 [x0..x1]×[y0..y1], 단층):
+//   벽 변 규약은 buildStructure와 동일(N=자기 셀 북변 — 남변은 아래 셀의 N, E=자기 셀 동변 — 서변은 왼 셀의 E).
+//   doorXs = 남변에서 벽을 뺄 x 목록(문). null이면 밀폐(곳간 — 고상 사다리 출입 고증).
+function buildStructureRect(db, vilDbId, x0, y0, x1, y1, ownerId, ownerName, doorXs) {
+  let rows = 0;
+  const doorSet = new Set(doorXs || []);
+  const wall = (cx, cy, side) => { db.insertBuilding({ type: 'wall', owner_id: ownerId, owner_name: ownerName, x: cx * SZ, y: cy * SZ, data: JSON.stringify({ side, floor: 0 }), village_id: vilDbId }); rows++; };
+  const floor = (cx, cy) => { db.insertBuilding({ type: 'floor', owner_id: ownerId, owner_name: ownerName, x: cx * SZ + SZ / 2, y: cy * SZ + SZ / 2, data: JSON.stringify({ floor: 0 }), village_id: vilDbId }); rows++; };
+  for (let x = x0; x <= x1; x++) {
+    wall(x, y0, 'N');                                        // 북변
+    if (!doorSet.has(x)) wall(x, y1 + 1, 'N');               // 남변(문 칸 제외)
+  }
+  for (let y = y0; y <= y1; y++) { wall(x1, y, 'E'); wall(x0 - 1, y, 'E'); }  // 동·서변
+  for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) floor(x, y);
+  return rows;
+}
 function materializeVillageStructures(db, vil, bRows) {
   const ownerId = `npc_simvil_${vil.dbId}`;
-  let rows = 0, houses = 0;
-  // 회관 — 9×9(±4) 2층, 남쪽 3칸 문. 레이아웃 계약(village-layout ★전부 원 정본: 집 HALL_CLEAR=16.5·농지 hallFarmBlock r12 제외 — 회관 9×9는 마당 원 r10 안)상 비겹침.
-  rows += buildStructure(db, vil.dbId, vil.ccx, vil.ccy, 4, 2, ownerId, `${vil.name} 회관`, 1);
+  let rows = 0, houses = 0, grans = 0;
+  // ★큰집 — 8×8([ccx-4..ccx+3]², 랩 정본과 픽셀 동일) 단층, 남벽 2칸 문(ccx-1·ccx). 구 9×9 2층 회관 폐지[실체화 동기].
+  //   레이아웃 계약: 집 HALL_CLEAR=16.5·농지 hallFarmBlock r12 제외 — 큰집은 마당 원 r10 안.
+  rows += buildStructureRect(db, vil.dbId, vil.ccx - 4, vil.ccy - 4, vil.ccx + 3, vil.ccy + 3, ownerId, `${vil.name} 큰집`, [vil.ccx - 1, vil.ccx]);
   for (const b of bRows) {
-    if (b.type !== 'house') continue;
-    rows += buildStructure(db, vil.dbId, b.cx, b.cy, 2, Math.max(1, b.floors | 0), ownerId, `${vil.name} 한옥`, 0);
-    houses++;
+    if (b.type === 'house') {
+      // ★움집 6×4 = 부지 원판 안 북서 [cx-5..cx+0]×[cy-5..cy-2], 남벽 2칸 문(cx-3·cx-2) — 랩 정본 동일 오프셋. 구 5×5 한옥 폐지. 단층(고증 v2).
+      rows += buildStructureRect(db, vil.dbId, b.cx - 5, b.cy - 5, b.cx + 0, b.cy - 2, ownerId, `${vil.name} 움집`, [b.cx - 3, b.cx - 2]);
+      houses++;
+    } else if (b.type === 'granary') {
+      // ★고상곳간 5×3([cx-2..cx+2]×[cy-1..cy+1]) — 문 없는 밀폐(사다리 출입 고증, 상호작용은 인접 셀). 송국리 소형 굴립주 5.3×3.2 실측.
+      rows += buildStructureRect(db, vil.dbId, b.cx - 2, b.cy - 1, b.cx + 2, b.cy + 1, ownerId, `${vil.name} 곳간`, null);
+      grans++;
+    }
   }
-  return { rows, houses };
+  return { rows, houses, grans };
+}
+
+// ★[실체화 동기] 마을 곳간 자리 — 랩 _granAdd 링 배치의 시딩 시점 포팅(결정론):
+//   큰집 곁 r11~15 링(15° 스텝), 남쪽 집결부 회피(콘 베토+남측 감점), 영토 안·비차단·농지(기경+존닝) 회피·물 체비셰프 16 이격.
+function pickGranarySpot(ta, layout) {
+  const ccx = layout.center.cx, ccy = layout.center.cy;
+  const own = new Set(layout.territory.map(c => c[0] + ',' + c[1]));
+  const farm = new Set();
+  for (const arr of [layout.nongZone || [], layout.farmland || [], layout.dryfield || []]) for (const c of arr) farm.add(c.cx + ',' + c.cy);
+  const ok = (cx, cy) => {
+    for (let dx = -2; dx <= 2; dx++) for (let dy = -1; dy <= 1; dy++) {
+      const x = cx + dx, y = cy + dy;
+      if (ta.isBlocked(x, y) || !own.has(x + ',' + y) || farm.has(x + ',' + y)) return false;
+    }
+    for (let dy = -16; dy <= 16; dy++) for (let dx = -16; dx <= 16; dx++) if (ta.isWater && ta.isWater(cx + dx, cy + dy)) return false;   // 강변 논밭 벨트 비침범+건조지 고증
+    return true;
+  };
+  let best = null, bs = 1e9;
+  for (let r = 11; r <= 15; r++) for (let a = 0; a < 360; a += 15) {
+    const th = a * Math.PI / 180, cx = Math.round(ccx + Math.cos(th) * r), cy = Math.round(ccy + Math.sin(th) * r);
+    if (cy > ccy + 2 && Math.abs(cx - ccx) < 8) continue;   // 남쪽 문·집결 마당 정면 회피
+    if (!ok(cx, cy)) continue;
+    const sc = r + (cy > ccy ? 40 : 0) + (a % 90) * 0.01;
+    if (sc < bs) { bs = sc; best = { cx, cy }; }
+  }
+  return best;
 }
 
 // =============================================================================
@@ -485,13 +534,14 @@ function farmTilesInRect(x0, y0, x1, y1) {
   const out = [];
   for (const r of rows) {
     const vil = state.byDbId && state.byDbId.get(r.village_id);
+    const isFarm = (r.type === 'farmland' || r.type === 'dryfield');
     out.push({
       id: `vb${r.id}`, dbId: null, sim: true,
-      type: 'farmland',
+      type: isFarm ? 'farmland' : 'vtile',   // ★실체화 동기: yard/plaza/garden → vtile(지면 다짐 타일, data.kind로 구분)
       ownerId: `npc_simvil_${r.village_id}`,
-      ownerName: vil ? `${vil.name} 경작지` : '마을 경작지',
+      ownerName: vil ? `${vil.name} ${isFarm ? '경작지' : '마당'}` : '마을 땅',
       x: r.cx * SZ + SZ / 2, y: r.cy * SZ + SZ / 2,
-      data: { sim: 1, dry: r.type === 'dryfield' ? 1 : 0 },
+      data: isFarm ? { sim: 1, dry: r.type === 'dryfield' ? 1 : 0 } : { sim: 1, kind: r.type },
       floor: 0,
       villageId: r.village_id,
     });
@@ -590,6 +640,36 @@ function seedVillages(db, terrain, ta, ZONE) {
       for (const h of layout.houses) db.insertVillageBuilding({ village_id: dbId, type: 'house', cx: h.cx, cy: h.cy, floors: h.floors || 1, data: null });
       for (const f of layout.farmland) db.insertVillageBuilding({ village_id: dbId, type: 'farmland', cx: f.cx, cy: f.cy, floors: 0, data: null });
       for (const f of (layout.dryfield || [])) db.insertVillageBuilding({ village_id: dbId, type: 'dryfield', cx: f.cx, cy: f.cy, floors: 0, data: null });
+      // ★[실체화 동기 — 랩 정본] 지면 타일: 부지 원판(yard)·큰집 마당 원판(plaza)·텃밭(garden 4×4 남동).
+      //   farmland 패턴 그대로(영속 셀 행 → 청크 활성화 때 비영속 시각 타일). 겹침 방지: 건물 발자국·텃밭은 yard에서 제외.
+      {
+        const terrSet = new Set(layout.territory.map(c => c[0] + ',' + c[1]));
+        let tiles = 0;
+        for (const h of layout.houses) {
+          for (const [dx, dy] of VillageLayout.LOT_CELLS) {
+            const x = h.cx + dx, y = h.cy + dy;
+            if (!terrSet.has(x + ',' + y)) continue;
+            if (dx >= -5 && dx <= 0 && dy >= -5 && dy <= -2) continue;      // 움집 발자국(바닥 렌더가 덮음)
+            if (dx >= 1 && dx <= 4 && dy >= 1 && dy <= 4) continue;         // 텃밭 자리(아래서 garden으로)
+            db.insertVillageBuilding({ village_id: dbId, type: 'yard', cx: x, cy: y, floors: 0, data: null }); tiles++;
+          }
+          for (let dx = 1; dx <= 4; dx++) for (let dy = 1; dy <= 4; dy++) {
+            const x = h.cx + dx, y = h.cy + dy;
+            if (!terrSet.has(x + ',' + y)) continue;
+            db.insertVillageBuilding({ village_id: dbId, type: 'garden', cx: x, cy: y, floors: 0, data: null }); tiles++;
+          }
+        }
+        for (const [dx, dy] of VillageLayout.YARD_CELLS) {
+          const x = c.ccx + dx, y = c.ccy + dy;
+          if (!terrSet.has(x + ',' + y)) continue;
+          if (dx >= -4 && dx <= 3 && dy >= -4 && dy <= 3) continue;         // 큰집 발자국 제외
+          db.insertVillageBuilding({ village_id: dbId, type: 'plaza', cx: x, cy: y, floors: 0, data: null }); tiles++;
+        }
+        // ★마을 곳간 1동(랩 링 배치 포팅) — 자리 없으면 스킵(내륙·특이 지형 관용)
+        const g = pickGranarySpot(ta, layout);
+        if (g) db.insertVillageBuilding({ village_id: dbId, type: 'granary', cx: g.cx, cy: g.cy, floors: 1, data: null });
+        console.log(`[${state.zoneId}] 🏘️ [${hv.name}] 실체화 타일: ${tiles} (yard/garden/plaza)${g ? ` 곳간(${g.cx},${g.cy})` : ' 곳간 자리 없음'}`);
+      }
       rows.push({ dbId, name: hv.name, ccx: c.ccx, ccy: c.ccy, landParams: lp, layout });
       console.log(`[${state.zoneId}] 🏘️ [${hv.name}] 시딩: 중심 셀(${c.ccx},${c.ccy}) 집 ${layout.houses.length} 논 ${layout.farmland.length} 밭 ${(layout.dryfield || []).length} 영토 ${layout.territory.length}셀 land(F${lp.fertility}/W${lp.water}/S${lp.stone}/O${lp.ore}/우드${lp.wood}) ${Date.now() - t0}ms`);
     }
@@ -1285,7 +1365,7 @@ function init(deps) {
         try { db.db.exec('ROLLBACK'); } catch {}
         console.warn(`[${ZONE_ID}] 🏘️ 건물 실물화 실패(마을은 무건물로 계속):`, e.message);
       }
-      console.log(`[${ZONE_ID}] 🏘️ Stage4A 실물화: 회관 ${state.villages.length}·한옥 ${totalHouses}채 → buildings ${totalRows}행(wall/floor, owner npc_simvil_*) + 농지 ${totalFarm}칸은 청크 활성화 시 비영속 타일(vb*) · ${Date.now() - t0}ms`);
+      console.log(`[${ZONE_ID}] 🏘️ Stage4A 실물화: 큰집 ${state.villages.length}·움집 ${totalHouses}채(6×4)·곳간 → buildings ${totalRows}행(wall/floor, owner npc_simvil_*) + 농지·마당 타일은 청크 활성화 시 비영속(vb*) · ${Date.now() - t0}ms`);
     }
 
     // --- Stage 4A: 클라 영토 페이로드(welcome 1회) — 경계 셀 flat [dx,dy,mask] or 반경 근사 ---
