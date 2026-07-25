@@ -30,6 +30,15 @@
   const LOT_CELLS = discCells(LOT_R), LOT_GUARD = discCells(LOT_R + FARM_GAP), YARD_CELLS = discCells(HALL_YARD);   // 부지 원판(124셀 — 구 12×12 등적·적도폭 12), 부지+2 침수·완충 원판, 큰집 마당 원판(316셀)
   const houseFarmBlock = (hx, hy, x, y) => inDisc(hx, hy, LOT_R + FARM_GAP, x, y), hallFarmBlock = (hx, hy, x, y) => inDisc(hx, hy, HALL_YARD + FARM_GAP, x, y);   // 농지 완충: 부지/마당 밖 정확 2타일(원이라 비대칭 구조적 불가)
   const landNeedPer = (fv, base) => base * Math.max(0.6, Math.min(2.5, 0.55 / Math.max(0.05, (fv != null ? fv : 0.55))));   // ★보즈럽 조방화: 인당 경작칸=기준×(0.55/비옥), 0.6~2.5 클램프 — 저비옥=조방·고비옥=집약(랩 정본 동식)
+  const _dt1d = (f, n, d, v, z) => { let k = 0; v[0] = 0; z[0] = -1e20; z[1] = 1e20; for (let q = 1; q < n; q++) { let s = ((f[q] + q * q) - (f[v[k]] + v[k] * v[k])) / (2 * q - 2 * v[k]); while (s <= z[k]) { k--; s = ((f[q] + q * q) - (f[v[k]] + v[k] * v[k])) / (2 * q - 2 * v[k]); } k++; v[k] = q; z[k] = s; z[k + 1] = 1e20; } k = 0; for (let q = 0; q < n; q++) { while (z[k + 1] < q) k++; const p = v[k]; d[q] = (q - p) * (q - p) + f[p]; } };   // Felzenszwalb 1D 제곱거리 변환
+  const waterEDT = (t, x0, y0, x1, y1) => {   // ★정확 유클리드 물거리장(2패스 EDT) — 물가세·침수 계열 거리 정본(랩 동기[사용자 #15 사례]): ±14 박스=무과세 문턱, BFS=대각 √2 저과세 — 둘 다 탈락. 존닝 dwOf(BFS)="걸어서 물까지"라 별개 정본
+    const W = x1 - x0 + 1, Hh = y1 - y0 + 1, g = new Float64Array(W * Hh);
+    for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) g[y * W + x] = (t.isWater && t.isWater(x0 + x, y0 + y)) ? 0 : 1e20;
+    const n = Math.max(W, Hh), d = new Float64Array(n), v = new Int32Array(n), z = new Float64Array(n + 1), f = new Float64Array(n);
+    for (let x = 0; x < W; x++) { for (let y = 0; y < Hh; y++) f[y] = g[y * W + x]; _dt1d(f, Hh, d, v, z); for (let y = 0; y < Hh; y++) g[y * W + x] = d[y]; }
+    for (let y = 0; y < Hh; y++) { for (let x = 0; x < W; x++) f[x] = g[y * W + x]; _dt1d(f, W, d, v, z); for (let x = 0; x < W; x++) g[y * W + x] = d[x]; }
+    return { at: (x, y) => { const ix = x - x0, iy = y - y0; if (ix < 0 || iy < 0 || ix >= W || iy >= Hh) return 999; const s = g[iy * W + ix]; return s >= 1e19 ? 999 : Math.sqrt(s); } };
+  };
 
   function footprintLand(terrain, cx, cy) { for (const [dx, dy] of LOT_CELLS) if (terrain.isBlocked(cx + dx, cy + dy)) return false; return true; }   // 부지=원판
 
@@ -110,7 +119,8 @@
     const fpInTerr = (cx, cy) => { for (const [dx, dy] of LOT_CELLS) if (t.isBlocked(cx + dx, cy + dy) || !own.has(key(cx + dx, cy + dy))) return false; return true; };
     const farFromWater = (cx, cy) => { for (const [dx, dy] of LOT_GUARD) if (t.isWater && t.isWater(cx + dx, cy + dy)) return false; return true; };   // ★부지 원+2 완충 원 물 X(침수 회피, 자연제방 고증)
     const W_PEN_K = 2000;   // 물가 페널티 강도(랩 verbatim)
-    const wDist = (x, y) => { let m = 99; if (!t.isWater) return m; for (let dx = -14; dx <= 14; dx++) for (let dy = -14; dy <= 14; dy++) if (t.isWater(x + dx, y + dy)) { const d = Math.hypot(dx, dy) - LOT_R; if (d < m) m = d; } return m; };   // 부지 원 가장자리~물 최소 유클리드 거리(★전부 원 통일)
+    const WF = waterEDT(t, ccx - WR, ccy - WR, ccx + WR, ccy + WR);   // 유클리드 물거리장(박스=dw BFS와 동일 범위)
+    const wDist = (x, y) => { const v = WF.at(x, y); return v >= 999 ? 99 : Math.max(1, v - LOT_R); };   // ★물가세 거리=정확 유클리드 EDT 조회(랩 동기[사용자 #15 사례] — ±14 박스 무과세 문턱 폐지, 전 영토 연속 과세+O(1))
 
     // ── 2. 농지: 논=지형 존닝(물가 7줄 스트립), 밭=창발(여기선 균형해가 초기 기경지만) — 집보다 먼저(집이 논 피함)
     const farmCand = [], bank = [];
@@ -219,7 +229,7 @@
     return best;
   }
 
-  const API = { generate, footprintLand, axisAt, nearestBank, HOUSE_HALF, HOUSE_CAP: HOUSE_CAP_PER_FLOOR, HOUSE_CAP_PER_FLOOR, LAND_PER_HOUSE, landNeedPer, HALL_YARD, LOT_R, FARM_GAP, ALLEY_R, HALL_CLEAR, inDisc, LOT_CELLS, LOT_GUARD, YARD_CELLS, houseFarmBlock, hallFarmBlock };
+  const API = { generate, footprintLand, axisAt, nearestBank, waterEDT, HOUSE_HALF, HOUSE_CAP: HOUSE_CAP_PER_FLOOR, HOUSE_CAP_PER_FLOOR, LAND_PER_HOUSE, landNeedPer, HALL_YARD, LOT_R, FARM_GAP, ALLEY_R, HALL_CLEAR, inDisc, LOT_CELLS, LOT_GUARD, YARD_CELLS, houseFarmBlock, hallFarmBlock };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   if (typeof window !== 'undefined') window.VillageLayout = API;
 })();
