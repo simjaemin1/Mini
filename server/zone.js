@@ -2534,8 +2534,8 @@ function handlePlayerInput(player, raw) {
   }
   else if (msg.type === 'chest_put') tryChestPut(player, msg.buildingId, msg.item, +msg.amount || 1);
   else if (msg.type === 'chest_take') tryChestTake(player, msg.buildingId, msg.item, +msg.amount || 1);
-  else if (msg.type === 'build_guild_granary') tryBuildGuildGranary(player);   // ★길드 곳간 실물화[사용자 확정]
-  else if (msg.type === 'hut_start') tryHutStart(player);                       // ★움집 고증 건축 ①굴착
+  else if (msg.type === 'build_guild_granary') tryBuildGuildGranary(player, +msg.atX, +msg.atY);   // ★길드 곳간 실물화[사용자 확정 — 커서 배치]
+  else if (msg.type === 'hut_start') tryHutStart(player, +msg.atX, +msg.atY);   // ★움집 고증 건축 ①굴착(커서 배치)
   else if (msg.type === 'hut_advance') tryHutAdvance(player, msg.buildingId);   // ★움집 고증 건축 ②~④
   else if (msg.type === 'attack') { metrics.attacks++; tryAttack(player); }
   else if (msg.type === 'ranged_attack') { metrics.attacks++; tryRangedAttack(player, +msg.aimX, +msg.aimY); }
@@ -4046,10 +4046,19 @@ const HUT_STAGES = [
   { need: { rafter: 8, fiber: 6 },                             label: '③ 도리·서까래 골조(서까래 8·풀 6)' },
   { need: { thatch: 8 },                                       label: '④ 이엉 지붕 잇기(이엉 8)' },
 ];
-function tryHutStart(player) {
+function tryHutStart(player, atX, atY) {
   const SZg = BUILDING_SIZE;
-  const gx = Math.round(player.x / SZg), gy = Math.round(player.y / SZg);
-  const x0 = gx - 3, y0 = gy - 4, x1 = gx + 2, y1 = gy - 1;
+  let x0, y0, x1, y1;
+  if (Number.isFinite(atX) && Number.isFinite(atY)) {
+    // ★건축모드 커서 배치[사용자 지시 "좀보이드 스타일"] — 커서 셀 중심 6×4
+    if (Math.hypot(atX - player.x, atY - player.y) > 200) { send(player.ws, { type: 'notice', text: '너무 멀어서 거기에 못 팜' }); return; }
+    const cx = Math.floor(atX / SZg), cy = Math.floor(atY / SZg);
+    x0 = cx - 3; y0 = cy - 2; x1 = cx + 2; y1 = cy + 1;
+  } else {
+    // 폴백(구식): 시전자 북쪽
+    const gx = Math.round(player.x / SZg), gy = Math.round(player.y / SZg);
+    x0 = gx - 3; y0 = gy - 4; x1 = gx + 2; y1 = gy - 1;
+  }
   const st = HUT_STAGES[0];
   if (!hasTool(player, st.tool)) { send(player.ws, { type: 'notice', text: `${st.label} — 곡괭이 필요` }); return; }
   for (let x = x0 - 1; x <= x1 + 1; x++) for (let y = y0 - 1; y <= y1 + 1; y++) {
@@ -4061,7 +4070,8 @@ function tryHutStart(player) {
       }
     }
   }
-  const nearB = qtBuildings ? qtBuildings.queryCircle(gx * SZg, (gy - 2) * SZg, SZg * 6) : Array.from(buildings.values());
+  const ctrX = ((x0 + x1 + 1) / 2) * SZg, ctrY = ((y0 + y1 + 1) / 2) * SZg;
+  const nearB = qtBuildings ? qtBuildings.queryCircle(ctrX, ctrY, SZg * 6) : Array.from(buildings.values());
   for (const b of nearB) {
     const bcx = Math.round((b.x - (b.type === 'wall' ? 0 : SZg / 2)) / SZg), bcy = Math.round((b.y - (b.type === 'wall' ? 0 : SZg / 2)) / SZg);
     if (bcx >= x0 - 1 && bcx <= x1 + 1 && bcy >= y0 - 1 && bcy <= y1 + 1 && (b.floor || 0) === 0) {
@@ -4070,10 +4080,10 @@ function tryHutStart(player) {
   }
   consumeToolByType(player, st.tool, st.wear || 1);
   const data = { stage: 1, x0, y0, x1, y1, owner: player.playerId, floor: 0 };
-  const bo = _liveBuildRow('hut_site', gx * SZg + SZg / 2, (gy - 2) * SZg + SZg / 2, data, player.playerId, `${player.name}의 움집터`, null);
+  const bo = _liveBuildRow('hut_site', ctrX, ctrY, data, player.playerId, `${player.name}의 움집터`, null);
   broadcast({ type: 'building_added', building: bo });
   send(player.ws, { type: 'notice', text: `⛏️ ${st.label} 완료 — 다음: ${HUT_STAGES[1].label} (움집터 클릭)` });
-  console.log(`[${ZONE_ID}] ⛏️ ${player.name} 움집터 굴착 @(${gx},${gy})`);
+  console.log(`[${ZONE_ID}] ⛏️ ${player.name} 움집터 굴착 [${x0}..${x1}]×[${y0}..${y1}]`);
 }
 function tryHutAdvance(player, buildingId) {
   const b = buildings.get(buildingId);
@@ -4119,7 +4129,7 @@ function tryHutAdvance(player, buildingId) {
 }
 
 const GRANARY_COST = { plank: 12, stone: 8 };
-async function tryBuildGuildGranary(player) {
+async function tryBuildGuildGranary(player, atX, atY) {
   if (!player.tribeId) { send(player.ws, { type: 'notice', text: '길드 소속이 아닙니다' }); return; }
   // 리더 검사(central)
   try {
@@ -4133,7 +4143,14 @@ async function tryBuildGuildGranary(player) {
     for (const r of rows) { try { const d = JSON.parse(r.data || '{}'); if (d.tribe_id === player.tribeId) { send(player.ws, { type: 'notice', text: '길드 곳간은 이미 있습니다 (길드당 1동)' }); return; } } catch (_) {} }
   } catch (e) {}
   const SZg = BUILDING_SIZE;
-  const gx = Math.round(player.x / SZg), gy = Math.round(player.y / SZg) - 3;   // 앵커=북쪽 3칸
+  let gx, gy;
+  if (Number.isFinite(atX) && Number.isFinite(atY)) {
+    // ★건축모드 커서 배치[사용자 지시 "좀보이드 스타일"]
+    if (Math.hypot(atX - player.x, atY - player.y) > 200) { send(player.ws, { type: 'notice', text: '너무 멀어서 거기에 못 지음' }); return; }
+    gx = Math.floor(atX / SZg); gy = Math.floor(atY / SZg);
+    const pcx = Math.floor(player.x / SZg), pcy = Math.floor(player.y / SZg);
+    if (pcx >= gx - 2 && pcx <= gx + 2 && pcy >= gy - 1 && pcy <= gy + 1) { send(player.ws, { type: 'notice', text: '곳간은 밀폐 — 발자국 안에 서 있으면 갇힙니다. 밖에서 지으세요' }); return; }
+  } else { gx = Math.round(player.x / SZg); gy = Math.round(player.y / SZg) - 3; }   // 폴백(구식): 북쪽 3칸
   // 길드영토 안(발자국 네 모서리 전부) — claim 사각 bbox 판정
   const inMyGuildClaim = (px, py) => {
     for (const c of claims.values()) {

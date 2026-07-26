@@ -1073,7 +1073,7 @@ const SIM_JOB_EMOJI = {
       else if (a === 'build_farmland') sendPrimary({ type: 'build', buildType: 'farmland', floor: myBuildFloor });
       else if (a === 'build_stair') sendPrimary({ type: 'build', buildType: 'stair', floor: myBuildFloor });
       else if (a === 'build_floor') sendPrimary({ type: 'build', buildType: 'floor', floor: myBuildFloor });
-      else if (a === 'hut_start') { sendPrimary({ type: 'hut_start' }); showNotice('⛏️ 수혈 굴착 시도 — 곡괭이 필요, 내 위치 북쪽 6×4'); }   // ★움집 고증 건축
+      else if (a === 'hut_start') { buildMode = true; placementMode = { special: 'hut_site' }; showNotice('⛏️ 움집터 배치 모드 — 클릭 위치에 6×4 수혈 굴착 (곡괭이 필요 · B=취소)'); }   // ★움집 고증 건축(좀보이드 커서 배치)
       else if (a === 'harvest') sendPrimary({ type: 'harvest' });
       else if (a === 'feed') sendPrimary({ type: 'feed' });
       else if (a === 'tribe') toggleTribePanel();
@@ -1440,6 +1440,12 @@ const SIM_JOB_EMOJI = {
         // 사용자 위치에서 거리 체크 (160px)
         const distMe = Math.hypot(clickWx - myAbsPredicted.x, clickWy - myAbsPredicted.y);
         if (distMe > 160) { showNotice('너무 멀어서 거기에 못 지음 (160px)'); return; }
+        if (placementMode.special) {
+          // ★움집터·길드 곳간 — 커서 셀 기준 다중 셀 배치(검증·재료·배치는 서버 권위)
+          sendPrimary({ type: placementMode.special === 'hut_site' ? 'hut_start' : 'build_guild_granary', atX: clickWx, atY: clickWy });
+          if (!e.shiftKey) { placementMode = null; showNotice('배치 요청'); }
+          return;
+        }
         if (placementMode.itemType) {
           // 14.54-d: blocked면 클릭 무시 + 알림
           const _cx = Math.floor(clickWx / 32), _cy = Math.floor(clickWy / 32);
@@ -2737,7 +2743,28 @@ const SIM_JOB_EMOJI = {
   }
   // 14.53-i: placement ghost — 마우스 위치에 실루엣 미리보기
   function drawPlacementGhost() {
-    if (!placementMode || !placementMode.itemType) return;
+    if (!placementMode) return;
+    if (placementMode.special) {
+      // ★움집터(6×4)·길드 곳간(5×3) 발자국 윤곽 고스트 — 커서 셀 기준(서버 좌표 규약 동형)
+      const wx0 = placementCursor.wx, wy0 = placementCursor.wy;
+      const ccx = Math.floor(wx0 / 32), ccy = Math.floor(wy0 / 32);
+      const hut = placementMode.special === 'hut_site';
+      const fx0 = hut ? ccx - 3 : ccx - 2, fy0 = hut ? ccy - 2 : ccy - 1;
+      const fx1 = hut ? ccx + 2 : ccx + 2, fy1 = hut ? ccy + 1 : ccy + 1;
+      const myIso0 = w2i(myAbsPredicted.x, myAbsPredicted.y);
+      const pt = (cx2, cy2) => { const i = w2i(cx2 * 32, cy2 * 32); return { x: i.x - myIso0.x + W / 2, y: i.y - myIso0.y + H / 2 - (myFloor || 0) * FLOOR_HEIGHT }; };
+      const p1 = pt(fx0, fy0), p2 = pt(fx1 + 1, fy0), p3 = pt(fx1 + 1, fy1 + 1), p4 = pt(fx0, fy1 + 1);
+      ctx.save();
+      ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.lineTo(p3.x, p3.y); ctx.lineTo(p4.x, p4.y); ctx.closePath();
+      ctx.fillStyle = hut ? 'rgba(154,122,74,0.25)' : 'rgba(165,129,63,0.25)'; ctx.fill();
+      ctx.setLineDash([5, 4]); ctx.strokeStyle = hut ? '#c9b28a' : '#e0b060'; ctx.lineWidth = 1.5; ctx.stroke(); ctx.setLineDash([]);
+      ctx.font = 'bold 11px sans-serif'; ctx.fillStyle = '#ffe9b0'; ctx.textAlign = 'center';
+      ctx.fillText(hut ? '움집터 6×4 (수혈 굴착)' : '길드 곳간 5×3 (밀폐)', (p1.x + p3.x) / 2, p1.y - 8);
+      ctx.textAlign = 'left';
+      ctx.restore();
+      return;
+    }
+    if (!placementMode.itemType) return;
     const wx = placementCursor.wx, wy = placementCursor.wy;
     const cx = Math.floor(wx / 32), cy = Math.floor(wy / 32);
     const dir = placementMode.dir || 'N';
@@ -6096,7 +6123,7 @@ const SIM_JOB_EMOJI = {
           else alert(d.error || '종전 실패');
         });
         const grBtn = document.getElementById('tribeGranaryBtn');
-        if (grBtn) grBtn.onclick = () => { sendPrimary({ type: 'build_guild_granary' }); showNotice('길드 곳간 건설 시도...'); };
+        if (grBtn) grBtn.onclick = () => { buildMode = true; placementMode = { special: 'guild_granary' }; toggleTribePanel(); showNotice('🏚️ 길드 곳간 배치 모드 — 길드영토 안 클릭 (5×3 밀폐 · 밖에서 지으세요 · B=취소)'); };
         document.getElementById('tribeLeaveBtn').onclick = async () => {
           if (!confirm('정말 탈퇴하시겠습니까?')) return;
           const r = await fetch('/tribe/leave', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ player_id: myUsername }) });
