@@ -686,6 +686,15 @@ function seedVillages(db, terrain, ta, ZONE) {
         const g = pickGranarySpot(ta, layout);
         if (g) db.insertVillageBuilding({ village_id: dbId, type: 'granary', cx: g.cx, cy: g.cy, floors: 1, data: null });
         console.log(`[${state.zoneId}] 🏘️ [${hv.name}] 실체화 타일: ${tiles} (yard/garden/plaza)${g ? ` 곳간(${g.cx},${g.cy})` : ' 곳간 자리 없음'}`);
+        // ★[생활 층 ②③ — 랩 동형] 영토·미개간 논 존닝 영속: 재부팅 후 개간 크루·신축 부지 선정의
+        //   원료(레이아웃 객체는 시딩 때만 존재). terr=영토 전 셀, nongzone=potSet(미개간 논 후보 — 밭은 창발이라 무행).
+        {
+          const _fs = new Set([...layout.farmland, ...(layout.dryfield || [])].map(c2 => c2.cx + ',' + c2.cy));
+          let tn = 0, zn = 0;
+          for (const c2 of layout.territory) { db.insertVillageBuilding({ village_id: dbId, type: 'terr', cx: c2[0], cy: c2[1], floors: 0, data: null }); tn++; }
+          for (const z2 of (layout.nongZone || [])) { if (_fs.has(z2.cx + ',' + z2.cy)) continue; db.insertVillageBuilding({ village_id: dbId, type: 'nongzone', cx: z2.cx, cy: z2.cy, floors: 0, data: null }); zn++; }
+          console.log(`[${state.zoneId}] 🏘️ [${hv.name}] 생활층 영속: 영토 ${tn}셀 · 미개간 논존닝 ${zn}셀`);
+        }
       }
       rows.push({ dbId, name: hv.name, ccx: c.ccx, ccy: c.ccy, landParams: lp, layout });
       console.log(`[${state.zoneId}] 🏘️ [${hv.name}] 시딩: 중심 셀(${c.ccx},${c.ccy}) 집 ${layout.houses.length} 논 ${layout.farmland.length} 밭 ${(layout.dryfield || []).length} 영토 ${layout.territory.length}셀 land(F${lp.fertility}/W${lp.water}/S${lp.stone}/O${lp.ore}/우드${lp.wood}) ${Date.now() - t0}ms`);
@@ -1237,6 +1246,7 @@ function init(deps) {
     const terrain = require('./terrain');
     state.db = db;
     const ta = makeTerrainAdapter(terrain, ZONE, deps);
+  state.ta = ta;   // ★[생활 층] 런타임 지형 판정(개간 적격·신축 부지·물거리 EDT)용 유지 — 시딩 후에도 사용
 
     // --- Stage 2: 시딩 (idempotent — villages 비었을 때만) ---
     let dbRows = db.getVillagesByZone(ZONE_ID);
@@ -1281,15 +1291,22 @@ function init(deps) {
       // NPC 집 위치 — village_buildings의 house 셀(복원 시에도 동일 소스)
       const bRows = db.getVillageBuildings(row.id);
       const housesPx = [];
+      // ★[생활 층] 부팅 시 상태 집합 재구성 — terr/nongzone(시딩 영속) + 개간 실상태(farm/dry) + 집·곳간 셀
+      const terrSet = new Set(), potSet = new Set(), farmSet = new Set(), granList = [], houseCells = [], siteRows = [];
       let farmN = 0, dryN = 0, hallData = null, maxCellR = 4;
       for (const b of bRows) {
         const r = Math.hypot(b.cx - row.cx, b.cy - row.cy);
         if (r > maxCellR) maxCellR = r;
-        if (b.type === 'house') housesPx.push({ x: b.cx * SZ + SZ / 2, y: b.cy * SZ + SZ / 2 });
-        else if (b.type === 'farmland') farmN++;
-        else if (b.type === 'dryfield') dryN++;
+        if (b.type === 'house') { housesPx.push({ x: b.cx * SZ + SZ / 2, y: b.cy * SZ + SZ / 2 }); houseCells.push({ cx: b.cx, cy: b.cy }); }
+        else if (b.type === 'farmland') { farmN++; farmSet.add(b.cx + ',' + b.cy); }
+        else if (b.type === 'dryfield') { dryN++; farmSet.add(b.cx + ',' + b.cy); }
+        else if (b.type === 'terr') terrSet.add(b.cx + ',' + b.cy);
+        else if (b.type === 'nongzone') potSet.add(b.cx + ',' + b.cy);
+        else if (b.type === 'granary') granList.push({ cx: b.cx, cy: b.cy });
+        else if (b.type === 'housesite') siteRows.push({ cx: b.cx, cy: b.cy });
         else if (b.type === 'hall' && b.data) { try { hallData = JSON.parse(b.data); } catch {} }
       }
+      for (const k of farmSet) potSet.delete(k);   // 이미 개간된 존닝 셀 제외(미개간 잔여만 potSet)
       // Stage 4A: 영토 경계(시딩 때 hall data.bnd로 영속). 구DB(Stage1~3)엔 없음 → 반경 원 근사 폴백.
       const bnd = (hallData && Array.isArray(hallData.bnd) && hallData.bnd.length) ? hallData.bnd : null;
       let maxRPx = (maxCellR + 3) * SZ;
@@ -1298,7 +1315,9 @@ function init(deps) {
         for (let i = 0; i < bnd.length; i += 3) { const d = Math.hypot(bnd[i], bnd[i + 1]); if (d > m) m = d; }
         maxRPx = Math.max(maxRPx, (m + 2) * SZ);
       }
-      state.villages.push({ dbId: row.id, name: row.name, ccx: row.cx, ccy: row.cy, housesPx, econ: ev, npcPids: [], _bRows: bRows, _bnd: bnd, _maxRPx: Math.round(maxRPx), _farmN: farmN, _dryN: dryN });
+      const _pendSite = siteRows.find(s3 => !houseCells.some(h => h.cx === s3.cx && h.cy === s3.cy)) || null;   // 완공(house 행 존재) 안 된 진행 중 터만
+      state.villages.push({ dbId: row.id, name: row.name, ccx: row.cx, ccy: row.cy, housesPx, econ: ev, npcPids: [], _bRows: bRows, _bnd: bnd, _maxRPx: Math.round(maxRPx), _farmN: farmN, _dryN: dryN,
+        _terrSet: terrSet, _potSet: potSet, _farmSet: farmSet, _granList: granList, _houseCells: houseCells, _pendSite, _site: null, _clearCrew: 0, _buildCrew: 0, _claim: new Set() });   // ★[생활 층] 런타임 상태(구DB=terr 0셀 → 생활층 휴면)
     }
     world.day = maxDay;
     state.world = world;
@@ -1860,6 +1879,7 @@ function onGameTick(now) {
     // Stage 4B: econ 캐러밴 집합 ↔ 실체 동기(스폰·도착 전이·회수) — econ 틱 직후라 상태가 최신
     const carSync = syncCaravanBodies(now);
     state.saveQueue = state.villages.slice(); // 저장은 다음 틱부터 1마을/틱 — 19마을이면 0.63초에 걸쳐 완료(게임일 600s 대비 무시)
+    for (const vil of state.villages) { try { _lifeDaily(vil); } catch (e) { console.error(`[${state.zoneId}] 생활층 일일 훅 실패(${vil.name}):`, e.message); } }   // ★[생활 층] 크루 리셋·신축 판단 — econ 틱 직후(읽기 전용 결합)
     if (state.distDirty) { // 무효화 훅(스텁) 소비 — 게임일 경계(자정 큐 세팅 뒤) 전쌍 재계산. 건물 변화는 드물어 일 1회면 족함(정밀화는 Stage 4 — 위 훅 주석).
       state.distDirty = false;
       try { computeAndInjectDistMatrix('무효화 재계산'); } catch (e) { console.error(`[${state.zoneId}] 🏘️ BFS 거리행렬 재계산 실패(기존 행렬 유지):`, e.message); }
@@ -1941,8 +1961,213 @@ function banditHost() {
   };
 }
 
+// =============================================================================
+// ★[생활 층 이관 ②③④ — 랩 동형(war 7759~7798 개간·6122 addHouseSite·건설 크루), 2026-07-27]
+//   원칙: econ=진실(읽기 전용 결합 — 회귀 절대 보호), NPC 작업=실체 표현. 식량 이중 계상 금지
+//   (랩 s.food 생활 층 식량은 이식하지 않음 — 서버 식량은 econ storage가 유일).
+//   ② 개간: needLand(식량 120일치 글럿 정지 + 개간수<인구×landNeedPer) → frontier(기개간 인접
+//      논 존닝 + 밭 창발 _batEligible) → 농부가 현장 도보 → 노동 누적 → farmland/dryfield 행
+//      영속 + 라이브 타일. ③ 신축: 수용력(채당 HOUSE_CAP) 압박 → addHouseSite 동형 점수식
+//      (HALL_CLEAR·간격 18·부지 원판 무결·물가 K/d²·2패스 잠식·granClear) → hut_site(플레이어
+//      4단계 공정과 동일 규약) → 크루 시공 → 완공=data.hut 실체화+마당 타일. ④ 농부 실작업:
+//      낮에 자기 마을 농지 셀을 결정론 순회(현장 왕복 — 겉보기 도넛 배회 대체).
+//   구DB(terr 행 없음)=생활층 휴면. 재부팅: 진행 중 터는 housesite 행으로 복원(단계는 1부터 —
+//   village_buildings 갱신 API 부재 관용). 좌표·야간 귀가·늑대 도주는 기존 계약 유지.
+// =============================================================================
+const LIFE_ON = process.env.VILLAGE_LIFE !== '0';
+const L_LANDNEED = 8;        // 랩 동형: 인당 기준 경작칸(landNeedPer가 비옥도 보정)
+const LIFE_CLEAR_PDAY = 3;   // 농부 1인 하루 개간 셀(랩 L_CLEAR=90 노동·dwell 스케일 근사 — 관찰 후 튜닝)
+const LIFE_STAGE_PDAY = 1;   // 건설 1인 하루 1단계(움집 4단계≈4인일 — 랩 L_BUILDSEC=4600인·초 근사)
+const LIFE_CREW = 2;         // 작업당 동시 크루 상한
+
+function _lifeFarmTooClose(vil, x, y) {   // 랩 farmTooClose 동형: 부지 원+2·마당 원+2·곳간 5×3+1버퍼
+  for (const h of vil._houseCells) if (VillageLayout.houseFarmBlock(h.cx, h.cy, x, y)) return true;
+  if (VillageLayout.hallFarmBlock(vil.ccx, vil.ccy, x, y)) return true;
+  for (const g2 of vil._granList) if (Math.abs(g2.cx - x) <= 4 && Math.abs(g2.cy - y) <= 3) return true;
+  if (vil._site && Math.abs(vil._site.cx - x) <= 8 && Math.abs(vil._site.cy - y) <= 8) return true;   // 진행 중 신축 부지 보호
+  return false;
+}
+function _lifeBatEligible(vil, x, y) {   // 랩 _batEligible 동형(길 답압 항은 서버 road 조회 연결 시 — 주석 계약)
+  if (!vil._terrSet.has(x + ',' + y)) return false;
+  if (VillageLayout.hallFarmBlock(vil.ccx, vil.ccy, x, y)) return false;
+  if (!state.ta || state.ta.isBlocked(x, y)) return false;
+  let n = 0; const A2 = VillageLayout.ALLEY_R * VillageLayout.ALLEY_R;
+  for (const h of vil._houseCells) { const dx = h.cx - x, dy = h.cy - y; if (dx * dx + dy * dy < A2) { n++; if (n >= 2) return false; } }   // 골목 배제(집 2채 r12.5)
+  return true;
+}
+function _lifeFrontier(vil) {   // 랩 getFrontier 동형(일 캐시): 기개간 인접 논 존닝 + 밭 창발
+  if (vil._frontier && vil._frontDay === state.world.day) return vil._frontier;
+  const fr = [], seen = new Set(), any = vil._farmSet.size > 0;
+  for (const k of vil._potSet) {
+    const ci = k.indexOf(','), x = +k.slice(0, ci), y = +k.slice(ci + 1);
+    if (any) { let adj = false; for (const d of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (vil._farmSet.has((x + d[0]) + ',' + (y + d[1]))) { adj = true; break; } if (!adj) continue; }
+    if (_lifeFarmTooClose(vil, x, y)) continue;
+    seen.add(k); fr.push({ cx: x, cy: y, f: '논' });
+  }
+  const addBat = (x, y) => { const k = x + ',' + y; if (seen.has(k) || vil._potSet.has(k) || vil._farmSet.has(k)) return; if (!_lifeBatEligible(vil, x, y) || _lifeFarmTooClose(vil, x, y)) return; seen.add(k); fr.push({ cx: x, cy: y, f: '밭' }); };
+  for (const k of vil._farmSet) { const ci = k.indexOf(','), x = +k.slice(0, ci), y = +k.slice(ci + 1); addBat(x + 1, y); addBat(x - 1, y); addBat(x, y + 1); addBat(x, y - 1); }
+  vil._frontier = fr; vil._frontDay = state.world.day; return fr;
+}
+function _lifeNeedClear(vil) {   // 랩 needLand 동형: 보즈럽 수요 게이트 + 목표 미달
+  const e = vil.econ; if (!e || !vil._potSet) return false;
+  if (((e.storage && e.storage.food) || 0) > e.npcs.length * 120) return false;
+  const fert = (e.land && e.land.fertility != null) ? e.land.fertility : 0.55;
+  return vil._farmSet.size < Math.ceil(e.npcs.length * VillageLayout.landNeedPer(fert, L_LANDNEED));
+}
+function _lifeLiveFarmTile(vil, cx, cy, type) {   // 개간 완료 실체화: 영속 행 + 라이브 시각 타일(farmTilesInRect 규약 동형)
+  const rowid = state.db.insertVillageBuilding({ village_id: vil.dbId, type, cx, cy, floors: 0, data: null });
+  vil._farmSet.add(cx + ',' + cy); vil._potSet.delete(cx + ',' + cy); vil._frontier = null; vil._farmArr = null;
+  if (type === 'farmland') vil._farmN++; else vil._dryN++;
+  const bo = { id: `vb${rowid}`, dbId: null, sim: true, type: 'farmland', ownerId: `npc_simvil_${vil.dbId}`, ownerName: `${vil.name} 경작지`, x: cx * SZ + SZ / 2, y: cy * SZ + SZ / 2, data: { sim: 1, dry: type === 'dryfield' ? 1 : 0 }, floor: 0, villageId: vil.dbId };
+  try { if (state.deps.chunkManager) state.deps.chunkManager.insertBuilding(bo); state.deps.broadcast({ type: 'buildings_spawn', buildings: [bo] }); } catch (e) {}
+}
+function _lifeAddHouseSite(vil) {   // 랩 addHouseSite 동형(서버판): 2패스(잠재농지 회피→잠식 비용) + 전 하드 필터
+  if (vil._site || !state.ta) return;
+  if (!vil._wf) {   // 물거리 EDT 캐시(마을당 1회 — 영토 bbox±32, 랩 s._wf 동형)
+    let bx0 = 1e9, by0 = 1e9, bx1 = -1e9, by1 = -1e9;
+    for (const k of vil._terrSet) { const ci = k.indexOf(','), x = +k.slice(0, ci), y = +k.slice(ci + 1); if (x < bx0) bx0 = x; if (x > bx1) bx1 = x; if (y < by0) by0 = y; if (y > by1) by1 = y; }
+    vil._wf = VillageLayout.waterEDT(state.ta, bx0 - 32, by0 - 32, bx1 + 32, by1 + 32);
+  }
+  const W_PEN_K = 2000, HG = 18;
+  const wnd = (x, y) => { const v = vil._wf.at(x, y); return v >= 999 ? 99 : Math.max(1, v - VillageLayout.LOT_R); };
+  const farmAt = (x, y, strict) => (strict && vil._potSet.has(x + ',' + y)) || vil._farmSet.has(x + ',' + y);
+  for (const strict of [true, false]) {
+    const cand = [];
+    for (const k of vil._terrSet) {
+      const ci = k.indexOf(','), x = +k.slice(0, ci), y = +k.slice(ci + 1);
+      if ((x & 1) || (y & 1)) continue;                                        // 짝수 격자(레이아웃 동일)
+      const r = Math.hypot(x - vil.ccx, y - vil.ccy); if (r < VillageLayout.HALL_CLEAR) continue;
+      if (farmAt(x, y, strict)) continue;
+      const wd = wnd(x, y); let sc = r + (wd < 99 ? W_PEN_K / (wd * wd) : 0);  // 물가 연속 페널티 K/d²
+      if (!strict) { let nong = 0; for (const [dx, dy] of VillageLayout.LOT_CELLS) if (vil._potSet.has((x + dx) + ',' + (y + dy))) nong++; sc += nong * 6; }   // 2패스 잠식 비용
+      cand.push([x, y, sc]);
+    }
+    cand.sort((a2, b2) => a2[2] - b2[2]);
+    for (const c2 of cand) {
+      const x = c2[0], y = c2[1];
+      let gap = true; for (const h of vil._houseCells) if (Math.hypot(h.cx - x, h.cy - y) < HG) { gap = false; break; } if (!gap) continue;
+      let ok = true;
+      for (const [dx, dy] of VillageLayout.LOT_CELLS) { const xx = x + dx, yy = y + dy; if (!vil._terrSet.has(xx + ',' + yy) || state.ta.isBlocked(xx, yy) || farmAt(xx, yy, strict)) { ok = false; break; } }   // 부지 원판 무결
+      if (ok) for (const [dx, dy] of VillageLayout.LOT_GUARD) if (state.ta.isWater && state.ta.isWater(x + dx, y + dy)) { ok = false; break; }   // 침수 완충
+      if (ok) for (const g2 of vil._granList) {   // granClear 양방향(집채+1·텃밭 vs 곳간 5×3)
+        if (g2.cx + 2 >= x - 6 && g2.cx - 2 <= x + 1 && g2.cy + 1 >= y - 6 && g2.cy - 1 <= y - 1) { ok = false; break; }
+        if (g2.cx + 2 >= x + 1 && g2.cx - 2 <= x + 4 && g2.cy + 1 >= y + 1 && g2.cy - 1 <= y + 4) { ok = false; break; }
+      }
+      if (!ok) continue;
+      if (!strict) for (const [dx, dy] of VillageLayout.LOT_CELLS) vil._potSet.delete((x + dx) + ',' + (y + dy));   // 선점 부지는 잠재농지 제거
+      const bo = state.deps.liveBuildRow ? state.deps.liveBuildRow('hut_site', (x - 2.5) * SZ, (y - 3.5) * SZ,
+        { stage: 1, x0: x - 5, y0: y - 5, x1: x + 0, y1: y - 2, owner: 'npc', floor: 0 }, `npc_simvil_${vil.dbId}`, `${vil.name} 새 움집터`, null) : null;   // ★NPC 정본 렉트를 hut_site 규약에 실음(완공 기하 동일)
+      if (bo) state.deps.broadcast({ type: 'building_added', building: bo });
+      state.db.insertVillageBuilding({ village_id: vil.dbId, type: 'housesite', cx: x, cy: y, floors: 0, data: null });
+      vil._site = { cx: x, cy: y, stage: 1, bo };
+      console.log(`[${state.zoneId}] 🏘️ [${vil.name}] 생활층 신축 터 @(${x},${y}) — 크루 시공 시작`);
+      return;
+    }
+  }
+}
+function _lifeAdvanceSite(vil) {   // 크루 1단계 완수 → 단계 전진(클라 hut_site 렌더가 1~3단계 표시) / 4→완공
+  const s2 = vil._site; if (!s2) return;
+  s2.stage++;
+  if (s2.stage <= 3) {
+    if (s2.bo) { s2.bo.data.stage = s2.stage; try { state.db.updateBuildingData(s2.bo.dbId, JSON.stringify(s2.bo.data)); } catch (e) {} state.deps.broadcast({ type: 'building_added', building: s2.bo }); }
+    return;
+  }
+  _lifeCompleteHouse(vil);
+}
+function _lifeCompleteHouse(vil) {   // 완공: 터 제거 + NPC 정본 6×4 실체화(hut 태그) + house/yard/garden 영속 + 라이브
+  const s2 = vil._site; if (!s2) return;
+  const dp = state.deps;
+  if (s2.bo) { try { state.db.deleteBuilding(s2.bo.dbId); } catch (e) {} if (dp.buildings) dp.buildings.delete(s2.bo.id); try { if (dp.chunkManager && dp.chunkManager.removeBuilding) dp.chunkManager.removeBuilding(s2.bo); } catch (e) {} dp.broadcast({ type: 'building_removed', id: s2.bo.id }); }
+  const cx = s2.cx, cy = s2.cy, ownerId = `npc_simvil_${vil.dbId}`, onm = `${vil.name} 움집`, made = [];
+  const tag = [cx - 5, cy - 5, cx + 0, cy - 2], doorXs = new Set([cx - 3, cx - 2]);
+  const lb = dp.liveBuildRow;
+  if (lb) {
+    for (let x = cx - 5; x <= cx + 0; x++) {
+      lb('wall', x * SZ, (cy - 5) * SZ, { side: 'N', floor: 0, hut: tag }, ownerId, onm, made);
+      if (!doorXs.has(x)) lb('wall', x * SZ, (cy - 1) * SZ, { side: 'N', floor: 0, hut: tag }, ownerId, onm, made);
+    }
+    for (let y = cy - 5; y <= cy - 2; y++) { lb('wall', (cx + 0) * SZ, y * SZ, { side: 'E', floor: 0, hut: tag }, ownerId, onm, made); lb('wall', (cx - 6) * SZ, y * SZ, { side: 'E', floor: 0, hut: tag }, ownerId, onm, made); }
+    for (let x = cx - 5; x <= cx + 0; x++) for (let y = cy - 5; y <= cy - 2; y++) lb('floor', x * SZ + SZ / 2, y * SZ + SZ / 2, { floor: 0, hut: tag }, ownerId, onm, made);
+    dp.broadcast({ type: 'buildings_spawn', buildings: made });
+  }
+  state.db.insertVillageBuilding({ village_id: vil.dbId, type: 'house', cx, cy, floors: 1, data: null });   // 다음 부팅 실물화 재기록의 원료
+  vil._houseCells.push({ cx, cy }); vil.housesPx.push({ x: cx * SZ + SZ / 2, y: cy * SZ + SZ / 2 });
+  const tiles = [];
+  for (const [dx, dy] of VillageLayout.LOT_CELLS) {   // 마당·텃밭(시딩 블록 동형)
+    const x = cx + dx, y = cy + dy;
+    if (!vil._terrSet.has(x + ',' + y)) continue;
+    if (dx >= -5 && dx <= 0 && dy >= -5 && dy <= -2) continue;
+    const isG = dx >= 1 && dx <= 4 && dy >= 1 && dy <= 4;
+    const rid = state.db.insertVillageBuilding({ village_id: vil.dbId, type: isG ? 'garden' : 'yard', cx: x, cy: y, floors: 0, data: null });
+    const bo2 = { id: `vb${rid}`, dbId: null, sim: true, type: 'vtile', ownerId, ownerName: `${vil.name} 마당`, x: x * SZ + SZ / 2, y: y * SZ + SZ / 2, data: { sim: 1, kind: isG ? 'garden' : 'yard' }, floor: 0, villageId: vil.dbId };
+    try { if (dp.chunkManager) dp.chunkManager.insertBuilding(bo2); } catch (e) {}
+    tiles.push(bo2);
+  }
+  if (tiles.length) dp.broadcast({ type: 'buildings_spawn', buildings: tiles });
+  vil._site = null; vil._buildCrew = 0;
+  console.log(`[${state.zoneId}] 🏘️ [${vil.name}] 생활층 신축 움집 완공 @(${cx},${cy})`);
+}
+function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(디스폰 누수 자가치유) + 신축 판단
+  if (!LIFE_ON || !vil._terrSet || !vil._terrSet.size || !vil.econ) return;
+  vil._clearCrew = 0; vil._buildCrew = 0; vil._claim = new Set(); vil._frontDay = -1;
+  for (const pid of vil.npcPids) { const p = state.deps.players.get(pid); if (p && p._lifeTask) { if (p._lifeTask.k === 'clear') { vil._claim.add(p._lifeTask.cx + ',' + p._lifeTask.cy); vil._clearCrew++; } else if (p._lifeTask.k === 'build') vil._buildCrew++; } }
+  if (vil._pendSite && !vil._site) {   // 재부팅 복원: 진행 중이던 터 재실체화(단계 1부터 — 관용)
+    const ps = vil._pendSite; vil._pendSite = null;
+    if (state.deps.liveBuildRow) {
+      const bo = state.deps.liveBuildRow('hut_site', (ps.cx - 2.5) * SZ, (ps.cy - 3.5) * SZ, { stage: 1, x0: ps.cx - 5, y0: ps.cy - 5, x1: ps.cx + 0, y1: ps.cy - 2, owner: 'npc', floor: 0 }, `npc_simvil_${vil.dbId}`, `${vil.name} 새 움집터`, null);
+      state.deps.broadcast({ type: 'building_added', building: bo });
+      vil._site = { cx: ps.cx, cy: ps.cy, stage: 1, bo };
+    }
+  }
+  const cap = vil._houseCells.length * (VillageLayout.HOUSE_CAP || 6);
+  if (!vil._site && vil.econ.npcs.length > cap * 0.92) { try { _lifeAddHouseSite(vil); } catch (e) { console.error(`[${state.zoneId}] 생활층 신축 실패(${vil.name}):`, e.message); } }
+}
+function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도주 뒤·야간 귀가 게이트 앞) — true=일과 배정됨
+  if (!LIFE_ON) return false;
+  const vil = state.byDbId && state.byDbId.get(npc.simVillageId);
+  if (!vil || !vil._terrSet || !vil._terrSet.size) return false;
+  const t = npc._lifeTask;
+  if (t) {
+    if (t.k === 'build' && !vil._site) { npc._lifeTask = null; return false; }   // 완공/소멸 → 해산
+    const d = Math.hypot(npc.x - t.px, npc.y - t.py);
+    if (d > 44) { npc.behavior = 'wander'; npc.targetX = t.px; npc.targetY = t.py; npc.gatherTarget = null; npc._workT = now; return true; }
+    const el = Math.min(3000, now - (npc._workT || now)); npc._workT = now;   // 현장 도착 — 실시간 노동 누적(틱 간격 캡)
+    t.prog += el;
+    npc.behavior = 'wander'; npc.targetX = t.px; npc.targetY = t.py;
+    const dayMs = state.dayMs || 600000;
+    if (t.k === 'clear' && t.prog >= dayMs / LIFE_CLEAR_PDAY) {
+      _lifeLiveFarmTile(vil, t.cx, t.cy, t.f === '밭' ? 'dryfield' : 'farmland');
+      vil._claim.delete(t.cx + ',' + t.cy); vil._clearCrew = Math.max(0, vil._clearCrew - 1); npc._lifeTask = null;
+    } else if (t.k === 'build' && t.prog >= dayMs / LIFE_STAGE_PDAY) {
+      t.prog = 0; _lifeAdvanceSite(vil);
+      if (!vil._site) npc._lifeTask = null;   // 완공 시 해산(카운터는 complete가 리셋)
+    }
+    return true;
+  }
+  // 작업 배정: 개간(농부) > 건설(전 직업) > 농부 현장 순회
+  if (npc.simJob === 'farmer' && vil._clearCrew < LIFE_CREW && _lifeNeedClear(vil)) {
+    const fr = _lifeFrontier(vil); let best = null, bd = 1e9;
+    for (const c2 of fr) { const k = c2.cx + ',' + c2.cy; if (vil._claim.has(k) || vil._farmSet.has(k)) continue; const dx = c2.cx * SZ + 16 - npc.x, dy = c2.cy * SZ + 16 - npc.y, d2 = dx * dx + dy * dy; if (d2 < bd) { bd = d2; best = c2; } }
+    if (best) { vil._claim.add(best.cx + ',' + best.cy); vil._clearCrew++; npc._lifeTask = { k: 'clear', cx: best.cx, cy: best.cy, f: best.f, px: best.cx * SZ + SZ / 2, py: best.cy * SZ + SZ / 2, prog: 0 }; npc._workT = now; return true; }
+  }
+  if (vil._site && vil._buildCrew < LIFE_CREW) {
+    vil._buildCrew++; npc._lifeTask = { k: 'build', px: (vil._site.cx - 2.5) * SZ, py: (vil._site.cy - 0.5) * SZ, prog: 0 }; npc._workT = now; return true;   // 남측 마당에서 시공
+  }
+  if (npc.simJob === 'farmer' && vil._farmSet.size) {   // ④ 농부 실작업: 자기 마을 농지 셀 결정론 순회(현장 왕복)
+    if (npc._jobT && now < npc._jobT) { return true; }   // 체류 중(target 유지)
+    const arr = (vil._farmArr && vil._farmArr.length) ? vil._farmArr : (vil._farmArr = [...vil._farmSet]);
+    npc._jobN = ((npc._jobN || 0) + 1);
+    let hsh = 7; const ps = String(npc.pid); for (let i = 0; i < ps.length; i++) hsh = (hsh * 31 + ps.charCodeAt(i)) >>> 0;
+    const k = arr[(hsh + npc._jobN * 13) % arr.length], ci = k.indexOf(','), x = +k.slice(0, ci), y = +k.slice(ci + 1);
+    npc.behavior = 'wander'; npc.targetX = x * SZ + SZ / 2; npc.targetY = y * SZ + SZ / 2; npc.gatherTarget = null;
+    npc._jobT = now + 9000 + (hsh % 7) * 1500;
+    return true;
+  }
+  return false;   // 기타 직업 → 레거시 일과(작업 도넛·채집)
+}
+
 module.exports = {
-  init, onGameTick, invalidateTradeDistances,
+  init, onGameTick, invalidateTradeDistances, npcLifeTick,
   // Stage 4A — zone.js 소비: 농지 lazy 실물화 / welcome 영토 페이로드 / 레거시 디듀프 판정
   farmTilesInRect, clientVillages, isLegacyVillageClaimed,
   // 플레이어 구매/판매 경계계약(읽기전용 마을 품질 EMA — econ 무접촉)

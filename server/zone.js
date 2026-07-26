@@ -1379,6 +1379,9 @@ function decideNpcBehavior(npc, now) {
     npc.targetY = npc.y + (dy/dd) * 200;
     return;
   }
+  // ★[생활 층 이관 ②③④] 마을 시뮬 NPC 일과 — villages.js 소유(개간 크루·신축 시공·농부 농지 순회).
+  //   늑대 도주가 우선(위), 야간 귀가 게이트는 npcStep이 이 뒤에서 덮음(§19 계약 유지). false=레거시 일과 폴스루.
+  if (npc.simVillageId && SimVillages.npcLifeTick && SimVillages.npcLifeTick(npc, now)) return;
   // ② 자기 농지 익었으면 수확 — 근처(qtBuildings)만 (집 ON이면 전 건물 3만+채 순회 방지)
   const _nearBld = qtBuildings ? qtBuildings.queryCircle(npc.x, npc.y, 700) : [];
   for (const b of _nearBld) {
@@ -1838,7 +1841,8 @@ setInterval(() => {
 //   ENABLE_VILLAGES=0 → init 즉시 return → isLegacyVillageClaimed 항상 false = 레거시 50곳 전부 유지(기존과 동일).
 // §4-4 Stage 4B: isPositionActive(AOI 상세/보간 분기)·isBlockedByWall(캐러밴 벽 충돌·로컬 재경로) 추가 주입.
 // §4-4 P2 LOD: anyViewerNear(defCenterPx, r) 추가 주입 — villages.js 가 전쟁 eta 결판을 physical/headless 로 분기(서버 내부 스텝만, broadcast·렌더 없음).
-SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, isWaterTileLocal, isPositionActive, isBlockedByWall, anyViewerNear });
+SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, isWaterTileLocal, isPositionActive, isBlockedByWall, anyViewerNear,
+  liveBuildRow: _liveBuildRow, buildings, chunkManager });   // ★[생활 층 ③] 신축 크루의 라이브 실체화 경로(플레이어 완공과 동일 헬퍼 — 발명 금지)
 // §11 도적 1파 — SimVillages.init 직후(banditHost 준비 시점): 소굴 스캔/복원 + econ 훅(banditRouteRisk/onBanditLoot) 배선.
 Bandits.init();
 // §16 답압 길 4파 — 존 셀 치수·게임일 시계로 독립 부팅(villages와 무관 — 스탬프는 이동 루프 편승).
