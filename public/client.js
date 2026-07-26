@@ -3322,6 +3322,14 @@ const SIM_JOB_EMOJI = {
     const _renderMyCy = Math.floor(myAbsPredicted.y / CL_BUILDING_SIZE);
     const aboveCutawayWalls = computeAboveCutawayWalls(_renderMyCx, _renderMyCy, myFloor);
     const aboveCutawayCells = computeAboveCutawayCells(_renderMyCx, _renderMyCy, myFloor);
+    // ★[사용자 지적 — 밖에서도 동벽이 눕던 버그] 방향성 남·동벽 페이드의 실내 게이트(프레임당 1회):
+    //   내가 실내(방 BFS enclosed)일 때만 발동 — 밖에서는 모든 벽 불투명. 문이 개구인 움집·큰집은
+    //   방 BFS가 새므로 발자국 렉트 태그(data.hut/data.bld)가 실내 판정 정본(벽 페이드 분기에서 처리).
+    let _myRoom = null;
+    try {
+      const _mr = cellRoomCache.get(`${_renderMyCx}_${_renderMyCy}_${myFloor}`) || computeRoom(_renderMyCx, _renderMyCy, myFloor);
+      _myRoom = (_mr && _mr.isIndoor) ? _mr : null;
+    } catch (e) { _myRoom = null; }
 
     // 14.49-e7ae: mask composite를 entity render 전으로 (entity가 mask 위에 = mask 영향 X)
     // mask 자체는 entity render 후에 만들어짐 (현재 위치 그대로). 즉 1 frame 지연.
@@ -3635,6 +3643,18 @@ const SIM_JOB_EMOJI = {
           let isCutaway = false;
           if (side === 'N' && dy > 8) isCutaway = true;
           else if (side === 'E' && dx > 8) isCutaway = true;
+          // ★실내 게이트[사용자 지적]: 페이드는 "내가 그 건물 안"일 때만 — 원 의도(입실 시 남·동벽이 눕는 실내감) 복원.
+          if (isCutaway) {
+            const _rect = item.b.data?.hut || item.b.data?.bld;   // 움집/큰집 = 발자국 렉트 판정(문 개구로 방 BFS가 새는 구조)
+            if (_rect) {
+              isCutaway = (myFloor || 0) === 0 && _renderMyCx >= _rect[0] && _renderMyCx <= _rect[2] && _renderMyCy >= _rect[1] && _renderMyCy <= _rect[3];
+            } else if (_myRoom) {                                  // 일반 건물 = 방 시스템: 이 벽이 '내 방'에 접해 있을 때만
+              let _wcx, _wcy, _ocx, _ocy;
+              if (side === 'N') { _wcx = Math.floor(item.ax / CL_BUILDING_SIZE); _wcy = Math.floor(item.ay / CL_BUILDING_SIZE); _ocx = _wcx; _ocy = _wcy - 1; }
+              else { _wcx = Math.floor(item.ax / CL_BUILDING_SIZE) - 1; _wcy = Math.floor(item.ay / CL_BUILDING_SIZE); _ocx = _wcx + 1; _ocy = _wcy; }
+              isCutaway = cellRoomCache.get(`${_wcx}_${_wcy}_${bf}`) === _myRoom || cellRoomCache.get(`${_ocx}_${_ocy}_${bf}`) === _myRoom;
+            } else isCutaway = false;                              // 실외 = 전 벽 불투명
+          }
           if (isCutaway) {
             const dist = Math.hypot(dx, dy);
             const NEAR = 8 * CL_BUILDING_SIZE;

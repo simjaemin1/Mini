@@ -485,7 +485,8 @@ function materializeVillageStructures(db, vil, bRows) {
   let rows = 0, houses = 0, grans = 0;
   // ★큰집 — 8×8([ccx-4..ccx+3]², 랩 정본과 픽셀 동일) 단층, 남벽 2칸 문(ccx-1·ccx). 구 9×9 2층 회관 폐지[실체화 동기].
   //   레이아웃 계약: 집 HALL_CLEAR=16.5·농지 hallFarmBlock r12 제외 — 큰집은 마당 원 r10 안.
-  rows += buildStructureRect(db, vil.dbId, vil.ccx - 4, vil.ccy - 4, vil.ccx + 3, vil.ccy + 3, ownerId, `${vil.name} 큰집`, [vil.ccx - 1, vil.ccx]);
+  //   data.bld 태그 = 클라 실내 게이트(입실 시 남·동벽 페이드) 발자국 렉트 — 문이 개구라 방 BFS가 새는 구조의 실내 판정 정본.
+  rows += buildStructureRect(db, vil.dbId, vil.ccx - 4, vil.ccy - 4, vil.ccx + 3, vil.ccy + 3, ownerId, `${vil.name} 큰집`, [vil.ccx - 1, vil.ccx], { bld: [vil.ccx - 4, vil.ccy - 4, vil.ccx + 3, vil.ccy + 3] });
   for (const b of bRows) {
     if (b.type === 'house') {
       // ★움집 6×4 = 부지 원판 안 북서 [cx-5..cx+0]×[cy-5..cy-2], 남벽 2칸 문(cx-3·cx-2) — 랩 정본 동일 오프셋. 구 5×5 한옥 폐지. 단층(고증 v2).
