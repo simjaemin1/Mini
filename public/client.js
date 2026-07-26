@@ -3234,7 +3234,7 @@ const SIM_JOB_EMOJI = {
               const rax = ox + b.x, ray = oy + b.y;
               if (Math.abs(rax - worldCx) <= VIEW_RADIUS + 200 && Math.abs(ray - worldCy) <= VIEW_RADIUS + 200) {
                 const _riso = w2i(rax - 96, ray - 128);       // 지붕 로컬 원점 = 북서 오버행 모서리(캐리어 중심 - (3,4)셀)
-                renderables.push({ z: (rax + ray) * 0.5 + 24, kind: 'hutroof', iso: _riso });   // 남벽(≈+16)보다 뒤 — 처마가 벽 상단을 덮음
+                renderables.push({ z: (rax + ray) * 0.5 + 64, kind: 'hutroof', iso: _riso });   // ★지붕은 자기 집 벽 4면보다 무조건 앞[사용자 지적]: 벽 z 최대=남벽 동단·동벽 남단 (캐리어+56) — +24는 SE 구간 벽이 처마를 덮었음. +64로 전부 상회. 남측 개체는 지붕이 64px 떠 있어 픽셀 비겹침(플레이어는 +500 별도)이라 안전
               }
             }
             continue;
