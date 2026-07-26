@@ -4113,12 +4113,13 @@ function tryHutAdvance(player, buildingId) {
     const SZg = BUILDING_SIZE, made = [];
     const doorXs = new Set([x0 + 2, x0 + 3]);   // 남벽 중앙 2칸(NPC 움집 문 규약 동형)
     const oid = player.playerId, onm = `${player.name}의 움집`;
+    const _hutTag = [x0, y0, x1, y1];   // ★클라 v3 반수혈 스킨 태그(NPC 움집과 동일 외형 — 물리 불변)
     for (let x = x0; x <= x1; x++) {
-      _liveBuildRow('wall', x * SZg, y0 * SZg, { side: 'N', floor: 0 }, oid, onm, made);
-      if (!doorXs.has(x)) _liveBuildRow('wall', x * SZg, (y1 + 1) * SZg, { side: 'N', floor: 0 }, oid, onm, made);
+      _liveBuildRow('wall', x * SZg, y0 * SZg, { side: 'N', floor: 0, hut: _hutTag }, oid, onm, made);
+      if (!doorXs.has(x)) _liveBuildRow('wall', x * SZg, (y1 + 1) * SZg, { side: 'N', floor: 0, hut: _hutTag }, oid, onm, made);
     }
-    for (let y = y0; y <= y1; y++) { _liveBuildRow('wall', x1 * SZg, y * SZg, { side: 'E', floor: 0 }, oid, onm, made); _liveBuildRow('wall', (x0 - 1) * SZg, y * SZg, { side: 'E', floor: 0 }, oid, onm, made); }
-    for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) _liveBuildRow('floor', x * SZg + SZg / 2, y * SZg + SZg / 2, { floor: 0 }, oid, onm, made);
+    for (let y = y0; y <= y1; y++) { _liveBuildRow('wall', x1 * SZg, y * SZg, { side: 'E', floor: 0, hut: _hutTag }, oid, onm, made); _liveBuildRow('wall', (x0 - 1) * SZg, y * SZg, { side: 'E', floor: 0, hut: _hutTag }, oid, onm, made); }
+    for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) _liveBuildRow('floor', x * SZg + SZg / 2, y * SZg + SZg / 2, { floor: 0, hut: _hutTag }, oid, onm, made);
     _liveBuildRow('hut', ((x0 + x1 + 1) / 2) * SZg, ((y0 + y1 + 1) / 2) * SZg, { owner: player.playerId, floor: 0 }, oid, onm, made);
     broadcast({ type: 'buildings_spawn', buildings: made });
     send(player.ws, { type: 'notice', text: '🏠 움집 완공! (수혈 굴착→굴립주→골조→이엉 — 고증 공정 완주)' });

@@ -467,11 +467,11 @@ function buildStructure(db, vilDbId, ccx, ccy, half, floors, ownerId, ownerName,
 // ★[실체화 동기 — 랩 정본, 사용자 확정] 짝수변 직사각 건물(변 좌표계 [x0..x1]×[y0..y1], 단층):
 //   벽 변 규약은 buildStructure와 동일(N=자기 셀 북변 — 남변은 아래 셀의 N, E=자기 셀 동변 — 서변은 왼 셀의 E).
 //   doorXs = 남변에서 벽을 뺄 x 목록(문). null이면 밀폐(곳간 — 고상 사다리 출입 고증).
-function buildStructureRect(db, vilDbId, x0, y0, x1, y1, ownerId, ownerName, doorXs) {
+function buildStructureRect(db, vilDbId, x0, y0, x1, y1, ownerId, ownerName, doorXs, tag) {
   let rows = 0;
   const doorSet = new Set(doorXs || []);
-  const wall = (cx, cy, side) => { db.insertBuilding({ type: 'wall', owner_id: ownerId, owner_name: ownerName, x: cx * SZ, y: cy * SZ, data: JSON.stringify({ side, floor: 0 }), village_id: vilDbId }); rows++; };
-  const floor = (cx, cy) => { db.insertBuilding({ type: 'floor', owner_id: ownerId, owner_name: ownerName, x: cx * SZ + SZ / 2, y: cy * SZ + SZ / 2, data: JSON.stringify({ floor: 0 }), village_id: vilDbId }); rows++; };
+  const wall = (cx, cy, side) => { db.insertBuilding({ type: 'wall', owner_id: ownerId, owner_name: ownerName, x: cx * SZ, y: cy * SZ, data: JSON.stringify(Object.assign({ side, floor: 0 }, tag || {})), village_id: vilDbId }); rows++; };
+  const floor = (cx, cy) => { db.insertBuilding({ type: 'floor', owner_id: ownerId, owner_name: ownerName, x: cx * SZ + SZ / 2, y: cy * SZ + SZ / 2, data: JSON.stringify(Object.assign({ floor: 0 }, tag || {})), village_id: vilDbId }); rows++; };
   for (let x = x0; x <= x1; x++) {
     wall(x, y0, 'N');                                        // 북변
     if (!doorSet.has(x)) wall(x, y1 + 1, 'N');               // 남변(문 칸 제외)
@@ -489,7 +489,8 @@ function materializeVillageStructures(db, vil, bRows) {
   for (const b of bRows) {
     if (b.type === 'house') {
       // ★움집 6×4 = 부지 원판 안 북서 [cx-5..cx+0]×[cy-5..cy-2], 남벽 2칸 문(cx-3·cx-2) — 랩 정본 동일 오프셋. 구 5×5 한옥 폐지. 단층(고증 v2).
-      rows += buildStructureRect(db, vil.dbId, b.cx - 5, b.cy - 5, b.cx + 0, b.cy - 2, ownerId, `${vil.name} 움집`, [b.cx - 3, b.cx - 2]);
+      //   data.hut 태그 = 클라 v3 반수혈 스킨(벽·바닥 억제+이엉 지붕 합성) 앵커 — 물리(콜라이더·문)는 태그와 무관하게 불변.
+      rows += buildStructureRect(db, vil.dbId, b.cx - 5, b.cy - 5, b.cx + 0, b.cy - 2, ownerId, `${vil.name} 움집`, [b.cx - 3, b.cx - 2], { hut: [b.cx - 5, b.cy - 5, b.cx + 0, b.cy - 2] });
       houses++;
     } else if (b.type === 'granary') {
       // ★고상곳간 5×3([cx-2..cx+2]×[cy-1..cy+1]) — 문 없는 밀폐(사다리 출입 고증, 상호작용은 인접 셀). 송국리 소형 굴립주 5.3×3.2 실측.
