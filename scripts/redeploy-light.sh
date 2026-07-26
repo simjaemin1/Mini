@@ -4,6 +4,9 @@
 #   - 존 부팅이 무거워서(해안선 수십만 타일) 26존을 동시에 띄우면 부팅 폭주로 박스가 멈춤 → sleep 으로 직렬화.
 #   - 기본은 멀쩡한 다른 존(canadia 등)은 그대로 둠. STOP_OTHERS=1 줘야 정지(저RAM 모드).
 #   - ZONE_HOSTS/ENABLED_ZONES 는 전체 26존 기준으로 넣어 핸드오프 라우팅 유지.
+#   - ★스크립트는 존이 전부 healthy(시딩·부팅 완료 = 접속 가능)가 된 뒤에야 "완료"를 찍는다.
+#     띄우기만 하고 끝나던 구판은 신규 시딩(수 분) 중에도 완료처럼 보여 혼동[사용자 지적].
+#     WAIT_HEALTH=0 으로 끄기 · 존당 타임아웃 WAIT_TIMEOUT(기본 900s).
 # 사용:
 #   bash scripts/redeploy-light.sh                          # 그려진 11존만 고친 이미지로 직렬 재생성
 #   STOP_OTHERS=1 bash scripts/redeploy-light.sh            # 나머지 존은 정지(저RAM)
@@ -62,7 +65,39 @@ for ID in $RUN_ZONES; do
   sleep "$BOOT_GAP"
 done
 
+# 3) ★준비 대기 — '컨테이너 떴음'과 '접속 가능(healthy)'은 다르다: DB 리셋 후 신규 시딩은 수 분.
+#    healthy 될 때까지 존별로 최신 시딩 로그를 보여주며 블록 — 이 스크립트가 끝나면 진짜 끝난 것.
+if [ "${WAIT_HEALTH:-1}" = "1" ]; then
+  echo
+  echo "[light] 준비 대기 — 시딩·부팅이 끝나야 접속 가능. (Ctrl+C 해도 부팅 자체는 백그라운드 계속)"
+  for ID in $RUN_ZONES; do
+    T0=$(date +%s)
+    while :; do
+      ST=$(docker inspect --format '{{.State.Health.Status}}' "durango-zone-$ID" 2>/dev/null || echo gone)
+      RUN=$(docker inspect --format '{{.State.Status}}' "durango-zone-$ID" 2>/dev/null || echo gone)
+      EL=$(( $(date +%s) - T0 ))
+      if [ "$ST" = "healthy" ]; then
+        printf '\r  [ready] %-14s %4ss — 접속 가능%-60s\n' "$ID" "$EL" ""
+        break
+      fi
+      if [ "$RUN" != "running" ]; then
+        echo
+        echo "  [FAIL] $ID 컨테이너 상태=$RUN — docker logs --tail 50 durango-zone-$ID 로 원인 확인"
+        break
+      fi
+      if [ "$EL" -gt "${WAIT_TIMEOUT:-900}" ]; then
+        echo
+        echo "  [timeout] $ID ${WAIT_TIMEOUT:-900}s 초과 — docker logs --tail 50 durango-zone-$ID 확인"
+        break
+      fi
+      L=$(docker logs --tail 1 "durango-zone-$ID" 2>&1 | tail -1 | tr -d '\r' | cut -c1-90)
+      printf '\r  [wait] %-14s %4ss  %-92s' "$ID" "$EL" "$L"
+      sleep 3
+    done
+  done
+fi
+
 echo
-echo "=== 완료: central + $(echo $RUN_ZONES | wc -w)개 존 ==="
+echo "=== 완료: $(echo $RUN_ZONES | wc -w)개 존 준비됨(healthy=접속 가능) ==="
 docker ps --format '{{.Names}}\t{{.Status}}' | grep durango | sort
 free -h | head -2
