@@ -435,7 +435,7 @@ const SIM_JOB_EMOJI = {
     _tileYardC = mkTile(ep, 0.92, 235);
     _tilePlazaC = mkTile(ep, 1.06, 235);
     // ── 맞배 이엉 지붕 베이크(시안 v3 래스터의 2× 스케일 포팅: 능선 중앙·처마 저고도·남면 문 2칸·동측 합각) ──
-    const DI = 7, DJ = 5, HMAX = 58, EAVE = 13;   // 로컬 셀 범위(발자국 6×4 + 오버행 0.5셀), 셀 64×32
+    const DI = 7, DJ = 5, HMAX = WALL_HEIGHT + 12, EAVE = 18;   // 로컬 셀 범위(발자국 6×4 + 오버행 0.5셀), 셀 64×32. ★높이 자 통일[사용자 지적]: 게임 표준 벽고=WALL_HEIGHT(64)=FLOOR_HEIGHT — 용마루=벽고+마루 볼록 12, 처마 18(반수혈 저고도). 구판 58/13은 임의치라 옆 벽들보다 낮아 보임
     const jc = DJ / 2, SL = (HMAX - EAVE) / jc;
     const W2 = (DI + DJ) * 32, H2 = (DI + DJ) * 16 + HMAX + 4;
     const c = document.createElement('canvas'); c.width = W2; c.height = H2;
