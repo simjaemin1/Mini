@@ -1561,6 +1561,61 @@ function unstuckNpc(npc, now) {
   npc.vx = 0; npc.vy = 0;
 }
 
+// =============================================================================
+// ★[생활 층 이관 ① — 랩 sepAgents(7954) 동형, 2026-07-27] 맵 위 NPC 통합 소프트 상호 분리.
+//   랩 정본: 개인공간 0.85셀 소프트 밀림(가중 평균) + NPC_BODY 0.5셀(성인 어깨폭 고증)=단단한
+//   하한 별도 층(최소 해소 속도 보장). 서버 스케일 1셀=32px → R_SOFT 27.2px·R_BODY 16px.
+//   대상=활성 NPC만. 좌표 단일 작성자 계약: simCaravan(villages.js 경로 페이싱)·simWar(행군 대형)는
+//   그리드(고정체) 등록만 하고 밀리지 않음. 사람 플레이어도 고정체(랩 전투원 패턴) — 클라 예측
+//   리컨실리에이션 러버밴딩 방지, NPC가 사람을 비켜 흐른다. 벽·물로는 안 밀림(성분별 취소 —
+//   movePlayerStep 콜라이더와 동일 판정 재사용). 해시 그리드 O(N×국소밀도), 틱당 1회.
+// =============================================================================
+const SEP_SOFT_PX = 27.2, SEP_BODY_PX = 16, SEP_BK = 64;   // 0.85셀 개인공간 · 0.5셀 몸(NPC_BODY 정본 수동 동기) · 버킷 2셀
+function sepNpcs(dt) {
+  const G = new Map(), gkey = (x, y) => ((x / SEP_BK) | 0) * 100000 + ((y / SEP_BK) | 0) + 5000000;
+  const movers = [];
+  for (const pid of npcs) {
+    const p = players.get(pid);
+    if (!p || p.hp <= 0 || p.handingOff) continue;
+    if (!p.canadiaVillage && !isPositionActive(p.x, p.y)) continue;   // dormant 스킵(비용·기존 정지 규약 동일)
+    const k = gkey(p.x, p.y), c = G.get(k);
+    c ? c.push(p) : G.set(k, [p]);
+    if (p.simCaravan || p.simWar) continue;   // 단일 작성자 계약 — 고정체로만 참여
+    movers.push(p);
+  }
+  for (const p of players.values()) {   // 사람 = 밀리지 않는 고정체 등록(NPC가 비켜감)
+    if (p.isNpc || p.handingOff) continue;
+    const k = gkey(p.x, p.y), c = G.get(k);
+    c ? c.push(p) : G.set(k, [p]);
+  }
+  const R2 = SEP_SOFT_PX * SEP_SOFT_PX;
+  const push = Math.min(16, 26 * dt);   // 소프트 밀림 상한(랩 min(0.5, 0.35·dGM)셀 동형 스케일)
+  for (const p of movers) {
+    let sx = 0, sy = 0, n = 0, hx = 0, hy = 0, hn = 0;
+    const bx = (p.x / SEP_BK) | 0, by = (p.y / SEP_BK) | 0;
+    for (let ix = bx - 1; ix <= bx + 1; ix++) for (let iy = by - 1; iy <= by + 1; iy++) {
+      const c = G.get(ix * 100000 + iy + 5000000);
+      if (!c) continue;
+      for (const o of c) {
+        if (o === p || (o.floor || 0) !== (p.floor || 0)) continue;
+        const dx = p.x - o.x, dy = p.y - o.y, d2 = dx * dx + dy * dy;
+        if (d2 < R2 && d2 > 1e-6) {
+          const d = Math.sqrt(d2);
+          sx += dx / d * (1 - d / SEP_SOFT_PX); sy += dy / d * (1 - d / SEP_SOFT_PX); n++;
+          if (d < SEP_BODY_PX) { hx += dx / d * (SEP_BODY_PX - d) * 0.5; hy += dy / d * (SEP_BODY_PX - d) * 0.5; hn++; }   // ★몸 하한 침범분 위치보정 누적(소프트와 별개 층)
+        }
+      }
+    }
+    if (!n && !hn) continue;
+    let mx = n ? sx / n * push : 0, my = n ? sy / n * push : 0;
+    if (hn) { const hl = Math.hypot(hx, hy); if (hl > 1e-9) { const hk = Math.min(1, Math.max(push, 2.5) / hl); mx += hx * hk; my += hy * hk; } }   // 몸 겹침 해소 최소 2.5px/틱(랩 0.08셀 동형) — 1×에서도 수 틱 내 단단히 풀림
+    const pf = p.floor || 0;
+    const nx = p.x + mx, ny = p.y + my;
+    if (!isTerrainBlockedLocal(nx, p.y) && !isBlockedByWall(nx, p.y, p.x, p.y, pf)) p.x = nx;   // 물·벽 변으로는 안 밀림(성분별 취소)
+    if (!isTerrainBlockedLocal(p.x, ny) && !isBlockedByWall(p.x, ny, p.x, p.y, pf)) p.y = ny;
+  }
+}
+
 function npcStep(npc, dt, now) {
   decideNpcBehavior(npc, now);
 
@@ -5275,6 +5330,7 @@ setInterval(() => {
       if (consumed === 0) { p.vx = 0; p.vy = 0; } // 입력 없는 틱 — 정지 (유령 이동 방지)
     }
   }
+  sepNpcs(dt);   // ★[생활 층 ①] NPC 상호 분리 — 이동 적용 직후(같은 틱 위치에 보정) 틱당 1회
 
   // === Phase 14.49-e: PZ식 다단 계단 — 3 cell 점유 + step별 z + walk-off로 floor 전환 ===
   // stair (b) — anchor (b.x, b.y) = 낮은 발판. dir = 위로 가는 방향.
