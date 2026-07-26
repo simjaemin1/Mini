@@ -1574,7 +1574,7 @@ function npcStep(npc, dt, now) {
   //   VILLAGE_LON=0 게이트. 서버 NPC 일과 모델이 얕아(§2 매트릭스) 야간 자택 대기가 첫 스케줄 소비처(최소 실체).
   else if (SIM_LON_ON && npc.simLonOff != null && npc.npcHomeX != null && npc.behavior !== 'fight') {
     const fv = (worldPhase(now) + npc.simLonOff) % 1;
-    if (fv > WORLD.dayPhaseRatio) { npc.behavior = 'wander'; npc.targetX = npc.npcHomeX + (Math.random() - 0.5) * 40; npc.targetY = npc.npcHomeY + (Math.random() - 0.5) * 40; npc.gatherTarget = null; }
+    if (fv > WORLD.dayPhaseRatio) { npc.targetX = npc.npcHomeX; npc.targetY = npc.npcHomeY; if (npc.behavior !== 'wander') { npc.behavior = 'wander'; npc.path = null; } npc.gatherTarget = null; }   // ★[사용자 스샷 떼겹침] ±20px 매틱 재추첨 지터 폐지 — 자리 분산은 1인 1자리(villages.js HOME_SLOTS)가 실체로 보장. 재추첨은 식구들을 밤새 같은 점 주위에서 부비게 만들던 원인
   }
 
   // Phase 4d-14d: canadia caravan traveling — decideCanadiaBehavior가 직접 vx/vy(500 px/s) 설정.

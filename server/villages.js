@@ -335,19 +335,26 @@ function restoreEcon(json, econ) {
 // 스폰: zone.js spawnNpc() (spawnVillagers·canadia와 동일). 제거: canadia 검증 패턴
 // (players/npcs delete + player_left broadcast — zone.js 5828행).
 // =============================================================================
+// ★[사용자 스샷 — NPC 떼겹침] 1인 1자리(움집 앞마당 2×3, 침대 6=BEDO와 같은 사상): 종전엔 한 집 식구
+//   전원이 npcHome으로 '같은 px 한 점'을 받아 야간 귀가·대피 때 한 덩어리로 포개졌다. 자리 셀은 전부
+//   부지 원(r6.5) 안 마당 — 집채([-5..0]×[-5..-2]) 남쪽 바깥·텃밭([+1..+4]²) 밖·문(cx-3·-2) 앞 개활지.
+//   침상(집 내부) 진입은 벽 콜라이더·경로 스무딩 묶음(백로그 — 생활 층)에서, 여기선 실체 자리만 분산.
+const HOME_SLOTS = [[-4, -1], [-2, -1], [0, -1], [-5, 0], [-3, 0], [-1, 0]];
 function spawnOneNpc(vil) {
-  const houses = vil.housesPx.length ? vil.housesPx : [{ x: vil.ccx * SZ + SZ / 2, y: vil.ccy * SZ + SZ / 2 }];
+  const houses = vil.housesPx.length ? vil.housesPx : [{ x: vil.ccx * SZ + SZ / 2, y: (vil.ccy + 6) * SZ + SZ / 2 }];   // ★폴백도 큰집 벽 안(중심 셀) 금지 — 남문 앞 마당
   const home = houses[vil.npcPids.length % houses.length];
+  const slot = HOME_SLOTS[Math.floor(vil.npcPids.length / houses.length) % HOME_SLOTS.length];
+  const hx = home.x + slot[0] * SZ, hy = home.y + slot[1] * SZ;
   const cxPx = vil.ccx * SZ + SZ / 2, cyPx = vil.ccy * SZ + SZ / 2;
   // Stage 4A: 작업 지점을 회관 밖 도넛(180~320px)으로 — 회관 9×9(반폭 144px+벽)이 실물화되어
   //   내부 좌표를 주면 NPC가 벽에 영원히 비비게 됨(레거시엔 중앙 건물이 없어 ±200 균일이 무해했음).
   const wAng = Math.random() * Math.PI * 2, wR = 180 + Math.random() * 140;
   const p = state.deps.spawnNpc({
-    x: home.x + (Math.random() - 0.5) * 60,
-    y: home.y + (Math.random() - 0.5) * 60,
+    x: hx + (Math.random() - 0.5) * 60,
+    y: hy + (Math.random() - 0.5) * 60,
     villageId: `simvil_${vil.dbId}`,
     villageName: vil.name,
-    npcHomeX: home.x, npcHomeY: home.y,
+    npcHomeX: hx, npcHomeY: hy,
     npcWorkX: cxPx + Math.cos(wAng) * wR,
     npcWorkY: cyPx + Math.sin(wAng) * wR,
     // npcJob 의도적 미지정(null): zone.js tallyVillageJobs(4415행)가 npcJob 있는 NPC를
@@ -494,7 +501,7 @@ function materializeVillageStructures(db, vil, bRows) {
 }
 
 // ★[실체화 동기] 마을 곳간 자리 — 랩 _granAdd 링 배치의 시딩 시점 포팅(결정론):
-//   큰집 곁 r11~15 링(15° 스텝), 남쪽 집결부 회피(콘 베토+남측 감점), 영토 안·비차단·농지(기경+존닝) 회피·물 체비셰프 16 이격.
+//   큰집 곁 r11~15 링(15° 스텝), 남쪽 집결부 회피(콘 베토+남측 감점), 영토 안·비차단·농지(기경+존닝) 회피·물 체비셰프 16 이격·집채/텃밭/큰집 발자국 비겹침.
 function pickGranarySpot(ta, layout) {
   const ccx = layout.center.cx, ccy = layout.center.cy;
   const own = new Set(layout.territory.map(c => c[0] + ',' + c[1]));
@@ -505,6 +512,14 @@ function pickGranarySpot(ta, layout) {
       const x = cx + dx, y = cy + dy;
       if (ta.isBlocked(x, y) || !own.has(x + ',' + y) || farm.has(x + ',' + y)) return false;
     }
+    // ★[사용자 스샷 농촌17] 집채([-5..0]×[-5..-2])+1버퍼·텃밭([+1..+4]²)과 곳간 5×3 비겹침 —
+    //   집 앵커는 r≥HALL_CLEAR(16.5)지만 집채가 회관 쪽으로 r≈10.1까지 뻗어 링 r11~15와 교차,
+    //   곳간 벽·바닥이 움집과 융합되던 버그(구판은 지형·농지만 보고 건물 발자국을 안 봄).
+    for (const h of layout.houses || []) {
+      if (cx + 2 >= h.cx - 6 && cx - 2 <= h.cx + 1 && cy + 1 >= h.cy - 6 && cy - 1 <= h.cy - 1) return false;
+      if (cx + 2 >= h.cx + 1 && cx - 2 <= h.cx + 4 && cy + 1 >= h.cy + 1 && cy - 1 <= h.cy + 4) return false;
+    }
+    if (cx + 2 >= ccx - 5 && cx - 2 <= ccx + 4 && cy + 1 >= ccy - 5 && cy - 1 <= ccy + 4) return false;   // 큰집 8×8+1(링 r11이라 이론상 무접촉 — 방어)
     for (let dy = -16; dy <= 16; dy++) for (let dx = -16; dx <= 16; dx++) if (ta.isWater && ta.isWater(cx + dx, cy + dy)) return false;   // 강변 논밭 벨트 비침범+건조지 고증
     return true;
   };
