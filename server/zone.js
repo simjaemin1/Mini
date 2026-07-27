@@ -1720,7 +1720,8 @@ function npcStep(npc, dt, now) {
 
   // 목표 방향으로 이동 — A* path 따라가기. path 없으면 새로 계산.
   // path가 만료(목표 바뀜)되거나 너무 오래(>3초) 됐으면 재계산.
-  const speedMult = npc.behavior === 'flee' ? 2.5 : 0.6;   // ★도주=달리기 5m/s(맨몸이라 전투 유닛 돌격보다 빠름 → 추격 어려움, 고증). 배회=1.2
+  let speedMult = npc.behavior === 'flee' ? 2.5 : 0.6;   // ★도주=달리기 5m/s(맨몸이라 전투 유닛 돌격보다 빠름 → 추격 어려움, 고증). 배회=1.2
+  if (npc.behavior !== 'flee' && npc._huntSpd) speedMult *= npc._huntSpd;   // ★[사냥꾼 완전체] wildlife 두뇌 배속(랩 moveNPC 동형): 잠행 0.5×·추적/회수 2×·속보 1.25×·조준 정지≈0
   const targetKey = `${npc.targetX|0}_${npc.targetY|0}`;
   const needPath = !npc.path || npc.pathIndex >= npc.path.length ||
                    npc._pathFor !== targetKey ||

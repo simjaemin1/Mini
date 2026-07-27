@@ -461,6 +461,76 @@ function _updateVillageAnchor() {
 }
 
 // ── 본체 mobs 브리지(shadow) ──
+// ═══ [C] ★사냥꾼 두뇌 — 전쟁실험실 7998~8037 이식(생활 층 100% 마감) ═══
+//   블록(287행~)은 a._bm(표적)·a.sneak·a._carc를 '소비'하는 실행층(조준·사격·근접·도살·회피) — 원문 무수정 원칙.
+//   여기는 그걸 '정하는' 두뇌: 사냥 우선순위 = 회수(내 사체) > 부상 lock 추적(핏자국) > 커밋 표적 > 신규 스캔
+//   (경제화 스코어: (거리+30)×상태×위험÷수율) > 사냥터 밀도 셀 수색. 잠행 판정·프레임 가드(몰림 감지·갈아타기·
+//   잠행 히스테리시스)까지 랩 동형. 이동은 본체 소유(좌표 단일 작성자): moveTo 대신 목표 셀 기록(_hgx/_hgy) →
+//   tick()이 본체 npc.targetX/Y로 역전달(경로 스무딩·벽·물은 zone.js 이동층 담당). 치환: life→s · dGM→dt ·
+//   a._fgl(econ 식량 잉여 가중)=0 폴백(식 유지 — 미연결 시 무효과).
+function _hunterBrain(a, s, dt) {
+  const bMoveTo = (a2, cx, cy) => { a2._hgx = cx; a2._hgy = cy; a2._hgo = 1; return true; };   // 목표 기록(성공은 본체 경로층이 판정 — stuck·재경로 흡수)
+  // ── 프레임 가드(랩 8030~8037 — dwell 무관 매 프레임) ──
+  if (a._bm) {
+    const b2 = a._bm, ded = b2.hp <= 0 || b2.st === 'dead', fle = b2.st === 'flee';
+    if (b2.st === 'flee' || b2.fcd > 0) { if ((a._cpt = (a._cpt || 0) - dt) <= 0) { a._crn = (a._cpx !== undefined && Math.hypot(b2.px - a._cpx, b2.py - a._cpy) < 6 && Math.hypot(b2.px - a.px, b2.py - a.py) < 30) ? 1 : 0; a._cpx = b2.px; a._cpy = b2.py; a._cpt = 4; } } else { a._crn = 0; a._cpx = undefined; }   /*★몰림 감지*/
+    if (!ded && b2 !== a._tgt && (b2.st === 'flee' || b2.fcd > 0) && Math.hypot(b2.px - a.px, b2.py - a.py) > 60) {   /*★부상 lock(핏자국)은 예외 — 무조건 끝까지*/ /*★유일한 갈아타기: 표적이 도주로 60m+ 벌어짐 → 근처(55m) 방심 사슴 체크*/
+      let sw = null, sd = 1e9;
+      for (const m2 of s.mobs) {
+        if (m2 === b2 || m2.hp <= 0 || m2.st === 'dead' || m2.st === 'hide' || MOB_DEF[m2.type].pred) continue;
+        if (!((m2.st === 'graze' || m2.st === 'prowl' || m2.st === 'sleep' || m2.pause > 0) && !(m2.fcd > 0))) continue;
+        const r2 = Math.hypot(m2.px - a.px, m2.py - a.py); if (r2 < 55) { const s2 = (r2 + 30) / Math.pow(MOB_DEF[m2.type].hp, 0.7); if (s2 < sd) { sd = s2; sw = m2; } }
+      }
+      if (sw) { a._cm = sw; a._bm = sw; a.dwell = 0; }
+    }
+    const _sn2 = (b2.hp < MOB_DEF[b2.type].hp) ? 72 : Math.min(MOB_SNEAK_IN, MOB_DEF[b2.type].alert * 1.2);
+    const d2b = ded ? 1e9 : Math.hypot(b2.px - a.px, b2.py - a.py), want = !ded && !fle && d2b < _sn2 + (a.sneak ? 8 : 0);
+    if (want !== a.sneak) { a.sneak = want; a.dwell = Math.min(a.dwell || 0, 0.5); }   // ★프레임 잠행 가드: 낡은 플래그로 기어가거나 도주 링까지 걸어 들어가는 것 방지 — 전환 즉시 재계획
+  }
+  // ── 재조준(랩 7998~8022 — 사냥 우선순위: 회수 > 전담 추적 > 신규 표적 > 밀도 셀 수색) ──
+  if ((a.dwell = (a.dwell || 0) - dt) > 0) return;
+  if (a._carc && a._carc.st === 'dead' && a._carc.rot > 0) { a.sneak = false; a._bm = null; bMoveTo(a, Math.round(a._carc.px), Math.round(a._carc.py)); a.action = '회수'; a.dwell = 8; return; }   // ★내 사냥감 사체로 직행(도살·수확은 전투 루프. 부패·늑대와 시간 싸움)
+  let best = null, bm = null;
+  if (s.mobs && s.mobs.length) {
+    let bd = 1e9;   // ★원거리 발견(포착 130m)
+    if (a._tgt && a._tgt.hp > 0 && a._tgt.st !== 'dead' && Math.hypot(a._tgt.px - a.px, a._tgt.py - a.py) < (a._tgt.hp < MOB_DEF[a._tgt.type].hp ? 130 : MOB_HUNT_R * 2.5)) bm = (MOB_DEF[a._tgt.type].pred && !((a._tgt.st === 'sleep' || a._tgt.st === 'feed' || a._tgt.st === 'rest' || a._tgt.pause > 0) && !(a._tgt.fcd > 0))) ? bm : a._tgt;   // ★부상 lock: 초식=끝까지 · 맹수=방심일 때만 재교전
+    if (!bm && a._cm && a._cm.hp > 0 && a._cm.st !== 'dead' && a._cm.st !== 'hide' && lifeGM - (a._cmG || 0) < 60 && (!MOB_DEF[a._cm.type].pred || a._cm.st === 'sleep' || a._cm.st === 'feed' || a._cm.st === 'rest' || a._cm.pause > 0)) bm = a._cm; else if (!bm) a._cm = null;   /*★무부상 커밋 손절 60초 — 죽거나 잃기 전엔 자동 재평가 없음*/
+    if (!bm) {
+      for (const mo of s.mobs) {
+        if (mo.hp <= 0 || mo.type === '🐯' || mo.st === 'hide') continue; if (losRk(a.px, a.py, mo.px, mo.py)) continue; /*★포착=시야 확보만*/ const MD3 = MOB_DEF[mo.type];
+        const rr = Math.hypot(mo.px - a.px, mo.py - a.py);
+        const calm3 = mo.st === 'graze' || mo.st === 'raid' || mo.st === 'prowl' || mo.st === 'sleep' || mo.st === 'feed' || mo.pause > 0;
+        if (MOB_DEF[mo.type].pred && !(mo.st === 'sleep' || mo.st === 'feed' || mo.st === 'rest' || (mo.pause > 0 && mo.st !== 'stalk' && mo.st !== 'chase'))) continue;   /*★맹수 커밋=진짜 취약 상태만(사체 미끼·취침 기회 사냥)*/
+        const cl3 = (mo._hcl && mo._hcl !== a && !mo._hcl._dead && (lifeGM - (mo._hclG || 0)) < 20) ? (MD3.atk > 0 ? 0.5 : 3) : 1;   // ★위험 종=동료 표적에 수렴(협동), 초식=분산
+        const wnd3 = mo.hp < MD3.hp && rr < MOB_HUNT_R * 1.8;
+        if (rr > (wnd3 ? MOB_HUNT_R * 1.8 : (calm3 ? 216 : ((mo.st === 'flee' || mo.fcd > 0) ? 50 : 130)) * Math.pow(0.85, losFT(a.px, a.py, mo.px, mo.py) / 4))) continue;   /*★반경 게이트=지각 한계 × 숲 감쇠(4m당 0.85)*/
+        const d = (rr + 30) * (wnd3 ? 0.55 : 1) * (calm3 ? 0.6 : ((mo.st === 'flee' || mo.fcd > 0) ? 2.6 : 1)) * cl3 * (1 + MD3.atk * 0.8) / (Math.pow(MD3.hp, 0.7) * (MD3.atk ? 1 : (1 - 0.5 * (a._fgl || 0))));   /*★표적 경제화: 가까운 토끼보다 60m 사슴, 사슴 멀면 멧돼지가 창발*/
+        if (d < bd) { bd = d; bm = mo; }
+      }
+      if (bm) { if (a._cm !== bm) a._cmG = lifeGM; a._cm = bm; }
+    }
+    if (bm) {
+      bm._hcl = a; bm._hclG = lifeGM; a._onTrail = false; const dx = a.px - bm.px, dy = a.py - bm.py, dd = Math.hypot(dx, dy) || 1;
+      if (bm === a._tgt && bm.hp < MOB_DEF[bm.type].hp && dd > 26) {   /*★추종 26m — 부상 표적 60m 밖=눈에서 사라짐 → 핏방울을 순서대로 밟아 추적*/
+        const bb = nextBlood(s, a, bm);
+        if (bb) { best = { cx: Math.round(bb.x), cy: Math.round(bb.y) }; a._onTrail = true; a._lbx = bb.x; a._lby = bb.y; }
+        else if (a._lbx !== undefined && Math.hypot(a._lbx - a.px, a._lby - a.py) > 3) { best = { cx: Math.round(a._lbx), cy: Math.round(a._lby) }; a._onTrail = true; }   // 다음 방울이 없으면 마지막 자국 지점까지
+        else { a._tgt = null; a._lbx = undefined; bm = null; }   /*★자국 끊김=진짜 놓침 — 실위치 직행(ESP) 금지, 수색 전환*/
+      }
+      if (bm && !best) {
+        const fin = MOB_DEF[bm.type].atk === 0 && ((bm === a._tgt && bm.hp < MOB_DEF[bm.type].hp && bm.st === 'flee') || (a._crn && (bm.st === 'flee' || bm.fcd > 0)));   /*★마무리 돌입=초식 전용(부상 도주·몰림)*/
+        const so = (bm.st === 'sleep' || fin) ? 0 : (dd < MOB_HUNT_R * 0.6 ? MOB_HUNT_R * 0.92 : Math.min(dd, MOB_HUNT_R * 0.92));
+        best = { cx: Math.round(bm.px + dx / dd * so), cy: Math.round(bm.py + dy / dd * so) };   // 20m 잠복 간격, 잠든 표적만 바짝(급소)
+      }
+    }
+  }
+  a._bm = bm || null; const _snR = (bm && bm.hp < MOB_DEF[bm.type].hp) ? 72 : (bm ? Math.min(MOB_SNEAK_IN, MOB_DEF[bm.type].alert * 1.2) : MOB_SNEAK_IN);   /*★부상 표적=72m부터 포복(도주 링 밖)*/
+  a.sneak = !!(bm && Math.hypot(bm.px - a.px, bm.py - a.py) < _snR && bm.st !== 'flee');   /*★잠행 개시=종별 min(55, 경계×1.2)*/
+  if (!best) { const m = s.gameRich, src = (s.huntCells && s.huntCells.length) ? s.huntCells : s.forestCells; for (let t2 = 0; t2 < 8; t2++) { const c = src[(Math.random() * src.length) | 0]; if (!c) break; if (Math.hypot(c.cx - a.work.cx, c.cy - a.work.cy) <= 9 && m && (m.get(c.cx + ',' + c.cy) || 0) > 8) { best = c; break; } } }   // 몹 없으면 사냥터 밴드의 밀도 셀(작업 앵커 ±9)
+  if (best && bMoveTo(a, best.cx, best.cy)) a.action = bm ? ((bm.st === 'flee' || a._onTrail) ? '추적' : (a.sneak ? '잠행' : '접근')) : '수색'; else a.action = '사냥';   /*★추적=flee·핏자국 전용*/
+  a.dwell = 16 + Math.random() * 28;   // 추격 시 더 자주 재조준(몹 따라감)
+}
+
 function _makeShadow(lm) {
   const mt = MAIN_TYPE[lm.type] || 'deer';
   const sh = {
@@ -565,7 +635,16 @@ function tick(now) {
     if (!pr) { pr = { job: 'hunter', state: 'idle', home: { cx: 0, cy: 0 }, _arm: 0 }; _proxies.set(p.pid, pr); }
     pr.px = p.x / 32; pr.py = p.y / 32;
     pr.home.cx = pr.px | 0; pr.home.cy = pr.py | 0;
-    pr.hp = p.hp; pr._hp0 = p.hp; pr._real = p; pr._dead = 0; pr.action = ''; pr.state = 'idle';
+    pr.hp = p.hp; pr._hp0 = p.hp; pr._real = p; pr._dead = 0; pr.action = '';
+    // ★[사냥꾼 완전체 — 생활 층 100% 마감] 마을 사냥꾼 일과 중(villages.js npcLifeTick이 p._huntOn 마킹)이면
+    //   랩 'work' 승격 — 블록의 사냥꾼 전투(조준·사격·근접·도살·손절 후퇴·돌진 회피 — 287행)와 _hunterBrain
+    //   (표적 선정·잠행·핏자국 — 아래 [C])이 그대로 발동. 프록시는 pid 지속 객체라 dwell·_bm·_tgt·sneak·_carc
+    //   등 사냥 상태가 틱을 넘어 보존된다. 그 외(플레이어·타 직업)=종전 'idle'(지각 위협원 전용 — 랩 소음 모델).
+    if (p.isNpc && p.simJob === 'hunter' && p._huntOn) {
+      pr.state = 'work';
+      if (p._huntWk) { if (!pr.work) pr.work = { cx: 0, cy: 0 }; pr.work.cx = p._huntWk.cx; pr.work.cy = p._huntWk.cy; }
+      if (!pr.work) pr.work = { cx: pr.px | 0, cy: pr.py | 0 };
+    } else { pr.state = 'idle'; if (p._huntSpd) p._huntSpd = 0; }
     pr._sp2 = Math.hypot(p.vx || 0, p.vy || 0) / 32;   // 실속도 m/s — 본체 걷기 6.9m/s는 랩 '달리기' 소음대(>3)로 지각됨(정지=조용)
     S.agents.push(pr); _tickAgents.push(pr);
   }
@@ -594,6 +673,17 @@ function tick(now) {
       lm.hp = sh.hp / HP_SCALE; lm._lsh = sh.hp; lm.fcd = 20;
       if (lm.hp <= 0) { _extKill(lm); if (H.mobs.has(sh.mid)) { H.mobs.delete(sh.mid); H.chunkManager.removeMob(sh); H.broadcast({ type: 'mob_removed', mid: sh.mid }); } }
     }
+  }
+  // 4b) ★사냥꾼 두뇌(표적·잠행·핏자국 — [C] _hunterBrain) + 본체 역전달: 블록 구동 전에 a._bm을 정해야
+  //     실행층(조준·사격·근접·도살)이 이번 틱에 소비한다. 이동 목표(_hgx/_hgy 셀)는 본체 npc.targetX/Y로 —
+  //     경로(직선 우선→A*→스무딩)·벽·물·stuck은 zone.js 이동층 소유(좌표 단일 작성자 유지).
+  //     속도 배속 _huntSpd: 잠행 0.5×·추적/회수 2×(도주 표적·부패와 시간 싸움)·평시 속보 1.25×·정지(_hold)≈0 — 랩 moveNPC 동형.
+  for (const pr of S.agents) {
+    if (pr.state !== 'work' || !pr._real) continue;
+    try { _hunterBrain(pr, S, 1 / H.TICK_HZ); } catch (e) { if (!S._hbErr) { S._hbErr = 1; console.error('[wildlife] 사냥꾼 두뇌 오류:', e.message); } }
+    const rp = pr._real;
+    if (pr._hgo) { rp.behavior = 'wander'; rp.targetX = pr._hgx * 32 + 16; rp.targetY = pr._hgy * 32 + 16; rp.gatherTarget = null; pr._hgo = 0; }
+    rp._huntSpd = pr._hold ? 0.02 : (pr.sneak ? 0.5 : ((pr.action === '추적' || pr.action === '회수') ? 2 : 1.25));
   }
   // 5) ★블록 구동 — dt = 1/TICK_HZ 유닛/틱 (30Hz × 1/30 = 1유닛/초 = 환산 계수 1)
   updateMobs(S, 1 / H.TICK_HZ);

@@ -2018,6 +2018,7 @@ function _villageCropFor(vil, field, mo, par) {   // 랩 villageCropFor 동형: 
 function _pidHash(pid) { let h = 7; const s2 = String(pid); for (let i = 0; i < s2.length; i++) h = (h * 31 + s2.charCodeAt(i)) >>> 0; return h; }
 function _lifeGoHome(npc) {   // 자택 대기(취침·요양·휴식·대피 공통 — §19 게이트와 동일 목표 세팅)
   npc.behavior = 'wander'; npc.gatherTarget = null;
+  npc._huntOn = 0; npc._huntSpd = 0;   // ★사냥꾼 완전체: 귀가=두뇌 주도권 반납(wildlife 프록시 idle 강등 — 잠행 배속 잔존 방지)
   if (npc.npcHomeX != null) { npc.targetX = npc.npcHomeX; npc.targetY = npc.npcHomeY; }
 }
 function _lifeDropTask(vil, npc) {   // 진행 중 작업 즉시 반납(요양 진입·반일 퇴근·야간 — 크루 카운터·클레임 정리. 일일 자가치유의 즉시판)
@@ -2365,27 +2366,24 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
     npc.behavior = 'wander'; npc.targetX = ws.x + (Math.random() - 0.5) * 40; npc.targetY = ws.y + (Math.random() - 0.5) * 40; npc.gatherTarget = null;
     return true;
   }
-  if (job === 'hunter') {   // 사냥꾼=사냥감 서식 현장 + 실물 사냥(초식만 — 늑대·호랑이 회피는 늑대 도주 게이트 소유)
-    if (npc.behavior === 'fight' && npc.fightTarget && state.deps.mobs) {   // 교전 커밋(랩 '죽거나 잃기 전 재평가 없음' 동형 — 늑대 반격은 zone.js 게이트 소유라 불침범)
-      const cur = state.deps.mobs.get(npc.fightTarget);
-      if (cur && cur.hp > 0 && cur.type !== 'wolf') return true;
-    }
+  if (job === 'hunter') {   // 사냥꾼=사냥터 앵커 출근 + ★wildlife 두뇌 완전체(잠행·핏자국·활·근접·도살 — 랩 실행층·두뇌 동형)
     const sites = _lifeJobSites(vil, day).hunter;
-    if (!sites || !sites.length) return false;   // 사냥감 실종 → 레거시 폴스루
     const h = _pidHash(npc.pid);
-    if (!npc._workSite || npc._workSite.day !== day) npc._workSite = { x: sites[h % sites.length].x, y: sites[h % sites.length].y, day };
+    if ((!npc._workSite || npc._workSite.day !== day) && sites && sites.length) npc._workSite = { x: sites[h % sites.length].x, y: sites[h % sites.length].y, day };
+    if (!npc._workSite) { npc._huntOn = 0; return false; }   // 사냥감·앵커 전무 → 레거시 폴스루
     const ws = npc._workSite;
-    if (Math.hypot(npc.x - ws.x, npc.y - ws.y) > 300) { npc.behavior = 'wander'; npc.targetX = ws.x; npc.targetY = ws.y; npc.gatherTarget = null; return true; }
-    if (state.deps.mobs) {   // 현장 도착 — 근처 초식 사냥감 교전(기존 fight 루프가 접근·타격·처치 처리)
-      let bm = null, bd2 = 260 * 260;
-      for (const mo of state.deps.mobs.values()) {
-        if (mo.hp <= 0 || mo.type === 'wolf' || mo.type === 'tiger' || mo.tameOwner) continue;
-        const dx = mo.x - npc.x, dy = mo.y - npc.y, d2 = dx * dx + dy * dy; if (d2 < bd2) { bd2 = d2; bm = mo; }
-      }
-      if (bm) { npc.behavior = 'fight'; npc.fightTarget = bm.mid; return true; }
+    // 뷰 안(활성 청크)=wildlife가 몹·핏자국·전투 전부 구동(LOD 계약): 여기는 마킹+주도권 소유만 —
+    //   목표·잠행·속도는 wildlife 두뇌가 본체로 역전달(npc.targetX/_huntSpd). 스케줄(밤·요양·반일)은 위 게이트가 우선.
+    if (state.deps.isPositionActive && state.deps.isPositionActive(npc.x, npc.y)) {
+      npc._huntOn = 1; npc._huntWk = { cx: Math.round(ws.x / SZ), cy: Math.round(ws.y / SZ) };
+      if (Math.hypot(npc.x - ws.x, npc.y - ws.y) > 900 && !npc._bmOn) { npc.behavior = 'wander'; npc.targetX = ws.x; npc.targetY = ws.y; npc.gatherTarget = null; }   // 초기 출근(두뇌 목표 오기 전)
+      return true;
     }
+    // 뷰 밖(비활성)=몹도 없음(LOD) — 사냥터 밴드 순회(연출 최소·복귀 시 두뇌가 즉시 인수)
+    npc._huntOn = 0;
+    if (Math.hypot(npc.x - ws.x, npc.y - ws.y) > 300) { npc.behavior = 'wander'; npc.targetX = ws.x; npc.targetY = ws.y; npc.gatherTarget = null; return true; }
     if (npc._jobT && now < npc._jobT) return true;
-    npc._jobT = now + 7000 + (h % 5) * 1200;   // 수색 순회(사냥터 밴드 — 랩 '몹 없으면 밀도 셀' 동형)
+    npc._jobT = now + 7000 + (h % 5) * 1200;
     npc.behavior = 'wander'; npc.targetX = ws.x + (Math.random() - 0.5) * 260; npc.targetY = ws.y + (Math.random() - 0.5) * 260; npc.gatherTarget = null;
     return true;
   }
