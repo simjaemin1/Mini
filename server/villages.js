@@ -2016,9 +2016,13 @@ function _villageCropFor(vil, field, mo, par) {   // 랩 villageCropFor 동형: 
   return (_vcfCache[ck] = res);
 }
 function _pidHash(pid) { let h = 7; const s2 = String(pid); for (let i = 0; i < s2.length; i++) h = (h * 31 + s2.charCodeAt(i)) >>> 0; return h; }
-function _lifeGoHome(npc) {   // 자택 대기(취침·요양·휴식·대피 공통 — §19 게이트와 동일 목표 세팅)
+function _lifeAct(npc, s) {   // ★[액션 라벨 가시화] 행동 라벨 세터 — 변경 시 타임스탬프(zone.js makeEntry가 변경 후 1.2s 윈도우+최초가시에만 전송: 무상태 델타)
+  if (npc._lifeAct !== s) { npc._lifeAct = s; npc._lifeActAt = Date.now(); }
+}
+function _lifeGoHome(npc, act) {   // 자택 대기(취침·요양·휴식·대피 공통 — §19 게이트와 동일 목표 세팅)
   npc.behavior = 'wander'; npc.gatherTarget = null;
   npc._huntOn = 0; npc._huntSpd = 0;   // ★사냥꾼 완전체: 귀가=두뇌 주도권 반납(wildlife 프록시 idle 강등 — 잠행 배속 잔존 방지)
+  if (act) _lifeAct(npc, act);
   if (npc.npcHomeX != null) { npc.targetX = npc.npcHomeX; npc.targetY = npc.npcHomeY; }
 }
 function _lifeDropTask(vil, npc) {   // 진행 중 작업 즉시 반납(요양 진입·반일 퇴근·야간 — 크루 카운터·클레임 정리. 일일 자가치유의 즉시판)
@@ -2041,11 +2045,11 @@ function _cellTask(vil, k, day) {   // 우선순위: 5수확 4방제 3물대기(
 function _lifeDoTask(vil, npc, k, day) {   // 도착한 셀 처리(랩 doTask 동형 — econ storage 불변·스킬은 서버 생략)
   const e = vil._crop.get(k), nong = !vil._drySet.has(k);
   const ci = k.indexOf(','), par = (+k.slice(0, ci) + +k.slice(ci + 1)) & 1;
-  if (!e) { const cr = _villageCropFor(vil, nong ? '논' : '밭', _lMonth(day), par); if (!cr) return false; vil._crop.set(k, { c: cr, p: day, td: day, w: day, wd: 0, ps: 0, q: 1 }); npc._lifeAct = nong ? '모내기' : '파종'; return true; }
-  if (day - e.p >= e.c.grow) { vil._crop.delete(k); npc._lifeAct = '수확'; return true; }   // 수확 — 식량은 econ이 이미 계상(연출만)
-  if (e.ps) { e.ps = 0; e.td = day; e.q = Math.min(1, e.q + L_QREC); npc._lifeAct = '방제'; return true; }
-  if (nong && day - (e.w || e.p) >= L_WATERGAP) { e.w = day; e.q = Math.min(1, e.q + L_QREC); npc._lifeAct = '물대기'; return true; }
-  const wd = e.wd || 0; if (wd < L_WEEDS.length && (day - e.p) / e.c.grow >= L_WEEDS[wd]) { e.wd = wd + 1; e.td = day; e.q = Math.min(1, e.q + L_QREC); npc._lifeAct = nong ? '논매기' : '김매기'; return true; }
+  if (!e) { const cr = _villageCropFor(vil, nong ? '논' : '밭', _lMonth(day), par); if (!cr) return false; vil._crop.set(k, { c: cr, p: day, td: day, w: day, wd: 0, ps: 0, q: 1 }); _lifeAct(npc, nong ? '모내기' : '파종'); return true; }
+  if (day - e.p >= e.c.grow) { vil._crop.delete(k); _lifeAct(npc, '수확'); return true; }   // 수확 — 식량은 econ이 이미 계상(연출만)
+  if (e.ps) { e.ps = 0; e.td = day; e.q = Math.min(1, e.q + L_QREC); _lifeAct(npc, '방제'); return true; }
+  if (nong && day - (e.w || e.p) >= L_WATERGAP) { e.w = day; e.q = Math.min(1, e.q + L_QREC); _lifeAct(npc, '물대기'); return true; }
+  const wd = e.wd || 0; if (wd < L_WEEDS.length && (day - e.p) / e.c.grow >= L_WEEDS[wd]) { e.wd = wd + 1; e.td = day; e.q = Math.min(1, e.q + L_QREC); _lifeAct(npc, nong ? '논매기' : '김매기'); return true; }
   return false;
 }
 function _lifeNextFarmCell(vil, npc, day) {   // 랩 nextTask 동형(구역 대신 전 농지 — 서버 농지 수백 셀 스케일): 우선순위 높고 가까운 할 일
@@ -2260,13 +2264,13 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
   // 요양(랩 a.rest 6298·7526): hp<60% 진입 → 진행 작업 반납·자택 요양. 만피 해제(회복=zone.js 자연 리젠 — 히스테리시스 동형)
   if (npc._rest) {
     if ((npc.hp || 0) >= (npc.maxHp || 100)) npc._rest = 0;
-    else { _lifeDropTask(vil, npc); _lifeGoHome(npc); return true; }
+    else { _lifeDropTask(vil, npc); _lifeGoHome(npc, '요양'); return true; }
   } else if (npc.hp != null && npc.hp > 0 && npc.hp < (npc.maxHp || 100) * SCH_REST_IN) {
-    npc._rest = 1; _lifeDropTask(vil, npc); _lifeGoHome(npc); return true;
+    npc._rest = 1; _lifeDropTask(vil, npc); _lifeGoHome(npc, '요양'); return true;
   }
   // 기상 시차(랩 a._dOff): 개인 결정론 오프셋 0~하루 3%(43분) — 마을 일괄 기상의 프레임 스파이크 분산 + 유기적 출근 풍경
   if (npc._dOff === undefined) npc._dOff = ((_pidHash(npc.pid) % 997) / 997) * SCH_DOFF;
-  if (fv >= dayR || fv < npc._dOff) { npc._workT = null; _lifeGoHome(npc); return true; }   // 밤·기상 전=취침(진행 작업 유지 — 아침 현장 재개, 노동 적산은 도착부터)
+  if (fv >= dayR || fv < npc._dOff) { npc._workT = null; _lifeGoHome(npc, '취침'); return true; }   // 밤·기상 전=취침(진행 작업 유지 — 아침 현장 재개, 노동 적산은 도착부터)
   // 아침 추첨(랩 a._hd/_half 7984): econ 여유노동(_idleFrac) 비율 = 오늘 반일 근무 확률 — 여가→행복의 시각화(궁핍촌 idle 0=항상 종일)
   if (npc._hd !== day) { npc._hd = day; npc._half = Math.random() < ((vil.econ && vil.econ._idleFrac) || 0); }
   const dayFrac = fv / dayR;   // 낮 진행률 0~1(랩 상수의 서버 환산 축)
@@ -2275,7 +2279,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
     if (!(npc._lifeTask && npc._lifeTask.k === 'build')) {
       _lifeDropTask(vil, npc);
       if (vil._site) { vil._buildCrew++; npc._lifeTask = { k: 'build', px: (vil._site.cx - 2.5) * SZ, py: (vil._site.cy - 0.5) * SZ, prog: 0 }; npc._workT = now; }
-      else { _lifeGoHome(npc); return true; }
+      else { _lifeGoHome(npc, '휴식'); return true; }
     }
   }
   // ══ 진행 중 작업(개간·건설 — 현장 실시간 노동) ══
@@ -2283,9 +2287,10 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
   if (t) {
     if (t.k === 'build' && !vil._site) { npc._lifeTask = null; return false; }   // 완공/소멸 → 해산
     const d = Math.hypot(npc.x - t.px, npc.y - t.py);
-    if (d > 44) { npc.behavior = 'wander'; npc.targetX = t.px; npc.targetY = t.py; npc.gatherTarget = null; npc._workT = now; return true; }
+    if (d > 44) { npc.behavior = 'wander'; npc.targetX = t.px; npc.targetY = t.py; npc.gatherTarget = null; npc._workT = now; _lifeAct(npc, '출근'); return true; }
     const el = Math.min(3000, now - (npc._workT || now)); npc._workT = now;   // 현장 도착 — 실시간 노동 누적(틱 간격 캡)
     t.prog += el;
+    _lifeAct(npc, t.k === 'clear' ? '개간' : '건축');
     npc.behavior = 'wander'; npc.targetX = t.px; npc.targetY = t.py;
     const dayMs = state.dayMs || 600000;
     if (t.k === 'clear' && t.prog >= dayMs / LIFE_CLEAR_PDAY) {
@@ -2301,18 +2306,18 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
   // 농부 아침 출근 창(랩 7983 fv<L_DAWN+0.08): 창 밖 + 오늘 미출근(요양 해제가 낮이면 등)=오늘 휴무 — 랩 동형
   const isFarmer = npc.simJob === 'farmer';
   if (isFarmer) {
-    if (dayFrac > SCH_FARMW_R && npc._fOutD !== day) { _lifeGoHome(npc); return true; }
+    if (dayFrac > SCH_FARMW_R && npc._fOutD !== day) { _lifeGoHome(npc, '휴식'); return true; }
     npc._fOutD = day;   // 창 안 진입 — 오늘 출근 도장(창 지나도 계속 근무)
   }
   if (isFarmer && vil._clearCrew < LIFE_CREW && _lifeNeedClear(vil)) {
     const fr = _lifeFrontier(vil); let best = null, bd = 1e9;
     for (const c2 of fr) { const k = c2.cx + ',' + c2.cy; if (vil._claim.has(k) || vil._farmSet.has(k)) continue; const dx = c2.cx * SZ + 16 - npc.x, dy = c2.cy * SZ + 16 - npc.y, d2 = dx * dx + dy * dy; if (d2 < bd) { bd = d2; best = c2; } }
     if (best) { vil._claim.add(best.cx + ',' + best.cy); vil._clearCrew++; npc._lifeTask = { k: 'clear', cx: best.cx, cy: best.cy, f: best.f, px: best.cx * SZ + SZ / 2, py: best.cy * SZ + SZ / 2, prog: 0 }; npc._workT = now;
-      npc.behavior = 'wander'; npc.targetX = npc._lifeTask.px; npc.targetY = npc._lifeTask.py; npc.gatherTarget = null; return true; }   // ★배정 틱에도 즉시 이동 목표(미세팅 시 신선 NPC target NaN)
+      npc.behavior = 'wander'; npc.targetX = npc._lifeTask.px; npc.targetY = npc._lifeTask.py; npc.gatherTarget = null; _lifeAct(npc, '출근'); return true; }   // ★배정 틱에도 즉시 이동 목표(미세팅 시 신선 NPC target NaN)
   }
   if (vil._site && vil._buildCrew < LIFE_CREW) {
     vil._buildCrew++; npc._lifeTask = { k: 'build', px: (vil._site.cx - 2.5) * SZ, py: (vil._site.cy - 0.5) * SZ, prog: 0 }; npc._workT = now;   // 남측 마당에서 시공
-    npc.behavior = 'wander'; npc.targetX = npc._lifeTask.px; npc.targetY = npc._lifeTask.py; npc.gatherTarget = null; return true;   // ★배정 틱 즉시 이동 목표
+    npc.behavior = 'wander'; npc.targetX = npc._lifeTask.px; npc.targetY = npc._lifeTask.py; npc.gatherTarget = null; _lifeAct(npc, '출근'); return true;   // ★배정 틱 즉시 이동 목표
   }
   // ══ 직업 실작업(랩 JOBACT·work 분기 동형 — 서버는 실물 자원·실물 사냥감이 정본) ══
   const job = npc.simJob;
@@ -2321,6 +2326,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
     if (npc._farmK) {   // 배정 셀로 이동 중/도착
       const k = npc._farmK, ci = k.indexOf(','), px2 = +k.slice(0, ci) * SZ + SZ / 2, py2 = +k.slice(ci + 1) * SZ + SZ / 2;
       npc.behavior = 'wander'; npc.targetX = px2; npc.targetY = py2; npc.gatherTarget = null;
+      _lifeAct(npc, '경작');   // 이동 구간 라벨(도착 순간 doTask의 구체 라벨이 덮고, 체류 중엔 위 _jobT 조기 리턴이 유지)
       if (Math.hypot(npc.x - px2, npc.y - py2) <= 44) {   // 도착 — 셀 처리(파종·수확·방제·물대기·김매기) + 체류
         _lifeDoTask(vil, npc, k, day);
         vil._cropClaim.delete(k); npc._farmK = null;
@@ -2329,13 +2335,14 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
       return true;
     }
     const k2 = _lifeNextFarmCell(vil, npc, day);
-    if (k2) { vil._cropClaim.add(k2); npc._farmK = k2; const ci = k2.indexOf(','); npc.behavior = 'wander'; npc.targetX = +k2.slice(0, ci) * SZ + SZ / 2; npc.targetY = +k2.slice(ci + 1) * SZ + SZ / 2; npc.gatherTarget = null; return true; }
+    if (k2) { vil._cropClaim.add(k2); npc._farmK = k2; const ci = k2.indexOf(','); npc.behavior = 'wander'; npc.targetX = +k2.slice(0, ci) * SZ + SZ / 2; npc.targetY = +k2.slice(ci + 1) * SZ + SZ / 2; npc.gatherTarget = null; _lifeAct(npc, '경작'); return true; }
     const arr = (vil._farmArr && vil._farmArr.length) ? vil._farmArr : (vil._farmArr = [...vil._farmSet]);   // 일감 없음(비수기·전부 생육 중) — 결정론 밭 순찰(구 ④ 유지)
     npc._jobN = ((npc._jobN || 0) + 1);
     const h = _pidHash(npc.pid);
     const k3 = arr[(h + npc._jobN * 13) % arr.length], ci3 = k3.indexOf(',');
     npc.behavior = 'wander'; npc.targetX = +k3.slice(0, ci3) * SZ + SZ / 2; npc.targetY = +k3.slice(ci3 + 1) * SZ + SZ / 2; npc.gatherTarget = null;
     npc._jobT = now + 9000 + (h % 7) * 1500;
+    _lifeAct(npc, '경작');
     return true;
   }
   if (job === 'lumberjack' || job === 'miner' || job === 'forager') {   // 벌목·채광·채집=자원 밀집 현장 출근 + 실물 채집(랩 7841·7844·7861 동형)
@@ -2344,13 +2351,13 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
     const h = _pidHash(npc.pid);
     if (!npc._workSite || npc._workSite.day !== day) npc._workSite = { x: sites[h % sites.length].x, y: sites[h % sites.length].y, day };   // 분산 배정(랩 place %분산 동형)
     const ws = npc._workSite;
-    if (Math.hypot(npc.x - ws.x, npc.y - ws.y) > 240) { npc.behavior = 'wander'; npc.targetX = ws.x; npc.targetY = ws.y; npc.gatherTarget = null; return true; }   // 출근
+    if (Math.hypot(npc.x - ws.x, npc.y - ws.y) > 240) { npc.behavior = 'wander'; npc.targetX = ws.x; npc.targetY = ws.y; npc.gatherTarget = null; _lifeAct(npc, '출근'); return true; }   // 출근
     if (npc._jobT && now < npc._jobT) return true;   // 작업 스윙 페이싱
     const qt = state.deps.qtResources && state.deps.qtResources();
     const near = qt ? qt.queryCircle(ws.x, ws.y, 260) : [];
     let best = null, bd = 1e9;
     for (const r of near) { if (!JOB_RES[job].includes(r.type)) continue; const dx = r.x - npc.x, dy = r.y - npc.y, d2 = dx * dx + dy * dy; if (d2 < bd) { bd = d2; best = r; } }
-    if (best) { npc.behavior = 'gather'; npc.targetX = best.x; npc.targetY = best.y; npc.gatherTarget = best.id; npc._jobT = now + 6000 + (h % 5) * 1000; return true; }   // 실물 채집(기존 gather 실행부·리스폰이 처리)
+    if (best) { npc.behavior = 'gather'; npc.targetX = best.x; npc.targetY = best.y; npc.gatherTarget = best.id; npc._jobT = now + 6000 + (h % 5) * 1000; _lifeAct(npc, job === 'lumberjack' ? '벌목' : (job === 'miner' ? '채광' : '채집')); return true; }   // 실물 채집(기존 gather 실행부·리스폰이 처리)
     npc._workSite = null;   // 현장 고갈 — 다음 결정 때 재배정(랩 resourceTick '더 풍부한 셀로' 동형)
     npc.behavior = 'wander'; npc.targetX = ws.x + ((h % 5) - 2) * 24; npc.targetY = ws.y + ((((h / 5) | 0) % 5) - 2) * 24; npc.gatherTarget = null; npc._jobT = now + 5000;
     return true;
@@ -2361,9 +2368,10 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
     const h = _pidHash(npc.pid);
     if (!npc._workSite || npc._workSite.day !== day) npc._workSite = { x: sites[h % sites.length].x, y: sites[h % sites.length].y, day };
     const ws = npc._workSite;
-    if (Math.hypot(npc.x - ws.x, npc.y - ws.y) > 130) { npc.behavior = 'wander'; npc.targetX = ws.x; npc.targetY = ws.y; npc.gatherTarget = null; return true; }
+    if (Math.hypot(npc.x - ws.x, npc.y - ws.y) > 130) { npc.behavior = 'wander'; npc.targetX = ws.x; npc.targetY = ws.y; npc.gatherTarget = null; _lifeAct(npc, '출근'); return true; }
     if (!npc._lastFishAt || now - npc._lastFishAt > 8000) { npc._lastFishAt = now; if (npc.inventory) npc.inventory.fish = (npc.inventory.fish || 0) + 1; }   // 8초 1마리(구 ③-b 이관 — simJob 기준)
     npc.behavior = 'wander'; npc.targetX = ws.x + (Math.random() - 0.5) * 40; npc.targetY = ws.y + (Math.random() - 0.5) * 40; npc.gatherTarget = null;
+    _lifeAct(npc, '낚시');
     return true;
   }
   if (job === 'hunter') {   // 사냥꾼=사냥터 앵커 출근 + ★wildlife 두뇌 완전체(잠행·핏자국·활·근접·도살 — 랩 실행층·두뇌 동형)
@@ -2385,6 +2393,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
     if (npc._jobT && now < npc._jobT) return true;
     npc._jobT = now + 7000 + (h % 5) * 1200;
     npc.behavior = 'wander'; npc.targetX = ws.x + (Math.random() - 0.5) * 260; npc.targetY = ws.y + (Math.random() - 0.5) * 260; npc.gatherTarget = null;
+    _lifeAct(npc, '수색');
     return true;
   }
   return false;   // 기타 직업(전사·대장장이 등 실내·특수) → 레거시 일과(작업 도넛·채집)

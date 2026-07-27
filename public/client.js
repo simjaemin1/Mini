@@ -1892,6 +1892,7 @@ const SIM_JOB_EMOJI = {
             maxHp: pp.maxHp ?? prev?.maxHp ?? 100,
             tribeName: pp.tribeName !== undefined ? pp.tribeName : prev?.tribeName,
             simJob: pp.simJob !== undefined ? pp.simJob : prev?.simJob, // §4-4 Stage 4A: 마을 NPC 직업(첫 visible 메타 + sim_village_day 갱신)
+            act: pp.act !== undefined ? pp.act : prev?.act, // ★[액션 라벨] 생활 층 행동(모내기·잠행·개간…) — 변경 시에만 수신, 미수신=유지
             cap: pp.cap | 0, // §18 3파: 포로 표식(동적 1비트 — 회색 테두리 렌더)
             buf,
             lastX: prev?.x ?? pp.x, lastY: prev?.y ?? pp.y,
@@ -3304,7 +3305,7 @@ const SIM_JOB_EMOJI = {
         const oFloor = o.floor || 0;
         const oZ = oFloor * FLOOR_HEIGHT + (o.z || 0); // 14.49-d: 계단 위 z 포함
         const isoF = w2i(ax, ay, oZ);
-        renderables.push({ z: (ax + ay) * 0.5 + oFloor * 0.5 + 500, kind: 'player', pid: o.pid, name: displayName, color: o.color || '#5a9ae0', hp: o.hp, maxHp: o.maxHp, iso: isoF, ax, ay, floor: oFloor, lastAttackAt: o.lastAttackAt, vx: o.vx, vy: o.vy, _fvx: o._fvx, _fvy: o._fvy, _war: o._war, bt: o.bt, bs: o.bs, bc: o.bc, br: o.br, cap: o.cap });
+        renderables.push({ z: (ax + ay) * 0.5 + oFloor * 0.5 + 500, kind: 'player', pid: o.pid, name: displayName, color: o.color || '#5a9ae0', hp: o.hp, maxHp: o.maxHp, iso: isoF, ax, ay, floor: oFloor, lastAttackAt: o.lastAttackAt, vx: o.vx, vy: o.vy, _fvx: o._fvx, _fvy: o._fvy, _war: o._war, bt: o.bt, bs: o.bs, bc: o.bc, br: o.br, cap: o.cap, act: o.act });
       }
     }
     {
@@ -3573,7 +3574,7 @@ const SIM_JOB_EMOJI = {
         }
         // Phase 14.41: 다운 상태 — 본인은 myIsDown, 다른 사람은 downStates Map
         const downFlag = item.isMe ? myIsDown : !!downStates.get(item.pid);
-        drawPlayerIso(s.x, s.y, item.name, item.color, item.isMe, { moving, attackPhase, fvx, fvy, isDown: downFlag, war: item._war, bt: item.bt, bs: item.bs, bc: item.bc, br: item.br, cap: item.cap });
+        drawPlayerIso(s.x, s.y, item.name, item.color, item.isMe, { moving, attackPhase, fvx, fvy, isDown: downFlag, war: item._war, bt: item.bt, bs: item.bs, bc: item.bc, br: item.br, cap: item.cap, act: item.act });
         // HP bar for others (전쟁 병사는 만피여도 항상 표시 + 진영색 테두리)
         if (!item.isMe) {
           const o = item.hp !== undefined ? item : null;
@@ -5398,6 +5399,14 @@ const SIM_JOB_EMOJI = {
     ctx.lineWidth = 3;
     ctx.strokeText(name, x, y - 22);
     ctx.fillText(name, x, y - 22);
+    // ★[액션 라벨 — 생활 층 100% 가시화] 이름 위 작은 행동 라벨(모내기·잠행·추적·개간·건축·취침…) — 서버 makeEntry e.act
+    if (opts.act && !isMe) {
+      ctx.font = '9px sans-serif';
+      ctx.fillStyle = '#ffd77a';
+      ctx.lineWidth = 2.5;
+      ctx.strokeText(opts.act, x, y - 33);
+      ctx.fillText(opts.act, x, y - 33);
+    }
     ctx.textAlign = 'start';
   }
 

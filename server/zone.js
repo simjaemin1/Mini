@@ -1651,6 +1651,7 @@ function npcStep(npc, dt, now) {
   //   행동 목표를 자택으로 고정(취침·출근 대신 '대피'). TTL 만료(전투 종결)면 자동 해제. fight(교전)는 예외.
   if (npc.simEvacUntil && now < npc.simEvacUntil && npc.behavior !== 'fight' && npc.npcHomeX != null) {
     npc.behavior = 'wander'; npc.targetX = npc.npcHomeX; npc.targetY = npc.npcHomeY; npc.gatherTarget = null;
+    if (npc._lifeAct !== '대피') { npc._lifeAct = '대피'; npc._lifeActAt = now; }   // ★[액션 라벨 가시화] 비전투원 대피(랩 '대피' 동형)
   }
   // ★[§19 4파·경도 로컬 태양시] 마을 시뮬 NPC 야간 귀가(동쪽 마을이 먼저 자고 먼저 깬다 — 원통 세계 대비).
   //   인간 일과만 로컬 fv=(전역 phase+마을 _lonOff)%1 — 야생·도적·econ 일 경계는 전역 유지(랩 5351 블록 계약).
@@ -5837,6 +5838,9 @@ setInterval(() => {
       if (o.simCaptive) e.cap = 1;
       // §4-4 Stage 4A: simJob(마을 시뮬 NPC 직업 — npcJob과 별개)도 메타로 1회. 일중 변경분은 sim_village_day 브로드캐스트가 갱신.
       if (isNew) { e.name = o.name; e.color = o.color; e.maxHp = o.maxHp; e.tribeName = o.tribeName || null; if (o.simJob) e.simJob = o.simJob; }
+      // ★[액션 라벨 가시화 — 생활 층 100%] 행동 라벨(모내기·잠행·개간·건축·취침…): 변경 후 1.2s 윈도우 + 최초가시에만
+      //   문자열 전송(무상태 델타 — 뷰어별 추적 없이 25틱 중복이 상한). 클라는 수신 시 갱신·미수신 시 유지. ''=라벨 제거.
+      if (o._lifeAct !== undefined && (isNew || now - (o._lifeActAt || 0) < 1200)) e.act = o._lifeAct;
       return e;
     }
     // Phase 14.38: mob facing — vx/vy 포함. 14.49-d: floor + z

@@ -684,6 +684,7 @@ function tick(now) {
     const rp = pr._real;
     if (pr._hgo) { rp.behavior = 'wander'; rp.targetX = pr._hgx * 32 + 16; rp.targetY = pr._hgy * 32 + 16; rp.gatherTarget = null; pr._hgo = 0; }
     rp._huntSpd = pr._hold ? 0.02 : (pr.sneak ? 0.5 : ((pr.action === '추적' || pr.action === '회수') ? 2 : 1.25));
+    if (pr.action && rp._lifeAct !== pr.action) { rp._lifeAct = pr.action; rp._lifeActAt = Date.now(); }   // ★[액션 라벨 가시화] 잠행·추적·조준·도살 등 실행층 라벨 → 본체(zone AOI가 클라 전송)
   }
   // 5) ★블록 구동 — dt = 1/TICK_HZ 유닛/틱 (30Hz × 1/30 = 1유닛/초 = 환산 계수 1)
   updateMobs(S, 1 / H.TICK_HZ);
