@@ -1975,6 +1975,9 @@ function banditHost() {
 //   village_buildings 갱신 API 부재 관용). 좌표·야간 귀가·늑대 도주는 기존 계약 유지.
 // =============================================================================
 const LIFE_ON = process.env.VILLAGE_LIFE !== '0';
+let VillageLayout = null;   // ★lazy require(설계 계약: 시뮬 off면 sim 모듈 무로드) — 생활층 진입점에서 1회 로드.
+//   시딩(seedVillages)은 자기 지역 require를 씀 — 모듈 레벨 참조가 없어 "is not defined"로 일일 훅이 죽던 버그 수정.
+const _lifeVL = () => VillageLayout || (VillageLayout = require('./village-layout'));
 const L_LANDNEED = 8;        // 랩 동형: 인당 기준 경작칸(landNeedPer가 비옥도 보정)
 const LIFE_CLEAR_PDAY = 3;   // 농부 1인 하루 개간 셀(랩 L_CLEAR=90 노동·dwell 스케일 근사 — 관찰 후 튜닝)
 const LIFE_STAGE_PDAY = 1;   // 건설 1인 하루 1단계(움집 4단계≈4인일 — 랩 L_BUILDSEC=4600인·초 근사)
@@ -2109,6 +2112,7 @@ function _lifeCompleteHouse(vil) {   // 완공: 터 제거 + NPC 정본 6×4 실
 }
 function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(디스폰 누수 자가치유) + 신축 판단
   if (!LIFE_ON || !vil._terrSet || !vil._terrSet.size || !vil.econ) return;
+  _lifeVL();
   vil._clearCrew = 0; vil._buildCrew = 0; vil._claim = new Set(); vil._frontDay = -1;
   for (const pid of vil.npcPids) { const p = state.deps.players.get(pid); if (p && p._lifeTask) { if (p._lifeTask.k === 'clear') { vil._claim.add(p._lifeTask.cx + ',' + p._lifeTask.cy); vil._clearCrew++; } else if (p._lifeTask.k === 'build') vil._buildCrew++; } }
   if (vil._pendSite && !vil._site) {   // 재부팅 복원: 진행 중이던 터 재실체화(단계 1부터 — 관용)
@@ -2126,6 +2130,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
   if (!LIFE_ON) return false;
   const vil = state.byDbId && state.byDbId.get(npc.simVillageId);
   if (!vil || !vil._terrSet || !vil._terrSet.size) return false;
+  _lifeVL();
   const t = npc._lifeTask;
   if (t) {
     if (t.k === 'build' && !vil._site) { npc._lifeTask = null; return false; }   // 완공/소멸 → 해산
@@ -2148,10 +2153,12 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
   if (npc.simJob === 'farmer' && vil._clearCrew < LIFE_CREW && _lifeNeedClear(vil)) {
     const fr = _lifeFrontier(vil); let best = null, bd = 1e9;
     for (const c2 of fr) { const k = c2.cx + ',' + c2.cy; if (vil._claim.has(k) || vil._farmSet.has(k)) continue; const dx = c2.cx * SZ + 16 - npc.x, dy = c2.cy * SZ + 16 - npc.y, d2 = dx * dx + dy * dy; if (d2 < bd) { bd = d2; best = c2; } }
-    if (best) { vil._claim.add(best.cx + ',' + best.cy); vil._clearCrew++; npc._lifeTask = { k: 'clear', cx: best.cx, cy: best.cy, f: best.f, px: best.cx * SZ + SZ / 2, py: best.cy * SZ + SZ / 2, prog: 0 }; npc._workT = now; return true; }
+    if (best) { vil._claim.add(best.cx + ',' + best.cy); vil._clearCrew++; npc._lifeTask = { k: 'clear', cx: best.cx, cy: best.cy, f: best.f, px: best.cx * SZ + SZ / 2, py: best.cy * SZ + SZ / 2, prog: 0 }; npc._workT = now;
+      npc.behavior = 'wander'; npc.targetX = npc._lifeTask.px; npc.targetY = npc._lifeTask.py; npc.gatherTarget = null; return true; }   // ★배정 틱에도 즉시 이동 목표(미세팅 시 신선 NPC target NaN)
   }
   if (vil._site && vil._buildCrew < LIFE_CREW) {
-    vil._buildCrew++; npc._lifeTask = { k: 'build', px: (vil._site.cx - 2.5) * SZ, py: (vil._site.cy - 0.5) * SZ, prog: 0 }; npc._workT = now; return true;   // 남측 마당에서 시공
+    vil._buildCrew++; npc._lifeTask = { k: 'build', px: (vil._site.cx - 2.5) * SZ, py: (vil._site.cy - 0.5) * SZ, prog: 0 }; npc._workT = now;   // 남측 마당에서 시공
+    npc.behavior = 'wander'; npc.targetX = npc._lifeTask.px; npc.targetY = npc._lifeTask.py; npc.gatherTarget = null; return true;   // ★배정 틱 즉시 이동 목표
   }
   if (npc.simJob === 'farmer' && vil._farmSet.size) {   // ④ 농부 실작업: 자기 마을 농지 셀 결정론 순회(현장 왕복)
     if (npc._jobT && now < npc._jobT) { return true; }   // 체류 중(target 유지)
