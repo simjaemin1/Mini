@@ -158,6 +158,10 @@ const SIM_JOB_EMOJI = {
   let myFacingVx = 1, myFacingVy = 0; // Phase 14.37: 본인 마지막 facing (기본 동쪽)
   // Phase 14.40: Shift 달리기
   let mySprint = false;
+  // ★유령 클라 fix: 서버에 내 플레이어 실체가 없는 구간(사망 제거·orphan 판정·재연결 대기) 플래그.
+  //   true 동안 클라 예측(predictStep)을 정지시켜, 실체 없는 좌표로 계속 걸어가는 "유령 클라"를 원천 차단.
+  //   해제는 오직 primary welcome 앵커에서만(= 서버 권위 좌표를 받은 순간).
+  let _selfGone = false;
   // Phase 14.41: 사망/구조
   let myIsDown = false;
   let myDownedAt = 0;
@@ -1740,9 +1744,15 @@ const SIM_JOB_EMOJI = {
   function connect(zoneId, role, transfer) {
     const existing = conns.get(zoneId);
     if (existing) {
-      if (existing.role !== role) existing.role = role;
-      if (role === 'primary') primaryZoneId = zoneId;
-      return;
+      // ★유령 클라 fix: 살아있는(CONNECTING/OPEN) 엔트리만 재사용. CLOSING/CLOSED 엔트리를 재사용하면
+      //   새 ws가 영영 안 생겨 클라가 옛 예측 좌표에 고착된다(= 유령). 죽은 엔트리는 버리고 새로 연결.
+      if (existing.ws.readyState <= 1) {
+        if (existing.role !== role) existing.role = role;
+        if (role === 'primary') primaryZoneId = zoneId;
+        return;
+      }
+      try { existing.ws.close(); } catch (e) {}
+      conns.delete(zoneId);
     }
     const meta = zonesMeta[zoneId];
     if (!meta) return;
@@ -1781,7 +1791,9 @@ const SIM_JOB_EMOJI = {
     };
     conns.set(zoneId, c);
     if (role === 'primary') primaryZoneId = zoneId;
-    ws.onmessage = (ev) => handleMessage(zoneId, JSON.parse(ev.data));
+    // ★유령 클라 fix: 자기 conn 객체(c)를 같이 넘김. 교체된 옛 소켓이 close 직전 흘리는 잔여 메시지가
+    //   zoneId 재조회로 "새 연결"의 상태에 섞여 들어가던 경로 차단(myPid/좌표/엔티티 오염).
+    ws.onmessage = (ev) => handleMessage(zoneId, JSON.parse(ev.data), c);
     ws.onclose = (ev) => {
       if (conns.get(zoneId) === c) conns.delete(zoneId);
       _lastCloseAt.set(zoneId, performance.now()); // cooldown 기록
@@ -1805,9 +1817,12 @@ const SIM_JOB_EMOJI = {
     _lastCloseAt.set(zoneId, performance.now());
   }
 
-  function handleMessage(zoneId, msg) {
+  function handleMessage(zoneId, msg, srcConn) {
     const c = conns.get(zoneId);
     if (!c) return;
+    // ★유령 클라 fix: 이미 교체된(superseded) 소켓의 메시지는 전부 폐기.
+    //   재연결 레이스에서 옛 ws의 버퍼된 tick/kicked/welcome이 새 conn 상태를 덮어쓰던 것을 막는다.
+    if (srcConn && srcConn !== c) return;
 
     if (msg.type === 'welcome') {
       // 끊김 측정: promote 보낸 뒤 welcome 도착까지 걸린 시간 + welcome 처리 시간
@@ -1898,6 +1913,7 @@ const SIM_JOB_EMOJI = {
         const absY = (msg.zone.worldOffsetY || 0) + msg.self.y;
         myAbsPos = { x: absX, y: absY };
         // welcome = 풀 권위 리싱크(재연결/존이동) → 텔포처럼 취급: 미ack 입력 비우고 앵커.
+        // ★유령 클라 fix: 앵커는 어떤 조건으로도 우회되지 않는다(primary welcome = 무조건 재앵커).
         pendingInputs.length = 0;
         _predAccum = 0;
         myAbsPredicted = { x: absX, y: absY };
@@ -1905,6 +1921,11 @@ const SIM_JOB_EMOJI = {
         _renderCurr = { x: absX, y: absY };
         myAbsRender = { x: absX, y: absY };
         _renderReady = true;
+        // 옛 보정 lerp 잔재도 함께 리셋(respawn 경로와 동형) — 앵커 직후 옛 속도로 끌려가지 않게.
+        correctionVel = { x: 0, y: 0 };
+        correctionUntil = 0;
+        correctionIgnoreWall = false;
+        _selfGone = false;              // 서버에 내 실체가 다시 생김 → 예측 재개
         if (!initialWelcomeReceived) {
           initialWelcomeReceived = true;
         }
@@ -2248,6 +2269,18 @@ const SIM_JOB_EMOJI = {
       window.__lastChestState = msg;
       renderChestUi(msg.buildingId, msg.data);
     } else if (msg.type === 'player_left') {
+      // ★유령 클라 fix: 본인 제거(사망·서버측 삭제) 수신 → 예측 즉시 정지 + 재연결 트리거.
+      //   옛 코드는 자기 pid를 others에서 지우기만 해서, 서버에 실체가 없는데 클라만 계속 걸어다녔다(유령).
+      if (msg.pid && msg.pid === myPid) {
+        console.warn('[recover] 서버가 내 플레이어를 제거함(player_left) — 예측 정지 후 재연결');
+        _selfGone = true;
+        myPid = null;                 // 이후 어떤 tick도 "나"로 오인되지 않게
+        lastTickWithMyPidAt = 0;      // orphan 워치독 비활성(재연결 welcome이 다시 켬)
+        pendingInputs.length = 0;
+        _predAccum = 0;
+        if (conns.has(zoneId)) closeConnection(zoneId); // 다음 프레임 ensurePrimaryConnection이 재연결
+        return;
+      }
       c.others.delete(msg.pid);
     } else if (msg.type === 'gauges') {
       if (typeof msg.hunger === 'number') myHunger = msg.hunger;
@@ -2503,7 +2536,8 @@ const SIM_JOB_EMOJI = {
   // 고정 스텝 1회 이동 — myAbsPredicted 를 직접 변형.
   // sprint 인자: live는 mySprint, replay는 각 입력의 sprint 상태를 넘김 (속도에 영향).
   function predictStep(dt, wx, wy, sprint) {
-    if (myIsDown || (wx === 0 && wy === 0)) return;
+    // ★유령 클라 fix: 서버에 내 실체가 없는 동안(_selfGone)은 예측 정지 — 유령이 걸어다니지 않게.
+    if (myIsDown || _selfGone || (wx === 0 && wy === 0)) return;
     const canSprintClient = sprint && myHunger > 5 && myThirst > 5;
     const speed = 64 * (canSprintClient ? 2.5 : 1);   // ★서버 MOVE_SPEED=64·SPRINT_MULT=2.5와 일치(불일치 시 예측 오버슈트→러버밴딩)
     let mwx = wx, mwy = wy;
@@ -3061,7 +3095,12 @@ const SIM_JOB_EMOJI = {
     if (c && c.ws.readyState <= 1) return;
     const pm = zonesMeta[primaryZoneId];
     if (!pm) return;
-    if (c) conns.delete(primaryZoneId);
+    // ★유령 클라 fix: 옛 소켓을 확실히 닫고 지운다(닫지 않고 지우면 잔여 메시지가 새 conn으로 샌다).
+    if (c) { try { c.ws.close(); } catch (e) {} conns.delete(primaryZoneId); }
+    // 재연결 = 서버가 새 pid로 스폰(좌표 인자는 서버가 쓰지 않음) → 옛 pid는 즉시 폐기하고
+    // 위치는 welcome 앵커만을 정본으로 삼는다.
+    myPid = null;
+    _selfGone = true;
     const localX = myAbsPredicted.x - pm.worldOffsetX;
     const localY = myAbsPredicted.y - (pm.worldOffsetY || 0);
     console.warn('[recover] primary 재연결', primaryZoneId);
@@ -3135,6 +3174,12 @@ const SIM_JOB_EMOJI = {
     if (!primaryZoneId || lastTickWithMyPidAt === 0) return;
     if (performance.now() - lastTickWithMyPidAt > 2000) {
       console.warn('[recover] 내 pid가 2초간 tick에 없음 - primary 재연결');
+      // ★유령 클라 fix: 서버에 내 실체가 없다고 판정된 순간부터 예측 정지 + pid 폐기.
+      //   (옛 코드는 재연결 동안에도 옛 좌표로 계속 전진해서 welcome 앵커와 실좌표 괴리가 커졌다.)
+      _selfGone = true;
+      myPid = null;
+      pendingInputs.length = 0;
+      _predAccum = 0;
       lastTickWithMyPidAt = 0; // 0으로 리셋 — 재연결 WS가 첫 틱 받을 때까지 orphan 검사 비활성. now()로 두면 느린 연결(사파리/Private Relay)에서 establishing 중인 WS를 2초마다 죽여 무한루프가 됨.
       if (conns.has(primaryZoneId)) closeConnection(primaryZoneId);
       // ensurePrimaryConnection이 다음 프레임에 재연결
