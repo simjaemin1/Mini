@@ -502,7 +502,8 @@ function materializeVillageStructures(db, vil, bRows) {
       houses++;
     } else if (b.type === 'granary') {
       // ★고상곳간 5×3([cx-2..cx+2]×[cy-1..cy+1]) — 문 없는 밀폐(사다리 출입 고증, 상호작용은 인접 셀). 송국리 소형 굴립주 5.3×3.2 실측.
-      rows += buildStructureRect(db, vil.dbId, b.cx - 2, b.cy - 1, b.cx + 2, b.cy + 1, ownerId, `${vil.name} 곳간`, null);
+      //   data.gran 태그[에셋 2차]: 클라가 벽·바닥 시각 억제 + 고상 통짜 스프라이트(기둥+판벽+이엉) 합성 — 콜라이더·밀폐 불변.
+      rows += buildStructureRect(db, vil.dbId, b.cx - 2, b.cy - 1, b.cx + 2, b.cy + 1, ownerId, `${vil.name} 곳간`, null, { gran: [b.cx - 2, b.cy - 1, b.cx + 2, b.cy + 1] });
       grans++;
     }
   }

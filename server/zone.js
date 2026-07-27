@@ -4280,9 +4280,10 @@ async function tryBuildGuildGranary(player, atX, atY) {
   const ownerId = `tribe_${player.tribeId}`, ownerName = `[${player.tribeName || '길드'}] 곳간`;
   const made = [];
   const mk = (type, x, y, data) => _liveBuildRow(type, x, y, data, ownerId, ownerName, made);
-  for (let x = gx - 2; x <= gx + 2; x++) { mk('wall', x * SZg, (gy - 1) * SZg, { side: 'N', floor: 0 }); mk('wall', x * SZg, (gy + 2) * SZg, { side: 'N', floor: 0 }); }
-  for (let y = gy - 1; y <= gy + 1; y++) { mk('wall', (gx + 2) * SZg, y * SZg, { side: 'E', floor: 0 }); mk('wall', (gx - 3) * SZg, y * SZg, { side: 'E', floor: 0 }); }
-  for (let x = gx - 2; x <= gx + 2; x++) for (let y = gy - 1; y <= gy + 1; y++) mk('floor', x * SZg + SZg / 2, y * SZg + SZg / 2, { floor: 0 });
+  const _gr = { gran: [gx - 2, gy - 1, gx + 2, gy + 1] };   // ★[에셋 2차] 클라 고상 통짜 스킨 태그(마을 곳간과 동일 — 벽·바닥 시각 억제, 콜라이더 불변)
+  for (let x = gx - 2; x <= gx + 2; x++) { mk('wall', x * SZg, (gy - 1) * SZg, { side: 'N', floor: 0, ..._gr }); mk('wall', x * SZg, (gy + 2) * SZg, { side: 'N', floor: 0, ..._gr }); }
+  for (let y = gy - 1; y <= gy + 1; y++) { mk('wall', (gx + 2) * SZg, y * SZg, { side: 'E', floor: 0, ..._gr }); mk('wall', (gx - 3) * SZg, y * SZg, { side: 'E', floor: 0, ..._gr }); }
+  for (let x = gx - 2; x <= gx + 2; x++) for (let y = gy - 1; y <= gy + 1; y++) mk('floor', x * SZg + SZg / 2, y * SZg + SZg / 2, { floor: 0, ..._gr });
   mk('guild_granary', gx * SZg + SZg / 2, gy * SZg + SZg / 2, { tribe_id: player.tribeId, floor: 0 });
   broadcast({ type: 'buildings_spawn', buildings: made });
   savePlayer(player);
