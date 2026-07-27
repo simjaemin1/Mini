@@ -17,6 +17,7 @@ const central = require('./central-client'); // central HTTP 클라이언트
 const { Quadtree } = require('./quadtree'); // spatial index — O(N²) 검색 회피
 const { ChunkManager, CHUNK_SIZE, generateChunkResources, generateVillagesForZone, generateCoastlineWaterTiles } = require('./chunk'); // 청크 단위 entity 분류 + procedural + 해안선
 const { findPath: pfFindPath } = require('./pathfind'); // Phase 14.49-b: NPC A* pathfinding
+const PathCore = require('../sim/path-core.js'); // ★[생활 층 100% ①] 랩·서버 공용 경로 정본 — smoothPath(스트링 풀링)를 주민 이동에 직결
 const { ANIMALS } = require('./animals');  // Phase 5-6: 동물 mob 36종 catalog
 const PlayerItems = require('./player-items'); // 플레이어 아이템 인스턴스(품질·속성·내구) — econ 무접촉·본체 서버층(설계: 플레이어_아이템_속성_설계.md)
 const harvestedSeeds = new Set(); // 채집된 시드 자원 (DB에서 load)
@@ -1491,28 +1492,42 @@ function straightPathClear(x0, y0, x1, y1, floor) {
   }
   return true;
 }
+// ★[생활 층 100% ① — 랩 moveTo/_smoothWalk(7807~7814) 동형, 2026-07-27] 마을 주민의 이동 양식을 랩 정본과 통일.
+//   랩 계약: lineClear(직선 통행)면 단일 세그먼트 직행 → 막히면 bfsPath(사실상 무제한 탐색) → PathCore.smoothPath
+//   스트링 풀링(계단 웨이포인트를 열린 구간에서 진짜 사선 벡터로 병합, 길 칸(roadLevel>0)은 keep 앵커로 전부
+//   경유 — 길은 길 모양대로 걷고 답압·배속 루프 유지) + prefer=길 등급(등거리 동률이 기존 길로 스냅).
+//   서버 매핑: lineClear=straightPathClear(벽 변+물·바위 — 동일 규칙) · bfsPath=pfFindPath(같은 path-core 정본,
+//   주민만 기본 한도 4096/64로 랩의 '마을 생활권 전체' 탐색 동형) · roadLevel=Roads.levelOf(§16 답압 길) ·
+//   A* 2s 쿨다운은 서버 스케일 방어(결과 경로 모양은 동일 — 이동 양식 불변). 비주민(야생·도적·레거시)은 현행 유지.
+function _roadKeep(x, y) { return Roads.ENABLED && Roads.levelOf((x / 32) | 0, (y / 32) | 0) > 0; }   // px→답압 길 칸(스무딩 keep 앵커)
+function _roadPrefer(x, y) { return Roads.ENABLED ? Roads.levelOf((x / 32) | 0, (y / 32) | 0) : 0; }  // px→길 등급(A* 동률 스냅)
 function computeNpcPath(npc, now) {
   if (typeof npc.targetX !== 'number' || typeof npc.targetY !== 'number') return null;
   const d = Math.hypot(npc.targetX - npc.x, npc.targetY - npc.y);
   if (d < 48) return [{ x: npc.targetX, y: npc.targetY }];
-  // wander/flee는 A* 안 씀 — beeline path (벽 만나면 stuck 감지가 fallback)
-  if (npc.behavior === 'wander' || npc.behavior === 'flee') {
+  const isVil = !!npc.simVillageId;   // 마을 주민 = 랩 이동 정본 대상
+  // 도주는 직선 전력질주(랩 동형 — 도주는 경로 계획 밖). 비주민 배회도 현행 beeline(성능 — 야생·레거시 회귀 없음)
+  if (npc.behavior === 'flee' || (npc.behavior === 'wander' && !isVil)) {
     return [{ x: npc.targetX, y: npc.targetY }];
   }
-  // 직선이 깨끗하면 A* 스킵 (cheap raycast)
+  // 직선이 깨끗하면 A* 스킵 (랩 moveTo의 lineClear 우선 — 동형)
   if (straightPathClear(npc.x, npc.y, npc.targetX, npc.targetY, npc.floor || 0)) {
     return [{ x: npc.targetX, y: npc.targetY }];
   }
   // A* — NPC당 최소 2초 간격
   if (npc._lastAStarAt && now - npc._lastAStarAt < 2000) return null;
   npc._lastAStarAt = now;
-  return pfFindPath(npc.x, npc.y, npc.targetX, npc.targetY, {
+  const wp = pfFindPath(npc.x, npc.y, npc.targetX, npc.targetY, {
     floor: npc.floor || 0,
     isBlockedFn: isBlockedByWall,
     isWaterFn: isTerrainBlockedLocal,
-    maxCells: 200,         // ~4ms 한도 (TICK 33ms에 여유)
-    searchRadiusCells: 24, // 768px 범위
+    maxCells: isVil ? 1500 : 200,          // 주민=마을 생활권 우회 커버(수백 노드면 충분 — 도달 불가 목표도 빨리 확정, 최악 ~10ms). 비주민=현행 ~4ms 한도
+    searchRadiusCells: isVil ? 64 : 24,    // 주민=2048px(집→먼 밭·물가 현장). 비주민=768px
+    preferFn: isVil ? _roadPrefer : undefined,   // ★답압 수렴(랩 bfsPath prefer 동형): 등거리 동률이 길로 스냅
   });
+  if (!wp || wp.length < 3 || !isVil) return wp;
+  const fl = npc.floor || 0;   // ★스트링 풀링(랩 _smoothWalk 동형): canPass=직선 통행(동일 게이트) · keep=길 칸 앵커
+  return PathCore.smoothPath(wp, (ax, ay, bx, by) => straightPathClear(ax, ay, bx, by, fl), { keep: Roads.ENABLED ? _roadKeep : null });
 }
 // npc.path를 따라 다음 waypoint 향해 vx/vy 설정. 도착했으면 다음 waypoint로.
 // 반환: true면 path 완료 (목표 도달), false면 진행 중
@@ -1543,6 +1558,7 @@ function detectStuck(npc, now) {
   const moved = Math.hypot(npc.x - npc._stuckPos.x, npc.y - npc._stuckPos.y);
   if (moved > 5) {
     npc._stuckPos = { x: npc.x, y: npc.y, at: now };
+    npc._stuckN = 0;   // ★[생활 층 100% ①] 정상 이동 재개 → 연속 stuck 카운터 리셋
     return false;
   }
   if (now - npc._stuckPos.at > 1500) {
@@ -1552,9 +1568,18 @@ function detectStuck(npc, now) {
   return false;
 }
 // stuck 해소: path·target 비우고 짧은 wander 방향 + 다음 decide 트리거
+// ★[생활 층 100% ①] 주민은 목표 유지·즉시 재경로(랩엔 랜덤 회피가 없다 — 경로가 벽 변을 인지하니 재탐색이 정답).
+//   A* 쿨다운·경로 캐시를 무효화해 다음 틱에 새 경로(스무딩 포함). 3연속 stuck만 현행 랜덤 회피 폴백(만능 방어).
 function unstuckNpc(npc, now) {
   npc.path = null;
   npc.pathIndex = 0;
+  if (npc.simVillageId && typeof npc.targetX === 'number' && (npc._stuckN = (npc._stuckN || 0) + 1) < 3) {
+    npc._lastAStarAt = 0; npc._pathFor = null;   // 재경로 강제(목표 불변 — 랩 setPath 재호출 동형)
+    npc.nextDecisionAt = now + 400;
+    npc.vx = 0; npc.vy = 0;
+    return;
+  }
+  npc._stuckN = 0;
   // 작은 회피 — 랜덤 방향으로 짧게 비킨다
   const ang = Math.random() * Math.PI * 2;
   npc.targetX = npc.x + Math.cos(ang) * 80;
@@ -1842,7 +1867,8 @@ setInterval(() => {
 // §4-4 Stage 4B: isPositionActive(AOI 상세/보간 분기)·isBlockedByWall(캐러밴 벽 충돌·로컬 재경로) 추가 주입.
 // §4-4 P2 LOD: anyViewerNear(defCenterPx, r) 추가 주입 — villages.js 가 전쟁 eta 결판을 physical/headless 로 분기(서버 내부 스텝만, broadcast·렌더 없음).
 SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, isWaterTileLocal, isPositionActive, isBlockedByWall, anyViewerNear,
-  liveBuildRow: _liveBuildRow, buildings, chunkManager });   // ★[생활 층 ③] 신축 크루의 라이브 실체화 경로(플레이어 완공과 동일 헬퍼 — 발명 금지)
+  liveBuildRow: _liveBuildRow, buildings, chunkManager,   // ★[생활 층 ③] 신축 크루의 라이브 실체화 경로(플레이어 완공과 동일 헬퍼 — 발명 금지)
+  worldPhase, dayPhaseRatio: WORLD.dayPhaseRatio, mobs, qtResources: () => qtResources });   // ★[생활 층 100% ②③] 일과 스케줄(하루 위상)·직업 실작업(자원·사냥감 현장) 소스
 // §11 도적 1파 — SimVillages.init 직후(banditHost 준비 시점): 소굴 스캔/복원 + econ 훅(banditRouteRisk/onBanditLoot) 배선.
 Bandits.init();
 // §16 답압 길 4파 — 존 셀 치수·게임일 시계로 독립 부팅(villages와 무관 — 스탬프는 이동 루프 편승).
