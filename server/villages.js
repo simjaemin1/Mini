@@ -2052,7 +2052,7 @@ function lifeDebug() {   // ★[직접 서버 디버깅 — 사용자 요청] zo
         rest: p._rest || 0, half: !!p._half, fOut: p._fOutD });
     }
     out.push({ name: vil.name, pop: vil.npcPids.length, farm: vil._farmSet ? vil._farmSet.size : 0, crop: vil._crop ? vil._crop.size : 0,
-      site: vil._site ? vil._site.stage : null, clearCrew: vil._clearCrew || 0, buildCrew: vil._buildCrew || 0, acts, sample });
+      site: vil._site ? vil._site.stage : null, clearCrew: vil._clearCrew || 0, buildCrew: vil._buildCrew || 0, hl: vil._hlDay || null, acts, sample });
   }
   return { t: new Date().toISOString(), phase: wpF ? +wpF(now).toFixed(3) : null, dayR, life: LIFE_ON, villages: out };
 }
@@ -2073,15 +2073,51 @@ function _cellTask(vil, k, day) {   // 우선순위: 5수확 4방제 3물대기(
   const wd = e.wd || 0; if (wd < L_WEEDS.length && (day - e.p) / e.c.grow >= L_WEEDS[wd]) return 1;
   return 0;
 }
-function _lifeDoTask(vil, npc, k, day) {   // 도착한 셀 처리(랩 doTask 동형 — econ storage 불변·스킬은 서버 생략)
+function _lifeDoTask(vil, npc, k, day) {   // 도착한 셀 처리(랩 doTask 동형 — econ storage 불변·스킬은 서버 생략). npc=null=헤드리스(라벨 생략)
   const e = vil._crop.get(k), nong = !vil._drySet.has(k);
   const ci = k.indexOf(','), par = (+k.slice(0, ci) + +k.slice(ci + 1)) & 1;
-  if (!e) { const cr = _villageCropFor(vil, nong ? '논' : '밭', _lMonth(day), par); if (!cr) return false; vil._crop.set(k, { c: cr, p: day, td: day, w: day, wd: 0, ps: 0, q: 1 }); _lifeAct(npc, nong ? '모내기' : '파종'); return true; }
-  if (day - e.p >= e.c.grow) { vil._crop.delete(k); _lifeAct(npc, '수확'); return true; }   // 수확 — 식량은 econ이 이미 계상(연출만)
-  if (e.ps) { e.ps = 0; e.td = day; e.q = Math.min(1, e.q + L_QREC); _lifeAct(npc, '방제'); return true; }
-  if (nong && day - (e.w || e.p) >= L_WATERGAP) { e.w = day; e.q = Math.min(1, e.q + L_QREC); _lifeAct(npc, '물대기'); return true; }
-  const wd = e.wd || 0; if (wd < L_WEEDS.length && (day - e.p) / e.c.grow >= L_WEEDS[wd]) { e.wd = wd + 1; e.td = day; e.q = Math.min(1, e.q + L_QREC); _lifeAct(npc, nong ? '논매기' : '김매기'); return true; }
+  if (!e) { const cr = _villageCropFor(vil, nong ? '논' : '밭', _lMonth(day), par); if (!cr) return false; vil._crop.set(k, { c: cr, p: day, td: day, w: day, wd: 0, ps: 0, q: 1 }); if (npc) _lifeAct(npc, nong ? '모내기' : '파종'); return true; }
+  if (day - e.p >= e.c.grow) { vil._crop.delete(k); if (npc) _lifeAct(npc, '수확'); return true; }   // 수확 — 식량은 econ이 이미 계상(연출만)
+  if (e.ps) { e.ps = 0; e.td = day; e.q = Math.min(1, e.q + L_QREC); if (npc) _lifeAct(npc, '방제'); return true; }
+  if (nong && day - (e.w || e.p) >= L_WATERGAP) { e.w = day; e.q = Math.min(1, e.q + L_QREC); if (npc) _lifeAct(npc, '물대기'); return true; }
+  const wd = e.wd || 0; if (wd < L_WEEDS.length && (day - e.p) / e.c.grow >= L_WEEDS[wd]) { e.wd = wd + 1; e.td = day; e.q = Math.min(1, e.q + L_QREC); if (npc) _lifeAct(npc, nong ? '논매기' : '김매기'); return true; }
   return false;
+}
+// ★[헤드리스 일일 결산 — 사용자 "아무도 안 보는 마을도 일과가 작동해야 하는 거 아냐?"] 동면 마을(관측자 없음)의
+//   물리 결과를 게임일 경계에 같은 규칙·같은 인일 속도로 일괄 적산 — 랩 빨리감기(lifeLoop fast: 걷기 생략+일괄) 동형.
+//   econ(인구·생산·재고)은 원래 전 마을 상시 작동 — 여기는 '몸의 결과물'(개간 셀·신축 단계·작물 상태)을 실체로
+//   따라붙여 관측 여부와 무관하게 세계 상태가 동일해지게 한다(일관성 원칙: 도착해 보면 살던 흔적 그대로).
+//   활성 마을은 스킵 — 실걸음 크루(npcLifeTick)가 같은 속도로 이미 쌓는다(이중 계상 방지).
+const LIFE_TASKS_PDAY = 30;   // 농부 1인 하루 작물 처리 셀(실걸음 실측 근사: 체류 9~19s+이동 — 랩 노동 한도 동형)
+function _lifeHeadlessDay(vil) {
+  _lifeVL();   // lazy 로드 방어(단독 호출 경로 — 5e8d5f5 'is not defined' 클래스 재발 금지)
+  const day = state.dayMs ? gameDayOf(Date.now()) : 0;
+  let farmerN = 0, popN = 0;
+  for (const pid of vil.npcPids) { const p = state.deps.players.get(pid); if (!p) continue; popN++; if (p.simJob === 'farmer') farmerN++; }
+  if (!popN) return;
+  // ① 개간 — 실걸음과 동일: 크루 상한 2 × 3셀/인일, 프론티어 최근접부터(마을 중심 기준)
+  if (farmerN && _lifeNeedClear(vil)) {
+    let n = Math.min(LIFE_CREW, farmerN) * LIFE_CLEAR_PDAY;
+    while (n-- > 0 && _lifeNeedClear(vil)) {
+      const fr = _lifeFrontier(vil); let best = null, bd = 1e9;
+      for (const c2 of fr) { const k = c2.cx + ',' + c2.cy; if (vil._farmSet.has(k)) continue; const dx = c2.cx - vil.ccx, dy = c2.cy - vil.ccy, d2 = dx * dx + dy * dy; if (d2 < bd) { bd = d2; best = c2; } }
+      if (!best) break;
+      _lifeLiveFarmTile(vil, best.cx, best.cy, best.f === '밭' ? 'dryfield' : 'farmland');
+    }
+  }
+  // ② 신축 — 크루 인일=단계(실걸음과 동일 속도). 완공 시 _lifeCompleteHouse가 실체화(집·마당·침대 명부)
+  if (vil._site) { let st = Math.min(LIFE_CREW, popN) * LIFE_STAGE_PDAY; while (st-- > 0 && vil._site) _lifeAdvanceSite(vil); }
+  // ③ 작물 — 농부 노동예산으로 우선순위 일괄(수확>방제>물대기>파종>김매기 — cellTask 순서가 자연 보장)
+  let budget = farmerN * LIFE_TASKS_PDAY;
+  while (budget > 0) {
+    let did = 0;
+    for (const k of vil._farmSet) {
+      if (budget <= 0) break;
+      if (_cellTask(vil, k, day) > 0 && _lifeDoTask(vil, null, k, day)) { budget--; did++; }
+    }
+    if (!did) break;   // 일감 소진(비수기·전부 생육 중)
+  }
+  vil._hlDay = day;   // lifeDebug 노출용(결산 도장)
 }
 function _lifeNextFarmCell(vil, npc, day) {   // 랩 nextTask 동형(구역 대신 전 농지 — 서버 농지 수백 셀 스케일): 우선순위 높고 가까운 할 일
   let best = null, bp = 0, bd = 1e9;
@@ -2282,6 +2318,11 @@ function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(�
   }
   const cap = vil._houseCells.length * (VillageLayout.HOUSE_CAP || 6);
   if (!vil._site && vil.econ.npcs.length > cap * 0.92) { try { _lifeAddHouseSite(vil); } catch (e) { console.error(`[${state.zoneId}] 생활층 신축 실패(${vil.name}):`, e.message); } }
+  // ★[헤드리스 결산] 관측자 없는 마을 = 랩 빨리감기 — 하루치 물리 결과 일괄 적산(관측 마을은 실걸음 크루 소유)
+  const anyNear = state.deps.anyViewerNear;
+  if (!(anyNear && anyNear(vil.ccx * SZ + SZ / 2, vil.ccy * SZ + SZ / 2, (vil._maxRPx || 800) + 1600))) {
+    try { _lifeHeadlessDay(vil); } catch (e) { console.error(`[${state.zoneId}] 생활층 헤드리스 결산 실패(${vil.name}):`, e.message); }
+  }
 }
 function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도주 뒤·야간 귀가 게이트 앞) — true=일과 소유(레거시 차단)
   if (!LIFE_ON) return false;
