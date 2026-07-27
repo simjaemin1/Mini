@@ -3685,13 +3685,11 @@ const SIM_JOB_EMOJI = {
         const vis = entityVisibility(item.ax, item.ay, d);
         if (vis < 0.05) continue;
         ctx.globalAlpha = vis;
-        const icon = (ITEM_ICONS && ITEM_ICONS[gi.item]) || ({wood:'🪵',stone:'🪨'}[gi.item]) || '📦';
         // 그림자
         ctx.fillStyle = 'rgba(0,0,0,0.4)';
         ctx.beginPath(); ctx.ellipse(s.x, s.y + 3, 8, 3, 0, 0, Math.PI * 2); ctx.fill();
-        // 아이콘
-        ctx.font = '16px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(icon, s.x, s.y - 4);
+        // 아이콘 — 3D 렌더 이미지 우선, 미로드 시 이모지 폴백
+        drawItemIcon(ctx, gi.item, s.x, s.y - 4, 18);
         // 개수 ×N (>1일 때)
         if (gi.count > 1) {
           ctx.font = '9px sans-serif'; ctx.fillStyle = '#fff';
@@ -5603,6 +5601,46 @@ const SIM_JOB_EMOJI = {
     item_wall: '🧱', item_floor: '⬜', item_door: '🚪', item_fence: '🪵',
     item_stair: '🪜', item_chest: '📦', item_campfire: '🔥', item_farmland: '🌱',
   };
+  // === 에셋 5차: 인벤 아이콘 3D 렌더(Blender icon_render.py) ===
+  // /assets/icons/<key>.png (96×96 알파, 자연물과 동일 씬·조명). 로드 성공한 키만 이미지로 교체 —
+  // 실패/미배포 시 위 이모지가 그대로 폴백이라 어느 쪽이든 UI가 비지 않는다.
+  const ITEM_ICON_IMG = {};
+  let _iconImgLoaded = 0;
+  (function preloadItemIcons() {
+    if (typeof Image !== 'function') return;
+    const keys = Object.keys(ITEM_ICONS);
+    let settled = 0;
+    const done = () => {
+      if (++settled === keys.length) { try { updateHud(); } catch (e) {} }
+    };
+    for (const k of keys) {
+      const im = new Image();
+      im.onload = () => { ITEM_ICON_IMG[k] = im; _iconImgLoaded++; done(); };
+      im.onerror = () => { done(); };
+      im.src = '/assets/icons/' + k + '.png';
+    }
+  })();
+  function itemIconImg(k) {
+    const im = ITEM_ICON_IMG[k];
+    return (im && im.complete && im.naturalWidth > 0) ? im : null;
+  }
+  // DOM(innerHTML)용 — 이미지 있으면 <img>, 없으면 이모지(그것도 없으면 fb)
+  function itemIconHtml(k, px, fb) {
+    const s = px || 20;
+    const im = itemIconImg(k);
+    if (im) return `<img class="item-icon" src="${im.src}" width="${s}" height="${s}" alt="" style="vertical-align:middle;display:inline-block">`;
+    return (ITEM_ICONS && ITEM_ICONS[k]) || fb || '📦';
+  }
+  // 캔버스용 — 이미지 있으면 drawImage, 없으면 이모지 fillText (중심 정렬 동일)
+  function drawItemIcon(ctx, k, sx, sy, px) {
+    const s = px || 18;
+    const im = itemIconImg(k);
+    if (im) { ctx.drawImage(im, sx - s / 2, sy - s / 2, s, s); return; }
+    const icon = (ITEM_ICONS && ITEM_ICONS[k]) || '📦';
+    ctx.font = Math.round(s * 0.9) + 'px sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(icon, sx, sy);
+  }
   const ITEM_LABEL = {
     pillar: '기둥', rafter: '서까래', thatch: '이엉',   // ★건축 중간재
     berry: '베리', fiber: '풀', meat_raw: '날고기', meat_cooked: '구운고기',
@@ -5817,7 +5855,7 @@ const SIM_JOB_EMOJI = {
         const sp = document.createElement('span');
         const isFood = !!foodEffects[k];
         sp.className = 'inv' + (isFood ? '' : ' disabled');
-        sp.textContent = `${ITEM_ICONS[k]} ${ITEM_LABEL[k]} ${inventory[k]}`;
+        sp.innerHTML = `${itemIconHtml(k, 18)} ${ITEM_LABEL[k]} ${inventory[k]}`;
         if (isFood) {
           const eff = foodEffects[k];
           sp.title = `먹기 (+허기 ${eff.hunger||0}${eff.thirst?', +갈증 '+eff.thirst:''}${eff.hpDelta?', HP '+eff.hpDelta:''})`;
@@ -6047,14 +6085,14 @@ const SIM_JOB_EMOJI = {
       const matBtns = rc.accepts.map(m => {
         const has = (inventory[m] || 0), on = (m === sel);
         const st = 'margin:2px 3px 0 0;padding:1px 6px;border-radius:4px;font-size:11px;cursor:pointer;border:1px solid ' + (on ? '#8bd' : '#444') + ';background:' + (on ? '#245' : '#222') + ';color:' + (has > 0 ? '#eee' : '#666');
-        return `<button data-eqtype="${type}" data-eqmat="${m}" ${has > 0 ? '' : 'disabled'} style="${st}" title="${m} 보유 ${has}">${ITEM_ICONS[m] || m}${has ? ` ${has}` : ''}</button>`;
+        return `<button data-eqtype="${type}" data-eqmat="${m}" ${has > 0 ? '' : 'disabled'} style="${st}" title="${m} 보유 ${has}">${itemIconHtml(m, 18, m)}${has ? ` ${has}` : ''}</button>`;
       }).join('');
       const pvStr = pv ? `<b style="color:#8fc8ff">${pv.attrLabel} ${pv.attr} · 내구 ${pv.dura}</b>` : '';
       html += `<div class="craft-recipe ${canCraft ? 'can-make' : 'cant-make'}">
         <div class="cr-icon">${EQUIP_ICONS[type] || '🎽'}</div>
         <div class="cr-info">
           <div class="cr-name">${rc.label} <span style="color:#7cd97c;font-weight:normal">${rc.skill} Lv${lvl}</span></div>
-          <div class="cr-cost">${sel ? (ITEM_ICONS[sel] || sel) : '?'} ×${rc.qty} → ${pvStr}</div>
+          <div class="cr-cost">${sel ? itemIconHtml(sel, 18, sel) : '?'} ×${rc.qty} → ${pvStr}</div>
           <div style="margin-top:3px">${matBtns}</div>
         </div>
         <button data-eqcraft="${type}" ${canCraft ? '' : 'disabled'}>제작</button>
@@ -6136,13 +6174,13 @@ const SIM_JOB_EMOJI = {
         const matBtns = rc.accepts.map(m => {
           const has = (inventory[m] || 0), on = (m === sel);
           const st = 'margin:2px 3px 0 0;padding:1px 6px;border-radius:4px;font-size:11px;cursor:pointer;border:1px solid ' + (on ? '#8bd' : '#444') + ';background:' + (on ? '#245' : '#222') + ';color:' + (has > 0 ? '#eee' : '#666');
-          return `<button data-eqtype="${type}" data-eqmat="${m}" ${has > 0 ? '' : 'disabled'} style="${st}">${ITEM_ICONS[m] || m}${has ? ` ${has}` : ''}</button>`;
+          return `<button data-eqtype="${type}" data-eqmat="${m}" ${has > 0 ? '' : 'disabled'} style="${st}">${itemIconHtml(m, 18, m)}${has ? ` ${has}` : ''}</button>`;
         }).join('');
         h += `<div class="craft-recipe ${canBuy ? 'can-make' : 'cant-make'}">
           <div class="cr-icon">${EQUIP_ICONS[type] || '🎽'}</div>
           <div class="cr-info">
             <div class="cr-name">${rc.label} <span style="color:#8fc8ff;font-weight:normal">${qStr}</span></div>
-            <div class="cr-cost">재료 ${sel ? (ITEM_ICONS[sel] || sel) : '?'} ×${rc.qty} 지불</div>
+            <div class="cr-cost">재료 ${sel ? itemIconHtml(sel, 18, sel) : '?'} ×${rc.qty} 지불</div>
             <div style="margin-top:3px">${matBtns}</div>
           </div>
           <button data-buy="${type}" ${canBuy && vq != null ? '' : 'disabled'}>구매</button>
@@ -6157,7 +6195,7 @@ const SIM_JOB_EMOJI = {
         h += `<div class="craft-recipe">
           <div class="cr-icon">${EQUIP_ICONS[inst.type] || '🎒'}</div>
           <div class="cr-info"><div class="cr-name">${rc.label || inst.type} <span style="color:#8a93a0;font-weight:normal">Lv${inst.craftedSkill || 0}</span></div>
-          <div class="cr-cost">용해 → ${inst.mat ? (ITEM_ICONS[inst.mat] || inst.mat) : '재료'} ×${refund} 회수</div></div>
+          <div class="cr-cost">용해 → ${inst.mat ? itemIconHtml(inst.mat, 18, inst.mat) : '재료'} ×${refund} 회수</div></div>
           <button data-sell="${inst.id}">판매</button>
         </div>`;
       }
@@ -6208,8 +6246,8 @@ const SIM_JOB_EMOJI = {
       for (const [name, ir] of Object.entries(itemRecipes)) {
         const hasTool = !ir.requiresTool || hasToolAlive(ir.requiresTool);
         const canCraft = hasTool && Object.entries(ir.from).every(([k, v]) => (inventory[k] || 0) >= v);
-        const fromStr = Object.entries(ir.from).map(([k, v]) => `${ITEM_ICONS[k]||k} ${v}`).join(' · ');
-        const toStr = Object.entries(ir.to).map(([k, v]) => `${ITEM_ICONS[k]||k} ×${v}`).join(' ');
+        const fromStr = Object.entries(ir.from).map(([k, v]) => `${itemIconHtml(k, 18, k)} ${v}`).join(' · ');
+        const toStr = Object.entries(ir.to).map(([k, v]) => `${itemIconHtml(k, 18, k)} ×${v}`).join(' ');
         const toolStr = ir.requiresTool ? ` (${ir.requiresTool} 필요)` : '';
         const row = document.createElement('div');
         row.className = 'craft-row';
@@ -6240,13 +6278,13 @@ const SIM_JOB_EMOJI = {
           cost[k] = v;
         }
         const canCraft = hasHammer && Object.entries(cost).every(([k, v]) => (inventory[k] || 0) >= v);
-        const costStr = Object.entries(cost).map(([k, v]) => `${ITEM_ICONS[k]||k} ${v}`).join(' · ');
+        const costStr = Object.entries(cost).map(([k, v]) => `${itemIconHtml(k, 18, k)} ${v}`).join(' · ');
         const hammerStr = br._needHammer ? ' 🔨' : '';
         const have = inventory[name] || 0;
         const row = document.createElement('div');
         row.className = 'craft-row';
         row.innerHTML = `
-          <div class="craft-icon">${ITEM_ICONS[name] || '🏗️'}</div>
+          <div class="craft-icon">${itemIconHtml(name, 34, '🏗️')}</div>
           <div class="craft-info">
             <div class="craft-name">${br.label} <span class="craft-have">×${have}</span>${hammerStr}</div>
             <div class="craft-cost">${costStr || '-'}</div>
@@ -6297,12 +6335,12 @@ const SIM_JOB_EMOJI = {
     }
     for (const [name, r] of entries) {
       const canCook = Object.entries(r.cost).every(([k, v]) => (inventory[k] || 0) >= v);
-      const costStr = Object.entries(r.cost).map(([k, v]) => `${ITEM_ICONS[k]||k} ${v}`).join(' · ');
-      const prodStr = Object.entries(r.produces).map(([k, v]) => `${ITEM_ICONS[k]||k} ×${v}`).join(' ');
+      const costStr = Object.entries(r.cost).map(([k, v]) => `${itemIconHtml(k, 18, k)} ${v}`).join(' · ');
+      const prodStr = Object.entries(r.produces).map(([k, v]) => `${itemIconHtml(k, 18, k)} ×${v}`).join(' ');
       const row = document.createElement('div');
       row.className = 'craft-row';
       row.innerHTML = `
-        <div class="craft-icon">${ITEM_ICONS[name] || '🍳'}</div>
+        <div class="craft-icon">${itemIconHtml(name, 34, '🍳')}</div>
         <div class="craft-info">
           <div class="craft-name">${r.label} → ${prodStr}</div>
           <div class="craft-cost">${costStr}</div>
@@ -6417,7 +6455,7 @@ const SIM_JOB_EMOJI = {
         else { tierLabel = '악성 (evil)'; tierColor = '#e85040'; }
         const treasury = data.treasury || {};
         const trItems = Object.entries(treasury).filter(([k,v]) => v > 0)
-          .map(([k,v]) => `${ITEM_ICONS[k]||k} ${v}`).join(' · ') || '(비어있음)';
+          .map(([k,v]) => `${itemIconHtml(k, 18, k)} ${v}`).join(' · ') || '(비어있음)';
         const isNpc = data.tribe.is_npc;
         const tierBadge = isNpc ? `<span class="badge" style="background:#5a7aa8">NPC길드 (${data.tribe.behavior_tier})</span>` : '';
         // Phase 14.9 — 전쟁 선포 대상 목록 (내 길드 X, 이미 전쟁중 X)
@@ -6868,7 +6906,7 @@ const SIM_JOB_EMOJI = {
       });
       if (entries.length === 0) return `<tr><td colspan="4" style="color:#6c7686;text-align:center;padding:20px">(비어있음)</td></tr>`;
       return entries.map(([k, v]) => {
-        const icon = (ITEM_ICONS && ITEM_ICONS[k]) || ({wood:'🪵',stone:'🪨'}[k]) || '📦';
+        const icon = itemIconHtml(k, 22);
         const label = (ITEM_LABEL && ITEM_LABEL[k]) || k;
         const cat = ITEM_CAT[k] || '기타';
         const isContainerItem = (kind === 'chest');
@@ -6923,7 +6961,7 @@ const SIM_JOB_EMOJI = {
       const giRows = gItems.length === 0
         ? `<tr><td colspan="4" style="color:#6c7686;text-align:center;padding:20px">(바닥에 아이템 없음 — 드롭하면 여기에 표시됩니다)</td></tr>`
         : gItems.map(({ gi }) => {
-            const icon = (ITEM_ICONS[gi.item]) || ({wood:'🪵',stone:'🪨'}[gi.item]) || '📦';
+            const icon = itemIconHtml(gi.item, 22);
             const label = (ITEM_LABEL[gi.item]) || gi.item;
             const cat = ITEM_CAT[gi.item] || '기타';
             return `<tr><td class="it-icon">${icon}</td><td class="it-name">${label} <span class="it-count">×${gi.count}</span></td><td class="it-cat">${cat}</td><td class="it-action"><button data-pickup="${gi.id}">↑</button></td></tr>`;
@@ -7083,11 +7121,11 @@ const SIM_JOB_EMOJI = {
         e.dataTransfer.effectAllowed = 'move';
         tr.classList.add('dragging');
         // 작은 ghost (이모지 + 라벨)
-        const icon = (ITEM_ICONS && ITEM_ICONS[item]) || ({wood:'🪵',stone:'🪨'}[item]) || '📦';
+        const icon = itemIconHtml(item, 18);
         const label = (ITEM_LABEL && ITEM_LABEL[item]) || item;
         const ghost = document.createElement('div');
         ghost.className = 'drag-ghost';
-        ghost.textContent = `${icon} ${label}`;
+        ghost.innerHTML = `${icon} ${label}`;
         document.body.appendChild(ghost);
         e.dataTransfer.setDragImage(ghost, 18, 18);
         setTimeout(() => ghost.remove(), 0);
@@ -7195,7 +7233,7 @@ const SIM_JOB_EMOJI = {
           cost[k] = v;
         }
         return {
-          id, msgType: 'craft_building', icon: ITEM_ICONS[id] || '🏗️',
+          id, msgType: 'craft_building', icon: itemIconHtml(id, 34, '🏗️'),
           name: r.label || id,
           cost, needHammer: !!r._needHammer,
           have: inventory[id] || 0,
@@ -7204,7 +7242,7 @@ const SIM_JOB_EMOJI = {
     } else if (craftCat === 'item') {
       // 14.50 itemRecipes — 통나무→판자 등
       items = Object.entries(itemRecipes || {}).map(([id, r]) => ({
-        id, msgType: 'craft_item', icon: ITEM_ICONS[id] || '🪚',
+        id, msgType: 'craft_item', icon: itemIconHtml(id, 34, '🪚'),
         name: r.label || id,
         cost: r.from || {},
         produces: r.to || {},
@@ -7215,13 +7253,13 @@ const SIM_JOB_EMOJI = {
       const cr = cookRecipes || {};
       if (Object.keys(cr).length === 0) {
         items = [
-          { id: 'meat_cooked', msgType: 'cook', icon: '🍗', name: '고기 굽기', cost: { meat_raw: 1 }, needCampfire: true },
-          { id: 'berry_jam', msgType: 'cook', icon: '🍯', name: '베리잼', cost: { berry: 3 }, needCampfire: true },
-          { id: 'water_bottle', msgType: 'cook', icon: '🥤', name: '물병', cost: { fiber: 2 }, needCampfire: true },
+          { id: 'meat_cooked', msgType: 'cook', icon: itemIconHtml('meat_cooked', 34, '🍗'), name: '고기 굽기', cost: { meat_raw: 1 }, needCampfire: true },
+          { id: 'berry_jam', msgType: 'cook', icon: itemIconHtml('berry_jam', 34, '🍯'), name: '베리잼', cost: { berry: 3 }, needCampfire: true },
+          { id: 'water_bottle', msgType: 'cook', icon: itemIconHtml('water_bottle', 34, '🥤'), name: '물병', cost: { fiber: 2 }, needCampfire: true },
         ];
       } else {
         items = Object.entries(cr).map(([id, r]) => ({
-          id, msgType: 'cook', icon: ITEM_ICONS[id] || '🍳',
+          id, msgType: 'cook', icon: itemIconHtml(id, 34, '🍳'),
           name: r.label || id, cost: r.cost || {}, needCampfire: true,
         }));
       }
@@ -7246,13 +7284,13 @@ const SIM_JOB_EMOJI = {
             const hammerOK = !r.needHammer || hasToolAlive('hammer');
             const toolOK = !r.needTool || hasToolAlive(r.needTool);
             const canMake = costOK && hammerOK && toolOK;
-            const costStr = Object.entries(r.cost).map(([k,v]) => `${(ITEM_ICONS&&ITEM_ICONS[k])||k} ${v}`).join(' · ') || '-';
+            const costStr = Object.entries(r.cost).map(([k,v]) => `${itemIconHtml(k, 16, k)} ${v}`).join(' · ') || '-';
             const flags = [];
             if (r.needHammer) flags.push('🔨');
             if (r.needTool) flags.push(r.needTool);
             if (r.needCampfire) flags.push('🔥');
             if (r.produces) {
-              const prodStr = Object.entries(r.produces).map(([k,v]) => `${(ITEM_ICONS&&ITEM_ICONS[k])||k}×${v}`).join(' ');
+              const prodStr = Object.entries(r.produces).map(([k,v]) => `${itemIconHtml(k, 16, k)}×${v}`).join(' ');
               flags.push(`→ ${prodStr}`);
             }
             const haveBadge = (typeof r.have === 'number')
