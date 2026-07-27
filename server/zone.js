@@ -723,7 +723,7 @@ const HUNGER_MAX = 100;
 const THIRST_MAX = 100;
 const HUNGER_DRAIN_PER_SEC = 100 / 600; // 약 10분에 0까지
 const THIRST_DRAIN_PER_SEC = 100 / 420; // 약 7분에 0까지
-const STARVATION_HP_PER_SEC = 1;        // hunger/thirst 0이면 초당 -1 HP
+// (제거) STARVATION_HP_PER_SEC — 아사 폐지(사용자 확정): 식량 사망 = econ 기근 인구감소 단일 경로. 기갈은 디버프만.
 // 장착 시 효과 — 채집/공격 데미지 배수
 // 채집은 자원 hp 깎는 1회 데미지를 배수 적용. 기본 1.
 const TOOL_EFFECTS = {
@@ -5580,9 +5580,10 @@ setInterval(() => {
   // === 생존 게이지: hunger/thirst 감소 + 0이면 HP 페널티 + vp decay ===
   for (const p of players.values()) {
     if (p.hp <= 0 || p.isDown) continue;
-    if (p.isNpc && !p.canadiaVillage && !isPositionActive(p.x, p.y)) continue;  // dormant NPC 허기/갈증 스킵
-    // Phase 4d-10 fix: canadia NPC는 hunger/thirst skip (sim에서 식량 소비 처리, zone 자동 식사 없음)
-    if (p.canadiaVillage) { p.hunger = HUNGER_MAX; p.thirst = THIRST_MAX; continue; }
+    // ★NPC 전면 면제(랩 100% 동형 — 사용자 확정): 랩 NPC에는 개체 허기·갈증이 없다 — 식량은 econ 소유(기근=econ 인구감소가
+    //   유일한 식량 사망 경로). 기존엔 canadia만 면제라 활성 청크의 마을 NPC가 게이지 드레인→기아 hp 드레인을 맞았고,
+    //   이것이 '관측할수록 마을이 굶는' 임업3 요양 사태(24/24 hp<60%)의 원인이었다. 도적·캐러밴·병사도 랩에 개체 허기 없음.
+    if (p.isNpc) { p.hunger = HUNGER_MAX; p.thirst = THIRST_MAX; continue; }
     // Phase 14.40: 달리는 중이면 1.5× 빠르게 감소 (실제로 이동 중일 때만)
     const moving = Math.hypot(p.vx || 0, p.vy || 0) > 1;
     const drainMult = (p.sprint && moving) ? SPRINT_DRAIN_MULT : 1.0;
@@ -5606,19 +5607,16 @@ setInterval(() => {
     }
     // vp 시간당 감소
     if ((p.vp ?? 0) > 0) p.vp = Math.max(0, p.vp - VP_DECAY_PER_SEC * dt);
-    // 게이지 0이면 굶주림/탈수 데미지 (둘 다 0이면 2배)
-    let starv = 0;
-    if (p.hunger <= 0) starv += STARVATION_HP_PER_SEC;
-    if (p.thirst <= 0) starv += STARVATION_HP_PER_SEC;
-    if (starv > 0) {
-      p.hp -= starv * dt;
-      if (p.hp <= 0) damagePlayer(p, 0, 'starvation'); // damagePlayer 안에서 사망 처리
-    }
+    // ★아사(기아 hp 드레인) 제거 — 사용자 확정: 식량 사망은 econ 기근 인구감소가 유일, 별도 아사 기능은 중복이라 폐지.
+    //   기갈 0/0은 디버프만: 달리기 불가(위 sprint 게이트)·자연 회복 정지(아래 회복 루프 게이지 조건)·클라 지침/시야 축소.
   }
 
   // === HP 회복 (out-of-combat 1초 후) — 단 hunger/thirst 모두 0이상일 때만 ===
   for (const p of players.values()) {
     if (p.isNpc && !p.canadiaVillage && !isPositionActive(p.x, p.y)) continue;  // dormant NPC HP회복 스킵
+    // ★마을 NPC = 랩 일일 회복만(villages.js _lifeDaily: 요양18·근무6/일 ×건강·행복·식량 — 랩 7585 verbatim).
+    //   초당 회복은 랩에 없음: 부상=수일 노동손실이 요양·약재 수요의 실체라 초당 10hp면 그 경제가 통째로 사라진다.
+    if (p.isNpc && p.simVillageId != null) continue;
     if (p.hp > 0 && p.hp < p.maxHp && now - p.lastDamagedAt > 1000) {
       if ((p.hunger ?? HUNGER_MAX) > 10 && (p.thirst ?? THIRST_MAX) > 10) {
         p.hp = Math.min(p.maxHp, p.hp + 2 * dt * 5); // 초당 ~10hp

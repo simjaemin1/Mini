@@ -2326,6 +2326,43 @@ function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(�
   if (!(anyNear && anyNear(vil.ccx * SZ + SZ / 2, vil.ccy * SZ + SZ / 2, (vil._maxRPx || 800) + 1600))) {
     try { _lifeHeadlessDay(vil); } catch (e) { console.error(`[${state.zoneId}] 생활층 헤드리스 결산 실패(${vil.name}):`, e.message); }
   }
+  // ★[NPC hp 랩 100% — 랩 7576~7590 verbatim] 부상 회복(일일) + 부상 노동력 계수. 회복 = 요양18·근무6/일 ×건강F×행복F×식량F.
+  //   zone.js 초당 회복(플레이어 전용)에서 마을 NPC는 제외되며(simVillageId 게이트) 이 일일 규칙이 유일한 회복 경로 —
+  //   요양 수일 = 노동 손실 실체(랩 herb 수요·_laborMul의 전제). 개체 허기·아사 없음(식량 사망 = econ 기근 인구감소가 유일).
+  //   서버 econ v2엔 lastStats·storage.herb 미존재 → 랩 폴백 경로 그대로(계수 1.0·약재 0=가속 없음). 엔진 재인라인 시 자동 활성.
+  //   모든 마을(활성·동면) 게임일 경계마다 — 동면 마을도 랩과 동일하게 회복(헤드리스 결산과 같은 원리).
+  try {
+    const econ = vil.econ, _pl = state.deps.players;
+    if (econ && vil.npcPids && vil.npcPids.length) {
+      const st = econ.lastStats;
+      const hpF = Math.max(0.4, Math.min(1.5, 0.5 + (st ? st.health : 0.5)));
+      const hapF = Math.max(0.4, Math.min(1.5, 0.5 + (st ? st.happiness : 0.5)));
+      const _food = (econ.storage && econ.storage.food) || 0;
+      const _pop = (econ.npcs && econ.npcs.length) || vil.npcPids.length;   // 랩 s.pop=econ 인구 동형
+      const foodF = Math.max(0.35, Math.min(1.4, _food / Math.max(1, _pop * 30)));
+      const regenMul = hpF * hapF * foodF;   // 식량 하한 0.35(기근에도 소량 회복 → 죽음 나선 방지 — 랩 동형)
+      const _as = [];
+      let _restN = 0;
+      for (const pid of vil.npcPids) { const a = _pl.get(pid); if (a && a.isNpc) { _as.push(a); if (a._rest && (a.hp || 0) < (a.maxHp || 100)) _restN++; } }
+      let _herbMul = 1;   // 약재 치료(§9 2차): 요양자 1인당 일 0.5 소비 → 요양 회복 ×1.6(부분 공급=비례, 없으면 현행)
+      if (_restN > 0) {
+        const _hN = _restN * 0.5, _hH = (econ.storage && econ.storage.herb) || 0, _hT = Math.min(_hN, _hH);
+        if (_hT > 0) { econ.storage.herb = _hH - _hT; econ._herbUsed = (econ._herbUsed || 0) + _hT; _herbMul = 1 + 0.6 * (_hT / _hN); }
+      }
+      let labSum = 0;
+      for (const a of _as) {
+        const mx = a.maxHp || 100;
+        if (a.hp > 0 && a.hp < mx) { a.hp = Math.min(mx, a.hp + (a._rest ? 18 * _herbMul : 6) * regenMul); if (a.hp >= mx) a._rest = 0; }   // 만피 회복 시 요양 해제(히스테리시스) — 요양만 약재 가속
+        labSum += a._rest ? 0 : (0.6 + 0.4 * Math.max(0, a.hp || 0) / mx);   // 노동력: 요양=0, 부상=0.6~1.0(hp율)
+      }
+      const _day = state.dayMs ? gameDayOf(Date.now()) : 0;
+      const _mobF = (econ._warMobUntil && _day < econ._warMobUntil) ? Math.max(0.2, 1 - (econ._warMobFrac || 0)) : 1;   // 전쟁 동원: 차출자 생산 정지
+      if (_as.length) econ._laborMul = (labSum / _as.length) * _mobF;   // 엔진 v2 미소비(재인라인 시 자동 활성) — 랩 s.econ._laborMul 동형
+      const _hn = _as.reduce((k2, a) => k2 + (a.simJob === 'hunter' ? 1 : 0), 0);
+      const _hev = vil._hEvD || 0; vil._hEvD = 0;   // 사냥 위험 학습(EMA α.05 ~20일 기억): 평온=0.03 수렴 — wildlife hurtNPC가 가중일 기록 시 자동 반영
+      if (_hn > 0) econ._huntRisk = Math.min(0.6, (econ._huntRisk === undefined ? 0.08 : econ._huntRisk) * 0.95 + Math.max(0.03, Math.min(0.6, _hev / _hn * 0.5)) * 0.05);
+    }
+  } catch (e) { console.error(`[${state.zoneId}] 생활층 일일 회복 실패(${vil.name}):`, e.message); }
 }
 function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도주 뒤·야간 귀가 게이트 앞) — true=일과 소유(레거시 차단)
   if (!LIFE_ON) return false;
