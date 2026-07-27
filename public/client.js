@@ -5171,12 +5171,13 @@ const SIM_JOB_EMOJI = {
     const add = (cls, name, n) => { const a = (NATURE_SPRITES[cls] = NATURE_SPRITES[cls] || []); for (let i = 1; i <= n; i++) { const im = new Image(); im.onload = () => _natureLoaded++; im.src = '/assets/nature/' + name + String(i).padStart(2, '0') + '.png'; a.push(im); } };
     add('rock', 'rock', 6); add('rock', 'mossrock', 6); add('ore', 'ore', 6); add('bush', 'bush', 6); add('herb', 'herb', 6);
   })();
+  const NATURE_BASE_W = { rock: 26, mossrock: 26, ore: 25, bush: 27, herb: 24 };   // ★인게임 기준 폭(px) — 종전 자산 naturalWidth 평균과 동일. 자산 해상도를 올려도(예: 128px 렌더) 화면 크기 불변
   function drawNatureSprite(cls, x, y, seedX, seedY, scale) {   // 위치 해시로 변형 고정(깜빡임 없음) — 바닥 중심 앵커+그림자
     const arr = NATURE_SPRITES[cls]; if (!arr || !_natureLoaded) return false;
     const hsh = _treeHash(seedX != null ? seedX : x, seedY != null ? seedY : y);
     const im = arr[(hsh * arr.length) | 0];
     if (!im || !im.complete || !im.naturalHeight) return false;
-    const sc = scale || 1.5, w = im.naturalWidth * sc, hh = im.naturalHeight * sc;
+    const sc = scale || 1.5, w = (NATURE_BASE_W[cls] || 26) * sc, hh = w * (im.naturalHeight / im.naturalWidth);
     ctx.fillStyle = 'rgba(0,0,0,0.20)';
     ctx.beginPath(); ctx.ellipse(x, y + 3, w * 0.42, w * 0.16, 0, 0, Math.PI * 2); ctx.fill();
     ctx.drawImage(im, x - w / 2, y - hh + 5, w, hh);

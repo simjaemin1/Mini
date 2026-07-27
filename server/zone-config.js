@@ -308,7 +308,7 @@ const WORLD = {
   worldWidth: _maxX,
   worldHeight: _maxY,
   tileSize: 32,
-  dayLengthMs: 10 * 60 * 1000,
+  dayLengthMs: 24 * 60 * 1000,  // 하루=현실 24분(현실 1초=게임 1분) [사용자 확정 — 종전 10분에서 변경]. 단일 노브: 하늘·econ 게임일·생활층·작물 전부 이 값 파생
   dayPhaseRatio: 0.7,
   worldEpoch: 0,
   zoneWidth: 100000, zoneHeight: 100000, // 옛 호환 (Phase 5-3에서 ×10)

@@ -140,7 +140,8 @@ function init(deps) { // deps: { zoneId, cellsW, cellsH, epoch, dayMs, broadcast
     S.db = require('./zone-local-db');
     const t0 = Date.now();
     const rows = S.db.getRoadCells(S.zoneId);
-    for (const r of rows) S.cells.set(r.cell_key | 0, { v: r.v, d: r.d | 0 });
+    const _tNow = Math.floor((Date.now() - (deps.epoch || 0)) / (deps.dayMs || 600000));
+    for (const r of rows) S.cells.set(r.cell_key | 0, { v: r.v, d: Math.min(r.d | 0, _tNow) });   // ★미래 일번호 방어: dayLengthMs 변경(예: 10분→24분)으로 절대 일번호가 뒤로 점프하면 저장된 d가 미래가 되어 감쇠 정지 — 오늘로 클램프(1회성 이행)
     S.lastDay = dayNow();
     _rebuildCoarse(S.lastDay);
     S.stats.cellsTotal = S.cells.size;
