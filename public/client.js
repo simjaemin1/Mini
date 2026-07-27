@@ -16,7 +16,27 @@ const FACILITY_EMOJI = {
   cart: '🛒',
 };
 // Phase 4d-16-d: farmland stage별 emoji (0=씨, 1=어린싹, 2=자람, 3=익음)
-const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];
+const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];   // 스프라이트 미로드 시 폴백
+// === 에셋 5차: 작물 밭 4단계 스프라이트(Blender crop_render.py — 자연물·아이콘과 동일 씬) ===
+//   곡물(grain)·채소(veg) 2계열 × 4단계(갈은 흙/어린싹/자람/익음). 계열은 셀 좌표 해시로 고정(프레임마다 안 바뀜).
+//   30종 개별 구분은 하지 않음 — 32px에서 판독 불가라 의도적으로 2계열까지만.
+const CROP_SPR = { grain: [], veg: [] };
+let _cropSprLoaded = 0;
+(function preloadCropSprites() {
+  if (typeof Image !== 'function') return;
+  for (const ser of ['grain', 'veg']) for (let i = 0; i < 4; i++) {
+    const im = new Image();
+    im.onload = () => { _cropSprLoaded++; };
+    im.src = '/assets/crops/' + ser + '_' + i + '.png';
+    CROP_SPR[ser][i] = im;
+  }
+})();
+function cropSprite(stage, wx, wy) {
+  const st = Math.max(0, Math.min(3, stage | 0));
+  const h = Math.abs(((wx | 0) * 73856093) ^ ((wy | 0) * 19349663));
+  const im = CROP_SPR[(h % 2) ? 'veg' : 'grain'][st];
+  return (im && im.complete && im.naturalWidth > 0) ? im : null;
+}
 // §4-4 Stage 4A: 마을 시뮬 NPC 직업(p.simJob — economy-sim JOBS 12종) → 이름 옆 이모지
 const SIM_JOB_EMOJI = {
   farmer: '🌾', fisher: '🎣', hunter: '🏹', lumberjack: '🪓', miner: '⛏️',
@@ -3609,7 +3629,10 @@ const SIM_JOB_EMOJI = {
           // farmland는 stage별 emoji 사용
           let emoji = FACILITY_EMOJI[cl.facilityType] || '';
           if (cl.facilityType === 'farmland' && cl.farmStage != null) {
-            emoji = FARM_STAGE_EMOJI[cl.farmStage] || '🌾';
+            // 에셋 5차: 4단계 3D 스프라이트 우선(미로드 시 이모지 폴백)
+            const _cs = cropSprite(cl.farmStage, off + cl.x, offY + cl.y);
+            if (_cs) { ctx.drawImage(_cs, cs.x - 20, cs.y - 25, 40, 40); emoji = ''; }
+            else emoji = FARM_STAGE_EMOJI[cl.farmStage] || '🌾';
           }
           if (emoji) {
             ctx.font = '14px sans-serif';
@@ -4686,6 +4709,23 @@ const SIM_JOB_EMOJI = {
       const now = Date.now();
       const isReady = now >= readyAt;
       const growProgress = readyAt > data.plantedAt ? Math.min(1, (now - data.plantedAt) / (readyAt - data.plantedAt)) : 1;
+      // 에셋 5차: 4단계 3D 스프라이트(갈은 흙/어린싹/자람/익음). 미로드 시 아래 벡터 렌더 폴백.
+      {
+        const _st = isReady ? 3 : Math.min(2, Math.floor(growProgress * 3));
+        const _cs = cropSprite(_st, building ? building.x : x, building ? building.y : y);
+        if (_cs) {
+          ctx.fillStyle = 'rgba(0,0,0,0.30)';
+          ctx.beginPath(); ctx.ellipse(x, y + 4, 14, 4, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.drawImage(_cs, x - 24, y - 30, 48, 48);
+          if (isReady) {
+            ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
+            ctx.fillStyle = '#9adb6e'; ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.lineWidth = 2;
+            ctx.strokeText('수확가능', x, y - 20); ctx.fillText('수확가능', x, y - 20);
+            ctx.textAlign = 'start';
+          }
+          return;
+        }
+      }
       ctx.fillStyle = 'rgba(0,0,0,0.35)';
       ctx.beginPath(); ctx.ellipse(x, y + 4, 14, 4, 0, 0, Math.PI * 2); ctx.fill();
       // 흙
