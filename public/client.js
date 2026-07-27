@@ -1021,6 +1021,8 @@ const SIM_JOB_EMOJI = {
   let _warCmdId = null;                          // 지휘 참가 중 warId (null=관전만/미참가)
   let _warCmdMsg = '';                           // war_command_ack 상태 문구(HUD)
   let _lastCamAbs = { x: 0, y: 0 };              // 매 프레임 실제 카메라 abs(트윈 출발점 캡처용)
+  // 화살 이펙트 큐 — 서버 arrow_fx(사냥꾼 사격) [{x0,y0,x1,y1(절대 월드 px), at, ms}]
+  const _arrowFx = [];
   let _warHudEl = null;                          // 스펙테이터 HUD DOM(지연 생성)
 
   // === Entity interpolation (다른 플레이어/mob 부드러운 움직임) ===
@@ -2268,6 +2270,15 @@ const SIM_JOB_EMOJI = {
       // 상자 UI에 반영
       window.__lastChestState = msg;
       renderChestUi(msg.buildingId, msg.data);
+    } else if (msg.type === 'arrow_fx') {
+      // ★사냥꾼 사격 시각화 — 서버 wildlife 실행층이 발사 순간 1회 방송(존 로컬 px).
+      //   절대 월드로 변환해 보관하고, ms 동안 진행률 보간으로 화살을 그린다(서버 비행시간과 동일 속도).
+      const ox = (c.meta && c.meta.worldOffsetX) || 0, oy = (c.meta && c.meta.worldOffsetY) || 0;
+      _arrowFx.push({
+        x0: ox + msg.x0, y0: oy + msg.y0, x1: ox + msg.x1, y1: oy + msg.y1,
+        at: performance.now(), ms: Math.max(80, Math.min(1500, msg.ms || 250)),
+      });
+      if (_arrowFx.length > 96) _arrowFx.shift();   // 폭주 방어
     } else if (msg.type === 'player_left') {
       // ★유령 클라 fix: 본인 제거(사망·서버측 삭제) 수신 → 예측 즉시 정지 + 재연결 트리거.
       //   옛 코드는 자기 pid를 others에서 지우기만 해서, 서버에 실체가 없는데 클라만 계속 걸어다녔다(유령).
@@ -2680,12 +2691,45 @@ const SIM_JOB_EMOJI = {
       window._gAcc = (window._gAcc||0)+_rd; window._gN = (window._gN||0)+1; if (_rd > (window._gMax||0)) window._gMax = _rd;
       if (window._gN >= 30) { if (window._renderDbg) { let _bn=0; for (const c of conns.values()) _bn += c.buildings.size;
         console.log(`[render] avg=${(window._gAcc/window._gN).toFixed(1)}ms tiles=${((window._tileAcc||0)/window._gN).toFixed(1)}ms max=${window._gMax.toFixed(0)}ms bld=${_bn}`); } window._gAcc=0; window._gN=0; window._gMax=0; window._tileAcc=0; } }
+    drawArrowFx();      // 사냥꾼 화살 비행(서버 arrow_fx)
     drawBuildOverlay(); // 14.51: hover outline
     drawPlacementGhost(); // 14.53-i: placement 시 실루엣 미리보기
     updateBuildProgressEl(); // 14.51: 3초 progress bar (DOM)
     updateMinimap();
     requestAnimationFrame(loop);
   }
+  // === 화살 이펙트 ===
+  // 서버 arrow_fx 방송(사냥꾼 사격)을 비행시간 동안 보간해 그림. 카메라 기준은 render()가 남긴
+  // _lastCamAbs(관전 카메라 포함) — 오버레이가 본체 렌더와 어긋나지 않게.
+  function drawArrowFx() {
+    if (!_arrowFx.length) return;
+    const now = performance.now();
+    const camIso = w2i(_lastCamAbs.x, _lastCamAbs.y);
+    for (let i = _arrowFx.length - 1; i >= 0; i--) {
+      const a = _arrowFx[i];
+      const k = (now - a.at) / a.ms;
+      if (k >= 1.2) { _arrowFx.splice(i, 1); continue; }   // 착탄 후 짧은 잔상(0.2×비행시간)
+      const p = Math.min(1, k);
+      const wx = a.x0 + (a.x1 - a.x0) * p, wy = a.y0 + (a.y1 - a.y0) * p;
+      const iso = w2i(wx, wy);
+      const sx = iso.x - camIso.x + W / 2;
+      const sy = iso.y - camIso.y + H / 2 - 20;   // 활 높이(사수 가슴께)
+      if (sx < -40 || sy < -40 || sx > W + 40 || sy > H + 40) continue;   // 시야 밖은 자연히 스킵
+      const i0 = w2i(a.x0, a.y0), i1 = w2i(a.x1, a.y1);
+      const ang = Math.atan2(i1.y - i0.y, i1.x - i0.x);   // 화면(아이소 투영) 진행 방향
+      ctx.save();
+      ctx.globalAlpha = k > 1 ? Math.max(0, 1 - (k - 1) / 0.2) : 1;
+      ctx.translate(sx, sy); ctx.rotate(ang);
+      ctx.strokeStyle = '#5a4426'; ctx.lineWidth = 2;                     // 화살대(갈색)
+      ctx.beginPath(); ctx.moveTo(-9, 0); ctx.lineTo(4, 0); ctx.stroke();
+      ctx.fillStyle = '#3a2f1c';                                          // 삼각촉
+      ctx.beginPath(); ctx.moveTo(8, 0); ctx.lineTo(3, -2.4); ctx.lineTo(3, 2.4); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#d8cfae';                                          // 살깃
+      ctx.beginPath(); ctx.moveTo(-9, 0); ctx.lineTo(-12.5, -2.2); ctx.lineTo(-12.5, 2.2); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+  }
+
   // 14.51 + 14.53-e: 건축 모드 overlay — building 형태별 outline
   function drawBuildOverlay() {
     if (!buildMode || !hoverBuildingId || placementMode) return;

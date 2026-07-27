@@ -688,6 +688,23 @@ function tick(now) {
   }
   // 5) ★블록 구동 — dt = 1/TICK_HZ 유닛/틱 (30Hz × 1/30 = 1유닛/초 = 환산 계수 1)
   updateMobs(S, 1 / H.TICK_HZ);
+  // 5b) ★화살 이펙트 브로드캐스트 — 실행층이 이번 틱에 만든 사격(S._fx 신규 항목)만 1회 발신.
+  //   랩 좌표(m) → 존 로컬 px(×32). 비행시간 T는 실초 단위(dt 환산 계수 1) → ms로 전달해
+  //   클라가 서버와 같은 속도로 보간한다(유도탄 금지 원칙 유지 — 화살은 조준점까지 직선).
+  //   빈도는 활성 마을 사냥꾼 사격 수준이라 브로드캐스트 부담 낮음. 피해·명중 판정은 여기서 안 함(시각 전용).
+  if (S._fx && S._fx.length && typeof H.broadcast === 'function') {
+    for (const q of S._fx) {
+      if (q._fxSent) continue;
+      q._fxSent = 1;
+      H.broadcast({
+        type: 'arrow_fx',
+        x0: q.x1 * 32, y0: q.y1 * 32,
+        x1: q.x2 * 32, y1: q.y2 * 32,
+        ms: Math.max(80, Math.min(1500, Math.round((q.T || 0.4) * 1000))),
+      });
+      _stats.arrowFx = (_stats.arrowFx || 0) + 1;
+    }
+  }
   // 6) 랩몹 → shadow 동기 (+신규 스폰 로그·상태 전이 계측·사망/hide/디스폰 처리)
   const liveSet = new Set();
   for (const lm of S.mobs) {
