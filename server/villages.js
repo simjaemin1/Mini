@@ -512,11 +512,16 @@ function materializeVillageStructures(db, vil, bRows) {
 
 // ★[실체화 동기] 마을 곳간 자리 — 랩 _granAdd 링 배치의 시딩 시점 포팅(결정론):
 //   큰집 곁 r11~15 링(15° 스텝), 남쪽 집결부 회피(콘 베토+남측 감점), 영토 안·비차단·농지(기경+존닝) 회피·물 체비셰프 16 이격·집채/텃밭/큰집 발자국 비겹침.
+//   ★런타임 증설(_lifeGranAdd) 겸용: layout.ownSet/farmSet/gran을 주면 시딩 레이아웃 객체 없이도 같은 규칙으로 자리를 고른다.
 function pickGranarySpot(ta, layout) {
   const ccx = layout.center.cx, ccy = layout.center.cy;
-  const own = new Set(layout.territory.map(c => c[0] + ',' + c[1]));
-  const farm = new Set();
-  for (const arr of [layout.nongZone || [], layout.farmland || [], layout.dryfield || []]) for (const c of arr) farm.add(c.cx + ',' + c.cy);
+  const own = layout.ownSet || new Set(layout.territory.map(c => c[0] + ',' + c[1]));
+  let farm = layout.farmSet;
+  if (!farm) {
+    farm = new Set();
+    for (const arr of [layout.nongZone || [], layout.farmland || [], layout.dryfield || []]) for (const c of arr) farm.add(c.cx + ',' + c.cy);
+  }
+  const grans = layout.gran || [];   // 기존 곳간 이격(랩 _granAdd: |dx|<=6 && |dy|<=4 금지) — 시딩(1동)엔 빈 배열이라 무영향
   const ok = (cx, cy) => {
     for (let dx = -2; dx <= 2; dx++) for (let dy = -1; dy <= 1; dy++) {
       const x = cx + dx, y = cy + dy;
@@ -529,6 +534,7 @@ function pickGranarySpot(ta, layout) {
       if (cx + 2 >= h.cx - 6 && cx - 2 <= h.cx + 1 && cy + 1 >= h.cy - 6 && cy - 1 <= h.cy - 1) return false;
       if (cx + 2 >= h.cx + 1 && cx - 2 <= h.cx + 4 && cy + 1 >= h.cy + 1 && cy - 1 <= h.cy + 4) return false;
     }
+    for (const g of grans) if (Math.abs(g.cx - cx) <= 6 && Math.abs(g.cy - cy) <= 4) return false;   // ★랩 _granAdd verbatim: 곳간끼리 이격
     if (cx + 2 >= ccx - 5 && cx - 2 <= ccx + 4 && cy + 1 >= ccy - 5 && cy - 1 <= ccy + 4) return false;   // 큰집 8×8+1(링 r11이라 이론상 무접촉 — 방어)
     for (let dy = -16; dy <= 16; dy++) for (let dx = -16; dx <= 16; dx++) if (ta.isWater && ta.isWater(cx + dx, cy + dy)) return false;   // 강변 논밭 벨트 비침범+건조지 고증
     return true;
@@ -2292,6 +2298,60 @@ function _lifeCompleteHouse(vil) {   // 완공: 터 제거 + NPC 정본 6×4 실
   vil._site = null; vil._buildCrew = 0;
   console.log(`[${state.zoneId}] 🏘️ [${vil.name}] 생활층 신축 움집 완공 @(${cx},${cy})`);
 }
+// ★[곳간 증설 런타임 — 랩 _granAdd 링] 랩 상수·공식 verbatim:
+//   const G_W=5,G_H=3,G_CAP=2500,G_MAX=8,G_BUILDD=6;
+//   if(s.gran){const _gn=Math.max(1,Math.min(G_MAX,Math.ceil((s.food||0)/G_CAP)));if(s.gran.length<_gn)_granAdd(s);
+//     for(const g of s.gran)if(!g.done){g.built+=1/G_BUILDD;...}}
+//   = 식량 재고 2500인일당 곳간 1동(최소 1·최대 8), 하루 1동씩 착공, 완공까지 6일.
+//   자리는 시딩과 동일한 pickGranarySpot(링 r11~15·남측 회피·영토·물 16 이격·집채/텃밭/큰집/기존 곳간 비겹침).
+const G_CAP = 2500, G_MAX = 8, G_BUILDD = 6;
+function _lifeGranAdd(vil) {
+  if (!state.ta || !vil.econ || !vil._granList || !vil._terrSet || !vil._terrSet.size) return;
+  const day = (state.world && state.world.day) || 0;
+  // ① 착공분 완공(랩 built 누적 6일 = 여기선 착공일+G_BUILDD 도래) — 하루 1동 원칙상 완공 처리가 우선.
+  if (vil._granPend) {
+    if (day >= vil._granPend.day) { const p = vil._granPend; vil._granPend = null; _lifeCompleteGranary(vil, p.cx, p.cy); }
+    return;
+  }
+  // ② 재고 비례 목표 대비 부족분 1동 착공
+  const food = (vil.econ.storage && vil.econ.storage.food) || 0;
+  const _gn = Math.max(1, Math.min(G_MAX, Math.ceil(food / G_CAP)));
+  if (vil._granList.length >= _gn) return;
+  // 런타임엔 시딩 레이아웃 객체가 없으므로 영속 집합으로 동형 컨테이너를 구성(값·규칙 동일).
+  //   farmSet = 기경지(farm/dry) + 미개간 존닝(potSet) — 시딩의 nongZone+farmland+dryfield 합집합과 같은 의미.
+  const farmSet = new Set(vil._farmSet); for (const k of vil._potSet) farmSet.add(k);
+  const g = pickGranarySpot(state.ta, {
+    center: { cx: vil.ccx, cy: vil.ccy },
+    ownSet: vil._terrSet, farmSet, houses: vil._houseCells, gran: vil._granList,
+  });
+  if (!g) return;   // 링 여력 없음 — 관용(시딩 '자리 없음 스킵'과 동일)
+  vil._granPend = { cx: g.cx, cy: g.cy, day: day + G_BUILDD };
+  console.log(`[${state.zoneId}] 🏘️ [${vil.name}] 곳간 증설 착공 @(${g.cx},${g.cy}) — 식량 ${Math.round(food)} → 목표 ${_gn}동(현재 ${vil._granList.length}), ${G_BUILDD}일 후 완공`);
+}
+// 완공: 5×3 밀폐 렉트 실체화(gran 태그) + village_buildings 영속 + 라이브 방송. _lifeCompleteHouse 동형 경로.
+//   ※재부팅 시 buildings 테이블은 wipe 후 village_buildings에서 전량 재기록되므로 중복 생성 없음(materializeVillageStructures).
+function _lifeCompleteGranary(vil, cx, cy) {
+  const dp = state.deps, ownerId = `npc_simvil_${vil.dbId}`, onm = `${vil.name} 곳간`, made = [];
+  const tag = [cx - 2, cy - 1, cx + 2, cy + 1];
+  const lb = dp.liveBuildRow;
+  if (lb) {
+    for (let x = cx - 2; x <= cx + 2; x++) {                      // 북·남변(문 없음 — 고상 사다리 출입 고증)
+      lb('wall', x * SZ, (cy - 1) * SZ, { side: 'N', floor: 0, gran: tag }, ownerId, onm, made);
+      lb('wall', x * SZ, (cy + 2) * SZ, { side: 'N', floor: 0, gran: tag }, ownerId, onm, made);
+    }
+    for (let y = cy - 1; y <= cy + 1; y++) {                      // 동·서변
+      lb('wall', (cx + 2) * SZ, y * SZ, { side: 'E', floor: 0, gran: tag }, ownerId, onm, made);
+      lb('wall', (cx - 3) * SZ, y * SZ, { side: 'E', floor: 0, gran: tag }, ownerId, onm, made);
+    }
+    for (let x = cx - 2; x <= cx + 2; x++) for (let y = cy - 1; y <= cy + 1; y++)
+      lb('floor', x * SZ + SZ / 2, y * SZ + SZ / 2, { floor: 0, gran: tag }, ownerId, onm, made);
+    if (made.length) dp.broadcast({ type: 'buildings_spawn', buildings: made });
+  }
+  state.db.insertVillageBuilding({ village_id: vil.dbId, type: 'granary', cx, cy, floors: 1, data: null });
+  vil._granList.push({ cx, cy });
+  console.log(`[${state.zoneId}] 🏘️ [${vil.name}] 곳간 증설 완공 @(${cx},${cy}) — 총 ${vil._granList.length}동`);
+}
+
 // ★[HSK↔econ 스킬 연결] 랩(전쟁실험실) 직업 배치 루틴의 사냥꾼 연결 블록 verbatim 이식.
 //   랩 원문:
 //     {const _eh=(s.econ&&s.econ.npcs)?s.econ.npcs.filter(n=>n.currentJob==='hunter'):[];
@@ -2325,6 +2385,7 @@ function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(�
   vil._clearCrew = 0; vil._buildCrew = 0; vil._claim = new Set(); vil._frontDay = -1;
   vil._cropClaim = new Set(); vil._jobSites = null;   // ★[생활 층 100% ③] 작물 셀 클레임·직업 현장 캐시 일일 리셋(자가치유·현장 재평가)
   _lifeHunterEconLink(vil);   // ★[HSK↔econ] 시각 사냥꾼 ↔ econ 사냥꾼 NPC 연결(랩 배치 루틴 verbatim — 일일 재대사)
+  try { _lifeGranAdd(vil); } catch (e) { console.error(`[${state.zoneId}] 생활층 곳간 증설 실패(${vil.name}):`, e.message); }   // ★[곳간 증설 런타임] 재고 비례 링 증설(랩 _granAdd)
   // 작물 하루 틱(랩 7920 동형): 김매기·물대기 놓치면 품질↓ · 병충해 발생(내일 방제 일감) — 상태·연출만(식량은 econ 소유)
   if (vil._crop && vil._crop.size) {
     const day = state.dayMs ? gameDayOf(Date.now()) : 0;
