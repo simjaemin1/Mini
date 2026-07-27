@@ -3220,6 +3220,7 @@ const SIM_JOB_EMOJI = {
           renderables.push({ z: w2i(bx, by).y - 300, kind: 'banditcamp', bc, off: ox, offY: oy });
         }
       }
+      const _hutRs = [], _hutSeen = new Set();   // ★[침대 진입] 이번 프레임 움집 렉트+지붕 표시 여부 — 실내 NPC 가림 판정(others 루프 소비)
       for (const b of c.buildings.values()) {
         // ★움집 지붕: 서버 태그 data.hut=[x0,y0,x1,y1] — 지붕은 벽 유닛(64px) '위에' 얹힌 스프라이트[사용자 확정: 유닛 문법].
         //   벽은 항상 그대로 렌더(통나무 스킨·문=벽 개구·콜라이더 불변). 바닥만 밖에서 억제(지붕에 가림) + 캐리어 1셀이 지붕 합성.
@@ -3229,6 +3230,7 @@ const SIM_JOB_EMOJI = {
           const _mcx = Math.floor(myAbsPredicted.x / CL_BUILDING_SIZE), _mcy = Math.floor(myAbsPredicted.y / CL_BUILDING_SIZE);
           const _inside = (myFloor || 0) === 0 && ((_mcx >= _hut[0] && _mcx <= _hut[2] && _mcy >= _hut[1] && _mcy <= _hut[3])
             || (_mcy === _hut[3] + 1 && (_mcx === _hut[0] + 2 || _mcx === _hut[0] + 3)));   // ★문 앞 1셀에서도 개방(열린 문으로 내부 엿보기 — PZ 관례)
+          { const _hk = _hut[0] + ',' + _hut[1]; if (!_hutSeen.has(_hk)) { _hutSeen.add(_hk); _hutRs.push({ r: _hut, roofOn: !_inside }); } }   // ★[침대 진입] 렉트+지붕 여부 수집(움집당 1회)
           if (!_inside) {
             const _fcx = Math.floor(b.x / CL_BUILDING_SIZE), _fcy = Math.floor(b.y / CL_BUILDING_SIZE);
             if (_fcx === _hut[0] + 2 && _fcy === _hut[3]) {   // 캐리어=남행 문 좌측 바닥 1셀(움집당 정확 1회)
@@ -3299,6 +3301,14 @@ const SIM_JOB_EMOJI = {
         const ax = ox + pos.x, ay = oy + pos.y;
         if (Math.abs(ax - worldCx) > VIEW_RADIUS || Math.abs(ay - worldCy) > VIEW_RADIUS) continue;
         const iso = w2i(ax, ay);
+        // ★[침대 진입 — PZ 동형] 움집 실내 NPC(취침·요양)는 그 집 지붕이 그려져 있으면(뷰어가 밖) 숨김 —
+        //   플레이어 z(+500)가 지붕 z(캐리어+64)를 항상 이겨 '지붕 위에 누워 자는' 그림이 되기 때문. 들어가면(컷어웨이) 보인다.
+        if ((o.floor || 0) === 0 && _hutRs.length) {
+          const _ncx = Math.floor(ax / CL_BUILDING_SIZE), _ncy = Math.floor(ay / CL_BUILDING_SIZE);
+          let _hide = false;
+          for (const _h of _hutRs) { if (_ncx >= _h.r[0] && _ncx <= _h.r[2] && _ncy >= _h.r[1] && _ncy <= _h.r[3]) { _hide = _h.roofOn; break; } }
+          if (_hide) continue;
+        }
         // §4-4 Stage 4A: 마을 NPC 직업 이모지 접두 (simJob — econ 분포와 매 게임일 동기)
         const _sjEmoji = (o.simJob && SIM_JOB_EMOJI[o.simJob]) || '';
         const displayName = (_sjEmoji ? _sjEmoji + ' ' : '') + (o.tribeName ? `[${o.tribeName}] ${o.name}` : o.name);

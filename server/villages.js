@@ -340,11 +340,17 @@ function restoreEcon(json, econ) {
 //   부지 원(r6.5) 안 마당 — 집채([-5..0]×[-5..-2]) 남쪽 바깥·텃밭([+1..+4]²) 밖·문(cx-3·-2) 앞 개활지.
 //   침상(집 내부) 진입은 벽 콜라이더·경로 스무딩 묶음(백로그 — 생활 층)에서, 여기선 실체 자리만 분산.
 const HOME_SLOTS = [[-4, -1], [-2, -1], [0, -1], [-5, 0], [-3, 0], [-1, 0]];
+// ★[침대 진입 — 사용자 "취침을 밖에서 하고 있는데"] 실내 침대 6자리 = 클라 BEDO 렌더 정본 verbatim(집 앵커 상대 셀).
+//   HOME_SLOTS(마당)는 휴식·대피·낮 대기 자리로 유지, 취침·요양만 침대 — 문(남벽 개구)으로 실제 출입(주민 A*가
+//   벽 변 인지+스무딩이라 가능해짐 — 종전엔 경로가 벽을 몰라 실내 좌표를 주면 영원히 벽에 비볐다).
+const BED_SLOTS = [[-4, -4], [-3, -4], [-2, -4], [-1, -4], [-4, -3], [-1, -3]];
 function spawnOneNpc(vil) {
   const houses = vil.housesPx.length ? vil.housesPx : [{ x: vil.ccx * SZ + SZ / 2, y: (vil.ccy + 6) * SZ + SZ / 2 }];   // ★폴백도 큰집 벽 안(중심 셀) 금지 — 남문 앞 마당
   const home = houses[vil.npcPids.length % houses.length];
-  const slot = HOME_SLOTS[Math.floor(vil.npcPids.length / houses.length) % HOME_SLOTS.length];
+  const slotI = Math.floor(vil.npcPids.length / houses.length) % HOME_SLOTS.length;
+  const slot = HOME_SLOTS[slotI];
   const hx = home.x + slot[0] * SZ, hy = home.y + slot[1] * SZ;
+  const bed = BED_SLOTS[slotI];   // ★[침대 진입 — 사용자 "취침을 밖에서"] 실내 침대 1인 1자리(클라 BEDO 렌더 정본과 동일 좌표)
   const cxPx = vil.ccx * SZ + SZ / 2, cyPx = vil.ccy * SZ + SZ / 2;
   // Stage 4A: 작업 지점을 회관 밖 도넛(180~320px)으로 — 회관 9×9(반폭 144px+벽)이 실물화되어
   //   내부 좌표를 주면 NPC가 벽에 영원히 비비게 됨(레거시엔 중앙 건물이 없어 ±200 균일이 무해했음).
@@ -365,6 +371,7 @@ function spawnOneNpc(vil) {
   });
   p.simVillageId = vil.dbId; // NPC↔마을 연결(메모리 — players 컬럼 추가보다 저침습)
   p.simLonOff = vil._lonOff || 0; // §19 경도: 이 마을 로컬 태양시(zone.js npcStep 야간 귀가 게이트가 소비)
+  p.npcBedX = home.x + bed[0] * SZ; p.npcBedY = home.y + bed[1] * SZ;   // ★침대(실내) — 취침·요양 목표(_lifeGoHome·§19 게이트 소비)
   vil.npcPids.push(p.pid);
   return p;
 }
@@ -2022,8 +2029,32 @@ function _lifeAct(npc, s) {   // ★[액션 라벨 가시화] 행동 라벨 세�
 function _lifeGoHome(npc, act) {   // 자택 대기(취침·요양·휴식·대피 공통 — §19 게이트와 동일 목표 세팅)
   npc.behavior = 'wander'; npc.gatherTarget = null;
   npc._huntOn = 0; npc._huntSpd = 0;   // ★사냥꾼 완전체: 귀가=두뇌 주도권 반납(wildlife 프록시 idle 강등 — 잠행 배속 잔존 방지)
-  if (act) _lifeAct(npc, act);
-  if (npc.npcHomeX != null) { npc.targetX = npc.npcHomeX; npc.targetY = npc.npcHomeY; }
+  // ★[침대 진입] 취침·요양=실내 침대(문으로 출입 — 주민 A*가 벽 변 인지), 휴식·대피=마당 슬롯(집 앞 개활지).
+  //   라벨은 랩 toHome 동형: 이동 중 '귀가' → 도착(44px)하면 지정 라벨(취침·요양·휴식) — "걸으면서 취침" 어색함 제거.
+  const bed = (act === '취침' || act === '요양') && npc.npcBedX != null;
+  const tx = bed ? npc.npcBedX : npc.npcHomeX, ty = bed ? npc.npcBedY : npc.npcHomeY;
+  if (tx != null) {
+    npc.targetX = tx; npc.targetY = ty;
+    if (act) _lifeAct(npc, Math.hypot(npc.x - tx, npc.y - ty) > 44 ? '귀가' : act);
+  } else if (act) _lifeAct(npc, act);
+}
+function lifeDebug() {   // ★[직접 서버 디버깅 — 사용자 요청] zone /lifedbg가 노출: 마을별 라벨 분포·크루·작물·샘플 NPC(침대 거리 포함)
+  const out = [], now = Date.now();
+  const wpF = state.deps && state.deps.worldPhase, dayR = (state.deps && state.deps.dayPhaseRatio) || 0.7;
+  for (const vil of state.villages) {
+    const acts = {}, sample = [];
+    for (const pid of vil.npcPids) {
+      const p = state.deps.players.get(pid); if (!p) continue;
+      const a = p._lifeAct || '·'; acts[a] = (acts[a] || 0) + 1;
+      if (sample.length < 8) sample.push({ job: p.simJob, act: p._lifeAct || null, x: Math.round(p.x), y: Math.round(p.y),
+        dHome: p.npcHomeX != null ? Math.round(Math.hypot(p.x - p.npcHomeX, p.y - p.npcHomeY)) : null,
+        dBed: p.npcBedX != null ? Math.round(Math.hypot(p.x - p.npcBedX, p.y - p.npcBedY)) : null,
+        rest: p._rest || 0, half: !!p._half, fOut: p._fOutD });
+    }
+    out.push({ name: vil.name, pop: vil.npcPids.length, farm: vil._farmSet ? vil._farmSet.size : 0, crop: vil._crop ? vil._crop.size : 0,
+      site: vil._site ? vil._site.stage : null, clearCrew: vil._clearCrew || 0, buildCrew: vil._buildCrew || 0, acts, sample });
+  }
+  return { t: new Date().toISOString(), phase: wpF ? +wpF(now).toFixed(3) : null, dayR, life: LIFE_ON, villages: out };
 }
 function _lifeDropTask(vil, npc) {   // 진행 중 작업 즉시 반납(요양 진입·반일 퇴근·야간 — 크루 카운터·클레임 정리. 일일 자가치유의 즉시판)
   const t = npc._lifeTask; if (!t) return null;
@@ -2400,7 +2431,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
 }
 
 module.exports = {
-  init, onGameTick, invalidateTradeDistances, npcLifeTick,
+  init, onGameTick, invalidateTradeDistances, npcLifeTick, lifeDebug,
   // Stage 4A — zone.js 소비: 농지 lazy 실물화 / welcome 영토 페이로드 / 레거시 디듀프 판정
   farmTilesInRect, clientVillages, isLegacyVillageClaimed,
   // 플레이어 구매/판매 경계계약(읽기전용 마을 품질 EMA — econ 무접촉)

@@ -1658,7 +1658,7 @@ function npcStep(npc, dt, now) {
   //   VILLAGE_LON=0 게이트. 서버 NPC 일과 모델이 얕아(§2 매트릭스) 야간 자택 대기가 첫 스케줄 소비처(최소 실체).
   else if (SIM_LON_ON && npc.simLonOff != null && npc.npcHomeX != null && npc.behavior !== 'fight') {
     const fv = (worldPhase(now) + npc.simLonOff) % 1;
-    if (fv > WORLD.dayPhaseRatio) { npc.targetX = npc.npcHomeX; npc.targetY = npc.npcHomeY; if (npc.behavior !== 'wander') { npc.behavior = 'wander'; npc.path = null; } npc.gatherTarget = null; }   // ★[사용자 스샷 떼겹침] ±20px 매틱 재추첨 지터 폐지 — 자리 분산은 1인 1자리(villages.js HOME_SLOTS)가 실체로 보장. 재추첨은 식구들을 밤새 같은 점 주위에서 부비게 만들던 원인
+    if (fv > WORLD.dayPhaseRatio) { npc.targetX = npc.npcBedX ?? npc.npcHomeX; npc.targetY = npc.npcBedY ?? npc.npcHomeY; if (npc.behavior !== 'wander') { npc.behavior = 'wander'; npc.path = null; } npc.gatherTarget = null; }   // ★[침대 진입] 밤 목표=실내 침대(npcLifeTick과 동일 — 두 게이트가 침대/마당으로 갈라지면 왕복 진동). 자리 분산은 1인 1침대(BED_SLOTS)가 실체로 보장
   }
 
   // Phase 4d-14d: canadia caravan traveling — decideCanadiaBehavior가 직접 vx/vy(500 px/s) 설정.
@@ -1971,6 +1971,14 @@ const server = http.createServer((req, res) => {
       latency_ms: LATENCY_MS,
       uptime: process.uptime(),
     }));
+    return;
+  }
+  if (req.url && req.url.startsWith('/lifedbg') && req.method === 'GET') {
+    // ★[직접 서버 디버깅 — 사용자 "네가 직접 서버에서 디버깅하는 방법은 없어?"] 생활 층 내부 상태 읽기 전용 JSON.
+    //   CORS *: 게임 페이지·외부 도구에서 크로스오리진 fetch 허용(민감정보 없음 — NPC 시뮬 상태만).
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+    try { res.end(JSON.stringify(SimVillages.lifeDebug ? SimVillages.lifeDebug() : { err: 'lifeDebug 미탑재' })); }
+    catch (e) { res.end(JSON.stringify({ err: e.message })); }
     return;
   }
   if (req.url === '/metrics' && req.method === 'GET') {
