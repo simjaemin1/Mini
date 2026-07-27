@@ -2050,7 +2050,9 @@ function lifeDebug() {   // ★[직접 서버 디버깅 — 사용자 요청] zo
       if (sample.length < 8) sample.push({ job: p.simJob, act: p._lifeAct || null, x: Math.round(p.x), y: Math.round(p.y),
         dHome: p.npcHomeX != null ? Math.round(Math.hypot(p.x - p.npcHomeX, p.y - p.npcHomeY)) : null,
         dBed: p.npcBedX != null ? Math.round(Math.hypot(p.x - p.npcBedX, p.y - p.npcBedY)) : null,
-        rest: p._rest || 0, half: !!p._half, fOut: p._fOutD });
+        rest: p._rest || 0, half: !!p._half, fOut: p._fOutD,
+        on: state.deps.isPositionActive ? (state.deps.isPositionActive(p.x, p.y) ? 1 : 0) : null,   // ★진단: 활성 청크 여부
+        inN: state.deps.npcs ? (state.deps.npcs.has(pid) ? 1 : 0) : null });   // ★진단: npcStep 순회 집합 소속 여부
     }
     out.push({ name: vil.name, pop: vil.npcPids.length, farm: vil._farmSet ? vil._farmSet.size : 0, crop: vil._crop ? vil._crop.size : 0,
       site: vil._site ? vil._site.stage : null, clearCrew: vil._clearCrew || 0, buildCrew: vil._buildCrew || 0, hl: vil._hlDay || null, acts, sample });
