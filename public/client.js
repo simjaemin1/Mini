@@ -868,23 +868,25 @@ const SIM_JOB_EMOJI = {
   // 나무 콜라이더 — 서버 zone.js isBlockedByTree 미러. (resources는 zone-local 좌표 → abs로 변환)
   const PLAYER_BODY_R = 6;  // 서버와 동일
   const TRUNK_COLLIDER_MAX = 9;  // 서버와 동일 — 줄기 충돌 반경 상한
+  const ROCK_COLLIDER_R = 14;    // 서버와 동일 — ★바위·광맥 차단 반경(대형 자연물 물리 실체)
   function clientNearbyTrees(ax, ay) {
     const pc = conns.get(primaryZoneId);
     if (!pc || !pc.resources) return null;
     const ox = pc.meta?.worldOffsetX || 0, oy = pc.meta?.worldOffsetY || 0;
     let out = null;
     for (const r of pc.resources.values()) {
-      if (r.type !== 'tree' || !r.r) continue;
+      const isRock = (r.type === 'rock' || r.type === 'ore');   // ★바위·광맥도 차단 개체
+      if (!isRock && (r.type !== 'tree' || !r.r)) continue;
       const tx = r.x + ox, ty = r.y + oy;
-      if (Math.abs(tx - ax) > 40 || Math.abs(ty - ay) > 40) continue;  // 근처만 (나무 r최대20 + body6 + 이동여유)
-      (out || (out = [])).push({ tx, ty, r: r.r });
+      if (Math.abs(tx - ax) > 40 || Math.abs(ty - ay) > 40) continue;  // 근처만 (max 충돌 20 + 이동여유)
+      (out || (out = [])).push({ tx, ty, r: r.r || 0, rock: isRock ? 1 : 0 });
     }
     return out;
   }
   function clientIsBlockedByTree(x, y, trees) {
     if (!trees) return false;
     for (const t of trees) {
-      const tr = Math.min(t.r, TRUNK_COLLIDER_MAX);   // 줄기 반경 (서버와 동일)
+      const tr = t.rock ? ROCK_COLLIDER_R : Math.min(t.r, TRUNK_COLLIDER_MAX);   // 서버와 동일(바위=고정 반경)
       if (Math.hypot(t.tx - x, t.ty - y) < tr + PLAYER_BODY_R) return true;
     }
     return false;
@@ -2539,7 +2541,8 @@ const SIM_JOB_EMOJI = {
       if (clientIsBlockedByWall(nx, ny, myAbsPredicted.x, myAbsPredicted.y, myFloor)) { nx = myAbsPredicted.x; ny = myAbsPredicted.y; }
       if (myFloor === 0 && (mwx || mwy)) {
         const trees = clientNearbyTrees(myAbsPredicted.x, myAbsPredicted.y);
-        if (trees) {
+        // ★탈출 밸브(서버 movePlayerStep 미러): 현재 위치가 이미 콜라이더 안이면 차단 해제 — 걸어나올 수 있게
+        if (trees && !clientIsBlockedByTree(myAbsPredicted.x, myAbsPredicted.y, trees)) {
           if (clientIsBlockedByTree(nx, myAbsPredicted.y, trees)) nx = myAbsPredicted.x;
           if (clientIsBlockedByTree(myAbsPredicted.x, ny, trees)) ny = myAbsPredicted.y;
           if (clientIsBlockedByTree(nx, ny, trees)) { nx = myAbsPredicted.x; ny = myAbsPredicted.y; }
@@ -5171,7 +5174,7 @@ const SIM_JOB_EMOJI = {
     const add = (cls, name, n) => { const a = (NATURE_SPRITES[cls] = NATURE_SPRITES[cls] || []); for (let i = 1; i <= n; i++) { const im = new Image(); im.onload = () => _natureLoaded++; im.src = '/assets/nature/' + name + String(i).padStart(2, '0') + '.png'; a.push(im); } };
     add('rock', 'rock', 6); add('rock', 'mossrock', 6); add('ore', 'ore', 6); add('bush', 'bush', 6); add('herb', 'herb', 6);
   })();
-  const NATURE_BASE_W = { rock: 26, mossrock: 26, ore: 25, bush: 27, herb: 24 };   // ★인게임 기준 폭(px) — 종전 자산 naturalWidth 평균과 동일. 자산 해상도를 올려도(예: 128px 렌더) 화면 크기 불변
+  const NATURE_BASE_W = { rock: 44, mossrock: 44, ore: 42, bush: 40, herb: 30 };   // ★인게임 기준 폭(px) — 대형안[사용자 확정]: 그리기=×1.5(약초 ×1.25) → 바위 66·광맥 63·덤불 60·약초 38px(나무 ~78px과 동급). 자산 해상도 무관 화면 크기 고정
   function drawNatureSprite(cls, x, y, seedX, seedY, scale) {   // 위치 해시로 변형 고정(깜빡임 없음) — 바닥 중심 앵커+그림자
     const arr = NATURE_SPRITES[cls]; if (!arr || !_natureLoaded) return false;
     const hsh = _treeHash(seedX != null ? seedX : x, seedY != null ? seedY : y);

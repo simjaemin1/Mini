@@ -4984,15 +4984,19 @@ function isBlockedByStairSide(newX, newY, oldX, oldY, entityFloor = 0) {
 // Phase 5-8: tree 입체 콜라이더 — 원형. radius 검사.
 const PLAYER_BODY_R = 6;
 const TRUNK_COLLIDER_MAX = 9;   // 줄기 충돌 반경 상한 — 캐노피가 커도 줄기는 가늘다(스프라이트 줄기와 정합). r은 occlusion용(최대 20).
+const ROCK_COLLIDER_R = 14;     // ★바위·광맥 차단 반경(대형 스프라이트 66px의 코어) — 나무와 동형의 물리 실체 [사용자 확정]. 클라 미러 동일 상수.
 function isBlockedByTree(x, y) {
   if (!qtResources) return false;
-  // 검색 반경 28 = 최대 충돌(TRUNK_COLLIDER_MAX 9 + PLAYER_BODY_R 6 = 15)보다 충분히 큼. 클라 스캔(40)과 함께 둘 다 모든 차단 나무 포함 → 일관.
+  // 검색 반경 28 = 최대 충돌(max(TRUNK 9, ROCK 14) + PLAYER_BODY_R 6 = 20)보다 충분히 큼. 클라 스캔(40)과 함께 둘 다 모든 차단 개체 포함 → 일관.
   const nearby = qtResources.queryCircle(x, y, 28);
   for (const item of nearby) {
     const r = item.ref || item;
-    if (r.type !== 'tree' || !r.r) continue;
-    const tr = Math.min(r.r, TRUNK_COLLIDER_MAX);   // 줄기 반경 (캐노피 r 아님)
-    if (Math.hypot(r.x - x, r.y - y) < tr + PLAYER_BODY_R) return true;
+    if (r.type === 'tree' && r.r) {
+      const tr = Math.min(r.r, TRUNK_COLLIDER_MAX);   // 줄기 반경 (캐노피 r 아님)
+      if (Math.hypot(r.x - x, r.y - y) < tr + PLAYER_BODY_R) return true;
+    } else if (r.type === 'rock' || r.type === 'ore') {   // ★대형 자연물 콜라이더(채광 GATHER_RANGE 48 > 20이라 작업 무영향)
+      if (Math.hypot(r.x - x, r.y - y) < ROCK_COLLIDER_R + PLAYER_BODY_R) return true;
+    }
   }
   return false;
 }
@@ -5274,8 +5278,10 @@ setInterval(() => {
     if (isBlockedByWall(nx, p.y, p.x, p.y, pf, trace)) nx = p.x;
     if (isBlockedByWall(p.x, ny, p.x, p.y, pf, trace)) ny = p.y;
     if (isBlockedByWall(nx, ny, p.x, p.y, pf, trace)) { nx = p.x; ny = p.y; }
-    // Phase 5-8: tree 입체 콜라이더 (1층만, 위층은 통과)
-    if (pf === 0) {
+    // Phase 5-8: tree(+★rock/ore) 입체 콜라이더 (1층만, 위층은 통과)
+    //   ★탈출 밸브: 현재 위치가 이미 콜라이더 안이면(스폰·핸드오프·자원 리스폰이 몸 위에 겹친 경우) 차단을 풀어 걸어나올 수 있게
+    //   — isTerrainBlockedLocal의 !현재위치 가드와 동일 패턴. 클라 predictStep 미러 동일.
+    if (pf === 0 && !isBlockedByTree(p.x, p.y)) {
       if (isBlockedByTree(nx, p.y)) nx = p.x;
       if (isBlockedByTree(p.x, ny)) ny = p.y;
       if (isBlockedByTree(nx, ny)) { nx = p.x; ny = p.y; }
