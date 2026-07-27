@@ -2292,11 +2292,39 @@ function _lifeCompleteHouse(vil) {   // 완공: 터 제거 + NPC 정본 6×4 실
   vil._site = null; vil._buildCrew = 0;
   console.log(`[${state.zoneId}] 🏘️ [${vil.name}] 생활층 신축 움집 완공 @(${cx},${cy})`);
 }
+// ★[HSK↔econ 스킬 연결] 랩(전쟁실험실) 직업 배치 루틴의 사냥꾼 연결 블록 verbatim 이식.
+//   랩 원문:
+//     {const _eh=(s.econ&&s.econ.npcs)?s.econ.npcs.filter(n=>n.currentJob==='hunter'):[];
+//      for(let i2=0;i2<hu.length;i2++){ hu[i2]._esk=_eh.length?_eh[i2%_eh.length]:null;
+//        hu[i2]._fgl=(s.econ&&s.econ._fGlut)||0;
+//        hu[i2]._arm=(s.econ&&s.econ.storage)?Math.min(1,(s.econ.storage.armor||0)/Math.max(1,(s.econ.counts.warrior||0)+(s.econ.counts.hunter||0))):0;}}
+//   서버 차이는 컨테이너뿐: 랩 hu(시각 사냥꾼 배열) → 이 마을의 simJob==='hunter' NPC(npcPids 순서 = 안정 정렬).
+//   ★살아있는 참조를 심는다 — econ 일일 xp 성장이 다음 사격의 명중률(HSK_W)·잠행/도살(HSK_F)에 그대로 반영.
+//   개체별 페어링(랩과 동일). econ 사냥꾼 수가 시각 사냥꾼보다 적으면 라운드로빈으로 공유(랩 동형).
+//   ※서버 econ v2엔 _fGlut 미존재 → _fgl=0 폴백(무효과, wildlife 470행 주석의 그 경로). 엔진 재인라인 시 자동 활성.
+function _lifeHunterEconLink(vil) {
+  const econ = vil.econ, pl = state.deps.players;
+  if (!econ || !pl || !vil.npcPids || !vil.npcPids.length) return;
+  const hu = [];
+  for (const pid of vil.npcPids) { const p = pl.get(pid); if (p && p.simJob === 'hunter') hu.push(p); }
+  if (!hu.length) return;
+  const _eh = (econ && econ.npcs) ? econ.npcs.filter(n => n.currentJob === 'hunter') : [];
+  const _armV = (econ && econ.storage)
+    ? Math.min(1, (econ.storage.armor || 0) / Math.max(1, ((econ.counts && econ.counts.warrior) || 0) + ((econ.counts && econ.counts.hunter) || 0)))
+    : 0;
+  for (let i2 = 0; i2 < hu.length; i2++) {
+    hu[i2]._esk = _eh.length ? _eh[i2 % _eh.length] : null;
+    hu[i2]._fgl = (econ && econ._fGlut) || 0;
+    hu[i2]._arm = _armV;
+  }
+}
+
 function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(디스폰 누수 자가치유) + 신축 판단 + 작물 하루 성장
   if (!LIFE_ON || !vil._terrSet || !vil._terrSet.size || !vil.econ) return;
   _lifeVL();
   vil._clearCrew = 0; vil._buildCrew = 0; vil._claim = new Set(); vil._frontDay = -1;
   vil._cropClaim = new Set(); vil._jobSites = null;   // ★[생활 층 100% ③] 작물 셀 클레임·직업 현장 캐시 일일 리셋(자가치유·현장 재평가)
+  _lifeHunterEconLink(vil);   // ★[HSK↔econ] 시각 사냥꾼 ↔ econ 사냥꾼 NPC 연결(랩 배치 루틴 verbatim — 일일 재대사)
   // 작물 하루 틱(랩 7920 동형): 김매기·물대기 놓치면 품질↓ · 병충해 발생(내일 방제 일감) — 상태·연출만(식량은 econ 소유)
   if (vil._crop && vil._crop.size) {
     const day = state.dayMs ? gameDayOf(Date.now()) : 0;

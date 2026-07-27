@@ -644,6 +644,12 @@ function tick(now) {
       pr.state = 'work';
       if (p._huntWk) { if (!pr.work) pr.work = { cx: 0, cy: 0 }; pr.work.cx = p._huntWk.cx; pr.work.cy = p._huntWk.cy; }
       if (!pr.work) pr.work = { cx: pr.px | 0, cy: pr.py | 0 };
+      // ★[HSK↔econ] villages._lifeHunterEconLink가 일일로 심어둔 econ NPC 살아있는 참조를 프록시로 전달.
+      //   HSK_W(활 숙련→명중률·시위 시간)·HSK_F(사냥 숙련→잠행·추적·도살 수율)가 _esk.skills를 그대로 읽는다
+      //   (종전엔 _esk 미설정 → a._hsk 폴백 0, 즉 전 사냥꾼 레벨0 고정). _arm=가죽 갑옷 부상 경감, _fgl=식량 잉여 가중.
+      pr._esk = p._esk || null;
+      pr._fgl = p._fgl || 0;
+      pr._arm = p._arm || 0;
     } else { pr.state = 'idle'; if (p._huntSpd) p._huntSpd = 0; }
     pr._sp2 = Math.hypot(p.vx || 0, p.vy || 0) / 32;   // 실속도 m/s — 본체 걷기 6.9m/s는 랩 '달리기' 소음대(>3)로 지각됨(정지=조용)
     S.agents.push(pr); _tickAgents.push(pr);
