@@ -3618,11 +3618,11 @@ const SIM_JOB_EMOJI = {
         if (vis < 0.05) continue;
         ctx.globalAlpha = vis;
         if (item.r.type === 'tree') drawTreeIso(s.x, s.y, item.r.r || 8, item.r.h || 60, item.ax, item.ay);
-        else if (item.r.type === 'rock') drawRockIso(s.x, s.y);
-        else if (item.r.type === 'berry_bush') drawBerryBushIso(s.x, s.y);
+        else if (item.r.type === 'rock') drawRockIso(s.x, s.y, item.ax, item.ay);
+        else if (item.r.type === 'berry_bush') drawBerryBushIso(s.x, s.y, item.ax, item.ay);
         else if (item.r.type === 'water_pool') drawWaterPoolIso(s.x, s.y);
-        else if (item.r.type === 'herb') drawHerbIso(s.x, s.y);
-        else if (item.r.type === 'ore') drawOreIso(s.x, s.y);
+        else if (item.r.type === 'herb') drawHerbIso(s.x, s.y, item.ax, item.ay);
+        else if (item.r.type === 'ore') drawOreIso(s.x, s.y, item.ax, item.ay);
         if (item.r.hp < item.r.maxHp) {
           const pct = item.r.hp / item.r.maxHp;
           ctx.fillStyle = '#222'; ctx.fillRect(s.x - 10, s.y - 28, 20, 3);
@@ -5163,6 +5163,25 @@ const SIM_JOB_EMOJI = {
     return (h % 997) / 997;
   }
   // 나무 스프라이트 (Kenney Nature Kit, 초록 recolor) — public/assets/trees/. 로드되면 벡터 대신 사용.
+  // ★[에셋 3차 — 자연물 리스킨] RD 생성 스프라이트(assets-src/rd-nature-sheet.png에서 추출·분류) — 나무 파이프라인 동형.
+  //   rock=바위6+이끼바위6 풀, ore=구리 광맥6, bush=딸기 덤불6, herb=약초6. 로드 전엔 기존 절차 렌더 폴백.
+  const NATURE_SPRITES = {};
+  let _natureLoaded = 0;
+  (() => {
+    const add = (cls, name, n) => { const a = (NATURE_SPRITES[cls] = NATURE_SPRITES[cls] || []); for (let i = 1; i <= n; i++) { const im = new Image(); im.onload = () => _natureLoaded++; im.src = '/assets/nature/' + name + String(i).padStart(2, '0') + '.png'; a.push(im); } };
+    add('rock', 'rock', 6); add('rock', 'mossrock', 6); add('ore', 'ore', 6); add('bush', 'bush', 6); add('herb', 'herb', 6);
+  })();
+  function drawNatureSprite(cls, x, y, seedX, seedY, scale) {   // 위치 해시로 변형 고정(깜빡임 없음) — 바닥 중심 앵커+그림자
+    const arr = NATURE_SPRITES[cls]; if (!arr || !_natureLoaded) return false;
+    const hsh = _treeHash(seedX != null ? seedX : x, seedY != null ? seedY : y);
+    const im = arr[(hsh * arr.length) | 0];
+    if (!im || !im.complete || !im.naturalHeight) return false;
+    const sc = scale || 1.5, w = im.naturalWidth * sc, hh = im.naturalHeight * sc;
+    ctx.fillStyle = 'rgba(0,0,0,0.20)';
+    ctx.beginPath(); ctx.ellipse(x, y + 3, w * 0.42, w * 0.16, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.drawImage(im, x - w / 2, y - hh + 5, w, hh);
+    return true;
+  }
   const TREE_SPRITES = [];
   let _treeSpritesLoaded = 0;
   for (let _ti = 1; _ti <= 12; _ti++) {
@@ -5239,7 +5258,8 @@ const SIM_JOB_EMOJI = {
     ctx.fill();
   }
 
-  function drawRockIso(x, y) {
+  function drawRockIso(x, y, seedX, seedY) {
+    if (drawNatureSprite('rock', x, y, seedX, seedY)) return;   // ★에셋 3차: 스프라이트 우선(로드 전 절차 폴백)
     ctx.fillStyle = 'rgba(0,0,0,0.35)';
     ctx.beginPath(); ctx.ellipse(x, y + 3, 11, 4, 0, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath();
@@ -5258,7 +5278,8 @@ const SIM_JOB_EMOJI = {
     ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fill();
   }
 
-  function drawBerryBushIso(x, y) {
+  function drawBerryBushIso(x, y, seedX, seedY) {
+    if (drawNatureSprite('bush', x, y, seedX, seedY)) return;   // ★에셋 3차
     // 낮은 덤불 + 빨간 베리들
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
     ctx.beginPath(); ctx.ellipse(x, y + 4, 10, 4, 0, 0, Math.PI * 2); ctx.fill();
@@ -5289,7 +5310,8 @@ const SIM_JOB_EMOJI = {
   }
 
   // Phase 14.3 — 약초 (herb): 작은 녹색 꽃 무더기
-  function drawHerbIso(x, y) {
+  function drawHerbIso(x, y, seedX, seedY) {
+    if (drawNatureSprite('herb', x, y, seedX, seedY, 1.25)) return;   // ★에셋 3차(약초는 작게)
     ctx.fillStyle = 'rgba(0,0,0,0.2)';
     ctx.beginPath(); ctx.ellipse(x, y + 2, 8, 3, 0, 0, Math.PI*2); ctx.fill();
     // 줄기 3개
@@ -5310,7 +5332,8 @@ const SIM_JOB_EMOJI = {
   }
 
   // Phase 14.3 — 광물 (ore): 회색 바위 + 빛나는 금속 결정
-  function drawOreIso(x, y) {
+  function drawOreIso(x, y, seedX, seedY) {
+    if (drawNatureSprite('ore', x, y, seedX, seedY)) return;   // ★에셋 3차
     ctx.fillStyle = 'rgba(0,0,0,0.35)';
     ctx.beginPath(); ctx.ellipse(x, y + 5, 13, 5, 0, 0, Math.PI*2); ctx.fill();
     // 바위 본체
