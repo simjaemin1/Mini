@@ -1307,21 +1307,66 @@ const SIM_JOB_EMOJI = {
     }
 
     const sel = document.getElementById('startZone');
+    // ★[로비 죽은 존 UX] central의 /zones는 각 존 /health 폴링 결과를 population/cap으로 실어 준다 —
+    //   응답 못 받은 존은 population=null·cap=null. 이게 곧 생존 신호다(브라우저에서 존 /health를 직접
+    //   부를 수는 없다 — 존 HTTP는 /lifedbg 외 CORS 미개방).
+    //   종전엔 이 신호를 안 써서 죽은 존이 그대로 목록에 남았고, data.defaultZone이 응답에 아예 없어
+    //   selected가 하나도 안 붙어 **첫 옵션(canadia=죽은 존)이 기본 선택**됐다.
+    //   → 첫 입장이 조용히 실패(primary ws가 CLOSED, welcome 0건)하고 "서버가 죽었다"고 오진하게 된다.
+    const zoneAlive = (z) => z && z.population !== null && z.population !== undefined && !!z.cap;
     function refreshZoneOptions() {
+      const prev = sel.value;
       sel.innerHTML = '';
+      let liveN = 0, firstLive = null;
       for (const [id, z] of Object.entries(zonesMeta)) {
         const opt = document.createElement('option');
         opt.value = id;
-        const popPart = (z.population !== null && z.population !== undefined && z.cap)
-          ? ` · ${z.population}/${z.cap}명${z.full ? ' (가득참)' : ''}`
-          : '';
-        opt.textContent = `${z.displayName} (RTT ≈ ${(z.simulatedLatencyMs || 0) * 2}ms)${popPart}`;
+        const alive = zoneAlive(z);
+        const popPart = alive ? ` · ${z.population}/${z.cap}명${z.full ? ' (가득참)' : ''}` : '';
+        opt.textContent = `${z.displayName} (RTT ≈ ${(z.simulatedLatencyMs || 0) * 2}ms)${popPart}${alive ? '' : ' — 점검 중'}`;
+        if (!alive) { opt.disabled = true; opt.style.color = '#6c7686'; }   // 죽은 존 = 흐리게 + 선택 불가
+        else { liveN++; if (!firstLive) firstLive = id; }
         if (z.full) opt.disabled = true;
-        if (id === data.defaultZone && !z.full) opt.selected = true;
         sel.appendChild(opt);
       }
+      // 기본 선택 = ①직전 선택(살아있으면) ②central 기본존(살아있으면) ③hanbando ④첫 생존 존
+      const want = [prev, data.defaultZone, 'hanbando', firstLive]
+        .find(id => id && zonesMeta[id] && zoneAlive(zonesMeta[id]) && !zonesMeta[id].full);
+      if (want) sel.value = want;
+      // 전멸 시 안내(빈 화면 금지)
+      let warn = document.getElementById('zoneDeadWarn');
+      if (!liveN) {
+        if (!warn) {
+          warn = document.createElement('div');
+          warn.id = 'zoneDeadWarn';
+          warn.style.cssText = 'margin-top:8px;padding:8px 10px;border-radius:6px;background:#3a2418;border:1px solid #8a5a2a;color:#f0c674;font-size:13px;line-height:1.5';
+          warn.textContent = '⚠️ 현재 접속 가능한 지역이 없습니다. 서버 점검 중일 수 있어요 — 잠시 후 자동으로 다시 확인합니다.';
+          (document.getElementById('zoneRow') || sel.parentNode).appendChild(warn);
+        }
+        warn.style.display = 'block';
+        if (enterBtn) { enterBtn.disabled = true; }
+      } else {
+        if (warn) warn.style.display = 'none';
+        if (enterBtn) enterBtn.disabled = false;
+      }
+      return liveN;
     }
+    const enterBtn = document.getElementById('enter');
     refreshZoneOptions();
+    // 짧은 폴링(15초) — 존이 살아나면 자동으로 선택 가능해진다. 실패는 조용히 무시(로비가 깨지면 안 됨).
+    setInterval(async () => {
+      try {
+        const r = await fetch('/zones', { cache: 'no-store' });
+        if (!r.ok) return;
+        const j = await r.json();
+        if (!j || !j.zones) return;
+        for (const [id, z] of Object.entries(j.zones)) {
+          if (zonesMeta[id]) { zonesMeta[id].population = z.population; zonesMeta[id].cap = z.cap; zonesMeta[id].full = z.full; }
+          else zonesMeta[id] = z;
+        }
+        if (!document.getElementById('lobby').classList.contains('hidden')) refreshZoneOptions();
+      } catch (e) { /* 조용히 무시 */ }
+    }, 15000);
 
     // 14.42-a: 이름 입력 시 기존 계정 여부 확인 → zone picker 토글
     //   - 게스트(이름+비번 없음): picker 노출 — 지역 직접 선택
