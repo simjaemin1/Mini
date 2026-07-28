@@ -218,11 +218,17 @@ def m_fiber():    # 풀 줄기 다발 — 휜 잎날 + 결속
 def m_meat_raw():  # 생고기 덩이 — 잘라낸 정육(각진 덩어리 + 지방 줄 + 절단면)
     random.seed(51)
     # 도려낸 살덩이: 저폴리 각짐(subdiv 1)으로 '잘린 고기'의 면이 서게 — 매끈한 구는 뇌처럼 보인다
-    ico(0.60, (0, 0, 0.32), subdiv=1, mat=M['meat'], scale=(1.30, 0.90, 0.58), jitter=0.16, smooth=False)
-    box(1.05, 0.72, 0.10, (0.02, 0.02, 0.60), rot=(0, 0, 0.12), mat=M['meat'])          # 윗면 절단면(평평)
-    for i, (x, y, r) in enumerate(((-0.26, 0.12, 0.035), (0.16, -0.10, 0.030), (0.40, 0.14, 0.026))):
-        cyl(r, 0.80, (x, y, 0.615), rot=(0, math.radians(88), 0.30 + i * 0.55), mat=M['fat'], verts=6)   # 절단면에 드러난 지방 결(얇게)
-    ico(0.16, (-0.56, -0.06, 0.30), subdiv=1, mat=M['fat'], scale=(0.55, 0.85, 0.35), jitter=0.2, smooth=False)  # 비계 가장자리
+    # 몸통 = 각진 저폴리 덩이. ★평면 '뚜껑' 박스를 얹지 않는다 — 얹으면 여행가방처럼 보인다(7차 1패스 실패).
+    #   대신 살짝 납작한 덩이를 두 번 겹쳐 윗면이 자연스레 평평해지게(잘라낸 면) 한다.
+    ico(0.60, (0, 0, 0.30), subdiv=1, mat=M['meat'], scale=(1.28, 0.92, 0.52), jitter=0.16, smooth=False)
+    ico(0.46, (0.06, 0.04, 0.50), subdiv=1, mat=M['meat'], scale=(1.20, 0.88, 0.30), jitter=0.13, smooth=False)
+    # ★지방·힘줄은 **절단면 안쪽에 묻는다** — 종전엔 실린더가 살 밖으로 못처럼 삐져나왔다.
+    #   길이를 살 폭(≈1.5)보다 훨씬 짧게(0.34~0.46) 하고 중심 근처에 두어 양 끝이 살 안에서 끝나게 한다.
+    #   z도 절단면(0.60)보다 살짝 아래(0.585)로 내려 표면에 얹히지 않고 박힌 것처럼 보이게.
+    for i, (x, y, ln, r) in enumerate(((-0.16, 0.10, 0.46, 0.030), (0.10, -0.08, 0.40, 0.026), (0.28, 0.12, 0.34, 0.022))):
+        cyl(r, ln, (x, y, 0.585), rot=(0, math.radians(88), 0.30 + i * 0.55), mat=M['fat'], verts=6)
+    # 비계는 덩어리 가장자리에 '얹지 말고' 살 윤곽 안쪽으로 넣는다
+    ico(0.13, (-0.40, -0.04, 0.34), subdiv=1, mat=M['fat'], scale=(0.5, 0.8, 0.30), jitter=0.18, smooth=False)
 
 def m_meat_cooked():  # 구운 고기 꼬치
     random.seed(61)
@@ -269,26 +275,33 @@ def m_seed_berry():  # 베리 씨앗 — 작고 붉은 기 도는 알갱이 무�
         o = ico(0.062, (x, y, z), subdiv=1, mat=M['seedhull'], scale=(1.0, 0.72, 0.52), jitter=0.22, smooth=False)
         o.rotation_euler = (random.uniform(-0.3, 0.3), random.uniform(-0.3, 0.3), random.uniform(0, 3.14))
 
-def m_herb():     # 약초 다발 — 자연물 herb.png의 잎날 구조를 아이콘 스케일로(납작한 별 → 세워 묶은 다발)
+def m_herb():     # 약초 다발 — ★7차 5패스: 세워 묶은 다발은 아이소 탑다운에서 어떻게 해도 '별'로 읽힌다
+    #   (1~4패스에서 벌림각·두께·길이층을 다 시도했다). 실제로 수확한 약초는 **뉘어서 끈으로 묶는다** —
+    #   눕힌 다발은 위에서 봐도 '묶음'의 방향과 끈이 그대로 보여 실루엣이 명확하다. 자연물 herb(서 있는 풀)와
+    #   아이템 herb(수확물)의 역할 차이와도 맞는다.
     random.seed(91)
-    # 밑동 줄기 묶음(세로) — 다발의 축이 서야 '납작한 별'로 안 읽힌다
+    AX = 0.62                                  # 다발 축(수평)
+    for i in range(13):
+        t = (i / 12) - 0.5                     # -0.5..0.5 — 축 직교 방향 분포
+        lean = random.uniform(-0.10, 0.10)
+        ln = 1.55 + random.uniform(-0.18, 0.18)
+        o = plane(1.0, 1.0, (t * 0.055 * math.sin(AX) * 6, t * 0.30, 0.075 + abs(t) * 0.02),
+                  rot=(0, 0, 0), mat=(M['leafg'] if i % 2 else M['leafg2']))
+        o.rotation_euler = (math.radians(88) + lean, 0, AX + t * 0.26 + lean)   # 눕힘 + 부챗살 미세 벌림
+        o.scale = (0.115, ln, 1.0)
+    # 줄기 밑동(다발 한쪽 끝으로 모임)
     for i in range(5):
-        a = i * 1.257
-        cyl(0.018, 0.42, (math.cos(a) * 0.035, math.sin(a) * 0.035, 0.21),
-            rot=(math.sin(a) * 0.06, -math.cos(a) * 0.06, 0), mat=M['grass'], verts=5)
-    # 잎날: 좁고 길게, 위로 세워 부챗살(tilt 낮을수록 수직) — 2톤 교차
-    for i in range(11):
-        a = i * (2 * math.pi / 11) + 0.3
-        tilt = 0.20 + (i % 3) * 0.10
-        d = V((math.cos(a) * math.sin(tilt), math.sin(a) * math.sin(tilt), math.cos(tilt)))
-        o = plane(0.085, 1.30, d * 0.62 + V((0, 0, 0.46)), mat=(M['leafg'] if i % 2 else M['leafg2']))
-        o.rotation_euler = d.to_track_quat('Z', 'Y').to_euler()
-        o.scale = (0.16, 1.0, 1.0)          # 좁은 잎날(자연물 herb 동형)
-    for i in range(4):                       # 꽃점 — 잎 끝 높이에
-        a = i * 1.57 + 0.4
-        ico(0.085, (math.cos(a) * 0.17, math.sin(a) * 0.17, 1.14), subdiv=2, mat=M['flower'])
-    bpy.ops.mesh.primitive_torus_add(major_radius=0.075, minor_radius=0.02, location=(0, 0, 0.13))
-    add(bpy.context.active_object, M['cord'])   # 묶음 끈
+        o = cyl(0.017, 0.55, (-math.cos(AX) * 0.52, -math.sin(AX) * 0.52 + (i - 2) * 0.035, 0.055),
+                rot=(0, math.radians(90), AX), mat=M['grass'], verts=5)
+    # ★묶음 끈 — 위에서 봤을 때 '다발'임을 못 박는 요소
+    # 끈은 다발 **가운데**를 감아야 위에서 보인다(끝에 두면 줄기에 가려 안 보였다 — 5패스)
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.21, minor_radius=0.032,
+                                     location=(-math.cos(AX) * 0.10, -math.sin(AX) * 0.10, 0.085),
+                                     rotation=(0, math.radians(90), AX))
+    add(bpy.context.active_object, M['cord'])
+    # 꽃점 — 잎 끝 쪽에 몇 개(높이 살짝 띄워 부피감)
+    # ★꽃점은 뺐다 — 눕힌 다발 배치에서 좌표가 잎 끝과 맞지 않아 다발 옆에 뜬 점으로만 보였다(5·6패스).
+    #   자연물 herb(서 있는 풀)는 꽃점을 유지하고, 아이템 herb(수확물 다발)는 잎·줄기·끈만으로 읽힌다.
 
 def m_ore():      # 구리빛 광석 덩이 — 모암 + 구리 결정
     random.seed(101)
