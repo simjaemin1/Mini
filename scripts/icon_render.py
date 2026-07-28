@@ -275,33 +275,45 @@ def m_seed_berry():  # 베리 씨앗 — 작고 붉은 기 도는 알갱이 무�
         o = ico(0.062, (x, y, z), subdiv=1, mat=M['seedhull'], scale=(1.0, 0.72, 0.52), jitter=0.22, smooth=False)
         o.rotation_euler = (random.uniform(-0.3, 0.3), random.uniform(-0.3, 0.3), random.uniform(0, 3.14))
 
-def m_herb():     # 약초 다발 — ★7차 5패스: 세워 묶은 다발은 아이소 탑다운에서 어떻게 해도 '별'로 읽힌다
-    #   (1~4패스에서 벌림각·두께·길이층을 다 시도했다). 실제로 수확한 약초는 **뉘어서 끈으로 묶는다** —
-    #   눕힌 다발은 위에서 봐도 '묶음'의 방향과 끈이 그대로 보여 실루엣이 명확하다. 자연물 herb(서 있는 풀)와
-    #   아이템 herb(수확물)의 역할 차이와도 맞는다.
+def m_herb():     # 약초 다발(수확물) — ★8차: 눕힘 축 통일
+    #   [7차의 결함] 잎은 rotation_euler=(88°, 0, AX+…) 였다. Blender XYZ 오일러에서 X축 88° 회전은
+    #   평면의 긴 축(+Y)을 거의 +Z로 세운다 — 즉 **잎은 서 있었다**. 반면 줄기·끈은 (0, 90°, AX)로
+    #   **누워** 있었다. 두 축이 서로 달라서 잎 하나가 다발과 직각으로 삐져나와 허공에 뜬 것처럼 보였다.
+    #   [8차] 잎·줄기·끈을 **모두 AX 방향으로 눕힌다**. 평면의 긴 축 +Y를 월드 (cosAX, sinAX, 0)에
+    #   맞추려면 Rz(AX − 90°)다(−sinθ=cosAX, cosθ=sinAX). 옆으로 벌리는 폭은 반드시 **AX의 수직 벡터**
+    #   perp=(−sinAX, cosAX)를 따라야 한다(7차는 x만 sinAX를 곱해 축이 비틀렸다).
     random.seed(91)
-    AX = 0.62                                  # 다발 축(수평)
+    AX = 0.62                                   # 다발이 누운 방향(수평)
+    ca, sa = math.cos(AX), math.sin(AX)
+    px, py = -sa, ca                            # AX의 수직 — 잎을 옆으로 벌리는 축
+    LAY = AX - math.pi / 2                      # 평면 긴 축(+Y)을 AX에 맞추는 Z회전
     for i in range(13):
-        t = (i / 12) - 0.5                     # -0.5..0.5 — 축 직교 방향 분포
-        lean = random.uniform(-0.10, 0.10)
-        ln = 1.55 + random.uniform(-0.18, 0.18)
-        o = plane(1.0, 1.0, (t * 0.055 * math.sin(AX) * 6, t * 0.30, 0.075 + abs(t) * 0.02),
-                  rot=(0, 0, 0), mat=(M['leafg'] if i % 2 else M['leafg2']))
-        o.rotation_euler = (math.radians(88) + lean, 0, AX + t * 0.26 + lean)   # 눕힘 + 부챗살 미세 벌림
-        o.scale = (0.115, ln, 1.0)
-    # 줄기 밑동(다발 한쪽 끝으로 모임)
+        t = (i / 12) - 0.5                      # -0.5..0.5
+        ln = 1.55 + random.uniform(-0.16, 0.16)
+        # 8차 2패스: 폭이 전부 같아 '대파 묶음'처럼 균일해 보였다 → 잎폭을 층지게(0.075~0.15) +
+        #   끝단 부챗살을 키워(0.34) 잎 끝이 벌어지는 약초 다발 실루엣으로.
+        fan = t * 0.55 + random.uniform(-0.06, 0.06)   # 3패스: 끝단을 크게 벌려 '묶인 밑동 ↔ 퍼진 잎끝' 대비를 준다
+        tilt = random.uniform(-0.10, 0.10)                # 살짝 들림(겹침 명암용) — 세우지는 않는다
+        wid = (0.075, 0.11, 0.15)[i % 3]
+        o = plane(1.0, 1.0, (px * t * 0.28, py * t * 0.28, 0.075 + abs(t) * 0.015),
+                  mat=(M['leafg'] if i % 2 else M['leafg2']))
+        o.rotation_euler = (tilt, 0, LAY + fan)
+        o.scale = (wid, ln, 1.0)
+    # 줄기 밑동 — 다발 한쪽 끝(−AX 방향)에 모임. 실린더 기본 축 Z → (0, 90°, AX)면 AX를 따라 눕는다.
     for i in range(5):
-        o = cyl(0.017, 0.55, (-math.cos(AX) * 0.52, -math.sin(AX) * 0.52 + (i - 2) * 0.035, 0.055),
-                rot=(0, math.radians(90), AX), mat=M['grass'], verts=5)
-    # ★묶음 끈 — 위에서 봤을 때 '다발'임을 못 박는 요소
-    # 끈은 다발 **가운데**를 감아야 위에서 보인다(끝에 두면 줄기에 가려 안 보였다 — 5패스)
-    bpy.ops.mesh.primitive_torus_add(major_radius=0.21, minor_radius=0.032,
-                                     location=(-math.cos(AX) * 0.10, -math.sin(AX) * 0.10, 0.085),
+        cyl(0.017, 0.55, (-ca * 0.52 + px * (i - 2) * 0.035, -sa * 0.52 + py * (i - 2) * 0.035, 0.055),
+            rot=(0, math.radians(90), AX), mat=M['grass'], verts=5)
+    # 3패스: 잔잎(작은 곁잎) — 매끈한 줄기 묶음이 대파처럼 보이던 것을 약초답게. 눕힘 축은 동일하게 유지.
+    for i, (tt, off, ln2) in enumerate(((0.34, 0.30, 0.62), (-0.28, 0.44, 0.55), (0.12, 0.56, 0.48), (-0.40, 0.18, 0.58))):
+        o = plane(1.0, 1.0, (ca * off + px * tt * 0.34, sa * off + py * tt * 0.34, 0.105),
+                  mat=(M['leafg2'] if i % 2 else M['leafg']))
+        o.rotation_euler = (random.uniform(-0.12, 0.12), 0, LAY + tt * 1.25)
+        o.scale = (0.085, ln2, 1.0)
+    # 묶음 끈 — 다발 가운데를 감는다(고리 면이 AX에 수직)
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.20, minor_radius=0.032,
+                                     location=(-ca * 0.12, -sa * 0.12, 0.085),
                                      rotation=(0, math.radians(90), AX))
     add(bpy.context.active_object, M['cord'])
-    # 꽃점 — 잎 끝 쪽에 몇 개(높이 살짝 띄워 부피감)
-    # ★꽃점은 뺐다 — 눕힌 다발 배치에서 좌표가 잎 끝과 맞지 않아 다발 옆에 뜬 점으로만 보였다(5·6패스).
-    #   자연물 herb(서 있는 풀)는 꽃점을 유지하고, 아이템 herb(수확물 다발)는 잎·줄기·끈만으로 읽힌다.
 
 def m_ore():      # 구리빛 광석 덩이 — 모암 + 구리 결정
     random.seed(101)
