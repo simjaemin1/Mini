@@ -1999,6 +1999,7 @@ const _lifeVL = () => VillageLayout || (VillageLayout = require('./village-layou
 const L_LANDNEED = 8;        // 랩 동형: 인당 기준 경작칸(landNeedPer가 비옥도 보정)
 // ★랩 JOBACT 대상 직업 = 현장(논밭·물·숲·산) 직업. 이 집합 밖은 랩 'villager' 버킷(회관 내부 앵커 + 역할 라벨).
 const LIFE_FIELD_JOBS = new Set(['farmer', 'fisher', 'hunter', 'lumberjack', 'miner', 'forager']);
+const SCH_VG_STUCK = 20000;  // 기타직 '출근' 정체 판정(ms). 실측 정체는 17.5초에도 0px였다 — 여유 20초.
 const LIFE_CLEAR_PDAY = 3;   // 농부 1인 하루 개간 셀(랩 L_CLEAR=90 노동·dwell 스케일 근사 — 관찰 후 튜닝)
 const LIFE_STAGE_PDAY = 1;   // 건설 1인 하루 1단계(움집 4단계≈4인일 — 랩 L_BUILDSEC=4600인·초 근사)
 const LIFE_CREW = 2;         // 작업당 동시 크루 상한
@@ -2695,10 +2696,33 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
     const idx = _lifeOtherIndex(vil, npc);
     const wx = (vil.ccx + ((idx % 6) - 3)) * SZ + SZ / 2;
     const wy = (vil.ccy + ((((idx / 6) | 0) % 6) - 3)) * SZ + SZ / 2;
-    if (Math.hypot(npc.x - wx, npc.y - wy) > 44) {
+    const dHall = Math.hypot(npc.x - wx, npc.y - wy);
+    if (dHall > 44) {
+      // ★[출근 정체 가드 — 2026-07-28 실측으로 발견한 회귀]
+      //   실서버 관측: 어촌1의 mason·smith×2·cook 4명이 회관에서 445~856px 떨어진 채
+      //   **17.5초(서버 66틱) 동안 0px** 이동, act는 계속 '출근'이었다. 회관 내부 앵커([-3..2]²)는
+      //   8×8 큰집 **벽 안**이라 남벽 문(2칸)을 통과해야 하는데, 주민 이동층이 그 경로를 못 만들면
+      //   이 분기는 매 틱 같은 목표를 다시 세팅하며 **영구 '출근'**으로 고착된다.
+      //   → 진짜 해법(문 통과 경로)은 벽=변 콜라이더 층 소관이라 여기서 우회하지 않는다(벽 뚫기 금지).
+      //     대신 **정체를 감지하면 생활층이 소유권을 놓고** 레거시 일과로 되돌려 고착을 없앤다.
+      //     한 번 놓은 NPC는 게임일이 바뀔 때 다시 시도한다(_vgDay).
+      // ★첫 진입에 반드시 기준점을 심는다 — 안 그러면 _vgX가 영영 undefined라 가드가 무장되지 않는다
+      //   (하네스 test-villager-stuck.js ①이 이 구멍을 잡아냈다: 60초를 굴려도 발동 0회)
+      // 게임일이 바뀌면 창을 새로 연다 — 어제 못 갔다고 영영 포기시키지 않는다(경로 조건은 날마다 달라진다)
+      if (npc._vgDay !== day) { npc._vgDay = day; npc._vgGiveUp = -1; npc._vgX = npc.x; npc._vgY = npc.y; npc._vgSince = now; }
+      if (npc._vgX === undefined) { npc._vgX = npc.x; npc._vgY = npc.y; npc._vgSince = now; }
+      const moved = Math.hypot(npc.x - npc._vgX, npc.y - npc._vgY);
+      if (moved > 6) { npc._vgX = npc.x; npc._vgY = npc.y; npc._vgSince = now; }
+      else if (npc._vgSince && now - npc._vgSince > SCH_VG_STUCK) {
+        npc._vgGiveUp = day;                       // 오늘은 포기 — 라벨도 지우고 레거시로
+        if (!npc._huntOn && npc._lifeAct) _lifeAct(npc, '');
+        return false;
+      }
+      if (npc._vgGiveUp === day) { if (!npc._huntOn && npc._lifeAct) _lifeAct(npc, ''); return false; }
       npc.behavior = 'wander'; npc.targetX = wx; npc.targetY = wy; npc.gatherTarget = null;
       _lifeAct(npc, '출근'); return true;
     }
+    npc._vgSince = 0; npc._vgGiveUp = -1;          // 도착 = 정체 해제
     const h2 = _pidHash(npc.pid);
     if (!npc._jobT || now >= npc._jobT) {   // 회관 안 제자리 작업(서성임) — 좌표 단일 작성자 유지
       npc._jobT = now + 7000 + (h2 % 5) * 1200;
