@@ -6,7 +6,8 @@
 //   · 경로는 A*가 아니라 BFS 도달성으로 판정(A*는 노드 상한 1500이라 수천 셀 원거리엔 부적합 —
 //     "경로가 존재하는가"라는 질문에는 BFS가 정확하다).
 //
-// 실행: node scripts/test-bridge-path.js
+// 실행: node scripts/test-bridge-path.js [마을이름]   (기본 어촌1)
+//   성분별 대표 마을로 3회 돌린다: 임업5(#0) · 농촌17(#9) · 어촌8(#10) · 어촌1(#12)
 const path = require('path');
 const terrain = require(path.join(__dirname, '..', 'server', 'terrain'));
 const { ZONES } = require(path.join(__dirname, '..', 'server', 'zone-config'));
@@ -37,7 +38,10 @@ const blocked = (cx, cy, useBridge) => {
 };
 
 function reachable(sx, sy, tx, ty, useBridge, cap) {
-  const LIM = cap || 3_000_000;
+  // ★상한 = 존 전체 셀 수(2188×4063 = 8.89M). 다리를 놓으면 도달 영역이 성분 합집합으로 커진다 —
+  //   3M 상한을 쓰면 **다리가 제대로 놓였는데도 상한 소진으로 '도달 불가'가 나온다**(실제로 임업5·농촌17에서
+  //   그렇게 오판했다). 상한은 "더 갈 데가 없음"을 뜻해야지 "예산이 떨어짐"을 뜻하면 안 된다.
+  const LIM = cap || (NX * NY + 16);
   const seen = new Uint8Array(NX * NY);
   const q = new Int32Array(LIM);
   let head = 0, tail = 0, n = 0;
@@ -68,12 +72,14 @@ const chk = (c, m) => { console.log((c ? '  ✓ ' : '  ✗ ') + m); if (!c) fail
 
 console.log('=== T4 다리 층 검증 (실지형 hanbando) ===');
 console.log(`존 ${NX}×${NY}셀 · 다리 셀 ${BRIDGE.size}개`);
+const TARGET = process.argv[2] || '어촌1';
 const vs = terrain.getZoneVillages(ZID) || [];
-const e1 = vs.find(v => v.name === '어촌1');
-chk(!!e1, `어촌1 좌표 ${e1 ? `(${Math.round(e1.x / SZ)},${Math.round(e1.y / SZ)})` : '없음'}`);
+const e1 = vs.find(v => v.name === TARGET);
+chk(!!e1, `${TARGET} 좌표 ${e1 ? `(${Math.round(e1.x / SZ)},${Math.round(e1.y / SZ)})` : '없음'}`);
+if (!e1) { console.log('대상 마을 없음 — 중단'); process.exit(1); }
 const sx = Math.round(Z.mainSquare.x / SZ), sy = Math.round(Z.mainSquare.y / SZ);
 const tx = Math.round(e1.x / SZ), ty = Math.round(e1.y / SZ);
-console.log(`스폰(${sx},${sy}) → 어촌1(${tx},${ty}) 직선 ${Math.round(Math.hypot(tx - sx, ty - sy))}셀`);
+console.log(`스폰(${sx},${sy}) → ${TARGET}(${tx},${ty}) 직선 ${Math.round(Math.hypot(tx - sx, ty - sy))}셀`);
 
 console.log('\n[① 다리 전 — 도달 불가여야 함]');
 let t0 = Date.now();
