@@ -636,7 +636,7 @@ const SIM_JOB_EMOJI = {
       // 완료 → 송신
       const { kind, payload } = buildAction;
       if (kind === 'place') {
-        sendPrimary({
+        sendPrimaryAt({
           type: 'place_building',
           itemType: payload.itemType,
           floor: payload.floor,
@@ -1289,6 +1289,8 @@ const SIM_JOB_EMOJI = {
       else if (a === 'build_stair') sendPrimary({ type: 'build', buildType: 'stair', floor: myBuildFloor });
       else if (a === 'build_floor') sendPrimary({ type: 'build', buildType: 'floor', floor: myBuildFloor });
       else if (a === 'hut_start') { buildMode = true; placementMode = { special: 'hut_site' }; showNotice('⛏️ 움집터 배치 모드 — 클릭 위치에 6×4 수혈 굴착 (곡괭이 필요 · B=취소)'); }   // ★움집 고증 건축(좀보이드 커서 배치)
+      // ★[11차 T4] 마을 크루에게 집 의뢰 — placementMode.special 재사용(발명 0). 검증·재료·배치는 서버 권위.
+      else if (a === 'psite_request') { buildMode = true; placementMode = { special: 'psite' }; showNotice('🏠 집 의뢰 모드 — 마을 영토 안을 클릭 (기둥6·서까래8·이엉8 선납 · B=취소)'); }
       else if (a === 'harvest') sendPrimary({ type: 'harvest' });
       else if (a === 'feed') sendPrimary({ type: 'feed' });
       else if (a === 'tribe') toggleTribePanel();
@@ -1302,8 +1304,24 @@ const SIM_JOB_EMOJI = {
     const c = conns.get(primaryZoneId);
     if (c && c.ws.readyState === 1) c.ws.send(JSON.stringify(obj));
   }
+  // ★★[11차 T4에서 드러난 좌표계 결함] 커서 배치 좌표(atX/atY)는 **존 로컬**로 보내야 한다.
+  //   서버의 player.x는 존 로컬인데(클라가 welcome에서 worldOffsetX를 더해 절대로 만든다),
+  //   지금까지 클라는 화면 역투영한 **절대** 좌표를 그대로 실어 보냈다. worldOffset이 0인 존(canadia)에선
+  //   두 값이 같아 아무 문제가 없었지만, 한반도(offset 409,984px)에선 거리 검사가 **항상** 실패한다
+  //   ("너무 멀어서 …") — 움집터·길드 곳간·아이템 배치가 전부 같은 결함을 공유했다.
+  //   여기서 한 번에 로컬로 접어 보낸다(서버 계약은 그대로, 클라가 프레임을 맞춘다).
+  function absToLocalAt(obj) {
+    const c = conns.get(primaryZoneId);
+    const ox = (c && c.meta && c.meta.worldOffsetX) || 0, oy = (c && c.meta && c.meta.worldOffsetY) || 0;
+    if (typeof obj.atX === 'number') obj.atX -= ox;
+    if (typeof obj.atY === 'number') obj.atY -= oy;
+    return obj;
+  }
+  function sendPrimaryAt(obj) { return sendPrimary(absToLocalAt(obj)); }
   // 미니맵 등 외부에서 호출 가능하게 노출
   window.__sendPrimary = sendPrimary;
+  window.__sendPrimaryAt = sendPrimaryAt;
+  window.__getInv = () => ({ ...inventory });   // ★진단 훅(읽기 전용) — 재료 선납 차감 실측용
   window.__getPrimaryZoneId = () => primaryZoneId;
 
   // === 부트 ===
@@ -1702,7 +1720,8 @@ const SIM_JOB_EMOJI = {
         if (distMe > 160) { showNotice('너무 멀어서 거기에 못 지음 (160px)'); return; }
         if (placementMode.special) {
           // ★움집터·길드 곳간 — 커서 셀 기준 다중 셀 배치(검증·재료·배치는 서버 권위)
-          sendPrimary({ type: placementMode.special === 'hut_site' ? 'hut_start' : 'build_guild_granary', atX: clickWx, atY: clickWy });
+          const _sp = placementMode.special;
+          sendPrimaryAt({ type: _sp === 'hut_site' ? 'hut_start' : (_sp === 'psite' ? 'request_village_house' : 'build_guild_granary'), atX: clickWx, atY: clickWy });
           if (!e.shiftKey) { placementMode = null; showNotice('배치 요청'); }
           return;
         }
@@ -1721,7 +1740,7 @@ const SIM_JOB_EMOJI = {
           });
         } else {
           // 옛 호환 (즉시)
-          sendPrimary({ type: 'build', buildType: placementMode.type, floor: placementMode.floor, atX: clickWx, atY: clickWy });
+          sendPrimaryAt({ type: 'build', buildType: placementMode.type, floor: placementMode.floor, atX: clickWx, atY: clickWy });
           if (!e.shiftKey) { placementMode = null; showNotice('배치 모드 종료'); }
         }
         return;
@@ -3115,9 +3134,11 @@ const SIM_JOB_EMOJI = {
       // ★움집터(6×4)·길드 곳간(5×3) 발자국 윤곽 고스트 — 커서 셀 기준(서버 좌표 규약 동형)
       const wx0 = placementCursor.wx, wy0 = placementCursor.wy;
       const ccx = Math.floor(wx0 / 32), ccy = Math.floor(wy0 / 32);
-      const hut = placementMode.special === 'hut_site';
-      const fx0 = hut ? ccx - 3 : ccx - 2, fy0 = hut ? ccy - 2 : ccy - 1;
-      const fx1 = hut ? ccx + 2 : ccx + 2, fy1 = hut ? ccy + 1 : ccy + 1;
+      const psite = placementMode.special === 'psite';
+      const hut = placementMode.special === 'hut_site' || psite;   // ★[11차 T4] 의뢰 집도 같은 6×4 움집 발자국(실체 동일)
+      // ★의뢰 집터의 발자국 규약은 **마을 정본**([cx-5..cx+0]×[cy-5..cy-2], 서버 lifeRequestPlayerSite와 동일)
+      const fx0 = psite ? ccx - 5 : (hut ? ccx - 3 : ccx - 2), fy0 = psite ? ccy - 5 : (hut ? ccy - 2 : ccy - 1);
+      const fx1 = psite ? ccx + 0 : (hut ? ccx + 2 : ccx + 2), fy1 = psite ? ccy - 2 : (hut ? ccy + 1 : ccy + 1);
       const myIso0 = w2i(myAbsPredicted.x, myAbsPredicted.y);
       const pt = (cx2, cy2) => { const i = w2i(cx2 * 32, cy2 * 32); return { x: i.x - myIso0.x + W / 2, y: i.y - myIso0.y + H / 2 - (myFloor || 0) * FLOOR_HEIGHT }; };
       const p1 = pt(fx0, fy0), p2 = pt(fx1 + 1, fy0), p3 = pt(fx1 + 1, fy1 + 1), p4 = pt(fx0, fy1 + 1);
@@ -3126,7 +3147,7 @@ const SIM_JOB_EMOJI = {
       ctx.fillStyle = hut ? 'rgba(154,122,74,0.25)' : 'rgba(165,129,63,0.25)'; ctx.fill();
       ctx.setLineDash([5, 4]); ctx.strokeStyle = hut ? '#c9b28a' : '#e0b060'; ctx.lineWidth = 1.5; ctx.stroke(); ctx.setLineDash([]);
       ctx.font = 'bold 11px sans-serif'; ctx.fillStyle = '#ffe9b0'; ctx.textAlign = 'center';
-      ctx.fillText(hut ? '움집터 6×4 (수혈 굴착)' : '길드 곳간 5×3 (밀폐)', (p1.x + p3.x) / 2, p1.y - 8);
+      ctx.fillText(psite ? '마을에 집 의뢰 6×4 (재료 선납)' : (hut ? '움집터 6×4 (수혈 굴착)' : '길드 곳간 5×3 (밀폐)'), (p1.x + p3.x) / 2, p1.y - 8);
       ctx.textAlign = 'left';
       ctx.restore();
       return;
@@ -6963,6 +6984,8 @@ const SIM_JOB_EMOJI = {
 
   let noticeTimer;
   function showNotice(text) {
+    // ★진단 훅(읽기 전용): 최근 알림 40건 — 하네스가 '재료 부족/의뢰 성공' 같은 서버 응답을 실측하는 통로.
+    (window.__notices = window.__notices || []).push(text); if (window.__notices.length > 40) window.__notices.shift();
     document.getElementById('notice').textContent = text;
     clearTimeout(noticeTimer);
     noticeTimer = setTimeout(() => {

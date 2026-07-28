@@ -2274,7 +2274,12 @@ wss.on('connection', async (ws, req) => {
 
   // === 토큰 기반 핸드오프 우선 처리 ===
   const handoffToken = url.searchParams.get('handoff_token');
-  let playerId, name, sx, sy, ivx = 0, ivy = 0, inventory = { wood: 0, stone: 0 }, color = '#5a9ae0';
+  // ★[테스트 전용] ZONE_TEST_INV="pillar:6,rafter:8,thatch:8" — 손님 초기 인벤에 얹는다.
+  //   기존 VILLAGE_DAY_MS·VILLAGE_CARAVAN_BLOCKTEST와 같은 관례(env 미설정 = 운영 동작 완전 불변).
+  //   하네스가 '재료 있음/없음' 두 경로를 실제 서버에서 재현하기 위한 유일한 통로.
+  const _testInv = {};
+  if (process.env.ZONE_TEST_INV) for (const kv of process.env.ZONE_TEST_INV.split(',')) { const [k, v] = kv.split(':'); if (k && +v > 0) _testInv[k.trim()] = +v; }
+  let playerId, name, sx, sy, ivx = 0, ivy = 0, inventory = { wood: 0, stone: 0, ..._testInv }, color = '#5a9ae0';
   let tools = {}, equipped = null;
   let _loadEquipment = [], _loadEquipSlots = {}, _loadCraftSkill = {}; // 플레이어 아이템(품질·속성·내구·숙련) 복원 버퍼 — tools_json blob piggyback
   let initHunger = HUNGER_MAX, initThirst = THIRST_MAX, initVp = 0;
@@ -2682,6 +2687,7 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'chest_put') tryChestPut(player, msg.buildingId, msg.item, +msg.amount || 1);
   else if (msg.type === 'chest_take') tryChestTake(player, msg.buildingId, msg.item, +msg.amount || 1);
   else if (msg.type === 'build_guild_granary') tryBuildGuildGranary(player, +msg.atX, +msg.atY);   // ★길드 곳간 실물화[사용자 확정 — 커서 배치]
+  else if (msg.type === 'request_village_house') tryRequestVillageHouse(player, +msg.atX, +msg.atY);   // ★[11차 T4] 마을 크루에게 집 짓기 의뢰(재료 선납)
   else if (msg.type === 'hut_start') tryHutStart(player, +msg.atX, +msg.atY);   // ★움집 고증 건축 ①굴착(커서 배치)
   else if (msg.type === 'hut_advance') tryHutAdvance(player, msg.buildingId);   // ★움집 고증 건축 ②~④
   else if (msg.type === 'attack') { metrics.attacks++; tryAttack(player); }
@@ -4231,6 +4237,31 @@ function tryHutStart(player, atX, atY) {
   broadcast({ type: 'building_added', building: bo });
   send(player.ws, { type: 'notice', text: `⛏️ ${st.label} 완료 — 다음: ${HUT_STAGES[1].label} (움집터 클릭)` });
   console.log(`[${ZONE_ID}] ⛏️ ${player.name} 움집터 굴착 [${x0}..${x1}]×[${y0}..${y1}]`);
+}
+// ★★[11차 T4] 마을 NPC 크루에게 집 짓기를 의뢰한다 — 랩 10차 B안의 서버 접점.
+//   대가 = **재료 선납**(사용자 확정). 움집 4단계의 중간재 3종을 지정 시점에 한 번에 낸다.
+//   ┌ 왜 선납인가: econ 엔진 무접촉을 지키려면 물리 자재 소비가 가장 안전하다(설계안 §2-2).
+//   │ 왜 중간재 3종인가: 굴립주(pillar)·도리서까래(rafter)·이엉(thatch)이 HUT_STAGES ②③④의 실물이고,
+//   └ 이건 플레이어가 이미 만들 줄 아는 것들이다(기존 크래프트 경로 재사용 — 발명 0).
+//   부족하면 **지정 자체를 거절**한다(외상 없음 — 진행 중 미납 상태라는 새 개념을 만들지 않기 위해).
+const PSITE_COST = { pillar: 6, rafter: 8, thatch: 8 };   // = HUT_STAGES ②굴립주6 ③서까래8 ④이엉8 (fiber는 원자재라 제외)
+function tryRequestVillageHouse(player, atX, atY) {
+  if (!Number.isFinite(atX) || !Number.isFinite(atY)) { send(player.ws, { type: 'notice', text: '자리를 지정해 주세요' }); return; }
+  if (Math.hypot(atX - player.x, atY - player.y) > 400) { send(player.ws, { type: 'notice', text: '너무 멀어서 거기에 의뢰할 수 없다' }); return; }
+  const cx = Math.floor(atX / BUILDING_SIZE), cy = Math.floor(atY / BUILDING_SIZE);
+  const vil = SimVillages.villageOwningCell ? SimVillages.villageOwningCell(cx, cy) : null;
+  if (!vil) { send(player.ws, { type: 'notice', text: '마을 영토 안에서만 의뢰할 수 있다' }); return; }
+  // ★재료 검사 먼저(거절이면 상태를 아무것도 안 바꾼다) → 자리 검사 → 그 다음에야 차감.
+  const lack = [];
+  for (const [it, amt] of Object.entries(PSITE_COST)) if ((player.inventory[it] || 0) < amt) lack.push(`${ITEM_LABEL_SERVER[it] || it} ${player.inventory[it] || 0}/${amt}`);
+  if (lack.length) { send(player.ws, { type: 'notice', text: `재료 선납 부족 — ${lack.join(' · ')}` }); return; }
+  const r = SimVillages.lifeRequestPlayerSite(vil, cx, cy, player.playerId, `${player.name}의 의뢰 움집`);
+  if (!r || r.err) { send(player.ws, { type: 'notice', text: `의뢰 불가 — ${(r && r.err) || '알 수 없음'}` }); return; }
+  for (const [it, amt] of Object.entries(PSITE_COST)) player.inventory[it] -= amt;   // ★자리 확정 뒤 차감(실패 시 재료가 사라지지 않게)
+  send(player.ws, { type: 'inventory', inventory: player.inventory });
+  const costStr = Object.entries(PSITE_COST).map(([k, v]) => `${ITEM_LABEL_SERVER[k] || k} ${v}`).join(' · ');
+  send(player.ws, { type: 'notice', text: `🏠 ${vil.name} 크루에게 집 짓기를 의뢰했다 (${costStr} 선납) — 마을 일이 없을 때 지어 준다` });
+  console.log(`[${ZONE_ID}] 🏠 ${player.name} → ${vil.name} 집 의뢰 @(${cx},${cy}) 선납 ${costStr}`);
 }
 function tryHutAdvance(player, buildingId) {
   const b = buildings.get(buildingId);

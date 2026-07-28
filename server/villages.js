@@ -500,6 +500,10 @@ function materializeVillageStructures(db, vil, bRows) {
       //   data.hut 태그 = 클라 v3 반수혈 스킨(벽·바닥 억제+이엉 지붕 합성) 앵커 — 물리(콜라이더·문)는 태그와 무관하게 불변.
       rows += buildStructureRect(db, vil.dbId, b.cx - 5, b.cy - 5, b.cx + 0, b.cy - 2, ownerId, `${vil.name} 움집`, [b.cx - 3, b.cx - 2], { hut: [b.cx - 5, b.cy - 5, b.cx + 0, b.cy - 2] });
       houses++;
+    } else if (b.type === 'phouse') {
+      // ★[11차 T4] 플레이어 의뢰 집 — **실체는 마을 움집과 완전히 동일**(같은 6×4·같은 문). 다른 건 소유자와 명부뿐.
+      let ow = ownerId; try { const d = JSON.parse(b.data || '{}'); if (d.owner) ow = d.owner; } catch (e) {}
+      rows += buildStructureRect(db, vil.dbId, b.cx - 5, b.cy - 5, b.cx + 0, b.cy - 2, ow, '의뢰 움집', [b.cx - 3, b.cx - 2], { hut: [b.cx - 5, b.cy - 5, b.cx + 0, b.cy - 2] });
     } else if (b.type === 'granary') {
       // ★고상곳간 5×3([cx-2..cx+2]×[cy-1..cy+1]) — 문 없는 밀폐(사다리 출입 고증, 상호작용은 인접 셀). 송국리 소형 굴립주 5.3×3.2 실측.
       //   data.gran 태그[에셋 2차]: 클라가 벽·바닥 시각 억제 + 고상 통짜 스프라이트(기둥+판벽+이엉) 합성 — 콜라이더·밀폐 불변.
@@ -1306,7 +1310,7 @@ function init(deps) {
       const bRows = db.getVillageBuildings(row.id);
       const housesPx = [];
       // ★[생활 층] 부팅 시 상태 집합 재구성 — terr/nongzone(시딩 영속) + 개간 실상태(farm/dry) + 집·곳간 셀
-      const terrSet = new Set(), potSet = new Set(), farmSet = new Set(), drySet = new Set(), granList = [], houseCells = [], siteRows = [], ditchCells = [];
+      const terrSet = new Set(), potSet = new Set(), farmSet = new Set(), drySet = new Set(), granList = [], houseCells = [], siteRows = [], ditchCells = [], pHouseRows = [], pSiteRows = [];
       let farmN = 0, dryN = 0, hallData = null, maxCellR = 4;
       for (const b of bRows) {
         const r = Math.hypot(b.cx - row.cx, b.cy - row.cy);
@@ -1318,6 +1322,8 @@ function init(deps) {
         else if (b.type === 'nongzone') potSet.add(b.cx + ',' + b.cy);
         else if (b.type === 'granary') granList.push({ cx: b.cx, cy: b.cy });
         else if (b.type === 'housesite') siteRows.push({ cx: b.cx, cy: b.cy });
+        else if (b.type === 'phouse') pHouseRows.push({ cx: b.cx, cy: b.cy, data: b.data });   // ★[11차 T4] 플레이어 의뢰 집 — 집채는 되살리되 **마을 침대 명부엔 안 넣는다**
+        else if (b.type === 'psitework') pSiteRows.push({ cx: b.cx, cy: b.cy, data: b.data });   // 공사 중이던 의뢰 집터
         else if (b.type === 'ditch') ditchCells.push({ cx: b.cx, cy: b.cy });   // ★[11차 T3 환호] 도랑 셀(영속) — 콜라이더·렌더의 원천
         else if (b.type === 'hall' && b.data) { try { hallData = JSON.parse(b.data); } catch {} }
       }
@@ -1333,7 +1339,8 @@ function init(deps) {
       const _pendSite = siteRows.find(s3 => !houseCells.some(h => h.cx === s3.cx && h.cy === s3.cy)) || null;   // 완공(house 행 존재) 안 된 진행 중 터만
       state.villages.push({ dbId: row.id, name: row.name, ccx: row.cx, ccy: row.cy, housesPx, econ: ev, npcPids: [], _bRows: bRows, _bnd: bnd, _maxRPx: Math.round(maxRPx), _farmN: farmN, _dryN: dryN,
         _terrSet: terrSet, _potSet: potSet, _farmSet: farmSet, _drySet: drySet, _granList: granList, _houseCells: houseCells, _pendSite, _site: null, _clearCrew: 0, _buildCrew: 0, _claim: new Set(),
-        _crop: new Map(), _cropClaim: new Set(), _ditch: ditchCells });   // ★[생활 층] 런타임 상태(구DB=terr 0셀 → 생활층 휴면). _crop=작물 상태머신(랩 life.crop 동형 — 인메모리 관용: 재부팅=재파종)
+        _crop: new Map(), _cropClaim: new Set(), _ditch: ditchCells,
+        _pHouses: pHouseRows, _pSiteRows: pSiteRows, _psite: null, _psiteCrew: 0 });   // ★[생활 층] 런타임 상태(구DB=terr 0셀 → 생활층 휴면). _crop=작물 상태머신(랩 life.crop 동형 — 인메모리 관용: 재부팅=재파종)
     }
     world.day = maxDay;
     state.world = world;
@@ -1406,6 +1413,20 @@ function init(deps) {
 
     // --- ★[11차 T3 환호] 시범 마을 도랑 실체화(부팅 자가치유·idempotent — DB 리셋 없이 신규 반영) ---
     try { _ditchInitAll(); } catch (e) { console.error(`[${ZONE_ID}] 🏰 환호 실체화 실패(무시하고 계속):`, e.message); }
+
+    // --- ★[11차 T4] 공사 중이던 플레이어 의뢰 집터 복원(재부팅에 의뢰가 증발하지 않게) ---
+    try {
+      let n = 0;
+      for (const vil of state.villages) {
+        const r = (vil._pSiteRows || [])[0]; if (!r) continue;
+        let ow = null; try { ow = (JSON.parse(r.data || '{}') || {}).owner || null; } catch (e) {}
+        const bo = deps.liveBuildRow ? deps.liveBuildRow('hut_site', (r.cx - 2.5) * SZ, (r.cy - 3.5) * SZ,
+          { stage: 1, x0: r.cx - 5, y0: r.cy - 5, x1: r.cx + 0, y1: r.cy - 2, owner: ow, psite: 1 }, ow || `npc_simvil_${vil.dbId}`, '의뢰 움집터', null) : null;
+        vil._psite = { cx: r.cx, cy: r.cy, stage: 1, bo, player: 1, owner: ow, ownerName: '의뢰 움집' };
+        vil._psiteCrew = 0; n++;
+      }
+      if (n) console.log(`[${ZONE_ID}] 🏠 플레이어 의뢰 집터 복원 ${n}건(단계는 1로 재시작 — 진행도 비영속 관용)`);
+    } catch (e) { console.error(`[${ZONE_ID}] 🏠 의뢰 집터 복원 실패:`, e.message); }
 
     // --- Stage 4A: 회관·집 실물화 (buildings 테이블 — 부팅 wipe가 지운 자리에 재기록, 1트랜잭션) ---
     {
@@ -2286,6 +2307,8 @@ function lifeDebug() {   // ★[직접 서버 디버깅 — 사용자 요청] zo
       jobs, econCounts: ec, actN, actPct: vil.npcPids.length ? +(actN / vil.npcPids.length * 100).toFixed(1) : 0,
       site: vil._site ? vil._site.stage : null, clearCrew: vil._clearCrew || 0, buildCrew: vil._buildCrew || 0, hl: vil._hlDay || null,
       ditch: (vil._ditch ? vil._ditch.length : 0),   // ★[11차 T3] 환호 도랑 셀 수(0=시범 마을 아님) — 라이브 확인용
+      psite: vil._psite ? { cx: vil._psite.cx, cy: vil._psite.cy, stage: vil._psite.stage, crew: vil._psiteCrew || 0, owner: vil._psite.owner } : null,   // ★[11차 T4] 플레이어 의뢰 집터(공정 단계·붙은 크루)
+      pHouses: (vil._pHouses ? vil._pHouses.length : 0),   // 완공된 의뢰 집(마을 침대 명부 밖)
       mkt: (() => { if (!state.caravanBodies) return 0; for (const b of state.caravanBodies.values()) if (b.phase === 'linger' && state.byEcon.get(b.toV) === vil) return 1; return 0; })(),   // ★[10차 T4] 장마당 개장 여부(캐러밴 체류 중) — 라이브 확인용 계측
       ccx: vil.ccx, ccy: vil.ccy, acts, sample });
   }
@@ -2465,8 +2488,9 @@ function _lifeLiveFarmTile(vil, cx, cy, type) {   // 개간 완료 실체화: �
   const bo = { id: `vb${rowid}`, dbId: null, sim: true, type: 'farmland', ownerId: `npc_simvil_${vil.dbId}`, ownerName: `${vil.name} 경작지`, x: cx * SZ + SZ / 2, y: cy * SZ + SZ / 2, data: { sim: 1, dry: type === 'dryfield' ? 1 : 0 }, floor: 0, villageId: vil.dbId };
   try { if (state.deps.chunkManager) state.deps.chunkManager.insertBuilding(bo); state.deps.broadcast({ type: 'buildings_spawn', buildings: [bo] }); } catch (e) {}
 }
-function _lifeAddHouseSite(vil) {   // 랩 addHouseSite 동형(서버판): 2패스(잠재농지 회피→잠식 비용) + 전 하드 필터
-  if (vil._site || !state.ta) return;
+// ★★[11차 T4] 집터 하드 필터 — 마을 자동 배치(_lifeAddHouseSite)와 플레이어 의뢰(lifeRequestPlayerSite)가 **같은 코드**를 쓴다.
+//   랩 10차 siteFilters 규약의 서버 이식본. 필터를 복제하면 두 경로가 갈라져 마을 기하가 깨진다(랩에서 이미 겪은 교훈).
+function _lifeSiteFilters(vil) {
   if (!vil._wf) {   // 물거리 EDT 캐시(마을당 1회 — 영토 bbox±32, 랩 s._wf 동형)
     let bx0 = 1e9, by0 = 1e9, bx1 = -1e9, by1 = -1e9;
     for (const k of vil._terrSet) { const ci = k.indexOf(','), x = +k.slice(0, ci), y = +k.slice(ci + 1); if (x < bx0) bx0 = x; if (x > bx1) bx1 = x; if (y < by0) by0 = y; if (y > by1) by1 = y; }
@@ -2475,6 +2499,76 @@ function _lifeAddHouseSite(vil) {   // 랩 addHouseSite 동형(서버판): 2패�
   const W_PEN_K = 2000, HG = 18;
   const wnd = (x, y) => { const v = vil._wf.at(x, y); return v >= 999 ? 99 : Math.max(1, v - VillageLayout.LOT_R); };
   const farmAt = (x, y, strict) => (strict && vil._potSet.has(x + ',' + y)) || vil._farmSet.has(x + ',' + y);
+  // reject(x,y,strict) → 사유 문자열(불가) 또는 null(가능). 자동 배치는 사유를 버리고 continue만 한다.
+  const reject = (x, y, strict) => {
+    for (const h of vil._houseCells) if (Math.hypot(h.cx - x, h.cy - y) < HG) return `기존 집과 너무 가까움(<${HG})`;
+    if (vil._site && Math.hypot(vil._site.cx - x, vil._site.cy - y) < HG) return '공사 중인 마을 집터와 너무 가까움';
+    if (vil._psite && Math.hypot(vil._psite.cx - x, vil._psite.cy - y) < HG) return '다른 의뢰 집터와 너무 가까움';
+    for (const [dx, dy] of VillageLayout.LOT_CELLS) {
+      const xx = x + dx, yy = y + dy;
+      if (!vil._terrSet.has(xx + ',' + yy)) return '마을 영토 밖';
+      if (state.ta.isBlocked(xx, yy)) return '부지 불가(물·바위)';
+      if (farmAt(xx, yy, strict)) return '개간 농지 위';
+    }
+    for (const [dx, dy] of VillageLayout.LOT_GUARD) if (state.ta.isWater && state.ta.isWater(x + dx, y + dy)) return '물가 완충 침범(침수)';
+    for (const g2 of vil._granList) {
+      if (g2.cx + 2 >= x - 6 && g2.cx - 2 <= x + 1 && g2.cy + 1 >= y - 6 && g2.cy - 1 <= y - 1) return '곳간과 겹침';
+      if (g2.cx + 2 >= x + 1 && g2.cx - 2 <= x + 4 && g2.cy + 1 >= y + 1 && g2.cy - 1 <= y + 4) return '곳간과 겹침';
+    }
+    // ★[11차 T3↔T4 상호작용] 환호 도랑 위에는 집을 못 짓는다. 도랑은 지형(ta)이 아니라 마을 소유 사물이라
+    //   state.ta.isBlocked가 모른다 — 여기서 명시하지 않으면 부지가 해자를 깔고 앉는다(두 층을 같은 밤에 넣은 대가).
+    if (vil._ditch && vil._ditch.length) {
+      const D = vil._ditchSet || (vil._ditchSet = new Set(vil._ditch.map(c => c.cx + ',' + c.cy)));
+      for (const [dx, dy] of VillageLayout.LOT_CELLS) if (D.has((x + dx) + ',' + (y + dy))) return '환호 도랑 위';
+    }
+    return null;
+  };
+  return { W_PEN_K, HG, wnd, farmAt, reject };
+}
+
+// ★★[11차 T4 — 랩 B안 서버 이식] 플레이어가 마을 영토 안에 집터를 지정하면 그 마을 NPC 크루가 지어 준다.
+//   랩 10차 정본(psite 하네스가 검증한 것)의 규약을 그대로 옮긴다:
+//     ① 자리 = 마을 자동 배치와 **같은 필터**(_lifeSiteFilters) ② 진척 = 크루 현장 노동만
+//     ③ 상태머신 불변 — 대상 포인터만 확장 ④ 마을이 굶지 않게 **여유 크루만**
+//     ⑤ 마을 침대 명부·주택 수급에 안 들어감
+//   ★예비 크루 수: 랩은 연속시간 적산이라 포화점이 4명이었지만, **서버는 하루 진척이
+//     min(LIFE_CREW, pop) × LIFE_STAGE_PDAY로 이미 상한**이다 → 서버의 포화점은 LIFE_CREW(2) 그 자체.
+//     즉 vil._buildCrew가 LIFE_CREW에 닿은 뒤의 크루는 마을 집터에 붙어도 진척이 0이다.
+//     "관례값이 아니라 포화점을 계산하라"는 원칙은 같고, 숫자는 각 모델의 상수에서 유도된다.
+function lifeRequestPlayerSite(vil, x, y, ownerId, ownerName) {
+  if (!vil || !state.ta) return { err: '마을 없음' };
+  if (!vil._terrSet || !vil._terrSet.size) return { err: '마을이 아직 깨어나지 않음(영토 0셀)' };
+  if (vil._psite) return { err: '이 마을엔 이미 의뢰한 집터가 있다(완공 후 다시)' };
+  x = Math.round(x / 2) * 2; y = Math.round(y / 2) * 2;                       // 짝수 격자 스냅(가장 가까운 짝수 — 랩 교정분)
+  if (Math.hypot(x - vil.ccx, y - vil.ccy) < VillageLayout.HALL_CLEAR) return { err: `큰집 마당 침범(r<${VillageLayout.HALL_CLEAR})` };
+  const F = _lifeSiteFilters(vil);
+  const why = F.reject(x, y, false);                                          // strict=false = 미개간 잠재농지는 선점 허용(자동 배치 2패스와 동일)
+  if (why) return { err: why };
+  for (const [dx, dy] of VillageLayout.LOT_CELLS) vil._potSet.delete((x + dx) + ',' + (y + dy));   // 선점 부지는 잠재농지에서 제거
+  const bo = state.deps.liveBuildRow ? state.deps.liveBuildRow('hut_site', (x - 2.5) * SZ, (y - 3.5) * SZ,
+    { stage: 1, x0: x - 5, y0: y - 5, x1: x + 0, y1: y - 2, owner: ownerId, psite: 1 }, ownerId, ownerName || '의뢰 움집터', null) : null;
+  if (bo) state.deps.broadcast({ type: 'building_added', building: bo });
+  state.db.insertVillageBuilding({ village_id: vil.dbId, type: 'psitework', cx: x, cy: y, floors: 0, data: JSON.stringify({ owner: ownerId }) });
+  vil._psite = { cx: x, cy: y, stage: 1, bo, player: 1, owner: ownerId, ownerName: ownerName || null };
+  vil._psiteCrew = 0;
+  console.log(`[${state.zoneId}] 🏠 [${vil.name}] 플레이어 의뢰 집터 @(${x},${y}) owner=${ownerId} — 여유 크루가 짓는다`);
+  return { ok: true, site: vil._psite };
+}
+// 가장 가까운 마을(영토 안이어야 한다) — zone.js가 클릭 셀로 마을을 찾을 때 쓴다.
+function villageOwningCell(x, y) {
+  for (const vil of state.villages) if (vil._terrSet && vil._terrSet.has(x + ',' + y)) return vil;
+  return null;
+}
+
+function _lifeAddHouseSite(vil) {   // 랩 addHouseSite 동형(서버판): 2패스(잠재농지 회피→잠식 비용) + 전 하드 필터
+  if (vil._site || !state.ta) return;
+  if (!vil._wf) {   // 물거리 EDT 캐시(마을당 1회 — 영토 bbox±32, 랩 s._wf 동형)
+    let bx0 = 1e9, by0 = 1e9, bx1 = -1e9, by1 = -1e9;
+    for (const k of vil._terrSet) { const ci = k.indexOf(','), x = +k.slice(0, ci), y = +k.slice(ci + 1); if (x < bx0) bx0 = x; if (x > bx1) bx1 = x; if (y < by0) by0 = y; if (y > by1) by1 = y; }
+    vil._wf = VillageLayout.waterEDT(state.ta, bx0 - 32, by0 - 32, bx1 + 32, by1 + 32);
+  }
+  const F = _lifeSiteFilters(vil);
+  const W_PEN_K = F.W_PEN_K, wnd = F.wnd, farmAt = F.farmAt;
   for (const strict of [true, false]) {
     const cand = [];
     for (const k of vil._terrSet) {
@@ -2489,15 +2583,7 @@ function _lifeAddHouseSite(vil) {   // 랩 addHouseSite 동형(서버판): 2패�
     cand.sort((a2, b2) => a2[2] - b2[2]);
     for (const c2 of cand) {
       const x = c2[0], y = c2[1];
-      let gap = true; for (const h of vil._houseCells) if (Math.hypot(h.cx - x, h.cy - y) < HG) { gap = false; break; } if (!gap) continue;
-      let ok = true;
-      for (const [dx, dy] of VillageLayout.LOT_CELLS) { const xx = x + dx, yy = y + dy; if (!vil._terrSet.has(xx + ',' + yy) || state.ta.isBlocked(xx, yy) || farmAt(xx, yy, strict)) { ok = false; break; } }   // 부지 원판 무결
-      if (ok) for (const [dx, dy] of VillageLayout.LOT_GUARD) if (state.ta.isWater && state.ta.isWater(x + dx, y + dy)) { ok = false; break; }   // 침수 완충
-      if (ok) for (const g2 of vil._granList) {   // granClear 양방향(집채+1·텃밭 vs 곳간 5×3)
-        if (g2.cx + 2 >= x - 6 && g2.cx - 2 <= x + 1 && g2.cy + 1 >= y - 6 && g2.cy - 1 <= y - 1) { ok = false; break; }
-        if (g2.cx + 2 >= x + 1 && g2.cx - 2 <= x + 4 && g2.cy + 1 >= y + 1 && g2.cy - 1 <= y + 4) { ok = false; break; }
-      }
-      if (!ok) continue;
+      if (F.reject(x, y, strict)) continue;   // ★[11차 T4] 하드 필터는 _lifeSiteFilters 소유 — 플레이어 의뢰 터와 **같은 코드**(랩 siteFilters 규약 이식)
       if (!strict) for (const [dx, dy] of VillageLayout.LOT_CELLS) vil._potSet.delete((x + dx) + ',' + (y + dy));   // 선점 부지는 잠재농지 제거
       const bo = state.deps.liveBuildRow ? state.deps.liveBuildRow('hut_site', (x - 2.5) * SZ, (y - 3.5) * SZ,
         { stage: 1, x0: x - 5, y0: y - 5, x1: x + 0, y1: y - 2, owner: 'npc', floor: 0 }, `npc_simvil_${vil.dbId}`, `${vil.name} 새 움집터`, null) : null;   // ★NPC 정본 렉트를 hut_site 규약에 실음(완공 기하 동일)
@@ -2509,21 +2595,24 @@ function _lifeAddHouseSite(vil) {   // 랩 addHouseSite 동형(서버판): 2패�
     }
   }
 }
-function _lifeAdvanceSite(vil) {   // 크루 1단계 완수 → 단계 전진(클라 hut_site 렌더가 1~3단계 표시) / 4→완공
-  const s2 = vil._site; if (!s2) return;
-  vil._mSt = (vil._mSt || 0) + 1;   // ★[LIFE_* 튜닝 계측] 오늘 전진한 건설 단계 수
+function _lifeAdvanceSite(vil, which) {   // 크루 1단계 완수 → 단계 전진(클라 hut_site 렌더가 1~3단계 표시) / 4→완공
+  const s2 = (which === 'p') ? vil._psite : vil._site; if (!s2) return;
+  if (which !== 'p') vil._mSt = (vil._mSt || 0) + 1;   // ★[LIFE_* 튜닝 계측] 오늘 전진한 **마을** 건설 단계 수(의뢰분은 마을 지표 아님)
   s2.stage++;
   if (s2.stage <= 3) {
     if (s2.bo) { s2.bo.data.stage = s2.stage; try { state.db.updateBuildingData(s2.bo.dbId, JSON.stringify(s2.bo.data)); } catch (e) {} state.deps.broadcast({ type: 'building_added', building: s2.bo }); }
     return;
   }
-  _lifeCompleteHouse(vil);
+  _lifeCompleteHouse(vil, which);
 }
-function _lifeCompleteHouse(vil) {   // 완공: 터 제거 + NPC 정본 6×4 실체화(hut 태그) + house/yard/garden 영속 + 라이브
-  const s2 = vil._site; if (!s2) return;
+function _lifeCompleteHouse(vil, which) {   // 완공: 터 제거 + NPC 정본 6×4 실체화(hut 태그) + house/yard/garden 영속 + 라이브
+  const isP = (which === 'p');                       // ★[11차 T4] 플레이어 의뢰 집 — 실체는 같고, **마을 명부에만 안 들어간다**
+  const s2 = isP ? vil._psite : vil._site; if (!s2) return;
   const dp = state.deps;
   if (s2.bo) { try { state.db.deleteBuilding(s2.bo.dbId); } catch (e) {} if (dp.buildings) dp.buildings.delete(s2.bo.id); try { if (dp.chunkManager && dp.chunkManager.removeBuilding) dp.chunkManager.removeBuilding(s2.bo); } catch (e) {} dp.broadcast({ type: 'building_removed', id: s2.bo.id }); }
-  const cx = s2.cx, cy = s2.cy, ownerId = `npc_simvil_${vil.dbId}`, onm = `${vil.name} 움집`, made = [];
+  const cx = s2.cx, cy = s2.cy;
+  const ownerId = isP ? s2.owner : `npc_simvil_${vil.dbId}`;                       // 소유 = 의뢰한 플레이어(약탈·철거 권한이 기존 owner 규약을 그대로 탄다)
+  const onm = isP ? (s2.ownerName || '의뢰 움집') : `${vil.name} 움집`, made = [];
   const tag = [cx - 5, cy - 5, cx + 0, cy - 2], doorXs = new Set([cx - 3, cx - 2]);
   const lb = dp.liveBuildRow;
   if (lb) {
@@ -2535,8 +2624,9 @@ function _lifeCompleteHouse(vil) {   // 완공: 터 제거 + NPC 정본 6×4 실
     for (let x = cx - 5; x <= cx + 0; x++) for (let y = cy - 5; y <= cy - 2; y++) lb('floor', x * SZ + SZ / 2, y * SZ + SZ / 2, { floor: 0, hut: tag }, ownerId, onm, made);
     dp.broadcast({ type: 'buildings_spawn', buildings: made });
   }
-  state.db.insertVillageBuilding({ village_id: vil.dbId, type: 'house', cx, cy, floors: 1, data: null });   // 다음 부팅 실물화 재기록의 원료
-  vil._houseCells.push({ cx, cy }); vil.housesPx.push({ x: cx * SZ + SZ / 2, y: cy * SZ + SZ / 2 });
+  // ★[11차 T4] 의뢰 집은 'phouse' — 다음 부팅에 **집채는 되살아나되 마을 침대 명부엔 안 들어간다**(랩 ⑤ 규약 이식).
+  state.db.insertVillageBuilding({ village_id: vil.dbId, type: isP ? 'phouse' : 'house', cx, cy, floors: 1, data: isP ? JSON.stringify({ owner: ownerId }) : null });
+  if (!isP) { vil._houseCells.push({ cx, cy }); vil.housesPx.push({ x: cx * SZ + SZ / 2, y: cy * SZ + SZ / 2 }); }
   const tiles = [];
   for (const [dx, dy] of VillageLayout.LOT_CELLS) {   // 마당·텃밭(시딩 블록 동형)
     const x = cx + dx, y = cy + dy;
@@ -2549,8 +2639,15 @@ function _lifeCompleteHouse(vil) {   // 완공: 터 제거 + NPC 정본 6×4 실
     tiles.push(bo2);
   }
   if (tiles.length) dp.broadcast({ type: 'buildings_spawn', buildings: tiles });
-  vil._site = null; vil._buildCrew = 0;
-  console.log(`[${state.zoneId}] 🏘️ [${vil.name}] 생활층 신축 움집 완공 @(${cx},${cy})`);
+  if (isP) {
+    (vil._pHouses = vil._pHouses || []).push({ cx, cy, data: JSON.stringify({ owner: ownerId }) });   // 관측용 명부(마을 침대 명부와 별개 — /lifedbg pHouses)
+    vil._psite = null; vil._psiteCrew = 0;
+    try { state.db.db.prepare("DELETE FROM village_buildings WHERE village_id=? AND type='psitework' AND cx=? AND cy=?").run(vil.dbId, cx, cy); } catch (e) {}
+    console.log(`[${state.zoneId}] 🏠 [${vil.name}] 플레이어 의뢰 움집 완공 @(${cx},${cy}) owner=${ownerId}`);
+  } else {
+    vil._site = null; vil._buildCrew = 0;
+    console.log(`[${state.zoneId}] 🏘️ [${vil.name}] 생활층 신축 움집 완공 @(${cx},${cy})`);
+  }
 }
 // ★[곳간 증설 런타임 — 랩 _granAdd 링] 랩 상수·공식 verbatim:
 //   const G_W=5,G_H=3,G_CAP=2500,G_MAX=8,G_BUILDD=6;
@@ -2770,7 +2867,8 @@ function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(�
       if (e.q < L_QMIN) e.q = L_QMIN;
     }
   }
-  for (const pid of vil.npcPids) { const p = state.deps.players.get(pid); if (p && p._lifeTask) { if (p._lifeTask.k === 'clear') { vil._claim.add(p._lifeTask.cx + ',' + p._lifeTask.cy); vil._clearCrew++; } else if (p._lifeTask.k === 'build') vil._buildCrew++; } }
+  vil._psiteCrew = 0;
+  for (const pid of vil.npcPids) { const p = state.deps.players.get(pid); if (p && p._lifeTask) { if (p._lifeTask.k === 'clear') { vil._claim.add(p._lifeTask.cx + ',' + p._lifeTask.cy); vil._clearCrew++; } else if (p._lifeTask.k === 'build') { if (p._lifeTask.ps) vil._psiteCrew++; else vil._buildCrew++; } } }
   if (vil._pendSite && !vil._site) {   // 재부팅 복원: 진행 중이던 터 재실체화(단계 1부터 — 관용)
     const ps = vil._pendSite; vil._pendSite = null;
     if (state.deps.liveBuildRow) {
@@ -2858,6 +2956,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
     if (!(npc._lifeTask && npc._lifeTask.k === 'build')) {
       _lifeDropTask(vil, npc);
       if (vil._site) { vil._buildCrew++; npc._lifeTask = { k: 'build', px: (vil._site.cx - 2.5) * SZ, py: (vil._site.cy - 0.5) * SZ, prog: 0 }; npc._workT = now; }
+      else if (vil._psite) { vil._psiteCrew = (vil._psiteCrew || 0) + 1; npc._lifeTask = { k: 'build', ps: 1, px: (vil._psite.cx - 2.5) * SZ, py: (vil._psite.cy - 0.5) * SZ, prog: 0 }; npc._workT = now; }   // ★[11차 T4] 마을 일감이 없을 때만 의뢰 집터로(마을 우선 — 랩 ④ 규약)
       else {
         // ★[곳간②] 퇴근길: 든 짐은 곳간에 넣고, 빈손이면 재고에서 하루치를 꺼내 집으로 나른다
         if (npc._granD !== day) {   // ★오늘 인출을 마쳤으면 곳간 용무 종료 — 저장↔인출 왕복 금지(랩 toHome 이탈 대응)
@@ -2871,7 +2970,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
   // ══ 진행 중 작업(개간·건설 — 현장 실시간 노동) ══
   const t = npc._lifeTask;
   if (t) {
-    if (t.k === 'build' && !vil._site) { npc._lifeTask = null; return false; }   // 완공/소멸 → 해산
+    if (t.k === 'build' && !(t.ps ? vil._psite : vil._site)) { npc._lifeTask = null; return false; }   // 완공/소멸 → 해산
     const d = Math.hypot(npc.x - t.px, npc.y - t.py);
     if (d > 44) { npc.behavior = 'wander'; npc.targetX = t.px; npc.targetY = t.py; npc.gatherTarget = null; npc._workT = now; _lifeAct(npc, '출근'); return true; }
     const el = Math.min(3000, now - (npc._workT || now)); npc._workT = now;   // 현장 도착 — 실시간 노동 누적(틱 간격 캡)
@@ -2883,8 +2982,8 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
       _lifeLiveFarmTile(vil, t.cx, t.cy, t.f === '밭' ? 'dryfield' : 'farmland');
       vil._claim.delete(t.cx + ',' + t.cy); vil._clearCrew = Math.max(0, vil._clearCrew - 1); npc._lifeTask = null;
     } else if (t.k === 'build' && t.prog >= dayMs / LIFE_STAGE_PDAY) {
-      t.prog = 0; _lifeAdvanceSite(vil);
-      if (!vil._site) npc._lifeTask = null;   // 완공 시 해산(카운터는 complete가 리셋)
+      t.prog = 0; _lifeAdvanceSite(vil, t.ps ? 'p' : null);
+      if (!(t.ps ? vil._psite : vil._site)) npc._lifeTask = null;   // 완공 시 해산(카운터는 complete가 리셋)
     }
     return true;
   }
@@ -2904,6 +3003,14 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
   if (vil._site && vil._buildCrew < LIFE_CREW) {
     vil._buildCrew++; npc._lifeTask = { k: 'build', px: (vil._site.cx - 2.5) * SZ, py: (vil._site.cy - 0.5) * SZ, prog: 0 }; npc._workT = now;   // 남측 마당에서 시공
     npc.behavior = 'wander'; npc.targetX = npc._lifeTask.px; npc.targetY = npc._lifeTask.py; npc.gatherTarget = null; _lifeAct(npc, '출근'); return true;   // ★배정 틱 즉시 이동 목표
+  }
+  // ★★[11차 T4] 여유 크루만 플레이어 의뢰 집터로 — 마을 집터가 **포화(LIFE_CREW)된 뒤**에야 여기 닿는다.
+  //   서버의 하루 진척은 min(LIFE_CREW,pop)×LIFE_STAGE_PDAY로 상한이라, 그 위의 크루는 마을에 붙어도 진척이 0이다.
+  //   즉 여기로 돌리는 노동은 마을에서 뺏는 게 아니라 **어차피 버려질 잉여**다(랩 10차 실측으로 확립된 규칙).
+  if (vil._psite && (vil._psiteCrew || 0) < LIFE_CREW) {
+    vil._psiteCrew = (vil._psiteCrew || 0) + 1;
+    npc._lifeTask = { k: 'build', ps: 1, px: (vil._psite.cx - 2.5) * SZ, py: (vil._psite.cy - 0.5) * SZ, prog: 0 }; npc._workT = now;
+    npc.behavior = 'wander'; npc.targetX = npc._lifeTask.px; npc.targetY = npc._lifeTask.py; npc.gatherTarget = null; _lifeAct(npc, '출근'); return true;
   }
   // ══ 직업 실작업(랩 JOBACT·work 분기 동형 — 서버는 실물 자원·실물 사냥감이 정본) ══
   const job = npc.simJob;
@@ -3074,6 +3181,8 @@ module.exports = {
   marketVillages,
   // ★[11차 T3] 환호 — 콜라이더(zone.js isTerrainBlockedLocal)·welcome 페이로드 원천
   ditchCells,
+  // ★[11차 T4] 플레이어 의뢰 집 건설 — zone.js 배치 핸들러가 소비
+  lifeRequestPlayerSite, villageOwningCell,
   // 플레이어 구매/판매 경계계약(읽기전용 마을 품질 EMA — econ 무접촉)
   villageQualityAt,
   // §11 도적 — server/bandits.js 소비(좁은 접점, 추가 전용)

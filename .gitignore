@@ -20,3 +20,5 @@ scripts/bridge_renders/
 scripts/_t4-*.js
 \nscripts/_t3-*.js
 scripts/_t3-*.js
+scripts/_t4b-*.js
+scripts/_t4b-*.js
