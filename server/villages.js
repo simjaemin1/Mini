@@ -2047,6 +2047,8 @@ function _lifeGoHome(npc, act) {   // 자택 대기(취침·요양·휴식·대�
   //   라벨은 랩 toHome 동형: 이동 중 '귀가' → 도착(44px)하면 지정 라벨(취침·요양·휴식) — "걸으면서 취침" 어색함 제거.
   const bed = (act === '취침' || act === '요양') && npc.npcBedX != null;
   const tx = bed ? npc.npcBedX : npc.npcHomeX, ty = bed ? npc.npcBedY : npc.npcHomeY;
+  // ★[곳간②] 집 도착 = 들고 온 것을 집에서 소비(회계는 econ이 이미 반영 — 짐만 비운다)
+  if (npc._carry > 0 && tx != null && Math.hypot(npc.x - tx, npc.y - ty) <= 44) npc._carry = 0;
   if (tx != null) {
     npc.targetX = tx; npc.targetY = ty;
     if (act) _lifeAct(npc, Math.hypot(npc.x - tx, npc.y - ty) > 44 ? '귀가' : act);
@@ -2145,6 +2147,8 @@ function lifeDebug() {   // ★[직접 서버 디버깅 — 사용자 요청] zo
       //   actN/actPct=액션 라벨 가시성.
       terr: vil._terrSet ? vil._terrSet.size : 0, terrBf: vil._terrBackfilled ? 1 : 0,
       pot: vil._potSet ? vil._potSet.size : 0, gran: vil._granList ? vil._granList.length : 0,
+      granStock: vil._granStock ? [...vil._granStock.values()].reduce((a, b) => a + b, 0) : 0,   // ★곳간② 물리 장부 합(회계 아님)
+      carrying: (() => { let n = 0; for (const pid of vil.npcPids) { const p = state.deps.players.get(pid); if (p && p._carry > 0) n++; } return n; })(),
       jobs, econCounts: ec, actN, actPct: vil.npcPids.length ? +(actN / vil.npcPids.length * 100).toFixed(1) : 0,
       site: vil._site ? vil._site.stage : null, clearCrew: vil._clearCrew || 0, buildCrew: vil._buildCrew || 0, hl: vil._hlDay || null, acts, sample });
   }
@@ -2176,7 +2180,7 @@ function _lifeDoTask(vil, npc, k, day) {   // 도착한 셀 처리(랩 doTask �
   const e = vil._crop.get(k), nong = !vil._drySet.has(k);
   const ci = k.indexOf(','), par = (+k.slice(0, ci) + +k.slice(ci + 1)) & 1;
   if (!e) { const cr = _villageCropFor(vil, nong ? '논' : '밭', _lMonth(day), par); if (!cr) return false; vil._crop.set(k, { c: cr, p: day, td: day, w: day, wd: 0, ps: 0, q: 1 }); if (npc) _lifeAct(npc, nong ? '모내기' : '파종'); return true; }
-  if (day - e.p >= e.c.grow) { vil._crop.delete(k); if (npc) _lifeAct(npc, '수확'); return true; }   // 수확 — 식량은 econ이 이미 계상(연출만)
+  if (day - e.p >= e.c.grow) { vil._crop.delete(k); if (npc) { npc._carry = (npc._carry || 0) + 1; _lifeAct(npc, '수확'); } return true; }   // 수확 — 식량은 econ이 이미 계상(연출만). ★곳간② 물리 짐 1칸분 적재(회계 아님)
   if (e.ps) { e.ps = 0; e.td = day; e.q = Math.min(1, e.q + L_QREC); if (npc) _lifeAct(npc, '방제'); return true; }
   if (nong && day - (e.w || e.p) >= L_WATERGAP) { e.w = day; e.q = Math.min(1, e.q + L_QREC); if (npc) _lifeAct(npc, '물대기'); return true; }
   const wd = e.wd || 0; if (wd < L_WEEDS.length && (day - e.p) / e.c.grow >= L_WEEDS[wd]) { e.wd = wd + 1; e.td = day; e.q = Math.min(1, e.q + L_QREC); if (npc) _lifeAct(npc, nong ? '논매기' : '김매기'); return true; }
@@ -2394,6 +2398,61 @@ function _lifeCompleteHouse(vil) {   // 완공: 터 제거 + NPC 정본 6×4 실
 //     for(const g of s.gran)if(!g.done){g.built+=1/G_BUILDD;...}}
 //   = 식량 재고 2500인일당 곳간 1동(최소 1·최대 8), 하루 1동씩 착공, 완공까지 6일.
 //   자리는 시딩과 동일한 pickGranarySpot(링 r11~15·남측 회피·영토·물 16 이격·집채/텃밭/큰집/기존 곳간 비겹침).
+// ★★[곳간② 2단계 — 랩 이식] NPC의 물리적 저장·인출. 랩 전쟁실험실 `★곳간②` 블록 대응.
+//   ┌ 회계는 econ 소유다. 서버는 애초에 식량 수치를 만들지 않으므로(수확=상태 삭제+연출) 랩의 `_y`에
+//   │ 대응하는 값이 **서버엔 존재하지 않는다**(CROPS에 yieldC 없음). 그래서 물리 층은 **'수확한 칸 수'**를
+//   │ 짐으로 센다 — 회계와 무관한 순수 물리량이고 econ storage를 절대 건드리지 않는다.
+//   └ vil._granStock(Map "cx,cy"→수량)도 같은 성격의 **물리 장부**다.
+//   랩 규약 유지: 사다리=곳간 5×3 남쪽 인접칸(문 없는 고상) · 그 칸 체류가 저장/인출 행위 ·
+//                자리·경로 없으면 false 폴스루(회귀 0) · 라벨은 기존 것만(운반·저장·인출).
+const G_CARRY = 3;            // 짐 상한 = 수확 칸 수(이만큼 모이면 곳간행)
+const G_STOREW = 6000;        // 사다리 체류(저장) ms — 랩 G_STOREW 6유닛 대응
+const G_DRAWW = 5000;         // 사다리 체류(인출) ms — 랩 G_DRAWW 5유닛 대응
+const G_DRAW = 2;             // 1회 인출량(물리 단위)
+const G_STOCK_CAP = 60;       // 곳간 1동 물리 수용(칸 수 기준) — 넘으면 다음 곳간
+function _granStockOf(vil, g) { if (!vil._granStock) vil._granStock = new Map(); return vil._granStock.get(g.cx + ',' + g.cy) || 0; }
+function _granStockAdd(vil, g, d) { if (!vil._granStock) vil._granStock = new Map(); const k = g.cx + ',' + g.cy; vil._granStock.set(k, Math.max(0, (vil._granStock.get(k) || 0) + d)); }
+function _granLadder(g) { return { x: g.cx * SZ + SZ / 2, y: (g.cy + 2) * SZ + SZ / 2 }; }   // ★문 없는 고상곳간 — 5×3 렉트[cy-1..cy+1] 남쪽 인접칸이 사다리 자리
+function _granPick(vil, npc, forDraw) {         // 저장=여유 있는 곳 / 인출=재고 있는 곳 중 최근접
+  let best = null, bd = 1e9;
+  for (const g of (vil._granList || [])) {
+    const st = _granStockOf(vil, g);
+    if (forDraw ? !(st > 0) : (st >= G_STOCK_CAP)) continue;
+    const L = _granLadder(g), d = Math.hypot(L.x - npc.x, L.y - npc.y);
+    if (d < bd) { bd = d; best = g; }
+  }
+  return best;
+}
+function _granGo(vil, npc, forDraw) {           // 곳간행 개시 — 자리 없으면 false(호출측이 기존 흐름 유지)
+  const g = _granPick(vil, npc, forDraw); if (!g) return false;
+  npc._granTask = { cx: g.cx, cy: g.cy, draw: !!forDraw, at: 0 };
+  return true;
+}
+// 곳간행 실행 — 이번 틱 소유권을 가지면 true. (랩 toGran/gran 2상태를 서버 _lifeTask 대신 _granTask로 표현)
+function _lifeGranStep(vil, npc, now) {
+  const t = npc._granTask; if (!t) return false;
+  const g = (vil._granList || []).find((x) => x.cx === t.cx && x.cy === t.cy);
+  if (!g) { npc._granTask = null; return false; }                    // 곳간이 사라짐(재배치) — 폴스루
+  const L = _granLadder(g);
+  if (!t.at) {                                                       // ① 사다리로 이동
+    npc.behavior = 'wander'; npc.targetX = L.x; npc.targetY = L.y; npc.gatherTarget = null;
+    _lifeAct(npc, t.draw ? '인출' : '운반');
+    if (Math.hypot(npc.x - L.x, npc.y - L.y) <= 44) { t.at = now; _lifeAct(npc, t.draw ? '인출' : '저장'); }
+    return true;
+  }
+  if (now - t.at < (t.draw ? G_DRAWW : G_STOREW)) {                  // ② 사다리 체류 = 저장/인출 행위
+    _lifeAct(npc, t.draw ? '인출' : '저장');
+    return true;
+  }
+  // ★[곳간② 순환 방어] 인출을 마치면 **오늘 곳간 용무 종료** 도장을 찍는다.
+  //   랩은 인출 직후 state='toHome'으로 상태를 떠나 그날 다시 work 탈출 검사에 걸리지 않는다(8010행).
+  //   서버는 상태가 없고 스케줄 게이트를 매 틱 재평가하므로, 도장이 없으면
+  //   퇴근 훅이 저장(짐>0)↔인출(빈손)을 무한 왕복시킨다 — 집에 못 간다.
+  if (t.draw) { const q = Math.min(G_DRAW, _granStockOf(vil, g)); _granStockAdd(vil, g, -q); npc._carry = (npc._carry || 0) + q; npc._granD = state.dayMs ? gameDayOf(now) : 0; }
+  else { _granStockAdd(vil, g, npc._carry || 0); npc._carry = 0; }   // ③ 정산(물리 장부만 — econ 무접촉)
+  npc._granTask = null;
+  return false;                                                      // 소유권 반납 → 이번 틱부터 평소 일과
+}
 const G_CAP = 2500, G_MAX = 8, G_BUILDD = 6;
 function _lifeGranAdd(vil) {
   if (!state.ta || !vil.econ || !vil._granList || !vil._terrSet || !vil._terrSet.size) return;
@@ -2548,6 +2607,13 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
   const vil = state.byDbId && state.byDbId.get(npc.simVillageId);
   if (!vil || !vil._terrSet || !vil._terrSet.size) return false;
   _lifeVL();
+  // ★[곳간②] 곳간행(운반·저장·인출)은 스케줄보다 우선 — 짐을 든 채 딴 데로 가지 않는다.
+  //   단 밤(취침 구간)엔 중단하고 귀가시킨다(랩: 황혼 이후 저장은 바로 귀가 — 밤 헛걸음 제거).
+  if (npc._granTask) {
+    const _fvG = state.deps.worldPhase ? (state.deps.worldPhase(now) + (npc.simLonOff || 0)) % 1 : 0.35;
+    if (_fvG >= (state.deps.dayPhaseRatio || 0.7)) { npc._granTask = null; }
+    else if (_lifeGranStep(vil, npc, now)) return true;
+  }
   // ══ 스케줄 게이트(랩 lifeLoop home 분기 7978~7987 동형 — 우선순위: 요양 > 밤·기상 전 취침 > 아침 추첨 > 반일 오후) ══
   const wpF = state.deps.worldPhase, dayR = state.deps.dayPhaseRatio || 0.7;
   const fv = wpF ? (wpF(now) + (npc.simLonOff || 0)) % 1 : 0.35;   // 경도 로컬 태양시(§19 동형 — 동쪽 마을이 먼저 깨고 먼저 잔다)
@@ -2570,7 +2636,14 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
     if (!(npc._lifeTask && npc._lifeTask.k === 'build')) {
       _lifeDropTask(vil, npc);
       if (vil._site) { vil._buildCrew++; npc._lifeTask = { k: 'build', px: (vil._site.cx - 2.5) * SZ, py: (vil._site.cy - 0.5) * SZ, prog: 0 }; npc._workT = now; }
-      else { _lifeGoHome(npc, '휴식'); return true; }
+      else {
+        // ★[곳간②] 퇴근길: 든 짐은 곳간에 넣고, 빈손이면 재고에서 하루치를 꺼내 집으로 나른다
+        if (npc._granD !== day) {   // ★오늘 인출을 마쳤으면 곳간 용무 종료 — 저장↔인출 왕복 금지(랩 toHome 이탈 대응)
+          if ((npc._carry || 0) > 0 && _granGo(vil, npc, false)) return true;
+          if (!(npc._carry > 0) && _granGo(vil, npc, true)) return true;
+        }
+        _lifeGoHome(npc, '휴식'); return true;
+      }
     }
   }
   // ══ 진행 중 작업(개간·건설 — 현장 실시간 노동) ══
@@ -2622,6 +2695,8 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
         _lifeDoTask(vil, npc, k, day);
         vil._cropClaim.delete(k); npc._farmK = null;
         npc._jobT = now + 9000 + (_pidHash(npc.pid) % 7) * 1500;
+        // ★[곳간②] 짐이 상한에 닿으면 곳간으로 운반(자리 없으면 false → 기존 흐름 그대로)
+        if ((npc._carry || 0) >= G_CARRY && _granGo(vil, npc, false)) { npc._jobT = 0; return true; }
       }
       return true;
     }
