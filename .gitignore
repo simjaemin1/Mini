@@ -18,3 +18,5 @@ sim/_*.js
 # 10차: 렌더 산출물(에셋 원본은 public/assets 로 복사해 커밋)
 scripts/bridge_renders/
 scripts/_t4-*.js
+\nscripts/_t3-*.js
+scripts/_t3-*.js

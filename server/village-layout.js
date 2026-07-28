@@ -229,7 +229,108 @@
     return best;
   }
 
-  const API = { generate, footprintLand, axisAt, nearestBank, waterEDT, HOUSE_HALF, HOUSE_CAP: HOUSE_CAP_PER_FLOOR, HOUSE_CAP_PER_FLOOR, LAND_PER_HOUSE, landNeedPer, HALL_YARD, LOT_R, FARM_GAP, ALLEY_R, HALL_CLEAR, inDisc, LOT_CELLS, LOT_GUARD, YARD_CELLS, houseFarmBlock, hallFarmBlock };
+  // =============================================================================
+  // ★★[11차 T3] 환호(도랑) 링 — 검단리 규약
+  //   고증(설계_장마당_환호_고증과_설계안.md B-1, 우리역사넷 「전쟁의 기원-마을의 출현」):
+  //     · 울산 검단리: 장경 118m × 단경 70m **타원**(장/단 = 1.686), 총길이 298m, 폭 가장 넓은 곳 **2m**, 깊이 20~110cm
+  //     · ★출입구 = 다리가 아니라 **"도랑을 파지 않고 원래의 지면을 그대로 남겨"** 만든 통로. 남북 각 1개소.
+  //   ⇒ 여기서 만드는 것: 취락(집채 전부)을 감싸는 **폭 2셀 타원 링** + 남·북 **안 판 셀 3칸** 출입구 2곳.
+  //   ⇒ 1셀 = 1m 실축이라 고증 수치를 그대로 셀로 쓴다(환산 없음).
+  //
+  //   ★불변식(하네스가 검사): 링은 **4연결**이어야 한다. 대각으로만 닿은 두 셀 사이에는 사람이 낄 수 있어
+  //   (플레이어 이동은 연속 좌표라 목적지 셀만 보는 판정으로는 모서리 통과가 열린다) 방어선이 새기 때문이다.
+  //   폭 2셀 링(안쪽 타원 밖 ∧ 바깥 타원 안)은 구조적으로 4연결이 보장된다 — 그래서 폭 1이 아니라 2다(고증과도 일치).
+  //
+  //   ★소급 금지: generate()는 이 함수를 부르지 않는다. 호출은 villages.js가 **시범 마을에만** 한다.
+  const DITCH_W = 2;                 // 도랑 폭(셀=m) — 검단리 실측 "가장 넓은 곳 2m"
+  const DITCH_AXIS_RATIO = 118 / 70; // 장경/단경 — 검단리 타원 비
+  const DITCH_GATE_HALF = 1;         // 출입구 반폭(셀) → 폭 3칸("안 판 땅" 2~3칸 규약)
+  const DITCH_MARGIN = 2;            // 집 부지 원 바깥 여유(셀) — 도랑이 부지를 물지 않게
+
+  // 타원 좌표계: 마을 축(axis.toWater)을 단축(v), 그 수직을 장축(u)으로 둔다.
+  //   물가 취락은 강과 나란히 길쭉해지므로 장축을 강 방향(perp)에 맞추는 게 자연스럽다.
+  function _ditchFrame(axis) {
+    const w = (axis && axis.toWater) ? axis.toWater : { x: 0, y: 1 };
+    const n = Math.hypot(w.x, w.y) || 1;
+    const vv = { x: w.x / n, y: w.y / n };          // 단축 방향(강 쪽)
+    return { u: { x: -vv.y, y: vv.x }, v: vv };     // 장축 = 강과 나란히
+  }
+
+  // opts: { houses, terrain, skip(x,y)→true면 파지 않음, ownSet(Set "x,y") 영토 제한(선택) }
+  // 반환: { cells:[{cx,cy}], a, b, gates:[{cx,cy}…], skipped, frame }
+  function ditchRing(ccx, ccy, opts) {
+    const o = opts || {};
+    const houses = o.houses || [];
+    const t = o.terrain || null;
+    const skip = o.skip || (() => false);
+    const own = o.ownSet || null;
+    const F = _ditchFrame(o.axis);
+
+    // 단축 b = 모든 집 부지(원 r=LOT_R)를 품는 최소 반경 + 여유. 장축 a = b × 검단리 비.
+    let need = HALL_YARD + LOT_R;                    // 최소한 큰집 마당은 품는다
+    for (const h of houses) {
+      const dx = h.cx - ccx, dy = h.cy - ccy;
+      const pu = Math.abs(dx * F.u.x + dy * F.u.y), pv = Math.abs(dx * F.v.x + dy * F.v.y);
+      // 이 집이 타원 안에 들어오려면 필요한 b: (pu/(b·R))² + (pv/b)² ≤ 1  →  b ≥ √((pu/R)² + pv²)
+      const r = Math.sqrt((pu / DITCH_AXIS_RATIO) * (pu / DITCH_AXIS_RATIO) + pv * pv) + LOT_R;
+      if (r > need) need = r;
+    }
+    const b = Math.ceil(need + DITCH_MARGIN), a = Math.ceil(b * DITCH_AXIS_RATIO);
+    const bo = b + DITCH_W, ao = a + DITCH_W;        // 바깥 타원
+    const cells = [], gates = [];
+    let skipTerr = 0, skipBlock = 0;
+    const B = ao + 2;
+    for (let dy = -B; dy <= B; dy++) for (let dx = -B; dx <= B; dx++) {
+      const pu = dx * F.u.x + dy * F.u.y, pv = dx * F.v.x + dy * F.v.y;
+      const inOuter = (pu / ao) * (pu / ao) + (pv / bo) * (pv / bo) <= 1;
+      if (!inOuter) continue;
+      const inInner = (pu / a) * (pu / a) + (pv / b) * (pv / b) < 1;
+      if (inInner) continue;                          // 안쪽 = 취락(파지 않음)
+      const x = ccx + dx, y = ccy + dy;
+      // ★출입구 — 장축 좌표가 0 근처인 두 곳(=단축 양 끝, 남·북)은 **파지 않는다**.
+      //   검단리 "도랑을 파지 않고 원래의 지면을 그대로 남겨" 그대로. 다리 같은 별도 구조물 없음.
+      if (Math.abs(pu) <= DITCH_GATE_HALF + 0.5) { gates.push({ cx: x, cy: y }); continue; }
+      // ★구멍의 두 종류를 반드시 구분한다 — 이게 이 층의 핵심 계측이다.
+      //   ①지형(물·바위) 때문에 못 판 셀 = **새지 않는다**(이미 통행 불가라 방어선이 그대로 이어진다).
+      //   ②농지·건물 때문에 안 판 셀 = **샌다**(사람이 그리로 걸어 들어온다). 이쪽이 0에 가까워야 환호가 환호다.
+      if (t && t.isBlocked && t.isBlocked(x, y)) { skipTerr++; continue; }
+      if (own && !own.has(x + ',' + y)) { skipBlock++; continue; }
+      if (skip(x, y)) { skipBlock++; continue; }
+      cells.push({ cx: x, cy: y });
+    }
+    return { cells, gates, a, b, ao, bo, skipTerr, skipBlock, skipped: skipTerr + skipBlock, frame: F };
+  }
+
+  // 링 4연결 검사 — 하네스·시딩 양쪽이 쓰는 단일 정본.
+  //   반환 { ok, comps, diagOnly } : comps=4연결 성분 수(출입구 2개로 끊기므로 정상값 2), diagOnly=대각으로만 이어진 지점 수
+  function ditchConnectivity(cells) {
+    const S = new Set(cells.map((c) => c.cx + ',' + c.cy));
+    const seen = new Set();
+    let comps = 0;
+    for (const c of cells) {
+      const k = c.cx + ',' + c.cy;
+      if (seen.has(k)) continue;
+      comps++;
+      const st = [k]; seen.add(k);
+      while (st.length) {
+        const cur = st.pop(), ci = cur.indexOf(','), x = +cur.slice(0, ci), y = +cur.slice(ci + 1);
+        for (const [ax, ay] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const nk = (x + ax) + ',' + (y + ay);
+          if (S.has(nk) && !seen.has(nk)) { seen.add(nk); st.push(nk); }
+        }
+      }
+    }
+    // 대각으로만 이어진 지점 = 두 도랑 셀이 대각 이웃인데 공유 직교 이웃이 둘 다 도랑이 아닌 경우(사람이 낄 틈)
+    let diagOnly = 0;
+    for (const c of cells) for (const [ax, ay] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+      if (!S.has((c.cx + ax) + ',' + (c.cy + ay))) continue;
+      if (!S.has((c.cx + ax) + ',' + c.cy) && !S.has(c.cx + ',' + (c.cy + ay))) diagOnly++;
+    }
+    return { ok: diagOnly === 0, comps, diagOnly };
+  }
+
+  const API = { generate, footprintLand, axisAt, nearestBank, waterEDT, HOUSE_HALF, HOUSE_CAP: HOUSE_CAP_PER_FLOOR, HOUSE_CAP_PER_FLOOR, LAND_PER_HOUSE, landNeedPer, HALL_YARD, LOT_R, FARM_GAP, ALLEY_R, HALL_CLEAR, inDisc, LOT_CELLS, LOT_GUARD, YARD_CELLS, houseFarmBlock, hallFarmBlock,
+    ditchRing, ditchConnectivity, DITCH_W, DITCH_AXIS_RATIO, DITCH_GATE_HALF, DITCH_MARGIN };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   if (typeof window !== 'undefined') window.VillageLayout = API;
 })();

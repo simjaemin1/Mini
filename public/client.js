@@ -84,6 +84,8 @@ const SIM_JOB_EMOJI = {
   window.__getMyAbs = () => myAbsPredicted;
   // ★[10차 T4] 장마당 진단 훅 — 클라가 서버 markets 플래그를 실제로 받았는지 확인용(읽기 전용, 기존 __get* 관례).
   window.__getMarkets = () => { const out = {}; for (const [zid, c] of conns) out[zid] = (c && c.markets) ? c.markets.slice() : null; return out; };
+  // ★[11차 T3] 환호 진단 훅 — 클라가 도랑 페이로드를 받아 미러(_ditchAbs)에 실었는지(읽기 전용).
+  window.__getDitches = () => { let recv = 0; for (const [, c] of conns) recv += (c && c.ditches) ? c.ditches.size : 0; return { recv, mirror: _ditchAbs.size }; };
   // Phase 5-G debug: 미니맵에서 wall 위치 검증용
   window.__getAllWalls = () => {
     const walls = [];
@@ -359,12 +361,21 @@ const SIM_JOB_EMOJI = {
   // 지형 차단 통합 (물+바위) — 이동 예측용
   // ★[다리 층] 절대 셀 좌표 다리 집합(존 welcome에서 누적) — 서버 BRIDGE_CELLS 미러.
   const _bridgeAbs = new Set();
+  // ★[11차 T3 환호] 도랑 절대 셀 집합 — 서버 DITCH_CELLS 미러. 다리와 **같은 이유로** 미러가 필수다:
+  //   서버 isTerrainBlockedLocal이 도랑에서 막는데 클라 예측이 안 막으면 도랑 위로 걸어 들어갔다가
+  //   서버 위치로 튕겨 나오는 러버밴딩이 난다(좌표 단일 작성자 원칙 — 예측은 서버와 같은 판정이어야 함).
+  const _ditchAbs = new Set();
   function isBridgeAtAbs(x, y) {
     if (!_bridgeAbs.size) return false;
     return _bridgeAbs.has(Math.floor(x / CL_BUILDING_SIZE) + ',' + Math.floor(y / CL_BUILDING_SIZE));
   }
+  function isDitchAtAbs(x, y) {
+    if (!_ditchAbs.size) return false;
+    return _ditchAbs.has(Math.floor(x / CL_BUILDING_SIZE) + ',' + Math.floor(y / CL_BUILDING_SIZE));
+  }
   function isTerrainBlockedAtAbs(x, y) {
     if (isRockAtAbs(x, y)) return true;                 // 바위는 다리로 안 뚫림(서버 동형)
+    if (isDitchAtAbs(x, y)) return true;                // ★환호 = 이동 불가(서버 동형). 출입구는 안 판 셀이라 자동으로 열림
     if (isWaterAtAbs(x, y)) return !isBridgeAtAbs(x, y);
     return false;
   }
@@ -1970,6 +1981,12 @@ const SIM_JOB_EMOJI = {
           c.bridges.add(k);
           _bridgeAbs.add(((msg.zone.worldOffsetX / CL_BUILDING_SIZE) + msg.bridges[i]) + ',' + (((msg.zone.worldOffsetY || 0) / CL_BUILDING_SIZE) + msg.bridges[i + 1]));
         }
+        // ★[11차 T3 환호] 도랑 셀 flat [cx,cy,…] — 서버 콜라이더 미러 + 타일 렌더 원천(마을 소유 사물, welcome 1회)
+        c.ditches = new Set();
+        if (msg.ditches) for (let i = 0; i + 1 < msg.ditches.length; i += 2) {
+          c.ditches.add(msg.ditches[i] + ',' + msg.ditches[i + 1]);
+          _ditchAbs.add(((msg.zone.worldOffsetX / CL_BUILDING_SIZE) + msg.ditches[i]) + ',' + (((msg.zone.worldOffsetY || 0) / CL_BUILDING_SIZE) + msg.ditches[i + 1]));
+        }
         // ★[곳간② 재고 표시] 곳간 물리 재고 flat [cx,cy,수량,…] — welcome 스냅샷, 이후 gran_stock 델타.
         //   회계(econ)가 아니라 NPC가 실제로 지고 와 쌓은 물리량이다. 사다리 앞 칸에 짐더미로 그린다.
         c.granStock = new Map();
@@ -3496,6 +3513,20 @@ const SIM_JOB_EMOJI = {
           renderables.push({ z: w2i(bax, bay).y - 930, kind: 'bridge', bx: bax, by: bay, bk, bs });
         }
       }
+      // ★★[11차 T3 환호] 도랑 타일 — 길(-950)보다 위, 다리(-930)보다 아래(-940). 마을 소유 정적 사물.
+      //   축 판정은 다리와 **같은 규약**(2칸 앞까지 세어 긴 쪽이 도랑 축) — 폭 2셀이라 이웃 1칸만 보면 옆줄에 헷갈린다.
+      //   모서리(양축 모두 뻗음) = ditch_c. 스프라이트가 없으면 파인 흙 다이아로 폴백(도랑이 안 보이면 함정이 된다).
+      if (c.ditches && c.ditches.size) {
+        for (const dk of c.ditches) {
+          const ci = dk.indexOf(','); const dcx = +dk.slice(0, ci), dcy = +dk.slice(ci + 1);
+          const dax = ox + dcx * CL_BUILDING_SIZE + 16, day2 = oy + dcy * CL_BUILDING_SIZE + 16;
+          if (Math.abs(dax - worldCx) > VIEW_RADIUS || Math.abs(day2 - worldCy) > VIEW_RADIUS) continue;
+          const cnt = (dx, dy) => { let n = 0; for (let k = 1; k <= 2; k++) if (c.ditches.has((dcx + dx * k) + ',' + (dcy + dy * k))) n++; return n; };
+          const hx = cnt(-1, 0) + cnt(1, 0), hy = cnt(0, -1) + cnt(0, 1);
+          const ds = (hx >= 2 && hy >= 2) ? 'ditch_c' : (hx >= hy ? 'ditch_x' : 'ditch_y');
+          renderables.push({ z: w2i(dax, day2).y - 940, kind: 'ditch', bx: dax, by: day2, ds });
+        }
+      }
       // ★[곳간② 재고 표시] 곳간 사다리 앞 칸(cx, cy+2)에 짐더미 — 재고 구간 2단계.
       //   곳간은 문 없는 고상 구조라 사다리 칸이 NPC의 저장·인출 자리다(서버 _granLadder와 같은 셀).
       //   z는 자원과 동형(iso.y)이라 곳간 벽·NPC와 깊이 정렬이 맞는다.
@@ -3820,6 +3851,16 @@ const SIM_JOB_EMOJI = {
         const d2 = toScreen(w2i(item.rcx, item.rcy + 32).x, w2i(item.rcx, item.rcy + 32).y);
         ctx.fillStyle = item.lv >= 2 ? 'rgba(168,134,88,0.42)' : 'rgba(150,124,86,0.26)';
         ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b2.x, b2.y); ctx.lineTo(c2.x, c2.y); ctx.lineTo(d2.x, d2.y); ctx.closePath(); ctx.fill();
+      } else if (item.kind === 'ditch') {
+        // ★[11차 T3 환호] 도랑 — 8차 셀 정합 스프라이트(이미지 중심=셀 중심·128px). 없으면 파인 흙 다이아 폴백.
+        if (!drawBridgeSprite(item.ds, item.bx, item.by, toScreen)) {
+          const x0 = item.bx - 16, y0 = item.by - 16;
+          const P = (dx, dy) => { const p = w2i(x0 + dx, y0 + dy); return toScreen(p.x, p.y); };
+          const a1 = P(0, 0), b1 = P(32, 0), c1 = P(32, 32), d1 = P(0, 32);
+          ctx.fillStyle = '#3a2c1d';
+          ctx.beginPath(); ctx.moveTo(a1.x, a1.y); ctx.lineTo(b1.x, b1.y); ctx.lineTo(c1.x, c1.y); ctx.lineTo(d1.x, d1.y); ctx.closePath(); ctx.fill();
+          ctx.strokeStyle = 'rgba(20,14,8,0.85)'; ctx.lineWidth = 1; ctx.stroke();
+        }
       } else if (item.kind === 'bridge') {
         // ★[다리 층] 통나무 널다리 상판 — 청동기 후기 고증: 통나무를 걸치고 널을 깐 다리(석조 아치 금지).
         //   셀 다이아 상판(널 결) + 물그림자. 물 위 정적 사물이라 애니메이션 없음.
@@ -5538,7 +5579,8 @@ const SIM_JOB_EMOJI = {
     for (const k of ['bridge_mid_x', 'bridge_mid_y', 'bridge_cap0_x', 'bridge_cap0_y', 'bridge_cap1_x', 'bridge_cap1_y',
                      'gran_pile1', 'gran_pile2', 'gran_pile3', 'gran_prop',
                      'yard_hearth', 'yard_jar1', 'yard_jar2', 'yard_garden',      // ★10차: 마당 소품(화덕·장독2·텃밭)
-                     'mkt_mat', 'mkt_basket', 'mkt_jar', 'mkt_hide']) {           // ★10차 T4: 장마당 좌판(멍석·바구니·항아리·가죽)
+                     'mkt_mat', 'mkt_basket', 'mkt_jar', 'mkt_hide',              // ★10차 T4: 장마당 좌판(멍석·바구니·항아리·가죽)
+                     'ditch_x', 'ditch_y', 'ditch_c']) {                          // ★11차 T3: 환호 도랑(가로·세로·모서리)
       const im = new Image(); im.onload = () => _bridgeLoaded++; im.src = '/assets/bridge/' + k + '.png';
       BRIDGE_SPRITES[k] = im;
     }

@@ -337,9 +337,30 @@ function isBridgeTileLocal(localX, localY) {
   if (!BRIDGE_CELLS.size) return false;
   return BRIDGE_CELLS.has(Math.floor(localX / 32) + '_' + Math.floor(localY / 32));
 }
+// ★★[11차 T3 환호] 도랑 셀 — **마을이 소유한 사물**(village_buildings 'ditch')이라 정적 ZONE 설정이 아니라
+//   SimVillages.init 직후 런타임으로 채운다(아래 refreshDitchCells). 다리와 같은 규약: 서버 단일 술어 한 곳만 고치면
+//   플레이어·NPC·A*·야생·전쟁 콜라이더가 동시에 반영된다(규약 신설 없음).
+//   판정: 도랑 = 이동 불가. 검단리 깊이 20~110cm·폭 2m면 '뛰어넘기 애매' → 게임 규약상 막힘이 단순하다(사용자 확정 안 1).
+const DITCH_CELLS = new Set();
+function isDitchTileLocal(localX, localY) {
+  if (!DITCH_CELLS.size) return false;
+  return DITCH_CELLS.has(Math.floor(localX / 32) + '_' + Math.floor(localY / 32));
+}
+function refreshDitchCells() {
+  DITCH_CELLS.clear();
+  try {
+    const flat = SimVillages.ditchCells ? SimVillages.ditchCells() : [];
+    for (let i = 0; i + 1 < flat.length; i += 2) DITCH_CELLS.add(flat[i] + '_' + flat[i + 1]);
+  } catch (e) { console.error(`[${ZONE_ID}] 🏰 도랑 콜라이더 적재 실패:`, e.message); }
+  return DITCH_CELLS.size;
+}
+function ditchPayload() {                 // welcome 페이로드(flat [cx,cy,…]) — 다리와 같은 규약
+  try { return SimVillages.ditchCells ? SimVillages.ditchCells() : []; } catch (e) { return []; }
+}
 function isTerrainBlockedLocal(x, y) {
   // 다리는 물 위에만 놓인다 — 바위(산맥)는 다리로 뚫지 않는다(고증·지형 무결).
   if (isRockTileLocal(x, y)) return true;
+  if (isDitchTileLocal(x, y)) return true;      // ★환호 = 이동 불가. 출입구는 '도랑을 파지 않은 셀'이라 자동으로 열려 있다.
   if (isWaterTileLocal(x, y)) return !isBridgeTileLocal(x, y);
   return false;
 }
@@ -1891,6 +1912,9 @@ setInterval(() => {
 SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, isWaterTileLocal, isPositionActive, isBlockedByWall, anyViewerNear,
   liveBuildRow: _liveBuildRow, buildings, chunkManager,   // ★[생활 층 ③] 신축 크루의 라이브 실체화 경로(플레이어 완공과 동일 헬퍼 — 발명 금지)
   worldPhase, dayPhaseRatio: WORLD.dayPhaseRatio, mobs, qtResources: () => qtResources });   // ★[생활 층 100% ②③] 일과 스케줄(하루 위상)·직업 실작업(자원·사냥감 현장) 소스
+// ★[11차 T3 환호] 도랑 콜라이더 적재 — SimVillages.init이 시범 마을 도랑을 실체화한 **직후**여야 한다.
+//   (이 줄이 없으면 도랑 행은 DB에 있는데 통행 판정은 열려 있는 '유령 도랑'이 된다.)
+console.log(`[${ZONE_ID}] 🏰 환호 콜라이더: ${refreshDitchCells()}셀 적재`);
 // §11 도적 1파 — SimVillages.init 직후(banditHost 준비 시점): 소굴 스캔/복원 + econ 훅(banditRouteRisk/onBanditLoot) 배선.
 Bandits.init();
 // §16 답압 길 4파 — 존 셀 치수·게임일 시계로 독립 부팅(villages와 무관 — 스탬프는 이동 루프 편승).
@@ -2225,6 +2249,7 @@ wss.on('connection', async (ws, req) => {
       banditCamps: Bandits.clientCamps(), // §11 도적: 소굴·야영 마커 1종 — 이후 bandit_camps가 변경분 방송
       roads: Roads.clientRoads(), // §16 답압 길: 등급 셀 flat [cx,cy,lv,...] — 이후 road_cells가 변경분 방송
       bridges: (ZONE.bridges || null), // ★[다리 층] 통나무 널다리 셀 flat [cx,cy,...] — 정적(맵 사물)이라 welcome 1회
+      ditches: ditchPayload(),         // ★[11차 T3 환호] 도랑 셀 flat [cx,cy,...] — 마을 소유 사물(부팅 후 불변)이라 welcome 1회
       buildings: activeChunkBuildings(),
       worldClock: {
         epoch: WORLD.worldEpoch,
@@ -2511,6 +2536,7 @@ wss.on('connection', async (ws, req) => {
     banditCamps: Bandits.clientCamps(), // §11 도적: 소굴·야영 마커 1종 — 이후 bandit_camps가 변경분 방송
     roads: Roads.clientRoads(), // §16 답압 길: 등급 셀 flat [cx,cy,lv,...] — 이후 road_cells가 변경분 방송
     bridges: (ZONE.bridges || null), // ★[다리 층] 통나무 널다리 셀 flat [cx,cy,...] — 정적(맵 사물)이라 welcome 1회
+    ditches: ditchPayload(),         // ★[11차 T3 환호] 도랑 셀 flat [cx,cy,...] — 마을 소유 사물(부팅 후 불변)이라 welcome 1회
     buildings: activeChunkBuildings(),
     groundItems: Array.from(groundItems.values()), // Phase 14.23
     mobs: Array.from(mobs.values()).map(m => ({ mid: m.mid, type: m.type, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, tameOwner: m.tameOwner || null, tameOwnerName: m.tameOwnerName || null })),

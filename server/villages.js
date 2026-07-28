@@ -1306,7 +1306,7 @@ function init(deps) {
       const bRows = db.getVillageBuildings(row.id);
       const housesPx = [];
       // ★[생활 층] 부팅 시 상태 집합 재구성 — terr/nongzone(시딩 영속) + 개간 실상태(farm/dry) + 집·곳간 셀
-      const terrSet = new Set(), potSet = new Set(), farmSet = new Set(), drySet = new Set(), granList = [], houseCells = [], siteRows = [];
+      const terrSet = new Set(), potSet = new Set(), farmSet = new Set(), drySet = new Set(), granList = [], houseCells = [], siteRows = [], ditchCells = [];
       let farmN = 0, dryN = 0, hallData = null, maxCellR = 4;
       for (const b of bRows) {
         const r = Math.hypot(b.cx - row.cx, b.cy - row.cy);
@@ -1318,6 +1318,7 @@ function init(deps) {
         else if (b.type === 'nongzone') potSet.add(b.cx + ',' + b.cy);
         else if (b.type === 'granary') granList.push({ cx: b.cx, cy: b.cy });
         else if (b.type === 'housesite') siteRows.push({ cx: b.cx, cy: b.cy });
+        else if (b.type === 'ditch') ditchCells.push({ cx: b.cx, cy: b.cy });   // ★[11차 T3 환호] 도랑 셀(영속) — 콜라이더·렌더의 원천
         else if (b.type === 'hall' && b.data) { try { hallData = JSON.parse(b.data); } catch {} }
       }
       for (const k of farmSet) potSet.delete(k);   // 이미 개간된 존닝 셀 제외(미개간 잔여만 potSet)
@@ -1332,7 +1333,7 @@ function init(deps) {
       const _pendSite = siteRows.find(s3 => !houseCells.some(h => h.cx === s3.cx && h.cy === s3.cy)) || null;   // 완공(house 행 존재) 안 된 진행 중 터만
       state.villages.push({ dbId: row.id, name: row.name, ccx: row.cx, ccy: row.cy, housesPx, econ: ev, npcPids: [], _bRows: bRows, _bnd: bnd, _maxRPx: Math.round(maxRPx), _farmN: farmN, _dryN: dryN,
         _terrSet: terrSet, _potSet: potSet, _farmSet: farmSet, _drySet: drySet, _granList: granList, _houseCells: houseCells, _pendSite, _site: null, _clearCrew: 0, _buildCrew: 0, _claim: new Set(),
-        _crop: new Map(), _cropClaim: new Set() });   // ★[생활 층] 런타임 상태(구DB=terr 0셀 → 생활층 휴면). _crop=작물 상태머신(랩 life.crop 동형 — 인메모리 관용: 재부팅=재파종)
+        _crop: new Map(), _cropClaim: new Set(), _ditch: ditchCells });   // ★[생활 층] 런타임 상태(구DB=terr 0셀 → 생활층 휴면). _crop=작물 상태머신(랩 life.crop 동형 — 인메모리 관용: 재부팅=재파종)
     }
     world.day = maxDay;
     state.world = world;
@@ -1402,6 +1403,9 @@ function init(deps) {
 
     // --- ★[생활층 휴면 해소] 영토 런타임 백필 — terr 0셀 구DB 마을 자가치유 ---
     try { _terrBackfillAll(); } catch (e) { console.error(`[${ZONE_ID}] 🏘️ 영토 백필 실패(마을은 휴면 유지):`, e.message); }
+
+    // --- ★[11차 T3 환호] 시범 마을 도랑 실체화(부팅 자가치유·idempotent — DB 리셋 없이 신규 반영) ---
+    try { _ditchInitAll(); } catch (e) { console.error(`[${ZONE_ID}] 🏰 환호 실체화 실패(무시하고 계속):`, e.message); }
 
     // --- Stage 4A: 회관·집 실물화 (buildings 테이블 — 부팅 wipe가 지운 자리에 재기록, 1트랜잭션) ---
     {
@@ -2104,6 +2108,128 @@ function _terrBackfillOne(vil, VL) {
   vil._wf = null;   // 물거리 EDT 캐시 무효화(영토 bbox가 바뀌었으므로 재계산)
   return { name: vil.name, pop, gen, added, total: own.size, pot: potN };
 }
+// =============================================================================
+// ★★[11차 T3] 환호(도랑) — 시범 마을 실체화
+//   고증·기하는 village-layout.ditchRing 소유(검단리 규약). 여기는 **실체화·영속·소급 금지**만 담당한다.
+//   ┌ 설계 선택(v10 문서 B-3 안 1, 사용자 확정): 도랑은 지형이 아니라 **마을이 소유한 사물**이다.
+//   │   → village_buildings 'ditch' 행(집채·곳간과 같은 실체화 경로). 되돌리기 = 행 삭제.
+//   │   → 터레인 재빌드 없음 = 기존 50마을 무영향(소급은 별도 판단 — 여기선 시범 마을만).
+//   └ 콜라이더는 다리 층 규약 동형: 서버 단일 술어(isTerrainBlockedLocal) + 클라 미러 + welcome 페이로드.
+//   ★DB 리셋 금지 제약과 무충돌: 시딩이 아니라 **부팅 런타임 자가치유**로 넣는다(영토 백필과 같은 방식).
+//     이미 ditch 행이 있으면 아무것도 하지 않는다(idempotent).
+const DITCH_PILOT_MAX = Math.max(0, parseInt(process.env.VILLAGE_DITCH_MAX || '2', 10));   // 시범 마을 수(0=끔)
+const DITCH_PILOT_NAMES = (process.env.VILLAGE_DITCH_PILOT || '').split(',').map(s2 => s2.trim()).filter(Boolean);
+function _ditchPlan(vil, VL) {
+  // 링 계산만(DB 무변경) — 시범 선정에 쓰는 순수 계측.
+  const block = new Set();
+  for (const b of (vil._bRows || [])) {
+    if (b.type === 'terr' || b.type === 'nongzone' || b.type === 'ditch') continue;
+    if (b.type === 'house' || b.type === 'hall') {                  // 집채 6×4 / 큰집 8×8 발자국까지
+      const x0 = b.cx - (b.type === 'hall' ? 4 : 5), x1 = b.cx + (b.type === 'hall' ? 3 : 0);
+      const y0 = b.cy - (b.type === 'hall' ? 4 : 5), y1 = b.cy + (b.type === 'hall' ? 3 : -2);
+      for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) block.add(x + ',' + y);
+      continue;
+    }
+    if (b.type === 'granary') { for (let x = b.cx - 2; x <= b.cx + 2; x++) for (let y = b.cy - 1; y <= b.cy + 1; y++) block.add(x + ',' + y); continue; }
+    block.add(b.cx + ',' + b.cy);
+  }
+  const houses = (vil._houseCells || []).map(h => ({ cx: h.cx, cy: h.cy }));
+  const axis = VL.axisAt(state.ta, vil.ccx, vil.ccy);
+  const r = VL.ditchRing(vil.ccx, vil.ccy, { houses, terrain: state.ta, axis, skip: (x, y) => block.has(x + ',' + y) });
+  return r;
+}
+// ★★환호가 환호인지 **실측으로 판정**한다 — 구멍 난 링은 방어선이 아니다(반쪽 구현 금지).
+//   판정: (도랑 ∪ 지형차단)을 벽으로 놓고 바깥에서 큰집까지 8방 BFS.
+//     ① 출입구 열림 → 도달해야 한다(마을이 고립되면 안 된다)
+//     ② 출입구를 막으면 → 도달 못 해야 한다(= 통행이 오직 출입구로만 이뤄진다 = 링이 실제로 닫혀 있다)
+//   ★지형(물·바위) 구멍은 통과 못 하므로 자동으로 벽에 포함된다 — "물가 마을은 강이 성벽"이라는 고증과도 맞다.
+function _ditchEncloses(vil, r) {
+  const S = new Set(r.cells.map(c => c.cx + ',' + c.cy));
+  const G = new Set(r.gates.map(c => c.cx + ',' + c.cy));
+  const R = r.ao + 8, cx0 = vil.ccx, cy0 = vil.ccy;
+  const blocked = (x, y, gatesClosed) => {
+    const k = x + ',' + y;
+    if (S.has(k)) return true;
+    if (gatesClosed && G.has(k)) return true;
+    return state.ta.isBlocked(x, y);
+  };
+  const reach = (gatesClosed) => {
+    // 바깥 시작점 = 링 밖에서 통행 가능한 첫 셀(테두리 한 바퀴 훑기 — 물가 마을은 모서리가 물일 수 있다)
+    let start = null;
+    for (let d = -R; d <= R && !start; d++) {
+      for (const [sx, sy] of [[cx0 + d, cy0 - R], [cx0 + d, cy0 + R], [cx0 - R, cy0 + d], [cx0 + R, cy0 + d]]) {
+        if (!blocked(sx, sy, gatesClosed)) { start = [sx, sy]; break; }
+      }
+    }
+    if (!start) return false;
+    const seen = new Set([start[0] + ',' + start[1]]), q = [start];
+    let head = 0;
+    while (head < q.length) {
+      const [x, y] = q[head++];
+      if (x === cx0 && y === cy0) return true;
+      for (const [ax, ay] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {   // ★8방 = 대각 새기까지 본다
+        const nx = x + ax, ny = y + ay;
+        if (nx < cx0 - R || ny < cy0 - R || nx > cx0 + R || ny > cy0 + R) continue;
+        const k = nx + ',' + ny;
+        if (seen.has(k) || blocked(nx, ny, gatesClosed)) continue;
+        seen.add(k); q.push([nx, ny]);
+      }
+    }
+    return false;
+  };
+  const open = reach(false), closed = reach(true);
+  return { ok: open && !closed, open, closed };
+}
+function _ditchDig(vil, r) {
+  const DB = state.db;                                  // ★모듈 전역 db 없음 — 런타임 싱글턴은 state.db(1261행)
+  DB.db.exec('BEGIN');
+  try {
+    for (const c of r.cells) DB.insertVillageBuilding({ village_id: vil.dbId, type: 'ditch', cx: c.cx, cy: c.cy, floors: 0, data: null });
+    DB.db.exec('COMMIT');
+  } catch (e) { try { DB.db.exec('ROLLBACK'); } catch (_) {} throw e; }
+  vil._ditch = r.cells.map(c => ({ cx: c.cx, cy: c.cy }));
+}
+function _ditchInitAll() {
+  if (!LIFE_ON || !state.ta || DITCH_PILOT_MAX <= 0) return;
+  const VL = require('./village-layout');
+  const already = state.villages.filter(v => v._ditch && v._ditch.length);
+  if (already.length >= DITCH_PILOT_MAX) {
+    console.log(`[${state.zoneId}] 🏰 환호 시범: 기존 ${already.length}개 마을(${already.map(v => v.name).join(',')}) — 신규 없음`);
+    return;
+  }
+  // ★시범 마을은 **이름이 아니라 실측으로 고른다**: 링을 계산해 보고 '진짜 닫히는' 마을만 판다.
+  //   구멍(농지·건물 때문에 못 판 셀)이 있으면 그 자리로 사람이 걸어 들어와 환호가 장식이 된다.
+  //   지형(물·바위) 구멍은 이미 통행 불가라 방어선에 포함된다 — 그래서 판정은 BFS 실측이지 셀 수 비교가 아니다.
+  const pool = DITCH_PILOT_NAMES.length ? state.villages.filter(v => DITCH_PILOT_NAMES.includes(v.name)) : state.villages;
+  const report = [];
+  let dug = already.length;
+  for (const vil of pool) {
+    if (dug >= DITCH_PILOT_MAX) break;
+    if (vil._ditch && vil._ditch.length) continue;
+    let r = null;
+    try { r = _ditchPlan(vil, VL); } catch (e) { report.push({ n: vil.name, why: 'plan 실패: ' + e.message }); continue; }
+    if (!r || !r.cells.length) { report.push({ n: vil.name, why: `팔 자리 없음(지형구멍 ${r ? r.skipTerr : '?'}·취락구멍 ${r ? r.skipBlock : '?'} — 링 전체가 물·바위)` }); continue; }
+    const enc = _ditchEncloses(vil, r);
+    const conn = VL.ditchConnectivity(r.cells);
+    if (!enc.ok) {
+      report.push({ n: vil.name, why: `안 닫힘(열림 도달 ${enc.open ? '○' : '✗'} · 막음 도달 ${enc.closed ? '○(샘)' : '✗'}) · 도랑 ${r.cells.length}셀 · 지형구멍 ${r.skipTerr} · 취락구멍 ${r.skipBlock}` });
+      continue;
+    }
+    try { _ditchDig(vil, r); } catch (e) { report.push({ n: vil.name, why: '기록 실패: ' + e.message }); continue; }
+    dug++;
+    console.log(`[${state.zoneId}] 🏰 [${vil.name}] 환호: 도랑 ${r.cells.length}셀(타원 장반경 ${r.a}·단반경 ${r.b}) · 출입구 안 판 셀 ${r.gates.length} · 지형구멍 ${r.skipTerr}(강·산=성벽) · 취락구멍 ${r.skipBlock} · 4연결 성분 ${conn.comps} · 대각누수 ${conn.diagOnly} · ★봉쇄 실측 통과(출입구 열면 도달·막으면 불가)`);
+  }
+  const withD = state.villages.filter(v => v._ditch && v._ditch.length);
+  console.log(`[${state.zoneId}] 🏰 환호 시범: ${withD.length}/${state.villages.length}개 마을 [${withD.map(v => v.name).join(',')}] — 나머지 무영향(소급 없음)`);
+  if (report.length) console.log(`[${state.zoneId}] 🏰 환호 부적합(판지 않음) ${report.length}곳: ` + report.slice(0, 6).map(x => `${x.n}=${x.why}`).join(' | '));
+}
+// 콜라이더·welcome 원천 — 전 마을 도랑 셀 flat [cx,cy,…] (다리 ZONE.bridges와 같은 규약)
+function ditchCells() {
+  const out = [];
+  for (const vil of state.villages) for (const c of (vil._ditch || [])) out.push(c.cx, c.cy);
+  return out;
+}
+
 function _terrBackfillAll() {
   if (!LIFE_ON || !state.ta) return;
   const VL = require('./village-layout');
@@ -2159,6 +2285,7 @@ function lifeDebug() {   // ★[직접 서버 디버깅 — 사용자 요청] zo
       carrying: (() => { let n = 0; for (const pid of vil.npcPids) { const p = state.deps.players.get(pid); if (p && p._carry > 0) n++; } return n; })(),
       jobs, econCounts: ec, actN, actPct: vil.npcPids.length ? +(actN / vil.npcPids.length * 100).toFixed(1) : 0,
       site: vil._site ? vil._site.stage : null, clearCrew: vil._clearCrew || 0, buildCrew: vil._buildCrew || 0, hl: vil._hlDay || null,
+      ditch: (vil._ditch ? vil._ditch.length : 0),   // ★[11차 T3] 환호 도랑 셀 수(0=시범 마을 아님) — 라이브 확인용
       mkt: (() => { if (!state.caravanBodies) return 0; for (const b of state.caravanBodies.values()) if (b.phase === 'linger' && state.byEcon.get(b.toV) === vil) return 1; return 0; })(),   // ★[10차 T4] 장마당 개장 여부(캐러밴 체류 중) — 라이브 확인용 계측
       ccx: vil.ccx, ccy: vil.ccy, acts, sample });
   }
@@ -2945,6 +3072,8 @@ module.exports = {
   granStocks,
   // ★[10차 T4] 장마당 — welcome 스냅샷(변경분은 onGameTick의 markets 방송)
   marketVillages,
+  // ★[11차 T3] 환호 — 콜라이더(zone.js isTerrainBlockedLocal)·welcome 페이로드 원천
+  ditchCells,
   // 플레이어 구매/판매 경계계약(읽기전용 마을 품질 EMA — econ 무접촉)
   villageQualityAt,
   // §11 도적 — server/bandits.js 소비(좁은 접점, 추가 전용)
