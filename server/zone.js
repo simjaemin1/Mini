@@ -19,6 +19,7 @@ const { ChunkManager, CHUNK_SIZE, generateChunkResources, generateVillagesForZon
 const { findPath: pfFindPath } = require('./pathfind'); // Phase 14.49-b: NPC A* pathfinding
 const PathCore = require('../sim/path-core.js'); // ★[생활 층 100% ①] 랩·서버 공용 경로 정본 — smoothPath(스트링 풀링)를 주민 이동에 직결
 const { ANIMALS } = require('./animals');  // Phase 5-6: 동물 mob 36종 catalog
+const GuildTreasury = require('./guild-treasury'); // 길드 곳간(물리) ↔ central 금고(회계) 정합 — 장부 계약은 그 파일 상단 참조
 const PlayerItems = require('./player-items'); // 플레이어 아이템 인스턴스(품질·속성·내구) — econ 무접촉·본체 서버층(설계: 플레이어_아이템_속성_설계.md)
 const harvestedSeeds = new Set(); // 채집된 시드 자원 (DB에서 load)
 
@@ -4315,6 +4316,21 @@ async function tryBuildGuildGranary(player, atX, atY) {
   console.log(`[${ZONE_ID}] 🏚️ ${player.name} 길드 곳간 건설 tribe=${player.tribeId} @(${gx},${gy})`);
 }
 
+// ★[길드 금고 통합] 길드 곳간 물리 변동 → central 회계 반영(정확히 한 번·자가 치유).
+//   기존 채널만 쓴다(POST /tribe/treasury). central이 죽어 있으면 델타가 곳간 data에 남아 다음에 합쳐 올라간다.
+function _guildTreasuryOpts() {
+  return {
+    tribeTreasury: (tribeId, delta) => central.tribeTreasury(tribeId, delta),
+    saveData: (b) => { try { db.updateBuildingData(b.dbId, JSON.stringify(b.data)); } catch (e) { } },
+  };
+}
+function syncGuildGranary(b) {
+  if (!b || b.type !== 'guild_granary') return;
+  GuildTreasury.syncGranary(b, _guildTreasuryOpts())
+    .then((r) => { if (r && !r.ok) console.warn(`[${ZONE_ID}] 💰 길드 금고 반영 보류(다음 기회 재시도):`, r.err); })
+    .catch(() => { });
+}
+
 function tryChestPut(player, buildingId, item, amount) {
   const b = buildings.get(buildingId);
   if (!b || (b.type !== 'chest' && b.type !== 'guild_granary')) return;
@@ -4354,6 +4370,7 @@ function tryChestPut(player, buildingId, item, amount) {
   // 기존 wood/stone만 초기화되어 있던 chest는 다른 키 보존
   b.data[item] = (b.data[item] || 0) + amount;
   db.updateBuildingData(b.dbId, JSON.stringify(b.data));
+  syncGuildGranary(b);   // ★길드 곳간이면 회계(금고)에 같은 델타 1회 반영
   savePlayer(player);
   send(player.ws, { type: 'inventory', inventory: player.inventory });
   send(player.ws, { type: 'chest_state', buildingId: b.id, data: b.data });
@@ -4428,6 +4445,7 @@ async function tryChestTake(player, buildingId, item, amount) {
   b.data[item] -= takeAmt;
   player.inventory[item] = (player.inventory[item] || 0) + takeAmt;
   db.updateBuildingData(b.dbId, JSON.stringify(b.data));
+  syncGuildGranary(b);   // ★인출·약탈도 같은 경로로 회계 반영(물리에서 빠진 만큼 총자산 감소)
   savePlayer(player);
   send(player.ws, { type: 'inventory', inventory: player.inventory });
   send(player.ws, { type: 'chest_state', buildingId: b.id, data: b.data });
@@ -5160,7 +5178,20 @@ function villageProduction(villageName, jobCounts) {
   return prod;
 }
 
+// ★[길드 금고 통합] 곳간 재동기 — DB 전수(메모리 미로드 곳간 포함). 부팅 1회 + 생산 틱마다 1회.
+//   central이 죽어 있던 동안 쌓인 델타를 자가 치유로 올린다(정확히 한 번 — data._tr 스냅샷 규약).
+async function reconcileGuildGranaries(tag) {
+  let rows = [];
+  try { rows = db.db.prepare("SELECT id, data FROM buildings WHERE type='guild_granary'").all(); } catch (e) { return; }
+  if (!rows.length) return;
+  const objs = rows.map((r) => { let d = {}; try { d = JSON.parse(r.data || '{}'); } catch (_) { } return { type: 'guild_granary', dbId: r.id, data: d }; });
+  const res = await GuildTreasury.reconcileAll(objs, _guildTreasuryOpts());
+  if (res.sent || res.failed) console.log(`[${ZONE_ID}] 💰 길드 곳간 회계 재동기(${tag}): 반영 ${res.sent} · 보류 ${res.failed} · 변화없음 ${res.skipped}`);
+}
+setTimeout(() => { reconcileGuildGranaries('부팅').catch(() => { }); }, 8000);
+
 setInterval(async () => {
+  reconcileGuildGranaries('주기').catch(() => { });   // ★생산 틱과 같은 주기(신규 타이머 없음)
   if (villageGuildIds.size === 0) return;
   const tally = tallyVillageJobs();
   const zoneSum = {};
