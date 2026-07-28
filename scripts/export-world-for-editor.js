@@ -28,6 +28,8 @@ const hb = {
   forests: (d.forests || []).map(f => ({ name: f.name, center: [R(f.center[0]), R(f.center[1])], rx: R(f.rx), ry: R(f.ry), densityMult: f.densityMult || 1.5 })),
   lakes:   (d.lakes || []).filter(l => !l._mirroredFrom && l.center).map(l => ({ name: l.name, center: [R(l.center[0]), R(l.center[1])], radius: lakeR(l) })),
   passes:  (d.passes || []).filter(p => !p.auto && !p._mirroredFrom && p.pos).map(p => ({ name: p.name, pos: [R(p.pos[0]), R(p.pos[1])], radius: R(p.radius) })),
+  // ★[다리 오버레이] zone-config 다리 셀 flat [cx,cy,…] 그대로(가공 금지 — 셀 좌표가 정본). 읽기 전용.
+  bridges: (() => { try { return (require(path.join(__dirname, '..', 'server', 'zone-config')).ZONES.hanbando || {}).bridges || []; } catch (e) { return []; } })(),
 };
 
 const zones = { hanbando: hb };
@@ -45,6 +47,6 @@ try {
 
 fs.writeFileSync(OUT, JSON.stringify({ multi: true, zones }));
 console.log('editor-world.json 생성:');
-console.log(`  hanbando(빌드출력) — rivers ${hb.rivers.length}, ridges ${hb.ridges.length}, forests ${hb.forests.length}, lakes ${hb.lakes.length}, passes ${hb.passes.length}`);
+console.log(`  hanbando(빌드출력) — rivers ${hb.rivers.length}, ridges ${hb.ridges.length}, forests ${hb.forests.length}, lakes ${hb.lakes.length}, passes ${hb.passes.length}, bridges ${hb.bridges.length / 2}셀`);
 console.log('  이웃(region design):', neighbors.join(', ') || '(없음)');
 console.log('  나머지 존 = 빈 공간.');

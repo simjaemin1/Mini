@@ -2162,6 +2162,7 @@ function lifeDebug() {   // ★[직접 서버 디버깅 — 사용자 요청] zo
   for (const v of out) { tN += v.pop; tAct += v.actN; }
   return { t: new Date().toISOString(), phase: wpF ? +wpF(now).toFixed(3) : null, dayR, life: LIFE_ON,
     totals: { pop: tN, actN: tAct, actPct: tN ? +(tAct / tN * 100).toFixed(1) : 0, vgStuck: _vgStuckN,
+              tkPday: _lifeTasksPerFarmerDay(), taskSec: LIFE_TASK_SEC,   // ★결산 정합 진단: 헤드리스가 쓰는 농부 1인 하루 작물 셀(날 길이 파생)
               dormant: out.filter(v => !v.terr).length, noFarmer: out.filter(v => !(v.jobs && v.jobs.farmer)).length },
     villages: out };
 }
@@ -2203,7 +2204,21 @@ function _lifeDoTask0(vil, npc, k, day) {
 //   econ(인구·생산·재고)은 원래 전 마을 상시 작동 — 여기는 '몸의 결과물'(개간 셀·신축 단계·작물 상태)을 실체로
 //   따라붙여 관측 여부와 무관하게 세계 상태가 동일해지게 한다(일관성 원칙: 도착해 보면 살던 흔적 그대로).
 //   활성 마을은 스킵 — 실걸음 크루(npcLifeTick)가 같은 속도로 이미 쌓는다(이중 계상 방지).
-const LIFE_TASKS_PDAY = 30;   // 농부 1인 하루 작물 처리 셀(실걸음 실측 근사: 체류 9~19s+이동 — 랩 노동 한도 동형)
+// ★[결산 정합 — 6차 실측의 전제 수정] 종전 상수 `LIFE_TASKS_PDAY = 30`(농부 1인 하루 작물 셀)은
+//   **날 길이와 무관한 고정값**이라, 하루가 길어질수록 실걸음(실시간 구속)보다 느려지고 짧아질수록 빨라졌다.
+//   실걸음 1건 = 이동 + 체류(_jobT: 9~18초)이므로 하루 처리량은 **낮의 실초 ÷ 건당 실초**다.
+//   그래서 상수를 '하루 셀 수'가 아니라 **'건당 실초'**로 잡고 결산이 날 길이에서 파생되게 한다
+//   (fast 모드 = 물리의 가속 shadow — 관측 여부로 세계 속도가 갈리지 않게 하는 유일한 방법).
+const LIFE_TASK_SEC = 5.0;    // ★작물 셀 1건당 실걸음 실초 — **로컬 A/B 실측 보정값**(추정 아님).
+                              //   실측(하루 2분 압축·**작물 완전 포화**·농부 8): 관측 마을 135셀/일 = 인당 16.9
+                              //   → 낮 84초 ÷ 16.9 = 5.0초/건. (체류 9~18초보다 짧은 이유: 곳간 운반 훅이
+                              //   짐 상한에서 _jobT를 0으로 풀어 대기를 건너뛰기 때문 — 추정 말고 실측이 정본.
+                              //   ※일감이 모자란 평시엔 예산이 남으므로 이 값은 **상한**이지 강제량이 아니다.)
+function _lifeTasksPerFarmerDay() {   // 낮 실초 ÷ 건당 실초 = 농부 1인 하루 처리 셀(하한 1)
+  const dayMs = state.dayMs || 600000;
+  const dayR = (state.deps && state.deps.dayPhaseRatio) || 0.7;
+  return Math.max(1, Math.round((dayMs * dayR / 1000) / LIFE_TASK_SEC));
+}
 function _lifeHeadlessDay(vil) {
   _lifeVL();   // lazy 로드 방어(단독 호출 경로 — 5e8d5f5 'is not defined' 클래스 재발 금지)
   const day = state.dayMs ? gameDayOf(Date.now()) : 0;
@@ -2223,7 +2238,7 @@ function _lifeHeadlessDay(vil) {
   // ② 신축 — 크루 인일=단계(실걸음과 동일 속도). 완공 시 _lifeCompleteHouse가 실체화(집·마당·침대 명부)
   if (vil._site) { let st = Math.min(LIFE_CREW, popN) * LIFE_STAGE_PDAY; while (st-- > 0 && vil._site) _lifeAdvanceSite(vil); }
   // ③ 작물 — 농부 노동예산으로 우선순위 일괄(수확>방제>물대기>파종>김매기 — cellTask 순서가 자연 보장)
-  let budget = farmerN * LIFE_TASKS_PDAY;
+  let budget = farmerN * _lifeTasksPerFarmerDay();   // ★날 길이 파생(구 고정 30 → 실걸음 정합)
   while (budget > 0) {
     let did = 0;
     for (const k of vil._farmSet) {

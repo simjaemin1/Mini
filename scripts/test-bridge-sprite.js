@@ -78,6 +78,38 @@ console.log('\n[④ 1칸 전방만 보면 축이 뒤집힌다 — 2칸 판정의
   chk(flip > 0, `1칸 판정과 어긋나는 셀 ${flip}개 — 폭 2셀 평행줄 때문. 2칸 전방 판정이 이걸 막는다`);
 }
 
+console.log('\n[④-2 ★불변식: 다리는 동서남북 4방(축 직선)으로만 이어진다 — 대각 연결 금지(사용자 확정)]');
+{
+  // 계획기 v1·v2 모두 축 직선만 만든다. 대각으로만 이어진 셀이 있으면 **데이터 오류**다.
+  //   판정: 4방 이웃이 하나도 없는데 대각 이웃은 있는 셀 = 대각 연결. 고립 셀(폭 1의 끝)도 함께 본다.
+  let diagOnly = 0, isolated = 0;
+  const bad = [];
+  for (const [x, y] of cells) {
+    const orth = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([dx, dy]) => set.has((x + dx) + ',' + (y + dy))).length;
+    const diag = [[1, 1], [1, -1], [-1, 1], [-1, -1]].filter(([dx, dy]) => set.has((x + dx) + ',' + (y + dy))).length;
+    if (orth === 0 && diag > 0) { diagOnly++; if (bad.length < 5) bad.push(x + ',' + y); }
+    if (orth === 0 && diag === 0) { isolated++; if (bad.length < 5) bad.push('고립 ' + x + ',' + y); }
+  }
+  chk(diagOnly === 0, `대각으로만 이어진 셀 ${diagOnly}개${bad.length ? ' — ' + bad.join(' ') : ''}`);
+  chk(isolated === 0, `고립 셀 ${isolated}개(다리는 최소 2셀 이상 이어져야 한다)`);
+  // 성분별 형태: 축 직선 다리이므로 각 성분은 (길이 L × 폭 W)의 꽉 찬 직사각형이어야 한다
+  let notRect = 0;
+  for (const g of groups) {
+    const xs = g.map((k) => +k.slice(0, k.indexOf(','))), ys = g.map((k) => +k.slice(k.indexOf(',') + 1));
+    const w = Math.max(...xs) - Math.min(...xs) + 1, h = Math.max(...ys) - Math.min(...ys) + 1;
+    if (w * h !== g.length) notRect++;
+  }
+  chk(notRect === 0, `성분 ${groups.length}개 전부 꽉 찬 직사각형(축 직선 다리의 필요조건) — 위반 ${notRect}`);
+}
+
+console.log('\n[④-3 에디터 오버레이 페이로드 — export 스크립트가 다리를 그대로 싣는가]');
+{
+  const e1 = fs.readFileSync(path.join(__dirname, 'export-for-editor.js'), 'utf8');
+  const e2 = fs.readFileSync(path.join(__dirname, 'export-world-for-editor.js'), 'utf8');
+  chk(/bridges:\s*BRIDGES/.test(e1), 'export-for-editor.js가 bridges를 싣는다(가공 없이)');
+  chk(/bridges:\s*\(\(\) => \{ try \{ return/.test(e2), 'export-world-for-editor.js가 bridges를 싣는다');
+}
+
 console.log('\n[⑤ 에셋 실재 + 정사각(크롭 금지 규약)]');
 const ADIR = path.join(__dirname, '..', 'public', 'assets', 'bridge');
 for (const k of KEYS) {

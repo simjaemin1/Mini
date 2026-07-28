@@ -445,6 +445,19 @@ const SIM_JOB_EMOJI = {
   const TEX_EARTH_URL = 'data:image/png;base64,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';
   let _hutRoofC = null, _tileYardC = null, _tilePlazaC = null, _tileHutC = null, _wallNC = null, _wallEC = null;
   let _hallRoofC = null, _granC = null;   // ★[에셋 2차] 큰집 지붕(움집 물매 동형 확대)·고상곳간 통짜(기둥+판벽+이엉 — 송국리 정본)
+  // ★[에셋 10차 — 건물 3D화] scripts/building_render.py 산출물. **베이크 캔버스와 계약이 같다**:
+  //   같은 앵커 규약(_ox,_oy = 지붕 로컬 원점=발자국+오버행 북서 모서리의 지면 픽셀)·같은 화법(1셀 64×32px,
+  //   높이 1m=32px)·같은 처마고(2m=WALL_HEIGHT). 그래서 벽·컷어웨이·z 규약을 **한 줄도 건드리지 않고**
+  //   이미지만 갈아끼운다(로드 실패·미배포 시 기존 베이크가 그대로 폴백).
+  const _bldSpr = {};
+  (() => {
+    const A = { hut_roof: [164.0, 130.4], hall_roof: [292.0, 169.1], granary: [132.0, 121.1] };   // building_anchors.json 동기(하네스가 대조)
+    for (const k in A) {
+      const im = new Image();
+      im.onload = () => { im._ox = A[k][0]; im._oy = A[k][1]; _bldSpr[k] = im; };
+      im.src = '/assets/buildings/' + k + '.png';
+    }
+  })();
   (function _loadVilTex() {
     try {
       const th = new Image(), ea = new Image(), wl = new Image(); let n = 0;
@@ -3480,10 +3493,14 @@ const SIM_JOB_EMOJI = {
       if (c.granStock && c.granStock.size) {
         for (const [gk, st] of c.granStock) {
           if (!(st > 0)) continue;
-          const ci = gk.indexOf(','); const gcx = +gk.slice(0, ci), gcy = +gk.slice(ci + 1) + 2;   // 사다리 칸
+          const ci = gk.indexOf(','); const gc0 = +gk.slice(0, ci), gcx = gc0, gcy = +gk.slice(ci + 1) + 2;   // 사다리 칸
           const gax = ox + gcx * CL_BUILDING_SIZE + 16, gay = oy + gcy * CL_BUILDING_SIZE + 16;
           if (Math.abs(gax - worldCx) > VIEW_RADIUS || Math.abs(gay - worldCy) > VIEW_RADIUS) continue;
           renderables.push({ z: w2i(gax, gay).y, kind: 'granpile', gx: gax, gy: gay, st });
+          // ★[곳간 연출 세분화] 벽에 기대 놓은 소품(멍석 말이·삼태기) — 사다리 옆 칸(발자국 남동 모서리 밖).
+          //   재고가 있는 곳간에만(=사람이 드나드는 곳간) 놓아 '쓰이는 창고'로 읽히게 한다.
+          const pax = ox + (gc0 + 2) * CL_BUILDING_SIZE + 16, pay = gay;
+          renderables.push({ z: w2i(pax, pay).y, kind: 'granpile', gx: pax, gy: pay, prop: 1 });
         }
       }
       // §4-4 Stage 4A: 마을 시뮬 영토 — 경계 셀(b: [dx,dy,mask...]) 반투명 렌더. claim보다 더 배경(-900).
@@ -3510,7 +3527,8 @@ const SIM_JOB_EMOJI = {
         //   플레이어가 발자국 안/문 앞 1셀(0층)이면 지붕만 걷힘(컷어웨이) → 실내 바닥·가구 노출.
         // ★[에셋 2차] 고상곳간(data.gran) — 실물 벽·바닥은 시각만 억제(콜라이더·밀폐 불변), 캐리어 1셀이 통짜
         //   스프라이트(기둥+판벽+이엉) 합성. 컷어웨이 없음(문 없는 밀폐 — 반출입은 사다리 연출).
-        const _grn = _granC && b.data && b.data.gran;
+        const _granI = _bldSpr.granary || _granC;   // ★10차: 3D 스프라이트 우선, 없으면 베이크 폴백
+        const _grn = _granI && b.data && b.data.gran;
         if (_grn) {
           if (b.type === 'floor') {
             const _fgx = Math.floor(b.x / CL_BUILDING_SIZE), _fgy = Math.floor(b.y / CL_BUILDING_SIZE);
@@ -3518,7 +3536,7 @@ const SIM_JOB_EMOJI = {
               const rax = ox + b.x, ray = oy + b.y;
               if (Math.abs(rax - worldCx) <= VIEW_RADIUS + 200 && Math.abs(ray - worldCy) <= VIEW_RADIUS + 200) {
                 const _giso = w2i(rax - 160, ray - 96);   // 지붕 로컬 원점=발자국 북서(x0-0.5,y0-0.5) — 캐리어(x1,y1)에서 (-5,-3)셀... x:(x0-0.5)-(x1+0.5)=-5셀=-160, y:-3셀=-96
-                renderables.push({ z: (rax + ray) * 0.5 + 40, kind: 'hutroof', img: _granC, iso: _giso });
+                renderables.push({ z: (rax + ray) * 0.5 + 40, kind: 'hutroof', img: _granI, iso: _giso });
               }
             }
           }
@@ -3526,7 +3544,8 @@ const SIM_JOB_EMOJI = {
         }
         // ★[에셋 2차] 큰집 지붕(data.bld) — 움집 문법 동형: 벽은 항상(통나무 스킨), 바닥=밖 억제, 캐리어=남행 문
         //   좌측 바닥 1셀이 지붕 합성. 컷어웨이=발자국 안/문앞 1셀(남벽 문 2칸 x0+3·x0+4).
-        const _bld2 = _hallRoofC && b.data && b.data.bld;
+        const _hallI = _bldSpr.hall_roof || _hallRoofC;   // ★10차: 3D 스프라이트 우선
+        const _bld2 = _hallI && b.data && b.data.bld;
         if (_bld2 && b.type === 'floor') {
           const _mbx = Math.floor(myAbsPredicted.x / CL_BUILDING_SIZE), _mby = Math.floor(myAbsPredicted.y / CL_BUILDING_SIZE);
           const _binside = (myFloor || 0) === 0 && ((_mbx >= _bld2[0] && _mbx <= _bld2[2] && _mby >= _bld2[1] && _mby <= _bld2[3])
@@ -3538,13 +3557,14 @@ const SIM_JOB_EMOJI = {
               const rax = ox + b.x, ray = oy + b.y;
               if (Math.abs(rax - worldCx) <= VIEW_RADIUS + 300 && Math.abs(ray - worldCy) <= VIEW_RADIUS + 300) {
                 const _riso = w2i(rax - 128, ray - 256);   // 원점=북서(x0-0.5,y0-0.5): 캐리어(x0+3,y1)에서 (-4,-8)셀
-                renderables.push({ z: (rax + ray) * 0.5 + 80, kind: 'hutroof', img: _hallRoofC, iso: _riso });   // ★벽 4면 상회: 8×8은 남벽 동단·동벽 남단=캐리어+72 — +80으로 전부 상회(움집 +64 논리 동형)
+                renderables.push({ z: (rax + ray) * 0.5 + 80, kind: 'hutroof', img: _hallI, iso: _riso });   // ★벽 4면 상회: 8×8은 남벽 동단·동벽 남단=캐리어+72 — +80으로 전부 상회(움집 +64 논리 동형)
               }
             }
             continue;   // 밖=실내 바닥 억제(지붕에 가림)
           }
         }
-        const _hut = _hutRoofC && b.data && b.data.hut;
+        const _hutI = _bldSpr.hut_roof || _hutRoofC;   // ★10차: 3D 스프라이트 우선
+        const _hut = _hutI && b.data && b.data.hut;
         if (_hut && b.type === 'floor') {
           const _mcx = Math.floor(myAbsPredicted.x / CL_BUILDING_SIZE), _mcy = Math.floor(myAbsPredicted.y / CL_BUILDING_SIZE);
           const _inside = (myFloor || 0) === 0 && ((_mcx >= _hut[0] && _mcx <= _hut[2] && _mcy >= _hut[1] && _mcy <= _hut[3])
@@ -3556,7 +3576,7 @@ const SIM_JOB_EMOJI = {
               const rax = ox + b.x, ray = oy + b.y;
               if (Math.abs(rax - worldCx) <= VIEW_RADIUS + 200 && Math.abs(ray - worldCy) <= VIEW_RADIUS + 200) {
                 const _riso = w2i(rax - 96, ray - 128);       // 지붕 로컬 원점 = 북서 오버행 모서리(캐리어 중심 - (3,4)셀)
-                renderables.push({ z: (rax + ray) * 0.5 + 64, kind: 'hutroof', iso: _riso });   // ★지붕은 자기 집 벽 4면보다 무조건 앞[사용자 지적]: 벽 z 최대=남벽 동단·동벽 남단 (캐리어+56) — +24는 SE 구간 벽이 처마를 덮었음. +64로 전부 상회. 남측 개체는 지붕이 64px 떠 있어 픽셀 비겹침(플레이어는 +500 별도)이라 안전
+                renderables.push({ z: (rax + ray) * 0.5 + 64, kind: 'hutroof', img: _hutI, iso: _riso });   // ★지붕은 자기 집 벽 4면보다 무조건 앞[사용자 지적]: 벽 z 최대=남벽 동단·동벽 남단 (캐리어+56) — +24는 SE 구간 벽이 처마를 덮었음. +64로 전부 상회. 남측 개체는 지붕이 64px 떠 있어 픽셀 비겹침(플레이어는 +500 별도)이라 안전
               }
             }
             continue;
@@ -3788,7 +3808,10 @@ const SIM_JOB_EMOJI = {
       } else if (item.kind === 'granpile') {
         // ★[곳간② 재고 표시] 볏짚 단 더미 — 재고 1~19=작은 더미, 20+=큰 더미(G_STOCK_CAP=60 기준 1/3 분기).
         //   스프라이트는 다리 타일과 **같은 셀 정합 카메라**로 렌더돼 같은 규약(중심=셀 중심·128px)으로 그린다.
-        if (!drawBridgeSprite(item.st >= 20 ? 'gran_pile2' : 'gran_pile1', item.gx, item.gy, toScreen)) {
+        // 재고 구간 3단계(G_STOCK_CAP=60 기준 1/3·2/3): 1~19 · 20~39 · 40+ / prop=벽 기대 소품
+        const _pk = item.prop ? 'gran_prop' : (item.st >= 40 ? 'gran_pile3' : (item.st >= 20 ? 'gran_pile2' : 'gran_pile1'));
+        if (item.prop) { drawBridgeSprite(_pk, item.gx, item.gy, toScreen); continue; }
+        if (!drawBridgeSprite(_pk, item.gx, item.gy, toScreen)) {
           const gp = toScreen(w2i(item.gx, item.gy).x, w2i(item.gx, item.gy).y);   // 폴백: 단순 더미
           ctx.fillStyle = 'rgba(0,0,0,0.20)';
           ctx.beginPath(); ctx.ellipse(gp.x, gp.y + 2, 14, 6, 0, 0, Math.PI * 2); ctx.fill();
@@ -5456,7 +5479,8 @@ const SIM_JOB_EMOJI = {
   const BRIDGE_SPRITES = {};
   let _bridgeLoaded = 0;
   (() => {
-    for (const k of ['bridge_mid_x', 'bridge_mid_y', 'bridge_cap0_x', 'bridge_cap0_y', 'bridge_cap1_x', 'bridge_cap1_y', 'gran_pile1', 'gran_pile2']) {
+    for (const k of ['bridge_mid_x', 'bridge_mid_y', 'bridge_cap0_x', 'bridge_cap0_y', 'bridge_cap1_x', 'bridge_cap1_y',
+                     'gran_pile1', 'gran_pile2', 'gran_pile3', 'gran_prop']) {
       const im = new Image(); im.onload = () => _bridgeLoaded++; im.src = '/assets/bridge/' + k + '.png';
       BRIDGE_SPRITES[k] = im;
     }

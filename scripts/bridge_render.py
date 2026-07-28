@@ -278,8 +278,38 @@ def t_pile2():   # 많은 재고 — 아래 4 + 위 2 + 토기 항아리 2
         cyl(0.070, 0.07, (x, y, 0.265), mat=M['pottery'], verts=14)
 
 
+def t_pile3():   # 가득 — 3층 적재 + 항아리 3 + 멍석 말이(재고 40+)
+    random.seed(73)
+    for i, (x, y, a) in enumerate(((0.28, 0.36, 0.10), (0.58, 0.32, -0.15), (0.30, 0.64, 0.35), (0.64, 0.62, -0.40))):
+        _bundle(x, y, 0.12, a, ln=0.46, r=0.12, seed=i)
+    for i, (x, y, a) in enumerate(((0.40, 0.44, 0.55), (0.58, 0.52, -0.05), (0.44, 0.62, 0.20))):
+        _bundle(x, y, 0.335, a, ln=0.42, r=0.115, seed=10 + i)
+    for i, (x, y, a) in enumerate(((0.48, 0.50, 0.30), (0.52, 0.58, -0.25))):
+        _bundle(x, y, 0.545, a, ln=0.38, r=0.11, seed=20 + i)
+    for (x, y) in ((0.80, 0.46), (0.20, 0.50), (0.72, 0.74)):     # 토기 항아리
+        cyl(0.105, 0.24, (x, y, 0.12), mat=M['pottery'], verts=14)
+        cyl(0.070, 0.07, (x, y, 0.265), mat=M['pottery'], verts=14)
+
+
+def t_prop():    # 곳간 벽에 기대 놓은 소품 — 멍석 말이 + 삼태기(바구니)
+    random.seed(74)
+    # ★멍석 말이 — **밑동이 땅에 닿아야** 기대 놓은 것으로 읽힌다(1패스: 공중에 뜬 막대처럼 보였음).
+    #   기울기 22°(수직 기준) · 중심 z = (길이/2)·cos22° 로 밑동을 지면에 앉힌다.
+    LN, TILT = 0.92, math.radians(22)
+    cz = LN / 2 * math.cos(TILT)
+    cyl(0.105, LN, (0.44, 0.54, cz), rot=(TILT, 0, math.radians(12)), mat=M['straw'], verts=12)
+    for t in (-0.28, 0.28):   # 묶은 새끼 2줄
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.112, minor_radius=0.014,
+                                         location=(0.44, 0.54 - t * LN * math.sin(TILT), cz + t * LN * math.cos(TILT)),
+                                         rotation=(TILT, 0, math.radians(12)))
+        add(bpy.context.active_object, M['cord'])
+    cyl(0.16, 0.20, (0.66, 0.60, 0.10), rot=(math.radians(12), 0, 0), mat=M['straw'], verts=14)   # 삼태기(엎어 놓은 바구니)
+    cyl(0.13, 0.02, (0.66, 0.60, 0.205), rot=(math.radians(12), 0, 0), mat=M['cord'], verts=14)
+
+
 JOBS = [("bridge_mid", t_mid, True), ("bridge_cap1", t_cap1, True), ("bridge_cap0", t_cap0, True),
-        ("gran_pile1", t_pile1, False), ("gran_pile2", t_pile2, False)]
+        ("gran_pile1", t_pile1, False), ("gran_pile2", t_pile2, False),
+        ("gran_pile3", t_pile3, False), ("gran_prop", t_prop, False)]
 
 
 def frame_and_render(path, rot_z_deg):
