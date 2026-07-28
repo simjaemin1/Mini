@@ -355,7 +355,17 @@ const SIM_JOB_EMOJI = {
     return v;
   }
   // 지형 차단 통합 (물+바위) — 이동 예측용
-  function isTerrainBlockedAtAbs(x, y) { return isWaterAtAbs(x, y) || isRockAtAbs(x, y); }
+  // ★[다리 층] 절대 셀 좌표 다리 집합(존 welcome에서 누적) — 서버 BRIDGE_CELLS 미러.
+  const _bridgeAbs = new Set();
+  function isBridgeAtAbs(x, y) {
+    if (!_bridgeAbs.size) return false;
+    return _bridgeAbs.has(Math.floor(x / CL_BUILDING_SIZE) + ',' + Math.floor(y / CL_BUILDING_SIZE));
+  }
+  function isTerrainBlockedAtAbs(x, y) {
+    if (isRockAtAbs(x, y)) return true;                 // 바위는 다리로 안 뚫림(서버 동형)
+    if (isWaterAtAbs(x, y)) return !isBridgeAtAbs(x, y);
+    return false;
+  }
 
   // 14.49-e6-c: 시야 재구성
   // 지형: 중앙 80px 원 = 항상 full bright. 뒤쪽 = 0.85 (덜 어둡게).
@@ -1935,6 +1945,15 @@ const SIM_JOB_EMOJI = {
         // §16 답압 길: 등급 셀 flat [cx,cy,lv,...](welcome 1회, 이후 road_cells가 변경분 방송)
         c.roads = new Map();
         if (msg.roads) for (let i = 0; i < msg.roads.length; i += 3) c.roads.set(msg.roads[i] + ',' + msg.roads[i + 1], msg.roads[i + 2]);
+        // ★[다리 층] 통나무 널다리 셀(정적 맵 사물 — welcome 1회). 렌더 + 클라 콜라이더 미러 둘 다에 쓴다.
+        //   서버 isTerrainBlockedLocal이 이 셀에서 물 차단을 푸는데 클라가 안 풀면 예측이 물에 막혀
+        //   러버밴딩·다리 위 스턱이 난다(좌표 단일 작성자 원칙상 클라 예측은 서버와 같은 판정이어야 함).
+        c.bridges = new Set();
+        if (msg.bridges) for (let i = 0; i + 1 < msg.bridges.length; i += 2) {
+          const k = msg.bridges[i] + ',' + msg.bridges[i + 1];
+          c.bridges.add(k);
+          _bridgeAbs.add(((msg.zone.worldOffsetX / CL_BUILDING_SIZE) + msg.bridges[i]) + ',' + (((msg.zone.worldOffsetY || 0) / CL_BUILDING_SIZE) + msg.bridges[i + 1]));
+        }
       }
       // 월드 시계 동기화 — 서버 now와 클라 now 차이를 보정해서 동일 phase 계산
       if (msg.worldClock) {
@@ -3426,6 +3445,15 @@ const SIM_JOB_EMOJI = {
           renderables.push({ z: w2i(rax, ray).y - 950, kind: 'road', rcx: rax - 16, rcy: ray - 16, lv });
         }
       }
+      // ★[다리 층] 통나무 널다리 상판 — 길(-950)보다 위, 건물보다 아래(-930). 물 위 정적 사물.
+      if (c.bridges && c.bridges.size) {
+        for (const bk of c.bridges) {
+          const ci = bk.indexOf(','); const bcx = +bk.slice(0, ci), bcy = +bk.slice(ci + 1);
+          const bax = ox + bcx * CL_BUILDING_SIZE + 16, bay = oy + bcy * CL_BUILDING_SIZE + 16;
+          if (Math.abs(bax - worldCx) > VIEW_RADIUS || Math.abs(bay - worldCy) > VIEW_RADIUS) continue;
+          renderables.push({ z: w2i(bax, bay).y - 930, kind: 'bridge', bx: bax, by: bay, bk });
+        }
+      }
       // §4-4 Stage 4A: 마을 시뮬 영토 — 경계 셀(b: [dx,dy,mask...]) 반투명 렌더. claim보다 더 배경(-900).
       if (c.simVillages) {
         for (const v of c.simVillages) {
@@ -3704,6 +3732,23 @@ const SIM_JOB_EMOJI = {
         const d2 = toScreen(w2i(item.rcx, item.rcy + 32).x, w2i(item.rcx, item.rcy + 32).y);
         ctx.fillStyle = item.lv >= 2 ? 'rgba(168,134,88,0.42)' : 'rgba(150,124,86,0.26)';
         ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b2.x, b2.y); ctx.lineTo(c2.x, c2.y); ctx.lineTo(d2.x, d2.y); ctx.closePath(); ctx.fill();
+      } else if (item.kind === 'bridge') {
+        // ★[다리 층] 통나무 널다리 상판 — 청동기 후기 고증: 통나무를 걸치고 널을 깐 다리(석조 아치 금지).
+        //   셀 다이아 상판(널 결) + 물그림자. 물 위 정적 사물이라 애니메이션 없음.
+        const x0 = item.bx - 16, y0 = item.by - 16;
+        const P = (dx, dy) => { const p = w2i(x0 + dx, y0 + dy); return toScreen(p.x, p.y); };
+        const a1 = P(0, 0), b1 = P(32, 0), c1 = P(32, 32), d1 = P(0, 32);
+        ctx.fillStyle = 'rgba(0,0,0,0.28)';   // 수면 그림자
+        ctx.beginPath(); ctx.moveTo(a1.x, a1.y + 5); ctx.lineTo(b1.x, b1.y + 5); ctx.lineTo(c1.x, c1.y + 5); ctx.lineTo(d1.x, d1.y + 5); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#8a6a40';            // 널 상판
+        ctx.beginPath(); ctx.moveTo(a1.x, a1.y); ctx.lineTo(b1.x, b1.y); ctx.lineTo(c1.x, c1.y); ctx.lineTo(d1.x, d1.y); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = 'rgba(70,50,28,0.85)'; ctx.lineWidth = 1;
+        ctx.stroke();
+        // 널 결 2줄(셀 내부 분할) — 축소해도 '판자'로 읽히게
+        ctx.strokeStyle = 'rgba(62,44,24,0.55)';
+        ctx.beginPath();
+        for (const t of [10.7, 21.3]) { const p1 = P(t, 0), p2 = P(t, 32); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); }
+        ctx.stroke();
       } else if (item.kind === 'simvil') {
         // §4-4 Stage 4A: 마을 시뮬 영토 — 서버가 경계 셀만 전송(b: [dx,dy,mask...] 중심 상대,
         //   mask 비트 1=N 2=E 4=S 8=W = 영토 바깥과 맞닿은 변). 반투명 초록(길드 파랑과 구분).

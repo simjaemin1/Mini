@@ -322,7 +322,26 @@ function isRockTileLocal(localX, localY) {
   return typeof _terrain.isRockCellLocal === 'function' && _terrain.isRockCellLocal(ZONE_ID, tx * 32 + 16, ty * 32 + 16);
 }
 // 지형 차단 통합 (물 + 바위) — 이동·스폰·경로·텔레포트 검증 공용
-function isTerrainBlockedLocal(x, y) { return isWaterTileLocal(x, y) || isRockTileLocal(x, y); }
+// ★[다리 층] 통나무 널다리 셀 — zone-config ZONES[zone].bridges(flat [cx,cy,...])에서 1회 구축.
+//   path-core 계약: "물 = 차단, 다리 칸만 통행 — 다리는 맵에 만들어두는 사물(경로 창발 아님).
+//   물/다리 판정은 전부 호출측 blocked 콜백 소관." → 그 '호출측'이 바로 이 단일 술어다.
+//   isTerrainBlockedLocal은 플레이어 이동·NPC 이동·A*·wildlife·전쟁 콜라이더가 전부 공유하는
+//   유일한 통행 판정이라, 여기 한 곳만 열면 모든 이동층에 다리가 동시에 열린다(규약 신설 없음).
+const BRIDGE_CELLS = new Set();
+{
+  const bl = (ZONE && ZONE.bridges) || null;
+  if (bl && bl.length) { for (let i = 0; i + 1 < bl.length; i += 2) BRIDGE_CELLS.add(bl[i] + '_' + bl[i + 1]); }
+}
+function isBridgeTileLocal(localX, localY) {
+  if (!BRIDGE_CELLS.size) return false;
+  return BRIDGE_CELLS.has(Math.floor(localX / 32) + '_' + Math.floor(localY / 32));
+}
+function isTerrainBlockedLocal(x, y) {
+  // 다리는 물 위에만 놓인다 — 바위(산맥)는 다리로 뚫지 않는다(고증·지형 무결).
+  if (isRockTileLocal(x, y)) return true;
+  if (isWaterTileLocal(x, y)) return !isBridgeTileLocal(x, y);
+  return false;
+}
 // 메트릭 카운터
 const metrics = {
   startedAt: Date.now(),
@@ -2202,6 +2221,7 @@ wss.on('connection', async (ws, req) => {
       simVillages: SimVillages.clientVillages(), // §4-4 Stage 4A: 마을 영토(경계 셀)·이름·인구 — 1회
       banditCamps: Bandits.clientCamps(), // §11 도적: 소굴·야영 마커 1종 — 이후 bandit_camps가 변경분 방송
       roads: Roads.clientRoads(), // §16 답압 길: 등급 셀 flat [cx,cy,lv,...] — 이후 road_cells가 변경분 방송
+      bridges: (ZONE.bridges || null), // ★[다리 층] 통나무 널다리 셀 flat [cx,cy,...] — 정적(맵 사물)이라 welcome 1회
       buildings: activeChunkBuildings(),
       worldClock: {
         epoch: WORLD.worldEpoch,
@@ -2485,6 +2505,7 @@ wss.on('connection', async (ws, req) => {
     simVillages: SimVillages.clientVillages(), // §4-4 Stage 4A: 마을 영토(경계 셀)·이름·인구 — 1회
     banditCamps: Bandits.clientCamps(), // §11 도적: 소굴·야영 마커 1종 — 이후 bandit_camps가 변경분 방송
     roads: Roads.clientRoads(), // §16 답압 길: 등급 셀 flat [cx,cy,lv,...] — 이후 road_cells가 변경분 방송
+    bridges: (ZONE.bridges || null), // ★[다리 층] 통나무 널다리 셀 flat [cx,cy,...] — 정적(맵 사물)이라 welcome 1회
     buildings: activeChunkBuildings(),
     groundItems: Array.from(groundItems.values()), // Phase 14.23
     mobs: Array.from(mobs.values()).map(m => ({ mid: m.mid, type: m.type, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, tameOwner: m.tameOwner || null, tameOwnerName: m.tameOwnerName || null })),
