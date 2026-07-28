@@ -1999,6 +1999,7 @@ const _lifeVL = () => VillageLayout || (VillageLayout = require('./village-layou
 const L_LANDNEED = 8;        // 랩 동형: 인당 기준 경작칸(landNeedPer가 비옥도 보정)
 // ★랩 JOBACT 대상 직업 = 현장(논밭·물·숲·산) 직업. 이 집합 밖은 랩 'villager' 버킷(회관 내부 앵커 + 역할 라벨).
 const LIFE_FIELD_JOBS = new Set(['farmer', 'fisher', 'hunter', 'lumberjack', 'miner', 'forager']);
+let _vgStuckN = 0;           // ★기타직 정체 가드 발동 누계(부팅 이후) — lifedbg가 노출
 const SCH_VG_STUCK = 20000;  // 기타직 '출근' 정체 판정(ms). 실측 정체는 17.5초에도 0px였다 — 여유 20초.
 const LIFE_CLEAR_PDAY = 3;   // 농부 1인 하루 개간 셀(랩 L_CLEAR=90 노동·dwell 스케일 근사 — 관찰 후 튜닝)
 const LIFE_STAGE_PDAY = 1;   // 건설 1인 하루 1단계(움집 4단계≈4인일 — 랩 L_BUILDSEC=4600인·초 근사)
@@ -2150,7 +2151,7 @@ function lifeDebug() {   // ★[직접 서버 디버깅 — 사용자 요청] zo
   let tN = 0, tAct = 0;
   for (const v of out) { tN += v.pop; tAct += v.actN; }
   return { t: new Date().toISOString(), phase: wpF ? +wpF(now).toFixed(3) : null, dayR, life: LIFE_ON,
-    totals: { pop: tN, actN: tAct, actPct: tN ? +(tAct / tN * 100).toFixed(1) : 0,
+    totals: { pop: tN, actN: tAct, actPct: tN ? +(tAct / tN * 100).toFixed(1) : 0, vgStuck: _vgStuckN,
               dormant: out.filter(v => !v.terr).length, noFarmer: out.filter(v => !(v.jobs && v.jobs.farmer)).length },
     villages: out };
 }
@@ -2715,6 +2716,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
       if (moved > 6) { npc._vgX = npc.x; npc._vgY = npc.y; npc._vgSince = now; }
       else if (npc._vgSince && now - npc._vgSince > SCH_VG_STUCK) {
         npc._vgGiveUp = day;                       // 오늘은 포기 — 라벨도 지우고 레거시로
+        _vgStuckN++;                               // ★진단 카운터(lifedbg vgStuck) — 실제로 발동하는지 프로덕션에서 센다
         if (!npc._huntOn && npc._lifeAct) _lifeAct(npc, '');
         return false;
       }
