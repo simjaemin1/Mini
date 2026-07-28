@@ -157,6 +157,73 @@ const get = (url) => new Promise((res, rej) => {
     chk(calls.length === 2 && calls[0].wood === 10 && calls[1].wood === 5, `총 보고 10+5=15 = 물리 15 (누락·중복 0) — 호출 ${JSON.stringify(calls)}`);
   }
 
+  // ★★[11차 T5] 물리화 초석 — depositAccounted. 핵심은 **이중 계상 0**이다.
+  console.log('\n[⑨ 생산 물리화 입고 — 회계에 이미 있는 물건이라 다시 보고하지 않는다(이중 계상 0)]');
+  {
+    const b = { type: 'guild_granary', dbId: 1, data: { tribe_id: 7, wood: 10, _tr: { wood: 10 } } };
+    const r = GT.depositAccounted(b, { wood: 5, fiber: 3 });
+    chk(GT.granaryItems(b.data).wood === 15 && GT.granaryItems(b.data).fiber === 3,
+      `물리 실체는 늘었다 — wood 15 · fiber 3 (실제 ${JSON.stringify(GT.granaryItems(b.data))})`);
+    const d = GT.pendingDelta(b.data);
+    chk(Object.keys(d).length === 0, `★보고 대기 델타 = 빈 객체 (생산 1회당 회계 2배가 되는 결함의 유일한 방어) — 실제 ${JSON.stringify(d)}`);
+    const log = []; const opts = mkOpts(log, () => false);
+    chk((await GT.syncGranary(b, opts)) === null && log.length === 0, `직후 동기화가 central을 부르지 않음 — 호출 ${log.length}회(기대 0)`);
+  }
+
+  console.log('\n[⑩ 반복 입고 + 플레이어 입출고 혼합 — 불변식 물리 ≤ 회계 유지]');
+  {
+    const log = []; const opts = mkOpts(log, () => false);
+    const b = { type: 'guild_granary', dbId: 1, data: { tribe_id: 7 } };
+    let acct = 0;                                   // 회계 총자산(생산분은 이미 올라간 것으로 친다)
+    for (let day = 0; day < 12; day++) {
+      GT.depositAccounted(b, { wood: 4 }); acct += 4;                 // 생산 물리화(회계 선반영)
+      b.data.wood = (b.data.wood || 0) + 2;                            // 플레이어 입고(회계 미반영)
+      const r = await GT.syncGranary(b, opts);
+      if (r && r.ok) acct += (r.delta.wood || 0);
+    }
+    const phys = GT.granaryItems(b.data).wood;
+    chk(phys <= acct, `물리 ${phys} ≤ 회계 ${acct} (불변식)`);
+    chk(phys === 12 * 6 && acct === 12 * 6, `누락·중복 0 — 물리 ${phys} = 회계 ${acct} = 12일×(생산4+입고2)`);
+    chk(log.length === 12, `central 호출 ${log.length}회 = 플레이어 입고분만(생산분은 재보고 안 함)`);
+  }
+
+  console.log('\n[⑪ 입고 직후 재부팅(reconcileAll) — 회계가 한 톨도 안 늘어야 한다]');
+  {
+    const log = []; const opts = mkOpts(log, () => false);
+    const b = { type: 'guild_granary', dbId: 1, data: { tribe_id: 7, wood: 20, _tr: { wood: 20 } } };
+    GT.depositAccounted(b, { wood: 7, hide: 2 });
+    const snap = JSON.parse(JSON.stringify(b.data));
+    const rr = await GT.reconcileAll([b], opts);
+    chk(log.length === 0 && rr.sent === 0, `재부팅 재동기 central 호출 ${log.length}회·전송 ${rr.sent}건(기대 0/0)`);
+    chk(JSON.stringify(b.data) === JSON.stringify(snap), '곳간 data 무변경(자가치유가 오히려 장부를 흔들지 않는다)');
+  }
+
+  console.log('\n[⑫ 자원명 사상 전수 — 조용한 누락 0(생산 가능한 모든 아이템이 분류돼 있다)]');
+  {
+    const zsrc = require('fs').readFileSync(path.join(__dirname, '..', 'server', 'zone.js'), 'utf8');
+    const jy = zsrc.slice(zsrc.indexOf('const JOB_YIELD = {'), zsrc.indexOf('const _prodCarry'));
+    const items = new Set([...jy.matchAll(/([a-z_]+):\s*[0-9.]+/g)].map((m) => m[1]));
+    for (const j of ['farmer', 'fisher', 'forager', 'lumberjack', 'hunter', 'cook', 'weaponsmith']) items.delete(j);
+    let ores = [];
+    try { const S = require(path.join(__dirname, '..', 'server', 'specialty')); ores = [...new Set(Object.values(S.ORE_POOLS).flat())]; } catch (e) { }
+    for (const o of ores) items.add(o);
+    const unclassified = [...items].filter((k) => !GT.PHYS_WHITELIST.has(k) && !GT.PHYS_EXCLUDE.has(k));
+    chk(unclassified.length === 0, `생산 아이템 ${items.size}종(직업 ${items.size - ores.length} + 광물 ${ores.length}) 전부 분류 — 미분류 ${unclassified.length}${unclassified.length ? ': ' + unclassified.join(',') : ''}`);
+    for (const [k, why] of GT.PHYS_EXCLUDE) console.log(`     └ 제외 ${k}: ${why}`);
+  }
+
+  console.log('\n[⑬ 용량 상한 — 넘친 몫은 물리에 안 들어가고 회계에만 남는다(불변식 보존)]');
+  {
+    const b = { type: 'guild_granary', dbId: 1, data: { tribe_id: 7 } };
+    const r = GT.depositAccounted(b, { wood: 40 }, { cap: 25 });
+    chk(r.stored.wood === 25 && r.overflow.wood === 15, `상한 25 — 물리 ${r.stored.wood} · 넘침 ${r.overflow.wood}`);
+    chk(GT.granaryItems(b.data).wood === 25, `곳간 실체 ${GT.granaryItems(b.data).wood} = 상한(넘침은 물리 없음)`);
+    chk(Object.keys(GT.pendingDelta(b.data)).length === 0, '상한에 걸려도 보고 델타 0(넘친 몫은 회계에 이미 있다)');
+    const r2 = GT.depositAccounted(b, { wood: 5 }, { cap: 25 });
+    chk(r2.stored.wood === undefined && r2.overflow.wood === 5, '가득 찬 곳간 — 추가 입고 전량 넘침');
+    console.log(`     └ 제안 기본값 GUILD_GRANARY_CAP=${GT.GUILD_GRANARY_CAP} (근거: 마을 고상곳간 5×3 물리수용 60칸 × 아이템 10점 환산 — 환산 계수 10은 재민 판단)`);
+  }
+
   console.log('\n' + (fail === 0 ? '결과: PASS' : `결과: FAIL (${fail}건)`));
   process.exit(fail === 0 ? 0 : 1);
 })();
