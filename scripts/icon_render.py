@@ -114,7 +114,9 @@ M['stone']   = bumped_mat("stone",  (0.34, 0.33, 0.31), (0.16, 0.16, 0.16), 9, 0
 M['straw']   = striped_mat("straw", (0.83, 0.68, 0.30), (0.68, 0.52, 0.20), 34, 0.8)    # 이엉·볏짚
 M['grass']   = striped_mat("grass", (0.46, 0.55, 0.26), (0.34, 0.44, 0.18), 30, 0.7)    # 풀 줄기(생)
 M['drygrass']= striped_mat("drygrass",(0.62, 0.58, 0.28), (0.48, 0.44, 0.20), 28, 0.8)  # 마른 풀 줄기(fiber — herb와 색 분리)
-M['meat']    = striped_mat("meat",  (0.42, 0.09, 0.09), (0.52, 0.20, 0.18), 6, 0.55)    # 붉은 살(결 아주 약하게 — 얼룩말 무늬 방지)
+M['meat']    = striped_mat("meat",  (0.44, 0.11, 0.10), (0.56, 0.22, 0.19), 30, 0.5)    # 붉은 살: 촘촘한 근섬유 결(scale 30 — 6은 굵은 띠라 '분홍 뇌'로 읽혔음)
+M['fat']     = simple_mat("fat",    (0.80, 0.68, 0.60), 0.5)                             # 지방·힘줄(살빛에 가깝게 — 흰 막대로 안 읽히게)
+M['seedhull']= striped_mat("seedhull",(0.46, 0.16, 0.14), (0.60, 0.30, 0.22), 24, 0.55)  # 베리 씨앗 껍질(붉은 기)
 M['cooked']  = striped_mat("cooked",(0.42, 0.22, 0.10), (0.26, 0.13, 0.06), 18, 0.5)
 M['hide']    = bumped_mat("hide",   (0.60, 0.44, 0.28), (0.44, 0.31, 0.19), 7, 0.35, 0.8)
 M['leather'] = bumped_mat("leather",(0.40, 0.27, 0.16), (0.27, 0.17, 0.09), 11, 0.45, 0.7)
@@ -127,8 +129,8 @@ M['soil']    = bumped_mat("soil",   (0.32, 0.22, 0.13), (0.20, 0.13, 0.07), 12, 
 M['tamped']  = bumped_mat("tamped", (0.47, 0.37, 0.24), (0.33, 0.25, 0.15), 16, 0.35, 0.95)
 M['flame']   = simple_mat("flame",  (1.0, 0.55, 0.12), 0.4, emit=(1.0, 0.52, 0.12), emit_str=6.0)
 M['cord']    = simple_mat("cord",   (0.55, 0.45, 0.26), 0.85)
-M['leafg']   = simple_mat("leafg",  (0.30, 0.48, 0.16), 0.55)
-M['leafg2']  = simple_mat("leafg2", (0.45, 0.62, 0.22), 0.55)
+M['leafg']   = simple_mat("leafg",  (0.20, 0.38, 0.11), 0.55)
+M['leafg2']  = simple_mat("leafg2", (0.33, 0.52, 0.17), 0.55)
 M['flower']  = simple_mat("flower", (0.86, 0.82, 0.42), 0.5)
 M['charcoal']= simple_mat("charcoal",(0.10, 0.09, 0.08), 0.9)
 
@@ -213,10 +215,14 @@ def m_fiber():    # 풀 줄기 다발 — 휜 잎날 + 결속
     bpy.ops.mesh.primitive_torus_add(major_radius=0.16, minor_radius=0.03, location=(0, 0, 0.16))
     add(bpy.context.active_object, M['cord'])
 
-def m_meat_raw():  # 생고기 덩이 — 살결+지방 흰줄
+def m_meat_raw():  # 생고기 덩이 — 잘라낸 정육(각진 덩어리 + 지방 줄 + 절단면)
     random.seed(51)
-    ico(0.62, (0, 0, 0.34), subdiv=3, mat=M['meat'], scale=(1.25, 0.95, 0.62), jitter=0.10)
-    ico(0.30, (0.34, 0.18, 0.52), subdiv=2, mat=M['meat'], scale=(1.0, 0.8, 0.6), jitter=0.14)
+    # 도려낸 살덩이: 저폴리 각짐(subdiv 1)으로 '잘린 고기'의 면이 서게 — 매끈한 구는 뇌처럼 보인다
+    ico(0.60, (0, 0, 0.32), subdiv=1, mat=M['meat'], scale=(1.30, 0.90, 0.58), jitter=0.16, smooth=False)
+    box(1.05, 0.72, 0.10, (0.02, 0.02, 0.60), rot=(0, 0, 0.12), mat=M['meat'])          # 윗면 절단면(평평)
+    for i, (x, y, r) in enumerate(((-0.26, 0.12, 0.035), (0.16, -0.10, 0.030), (0.40, 0.14, 0.026))):
+        cyl(r, 0.80, (x, y, 0.615), rot=(0, math.radians(88), 0.30 + i * 0.55), mat=M['fat'], verts=6)   # 절단면에 드러난 지방 결(얇게)
+    ico(0.16, (-0.56, -0.06, 0.30), subdiv=1, mat=M['fat'], scale=(0.55, 0.85, 0.35), jitter=0.2, smooth=False)  # 비계 가장자리
 
 def m_meat_cooked():  # 구운 고기 꼬치
     random.seed(61)
@@ -251,23 +257,38 @@ def m_water_bottle():  # 가죽 물주머니 (청동기 — 플라스틱 금지)
     bpy.ops.mesh.primitive_torus_add(major_radius=0.44, minor_radius=0.028, location=(0, 0.02, 0.72), rotation=(math.radians(80), 0, 0))
     add(bpy.context.active_object, M['cord'])                   # 어깨끈
 
-def m_seed_berry():  # 씨앗 몇 알
+def m_seed_berry():  # 베리 씨앗 — 작고 붉은 기 도는 알갱이 무더기(달걀처럼 안 보이게 작고 많이·각지게)
     random.seed(81)
-    for p in ((0, 0, 0.10), (0.22, 0.05, 0.09), (0.10, 0.22, 0.09), (-0.18, 0.14, 0.10), (0.05, -0.20, 0.09)):
-        o = ico(0.13, p, subdiv=3, mat=M['seed'], scale=(1.0, 0.62, 0.55))
-        o.rotation_euler = (0, 0, random.uniform(0, 3.14))
+    pts = []
+    for ring, (n, rr, z) in enumerate(((7, 0.26, 0.05), (5, 0.14, 0.10), (3, 0.05, 0.15))):
+        for i in range(n):
+            a = i * (2 * math.pi / n) + ring * 0.7
+            pts.append((math.cos(a) * rr + random.uniform(-0.02, 0.02),
+                        math.sin(a) * rr + random.uniform(-0.02, 0.02), z))
+    for (x, y, z) in pts:
+        o = ico(0.062, (x, y, z), subdiv=1, mat=M['seedhull'], scale=(1.0, 0.72, 0.52), jitter=0.22, smooth=False)
+        o.rotation_euler = (random.uniform(-0.3, 0.3), random.uniform(-0.3, 0.3), random.uniform(0, 3.14))
 
-def m_herb():     # 약초 다발 — 2톤 잎날 부챗살 + 꽃점
+def m_herb():     # 약초 다발 — 자연물 herb.png의 잎날 구조를 아이콘 스케일로(납작한 별 → 세워 묶은 다발)
     random.seed(91)
-    for i in range(9):
-        a = random.uniform(0, 2 * math.pi); tilt = random.uniform(0.18, 0.55)
+    # 밑동 줄기 묶음(세로) — 다발의 축이 서야 '납작한 별'로 안 읽힌다
+    for i in range(5):
+        a = i * 1.257
+        cyl(0.018, 0.42, (math.cos(a) * 0.035, math.sin(a) * 0.035, 0.21),
+            rot=(math.sin(a) * 0.06, -math.cos(a) * 0.06, 0), mat=M['grass'], verts=5)
+    # 잎날: 좁고 길게, 위로 세워 부챗살(tilt 낮을수록 수직) — 2톤 교차
+    for i in range(11):
+        a = i * (2 * math.pi / 11) + 0.3
+        tilt = 0.20 + (i % 3) * 0.10
         d = V((math.cos(a) * math.sin(tilt), math.sin(a) * math.sin(tilt), math.cos(tilt)))
-        o = plane(0.10, 1.15, d * 0.50 + V((0, 0, 0.24)), mat=(M['leafg'] if i % 2 else M['leafg2']))
+        o = plane(0.085, 1.30, d * 0.62 + V((0, 0, 0.46)), mat=(M['leafg'] if i % 2 else M['leafg2']))
         o.rotation_euler = d.to_track_quat('Z', 'Y').to_euler()
-        o.scale = (0.22, 1.0, 1.0)
-    for _ in range(3):
-        a = random.uniform(0, 2 * math.pi)
-        ico(0.075, (math.cos(a) * 0.22, math.sin(a) * 0.22, 0.72), subdiv=2, mat=M['flower'])
+        o.scale = (0.16, 1.0, 1.0)          # 좁은 잎날(자연물 herb 동형)
+    for i in range(4):                       # 꽃점 — 잎 끝 높이에
+        a = i * 1.57 + 0.4
+        ico(0.085, (math.cos(a) * 0.17, math.sin(a) * 0.17, 1.14), subdiv=2, mat=M['flower'])
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.075, minor_radius=0.02, location=(0, 0, 0.13))
+    add(bpy.context.active_object, M['cord'])   # 묶음 끈
 
 def m_ore():      # 구리빛 광석 덩이 — 모암 + 구리 결정
     random.seed(101)

@@ -157,25 +157,28 @@ def veg1():
 def veg2():
     soil_bed(furrows=3)
     def one(x, y, i):
-        for k in range(6):
-            a = k * 1.05 + i * 0.5
-            d = V((math.cos(a) * 0.72, math.sin(a) * 0.72, 0.70)).normalized()
-            o = plane(0.13, 0.30, (x, y, 0.20) , mat=(M['leaf'] if k % 2 else M['leaf2']))
-            o.location = (x + d.x * 0.11, y + d.y * 0.11, 0.20 + d.z * 0.09)
+        # ★4단계와 구분: 잎이 아직 **세워져 있고 작다**(결구·열매 없음)
+        for k in range(5):
+            a = k * 1.26 + i * 0.5
+            d = V((math.cos(a) * 0.50, math.sin(a) * 0.50, 0.86)).normalized()
+            o = plane(0.11, 0.26, (x, y, 0.20), mat=(M['leaf'] if k % 2 else M['leaf2']))
+            o.location = (x + d.x * 0.07, y + d.y * 0.07, 0.20 + d.z * 0.09)
             o.rotation_euler = d.to_track_quat('Z', 'Y').to_euler()
-            o.scale = (0.45, 1.0, 1.0)
+            o.scale = (0.40, 1.0, 1.0)
     rows(4, 3, one, jitter=0.05, seed=22)
 def veg3():
+    # ★3단계(잎만)와 확실히 구분: 잎을 더 벌리고 **결구(속이 찬 통배추형) + 열매**를 크게 얹는다.
     soil_bed(furrows=3)
     def one(x, y, i):
-        for k in range(7):
-            a = k * 0.9 + i * 0.5
-            d = V((math.cos(a) * 0.80, math.sin(a) * 0.80, 0.60)).normalized()
-            o = plane(0.15, 0.40, (x, y, 0.22), mat=(M['leaf'] if k % 2 else M['leaf2']))
-            o.location = (x + d.x * 0.15, y + d.y * 0.15, 0.22 + d.z * 0.12)
+        for k in range(8):
+            a = k * 0.79 + i * 0.5
+            d = V((math.cos(a) * 0.95, math.sin(a) * 0.95, 0.35)).normalized()   # 더 눕혀 벌어진 겉잎
+            o = plane(0.19, 0.52, (x, y, 0.20), mat=(M['leaf'] if k % 2 else M['leaf2']))
+            o.location = (x + d.x * 0.20, y + d.y * 0.20, 0.20 + d.z * 0.10)
             o.rotation_euler = d.to_track_quat('Z', 'Y').to_euler()
-            o.scale = (0.5, 1.0, 1.0)
-        ico(0.10, (x, y, 0.34), subdiv=2, mat=M['fruit'], scale=(1.0, 1.0, 0.85))   # 결실
+            o.scale = (0.55, 1.0, 1.0)
+        ico(0.16, (x, y, 0.34), subdiv=2, mat=M['leaf2'], scale=(1.0, 1.0, 1.15))   # 결구(속)
+        ico(0.085, (x + 0.13, y - 0.10, 0.30), subdiv=2, mat=M['fruit'], scale=(1.0, 1.0, 0.9))   # 열매
     rows(4, 3, one, jitter=0.05, seed=23)
 
 JOBS = [("grain_0", grain0), ("grain_1", grain1), ("grain_2", grain2), ("grain_3", grain3),
