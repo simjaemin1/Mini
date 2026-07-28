@@ -1838,6 +1838,8 @@ function onGameTick(now) {
   try { tickCaravanBodies(now); } catch (e) { console.error(`[${state.zoneId}] 🐂 캐러밴 실체 틱 실패:`, e.message); }
   // P2: 실체 전투 30Hz 스텝 — 캐러밴 직후(설계 위치). 무인 존에서도 진행 중 전투 완주(idle 스킵보다 앞).
   try { tickWarBodies(now); } catch (e) { console.error(`[${state.zoneId}] ⚔️ 실체 전투 틱 실패:`, e.message); }
+  // ★[곳간② 클라 표시] 물리 재고 델타 방송(1초 스로틀 — 변한 곳간만). 실패해도 틱을 죽이지 않는다.
+  try { _granBroadcast(now); } catch (e) { console.error(`[${state.zoneId}] 🏘️ 곳간 재고 방송 실패:`, e.message); }
   // ★자정 스파이크 분산: DB 직렬화(마을당 ~10KB JSON — 자정 틱 비용의 주범)는 이후 틱에 1마을/틱씩 배수(drain).
   //   econ 틱 자체는 일괄 유지 — 교역(tickWorldV2)이 마을 간 원자적이라 쪼개면 정합이 깨짐. 30Hz 예산(33ms) 보호.
   if (state.saveQueue && state.saveQueue.length) {
@@ -2148,6 +2150,10 @@ function lifeDebug() {   // ★[직접 서버 디버깅 — 사용자 요청] zo
       terr: vil._terrSet ? vil._terrSet.size : 0, terrBf: vil._terrBackfilled ? 1 : 0,
       pot: vil._potSet ? vil._potSet.size : 0, gran: vil._granList ? vil._granList.length : 0,
       granStock: vil._granStock ? [...vil._granStock.values()].reduce((a, b) => a + b, 0) : 0,   // ★곳간② 물리 장부 합(회계 아님)
+      // ★[LIFE_* 튜닝 계측] 오늘 진행분(m*)과 어제 확정치(d*) — 개간 셀·건설 단계·작물 태스크.
+      //   LIFE_CLEAR_PDAY(3)·LIFE_STAGE_PDAY(1)의 **실효 속도**를 관측으로 재는 축(상수 변경은 사용자 소관).
+      mCl: vil._mCl || 0, mSt: vil._mSt || 0, mTk: vil._mTk || 0,
+      dCl: vil._dCl || 0, dSt: vil._dSt || 0, dTk: vil._dTk || 0,
       carrying: (() => { let n = 0; for (const pid of vil.npcPids) { const p = state.deps.players.get(pid); if (p && p._carry > 0) n++; } return n; })(),
       jobs, econCounts: ec, actN, actPct: vil.npcPids.length ? +(actN / vil.npcPids.length * 100).toFixed(1) : 0,
       site: vil._site ? vil._site.stage : null, clearCrew: vil._clearCrew || 0, buildCrew: vil._buildCrew || 0, hl: vil._hlDay || null, acts, sample });
@@ -2177,6 +2183,12 @@ function _cellTask(vil, k, day) {   // 우선순위: 5수확 4방제 3물대기(
   return 0;
 }
 function _lifeDoTask(vil, npc, k, day) {   // 도착한 셀 처리(랩 doTask 동형 — econ storage 불변·스킬은 서버 생략). npc=null=헤드리스(라벨 생략)
+  // ★[LIFE_* 튜닝 계측] 오늘 처리된 작물 태스크 수(파종·수확·방제·물대기·김매기 — 실제 처리된 것만)
+  const _r = _lifeDoTask0(vil, npc, k, day);
+  if (_r) vil._mTk = (vil._mTk || 0) + 1;
+  return _r;
+}
+function _lifeDoTask0(vil, npc, k, day) {
   const e = vil._crop.get(k), nong = !vil._drySet.has(k);
   const ci = k.indexOf(','), par = (+k.slice(0, ci) + +k.slice(ci + 1)) & 1;
   if (!e) { const cr = _villageCropFor(vil, nong ? '논' : '밭', _lMonth(day), par); if (!cr) return false; vil._crop.set(k, { c: cr, p: day, td: day, w: day, wd: 0, ps: 0, q: 1 }); if (npc) _lifeAct(npc, nong ? '모내기' : '파종'); return true; }
@@ -2299,6 +2311,7 @@ function _lifeNeedClear(vil) {   // 랩 needLand 동형: 보즈럽 수요 게이
   return vil._farmSet.size < Math.ceil(e.npcs.length * VillageLayout.landNeedPer(fert, L_LANDNEED));
 }
 function _lifeLiveFarmTile(vil, cx, cy, type) {   // 개간 완료 실체화: 영속 행 + 라이브 시각 타일(farmTilesInRect 규약 동형)
+  vil._mCl = (vil._mCl || 0) + 1;   // ★[LIFE_* 튜닝 계측] 오늘 개간된 셀 수(실걸음·LOD 배치 공통 싱크)
   const rowid = state.db.insertVillageBuilding({ village_id: vil.dbId, type, cx, cy, floors: 0, data: null });
   vil._farmSet.add(cx + ',' + cy); vil._potSet.delete(cx + ',' + cy); vil._frontier = null; vil._farmArr = null;
   if (type === 'dryfield' && vil._drySet) vil._drySet.add(cx + ',' + cy);   // ★[생활 층 100% ③] 밭 구분 유지(작물 상태머신 field 판정)
@@ -2352,6 +2365,7 @@ function _lifeAddHouseSite(vil) {   // 랩 addHouseSite 동형(서버판): 2패�
 }
 function _lifeAdvanceSite(vil) {   // 크루 1단계 완수 → 단계 전진(클라 hut_site 렌더가 1~3단계 표시) / 4→완공
   const s2 = vil._site; if (!s2) return;
+  vil._mSt = (vil._mSt || 0) + 1;   // ★[LIFE_* 튜닝 계측] 오늘 전진한 건설 단계 수
   s2.stage++;
   if (s2.stage <= 3) {
     if (s2.bo) { s2.bo.data.stage = s2.stage; try { state.db.updateBuildingData(s2.bo.dbId, JSON.stringify(s2.bo.data)); } catch (e) {} state.deps.broadcast({ type: 'building_added', building: s2.bo }); }
@@ -2453,6 +2467,38 @@ function _lifeGranStep(vil, npc, now) {
   npc._granTask = null;
   return false;                                                      // 소유권 반납 → 이번 틱부터 평소 일과
 }
+// ★[곳간② 클라 표시] 물리 재고를 화면에 — 사다리 앞 칸 짐더미로 보이게 하는 최소 침습 배선.
+//   ①welcome에 현재 스냅샷(granStocks) ②이후엔 **변한 곳간만** 1초 스로틀 델타 방송(gran_stock).
+//   회계(econ storage)와 무관한 물리 장부만 나간다. 페이로드는 flat [cx,cy,수량,…] (JSON 소형화 — 영토 규약 동형).
+let _granBcAt = 0;
+function granStocks() {                      // zone.js welcome 소비 — 전 마을 현재 재고 스냅샷
+  const g = [];
+  if (!state.ready) return g;
+  for (const vil of state.villages) {
+    if (!vil._granStock) continue;
+    for (const [k, v] of vil._granStock) {
+      if (!(v > 0)) continue;
+      const ci = k.indexOf(','); g.push(+k.slice(0, ci), +k.slice(ci + 1), v);
+    }
+  }
+  return g;
+}
+function _granBroadcast(now) {               // onGameTick(30Hz) 훅 — 변화분만, 1초 스로틀
+  if (!state.deps || !state.deps.broadcast) return;
+  if (now - _granBcAt < 1000) return;
+  _granBcAt = now;
+  const g = [];
+  for (const vil of state.villages) {
+    if (!vil._granStock || !vil._granStock.size) continue;
+    if (!vil._granSent) vil._granSent = new Map();
+    for (const [k, v] of vil._granStock) {
+      if (vil._granSent.get(k) === v) continue;
+      vil._granSent.set(k, v);
+      const ci = k.indexOf(','); g.push(+k.slice(0, ci), +k.slice(ci + 1), v);
+    }
+  }
+  if (g.length) state.deps.broadcast({ type: 'gran_stock', g });
+}
 const G_CAP = 2500, G_MAX = 8, G_BUILDD = 6;
 function _lifeGranAdd(vil) {
   if (!state.ta || !vil.econ || !vil._granList || !vil._terrSet || !vil._terrSet.size) return;
@@ -2531,6 +2577,9 @@ function _lifeHunterEconLink(vil) {
 function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(디스폰 누수 자가치유) + 신축 판단 + 작물 하루 성장
   if (!LIFE_ON || !vil._terrSet || !vil._terrSet.size || !vil.econ) return;
   _lifeVL();
+  // ★[LIFE_* 튜닝 계측] 하루 누계를 '어제치'로 확정하고 리셋 — /lifedbg가 dCl/dSt/dTk로 노출한다.
+  vil._dCl = vil._mCl || 0; vil._dSt = vil._mSt || 0; vil._dTk = vil._mTk || 0;
+  vil._mCl = 0; vil._mSt = 0; vil._mTk = 0;
   vil._clearCrew = 0; vil._buildCrew = 0; vil._claim = new Set(); vil._frontDay = -1;
   vil._cropClaim = new Set(); vil._jobSites = null;   // ★[생활 층 100% ③] 작물 셀 클레임·직업 현장 캐시 일일 리셋(자가치유·현장 재평가)
   _lifeHunterEconLink(vil);   // ★[HSK↔econ] 시각 사냥꾼 ↔ econ 사냥꾼 NPC 연결(랩 배치 루틴 verbatim — 일일 재대사)
@@ -2846,6 +2895,8 @@ module.exports = {
   init, onGameTick, invalidateTradeDistances, npcLifeTick, lifeDebug,
   // Stage 4A — zone.js 소비: 농지 lazy 실물화 / welcome 영토 페이로드 / 레거시 디듀프 판정
   farmTilesInRect, clientVillages, isLegacyVillageClaimed,
+  // ★곳간② 클라 표시 — welcome 스냅샷(델타는 onGameTick에서 gran_stock 방송)
+  granStocks,
   // 플레이어 구매/판매 경계계약(읽기전용 마을 품질 EMA — econ 무접촉)
   villageQualityAt,
   // §11 도적 — server/bandits.js 소비(좁은 접점, 추가 전용)

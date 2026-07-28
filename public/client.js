@@ -1954,6 +1954,12 @@ const SIM_JOB_EMOJI = {
           c.bridges.add(k);
           _bridgeAbs.add(((msg.zone.worldOffsetX / CL_BUILDING_SIZE) + msg.bridges[i]) + ',' + (((msg.zone.worldOffsetY || 0) / CL_BUILDING_SIZE) + msg.bridges[i + 1]));
         }
+        // ★[곳간② 재고 표시] 곳간 물리 재고 flat [cx,cy,수량,…] — welcome 스냅샷, 이후 gran_stock 델타.
+        //   회계(econ)가 아니라 NPC가 실제로 지고 와 쌓은 물리량이다. 사다리 앞 칸에 짐더미로 그린다.
+        c.granStock = new Map();
+        if (msg.granStocks) for (let i = 0; i + 2 < msg.granStocks.length; i += 3) {
+          c.granStock.set(msg.granStocks[i] + ',' + msg.granStocks[i + 1], msg.granStocks[i + 2]);
+        }
       }
       // 월드 시계 동기화 — 서버 now와 클라 now 차이를 보정해서 동일 phase 계산
       if (msg.worldClock) {
@@ -2195,6 +2201,12 @@ const SIM_JOB_EMOJI = {
       if (!c.roads) c.roads = new Map();
       const rc = msg.cells || [];
       for (let i = 0; i < rc.length; i += 3) { const k = rc[i] + ',' + rc[i + 1]; if (rc[i + 2]) c.roads.set(k, rc[i + 2]); else c.roads.delete(k); }
+    } else if (msg.type === 'gran_stock') {
+      // ★[곳간② 재고 표시] 물리 재고 델타(변한 곳간만 · 1초 스로틀) — flat [cx,cy,수량,…], 0이면 삭제.
+      if (!c.granStock) c.granStock = new Map();
+      const gs = msg.g || [];
+      for (let i = 0; i + 2 < gs.length; i += 3) { const k = gs[i] + ',' + gs[i + 1]; if (gs[i + 2] > 0) c.granStock.set(k, gs[i + 2]); else c.granStock.delete(k); }
+      needsRedraw = true;
     } else if (msg.type === 'war_battle') {
       // §4-4 P4: 진행 전투 집계(2Hz+전이) — 스펙테이터 HUD·화면밖 지시자·관전 카메라 레지스트리.
       //   origin은 해당 존 로컬 px(o.cx*32) → 존 worldOffset 더해 절대 px(병사 pp.x 국지화와 동일).
@@ -3451,7 +3463,27 @@ const SIM_JOB_EMOJI = {
           const ci = bk.indexOf(','); const bcx = +bk.slice(0, ci), bcy = +bk.slice(ci + 1);
           const bax = ox + bcx * CL_BUILDING_SIZE + 16, bay = oy + bcy * CL_BUILDING_SIZE + 16;
           if (Math.abs(bax - worldCx) > VIEW_RADIUS || Math.abs(bay - worldCy) > VIEW_RADIUS) continue;
-          renderables.push({ z: w2i(bax, bay).y - 930, kind: 'bridge', bx: bax, by: bay, bk });
+          // ★스프라이트 종류 판정(다리 셀 집합만으로 결정 — 서버 페이로드 불변):
+          //   다리는 폭 2셀이라 축 판정에 이웃 1칸만 보면 평행한 옆줄 때문에 헷갈린다 → **2칸 앞까지** 세어
+          //   더 길게 뻗은 쪽을 다리 축으로 잡는다. 그 축 방향으로 이웃이 없는 쪽 = 뭍에 닿는 끝(cap).
+          const cnt = (dx, dy) => { let n = 0; for (let k = 1; k <= 2; k++) if (c.bridges.has((bcx + dx * k) + ',' + (bcy + dy * k))) n++; return n; };
+          const ax = (cnt(-1, 0) + cnt(1, 0)) >= (cnt(0, -1) + cnt(0, 1)) ? 'x' : 'y';
+          const hiN = ax === 'x' ? c.bridges.has((bcx + 1) + ',' + bcy) : c.bridges.has(bcx + ',' + (bcy + 1));
+          const loN = ax === 'x' ? c.bridges.has((bcx - 1) + ',' + bcy) : c.bridges.has(bcx + ',' + (bcy - 1));
+          const bs = 'bridge_' + (!hiN ? 'cap1' : (!loN ? 'cap0' : 'mid')) + '_' + ax;
+          renderables.push({ z: w2i(bax, bay).y - 930, kind: 'bridge', bx: bax, by: bay, bk, bs });
+        }
+      }
+      // ★[곳간② 재고 표시] 곳간 사다리 앞 칸(cx, cy+2)에 짐더미 — 재고 구간 2단계.
+      //   곳간은 문 없는 고상 구조라 사다리 칸이 NPC의 저장·인출 자리다(서버 _granLadder와 같은 셀).
+      //   z는 자원과 동형(iso.y)이라 곳간 벽·NPC와 깊이 정렬이 맞는다.
+      if (c.granStock && c.granStock.size) {
+        for (const [gk, st] of c.granStock) {
+          if (!(st > 0)) continue;
+          const ci = gk.indexOf(','); const gcx = +gk.slice(0, ci), gcy = +gk.slice(ci + 1) + 2;   // 사다리 칸
+          const gax = ox + gcx * CL_BUILDING_SIZE + 16, gay = oy + gcy * CL_BUILDING_SIZE + 16;
+          if (Math.abs(gax - worldCx) > VIEW_RADIUS || Math.abs(gay - worldCy) > VIEW_RADIUS) continue;
+          renderables.push({ z: w2i(gax, gay).y, kind: 'granpile', gx: gax, gy: gay, st });
         }
       }
       // §4-4 Stage 4A: 마을 시뮬 영토 — 경계 셀(b: [dx,dy,mask...]) 반투명 렌더. claim보다 더 배경(-900).
@@ -3740,7 +3772,11 @@ const SIM_JOB_EMOJI = {
         const a1 = P(0, 0), b1 = P(32, 0), c1 = P(32, 32), d1 = P(0, 32);
         ctx.fillStyle = 'rgba(0,0,0,0.28)';   // 수면 그림자
         ctx.beginPath(); ctx.moveTo(a1.x, a1.y + 5); ctx.lineTo(b1.x, b1.y + 5); ctx.lineTo(c1.x, c1.y + 5); ctx.lineTo(d1.x, d1.y + 5); ctx.closePath(); ctx.fill();
-        ctx.fillStyle = '#8a6a40';            // 널 상판
+        // ★[에셋 9차] Blender 통나무 널다리 타일 — 로드됐으면 벡터 대신 스프라이트.
+        //   렌더 규약: 카메라가 w2i와 동일한 2:1(방위 45°·고도 30°), ortho_scale=2√2 ⇒ **이미지 중심=셀 중심,
+        //   셀 다이아 폭=이미지 폭의 1/2**. 따라서 셀 중심에 한 변 128px(=64×2) 정사각으로 그리면 정확히 맞는다.
+        if (drawBridgeSprite(item.bs, item.bx, item.by, toScreen)) continue;
+        ctx.fillStyle = '#8a6a40';            // 널 상판(스프라이트 미로드 폴백 — 이하 벡터 경로)
         ctx.beginPath(); ctx.moveTo(a1.x, a1.y); ctx.lineTo(b1.x, b1.y); ctx.lineTo(c1.x, c1.y); ctx.lineTo(d1.x, d1.y); ctx.closePath(); ctx.fill();
         ctx.strokeStyle = 'rgba(70,50,28,0.85)'; ctx.lineWidth = 1;
         ctx.stroke();
@@ -3749,6 +3785,16 @@ const SIM_JOB_EMOJI = {
         ctx.beginPath();
         for (const t of [10.7, 21.3]) { const p1 = P(t, 0), p2 = P(t, 32); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); }
         ctx.stroke();
+      } else if (item.kind === 'granpile') {
+        // ★[곳간② 재고 표시] 볏짚 단 더미 — 재고 1~19=작은 더미, 20+=큰 더미(G_STOCK_CAP=60 기준 1/3 분기).
+        //   스프라이트는 다리 타일과 **같은 셀 정합 카메라**로 렌더돼 같은 규약(중심=셀 중심·128px)으로 그린다.
+        if (!drawBridgeSprite(item.st >= 20 ? 'gran_pile2' : 'gran_pile1', item.gx, item.gy, toScreen)) {
+          const gp = toScreen(w2i(item.gx, item.gy).x, w2i(item.gx, item.gy).y);   // 폴백: 단순 더미
+          ctx.fillStyle = 'rgba(0,0,0,0.20)';
+          ctx.beginPath(); ctx.ellipse(gp.x, gp.y + 2, 14, 6, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#c8ab63';
+          ctx.beginPath(); ctx.ellipse(gp.x, gp.y - 4, 12, 8, 0, 0, Math.PI * 2); ctx.fill();
+        }
       } else if (item.kind === 'simvil') {
         // §4-4 Stage 4A: 마을 시뮬 영토 — 서버가 경계 셀만 전송(b: [dx,dy,mask...] 중심 상대,
         //   mask 비트 1=N 2=E 4=S 8=W = 영토 바깥과 맞닿은 변). 반투명 초록(길드 파랑과 구분).
@@ -5401,6 +5447,25 @@ const SIM_JOB_EMOJI = {
     ctx.fillStyle = 'rgba(0,0,0,0.20)';
     ctx.beginPath(); ctx.ellipse(x, y + 3, w * 0.42, w * 0.16, 0, 0, Math.PI * 2); ctx.fill();
     ctx.drawImage(im, x - w / 2, y - hh + 5, w, hh);
+    return true;
+  }
+  // ★[다리 스프라이트 — 에셋 9차] scripts/bridge_render.py 산출물(256², 알파).
+  //   중간 타일 mid + 접지 캡 cap0/cap1 × 축 x/y = 6장. **자연물과 규약이 다르다**:
+  //   자연물은 bbox 크롭 후 화면 폭을 상수로 잡지만, 다리는 셀에 딱 맞아야 하므로 **크롭 금지**이고
+  //   이미지 중심 = 셀 중심, 그리기 크기 = 128×128 고정(셀 다이아 64px의 2배)이다.
+  const BRIDGE_SPRITES = {};
+  let _bridgeLoaded = 0;
+  (() => {
+    for (const k of ['bridge_mid_x', 'bridge_mid_y', 'bridge_cap0_x', 'bridge_cap0_y', 'bridge_cap1_x', 'bridge_cap1_y', 'gran_pile1', 'gran_pile2']) {
+      const im = new Image(); im.onload = () => _bridgeLoaded++; im.src = '/assets/bridge/' + k + '.png';
+      BRIDGE_SPRITES[k] = im;
+    }
+  })();
+  const BRIDGE_DRAW_PX = 128;   // = 셀 다이아 폭(64) × 2 — 렌더 ortho_scale=2√2와 짝인 상수
+  function drawBridgeSprite(key, wx, wy, toScreenFn) {
+    const im = BRIDGE_SPRITES[key]; if (!im || !im.complete || !im.naturalHeight) return false;
+    const p = w2i(wx, wy), s = toScreenFn(p.x, p.y);
+    ctx.drawImage(im, s.x - BRIDGE_DRAW_PX / 2, s.y - BRIDGE_DRAW_PX / 2, BRIDGE_DRAW_PX, BRIDGE_DRAW_PX);
     return true;
   }
   const TREE_SPRITES = [];

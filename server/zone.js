@@ -2219,6 +2219,7 @@ wss.on('connection', async (ws, req) => {
       resources: Array.from(resources.values()),
       claims: Array.from(claims.values()),
       simVillages: SimVillages.clientVillages(), // §4-4 Stage 4A: 마을 영토(경계 셀)·이름·인구 — 1회
+      granStocks: SimVillages.granStocks(),      // ★곳간② 물리 재고 스냅샷(이후 gran_stock 델타) — 사다리 앞 짐더미 연출
       banditCamps: Bandits.clientCamps(), // §11 도적: 소굴·야영 마커 1종 — 이후 bandit_camps가 변경분 방송
       roads: Roads.clientRoads(), // §16 답압 길: 등급 셀 flat [cx,cy,lv,...] — 이후 road_cells가 변경분 방송
       bridges: (ZONE.bridges || null), // ★[다리 층] 통나무 널다리 셀 flat [cx,cy,...] — 정적(맵 사물)이라 welcome 1회
@@ -2503,6 +2504,7 @@ wss.on('connection', async (ws, req) => {
     resources: Array.from(resources.values()),
     claims: Array.from(claims.values()),
     simVillages: SimVillages.clientVillages(), // §4-4 Stage 4A: 마을 영토(경계 셀)·이름·인구 — 1회
+      granStocks: SimVillages.granStocks(),      // ★곳간② 물리 재고 스냅샷(이후 gran_stock 델타) — 사다리 앞 짐더미 연출
     banditCamps: Bandits.clientCamps(), // §11 도적: 소굴·야영 마커 1종 — 이후 bandit_camps가 변경분 방송
     roads: Roads.clientRoads(), // §16 답압 길: 등급 셀 flat [cx,cy,lv,...] — 이후 road_cells가 변경분 방송
     bridges: (ZONE.bridges || null), // ★[다리 층] 통나무 널다리 셀 flat [cx,cy,...] — 정적(맵 사물)이라 welcome 1회
