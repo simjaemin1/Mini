@@ -112,7 +112,24 @@ console.log('\n[④-3 에디터 오버레이 페이로드 — export 스크립�
 
 console.log('\n[⑤ 에셋 실재 + 정사각(크롭 금지 규약)]');
 const ADIR = path.join(__dirname, '..', 'public', 'assets', 'bridge');
-for (const k of KEYS) {
+// ★1셀 규약 에셋 전량(다리 타일 + 곳간 짐더미·소품 + 마당 소품) — 클라 로더 목록과 실제 파일이 어긋나면 잡는다.
+const CELL_KEYS = [...KEYS, 'gran_pile1', 'gran_pile2', 'gran_pile3', 'gran_prop',
+  'yard_hearth', 'yard_jar1', 'yard_jar2', 'yard_garden'];
+{
+  const li = SRC.indexOf('_bridgeLoaded');
+  const seg = SRC.slice(Math.max(0, li - 200), li + 900);
+  const loader = seg.match(/for \(const k of \[([\s\S]*?)\]\)/);
+  const listed = loader ? [...loader[1].matchAll(/'([\w]+)'/g)].map((m) => m[1]) : [];
+  chk(listed.length === CELL_KEYS.length && CELL_KEYS.every((k) => listed.includes(k)),
+    `클라 로더 목록(${listed.length}) = 1셀 에셋 목록(${CELL_KEYS.length})`);
+  for (const k of CELL_KEYS) {
+    const f = path.join(ADIR, k + '.png');
+    let ok2 = false, dim = '없음';
+    if (fs.existsSync(f)) { const b = fs.readFileSync(f); const w = b.readUInt32BE(16), h = b.readUInt32BE(20); dim = `${w}×${h}`; ok2 = (w === h && w === 256); }
+    chk(ok2, `${k}.png ${dim}`);
+  }
+}
+if (0) for (const k of KEYS) {
   const f = path.join(ADIR, k + '.png');
   let ok = false, dim = '없음';
   if (fs.existsSync(f)) {

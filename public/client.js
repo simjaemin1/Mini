@@ -451,7 +451,8 @@ const SIM_JOB_EMOJI = {
   //   이미지만 갈아끼운다(로드 실패·미배포 시 기존 베이크가 그대로 폴백).
   const _bldSpr = {};
   (() => {
-    const A = { hut_roof: [164.0, 130.4], hall_roof: [292.0, 169.1], granary: [132.0, 121.1] };   // building_anchors.json 동기(하네스가 대조)
+    const A = { hut_roof: [164.0, 130.4], hall_roof: [292.0, 169.1], granary: [132.0, 121.1],
+                hut_s1: [164.0, 20.2], hut_s2: [164.0, 81.1], hut_s3: [164.0, 129.1] };   // building_anchors.json 동기(scripts/test-building-anchor.js가 결정적 재계산으로 대조)
     for (const k in A) {
       const im = new Image();
       im.onload = () => { im._ox = A[k][0]; im._oy = A[k][1]; _bldSpr[k] = im; };
@@ -3565,6 +3566,20 @@ const SIM_JOB_EMOJI = {
         }
         const _hutI = _bldSpr.hut_roof || _hutRoofC;   // ★10차: 3D 스프라이트 우선
         const _hut = _hutI && b.data && b.data.hut;
+        // ★[마당 소품 — 에셋 10차] 구역 기하 정본 자리에 화덕·장독 2점. 서버 페이로드는 그대로 두고
+        //   움집 태그(data.hut=[x0,y0,x1,y1])에서 유도한다(실내 화덕·침대가 이미 쓰는 방식과 동형).
+        //   집 앵커 (cx,cy) = (x1, y1+2) → 화덕(cx-2,cy) · 장독(cx+2,cy-4)(cx+4,cy-3).
+        //   컷어웨이와 무관하게 항상 보인다(마당 사물). 캐리어=발자국 남동단 1셀(움집당 정확 1회).
+        if (_hut && b.type === 'floor') {
+          const _pcx = Math.floor(b.x / CL_BUILDING_SIZE), _pcy = Math.floor(b.y / CL_BUILDING_SIZE);
+          if (_pcx === _hut[2] && _pcy === _hut[3]) {
+            for (const [_pk, _pdx, _pdy] of [['yard_hearth', -2, 2], ['yard_jar1', 2, -2], ['yard_jar2', 4, -1]]) {
+              const _px2 = ox + (_hut[2] + _pdx) * CL_BUILDING_SIZE + 16, _py2 = oy + (_hut[3] + _pdy) * CL_BUILDING_SIZE + 16;
+              if (Math.abs(_px2 - worldCx) > VIEW_RADIUS || Math.abs(_py2 - worldCy) > VIEW_RADIUS) continue;
+              renderables.push({ z: w2i(_px2, _py2).y, kind: 'cellprop', key: _pk, gx: _px2, gy: _py2 });
+            }
+          }
+        }
         if (_hut && b.type === 'floor') {
           const _mcx = Math.floor(myAbsPredicted.x / CL_BUILDING_SIZE), _mcy = Math.floor(myAbsPredicted.y / CL_BUILDING_SIZE);
           const _inside = (myFloor || 0) === 0 && ((_mcx >= _hut[0] && _mcx <= _hut[2] && _mcy >= _hut[1] && _mcy <= _hut[3])
@@ -3805,6 +3820,9 @@ const SIM_JOB_EMOJI = {
         ctx.beginPath();
         for (const t of [10.7, 21.3]) { const p1 = P(t, 0), p2 = P(t, 32); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); }
         ctx.stroke();
+      } else if (item.kind === 'cellprop') {
+        // ★[마당 소품] 화덕·장독 — 다리 타일과 같은 셀 정합 규약(이미지 중심=셀 중심·128px). 폴백은 없음(없으면 안 그림).
+        drawBridgeSprite(item.key, item.gx, item.gy, toScreen);
       } else if (item.kind === 'granpile') {
         // ★[곳간② 재고 표시] 볏짚 단 더미 — 재고 1~19=작은 더미, 20+=큰 더미(G_STOCK_CAP=60 기준 1/3 분기).
         //   스프라이트는 다리 타일과 **같은 셀 정합 카메라**로 렌더돼 같은 규약(중심=셀 중심·128px)으로 그린다.
@@ -4783,6 +4801,8 @@ const SIM_JOB_EMOJI = {
     if (type === 'vtile') {
       // ★[실체화 동기 — 랩 정본] 마을 지면 타일: yard=부지 원판(다짐 흙), plaza=큰집 마당 광장, garden=텃밭(이랑)
       const kind = (building?.data?.kind) || 'yard';
+      // ★[텃밭 3D — 에셋 10차] 이랑·새싹 타일(1셀 정합 스프라이트). 미로드 시 아래 벡터 이랑 폴백.
+      if (kind === 'garden' && drawCellSpriteAt('yard_garden', x, y)) return;
       if (kind !== 'garden' && _tileYardC) {
         // ★생성형 텍스처 실셀 다이아(64×32) — 마당·광장이 이어진 다짐 지면으로 읽힘(구 반크기 점묘 폐지)
         ctx.drawImage(kind === 'plaza' ? _tilePlazaC : _tileYardC, x - 32, y - 16);
@@ -4804,8 +4824,23 @@ const SIM_JOB_EMOJI = {
       return;
     }
     if (type === 'hut_site') {
-      // ★움집터 — 수혈 구덩이 + 단계 진행(점선 골조 느낌). stage 1=구덩이, 2=기둥, 3=골조
+      // ★움집터 — 수혈 구덩이 + 단계 진행. stage 1=구덩이, 2=굴립주, 3=도리·서까래 골조, 4=완공(hut로 전환)
       const st = (building?.data?.stage) | 0;
+      // ★[공정 3D — 에셋 10차] 완공 움집과 **같은 발자국(6×4)·같은 앵커 계약**의 단계 스프라이트.
+      //   행 px(b.x,b.y)는 발자국 중심이 아니라 (x0+2.5, y0+1.5)셀이라, 발자국 북서 오버행 모서리까지의
+      //   델타를 iso로 변환해 앵커를 잡는다(w2i가 선형이라 델타 변환이 성립).
+      {
+        const _sp = _bldSpr['hut_s' + st], _d = building && building.data;
+        if (_sp && _d && _d.x0 != null) {
+          const _dx = (_d.x0 - 0.5) * CL_BUILDING_SIZE - building.x, _dy = (_d.y0 - 0.5) * CL_BUILDING_SIZE - building.y;
+          const _ax2 = x + (_dx - _dy), _ay2 = y + (_dx + _dy) * 0.5;
+          ctx.drawImage(_sp, _ax2 - _sp._ox, _ay2 - _sp._oy);
+          ctx.font = 'bold 10px sans-serif'; ctx.fillStyle = '#ffe9b0'; ctx.textAlign = 'center';
+          ctx.fillText(`움집터 ${st}/4단계 (클릭=시공)`, x, y - 18);
+          ctx.textAlign = 'left';
+          return;
+        }
+      }
       ctx.beginPath();
       ctx.moveTo(x, y - 14); ctx.lineTo(x + 30, y); ctx.lineTo(x, y + 14); ctx.lineTo(x - 30, y); ctx.closePath();
       ctx.fillStyle = 'rgba(74,58,40,0.55)'; ctx.fill();
@@ -5480,7 +5515,8 @@ const SIM_JOB_EMOJI = {
   let _bridgeLoaded = 0;
   (() => {
     for (const k of ['bridge_mid_x', 'bridge_mid_y', 'bridge_cap0_x', 'bridge_cap0_y', 'bridge_cap1_x', 'bridge_cap1_y',
-                     'gran_pile1', 'gran_pile2', 'gran_pile3', 'gran_prop']) {
+                     'gran_pile1', 'gran_pile2', 'gran_pile3', 'gran_prop',
+                     'yard_hearth', 'yard_jar1', 'yard_jar2', 'yard_garden']) {   // ★10차: 마당 소품(화덕·장독2·텃밭)
       const im = new Image(); im.onload = () => _bridgeLoaded++; im.src = '/assets/bridge/' + k + '.png';
       BRIDGE_SPRITES[k] = im;
     }
@@ -5490,6 +5526,12 @@ const SIM_JOB_EMOJI = {
     const im = BRIDGE_SPRITES[key]; if (!im || !im.complete || !im.naturalHeight) return false;
     const p = w2i(wx, wy), s = toScreenFn(p.x, p.y);
     ctx.drawImage(im, s.x - BRIDGE_DRAW_PX / 2, s.y - BRIDGE_DRAW_PX / 2, BRIDGE_DRAW_PX, BRIDGE_DRAW_PX);
+    return true;
+  }
+  // 같은 규약을 **화면 좌표로 직접** 쓰는 경로(지면 타일 draw는 이미 셀 중심 화면좌표를 받는다)
+  function drawCellSpriteAt(key, sx, sy) {
+    const im = BRIDGE_SPRITES[key]; if (!im || !im.complete || !im.naturalHeight) return false;
+    ctx.drawImage(im, sx - BRIDGE_DRAW_PX / 2, sy - BRIDGE_DRAW_PX / 2, BRIDGE_DRAW_PX, BRIDGE_DRAW_PX);
     return true;
   }
   const TREE_SPRITES = [];

@@ -29,6 +29,10 @@ const JOBS = {
   hut_roof: anchor(6, 4, EAVE + 2.5 * SLOPE + 0.4),
   hall_roof: anchor(8, 8, EAVE + 4.5 * SLOPE + 0.4),
   granary: anchor(5, 3, 2.0 + 2.0 * SLOPE + 0.4),
+  // ★움집 4단계 공정(8차) — 발자국은 완공과 같은 6×4, 높이만 단계별(building_render.py JOBS 동형)
+  hut_s1: anchor(6, 4, 0.45),
+  hut_s2: anchor(6, 4, EAVE + 0.35),
+  hut_s3: anchor(6, 4, EAVE + 2.5 * SLOPE + 0.35),
 };
 
 // ── ① client.js A표 파싱 ──

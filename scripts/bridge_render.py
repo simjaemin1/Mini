@@ -110,7 +110,7 @@ if bg:
     bg.inputs[0].default_value = (0.52, 0.56, 0.6, 1.0); bg.inputs[1].default_value = 0.55
 sun_d = bpy.data.lights.new("Sun", 'SUN'); sun_d.energy = 3.6; sun_d.angle = 0.2
 sun = bpy.data.objects.new("Sun", sun_d); scene.collection.objects.link(sun)
-sun.rotation_euler = (math.radians(52), 0, math.radians(35))
+sun.rotation_euler = (math.radians(52), 0, math.radians(-35))   # ★좌우 뒤집기 보정(아래 _flip_png) — 뒤집은 뒤 기존 베이크와 같은 방향에서 빛이 온다
 tgt = bpy.data.objects.new("Tgt", None); scene.collection.objects.link(tgt)
 cam_d = bpy.data.cameras.new("Cam"); cam_d.type = 'ORTHO'; cam_d.clip_start = 0.1; cam_d.clip_end = 1000
 cam = bpy.data.objects.new("Cam", cam_d); scene.collection.objects.link(cam)
@@ -122,6 +122,33 @@ NHAT = V((math.cos(THETA) / math.sqrt(2), math.cos(THETA) / math.sqrt(2), math.s
 CELL_DIAG_W = math.sqrt(2.0)                 # 1×1 셀의 투영 가로폭(Blender 유닛)
 cam_d.ortho_scale = CELL_DIAG_W * 2.0        # 이미지 폭 = 셀 다이아 폭 ×2
 
+# =============================================================================
+# ★★좌우 뒤집기(FLIP) — 8차 실측으로 확정된 필수 보정.
+#   Blender TRACK_TO 카메라를 (+x,+y,+z)에 두면 **화면 오른쪽이 (-1,+1,0)** 이 된다(축 실측:
+#   (1,0,0)=왼쪽 86px · (0,1,0)=오른쪽 214px · 중심 150). 그런데 게임 투영 w2i는 +x가 오른쪽이다.
+#   → 렌더 결과를 좌우로 뒤집어야 게임과 같은 손방향이 된다. 뒤집지 않으면 x/y가 뒤바뀌어
+#     **맞배지붕 용마루가 90° 돌아간 것처럼** 보인다(7차 건물 스프라이트의 실제 결함 — 실화면 A/B로 발견).
+#   앵커(_ox)는 원래부터 '게임 규약(+x 오른쪽)' 기준으로 계산해 왔으므로 **뒤집은 뒤에 그대로 맞는다**
+#   (하네스 test-building-anchor.js가 같은 수학으로 대조).
+# =============================================================================
+def _flip_png(path):
+    img = bpy.data.images.load(path)
+    w, h = img.size
+    px = list(img.pixels[:])                       # (Blender 번들 파이썬엔 numpy가 없을 수 있어 순수 파이썬으로)
+    out = [0.0] * len(px)
+    for y in range(h):
+        row = y * w * 4
+        for x in range(w):
+            s2 = row + x * 4
+            d2 = row + (w - 1 - x) * 4
+            out[d2] = px[s2]; out[d2 + 1] = px[s2 + 1]; out[d2 + 2] = px[s2 + 2]; out[d2 + 3] = px[s2 + 3]
+    img.pixels = out
+    img.filepath_raw = path
+    img.file_format = 'PNG'
+    img.save()
+    bpy.data.images.remove(img)
+
+
 # ===== 재질 =====
 M = {}
 M['log']    = striped_mat("log",   (0.44, 0.31, 0.17), (0.34, 0.23, 0.12), 20, 0.85, 0.45)   # 껍질 붙은 통나무 보
@@ -131,6 +158,13 @@ M['cord']   = simple_mat("cord",   (0.55, 0.45, 0.26), 0.9)
 M['soil']   = bumped_mat("soil",   (0.32, 0.22, 0.13), (0.20, 0.13, 0.07), 12, 0.6, 0.95)
 M['straw']  = striped_mat("straw", (0.80, 0.66, 0.31), (0.66, 0.51, 0.21), 30, 0.85, 0.4)   # 볏짚 단(곳간 짐더미)
 M['pottery']= bumped_mat("pottery",(0.52, 0.32, 0.20), (0.38, 0.22, 0.13), 6, 0.3, 0.75)      # 토기 항아리
+M['hstone'] = bumped_mat("hstone", (0.46, 0.40, 0.33), (0.30, 0.25, 0.20), 9, 0.8, 0.95)   # 화덕 두름돌(따뜻한 강돌)
+M['ridge']  = bumped_mat("ridge",  (0.42, 0.31, 0.19), (0.31, 0.22, 0.13), 10, 0.55, 0.95)  # 텃밭 두둑(흙 — 통나무로 안 읽히게)
+M['ash']    = simple_mat("ash",     (0.42, 0.40, 0.37), 0.95)   # 재
+M['char']   = simple_mat("char",    (0.13, 0.11, 0.09), 0.9)    # 숯·탄 장작
+M['ember']  = simple_mat("ember",   (0.95, 0.42, 0.10), 0.5)    # 잉걸(발광 없이 색만 — 밤 조명은 클라 소관)
+M['soil']   = bumped_mat("soil2y", (0.36, 0.26, 0.16), (0.25, 0.17, 0.10), 11, 0.6, 0.95)   # 텃밭 흙
+M['sprout'] = simple_mat("sprout",  (0.34, 0.52, 0.20), 0.7)    # 새싹
 M['stone']  = bumped_mat("stone",  (0.34, 0.33, 0.31), (0.16, 0.16, 0.16), 9, 0.8, 0.95)
 
 OBJS = []
@@ -295,21 +329,77 @@ def t_prop():    # 곳간 벽에 기대 놓은 소품 — 멍석 말이 + 삼태
     random.seed(74)
     # ★멍석 말이 — **밑동이 땅에 닿아야** 기대 놓은 것으로 읽힌다(1패스: 공중에 뜬 막대처럼 보였음).
     #   기울기 22°(수직 기준) · 중심 z = (길이/2)·cos22° 로 밑동을 지면에 앉힌다.
-    LN, TILT = 0.92, math.radians(22)
+    # ★7차 실화면 지적: 1:1(32px 셀)에서 '막대 하나'로 보였다 → **짧고 굵게** + 결속을 굵게 + 삼태기를 키워
+    #   실루엣이 두 덩이로 읽히게 한다(작은 스프라이트는 형태 수보다 덩이 대비가 중요).
+    LN, TILT = 0.62, math.radians(26)
     cz = LN / 2 * math.cos(TILT)
-    cyl(0.105, LN, (0.44, 0.54, cz), rot=(TILT, 0, math.radians(12)), mat=M['straw'], verts=12)
-    for t in (-0.28, 0.28):   # 묶은 새끼 2줄
-        bpy.ops.mesh.primitive_torus_add(major_radius=0.112, minor_radius=0.014,
-                                         location=(0.44, 0.54 - t * LN * math.sin(TILT), cz + t * LN * math.cos(TILT)),
+    cyl(0.165, LN, (0.40, 0.52, cz), rot=(TILT, 0, math.radians(12)), mat=M['straw'], verts=14)
+    for t in (-0.30, 0.30):   # 묶은 새끼 2줄(굵게)
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.175, minor_radius=0.026,
+                                         location=(0.40, 0.52 - t * LN * math.sin(TILT), cz + t * LN * math.cos(TILT)),
                                          rotation=(TILT, 0, math.radians(12)))
         add(bpy.context.active_object, M['cord'])
-    cyl(0.16, 0.20, (0.66, 0.60, 0.10), rot=(math.radians(12), 0, 0), mat=M['straw'], verts=14)   # 삼태기(엎어 놓은 바구니)
-    cyl(0.13, 0.02, (0.66, 0.60, 0.205), rot=(math.radians(12), 0, 0), mat=M['cord'], verts=14)
+    cyl(0.21, 0.26, (0.70, 0.62, 0.13), rot=(math.radians(10), 0, 0), mat=M['straw'], verts=16)   # 삼태기(엎어 놓은 바구니)
+    cyl(0.17, 0.03, (0.70, 0.62, 0.27), rot=(math.radians(10), 0, 0), mat=M['cord'], verts=16)
+
+
+# ===== 마당 소품(1셀 타일 규약 — 다리·짐더미와 동일: 이미지 중심=셀 중심, 클라 128px 정사각) =====
+#   구역 기하 정본의 자리에 그대로 놓는다(화덕(-2,0) · 장독(+2,-4)(+4,-3) · 텃밭 [+1..+4]²).
+#   크기·위치는 클라가 셀에 맞춰 그리므로 여기선 **셀 안에 들어가는 실물 크기**만 지킨다.
+def t_hearth():   # 앞마당 화덕 — 돌 두른 노지 + 재 + 잉걸 + 타다 만 장작
+    random.seed(81)
+    for i in range(10):                                  # 두름돌 — ★1패스: 회청색 stone이라 차가웠다 → 따뜻한 강돌
+        t = i / 10 * 2 * math.pi
+        ico(random.uniform(0.085, 0.115), (0.5 + math.cos(t) * 0.33, 0.5 + math.sin(t) * 0.33, 0.055),
+            subdiv=1, mat=M['hstone'], jitter=0.3, scale=(1.0, 1.0, 0.8))
+    cyl(0.26, 0.05, (0.5, 0.5, 0.02), mat=M['ash'], verts=18)            # 잿바닥
+    for i in range(4):                                   # 장작(타다 만 통나무)
+        a = i * 1.1 + 0.3
+        cyl(0.038, random.uniform(0.32, 0.44), (0.5 + math.cos(a) * 0.06, 0.5 + math.sin(a) * 0.06, 0.075),
+            rot=(0, math.radians(86), a), mat=M['char'], verts=7)
+    for (ex, ey, er) in ((0.5, 0.5, 0.085), (0.44, 0.55, 0.055), (0.57, 0.47, 0.05)):            # 잉걸(또렷하게)
+        ico(er, (ex, ey, 0.085), subdiv=1, mat=M['ember'], jitter=0.3, scale=(1.3, 1.3, 0.6))
+
+
+def _jar(x, y, r, h, lid=True, seed=0):
+    random.seed(seed)
+    cyl(r * 0.72, 0.06, (x, y, 0.03), mat=M['pottery'], verts=16)        # 굽
+    ico(r, (x, y, h * 0.52), subdiv=2, mat=M['pottery'], scale=(1.0, 1.0, h / (2 * r)))   # 배부른 몸통
+    cyl(r * 0.52, 0.07, (x, y, h * 0.98), mat=M['pottery'], verts=16)    # 아가리
+    if lid:
+        cyl(r * 0.60, 0.045, (x, y, h * 1.03), mat=M['pottery'], verts=16)   # 뚜껑
+        cyl(0.035, 0.06, (x, y, h * 1.08), mat=M['pottery'], verts=10)
+
+
+def t_jar1():     # 장독 — 큰 항아리 1 + 작은 항아리 1
+    _jar(0.42, 0.46, 0.20, 0.44, True, 82)
+    _jar(0.68, 0.62, 0.13, 0.28, True, 83)
+
+
+def t_jar2():     # 장독 — 중간 2점(뚜껑 하나는 열린 채 기대 놓음)
+    _jar(0.38, 0.56, 0.16, 0.34, True, 84)
+    _jar(0.64, 0.44, 0.15, 0.32, False, 85)
+    random.seed(86)
+    o = cyl(0.10, 0.035, (0.64, 0.62, 0.10), rot=(math.radians(72), 0, math.radians(20)), mat=M['pottery'], verts=14)
+
+
+def t_garden():   # 텃밭 1셀 — 이랑(두둑·고랑) + 새싹. 이웃 셀과 이어지도록 x축 관통 이랑.
+    random.seed(87)
+    box(1.0, 1.0, 0.02, (0.5, 0.5, 0.01), mat=M['soil'])                 # 다진 흙 바닥
+    for i in range(3):                                                   # 두둑 3줄(주기 0.333 — 셀 경계 관통)
+        y = 0.1667 + i * 0.3333
+        o = cyl(0.085, 1.02, (0.5, y, 0.045), rot=(0, math.radians(90), 0), mat=M['ridge'], verts=8)
+        o.scale = (1.0, 1.0, 0.5)
+        for k in range(4):                                               # 새싹
+            sx2 = 0.14 + k * 0.24 + random.uniform(-0.03, 0.03)
+            cyl(0.012, 0.10, (sx2, y, 0.11), rot=(random.uniform(-0.25, 0.25), random.uniform(-0.25, 0.25), 0), mat=M['sprout'], verts=6)
 
 
 JOBS = [("bridge_mid", t_mid, True), ("bridge_cap1", t_cap1, True), ("bridge_cap0", t_cap0, True),
         ("gran_pile1", t_pile1, False), ("gran_pile2", t_pile2, False),
-        ("gran_pile3", t_pile3, False), ("gran_prop", t_prop, False)]
+        ("gran_pile3", t_pile3, False), ("gran_prop", t_prop, False),
+        ("yard_hearth", t_hearth, False), ("yard_jar1", t_jar1, False),
+        ("yard_jar2", t_jar2, False), ("yard_garden", t_garden, False)]
 
 
 def frame_and_render(path, rot_z_deg):
@@ -327,6 +417,7 @@ def frame_and_render(path, rot_z_deg):
     cam.location = ctr + NHAT * 40.0
     scene.render.filepath = path
     bpy.ops.render.render(write_still=True)
+    _flip_png(path)                   # ★게임 손방향 보정(위 FLIP 주석)
     if rot_z_deg:                     # 원위치(다음 축 렌더를 위해 되돌린다)
         bpy.ops.object.select_all(action='DESELECT')
         for o in OBJS:

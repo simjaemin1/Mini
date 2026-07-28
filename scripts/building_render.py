@@ -82,7 +82,7 @@ if bg:
     bg.inputs[0].default_value = (0.52, 0.56, 0.6, 1.0); bg.inputs[1].default_value = 0.55
 sun_d = bpy.data.lights.new("Sun", 'SUN'); sun_d.energy = 3.6; sun_d.angle = 0.2
 sun = bpy.data.objects.new("Sun", sun_d); scene.collection.objects.link(sun)
-sun.rotation_euler = (math.radians(52), 0, math.radians(35))
+sun.rotation_euler = (math.radians(52), 0, math.radians(-35))   # ★좌우 뒤집기 보정(아래 _flip_png) — 뒤집은 뒤 기존 베이크와 같은 방향에서 빛이 온다
 tgt = bpy.data.objects.new("Tgt", None); scene.collection.objects.link(tgt)
 cam_d = bpy.data.cameras.new("Cam"); cam_d.type = 'ORTHO'; cam_d.clip_start = 0.1; cam_d.clip_end = 2000
 cam = bpy.data.objects.new("Cam", cam_d); scene.collection.objects.link(cam)
@@ -93,6 +93,33 @@ NHAT = V((math.cos(THETA) / math.sqrt(2), math.cos(THETA) / math.sqrt(2), math.s
 RHAT = V((1.0, -1.0, 0.0)).normalized()
 UHAT = V((-math.sin(THETA) / math.sqrt(2), -math.sin(THETA) / math.sqrt(2), math.cos(THETA)))
 
+# =============================================================================
+# ★★좌우 뒤집기(FLIP) — 8차 실측으로 확정된 필수 보정.
+#   Blender TRACK_TO 카메라를 (+x,+y,+z)에 두면 **화면 오른쪽이 (-1,+1,0)** 이 된다(축 실측:
+#   (1,0,0)=왼쪽 86px · (0,1,0)=오른쪽 214px · 중심 150). 그런데 게임 투영 w2i는 +x가 오른쪽이다.
+#   → 렌더 결과를 좌우로 뒤집어야 게임과 같은 손방향이 된다. 뒤집지 않으면 x/y가 뒤바뀌어
+#     **맞배지붕 용마루가 90° 돌아간 것처럼** 보인다(7차 건물 스프라이트의 실제 결함 — 실화면 A/B로 발견).
+#   앵커(_ox)는 원래부터 '게임 규약(+x 오른쪽)' 기준으로 계산해 왔으므로 **뒤집은 뒤에 그대로 맞는다**
+#   (하네스 test-building-anchor.js가 같은 수학으로 대조).
+# =============================================================================
+def _flip_png(path):
+    img = bpy.data.images.load(path)
+    w, h = img.size
+    px = list(img.pixels[:])                       # (Blender 번들 파이썬엔 numpy가 없을 수 있어 순수 파이썬으로)
+    out = [0.0] * len(px)
+    for y in range(h):
+        row = y * w * 4
+        for x in range(w):
+            s2 = row + x * 4
+            d2 = row + (w - 1 - x) * 4
+            out[d2] = px[s2]; out[d2 + 1] = px[s2 + 1]; out[d2 + 2] = px[s2 + 2]; out[d2 + 3] = px[s2 + 3]
+    img.pixels = out
+    img.filepath_raw = path
+    img.file_format = 'PNG'
+    img.save()
+    bpy.data.images.remove(img)
+
+
 M = {}
 # ★색 보정(A/B 육안): 하늘(청회색 0.52/0.56/0.60)을 위로 향한 면이 많이 받아 **이엉이 탁하게** 나왔다.
 #   기존 베이크의 따뜻한 볏짚색과 나란히 놓고 보정 — 채도·황색을 올려 같은 마을 안에서 이질감이 없게.
@@ -102,6 +129,9 @@ M['log'] = striped_mat("log", (0.44, 0.31, 0.17), (0.33, 0.22, 0.12), 18, 0.85, 
 M['plank'] = striped_mat("plank", (0.55, 0.41, 0.24), (0.45, 0.32, 0.18), 14, 0.82, 0.35)         # 판벽
 M['cord'] = simple_mat("cord", (0.55, 0.45, 0.26), 0.9)
 M['dark'] = simple_mat("dark", (0.07, 0.06, 0.05), 0.95)                                          # 들린 바닥 밑 그늘
+M['soil'] = striped_mat("soil", (0.34, 0.25, 0.15), (0.24, 0.17, 0.10), 9, 0.95, 0.6, 6.0)        # 파낸 흙(수혈·둔덕)
+M['soil2'] = striped_mat("soil2", (0.28, 0.20, 0.12), (0.19, 0.13, 0.08), 12, 0.95, 0.5, 6.0)     # 수혈 바닥 다짐흙(그늘)
+M['fiber'] = simple_mat("fiber", (0.62, 0.55, 0.30), 0.9)                                          # 새끼·풀 결속
 
 OBJS = []
 
@@ -247,8 +277,10 @@ def render(key, W, D, top_m):
     ctr = V((DI / 2, DJ / 2, (top_m * ZSQ) / 2))
     tgt.location = ctr
     cam.location = ctr + NHAT * 200.0
-    scene.render.filepath = os.path.join(OUTDIR, key + ".png")
+    _p = os.path.join(OUTDIR, key + ".png")
+    scene.render.filepath = _p
     bpy.ops.render.render(write_still=True)
+    _flip_png(_p)                     # ★게임 손방향 보정(위 FLIP 주석)
     # 로컬 원점(0,0,0)의 픽셀 좌표 = 앵커
     rel = V((0.0, 0.0, 0.0)) - ctr
     ox = Wpx / 2.0 + rel.dot(RHAT) * PPU
@@ -265,10 +297,93 @@ def cleanup():
     bpy.ops.object.delete()
 
 
+# =============================================================================
+# 움집 4단계 공정(HUT_STAGES) — 서버 stage 1~3이 '움집터'로 보이는 구간. 4단계=완공(hut_roof가 대체).
+#   ① 수혈 굴착(터파기) ② 굴립주 기둥 6 ③ 도리·서까래 골조 ④ 이엉(=완공)
+#   발자국은 완공 움집과 동일한 6×4 — 같은 앵커 계약이라 클라가 같은 원점에 그린다.
+# =============================================================================
+HUT_W, HUT_D = 6.0, 4.0
+POSTS6 = None   # 굴립주 6주 좌표(발자국 안쪽) — 단계 ②③ 공용
+
+
+def _hut_posts():
+    """굴립주 6주 = 네 모서리 + 장변 중간 2 (고증: 6주식)."""
+    b0x, b1x = 0.9, HUT_W + 0.1
+    b0y, b1y = 0.9, HUT_D + 0.1
+    return [(b0x, b0y), ((b0x + b1x) / 2, b0y), (b1x, b0y),
+            (b0x, b1y), ((b0x + b1x) / 2, b1y), (b1x, b1y)]
+
+
+def _hut_pit(rim=True):
+    """수혈(얕은 구덩이) — 바닥 다짐흙 + 파낸 흙 둔덕. 로컬 원점 기준 발자국은 [0.5..W+0.5]×[0.5..D+0.5]."""
+    random.seed(91)
+    cx2, cy2 = (HUT_W + 1) / 2, (HUT_D + 1) / 2
+    # ★1패스 육안: 바닥이 '깔개'처럼 보였다 — 더 낮게·더 어둡게 깔고 둔덕을 키워 '파낸 구덩이'로 읽히게.
+    box(HUT_W, HUT_D, 0.06, (cx2, cy2, -0.06), mat=M['soil2'])           # 파인 바닥(수혈 — 지면보다 낮다)
+    if rim:
+        for i in range(30):                                              # 파낸 흙 둔덕(가장자리 — 구덩이 테두리)
+            t = i / 30 * 2 * math.pi
+            x = cx2 + math.cos(t) * (HUT_W / 2 + 0.22)
+            y = cy2 + math.sin(t) * (HUT_D / 2 + 0.22)
+            bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=random.uniform(0.16, 0.26), location=(x, y, 0.09))
+            o = bpy.context.active_object
+            o.scale = (1.25, 1.25, 0.62)
+            add(o, M['soil'])
+
+
+def hut_s1():
+    """① 수혈 굴착 — 구덩이 + 흙 둔덕 + 파낸 자리 말뚝 표시 2개."""
+    _hut_pit()
+    for (x, y) in ((1.2, 0.75), (HUT_W - 0.2, HUT_D + 0.25)):
+        cyl(0.04, 0.42, (x, y, 0.21), mat=M['log'], verts=8)
+
+
+def hut_s2():
+    """② 굴립주 기둥 6 — 2m 통나무를 수혈 바닥에 묻어 세운다."""
+    _hut_pit()
+    for (x, y) in _hut_posts():
+        cyl(0.115, EAVE_M + 0.20, (x, y, (EAVE_M + 0.20) / 2 - 0.10), mat=M['log'], verts=10)
+        cyl(0.15, 0.10, (x, y, 0.03), mat=M['soil'], verts=10)           # 밑동 되메운 흙
+
+
+def hut_s3():
+    """③ 도리·서까래 골조 — 기둥 + 처마도리 + 용마루 종도리 + 서까래(이엉 전). 물매는 완공과 동일."""
+    hut_s2()
+    jc = (HUT_D + 1) / 2
+    ridge = EAVE_M + jc * SLOPE
+    # 처마도리(장변 2줄)
+    for y in (0.9, HUT_D + 0.1):
+        cyl(0.075, HUT_W + 0.5, ((HUT_W + 1) / 2, y, EAVE_M), rot=(0, math.radians(90), 0), mat=M['log'], verts=10)
+    # 마룻대(종도리) + 받침 기둥 2
+    cyl(0.085, HUT_W + 0.6, ((HUT_W + 1) / 2, jc, ridge), rot=(0, math.radians(90), 0), mat=M['log'], verts=10)
+    for x in (1.2, HUT_W - 0.2):
+        cyl(0.09, ridge, (x, jc, ridge / 2), mat=M['log'], verts=10)
+    # 서까래 — 마룻대에서 양 처마로
+    ang = math.atan2(ridge - EAVE_M, jc)
+    ln = math.hypot(jc, ridge - EAVE_M)
+    for i in range(9):
+        x = 0.65 + i * (HUT_W - 0.3) / 8
+        for sgn in (-1, 1):
+            cy2 = jc + sgn * jc / 2
+            cz = (EAVE_M + ridge) / 2
+            cyl(0.038, ln, (x, cy2, cz), rot=(math.radians(90) - sgn * ang, 0, 0), mat=M['log'], verts=7)
+    # 들보(장변 기둥을 가로로 묶는 보 2줄) — 골조가 '서 있는 구조'로 읽히게
+    for x in (1.6, HUT_W - 0.6):
+        cyl(0.06, HUT_D - 0.6, (x, jc, EAVE_M - 0.12), rot=(math.radians(90), 0, 0), mat=M['log'], verts=8)
+    # 결속 새끼(마룻대 몇 군데)
+    for i in range(3):
+        x = 1.4 + i * (HUT_W - 1.6) / 2
+        cyl(0.03, 0.34, (x, jc, ridge), rot=(math.radians(90), 0, 0), mat=M['fiber'], verts=8)
+
+
 JOBS = [
     ("hut_roof", hut_roof, 6.0, 4.0, EAVE_M + 2.5 * SLOPE + 0.4),
     ("hall_roof", hall_roof, 8.0, 8.0, EAVE_M + 4.5 * SLOPE + 0.4),
     ("granary", granary, 5.0, 3.0, 2.0 + 2.0 * SLOPE + 0.4),
+    # ★움집 공정 — 발자국은 완공과 같은 6×4(같은 앵커 계약), 높이만 단계별
+    ("hut_s1", hut_s1, 6.0, 4.0, 0.45),
+    ("hut_s2", hut_s2, 6.0, 4.0, EAVE_M + 0.35),
+    ("hut_s3", hut_s3, 6.0, 4.0, EAVE_M + 2.5 * SLOPE + 0.35),
 ]
 ONLY = [k for k in os.environ.get('BLD_ONLY', '').split(',') if k]
 anchors = {}
