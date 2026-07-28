@@ -1400,6 +1400,9 @@ function init(deps) {
       log: null,
     });
 
+    // --- ★[생활층 휴면 해소] 영토 런타임 백필 — terr 0셀 구DB 마을 자가치유 ---
+    try { _terrBackfillAll(); } catch (e) { console.error(`[${ZONE_ID}] 🏘️ 영토 백필 실패(마을은 휴면 유지):`, e.message); }
+
     // --- Stage 4A: 회관·집 실물화 (buildings 테이블 — 부팅 wipe가 지운 자리에 재기록, 1트랜잭션) ---
     {
       const t0 = Date.now();
@@ -2045,14 +2048,84 @@ function _lifeGoHome(npc, act) {   // 자택 대기(취침·요양·휴식·대�
     if (act) _lifeAct(npc, Math.hypot(npc.x - tx, npc.y - ty) > 44 ? '귀가' : act);
   } else if (act) _lifeAct(npc, act);
 }
+// =============================================================================
+// ★[생활층 휴면 해소] 영토 런타임 백필
+//   구DB(Stage1~3) 레코드 마을은 village_buildings에 'terr' 행이 없어 부팅 시 _terrSet=0셀이 된다.
+//   그러면 npcLifeTick·_lifeDaily·_lifeGranAdd가 전부 `!_terrSet.size`로 조기 return —
+//   개간·신축·작물·곳간 증설·직업 실작업·액션 라벨까지 생활 층 전체가 휴면한다.
+//   DB 마이그레이션 대신 **부팅 시 런타임 재계산**(DB 무변경 = 리셋 금지 제약과 무충돌, 매 부팅 자가치유).
+//
+//   정본 재사용: 새 마을이 영토를 얻는 경로와 **완전히 같은 함수**(VillageLayout.generate의 layout.territory)를
+//   호출한다 — 새 공식 발명 없음. pop은 현재 econ 인구(영토는 채당 LAND_PER_HOUSE=400셀 유일 공식 파생).
+//   ★기존 실체 존중: 생성된 영토에 이미 서 있는 집 부지 원판(LOT_CELLS)·곳간 5×3·기경지(_farmSet)·
+//   큰집 8×8을 **합집합**으로 반드시 포함시킨다(이미 선 건물이 영토 밖이 되면 개간·신축 판정이 깨진다).
+//   nongzone(potSet)도 같은 layout에서 복원하되 이미 개간된 셀은 제외(시딩 블록 동형).
+// =============================================================================
+function _terrBackfillOne(vil, VL) {
+  if (!state.ta || !vil || (vil._terrSet && vil._terrSet.size)) return null;
+  const pop = (vil.econ && vil.econ.npcs) ? vil.econ.npcs.length : (vil.npcPids ? vil.npcPids.length : 0);
+  const layout = VL.generate(state.ta, vil.ccx, vil.ccy, Math.max(4, pop), {});   // 시딩과 동일 호출(정본 재사용)
+  const own = vil._terrSet || (vil._terrSet = new Set());
+  for (const c of (layout.territory || [])) own.add(c[0] + ',' + c[1]);
+  const gen = own.size;
+  // ── 기존 실체 합집합(영토 밖 건물 금지) ──
+  let added = 0;
+  const put = (x, y) => { const k = x + ',' + y; if (!own.has(k)) { own.add(k); added++; } };
+  for (let dx = -4; dx <= 3; dx++) for (let dy = -4; dy <= 3; dy++) put(vil.ccx + dx, vil.ccy + dy);        // 큰집 8×8
+  for (const [dx, dy] of VL.YARD_CELLS) put(vil.ccx + dx, vil.ccy + dy);                                    // 큰집 마당 원판
+  for (const h of (vil._houseCells || [])) {
+    for (const [dx, dy] of VL.LOT_CELLS) put(h.cx + dx, h.cy + dy);                                         // 집 부지 원판(집채·텃밭 포함)
+  }
+  for (const g of (vil._granList || [])) {
+    for (let dx = -2; dx <= 2; dx++) for (let dy = -1; dy <= 1; dy++) put(g.cx + dx, g.cy + dy);             // 곳간 5×3
+  }
+  for (const k of (vil._farmSet || [])) { if (!own.has(k)) { own.add(k); added++; } }                        // 기경지(논·밭)
+  // ── 미개간 논 존닝(potSet) 복원 — 이미 개간된 셀 제외(시딩 블록 동형) ──
+  let potN = 0;
+  if (vil._potSet && !vil._potSet.size) {
+    for (const z of (layout.nongZone || [])) {
+      const k = z.cx + ',' + z.cy;
+      if (vil._farmSet && vil._farmSet.has(k)) continue;
+      if (!own.has(k)) continue;                 // 영토 밖 존닝은 담지 않음(개간 프론티어 계약)
+      vil._potSet.add(k); potN++;
+    }
+  }
+  vil._terrBackfilled = 1;
+  vil._wf = null;   // 물거리 EDT 캐시 무효화(영토 bbox가 바뀌었으므로 재계산)
+  return { name: vil.name, pop, gen, added, total: own.size, pot: potN };
+}
+function _terrBackfillAll() {
+  if (!LIFE_ON || !state.ta) return;
+  const VL = require('./village-layout');
+  const done = [];
+  for (const vil of state.villages) {
+    if (vil._terrSet && vil._terrSet.size) continue;
+    const t0 = Date.now();
+    let r = null;
+    try { r = _terrBackfillOne(vil, VL); }
+    catch (e) { console.warn(`[${state.zoneId}] 🏘️ [${vil.name}] 영토 백필 실패(휴면 유지):`, e.message); continue; }
+    if (r) { r.ms = Date.now() - t0; done.push(r); }
+  }
+  if (done.length) {
+    for (const r of done) console.log(`[${state.zoneId}] 🏘️ [${r.name}] 영토 백필: 생성 ${r.gen}셀 + 기존 실체 ${r.added}셀 = ${r.total}셀 · 논존닝 ${r.pot}셀 (pop ${r.pop}, ${r.ms}ms) — 생활층 기동`);
+    console.log(`[${state.zoneId}] 🏘️ 영토 백필 완료: ${done.length}/${state.villages.length}개 마을 휴면 해소`);
+  } else {
+    console.log(`[${state.zoneId}] 🏘️ 영토 백필: 대상 없음(전 마을 terr 보유)`);
+  }
+  return done;
+}
+
 function lifeDebug() {   // ★[직접 서버 디버깅 — 사용자 요청] zone /lifedbg가 노출: 마을별 라벨 분포·크루·작물·샘플 NPC(침대 거리 포함)
   const out = [], now = Date.now();
   const wpF = state.deps && state.deps.worldPhase, dayR = (state.deps && state.deps.dayPhaseRatio) || 0.7;
   for (const vil of state.villages) {
-    const acts = {}, sample = [];
+    const acts = {}, sample = [], jobs = {};
+    let actN = 0;
     for (const pid of vil.npcPids) {
       const p = state.deps.players.get(pid); if (!p) continue;
       const a = p._lifeAct || '·'; acts[a] = (acts[a] || 0) + 1;
+      if (p._lifeAct) actN++;                                   // ★actNonNull 집계(라벨 가시성 정량)
+      jobs[p.simJob || '(무)'] = (jobs[p.simJob || '(무)'] || 0) + 1;   // ★전 주민 simJob 히스토그램(샘플 8이 아니라 전수)
       if (sample.length < 8) sample.push({ job: p.simJob, act: p._lifeAct || null, x: Math.round(p.x), y: Math.round(p.y),
         dHome: p.npcHomeX != null ? Math.round(Math.hypot(p.x - p.npcHomeX, p.y - p.npcHomeY)) : null,
         dBed: p.npcBedX != null ? Math.round(Math.hypot(p.x - p.npcBedX, p.y - p.npcBedY)) : null,
@@ -2060,10 +2133,23 @@ function lifeDebug() {   // ★[직접 서버 디버깅 — 사용자 요청] zo
         on: state.deps.isPositionActive ? (state.deps.isPositionActive(p.x, p.y) ? 1 : 0) : null,   // ★진단: 활성 청크 여부
         inN: state.deps.npcs ? (state.deps.npcs.has(pid) ? 1 : 0) : null });   // ★진단: npcStep 순회 집합 소속 여부
     }
+    const ec = (vil.econ && vil.econ.counts) || null;
     out.push({ name: vil.name, pop: vil.npcPids.length, farm: vil._farmSet ? vil._farmSet.size : 0, crop: vil._crop ? vil._crop.size : 0,
+      // ★[생활층 휴면 진단] terr=영토 셀 수(0이면 npcLifeTick/_lifeDaily/_lifeGranAdd가 전부 조기 return = 휴면),
+      //   terrBf=런타임 백필로 채워진 마을인지, jobs=전 주민 직업 분포(농부 0이면 파종 자체가 불가),
+      //   econCounts=econ이 정한 직업 수(simJob의 원천 — 여기가 농부 0이면 생활층 문제가 아니라 econ 결과),
+      //   actN/actPct=액션 라벨 가시성.
+      terr: vil._terrSet ? vil._terrSet.size : 0, terrBf: vil._terrBackfilled ? 1 : 0,
+      pot: vil._potSet ? vil._potSet.size : 0, gran: vil._granList ? vil._granList.length : 0,
+      jobs, econCounts: ec, actN, actPct: vil.npcPids.length ? +(actN / vil.npcPids.length * 100).toFixed(1) : 0,
       site: vil._site ? vil._site.stage : null, clearCrew: vil._clearCrew || 0, buildCrew: vil._buildCrew || 0, hl: vil._hlDay || null, acts, sample });
   }
-  return { t: new Date().toISOString(), phase: wpF ? +wpF(now).toFixed(3) : null, dayR, life: LIFE_ON, villages: out };
+  let tN = 0, tAct = 0;
+  for (const v of out) { tN += v.pop; tAct += v.actN; }
+  return { t: new Date().toISOString(), phase: wpF ? +wpF(now).toFixed(3) : null, dayR, life: LIFE_ON,
+    totals: { pop: tN, actN: tAct, actPct: tN ? +(tAct / tN * 100).toFixed(1) : 0,
+              dormant: out.filter(v => !v.terr).length, noFarmer: out.filter(v => !(v.jobs && v.jobs.farmer)).length },
+    villages: out };
 }
 function _lifeDropTask(vil, npc) {   // 진행 중 작업 즉시 반납(요양 진입·반일 퇴근·야간 — 크루 카운터·클레임 정리. 일일 자가치유의 즉시판)
   const t = npc._lifeTask; if (!t) return null;
