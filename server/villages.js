@@ -1413,6 +1413,7 @@ function init(deps) {
 
     // --- ★[11차 T3 환호] 시범 마을 도랑 실체화(부팅 자가치유·idempotent — DB 리셋 없이 신규 반영) ---
     try { _ditchInitAll(); } catch (e) { console.error(`[${ZONE_ID}] 🏰 환호 실체화 실패(무시하고 계속):`, e.message); }
+    if (process.env.VILLAGE_DITCH_SCAN === '1') { try { _ditchScanAll(); } catch (e) { console.error(`[${ZONE_ID}] 🏰 환호 스캔 실패:`, e.message); } }
 
     // --- ★[11차 T4] 공사 중이던 플레이어 의뢰 집터 복원(재부팅에 의뢰가 증발하지 않게) ---
     try {
@@ -2210,6 +2211,30 @@ function _ditchDig(vil, r) {
   } catch (e) { try { DB.db.exec('ROLLBACK'); } catch (_) {} throw e; }
   vil._ditch = r.cells.map(c => ({ cx: c.cx, cy: c.cy }));
 }
+// ★[11차] 소급 판단용 **계측 전용** 스캔 — 아무것도 파지 않고 "전 마을 중 몇 곳이 적격인가"만 잰다.
+//   VILLAGE_DITCH_SCAN=1 로 켠다(운영 기본 꺼짐). 소급 여부는 이 실측 위에서 결정한다(추정 금지).
+function _ditchScanAll() {
+  if (!state.ta) return;
+  const VL = require('./village-layout');
+  const rows = [];
+  for (const vil of state.villages) {
+    if (vil._ditch && vil._ditch.length) { rows.push({ n: vil.name, ok: 1, cells: vil._ditch.length, note: '이미 파임' }); continue; }
+    let r = null;
+    try { r = _ditchPlan(vil, VL); } catch (e) { rows.push({ n: vil.name, ok: 0, note: 'plan 실패' }); continue; }
+    if (!r || !r.cells.length) { rows.push({ n: vil.name, ok: 0, cells: 0, st: r ? r.skipTerr : null, sb: r ? r.skipBlock : null, diag: 0, note: `팔 자리 0 — 링 전 구간이 막힘` }); continue; }
+    const enc = _ditchEncloses(vil, r);
+    const conn = VL.ditchConnectivity(r.cells);
+    rows.push({ n: vil.name, ok: enc.ok ? 1 : 0, cells: r.cells.length, st: r.skipTerr, sb: r.skipBlock, diag: conn.diagOnly,
+      // ★두 가지 실패를 구분한다: (a)막아도 도달 = **샌다**(진짜 부적격) (b)열어도 도달 못함 = **검증 불가**
+      //   (b)는 바깥 시작점이 전부 물이라 BFS가 출발하지 못한 경우가 대부분이다(강에 둘러싸인 어촌).
+      //   "샌다"와 "못 쟀다"를 같은 ✗로 뭉뚱그리면 소급 판단이 틀린 근거 위에 서게 된다.
+      note: enc.ok ? '적격' : (enc.closed ? '샘(출입구 막아도 안으로 들어와짐)' : '검증 불가(바깥에서 큰집까지 BFS 자체가 불가 — 물에 둘러싸임)') });
+  }
+  const okN = rows.filter(x => x.ok).length;
+  const cells = rows.filter(x => x.ok).reduce((a, x) => a + (x.cells || 0), 0);
+  console.log(`[${state.zoneId}] 🏰 [소급 판단용 계측] 적격 ${okN}/${rows.length}개 마을 · 전면 소급 시 도랑 ${cells}셀(welcome 페이로드 ≈${(cells * 2 * 4 / 1024).toFixed(1)}KB · 다리 294셀 대비 ${(cells / 294).toFixed(1)}배)`);
+  for (const x of rows) console.log(`[${state.zoneId}] 🏰   ${x.ok ? '○' : '✗'} ${x.n}: ${x.cells != null ? x.cells + '셀 ' : ''}${x.st != null ? `지형구멍 ${x.st}·취락구멍 ${x.sb}·대각 ${x.diag} ` : ''}— ${x.note}`);
+}
 function _ditchInitAll() {
   if (!LIFE_ON || !state.ta || DITCH_PILOT_MAX <= 0) return;
   const VL = require('./village-layout');
@@ -2229,11 +2254,11 @@ function _ditchInitAll() {
     if (vil._ditch && vil._ditch.length) continue;
     let r = null;
     try { r = _ditchPlan(vil, VL); } catch (e) { report.push({ n: vil.name, why: 'plan 실패: ' + e.message }); continue; }
-    if (!r || !r.cells.length) { report.push({ n: vil.name, why: `팔 자리 없음(지형구멍 ${r ? r.skipTerr : '?'}·취락구멍 ${r ? r.skipBlock : '?'} — 링 전체가 물·바위)` }); continue; }
+    if (!r || !r.cells.length) { report.push({ n: vil.name, why: `팔 자리 없음(지형구멍 ${r ? r.skipTerr : '?'}·취락구멍 ${r ? r.skipBlock : '?'})` }); continue; }
     const enc = _ditchEncloses(vil, r);
     const conn = VL.ditchConnectivity(r.cells);
     if (!enc.ok) {
-      report.push({ n: vil.name, why: `안 닫힘(열림 도달 ${enc.open ? '○' : '✗'} · 막음 도달 ${enc.closed ? '○(샘)' : '✗'}) · 도랑 ${r.cells.length}셀 · 지형구멍 ${r.skipTerr} · 취락구멍 ${r.skipBlock}` });
+      report.push({ n: vil.name, why: `${enc.closed ? '샘' : '검증 불가(바깥→큰집 BFS 불가)'} · 도랑 ${r.cells.length}셀 · 지형구멍 ${r.skipTerr} · 취락구멍 ${r.skipBlock}` });
       continue;
     }
     try { _ditchDig(vil, r); } catch (e) { report.push({ n: vil.name, why: '기록 실패: ' + e.message }); continue; }

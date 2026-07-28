@@ -250,8 +250,13 @@
   // 타원 좌표계: 마을 축(axis.toWater)을 단축(v), 그 수직을 장축(u)으로 둔다.
   //   물가 취락은 강과 나란히 길쭉해지므로 장축을 강 방향(perp)에 맞추는 게 자연스럽다.
   function _ditchFrame(axis) {
-    const w = (axis && axis.toWater) ? axis.toWater : { x: 0, y: 1 };
-    const n = Math.hypot(w.x, w.y) || 1;
+    let w = (axis && axis.toWater) ? axis.toWater : { x: 0, y: 1 };
+    let n = Math.hypot(w.x, w.y);
+    // ★[실측으로 잡은 결함] 완전 평지면 axisAt의 고도 기울기가 0 → toWater=(0,0)이 온다.
+    //   구 코드는 `|| 1`로 나눠 vv=(0,0)이 됐고, 그러면 모든 셀의 타원 반경이 0이라 **링이 통째로 사라졌다**
+    //   (소급 계측에서 19마을 중 8곳이 "0셀·구멍 0"으로 나온 원인 — 구멍이 아니라 축이 없었다).
+    //   평지엔 강 방향이라는 개념이 없으므로 남북(0,1)을 결정론 폴백으로 쓴다.
+    if (!(n > 1e-6)) { w = { x: 0, y: 1 }; n = 1; }
     const vv = { x: w.x / n, y: w.y / n };          // 단축 방향(강 쪽)
     return { u: { x: -vv.y, y: vv.x }, v: vv };     // 장축 = 강과 나란히
   }
