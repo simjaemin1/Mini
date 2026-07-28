@@ -114,7 +114,8 @@ console.log('\n[⑤ 에셋 실재 + 정사각(크롭 금지 규약)]');
 const ADIR = path.join(__dirname, '..', 'public', 'assets', 'bridge');
 // ★1셀 규약 에셋 전량(다리 타일 + 곳간 짐더미·소품 + 마당 소품) — 클라 로더 목록과 실제 파일이 어긋나면 잡는다.
 const CELL_KEYS = [...KEYS, 'gran_pile1', 'gran_pile2', 'gran_pile3', 'gran_prop',
-  'yard_hearth', 'yard_jar1', 'yard_jar2', 'yard_garden'];
+  'yard_hearth', 'yard_jar1', 'yard_jar2', 'yard_garden',
+  'mkt_mat', 'mkt_basket', 'mkt_jar', 'mkt_hide'];   // ★10차 T4 장마당 좌판(캐러밴 체류 중에만 깔린다)
 {
   const li = SRC.indexOf('_bridgeLoaded');
   const seg = SRC.slice(Math.max(0, li - 200), li + 900);

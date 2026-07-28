@@ -82,6 +82,8 @@ const SIM_JOB_EMOJI = {
   let myAbsPredicted = { x: 0, y: 0 };
   // Phase 5-2-mini: 미니맵에서 access
   window.__getMyAbs = () => myAbsPredicted;
+  // ★[10차 T4] 장마당 진단 훅 — 클라가 서버 markets 플래그를 실제로 받았는지 확인용(읽기 전용, 기존 __get* 관례).
+  window.__getMarkets = () => { const out = {}; for (const [zid, c] of conns) out[zid] = (c && c.markets) ? c.markets.slice() : null; return out; };
   // Phase 5-G debug: 미니맵에서 wall 위치 검증용
   window.__getAllWalls = () => {
     const walls = [];
@@ -1974,6 +1976,8 @@ const SIM_JOB_EMOJI = {
         if (msg.granStocks) for (let i = 0; i + 2 < msg.granStocks.length; i += 3) {
           c.granStock.set(msg.granStocks[i] + ',' + msg.granStocks[i + 1], msg.granStocks[i + 2]);
         }
+        // ★[10차 T4 장마당] 캐러밴 체류 중인 마을 중심 flat [ccx,ccy,…] — welcome 스냅샷, 이후 markets 방송.
+        c.markets = (msg.markets || []).slice();
       }
       // 월드 시계 동기화 — 서버 now와 클라 now 차이를 보정해서 동일 phase 계산
       if (msg.worldClock) {
@@ -2220,6 +2224,10 @@ const SIM_JOB_EMOJI = {
       if (!c.granStock) c.granStock = new Map();
       const gs = msg.g || [];
       for (let i = 0; i + 2 < gs.length; i += 3) { const k = gs[i] + ',' + gs[i + 1]; if (gs[i + 2] > 0) c.granStock.set(k, gs[i + 2]); else c.granStock.delete(k); }
+      needsRedraw = true;
+    } else if (msg.type === 'markets') {
+      // ★[10차 T4 장마당] 전체 치환(집합이 바뀔 때만 오는 방송 — 델타가 아니다). 빈 배열 = 전 마을 파장.
+      c.markets = (msg.m || []).slice();
       needsRedraw = true;
     } else if (msg.type === 'war_battle') {
       // §4-4 P4: 진행 전투 집계(2Hz+전이) — 스펙테이터 HUD·화면밖 지시자·관전 카메라 레지스트리.
@@ -3502,6 +3510,19 @@ const SIM_JOB_EMOJI = {
           //   재고가 있는 곳간에만(=사람이 드나드는 곳간) 놓아 '쓰이는 창고'로 읽히게 한다.
           const pax = ox + (gc0 + 2) * CL_BUILDING_SIZE + 16, pay = gay;
           renderables.push({ z: w2i(pax, pay).y, kind: 'granpile', gx: pax, gy: pay, prop: 1 });
+        }
+      }
+      // ★★[10차 T4 장마당] 캐러밴이 큰집 마당에 머무는 동안에만 좌판이 깔린다(서버 markets = phase 'linger' 목적지).
+      //   자리 = 큰집 남벽 문(ccx, ccy+3~4) 앞 마당 원판 — 문 통로(ccx 열)는 비워 두고 좌우로 흩어 놓는다.
+      //   고증(A-1): 상설 점포가 아니라 **폈다 걷는 물건**이라 캐러밴이 떠나면 이 배열 자체가 사라진다.
+      if (c.markets && c.markets.length) {
+        for (let mi = 0; mi + 1 < c.markets.length; mi += 2) {
+          const mcx = c.markets[mi], mcy = c.markets[mi + 1];
+          for (const [_mk, _mdx, _mdy] of MARKET_STALLS) {
+            const _mx = ox + (mcx + _mdx) * CL_BUILDING_SIZE + 16, _my = oy + (mcy + _mdy) * CL_BUILDING_SIZE + 16;
+            if (Math.abs(_mx - worldCx) > VIEW_RADIUS || Math.abs(_my - worldCy) > VIEW_RADIUS) continue;
+            renderables.push({ z: w2i(_mx, _my).y, kind: 'cellprop', key: _mk, gx: _mx, gy: _my });
+          }
         }
       }
       // §4-4 Stage 4A: 마을 시뮬 영토 — 경계 셀(b: [dx,dy,mask...]) 반투명 렌더. claim보다 더 배경(-900).
@@ -5516,12 +5537,16 @@ const SIM_JOB_EMOJI = {
   (() => {
     for (const k of ['bridge_mid_x', 'bridge_mid_y', 'bridge_cap0_x', 'bridge_cap0_y', 'bridge_cap1_x', 'bridge_cap1_y',
                      'gran_pile1', 'gran_pile2', 'gran_pile3', 'gran_prop',
-                     'yard_hearth', 'yard_jar1', 'yard_jar2', 'yard_garden']) {   // ★10차: 마당 소품(화덕·장독2·텃밭)
+                     'yard_hearth', 'yard_jar1', 'yard_jar2', 'yard_garden',      // ★10차: 마당 소품(화덕·장독2·텃밭)
+                     'mkt_mat', 'mkt_basket', 'mkt_jar', 'mkt_hide']) {           // ★10차 T4: 장마당 좌판(멍석·바구니·항아리·가죽)
       const im = new Image(); im.onload = () => _bridgeLoaded++; im.src = '/assets/bridge/' + k + '.png';
       BRIDGE_SPRITES[k] = im;
     }
   })();
   const BRIDGE_DRAW_PX = 128;   // = 셀 다이아 폭(64) × 2 — 렌더 ortho_scale=2√2와 짝인 상수
+  // ★[10차 T4 장마당] 좌판 배치 — 큰집(8×8, 발자국 [-4..3]²) 남벽 문 앞 마당. 문 통로(dx=0)와 그 옆(dx=±1)은
+  //   비워 둔다(랩 _hallYard가 쓰는 통로 — 막으면 NPC 문턱 정체). dy≥5라 발자국 밖·마당 원(r10) 안.
+  const MARKET_STALLS = [['mkt_mat', -3, 5], ['mkt_basket', -1, 7], ['mkt_jar', 2, 5], ['mkt_hide', 4, 6]];
   function drawBridgeSprite(key, wx, wy, toScreenFn) {
     const im = BRIDGE_SPRITES[key]; if (!im || !im.complete || !im.naturalHeight) return false;
     const p = w2i(wx, wy), s = toScreenFn(p.x, p.y);

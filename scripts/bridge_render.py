@@ -166,6 +166,13 @@ M['ember']  = simple_mat("ember",   (0.95, 0.42, 0.10), 0.5)    # 잉걸(발광 
 M['soil']   = bumped_mat("soil2y", (0.36, 0.26, 0.16), (0.25, 0.17, 0.10), 11, 0.6, 0.95)   # 텃밭 흙
 M['sprout'] = simple_mat("sprout",  (0.34, 0.52, 0.20), 0.7)    # 새싹
 M['stone']  = bumped_mat("stone",  (0.34, 0.33, 0.31), (0.16, 0.16, 0.16), 9, 0.8, 0.95)
+# ★[10차 T4 — 장마당 좌판] 곡물·가죽. 좌판은 '가게'가 아니라 깔개 위 물건이라 재질로 종류를 읽혀야 한다.
+M['grain']  = bumped_mat("grain",  (0.83, 0.70, 0.36), (0.70, 0.56, 0.25), 26, 0.45, 0.85)   # 곡물 무더기(낟알 알갱이감)
+M['grain2'] = bumped_mat("grain2", (0.72, 0.60, 0.34), (0.58, 0.46, 0.24), 24, 0.45, 0.85)   # 다른 곡물(색 변주 — 두 무더기 구분)
+M['hide']   = bumped_mat("hide",   (0.55, 0.40, 0.27), (0.42, 0.29, 0.18), 7, 0.35, 0.80)    # 무두질 가죽(교역품)
+M['hide2']  = bumped_mat("hide2",  (0.40, 0.30, 0.22), (0.28, 0.20, 0.14), 8, 0.35, 0.80)    # 어두운 가죽(두 장 구분)
+M['matdark']= striped_mat("matdark",(0.44, 0.34, 0.19), (0.35, 0.26, 0.14), 24, 0.88, 0.35)  # ★멍석 — 곡물(밝음) 대비용으로 어둡게. 1패스에선 straw와 같은 색이라 전부 한 덩이로 뭉갰다
+M['weave']  = striped_mat("weave", (0.62, 0.48, 0.24), (0.45, 0.33, 0.15), 34, 0.88, 0.55)   # 바구니 엮음(결 촘촘·굴곡 강 — 축소해도 '엮은 것'으로 읽히게)
 
 OBJS = []
 
@@ -395,7 +402,75 @@ def t_garden():   # 텃밭 1셀 — 이랑(두둑·고랑) + 새싹. 이웃 셀�
             cyl(0.012, 0.10, (sx2, y, 0.11), rot=(random.uniform(-0.25, 0.25), random.uniform(-0.25, 0.25), 0), mat=M['sprout'], verts=6)
 
 
+# ===== 장마당 좌판 소품(10차 T4 — 1셀 타일 규약, 마당 소품과 동일 파이프라인) =====
+#   ★고증 제약(설계_장마당_환호_고증과_설계안.md A-1): 청동기시대 **상설 점포·화폐 시장의 근거는 없다**.
+#     그래서 만드는 것은 가게가 아니라 **깔고 폈다 걷는 물건들** — 멍석·바구니·항아리·가죽 걸침대.
+#     기둥 박은 차양·판매대·간판은 만들지 않는다(후대 장시의 형상).
+#   ★캐러밴 체류 동안만 마당에 깔렸다가 걷힌다 → 영구 구조물로 읽히면 안 된다(낮고 흩어진 실루엣).
+def _grainheap(x, y, r, h, mat):
+    """멍석 위 곡물 무더기 — 낮은 원뿔(축소 판독을 위해 밑동을 넓게)."""
+    bpy.ops.mesh.primitive_cone_add(vertices=14, radius1=r, radius2=r * 0.12, depth=h, location=(x, y, h / 2 + 0.012))
+    return add(bpy.context.active_object, mat)
+
+
+# ★1패스 대조 시트(1:1 32px·128px)에서 드러난 것: 전부 **너무 작고 너무 단색**이라 노란 얼룩으로 뭉갰다.
+#   교정 원칙(gran_prop 7차 교훈과 동일) — ①셀을 거의 채울 것(폭 0.8~0.9) ②덩이 대비를 줄 것(밝은 곡물 vs 어두운 멍석·바구니)
+#   ③형태 수를 줄이고 큼직하게. 작은 스프라이트는 디테일이 아니라 **실루엣 덩이**로 읽힌다.
+def t_mkt_mat():      # 멍석 깔개 + 곡물 무더기 2 + 토기 사발 — 장마당의 기본 좌판(펴고 걷는다)
+    random.seed(91)
+    box(0.86, 0.70, 0.016, (0.50, 0.50, 0.008), rot=(0, 0, math.radians(7)), mat=M['matdark'])   # 멍석(어둡게 — 곡물 대비)
+    for t in (-0.5, 0.5):                                                                        # 가장자리 말린 단(멍석으로 읽히게)
+        cyl(0.030, 0.88, (0.50, 0.50 + t * 0.70, 0.028), rot=(0, math.radians(90), math.radians(7)), mat=M['straw'], verts=8)
+    _grainheap(0.37, 0.42, 0.215, 0.20, M['grain'])
+    _grainheap(0.66, 0.58, 0.180, 0.17, M['grain2'])
+    cyl(0.115, 0.075, (0.40, 0.72, 0.052), mat=M['pottery'], verts=14)                            # 토기 사발(색 대비 한 점)
+    for i in range(4):                                                                            # 나물 다발(굵게 한 묶음)
+        cyl(0.026, 0.30, (0.68, 0.30 + 0.028 * i, 0.045), rot=(0, math.radians(88), math.radians(6 * i)), mat=M['sprout'], verts=6)
+    cyl(0.050, 0.10, (0.68, 0.342, 0.055), rot=(0, math.radians(88), 0), mat=M['cord'], verts=8)  # 묶은 새끼
+
+
+def t_mkt_basket():   # 삼태기·바구니 좌판 — 큼직한 3점(하나는 엎어 놓음), 하나는 곡식이 수북
+    random.seed(92)
+    cyl(0.245, 0.30, (0.36, 0.40, 0.15), mat=M['weave'], verts=16)                # 선 바구니(깊게 — 팬케이크로 안 보이게)
+    cyl(0.255, 0.035, (0.36, 0.40, 0.305), mat=M['cord'], verts=16)               # 테두리 새끼(굵게 = 바구니 표식)
+    _grainheap(0.36, 0.40, 0.205, 0.16, M['grain'])                               # 수북한 곡식
+    cyl(0.205, 0.26, (0.70, 0.52, 0.13), mat=M['weave'], verts=16)                # 둘째 바구니
+    cyl(0.215, 0.032, (0.70, 0.52, 0.265), mat=M['cord'], verts=16)
+    cyl(0.235, 0.19, (0.46, 0.76, 0.095), rot=(math.radians(11), 0, 0), mat=M['weave'], verts=16)   # 엎어 놓은 삼태기
+    cyl(0.190, 0.030, (0.46, 0.76, 0.195), rot=(math.radians(11), 0, 0), mat=M['cord'], verts=16)
+    box(0.80, 0.66, 0.014, (0.50, 0.52, 0.007), rot=(0, 0, math.radians(-8)), mat=M['matdark'])     # 밑에 깐 멍석
+
+
+def t_mkt_jar():      # 항아리 좌판 — 큰 3점(뚜껑 하나는 열어 기대 놓음). 마당 장독(yard_jar)과 달리 흩어 놓는다
+    random.seed(93)
+    box(0.80, 0.64, 0.014, (0.50, 0.52, 0.007), rot=(0, 0, math.radians(-11)), mat=M['matdark'])   # 밑에 깐 멍석(먼저 — 항아리가 위에 앉게)
+    for (x, y, r, h, lid) in ((0.34, 0.42, 0.180, 0.40, True), (0.68, 0.38, 0.140, 0.31, True), (0.52, 0.72, 0.125, 0.27, False)):
+        cyl(r, h, (x, y, h / 2 + 0.014), mat=M['pottery'], verts=16)
+        if lid:
+            cyl(r * 0.60, 0.045, (x, y, h + 0.036), mat=M['pottery'], verts=14)
+    cyl(0.105, 0.035, (0.74, 0.66, 0.072), rot=(math.radians(74), 0, math.radians(22)), mat=M['pottery'], verts=14)   # 열어 기대 놓은 뚜껑
+
+
+def t_mkt_hide():     # 가죽 좌판 — 바닥에 편 가죽 1장 + 말아 묶은 가죽 2롤(교역품의 대표 실물).
+    # ★2패스 교정: 걸침대(말뚝+가로대) 형태는 32px에서 **간판·평상**으로 읽혔다. 서서 있는 구조를 없애고
+    #   전부 바닥에 눕혀 '펴 놓고 파는 물건'으로 되돌린다(상설 점포 금지라는 고증 제약과도 정합).
+    random.seed(94)
+    box(0.78, 0.60, 0.020, (0.46, 0.50, 0.010), rot=(0, 0, math.radians(9)), mat=M['hide'])        # 펴 놓은 가죽 1장(크게)
+    box(0.44, 0.36, 0.018, (0.60, 0.62, 0.030), rot=(0, 0, math.radians(-16)), mat=M['hide2'])     # 겹쳐 놓은 작은 가죽(색 대비)
+    for (x, y, a) in ((0.30, 0.74, 0.25), (0.44, 0.82, -0.10)):                                    # 말아 묶은 가죽 두루마리 2
+        cyl(0.105, 0.46, (x, y, 0.115), rot=(0, math.radians(90), a), mat=M['hide2'], verts=12)
+        for t in (-0.28, 0.28):
+            bpy.ops.mesh.primitive_torus_add(major_radius=0.113, minor_radius=0.020,
+                                             location=(x + math.cos(a) * 0.46 * t, y + math.sin(a) * 0.46 * t, 0.115),
+                                             rotation=(0, math.radians(90), a))
+            add(bpy.context.active_object, M['cord'])
+    cyl(0.175, 0.20, (0.76, 0.30, 0.10), mat=M['weave'], verts=14)                                 # 곁 바구니(덩이 하나 더)
+    cyl(0.185, 0.028, (0.76, 0.30, 0.205), mat=M['cord'], verts=14)
+
+
 JOBS = [("bridge_mid", t_mid, True), ("bridge_cap1", t_cap1, True), ("bridge_cap0", t_cap0, True),
+        ("mkt_mat", t_mkt_mat, False), ("mkt_basket", t_mkt_basket, False),
+        ("mkt_jar", t_mkt_jar, False), ("mkt_hide", t_mkt_hide, False),
         ("gran_pile1", t_pile1, False), ("gran_pile2", t_pile2, False),
         ("gran_pile3", t_pile3, False), ("gran_prop", t_prop, False),
         ("yard_hearth", t_hearth, False), ("yard_jar1", t_jar1, False),

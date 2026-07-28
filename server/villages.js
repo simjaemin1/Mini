@@ -87,7 +87,7 @@ const MIN_SPACING_PX = 12000; // 마을 간 최소 간격 — pickSeedVillages �
 // --- Stage 4B: 캐러밴 실체화 상수 ---
 const PX_PER_ECON = SZ / 2.5;   // econ 좌표(셀×2.5) 1단위 = 12.8px — c.distance↔픽셀 환산(init의 ev.coord 스케일과 동일)
 const CARAVAN_BODY_MAX = Math.max(0, parseInt(process.env.VILLAGE_CARAVAN_MAX || '60', 10)); // 실체 상한 — 초과분은 econ만(canadia '상인 없으면 시각 생략' 선례)
-const CARAVAN_LINGER_DAY_FRAC = 1 / 24;      // 도착 후 머묾 = 1게임시간
+const CARAVAN_LINGER_DAY_FRAC = parseFloat(process.env.VILLAGE_LINGER_FRAC || '') || 1 / 24;      // 도착 후 머묾 = 1게임시간 (VILLAGE_LINGER_FRAC는 **테스트 전용** — VILLAGE_DAY_MS 관례와 동형, 미설정 시 운영값 불변)
 let PathCore = null;   // ★[경로 통일 2026-07-17] sim/path-core.js 정본(랩·서버 공용) — 첫 교역로 계산 때 lazy require(sim/* 로드 규약 준수)
 const CARAVAN_REPAIR_COOLDOWN_MS = 2000;     // 로컬 재경로 최소 간격(NPC A* 2초 간격 규칙과 동일)
 const CARAVAN_REPAIR_LOOKAHEAD_PX = 480;     // 차단 시 우회 목표 = 전방 480px(15셀) 경로 정점
@@ -1840,6 +1840,8 @@ function onGameTick(now) {
   try { tickWarBodies(now); } catch (e) { console.error(`[${state.zoneId}] ⚔️ 실체 전투 틱 실패:`, e.message); }
   // ★[곳간② 클라 표시] 물리 재고 델타 방송(1초 스로틀 — 변한 곳간만). 실패해도 틱을 죽이지 않는다.
   try { _granBroadcast(now); } catch (e) { console.error(`[${state.zoneId}] 🏘️ 곳간 재고 방송 실패:`, e.message); }
+  // ★[10차 T4 장마당] 캐러밴 체류(phase='linger') 집합이 바뀔 때만 방송 — 평시 O(캐러밴 수) 비교 1회
+  try { _mktBroadcast(); } catch (e) { console.error(`[${state.zoneId}] 🏪 장마당 플래그 방송 실패:`, e.message); }
   // ★자정 스파이크 분산: DB 직렬화(마을당 ~10KB JSON — 자정 틱 비용의 주범)는 이후 틱에 1마을/틱씩 배수(drain).
   //   econ 틱 자체는 일괄 유지 — 교역(tickWorldV2)이 마을 간 원자적이라 쪼개면 정합이 깨짐. 30Hz 예산(33ms) 보호.
   if (state.saveQueue && state.saveQueue.length) {
@@ -2156,7 +2158,9 @@ function lifeDebug() {   // ★[직접 서버 디버깅 — 사용자 요청] zo
       dCl: vil._dCl || 0, dSt: vil._dSt || 0, dTk: vil._dTk || 0,
       carrying: (() => { let n = 0; for (const pid of vil.npcPids) { const p = state.deps.players.get(pid); if (p && p._carry > 0) n++; } return n; })(),
       jobs, econCounts: ec, actN, actPct: vil.npcPids.length ? +(actN / vil.npcPids.length * 100).toFixed(1) : 0,
-      site: vil._site ? vil._site.stage : null, clearCrew: vil._clearCrew || 0, buildCrew: vil._buildCrew || 0, hl: vil._hlDay || null, acts, sample });
+      site: vil._site ? vil._site.stage : null, clearCrew: vil._clearCrew || 0, buildCrew: vil._buildCrew || 0, hl: vil._hlDay || null,
+      mkt: (() => { if (!state.caravanBodies) return 0; for (const b of state.caravanBodies.values()) if (b.phase === 'linger' && state.byEcon.get(b.toV) === vil) return 1; return 0; })(),   // ★[10차 T4] 장마당 개장 여부(캐러밴 체류 중) — 라이브 확인용 계측
+      ccx: vil.ccx, ccy: vil.ccy, acts, sample });
   }
   let tN = 0, tAct = 0;
   for (const v of out) { tN += v.pop; tAct += v.actN; }
@@ -2513,6 +2517,33 @@ function _granBroadcast(now) {               // onGameTick(30Hz) 훅 — 변화�
     }
   }
   if (g.length) state.deps.broadcast({ type: 'gran_stock', g });
+}
+
+// ★★[10차 T4] 장마당(계절 장) — 상태 플래그 1개. **새 상태·새 채널·새 타이머를 만들지 않는다.**
+//   고증(설계_장마당_환호_고증과_설계안.md A-1): 청동기시대 상설 시장의 근거는 없다. 그래서 "열려 있는 시장"이
+//   따로 있는 게 아니라, **캐러밴이 큰집 마당에 머무는 동안만** 그 자리가 장(場)이 된다.
+//   실체 정의 = `body.phase === 'linger'`(이미 있는 것) 인 캐러밴의 **목적지 마을**. lingerUntil이 지나면
+//   startReturnLeg가 phase를 바꾸므로 장은 저절로 파한다 — 별도 만료 로직이 없다(그게 이 설계의 요점).
+function marketVillages() {                  // → flat [ccx, ccy, …] (영토·곳간 페이로드와 같은 소형 규약)
+  const out = [];
+  if (!state.ready || !state.caravanBodies) return out;
+  const seen = new Set();
+  for (const body of state.caravanBodies.values()) {
+    if (!body || body.phase !== 'linger') continue;
+    const vil = state.byEcon.get(body.toV);
+    if (!vil || seen.has(vil)) continue;
+    seen.add(vil);
+    out.push(vil.ccx, vil.ccy);
+  }
+  return out;
+}
+let _mktSig = '';
+function _mktBroadcast() {                   // onGameTick 훅 — **바뀔 때만** 방송(캐러밴 도착·출발은 하루 몇 번)
+  if (!state.deps || !state.deps.broadcast) return;
+  const m = marketVillages(), sig = m.join(',');
+  if (sig === _mktSig) return;
+  _mktSig = sig;
+  state.deps.broadcast({ type: 'markets', m });
 }
 const G_CAP = 2500, G_MAX = 8, G_BUILDD = 6;
 function _lifeGranAdd(vil) {
@@ -2912,6 +2943,8 @@ module.exports = {
   farmTilesInRect, clientVillages, isLegacyVillageClaimed,
   // ★곳간② 클라 표시 — welcome 스냅샷(델타는 onGameTick에서 gran_stock 방송)
   granStocks,
+  // ★[10차 T4] 장마당 — welcome 스냅샷(변경분은 onGameTick의 markets 방송)
+  marketVillages,
   // 플레이어 구매/판매 경계계약(읽기전용 마을 품질 EMA — econ 무접촉)
   villageQualityAt,
   // §11 도적 — server/bandits.js 소비(좁은 접점, 추가 전용)
