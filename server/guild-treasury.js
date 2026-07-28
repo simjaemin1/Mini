@@ -47,6 +47,7 @@ async function syncGranary(b, opts) {
   if (!b || !b.data) return null;
   const tribeId = b.data.tribe_id;
   if (!tribeId) return null;                      // 길드 미지정 곳간(있을 수 없지만 방어)
+  const snap = granaryItems(b.data);              // ★보고 시점 스냅샷 — 델타의 기준점
   const delta = pendingDelta(b.data);
   if (isEmptyDelta(delta)) return null;
   try {
@@ -54,7 +55,10 @@ async function syncGranary(b, opts) {
   } catch (e) {
     return { ok: false, delta, err: (e && e.message) || String(e) };   // _tr 그대로 → 다음에 재시도
   }
-  b.data._tr = granaryItems(b.data);              // 보고 완료 스냅샷
+  // ★[검수 수정 — 전송 중 변동 유실 방어] _tr은 "지금 내용물"이 아니라 **보고한 스냅샷(snap)**이어야 한다.
+  //   HTTP 왕복 중에 입고가 끼어들면, 현재값으로 덮을 경우 그 입고분이 보고 없이 _tr에 흡수돼 영영 누락된다.
+  //   snap으로 두면 끼어든 변동은 (현재 − snap) 델타로 남아 다음 동기에 올라간다.
+  b.data._tr = snap;
   if (opts.saveData) opts.saveData(b);
   return { ok: true, delta };
 }

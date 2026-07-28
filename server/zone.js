@@ -5184,7 +5184,16 @@ async function reconcileGuildGranaries(tag) {
   let rows = [];
   try { rows = db.db.prepare("SELECT id, data FROM buildings WHERE type='guild_granary'").all(); } catch (e) { return; }
   if (!rows.length) return;
-  const objs = rows.map((r) => { let d = {}; try { d = JSON.parse(r.data || '{}'); } catch (_) { } return { type: 'guild_granary', dbId: r.id, data: d }; });
+  // ★[검수 수정 — 이중 계상 방어] 메모리에 로드된 곳간은 **메모리 객체 그대로** 동기화한다.
+  //   DB 행 사본으로 동기하면 DB의 _tr만 갱신되고 메모리 b.data._tr은 구본으로 남는다 →
+  //   central 장애 복구를 재동기가 처리한 뒤 **다음 입고 이벤트가 장애 기간 델타를 다시 올린다**(중복).
+  //   메모리 미로드 곳간만 DB 행 사본으로(그건 이벤트 경로가 없어 안전).
+  const inMem = new Map();
+  for (const b of buildings.values()) if (b.type === 'guild_granary' && b.dbId) inMem.set(b.dbId, b);
+  const objs = rows.map((r) => {
+    if (inMem.has(r.id)) return inMem.get(r.id);
+    let d = {}; try { d = JSON.parse(r.data || '{}'); } catch (_) { } return { type: 'guild_granary', dbId: r.id, data: d };
+  });
   const res = await GuildTreasury.reconcileAll(objs, _guildTreasuryOpts());
   if (res.sent || res.failed) console.log(`[${ZONE_ID}] 💰 길드 곳간 회계 재동기(${tag}): 반영 ${res.sent} · 보류 ${res.failed} · 변화없음 ${res.skipped}`);
 }

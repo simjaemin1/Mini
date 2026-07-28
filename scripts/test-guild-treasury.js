@@ -138,6 +138,25 @@ const get = (url) => new Promise((res, rej) => {
   } else {
     console.log('\n[⑦ 실 HTTP 왕복] 건너뜀 — CENTRAL_URL 미지정(로컬 central 띄우고 지정하면 수행)');
   }
+
+  // ★검수 세션 추가 — 전송 중 변동 유실 방어(_tr = 보고 스냅샷이어야 함)
+  console.log('\n[⑧ 전송 중 입고 끼어듦 — HTTP 왕복 사이의 변동은 다음 델타로 남아야 한다]');
+  {
+    const calls = [];
+    let release;
+    const gate = new Promise((res) => { release = res; });
+    const opts = { tribeTreasury: (tid, delta) => { calls.push({ ...delta }); return gate; }, saveData: () => { } };
+    const b = { type: 'guild_granary', dbId: 1, data: { tribe_id: 7, wood: 10 } };
+    const p = GT.syncGranary(b, opts);      // 델타 {wood:10} 전송 시작(아직 미완)
+    b.data.wood += 5;                       // ★왕복 중 입고 +5
+    release({}); await p;                   // 전송 완료
+    chk((b.data._tr.wood || 0) === 10, `_tr = 보고 스냅샷 10 (현재값 15로 덮으면 +5가 영영 누락된다) — 실제 ${b.data._tr.wood}`);
+    const d2 = GT.pendingDelta(b.data);
+    chk(d2.wood === 5, `끼어든 +5가 다음 델타로 남음 — 실제 ${JSON.stringify(d2)}`);
+    await GT.syncGranary(b, { tribeTreasury: (t, d) => { calls.push({ ...d }); return Promise.resolve(); }, saveData: () => { } });
+    chk(calls.length === 2 && calls[0].wood === 10 && calls[1].wood === 5, `총 보고 10+5=15 = 물리 15 (누락·중복 0) — 호출 ${JSON.stringify(calls)}`);
+  }
+
   console.log('\n' + (fail === 0 ? '결과: PASS' : `결과: FAIL (${fail}건)`));
   process.exit(fail === 0 ? 0 : 1);
 })();
