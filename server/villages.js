@@ -1997,6 +1997,8 @@ let VillageLayout = null;   // ★lazy require(설계 계약: 시뮬 off면 sim 
 //   시딩(seedVillages)은 자기 지역 require를 씀 — 모듈 레벨 참조가 없어 "is not defined"로 일일 훅이 죽던 버그 수정.
 const _lifeVL = () => VillageLayout || (VillageLayout = require('./village-layout'));
 const L_LANDNEED = 8;        // 랩 동형: 인당 기준 경작칸(landNeedPer가 비옥도 보정)
+// ★랩 JOBACT 대상 직업 = 현장(논밭·물·숲·산) 직업. 이 집합 밖은 랩 'villager' 버킷(회관 내부 앵커 + 역할 라벨).
+const LIFE_FIELD_JOBS = new Set(['farmer', 'fisher', 'hunter', 'lumberjack', 'miner', 'forager']);
 const LIFE_CLEAR_PDAY = 3;   // 농부 1인 하루 개간 셀(랩 L_CLEAR=90 노동·dwell 스케일 근사 — 관찰 후 튜닝)
 const LIFE_STAGE_PDAY = 1;   // 건설 1인 하루 1단계(움집 4단계≈4인일 — 랩 L_BUILDSEC=4600인·초 근사)
 const LIFE_CREW = 2;         // 작업당 동시 크루 상한
@@ -2683,7 +2685,60 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
     _lifeAct(npc, '수색');
     return true;
   }
+  // ★[랩 villager 분기 verbatim 이식] 기타 직업(대장장이·무기장·갑옷장·요리사·행상·전사·주민)
+  //   랩 원문(직업 배치): a.work = {cx: hall.cx+((i%6)-3), cy: hall.cy+(((i/6|0)%6)-3)}; a.role = otRole(s.econ, i);
+  //                      // ★회관 내부 앵커([-3..2]² = 8×8 회관의 벽 안 6×6, 문(0,3) 경유 도달)
+  //   랩 원문(라벨):     a.state='work'; a.action = JOBACT[a.job] || (a.job==='villager' ? (a.role||'주민') : a.action);
+  //   → 이동 중 '출근'(랩 toWork 동형), 도착하면 역할 라벨. 전부 랩에 있는 라벨만 사용(신규 발명 없음).
+  //   이 분기 이전엔 기타 직업이 `return false`로 레거시 일과에 떨어져 **라벨이 영영 안 붙었다**(액션 라벨 구멍의 실체).
+  if (!LIFE_FIELD_JOBS.has(job)) {
+    const idx = _lifeOtherIndex(vil, npc);
+    const wx = (vil.ccx + ((idx % 6) - 3)) * SZ + SZ / 2;
+    const wy = (vil.ccy + ((((idx / 6) | 0) % 6) - 3)) * SZ + SZ / 2;
+    if (Math.hypot(npc.x - wx, npc.y - wy) > 44) {
+      npc.behavior = 'wander'; npc.targetX = wx; npc.targetY = wy; npc.gatherTarget = null;
+      _lifeAct(npc, '출근'); return true;
+    }
+    const h2 = _pidHash(npc.pid);
+    if (!npc._jobT || now >= npc._jobT) {   // 회관 안 제자리 작업(서성임) — 좌표 단일 작성자 유지
+      npc._jobT = now + 7000 + (h2 % 5) * 1200;
+      npc.behavior = 'wander'; npc.targetX = wx + ((h2 % 7) - 3) * 8; npc.targetY = wy + (((h2 / 7 | 0) % 7) - 3) * 8; npc.gatherTarget = null;
+    }
+    _lifeAct(npc, _otRole(vil.econ, idx));
+    return true;
+  }
+  // 현장 직업인데 생활권에 자원이 없는 경우(내륙 어부 등)만 레거시 일과로 폴스루.
+  //   ★스테일 라벨 제거: 생활 층이 소유권을 놓는 순간 라벨도 지운다(''=클라 라벨 제거). 사냥꾼은 wildlife가
+  //   매 틱 역전달하므로 건드리지 않는다(_huntOn 가드) — 안 그러면 두 층이 라벨을 두고 싸운다.
+  if (!npc._huntOn && npc._lifeAct) _lifeAct(npc, '');
   return false;   // 기타 직업(전사·대장장이 등 실내·특수) → 레거시 일과(작업 도넛·채집)
+}
+
+// ★랩 otRole verbatim — '주민' 버킷(숲·산·물·논밭 외 직업)의 역할 라벨.
+//   랩 원문: const c=econ.counts, order=[['smith','대장장이'],['weaponsmith','무기장'],['armorsmith','갑옷장'],
+//            ['cook','요리사'],['merchant','행상'],['warrior','전사']];
+//            let k=i; for(const[j,label]of order){const n=Math.round(c[j]||0); if(k<n)return label; k-=n;} return '주민';
+function _otRole(econ, i) {
+  if (!econ || !econ.counts) return '주민';
+  const c = econ.counts, order = [['smith', '대장장이'], ['weaponsmith', '무기장'], ['armorsmith', '갑옷장'], ['cook', '요리사'], ['merchant', '행상'], ['warrior', '전사']];
+  let k = i;
+  for (const [j, label] of order) { const n = Math.round(c[j] || 0); if (k < n) return label; k -= n; }
+  return '주민';
+}
+// 마을 내 기타직 안정 순번(랩 ot 배열 인덱스 i 동형) — npcPids 순서 = 결정론. 게임일 1회 캐시.
+function _lifeOtherIndex(vil, npc) {
+  const day = state.world ? state.world.day : 0;
+  if (!vil._otIdx || vil._otIdxDay !== day) {
+    vil._otIdx = new Map(); vil._otIdxDay = day;
+    let i = 0;
+    for (const pid of vil.npcPids) {
+      const p = state.deps.players.get(pid);
+      if (!p || LIFE_FIELD_JOBS.has(p.simJob)) continue;
+      vil._otIdx.set(pid, i++);
+    }
+  }
+  const v = vil._otIdx.get(npc.pid);
+  return v === undefined ? (_pidHash(npc.pid) % 36) : v;
 }
 
 module.exports = {
