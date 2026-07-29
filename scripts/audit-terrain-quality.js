@@ -61,7 +61,7 @@ function auditZone(ZID) {
   const Z = ZONES[ZID] || {};
   if (!t) return null;
   const rivers = (t.rivers || []).filter((r) => !r._mirroredFrom);
-  const F = { A: [], B: [], C: [], D: [], E: [], F: [], G: [], H: [], I: [], J: [], K: [] };
+  const F = { A: [], B: [], C: [], D: [], E: [], F: [], G: [], H: [], I: [], J: [], K: [], L: [] };
   const wat = (cx, cy) => terrain.isWaterCellLocal(ZID, cx * CELL + 16, cy * CELL + 16);
 
   // ── [A] 강 자체 폭 급변 ──────────────────────────────────────────────────
@@ -212,6 +212,36 @@ function auditZone(ZID) {
     }
   }
 
+  // ── [L] 폭 단조성 — 상류에서 하구로 갈수록 굵어져야 한다 ──────────────────
+  //   재민 지적: "어디가 상류야? 상류→하류 굵어져야 해."
+  //   병합 이음매 taper 가 강 한복판에 봉우리를 만든 적이 있다(선천: 양끝 133/371인데 중간 475).
+  //   ※양끝이 다 물에 닿는 분류(分流)는 흐름 방향이 하나가 아니므로 제외한다.
+  for (const rv of rivers) {
+    const p = rv.path || []; if (p.length < 4) continue;
+    let inc = 0, dec = 0;
+    for (let i = 0; i < p.length - 1; i++) {
+      const a = wOf(p[i], rv), b = wOf(p[i + 1], rv);
+      if (b > a + 0.5) inc++; else if (b < a - 0.5) dec++;
+    }
+    if (!(inc && dec)) continue;
+    const s0 = P(p[0]), e0 = P(p[p.length - 1]);
+    const wetOf = (q) => {
+      if (q[0] < 1200 || q[1] < 1200 || (Z.zoneWidth && q[0] > Z.zoneWidth - 1200) || (Z.zoneHeight && q[1] > Z.zoneHeight - 1200)) return true;
+      for (const o of rivers) { if (o === rv) continue; const r = toFeat(q[0], q[1], o); if (r && r.surf <= 2 * CELL) return true; }
+      for (const lk of (t.lakes || [])) {
+        const c = lk.center; if (!c) continue;
+        const rx = lk.rx || lk.radius || 0, ry = lk.ry || lk.radius || 0; if (!rx || !ry) continue;
+        if (Math.hypot((q[0] - c[0]) / rx, (q[1] - c[1]) / ry) <= 1.05) return true;
+      }
+      return false;
+    };
+    if (wetOf(s0) && wetOf(e0)) continue;   // 분류 — 방향 없음
+    let mx = 0, mi = 0;
+    for (let i = 0; i < p.length; i++) { const w = wOf(p[i], rv); if (w > mx) { mx = w; mi = i; } }
+    if (mi === 0 || mi === p.length - 1) continue;
+    F.L.push({ river: rv.name, inc, dec, wStart: Math.round(wOf(p[0], rv)), wEnd: Math.round(wOf(p[p.length - 1], rv)), peak: Math.round(mx), peakAt: P(p[mi]).map(Math.round) });
+  }
+
   // ── [H] 마을이 통행 불가 셀 위 ──────────────────────────────────────────
   for (const v of (terrain.getZoneVillages(ZID) || [])) {
     const w = terrain.isWaterCellLocal(ZID, v.x, v.y), r = terrain.isRockCellLocal(ZID, v.x, v.y);
@@ -233,9 +263,10 @@ const LABEL = {
   I: '★경로 점프 — 이웃 점이 수백 셀 떨어짐(병합 방향 오류의 흔적)',
   J: '경로 꺾임 45° 초과 — 렌더에서 각진 모서리',
   K: '점밀도 불균일 — 최대/최소 간격 12배 초과',
+  L: '★폭 단조성 위반 — 강 한복판이 양 끝보다 굵다(상류→하구로 굵어져야)',
   F: '[정보] 강이 산맥 관통 · 고개 없음 — terrain.js 규약상 물 우선이라 의도된 협곡일 수 있다',
 };
-const DEFECT = ['I', 'C', 'B', 'A', 'J', 'K', 'D', 'E', 'G', 'H'];
+const DEFECT = ['I', 'L', 'C', 'B', 'A', 'J', 'K', 'D', 'E', 'G', 'H'];
 for (const z of zoneIds) {
   const F = auditZone(z);
   if (!F) { console.log('존 없음:', z); continue; }

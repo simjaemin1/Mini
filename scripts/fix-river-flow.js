@@ -126,38 +126,89 @@ for (const rv of rivers()) {
 }
 console.log('  뒤집은 강 ' + flipped + '개' + (stillIsolated.length ? ' · ★양끝 고립(손 못 댐) ' + stillIsolated.length + '개: ' + stillIsolated.join(', ') : ''));
 
-// ── ③ 합류부 스무딩 ────────────────────────────────────────────────────────
-console.log('\n[3/3] 합류부 — 지류 하구를 본류 폭 ' + (CLAMP * 100) + '% 이하로, 경로 25%에 걸쳐 코사인 블렌드');
-let smoothed = 0;
-// ★두 가지 함정을 피해야 한다
-//   ⓐ 짧은 taper(앞 8점만) → 그 뒤에서 원래 폭으로 되튀어 **새 계단**이 생긴다.
-//   ⓑ 프로파일 전체 아핀 재조정 → 본류가 먼저 줄면 지류가 그 줄어든 값을 다시 읽어 **연쇄 축소**된다
-//      (실측: 학천이 ×0.05까지 쪼그라들어 강이 통째로 실개천이 됐다).
-//   ⇒ 하구에서 경로의 25%(최소 TAPER)에 걸쳐 **코사인 블렌드**로 되돌린다. 길게 펴니
-//     이웃 점 배율이 1.6을 넘지 않아 [A] 급변이 새로 생기지 않는다(감사로 확인).
-for (const rv of rivers()) {
-  for (const which of [0, 1]) {
-    const p = rv.path, iH = which ? 0 : p.length - 1;
-    const e = endInfo(rv, which);
-    if (e.edge || !e.near || e.near.surf > WET * CELL || !e.near.rv) continue;  // 합류부만
-    const hostW = e.near.w;
-    if (!(e.w > hostW * CLAMP)) continue;
-    const wHead = wOf(p[iH], rv);
-    const target = Math.max(hostW * CLAMP, wHead);        // 발원지보다 좁아지진 않는다
-    // ★멱등 보장 — 이미 맞춰진 하구를 또 줄이면, 본류가 줄고 그걸 읽은 지류가 또 줄어
-    //   **다시 돌릴 때마다 강이 조금씩 마르는** 연쇄가 생긴다. 2% 안이면 손대지 않는다.
-    if (Math.abs(e.w - target) <= Math.max(4, target * 0.02)) continue;
-    const span = Math.max(TAPER, Math.floor(p.length * 0.25));
-    for (let k = 0; k <= span; k++) {
-      const idx = which ? (p.length - 1 - k) : k;
-      if (idx < 0 || idx >= p.length) break;
-      const f = 0.5 * (1 + Math.cos(Math.PI * k / span));  // k=0 → 1, k=span → 0
-      const orig = wOf(p[idx], rv);
-      p[idx].width = R(Math.max(CELL, orig + (target - orig) * f));
+// ── ④ 단조 폭 — 상류에서 하구로 갈수록 굵어져야 한다 ──────────────────────
+// ★재민 지적: "선천 다시 엄밀하게 봐. 어디가 상류야? 상류→하류 굵어져야 해."
+//   실측: 선천은 양 끝이 133(상류) / 371(하구)로 맞는데 **중간이 475로 불룩**했다(감소 구간 8개).
+//   병합 이음매 taper 가 접합부를 두 획 중 넓은 쪽에 맞추면서 강 한복판에 봉우리를 만든 것이다.
+//   ⇒ 하구 방향으로 **단조 비감소**가 되도록 폭을 고친다. 최소제곱 의미로 원본에 가장 가까운
+//     단조 수열을 구하는 방법이 PAVA(pool-adjacent-violators)다 — 임의로 깎지 않고 봉우리만 눌린다.
+function pava(vals) {                      // 비감소 등장회귀
+  const v = vals.slice(), wgt = vals.map(() => 1);
+  const stackV = [], stackW = [];
+  for (let i = 0; i < v.length; i++) {
+    let cv = v[i], cw = wgt[i];
+    while (stackV.length && stackV[stackV.length - 1] > cv) {
+      const pv = stackV.pop(), pw = stackW.pop();
+      cv = (pv * pw + cv * cw) / (pw + cw); cw += pw;
     }
+    stackV.push(cv); stackW.push(cw);
+  }
+  const out = [];
+  for (let i = 0; i < stackV.length; i++) for (let k = 0; k < stackW[i]; k++) out.push(stackV[i]);
+  return out;
+}
+console.log('\n[4/5] 단조 폭 — 상류→하구로 갈수록 굵어지게(PAVA 등장회귀)');
+let monoFixed = 0;
+for (const rv of rivers()) {
+  const p = rv.path;
+  const s = endInfo(rv, 0), e = endInfo(rv, 1);
+  const wetS = s.edge || s.surf <= WET * CELL, wetE = e.edge || e.surf <= WET * CELL;
+  let mouthEnd;                                   // 1 = 끝이 하구, 0 = 시작이 하구
+  if (wetS && !wetE) mouthEnd = 0;
+  else if (wetE && !wetS) mouthEnd = 1;
+  else if (wetS && wetE) {
+    // ★양끝이 다 물에 닿으면 그건 두 물줄기를 잇는 **분류(分流)**다 — 흐름 방향이 하나로 정해지지 않는다.
+    //   여기에 단조를 강요하면 강이 통째로 눌린다(옥계천: 양끝 120인데 중간 봉우리를 다 깎아 평평해졌다).
+    //   폭 차이가 뚜렷할 때(1.3배 초과)만 넓은 쪽을 하구로 보고, 아니면 손대지 않는다.
+    const hi = Math.max(s.w, e.w), lo = Math.min(s.w, e.w);
+    if (!(lo > 0 && hi / lo > 1.3)) continue;
+    mouthEnd = (e.w >= s.w) ? 1 : 0;
+  }
+  else continue;                                            // 양끝 고립 — 방향을 못 정한다
+  const ws = p.map((q) => wOf(q, rv));
+  const seq = mouthEnd ? ws : ws.slice().reverse();          // 상류 → 하구 순서
+  let dec = 0; for (let i = 0; i < seq.length - 1; i++) if (seq[i + 1] < seq[i] - 0.5) dec++;
+  if (!dec) continue;
+  const fixedSeq = pava(seq);
+  const back = mouthEnd ? fixedSeq : fixedSeq.slice().reverse();
+  let maxDelta = 0;
+  for (let i = 0; i < p.length; i++) { maxDelta = Math.max(maxDelta, Math.abs(back[i] - ws[i])); p[i].width = R(back[i]); }
+  monoFixed++;
+  console.log('  ↗ ' + rv.name.padEnd(8) + ' 하구=' + (mouthEnd ? '끝' : '시작')
+    + ' · 감소 구간 ' + dec + '개 · 최대 보정 ' + R(maxDelta) + 'px'
+    + '  (상류 w' + R(seq[0]) + ' → 하구 w' + R(seq[seq.length - 1]) + ')');
+}
+console.log('  단조화한 강 ' + monoFixed + '개');
+
+// ── ⑤ 합류부 — 지류 하구는 본류보다 좁아야 한다(단조 유지) ─────────────────
+// ★순서를 ④ 뒤로 옮겼다. 앞에 두면 ④ 단조화가 하구를 도로 올려 [B] 합류 폭 역전이 되살아난다
+//   (실측: 3건 → 7건). 그리고 국소 blend 로 하구만 눌러도 단조가 깨진다.
+//   ⇒ 발원지 폭을 고정한 채 **프로파일 전체를 아핀 스케일**한다 — 단조는 그대로 보존되고 하구만 맞는다.
+//   연쇄 축소를 막으려고 **본류가 굵은 순서로 한 번만** 돈다.
+console.log('\n[5/5] 합류부 — 지류 하구를 본류 폭 ' + (CLAMP * 100) + '% 이하로(단조 보존 아핀 스케일)');
+let smoothed = 0;
+{
+  const jobs = [];
+  for (const rv of rivers()) for (const which of [0, 1]) {
+    const e = endInfo(rv, which);
+    if (e.edge || !e.near || e.near.surf > WET * CELL || !e.near.rv) continue;
+    if (!(e.w > e.near.w * CLAMP)) continue;
+    jobs.push({ rv, which, hostW: e.near.w, host: e.near.rv.name, w: e.w });
+  }
+  jobs.sort((x, y) => y.hostW - x.hostW);
+  for (const j of jobs) {
+    const p = j.rv.path, iH = j.which ? 0 : p.length - 1;
+    const wHead = wOf(p[iH], j.rv), wMouth = wOf(p[j.which ? p.length - 1 : 0], j.rv);
+    const target = Math.max(j.hostW * CLAMP, wHead);
+    if (Math.abs(wMouth - target) <= Math.max(4, target * 0.02)) continue;
+    const den = wMouth - wHead;
+    if (Math.abs(den) < 1e-6) continue;
+    const k = (target - wHead) / den;
+    if (!(k > 0)) continue;
+    for (let i = 0; i < p.length; i++) p[i].width = R(Math.max(CELL, wHead + (wOf(p[i], j.rv) - wHead) * k));
     smoothed++;
-    console.log('  ~ ' + rv.name.padEnd(8) + '[' + (which ? '끝' : '시작') + '] 하구 w' + R(e.w) + ' → ' + R(target)
-      + '  (본류 ' + e.near.rv.name + ' w' + R(hostW) + ') · ' + span + '점 코사인 블렌드');
+    console.log('  ~ ' + j.rv.name.padEnd(8) + '[' + (j.which ? '끝' : '시작') + '] 하구 w' + R(wMouth) + ' → ' + R(target)
+      + '  (본류 ' + j.host + ' w' + R(j.hostW) + ') · 프로파일 x' + k.toFixed(2));
   }
 }
 console.log('  스무딩 ' + smoothed + '건');
