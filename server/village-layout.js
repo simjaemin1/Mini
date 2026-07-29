@@ -31,7 +31,18 @@
   const houseFarmBlock = (hx, hy, x, y) => inDisc(hx, hy, LOT_R + FARM_GAP, x, y), hallFarmBlock = (hx, hy, x, y) => inDisc(hx, hy, HALL_YARD + FARM_GAP, x, y);   // 농지 완충: 부지/마당 밖 정확 2타일(원이라 비대칭 구조적 불가)
   const landNeedPer = (fv, base) => base * Math.max(0.6, Math.min(2.5, 0.55 / Math.max(0.05, (fv != null ? fv : 0.55))));   // ★보즈럽 조방화: 인당 경작칸=기준×(0.55/비옥), 0.6~2.5 클램프 — 저비옥=조방·고비옥=집약(랩 정본 동식)
   const _dt1d = (f, n, d, v, z) => { let k = 0; v[0] = 0; z[0] = -1e20; z[1] = 1e20; for (let q = 1; q < n; q++) { let s = ((f[q] + q * q) - (f[v[k]] + v[k] * v[k])) / (2 * q - 2 * v[k]); while (s <= z[k]) { k--; s = ((f[q] + q * q) - (f[v[k]] + v[k] * v[k])) / (2 * q - 2 * v[k]); } k++; v[k] = q; z[k] = s; z[k + 1] = 1e20; } k = 0; for (let q = 0; q < n; q++) { while (z[k + 1] < q) k++; const p = v[k]; d[q] = (q - p) * (q - p) + f[p]; } };   // Felzenszwalb 1D 제곱거리 변환
-  const waterEDT = (t, x0, y0, x1, y1) => {   // ★정확 유클리드 물거리장(2패스 EDT) — 물가세·침수 계열 거리 정본(랩 동기[사용자 #15 사례]): ±14 박스=무과세 문턱, BFS=대각 √2 저과세 — 둘 다 탈락. 존닝 dwOf(BFS)="걸어서 물까지"라 별개 정본
+  // ★[11차] 임의 술어에 대한 정확 EDT — 물뿐 아니라 **바위 거리**도 필요해졌다(셀 비옥도).
+  //   waterEDT 는 이걸 pred=isWater 로 부르는 얇은 껍데기가 된다(동작 불변, 중복 제거).
+  const maskEDT = (pred, x0, y0, x1, y1) => {
+    const W = x1 - x0 + 1, Hh = y1 - y0 + 1, g = new Float64Array(W * Hh);
+    for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) g[y * W + x] = pred(x0 + x, y0 + y) ? 0 : 1e20;
+    const n = Math.max(W, Hh), d = new Float64Array(n), v = new Int32Array(n), z = new Float64Array(n + 1), f = new Float64Array(n);
+    for (let x = 0; x < W; x++) { for (let y = 0; y < Hh; y++) f[y] = g[y * W + x]; _dt1d(f, Hh, d, v, z); for (let y = 0; y < Hh; y++) g[y * W + x] = d[y]; }
+    for (let y = 0; y < Hh; y++) { for (let x = 0; x < W; x++) f[x] = g[y * W + x]; _dt1d(f, W, d, v, z); for (let x = 0; x < W; x++) g[y * W + x] = d[x]; }
+    return { at: (x, y) => { const ix = x - x0, iy = y - y0; if (ix < 0 || iy < 0 || ix >= W || iy >= Hh) return 999; const s = g[iy * W + ix]; return s >= 1e19 ? 999 : Math.sqrt(s); } };
+  };
+  const waterEDT = (t, x0, y0, x1, y1) => maskEDT((x, y) => !!(t.isWater && t.isWater(x, y)), x0, y0, x1, y1);
+  const _waterEDT_old = (t, x0, y0, x1, y1) => {   // ★정확 유클리드 물거리장(2패스 EDT) — 물가세·침수 계열 거리 정본(랩 동기[사용자 #15 사례]): ±14 박스=무과세 문턱, BFS=대각 √2 저과세 — 둘 다 탈락. 존닝 dwOf(BFS)="걸어서 물까지"라 별개 정본
     const W = x1 - x0 + 1, Hh = y1 - y0 + 1, g = new Float64Array(W * Hh);
     for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) g[y * W + x] = (t.isWater && t.isWater(x0 + x, y0 + y)) ? 0 : 1e20;
     const n = Math.max(W, Hh), d = new Float64Array(n), v = new Int32Array(n), z = new Float64Array(n + 1), f = new Float64Array(n);
@@ -55,7 +66,15 @@
     const axis = axisAt(t, ccx, ccy);
     const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]], key = (x, y) => x + ',' + y;
     const w = axis.toWater, perp = { x: -w.y, y: w.x };
-    const fertW = opts.fertW != null ? opts.fertW : 0.35;
+    // ★[11차] fertW 0.35 → 3.5. 셀 비옥도 필드를 깔았더니 **영토가 하나도 안 바뀌었다**(일치 100%,
+    //   평균 비옥 0.414→0.415). 원인은 저울이었다: 점수 = fertW·fert − distW·거리 인데
+    //   fert∈[0.05,1] 이라 fertW·fert ≤ 0.35 인 반면 거리항은 distW(0.1)×반경 33 ≈ 3.3 —
+    //   **거리가 10배 무거워** 비옥도가 묻혔다(옛 주석의 '컴팩트 블롭'이 이 뜻이다).
+    //   A/B 실측(농촌17 영토 평균 비옥도 / 반경 최대):
+    //     0.35 → 0.608 / 47   1.5 → 0.619 / 51   **3.5 → 0.637 / 57**   7 → 0.662 / 65   14 → 0.678 / 65
+    //   14는 농촌1에서 반경 최대 42→82 로 촉수가 뻗는다(땅이 고르게 척박한데도 억지로 멀리 감).
+    //   3.5 = 지형을 따라가되 모양이 안 무너지는 지점.
+    const fertW = opts.fertW != null ? opts.fertW : 3.5;
     const compactW = opts.compactW != null ? opts.compactW : 0;
     const distW = opts.distW != null ? opts.distW : 0.1;
     const lval = (x, y) => t.landValue ? t.landValue(x, y) : t.fert(x, y);
@@ -334,7 +353,7 @@
     return { ok: diagOnly === 0, comps, diagOnly };
   }
 
-  const API = { generate, footprintLand, axisAt, nearestBank, waterEDT, HOUSE_HALF, HOUSE_CAP: HOUSE_CAP_PER_FLOOR, HOUSE_CAP_PER_FLOOR, LAND_PER_HOUSE, landNeedPer, HALL_YARD, LOT_R, FARM_GAP, ALLEY_R, HALL_CLEAR, inDisc, LOT_CELLS, LOT_GUARD, YARD_CELLS, houseFarmBlock, hallFarmBlock,
+  const API = { generate, footprintLand, axisAt, nearestBank, waterEDT, maskEDT, HOUSE_HALF, HOUSE_CAP: HOUSE_CAP_PER_FLOOR, HOUSE_CAP_PER_FLOOR, LAND_PER_HOUSE, landNeedPer, HALL_YARD, LOT_R, FARM_GAP, ALLEY_R, HALL_CLEAR, inDisc, LOT_CELLS, LOT_GUARD, YARD_CELLS, houseFarmBlock, hallFarmBlock,
     ditchRing, ditchConnectivity, DITCH_W, DITCH_AXIS_RATIO, DITCH_GATE_HALF, DITCH_MARGIN };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   if (typeof window !== 'undefined') window.VillageLayout = API;

@@ -174,13 +174,40 @@ function makeTerrainAdapter(terrain, ZONE, deps) {
     }
     return maxR + 1;
   };
-  // ★근사(1차, 주석 의무): 본체 지형엔 마을실험실의 fert 필드(셀 비옥도 실측)가 없다.
-  //   fert는 상수 0.5 — generate()의 영토 확장 tiebreak(fertW=0.35)만 중립화되고
-  //   거리항(distW)이 지배해 컴팩트 블롭이 나옴(랩과 같은 계열). 실측 비옥도는 Stage 4 후보.
-  const fert = () => 0.5;
+  // ★[11차 · 재민 확정] 셀 단위 비옥도 — 지형에서 유도한다.
+  //   그동안 fert 는 **상수 0.5**였다. 그래서 generate() 의 영토 확장 tiebreak(fertW=0.35)가
+  //   통째로 중립화되고 거리항(distW)만 남아, 영토가 지형과 무관하게 **동그란 블롭**으로 퍼졌다.
+  //   "농촌이 강에서 멀어도 되나"라는 물음의 뿌리도 여기다 — 땅의 좋고 나쁨이 지도에 없었다.
+  //
+  //   공식(청동기 취락 입지 고증 — 하천 충적지·구릉 사면):
+  //     fert = 0.12                       기본(척박한 땅도 0은 아니다)
+  //          + 0.62 · exp(-dw/28)         **충적·관개**: 물가가 최고, 28셀에서 1/e로 감쇠
+  //          + 0.18 · min(1, dr/12)       **산사면 배제**: 바위에서 12셀 넘게 떨어져야 만점
+  //          + 0.08 · (숲이면)            부식질 소폭(개간 비용은 별개 계산)
+  //   dw·dr 은 정확 유클리드 EDT(村 박스 2패스) — 링 스캔이 아니라 O(면적)이라 싸다.
+  //   범위 밖은 0.5(중립)로 떨어뜨려 예전 동작으로 안전하게 회귀한다.
+  let _FF = null;   // { at(x,y) }
+  const prepareFert = (ccx, ccy, R) => {
+    const VL = require('./village-layout');
+    if (!VL.maskEDT) { _FF = null; return; }
+    const x0 = ccx - R, y0 = ccy - R, x1 = ccx + R, y1 = ccy + R;
+    const WD = VL.maskEDT((x, y) => isWater(x, y), x0, y0, x1, y1);
+    const RD = VL.maskEDT((x, y) => isRock(x, y), x0, y0, x1, y1);
+    const W = x1 - x0 + 1, Hh = y1 - y0 + 1, g = new Float32Array(W * Hh);
+    for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) {
+      const cx = x0 + x, cy = y0 + y;
+      const dw = WD.at(cx, cy), dr = RD.at(cx, cy);
+      const woody = forestMult(cx, cy) > 1.2 ? 1 : 0;
+      let f = 0.12 + 0.62 * Math.exp(-Math.min(dw, 999) / 28) + 0.18 * Math.min(1, dr / 12) + 0.08 * woody;
+      if (isRock(cx, cy) || isWater(cx, cy)) f = 0.05;   // 바위·물 자체는 경작 불가
+      g[y * W + x] = Math.max(0.05, Math.min(1, f));
+    }
+    _FF = { at: (x, y) => { const ix = x - x0, iy = y - y0; return (ix < 0 || iy < 0 || ix >= W || iy >= Hh) ? 0.5 : g[iy * W + ix]; } };
+  };
+  const fert = (cx, cy) => (_FF ? _FF.at(cx, cy) : 0.5);
   // 고도 프록시 — 물에서 멀수록 높음(배산임수 축 판정용). axisAt이 ±1셀 4회만 호출해 링 스캔 비용 OK.
   const elev = (cx, cy) => Math.min(1, nearestWaterDist(cx, cy, 45) / 45);
-  return { isBlocked, isWater, isRock, forestMult, fert, elev, nearestWaterDist };
+  return { isBlocked, isWater, isRock, forestMult, fert, elev, nearestWaterDist, prepareFert, fertField: () => _FF };
 }
 
 // 마을 중심이 물/바위 위면 근처 열린 셀로 스냅(에디터 좌표가 강폭 확장 등으로 물에 잠긴 경우 구제).
@@ -227,7 +254,17 @@ function extractLandParamsApprox(ta, ccx, ccy, layout) {
   let tw = 0;
   const tn = (layout.territory && layout.territory.length) || 0;
   if (tn) for (const c of layout.territory) if (ta.isWater(c[0], c[1])) tw++;
-  const fertility = clamp(+(0.4 + water * 0.9 - rockD * 1.5).toFixed(2), 0.1, 2.0); // ★근사 ① (위 주석)
+  // ★[11차] 셀 비옥도가 생겼으므로 마을 비옥도는 **영토 실측 평균**이다(프록시 폐기).
+  //   보정 ×1.4 는 옛 프록시 눈금에 맞춘 것 — 강변 마을 평균 ~0.9 → 1.26, 마른 마을 ~0.33 → 0.46 로
+  //   econ 밸런스가 이어진다(옛 값 범위 0.45~1.29와 같은 자리). 필드가 없으면 옛 프록시로 회귀.
+  let fertility;
+  if (ta.fert && ta.fertField && ta.fertField() && tn) {
+    let fs = 0;
+    for (const c2 of layout.territory) fs += ta.fert(c2[0], c2[1]);
+    fertility = clamp(+((fs / tn) * 1.4).toFixed(2), 0.1, 2.0);
+  } else {
+    fertility = clamp(+(0.4 + water * 0.9 - rockD * 1.5).toFixed(2), 0.1, 2.0); // 옛 근사(필드 없을 때)
+  }
   return {
     fertility,
     arable: tn ? +((tn - tw) / tn).toFixed(2) : 1.0,
@@ -657,6 +694,9 @@ function seedVillages(db, terrain, ta, ZONE) {
       // 레이아웃 먼저(영토 → land params의 size/arable 실측), 이어서 params (랩 setupVillage와 같은 순서)
       let layout;
       try {
+        // ★비옥도 필드를 먼저 깐다 — generate 의 영토 확장 tiebreak(fertW)가 이걸 읽는다.
+        //   반경은 영토 반경(√(target/π)≈33) + 여유 25 — 확장이 박스를 넘지 않게.
+        if (ta.prepareFert) ta.prepareFert(c.ccx, c.ccy, 62);
         layout = VillageLayout.generate(ta, c.ccx, c.ccy, INITIAL_POP, {});
       } catch (e) {
         console.warn(`[${state.zoneId}] 🏘️ [${hv.name}] generate 실패 — 스킵:`, e.message);
