@@ -51,7 +51,14 @@ const ok = (c, m) => { console.log((c ? '  ✓ ' : '  ✗ ') + m); if (!c) fail+
 // 표본 지점 — 광산마을(산 바로 옆), 계곡 안, 평지
 const spots = [];
 for (const v of (terrain.getZoneVillages(ZID) || [])) if (/광산/.test(v.name)) spots.push([v.name, Math.round(v.x / 32), Math.round(v.y / 32)]);
-spots.push(['무산계곡 한복판', 1846, 246], ['평지(스폰)', 1094, 2031]);
+// ★계곡 표본은 **지형 파일에서 뽑는다** — 좌표를 손으로 박아 두면 계곡을 옮긴 뒤 조용히 엉뚱한 곳을 재게 된다
+//   (11차에 무산계곡을 T자 접점에서 33셀 밖으로 옮기고 나서 실제로 그럴 뻔했다).
+for (const v of (require(path.join(__dirname, '..', 'server', 'hanbando-terrain.json'))[ZID].valleys || [])) {
+  const c = v.path[Math.floor(v.path.length / 2)];
+  const q = c.pos ? c.pos : [c.x, c.y];
+  spots.push([v.name + ' 한복판', Math.round(q[0] / 32), Math.round(q[1] / 32)]);
+}
+spots.push(['평지(스폰)', 1094, 2031]);
 // ★최악 표본 — 산맥 **가장자리 바로 옆**(실루엣이 가장 길게 잡히는 자리). 광산마을은 실측상 바위까지 27~55셀이라
 //   수집 반경 20셀 밖이다 — 그것만 보면 '선분 0'이라 아무것도 재지 못한다.
 {
@@ -70,7 +77,10 @@ console.log('[① 실루엣이 바위 경계를 빠짐없이 덮는가]');
 {
   // ★표본은 **경계가 실제로 있는 자리**여야 한다. 광산마을은 바위까지 27~55셀이라 반경 20셀 안에
   //   경계 변이 0개다 — 그걸로 검사하면 "0개 중 0개 빠짐 ✔"라는 아무 말도 안 하는 통과가 나온다.
-  const [, cx, cy] = ['무산계곡', 1846, 246];
+  const vv = require(path.join(__dirname, '..', 'server', 'hanbando-terrain.json'))[ZID].valleys[0];
+  const vc = vv.path[Math.floor(vv.path.length / 2)];
+  const vq = vc.pos ? vc.pos : [vc.x, vc.y];
+  const cx = Math.round(vq[0] / 32), cy = Math.round(vq[1] / 32);
   const { segs } = silhouette(cx, cy);
   // 선분 집합을 셀 변으로 되돌려, 브루트포스로 센 경계 변과 대조
   const have = new Set();
