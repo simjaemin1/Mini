@@ -4269,6 +4269,62 @@ const SIM_JOB_EMOJI = {
           }
         }
       }
+      // ★[11차 재민 확정] 산은 완벽한 콜라이더다 — **건너편이 절대 안 보인다**.
+      //   지금까지 바위 시야 차단은 야생 AI(server/wildlife.js losRk)에만 걸려 있어서, 늑대는 산 너머를
+      //   못 보는데 플레이어 화면에는 산 너머가 그대로 보였다. 그 비대칭을 없앤다.
+      //   구현: 바위 덩어리의 **실루엣**(비바위와 맞닿은 변)만 선분으로 넣는다. 안쪽 변은 어차피
+      //   바깥 변에 가려 시야에 영향이 없고, 넣으면 선분만 수백 개 늘어 O(선분²)를 터뜨린다.
+      //   비용 고정 장치 두 겹:
+      //     ① 플레이어가 **셀을 옮길 때만** 다시 만든다(프레임마다 1681번 지형 판정하면 메인루프가 멈춘다).
+      //     ② 같은 줄로 이어지는 변은 하나로 합치고(런 병합), 그래도 많으면 가까운 순 상한.
+      //   나무(MAX_TREE_OCCLUDERS 22)와 같은 사고방식 — 가까운 것이 먼 것을 어차피 가린다.
+      {
+        const ROCK_RANGE_CELLS = 20;         // 수집 반경(셀) — 화면 대각선보다 넉넉
+        const MAX_ROCK_SEGS = 90;            // 선분 상한(런 병합 후) — 나무 132선분과 합쳐도 O(선분²)가 감당된다
+        const rcx = Math.floor(px / 32), rcy = Math.floor(py / 32);
+        let rc = window._rockOccCache;
+        if (!rc || rc.cx !== rcx || rc.cy !== rcy || rc.zid !== primaryZoneId) {
+          const R = ROCK_RANGE_CELLS, segsR = [];
+          const isR = (cx, cy) => isRockAtAbs(cx * 32 + 16, cy * 32 + 16);
+          // 가로 변(N/S): y줄마다 x로 훑으며 '바위인데 위(아래)가 비바위'인 구간을 런으로 묶는다
+          for (let cy = rcy - R; cy <= rcy + R; cy++) {
+            for (const [dy, edge] of [[-1, 0], [1, 1]]) {
+              let run = null;
+              for (let cx = rcx - R; cx <= rcx + R + 1; cx++) {
+                const on = cx <= rcx + R && isR(cx, cy) && !isR(cx, cy + dy);
+                if (on) { if (!run) run = [cx, cx]; else run[1] = cx; }
+                else if (run) {
+                  const y = (cy + edge) * 32;
+                  segsR.push({ ax: run[0] * 32, ay: y, bx: (run[1] + 1) * 32, by: y });
+                  run = null;
+                }
+              }
+            }
+          }
+          // 세로 변(W/E)
+          for (let cx = rcx - R; cx <= rcx + R; cx++) {
+            for (const [dx, edge] of [[-1, 0], [1, 1]]) {
+              let run = null;
+              for (let cy = rcy - R; cy <= rcy + R + 1; cy++) {
+                const on = cy <= rcy + R && isR(cx, cy) && !isR(cx + dx, cy);
+                if (on) { if (!run) run = [cy, cy]; else run[1] = cy; }
+                else if (run) {
+                  const x = (cx + edge) * 32;
+                  segsR.push({ ax: x, ay: run[0] * 32, bx: x, by: (run[1] + 1) * 32 });
+                  run = null;
+                }
+              }
+            }
+          }
+          rc = window._rockOccCache = { cx: rcx, cy: rcy, zid: primaryZoneId, segs: segsR };
+        }
+        let rs = rc.segs;
+        if (rs.length > MAX_ROCK_SEGS) {
+          const d2 = (s) => { const mx = (s.ax + s.bx) / 2 - px, my = (s.ay + s.by) / 2 - py; return mx * mx + my * my; };
+          rs = rs.slice().sort((a, b) => d2(a) - d2(b)).slice(0, MAX_ROCK_SEGS);
+        }
+        for (const s of rs) segs.push(s);
+      }
       // 경계 박스 4변 (ray 종료점) — MAX_RANGE 큰 박스
       const bMin = MAX_RANGE;
       segs.push({ ax: px - bMin, ay: py - bMin, bx: px + bMin, by: py - bMin });

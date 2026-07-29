@@ -70,6 +70,7 @@ function featsOf(zid, ox, oy) {
   };
   line('river', d.rivers);
   line('ridge', d.ridges);
+  line('valley', d.valleys);   // ★[11차] 계곡 = 산맥을 가로지르는 선형 통로(강·산맥과 같은 path+width)
   blob('forest', d.forests);
   blob('lake', d.lakes, 'radius');
   blob('pass', d.passes, 'radius');

@@ -98,6 +98,7 @@ function _getZoneTerrain(zoneId) {
     data.lakes     = hc[zoneId].lakes   || [];
     data.ridges    = hc[zoneId].ridges  || [];
     data.passes    = hc[zoneId].passes  || [];
+    data.valleys   = hc[zoneId].valleys || [];   // ★[11차] 계곡 = 산맥을 가로지르는 선형 통로(강과 같은 path+width)
     data.forests   = hc[zoneId].forests || [];
     data.mountains = [];
     // 광맥(ores): 손그림(v8)이 있으면 그걸로 교체. 광물 종류는 zone.js가 biome 보고 배정.
@@ -223,8 +224,11 @@ function isWaterCellLocal(zoneId, localX, localY) {
 }
 
 // === Phase 5-H: 산맥(바위) 셀 판정 — 통행 불가 ===
-// ridge는 강과 동일한 path+width 형식. 우선순위: 고개(pass) > 물 > 바위.
-//   - pass radius 안 = 통행 가능 (고개)
+// ridge는 강과 동일한 path+width 형식. 우선순위: 계곡·고개 > 물 > 바위.
+//   - pass radius 안 = 통행 가능 (고개 — 능선을 낮춰 넘어가는 자리. 원)
+//   - ★[11차 재민 확정] valley = 산맥을 **가로지르는 선형 통로**(강과 같은 path+width). 폭이 좁고 길어
+//     '계곡'이라는 말이 맞고, 반지름 50셀짜리 원처럼 산을 100m씩 통째로 지워 버리지 않는다.
+//     산은 완벽한 콜라이더다 — 뚫려 있는 곳은 **처음부터 뚫려 있는 이 두 종류뿐**이다.
 //   - 물과 겹치면 물 (강이 협곡으로 관통 — 셀은 water로 렌더·판정)
 function isRockCellLocal(zoneId, localX, localY) {
   const t = ZONE_TERRAIN[zoneId];
@@ -237,6 +241,9 @@ function isRockCellLocal(zoneId, localX, localY) {
   for (const q of t.passes || []) {
     const dx = localX - q.pos[0], dy = localY - q.pos[1];
     if (dx * dx + dy * dy < q.radius * q.radius) return false;
+  }
+  for (const v of t.valleys || []) {
+    if (_isPointInRiver(localX, localY, v)) return false;
   }
   if (isWaterCellLocal(zoneId, localX, localY)) return false;
   return true;

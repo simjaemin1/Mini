@@ -77,6 +77,7 @@ function _getZoneTerrain(zoneId) {
     data.lakes     = hc.lakes   || [];
     data.ridges    = hc.ridges  || [];
     data.passes    = hc.passes  || [];
+    data.valleys   = hc.valleys || [];   // ★[11차] 계곡 = 산맥을 가로지르는 선형 통로(서버 terrain.js와 동일 규약)
     data.forests   = hc.forests || [];
     data.mountains = [];
     // data.ores 는 절차생성 그대로 둔다.
@@ -265,7 +266,8 @@ function isOreClusterAt(zoneId, x, y) {
 
 // === 미니맵용 — cell 종류 결정 ===
 // 우선순위: water > ore > mountain > forest > plain
-// === Phase 5-H: 산맥(바위) 셀 판정 — 통행 불가. 고개(pass) > 물 > 바위 우선. ===
+// === Phase 5-H: 산맥(바위) 셀 판정 — 통행 불가. 계곡·고개 > 물 > 바위 우선. ===
+// ★서버 server/terrain.js isRockCellLocal의 거울 — 한쪽만 고치면 유령 벽/유령 통로가 된다.
 function isRockCellLocal(zoneId, localX, localY) {
   const t = ZONE_TERRAIN[zoneId];
   if (!t || !t.ridges || t.ridges.length === 0) return false;
@@ -277,6 +279,9 @@ function isRockCellLocal(zoneId, localX, localY) {
   for (const q of t.passes || []) {
     const dx = localX - q.pos[0], dy = localY - q.pos[1];
     if (dx * dx + dy * dy < q.radius * q.radius) return false;
+  }
+  for (const v of t.valleys || []) {
+    if (_isPointInRiver(localX, localY, v)) return false;
   }
   if (isWaterCellLocal(zoneId, localX, localY)) return false;
   return true;
