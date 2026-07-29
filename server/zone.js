@@ -1910,6 +1910,9 @@ setInterval(() => {
 // §4-4 Stage 4B: isPositionActive(AOI 상세/보간 분기)·isBlockedByWall(캐러밴 벽 충돌·로컬 재경로) 추가 주입.
 // §4-4 P2 LOD: anyViewerNear(defCenterPx, r) 추가 주입 — villages.js 가 전쟁 eta 결판을 physical/headless 로 분기(서버 내부 스텝만, broadcast·렌더 없음).
 SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, isWaterTileLocal, isPositionActive, isBlockedByWall, anyViewerNear,
+  // ★[11차 실측] 교역 거리행렬의 코스 그리드(4셀 서브샘플)가 **폭 2셀 다리를 절반이나 못 본다**(28개 중 15개).
+  //   다리 술어를 넘겨 주면 villages.js 가 코스 셀 안을 훑어 '이 블록에 다리가 지난다'를 살려낸다.
+  isBridgeLocal: isBridgeTileLocal,
   liveBuildRow: _liveBuildRow, buildings, chunkManager,   // ★[생활 층 ③] 신축 크루의 라이브 실체화 경로(플레이어 완공과 동일 헬퍼 — 발명 금지)
   worldPhase, dayPhaseRatio: WORLD.dayPhaseRatio, mobs, qtResources: () => qtResources });   // ★[생활 층 100% ②③] 일과 스케줄(하루 위상)·직업 실작업(자원·사냥감 현장) 소스
 // ★[11차 T3 환호] 도랑 콜라이더 적재 — SimVillages.init이 시범 마을 도랑을 실체화한 **직후**여야 한다.

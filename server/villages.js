@@ -207,7 +207,13 @@ function makeTerrainAdapter(terrain, ZONE, deps) {
   const fert = (cx, cy) => (_FF ? _FF.at(cx, cy) : 0.5);
   // 고도 프록시 — 물에서 멀수록 높음(배산임수 축 판정용). axisAt이 ±1셀 4회만 호출해 링 스캔 비용 OK.
   const elev = (cx, cy) => Math.min(1, nearestWaterDist(cx, cy, 45) / 45);
-  return { isBlocked, isWater, isRock, forestMult, fert, elev, nearestWaterDist, prepareFert, fertField: () => _FF };
+  // ★다리 셀 술어(셀 좌표) — 교역 거리행렬의 코스 그리드가 폭 2셀 다리를 놓치지 않게 하는 용도.
+  //   zone.js 가 isBridgeLocal(픽셀)을 주입하지 않으면 항상 false = 기존 동작 그대로.
+  const isBridgeCell = (cx, cy) => {
+    if (!deps.isBridgeLocal) return false;
+    try { return !!deps.isBridgeLocal(px(cx), px(cy)); } catch { return false; }
+  };
+  return { isBlocked, isWater, isRock, isBridgeCell, forestMult, fert, elev, nearestWaterDist, prepareFert, fertField: () => _FF };
 }
 
 // 마을 중심이 물/바위 위면 근처 열린 셀로 스냅(에디터 좌표가 강폭 확장 등으로 물에 잠긴 경우 구제).
@@ -781,6 +787,23 @@ function seedVillages(db, terrain, ta, ZONE) {
 //     전 마을 상호 고립이면 경고 로그(지형 병리 — 교역 전무).
 // =============================================================================
 const DIST_STEP = Math.max(1, parseInt(process.env.VILLAGE_DIST_STEP || '4', 10));
+// ★[11차 실측 · 다리 구제] 코스 셀 1칸의 통행 판정 — **거리행렬과 캐러밴 A*가 같은 함수를 쓴다**(모듈 헤더 계약).
+//   중심 1점 샘플은 **폭 2셀 다리를 절반 확률로 못 본다**: 다리가 코스 셀 중심선(좌표 %STEP==half)에
+//   걸쳐야만 보이기 때문이다. 실측(한반도 다리 28개 · STEP 4): 13개만 보이고 **15개가 안 보였다**.
+//   안 보이면 그 강은 코스 그리드에서 여전히 완전 폐색 → 건너편 마을쌍이 전부 Infinity →
+//   v2 top-K 절대 상한이 그 후보를 통째로 잘라낸다(다리를 놓았는데 교역은 안 열리는 상태).
+//   구제는 **중심이 막혔을 때만** 코스 셀 안(STEP×STEP)을 훑어 '다리이면서 통행 가능한 칸'을 찾는다.
+//   물·바위 일반에는 적용하지 않는다 — 좁은 물목을 임의로 뚫으면 거리 근사가 아니라 거짓말이 된다.
+//   반환 0=차단 1=중심이 열림 2=다리로 구제.
+function coarseOpen(ta, gx, gy) {
+  const half = DIST_STEP >> 1, bx = gx * DIST_STEP, by = gy * DIST_STEP;
+  if (!ta.isBlocked(bx + half, by + half)) return 1;
+  if (!ta.isBridgeCell) return 0;
+  for (let dy = 0; dy < DIST_STEP; dy++) for (let dx = 0; dx < DIST_STEP; dx++) {
+    if (ta.isBridgeCell(bx + dx, by + dy) && !ta.isBlocked(bx + dx, by + dy)) return 2;
+  }
+  return 0;
+}
 function computeAndInjectDistMatrix(reason) {
   const { ta, ZONE } = state._distCtx;
   const world = state.world;
@@ -791,11 +814,11 @@ function computeAndInjectDistMatrix(reason) {
   const gw = Math.ceil(cellsW / DIST_STEP), gh = Math.ceil(cellsH / DIST_STEP);
   const half = DIST_STEP >> 1;
   const blk = new Int8Array(gw * gh); // 0=미판정 1=열림 2=차단 — 이번 계산 안에서 소스 간 공유(재계산 시엔 새로 — 어댑터가 미래에 건물을 반영해도 안전)
-  let sampled = 0;
+  let sampled = 0, bridgeSaved = 0;
   const isBlk = (gx, gy) => {
     if (gx < 0 || gy < 0 || gx >= gw || gy >= gh) return true;
     const i = gy * gw + gx;
-    if (blk[i] === 0) { sampled++; blk[i] = ta.isBlocked(gx * DIST_STEP + half, gy * DIST_STEP + half) ? 2 : 1; }
+    if (blk[i] === 0) { sampled++; const v = coarseOpen(ta, gx, gy); if (v === 2) bridgeSaved++; blk[i] = v ? 1 : 2; }
     return blk[i] === 2;
   };
   // 마을 → 코스 노드. 중심 코스 셀이 차단이면 근방 반경 6노드(=24셀) 나선 스냅(findOpenCenter와 같은 구제).
@@ -858,7 +881,7 @@ function computeAndInjectDistMatrix(reason) {
     const r = d / Math.max(1, eu);
     pairs++; sumR += r; if (r > maxR) maxR = r; if (r > 1.02) longer++; if (d > maxD) maxD = d;
   }
-  console.log(`[${state.zoneId}] 🏘️ 교역 BFS 거리행렬${reason ? `(${reason})` : ''}: ${M}마을 ${pairs + unreach}쌍 ${Date.now() - t0}ms (그리드 ${gw}×${gh}·step ${DIST_STEP}셀·지형판정 ${sampled}) — 유클리드 대비 평균 ×${pairs ? (sumR / pairs).toFixed(2) : '-'} 최대 ×${maxR.toFixed(2)} 우회쌍(>1.02배) ${longer} · 최장 ${maxD.toFixed(0)} · 도달불능 ${unreach}쌍`);
+  console.log(`[${state.zoneId}] 🏘️ 교역 BFS 거리행렬${reason ? `(${reason})` : ''}: ${M}마을 ${pairs + unreach}쌍 ${Date.now() - t0}ms (그리드 ${gw}×${gh}·step ${DIST_STEP}셀·지형판정 ${sampled}·다리구제 ${bridgeSaved}) — 유클리드 대비 평균 ×${pairs ? (sumR / pairs).toFixed(2) : '-'} 최대 ×${maxR.toFixed(2)} 우회쌍(>1.02배) ${longer} · 최장 ${maxD.toFixed(0)} · 도달불능 ${unreach}쌍`);
   if (M > 1 && pairs === 0) console.warn(`[${state.zoneId}] 🏘️ ⚠ 전 마을 상호 고립(BFS 도달 불능) — 지형 병리: 교역 전무 예상`);
 }
 
@@ -889,7 +912,7 @@ function computeRoutePts(x0, y0, x1, y1) {
   const isBlk = (gx, gy) => {
     if (gx < 0 || gy < 0 || gx >= gw || gy >= gh) return true;
     const i = gy * gw + gx;
-    if (R.blk[i] === 0) R.blk[i] = ta.isBlocked(gx * DIST_STEP + half, gy * DIST_STEP + half) ? 2 : 1;
+    if (R.blk[i] === 0) R.blk[i] = coarseOpen(ta, gx, gy) ? 1 : 2;   // ★거리행렬과 동일 규칙(다리 구제 포함)
     return R.blk[i] === 2;
   };
   const snap = (px, py) => { // 행렬 srcNode와 동일 스냅(반경 6노드 나선)
