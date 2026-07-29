@@ -1298,6 +1298,15 @@ function syncCaravanBodies(now) {
 // Stage 4B부터 실동: zone.js 벽류(wall/fence) 설치·철거·파괴 지점이 호출(§5.5b 차단·개통) —
 //   다음 게임일 경계에 전쌍 재계산 + 캐러밴 경로 캐시·코스 차단 메모도 비움(다음 캐러밴부터 새 판정).
 //   ★한계: 행렬·경로 그리드의 판정은 지형만(모듈 헤더 Stage 4B 주석) — 벽의 실시간 효과는 실체 충돌이 담당.
+// ★[11차 인계 계약 · 플레이어 마을 선포] 마을이 **런타임에 늘거나 줄면** 여기도 반드시 거쳐야 한다.
+//   지금 world.villages 는 부팅 시 DB 행에서만 채워진다(1369행) — 선포 기능이 생기면:
+//     ① world.villages.push(ev) 직후 invalidateTradeDistances() 호출 — 안 하면 새 마을은
+//        setDistMatrix 가 다시 돌 때까지 _distIdx 가 없어 villageDist 가 **유클리드로 후퇴**한다
+//        (강·산 우회를 모르는 거리로 교역 상대를 고르게 된다).
+//     ② econ 쪽 top-K 캐시는 world.villages.length 변화로 저절로 무효화되므로 별도 조치 불필요
+//        (economy-engine.browser.js 3766행 _near20N 비교).
+//     ③ 자정까지 못 기다릴 자리(선포 즉시 교역 개시)라면 computeAndInjectDistMatrix('마을 선포')를
+//        그 자리에서 부르면 된다 — 51마을 전쌍이 한 자릿수 초, 선포는 드문 사건이라 감당된다.
 function invalidateTradeDistances(cx, cy) { // eslint-disable-line no-unused-vars
   if (!state.ready) return;
   state.distDirty = true;
