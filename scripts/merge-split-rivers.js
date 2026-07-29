@@ -144,12 +144,26 @@ for (const chain of chains) {
     let L = 0; for (let i = 0; i < p.length - 1; i++) L += Math.hypot(Pt(p[i + 1])[0] - Pt(p[i])[0], Pt(p[i + 1])[1] - Pt(p[i])[1]);
     lens.push(L);
     if (!pathOut) { pathOut = p; continue; }
-    const tail = Pt(pathOut[pathOut.length - 1]);
-    const dS = Math.hypot(Pt(p[0])[0] - tail[0], Pt(p[0])[1] - tail[1]);
-    const dE = Math.hypot(Pt(p[p.length - 1])[0] - tail[0], Pt(p[p.length - 1])[1] - tail[1]);
-    if (dE < dS) p = p.slice().reverse();
+    // ★[실측으로 잡은 결함 — 재민 "명호 옆 직선강"] 들어오는 획만 뒤집어 맞추면 안 된다.
+    //   이음매가 **이미 쌓아 둔 경로의 머리 쪽**일 수 있다. 죽림천이 그랬고(이음매=path[0]),
+    //   선천을 꼬리에 붙이는 바람에 14,508px(453셀)을 폭 475로 가로지르는 직선이 생겼다.
+    //   ⇒ 네 조합(머리/꼬리 × 정/역)을 모두 재서 **가장 가까운 것**을 고른다.
+    const head = Pt(pathOut[0]), tail = Pt(pathOut[pathOut.length - 1]);
+    const ps = Pt(p[0]), pe = Pt(p[p.length - 1]);
+    const D = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+    const cands = [
+      { d: D(tail, ps), revOut: false, revIn: false },
+      { d: D(tail, pe), revOut: false, revIn: true },
+      { d: D(head, pe), revOut: true, revIn: false },
+      { d: D(head, ps), revOut: true, revIn: true },
+    ].sort((a, b) => a.d - b.d);
+    const best = cands[0];
+    if (best.revOut) pathOut = pathOut.slice().reverse();
+    if (best.revIn) p = p.slice().reverse();
     // 이음매의 겹치는 첫 점은 버린다(같은 자리 두 점 = 렌더 이음매 얼룩)
     pathOut = pathOut.concat(p.slice(1));
+    // ★불변식: 이어 붙인 자리가 실제로 붙어 있어야 한다. 아니면 지도에 직선이 그어진다.
+    if (best.d > 40 * 32) throw new Error('이음매가 ' + Math.round(best.d / 32) + '셀 벌어짐 — 병합 중단(' + rv.name + ')');
   }
   // 대표 이름 = 가장 긴 획
   const mainIdx = lens.indexOf(Math.max(...lens));

@@ -61,7 +61,7 @@ function auditZone(ZID) {
   const Z = ZONES[ZID] || {};
   if (!t) return null;
   const rivers = (t.rivers || []).filter((r) => !r._mirroredFrom);
-  const F = { A: [], B: [], C: [], D: [], E: [], F: [], G: [], H: [] };
+  const F = { A: [], B: [], C: [], D: [], E: [], F: [], G: [], H: [], I: [], J: [], K: [] };
   const wat = (cx, cy) => terrain.isWaterCellLocal(ZID, cx * CELL + 16, cy * CELL + 16);
 
   // ── [A] 강 자체 폭 급변 ──────────────────────────────────────────────────
@@ -186,6 +186,32 @@ function auditZone(ZID) {
     if (brk > 0) F.G.push({ lake: lk.name, river: e.rv.name, gapCells: +(best.gap / CELL).toFixed(1), dryCells: brk, at: [Math.round(e.at[0]), Math.round(e.at[1])] });
   }
 
+  // ── [I]/[J]/[K] 경로 자체의 불연속 — 11차에 실제로 지도를 망가뜨린 셋 ────────
+  //   [I] 점프: 병합이 방향을 잘못 맞추면 수백 셀을 가로지르는 직선이 생긴다(선천 453셀 실사고)
+  //   [J] 꺾임: 획마다 다른 도구로 그려진 게 이어 붙으며 90~180° 모서리로 남는다(설천 90°, 옥계천 180°)
+  //   [K] 점밀도: 한쪽만 촘촘하면 같은 강인데 한쪽만 부드럽게 보인다(설천 서 74px / 동 178px)
+  for (const kind of ['rivers', 'ridges']) {
+    for (const rv of (t[kind] || [])) {
+      if (rv._mirroredFrom) continue;
+      const p = rv.path || []; if (p.length < 4) continue;
+      const ds = [];
+      for (let i = 0; i < p.length - 1; i++) ds.push(Math.hypot(P(p[i + 1])[0] - P(p[i])[0], P(p[i + 1])[1] - P(p[i])[1]));
+      const srt = [...ds].sort((a, b) => a - b), med = srt[srt.length >> 1] || 1;
+      ds.forEach((d, i) => { if (d > med * 8 && d > 1000) F.I.push({ feat: kind + '/' + rv.name, i, px: Math.round(d), cells: +(d / CELL).toFixed(0), x: med ? +(d / med).toFixed(0) : 0, at: P(p[i]).map(Math.round) }); });
+      let worst = 0, wi = -1;
+      for (let i = 1; i < p.length - 1; i++) {
+        const a = P(p[i - 1]), b = P(p[i]), c = P(p[i + 1]);
+        const v1 = [b[0] - a[0], b[1] - a[1]], v2 = [c[0] - b[0], c[1] - b[1]];
+        const L1 = Math.hypot(v1[0], v1[1]) || 1, L2 = Math.hypot(v2[0], v2[1]) || 1;
+        const ang = Math.acos(Math.max(-1, Math.min(1, (v1[0] * v2[0] + v1[1] * v2[1]) / (L1 * L2)))) * 180 / Math.PI;
+        if (ang > worst) { worst = ang; wi = i; }
+      }
+      if (worst > 45) F.J.push({ feat: kind + '/' + rv.name, deg: +worst.toFixed(0), at: P(p[wi]).map(Math.round) });
+      if (srt[srt.length - 1] > srt[0] * 12 && srt[srt.length - 1] > 400)
+        F.K.push({ feat: kind + '/' + rv.name, min: Math.round(srt[0]), med: Math.round(med), max: Math.round(srt[srt.length - 1]), ratio: +(srt[srt.length - 1] / Math.max(1, srt[0])).toFixed(0) });
+    }
+  }
+
   // ── [H] 마을이 통행 불가 셀 위 ──────────────────────────────────────────
   for (const v of (terrain.getZoneVillages(ZID) || [])) {
     const w = terrain.isWaterCellLocal(ZID, v.x, v.y), r = terrain.isRockCellLocal(ZID, v.x, v.y);
@@ -204,9 +230,12 @@ const LABEL = {
   E: '셀(32px)보다 좁은 강 — 래스터에서 끊긴다',
   G: '호수-강 미접속(실셀 확인)',
   H: '마을이 물·바위 위',
+  I: '★경로 점프 — 이웃 점이 수백 셀 떨어짐(병합 방향 오류의 흔적)',
+  J: '경로 꺾임 45° 초과 — 렌더에서 각진 모서리',
+  K: '점밀도 불균일 — 최대/최소 간격 12배 초과',
   F: '[정보] 강이 산맥 관통 · 고개 없음 — terrain.js 규약상 물 우선이라 의도된 협곡일 수 있다',
 };
-const DEFECT = ['C', 'B', 'A', 'D', 'E', 'G', 'H'];
+const DEFECT = ['I', 'C', 'B', 'A', 'J', 'K', 'D', 'E', 'G', 'H'];
 for (const z of zoneIds) {
   const F = auditZone(z);
   if (!F) { console.log('존 없음:', z); continue; }
