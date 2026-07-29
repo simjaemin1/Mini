@@ -107,7 +107,9 @@ console.log('\n[④-3 에디터 오버레이 페이로드 — export 스크립�
   const e1 = fs.readFileSync(path.join(__dirname, 'export-for-editor.js'), 'utf8');
   const e2 = fs.readFileSync(path.join(__dirname, 'export-world-for-editor.js'), 'utf8');
   chk(/bridges:\s*BRIDGES/.test(e1), 'export-for-editor.js가 bridges를 싣는다(가공 없이)');
-  chk(/bridges:\s*\(\(\) => \{ try \{ return/.test(e2), 'export-world-for-editor.js가 bridges를 싣는다');
+  // 11차: export-world-for-editor.js 를 게임 로드본 전 존 기반으로 재작성하면서 다리는
+  // zone-config 에서 존별로 직접 싣는다(`bridges: zc.bridges || []`). 옛 즉시실행 try 형태는 사라졌다.
+  chk(/bridges:\s*zc\.bridges/.test(e2) || /bridges:\s*\(\(\) => \{ try \{ return/.test(e2), 'export-world-for-editor.js가 bridges를 싣는다');
 }
 
 console.log('\n[⑤ 에셋 실재 + 정사각(크롭 금지 규약)]');
