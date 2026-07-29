@@ -1668,7 +1668,24 @@ for (const z of Object.keys(d)) {
 mirrorAll(d);
 fs.writeFileSync(OUT_JSON_V3, JSON.stringify(d), 'utf8');
 console.log('  저장:', OUT_JSON_V3);
-fs.writeFileSync(GAME_JSON, JSON.stringify(d), 'utf8');
-console.log('  게임 파일:', GAME_JSON);
+
+// ★★ 11차 실측으로 드러난 지뢰 — 이 스크립트는 **더 이상 게임 파일의 생성기가 아니다**.
+//   server/hanbando-terrain.json 을 마지막으로 쓴 건 920494d(v7/v8 월드 + 마을 50개)이고,
+//   이 v3 체인(import-design → src.json → 여기)은 그보다 앞선 세대다.
+//   /tmp에 격리해 실제로 돌려서 잰 결과(2026-07-29):
+//       존      11개 → 5개      (jungwon_s·centaria·hindgang·europa·nordan·sahar 전멸)
+//       마을    50개 → 0개
+//       한반도  강 41→37 · 산맥 11→8 · 숲 25→8 · 호수 10→8
+//   즉 이 줄이 살아 있는 한, 이 스크립트를 무심코 한 번 돌리면 세계의 절반이 사라진다.
+//   덮어쓰기는 명시적 의사표시(TERRAIN_V3_WRITE_GAME=1)가 있을 때만 한다.
+if (process.env.TERRAIN_V3_WRITE_GAME === '1') {
+  const bak = GAME_JSON + '.bak-' + process.pid;
+  try { fs.copyFileSync(GAME_JSON, bak); console.log('  ⚠ 기존 게임 파일 백업:', bak); } catch (e) { }
+  fs.writeFileSync(GAME_JSON, JSON.stringify(d), 'utf8');
+  console.log('  ⚠⚠ 게임 파일 덮어씀(TERRAIN_V3_WRITE_GAME=1):', GAME_JSON);
+} else {
+  console.log('  ⏭ 게임 파일은 건드리지 않음 — 이 체인은 v7/v8보다 구세대다.');
+  console.log('     (정말 되돌리려면 TERRAIN_V3_WRITE_GAME=1 로 실행. 존 6개·마을 50개가 사라진다.)');
+}
 fs.writeFileSync(OUT_SVG_V3, renderSvg(d), 'utf8');
 console.log('  SVG:', OUT_SVG_V3);

@@ -21,7 +21,9 @@ const fs = require('fs');
 const path = require('path');
 
 const ZID = process.argv[2] || 'hanbando';
-const SRC = path.join(__dirname, '..', 'server', 'hanbando-terrain.json');
+// 정본 v3(hanbando_terrain_v3.json)이 있으면 그것을 쓴다 — 기하는 게임 파일과 완전히 같고 지명만 더 있다.
+const V3 = path.join(__dirname, '..', '..', 'hanbando_terrain_v3.json');
+const SRC = fs.existsSync(V3) ? V3 : path.join(__dirname, '..', 'server', 'hanbando-terrain.json');
 const OUT = path.join(__dirname, '..', '..', 'editor-game-terrain.json');
 const R = (v) => Math.round(v);
 
@@ -39,8 +41,9 @@ const out = {
   size: [zc.zoneWidth || 70016, zc.zoneHeight || 130016],
   // ★게임 판정과 1:1이 되도록 **가공 금지**: 경로·폭을 그대로 옮긴다(반올림만).
   smooth: false,   // 에디터가 이 참조를 래스터화할 때 스무딩하지 말 것(게임은 스무딩 안 함)
-  rivers: (d.rivers || []).map((r) => ({ name: r.name, path: (r.path || []).map(pt) })),
-  ridges: (d.ridges || []).map((r) => ({ name: r.name, path: (r.path || []).map(pt) })),
+  // altName = 정본 v3가 병기한 v2 시절 지명(백두대간 등). 에디터가 있으면 같이 띄운다.
+  rivers: (d.rivers || []).map((r) => ({ name: r.name, altName: r.altName, path: (r.path || []).map(pt) })),
+  ridges: (d.ridges || []).map((r) => ({ name: r.name, altName: r.altName, path: (r.path || []).map(pt) })),
   forests: (d.forests || []).filter((f) => f.center).map((f) => ({ name: f.name, center: [R(f.center[0]), R(f.center[1])], rx: R(f.rx || 4000), ry: R(f.ry || 3000), densityMult: f.densityMult || 1.5 })),
   lakes: (d.lakes || []).filter((l) => l.center).map((l) => ({ name: l.name, center: [R(l.center[0]), R(l.center[1])], radius: R(l.radius || Math.max(l.rx || 0, l.ry || 0) || 600), rx: l.rx ? R(l.rx) : undefined, ry: l.ry ? R(l.ry) : undefined })),
   passes: (d.passes || []).filter((p) => p.pos).map((p) => ({ name: p.name, pos: [R(p.pos[0]), R(p.pos[1])], radius: R(p.radius || 1500) })),
