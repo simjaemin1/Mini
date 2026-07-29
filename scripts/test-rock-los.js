@@ -138,6 +138,12 @@ console.log('\n[④ 서버/클라 바위 판정 거울 — 계곡을 한쪽만 �
   ok(/_rockOccCache/.test(cj), 'client.js 가 바위 실루엣을 시야 차단에 넣는다');
   const m = cj.match(/const ROCK_RANGE_CELLS = (\d+)[\s\S]*?const MAX_ROCK_SEGS = (\d+)/);
   ok(!!m && +m[1] === R && +m[2] === MAX_ROCK_SEGS, '상수 일치 — client(' + (m ? m[1] + ',' + m[2] : '못 찾음') + ') vs 하네스(' + R + ',' + MAX_ROCK_SEGS + ')');
+  // ★강이 산보다 위 — 세 갈래 렌더 경로가 전부 '물 먼저'여야 한다(판정도 물 우선이라 안 맞으면 지도가 거짓말한다)
+  ok(/const isRock = !isWater && isRockAtAbs/.test(cj), '월드 타일: 물이 바위를 이긴다');
+  ok(/isWaterCellLocal\(zid, lx \+ 16, ly \+ 16\)\) col = waterColor;[\s\S]{0,120}isRockCellLocal/.test(cj), '전체지도 셀 경로: 물 먼저');
+  const vi = cj.indexOf('5. ridge(산맥) stroke'), li = cj.indexOf('6. lake'), ri = cj.indexOf('7. river stroke');
+  ok(vi > 0 && vi < li && li < ri, '전체지도 벡터 경로: 산맥 → 호수 → 강 순서(나중에 그린 물이 위)');
+  ok(/destination-out/.test(cj) && /for \(const v of \(td\.valleys\|\|\[\]\)\)/.test(cj), '전체지도가 고개·계곡을 산맥에서 도로 뚫는다');
 }
 
 console.log('\n결과: ' + (fail ? 'FAIL(' + fail + ')' : 'PASS'));

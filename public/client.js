@@ -8179,8 +8179,21 @@ const SIM_JOB_EMOJI = {
     if (td.mountains && TILE_COLORS.mountain) { cx.fillStyle = TILE_COLORS.mountain;
       for (const m of td.mountains) { if (!m.rect||(m.stoneMult||0)<=1.5) continue; const [x1,y1,x2,y2]=m.rect; cx.fillRect(x1*sxr,y1*syr,Math.max(1,(x2-x1)*sxr),Math.max(1,(y2-y1)*syr)); } }
     // 5. ridge(산맥) stroke — rock. river/lake보다 먼저(water>rock).
-    if (td.ridges && TILE_COLORS.rock) { cx.strokeStyle=TILE_COLORS.rock; cx.lineCap='round'; cx.lineJoin='round';
-      for (const r of td.ridges) { const p=r.path||[]; for (let i=0;i<p.length-1;i++){ const a=p[i],b=p[i+1]; const ax=a.pos?a.pos[0]:a[0],ay=a.pos?a.pos[1]:a[1],bx=b.pos?b.pos[0]:b[0],by=b.pos?b.pos[1]:b[1]; cx.lineWidth=Math.max(1.2,((a.width||300)+(b.width||300))/2*sxr); cx.beginPath(); cx.moveTo(ax*sxr,ay*syr); cx.lineTo(bx*sxr,by*syr); cx.stroke(); } } }
+    //   ★[11차] 산맥을 그린 **뒤 고개(원)·계곡(선)을 도로 뚫는다**. 안 뚫으면 전체 지도만 산이 통짜로
+    //   막힌 것처럼 보이고, 정작 게임 안에서는 지나다닌다 — 지도가 지형을 두고 거짓말을 하게 된다.
+    //   판정 우선순위(terrain.js isRockCellLocal: 계곡·고개 > 물 > 바위)와 그리는 순서를 맞춘 것.
+    //   별도 캔버스에 산맥을 그리고 거기서 구멍을 낸 뒤 합성 — 바탕색으로 덧칠하면 그 밑의 숲·광맥까지 지워진다.
+    if (td.ridges && TILE_COLORS.rock) {
+      const rc = document.createElement('canvas'); rc.width = cw; rc.height = ch;
+      const rx2 = rc.getContext('2d');
+      rx2.strokeStyle = TILE_COLORS.rock; rx2.lineCap = 'round'; rx2.lineJoin = 'round';
+      for (const r of td.ridges) { const p=r.path||[]; for (let i=0;i<p.length-1;i++){ const a=p[i],b=p[i+1]; const ax=a.pos?a.pos[0]:a[0],ay=a.pos?a.pos[1]:a[1],bx=b.pos?b.pos[0]:b[0],by=b.pos?b.pos[1]:b[1]; rx2.lineWidth=Math.max(1.2,((a.width||300)+(b.width||300))/2*sxr); rx2.beginPath(); rx2.moveTo(ax*sxr,ay*syr); rx2.lineTo(bx*sxr,by*syr); rx2.stroke(); } }
+      rx2.globalCompositeOperation = 'destination-out';
+      for (const q of (td.passes||[])) { if (!q.pos) continue; rx2.beginPath(); rx2.ellipse(q.pos[0]*sxr, q.pos[1]*syr, Math.max(0.5,(q.radius||0)*sxr), Math.max(0.5,(q.radius||0)*syr), 0, 0, 6.2832); rx2.fill(); }
+      rx2.lineCap='round'; rx2.lineJoin='round';
+      for (const v of (td.valleys||[])) { const p=v.path||[]; for (let i=0;i<p.length-1;i++){ const a=p[i],b=p[i+1]; const ax=a.pos?a.pos[0]:a[0],ay=a.pos?a.pos[1]:a[1],bx=b.pos?b.pos[0]:b[0],by=b.pos?b.pos[1]:b[1]; rx2.lineWidth=Math.max(1.2,((a.width||300)+(b.width||300))/2*sxr); rx2.beginPath(); rx2.moveTo(ax*sxr,ay*syr); rx2.lineTo(bx*sxr,by*syr); rx2.stroke(); } }
+      cx.drawImage(rc, 0, 0);
+    }
     // 6. lake — wobble 폴리곤 (게임 호수 모양과 일치: 존-로컬 center 시드)
     cx.fillStyle = waterColor;
     for (const lake of (td.lakes||[])) { if (!lake.center) continue;
