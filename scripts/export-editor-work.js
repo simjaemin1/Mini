@@ -87,7 +87,19 @@ for (const zid of Object.keys(all)) {
   mf = mf.concat(featsOf(zid, ox, oy));
 }
 
-fs.writeFileSync(OUT, JSON.stringify({ editorWork: true, features, mf, zone: MAIN }));
+// ★스탬프 — "지금 화면에 뜬 게 언제 것인가"를 에디터가 스스로 말하게 하려면 판본 식별자가 필요하다.
+//   재민이 두 번 당한 함정이 이것이다: 참조 파일도, 작업 파일도 옛것이 조용히 되살아났다.
+//   에디터는 localStorage 에 작업을 자동저장하고 **시작할 때 되살린다** — 새로고침으로는 안 바뀐다.
+//   그래서 ①스탬프를 붙이고 ②HTML에 최신본을 통째로 내장(WORK_BAKED)해 버튼 한 번으로 불러오게 하고
+//   ③되살린 작업의 스탬프가 내장본과 다르면 배너로 경고한다. 파일 고르는 절차 자체를 없앤다.
+const crypto = require('crypto');
+const stamp = 'f' + features.length + '/m' + mf.length + '/'
+  + crypto.createHash('sha1').update(JSON.stringify([features, mf])).digest('hex').slice(0, 10);
+const work = { editorWork: true, stamp, features, mf, zone: MAIN };
+fs.writeFileSync(OUT, JSON.stringify(work));
+// 에디터 내장용 스니펫 — map-editor.html 의 `const WORK_BAKED = {...};` 를 이걸로 갈아끼운다
+fs.writeFileSync(path.join(__dirname, '..', '..', 'work-baked.js'), 'const WORK_BAKED = ' + JSON.stringify(work) + ';');
+console.log('  스탬프 ' + stamp);
 
 const count = (a) => a.reduce((m, f) => (m[f.type] = (m[f.type] || 0) + 1, m), {});
 const bad = (a) => a.filter((f) => /^경계/.test(f.name || '')).map((f) => f.name);
