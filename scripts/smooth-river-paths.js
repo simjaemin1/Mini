@@ -34,7 +34,8 @@ const MAX_TURN = parseFloat(val('--turn', '25'));  // 이보다 꺾이면 완화
 const ITERS = parseInt(val('--iters', '12'), 10);
 const ALPHA = 0.45;
 const EPS = parseFloat(val('--eps', '8'));      // 단순화 허용 오차(px) — 셀 32px의 1/4
-const MAXSEG = parseFloat(val('--maxseg', '384')); // 한 구간 최대 길이(px) = 12셀
+const MAXSEG = parseFloat(val('--maxseg', '384')); // (미사용 — 균등 재샘플로 대체)
+const STEP_FINAL = parseFloat(val('--final', '192')); // ★최종 균등 간격(px) = 6셀. 모든 구간이 이 길이
 
 const GAME = path.join(__dirname, '..', 'server', 'hanbando-terrain.json');
 const world = JSON.parse(fs.readFileSync(GAME, 'utf8'));
@@ -173,8 +174,18 @@ for (const zid of zoneIds) {
       let p = dedupe(p0.map((q) => ({ pos: [P(q)[0], P(q)[1]], width: W(q) })));
       p = resample(p, STEP);
       p = relaxCorners(p, MAX_TURN, ITERS);
-      p = simplify(p, EPS);
-      p = capSegments(p, MAXSEG);
+      // ★[재민 재지적 — 실화면] 단순화+구간상한 조합은 간격을 [33, 385]px 로 남긴다(11.7배 편차).
+      //   에디터에서 점을 눈으로 보면 곡선부는 다닥다닥, 직선부는 듬성듬성 — 그대로 불균일이다.
+      //   ⇒ **마지막에 균등 재샘플을 한 번 더** 한다. 그러면 모든 구간이 정확히 같은 길이가 된다.
+      //   점 수는 STEP_FINAL 로 조절한다(96px면 3배로 불어나 런타임이 무거워진다 — 192px로 절충).
+      // 균등 간격으로 다시 뽑으면 곡선부의 점이 줄어 **점당 회전각이 도로 커진다**(29°→53°).
+      //   그래서 [균등 재샘플 → 꺾임 완화]를 두 번 돌리고 마지막을 재샘플로 끝낸다 —
+      //   부드러움과 균등 간격을 둘 다 만족시키는 유일한 순서다.
+      p = resample(p, STEP_FINAL);
+      p = relaxCorners(p, MAX_TURN, ITERS);
+      p = resample(p, STEP_FINAL);
+      p = relaxCorners(p, MAX_TURN, 6);
+      p = resample(p, STEP_FINAL);
       p = smoothWidths(p, 1.55);
       const after = stats(p);
       worstBefore = Math.max(worstBefore, before.turn); worstAfter = Math.max(worstAfter, after.turn);
