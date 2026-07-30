@@ -1357,6 +1357,61 @@ function syncCaravanBodies(now) {
 //        (economy-engine.browser.js 3766행 _near20N 비교).
 //     ③ 자정까지 못 기다릴 자리(선포 즉시 교역 개시)라면 computeAndInjectDistMatrix('마을 선포')를
 //        그 자리에서 부르면 된다 — 51마을 전쌍이 한 자릿수 초, 선포는 드문 사건이라 감당된다.
+// =============================================================================
+// 영토 확장 — econ이 산 땅(land.size)만큼 물리 영토를 넓힌다. [11차 재민 지시]
+//   · 목표 셀수 = land.size × 25 (씨딩 때 size = round(셀수/25) 였던 그 환산의 역)
+//   · 어느 셀을 먹나 = village-layout.generate 와 **같은 점수식**: fertW·비옥 + compactW·이웃 − distW·거리
+//     (fertW 3.5 · compactW 0 · distW 0.1 — 레이아웃 정본과 같은 값. 다르면 확장이 생성과 다른 모양이 된다)
+//   · 새로 들어온 셀은 **바로 개간**한다(나무 제거) — 마을 안엔 숲이 없다.
+//   · 영토가 늘면 비옥도·경작가능비율을 다시 재어 econ에 반영한다(지형이 진실).
+//   · 하루 증가분은 작아서(econ 1셀 단위 구매) 매일 전 마을을 돌아도 싸다. 상한을 둬서 폭주도 막는다.
+const TERR_GROW_MAX_PER_DAY = 60;   // 마을당 하루 최대 확장 셀 — econ 구매 속도보다 넉넉하되 폭주는 막는다
+function _terrGrow(vil) {
+  if (!state.ta || !vil || !vil._terrSet || !vil._terrSet.size) return 0;
+  const land = vil.econ && vil.econ.land; if (!land || !land.size) return 0;
+  const target = Math.round(land.size * 25);
+  if (vil._terrSet.size >= target) return 0;
+  const ta = state.ta, own = vil._terrSet, ccx = vil.ccx, ccy = vil.ccy;
+  const fertW = 3.5, compactW = 0, distW = 0.1;
+  const K = (x, y) => x + ',' + y;
+  const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  const fertOf = (x, y) => (ta.fert ? ta.fert(x, y) : 0.5);
+  const nbCount = (x, y) => { let n = 0; for (const [dx, dy] of N4) if (own.has(K(x + dx, y + dy))) n++; return n; };
+  const score = (x, y) => fertW * fertOf(x, y) + compactW * nbCount(x, y) - distW * Math.hypot(x - ccx, y - ccy);
+  // 경계 후보 수집(영토에 인접한 미소유·비차단 셀)
+  const cand = new Map();
+  for (const k of own) {
+    const ci = k.indexOf(','), x = +k.slice(0, ci), y = +k.slice(ci + 1);
+    for (const [dx, dy] of N4) {
+      const nx = x + dx, ny = y + dy, nk = K(nx, ny);
+      if (own.has(nk) || cand.has(nk)) continue;
+      if (ta.isBlocked(nx, ny)) continue;
+      cand.set(nk, score(nx, ny));
+    }
+  }
+  if (!cand.size) return 0;
+  const want = Math.min(target - own.size, TERR_GROW_MAX_PER_DAY);
+  const picked = [...cand.entries()].sort((a, b) => b[1] - a[1]).slice(0, want).map((e) => e[0]);
+  if (!picked.length) return 0;
+  const added = new Set();
+  for (const k of picked) { own.add(k); added.add(k); }
+  // ★새 셀 개간 — 나무 제거(마을 안엔 숲이 없다)
+  let cut = 0;
+  try { if (state.deps.clearTreesInCells) cut = state.deps.clearTreesInCells(added) || 0; } catch (e) {}
+  // ★지형 재측정 → econ 반영(비옥도는 영토 실측 평균 × 1.4 — 씨딩과 같은 환산)
+  let fs = 0, tw = 0;
+  for (const k of own) {
+    const ci = k.indexOf(','), x = +k.slice(0, ci), y = +k.slice(ci + 1);
+    fs += fertOf(x, y); if (ta.isWater(x, y)) tw++;
+  }
+  const n = own.size;
+  land.fertility = Math.max(0.1, Math.min(2.0, +((fs / n) * 1.4).toFixed(2)));
+  land.arable = +((n - tw) / n).toFixed(2);
+  vil._jobSites = null;              // 현장 후보 재계산(새 땅의 자원 반영)
+  if (cut) console.log(`[${state.zoneId}] 🏘️ ${vil.name} 영토 +${added.size}셀(${n}/${target}) · 개간 ${cut}그루 · 비옥 ${land.fertility}`);
+  return added.size;
+}
+
 function invalidateTradeDistances(cx, cy) { // eslint-disable-line no-unused-vars
   if (!state.ready) return;
   state.distDirty = true;
@@ -2045,6 +2100,10 @@ function onGameTick(now) {
     }
     // Stage 4A: 일 1회 브로드캐스트 — 직업 변경분 + 마을 인구(클라 영토 라벨·이름 옆 이모지 갱신).
     //   clientPayload의 pop도 갱신(새 welcome 수신자 최신화). 접속자 0이어도 broadcast는 no-op 수준.
+    // ★[11차 재민 지시] **영토 확장 실동** — econ이 매일 산 땅만큼 실제 셀을 넓히고, 새 셀의 나무를 벤다.
+    //   전에는 econ land.size 만 자라고 물리 영토(_terrSet)는 생성 시 크기에 얼어 있었다:
+    //   econ은 "땅을 더 샀다"는데 지도에는 아무 일도 안 일어났다(클라 라벨 반경만 커졌다).
+    for (const vil of state.villages) { try { _terrGrow(vil); } catch (e) {} }
     const terr = {};   // §19/§2 영토 크립(4파): econ land.size는 매일 자람(1셀 단위 구매) — 등가 반경(px)을 클라에 동기.
     for (const vil of state.villages) terr[vil.dbId] = Math.round(Math.sqrt(((vil.econ.land && vil.econ.land.size ? vil.econ.land.size * 25 : 2800)) / Math.PI) * SZ);
     for (const cv of (state.clientPayload || [])) { if (pops[cv.id] != null) cv.pop = pops[cv.id]; if (terr[cv.id] != null) cv.tr = terr[cv.id]; }
