@@ -206,7 +206,11 @@ function makeTerrainAdapter(terrain, ZONE, deps) {
     if (!deps.isBridgeLocal) return false;
     try { return !!deps.isBridgeLocal(px(cx), px(cy)); } catch { return false; }
   };
-  return { isBlocked, isWater, isRock, isBridgeCell, forestMult, fert, elev, nearestWaterDist, prepareFert, fertField: () => _FF };
+  // ★[11차] 광맥 술어 — 광업 토지값을 **광맥 레이어 기준**으로 재려면 필요하다(전에는 바위밀도로 갈음했다).
+  const isOre = (cx, cy) => {
+    try { return !!(terrain.isOreClusterAt && terrain.isOreClusterAt(zoneId, px(cx), px(cy))); } catch { return false; }
+  };
+  return { isBlocked, isWater, isRock, isOre, isBridgeCell, forestMult, fert, elev, nearestWaterDist, prepareFert, fertField: () => _FF };
 }
 
 // 마을 중심이 물/바위 위면 근처 열린 셀로 스냅(에디터 좌표가 강폭 확장 등으로 물에 잠긴 경우 구제).
@@ -237,17 +241,25 @@ function findOpenCenter(ta, ccx, ccy) {
 function extractLandParamsApprox(ta, ccx, ccy, layout) {
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
   const R = 140, STEP = 4;
-  let rock = 0, forest = 0, n = 0;
+  let rock = 0, forest = 0, ore = 0, n = 0;
+  // ★[11차] 사냥터는 **마을 밖 40~130셀 밴드**다(랩 huntCells와 같은 밴드 — 마을 안엔 짐승이 안 산다).
+  //   전에는 사냥(game)이 임업(wood)과 **같은 수식**이라 독립 지도가 없었다.
+  let huntF = 0, huntN = 0;
+  const HUNT0 = 40, HUNT1 = 130;
   for (let dy = -R; dy <= R; dy += STEP) {
     for (let dx = -R; dx <= R; dx += STEP) {
-      if (dx * dx + dy * dy > R * R) continue;
-      n++;   // ★면적 자원 스캔 가중은 A/B로 기각(랩 시드3 인구 -15% — 배산임수상 산·숲이 중립점 밖이라 전 마을 일괄 너프). 거리 차등은 물(최근접 140 감쇠)만
+      const d2 = dx * dx + dy * dy;
       const cx = ccx + dx, cy = ccy + dy;
+      if (d2 >= HUNT0 * HUNT0 && d2 <= HUNT1 * HUNT1) { huntN++; if (ta.forestMult(cx, cy) > 1.2) huntF++; }
+      if (d2 > R * R) continue;
+      n++;   // ★면적 자원 스캔 가중은 A/B로 기각(랩 시드3 인구 -15% — 배산임수상 산·숲이 중립점 밖이라 전 마을 일괄 너프). 거리 차등은 물(최근접 140 감쇠)만
+      if (ta.isOre && ta.isOre(cx, cy)) ore++;   // ★광맥은 바위와 겹칠 수 있다 — else 로 묶지 않는다
       if (ta.isRock(cx, cy)) rock++;
       else if (ta.forestMult(cx, cy) > 1.2) forest++;
     }
   }
   const rockD = n ? rock / n : 0, forD = n ? forest / n : 0;
+  const oreD = n ? ore / n : 0, huntD = huntN ? huntF / huntN : 0;
   const nd = ta.nearestWaterDist(ccx, ccy, 140);   // ★탐색 45→140(랩 자원권 R과 통일 — 100m 강도 어장권)
   const water = Math.max(0.05, Math.min(1, 1 - nd / 140));   // ★리카도 선형 감쇠: 물가 1.0 → 100m 0.29 → 140m+ 바닥 — '멀리 강 있는 마을은 어부를 뽑되 적게'
   let tw = 0;
@@ -268,10 +280,9 @@ function extractLandParamsApprox(ta, ccx, ccy, layout) {
     fertility,
     arable: tn ? +((tn - tw) / tn).toFixed(2) : 1.0,
     water: +(water * 1.6).toFixed(2),
-    stone: clamp(+(0.1 + rockD * 12).toFixed(2), 0.05, 2.5),
-    ore: clamp(+(0.08 + rockD * 12).toFixed(2), 0.05, 2.5),
-    wood: clamp(+(0.25 + forD * 2.8).toFixed(2), 0.05, 2.5),
-    game: clamp(+(0.2 + forD * 2.6).toFixed(2), 0.05, 2.5),
+    // ★[11차 재민 확정] 생업별 부존은 server/livelihood.js 가 정본 — 종류마다 바닥항을 두고
+    //   광업은 광맥, 사냥은 사냥터 밴드로 **각자 제 지도**를 갖는다. 옛 수식은 ore==stone, game==wood 였다.
+    ...require('./livelihood').landOf({ forShare: forD, huntShare: huntD, rockShare: rockD, oreShare: oreD }),
     size: Math.max(30, Math.round(tn / 25)),
   };
 }
