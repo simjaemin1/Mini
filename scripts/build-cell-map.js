@@ -211,7 +211,7 @@ button.lyr.on{background:#2a78d6;border-color:#5598e7;color:#fff;font-weight:600
 </div>
 <div class="panel" id="layers">
   <div style="color:#8ab;margin-bottom:5px">층 <span style="opacity:.6">(F 키로 전환)</span></div>
-  <button class="lyr on" data-m="terrain">지형</button><button class="lyr" data-m="fert">비옥도</button>
+  <button class="lyr" data-m="terrain">지형</button><button class="lyr on" data-m="fert">비옥도</button>
 </div>
 <div class="panel" id="find"><input id="q" placeholder="이름으로 찾기 (예: 광산2, 죽령)"></div>
 <div class="panel" id="legend"></div>
@@ -229,7 +229,9 @@ function legend(){
     +M.fpal.map((p,i)=>'<div><i style="background:'+p.c+'"></i>'+p.n+(i>=2?' '+(M.fcount[i]*100/M.fn).toFixed(1)+'%':'')+'</div>').join('');
   else L.innerHTML=M.pal.map((p,i)=>'<div><i style="background:'+p.c+'"></i>'+p.n+' '+(M.count[i]*100/(M.w*M.h)).toFixed(1)+'%</div>').join('');
 }
-let S={x:M.w/2,y:M.h/2,z:0.35},drag=null,showLab=true,showGrid=true,mode='terrain';
+// ★열 때 층 = 비옥도. 지형은 한 번 눌러 보면 된다. 반대로 두면 "비옥도를 넣었다"는데 화면은
+//   초록이라 아무 일도 안 일어난 것처럼 보인다(11차에 두 번 그랬다).
+let S={x:M.w/2,y:M.h/2,z:0.35},drag=null,showLab=true,showGrid=true,mode='fert';
 function resize(){cv.width=innerWidth;cv.height=innerHeight;draw();}
 addEventListener('resize',resize);
 const KCOL={river:'#8fd3ff',ridge:'#d9c19a',valley:'#a8f0b0',lake:'#8fd3ff',village:'#ffb0b0'};
@@ -298,7 +300,7 @@ function bakeRead(im){
   od=oc.getImageData(0,0,M.w,M.h).data;
 }
 let ready=0;
-const onready=()=>{ if(++ready<2)return; legend(); bakeRead(IMG); resize(); };
+const onready=()=>{ if(++ready<2)return; legend(); bakeRead(mode==='fert'?FIMG:IMG); resize(); };
 IMG.onload=onready; FIMG.onload=onready;
 cv.addEventListener('mousedown',e=>{drag={x:e.clientX,y:e.clientY,sx:S.x,sy:S.y};});
 addEventListener('mouseup',()=>drag=null);
