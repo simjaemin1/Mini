@@ -47,6 +47,12 @@ const MULTI_SEP = 120;                   // 같은 덩이 안 머리끼리 최�
 //   200이면 자식은 부모의 **하류부**에만 붙는다 — 실제 하계망도 그렇다.
 const HOST_MIN_W = 200;
 const HOST_END_CLEAR = 30;               // 본류 양 끝에서 이만큼(셀) 떨어진 자리에만 — 하구끼리 만나면 [C] 급변
+// ★[재민 지적] "갈현천? 저건 지금 산맥이랑 평행해서 이상해" — 실측 확인: 갈현천은 멸악산맥에서
+//   36셀 거리에 방위가 둘 다 -173°, 완전 평행이었다. 산줄기와 나란히 흐르는 하천은 자연에 없다
+//   (물은 능선을 등지고 **직교 방향으로** 내려간다). 규칙으로 막는다:
+//   산맥 중심선에서 RIDGE_NEAR 안을 지나면서 그 구간과 각도 차가 PARA_DEG 미만이면 기각.
+const RIDGE_NEAR = 90;                   // 이 거리(셀) 안이면 '산맥 옆'으로 본다
+const PARA_DEG = 30;                     // 각도 차가 이보다 작으면 평행으로 본다
 
 const GAME = path.join(__dirname, '..', 'server', 'hanbando-terrain.json');
 const world = require(GAME);
@@ -160,6 +166,34 @@ function riverDist(cx, cy, skipName) {
   return m;
 }
 const villages = (terrain.getZoneVillages(ZID) || []).map((v) => [Math.round(v.x / CELL), Math.round(v.y / CELL), v.name]);
+const ridgeSegs = [];
+for (const r of (d.ridges || [])) {
+  if (r._mirroredFrom || !r.path) continue;
+  for (let i = 0; i < r.path.length - 1; i++) {
+    const a = P(r.path[i]), b = P(r.path[i + 1]);
+    ridgeSegs.push({ ax: a[0] / CELL, ay: a[1] / CELL, bx: b[0] / CELL, by: b[1] / CELL, name: r.name });
+  }
+}
+// 산맥과 나란한가 — 경로의 어느 점이든 산맥 90셀 안에서 각도 차 30° 미만이면 평행
+function parallelToRidge(pts) {
+  const dx0 = pts[pts.length - 1][0] - pts[0][0], dy0 = pts[pts.length - 1][1] - pts[0][1];
+  const A = Math.atan2(dy0, dx0);
+  for (const s2 of ridgeSegs) {
+    // 경로 중간점들과 이 구간의 최단거리
+    let near = Infinity;
+    for (const q of pts) {
+      const vx = s2.bx - s2.ax, vy = s2.by - s2.ay, L2 = vx * vx + vy * vy || 1;
+      let t = ((q[0] - s2.ax) * vx + (q[1] - s2.ay) * vy) / L2; t = Math.max(0, Math.min(1, t));
+      const dd = Math.hypot(q[0] - (s2.ax + vx * t), q[1] - (s2.ay + vy * t));
+      if (dd < near) near = dd;
+    }
+    if (near > RIDGE_NEAR) continue;
+    const B = Math.atan2(s2.by - s2.ay, s2.bx - s2.ax);
+    let diff = Math.abs(A - B) * 180 / Math.PI; diff %= 180; if (diff > 90) diff = 180 - diff;
+    if (diff < PARA_DEG) return { name: s2.name, near: Math.round(near), diff: Math.round(diff) };
+  }
+  return null;
+}
 
 // ── 지류 한 줄 만들기: 머리(소외 덩이 안) → 입(본류) ──
 function makeTrib(comp) {
@@ -188,20 +222,30 @@ function makeTrib(comp) {
     const [x, y] = pts[i];
     if (x < 4 || y < 4 || x >= W - 4 || y >= H - 4) return { skip: '존 밖' };
     if (isRock(x, y)) return { skip: '바위 관통' };
-    for (const [vx, vy, vn] of villages) if (Math.hypot(x - vx, y - vy) < VIL_CLEAR) return { skip: '마을 ' + vn + ' 에서 ' + Math.round(Math.hypot(x - vx, y - vy)) + '셀' };
+
     if (i / (pts.length - 1) <= SEP_UPTO) {
       const rd = riverDist(x, y, host.host);
       if (rd < MIN_SEP) return { skip: '기존 강에서 ' + Math.round(rd) + '셀 — 나란히 달림' };
     }
   }
-  // 중간 샘플도 바위 검사(점 사이가 뚫려 있을 수 있다)
+  // 중간 샘플도 검사 — 점 사이가 뚫려 있을 수 있다.
+  // ★[재민 지적으로 드러난 버그] 마을 이격을 **점에서만** 재다가 늪실천이 농촌2 중심을 2.2셀 관통했다
+  //   (점 사이 구간이 마을을 스쳐 지나갔고, 강 폭 절반도 안 세고 있었다). 구간 보간 + 폭 고려로 잡는다.
+  const halfMax = MOUTH_W / 2 / CELL;
   for (let i = 0; i < pts.length - 1; i++) {
     const steps = Math.ceil(Math.hypot(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1]));
     for (let k = 0; k <= steps; k += 2) {
       const t = k / steps, x = Math.round(pts[i][0] + (pts[i + 1][0] - pts[i][0]) * t), y = Math.round(pts[i][1] + (pts[i + 1][1] - pts[i][1]) * t);
       if (isRock(x, y)) return { skip: '바위 관통(구간)' };
+      for (const [vx, vy, vn] of villages) {
+        const dd = Math.hypot(x - vx, y - vy) - halfMax;
+        if (dd < VIL_CLEAR) return { skip: '마을 ' + vn + ' 에서 ' + Math.round(dd) + '셀(폭 감안)' };
+      }
     }
   }
+  // ★산맥과 나란한 하천은 기각(자연에 없다 — 물은 능선과 직교로 내려간다)
+  const par = parallelToRidge(pts);
+  if (par) return { skip: par.name + '과 나란함(' + par.near + '셀 거리 · 각도차 ' + par.diff + '°)' };
   // 폭: 머리 → 입 단조 증가
   const pathOut = pts.map((q, i) => ({ pos: [q[0] * CELL + 16, q[1] * CELL + 16], width: Math.round(HEAD_W + (mouthW - HEAD_W) * (i / (pts.length - 1))) }));
   return { path: pathOut, len: Math.round(L), host: host.host, mouthW, headCell: [hx, hy] };
