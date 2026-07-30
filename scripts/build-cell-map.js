@@ -145,7 +145,8 @@ b{color:#7fd0ff}label{cursor:pointer;user-select:none}
 </style></head><body>
 <canvas id="cv"></canvas>
 <div class="panel" id="title"><b>셀 지도</b> ${ZID} · ${W}×${H}셀 · 1셀=1m · 휠 줌 · 드래그 이동
-&nbsp;<label><input type="checkbox" id="lab" checked> 이름표</label></div>
+&nbsp;<label><input type="checkbox" id="lab" checked> 이름표</label>
+&nbsp;<label><input type="checkbox" id="grd" checked> 격자</label></div>
 <div class="panel" id="find"><input id="q" placeholder="이름으로 찾기 (예: 광산2, 죽령)"></div>
 <div class="panel" id="legend"></div>
 <div class="panel" id="hud">—</div>
@@ -157,7 +158,7 @@ const cv=document.getElementById('cv'),ctx=cv.getContext('2d',{alpha:false});
 let off=null,od=null;
 const L=document.getElementById('legend');
 L.innerHTML=M.pal.map((p,i)=>'<div><i style="background:'+p.c+'"></i>'+p.n+' '+(M.count[i]*100/(M.w*M.h)).toFixed(1)+'%</div>').join('');
-let S={x:M.w/2,y:M.h/2,z:0.35},drag=null,showLab=true;
+let S={x:M.w/2,y:M.h/2,z:0.35},drag=null,showLab=true,showGrid=true;
 function resize(){cv.width=innerWidth;cv.height=innerHeight;draw();}
 addEventListener('resize',resize);
 const KCOL={river:'#8fd3ff',ridge:'#d9c19a',valley:'#a8f0b0',lake:'#8fd3ff',village:'#ffb0b0'};
@@ -167,6 +168,7 @@ function draw(){
   const z=S.z,ox=cv.width/2-S.x*z,oy=cv.height/2-S.y*z;
   ctx.imageSmoothingEnabled=false;
   ctx.drawImage(IMG,ox,oy,M.w*z,M.h*z);
+  if(showGrid) drawGrid(ox,oy,z);
   if(showLab&&z>0.08){
     ctx.font=(z>0.5?13:11)+'px sans-serif';ctx.textAlign='center';ctx.lineWidth=3;ctx.strokeStyle='#0b1016';
     for(const l of M.labels){
@@ -177,6 +179,45 @@ function draw(){
       ctx.strokeText(l.n,X,Y-4);ctx.fillStyle=KCOL[l.k]||'#cfe';ctx.fillText(l.n,X,Y-4);
     }
   }
+}
+// ★격자 — 1픽셀이 1셀(=1m)이라 배율에 따라 눈금을 갈아 낀다.
+//   촘촘한 격자를 낮은 배율에서 그리면 선이 뭉쳐 화면이 통째로 회색이 된다: 선 간격이 화면에서
+//   6px 아래면 그 단계는 아예 안 그린다. 100m 격자만 거의 항상 남아 위치 감각을 준다.
+function drawGrid(ox,oy,z){
+  const lines=(step,color)=>{
+    if(step*z<6)return;
+    ctx.strokeStyle=color;ctx.lineWidth=1;ctx.beginPath();
+    const x0=Math.max(0,Math.floor((-ox/z)/step)*step), x1=Math.min(M.w,(cv.width-ox)/z);
+    for(let x=x0;x<=x1;x+=step){const X=Math.round(ox+x*z)+0.5;ctx.moveTo(X,Math.max(0,oy));ctx.lineTo(X,Math.min(cv.height,oy+M.h*z));}
+    const y0=Math.max(0,Math.floor((-oy/z)/step)*step), y1=Math.min(M.h,(cv.height-oy)/z);
+    for(let y=y0;y<=y1;y+=step){const Y=Math.round(oy+y*z)+0.5;ctx.moveTo(Math.max(0,ox),Y);ctx.lineTo(Math.min(cv.width,ox+M.w*z),Y);}
+    ctx.stroke();
+  };
+  lines(1,'rgba(255,255,255,.055)');       // 1셀 = 1m
+  lines(10,'rgba(255,255,255,.10)');       // 10m
+  lines(100,'rgba(140,200,255,.22)');      // 100m
+  lines(1000,'rgba(140,200,255,.40)');     // 1km
+  // 눈금 좌표 — 위·왼쪽 가장자리
+  const lstep = (100*z>=44) ? 100 : (1000*z>=44 ? 1000 : 0);
+  if(lstep){
+    ctx.font='10px ui-monospace,monospace';ctx.fillStyle='rgba(180,220,255,.75)';
+    ctx.textAlign='left';ctx.textBaseline='top';
+    const x0=Math.max(0,Math.floor((-ox/z)/lstep)*lstep), x1=Math.min(M.w,(cv.width-ox)/z);
+    for(let x=x0;x<=x1;x+=lstep) ctx.fillText(x, Math.round(ox+x*z)+2, 2);
+    const y0=Math.max(0,Math.floor((-oy/z)/lstep)*lstep), y1=Math.min(M.h,(cv.height-oy)/z);
+    for(let y=y0;y<=y1;y+=lstep) ctx.fillText(y, 2, Math.round(oy+y*z)+2);
+    ctx.textBaseline='alphabetic';
+  }
+  // 축척바 — 화면에서 60~200px에 드는 깔끔한 수를 고른다
+  let unit=1; while(unit*z<60) unit*=10;
+  if(unit*z>200&&unit>=10){ if(unit/2*z>=60)unit/=2; else if(unit/5*z>=60)unit/=5; }
+  const bw=unit*z, bx=cv.width-24-bw, by=cv.height-22;
+  ctx.strokeStyle='rgba(220,240,255,.9)';ctx.lineWidth=2;ctx.beginPath();
+  ctx.moveTo(bx,by-5);ctx.lineTo(bx,by);ctx.lineTo(bx+bw,by);ctx.lineTo(bx+bw,by-5);ctx.stroke();
+  ctx.font='11px ui-sans-serif,system-ui,sans-serif';ctx.fillStyle='rgba(220,240,255,.95)';
+  ctx.textAlign='center';ctx.textBaseline='bottom';
+  ctx.fillText(unit>=1000?(unit/1000)+'km':unit+'m', bx+bw/2, by-6);
+  ctx.textBaseline='alphabetic';
 }
 IMG.onload=()=>{off=document.createElement('canvas');off.width=M.w;off.height=M.h;
   const oc=off.getContext('2d',{willReadFrequently:true});oc.drawImage(IMG,0,0);
@@ -199,6 +240,7 @@ cv.addEventListener('wheel',e=>{e.preventDefault();
   const wx=(e.clientX-ox)/z0,wy=(e.clientY-oy)/z0;
   S.z=z1;S.x=wx-(e.clientX-cv.width/2)/z1;S.y=wy-(e.clientY-cv.height/2)/z1;draw();},{passive:false});
 document.getElementById('lab').onchange=e=>{showLab=e.target.checked;draw();};
+document.getElementById('grd').onchange=e=>{showGrid=e.target.checked;draw();};
 document.getElementById('q').oninput=e=>{
   const s=e.target.value.trim();if(!s)return;
   const l=M.labels.find(v=>v.n===s)||M.labels.find(v=>v.n.indexOf(s)===0);
