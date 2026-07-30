@@ -312,6 +312,49 @@ function isOreClusterAt(zoneId, x, y) {
   return null;
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 광석 확률 p — **연속장** [11차 재민 확정]
+// ═══════════════════════════════════════════════════════════════════════════
+// 구 규약: 광맥은 완벽한 원이고 그 안이면 어디나 동일. 밖이면 광석 0. 경계에서 뚝 끊겼다.
+// 신 규약: 캐면 어디서든 돌덩이가 나오고, 그게 **광석일 확률 p** 만 자리마다 다르다.
+//   p(x,y) = p_peak × (1 − d/R)^1.2 × (0.5 + fbm(x/24셀, y/24셀))     · 광맥 밖 = 0
+//   · 값 저장 없음 — 좌표에서 결정론적으로 계산(존 전체 셀에 필드를 들 필요가 없다).
+//   · **연속성이 구조적으로 보장**된다: fbm 격자가 24셀이라 인접 셀 간 p 급변이 불가능
+//     ("이 셀 0.05인데 옆 셀 0.8" 이 일어날 수 없다 — 재민 요구).
+//   · 노이즈가 falloff에 곱해지므로 **경계도 원이 아니다**. 모양을 따로 정의할 필요가 없어졌다.
+//   · p_peak 은 클러스터 속성(pk). 미지정이면 tier 기본값 — 넓지만 가난한 광맥도 표현된다.
+const _ORE_P_GAMMA = 1.2;      // falloff 지수 — 클수록 중심 집중
+const _ORE_P_GRID = 24 * 32;   // 노이즈 격자(px) = 24셀. 이 길이 스케일로 완만하게 변한다
+const _ORE_P_DEFAULT_PK = 0.33;
+
+function _oHash(ix, iy, s) {
+  let h = (ix | 0) * 374761393 + (iy | 0) * 668265263 + (s | 0) * 1274126177;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967295;
+}
+function _oVN(x, y, s) {   // value noise + smoothstep 보간(연속·C1)
+  const x0 = Math.floor(x), y0 = Math.floor(y), fx = x - x0, fy = y - y0;
+  const u = fx * fx * (3 - 2 * fx), v = fy * fy * (3 - 2 * fy);
+  const a = _oHash(x0, y0, s), b = _oHash(x0 + 1, y0, s);
+  const c = _oHash(x0, y0 + 1, s), d = _oHash(x0 + 1, y0 + 1, s);
+  return (a * (1 - u) + b * u) * (1 - v) + (c * (1 - u) + d * u) * v;
+}
+function _oFbm(x, y, s) { let t = 0, a = 0.5, f = 1; for (let i = 0; i < 3; i++) { t += a * _oVN(x * f, y * f, s + i * 31); a *= 0.5; f *= 2; } return t; }
+
+// 이 좌표(px)에서 캔 덩이가 광석일 확률. 광맥 밖이면 0(= 캐도 영원히 돌만 나온다).
+function oreProbAt(zoneId, x, y) {
+  const o = isOreClusterAt(zoneId, x, y);
+  if (!o) return 0;
+  const dx = x - o.center[0], dy = y - o.center[1];
+  const d = Math.sqrt(dx * dx + dy * dy) / (o.radius || 1);
+  if (d >= 1) return 0;
+  const pk = (typeof o.pk === 'number') ? o.pk : _ORE_P_DEFAULT_PK;
+  const seed = ((o.center[0] | 0) * 7 + (o.center[1] | 0) * 13 + 911) | 0;
+  const n = 0.5 + _oFbm(x / _ORE_P_GRID, y / _ORE_P_GRID, seed);
+  const p = pk * Math.pow(1 - d, _ORE_P_GAMMA) * n;
+  return p < 0 ? 0 : (p > 1 ? 1 : p);
+}
+
 // === 미니맵용 — cell 종류 결정 ===
 // 우선순위: water > ore > mountain > forest > plain
 function getTileType(zoneId, x, y) {
@@ -337,6 +380,7 @@ if (typeof module !== 'undefined' && module.exports) {
     getForestMultiplier,
     getStoneMultiplier,
     isOreClusterAt,
+    oreProbAt,
     getTileType,
   };
 }
@@ -351,6 +395,7 @@ if (typeof window !== 'undefined') {
     getForestMultiplier,
     getStoneMultiplier,
     isOreClusterAt,
+    oreProbAt,
     getTileType,
   };
 }

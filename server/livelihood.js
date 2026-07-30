@@ -34,12 +34,18 @@ const GAIN = {
   wood:  2.30,   // 숲비율(반경 140셀) — 만림이면 0.45+2.30 = 2.75 → 상한 2.5
   game:  1.80,   // 사냥밴드 숲비율(40~130셀)
   stone: 9.00,   // 바위비율(반경 140셀)
-  ore:  60.00,   // 광맥 셀비율(반경 140셀)
-  //   ★이득폭이 큰 이유는 **기하** 때문이다. 광맥 8개가 존의 0.125%(11,106셀)뿐이고 덩이 반지름이
-  //   ~21셀이라, 광맥 한복판에 앉은 마을도 반경 140셀 원판에서 차지하는 비율이 **2.5%**밖에 안 된다.
-  //   실측: 이득 6.0으로는 광산1~7이 전부 0.25(바닥 근처)로 죽었다 — 광맥 위에 앉아 있는데도.
-  //   60이면 광맥 위 마을 0.10+1.35=1.45, 광맥 없는 마을 0.10 — 갈라진다.
+  ore:   2.40,   // ★[11차] **√(광맥 셀비율)** — 계수의 의미가 바뀌었다(아래 ORE_SQRT 참조)
+  //   구 60(선형)의 사연: 광맥 8개가 존의 0.125%뿐이고 반지름이 ~21셀이라, 광맥 한복판에 앉은
+  //   마을도 반경 140셀 원판의 2.5%밖에 못 채웠다. 그래서 계수를 60까지 올려야 갈라졌다.
+  //   ★그런데 광맥을 대·중·소로 키우면 그 선형이 무너진다 — 실측 환산:
+  //     대형(r130) 위 마을 원판의 85%가 광맥 → 0.10+60×0.85 = 51 → 캡 2.5
+  //     소형(r32)  위 마을 5.2%           → 0.10+60×0.052 = 3.2 → 캡 2.5
+  //     ⇒ **대형이든 소형이든 전부 캡**. 광부 정원(size×ore×0.30)이 똑같아져 등급이 무의미해진다.
+  //   그래서 선형을 버리고 √로 간다. 0.10 + 2.40·√share 로 잡으면:
+  //     대형 85% → 2.31 · 중형 15% → 1.03 · 소형 5.2% → 0.65 · 자잘 0.25% → 0.22
+  //     광부 정원(size 40) = 27명 / 12명 / 7명 / 2명 — **광맥 등급이 마을 규모로 번역된다**.
 };
+const ORE_SQRT = true;   // ore만 √(share) — 나머지 생업은 선형 유지(숲·사냥·바위는 밀도=면적이라 선형이 맞다)
 const CAP = 2.5;
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
@@ -54,7 +60,7 @@ function landOf({ forShare, huntShare, rockShare, oreShare }) {
     wood:  +clamp(FLOOR.wood  + GAIN.wood  * forShare,  0.05, CAP).toFixed(2),
     game:  +clamp(FLOOR.game  + GAIN.game  * huntShare, 0.05, CAP).toFixed(2),
     stone: +clamp(FLOOR.stone + GAIN.stone * rockShare, 0.05, CAP).toFixed(2),
-    ore:   +clamp(FLOOR.ore   + GAIN.ore   * oreShare,  0.05, CAP).toFixed(2),
+    ore:   +clamp(FLOOR.ore   + GAIN.ore   * (ORE_SQRT ? Math.sqrt(Math.max(0, oreShare)) : oreShare), 0.05, CAP).toFixed(2),
   };
 }
 

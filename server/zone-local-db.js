@@ -182,10 +182,16 @@ function insertHarvestedSeed(key) { stmtInsertHarvested.run(key, Date.now()); }
 function getAllHarvestedSeeds() { return stmtGetAllHarvested.all().map(r => r.seed_key); }
 
 // === mined_cells (광맥 셀 번영도 — lazy refill) ===
-const stmtUpsertMined = db.prepare('INSERT INTO mined_cells (cell_key, prosperity, last_t) VALUES (?, ?, ?) ON CONFLICT(cell_key) DO UPDATE SET prosperity=excluded.prosperity, last_t=excluded.last_t');
-const stmtGetAllMined = db.prepare('SELECT cell_key, prosperity, last_t FROM mined_cells');
+// ★[11차 채광 재설계] prosperity 컬럼은 이제 **잔여 재고**(0..ORE_K=1000)를 담는다.
+//   swings       = 그 셀에 쌓인 타수(0..59). **셀에 쌓이므로** 두 사람이 같이 파면 60타를 나눠 채운다(2인 1조).
+//   migrated_v11 = 구 스키마(번영도 0..100) 이행 완료 표시 — 부팅 때 한 번만 비율 변환(zone.js).
+{ const _mc = db.prepare('PRAGMA table_info(mined_cells)').all().map(c => c.name);
+  if (!_mc.includes('swings')) db.exec('ALTER TABLE mined_cells ADD COLUMN swings REAL NOT NULL DEFAULT 0');
+  if (!_mc.includes('migrated_v11')) db.exec('ALTER TABLE mined_cells ADD COLUMN migrated_v11 INTEGER NOT NULL DEFAULT 0'); }
+const stmtUpsertMined = db.prepare('INSERT INTO mined_cells (cell_key, prosperity, last_t, swings, migrated_v11) VALUES (?, ?, ?, ?, 1) ON CONFLICT(cell_key) DO UPDATE SET prosperity=excluded.prosperity, last_t=excluded.last_t, swings=excluded.swings, migrated_v11=1');
+const stmtGetAllMined = db.prepare('SELECT cell_key, prosperity, last_t, swings, migrated_v11 FROM mined_cells');
 const stmtDeleteMined = db.prepare('DELETE FROM mined_cells WHERE cell_key = ?');
-function upsertMinedCell(key, prosperity, lastT) { stmtUpsertMined.run(key, prosperity, lastT); }
+function upsertMinedCell(key, stock, lastT, swings) { stmtUpsertMined.run(key, stock, lastT, swings || 0); }
 function getAllMinedCells() { return stmtGetAllMined.all(); }
 function deleteMinedCell(key) { stmtDeleteMined.run(key); }
 

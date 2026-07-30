@@ -278,15 +278,83 @@ function _byHarvest() {
   return m;
 }
 
-// === 채굴 파라미터 (광물 가치 tier별) — 광맥 셀 번영도 시스템 ===
-const _HOUR = 3600 * 1000;
+// ═══════════════════════════════════════════════════════════════════════════
+// === 채굴 — 11차 전면 재설계 [재민 확정] ===
+// ═══════════════════════════════════════════════════════════════════════════
+// 구 모델(폐기): 셀 번영도 100 · 1타에 cost 10 · tier별 refillMs 1~24시간 · dropChance.
+//   결함 셋 — ①1타=10이면 셀 하나를 10번 파고 고갈, 실척으로 1m²를 **1.3cm** 판 셈(고증 붕괴)
+//             ②서버 쿨다운이 없어 E 연타(초당 3~5타)가 그대로 통과 → 한 명이 광맥 하루치를 20분에 긁음
+//             ③드롭 실패해도 재고는 깎여 이중 손해
+//
+// 신 모델 — 단위가 전부 실측에서 유도된다:
+//   · 1타 = **1초** (게임일 24분 = 1440 게임분 ⇒ 1 게임분 = 1 실시간초)
+//   · **60타 = 재고 1 = 돌덩이 1개**  ⇒ 광부는 1 게임시간에 덩이 하나
+//   · 셀 재고 K = **1000** = 1m²를 **130cm** 파는 양 (덩이 3.5kg · 암석 2.7t/m³)
+//   · 캐면 **무조건 뭔가 나온다**(실패 없음). 다만 나온 것이 광석인지 그냥 돌인지는
+//     **채굴 시점에 알 수 없다** — 미확인 `ore_chunk`로 들어오고 마을에서 **선광**해야 갈린다.
+//   · 광석일 확률 p 는 셀마다 다른 **연속장**(terrain.oreProbAt) — 광맥 중심이 높고 평지는 0.
+//
+// 고증 눈금(Great Orme, 웨일스, BC1700~900): 800년 채굴 · 굴착 3~10만 m³.
+//   광부 30명 × 600 게임년 = 96.8M 덩이 = 33.9만 톤 — 상한 추정 27만 톤의 1.25배(같은 규모).
+const ORE_K = 1000;              // 셀 재고(덩이)
+const MINE_SWING_MS = 1000;      // 1타 = 1초 (서버 강제 쿨다운)
+const MINE_SWINGS_PER = 60;      // 60타 = 재고 1 = 덩이 1
+const CHUNK_KG = 3.5;            // 돌덩이 1개 무게
+
+// 리젠 — 고갈될수록 빨라지되 **2배 안에서만**(재민 확정: 플레이어가 몰릴 때의 완충).
+//   dR/dt = ORE_REG0 + ORE_REG1·(1 − R/K) = A − B·R   (게임일 단위)
+//   만땅 0.01/게임일 · 완전고갈 0.02/게임일.
+//   ★선형이 아니므로 **닫힌 해**로 적분한다 — lazy 갱신에서 dt가 아무리 길어도 오차 0:
+//     R(t) = A/B − (A/B − R0)·e^(−B·t) = 2000 − (2000−R0)·e^(−t/100000)
+//   완전고갈→만땅 69,315 게임일 = 190 게임년(선형 0.01이면 274년).
+//   ※기각안: dR=r(1−R/K) 단독 → 빈 셀은 선형과 같고 중·고 재고만 느려져 고갈이 *더* 잘 됨(의도 반대)
+//            dR=r·K/R 류 → R→0에서 발산 → 고갈이 물리적으로 불가능
+const ORE_REG0 = 0.01, ORE_REG1 = 0.01;
+const _ORE_A = ORE_REG0 + ORE_REG1, _ORE_B = ORE_REG1 / ORE_K, _ORE_ASY = _ORE_A / _ORE_B;
+function oreRegen(R0, gameDays) {
+  if (!(gameDays > 0)) return Math.min(ORE_K, R0);
+  return Math.min(ORE_K, _ORE_ASY - (_ORE_ASY - R0) * Math.exp(-_ORE_B * gameDays));
+}
+// 광부 1명 일일 정산량(NPC 마을 경제용) — L_MINE 동형 유도:
+//   1440 게임분 × 노동률 0.633 × 왕복효율 0.9697 ÷ 60 = 14.73 덩이/게임일
+//   노동률   = 낮 0.70 − 기상시차 0.015 − 반일근무 0.052 (villages.js 스케줄 상수 실측)
+//   왕복효율 = (지게 8덩이 × 60분) / (그 + 왕복 15분) — 덩이당 60분이라 왕복 비중이 3%뿐이다.
+//              ⇒ 무게·왕복은 가까운 광맥에선 제동이 아니고 **먼 광맥 원정**에서만 물린다:
+//                 왕복 15분(7.5셀) 0.970 · 100분(50셀) 0.828 · 200분(100셀) 0.706 · 800분(400셀) 0.375
+const MINE_HAUL = 8, MINE_HAUL_TRIP = 15, MINE_LABOR = 0.633;
+const MINE_HAULEFF = (MINE_HAUL * MINE_SWINGS_PER) / (MINE_HAUL * MINE_SWINGS_PER + MINE_HAUL_TRIP);
+const NPC_MINE_PER_DAY = +(1440 * MINE_LABOR * MINE_HAULEFF / MINE_SWINGS_PER).toFixed(2);   // 14.73
+// 먼 광맥 왕복 효율 — land.ore 의 거리 가중, NPC 원정 판정 공용. d = 왕복 게임분(= 셀거리, L_WALK 2셀/분 왕복)
+function haulEff(tripMinutes) { const m = MINE_HAUL * MINE_SWINGS_PER; return m / (m + Math.max(0, tripMinutes)); }
+
+// tier — 이제 **가치 등급 표시**에만 쓴다(채굴 속도·재고와 무관). 희소성은 광맥 크기·p로 표현한다.
 function miningParams(mineralId) {
   const r = RESOURCES[mineralId];
   const v = r ? r.baseValue : 5;
-  if (v <= 5)  return { tier: 'common', cost: 10, refillMs: 1  * _HOUR, dropChance: 0.7,  max: 100 }; // 흔함: +1/시간
-  if (v <= 50) return { tier: 'mid',    cost: 12, refillMs: 4  * _HOUR, dropChance: 0.45, max: 100 }; // 중간: +1/4시간
-  return                { tier: 'rare',   cost: 15, refillMs: 24 * _HOUR, dropChance: 0.25, max: 100 }; // 귀함: +1/하루
+  const tier = v <= 5 ? 'common' : (v <= 50 ? 'mid' : 'rare');
+  return { tier, value: v, K: ORE_K, swingMs: MINE_SWING_MS, swingsPer: MINE_SWINGS_PER };
 }
+
+// ── 인벤 무게 [11차 신설] ────────────────────────────────────────────────
+// RESOURCES.weight 는 정의만 있고 한 줄도 안 쓰이고 있었다. 게다가 게임이 실제로 쓰는 id 중
+// stone·wood·ore·fish·berry·herb·fiber 등은 RESOURCES 에 아예 없다 → 여기서 보충한다.
+// 광석만 무겁게 하면 나무 999개를 지고 다니게 되어 이상해지므로 **전 자원**에 건다.
+const EXTRA_WEIGHT = {
+  ore_chunk: CHUNK_KG,   // ★미확인 원석 덩이 — 선광 전이라 맥석 포함(무겁다)
+  stone: 3.0, wood: 2.5, plank: 1.2, pillar: 8.0, rafter: 1.0, thatch: 1.5,
+  ore: 3.5, fiber: 0.3, herb: 0.2, berry: 0.2, seed_berry: 0.05,
+  fish: 1.0, meat_raw: 1.0, meat_cooked: 0.8, hide: 1.5, bone: 0.5,
+  food: 1.0, water: 1.0, charcoal: 0.6, resin: 0.3, bark: 0.4, acorn: 0.2,
+};
+function itemWeight(id) {
+  const r = RESOURCES[id];
+  if (r && typeof r.weight === 'number') return r.weight;
+  if (EXTRA_WEIGHT[id] != null) return EXTRA_WEIGHT[id];
+  return 0.5;   // 미등록 소품 기본값
+}
+// 지게 상한 — 청동기 지게 짐 20~40kg 실측 중간. 덩이(3.5kg)로 8개 = MINE_HAUL 과 정합.
+const CARRY_MAX_KG = 28;
+function inventoryWeight(inv) { let w = 0; for (const k in inv) { const n = inv[k]; if (n > 0) w += itemWeight(k) * n; } return +w.toFixed(2); }
 
 // === biome별 광물 풀 (가중치 = 중복) — 광맥에 mineral 미지정 시 위치 해시로 자동 배정 ===
 const ORE_POOLS = {
@@ -306,7 +374,10 @@ function pickMineral(biome, seedNum) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { RESOURCES, _summary, _byHarvest, miningParams, pickMineral, ORE_POOLS };
+  module.exports = { RESOURCES, _summary, _byHarvest, miningParams, pickMineral, ORE_POOLS,
+    ORE_K, MINE_SWING_MS, MINE_SWINGS_PER, CHUNK_KG, ORE_REG0, ORE_REG1, oreRegen,
+    NPC_MINE_PER_DAY, MINE_HAUL, MINE_HAUL_TRIP, MINE_LABOR, MINE_HAULEFF, haulEff,
+    itemWeight, inventoryWeight, CARRY_MAX_KG, EXTRA_WEIGHT };
 }
 if (typeof window !== 'undefined') {
   window.Specialty = { RESOURCES };

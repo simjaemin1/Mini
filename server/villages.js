@@ -1365,6 +1365,82 @@ function syncCaravanBodies(now) {
 //   · 새로 들어온 셀은 **바로 개간**한다(나무 제거) — 마을 안엔 숲이 없다.
 //   · 영토가 늘면 비옥도·경작가능비율을 다시 재어 econ에 반영한다(지형이 진실).
 //   · 하루 증가분은 작아서(econ 1셀 단위 구매) 매일 전 마을을 돌아도 싸다. 상한을 둬서 폭주도 막는다.
+// ═══════════════════════════════════════════════════════════════════════════
+// NPC 채굴 — 광맥 셀 재고를 **플레이어와 같은 장부**로 판다 [11차 재민 확정]
+// ═══════════════════════════════════════════════════════════════════════════
+// 재민 지시: "실제 광맥 구역에 해당하는 셀로 가서 캐고 재고 줄이고 그에 따라 아이템 얻는 방식".
+//   구조는 어부와 동형이다 — **가시 행동은 표현, 마을 경제는 econ 소유**. 여기서 하는 일은
+//   ①광부 수만큼 셀 재고를 깎고 ②그 결과(oFrac)를 land.ore 로 되먹이는 것뿐이다.
+//   산출 아이템은 econ 이 land.ore 로 계산한다(이중 계상 금지).
+//
+// 채굴 속도는 플레이어와 **같다**(1초 1타 · 60타에 덩이 하나 — 재민 확정). 차이는 노동시간뿐:
+//   NPC_MINE_PER_DAY = 1440분 × 노동률 0.633 × 왕복효율 0.9697 ÷ 60 = 14.73 덩이/게임일
+//   노동률은 이 파일의 스케줄 상수 실측이다(낮 0.70 − 기상시차 SCH_DOFF/2 − 반일근무).
+//
+// 2인 1조(Great Orme 불질 채광 고증): 광부를 짝지어 **같은 셀**에 보낸다. 셀의 타수 카운터가
+//   공유되므로 둘이 30타씩 60타를 채운다. zone.js 의 minedCells 규약이 그대로 성립한다.
+const ORE_LABOR_R = 150;             // 광부 노동권(셀) — 랩 R=150 동형
+const ORE_CELL_CAP = 6000;           // 마을당 추적 광맥 셀 상한(대형 광맥이면 수만 셀 — 표본으로 충분)
+const ORE_FLOOR = 0.4;               // land.ore 바닥 40% — ★이주가 없으므로 마을은 안 떠나고 광부만 다른 직업으로 빠진다
+// 마을 생활권의 광맥 셀 목록(일 캐시). p(광석확률)까지 들고 있어 품위 높은 자리부터 판다.
+function _oreCellsOf(vil) {
+  if (vil._oreCells) return vil._oreCells;
+  const ta = state.ta, out = [];
+  if (!ta || !ta.isOre) return (vil._oreCells = out);
+  const R = ORE_LABOR_R, R2 = R * R;
+  const pf = state.deps && state.deps.oreProbAt;
+  for (let dy = -R; dy <= R && out.length < ORE_CELL_CAP; dy++) {
+    for (let dx = -R; dx <= R; dx++) {
+      if (dx * dx + dy * dy > R2) continue;
+      const cx = vil.ccx + dx, cy = vil.ccy + dy;
+      if (!ta.isOre(cx, cy)) continue;
+      if (ta.isWater(cx, cy) || ta.isRock(cx, cy)) continue;
+      out.push({ cx, cy, p: pf ? pf(cx * SZ + SZ / 2, cy * SZ + SZ / 2) : 0.3 });
+      if (out.length >= ORE_CELL_CAP) break;
+    }
+  }
+  out.sort((a, b) => b.p - a.p);   // 품위 높은 자리부터 — 광부는 좋은 노두를 먼저 판다
+  return (vil._oreCells = out);
+}
+// 하루치 채굴 정산. 반환: { cells, consumed, oFrac }
+function _oreMineDaily(vil) {
+  const cells = _oreCellsOf(vil);
+  if (!cells.length) return null;
+  const dep = state.deps || {};
+  if (!dep.oreConsumeAt || !dep.oreStockAt) return null;
+  const nMiner = Math.max(0, Math.round((vil.econ && vil.econ.counts && vil.econ.counts.miner) || 0));
+  const PER = (dep.NPC_MINE_PER_DAY || 14.73);
+  let consumed = 0;
+  if (nMiner > 0) {
+    // 2인 1조: 짝(2명)당 셀 하나. 조는 서로 다른 셀에 붙는다(랩 조 단위 분산 동형).
+    const teams = Math.max(1, Math.ceil(nMiner / 2));
+    for (let t = 0; t < teams; t++) {
+      const inTeam = Math.min(2, nMiner - t * 2);
+      let want = PER * inTeam;
+      // 그 조의 셀 — 품위 순으로 조마다 다른 자리. 고갈되면 다음 자리로 밀린다.
+      for (let k = t; k < cells.length && want > 0.001; k += teams) {
+        const c = cells[k];
+        const got = dep.oreConsumeAt(c.cx, c.cy, want);
+        want -= got; consumed += got;
+      }
+    }
+  }
+  // oFrac — 생활권 광맥의 평균 잔여 비율(표본)
+  let sum = 0, n = 0;
+  const step = Math.max(1, Math.floor(cells.length / 600));   // 최대 600표본
+  for (let i = 0; i < cells.length; i += step) { sum += dep.oreStockAt(cells[i].cx, cells[i].cy); n++; }
+  const K = dep.ORE_K || 1000;
+  const oFrac = n ? Math.max(0, Math.min(1, sum / (n * K))) : 1;
+  return { cells: cells.length, consumed: +consumed.toFixed(2), oFrac: +oFrac.toFixed(4) };
+}
+// land.ore 되먹임 — 재고가 깎이는 *내내* 광부 정원(size×ore×0.30)이 비례해 준다.
+//   실측 평형(size 40): 대형 재고 100%·광부 27.9명 / 중형 89%·14.6명 / 소형 32%·4.6명 / 자잘 0%·1.1명.
+function _oreFeedback(vil, oFrac) {
+  const land = vil.econ && vil.econ.land; if (!land) return;
+  if (vil._baseOre == null) vil._baseOre = land.ore || 0;
+  land.ore = +(vil._baseOre * (ORE_FLOOR + (1 - ORE_FLOOR) * oFrac)).toFixed(2);
+}
+
 const TERR_GROW_MAX_PER_DAY = 60;   // 마을당 하루 최대 확장 셀 — econ 구매 속도보다 넉넉하되 폭주는 막는다
 function _terrGrow(vil) {
   if (!state.ta || !vil || !vil._terrSet || !vil._terrSet.size) return 0;
@@ -2104,6 +2180,13 @@ function onGameTick(now) {
     //   전에는 econ land.size 만 자라고 물리 영토(_terrSet)는 생성 시 크기에 얼어 있었다:
     //   econ은 "땅을 더 샀다"는데 지도에는 아무 일도 안 일어났다(클라 라벨 반경만 커졌다).
     for (const vil of state.villages) { try { _terrGrow(vil); } catch (e) {} }
+    // ★[11차] NPC 채굴 — 광부가 실제 광맥 셀 재고를 깎고, 그 결과가 land.ore 로 돌아온다.
+    { let _mv = 0, _mc = 0;
+      for (const vil of state.villages) {
+        try { const r = _oreMineDaily(vil); if (r) { _oreFeedback(vil, r.oFrac); if (r.consumed > 0) { _mv++; _mc += r.consumed; } } } catch (e) { }
+      }
+      if (_mv) console.log(`[${state.zoneId}] ⛏ NPC 채굴: ${_mv}개 마을 · 재고 -${_mc.toFixed(0)}`);
+    }
     const terr = {};   // §19/§2 영토 크립(4파): econ land.size는 매일 자람(1셀 단위 구매) — 등가 반경(px)을 클라에 동기.
     for (const vil of state.villages) terr[vil.dbId] = Math.round(Math.sqrt(((vil.econ.land && vil.econ.land.size ? vil.econ.land.size * 25 : 2800)) / Math.PI) * SZ);
     for (const cv of (state.clientPayload || [])) { if (pops[cv.id] != null) cv.pop = pops[cv.id]; if (terr[cv.id] != null) cv.tr = terr[cv.id]; }

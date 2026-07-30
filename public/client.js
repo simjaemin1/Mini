@@ -1149,6 +1149,13 @@ const SIM_JOB_EMOJI = {
       return;
     }
     if (k === 'e') {
+      // ★[11차 채광 재설계] E를 **누르고 있으면 1초마다 반복** — 채굴이 60타에 덩이 하나라
+      //   한 번씩 누르게 두면 손가락이 남아난다. 서버가 1초/타를 강제하므로 과송신은 무해하고,
+      //   문 토글·도살은 첫 1회만(반복 타이머는 gather 전용 — 문이 깜빡이지 않는다).
+      if (!window.__eRepeat) window.__eRepeat = setInterval(() => {
+        if (!keys.has('e') || chatActive || myIsDown) { clearInterval(window.__eRepeat); window.__eRepeat = null; return; }
+        sendPrimary({ type: 'gather' });
+      }, 1000);
       // 14.50: E 키 — 주변 door 토글, 없으면 사체 도살, 없으면 gather
       const nearDoor = findNearestDoor(myAbsPredicted.x, myAbsPredicted.y, myFloor);
       if (nearDoor) sendPrimary({ type: 'door_toggle', buildingId: nearDoor.id });
@@ -1171,6 +1178,7 @@ const SIM_JOB_EMOJI = {
     if (k === '1') {
       sendPrimary({ type: 'toggle_hotkey' });
     }
+    else if (k === 'o') sendPrimary({ type: 'sort_ore' });   // ★[11차] 선광 — 캔 원석 덩이를 광석/맥석으로 가른다
     else if (k === 'c' && e.shiftKey) sendPrimary({ type: 'claim', kind: 'guild' });  // 길드 영토 (Shift+C)
     else if (k === 'c') sendPrimary({ type: 'claim', kind: 'personal' });  // 개인 사유지 (1 grid)
     else if (k === 't' && !e.shiftKey) sendPrimary({ type: 'claim', kind: 'temporary' });  // 임시 사유지 (1 grid)
@@ -1233,6 +1241,7 @@ const SIM_JOB_EMOJI = {
     if (e.key === 'Shift' && mySprint) { mySprint = false; updateHud(); }
     const k = normalizeKey(e);
     keys.delete(k);
+    if (k === 'e' && window.__eRepeat) { clearInterval(window.__eRepeat); window.__eRepeat = null; }   // ★채굴 반복 정지
     // 정지도 루프 고정 스텝이 ≤33ms 내 전송 (즉시-send 제거 — 스텝/accumulator 불규칙 건드림이 버벅 원인이었음).
   });
   // blur 이벤트로 keys 초기화 안 함 — 콘솔 열기/탭 전환 등 사소한 이유로 키가 reset돼서
@@ -6095,6 +6104,9 @@ const SIM_JOB_EMOJI = {
     berry: '베리', fiber: '풀', meat_raw: '날고기', meat_cooked: '구운고기',
     hide: '가죽', berry_jam: '베리잼', water_bottle: '물병',
     seed_berry: '베리씨앗', herb: '약초', ore: '광물',
+    ore_chunk: '원석 덩이(미확인)',   // ★[11차] 캔 것은 정체를 모른다 — 마을에서 선광(O키)해야 광석/맥석이 갈린다
+    iron: '철광석', copper: '구리', tin: '주석', coal: '석탄', jade_raw: '옥 원석',
+    marble: '대리석', tungsten: '텅스텐', gold: '금', silver: '은',
     wood: '통나무', plank: '판자', stone: '돌',
     item_wall: '벽', item_floor: '바닥', item_door: '문', item_fence: '울타리',
     item_stair: '계단', item_chest: '상자', item_campfire: '모닥불', item_farmland: '농지',

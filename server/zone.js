@@ -249,6 +249,7 @@ function savePlayer(player, extra = {}) {
       equipment: player.equipment || [],   // 플레이어 아이템 인스턴스 영속(품질·속성·내구)
       equipSlots: player.equipSlots || {},  // 장착 슬롯
       craftSkill: player.craftSkill || {},  // 제작 숙련 xp
+      oreLedger: player.oreLedger || {},    // ★[11차] 캔 원석의 **숨은 정체 장부** — 선광 전까지 클라에 안 보낸다
     }),
     equipped: player.equipped || null,
     last_zone: extra.last_zone ?? null, // 명시적으로 넘긴 zone만 변경
@@ -1942,6 +1943,18 @@ SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, is
   // ★[11차 실측] 교역 거리행렬의 코스 그리드(4셀 서브샘플)가 **폭 2셀 다리를 절반이나 못 본다**(28개 중 15개).
   //   다리 술어를 넘겨 주면 villages.js 가 코스 셀 안을 훑어 '이 블록에 다리가 지난다'를 살려낸다.
   isBridgeLocal: isBridgeTileLocal,
+  // ★[11차 채광 재설계] NPC 광부가 **플레이어와 같은 광맥 장부**(minedCells)를 판다.
+  //   villages.js 는 재고를 깎고 oFrac 을 읽기만 한다 — 산출 아이템은 econ 이 land.ore 로 계산(이중 계상 금지).
+  oreStockAt: (cx, cy) => { const now = Date.now(); const r = _oreRec(cx + '_' + cy, now); return r.s; },
+  oreConsumeAt: (cx, cy, amount) => {
+    if (!(amount > 0)) return 0;
+    const now = Date.now(), key = cx + '_' + cy, rec = _oreRec(key, now);
+    const got = Math.min(amount, Math.max(0, rec.s));
+    if (got <= 0) { if (!rec.fresh) _oreSave(key, rec); return 0; }
+    rec.s -= got; _oreSave(key, rec); return got;
+  },
+  oreProbAt: (px, py) => (_terrain.oreProbAt ? _terrain.oreProbAt(ZONE_ID, px, py) : 0.3),
+  ORE_K: require('./specialty').ORE_K, NPC_MINE_PER_DAY: require('./specialty').NPC_MINE_PER_DAY,   // ★const Specialty 선언(3400+)보다 앞이라 TDZ — require 캐시로 우회
   liveBuildRow: _liveBuildRow, buildings, chunkManager,   // ★[생활 층 ③] 신축 크루의 라이브 실체화 경로(플레이어 완공과 동일 헬퍼 — 발명 금지)
   worldPhase, dayPhaseRatio: WORLD.dayPhaseRatio, mobs, qtResources: () => qtResources });   // ★[생활 층 100% ②③] 일과 스케줄(하루 위상)·직업 실작업(자원·사냥감 현장) 소스
 // ★[11차 T3 환호] 도랑 콜라이더 적재 — SimVillages.init이 시범 마을 도랑을 실체화한 **직후**여야 한다.
@@ -2313,7 +2326,7 @@ wss.on('connection', async (ws, req) => {
   if (process.env.ZONE_TEST_INV) for (const kv of process.env.ZONE_TEST_INV.split(',')) { const [k, v] = kv.split(':'); if (k && +v > 0) _testInv[k.trim()] = +v; }
   let playerId, name, sx, sy, ivx = 0, ivy = 0, inventory = { wood: 0, stone: 0, ..._testInv }, color = '#5a9ae0';
   let tools = {}, equipped = null;
-  let _loadEquipment = [], _loadEquipSlots = {}, _loadCraftSkill = {}; // 플레이어 아이템(품질·속성·내구·숙련) 복원 버퍼 — tools_json blob piggyback
+  let _loadEquipment = [], _loadEquipSlots = {}, _loadCraftSkill = {}, _loadOreLedger = {}; // 플레이어 아이템(품질·속성·내구·숙련)·원석 정체 장부 복원 버퍼 — tools_json blob piggyback
   let initHunger = HUNGER_MAX, initThirst = THIRST_MAX, initVp = 0;
   let initTribeId = null, initTribeName = null;
   let initFloor = 0;
@@ -2391,6 +2404,7 @@ wss.on('connection', async (ws, req) => {
       if (tools && Array.isArray(tools.equipment)) _loadEquipment = tools.equipment;
       if (tools && tools.equipSlots && typeof tools.equipSlots === 'object') _loadEquipSlots = tools.equipSlots;
       if (tools && tools.craftSkill && typeof tools.craftSkill === 'object') _loadCraftSkill = tools.craftSkill;
+      if (tools && tools.oreLedger && typeof tools.oreLedger === 'object') _loadOreLedger = tools.oreLedger;   // ★[11차] 원석 정체 장부 복원
       // 14.53: 옛 tools (object 또는 number 형식) → 새 toolItems list 변환
       // tools_json 안에 옛 형식 또는 새 형식 {toolItems, equipped, hotkey1} 둘 다 처리
       let toolItems = [];
@@ -2532,7 +2546,8 @@ wss.on('connection', async (ws, req) => {
     hotkey1: _hotkey1,          // 14.53: 1번 슬롯 toolItemId
     equipment: _loadEquipment,  // 플레이어 아이템: 장비 인스턴스 [{type,q,attrs,dura...}]
     equipSlots: _loadEquipSlots,// 슬롯→인스턴스 id (clothes/armor/weapon/tool)
-    craftSkill: _loadCraftSkill,// 제작 숙련 xp {tailoring,smithing,toolmaking,cooking}
+    craftSkill: _loadCraftSkill,// 제작 숙련 xp {tailoring,smithing,toolmaking,cooking,mining}
+    oreLedger: _loadOreLedger,  // ★[11차] 원석 덩이의 숨은 정체(선광 때 소비)
     hp: PLAYER_MAX_HP, maxHp: PLAYER_MAX_HP,
     hunger: initHunger, thirst: initThirst, vp: initVp,
     tribeId: initTribeId, tribeName: initTribeName,
@@ -2643,6 +2658,7 @@ function handlePlayerInput(player, raw) {
     tryRescue(player, msg.pid);
   } else if (msg.type === 'butcher') butcherCorpse(player, msg.cid);  // Phase 5-7
   else if (msg.type === 'gather') tryGather(player);
+  else if (msg.type === 'sort_ore') trySortOre(player);   // ★선광 — 캔 원석 덩이를 광석/맥석으로 가른다
   else if (msg.type === 'claim') tryClaim(player, msg.kind || 'personal');
   else if (msg.type === 'drop_item') tryDropItem(player, msg.item, msg.amount || 1);
   else if (msg.type === 'pickup_item') tryPickupItem(player, msg.giId);
@@ -3470,13 +3486,42 @@ function doToggleHotkey(player) {
 // 광맥 채굴 — 셀별 번영도 (lazy timestamp refill). 틱 없음, 채굴 시에만 계산.
 // ═══════════════════════════════════════════════════════════════════
 const Specialty = require('./specialty');
-const minedCells = new Map();   // "cx_cy" → { prosperity, lastT }. 안 판 셀은 암묵적으로 max(저장X).
+// ═══════════════════════════════════════════════════════════════════════════
+// 광맥 셀 재고 — 11차 전면 재설계 [재민 확정]
+// ═══════════════════════════════════════════════════════════════════════════
+//   "cx_cy" → { s: 잔여 재고(0..1000), t: 마지막 갱신 ms, w: 누적 타수(0..59) }
+//   안 판 셀은 저장하지 않는다(암묵적으로 만땅) — 테이블을 작게 유지.
+//   · s(재고) = 그 셀에서 앞으로 나올 돌덩이 수. 1000 = 1m²를 130cm 판 양.
+//   · w(타수)는 **셀에 쌓인다**(플레이어별이 아니다) ⇒ 두 사람이 같은 셀을 파면
+//     각자 30타씩 60타를 채워 덩이가 나온다 = **2인 1조 협업이 규칙에서 저절로 나온다**.
+//     (Great Orme 불질 채광 고증: 한 명이 불을 지피고 한 명이 물을 붓는 2인 작업)
+const minedCells = new Map();
 
-{ // 부팅: DB에서 파인 셀 로드
+{ // 부팅: DB에서 파인 셀 로드 (구 스키마 prosperity(0..100) → 신 재고(0..1000) 이행)
   try {
-    for (const r of db.getAllMinedCells()) minedCells.set(r.cell_key, { prosperity: r.prosperity, lastT: r.last_t });
-    if (minedCells.size) console.log(`[${ZONE_ID}] 광맥 파인 셀 ${minedCells.size}개 로드`);
+    let migrated = 0;
+    for (const r of db.getAllMinedCells()) {
+      let s = r.prosperity, w = r.swings || 0;
+      if (s <= 100 && Specialty.ORE_K > 100 && !r.migrated_v11) { s = s * (Specialty.ORE_K / 100); migrated++; }   // 구 0~100 → 신 0~1000 비율 보존
+      minedCells.set(r.cell_key, { s, t: r.last_t, w });
+    }
+    if (minedCells.size) console.log(`[${ZONE_ID}] 광맥 파인 셀 ${minedCells.size}개 로드` + (migrated ? ` (구 번영도 ${migrated}개 → 재고 비율 이행)` : ''));
   } catch (e) { console.log(`[${ZONE_ID}] mined_cells 로드 실패: ${e.message}`); }
+}
+// 게임일 길이(리젠 적분의 시간축). zone-config WORLD와 같은 원천.
+const _ORE_DAY_MS = (WORLD && WORLD.dayLengthMs) || 24 * 60 * 1000;   // 게임일 24분 — 리젠 적분의 시간축(zone-config WORLD 단일 원천)
+// 셀 레코드 확보 + lazy 리젠(닫힌 해로 한 번에 적분 — dt가 몇 달이어도 오차 0)
+function _oreRec(key, now) {
+  let rec = minedCells.get(key);
+  if (!rec) return { s: Specialty.ORE_K, t: now, w: 0, fresh: true };
+  const days = (now - rec.t) / _ORE_DAY_MS;
+  if (days > 0) { rec.s = Specialty.oreRegen(rec.s, days); rec.t = now; }
+  return rec;
+}
+function _oreSave(key, rec) {
+  if (rec.s >= Specialty.ORE_K && rec.w <= 0) { minedCells.delete(key); try { db.deleteMinedCell(key); } catch (e) { } return; }
+  delete rec.fresh; minedCells.set(key, rec);
+  try { db.upsertMinedCell(key, rec.s, rec.t, rec.w); } catch (e) { }
 }
 
 { // 부팅: 광맥 클러스터에 광물 배정 (v8 미지정이면 biome+위치 해시로)
@@ -3489,34 +3534,96 @@ const minedCells = new Map();   // "cx_cy" → { prosperity, lastT }. 안 판 �
   }
 }
 
-// 곡괭이 장착 + 현재 셀이 광맥 구역이면: 번영도 깎고 확률 드롭. 처리했으면 true.
+// ═══ 채굴 ═══════════════════════════════════════════════════════════════
+// 곡괭이를 들고 **어디서나** 팔 수 있다 — 마당에서도, 산기슭에서도. 나오는 건 돌이다.
+// 광맥 위에서는 그 돌덩이가 **광석일 확률 p**(연속장)를 갖는다. 평지는 p=0이라 영원히 돌만.
+//   · 1타 = 1초(서버 강제) · 60타 = 재고 1 = **돌덩이 1개**
+//   · 나온 덩이는 ore_chunk(미확인 원석)로 들어온다. 광석인지 돌인지는 **선광해야** 안다.
+//     결과 자체는 채굴 순간 정해져 숨은 장부(player.oreLedger)에 적힌다 — 나중에 몰아서
+//     굴리면 선광 시점의 난수로 결과가 바뀌어 "이미 캔 것"의 정체가 흔들린다.
+//   · 감정(mining 숙련): 레벨이 오르면 지고 오기 전에 정체를 알아본다. 캐는 속도는 그대로.
+//     ⇒ 스킬 이득 = **버릴 것을 마을까지 지고 가지 않는 것**. 가까운 광맥에선 작고
+//        먼 광맥 원정에서 커진다(왕복이 길수록 헛짐의 대가가 크다).
+const MINE_ID_L1 = 3, MINE_ID_L2 = 7;   // 감정 레벨 문턱: 3=돌/광석 구분, 7=광물 종류까지
+function _mineIdentify(player, mineral, isOre) {
+  const lv = playerCraftLevel(player, 'mining');
+  if (lv >= MINE_ID_L2) return isOre ? `${(Specialty.RESOURCES[mineral] || {}).ko || mineral} 든 덩이` : '맥석(버릴 것)';
+  if (lv >= MINE_ID_L1) return isOre ? '광석 든 덩이' : '맥석(버릴 것)';
+  return null;   // 미숙련 — 캐 봐야 모른다
+}
 function mineOreCell(player) {
   const eq = getEquippedTool(player);
   if (!eq || eq.type !== 'pickaxe') return false;
-  const cx = Math.floor(player.x / 32), cy = Math.floor(player.y / 32);
-  const cluster = _terrain.isOreClusterAt(ZONE_ID, cx * 32 + 16, cy * 32 + 16);
-  if (!cluster) return false;
-  const mineral = cluster.mineral || 'iron';
-  const mp = Specialty.miningParams(mineral);
-  const key = cx + '_' + cy;
   const now = Date.now();
-  const rec = minedCells.get(key) || { prosperity: mp.max, lastT: now };
-  const refilled = Math.floor((now - rec.lastT) / mp.refillMs);   // lazy 리필
-  if (refilled > 0) { rec.prosperity = Math.min(mp.max, rec.prosperity + refilled); rec.lastT += refilled * mp.refillMs; }
-  if (rec.prosperity < mp.cost) { send(player.ws, { type: 'notice', text: '⛏ 고갈됨 — 회복 대기중' }); return true; }
-  rec.prosperity -= mp.cost;
-  consumeEquippedDurability(player, 1);
-  let extra = '';
-  if (Math.random() < mp.dropChance) {
-    player.inventory[mineral] = (player.inventory[mineral] || 0) + 1;
-    extra = ` +${(Specialty.RESOURCES[mineral] || {}).ko || mineral}`;
-    send(player.ws, { type: 'inventory', inventory: player.inventory });
+  if (now - (player._mineT || 0) < Specialty.MINE_SWING_MS) return true;   // ★1초/타 — 연타 방지(구 모델엔 쿨다운이 아예 없었다)
+  const cx = Math.floor(player.x / 32), cy = Math.floor(player.y / 32);
+  const px = cx * 32 + 16, py = cy * 32 + 16;
+  if (isWaterTileLocal(px, py) || isTerrainBlockedLocal(px, py)) return false;   // 물·바위 위에선 못 판다
+  player._mineT = now;
+  const key = cx + '_' + cy;
+  const rec = _oreRec(key, now);
+  if (rec.s < 1) { send(player.ws, { type: 'notice', text: '⛏ 이 자리는 다 팠다 — 옆으로 옮기자' }); _oreSave(key, rec); return true; }
+  // 무게: 짐이 가득이면 더 못 든다(지게 28kg = 원석 8덩이)
+  const w = Specialty.inventoryWeight(player.inventory || {});
+  if (w + Specialty.CHUNK_KG > Specialty.CARRY_MAX_KG) {
+    send(player.ws, { type: 'notice', text: `⛏ 짐이 가득 — ${w.toFixed(0)}/${Specialty.CARRY_MAX_KG}kg. 마을에 부리고 오자` });
+    return true;
   }
-  if (rec.prosperity >= mp.max) { minedCells.delete(key); try { db.deleteMinedCell(key); } catch (e) {} }
-  else { minedCells.set(key, rec); try { db.upsertMinedCell(key, rec.prosperity, rec.lastT); } catch (e) {} }
-  send(player.ws, { type: 'notice', text: `⛏ 채굴 (번영 ${Math.round(rec.prosperity)})${extra}` });
+  consumeEquippedDurability(player, 1);
+  rec.w = (rec.w || 0) + 1;
+  let msg;
+  if (rec.w >= Specialty.MINE_SWINGS_PER) {
+    rec.w -= Specialty.MINE_SWINGS_PER; rec.s -= 1;
+    const cluster = _terrain.isOreClusterAt(ZONE_ID, px, py);
+    const p = _terrain.oreProbAt ? _terrain.oreProbAt(ZONE_ID, px, py) : 0;
+    const isOre = Math.random() < p;
+    const mineral = cluster ? (cluster.mineral || 'iron') : 'iron';
+    if (!player.oreLedger || typeof player.oreLedger !== 'object') player.oreLedger = {};
+    const lk = isOre ? mineral : 'stone';
+    player.oreLedger[lk] = (player.oreLedger[lk] || 0) + 1;   // ★결과는 지금 정해 숨긴다
+    player.inventory.ore_chunk = (player.inventory.ore_chunk || 0) + 1;
+    player.craftSkill = player.craftSkill || {};
+    player.craftSkill.mining = (player.craftSkill.mining || 0) + 1;   // 덩이 1개 = xp 1
+    send(player.ws, { type: 'inventory', inventory: player.inventory });
+    const id = _mineIdentify(player, mineral, isOre);
+    msg = `⛏ 돌덩이 하나${id ? ' — ' + id : ' (정체 모름 · 마을에서 선광)'}`;
+  } else {
+    msg = `⛏ 캐는 중 ${rec.w}/${Specialty.MINE_SWINGS_PER}`;
+  }
+  _oreSave(key, rec);
+  send(player.ws, { type: 'notice', text: msg + ` · 남은 광맥 ${Math.round(rec.s)}` });
   savePlayer(player);
   return true;
+}
+
+// 선광(選鑛) — 캔 원석 덩이를 갈라 광석과 맥석으로 나눈다. 마을(회관·작업대) 근처에서만.
+//   고증: 캔 광석은 선광(dressing)을 거쳐야 정광이 된다. 맥석은 갱구 옆 폐석더미로 간다.
+function trySortOre(player) {
+  const n = (player.inventory && player.inventory.ore_chunk) || 0;
+  if (n <= 0) { send(player.ws, { type: 'notice', text: '선광할 원석이 없다' }); return; }
+  const led = player.oreLedger || {};
+  const got = {};
+  let left = n;
+  for (const k of Object.keys(led)) {
+    if (left <= 0) break;
+    const take = Math.min(left, led[k]);
+    if (take <= 0) continue;
+    led[k] -= take; if (led[k] <= 0) delete led[k];
+    left -= take;
+    if (k !== 'stone') { player.inventory[k] = (player.inventory[k] || 0) + take; got[k] = take; }
+    else got.stone_waste = (got.stone_waste || 0) + take;   // ★맥석은 폐석 — 인벤에 안 넣는다(현장에 버렸어야 할 것)
+  }
+  if (left > 0) { got.stone_waste = (got.stone_waste || 0) + left; }   // 장부 유실분은 맥석으로 간주(보수적)
+  player.inventory.ore_chunk = 0; delete player.inventory.ore_chunk;
+  player.oreLedger = led;
+  const parts = Object.entries(got).filter(([k]) => k !== 'stone_waste')
+    .map(([k, v]) => `${(Specialty.RESOURCES[k] || {}).ko || k} ${v}`);
+  send(player.ws, { type: 'inventory', inventory: player.inventory });
+  send(player.ws, {
+    type: 'notice',
+    text: `⚒ 선광 ${n}덩이 → ` + (parts.length ? parts.join(', ') : '광석 없음') + (got.stone_waste ? ` · 맥석 ${got.stone_waste} 버림` : '')
+  });
+  savePlayer(player);
 }
 
 // 주기적 정리 (15분) — 만땅 회복된 셀 레코드 제거. minedCells만 순회(파인 셀, 한정적)라 가벼움.
@@ -3524,11 +3631,9 @@ setInterval(() => {
   if (minedCells.size === 0) return;
   const now = Date.now();
   for (const [key, rec] of minedCells) {
-    const [cx, cy] = key.split('_').map(Number);
-    const cl = _terrain.isOreClusterAt(ZONE_ID, cx * 32 + 16, cy * 32 + 16);
-    const mp = Specialty.miningParams(cl ? (cl.mineral || 'iron') : 'iron');
-    const refilled = Math.floor((now - rec.lastT) / mp.refillMs);
-    if (rec.prosperity + refilled >= mp.max) { minedCells.delete(key); try { db.deleteMinedCell(key); } catch (e) {} }
+    const days = (now - rec.t) / _ORE_DAY_MS;
+    if (days > 0) { rec.s = Specialty.oreRegen(rec.s, days); rec.t = now; }
+    if (rec.s >= Specialty.ORE_K && (rec.w || 0) <= 0) { minedCells.delete(key); try { db.deleteMinedCell(key); } catch (e) { } }
   }
 }, 15 * 60 * 1000);
 
@@ -5240,17 +5345,34 @@ function tallyVillageJobs() {
   return tally;
 }
 
+// 마을 이름 → 좌표(존 로컬 px). villageProduction 이 그 마을이 딛고 있는 광맥을 찾는 데 쓴다.
+const _vilPosCache = new Map();
+function _villageAt(name) {
+  if (_vilPosCache.has(name)) return _vilPosCache.get(name);
+  let hit = null;
+  try { for (const v of (VILLAGES || [])) if (v.name === name) { hit = { x: v.x, y: v.y }; break; } } catch (e) { }
+  _vilPosCache.set(name, hit);
+  return hit;
+}
 function villageProduction(villageName, jobCounts) {
   const carry = _prodCarry.get(villageName) || {};
   const acc = {};
   const add = (item, q) => { if (q) acc[item] = (acc[item] || 0) + q; };
-  const orePool = Specialty.ORE_POOLS[ZONE.biome] || Specialty.ORE_POOLS.plains;
   for (const [job, n] of Object.entries(jobCounts)) {
     if (job === 'miner') {
-      for (let i = 0; i < n; i++) {  // NPC별 광물 1회 시도 — tier dropChance (흔함0.7/중간0.45/귀함0.25)
-        const mineral = orePool[(Math.random() * orePool.length) | 0];
-        const mp = Specialty.miningParams(mineral);
-        if (Math.random() < mp.dropChance) add(mineral, 1);
+      // ★★[11차 채광 재설계] 구 코드는 **biome 풀에서 랜덤**으로 광물을 뽑고 tier dropChance로 굴렸다.
+      //   결함 둘 — ①한반도에 금광이 하나도 없는데 51개 마을 전부가 금(가치 100)·옥(80)을 0.25 확률로 캤다
+      //             (현 경제 최대 인플레 소스) ②forest 풀에 tin이 없어 **NPC는 주석을 한 개도 못 캤다**
+      //             (광맥9를 주석으로 신설했는데도).
+      //   이제 **그 마을이 실제로 딛고 있는 광맥의 광물**만, 그 자리의 품위 p 만큼 나온다.
+      //   광맥이 없는 마을의 광부는 돌만 캔다(p=0) — 지도에 없는 금이 생기지 않는다.
+      const vp = _villageAt(villageName);
+      const cl = vp ? _terrain.isOreClusterAt(ZONE_ID, vp.x, vp.y) : null;
+      const p = (vp && _terrain.oreProbAt) ? _terrain.oreProbAt(ZONE_ID, vp.x, vp.y) : 0;
+      const mineral = cl ? (cl.mineral || 'iron') : null;
+      for (let i = 0; i < n; i++) {
+        if (mineral && Math.random() < p) add(mineral, 1);
+        else add('stone', 1);   // 맥석 — 광맥이 없거나 그 삽이 헛삽이면 돌
       }
       continue;
     }
