@@ -1416,7 +1416,10 @@ function init(deps) {
       state.villages.push({ dbId: row.id, name: row.name, ccx: row.cx, ccy: row.cy, housesPx, econ: ev, npcPids: [], _bRows: bRows, _bnd: bnd, _maxRPx: Math.round(maxRPx), _farmN: farmN, _dryN: dryN,
         _terrSet: terrSet, _potSet: potSet, _farmSet: farmSet, _drySet: drySet, _granList: granList, _houseCells: houseCells, _pendSite, _site: null, _clearCrew: 0, _buildCrew: 0, _claim: new Set(),
         _crop: new Map(), _cropClaim: new Set(), _ditch: ditchCells,
-        _pHouses: pHouseRows, _pSiteRows: pSiteRows, _psite: null, _psiteCrew: 0 });   // ★[생활 층] 런타임 상태(구DB=terr 0셀 → 생활층 휴면). _crop=작물 상태머신(랩 life.crop 동형 — 인메모리 관용: 재부팅=재파종)
+        _pHouses: pHouseRows, _pSiteRows: pSiteRows, _psite: null, _psiteCrew: 0 });
+      // ★[11차 재민 확정] 마을 안엔 숲이 없다 — 영토 셀의 나무를 벤다(개간).
+      //   부팅 때마다 부르지만 이미 벤 나무는 harvestedSeeds 에 있어 다시 생성되지 않는다(멱등).
+      try { if (state.deps.clearTreesInCells) { const n2 = state.deps.clearTreesInCells(terrSet); if (n2) console.log(`[${state.zoneId}] 🏘️ ${row.name} 영토 개간 — 나무 ${n2}그루`); } } catch (e) {}   // ★[생활 층] 런타임 상태(구DB=terr 0셀 → 생활층 휴면). _crop=작물 상태머신(랩 life.crop 동형 — 인메모리 관용: 재부팅=재파종)
     }
     world.day = maxDay;
     state.world = world;
@@ -2180,6 +2183,8 @@ function _terrBackfillOne(vil, VL) {
   const own = vil._terrSet || (vil._terrSet = new Set());
   for (const c of (layout.territory || [])) own.add(c[0] + ',' + c[1]);
   const gen = own.size;
+  // ★영토가 새로 잡히면(백필·확장) 그 셀도 개간한다 — "영토가 확장되면 바로 벤다"
+  try { if (state.deps.clearTreesInCells) state.deps.clearTreesInCells(own); } catch (e) {}
   // ── 기존 실체 합집합(영토 밖 건물 금지) ──
   let added = 0;
   const put = (x, y) => { const k = x + ',' + y; if (!own.has(k)) { own.add(k); added++; } };

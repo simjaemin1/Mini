@@ -1909,7 +1909,36 @@ setInterval(() => {
 //   ENABLE_VILLAGES=0 → init 즉시 return → isLegacyVillageClaimed 항상 false = 레거시 50곳 전부 유지(기존과 동일).
 // §4-4 Stage 4B: isPositionActive(AOI 상세/보간 분기)·isBlockedByWall(캐러밴 벽 충돌·로컬 재경로) 추가 주입.
 // §4-4 P2 LOD: anyViewerNear(defCenterPx, r) 추가 주입 — villages.js 가 전쟁 eta 결판을 physical/headless 로 분기(서버 내부 스텝만, broadcast·렌더 없음).
+// ★[11차 재민 확정] "마을 안에는 숲이 없어야 하고, 영토가 확장되면 바로 벴으면 좋겠어."
+//   마을을 세우는 건 곧 그 땅을 **개간**하는 일이다. 지금까지는 제거 경로가 '채집' 하나뿐이라
+//   숲에 선 마을은 집·밭 위에 나무가 그대로 서 있었다(실측: 임업3 영토 안 564그루, 어촌2 562그루).
+//   자원 제거는 채집과 **같은 경로**를 쓴다 — harvestedSeeds + DB + 청크 + 브로드캐스트.
+//   (영토 확장은 아직 기능 자체가 없다. 생기면 새로 들어온 셀만 이 함수에 넘기면 된다.)
+function clearTreesInCells(cellKeys) {
+  if (!cellKeys || !cellKeys.size) return 0;
+  let cleared = 0;
+  const seen = new Set();
+  for (const k of cellKeys) {
+    const ci = k.indexOf(','), cx = +k.slice(0, ci), cy = +k.slice(ci + 1);
+    const px = cx * 32 + 16, py = cy * 32 + 16;
+    const near = qtResources ? qtResources.queryCircle(px, py, 24) : [];
+    for (const r of near) {
+      if (r.type !== 'tree' || seen.has(r.id)) continue;
+      if (Math.floor(r.x / 32) !== cx || Math.floor(r.y / 32) !== cy) continue;   // 이 셀 것만
+      seen.add(r.id);
+      resources.delete(r.id);
+      chunkManager.removeResource(r);
+      if (r.isSeed && r.seedKey) { harvestedSeeds.add(r.seedKey); try { db.insertHarvestedSeed(r.seedKey); } catch (e) {} }
+      else if (r.dbId) { try { db.deleteResource(r.dbId); } catch (e) {} }
+      broadcast({ type: 'resource_removed', id: r.id });
+      cleared++;
+    }
+  }
+  if (cleared) resourcesDirty = true;
+  return cleared;
+}
 SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, isWaterTileLocal, isPositionActive, isBlockedByWall, anyViewerNear,
+  clearTreesInCells,   // ★영토 개간 — 마을 안엔 숲이 없다
   // ★[11차 실측] 교역 거리행렬의 코스 그리드(4셀 서브샘플)가 **폭 2셀 다리를 절반이나 못 본다**(28개 중 15개).
   //   다리 술어를 넘겨 주면 villages.js 가 코스 셀 안을 훑어 '이 블록에 다리가 지난다'를 살려낸다.
   isBridgeLocal: isBridgeTileLocal,
