@@ -186,23 +186,16 @@ function makeTerrainAdapter(terrain, ZONE, deps) {
   //          + 0.08 · (숲이면)            부식질 소폭(개간 비용은 별개 계산)
   //   dw·dr 은 정확 유클리드 EDT(村 박스 2패스) — 링 스캔이 아니라 O(면적)이라 싸다.
   //   범위 밖은 0.5(중립)로 떨어뜨려 예전 동작으로 안전하게 회귀한다.
+  //   ★[11차] 수식과 장(場) 구성은 server/fertility.js 로 옮겼다 — 셀 지도(build-cell-map.js)가
+  //   같은 함수를 써야 게임과 지도가 같은 땅을 보여 준다. 여기 있던 사본은 지웠다.
   let _FF = null;   // { at(x,y) }
   const prepareFert = (ccx, ccy, R) => {
     const VL = require('./village-layout');
     if (!VL.maskEDT) { _FF = null; return; }
-    const x0 = ccx - R, y0 = ccy - R, x1 = ccx + R, y1 = ccy + R;
-    const WD = VL.maskEDT((x, y) => isWater(x, y), x0, y0, x1, y1);
-    const RD = VL.maskEDT((x, y) => isRock(x, y), x0, y0, x1, y1);
-    const W = x1 - x0 + 1, Hh = y1 - y0 + 1, g = new Float32Array(W * Hh);
-    for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) {
-      const cx = x0 + x, cy = y0 + y;
-      const dw = WD.at(cx, cy), dr = RD.at(cx, cy);
-      const woody = forestMult(cx, cy) > 1.2 ? 1 : 0;
-      let f = 0.12 + 0.62 * Math.exp(-Math.min(dw, 999) / 28) + 0.18 * Math.min(1, dr / 12) + 0.08 * woody;
-      if (isRock(cx, cy) || isWater(cx, cy)) f = 0.05;   // 바위·물 자체는 경작 불가
-      g[y * W + x] = Math.max(0.05, Math.min(1, f));
-    }
-    _FF = { at: (x, y) => { const ix = x - x0, iy = y - y0; return (ix < 0 || iy < 0 || ix >= W || iy >= Hh) ? 0.5 : g[iy * W + ix]; } };
+    const FERT = require('./fertility');
+    _FF = FERT.buildField({
+      isWater, isRock, isWoody: (x, y) => forestMult(x, y) > 1.2, maskEDT: VL.maskEDT,
+    }, ccx - R, ccy - R, ccx + R, ccy + R);
   };
   const fert = (cx, cy) => (_FF ? _FF.at(cx, cy) : 0.5);
   // 고도 프록시 — 물에서 멀수록 높음(배산임수 축 판정용). axisAt이 ±1셀 4회만 호출해 링 스캔 비용 OK.

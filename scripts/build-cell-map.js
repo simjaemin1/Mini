@@ -98,20 +98,76 @@ const chunk = (type, data) => {
   cc.writeUInt32BE(crc(Buffer.concat([tb, data])));
   return Buffer.concat([len, tb, data, cc]);
 };
-const ihdr = Buffer.alloc(13);
-ihdr.writeUInt32BE(W, 0); ihdr.writeUInt32BE(H, 4); ihdr[8] = 8; ihdr[9] = 3;   // 8비트 · 팔레트
-const plte = Buffer.from(PAL.flatMap((p) => [p[0], p[1], p[2]]));
-const raw = Buffer.alloc(H * (W + 1));
-for (let y = 0; y < H; y++) { raw[y * (W + 1)] = 0; Buffer.from(idx.buffer, y * W, W).copy(raw, y * (W + 1) + 1); }
-const png = Buffer.concat([
-  Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
-  chunk('IHDR', ihdr), chunk('PLTE', plte),
-  chunk('IDAT', zlib.deflateSync(raw, { level: 9 })),
-  chunk('IEND', Buffer.alloc(0)),
-]);
+function mkPng(w, h, pal, data) {
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(w, 0); ihdr.writeUInt32BE(h, 4); ihdr[8] = 8; ihdr[9] = 3;   // 8비트 · 팔레트
+  const plte = Buffer.from(pal.flatMap((p) => [p[0], p[1], p[2]]));
+  const raw = Buffer.alloc(h * (w + 1));
+  for (let y = 0; y < h; y++) { raw[y * (w + 1)] = 0; Buffer.from(data.buffer, y * w, w).copy(raw, y * (w + 1) + 1); }
+  return Buffer.concat([
+    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+    chunk('IHDR', ihdr), chunk('PLTE', plte),
+    chunk('IDAT', zlib.deflateSync(raw, { level: 9 })),
+    chunk('IEND', Buffer.alloc(0)),
+  ]);
+}
+const png = mkPng(W, H, PAL, idx);
 const OUTPNG = path.join(__dirname, '..', '..', 'cell-map.png');
 fs.writeFileSync(OUTPNG, png);
 console.log('PNG ' + (png.length / 1024).toFixed(0) + 'KB → ' + OUTPNG);
+
+// ---- 비옥도장 ----
+// ★래스터를 이미 구웠으니 지형 술어를 다시 부르지 않는다 — 물/바위/숲 판정은 구운 인덱스가 곧 정답이다.
+//   비옥도 수식은 server/fertility.js(정본)를 그대로 부른다. 게임이 쓰는 함수와 **같은 함수**다.
+const FERT = require(path.join(__dirname, '..', 'server', 'fertility'));
+const VL = require(path.join(__dirname, '..', 'server', 'village-layout'));
+// 구운 인덱스에서 되읽는 술어(마을 점은 그 아래 지형을 덮어썼으니 별도 사본에서 읽는다)
+const base = new Uint8Array(idx);   // 마을 점을 찍기 전 값이 필요하지만, 마을은 평지 위에만 서므로 평지로 취급
+for (let i = 0; i < base.length; i++) if (base[i] === 6) base[i] = 0;
+const isW = (x, y) => (x < 0 || y < 0 || x >= W || y >= H) ? false : base[y * W + x] === 1;
+const isR = (x, y) => (x < 0 || y < 0 || x >= W || y >= H) ? false : base[y * W + x] === 2;
+const isF = (x, y) => (x < 0 || y < 0 || x >= W || y >= H) ? false : base[y * W + x] === 3;
+console.log('비옥도장 계산(EDT 2회 · ' + (W * H).toLocaleString() + '셀)…');
+const tf = Date.now();
+const FF = FERT.buildField({ isWater: isW, isRock: isR, isWoody: isF, maskEDT: VL.maskEDT }, 0, 0, W - 1, H - 1);
+console.log('  ' + ((Date.now() - tf) / 1000).toFixed(0) + 's');
+
+// 비옥도 팔레트 — 순차(한 색 · 명도 단조). dataviz 검증기 통과: 어두운 바탕 #0b1016에서
+//   명도 단조 ✔ · 인접 ΔL ≥ 0.06 ✔ · 가장 어두운 단 2.36:1 ✔ · 색상 폭 4° ✔
+//   낮은 쪽이 바탕으로 물러나고 높은 쪽이 밝다. 경작 불가(물·바위)는 **중립 회색** — 등급 밖이라
+//   파란 등급과 절대 헷갈리지 않는다.
+// ★칸 경계는 실측 분포를 보고 잡았다. 경작 가능 셀의 **53.2%가 0.30~0.35에 몰려 있다** —
+//   그게 '물도 바위도 먼 기본 평지'의 값(0.12 기본 + 0.18 산사면 만점 + 물항 거의 0)이다.
+//   그래서 그 덩어리를 한 칸으로 따로 떼어 두 번째로 어두운 단에 놓았다. 지도가 전체적으로 어둡고,
+//   물가 띠와 상급 충적지만 밝게 뜬다 — 균등 폭으로 자르면 반이 한 색이 되어 아무것도 안 보인다.
+//   칸마다 실제 값 범위를 그대로 적어 둔다(분위로 자르면 색이 값에 비례하지 않게 되므로 안 쓴다).
+const FPAL = [
+  [0x2b, 0x2b, 0x28, '바위(경작 불가)'],
+  [0x4a, 0x4a, 0x46, '물(경작 불가)'],
+  [0x18, 0x4f, 0x95, '0.30 미만 · 산사면'],
+  [0x25, 0x6a, 0xbf, '0.30~0.35 · 기본 평지'],
+  [0x39, 0x87, 0xe5, '0.35~0.45'],
+  [0x6d, 0xa7, 0xec, '0.45~0.60'],
+  [0x9e, 0xc5, 0xf4, '0.60~0.80'],
+  [0xcd, 0xe2, 0xfb, '0.80 이상 · 충적지'],
+];
+const FBIN = (f) => f < 0.30 ? 2 : f < 0.35 ? 3 : f < 0.45 ? 4 : f < 0.60 ? 5 : f < 0.80 ? 6 : 7;
+const fidx = new Uint8Array(W * H);
+const fcount = new Array(FPAL.length).fill(0);
+let fsum = 0, fn = 0;
+for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+  const i = y * W + x;
+  let t;
+  if (base[i] === 2) t = 0;
+  else if (base[i] === 1) t = 1;
+  else { const f = FF.at(x, y); fsum += f; fn++; t = FBIN(f); }
+  fidx[i] = t; fcount[t]++;
+}
+console.log('비옥도: 경작 가능 ' + fn.toLocaleString() + '셀 평균 ' + (fsum / fn).toFixed(3)
+  + ' · ' + FPAL.slice(2).map((p, k) => p[3] + ' ' + (fcount[k + 2] / fn * 100).toFixed(1) + '%').join(' · '));
+const fpng = mkPng(W, H, FPAL, fidx);
+fs.writeFileSync(path.join(__dirname, '..', '..', 'cell-fert.png'), fpng);
+console.log('비옥도 PNG ' + (fpng.length / 1024).toFixed(0) + 'KB');
 
 // ---- 이름표 ----
 const gw = require(path.join(__dirname, '..', 'server', 'hanbando-terrain.json'))[ZID] || {};
@@ -126,10 +182,13 @@ for (const v of villages) labels.push({ k: 'village', n: v.n, x: v.x, y: v.y });
 
 // ---- 뷰어 HTML (자립 · 지형 수식 없음) ----
 const b64 = png.toString('base64');
+const fb64 = fpng.toString('base64');
+const hex2 = (p) => '#' + [p[0], p[1], p[2]].map((v) => v.toString(16).padStart(2, '0')).join('');
 const meta = {
   zone: ZID, w: W, h: H, cell: CELL,
-  pal: PAL.map((p) => ({ c: '#' + [p[0], p[1], p[2]].map((v) => v.toString(16).padStart(2, '0')).join(''), n: p[3] })),
-  count, labels,
+  pal: PAL.map((p) => ({ c: hex2(p), n: p[3] })),
+  fpal: FPAL.map((p) => ({ c: hex2(p), n: p[3] })),
+  count, fcount, favg: +(fsum / fn).toFixed(3), fn, labels,
 };
 const html = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>셀 지도 — ${ZID}</title>
 <style>
@@ -146,19 +205,25 @@ b{color:#7fd0ff}label{cursor:pointer;user-select:none}
 <canvas id="cv"></canvas>
 <div class="panel" id="title"><b>셀 지도</b> ${ZID} · ${W}×${H}셀 · 1셀=1m · 휠 줌 · 드래그 이동
 &nbsp;<label><input type="checkbox" id="lab" checked> 이름표</label>
-&nbsp;<label><input type="checkbox" id="grd" checked> 격자</label></div>
+&nbsp;<label><input type="checkbox" id="grd" checked> 격자</label>
+&nbsp;층 <select id="mode"><option value="terrain">지형</option><option value="fert">비옥도</option></select></div>
 <div class="panel" id="find"><input id="q" placeholder="이름으로 찾기 (예: 광산2, 죽령)"></div>
 <div class="panel" id="legend"></div>
 <div class="panel" id="hud">—</div>
 <script>
 const M=${JSON.stringify(meta)};
 const IMG=new Image(); IMG.src="data:image/png;base64,${b64}";
+const FIMG=new Image(); FIMG.src="data:image/png;base64,${fb64}";
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d',{alpha:false});
 // 색→종류 되읽기용 오프스크린(지형 수식 복제 금지 — 구운 그림이 곧 정답)
 let off=null,od=null;
 const L=document.getElementById('legend');
-L.innerHTML=M.pal.map((p,i)=>'<div><i style="background:'+p.c+'"></i>'+p.n+' '+(M.count[i]*100/(M.w*M.h)).toFixed(1)+'%</div>').join('');
-let S={x:M.w/2,y:M.h/2,z:0.35},drag=null,showLab=true,showGrid=true;
+function legend(){
+  if(mode==='fert') L.innerHTML='<div style="margin-bottom:4px;color:#9fd">셀 비옥도 · 경작 가능 평균 <b>'+M.favg+'</b></div>'
+    +M.fpal.map((p,i)=>'<div><i style="background:'+p.c+'"></i>'+p.n+(i>=2?' '+(M.fcount[i]*100/M.fn).toFixed(1)+'%':'')+'</div>').join('');
+  else L.innerHTML=M.pal.map((p,i)=>'<div><i style="background:'+p.c+'"></i>'+p.n+' '+(M.count[i]*100/(M.w*M.h)).toFixed(1)+'%</div>').join('');
+}
+let S={x:M.w/2,y:M.h/2,z:0.35},drag=null,showLab=true,showGrid=true,mode='terrain';
 function resize(){cv.width=innerWidth;cv.height=innerHeight;draw();}
 addEventListener('resize',resize);
 const KCOL={river:'#8fd3ff',ridge:'#d9c19a',valley:'#a8f0b0',lake:'#8fd3ff',village:'#ffb0b0'};
@@ -167,7 +232,7 @@ function draw(){
   ctx.fillStyle='#0b1016';ctx.fillRect(0,0,cv.width,cv.height);
   const z=S.z,ox=cv.width/2-S.x*z,oy=cv.height/2-S.y*z;
   ctx.imageSmoothingEnabled=false;
-  ctx.drawImage(IMG,ox,oy,M.w*z,M.h*z);
+  ctx.drawImage(mode==='fert'?FIMG:IMG,ox,oy,M.w*z,M.h*z);
   if(showGrid) drawGrid(ox,oy,z);
   if(showLab&&z>0.08){
     ctx.font=(z>0.5?13:11)+'px sans-serif';ctx.textAlign='center';ctx.lineWidth=3;ctx.strokeStyle='#0b1016';
@@ -219,9 +284,16 @@ function drawGrid(ox,oy,z){
   ctx.fillText(unit>=1000?(unit/1000)+'km':unit+'m', bx+bw/2, by-6);
   ctx.textBaseline='alphabetic';
 }
-IMG.onload=()=>{off=document.createElement('canvas');off.width=M.w;off.height=M.h;
-  const oc=off.getContext('2d',{willReadFrequently:true});oc.drawImage(IMG,0,0);
-  od=oc.getImageData(0,0,M.w,M.h).data;resize();};
+// ★커서 아래 판정은 **구운 그림의 색을 되읽어** 답한다(지형 수식 복제 금지).
+//   층을 바꿀 때 사본도 같이 바꾼다 — 두 층을 동시에 들고 있으면 34MiB짜리 버퍼가 둘이 된다.
+function bakeRead(im){
+  off=off||document.createElement('canvas');off.width=M.w;off.height=M.h;
+  const oc=off.getContext('2d',{willReadFrequently:true});oc.clearRect(0,0,M.w,M.h);oc.drawImage(im,0,0);
+  od=oc.getImageData(0,0,M.w,M.h).data;
+}
+let ready=0;
+const onready=()=>{ if(++ready<2)return; legend(); bakeRead(IMG); resize(); };
+IMG.onload=onready; FIMG.onload=onready;
 cv.addEventListener('mousedown',e=>{drag={x:e.clientX,y:e.clientY,sx:S.x,sy:S.y};});
 addEventListener('mouseup',()=>drag=null);
 addEventListener('mousemove',e=>{
@@ -231,8 +303,8 @@ addEventListener('mousemove',e=>{
   const h=document.getElementById('hud');
   if(!od||cx<0||cy<0||cx>=M.w||cy>=M.h){h.textContent='—';return;}
   const i=(cy*M.w+cx)*4,c='#'+[od[i],od[i+1],od[i+2]].map(v=>v.toString(16).padStart(2,'0')).join('');
-  const p=M.pal.find(q=>q.c===c);
-  h.innerHTML='셀 <b>('+cx+', '+cy+')</b> · '+(p?p.n:'?')+' · 픽셀 '+(cx*M.cell)+','+(cy*M.cell)+' · 줌 '+z.toFixed(2)+'×';
+  const p=(mode==='fert'?M.fpal:M.pal).find(q=>q.c===c);
+  h.innerHTML='셀 <b>('+cx+', '+cy+')</b> · '+(mode==='fert'?'비옥도 ':'')+(p?p.n:'?')+' · 픽셀 '+(cx*M.cell)+','+(cy*M.cell)+' · 줌 '+z.toFixed(2)+'×';
 });
 cv.addEventListener('wheel',e=>{e.preventDefault();
   const z0=S.z,z1=Math.max(0.03,Math.min(24,z0*(e.deltaY<0?1.2:1/1.2)));
@@ -241,6 +313,7 @@ cv.addEventListener('wheel',e=>{e.preventDefault();
   S.z=z1;S.x=wx-(e.clientX-cv.width/2)/z1;S.y=wy-(e.clientY-cv.height/2)/z1;draw();},{passive:false});
 document.getElementById('lab').onchange=e=>{showLab=e.target.checked;draw();};
 document.getElementById('grd').onchange=e=>{showGrid=e.target.checked;draw();};
+document.getElementById('mode').onchange=e=>{mode=e.target.value;bakeRead(mode==='fert'?FIMG:IMG);legend();draw();};
 document.getElementById('q').oninput=e=>{
   const s=e.target.value.trim();if(!s)return;
   const l=M.labels.find(v=>v.n===s)||M.labels.find(v=>v.n.indexOf(s)===0);
