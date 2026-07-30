@@ -210,7 +210,22 @@ function makeTerrainAdapter(terrain, ZONE, deps) {
   const isOre = (cx, cy) => {
     try { return !!(terrain.isOreClusterAt && terrain.isOreClusterAt(zoneId, px(cx), px(cy))); } catch { return false; }
   };
-  return { isBlocked, isWater, isRock, isOre, isBridgeCell, forestMult, fert, elev, nearestWaterDist, prepareFert, fertField: () => _FF };
+  // ★노동권 안 광맥 덩이의 광물 종류 목록 — 특수 산지(주석·흑요석·옥)를 land 키로 넘기려면 필요하다.
+  //   덩이별 mineral 은 zone.js 가 Specialty.pickMineral 로 정해 지형 객체에 붙인다(3486행).
+  const oreMinerals = (ccx, ccy, R) => {
+    try {
+      const t = terrain.ZONE_TERRAIN ? terrain.ZONE_TERRAIN[zoneId] : null;
+      const list = (t && t.ores) || [];
+      const out = [];
+      for (const o of list) {
+        if (!o.center) continue;
+        const d = Math.hypot(o.center[0] - px(ccx), o.center[1] - px(ccy));
+        if (d <= (R * SZ + (o.radius || 0)) && o.mineral) out.push(o.mineral);
+      }
+      return out;
+    } catch { return []; }
+  };
+  return { isBlocked, isWater, isRock, isOre, isBridgeCell, oreMinerals, forestMult, fert, elev, nearestWaterDist, prepareFert, fertField: () => _FF };
 }
 
 // 마을 중심이 물/바위 위면 근처 열린 셀로 스냅(에디터 좌표가 강폭 확장 등으로 물에 잠긴 경우 구제).
@@ -284,7 +299,38 @@ function extractLandParamsApprox(ta, ccx, ccy, layout) {
     //   광업은 광맥, 사냥은 사냥터 밴드로 **각자 제 지도**를 갖는다. 옛 수식은 ore==stone, game==wood 였다.
     ...require('./livelihood').landOf({ forShare: forD, huntShare: huntD, rockShare: rockD, oreShare: oreD }),
     size: Math.max(30, Math.round(tn / 25)),
+    baseSize: Math.max(30, Math.round(tn / 25)),   // ★엔진 marginalLandQ·effectiveLandSize 의 기준 면적
+    ...extractSustain(ta, ccx, ccy, layout, rockD, oreD, forD, huntD),
   };
+}
+
+// ★[11차 재민 지시 "한 번에 다 해"] 랩 공간 자원 층의 econ 접점 — server/sustain.js 가 정본.
+//   엔진이 읽는데 서버가 안 주던 키를 채운다: woodSustain·fishSustain·forageSustain(MSY 상한),
+//   marginalQ(리카도 한계지 실측), tin·obsidian·jade(특수 산지).
+//   전부 '값이 없으면 상한 미적용' 규약이라, 못 재는 마을은 예전과 완전히 같게 굴러간다.
+function extractSustain(ta, ccx, ccy, layout, rockD, oreD, forD, huntD) {
+  const S = require('./sustain');
+  const out = {};
+  try {
+    const scan = S.scanLabor({
+      isForest: (x, y) => ta.forestMult(x, y) > 1.2,
+      isWater: (x, y) => ta.isWater(x, y),
+      isRock: (x, y) => ta.isRock(x, y),
+    }, ccx, ccy);
+    const LV = require('./livelihood').landOf({ forShare: forD, huntShare: huntD, rockShare: rockD, oreShare: oreD });
+    Object.assign(out, S.sustainOf(scan, LV.wood));
+    // 리카도 한계지 — 영토 셀 비옥도 실측(필드가 있을 때만)
+    if (ta.fert && ta.fertField && ta.fertField() && layout.territory && layout.territory.length) {
+      const q = S.marginalQOf(layout.territory.map((c) => ta.fert(c[0], c[1])));
+      if (q != null) out.marginalQ = q;
+    }
+    // 특수 산지 — 노동권 안 광맥 덩이의 광물 종류
+    if (ta.oreMinerals) {
+      const mins = ta.oreMinerals(ccx, ccy, S.LABOR_R);
+      Object.assign(out, S.specialOf(mins, LV.ore));
+    }
+  } catch (e) { /* 재지 못하면 키를 안 넣는다 = 상한 미적용(현행 보존) */ }
+  return out;
 }
 
 // =============================================================================
