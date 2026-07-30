@@ -199,12 +199,20 @@ html,body{margin:0;height:100%;background:#0b1016;color:#cfe;font-family:ui-sans
 b{color:#7fd0ff}label{cursor:pointer;user-select:none}
 #find{position:fixed;left:10px;top:44px;background:rgba(10,14,18,.86);border:1px solid #2a3a4a;border-radius:6px;padding:6px}
 #find input{background:#0e1720;border:1px solid #2a3a4a;color:#cfe;border-radius:4px;padding:3px 6px;width:150px}
+#layers{left:10px;top:82px}
+button.lyr{background:#16222e;border:1px solid #2a3a4a;color:#9ab;border-radius:5px;padding:5px 14px;margin-right:4px;font-size:13px;cursor:pointer}
+button.lyr:hover{background:#1d2c3a;color:#cfe}
+button.lyr.on{background:#2a78d6;border-color:#5598e7;color:#fff;font-weight:600}
 </style></head><body>
 <canvas id="cv"></canvas>
 <div class="panel" id="title"><b>셀 지도</b> ${ZID} · ${W}×${H}셀 · 1셀=1m · 휠 줌 · 드래그 이동
 &nbsp;<label><input type="checkbox" id="lab" checked> 이름표</label>
 &nbsp;<label><input type="checkbox" id="grd" checked> 격자</label>
-&nbsp;층 <select id="mode"><option value="terrain">지형</option><option value="fert">비옥도</option></select></div>
+</div>
+<div class="panel" id="layers">
+  <div style="color:#8ab;margin-bottom:5px">층 <span style="opacity:.6">(F 키로 전환)</span></div>
+  <button class="lyr on" data-m="terrain">지형</button><button class="lyr" data-m="fert">비옥도</button>
+</div>
 <div class="panel" id="find"><input id="q" placeholder="이름으로 찾기 (예: 광산2, 죽령)"></div>
 <div class="panel" id="legend"></div>
 <div class="panel" id="hud">—</div>
@@ -311,7 +319,17 @@ cv.addEventListener('wheel',e=>{e.preventDefault();
   S.z=z1;S.x=wx-(e.clientX-cv.width/2)/z1;S.y=wy-(e.clientY-cv.height/2)/z1;draw();},{passive:false});
 document.getElementById('lab').onchange=e=>{showLab=e.target.checked;draw();};
 document.getElementById('grd').onchange=e=>{showGrid=e.target.checked;draw();};
-document.getElementById('mode').onchange=e=>{mode=e.target.value;bakeRead(mode==='fert'?FIMG:IMG);legend();draw();};
+function setMode(m){
+  if(m===mode)return;
+  mode=m;
+  document.querySelectorAll('button.lyr').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
+  bakeRead(mode==='fert'?FIMG:IMG); legend(); draw();
+}
+document.querySelectorAll('button.lyr').forEach(b=>b.onclick=()=>setMode(b.dataset.m));
+addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT')return;
+  if(e.key==='f'||e.key==='F') setMode(mode==='fert'?'terrain':'fert');
+});
 document.getElementById('q').oninput=e=>{
   const s=e.target.value.trim();if(!s)return;
   const l=M.labels.find(v=>v.n===s)||M.labels.find(v=>v.n.indexOf(s)===0);
