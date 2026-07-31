@@ -210,6 +210,46 @@ ok(T.oreProbAt('hanbando', cl.center[0] + 3000 * 32, cl.center[1]) === 0, '광�
   }
 }
 
+{
+  // ★★[재민 지시] "한반도 내의 실제 광물 분포도를 조사해서, 그거에 맞게 조절해줘"
+  //   광종이 좌표 해시로 **전국 균등**이던 걸 실제 산지 지도로 바꿨다(server/hanbando-minerals.js).
+  //   여기서 지키는 것: ①저장 광물 ≡ 지도  ②각 지역의 대표 광종이 실제로 그 지역에서 1위
+  const HM = require(path.join(__dirname, '..', 'server', 'hanbando-minerals'));
+  const h2 = (ix, iy, sd) => { let h = (ix|0)*374761393 + (iy|0)*668265263 + (sd|0)*1274126177; h = Math.imul(h ^ (h>>>13), 1274126177); return ((h ^ (h>>>16))>>>0)/4294967295; };
+  let bad = 0;
+  const byReg = {};
+  for (const o of d0.ores) {
+    const cx = Math.floor(o.center[0]/32), cy = Math.floor(o.center[1]/32);
+    if (o.mineral !== HM.mineralAt(cx, cy, h2(cx, cy, 731))) bad++;
+    const r = HM.regionAt(cx, cy).name;
+    (byReg[r] = byReg[r] || {})[o.mineral] = ((byReg[r] || {})[o.mineral] || 0) + 1;
+  }
+  ok(bad === 0, '★저장 광물 ≡ 실제 산지 지도 (' + bad + '개 불일치) — 지도를 고치면 terrain.json 도 다시 매겨야 한다');
+  console.log('    지역별 1위 광종:');
+  const want = { 함경북도: 'iron', 평안북도: 'gold', 평안남도: 'coal', 황해도: 'iron', 춘천: 'jade_raw', 경상북도: 'tungsten' };
+  let allok = true;
+  for (const r of HM.REGIONS) {
+    const m = byReg[r.name] || {};
+    const top = Object.entries(m).sort((a, b) => b[1] - a[1])[0];
+    if (!top) continue;
+    const n = Object.values(m).reduce((a, b) => a + b, 0);
+    console.log('      ' + r.name.padEnd(7) + String(n).padStart(5) + '개 · 1위 ' + top[0].padEnd(9) + (top[1]/n*100).toFixed(0) + '%' +
+      (want[r.name] ? '   (기대 ' + want[r.name] + ')' : ''));
+    if (want[r.name] && top[0] !== want[r.name]) allok = false;
+  }
+  ok(allok, '★지역별 1위 광종이 실제와 맞는다 — 함북 철 · 평북 금 · 평남 석탄 · 황해 철 · 춘천 옥 · 경북 텅스텐');
+  {
+    const jade = d0.ores.filter((o) => o.mineral === 'jade_raw');
+    const inChun = jade.filter((o) => HM.regionAt(Math.floor(o.center[0]/32), Math.floor(o.center[1]/32)).name === '춘천').length;
+    console.log('      옥 광맥 ' + jade.length + '개 중 춘천권 ' + inChun + '개 (' + (inChun/jade.length*100).toFixed(0) + '%)');
+    ok(inChun / jade.length > 0.4, '  옥은 춘천권에 몰려 있다 — 한국 유일의 연옥 산지');
+    const tin = d0.ores.filter((o) => o.mineral === 'tin');
+    const belt = tin.filter((o) => { const r = HM.regionAt(Math.floor(o.center[0]/32), Math.floor(o.center[1]/32)).name; return r === '강원도' || r === '경상북도'; }).length;
+    console.log('      주석 광맥 ' + tin.length + '개 중 강원·경북 벨트 ' + belt + '개');
+    ok(belt === tin.length, '  주석은 봉화-울진-영월 벨트에만 난다 — 실제 국내 주석 산지가 거기뿐이었다');
+  }
+}
+
 console.log('④ livelihood √ — 광맥 등급 → 광부 정원');
 {
   const rows = [[0.85, '대형 r130', 27], [0.15, '중형 r70', 12], [0.052, '소형 r32', 7], [0.0025, '자잘 r7', 2], [0, '광맥 없음', 1]];

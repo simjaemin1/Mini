@@ -132,6 +132,9 @@ const boxAvg = (A, x0, y0, x1, y1) => {
   const sm = A[(y1 + 1) * (gw + 1) + x1 + 1] - A[y0 * (gw + 1) + x1 + 1] - A[(y1 + 1) * (gw + 1) + x0] + A[y0 * (gw + 1) + x0];
   return sm / ((x1 - x0 + 1) * (y1 - y0 + 1));
 };
+// 한반도는 실제 산지 지도를 쓴다(다른 존은 biome 풀 유지)
+let HB_MIN = null;
+try { if (ZID === 'hanbando') HB_MIN = require(path.join(__dirname, '..', 'server', 'hanbando-minerals')); } catch (e) { }
 const hash2 = (ix, iy, s) => { let h = (ix | 0) * 374761393 + (iy | 0) * 668265263 + (s | 0) * 1274126177; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967295; };
 
 // 기존 클러스터를 placed 로 선점 — 새 것이 위를 덮지 않게
@@ -263,7 +266,12 @@ for (const [cnt, R0, pk0] of tiers) {
     // ★자잘은 반경도 흩는다 — 전부 같은 크기면 지도에서 규칙적으로 보인다
     let Reff = R0;
     if (R0 <= 12) Reff = MINOR_R_JITTER[0] + Math.round(hash2(best.cx, best.cy, 733) * (MINOR_R_JITTER[1] - MINOR_R_JITTER[0]));
-    const mineral = FORCE_MINERAL || Specialty.pickMineral(Z.biome, Math.round(center[0] * 0.131 + center[1] * 0.237));
+    // ★[재민 지시 "실제 광물 분포도에 맞게"] 한반도는 **실제 산지 지도**(hanbando-minerals)를 쓴다.
+    //   biome 균등 풀(pickMineral)은 금광이 전국에 고르게 흩어지는 등 실제와 달랐다.
+    //   씨앗 731 은 품위 지터(500)와 **분리**한다 — 광종과 품위가 상관되면 안 된다.
+    const mineral = FORCE_MINERAL || (HB_MIN
+      ? HB_MIN.mineralAt(best.cx, best.cy, hash2(best.cx, best.cy, 731))
+      : Specialty.pickMineral(Z.biome, Math.round(center[0] * 0.131 + center[1] * 0.237)));
     if (FORCE_MINERAL && APART > 0) SAME_MIN.push([best.cx, best.cy]);   // ★새로 놓은 것도 즉시 밀어내기 대상
     // ★[재민 확정] 금광 같은 건 **종류를 빼는 게 아니라 p로 누른다** — 금맥은 있되 한 삽에 금이 나올 확률이 낮다.
     //   p_peak = 등급기준 × 위치지터(0.4~1.6) × oreValueScale(가치) — 철 1.00 · 텅스텐 0.16 · 금 0.09 · 다이아 0.014
@@ -324,7 +332,9 @@ let _pkFilled = 0, _pkKept = 0;
 for (const o of d.ores) {
   // ★기존 광맥은 JSON에 mineral 이 없다 — zone.js 가 **부팅 때** pickMineral(biome, 위치해시)로 정한다(3486행).
   //   여기서 같은 식을 재현해 JSON에 못 박는다(값은 동일 = 무변경). 안 그러면 전부 'iron' 폴백으로 잘못 매긴다.
-  if (!o.mineral) o.mineral = Specialty.pickMineral(Z.biome, Math.round(o.center[0] * 0.131 + o.center[1] * 0.237));
+  if (!o.mineral) o.mineral = HB_MIN
+    ? HB_MIN.mineralAt(Math.floor(o.center[0] / CELL), Math.floor(o.center[1] / CELL), hash2(Math.floor(o.center[0] / CELL), Math.floor(o.center[1] / CELL), 731))
+    : Specialty.pickMineral(Z.biome, Math.round(o.center[0] * 0.131 + o.center[1] * 0.237));
   const m = o.mineral;
   if (typeof o.pk === 'number' && isFinite(o.pk) && o.pk > 0) { _pkKept++; continue; }   // ★멱등 — 절대 덮어쓰지 않는다
   const rc = Math.round(o.radius / CELL);
