@@ -178,10 +178,13 @@ ok(T.oreProbAt('hanbando', cl.center[0] + 3000 * 32, cl.center[1]) === 0, '광�
   }
   const med = (a) => { const b = a.slice().sort((x, y) => x - y); return b[b.length >> 1]; };
   const m130 = med(byTier.r130), m70 = med(byTier.r70), m22 = med(byTier.r22), mmn = med(byTier.minor);
+  const K = S.ORE_P_SCALE;   // ★총량 중립 축척(재민 (다)) — 등급표는 그대로 두고 곱하기 하나로 총량만 맞춘다
   console.log("    등급기준 중앙값(가치 보정 되돌림): r130 " + m130.toFixed(3) + " · r70 " + m70.toFixed(3) +
-    " · r22~32 " + m22.toFixed(3) + " · 자잘 " + mmn.toFixed(3) + "   (설계 0.45 / 0.38 / 0.30 / 0.22)");
+    " · r22~32 " + m22.toFixed(3) + " · 자잘 " + mmn.toFixed(3) +
+    "   (설계 0.45/0.38/0.30/0.22 × 축척 " + K + " = " + (0.45*K).toFixed(3) + "/" + (0.38*K).toFixed(3) + "/" + (0.30*K).toFixed(3) + "/" + (0.22*K).toFixed(3) + ")");
   ok(m130 > m70 && m70 > m22 && m22 > mmn, "★등급이 반경 순서를 지킨다 — 대형이 가장 진하다(배치기 pk 덮어쓰기 회귀 감지)");
-  ok(Math.abs(m130 / 0.45 - 1) < 0.45 && Math.abs(mmn / 0.22 - 1) < 0.45, "  등급기준이 설계값(0.45 · 0.22) 근처");
+  ok(Math.abs(m130 / (0.45*K) - 1) < 0.25 && Math.abs(mmn / (0.22*K) - 1) < 0.25,
+    "  ★저장된 pk 가 축척과 맞는다 — ORE_P_SCALE 을 바꾸면 terrain.json 도 다시 매겨야 한다(여기서 잡힌다)");
 }
 
 console.log('④ livelihood √ — 광맥 등급 → 광부 정원');

@@ -348,10 +348,19 @@ function oreValueScale(baseValue) {
 }
 // 클러스터 p_peak — 등급 기준값 × 위치 지터(0.4~1.6) × 가치 감쇠.
 //   지터가 있어서 "넓지만 가난한 광맥"도, "작지만 노다지"도 생긴다.
+// ★[재민 (다) 확정] **등급 서열은 지키고 총량만 중립화**하는 전역 축척.
+//   배치기가 대형(0.45)·중형(0.38)을 r22 등급(0.30)으로 몰래 강등시켜 온 걸 되돌렸더니
+//   전 광물 산출이 +17%(38,276 → 44,769)가 됐다. 등급표를 손대면 서열이 흐려지므로
+//   **곱하기 하나**로 총량만 되돌린다 — 곱이라 등급 비율·광물 비율·자리별 편차가 전부 보존된다.
+//   k 는 실측으로 풀었다(전 광맥 셀을 훑으며 여러 k 를 동시에 적분):
+//     k=1.000 → 44,769 (+17.0%) · k=0.900 → 40,306 (+5.3%) · **k=0.855 → 38,296 (+0.1%)** · k=0.800 → 35,840 (−6.4%)
+//   ※합성(1−∏(1−p_i)) 때문에 총량은 k에 정확히 비례하지 않는다 — 그래서 계산이 아니라 실측으로 잡았다.
+//   ※이 값을 바꾸면 **terrain.json 에 박힌 pk 도 같은 비율로 다시 매겨야 한다**(저장값이라 자동 반영 안 됨).
+const ORE_P_SCALE = 0.855;
 function orePeakFor(mineralId, tierBase, jitter01) {
   const r = RESOURCES[mineralId];
   const j = 0.4 + Math.max(0, Math.min(1, jitter01 == null ? 0.5 : jitter01)) * 1.2;
-  return +(tierBase * j * oreValueScale(r ? r.baseValue : 5)).toFixed(4);
+  return +(tierBase * ORE_P_SCALE * j * oreValueScale(r ? r.baseValue : 5)).toFixed(4);
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -527,6 +536,7 @@ if (typeof module !== 'undefined' && module.exports) {
     NPC_MINE_PER_DAY, MINE_HAUL, MINE_HAUL_TRIP, MINE_LABOR, MINE_HAULEFF, haulEff,
     itemWeight, inventoryWeight, CARRY_MAX_KG, EXTRA_WEIGHT,
     oreValueScale, orePeakFor, ORE_VALUE_EXP,
+    ORE_P_SCALE,
     mineLevelF, MINE_XP_MAX, mineChunkKg, mineChunkRoll, CHUNK_CV, CHUNK_Z_MAX,
     mineDepthCost, mineSwingsNeeded, mineToolWear,
     mineTPR, mineTNR, mineIdAcc, mineIdPhrase, MINE_DEPTH_MAX };
