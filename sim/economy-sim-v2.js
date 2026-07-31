@@ -46,8 +46,10 @@ const BASE_VALUE_V2 = {
   herb: 4.0,   // ★약재(§9 2차): 채집 산출 ~15%·호골 — 노동집약 anchor(v1 BASE_VALUE와 동일)
   bone: 1.5, tigerhide: 40,   // ★§9 3차: 뼈(풍부 저가 투입재) · 호피(최고가 위신재 — 희소 0.3/일 사냥 위험이 anchor 근거, v1 동일)
   ramie: 6,   // ★모시(2026-07-13) — 고급 직물 앵커(거친 삼베 hemp 4보다↑·cotton 6급): 저마 방적·표백이 노동집약(한산모시 고증). 산지=고가 수출 특산
-  wood: 1.67, stone: 2.14, ore: 3.0,
-  tool: 3.0, weapon: 5.0, armor: 5.0,  // 8/5 → 5/3
+  // ★★노동가치 재정합(v1 BASE_VALUE 와 같은 근거 — scripts/test-valuechain.js 참조).
+  //   v2 는 v1 대비 무기·도구를 0.625 배로 낮춰 쓰던 이력이 있다(교역 쏠림 억제). 그 비를 유지한다.
+  wood: 1.67, stone: 1.67, ore: 1.0,
+  tool: 3.0, weapon: 7.5, armor: 7.5,   // v1 12 × 0.625(v2 관행 비)
   bronze_tool: 3.0, iron_tool: 3.0,   // ★도구 대체재(청동·철) — tool과 동일 anchor. satiation 판정용 기준값(누락 시 adj=1 고정→taper 무발동).
   fruit: 1.5, vegetable: 1.5, mushroom: 1.5, twig: 1.0, pebble: 1.0,
   obsidian: 15, jade: 80,   // ★S5 흑요석(예리 교역재, 화살촉·소형칼날) · 옥(위세품 교역재 — 고가). 비교우위 특산.
@@ -365,6 +367,21 @@ function computeShadowPrices(v) {
     if (ORNAMENTAL[r]) maxAdj = Math.min(maxAdj, LUX_ADJ_MAX);   // ②위신재는 웃돈 상한
     const adj = Math.max(PRICE_ADJ_MIN, Math.min(maxAdj, scarcity));
     prices[r] = base * adj;
+  }
+  // ★★[재민 지적] "중간재라 불렀나? 그게 오류를 만들지는 않겠지?" — 만들고 있었다.
+  //   실측: 원석 그림자가격 **39.81** vs 같은 마을 구리 **0.47**. 원석이 그것으로 만드는 금속보다
+  //   85배 비쌌다. 제련이 원석을 소진시키면 원석 재고가 0 이 되고, 희소도(target/stock)가 폭발한다.
+  //   그런데 금속은 쌓여서 가격이 바닥이다 — 그러면 "녹여봐야 손해"가 되어 제련이 **영구 정지**한다.
+  //   제련이 자기 원료를 비싸게 만들어 자기를 죽이는 악순환이다.
+  //   ⇒ 사슬 항등식을 가격에 직접 건다: **중간재는 그것이 될 최종재보다 비쌀 수 없다.**
+  //     P(원석) ≤ 제련수율 × P(그 마을 광종의 금속)
+  {
+    const mix = v.land && v.land.oreMix;
+    if (prices.ore != null && mix) {
+      let mv = 0, tot = 0;
+      for (const k in mix) { const q = mix[k]; if (!(q > 0)) continue; tot += q; mv += q * (prices[k === 'jade_raw' ? 'jade' : k] || 0); }
+      if (tot > 0) prices.ore = Math.min(prices.ore, (v1._SMELT_YIELD || 0.33) * (mv / tot));
+    }
   }
   return prices;
 }
