@@ -714,18 +714,22 @@ const COOK_RECIPES = {
 // ── 플레이어 장비 제작 (플레이어_아이템_속성_설계.md — econ 무접촉·본체 서버층) ──
 // PlayerItems.craftItem(type, 숙련레벨, materials) → 품질(숙련×재료등급)·속성·내구 인스턴스. 재료는 인벤 스택 차감.
 // accepts = 이 유형에 쓰는 재료(인벤 키), qty = 소비량, skill = 숙련 분야, slot = 장착 슬롯.
+// ★cast: 이 유형은 **주조**할 수 있다 — 금속 여러 개를 도가니에 같이 녹여 배합을 짠다.
+//   배합에 넣을 수 있는 금속은 accepts 가 아니라 PlayerItems.castKinds()(시대 제련 가능 금속)가 정한다.
+//   accepts 는 여전히 "한 가지 재료로 만들기"(깎기·두드리기) 경로의 목록이다.
 const EQUIPMENT_RECIPES = {
   clothes: { label: '옷',   slot: 'clothes', skill: 'tailoring',  qty: 3, accepts: ['fur','ramie','leather','hide','fiber','hemp'] },
-  armor:   { label: '갑옷', slot: 'armor',   skill: 'smithing',   qty: 4, accepts: ['bronze','copper','iron','leather','hide'] },
-  weapon:  { label: '무기', slot: 'weapon',  skill: 'smithing',   qty: 3, accepts: ['bronze','copper','iron','stone','wood','bone','obsidian'] },
-  tool:    { label: '도구', slot: 'tool',    skill: 'toolmaking', qty: 3, accepts: ['bronze','copper','iron','stone','wood','bone'] },
+  armor:   { label: '갑옷', slot: 'armor',   skill: 'smithing',   qty: 4, cast: true, accepts: ['bronze','copper','iron','leather','hide'] },
+  weapon:  { label: '무기', slot: 'weapon',  skill: 'smithing',   qty: 3, cast: true, accepts: ['bronze','copper','iron','stone','wood','bone','obsidian'] },
+  tool:    { label: '도구', slot: 'tool',    skill: 'toolmaking', qty: 3, cast: true, accepts: ['bronze','copper','iron','stone','wood','bone'] },
 };
 // 제작 숙련: xp → 레벨(0~10). 유효 완성품 1개당 +1 xp(설계 §3 xp 원칙). 초반 빠르고 만렙 완만 — "레벨업하면 다음 제작품 수치가 오른다" 가시화.
 const CRAFT_XP_PER_LEVEL = 6; // 레벨당 6개 → 만렙 ~60개(플레이 스케일; econ NPC 2150노동일과 별개 척도).
 function craftLevel(xp) { return Math.max(0, Math.min(10, Math.floor((xp || 0) / CRAFT_XP_PER_LEVEL))); }
 function playerCraftLevel(player, skill) { return craftLevel(player.craftSkill && player.craftSkill[skill]); }
 // 클라 미리보기용 메타(단일 진실 — PlayerItems 엔진 상수 그대로 노출). 클라가 "방한 62·내구 85"를 서버와 동일 공식으로 계산.
-const EQUIPMENT_META = { matGrade: PlayerItems.MAT_GRADE, qSkillSpan: PlayerItems.Q_SKILL_SPAN, duraSpan: PlayerItems.DURA_SPAN, xpPerLevel: CRAFT_XP_PER_LEVEL, types: {} };
+const EQUIPMENT_META = { matGrade: PlayerItems.MAT_GRADE, qSkillSpan: PlayerItems.Q_SKILL_SPAN, duraSpan: PlayerItems.DURA_SPAN, xpPerLevel: CRAFT_XP_PER_LEVEL,
+  castKinds: PlayerItems.castKinds(), castMaxKinds: PlayerItems.CAST_MAX_KINDS, castGradeMax: PlayerItems.CAST_GRADE_MAX, castKind: PlayerItems.CAST_KIND, types: {} };
 for (const _t of ['clothes','armor','weapon','tool']) {
   const _d = PlayerItems.ITEM_TYPES[_t]; const _ak = Object.keys(_d.attrs)[0];
   EQUIPMENT_META.types[_t] = { attr: _d.attrs[_ak], attrScale: _d.attrScale || 100, baseDura: _d.baseDura, recipe: EQUIPMENT_RECIPES[_t] };
@@ -2751,7 +2755,8 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'craft') doCraft(player, msg.recipe);
   else if (msg.type === 'craft_item') doCraftItem(player, msg.recipe);
   // 플레이어 장비(품질·속성·내구 인스턴스) — econ 무접촉
-  else if (msg.type === 'craft_equipment') doCraftEquipment(player, msg.itemType, msg.material);
+  else if (msg.type === 'craft_equipment') doCraftEquipment(player, msg.itemType, msg.material, msg.mix);
+  else if (msg.type === 'cast_preview') doCastPreview(player, msg.itemType, msg.mix);
   else if (msg.type === 'equip_item') doEquipItem(player, msg.id);
   else if (msg.type === 'unequip_item') doUnequipItem(player, msg.slot);
   else if (msg.type === 'repair_equipment') doRepairEquipment(player, msg.id, msg.material);
@@ -3263,10 +3268,82 @@ function sendEquipment(player) {
   send(player.ws, { type: 'equipment', equipment: player.equipment || [], equipSlots: player.equipSlots || {}, craftSkill: player.craftSkill || {} });
 }
 // 장비 제작: 유형+재료 → 품질(숙련×재료등급) 인스턴스. 재료 스택 차감, 숙련 xp+.
-function doCraftEquipment(player, itemType, material) {
+// ★[재민 확정] 주조 배합 정규화 — 클라가 보낸 {구리:83, 주석:17}(가중치/퍼센트 아무거나)를
+//   검증하고 **소비량**으로 바꾼다. 반환 { use:{금속:소비량}, mix:{금속:분율} } 또는 { err }.
+//   소비량은 분수다: qty 3 짜리 무기에 주석 17% 면 주석 0.51 을 쓴다.
+//   ⇒ 3개 단위로 배합하면 0/33/67/100% 밖에 못 고른다. "값에 따라 연속적으로" 라는 요구가
+//     정수 단위와 양립하지 않으므로 **분수 소비**를 택했다(광석 재고는 이미 kg 실수다).
+function normalizeCastMix(recipe, rawMix, inventory, skipStock) {
+  const kinds = PlayerItems.castKinds();
+  const ks = Object.keys(rawMix || {}).filter((k) => Number(rawMix[k]) > 0);
+  if (!ks.length) return { err: '배합이 비었습니다' };
+  if (ks.length > PlayerItems.CAST_MAX_KINDS) return { err: `한 번에 ${PlayerItems.CAST_MAX_KINDS}종까지만 녹일 수 있습니다` };
+  for (const k of ks) if (!kinds.includes(k)) return { err: `이 시대의 노로는 못 녹입니다: ${k}` };
+  let tot = 0; for (const k of ks) tot += Number(rawMix[k]);
+  if (!(tot > 0)) return { err: '배합이 비었습니다' };
+  const mix = {}, use = {};
+  for (const k of ks) {
+    mix[k] = Number(rawMix[k]) / tot;
+    use[k] = +(recipe.qty * mix[k]).toFixed(4);
+  }
+  if (!skipStock) for (const k of ks) {
+    const have = inventory[k] || 0;
+    if (have + 1e-9 < use[k]) return { err: `재료 부족: ${k} ${use[k]} 필요 (보유 ${(+have).toFixed(2)})` };
+  }
+  return { use, mix };
+}
+// 주조 미리보기 — 클라가 슬라이더를 움직일 때마다 물어본다.
+// ★합금 모델을 클라에 **복제하지 않기 위해** 서버에 묻는다. 이 세션에 복제본(proto-alloy)이
+//   출하본과 어긋나서 검증이 헛돈 적이 있다. 배합 하나 계산은 마이크로초라 왕복이 더 싸다.
+function doCastPreview(player, itemType, rawMix) {
+  const recipe = EQUIPMENT_RECIPES[itemType];
+  if (!recipe || !recipe.cast) return;
+  const nm = normalizeCastMix(recipe, rawMix, player.inventory, true);
+  if (nm.err) { send(player.ws, { type: 'cast_preview', itemType, err: nm.err }); return; }
+  const props = Specialty.alloyProps ? Specialty.alloyProps(nm.mix) : null;
+  const grade = PlayerItems.castGrade(nm.mix, PlayerItems.CAST_KIND[itemType]);
+  const lvl = playerCraftLevel(player, recipe.skill);
+  const q = PlayerItems.qSkill(lvl) * (grade == null ? 0.6 : grade);
+  const t = PlayerItems.ITEM_TYPES[itemType] || {};
+  let lack = null;
+  for (const k in nm.use) if ((player.inventory[k] || 0) + 1e-9 < nm.use[k]) { lack = k; break; }
+  send(player.ws, {
+    type: 'cast_preview', itemType, grade: grade == null ? null : +grade.toFixed(3), lack,
+    use: nm.use,
+    attr: Math.round((t.attrScale || 100) * q),
+    dura: t.baseDura ? Math.round(t.baseDura * (1 + PlayerItems.DURA_SPAN * q)) : null,
+    props: props ? { hardness: Math.round(props.hardness), tough: +props.tough.toFixed(2), mp: Math.round(props.mp),
+                     cast: +props.cast.toFixed(2), rho: +props.rho.toFixed(2), split: +props.split.toFixed(3), brittle: +props.brittle.toFixed(3) } : null,
+  });
+}
+function doCraftEquipment(player, itemType, material, rawMix) {
   ensurePlayerItems(player);
   const recipe = EQUIPMENT_RECIPES[itemType];
   if (!recipe) { send(player.ws, { type: 'notice', text: `알 수 없는 장비: ${itemType}` }); return; }
+  // ── 주조 경로: 금속 여러 개를 배합해 녹인다(품질 = 합금 모델 × 숙련) ──
+  if (rawMix && typeof rawMix === 'object' && Object.keys(rawMix).length) {
+    if (!recipe.cast) { send(player.ws, { type: 'notice', text: `${recipe.label}은(는) 주조하지 않습니다` }); return; }
+    const nm = normalizeCastMix(recipe, rawMix, player.inventory);
+    if (nm.err) { send(player.ws, { type: 'notice', text: nm.err }); return; }
+    const lvl0 = playerCraftLevel(player, recipe.skill);
+    let cinst;
+    try { cinst = PlayerItems.craftItem(itemType, lvl0, nm.use); }
+    catch (e) { send(player.ws, { type: 'notice', text: `주조 실패: ${e.message}` }); return; }
+    cinst.id = genEquipId();
+    cinst.mix = {};                                   // 배합 기록(표시·수선용)
+    for (const k in nm.mix) cinst.mix[k] = +(nm.mix[k] * 100).toFixed(1);
+    cinst.mat = Object.keys(nm.mix).reduce((a, k) => (nm.mix[k] > nm.mix[a] ? k : a), Object.keys(nm.mix)[0]);
+    for (const k in nm.use) player.inventory[k] = Math.max(0, +((player.inventory[k] || 0) - nm.use[k]).toFixed(4));
+    player.equipment.push(cinst);
+    player.craftSkill[recipe.skill] = (player.craftSkill[recipe.skill] || 0) + 1;
+    const lvl1 = playerCraftLevel(player, recipe.skill);
+    send(player.ws, { type: 'inventory', inventory: player.inventory });
+    sendEquipment(player);
+    const alloyNm = Object.entries(cinst.mix).map(([k, v]) => `${k} ${v}%`).join(' · ');
+    send(player.ws, { type: 'notice', text: `${PlayerItems.displayItem(cinst)} 주조 (${alloyNm})${lvl1 > lvl0 ? ` — ${recipe.skill} Lv${lvl1} 달성!` : ''}` });
+    if (!player.playerId.startsWith('anon_')) savePlayer(player);
+    return;
+  }
   if (!recipe.accepts.includes(material)) { send(player.ws, { type: 'notice', text: `${recipe.label}에 못 쓰는 재료: ${material}` }); return; }
   const have = player.inventory[material] || 0;
   if (have < recipe.qty) { send(player.ws, { type: 'notice', text: `재료 부족: ${material} ${recipe.qty} 필요 (보유 ${have})` }); return; }
@@ -3314,6 +3391,21 @@ function doRepairEquipment(player, id, material) {
   if (!inst || inst.dura == null) { send(player.ws, { type: 'notice', text: '수선 불가' }); return; }
   const def = EQUIPMENT_RECIPES[inst.type];
   if (!def) { send(player.ws, { type: 'notice', text: '수선 불가' }); return; }
+  // ★주조품은 **자기 배합 그대로** 때운다 — 청동검을 순동으로 때우면 때운 자리가 무르다.
+  //   (재료를 지정하지 않았고 배합 기록이 있을 때. 지정하면 옛 단일재료 경로.)
+  if (!material && inst.mix && Object.keys(inst.mix).length) {
+    const cost0 = Math.max(1, Math.floor(def.qty / 2));
+    const nm = normalizeCastMix({ qty: cost0 }, inst.mix, player.inventory);
+    if (nm.err) { send(player.ws, { type: 'notice', text: `수선 ${nm.err}` }); return; }
+    const lvl0 = playerCraftLevel(player, def.skill);
+    for (const k in nm.use) player.inventory[k] = Math.max(0, +((player.inventory[k] || 0) - nm.use[k]).toFixed(4));
+    PlayerItems.repairItem(inst, lvl0, nm.use);
+    send(player.ws, { type: 'inventory', inventory: player.inventory });
+    sendEquipment(player);
+    send(player.ws, { type: 'notice', text: `${PlayerItems.displayItem(inst)} 수선 (같은 배합)` });
+    if (!player.playerId.startsWith('anon_')) savePlayer(player);
+    return;
+  }
   const mat = material || inst.mat;
   if (!def.accepts.includes(mat)) { send(player.ws, { type: 'notice', text: '수선에 못 쓰는 재료' }); return; }
   const cost = Math.max(1, Math.floor(def.qty / 2));
@@ -3402,10 +3494,22 @@ function doShopSell(player, id) {
   const slot = recipe ? recipe.slot : inst.type;
   if (player.equipSlots[slot] === id) delete player.equipSlots[slot];   // 장착 중이면 해제
   player.equipment.splice(idx, 1);
-  if (mat) player.inventory[mat] = (player.inventory[mat] || 0) + refund;
+  // ★주조품을 녹이면 **넣었던 배합 그대로** 돌아온다(다시 녹인 쇳물이니까).
+  let backTxt = `${mat || '재료'} ×${refund}`;
+  if (inst.mix && Object.keys(inst.mix).length) {
+    let tot = 0; for (const k in inst.mix) tot += inst.mix[k];
+    const parts = [];
+    for (const k in inst.mix) {
+      const amt = +(refund * inst.mix[k] / tot).toFixed(3);
+      if (amt <= 0) continue;
+      player.inventory[k] = +((player.inventory[k] || 0) + amt).toFixed(4);
+      parts.push(`${k} ${amt}`);
+    }
+    backTxt = parts.join(' · ');
+  } else if (mat) player.inventory[mat] = (player.inventory[mat] || 0) + refund;
   send(player.ws, { type: 'inventory', inventory: player.inventory });
   sendEquipment(player);
-  send(player.ws, { type: 'notice', text: `용해: ${(recipe && recipe.label) || inst.type} → ${mat || '재료'} ×${refund}` });
+  send(player.ws, { type: 'notice', text: `용해: ${(recipe && recipe.label) || inst.type} → ${backTxt}` });
   if (!player.playerId.startsWith('anon_')) savePlayer(player);
 }
 

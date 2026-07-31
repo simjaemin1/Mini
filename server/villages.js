@@ -214,6 +214,10 @@ function makeTerrainAdapter(terrain, ZONE, deps) {
   };
   // ★노동권 안 광맥 덩이의 광물 종류 목록 — 특수 산지(주석·흑요석·옥)를 land 키로 넘기려면 필요하다.
   //   덩이별 mineral 은 zone.js 가 Specialty.pickMineral 로 정해 지형 객체에 붙인다(3486행).
+  // ★★[재민 확정] "마을이 주석 산지이다 아니다를 꼭 이분법적으로 정할 필요가 있어..?"
+  //   없다. 광종을 **개수 목록**이 아니라 **면적 가중 비율**로 낸다.
+  //   노동권 안에 겹치는 몫만큼만 세므로, 큰 광맥이 살짝 걸친 마을과 작은 광맥을 통째로 품은
+  //   마을이 구분된다. 이 비율이 그대로 econ 의 산출 구성이 된다(고정 부산물 dict 폐기).
   const oreMinerals = (ccx, ccy, R) => {
     try {
       const t = terrain.ZONE_TERRAIN ? terrain.ZONE_TERRAIN[zoneId] : null;
@@ -228,7 +232,32 @@ function makeTerrainAdapter(terrain, ZONE, deps) {
       return out;
     } catch { return []; }
   };
-  return { isBlocked, isWater, isRock, isOre, isBridgeCell, oreMinerals, forestMult, fert, elev, nearestWaterDist, prepareFert, fertField: () => _FF };
+  // 광종별 **면적 가중** — 두 원(노동권 R, 광맥 radius)의 겹치는 넓이로 잰다.
+  const oreMix = (ccx, ccy, R) => {
+    const mix = {};
+    try {
+      const t = terrain.ZONE_TERRAIN ? terrain.ZONE_TERRAIN[zoneId] : null;
+      const list = (t && t.ores) || [];
+      const RR = R * SZ;
+      for (const o of list) {
+        if (o.minor || !o.center || !o.mineral) continue;
+        const r = o.radius || 0, d = Math.hypot(o.center[0] - px(ccx), o.center[1] - px(ccy));
+        if (d >= RR + r) continue;
+        let a;                                    // 두 원의 교집합 넓이
+        if (d <= Math.abs(RR - r)) a = Math.PI * Math.min(RR, r) * Math.min(RR, r);
+        else {
+          const c1 = (d * d + RR * RR - r * r) / (2 * d * RR), c2 = (d * d + r * r - RR * RR) / (2 * d * r);
+          const a1 = Math.acos(Math.max(-1, Math.min(1, c1))), a2 = Math.acos(Math.max(-1, Math.min(1, c2)));
+          a = RR * RR * (a1 - Math.sin(2 * a1) / 2) + r * r * (a2 - Math.sin(2 * a2) / 2);
+        }
+        if (a > 0) mix[o.mineral] = (mix[o.mineral] || 0) + a;
+      }
+      let tot = 0; for (const k in mix) tot += mix[k];
+      if (tot > 0) for (const k in mix) mix[k] = +(mix[k] / tot).toFixed(4);
+    } catch { }
+    return mix;
+  };
+  return { isBlocked, isWater, isRock, isOre, isBridgeCell, oreMinerals, oreMix, forestMult, fert, elev, nearestWaterDist, prepareFert, fertField: () => _FF };
 }
 
 // 마을 중심이 물/바위 위면 근처 열린 셀로 스냅(에디터 좌표가 강폭 확장 등으로 물에 잠긴 경우 구제).
@@ -331,6 +360,19 @@ function extractSustain(ta, ccx, ccy, layout, rockD, oreD, forD, huntD) {
     if (ta.oreMinerals) {
       const mins = ta.oreMinerals(ccx, ccy, S.LABOR_R);
       Object.assign(out, S.specialOf(mins, LV.ore));
+    }
+    // ★광종별 면적 비율 — econ 이 이걸 산출 구성으로 쓴다(고정 부산물 dict 대체).
+    //   land.tin 도 여기서 나온다: 주석 비율 × 총 광맥 부존 = 연속량(이분법 폐기).
+    //   ★비어 있어도 **반드시 싣는다**({}). econ 이 "지도가 주석 없다고 말한다"와
+    //     "지도 정보가 아예 없다(랩·CLI)"를 구분해야 하기 때문이다. 앞의 것은 tin=0 이고
+    //     뒤의 것만 옛 이름해시 폴백이다. 이걸 안 하면 광맥 하나 없는 농촌이
+    //     이름 해시 운으로 주석 산지가 되어버린다.
+    if (ta.oreMix) {
+      const mix = ta.oreMix(ccx, ccy, S.LABOR_R);
+      out.oreMix = mix;
+      for (const [m, k] of Object.entries(S.MINERAL_KEY)) {
+        if (mix[m] != null) out[k] = +(mix[m] * LV.ore).toFixed(3);
+      }
     }
   } catch (e) { /* 재지 못하면 키를 안 넣는다 = 상한 미적용(현행 보존) */ }
   return out;

@@ -19,8 +19,40 @@ const MAT_GRADE = {
   //   ⇒ 주석 병목을 **막는 벽이 아니라 등급 차이**로 만든다:
   //     마제석기(0.6) < 순동(0.7) < 철(0.85) < 흑요석 날(0.95) < 청동(1.0)
   //     구리만 있는 마을은 순동으로 버티고, 주석을 쥔 쪽이 군사적 우위를 갖는다(현실 구조 그대로).
+  //   ★수치는 손으로 정하지 않는다 — 아래에서 합금 모델이 계산해 덮어쓴다(순동 = 0.466).
   copper: 0.7,
 };
+
+// ── 주조(鑄造): 임의 배합의 등급을 금속학이 계산한다 [재민 확정] ──────────────
+// "주석·구리·납뿐만 아니라 금·철·은 등 **모든 광물**을 가능하게. 값에 따라 연속적으로."
+//
+// ★MAT_GRADE 는 "재료 한 가지"를 위한 손으로 적은 표다. 그 표를 늘리는 대신
+//   **배합 자체를 받는다**: matGrade({copper:0.83, tin:0.17}) → specialty.alloyGrade.
+//   표는 그대로 두되, 표와 모델이 **어긋나면 안 되므로** 겹치는 항목(순동)은 모델이 덮어쓴다.
+//
+// ★어디까지 주조로 볼 것인가 — 시대가 자른다.
+//   청동기 노는 1085℃(구리)까지다. 철(1538℃)·아연(907℃에서 증발)은 못 녹인다.
+//   ⇒ alloySmeltable() 이 참인 금속만 도가니에 들어간다. 철·흑요석·돌·나무·뼈는
+//     '주조'가 아니라 깎고 두드려 만드는 것이라 옛 단일재료 경로(MAT_GRADE)를 그대로 쓴다.
+let Specialty = null;
+try { Specialty = require('./specialty'); } catch (e) { Specialty = null; }
+const MAT_KO = { copper: '구리', tin: '주석', lead: '납', zinc: '아연', silver: '은', gold: '금', iron: '철', nickel: '니켈' };
+const CAST_ERA = 'bronze';
+const CAST_MAX_KINDS = 3;      // 재민: "금속 3개까지 합금을 자유롭게"
+const CAST_GRADE_MAX = 1.6;    // 폭주 방지 상한(금 배합이 청동의 2배를 넘지 못하게)
+function castable(m) { return !!(Specialty && Specialty.ALLOY_E && Specialty.ALLOY_E[m] && Specialty.alloySmeltable(m, CAST_ERA)); }
+function castKinds() { return Specialty ? Object.keys(Specialty.ALLOY_E).filter(castable) : []; }
+// 아이템 유형 → 합금 평가 축. 무기·갑옷·도구는 경도×인성×경량성, 장신구는 광택×주조성.
+const CAST_KIND = { weapon: 'weapon', armor: 'weapon', tool: 'weapon', clothes: 'ornament' };
+// 배합 → 등급. 전부 주조 가능 금속일 때만 합금 모델을 쓴다(그 외엔 MAT_GRADE 가중평균).
+function castGrade(materials, kind) {
+  if (!Specialty || !Specialty.alloyGrade) return null;
+  const ks = Object.keys(materials || {}).filter((k) => materials[k] > 0);
+  if (!ks.length || ks.length > CAST_MAX_KINDS) return null;
+  if (!ks.every(castable)) return null;
+  const g = Specialty.alloyGrade(materials, kind || 'weapon');
+  return g > 0 ? Math.min(CAST_GRADE_MAX, g) : null;
+}
 
 // ── 유형별 속성 정의 (설계 §2: 유형당 2~3개, 기존 econ 채널 매핑) ──
 const ITEM_TYPES = {
@@ -39,18 +71,25 @@ function qSkill(level) {
   const l = Math.max(0, Math.min(10, level || 0));
   return 1 - Q_SKILL_SPAN + Q_SKILL_SPAN * (l / 10);
 }
-// 재료 믹스 등급(무게 가중평균)
-function matGrade(materials) {
+// 재료 믹스 등급 — 주조 금속만으로 된 배합이면 **합금 모델**, 아니면 옛 무게 가중평균.
+function matGrade(materials, kind) {
+  const cg = castGrade(materials, kind);
+  if (cg != null) return cg;
   let num = 0, den = 0;
   for (const m in materials) { const g = MAT_GRADE[m]; if (g == null) continue; num += materials[m] * g; den += materials[m]; }
   return den > 0 ? num / den : 0.6;
+}
+// ★표와 모델을 한 값으로 못박는다 — 순동을 손으로 0.7 이라 적어놨었는데 모델은 0.466 이라 한다.
+//   같은 재료가 UI 미리보기(표)와 실제 제작(모델)에서 다른 값이면 그게 버그다. 모델을 따른다.
+if (Specialty && Specialty.alloyGrade) {
+  for (const m of castKinds()) { const g = Specialty.alloyGrade({ [m]: 1 }, 'weapon'); if (g > 0) MAT_GRADE[m] = +g.toFixed(3); }
 }
 
 // ── 제작: 플레이어 숙련 × 재료 → 인스턴스 (설계 §3 숙련 진행 가시화) ──
 function craftItem(type, skillLevel, materials) {
   const def = ITEM_TYPES[type];
   if (!def) throw new Error('unknown item type: ' + type);
-  const q = qSkill(skillLevel) * matGrade(materials);   // 0.24(초보·삼베) ~ 1.0(만렙·모피/청동)
+  const q = qSkill(skillLevel) * matGrade(materials, CAST_KIND[type]);   // 0.24(초보·삼베) ~ 1.0(만렙·모피/청동)
   const inst = { type, q: +q.toFixed(3), craftedSkill: skillLevel, attrs: {} };
   for (const a in def.attrs) {
     if (a === 'buff') inst.attrs.buff = +q.toFixed(2);
@@ -71,7 +110,7 @@ function wearItem(inst, amount) {
 }
 function repairItem(inst, skillLevel, materials) {
   if (inst.dura == null || inst.durMax == null) return inst;
-  const rq = qSkill(skillLevel) * matGrade(materials);
+  const rq = qSkill(skillLevel) * matGrade(materials, CAST_KIND[inst.type]);
   inst.dura = Math.min(inst.durMax, inst.dura + Math.round(inst.durMax * 0.5 * rq));
   inst.broken = inst.dura === 0;
   return inst;
@@ -110,10 +149,14 @@ function displayItem(inst) {
     parts.push(lbl + ' ' + inst.attrs[a]);
   }
   if (inst.dura != null) parts.push('내구 ' + inst.dura + '/' + inst.durMax);
-  return def.label + ' [' + parts.join(' · ') + ']' + (inst.craftedSkill != null ? ' — Lv' + inst.craftedSkill + ' 제작' : '');
+  // 주조품은 배합을 이름에 달아준다 — "무기[공격 109]" 보다 "무기(구리83·주석17)" 가 정보다.
+  const alloy = inst.mix && Object.keys(inst.mix).length
+    ? '(' + Object.entries(inst.mix).map(([k, v]) => (MAT_KO[k] || k) + Math.round(v) + '%').join('·') + ')' : '';
+  return def.label + alloy + ' [' + parts.join(' · ') + ']' + (inst.craftedSkill != null ? ' — Lv' + inst.craftedSkill + ' 제작' : '');
 }
 
-module.exports = { MAT_GRADE, ITEM_TYPES, Q_SKILL_SPAN, DURA_SPAN, qSkill, matGrade, craftItem, wearItem, repairItem, decayFreshness, materializeFromVillage, sellNudge, displayItem };
+module.exports = { MAT_GRADE, ITEM_TYPES, Q_SKILL_SPAN, DURA_SPAN, qSkill, matGrade, craftItem, wearItem, repairItem, decayFreshness, materializeFromVillage, sellNudge, displayItem,
+  castable, castKinds, castGrade, CAST_KIND, CAST_MAX_KINDS, CAST_GRADE_MAX, CAST_ERA, MAT_KO };
 
 // ── 자가검증 (node server/player-items.js) ──
 if (require.main === module) {

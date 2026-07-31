@@ -961,6 +961,39 @@ function _tinDepositFor(opts) {
   return +(TIN_DEPOSIT_STRENGTH_LO + over * TIN_DEPOSIT_STRENGTH_SPAN).toFixed(3);
 }
 // ★청동 경제 자격 — 청동검 지속 생산 가능 마을만 true(주석 산지 OR 대량 주석 비축=교역 허브). 나머지=석기 무장.
+// ★oreMix(광종 면적 비율) → 광부 부산물 비율. 광석 자체(ore)는 별도로 이미 산출되므로
+//   여기서는 **금속·특수재만** 낸다. 합이 옛 dict 총합(0.33)과 같아지게 맞춰 총량 충격을 없앤다.
+const _BP_TOTAL = 0.33;
+function _oreMixToByproduct(mix) {
+  const out = {}; let tot = 0;
+  for (const k in mix) { const v = mix[k]; if (!(v > 0)) continue; out[k === 'jade_raw' ? 'jade' : k] = v; tot += v; }
+  if (!(tot > 0)) return { copper: 0.22, iron: 0.03, silver: 0.05, gold: 0.02, gem: 0.01 };
+  for (const k in out) out[k] = +(out[k] / tot * _BP_TOTAL).toFixed(4);
+  return out;
+}
+// ★대장장이 배합 — 마을 재고 비율대로 녹인다. 총 금속 투입은 0.42 로 고정(옛 0.3+0.12 와 동일).
+//   반환 { take: {금속: 양}, grade: 합금 등급(청동=1.0), bronzeness: 청동다움(계측용) }
+const _MELT_TOTAL = 0.42;
+const _MELT_METALS = ['copper', 'tin', 'lead', 'silver', 'gold'];   // 청동기에 제련 가능한 것만
+function _alloyMelt(v) {
+  let SP = null; try { SP = require('../server/specialty'); } catch (e) { return null; }
+  const st = v.storage || {};
+  const avail = {}; let tot = 0;
+  for (const m of _MELT_METALS) { const q = st[m] || 0; if (q > 0.01) { avail[m] = q; tot += q; } }
+  if (!(tot > 0) || !(avail.copper > 0)) return null;            // 구리 없이는 못 만든다
+  // 재고 비율대로 배합하되 구리를 기지로 보장한다(귀금속이 기지가 되면 검이 아니라 장신구다)
+  const mix = {}; for (const m in avail) mix[m] = avail[m] / tot;
+  if (!(mix.copper >= 0.5)) {                                     // 구리가 절반 미만이면 구리로 채운다
+    const need = 0.5 - mix.copper, rest = 1 - mix.copper;
+    for (const m in mix) if (m !== 'copper') mix[m] *= Math.max(0, 1 - need / Math.max(1e-9, rest));
+    mix.copper = 0.5;
+  }
+  const take = {};
+  for (const m in mix) { const q = _MELT_TOTAL * mix[m]; if (q > 0) take[m] = +q.toFixed(4); }
+  for (const m in take) if ((st[m] || 0) < take[m]) return null;   // 재고 부족
+  const grade = SP.alloyGrade ? SP.alloyGrade(mix, 'weapon') : 1;
+  return { take, grade, bronzeness: Math.min(1, (mix.tin || 0) / 0.12) };
+}
 function _bronzeCapable(v) {
   if ((v.land && v.land.tin || 0) > 0) return true;                       // 주석 산지 — 자체 청동
   const N = v.npcs ? v.npcs.length : 1;
@@ -986,7 +1019,18 @@ function createVillage(opts) {
       game: opts.game ?? 0.6,
       obsidian: opts.obsidian ?? 0,   // ★S5 흑요석 특수 산지(0~1, 대부분 마을 0 — 화산지대만). 광부가 채굴 → 화살촉/소형칼날 교역재.
       jade: opts.jade ?? 0,           // ★S5 옥 특수 산지(0~1, 극소수 마을만). 광부가 채굴 → 위세품 교역재.
-      tin: _tinDepositFor(opts),      // ★청동 희소성: 주석 산지(0=무산지 대다수, >0=소수 산지). 산지만 tin 채굴→청동. name 해시 결정론(TIN_DEPOSIT_RATE 비율).
+      // ★★[재민 확정] "마을이 주석 산지이다 아니다를 꼭 이분법적으로 정할 필요가 있어..?"
+      //   없앴다. oreMix(노동권 광맥의 광종별 면적 비율)가 있으면 **연속량**으로 나온다:
+      //     land.tin = oreMix.tin × land.ore   — 조금 나는 마을·많이 나는 마을이 자연히 생긴다
+      //   oreMix 가 없는 호출부(랩·CLI)만 옛 이름해시 문턱으로 폴백한다.
+      //   ⇒ TIN_DEPOSIT_ORE_SCORE 문턱 튜닝 문제(본게임 최대 land.ore 1.06 < 필요 1.067)도 함께 소멸.
+      oreMix: opts.oreMix || null,
+      // ★oreMix 가 **있기만 하면** 그게 정답이다 — 비어 있으면 "지도가 여긴 광맥 없다고 말한다"이지
+      //   "모른다"가 아니다. 옛 이름해시 폴백은 oreMix 자체가 없는 호출부(랩·CLI)에만 남긴다.
+      //   (이 구분을 안 하면 광맥 0개인 농촌이 이름 운으로 주석 산지가 된다.)
+      tin: opts.tin != null ? opts.tin
+         : (opts.oreMix ? +(((opts.oreMix.tin) || 0) * (opts.ore ?? 0.5)).toFixed(3)
+                        : _tinDepositFor(opts)),
       size: baseSize,
       baseSize,                                                   // 확장 비용 계산 기준
     },
@@ -1330,13 +1374,18 @@ function tickVillage(v, day) {
         ? (v.npcs.length || 0) * MELEE_ARMORY_PC * BRONZE_ARMORY_FRAC
         : Math.max(2, (v.counts.warrior || 0) * MELEE_COV_BUFFER);   // 취약 마을 = 전사 커버리지만
       // ★청동 희소성: 청동검은 *청동 경제 자격* 마을(주석 산지·교역 허브)만 + 병기고 청동 한도 미만일 때. 흘러든 트레이스 주석뿐이거나 청동 한도 도달 마을은 석공 마제석검.
-      if (_bronzeCapable(v) && _smSwordStock < _bronzeArmoryCap && (v.storage.copper || 0) >= 0.3 && (v.storage.tin || 0) >= 0.12) {
-        v.storage.copper -= 0.3; v.storage.tin -= 0.12;   // ★청동검(청동기 주력 무기)
-        _cons(v, 'copper', 0.3); _cons(v, 'tin', 0.12);   // ★flow-EMA
-        v._cuWeapUsed = (v._cuWeapUsed || 0) + 0.3;   // (계측 전용) 무기용 구리 누적 소비
-        v._bronzeWeaponMade = (v._bronzeWeaponMade || 0) + amt;
-        v._swordMadeToday = (v._swordMadeToday || 0) + amt;   // ★근접검 비중 EMA(청동검=근접)
-        const wq = WEAP_Q_BRONZE * _qSkill;   // 청동검 품질 = 청동등급(1.0) × 스킬(명장이 최고품질)
+      // ★★[재민 확정] 청동검/철검/석검의 **이산 분기 3개를 연속 곡선 하나로** 바꾼다.
+      //   대장장이는 마을 재고 비율대로 배합한다 → 주석 넉넉하면 좋은 검, 조금이면 무른 검, 없으면 순동.
+      //   품질은 specialty.alloyGrade 가 금속학에서 계산한다(고용 강화·제2상·공융).
+      //   ⇒ _bronzeCapable 문턱도, 순동검 분기도 따로 필요 없다.
+      const _melt = _alloyMelt(v);
+      if (_melt && _smSwordStock < _bronzeArmoryCap) {
+        for (const m in _melt.take) { v.storage[m] -= _melt.take[m]; _cons(v, m, _melt.take[m]); }
+        v._cuWeapUsed = (v._cuWeapUsed || 0) + (_melt.take.copper || 0);   // (계측 전용)
+        v._bronzeWeaponMade = (v._bronzeWeaponMade || 0) + amt * _melt.bronzeness;
+        v._alloyGrade = _melt.grade;                       // (계측) 이 마을이 만든 합금의 등급
+        v._swordMadeToday = (v._swordMadeToday || 0) + amt;
+        const wq = Math.min(1.2, _melt.grade) * WEAP_Q_BRONZE * _qSkill;   // ★배합이 품질을 정한다
         v._weapQnum = (v._weapQnum || 0) + wq * amt; v._weapQden = (v._weapQden || 0) + amt;
         addProduce('weapon', amt);
         workNPC(npc);
@@ -1400,7 +1449,13 @@ function tickVillage(v, day) {
         addProduce('ore', oAmt);
         // ★청동 희소성 복원: tin을 부산물에서 *제거*. 종전 { copper:0.22, tin:0.11, ... } → tin은 전 마을 자동산출 = 청동 보편재의 근본 원인.
         //   이제 tin은 산지(land.tin>0)만 아래 별도 채굴. copper/iron/장식재는 종전대로 모든 광맥 부산물(청동기: 구리는 흔하되 주석이 병목).
-        const bp = { copper: 0.22, iron: 0.03, silver: 0.05, gold: 0.02, gem: 0.01 };   // ★철 0.03: 청동기엔 철이 희소. tin 제거(산지 전용) — 구리는 흔해도 주석 병목이 청동을 희소화.
+        // ★★[재민 확정] 고정 dict 폐기. 지도의 **광종 구성**이 그대로 산출이 된다.
+        //   전에는 금맥 옆 마을이나 철맥 옆 마을이나 {copper .22, iron .03, …} 로 똑같이 나왔다 —
+        //   지도의 광종 배분이 경제에 **전혀 안 닿았다**. 이제 닿는다.
+        //   oreMix 가 없는 호출부(랩·CLI)는 옛 dict 로 폴백해 기존 거동을 보존한다.
+        const _mixSrc = (v.land && v.land.oreMix) || null;
+        const bp = _mixSrc ? _oreMixToByproduct(_mixSrc)
+                           : { copper: 0.22, iron: 0.03, silver: 0.05, gold: 0.02, gem: 0.01 };
         for (const r in bp) addProduce(r, oAmt * bp[r]);
         addProduce('salt', oAmt * 0.05); addProduce('clay', oAmt * 0.08);   // ★소금=완충 교역재(광범위 수요 utility 0.8). 제거 시 교역균형 흔들려 취약 시드 boom-bust. 고증(소금길). 이제 광맥 채굴 부산물로 산출(돌 채석과 분리).
       }
@@ -1930,8 +1985,9 @@ function pickDeficitJob(v) {
   }
   // ★S2 무기 부족 — 금속(구리+주석) 있으면 대장장이(청동검), 없으면 석공(마제석검). ★전사 기준(석공·대장장이는 전사 무장 담당) — 사냥꾼 활은 자가제작(archery)로 자급하므로 여기서 석공을 강제하지 않음.
   if ((counts.warrior || 0) >= 1 && (v.storage.weapon || 0) < N * 0.5) {
-    const _hasMetal = (v.storage.copper || 0) >= 0.3 && (v.storage.tin || 0) >= 0.12;
-    if (_hasMetal && hasSlot(v, 'smith', cap, counts)) return 'smith';
+    // ★★[재민 확정] 여기도 "구리+주석" 이라는 이산 조건이었다 — 배합이 자유로워진 지금은
+    //   "석공보다 나은 걸 만들 수 있나" 하나로 판정한다(_smithBeatsMason).
+    if (_smithBeatsMason(v) && hasSlot(v, 'smith', cap, counts)) return 'smith';
     if (hasSlot(v, 'mason', cap, counts)) return 'mason';
   }
   // Phase 4d-7: armorsmith — warrior 있고 hide 있는 마을
@@ -2017,9 +2073,17 @@ function masonTarget(v) {
 }
 // ★S2 대장장이(smith) 노동목표 = *청동·철 무기* 수요. 금속(구리/주석 또는 철) 있어야 성립(없으면 0 → 석공이 저티어 무기).
 //   무기는 교역으로 수출 → 금속 있는 전사·사냥꾼 마을은 상시 대장장이. 청동 희소(금속=광맥/교역)라 대장장이도 금속 마을 위주.
+// ★대장장이를 쓸 이유 = 그가 석공보다 나은 무기를 만들 수 있을 때뿐이다.
+//   지금 재고로 실제 배합을 짜 보고(_alloyMelt) 그 등급이 마제석검을 넘는지 본다.
+//   문턱이 아니라 **비교**다 — 무엇이 나든 같은 잣대로 판정된다(주석·은·금·납 다 같이).
+function _smithBeatsMason(v) {
+  const m = _alloyMelt(v);
+  if (m) return (Math.min(1.2, m.grade) * WEAP_Q_BRONZE) > WEAP_Q_STONE;
+  return _ironWeaponCapable(v);   // 철은 아직 주조 아닌 별도 축(청동기 노가 못 녹인다) — 옛 경로 유지
+}
 function smithTarget(v) {
   // ★청동 희소성: 청동은 *청동 자격* 마을만(주석 산지·교역 허브). 트레이스 주석뿐인 마을은 청동 생산 안 함(석공이 마제석검).
-  const hasBronze = _bronzeCapable(v) && (v.storage.copper || 0) >= 0.3 && (v.storage.tin || 0) >= 0.12;
+  const hasBronze = _smithBeatsMason(v) && (v.storage.copper || 0) >= 0.3;
   const hasIron = _ironWeaponCapable(v);   // ★철검=최희소: 철 풍부 마을만(트레이스 축적 미달 → 석공 마제석검)
   if (!hasBronze && !hasIron) return 0;   // 금속 없으면 대장장이 불필요(무기는 석공 담당)
   // ★청동 희소성: 청동 자격 마을은 대장장이가 청동검 *병기고*를 채움(무산지 석기 병기고의 청동판). 재고=근접검(_swordFrac) → 활이 채운 pool에 가려 청동검 노동목표가 죽지 않음.
@@ -2121,8 +2185,13 @@ function pickDeficitJob_rational(v, world) {
   let _toolDeps = toolDepCount(v);
   // ★S2 석공(석기 도구 + 저티어 무기[마제석검·활]) — 돌 있으면 충원. masonTarget이 도구+무기 수요 통합.
   if ((counts.mason || 0) < masonTarget(v) && ((v.storage.stone || 0) >= 0.2 || (v.storage.wood || 0) > N * 0.5)) return 'mason';
-  // ★S2 대장장이(청동·철 무기) — 청동 자격(주석 산지·교역 허브) OR 철 풍부해야. smithTarget이 자격 없으면 0 반환 → 자연 스킵.
-  if ((counts.smith || 0) < smithTarget(v) && ((_bronzeCapable(v) && (v.storage.copper || 0) >= 0.3 && (v.storage.tin || 0) >= 0.12) || _ironWeaponCapable(v))) return 'smith';
+  // ★★[재민 확정] 채용 조건도 이산 분기를 뺀다.
+  //   전에는 "주석 산지거나 / 철 부자거나" 라는 **두 개의 문턱**이었다. 그런데 대장장이가
+  //   임의 배합을 녹일 수 있게 된 지금, 그 문턱은 자기 판단 기준이 아니다.
+  //   진짜 기준은 하나다 — **대장장이가 석공보다 나은 무기를 만들 수 있는가.**
+  //   순동 등급 0.466 < 마제석검 0.5 라서, 구리만 있는 마을은 저절로 석기를 유지한다
+  //   (고증 그대로 — 순동은 석기를 밀어내지 못했다). 주석 1%만 섞여도 0.63 이 되어 역전된다.
+  if ((counts.smith || 0) < smithTarget(v) && _smithBeatsMason(v)) return 'smith';
   if ((counts.armorsmith || 0) < armorsmithTarget(v) && (v.storage.hide || 0) > N * 0.3) return 'armorsmith';
   if ((counts.cook || 0) < cookTarget(v)) return 'cook';   // ★유령 박멸 #4: 요리사 — 스톡-플로우 노동목표(장인 패턴). 잉여 마을만(cookTarget 내 게이트)
   if ((counts.tailor || 0) < tailorTarget(v)) return 'tailor';   // ★의복(2026-07-12): 재봉사 — 스톡-플로우 노동목표(장인 패턴). 옷감 게이트는 tailorTarget 내(옷감 보온-eq<1 → 0 — 요리사 결함[픽커 후보 부재] 재발 방지로 여기 명시 등록)

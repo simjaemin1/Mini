@@ -23,88 +23,31 @@
 // ── 원소 상수 (실측값) ────────────────────────────────────────────────────
 //   r 금속 원자반지름(pm) · st 결정구조 · en 전기음성도(폴링) · val 주된 원자가
 //   mp 융점(℃) · h0 순금속 경도(HB) · rho 밀도 · lus 광택/백색도(0~1)
-const E = {
-  copper: { ko: '구리', r: 128, st: 'fcc', en: 1.90, val: 1, mp: 1085, h0: 50,  rho: 8.96,  lus: 0.35 },
-  tin:    { ko: '주석', r: 140, st: 'tet', en: 1.96, val: 4, mp: 232,  h0: 5,   rho: 7.31,  lus: 0.75 },
-  lead:   { ko: '납',   r: 175, st: 'fcc', en: 2.33, val: 4, mp: 327,  h0: 4,   rho: 11.34, lus: 0.55 },
-  zinc:   { ko: '아연', r: 134, st: 'hcp', en: 1.65, val: 2, mp: 420,  h0: 30,  rho: 7.14,  lus: 0.70 },
-  silver: { ko: '은',   r: 144, st: 'fcc', en: 1.93, val: 1, mp: 962,  h0: 25,  rho: 10.49, lus: 1.00 },
-  gold:   { ko: '금',   r: 144, st: 'fcc', en: 2.54, val: 1, mp: 1064, h0: 25,  rho: 19.30, lus: 0.90 },
-  iron:   { ko: '철',   r: 126, st: 'bcc', en: 1.83, val: 2, mp: 1538, h0: 150, rho: 7.87,  lus: 0.60 },
-  nickel: { ko: '니켈', r: 124, st: 'fcc', en: 1.91, val: 2, mp: 1455, h0: 90,  rho: 8.91,  lus: 0.80 },
-};
-
-// ── ① 고용 한도 — **실측 상태도 값** ────────────────────────────────────
-//   ★첫 시안은 Hume-Rothery 4규칙만으로 고용도를 *추정*했다가 크게 틀렸다:
-//     Cu-Sn 을 2.3%로 봐서(실제 15.8%) 청동이 순동만큼 무르게 나왔고,
-//     Cu-Fe 를 18%로 봐서(실제 0.3%) "구리 50 + 철 49" 가 최적 무기로 뽑혔다.
-//   원인: Hume-Rothery 는 **필요조건이지 충분조건이 아니다.** 실제 고용도는 혼합 엔탈피가 정하고,
-//     그건 4규칙으로 계산이 안 된다(Miedema 모형이 필요하다).
-//   ⇒ 기지별 고용 한도만 **표로** 준다. 조합 곡선이 아니라 **숫자 하나씩**이다 —
-//     기지 4종 × 용질 8종 = 32개. C(N,3) 조합 곡선을 짜는 것과는 규모가 다르다.
-//     (게임에 필요한 기지는 구리·철·금·은 정도다. 나머지는 기본값으로 충분하다.)
-const SOL = {   // [최대 고용 분율, 제2상 성격]
-  copper: {
-    tin:    [0.158, 'im'],   // α 한계 15.8at% — 넘으면 δ상 Cu31Sn8(단단·취성)
-    zinc:   [0.390, 'im'],   // 황동 — 고용도가 크다
-    nickel: [1.000, 'ss'],   // 완전 고용(백동)
-    gold:   [1.000, 'ss'],   // 완전 고용(적금)
-    silver: [0.080, 'ss'],
-    lead:   [0.000, 'split'],// 액상에서도 갈린다 — 연질 개재물
-    iron:   [0.003, 'split'],// 사실상 안 섞인다
-  },
-  iron:   { nickel: [1.000, 'ss'], copper: [0.003, 'split'], tin: [0.100, 'im'], lead: [0.000, 'split'] },
-  gold:   { copper: [1.000, 'ss'], silver: [1.000, 'ss'], nickel: [1.000, 'ss'] },
-  silver: { copper: [0.080, 'ss'], gold: [1.000, 'ss'] },
-};
-function solubility(b, s) {
-  const t = (SOL[b] && SOL[b][s]) || null;
-  if (t) return { max: t[0], mode: t[1] };
-  // 표에 없으면 Hume-Rothery 로 **보수적** 추정(모르는 조합은 잘 안 섞인다고 본다)
-  const B = E[b], S = E[s];
-  const dr = Math.abs(S.r - B.r) / B.r;
-  if (dr > 0.25) return { max: 0, mode: 'split' };
-  let f = Math.max(0, 1 - dr / 0.15) * (S.st === B.st ? 1 : 0.3)
-        * Math.max(0.15, 1 - Math.abs(S.en - B.en) / 0.5);
-  return { max: Math.min(0.2, f), mode: Math.abs(S.val - B.val) >= 2 ? 'im' : 'ss' };
-}
-
-// ── 합금 물성 ────────────────────────────────────────────────────────────
-const K_SS = 4200;    // 고용 강화 계수 — 청동·스털링·적금이 동시에 실측 경도대에 들어오게 보정
-const K_IM = 700;     // 금속간화합물의 경도 기여(δ상은 **더 단단하다**. 대신 부서진다)
+// ★2026-07: 이 시안이 통과해서 server/specialty.js 에 들어갔다.
+//   이제 이 스크립트는 **시안이 아니라 검증 하네스**다 — 모델을 여기 복제하지 않고
+//   출하본(specialty.alloyProps)을 그대로 불러 검증한다. 복제본이 있으면
+//   출하본을 고쳐도 검증이 통과해버린다(실제로 밀도 패널티를 넣었을 때 그럴 뻔했다).
+const SP = require('../server/specialty');
+const KO = { copper: '구리', tin: '주석', lead: '납', zinc: '아연', silver: '은', gold: '금', iron: '철', nickel: '니켈' };
+const E = {}; for (const k in SP.ALLOY_E) E[k] = Object.assign({ ko: KO[k] || k }, SP.ALLOY_E[k]);
 function alloy(mix) {
-  const ks = Object.keys(mix).filter((k) => mix[k] > 1e-6 && E[k]);
-  const tot = ks.reduce((a, k) => a + mix[k], 0);
-  const x = {}; for (const k of ks) x[k] = mix[k] / tot;
-  const base = ks.reduce((a, k) => (x[k] > x[a] ? k : a), ks[0]);
-
-  let hRule = 0, rho = 0, mpLin = 0, lus = 0;
-  for (const k of ks) { hRule += x[k] * E[k].h0; rho += x[k] * E[k].rho; mpLin += x[k] * E[k].mp; lus += x[k] * E[k].lus; }
-
-  let dH = 0, brittle = 0, split = 0;
+  const a = SP.alloyProps(mix);
+  // 소견은 출하본이 낸 제2상 분율에서 되짚는다(문구는 이 하네스 소유)
   const notes = [];
+  const ks = Object.keys(mix).filter((k) => mix[k] > 1e-6 && E[k]);
+  const tot = ks.reduce((t, k) => t + mix[k], 0);
   for (const k of ks) {
-    if (k === base) continue;
-    const { max, mode } = solubility(base, k);
-    const dr = Math.abs(E[k].r - E[base].r) / E[base].r;
-    const dis = Math.min(x[k], max), sec = x[k] - dis;
-    dH += K_SS * Math.pow(dr, 4 / 3) * Math.sqrt(dis);          // ② 고용 강화
-    if (mode === 'split') { split += sec; if (sec > 0.01) notes.push(E[k].ko + ' 불용 — 층이 갈린다'); }
-    else if (mode === 'im') { brittle += sec; dH += K_IM * sec;  // 금속간화합물: 단단하지만 취성
-      if (sec > 0.01) notes.push(E[k].ko + ' 과잉 → 금속간화합물(단단·취성)'); }
+    if (k === a.base) continue;
+    const t = (SP.ALLOY_SOL[a.base] && SP.ALLOY_SOL[a.base][k]) || null;
+    if (!t) continue;
+    const sec = mix[k] / tot - Math.min(mix[k] / tot, t[0]);
+    if (sec <= 0.01) continue;
+    if (t[1] === 'split') notes.push(E[k].ko + ' 불용 — 층이 갈린다');
+    else if (t[1] === 'im') notes.push(E[k].ko + ' 과잉 → 금속간화합물(단단·취성)');
   }
-  let ent = 0; for (const k of ks) if (x[k] > 0) ent -= x[k] * Math.log(x[k]);
-  const mp = mpLin * (1 - 0.42 * ent);                          // ④ 공융 강하
-
-  const hardness = Math.max(1, hRule + dH - 150 * split);
-  const tough = 1 / (1 + Math.pow(brittle / 0.055, 2)) * (1 - 0.85 * split);
-  const cast = Math.max(0.05, Math.min(2, (1400 - mp) / 700)) * (1 + 1.1 * split);
-  return { base, hardness, tough, mp, cast, rho, lustre: lus,
-    weapon: Math.min(1.6, hardness / 150) * tough,
-    mirror: lus * Math.min(1, hardness / 200) * Math.min(1, cast), notes };
+  return Object.assign({}, a, { notes });
 }
 
-// ── 검증 ─────────────────────────────────────────────────────────────────
 const show = (name, mix, expect) => {
   const a = alloy(mix);
   const comp = Object.entries(mix).map(([k, v]) => E[k].ko + ' ' + (v * 100).toFixed(0) + '%').join(' · ');

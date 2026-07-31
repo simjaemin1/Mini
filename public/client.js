@@ -152,6 +152,10 @@ const SIM_JOB_EMOJI = {
   let equipmentRecipes = {}, equipmentMeta = null; // 장비 제작 레시피·미리보기 메타(서버 공식 단일진실)
   let equipment = [], equipSlots = {}, craftSkill = {}; // 장비 인스턴스·장착 슬롯·제작 숙련 xp
   let craftEquipSel = {}; // UI: 유형별 선택 재료 {clothes:'hide',...}
+  // ★주조(합금) UI — 유형별 배합 가중치 {weapon:{copper:83,tin:17}}, 켬/끔, 서버 미리보기 캐시.
+  //   합금 물성은 **서버(server/specialty.js)가 단독 계산**한다. 클라에 복제하지 않는다 —
+  //   복제본은 반드시 어긋나고, 어긋나면 미리보기와 실제 제작품이 달라진다.
+  let castMix = {}, castOn = {}, castPv = {};
   let dishes = []; // 요리 인스턴스(신선도·버프) — [{id,label,q,nutrition,buff,freshness}]
   let shopVillage = null; // 거래: 가까운 마을 품질 EMA(shop_info 응답)
   let myHunger = 100, myThirst = 100, myVp = 0;
@@ -2183,6 +2187,9 @@ const SIM_JOB_EMOJI = {
       }
     } else if (msg.type === 'inventory') {
       inventory = msg.inventory; updateHud(); renderCraftPanel(); if (cookOpen) renderCookPanel();
+    } else if (msg.type === 'cast_preview') {
+      castPv[msg.itemType] = msg;   // 서버가 계산한 합금 물성 — 읽어서 그리기만 한다
+      paintCastReadout(msg.itemType);
     } else if (msg.type === 'equipment') {
       // 플레이어 장비 인스턴스·장착 슬롯·제작 숙련 갱신
       if (Array.isArray(msg.equipment)) equipment = msg.equipment;
@@ -6531,6 +6538,100 @@ const SIM_JOB_EMOJI = {
     const q = qSkill * grade;
     return { attr: Math.round(t.attrScale * q), dura: Math.round(t.baseDura * (1 + equipmentMeta.duraSpan * q)), attrLabel: t.attr };
   }
+  // ══ 주조(鑄造): 금속 여러 개를 배합해 녹인다 [재민 확정] ══════════════════
+  // "금속 3개까지 합금을 자유롭게. 그거에 따른 성질을 화학적으로 잘 반영. 값에 따라 연속적으로."
+  // 여기(클라)는 **슬라이더와 그림만** 담당한다. 경도·인성·융점·주조성은 서버가 낸다.
+  const CAST_KO = { copper: '구리', tin: '주석', lead: '납', silver: '은', gold: '금', zinc: '아연', iron: '철', nickel: '니켈' };
+  function castKindsList() { return (equipmentMeta && equipmentMeta.castKinds) || []; }
+  function castMaxKinds() { return (equipmentMeta && equipmentMeta.castMaxKinds) || 3; }
+  function ensureCastMix(type) {
+    if (!castMix[type]) castMix[type] = {};
+    const m = castMix[type];
+    for (const k in m) if (!(m[k] > 0)) delete m[k];
+    if (!Object.keys(m).length) {   // 기본값 = 표준 청동. 구리가 없으면 가진 금속 아무거나.
+      const kinds = castKindsList();
+      if (kinds.includes('copper') && (inventory.copper || 0) > 0) {
+        m.copper = 88; if (kinds.includes('tin') && (inventory.tin || 0) > 0) m.tin = 12;
+      } else { const f = kinds.find(k => (inventory[k] || 0) > 0); if (f) m[f] = 100; }
+    }
+    return m;
+  }
+  function castPct(type) {
+    const m = castMix[type] || {}; let tot = 0;
+    for (const k in m) tot += m[k];
+    const out = {}; for (const k in m) out[k] = tot > 0 ? m[k] / tot : 0;
+    return out;
+  }
+  let _castTimer = {};
+  function requestCastPreview(type) {
+    clearTimeout(_castTimer[type]);
+    _castTimer[type] = setTimeout(() => {
+      const m = castMix[type]; if (!m || !Object.keys(m).length) return;
+      sendPrimary({ type: 'cast_preview', itemType: type, mix: m });
+    }, 90);   // 슬라이더 드래그 중 폭주 방지
+  }
+  // 서버 응답을 읽어 **그 줄만** 다시 그린다(패널 전체를 다시 그리면 드래그 중인 슬라이더가 튄다).
+  function paintCastReadout(type) {
+    const pv = castPv[type];
+    const pct = castPct(type);
+    for (const k in pct) {
+      const el = document.getElementById('castPct-' + type + '-' + k);
+      if (el) el.textContent = Math.round(pct[k] * 100) + '%';
+    }
+    const box = document.getElementById('castRead-' + type);
+    if (!box) return;
+    if (!pv) { box.innerHTML = '<span style="color:#888">계산 중…</span>'; return; }
+    if (pv.err) { box.innerHTML = '<span style="color:#e77">' + pv.err + '</span>'; return; }
+    const p = pv.props || {};
+    const gCol = pv.grade >= 1 ? '#7cd97c' : (pv.grade >= 0.7 ? '#dd5' : '#e88');
+    const warn = [];
+    if (p.brittle > 0.02) warn.push('취성 — 잘 부러진다');
+    if (p.split > 0.02) warn.push('층이 갈린다');
+    if (p.mp > 1150) warn.push('노가 못 녹인다');
+    const useTxt = Object.entries(pv.use || {}).map(([k, v]) => (CAST_KO[k] || k) + ' ' + v).join(' · ');
+    box.innerHTML =
+      '<b style="color:' + gCol + '">등급 ' + (pv.grade == null ? '?' : pv.grade.toFixed(2)) + '</b>'
+      + ' · <b style="color:#8fc8ff">' + (pv.attr != null ? pv.attr : '?') + '</b>'
+      + (pv.dura != null ? ' · 내구 ' + pv.dura : '')
+      + '<div style="color:#9aa;font-size:10px;margin-top:2px">경도 ' + (p.hardness != null ? p.hardness : '?')
+      + ' · 인성 ' + (p.tough != null ? p.tough.toFixed(2) : '?')
+      + ' · 융점 ' + (p.mp != null ? p.mp + '℃' : '?')
+      + ' · 주조성 ' + (p.cast != null ? p.cast.toFixed(2) : '?') + '</div>'
+      + '<div style="color:#7a8;font-size:10px">소모 ' + useTxt + '</div>'
+      + (warn.length ? '<div style="color:#e88;font-size:10px">⚠ ' + warn.join(' · ') + '</div>' : '')
+      + (pv.lack ? '<div style="color:#e77;font-size:10px">재료 부족: ' + (CAST_KO[pv.lack] || pv.lack) + '</div>' : '');
+  }
+  function castBlockHtml(type, rc) {
+    if (!rc.cast || !castKindsList().length) return '';
+    const on = !!castOn[type];
+    const btn = '<button data-castoggle="' + type + '" style="margin-top:4px;padding:1px 6px;font-size:11px;border-radius:4px;cursor:pointer;border:1px solid '
+      + (on ? '#c93' : '#444') + ';background:' + (on ? '#432' : '#222') + ';color:#eee">⚗ 주조 배합' + (on ? ' ▾' : ' ▸') + '</button>';
+    if (!on) return btn;
+    const m = ensureCastMix(type), pct = castPct(type);
+    const nSel = Object.keys(m).length;
+    const chips = castKindsList().map(k => {
+      const have = inventory[k] || 0, sel = m[k] > 0;
+      const dis = (!sel && (have <= 0 || nSel >= castMaxKinds()));
+      const st = 'margin:2px 3px 0 0;padding:1px 6px;border-radius:4px;font-size:11px;cursor:pointer;border:1px solid '
+        + (sel ? '#c93' : '#444') + ';background:' + (sel ? '#432' : '#222') + ';color:' + (have > 0 ? '#eee' : '#666');
+      return '<button data-castmetal="' + k + '" data-casttype="' + type + '" ' + (dis ? 'disabled' : '')
+        + ' style="' + st + '" title="' + (CAST_KO[k] || k) + ' 보유 ' + (+have).toFixed(2) + '">'
+        + (CAST_KO[k] || k) + (have > 0 ? ' ' + (+have).toFixed(1) : '') + '</button>';
+    }).join('');
+    const sliders = Object.keys(m).map(k =>
+      '<div style="display:flex;align-items:center;gap:5px;margin-top:3px">'
+      + '<span style="width:28px;font-size:11px;color:#ccc">' + (CAST_KO[k] || k) + '</span>'
+      + '<input type="range" min="0" max="100" value="' + m[k] + '" data-castslider="' + k + '" data-casttype="' + type + '" style="flex:1;height:14px">'
+      + '<span id="castPct-' + type + '-' + k + '" style="width:34px;text-align:right;font-size:11px;color:#8fc8ff">' + Math.round(pct[k] * 100) + '%</span>'
+      + '</div>').join('');
+    return btn
+      + '<div style="margin-top:4px;padding:5px 6px;border:1px solid #543;border-radius:5px;background:#1b1713">'
+      + '<div style="font-size:10px;color:#a98;margin-bottom:2px">도가니 — 최대 ' + castMaxKinds() + '종. 이 시대의 노가 녹일 수 있는 금속만.</div>'
+      + chips + sliders
+      + '<div id="castRead-' + type + '" style="margin-top:5px;font-size:11px">계산 중…</div>'
+      + '<button data-castcraft="' + type + '" style="margin-top:5px;width:100%">⚗ 주조</button>'
+      + '</div>';
+  }
   // 장비 제작+보유목록 HTML(양쪽 크래프트 패널 공유). 미리보기 = 서버 공식과 동일.
   function equipmentSectionHtml() {
     if (!equipmentRecipes || !Object.keys(equipmentRecipes).length || !equipmentMeta) return '<div class="hint">장비 데이터 로딩 중…</div>';
@@ -6555,6 +6656,7 @@ const SIM_JOB_EMOJI = {
           <div class="cr-name">${rc.label} <span style="color:#7cd97c;font-weight:normal">${rc.skill} Lv${lvl}</span></div>
           <div class="cr-cost">${sel ? itemIconHtml(sel, 18, sel) : '?'} ×${rc.qty} → ${pvStr}</div>
           <div style="margin-top:3px">${matBtns}</div>
+          ${castBlockHtml(type, rc)}
         </div>
         <button data-eqcraft="${type}" ${canCraft ? '' : 'disabled'}>제작</button>
       </div>`;
@@ -6589,6 +6691,34 @@ const SIM_JOB_EMOJI = {
   function wireEquipmentHandlers(root, rerender) {
     root.querySelectorAll('[data-eqmat]').forEach(b => b.onclick = () => { craftEquipSel[b.dataset.eqtype] = b.dataset.eqmat; if (rerender) rerender(); });
     root.querySelectorAll('[data-eqcraft]').forEach(b => b.onclick = () => sendPrimary({ type: 'craft_equipment', itemType: b.dataset.eqcraft, material: craftEquipSel[b.dataset.eqcraft] }));
+    // ── 주조 배합 ──
+    root.querySelectorAll('[data-castoggle]').forEach(b => b.onclick = () => {
+      const t = b.dataset.castoggle; castOn[t] = !castOn[t];
+      if (castOn[t]) { ensureCastMix(t); requestCastPreview(t); }
+      if (rerender) rerender();
+    });
+    root.querySelectorAll('[data-castmetal]').forEach(b => b.onclick = () => {
+      const t = b.dataset.casttype, k = b.dataset.castmetal, m = ensureCastMix(t);
+      if (m[k] > 0) { if (Object.keys(m).length > 1) delete m[k]; }
+      else if (Object.keys(m).length < castMaxKinds()) m[k] = 10;
+      requestCastPreview(t); if (rerender) rerender();
+    });
+    root.querySelectorAll('[data-castslider]').forEach(s => {
+      s.oninput = () => {   // ★패널을 다시 그리지 않는다 — 드래그 중이라 DOM 을 갈면 손이 놓친다
+        const t = s.dataset.casttype, k = s.dataset.castslider, m = ensureCastMix(t);
+        m[k] = Number(s.value);
+        let tot = 0; for (const kk in m) tot += m[kk];
+        if (!(tot > 0)) { m[k] = 1; }                      // 전부 0 은 금지(배합이 사라진다)
+        const pct = castPct(t);
+        for (const kk in pct) { const el = document.getElementById('castPct-' + t + '-' + kk); if (el) el.textContent = Math.round(pct[kk] * 100) + '%'; }
+        requestCastPreview(t);
+      };
+    });
+    root.querySelectorAll('[data-castcraft]').forEach(b => b.onclick = () => {
+      const t = b.dataset.castcraft, m = castMix[t];
+      if (m && Object.keys(m).length) sendPrimary({ type: 'craft_equipment', itemType: t, mix: m });
+    });
+    for (const t in castOn) if (castOn[t]) { paintCastReadout(t); requestCastPreview(t); }
     root.querySelectorAll('[data-eqtoggle]').forEach(b => b.onclick = () => {
       const id = b.dataset.eqtoggle, slot = b.dataset.slot;
       if (equipSlots[slot] === id) sendPrimary({ type: 'unequip_item', slot });

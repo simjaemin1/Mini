@@ -600,6 +600,125 @@ function pickMineral(biome, seedNum) {
   return pool[Math.abs(seedNum) % pool.length] || 'iron';
 }
 
+// =============================================================================
+// 합금 — 임의 금속 배합의 물성 [재민 확정]
+// =============================================================================
+// "금·철·은 등 **모든 광물**을 가능하게. 값에 따라 연속적으로."
+//
+// ★조합마다 곡선을 짜지 않는다. 원소당 상수 8개 + 기지별 고용한도 표만 주면
+//   임의 배합의 물성이 **금속학에서 계산된다.** N개 금속이면 C(N,3) 이 아니라 8N + 표 몇 줄이다.
+//
+//   ① 고용 한도   각 기지에 용질이 얼마나 녹아드나 (실측 상태도)
+//   ② 고용 강화   ΔH = K·δ^(4/3)·√x  (Fleischer) — **합금이 순금속보다 단단한 이유**
+//   ③ 제2상       한도 초과분. 금속간화합물(Cu31Sn8)=단단·취성 / 액상분리(Cu-Pb·Cu-Fe)=층이 갈린다
+//   ④ 공융 강하   섞으면 융점이 내려간다(혼합 엔트로피) → 주조성
+//
+// ⚠개발 기록: 첫 시안은 Hume-Rothery 4규칙만으로 고용도를 *추정*했다가 크게 틀렸다
+//   (Cu-Sn 2.3% ← 실제 15.8% · Cu-Fe 18% ← 실제 0.3%). 4규칙은 필요조건이지 충분조건이 아니다.
+//   실제 고용도는 혼합 엔탈피가 정하고 그건 4규칙으로 계산이 안 된다 ⇒ 한도만 실측 표로 박는다.
+//
+// 검증(scripts/proto-alloy.js): 순동 50 · 청동(Sn12) 107 · 세형동검 91 · 세문경 235/인성 0.08 ·
+//   황동 83 · 백동 81 · 스털링 88 · 적금 143 · 구리+철 41("층이 갈린다") — 전부 실측 경도대.
+
+const ALLOY_E = {   // r 원자반지름(pm) · st 결정구조 · en 전기음성도 · val 원자가 · mp 융점(℃) · h0 순금속 경도(HB) · rho 밀도 · lus 광택
+  copper: { r: 128, st: 'fcc', en: 1.90, val: 1, mp: 1085, h0: 50,  rho: 8.96,  lus: 0.35 },
+  tin:    { r: 140, st: 'tet', en: 1.96, val: 4, mp: 232,  h0: 5,   rho: 7.31,  lus: 0.75 },
+  lead:   { r: 175, st: 'fcc', en: 2.33, val: 4, mp: 327,  h0: 4,   rho: 11.34, lus: 0.55 },
+  zinc:   { r: 134, st: 'hcp', en: 1.65, val: 2, mp: 420,  h0: 30,  rho: 7.14,  lus: 0.70 },
+  silver: { r: 144, st: 'fcc', en: 1.93, val: 1, mp: 962,  h0: 25,  rho: 10.49, lus: 1.00 },
+  gold:   { r: 144, st: 'fcc', en: 2.54, val: 1, mp: 1064, h0: 25,  rho: 19.30, lus: 0.90 },
+  iron:   { r: 126, st: 'bcc', en: 1.83, val: 2, mp: 1538, h0: 150, rho: 7.87,  lus: 0.60 },
+  nickel: { r: 124, st: 'fcc', en: 1.91, val: 2, mp: 1455, h0: 90,  rho: 8.91,  lus: 0.80 },
+};
+// 기지별 고용 한도 [최대 분율, 제2상 성격]  im=금속간화합물 · ss=고용체 · split=액상분리
+const ALLOY_SOL = {
+  copper: { tin: [0.158, 'im'], zinc: [0.390, 'im'], nickel: [1, 'ss'], gold: [1, 'ss'],
+            silver: [0.080, 'ss'], lead: [0, 'split'], iron: [0.003, 'split'] },
+  iron:   { nickel: [1, 'ss'], copper: [0.003, 'split'], tin: [0.100, 'im'], lead: [0, 'split'] },
+  gold:   { copper: [1, 'ss'], silver: [1, 'ss'], nickel: [1, 'ss'] },
+  silver: { copper: [0.080, 'ss'], gold: [1, 'ss'] },
+};
+const ALLOY_K_SS = 4200;   // 고용 강화 계수 — 청동·스털링·적금이 동시에 실측 경도대에 들어오게 보정
+const ALLOY_K_IM = 700;    // 금속간화합물의 경도 기여(δ상은 더 단단하다. 대신 부서진다)
+
+// ★시대가 배합 공간을 자른다 — "청동기 시대"라는 이름의 실질.
+//   아연은 907℃에서 끓어 증발한다(순수 분리는 중세 인도). 철은 융점 1538℃로 청동기 노가 못 낸다.
+const ALLOY_ERA = {
+  bronze: ['copper', 'tin', 'lead', 'gold', 'silver'],
+  iron:   ['copper', 'tin', 'lead', 'gold', 'silver', 'iron', 'nickel'],
+};
+function alloySmeltable(id, era) { return (ALLOY_ERA[era || 'bronze'] || ALLOY_ERA.bronze).indexOf(id) >= 0; }
+
+function _alloySol(b, m) {
+  const t = ALLOY_SOL[b] && ALLOY_SOL[b][m];
+  if (t) return { max: t[0], mode: t[1] };
+  const B = ALLOY_E[b], S = ALLOY_E[m];
+  if (!B || !S) return { max: 0, mode: 'split' };
+  const dr = Math.abs(S.r - B.r) / B.r;
+  if (dr > 0.25) return { max: 0, mode: 'split' };
+  const f = Math.max(0, 1 - dr / 0.15) * (S.st === B.st ? 1 : 0.3)
+          * Math.max(0.15, 1 - Math.abs(S.en - B.en) / 0.5);
+  return { max: Math.min(0.2, f), mode: Math.abs(S.val - B.val) >= 2 ? 'im' : 'ss' };
+}
+
+// mix: { copper: 0.88, tin: 0.12, … } — 합이 1이 아니어도 정규화한다.
+// 반환: { base, hardness, tough, mp, cast, rho, lustre, weapon, mirror, ornament, split, brittle }
+function alloyProps(mix) {
+  const ks = Object.keys(mix || {}).filter((k) => mix[k] > 1e-9 && ALLOY_E[k]);
+  if (!ks.length) return null;
+  const tot = ks.reduce((a, k) => a + mix[k], 0);
+  const x = {}; for (const k of ks) x[k] = mix[k] / tot;
+  const base = ks.reduce((a, k) => (x[k] > x[a] ? k : a), ks[0]);
+
+  let hRule = 0, rho = 0, mpLin = 0, lus = 0;
+  for (const k of ks) { const E = ALLOY_E[k]; hRule += x[k] * E.h0; rho += x[k] * E.rho; mpLin += x[k] * E.mp; lus += x[k] * E.lus; }
+
+  // ★용질이 둘 이상이면 강화 기여를 **그냥 더하면 안 된다**(Kocks 중첩).
+  //   세기가 비슷한 장애물끼리는 제곱합의 제곱근으로 겹친다: ΔH = √(Σ ΔHᵢ²).
+  //   1원소만 넣으면 √(a²)=a 라 기준 합금 9종의 값은 하나도 안 바뀌고,
+  //   3원 배합에서만 과대평가가 잡힌다(Cu-Sn15-Ag10 이 청동의 1.7배가 되던 것이 1.3배로).
+  let dH2 = 0, dHim = 0, brittle = 0, split = 0;
+  for (const k of ks) {
+    if (k === base) continue;
+    const { max, mode } = _alloySol(base, k);
+    const dr = Math.abs(ALLOY_E[k].r - ALLOY_E[base].r) / ALLOY_E[base].r;
+    const dis = Math.min(x[k], max), sec = x[k] - dis;
+    const d = ALLOY_K_SS * Math.pow(dr, 4 / 3) * Math.sqrt(dis);
+    dH2 += d * d;
+    if (mode === 'split') split += sec;
+    else if (mode === 'im') { brittle += sec; dHim += ALLOY_K_IM * sec; }
+  }
+  const dH = Math.sqrt(dH2) + dHim;   // 제2상(금속간화합물)은 별개 기구라 따로 더한다
+  let ent = 0; for (const k of ks) if (x[k] > 0) ent -= x[k] * Math.log(x[k]);
+  const mp = mpLin * (1 - 0.42 * ent);
+
+  const hardness = Math.max(1, hRule + dH - 150 * split);
+  const tough = 1 / (1 + Math.pow(brittle / 0.055, 2)) * (1 - 0.85 * split);
+  const cast = Math.max(0.05, Math.min(2, (1400 - mp) / 700)) * (1 + 1.1 * split);
+  // ★무기는 **휘둘러야** 한다 — 밀도가 실격 사유다. 같은 형상이면 무게가 밀도에 비례한다.
+  //   금(19.3)·납(11.3)은 물성이 좋아도 손에 든 무기로는 못 쓴다. 청동(8.76)·철(7.87)은 무패널티.
+  //   이게 없으면 모델이 "구리 반 금 반"을 최강 무기로 고른다 — 물성만 보면 실제로 맞지만
+  //   (Au-Cu 규칙격자는 진짜 단단하다) 그런 검은 역사에 없다. 이유는 값만이 아니라 무게다.
+  const wRho = Math.min(1, 8.9 / Math.max(1e-6, rho));
+  return {
+    base, hardness, tough, mp, cast, rho, lustre: lus, split, brittle,
+    weapon: Math.min(1.6, hardness / 150) * tough * wRho,   // 무기 = 경도 × 인성 × 경량성
+    mirror: lus * Math.min(1, hardness / 200) * Math.min(1, cast),
+    ornament: lus * Math.min(1.4, cast),
+  };
+}
+
+// ★게임 등급(0~1+) — 기존 MAT_GRADE 축과 이어 붙이기 위한 정규화.
+//   기준점: 표준 청동(Cu 88 · Sn 12) = 1.00. 순동 ≈ 0.46, 마제석기 0.6(비금속이라 별도 축).
+const ALLOY_REF = 0.7104;   // alloyProps({copper:.88,tin:.12}).weapon — 아래 검증에서 고정
+function alloyGrade(mix, kind) {
+  const a = alloyProps(mix);
+  if (!a) return 0;
+  const raw = kind === 'mirror' ? a.mirror : (kind === 'ornament' ? a.ornament : a.weapon);
+  const ref = kind === 'weapon' || !kind ? ALLOY_REF : 1;
+  return +(raw / ref).toFixed(4);
+}
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { RESOURCES, _summary, _byHarvest, miningParams, pickMineral, ORE_POOLS,
     ORE_K, MINE_SWING_MS, MINE_SWINGS_PER, CHUNK_KG, ORE_REG0, ORE_REG1, oreRegen,
@@ -610,7 +729,8 @@ if (typeof module !== 'undefined' && module.exports) {
     mineLevelF, MINE_XP_MAX, mineChunkKg, mineChunkRoll, CHUNK_CV, CHUNK_Z_MAX,
     mineDepthCost, mineSwingsNeeded, mineToolWear,
     mineTPR, mineTNR, mineIdAcc, mineIdPhrase,
-    mineDepthP, mineDepthEff, ORE_DEPTH_PER, ORE_DEPTH_P_GAIN };
+    mineDepthP, mineDepthEff, ORE_DEPTH_PER, ORE_DEPTH_P_GAIN,
+    ALLOY_E, ALLOY_SOL, ALLOY_ERA, alloySmeltable, alloyProps, alloyGrade, ALLOY_REF };
 }
 if (typeof window !== 'undefined') {
   window.Specialty = { RESOURCES };
