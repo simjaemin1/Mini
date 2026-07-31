@@ -29,7 +29,8 @@ const has = (f) => argv.includes(f);
 const val = (f, d) => { const i = argv.indexOf(f); return i >= 0 ? argv[i + 1] : d; };
 const ZID = val('--zone', 'hanbando');
 const APPLY = has('--apply');
-const MINOR = has('--minor');
+const MINOR = has('--minor') || has('--minor-only');
+const MINOR_ONLY = has('--minor-only');   // ★대·중·소 50개는 이미 적용됐다 — 자잘만 돈다(중복 방지)
 const OUT = val('--out', '/tmp/ore-plan.json');
 
 const { ZONES } = require(path.join(__dirname, '..', 'server', 'zone-config'));
@@ -46,6 +47,11 @@ const W = Math.round(Z.zoneWidth / CELL), H = Math.round(Z.zoneHeight / CELL);
 // 대중소 50 + (옵션) 자잘. [개수, 반경(셀), p_peak 기준]
 const TIERS = [[3, 130, 0.45], [12, 70, 0.38], [35, 32, 0.30]];
 const MINOR_TIER = [400, 7, 0.22];
+// ★[재민 확정 순서 3단계] 자잘 광맥은 **남은 소외 구역 편중**으로 뿌린다.
+//   ①지류(3개) → ②자잘한 숲(17개)으로 소외가 2.9% → 0.2%까지 내려갔다. 그러고도 남은 자리가
+//   자잘 광맥의 1순위다 — 물도 숲도 없는 내륙 깊은 곳이라 광맥 고증에도 맞고,
+//   그 땅이 유일하게 아무것도 안 되는 곳이기 때문이다.
+const MINOR_NEG_BOOST = 6;   // 소외 격자 위 후보의 점수 배수
 
 console.log('=== 광맥 배치 계획 · ' + ZID + ' · ' + W + '×' + H + '셀 ===');
 console.log('기존 광맥 ' + d.ores.length + '개 — ' + d.ores.map((o) => o.name + '(' + (o.mineral || '?') + ' r' + Math.round(o.radius / CELL) + ')').join(', '));
@@ -67,6 +73,30 @@ for (let gy = 0; gy < gh; gy++) {
 }
 console.log('  ' + ((Date.now() - t0) / 1000).toFixed(0) + 's                    ');
 
+// ── 소외 필드(--minor 전용) — audit-neglect 와 같은 기준: 물 ≥180 & 숲 ≥180 ──
+let NEG = null;
+if (MINOR) {
+  console.log('소외 필드 계산(물 ≥180 & 숲 ≥180)…');
+  const kind = new Uint8Array(gw * gh);
+  for (let gy = 0; gy < gh; gy++) for (let gx = 0; gx < gw; gx++) {
+    const x = gx * S + (S >> 1), y = gy * S + (S >> 1), px = x * CELL + 16, py = y * CELL + 16;
+    kind[gy * gw + gx] = terrain.isWaterCellLocal(ZID, px, py) ? 1
+      : (terrain.isRockCellLocal(ZID, px, py) ? 2 : (terrain.getForestMultiplier(ZID, px, py) > 1.2 ? 3 : 0));
+  }
+  const cham = (pred) => {
+    const INF = 1 << 28, a = new Int32Array(gw * gh);
+    for (let i = 0; i < a.length; i++) a[i] = pred(i) ? 0 : INF;
+    const up = (i, j, c) => { if (a[j] + c < a[i]) a[i] = a[j] + c; };
+    for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) { const i = y * gw + x; if (!a[i]) continue; if (x > 0) up(i, i - 1, 5); if (y > 0) up(i, i - gw, 5); if (x > 0 && y > 0) up(i, i - gw - 1, 7); if (x < gw - 1 && y > 0) up(i, i - gw + 1, 7); }
+    for (let y = gh - 1; y >= 0; y--) for (let x = gw - 1; x >= 0; x--) { const i = y * gw + x; if (!a[i]) continue; if (x < gw - 1) up(i, i + 1, 5); if (y < gh - 1) up(i, i + gw, 5); if (x < gw - 1 && y < gh - 1) up(i, i + gw + 1, 7); if (x > 0 && y < gh - 1) up(i, i + gw - 1, 7); }
+    return a;
+  };
+  const dW = cham((i) => kind[i] === 1), dF = cham((i) => kind[i] === 3), cd = (a, i) => a[i] / 5 * S;
+  NEG = new Uint8Array(gw * gh);
+  let n = 0;
+  for (let i = 0; i < kind.length; i++) { if (kind[i] === 1 || kind[i] === 2) continue; if (cd(dW, i) >= 180 && cd(dF, i) >= 180) { NEG[i] = 1; n++; } }
+  console.log('  소외 격자 ' + n.toLocaleString() + '개 — 자잘 광맥을 여기 편중 배치한다');
+}
 const mkII = (src) => { const A = new Int32Array((gw + 1) * (gh + 1)); for (let y = 0; y < gh; y++) { let row = 0; for (let x = 0; x < gw; x++) { row += src(y * gw + x); A[(y + 1) * (gw + 1) + x + 1] = A[y * (gw + 1) + x + 1] + row; } } return A; };
 const RI = mkII((i) => rock[i]), LI = mkII((i) => (rock[i] || water[i]) ? 0 : 1);
 const boxAvg = (A, x0, y0, x1, y1) => {
@@ -82,15 +112,26 @@ const placed = d.ores.map((o) => ({ cx: Math.round(o.center[0] / CELL), cy: Math
 const added = [];
 let nextIdx = d.ores.length + 1;
 
-const tiers = MINOR ? TIERS.concat([MINOR_TIER]) : TIERS;
+const tiers = MINOR_ONLY ? [MINOR_TIER] : (MINOR ? TIERS.concat([MINOR_TIER]) : TIERS);
+let _scanCache = null, _scanFor = -1;
 for (const [cnt, R0, pk0] of tiers) {
-  let made = 0;
+  let made = 0; _scanCache = null; _scanFor = -1;
   for (let k = 0; k < cnt; k++) {
     const gR = Math.max(1, Math.round(R0 / S));
     let best = null, bs = -1;
+    // ★자잘 광맥(R0 ≤ 12셀)은 **소외 격자만** 훑는다. 전 지도(547×1016)를 400번 스캔하면
+    //   250억 연산이라 사실상 끝나지 않는다 — 실측으로 확인하고 좁혔다.
+    //   목적 자체가 "남은 소외 구역에 배치"(재민 순서 3단계)라 탐색 범위를 그리로 좁히는 게 옳다.
     const step = Math.max(2, Math.min(8, gR));
-    for (let gy = gR; gy < gh - gR; gy += step) {
-      for (let gx = gR; gx < gw - gR; gx += step) {
+    let scan = _scanCache;
+    if (!scan || _scanFor !== R0) {
+      scan = [];
+      if (NEG && R0 <= 12) { for (let i = 0; i < NEG.length; i++) if (NEG[i]) { const gx = i % gw, gy = (i / gw) | 0; if (gx >= gR && gy >= gR && gx < gw - gR && gy < gh - gR) scan.push(i); } }
+      else { for (let gy = gR; gy < gh - gR; gy += step) for (let gx = gR; gx < gw - gR; gx += step) scan.push(gy * gw + gx); }
+      _scanCache = scan; _scanFor = R0;
+    }
+    for (const _i of scan) {
+      { const gy = (_i / gw) | 0, gx = _i % gw;
         const i = gy * gw + gx;
         if (water[i] || rock[i]) continue;                    // 중심은 반드시 땅
         const cx = gx * S, cy = gy * S;
@@ -100,7 +141,8 @@ for (const [cnt, R0, pk0] of tiers) {
         const lf = boxAvg(LI, gx - gR, gy - gR, gx + gR, gy + gR);
         if (lf < 0.35) continue;                              // 원판의 1/3 이상이 팔 수 있는 땅
         const rf = boxAvg(RI, gx - gR - 3, gy - gR - 3, gx + gR + 3, gy + gR + 3);   // 기슭을 잡으려 원판을 넓혀 잰다
-        const sc = (0.20 + rf * 2.5) * Math.pow(lf, 1.5) * (0.6 + hash2(gx, gy, 400 + k) * 0.8);
+        const negB = (NEG && NEG[gy * gw + gx]) ? MINOR_NEG_BOOST : 1;   // ★소외 격자 우선(재민 순서 3단계)
+        const sc = (0.20 + rf * 2.5) * Math.pow(lf, 1.5) * (0.6 + hash2(gx, gy, 400 + k) * 0.8) * negB;
         if (sc > bs) { bs = sc; best = { cx, cy, lf, rf }; }
       }
     }

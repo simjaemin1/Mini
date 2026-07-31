@@ -30248,6 +30248,114 @@
      56801,
      120673
     ]
+   },
+   {
+    "name": "갈현천",
+    "path": [
+     {
+      "pos": [
+       41616,
+       22416
+      ],
+      "width": 96
+     },
+     {
+      "pos": [
+       43120,
+       20496
+      ],
+      "width": 109
+     },
+     {
+      "pos": [
+       44496,
+       18480
+      ],
+      "width": 122
+     },
+     {
+      "pos": [
+       45712,
+       16400
+      ],
+      "width": 135
+     },
+     {
+      "pos": [
+       46736,
+       14192
+      ],
+      "width": 148
+     },
+     {
+      "pos": [
+       47664,
+       11920
+      ],
+      "width": 161
+     }
+    ],
+    "_tributary": true,
+    "_bbox": [
+     41534.5,
+     11838.5,
+     47745.5,
+     22497.5
+    ]
+   },
+   {
+    "name": "고래실천",
+    "path": [
+     {
+      "pos": [
+       55440,
+       38800
+      ],
+      "width": 96
+     },
+     {
+      "pos": [
+       52656,
+       38928
+      ],
+      "width": 134
+     },
+     {
+      "pos": [
+       49936,
+       39184
+      ],
+      "width": 173
+     },
+     {
+      "pos": [
+       47216,
+       39632
+      ],
+      "width": 211
+     },
+     {
+      "pos": [
+       44528,
+       40272
+      ],
+      "width": 250
+     },
+     {
+      "pos": [
+       41872,
+       41072
+      ],
+      "width": 288
+     }
+    ],
+    "_tributary": true,
+    "_bbox": [
+     41727,
+     38655,
+     55585,
+     41217
+    ]
    }
   ],
   "lakes": [
@@ -45710,6 +45818,176 @@
     "ry": 769,
     "densityMult": 1.5,
     "dedupName": "매수해_2"
+   },
+   {
+    "name": "숯골",
+    "center": [
+     54736,
+     124880
+    ],
+    "rx": 2272,
+    "ry": 3296,
+    "densityMult": 1.45
+   },
+   {
+    "name": "떡갈숲",
+    "center": [
+     66896,
+     72784
+    ],
+    "rx": 1888,
+    "ry": 1568,
+    "densityMult": 1.68
+   },
+   {
+    "name": "물푸레숲",
+    "center": [
+     10192,
+     90320
+    ],
+    "rx": 1504,
+    "ry": 1312,
+    "densityMult": 1.65
+   },
+   {
+    "name": "자작골",
+    "center": [
+     1616,
+     48976
+    ],
+    "rx": 1344,
+    "ry": 1472,
+    "densityMult": 1.57
+   },
+   {
+    "name": "싸리숲",
+    "center": [
+     47952,
+     26448
+    ],
+    "rx": 1280,
+    "ry": 1408,
+    "densityMult": 1.56
+   },
+   {
+    "name": "느티골",
+    "center": [
+     2640,
+     111312
+    ],
+    "rx": 1280,
+    "ry": 1280,
+    "densityMult": 1.59
+   },
+   {
+    "name": "박달숲",
+    "center": [
+     49872,
+     106704
+    ],
+    "rx": 992,
+    "ry": 1568,
+    "densityMult": 1.41
+   },
+   {
+    "name": "옻나무골",
+    "center": [
+     15440,
+     119248
+    ],
+    "rx": 1184,
+    "ry": 1376,
+    "densityMult": 1.55
+   },
+   {
+    "name": "산벚숲",
+    "center": [
+     43856,
+     29264
+    ],
+    "rx": 1248,
+    "ry": 1312,
+    "densityMult": 1.59
+   },
+   {
+    "name": "굴참골",
+    "center": [
+     67920,
+     78160
+    ],
+    "rx": 1408,
+    "ry": 1152,
+    "densityMult": 1.67
+   },
+   {
+    "name": "가래숲",
+    "center": [
+     61904,
+     1360
+    ],
+    "rx": 1408,
+    "ry": 1152,
+    "densityMult": 1.67
+   },
+   {
+    "name": "오리목골",
+    "center": [
+     52432,
+     99152
+    ],
+    "rx": 1216,
+    "ry": 1344,
+    "densityMult": 1.57
+   },
+   {
+    "name": "층층숲",
+    "center": [
+     21200,
+     13264
+    ],
+    "rx": 1216,
+    "ry": 1344,
+    "densityMult": 1.57
+   },
+   {
+    "name": "고로쇠골",
+    "center": [
+     15440,
+     27856
+    ],
+    "rx": 1568,
+    "ry": 992,
+    "densityMult": 1.77
+   },
+   {
+    "name": "단풍숲",
+    "center": [
+     68688,
+     101584
+    ],
+    "rx": 1280,
+    "ry": 1280,
+    "densityMult": 1.6
+   },
+   {
+    "name": "서어골",
+    "center": [
+     18000,
+     8144
+    ],
+    "rx": 1472,
+    "ry": 1088,
+    "densityMult": 1.72
+   },
+   {
+    "name": "쪽동백숲",
+    "center": [
+     10448,
+     111696
+    ],
+    "rx": 1536,
+    "ry": 1024,
+    "densityMult": 1.76
    }
   ],
   "ores": [
@@ -45811,7 +46089,7 @@
     ],
     "radius": 4160,
     "mineral": "tungsten",
-    "pk": 0.0351
+    "pk": 0.0392
    },
    {
     "name": "광맥11",
@@ -45821,7 +46099,7 @@
     ],
     "radius": 4160,
     "mineral": "iron",
-    "pk": 0.4649
+    "pk": 0.2809
    },
    {
     "name": "광맥12",
@@ -45831,7 +46109,7 @@
     ],
     "radius": 4160,
     "mineral": "coal",
-    "pk": 0.6864
+    "pk": 0.3887
    },
    {
     "name": "광맥13",
@@ -45841,7 +46119,7 @@
     ],
     "radius": 2240,
     "mineral": "coal",
-    "pk": 0.6064
+    "pk": 0.3297
    },
    {
     "name": "광맥14",
@@ -45851,7 +46129,7 @@
     ],
     "radius": 2240,
     "mineral": "gold",
-    "pk": 0.0278
+    "pk": 0.0423
    },
    {
     "name": "광맥15",
@@ -45861,7 +46139,7 @@
     ],
     "radius": 2240,
     "mineral": "iron",
-    "pk": 0.2523
+    "pk": 0.3172
    },
    {
     "name": "광맥16",
@@ -45871,7 +46149,7 @@
     ],
     "radius": 2240,
     "mineral": "marble",
-    "pk": 0.0729
+    "pk": 0.0558
    },
    {
     "name": "광맥17",
@@ -45881,7 +46159,7 @@
     ],
     "radius": 2240,
     "mineral": "copper",
-    "pk": 0.5502
+    "pk": 0.4613
    },
    {
     "name": "광맥18",
@@ -45891,7 +46169,7 @@
     ],
     "radius": 2240,
     "mineral": "gold",
-    "pk": 0.0337
+    "pk": 0.0435
    },
    {
     "name": "광맥19",
@@ -45901,7 +46179,7 @@
     ],
     "radius": 2240,
     "mineral": "gold",
-    "pk": 0.0263
+    "pk": 0.0215
    },
    {
     "name": "광맥20",
@@ -45911,7 +46189,7 @@
     ],
     "radius": 2240,
     "mineral": "tungsten",
-    "pk": 0.0739
+    "pk": 0.0661
    },
    {
     "name": "광맥21",
@@ -45921,7 +46199,7 @@
     ],
     "radius": 2240,
     "mineral": "iron",
-    "pk": 0.4828
+    "pk": 0.4156
    },
    {
     "name": "광맥22",
@@ -45931,7 +46209,7 @@
     ],
     "radius": 2240,
     "mineral": "iron",
-    "pk": 0.5326
+    "pk": 0.3488
    },
    {
     "name": "광맥23",
@@ -45941,7 +46219,7 @@
     ],
     "radius": 2240,
     "mineral": "jade_raw",
-    "pk": 0.0279
+    "pk": 0.0337
    },
    {
     "name": "광맥24",
@@ -45951,7 +46229,7 @@
     ],
     "radius": 2240,
     "mineral": "tungsten",
-    "pk": 0.0694
+    "pk": 0.0378
    },
    {
     "name": "광맥25",
@@ -45961,7 +46239,7 @@
     ],
     "radius": 1024,
     "mineral": "jade_raw",
-    "pk": 0.0132
+    "pk": 0.0298
    },
    {
     "name": "광맥26",
@@ -45971,7 +46249,7 @@
     ],
     "radius": 1024,
     "mineral": "tungsten",
-    "pk": 0.051
+    "pk": 0.0302
    },
    {
     "name": "광맥27",
@@ -45981,7 +46259,7 @@
     ],
     "radius": 1024,
     "mineral": "jade_raw",
-    "pk": 0.0371
+    "pk": 0.0317
    },
    {
     "name": "광맥28",
@@ -45991,7 +46269,7 @@
     ],
     "radius": 1024,
     "mineral": "jade_raw",
-    "pk": 0.0139
+    "pk": 0.0332
    },
    {
     "name": "광맥29",
@@ -46001,7 +46279,7 @@
     ],
     "radius": 1024,
     "mineral": "gold",
-    "pk": 0.0297
+    "pk": 0.0369
    },
    {
     "name": "광맥30",
@@ -46011,7 +46289,7 @@
     ],
     "radius": 1024,
     "mineral": "gold",
-    "pk": 0.0164
+    "pk": 0.0113
    },
    {
     "name": "광맥31",
@@ -46021,7 +46299,7 @@
     ],
     "radius": 1024,
     "mineral": "coal",
-    "pk": 0.2045
+    "pk": 0.3518
    },
    {
     "name": "광맥32",
@@ -46031,7 +46309,7 @@
     ],
     "radius": 1024,
     "mineral": "copper",
-    "pk": 0.1531
+    "pk": 0.3471
    },
    {
     "name": "광맥33",
@@ -46041,7 +46319,7 @@
     ],
     "radius": 1024,
     "mineral": "iron",
-    "pk": 0.4066
+    "pk": 0.2783
    },
    {
     "name": "광맥34",
@@ -46051,7 +46329,7 @@
     ],
     "radius": 1024,
     "mineral": "tungsten",
-    "pk": 0.0276
+    "pk": 0.0735
    },
    {
     "name": "광맥35",
@@ -46061,7 +46339,7 @@
     ],
     "radius": 1024,
     "mineral": "copper",
-    "pk": 0.4233
+    "pk": 0.3979
    },
    {
     "name": "광맥36",
@@ -46071,7 +46349,7 @@
     ],
     "radius": 1024,
     "mineral": "gold",
-    "pk": 0.0329
+    "pk": 0.0394
    },
    {
     "name": "광맥37",
@@ -46081,7 +46359,7 @@
     ],
     "radius": 1024,
     "mineral": "iron",
-    "pk": 0.4488
+    "pk": 0.2706
    },
    {
     "name": "광맥38",
@@ -46091,7 +46369,7 @@
     ],
     "radius": 1024,
     "mineral": "iron",
-    "pk": 0.2003
+    "pk": 0.1563
    },
    {
     "name": "광맥39",
@@ -46101,7 +46379,7 @@
     ],
     "radius": 1024,
     "mineral": "iron",
-    "pk": 0.47
+    "pk": 0.2609
    },
    {
     "name": "광맥40",
@@ -46111,7 +46389,7 @@
     ],
     "radius": 1024,
     "mineral": "iron",
-    "pk": 0.3497
+    "pk": 0.3767
    },
    {
     "name": "광맥41",
@@ -46121,7 +46399,7 @@
     ],
     "radius": 1024,
     "mineral": "iron",
-    "pk": 0.2067
+    "pk": 0.3893
    },
    {
     "name": "광맥42",
@@ -46131,7 +46409,7 @@
     ],
     "radius": 1024,
     "mineral": "gold",
-    "pk": 0.0197
+    "pk": 0.0272
    },
    {
     "name": "광맥43",
@@ -46141,7 +46419,7 @@
     ],
     "radius": 1024,
     "mineral": "tungsten",
-    "pk": 0.0454
+    "pk": 0.0619
    },
    {
     "name": "광맥44",
@@ -46151,7 +46429,7 @@
     ],
     "radius": 1024,
     "mineral": "marble",
-    "pk": 0.0769
+    "pk": 0.0593
    },
    {
     "name": "광맥45",
@@ -46161,7 +46439,7 @@
     ],
     "radius": 1024,
     "mineral": "iron",
-    "pk": 0.236
+    "pk": 0.2304
    },
    {
     "name": "광맥46",
@@ -46171,7 +46449,7 @@
     ],
     "radius": 1024,
     "mineral": "tungsten",
-    "pk": 0.0265
+    "pk": 0.0544
    },
    {
     "name": "광맥47",
@@ -46181,7 +46459,7 @@
     ],
     "radius": 1024,
     "mineral": "iron",
-    "pk": 0.4155
+    "pk": 0.1482
    },
    {
     "name": "광맥48",
@@ -46191,7 +46469,7 @@
     ],
     "radius": 1024,
     "mineral": "coal",
-    "pk": 0.2658
+    "pk": 0.2238
    },
    {
     "name": "광맥49",
@@ -46201,7 +46479,7 @@
     ],
     "radius": 1024,
     "mineral": "gold",
-    "pk": 0.0176
+    "pk": 0.0372
    },
    {
     "name": "광맥50",
@@ -46211,7 +46489,7 @@
     ],
     "radius": 1024,
     "mineral": "coal",
-    "pk": 0.4553
+    "pk": 0.2374
    },
    {
     "name": "광맥51",
@@ -46221,7 +46499,7 @@
     ],
     "radius": 1024,
     "mineral": "marble",
-    "pk": 0.0332
+    "pk": 0.0622
    },
    {
     "name": "광맥52",
@@ -46231,7 +46509,7 @@
     ],
     "radius": 1024,
     "mineral": "copper",
-    "pk": 0.4319
+    "pk": 0.1795
    },
    {
     "name": "광맥53",
@@ -46241,7 +46519,7 @@
     ],
     "radius": 1024,
     "mineral": "jade_raw",
-    "pk": 0.0301
+    "pk": 0.0232
    },
    {
     "name": "광맥54",
@@ -46251,7 +46529,7 @@
     ],
     "radius": 1024,
     "mineral": "tungsten",
-    "pk": 0.0496
+    "pk": 0.0274
    },
    {
     "name": "광맥55",
@@ -46261,7 +46539,7 @@
     ],
     "radius": 1024,
     "mineral": "copper",
-    "pk": 0.1563
+    "pk": 0.3894
    },
    {
     "name": "광맥56",
@@ -46271,7 +46549,7 @@
     ],
     "radius": 1024,
     "mineral": "iron",
-    "pk": 0.2258
+    "pk": 0.4411
    },
    {
     "name": "광맥57",
@@ -46281,7 +46559,7 @@
     ],
     "radius": 1024,
     "mineral": "iron",
-    "pk": 0.4522
+    "pk": 0.1637
    },
    {
     "name": "광맥58",
@@ -46291,7 +46569,7 @@
     ],
     "radius": 1024,
     "mineral": "tungsten",
-    "pk": 0.0205
+    "pk": 0.076
    },
    {
     "name": "광맥59",
@@ -46301,7 +46579,1717 @@
     ],
     "radius": 1024,
     "mineral": "marble",
-    "pk": 0.0303
+    "pk": 0.0504
+   },
+   {
+    "name": "광맥60",
+    "center": [
+     69648,
+     21520
+    ],
+    "radius": 224,
+    "mineral": "iron",
+    "pk": 0.2983
+   },
+   {
+    "name": "광맥61",
+    "center": [
+     68368,
+     61968
+    ],
+    "radius": 224,
+    "mineral": "tungsten",
+    "pk": 0.0281
+   },
+   {
+    "name": "광맥62",
+    "center": [
+     69520,
+     21136
+    ],
+    "radius": 224,
+    "mineral": "marble",
+    "pk": 0.0576
+   },
+   {
+    "name": "광맥63",
+    "center": [
+     68368,
+     63504
+    ],
+    "radius": 224,
+    "mineral": "copper",
+    "pk": 0.1099
+   },
+   {
+    "name": "광맥64",
+    "center": [
+     68368,
+     62224
+    ],
+    "radius": 224,
+    "mineral": "copper",
+    "pk": 0.1524
+   },
+   {
+    "name": "광맥65",
+    "center": [
+     5392,
+     96656
+    ],
+    "radius": 224,
+    "mineral": "coal",
+    "pk": 0.1154
+   },
+   {
+    "name": "광맥66",
+    "center": [
+     68240,
+     64784
+    ],
+    "radius": 224,
+    "mineral": "jade_raw",
+    "pk": 0.0181
+   },
+   {
+    "name": "광맥67",
+    "center": [
+     68240,
+     65424
+    ],
+    "radius": 224,
+    "mineral": "jade_raw",
+    "pk": 0.0102
+   },
+   {
+    "name": "광맥68",
+    "center": [
+     68368,
+     63248
+    ],
+    "radius": 224,
+    "mineral": "gold",
+    "pk": 0.0162
+   },
+   {
+    "name": "광맥69",
+    "center": [
+     68368,
+     62608
+    ],
+    "radius": 224,
+    "mineral": "gold",
+    "pk": 0.0269
+   },
+   {
+    "name": "광맥70",
+    "center": [
+     68240,
+     64016
+    ],
+    "radius": 224,
+    "mineral": "copper",
+    "pk": 0.2619
+   },
+   {
+    "name": "광맥71",
+    "center": [
+     68240,
+     64528
+    ],
+    "radius": 224,
+    "mineral": "iron",
+    "pk": 0.1878
+   },
+   {
+    "name": "광맥72",
+    "center": [
+     68368,
+     62992
+    ],
+    "radius": 224,
+    "mineral": "jade_raw",
+    "pk": 0.0235
+   },
+   {
+    "name": "광맥73",
+    "center": [
+     68368,
+     61712
+    ],
+    "radius": 224,
+    "mineral": "coal",
+    "pk": 0.2809
+   },
+   {
+    "name": "광맥74",
+    "center": [
+     68240,
+     65040
+    ],
+    "radius": 224,
+    "mineral": "gold",
+    "pk": 0.0125
+   },
+   {
+    "name": "광맥75",
+    "center": [
+     68240,
+     65680
+    ],
+    "radius": 224,
+    "mineral": "gold",
+    "pk": 0.0254
+   },
+   {
+    "name": "광맥76",
+    "center": [
+     5776,
+     96528
+    ],
+    "radius": 224,
+    "mineral": "gold",
+    "pk": 0.0251
+   },
+   {
+    "name": "광맥77",
+    "center": [
+     68368,
+     63760
+    ],
+    "radius": 224,
+    "mineral": "tungsten",
+    "pk": 0.0459
+   },
+   {
+    "name": "광맥78",
+    "center": [
+     68240,
+     64272
+    ],
+    "radius": 224,
+    "mineral": "marble",
+    "pk": 0.0594
+   },
+   {
+    "name": "광맥79",
+    "center": [
+     6416,
+     96400
+    ],
+    "radius": 224,
+    "mineral": "copper",
+    "pk": 0.2749
+   },
+   {
+    "name": "광맥80",
+    "center": [
+     68624,
+     62608
+    ],
+    "radius": 224,
+    "mineral": "marble",
+    "pk": 0.0711
+   },
+   {
+    "name": "광맥81",
+    "center": [
+     68496,
+     65168
+    ],
+    "radius": 224,
+    "mineral": "gold",
+    "pk": 0.0249
+   },
+   {
+    "name": "광맥82",
+    "center": [
+     6032,
+     96528
+    ],
+    "radius": 224,
+    "mineral": "tungsten",
+    "pk": 0.0342
+   },
+   {
+    "name": "광맥83",
+    "center": [
+     68624,
+     61712
+    ],
+    "radius": 224,
+    "mineral": "copper",
+    "pk": 0.1741
+   },
+   {
+    "name": "광맥84",
+    "center": [
+     68496,
+     64912
+    ],
+    "radius": 224,
+    "mineral": "jade_raw",
+    "pk": 0.0202
+   },
+   {
+    "name": "광맥85",
+    "center": [
+     68624,
+     62224
+    ],
+    "radius": 224,
+    "mineral": "iron",
+    "pk": 0.2722
+   },
+   {
+    "name": "광맥86",
+    "center": [
+     68624,
+     63248
+    ],
+    "radius": 224,
+    "mineral": "marble",
+    "pk": 0.0705
+   },
+   {
+    "name": "광맥87",
+    "center": [
+     68496,
+     65552
+    ],
+    "radius": 224,
+    "mineral": "jade_raw",
+    "pk": 0.0292
+   },
+   {
+    "name": "광맥88",
+    "center": [
+     68496,
+     64656
+    ],
+    "radius": 224,
+    "mineral": "iron",
+    "pk": 0.299
+   },
+   {
+    "name": "광맥89",
+    "center": [
+     68624,
+     62864
+    ],
+    "radius": 224,
+    "mineral": "iron",
+    "pk": 0.1026
+   },
+   {
+    "name": "광맥90",
+    "center": [
+     68496,
+     64016
+    ],
+    "radius": 224,
+    "mineral": "iron",
+    "pk": 0.1865
+   },
+   {
+    "name": "광맥91",
+    "center": [
+     68496,
+     64400
+    ],
+    "radius": 224,
+    "mineral": "marble",
+    "pk": 0.0413
+   },
+   {
+    "name": "광맥92",
+    "center": [
+     68624,
+     63504
+    ],
+    "radius": 224,
+    "mineral": "iron",
+    "pk": 0.257
+   },
+   {
+    "name": "광맥93",
+    "center": [
+     5648,
+     96784
+    ],
+    "radius": 224,
+    "mineral": "coal",
+    "pk": 0.3299
+   },
+   {
+    "name": "광맥94",
+    "center": [
+     5136,
+     96528
+    ],
+    "radius": 224,
+    "mineral": "coal",
+    "pk": 0.2038
+   },
+   {
+    "name": "광맥95",
+    "center": [
+     68624,
+     61968
+    ],
+    "radius": 224,
+    "mineral": "marble",
+    "pk": 0.0404
+   },
+   {
+    "name": "광맥96",
+    "center": [
+     68496,
+     65808
+    ],
+    "radius": 224,
+    "mineral": "iron",
+    "pk": 0.2625
+   },
+   {
+    "name": "광맥97",
+    "center": [
+     6160,
+     97808
+    ],
+    "radius": 224,
+    "mineral": "tungsten",
+    "pk": 0.0526
+   },
+   {
+    "name": "광맥98",
+    "center": [
+     5904,
+     96784
+    ],
+    "radius": 224,
+    "mineral": "copper",
+    "pk": 0.1257
+   },
+   {
+    "name": "광맥99",
+    "center": [
+     68112,
+     63632
+    ],
+    "radius": 224,
+    "mineral": "tungsten",
+    "pk": 0.0256
+   },
+   {
+    "name": "광맥100",
+    "center": [
+     5520,
+     96400
+    ],
+    "radius": 224,
+    "mineral": "gold",
+    "pk": 0.0307
+   },
+   {
+    "name": "광맥101",
+    "center": [
+     67984,
+     64784
+    ],
+    "radius": 224,
+    "mineral": "marble",
+    "pk": 0.0279
+   },
+   {
+    "name": "광맥102",
+    "center": [
+     6160,
+     96272
+    ],
+    "radius": 224,
+    "mineral": "copper",
+    "pk": 0.2839
+   },
+   {
+    "name": "광맥103",
+    "center": [
+     67984,
+     65040
+    ],
+    "radius": 224,
+    "mineral": "iron",
+    "pk": 0.299
+   },
+   {
+    "name": "광맥104",
+    "center": [
+     68624,
+     63760
+    ],
+    "radius": 224,
+    "mineral": "jade_raw",
+    "pk": 0.0208
+   },
+   {
+    "name": "광맥105",
+    "center": [
+     68112,
+     62992
+    ],
+    "radius": 224,
+    "mineral": "marble",
+    "pk": 0.0808
+   },
+   {
+    "name": "광맥106",
+    "center": [
+     68112,
+     61840
+    ],
+    "radius": 224,
+    "mineral": "tungsten",
+    "pk": 0.0432
+   },
+   {
+    "name": "광맥107",
+    "center": [
+     68112,
+     63376
+    ],
+    "radius": 224,
+    "mineral": "copper",
+    "pk": 0.2668
+   },
+   {
+    "name": "광맥108",
+    "center": [
+     68112,
+     62224
+    ],
+    "radius": 224,
+    "mineral": "coal",
+    "pk": 0.1121
+   },
+   {
+    "name": "광맥109",
+    "center": [
+     67984,
+     65296
+    ],
+    "radius": 224,
+    "mineral": "jade_raw",
+    "pk": 0.0179
+   },
+   {
+    "name": "광맥110",
+    "center": [
+     68112,
+     62480
+    ],
+    "radius": 224,
+    "mineral": "gold",
+    "pk": 0.0165
+   },
+   {
+    "name": "광맥111",
+    "center": [
+     68112,
+     62736
+    ],
+    "radius": 224,
+    "mineral": "copper",
+    "pk": 0.1909
+   },
+   {
+    "name": "광맥112",
+    "center": [
+     6288,
+     96656
+    ],
+    "radius": 224,
+    "mineral": "tungsten",
+    "pk": 0.0273
+   },
+   {
+    "name": "광맥113",
+    "center": [
+     5904,
+     96272
+    ],
+    "radius": 224,
+    "mineral": "coal",
+    "pk": 0.1918
+   },
+   {
+    "name": "광맥114",
+    "center": [
+     67984,
+     65552
+    ],
+    "radius": 224,
+    "mineral": "gold",
+    "pk": 0.0125
+   },
+   {
+    "name": "광맥115",
+    "center": [
+     6416,
+     96144
+    ],
+    "radius": 224,
+    "mineral": "tungsten",
+    "pk": 0.0248
+   },
+   {
+    "name": "광맥116",
+    "center": [
+     67984,
+     64272
+    ],
+    "radius": 224,
+    "mineral": "gold",
+    "pk": 0.0167
+   },
+   {
+    "name": "광맥117",
+    "center": [
+     67984,
+     64016
+    ],
+    "radius": 224,
+    "mineral": "coal",
+    "pk": 0.2435
+   },
+   {
+    "name": "광맥118",
+    "center": [
+     67984,
+     64528
+    ],
+    "radius": 224,
+    "mineral": "copper",
+    "pk": 0.2415
+   },
+   {
+    "name": "광맥119",
+    "center": [
+     5264,
+     96272
+    ],
+    "radius": 224,
+    "mineral": "gold",
+    "pk": 0.0157
+   },
+   {
+    "name": "광맥120",
+    "center": [
+     5648,
+     96144
+    ],
+    "radius": 224,
+    "mineral": "coal",
+    "pk": 0.1674
+   },
+   {
+    "name": "광맥121",
+    "center": [
+     6160,
+     96016
+    ],
+    "radius": 224,
+    "mineral": "tungsten",
+    "pk": 0.0291
+   },
+   {
+    "name": "광맥122",
+    "center": [
+     67728,
+     63888
+    ],
+    "radius": 224,
+    "mineral": "coal",
+    "pk": 0.2613
+   },
+   {
+    "name": "광맥123",
+    "center": [
+     57232,
+     32528
+    ],
+    "radius": 224,
+    "mineral": "copper",
+    "pk": 0.2538
+   },
+   {
+    "name": "광맥124",
+    "center": [
+     16272,
+     93456
+    ],
+    "radius": 224,
+    "mineral": "iron",
+    "pk": 0.1314
+   },
+   {
+    "name": "광맥125",
+    "center": [
+     4880,
+     96400
+    ],
+    "radius": 224,
+    "mineral": "coal",
+    "pk": 0.3155
+   },
+   {
+    "name": "광맥126",
+    "center": [
+     46992,
+     129552
+    ],
+    "radius": 224,
+    "mineral": "marble",
+    "pk": 0.055
+   },
+   {
+    "name": "광맥127",
+    "center": [
+     67600,
+     65168
+    ],
+    "radius": 224,
+    "mineral": "marble",
+    "pk": 0.0697
+   },
+   {
+    "name": "광맥128",
+    "center": [
+     67472,
+     64656
+    ],
+    "radius": 224,
+    "mineral": "gold",
+    "pk": 0.0086
+   },
+   {
+    "name": "광맥129",
+    "center": [
+     67472,
+     63760
+    ],
+    "radius": 224,
+    "mineral": "coal",
+    "pk": 0.3185
+   },
+   {
+    "name": "광맥130",
+    "center": [
+     67728,
+     62864
+    ],
+    "radius": 224,
+    "mineral": "tungsten",
+    "pk": 0.0415
+   },
+   {
+    "name": "광맥131",
+    "center": [
+     47888,
+     129040
+    ],
+    "radius": 224,
+    "mineral": "iron",
+    "pk": 0.2256
+   },
+   {
+    "name": "광맥132",
+    "center": [
+     67856,
+     62096
+    ],
+    "radius": 224,
+    "mineral": "coal",
+    "pk": 0.1791
+   },
+   {
+    "name": "광맥133",
+    "center": [
+     57488,
+     32400
+    ],
+    "radius": 224,
+    "mineral": "gold",
+    "pk": 0.0259
+   },
+   {
+    "name": "광맥134",
+    "center": [
+     48912,
+     69776
+    ],
+    "radius": 224,
+    "mineral": "iron",
+    "pk": 0.2929
+   },
+   {
+    "name": "광맥135",
+    "center": [
+     56848,
+     31504
+    ],
+    "radius": 224,
+    "mineral": "gold",
+    "pk": 0.0316
+   },
+   {
+    "name": "광맥136",
+    "center": [
+     46480,
+     129680
+    ],
+    "radius": 224,
+    "mineral": "copper",
+    "pk": 0.168
+   },
+   {
+    "name": "광맥137",
+    "center": [
+     47888,
+     129680
+    ],
+    "radius": 224,
+    "mineral": "copper",
+    "pk": 0.3099
+   },
+   {
+    "name": "광맥138",
+    "center": [
+     57104,
+     33168
+    ],
+    "radius": 224,
+    "mineral": "jade_raw",
+    "pk": 0.0259
+   },
+   {
+    "name": "광맥139",
+    "center": [
+     5904,
+     96016
+    ],
+    "radius": 224,
+    "mineral": "iron",
+    "pk": 0.146
+   },
+   {
+    "name": "광맥140",
+    "center": [
+     46992,
+     128784
+    ],
+    "radius": 224,
+    "mineral": "coal",
+    "pk": 0.3142
+   },
+   {
+    "name": "광맥141",
+    "center": [
+     46736,
+     128656
+    ],
+    "radius": 224,
+    "mineral": "coal",
+    "pk": 0.2484
+   },
+   {
+    "name": "광맥142",
+    "center": [
+     49040,
+     70032
+    ],
+    "radius": 224,
+    "mineral": "coal",
+    "pk": 0.2364
+   },
+   {
+    "name": "광맥143",
+    "center": [
+     57104,
+     33552
+    ],
+    "radius": 224,
+    "mineral": "iron",
+    "pk": 0.1883
+   },
+   {
+    "name": "광맥144",
+    "center": [
+     12304,
+     49552
+    ],
+    "radius": 224,
+    "mineral": "marble",
+    "pk": 0.0355
+   },
+   {
+    "name": "광맥145",
+    "center": [
+     67728,
+     64912
+    ],
+    "radius": 224,
+    "mineral": "iron",
+    "pk": 0.2886
+   },
+   {
+    "name": "광맥146",
+    "center": [
+     47248,
+     129040
+    ],
+    "radius": 224,
+    "mineral": "marble",
+    "pk": 0.0682
+   },
+   {
+    "name": "광맥147",
+    "center": [
+     47632,
+     128912
+    ],
+    "radius": 224,
+    "mineral": "iron",
+    "pk": 0.2
+   },
+   {
+    "name": "광맥148",
+    "center": [
+     56464,
+     31632
+    ],
+    "radius": 224,
+    "mineral": "coal",
+    "pk": 0.3345
+   },
+   {
+    "name": "광맥149",
+    "center": [
+     47504,
+     128528
+    ],
+    "radius": 224,
+    "mineral": "marble",
+    "pk": 0.0645
+   },
+   {
+    "name": "광맥150",
+    "center": [
+     13328,
+     33936
+    ],
+    "radius": 224,
+    "mineral": "jade_raw",
+    "pk": 0.0334
+   },
+   {
+    "name": "광맥151",
+    "center": [
+     56720,
+     33680
+    ],
+    "radius": 224,
+    "mineral": "marble",
+    "pk": 0.0839
+   },
+   {
+    "name": "광맥152",
+    "center": [
+     57488,
+     32784
+    ],
+    "radius": 224,
+    "mineral": "jade_raw",
+    "pk": 0.0213
+   },
+   {
+    "name": "광맥153",
+    "center": [
+     57104,
+     32912
+    ],
+    "radius": 224,
+    "mineral": "iron",
+    "pk": 0.2567
+   },
+   {
+    "name": "광맥154",
+    "center": [
+     57744,
+     33040
+    ],
+    "radius": 224,
+    "mineral": "tungsten",
+    "pk": 0.0438
+   },
+   {
+    "name": "광맥155",
+    "center": [
+     47376,
+     129552
+    ],
+    "radius": 224,
+    "mineral": "coal",
+    "pk": 0.3157
+   },
+   {
+    "name": "광맥156",
+    "center": [
+     57616,
+     34064
+    ],
+    "radius": 224,
+    "mineral": "jade_raw",
+    "pk": 0.0121
+   },
+   {
+    "name": "광맥157",
+    "center": [
+     57232,
+     32144
+    ],
+    "radius": 224,
+    "mineral": "marble",
+    "pk": 0.0757
+   },
+   {
+    "name": "광맥158",
+    "center": [
+     47888,
+     128784
+    ],
+    "radius": 224,
+    "mineral": "tungsten",
+    "pk": 0.0532
+   },
+   {
+    "name": "광맥159",
+    "center": [
+     67856,
+     63632
+    ],
+    "radius": 224,
+    "mineral": "gold",
+    "pk": 0.025
+   },
+   {
+    "name": "광맥160",
+    "center": [
+     47120,
+     128144
+    ],
+    "radius": 224,
+    "mineral": "copper",
+    "pk": 0.2247
+   },
+   {
+    "name": "광맥161",
+    "center": [
+     67472,
+     65424
+    ],
+    "radius": 224,
+    "mineral": "iron",
+    "pk": 0.2441
+   },
+   {
+    "name": "광맥162",
+    "center": [
+     67216,
+     65296
+    ],
+    "radius": 224,
+    "mineral": "iron",
+    "pk": 0.2469
+   },
+   {
+    "name": "광맥163",
+    "center": [
+     47632,
+     129424
+    ],
+    "radius": 224,
+    "mineral": "iron",
+    "pk": 0.1225
+   },
+   {
+    "name": "광맥164",
+    "center": [
+     56720,
+     32016
+    ],
+    "radius": 224,
+    "mineral": "gold",
+    "pk": 0.0251
+   },
+   {
+    "name": "광맥165",
+    "center": [
+     57360,
+     33552
+    ],
+    "radius": 224,
+    "mineral": "gold",
+    "pk": 0.0147
+   },
+   {
+    "name": "광맥166",
+    "center": [
+     67600,
+     62096
+    ],
+    "radius": 224,
+    "mineral": "marble",
+    "pk": 0.053
+   },
+   {
+    "name": "광맥167",
+    "center": [
+     57744,
+     32272
+    ],
+    "radius": 224,
+    "mineral": "jade_raw",
+    "pk": 0.0111
+   },
+   {
+    "name": "광맥168",
+    "center": [
+     57744,
+     33296
+    ],
+    "radius": 224,
+    "mineral": "iron",
+    "pk": 0.1496
+   },
+   {
+    "name": "광맥169",
+    "center": [
+     57488,
+     33808
+    ],
+    "radius": 224,
+    "mineral": "copper",
+    "pk": 0.2533
+   },
+   {
+    "name": "광맥170",
+    "center": [
+     46992,
+     129296
+    ],
+    "radius": 224,
+    "mineral": "copper",
+    "pk": 0.2867
+   },
+   {
+    "name": "광맥171",
+    "center": [
+     57104,
+     31888
+    ],
+    "radius": 224,
+    "mineral": "coal",
+    "pk": 0.3264
+   },
+   {
+    "name": "광맥172",
+    "center": [
+     46992,
+     129040
+    ],
+    "radius": 224,
+    "mineral": "gold",
+    "pk": 0.0115
+   },
+   {
+    "name": "광맥173",
+    "center": [
+     16272,
+     93200
+    ],
+    "radius": 224,
+    "mineral": "marble",
+    "pk": 0.0425
+   },
+   {
+    "name": "광맥174",
+    "center": [
+     56720,
+     31760
+    ],
+    "radius": 224,
+    "mineral": "jade_raw",
+    "pk": 0.0377
+   },
+   {
+    "name": "광맥175",
+    "center": [
+     57104,
+     33808
+    ],
+    "radius": 224,
+    "mineral": "jade_raw",
+    "pk": 0.0285
+   },
+   {
+    "name": "광맥176",
+    "center": [
+     47376,
+     128144
+    ],
+    "radius": 224,
+    "mineral": "iron",
+    "pk": 0.2634
+   },
+   {
+    "name": "광맥177",
+    "center": [
+     67472,
+     64912
+    ],
+    "radius": 224,
+    "mineral": "copper",
+    "pk": 0.1541
+   },
+   {
+    "name": "광맥178",
+    "center": [
+     47760,
+     128528
+    ],
+    "radius": 224,
+    "mineral": "coal",
+    "pk": 0.2346
+   },
+   {
+    "name": "광맥179",
+    "center": [
+     57488,
+     33168
+    ],
+    "radius": 224,
+    "mineral": "iron",
+    "pk": 0.0935
+   },
+   {
+    "name": "광맥180",
+    "center": [
+     56976,
+     32528
+    ],
+    "radius": 224,
+    "mineral": "jade_raw",
+    "pk": 0.0157
+   },
+   {
+    "name": "광맥181",
+    "center": [
+     57872,
+     33552
+    ],
+    "radius": 224,
+    "mineral": "jade_raw",
+    "pk": 0.0308
+   },
+   {
+    "name": "광맥182",
+    "center": [
+     47632,
+     129680
+    ],
+    "radius": 224,
+    "mineral": "coal",
+    "pk": 0.3045
+   },
+   {
+    "name": "광맥183",
+    "center": [
+     67472,
+     64272
+    ],
+    "radius": 224,
+    "mineral": "copper",
+    "pk": 0.25
+   },
+   {
+    "name": "광맥184",
+    "center": [
+     47120,
+     127888
+    ],
+    "radius": 224,
+    "mineral": "gold",
+    "pk": 0.0295
+   },
+   {
+    "name": "광맥185",
+    "center": [
+     46480,
+     129296
+    ],
+    "radius": 224,
+    "mineral": "marble",
+    "pk": 0.0627
+   },
+   {
+    "name": "광맥186",
+    "center": [
+     67728,
+     61840
+    ],
+    "radius": 224,
+    "mineral": "iron",
+    "pk": 0.1641
+   },
+   {
+    "name": "광맥187",
+    "center": [
+     46736,
+     129168
+    ],
+    "radius": 224,
+    "mineral": "copper",
+    "pk": 0.1707
+   },
+   {
+    "name": "광맥188",
+    "center": [
+     56976,
+     32144
+    ],
+    "radius": 224,
+    "mineral": "gold",
+    "pk": 0.0118
+   },
+   {
+    "name": "광맥189",
+    "center": [
+     48144,
+     129680
+    ],
+    "radius": 224,
+    "mineral": "iron",
+    "pk": 0.3156
+   },
+   {
+    "name": "광맥190",
+    "center": [
+     67856,
+     62480
+    ],
+    "radius": 224,
+    "mineral": "iron",
+    "pk": 0.2715
+   },
+   {
+    "name": "광맥191",
+    "center": [
+     57744,
+     32656
+    ],
+    "radius": 224,
+    "mineral": "iron",
+    "pk": 0.2355
+   },
+   {
+    "name": "광맥192",
+    "center": [
+     67728,
+     64400
+    ],
+    "radius": 224,
+    "mineral": "copper",
+    "pk": 0.1061
+   },
+   {
+    "name": "광맥193",
+    "center": [
+     56848,
+     33296
+    ],
+    "radius": 224,
+    "mineral": "gold",
+    "pk": 0.0314
+   },
+   {
+    "name": "광맥194",
+    "center": [
+     47888,
+     129296
+    ],
+    "radius": 224,
+    "mineral": "marble",
+    "pk": 0.0724
+   },
+   {
+    "name": "광맥195",
+    "center": [
+     48784,
+     69520
+    ],
+    "radius": 224,
+    "mineral": "tungsten",
+    "pk": 0.0493
+   },
+   {
+    "name": "광맥196",
+    "center": [
+     67728,
+     65552
+    ],
+    "radius": 224,
+    "mineral": "iron",
+    "pk": 0.2953
+   },
+   {
+    "name": "광맥197",
+    "center": [
+     47632,
+     129168
+    ],
+    "radius": 224,
+    "mineral": "jade_raw",
+    "pk": 0.0176
+   },
+   {
+    "name": "광맥198",
+    "center": [
+     47376,
+     127888
+    ],
+    "radius": 224,
+    "mineral": "marble",
+    "pk": 0.0717
+   },
+   {
+    "name": "광맥199",
+    "center": [
+     67856,
+     63120
+    ],
+    "radius": 224,
+    "mineral": "iron",
+    "pk": 0.2817
+   },
+   {
+    "name": "광맥200",
+    "center": [
+     57232,
+     31632
+    ],
+    "radius": 224,
+    "mineral": "gold",
+    "pk": 0.0318
+   },
+   {
+    "name": "광맥201",
+    "center": [
+     8592,
+     49424
+    ],
+    "radius": 224,
+    "mineral": "copper",
+    "pk": 0.2083
+   },
+   {
+    "name": "광맥202",
+    "center": [
+     46736,
+     129680
+    ],
+    "radius": 224,
+    "mineral": "iron",
+    "pk": 0.1766
+   },
+   {
+    "name": "광맥203",
+    "center": [
+     47120,
+     128400
+    ],
+    "radius": 224,
+    "mineral": "marble",
+    "pk": 0.0211
+   },
+   {
+    "name": "광맥204",
+    "center": [
+     57616,
+     32016
+    ],
+    "radius": 224,
+    "mineral": "copper",
+    "pk": 0.1171
+   },
+   {
+    "name": "광맥205",
+    "center": [
+     47632,
+     128272
+    ],
+    "radius": 224,
+    "mineral": "iron",
+    "pk": 0.2484
+   },
+   {
+    "name": "광맥206",
+    "center": [
+     47248,
+     127632
+    ],
+    "radius": 224,
+    "mineral": "coal",
+    "pk": 0.16
+   },
+   {
+    "name": "광맥207",
+    "center": [
+     56336,
+     31248
+    ],
+    "radius": 224,
+    "mineral": "gold",
+    "pk": 0.014
+   },
+   {
+    "name": "광맥208",
+    "center": [
+     67600,
+     62480
+    ],
+    "radius": 224,
+    "mineral": "copper",
+    "pk": 0.223
+   },
+   {
+    "name": "광맥209",
+    "center": [
+     67728,
+     64144
+    ],
+    "radius": 224,
+    "mineral": "gold",
+    "pk": 0.0236
+   },
+   {
+    "name": "광맥210",
+    "center": [
+     67472,
+     63376
+    ],
+    "radius": 224,
+    "mineral": "tungsten",
+    "pk": 0.0251
+   },
+   {
+    "name": "광맥211",
+    "center": [
+     56592,
+     31376
+    ],
+    "radius": 224,
+    "mineral": "gold",
+    "pk": 0.0198
+   },
+   {
+    "name": "광맥212",
+    "center": [
+     67472,
+     64016
+    ],
+    "radius": 224,
+    "mineral": "tungsten",
+    "pk": 0.0299
+   },
+   {
+    "name": "광맥213",
+    "center": [
+     67856,
+     63376
+    ],
+    "radius": 224,
+    "mineral": "jade_raw",
+    "pk": 0.034
+   },
+   {
+    "name": "광맥214",
+    "center": [
+     21776,
+     45200
+    ],
+    "radius": 224,
+    "mineral": "jade_raw",
+    "pk": 0.0241
+   },
+   {
+    "name": "광맥215",
+    "center": [
+     48656,
+     69904
+    ],
+    "radius": 224,
+    "mineral": "jade_raw",
+    "pk": 0.0282
+   },
+   {
+    "name": "광맥216",
+    "center": [
+     56720,
+     32272
+    ],
+    "radius": 224,
+    "mineral": "copper",
+    "pk": 0.1474
+   },
+   {
+    "name": "광맥217",
+    "center": [
+     67600,
+     63120
+    ],
+    "radius": 224,
+    "mineral": "copper",
+    "pk": 0.1644
+   },
+   {
+    "name": "광맥218",
+    "center": [
+     46736,
+     129424
+    ],
+    "radius": 224,
+    "mineral": "marble",
+    "pk": 0.0481
+   },
+   {
+    "name": "광맥219",
+    "center": [
+     47248,
+     128784
+    ],
+    "radius": 224,
+    "mineral": "copper",
+    "pk": 0.2629
+   },
+   {
+    "name": "광맥220",
+    "center": [
+     12048,
+     49424
+    ],
+    "radius": 224,
+    "mineral": "marble",
+    "pk": 0.0284
+   },
+   {
+    "name": "광맥221",
+    "center": [
+     57488,
+     31760
+    ],
+    "radius": 224,
+    "mineral": "gold",
+    "pk": 0.0257
+   },
+   {
+    "name": "광맥222",
+    "center": [
+     67728,
+     64656
+    ],
+    "radius": 224,
+    "mineral": "marble",
+    "pk": 0.0531
+   },
+   {
+    "name": "광맥223",
+    "center": [
+     57872,
+     34064
+    ],
+    "radius": 224,
+    "mineral": "coal",
+    "pk": 0.1779
+   },
+   {
+    "name": "광맥224",
+    "center": [
+     48144,
+     129424
+    ],
+    "radius": 224,
+    "mineral": "marble",
+    "pk": 0.0496
+   },
+   {
+    "name": "광맥225",
+    "center": [
+     46864,
+     128400
+    ],
+    "radius": 224,
+    "mineral": "gold",
+    "pk": 0.0254
+   },
+   {
+    "name": "광맥226",
+    "center": [
+     47376,
+     129296
+    ],
+    "radius": 224,
+    "mineral": "iron",
+    "pk": 0.301
+   },
+   {
+    "name": "광맥227",
+    "center": [
+     57872,
+     33808
+    ],
+    "radius": 224,
+    "mineral": "gold",
+    "pk": 0.0107
+   },
+   {
+    "name": "광맥228",
+    "center": [
+     57616,
+     33552
+    ],
+    "radius": 224,
+    "mineral": "marble",
+    "pk": 0.0787
+   },
+   {
+    "name": "광맥229",
+    "center": [
+     46736,
+     128912
+    ],
+    "radius": 224,
+    "mineral": "tungsten",
+    "pk": 0.0321
+   },
+   {
+    "name": "광맥230",
+    "center": [
+     16528,
+     93200
+    ],
+    "radius": 224,
+    "mineral": "coal",
+    "pk": 0.2372
    }
   ],
   "villages": [
