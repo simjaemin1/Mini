@@ -1959,6 +1959,7 @@ SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, is
   ORE_K: require('./specialty').ORE_K, NPC_MINE_PER_DAY: require('./specialty').NPC_MINE_PER_DAY,
   // ★NPC 광부도 **플레이어와 같은 공식**으로 깊이 페널티를 겪고 숙련으로 상쇄한다(축이 하나다)
   mineDepthCost: (f) => require('./specialty').mineDepthCost(f),
+  mineDepthP: (f) => require('./specialty').mineDepthP(f),   // ★NPC도 같은 깊이 보정을 받는다(축이 하나다)
   mineChunkKg: (lvl) => require('./specialty').mineChunkKg(lvl),   // ★const Specialty 선언(3400+)보다 앞이라 TDZ — require 캐시로 우회
   liveBuildRow: _liveBuildRow, buildings, chunkManager,   // ★[생활 층 ③] 신축 크루의 라이브 실체화 경로(플레이어 완공과 동일 헬퍼 — 발명 금지)
   worldPhase, dayPhaseRatio: WORLD.dayPhaseRatio, mobs, qtResources: () => qtResources });   // ★[생활 층 100% ②③] 일과 스케줄(하루 위상)·직업 실작업(자원·사냥감 현장) 소스
@@ -3631,7 +3632,10 @@ function mineOreCell(player) {
     const cluster = _terrain.isOreClusterAt(ZONE_ID, px, py);
     // ★[재민 확정 (다)] p 는 **겹친 광맥 전부의 합성**이다: 1 − ∏(1−p_i).
     //   겹치는 자리가 노다지가 된다("왜 여기만 유독 잘 나오지?").
-    const p = _terrain.oreProbAt ? _terrain.oreProbAt(ZONE_ID, px, py) : 0;   // 품위는 **자리**의 것
+    // 품위는 **자리**의 것 × **깊이** 보정. 깊을수록 진하지만(×2.40까지) 타수는 더 빨리 늘어(×2.667)
+    // 결국 얕은 데를 골고루 긁는 쪽이 미세하게 이득이다(재민 확정).
+    const pRaw = _terrain.oreProbAt ? _terrain.oreProbAt(ZONE_ID, px, py) : 0;
+    const p = Math.min(0.95, pRaw * Specialty.mineDepthP(f));
     const isOre = Math.random() < p;
     // ★광물도 자리에 걸친 광맥들 사이에서 **p 비례 추첨**한다 — 접촉대에선 구리도 옥도 나온다.
     //   (isOreClusterAt 은 p 최대인 하나만 준다. 그걸 쓰면 겹친 상대 광물이 영원히 안 나온다 —
@@ -3648,7 +3652,9 @@ function mineOreCell(player) {
     player.craftSkill.mining = (player.craftSkill.mining || 0) + 1;   // 덩이 1개 = xp 1 = 1 게임시간
     msg = `⛏ 돌덩이 ${kg.toFixed(1)}kg${id ? ' — ' + id : ' (정체 모름 · 마을에서 선광)'}`;
   } else {
-    msg = `⛏ 캐는 중 ${Math.round(rec.w)}/${Math.round(need)}` + (need > Specialty.MINE_SWINGS_PER * 1.2 ? ' (깊다)' : '');
+    const dp = Specialty.mineDepthP(f);
+    msg = `⛏ 캐는 중 ${Math.round(rec.w)}/${Math.round(need)}`
+      + (need > Specialty.MINE_SWINGS_PER * 1.5 ? ` (깊다 · 품위 ×${dp.toFixed(2)})` : '');
   }
   _oreSave(key, rec);
   send(player.ws, { type: 'notice', text: msg + ` · 남은 광맥 ${Math.round(rec.s)}` });

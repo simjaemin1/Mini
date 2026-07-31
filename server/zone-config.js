@@ -33,109 +33,109 @@ const HTTP_PROTO = process.env.HTTP_PROTO || 'http';
 const ZONES_BASE = {
   // === c0: 아메리카 (11000w base → ×10) ===
   canadia: {
-    port: 3001, biome: 'taiga', displayName: '캐나디아 (NA 북부)',
+    port: 3001, biome: 'taiga', displayName: '캐나디아 북림',
     groundColor: '#5a7c4a', tintColor: '#3a6a2a',
     worldOffsetX: 0, worldOffsetY: 0, zoneWidth: 11000, zoneHeight: 5000,
     villageSeed: 1001, villageCount: 6,
     mainSquare: { x: 5500, y: 2500, name: '카나디 광장' },
   },
   nubiano: {
-    port: 3002, biome: 'plains', displayName: '누비아노 (USA)',
+    port: 3002, biome: 'plains', displayName: '누비아노 대평원',
     groundColor: '#bca56a', tintColor: '#8a6a3a',
     worldOffsetX: 0, worldOffsetY: 5000, zoneWidth: 11000, zoneHeight: 13000,
     villageSeed: 1002, villageCount: 25,
     mainSquare: { x: 5500, y: 6500, name: '뉴아크 광장' },
   },
   mayan: {
-    port: 3003, biome: 'jungle', displayName: '마야안 (중미)',
+    port: 3003, biome: 'jungle', displayName: '마야안 협지',
     groundColor: '#4a7c3a', tintColor: '#2a5a1a',
     worldOffsetX: 0, worldOffsetY: 18000, zoneWidth: 11000, zoneHeight: 6000,
     villageSeed: 1003, villageCount: 10,
     mainSquare: { x: 5500, y: 3000, name: '치치카 광장' },
   },
   amazonia: {
-    port: 3004, biome: 'jungle', displayName: '아마조니아 (브라질)',
+    port: 3004, biome: 'jungle', displayName: '아마조니아 우림',
     groundColor: '#3a6a2a', tintColor: '#1a4a0a',
     worldOffsetX: 0, worldOffsetY: 24000, zoneWidth: 11000, zoneHeight: 7000,
     villageSeed: 1004, villageCount: 14,
-    mainSquare: { x: 5500, y: 3500, name: '마나스 광장' },
+    mainSquare: { x: 5500, y: 3500, name: '마나세 광장' },
   },
   patagona: {
-    port: 3005, biome: 'plains', displayName: '파타고나 (남미 남단)',
+    port: 3005, biome: 'plains', displayName: '파타고나 남끝',
     groundColor: '#7a8a6a', tintColor: '#5a6a4a',
     worldOffsetX: 0, worldOffsetY: 31000, zoneWidth: 11000, zoneHeight: 7000,
     villageSeed: 1005, villageCount: 6,
-    mainSquare: { x: 5500, y: 3500, name: '바리로체 광장' },
+    mainSquare: { x: 5500, y: 3500, name: '바리체 광장' },
   },
 
   // === c1: 대서양 (5000w, 세로 전체) ===
   atlantic: {
-    port: 3006, biome: 'ocean', displayName: '대서양',
+    port: 3006, biome: 'ocean', displayName: '서대해',
     groundColor: '#2a4a7c', tintColor: '#1a3a6a',
     worldOffsetX: 11000, worldOffsetY: 0, zoneWidth: 5000, zoneHeight: 38000,
     villageSeed: 0, villageCount: 0,
-    mainSquare: { x: 2500, y: 19000, name: '대서양 중심' },
+    mainSquare: { x: 2500, y: 19000, name: '서대해 중심' },
     isOcean: true,
   },
 
   // === c2: 유럽 + 아프리카 (9000w) ===
   nordan: {
-    port: 3007, biome: 'taiga', displayName: '노르단 (스칸디)',
+    port: 3007, biome: 'taiga', displayName: '노르단 설림',
     groundColor: '#6a8a5a', tintColor: '#4a6a3a',
     worldOffsetX: 16000, worldOffsetY: 0, zoneWidth: 9000, zoneHeight: 5000,
     villageSeed: 1007, villageCount: 8,
     mainSquare: { x: 4500, y: 2500, name: '오스로 광장' },
   },
   europa: {
-    port: 3008, biome: 'forest', displayName: '유로파 (유럽)',
+    port: 3008, biome: 'forest', displayName: '유로파 서역',
     groundColor: '#5a8a4a', tintColor: '#3a6a2a',
     worldOffsetX: 16000, worldOffsetY: 5000, zoneWidth: 9000, zoneHeight: 13000,
     villageSeed: 1008, villageCount: 25,
     mainSquare: { x: 4500, y: 6500, name: '파리시 광장' },
   },
   sahar: {
-    port: 3009, biome: 'desert', displayName: '사하르 (북아프리카)',
+    port: 3009, biome: 'desert', displayName: '사하르 사막',
     groundColor: '#d4b97a', tintColor: '#a89460',
     worldOffsetX: 16000, worldOffsetY: 18000, zoneWidth: 9000, zoneHeight: 6000,
     villageSeed: 1009, villageCount: 8,
     mainSquare: { x: 4500, y: 3000, name: '카이르 광장' },
   },
   kongra: {
-    port: 3030, biome: 'savanna', displayName: '콩그·케이프 (남아프리카)',
+    port: 3030, biome: 'savanna', displayName: '콩그 초원',
     groundColor: '#8a8a5a', tintColor: '#6a6a3a',
     worldOffsetX: 16000, worldOffsetY: 24000, zoneWidth: 9000, zoneHeight: 14000,
     villageSeed: 1010, villageCount: 10,
-    mainSquare: { x: 4500, y: 7000, name: '나로비 광장' },
+    mainSquare: { x: 4500, y: 7000, name: '나로베 광장' },
   },
 
   // === c3: 중앙 Eurasia + 인도양 (6000w) — sibara/centaria/hindgang/indoyang ===
   // sibara는 c3+c4 row 0 wide → 별도 정의 (아래)
   centaria: {
-    port: 3012, biome: 'plains', displayName: '중아세아',
+    port: 3012, biome: 'plains', displayName: '아세라 초원',
     groundColor: '#a89460', tintColor: '#806e44',
     worldOffsetX: 25000, worldOffsetY: 5000, zoneWidth: 6000, zoneHeight: 13000,
     villageSeed: 1012, villageCount: 14,
     mainSquare: { x: 3000, y: 6500, name: '아스나 광장' },
   },
   hindgang: {
-    port: 3013, biome: 'jungle', displayName: '힌드강 (인도)',
+    port: 3013, biome: 'jungle', displayName: '힌드강 유역',
     groundColor: '#5a8a3a', tintColor: '#3a6a1a',
     worldOffsetX: 25000, worldOffsetY: 18000, zoneWidth: 6000, zoneHeight: 6000,
     villageSeed: 1013, villageCount: 16,
     mainSquare: { x: 3000, y: 3000, name: '델리아 광장' },
   },
   indoyang: {
-    port: 3014, biome: 'ocean', displayName: '인도양',
+    port: 3014, biome: 'ocean', displayName: '남대해',
     groundColor: '#2a5a8a', tintColor: '#1a4a7a',
     worldOffsetX: 25000, worldOffsetY: 24000, zoneWidth: 6000, zoneHeight: 14000,
     villageSeed: 0, villageCount: 0,
-    mainSquare: { x: 3000, y: 7000, name: '인도양 중심' },
+    mainSquare: { x: 3000, y: 7000, name: '남대해 중심' },
     isOcean: true,
   },
 
   // === Russia 가로띠 (row 0, c3+c4 wide) ===
   sibara: {
-    port: 3011, biome: 'tundra', displayName: '시바라 (Siberia 西·中)',
+    port: 3011, biome: 'tundra', displayName: '시바라 설원',
     groundColor: '#8a9a9a', tintColor: '#6a7a7a',
     worldOffsetX: 25000, worldOffsetY: 0, zoneWidth: 16000, zoneHeight: 5000,
     villageSeed: 1011, villageCount: 8,
@@ -144,39 +144,39 @@ const ZONES_BASE = {
 
   // === c4: 중원 + 동남아 (10000w) ===
   jungwon_n: {
-    port: 3016, biome: 'plains', displayName: '중원북 (中北)',
+    port: 3016, biome: 'plains', displayName: '하란 북부',
     groundColor: '#9aa860', tintColor: '#7a8a40',
     worldOffsetX: 31000, worldOffsetY: 5000, zoneWidth: 10000, zoneHeight: 13000,
     villageSeed: 1016, villageCount: 25,
     mainSquare: { x: 5000, y: 6500, name: '베이장 광장' },
   },
   jungwon_s: {
-    port: 3017, biome: 'plains', displayName: '중원남 (中南)',
+    port: 3017, biome: 'plains', displayName: '하란 남부',
     groundColor: '#8aa860', tintColor: '#6a8840',
     worldOffsetX: 31000, worldOffsetY: 18000, zoneWidth: 10000, zoneHeight: 6000,
     villageSeed: 1017, villageCount: 16,
     mainSquare: { x: 5000, y: 3000, name: '샹하 광장' },
   },
   nanyang: {
-    port: 3018, biome: 'archipelago', displayName: '남양제도 (동남아)',
+    port: 3018, biome: 'archipelago', displayName: '남양 제도',
     groundColor: '#4a8a5a', tintColor: '#2a6a3a',
     worldOffsetX: 31000, worldOffsetY: 24000, zoneWidth: 10000, zoneHeight: 7000,
     villageSeed: 1018, villageCount: 14,
-    mainSquare: { x: 5000, y: 3500, name: '발리 광장' },
+    mainSquare: { x: 5000, y: 3500, name: '발라이 광장' },
   },
 
   // === Russia 가로띠 (row 0, c5+c6+half_c7 wide) ===
   bering: {
-    port: 3015, biome: 'tundra', displayName: '베링 (NE 러시아)',
+    port: 3015, biome: 'tundra', displayName: '눈벌 동토',
     groundColor: '#7a8a8a', tintColor: '#5a6a6a',
     worldOffsetX: 41000, worldOffsetY: 0, zoneWidth: 16000, zoneHeight: 5000,
     villageSeed: 1015, villageCount: 4,
-    mainSquare: { x: 8000, y: 2500, name: '아나디 광장' },
+    mainSquare: { x: 8000, y: 2500, name: '아나딜 광장' },
   },
 
   // === c5: 한반도 컬럼 (7000w) ===
   hanbando: {
-    port: 3020, biome: 'forest', displayName: '한반도',
+    port: 3020, biome: 'forest', displayName: '새벌',
     groundColor: '#9a9670', tintColor: '#7a8a4a',
     worldOffsetX: 41000, worldOffsetY: 5000, zoneWidth: 7000, zoneHeight: 13000, // ← BASE(×10): 실제 70016×130016px ≈ 2188×4063셀 ≈ 8.9M셀
     villageSeed: 1020, villageCount: 0, // procedural 마을 0 — 하드코딩(hanbando-terrain.json villages, 에디터 v9) 사용
@@ -184,7 +184,7 @@ const ZONES_BASE = {
     npcVillageHouses: true,     // NPC 집 ON. 진짜 병목은 서버 qtBuildings 매틱 전체재삽입(3.3만채=22%CPU)이었고, 활성청크만 인덱싱으로 수정.
     npcVillageTerritory: true,  // 길드영토 ON — claims는 welcome에 1회(텔포와 무관, 접속 OK 확인됨).
     npcPerVillage: 6, // 50 하드코딩 마을 × 6 = 300 NPC (1코어 안전선). dormancy로 액티브만 처리.
-    mainSquare: { x: 3500, y: 6500, name: '한양 광장' },
+    mainSquare: { x: 3500, y: 6500, name: '벌말 광장' },
     // Phase 5-K: cleanZone 해제 — 자원·몹 spawn 켜짐 (건축 재료 공급). 산맥·강은 hardcoded 차단 유지.
     // ★[다리 층] 통나무 널다리 — flat [cx,cy,...] 셀 목록. path-core 계약("물=차단, 다리 칸만 통행 —
     //   다리는 맵에 만들어두는 사물, 경로 창발 아님. 판정은 호출측 blocked 콜백 소관")에 따라
@@ -282,15 +282,15 @@ const ZONES_BASE = {
     bridges: [288,1732,289,1732,288,1731,289,1731,288,1730,289,1730,288,1729,289,1729,288,1728,289,1728,288,1727,289,1727,288,1726,289,1726,288,1725,289,1725,1256,3087,1256,3088,1255,3087,1255,3088,1254,3087,1254,3088,1253,3087,1253,3088,1252,3087,1252,3088,1251,3087,1251,3088,1250,3087,1250,3088,1249,3087,1249,3088,1248,3087,1248,3088,1247,3087,1247,3088,1246,3087,1246,3088,1245,3087,1245,3088,1244,3087,1244,3088,1243,3087,1243,3088,1242,3087,1242,3088,1241,3087,1241,3088,1240,3087,1240,3088,1239,3087,1239,3088,1238,3087,1238,3088,1237,3087,1237,3088,1236,3087,1236,3088,1235,3087,1235,3088,1234,3087,1234,3088,1233,3087,1233,3088,1232,3087,1232,3088,1231,3087,1231,3088,1230,3087,1230,3088,1229,3087,1229,3088,1228,3087,1228,3088,1227,3087,1227,3088,1226,3087,1226,3088,1225,3087,1225,3088,1224,3087,1224,3088,1223,3087,1223,3088,1222,3087,1222,3088,1221,3087,1221,3088,1220,3087,1220,3088,1219,3087,1219,3088,1218,3087,1218,3088,1217,3087,1217,3088,1480,2559,1480,2560,1479,2559,1479,2560,1478,2559,1478,2560,1477,2559,1477,2560,1476,2559,1476,2560,1475,2559,1475,2560,1474,2559,1474,2560,1473,2559,1473,2560,1472,2559,1472,2560,1471,2559,1471,2560,1470,2559,1470,2560,1469,2559,1469,2560,1468,2559,1468,2560,1467,2559,1467,2560,1466,2559,1466,2560,1465,2559,1465,2560,1464,2559,1464,2560,1463,2559,1463,2560,1462,2559,1462,2560,1461,2559,1461,2560,1460,2559,1460,2560,1459,2559,1459,2560,1458,2559,1458,2560,1457,2559,1457,2560,1456,2559,1456,2560,1455,2559,1455,2560,1454,2559,1454,2560,1453,2559,1453,2560,1452,2559,1452,2560,1451,2559,1451,2560,1450,2559,1450,2560,1449,2559,1449,2560,1448,2559,1448,2560,1447,2559,1447,2560,1149,2320,1150,2320,1149,2321,1150,2321,1149,2322,1150,2322,1149,2323,1150,2323,1149,2324,1150,2324,1149,2325,1150,2325,1149,2326,1150,2326,1149,2327,1150,2327,1149,2328,1150,2328,1149,2329,1150,2329,1149,2330,1150,2330,1149,2331,1150,2331,1149,2332,1150,2332,1149,2333,1150,2333,1149,2334,1150,2334,1149,2335,1150,2335,1149,2336,1150,2336,1149,2337,1150,2337,1149,2338,1150,2338,1149,2339,1150,2339,1149,2340,1150,2340,1149,2341,1150,2341,1149,2342,1150,2342,1149,2343,1150,2343,1149,2344,1150,2344,1149,2345,1150,2345,1149,2346,1150,2346,1149,2347,1150,2347,1149,2348,1150,2348,1149,2349,1150,2349,473,1762,473,1763,474,1762,474,1763,475,1762,475,1763,476,1762,476,1763,477,1762,477,1763,478,1762,478,1763,479,1762,479,1763,480,1762,480,1763,481,1762,481,1763,482,1762,482,1763,483,1762,483,1763,484,1762,484,1763,485,1762,485,1763,486,1762,486,1763,487,1762,487,1763,488,1762,488,1763,489,1762,489,1763,490,1762,490,1763,491,1762,491,1763,492,1762,492,1763,493,1762,493,1763,494,1762,494,1763,702,2515,702,2516,703,2515,703,2516,704,2515,704,2516,705,2515,705,2516,706,2515,706,2516,707,2515,707,2516,708,2515,708,2516,1257,3087,1257,3088,1481,2559,1481,2560,1149,2319,1150,2319,472,1762,472,1763,701,2515,701,2516,663,724,663,725,664,724,664,725,665,724,665,725,666,724,666,725,667,724,667,725,668,724,668,725,669,724,669,725,670,724,670,725,671,724,671,725,672,724,672,725,673,724,673,725,674,724,674,725,690,657,691,657,690,658,691,658,690,659,691,659,690,660,691,660,690,661,691,661,690,662,691,662,690,663,691,663,690,664,691,664,690,665,691,665,690,666,691,666,690,667,691,667,136,563,137,563,136,564,137,564,136,565,137,565,136,566,137,566,136,567,137,567,136,568,137,568,136,569,137,569,136,570,137,570,136,571,137,571,136,572,137,572,136,573,137,573,136,574,137,574,1496,177,1496,178,1497,177,1497,178,1498,177,1498,178,1499,177,1499,178,1500,177,1500,178,1501,177,1501,178,1502,177,1502,178,1503,177,1503,178,1504,177,1504,178,1505,177,1505,178,1506,177,1506,178,1640,384,1641,384,1640,385,1641,385,1640,386,1641,386,1640,387,1641,387,1640,388,1641,388,1640,389,1641,389,1640,390,1641,390,1640,391,1641,391,1640,392,1641,392,1983,242,1984,242,1983,243,1984,243,1983,244,1984,244,1983,245,1984,245,1983,246,1984,246,1983,247,1984,247,1983,248,1984,248,1983,249,1984,249,1983,250,1984,250,1983,251,1984,251,1983,252,1984,252,1983,253,1984,253,1983,254,1984,254,1983,255,1984,255,1797,635,1798,635,1797,636,1798,636,1797,637,1798,637,1797,638,1798,638,1797,639,1798,639,1797,640,1798,640,1797,641,1798,641,1797,642,1798,642,1797,643,1798,643,1716,2720,1717,2720,1716,2721,1717,2721,1716,2722,1717,2722,1716,2723,1717,2723,1716,2724,1717,2724,1716,2725,1717,2725,1716,2726,1717,2726,1716,2727,1717,2727,1716,2728,1717,2728,1716,2729,1717,2729,1716,2730,1717,2730,1716,2731,1717,2731,1716,2732,1717,2732,2034,3002,2035,3002,2034,3003,2035,3003,2034,3004,2035,3004,2034,3005,2035,3005,2034,3006,2035,3006,2034,3007,2035,3007,2034,3008,2035,3008,2034,3009,2035,3009,2034,3010,2035,3010,2034,3011,2035,3011,2034,3012,2035,3012,2034,3013,2035,3013,2034,3014,2035,3014,2028,3937,2029,3937,2028,3938,2029,3938,2028,3939,2029,3939,2028,3940,2029,3940,2028,3941,2029,3941,2028,3942,2029,3942,2028,3943,2029,3943,2028,3944,2029,3944,2028,3945,2029,3945,2028,3946,2029,3946,423,3327,424,3327,423,3328,424,3328,423,3329,424,3329,423,3330,424,3330,423,3331,424,3331,423,3332,424,3332,423,3333,424,3333,423,3334,424,3334,423,3335,424,3335,423,3336,424,3336,724,3274,724,3275,725,3274,725,3275,726,3274,726,3275,727,3274,727,3275,728,3274,728,3275,729,3274,729,3275,730,3274,730,3275,731,3274,731,3275,732,3274,732,3275,733,3274,733,3275,734,3274,734,3275,345,736,346,736,345,737,346,737,345,738,346,738,345,739,346,739,345,740,346,740,345,741,346,741,345,742,346,742,345,743,346,743,345,744,346,744,345,745,346,745,345,746,346,746,345,747,346,747,345,748,346,748,345,749,346,749,345,750,346,750,345,751,346,751,345,752,346,752,51,1777,52,1777,51,1778,52,1778,51,1779,52,1779,51,1780,52,1780,51,1781,52,1781,51,1782,52,1782,51,1783,52,1783,51,1784,52,1784,51,1785,52,1785,51,1786,52,1786,51,1787,52,1787,51,1788,52,1788,51,1789,52,1789,395,1980,395,1981,396,1980,396,1981,397,1980,397,1981,398,1980,398,1981,399,1980,399,1981,400,1980,400,1981,401,1980,401,1981,402,1980,402,1981,403,1980,403,1981,404,1980,404,1981,405,1980,405,1981,406,1980,406,1981,407,1980,407,1981,408,1980,408,1981,409,1980,409,1981,410,1980,410,1981,411,1980,411,1981,412,1980,412,1981,413,1980,413,1981,414,1980,414,1981,415,1980,415,1981,387,2070,387,2071,388,2070,388,2071,389,2070,389,2071,390,2070,390,2071,391,2070,391,2071,392,2070,392,2071,393,2070,393,2071,394,2070,394,2071,395,2070,395,2071,396,2070,396,2071,397,2070,397,2071,398,2070,398,2071,399,2070,399,2071,400,2070,400,2071,401,2070,401,2071,402,2070,402,2071,403,2070,403,2071,404,2070,404,2071,405,2070,405,2071,406,2070,406,2071,407,2070,407,2071,196,2106,197,2106,196,2107,197,2107,196,2108,197,2108,196,2109,197,2109,196,2110,197,2110,196,2111,197,2111,196,2112,197,2112,196,2113,197,2113,196,2114,197,2114,196,2115,197,2115,780,2740,780,2741,781,2740,781,2741,782,2740,782,2741,783,2740,783,2741,784,2740,784,2741,785,2740,785,2741,965,1831,966,1831,965,1832,966,1832,965,1833,966,1833,965,1834,966,1834,965,1835,966,1835,965,1836,966,1836,965,1837,966,1837,965,1838,966,1838,965,1839,966,1839,965,1840,966,1840,965,1841,966,1841,965,1842,966,1842,965,1843,966,1843,965,1844,966,1844,965,1845,966,1845,965,1846,966,1846,965,1847,966,1847,965,1848,966,1848,965,1849,966,1849,965,1850,966,1850,965,1851,966,1851,965,1852,966,1852,965,1853,966,1853,965,1854,966,1854,870,873,871,873,870,874,871,874,870,875,871,875,870,876,871,876,870,877,871,877,870,878,871,878,870,879,871,879,870,880,871,880,845,537,846,537,845,538,846,538,845,539,846,539,845,540,846,540,845,541,846,541,845,542,846,542,845,543,846,543,845,544,846,544,845,545,846,545,912,650,912,651,913,650,913,651,914,650,914,651,915,650,915,651,916,650,916,651,917,650,917,651,918,650,918,651,919,650,919,651],
   },
   east_sea_s: {
-    port: 3026, biome: 'ocean', displayName: '동중국해',
+    port: 3026, biome: 'ocean', displayName: '동창해',
     groundColor: '#2a5a8a', tintColor: '#1a4a7a',
     worldOffsetX: 41000, worldOffsetY: 18000, zoneWidth: 7000, zoneHeight: 6000,
     villageSeed: 0, villageCount: 0,
-    mainSquare: { x: 3500, y: 3000, name: '동중국해 중심' },
+    mainSquare: { x: 3500, y: 3000, name: '동창해 중심' },
     isOcean: true,
   },
   oseania: {
-    port: 3022, biome: 'savanna', displayName: '오세니아 (호주+NZ)',
+    port: 3022, biome: 'savanna', displayName: '오세니아 남주',
     groundColor: '#c4a05a', tintColor: '#a08040',
     worldOffsetX: 41000, worldOffsetY: 24000, zoneWidth: 7000, zoneHeight: 7000,
     villageSeed: 1022, villageCount: 10,
@@ -299,47 +299,47 @@ const ZONES_BASE = {
 
   // === c6: 닛폰 컬럼 (5000w) ===
   nippon: {
-    port: 3021, biome: 'mountain', displayName: '닛폰 (日本)',
+    port: 3021, biome: 'mountain', displayName: '아사기 열도',
     groundColor: '#7a8a5a', tintColor: '#5a6a3a',
     worldOffsetX: 48000, worldOffsetY: 5000, zoneWidth: 5000, zoneHeight: 13000,
     villageSeed: 1021, villageCount: 16,
-    mainSquare: { x: 2500, y: 6500, name: '도카이 광장' },
+    mainSquare: { x: 2500, y: 6500, name: '도가이 광장' },
   },
   japan_pacific: {
-    port: 3028, biome: 'ocean', displayName: '필리핀해+일본남해',
+    port: 3028, biome: 'ocean', displayName: '남창해',
     groundColor: '#2a5a8a', tintColor: '#1a4a7a',
     worldOffsetX: 48000, worldOffsetY: 18000, zoneWidth: 5000, zoneHeight: 13000,
     villageSeed: 0, villageCount: 0,
-    mainSquare: { x: 2500, y: 6500, name: '필리핀해 중심' },
+    mainSquare: { x: 2500, y: 6500, name: '남창해 중심' },
     isOcean: true,
   },
 
   // === 남빙양 (row 4 가로, c4+c5+c6 통합) ===
   nambingyang: {
-    port: 3019, biome: 'ocean', displayName: '남빙양',
+    port: 3019, biome: 'ocean', displayName: '남얼음바다',
     groundColor: '#3a6a9a', tintColor: '#2a5a8a',
     worldOffsetX: 31000, worldOffsetY: 31000, zoneWidth: 22000, zoneHeight: 7000,
     villageSeed: 0, villageCount: 0,
-    mainSquare: { x: 11000, y: 3500, name: '남빙양 중심' },
+    mainSquare: { x: 11000, y: 3500, name: '남얼음바다 중심' },
     isOcean: true,
   },
 
   // === c7: 태평양 (8000w) ===
   // bering이 c7 절반(53000~57000) row 0 차지. pacific_arctic은 동쪽 corner 작은 ocean.
   pacific_arctic: {
-    port: 3027, biome: 'ocean', displayName: '북태평양 corner',
+    port: 3027, biome: 'ocean', displayName: '북큰바다 모서리',
     groundColor: '#1a3a7a', tintColor: '#0a2a5a',
     worldOffsetX: 57000, worldOffsetY: 0, zoneWidth: 4000, zoneHeight: 5000,
     villageSeed: 0, villageCount: 0,
-    mainSquare: { x: 2000, y: 2500, name: '북태평양 NE' },
+    mainSquare: { x: 2000, y: 2500, name: '북큰바다 모서리' },
     isOcean: true,
   },
   pacific: {
-    port: 3024, biome: 'ocean', displayName: '태평양',
+    port: 3024, biome: 'ocean', displayName: '큰바다',
     groundColor: '#1a3a7a', tintColor: '#0a2a5a',
     worldOffsetX: 53000, worldOffsetY: 5000, zoneWidth: 8000, zoneHeight: 33000,
     villageSeed: 0, villageCount: 0,
-    mainSquare: { x: 4000, y: 16500, name: '태평양 중심' },
+    mainSquare: { x: 4000, y: 16500, name: '큰바다 중심' },
     isOcean: true,
   },
 };

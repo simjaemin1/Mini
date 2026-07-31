@@ -396,9 +396,24 @@ console.log('⑧ 채광 숙련 — 레벨 이득 셋 [재민 최종]');
   console.log('    ★재고 소모 1 고정 ⇒ 광맥 수명(1000회)은 숙련 무관, 뽑히는 총량만 비례:');
   console.log('      셀 하나 총 산출 lvl0 ' + (1000 * S.mineChunkKg(0)).toLocaleString() + 'kg · lvl10 ' + (1000 * S.mineChunkKg(10)).toLocaleString() + 'kg');
 
-  console.log('    ── 깊이는 **셀 속성**(레벨 무관 지형 압력) ──');
-  console.log('      표층 ' + S.mineSwingsNeeded(1) + '타 → 최심부 ' + S.mineSwingsNeeded(0) + '타 (D ' + S.mineDepthCost(0) + '배)');
+  console.log('    ── 깊이 — 타수는 선형으로 늘고 품위는 **그보다 느리게** 오른다 [재민 확정] ──');
+  console.log('      재고    필요타수   품위배수   효율(타당)');
+  for (const st of [1000, 750, 500, 250, 0]) { const f = st / S.ORE_K;
+    console.log('      ' + String(st).padStart(4) + String(S.mineSwingsNeeded(f).toFixed(0)).padStart(9) + '타' +
+      S.mineDepthP(f).toFixed(3).padStart(10) + S.mineDepthEff(f).toFixed(4).padStart(11)); }
   ok(S.mineSwingsNeeded.length === 1, '★mineSwingsNeeded 가 레벨 인자를 안 받는다 — 셀 공용 문턱(무임승차 불가)');
+  ok(Math.abs(S.mineSwingsNeeded(1) - 60) < 1e-9 && Math.abs(S.mineSwingsNeeded(0) - 160) < 1e-9,
+    '★재고 ' + S.ORE_DEPTH_PER + ' 마다 필요 타수 +1 — 만땅 60타 → 완전고갈 160타');
+  {
+    let mono = true, prev = Infinity, minE = 1;
+    for (let st = S.ORE_K; st >= 0; st -= 5) { const e = S.mineDepthEff(st / S.ORE_K);
+      if (e > prev + 1e-12) mono = false; prev = e; if (e < minE) minE = e; }
+    ok(mono, '★★효율이 깊이에 대해 **단조 감소** — 겉핥기로 골고루 파는 게 항상 이득(재민 확정)');
+    ok(Math.abs(S.mineDepthEff(1) - 1) < 1e-9, '  표층 효율 = 1.0 (기준점)');
+    ok(minE > 0.80 && minE < 1, '  다만 차이는 **미세**하다 — 최심부 효율 ' + minE.toFixed(3) + ' (10%만 손해라 깊이 파도 못 할 짓은 아니다)');
+    ok(S.mineDepthP(0) > 1 && S.mineDepthP(0) < S.mineDepthCost(0),
+      '★품위 상승(×' + S.mineDepthP(0).toFixed(2) + ')이 타수 상승(×' + S.mineDepthCost(0).toFixed(2) + ')보다 **작다** — 이게 뒤집히면 깊이 파는 게 이득이 된다');
+  }
 
   ok(S.mineTNR(4) > S.mineTPR(4) + 0.1, '③ 감정 — ★비대칭: 초보는 좋은 광석을 몰라보고 버린다(FN≫FP)');
   ok(Math.abs(S.mineTPR(10) - S.mineTNR(10)) < 1e-9 && S.mineIdAcc(0) === 0.5, '  만렙 0.95로 수렴 · lvl0 = 정보 0');

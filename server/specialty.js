@@ -494,17 +494,39 @@ function mineChunkRoll(meanKg, rnd) {
 }
 
 // ── 깊이 비용 — **셀 속성**(지형 압력). 레벨은 안 들어간다 ────────────────
-//   D(f) = 1 + 3(1−f)²  · 표층 1.0 → 최심부 4.0. 필요 타수 = 60 × D(f).
-//   ★"심층에서만 숙련자가 빨라진다"는 기각됐다(재민: "좀 이상한가" — 서사가 약하다).
-//     깊이는 순수 지형 압력으로만 남는다: 얕은 자리가 유리하고 깊은 자리는 버려졌다가
-//     나중에 누가 이어받는다. 저렙도 심층을 팔 수 있다(느릴 뿐 — 하드 게이트 없음).
-//   ※이것도 빼고 60타 완전 고정으로 갈 수 있다. MINE_DEPTH_MAX=1 로 두면 꺼진다.
-const MINE_DEPTH_MAX = 4;
-function mineDepthCost(stockFrac) {
+//   ★"심층에서만 숙련자가 빨라진다"는 기각됐다 — 깊이는 순수 **지형 압력**이고 레벨이 안 들어간다.
+//     (필요 타수는 셀 공용 카운터라 개인차를 두면 저렙이 고렙 진척에 무임승차한다.)
+// ★★[재민 확정] 깊이 규칙을 다시 짰다.
+//   "비옥도가 1000까지 있지? **10마다 필요 타수가 1씩** 늘어나게. 최종적으로 160까지.
+//    그리고 깊이 팔수록 **미세하게 p값이 증가**하게. 대신 효율이 타수 늘어나는 것보다 더 크면 안 돼.
+//    …결국 **겉핥기로 골고루 파는 게 미세하게 더 이득**인 거야"
+//
+//   타수  need(s) = 60 + (1000 − s)/10        만땅 60타 → 완전고갈 160타 (×2.667)
+//   품위  G(s)    = 1 + 1.40·(1 − s/1000)     만땅 ×1.00 → 완전고갈 ×2.40
+//
+//   ★핵심은 **G < D** 다. 둘 다 깊이에 따라 커지지만 품위가 더 천천히 큰다:
+//     효율(타당 기대 광석) = G/D
+//       표층      (1.00)/(1.000) = 1.000
+//       절반      (1.70)/(1.833) = 0.927
+//       완전고갈  (2.40)/(2.667) = 0.900
+//     ⇒ 얕은 자리가 **항상** 유리하다. 다만 차이가 최대 10%라 "미세하게"에 맞는다.
+//       깊이 파는 게 손해이긴 해도 못 할 짓은 아니다(자리를 옮기기 귀찮으면 계속 파도 된다).
+//   ★깊게 파도 이득이 아예 없으면 안 되는 이유: 그러면 셀 재고 1000 중 뒷부분이 죽은 자원이 된다.
+//     p가 오르니 "여긴 이미 깊지만 그래도 진하다"가 성립하고, 광맥 수명은 그대로 1000회다.
+const ORE_DEPTH_PER = 10;        // 재고 이만큼 소모될 때마다 필요 타수 +1
+const ORE_DEPTH_P_GAIN = 1.40;   // 완전고갈 자리의 품위 배수 = 1 + 이 값 (타수 배수 2.667 보다 작아야 한다)
+function mineSwingsNeeded(stockFrac) {
   const f = Math.max(0, Math.min(1, stockFrac));
-  return 1 + (MINE_DEPTH_MAX - 1) * (1 - f) * (1 - f);
+  return MINE_SWINGS_PER + (ORE_K * (1 - f)) / ORE_DEPTH_PER;
 }
-function mineSwingsNeeded(stockFrac) { return MINE_SWINGS_PER * mineDepthCost(stockFrac); }
+function mineDepthCost(stockFrac) { return mineSwingsNeeded(stockFrac) / MINE_SWINGS_PER; }   // 배수(호환용)
+// 그 자리의 깊이가 품위에 주는 배수. oreProbAt(정적 장)에 곱해서 쓴다.
+function mineDepthP(stockFrac) {
+  const f = Math.max(0, Math.min(1, stockFrac));
+  return 1 + ORE_DEPTH_P_GAIN * (1 - f);
+}
+// 타당 기대 광석의 상대 효율 — 얕을수록 1에 가깝고 깊을수록 떨어진다(항상 ≤ 1).
+function mineDepthEff(stockFrac) { return mineDepthP(stockFrac) / mineDepthCost(stockFrac); }
 
 // ── ③ 곡괭이 내구 ────────────────────────────────────────────────────────
 // 만렙은 타당 0.5만 축낸다(곡괭이 수명 2배). 깊이와는 무관 — 심층 채널과 이중으로 겹치지 않게.
@@ -587,7 +609,8 @@ if (typeof module !== 'undefined' && module.exports) {
     ORE_P_SCALE, ORE_TIER_BASE, ORE_LN_SIGMA, ORE_PK_MAX, oreGradeMult,
     mineLevelF, MINE_XP_MAX, mineChunkKg, mineChunkRoll, CHUNK_CV, CHUNK_Z_MAX,
     mineDepthCost, mineSwingsNeeded, mineToolWear,
-    mineTPR, mineTNR, mineIdAcc, mineIdPhrase, MINE_DEPTH_MAX };
+    mineTPR, mineTNR, mineIdAcc, mineIdPhrase,
+    mineDepthP, mineDepthEff, ORE_DEPTH_PER, ORE_DEPTH_P_GAIN };
 }
 if (typeof window !== 'undefined') {
   window.Specialty = { RESOURCES };

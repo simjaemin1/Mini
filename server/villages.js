@@ -1440,7 +1440,11 @@ function _oreMineDaily(vil) {
         // 깊이 페널티 — 표층은 그대로, 심층은 느려진다. 숙련이 그만큼 상쇄한다(플레이어와 동일 공식).
         const f = (dep.oreStockAt(c.cx, c.cy) || 0) / K0;
         // ★[재민 최종] 채굴 속도는 고정 — 숙련은 **덩이 크기**만 바꾼다. 깊이만 진척을 늦춘다(셀 속성).
-        const eff = dep.mineDepthCost ? (1 / dep.mineDepthCost(f)) : 1;
+        // ★깊이는 타수를 늘리고(1/D) 품위를 올린다(×G). 둘 다 반영해야 플레이어와 축이 같다.
+        //   G < D 이므로 순효과는 **깊을수록 손해** — NPC도 얕은 자리부터 판다.
+        const eff = dep.mineDepthCost
+          ? (dep.mineDepthP ? dep.mineDepthP(f) : 1) / dep.mineDepthCost(f)
+          : 1;
         const got = dep.oreConsumeAt(c.cx, c.cy, want * eff) / (eff || 1);   // 실제 소모는 재고 기준, 진척은 효율 기준
         want -= got; consumed += got * eff;
       }
