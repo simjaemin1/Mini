@@ -232,9 +232,39 @@ function makeTerrainAdapter(terrain, ZONE, deps) {
       return out;
     } catch { return []; }
   };
-  // 광종별 **면적 가중** — 두 원(노동권 R, 광맥 radius)의 겹치는 넓이로 잰다.
+  // ★★[재민 확정] "econ 산출에 p를 곱한다"
+  //   전에는 광종 구성을 **면적만**으로 쟀다. 그래서 NPC 는 광맥의 **농도(p)를 못 봤다** —
+  //   금 p_peak 0.033 은 구리 0.311 의 1/10 인데, 광부 산출은 똑같았다.
+  //   플레이어는 금을 10배 어렵게 캐는데 NPC 는 똑같이 캐는, **두 축이 다른 세계를 보는** 상태였다.
+  //   실측 결과가 그대로 나왔다: 금 재고 10,490 중 10,465(99.8%)가 금 광맥 위 두 마을에서 나왔다.
+  //
+  //   ⇒ 이제 가중을 **면적 × p_peak** 으로 잰다. 두 가지가 한꺼번에 고쳐진다:
+  //     ① 광종 구성 — 농도 낮은 광종의 몫이 준다
+  //     ② land.ore 자체 — 노동권 평균 농도 / 존 전체 평균 농도 를 곱한다(gradeMult).
+  //        기준을 **존 전체 면적가중 평균 pk** 로 잡아 총량 중립이다. 광부 총수는 그대로,
+  //        어느 마을에 몰리느냐만 바뀐다. 금 마을 ×0.37~0.41, 구리 마을 ×1.14~3.43.
+  //   ★land.ore 에 곱하는 게 핵심이다. 산출에만 곱하면 광부는 그대로 남아 헛일을 한다
+  //     (직업 유틸리티가 land.ore 를 보기 때문). 부존을 고쳐야 사람이 따라 움직인다.
+  let _pkRef = null;
+  const orePkRef = () => {
+    if (_pkRef != null) return _pkRef;
+    let A = 0, AP = 0;
+    try {
+      const t = terrain.ZONE_TERRAIN ? terrain.ZONE_TERRAIN[zoneId] : null;
+      for (const o of ((t && t.ores) || [])) {
+        if (o.minor || !o.center) continue;
+        const a = Math.PI * (o.radius || 0) * (o.radius || 0);
+        A += a; AP += a * (o.pk || 0);
+      }
+    } catch { }
+    _pkRef = A > 0 ? AP / A : 0.3;
+    return _pkRef;
+  };
+  // 광종별 **면적 × 농도 가중** — 두 원(노동권 R, 광맥 radius)의 겹치는 넓이 × p_peak.
+  //   반환 { mix, gradeMult } — gradeMult 는 land.ore 에 곱하는 농도 보정(1.0 = 평균 품위).
   const oreMix = (ccx, ccy, R) => {
     const mix = {};
+    let _a0 = 0, _ap = 0;
     try {
       const t = terrain.ZONE_TERRAIN ? terrain.ZONE_TERRAIN[zoneId] : null;
       const list = (t && t.ores) || [];
@@ -250,12 +280,14 @@ function makeTerrainAdapter(terrain, ZONE, deps) {
           const a1 = Math.acos(Math.max(-1, Math.min(1, c1))), a2 = Math.acos(Math.max(-1, Math.min(1, c2)));
           a = RR * RR * (a1 - Math.sin(2 * a1) / 2) + r * r * (a2 - Math.sin(2 * a2) / 2);
         }
-        if (a > 0) mix[o.mineral] = (mix[o.mineral] || 0) + a;
+        if (a > 0) { _a0 += a; _ap += a * (o.pk || 0); mix[o.mineral] = (mix[o.mineral] || 0) + a * (o.pk || 0); }
       }
       let tot = 0; for (const k in mix) tot += mix[k];
       if (tot > 0) for (const k in mix) mix[k] = +(mix[k] / tot).toFixed(4);
+      else for (const k in mix) delete mix[k];   // 전부 pk 0 이면 광종 정보 없음으로 본다
     } catch { }
-    return mix;
+    const gradeMult = _a0 > 0 ? +((_ap / _a0) / orePkRef()).toFixed(4) : 1;
+    return { mix, gradeMult };
   };
   return { isBlocked, isWater, isRock, isOre, isBridgeCell, oreMinerals, oreMix, forestMult, fert, elev, nearestWaterDist, prepareFert, fertField: () => _FF };
 }
@@ -368,10 +400,14 @@ function extractSustain(ta, ccx, ccy, layout, rockD, oreD, forD, huntD) {
     //     뒤의 것만 옛 이름해시 폴백이다. 이걸 안 하면 광맥 하나 없는 농촌이
     //     이름 해시 운으로 주석 산지가 되어버린다.
     if (ta.oreMix) {
-      const mix = ta.oreMix(ccx, ccy, S.LABOR_R);
+      const { mix, gradeMult } = ta.oreMix(ccx, ccy, S.LABOR_R);
       out.oreMix = mix;
+      // ★부존 자체를 농도로 보정한다 — 총량 중립(기준=존 전체 면적가중 평균 pk).
+      //   품위 낮은 광맥 위 마을은 광부 정원이 줄고, 진한 광맥 위 마을은 는다.
+      const ore = +Math.max(0.05, Math.min(2.5, LV.ore * gradeMult)).toFixed(2);
+      out.ore = ore; out.oreGrade = gradeMult;
       for (const [m, k] of Object.entries(S.MINERAL_KEY)) {
-        if (mix[m] != null) out[k] = +(mix[m] * LV.ore).toFixed(3);
+        if (mix[m] != null) out[k] = +(mix[m] * ore).toFixed(3);
       }
     }
   } catch (e) { /* 재지 못하면 키를 안 넣는다 = 상한 미적용(현행 보존) */ }

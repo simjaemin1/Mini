@@ -28,7 +28,7 @@ if (!vs.length) { console.error('마을 0 — 지형 로드 실패'); process.ex
 // ── 노동권 안 광맥을 **면적 가중**으로 — server/villages.js oreMix 와 같은 식(원 교집합) ──
 const ores = ((T.ZONE_TERRAIN && T.ZONE_TERRAIN[Z]) || {}).ores || [];
 function oreMixAt(cx, cy) {
-  const mix = {}; const RR = LR * C, PX = cx * C + C / 2, PY = cy * C + C / 2;
+  const mix = {}; let _a0 = 0, _ap = 0; const RR = LR * C, PX = cx * C + C / 2, PY = cy * C + C / 2;
   for (const o of ores) {
     if (o.minor || !o.center || !o.mineral) continue;
     const r = o.radius || 0, d = Math.hypot(o.center[0] - PX, o.center[1] - PY);
@@ -40,12 +40,18 @@ function oreMixAt(cx, cy) {
       const a1 = Math.acos(Math.max(-1, Math.min(1, c1))), a2 = Math.acos(Math.max(-1, Math.min(1, c2)));
       a = RR * RR * (a1 - Math.sin(2 * a1) / 2) + r * r * (a2 - Math.sin(2 * a2) / 2);
     }
-    if (a > 0) mix[o.mineral] = (mix[o.mineral] || 0) + a;
+    if (a > 0) { _a0 += a; _ap += a * (o.pk || 0); mix[o.mineral] = (mix[o.mineral] || 0) + a * (o.pk || 0); }
   }
   let tot = 0; for (const k in mix) tot += mix[k];
   if (tot > 0) for (const k in mix) mix[k] = +(mix[k] / tot).toFixed(4);
-  return mix;
+  else for (const k in mix) delete mix[k];
+  return { mix, gradeMult: _a0 > 0 ? (_ap / _a0) / PK_REF : 1 };
 }
+// 존 전체 주요 광맥의 면적가중 평균 pk — 농도 보정의 기준점(총량 중립)
+const PK_REF = (() => { let A = 0, AP = 0;
+  for (const o of ores) { if (o.minor || !o.center) continue;
+    const a = Math.PI * (o.radius || 0) * (o.radius || 0); A += a; AP += a * (o.pk || 0); }
+  return A > 0 ? AP / A : 0.3; })();
 // 노동권 셀 표본으로 부존 스칼라(0~2 척도) — 랩 land.* 와 같은 축.
 // ⚠비옥도는 여기서 안 잰다: 그건 server/villages.js 의 EDT 비옥도장(prepareFert)이 필요하고
 //   그 어댑터는 zone.js 의 deps 주입 없이는 못 만든다. 이 스크립트의 목적은 **광물 축**이므로
@@ -91,7 +97,8 @@ const census = [];
 for (const v of vs) {
   const cx = Math.round(v.x / C), cy = Math.round(v.y / C);
   const L = landAt(cx, cy); if (!L) continue;
-  const mix = oreMixAt(cx, cy);
+  const { mix, gradeMult } = oreMixAt(cx, cy);
+  L.ore = +Math.max(0.05, Math.min(2.5, L.ore * gradeMult)).toFixed(2);   // ★농도 보정(본 게임 동형)
   census.push({ name: v.name, ore: L.ore, mix });
   villages.push(econ.createVillage({
     name: v.name, fertility: Math.max(0.15, L.fertility), wood: Math.max(0.1, L.wood),

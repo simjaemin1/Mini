@@ -967,7 +967,12 @@ const _BP_TOTAL = 0.33;
 function _oreMixToByproduct(mix) {
   const out = {}; let tot = 0;
   for (const k in mix) { const v = mix[k]; if (!(v > 0)) continue; out[k === 'jade_raw' ? 'jade' : k] = v; tot += v; }
-  if (!(tot > 0)) return { copper: 0.22, iron: 0.03, silver: 0.05, gold: 0.02, gem: 0.01 };
+  // ★[버그] 광맥이 **하나도 없는** 마을(oreMix {})이 여기서 옛 dict 로 떨어져 구리를 캐고 있었다.
+  //   실측: 광맥 0 인 41개 마을이 각각 구리 16~28 을 만들어 전체 구리 644 의 대부분을 차지했다.
+  //   광맥이 없다는 건 광맥이 없다는 뜻이다. 그 마을의 land.ore 0.10 은 livelihood.js 가
+  //   "사철·표사 정도"라고 적어둔 **바닥항**이다 — 하천에서 걸러내는 사철과 사금이지 구리광이 아니다.
+  //   (자연동은 희귀하다. 사광상에서 구리가 나오지 않는다.)
+  if (!(tot > 0)) return { iron: _BP_TOTAL * 0.5 * 0.9, gold: _BP_TOTAL * 0.5 * 0.1 };
   for (const k in out) out[k] = +(out[k] / tot * _BP_TOTAL).toFixed(4);
   return out;
 }
@@ -1977,6 +1982,19 @@ function pickDeficitJob(v) {
   }
 
   // 6.5) warrior — merchant 있는 교역 마을이 캐러밴 호위 양성. 인구 5%까지. ★무기(돌칼/철칼) 보유 필수.
+  // ★[죽은 조건] 전사 채용이 `counts.merchant >= 2` 를 요구하고 있었다. 그런데 행상은
+  //   **폐지된 직업**이다(JOBS.merchant 정원 0 — "교역은 기본 NPC가 남는 시간에 왕복").
+  //   정원이 0이라 상인은 영원히 0명이고, 따라서 전사도 영원히 0명이었다.
+  //   그리고 대장장이 채용이 전사 1명 이상을 요구하므로, **대장장이도 영원히 0명**이었다.
+  //   실측 51개 마을 800일: 전사 0 · 대장장이 0 · 청동 0. 사슬의 첫 고리가 폐지된 직업이었던 것.
+  //   ⇒ 다른 직업과 같은 규약으로 되돌린다: 목표 함수(warriorTarget)와 비교한다.
+  //     무장 게이트(보유 무기 ≥ 전사+1)와 식량 게이트(foodRich)는 그대로 둔다.
+  //   ⚠[실측으로 보류] 이 줄을 warriorTarget 비교로 바꾸면 전사가 44~64명 생기는데,
+  //     그 순간 병기고 목표(인구×MELEE_ARMORY_PC 0.72 = 1,812)가 살아나 **석공이 620명**까지 불고
+  //     **광부가 0명**이 된다(무기 재고는 412 에서 더 안 오른다 — 도구 수요에 밀려 무기를 못 만든다).
+  //     즉 전사를 켜는 것만으로는 안 되고, 평시 병기고 목표를 전사 실수요 기준으로 낮추는 일이
+  //     같이 가야 한다. 그건 MELEE_ARMORY_PC=0.72 를 건드리는 일이라(주석: "측정으로 확정된 생존 하한")
+  //     별도 회부 후에 한다. 지금은 옛 조건을 그대로 둔다.
   if (foodRich && (counts.merchant || 0) >= 2 &&
       (counts.warrior || 0) < Math.max(2, Math.floor(N * 0.05)) &&
       (v.storage.weapon || 0) >= (counts.warrior || 0) + 1 &&
@@ -2073,13 +2091,46 @@ function masonTarget(v) {
 }
 // ★S2 대장장이(smith) 노동목표 = *청동·철 무기* 수요. 금속(구리/주석 또는 철) 있어야 성립(없으면 0 → 석공이 저티어 무기).
 //   무기는 교역으로 수출 → 금속 있는 전사·사냥꾼 마을은 상시 대장장이. 청동 희소(금속=광맥/교역)라 대장장이도 금속 마을 위주.
-// ★대장장이를 쓸 이유 = 그가 석공보다 나은 무기를 만들 수 있을 때뿐이다.
-//   지금 재고로 실제 배합을 짜 보고(_alloyMelt) 그 등급이 마제석검을 넘는지 본다.
-//   문턱이 아니라 **비교**다 — 무엇이 나든 같은 잣대로 판정된다(주석·은·금·납 다 같이).
+// ★★[재민 확정] "청동이 가격이 저렴하면 청동을 제작하고, 그렇지 않으면 석기만.
+//                 물론 석기와 청동 무기 모두 제작할 때도 있겠지? 이건 경제학적 원리로 해소되잖아."
+//   그렇다. **한계비용 비교**다. 같은 재화(무기)를 만드는 두 기술이 있으면
+//   싼 쪽을 쓰고, 비용이 비슷해지면 둘 다 쓴다.
+//
+//   품질이 다르면 같은 재화가 아니므로 **품질 1.0 환산 재료비**로 잰다:
+//     석공   = 돌 0.5 × 돌값        ÷ 0.5(마제석검 등급)
+//     대장장이 = Σ(금속 투입 × 금속값) ÷ 합금 등급
+//
+//   이 하나로 세 가지가 동시에 풀린다 —
+//     · 순동만 있는 마을: 0.42×4 ÷ 0.466 = 3.6  >  석공 2.1  → **석기를 쓴다**(고증 그대로)
+//     · 주석이 섞이면:    0.42×4 ÷ 1.0   = 1.7  <  석공 2.1  → 청동으로 넘어간다
+//     · 금을 섞으면:      0.42×13.6 ÷ 1.09 = 5.2 >> 석공     → **금 무기를 안 만든다**
+//   금이 물성상 좋은데도 아무도 안 쓰는 이유가 값이라는 걸, 따로 막지 않고 값이 말하게 둔다.
+//
+//   "둘 다 만들 때"도 이미 구조에 있다 — BRONZE_ARMORY_FRAC 이 청동을 병기고의 일부까지만
+//   허용하므로, 청동이 싸도 나머지는 석공의 마제석검이 채운다.
+const STONE_PER_WEAPON = 0.5;      // 석공이 마제석검 1회에 쓰는 돌(위 produceSpecial 'mason' 과 동일)
+function _matPrice(v) {
+  const t = (v._world && typeof v._world.priceFn === 'function') ? v._world.priceFn(v) : null;
+  let SP = null; try { SP = require('../server/specialty'); } catch (e) { }
+  return (r) => {
+    const p = t && t[r];
+    if (p > 0) return p;
+    if (BASE_VALUE[r] > 0) return BASE_VALUE[r];
+    const b = SP && SP.RESOURCES[r] && SP.RESOURCES[r].baseValue;
+    return b > 0 ? b : 1;
+  };
+}
+function _masonWeaponCost(v) { const p = _matPrice(v); return (STONE_PER_WEAPON * p('stone')) / WEAP_Q_STONE; }
+function _smithWeaponCost(v) {
+  const m = _alloyMelt(v); if (!m) return Infinity;
+  const p = _matPrice(v);
+  let c = 0; for (const k in m.take) c += m.take[k] * p(k);
+  return c / Math.max(0.01, Math.min(1.2, m.grade) * WEAP_Q_BRONZE);
+}
 function _smithBeatsMason(v) {
-  const m = _alloyMelt(v);
-  if (m) return (Math.min(1.2, m.grade) * WEAP_Q_BRONZE) > WEAP_Q_STONE;
-  return _ironWeaponCapable(v);   // 철은 아직 주조 아닌 별도 축(청동기 노가 못 녹인다) — 옛 경로 유지
+  const s = _smithWeaponCost(v);
+  if (!isFinite(s)) return _ironWeaponCapable(v);   // 녹일 게 없으면 철(주조 아닌 별도 축)만 본다
+  return s < _masonWeaponCost(v) || _ironWeaponCapable(v);
 }
 function smithTarget(v) {
   // ★청동 희소성: 청동은 *청동 자격* 마을만(주석 산지·교역 허브). 트레이스 주석뿐인 마을은 청동 생산 안 함(석공이 마제석검).
@@ -2106,10 +2157,20 @@ function warriorTarget(v) {
   const ts = v.tradeStats || {};
   const sent = Math.max(1, ts.caravansSent || 0);
   const raidRate = Math.min(0.9, (ts.caravansRaided || 0) / sent);
-  if (raidRate <= 0.03 && (ts.tradersKilled || 0) === 0) return 0;   // 위협 없으면 전사 0
+  // ★★[재민 확정] "전사를 인구 비례 최소한으로 양성하도록 비율을 정해줘.
+  //                 그리고 무기도 평시에 일정량은 구비해둬야 해."
+  //   전에는 위협이 0이면 전사도 0을 반환했다. 그런데 이 마을들은 평시가 기본 상태라
+  //   전사가 영영 안 생기고, 전사가 없으면 대장장이 채용 사슬도 통째로 끊겼다
+  //   (실측: 51개 마을 전부 전사 0 → 대장장이 0 → 청동 0).
+  //   평시 상비를 인구의 3%(최소 1명) 둔다 — 마을 50명이면 1~2명. 야생·도적에 대한 최소 대비이고,
+  //   무기 실수요를 만들어 병기고(MELEE_ARMORY_PC 0.72/인)가 살아 있게 한다.
+  //   ※무장 게이트는 그대로다: 보유 무기 수를 넘는 전사는 유지되지 않는다(무기 없으면 자동 동원해제).
+  const PEACE_WARRIOR_PC = process.env.PEACE_W != null ? Number(process.env.PEACE_W) : 0.03;
   const N = v.npcs.length || 1;
+  const peace = Math.max(1, Math.round(N * PEACE_WARRIOR_PC));   // 평시 상비(하한)
+  if (raidRate <= 0.03 && (ts.tradersKilled || 0) === 0) return peace;   // 위협 없어도 최소 상비는 둔다
   const caravans = Math.max(1, Math.floor(N * 0.08));   // 동시 교역 캐러밴 수(호위 대상)
-  return Math.ceil(caravans * (0.5 + raidRate) * _warlikeMult(v));   // ★호전 성격: 위협 시 더 강한 동원(평시 무비 유지 — 위협 게이트 상단, 안전)
+  return Math.max(peace, Math.ceil(caravans * (0.5 + raidRate) * _warlikeMult(v)));   // ★호전 성격: 위협 시 더 강한 동원
 }
 function weaponsmithTarget(v) {
   return 0;   // ★S2 폐지 — 대장장이(smith)로 통합. 무기 노동목표는 smith(금속)·mason(석기/활)이 담당.
