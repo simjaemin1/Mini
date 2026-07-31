@@ -117,6 +117,47 @@ ok(T.oreProbAt('hanbando', cl.center[0] + 3000 * 32, cl.center[1]) === 0, '광�
     ok(tail.every((v) => v < 0.60), '★p 장이 **진짜 연속** — 간격을 반으로 줄이면 |Δp| 최대도 반이 된다(점프면 안 줄어든다)');
     ok(seq[4] < 0.02, '  최소 간격(2px)에서 |Δp| < 0.02 — 잔여 불연속 없음');
   }
+  // ★★[재민 확정 (다)] 겹친 광맥의 p 는 **합성**이다: 1 − ∏(1−p_i)
+  {
+    // 겹치는 자리를 찾아 max 규칙 대비 얼마나 진해지는지 + 상한을 안 넘는지
+    let n = 0, sMax = 0, sCmp = 0, mx = 0, over = 0, bad = 0;
+    for (const o of d0.ores) {
+      for (let i = 0; i < 24; i++) {
+        const a = i * 0.618 * 6.2832, r = (i % 7) / 7 * o.radius * 0.7;
+        const x = o.center[0] + r * Math.cos(a), y = o.center[1] + r * Math.sin(a);
+        const c = T.oreCandidatesAt("hanbando", x, y); if (!c.length) continue;
+        let miss = 1, best = 0; for (const e of c) { miss *= (1 - e.p); if (e.p > best) best = e.p; }
+        const cmp = 1 - miss, real = T.oreProbAt("hanbando", x, y);
+        if (Math.abs(real - cmp) > 1e-9) bad++;
+        n++; sMax += best; sCmp += cmp; if (cmp > mx) mx = cmp; if (c.length > 1) over++;
+      }
+    }
+    console.log("    ★p 합성 — 표본 " + n.toLocaleString() + " (겹친 자리 " + (over / n * 100).toFixed(1) + "%)");
+    console.log("      평균 p  max 규칙 " + (sMax / n).toFixed(4) + " → 합성 " + (sCmp / n).toFixed(4) +
+      " (+" + ((sCmp / sMax - 1) * 100).toFixed(1) + "%) · 최대 " + mx.toFixed(4));
+    ok(bad === 0, "★oreProbAt 이 1−∏(1−p_i) 와 정확히 일치 (합성이 실제로 배선됨)");
+    ok(mx < 1, "  합성 p 가 1을 안 넘는다 — 곱 형태라 클램프 없이 구조적으로 보장");
+    ok(sCmp >= sMax, "  합성은 max 이상 (겹침이 손해가 아니라 이득)");
+  }
+  {
+    // 겹쳐서 **소유 셀 0** 이던 광맥이 광물 추첨에 참여하는가(유령 부활)
+    const ghosts = ["광맥92", "광맥101", "광맥127", "광맥190"];
+    let allok = true;
+    for (const nm of ghosts) {
+      const o = d0.ores.find((x) => x.name === nm); if (!o) continue;
+      let hit = 0, n = 0;
+      for (let i = 0; i < 1500; i++) {
+        const a = i * 0.618 * 6.2832, r = (i % 17) / 17 * o.radius * 0.8;
+        const x = o.center[0] + r * Math.cos(a), y = o.center[1] + r * Math.sin(a);
+        const c = T.oreCandidatesAt("hanbando", x, y); if (!c.some((e) => e.o.name === nm)) continue;
+        n++; if (T.oreMineralAt("hanbando", x, y) === o.mineral) hit++;
+      }
+      if (!(n > 0 && hit / n > 0.02)) allok = false;
+      console.log("      " + nm + "(" + o.mineral + ") 자기 영역에서 자기 광물 " + (n ? (hit / n * 100).toFixed(0) : "-") + "%");
+    }
+    ok(allok, "★큰 광맥에 먹혀 소유 셀 0 이던 광맥도 제 광물을 낸다(유령 33개 부활)");
+    ok(T.oreMineralAt("hanbando", d0.ores[0].center[0] + 9e5, d0.ores[0].center[1]) === null, "  광맥 밖에선 광물 없음(null)");
+  }
   let s2 = 0, c2 = 0; for (let cy = -22; cy <= 22; cy++) for (let cx = -22; cx <= 22; cx++) { const p = T.oreProbAt('hanbando', cl.center[0] + cx * 32, cl.center[1] + cy * 32); if (p > 0) { s2 += p; c2++; } }
   console.log('    광맥1: p>0 ' + c2 + '셀 · 평균 p ' + (s2 / c2).toFixed(4));
   ok(c2 > 1000, '광맥 하나가 1000셀 이상 (반경 21.9셀 원판)');

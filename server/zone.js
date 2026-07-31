@@ -1954,7 +1954,8 @@ SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, is
     if (got <= 0) { if (!rec.fresh) _oreSave(key, rec); return 0; }
     rec.s -= got; _oreSave(key, rec); return got;
   },
-  oreProbAt: (px, py) => (_terrain.oreProbAt ? _terrain.oreProbAt(ZONE_ID, px, py) : 0.3),
+  // ★NPC 경제가 보는 p 는 **자잘을 뺀 합성**이다(isMajorOreAt 과 짝) — 자잘은 플레이어 전용
+  oreProbAt: (px, py) => (_terrain.oreProbMajorAt ? _terrain.oreProbMajorAt(ZONE_ID, px, py) : 0.3),
   ORE_K: require('./specialty').ORE_K, NPC_MINE_PER_DAY: require('./specialty').NPC_MINE_PER_DAY,
   // ★NPC 광부도 **플레이어와 같은 공식**으로 깊이 페널티를 겪고 숙련으로 상쇄한다(축이 하나다)
   mineDepthCost: (f) => require('./specialty').mineDepthCost(f),
@@ -3628,9 +3629,15 @@ function mineOreCell(player) {
     //   추첨 결과를 빼면 운 좋게 큰 덩이가 나온 다음 덩이가 굶는다(난수가 다음 덩이로 새면 안 된다).
     rec.w -= need; rec.s -= 1;                                       // ★재고 소모 1 고정(재민 지시)
     const cluster = _terrain.isOreClusterAt(ZONE_ID, px, py);
+    // ★[재민 확정 (다)] p 는 **겹친 광맥 전부의 합성**이다: 1 − ∏(1−p_i).
+    //   겹치는 자리가 노다지가 된다("왜 여기만 유독 잘 나오지?").
     const p = _terrain.oreProbAt ? _terrain.oreProbAt(ZONE_ID, px, py) : 0;   // 품위는 **자리**의 것
     const isOre = Math.random() < p;
-    const mineral = cluster ? (cluster.mineral || 'iron') : 'iron';
+    // ★광물도 자리에 걸친 광맥들 사이에서 **p 비례 추첨**한다 — 접촉대에선 구리도 옥도 나온다.
+    //   (isOreClusterAt 은 p 최대인 하나만 준다. 그걸 쓰면 겹친 상대 광물이 영원히 안 나온다 —
+    //    실측으로 자잘 33개가 그렇게 소유 셀 0 인 유령이 돼 있었다.)
+    const mineral = (_terrain.oreMineralAt ? _terrain.oreMineralAt(ZONE_ID, px, py) : null)
+      || (cluster ? (cluster.mineral || 'iron') : 'iron');
     if (!player.oreLedger || typeof player.oreLedger !== 'object') player.oreLedger = {};
     const lk = isOre ? mineral : 'stone';
     player.oreLedger[lk] = +((player.oreLedger[lk] || 0) + kg).toFixed(3);   // ★결과는 지금 정해 숨긴다
@@ -5432,7 +5439,8 @@ function villageProduction(villageName, jobCounts) {
       const vp = _villageAt(villageName);
       // ★[재민 확정] 마을(NPC)은 **자잘 광맥을 못 본다** — 자잘은 플레이어 전용 발견 요소다.
       const cl = vp ? _terrain.isMajorOreAt(ZONE_ID, vp.x, vp.y) : null;
-      const p = (vp && cl && _terrain.oreProbAt) ? _terrain.oreProbAt(ZONE_ID, vp.x, vp.y) : 0;
+      // ★major 전용 합성 p — 자잘이 정원·산출에 새면 안 된다(NPC 시야 밖)
+      const p = (vp && cl && _terrain.oreProbMajorAt) ? _terrain.oreProbMajorAt(ZONE_ID, vp.x, vp.y) : 0;
       const mineral = cl ? (cl.mineral || 'iron') : null;
       for (let i = 0; i < n; i++) {
         if (mineral && Math.random() < p) add(mineral, 1);

@@ -354,12 +354,28 @@ function _oreP(o, d, x, y) {
 //     각 광맥의 p_i 는 제 경계에서 0으로 **연속** 수렴하므로(p ∝ (1−d)^1.2),
 //     max_i p_i 도 연속이다. 소유(=광물 종류)가 바뀌는 선은 정확히 **p가 같은 선**이라
 //     그 순간 p 는 이어지고 광물만 바뀐다 — 딱 원하는 그림이다.
+// ★★[재민 확정 — (다) 합성] 겹친 광맥의 p 를 **max 가 아니라 합성**한다.
+//   실측: 광맥 셀의 10.9%(91,162셀)가 둘 이상에 걸쳐 있고, 그중 33개 자잘은 큰 광맥에
+//   완전히 먹혀 **소유 셀 0** — 그 광물이 아예 안 나왔다(배치 슬롯만 먹는 유령).
+//   max 규칙에선 겹침이 **순수 손해**였다. 합성하면 겹침이 노다지가 된다:
+//
+//     p = 1 − ∏(1 − p_i)        (각 광맥이 **독립적으로** 광석을 넣었다고 본다)
+//
+//   · 겹치는 자리는 두 광맥 몫이 더해져 "왜 여기만 유독 잘 나오지?" 하는 자리가 생긴다
+//   · 1을 절대 안 넘는다(클램프가 아니라 구조적으로) — 곱의 형태라 상한이 공짜다
+//   · **연속성 유지**: p_i 각각이 제 경계에서 0으로 연속 수렴하므로 곱도, 1−곱도 연속
+//   · 광맥이 하나뿐인 자리에선 정확히 p_1 — 기존 동작과 동일
+//   · 먹혔던 33개가 되살아난다(자기 p 를 보태고, 광물 추첨에도 참여한다)
+//
+//   소유(=광물 종류)는 여전히 **p 최대**인 광맥이다 — 지도·econ·감정 문구가 흔들리면 안 되므로.
+//   다만 실제로 캘 때 어느 광물이 나오는지는 p_i 에 **비례 추첨**한다(_oreMineralAt).
+//   접촉대(contact zone)에서 구리도 옥도 나오는 게 고증이다.
 function _oreOwnerAt(zoneId, x, y) {
   const t = ZONE_TERRAIN[zoneId];
   if (!t || !t.ores) return null;
   const list = _oreNear(t, x, y);
   if (!list) return null;
-  let best = null, bd = 1, bp = -1;
+  let best = null, bd = 1, bp = -1, miss = 1, n = 0;
   for (const o of list) {
     const dx = x - o.center[0], dy = y - o.center[1];
     const rr = o.radius * _ORE_REACH;
@@ -367,10 +383,42 @@ function _oreOwnerAt(zoneId, x, y) {
     const d = _oreShape(o, x, y);
     if (!(d < 1)) continue;
     const p = _oreP(o, d, x, y);
-    // p 최대 · 동률이면 d_eff 최소(p=0 인 축퇴 구간에서도 소유가 정해지도록)
+    miss *= (1 - p); n++;
+    // 소유는 p 최대 · 동률이면 d_eff 최소(p=0 인 축퇴 구간에서도 소유가 정해지도록)
     if (p > bp || (p === bp && d < bd)) { bp = p; bd = d; best = o; }
   }
-  return best ? { o: best, d: bd, p: bp } : null;
+  if (!best) return null;
+  // n===1 이면 1−(1−p) = p 라 분기 없이도 같지만, 부동소수 왕복을 피해 원값을 그대로 쓴다
+  return { o: best, d: bd, p: n > 1 ? 1 - miss : bp, pSolo: bp, n: n };
+}
+// 이 자리에 걸친 광맥 전부와 각자의 p — 채굴 시 **광물 추첨**에 쓴다(할당이 있어 뜨거운 경로 밖에서만).
+function oreCandidatesAt(zoneId, x, y) {
+  const t = ZONE_TERRAIN[zoneId];
+  if (!t || !t.ores) return [];
+  const list = _oreNear(t, x, y);
+  if (!list) return [];
+  const out = [];
+  for (const o of list) {
+    const dx = x - o.center[0], dy = y - o.center[1];
+    const rr = o.radius * _ORE_REACH;
+    if (dx * dx + dy * dy >= rr * rr) continue;
+    const d = _oreShape(o, x, y);
+    if (!(d < 1)) continue;
+    out.push({ o: o, d: d, p: _oreP(o, d, x, y) });
+  }
+  return out;
+}
+// 광석이 나왔다는 **조건 하에** 어느 광물인지. p_i 에 비례 추첨한다.
+//   (합성 p = 1−∏(1−p_i) 의 엄밀한 분해는 아니지만, 겹침이 얕은 구간에서 오차가 O(p²)로 작고
+//    "진한 쪽이 더 자주 나온다"는 직관이 정확히 성립한다.)
+function oreMineralAt(zoneId, x, y, rnd) {
+  const c = oreCandidatesAt(zoneId, x, y);
+  if (!c.length) return null;
+  let s = 0; for (const e of c) s += e.p;
+  if (!(s > 0)) return c[0].o.mineral || 'iron';
+  let r = ((typeof rnd === 'function') ? rnd() : Math.random()) * s;
+  for (const e of c) { r -= e.p; if (r <= 0) return e.o.mineral || 'iron'; }
+  return c[c.length - 1].o.mineral || 'iron';
 }
 // ★[11차 재민 확인 "모든 광맥이 원 모양이 아니라 무작위 모양인 거 맞지?"]
 //   ...아니었다. p(품위)만 무작위였고 **경계는 완벽한 원**이었다(셀맵·oreShare·villages 전부 원을 봄).
@@ -419,6 +467,24 @@ function isMajorOreAt(zoneId, x, y) {
     if (p > bp || (p === bp && d < bd)) { bp = p; bd = d; best = o; }
   }
   return best;
+}
+// NPC·econ 전용 p — **자잘을 뺀** 채로 합성한다(자잘은 NPC 시야 밖이라 정원 계산에 새면 안 된다).
+function oreProbMajorAt(zoneId, x, y) {
+  const t = ZONE_TERRAIN[zoneId];
+  if (!t || !t.ores) return 0;
+  const list = _oreNear(t, x, y);
+  if (!list) return 0;
+  let miss = 1, any = false;
+  for (const o of list) {
+    if (o.minor) continue;
+    const dx = x - o.center[0], dy = y - o.center[1];
+    const rr = o.radius * _ORE_REACH;
+    if (dx * dx + dy * dy >= rr * rr) continue;
+    const d = _oreShape(o, x, y);
+    if (!(d < 1)) continue;
+    miss *= (1 - _oreP(o, d, x, y)); any = true;
+  }
+  return any ? 1 - miss : 0;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -483,6 +549,9 @@ if (typeof module !== 'undefined' && module.exports) {
     isOreClusterAt,
     isMajorOreAt,
     oreProbAt,
+    oreProbMajorAt,
+    oreCandidatesAt,
+    oreMineralAt,
     getTileType,
   };
 }
@@ -499,6 +568,9 @@ if (typeof window !== 'undefined') {
     isOreClusterAt,
     isMajorOreAt,
     oreProbAt,
+    oreProbMajorAt,
+    oreCandidatesAt,
+    oreMineralAt,
     getTileType,
   };
 }
