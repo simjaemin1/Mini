@@ -228,15 +228,21 @@ ok(T.oreProbAt('hanbando', cl.center[0] + 3000 * 32, cl.center[1]) === 0, '광�
   {
     // ②지역 무관 — 구역별 광종 비율의 산포가 **이항분포 기대치와 같아야** 한다.
     //   지역 편중이 있으면 관측 CV 가 기대 CV 보다 크게 나온다(구 산지 지도에서 실제로 그랬다).
-    const GX = 8, GY = 15, W = 2188, H = 4063;
+    // ★격자를 **광맥 수에 맞춰** 고른다. 8×15 로 고정했더니 광맥이 3324 → 787 로 줄면서
+    //   구역당 6.6개가 돼 광종별 칸이 0~2개가 됐고, CV 비 추정이 표본잡음으로 1.61 까지 튀었다.
+    //   (광종 추첨은 좌표를 **안 받는다** — 구조적으로 지역 편중이 불가능하다. 순수 잡음이었다.)
+    //   구역당 평균 40개쯤 되게 격자를 잡는다.
+    const W = 2188, H = 4063;
+    const nB = Math.max(4, Math.min(120, Math.round(d0.ores.length / 40)));
+    const GY = Math.max(2, Math.round(Math.sqrt(nB * (H / W)))), GX = Math.max(2, Math.round(nB / GY));
     const grid = {}, cnt = {};
     for (const o of d0.ores) {
       cnt[o.mineral] = (cnt[o.mineral] || 0) + 1;
       const gx = Math.min(GX-1, Math.floor(o.center[0]/32/W*GX)), gy = Math.min(GY-1, Math.floor(o.center[1]/32/H*GY));
       const b = gy*GX + gx; (grid[b] = grid[b] || {})[o.mineral] = ((grid[b]||{})[o.mineral] || 0) + 1;
     }
-    const bs = Object.values(grid).filter((g) => Object.values(g).reduce((a,b)=>a+b,0) >= 15);
-    console.log('    구역별 광종 비율 (' + bs.length + '개 구역) — 관측 CV / 무작위 기대 CV');
+    const bs = Object.values(grid).filter((g) => Object.values(g).reduce((a,b)=>a+b,0) >= 20);
+    console.log('    구역별 광종 비율 (' + GX + '×' + GY + ' 격자 · 유효 ' + bs.length + '개 구역) — 관측 CV / 무작위 기대 CV');
     let worst = 0, wm = '';
     for (const m of Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a])) {
       const fr = [], ns = [];
