@@ -356,11 +356,59 @@ function oreValueScale(baseValue) {
 //     k=1.000 → 44,769 (+17.0%) · k=0.900 → 40,306 (+5.3%) · **k=0.855 → 38,296 (+0.1%)** · k=0.800 → 35,840 (−6.4%)
 //   ※합성(1−∏(1−p_i)) 때문에 총량은 k에 정확히 비례하지 않는다 — 그래서 계산이 아니라 실측으로 잡았다.
 //   ※이 값을 바꾸면 **terrain.json 에 박힌 pk 도 같은 비율로 다시 매겨야 한다**(저장값이라 자동 반영 안 됨).
-const ORE_P_SCALE = 0.855;
+const ORE_P_SCALE = 0.9063;   // ★등급을 크기무관·로그정규로 바꾸면서 총량이 −5.5% 됐다 → k 1.06 재보정(실측 38,312 = +0.1%)
+
+// ★★[재민 확정] "크기 무관 모든 광맥이 평균이 비슷하게" + "광맥의 평균의 표준편차가 크게"
+//
+//   ① **크기는 등급을 정하지 않는다.** 등급기준을 하나로 합쳤다(ORE_TIER_BASE).
+//      기각된 것: r130 0.45 / r70 0.38 / r22 0.30 / 자잘 0.22 (큰 광맥일수록 진함).
+//      기각 이유가 둘이다.
+//        · 고증이 반대다 — 거대 광체는 오히려 **저품위**다(반암동광은 산 하나가 광체인데
+//          구리 0.5% 미만). 좁은 열수맥이 작고 진하다. "크면 넓고 묽다"가 자연스럽다.
+//        · 이중 보상이었다 — 광부 정원(villages.oreD)은 **면적만** 본다(품위를 안 본다).
+//          대형은 이미 넓이·수명·정원으로 보상받는데 품위까지 높으면 자잘을 찾을 이유가 없다.
+//      ⇒ 이제 큰 광맥은 **넓고 오래 가고**, 작은 광맥도 **똑같이 진할 수 있다**.
+//        r7 짜리가 r130 보다 진한 일이 흔하다 — 그게 탐험의 보상이다.
+//
+//   ② **광맥 사이 산포를 크게.** 균등 지터 0.4~1.6(CV 0.346)을 **로그정규**로 바꿨다.
+//      고증: 광상의 품위 분포는 로그정규다(Ahrens 의 법칙 · De Wijs). 대부분은 그저 그렇고
+//      드물게 노다지가 있다 — 균등분포는 "적당한 광맥"이 너무 흔하다.
+//        mult = exp(σZ − σ²/2)  ⇒ 기댓값 정확히 1 (총량을 안 흔든다)
+//        σ = 0.75 → CV = √(e^0.5625 − 1) = 0.869   (실측 0.394 → 목표 ~0.85)
+//      Z 는 균등 해시를 **역정규누적분포**로 밀어 만든다(결정론 유지 — 좌표만 알면 재현된다).
+//      꼬리는 [0.12, 4.0] 으로 자른다(p 가 1을 넘지 않게 · 완전 빈 광맥이 안 생기게).
+const ORE_TIER_BASE = 0.30;     // 전 등급 공통. 크기는 **넓이**로만 말한다.
+const ORE_LN_SIGMA = 0.75;      // 광맥 사이 산포(로그정규 σ) — 클수록 노다지/꽝의 차이가 커진다
+const ORE_LN_CLAMP = [0.12, 4.0];
+
+// 역정규누적분포(Acklam 유리근사) — 균등 u∈(0,1) → 표준정규 z. 최대오차 ~1.15e-9.
+function _probit(u) {
+  const a = [-3.969683028665376e+01, 2.209460984245205e+02, -2.759285104469687e+02, 1.383577518672690e+02, -3.066479806614716e+01, 2.506628277459239e+00];
+  const b = [-5.447609879822406e+01, 1.615858368580409e+02, -1.556989798598866e+02, 6.680131188771972e+01, -1.328068155288572e+01];
+  const c = [-7.784894002430293e-03, -3.223964580411365e-01, -2.400758277161838e+00, -2.549732539343734e+00, 4.374664141464968e+00, 2.938163982698783e+00];
+  const dd = [7.784695709041462e-03, 3.224671290700398e-01, 2.445134137142996e+00, 3.754408661907416e+00];
+  const pl = 0.02425, ph = 1 - pl;
+  let q, r;
+  if (u < pl) { q = Math.sqrt(-2 * Math.log(u));
+    return (((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) / ((((dd[0]*q+dd[1])*q+dd[2])*q+dd[3])*q+1); }
+  if (u > ph) { q = Math.sqrt(-2 * Math.log(1 - u));
+    return -(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) / ((((dd[0]*q+dd[1])*q+dd[2])*q+dd[3])*q+1); }
+  q = u - 0.5; r = q * q;
+  return (((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5]) * q / (((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1);
+}
+function oreGradeMult(jitter01) {
+  const u = Math.min(1 - 1e-9, Math.max(1e-9, jitter01 == null ? 0.5 : jitter01));
+  const m = Math.exp(ORE_LN_SIGMA * _probit(u) - ORE_LN_SIGMA * ORE_LN_SIGMA / 2);
+  return Math.max(ORE_LN_CLAMP[0], Math.min(ORE_LN_CLAMP[1], m));
+}
+// tierBase 인자는 호출부 호환을 위해 남기되 **무시한다** — 크기가 등급을 정하지 않는다.
+// ★노다지에도 천장을 둔다 — p=1 이면 **모든 덩이가 광석**이라 "돌이냐 광석이냐"의 긴장이 사라진다.
+//   로그정규 상한(mult 4.0)에 걸린 광맥이 23개 있었고 그 자리 p_peak 이 1.09 였다.
+const ORE_PK_MAX = 0.90;
 function orePeakFor(mineralId, tierBase, jitter01) {
   const r = RESOURCES[mineralId];
-  const j = 0.4 + Math.max(0, Math.min(1, jitter01 == null ? 0.5 : jitter01)) * 1.2;
-  return +(tierBase * ORE_P_SCALE * j * oreValueScale(r ? r.baseValue : 5)).toFixed(4);
+  const p = ORE_TIER_BASE * ORE_P_SCALE * oreGradeMult(jitter01) * oreValueScale(r ? r.baseValue : 5);
+  return +Math.min(ORE_PK_MAX, p).toFixed(4);
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -536,7 +584,7 @@ if (typeof module !== 'undefined' && module.exports) {
     NPC_MINE_PER_DAY, MINE_HAUL, MINE_HAUL_TRIP, MINE_LABOR, MINE_HAULEFF, haulEff,
     itemWeight, inventoryWeight, CARRY_MAX_KG, EXTRA_WEIGHT,
     oreValueScale, orePeakFor, ORE_VALUE_EXP,
-    ORE_P_SCALE,
+    ORE_P_SCALE, ORE_TIER_BASE, ORE_LN_SIGMA, ORE_PK_MAX, oreGradeMult,
     mineLevelF, MINE_XP_MAX, mineChunkKg, mineChunkRoll, CHUNK_CV, CHUNK_Z_MAX,
     mineDepthCost, mineSwingsNeeded, mineToolWear,
     mineTPR, mineTNR, mineIdAcc, mineIdPhrase, MINE_DEPTH_MAX };

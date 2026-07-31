@@ -88,7 +88,10 @@ ok(T.oreProbAt('hanbando', cl.center[0] + 3000 * 32, cl.center[1]) === 0, '광�
     }
   }
   console.log('    인접 셀 |Δp| 평균 ' + (sum / n).toFixed(5) + ' · 최대 ' + mx.toFixed(5) + ' at ' + JSON.stringify(at));
-  ok(mx < 0.05, '★인접 셀 p 급변 없음 (|Δp| < 0.05 — "이 셀 0.05인데 옆 셀 0.8" 이 구조적으로 불가능)');
+  // ★문턱을 0.05 → 0.20 으로 올렸다. 얼룩 이득을 2.84배로 키운 뒤(재민: "광맥 내에서도 표준편차가
+  //   컸으면") 한 셀 걸음의 변화가 커진 건 **의도한 것**이다. 여기서 막을 건 "이 셀 0.05인데 옆 셀 0.8"
+  //   같은 **뒤집힘**이지 가파름이 아니다. 진짜 연속성 판정은 바로 아래 수렴 검사가 한다.
+  ok(mx < 0.20, '인접 셀에서 품위가 뒤집히진 않는다 (|Δp| < 0.20)');
   // ★★[정정] 위 문턱(0.05)은 **연속성의 증거가 아니다** — 표본 간격이 1셀로 고정이라
   //   "작고 진한 광맥의 가파른 기울기"와 "겹침 경계의 진짜 점프"를 구분하지 못한다.
   //   실제로 자잘을 2600개로 늘리자 겹침에서 Δp 0.051 짜리 **점프**가 나왔고(소유를 d_eff
@@ -115,7 +118,7 @@ ok(T.oreProbAt('hanbando', cl.center[0] + 3000 * 32, cl.center[1]) === 0, '광�
     console.log('      축소비 : ' + ratio.map((v) => v.toFixed(3)).join(' · ') + '   (연속이면 → 0.5 · 점프면 → 1)');
     const tail = ratio.slice(-3);
     ok(tail.every((v) => v < 0.60), '★p 장이 **진짜 연속** — 간격을 반으로 줄이면 |Δp| 최대도 반이 된다(점프면 안 줄어든다)');
-    ok(seq[4] < 0.02, '  최소 간격(2px)에서 |Δp| < 0.02 — 잔여 불연속 없음');
+    ok(seq[4] < 0.08, '  최소 간격(2px)에서 |Δp| < 0.08 — 잔여 불연속 없음(0.5로 수렴하므로 간격을 더 줄이면 계속 준다)');
   }
   // ★★[재민 확정 (다)] 겹친 광맥의 p 는 **합성**이다: 1 − ∏(1−p_i)
   {
@@ -169,22 +172,42 @@ ok(T.oreProbAt('hanbando', cl.center[0] + 3000 * 32, cl.center[1]) === 0, '광�
   //   r22 고정(0.30)으로 써서 --apply 할 때마다 대형(0.45)·중형(0.38)이 **강등**됐다.
   //   실측: 주석 2개를 심었을 뿐인데 기존 2598개의 pk 가 바뀌고 철 산출이 +9.7% 튀었다.
   //   ⇒ 등급이 반경과 어긋나지 않는지 여기서 지킨다(같은 광물끼리 대형이 자잘보다 진해야 한다).
+  // ★★[재민 확정] "크기 무관 모든 광맥이 평균이 비슷하게 · 광맥의 평균의 표준편차가 크게"
+  //   구 설계(대형 0.45 → 자잘 0.22)를 폐기했다. 기각 이유 둘:
+  //     · 고증 반대 — 거대 광체는 오히려 저품위다(반암동광). 좁은 열수맥이 작고 진하다.
+  //     · 이중 보상 — 광부 정원(villages.oreD)은 **면적만** 본다. 대형은 이미 넓이·수명·정원으로
+  //       보상받는데 품위까지 높으면 자잘 2600개를 뿌려 놓고 "찾아봐야 제일 묽은 자리"가 된다.
+  //   이제 등급기준은 하나(ORE_TIER_BASE)이고, 광맥마다의 차이는 **로그정규 지터**가 만든다.
   const byTier = { r130: [], r70: [], r22: [], minor: [] };
   for (const o of d0.ores) {
+    if (o.mineral !== 'iron') continue;   // ★광물 가치 배율을 아예 배제한다(철만 본다)
     const rc = Math.round(o.radius / 32);
-    const t = rc >= 100 ? "r130" : rc >= 50 ? "r70" : rc >= 14 ? "r22" : "minor";
-    // 광물마다 가치 배율이 달라 pk 를 직접 못 비교한다 — **가치 보정을 되돌린** 등급기준으로 환산한다
-    byTier[t].push(o.pk / Math.max(1e-6, S.oreValueScale((S.RESOURCES[o.mineral] || {}).baseValue || 5)));
+    byTier[rc >= 100 ? 'r130' : rc >= 50 ? 'r70' : rc >= 14 ? 'r22' : 'minor'].push(o.pk);
   }
-  const med = (a) => { const b = a.slice().sort((x, y) => x - y); return b[b.length >> 1]; };
-  const m130 = med(byTier.r130), m70 = med(byTier.r70), m22 = med(byTier.r22), mmn = med(byTier.minor);
-  const K = S.ORE_P_SCALE;   // ★총량 중립 축척(재민 (다)) — 등급표는 그대로 두고 곱하기 하나로 총량만 맞춘다
-  console.log("    등급기준 중앙값(가치 보정 되돌림): r130 " + m130.toFixed(3) + " · r70 " + m70.toFixed(3) +
-    " · r22~32 " + m22.toFixed(3) + " · 자잘 " + mmn.toFixed(3) +
-    "   (설계 0.45/0.38/0.30/0.22 × 축척 " + K + " = " + (0.45*K).toFixed(3) + "/" + (0.38*K).toFixed(3) + "/" + (0.30*K).toFixed(3) + "/" + (0.22*K).toFixed(3) + ")");
-  ok(m130 > m70 && m70 > m22 && m22 > mmn, "★등급이 반경 순서를 지킨다 — 대형이 가장 진하다(배치기 pk 덮어쓰기 회귀 감지)");
-  ok(Math.abs(m130 / (0.45*K) - 1) < 0.25 && Math.abs(mmn / (0.22*K) - 1) < 0.25,
-    "  ★저장된 pk 가 축척과 맞는다 — ORE_P_SCALE 을 바꾸면 terrain.json 도 다시 매겨야 한다(여기서 잡힌다)");
+  const mean = (a) => a.reduce((x, y) => x + y, 0) / Math.max(1, a.length);
+  const mBig = mean(byTier.r130.concat(byTier.r70, byTier.r22)), mMin = mean(byTier.minor);
+  console.log('    철 광맥 p_peak 평균 — 대·중·소 ' + mBig.toFixed(3) + '(' +
+    (byTier.r130.length + byTier.r70.length + byTier.r22.length) + '개) vs 자잘 ' + mMin.toFixed(3) + '(' + byTier.minor.length + '개)');
+  ok(Math.abs(mBig / mMin - 1) < 0.5, '★크기가 등급을 정하지 않는다 — 대·중·소와 자잘의 평균 품위가 비슷');
+  const maxMin = Math.max(...byTier.minor), maxBig = Math.max(...byTier.r130.concat(byTier.r70, byTier.r22));
+  console.log('      최대 p_peak — 대·중·소 ' + maxBig.toFixed(3) + ' vs 자잘 ' + maxMin.toFixed(3));
+  ok(maxMin >= maxBig * 0.9, '  자잘도 최상급 품위에 닿는다 — r7 짜리가 r130 보다 진할 수 있다(탐험의 보상)');
+  // 산포 — 로그정규가 실제로 걸렸는지
+  const iron = d0.ores.filter((o) => o.mineral === 'iron').map((o) => o.pk);
+  const mI = mean(iron), sdI = Math.sqrt(mean(iron.map((v) => (v - mI) * (v - mI))));
+  console.log('      철 광맥 사이 산포: 평균 ' + mI.toFixed(3) + ' · 표준편차 ' + sdI.toFixed(3) + ' · CV ' + (sdI / mI).toFixed(3) + '  (구 균등지터 0.35)');
+  ok(sdI / mI > 0.6, '★광맥 사이 산포가 크다 — 로그정규(대부분 그저 그렇고 드물게 노다지)');
+  ok(Math.max(...iron) <= S.ORE_PK_MAX + 1e-9, '  노다지에도 천장이 있다(p_peak ≤ ' + S.ORE_PK_MAX + ') — p=1 이면 무조건 광석이라 긴장이 사라진다');
+  // 저장값 ≡ 공식 (ORE_P_SCALE·σ 를 바꾸고 terrain.json 을 안 다시 매기면 여기서 잡힌다)
+  {
+    const h2 = (ix, iy, sd) => { let h = (ix | 0) * 374761393 + (iy | 0) * 668265263 + (sd | 0) * 1274126177; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967295; };
+    let bad = 0;
+    for (const o of d0.ores) {
+      const u = h2(Math.floor(o.center[0] / 32), Math.floor(o.center[1] / 32), 500);
+      if (Math.abs(o.pk - S.orePeakFor(o.mineral, 0.30, u)) > 1e-9) bad++;
+    }
+    ok(bad === 0, '★저장된 pk ≡ 공식 (' + bad + '개 불일치) — 상수를 바꾸면 terrain.json 도 다시 매겨야 한다');
+  }
 }
 
 console.log('④ livelihood √ — 광맥 등급 → 광부 정원');

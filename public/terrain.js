@@ -290,13 +290,25 @@ function _oreNear(t, x, y) {
   return ix.m.get(Math.floor(x / _ORE_IX_G) + ',' + Math.floor(y / _ORE_IX_G)) || null;
 }
 // 한 좌표에서의 광맥 하나 몫의 p — 소유 판정과 최종 p가 **같은 식**을 쓰게 떼어냈다.
+// ★셀 p 상한. 1.0 이면 그 자리는 **캐면 무조건 광석**이라
+//   "돌이냐 광석이냐"의 긴장도, 감정(③) 스킬의 쓸모도 사라진다.
+//   등급을 로그정규로 바꾸면서 노다지 광맥(pk 0.90)이 생겼고 얼룩 이득까지 겹쳐 실제로 1.0에 닿았다.
+const _ORE_P_CELL_MAX = 0.95;
 function _oreP(o, d, x, y) {
   if (!(d < 1)) return 0;
   const pk = (typeof o.pk === 'number') ? o.pk : _ORE_P_DEFAULT_PK;
   const seed = ((o.center[0] | 0) * 7 + (o.center[1] | 0) * 13 + 911) | 0;
-  const n = 0.5 + _oFbm(x / _ORE_P_GRID, y / _ORE_P_GRID, seed);
+  // ★★[재민] "광맥 내에서도 표준편차가 컸으면" — 실측해 보니 **반쯤만** 그랬다:
+  //   광맥 안 p 의 CV 0.813 인데, 그건 거의 전부 **반경 감쇠**(중심 진함 → 가장자리 0)다.
+  //   같은 깊이끼리만 재면(d_eff 0.38~0.46 밴드) CV 0.134 — 얼룩이 거의 없었다.
+  //   원인: n = 0.5 + fbm 인데 fbm 은 평균 0.437 · 표준편차 0.123 이라 흔들 폭이 작았다.
+  //   ⇒ 평균을 1로 맞춰 놓고(총량 불변) 편차만 이득 G 배 키운다:
+  //        n = 1 + G·(fbm − 0.4372),  G = 0.35/0.1231 = 2.843  → 얼룩 CV ≈ 0.35
+  //   바닥 0.06 — 광맥 안에 "완전히 죽은 자리"가 생기진 않게(그건 광맥 밖과 구분이 안 된다).
+  const _fb = _oFbm(x / _ORE_P_GRID, y / _ORE_P_GRID, seed);
+  const n = Math.max(0.06, 1 + _ORE_P_PATCH_G * (_fb - _OFBM_MEAN));
   const p = pk * Math.pow(1 - d, _ORE_P_GAMMA) * n;
-  return p < 0 ? 0 : (p > 1 ? 1 : p);
+  return p < 0 ? 0 : (p > _ORE_P_CELL_MAX ? _ORE_P_CELL_MAX : p);
 }
 // ★★[정정] 겹친 광맥의 소유를 **d_eff 최소**로 정하던 것을 **p 최대**로 바꾼다.
 //   재민 요구는 "p가 셀들끼리 **연속적으로** 변할 것"이었는데, d_eff 최소 규칙은 그걸 깼다:
@@ -383,7 +395,9 @@ function oreMineralAt(zoneId, x, y, rnd) {
 //   통째로 들어가 warp 가 균일해졌다 — 결국 "반경만 줄어든 원"이 됐다(실측: 각도별 17.5~19.0셀,
 //   원이면 21.9 — 사실상 원). 반경의 0.45배로 두면 클러스터마다 갈래가 두세 개 생긴다.
 const _ORE_WARP_R = 0.45;        // 왜곡 노이즈 격자 = 반경 × 이 값
-const _OFBM_MAX = 0.875;         // _oFbm 3옥타브 진폭 합(0.5+0.25+0.125) — 0..1 정규화용
+const _OFBM_MAX = 0.875;
+const _OFBM_MEAN = 0.4372;       // _oFbm 3옥타브의 실측 평균(표준편차 0.1231) — 얼룩 항을 평균 1로 맞추는 데 쓴다
+const _ORE_P_PATCH_G = 2.843;    // 얼룩 이득 — 같은 깊이에서의 품위 CV 목표 0.35 (구 0.134)         // _oFbm 3옥타브 진폭 합(0.5+0.25+0.125) — 0..1 정규화용
 function _oreShape(o, x, y) {
   const dx = x - o.center[0], dy = y - o.center[1];
   const R = o.radius || 1;
