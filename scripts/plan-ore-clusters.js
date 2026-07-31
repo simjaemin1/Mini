@@ -51,7 +51,7 @@ const W = Math.round(Z.zoneWidth / CELL), H = Math.round(Z.zoneHeight / CELL);
 const TIERS = [[3, 130, 0.30], [12, 70, 0.30], [35, 32, 0.30]];
 // ★[재민] "자잘광맥을 더 추가하는 방향으로 해봐.. **훨씬 많아야 해**.. 그래야 탐험하는 재미가 있지"
 //   400 → 1600. 반경도 4~10셀로 흩는다(전부 r7이면 지도에서 규칙적으로 보인다).
-const MINOR_TIER = [2600, 7, 0.30];   // ★[재민] "훨씬 많아야 해.. 그래야 탐험하는 재미가 있지" — 1600 → 2600
+const MINOR_TIER = [700, 7, 0.30];   // ★2600 → 700. 산과 무관한 평지 자잘은 **노두 신호를 흐리는 잡음**이다(실측: 노두 중 산속 본체와 이어진 것이 24.5%뿐)   // ★[재민] "훨씬 많아야 해.. 그래야 탐험하는 재미가 있지" — 1600 → 2600
 const MINOR_R_JITTER = [4, 10];   // 자잘 반경 범위(셀) — 클러스터마다 다르게
 const MINOR_MIN_SEP = 22;         // 자잘끼리 절대 최소 간격(셀) — 뭉침 방지
 // ★소외 최대 덩이에 놓는 **비교적 큰 광맥**(재민). --neg-big 으로 이것만 따로 돌린다.
@@ -166,9 +166,21 @@ const NEG_BIG = has('--neg-big');   // 소외 최대 덩이에 중형 광맥만 
 //       (대·중·소로 넣으면 광부 정원이 63개→수백개 기준으로 튄다.)
 //     · 곧 들어올 "산 부수기"의 **보상**이 정확히 이 층이다. 산을 깨면 여기가 열린다.
 const ROCK_FILL = has('--rock-fill');
-const ROCK_FILL_TIER = [900, 14, 0.30];   // [개수, 반경(셀), pk0(무시됨)]
-const ROCK_FILL_RF = 0.55;                // 주변 바위 비율 하한 — 이보다 낮으면 산 속이 아니다
-const ROCK_FILL_SEP = 16;                 // 산속 광맥끼리 최소 간격(셀)
+// ★실측으로 350개는 **너무 많았다** — 경계 밴드가 좁아 거기에 몰리면 기슭이 67%까지 찬다.
+//   대·중·소만으로 이미 바위 안 28.8% · 기슭 12.6% 로 목표에 닿는다(대·중·소가 스스로 걸쳐 있다).
+//   이 층의 역할은 밀도 채우기가 아니라 **발견할 자리의 개수를 늘리는 것**이다 ⇒ 작고 드물게.
+const ROCK_FILL_TIER = [120, 9, 0.30];   // [개수, 반경(셀), pk0(무시됨)]
+// ★★[재민 확정] 바위 셀 **전용**에서 **경계에 걸치는** 층으로 바꾼다.
+//   전 규칙(rf ≥ 0.55, 산 속 깊이)의 결과를 실측했더니 설계 의도가 아예 성립하지 않았다:
+//     · 광맥 3324개 중 산 안팎에 **걸친 것이 18개**뿐(산속 전용 944 / 평지 전용 2362 로 갈림)
+//     · 바위 안 광맥 사전확률 86.3% ⇒ 노두를 봐도 얻는 정보가 **1.8%p**
+//       (노두 봤을 때 88.1% vs 노두 없을 때 80.6% — 안 보고 파도 거의 같다)
+//   재민: "산 안쪽 광맥 셀 비율이 80% 정도면, 그냥 그런 추론 없이 아무데나 파도 나와서 재미가 떨어지지 않느냐"
+//   ⇒ rf 를 **밴드**로 바꿔 바위 경계에 앉힌다. 몸통은 산 안, 갈래가 산 밖으로 삐져나와 **노두**가 된다.
+//     그게 "이 산 안쪽에 광맥이 대폭 있구나"를 알아차리게 하는 단서다(재민 옛 설계서의 straddle).
+const ROCK_FILL_RF = 0.35;                // 주변 바위 비율 **하한** — 이보다 낮으면 산이 아니다
+const ROCK_FILL_RF_MAX = 0.75;            // **상한** — 이보다 높으면 산 한복판이라 밖으로 안 삐져나온다
+const ROCK_FILL_SEP = 90;                 // 경계 광맥끼리 최소 간격(셀) — 한 산에 몰리지 않게 널찍이
 const tiers = FORCE_TIER ? [FORCE_TIER]
   : ROCK_FILL ? [ROCK_FILL_TIER]
   : (NEG_BIG ? [NEG_BIG_TIER] : (MINOR_ONLY ? [MINOR_TIER] : (MINOR ? TIERS.concat([MINOR_TIER]) : TIERS)));
@@ -277,8 +289,9 @@ for (const [cnt, R0, pk0] of tiers) {
         let sc;
         if (ROCK_FILL) {
           // 산 **속**으로 — 주변이 바위일수록 좋다. 땅 비율(lf)은 아예 안 본다.
-          if (rf < ROCK_FILL_RF) continue;
-          sc = rf * (0.6 + hash2(gx, gy, 400 + k) * 0.8);
+          if (rf < ROCK_FILL_RF || rf > ROCK_FILL_RF_MAX) continue;   // ★경계 밴드만
+          // 밴드 한복판(rf 0.55)에 가까울수록 좋다 — 딱 걸치는 자리
+          sc = (1 - Math.abs(rf - 0.55) / 0.20) * (0.6 + hash2(gx, gy, 400 + k) * 0.8);
           if (sc > bs) { bs = sc; best = { cx, cy, lf, rf }; }
           continue;
         }
@@ -306,7 +319,7 @@ for (const [cnt, R0, pk0] of tiers) {
     const center = [best.cx * CELL + 16, best.cy * CELL + 16];
     // ★자잘은 반경도 흩는다 — 전부 같은 크기면 지도에서 규칙적으로 보인다
     let Reff = R0;
-    if (ROCK_FILL) Reff = 9 + Math.round(hash2(best.cx, best.cy, 733) * 10);          // 9~19셀
+    if (ROCK_FILL) Reff = 6 + Math.round(hash2(best.cx, best.cy, 733) * 6);          // 6~12셀 — 작게, 대신 널리
     else if (R0 <= 12) Reff = MINOR_R_JITTER[0] + Math.round(hash2(best.cx, best.cy, 733) * (MINOR_R_JITTER[1] - MINOR_R_JITTER[0]));
         // ★[재민 확정] 광종은 **지역 무관 전역 풀**(hanbando-minerals)에서 뽑는다.
     //   (한때 실제 산지 지도를 입혔다가 기각 — 지형이 가상인데 광물만 실지리를 따르면 어긋난다.)
