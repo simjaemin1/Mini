@@ -1408,8 +1408,22 @@ function _oreMineDaily(vil) {
   if (!cells.length) return null;
   const dep = state.deps || {};
   if (!dep.oreConsumeAt || !dep.oreStockAt) return null;
+  const K0 = dep.ORE_K || 1000;
   const nMiner = Math.max(0, Math.round((vil.econ && vil.econ.counts && vil.econ.counts.miner) || 0));
   const PER = (dep.NPC_MINE_PER_DAY || 14.73);
+  // ★[11차 재민 지적 "npc 개개인한테도 적용이 안 되어 있는 거지?"] 맞았다 — 광부 수만 세고
+  //   개인 숙련(npc.skills.mining)을 안 봤다. econ 산출에만 skillMul 이 걸리고 **땅 파는 효율엔
+  //   전혀 반영이 안 되고 있었다.** 이제 그 마을 광부들의 실제 숙련으로 깊이 페널티를 상쇄한다.
+  //   숙련은 **덩이 크기**(mineChunkKg)로 산출 kg를 키운다 — 플레이어와 완전히 같은 공식이라 축이 하나다.
+  let skillSum = 0, skillN = 0;
+  try {
+    for (const n of ((vil.econ && vil.econ.npcs) || [])) {
+      if (n.currentJob !== 'miner') continue;
+      skillSum += (n.skills && n.skills.mining) || 0; skillN++;
+    }
+  } catch (e) { }
+  const lvlAvg = skillN ? skillSum / skillN : 0;
+  vil._mineLvl = +lvlAvg.toFixed(2);
   let consumed = 0;
   if (nMiner > 0) {
     // 2인 1조: 짝(2명)당 셀 하나. 조는 서로 다른 셀에 붙는다(랩 조 단위 분산 동형).
@@ -1420,8 +1434,12 @@ function _oreMineDaily(vil) {
       // 그 조의 셀 — 품위 순으로 조마다 다른 자리. 고갈되면 다음 자리로 밀린다.
       for (let k = t; k < cells.length && want > 0.001; k += teams) {
         const c = cells[k];
-        const got = dep.oreConsumeAt(c.cx, c.cy, want);
-        want -= got; consumed += got;
+        // 깊이 페널티 — 표층은 그대로, 심층은 느려진다. 숙련이 그만큼 상쇄한다(플레이어와 동일 공식).
+        const f = (dep.oreStockAt(c.cx, c.cy) || 0) / K0;
+        // ★[재민 최종] 채굴 속도는 고정 — 숙련은 **덩이 크기**만 바꾼다. 깊이만 진척을 늦춘다(셀 속성).
+        const eff = dep.mineDepthCost ? (1 / dep.mineDepthCost(f)) : 1;
+        const got = dep.oreConsumeAt(c.cx, c.cy, want * eff) / (eff || 1);   // 실제 소모는 재고 기준, 진척은 효율 기준
+        want -= got; consumed += got * eff;
       }
     }
   }

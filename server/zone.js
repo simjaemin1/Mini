@@ -249,7 +249,8 @@ function savePlayer(player, extra = {}) {
       equipment: player.equipment || [],   // 플레이어 아이템 인스턴스 영속(품질·속성·내구)
       equipSlots: player.equipSlots || {},  // 장착 슬롯
       craftSkill: player.craftSkill || {},  // 제작 숙련 xp
-      oreLedger: player.oreLedger || {},    // ★[11차] 캔 원석의 **숨은 정체 장부** — 선광 전까지 클라에 안 보낸다
+      oreLedger: player.oreLedger || {},    // ★[11차] 캔 원석의 **숨은 정체 장부**(kg) — 선광 전까지 클라에 안 보낸다
+      oreCarry: player.oreCarry || {},      // ★선광 소수분 이월(kg) — 버리지 않는다
     }),
     equipped: player.equipped || null,
     last_zone: extra.last_zone ?? null, // 명시적으로 넘긴 zone만 변경
@@ -1954,7 +1955,10 @@ SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, is
     rec.s -= got; _oreSave(key, rec); return got;
   },
   oreProbAt: (px, py) => (_terrain.oreProbAt ? _terrain.oreProbAt(ZONE_ID, px, py) : 0.3),
-  ORE_K: require('./specialty').ORE_K, NPC_MINE_PER_DAY: require('./specialty').NPC_MINE_PER_DAY,   // ★const Specialty 선언(3400+)보다 앞이라 TDZ — require 캐시로 우회
+  ORE_K: require('./specialty').ORE_K, NPC_MINE_PER_DAY: require('./specialty').NPC_MINE_PER_DAY,
+  // ★NPC 광부도 **플레이어와 같은 공식**으로 깊이 페널티를 겪고 숙련으로 상쇄한다(축이 하나다)
+  mineDepthCost: (f) => require('./specialty').mineDepthCost(f),
+  mineChunkKg: (lvl) => require('./specialty').mineChunkKg(lvl),   // ★const Specialty 선언(3400+)보다 앞이라 TDZ — require 캐시로 우회
   liveBuildRow: _liveBuildRow, buildings, chunkManager,   // ★[생활 층 ③] 신축 크루의 라이브 실체화 경로(플레이어 완공과 동일 헬퍼 — 발명 금지)
   worldPhase, dayPhaseRatio: WORLD.dayPhaseRatio, mobs, qtResources: () => qtResources });   // ★[생활 층 100% ②③] 일과 스케줄(하루 위상)·직업 실작업(자원·사냥감 현장) 소스
 // ★[11차 T3 환호] 도랑 콜라이더 적재 — SimVillages.init이 시범 마을 도랑을 실체화한 **직후**여야 한다.
@@ -2326,7 +2330,7 @@ wss.on('connection', async (ws, req) => {
   if (process.env.ZONE_TEST_INV) for (const kv of process.env.ZONE_TEST_INV.split(',')) { const [k, v] = kv.split(':'); if (k && +v > 0) _testInv[k.trim()] = +v; }
   let playerId, name, sx, sy, ivx = 0, ivy = 0, inventory = { wood: 0, stone: 0, ..._testInv }, color = '#5a9ae0';
   let tools = {}, equipped = null;
-  let _loadEquipment = [], _loadEquipSlots = {}, _loadCraftSkill = {}, _loadOreLedger = {}; // 플레이어 아이템(품질·속성·내구·숙련)·원석 정체 장부 복원 버퍼 — tools_json blob piggyback
+  let _loadEquipment = [], _loadEquipSlots = {}, _loadCraftSkill = {}, _loadOreLedger = {}, _loadOreCarry = {}; // 플레이어 아이템(품질·속성·내구·숙련)·원석 정체 장부 복원 버퍼 — tools_json blob piggyback
   let initHunger = HUNGER_MAX, initThirst = THIRST_MAX, initVp = 0;
   let initTribeId = null, initTribeName = null;
   let initFloor = 0;
@@ -2405,6 +2409,7 @@ wss.on('connection', async (ws, req) => {
       if (tools && tools.equipSlots && typeof tools.equipSlots === 'object') _loadEquipSlots = tools.equipSlots;
       if (tools && tools.craftSkill && typeof tools.craftSkill === 'object') _loadCraftSkill = tools.craftSkill;
       if (tools && tools.oreLedger && typeof tools.oreLedger === 'object') _loadOreLedger = tools.oreLedger;   // ★[11차] 원석 정체 장부 복원
+      if (tools && tools.oreCarry && typeof tools.oreCarry === 'object') _loadOreCarry = tools.oreCarry;
       // 14.53: 옛 tools (object 또는 number 형식) → 새 toolItems list 변환
       // tools_json 안에 옛 형식 또는 새 형식 {toolItems, equipped, hotkey1} 둘 다 처리
       let toolItems = [];
@@ -2547,7 +2552,8 @@ wss.on('connection', async (ws, req) => {
     equipment: _loadEquipment,  // 플레이어 아이템: 장비 인스턴스 [{type,q,attrs,dura...}]
     equipSlots: _loadEquipSlots,// 슬롯→인스턴스 id (clothes/armor/weapon/tool)
     craftSkill: _loadCraftSkill,// 제작 숙련 xp {tailoring,smithing,toolmaking,cooking,mining}
-    oreLedger: _loadOreLedger,  // ★[11차] 원석 덩이의 숨은 정체(선광 때 소비)
+    oreLedger: _loadOreLedger,  // ★[11차] 원석 덩이의 숨은 정체(kg — 선광 때 소비)
+    oreCarry: _loadOreCarry,    // 선광 소수분 이월(kg)
     hp: PLAYER_MAX_HP, maxHp: PLAYER_MAX_HP,
     hunger: initHunger, thirst: initThirst, vp: initVp,
     tribeId: initTribeId, tribeName: initTribeName,
@@ -3552,10 +3558,13 @@ function _oreSave(key, rec) {
 //   ③ 말투가 정확도를 대신 알려준다(UI에 숫자를 안 띄운다):
 //      ~같기도 하다(사후 47~61%) → ~인 것 같다(74~82%) → 단정(87%+)
 //   실패는 선광 때 드러난다 = 학습 루프. 이득은 여전히 "버릴 것을 지고 가지 않는 것"이다.
-function _mineIdentify(player, mineral, isOre) {
-  const xp = (player.craftSkill && player.craftSkill.mining) || 0;
-  const acc = Specialty.mineIdAcc(xp);
-  const says = (Math.random() < acc) ? isOre : !isOre;   // ★판단은 확률적 — 틀릴 수 있다
+function _mineIdentify(player, mineral, isOre, lvlF) {
+  // ★비대칭 채널(재민 확정): 초보는 **좋은 광석을 몰라보고 버리는 FN**이 많고,
+  //   명백한 맥석에 속는 FP는 적다. 광석의 단서(광택·비중)는 "있으면 보이는" 신호라 놓치기 쉽고,
+  //   맥석은 특징의 부재라 거르기 쉽다.  TPR = 0.5+0.45·s^1.6(느림) · TNR = 0.5+0.45·s^0.6(빠름)
+  const acc = Specialty.mineIdAcc(lvlF);
+  const hit = Math.random() < (isOre ? Specialty.mineTPR(lvlF) : Specialty.mineTNR(lvlF));
+  const says = hit ? isOre : !isOre;                     // ★판단은 확률적 — 틀릴 수 있다
   const phrase = Specialty.mineIdPhrase(acc, says, (Specialty.RESOURCES[mineral] || {}).ko || mineral);
   // ★적중/오판 적산 — 선광 때 "판단 12/15 적중"으로 돌려준다. 숫자 HUD 없이 자기 눈을 얼마나
   //   믿을지 배우는 유일한 창구다(학습 루프). 판단을 안 한 구간(acc<0.60)은 세지 않는다.
@@ -3583,26 +3592,42 @@ function mineOreCell(player) {
     send(player.ws, { type: 'notice', text: `⛏ 짐이 가득 — ${w.toFixed(0)}/${Specialty.CARRY_MAX_KG}kg. 마을에 부리고 오자` });
     return true;
   }
-  consumeEquippedDurability(player, 1);
-  rec.w = (rec.w || 0) + 1;
+  // ★★[재민 지적으로 뒤집은 설계] 타수 카운터(rec.w)는 **셀에 쌓인다** — 2인 1조가 성립하는 규약.
+  //   그래서 "필요 타수"를 사람마다 다르게 두면 저렙이 고렙 진척에 무임승차한다. 뒤집었다:
+  //     · 문턱(need)  = 셀 속성. 깊이만 본다.  need(f) = 60 × D(f) ,  D = 1+3(1−f)²
+  //     · 기여(power) = 개인 속성. 스킬만 본다. power(f,lvl) = 1 + (lvl/10)(D−1)
+  //   표층(D=1)에선 power=1 로 전원 동일(= "캐는 속도는 같아야"), 만렙은 심층 페널티를 완전 상쇄.
+  //   둘이 같이 파면 각자 자기 power 만큼만 올리고 덩이는 문턱을 넘긴 타격의 주인이 갖는다
+  //   ⇒ 장기적으로 **기여한 만큼** 분배된다(무임승차 없음).
+  // ★★[재민 최종] 채굴 **속도는 고정**이다 — 1초/타 · 덩이당 60타 · 재고 소모 1. 전부 레벨 무관.
+  //   레벨이 바꾸는 건 딱 셋:  ①곡괭이 내구 절약  ②떨어져 나오는 **덩이 크기**  ③감정
+  //   (필요 타수는 셀 공용 카운터라 개인차를 두면 저렙이 고렙 진척에 무임승차한다 — 재민 지적)
+  const lvlF = Specialty.mineLevelF((player.craftSkill && player.craftSkill.mining) || 0);
+  const f = rec.s / Specialty.ORE_K;
+  const need = Specialty.mineSwingsNeeded(f);   // 깊이만 본다(셀 속성) — 레벨 안 들어감
+  consumeEquippedDurability(player, Specialty.mineToolWear(lvlF));   // ★①만렙은 곡괭이를 절반만 축낸다
+  rec.w = (rec.w || 0) + 1;                                          // 기여는 누구나 1타 = 1
   let msg;
-  if (rec.w >= Specialty.MINE_SWINGS_PER) {
-    rec.w -= Specialty.MINE_SWINGS_PER; rec.s -= 1;
+  if (rec.w >= need) {
+    rec.w -= need; rec.s -= 1;                                       // ★재고 소모 1 고정(재민 지시)
     const cluster = _terrain.isOreClusterAt(ZONE_ID, px, py);
-    const p = _terrain.oreProbAt ? _terrain.oreProbAt(ZONE_ID, px, py) : 0;
+    const p = _terrain.oreProbAt ? _terrain.oreProbAt(ZONE_ID, px, py) : 0;   // 품위는 **자리**의 것
     const isOre = Math.random() < p;
     const mineral = cluster ? (cluster.mineral || 'iron') : 'iron';
+    // ★②큰 돌덩이 — 결을 읽어 크게 떼어낸다. 3.5kg → 만렙 5.25kg.
+    //   인벤·장부를 **kg 단위**로 든다(덩이 크기가 사람마다 달라 개수로는 못 센다).
+    const kg = Specialty.mineChunkKg(lvlF);
     if (!player.oreLedger || typeof player.oreLedger !== 'object') player.oreLedger = {};
     const lk = isOre ? mineral : 'stone';
-    player.oreLedger[lk] = (player.oreLedger[lk] || 0) + 1;   // ★결과는 지금 정해 숨긴다
-    player.inventory.ore_chunk = (player.inventory.ore_chunk || 0) + 1;
+    player.oreLedger[lk] = +((player.oreLedger[lk] || 0) + kg).toFixed(3);   // ★결과는 지금 정해 숨긴다
+    player.inventory.ore_chunk = +((player.inventory.ore_chunk || 0) + kg).toFixed(2);
     send(player.ws, { type: 'inventory', inventory: player.inventory });
-    const id = _mineIdentify(player, mineral, isOre);   // ★감정은 xp 적립 *전*에 — 방금 캔 덩이가 자기 xp 덕을 보면 안 된다
+    const id = _mineIdentify(player, mineral, isOre, lvlF);   // ★감정은 xp 적립 *전*에 — 방금 캔 덩이가 자기 xp 덕을 보면 안 된다
     player.craftSkill = player.craftSkill || {};
     player.craftSkill.mining = (player.craftSkill.mining || 0) + 1;   // 덩이 1개 = xp 1 = 1 게임시간
-    msg = `⛏ 돌덩이 하나${id ? ' — ' + id : ' (정체 모름 · 마을에서 선광)'}`;
+    msg = `⛏ 돌덩이 ${kg.toFixed(1)}kg${id ? ' — ' + id : ' (정체 모름 · 마을에서 선광)'}`;
   } else {
-    msg = `⛏ 캐는 중 ${rec.w}/${Specialty.MINE_SWINGS_PER}`;
+    msg = `⛏ 캐는 중 ${Math.round(rec.w)}/${Math.round(need)}` + (need > Specialty.MINE_SWINGS_PER * 1.2 ? ' (깊다)' : '');
   }
   _oreSave(key, rec);
   send(player.ws, { type: 'notice', text: msg + ` · 남은 광맥 ${Math.round(rec.s)}` });
@@ -3615,19 +3640,22 @@ function mineOreCell(player) {
 function trySortOre(player) {
   const n = (player.inventory && player.inventory.ore_chunk) || 0;
   if (n <= 0) { send(player.ws, { type: 'notice', text: '선광할 원석이 없다' }); return; }
+  // (n 은 kg)
+  // ★장부는 **kg**이다(덩이 크기가 사람마다 다르므로). 선광하면 kg → 광석 개수로 갈린다.
+  //   광석 1개 = CHUNK_KG(3.5kg) 기준. 소수분은 다음 선광으로 이월(버리지 않는다).
   const led = player.oreLedger || {};
   const got = {};
-  let left = n;
+  const carry = (player.oreCarry && typeof player.oreCarry === 'object') ? player.oreCarry : (player.oreCarry = {});
   for (const k of Object.keys(led)) {
-    if (left <= 0) break;
-    const take = Math.min(left, led[k]);
-    if (take <= 0) continue;
-    led[k] -= take; if (led[k] <= 0) delete led[k];
-    left -= take;
-    if (k !== 'stone') { player.inventory[k] = (player.inventory[k] || 0) + take; got[k] = take; }
-    else got.stone_waste = (got.stone_waste || 0) + take;   // ★맥석은 폐석 — 인벤에 안 넣는다(현장에 버렸어야 할 것)
+    const kg = led[k]; if (!(kg > 0)) { delete led[k]; continue; }
+    delete led[k];
+    if (k === 'stone') { got.stone_waste = +((got.stone_waste || 0) + kg).toFixed(1); continue; }   // ★맥석은 폐석 — 인벤에 안 넣는다
+    const tot = (carry[k] || 0) + kg;
+    const whole = Math.floor(tot / Specialty.CHUNK_KG);
+    const rem = tot - whole * Specialty.CHUNK_KG;
+    carry[k] = +rem.toFixed(3);
+    if (whole > 0) { player.inventory[k] = (player.inventory[k] || 0) + whole; got[k] = whole; }
   }
-  if (left > 0) { got.stone_waste = (got.stone_waste || 0) + left; }   // 장부 유실분은 맥석으로 간주(보수적)
   player.inventory.ore_chunk = 0; delete player.inventory.ore_chunk;
   player.oreLedger = led;
   const parts = Object.entries(got).filter(([k]) => k !== 'stone_waste')
@@ -3642,7 +3670,7 @@ function trySortOre(player) {
   }
   send(player.ws, {
     type: 'notice',
-    text: `⚒ 선광 ${n}덩이 → ` + (parts.length ? parts.join(', ') : '광석 없음') + (got.stone_waste ? ` · 맥석 ${got.stone_waste} 버림` : '') + score
+    text: `⚒ 선광 ${n.toFixed(0)}kg → ` + (parts.length ? parts.join(', ') : '광석 없음') + (got.stone_waste ? ` · 맥석 ${got.stone_waste}kg 버림` : '') + score
   });
   savePlayer(player);
 }

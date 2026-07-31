@@ -6104,7 +6104,7 @@ const SIM_JOB_EMOJI = {
     berry: '베리', fiber: '풀', meat_raw: '날고기', meat_cooked: '구운고기',
     hide: '가죽', berry_jam: '베리잼', water_bottle: '물병',
     seed_berry: '베리씨앗', herb: '약초', ore: '광물',
-    ore_chunk: '원석 덩이(미확인)',   // ★[11차] 캔 것은 정체를 모른다 — 마을에서 선광(O키)해야 광석/맥석이 갈린다
+    ore_chunk: '원석(kg·미확인)',   // ★[11차] 캔 것은 정체를 모른다 — 마을에서 선광(O키)해야 광석/맥석이 갈린다. 덩이 크기가 숙련마다 달라 **kg 단위**로 센다
     iron: '철광석', copper: '구리', tin: '주석', coal: '석탄', jade_raw: '옥 원석',
     marble: '대리석', tungsten: '텅스텐', gold: '금', silver: '은',
     wood: '통나무', plank: '판자', stone: '돌',
