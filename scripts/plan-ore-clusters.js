@@ -105,9 +105,11 @@ for (const [cnt, R0, pk0] of tiers) {
       }
     }
     if (!best) { console.log('  ⚠ r' + R0 + ' #' + (k + 1) + ' — 자리 없음(중단)'); break; }
-    const pk = +(pk0 * (0.4 + hash2(best.cx, best.cy, 500) * 1.2)).toFixed(3);
     const center = [best.cx * CELL + 16, best.cy * CELL + 16];
     const mineral = Specialty.pickMineral(Z.biome, Math.round(center[0] * 0.131 + center[1] * 0.237));
+    // ★[재민 확정] 금광 같은 건 **종류를 빼는 게 아니라 p로 누른다** — 금맥은 있되 한 삽에 금이 나올 확률이 낮다.
+    //   p_peak = 등급기준 × 위치지터(0.4~1.6) × oreValueScale(가치) — 철 1.00 · 텅스텐 0.16 · 금 0.09 · 다이아 0.014
+    const pk = Specialty.orePeakFor(mineral, pk0, hash2(best.cx, best.cy, 500));
     const o = { name: '광맥' + (nextIdx++), center, radius: R0 * CELL, mineral, pk };
     placed.push({ cx: best.cx, cy: best.cy, r: R0 });
     added.push(Object.assign({}, o, { _lf: +best.lf.toFixed(3), _rf: +best.rf.toFixed(3) }));
@@ -142,7 +144,21 @@ for (const [, r] of [[0, 130], [0, 70], [0, 32], [0, 7]]) {
 fs.writeFileSync(OUT, JSON.stringify({ zone: ZID, existing: d.ores.length, added }, null, 1));
 console.log('\n계획 → ' + OUT);
 
-if (!APPLY) { console.log('★계산만 — 쓰려면 --apply'); process.exit(0); }
+// 기존 9개에도 p_peak 을 매긴다 — 좌표·반경·광물은 **절대 안 건드린다**(광산5 주석 자급이 걸려 있다).
+//   pk 가 없으면 terrain 이 기본 0.33을 쓰는데, 그러면 광맥8(옥)이 광맥1(철)과 같은 품위가 된다.
+const EXIST_TIER_BASE = 0.30;   // 기존은 전부 r22 = 소형 등급
+console.log('\n기존 9개 p_peak 부여(좌표·반경·광물 불변):');
+for (const o of d.ores) {
+  // ★기존 광맥은 JSON에 mineral 이 없다 — zone.js 가 **부팅 때** pickMineral(biome, 위치해시)로 정한다(3486행).
+  //   여기서 같은 식을 재현해 JSON에 못 박는다(값은 동일 = 무변경). 안 그러면 전부 'iron' 폴백으로 잘못 매긴다.
+  if (!o.mineral) o.mineral = Specialty.pickMineral(Z.biome, Math.round(o.center[0] * 0.131 + o.center[1] * 0.237));
+  const m = o.mineral;
+  o.pk = Specialty.orePeakFor(m, EXIST_TIER_BASE, hash2(Math.round(o.center[0] / CELL), Math.round(o.center[1] / CELL), 500));
+  const v = (Specialty.RESOURCES[m] || {}).baseValue || 5;
+  console.log('  ' + o.name.padEnd(5) + ' ' + m.padEnd(10) + ' 가치 ' + String(v).padStart(4) + ' → p_peak ' + o.pk);
+}
+
+if (!APPLY) { console.log('\n★계산만 — 쓰려면 --apply'); process.exit(0); }
 for (const o of added) d.ores.push({ name: o.name, center: o.center, radius: o.radius, mineral: o.mineral, pk: o.pk });
 fs.writeFileSync(GAME, JSON.stringify(doc, null, 1));
 console.log('★적용됨 → ' + GAME + ' (광맥 ' + d.ores.length + '개)');

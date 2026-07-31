@@ -327,6 +327,56 @@ const NPC_MINE_PER_DAY = +(1440 * MINE_LABOR * MINE_HAULEFF / MINE_SWINGS_PER).t
 // 먼 광맥 왕복 효율 — land.ore 의 거리 가중, NPC 원정 판정 공용. d = 왕복 게임분(= 셀거리, L_WALK 2셀/분 왕복)
 function haulEff(tripMinutes) { const m = MINE_HAUL * MINE_SWINGS_PER; return m / (m + Math.max(0, tripMinutes)); }
 
+// ── 광물 가치 → 품위(p_peak) 감쇠 [11차 재민 확정] ──────────────────────
+// 재민: "금광 같은 건 전부 p값 조절을 하면 되지 않아?"
+//   맞다. 광물 *종류*를 지도에서 빼면 고증이 깨진다(한반도에 금이 아예 없던 건 아니다).
+//   대신 **품위**를 낮춘다 — 금맥은 있되 한 삽에 금이 나올 확률이 낮다. 그게 실제 광상이다.
+//   (금 품위는 g/t 단위, 철광은 %(=만 g/t) 단위. 실제로 5~6자릿수 차이가 난다.)
+//
+// oreValueScale(v) = clamp((5/v)^0.8, 0.01, 1.0)      — 기준 v=5(흔한 광물)에서 1.0
+//   철 3 → 1.00 · 구리 4 → 1.00 · 대리석 30 → 0.240 · 텅스텐 50 → 0.158
+//   옥 80 → 0.109 · 금 100 → 0.091 · 다이아 1000 → 0.014
+//   ★바닥은 0.01. 0.10으로 두면 금(100)과 다이아(1000)가 같은 배수가 돼 가치흐름이 100으로 튄다(실측).
+// 검산(가치 흐름 = 가치 × 품위배수, 광맥 크기 동일 가정):
+//   석탄 2.0 · 철 3.0 · 구리 4.0 · 대리석 7.2 · 텅스텐 7.9 · 옥 8.7 · 금 9.1 · 다이아 14.4
+//   ⇒ 귀금속이 여전히 낫지만 **3~4배 안**이다. 구 모델(금이 철의 33배)의 인플레가 사라진다.
+// 지수 0.8은 노브다: 1.0이면 가치 완전 중립(금=철), 0.5면 금이 철의 8배로 벌어진다.
+const ORE_VALUE_EXP = 0.8;
+function oreValueScale(baseValue) {
+  const v = Math.max(0.5, baseValue || 5);
+  return Math.max(0.01, Math.min(1.0, Math.pow(5 / v, ORE_VALUE_EXP)));
+}
+// 클러스터 p_peak — 등급 기준값 × 위치 지터(0.4~1.6) × 가치 감쇠.
+//   지터가 있어서 "넓지만 가난한 광맥"도, "작지만 노다지"도 생긴다.
+function orePeakFor(mineralId, tierBase, jitter01) {
+  const r = RESOURCES[mineralId];
+  const j = 0.4 + Math.max(0, Math.min(1, jitter01 == null ? 0.5 : jitter01)) * 1.2;
+  return +(tierBase * j * oreValueScale(r ? r.baseValue : 5)).toFixed(4);
+}
+
+// ── 채광 감정 — **연속** 능력 [11차 재민 확정] ──────────────────────────
+// 재민: "3렙·7렙 해금이 아니라 경험치에 따라 연속적으로 변화하는 능력이었으면".
+//   그래서 정수 레벨(craftLevel)을 쓰지 않는다. xp → 정확도를 바로 잇는 포화 곡선:
+//     acc(xp) = 0.5 + 0.45·(1 − e^(−xp/MINE_ID_TAU))
+//   xp 는 덩이 1개당 +1 = 1 게임시간. τ=400 이면
+//     xp   0 → 0.500 (동전던지기 = **정보 0**)
+//     xp 400 → 0.784   xp 1200 → 0.928   xp 2000 → 0.947   → 0.95 로 포화
+//   ★0.5가 "정보 0"인 게 중요하다. 베이즈로 보면 사후확률 = p·a / (p·a + (1−p)(1−a)) 인데
+//     a=0.5면 사후 = p(사전) 그대로 — 아무것도 안 배운 것과 같다. a가 오를수록 판단이 값을 갖는다.
+//     p=0.3 기준: a=0.5 → 사후 30% · a=0.78 → 55% · a=0.93 → 85% · a=0.95 → 89%
+const MINE_ID_TAU = 400;
+function mineIdAcc(xp) { return 0.5 + 0.45 * (1 - Math.exp(-Math.max(0, xp || 0) / MINE_ID_TAU)); }
+// 확신도 단계 — 정확도가 곧 **말투**가 된다. 숫자를 UI에 띄우지 않아도 플레이어가 자기 눈을 얼마나
+// 믿을지 알 수 있다. (틀린 판단은 선광 때 드러난다 — 그게 학습 루프다)
+function mineIdPhrase(acc, saysOre, mineralKo) {
+  if (acc < 0.60) return null;                                   // 아직 못 본다 — 판단 자체를 안 함
+  if (acc < 0.80) return saysOre ? '광이 도는 것 같기도 하다' : '그냥 돌 같기도 하다';
+  if (acc < 0.93) return saysOre ? '질 좋은 덩이인 것 같다' : '맥석인 것 같다';
+  return saysOre ? (mineralKo + '이다') : '맥석이다';             // 거의 확신
+  // ★문턱은 **사후확률** 기준으로 잡았다(p=0.3 가정): 0.60→39% · 0.80→63% · 0.93→85%.
+  //   "이다"라고 단정하는 건 열에 여덟 이상 맞을 때부터다 — acc 0.889(사후 77%)에서 단정하면 과하다.
+}
+
 // tier — 이제 **가치 등급 표시**에만 쓴다(채굴 속도·재고와 무관). 희소성은 광맥 크기·p로 표현한다.
 function miningParams(mineralId) {
   const r = RESOURCES[mineralId];
@@ -377,7 +427,8 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = { RESOURCES, _summary, _byHarvest, miningParams, pickMineral, ORE_POOLS,
     ORE_K, MINE_SWING_MS, MINE_SWINGS_PER, CHUNK_KG, ORE_REG0, ORE_REG1, oreRegen,
     NPC_MINE_PER_DAY, MINE_HAUL, MINE_HAUL_TRIP, MINE_LABOR, MINE_HAULEFF, haulEff,
-    itemWeight, inventoryWeight, CARRY_MAX_KG, EXTRA_WEIGHT };
+    itemWeight, inventoryWeight, CARRY_MAX_KG, EXTRA_WEIGHT,
+    oreValueScale, orePeakFor, ORE_VALUE_EXP, mineIdAcc, mineIdPhrase, MINE_ID_TAU };
 }
 if (typeof window !== 'undefined') {
   window.Specialty = { RESOURCES };

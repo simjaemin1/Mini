@@ -3544,12 +3544,19 @@ function _oreSave(key, rec) {
 //   · 감정(mining 숙련): 레벨이 오르면 지고 오기 전에 정체를 알아본다. 캐는 속도는 그대로.
 //     ⇒ 스킬 이득 = **버릴 것을 마을까지 지고 가지 않는 것**. 가까운 광맥에선 작고
 //        먼 광맥 원정에서 커진다(왕복이 길수록 헛짐의 대가가 크다).
-const MINE_ID_L1 = 3, MINE_ID_L2 = 7;   // 감정 레벨 문턱: 3=돌/광석 구분, 7=광물 종류까지
+// ★[재민 확정] 감정은 **연속**이고 **확률적**이다 — 정수 레벨 해금(3렙/7렙)이 아니다.
+//   ① 정확도 acc(xp) = 0.5 + 0.45(1−e^(−xp/400)) — xp는 덩이 1개당 +1(=1 게임시간)
+//      acc 0.5 = 동전던지기 = **정보 0**(베이즈 사후확률이 사전 p 그대로). 거기서부터 자란다.
+//   ② 판단 자체가 틀릴 수 있다: acc 확률로 진실을, 아니면 반대를 말한다.
+//      "질 좋은 덩이인 것 같다" 해놓고 선광하면 맥석일 수 있다 — 그게 숙련의 의미다.
+//   ③ 말투가 정확도를 대신 알려준다(UI에 숫자를 안 띄운다):
+//      ~같기도 하다(사후 47~61%) → ~인 것 같다(74~82%) → 단정(87%+)
+//   실패는 선광 때 드러난다 = 학습 루프. 이득은 여전히 "버릴 것을 지고 가지 않는 것"이다.
 function _mineIdentify(player, mineral, isOre) {
-  const lv = playerCraftLevel(player, 'mining');
-  if (lv >= MINE_ID_L2) return isOre ? `${(Specialty.RESOURCES[mineral] || {}).ko || mineral} 든 덩이` : '맥석(버릴 것)';
-  if (lv >= MINE_ID_L1) return isOre ? '광석 든 덩이' : '맥석(버릴 것)';
-  return null;   // 미숙련 — 캐 봐야 모른다
+  const xp = (player.craftSkill && player.craftSkill.mining) || 0;
+  const acc = Specialty.mineIdAcc(xp);
+  const says = (Math.random() < acc) ? isOre : !isOre;   // ★판단은 확률적 — 틀릴 수 있다
+  return Specialty.mineIdPhrase(acc, says, (Specialty.RESOURCES[mineral] || {}).ko || mineral);
 }
 function mineOreCell(player) {
   const eq = getEquippedTool(player);
@@ -3582,10 +3589,10 @@ function mineOreCell(player) {
     const lk = isOre ? mineral : 'stone';
     player.oreLedger[lk] = (player.oreLedger[lk] || 0) + 1;   // ★결과는 지금 정해 숨긴다
     player.inventory.ore_chunk = (player.inventory.ore_chunk || 0) + 1;
-    player.craftSkill = player.craftSkill || {};
-    player.craftSkill.mining = (player.craftSkill.mining || 0) + 1;   // 덩이 1개 = xp 1
     send(player.ws, { type: 'inventory', inventory: player.inventory });
-    const id = _mineIdentify(player, mineral, isOre);
+    const id = _mineIdentify(player, mineral, isOre);   // ★감정은 xp 적립 *전*에 — 방금 캔 덩이가 자기 xp 덕을 보면 안 된다
+    player.craftSkill = player.craftSkill || {};
+    player.craftSkill.mining = (player.craftSkill.mining || 0) + 1;   // 덩이 1개 = xp 1 = 1 게임시간
     msg = `⛏ 돌덩이 하나${id ? ' — ' + id : ' (정체 모름 · 마을에서 선광)'}`;
   } else {
     msg = `⛏ 캐는 중 ${rec.w}/${Specialty.MINE_SWINGS_PER}`;
