@@ -264,7 +264,7 @@ function makeTerrainAdapter(terrain, ZONE, deps) {
   //   반환 { mix, gradeMult } — gradeMult 는 land.ore 에 곱하는 농도 보정(1.0 = 평균 품위).
   const oreMix = (ccx, ccy, R) => {
     const mix = {};
-    let _a0 = 0, _ap = 0;
+    let _a0 = 0, _ap = 0, _ad = 0;
     try {
       const t = terrain.ZONE_TERRAIN ? terrain.ZONE_TERRAIN[zoneId] : null;
       const list = (t && t.ores) || [];
@@ -280,14 +280,18 @@ function makeTerrainAdapter(terrain, ZONE, deps) {
           const a1 = Math.acos(Math.max(-1, Math.min(1, c1))), a2 = Math.acos(Math.max(-1, Math.min(1, c2)));
           a = RR * RR * (a1 - Math.sin(2 * a1) / 2) + r * r * (a2 - Math.sin(2 * a2) / 2);
         }
-        if (a > 0) { _a0 += a; _ap += a * (o.pk || 0); mix[o.mineral] = (mix[o.mineral] || 0) + a * (o.pk || 0); }
+        if (a > 0) { _a0 += a; _ap += a * (o.pk || 0); _ad += a * d; mix[o.mineral] = (mix[o.mineral] || 0) + a * (o.pk || 0); }
       }
       let tot = 0; for (const k in mix) tot += mix[k];
       if (tot > 0) for (const k in mix) mix[k] = +(mix[k] / tot).toFixed(4);
       else for (const k in mix) delete mix[k];   // 전부 pk 0 이면 광종 정보 없음으로 본다
     } catch { }
     const gradeMult = _a0 > 0 ? +((_ap / _a0) / orePkRef()).toFixed(4) : 1;
-    return { mix, gradeMult };
+    // ★면적가중 평균 농도(p)와 평균 거리(셀) — econ 의 감정 모델이 쓴다.
+    //   먼 광맥일수록 헛짐(FP)을 지고 오는 대가가 커진다 → 맥석을 알아보는 눈의 값이 오른다.
+    const oreP = _a0 > 0 ? +(_ap / _a0).toFixed(4) : 0;
+    const oreDist = _a0 > 0 ? +((_ad / _a0) / SZ).toFixed(1) : 0;   // px → 셀
+    return { mix, gradeMult, oreP, oreDist };
   };
   return { isBlocked, isWater, isRock, isOre, isBridgeCell, oreMinerals, oreMix, forestMult, fert, elev, nearestWaterDist, prepareFert, fertField: () => _FF };
 }
@@ -400,12 +404,12 @@ function extractSustain(ta, ccx, ccy, layout, rockD, oreD, forD, huntD) {
     //     뒤의 것만 옛 이름해시 폴백이다. 이걸 안 하면 광맥 하나 없는 농촌이
     //     이름 해시 운으로 주석 산지가 되어버린다.
     if (ta.oreMix) {
-      const { mix, gradeMult } = ta.oreMix(ccx, ccy, S.LABOR_R);
+      const { mix, gradeMult, oreP, oreDist } = ta.oreMix(ccx, ccy, S.LABOR_R);
       out.oreMix = mix;
       // ★부존 자체를 농도로 보정한다 — 총량 중립(기준=존 전체 면적가중 평균 pk).
       //   품위 낮은 광맥 위 마을은 광부 정원이 줄고, 진한 광맥 위 마을은 는다.
       const ore = +Math.max(0.05, Math.min(2.5, LV.ore * gradeMult)).toFixed(2);
-      out.ore = ore; out.oreGrade = gradeMult;
+      out.ore = ore; out.oreGrade = gradeMult; out.oreP = oreP; out.oreDist = oreDist;
       for (const [m, k] of Object.entries(S.MINERAL_KEY)) {
         if (mix[m] != null) out[k] = +(mix[m] * ore).toFixed(3);
       }

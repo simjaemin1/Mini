@@ -554,6 +554,39 @@ function mineIdPhrase(acc, saysOre, mineralKo) {
   return saysOre ? (mineralKo + '이다') : '맥석이다';             // 열에 아홉 — 단정
 }
 
+// ── NPC 광부의 감정 = **정광률 + 헛짐 운반비** [재민 확정] ────────────────
+// 재민: "광부 NPC도 레벨에 따라 미리 버릴지 가져올지 선택하는 거 맞지? FP와 TN이 모두 고려되는 거고?"
+//   플레이어 쪽엔 있었지만(문구 → 사람이 판단 → 선광에서 드러남) NPC 쪽엔 그 층이 통째로 없었다.
+//   econ 은 덩이를 하나씩 못 세므로 **한 짐의 기대값**으로 넣는다.
+//
+// 한 짐(MINE_HAUL 덩이)을 채우고 마을을 왕복하는 한 주기를 세면:
+//   keep = p·TPR + (1−p)(1−TNR)      지고 오기로 **결정한** 비율 (TN 은 버려서 여기서 빠진다)
+//   r    = p·TPR / keep              그 짐 안의 **진짜 광석** 비율 (= 정광률)
+//   한 주기 = 채굴 (MINE_HAUL/keep)·MINE_SWINGS_PER 분  +  왕복 trip 분
+//   유효 산출 = MINE_HAUL·r / 주기  ∝  **p·TPR / (MINE_HAUL·MINE_SWINGS_PER + keep·trip)**
+//
+// ★두 채널이 서로 다른 자리에 들어간다 — 이게 "FP·TN 이 모두 고려된다"의 실체다:
+//   TPR↑ → 분자↑   좋은 광석을 몰라보고 버리지 않는다(FN 감소)
+//   TNR↑ → keep↓ → 분모↓   맥석을 지고 오지 않는다(FP 감소 = 헛짐 운반비 절약)
+//   맥석을 알아보는 눈은 **짐칸을 아끼는 방식으로만** 이득이 된다. 그래서 왕복이 짧으면 무의미하고
+//   먼 광산일수록 커진다 — specialty 실측(왕복 15분 0.97배 · 800분 1.65배)과 같은 구조다.
+const ASSAY_REF_LVL = 5;   // 이 레벨을 1.0 으로 정규화한다(총량 중립 — 평균 광부는 지금과 같다)
+function _assayRaw(lvlF, p, tripMin) {
+  const pp = Math.max(1e-4, Math.min(0.999, p));
+  const tpr = mineTPR(lvlF), tnr = mineTNR(lvlF);
+  const keep = pp * tpr + (1 - pp) * (1 - tnr);
+  if (!(keep > 0)) return 0;
+  return (pp * tpr) / (MINE_HAUL * MINE_SWINGS_PER + keep * Math.max(0, tripMin));
+}
+// 산출 배수 — 레벨 5 광부 = 1.0. 낮으면 헛짐과 놓친 광석으로 손해, 높으면 이득.
+function mineAssayMult(lvlF, p, tripMin) {
+  const ref = _assayRaw(ASSAY_REF_LVL, p, tripMin);
+  if (!(ref > 0)) return 1;
+  return +(_assayRaw(lvlF, p, tripMin) / ref).toFixed(4);
+}
+// 왕복 분 — 광맥까지 거리(셀)에서. 1셀=1m, 도보 4km/h = 66.7 m/분. 왕복이므로 ×2.
+function mineTripMinutes(distCells) { return Math.max(0, (2 * Math.max(0, distCells || 0)) / 66.7); }
+
 // tier — 이제 **가치 등급 표시**에만 쓴다(채굴 속도·재고와 무관). 희소성은 광맥 크기·p로 표현한다.
 function miningParams(mineralId) {
   const r = RESOURCES[mineralId];
@@ -728,7 +761,7 @@ if (typeof module !== 'undefined' && module.exports) {
     ORE_P_SCALE, ORE_TIER_BASE, ORE_LN_SIGMA, ORE_PK_MAX, oreGradeMult,
     mineLevelF, MINE_XP_MAX, mineChunkKg, mineChunkRoll, CHUNK_CV, CHUNK_Z_MAX,
     mineDepthCost, mineSwingsNeeded, mineToolWear,
-    mineTPR, mineTNR, mineIdAcc, mineIdPhrase,
+    mineTPR, mineTNR, mineIdAcc, mineIdPhrase, mineAssayMult, mineTripMinutes, ASSAY_REF_LVL,
     mineDepthP, mineDepthEff, ORE_DEPTH_PER, ORE_DEPTH_P_GAIN,
     ALLOY_E, ALLOY_SOL, ALLOY_ERA, alloySmeltable, alloyProps, alloyGrade, ALLOY_REF };
 }

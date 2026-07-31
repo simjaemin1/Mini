@@ -422,6 +422,23 @@ console.log('⑧ 채광 숙련 — 레벨 이득 셋 [재민 최종]');
   }
 
   ok(S.mineTNR(4) > S.mineTPR(4) + 0.1, '③ 감정 — ★비대칭: 초보는 좋은 광석을 몰라보고 버린다(FN≫FP)');
+  // ★NPC 광부의 감정 = 정광률 + 헛짐 운반비 [재민 확정]
+  {
+    console.log('    ── NPC 광부 감정 배수(레벨 5 = 1.0 정규화) ──');
+    const P = 0.117, TR = S.mineTripMinutes(150);   // 존 평균 농도 · 노동권 끝 왕복
+    const row = [0, 2, 5, 8, 10].map((l) => S.mineAssayMult(l, P, TR));
+    console.log('      lvl 0/2/5/8/10 → ' + row.map((x) => x.toFixed(2)).join(' · ')
+      + '   (폭 ' + (row[4] / row[0]).toFixed(2) + '배)');
+    ok(Math.abs(S.mineAssayMult(S.ASSAY_REF_LVL, P, TR) - 1) < 1e-9, '  레벨 ' + S.ASSAY_REF_LVL + ' = 1.00 (총량 중립 기준점)');
+    ok(row[0] < 1 && row[4] > 1, '  초보는 손해 · 만렙은 이득');
+    for (let i = 1; i < row.length; i++) ok(row[i] > row[i - 1], '  레벨에 대해 단조 증가 (lvl' + [0,2,5,8,10][i] + ')');
+    ok(row[4] / row[0] < 3, '  ★폭이 3배 미만 — 감정은 스킬의 본체가 아니라 곁가지다');
+    // 두 채널이 서로 다른 자리에 들어간다: TNR 이득은 **왕복이 길 때만** 커진다
+    const near = S.mineAssayMult(10, P, S.mineTripMinutes(0));
+    const far = S.mineAssayMult(10, P, S.mineTripMinutes(20000));
+    console.log('      만렙 배수 — 광맥 위(왕복 0분) ' + near.toFixed(2) + ' vs 원정(왕복 600분) ' + far.toFixed(2));
+    ok(far > near, '  ★헛짐 회피(TNR)는 **먼 광산일수록** 값이 커진다 — 짐칸을 아끼는 방식으로만 이득이라');
+  }
   ok(Math.abs(S.mineTPR(10) - S.mineTNR(10)) < 1e-9 && S.mineIdAcc(0) === 0.5, '  만렙 0.95로 수렴 · lvl0 = 정보 0');
   ok(S.itemWeight('ore_chunk') === 1, '★원석은 kg 단위로 인벤에 든다(덩이 크기가 사람마다 달라 개수로는 못 셈)');
 }

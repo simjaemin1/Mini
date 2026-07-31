@@ -117,7 +117,10 @@ console.log(`  주석이 나는 마을 ${tinV}/${census.length} · 구리가 나
 const tins = census.filter(c => c.mix.tin > 0).map(c => c.name + '(' + (c.mix.tin * 100).toFixed(1) + '%)');
 if (tins.length) console.log('  주석 마을: ' + tins.join(', '));
 
+// ★가격 신호 주입 — 이게 없으면 모든 재화 가중치가 1.0 이라 **한계비용도 광부 유인도 죽는다.**
+//   v1 CLI 랩은 priceFn 을 안 붙인다(v2 전용 훅). 본 게임은 붙이므로, 랩이 본 게임을 닮으려면 붙여야 한다.
 const world = { villages, tradeLog: [], events: [], caravans: [], picker: process.env.PICKER || 'legacy' };
+if (process.env.NO_PRICE !== '1') world.priceFn = (v) => econ.computeVillagePrices(v);
 for (const v of villages) v._world = world;
 for (let day = 1; day <= DAYS; day++) {
   for (const v of world.villages) econ.tickVillage(v, day, world);
