@@ -54,6 +54,16 @@ const MINOR_R_JITTER = [4, 10];   // 자잘 반경 범위(셀) — 클러스터�
 const MINOR_MIN_SEP = 22;         // 자잘끼리 절대 최소 간격(셀) — 뭉침 방지
 // ★소외 최대 덩이에 놓는 **비교적 큰 광맥**(재민). --neg-big 으로 이것만 따로 돌린다.
 const NEG_BIG_TIER = [2, 70, 0.38];
+// ★[재민 "심어"] 특정 광물을 **지정해서** 심는 모드.
+//   실측에서 주석(tin)이 광맥9 하나뿐이라 기대 산출이 구리의 1/39 였다 —
+//   게다가 NPC 는 자잘을 못 보므로 **마을 경제의 주석 공급원이 문자 그대로 광맥 하나**였다.
+//   pickMineral 을 건드리면(ORE_POOLS 에 tin 추가) 풀 길이가 바뀌어 modulo 가 밀려
+//   **기존 2661개 전부의 광물이 재배정된다** — 절대 안 된다. 그래서 지정 배치 모드를 둔다.
+//     --mineral tin --tier 2,22,0.30 --apart 700
+const FORCE_MINERAL = val('--mineral', null);
+const FORCE_TIER = (() => { const v = val('--tier', null); if (!v) return null;
+  const a = v.split(',').map(Number); return (a.length === 3 && a.every((x) => isFinite(x))) ? a : null; })();
+const APART = parseFloat(val('--apart', '0'));   // 같은 광물끼리 최소 거리(셀)
 // ★[재민 확정 순서 3단계] 자잘 광맥은 **남은 소외 구역 편중**으로 뿌린다.
 //   ①지류(3개) → ②자잘한 숲(17개)으로 소외가 2.9% → 0.2%까지 내려갔다. 그러고도 남은 자리가
 //   자잘 광맥의 1순위다 — 물도 숲도 없는 내륙 깊은 곳이라 광맥 고증에도 맞고,
@@ -142,7 +152,12 @@ const added = [];
 let nextIdx = d.ores.length + 1;
 
 const NEG_BIG = has('--neg-big');   // 소외 최대 덩이에 중형 광맥만 놓는다
-const tiers = NEG_BIG ? [NEG_BIG_TIER] : (MINOR_ONLY ? [MINOR_TIER] : (MINOR ? TIERS.concat([MINOR_TIER]) : TIERS));
+const tiers = FORCE_TIER ? [FORCE_TIER] : (NEG_BIG ? [NEG_BIG_TIER] : (MINOR_ONLY ? [MINOR_TIER] : (MINOR ? TIERS.concat([MINOR_TIER]) : TIERS)));
+// 같은 광물이 이미 놓인 자리들 — APART 로 밀어낸다(주석이 한 골짜기에 몰리면 인질 문제가 그대로다)
+const SAME_MIN = (FORCE_MINERAL && APART > 0)
+  ? d.ores.filter((o) => o.mineral === FORCE_MINERAL).map((o) => [Math.round(o.center[0] / CELL), Math.round(o.center[1] / CELL)])
+  : [];
+if (FORCE_MINERAL) console.log('★광물 지정 배치: ' + FORCE_MINERAL + ' · 기존 동일 광물 ' + SAME_MIN.length + '개에서 ' + APART + '셀 이상 떨어뜨림');
 // ── 자잘 배치용 구역 할당표 ─────────────────────────────────────────────
 //   존을 MINOR_GX×MINOR_GY 로 나누고, 뭍이 있는 구역에 균등 할당(소외 품은 구역은 ×2.5).
 //   그리고 클러스터를 **구역 순서대로 돌아가며** 놓는다 ⇒ 한 곳에 몰릴 수가 없다.
@@ -214,6 +229,9 @@ for (const [cnt, R0, pk0] of tiers) {
         const sepMin = R0 <= 12 ? MINOR_MIN_SEP : 0;
         for (const o of pbNear(cx, cy)) { const dd = Math.hypot(o.cx - cx, o.cy - cy); if (dd < Math.max(sepMin, (o.r + R0) * 0.55)) { free = false; break; } }
         if (!free) continue;
+        if (SAME_MIN.length) { let near = false;
+          for (const q of SAME_MIN) { if (Math.hypot(q[0] - cx, q[1] - cy) < APART) { near = true; break; } }
+          if (near) continue; }
         const lf = boxAvg(LI, gx - gR, gy - gR, gx + gR, gy + gR);
         const rf = boxAvg(RI, gx - gR, gy - gR, gx + gR, gy + gR);
         // ★★[11차 재민] "광맥이 산 근처에 퍼져 있는 건 좋은데, 좀 더 **산 안쪽**으로 들어갔으면 좋겠어.
@@ -243,7 +261,8 @@ for (const [cnt, R0, pk0] of tiers) {
     // ★자잘은 반경도 흩는다 — 전부 같은 크기면 지도에서 규칙적으로 보인다
     let Reff = R0;
     if (R0 <= 12) Reff = MINOR_R_JITTER[0] + Math.round(hash2(best.cx, best.cy, 733) * (MINOR_R_JITTER[1] - MINOR_R_JITTER[0]));
-    const mineral = Specialty.pickMineral(Z.biome, Math.round(center[0] * 0.131 + center[1] * 0.237));
+    const mineral = FORCE_MINERAL || Specialty.pickMineral(Z.biome, Math.round(center[0] * 0.131 + center[1] * 0.237));
+    if (FORCE_MINERAL && APART > 0) SAME_MIN.push([best.cx, best.cy]);   // ★새로 놓은 것도 즉시 밀어내기 대상
     // ★[재민 확정] 금광 같은 건 **종류를 빼는 게 아니라 p로 누른다** — 금맥은 있되 한 삽에 금이 나올 확률이 낮다.
     //   p_peak = 등급기준 × 위치지터(0.4~1.6) × oreValueScale(가치) — 철 1.00 · 텅스텐 0.16 · 금 0.09 · 다이아 0.014
     const pk = Specialty.orePeakFor(mineral, pk0, hash2(best.cx, best.cy, 500));
@@ -288,19 +307,31 @@ const minorQuota = MINOR_ZONE ? { gx: MINOR_GX, gy: MINOR_GY, w: MINOR_ZONE.w, n
 fs.writeFileSync(OUT, JSON.stringify({ zone: ZID, existing: d.ores.length, added, minorQuota }, null, 1));
 console.log('\n계획 → ' + OUT);
 
-// 기존 9개에도 p_peak 을 매긴다 — 좌표·반경·광물은 **절대 안 건드린다**(광산5 주석 자급이 걸려 있다).
+// 기존 광맥의 **빠진** p_peak 만 채운다 — 좌표·반경·광물은 절대 안 건드린다(광산5 주석 자급이 걸려 있다).
 //   pk 가 없으면 terrain 이 기본 0.33을 쓰는데, 그러면 광맥8(옥)이 광맥1(철)과 같은 품위가 된다.
-const EXIST_TIER_BASE = 0.30;   // 기존은 전부 r22 = 소형 등급
-console.log('\n기존 9개 p_peak 부여(좌표·반경·광물 불변):');
+//
+// ★★[치명 결함 수정] 이 블록은 광맥이 **9개**이던 시절에 쓰였는데, 조건 없이 pk 를 **덮어썼다**.
+//   지금은 2661개를 돌면서 매 --apply 마다 전부 재채점한다 — 실측으로 확인됐다:
+//     주석 2개를 심었을 뿐인데 **기존 2598개의 pk 가 바뀌었고**(광맥67 0.129→0.471 등)
+//     철 기대산출이 21,636 → 23,744 (+9.7%) 로 튀었다. 심은 것과 무관한 순수 재추첨 잡음이다.
+//   게다가 등급 기준을 r22 고정(0.30)으로 썼다 — r130(0.45)은 강등되고 자잘(0.22)은 승격됐다.
+//   ⇒ ①이미 pk 가 있으면 **손대지 않는다**(멱등)  ②없을 때만, **반경에 맞는 등급**으로 매긴다.
+const EXIST_TIER_BASE = 0.30;
+const tierBaseFor = (rc) => (rc >= 100 ? 0.45 : rc >= 50 ? 0.38 : rc >= 14 ? 0.30 : 0.22);
+let _pkFilled = 0, _pkKept = 0;
 for (const o of d.ores) {
   // ★기존 광맥은 JSON에 mineral 이 없다 — zone.js 가 **부팅 때** pickMineral(biome, 위치해시)로 정한다(3486행).
   //   여기서 같은 식을 재현해 JSON에 못 박는다(값은 동일 = 무변경). 안 그러면 전부 'iron' 폴백으로 잘못 매긴다.
   if (!o.mineral) o.mineral = Specialty.pickMineral(Z.biome, Math.round(o.center[0] * 0.131 + o.center[1] * 0.237));
   const m = o.mineral;
-  o.pk = Specialty.orePeakFor(m, EXIST_TIER_BASE, hash2(Math.round(o.center[0] / CELL), Math.round(o.center[1] / CELL), 500));
+  if (typeof o.pk === 'number' && isFinite(o.pk) && o.pk > 0) { _pkKept++; continue; }   // ★멱등 — 절대 덮어쓰지 않는다
+  const rc = Math.round(o.radius / CELL);
+  o.pk = Specialty.orePeakFor(m, tierBaseFor(rc), hash2(Math.round(o.center[0] / CELL), Math.round(o.center[1] / CELL), 500));
+  _pkFilled++;
   const v = (Specialty.RESOURCES[m] || {}).baseValue || 5;
-  console.log('  ' + o.name.padEnd(5) + ' ' + m.padEnd(10) + ' 가치 ' + String(v).padStart(4) + ' → p_peak ' + o.pk);
+  console.log('  ' + o.name.padEnd(7) + ' ' + m.padEnd(10) + ' r' + String(rc).padStart(3) + ' 가치 ' + String(v).padStart(4) + ' → p_peak ' + o.pk);
 }
+console.log('기존 p_peak: 유지 ' + _pkKept + '개 · 새로 채움 ' + _pkFilled + '개');
 
 if (!APPLY) { console.log('\n★계산만 — 쓰려면 --apply'); process.exit(0); }
 for (const o of added) { const e = { name: o.name, center: o.center, radius: o.radius, mineral: o.mineral, pk: o.pk }; if (o.minor) e.minor = 1; d.ores.push(e); }

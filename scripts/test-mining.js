@@ -163,6 +163,27 @@ ok(T.oreProbAt('hanbando', cl.center[0] + 3000 * 32, cl.center[1]) === 0, '광�
   ok(c2 > 1000, '광맥 하나가 1000셀 이상 (반경 21.9셀 원판)');
 }
 
+{
+  // ★★[치명 결함 회귀 방지] 배치기(plan-ore-clusters)의 "기존 p_peak 부여" 블록이 조건 없이
+  //   pk 를 **덮어썼다**. 광맥이 9개이던 시절 코드가 2661개를 돌면서, 게다가 등급 기준을
+  //   r22 고정(0.30)으로 써서 --apply 할 때마다 대형(0.45)·중형(0.38)이 **강등**됐다.
+  //   실측: 주석 2개를 심었을 뿐인데 기존 2598개의 pk 가 바뀌고 철 산출이 +9.7% 튀었다.
+  //   ⇒ 등급이 반경과 어긋나지 않는지 여기서 지킨다(같은 광물끼리 대형이 자잘보다 진해야 한다).
+  const byTier = { r130: [], r70: [], r22: [], minor: [] };
+  for (const o of d0.ores) {
+    const rc = Math.round(o.radius / 32);
+    const t = rc >= 100 ? "r130" : rc >= 50 ? "r70" : rc >= 14 ? "r22" : "minor";
+    // 광물마다 가치 배율이 달라 pk 를 직접 못 비교한다 — **가치 보정을 되돌린** 등급기준으로 환산한다
+    byTier[t].push(o.pk / Math.max(1e-6, S.oreValueScale((S.RESOURCES[o.mineral] || {}).baseValue || 5)));
+  }
+  const med = (a) => { const b = a.slice().sort((x, y) => x - y); return b[b.length >> 1]; };
+  const m130 = med(byTier.r130), m70 = med(byTier.r70), m22 = med(byTier.r22), mmn = med(byTier.minor);
+  console.log("    등급기준 중앙값(가치 보정 되돌림): r130 " + m130.toFixed(3) + " · r70 " + m70.toFixed(3) +
+    " · r22~32 " + m22.toFixed(3) + " · 자잘 " + mmn.toFixed(3) + "   (설계 0.45 / 0.38 / 0.30 / 0.22)");
+  ok(m130 > m70 && m70 > m22 && m22 > mmn, "★등급이 반경 순서를 지킨다 — 대형이 가장 진하다(배치기 pk 덮어쓰기 회귀 감지)");
+  ok(Math.abs(m130 / 0.45 - 1) < 0.45 && Math.abs(mmn / 0.22 - 1) < 0.45, "  등급기준이 설계값(0.45 · 0.22) 근처");
+}
+
 console.log('④ livelihood √ — 광맥 등급 → 광부 정원');
 {
   const rows = [[0.85, '대형 r130', 27], [0.15, '중형 r70', 12], [0.052, '소형 r32', 7], [0.0025, '자잘 r7', 2], [0, '광맥 없음', 1]];
