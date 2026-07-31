@@ -258,18 +258,71 @@ function getStoneMultiplier(zoneId, x, y) {
 //     원에서 잘려** 모양이 반쪽만 표현된다(실측: 갈래가 전부 R 에서 딱 끊겼다).
 //   ★겹칠 땐 **더 깊이 든 쪽**(d_eff 최소)이 그 셀을 갖는다 — 인접 광체가 맞물리는 자연스러운 규칙.
 const _ORE_REACH = 1.55;
+// ── 광맥 공간 색인 ──────────────────────────────────────────────────────
+//   자잘 광맥을 2000개대로 늘리면서 **선형 훑기가 병목**이 됐다.
+//   (셀맵 빌드는 수백만 셀 × 광맥 수 = 수십억 연산 — 실측으로 분 단위가 됐다.)
+//   광맥은 정적이므로 존별로 한 번만 격자에 담아 둔다. 결과는 선형 훑기와 **완전히 동일**하다
+//   (도달 반경 radius×_ORE_REACH 를 감싸는 칸에 전부 등록하므로 누락이 없다).
+const _ORE_IX_G = 2048;            // 색인 격자(px) = 64셀
+const _oreIndexCache = new WeakMap();
+function _oreIndex(t) {
+  let ix = _oreIndexCache.get(t);
+  if (ix) return ix;
+  const m = new Map();
+  for (const o of t.ores) {
+    const rr = o.radius * _ORE_REACH;
+    const x0 = Math.floor((o.center[0] - rr) / _ORE_IX_G), x1 = Math.floor((o.center[0] + rr) / _ORE_IX_G);
+    const y0 = Math.floor((o.center[1] - rr) / _ORE_IX_G), y1 = Math.floor((o.center[1] + rr) / _ORE_IX_G);
+    for (let gy = y0; gy <= y1; gy++) for (let gx = x0; gx <= x1; gx++) {
+      const k = gx + ',' + gy;
+      let a = m.get(k); if (!a) { a = []; m.set(k, a); }
+      a.push(o);
+    }
+  }
+  ix = { m, n: t.ores.length };
+  _oreIndexCache.set(t, ix);
+  return ix;
+}
+function _oreNear(t, x, y) {
+  if (!t.ores.length) return null;
+  const ix = _oreIndex(t);
+  if (ix.n !== t.ores.length) { _oreIndexCache.delete(t); return _oreNear(t, x, y); }   // 지형이 갈아끼워졌으면 재색인
+  return ix.m.get(Math.floor(x / _ORE_IX_G) + ',' + Math.floor(y / _ORE_IX_G)) || null;
+}
+// 한 좌표에서의 광맥 하나 몫의 p — 소유 판정과 최종 p가 **같은 식**을 쓰게 떼어냈다.
+function _oreP(o, d, x, y) {
+  if (!(d < 1)) return 0;
+  const pk = (typeof o.pk === 'number') ? o.pk : _ORE_P_DEFAULT_PK;
+  const seed = ((o.center[0] | 0) * 7 + (o.center[1] | 0) * 13 + 911) | 0;
+  const n = 0.5 + _oFbm(x / _ORE_P_GRID, y / _ORE_P_GRID, seed);
+  const p = pk * Math.pow(1 - d, _ORE_P_GAMMA) * n;
+  return p < 0 ? 0 : (p > 1 ? 1 : p);
+}
+// ★★[정정] 겹친 광맥의 소유를 **d_eff 최소**로 정하던 것을 **p 최대**로 바꾼다.
+//   재민 요구는 "p가 셀들끼리 **연속적으로** 변할 것"이었는데, d_eff 최소 규칙은 그걸 깼다:
+//   두 광맥이 겹친 자리에서 소유가 바뀌는 선을 넘으면 p가 **점프**한다(실측 0.0554 → 0.0044,
+//   Δ0.051 — 하네스가 |Δp|<0.05 상한에서 잡아냈다. 자잘을 2600개로 늘리며 겹침이 흔해져 드러났다).
+//   p 최대 규칙이면 이 문제가 구조적으로 사라진다:
+//     각 광맥의 p_i 는 제 경계에서 0으로 **연속** 수렴하므로(p ∝ (1−d)^1.2),
+//     max_i p_i 도 연속이다. 소유(=광물 종류)가 바뀌는 선은 정확히 **p가 같은 선**이라
+//     그 순간 p 는 이어지고 광물만 바뀐다 — 딱 원하는 그림이다.
 function _oreOwnerAt(zoneId, x, y) {
   const t = ZONE_TERRAIN[zoneId];
   if (!t || !t.ores) return null;
-  let best = null, bd = 1;
-  for (const o of t.ores) {
+  const list = _oreNear(t, x, y);
+  if (!list) return null;
+  let best = null, bd = 1, bp = -1;
+  for (const o of list) {
     const dx = x - o.center[0], dy = y - o.center[1];
     const rr = o.radius * _ORE_REACH;
     if (dx * dx + dy * dy >= rr * rr) continue;
     const d = _oreShape(o, x, y);
-    if (d < bd) { bd = d; best = o; }
+    if (!(d < 1)) continue;
+    const p = _oreP(o, d, x, y);
+    // p 최대 · 동률이면 d_eff 최소(p=0 인 축퇴 구간에서도 소유가 정해지도록)
+    if (p > bp || (p === bp && d < bd)) { bp = p; bd = d; best = o; }
   }
-  return best ? { o: best, d: bd } : null;
+  return best ? { o: best, d: bd, p: bp } : null;
 }
 // ★[11차 재민 확인 "모든 광맥이 원 모양이 아니라 무작위 모양인 거 맞지?"]
 //   ...아니었다. p(품위)만 무작위였고 **경계는 완벽한 원**이었다(셀맵·oreShare·villages 전부 원을 봄).
@@ -296,6 +349,28 @@ function _oreShape(o, x, y) {
 function isOreClusterAt(zoneId, x, y) {
   const r = _oreOwnerAt(zoneId, x, y);
   return r ? r.o : null;
+}
+// ★★[11차 재민 확정] "npc는 자잘광맥은 무슨 일이 있어도 인식 못하게 할 거야. 오로지 플레이어만을 위한 거야"
+//   자잘 광맥(minor:1, r7)은 **플레이어 전용 발견 요소**다. 마을 경제(econ)·NPC 광부·마을 생성·
+//   길드 생산은 이 술어를 써서 자잘을 아예 못 본다 — land.ore 도, 광부 정원도, 출근지도 안 잡힌다.
+//   플레이어 채굴(mineOreCell)과 oreProbAt 은 **전부**를 본다(그게 요점이다).
+function isMajorOreAt(zoneId, x, y) {
+  const t = ZONE_TERRAIN[zoneId];
+  if (!t || !t.ores) return null;
+  const list = _oreNear(t, x, y);
+  if (!list) return null;
+  let best = null, bd = 1, bp = -1;
+  for (const o of list) {
+    if (o.minor) continue;                       // ★자잘은 NPC 시야 밖
+    const dx = x - o.center[0], dy = y - o.center[1];
+    const rr = o.radius * _ORE_REACH;
+    if (dx * dx + dy * dy >= rr * rr) continue;
+    const d = _oreShape(o, x, y);
+    if (!(d < 1)) continue;
+    const p = _oreP(o, d, x, y);                 // ★소유 규칙을 _oreOwnerAt 과 일치시킨다(p 최대)
+    if (p > bp || (p === bp && d < bd)) { bp = p; bd = d; best = o; }
+  }
+  return best;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -330,13 +405,7 @@ function _oFbm(x, y, s) { let t = 0, a = 0.5, f = 1; for (let i = 0; i < 3; i++)
 // 이 좌표(px)에서 캔 덩이가 광석일 확률. 광맥 밖이면 0(= 캐도 영원히 돌만 나온다).
 function oreProbAt(zoneId, x, y) {
   const r = _oreOwnerAt(zoneId, x, y);
-  if (!r) return 0;
-  const o = r.o, d = r.d;                // ★왜곡된 거리 — 경계가 원이 아니다
-  const pk = (typeof o.pk === 'number') ? o.pk : _ORE_P_DEFAULT_PK;
-  const seed = ((o.center[0] | 0) * 7 + (o.center[1] | 0) * 13 + 911) | 0;
-  const n = 0.5 + _oFbm(x / _ORE_P_GRID, y / _ORE_P_GRID, seed);
-  const p = pk * Math.pow(1 - d, _ORE_P_GAMMA) * n;
-  return p < 0 ? 0 : (p > 1 ? 1 : p);
+  return r ? r.p : 0;                    // ★소유자 = p가 가장 큰 광맥이므로 그 값이 곧 최종 p다
 }
 
 // === 미니맵용 — cell 종류 결정 ===
@@ -383,6 +452,7 @@ if (typeof module !== 'undefined' && module.exports) {
     getForestMultiplier,
     getStoneMultiplier,
     isOreClusterAt,
+    isMajorOreAt,
     oreProbAt,
     getTileType,
   };
@@ -398,6 +468,7 @@ if (typeof window !== 'undefined') {
     getForestMultiplier,
     getStoneMultiplier,
     isOreClusterAt,
+    isMajorOreAt,
     oreProbAt,
     getTileType,
   };

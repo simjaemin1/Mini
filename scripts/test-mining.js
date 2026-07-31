@@ -89,6 +89,34 @@ ok(T.oreProbAt('hanbando', cl.center[0] + 3000 * 32, cl.center[1]) === 0, '광�
   }
   console.log('    인접 셀 |Δp| 평균 ' + (sum / n).toFixed(5) + ' · 최대 ' + mx.toFixed(5) + ' at ' + JSON.stringify(at));
   ok(mx < 0.05, '★인접 셀 p 급변 없음 (|Δp| < 0.05 — "이 셀 0.05인데 옆 셀 0.8" 이 구조적으로 불가능)');
+  // ★★[정정] 위 문턱(0.05)은 **연속성의 증거가 아니다** — 표본 간격이 1셀로 고정이라
+  //   "작고 진한 광맥의 가파른 기울기"와 "겹침 경계의 진짜 점프"를 구분하지 못한다.
+  //   실제로 자잘을 2600개로 늘리자 겹침에서 Δp 0.051 짜리 **점프**가 나왔고(소유를 d_eff
+  //   최소로 정하던 탓), 이 문턱은 그걸 아슬아슬하게만 잡았다. 제대로 된 판정은 **수렴**이다:
+  //     연속이면 표본 간격을 절반으로 줄일 때 |Δp| 최대도 절반이 된다.
+  //     불연속이면 간격을 아무리 줄여도 점프 크기에서 멈춘다.
+  //   (지금은 소유를 **p 최대**로 정한다 — max of 연속함수 = 연속. 광물만 바뀌고 p는 이어진다.)
+  {
+    const worst = d0.ores.reduce((a, o) => ((o.pk || 0) / Math.max(1, o.radius / 32) > (a.pk || 0) / Math.max(1, a.radius / 32) ? o : a));
+    const scan = (step) => {
+      const R = Math.ceil(worst.radius * 1.55 / step); let m = 0;
+      for (let cy = -R; cy <= R; cy++) for (let cx = -R; cx <= R; cx++) {
+        const x = worst.center[0] + cx * step, y = worst.center[1] + cy * step, p0 = T.oreProbAt('hanbando', x, y);
+        for (const [ax, ay] of [[step, 0], [0, step]]) { const dd = Math.abs(T.oreProbAt('hanbando', x + ax, y + ay) - p0); if (dd > m) m = dd; }
+      }
+      return m;
+    };
+    const seq = [32, 16, 8, 4, 2].map(scan);
+    console.log('    ★연속성 수렴 — 기울기가 가장 가파른 광맥(' + worst.name + ' r' + (worst.radius / 32) + ' pk ' + worst.pk + ')');
+    console.log('      간격 32→2px : ' + seq.map((v) => v.toFixed(5)).join(' → '));
+    // 비(比)를 본다. 굵은 간격(32→16)은 아직 점근 구간이 아니라 0.5보다 크게 나온다(장의 곡률 탓).
+    // 판정은 **고운 쪽 세 비**로 한다 — 여기서 0.5로 수렴하면 연속, 점프가 있으면 1로 붙는다.
+    const ratio = seq.slice(1).map((v, i) => v / seq[i]);
+    console.log('      축소비 : ' + ratio.map((v) => v.toFixed(3)).join(' · ') + '   (연속이면 → 0.5 · 점프면 → 1)');
+    const tail = ratio.slice(-3);
+    ok(tail.every((v) => v < 0.60), '★p 장이 **진짜 연속** — 간격을 반으로 줄이면 |Δp| 최대도 반이 된다(점프면 안 줄어든다)');
+    ok(seq[4] < 0.02, '  최소 간격(2px)에서 |Δp| < 0.02 — 잔여 불연속 없음');
+  }
   let s2 = 0, c2 = 0; for (let cy = -22; cy <= 22; cy++) for (let cx = -22; cx <= 22; cx++) { const p = T.oreProbAt('hanbando', cl.center[0] + cx * 32, cl.center[1] + cy * 32); if (p > 0) { s2 += p; c2++; } }
   console.log('    광맥1: p>0 ' + c2 + '셀 · 평균 p ' + (s2 / c2).toFixed(4));
   ok(c2 > 1000, '광맥 하나가 1000셀 이상 (반경 21.9셀 원판)');
@@ -185,6 +213,47 @@ console.log('⑧ 채광 숙련 — 레벨 이득 셋 [재민 최종]');
       t0.toFixed(0) + '타 → ' + t10.toFixed(0) + '타 = ' + (t0 / t10).toFixed(2) + '배');
     ok(Math.abs(t0 / t10 - 1.5) < 0.01, '  시간당 산출 ×1.5');
   }
+  // ── ②의 산포 — 레벨은 **평균만** 정한다 (재민 확정) ──────────────────────
+  console.log('    ── ②는 고정값이 아니라 정규분포다 (재민: "레벨 낮은 광부가 캐도 가끔 큰 돌덩이") ──');
+  {
+    const N = 200000;
+    const stat = (mu) => {
+      let s = 0, s2 = 0, mn = Infinity, mx = 0;
+      for (let i = 0; i < N; i++) { const v = S.mineChunkRoll(mu); s += v; s2 += v * v; if (v < mn) mn = v; if (v > mx) mx = v; }
+      const m = s / N; return { m, sd: Math.sqrt(s2 / N - m * m), mn, mx };
+    };
+    for (const L of [0, 10]) {
+      const mu = S.mineChunkKg(L), r = stat(mu);
+      console.log('      lvl' + String(L).padStart(2) + ' 평균 ' + mu.toFixed(2) + 'kg → 실측 ' + r.m.toFixed(3) +
+        ' · σ ' + r.sd.toFixed(2) + ' · 범위 ' + r.mn.toFixed(2) + '~' + r.mx.toFixed(2) + 'kg');
+      ok(Math.abs(r.m / mu - 1) < 0.005, '  lvl' + L + ' 평균 보존(±0.5%) — ★NPC·econ 이 평균을 쓰므로 필수');
+    }
+    ok(Math.abs(stat(S.mineChunkKg(0)).sd / 3.5 - S.CHUNK_CV) < 0.02, '  산포 = CV ' + S.CHUNK_CV + ' (±2.5σ 재추첨분 감안)');
+    // 겹침 — "가끔"의 실측
+    let c = 0; for (let i = 0; i < N; i++) if (S.mineChunkRoll(S.mineChunkKg(0)) >= S.mineChunkKg(10)) c++;
+    const pOver = c / N;
+    console.log('      lvl0 이 lvl10 평균(5.25kg) 이상을 캘 확률 ' + (pOver * 100).toFixed(2) + '% ≈ ' + Math.round(1 / pOver) + '덩이에 한 번');
+    ok(pOver > 0.005 && pOver < 0.10, '  겹치되 뒤집히진 않는다 — "가끔"(0.5~10%)');
+    // 절사가 대칭이라 하한이 0 이하로 안 내려간다
+    ok(stat(S.mineChunkKg(0)).mn > 0.5, '  하한이 양수 — 0kg 덩이가 안 나온다');
+  }
+  {
+    // ★셀 회계와의 합성: 가중평균을 **평균**으로만 쓰고, 추첨분은 장부에 이월되지 않는다
+    const sim = (levels, chunks) => {
+      let recW = 0, recKg = 0, tot = 0, n = 0, i = 0;
+      const need = S.MINE_SWINGS_PER;
+      while (n < chunks) {
+        const L = levels[(i++) % levels.length];
+        recW += 1; recKg += S.mineChunkKg(L);
+        if (recW >= need) { const mu = recKg / recW; tot += S.mineChunkRoll(mu); recKg -= mu * need; recW -= need; n++; }
+      }
+      return { avg: tot / n, resid: recKg };
+    };
+    const r = sim([0, 10], 100000);
+    ok(Math.abs(r.avg / 4.375 - 1) < 0.01, '  2인 1조(lvl0+lvl10) 장기 평균 = 가중평균 4.375kg');
+    ok(Math.abs(r.resid) < 1e-6, '  ★장부 표류 0 — 추첨 결과가 아니라 **평균분**을 뺀다(난수가 다음 덩이로 새면 안 됨)');
+  }
+
   console.log('    ★재고 소모 1 고정 ⇒ 광맥 수명(1000회)은 숙련 무관, 뽑히는 총량만 비례:');
   console.log('      셀 하나 총 산출 lvl0 ' + (1000 * S.mineChunkKg(0)).toLocaleString() + 'kg · lvl10 ' + (1000 * S.mineChunkKg(10)).toLocaleString() + 'kg');
 

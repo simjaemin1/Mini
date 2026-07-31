@@ -383,7 +383,7 @@ function generateVillagesForZone(zone) {
     // 산 — stoneMultiplier > 2.0 (광맥·채석)
     if (terrain.getStoneMultiplier(zone.id, x, y) > 2.0) return 'mountain';
     // 광맥 cluster 위 — mining 마을
-    if (terrain.isOreClusterAt(zone.id, x, y)) return 'mining';
+    if (terrain.isMajorOreAt ? terrain.isMajorOreAt(zone.id, x, y) : terrain.isOreClusterAt(zone.id, x, y)) return 'mining';   // ★자잘 광맥으로는 광산 마을이 생기지 않는다(플레이어 전용)
     // 깊은 숲 — forest 마을 (사냥·임업)
     if (terrain.getForestMultiplier(zone.id, x, y) > 2.0) return 'forest';
     return 'plain';

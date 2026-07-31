@@ -32,6 +32,7 @@ const APPLY = has('--apply');
 const MINOR = has('--minor') || has('--minor-only') || has('--neg-big');
 const MINOR_ONLY = has('--minor-only');   // ★대·중·소 50개는 이미 적용됐다 — 자잘만 돈다(중복 방지)
 const OUT = val('--out', '/tmp/ore-plan.json');
+const QUOTA_OUT = val('--quota-out', __dirname + '/ore-minor-quota.json');   // 자잘 구역 할당표(감사용 귀무가설)
 
 const { ZONES } = require(path.join(__dirname, '..', 'server', 'zone-config'));
 const terrain = require(path.join(__dirname, '..', 'server', 'terrain'));
@@ -46,7 +47,11 @@ const W = Math.round(Z.zoneWidth / CELL), H = Math.round(Z.zoneHeight / CELL);
 
 // 대중소 50 + (옵션) 자잘. [개수, 반경(셀), p_peak 기준]
 const TIERS = [[3, 130, 0.45], [12, 70, 0.38], [35, 32, 0.30]];
-const MINOR_TIER = [400, 7, 0.22];
+// ★[재민] "자잘광맥을 더 추가하는 방향으로 해봐.. **훨씬 많아야 해**.. 그래야 탐험하는 재미가 있지"
+//   400 → 1600. 반경도 4~10셀로 흩는다(전부 r7이면 지도에서 규칙적으로 보인다).
+const MINOR_TIER = [2600, 7, 0.22];   // ★[재민] "훨씬 많아야 해.. 그래야 탐험하는 재미가 있지" — 1600 → 2600
+const MINOR_R_JITTER = [4, 10];   // 자잘 반경 범위(셀) — 클러스터마다 다르게
+const MINOR_MIN_SEP = 22;         // 자잘끼리 절대 최소 간격(셀) — 뭉침 방지
 // ★소외 최대 덩이에 놓는 **비교적 큰 광맥**(재민). --neg-big 으로 이것만 따로 돌린다.
 const NEG_BIG_TIER = [2, 70, 0.38];
 // ★[재민 확정 순서 3단계] 자잘 광맥은 **남은 소외 구역 편중**으로 뿌린다.
@@ -119,6 +124,20 @@ const hash2 = (ix, iy, s) => { let h = (ix | 0) * 374761393 + (iy | 0) * 6682652
 
 // 기존 클러스터를 placed 로 선점 — 새 것이 위를 덮지 않게
 const placed = d.ores.map((o) => ({ cx: Math.round(o.center[0] / CELL), cy: Math.round(o.center[1] / CELL), r: Math.round(o.radius / CELL), existing: true, name: o.name }));
+// ★공간 해시 — placed 선형 검사는 자잘 1600개에서 120억 연산이 된다(실측으로 두 번 당했다).
+//   버킷 한 변 = 가장 큰 반경의 2배. 검사할 땐 주변 3×3 버킷만 본다.
+const PB = 320;   // 버킷 한 변(셀)
+const _pb = new Map();
+const _pbKey = (cx, cy) => ((cx / PB) | 0) * 100000 + ((cy / PB) | 0);
+function pbAdd(p) { const k = _pbKey(p.cx, p.cy); let a = _pb.get(k); if (!a) _pb.set(k, a = []); a.push(p); }
+function pbNear(cx, cy) {
+  const bx = (cx / PB) | 0, by = (cy / PB) | 0, out = [];
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+    const a = _pb.get((bx + dx) * 100000 + (by + dy)); if (a) for (const q of a) out.push(q);
+  }
+  return out;
+}
+for (const p of placed) pbAdd(p);
 const added = [];
 let nextIdx = d.ores.length + 1;
 
@@ -143,6 +162,13 @@ let MINOR_ZONE = null, MINOR_ORDER = null;
   for (let b = 0; b < w.length; b++) if (w[b] > 0) order.push(b);
   MINOR_ORDER = order;
   console.log('자잘 배치 구역 ' + MINOR_GX + '×' + MINOR_GY + ' — 뭍 있는 구역 ' + order.length + '개 · 소외 품은 구역 ' + negIn.filter((n) => n > 0).length + '개');
+  // ★--quota-only : 할당표만 뽑고 끝낸다(배치는 안 한다).
+  //   감사가 **설계 의도를 귀무가설로** 쓰려면 이 표가 필요하다. 배치(3분)를 다시 돌리지 않으려고 뺐다.
+  if (has('--quota-only')) {
+    fs.writeFileSync(QUOTA_OUT, JSON.stringify({ zone: ZID, gx: MINOR_GX, gy: MINOR_GY, negQuota: MINOR_NEG_QUOTA, w }, null, 1));
+    console.log('할당표 → ' + QUOTA_OUT);
+    process.exit(0);
+  }
 }
 // 구역별 셀 목록(자잘 배치 때 그 구역 안에서만 최적점을 고른다)
 const MINOR_BCELL = new Map();
@@ -180,27 +206,52 @@ for (const [cnt, R0, pk0] of tiers) {
     for (const _i of scan) {
       { const gy = (_i / gw) | 0, gx = _i % gw;
         const i = gy * gw + gx;
-        if (water[i] || rock[i]) continue;                    // 중심은 반드시 땅
+        if (water[i]) continue;                               // 물 위는 안 된다(바위 위는 **된다** — 아래)
         const cx = gx * S, cy = gy * S;
         let free = true;
-        for (const o of placed) { const dd = Math.hypot(o.cx - cx, o.cy - cy); if (dd < (o.r + R0) * 0.55) { free = false; break; } }
+        // ★자잘은 **절대 최소 간격**을 둔다. 비례 간격(0.55×(7+7)=7.7셀)만으로는 구역 안에서
+        //   argmax 주변에 다닥다닥 붙어 뭉침 지수가 1.49까지 올랐다(실측). 40셀을 강제한다.
+        const sepMin = R0 <= 12 ? MINOR_MIN_SEP : 0;
+        for (const o of pbNear(cx, cy)) { const dd = Math.hypot(o.cx - cx, o.cy - cy); if (dd < Math.max(sepMin, (o.r + R0) * 0.55)) { free = false; break; } }
         if (!free) continue;
         const lf = boxAvg(LI, gx - gR, gy - gR, gx + gR, gy + gR);
-        if (lf < 0.35) continue;                              // 원판의 1/3 이상이 팔 수 있는 땅
-        const rf = boxAvg(RI, gx - gR - 3, gy - gR - 3, gx + gR + 3, gy + gR + 3);   // 기슭을 잡으려 원판을 넓혀 잰다
-        const negB = (NEG && NEG[gy * gw + gx]) ? MINOR_NEG_BOOST : 1;   // ★소외 격자 우선(재민 순서 3단계)
-        const sc = (0.20 + rf * 2.5) * Math.pow(lf, 1.5) * (0.6 + hash2(gx, gy, 400 + k) * 0.8) * negB;
+        const rf = boxAvg(RI, gx - gR, gy - gR, gx + gR, gy + gR);
+        // ★★[11차 재민] "광맥이 산 근처에 퍼져 있는 건 좋은데, 좀 더 **산 안쪽**으로 들어갔으면 좋겠어.
+        //   산 타일을 부숴야만 채굴할 수 있도록 말이야."
+        //   구 점수 (0.20+rf×2.5)×lf^1.5 는 lf(땅 비율)를 제곱 이상으로 요구해 **산을 밀어냈다**
+        //   — 실측: 광맥 중심이 바위 안인 것이 **0%**, 기슭(20셀 이내)에 붙어만 있었다.
+        //   이제 등급별로 프로파일을 나눈다:
+        //     · 대·중·소 = **산 안쪽**. rock 비율을 강하게 보고 땅 비율은 하한만 본다(접근로 확보용).
+        //     · 자잘     = **맵 전체 균등 우선**. 산 편중은 약하게 — 재민: "다른 광맥에 비해서는
+        //       맵 전체적으로 골고루 퍼져 있으면 좋겠어".
+        const isMinor = R0 <= 12;
+        let sc;
+        if (isMinor) {
+          if (lf < 0.25) continue;                            // 자잘은 캐러 갈 땅이 어느 정도 있어야
+          sc = (0.30 + rf * 3.0) * Math.pow(lf, 0.5) * (0.6 + hash2(gx, gy, 400 + k) * 0.8);
+        } else {
+          if (lf < 0.06) continue;                            // ★하한만 — 원판 대부분이 바위여도 좋다(산 속 광맥)
+          sc = (0.10 + rf * 4.0) * Math.pow(lf, 0.25) * (0.6 + hash2(gx, gy, 400 + k) * 0.8);
+        }
+        const negB = (NEG && NEG[gy * gw + gx]) ? MINOR_NEG_BOOST : 1;
+        sc *= negB;
         if (sc > bs) { bs = sc; best = { cx, cy, lf, rf }; }
       }
     }
     if (!best) { console.log('  ⚠ r' + R0 + ' #' + (k + 1) + ' — 자리 없음(중단)'); break; }
     const center = [best.cx * CELL + 16, best.cy * CELL + 16];
+    // ★자잘은 반경도 흩는다 — 전부 같은 크기면 지도에서 규칙적으로 보인다
+    let Reff = R0;
+    if (R0 <= 12) Reff = MINOR_R_JITTER[0] + Math.round(hash2(best.cx, best.cy, 733) * (MINOR_R_JITTER[1] - MINOR_R_JITTER[0]));
     const mineral = Specialty.pickMineral(Z.biome, Math.round(center[0] * 0.131 + center[1] * 0.237));
     // ★[재민 확정] 금광 같은 건 **종류를 빼는 게 아니라 p로 누른다** — 금맥은 있되 한 삽에 금이 나올 확률이 낮다.
     //   p_peak = 등급기준 × 위치지터(0.4~1.6) × oreValueScale(가치) — 철 1.00 · 텅스텐 0.16 · 금 0.09 · 다이아 0.014
     const pk = Specialty.orePeakFor(mineral, pk0, hash2(best.cx, best.cy, 500));
-    const o = { name: '광맥' + (nextIdx++), center, radius: R0 * CELL, mineral, pk };
-    placed.push({ cx: best.cx, cy: best.cy, r: R0 });
+    // ★[재민 확정] 자잘 광맥은 **플레이어 전용**이다 — minor:1 이 박히면 NPC/econ 은 영영 못 본다
+    //   (terrain.isMajorOreAt · villages isOre/oreMinerals · zone _findNearestTerrainCluster/villageProduction · chunk 마을타입)
+    const o = { name: '광맥' + (nextIdx++), center, radius: Reff * CELL, mineral, pk };
+    if (R0 <= 12) o.minor = 1;
+    { const _p = { cx: best.cx, cy: best.cy, r: Reff }; placed.push(_p); pbAdd(_p); }
     added.push(Object.assign({}, o, { _lf: +best.lf.toFixed(3), _rf: +best.rf.toFixed(3) }));
     made++;
   }
@@ -230,7 +281,11 @@ for (const [, r] of [[0, 130], [0, 70], [0, 32], [0, 7]]) {
     (c * 0.01 / Specialty.NPC_MINE_PER_DAY).toFixed(1) + '명 · 완전고갈 ' + (c * 0.02 / Specialty.NPC_MINE_PER_DAY).toFixed(1) + '명 · 총재고 ' + Math.round(c * Specialty.ORE_K).toLocaleString());
 }
 
-fs.writeFileSync(OUT, JSON.stringify({ zone: ZID, existing: d.ores.length, added }, null, 1));
+// ★자잘 할당표를 같이 남긴다 — 감사(audit-ore-distribution)가 **설계 의도를 귀무가설로** 쓰기 위함이다.
+//   자잘 배치는 "뭍 면적 비례"가 아니라 "구역당 균등(소외 품은 구역은 ×2.5)"이다.
+//   면적 비례를 귀무가설로 잡으면 의도한 균등을 뭉침으로 오독한다(실측 1.72 — 전부 이 배수 탓이었다).
+const minorQuota = MINOR_ZONE ? { gx: MINOR_GX, gy: MINOR_GY, w: MINOR_ZONE.w, negQuota: MINOR_NEG_QUOTA } : null;
+fs.writeFileSync(OUT, JSON.stringify({ zone: ZID, existing: d.ores.length, added, minorQuota }, null, 1));
 console.log('\n계획 → ' + OUT);
 
 // 기존 9개에도 p_peak 을 매긴다 — 좌표·반경·광물은 **절대 안 건드린다**(광산5 주석 자급이 걸려 있다).
@@ -248,7 +303,7 @@ for (const o of d.ores) {
 }
 
 if (!APPLY) { console.log('\n★계산만 — 쓰려면 --apply'); process.exit(0); }
-for (const o of added) d.ores.push({ name: o.name, center: o.center, radius: o.radius, mineral: o.mineral, pk: o.pk });
+for (const o of added) { const e = { name: o.name, center: o.center, radius: o.radius, mineral: o.mineral, pk: o.pk }; if (o.minor) e.minor = 1; d.ores.push(e); }
 fs.writeFileSync(GAME, JSON.stringify(doc, null, 1));
 console.log('★적용됨 → ' + GAME + ' (광맥 ' + d.ores.length + '개)');
 console.log('  다음: node scripts/audit-terrain-quality.js ' + ZID + ' · build-cell-map · export-editor-work');

@@ -3509,7 +3509,7 @@ const minedCells = new Map();
     for (const r of db.getAllMinedCells()) {
       let s = r.prosperity, w = r.swings || 0;
       if (s <= 100 && Specialty.ORE_K > 100 && !r.migrated_v11) { s = s * (Specialty.ORE_K / 100); migrated++; }   // 구 0~100 → 신 0~1000 비율 보존
-      minedCells.set(r.cell_key, { s, t: r.last_t, w });
+      minedCells.set(r.cell_key, { s, t: r.last_t, w, kg: r.kgsum || 0 });
     }
     if (minedCells.size) console.log(`[${ZONE_ID}] 광맥 파인 셀 ${minedCells.size}개 로드` + (migrated ? ` (구 번영도 ${migrated}개 → 재고 비율 이행)` : ''));
   } catch (e) { console.log(`[${ZONE_ID}] mined_cells 로드 실패: ${e.message}`); }
@@ -3525,9 +3525,9 @@ function _oreRec(key, now) {
   return rec;
 }
 function _oreSave(key, rec) {
-  if (rec.s >= Specialty.ORE_K && rec.w <= 0) { minedCells.delete(key); try { db.deleteMinedCell(key); } catch (e) { } return; }
+  if (rec.s >= Specialty.ORE_K && rec.w <= 0 && !(rec.kg > 0)) { minedCells.delete(key); try { db.deleteMinedCell(key); } catch (e) { } return; }
   delete rec.fresh; minedCells.set(key, rec);
-  try { db.upsertMinedCell(key, rec.s, rec.t, rec.w); } catch (e) { }
+  try { db.upsertMinedCell(key, rec.s, rec.t, rec.w, rec.kg || 0); } catch (e) { }
 }
 
 { // 부팅: 광맥 클러스터에 광물 배정 (v8 미지정이면 biome+위치 해시로)
@@ -3586,9 +3586,15 @@ function mineOreCell(player) {
   const key = cx + '_' + cy;
   const rec = _oreRec(key, now);
   if (rec.s < 1) { send(player.ws, { type: 'notice', text: '⛏ 이 자리는 다 팠다 — 옆으로 옮기자' }); _oreSave(key, rec); return true; }
-  // 무게: 짐이 가득이면 더 못 든다(지게 28kg = 원석 8덩이)
+  // ★★[재민 최종] 채굴 **속도는 고정**이다 — 1초/타 · 덩이당 60타 · 재고 소모 1. 전부 레벨 무관.
+  //   레벨이 바꾸는 건 딱 셋:  ①곡괭이 내구 절약  ②떨어져 나오는 **덩이 크기**  ③감정
+  const lvlF = Specialty.mineLevelF((player.craftSkill && player.craftSkill.mining) || 0);
+  // 무게: 짐이 가득이면 더 못 든다(지게 28kg = 미숙련 원석 8덩이)
+  //   ★기준을 CHUNK_KG(3.5) 고정이 아니라 **자기 레벨의 평균 덩이**로 본다 —
+  //     고렙은 덩이가 크므로 같은 28kg에 덜 담긴다. (실제 덩이는 정규분포라 마지막 한 덩이는
+  //     평균보다 무거울 수 있다. 상한을 조금 넘길 수 있게 두는 게 옳다 — 캐고 나서야 크기를 아니까.)
   const w = Specialty.inventoryWeight(player.inventory || {});
-  if (w + Specialty.CHUNK_KG > Specialty.CARRY_MAX_KG) {
+  if (w + Specialty.mineChunkKg(lvlF) > Specialty.CARRY_MAX_KG) {
     send(player.ws, { type: 'notice', text: `⛏ 짐이 가득 — ${w.toFixed(0)}/${Specialty.CARRY_MAX_KG}kg. 마을에 부리고 오자` });
     return true;
   }
@@ -3599,24 +3605,32 @@ function mineOreCell(player) {
   //   표층(D=1)에선 power=1 로 전원 동일(= "캐는 속도는 같아야"), 만렙은 심층 페널티를 완전 상쇄.
   //   둘이 같이 파면 각자 자기 power 만큼만 올리고 덩이는 문턱을 넘긴 타격의 주인이 갖는다
   //   ⇒ 장기적으로 **기여한 만큼** 분배된다(무임승차 없음).
-  // ★★[재민 최종] 채굴 **속도는 고정**이다 — 1초/타 · 덩이당 60타 · 재고 소모 1. 전부 레벨 무관.
-  //   레벨이 바꾸는 건 딱 셋:  ①곡괭이 내구 절약  ②떨어져 나오는 **덩이 크기**  ③감정
   //   (필요 타수는 셀 공용 카운터라 개인차를 두면 저렙이 고렙 진척에 무임승차한다 — 재민 지적)
-  const lvlF = Specialty.mineLevelF((player.craftSkill && player.craftSkill.mining) || 0);
   const f = rec.s / Specialty.ORE_K;
   const need = Specialty.mineSwingsNeeded(f);   // 깊이만 본다(셀 속성) — 레벨 안 들어감
   consumeEquippedDurability(player, Specialty.mineToolWear(lvlF));   // ★①만렙은 곡괭이를 절반만 축낸다
+  // ★★[재민 지적] 타수는 **모두가 같이 넣는다**(rec.w 는 셀 공용). 그런데 덩이 무게를
+  //   *막타 친 사람*의 레벨로 정하면 lvl0 이 59타 치고 lvl10 이 1타 쳐도 5.25kg 를 lvl10 이 가져간다.
+  //   ⇒ 타격마다 **그 사람의 kg 기여**를 따로 누적하고, 덩이가 나올 때 **가중평균**을 쓴다.
+  //     rec.kg = Σ mineChunkKg(각 타격자 레벨)  ·  덩이 무게 = rec.kg / rec.w  (= 타격 평균)
+  //   (덩이 자체는 문턱을 넘긴 사람이 갖는다 — 매 타격이 막타가 될 확률이 같으므로
+  //    장기적으로는 타수에 비례해 분배된다. 무게만 기여도대로 정해지면 된다.)
   rec.w = (rec.w || 0) + 1;                                          // 기여는 누구나 1타 = 1
+  rec.kg = (rec.kg || 0) + Specialty.mineChunkKg(lvlF);              // ★이 타격이 실어 나른 무게
   let msg;
   if (rec.w >= need) {
+    // ★[재민 확정] 가중평균은 이 덩이의 **평균**일 뿐이다. 실제 크기는 여기서 한 번 추첨한다.
+    //   추첨을 타격마다 하지 않는 이유: 60타 평균은 산포를 √60 배 줄여 사실상 고정값이 된다
+    //   (CV 0.28 → 0.036). "가끔 큰 돌덩이"는 **덩이 단위**로 굴려야 체감된다.
+    const mu = rec.kg / rec.w;                                       // ★가중평균 — 막타 기준이 아니다
+    const kg = +Math.max(0.05, Specialty.mineChunkRoll(mu)).toFixed(3);
+    rec.kg -= mu * need;                                             // ★장부에서 빼는 건 **평균분**이다 —
+    //   추첨 결과를 빼면 운 좋게 큰 덩이가 나온 다음 덩이가 굶는다(난수가 다음 덩이로 새면 안 된다).
     rec.w -= need; rec.s -= 1;                                       // ★재고 소모 1 고정(재민 지시)
     const cluster = _terrain.isOreClusterAt(ZONE_ID, px, py);
     const p = _terrain.oreProbAt ? _terrain.oreProbAt(ZONE_ID, px, py) : 0;   // 품위는 **자리**의 것
     const isOre = Math.random() < p;
     const mineral = cluster ? (cluster.mineral || 'iron') : 'iron';
-    // ★②큰 돌덩이 — 결을 읽어 크게 떼어낸다. 3.5kg → 만렙 5.25kg.
-    //   인벤·장부를 **kg 단위**로 든다(덩이 크기가 사람마다 달라 개수로는 못 센다).
-    const kg = Specialty.mineChunkKg(lvlF);
     if (!player.oreLedger || typeof player.oreLedger !== 'object') player.oreLedger = {};
     const lk = isOre ? mineral : 'stone';
     player.oreLedger[lk] = +((player.oreLedger[lk] || 0) + kg).toFixed(3);   // ★결과는 지금 정해 숨긴다
@@ -3682,7 +3696,7 @@ setInterval(() => {
   for (const [key, rec] of minedCells) {
     const days = (now - rec.t) / _ORE_DAY_MS;
     if (days > 0) { rec.s = Specialty.oreRegen(rec.s, days); rec.t = now; }
-    if (rec.s >= Specialty.ORE_K && (rec.w || 0) <= 0) { minedCells.delete(key); try { db.deleteMinedCell(key); } catch (e) { } }
+    if (rec.s >= Specialty.ORE_K && (rec.w || 0) <= 0 && !(rec.kg > 0)) { minedCells.delete(key); try { db.deleteMinedCell(key); } catch (e) { } }
   }
 }, 15 * 60 * 1000);
 
@@ -5416,8 +5430,9 @@ function villageProduction(villageName, jobCounts) {
       //   이제 **그 마을이 실제로 딛고 있는 광맥의 광물**만, 그 자리의 품위 p 만큼 나온다.
       //   광맥이 없는 마을의 광부는 돌만 캔다(p=0) — 지도에 없는 금이 생기지 않는다.
       const vp = _villageAt(villageName);
-      const cl = vp ? _terrain.isOreClusterAt(ZONE_ID, vp.x, vp.y) : null;
-      const p = (vp && _terrain.oreProbAt) ? _terrain.oreProbAt(ZONE_ID, vp.x, vp.y) : 0;
+      // ★[재민 확정] 마을(NPC)은 **자잘 광맥을 못 본다** — 자잘은 플레이어 전용 발견 요소다.
+      const cl = vp ? _terrain.isMajorOreAt(ZONE_ID, vp.x, vp.y) : null;
+      const p = (vp && cl && _terrain.oreProbAt) ? _terrain.oreProbAt(ZONE_ID, vp.x, vp.y) : 0;
       const mineral = cl ? (cl.mineral || 'iron') : null;
       for (let i = 0; i < n; i++) {
         if (mineral && Math.random() < p) add(mineral, 1);
@@ -6993,7 +7008,8 @@ function _findNearestTerrainCluster(zoneId, mx, my, kind) {
   const t = _terrain.ZONE_TERRAIN[zoneId];
   if (!t) return null;
   let list, getCenter;
-  if (kind === 'ore') { list = t.ores || []; getCenter = c => c.center; }
+  // ★[재민 확정] NPC 작업장 배정도 **자잘 광맥을 못 본다**(o.minor) — 자잘은 플레이어 전용이다.
+  if (kind === 'ore') { list = (t.ores || []).filter(c => !c.minor); getCenter = c => c.center; }
   else if (kind === 'forest') { list = t.forests || []; getCenter = c => c.rect ? [(c.rect[0]+c.rect[2])/2, (c.rect[1]+c.rect[3])/2] : (c.center || [0, 0]); }
   else if (kind === 'water') {
     // 호수 또는 강 path 첫 point. 가장 가까운 것

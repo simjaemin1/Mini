@@ -405,6 +405,37 @@ function mineLevelF(xp) {
 //     lvl0 8덩이 480타 · lvl10 5.3덩이 320타 — 같은 28kg를 1.5배 빨리 채운다.
 function mineChunkKg(lvlF) { return CHUNK_KG * (1 + 0.05 * Math.max(0, Math.min(10, lvlF))); }
 
+// ── 덩이 크기의 **산포** — 레벨은 평균만 정한다 ────────────────────────────
+//   ★[재민 확정] "레벨에 따른 돌덩이 크기도, 고정이 아니라 정규분포야.
+//                 레벨 낮은 광부가 캐도 가끔 큰 돌덩이 나올 수 있어"
+//   고증: 떼어지는 크기는 결(節理)의 간격이 정한다. 숙련은 **결을 읽을 확률**을 올릴 뿐
+//         암반이 어디서 갈라질지를 지배하지 못한다 — 저렙이 운 좋게 큰 판을 떼기도 하고,
+//         고렙이 잔부스러기만 얻기도 한다. 평균만 기울고 분포는 겹친다.
+//
+//   무게 ~ N(mu, (CV·mu)²) ,  mu = mineChunkKg(lvlF) ,  CV = 0.28
+//   ±2.5σ 밖은 **기각 재추첨**(절사 아님) — 절사는 경계에 덩어리를 만들고 평균을 흔든다.
+//   재추첨은 좌우 대칭이라 평균이 정확히 mu로 보존된다(NPC·econ이 평균을 쓰므로 이게 중요하다).
+//
+//   겹침(재민이 요구한 "가끔"): lvl0 이 lvl10 평균(5.25kg)을 넘길 확률
+//     z = (5.25−3.5)/(0.28×3.5) = 1.786 → 3.7%.  60타에 한 번 캐니 대략 27덩이에 한 번.
+//   범위: lvl0  1.05~5.95kg  ·  lvl10  1.58~8.93kg
+const CHUNK_CV = 0.28;      // 변동계수(표준편차 ÷ 평균) — 평균에 비례하므로 고렙일수록 절대 산포도 크다
+const CHUNK_Z_MAX = 2.5;    // 이 밖은 재추첨(하한이 0 이하로 내려가지 않게 하는 역할도 겸한다)
+function _stdNormal(rnd) {
+  // Box–Muller. u1=0 이면 log 가 발산하므로 (0,1] 로 민다.
+  let u1 = rnd(); if (!(u1 > 0)) u1 = 1e-12;
+  return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * rnd());
+}
+// meanKg 를 받는다 — 2인 1조에서는 **타격별 가중평균**이 들어오기 때문이다(막타 레벨이 아니다).
+function mineChunkRoll(meanKg, rnd) {
+  const r = (typeof rnd === 'function') ? rnd : Math.random;
+  const mu = Math.max(0.01, meanKg || CHUNK_KG);
+  let z = _stdNormal(r), guard = 0;
+  while (Math.abs(z) > CHUNK_Z_MAX && ++guard < 32) z = _stdNormal(r);
+  if (Math.abs(z) > CHUNK_Z_MAX) z = z > 0 ? CHUNK_Z_MAX : -CHUNK_Z_MAX;   // 안전망(도달 확률 ~0)
+  return mu * (1 + CHUNK_CV * z);
+}
+
 // ── 깊이 비용 — **셀 속성**(지형 압력). 레벨은 안 들어간다 ────────────────
 //   D(f) = 1 + 3(1−f)²  · 표층 1.0 → 최심부 4.0. 필요 타수 = 60 × D(f).
 //   ★"심층에서만 숙련자가 빨라진다"는 기각됐다(재민: "좀 이상한가" — 서사가 약하다).
@@ -496,7 +527,8 @@ if (typeof module !== 'undefined' && module.exports) {
     NPC_MINE_PER_DAY, MINE_HAUL, MINE_HAUL_TRIP, MINE_LABOR, MINE_HAULEFF, haulEff,
     itemWeight, inventoryWeight, CARRY_MAX_KG, EXTRA_WEIGHT,
     oreValueScale, orePeakFor, ORE_VALUE_EXP,
-    mineLevelF, MINE_XP_MAX, mineChunkKg, mineDepthCost, mineSwingsNeeded, mineToolWear,
+    mineLevelF, MINE_XP_MAX, mineChunkKg, mineChunkRoll, CHUNK_CV, CHUNK_Z_MAX,
+    mineDepthCost, mineSwingsNeeded, mineToolWear,
     mineTPR, mineTNR, mineIdAcc, mineIdPhrase, MINE_DEPTH_MAX };
 }
 if (typeof window !== 'undefined') {

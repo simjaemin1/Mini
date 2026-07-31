@@ -40,6 +40,7 @@ const PAL = [
   [0xd2, 0x89, 0x2e, '다리'],
   [0xd9, 0x90, 0x30, '광맥'],
   [0xff, 0x46, 0x46, '마을'],
+  [0xa8, 0x74, 0x2c, '자잘광맥'],   // ★자잘은 색을 나눈다 — 분포를 눈으로 감사하려고(게임 미니맵엔 안 나온다)
 ];
 
 const bridge = new Set();
@@ -63,11 +64,11 @@ if (fs.existsSync(CACHE) && fs.statSync(CACHE).size === W * H) {
 for (let y = 0; !cached && y < H; y++) {
   for (let x = 0; x < W; x++) {
     const px = x * CELL + 16, py = y * CELL + 16;
-    let t;
+    let t, _oc;
     if (bridge.has(x + ',' + y)) t = 4;
     else if (terrain.isWaterCellLocal(ZID, px, py)) t = 1;
     else if (terrain.isRockCellLocal(ZID, px, py)) t = 2;
-    else if (terrain.isOreClusterAt && terrain.isOreClusterAt(ZID, px, py)) t = 5;
+    else if (terrain.isOreClusterAt && (_oc = terrain.isOreClusterAt(ZID, px, py))) t = _oc.minor ? 7 : 5;
     else if (terrain.getForestMultiplier(ZID, px, py) > 1.2) t = 3;
     else t = 0;
     idx[y * W + x] = t;

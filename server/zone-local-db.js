@@ -187,11 +187,13 @@ function getAllHarvestedSeeds() { return stmtGetAllHarvested.all().map(r => r.se
 //   migrated_v11 = 구 스키마(번영도 0..100) 이행 완료 표시 — 부팅 때 한 번만 비율 변환(zone.js).
 { const _mc = db.prepare('PRAGMA table_info(mined_cells)').all().map(c => c.name);
   if (!_mc.includes('swings')) db.exec('ALTER TABLE mined_cells ADD COLUMN swings REAL NOT NULL DEFAULT 0');
-  if (!_mc.includes('migrated_v11')) db.exec('ALTER TABLE mined_cells ADD COLUMN migrated_v11 INTEGER NOT NULL DEFAULT 0'); }
-const stmtUpsertMined = db.prepare('INSERT INTO mined_cells (cell_key, prosperity, last_t, swings, migrated_v11) VALUES (?, ?, ?, ?, 1) ON CONFLICT(cell_key) DO UPDATE SET prosperity=excluded.prosperity, last_t=excluded.last_t, swings=excluded.swings, migrated_v11=1');
-const stmtGetAllMined = db.prepare('SELECT cell_key, prosperity, last_t, swings, migrated_v11 FROM mined_cells');
+  if (!_mc.includes('migrated_v11')) db.exec('ALTER TABLE mined_cells ADD COLUMN migrated_v11 INTEGER NOT NULL DEFAULT 0');
+  // ★kgsum = 그 셀에 쌓인 **무게 기여 합**. 덩이 무게를 막타가 아니라 타격별 가중평균으로 내기 위함(재민 지적).
+  if (!_mc.includes('kgsum')) db.exec('ALTER TABLE mined_cells ADD COLUMN kgsum REAL NOT NULL DEFAULT 0'); }
+const stmtUpsertMined = db.prepare('INSERT INTO mined_cells (cell_key, prosperity, last_t, swings, kgsum, migrated_v11) VALUES (?, ?, ?, ?, ?, 1) ON CONFLICT(cell_key) DO UPDATE SET prosperity=excluded.prosperity, last_t=excluded.last_t, swings=excluded.swings, kgsum=excluded.kgsum, migrated_v11=1');
+const stmtGetAllMined = db.prepare('SELECT cell_key, prosperity, last_t, swings, kgsum, migrated_v11 FROM mined_cells');
 const stmtDeleteMined = db.prepare('DELETE FROM mined_cells WHERE cell_key = ?');
-function upsertMinedCell(key, stock, lastT, swings) { stmtUpsertMined.run(key, stock, lastT, swings || 0); }
+function upsertMinedCell(key, stock, lastT, swings, kgsum) { stmtUpsertMined.run(key, stock, lastT, swings || 0, kgsum || 0); }
 function getAllMinedCells() { return stmtGetAllMined.all(); }
 function deleteMinedCell(key) { stmtDeleteMined.run(key); }
 

@@ -8185,8 +8185,13 @@ const SIM_JOB_EMOJI = {
         if (f.rect) { const [x1,y1,x2,y2]=f.rect; cx.fillRect(x1*sxr,y1*syr,Math.max(1,(x2-x1)*sxr),Math.max(1,(y2-y1)*syr)); }
         else if (f.center) { cx.beginPath(); cx.ellipse(f.center[0]*sxr,f.center[1]*syr,Math.max(0.5,(f.rx||f.a||1)*sxr),Math.max(0.5,(f.ry||f.b||1)*syr),0,0,6.2832); cx.fill(); } } }
     // 3. ore arc
+    // ★★[재민 확정] 자잘 광맥(o.minor)은 **미니맵에 안 그린다**.
+    //   "자잘광맥을 더 추가하는 방향으로.. 훨씬 많아야 해.. 그래야 탐험하는 재미가 있지"
+    //   지도에 2600개가 전부 찍히면 발견이라는 게 없어진다 — 걸어 다니다 만나야 한다.
+    //   (겸사겸사 프레임당 2600개 arc 도 사라진다. 큰 광맥 61개만 그린다.)
+    //   ※ "판 자잘 광맥은 지도에 표시로 남긴다"(발견 기록)는 별도 기능 — 설계 회부 대상.
     if (td.ores && TILE_COLORS.ore) { cx.fillStyle = TILE_COLORS.ore;
-      for (const o of td.ores) { if (!o.center) continue; cx.beginPath(); cx.arc(o.center[0]*sxr,o.center[1]*syr,Math.max(0.5,(o.radius||0)*sxr),0,6.2832); cx.fill(); } }
+      for (const o of td.ores) { if (!o.center || o.minor) continue; cx.beginPath(); cx.arc(o.center[0]*sxr,o.center[1]*syr,Math.max(0.5,(o.radius||0)*sxr),0,6.2832); cx.fill(); } }
     // 4. mountain rect (절차 — 그려진 존은 비어있음)
     if (td.mountains && TILE_COLORS.mountain) { cx.fillStyle = TILE_COLORS.mountain;
       for (const m of td.mountains) { if (!m.rect||(m.stoneMult||0)<=1.5) continue; const [x1,y1,x2,y2]=m.rect; cx.fillRect(x1*sxr,y1*syr,Math.max(1,(x2-x1)*sxr),Math.max(1,(y2-y1)*syr)); } }

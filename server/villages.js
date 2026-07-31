@@ -207,8 +207,10 @@ function makeTerrainAdapter(terrain, ZONE, deps) {
     try { return !!deps.isBridgeLocal(px(cx), px(cy)); } catch { return false; }
   };
   // ★[11차] 광맥 술어 — 광업 토지값을 **광맥 레이어 기준**으로 재려면 필요하다(전에는 바위밀도로 갈음했다).
+  // ★[재민 확정] NPC 경제는 **자잘 광맥을 못 본다**(isMajorOreAt). 자잘은 플레이어 전용이다.
+  //   land.ore · 광부 정원 · 출근지 · 특산 광물 전부 이 술어를 거친다.
   const isOre = (cx, cy) => {
-    try { return !!(terrain.isOreClusterAt && terrain.isOreClusterAt(zoneId, px(cx), px(cy))); } catch { return false; }
+    try { return !!(terrain.isMajorOreAt && terrain.isMajorOreAt(zoneId, px(cx), px(cy))); } catch { return false; }
   };
   // ★노동권 안 광맥 덩이의 광물 종류 목록 — 특수 산지(주석·흑요석·옥)를 land 키로 넘기려면 필요하다.
   //   덩이별 mineral 은 zone.js 가 Specialty.pickMineral 로 정해 지형 객체에 붙인다(3486행).
@@ -218,6 +220,7 @@ function makeTerrainAdapter(terrain, ZONE, deps) {
       const list = (t && t.ores) || [];
       const out = [];
       for (const o of list) {
+        if (o.minor) continue;   // ★자잘 광맥은 NPC 특산 판정에서 제외(플레이어 전용)
         if (!o.center) continue;
         const d = Math.hypot(o.center[0] - px(ccx), o.center[1] - px(ccy));
         if (d <= (R * SZ + (o.radius || 0)) && o.mineral) out.push(o.mineral);
