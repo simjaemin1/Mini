@@ -301,15 +301,49 @@ function getStoneMultiplier(zoneId, x, y) {
   return m;
 }
 
-function isOreClusterAt(zoneId, x, y) {
+// 원은 **탐색 경계**일 뿐이다 — 실제 광맥 모양은 아래 _oreShape 가 정한다.
+//   ★탐색 반경을 공칭 반경의 _ORE_REACH 배로 넓힌다. 안 그러면 warp 가 1을 넘겨 뻗는 **갈래가
+//     원에서 잘려** 모양이 반쪽만 표현된다(실측: 갈래가 전부 R 에서 딱 끊겼다).
+//   ★겹칠 땐 **더 깊이 든 쪽**(d_eff 최소)이 그 셀을 갖는다 — 인접 광체가 맞물리는 자연스러운 규칙.
+const _ORE_REACH = 1.55;
+function _oreOwnerAt(zoneId, x, y) {
   const t = ZONE_TERRAIN[zoneId];
   if (!t || !t.ores) return null;
+  let best = null, bd = 1;
   for (const o of t.ores) {
-    const dx = x - o.center[0];
-    const dy = y - o.center[1];
-    if (dx * dx + dy * dy < o.radius * o.radius) return o;
+    const dx = x - o.center[0], dy = y - o.center[1];
+    const rr = o.radius * _ORE_REACH;
+    if (dx * dx + dy * dy >= rr * rr) continue;
+    const d = _oreShape(o, x, y);
+    if (d < bd) { bd = d; best = o; }
   }
-  return null;
+  return best ? { o: best, d: bd } : null;
+}
+// ★[11차 재민 확인 "모든 광맥이 원 모양이 아니라 무작위 모양인 거 맞지?"]
+//   ...아니었다. p(품위)만 무작위였고 **경계는 완벽한 원**이었다(셀맵·oreShare·villages 전부 원을 봄).
+//   이제 반경을 저주파 노이즈로 **왜곡**해 경계 자체를 무작위로 만든다:
+//     warp(x,y) = 0.62 + 0.76·fbm(저주파)      — 클러스터마다 다른 씨앗
+//     d_eff = (거리/반경) / warp   ,  d_eff ≥ 1 이면 광맥 밖
+//   ⇒ 갈래가 뻗고 옴폭 들어간 **엽상(lobed)** 윤곽이 나온다(호수 _lakeWobble 과 같은 취지지만
+//     각도가 아니라 좌표 기반이라 더 자연스럽다). 원 면적의 60~70%가 실제 광맥이 된다.
+// ★왜곡 격자는 **반경에 비례**해야 한다. 고정 96셀로 뒀더니 작은 광맥(r22)이 노이즈 한 칸에
+//   통째로 들어가 warp 가 균일해졌다 — 결국 "반경만 줄어든 원"이 됐다(실측: 각도별 17.5~19.0셀,
+//   원이면 21.9 — 사실상 원). 반경의 0.45배로 두면 클러스터마다 갈래가 두세 개 생긴다.
+const _ORE_WARP_R = 0.45;        // 왜곡 노이즈 격자 = 반경 × 이 값
+const _OFBM_MAX = 0.875;         // _oFbm 3옥타브 진폭 합(0.5+0.25+0.125) — 0..1 정규화용
+function _oreShape(o, x, y) {
+  const dx = x - o.center[0], dy = y - o.center[1];
+  const R = o.radius || 1;
+  const dn = Math.sqrt(dx * dx + dy * dy) / R;
+  const seed = ((o.center[0] | 0) * 7 + (o.center[1] | 0) * 13 + 911) | 0;
+  const g = Math.max(64, R * _ORE_WARP_R);
+  const nz = Math.min(1, _oFbm(x / g, y / g, seed + 77) / _OFBM_MAX);
+  const warp = 0.50 + 1.00 * nz;   // 0.5 ~ 1.5 — 갈래는 반경의 1.5배까지 뻗고 옴폭한 곳은 절반
+  return dn / warp;                // d_eff. ≥1 이면 광맥 밖
+}
+function isOreClusterAt(zoneId, x, y) {
+  const r = _oreOwnerAt(zoneId, x, y);
+  return r ? r.o : null;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -343,11 +377,9 @@ function _oFbm(x, y, s) { let t = 0, a = 0.5, f = 1; for (let i = 0; i < 3; i++)
 
 // 이 좌표(px)에서 캔 덩이가 광석일 확률. 광맥 밖이면 0(= 캐도 영원히 돌만 나온다).
 function oreProbAt(zoneId, x, y) {
-  const o = isOreClusterAt(zoneId, x, y);
-  if (!o) return 0;
-  const dx = x - o.center[0], dy = y - o.center[1];
-  const d = Math.sqrt(dx * dx + dy * dy) / (o.radius || 1);
-  if (d >= 1) return 0;
+  const r = _oreOwnerAt(zoneId, x, y);
+  if (!r) return 0;
+  const o = r.o, d = r.d;                // ★왜곡된 거리 — 경계가 원이 아니다
   const pk = (typeof o.pk === 'number') ? o.pk : _ORE_P_DEFAULT_PK;
   const seed = ((o.center[0] | 0) * 7 + (o.center[1] | 0) * 13 + 911) | 0;
   const n = 0.5 + _oFbm(x / _ORE_P_GRID, y / _ORE_P_GRID, seed);

@@ -29,7 +29,7 @@ const has = (f) => argv.includes(f);
 const val = (f, d) => { const i = argv.indexOf(f); return i >= 0 ? argv[i + 1] : d; };
 const ZID = val('--zone', 'hanbando');
 const APPLY = has('--apply');
-const MINOR = has('--minor') || has('--minor-only');
+const MINOR = has('--minor') || has('--minor-only') || has('--neg-big');
 const MINOR_ONLY = has('--minor-only');   // ★대·중·소 50개는 이미 적용됐다 — 자잘만 돈다(중복 방지)
 const OUT = val('--out', '/tmp/ore-plan.json');
 
@@ -47,11 +47,21 @@ const W = Math.round(Z.zoneWidth / CELL), H = Math.round(Z.zoneHeight / CELL);
 // 대중소 50 + (옵션) 자잘. [개수, 반경(셀), p_peak 기준]
 const TIERS = [[3, 130, 0.45], [12, 70, 0.38], [35, 32, 0.30]];
 const MINOR_TIER = [400, 7, 0.22];
+// ★소외 최대 덩이에 놓는 **비교적 큰 광맥**(재민). --neg-big 으로 이것만 따로 돌린다.
+const NEG_BIG_TIER = [2, 70, 0.38];
 // ★[재민 확정 순서 3단계] 자잘 광맥은 **남은 소외 구역 편중**으로 뿌린다.
 //   ①지류(3개) → ②자잘한 숲(17개)으로 소외가 2.9% → 0.2%까지 내려갔다. 그러고도 남은 자리가
 //   자잘 광맥의 1순위다 — 물도 숲도 없는 내륙 깊은 곳이라 광맥 고증에도 맞고,
 //   그 땅이 유일하게 아무것도 안 되는 곳이기 때문이다.
-const MINOR_NEG_BOOST = 6;   // 소외 격자 위 후보의 점수 배수
+// ★[재민 정정] "자잘한 광맥은 맵 곳곳에 골고루 퍼져야지.. 소외지역에 넣어달라고 한 건
+//   **비교적 큰 광맥**을 넣고, 자잘광맥도 비교적 **많이** 배치되게 해달란 거였어."
+//   부스트 6으로 전량을 소외에 몰아넣었더니 6×10 구역 중 **48개가 비고 한 구역에 56개**가 몰렸다
+//   — 큰 광맥 하나 넣은 것과 다를 게 없었다(실측). 그래서 둘로 나눈다:
+//     · 자잘은 존을 격자로 나눠 **구역마다 할당량**을 준다(균등 보장). 소외 구역만 할당을 늘린다.
+//     · 소외 최대 덩이에는 별도로 **중형(r70)** 을 하나 놓는다 — "비교적 큰 광맥"이 그 뜻이다.
+const MINOR_NEG_BOOST = 1.6;   // 소외 격자 위 후보의 점수 배수(같은 구역 안에서만 작동)
+const MINOR_GX = 8, MINOR_GY = 15;   // 자잘 배치 구역 격자 — 존을 이만큼 나눠 할당
+const MINOR_NEG_QUOTA = 2.5;         // 소외를 품은 구역의 할당 배수
 
 console.log('=== 광맥 배치 계획 · ' + ZID + ' · ' + W + '×' + H + '셀 ===');
 console.log('기존 광맥 ' + d.ores.length + '개 — ' + d.ores.map((o) => o.name + '(' + (o.mineral || '?') + ' r' + Math.round(o.radius / CELL) + ')').join(', '));
@@ -112,23 +122,60 @@ const placed = d.ores.map((o) => ({ cx: Math.round(o.center[0] / CELL), cy: Math
 const added = [];
 let nextIdx = d.ores.length + 1;
 
-const tiers = MINOR_ONLY ? [MINOR_TIER] : (MINOR ? TIERS.concat([MINOR_TIER]) : TIERS);
-let _scanCache = null, _scanFor = -1;
+const NEG_BIG = has('--neg-big');   // 소외 최대 덩이에 중형 광맥만 놓는다
+const tiers = NEG_BIG ? [NEG_BIG_TIER] : (MINOR_ONLY ? [MINOR_TIER] : (MINOR ? TIERS.concat([MINOR_TIER]) : TIERS));
+// ── 자잘 배치용 구역 할당표 ─────────────────────────────────────────────
+//   존을 MINOR_GX×MINOR_GY 로 나누고, 뭍이 있는 구역에 균등 할당(소외 품은 구역은 ×2.5).
+//   그리고 클러스터를 **구역 순서대로 돌아가며** 놓는다 ⇒ 한 곳에 몰릴 수가 없다.
+let MINOR_ZONE = null, MINOR_ORDER = null;
+{
+  const bw = Math.ceil(gw / MINOR_GX), bh = Math.ceil(gh / MINOR_GY);
+  const cells = [], negIn = new Array(MINOR_GX * MINOR_GY).fill(0), landIn = new Array(MINOR_GX * MINOR_GY).fill(0);
+  for (let gy = 2; gy < gh - 2; gy++) for (let gx = 2; gx < gw - 2; gx++) {
+    const i = gy * gw + gx; if (water[i] || rock[i]) continue;
+    const b = Math.min(MINOR_GY - 1, (gy / bh) | 0) * MINOR_GX + Math.min(MINOR_GX - 1, (gx / bw) | 0);
+    landIn[b]++; if (NEG && NEG[i]) negIn[b]++;
+    cells.push(i);
+  }
+  const w = landIn.map((n, b) => n < 200 ? 0 : (1 + (negIn[b] > 0 ? MINOR_NEG_QUOTA - 1 : 0)));
+  MINOR_ZONE = { bw, bh, cells, w, landIn, negIn };
+  const order = [];
+  for (let b = 0; b < w.length; b++) if (w[b] > 0) order.push(b);
+  MINOR_ORDER = order;
+  console.log('자잘 배치 구역 ' + MINOR_GX + '×' + MINOR_GY + ' — 뭍 있는 구역 ' + order.length + '개 · 소외 품은 구역 ' + negIn.filter((n) => n > 0).length + '개');
+}
+// 구역별 셀 목록(자잘 배치 때 그 구역 안에서만 최적점을 고른다)
+const MINOR_BCELL = new Map();
+if (MINOR_ZONE) for (const i of MINOR_ZONE.cells) {
+  const gx = i % gw, gy = (i / gw) | 0;
+  const b = Math.min(MINOR_GY - 1, (gy / MINOR_ZONE.bh) | 0) * MINOR_GX + Math.min(MINOR_GX - 1, (gx / MINOR_ZONE.bw) | 0);
+  let a = MINOR_BCELL.get(b); if (!a) MINOR_BCELL.set(b, a = []); a.push(i);
+}
+
+let _scanCache = null, _scanFor = -1, _minorTurn = 0;
 for (const [cnt, R0, pk0] of tiers) {
   let made = 0; _scanCache = null; _scanFor = -1;
   for (let k = 0; k < cnt; k++) {
     const gR = Math.max(1, Math.round(R0 / S));
     let best = null, bs = -1;
-    // ★자잘 광맥(R0 ≤ 12셀)은 **소외 격자만** 훑는다. 전 지도(547×1016)를 400번 스캔하면
-    //   250억 연산이라 사실상 끝나지 않는다 — 실측으로 확인하고 좁혔다.
-    //   목적 자체가 "남은 소외 구역에 배치"(재민 순서 3단계)라 탐색 범위를 그리로 좁히는 게 옳다.
+    // ★자잘(R0 ≤ 12셀)은 **구역 할당**으로 균등 배치한다 — 전 지도 스캔은 250억 연산이라
+    //   끝나지 않고(실측), 소외만 훑으면 한 덩이에 몰린다(실측 48/60 구역 공백). 구역이 답이다.
     const step = Math.max(2, Math.min(8, gR));
     let scan = _scanCache;
     if (!scan || _scanFor !== R0) {
       scan = [];
-      if (NEG && R0 <= 12) { for (let i = 0; i < NEG.length; i++) if (NEG[i]) { const gx = i % gw, gy = (i / gw) | 0; if (gx >= gR && gy >= gR && gx < gw - gR && gy < gh - gR) scan.push(i); } }
+      if (NEG_BIG && NEG) { for (let i = 0; i < NEG.length; i++) if (NEG[i]) { const gx = i % gw, gy = (i / gw) | 0; if (gx >= gR && gy >= gR && gx < gw - gR && gy < gh - gR) scan.push(i); } }
+      else if (MINOR_ZONE && R0 <= 12) { scan = MINOR_ZONE.cells; }
       else { for (let gy = gR; gy < gh - gR; gy += step) for (let gx = gR; gx < gw - gR; gx += step) scan.push(gy * gw + gx); }
       _scanCache = scan; _scanFor = R0;
+    }
+    if (R0 <= 12 && MINOR_ORDER && MINOR_ORDER.length) {
+      // ★구역 순환 — 가중치가 큰(소외 품은) 구역은 여러 번 차례가 온다
+      const wsum = [];
+      let acc = 0; for (const b of MINOR_ORDER) { acc += MINOR_ZONE.w[b]; wsum.push(acc); }
+      const t = ((_minorTurn++) * 0.6180339887 % 1) * acc;   // 황금비 순환 = 결정론 + 고른 분산
+      let bi = 0; while (bi < wsum.length - 1 && wsum[bi] < t) bi++;
+      scan = MINOR_BCELL.get(MINOR_ORDER[bi]) || scan;
     }
     for (const _i of scan) {
       { const gy = (_i / gw) | 0, gx = _i % gw;
