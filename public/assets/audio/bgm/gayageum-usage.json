@@ -1,0 +1,74 @@
+{
+ "village_day_trad": {
+  "n": 184,
+  "fail": 0,
+  "shift": 0.21,
+  "arts": "지속음115 얕은 농현69"
+ },
+ "village_day_amb": {
+  "n": 33,
+  "fail": 0,
+  "shift": 0.39,
+  "arts": "지속음18 깊은 농현15"
+ },
+ "village_night_trad": {
+  "n": 45,
+  "fail": 0,
+  "shift": 0.18,
+  "arts": "깊은 농현31 퇴김14"
+ },
+ "village_night_amb": {
+  "n": 12,
+  "fail": 0,
+  "shift": 0.21,
+  "arts": "깊은 농현12"
+ },
+ "battle_trad": {
+  "n": 0,
+  "fail": 0,
+  "shift": 0.0,
+  "arts": "-"
+ },
+ "battle_amb": {
+  "n": 0,
+  "fail": 0,
+  "shift": 0.0,
+  "arts": "-"
+ },
+ "journey_trad": {
+  "n": 294,
+  "fail": 0,
+  "shift": 0.36,
+  "arts": "지속음245 얕은 농현49"
+ },
+ "journey_amb": {
+  "n": 56,
+  "fail": 0,
+  "shift": 0.27,
+  "arts": "지속음42 깊은 농현14"
+ },
+ "village_day_ari": {
+  "n": 347,
+  "fail": 0,
+  "shift": 0.32,
+  "arts": "지속음240 얕은 농현107"
+ },
+ "village_night_ari": {
+  "n": 64,
+  "fail": 0,
+  "shift": 0.28,
+  "arts": "깊은 농현32 지속음32"
+ },
+ "battle_ari": {
+  "n": 192,
+  "fail": 0,
+  "shift": 0.32,
+  "arts": "지속음128 얕은 농현64"
+ },
+ "journey_ari": {
+  "n": 347,
+  "fail": 0,
+  "shift": 0.32,
+  "arts": "지속음240 얕은 농현107"
+ }
+}

@@ -1,0 +1,20 @@
+여기에 국악기 음원(wav)을 넣으세요.
+
+폴더 구조는 아무래도 괜찮습니다. 경로 어딘가에 악기 이름만 들어 있으면 됩니다.
+  가야금 / gayageum, 거문고 / geomungo, 대금 / daegeum, 단소 / danso,
+  피리 / piri, 궁편 / gung, 채편 / chae, 장구 / janggu,
+  북 / buk, 징 / jing, 꽹과리 / kkwaenggwari
+
+예)
+  samples/가야금/01.wav
+  samples/대금_D4.wav
+  samples/janggu_gung_01.wav
+
+넣은 뒤 상위 폴더에서:
+  python3 sampler.py scan samples/
+  python3 render_samples.py samples/
+
+음원은 국립국악원 gugak.go.kr/digitaleum 의 「단음」을 받으시면 됩니다.
+공공누리 제1유형 — 출처만 표시하면 상업적 이용·변형까지 자유입니다.
+
+자세한 내용은 상위 폴더의 국악기_음원_넣는법.md 를 보세요.

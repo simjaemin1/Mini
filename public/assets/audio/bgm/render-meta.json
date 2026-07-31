@@ -1,0 +1,77 @@
+{
+ "source": {
+  "gayageum": "샘플",
+  "geomungo": "합성",
+  "daegeum": "합성",
+  "danso": "합성",
+  "piri": "합성",
+  "janggu_gung": "합성",
+  "janggu_chae": "합성",
+  "buk": "합성",
+  "jing": "합성",
+  "kkwaenggwari": "합성",
+  "bak": "합성"
+ },
+ "tracks": {
+  "village_day_trad": {
+   "seconds": 109.02,
+   "rms_db": -14.98,
+   "peak_db": -1.29
+  },
+  "village_day_amb": {
+   "seconds": 112.0,
+   "rms_db": -17.23,
+   "peak_db": -2.12
+  },
+  "village_night_trad": {
+   "seconds": 115.2,
+   "rms_db": -18.32,
+   "peak_db": -2.02
+  },
+  "village_night_amb": {
+   "seconds": 118.0,
+   "rms_db": -19.67,
+   "peak_db": -4.01
+  },
+  "battle_trad": {
+   "seconds": 108.31,
+   "rms_db": -13.42,
+   "peak_db": -1.2
+  },
+  "battle_amb": {
+   "seconds": 104.0,
+   "rms_db": -16.17,
+   "peak_db": -1.2
+  },
+  "journey_trad": {
+   "seconds": 105.75,
+   "rms_db": -14.87,
+   "peak_db": -1.76
+  },
+  "journey_amb": {
+   "seconds": 116.0,
+   "rms_db": -16.87,
+   "peak_db": -1.5
+  },
+  "village_day_ari": {
+   "seconds": 103.68,
+   "rms_db": -15.11,
+   "peak_db": -2.47
+  },
+  "village_night_ari": {
+   "seconds": 120.96,
+   "rms_db": -18.54,
+   "peak_db": -4.55
+  },
+  "battle_ari": {
+   "seconds": 106.56,
+   "rms_db": -13.47,
+   "peak_db": -1.2
+  },
+  "journey_ari": {
+   "seconds": 89.28,
+   "rms_db": -14.93,
+   "peak_db": -1.94
+  }
+ }
+}
