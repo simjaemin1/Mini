@@ -110,7 +110,8 @@ console.log(`  주석이 나는 마을 ${tinV}/${census.length} · 구리가 나
 const tins = census.filter(c => c.mix.tin > 0).map(c => c.name + '(' + (c.mix.tin * 100).toFixed(1) + '%)');
 if (tins.length) console.log('  주석 마을: ' + tins.join(', '));
 
-const world = { villages, tradeLog: [], events: [], caravans: [] };
+const world = { villages, tradeLog: [], events: [], caravans: [], picker: process.env.PICKER || 'legacy' };
+for (const v of villages) v._world = world;
 for (let day = 1; day <= DAYS; day++) {
   for (const v of world.villages) econ.tickVillage(v, day, world);
   if (econ.tickMigration) econ.tickMigration(world, day);
