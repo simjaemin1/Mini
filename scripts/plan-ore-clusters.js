@@ -157,7 +157,21 @@ const added = [];
 let nextIdx = d.ores.length + 1;
 
 const NEG_BIG = has('--neg-big');   // 소외 최대 덩이에 중형 광맥만 놓는다
-const tiers = FORCE_TIER ? [FORCE_TIER] : (NEG_BIG ? [NEG_BIG_TIER] : (MINOR_ONLY ? [MINOR_TIER] : (MINOR ? TIERS.concat([MINOR_TIER]) : TIERS)));
+// ★★[재민 확정] "산 안쪽은 80%가 광맥 셀이어도 될 정도가 되어도 돼. 왜냐하면 산은 파기 정말
+//   어렵게 만들 거거든. 근데 산 밖으로 드러난 부분은 20% 정도로."
+//   실측으로 바위 안이 39.7% 였다 — 목표의 절반. 그렇다고 대·중·소를 키우면 **기슭까지 같이
+//   부푼다**(원형이라). ⇒ **바위 셀에만** 놓는 별도 층을 만든다:
+//     · 후보를 rock 셀로 한정하고, 주변 바위 비율(rf)이 높은 곳만 고른다 ⇒ 산 **속**으로 들어간다
+//     · minor:1 을 박는다 — NPC 는 산을 못 부수므로 애초에 못 캔다. 마을 경제에 영향 0.
+//       (대·중·소로 넣으면 광부 정원이 63개→수백개 기준으로 튄다.)
+//     · 곧 들어올 "산 부수기"의 **보상**이 정확히 이 층이다. 산을 깨면 여기가 열린다.
+const ROCK_FILL = has('--rock-fill');
+const ROCK_FILL_TIER = [900, 14, 0.30];   // [개수, 반경(셀), pk0(무시됨)]
+const ROCK_FILL_RF = 0.55;                // 주변 바위 비율 하한 — 이보다 낮으면 산 속이 아니다
+const ROCK_FILL_SEP = 16;                 // 산속 광맥끼리 최소 간격(셀)
+const tiers = FORCE_TIER ? [FORCE_TIER]
+  : ROCK_FILL ? [ROCK_FILL_TIER]
+  : (NEG_BIG ? [NEG_BIG_TIER] : (MINOR_ONLY ? [MINOR_TIER] : (MINOR ? TIERS.concat([MINOR_TIER]) : TIERS)));
 // 같은 광물이 이미 놓인 자리들 — APART 로 밀어낸다(주석이 한 골짜기에 몰리면 인질 문제가 그대로다)
 const SAME_MIN = (FORCE_MINERAL && APART > 0)
   ? d.ores.filter((o) => o.mineral === FORCE_MINERAL).map((o) => [Math.round(o.center[0] / CELL), Math.round(o.center[1] / CELL)])
@@ -190,6 +204,17 @@ let MINOR_ZONE = null, MINOR_ORDER = null;
     process.exit(0);
   }
 }
+// ★산속 채움용 후보 — **바위 셀만** 모은다(자잘 목록은 rock 을 빼므로 별도로 만든다)
+let ROCK_CELLS = null;
+if (ROCK_FILL) {
+  ROCK_CELLS = [];
+  for (let gy = 2; gy < gh - 2; gy++) for (let gx = 2; gx < gw - 2; gx++) {
+    const i = gy * gw + gx;
+    if (water[i] || !rock[i]) continue;
+    ROCK_CELLS.push(i);
+  }
+  console.log('산속 채움 후보(바위 셀) ' + ROCK_CELLS.length.toLocaleString() + '개');
+}
 // 구역별 셀 목록(자잘 배치 때 그 구역 안에서만 최적점을 고른다)
 const MINOR_BCELL = new Map();
 if (MINOR_ZONE) for (const i of MINOR_ZONE.cells) {
@@ -215,7 +240,8 @@ for (const [cnt, R0, pk0] of tiers) {
       else { for (let gy = gR; gy < gh - gR; gy += step) for (let gx = gR; gx < gw - gR; gx += step) scan.push(gy * gw + gx); }
       _scanCache = scan; _scanFor = R0;
     }
-    if (R0 <= 12 && MINOR_ORDER && MINOR_ORDER.length) {
+    if (ROCK_FILL) { scan = ROCK_CELLS; }
+    else if (R0 <= 12 && MINOR_ORDER && MINOR_ORDER.length) {
       // ★구역 순환 — 가중치가 큰(소외 품은) 구역은 여러 번 차례가 온다
       const wsum = [];
       let acc = 0; for (const b of MINOR_ORDER) { acc += MINOR_ZONE.w[b]; wsum.push(acc); }
@@ -227,11 +253,12 @@ for (const [cnt, R0, pk0] of tiers) {
       { const gy = (_i / gw) | 0, gx = _i % gw;
         const i = gy * gw + gx;
         if (water[i]) continue;                               // 물 위는 안 된다(바위 위는 **된다** — 아래)
+        if (ROCK_FILL && !rock[i]) continue;                  // ★산속 채움은 바위 셀에만
         const cx = gx * S, cy = gy * S;
         let free = true;
         // ★자잘은 **절대 최소 간격**을 둔다. 비례 간격(0.55×(7+7)=7.7셀)만으로는 구역 안에서
         //   argmax 주변에 다닥다닥 붙어 뭉침 지수가 1.49까지 올랐다(실측). 40셀을 강제한다.
-        const sepMin = R0 <= 12 ? MINOR_MIN_SEP : 0;
+        const sepMin = ROCK_FILL ? ROCK_FILL_SEP : (R0 <= 12 ? MINOR_MIN_SEP : 0);
         for (const o of pbNear(cx, cy)) { const dd = Math.hypot(o.cx - cx, o.cy - cy); if (dd < Math.max(sepMin, (o.r + R0) * 0.55)) { free = false; break; } }
         if (!free) continue;
         if (SAME_MIN.length) { let near = false;
@@ -247,11 +274,25 @@ for (const [cnt, R0, pk0] of tiers) {
         //     · 대·중·소 = **산 안쪽**. rock 비율을 강하게 보고 땅 비율은 하한만 본다(접근로 확보용).
         //     · 자잘     = **맵 전체 균등 우선**. 산 편중은 약하게 — 재민: "다른 광맥에 비해서는
         //       맵 전체적으로 골고루 퍼져 있으면 좋겠어".
-        const isMinor = R0 <= 12;
         let sc;
+        if (ROCK_FILL) {
+          // 산 **속**으로 — 주변이 바위일수록 좋다. 땅 비율(lf)은 아예 안 본다.
+          if (rf < ROCK_FILL_RF) continue;
+          sc = rf * (0.6 + hash2(gx, gy, 400 + k) * 0.8);
+          if (sc > bs) { bs = sc; best = { cx, cy, lf, rf }; }
+          continue;
+        }
+        const isMinor = R0 <= 12;
         if (isMinor) {
           if (lf < 0.25) continue;                            // 자잘은 캐러 갈 땅이 어느 정도 있어야
-          sc = (0.30 + rf * 3.0) * Math.pow(lf, 0.5) * (0.6 + hash2(gx, gy, 400 + k) * 0.8);
+          // ★★[재민 실측 지적] "산 근처가 과한 원인은 누구?" — **자잘이었다**.
+          //   기슭(바위에서 1~12셀) 광맥 44.1% 중 자잘이 26.3%p 로 대·중·소(21.7%p)보다 컸다.
+          //   원인: 배치기가 바위 셀 자체는 후보에서 빼면서(자잘은 산 위에 안 놓는다)
+          //   점수는 rf(주변 바위 비율)에 크게 보상했다 ⇒ **바위 가장자리 한 줄에 몰렸다**.
+          //   실측 — 자잘 중심의 바위 거리 25분위가 8셀(뭍 기준선은 104셀).
+          //   ⇒ 바위 편중을 **뺀다**. 자잘은 이제 뭍 어디서나 같은 확률로 놓인다.
+          //     (재민 요구: "산 밖으로 드러난 부분은 20% 정도" — 기슭만 44%인 게 문제였다.)
+          sc = Math.pow(lf, 0.5) * (0.6 + hash2(gx, gy, 400 + k) * 0.8);
         } else {
           if (lf < 0.06) continue;                            // ★하한만 — 원판 대부분이 바위여도 좋다(산 속 광맥)
           sc = (0.10 + rf * 4.0) * Math.pow(lf, 0.25) * (0.6 + hash2(gx, gy, 400 + k) * 0.8);
@@ -265,7 +306,8 @@ for (const [cnt, R0, pk0] of tiers) {
     const center = [best.cx * CELL + 16, best.cy * CELL + 16];
     // ★자잘은 반경도 흩는다 — 전부 같은 크기면 지도에서 규칙적으로 보인다
     let Reff = R0;
-    if (R0 <= 12) Reff = MINOR_R_JITTER[0] + Math.round(hash2(best.cx, best.cy, 733) * (MINOR_R_JITTER[1] - MINOR_R_JITTER[0]));
+    if (ROCK_FILL) Reff = 9 + Math.round(hash2(best.cx, best.cy, 733) * 10);          // 9~19셀
+    else if (R0 <= 12) Reff = MINOR_R_JITTER[0] + Math.round(hash2(best.cx, best.cy, 733) * (MINOR_R_JITTER[1] - MINOR_R_JITTER[0]));
         // ★[재민 확정] 광종은 **지역 무관 전역 풀**(hanbando-minerals)에서 뽑는다.
     //   (한때 실제 산지 지도를 입혔다가 기각 — 지형이 가상인데 광물만 실지리를 따르면 어긋난다.)
     //   씨앗 731 은 품위 지터(500)와 **분리**한다 — 광종과 품위가 상관되면 안 된다.
@@ -279,7 +321,7 @@ for (const [cnt, R0, pk0] of tiers) {
     // ★[재민 확정] 자잘 광맥은 **플레이어 전용**이다 — minor:1 이 박히면 NPC/econ 은 영영 못 본다
     //   (terrain.isMajorOreAt · villages isOre/oreMinerals · zone _findNearestTerrainCluster/villageProduction · chunk 마을타입)
     const o = { name: '광맥' + (nextIdx++), center, radius: Reff * CELL, mineral, pk };
-    if (R0 <= 12) o.minor = 1;
+    if (R0 <= 12 || ROCK_FILL) o.minor = 1;   // ★산속 채움도 플레이어 전용(NPC 는 산을 못 부순다)
     { const _p = { cx: best.cx, cy: best.cy, r: Reff }; placed.push(_p); pbAdd(_p); }
     added.push(Object.assign({}, o, { _lf: +best.lf.toFixed(3), _rf: +best.rf.toFixed(3) }));
     made++;
