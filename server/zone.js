@@ -716,9 +716,9 @@ const COOK_RECIPES = {
 // accepts = 이 유형에 쓰는 재료(인벤 키), qty = 소비량, skill = 숙련 분야, slot = 장착 슬롯.
 const EQUIPMENT_RECIPES = {
   clothes: { label: '옷',   slot: 'clothes', skill: 'tailoring',  qty: 3, accepts: ['fur','ramie','leather','hide','fiber','hemp'] },
-  armor:   { label: '갑옷', slot: 'armor',   skill: 'smithing',   qty: 4, accepts: ['bronze','iron','leather','hide'] },
-  weapon:  { label: '무기', slot: 'weapon',  skill: 'smithing',   qty: 3, accepts: ['bronze','iron','stone','wood','bone','obsidian'] },
-  tool:    { label: '도구', slot: 'tool',    skill: 'toolmaking', qty: 3, accepts: ['bronze','iron','stone','wood','bone'] },
+  armor:   { label: '갑옷', slot: 'armor',   skill: 'smithing',   qty: 4, accepts: ['bronze','copper','iron','leather','hide'] },
+  weapon:  { label: '무기', slot: 'weapon',  skill: 'smithing',   qty: 3, accepts: ['bronze','copper','iron','stone','wood','bone','obsidian'] },
+  tool:    { label: '도구', slot: 'tool',    skill: 'toolmaking', qty: 3, accepts: ['bronze','copper','iron','stone','wood','bone'] },
 };
 // 제작 숙련: xp → 레벨(0~10). 유효 완성품 1개당 +1 xp(설계 §3 xp 원칙). 초반 빠르고 만렙 완만 — "레벨업하면 다음 제작품 수치가 오른다" 가시화.
 const CRAFT_XP_PER_LEVEL = 6; // 레벨당 6개 → 만렙 ~60개(플레이 스케일; econ NPC 2150노동일과 별개 척도).
