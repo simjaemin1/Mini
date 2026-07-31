@@ -88,7 +88,7 @@ const HB = ZONES.hanbando;
 const [ZW, ZH] = HB.size; // [70016, 130016]
 const real = (arr) => (arr || []).filter(f => !f._mirroredFrom);
 const hbRivers = real(hb.rivers);
-const hbRidges = real(hb.ridges).filter(r => r.name !== '동해산맥' && r.name !== '백서산괴');
+const hbRidges = real(hb.ridges).filter(r => r.name !== '동해산맥' && r.name !== '한울산괴');
 const hbForests = hb.forests || [];
 const hbLakes = real(hb.lakes);
 
@@ -146,31 +146,31 @@ const design = { jungwon_n: { rivers: [], ridges: [], forests: [] }, nippon: { r
 {
   const Z = 'jungwon_n'; const [zw, zh] = ZONES[Z].size; // [100000, 130016]
   // hanbando W변에서 jungwon_n으로 들어오는 진입점(존 local). hanbando x=0 ↔ jungwon_n x=zw(=100000).
-  // 1) 이화강: hanbando 서변을 따라 흐르는 큰 강(maxW≈1792). 서쪽으로 큰 강을 연장.
-  const ihwa = riverEnds.find(e => e.name === '이화강' && e.tag === 'start'); // (0,0) 부근
+  // 1) 배꽃강: hanbando 서변을 따라 흐르는 큰 강(maxW≈1792). 서쪽으로 큰 강을 연장.
+  const ihwa = riverEnds.find(e => e.name === '배꽃강' && e.tag === 'start'); // (0,0) 부근
   if (ihwa) {
     const ent = hbToZone(Z, ihwa.x, ihwa.y); // ≈ (100000, 0)
     // 서쪽 내륙으로 굽이쳐 흐르다 jungwon 서편 바다/저지로. 본류.
     const r = makeFlow(ent, [zw * 0.28, zh * 0.34], 1792, 900, 2600, 16, hashStr('jw_ihwa'));
-    design[Z].rivers.push({ name: '중원대하', path: r, _connect: '이화강(W) 연장' });
+    design[Z].rivers.push({ name: '중원대하', path: r, _connect: '배꽃강(W) 연장' });
     // 지류 2개 (트리)
     const b1 = r[Math.floor(r.length * 0.45)];
     design[Z].rivers.push({ name: '중원지류1', path: makeTributary(b1.pos, [zw * 0.42, zh * 0.62], 380, 130, 1100, 9, hashStr('jw_t1')), _connect: '중원대하 지류' });
     const b2 = r[Math.floor(r.length * 0.7)];
     design[Z].rivers.push({ name: '중원지류2', path: makeTributary(b2.pos, [zw * 0.20, zh * 0.12], 340, 130, 900, 8, hashStr('jw_t2')), _connect: '중원대하 지류' });
   }
-  // 2) 봉수천(W변, 작은 강 end (2016,57312)) → jungwon으로 잇는 작은 강
-  const bongsu = riverEnds.find(e => e.name === '봉수천');
+  // 2) 봉홧둑천(W변, 작은 강 end (2016,57312)) → jungwon으로 잇는 작은 강
+  const bongsu = riverEnds.find(e => e.name === '봉홧둑천');
   if (bongsu) {
     const ent = hbToZone(Z, bongsu.x, bongsu.y);
-    design[Z].rivers.push({ name: '봉계천', path: makeFlow(ent, [zw * 0.5, zh * 0.5], 220, 110, 1400, 10, hashStr('jw_bongsu')), _connect: '봉수천(W) 연장' });
+    design[Z].rivers.push({ name: '봉계천', path: makeFlow(ent, [zw * 0.5, zh * 0.5], 220, 110, 1400, 10, hashStr('jw_bongsu')), _connect: '봉홧둑천(W) 연장' });
   }
-  // 3) 서편 능선들(묘향·멸악·차령·노령의 서쪽 끝)이 W변 근처에서 끝남 → jungwon으로 이어지는 산줄기.
+  // 3) 서편 능선들(향목·먹뫼·솔재·너울의 서쪽 끝)이 W변 근처에서 끝남 → jungwon으로 이어지는 산줄기.
   //    hanbando 서편 능선 wmost를 jungwon local로 변환해 그 지점부터 서쪽으로 굽이치는 능선.
   const spineSeeds = [
-    { name: '멸악', ridge: '멸악산맥', to: [zw * 0.45, zh * 0.30], w: 1900 },
-    { name: '차령', ridge: '차령산맥', to: [zw * 0.40, zh * 0.66], w: 1700 },
-    { name: '노령', ridge: '노령산맥', to: [zw * 0.30, zh * 0.85], w: 1500 },
+    { name: '먹뫼', ridge: '먹뫼산맥', to: [zw * 0.45, zh * 0.30], w: 1900 },
+    { name: '솔재', ridge: '솔재산맥', to: [zw * 0.40, zh * 0.66], w: 1700 },
+    { name: '너울', ridge: '너울산맥', to: [zw * 0.30, zh * 0.85], w: 1500 },
   ];
   let ridgeIdx = 0;
   for (const s of spineSeeds) {
@@ -192,32 +192,32 @@ const design = { jungwon_n: { rivers: [], ridges: [], forests: [] }, nippon: { r
 {
   const Z = 'nippon'; const [zw, zh] = ZONES[Z].size; // [49984, 130016]
   // hanbando E변(x≈70016) ↔ nippon x≈0.
-  // 1) 대마강 end (70544,0 w448) → nippon으로 잇는 강
-  const daema = riverEnds.find(e => e.name === '대마강' && e.tag === 'end');
+  // 1) 들말강 end (70544,0 w448) → nippon으로 잇는 강
+  const daema = riverEnds.find(e => e.name === '들말강' && e.tag === 'end');
   if (daema) {
     const ent = hbToZone(Z, daema.x, daema.y); // ≈ (560, 0)
-    design[Z].rivers.push({ name: '동영천', path: makeFlow(ent, [zw * 0.55, zh * 0.30], 448, 220, 1500, 12, hashStr('np_daema')), _connect: '대마강(E) 연장' });
+    design[Z].rivers.push({ name: '동영천', path: makeFlow(ent, [zw * 0.55, zh * 0.30], 448, 220, 1500, 12, hashStr('np_daema')), _connect: '들말강(E) 연장' });
   }
-  // 2) 계수천 end (69792,87040 w448) → nippon 큰 강
-  const gyesu = riverEnds.find(e => e.name === '계수천' && e.tag === 'end');
+  // 2) 닭메천 end (69792,87040 w448) → nippon 큰 강
+  const gyesu = riverEnds.find(e => e.name === '닭메천' && e.tag === 'end');
   if (gyesu) {
     const ent = hbToZone(Z, gyesu.x, gyesu.y);
     const r = makeFlow(ent, [zw * 0.62, zh * 0.66], 448, 240, 1700, 14, hashStr('np_gyesu'));
-    design[Z].rivers.push({ name: '닛폰대천', path: r, _connect: '계수천(E) 연장' });
+    design[Z].rivers.push({ name: '닛폰대천', path: r, _connect: '닭메천(E) 연장' });
     const b = r[Math.floor(r.length * 0.5)];
     design[Z].rivers.push({ name: '닛폰지류', path: makeTributary(b.pos, [zw * 0.45, zh * 0.9], 300, 120, 1000, 9, hashStr('np_t1')), _connect: '닛폰대천 지류' });
   }
-  // 3) 죽계천 end (67771,89594) → 작은 강
-  const jukgye = riverEnds.find(e => e.name === '죽계천');
+  // 3) 대숲골천 end (67771,89594) → 작은 강
+  const jukgye = riverEnds.find(e => e.name === '대숲골천');
   if (jukgye) {
     const ent = hbToZone(Z, jukgye.x, jukgye.y);
-    design[Z].rivers.push({ name: '죽계연천', path: makeFlow(ent, [zw * 0.5, zh * 0.78], 200, 110, 1100, 9, hashStr('np_jukgye')), _connect: '죽계천(E) 연장' });
+    design[Z].rivers.push({ name: '죽계연천', path: makeFlow(ent, [zw * 0.5, zh * 0.78], 200, 110, 1100, 9, hashStr('np_jukgye')), _connect: '대숲골천(E) 연장' });
   }
-  // 4) 함경산맥 동단 (E변 (67200,4200), 바깥 dx+) → nippon으로 이어지는 산줄기
-  const hamgyeong = ridgeEnds.find(e => e.name === '함경산맥');
+  // 4) 눈메산맥 동단 (E변 (67200,4200), 바깥 dx+) → nippon으로 이어지는 산줄기
+  const hamgyeong = ridgeEnds.find(e => e.name === '눈메산맥');
   if (hamgyeong) {
     const ent = hbToZone(Z, hamgyeong.x, hamgyeong.y);
-    design[Z].ridges.push({ name: '닛폰북령', path: makeFlow(ent, [zw * 0.6, zh * 0.18], 1400, 2200, 2200, 11, hashStr('np_hamgyeong')), _connect: '함경산맥 동단 연장' });
+    design[Z].ridges.push({ name: '닛폰북령', path: makeFlow(ent, [zw * 0.6, zh * 0.18], 1400, 2200, 2200, 11, hashStr('np_hamgyeong')), _connect: '눈메산맥 동단 연장' });
   }
   // nippon 척량 산맥 1개 (남북 등줄기)
   design[Z].ridges.push({ name: '닛폰척량', path: makeFlow([zw * 0.5, zh * 0.25], [zw * 0.42, zh * 0.92], 1800, 1400, 3000, 14, hashStr('np_spine')) });
@@ -232,38 +232,38 @@ const design = { jungwon_n: { rivers: [], ridges: [], forests: [] }, nippon: { r
   const Z = 'bering'; const [zw, zh] = ZONES[Z].size; // [160000, 49984]
   // hanbando N변(y≈0, off [409984,49984]) ↔ bering(off [409984,0]) 하단(y≈zh=49984).
   //   hanbando local x → bering local x (off_x 동일). hanbando y=0 ↔ bering y=zh.
-  // 1) 백두대간 start (54400,1500 w1187, 바깥 dy<0 = 북향) → bering으로 이어지는 산줄기 (대륙 척량)
-  const baekdu = ridgeEnds.find(e => e.name === '백두대간');
+  // 1) 한울대간 start (54400,1500 w1187, 바깥 dy<0 = 북향) → bering으로 이어지는 산줄기 (대륙 척량)
+  const baekdu = ridgeEnds.find(e => e.name === '한울대간');
   if (baekdu) {
     const ent = hbToZone(Z, baekdu.x, baekdu.y); // ≈ (54400, 49484)
     const rg = makeFlow(ent, [zw * 0.62, zh * 0.18], 1500, 2600, 4000, 14, hashStr('bg_baekdu'));
-    design[Z].ridges.push({ name: '베링산령', path: rg, _connect: '백두대간 북단 연장' });
+    design[Z].ridges.push({ name: '눈벌산령', path: rg, _connect: '한울대간 북단 연장' });
   }
-  // 2) 얄리강 start (54400,0 w320, 북향) → 천지(54400,0 r1120) 발원 → bering 북쪽 큰 강
-  const yali = riverEnds.find(e => e.name === '얄리강' && e.tag === 'start');
+  // 2) 너울강 start (54400,0 w320, 북향) → 한울못(54400,0 r1120) 발원 → bering 북쪽 큰 강
+  const yali = riverEnds.find(e => e.name === '너울강' && e.tag === 'start');
   if (yali) {
     const ent = hbToZone(Z, yali.x, yali.y);
     const r = makeFlow(ent, [zw * 0.5, zh * 0.22], 320, 600, 3000, 14, hashStr('bg_yali'));
-    design[Z].rivers.push({ name: '베링대하', path: r, _connect: '얄리강(N)·천지 연장' });
+    design[Z].rivers.push({ name: '베링대하', path: r, _connect: '너울강(N)·한울못 연장' });
     const b = r[Math.floor(r.length * 0.55)];
     design[Z].rivers.push({ name: '베링지류', path: makeTributary(b.pos, [zw * 0.7, zh * 0.7], 360, 130, 1400, 10, hashStr('bg_t1')), _connect: '베링대하 지류' });
   }
-  // 3) 청계천(N변 (13696,0)) → bering 서쪽 강
-  const cheonggye = riverEnds.find(e => e.name === '청계천');
+  // 3) 맑내천(N변 (13696,0)) → bering 서쪽 강
+  const cheonggye = riverEnds.find(e => e.name === '맑내천');
   if (cheonggye) {
     const ent = hbToZone(Z, cheonggye.x, cheonggye.y);
-    design[Z].rivers.push({ name: '청류대천', path: makeFlow(ent, [zw * 0.18, zh * 0.4], 256, 140, 2000, 12, hashStr('bg_cheonggye')), _connect: '청계천(N) 연장' });
+    design[Z].rivers.push({ name: '청류대천', path: makeFlow(ent, [zw * 0.18, zh * 0.4], 256, 140, 2000, 12, hashStr('bg_cheonggye')), _connect: '맑내천(N) 연장' });
   }
-  // 4) 송림천/백곡천 (N변) → 합쳐 1개 강
-  const songrim = riverEnds.find(e => e.name === '송림천');
+  // 4) 솔숲천/흰골천 (N변) → 합쳐 1개 강
+  const songrim = riverEnds.find(e => e.name === '솔숲천');
   if (songrim) {
     const ent = hbToZone(Z, songrim.x, songrim.y);
-    design[Z].rivers.push({ name: '송계천', path: makeFlow(ent, [zw * 0.32, zh * 0.55], 200, 120, 1600, 10, hashStr('bg_songrim')), _connect: '송림천(N) 연장' });
+    design[Z].rivers.push({ name: '송계천', path: makeFlow(ent, [zw * 0.32, zh * 0.55], 200, 120, 1600, 10, hashStr('bg_songrim')), _connect: '솔숲천(N) 연장' });
   }
-  // bering 동서 횡단 산맥 1개 (베링산령과 만나게)
-  design[Z].ridges.push({ name: '베링횡령', path: makeFlow([zw * 0.2, zh * 0.5], [zw * 0.88, zh * 0.42], 1600, 2000, 3000, 16, hashStr('bg_cross')) });
+  // bering 동서 횡단 산맥 1개 (눈벌산령과 만나게)
+  design[Z].ridges.push({ name: '눈벌횡령', path: makeFlow([zw * 0.2, zh * 0.5], [zw * 0.88, zh * 0.42], 1600, 2000, 3000, 16, hashStr('bg_cross')) });
   for (const [nm, cx, cy, rx, ry, dm] of [
-    ['베링수해', zw * 0.45, zh * 0.6, 11000, 6000, 1.8],
+    ['눈벌수해', zw * 0.45, zh * 0.6, 11000, 6000, 1.8],
     ['북림숲', zw * 0.75, zh * 0.7, 9000, 5500, 1.5],
     ['설원림', zw * 0.25, zh * 0.78, 8000, 5000, 1.3],
   ]) design[Z].forests.push({ name: nm, center: [Math.round(cx), Math.round(cy)], rx, ry, densityMult: dm });
@@ -291,7 +291,7 @@ const design = { jungwon_n: { rivers: [], ridges: [], forests: [] }, nippon: { r
   const jr = makeFlow([zw * 0.36, 0], [zw * 0.46, zh * 0.99], 900, 1300, 2000, 13, hashStr('js_main'));
   design[Z].rivers.push({ name: '중원남대하', path: jr, _connect: '중원대하 남단 연장' });
   design[Z].rivers.push({ name: '중원남지류', path: makeTributary(jr[Math.floor(jr.length * 0.5)].pos, [zw * 0.72, zh * 0.35], 320, 130, 1100, 9, hashStr('js_t')), _connect: '중원남대하 지류' });
-  design[Z].ridges.push({ name: '중원남산맥', path: makeFlow([zw * 0.12, 0], [zw * 0.3, zh * 0.62], 1500, 1000, 2600, 12, hashStr('js_rg')), _connect: '중원산맥3(노령) 남단 연장' });
+  design[Z].ridges.push({ name: '중원남산맥', path: makeFlow([zw * 0.12, 0], [zw * 0.3, zh * 0.62], 1500, 1000, 2600, 12, hashStr('js_rg')), _connect: '중원산맥3(너울) 남단 연장' });
   for (const [nm, cx, cy, rx, ry, dm] of [
     ['중원남수해', zw * 0.55, zh * 0.4, 9000, 6000, 1.6],
     ['남원숲', zw * 0.25, zh * 0.7, 7000, 5000, 1.4],

@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 // === scripts/refine-world.js — map-editor 작업저장(editorWork) 다듬기 ===
 // 강/산맥/호수 이름을 존(나라)별 문화 분위기 가공 이름으로 정리.
-//  - 실제 지명(함경/묘향/멸악/차령/노령산맥, 청계천, 금강, 백두대간, 천지, 위수/락수/회수/황하 등) → 가공 이름 교체
+//  - 실제 지명(백두/함경/묘향/멸악/차령/노령산맥, 청계천, 금강, 천지 등) → 가공 이름 교체
 //  - 자동이름(강1·산맥2…)·"경계X" 자리표시 → 가공 이름
 //  - 문화에 안 맞는 접미(닛폰의 '~천' 등) → 해당 문화 접미로 재명명 (닛폰=~가와, 중원=~하/수 …)
-//  - 지역 정체성 이름(닛폰*·중원*·베링*·시바라*)과 사용자가 아끼는 '낙만강'은 유지
+//  - 지역 정체성 이름(닛폰*·중원*·베링*·시바라*)과 사용자가 아끼는 '한여울강'은 유지
 // 강 폭: 하류(바다 쪽)로 갈수록 + 길수록 넓게.  산맥 폭: 길수록 굵고 양 끝은 가늘게.
 // 강/산맥 경로는 Chaikin 1회로 가볍게 매끈하게.
 // 사용: node scripts/refine-world.js [입력.json] [출력.json]  (기본 ../../world v3.json → ../../world v3 refined.json)
@@ -48,7 +48,7 @@ const FIT = {
   sibara:{ river:['강','류'], ridge:['산맥','령','스크령'], lake:['호'] },
 };
 // 실제 유명 지명 — 부분일치(길어서 안전한 것)
-const REAL_SUB = ['함경','낭림','묘향','멸악','차령','노령','태백','소백','백두','마식령','지리산','설악','한라','속리',
+const REAL_SUB = ['백두','낭림','묘향','멸악','차령','노령','태백','소백','함경','마식령','지리산','설악','한라','속리',
   '청계천','금강','한강','낙동','대동강','압록','두만','섬진','영산강','청천강','예성','임진',
   '황하','황수','장강','양자','위수','락수','낙수','회수','회하','한수',
   '천지','백록담','소양','경포','청초','영랑','파로','의암'];
@@ -58,7 +58,7 @@ const REAL = REAL_SUB; // 호환
 
 const isGeneric = n => !n || /^(강|산맥|능선|호수|호|숲|고개|river|ridge|lake|forest|pass)\s*\d*$/i.test(String(n).trim());
 const isReal = n => REAL_EXACT.has(String(n)) || REAL_SUB.some(s => String(n).includes(s));
-const wl = (n,z) => n==='낙만강' || (LBL[z] && String(n).startsWith(LBL[z]));
+const wl = (n,z) => n==='한여울강' || (LBL[z] && String(n).startsWith(LBL[z]));
 const fits = (n,z,t) => ((FIT[z]||FIT.hanbando)[t]||[]).some(s => String(n).endsWith(s));
 function needRename(n,z,t){
   if (isGeneric(n) || /^경계/.test(String(n))) return true;
@@ -91,7 +91,7 @@ const centroid = f => f.center ? [f.center.x,f.center.y] : (()=>{ const p=f.path
 for (const f of F){
   if (!['river','ridge','lake'].includes(f.type)) continue;
   const [x,y]=centroid(f); const z=zoneAt(x,y)||'hanbando';
-  if (f.type==='ridge' && String(f.name||'').includes('백두')) { f._spine=true; f._ren=true; continue; }
+  if (f.type==='ridge' && String(f.name||'').includes('한울')) { f._spine=true; f._ren=true; continue; }
   f._ren = needRename(f.name, z, f.type);
   if (!f._ren) { used[z]=used[z]||new Set(); used[z].add(f.name); }
 }

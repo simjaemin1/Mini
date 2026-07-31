@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 // === scripts/export-world-for-editor.js — **게임이 로드하는 지형** 전 존 → editor-world.json ===
 //
-// ★11차 재작성 이유(재민 지적: "묘향호에 붙어있는 강도 그대로고, 최북단 경계강도 그대로야")
+// ★11차 재작성 이유(재민 지적: "향목호에 붙어있는 강도 그대로고, 최북단 경계강도 그대로야")
 //   맞는 지적이었는데 원인은 지형이 아니라 **에디터가 옛 파일을 보고 있던 것**이었다.
 //   옛 이 스크립트는 존마다 다른 데서 긁어 왔다:
-//     · hanbando  ← ../hanbando_terrain_v2.json   (게임의 **조상**. 묘향호·경계강·경계산맥이 여기 있다)
+//     · hanbando  ← ../hanbando_terrain_v2.json   (게임의 **조상**. 향목호·경계강·경계산맥이 여기 있다)
 //     · 이웃 5존   ← editor-world-region.json      (design-region.js 산출 = 또 다른 세계)
 //     · 나머지     ← 빈 공간
 //   그래서 editor-world.json 을 열면 **게임에 없는 호수와 강**이 보였다. 고친 게 안 보이는 게 당연했다.

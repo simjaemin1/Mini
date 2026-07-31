@@ -26,12 +26,12 @@ const DESIGN_SVG  = path.join(__dirname, '..', '..', 'hanbando_full.svg');
 // === 산맥 정의 — 실제 지리 모티브 ===
 const RIDGES = [
   {
-    name: '백두대간', width: 2200,
+    name: '한울대간', width: 2200,
     path: [
-      [54400, 1500, 1600],   // 천지 남쪽 기슭에서 시작 [x, y, width]
+      [54400, 1500, 1600],   // 한울못 남쪽 기슭에서 시작 [x, y, width]
       [56500, 8000, 2200],
       [57500, 16000, 2400],
-      [55000, 25000, 2400],  // 낭림 분기점
+      [55000, 25000, 2400],  // 너울림 분기점
       [53000, 35000, 2200],
       [54000, 45000, 2200],
       [52500, 55000, 2400],  // 태백 구간
@@ -45,7 +45,7 @@ const RIDGES = [
     ],
   },
   {
-    name: '함경산맥', width: 1500,
+    name: '눈메산맥', width: 1500,
     path: [
       [56800, 10000, 1500],
       [62000, 7000, 1400],
@@ -53,16 +53,16 @@ const RIDGES = [
     ],
   },
   {
-    name: '묘향산맥', width: 1300,
+    name: '향목산맥', width: 1300,
     path: [
       [24000, 20000, 1100],
       [31000, 23000, 1300],
       [38000, 26500, 1300],
-      [45500, 29500, 1200], // 백두대간 서쪽 자락에 근접
+      [45500, 29500, 1200], // 한울대간 서쪽 자락에 근접
     ],
   },
   {
-    name: '멸악산맥', width: 1000,
+    name: '먹뫼산맥', width: 1000,
     path: [
       [13000, 39000, 900],
       [22000, 42500, 1000],
@@ -70,7 +70,7 @@ const RIDGES = [
     ],
   },
   {
-    name: '차령산맥', width: 1000,
+    name: '솔재산맥', width: 1000,
     path: [
       [16000, 70000, 900],
       [25500, 74500, 1000],
@@ -78,7 +78,7 @@ const RIDGES = [
     ],
   },
   {
-    name: '노령산맥', width: 950,
+    name: '너울산맥', width: 950,
     path: [
       [12000, 92500, 850],
       [19500, 96500, 950],
@@ -89,24 +89,24 @@ const RIDGES = [
 
 // 수동 고개 — 역사적 고개 모티브. radius 안은 통행 가능.
 const MANUAL_PASSES = [
-  { name: '철령',     pos: [53600, 40000], radius: 1500 },
-  { name: '대관령',   pos: [53000, 60000], radius: 1500 },
-  { name: '죽령',     pos: [47500, 88000], radius: 1400 },
-  { name: '문경새재', pos: [40500, 96500], radius: 1400 },
-  { name: '추풍령',   pos: [34500, 104000], radius: 1400 },
-  { name: '북계곡',   pos: [56600, 9000],  radius: 1300 }, // 백두대간-함경산맥 갈림 통로
+  { name: '쇠재',     pos: [53600, 40000], radius: 1500 },
+  { name: '한재',   pos: [53000, 60000], radius: 1500 },
+  { name: '대숲재',     pos: [47500, 88000], radius: 1400 },
+  { name: '모새재', pos: [40500, 96500], radius: 1400 },
+  { name: '갈바람재',   pos: [34500, 104000], radius: 1400 },
+  { name: '북계곡',   pos: [56600, 9000],  radius: 1300 }, // 한울대간-눈메산맥 갈림 통로
 ];
 
 // === 숲 정의 — ellipse + 중심 밀도(가장자리로 falloff) ===
 const FORESTS = [
-  { name: '개마수해',   center: [53000, 11000], rx: 11000, ry: 7000,  densityMult: 3.2 },
-  { name: '낭림숲',     center: [50000, 30000], rx: 7000,  ry: 9000,  densityMult: 2.6 },
-  { name: '태백수해',   center: [55500, 62000], rx: 6500,  ry: 16000, densityMult: 2.8 },
-  { name: '소백숲',     center: [38000, 99000], rx: 8000,  ry: 6000,  densityMult: 2.6 },
-  { name: '지리수해',   center: [28500, 112500], rx: 8500, ry: 6000,  densityMult: 3.2 },
-  { name: '묘향숲',     center: [33000, 24500], rx: 9000,  ry: 4500,  densityMult: 2.2 },
-  { name: '한양숲',     center: [27500, 58000], rx: 5000,  ry: 4000,  densityMult: 1.8 },
-  { name: '서호잡목림', center: [14000, 78000], rx: 5500,  ry: 4000,  densityMult: 1.8 },
+  { name: '덕미수해',   center: [53000, 11000], rx: 11000, ry: 7000,  densityMult: 3.2 },
+  { name: '너울림숲',     center: [50000, 30000], rx: 7000,  ry: 9000,  densityMult: 2.6 },
+  { name: '한밝수해',   center: [55500, 62000], rx: 6500,  ry: 16000, densityMult: 2.8 },
+  { name: '작밝숲',     center: [38000, 99000], rx: 8000,  ry: 6000,  densityMult: 2.6 },
+  { name: '두리수해',   center: [28500, 112500], rx: 8500, ry: 6000,  densityMult: 3.2 },
+  { name: '향목숲',     center: [33000, 24500], rx: 9000,  ry: 4500,  densityMult: 2.2 },
+  { name: '벌말숲',     center: [27500, 58000], rx: 5000,  ry: 4000,  densityMult: 1.8 },
+  { name: '샛못잡목림', center: [14000, 78000], rx: 5500,  ry: 4000,  densityMult: 1.8 },
 ];
 
 // === 강 교차 자동 고개 (계곡) ===
@@ -249,7 +249,7 @@ function renderSvg(d, passes) {
       out.push(`<text x="${sx(mp[0]).toFixed(1)}" y="${(sy(mp[1]) + 2.5).toFixed(1)}" text-anchor="middle" font-size="7" fill="#fff" font-weight="bold" font-family="sans-serif">${esc(r.name)}</text>`);
     }
   }
-  // 호수 (bering 천지 포함 — 이웃 zone 것은 offset 변환)
+  // 호수 (bering 한울못 포함 — 이웃 zone 것은 offset 변환)
   const OFF = { hanbando: [409984, 49984], bering: [409984, 0], jungwon_n: [309984, 49984], nippon: [480000, 49984] };
   for (const [zid, zd] of Object.entries(d)) {
     for (const lk of zd.lakes || []) {

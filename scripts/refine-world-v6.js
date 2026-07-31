@@ -33,7 +33,7 @@ const POOLS={
 };
 const ZP={hanbando:'hanbando',nippon:'nippon',jungwon_n:'jungwon',jungwon_s:'jungwon',bering:'bering',sibara:'sibara',nordan:'nordan',europa:'europa',sahar:'sahar',centaria:'centaria',hindgang:'hindgang'};
 
-const REAL_SUB=['함경','낭림','묘향','멸악','차령','노령','태백','소백','백두','마식령','지리산','설악','한라','속리','청계천','금강','한강','낙동','대동강','압록','두만','섬진','영산강','청천강','예성','임진','황하','황수','장강','양자','위수','락수','낙수','회수','회하','한수','천지','백록담','소양','경포','청초','영랑','파로','의암'];
+const REAL_SUB=['함경','너울림','향목','먹뫼','솔재','너울','태백','소백','한울','마식령','지리산','설악','한라','속리','맑내천','금강','한강','낙동','대동강','너울','두만','섬진','영산강','청천강','예성','임진','황하','황수','장강','양자','위수','락수','낙수','회수','회하','한수','한울못','백록담','소양','경포','청초','영랑','파로','의암'];
 const REAL_EXACT=new Set(['태산','화산','형산','항산','숭산','려산','여산','아미산','무당산','곤륜산','천산','곤산','오악','청성산','닐기리','아무다리야','시르다리야','이식쿨']);
 const isGeneric=n=>!n||/^경계/.test(String(n).trim())||/^(강|산맥|능선|호수|호|숲|고개|river|ridge|lake|forest|pass)\s*\d*$/i.test(String(n).trim());
 const isReal=n=>REAL_EXACT.has(String(n))||REAL_SUB.some(s=>String(n).includes(s));

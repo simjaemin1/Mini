@@ -52,7 +52,7 @@ const ok = (c, m) => { console.log((c ? '  ✓ ' : '  ✗ ') + m); if (!c) fail+
 const spots = [];
 for (const v of (terrain.getZoneVillages(ZID) || [])) if (/광산/.test(v.name)) spots.push([v.name, Math.round(v.x / 32), Math.round(v.y / 32)]);
 // ★계곡 표본은 **지형 파일에서 뽑는다** — 좌표를 손으로 박아 두면 계곡을 옮긴 뒤 조용히 엉뚱한 곳을 재게 된다
-//   (11차에 무산계곡을 T자 접점에서 33셀 밖으로 옮기고 나서 실제로 그럴 뻔했다).
+//   (11차에 너덜계곡을 T자 접점에서 33셀 밖으로 옮기고 나서 실제로 그럴 뻔했다).
 for (const v of (require(path.join(__dirname, '..', 'server', 'hanbando-terrain.json'))[ZID].valleys || [])) {
   const c = v.path[Math.floor(v.path.length / 2)];
   const q = c.pos ? c.pos : [c.x, c.y];

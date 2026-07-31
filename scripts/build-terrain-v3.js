@@ -212,7 +212,7 @@ function processRidge(ridge, rivers) {
       const fromEnd = pts.length - 1 - i;
       const fromStart = i;
       if (fromEnd < 4) w *= 0.45 + 0.55 * (fromEnd / 4);
-      if (!ridge.pinStart && fromStart < 3 && ridge.name !== '백두대간') w *= 0.55 + 0.45 * (fromStart / 3);
+      if (!ridge.pinStart && fromStart < 3 && ridge.name !== '한울대간') w *= 0.55 + 0.45 * (fromStart / 3);
       pts[i].width = Math.max(350, Math.round(w));
     }
   }
@@ -813,7 +813,7 @@ function normalizeToTree(rivers, tree, zoneSize) {
 //   경계 정렬 장벽(경계 강 + 경계 능선)을 제거해 경계를 평범한 땅으로 → 유저가 경계 인지 못함.
 //   경계 횡단 상호작용은 핸드오프 + cross-zone 전투(Phase 5-I)가 담당.
 const OPEN_BORDERS = process.env.OPEN_BORDERS === '1';
-const BOUNDARY_RIDGES = ['동해산맥', '백서산괴']; // 경계 정렬 능선
+const BOUNDARY_RIDGES = ['동해산맥', '한울산괴']; // 경계 정렬 능선
 console.log(`지형 빌드 v3 (트리)${OPEN_BORDERS ? ' [OPEN_BORDERS=경계 평지화]' : ''}:`);
 const d = JSON.parse(fs.readFileSync(SRC_JSON, 'utf8'));
 for (const z of Object.keys(d)) {
@@ -880,7 +880,7 @@ for (const mod of DATA_MODULES) {
   const z = mod.zone;
   let ridgeDefs = (mod.ridges || []);
   if (OPEN_BORDERS) ridgeDefs = ridgeDefs.filter(r => !BOUNDARY_RIDGES.includes(r.name)); // 경계 능선 제거
-  const spineDef = ridgeDefs.find(r => r.name === '백두대간');
+  const spineDef = ridgeDefs.find(r => r.name === '한울대간');
   const otherDefs = ridgeDefs.filter(r => r !== spineDef);
   const processed = []; let spineProc = null;
   if (spineDef) { spineProc = processRidge(spineDef, d[z].rivers); processed.push(spineProc); }
@@ -1130,7 +1130,7 @@ for (const mod of DATA_MODULES) {
       return false;
     };
 
-    // 단일 매끄러운 곡선 토막 (백두대간식 spline) — 유저 요구(칼각/ㄱ자 금지):
+    // 단일 매끄러운 곡선 토막 (한울대간식 spline) — 유저 요구(칼각/ㄱ자 금지):
     //   경계를 "따라 직선으로" 가지 않는다. 경계를 스치듯(graze) 지나며 내륙 target으로
     //   처음부터 끝까지 하나의 부드러운 곡선으로 휘어 들어간다.
     //   구조: 3~4개 control point를 지나는 Catmull-Rom spline → 조밀 샘플 → Chaikin.
@@ -1180,7 +1180,7 @@ for (const mod of DATA_MODULES) {
       const wEnd = kind === 'ridge' ? 700 : 200;
       const dStart = kind === 'ridge' ? (rng() * 110) : (rng() * 90); // 경계 끝 depth ~0 (straddle)
       // ---- Control points (along, depth) ----
-      // 백두대간식 완만한 단일 곡선: depth가 처음부터 끝까지 단조롭게(아주 천천히 시작) 일어나
+      // 한울대간식 완만한 단일 곡선: depth가 처음부터 끝까지 단조롭게(아주 천천히 시작) 일어나
       //   "평행 직선 후 급커브"가 생기지 않게 한다. 경계 그레이즈는 시작부 작은 depth로 표현
       //   (솔기 커버는 width 밴드가 담당) — 곡선 자체는 한 점에서 꺾지 않는다.
       const aDir = (aTgt >= along0) ? 1 : -1;              // target 쪽 along 진행 방향
@@ -1234,7 +1234,7 @@ for (const mod of DATA_MODULES) {
     };
 
     // ---- 내륙 연결점(target) 탐색 헬퍼 ----
-    // 능선 target: 기존 능선(백두대간/묘향/멸악/차령/노령/함경) 중 슬롯 along범위 [aLo,aHi] 안,
+    // 능선 target: 기존 능선(한울대간/향목/먹뫼/솔재/너울/함경) 중 슬롯 along범위 [aLo,aHi] 안,
     //   경계로부터 depth가 [7500,15000]인 중심선 점. 적정 depth(~11000)에 가까운 점 선택(A2식 지맥 부착).
     //   반환 {pos, along, dep}.
     //   슬롯 중심(aMid) 근처를 선호하되 along은 강제하지 않음(없으면 가까운 능선으로 자연스럽게).
@@ -1493,7 +1493,7 @@ for (const mod of DATA_MODULES) {
           const checkPath = [{ pos: [...endPt.pos], width: baseW }, ...extSm];
           if (extCrosses(checkPath, r)) continue;          // 다른 강·능선 교차 → 건너뜀(audit 안전)
           // A11 회피: 연장 끝(새 자유단)이 이 강의 반대 끝(기존 mouth)이 닿은 강과 같은 강에
-          //   band-touch 하면 고리/섬 → 건너뜀. (계수천처럼 경계 평행 강에 straddle이 되돌아오는 경우)
+          //   band-touch 하면 고리/섬 → 건너뜀. (닭메천처럼 경계 평행 강에 straddle이 되돌아오는 경우)
           const newEndPt = extSm[extSm.length - 1];
           let loopBack = false;
           for (const o of d[z].rivers) {
@@ -1613,7 +1613,7 @@ for (const z of Object.keys(d)) {
 }
 
 // === 자체검증: 2500px 윈도 최대 방향변화(누적 |Δθ|) — 칼각 검출 ===
-//   경계산맥 각각 ≤35° 목표(백두대간 동일 지표를 비교 기준으로 출력).
+//   경계산맥 각각 ≤35° 목표(한울대간 동일 지표를 비교 기준으로 출력).
 {
   const WIN = 2500, STEP = 120;
   const resample = (path) => {
@@ -1660,8 +1660,8 @@ for (const z of Object.keys(d)) {
       const over = bvals.filter(v => v > 35).length;
       console.log('    -> 경계산맥 max=' + Math.max(...bvals).toFixed(1) + '° mean=' + (bvals.reduce((a,b)=>a+b,0)/bvals.length).toFixed(1) + '° / 35° 초과 ' + over + '개 / width 전체 ' + Math.min(...wmins) + '~' + Math.max(...wmaxs));
     }
-    const bd = hb.ridges.find(r => r.name === '백두대간' && !r._mirroredFrom);
-    if (bd) { const m = winMetric(bd.path); console.log('    [기준] 백두대간 len=' + m.len + ' maxWinTurn=' + m.maxTurn.toFixed(1) + '°'); }
+    const bd = hb.ridges.find(r => r.name === '한울대간' && !r._mirroredFrom);
+    if (bd) { const m = winMetric(bd.path); console.log('    [기준] 한울대간 len=' + m.len + ' maxWinTurn=' + m.maxTurn.toFixed(1) + '°'); }
   }
 }
 

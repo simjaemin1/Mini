@@ -211,42 +211,53 @@ ok(T.oreProbAt('hanbando', cl.center[0] + 3000 * 32, cl.center[1]) === 0, '광�
 }
 
 {
-  // ★★[재민 지시] "한반도 내의 실제 광물 분포도를 조사해서, 그거에 맞게 조절해줘"
-  //   광종이 좌표 해시로 **전국 균등**이던 걸 실제 산지 지도로 바꿨다(server/hanbando-minerals.js).
-  //   여기서 지키는 것: ①저장 광물 ≡ 지도  ②각 지역의 대표 광종이 실제로 그 지역에서 1위
+  // ★★[재민 확정] "지역은 무관해야 해 … 자원도 골고루 섞이게 해줘"
+  //   한때 실제 한반도 산지 지도(함북 철·평북 금·춘천 옥 …)를 입혔다가 **기각**됐다.
+  //   지형이 실존 지명을 안 쓰는 가상 세계인데 광물만 실제 지리를 따르면 어긋나고,
+  //   지역 전문화가 강하면 어느 마을은 특정 광종을 영영 못 만진다.
+  //   ⇒ 여기서 지키는 것: ①저장 광물 ≡ 전역 풀  ②구역별 광종 비율이 **순수 무작위와 구분 안 됨**
   const HM = require(path.join(__dirname, '..', 'server', 'hanbando-minerals'));
   const h2 = (ix, iy, sd) => { let h = (ix|0)*374761393 + (iy|0)*668265263 + (sd|0)*1274126177; h = Math.imul(h ^ (h>>>13), 1274126177); return ((h ^ (h>>>16))>>>0)/4294967295; };
-  let bad = 0;
-  const byReg = {};
-  for (const o of d0.ores) {
-    const cx = Math.floor(o.center[0]/32), cy = Math.floor(o.center[1]/32);
-    if (o.mineral !== HM.mineralAt(cx, cy, h2(cx, cy, 731))) bad++;
-    const r = HM.regionAt(cx, cy).name;
-    (byReg[r] = byReg[r] || {})[o.mineral] = ((byReg[r] || {})[o.mineral] || 0) + 1;
-  }
-  ok(bad === 0, '★저장 광물 ≡ 실제 산지 지도 (' + bad + '개 불일치) — 지도를 고치면 terrain.json 도 다시 매겨야 한다');
-  console.log('    지역별 1위 광종:');
-  const want = { 함경북도: 'iron', 평안북도: 'gold', 평안남도: 'coal', 황해도: 'iron', 춘천: 'jade_raw', 경상북도: 'tungsten' };
-  let allok = true;
-  for (const r of HM.REGIONS) {
-    const m = byReg[r.name] || {};
-    const top = Object.entries(m).sort((a, b) => b[1] - a[1])[0];
-    if (!top) continue;
-    const n = Object.values(m).reduce((a, b) => a + b, 0);
-    console.log('      ' + r.name.padEnd(7) + String(n).padStart(5) + '개 · 1위 ' + top[0].padEnd(9) + (top[1]/n*100).toFixed(0) + '%' +
-      (want[r.name] ? '   (기대 ' + want[r.name] + ')' : ''));
-    if (want[r.name] && top[0] !== want[r.name]) allok = false;
-  }
-  ok(allok, '★지역별 1위 광종이 실제와 맞는다 — 함북 철 · 평북 금 · 평남 석탄 · 황해 철 · 춘천 옥 · 경북 텅스텐');
   {
-    const jade = d0.ores.filter((o) => o.mineral === 'jade_raw');
-    const inChun = jade.filter((o) => HM.regionAt(Math.floor(o.center[0]/32), Math.floor(o.center[1]/32)).name === '춘천').length;
-    console.log('      옥 광맥 ' + jade.length + '개 중 춘천권 ' + inChun + '개 (' + (inChun/jade.length*100).toFixed(0) + '%)');
-    ok(inChun / jade.length > 0.4, '  옥은 춘천권에 몰려 있다 — 한국 유일의 연옥 산지');
-    const tin = d0.ores.filter((o) => o.mineral === 'tin');
-    const belt = tin.filter((o) => { const r = HM.regionAt(Math.floor(o.center[0]/32), Math.floor(o.center[1]/32)).name; return r === '강원도' || r === '경상북도'; }).length;
-    console.log('      주석 광맥 ' + tin.length + '개 중 강원·경북 벨트 ' + belt + '개');
-    ok(belt === tin.length, '  주석은 봉화-울진-영월 벨트에만 난다 — 실제 국내 주석 산지가 거기뿐이었다');
+    // ①저장 광물 ≡ 풀 (대·중·소는 최소보장 보정이 걸리므로 자잘만 엄격히 본다)
+    let bad = 0, n = 0;
+    for (const o of d0.ores) { if (!o.minor) continue; n++;
+      if (o.mineral !== HM.mineralAt(0, 0, h2(Math.floor(o.center[0]/32), Math.floor(o.center[1]/32), 731))) bad++; }
+    ok(bad === 0, '★자잘 광맥의 광종 ≡ 전역 풀 (' + bad + '/' + n + ' 불일치)');
+  }
+  {
+    // ②지역 무관 — 구역별 광종 비율의 산포가 **이항분포 기대치와 같아야** 한다.
+    //   지역 편중이 있으면 관측 CV 가 기대 CV 보다 크게 나온다(구 산지 지도에서 실제로 그랬다).
+    const GX = 8, GY = 15, W = 2188, H = 4063;
+    const grid = {}, cnt = {};
+    for (const o of d0.ores) {
+      cnt[o.mineral] = (cnt[o.mineral] || 0) + 1;
+      const gx = Math.min(GX-1, Math.floor(o.center[0]/32/W*GX)), gy = Math.min(GY-1, Math.floor(o.center[1]/32/H*GY));
+      const b = gy*GX + gx; (grid[b] = grid[b] || {})[o.mineral] = ((grid[b]||{})[o.mineral] || 0) + 1;
+    }
+    const bs = Object.values(grid).filter((g) => Object.values(g).reduce((a,b)=>a+b,0) >= 15);
+    console.log('    구역별 광종 비율 (' + bs.length + '개 구역) — 관측 CV / 무작위 기대 CV');
+    let worst = 0, wm = '';
+    for (const m of Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a])) {
+      const fr = [], ns = [];
+      for (const g of bs) { const n = Object.values(g).reduce((a,b)=>a+b,0); fr.push((g[m]||0)/n); ns.push(n); }
+      const mu = fr.reduce((a,b)=>a+b,0)/fr.length;
+      const sd = Math.sqrt(fr.reduce((a,b)=>a+(b-mu)*(b-mu),0)/fr.length);
+      const nbar = ns.reduce((a,b)=>a+b,0)/ns.length;
+      const exp = mu > 0 ? Math.sqrt(mu*(1-mu)/nbar)/mu : 1;
+      const r = exp > 0 ? (sd/mu)/exp : 1;
+      if (r > worst) { worst = r; wm = m; }
+      console.log('      ' + m.padEnd(10) + '비중 ' + (mu*100).toFixed(1).padStart(5) + '%  비 ' + r.toFixed(2));
+    }
+    ok(worst < 1.35, '★광종에 **지역 편중이 없다** — 어느 구역을 떼도 비율이 같다(최대 비 ' + worst.toFixed(2) + ', 1.0 = 순수 무작위)');
+  }
+  {
+    // ③NPC 시야(대·중·소 63개)에 여덟 광종이 다 있는가 — 없으면 그 광종은 마을 경제에서 0 이 된다
+    const mc = {};
+    for (const o of d0.ores) if (!o.minor) mc[o.mineral] = (mc[o.mineral] || 0) + 1;
+    const miss = Object.keys(HM.POOL).filter((m) => (mc[m] || 0) < HM.MIN_MAJOR);
+    console.log('      대·중·소 광종: ' + Object.keys(HM.POOL).map((m) => m + ' ' + (mc[m]||0)).join(' · '));
+    ok(miss.length === 0, '★NPC 가 보는 광맥에 여덟 광종이 다 있다 (최소 ' + HM.MIN_MAJOR + '개씩) — 없으면 마을이 그 금속을 영영 못 만든다');
   }
 }
 

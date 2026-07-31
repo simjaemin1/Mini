@@ -76,7 +76,7 @@ const smallRivers = rivers.filter(r => Math.max(...r.path.map(q => q.width || 20
 console.log('A1. 능선↔지류 겹침 (고개 밖):');
 let exempted = 0;
 for (const ridge of ridges) {
-  if (ridge.name === '백서산괴') continue; // 의도적 관통
+  if (ridge.name === '한울산괴') continue; // 의도적 관통
   for (const s of samplePath(ridge, 250)) {
     if (inPass(s.x, s.y)) continue;
     for (const r of smallRivers) {
@@ -97,13 +97,13 @@ if (exempted) console.log(`  (합류부 실개천 예외 ${exempted}건 — 물>
 
 // === A2. 지맥 분기점 단절 ===
 console.log('A2. 지맥 분기점 부착:');
-const spine = ridges.find(r => r.name === '백두대간');
+const spine = ridges.find(r => r.name === '한울대간');
 for (const ridge of ridges) {
-  if (ridge === spine || ridge.name === '백서산괴' || ridge.name === '함경산맥' && !spine) continue;
-  if (['함경산맥', '묘향산맥', '멸악산맥', '차령산맥', '노령산맥'].includes(ridge.name)) {
+  if (ridge === spine || ridge.name === '한울산괴' || ridge.name === '눈메산맥' && !spine) continue;
+  if (['눈메산맥', '향목산맥', '먹뫼산맥', '솔재산맥', '너울산맥'].includes(ridge.name)) {
     const p0 = ridge.path[0];
     const b = distToPath(p0.pos[0], p0.pos[1], spine);
-    if (b.d > b.w / 2) flag('A2', `${ridge.name} 시작점이 백두대간 밴드 밖 (${b.d | 0}px > ${b.w / 2 | 0}px)`);
+    if (b.d > b.w / 2) flag('A2', `${ridge.name} 시작점이 한울대간 밴드 밖 (${b.d | 0}px > ${b.w / 2 | 0}px)`);
     else console.log(`  OK ${ridge.name} (본줄기까지 ${b.d | 0}px, 밴드 반폭 ${b.w / 2 | 0}px)`);
   }
 }
@@ -172,8 +172,8 @@ console.log(`  (트리 하구 연결 검사)`);
 // === A5. 경계 강 커버 ===
 console.log('A5. 경계선 커버 (서버 직선이 강폭 안에 잠기는지):');
 const checks = [
-  { name: '서쪽(이화강)', pts: Array.from({ length: 60 }, (_, i) => [0, 2000 + i * 2080]), riverName: '이화강' },
-  { name: '북쪽(얄리강 구간)', pts: Array.from({ length: 30 }, (_, i) => [3000 + i * 1700, 0]), riverName: '얄리강' },
+  { name: '서쪽(배꽃강)', pts: Array.from({ length: 60 }, (_, i) => [0, 2000 + i * 2080]), riverName: '배꽃강' },
+  { name: '북쪽(너울강 구간)', pts: Array.from({ length: 30 }, (_, i) => [3000 + i * 1700, 0]), riverName: '너울강' },
 ];
 for (const c of checks) {
   let uncovered = 0, first = null;
@@ -212,7 +212,7 @@ for (const rv of majorRivers) {
       const rdx = (b.pos[0] - a.pos[0]) / len, rdy = (b.pos[1] - a.pos[1]) / len;
       let hit = null;
       for (const ridge of ridges) {
-        if (ridge.name === '백서산괴') continue; // 의도적 관통 (발원지 산괴)
+        if (ridge.name === '한울산괴') continue; // 의도적 관통 (발원지 산괴)
         for (let j = 0; j < ridge.path.length - 1; j++) {
           const p1 = ridge.path[j], p2 = ridge.path[j + 1];
           const q = ptSegDist(x, y, p1.pos[0], p1.pos[1], p2.pos[0], p2.pos[1]);

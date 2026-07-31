@@ -211,7 +211,7 @@ function processRidge(ridge, rivers) {
       const fromEnd = pts.length - 1 - i;
       const fromStart = i;
       if (fromEnd < 4) w *= 0.45 + 0.55 * (fromEnd / 4);
-      if (!ridge.pinStart && fromStart < 3 && ridge.name !== '백두대간') w *= 0.55 + 0.45 * (fromStart / 3);
+      if (!ridge.pinStart && fromStart < 3 && ridge.name !== '한울대간') w *= 0.55 + 0.45 * (fromStart / 3);
       pts[i].width = Math.max(350, Math.round(w));
     }
   }
@@ -681,8 +681,8 @@ for (const [z, cfg] of Object.entries(ZONES)) {
 // B+C. 데이터 모듈 적용 (능선 가공 포함)
 for (const mod of DATA_MODULES) {
   const z = mod.zone;
-  // 본줄기(백두대간) 먼저 가공 → 지맥 첫 점을 가공된 본줄기 최근접점에 재앵커 → 지맥 가공
-  const spineDef = (mod.ridges || []).find(r => r.name === '백두대간');
+  // 본줄기(한울대간) 먼저 가공 → 지맥 첫 점을 가공된 본줄기 최근접점에 재앵커 → 지맥 가공
+  const spineDef = (mod.ridges || []).find(r => r.name === '한울대간');
   const otherDefs = (mod.ridges || []).filter(r => r !== spineDef);
   const processed = [];
   let spineProc = null;

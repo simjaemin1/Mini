@@ -214,7 +214,7 @@ button.lyr.on{background:#2a78d6;border-color:#5598e7;color:#fff;font-weight:600
   <div style="color:#8ab;margin-bottom:5px">층 <span style="opacity:.6">(F 키로 전환)</span></div>
   <button class="lyr" data-m="terrain">지형</button><button class="lyr on" data-m="fert">비옥도</button>
 </div>
-<div class="panel" id="find"><input id="q" placeholder="이름으로 찾기 (예: 광산2, 죽령)"></div>
+<div class="panel" id="find"><input id="q" placeholder="이름으로 찾기 (예: 광산2, 대숲재)"></div>
 <div class="panel" id="legend"></div>
 <div class="panel" id="hud">—</div>
 <script>
