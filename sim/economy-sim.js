@@ -326,7 +326,11 @@ const BASE_VALUE = {
   //   그래서 랩이 재던 "구리:주석 비"는 각 마을이 **자급한** 결과였지 교역 후 값이 아니었고,
   //   광부 유틸리티의 파생수요 계산도 금속 가격이 1.0 으로 폴백돼 죽어 있었다.
   //   값은 specialty.RESOURCES.baseValue 와 **같은 수**를 쓴다(두 곳이 다른 말을 하면 그게 버그다).
-  copper: 4, tin: 4, iron: 3, lead: 3, silver: 30, gold: 100,
+  //   ★철·납이 3 이던 것을 4 로. **제련 노동은 광종과 무관하게 같으므로** 노동가치로는 금속이
+  //     서로 비슷해야 한다(시장 가치 차이는 희소도가 만든다). 3 이면 제련 한계가치가
+  //     0.33×3 − 1.0 = −0.01 로 아슬아슬한 음수가 되어, 납 100% 마을(임업1)이 원석 112 를
+  //     쌓아두고도 제련을 한 번도 안 했다(실측). oreValueScale(3)=oreValueScale(4)=1.0 이라 pk 는 불변.
+  copper: 4, tin: 4, iron: 4, lead: 4, silver: 30, gold: 100,
   jade: 80, obsidian: 15, bronze: 12, gem: 60,
 };
 const JOB_NAMES = Object.keys(JOBS);
@@ -1068,6 +1072,8 @@ function _trySmelt(v, laborBase) {
 }
 // ★대장장이 배합 — 마을 재고 비율대로 녹인다. 총 금속 투입은 0.42 로 고정(옛 0.3+0.12 와 동일).
 //   반환 { take: {금속: 양}, grade: 합금 등급(청동=1.0), bronzeness: 청동다움(계측용) }
+const CAST_OUT_REF = 0.81;    // 표준 청동(Cu88Sn12)의 주조성 — 산출 배수 1.0 의 기준
+const CAST_OUT_MAX = 1.8;     // 주조성 이득 상한(납을 무한정 붓는 걸 막는다)
 const _MELT_TOTAL = 0.15;   // ★무기 1자루 = 금속 1단위(옛 2.8단위). 노동가치 정합가를 23.2→14.7 로 낮춘다
 const _MELT_METALS = ['copper', 'tin', 'lead', 'silver', 'gold'];   // 청동기에 제련 가능한 것만
 function _alloyMelt(v) {
@@ -1084,7 +1090,20 @@ function _alloyMelt(v) {
   //   재고가 허락하는 배합 중 **등급 ÷ 재료비**가 가장 큰 것을 고른다.
   //   ⇒ 주석이 넉넉하면 최적비(약 17%)로, 모자라면 있는 만큼만 섞어 등급을 조금이라도 올리고,
   //     금·은은 등급이 올라도 값이 비싸 점수에서 밀린다 — 따로 막지 않아도 안 쓴다.
+  //   ★목적함수는 **이윤**이다: (무기 산출 × 무기값 × 등급) − 재료비.
+  //     전에는 등급÷재료비(비율)를 썼는데, 그건 "재료가 제약일 때"의 답이다. econ 의 대장장이는
+  //     하루에 amt 개만 만드는 **노동 제약**이라, 그 하루로 얼마나 가치를 만드느냐가 문제다.
+  //     노동은 어차피 쓰는 고정비이므로 이윤 최대화가 옳다.
+  //   ★[재민] "구리 1000 에 주석 1 있어도 82:18 로만 합금해? 나머지 구리는 버려지는 거야?
+  //            구리를 많이 넣어 효율이 낮더라도 많이 만드는 게 이득 아닌가?"
+  //     버려지지 않는다 — 주석 1 이면 그 배합으로 37 자루를 만들고, 떨어지면 그때 순동으로 내려간다.
+  //     그리고 "얇게 펴서 많이"는 **재료가 희소해질수록 저절로 일어난다**: 주석이 귀해지면 시장가가
+  //     오르고, 이윤식이 주석 비중을 스스로 낮춘다(실측: 주석값 4→18% · 8→14% · 20→6% · 60→3%).
+  //     개수는 노동이 정하므로 배합으로 개수를 늘릴 수는 없지만, 재고 고갈로 **못 만드는 날**이
+  //     생기면 그게 가격에 잡혀 같은 결론에 도달한다.
   const STEPS = [0.03, 0.06, 0.10, 0.14, 0.18, 0.24];
+  const _amtPerCast = (JOBS.smith.base || 0.45) * WEAPON_LABOR_MULT;
+  const _pw = price('weapon');
   let best = null;
   const consider = (mix) => {
     const take = {};
@@ -1094,11 +1113,19 @@ function _alloyMelt(v) {
       if ((st[k] || 0) < q) return;                       // 재고 부족 — 이 배합은 못 짠다
       take[k] = +q.toFixed(4);
     }
+    const pr = SP.alloyProps ? SP.alloyProps(mix) : null;
     const g = SP.alloyGrade ? SP.alloyGrade(mix, 'weapon') : 0;
-    if (!(g > 0)) return;
-    let cost = 0; for (const k in mix) cost += mix[k] * price(k);
-    const score = g / Math.max(0.01, cost);
-    if (!best || score > best.score) best = { take, mix: Object.assign({}, mix), grade: g, score };
+    if (!(g > 0) || !pr) return;
+    // ★★주조성(cast)이 **산출량**을 정한다 — 이게 납의 자리다.
+    //   실제 세형동검에는 납이 11% 들어간다. 무기 성능은 떨어지는데 왜 넣었나? **주조가 쉬워서**다.
+    //   납은 융점을 낮추고 쇳물을 잘 흐르게 해 같은 노동으로 더 많이·복잡하게 뜰 수 있다.
+    //   품질만 보면 납은 영원히 안 쓰인다(등급을 깎기만 하므로). 산출량에 걸어야 자리가 생긴다.
+    //   기준은 표준 청동(Cu88Sn12, cast 0.81) = 1.0. 순동은 0.56(주조가 어렵다 — 고증: 순동기는 단조 위주),
+    //   세형동검 배합은 1.57. 이러면 모델이 스스로 Sn18Pb6 근처를 최적으로 고른다(실물 Sn14Pb11 과 근사).
+    const castF = Math.min(CAST_OUT_MAX, pr.cast / CAST_OUT_REF);
+    let cost = 0; for (const k in mix) cost += _MELT_TOTAL * mix[k] * price(k);
+    const score = _amtPerCast * castF * _pw * Math.min(1.2, g) - cost;   // 이윤 = 산출량 × 값 × 등급 − 재료비
+    if (!best || score > best.score) best = { take, mix: Object.assign({}, mix), grade: g, castF, score };
   };
   consider({ copper: 1 });                                 // 순동(기준선 — 항상 후보에 둔다)
   for (let i = 0; i < adds.length; i++) {
@@ -1113,7 +1140,7 @@ function _alloyMelt(v) {
     }
   }
   if (!best) return null;
-  return { take: best.take, grade: best.grade, bronzeness: Math.min(1, (best.mix.tin || 0) / 0.12) };
+  return { take: best.take, grade: best.grade, castF: best.castF, bronzeness: Math.min(1, (best.mix.tin || 0) / 0.12) };
 }
 function _bronzeCapable(v) {
   if ((v.land && v.land.tin || 0) > 0) return true;                       // 주석 산지 — 자체 청동
@@ -1488,7 +1515,7 @@ function tickVillage(v, day) {
     } else if (jdef.produceSpecial === 'smith') {
       // ★S2 대장장이(smithing) = 청동·철 *무기* 전용(도구 제작 폐지 → 석공). 청동검(구리+주석) 우선 → 철검(희소).
       // ★S3 레벨=품질: 무기 공격력·내구 = 재료등급(청동>철) × 스킬(smithing). 신규 티어 해금 아님. 무기 노동 3배(산출↓=희소).
-      const amt = jdef.base * skillMul * WEAPON_LABOR_MULT;   // ★무기 노동 3배 → 산출 1/3
+      let amt = jdef.base * skillMul * WEAPON_LABOR_MULT;   // ★무기 노동 3배 → 산출 1/3
       const _qSkill = 1 - WEAP_Q_SKILL_SPAN + WEAP_Q_SKILL_SPAN * (skillLvl / 10);   // 스킬 기여(0.4~1.0)
       // ★청동 병기고 비중 상한 — 청동은 병기고의 BRONZE_ARMORY_FRAC까지만(나머지 석기). swordStock이 그 한도 미만일 때만 청동 제작 → 청동마을도 석기 다수·청동 소수(엘리트).
       //   ★식량 안보 게이트: 잘 먹는 마을만 병기고까지 청동 확충, 취약 마을은 전사 실수요(BUFFER)까지만(식량·생존 우선).
@@ -1509,6 +1536,7 @@ function tickVillage(v, day) {
       if (_smelted > 0) { workNPC(npc); return; }   // 오늘은 제련으로 하루를 썼다
 
       const _melt = _alloyMelt(v);
+      if (_melt && _melt.castF > 0) amt *= _melt.castF;   // ★주조성이 산출량을 정한다(위 _alloyMelt 주석)
       if (_melt && _smSwordStock < _bronzeArmoryCap) {
         for (const m in _melt.take) { v.storage[m] -= _melt.take[m]; _cons(v, m, _melt.take[m]); }
         v._cuWeapUsed = (v._cuWeapUsed || 0) + (_melt.take.copper || 0);   // (계측 전용)
