@@ -226,6 +226,36 @@ const FOOD_CLASSES = { food: 1, fish: 1, meat: 1, cooked_food: 1 };   // ★식�
 for (const _fk in (v1.FORAGE_FOOD_FACTOR || {})) FOOD_CLASSES[_fk] = 1;
 // ★위신재(사치) 수요 — 장식재의 use-value는 물리소비가 아니라 위신·심리(positional good). 1인당 목표 보유로 수요 부여.
 //   없는 마을은 교역으로 수입, 광산촌(부산물로 쟁여둠)은 잉여 수출 → 죽어있던 장식교역이 살아나고 광산촌 수입원 다각화.
+// ★위신재 지불의사 상한 — 기준가의 이 배수까지만 낸다.
+//   근거: 위신재는 **필수재가 아니다.** 없어도 마을이 안 망하므로 수요가 가격에 탄력적이다.
+//   지금까지는 식량과 같은 희소도 곱셈을 써서 "없으면 값이 발산"했다(상아 3,185 = 식량의 2,900배).
+//   그 위신재가 줄 수 있는 효용에는 천장이 있다(PRESTIGE_MOD_CAP 0.25 · sat 1인당 2개에서 포화) —
+//   천장이 있는 효용에 무한한 값을 치르는 건 경제적 오류다.
+const LUX_ADJ_MAX = 3.0;
+// ★유효수요(effective demand) — **구할 수 없는 것을 목표로 삼지 않는다.**
+//   전에는 target 이 오로지 인구 비례였다. 세계에 한 개도 없는 자원(상아 등)도 target 이 붙고
+//   stock 은 0(→0.1 바닥)이라 희소도가 발산했다 — 실측 상아 3,184.9 = 같은 마을 식량의 2,900배.
+//   경제학적으로 수요는 **실현 가능할 때만 유효**하다. 세계 총공급 중 내 인구 몫이 상한이다.
+//   ⚠"공급 0 이면 가격 0" 으로 하면 안 된다 — 그러면 아무도 캘 이유가 없어져 영영 공급이 안 생기는
+//     자기실현적 소멸이 된다(실측: 금·은·옥 재고가 전부 0 으로 사라졌다). 가격은 기준가 근처에 두고
+//     **목표만** 제한한다. 캘 유인은 남기고 발산만 막는 것이 옳다.
+const EFFDEM_SHARE = 1.5;   // 인구 비례 몫의 이 배수까지만 목표로 삼는다
+function _worldStockOf(v, r) {
+  const w = v._world;
+  if (!w || !Array.isArray(w.villages)) return null;    // 월드 문맥 없으면 판단 보류(기존 거동)
+  let c = w._effDemCache;
+  if (!c || c.day !== w.day) {
+    c = w._effDemCache = { day: w.day, stock: {}, pop: 0 };
+    for (const u of w.villages) {
+      c.pop += (u.npcs && u.npcs.length) || 0;
+      const st = u.storage || {};
+      for (const k in st) if (st[k] > 0) c.stock[k] = (c.stock[k] || 0) + st[k];
+      const pb = u.dailyProductionBuf || {};           // 오늘 생산분도 공급이다(첫 산출 즉시 반영)
+      for (const k in pb) if (pb[k] > 0) c.stock[k] = (c.stock[k] || 0) + pb[k] * 30;
+    }
+  }
+  return { stock: c.stock[r] || 0, pop: Math.max(1, c.pop) };
+}
 const LUX_TARGET_PC = 0.08;   // 1인당 위신재 목표(각 장식재). 이 근처서 만족(체감), 광산촌은 훨씬 위라 수출.
 // ★호피(§9 3차) 수출 유보점 = v1 위신 포화점(CAP/W = 0.025/인)×1.2 — 위신 상한을 채우는 만큼만 쥐고 잉여는 교역재(외생 수요는 ORNAMENTAL·LUX_TARGET_PC가 부여).
 const TIGERHIDE_KEEP_PC = 1.2 * ((v1.TIGERHIDE_PRESTIGE_CAP && v1.TIGERHIDE_PRESTIGE_W) ? v1.TIGERHIDE_PRESTIGE_CAP / v1.TIGERHIDE_PRESTIGE_W : 0.025);
@@ -309,10 +339,30 @@ function computeShadowPrices(v) {
         stock = Math.max(0.1, stock + v.surplusEMA.food * 30);
       }
     }
+    // ★★[재민 지적] "당장 필요하지 않은데 엄청난 자원을 들여 이상한 걸 사오는 장치가 있지는 않은가"
+    //   있었다. 두 겹이었다.
+    //   ① **세계에 존재하지도 않는 자원에 수요가 붙어 있었다.** specialty 196종이 전부 TRADABLE 로
+    //      들어오는데, 그중 상아(ivory) 같은 건 이 세계의 어떤 직업도 생산하지 않는다. 그런데
+    //      target 은 인구 비례로 붙고 stock 은 0(→ 0.1 바닥) 이라 희소도가 발산했다.
+    //      실측: 상아 그림자가격 **3,184.9** — 같은 마을 식량 1.09 의 **2,900배**다.
+    //      공급이 없어 거래가 성사되지 않았을 뿐, 누가 한 개라도 내놓는 순간 마을이 식량을 쏟아붓는다.
+    //      ⇒ **본 적도 없는 것을 원하지 않는다.** 세계 어디에도 공급된 적 없는 자원은 수요가 0이다.
+    //   ② 사치재는 웃돈에 상한이 있다 — 굶으면 식량에 전 재산을 내지만 위신재엔 그러지 않는다.
+    //      필수재의 희소도 곱셈을 위신재에 그대로 쓰면 "없으면 값이 무한대"가 된다.
+    //   ⇒ 목표를 **세계 총공급 중 내 인구 몫**으로 제한한다(위 _worldStockOf 주석 참조).
+    const _ws = _worldStockOf(v, r);
+    //   ⚠**필수재와 자본재는 제외한다.** 식량은 세계에 없어도 원해야 한다 — 그 절박함이 곧
+    //     기근 신호이고 교역을 부른다. 거기에 "구할 수 있는 만큼만 원해라"를 걸면 흉년에
+    //     가격이 안 올라 캐러밴이 식량을 안 옮긴다(실측: 삼림 마을 식량가격이 1000 으로 튀며 기근).
+    //     제한은 **없어도 죽지 않는 것들**(위신재·잡화 롱테일)에만 건다.
+    if (_ws && !SUBSISTENCE_PER_NPC[r] && CAP_TARGET[r] === undefined && !VARIETY_FOOD[r]) {
+      target = Math.min(target, Math.max(0.2, _ws.stock * (N / _ws.pop) * EFFDEM_SHARE));
+    }
     const scarcity = Math.pow(target / stock, elast);
     // ★효용가중 가격상한: 고효용(식량 util1.5→상한1000)은 격차 자유, 저효용 외래품(util0.1→상한16)은 억제.
     //   외래 부산물이 재고0→550배 폭발해 교역 독식하는 걸 막아 staple(돌·식량) 재분배가 캐러밴을 잡게 함.
-    const maxAdj = Math.min(PRICE_ADJ_MAX, 10 * Math.pow(10, util * 2));
+    let maxAdj = Math.min(PRICE_ADJ_MAX, 10 * Math.pow(10, util * 2));
+    if (ORNAMENTAL[r]) maxAdj = Math.min(maxAdj, LUX_ADJ_MAX);   // ②위신재는 웃돈 상한
     const adj = Math.max(PRICE_ADJ_MIN, Math.min(maxAdj, scarcity));
     prices[r] = base * adj;
   }
