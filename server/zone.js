@@ -3556,7 +3556,14 @@ function _mineIdentify(player, mineral, isOre) {
   const xp = (player.craftSkill && player.craftSkill.mining) || 0;
   const acc = Specialty.mineIdAcc(xp);
   const says = (Math.random() < acc) ? isOre : !isOre;   // ★판단은 확률적 — 틀릴 수 있다
-  return Specialty.mineIdPhrase(acc, says, (Specialty.RESOURCES[mineral] || {}).ko || mineral);
+  const phrase = Specialty.mineIdPhrase(acc, says, (Specialty.RESOURCES[mineral] || {}).ko || mineral);
+  // ★적중/오판 적산 — 선광 때 "판단 12/15 적중"으로 돌려준다. 숫자 HUD 없이 자기 눈을 얼마나
+  //   믿을지 배우는 유일한 창구다(학습 루프). 판단을 안 한 구간(acc<0.60)은 세지 않는다.
+  if (phrase) {
+    if (!player.oreGuess || typeof player.oreGuess !== 'object') player.oreGuess = { n: 0, hit: 0 };
+    player.oreGuess.n++; if (says === isOre) player.oreGuess.hit++;
+  }
+  return phrase;
 }
 function mineOreCell(player) {
   const eq = getEquippedTool(player);
@@ -3626,9 +3633,16 @@ function trySortOre(player) {
   const parts = Object.entries(got).filter(([k]) => k !== 'stone_waste')
     .map(([k, v]) => `${(Specialty.RESOURCES[k] || {}).ko || k} ${v}`);
   send(player.ws, { type: 'inventory', inventory: player.inventory });
+  let score = '';
+  if (player.oreGuess && player.oreGuess.n > 0) {
+    const g = player.oreGuess;
+    score = ` · 눈대중 ${g.hit}/${g.n} 적중`;
+    if (g.hit < g.n) score += ` (${g.n - g.hit} 헛짐)`;
+    player.oreGuess = { n: 0, hit: 0 };   // 성적은 선광마다 리셋 — "이번 한 짐"의 성적이다
+  }
   send(player.ws, {
     type: 'notice',
-    text: `⚒ 선광 ${n}덩이 → ` + (parts.length ? parts.join(', ') : '광석 없음') + (got.stone_waste ? ` · 맥석 ${got.stone_waste} 버림` : '')
+    text: `⚒ 선광 ${n}덩이 → ` + (parts.length ? parts.join(', ') : '광석 없음') + (got.stone_waste ? ` · 맥석 ${got.stone_waste} 버림` : '') + score
   });
   savePlayer(player);
 }
