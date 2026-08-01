@@ -1302,7 +1302,12 @@ const SIM_JOB_EMOJI = {
       else if (a === 'build_stair') sendPrimary({ type: 'build', buildType: 'stair', floor: myBuildFloor });
       else if (a === 'build_floor') sendPrimary({ type: 'build', buildType: 'floor', floor: myBuildFloor });
       else if (a === 'hut_start') { buildMode = true; placementMode = { special: 'hut_site' }; showNotice('⛏️ 움집터 배치 모드 — 클릭 위치에 6×4 수혈 굴착 (곡괭이 필요 · B=취소)'); }   // ★움집 고증 건축(좀보이드 커서 배치)
-      else if (a === 'furnace_start') { buildMode = true; placementMode = { special: 'furnace_site' }; showNotice('🔥 노(爐) 터 배치 — 내 사유지/길드 사유지 안 2×2 (돌 6·곡괭이 · B=취소)'); }   // ★노 건설(재민 확정 — 움집 동형)
+      else if (a === 'furnace_start') {   // ★노 건설(재민 확정 — 움집 동형). kind=도가니로/괴련로(시대가 정한다)
+        const kind = btn.dataset.kind || 'crucible';
+        buildMode = true; placementMode = { special: 'furnace_site', kind };
+        showNotice(`🔥 ${kind === 'bloomery' ? '괴련로' : '노(爐)'} 터 배치 — 내 사유지/길드 사유지 안 2×2 (B=취소)`);
+      }
+      else if (a === 'kiln_start') { buildMode = true; placementMode = { special: 'kiln_site' }; showNotice('🪵 숯가마 터 배치 — 내 사유지/길드 사유지 안 2×2 (돌 4·곡괭이 · B=취소)'); }   // ★숯가마(노와 같은 계약)
       // ★[11차 T4] 마을 크루에게 집 의뢰 — placementMode.special 재사용(발명 0). 검증·재료·배치는 서버 권위.
       else if (a === 'psite_request') { buildMode = true; placementMode = { special: 'psite' }; showNotice('🏠 집 의뢰 모드 — 마을 영토 안을 클릭 (기둥6·서까래8·이엉8 선납 · B=취소)'); }
       else if (a === 'harvest') sendPrimary({ type: 'harvest' });
@@ -1735,7 +1740,9 @@ const SIM_JOB_EMOJI = {
         if (placementMode.special) {
           // ★움집터·길드 곳간 — 커서 셀 기준 다중 셀 배치(검증·재료·배치는 서버 권위)
           const _sp = placementMode.special;
-          sendPrimaryAt({ type: _sp === 'hut_site' ? 'hut_start' : (_sp === 'furnace_site' ? 'furnace_start' : (_sp === 'psite' ? 'request_village_house' : 'build_guild_granary')), atX: clickWx, atY: clickWy });
+          const _mt = _sp === 'hut_site' ? 'hut_start' : (_sp === 'furnace_site' ? 'furnace_start'
+                    : (_sp === 'kiln_site' ? 'kiln_start' : (_sp === 'psite' ? 'request_village_house' : 'build_guild_granary')));
+          sendPrimaryAt({ type: _mt, atX: clickWx, atY: clickWy, kind: placementMode.kind || undefined });
           if (!e.shiftKey) { placementMode = null; showNotice('배치 요청'); }
           return;
         }
@@ -1804,9 +1811,10 @@ const SIM_JOB_EMOJI = {
           if (!c.meta) continue;
           const ox = c.meta.worldOffsetX || 0, oy = c.meta.worldOffsetY || 0;
           for (const b of c.buildings.values()) {
-            if (b.type !== 'hut_site' && b.type !== 'furnace_site' && b.type !== 'furnace') continue;
+            if (b.type !== 'hut_site' && b.type !== 'furnace_site' && b.type !== 'furnace'
+                && b.type !== 'kiln_site' && b.type !== 'charcoal_kiln') continue;
             const absX = ox + b.x, absY = oy + b.y;
-            const rx = b.type === 'hut_site' ? 48 : 34, ry = b.type === 'hut_site' ? 40 : 34;   // 노는 2×2
+            const rx = b.type === 'hut_site' ? 48 : 34, ry = b.type === 'hut_site' ? 40 : 34;   // 노·숯가마는 2×2
             if (Math.abs(absX - clickWx) <= rx && Math.abs(absY - clickWy) <= ry) { hitSite = b; break; }
           }
           if (hitSite) break;
@@ -1814,6 +1822,8 @@ const SIM_JOB_EMOJI = {
         if (hitSite) {
           if (hitSite.type === 'furnace') sendPrimary({ type: 'furnace_smelt', buildingId: hitSite.id });   // ★완공 노 클릭 = 조업
           else if (hitSite.type === 'furnace_site') sendPrimary({ type: 'furnace_advance', buildingId: hitSite.id });
+          else if (hitSite.type === 'charcoal_kiln') sendPrimary({ type: 'kiln_burn', buildingId: hitSite.id });   // ★숯가마 클릭 = 조업
+          else if (hitSite.type === 'kiln_site') sendPrimary({ type: 'kiln_advance', buildingId: hitSite.id });
           else sendPrimary({ type: 'hut_advance', buildingId: hitSite.id });
           return;
         }
@@ -1976,6 +1986,13 @@ const SIM_JOB_EMOJI = {
         c._promoteSentAt = 0;
       }
       c.meta = msg.zone;
+      // ★시대 게이트 — 건축 메뉴는 **이 세상에 알려진 노**만 보여준다(era.js 가 유일한 진실, 클라 표 없음).
+      //   청동기엔 괴련로 버튼이 아예 없다: era.js 의 "지식 축은 순수 플레이어 지식" 원칙 — 있다는 것조차
+      //   알려주지 않는다. 시대가 열리면 다음 접속 때 버튼이 생긴다.
+      try {
+        const _known = new Set(((msg.zone && msg.zone.era && msg.zone.era.furnaces) || []).map(f => f.k));
+        document.querySelectorAll('[data-era-tech]').forEach(b => { b.style.display = _known.has(b.dataset.eraTech) ? '' : 'none'; });
+      } catch (e) {}
       // Phase 5-G: 서버에서 받은 hardcoded terrain (한반도 새 강·호수) — 미니맵 표시용
       const _zid = c.zoneId || (msg.zone && (msg.zone.id || msg.zone.zoneId)) || c.id;
       if (msg.hardcodedTerrain && window.Terrain && window.Terrain.setHardcoded && _zid) {
@@ -3159,7 +3176,8 @@ const SIM_JOB_EMOJI = {
       const ccx = Math.floor(wx0 / 32), ccy = Math.floor(wy0 / 32);
       const psite = placementMode.special === 'psite';
       const hut = placementMode.special === 'hut_site' || psite;   // ★[11차 T4] 의뢰 집도 같은 6×4 움집 발자국(실체 동일)
-      const furn = placementMode.special === 'furnace_site';       // ★노 2×2 발자국(재민 확정 — 사유지 안)
+      const kiln = placementMode.special === 'kiln_site';          // ★숯가마도 같은 2×2 계약
+      const furn = placementMode.special === 'furnace_site' || kiln;   // ★노 2×2 발자국(재민 확정 — 사유지 안)
       // ★의뢰 집터의 발자국 규약은 **마을 정본**([cx-5..cx+0]×[cy-5..cy-2], 서버 lifeRequestPlayerSite와 동일)
       const fx0 = furn ? ccx : (psite ? ccx - 5 : (hut ? ccx - 3 : ccx - 2)), fy0 = furn ? ccy : (psite ? ccy - 5 : (hut ? ccy - 2 : ccy - 1));
       const fx1 = furn ? ccx + 1 : (psite ? ccx + 0 : (hut ? ccx + 2 : ccx + 2)), fy1 = furn ? ccy + 1 : (psite ? ccy - 2 : (hut ? ccy + 1 : ccy + 1));   // ★노 2×2 = 서버 tryFurnaceStart 규약 동형
@@ -3171,7 +3189,7 @@ const SIM_JOB_EMOJI = {
       ctx.fillStyle = hut ? 'rgba(154,122,74,0.25)' : 'rgba(165,129,63,0.25)'; ctx.fill();
       ctx.setLineDash([5, 4]); ctx.strokeStyle = hut ? '#c9b28a' : '#e0b060'; ctx.lineWidth = 1.5; ctx.stroke(); ctx.setLineDash([]);
       ctx.font = 'bold 11px sans-serif'; ctx.fillStyle = '#ffe9b0'; ctx.textAlign = 'center';
-      ctx.fillText(furn ? '노(爐) 2×2 — 사유지 안' : (psite ? '마을에 집 의뢰 6×4 (재료 선납)' : (hut ? '움집터 6×4 (수혈 굴착)' : '길드 곳간 5×3 (밀폐)')), (p1.x + p3.x) / 2, p1.y - 8);
+      ctx.fillText(kiln ? '숯가마 2×2 — 사유지 안' : (furn ? `${placementMode.kind === 'bloomery' ? '괴련로' : '노(爐)'} 2×2 — 사유지 안` : (psite ? '마을에 집 의뢰 6×4 (재료 선납)' : (hut ? '움집터 6×4 (수혈 굴착)' : '길드 곳간 5×3 (밀폐)'))), (p1.x + p3.x) / 2, p1.y - 8);
       ctx.textAlign = 'left';
       ctx.restore();
       return;
@@ -5040,8 +5058,33 @@ const SIM_JOB_EMOJI = {
         ctx.fillStyle = '#ff9a3c'; ctx.beginPath(); ctx.ellipse(x, y - 13, 6, 4, 0, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#ffd77a'; ctx.beginPath(); ctx.ellipse(x, y - 13, 3, 2, 0, 0, Math.PI * 2); ctx.fill();
       }
+      const _kko = (building?.data?.kind) === 'bloomery' ? '괴련로' : '노(爐)';
+      const _kn = (building?.data?.kind) === 'bloomery' ? 3 : 3;
       ctx.font = 'bold 10px sans-serif'; ctx.fillStyle = '#ffe9b0'; ctx.textAlign = 'center';
-      ctx.fillText(done ? '노(爐) — 클릭=제련' : `노 터 ${st}/3단계 (클릭=시공)`, x, y - 26);
+      ctx.fillText(done ? `${_kko} — 클릭=제련` : `${_kko} 터 ${st}/${_kn}단계 (클릭=시공)`, x, y - 26);
+      ctx.textAlign = 'left';
+      return;
+    }
+    if (type === 'kiln_site' || type === 'charcoal_kiln') {
+      // ★숯가마 — 노와 같은 2×2 계약. 밀폐 봉토 둔덕 + 연도(굴뚝). 불꽃이 없다(공기를 막아 찌는 설비).
+      const st = (building?.data?.stage) | 0;
+      const done = type === 'charcoal_kiln';
+      ctx.beginPath();
+      ctx.moveTo(x, y - 10); ctx.lineTo(x + 22, y); ctx.lineTo(x, y + 10); ctx.lineTo(x - 22, y); ctx.closePath();
+      ctx.fillStyle = done ? 'rgba(74,62,50,0.9)' : 'rgba(88,80,70,0.55)'; ctx.fill();
+      ctx.setLineDash(done ? [] : [4, 3]); ctx.strokeStyle = '#9a8464'; ctx.lineWidth = 1.2; ctx.stroke(); ctx.setLineDash([]);
+      if (done || st >= 2) {   // 봉토 둔덕(반구)
+        ctx.fillStyle = done ? '#5b4a38' : '#6f6152';
+        ctx.beginPath(); ctx.ellipse(x, y - 4, 15, 11, 0, Math.PI, Math.PI * 2); ctx.fill();
+        ctx.fillRect(x - 15, y - 4, 30, 4);
+      }
+      if (done) {   // 연도(굴뚝) + 연기
+        ctx.fillStyle = '#4a3c30'; ctx.fillRect(x + 8, y - 20, 4, 10);
+        ctx.fillStyle = 'rgba(200,200,200,0.5)';
+        ctx.beginPath(); ctx.ellipse(x + 10, y - 24, 4, 3, 0, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.font = 'bold 10px sans-serif'; ctx.fillStyle = '#e6d6b6'; ctx.textAlign = 'center';
+      ctx.fillText(done ? '숯가마 — 클릭=굽기' : `숯가마 터 ${st}/2단계 (클릭=시공)`, x, y - 26);
       ctx.textAlign = 'left';
       return;
     }

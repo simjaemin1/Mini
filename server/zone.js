@@ -544,7 +544,7 @@ const CROP_GROW_MS = 60 * 1000;
 // 14.50: door도 닫혔을 때 blocking. fence는 cell 차지하지만 통과 가능 (사용자 의도: 시야는 통과, collider만 차단).
 const BLOCKING_BUILDINGS = new Set(['wall', 'fence', 'door']);
 // 14.49-e2: 층 높이 2배 (32 → 64). 벽·계단도 같이 2배.
-const BUILDING_HEIGHT = { wall: 64, floor: 4, fence: 32, door: 64, chest: 24, campfire: 20, farmland: 4, stair: 64, vtile: 2, guild_granary: 40, granary: 40, hut_site: 4, hut: 40, furnace_site: 4, furnace: 48 };   // ★실체화 동기: 지면 타일·곳간·움집터·노(爐)
+const BUILDING_HEIGHT = { wall: 64, floor: 4, fence: 32, door: 64, chest: 24, campfire: 20, farmland: 4, stair: 64, vtile: 2, guild_granary: 40, granary: 40, hut_site: 4, hut: 40, furnace_site: 4, furnace: 48, kiln_site: 4, charcoal_kiln: 36 };   // ★실체화 동기: 지면 타일·곳간·움집터·노(爐)·숯가마
 // Phase 14.25: chest 저장 가능 아이템 (모든 자원 + 도구 + 음식)
 const CHEST_ALLOWED_ITEMS = new Set([
   'wood', 'stone', 'ore', 'herb',
@@ -2753,9 +2753,12 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'request_village_house') tryRequestVillageHouse(player, +msg.atX, +msg.atY);   // ★[11차 T4] 마을 크루에게 집 짓기 의뢰(재료 선납)
   else if (msg.type === 'hut_start') tryHutStart(player, +msg.atX, +msg.atY);   // ★움집 고증 건축 ①굴착(커서 배치)
   else if (msg.type === 'hut_advance') tryHutAdvance(player, msg.buildingId);   // ★움집 고증 건축 ②~④
-  else if (msg.type === 'furnace_start') tryFurnaceStart(player, +msg.atX, +msg.atY);     // ★노 건설 ①(사유지 필수 — 재민 확정)
+  else if (msg.type === 'furnace_start') tryFurnaceStart(player, +msg.atX, +msg.atY, msg.kind);     // ★노 건설 ①(사유지 필수 — 재민 확정) · kind=도가니로/괴련로(시대 게이트)
   else if (msg.type === 'furnace_advance') tryFurnaceAdvance(player, msg.buildingId);      // ★노 건설 ②③·완공
   else if (msg.type === 'furnace_smelt') tryFurnaceSmelt(player, msg.buildingId);          // ★노 조업(철 정광+숯 → era.js 물리)
+  else if (msg.type === 'kiln_start') tryKilnStart(player, +msg.atX, +msg.atY);            // ★숯가마 건설 ①(노와 같은 계약)
+  else if (msg.type === 'kiln_advance') tryKilnAdvance(player, msg.buildingId);            // ★숯가마 건설 ②·완공
+  else if (msg.type === 'kiln_burn') tryKilnBurn(player, msg.buildingId);                  // ★숯가마 조업(통나무 3 → 숯 4)
   else if (msg.type === 'attack') { metrics.attacks++; tryAttack(player); }
   else if (msg.type === 'ranged_attack') { metrics.attacks++; tryRangedAttack(player, +msg.aimX, +msg.aimY); }
   else if (msg.type === 'craft') doCraft(player, msg.recipe);
@@ -4663,7 +4666,32 @@ const FURNACE_STAGES = [
   { need: { stone: 8, wood: 4 },                            label: '② 노벽 쌓기(돌 8·통나무 4)' },
   { need: { hide: 4, wood: 2 },                             label: '③ 풀무 걸기(가죽 4·통나무 2)' },
 ];
+// ★★[2026-08-02] 노 티어 — kind 파라미터화. **게이트는 era.hasTech 하나뿐이다**(표 복제 금지).
+//   도가니로(crucible)는 청동기 tech 라 늘 지을 수 있고, 괴련로(bloomery)는 early_iron 이 열려야 한다.
+//   고증: 괴련로는 "더 뜨거운 도가니"가 아니라 **환원 분위기를 유지하도록 설계된 원통 노**다 —
+//   더 크고(돌·통나무 더 많이), 송풍구가 따로 있다. 그래서 공정 자재가 더 든다.
+//   ⇒ 새 노를 추가할 때 고칠 곳은 이 표 하나. 온도·수율은 era.js FURNACE 가 이미 안다.
+const FURNACE_KINDS = {
+  crucible: { ko: '도가니로', stages: FURNACE_STAGES },
+  bloomery: { ko: '괴련로', stages: [
+    { need: { stone: 10 },           tool: 'pickaxe', wear: 3, label: '① 괴련로 터 다지기(돌 기초 10)' },
+    { need: { stone: 14, wood: 6 },                            label: '② 원통 노벽 쌓기(돌 14·통나무 6)' },
+    { need: { hide: 6, wood: 4 },                              label: '③ 송풍구·풀무 걸기(가죽 6·통나무 4)' },
+  ] },
+};
 const FURNACE_FUEL_PER_ORE = 2;   // 정광 1덩이(3.5kg)당 숯 2 — 고증: 제련 연료는 광석의 수 배 무게
+
+// ═══ ★[2026-08-02] 숯가마(炭窯) — 노와 **같은 건설 계약**(사유지·2×2·단계·재료) ═══
+//   고증: 노천 탄화(구덩이에 덮어 굽기)는 수율이 나쁘다 — 공기가 새 들어가 상당량이 그냥 재가 된다.
+//   진짜 탄요는 밀폐된 가마에 연도(굴뚝)를 내어 공기를 통제한다. 같은 나무로 숯이 훨씬 많이 나온다.
+//   ⇒ 제작창 레시피(통나무 3 → 숯 2)는 노천 탄화로 남기고, 가마를 지으면 통나무 3 → 숯 4.
+//   가마는 풀무가 필요 없다(불을 불려 태우는 게 아니라 **공기를 막아** 찌는 것) — 그래서 2단계다.
+const CHARCOAL_KILN_STAGES = [
+  { need: { stone: 4 },            tool: 'pickaxe', wear: 2, label: '① 가마 구덩이 파기(돌 기초 4)' },
+  { need: { stone: 6, wood: 2 },                            label: '② 가마 봉토·연도 내기(돌 6·통나무 2)' },
+];
+const CHARCOAL_KILN_WOOD = 3;    // 1회 조업 장입량(통나무)
+const CHARCOAL_KILN_YIELD = 4;   // 1회 산출(숯) — 제작창 노천 탄화는 같은 통나무 3에 숯 2
 function _furnaceClaimOf(player, px, py) {
   // 이 좌표를 덮는 사유지 중 플레이어에게 권한이 있는 것 — 개인(본인) 또는 길드(같은 길드).
   for (const c of claims.values()) {
@@ -4678,23 +4706,44 @@ function _furnaceCanUse(player, b) {
   if (d.tribeId) return !!player.tribeId && player.tribeId === d.tribeId;   // 길드 노 — 같은 길드원
   return d.owner === player.playerId;                                        // 개인 노 — 본인만(타인 관여 불가)
 }
-function tryFurnaceStart(player, atX, atY) {
+// ★★사유지 판정은 **셀마다** 한다 [2026-08-02 — scripts/test-furnace.js 가 잡은 버그]
+//   전에는 클릭 지점을 덮는 사유지 **하나**를 찾아 그 사각 안에 2×2 발자국이 들어가는지 봤다.
+//   그런데 사유지 한 장은 `w = h = BUILDING_SIZE` = **정확히 1셀**이다(tryClaim:4111 · 마을 영토도
+//   1셀짜리를 원형으로 깔아 만든다). 1셀 사각에 2×2 는 영원히 안 들어간다 ⇒ **노를 아예 못 지었다.**
+//   사유지는 타일을 이어 붙여 넓히는 물건이니 발자국 검사도 타일 단위여야 한다. 네 셀 전부에
+//   권한이 있어야 짓는다. (하네스 없이 코드만 읽어서는 안 보이던 좌표 기하 버그 — 실행 검증의 값.)
+// 반환: { tribeId } 성공(개인이면 null) · { err } 실패
+function _claimFootprint(player, x0, y0, x1, y1) {
+  const SZg = BUILDING_SIZE;
+  let anyPersonal = false, guildId = null;
+  for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) {
+    const px = x * SZg + SZg / 2, py = y * SZg + SZg / 2;
+    const c = _furnaceClaimOf(player, px, py);
+    if (!c) return { err: '발자국 2×2 전체가 내 사유지(또는 내 길드 사유지) 안에 있어야 한다' };
+    if (c.kind === 'guild') { if (guildId == null) guildId = c.guildTribeId; }
+    else anyPersonal = true;   // 개인·임시 사유지가 한 칸이라도 물리면 **개인 소유**로 굳는다
+  }
+  // 개인 사유지가 한 칸이라도 걸치면 개인 것(타인 관여 불가). 전부 길드 땅일 때만 길드 공용.
+  return { tribeId: anyPersonal ? null : guildId };
+}
+// ★2×2 사유지 설치물의 **공용** 착공/시공 — 노와 숯가마가 같은 계약을 쓴다(복제 금지).
+//   spec = { siteType, doneType, ko, icon, stages, kind }
+function _siteStart(player, atX, atY, spec) {
   if (!Number.isFinite(atX) || !Number.isFinite(atY)) { send(player.ws, { type: 'notice', text: '자리를 지정해 주세요' }); return; }
   if (Math.hypot(atX - player.x, atY - player.y) > 200) { send(player.ws, { type: 'notice', text: '너무 멀어서 거기에 못 지음' }); return; }
   const SZg = BUILDING_SIZE;
   const cx = Math.floor(atX / SZg), cy = Math.floor(atY / SZg);
   const x0 = cx, y0 = cy, x1 = cx + 1, y1 = cy + 1;   // 2×2
-  const cl = _furnaceClaimOf(player, atX, atY);
-  if (!cl) { send(player.ws, { type: 'notice', text: '노(爐)는 내 사유지나 내 길드 사유지 안에만 지을 수 있다' }); return; }
-  const st = FURNACE_STAGES[0];
-  if (st.tool && !hasTool(player, st.tool)) { send(player.ws, { type: 'notice', text: `${st.label} — 곡괭이 필요` }); return; }
+  const cl = _claimFootprint(player, x0, y0, x1, y1);
+  if (cl.err) { send(player.ws, { type: 'notice', text: `${spec.ko} — ${cl.err}` }); return; }
+  const st = spec.stages[0];
+  if (st.tool && !hasTool(player, st.tool)) { send(player.ws, { type: 'notice', text: `${st.label} — ${ITEM_LABEL_SERVER[st.tool] || st.tool} 필요` }); return; }
   for (const [it, amt] of Object.entries(st.need)) {
     if ((player.inventory[it] || 0) < amt) { send(player.ws, { type: 'notice', text: `${st.label} — 재료 부족: ${ITEM_LABEL_SERVER[it] || it} ${player.inventory[it] || 0}/${amt}` }); return; }
   }
   for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) {
     const px = x * SZg + SZg / 2, py = y * SZg + SZg / 2;
     if (isTerrainBlockedLocal(px, py)) { send(player.ws, { type: 'notice', text: '물·바위를 피해서 지어야 한다' }); return; }
-    if (!(px >= cl.x && px < cl.x + cl.w && py >= cl.y && py < cl.y + cl.h)) { send(player.ws, { type: 'notice', text: '노 2×2 가 사유지를 벗어난다' }); return; }
   }
   const ctrX = ((x0 + x1 + 1) / 2) * SZg, ctrY = ((y0 + y1 + 1) / 2) * SZg;
   const nearB = qtBuildings ? qtBuildings.queryCircle(ctrX, ctrY, SZg * 4) : Array.from(buildings.values());
@@ -4704,20 +4753,19 @@ function tryFurnaceStart(player, atX, atY) {
   }
   if (st.tool) consumeToolByType(player, st.tool, st.wear || 1);
   for (const [it, amt] of Object.entries(st.need)) player.inventory[it] -= amt;
-  const data = { stage: 1, x0, y0, x1, y1, owner: player.playerId, tribeId: cl.kind === 'guild' ? cl.guildTribeId : null, floor: 0 };
-  const bo = _liveBuildRow('furnace_site', ctrX, ctrY, data, player.playerId, `${player.name}의 노 터`, null);
+  const data = { stage: 1, x0, y0, x1, y1, owner: player.playerId, tribeId: cl.tribeId || null, kind: spec.kind || null, floor: 0 };
+  const bo = _liveBuildRow(spec.siteType, ctrX, ctrY, data, player.playerId, `${player.name}의 ${spec.ko} 터`, null);
   broadcast({ type: 'building_added', building: bo });
   send(player.ws, { type: 'inventory', inventory: player.inventory });
-  send(player.ws, { type: 'notice', text: `⛏️ ${st.label} 완료 — 다음: ${FURNACE_STAGES[1].label} (노 터 클릭)` });
-  console.log(`[${ZONE_ID}] 🔥 ${player.name} 노 터 @(${x0},${y0}) ${cl.kind}`);
+  send(player.ws, { type: 'notice', text: `⛏️ ${st.label} 완료 — 다음: ${spec.stages[1].label} (${spec.ko} 터 클릭)` });
+  console.log(`[${ZONE_ID}] ${spec.icon} ${player.name} ${spec.ko} 터 @(${x0},${y0}) ${cl.tribeId ? 'guild' : 'personal'}`);
+  return bo;
 }
-function tryFurnaceAdvance(player, buildingId) {
-  const b = buildings.get(buildingId);
-  if (!b || b.type !== 'furnace_site') return;
-  if (Math.hypot(b.x - player.x, b.y - player.y) > 120) { send(player.ws, { type: 'notice', text: '노 터에서 너무 멀리 있습니다' }); return; }
-  if (!_furnaceCanUse(player, b)) { send(player.ws, { type: 'notice', text: b.data.tribeId ? '우리 길드의 노 터가 아닙니다' : '내 노 터가 아닙니다' }); return; }
+function _siteAdvance(player, b, spec) {
+  if (Math.hypot(b.x - player.x, b.y - player.y) > 120) { send(player.ws, { type: 'notice', text: `${spec.ko} 터에서 너무 멀리 있습니다` }); return; }
+  if (!_furnaceCanUse(player, b)) { send(player.ws, { type: 'notice', text: b.data.tribeId ? `우리 길드의 ${spec.ko} 터가 아닙니다` : `내 ${spec.ko} 터가 아닙니다` }); return; }
   const stage = b.data.stage | 0;
-  const st = FURNACE_STAGES[stage];
+  const st = spec.stages[stage];
   if (!st) return;
   for (const [it, amt] of Object.entries(st.need)) {
     if ((player.inventory[it] || 0) < amt) {
@@ -4726,22 +4774,64 @@ function tryFurnaceAdvance(player, buildingId) {
     }
   }
   for (const [it, amt] of Object.entries(st.need)) player.inventory[it] -= amt;
-  if (stage < FURNACE_STAGES.length - 1) {
+  let done = null;
+  if (stage < spec.stages.length - 1) {
     b.data.stage = stage + 1;
     db.updateBuildingData(b.dbId, JSON.stringify(b.data));
     broadcast({ type: 'building_added', building: b });
-    send(player.ws, { type: 'notice', text: `${st.label} 완료 — 다음: ${FURNACE_STAGES[stage + 1].label}` });
+    send(player.ws, { type: 'notice', text: `${st.label} 완료 — 다음: ${spec.stages[stage + 1].label}` });
   } else {
-    const { x0, y0, owner, tribeId } = b.data;
+    const { x0, y0, owner, tribeId, kind } = b.data;
     buildings.delete(b.id); if (chunkManager.removeBuilding) chunkManager.removeBuilding(b); db.deleteBuilding(b.dbId);
     broadcast({ type: 'building_removed', id: b.id });
-    const bo = _liveBuildRow('furnace', b.x, b.y, { owner, tribeId, kind: 'crucible', x0, y0, floor: 0 }, owner, `${player.name}의 노(爐)`, null);
-    broadcast({ type: 'building_added', building: bo });
-    send(player.ws, { type: 'notice', text: '🔥 노(爐) 완공! — 철 정광 + 숯을 들고 노를 클릭하면 제련한다' });
-    console.log(`[${ZONE_ID}] 🔥 ${player.name} 노 완공 @(${x0},${y0})`);
+    done = _liveBuildRow(spec.doneType, b.x, b.y, { owner, tribeId, kind: kind || spec.kind || null, x0, y0, floor: 0 }, owner, `${player.name}의 ${spec.ko}`, null);
+    broadcast({ type: 'building_added', building: done });
+    send(player.ws, { type: 'notice', text: `${spec.icon} ${spec.ko} 완공! — ${spec.doneHint}` });
+    console.log(`[${ZONE_ID}] ${spec.icon} ${player.name} ${spec.ko} 완공 @(${x0},${y0})`);
   }
   savePlayer(player);
   send(player.ws, { type: 'inventory', inventory: player.inventory });
+  return done;
+}
+// ★노 종류(kind)는 **era.hasTech 하나로** 잠긴다 — 청동기엔 도가니로만 목록에 뜬다.
+function _furnaceSpec(kind) {
+  const k = FURNACE_KINDS[kind] ? kind : 'crucible';
+  return { siteType: 'furnace_site', doneType: 'furnace', ko: `노(${FURNACE_KINDS[k].ko})`, icon: '🔥',
+           stages: FURNACE_KINDS[k].stages, kind: k, doneHint: '철 정광 + 숯을 들고 노를 클릭하면 제련한다' };
+}
+const KILN_SPEC = { siteType: 'kiln_site', doneType: 'charcoal_kiln', ko: '숯가마', icon: '🪵',
+                    stages: CHARCOAL_KILN_STAGES, kind: 'charcoal_kiln',
+                    doneHint: `통나무 ${CHARCOAL_KILN_WOOD}을 들고 클릭하면 숯 ${CHARCOAL_KILN_YIELD}을 굽는다 (노천 탄화는 통나무 ${ITEM_RECIPES.charcoal.from.wood}→숯 ${ITEM_RECIPES.charcoal.to.charcoal})` };
+
+function tryFurnaceStart(player, atX, atY, kind) {
+  const k = FURNACE_KINDS[kind] ? kind : 'crucible';
+  const Era = require('./era');
+  if (!Era.hasTech(k)) { send(player.ws, { type: 'notice', text: `${FURNACE_KINDS[k].ko} 설계는 아직 이 세상에 알려지지 않았다` }); return; }
+  return _siteStart(player, atX, atY, _furnaceSpec(k));
+}
+function tryFurnaceAdvance(player, buildingId) {
+  const b = buildings.get(buildingId);
+  if (!b || b.type !== 'furnace_site') return;
+  return _siteAdvance(player, b, _furnaceSpec(b.data && b.data.kind));
+}
+function tryKilnStart(player, atX, atY) { return _siteStart(player, atX, atY, KILN_SPEC); }
+function tryKilnAdvance(player, buildingId) {
+  const b = buildings.get(buildingId);
+  if (!b || b.type !== 'kiln_site') return;
+  return _siteAdvance(player, b, KILN_SPEC);
+}
+// ★숯가마 조업 — 밀폐 탄화라 수율이 노천보다 좋다(통나무 3 → 숯 4 vs 제작창 3 → 2).
+function tryKilnBurn(player, buildingId) {
+  const b = buildings.get(buildingId);
+  if (!b || b.type !== 'charcoal_kiln') return;
+  if (Math.hypot(b.x - player.x, b.y - player.y) > 120) { send(player.ws, { type: 'notice', text: '숯가마에서 너무 멀리 있습니다' }); return; }
+  if (!_furnaceCanUse(player, b)) { send(player.ws, { type: 'notice', text: b.data.tribeId ? '우리 길드의 숯가마가 아닙니다' : '이 숯가마의 주인이 아닙니다' }); return; }
+  if ((player.inventory.wood || 0) < CHARCOAL_KILN_WOOD) { send(player.ws, { type: 'notice', text: `통나무 부족 (1회 장입 ${player.inventory.wood || 0}/${CHARCOAL_KILN_WOOD})` }); return; }
+  player.inventory.wood -= CHARCOAL_KILN_WOOD;
+  player.inventory.charcoal = (player.inventory.charcoal || 0) + CHARCOAL_KILN_YIELD;
+  send(player.ws, { type: 'inventory', inventory: player.inventory });
+  send(player.ws, { type: 'notice', text: `🪵 숯가마 조업 — 통나무 ${CHARCOAL_KILN_WOOD} → 숯 ${CHARCOAL_KILN_YIELD} (연도로 공기를 막아 구웠다)` });
+  savePlayer(player);
 }
 function tryFurnaceSmelt(player, buildingId) {
   const b = buildings.get(buildingId);
@@ -4751,8 +4841,8 @@ function tryFurnaceSmelt(player, buildingId) {
   const ore = player.inventory.iron_ore || 0;
   if (ore < 1) { send(player.ws, { type: 'notice', text: '철 정광이 없다 — 철 광맥을 캐서 선광하면 나온다' }); return; }
   const fuelNeed = FURNACE_FUEL_PER_ORE;
-  if ((player.inventory.charcoal || 0) < fuelNeed) { send(player.ws, { type: 'notice', text: `숯 부족 (정광 1덩이당 숯 ${fuelNeed} — 제작창에서 통나무로 굽는다)` }); return; }
-  // ★물리는 era.js 하나가 정한다 — 청동기 3.4%, 시대 열리면 같은 노가 67.8%.
+  if ((player.inventory.charcoal || 0) < fuelNeed) { send(player.ws, { type: 'notice', text: `숯 부족 (정광 1덩이당 숯 ${fuelNeed} — 제작창 노천 탄화 또는 숯가마로 굽는다)` }); return; }
+  // ★물리는 era.js 하나가 정한다 — 청동기 도가니로 3.4%, 시대 열리면 같은 노가 67.8%, 괴련로 88.1%.
   const Era = require('./era');
   const setup = { furnace: (b.data && b.data.kind) || 'crucible', fuel: 'charcoal', bellows: true };
   const y = Era.smeltYield('iron', setup);
@@ -4771,6 +4861,25 @@ function tryFurnaceSmelt(player, buildingId) {
   send(player.ws, { type: 'notice', text: msg2 + ` · 수율 ${(y * 100).toFixed(1)}%` });
   savePlayer(player);
 }
+
+// ═══ 테스트 훅 — 노(爐) E2E(scripts/test-furnace.js). server/villages.js `__p3Bind` 선례.
+//   운영 부팅 경로에서는 **절대 호출되지 않는** 순수 export 다(zone.js 는 원래 module.exports 가 없었고,
+//   이 한 줄이 유일하다 — require 해도 부작용이 없다). 하네스가 실서버를 띄운 뒤 in-memory 상태를
+//   직접 조작해 사유지 생성 → 터 → 3단계 → 조업까지 **실제 함수로** 왕복 검증한다.
+//   ★왜 소스 텍스트 검사(test-psite-server.js 형식)가 아니라 실행 검증인가: 노는 좌표 기하
+//     (2×2 발자국 vs 1셀 사유지)가 계약의 핵심인데, 그건 코드를 읽어서는 안 드러난다. 실제로
+//     지어 봐야 안다 — 실제로 이 하네스가 "노를 아예 못 짓는다"를 처음 잡아냈다.
+function __furnaceBind() {
+  return {
+    claims, buildings, players, BUILDING_SIZE, Specialty,
+    FURNACE_STAGES, FURNACE_FUEL_PER_ORE, CHARCOAL_KILN_STAGES, CHARCOAL_KILN_YIELD, CHARCOAL_KILN_WOOD,
+    tryFurnaceStart, tryFurnaceAdvance, tryFurnaceSmelt,
+    tryKilnStart, tryKilnAdvance, tryKilnBurn,
+    _furnaceClaimOf, _furnaceCanUse, isTerrainBlockedLocal,
+    newClaimId: () => `c${nextClaimId++}`,
+  };
+}
+module.exports = { __furnaceBind };
 
 const GRANARY_COST = { plank: 12, stone: 8 };
 async function tryBuildGuildGranary(player, atX, atY) {
@@ -6678,6 +6787,12 @@ function zonePublicMeta() {
     mainSquare: ZONE.mainSquare || null,
     // Phase 5-C: 마을 list (이름·좌표·type) — 클라가 미니맵 등에 표시
     villages: VILLAGES.map(v => ({ name: v.name, x: v.x, y: v.y, type: v.type || 'plain' })),
+    // ★시대 — 클라 건축 메뉴가 "이 세상에 **알려진** 노"만 노출하려고 쓴다. era.js 가 유일한 진실이고
+    //   클라는 표를 갖지 않는다(사본 금지). 청동기엔 furnaces=['crucible'] 하나뿐이라 괴련로는
+    //   메뉴에 아예 안 뜬다 — era.js §"지식 축은 순수 플레이어 지식" 과 정합(있다는 것조차 안 알려준다).
+    era: (() => { try { const E = require('./era'); const e = E.currentEra();
+      return { id: e, furnaces: Object.keys(FURNACE_KINDS).filter(k => E.hasTech(k)).map(k => ({ k, ko: FURNACE_KINDS[k].ko })) };
+    } catch (e) { return { id: 'bronze', furnaces: [{ k: 'crucible', ko: '도가니로' }] }; } })(),
   };
 }
 
