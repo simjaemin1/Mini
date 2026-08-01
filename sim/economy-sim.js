@@ -2683,9 +2683,16 @@ function autoSwitchJob(v, day, world) {
     if (foodSec && bestCost > 0.15) {
       const OUT1 = { farmer: 1.5 * (v.land.fertility || 0), fisher: 1.2 * (v.land.water || 0), hunter: 0.7 * (v.land.game || 0),
         lumberjack: 0.9 * (v.land.wood || 0), miner: 0.7 * (v.land.ore || 0), forager: 0.8,
-        mason: 1.0, smith: 0.9, weaponsmith: 0.8, armorsmith: 0.8, cook: 1.0, warrior: 0.3 };
+        mason: 1.0, smith: 0.9, weaponsmith: 0.8, armorsmith: 0.8, cook: 1.0, warrior: 0.3,
+        tailor: 0.5 };   // ★[재민 지시 "결함 전부 수정"] tailor 누락 보수 — jdef.base 0.5(하루 옷 0.5벌)
       const OUTRES = { farmer: 'food', fisher: 'fish', hunter: 'meat', lumberjack: 'wood', miner: 'ore', forager: 'food',
-        mason: 'tool', smith: 'weapon', weaponsmith: 'weapon', armorsmith: 'armor', cook: 'cooked_food', warrior: 'weapon' };   // ★S2 mason 산출=석기(tool) · smith 산출=청동/철 무기(weapon)
+        mason: 'tool', smith: 'weapon', weaponsmith: 'weapon', armorsmith: 'armor', cook: 'cooked_food', warrior: 'weapon',
+        tailor: 'clothes' };   // ★S2 mason 산출=석기(tool) · smith 산출=청동/철 무기(weapon)
+      // ★★[재민 지시 "결함 전부 수정" 2026-08-01] tailor가 이 두 표에 없어서 needValue가 폴백
+      //   (0.5 × w('food'))로 계산됐다 — 재봉 전환의 가치를 **옷 가격이 아니라 식량 가격**으로 재던 것.
+      //   실측(시드7 rational): need='tailor' 92회 중 68회가 hold(0.50<…)로 보류 → 6마을 CLI 세계에선
+      //   800일 내내 재봉사 0·옷 0벌(의복 축 전체 사망 — 요리사 '유령 박멸 #4'와 같은 계열의 표 누락).
+      //   표 누락은 test-picker-tables.js가 상시 감시한다(merchant는 산출재 없음 — 명시 예외).
       const needValue = (OUT1[need] || 0.5) * w(OUTRES[need] || 'food');
       if (needValue < bestCost * 1.3) { v._dbgSwitch.did = 'hold(' + needValue.toFixed(2) + '<' + (bestCost * 1.3).toFixed(2) + ')'; return; }
     }
@@ -3132,7 +3139,13 @@ function main() {
     evDay += 200 + Math.floor(srand() * 300);
   }
 
-  const world = { villages, tradeLog: [], events, caravans: [] };
+  // ★[재민 지시 "결함 전부 수정" 2026-08-01] CLI 세계에 picker 필드가 없어 **legacy picker로 돌고 있었다**
+  //   — 실서버(central.js·villages.js)는 전부 'rational'이다. 계측기가 프로덕션과 다른 기계를 재던 것
+  //   (검증 원칙 ⑫ "본 게임의 것을 부른다"의 picker판). legacy엔 tailor 규칙 자체가 없어 CLI 세계 의복 축이
+  //   800일 내내 0이었다(옷 0벌·재봉사 0 — 프로덕션엔 없는 유령 결함). rational로 정렬한다.
+  //   ※회귀표 수치는 이 정렬로 재기준선이 된다(하네스는 수치를 출력만 하고 단정하지 않으므로 코드 파손 없음).
+  const world = { villages, tradeLog: [], events, caravans: [], picker: 'rational' };
+  for (const v of villages) v._world = world;   // ★백참조 — 이게 없으면 picker 판별부(v._world.picker)가 영영 legacy로 떨어진다(createWorld는 심는데 main은 안 심고 있었다)
 
   // 시뮬 루프
   for (let day = 1; day <= TOTAL_DAYS; day++) {
