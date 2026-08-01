@@ -549,6 +549,9 @@ const JOBS = {
     inputs: { stone: 0.5, hide: 0.4, ore: 0.2 },
     // ★유령 박멸(§9): 보조 투입 — 삼끈(갑옷 엮음)·모피(방한 안감, hide와 별개 슬롯). 있으면 소비, 없어도 제작 성립(게이트 아님).
     aux: { hemp: 0.1, fur: 0.1 },
+    // ★[재민 지시 "결함 전부 수정" 2026-08-01] 수요-캡(경제사슬 ba06fc2 동형 — 모시 규약).
+    //   재고 게이트 없는 자본재 생산은 한번 고용된 갑옷장이가 무한 생산한다(v1 실측: 전사 2에 갑옷 642).
+    stockCap: (v) => Math.max(2, (v.counts.warrior || 0) * 1.3) + (v.npcs.length || 1) * 0.1,
   },
   tailor: {                 // ★의복(2026-07-12): 재봉사 — 옷감(모피·유피·가죽·삼베)→옷. 한랭(겨울) 수요·1인 1벌 자본재.
     field: 'tailoring', output: 'clothes', base: 0.5,
@@ -1741,6 +1744,8 @@ function tickVillage(v, day) {
       if (jaAmt > 0) addProduce('jade', jaAmt);
       if (oAmt > 0 || obAmt > 0 || jaAmt > 0) workNPC(npc);
     } else if (jdef.output && baseAmt > 0) {
+      // ★[재민 지시 "결함 전부 수정"] 수요-캡(jdef.stockCap) — 재고 ≥ 캡이면 산출·투입 모두 스킵(ba06fc2 동형)
+      if (jdef.stockCap && (v.storage[jdef.output] || 0) >= jdef.stockCap(v)) { continue; }
       for (const [inp, need] of Object.entries(jdef.inputs || {})) {
         _cons(v, inp, Math.min(v.storage[inp] || 0, need));   // ★flow-EMA(실차감분)
         v.storage[inp] = Math.max(0, v.storage[inp] - need);
@@ -2588,9 +2593,11 @@ function autoSwitchJob(v, day, world) {
     if (foodSec && bestCost > 0.15) {
       const OUT1 = { farmer: 1.5 * (v.land.fertility || 0), fisher: 1.2 * (v.land.water || 0), hunter: 0.7 * (v.land.game || 0),
         lumberjack: 0.9 * (v.land.wood || 0), miner: 0.7 * (v.land.ore || 0), forager: 0.8,
-        mason: 1.0, smith: 0.9, weaponsmith: 0.8, armorsmith: 0.8, cook: 1.0, warrior: 0.3 };
+        mason: 1.0, smith: 0.9, weaponsmith: 0.8, armorsmith: 0.8, cook: 1.0, warrior: 0.3,
+        tailor: 0.5 };   // ★[재민 지시 "결함 전부 수정"] tailor 표 누락 보수(08071de 동형 — 없으면 전환가치가 식량가 폴백으로 계산돼 상시 보류)
       const OUTRES = { farmer: 'food', fisher: 'fish', hunter: 'meat', lumberjack: 'wood', miner: 'ore', forager: 'food',
-        mason: 'tool', smith: 'weapon', weaponsmith: 'weapon', armorsmith: 'armor', cook: 'cooked_food', warrior: 'weapon' };   // ★S2 mason 산출=석기(tool) · smith 산출=청동/철 무기(weapon)
+        mason: 'tool', smith: 'weapon', weaponsmith: 'weapon', armorsmith: 'armor', cook: 'cooked_food', warrior: 'weapon',
+        tailor: 'clothes' };   // ★S2 mason 산출=석기(tool) · smith 산출=청동/철 무기(weapon)
       const needValue = (OUT1[need] || 0.5) * w(OUTRES[need] || 'food');
       if (needValue < bestCost * 1.3) { v._dbgSwitch.did = 'hold(' + needValue.toFixed(2) + '<' + (bestCost * 1.3).toFixed(2) + ')'; return; }
     }
