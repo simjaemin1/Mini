@@ -114,12 +114,19 @@ const world = econV2.createWorldV2({
 });
 world.villages = [];
 world.events = [];
+// ★랩 전용 A/B 손잡이(엔진 무접촉 — createVillage 뒤 초기 재고만 만진다) ─────────────
+//   LAB_CU=n : 전 마을에 구리 n 을 쥐여 주고 시작(주조 부트스트랩 A/B — 회부_구리부존과_시딩)
+//   ※땅맞춤 초기 부존 A/B 는 랩이 아니라 **엔진 손잡이** LANDFIT=0 으로 한다(공식 사본 금지).
+const LAB_CU = parseFloat(process.env.LAB_CU || '0') || 0;
 for (const s of seeds) {
   const ev = econ.createVillage({ ...s.lp, initialPop: P.INITIAL_POP, name: s.name });
   ev._world = world;
   ev.coord = { x: s.ccx * 2.5, y: s.ccy * 2.5 };   // ★econ 좌표 = 셀×2.5 (본 게임 1663행)
+  if (LAB_CU > 0) ev.storage.copper = (ev.storage.copper || 0) + LAB_CU;
   world.villages.push(ev);
 }
+if (LAB_CU > 0) console.log(`  [A/B] 전 마을 초기 구리 +${LAB_CU}`);
+if (process.env.LANDFIT != null) console.log(`  [A/B] 땅맞춤 초기 부존 배수 LANDFIT=${process.env.LANDFIT}`);
 world.day = 0;
 
 // ── 일 틱 — 본 게임 진입점(server/villages.js:2255) ────────────────────────────
