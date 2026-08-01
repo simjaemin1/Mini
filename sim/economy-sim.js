@@ -240,6 +240,13 @@ const JOBS = {
     inputs: { stone: 0.5, hide: 0.4, ore: 0.2 },
     // ★유령 박멸(§9): 보조 투입 — 삼끈(갑옷 엮음)·모피(방한 안감, hide와 별개 슬롯). 있으면 소비, 없어도 제작 성립(게이트 아님).
     aux: { hemp: 0.1, fur: 0.1 },
+    // ★[재민 지시 "직접 해결" 2026-08-01] 수요-캡 공급(모시 byproduct 규약 동형 — 사용자 결정 '짜는 만큼만 짠다').
+    //   갑옷은 자본재(전사 1인 1벌)인데 범용 output 분기에 재고 게이트가 없어, 한번 고용된 갑옷장이가
+    //   stone·hide·ore를 태우며 **무한 생산**했다(실측: 시드7 삼림 — 전사 2·갑옷 642 = 목표의 ~250배).
+    //   주석(_tinGlut)·흑요석·옥·모시는 전부 감산이 있는데 이 분기만 없던 것.
+    //   캡 = 교역 keep(max(2, 전사×1.3)) + 매물 문턱 여유(N×0.1) — tickTrade 매도 규약(위 WEAPONR thresh)과 같은 선.
+    //   재고가 캡 아래로 내려가면(마모·수출) 생산이 재개된다 — 스톡-플로우 그대로, 수출 공급도 산다.
+    stockCap: (v) => Math.max(2, (v.counts.warrior || 0) * 1.3) + (v.npcs.length || 1) * 0.1,
   },
   tailor: {                 // ★의복(2026-07-12): 재봉사 — 옷감(모피·유피·가죽·삼베)→옷. 한랭(겨울) 수요·1인 1벌 자본재.
     field: 'tailoring', output: 'clothes', base: 0.5,
@@ -1683,6 +1690,10 @@ function tickVillage(v, day) {
       if (jaAmt > 0) addProduce('jade', jaAmt);
       if (oAmt > 0 || obAmt > 0 || jaAmt > 0) workNPC(npc);
     } else if (jdef.output && baseAmt > 0) {
+      // ★[재민 지시 "직접 해결"] 수요-캡(jdef.stockCap) — 재고가 캡 이상이면 **산출도 투입도** 건너뛴다.
+      //   투입까지 멈추는 게 요점: 아무도 안 쓸 갑옷에 stone·hide·ore를 계속 태우던 게 결함이었다.
+      //   (노동은 놀지만 job-switch 재배치 경로가 곧 데려간다 — mason taper와 달리 이 직군엔 잉여 전용처가 없다.)
+      if (jdef.stockCap && (v.storage[jdef.output] || 0) >= jdef.stockCap(v)) { continue; }
       for (const [inp, need] of Object.entries(jdef.inputs || {})) {
         _cons(v, inp, Math.min(v.storage[inp] || 0, need));   // ★flow-EMA(실차감분)
         v.storage[inp] = Math.max(0, v.storage[inp] - need);
