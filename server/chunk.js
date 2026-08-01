@@ -146,7 +146,17 @@ function seedRand(zoneId, cx, cy, n) {
   return (h % 2147483647) / 2147483647;
 }
 
-const RESOURCE_HP_TABLE = { tree: 3, rock: 4, berry_bush: 2, water_pool: 999, herb: 1, ore: 5 };
+const RESOURCE_HP_TABLE = { tree: 3, rock: 4, berry_bush: 2, water_pool: 999, herb: 1, ore: 5, meteorite: 6 };
+
+// ★★[재민 확정 · 2026-08-02] 운철(隕鐵) — "거의 불가능"의 **'거의'**.
+//   era.js §METEORIC: 실제 운철은 Fe-Ni 자연합금이라 **제련이 필요 없다**. 이미 금속이다.
+//   투탕카멘 단검이 운철이고 청동기 이전 유물도 있다. 어려운 이유는 니켈이 아니라
+//   **하늘에서 떨어진 것이라 광맥이 없다** — 탐사로 찾는 경로 자체가 없다는 것.
+//   ⇒ 광맥 층(t.ores)에 넣지 않는다. 지표에 흩어진 **발견물**이라 청크 자원으로 깐다.
+//     자잘 광맥과 같은 성격(플레이어 전용 발견 요소 — NPC 는 자원 청크를 안 본다).
+//   밀도: 한반도 8,763 청크 × 0.006 ≈ 53회 시도, 물·바위에서 기각되고 남는 게 수십 개.
+//   ("대륙에 수십 개" — 지도를 뒤져야 하나 나오는 급. 광맥처럼 캐고 또 캐는 물건이 아니다.)
+const METEORITE_PER_CHUNK = 0.006;
 
 // Phase 14.1+14.3+14.46-a: biome별 자원 강한 편재.
 // biome 종류: plains, mountain, forest, taiga, tundra, desert, jungle, savanna, archipelago, ocean
@@ -285,6 +295,23 @@ function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet) 
       entity.h = 46 + (r3 * 120);  // 46~166
     }
     result.push(entity);
+  }
+
+  // === ★운철 낙하지 — 청크당 결정론 해시 1회(자잘 광맥 생성과 같은 규약) ===
+  //   좌표가 시드로 정해지므로 재부팅해도 같은 자리다. 채집하면 harvestedSeeds 에 박혀 사라진다.
+  {
+    const rm = seedRand(zoneId, cx, cy, 90001);
+    if (rm < METEORITE_PER_CHUNK) {
+      const mx = cx * chunkSize + 16 + seedRand(zoneId, cx, cy, 90002) * (chunkSize - 32);
+      const my = cy * chunkSize + 16 + seedRand(zoneId, cx, cy, 90003) * (chunkSize - 32);
+      const seedKey = `${cx}_${cy}_met`;
+      const wet = terrain.isWaterCellLocal(zoneId, mx, my);
+      const rock = typeof terrain.isRockCellLocal === 'function' && terrain.isRockCellLocal(zoneId, mx, my);
+      if (!wet && !rock && !(harvestedSet && harvestedSet.has(seedKey))) {
+        result.push({ id: `s_${cx}_${cy}_met`, seedKey, isSeed: true, x: mx, y: my,
+                      type: 'meteorite', hp: RESOURCE_HP_TABLE.meteorite, maxHp: RESOURCE_HP_TABLE.meteorite });
+      }
+    }
   }
 
   // === 숲 나무 — 빽빽한 지터드 그리드 (그린 타원 안에만 쫙 깔림) ===

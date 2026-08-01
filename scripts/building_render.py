@@ -154,6 +154,38 @@ def box(sx, sy, sz, loc, rot=(0, 0, 0), mat=None):
     return add(o, mat)
 
 
+
+def dome(r, h, loc, mat=None, seg=24, ring=8, jitter=0.0):
+    """반구 둔덕 — **지면 아래가 없는** 돔 메시. UV 구를 쓰면 아랫반구가 땅속에 그대로 남아
+    (렌더엔 지면 occluder 가 없다) '공'으로 읽힌다. 그래서 위쪽 반만 직접 만든다."""
+    verts, faces = [], []
+    for j in range(ring + 1):
+        phi = (math.pi / 2) * j / ring          # 0=꼭대기 ... pi/2=밑둘레
+        z = h * math.cos(phi)
+        rr = r * math.sin(phi)
+        if j == 0:
+            verts.append((loc[0], loc[1], loc[2] + z)); continue
+        for i in range(seg):
+            t = 2 * math.pi * i / seg
+            jj = 1.0 + (random.uniform(-jitter, jitter) if jitter else 0.0)
+            verts.append((loc[0] + math.cos(t) * rr * jj, loc[1] + math.sin(t) * rr * jj, loc[2] + z))
+    for i in range(seg):                         # 꼭대기 팬
+        faces.append((0, 1 + i, 1 + (i + 1) % seg))
+    for j in range(1, ring):
+        a0 = 1 + (j - 1) * seg; b0 = 1 + j * seg
+        for i in range(seg):
+            i2 = (i + 1) % seg
+            faces.append((a0 + i, b0 + i, b0 + i2, a0 + i2))
+    base = 1 + (ring - 1) * seg                  # 밑면(안 보이지만 닫아 둔다)
+    faces.append(tuple(range(base, base + seg))[::-1])
+    me = bpy.data.meshes.new("dome"); me.from_pydata(verts, [], faces); me.update()
+    o = bpy.data.objects.new("dome", me); scene.collection.objects.link(o)
+    try: 
+        for pgn in me.polygons: pgn.use_smooth = False
+    except Exception: pass
+    return add(o, mat)
+
+
 def tri_prism(pts, depth, axis_loc, mat=None):
     """단면 삼각형(합각) — pts=[(x,z)×3] (y는 axis_loc에 두께 depth)."""
     verts, faces = [], []
@@ -376,6 +408,187 @@ def hut_s3():
         cyl(0.03, 0.34, (x, jc, ridge), rot=(math.radians(90), 0, 0), mat=M['fiber'], verts=8)
 
 
+# =============================================================================
+# ★[재민 배치 A2 · 2026-08-02] 노(爐)·숯가마 — 발자국 2×2셀. 서버 FURNACE_STAGES/CHARCOAL_KILN_STAGES 와 1:1.
+#   고증(청동기 후기 야금):
+#     · 도가니로는 돌·진흙으로 쌓은 **낮은 수형(竪型) 노**다. 위가 열려 있고 도가니를 앉힌다.
+#     · 송풍구(tuyère)는 진흙 관이고, 그 끝에 **가죽 풀무**가 붙는다 — 풀무가 절반이다(era.js).
+#     · 연료는 목탄. 노 옆에 숯더미와 슬래그(쇠똥) 무더기가 쌓인다 — 유적에서 노를 찾는 표지가 이것이다.
+#     · 숯가마는 불리는 설비가 아니라 **공기를 막아 찌는** 설비라 봉토 둔덕 + 연도(굴뚝)로 읽혀야 한다.
+#   ★공정 3단계가 전부 같은 앵커 계약(발자국 2×2 북서 오버행 모서리)이라 클라가 같은 원점에 그린다.
+# =============================================================================
+M['stone'] = striped_mat("stone", (0.52, 0.50, 0.47), (0.38, 0.37, 0.35), 16, 0.92, 0.55, 5.0)   # 막돌 기초
+M['clay'] = striped_mat("clay", (0.55, 0.36, 0.24), (0.44, 0.28, 0.18), 11, 0.90, 0.45, 4.0)     # 진흙 노벽(구운 자국)
+M['clay_hot'] = simple_mat("clay_hot", (0.42, 0.24, 0.16), 0.95)                                  # 불받은 안쪽(그을음)
+M['hide_m'] = simple_mat("hide_m", (0.62, 0.48, 0.33), 0.85)                                      # 가죽 풀무
+M['coal'] = simple_mat("coal", (0.09, 0.08, 0.08), 0.98)                                          # 숯·슬래그
+M['ash'] = simple_mat("ash", (0.62, 0.60, 0.56), 0.95)                                            # 재
+
+
+def _emissive(name, color, strength):
+    m = bpy.data.materials.new(name); m.use_nodes = True
+    nt = m.node_tree
+    b = principled(m)
+    try:
+        b.inputs["Emission Color"].default_value = (color[0], color[1], color[2], 1.0)
+        b.inputs["Emission Strength"].default_value = strength
+        b.inputs["Base Color"].default_value = (color[0] * 0.5, color[1] * 0.4, color[2] * 0.3, 1.0)
+    except Exception:
+        em = nt.nodes.new("ShaderNodeEmission")
+        em.inputs[0].default_value = (color[0], color[1], color[2], 1.0)
+        em.inputs[1].default_value = strength
+        out = nt.nodes.get("Material Output")
+        nt.links.new(em.outputs[0], out.inputs["Surface"])
+    return m
+
+
+# ★1패스 육안: strength 9/4 는 Standard 뷰 트랜스폼에서 **하얗게 타 버렸다**(불이 아니라 백색 원반).
+#   불빛은 색이 살아야 불로 읽힌다 — 세기를 낮추고 주황을 진하게.
+M['fire'] = _emissive("fire", (1.0, 0.38, 0.06), 2.6)
+M['ember'] = _emissive("ember", (1.0, 0.30, 0.04), 1.5)
+
+FURN_W, FURN_D = 2.0, 2.0
+FCX, FCY = (FURN_W + 1) / 2, (FURN_D + 1) / 2      # 오버행 포함 로컬 중심(1.5, 1.5)
+
+
+def _furn_base(seed=201):
+    """① 노 터 — 다진 바닥 + 막돌 기초 고리. 돌은 크기·각도가 제각각이라야 '쌓은 것'으로 읽힌다."""
+    random.seed(seed)
+    cyl(0.80, 0.05, (FCX, FCY, -0.02), mat=M['soil2'], verts=20)                   # 다진 바닥(노 둘레만 — 네모 판이면 '깔개'로 읽힌다)
+    for i in range(16):
+        t = i / 16 * 2 * math.pi + random.uniform(-0.09, 0.09)
+        rr = 0.62 + random.uniform(-0.04, 0.04)
+        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=random.uniform(0.10, 0.16),
+                                              location=(FCX + math.cos(t) * rr, FCY + math.sin(t) * rr, 0.08))
+        o = bpy.context.active_object
+        o.scale = (1.15, 1.15, 0.72); o.rotation_euler = (0, 0, random.uniform(0, 3.14))
+        add(o, M['stone'])
+
+
+def _furn_shaft(h, plaster=False):
+    """② 노벽 — 돌을 쌓고 진흙을 바른 수형 노. plaster=True 면 겉을 진흙으로 마감(완공 직전)."""
+    random.seed(211)
+    rings = max(2, int(h / 0.24))
+    for k in range(rings):
+        z = 0.14 + k * (h - 0.14) / rings
+        rr = 0.56 - k * 0.030
+        n = 13
+        for i in range(n):
+            t = i / n * 2 * math.pi + k * 0.31
+            bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=random.uniform(0.095, 0.135),
+                                                  location=(FCX + math.cos(t) * rr, FCY + math.sin(t) * rr, z))
+            o = bpy.context.active_object
+            o.scale = (1.1, 1.1, 0.78); o.rotation_euler = (0, 0, random.uniform(0, 3.14))
+            add(o, M['clay'] if plaster else M['stone'])
+    cyl(0.40, 0.03, (FCX, FCY, 0.12), mat=M['clay_hot'], verts=18)                  # 노 바닥(내부)
+
+
+def _furn_tuyere_bellows():
+    """③ 송풍구 + 가죽 풀무 — 풀무가 절반이다(era.js BELLOWS_BONUS).
+    ★카메라가 (+x,+y,+z) 쪽에 있으므로 **+x+y 모서리가 화면 앞**이다. 풀무를 거기 둬야 노에 안 가린다.
+      1패스에서 작게 뒀더니 노 그림자에 묻혀 '베이지 얼룩'으로 읽혔다 — 키우고 색을 진하게."""
+    # 진흙 송풍구(노벽을 비스듬히 뚫고 들어간다)
+    cyl(0.07, 0.78, (FCX + 0.60, FCY + 0.60, 0.46), rot=(math.radians(72), 0, math.radians(-45)), mat=M['clay'], verts=9)
+    # 풀무 — 나무 판 두 장 사이의 가죽 주머니
+    bx, by = FCX + 1.02, FCY + 1.02
+    box(0.62, 0.40, 0.07, (bx, by, 0.22), rot=(0, 0, math.radians(45)), mat=M['plank'])
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=16, ring_count=9, radius=0.27, location=(bx, by, 0.42))
+    o = bpy.context.active_object; o.scale = (1.3, 1.0, 0.80); o.rotation_euler = (0, 0, math.radians(45))
+    add(o, M['hide_m'])
+    box(0.62, 0.40, 0.07, (bx, by, 0.64), rot=(0, math.radians(-10), math.radians(45)), mat=M['plank'])
+    cyl(0.036, 0.56, (bx + 0.22, by + 0.22, 0.80), rot=(math.radians(64), 0, math.radians(-45)), mat=M['log'], verts=7)   # 손잡이
+    for dx2, dy2 in ((-0.24, 0.24), (0.24, -0.24)):   # 풀무를 받치는 말뚝
+        cyl(0.045, 0.24, (bx + dx2, by + dy2, 0.11), mat=M['log'], verts=7)
+
+
+def _furn_yard(fire=False):
+    """노 옆 살림 — 숯더미와 슬래그(쇠똥) 무더기. 유적에서 노를 찾는 표지가 이것이다."""
+    random.seed(233)
+    for (ox2, oy2, mat, n) in ((-0.95, 0.80, M['coal'], 9), (0.85, -0.95, M['coal'], 6), (-0.85, -0.85, M['ash'], 5)):
+        for i in range(n):
+            bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=random.uniform(0.07, 0.12),
+                                                  location=(FCX + ox2 + random.uniform(-0.18, 0.18),
+                                                            FCY + oy2 + random.uniform(-0.18, 0.18),
+                                                            random.uniform(0.04, 0.11)))
+            o = bpy.context.active_object; o.scale = (1.2, 1.2, 0.62)
+            add(o, mat)
+    if fire:
+        cyl(0.26, 0.05, (FCX, FCY, 1.14), mat=M['ember'], verts=16)                 # 노 아가리의 잉걸(작게 — 원반이 크면 불이 아니라 조명이 된다)
+        for i in range(5):                                                          # 불꽃 혀
+            t = i / 5 * 2 * math.pi
+            bpy.ops.mesh.primitive_cone_add(vertices=7, radius1=random.uniform(0.045, 0.075), depth=random.uniform(0.14, 0.24),
+                                            location=(FCX + math.cos(t) * 0.13, FCY + math.sin(t) * 0.13, 1.24))
+            add(bpy.context.active_object, M['fire'])
+
+
+def furn_s1():
+    _furn_base()
+
+
+def furn_s2():
+    _furn_base(); _furn_shaft(0.74)
+
+
+def furn_s3():
+    _furn_base(); _furn_shaft(1.06); _furn_tuyere_bellows()
+
+
+def furnace():
+    _furn_base(); _furn_shaft(1.14, plaster=True); _furn_tuyere_bellows(); _furn_yard(fire=True)
+
+
+# ── 숯가마 — 봉토 둔덕 + 연도. 불을 불리는 게 아니라 **공기를 막는** 설비다 ────────
+def kiln_s1():
+    """① 가마 구덩이 — 파낸 구덩이 + 둘레 흙둔덕. 노 터(막돌 고리)와 **한눈에 구별돼야** 한다:
+    노는 돌을 동그랗게 쌓고, 가마는 땅을 파고 흙을 둘러 쌓는다(1패스에선 둘이 똑같아 보였다)."""
+    random.seed(301)
+    cyl(0.72, 0.07, (FCX, FCY, -0.06), mat=M['soil2'], verts=20)                   # 파인 바닥
+    for i in range(22):                                                            # 파낸 흙 둔덕(연속된 테두리)
+        t = i / 22 * 2 * math.pi
+        rr = 0.70 + random.uniform(-0.03, 0.03)
+        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=random.uniform(0.13, 0.19),
+                                              location=(FCX + math.cos(t) * rr, FCY + math.sin(t) * rr, 0.05))
+        o = bpy.context.active_object; o.scale = (1.3, 1.3, 0.55)
+        add(o, M['soil'])
+    for (x2, y2) in ((FCX - 0.30, FCY - 0.20), (FCX + 0.18, FCY + 0.26)):          # 쟁이려 갖다 둔 통나무
+        cyl(0.075, 0.66, (x2, y2, 0.03), rot=(0, math.radians(90), random.uniform(0, 3)), mat=M['log'], verts=8)
+
+
+def charcoal_kiln():
+    """완공 — 통나무를 세워 쟁이고 흙으로 덮은 둔덕 + 연도(굴뚝). 연기만 나고 불꽃은 안 보인다."""
+    # ★2패스 육안 교정: 통나무를 둔덕만큼 길게 세웠더니 **말뚝 왕관**처럼 보였고, 둔덕은 z압축(0.82)에
+    #   눌려 납작한 모래밭이 됐다. 탄요는 "장작을 흙으로 **덮어** 재우는 물건"이라 실루엣이 곧 반구다.
+    #   ⇒ 통나무는 밑동만 삐죽 보이게 줄이고, 둔덕은 압축을 감안해 z를 키운다.
+    random.seed(311)
+    cyl(0.80, 0.06, (FCX, FCY, -0.05), mat=M['soil2'], verts=20)
+    for i in range(8):   # 쟁인 통나무 — 덮다 만 밑동만 보인다
+        t = i / 8 * 2 * math.pi
+        cyl(0.075, 0.34, (FCX + math.cos(t) * 0.66, FCY + math.sin(t) * 0.66, 0.12),
+            rot=(math.radians(20), 0, t), mat=M['log'], verts=8)
+    # 봉토 둔덕(반구) — 노(수직 원통)와 실루엣이 반대라 멀리서도 구별된다. z압축 보정으로 1.35배.
+    #   ★UV 구를 얹으면 아랫반구가 그대로 보여 '공'이 된다(렌더엔 지면 가림막이 없다) — 돔 메시를 쓴다.
+    dome(0.80, 0.82, (FCX, FCY, 0.0), mat=M['soil'], seg=26, ring=9, jitter=0.035)
+    for i in range(14):   # 겉흙 결(손으로 덮어 두드린 티) — 둔덕 **허리**에만, 윗면은 매끈하게
+        t = i / 14 * 2 * math.pi
+        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=random.uniform(0.09, 0.14),
+                                              location=(FCX + math.cos(t) * 0.60, FCY + math.sin(t) * 0.60, 0.30))
+        o = bpy.context.active_object; o.scale = (1.2, 1.2, 0.62)
+        add(o, M['soil2'])
+    # 연도(굴뚝) — 둔덕 **꼭대기**에 낸다(연기가 나가는 자리). 살짝 비껴 세워야 앞뒤가 읽힌다.
+    kx, ky = FCX + 0.14, FCY + 0.14
+    for k in range(3):
+        cyl(0.115 - k * 0.012, 0.17, (kx, ky, 0.66 + k * 0.16), mat=M['stone'], verts=10)
+    cyl(0.085, 0.05, (kx, ky, 1.12), mat=M['coal'], verts=10)                      # 연도 아가리(그을음)
+    # 아궁이(불구멍) — 앞면 아래 한 곳만 열린다
+    cyl(0.11, 0.22, (FCX + 0.34, FCY + 0.56, 0.14), rot=(math.radians(78), 0, math.radians(-30)), mat=M['clay_hot'], verts=10)
+    for i in range(7):   # 곁에 부려 둔 숯 — 이게 이 설비가 뭘 만드는지 말해 준다
+        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=random.uniform(0.07, 0.12),
+                                              location=(FCX - 0.95 + random.uniform(-0.18, 0.18),
+                                                        FCY + 0.88 + random.uniform(-0.18, 0.18), 0.06))
+        o = bpy.context.active_object; o.scale = (1.2, 1.2, 0.6)
+        add(o, M['coal'])
+
+
 JOBS = [
     ("hut_roof", hut_roof, 6.0, 4.0, EAVE_M + 2.5 * SLOPE + 0.4),
     ("hall_roof", hall_roof, 8.0, 8.0, EAVE_M + 4.5 * SLOPE + 0.4),
@@ -384,6 +597,14 @@ JOBS = [
     ("hut_s1", hut_s1, 6.0, 4.0, 0.45),
     ("hut_s2", hut_s2, 6.0, 4.0, EAVE_M + 0.35),
     ("hut_s3", hut_s3, 6.0, 4.0, EAVE_M + 2.5 * SLOPE + 0.35),
+    # ★노(爐) 공정 — 발자국 2×2(서버 tryFurnaceStart 규약과 동일), 높이만 단계별
+    ("furn_s1", furn_s1, 2.0, 2.0, 0.30),
+    ("furn_s2", furn_s2, 2.0, 2.0, 0.95),
+    ("furn_s3", furn_s3, 2.0, 2.0, 1.35),
+    ("furnace", furnace, 2.0, 2.0, 1.55),
+    # ★숯가마 — 같은 2×2 계약, 2단계
+    ("kiln_s1", kiln_s1, 2.0, 2.0, 0.30),
+    ("charcoal_kiln", charcoal_kiln, 2.0, 2.0, 1.25),
 ]
 ONLY = [k for k in os.environ.get('BLD_ONLY', '').split(',') if k]
 anchors = {}

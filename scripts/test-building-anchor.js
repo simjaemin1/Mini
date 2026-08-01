@@ -33,6 +33,13 @@ const JOBS = {
   hut_s1: anchor(6, 4, 0.45),
   hut_s2: anchor(6, 4, EAVE + 0.35),
   hut_s3: anchor(6, 4, EAVE + 2.5 * SLOPE + 0.35),
+  // ★노(爐) 3단계 + 완공 · 숯가마 2단계(2026-08-02) — 발자국 2×2, 높이만 단계별
+  furn_s1: anchor(2, 2, 0.30),
+  furn_s2: anchor(2, 2, 0.95),
+  furn_s3: anchor(2, 2, 1.35),
+  furnace: anchor(2, 2, 1.55),
+  kiln_s1: anchor(2, 2, 0.30),
+  charcoal_kiln: anchor(2, 2, 1.25),
 };
 
 // ── ① client.js A표 파싱 ──

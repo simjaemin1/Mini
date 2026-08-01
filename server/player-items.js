@@ -84,6 +84,16 @@ function matGrade(materials, kind) {
 if (Specialty && Specialty.alloyGrade) {
   for (const m of castKinds()) { const g = Specialty.alloyGrade({ [m]: 1 }, 'weapon'); if (g > 0) MAT_GRADE[m] = +g.toFixed(3); }
 }
+// ★★운철(隕鐵) — 등급을 손으로 적지 않는다. **합금 모델이 낸 니켈 프리미엄**을 철 앵커에 곱한다.
+//   [재민 확정 · era.js §METEORIC] "니켈의 역할은 난이도가 아니라 성능이다 — 순철보다 단단하고
+//   덜 삭는다(3천 년 유물이 남은 이유)". Fe93/Ni7 은 모델이 순철보다 약 6% 좋다고 답한다.
+//   iron 은 청동기에 주조 불가라 위 루프가 못 덮어쓰므로(=손으로 적은 0.85 가 앵커로 남는다),
+//   운철도 그 앵커에 **비율만** 얹는다. 두 값이 서로 다른 척도를 타면 그게 버그다.
+if (Specialty && Specialty.alloyGrade) {
+  const gFe = Specialty.alloyGrade({ iron: 1 }, 'weapon');
+  const gMet = Specialty.alloyGrade({ iron: 0.93, nickel: 0.07 }, 'weapon');   // era.METEORIC 과 같은 배합
+  MAT_GRADE.meteoric_iron = gFe > 0 ? +(MAT_GRADE.iron * (gMet / gFe)).toFixed(3) : MAT_GRADE.iron;
+}
 
 // ── 제작: 플레이어 숙련 × 재료 → 인스턴스 (설계 §3 숙련 진행 가시화) ──
 function craftItem(type, skillLevel, materials) {

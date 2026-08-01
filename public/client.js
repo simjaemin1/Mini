@@ -469,7 +469,10 @@ const SIM_JOB_EMOJI = {
   const _bldSpr = {};
   (() => {
     const A = { hut_roof: [164.0, 130.4], hall_roof: [292.0, 169.1], granary: [132.0, 121.1],
-                hut_s1: [164.0, 20.2], hut_s2: [164.0, 81.1], hut_s3: [164.0, 129.1] };   // building_anchors.json 동기(scripts/test-building-anchor.js가 결정적 재계산으로 대조)
+                hut_s1: [164.0, 20.2], hut_s2: [164.0, 81.1], hut_s3: [164.0, 129.1],
+                // ★노(爐)·숯가마 — 발자국 2×2, 서버 FURNACE_STAGES/CHARCOAL_KILN_STAGES 와 1:1
+                furn_s1: [100.0, 15.3], furn_s2: [100.0, 36.2], furn_s3: [100.0, 49.1], furnace: [100.0, 55.3],
+                kiln_s1: [100.0, 15.3], charcoal_kiln: [100.0, 46.0] };   // building_anchors.json 동기(scripts/test-building-anchor.js가 결정적 재계산으로 대조)
     for (const k in A) {
       const im = new Image();
       im.onload = () => { im._ox = A[k][0]; im._oy = A[k][1]; _bldSpr[k] = im; };
@@ -4040,6 +4043,7 @@ const SIM_JOB_EMOJI = {
         else if (item.r.type === 'water_pool') drawWaterPoolIso(s.x, s.y);
         else if (item.r.type === 'herb') drawHerbIso(s.x, s.y, item.ax, item.ay);
         else if (item.r.type === 'ore') drawOreIso(s.x, s.y, item.ax, item.ay);
+        else if (item.r.type === 'meteorite') drawMeteoriteIso(s.x, s.y, item.ax, item.ay);   // ★운철 낙하지
         if (item.r.hp < item.r.maxHp) {
           const pct = item.r.hp / item.r.maxHp;
           ctx.fillStyle = '#222'; ctx.fillRect(s.x - 10, s.y - 28, 20, 3);
@@ -5041,9 +5045,24 @@ const SIM_JOB_EMOJI = {
       return;
     }
     if (type === 'furnace_site' || type === 'furnace') {
-      // ★노(爐) — 재민 확정(움집 동형 공정). 단계별 표현: 1=돌 기초, 2=노벽, 완공=노+불.
+      // ★노(爐) — 재민 확정(움집 동형 공정). 단계별 표현: 1=돌 기초, 2=노벽, 3=풀무, 완공=노+불.
       const st = (building?.data?.stage) | 0;
       const done = type === 'furnace';
+      // ★[에셋] 움집터와 **같은 앵커 계약** — 발자국 2×2 북서 오버행 모서리에 붙인다.
+      //   행 px(b.x,b.y)는 발자국 중심이라 (x0-0.5, y0-0.5)셀까지의 델타를 iso로 변환한다(w2i 선형).
+      {
+        const _sp = _bldSpr[done ? 'furnace' : ('furn_s' + st)], _d = building && building.data;
+        if (_sp && _d && _d.x0 != null) {
+          const _dx = (_d.x0 - 0.5) * CL_BUILDING_SIZE - building.x, _dy = (_d.y0 - 0.5) * CL_BUILDING_SIZE - building.y;
+          const _ax2 = x + (_dx - _dy), _ay2 = y + (_dx + _dy) * 0.5;
+          ctx.drawImage(_sp, _ax2 - _sp._ox, _ay2 - _sp._oy);
+          const _kko2 = (_d.kind) === 'bloomery' ? '괴련로' : '노(爐)';
+          ctx.font = 'bold 10px sans-serif'; ctx.fillStyle = '#ffe9b0'; ctx.textAlign = 'center';
+          ctx.fillText(done ? `${_kko2} — 클릭=제련` : `${_kko2} 터 ${st}/3단계 (클릭=시공)`, x, y - 28);
+          ctx.textAlign = 'left';
+          return;
+        }
+      }
       ctx.beginPath();
       ctx.moveTo(x, y - 10); ctx.lineTo(x + 22, y); ctx.lineTo(x, y + 10); ctx.lineTo(x - 22, y); ctx.closePath();
       ctx.fillStyle = done ? 'rgba(90,70,58,0.9)' : 'rgba(90,80,70,0.55)'; ctx.fill();
@@ -5069,6 +5088,18 @@ const SIM_JOB_EMOJI = {
       // ★숯가마 — 노와 같은 2×2 계약. 밀폐 봉토 둔덕 + 연도(굴뚝). 불꽃이 없다(공기를 막아 찌는 설비).
       const st = (building?.data?.stage) | 0;
       const done = type === 'charcoal_kiln';
+      {
+        const _sp = _bldSpr[done ? 'charcoal_kiln' : 'kiln_s1'], _d = building && building.data;
+        if (_sp && _d && _d.x0 != null) {
+          const _dx = (_d.x0 - 0.5) * CL_BUILDING_SIZE - building.x, _dy = (_d.y0 - 0.5) * CL_BUILDING_SIZE - building.y;
+          const _ax2 = x + (_dx - _dy), _ay2 = y + (_dx + _dy) * 0.5;
+          ctx.drawImage(_sp, _ax2 - _sp._ox, _ay2 - _sp._oy);
+          ctx.font = 'bold 10px sans-serif'; ctx.fillStyle = '#e6d6b6'; ctx.textAlign = 'center';
+          ctx.fillText(done ? '숯가마 — 클릭=굽기' : `숯가마 터 ${st}/2단계 (클릭=시공)`, x, y - 28);
+          ctx.textAlign = 'left';
+          return;
+        }
+      }
       ctx.beginPath();
       ctx.moveTo(x, y - 10); ctx.lineTo(x + 22, y); ctx.lineTo(x, y + 10); ctx.lineTo(x - 22, y); ctx.closePath();
       ctx.fillStyle = done ? 'rgba(74,62,50,0.9)' : 'rgba(88,80,70,0.55)'; ctx.fill();
@@ -5938,6 +5969,30 @@ const SIM_JOB_EMOJI = {
     ctx.strokeStyle = '#8a7820'; ctx.stroke();
     ctx.fillStyle = 'rgba(255,255,200,0.6)';
     ctx.beginPath(); ctx.arc(x, y - 6, 1.5, 0, Math.PI*2); ctx.fill();
+  }
+
+  // ★운철(隕鐵) 낙하지 — 광맥 노두와 헷갈리면 안 된다. 그을린 웅덩이(충돌 흔적) 위에
+  //   **금속 광택이 도는 검은 덩어리**. 광맥의 노란 결정(구리·금)과 달리 은백색으로 번쩍인다.
+  function drawMeteoriteIso(x, y, seedX, seedY) {
+    ctx.save();
+    // 충돌 그을음(둘레)
+    ctx.fillStyle = 'rgba(30,24,20,0.45)';
+    ctx.beginPath(); ctx.ellipse(x, y + 6, 20, 9, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.beginPath(); ctx.ellipse(x, y + 5, 11, 5, 0, 0, Math.PI * 2); ctx.fill();
+    // 덩어리 본체 — 모난 다면체
+    ctx.beginPath();
+    ctx.moveTo(x - 10, y + 2); ctx.lineTo(x - 7, y - 9); ctx.lineTo(x + 2, y - 12);
+    ctx.lineTo(x + 10, y - 5); ctx.lineTo(x + 7, y + 4); ctx.closePath();
+    ctx.fillStyle = '#3a3630'; ctx.fill();
+    ctx.strokeStyle = '#17140f'; ctx.lineWidth = 1.1; ctx.stroke();
+    // 파단면의 금속 광택(비트만슈테텐 무늬 암시)
+    ctx.strokeStyle = 'rgba(210,215,225,0.85)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x - 5, y - 2); ctx.lineTo(x + 4, y - 8); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x - 3, y - 7); ctx.lineTo(x + 5, y - 3); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.beginPath(); ctx.arc(x + 1, y - 6, 1.4, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
   }
 
   function drawSpeechBubble(x, y, text) {

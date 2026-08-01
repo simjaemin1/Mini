@@ -722,9 +722,11 @@ const COOK_RECIPES = {
 //   accepts 는 여전히 "한 가지 재료로 만들기"(깎기·두드리기) 경로의 목록이다.
 const EQUIPMENT_RECIPES = {
   clothes: { label: '옷',   slot: 'clothes', skill: 'tailoring',  qty: 3, accepts: ['fur','ramie','leather','hide','fiber','hemp'] },
-  armor:   { label: '갑옷', slot: 'armor',   skill: 'smithing',   qty: 4, cast: true, accepts: ['bronze','copper','iron','leather','hide'] },
-  weapon:  { label: '무기', slot: 'weapon',  skill: 'smithing',   qty: 3, cast: true, accepts: ['bronze','copper','iron','stone','wood','bone','obsidian'] },
-  tool:    { label: '도구', slot: 'tool',    skill: 'toolmaking', qty: 3, cast: true, accepts: ['bronze','copper','iron','stone','wood','bone'] },
+  // ★meteoric_iron(운철)은 **주조가 아니라 단조** 재료다 — 녹이지 않고 두들긴다(cast 목록엔 안 들어간다).
+  //   accepts 에만 있으므로 단일 재료 경로(MAT_GRADE)를 탄다. 노도 시대도 필요 없다.
+  armor:   { label: '갑옷', slot: 'armor',   skill: 'smithing',   qty: 4, cast: true, accepts: ['bronze','copper','iron','meteoric_iron','leather','hide'] },
+  weapon:  { label: '무기', slot: 'weapon',  skill: 'smithing',   qty: 3, cast: true, accepts: ['bronze','copper','iron','meteoric_iron','stone','wood','bone','obsidian'] },
+  tool:    { label: '도구', slot: 'tool',    skill: 'toolmaking', qty: 3, cast: true, accepts: ['bronze','copper','iron','meteoric_iron','stone','wood','bone'] },
 };
 // 제작 숙련: xp → 레벨(0~10). 유효 완성품 1개당 +1 xp(설계 §3 xp 원칙). 초반 빠르고 만렙 완만 — "레벨업하면 다음 제작품 수치가 오른다" 가시화.
 const CRAFT_XP_PER_LEVEL = 6; // 레벨당 6개 → 만렙 ~60개(플레이 스케일; econ NPC 2150노동일과 별개 척도).
@@ -3979,6 +3981,12 @@ function tryGather(player) {
     }
     else if (best.type === 'herb')   loot = { herb: 2 };       // Phase 14.3
     else if (best.type === 'ore')    loot = { ore: 1, stone: 1 }; // Phase 14.3 — ore + 부산물 stone
+    // ★운철 — **제련하지 않는다**. 이미 금속이라 그대로 단조 재료가 된다(era.js §METEORIC).
+    //   그래서 노가 없어도, 시대가 청동기여도 철제 물건을 만들 수 있다. 그게 '거의 불가능'의 '거의'다.
+    else if (best.type === 'meteorite') {
+      loot = { meteoric_iron: 2 + Math.floor(Math.random() * 2) };   // 2~3 — 한 자루치 남짓
+      send(player.ws, { type: 'notice', text: '☄️ 하늘에서 떨어진 쇠 — 불에 넣지 않아도 이미 금속이다. 두들기면 바로 날이 선다.' });
+    }
     for (const [item, amt] of Object.entries(loot)) {
       player.inventory[item] = (player.inventory[item] || 0) + amt;
     }
@@ -4219,7 +4227,7 @@ function tryPickupItem(player, gid) {
 // 라벨 (notice용)
 const ITEM_LABEL_SERVER = {
   wood: '나무', stone: '돌', berry: '베리', fiber: '풀', pillar: '기둥', rafter: '서까래', thatch: '이엉',
-  charcoal: '숯', iron_ore: '철 정광',
+  charcoal: '숯', iron_ore: '철 정광', meteoric_iron: '운철(隕鐵)',
   fish: '생선', fish_cooked: '구운생선',
   meat_raw: '날고기', meat_cooked: '구운고기', hide: '가죽',
   berry_jam: '베리잼', water_bottle: '물병', seed_berry: '베리씨앗',
@@ -4862,24 +4870,26 @@ function tryFurnaceSmelt(player, buildingId) {
   savePlayer(player);
 }
 
-// ═══ 테스트 훅 — 노(爐) E2E(scripts/test-furnace.js). server/villages.js `__p3Bind` 선례.
+// ═══ 테스트 훅 — 노(爐)·채광 E2E(scripts/test-furnace.js · test-mining.js). `__p3Bind` 선례.
 //   운영 부팅 경로에서는 **절대 호출되지 않는** 순수 export 다(zone.js 는 원래 module.exports 가 없었고,
 //   이 한 줄이 유일하다 — require 해도 부작용이 없다). 하네스가 실서버를 띄운 뒤 in-memory 상태를
 //   직접 조작해 사유지 생성 → 터 → 3단계 → 조업까지 **실제 함수로** 왕복 검증한다.
 //   ★왜 소스 텍스트 검사(test-psite-server.js 형식)가 아니라 실행 검증인가: 노는 좌표 기하
 //     (2×2 발자국 vs 1셀 사유지)가 계약의 핵심인데, 그건 코드를 읽어서는 안 드러난다. 실제로
 //     지어 봐야 안다 — 실제로 이 하네스가 "노를 아예 못 짓는다"를 처음 잡아냈다.
-function __furnaceBind() {
+function __testBind() {
   return {
     claims, buildings, players, BUILDING_SIZE, Specialty,
-    FURNACE_STAGES, FURNACE_FUEL_PER_ORE, CHARCOAL_KILN_STAGES, CHARCOAL_KILN_YIELD, CHARCOAL_KILN_WOOD,
+    FURNACE_STAGES, FURNACE_KINDS, FURNACE_FUEL_PER_ORE, CHARCOAL_KILN_STAGES, CHARCOAL_KILN_YIELD, CHARCOAL_KILN_WOOD,
     tryFurnaceStart, tryFurnaceAdvance, tryFurnaceSmelt,
     tryKilnStart, tryKilnAdvance, tryKilnBurn,
-    _furnaceClaimOf, _furnaceCanUse, isTerrainBlockedLocal,
+    _furnaceClaimOf, _furnaceCanUse, isTerrainBlockedLocal, isWaterTileLocal,
     newClaimId: () => `c${nextClaimId++}`,
+    // ── 채광·선광 E2E(test-mining.js §⑨ 다광종) ──
+    mineOreCell, trySortOre, minedCells, ITEM_LABEL_SERVER,
   };
 }
-module.exports = { __furnaceBind };
+module.exports = { __testBind, __furnaceBind: __testBind };
 
 const GRANARY_COST = { plank: 12, stone: 8 };
 async function tryBuildGuildGranary(player, atX, atY) {

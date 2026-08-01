@@ -39,7 +39,7 @@ const Zone = require(path.join(__dirname, '..', 'server', 'zone.js'));
 const Era = require(path.join(__dirname, '..', 'server', 'era.js'));
 quiet = false; console.log = _log;
 
-const H = Zone.__furnaceBind();
+const H = Zone.__testBind();
 const SZ = H.BUILDING_SIZE;
 
 let pass = 0, fail = 0;

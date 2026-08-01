@@ -458,5 +458,160 @@ console.log('⑧ 채광 숙련 — 레벨 이득 셋 [재민 최종]');
   ok(S.itemWeight('ore_chunk') === 1, '★원석은 kg 단위로 인벤에 든다(덩이 크기가 사람마다 달라 개수로는 못 셈)');
 }
 
+// ═══ ⑨ 다광종 선광 E2E — 실서버 mineOreCell → trySortOre 왕복 몬테카를로 ═══════
+//   ★[재민 배치 A6] "연은 광맥에서 캐→선광하면 납+은이 실제 비율(85:15±)로 나오는지"
+//   위 ①~⑧ 은 순수 모듈 검증이다. 다광종은 **광맥 데이터 → oreMineralAt 2단 추첨 → 장부 →
+//   선광 → 인벤**이 전부 이어져야 성립하므로, 그 사슬 하나가 끊겨도 모듈 검증은 통과한다.
+//   ⇒ 여기서만 실서버를 띄우고(임시 DB·임시 포트) 진짜 함수를 부른다. `__testBind` 훅.
+console.log('\n⑨ 다광종 선광 E2E (실서버 mineOreCell → trySortOre)');
+{
+  const fsx = require('fs');
+  const TMP = `/tmp/test-mining-${process.pid}.db`;
+  for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fsx.unlinkSync(f); } catch (e) {} }
+  process.env.ZONE_ID = 'hanbando';
+  process.env.PORT = String(38000 + (process.pid % 900));
+  process.env.DB_PATH = TMP;
+  process.env.ENABLE_VILLAGES = '0'; process.env.ENABLE_WILDLIFE = '0';
+  process.env.ENABLE_BANDITS = '0'; process.env.ENABLE_ROADS = '0';
+  const _l = console.log, _w = console.warn, _e = console.error;
+  console.log = () => {}; console.warn = () => {}; console.error = () => {};
+  const Zone = require(path.join(__dirname, '..', 'server', 'zone.js'));
+  console.log = _l; console.warn = _w; console.error = _e;
+  const H = Zone.__testBind();
+  // ★하네스 가속 — 채굴은 **한 타마다 셀 레코드를 SQLite 에 쓴다**(_oreSave → upsertMinedCell).
+  //   사람 손으로는 1초에 한 타라 문제가 없지만, 몬테카를로는 수십만 타를 친다. 디스크가 병목이라
+  //   이 구간에서만 쓰기를 no-op 으로 만든다(같은 require 캐시라 zone.js 를 안 고쳐도 된다).
+  //   ★검증 대상(광종 추첨·장부·선광)은 전부 in-memory 라 이 우회에 영향받지 않는다.
+  const zdb = require(path.join(__dirname, '..', 'server', 'zone-local-db.js'));
+  const _upsert = zdb.upsertMinedCell; zdb.upsertMinedCell = () => {};
+
+  // ── 겹치지 않는(단일 광맥) 연은 광맥을 데이터에서 고른다 — 겹치면 이웃 광종이 섞여 비율이 흐려진다
+  //   ★"중심이 깨끗한 광맥"만 봐서는 안 된다: 산맥 위 광맥은 중심이 바위라 팔 수 있는 셀이 0이다.
+  //     실제로 **팔 수 있는 셀 수**로 고른다(첫 시도에서 이 함정에 빠졌다).
+  const raw = require(path.join(__dirname, '..', 'server', 'hanbando-terrain.json')).hanbando;
+  // ★단위 함정 — 광맥 center·radius 와 terrain 의 ore 함수는 전부 **픽셀**이다(셀이 아니다).
+  //   플레이어 격자는 셀이라 여기서 한 번만 환산한다(셀 → 픽셀 중심 = c*32+16).
+  //   첫 시도에서 셀/픽셀을 뒤섞어 "광맥 안"이라 믿은 자리가 실은 32배 밖이었고, 장부에 맥석만
+  //   980kg 쌓였다. 단위가 틀리면 하네스는 조용히 통과하는 게 아니라 **엉뚱한 걸 잰다**.
+  const cleanCellsAround = (vxPx, vyPx, rCells) => {
+    const ccx = Math.floor(vxPx / 32), ccy = Math.floor(vyPx / 32), out = [];
+    for (let dx = -rCells; dx <= rCells; dx++) for (let dy = -rCells; dy <= rCells; dy++) {
+      const x = ccx + dx, y = ccy + dy, px = x * 32 + 16, py = y * 32 + 16;
+      if (T.isWaterCellLocal('hanbando', px, py)) continue;
+      if (T.isRockCellLocal && T.isRockCellLocal('hanbando', px, py)) continue;
+      if (T.oreCandidatesAt('hanbando', px, py).length !== 1) continue;   // 겹침 없는 단일 광맥 셀만
+      if (!(T.oreProbAt('hanbando', px, py) > 0.05)) continue;            // 가장자리(p≈0)는 표본이 안 모인다
+      out.push([x, y]);
+    }
+    return out;
+  };
+  let vein = null, cells = [];
+  for (const o of (raw.ores || []).filter((o) => o.minerals && o.minerals.silver > 0 && o.minerals.lead > 0)
+                                  .sort((a, b) => (b.pk || 0) - (a.pk || 0))) {
+    const c = cleanCellsAround(o.center[0], o.center[1], Math.max(4, Math.ceil(o.radius / 32)));
+    if (c.length >= 20) { vein = o; cells = c; break; }
+  }
+  if (!vein) { ok(false, '연은(방연석) 광맥을 못 찾음 — 다광종 마이그레이션 확인'); }
+  else {
+    const want = vein.minerals;   // { lead .85, silver .15 }
+    console.log(`    광맥 "${vein.name}" @(${vein.center}) r${vein.radius} pk=${vein.pk} · 표기 배합 ` +
+      Object.entries(want).map(([k, v]) => `${k} ${(v * 100).toFixed(0)}%`).join(' / '));
+    ok(cells.length >= 20, `  단일 광맥·굴착 가능 셀 ${cells.length}개 확보`);
+
+    // ★anon_ 접두 = savePlayer 가 central 호출을 건너뛴다(하네스가 네트워크를 안 탄다)
+    const p = { playerId: 'anon_mc', name: '표본', ws: null, x: 0, y: 0, floor: 0,
+                inventory: {}, toolItems: [{ id: 'mc0', type: 'pickaxe', d: 1e9, max: 1e9 }],
+                equipped: 'mc0', craftSkill: { mining: 0 }, oreLedger: {}, oreCarry: {}, hunger: 100, thirst: 100 };
+    const TARGET_KG = 2200 * S.CHUNK_KG;      // 광석 표본 ≈2,200덩이 — 15%±2%(95%) 에 충분
+    const ledgerKg = {}, sorted = {};
+    let chunks = 0, swings = 0, oreKgTot = 0;
+    const t0 = Date.now();
+    const drain = () => {                      // 한 셀 분량을 장부에 적립하고 선광 → 인벤 비우기
+      for (const k in p.oreLedger) ledgerKg[k] = +((ledgerKg[k] || 0) + p.oreLedger[k]).toFixed(3);
+      const invBefore = Object.assign({}, p.inventory);
+      H.trySortOre(p);
+      for (const k of Object.keys(p.inventory)) {
+        if (k === 'ore_chunk') continue;
+        const d = (p.inventory[k] || 0) - (invBefore[k] || 0);
+        if (d > 0) sorted[k] = (sorted[k] || 0) + d;
+      }
+      for (const k of Object.keys(p.inventory)) if (k !== 'ore_chunk') delete p.inventory[k];
+      oreKgTot = Object.entries(ledgerKg).reduce((a, [k, v]) => a + (k === 'stone' ? 0 : v), 0);
+    };
+    outer:
+    for (let round = 0; round < 2000; round++) {
+      for (const [cx, cy] of cells) {
+        p.x = cx * 32 + 16; p.y = cy * 32 + 16;
+        for (let s = 0; s < 900; s++) {
+          p._mineT = 0;                        // 1초/타 쿨다운 우회(하네스 전용 — 규칙 자체는 안 건드린다)
+          const before = p.inventory.ore_chunk || 0;
+          if (!H.mineOreCell(p)) break;        // 못 파는 자리 / 곡괭이 없음
+          swings++;
+          if ((p.inventory.ore_chunk || 0) > before) chunks++;
+          if (S.inventoryWeight(p.inventory || {}) > 20) break;   // 짐 가득 — 부리러 간다
+        }
+        drain();
+        if (oreKgTot >= TARGET_KG) break outer;
+      }
+    }
+    const gangue = ledgerKg.stone || 0;
+    const oreKg = Object.entries(ledgerKg).filter(([k]) => k !== 'stone');
+    const totOre = oreKg.reduce((a, [, v]) => a + v, 0);
+    console.log(`    ${(Date.now() - t0)}ms · 타 ${swings} · 덩이 ${chunks} · 광석 ${totOre.toFixed(0)}kg · 맥석 ${gangue.toFixed(0)}kg`);
+    console.log('    장부 질량비: ' + oreKg.sort((a, b) => b[1] - a[1])
+      .map(([k, v]) => `${k} ${(v / totOre * 100).toFixed(1)}%`).join(' · '));
+    console.log('    선광 산출(덩이): ' + Object.entries(sorted).sort((a, b) => b[1] - a[1])
+      .map(([k, v]) => `${k} ${v}`).join(' · '));
+
+    // ★① 광종이 표기 배합대로 갈리는가 — 오차 한계는 표본수에서 나온다(±3σ)
+    const n = totOre / S.CHUNK_KG;
+    for (const [m, w] of Object.entries(want)) {
+      const obs = (ledgerKg[m] || 0) / totOre;
+      const sd = Math.sqrt(w * (1 - w) / Math.max(1, n));
+      ok(Math.abs(obs - w) < Math.max(0.02, 3 * sd),
+        `  ${m}: 실측 ${(obs * 100).toFixed(1)}% vs 표기 ${(w * 100).toFixed(0)}% (허용 ±${(Math.max(0.02, 3 * sd) * 100).toFixed(1)}%p)`);
+    }
+    // ★② 표기에 없는 광종이 새어 들어오지 않는가(단일 광맥 셀만 팠으므로 0이어야 한다)
+    const stray = oreKg.filter(([k]) => !(k in want));
+    ok(stray.length === 0, `  표기 밖 광종 누설 0 ${stray.length ? '(' + stray.map(([k, v]) => k + ' ' + v.toFixed(1)).join(',') + ')' : ''}`);
+    // ★③ 선광이 질량을 보존하는가 — 은은 소수 덩이라 이월(oreCarry)로 남는다
+    const backKg = Object.entries(sorted).reduce((a, [k, v]) => a + v * S.CHUNK_KG, 0)
+      + Object.entries(p.oreCarry || {}).reduce((a, [k, v]) => a + (k === 'stone' ? 0 : v), 0);
+    ok(Math.abs(backKg - totOre) / totOre < 0.01, `  선광 질량 보존 — 장부 ${totOre.toFixed(1)}kg → 산출+이월 ${backKg.toFixed(1)}kg`);
+    // ★④ 은이 실제로 손에 잡히는가(고대 은의 출처는 방연석이다 — 은 단독 광맥은 폐지됐다)
+    ok((sorted.silver || 0) > 0, `  ★은이 방연석에서 나온다 — ${sorted.silver || 0}덩이 (은 단독 광맥 폐지의 대체 경로)`);
+  }
+
+  // ★⑩ 운철(隕鐵) 스폰 밀도 — 결정론 해시라 지도 전체를 세 볼 수 있다
+  {
+    const chunkMod = require(path.join(__dirname, '..', 'server', 'chunk.js'));
+    const Z = ZONES.hanbando, CS = 1024;
+    const colsX = Math.ceil(Z.zoneWidth / CS), colsY = Math.ceil(Z.zoneHeight / CS);
+    let hit = 0, land = 0;
+    for (let cx = 0; cx < colsX; cx++) for (let cy = 0; cy < colsY; cy++) {
+      const list = chunkMod.generateChunkResources('hanbando', Z.biome, cx, cy, CS, null);
+      const m = list.filter((r) => r.type === 'meteorite');
+      if (m.length) { land += m.length; }
+    }
+    // (기각분 포함 기대치는 청크수×확률 — 물·바위에서 떨어진 건 안 남는다)
+    const expect = colsX * colsY * 0.006;
+    console.log(`    운철: 청크 ${colsX}×${colsY}=${colsX * colsY} · 기대 시도 ${expect.toFixed(0)} → 지표 잔존 ${land}개`);
+    ok(land >= 10 && land <= 80, `  ★대륙에 수십 개 (${land}개) — 광맥이 아니라 발견물 밀도`);
+    // 결정론 — 같은 좌표를 두 번 부르면 같은 답
+    const a = chunkMod.generateChunkResources('hanbando', Z.biome, 30, 40, CS, null).filter((r) => r.type === 'meteorite');
+    const b = chunkMod.generateChunkResources('hanbando', Z.biome, 30, 40, CS, null).filter((r) => r.type === 'meteorite');
+    ok(JSON.stringify(a) === JSON.stringify(b), '  스폰이 결정론(재부팅해도 같은 자리)');
+    // 운철 등급 = 합금 모델이 낸 니켈 프리미엄 (손으로 적은 값이 아니다)
+    const PI = require(path.join(__dirname, '..', 'server', 'player-items'));
+    const gFe = S.alloyGrade({ iron: 1 }, 'weapon'), gMet = S.alloyGrade({ iron: 0.93, nickel: 0.07 }, 'weapon');
+    console.log(`    운철 등급 ${PI.MAT_GRADE.meteoric_iron} (철 ${PI.MAT_GRADE.iron} × 니켈 프리미엄 ${(gMet / gFe).toFixed(3)}) · 청동 ${PI.MAT_GRADE.bronze}`);
+    ok(PI.MAT_GRADE.meteoric_iron > PI.MAT_GRADE.iron, '  ★운철 > 순철 (니켈은 난이도가 아니라 성능이다)');
+    ok(PI.MAT_GRADE.meteoric_iron < PI.MAT_GRADE.bronze, '  ★운철 < 청동 — 초기 철기가 청동을 못 이긴 고증 그대로');
+  }
+
+  zdb.upsertMinedCell = _upsert;   // 가속 원복
+  for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fsx.unlinkSync(f); } catch (e) {} }
+}
+
 console.log('\n' + (fail.length ? '결과: FAIL — ' + fail.length + '건\n  · ' + fail.join('\n  · ') : '결과: PASS'));
 process.exit(fail.length ? 1 : 0);
