@@ -599,6 +599,20 @@ function mineTypeGuess(trueMineral, isOre, lvlF, rnd) {
 }
 // ── 문구 10단계 [재민 확정 "레벨별로 10단계로 나눌 수 있어?"] — 레벨이 눈금이다 ──
 //   guess 는 mineTypeGuess 의 지각된 종류(진실 아님). 이름·가족은 전부 추측 채널에서 나온다.
+// ★한글 조사 — "금로 보인다"·"구리이다" 같은 걸 안 내려고. [2026-08-02 test-assay.js 가 잡았다]
+//   받침 유무로 갈린다: 로/으로 · 다/이다. ㄹ 받침은 '로'를 그대로 쓴다(물로·쇠로).
+function _hasJong(s) {
+  const c = (s || '').trim().slice(-1).charCodeAt(0);
+  if (!(c >= 0xac00 && c <= 0xd7a3)) return false;          // 한글 음절이 아니면 받침 없음으로 본다
+  return ((c - 0xac00) % 28) !== 0;
+}
+function _isRieul(s) {
+  const c = (s || '').trim().slice(-1).charCodeAt(0);
+  if (!(c >= 0xac00 && c <= 0xd7a3)) return false;
+  return ((c - 0xac00) % 28) === 8;                          // 종성 ㄹ
+}
+const _ro = (s) => s + ((!_hasJong(s) || _isRieul(s)) ? '로' : '으로');    // 금→금으로 · 구리→구리로 · 쇠→쇠로
+const _ida = (s) => s + (_hasJong(s) ? '이다' : '다');                     // 금→금이다 · 구리→구리다
 function mineIdPhrase(lvlF, saysOre, guess, koOf) {
   const L = Math.floor(Math.max(0, Math.min(10, lvlF)));
   const ko = (m) => (koOf ? koOf(m) : m);
@@ -620,8 +634,8 @@ function mineIdPhrase(lvlF, saysOre, guess, koOf) {
       return alt ? (fam + ' — ' + ko(guess) + ' 아니면 ' + ko(alt)) : (fam + ' — ' + ko(guess) + ' 같다');
     }
     case 7: return ko(guess) + ' 같은데…';
-    case 8: return ko(guess) + '로 보인다';
-    default: return ko(guess) + '이다';                                          // 9~10 단정(오인 8→4%)
+    case 8: return _ro(ko(guess)) + ' 보인다';
+    default: return _ida(ko(guess));                                             // 9~10 단정(오인 8→4%)
   }
 }
 

@@ -70,6 +70,30 @@ console.log('\n[A~D] scripts/econ-lab-real.js — 실지도 랩');
   else ok('tickMigration 미사용 — 본 게임과 같다(2026-07 폐지)');
   if (/__labProbe/.test(S) && /extractLandParamsApprox/.test(S)) ok('부존 추출 = 본 게임 extractLandParamsApprox 직접 호출');
   else bad('부존 추출을 랩이 자체 구현하고 있다 — 4~7배 오차의 재발 경로다');
+  // ★[2026-08-02] 시딩 선별 인자 — 1744e0e 의 부유 시딩은 `pickSeedVillages(hard, ta)` 로 **땅 품질**을
+  //   본다. 랩이 ta 를 빼고 부르면 조용히 옛 타입 prior 시딩으로 돌아가 **다른 20곳**을 재게 된다.
+  const seedCall = S.match(/pickSeedVillages\(([^)]*)\)/);
+  if (seedCall && /,\s*ta\b/.test(seedCall[1])) ok('시딩 선별 = pickSeedVillages(hard, ta) — 땅 품질 인자 전달');
+  else bad(`시딩 선별에 지형 어댑터(ta)가 안 간다 — 부유 시딩이 죽어 다른 마을 20곳을 잰다 (${seedCall ? seedCall[0] : '호출 없음'})`);
+  // ★랩 전용 A/B 손잡이가 **기본값에서 꺼져 있는가** — 켜진 채 커밋되면 회귀가 딴 세계를 잰다.
+  for (const [k, re] of [['LAB_CU', /LAB_CU\s*=\s*parseFloat\(process\.env\.LAB_CU\s*\|\|\s*'0'\)/]]) {
+    if (re.test(S)) ok(`A/B 손잡이 ${k} 기본 OFF`);
+    else wrn(`A/B 손잡이 ${k} 의 기본값을 확인 못 했다 — 켜진 채 커밋되면 회귀가 딴 세계를 잰다`);
+  }
+}
+
+// ── A2: 엔진 A/B 손잡이가 기본값(=채택값)인가 ────────────────────────────────
+//   ★[2026-08-02] LANDFIT·SMELT_CAP 처럼 env 로 흔들 수 있는 손잡이는 **기본이 채택값**이어야 한다.
+//     기본을 바꿔 커밋하면 회귀는 통과하는데 라이브는 다른 세계가 된다.
+console.log('\n[A2] 엔진 A/B 손잡이 기본값');
+{
+  const E = rd('sim/economy-sim.js');
+  for (const [name, want] of [['LANDFIT', '1'], ['SMELT_CAP', '0.05'], ['PEACE_W', '0.03']]) {
+    const m = E.match(new RegExp('process\\.env\\.' + name + '[\\s\\S]{0,120}?:\\s*([\\d.]+)'));
+    if (!m) { wrn(`${name} 손잡이를 못 찾음 — 검사기가 낡았거나 손잡이가 사라졌다`); continue; }
+    if (m[1] === want) ok(`${name} 기본 ${m[1]} (채택값)`);
+    else bad(`${name} 기본이 ${m[1]} 다 — 채택값은 ${want}. 라이브가 딴 세계가 된다`);
+  }
 }
 
 // ── E: 회귀 하네스가 어느 기계를 재는가 ───────────────────────────────────────
@@ -109,6 +133,20 @@ console.log('\n[F] sim/economy-engine.browser.js — 번들 신선도');
     if (same) ok('번들 = 엔진 소스(specialty + economy-sim + -v2)');
     else bad('번들이 소스와 다르다 — 낡았거나 **손으로 기웠다**. node sim/build-econ-bundle.js 로 재생성해야 한다');
   } catch (e) { try { fs.writeFileSync(bundleP, cur); } catch (_) {} bad('번들 재생성 실패: ' + e.message); }
+  // ★[2026-08-02] 번들 내용물 검사 — "소스와 같다"만으로는 **무엇이 들었는지** 모른다.
+  const B = fs.readFileSync(bundleP, 'utf8');
+  //   ① era.js — 시대 게이트(npcKnows·smeltYield)가 econ 안에 있다. 빠지면 브라우저 랩만 시대를 모른다.
+  if (/function\s+npcKnows|const npcKnows\s*=/.test(B) && /function\s+smeltYield/.test(B)) ok('번들에 era 축 포함(npcKnows·smeltYield)');
+  else bad('번들에 era 축이 없다 — 브라우저 랩만 시대를 모르는 상태가 된다(CLI 하네스는 못 잡는 지뢰)');
+  //   ② process shim — 엔진에 process.env 손잡이(PEACE_W·LANDFIT·SMELT_CAP)가 늘 때마다
+  //      브라우저에서 ReferenceError 로 즉사한다. 2026-08-01 warriorTarget 이 실제로 그렇게 죽었다.
+  if (/(^|[^.\w])process\s*=|typeof process|globalThis\.process/.test(B.slice(0, 4000))) ok('번들 프렐류드에 process shim 존재(브라우저 랩 즉사 방지)');
+  else bad('번들에 process shim 이 없다 — 엔진에 process.env 손잡이가 하나만 늘어도 브라우저 랩이 ReferenceError 로 죽는다');
+  //   ③ 손잡이가 실제로 번들에 실렸는가(=엔진과 랩이 같은 기본값을 본다)
+  for (const k of ['LANDFIT', 'SMELT_CAP', 'PEACE_W']) {
+    if (B.includes(k)) ok(`  손잡이 ${k} 번들에 포함`);
+    else wrn(`  손잡이 ${k} 가 번들에 없다 — 랩과 서버가 다른 기본값을 볼 수 있다`);
+  }
 }
 
 // ── G: 랩 HTML 인라인 엔진이 그 번들과 같은가 ─────────────────────────────────
