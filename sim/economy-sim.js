@@ -1212,8 +1212,12 @@ function _bronzeCapable(v) {
 // ★철검 자격 — 철이 풍부한 마을만(청동기엔 철=최희소). 트레이스 축적(부산물)만으론 미달 → 석공 마제석검.
 function _ironWeaponCapable(v) {
   if (!_eraKnows('iron')) return false;   // ★NPC 대장장이는 시대가 열려야 철을 다룬다(플레이어는 별개 — era.js 참조)
-  const N = v.npcs ? v.npcs.length : 1;
-  return (v.storage && v.storage.iron || 0) >= Math.max(IRON_WEAPON_MIN_ABS, N * IRON_WEAPON_MIN_PC);
+  // ★[재민 확정 2026-08-02 "철검은 정상 생산되게 하면 되잖아"] 재고 문턱 max(20, N×1.5) 폐지.
+  //   그 문턱은 시대 게이트가 없던 시절 "철=최희소"를 표현하던 유물인데, 시대 게이트가 생긴 지금은
+  //   이중 잠금이었다 — 실측: 시대를 열어도 철 93~105 를 쌓고 문턱(147~411)을 영영 못 넘어 철검 0(무풍).
+  //   이제 청동과 같은 일반 재료 게이트다: 한 자루 재료(0.4 — 제작 분기 소비량)가 있으면 만든다.
+  //   희소성은 문턱이 아니라 **공급**이 표현한다(주요 광맥에 철 0 → NPC 철은 플레이어 유입뿐).
+  return (v.storage && v.storage.iron || 0) >= 0.4;
 }
 function createVillage(opts) {
   const baseSize = opts.size ?? 50;

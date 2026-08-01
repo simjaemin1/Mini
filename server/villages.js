@@ -436,21 +436,53 @@ function extractSustain(ta, ccx, ccy, layout, rockD, oreD, forD, huntD) {
 //     점수 내림차순. 단 econ 회로(도구·목재 사슬)에 광산·숲이 필요하므로 type별 최고
 //     1곳을 먼저 확보(다양성) 후 나머지를 점수순으로 채움.
 // =============================================================================
-function pickSeedVillages(all) {
+function pickSeedVillages(all, ta) {
   const TYPE_PRIOR = { plain: 1.0, riverside: 0.9, forest: 0.75, mining: 0.5 };
-  const scored = all.map(v => ({ ...v, _score: TYPE_PRIOR[v.type] != null ? TYPE_PRIOR[v.type] : 0.7 }));
+  // ★★[재민 확정 2026-08-02] "존재하는 마을은 전부 어느 정도 부유한 상태여야 해."
+  //   전에는 후보 51곳 중 20곳을 **타입 prior 만으로** 골랐다 — 땅이 실제로 먹여 살릴 수 있는지 안 봤다.
+  //   그래서 비옥도만 좋고 돌·나무가 바닥(0.25/0.45)인 자리에 마을이 심겼고, 도구가 닳는 순간
+  //   재보급을 못 해 굶어 죽었다(궤적 실측: 농촌22 — 비옥 1.12 인데 d220 식량 0 → 좀비 → 소멸.
+  //   회부_마을소멸_시딩.md 사인 규명 → 재민이 (가) 확정).
+  //   이제 **땅 품질 점수**로 고른다. 생존 실측에서 배운 두 축:
+  //     · 식량 부양력 — 농(비옥×1.5)·어(물×1.2)·수렵(사냥×0.7) 합(JOBS 산출 계수 그대로)
+  //     · 도구 유지력 — 돌(석기 재료)·나무(연료·건축). 바닥값(0.25/0.45) 초과분만 점수
+  //       (돌이 바닥이어도 식량이 아주 실하면 수입으로 버틴다 — 어촌2 실측 — 그래서 가산이지 필수는 아님)
+  //   ta 없이 불리면(구 호출부·테스트) 옛 타입 prior 로 동작한다.
+  //   ⚠1차 시도(food + tools 가산)의 실측 실패에서 배운 것:
+  //     · 돌 2.5 짜리 광산(비옥 0.3)이 도구 가산으로 뽑혀 굶어 죽었다 — 식량은 가산으로 못 메꾼다.
+  //     · 물 1.5 어촌(돌 0.25)이 식량 점수만으로 뽑혀 도구 아사했다 — 도구 접근 0이면 반토막나야 한다.
+  //   ⇒ 식량은 **하한(필수)**, 도구 접근은 **배수(0.5~1.5)** 다.
+  const FOOD_FLOOR = 2.0;   // 부양력 하한 — 이 아래는 교역 의존 부얼타운인데, 실측에서 예외 없이 굶었다
+  const landScore = (v) => {
+    if (!ta) return 0;
+    try {
+      const c = { ccx: Math.round(v.x / SZ), ccy: Math.round(v.y / SZ) };
+      const lp = extractLandParamsApprox(ta, c.ccx, c.ccy, { territory: [] });   // 근사 폴백 경로(복원 배선과 동일)
+      const food = (lp.fertility || 0) * 1.5 + (lp.water || 0) * 1.2 + (lp.game || 0) * 0.7;
+      if (food < FOOD_FLOOR) return 0;                       // 필수 미달 — 심지 않는다
+      const toolAccess = Math.min(1, Math.max(0, (lp.stone || 0) - 0.25) / 0.75 + Math.max(0, (lp.wood || 0) - 0.45) / 1.5);
+      return food * (0.5 + toolAccess);                      // 도구 접근 0 → ×0.5, 충분 → ×1.5
+    } catch (e) { return 0; }
+  };
+  const scored = all.map(v => {
+    const tp = TYPE_PRIOR[v.type] != null ? TYPE_PRIOR[v.type] : 0.7;
+    const ls = landScore(v);
+    // 땅 점수가 주(主), 타입은 동률 깨기 수준의 보조(×0.3) — ta 없으면 옛 동작 그대로.
+    return { ...v, _land: +ls.toFixed(3), _score: ta ? ls + tp * 0.3 : tp };
+  });
   scored.sort((a, b) => b._score - a._score);
   const picked = [];
   const farEnough = (v) => picked.every(p => Math.hypot(p.x - v.x, p.y - v.y) >= MIN_SPACING_PX);
-  // ① type 다양성 — 각 type 최고점 1곳
+  // ① type 다양성 — 각 type 최고점 1곳 (품질순 정렬을 거친 뒤라, 같은 타입 중 가장 좋은 자리가 뽑힌다)
   for (const type of ['plain', 'riverside', 'forest', 'mining']) {
     if (picked.length >= VILLAGE_MAX) break;
-    const cand = scored.find(v => v.type === type && !picked.includes(v) && farEnough(v));
-    if (cand) picked.push(cand);
+    const cand = scored.find(v => v.type === type && !picked.includes(v) && farEnough(v) && (!ta || v._land > 0));
+    if (cand) picked.push(cand);   // ★식량 하한 미달(_land 0)은 다양성 슬롯으로도 못 들어온다
   }
   // ② 나머지는 점수순 + 간격
   for (const v of scored) {
     if (picked.length >= VILLAGE_MAX) break;
+    if (ta && !(v._land > 0)) continue;   // 하한 미달 자리는 비워 둔다 — 20 미만이어도 나쁜 자리보단 낫다
     if (!picked.includes(v) && farEnough(v)) picked.push(v);
   }
   return picked;
@@ -827,7 +859,7 @@ function territoryBoundary(territory, ccx, ccy) {
 function seedVillages(db, terrain, ta, ZONE) {
   const hard = terrain.getZoneVillages(state.zoneId) || [];
   if (!hard.length) { console.log(`[${state.zoneId}] 🏘️ 시딩 스킵 — 하드코딩 마을 없음`); return []; }
-  const picked = pickSeedVillages(hard);
+  const picked = pickSeedVillages(hard, ta);   // ★땅 품질 시딩(재민 확정 — 위 함수 주석)
   console.log(`[${state.zoneId}] 🏘️ 마을 시딩 시작 — 후보 ${hard.length} → 선별 ${picked.length} (VILLAGE_MAX=${VILLAGE_MAX})`);
   const rows = [];
   const VillageLayout = require('./village-layout');

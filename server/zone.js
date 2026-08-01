@@ -544,7 +544,7 @@ const CROP_GROW_MS = 60 * 1000;
 // 14.50: door도 닫혔을 때 blocking. fence는 cell 차지하지만 통과 가능 (사용자 의도: 시야는 통과, collider만 차단).
 const BLOCKING_BUILDINGS = new Set(['wall', 'fence', 'door']);
 // 14.49-e2: 층 높이 2배 (32 → 64). 벽·계단도 같이 2배.
-const BUILDING_HEIGHT = { wall: 64, floor: 4, fence: 32, door: 64, chest: 24, campfire: 20, farmland: 4, stair: 64, vtile: 2, guild_granary: 40, granary: 40, hut_site: 4, hut: 40 };   // ★실체화 동기: 지면 타일·곳간·움집터
+const BUILDING_HEIGHT = { wall: 64, floor: 4, fence: 32, door: 64, chest: 24, campfire: 20, farmland: 4, stair: 64, vtile: 2, guild_granary: 40, granary: 40, hut_site: 4, hut: 40, furnace_site: 4, furnace: 48 };   // ★실체화 동기: 지면 타일·곳간·움집터·노(爐)
 // Phase 14.25: chest 저장 가능 아이템 (모든 자원 + 도구 + 음식)
 const CHEST_ALLOWED_ITEMS = new Set([
   'wood', 'stone', 'ore', 'herb',
@@ -620,6 +620,9 @@ const ITEM_RECIPES = {
   pillar:  { from: { wood: 3 }, to: { pillar: 1 },  requiresTool: 'axe', label: '기둥 (통나무 3 → 굴립주 기둥 1)' },
   rafter:  { from: { wood: 1 }, to: { rafter: 2 },  requiresTool: 'axe', label: '서까래 (통나무 1 → 서까래 2)' },
   thatch:  { from: { fiber: 4 }, to: { thatch: 1 },                      label: '이엉 (풀 4 → 이엉 1 — 맨손 엮기)' },
+  // ★[재민 확정 2026-08-02 노 건설] 숯 — 노 연료. 장작으론 900℃ 위로 못 간다(era.js FUEL_CAP).
+  //   숯가마 설치물은 후속(회부_플레이어_제련_노모델)로 이월 — MVP 는 제작 경로.
+  charcoal: { from: { wood: 3 }, to: { charcoal: 2 },                    label: '숯 (통나무 3 → 숯 2 — 노 연료)' },
 };
 // 14.51/14.52: 건축물 = 인벤 아이템. 제작창에서 만들면 인벤에 들어가고, 건축 모드에서 배치한다.
 // 14.52: 재료는 plank/wood만 (stone 제외). 망치/톱은 재료가 아닌 "도구" — 내구도 소비.
@@ -2750,6 +2753,9 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'request_village_house') tryRequestVillageHouse(player, +msg.atX, +msg.atY);   // ★[11차 T4] 마을 크루에게 집 짓기 의뢰(재료 선납)
   else if (msg.type === 'hut_start') tryHutStart(player, +msg.atX, +msg.atY);   // ★움집 고증 건축 ①굴착(커서 배치)
   else if (msg.type === 'hut_advance') tryHutAdvance(player, msg.buildingId);   // ★움집 고증 건축 ②~④
+  else if (msg.type === 'furnace_start') tryFurnaceStart(player, +msg.atX, +msg.atY);     // ★노 건설 ①(사유지 필수 — 재민 확정)
+  else if (msg.type === 'furnace_advance') tryFurnaceAdvance(player, msg.buildingId);      // ★노 건설 ②③·완공
+  else if (msg.type === 'furnace_smelt') tryFurnaceSmelt(player, msg.buildingId);          // ★노 조업(철 정광+숯 → era.js 물리)
   else if (msg.type === 'attack') { metrics.attacks++; tryAttack(player); }
   else if (msg.type === 'ranged_attack') { metrics.attacks++; tryRangedAttack(player, +msg.aimX, +msg.aimY); }
   else if (msg.type === 'craft') doCraft(player, msg.recipe);
@@ -3790,6 +3796,17 @@ function trySortOre(player) {
     const kg = led[k]; if (!(kg > 0)) { delete led[k]; continue; }
     delete led[k];
     if (k === 'stone') { got.stone_waste = +((got.stone_waste || 0) + kg).toFixed(1); continue; }   // ★맥석은 폐석 — 인벤에 안 넣는다
+    // ★★[재민 확정 2026-08-02 노 건설] 철은 선광해도 금속이 아니라 **정광(iron_ore)**이다.
+    //   구리·주석 등 청동기 금속은 도가니에 녹으므로 선광→금속을 "간이 제련 포함"으로 추상하지만,
+    //   철은 융점 1538℃라 어떤 시대에도 도가니로는 못 녹인다(era.js) — 노(爐)를 지어야 한다.
+    //   전에는 여기서 철 금속이 그냥 나왔다: 수율 3.4% 설계를 통째로 우회하는 구멍이었다.
+    if (k === 'iron') {
+      const tot0 = (carry.iron_ore || 0) + kg;
+      const whole0 = Math.floor(tot0 / Specialty.CHUNK_KG);
+      carry.iron_ore = +(tot0 - whole0 * Specialty.CHUNK_KG).toFixed(3);
+      if (whole0 > 0) { player.inventory.iron_ore = (player.inventory.iron_ore || 0) + whole0; got.iron_ore = whole0; }
+      continue;
+    }
     const tot = (carry[k] || 0) + kg;
     const whole = Math.floor(tot / Specialty.CHUNK_KG);
     const rem = tot - whole * Specialty.CHUNK_KG;
@@ -4199,6 +4216,7 @@ function tryPickupItem(player, gid) {
 // 라벨 (notice용)
 const ITEM_LABEL_SERVER = {
   wood: '나무', stone: '돌', berry: '베리', fiber: '풀', pillar: '기둥', rafter: '서까래', thatch: '이엉',
+  charcoal: '숯', iron_ore: '철 정광',
   fish: '생선', fish_cooked: '구운생선',
   meat_raw: '날고기', meat_cooked: '구운고기', hide: '가죽',
   berry_jam: '베리잼', water_bottle: '물병', seed_berry: '베리씨앗',
@@ -4632,6 +4650,126 @@ function tryHutAdvance(player, buildingId) {
   }
   savePlayer(player);
   send(player.ws, { type: 'inventory', inventory: player.inventory });
+}
+
+// ═══ ★[재민 확정 2026-08-02] 노(爐) — "집이랑 비슷하게, 터를 먼저 잡고 필요 자원을 모아 투입하고
+//     시간을 들여 진척도를 채우면 건설. 길드 사유지 또는 개인 사유지에만. 개인 것엔 타인 관여 불가." ═══
+//   움집(HUT_STAGES) 계약 완전 동형 — 발명 0. 다른 점 둘뿐:
+//     · **사유지 필수**(움집은 남의 사유지만 피하면 됐다): 개인=본인만, 길드=같은 길드원만(건설·조업 동일 규칙)
+//     · 완공물이 조업 설비다: 철 정광 + 숯 → era.js 물리(smeltYield)대로 철. 청동기엔 수율 3.4% —
+//       "거의 불가능"이 노를 지어도 유지되고, 시대가 열리면 같은 노가 67.8%를 낸다(지식이 풀린 것).
+const FURNACE_STAGES = [
+  { need: { stone: 6 },            tool: 'pickaxe', wear: 2, label: '① 노 터 다지기(돌 기초 6)' },
+  { need: { stone: 8, wood: 4 },                            label: '② 노벽 쌓기(돌 8·통나무 4)' },
+  { need: { hide: 4, wood: 2 },                             label: '③ 풀무 걸기(가죽 4·통나무 2)' },
+];
+const FURNACE_FUEL_PER_ORE = 2;   // 정광 1덩이(3.5kg)당 숯 2 — 고증: 제련 연료는 광석의 수 배 무게
+function _furnaceClaimOf(player, px, py) {
+  // 이 좌표를 덮는 사유지 중 플레이어에게 권한이 있는 것 — 개인(본인) 또는 길드(같은 길드).
+  for (const c of claims.values()) {
+    if (!(px >= c.x && px < c.x + c.w && py >= c.y && py < c.y + c.h)) continue;
+    if (c.kind === 'guild') { if (player.tribeId && c.guildTribeId === player.tribeId) return c; continue; }
+    if (c.ownerPid === player.playerId) return c;   // personal/temporary — 본인 것만
+  }
+  return null;
+}
+function _furnaceCanUse(player, b) {
+  const d = b.data || {};
+  if (d.tribeId) return !!player.tribeId && player.tribeId === d.tribeId;   // 길드 노 — 같은 길드원
+  return d.owner === player.playerId;                                        // 개인 노 — 본인만(타인 관여 불가)
+}
+function tryFurnaceStart(player, atX, atY) {
+  if (!Number.isFinite(atX) || !Number.isFinite(atY)) { send(player.ws, { type: 'notice', text: '자리를 지정해 주세요' }); return; }
+  if (Math.hypot(atX - player.x, atY - player.y) > 200) { send(player.ws, { type: 'notice', text: '너무 멀어서 거기에 못 지음' }); return; }
+  const SZg = BUILDING_SIZE;
+  const cx = Math.floor(atX / SZg), cy = Math.floor(atY / SZg);
+  const x0 = cx, y0 = cy, x1 = cx + 1, y1 = cy + 1;   // 2×2
+  const cl = _furnaceClaimOf(player, atX, atY);
+  if (!cl) { send(player.ws, { type: 'notice', text: '노(爐)는 내 사유지나 내 길드 사유지 안에만 지을 수 있다' }); return; }
+  const st = FURNACE_STAGES[0];
+  if (st.tool && !hasTool(player, st.tool)) { send(player.ws, { type: 'notice', text: `${st.label} — 곡괭이 필요` }); return; }
+  for (const [it, amt] of Object.entries(st.need)) {
+    if ((player.inventory[it] || 0) < amt) { send(player.ws, { type: 'notice', text: `${st.label} — 재료 부족: ${ITEM_LABEL_SERVER[it] || it} ${player.inventory[it] || 0}/${amt}` }); return; }
+  }
+  for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) {
+    const px = x * SZg + SZg / 2, py = y * SZg + SZg / 2;
+    if (isTerrainBlockedLocal(px, py)) { send(player.ws, { type: 'notice', text: '물·바위를 피해서 지어야 한다' }); return; }
+    if (!(px >= cl.x && px < cl.x + cl.w && py >= cl.y && py < cl.y + cl.h)) { send(player.ws, { type: 'notice', text: '노 2×2 가 사유지를 벗어난다' }); return; }
+  }
+  const ctrX = ((x0 + x1 + 1) / 2) * SZg, ctrY = ((y0 + y1 + 1) / 2) * SZg;
+  const nearB = qtBuildings ? qtBuildings.queryCircle(ctrX, ctrY, SZg * 4) : Array.from(buildings.values());
+  for (const b of nearB) {
+    const bcx = Math.round((b.x - (b.type === 'wall' ? 0 : SZg / 2)) / SZg), bcy = Math.round((b.y - (b.type === 'wall' ? 0 : SZg / 2)) / SZg);
+    if (bcx >= x0 && bcx <= x1 && bcy >= y0 && bcy <= y1 && (b.floor || 0) === 0) { send(player.ws, { type: 'notice', text: '자리에 다른 건축물이 있습니다' }); return; }
+  }
+  if (st.tool) consumeToolByType(player, st.tool, st.wear || 1);
+  for (const [it, amt] of Object.entries(st.need)) player.inventory[it] -= amt;
+  const data = { stage: 1, x0, y0, x1, y1, owner: player.playerId, tribeId: cl.kind === 'guild' ? cl.guildTribeId : null, floor: 0 };
+  const bo = _liveBuildRow('furnace_site', ctrX, ctrY, data, player.playerId, `${player.name}의 노 터`, null);
+  broadcast({ type: 'building_added', building: bo });
+  send(player.ws, { type: 'inventory', inventory: player.inventory });
+  send(player.ws, { type: 'notice', text: `⛏️ ${st.label} 완료 — 다음: ${FURNACE_STAGES[1].label} (노 터 클릭)` });
+  console.log(`[${ZONE_ID}] 🔥 ${player.name} 노 터 @(${x0},${y0}) ${cl.kind}`);
+}
+function tryFurnaceAdvance(player, buildingId) {
+  const b = buildings.get(buildingId);
+  if (!b || b.type !== 'furnace_site') return;
+  if (Math.hypot(b.x - player.x, b.y - player.y) > 120) { send(player.ws, { type: 'notice', text: '노 터에서 너무 멀리 있습니다' }); return; }
+  if (!_furnaceCanUse(player, b)) { send(player.ws, { type: 'notice', text: b.data.tribeId ? '우리 길드의 노 터가 아닙니다' : '내 노 터가 아닙니다' }); return; }
+  const stage = b.data.stage | 0;
+  const st = FURNACE_STAGES[stage];
+  if (!st) return;
+  for (const [it, amt] of Object.entries(st.need)) {
+    if ((player.inventory[it] || 0) < amt) {
+      const needStr = Object.entries(st.need).map(([k, v]) => `${ITEM_LABEL_SERVER[k] || k} ${player.inventory[k] || 0}/${v}`).join(' · ');
+      send(player.ws, { type: 'notice', text: `${st.label} — 재료 부족: ${needStr}` }); return;
+    }
+  }
+  for (const [it, amt] of Object.entries(st.need)) player.inventory[it] -= amt;
+  if (stage < FURNACE_STAGES.length - 1) {
+    b.data.stage = stage + 1;
+    db.updateBuildingData(b.dbId, JSON.stringify(b.data));
+    broadcast({ type: 'building_added', building: b });
+    send(player.ws, { type: 'notice', text: `${st.label} 완료 — 다음: ${FURNACE_STAGES[stage + 1].label}` });
+  } else {
+    const { x0, y0, owner, tribeId } = b.data;
+    buildings.delete(b.id); if (chunkManager.removeBuilding) chunkManager.removeBuilding(b); db.deleteBuilding(b.dbId);
+    broadcast({ type: 'building_removed', id: b.id });
+    const bo = _liveBuildRow('furnace', b.x, b.y, { owner, tribeId, kind: 'crucible', x0, y0, floor: 0 }, owner, `${player.name}의 노(爐)`, null);
+    broadcast({ type: 'building_added', building: bo });
+    send(player.ws, { type: 'notice', text: '🔥 노(爐) 완공! — 철 정광 + 숯을 들고 노를 클릭하면 제련한다' });
+    console.log(`[${ZONE_ID}] 🔥 ${player.name} 노 완공 @(${x0},${y0})`);
+  }
+  savePlayer(player);
+  send(player.ws, { type: 'inventory', inventory: player.inventory });
+}
+function tryFurnaceSmelt(player, buildingId) {
+  const b = buildings.get(buildingId);
+  if (!b || b.type !== 'furnace') return;
+  if (Math.hypot(b.x - player.x, b.y - player.y) > 120) { send(player.ws, { type: 'notice', text: '노에서 너무 멀리 있습니다' }); return; }
+  if (!_furnaceCanUse(player, b)) { send(player.ws, { type: 'notice', text: b.data.tribeId ? '우리 길드의 노가 아닙니다' : '이 노의 주인이 아닙니다 — 개인 노엔 타인 관여 불가' }); return; }
+  const ore = player.inventory.iron_ore || 0;
+  if (ore < 1) { send(player.ws, { type: 'notice', text: '철 정광이 없다 — 철 광맥을 캐서 선광하면 나온다' }); return; }
+  const fuelNeed = FURNACE_FUEL_PER_ORE;
+  if ((player.inventory.charcoal || 0) < fuelNeed) { send(player.ws, { type: 'notice', text: `숯 부족 (정광 1덩이당 숯 ${fuelNeed} — 제작창에서 통나무로 굽는다)` }); return; }
+  // ★물리는 era.js 하나가 정한다 — 청동기 3.4%, 시대 열리면 같은 노가 67.8%.
+  const Era = require('./era');
+  const setup = { furnace: (b.data && b.data.kind) || 'crucible', fuel: 'charcoal', bellows: true };
+  const y = Era.smeltYield('iron', setup);
+  if (!(y > 0)) { send(player.ws, { type: 'notice', text: '이 노로는 철이 안 나온다' }); return; }
+  player.inventory.iron_ore -= 1;
+  player.inventory.charcoal -= fuelNeed;
+  const kg = Specialty.CHUNK_KG * y;   // 덩이 3.5kg × 수율
+  const carry = (player.oreCarry && typeof player.oreCarry === 'object') ? player.oreCarry : (player.oreCarry = {});
+  const tot = (carry._iron_smelt || 0) + kg;
+  const whole = Math.floor(tot / Specialty.CHUNK_KG);
+  carry._iron_smelt = +(tot - whole * Specialty.CHUNK_KG).toFixed(3);
+  let msg2;
+  if (whole > 0) { player.inventory.iron = (player.inventory.iron || 0) + whole; msg2 = `🔥 제련 성공 — 철 ${whole}덩이!`; }
+  else msg2 = `🔥 해면철 부스러기 ${kg.toFixed(2)}kg (누적 ${tot.toFixed(2)}/${Specialty.CHUNK_KG}kg — 슬래그가 대부분이다)`;
+  send(player.ws, { type: 'inventory', inventory: player.inventory });
+  send(player.ws, { type: 'notice', text: msg2 + ` · 수율 ${(y * 100).toFixed(1)}%` });
+  savePlayer(player);
 }
 
 const GRANARY_COST = { plank: 12, stone: 8 };

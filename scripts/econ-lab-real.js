@@ -71,7 +71,7 @@ const ta = P.makeTerrainAdapter(T, ZONE, { isTerrainBlockedLocal, isWaterTileLoc
 // ── 마을 선별 + 부존 추출 — seedVillages(server/villages.js:830~845) 와 같은 순서 ──
 const hard = T.getZoneVillages(Z) || [];
 if (!hard.length) { console.error('마을 0 — 지형 로드 실패'); process.exit(1); }
-const picked = P.pickSeedVillages(hard);
+const picked = P.pickSeedVillages(hard, ta);   // ★땅 품질 시딩 — 본 게임과 같은 인자
 console.log(`실제 지도 — 후보 ${hard.length}곳 → 시딩 선별 ${picked.length}곳 (VILLAGE_MAX=${P.VILLAGE_MAX})`);
 
 const seeds = [];
