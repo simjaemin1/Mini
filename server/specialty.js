@@ -676,11 +676,28 @@ const ALLOY_K_IM = 700;    // 금속간화합물의 경도 기여(δ상은 더 �
 
 // ★시대가 배합 공간을 자른다 — "청동기 시대"라는 이름의 실질.
 //   아연은 907℃에서 끓어 증발한다(순수 분리는 중세 인도). 철은 융점 1538℃로 청동기 노가 못 낸다.
-const ALLOY_ERA = {
+// ★★[2026-08-01] 이 표는 **server/era.js 로 옮겼다** — 사본을 두지 않는다.
+//   시대 판정이 두 곳에 있으면 반드시 어긋난다(이 세션에 번들·랩에서 두 번 겪었다).
+//   그리고 era.js 는 목록을 적어두지 않고 **물리로 유도한다**: 그 시대 최고 노의 도달 온도가
+//   금속의 융점 이상이면 부을 수 있다. 끓는점을 넘으면 증발한다(아연이 그래서 빠진다).
+//   ⇒ 결과는 옛 표와 정확히 같다: bronze = copper·tin·lead·silver·gold.
+//   era.js 가 없으면(구 배포·분리 테스트) 옛 표로 폴백한다 — 조용히 다른 답을 내지 않게 값을 맞춰둔다.
+const ALLOY_ERA_FALLBACK = {
   bronze: ['copper', 'tin', 'lead', 'gold', 'silver'],
   iron:   ['copper', 'tin', 'lead', 'gold', 'silver', 'iron', 'nickel'],
 };
-function alloySmeltable(id, era) { return (ALLOY_ERA[era || 'bronze'] || ALLOY_ERA.bronze).indexOf(id) >= 0; }
+let _eraMod;
+function _era() { if (_eraMod === undefined) { try { _eraMod = require('./era'); } catch (e) { _eraMod = null; } } return _eraMod; }
+function alloySmeltable(id, era) {
+  const E = _era();
+  if (E && E.castableMetals) { try { return E.castableMetals(era || 'bronze').indexOf(id) >= 0; } catch (e) {} }
+  return (ALLOY_ERA_FALLBACK[era || 'bronze'] || ALLOY_ERA_FALLBACK.bronze).indexOf(id) >= 0;
+}
+const ALLOY_ERA = new Proxy({}, {   // 옛 이름 호환 — 읽으면 era.js 에서 유도해 준다
+  get(_, k) { const E = _era(); if (E && E.castableMetals && typeof k === 'string') { try { return E.castableMetals(k); } catch (e) {} } return ALLOY_ERA_FALLBACK[k]; },
+  ownKeys() { const E = _era(); return E && E.ERAS ? E.ERAS.slice() : Object.keys(ALLOY_ERA_FALLBACK); },
+  getOwnPropertyDescriptor() { return { enumerable: true, configurable: true }; },
+});
 
 function _alloySol(b, m) {
   const t = ALLOY_SOL[b] && ALLOY_SOL[b][m];

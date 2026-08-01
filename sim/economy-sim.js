@@ -1072,12 +1072,30 @@ const SMELT_MIN_ORE = 0.5;      // 이만큼도 없으면 노를 지피지 않�
 // 광맥 0 인 마을의 원석 = 하천 사철·사금(livelihood.js FLOOR.ore 주석 "사철·표사").
 //   광부 부산물 폴백과 **같은 조성**을 쓴다 — 두 군데가 다른 말을 하면 그게 버그다.
 const SMELT_PLACER = { iron: 0.9, gold: 0.1 };
+// ★시대 게이트 — 판정은 server/era.js 하나에서만 한다(사본 금지). 모듈이 없으면 전부 허용(구 동작 보존).
+let _eraMod;
+function _era() { if (_eraMod === undefined) { try { _eraMod = require('../server/era'); } catch (e) { _eraMod = null; } } return _eraMod; }
+const _ERA_METALS = new Set(['copper', 'tin', 'lead', 'gold', 'silver', 'iron', 'nickel', 'zinc', 'aluminium', 'uranium']);
+const _ERA_METAL = (id) => _ERA_METALS.has(id);
+function _eraKnows(metal) { const E = _era(); if (!E || !E.npcKnows) return true; try { return E.npcKnows(metal); } catch (e) { return true; } }
 function _trySmelt(v, laborBase) {
   const om = v.land && v.land.oreMix;
   if (!om) return 0;                                   // 지도 정보 없는 호출부(랩·CLI)는 옛 경로
   const mix = Object.keys(om).length ? om : SMELT_PLACER;
   const have = v.storage.ore || 0;
   if (have < SMELT_MIN_ORE) return 0;
+  // ★★[2026-08-01 실측으로 잡음] 회수할 게 하나도 없으면 **아예 불을 때지 않는다.**
+  //   시대 게이트를 넣고 재보니 인구 1,025 → 279 로 무너졌다. 원인은 게이트가 아니라 이것이었다:
+  //   철만 나는 마을의 대장장이가 매일 원석을 노에 넣고, 철은 못 뽑으니 전량 슬래그로 버리고,
+  //   그렇게 하루를 통째로 날렸다. 원석 재고가 720 → 5 로 증발한 게 그 흔적이다.
+  //   광석을 통째로 넣는 것 자체는 맞지만, **나올 게 없는 걸 아는 채로 넣지는 않는다.**
+  {
+    let rec = 0, tt = 0;
+    for (const k in mix) { const q = mix[k]; if (!(q > 0)) continue; tt += q;
+      const id = k === 'jade_raw' ? 'jade' : k;
+      if (!_ERA_METAL(id) || _eraKnows(id)) rec += q; }
+    if (!(tt > 0) || !(rec / tt > 0.02)) return 0;   // 회수 몫 2% 미만이면 땔감 낭비다
+  }
   const cap = Math.max(0, laborBase * SMELT_PER_LABOR);
   const use = Math.min(have, cap);
   if (!(use > 0)) return 0;
@@ -1087,6 +1105,12 @@ function _trySmelt(v, laborBase) {
   const out = use * SMELT_YIELD;
   for (const k in mix) {
     const id = k === 'jade_raw' ? 'jade' : k;
+    // ★★[재민 확정 2026-08-01] 시대가 모르는 금속은 **슬래그로 버려진다.**
+    //   물리적으로도 맞다 — 청동기 노는 철광석을 넣어도 쇳물을 못 뽑는다(융점 1538℃).
+    //   그 마을의 원석 중 철 몫은 그냥 사라진다. 그래서 철만 나는 마을은 광부를 둘 이유가 없어지고,
+    //   철 말고 살 길이 없는 땅이면 쇠락한다 — 재민: "철광산 마을은 망해야 정상".
+    //   ⚠수요는 안 자른다. 플레이어가 철검을 팔면 마을은 산다(server/era.js 머리 주석 참조).
+    if (_ERA_METAL(id) && !_eraKnows(id)) continue;
     const q = out * (mix[k] / tot);
     if (q > 0) v.storage[id] = (v.storage[id] || 0) + q;
   }
@@ -1173,6 +1197,7 @@ function _bronzeCapable(v) {
 }
 // ★철검 자격 — 철이 풍부한 마을만(청동기엔 철=최희소). 트레이스 축적(부산물)만으론 미달 → 석공 마제석검.
 function _ironWeaponCapable(v) {
+  if (!_eraKnows('iron')) return false;   // ★NPC 대장장이는 시대가 열려야 철을 다룬다(플레이어는 별개 — era.js 참조)
   const N = v.npcs ? v.npcs.length : 1;
   return (v.storage && v.storage.iron || 0) >= Math.max(IRON_WEAPON_MIN_ABS, N * IRON_WEAPON_MIN_PC);
 }
@@ -2395,7 +2420,11 @@ function smeltTarget(v) {
   //     그 값이 게이트를 닫아 제련이 영구 정지한다(자기 꼬리를 무는 되먹임 — 실측으로 확인).
   //     설비 결정은 장기 가격으로 하는 게 맞다. 단기 과잉은 아래 금속 글럿이 따로 잡는다.
   let mv = 0, tot = 0;
-  for (const k in mix) { const q = mix[k]; if (!(q > 0)) continue; tot += q; mv += q * (BASE_VALUE[k === 'jade_raw' ? 'jade' : k] || 1); }
+  for (const k in mix) { const q = mix[k]; if (!(q > 0)) continue;
+    const id = k === 'jade_raw' ? 'jade' : k;
+    tot += q;                                        // 분모엔 남긴다 — 못 뽑는 몫은 그대로 손실이다
+    if (_ERA_METAL(id) && !_eraKnows(id)) continue;  // ★못 뽑는 금속은 제련 가치에 안 넣는다
+    mv += q * (BASE_VALUE[id] || 1); }
   if (!(tot > 0)) return 0;
   if (!(SMELT_YIELD * (mv / tot) - (BASE_VALUE.ore || 1) > 0)) return 0;   // 장기적으로 손해면 안 한다
   // 금속 과잉이면 멈춘다 — 이미 쌓인 걸 더 녹일 이유가 없다(광부 _metalGlut 과 같은 논리).
