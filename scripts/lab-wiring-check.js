@@ -72,45 +72,43 @@ console.log('\n[A~D] scripts/econ-lab-real.js — 실지도 랩');
   else bad('부존 추출을 랩이 자체 구현하고 있다 — 4~7배 오차의 재발 경로다');
 }
 
-// ── E: CLI 계측기 ─────────────────────────────────────────────────────────────
-console.log('\n[E] sim/economy-sim.js main() — CLI 5시드 계측기');
+// ── E: 회귀 하네스가 어느 기계를 재는가 ───────────────────────────────────────
+//   ★[재민 확정 2026-08-01 "후자로 가자"] 회귀 대상은 **v2 CLI** 다.
+//     v1 CLI(createWorld)는 priceFn 을 안 심어서 rational picker 의 한계가치 가중 w() 가
+//     전부 1.0 으로 죽는다 — 프로덕션에 없는 키메라. v2 CLI 는 createWorldV2 + tickWorldV2 라
+//     프로덕션과 같은 기계다.
+console.log('\n[E] scripts/econ-regress.js — 회귀 하네스가 재는 기계');
 {
-  const S = rd('sim/economy-sim.js');
-  const m = S.match(/const world = \{ villages[^\n]*\n(?:[^\n]*\n){0,3}/);
-  const blk = m ? m[0] : '';
-  const rational = /picker:\s*'rational'/.test(blk);
-  if (/_world\s*=\s*world/.test(blk)) ok('_world 백참조 있음 — picker 판별부가 world 를 본다');
-  else bad('_world 백참조가 없다 — picker 판별이 영영 legacy 로 떨어진다');
-  // ★★rational picker 는 world.priceFn 을 전제로 설계됐다 — 없으면 한계가치 가중 w() 가 **전부 1.0**
-  //   으로 떨어지고(가격에 따른 노동 이동 = rational 의 핵심 기제가 죽는다) 생산 포만(satMul) 판정도 꺼진다.
-  //   그런데 **v1 createWorld 는 priceFn 을 심지 않는다** — 가격은 v2(createWorldV2 → computeShadowPrices)
-  //   에서 들어온 기능이다. 그래서 "v1 세계 + rational picker" 는 프로덕션에 존재하지 않는 **키메라**다.
-  //   프로덕션은 언제나 v2 다(central.js · villages.js 둘 다 tickWorldV2).
-  //   ⇒ 이건 한 줄로 못 고친다. 선택지가 둘이고 회귀 기준선이 바뀌므로 **회부 대상**이다:
-  //       (가) v1 CLI 를 legacy 로 되돌린다 — v1 은 순수 안정성 회귀로만 쓰고 프로덕션 대변은 안 시킨다
-  //       (나) 회귀를 v2 CLI(sim/economy-sim-v2.js main — 이미 createWorldV2+tickWorldV2 다)로 옮긴다.
-  //            v2 main 이 sim/out 덤프를 안 써서 econ-regress 가 읽을 게 없다 → 덤프 추가가 필요하다
-  if (rational && !/priceFn/.test(blk)) {
-    wrn("CLI 가 rational 인데 priceFn 이 없다 — w() 전부 1.0(가격 신호 죽음)·satMul 꺼짐. "
-      + "v1 은 priceFn 을 못 심으므로(v2 기능) 이건 **회부 항목**이다: (가) v1→legacy 복귀 / (나) 회귀를 v2 CLI 로 이전");
-    console.log('     ↳ 지금 CLI 회귀 수치는 "프로덕션에 없는 기계"의 값이다. 안정성 비교로만 읽을 것.');
-  } else if (rational) ok("picker='rational' + priceFn — 가격 신호 살아 있음");
-  else ok("picker=legacy — v1 순수 안정성 회귀(프로덕션 대변 아님, 명시적)");
+  const S = rd('scripts/econ-regress.js');
+  if (/economy-sim-v2\.js/.test(S)) ok('대상 = sim/economy-sim-v2.js (createWorldV2 + tickWorldV2 — 프로덕션 동형)');
+  else bad('대상이 v2 CLI 가 아니다 — v1 CLI 는 priceFn 이 없어 rational picker 의 가격 신호가 죽는다');
+  if (/simv2-/.test(S)) ok('덤프 파일명이 v1(sim-*)과 분리됨 — 옛 덤프 오독 방지');
+  else wrn('덤프 파일명이 v1 과 겹칠 수 있다 — 거짓 통과 경로');
+  const V2 = rd('sim/economy-sim-v2.js');
+  if (/simv2-\$\{seed\}/.test(V2)) ok('v2 main 이 sim/out 덤프를 쓴다');
+  else bad('v2 main 에 덤프가 없다 — 회귀가 읽을 게 없다');
+  // v1 CLI 는 이제 프로덕션 대변자가 아니다. picker 가 뭐든 상관없지만, 그렇다고 주장하면 안 된다.
+  const V1 = rd('sim/economy-sim.js');
+  const m = V1.match(/const world = \{ villages[^\n]*\n(?:[^\n]*\n){0,3}/);
+  if (m && /picker:\s*'rational'/.test(m[0]) && !/priceFn/.test(m[0]))
+    wrn("v1 CLI main 이 아직 rational+priceFn없음 조합이다 — 회귀 대상은 아니지만 직접 돌리면 오해를 부른다(legacy 복귀 권장)");
 }
 
 // ── F: 번들이 엔진 소스와 같은가(손으로 기웠는지 포함) ────────────────────────
 console.log('\n[F] sim/economy-engine.browser.js — 번들 신선도');
 {
-  const cur = rd('sim/economy-engine.browser.js');
+  // ★검사는 부작용을 남기지 않는다 — build 가 실제 번들 파일을 덮어쓰므로 원본을 보관했다가
+  //   **항상** 되돌린다. (되돌리지 않으면 동시에 도는 다른 프로세스가 반쯤 쓰인 번들을 읽는다.)
+  const bundleP = path.join(root, 'sim/economy-engine.browser.js');
+  const cur = fs.readFileSync(bundleP);
   try {
     execFileSync(process.execPath, [path.join(root, 'sim/build-econ-bundle.js')], { stdio: 'ignore' });
-    const rebuilt = rd('sim/economy-engine.browser.js');
-    if (rebuilt === cur) ok('번들 = 엔진 소스(specialty + economy-sim + -v2)');
-    else {
-      fs.writeFileSync(path.join(root, 'sim/economy-engine.browser.js'), cur);   // 검사는 부작용을 남기지 않는다
-      bad('번들이 소스와 다르다 — 낡았거나 **손으로 기웠다**. node sim/build-econ-bundle.js 로 재생성해야 한다');
-    }
-  } catch (e) { bad('번들 재생성 실패: ' + e.message); }
+    const rebuilt = fs.readFileSync(bundleP);
+    const same = rebuilt.equals(cur);
+    fs.writeFileSync(bundleP, cur);
+    if (same) ok('번들 = 엔진 소스(specialty + economy-sim + -v2)');
+    else bad('번들이 소스와 다르다 — 낡았거나 **손으로 기웠다**. node sim/build-econ-bundle.js 로 재생성해야 한다');
+  } catch (e) { try { fs.writeFileSync(bundleP, cur); } catch (_) {} bad('번들 재생성 실패: ' + e.message); }
 }
 
 // ── G: 랩 HTML 인라인 엔진이 그 번들과 같은가 ─────────────────────────────────

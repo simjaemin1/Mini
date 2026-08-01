@@ -1369,6 +1369,36 @@ function main() {
   console.log(`\n[시뮬 시간: ${elapsed}s]`);
 
   printSummary(world, days);
+
+  // ★★[재민 확정 2026-08-01 "후자로 가자"] 회귀 하네스를 v1 CLI → **이쪽으로 옮긴다.**
+  //   이유: v1 CLI 는 createWorld(=priceFn 없음)라 rational picker 의 한계가치 가중 w() 가
+  //   전부 1.0 으로 죽는다. 가격에 따른 노동 이동이 rational 의 존재 이유인데 그게 꺼진 채
+  //   도는 것 — 프로덕션(central.js·villages.js = 언제나 tickWorldV2)에 없는 조합이다.
+  //   여기 main 은 createWorldV2 + tickWorldV2 라 **프로덕션과 같은 기계**다. 덤프만 없어서
+  //   econ-regress 가 못 읽고 있었으므로 덤프를 붙인다.
+  //   파일명은 v1(sim-*)과 **일부러 다르게** 한다 — 섞이면 옛 덤프를 읽는 거짓 통과가 또 난다.
+  {
+    const fs = require('fs');
+    const path = require('path');
+    const outDir = path.join(__dirname, 'out');
+    if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
+    const outFile = path.join(outDir, `simv2-${seed}-${days}d.json`);
+    fs.writeFileSync(outFile, JSON.stringify({
+      config: { days, seed, villageCount, engine: 'v2', picker: 'rational', tick: 'tickWorldV2' },
+      villages: world.villages.map(v => ({
+        name: v.name, land: v.land, coord: v.coord,
+        finalPop: v.npcs.length,
+        finalStorage: v.storage,
+        finalTreasury: v.treasury,
+        jobs: v1.jobCounts(v),
+        // 계측용 내부 스칼라(제련량·주조등급·품질 EMA 등) — 회귀표 밖 진단에 쓴다
+        _int: Object.fromEntries(Object.keys(v).filter(k => k[0] === '_' && typeof v[k] === 'number')
+          .map(k => [k, +v[k].toFixed(4)])),
+      })),
+      tradeCount: world.tradeLog.length,
+    }, null, 1));
+    console.log(`\n📁 JSON dump: ${outFile}`);
+  }
 }
 
 if (require.main === module) main();
