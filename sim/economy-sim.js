@@ -3355,6 +3355,7 @@ module.exports = {
   _SMELT_PER_LABOR: SMELT_PER_LABOR, _SMELT_YIELD: SMELT_YIELD, _MELT_TOTAL,
   createWorld,
   tickWorld,
+  tickTrade, tickCaravans,   // ★랩이 본 게임과 같은 루프를 돌려면 필요(누락돼 있어서 랩이 '교역 없는 세계'를 재고 있었다)
   serializeWorld,
   computeVillagePrices,
   computeDailyConsumption,

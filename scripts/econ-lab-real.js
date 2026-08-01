@@ -122,10 +122,15 @@ if (tins.length) console.log('  주석 마을: ' + tins.join(', '));
 const world = { villages, tradeLog: [], events: [], caravans: [], picker: process.env.PICKER || 'legacy' };
 if (process.env.NO_PRICE !== '1') world.priceFn = (v) => econ.computeVillagePrices(v);
 for (const v of villages) v._world = world;
-for (let day = 1; day <= DAYS; day++) {
-  for (const v of world.villages) econ.tickVillage(v, day, world);
-  if (econ.tickMigration) econ.tickMigration(world, day);
-}
+// ★★루프를 **손으로 복제하지 않는다.** econ.tickWorld 가 본 게임 루프 그 자체다
+//   (processEvents → tickVillage+adjustGuildTax → tickTrade → tickCaravans, 이주는 폐지됨).
+//   이 세션에 복제를 시도했다가 두 번 당했다:
+//     ① tickTrade 를 빼먹어 **교역 없는 세계**를 쟀다 — 광산 마을이 식량을 못 사서 죽는 게 당연했다
+//     ② tickTrade 만 넣고 tickCaravans 를 빼먹었다 — tickTrade 는 출발 즉시 재고를 **차감**하고
+//        캐러밴을 띄우는데 정산이 없으니 재고가 나가기만 했다. 인구 2,181 → 185, 47/51 마을 소멸.
+//   랩이 본 게임을 대변하지 못하면 그 위의 모든 측정이 헛것이다. 그래서 복제를 지운다.
+world.day = 0;
+for (let d = 0; d < DAYS; d++) econ.tickWorld(world);
 
 let pop = 0, weap = 0, cu = 0, tin = 0, iron = 0, gold = 0, smith = 0, miner = 0, dead = 0;
 let grSum = 0, grN = 0, bwSum = 0;
@@ -138,6 +143,12 @@ for (const v of world.villages) {
   if (v._alloyGrade != null) { grSum += v._alloyGrade; grN++; }
   bwSum += v._bronzeWeaponMade || 0;
 }
+if(global._TL){const e=Object.entries(global._TL).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  console.log('\n교역 이동량(1~200일 누적, 상위): '+e.map(([k,v])=>k+' '+v.toFixed(0)).join(' · '));
+  console.log('  거래 건수 '+world.tradeLog.length);}
+{const alive=world.villages.filter(v=>v.npcs.length>0);
+ console.log('  생존 마을 '+alive.length+'/51 · 첫 항목 키: '+(world.tradeLog[0]?Object.keys(world.tradeLog[0]).join(','):'-'));
+ if(world.tradeLog[0]) console.log('  샘플: '+JSON.stringify(world.tradeLog[0]).slice(0,220));}
 console.log('\n=== ' + DAYS + '일 후 ===');
 console.log('  인구 ' + pop + ' · 소멸 ' + dead + ' · 대장장이 ' + smith + ' · 광부 ' + miner);
 console.log('  재고 — 무기 ' + weap.toFixed(1) + ' · 구리 ' + cu.toFixed(1) + ' · 주석 ' + tin.toFixed(2)
