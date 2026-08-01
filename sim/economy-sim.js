@@ -1517,7 +1517,26 @@ function tickVillage(v, day) {
         // ★S3 도구 품질 = 막석기(TOOL_Q_BASE) + 숙련폭(TOOL_Q_SPAN×skill/10) → 막석기 1.25× ~ 명장석기 1.55×.
         const tq = TOOL_Q_BASE + TOOL_Q_SPAN * (skillLvl / 10);
         v._toolQnum = (v._toolQnum || 0) + tq * tAmt; v._toolQden = (v._toolQden || 0) + tAmt;
-        addProduce('tool', tAmt); workNPC(npc);
+        addProduce('tool', tAmt);
+        // ★★[재민 지시 "무기 축 복구"] 도구가 포화하면 **남는 손으로 검을 간다.**
+        //   이 else-if 사슬이 무기 축을 죽인 진범이었다. 무기 분기(아래 a2)로 넘어가려면
+        //   _toolTaper 가 0 이어야 하는데, taper 는 도구 커버리지가 3.5 를 넘어야 0 이 된다.
+        //   그런데 그 감산의 설계 자체가 "재고를 포화선 2.5 부근에 수렴시키는" 것이라 3.5 에 닿을 일이 없다.
+        //   실측: 커버리지 2.92 에서 수렴 · taper 0.43 · **석공 노동의 98.7%가 도구**(도구 17,359 vs 검 235).
+        //   도구는 이미 넘치는데(재고 4,776 / 목표 1,780) 계속 도구만 만들고, 남는 42% 노동은 그냥 놀았다.
+        //   ⇒ taper 로 줄인 만큼(1−taper)을 병기고에 돌린다. 조건은 a2 와 동일하게 둔다
+        //     (식량안보 · 병기고 결손 · 청동 마을 양보 · 돌 보유).
+        const _spare = 1 - _toolTaper;
+        if (_spare > 0.02 && (_armoryShort || _needStoneSword) && (v.storage.stone || 0) >= 0.5 * _spare) {
+          const sAmt = wAmt * _spare;
+          v.storage.stone -= 0.5 * _spare;
+          v._stoneWeaponMade = (v._stoneWeaponMade || 0) + sAmt;
+          v._swordMadeToday = (v._swordMadeToday || 0) + sAmt;
+          const wq2 = WEAP_Q_STONE * _qSkill;
+          v._weapQnum = (v._weapQnum || 0) + wq2 * sAmt; v._weapQden = (v._weapQden || 0) + sAmt;
+          addProduce('weapon', sAmt);
+        }
+        workNPC(npc);
       } else if (_armoryShort) {
         // (a2) 도구 포화 → 마제석검으로 마을 병기고 축적(무산지 마을 주력 무기 재고). 청동 자격 마을은 대장장이 청동검이 담당(여기 미해당).
         v.storage.stone -= 0.5;
@@ -2142,6 +2161,19 @@ function pickDeficitJob(v) {
   for (const j of JOB_NAMES) if (JOBS[j].toolDependent) _toolDeps += (counts[j] || 0);
   const toolPer = ((v.storage.tool || 0) + (v.storage.bronze_tool || 0) + (v.storage.iron_tool || 0)) / Math.max(1, _toolDeps);
   if (toolPer < 1.5 && hasSlot(v, 'mason', cap, counts)) return 'mason';   // ★S2 도구=석기 → 석공
+  // ★★[재민 지시 "무기 축 복구"] 석공 채용을 **목표와 직접 비교**한다.
+  //   전에는 석공이 무기 때문에 뽑히는 유일한 경로가 "전사 ≥ 1 && 무기 < N×0.5" 안에 있었다.
+  //   그런데 전사는 폐지된 직업(행상)에 막혀 영영 0 이라, 그 경로가 통째로 닫혀 있었다.
+  //   결과: 석공 69명(목표 204) · 무기 재고가 병기고 목표의 **33%** 에서 멈춤 · 병기고 결손 49/51 마을.
+  //   ★반대로 전사를 켜보면 이번엔 그 조건이 **영구히 참**이 되어 석공이 488명까지 폭주했다.
+  //     둘 다 틀린 이유는 같다 — 석공 정원을 전사에 묶었기 때문이다.
+  //   masonTarget 은 이미 도구 마모 + 병기고 결손을 통합해 계산한다. 다른 장인(대장장이·갑옷장·
+  //   재봉사·요리사)은 전부 `counts < target` 규약을 쓴다. 석공만 예외였던 것을 되돌린다.
+  //   ⚠식량 게이트를 함께 건다. 이걸 안 걸었더니 식량이 약한 광산 마을 3곳(광산2·3·6)이
+  //     석공에 인력을 뺏겨 소멸했다(실측). 굶는 마을이 석기 장인을 늘리는 건 순서가 틀렸다.
+  if ((counts.mason || 0) < masonTarget(v) && totalFoodEquivalent(v) > N * 30
+      && hasSlot(v, 'mason', cap, counts)
+      && ((v.storage.stone || 0) >= 0.5 || (v.storage.wood || 0) > N * 0.5)) return 'mason';
   // ★★[재민 질문 "전사 켜면 왜 광부가 0이 돼?"] 에 대한 답이자 그 수리.
   //   광부는 이 picker 에서 **맨 마지막 7단계("풍부 토지 분야")에만** 있었다. 그래서
   //   앞 단계 조건이 하나라도 오래 참이면 광부는 영영 안 뽑히고, 이미 있던 광부는
@@ -2192,18 +2224,21 @@ function pickDeficitJob(v) {
   //     즉 전사를 켜는 것만으로는 안 되고, 평시 병기고 목표를 전사 실수요 기준으로 낮추는 일이
   //     같이 가야 한다. 그건 MELEE_ARMORY_PC=0.72 를 건드리는 일이라(주석: "측정으로 확정된 생존 하한")
   //     별도 회부 후에 한다. 지금은 옛 조건을 그대로 둔다.
-  if (foodRich && (counts.merchant || 0) >= 2 &&
-      (counts.warrior || 0) < Math.max(2, Math.floor(N * 0.05)) &&
+  if (foodRich &&
+      (counts.warrior || 0) < warriorTarget(v) &&
       (v.storage.weapon || 0) >= (counts.warrior || 0) + 1 &&
       hasSlot(v, 'warrior', cap, counts)) {
     return 'warrior';
   }
   // ★S2 무기 부족 — 금속(구리+주석) 있으면 대장장이(청동검), 없으면 석공(마제석검). ★전사 기준(석공·대장장이는 전사 무장 담당) — 사냥꾼 활은 자가제작(archery)로 자급하므로 여기서 석공을 강제하지 않음.
+  // ★★[재민 지시 "무기 축 복구"] 이 줄의 무기 기준(N×0.5)이 **목표 함수와 달랐다.**
+  //   masonTarget/smithTarget 은 병기고 목표를 식량안보에 따라 N×0.72 또는 max(2, 전사×1.2) 로 잡는데,
+  //   여기서는 그것과 무관하게 N×0.5 를 썼다. 그래서 목표는 이미 찼는데 채용 조건은 계속 참인
+  //   상태가 되어 **석공이 목표의 8배(559명 / 목표 67)까지 폭주**했다(전사를 켰을 때 실측).
+  //   ⇒ 다른 장인과 같은 규약으로: 목표를 넘으면 더 뽑지 않는다.
   if ((counts.warrior || 0) >= 1 && (v.storage.weapon || 0) < N * 0.5) {
-    // ★★[재민 확정] 여기도 "구리+주석" 이라는 이산 조건이었다 — 배합이 자유로워진 지금은
-    //   "석공보다 나은 걸 만들 수 있나" 하나로 판정한다(_smithBeatsMason).
-    if (_smithBeatsMason(v) && hasSlot(v, 'smith', cap, counts)) return 'smith';
-    if (hasSlot(v, 'mason', cap, counts)) return 'mason';
+    if (_smithBeatsMason(v) && (counts.smith || 0) < smithTarget(v) && hasSlot(v, 'smith', cap, counts)) return 'smith';
+    if ((counts.mason || 0) < masonTarget(v) && hasSlot(v, 'mason', cap, counts)) return 'mason';
   }
   // Phase 4d-7: armorsmith — warrior 있고 hide 있는 마을
   if ((counts.warrior || 0) >= 1 && v.storage.hide > N * 0.5 && v.storage.armor < N * 0.5 &&
@@ -3315,6 +3350,7 @@ function computeVillagePrices(v) {
 
 module.exports = {
   _LEGACY_CONTRIBUTES: LEGACY_CONTRIBUTES,
+  totalFoodEquivalent,   // 진단 하네스가 병기고 식량안보 게이트를 정확히 재려면 필요
   // 가치사슬 하네스(scripts/test-valuechain.js)가 상수를 **복제하지 않고** 읽도록 노출.
   _SMELT_PER_LABOR: SMELT_PER_LABOR, _SMELT_YIELD: SMELT_YIELD, _MELT_TOTAL,
   createWorld,
