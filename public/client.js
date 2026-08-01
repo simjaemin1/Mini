@@ -6913,15 +6913,25 @@ const SIM_JOB_EMOJI = {
       }
     }
     if (equipment && equipment.length) {
-      h += '<div class="hint" style="margin-top:10px;font-weight:bold">— 판매(용해) —</div>';
+      h += '<div class="hint" style="margin-top:10px;font-weight:bold">— 판매 —</div>';
       for (const inst of equipment) {
         const rc = equipmentRecipes[inst.type] || {};
         const refund = rc.qty ? Math.max(1, Math.floor(rc.qty / 2)) : 1;
+        // ★철기는 **위세품**으로 넘길 수 있다(재민 확정 2026-08-02b) — 성능이 아니라 처음 보는
+        //   물건이라 값이 선다. 청동기 마을엔 철기가 없다. 주괴·정광은 해당 없음(완성품만).
+        const _fe = (() => {
+          if (inst.mat === 'iron' || inst.mat === 'meteoric_iron') return true;
+          if (inst.mix) { let t = 0, f = 0; for (const k in inst.mix) { t += inst.mix[k]; if (k === 'iron' || k === 'meteoric_iron') f += inst.mix[k]; } return t > 0 && f / t > 0.5; }
+          return false;
+        })();
         h += `<div class="craft-recipe">
           <div class="cr-icon">${EQUIP_ICONS[inst.type] || '🎒'}</div>
-          <div class="cr-info"><div class="cr-name">${rc.label || inst.type} <span style="color:#8a93a0;font-weight:normal">Lv${inst.craftedSkill || 0}</span></div>
-          <div class="cr-cost">용해 → ${inst.mat ? itemIconHtml(inst.mat, 18, inst.mat) : '재료'} ×${refund} 회수</div></div>
-          <button data-sell="${inst.id}">판매</button>
+          <div class="cr-info"><div class="cr-name">${rc.label || inst.type} <span style="color:#8a93a0;font-weight:normal">Lv${inst.craftedSkill || 0}</span>${_fe ? ' <span style="color:#ffd77a">철기</span>' : ''}</div>
+          <div class="cr-cost">용해 → ${inst.mat ? itemIconHtml(inst.mat, 18, inst.mat) : '재료'} ×${refund} 회수${_fe ? ' &nbsp;/&nbsp; <span style="color:#ffd77a">위세품으로 넘기면 마을이 값을 친다</span>' : ''}</div></div>
+          <div style="display:flex;flex-direction:column;gap:3px">
+            <button data-sell="${inst.id}">용해</button>
+            ${_fe ? `<button data-relic="${inst.id}" style="background:#4a3a1a;border-color:#8a6a2a">위세품 판매</button>` : ''}
+          </div>
         </div>`;
       }
     }
@@ -6931,6 +6941,7 @@ const SIM_JOB_EMOJI = {
     root.querySelectorAll('[data-eqmat]').forEach(b => b.onclick = () => { craftEquipSel[b.dataset.eqtype] = b.dataset.eqmat; if (rerender) rerender(); });
     root.querySelectorAll('[data-buy]').forEach(b => b.onclick = () => sendPrimary({ type: 'craft_buy', itemType: b.dataset.buy, material: craftEquipSel[b.dataset.buy] }));
     root.querySelectorAll('[data-sell]').forEach(b => b.onclick = () => sendPrimary({ type: 'craft_sell', id: b.dataset.sell }));
+    root.querySelectorAll('[data-relic]').forEach(b => b.onclick = () => sendPrimary({ type: 'sell_relic', id: b.dataset.relic }));   // ★철제 위세품
   }
   function renderCraftPanel() {
     const list = document.getElementById('craftList');

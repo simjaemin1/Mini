@@ -103,7 +103,10 @@ const UTILITY_WEIGHT = {
 };
 // ★순수 장식재 — use-value 없음(못 먹고 못 만듦). 화폐/위신재 모델링 전엔 수요 0에 가깝게(가짜 수요 제거).
 //   (예외적으로 LUX_TARGET_PC 목표 보유 수요는 있음 — 아래 computeShadowPrices. ★호피(§9 3차)도 이 장식재 프레임에 편입: 마을 내 소비 없음·교역 전용)
-const ORNAMENTAL = { gold: 1, silver: 1, gem: 1, pearl: 1, amber: 1, jade: 1, ivory: 1, tigerhide: 1 };
+//   ★iron_relic(철제 위세품, 2026-08-02b) — NPC 는 **생산하지 않는다**. 플레이어가 판 것만 세상에 있다.
+//     그래서 세계 재고 = "몇 자루가 세상에 나왔나"이고, 아래 _worldStockOf 유효수요 상한이
+//     희소성을 자동으로 값에 반영한다(별도 감쇠 장치를 만들지 않는 이유).
+const ORNAMENTAL = { gold: 1, silver: 1, gem: 1, pearl: 1, amber: 1, jade: 1, ivory: 1, tigerhide: 1, iron_relic: 1 };
 
 // === 자원 부패율 — base는 약하게 (인구 영향 X), excess만 강하게 ===
 //   stock 비례 부패에서 multiplier가 진짜 일함.
@@ -386,7 +389,7 @@ function computeShadowPrices(v) {
   //   ⇒ 사슬 항등식을 가격에 직접 건다: **중간재는 그것이 될 최종재보다 비쌀 수 없다.**
   //     P(원석) ≤ 제련수율 × P(그 마을 광종의 금속)
   {
-    const mix = v.land && v.land.oreMix;
+    const mix = v1.oreMixOf ? v1.oreMixOf(v) : (v.land && v.land.oreMix);   // ★유효 조성(수입 원석 포함)
     if (prices.ore != null && mix) {
       let mv = 0, tot = 0;
       for (const k in mix) { const q = mix[k]; if (!(q > 0)) continue; tot += q;
@@ -947,6 +950,9 @@ function tickCaravansV2(world, day) {
       //   pTo는 결정·로그용 스냅샷으로 유지.
       const grossCredit = _impactSellV2(c.to, c.giveRes, deliveredGive);
       // 도착 마을 chest에 들어옴 (거래 후)
+      // ★★[2026-08-02b] 원석이면 **출발 마을의 조성**을 함께 싣는다 — 광석은 실어 와도 그 광석이다.
+      //   폴드는 재고 가산 **전**에(기존 재고량이 가중치라 순서가 의미를 갖는다).
+      if (c.giveRes === 'ore' && v1.foldOreMix) v1.foldOreMix(c.to, c.to.storage.ore || 0, deliveredGive, v1.oreMixOf(c.from));
       c.to.storage[c.giveRes] = (c.to.storage[c.giveRes] || 0) + deliveredGive;
       const taxTo = grossCredit * TAU;
       const netCreditAfterArrival = grossCredit - taxTo;
@@ -1052,6 +1058,8 @@ function tickCaravansV2(world, day) {
 
       if (c._returningRes && c._returningAmt > 0) {
         const received = c._returningAmt * (1 - inboundLoss);
+        // ★귀환 화물이 원석이면 **매입처(c.to)의 조성**을 싣고 온다(위와 같은 규약)
+        if (c._returningRes === 'ore' && v1.foldOreMix) v1.foldOreMix(c.from, c.from.storage.ore || 0, received, v1.oreMixOf(c.to));
         c.from.storage[c._returningRes] = (c.from.storage[c._returningRes] || 0) + received;
         // v2 r13 Fix 1: 무역 자본 적립 — 받은 자원의 3%가 길드 treasury로 (사용자 의도: 3% 기본 세금)
         //   페니키아·베네치아 동학. 무역 도시도 영토 확장 가능.

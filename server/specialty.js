@@ -162,6 +162,16 @@ const RESOURCES = {
   fruit_berries:{ ko: '산딸기',        emoji: '🫐', category: 'forest', weight: 0.2, baseValue: 1.5, utility: 0.5, contributes: { subsistence: 0.3, happiness: 0.2 }, harvest: 'foraging' },
   birch_sap:   { ko: '자작나무 수액',  emoji: '💧', category: 'forest', weight: 0.5, baseValue: 3,   utility: 0.3, contributes: { happiness: 0.3 }, harvest: 'foraging' },
   charcoal:    { ko: '숯',             emoji: '🌑', category: 'forest', weight: 1.0, baseValue: 2,   utility: 0.5, contributes: { production: 0.7 }, harvest: 'crafting' },  // wood → charcoal
+  // ★★[재민 확정 2026-08-02b] 철제 위세품(鐵器 威勢品) — "세계 최초의 철검"의 값이 서는 자리.
+  //   연철검은 **성능으로는 청동검을 못 이긴다**(등급 0.75 < 1.09 — 고증이 그렇다). 그런데 청동기
+  //   사람에게 철검은 **처음 보는 물건**이고, 처음 보는 물건의 값은 성능이 아니라 위세가 매긴다.
+  //   ⇒ 성능축(무기 등급)은 손대지 않고 **보유축**을 하나 연다. 옥·호피와 같은 프레임이다:
+  //     "쓰지 않는 재화"가 아니라 **보유 자체가 효용**이라 유령 수요가 아니다
+  //     (2026-08-01 "모든 기본 비축 목표 없애라"가 장식재를 남긴 이유 그대로 — v2 주석 참조).
+  //   ★NPC 는 이걸 **생산하지 않는다.** 어떤 직업도 산출에 없다 — 세상에 들어오는 유일한 통로는
+  //     **플레이어가 파는 것**뿐이다. 그래서 세계 재고가 곧 "몇 자루나 세상에 나왔나"이고,
+  //     v2 의 _worldStockOf 유효수요 상한이 그 희소성을 **자동으로** 값에 반영한다(감쇠 장치 불필요).
+  iron_relic:  { ko: '철제 위세품',    emoji: '🗡️', category: 'gem',    weight: 2.0, baseValue: 60,  utility: 0.35, contributes: { prestige: 1.2 }, harvest: 'trade' },
   paper_mulberry:{ ko: '닥나무 껍질',  emoji: '🪵', category: 'forest', weight: 0.5, baseValue: 5,   utility: 0.3, contributes: { production: 0.5 }, harvest: 'woodcutting' },  // 종이 원료
 
   // ═══════════════════════════════════════════════════════════════════

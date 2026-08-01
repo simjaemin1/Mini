@@ -2775,6 +2775,7 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'shop_info') doShopInfo(player);
   else if (msg.type === 'craft_buy') doShopBuy(player, msg.itemType, msg.material);
   else if (msg.type === 'craft_sell') doShopSell(player, msg.id);
+  else if (msg.type === 'sell_relic') doSellIronRelic(player, msg.id);   // ★철제 위세품 판매(재민 확정 2026-08-02b)
   else if (msg.type === 'door_toggle') doDoorToggle(player, msg.buildingId);
   // 14.51: 건축물 아이템화 시스템
   else if (msg.type === 'craft_building') doCraftBuilding(player, msg.recipe);
@@ -3521,6 +3522,45 @@ function doShopSell(player, id) {
   send(player.ws, { type: 'inventory', inventory: player.inventory });
   sendEquipment(player);
   send(player.ws, { type: 'notice', text: `용해: ${(recipe && recipe.label) || inst.type} → ${backTxt}` });
+  if (!player.playerId.startsWith('anon_')) savePlayer(player);
+}
+
+// ═══ ★★[재민 확정 2026-08-02b] 철제 위세품 판매 — "세계 최초의 철검"의 값 ═══════
+//   ★성능축은 손대지 않는다. 연철검은 청동검보다 못하고(등급 0.75 < 1.09) 그게 고증이다.
+//     대신 **보유축**을 연다: 청동기 사람에게 철검은 처음 보는 물건이고, 처음 보는 물건의 값은
+//     성능이 아니라 위세가 매긴다. 옥·호피와 같은 프레임(보유 자체가 효용 = 유령 수요 아님).
+//   ★주괴·정광엔 프리미엄이 **절대** 붙지 않는다 — 완성품만이다(재민 확정).
+//     그래야 "안 쓰는 철을 사오는" 2026-08-01 의 그 버그가 이름만 바꿔 돌아오지 않는다.
+//   ★NPC 는 iron_relic 을 생산하지 않는다. 세상에 들어오는 통로는 이 함수 하나뿐이고,
+//     그래서 세계 재고가 곧 "몇 자루 나왔나"다 — v2 유효수요 상한이 희소성을 자동 반영한다.
+const RELIC_MATS = new Set(['iron', 'meteoric_iron']);
+function doSellIronRelic(player, id) {
+  ensurePlayerItems(player);
+  const idx = player.equipment.findIndex(e => e.id === id);
+  if (idx < 0) { send(player.ws, { type: 'notice', text: '해당 장비 없음' }); return; }
+  const inst = player.equipment[idx];
+  // ★재질 판정 — 주조품(mix)이면 철 비중이 과반이어야 '철기'다. 단일 재료면 그 재료.
+  let isIron = RELIC_MATS.has(inst.mat);
+  if (!isIron && inst.mix && Object.keys(inst.mix).length) {
+    let tot = 0, fe = 0;
+    for (const k in inst.mix) { tot += inst.mix[k]; if (RELIC_MATS.has(k)) fe += inst.mix[k]; }
+    isIron = tot > 0 && fe / tot > 0.5;
+  }
+  if (!isIron) { send(player.ws, { type: 'notice', text: '철기가 아니다 — 위세품으로 쳐주지 않는다(용해는 판매 버튼)' }); return; }
+  const q = (inst.attrs && inst.attrs.__q != null) ? inst.attrs.__q : (inst.q != null ? inst.q / 100 : 1);
+  let r;
+  try { r = SimVillages.lifeSellIronRelic(player.x, player.y, SHOP_RANGE_PX, { quality: q }); }
+  catch (e) { send(player.ws, { type: 'notice', text: `판매 실패: ${e.message}` }); return; }
+  if (!r || r.err) { send(player.ws, { type: 'notice', text: r ? r.err : '판매 불가' }); return; }
+  player.equipment.splice(idx, 1);
+  for (const k in player.equipSlots) if (player.equipSlots[k] === id) delete player.equipSlots[k];
+  const parts = [];
+  for (const k in r.pay) { player.inventory[k] = +((player.inventory[k] || 0) + r.pay[k]).toFixed(3); parts.push(`${ITEM_LABEL_SERVER[k] || k} ${r.pay[k]}`); }
+  send(player.ws, { type: 'inventory', inventory: player.inventory });
+  sendEquipment(player);
+  send(player.ws, { type: 'notice',
+    text: `🗡️ ${r.village}에 철기를 넘겼다 — ${parts.join(' · ') || '(대금 없음)'}  · 이 마을 철기 ${r.relics}점` });
+  console.log(`[${ZONE_ID}] 🗡️ ${player.name} → ${r.village} 철제 위세품 판매 (값 ${r.price} · 대금가치 ${r.paidValue})`);
   if (!player.playerId.startsWith('anon_')) savePlayer(player);
 }
 

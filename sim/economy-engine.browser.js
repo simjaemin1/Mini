@@ -399,6 +399,16 @@ const RESOURCES = {
   fruit_berries:{ ko: '산딸기',        emoji: '🫐', category: 'forest', weight: 0.2, baseValue: 1.5, utility: 0.5, contributes: { subsistence: 0.3, happiness: 0.2 }, harvest: 'foraging' },
   birch_sap:   { ko: '자작나무 수액',  emoji: '💧', category: 'forest', weight: 0.5, baseValue: 3,   utility: 0.3, contributes: { happiness: 0.3 }, harvest: 'foraging' },
   charcoal:    { ko: '숯',             emoji: '🌑', category: 'forest', weight: 1.0, baseValue: 2,   utility: 0.5, contributes: { production: 0.7 }, harvest: 'crafting' },  // wood → charcoal
+  // ★★[재민 확정 2026-08-02b] 철제 위세품(鐵器 威勢品) — "세계 최초의 철검"의 값이 서는 자리.
+  //   연철검은 **성능으로는 청동검을 못 이긴다**(등급 0.75 < 1.09 — 고증이 그렇다). 그런데 청동기
+  //   사람에게 철검은 **처음 보는 물건**이고, 처음 보는 물건의 값은 성능이 아니라 위세가 매긴다.
+  //   ⇒ 성능축(무기 등급)은 손대지 않고 **보유축**을 하나 연다. 옥·호피와 같은 프레임이다:
+  //     "쓰지 않는 재화"가 아니라 **보유 자체가 효용**이라 유령 수요가 아니다
+  //     (2026-08-01 "모든 기본 비축 목표 없애라"가 장식재를 남긴 이유 그대로 — v2 주석 참조).
+  //   ★NPC 는 이걸 **생산하지 않는다.** 어떤 직업도 산출에 없다 — 세상에 들어오는 유일한 통로는
+  //     **플레이어가 파는 것**뿐이다. 그래서 세계 재고가 곧 "몇 자루나 세상에 나왔나"이고,
+  //     v2 의 _worldStockOf 유효수요 상한이 그 희소성을 **자동으로** 값에 반영한다(감쇠 장치 불필요).
+  iron_relic:  { ko: '철제 위세품',    emoji: '🗡️', category: 'gem',    weight: 2.0, baseValue: 60,  utility: 0.35, contributes: { prestige: 1.2 }, harvest: 'trade' },
   paper_mulberry:{ ko: '닥나무 껍질',  emoji: '🪵', category: 'forest', weight: 0.5, baseValue: 5,   utility: 0.3, contributes: { production: 0.5 }, harvest: 'woodcutting' },  // 종이 원료
 
   // ═══════════════════════════════════════════════════════════════════
@@ -1771,6 +1781,33 @@ const HOUSE_START = 20;        // 정착 초기 집(부트스트랩 — 이 크�
 //   (계수를 임의로 흔들라는 손잡이가 아니라 A/B 재현용이다 — PEACE_W 선례. createVillage 참조.)
 const LANDFIT_K = (typeof process !== 'undefined' && process.env && process.env.LANDFIT != null)
   ? Number(process.env.LANDFIT) : 1;
+// ★부얼타운 전용 부존 배수(2026-08-02b) — 식량 부양력이 낮은 땅에 정착하는 무리의 식량·교역 밑천.
+//   ★★기본 0 = **기각**. 3시드 800일 실측이 부얼타운을 기각했다(보고_회부5건_배치.md §②):
+//     식량을 지고 오고 농사 탈출구까지 열어 줘도 광산6 은 3/3 시드에서 소멸했고, 세계 전체가
+//     인구 1,630 → 1,230 · 소멸 2.67 → 4.67 로 나빠졌다. 코드와 손잡이는 남긴다 —
+//     지도(주요 광맥에 철)나 교역이 달라지면 다시 재 볼 값이 있다. BOOMFIT=1 로 켠다.
+const BOOMFIT_K = (typeof process !== 'undefined' && process.env && process.env.BOOMFIT != null)
+  ? Number(process.env.BOOMFIT) : 0;
+// ★부얼타운 픽커 게이트 — 광맥이 실한 **광산촌만** "농사 불가" 탈출구를 쓴다.
+//   ★★기본 OFF = 기각(위 BOOMFIT_K 주석). BOOMGATE=1 로 켠다.
+const BOOMGATE_ON = (typeof process !== 'undefined' && process.env && process.env.BOOMGATE === '1');
+// ═══ ★★부얼타운(광산촌) 판정 — **단일 정의**. 시딩(villages.js)도 이 함수를 부른다(사본 금지) ═══
+//   ⚠1차 시도의 실패에서 배운 것: "식량 부양력이 하한 미달"만으로 잡으면 **너무 많이 잡힌다.**
+//     선별된 마을 20곳 중 절반 가까이가 부양력 1.3~2.0 구간이라, 거기에 식량을 얹고 농사 탈출구를
+//     열어 줬더니 인구 1,630 → 1,126 · 소멸 2.7 → 4.7 로 무너졌다(실측 3시드).
+//     ⇒ 부얼타운은 "식량이 좀 부족한 마을"이 아니라 **식량으로는 도저히 못 사는데 광맥이 아주 실한**
+//       자리다. 두 조건을 **모두** 요구한다.
+const BOOM_FOOD_MAX = 1.2;   // 부양력이 이 아래여야(하한 2.0 의 60%) — "농사로는 답이 없다"
+const BOOM_VEIN_MIN = 1.0;   // 광맥 점수가 이 위여야 — 실측 분포의 자연 절단선(다음이 0.238)
+const BOOM_VEIN_W = { copper: 1.0, tin: 1.0, iron: 0.6, gold: 0.5, silver: 0.5, lead: 0.4, jade_raw: 0.3, obsidian: 0.3 };
+function veinScore(land) {
+  if (!land) return 0;
+  const mix = land.oreMix || {};
+  let w = 0; for (const k in mix) w += (mix[k] || 0) * (BOOM_VEIN_W[k] != null ? BOOM_VEIN_W[k] : 0.3);
+  return (land.ore || 0) * w + (land.tin || 0) * 0.5;
+}
+const foodCapOf = (land) => land ? (land.fertility || 0) * 1.5 + (land.water || 0) * 1.2 + (land.game || 0) * 0.7 : 0;
+function isBoomtown(land) { return foodCapOf(land) < BOOM_FOOD_MAX && veinScore(land) >= BOOM_VEIN_MIN; }
 // ★땔감(연료): 집은 목재를 거의 안 먹지만(재고), 요리·난방은 인구에 비례하는 *매일의 흐름*. 이게 숲→인구 상한의 진짜 고리.
 //   큰 마을일수록 매일 대량 소비 → 고갈된 숲(벌목꾼 슬롯·산출↓)은 못 댐 → fuelCov↓ → 건강↓ → 인구·생산성↓(비례=자기교정).
 //   숲 안 베는 작은 마을은 수요 작아 무영향. 역사적으로 마을 크기를 실제 제한한 건 건축목재가 아니라 땔감(연료 고갈).
@@ -2115,6 +2152,9 @@ function opportunityCost(npc, v, w) {
     //   유인이 틀린 것이다. 원석 1단위의 실효가치는 **제련 후 금속 가치**(SMELT_YIELD × 광종 가중가)다.
     //   이러면 광종이 유인에 그대로 들어온다: 금맥 마을은 원석이 비싸고 철맥 마을은 싸다.
     case 'miner': {
+      // ★여기만 **land.oreMix** 를 그대로 쓴다(유효 조성 아님) — 광부의 **한계** 산출은 자기 땅이
+      //   내놓는 광종이지 곳간에 쌓인 수입 원석의 조성이 아니다. 남이 실어다 준 금맥 원석이
+      //   내 철광산의 채굴 유인을 올리면 그게 오류다.
       const _mix = v && v.land && v.land.oreMix;
       let _oreV = w('ore');
       if (_mix) {
@@ -2206,6 +2246,43 @@ const SMELT_MIN_ORE = 0.5;      // 이만큼도 없으면 노를 지피지 않�
 // 광맥 0 인 마을의 원석 = 하천 사철·사금(livelihood.js FLOOR.ore 주석 "사철·표사").
 //   광부 부산물 폴백과 **같은 조성**을 쓴다 — 두 군데가 다른 말을 하면 그게 버그다.
 const SMELT_PLACER = { iron: 0.9, gold: 0.1 };
+// ═══ ★★[재민 확정 2026-08-02b "다 하자"] 원석에 **조성을 싣는다** ══════════════
+//   문제: econ 의 `ore` 는 조성이 없는 스칼라였고, 조성은 **땅**(land.oreMix)에만 있었다.
+//   그래서 남이 실어다 준 원석은 "무엇이 든지 모르는 돌"이라 영원히 못 녹였다 — 실측으로
+//   어촌2 281 · 임업3 404 가 그렇게 묶여 썩고 있었다(회부_구리부존과_원석적체 ③).
+//   물리적으로 틀렸다. 광석은 실어 오면 그 광석 그대로다.
+//   ⇒ 마을마다 **유효 제련 조성** `_oreMixEff` 를 둔다 — 지금 곳간에 있는 원석의 가중 평균 조성.
+//     · 광부가 캐면 자기 땅 조성으로 폴드 · 캐러밴이 부리면 **출발 마을의 유효 조성**으로 폴드
+//     · 제련·부패는 비례 소모라 조성을 바꾸지 않는다(폴드는 **들어올 때만**)
+//   ★단일 진실: 읽는 쪽은 전부 `oreMixOf(v)` 를 부른다(사본 금지).
+//   ★손잡이 ORE_MIX_EFF=0 → 채택 전 동작(land.oreMix 만) 정확히 재현.
+const ORE_MIX_EFF_ON = !(typeof process !== 'undefined' && process.env && process.env.ORE_MIX_EFF === '0');
+function oreMixOf(v) {
+  if (ORE_MIX_EFF_ON) {
+    const e = v && v._oreMixEff;
+    if (e && typeof e === 'object') { for (const k in e) if (e[k] > 0) return e; }
+  }
+  return (v && v.land && v.land.oreMix) || null;
+}
+// 들어온 원석 addQty(조성 srcMix)를 곳간의 기존 원석 haveQty 에 섞는다.
+//   srcMix 가 없거나 비면 폴드하지 않는다(모르는 건 섞을 수 없다 — 기존 조성 유지).
+function foldOreMix(v, haveQty, addQty, srcMix) {
+  if (!ORE_MIX_EFF_ON || !v || !(addQty > 0) || !srcMix) return;
+  let st = 0; for (const k in srcMix) { const q = srcMix[k]; if (q > 0) st += q; }
+  if (!(st > 0)) return;
+  const cur = (v._oreMixEff && typeof v._oreMixEff === 'object') ? v._oreMixEff : null;
+  const base = cur || ((v.land && v.land.oreMix && Object.keys(v.land.oreMix).length) ? v.land.oreMix : null);
+  const out = {};
+  const oldQ = Math.max(0, haveQty || 0);
+  if (base && oldQ > 0) { let bt = 0; for (const k in base) { const q = base[k]; if (q > 0) bt += q; }
+    if (bt > 0) for (const k in base) { const q = base[k]; if (q > 0) out[k] = (out[k] || 0) + (q / bt) * oldQ; } }
+  for (const k in srcMix) { const q = srcMix[k]; if (q > 0) out[k] = (out[k] || 0) + (q / st) * addQty; }
+  let tot = 0; for (const k in out) tot += out[k];
+  if (!(tot > 0)) return;
+  const norm = {};
+  for (const k in out) { const f = out[k] / tot; if (f > 1e-4) norm[k] = +f.toFixed(5); }   // 잔부스러기는 버린다(직렬화 비대 방지)
+  v._oreMixEff = norm;
+}
 // ★시대 게이트 — 판정은 server/era.js 하나에서만 한다(사본 금지). 모듈이 없으면 전부 허용(구 동작 보존).
 let _eraMod;
 function _era() { if (_eraMod === undefined) { try { _eraMod = require('../server/era'); } catch (e) { _eraMod = null; } } return _eraMod; }
@@ -2213,7 +2290,7 @@ const _ERA_METALS = new Set(['copper', 'tin', 'lead', 'gold', 'silver', 'iron', 
 const _ERA_METAL = (id) => _ERA_METALS.has(id);
 function _eraKnows(metal) { const E = _era(); if (!E || !E.npcKnows) return true; try { return E.npcKnows(metal); } catch (e) { return true; } }
 function _trySmelt(v, laborBase) {
-  const om = v.land && v.land.oreMix;
+  const om = oreMixOf(v);                              // ★유효 조성 우선(수입 원석 포함) — 없으면 땅 조성
   if (!om) return 0;                                   // 지도 정보 없는 호출부(랩·CLI)는 옛 경로
   const mix = Object.keys(om).length ? om : SMELT_PLACER;
   const have = v.storage.ore || 0;
@@ -2453,6 +2530,19 @@ function createVillage(opts) {
   //     (그래서 개입 시점이 t=0 이어야 한다. 회부 문서가 재 본 "기근 마을 반출 금지"는 이미
   //      늦은 시점의 개입이라 시드 분산에 묻혔던 것이다.)
   //   ※LANDFIT=0 으로 끄면 채택 전 동작을 그대로 재현한다(A/B 손잡이 — 기본값은 1, PEACE_W 선례).
+  // ★★[재민 확정 2026-08-02b 부얼타운] **식량 부양력이 낮은 땅**에 자리 잡는 무리는 식량도 지고 온다.
+  //   같은 원리의 확장이다("못 주는 만큼 지고 온다"). 기준은 시딩이 쓰는 부양력 지표와 **같은 식**이고
+  //   (사본 금지), 하한 2.0 에 못 미치는 만큼만 얹는다.
+  //   ⚠양을 크게 잡지 않는다 — 옛 300일치 비축이 "글럿 → satiation → 부양력 오판 → 농부 이탈"로
+  //     초반 인구를 진동시킨 전례가 있다(위 45일치 주석). 최대 45일치 추가(=90일)까지만.
+  //   BOOMFIT=0 이면 이 항만 끈다(A/B 재현).
+  //   ★대상은 **부얼타운뿐**이다(isBoomtown — 부양력 미달 AND 광맥 실함). "식량이 좀 부족한 마을"에
+  //     일괄로 얹었다가 인구 1,630 → 1,126 으로 무너뜨린 게 1차 시도였다(위 판정 함수 주석).
+  const _isBoom = BOOMFIT_K > 0 && isBoomtown(v.land);
+  const _foodLack = _isBoom ? Math.max(0, Math.min(1, 1 - foodCapOf(v.land) / 2.0)) : 0;
+  if (_foodLack > 0) {
+    v.storage.food += initN * 45 * _foodLack * BOOMFIT_K;                       // 최대 +45일치
+  }
   const _lf = LANDFIT_K;
   if (_lf > 0) {
     const _lackStone = Math.max(0, 1.0 - (v.land.stone || 0));
@@ -2462,6 +2552,9 @@ function createVillage(opts) {
     v.storage.tool += initN * 6 * Math.max(_lackStone, _lackWood) * _lf;   // 도구 여유분 — 재보급이 어려운 만큼 더 지고 온다
   }
   v.storage.ore = Math.floor(initN * v.land.ore * 5);  // 광물 도시는 ore 잉여로 시작
+  // ★부얼타운은 **팔 것**도 지고 온다 — 식량을 살 밑천이다(이 마을은 식량을 사서 산다).
+  //   ※위 food 가산 뒤에 오는 이유: storage.ore 는 여기서 통째로 대입되므로 그 뒤에 얹어야 한다.
+  if (BOOMFIT_K > 0 && _foodLack > 0) v.storage.ore += initN * (v.land.ore || 0) * 10 * _foodLack * BOOMFIT_K;
   v.storage.herb = initN * 0.5;       // ★약재(§9): 정착민 상비약 반 근씩 — 재고0 희소폭등(가격 스파이크→채집 쏠림 과도) 방지 시드
   v.storage.weapon = Math.max(v.storage.weapon || 0, initN * 0.15);   // ★활 시드(§9 3차): 정착민 사냥꾼은 제 활을 들고 옴(~초기 사냥꾼 수) — t=0 무기 결손이 무기장 캐치업·교역을 흔드는 것 방지(herb 패턴)
   v.housing = Math.max(initN, HOUSE_START);   // ★주거 수용력. K = min(식량,생산) 안에서 인구가 이 값에 막힘(성장 게이트).
@@ -2864,6 +2957,10 @@ function tickVillage(v, day) {
         //   전에는 광부가 광석과 금속을 **동시에** 냈다 — 제련 단계가 통째로 비어 있었고,
         //   그래서 ore 는 산출만 되고 아무 데도 안 쓰이는 죽은 재화였다(교역재로만 쌓였다).
         //   이제 ore 가 제련 원료가 되고, 대장장이에겐 무기 수요와 **무관한 상시 일감**이 생긴다.
+        // ★[2026-08-02b] 캔 원석도 **조성을 싣는다** — 수입 원석과 섞이면 가중 평균이 된다.
+        //   폴드는 재고 가산 **전**(기존 재고량이 가중치). 실제 반영량은 세금·감산을 거치므로
+        //   addProduce 와 같은 배수를 쓸 수 없다 — 근사로 oAmt 를 쓴다(비율만 쓰는 값이라 무해).
+        if (v.land && v.land.oreMix) foldOreMix(v, v.storage.ore || 0, oAmt, v.land.oreMix);
         addProduce('ore', oAmt);
         // ★청동 희소성 복원: tin을 부산물에서 *제거*. 종전 { copper:0.22, tin:0.11, ... } → tin은 전 마을 자동산출 = 청동 보편재의 근본 원인.
         //   이제 tin은 산지(land.tin>0)만 아래 별도 채굴. copper/iron/장식재는 종전대로 모든 광맥 부산물(청동기: 구리는 흔하되 주석이 병목).
@@ -3595,7 +3692,7 @@ const ORE_STOCK_PC = 0.5;   // 1인당 원석 재고 목표 — 이 아래면 �
 const SMELT_LABOR_CAP_PC = (typeof process !== 'undefined' && process.env && process.env.SMELT_CAP != null)
   ? Number(process.env.SMELT_CAP) : 0.05;
 function smeltTarget(v) {
-  const mix = v.land && v.land.oreMix;
+  const mix = oreMixOf(v);   // ★유효 조성 — 수입 원석도 녹일 수 있다(2026-08-02b)
   if (!mix) return 0;
   const ore = v.storage.ore || 0;
   if (ore < SMELT_MIN_ORE) return 0;
@@ -3722,7 +3819,16 @@ function pickDeficitJob_rational(v, world) {
     // ★농사 불가 마을(비옥<0.2): 농부 강제는 무의미(거의 0 산출) → 가치재(금·광석) 채굴로 식량 살 자금 확보.
     //   광산 부얼타운 = 식량 전량 수입. 어로/사냥(직접 식량)이 가능하면 그게 우선, 광맥뿐이면 채굴해 교역.
     //   하드플로어 N*6: 그 아래로 떨어지면 가능한 식량직(어/렵)이라도 풀가동.
-    if ((v.land.fertility || 0) < 0.2 && foodEquiv > N * 6) {
+    // ★★[2026-08-02b] 판정 기준을 **비옥도 하나**에서 **식량 부양력**으로 통일한다(BOOMGATE=0 이면 옛 동작).
+    //   비옥 0.2 는 손으로 찍은 값이고, 시딩은 이미 "부양력 = 비옥×1.5 + 물×1.2 + 사냥×0.7" 을 쓴다.
+    //   두 층이 다른 잣대로 "농사 불가"를 판정하면 그 틈에 마을이 빠진다 — 실제로 빠졌다:
+    //   광산6(비옥 0.26 · 부양력 0.80 · 구리 90%)은 비옥 기준으론 "농사 가능"이라 이 탈출구를 못 쓰고,
+    //   거의 산출 없는 농부만 뽑다가 굶어 죽었다(실측: 3시드 중 2시드에서 소멸, 생존 시드도 광부 0).
+    //   ⚠"부양력 하한 미달" 전체로 넓혔다가 실패했다(위 isBoomtown 주석의 실측). 옛 비옥도 게이트는
+    //     **그대로 두고**, 부얼타운만 탈출구를 하나 더 갖는다 — 광산6(비옥 0.26·부양력 0.80·구리 90%)이
+    //     비옥 기준으론 "농사 가능"이라 굶어 죽던 그 틈만 정확히 메운다.
+    const _cantFarm = ((v.land.fertility || 0) < 0.2) || (BOOMGATE_ON && isBoomtown(v.land));
+    if (_cantFarm && foodEquiv > N * 6) {
       if (Math.max(v.land.ore || 0, v.land.obsidian || 0, v.land.jade || 0) > 0.3 && hasSlot(v, 'miner', cap, counts)) return 'miner';   // ★S1 광부=금속 전담 ★S5 흑요석·옥 산지도 채굴해 교역(부얼타운 자금)
     }
     // ★풍부광맥 예외: 광맥이 매우 풍부(ore>0.35) + 하드기근(18일치) 아님 + 채광노동 상한(4%) 미만이면
@@ -4598,7 +4704,7 @@ function computeVillagePrices(v) {
   }
   // ★중간재 상한 — 원석은 그것이 될 금속보다 비쌀 수 없다(v2 동일 규칙, 사유는 그쪽 주석 참조).
   {
-    const mix = v.land && v.land.oreMix;
+    const mix = oreMixOf(v);   // ★유효 조성 — 곳간에 실제로 든 원석이 무엇이냐로 값을 매긴다
     if (prices.ore != null && mix) {
       let mv = 0, tot = 0;
       for (const k in mix) { const q = mix[k]; if (!(q > 0)) continue; tot += q;
@@ -4619,6 +4725,11 @@ module.exports = {
   _SMELT_PER_LABOR: SMELT_PER_LABOR, _SMELT_YIELD: SMELT_YIELD, _MELT_TOTAL,
   // ★시대 게이트 조회 — v2 원석 상한이 같은 판정을 쓰도록(사본 금지). 금속이 아니면 항상 true.
   _eraMetalKnown: (id) => !_ERA_METAL(id) || _eraKnows(id),
+  // ★유효 제련 조성(2026-08-02b) — v2 가격 상한·교역 층이 **같은 함수**를 쓰도록 노출(사본 금지).
+  //   _trySmelt·smeltTarget 은 하네스(scripts/test-oremix.js)가 실제 제련을 돌려 보려고 노출한다.
+  oreMixOf, foldOreMix, _trySmelt, smeltTarget,
+  // ★부얼타운 판정 — 시딩(villages.js)이 같은 함수를 쓰도록 노출(사본 금지)
+  isBoomtown, veinScore, foodCapOf, BOOM_FOOD_MAX, BOOM_VEIN_MIN,
   createWorld,
   tickWorld,
   tickTrade, tickCaravans,   // ★랩이 본 게임과 같은 루프를 돌려면 필요(누락돼 있어서 랩이 '교역 없는 세계'를 재고 있었다)
@@ -4758,7 +4869,10 @@ const UTILITY_WEIGHT = {
 };
 // ★순수 장식재 — use-value 없음(못 먹고 못 만듦). 화폐/위신재 모델링 전엔 수요 0에 가깝게(가짜 수요 제거).
 //   (예외적으로 LUX_TARGET_PC 목표 보유 수요는 있음 — 아래 computeShadowPrices. ★호피(§9 3차)도 이 장식재 프레임에 편입: 마을 내 소비 없음·교역 전용)
-const ORNAMENTAL = { gold: 1, silver: 1, gem: 1, pearl: 1, amber: 1, jade: 1, ivory: 1, tigerhide: 1 };
+//   ★iron_relic(철제 위세품, 2026-08-02b) — NPC 는 **생산하지 않는다**. 플레이어가 판 것만 세상에 있다.
+//     그래서 세계 재고 = "몇 자루가 세상에 나왔나"이고, 아래 _worldStockOf 유효수요 상한이
+//     희소성을 자동으로 값에 반영한다(별도 감쇠 장치를 만들지 않는 이유).
+const ORNAMENTAL = { gold: 1, silver: 1, gem: 1, pearl: 1, amber: 1, jade: 1, ivory: 1, tigerhide: 1, iron_relic: 1 };
 
 // === 자원 부패율 — base는 약하게 (인구 영향 X), excess만 강하게 ===
 //   stock 비례 부패에서 multiplier가 진짜 일함.
@@ -5041,7 +5155,7 @@ function computeShadowPrices(v) {
   //   ⇒ 사슬 항등식을 가격에 직접 건다: **중간재는 그것이 될 최종재보다 비쌀 수 없다.**
   //     P(원석) ≤ 제련수율 × P(그 마을 광종의 금속)
   {
-    const mix = v.land && v.land.oreMix;
+    const mix = v1.oreMixOf ? v1.oreMixOf(v) : (v.land && v.land.oreMix);   // ★유효 조성(수입 원석 포함)
     if (prices.ore != null && mix) {
       let mv = 0, tot = 0;
       for (const k in mix) { const q = mix[k]; if (!(q > 0)) continue; tot += q;
@@ -5602,6 +5716,9 @@ function tickCaravansV2(world, day) {
       //   pTo는 결정·로그용 스냅샷으로 유지.
       const grossCredit = _impactSellV2(c.to, c.giveRes, deliveredGive);
       // 도착 마을 chest에 들어옴 (거래 후)
+      // ★★[2026-08-02b] 원석이면 **출발 마을의 조성**을 함께 싣는다 — 광석은 실어 와도 그 광석이다.
+      //   폴드는 재고 가산 **전**에(기존 재고량이 가중치라 순서가 의미를 갖는다).
+      if (c.giveRes === 'ore' && v1.foldOreMix) v1.foldOreMix(c.to, c.to.storage.ore || 0, deliveredGive, v1.oreMixOf(c.from));
       c.to.storage[c.giveRes] = (c.to.storage[c.giveRes] || 0) + deliveredGive;
       const taxTo = grossCredit * TAU;
       const netCreditAfterArrival = grossCredit - taxTo;
@@ -5707,6 +5824,8 @@ function tickCaravansV2(world, day) {
 
       if (c._returningRes && c._returningAmt > 0) {
         const received = c._returningAmt * (1 - inboundLoss);
+        // ★귀환 화물이 원석이면 **매입처(c.to)의 조성**을 싣고 온다(위와 같은 규약)
+        if (c._returningRes === 'ore' && v1.foldOreMix) v1.foldOreMix(c.from, c.from.storage.ore || 0, received, v1.oreMixOf(c.to));
         c.from.storage[c._returningRes] = (c.from.storage[c._returningRes] || 0) + received;
         // v2 r13 Fix 1: 무역 자본 적립 — 받은 자원의 3%가 길드 treasury로 (사용자 의도: 3% 기본 세금)
         //   페니키아·베네치아 동학. 무역 도시도 영토 확장 가능.

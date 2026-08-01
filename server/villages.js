@@ -452,27 +452,68 @@ function pickSeedVillages(all, ta) {
   //     · 돌 2.5 짜리 광산(비옥 0.3)이 도구 가산으로 뽑혀 굶어 죽었다 — 식량은 가산으로 못 메꾼다.
   //     · 물 1.5 어촌(돌 0.25)이 식량 점수만으로 뽑혀 도구 아사했다 — 도구 접근 0이면 반토막나야 한다.
   //   ⇒ 식량은 **하한(필수)**, 도구 접근은 **배수(0.5~1.5)** 다.
-  const FOOD_FLOOR = 2.0;   // 부양력 하한 — 이 아래는 교역 의존 부얼타운인데, 실측에서 예외 없이 굶었다
+  const FOOD_FLOOR = 2.0;   // 부양력 하한 — 이 아래는 교역 의존 부얼타운인데, 1차 실측에서 예외 없이 굶었다
+  // ★★[재민 확정 2026-08-02b "다 하자"] **부얼타운 예외** — 광산촌은 원래 척박한 데 선다.
+  //   1차 부유 시딩은 식량 하한으로 광산촌을 계통적으로 배제했고, 그 대가로 **세계 최고 구리 자리
+  //   (광산6 — 구리 90%·부존 1.13)를 지도에서 지웠다**. 주조 마을이 2/19 인 직접 원인이 이것이다
+  //   (회부_구리부존과_원석적체 ① — 구리 부존 마을 수 = 주조 마을 수, 전환율 100%).
+  //   고증도 예외 쪽이다: 광산 취락은 식량을 **사서** 산다(economy-sim §"광산 부얼타운 = 식량 전량 수입").
+  //   ⇒ 광맥이 아주 실한 자리는 하한 미달이어도 **최대 BOOMTOWN_MAX 곳** 심는다.
+  //   ⚠재민 원칙 "존재하는 마을은 전부 부유"가 여전히 우선이다 — 이 예외는 **실측이 채택 조건**이고,
+  //     굶으면 되돌린다(BOOMTOWN=0 으로 예외 없는 동작을 그대로 재현할 수 있다).
+  //   ★★기본 0 = **실측 기각**(2026-08-02b · 보고_회부5건_배치.md §②). 재민 승인은 났지만
+  //     "존재하는 마을은 전부 부유"가 우선이라는 조건부 승인이었고, 3시드 800일이 조건을 못 채웠다:
+  //       부얼타운만: 인구 1,630→1,556 · 소멸 2.67→4.33 · 주조 2.33→2.00 (목표였던 주조가 오히려 감소)
+  //       +식량 부존 +농사 탈출구: 인구 1,230 · 소멸 4.67 — 더 나빠졌다
+  //       광산6(구리 90%)은 **3/3 시드에서 소멸**, 살아남은 시드의 광산1 도 광부 0~7명
+  //     ⇒ 주조 확산은 부얼타운이 아니라 **③ 유효 제련 조성**이 해결했다(주조 2.33 → 4.00).
+  //     코드·손잡이는 남긴다 — 지도에 철이 들어가거나(설계_NPC철기산업_지도) 교역이 두터워지면
+  //     다시 재 볼 값이 있다. BOOMTOWN=2 로 켠다.
+  const BOOMTOWN_MAX = (typeof process !== 'undefined' && process.env && process.env.BOOMTOWN != null)
+    ? Number(process.env.BOOMTOWN) : 0;
+  //   광맥 점수 = 부존 × 광종 가중(청동 재료를 높게) + 주석 산지 축. 실측 분포에서 자연 절단선이 1.0 이다:
+  //     하한 미달 후보 중 1.0 이상은 광산6(1.073 · 구리90%) · 광산1(1.025 · 납85/은15) 둘뿐이고,
+  //     그다음이 0.238 로 뚝 떨어진다 — 임의 문턱이 아니라 지도가 그어 준 선.
+  //   ★판정은 엔진(economy-sim.isBoomtown)이 한다 — 시딩과 픽커와 부존이 **같은 잣대**를 써야 한다.
+  //     (여기에 공식을 베끼면 세 곳이 조용히 갈라진다 — 이 프로젝트가 여러 번 당한 그 병이다.)
+  const _E = require('../sim/economy-sim');
+  const veinScore = (lp) => (_E.veinScore ? _E.veinScore(lp) : 0);
+  const VEIN_FLOOR = _E.BOOM_VEIN_MIN != null ? _E.BOOM_VEIN_MIN : 1.0;
+  const _lpCache = new Map();
+  const lpOf = (v) => {
+    if (_lpCache.has(v.name)) return _lpCache.get(v.name);
+    let lp = null;
+    try { lp = extractLandParamsApprox(ta, Math.round(v.x / SZ), Math.round(v.y / SZ), { territory: [] }); } catch (e) {}
+    _lpCache.set(v.name, lp); return lp;
+  };
   const landScore = (v) => {
     if (!ta) return 0;
-    try {
-      const c = { ccx: Math.round(v.x / SZ), ccy: Math.round(v.y / SZ) };
-      const lp = extractLandParamsApprox(ta, c.ccx, c.ccy, { territory: [] });   // 근사 폴백 경로(복원 배선과 동일)
-      const food = (lp.fertility || 0) * 1.5 + (lp.water || 0) * 1.2 + (lp.game || 0) * 0.7;
-      if (food < FOOD_FLOOR) return 0;                       // 필수 미달 — 심지 않는다
-      const toolAccess = Math.min(1, Math.max(0, (lp.stone || 0) - 0.25) / 0.75 + Math.max(0, (lp.wood || 0) - 0.45) / 1.5);
-      return food * (0.5 + toolAccess);                      // 도구 접근 0 → ×0.5, 충분 → ×1.5
-    } catch (e) { return 0; }
+    const lp = lpOf(v);
+    if (!lp) return 0;
+    const food = (lp.fertility || 0) * 1.5 + (lp.water || 0) * 1.2 + (lp.game || 0) * 0.7;
+    if (food < FOOD_FLOOR) return 0;                       // 필수 미달 — 심지 않는다(부얼타운 예외는 아래 별도 패스)
+    const toolAccess = Math.min(1, Math.max(0, (lp.stone || 0) - 0.25) / 0.75 + Math.max(0, (lp.wood || 0) - 0.45) / 1.5);
+    return food * (0.5 + toolAccess);                      // 도구 접근 0 → ×0.5, 충분 → ×1.5
   };
   const scored = all.map(v => {
     const tp = TYPE_PRIOR[v.type] != null ? TYPE_PRIOR[v.type] : 0.7;
     const ls = landScore(v);
+    const lp = ta ? lpOf(v) : null;
     // 땅 점수가 주(主), 타입은 동률 깨기 수준의 보조(×0.3) — ta 없으면 옛 동작 그대로.
-    return { ...v, _land: +ls.toFixed(3), _score: ta ? ls + tp * 0.3 : tp };
+    return { ...v, _land: +ls.toFixed(3), _vein: lp ? +veinScore(lp).toFixed(3) : 0, _score: ta ? ls + tp * 0.3 : tp };
   });
   scored.sort((a, b) => b._score - a._score);
   const picked = [];
   const farEnough = (v) => picked.every(p => Math.hypot(p.x - v.x, p.y - v.y) >= MIN_SPACING_PX);
+  // ⓪ ★부얼타운 — **먼저** 뽑는다. 나중에 뽑으면 남은 자리가 없어 예외가 사문이 된다.
+  //   대상은 "하한 미달인데 광맥이 아주 실한" 자리뿐이다(하한을 넘는 광산은 어차피 정규 경로로 들어온다).
+  if (ta && BOOMTOWN_MAX > 0) {
+    const boom = scored.filter(v => !(v._land > 0) && _E.isBoomtown(lpOf(v))).sort((a, b) => b._vein - a._vein);
+    for (const v of boom) {
+      if (picked.length >= Math.min(BOOMTOWN_MAX, VILLAGE_MAX)) break;
+      if (farEnough(v)) { v._boomtown = 1; picked.push(v); }
+    }
+  }
   // ① type 다양성 — 각 type 최고점 1곳 (품질순 정렬을 거친 뒤라, 같은 타입 중 가장 좋은 자리가 뽑힌다)
   for (const type of ['plain', 'riverside', 'forest', 'mining']) {
     if (picked.length >= VILLAGE_MAX) break;
@@ -823,6 +864,64 @@ function villageQualityAt(px, py, maxDistPx) {
     pop: (typeof e.pop === 'number' ? Math.round(e.pop) : (e.npcs ? e.npcs.length : null)),
   };
 }
+// ═══ ★★[재민 확정 2026-08-02b] 철제 위세품 판매 — 플레이어 → 마을 ═══════════════
+//   "세계 최초의 철검"의 값이 서는 유일한 통로. NPC 는 iron_relic 을 **생산하지 않는다**.
+//   ★econ 접점 규약(좁게 유지):
+//     · **읽기** — v2 그림자가격(world.priceFn)으로 그 마을이 매기는 값을 그대로 쓴다(사본 금지)
+//     · **쓰기** — 딱 두 줄: storage.iron_relic += 1 · 대금 재화 −amt. 생산·직업·가격 로직 무접촉.
+//     · 대금은 **그 마을이 실제로 가진 것**에서만 나온다(빚 없음). 없으면 거래가 성사되지 않는다.
+//   ★유령 수요가 아닌 이유: 위세재는 "쓰지 않는 재화"가 아니라 보유 자체가 효용이다
+//     (2026-08-01 "모든 기본 비축 목표 없애라"가 ORNAMENTAL 을 남긴 근거 그대로).
+//   ★희소 감쇠 장치를 따로 만들지 않는다: v2 _worldStockOf 유효수요 상한이 세계 재고에 비례해
+//     목표를 깎으므로, 세상에 철기가 늘수록 값이 **저절로** 떨어진다.
+const RELIC_PAY_PREF = ['food', 'hide', 'stone', 'wood', 'herb', 'jade', 'obsidian'];   // 대금으로 받을 재화(플레이어에게 쓸모 순)
+const RELIC_PAY_KEEP = { food: 20 };   // 마을이 남겨 둬야 하는 몫(1인당) — 곳간을 비워 굶기지 않는다
+function lifeSellIronRelic(px, py, maxDistPx, opts) {
+  if (!state.ready) return { err: '마을 시뮬이 꺼져 있다' };
+  let best = null, bestD = (maxDistPx != null ? maxDistPx : Infinity);
+  for (const v of state.villages) {
+    if (!v.econ) continue;
+    const cx = v.ccx * SZ + SZ / 2, cy = v.ccy * SZ + SZ / 2;
+    const d = Math.hypot(cx - px, cy - py);
+    if (d < bestD) { bestD = d; best = v; }
+  }
+  if (!best) return { err: '거래할 마을이 근처에 없다' };
+  const e = best.econ;
+  const N = (e.npcs && e.npcs.length) || 1;
+  // ① 이 마을이 매기는 값 — v2 그림자가격 그대로(사본 금지)
+  let price = 0;
+  try {
+    const pf = state.world && state.world.priceFn;
+    const tbl = pf ? pf(e) : null;
+    price = (tbl && tbl.iron_relic) || 0;
+  } catch (err) { price = 0; }
+  if (!(price > 0)) return { err: `${best.name}은(는) 값을 못 쳐준다` };
+  const q = Math.max(0.2, Math.min(1.6, (opts && opts.quality) || 1));   // 품질 배수(장비 인스턴스 q)
+  const want = price * q;
+  // ② 대금 — 그 마을이 실제로 가진 것에서만. 곳간을 비우지 않는다.
+  const pay = {}; let paid = 0;
+  for (const r of RELIC_PAY_PREF) {
+    if (paid >= want) break;
+    const keep = (RELIC_PAY_KEEP[r] || 0) * N;
+    const spare = Math.max(0, (e.storage[r] || 0) - keep);
+    if (spare <= 0) continue;
+    let unit = 1;
+    try { const tbl = state.world && state.world.priceFn ? state.world.priceFn(e) : null; unit = (tbl && tbl[r]) || 1; } catch (err) { unit = 1; }
+    if (!(unit > 0)) continue;
+    const need = (want - paid) / unit;
+    const take = Math.min(spare, need);
+    if (take <= 0.01) continue;
+    pay[r] = +take.toFixed(2); paid += take * unit;
+  }
+  if (paid < want * 0.25) return { err: `${best.name}은(는) 값을 치를 물건이 없다 (가난한 마을이다)` };
+  // ③ 쓰기 — 딱 두 종류
+  for (const r in pay) e.storage[r] = Math.max(0, (e.storage[r] || 0) - pay[r]);
+  e.storage.iron_relic = (e.storage.iron_relic || 0) + 1;
+  e._ironRelicBought = (e._ironRelicBought || 0) + 1;   // (계측 전용)
+  return { village: best.name, price: +price.toFixed(2), paidValue: +paid.toFixed(2), pay,
+           relics: e.storage.iron_relic, pop: N, dist: Math.round(bestD) };
+}
+
 // bnd 없는 구DB(Stage1~3 시딩분)는 반경 원 근사(approx)로 폴백 — 과제 허용 최소 구현.
 // =============================================================================
 function clientVillages() {
@@ -3624,6 +3723,7 @@ module.exports = {
   lifeRequestPlayerSite, villageOwningCell,
   // 플레이어 구매/판매 경계계약(읽기전용 마을 품질 EMA — econ 무접촉)
   villageQualityAt,
+  lifeSellIronRelic,   // ★철제 위세품 판매(플레이어→마을) — econ 접점은 이 함수 하나뿐
   // §11 도적 — server/bandits.js 소비(좁은 접점, 추가 전용)
   banditHost,
   // P3 — zone.js Wildlife.init 소비: 실체 전쟁 병사 pid 위치(px)를 야생 agrid 위협원으로 주입

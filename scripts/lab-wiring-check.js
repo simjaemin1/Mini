@@ -88,12 +88,22 @@ console.log('\n[A~D] scripts/econ-lab-real.js — 실지도 랩');
 console.log('\n[A2] 엔진 A/B 손잡이 기본값');
 {
   const E = rd('sim/economy-sim.js');
-  for (const [name, want] of [['LANDFIT', '1'], ['SMELT_CAP', '0.05'], ['PEACE_W', '0.03']]) {
+  //   ★2026-08-02b 추가: BOOMFIT 0(실측 기각) · ORE_MIX_EFF 는 '0' 비교라 별도 검사(아래).
+  for (const [name, want] of [['LANDFIT', '1'], ['SMELT_CAP', '0.05'], ['PEACE_W', '0.03'], ['BOOMFIT', '0']]) {
     const m = E.match(new RegExp('process\\.env\\.' + name + '[\\s\\S]{0,120}?:\\s*([\\d.]+)'));
     if (!m) { wrn(`${name} 손잡이를 못 찾음 — 검사기가 낡았거나 손잡이가 사라졌다`); continue; }
     if (m[1] === want) ok(`${name} 기본 ${m[1]} (채택값)`);
     else bad(`${name} 기본이 ${m[1]} 다 — 채택값은 ${want}. 라이브가 딴 세계가 된다`);
   }
+  // 불리언 손잡이 — 기본값의 방향까지 본다(=== '0' 이면 기본 ON, === '1' 이면 기본 OFF)
+  if (/ORE_MIX_EFF === '0'/.test(E)) ok('ORE_MIX_EFF 기본 ON (채택 — 유효 제련 조성)');
+  else bad('ORE_MIX_EFF 기본이 OFF 다 — 채택값은 ON');
+  if (/process\.env\.BOOMGATE === '1'/.test(E)) ok('BOOMGATE 기본 OFF (실측 기각)');
+  else bad('BOOMGATE 기본이 ON 이다 — 실측이 기각한 동작이 켜져 있다');
+  const V = rd('server/villages.js');
+  const bm = V.match(/process\.env\.BOOMTOWN[\s\S]{0,80}?:\s*(\d+)/);
+  if (bm && bm[1] === '0') ok('BOOMTOWN 기본 0 (실측 기각)');
+  else bad(`BOOMTOWN 기본이 ${bm ? bm[1] : '?'} 다 — 실측 기각값은 0`);
 }
 
 // ── E: 회귀 하네스가 어느 기계를 재는가 ───────────────────────────────────────
