@@ -6191,6 +6191,9 @@ const SIM_JOB_EMOJI = {
     seed_berry: '🌱', herb: '🌿', ore: '⛏️',
     // 14.50: 목공 자원
     wood: '🪵', plank: '🪚', stone: '🪨',
+    // ★[2026-08-02] 야금 — 아이콘이 없으면 인벤 창에 기본 📦 가 뜬다(itemIconHtml 폴백)
+    ore_chunk: '🪨', iron_ore: '⚙️', charcoal: '🌑', meteoric_iron: '☄️',
+    iron: '⚙️', copper: '🟠', tin: '⚪', lead: '⬜', silver: '🥈', gold: '🥇', nickel: '⚪', jade_raw: '🟢',
     // 14.51: 건축물 아이템 (인벤에 들어가는 형태)
     item_wall: '🧱', item_floor: '⬜', item_door: '🚪', item_fence: '🪵',
     item_stair: '🪜', item_chest: '📦', item_campfire: '🔥', item_farmland: '🌱',
@@ -6241,6 +6244,8 @@ const SIM_JOB_EMOJI = {
     hide: '가죽', berry_jam: '베리잼', water_bottle: '물병',
     seed_berry: '베리씨앗', herb: '약초', ore: '광물',
     ore_chunk: '원석(kg·미확인)',   // ★[11차] 캔 것은 정체를 모른다 — 마을에서 선광(O키)해야 광석/맥석이 갈린다. 덩이 크기가 숙련마다 달라 **kg 단위**로 센다
+    // ★[2026-08-02 야금 사슬] 라벨이 없으면 인벤 창에 **영문 키가 그대로** 뜬다(ITEM_LABEL[k] || k).
+    iron_ore: '철 정광', charcoal: '숯', meteoric_iron: '운철(隕鐵)', lead: '납', nickel: '니켈',
     iron: '철광석', copper: '구리', tin: '주석', coal: '석탄', jade_raw: '옥 원석',
     marble: '대리석', tungsten: '텅스텐', gold: '금', silver: '은',
     wood: '통나무', plank: '판자', stone: '돌',
@@ -7550,6 +7555,10 @@ const SIM_JOB_EMOJI = {
     water_bottle: '음료',
     fiber: '잡화', seed_berry: '씨앗', hide: '잡화',
     axe: '도구', pickaxe: '도구', sword: '도구',
+    // ★[2026-08-02] 야금 — 인벤 창은 분류로 정렬한다. 분류가 없으면 'zzz' 로 밀려 잡동사니 뒤에 섞인다.
+    ore_chunk: '야금', iron_ore: '야금', charcoal: '야금',
+    iron: '야금', copper: '야금', tin: '야금', lead: '야금', silver: '야금', gold: '야금',
+    nickel: '야금', meteoric_iron: '야금', coal: '야금', jade_raw: '야금', marble: '자재', tungsten: '야금',
   };
 
   // 근처 모든 chest (120px 반경)

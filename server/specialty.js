@@ -689,7 +689,15 @@ const EXTRA_WEIGHT = {
   stone: 3.0, wood: 2.5, plank: 1.2, pillar: 8.0, rafter: 1.0, thatch: 1.5,
   ore: 3.5, fiber: 0.3, herb: 0.2, berry: 0.2, seed_berry: 0.05,
   fish: 1.0, meat_raw: 1.0, meat_cooked: 0.8, hide: 1.5, bone: 0.5,
-  food: 1.0, water: 1.0, charcoal: 0.6, resin: 0.3, bark: 0.4, acorn: 0.2,
+  food: 1.0, water: 1.0, resin: 0.3, bark: 0.4, acorn: 0.2,
+  // ★[2026-08-02] 야금 사슬의 플레이어 재화 — **무게가 없으면 미등록 기본 0.5kg 로 떨어진다.**
+  //   그러면 정광을 지게에 56덩이(28÷0.5) 지고 다니게 된다 — 원석 8덩이 상한(MINE_HAUL)과 정면 충돌.
+  //   정광·운철은 **덩이 단위**(CHUNK_KG 3.5kg)로 세는 물건이라 원석과 같은 무게여야 한다.
+  iron_ore: 3.5,        // 철 정광 1덩이 = 3.5kg (선광·제련 코드가 전부 CHUNK_KG 로 센다)
+  meteoric_iron: 3.5,   // 운철 1덩이 — 이미 금속이라 제련이 필요 없을 뿐, 무게는 쇳덩이다
+  // ※charcoal 은 여기 있었지만 **죽은 값**이었다(0.6). itemWeight 는 RESOURCES 를 먼저 보고,
+  //   RESOURCES.charcoal.weight = 1.0 이라 0.6 은 한 번도 쓰인 적이 없다. 같은 재화의 무게가
+  //   두 표에서 다르면 그게 버그의 씨앗이라 지운다 — 단일 진실은 RESOURCES 다(econ 도 그걸 쓴다).
 };
 function itemWeight(id) {
   const r = RESOURCES[id];
