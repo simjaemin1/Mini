@@ -123,7 +123,21 @@ for (const s of seeds) {
 world.day = 0;
 
 // ── 일 틱 — 본 게임 진입점(server/villages.js:2255) ────────────────────────────
-for (let d = 0; d < DAYS; d++) econV2.tickWorldV2(world);
+// ★시대 전환 실험 — ERA_FLIP_DAY=N 이면 N일차에 시대를 연다.
+//   [재민] "내가 시대를 언제 여는지에 따라 흥망성쇠가 크게 갈리면 안 돼" — 급변 폭을 실측한다.
+const FLIP = parseInt(process.env.ERA_FLIP_DAY || '0', 10) || 0;
+const FLIP_TO = process.env.ERA_FLIP_TO || 'early_iron';
+const Era = FLIP ? R('server/era') : null;
+for (let d = 0; d < DAYS; d++) {
+  if (Era && d === FLIP) { Era.setEra(FLIP_TO); console.log(`\n⚡ Day ${d}: 시대 전환 → ${FLIP_TO}\n`); }
+  econV2.tickWorldV2(world);
+  if (Era && d % 50 === 0 && d >= FLIP - 100) {
+    let fe = 0, cu = 0, ore = 0, mi = 0, sm = 0, pop = 0;
+    for (const v of world.villages) { const st = v.storage || {}; fe += st.iron || 0; cu += st.copper || 0; ore += st.ore || 0; pop += v.npcs.length;
+      for (const n of v.npcs) { if (n.currentJob === 'miner') mi++; else if (n.currentJob === 'smith') sm++; } }
+    console.log(`  [추적 d${d}] 인구 ${pop} · 광부 ${mi} · 대장장이 ${sm} · 철 ${fe.toFixed(0)} · 구리 ${cu.toFixed(0)} · 원석 ${ore.toFixed(0)}`);
+  }
+}
 
 // ── 보고 ─────────────────────────────────────────────────────────────────────
 const N0 = seeds.length;

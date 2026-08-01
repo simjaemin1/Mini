@@ -989,7 +989,11 @@ function opportunityCost(npc, v, w) {
       let _oreV = w('ore');
       if (_mix) {
         let mv = 0, tot = 0;
-        for (const k in _mix) { const q = _mix[k]; if (!(q > 0)) continue; tot += q; mv += q * w(k === 'jade_raw' ? 'jade' : k); }
+        for (const k in _mix) { const q = _mix[k]; if (!(q > 0)) continue; tot += q;
+          const _id = k === 'jade_raw' ? 'jade' : k;
+          // ★시대 게이트 — 못 뽑는 금속(철 등)은 분자에서 뺀다. 분모엔 남긴다(그 몫은 슬래그 = 실손실).
+          if (_ERA_METAL(_id) && !_eraKnows(_id)) continue;
+          mv += q * w(_id); }
         if (tot > 0) _oreV = Math.max(_oreV, _SMELT_YIELD_UTIL * (mv / tot));
       }
       return Math.max((L.ore || 0) * _oreV * (1 - (v && v._metalGlut || 0)), (L.obsidian || 0) * w('obsidian'), (L.jade || 0) * w('jade'), (L.tin || 0) * TIN_DEPOSIT_YIELD_FLAT * w('tin') * (1 - (v && v._tinGlut || 0))) * 0.3 * sk;   // ★S1 광부=금속 전담(돌 안 캠) ★S5 흑요석·옥 ★청동 희소성 +주석산지
@@ -3353,8 +3357,13 @@ function computeDailyConsumption(v) {
 //   소비 0인 자원도 인구 비례 최소 baseline 유지 (시장 미발달 보호)
 function computeDynReserve(v, cons, resourceKey, defaultPerPop) {
   const N = v.npcs.length || 1;
-  const baseline = (defaultPerPop || 1) * N * 0.3;  // 인구 비례 최소 (RESERVE 의 30%)
+  // ★★★[재민 지시 2026-08-01] "모든 기본 비축 목표 없애라" — v2 buffer 와 같은 병이다.
+  //   RESERVE_PC × N × 0.3 은 **용도와 무관하게 항상 깔리는 바닥**이었다. 아무도 안 쓰는 재화가
+  //   재고 0일 때 최대 부족 프리미엄을 받아, 노동을 그쪽으로 끌어갔다.
+  //   ⇒ 생존필수재(ESSENTIAL_V1 — 식량·연료·석재·도구·무기·갑옷)만 바닥을 남기고,
+  //     나머지는 **실소비 30일치**만이 목표가 된다. 안 쓰면 0.
   const dailyCons = cons[resourceKey] || 0;
+  const baseline = ESSENTIAL_V1[resourceKey] ? (defaultPerPop || 1) * N * 0.3 : 0;
   return Math.max(baseline, dailyCons * 30);  // 30일치 비축
 }
 
@@ -3394,7 +3403,11 @@ function computeVillagePrices(v) {
     const mix = v.land && v.land.oreMix;
     if (prices.ore != null && mix) {
       let mv = 0, tot = 0;
-      for (const k in mix) { const q = mix[k]; if (!(q > 0)) continue; tot += q; mv += q * (prices[k === 'jade_raw' ? 'jade' : k] || 0); }
+      for (const k in mix) { const q = mix[k]; if (!(q > 0)) continue; tot += q;
+        const _id = k === 'jade_raw' ? 'jade' : k;
+        // ★시대 게이트 — 못 뽑는 금속(철 등)은 분자에서 뺀다. 분모엔 남긴다(그 몫은 슬래그 = 실손실).
+        if (_ERA_METAL(_id) && !_eraKnows(_id)) continue;
+        mv += q * (prices[_id] || 0); }
       if (tot > 0) prices.ore = Math.min(prices.ore, SMELT_YIELD * (mv / tot));
     }
   }
@@ -3406,6 +3419,8 @@ module.exports = {
   totalFoodEquivalent,   // 진단 하네스가 병기고 식량안보 게이트를 정확히 재려면 필요
   // 가치사슬 하네스(scripts/test-valuechain.js)가 상수를 **복제하지 않고** 읽도록 노출.
   _SMELT_PER_LABOR: SMELT_PER_LABOR, _SMELT_YIELD: SMELT_YIELD, _MELT_TOTAL,
+  // ★시대 게이트 조회 — v2 원석 상한이 같은 판정을 쓰도록(사본 금지). 금속이 아니면 항상 true.
+  _eraMetalKnown: (id) => !_ERA_METAL(id) || _eraKnows(id),
   createWorld,
   tickWorld,
   tickTrade, tickCaravans,   // ★랩이 본 게임과 같은 루프를 돌려면 필요(누락돼 있어서 랩이 '교역 없는 세계'를 재고 있었다)

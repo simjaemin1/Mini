@@ -325,7 +325,17 @@ function computeShadowPrices(v) {
       //   흐름 target — flowT 중복 적용 시 실측(한랭 연료 등)이 캘리브를 2~3배 덮어써 시장 전체 유보 인플레
       //   (s505 576→17 붕괴 실측). flowT는 손튜닝 없는 롱테일 전용.
       const flowT = SUBSISTENCE_PER_NPC[r] ? 0 : ((v._consEMA || {})[r] || 0) * 30;
-      const buffer = ORNAMENTAL[r] ? N * LUX_TARGET_PC : N * (util * 1.2);
+      // ★★★[재민 지시 2026-08-01] "모든 기본 비축 목표 없애라"
+      //   "전혀 안 쓰는데 최소한의 비축을 위한 수요 때문에 철을 사는 거 아냐..
+      //    그걸 완전히 없애도 잘 작동해야 하는 거 아냐?"
+      //   맞다. N × util × 1.2 는 **용도와 무관하게 항상 깔리는 보유 수요**였다. 그래서
+      //   아무도 안 쓰는 철이 재고 0일 때 "부족 프리미엄"을 받아 구리와 같은 값(5.60)이 됐고,
+      //   그 값이 중간재 상한을 통해 원석값을 떠받쳐 광부가 계속 뽑혔다(실측: 철 91% 광맥 마을에 광부 2명).
+      //   가격이 "부족하면 비싸다"만 알고 "아무도 안 원한다"를 몰랐던 것 — 직업 선택은 그 거짓말을 정직히 따랐다.
+      //   ⇒ 수요는 **실소비 흐름(flowT)**과 생존필수(subs)와 자본재 커버리지(CAP_TARGET)만이 만든다.
+      //     안 쓰면 0이고, 플레이어가 철검을 들여와 마을이 쓰기 시작하면 _cons 가 잡혀 저절로 생긴다.
+      //   ※장식재(ORNAMENTAL)의 위신 수요는 남긴다 — 그건 '쓰지 않는 재화'가 아니라 보유 자체가 효용이다.
+      const buffer = ORNAMENTAL[r] ? N * LUX_TARGET_PC : 0;
       target = Math.max(subs * 30, buffer, flowT);
       // ★식량 다양성 수요 — 자체 생산 못 하는 식품군은 다양성 위해 소량 수입 목표. 자체 생산하면(≥0.05/명) 보너스 없음.
       //   ★식량안보 게이트: 주식(곡물) 25일치 이상일 때만 — 굶는 마을은 다양성보다 생존(주식) 우선(변방 마을 아사 방지).
@@ -379,7 +389,11 @@ function computeShadowPrices(v) {
     const mix = v.land && v.land.oreMix;
     if (prices.ore != null && mix) {
       let mv = 0, tot = 0;
-      for (const k in mix) { const q = mix[k]; if (!(q > 0)) continue; tot += q; mv += q * (prices[k === 'jade_raw' ? 'jade' : k] || 0); }
+      for (const k in mix) { const q = mix[k]; if (!(q > 0)) continue; tot += q;
+        const _id = k === 'jade_raw' ? 'jade' : k;
+        // ★시대 게이트 — 못 뽑는 금속(철 등)은 분자에서 뺀다. 분모엔 남긴다(그 몫은 슬래그 = 실손실).
+        if (v1._eraMetalKnown && !v1._eraMetalKnown(_id)) continue;
+        mv += q * (prices[_id] || 0); }
       if (tot > 0) prices.ore = Math.min(prices.ore, (v1._SMELT_YIELD || 0.33) * (mv / tot));
     }
   }
