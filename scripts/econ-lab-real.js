@@ -108,7 +108,7 @@ if (!seeds.length) { console.error('시딩 0 — 중단'); process.exit(1); }
 
 // ── world 조립 — server/villages.js:1645~1670 verbatim ────────────────────────
 const world = econV2.createWorldV2({
-  seed: ZONE.villageSeed || 1020,
+  seed: parseInt(process.env.LAB_SEED || '', 10) || ZONE.villageSeed || 1020,   // LAB_SEED=n — 카오스 민감도 A/B용(마을·지형 불변, econ 난수열만)
   villageCount: seeds.length,          // 슬롯만 확보 — 아래서 전부 실지형 마을로 교체
   picker: 'rational', infoRange: 5000, raidPer100: 0.005,   // 본 게임과 동일 옵션
 });
@@ -128,9 +128,18 @@ world.day = 0;
 const FLIP = parseInt(process.env.ERA_FLIP_DAY || '0', 10) || 0;
 const FLIP_TO = process.env.ERA_FLIP_TO || 'early_iron';
 const Era = FLIP ? R('server/era') : null;
+// ★궤적 표본(랩 쪽 계측 — 엔진 무접촉): tickWorldV2 는 history 를 안 쌓는다(v1 전용이었다).
+//   마을 소멸 사인 규명에 필요해서 10일마다 인구·식량환산을 여기서 직접 뜬다.
+const TRACE = {};
 for (let d = 0; d < DAYS; d++) {
   if (Era && d === FLIP) { Era.setEra(FLIP_TO); console.log(`\n⚡ Day ${d}: 시대 전환 → ${FLIP_TO}\n`); }
   econV2.tickWorldV2(world);
+  if (process.env.LAB_DUMP && d % 10 === 0) {
+    for (const v of world.villages) {
+      (TRACE[v.name] || (TRACE[v.name] = [])).push({ d, p: v.npcs.length,
+        f: +((econ.totalFoodEquivalent ? econ.totalFoodEquivalent(v) : (v.storage.food || 0))).toFixed(0) });
+    }
+  }
   if (Era && d % 50 === 0 && d >= FLIP - 100) {
     let fe = 0, cu = 0, ore = 0, mi = 0, sm = 0, pop = 0;
     for (const v of world.villages) { const st = v.storage || {}; fe += st.iron || 0; cu += st.copper || 0; ore += st.ore || 0; pop += v.npcs.length;
@@ -188,6 +197,8 @@ if (process.env.LAB_DUMP) {
       // 진단용 내부 스칼라 전부(_로 시작하는 수치 필드) — 게이트 산수를 밖에서 재현하려면 필요하다
       _int: Object.fromEntries(Object.keys(v).filter(k => k[0] === '_' && typeof v[k] === 'number')
         .map(k => [k, +v[k].toFixed(4)])),
+      // ★인구·식량 궤적(10일 스냅샷, 최근 500일) — 마을 소멸의 사인 규명용
+      history: TRACE[v.name] || [],   // {d,p(인구),f(식량환산)} — 랩 쪽 10일 표본(tickWorldV2 는 history 를 안 쌓는다)
     });
   }
   out.tradeLog = (world.tradeLog || []).slice(-400);

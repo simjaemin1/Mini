@@ -2595,6 +2595,15 @@ function pickDeficitJob_rational(v, world) {
   if ((counts.smith || 0) < smithTarget(v) && (_smithBeatsMason(v) || smeltTarget(v) > 0)) return 'smith';
   if ((counts.armorsmith || 0) < armorsmithTarget(v) && (v.storage.hide || 0) > N * 0.3) return 'armorsmith';
   if ((counts.cook || 0) < cookTarget(v)) return 'cook';   // ★유령 박멸 #4: 요리사 — 스톡-플로우 노동목표(장인 패턴). 잉여 마을만(cookTarget 내 게이트)
+  // ★★[끊김③ 해소 2026-08-01 — 재민 "계속해 끊지 말고 쭉"] rational 이 warriorTarget 을 안 봤다.
+  //   전사가 나오는 유일한 줄이 tradersKilled>3 안전망이었는데, 실측 캐러밴 1,572회 발송에 약탈 0 —
+  //   v2 약탈은 도적 훅(banditRouteRisk)이 있어야 발생하고 랩·본게임 초기엔 그 훅 발동이 드물어
+  //   전사가 **구조적으로 0**이었다(→갑옷장이 0 → 갑옷 0 → 무기 수요 사슬 사망).
+  //   warriorTarget 의 평시 상비 3%(재민 확정: "전사를 인구 비례 최소한으로 양성 + 무기도 평시 구비")는
+  //   이미 있다 — legacy 는 보는데 rational 만 안 보던 배선 구멍. 게이트는 legacy 안전망과 동형:
+  //   무장 가능(무기 재고)·식량 안보(40일)·자리 있음.
+  if ((counts.warrior || 0) < warriorTarget(v) && foodEquiv > N * 40
+      && (v.storage.weapon || 0) >= (counts.warrior || 0) + 1 && hasSlot(v, 'warrior', cap, counts)) return 'warrior';
   if ((counts.tailor || 0) < tailorTarget(v)) return 'tailor';   // ★의복(2026-07-12): 재봉사 — 스톡-플로우 노동목표(장인 패턴). 옷감 게이트는 tailorTarget 내(옷감 보온-eq<1 → 0 — 요리사 결함[픽커 후보 부재] 재발 방지로 여기 명시 등록)
   // ★주거 압박: 집이 거의 가득(인구 성장 막힘) + 집 지을 목재 부족 → 나무꾼. 집 지어야 인구가 늚 → 고리를 닫는 안전망.
   if (v.housing !== undefined && N >= v.housing * 0.95 && (v.storage.wood || 0) < N * 2 && hasSlot(v, 'lumberjack', cap, counts)) return 'lumberjack';
@@ -3198,8 +3207,13 @@ function main() {
   //   (검증 원칙 ⑫ "본 게임의 것을 부른다"의 picker판). legacy엔 tailor 규칙 자체가 없어 CLI 세계 의복 축이
   //   800일 내내 0이었다(옷 0벌·재봉사 0 — 프로덕션엔 없는 유령 결함). rational로 정렬한다.
   //   ※회귀표 수치는 이 정렬로 재기준선이 된다(하네스는 수치를 출력만 하고 단정하지 않으므로 코드 파손 없음).
-  const world = { villages, tradeLog: [], events, caravans: [], picker: 'rational' };
-  for (const v of villages) v._world = world;   // ★백참조 — 이게 없으면 picker 판별부(v._world.picker)가 영영 legacy로 떨어진다(createWorld는 심는데 main은 안 심고 있었다)
+  // ★[재민 확정 "후자로 가자" 후속 2026-08-01] v1 CLI 는 **legacy 로 복귀**한다.
+  //   rational 은 world.priceFn(가격 신호)을 전제로 설계된 picker 인데 v1 createWorld/main 은
+  //   priceFn 을 안 심는다 — "v1 세계 + rational" 은 w() 가 전부 1.0 인, 프로덕션에 없는 키메라였다.
+  //   프로덕션 대변은 v2 CLI(economy-sim-v2 main)와 실지도 랩이 맡고, 여기는 v1 순수 안정성
+  //   회귀로만 남는다(econ-regress 는 이미 v2 를 잰다). lab-wiring-check [E] 의 ⚠경고 해소.
+  const world = { villages, tradeLog: [], events, caravans: [], picker: 'legacy' };
+  for (const v of villages) v._world = world;   // 백참조(placer·글럿 게이트 등이 world 를 봄)
 
   // 시뮬 루프
   for (let day = 1; day <= TOTAL_DAYS; day++) {

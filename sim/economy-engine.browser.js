@@ -2,6 +2,11 @@
 // 소스: server/era.js + server/specialty.js + sim/economy-sim.js + sim/economy-sim-v2.js
 ;(function(root){
   var modules={};
+  // ★process shim(2026-08-01) — 엔진 소스는 process.env 를 튜닝 손잡이로 읽는다(PEACE_W 등).
+  //   브라우저엔 process 가 없어, 그 코드가 **처음 호출되는 순간** ReferenceError 로 터진다.
+  //   실제로 터졌다: rational picker 에 전사 줄을 넣자 warriorTarget(process.env.PEACE_W)이
+  //   랩에서 처음 호출돼 즉사했다 — CLI 하네스는 못 잡는 브라우저 전용 지뢰라 여기서 구조적으로 막는다.
+  var process=(typeof root.process!=='undefined'&&root.process)?root.process:{env:{}};
   function req(p){ if(/era/.test(p))return modules.era; if(/specialty/.test(p))return modules.specialty; if(/economy-sim-v2/.test(p))return modules.v2; if(/economy-sim/.test(p))return modules.v1; return {}; }
   modules["era"]=(function(){var module={exports:{}};var exports=module.exports;var require=req;
 // === server/era.js — 시대. "이 세계에서 지금 무엇이 **널리** 가능한가"를 정하는 단 하나의 자리 ===
@@ -3694,6 +3699,15 @@ function pickDeficitJob_rational(v, world) {
   if ((counts.smith || 0) < smithTarget(v) && (_smithBeatsMason(v) || smeltTarget(v) > 0)) return 'smith';
   if ((counts.armorsmith || 0) < armorsmithTarget(v) && (v.storage.hide || 0) > N * 0.3) return 'armorsmith';
   if ((counts.cook || 0) < cookTarget(v)) return 'cook';   // ★유령 박멸 #4: 요리사 — 스톡-플로우 노동목표(장인 패턴). 잉여 마을만(cookTarget 내 게이트)
+  // ★★[끊김③ 해소 2026-08-01 — 재민 "계속해 끊지 말고 쭉"] rational 이 warriorTarget 을 안 봤다.
+  //   전사가 나오는 유일한 줄이 tradersKilled>3 안전망이었는데, 실측 캐러밴 1,572회 발송에 약탈 0 —
+  //   v2 약탈은 도적 훅(banditRouteRisk)이 있어야 발생하고 랩·본게임 초기엔 그 훅 발동이 드물어
+  //   전사가 **구조적으로 0**이었다(→갑옷장이 0 → 갑옷 0 → 무기 수요 사슬 사망).
+  //   warriorTarget 의 평시 상비 3%(재민 확정: "전사를 인구 비례 최소한으로 양성 + 무기도 평시 구비")는
+  //   이미 있다 — legacy 는 보는데 rational 만 안 보던 배선 구멍. 게이트는 legacy 안전망과 동형:
+  //   무장 가능(무기 재고)·식량 안보(40일)·자리 있음.
+  if ((counts.warrior || 0) < warriorTarget(v) && foodEquiv > N * 40
+      && (v.storage.weapon || 0) >= (counts.warrior || 0) + 1 && hasSlot(v, 'warrior', cap, counts)) return 'warrior';
   if ((counts.tailor || 0) < tailorTarget(v)) return 'tailor';   // ★의복(2026-07-12): 재봉사 — 스톡-플로우 노동목표(장인 패턴). 옷감 게이트는 tailorTarget 내(옷감 보온-eq<1 → 0 — 요리사 결함[픽커 후보 부재] 재발 방지로 여기 명시 등록)
   // ★주거 압박: 집이 거의 가득(인구 성장 막힘) + 집 지을 목재 부족 → 나무꾼. 집 지어야 인구가 늚 → 고리를 닫는 안전망.
   if (v.housing !== undefined && N >= v.housing * 0.95 && (v.storage.wood || 0) < N * 2 && hasSlot(v, 'lumberjack', cap, counts)) return 'lumberjack';
@@ -4297,8 +4311,13 @@ function main() {
   //   (검증 원칙 ⑫ "본 게임의 것을 부른다"의 picker판). legacy엔 tailor 규칙 자체가 없어 CLI 세계 의복 축이
   //   800일 내내 0이었다(옷 0벌·재봉사 0 — 프로덕션엔 없는 유령 결함). rational로 정렬한다.
   //   ※회귀표 수치는 이 정렬로 재기준선이 된다(하네스는 수치를 출력만 하고 단정하지 않으므로 코드 파손 없음).
-  const world = { villages, tradeLog: [], events, caravans: [], picker: 'rational' };
-  for (const v of villages) v._world = world;   // ★백참조 — 이게 없으면 picker 판별부(v._world.picker)가 영영 legacy로 떨어진다(createWorld는 심는데 main은 안 심고 있었다)
+  // ★[재민 확정 "후자로 가자" 후속 2026-08-01] v1 CLI 는 **legacy 로 복귀**한다.
+  //   rational 은 world.priceFn(가격 신호)을 전제로 설계된 picker 인데 v1 createWorld/main 은
+  //   priceFn 을 안 심는다 — "v1 세계 + rational" 은 w() 가 전부 1.0 인, 프로덕션에 없는 키메라였다.
+  //   프로덕션 대변은 v2 CLI(economy-sim-v2 main)와 실지도 랩이 맡고, 여기는 v1 순수 안정성
+  //   회귀로만 남는다(econ-regress 는 이미 v2 를 잰다). lab-wiring-check [E] 의 ⚠경고 해소.
+  const world = { villages, tradeLog: [], events, caravans: [], picker: 'legacy' };
+  for (const v of villages) v._world = world;   // 백참조(placer·글럿 게이트 등이 world 를 봄)
 
   // 시뮬 루프
   for (let day = 1; day <= TOTAL_DAYS; day++) {
@@ -5284,6 +5303,15 @@ function tickTradeV2(world, day) {
         a.prices[r] = base * Math.max(PRICE_ADJ_MIN, Math.min(PRICE_ADJ_MAX, Math.pow(tg / st, elast))); }
 
       // 가져갈 자원 결정
+      // ※[2026-08-01 기근 반출 게이트 — 시도했다가 **철회**] "기근 마을의 식량은 반출 화물로 못 사간다"를
+      //   넣어봤다(농촌22 궤적: 이웃들이 모피 단가 1,170 을 싣고 와 굶는 마을의 마지막 보리를 실어 갔다).
+      //   경제학적으로는 옳아 보였지만 3시드 × 800일 A/B 실측이 기각했다:
+      //     게이트ON  소멸 11/10/12 · 인구 1051/242/525   (시드7 에선 세계 전체가 목 졸림)
+      //     게이트OFF 소멸  6/14/15 · 인구 1023/556/510
+      //   체계적 이득 없음 — 좀비 마을(2~7명 왕복)은 칼날 평형이라 어떤 개입이든 시드 분산에 묻힌다.
+      //   진짜 원인은 교역이 아니라 **시딩**이다: 죽는 마을들은 돌·나무 바닥(0.25/0.45) 땅에 심겨
+      //   태어날 때부터 식량환산이 기근선 아래다(371 < 22명×30). 처방은 상류(배치·초기 부존)에 있고
+      //   그건 설계 판단이라 회부(회부_마을소멸_시딩.md). 여기는 원래대로 둔다.
       let bestReturnRes = null, bestReturnRatio = 0;
       // ★식량 pull(P1): 위기 마을의 귀환재(=대금)는 식량류 1차 콘테스트, 게이트 못 넘으면 전체 폴백.
       for (const _foodOnly of (_crisisA ? [true, false] : [false])) {
