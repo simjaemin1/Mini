@@ -38,10 +38,10 @@ const RESOURCES = {
   // ═══════════════════════════════════════════════════════════════════
   // 🪨 광물 32개
   // ═══════════════════════════════════════════════════════════════════
-  iron:        { ko: '철광석',       emoji: '⚙️', category: 'mineral', weight: 4.0, baseValue: 3,    utility: 0.5, contributes: { production: 1.0 },           harvest: 'mining' },
+  iron:        { ko: '철광석',       emoji: '⚙️', category: 'mineral', weight: 4.0, baseValue: 4,    utility: 0.5, contributes: { production: 1.0 },           harvest: 'mining' },
   copper:      { ko: '구리',         emoji: '🟠', category: 'mineral', weight: 3.5, baseValue: 4,    utility: 0.4, contributes: { production: 0.8 },           harvest: 'mining' },
   tin:         { ko: '주석',         emoji: '⚪', category: 'mineral', weight: 3.0, baseValue: 4,    utility: 0.4, contributes: { production: 0.6 },           harvest: 'mining' },
-  lead:        { ko: '납',           emoji: '⬛', category: 'mineral', weight: 5.0, baseValue: 3,    utility: 0.3, contributes: { production: 0.5 },           harvest: 'mining' },
+  lead:        { ko: '납',           emoji: '⬛', category: 'mineral', weight: 5.0, baseValue: 4,    utility: 0.3, contributes: { production: 0.5 },           harvest: 'mining' },
   zinc:        { ko: '아연',         emoji: '🪙', category: 'mineral', weight: 3.5, baseValue: 4,    utility: 0.3, contributes: { production: 0.5 },           harvest: 'mining' },
   silver:      { ko: '은',           emoji: '🥈', category: 'mineral', weight: 2.0, baseValue: 30,   utility: 0.4, contributes: { prestige: 0.8 },             harvest: 'mining' },
   gold:        { ko: '금',           emoji: '🥇', category: 'mineral', weight: 2.0, baseValue: 100,  utility: 0.5, contributes: { prestige: 1.5 },             harvest: 'mining' },
@@ -284,15 +284,343 @@ function _byHarvest() {
   return m;
 }
 
-// === 채굴 파라미터 (광물 가치 tier별) — 광맥 셀 번영도 시스템 ===
-const _HOUR = 3600 * 1000;
+// ═══════════════════════════════════════════════════════════════════════════
+// === 채굴 — 11차 전면 재설계 [재민 확정] ===
+// ═══════════════════════════════════════════════════════════════════════════
+// 구 모델(폐기): 셀 번영도 100 · 1타에 cost 10 · tier별 refillMs 1~24시간 · dropChance.
+//   결함 셋 — ①1타=10이면 셀 하나를 10번 파고 고갈, 실척으로 1m²를 **1.3cm** 판 셈(고증 붕괴)
+//             ②서버 쿨다운이 없어 E 연타(초당 3~5타)가 그대로 통과 → 한 명이 광맥 하루치를 20분에 긁음
+//             ③드롭 실패해도 재고는 깎여 이중 손해
+//
+// 신 모델 — 단위가 전부 실측에서 유도된다:
+//   · 1타 = **1초** (게임일 24분 = 1440 게임분 ⇒ 1 게임분 = 1 실시간초)
+//   · **60타 = 재고 1 = 돌덩이 1개**  ⇒ 광부는 1 게임시간에 덩이 하나
+//   · 셀 재고 K = **1000** = 1m²를 **130cm** 파는 양 (덩이 3.5kg · 암석 2.7t/m³)
+//   · 캐면 **무조건 뭔가 나온다**(실패 없음). 다만 나온 것이 광석인지 그냥 돌인지는
+//     **채굴 시점에 알 수 없다** — 미확인 `ore_chunk`로 들어오고 마을에서 **선광**해야 갈린다.
+//   · 광석일 확률 p 는 셀마다 다른 **연속장**(terrain.oreProbAt) — 광맥 중심이 높고 평지는 0.
+//
+// 고증 눈금(Great Orme, 웨일스, BC1700~900): 800년 채굴 · 굴착 3~10만 m³.
+//   광부 30명 × 600 게임년 = 96.8M 덩이 = 33.9만 톤 — 상한 추정 27만 톤의 1.25배(같은 규모).
+const ORE_K = 1000;              // 셀 재고(덩이)
+const MINE_SWING_MS = 1000;      // 1타 = 1초 (서버 강제 쿨다운)
+const MINE_SWINGS_PER = 60;      // 60타 = 재고 1 = 덩이 1
+const CHUNK_KG = 3.5;            // 돌덩이 1개 무게
+
+// 리젠 — 고갈될수록 빨라지되 **2배 안에서만**(재민 확정: 플레이어가 몰릴 때의 완충).
+//   dR/dt = ORE_REG0 + ORE_REG1·(1 − R/K) = A − B·R   (게임일 단위)
+//   만땅 0.01/게임일 · 완전고갈 0.02/게임일.
+//   ★선형이 아니므로 **닫힌 해**로 적분한다 — lazy 갱신에서 dt가 아무리 길어도 오차 0:
+//     R(t) = A/B − (A/B − R0)·e^(−B·t) = 2000 − (2000−R0)·e^(−t/100000)
+//   완전고갈→만땅 69,315 게임일 = 190 게임년(선형 0.01이면 274년).
+//   ※기각안: dR=r(1−R/K) 단독 → 빈 셀은 선형과 같고 중·고 재고만 느려져 고갈이 *더* 잘 됨(의도 반대)
+//            dR=r·K/R 류 → R→0에서 발산 → 고갈이 물리적으로 불가능
+const ORE_REG0 = 0.01, ORE_REG1 = 0.01;
+const _ORE_A = ORE_REG0 + ORE_REG1, _ORE_B = ORE_REG1 / ORE_K, _ORE_ASY = _ORE_A / _ORE_B;
+function oreRegen(R0, gameDays) {
+  if (!(gameDays > 0)) return Math.min(ORE_K, R0);
+  return Math.min(ORE_K, _ORE_ASY - (_ORE_ASY - R0) * Math.exp(-_ORE_B * gameDays));
+}
+// 광부 1명 일일 정산량(NPC 마을 경제용) — L_MINE 동형 유도:
+//   1440 게임분 × 노동률 0.633 × 왕복효율 0.9697 ÷ 60 = 14.73 덩이/게임일
+//   노동률   = 낮 0.70 − 기상시차 0.015 − 반일근무 0.052 (villages.js 스케줄 상수 실측)
+//   왕복효율 = (지게 8덩이 × 60분) / (그 + 왕복 15분) — 덩이당 60분이라 왕복 비중이 3%뿐이다.
+//              ⇒ 무게·왕복은 가까운 광맥에선 제동이 아니고 **먼 광맥 원정**에서만 물린다:
+//                 왕복 15분(7.5셀) 0.970 · 100분(50셀) 0.828 · 200분(100셀) 0.706 · 800분(400셀) 0.375
+const MINE_HAUL = 8, MINE_HAUL_TRIP = 15, MINE_LABOR = 0.633;
+const MINE_HAULEFF = (MINE_HAUL * MINE_SWINGS_PER) / (MINE_HAUL * MINE_SWINGS_PER + MINE_HAUL_TRIP);
+const NPC_MINE_PER_DAY = +(1440 * MINE_LABOR * MINE_HAULEFF / MINE_SWINGS_PER).toFixed(2);   // 14.73
+// 먼 광맥 왕복 효율 — land.ore 의 거리 가중, NPC 원정 판정 공용. d = 왕복 게임분(= 셀거리, L_WALK 2셀/분 왕복)
+function haulEff(tripMinutes) { const m = MINE_HAUL * MINE_SWINGS_PER; return m / (m + Math.max(0, tripMinutes)); }
+
+// ── 광물 가치 → 품위(p_peak) 감쇠 [11차 재민 확정] ──────────────────────
+// 재민: "금광 같은 건 전부 p값 조절을 하면 되지 않아?"
+//   맞다. 광물 *종류*를 지도에서 빼면 고증이 깨진다(한반도에 금이 아예 없던 건 아니다).
+//   대신 **품위**를 낮춘다 — 금맥은 있되 한 삽에 금이 나올 확률이 낮다. 그게 실제 광상이다.
+//   (금 품위는 g/t 단위, 철광은 %(=만 g/t) 단위. 실제로 5~6자릿수 차이가 난다.)
+//
+// oreValueScale(v) = clamp((5/v)^0.8, 0.01, 1.0)      — 기준 v=5(흔한 광물)에서 1.0
+//   철 3 → 1.00 · 구리 4 → 1.00 · 대리석 30 → 0.240 · 텅스텐 50 → 0.158
+//   옥 80 → 0.109 · 금 100 → 0.091 · 다이아 1000 → 0.014
+//   ★바닥은 0.01. 0.10으로 두면 금(100)과 다이아(1000)가 같은 배수가 돼 가치흐름이 100으로 튄다(실측).
+// 검산(가치 흐름 = 가치 × 품위배수, 광맥 크기 동일 가정):
+//   석탄 2.0 · 철 3.0 · 구리 4.0 · 대리석 7.2 · 텅스텐 7.9 · 옥 8.7 · 금 9.1 · 다이아 14.4
+//   ⇒ 귀금속이 여전히 낫지만 **3~4배 안**이다. 구 모델(금이 철의 33배)의 인플레가 사라진다.
+// 지수 0.8은 노브다: 1.0이면 가치 완전 중립(금=철), 0.5면 금이 철의 8배로 벌어진다.
+const ORE_VALUE_EXP = 0.8;
+function oreValueScale(baseValue) {
+  const v = Math.max(0.5, baseValue || 5);
+  return Math.max(0.01, Math.min(1.0, Math.pow(5 / v, ORE_VALUE_EXP)));
+}
+// 클러스터 p_peak — 등급 기준값 × 위치 지터(0.4~1.6) × 가치 감쇠.
+//   지터가 있어서 "넓지만 가난한 광맥"도, "작지만 노다지"도 생긴다.
+// ★[재민 (다) 확정] **등급 서열은 지키고 총량만 중립화**하는 전역 축척.
+//   배치기가 대형(0.45)·중형(0.38)을 r22 등급(0.30)으로 몰래 강등시켜 온 걸 되돌렸더니
+//   전 광물 산출이 +17%(38,276 → 44,769)가 됐다. 등급표를 손대면 서열이 흐려지므로
+//   **곱하기 하나**로 총량만 되돌린다 — 곱이라 등급 비율·광물 비율·자리별 편차가 전부 보존된다.
+//   k 는 실측으로 풀었다(전 광맥 셀을 훑으며 여러 k 를 동시에 적분):
+//     k=1.000 → 44,769 (+17.0%) · k=0.900 → 40,306 (+5.3%) · **k=0.855 → 38,296 (+0.1%)** · k=0.800 → 35,840 (−6.4%)
+//   ※합성(1−∏(1−p_i)) 때문에 총량은 k에 정확히 비례하지 않는다 — 그래서 계산이 아니라 실측으로 잡았다.
+//   ※이 값을 바꾸면 **terrain.json 에 박힌 pk 도 같은 비율로 다시 매겨야 한다**(저장값이라 자동 반영 안 됨).
+const ORE_P_SCALE = 1.1841;   // ★광종을 지역 무관·골고루로 되돌리며 고가 광물(옥·금)이 늘어 총량 −16% → k 1.198 재보정(실측 38,315 = +0.1%)
+
+// ★★[재민 확정] "크기 무관 모든 광맥이 평균이 비슷하게" + "광맥의 평균의 표준편차가 크게"
+//
+//   ① **크기는 등급을 정하지 않는다.** 등급기준을 하나로 합쳤다(ORE_TIER_BASE).
+//      기각된 것: r130 0.45 / r70 0.38 / r22 0.30 / 자잘 0.22 (큰 광맥일수록 진함).
+//      기각 이유가 둘이다.
+//        · 고증이 반대다 — 거대 광체는 오히려 **저품위**다(반암동광은 산 하나가 광체인데
+//          구리 0.5% 미만). 좁은 열수맥이 작고 진하다. "크면 넓고 묽다"가 자연스럽다.
+//        · 이중 보상이었다 — 광부 정원(villages.oreD)은 **면적만** 본다(품위를 안 본다).
+//          대형은 이미 넓이·수명·정원으로 보상받는데 품위까지 높으면 자잘을 찾을 이유가 없다.
+//      ⇒ 이제 큰 광맥은 **넓고 오래 가고**, 작은 광맥도 **똑같이 진할 수 있다**.
+//        r7 짜리가 r130 보다 진한 일이 흔하다 — 그게 탐험의 보상이다.
+//
+//   ② **광맥 사이 산포를 크게.** 균등 지터 0.4~1.6(CV 0.346)을 **로그정규**로 바꿨다.
+//      고증: 광상의 품위 분포는 로그정규다(Ahrens 의 법칙 · De Wijs). 대부분은 그저 그렇고
+//      드물게 노다지가 있다 — 균등분포는 "적당한 광맥"이 너무 흔하다.
+//        mult = exp(σZ − σ²/2)  ⇒ 기댓값 정확히 1 (총량을 안 흔든다)
+//        σ = 0.75 → CV = √(e^0.5625 − 1) = 0.869   (실측 0.394 → 목표 ~0.85)
+//      Z 는 균등 해시를 **역정규누적분포**로 밀어 만든다(결정론 유지 — 좌표만 알면 재현된다).
+//      꼬리는 [0.12, 4.0] 으로 자른다(p 가 1을 넘지 않게 · 완전 빈 광맥이 안 생기게).
+const ORE_TIER_BASE = 0.30;     // 전 등급 공통. 크기는 **넓이**로만 말한다.
+const ORE_LN_SIGMA = 0.75;      // 광맥 사이 산포(로그정규 σ) — 클수록 노다지/꽝의 차이가 커진다
+const ORE_LN_CLAMP = [0.12, 4.0];
+
+// 역정규누적분포(Acklam 유리근사) — 균등 u∈(0,1) → 표준정규 z. 최대오차 ~1.15e-9.
+function _probit(u) {
+  const a = [-3.969683028665376e+01, 2.209460984245205e+02, -2.759285104469687e+02, 1.383577518672690e+02, -3.066479806614716e+01, 2.506628277459239e+00];
+  const b = [-5.447609879822406e+01, 1.615858368580409e+02, -1.556989798598866e+02, 6.680131188771972e+01, -1.328068155288572e+01];
+  const c = [-7.784894002430293e-03, -3.223964580411365e-01, -2.400758277161838e+00, -2.549732539343734e+00, 4.374664141464968e+00, 2.938163982698783e+00];
+  const dd = [7.784695709041462e-03, 3.224671290700398e-01, 2.445134137142996e+00, 3.754408661907416e+00];
+  const pl = 0.02425, ph = 1 - pl;
+  let q, r;
+  if (u < pl) { q = Math.sqrt(-2 * Math.log(u));
+    return (((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) / ((((dd[0]*q+dd[1])*q+dd[2])*q+dd[3])*q+1); }
+  if (u > ph) { q = Math.sqrt(-2 * Math.log(1 - u));
+    return -(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) / ((((dd[0]*q+dd[1])*q+dd[2])*q+dd[3])*q+1); }
+  q = u - 0.5; r = q * q;
+  return (((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5]) * q / (((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1);
+}
+function oreGradeMult(jitter01) {
+  const u = Math.min(1 - 1e-9, Math.max(1e-9, jitter01 == null ? 0.5 : jitter01));
+  const m = Math.exp(ORE_LN_SIGMA * _probit(u) - ORE_LN_SIGMA * ORE_LN_SIGMA / 2);
+  return Math.max(ORE_LN_CLAMP[0], Math.min(ORE_LN_CLAMP[1], m));
+}
+// tierBase 인자는 호출부 호환을 위해 남기되 **무시한다** — 크기가 등급을 정하지 않는다.
+// ★노다지에도 천장을 둔다 — p=1 이면 **모든 덩이가 광석**이라 "돌이냐 광석이냐"의 긴장이 사라진다.
+//   로그정규 상한(mult 4.0)에 걸린 광맥이 23개 있었고 그 자리 p_peak 이 1.09 였다.
+const ORE_PK_MAX = 0.90;
+function orePeakFor(mineralId, tierBase, jitter01) {
+  const r = RESOURCES[mineralId];
+  const p = ORE_TIER_BASE * ORE_P_SCALE * oreGradeMult(jitter01) * oreValueScale(r ? r.baseValue : 5);
+  return +Math.min(ORE_PK_MAX, p).toFixed(4);
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// 채광 숙련 — 세 채널 [11차 재민 확정]
+// ══════════════════════════════════════════════════════════════════════════
+// 요건(재민): 스킬은 **30점 예산에서 골라 찍는다**(분야당 10점, 평생 3분야 만렙).
+//   그러니 개인이 채광에 10점을 쓸 이유가 있어야 한다. 그리고 그 이유는
+//   ★**남에게 전이되면 안 된다** — "고렙 한 명이 찍고 나머지는 저렙"이 최적이 되면 실패다.
+//
+// 전이성으로 후보를 걸렀다:
+//   ✗ 탐맥(좋은 자리를 읽어줌)  — 최대 55배지만 **전이됨**(고렙이 찾아주면 끝) → 한 명만 찍으면 된다
+//   ✗ 재고 효율(광맥 수명 연장) — 공공재라 무임승차
+//   ✗ 부산물 회수율            — 결국 "광석 1개당 나오는 금속"을 바꾸는 것 = **제련** = 대장장이 영역
+//   ✗ 채굴 속도(기여도)         — 재민 최종: **속도는 고정**
+//   ✔ 큰 돌덩이                  — 내가 떼어내야 내 것
+//   ✔ 곡괭이 내구                — 내가 써야 내 것
+//   ✔ 감정                       — 내 눈이라 남에게 못 빌려준다
+//
+// 게임의 확립된 환율(CHECKLIST 스킬 효과 감사): 수량 ×1.5 · 품질 ×2.5 → 장인 합성 **×3.75**.
+// 채광: 큰 덩이 ×1.5(= 시간당 산출) × 곡괭이 ×2 × 감정(헛짐 회피) — 토지(광맥 등급)가
+//   지배하는 직업이라 스킬은 중위 보정이 맞다(CHECKLIST: "도구·토지가 지배하고 스킬은 중위 보정").
+
+// ── 연속 레벨 ────────────────────────────────────────────────────────────
+// 재민: "3렙·7렙 해금이 아니라 경험치에 따라 **연속적으로**".
+//   econ 의 xp 표(need(L) = 80 + 30L, 만렙까지 누적 2,150)를 **연속으로 역산**한다.
+//     누적(L) = 15L² + 65L  →  L(xp) = (−65 + √(4225 + 60·xp)) / 30
+//   정수 지점에서 econ 표와 **정확히 일치**하고 그 사이는 매끈하다. NPC(econ)와 플레이어가 같은 축.
+//   플레이어 xp = 덩이 1개당 +1 = 1 게임시간 ⇒ 만렙 2,150덩이 = 89.6 게임일 = 35.8 실시간시간.
+const MINE_XP_MAX = 2150;
+function mineLevelF(xp) {
+  const x = Math.max(0, xp || 0);
+  return Math.min(10, (-65 + Math.sqrt(4225 + 60 * x)) / 30);
+}
+
+// ── ② 큰 돌덩이 [재민 확정] ──────────────────────────────────────────────
+// 재민 최종: "채굴 속도는 **고정**으로 하고, 레벨 높을수록 얻는 이득은 세 가지 —
+//            ①곡괭이 내구도 절약 ②큰 돌덩이 ③미리 어느 정도 알 수 있는 능력".
+//
+//   ⇒ 리듬(1초/타)도, 덩이당 타수(60)도, 재고 소모(1)도 **전부 고정**이다. 레벨은
+//     그 한 덩이가 **얼마나 크게 떨어져 나오는지**만 바꾼다.
+//     kg(lvl) = 3.5 × (1 + 0.05·lvl)  → 만렙 5.25kg (×1.5)
+//
+//   고증: 숙련 광부·석공의 제1기술은 암석의 **결(節理·벽개)을 읽어 크게 떼어내는 것**이다.
+//     미숙련은 같은 힘으로 쳐도 잘게 부수고, 그 잔부스러기(fines)는 당시 선광 기술로
+//     회수가 안 돼 폐석더미로 갔다 — 실제 고대 광산 폐석에서 상당한 품위가 나오는 이유다.
+//
+//   ★재고 소모는 1 고정(재민 지시)이므로 **광맥 수명(=재고 1000회)은 숙련과 무관**하고,
+//     같은 광맥에서 뽑히는 **총량(kg)만 숙련에 비례**한다. 회수율이 기술에 달렸다는 고증 그대로.
+//   ★셀 카운터 무임승차 없음: 문턱(60타)은 셀 공용이고 덩이 크기는 **문턱을 넘긴 사람**의 것이다.
+//   ★지게(28kg)가 짐당 유효량을 고정하므로 이득은 "한 짐 채우는 시간"으로 나온다:
+//     lvl0 8덩이 480타 · lvl10 5.3덩이 320타 — 같은 28kg를 1.5배 빨리 채운다.
+function mineChunkKg(lvlF) { return CHUNK_KG * (1 + 0.05 * Math.max(0, Math.min(10, lvlF))); }
+
+// ── 덩이 크기의 **산포** — 레벨은 평균만 정한다 ────────────────────────────
+//   ★[재민 확정] "레벨에 따른 돌덩이 크기도, 고정이 아니라 정규분포야.
+//                 레벨 낮은 광부가 캐도 가끔 큰 돌덩이 나올 수 있어"
+//   고증: 떼어지는 크기는 결(節理)의 간격이 정한다. 숙련은 **결을 읽을 확률**을 올릴 뿐
+//         암반이 어디서 갈라질지를 지배하지 못한다 — 저렙이 운 좋게 큰 판을 떼기도 하고,
+//         고렙이 잔부스러기만 얻기도 한다. 평균만 기울고 분포는 겹친다.
+//
+//   무게 ~ N(mu, (CV·mu)²) ,  mu = mineChunkKg(lvlF) ,  CV = 0.28
+//   ±2.5σ 밖은 **기각 재추첨**(절사 아님) — 절사는 경계에 덩어리를 만들고 평균을 흔든다.
+//   재추첨은 좌우 대칭이라 평균이 정확히 mu로 보존된다(NPC·econ이 평균을 쓰므로 이게 중요하다).
+//
+//   겹침(재민이 요구한 "가끔"): lvl0 이 lvl10 평균(5.25kg)을 넘길 확률
+//     z = (5.25−3.5)/(0.28×3.5) = 1.786 → 3.7%.  60타에 한 번 캐니 대략 27덩이에 한 번.
+//   범위: lvl0  1.05~5.95kg  ·  lvl10  1.58~8.93kg
+const CHUNK_CV = 0.28;      // 변동계수(표준편차 ÷ 평균) — 평균에 비례하므로 고렙일수록 절대 산포도 크다
+const CHUNK_Z_MAX = 2.5;    // 이 밖은 재추첨(하한이 0 이하로 내려가지 않게 하는 역할도 겸한다)
+function _stdNormal(rnd) {
+  // Box–Muller. u1=0 이면 log 가 발산하므로 (0,1] 로 민다.
+  let u1 = rnd(); if (!(u1 > 0)) u1 = 1e-12;
+  return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * rnd());
+}
+// meanKg 를 받는다 — 2인 1조에서는 **타격별 가중평균**이 들어오기 때문이다(막타 레벨이 아니다).
+function mineChunkRoll(meanKg, rnd) {
+  const r = (typeof rnd === 'function') ? rnd : Math.random;
+  const mu = Math.max(0.01, meanKg || CHUNK_KG);
+  let z = _stdNormal(r), guard = 0;
+  while (Math.abs(z) > CHUNK_Z_MAX && ++guard < 32) z = _stdNormal(r);
+  if (Math.abs(z) > CHUNK_Z_MAX) z = z > 0 ? CHUNK_Z_MAX : -CHUNK_Z_MAX;   // 안전망(도달 확률 ~0)
+  return mu * (1 + CHUNK_CV * z);
+}
+
+// ── 깊이 비용 — **셀 속성**(지형 압력). 레벨은 안 들어간다 ────────────────
+//   ★"심층에서만 숙련자가 빨라진다"는 기각됐다 — 깊이는 순수 **지형 압력**이고 레벨이 안 들어간다.
+//     (필요 타수는 셀 공용 카운터라 개인차를 두면 저렙이 고렙 진척에 무임승차한다.)
+// ★★[재민 확정] 깊이 규칙을 다시 짰다.
+//   "비옥도가 1000까지 있지? **10마다 필요 타수가 1씩** 늘어나게. 최종적으로 160까지.
+//    그리고 깊이 팔수록 **미세하게 p값이 증가**하게. 대신 효율이 타수 늘어나는 것보다 더 크면 안 돼.
+//    …결국 **겉핥기로 골고루 파는 게 미세하게 더 이득**인 거야"
+//
+//   타수  need(s) = 60 + (1000 − s)/10        만땅 60타 → 완전고갈 160타 (×2.667)
+//   품위  G(s)    = 1 + 1.40·(1 − s/1000)     만땅 ×1.00 → 완전고갈 ×2.40
+//
+//   ★핵심은 **G < D** 다. 둘 다 깊이에 따라 커지지만 품위가 더 천천히 큰다:
+//     효율(타당 기대 광석) = G/D
+//       표층      (1.00)/(1.000) = 1.000
+//       절반      (1.70)/(1.833) = 0.927
+//       완전고갈  (2.40)/(2.667) = 0.900
+//     ⇒ 얕은 자리가 **항상** 유리하다. 다만 차이가 최대 10%라 "미세하게"에 맞는다.
+//       깊이 파는 게 손해이긴 해도 못 할 짓은 아니다(자리를 옮기기 귀찮으면 계속 파도 된다).
+//   ★깊게 파도 이득이 아예 없으면 안 되는 이유: 그러면 셀 재고 1000 중 뒷부분이 죽은 자원이 된다.
+//     p가 오르니 "여긴 이미 깊지만 그래도 진하다"가 성립하고, 광맥 수명은 그대로 1000회다.
+const ORE_DEPTH_PER = 10;        // 재고 이만큼 소모될 때마다 필요 타수 +1
+const ORE_DEPTH_P_GAIN = 1.40;   // 완전고갈 자리의 품위 배수 = 1 + 이 값 (타수 배수 2.667 보다 작아야 한다)
+function mineSwingsNeeded(stockFrac) {
+  const f = Math.max(0, Math.min(1, stockFrac));
+  return MINE_SWINGS_PER + (ORE_K * (1 - f)) / ORE_DEPTH_PER;
+}
+function mineDepthCost(stockFrac) { return mineSwingsNeeded(stockFrac) / MINE_SWINGS_PER; }   // 배수(호환용)
+// 그 자리의 깊이가 품위에 주는 배수. oreProbAt(정적 장)에 곱해서 쓴다.
+function mineDepthP(stockFrac) {
+  const f = Math.max(0, Math.min(1, stockFrac));
+  return 1 + ORE_DEPTH_P_GAIN * (1 - f);
+}
+// 타당 기대 광석의 상대 효율 — 얕을수록 1에 가깝고 깊을수록 떨어진다(항상 ≤ 1).
+function mineDepthEff(stockFrac) { return mineDepthP(stockFrac) / mineDepthCost(stockFrac); }
+
+// ── ③ 곡괭이 내구 ────────────────────────────────────────────────────────
+// 만렙은 타당 0.5만 축낸다(곡괭이 수명 2배). 깊이와는 무관 — 심층 채널과 이중으로 겹치지 않게.
+function mineToolWear(lvlF) { return 1 - 0.05 * Math.max(0, Math.min(10, lvlF)); }
+
+// ── 감정(부차) — **비대칭** 잡음 채널 [재민 확정] ────────────────────────
+// 실측으로 감정 단독 이득은 왕복 15분에서 **0.97배(오히려 손해)**, 800분 원정에서도 1.65배뿐이다.
+//   (덩이 하나에 60분이 드는데 헛짐을 안 지는 이득은 왕복 15분을 아끼는 것뿐이라 묻힌다)
+//   그래서 스킬의 본체가 아니라 **맛**으로 존치한다. 위 ①②③이 본체다.
+// ★비대칭(재민 확정): 초보는 **좋은 광석을 몰라보고 버리는 FN**이 많고, 명백한 맥석에 속는 FP는 적다.
+//   광석의 단서(광택·비중)는 "있으면 보이는" 신호라 놓치기 쉽고, 맥석은 특징의 부재라 거르기 쉽다.
+//     TNR(맥석을 맥석이라) = 0.5 + 0.45·s^0.6   — 빨리 자란다
+//     TPR(광석을 광석이라) = 0.5 + 0.45·s^1.6   — 느리게 자란다      (둘 다 만렙 0.95)
+function mineTNR(lvlF) { const s = Math.max(0, Math.min(10, lvlF)) / 10; return 0.5 + 0.45 * Math.pow(s, 0.6); }
+function mineTPR(lvlF) { const s = Math.max(0, Math.min(10, lvlF)) / 10; return 0.5 + 0.45 * Math.pow(s, 1.6); }
+// 문구 문턱은 **균형정확도**((TPR+TNR)/2)로 잡는다 — p에 의존하지 않는 순수 눈의 성능.
+//   [재민 지적으로 정정] 사후확률 P(광석|"광석") = p·a/(p·a+(1−p)(1−a)) 은 p에 의존하는데
+//   p 는 셀마다 다른 연속장이다(광맥1 중심 0.372 · 가장자리 0.005). 사후로 문턱을 잡으면
+//   **문구가 그 자리의 p를 누설**한다 — 감정 스킬이 아니라 p 표시기가 된다.
+function mineIdAcc(lvlF) { return (mineTPR(lvlF) + mineTNR(lvlF)) / 2; }
+function mineIdPhrase(acc, saysOre, mineralKo) {
+  if (acc < 0.60) return null;                                   // 열에 여섯 — 아직 못 본다
+  if (acc < 0.78) return saysOre ? '광이 도는 것 같기도 하다' : '그냥 돌 같기도 하다';
+  if (acc < 0.90) return saysOre ? '질 좋은 덩이인 것 같다' : '맥석인 것 같다';
+  return saysOre ? (mineralKo + '이다') : '맥석이다';             // 열에 아홉 — 단정
+}
+
+// ── NPC 광부의 감정 = **정광률 + 헛짐 운반비** [재민 확정] ────────────────
+// 재민: "광부 NPC도 레벨에 따라 미리 버릴지 가져올지 선택하는 거 맞지? FP와 TN이 모두 고려되는 거고?"
+//   플레이어 쪽엔 있었지만(문구 → 사람이 판단 → 선광에서 드러남) NPC 쪽엔 그 층이 통째로 없었다.
+//   econ 은 덩이를 하나씩 못 세므로 **한 짐의 기대값**으로 넣는다.
+//
+// 한 짐(MINE_HAUL 덩이)을 채우고 마을을 왕복하는 한 주기를 세면:
+//   keep = p·TPR + (1−p)(1−TNR)      지고 오기로 **결정한** 비율 (TN 은 버려서 여기서 빠진다)
+//   r    = p·TPR / keep              그 짐 안의 **진짜 광석** 비율 (= 정광률)
+//   한 주기 = 채굴 (MINE_HAUL/keep)·MINE_SWINGS_PER 분  +  왕복 trip 분
+//   유효 산출 = MINE_HAUL·r / 주기  ∝  **p·TPR / (MINE_HAUL·MINE_SWINGS_PER + keep·trip)**
+//
+// ★두 채널이 서로 다른 자리에 들어간다 — 이게 "FP·TN 이 모두 고려된다"의 실체다:
+//   TPR↑ → 분자↑   좋은 광석을 몰라보고 버리지 않는다(FN 감소)
+//   TNR↑ → keep↓ → 분모↓   맥석을 지고 오지 않는다(FP 감소 = 헛짐 운반비 절약)
+//   맥석을 알아보는 눈은 **짐칸을 아끼는 방식으로만** 이득이 된다. 그래서 왕복이 짧으면 무의미하고
+//   먼 광산일수록 커진다 — specialty 실측(왕복 15분 0.97배 · 800분 1.65배)과 같은 구조다.
+const ASSAY_REF_LVL = 5;   // 이 레벨을 1.0 으로 정규화한다(총량 중립 — 평균 광부는 지금과 같다)
+function _assayRaw(lvlF, p, tripMin) {
+  const pp = Math.max(1e-4, Math.min(0.999, p));
+  const tpr = mineTPR(lvlF), tnr = mineTNR(lvlF);
+  const keep = pp * tpr + (1 - pp) * (1 - tnr);
+  if (!(keep > 0)) return 0;
+  return (pp * tpr) / (MINE_HAUL * MINE_SWINGS_PER + keep * Math.max(0, tripMin));
+}
+// 산출 배수 — 레벨 5 광부 = 1.0. 낮으면 헛짐과 놓친 광석으로 손해, 높으면 이득.
+function mineAssayMult(lvlF, p, tripMin) {
+  const ref = _assayRaw(ASSAY_REF_LVL, p, tripMin);
+  if (!(ref > 0)) return 1;
+  return +(_assayRaw(lvlF, p, tripMin) / ref).toFixed(4);
+}
+// 왕복 분 — 광맥까지 거리(셀)에서. 1셀=1m, 도보 4km/h = 66.7 m/분. 왕복이므로 ×2.
+function mineTripMinutes(distCells) { return Math.max(0, (2 * Math.max(0, distCells || 0)) / 66.7); }
+
+// tier — 이제 **가치 등급 표시**에만 쓴다(채굴 속도·재고와 무관). 희소성은 광맥 크기·p로 표현한다.
 function miningParams(mineralId) {
   const r = RESOURCES[mineralId];
   const v = r ? r.baseValue : 5;
-  if (v <= 5)  return { tier: 'common', cost: 10, refillMs: 1  * _HOUR, dropChance: 0.7,  max: 100 }; // 흔함: +1/시간
-  if (v <= 50) return { tier: 'mid',    cost: 12, refillMs: 4  * _HOUR, dropChance: 0.45, max: 100 }; // 중간: +1/4시간
-  return                { tier: 'rare',   cost: 15, refillMs: 24 * _HOUR, dropChance: 0.25, max: 100 }; // 귀함: +1/하루
+  const tier = v <= 5 ? 'common' : (v <= 50 ? 'mid' : 'rare');
+  return { tier, value: v, K: ORE_K, swingMs: MINE_SWING_MS, swingsPer: MINE_SWINGS_PER };
 }
+
+// ── 인벤 무게 [11차 신설] ────────────────────────────────────────────────
+// RESOURCES.weight 는 정의만 있고 한 줄도 안 쓰이고 있었다. 게다가 게임이 실제로 쓰는 id 중
+// stone·wood·ore·fish·berry·herb·fiber 등은 RESOURCES 에 아예 없다 → 여기서 보충한다.
+// 광석만 무겁게 하면 나무 999개를 지고 다니게 되어 이상해지므로 **전 자원**에 건다.
+const EXTRA_WEIGHT = {
+  ore_chunk: 1.0,   // ★[11차] 미확인 원석은 **kg 단위**로 인벤에 든다(덩이 크기가 숙련에 따라 달라서 개수로는 못 센다)
+  stone: 3.0, wood: 2.5, plank: 1.2, pillar: 8.0, rafter: 1.0, thatch: 1.5,
+  ore: 3.5, fiber: 0.3, herb: 0.2, berry: 0.2, seed_berry: 0.05,
+  fish: 1.0, meat_raw: 1.0, meat_cooked: 0.8, hide: 1.5, bone: 0.5,
+  food: 1.0, water: 1.0, charcoal: 0.6, resin: 0.3, bark: 0.4, acorn: 0.2,
+};
+function itemWeight(id) {
+  const r = RESOURCES[id];
+  if (r && typeof r.weight === 'number') return r.weight;
+  if (EXTRA_WEIGHT[id] != null) return EXTRA_WEIGHT[id];
+  return 0.5;   // 미등록 소품 기본값
+}
+// 지게 상한 — 청동기 지게 짐 20~40kg 실측 중간. 덩이(3.5kg)로 8개 = MINE_HAUL 과 정합.
+const CARRY_MAX_KG = 28;
+function inventoryWeight(inv) { let w = 0; for (const k in inv) { const n = inv[k]; if (n > 0) w += itemWeight(k) * n; } return +w.toFixed(2); }
 
 // === biome별 광물 풀 (가중치 = 중복) — 광맥에 mineral 미지정 시 위치 해시로 자동 배정 ===
 const ORE_POOLS = {
@@ -311,8 +639,137 @@ function pickMineral(biome, seedNum) {
   return pool[Math.abs(seedNum) % pool.length] || 'iron';
 }
 
+// =============================================================================
+// 합금 — 임의 금속 배합의 물성 [재민 확정]
+// =============================================================================
+// "금·철·은 등 **모든 광물**을 가능하게. 값에 따라 연속적으로."
+//
+// ★조합마다 곡선을 짜지 않는다. 원소당 상수 8개 + 기지별 고용한도 표만 주면
+//   임의 배합의 물성이 **금속학에서 계산된다.** N개 금속이면 C(N,3) 이 아니라 8N + 표 몇 줄이다.
+//
+//   ① 고용 한도   각 기지에 용질이 얼마나 녹아드나 (실측 상태도)
+//   ② 고용 강화   ΔH = K·δ^(4/3)·√x  (Fleischer) — **합금이 순금속보다 단단한 이유**
+//   ③ 제2상       한도 초과분. 금속간화합물(Cu31Sn8)=단단·취성 / 액상분리(Cu-Pb·Cu-Fe)=층이 갈린다
+//   ④ 공융 강하   섞으면 융점이 내려간다(혼합 엔트로피) → 주조성
+//
+// ⚠개발 기록: 첫 시안은 Hume-Rothery 4규칙만으로 고용도를 *추정*했다가 크게 틀렸다
+//   (Cu-Sn 2.3% ← 실제 15.8% · Cu-Fe 18% ← 실제 0.3%). 4규칙은 필요조건이지 충분조건이 아니다.
+//   실제 고용도는 혼합 엔탈피가 정하고 그건 4규칙으로 계산이 안 된다 ⇒ 한도만 실측 표로 박는다.
+//
+// 검증(scripts/proto-alloy.js): 순동 50 · 청동(Sn12) 107 · 세형동검 91 · 세문경 235/인성 0.08 ·
+//   황동 83 · 백동 81 · 스털링 88 · 적금 143 · 구리+철 41("층이 갈린다") — 전부 실측 경도대.
+
+const ALLOY_E = {   // r 원자반지름(pm) · st 결정구조 · en 전기음성도 · val 원자가 · mp 융점(℃) · h0 순금속 경도(HB) · rho 밀도 · lus 광택
+  copper: { r: 128, st: 'fcc', en: 1.90, val: 1, mp: 1085, h0: 50,  rho: 8.96,  lus: 0.35 },
+  tin:    { r: 140, st: 'tet', en: 1.96, val: 4, mp: 232,  h0: 5,   rho: 7.31,  lus: 0.75 },
+  lead:   { r: 175, st: 'fcc', en: 2.33, val: 4, mp: 327,  h0: 4,   rho: 11.34, lus: 0.55 },
+  zinc:   { r: 134, st: 'hcp', en: 1.65, val: 2, mp: 420,  h0: 30,  rho: 7.14,  lus: 0.70 },
+  silver: { r: 144, st: 'fcc', en: 1.93, val: 1, mp: 962,  h0: 25,  rho: 10.49, lus: 1.00 },
+  gold:   { r: 144, st: 'fcc', en: 2.54, val: 1, mp: 1064, h0: 25,  rho: 19.30, lus: 0.90 },
+  iron:   { r: 126, st: 'bcc', en: 1.83, val: 2, mp: 1538, h0: 150, rho: 7.87,  lus: 0.60 },
+  nickel: { r: 124, st: 'fcc', en: 1.91, val: 2, mp: 1455, h0: 90,  rho: 8.91,  lus: 0.80 },
+};
+// 기지별 고용 한도 [최대 분율, 제2상 성격]  im=금속간화합물 · ss=고용체 · split=액상분리
+const ALLOY_SOL = {
+  copper: { tin: [0.158, 'im'], zinc: [0.390, 'im'], nickel: [1, 'ss'], gold: [1, 'ss'],
+            silver: [0.080, 'ss'], lead: [0, 'split'], iron: [0.003, 'split'] },
+  iron:   { nickel: [1, 'ss'], copper: [0.003, 'split'], tin: [0.100, 'im'], lead: [0, 'split'] },
+  gold:   { copper: [1, 'ss'], silver: [1, 'ss'], nickel: [1, 'ss'] },
+  silver: { copper: [0.080, 'ss'], gold: [1, 'ss'] },
+};
+const ALLOY_K_SS = 4200;   // 고용 강화 계수 — 청동·스털링·적금이 동시에 실측 경도대에 들어오게 보정
+const ALLOY_K_IM = 700;    // 금속간화합물의 경도 기여(δ상은 더 단단하다. 대신 부서진다)
+
+// ★시대가 배합 공간을 자른다 — "청동기 시대"라는 이름의 실질.
+//   아연은 907℃에서 끓어 증발한다(순수 분리는 중세 인도). 철은 융점 1538℃로 청동기 노가 못 낸다.
+const ALLOY_ERA = {
+  bronze: ['copper', 'tin', 'lead', 'gold', 'silver'],
+  iron:   ['copper', 'tin', 'lead', 'gold', 'silver', 'iron', 'nickel'],
+};
+function alloySmeltable(id, era) { return (ALLOY_ERA[era || 'bronze'] || ALLOY_ERA.bronze).indexOf(id) >= 0; }
+
+function _alloySol(b, m) {
+  const t = ALLOY_SOL[b] && ALLOY_SOL[b][m];
+  if (t) return { max: t[0], mode: t[1] };
+  const B = ALLOY_E[b], S = ALLOY_E[m];
+  if (!B || !S) return { max: 0, mode: 'split' };
+  const dr = Math.abs(S.r - B.r) / B.r;
+  if (dr > 0.25) return { max: 0, mode: 'split' };
+  const f = Math.max(0, 1 - dr / 0.15) * (S.st === B.st ? 1 : 0.3)
+          * Math.max(0.15, 1 - Math.abs(S.en - B.en) / 0.5);
+  return { max: Math.min(0.2, f), mode: Math.abs(S.val - B.val) >= 2 ? 'im' : 'ss' };
+}
+
+// mix: { copper: 0.88, tin: 0.12, … } — 합이 1이 아니어도 정규화한다.
+// 반환: { base, hardness, tough, mp, cast, rho, lustre, weapon, mirror, ornament, split, brittle }
+function alloyProps(mix) {
+  const ks = Object.keys(mix || {}).filter((k) => mix[k] > 1e-9 && ALLOY_E[k]);
+  if (!ks.length) return null;
+  const tot = ks.reduce((a, k) => a + mix[k], 0);
+  const x = {}; for (const k of ks) x[k] = mix[k] / tot;
+  const base = ks.reduce((a, k) => (x[k] > x[a] ? k : a), ks[0]);
+
+  let hRule = 0, rho = 0, mpLin = 0, lus = 0;
+  for (const k of ks) { const E = ALLOY_E[k]; hRule += x[k] * E.h0; rho += x[k] * E.rho; mpLin += x[k] * E.mp; lus += x[k] * E.lus; }
+
+  // ★용질이 둘 이상이면 강화 기여를 **그냥 더하면 안 된다**(Kocks 중첩).
+  //   세기가 비슷한 장애물끼리는 제곱합의 제곱근으로 겹친다: ΔH = √(Σ ΔHᵢ²).
+  //   1원소만 넣으면 √(a²)=a 라 기준 합금 9종의 값은 하나도 안 바뀌고,
+  //   3원 배합에서만 과대평가가 잡힌다(Cu-Sn15-Ag10 이 청동의 1.7배가 되던 것이 1.3배로).
+  let dH2 = 0, dHim = 0, brittle = 0, split = 0;
+  for (const k of ks) {
+    if (k === base) continue;
+    const { max, mode } = _alloySol(base, k);
+    const dr = Math.abs(ALLOY_E[k].r - ALLOY_E[base].r) / ALLOY_E[base].r;
+    const dis = Math.min(x[k], max), sec = x[k] - dis;
+    const d = ALLOY_K_SS * Math.pow(dr, 4 / 3) * Math.sqrt(dis);
+    dH2 += d * d;
+    if (mode === 'split') split += sec;
+    else if (mode === 'im') { brittle += sec; dHim += ALLOY_K_IM * sec; }
+  }
+  const dH = Math.sqrt(dH2) + dHim;   // 제2상(금속간화합물)은 별개 기구라 따로 더한다
+  let ent = 0; for (const k of ks) if (x[k] > 0) ent -= x[k] * Math.log(x[k]);
+  const mp = mpLin * (1 - 0.42 * ent);
+
+  const hardness = Math.max(1, hRule + dH - 150 * split);
+  const tough = 1 / (1 + Math.pow(brittle / 0.055, 2)) * (1 - 0.85 * split);
+  const cast = Math.max(0.05, Math.min(2, (1400 - mp) / 700)) * (1 + 1.1 * split);
+  // ★무기는 **휘둘러야** 한다 — 밀도가 실격 사유다. 같은 형상이면 무게가 밀도에 비례한다.
+  //   금(19.3)·납(11.3)은 물성이 좋아도 손에 든 무기로는 못 쓴다. 청동(8.76)·철(7.87)은 무패널티.
+  //   이게 없으면 모델이 "구리 반 금 반"을 최강 무기로 고른다 — 물성만 보면 실제로 맞지만
+  //   (Au-Cu 규칙격자는 진짜 단단하다) 그런 검은 역사에 없다. 이유는 값만이 아니라 무게다.
+  const wRho = Math.min(1, 8.9 / Math.max(1e-6, rho));
+  return {
+    base, hardness, tough, mp, cast, rho, lustre: lus, split, brittle,
+    weapon: Math.min(1.6, hardness / 150) * tough * wRho,   // 무기 = 경도 × 인성 × 경량성
+    mirror: lus * Math.min(1, hardness / 200) * Math.min(1, cast),
+    ornament: lus * Math.min(1.4, cast),
+  };
+}
+
+// ★게임 등급(0~1+) — 기존 MAT_GRADE 축과 이어 붙이기 위한 정규화.
+//   기준점: 표준 청동(Cu 88 · Sn 12) = 1.00. 순동 ≈ 0.46, 마제석기 0.6(비금속이라 별도 축).
+const ALLOY_REF = 0.7104;   // alloyProps({copper:.88,tin:.12}).weapon — 아래 검증에서 고정
+function alloyGrade(mix, kind) {
+  const a = alloyProps(mix);
+  if (!a) return 0;
+  const raw = kind === 'mirror' ? a.mirror : (kind === 'ornament' ? a.ornament : a.weapon);
+  const ref = kind === 'weapon' || !kind ? ALLOY_REF : 1;
+  return +(raw / ref).toFixed(4);
+}
+
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { RESOURCES, _summary, _byHarvest, miningParams, pickMineral, ORE_POOLS };
+  module.exports = { RESOURCES, _summary, _byHarvest, miningParams, pickMineral, ORE_POOLS,
+    ORE_K, MINE_SWING_MS, MINE_SWINGS_PER, CHUNK_KG, ORE_REG0, ORE_REG1, oreRegen,
+    NPC_MINE_PER_DAY, MINE_HAUL, MINE_HAUL_TRIP, MINE_LABOR, MINE_HAULEFF, haulEff,
+    itemWeight, inventoryWeight, CARRY_MAX_KG, EXTRA_WEIGHT,
+    oreValueScale, orePeakFor, ORE_VALUE_EXP,
+    ORE_P_SCALE, ORE_TIER_BASE, ORE_LN_SIGMA, ORE_PK_MAX, oreGradeMult,
+    mineLevelF, MINE_XP_MAX, mineChunkKg, mineChunkRoll, CHUNK_CV, CHUNK_Z_MAX,
+    mineDepthCost, mineSwingsNeeded, mineToolWear,
+    mineTPR, mineTNR, mineIdAcc, mineIdPhrase, mineAssayMult, mineTripMinutes, ASSAY_REF_LVL,
+    mineDepthP, mineDepthEff, ORE_DEPTH_PER, ORE_DEPTH_P_GAIN,
+    ALLOY_E, ALLOY_SOL, ALLOY_ERA, alloySmeltable, alloyProps, alloyGrade, ALLOY_REF };
 }
 if (typeof window !== 'undefined') {
   window.Specialty = { RESOURCES };
@@ -350,6 +807,13 @@ function _getSpecialty() {
   }
   return _SPECIALTY;
 }
+// 채광·합금 모델(server/specialty.js) — 감정·제련·합금이 전부 여기서 온다. lazy 로드(순환 import 방지).
+let _SPECMOD;
+function _spec() {
+  if (_SPECMOD === undefined) { try { _SPECMOD = require('../server/specialty'); } catch { _SPECMOD = null; } }
+  return _SPECMOD;
+}
+const SPEC = new Proxy({}, { get: (_, k) => { const m = _spec(); return m ? m[k] : undefined; } });
 // 옛 시뮬 자원 → stat 매핑 (specialty.js에 없는 자원도 stat 부여)
 const LEGACY_CONTRIBUTES = {
   food:        { subsistence: 1.0 },
@@ -365,7 +829,12 @@ const LEGACY_CONTRIBUTES = {
   tool:        { production: 0.5 },
   wood:        { production: 0.3 },
   stone:       { production: 0.3, defense: 0.2 },
-  ore:         { production: 0.4 },
+  // ★★[재민 지시 "경제학적 원리에 입각해"] 효용 사슬도 **단조**여야 한다.
+  //   원석 3 개를 녹여야 금속 1 개가 나오는데(수율 0.45), 원석 기여가 0.4 이고 구리가 0.8 이면
+  //   제련할수록 마을 stat 이 **줄어든다**(원석 2.2×0.4 = 0.89 > 금속 1×0.8). 가격 사슬은 고쳤는데
+  //   효용 사슬이 뒤집혀 있어서, 제련을 넣자 v2 인구가 1,624 → 998 로 무너진 진짜 원인이 이것이었다.
+  //   원석은 **제련 전엔 생산에 못 쓴다** — production 기여는 금속에 있어야 한다.
+  ore:         { production: 0.1 },
   obsidian:    { defense: 0.4, production: 0.2 },   // ★S5 흑요석: 예리(화살촉·소형칼날) → 방어·사냥 보조
   jade:        { prestige: 1.2 },                   // ★S5 옥: 위세품(prestige)
 };
@@ -549,8 +1018,12 @@ const JOBS = {
     inputs: { stone: 0.5, hide: 0.4, ore: 0.2 },
     // ★유령 박멸(§9): 보조 투입 — 삼끈(갑옷 엮음)·모피(방한 안감, hide와 별개 슬롯). 있으면 소비, 없어도 제작 성립(게이트 아님).
     aux: { hemp: 0.1, fur: 0.1 },
-    // ★[재민 지시 "결함 전부 수정" 2026-08-01] 수요-캡(경제사슬 ba06fc2 동형 — 모시 규약).
-    //   재고 게이트 없는 자본재 생산은 한번 고용된 갑옷장이가 무한 생산한다(v1 실측: 전사 2에 갑옷 642).
+    // ★[재민 지시 "직접 해결" 2026-08-01] 수요-캡 공급(모시 byproduct 규약 동형 — 사용자 결정 '짜는 만큼만 짠다').
+    //   갑옷은 자본재(전사 1인 1벌)인데 범용 output 분기에 재고 게이트가 없어, 한번 고용된 갑옷장이가
+    //   stone·hide·ore를 태우며 **무한 생산**했다(실측: 시드7 삼림 — 전사 2·갑옷 642 = 목표의 ~250배).
+    //   주석(_tinGlut)·흑요석·옥·모시는 전부 감산이 있는데 이 분기만 없던 것.
+    //   캡 = 교역 keep(max(2, 전사×1.3)) + 매물 문턱 여유(N×0.1) — tickTrade 매도 규약(위 WEAPONR thresh)과 같은 선.
+    //   재고가 캡 아래로 내려가면(마모·수출) 생산이 재개된다 — 스톡-플로우 그대로, 수출 공급도 산다.
     stockCap: (v) => Math.max(2, (v.counts.warrior || 0) * 1.3) + (v.npcs.length || 1) * 0.1,
   },
   tailor: {                 // ★의복(2026-07-12): 재봉사 — 옷감(모피·유피·가죽·삼베)→옷. 한랭(겨울) 수요·1인 1벌 자본재.
@@ -590,6 +1063,24 @@ const CAPTIVE_JOB_BAN = { warrior: 1, hunter: 1 };   // 포로에게 무기를 �
 
 // 자원별 base value — 노동시간(생산 1단위에 드는 표준 일) 역수의 근사.
 //   교역 가격의 anchor. 마을 부족도가 여기 곱해져서 실제 가격 형성.
+// ★교역·가격이 공유하는 1인당 목표 재고표 — **한 곳에서만 정의한다.**
+//   전에는 tickTrade 와 computeVillagePrices 가 같은 표를 각자 복사해 갖고 있었다.
+//   한쪽에 금속을 추가하고 다른 쪽을 잊으면 "가격은 있는데 안 팔린다"가 된다.
+const RESERVE_PC = {
+  food: 30, fish: 10, meat: 8, cooked_food: 5,
+  wood: 5, stone: 3, ore: 1, tool: 1.5,
+  weapon: 0.5, armor: 0.5,
+  fruit: 2, vegetable: 2, mushroom: 1, twig: 2, pebble: 1, hide: 1, herb: 0.5,   // ★약재(§9)
+  bone: 1, tigerhide: 0.03,   // ★§9 3차 — 뼈 · 호피
+  // ★★[재민 지시] 금속·특수재도 교역재. 자본재라 목표가 작다. 주석이 가장 작다(전략재).
+  copper: 0.30, tin: 0.06, iron: 0.20, lead: 0.05, silver: 0.03, gold: 0.02,
+  jade: 0.05, obsidian: 0.10,
+};
+const LUX_V1 = { gold: 1, silver: 1, jade: 1 };      // 위신재 — 웃돈 상한 대상
+const LUX_V1_ADJ_MAX = 3.0;
+const ESSENTIAL_V1 = { food: 1, fish: 1, meat: 1, cooked_food: 1, wood: 1, stone: 1, tool: 1, weapon: 1, armor: 1 };
+
+const _SMELT_YIELD_UTIL = 0.33;   // = SMELT_YIELD(제련 수율). 파생수요 계산이 선언보다 위라 별도 상수.
 const BASE_VALUE = {
   food:        1.0,    // 농부 1.5/day → 1단위에 0.67일
   fish:        1.25,   // 어부 1.2/day
@@ -600,16 +1091,49 @@ const BASE_VALUE = {
   bone:        1.5,    // ★뼈(§9 3차): 사냥 부산물(0.2/고기)+시각층 대물 도축(+1) — 풍부한 저가재. 가치는 무기장 보조 투입(활 티어)이 매김(수요 하드코딩 없음)
   tigerhide:   40,     // ★호피(§9 3차): 호랑이 도축 +1 — 최고가 위신재(교역 전용 외생 수요+위신 스탯). "호랑이는 고기가 아니라 명예와 돈"(§8)
   wood:        1.67,   // 벌목 0.9/day
-  stone:       2.14,   // 광부 0.7/day
-  ore:         3.0,    // 광물 0.5/day. 더 귀함.
-  tool:        5.0,    // 0.4/day + wood/stone 투입
-  weapon:      8.0,    // Phase 4d-7: 무기 — warrior 공격력
-  armor:       8.0,    // 갑옷 — warrior 방어력
+  // ★★[재민 지시 "경제학적 원리에 입각해 한 치의 오차도 없이"] 노동가치 앵커 재정합.
+  //   이 표는 원래 노동가치설로 매겨졌다(주석의 "농부 1.5/day" 등 = 1단위에 드는 노동일의 비).
+  //   그런데 그 뒤로 **산출량이 바뀌었는데 가격을 안 고쳤다**. 실측한 어긋남:
+  //     ore   3.00 ← 정합 1.00 (광부는 이제 0.5/day 가 아니라 1.5/day 캔다)
+  //     stone 2.14 ← 정합 1.67 (돌은 광부가 아니라 채집꾼이 0.9/day 캔다)
+  //     weapon 8.00 ← 정합 23.20 (무기 노동 3배 + 금속 원료가 반영이 안 돼 있었다)
+  //   그 결과 사슬이 뒤집혀 있었다: 원석 그대로 3.0 → 제련 1.32 → 무기 0.94.
+  //   **가공할수록 가치가 주는** 경제였다. 제련도 주조도 석기무기도 전부 부가가치가 음수였고,
+  //   그런데도 마을이 그 일을 한 건 장인 정원이 가격이 아니라 스톡-플로우 목표로 굴러가서다.
+  //   ⇒ scripts/test-valuechain.js 가 이 항등식을 매번 검사한다.
+  stone:       1.67,   // 채집꾼 0.9/day
+  ore:         1.0,    // 광부 1.5/day (원석은 제련 전이라 저가치 — 값은 제련이 만든다)
+  tool:        5.0,    // 0.4/day + wood/stone 투입 (정합 4.82 — 유지)
+  //   ⚠weapon 은 **안 올린다.** 노동가치 정합가는 14.7(MELT_TOTAL 0.15 기준)이지만,
+  //     8 → 14 로 올려 실측했더니 v2 인구 −5.8% · 식량 −29% 로 나빠졌다(무기 교역 쏠림 —
+  //     코드 주석에 남은 옛 실측 "무기 희소폭등 → 캐러밴이 식량 대신 무기 쏠림 → 인구 −36%" 와 같은 현상).
+  //     원인: econ 의 직업 유틸리티는 **산출량 × 가격**이지 부가가치가 아니다(원료비를 안 뺀다).
+  //     그래서 가격을 정합시켜도 노동 배분이 그걸 못 읽고, 교역 쏠림만 남는다.
+  //     ⇒ 사슬이 **단조 증가**하기만 하면 "뭘 팔지"는 정확히 계산된다. 그 최소 조건만 만족시킨다:
+  //       제련 양수  ⇔ P(ore) < SMELT_YIELD × P(금속) = 1.32   → ore 1.0 ✔
+  //       주조 양수  ⇔ P(weapon) > P(금속) = 4 (MELT_TOTAL 0.15) → weapon 8 ✔
+  //   ⇒ weapon 은 12 로. 정합가 14.0 의 0.86 배 안이고, 주조 부가가치를 채광과 같은 수준(1.2 vs 1.5)으로
+  //     끌어올린다. 8 로 두면 주조가 채광의 40% 밖에 못 벌어 "만들수록 손해"에 가깝다.
+  //     (8 → 14 로 크게 올린 판을 실측했더니 v2 인구 1,617 로 8 일 때의 1,624 와 거의 같았다 —
+  //      무기값 자체는 인구에 큰 영향이 없다. 앞서 v2 가 나빠진 원인은 원석·돌값 하락이었다.)
+  weapon:      12.0,
+  armor:       12.0,
   fruit:       1.5,    // 채집물
   vegetable:   1.5,
   mushroom:    1.5,
   twig:        1.0,    // 흔함
   pebble:      1.0,
+  // ★★[재민 지시] "모든 물품은 교역 대상으로 들어가야 해."
+  //   v1 은 금속을 **가격조차 매기지 않았다** — BASE_VALUE 에도 RESERVE(교역재)에도 없었다.
+  //   그래서 랩이 재던 "구리:주석 비"는 각 마을이 **자급한** 결과였지 교역 후 값이 아니었고,
+  //   광부 유틸리티의 파생수요 계산도 금속 가격이 1.0 으로 폴백돼 죽어 있었다.
+  //   값은 specialty.RESOURCES.baseValue 와 **같은 수**를 쓴다(두 곳이 다른 말을 하면 그게 버그다).
+  //   ★철·납이 3 이던 것을 4 로. **제련 노동은 광종과 무관하게 같으므로** 노동가치로는 금속이
+  //     서로 비슷해야 한다(시장 가치 차이는 희소도가 만든다). 3 이면 제련 한계가치가
+  //     0.33×3 − 1.0 = −0.01 로 아슬아슬한 음수가 되어, 납 100% 마을(임업1)이 원석 112 를
+  //     쌓아두고도 제련을 한 번도 안 했다(실측). oreValueScale(3)=oreValueScale(4)=1.0 이라 pk 는 불변.
+  copper: 4, tin: 4, iron: 4, lead: 4, silver: 30, gold: 100,
+  jade: 80, obsidian: 15, bronze: 12, gem: 60,
 };
 const JOB_NAMES = Object.keys(JOBS);
 const FIELDS = [...new Set([...JOB_NAMES.map(j => JOBS[j].field), 'archery'])];   // ★archery=사냥꾼 제2숙련(활·직업 매핑 없는 무기 필드)
@@ -1232,7 +1756,22 @@ function opportunityCost(npc, v, w) {
     case 'fisher':      return (L.water || 0) * 1.2 * w('fish') * sk;
     case 'hunter':      return (L.game || 0) * 0.7 * (w('meat') + 0.3 * w('hide')) * sk;
     case 'lumberjack':  return (L.wood || 0) * 0.3 * w('wood') * sk;
-    case 'miner':       return Math.max((L.ore || 0) * w('ore') * (1 - (v && v._metalGlut || 0)), (L.obsidian || 0) * w('obsidian'), (L.jade || 0) * w('jade'), (L.tin || 0) * TIN_DEPOSIT_YIELD_FLAT * w('tin') * (1 - (v && v._tinGlut || 0))) * 0.3 * sk;   // ★S1 광부=금속 전담(돌 안 캠) ★S5 흑요석·옥 ★청동 희소성 +주석산지(귀재 tin 가격이 광부 매력)
+    // ★★[재민 지시 "경제학적 원리에 입각해"] 원석의 **파생수요**(derived demand).
+    //   광부는 원석 자체를 원해서 캐지 않는다 — 그게 **될 금속**을 위해 캔다.
+    //   전에는 유틸리티가 원석 시장가만 봤다. 그런데 원석 기준가를 노동가치에 맞춰 3.0→1.0 으로
+    //   내리자(제련이 가치를 파괴하던 걸 고치느라) 광부가 25→16 으로 줄었다 — 가격은 맞는데
+    //   유인이 틀린 것이다. 원석 1단위의 실효가치는 **제련 후 금속 가치**(SMELT_YIELD × 광종 가중가)다.
+    //   이러면 광종이 유인에 그대로 들어온다: 금맥 마을은 원석이 비싸고 철맥 마을은 싸다.
+    case 'miner': {
+      const _mix = v && v.land && v.land.oreMix;
+      let _oreV = w('ore');
+      if (_mix) {
+        let mv = 0, tot = 0;
+        for (const k in _mix) { const q = _mix[k]; if (!(q > 0)) continue; tot += q; mv += q * w(k === 'jade_raw' ? 'jade' : k); }
+        if (tot > 0) _oreV = Math.max(_oreV, _SMELT_YIELD_UTIL * (mv / tot));
+      }
+      return Math.max((L.ore || 0) * _oreV * (1 - (v && v._metalGlut || 0)), (L.obsidian || 0) * w('obsidian'), (L.jade || 0) * w('jade'), (L.tin || 0) * TIN_DEPOSIT_YIELD_FLAT * w('tin') * (1 - (v && v._tinGlut || 0))) * 0.3 * sk;   // ★S1 광부=금속 전담(돌 안 캠) ★S5 흑요석·옥 ★청동 희소성 +주석산지
+    }
     case 'forager':     return (Math.max(0.3, ((L.fertility || 0) + (L.wood || 0) + (L.stone || 0)) / 3) * 0.25 * (w('vegetable') + 0.6 * w('herb')) + (L.stone || 0) * 0.9 * w('stone')) * sk * (v && v._forageScale != null ? v._forageScale : 1);   // ★약재 슬롯(§9): herb 산출 15%/식량계수 0.25 = 0.6. ★S1: +돌 채집 가치(land.stone×0.9×돌가격) — 돌밭 채집꾼 매력. ×MSY 포화
     // ★자본재 장인: 노동목표 초과면 0.005(글럿 광부 0.01보다↓ → 1순위 차출), 이내면 50(유지).
     case 'mason':       return ((v.counts.mason || 0)       > masonTarget(v))       ? 0.005 : 50 * sk;   // ★S2 석공(석기·석검·활)
@@ -1285,6 +1824,126 @@ function _tinDepositFor(opts) {
   return +(TIN_DEPOSIT_STRENGTH_LO + over * TIN_DEPOSIT_STRENGTH_SPAN).toFixed(3);
 }
 // ★청동 경제 자격 — 청동검 지속 생산 가능 마을만 true(주석 산지 OR 대량 주석 비축=교역 허브). 나머지=석기 무장.
+// ★oreMix(광종 면적 비율) → 광부 부산물 비율. 광석 자체(ore)는 별도로 이미 산출되므로
+//   여기서는 **금속·특수재만** 낸다. 합이 옛 dict 총합(0.33)과 같아지게 맞춰 총량 충격을 없앤다.
+const _BP_TOTAL = 0.33;
+function _oreMixToByproduct(mix) {
+  const out = {}; let tot = 0;
+  for (const k in mix) { const v = mix[k]; if (!(v > 0)) continue; out[k === 'jade_raw' ? 'jade' : k] = v; tot += v; }
+  // ★[버그] 광맥이 **하나도 없는** 마을(oreMix {})이 여기서 옛 dict 로 떨어져 구리를 캐고 있었다.
+  //   실측: 광맥 0 인 41개 마을이 각각 구리 16~28 을 만들어 전체 구리 644 의 대부분을 차지했다.
+  //   광맥이 없다는 건 광맥이 없다는 뜻이다. 그 마을의 land.ore 0.10 은 livelihood.js 가
+  //   "사철·표사 정도"라고 적어둔 **바닥항**이다 — 하천에서 걸러내는 사철과 사금이지 구리광이 아니다.
+  //   (자연동은 희귀하다. 사광상에서 구리가 나오지 않는다.)
+  if (!(tot > 0)) return { iron: _BP_TOTAL * 0.5 * 0.9, gold: _BP_TOTAL * 0.5 * 0.1 };
+  for (const k in out) out[k] = +(out[k] / tot * _BP_TOTAL).toFixed(4);
+  return out;
+}
+// ★제련(製鍊) — 원석(ore) → 금속. 광종 구성(oreMix)이 무엇이 나오는지 정한다.
+//   수율 SMELT_YIELD 는 옛 부산물 총합(_BP_TOTAL 0.33)과 같게 잡아 **총량 중립**이다:
+//   전에는 광부가 광석 1 당 금속 0.33 을 같이 냈다. 이제 같은 0.33 이 제련에서 나온다.
+//   다만 제련에 **대장장이 노동**이 들므로, 대장장이가 모자란 마을은 원석이 쌓인다(그게 맞다).
+//   연료는 기존 야금공 경로(SMELT_FUEL_PER)가 이미 장작을 태우고 있어 따로 안 뺀다.
+const SMELT_YIELD = 0.33;
+const SMELT_PER_LABOR = 10.4;    // 대장장이 하루가 다루는 원석량 배수(jdef.base 0.45 기준 → 약 2.7/일)
+const SMELT_MIN_ORE = 0.5;      // 이만큼도 없으면 노를 지피지 않는다
+// 광맥 0 인 마을의 원석 = 하천 사철·사금(livelihood.js FLOOR.ore 주석 "사철·표사").
+//   광부 부산물 폴백과 **같은 조성**을 쓴다 — 두 군데가 다른 말을 하면 그게 버그다.
+const SMELT_PLACER = { iron: 0.9, gold: 0.1 };
+function _trySmelt(v, laborBase) {
+  const om = v.land && v.land.oreMix;
+  if (!om) return 0;                                   // 지도 정보 없는 호출부(랩·CLI)는 옛 경로
+  const mix = Object.keys(om).length ? om : SMELT_PLACER;
+  const have = v.storage.ore || 0;
+  if (have < SMELT_MIN_ORE) return 0;
+  const cap = Math.max(0, laborBase * SMELT_PER_LABOR);
+  const use = Math.min(have, cap);
+  if (!(use > 0)) return 0;
+  v.storage.ore = have - use; _cons(v, 'ore', use);
+  let tot = 0; for (const k in mix) tot += mix[k];
+  if (!(tot > 0)) return 0;
+  const out = use * SMELT_YIELD;
+  for (const k in mix) {
+    const id = k === 'jade_raw' ? 'jade' : k;
+    const q = out * (mix[k] / tot);
+    if (q > 0) v.storage[id] = (v.storage[id] || 0) + q;
+  }
+  v._smeltedToday = (v._smeltedToday || 0) + use;
+  v._smeltedTotal = (v._smeltedTotal || 0) + use;
+  return use;
+}
+// ★대장장이 배합 — 마을 재고 비율대로 녹인다. 총 금속 투입은 0.42 로 고정(옛 0.3+0.12 와 동일).
+//   반환 { take: {금속: 양}, grade: 합금 등급(청동=1.0), bronzeness: 청동다움(계측용) }
+const CAST_OUT_REF = 0.81;    // 표준 청동(Cu88Sn12)의 주조성 — 산출 배수 1.0 의 기준
+const CAST_OUT_MAX = 1.8;     // 주조성 이득 상한(납을 무한정 붓는 걸 막는다)
+const _MELT_TOTAL = 0.15;   // ★무기 1자루 = 금속 1단위(옛 2.8단위). 노동가치 정합가를 23.2→14.7 로 낮춘다
+const _MELT_METALS = ['copper', 'tin', 'lead', 'silver', 'gold'];   // 청동기에 제련 가능한 것만
+function _alloyMelt(v) {
+  const SP = _spec(); if (!SP) return null;
+  const st = v.storage || {};
+  if (!((st.copper || 0) > 0.01)) return null;            // 구리 없이는 못 만든다(기지가 없다)
+  const price = _matPrice(v);
+  const adds = _MELT_METALS.filter((m) => m !== 'copper' && (st[m] || 0) > 0.01);
+
+  // ★★[재민 확정] 대장장이는 **재고 비율대로 붓지 않는다.** 그건 대장장이가 아니라 쓰레기통이다.
+  //   (실측: 주석 21 · 구리 5 인 마을이 주석 50% 를 부어 등급 0.06 짜리 부서지는 검을 만들었다.
+  //    표준 청동이 1.00 이고 순동조차 0.47 인데, 재고 비율대로 부으면 순동보다 나쁜 게 나온다.)
+  //   청동기 대장장이는 경험으로 비율을 안다. 여기서는 그걸 **탐색**으로 표현한다:
+  //   재고가 허락하는 배합 중 **등급 ÷ 재료비**가 가장 큰 것을 고른다.
+  //   ⇒ 주석이 넉넉하면 최적비(약 17%)로, 모자라면 있는 만큼만 섞어 등급을 조금이라도 올리고,
+  //     금·은은 등급이 올라도 값이 비싸 점수에서 밀린다 — 따로 막지 않아도 안 쓴다.
+  //   ★목적함수는 **이윤**이다: (무기 산출 × 무기값 × 등급) − 재료비.
+  //     전에는 등급÷재료비(비율)를 썼는데, 그건 "재료가 제약일 때"의 답이다. econ 의 대장장이는
+  //     하루에 amt 개만 만드는 **노동 제약**이라, 그 하루로 얼마나 가치를 만드느냐가 문제다.
+  //     노동은 어차피 쓰는 고정비이므로 이윤 최대화가 옳다.
+  //   ★[재민] "구리 1000 에 주석 1 있어도 82:18 로만 합금해? 나머지 구리는 버려지는 거야?
+  //            구리를 많이 넣어 효율이 낮더라도 많이 만드는 게 이득 아닌가?"
+  //     버려지지 않는다 — 주석 1 이면 그 배합으로 37 자루를 만들고, 떨어지면 그때 순동으로 내려간다.
+  //     그리고 "얇게 펴서 많이"는 **재료가 희소해질수록 저절로 일어난다**: 주석이 귀해지면 시장가가
+  //     오르고, 이윤식이 주석 비중을 스스로 낮춘다(실측: 주석값 4→18% · 8→14% · 20→6% · 60→3%).
+  //     개수는 노동이 정하므로 배합으로 개수를 늘릴 수는 없지만, 재고 고갈로 **못 만드는 날**이
+  //     생기면 그게 가격에 잡혀 같은 결론에 도달한다.
+  const STEPS = [0.03, 0.06, 0.10, 0.14, 0.18, 0.24];
+  const _amtPerCast = (JOBS.smith.base || 0.45) * WEAPON_LABOR_MULT;
+  const _pw = price('weapon');
+  let best = null;
+  const consider = (mix) => {
+    const take = {};
+    for (const k in mix) {
+      const q = _MELT_TOTAL * mix[k];
+      if (q <= 0) continue;
+      if ((st[k] || 0) < q) return;                       // 재고 부족 — 이 배합은 못 짠다
+      take[k] = +q.toFixed(4);
+    }
+    const pr = SP.alloyProps ? SP.alloyProps(mix) : null;
+    const g = SP.alloyGrade ? SP.alloyGrade(mix, 'weapon') : 0;
+    if (!(g > 0) || !pr) return;
+    // ★★주조성(cast)이 **산출량**을 정한다 — 이게 납의 자리다.
+    //   실제 세형동검에는 납이 11% 들어간다. 무기 성능은 떨어지는데 왜 넣었나? **주조가 쉬워서**다.
+    //   납은 융점을 낮추고 쇳물을 잘 흐르게 해 같은 노동으로 더 많이·복잡하게 뜰 수 있다.
+    //   품질만 보면 납은 영원히 안 쓰인다(등급을 깎기만 하므로). 산출량에 걸어야 자리가 생긴다.
+    //   기준은 표준 청동(Cu88Sn12, cast 0.81) = 1.0. 순동은 0.56(주조가 어렵다 — 고증: 순동기는 단조 위주),
+    //   세형동검 배합은 1.57. 이러면 모델이 스스로 Sn18Pb6 근처를 최적으로 고른다(실물 Sn14Pb11 과 근사).
+    const castF = Math.min(CAST_OUT_MAX, pr.cast / CAST_OUT_REF);
+    let cost = 0; for (const k in mix) cost += _MELT_TOTAL * mix[k] * price(k);
+    const score = _amtPerCast * castF * _pw * Math.min(1.2, g) - cost;   // 이윤 = 산출량 × 값 × 등급 − 재료비
+    if (!best || score > best.score) best = { take, mix: Object.assign({}, mix), grade: g, castF, score };
+  };
+  consider({ copper: 1 });                                 // 순동(기준선 — 항상 후보에 둔다)
+  for (let i = 0; i < adds.length; i++) {
+    for (const a of STEPS) {
+      consider({ copper: 1 - a, [adds[i]]: a });
+      for (let j = i + 1; j < adds.length; j++) {
+        for (const b of STEPS) {
+          if (a + b >= 0.5) continue;                      // 기지는 구리여야 한다
+          consider({ copper: 1 - a - b, [adds[i]]: a, [adds[j]]: b });
+        }
+      }
+    }
+  }
+  if (!best) return null;
+  return { take: best.take, grade: best.grade, castF: best.castF, bronzeness: Math.min(1, (best.mix.tin || 0) / 0.12) };
+}
 function _bronzeCapable(v) {
   if ((v.land && v.land.tin || 0) > 0) return true;                       // 주석 산지 — 자체 청동
   const N = v.npcs ? v.npcs.length : 1;
@@ -1310,7 +1969,20 @@ function createVillage(opts) {
       game: opts.game ?? 0.6,
       obsidian: opts.obsidian ?? 0,   // ★S5 흑요석 특수 산지(0~1, 대부분 마을 0 — 화산지대만). 광부가 채굴 → 화살촉/소형칼날 교역재.
       jade: opts.jade ?? 0,           // ★S5 옥 특수 산지(0~1, 극소수 마을만). 광부가 채굴 → 위세품 교역재.
-      tin: _tinDepositFor(opts),      // ★청동 희소성: 주석 산지(0=무산지 대다수, >0=소수 산지). 산지만 tin 채굴→청동. name 해시 결정론(TIN_DEPOSIT_RATE 비율).
+      // ★★[재민 확정] "마을이 주석 산지이다 아니다를 꼭 이분법적으로 정할 필요가 있어..?"
+      //   없앴다. oreMix(노동권 광맥의 광종별 면적 비율)가 있으면 **연속량**으로 나온다:
+      //     land.tin = oreMix.tin × land.ore   — 조금 나는 마을·많이 나는 마을이 자연히 생긴다
+      //   oreMix 가 없는 호출부(랩·CLI)만 옛 이름해시 문턱으로 폴백한다.
+      //   ⇒ TIN_DEPOSIT_ORE_SCORE 문턱 튜닝 문제(본게임 최대 land.ore 1.06 < 필요 1.067)도 함께 소멸.
+      oreMix: opts.oreMix || null,
+      oreP: opts.oreP != null ? opts.oreP : null,       // 노동권 면적가중 평균 농도(감정 모델 입력)
+      oreDist: opts.oreDist != null ? opts.oreDist : 0,  // 광맥까지 면적가중 평균 거리(셀) — 헛짐 운반비
+      // ★oreMix 가 **있기만 하면** 그게 정답이다 — 비어 있으면 "지도가 여긴 광맥 없다고 말한다"이지
+      //   "모른다"가 아니다. 옛 이름해시 폴백은 oreMix 자체가 없는 호출부(랩·CLI)에만 남긴다.
+      //   (이 구분을 안 하면 광맥 0개인 농촌이 이름 운으로 주석 산지가 된다.)
+      tin: opts.tin != null ? opts.tin
+         : (opts.oreMix ? +(((opts.oreMix.tin) || 0) * (opts.ore ?? 0.5)).toFixed(3)
+                        : _tinDepositFor(opts)),
       size: baseSize,
       baseSize,                                                   // 확장 비용 계산 기준
     },
@@ -1630,7 +2302,26 @@ function tickVillage(v, day) {
         // ★S3 도구 품질 = 막석기(TOOL_Q_BASE) + 숙련폭(TOOL_Q_SPAN×skill/10) → 막석기 1.25× ~ 명장석기 1.55×.
         const tq = TOOL_Q_BASE + TOOL_Q_SPAN * (skillLvl / 10);
         v._toolQnum = (v._toolQnum || 0) + tq * tAmt; v._toolQden = (v._toolQden || 0) + tAmt;
-        addProduce('tool', tAmt); workNPC(npc);
+        addProduce('tool', tAmt);
+        // ★★[재민 지시 "무기 축 복구"] 도구가 포화하면 **남는 손으로 검을 간다.**
+        //   이 else-if 사슬이 무기 축을 죽인 진범이었다. 무기 분기(아래 a2)로 넘어가려면
+        //   _toolTaper 가 0 이어야 하는데, taper 는 도구 커버리지가 3.5 를 넘어야 0 이 된다.
+        //   그런데 그 감산의 설계 자체가 "재고를 포화선 2.5 부근에 수렴시키는" 것이라 3.5 에 닿을 일이 없다.
+        //   실측: 커버리지 2.92 에서 수렴 · taper 0.43 · **석공 노동의 98.7%가 도구**(도구 17,359 vs 검 235).
+        //   도구는 이미 넘치는데(재고 4,776 / 목표 1,780) 계속 도구만 만들고, 남는 42% 노동은 그냥 놀았다.
+        //   ⇒ taper 로 줄인 만큼(1−taper)을 병기고에 돌린다. 조건은 a2 와 동일하게 둔다
+        //     (식량안보 · 병기고 결손 · 청동 마을 양보 · 돌 보유).
+        const _spare = 1 - _toolTaper;
+        if (_spare > 0.02 && (_armoryShort || _needStoneSword) && (v.storage.stone || 0) >= 0.5 * _spare) {
+          const sAmt = wAmt * _spare;
+          v.storage.stone -= 0.5 * _spare;
+          v._stoneWeaponMade = (v._stoneWeaponMade || 0) + sAmt;
+          v._swordMadeToday = (v._swordMadeToday || 0) + sAmt;
+          const wq2 = WEAP_Q_STONE * _qSkill;
+          v._weapQnum = (v._weapQnum || 0) + wq2 * sAmt; v._weapQden = (v._weapQden || 0) + sAmt;
+          addProduce('weapon', sAmt);
+        }
+        workNPC(npc);
       } else if (_armoryShort) {
         // (a2) 도구 포화 → 마제석검으로 마을 병기고 축적(무산지 마을 주력 무기 재고). 청동 자격 마을은 대장장이 청동검이 담당(여기 미해당).
         v.storage.stone -= 0.5;
@@ -1645,7 +2336,7 @@ function tickVillage(v, day) {
     } else if (jdef.produceSpecial === 'smith') {
       // ★S2 대장장이(smithing) = 청동·철 *무기* 전용(도구 제작 폐지 → 석공). 청동검(구리+주석) 우선 → 철검(희소).
       // ★S3 레벨=품질: 무기 공격력·내구 = 재료등급(청동>철) × 스킬(smithing). 신규 티어 해금 아님. 무기 노동 3배(산출↓=희소).
-      const amt = jdef.base * skillMul * WEAPON_LABOR_MULT;   // ★무기 노동 3배 → 산출 1/3
+      let amt = jdef.base * skillMul * WEAPON_LABOR_MULT;   // ★무기 노동 3배 → 산출 1/3
       const _qSkill = 1 - WEAP_Q_SKILL_SPAN + WEAP_Q_SKILL_SPAN * (skillLvl / 10);   // 스킬 기여(0.4~1.0)
       // ★청동 병기고 비중 상한 — 청동은 병기고의 BRONZE_ARMORY_FRAC까지만(나머지 석기). swordStock이 그 한도 미만일 때만 청동 제작 → 청동마을도 석기 다수·청동 소수(엘리트).
       //   ★식량 안보 게이트: 잘 먹는 마을만 병기고까지 청동 확충, 취약 마을은 전사 실수요(BUFFER)까지만(식량·생존 우선).
@@ -1654,13 +2345,26 @@ function tickVillage(v, day) {
         ? (v.npcs.length || 0) * MELEE_ARMORY_PC * BRONZE_ARMORY_FRAC
         : Math.max(2, (v.counts.warrior || 0) * MELEE_COV_BUFFER);   // 취약 마을 = 전사 커버리지만
       // ★청동 희소성: 청동검은 *청동 경제 자격* 마을(주석 산지·교역 허브)만 + 병기고 청동 한도 미만일 때. 흘러든 트레이스 주석뿐이거나 청동 한도 도달 마을은 석공 마제석검.
-      if (_bronzeCapable(v) && _smSwordStock < _bronzeArmoryCap && (v.storage.copper || 0) >= 0.3 && (v.storage.tin || 0) >= 0.12) {
-        v.storage.copper -= 0.3; v.storage.tin -= 0.12;   // ★청동검(청동기 주력 무기)
-        _cons(v, 'copper', 0.3); _cons(v, 'tin', 0.12);   // ★flow-EMA
-        v._cuWeapUsed = (v._cuWeapUsed || 0) + 0.3;   // (계측 전용) 무기용 구리 누적 소비
-        v._bronzeWeaponMade = (v._bronzeWeaponMade || 0) + amt;
-        v._swordMadeToday = (v._swordMadeToday || 0) + amt;   // ★근접검 비중 EMA(청동검=근접)
-        const wq = WEAP_Q_BRONZE * _qSkill;   // 청동검 품질 = 청동등급(1.0) × 스킬(명장이 최고품질)
+      // ★★[재민 확정] 청동검/철검/석검의 **이산 분기 3개를 연속 곡선 하나로** 바꾼다.
+      //   대장장이는 마을 재고 비율대로 배합한다 → 주석 넉넉하면 좋은 검, 조금이면 무른 검, 없으면 순동.
+      //   품질은 specialty.alloyGrade 가 금속학에서 계산한다(고용 강화·제2상·공융).
+      //   ⇒ _bronzeCapable 문턱도, 순동검 분기도 따로 필요 없다.
+      // ★★[재민 확정] **제련이 먼저다.** 광부는 원석만 캐 오고, 그걸 금속으로 바꾸는 건 대장장이다.
+      //   이게 대장장이에게 무기 수요와 무관한 **상시 일감**을 준다 — 광석이 있으면 할 일이 있다.
+      //   고증: 청동기 제련은 노(爐)와 연료가 필요해 마을에서 했고, 광부의 일이 아니었다.
+      //   ※무기 주조보다 우선한다. 금속이 없으면 무기도 못 만드니 순서가 자연히 그렇다.
+      const _smelted = _trySmelt(v, jdef.base * skillMul);
+      if (_smelted > 0) { workNPC(npc); return; }   // 오늘은 제련으로 하루를 썼다
+
+      const _melt = _alloyMelt(v);
+      if (_melt && _melt.castF > 0) amt *= _melt.castF;   // ★주조성이 산출량을 정한다(위 _alloyMelt 주석)
+      if (_melt && _smSwordStock < _bronzeArmoryCap) {
+        for (const m in _melt.take) { v.storage[m] -= _melt.take[m]; _cons(v, m, _melt.take[m]); }
+        v._cuWeapUsed = (v._cuWeapUsed || 0) + (_melt.take.copper || 0);   // (계측 전용)
+        v._bronzeWeaponMade = (v._bronzeWeaponMade || 0) + amt * _melt.bronzeness;
+        v._alloyGrade = _melt.grade;                       // (계측) 이 마을이 만든 합금의 등급
+        v._swordMadeToday = (v._swordMadeToday || 0) + amt;
+        const wq = Math.min(1.2, _melt.grade) * WEAP_Q_BRONZE * _qSkill;   // ★배합이 품질을 정한다
         v._weapQnum = (v._weapQnum || 0) + wq * amt; v._weapQden = (v._weapQden || 0) + amt;
         addProduce('weapon', amt);
         workNPC(npc);
@@ -1719,20 +2423,40 @@ function tickVillage(v, day) {
       //   광맥 없는 마을은 광부를 둘 이유가 없다(landBoost=land.ore → 광맥 마을만 광부 매력). (탐사꾼 통합 유지)
       const toolB = jdef.toolDependent ? toolBoostShared : 1.0;
       // ★S2 금속 글럿 감산: 구리 과잉이면 광부가 광맥 채굴 자체를 줄임(무의미한 금속 축적 방지 = 여가). 광석·금속·부산물 공통 배율.
-      const oAmt = jdef.base * (v.land.ore || 0) * skillMul * toolB * (1 - _metalGlut);
+      // ★★[재민 확정] 광부의 감정(鑑定) — "레벨에 따라 미리 버릴지 가져올지 선택".
+      //   플레이어 쪽엔 있던 층(문구 → 사람이 판단 → 선광에서 드러남)이 NPC 엔 통째로 없었다.
+      //   한 짐의 기대값으로 넣는다(specialty.mineAssayMult): TPR 이 오르면 좋은 광석을 안 버리고(FN↓),
+      //   TNR 이 오르면 맥석을 안 지고 온다(FP↓ = 짐칸 절약). 레벨 5 를 1.0 으로 정규화 — 총량 중립.
+      const _assay = (v.land.oreP > 0)
+        ? SPEC.mineAssayMult(skillLvl, v.land.oreP, SPEC.mineTripMinutes(v.land.oreDist || 0))
+        : 1;
+      const oAmt = jdef.base * (v.land.ore || 0) * skillMul * toolB * (1 - _metalGlut) * _assay;
       if (oAmt > 0) {
+        // ★★[재민 확정] 광부는 이제 **원석만** 낸다. 금속은 대장장이가 제련해야 나온다.
+        //   전에는 광부가 광석과 금속을 **동시에** 냈다 — 제련 단계가 통째로 비어 있었고,
+        //   그래서 ore 는 산출만 되고 아무 데도 안 쓰이는 죽은 재화였다(교역재로만 쌓였다).
+        //   이제 ore 가 제련 원료가 되고, 대장장이에겐 무기 수요와 **무관한 상시 일감**이 생긴다.
         addProduce('ore', oAmt);
         // ★청동 희소성 복원: tin을 부산물에서 *제거*. 종전 { copper:0.22, tin:0.11, ... } → tin은 전 마을 자동산출 = 청동 보편재의 근본 원인.
         //   이제 tin은 산지(land.tin>0)만 아래 별도 채굴. copper/iron/장식재는 종전대로 모든 광맥 부산물(청동기: 구리는 흔하되 주석이 병목).
-        const bp = { copper: 0.22, iron: 0.03, silver: 0.05, gold: 0.02, gem: 0.01 };   // ★철 0.03: 청동기엔 철이 희소. tin 제거(산지 전용) — 구리는 흔해도 주석 병목이 청동을 희소화.
-        for (const r in bp) addProduce(r, oAmt * bp[r]);
+        // ★★[재민 확정] 고정 dict 폐기. 지도의 **광종 구성**이 그대로 산출이 된다.
+        //   전에는 금맥 옆 마을이나 철맥 옆 마을이나 {copper .22, iron .03, …} 로 똑같이 나왔다 —
+        //   지도의 광종 배분이 경제에 **전혀 안 닿았다**. 이제 닿는다.
+        //   oreMix 가 없는 호출부(랩·CLI)는 옛 dict 로 폴백해 기존 거동을 보존한다.
+        //   ※oreMix 가 **없는** 호출부(랩·CLI)는 제련 층이 없던 시절 그대로 금속을 바로 낸다 —
+        //     기존 회귀 기준선을 보존하기 위해서다. 지도가 있는 본 게임만 제련을 거친다.
+        if (!(v.land && v.land.oreMix)) {
+          const bp = { copper: 0.22, iron: 0.03, silver: 0.05, gold: 0.02, gem: 0.01 };
+          for (const r in bp) addProduce(r, oAmt * bp[r]);
+        }
         addProduce('salt', oAmt * 0.05); addProduce('clay', oAmt * 0.08);   // ★소금=완충 교역재(광범위 수요 utility 0.8). 제거 시 교역균형 흔들려 취약 시드 boom-bust. 고증(소금길). 이제 광맥 채굴 부산물로 산출(돌 채석과 분리).
       }
       // ★청동 희소성: 주석 채굴 — *산지 마을(land.tin>0)만*. 대부분 마을은 land.tin=0 → tin 산출 0 → 청동 불가(석기 무장).
       //   주석(cassiterite)은 자체 광상 → land.ore와 독립(obsidian/jade 동형: 부존만으로 채굴). 산지 마을이 청동검을 만들고 수출(교역 특산).
       // ★산출을 *마을 규모·광부 수 무관* 정량(광량 = land.tin이 결정)으로 — 대형/소형 산지 마을 간 tin 산출 편차(→청동/명 시드 변동)를 차단.
       //   첫 광부가 마을 일일 정량(TIN_DEPOSIT_YIELD_FLAT × land.tin)을 1회 산출(이후 광부는 tin 안 캠 — 광석·구리는 계속). _tinGlut로 과축적 시 감산.
-      if ((v.land.tin || 0) > 0 && (v._tinToday || 0) === 0) {
+      //   ※oreMix 가 있는 마을(본 게임)은 주석도 **제련에서** 나온다 — 여기서 또 내면 이중 산출이다.
+      if (!(v.land && v.land.oreMix) && (v.land.tin || 0) > 0 && (v._tinToday || 0) === 0) {
         const tinAmt = TIN_DEPOSIT_YIELD_FLAT * (v.land.tin || 0) * (1 - _tinGlut);
         if (tinAmt > 0) { addProduce('tin', tinAmt); v._tinMined = (v._tinMined || 0) + tinAmt; v._tinToday = (v._tinToday || 0) + tinAmt; }
       }
@@ -1744,7 +2468,9 @@ function tickVillage(v, day) {
       if (jaAmt > 0) addProduce('jade', jaAmt);
       if (oAmt > 0 || obAmt > 0 || jaAmt > 0) workNPC(npc);
     } else if (jdef.output && baseAmt > 0) {
-      // ★[재민 지시 "결함 전부 수정"] 수요-캡(jdef.stockCap) — 재고 ≥ 캡이면 산출·투입 모두 스킵(ba06fc2 동형)
+      // ★[재민 지시 "직접 해결"] 수요-캡(jdef.stockCap) — 재고가 캡 이상이면 **산출도 투입도** 건너뛴다.
+      //   투입까지 멈추는 게 요점: 아무도 안 쓸 갑옷에 stone·hide·ore를 계속 태우던 게 결함이었다.
+      //   (노동은 놀지만 job-switch 재배치 경로가 곧 데려간다 — mason taper와 달리 이 직군엔 잉여 전용처가 없다.)
       if (jdef.stockCap && (v.storage[jdef.output] || 0) >= jdef.stockCap(v)) { continue; }
       for (const [inp, need] of Object.entries(jdef.inputs || {})) {
         _cons(v, inp, Math.min(v.storage[inp] || 0, need));   // ★flow-EMA(실차감분)
@@ -2224,6 +2950,32 @@ function pickDeficitJob(v) {
   for (const j of JOB_NAMES) if (JOBS[j].toolDependent) _toolDeps += (counts[j] || 0);
   const toolPer = ((v.storage.tool || 0) + (v.storage.bronze_tool || 0) + (v.storage.iron_tool || 0)) / Math.max(1, _toolDeps);
   if (toolPer < 1.5 && hasSlot(v, 'mason', cap, counts)) return 'mason';   // ★S2 도구=석기 → 석공
+  // ★★[재민 지시 "무기 축 복구"] 석공 채용을 **목표와 직접 비교**한다.
+  //   전에는 석공이 무기 때문에 뽑히는 유일한 경로가 "전사 ≥ 1 && 무기 < N×0.5" 안에 있었다.
+  //   그런데 전사는 폐지된 직업(행상)에 막혀 영영 0 이라, 그 경로가 통째로 닫혀 있었다.
+  //   결과: 석공 69명(목표 204) · 무기 재고가 병기고 목표의 **33%** 에서 멈춤 · 병기고 결손 49/51 마을.
+  //   ★반대로 전사를 켜보면 이번엔 그 조건이 **영구히 참**이 되어 석공이 488명까지 폭주했다.
+  //     둘 다 틀린 이유는 같다 — 석공 정원을 전사에 묶었기 때문이다.
+  //   masonTarget 은 이미 도구 마모 + 병기고 결손을 통합해 계산한다. 다른 장인(대장장이·갑옷장·
+  //   재봉사·요리사)은 전부 `counts < target` 규약을 쓴다. 석공만 예외였던 것을 되돌린다.
+  //   ⚠식량 게이트를 함께 건다. 이걸 안 걸었더니 식량이 약한 광산 마을 3곳(광산2·3·6)이
+  //     석공에 인력을 뺏겨 소멸했다(실측). 굶는 마을이 석기 장인을 늘리는 건 순서가 틀렸다.
+  if ((counts.mason || 0) < masonTarget(v) && totalFoodEquivalent(v) > N * 30
+      && hasSlot(v, 'mason', cap, counts)
+      && ((v.storage.stone || 0) >= 0.5 || (v.storage.wood || 0) > N * 0.5)) return 'mason';
+  // ★★[재민 질문 "전사 켜면 왜 광부가 0이 돼?"] 에 대한 답이자 그 수리.
+  //   광부는 이 picker 에서 **맨 마지막 7단계("풍부 토지 분야")에만** 있었다. 그래서
+  //   앞 단계 조건이 하나라도 오래 참이면 광부는 영영 안 뽑히고, 이미 있던 광부는
+  //   다른 직업 충원에 차출돼 사라진다(기회비용이 낮아 1순위로 뽑혀 나간다).
+  //   실측: 전사 게이트를 열자 **25일 만에 광부 0**, 원석 재고가 156 에 얼어붙어 800일 내내 그대로였다.
+  //   (석공 폭증은 500일 이후라 원인이 아니라 결과였다 — 도구·무기 결손이 누적된 것.)
+  //   ⇒ 채굴에도 **파생수요**를 준다: 녹일 원석이 모자라면 캘 사람을 뽑는다.
+  //     제련이 원석을 다 먹고 굶는데 광부를 안 뽑는 건 어느 모로 봐도 결함이다.
+  if ((v.land.ore || 0) > 0.15 && (v.storage.ore || 0) < N * ORE_STOCK_PC
+      && hasSlot(v, 'miner', cap, counts)) return 'miner';
+  // ★★[재민 확정] 제련 — 광석이 쌓였으면 녹일 사람이 필요하다. **무기 수요와 무관한 상시 일감**이라
+  //   전사 사슬(상인2→전사→무기부족→대장장이)을 안 거친다. 그 사슬은 첫 고리가 폐지된 직업이라 죽어 있었다.
+  if ((counts.smith || 0) < smeltTarget(v) && hasSlot(v, 'smith', cap, counts)) return 'smith';
 
   // 3) 식량 자리 70% 미만 + 식량 잉여 적당 → 식량 직업 우선
   //   Phase 4d-6 fix: food storage가 N*20일치 이상 풍부하면 식량 게이트 우회 (자원 직업으로)
@@ -2248,17 +3000,34 @@ function pickDeficitJob(v) {
   }
 
   // 6.5) warrior — merchant 있는 교역 마을이 캐러밴 호위 양성. 인구 5%까지. ★무기(돌칼/철칼) 보유 필수.
-  if (foodRich && (counts.merchant || 0) >= 2 &&
-      (counts.warrior || 0) < Math.max(2, Math.floor(N * 0.05)) &&
+  // ★[죽은 조건] 전사 채용이 `counts.merchant >= 2` 를 요구하고 있었다. 그런데 행상은
+  //   **폐지된 직업**이다(JOBS.merchant 정원 0 — "교역은 기본 NPC가 남는 시간에 왕복").
+  //   정원이 0이라 상인은 영원히 0명이고, 따라서 전사도 영원히 0명이었다.
+  //   그리고 대장장이 채용이 전사 1명 이상을 요구하므로, **대장장이도 영원히 0명**이었다.
+  //   실측 51개 마을 800일: 전사 0 · 대장장이 0 · 청동 0. 사슬의 첫 고리가 폐지된 직업이었던 것.
+  //   ⇒ 다른 직업과 같은 규약으로 되돌린다: 목표 함수(warriorTarget)와 비교한다.
+  //     무장 게이트(보유 무기 ≥ 전사+1)와 식량 게이트(foodRich)는 그대로 둔다.
+  //   ⚠[실측으로 보류] 이 줄을 warriorTarget 비교로 바꾸면 전사가 44~64명 생기는데,
+  //     그 순간 병기고 목표(인구×MELEE_ARMORY_PC 0.72 = 1,812)가 살아나 **석공이 620명**까지 불고
+  //     **광부가 0명**이 된다(무기 재고는 412 에서 더 안 오른다 — 도구 수요에 밀려 무기를 못 만든다).
+  //     즉 전사를 켜는 것만으로는 안 되고, 평시 병기고 목표를 전사 실수요 기준으로 낮추는 일이
+  //     같이 가야 한다. 그건 MELEE_ARMORY_PC=0.72 를 건드리는 일이라(주석: "측정으로 확정된 생존 하한")
+  //     별도 회부 후에 한다. 지금은 옛 조건을 그대로 둔다.
+  if (foodRich &&
+      (counts.warrior || 0) < warriorTarget(v) &&
       (v.storage.weapon || 0) >= (counts.warrior || 0) + 1 &&
       hasSlot(v, 'warrior', cap, counts)) {
     return 'warrior';
   }
   // ★S2 무기 부족 — 금속(구리+주석) 있으면 대장장이(청동검), 없으면 석공(마제석검). ★전사 기준(석공·대장장이는 전사 무장 담당) — 사냥꾼 활은 자가제작(archery)로 자급하므로 여기서 석공을 강제하지 않음.
+  // ★★[재민 지시 "무기 축 복구"] 이 줄의 무기 기준(N×0.5)이 **목표 함수와 달랐다.**
+  //   masonTarget/smithTarget 은 병기고 목표를 식량안보에 따라 N×0.72 또는 max(2, 전사×1.2) 로 잡는데,
+  //   여기서는 그것과 무관하게 N×0.5 를 썼다. 그래서 목표는 이미 찼는데 채용 조건은 계속 참인
+  //   상태가 되어 **석공이 목표의 8배(559명 / 목표 67)까지 폭주**했다(전사를 켰을 때 실측).
+  //   ⇒ 다른 장인과 같은 규약으로: 목표를 넘으면 더 뽑지 않는다.
   if ((counts.warrior || 0) >= 1 && (v.storage.weapon || 0) < N * 0.5) {
-    const _hasMetal = (v.storage.copper || 0) >= 0.3 && (v.storage.tin || 0) >= 0.12;
-    if (_hasMetal && hasSlot(v, 'smith', cap, counts)) return 'smith';
-    if (hasSlot(v, 'mason', cap, counts)) return 'mason';
+    if (_smithBeatsMason(v) && (counts.smith || 0) < smithTarget(v) && hasSlot(v, 'smith', cap, counts)) return 'smith';
+    if ((counts.mason || 0) < masonTarget(v) && hasSlot(v, 'mason', cap, counts)) return 'mason';
   }
   // Phase 4d-7: armorsmith — warrior 있고 hide 있는 마을
   if ((counts.warrior || 0) >= 1 && v.storage.hide > N * 0.5 && v.storage.armor < N * 0.5 &&
@@ -2343,11 +3112,87 @@ function masonTarget(v) {
 }
 // ★S2 대장장이(smith) 노동목표 = *청동·철 무기* 수요. 금속(구리/주석 또는 철) 있어야 성립(없으면 0 → 석공이 저티어 무기).
 //   무기는 교역으로 수출 → 금속 있는 전사·사냥꾼 마을은 상시 대장장이. 청동 희소(금속=광맥/교역)라 대장장이도 금속 마을 위주.
+// ★★[재민 확정] "청동이 가격이 저렴하면 청동을 제작하고, 그렇지 않으면 석기만.
+//                 물론 석기와 청동 무기 모두 제작할 때도 있겠지? 이건 경제학적 원리로 해소되잖아."
+//   그렇다. **한계비용 비교**다. 같은 재화(무기)를 만드는 두 기술이 있으면
+//   싼 쪽을 쓰고, 비용이 비슷해지면 둘 다 쓴다.
+//
+//   품질이 다르면 같은 재화가 아니므로 **품질 1.0 환산 재료비**로 잰다:
+//     석공   = 돌 0.5 × 돌값        ÷ 0.5(마제석검 등급)
+//     대장장이 = Σ(금속 투입 × 금속값) ÷ 합금 등급
+//
+//   이 하나로 세 가지가 동시에 풀린다 —
+//     · 순동만 있는 마을: 0.42×4 ÷ 0.466 = 3.6  >  석공 2.1  → **석기를 쓴다**(고증 그대로)
+//     · 주석이 섞이면:    0.42×4 ÷ 1.0   = 1.7  <  석공 2.1  → 청동으로 넘어간다
+//     · 금을 섞으면:      0.42×13.6 ÷ 1.09 = 5.2 >> 석공     → **금 무기를 안 만든다**
+//   금이 물성상 좋은데도 아무도 안 쓰는 이유가 값이라는 걸, 따로 막지 않고 값이 말하게 둔다.
+//
+//   "둘 다 만들 때"도 이미 구조에 있다 — BRONZE_ARMORY_FRAC 이 청동을 병기고의 일부까지만
+//   허용하므로, 청동이 싸도 나머지는 석공의 마제석검이 채운다.
+const STONE_PER_WEAPON = 0.5;      // 석공이 마제석검 1회에 쓰는 돌(위 produceSpecial 'mason' 과 동일)
+function _matPrice(v) {
+  const t = (v._world && typeof v._world.priceFn === 'function') ? v._world.priceFn(v) : null;
+  let SP = null; try { SP = require('../server/specialty'); } catch (e) { }
+  return (r) => {
+    const p = t && t[r];
+    if (p > 0) return p;
+    if (BASE_VALUE[r] > 0) return BASE_VALUE[r];
+    const b = SP && SP.RESOURCES[r] && SP.RESOURCES[r].baseValue;
+    return b > 0 ? b : 1;
+  };
+}
+function _masonWeaponCost(v) { const p = _matPrice(v); return (STONE_PER_WEAPON * p('stone')) / WEAP_Q_STONE; }
+function _smithWeaponCost(v) {
+  const m = _alloyMelt(v); if (!m) return Infinity;
+  const p = _matPrice(v);
+  let c = 0; for (const k in m.take) c += m.take[k] * p(k);
+  return c / Math.max(0.01, Math.min(1.2, m.grade) * WEAP_Q_BRONZE);
+}
+function _smithBeatsMason(v) {
+  const s = _smithWeaponCost(v);
+  if (!isFinite(s)) return _ironWeaponCapable(v);   // 녹일 게 없으면 철(주조 아닌 별도 축)만 본다
+  return s < _masonWeaponCost(v) || _ironWeaponCapable(v);
+}
+// ★제련 노동목표 — 쌓인 원석을 소화하는 데 필요한 대장장이 수.
+//   이게 무기 수요와 **독립**이라는 게 핵심이다. 전에는 대장장이가 오직 무기 때문에만 필요했고,
+//   무기 수요는 전사에서 왔고, 전사는 폐지된 직업(행상)에 막혀 있어서 사슬 전체가 죽어 있었다.
+//   광석이 있으면 녹일 사람이 필요하다 — 그건 누구의 허락도 필요 없다.
+const ORE_STOCK_PC = 0.5;   // 1인당 원석 재고 목표 — 이 아래면 광부를 뽑는다(제련 원료 파생수요)
+const SMELT_LABOR_CAP_PC = 0.05;   // 제련에 쓸 노동 상한(인구 비율) — 야금은 마을 노동의 일부일 뿐
+function smeltTarget(v) {
+  const mix = v.land && v.land.oreMix;
+  if (!mix) return 0;
+  const ore = v.storage.ore || 0;
+  if (ore < SMELT_MIN_ORE) return 0;
+  // ★★[재민 지시 "경제학적 원리에 입각해"] 제련의 **한계 부가가치**가 양수일 때만 사람을 붙인다.
+  //   전에는 "원석이 쌓였으면 무조건" 이라 금속이 남아도는데도 계속 제련했고, 그 노동이 식량
+  //   생산을 밀어내 인구가 1,804 → 1,067 로 무너졌다(실측). 금속이 흔해지면 가격이 떨어지고
+  //   그러면 제련은 더 이상 남는 장사가 아니다 — 그때 멈추는 게 옳다.
+  //     한계 부가가치 = SMELT_YIELD × (광종 가중 금속가) − 원석가
+  //   ⚠게이트는 **기준가**로 본다. 시장가로 보면 제련이 원석을 소진시켜 원석값을 스스로 올리고,
+  //     그 값이 게이트를 닫아 제련이 영구 정지한다(자기 꼬리를 무는 되먹임 — 실측으로 확인).
+  //     설비 결정은 장기 가격으로 하는 게 맞다. 단기 과잉은 아래 금속 글럿이 따로 잡는다.
+  let mv = 0, tot = 0;
+  for (const k in mix) { const q = mix[k]; if (!(q > 0)) continue; tot += q; mv += q * (BASE_VALUE[k === 'jade_raw' ? 'jade' : k] || 1); }
+  if (!(tot > 0)) return 0;
+  if (!(SMELT_YIELD * (mv / tot) - (BASE_VALUE.ore || 1) > 0)) return 0;   // 장기적으로 손해면 안 한다
+  // 금속 과잉이면 멈춘다 — 이미 쌓인 걸 더 녹일 이유가 없다(광부 _metalGlut 과 같은 논리).
+  {
+    const N0 = v.npcs.length || 1;
+    let have = 0, want = 0;
+    for (const k in mix) { const id = k === 'jade_raw' ? 'jade' : k; have += v.storage[id] || 0; want += (RESERVE_PC[id] || 0.1) * N0; }
+    if (have > want * 4) return 0;
+  }
+  const per = 0.45 * SMELT_PER_LABOR;                        // 대장장이 1명 하루 제련량(숙련 1.0 기준)
+  const need = Math.max(1, Math.round(ore / (per * 30)));    // 한 달 안에 재고를 소화할 인원
+  return Math.min(Math.max(1, Math.ceil((v.npcs.length || 1) * SMELT_LABOR_CAP_PC)), need);
+}
 function smithTarget(v) {
   // ★청동 희소성: 청동은 *청동 자격* 마을만(주석 산지·교역 허브). 트레이스 주석뿐인 마을은 청동 생산 안 함(석공이 마제석검).
-  const hasBronze = _bronzeCapable(v) && (v.storage.copper || 0) >= 0.3 && (v.storage.tin || 0) >= 0.12;
+  const hasBronze = _smithBeatsMason(v) && (v.storage.copper || 0) >= 0.3;
   const hasIron = _ironWeaponCapable(v);   // ★철검=최희소: 철 풍부 마을만(트레이스 축적 미달 → 석공 마제석검)
-  if (!hasBronze && !hasIron) return 0;   // 금속 없으면 대장장이 불필요(무기는 석공 담당)
+  const _smelt = smeltTarget(v);
+  if (!hasBronze && !hasIron) return _smelt;   // 무기는 석공 담당이어도, 제련할 원석이 있으면 필요하다
   // ★청동 희소성: 청동 자격 마을은 대장장이가 청동검 *병기고*를 채움(무산지 석기 병기고의 청동판). 재고=근접검(_swordFrac) → 활이 채운 pool에 가려 청동검 노동목표가 죽지 않음.
   //   병기고 목표(N×MELEE_ARMORY_PC) — 전사 실수요를 넘어 마을 청동검 재고(청동 무기 0.2/명 목표의 공급원). 청동 자격 아니면(철만) 전사 커버리지만.
   const N0 = v.npcs.length || 1;
@@ -2360,7 +3205,12 @@ function smithTarget(v) {
   const cuRich = (v.storage.copper || 0) > N * 3;
   const weapThin = (v.storage.weapon || 0) < N * 0.8;   // 무기 재고 얇음(수출로 소진) → 특산 제작 재개
   const exportSmiths = (hasBronze && cuRich && weapThin) ? Math.max(1, Math.floor(N * 0.03)) : 0;
-  return Math.max(local, exportSmiths);
+  // ★★제련과 주조는 **다른 일**이다 — max 가 아니라 **합**이다.
+  //   max 로 두면 제련하는 날 무기를 못 만든다(실측: 무기 551 → 255, 그러자 전사·호위가 무너지고
+  //   교역이 줄어 인구가 1,804 → 1,045 로 급감했다). 정원을 합으로 두면 대장장이가 늘고,
+  //   개별 대장장이는 "원석이 있으면 제련, 없으면 주조"로 **자연히 분담**된다
+  //   (첫 사람이 원석을 다 소화하면 나머지는 주조로 넘어간다).
+  return Math.max(local, exportSmiths) + smeltTarget(v);
 }
 // ★전사 readiness 목표 — *정원 아님*. 교역 캐러밴 수 × 약탈위협으로 호위 수요 파생.
 //   위협 없으면 0(평시 전사 불필요), 위협 클수록 ↑. 글럿 마을의 전사 과잉(19%) 방지 + 평시 자연 동원해제.
@@ -2368,10 +3218,20 @@ function warriorTarget(v) {
   const ts = v.tradeStats || {};
   const sent = Math.max(1, ts.caravansSent || 0);
   const raidRate = Math.min(0.9, (ts.caravansRaided || 0) / sent);
-  if (raidRate <= 0.03 && (ts.tradersKilled || 0) === 0) return 0;   // 위협 없으면 전사 0
+  // ★★[재민 확정] "전사를 인구 비례 최소한으로 양성하도록 비율을 정해줘.
+  //                 그리고 무기도 평시에 일정량은 구비해둬야 해."
+  //   전에는 위협이 0이면 전사도 0을 반환했다. 그런데 이 마을들은 평시가 기본 상태라
+  //   전사가 영영 안 생기고, 전사가 없으면 대장장이 채용 사슬도 통째로 끊겼다
+  //   (실측: 51개 마을 전부 전사 0 → 대장장이 0 → 청동 0).
+  //   평시 상비를 인구의 3%(최소 1명) 둔다 — 마을 50명이면 1~2명. 야생·도적에 대한 최소 대비이고,
+  //   무기 실수요를 만들어 병기고(MELEE_ARMORY_PC 0.72/인)가 살아 있게 한다.
+  //   ※무장 게이트는 그대로다: 보유 무기 수를 넘는 전사는 유지되지 않는다(무기 없으면 자동 동원해제).
+  const PEACE_WARRIOR_PC = process.env.PEACE_W != null ? Number(process.env.PEACE_W) : 0.03;
   const N = v.npcs.length || 1;
+  const peace = Math.max(1, Math.round(N * PEACE_WARRIOR_PC));   // 평시 상비(하한)
+  if (raidRate <= 0.03 && (ts.tradersKilled || 0) === 0) return peace;   // 위협 없어도 최소 상비는 둔다
   const caravans = Math.max(1, Math.floor(N * 0.08));   // 동시 교역 캐러밴 수(호위 대상)
-  return Math.ceil(caravans * (0.5 + raidRate) * _warlikeMult(v));   // ★호전 성격: 위협 시 더 강한 동원(평시 무비 유지 — 위협 게이트 상단, 안전)
+  return Math.max(peace, Math.ceil(caravans * (0.5 + raidRate) * _warlikeMult(v)));   // ★호전 성격: 위협 시 더 강한 동원
 }
 function weaponsmithTarget(v) {
   return 0;   // ★S2 폐지 — 대장장이(smith)로 통합. 무기 노동목표는 smith(금속)·mason(석기/활)이 담당.
@@ -2447,8 +3307,16 @@ function pickDeficitJob_rational(v, world) {
   let _toolDeps = toolDepCount(v);
   // ★S2 석공(석기 도구 + 저티어 무기[마제석검·활]) — 돌 있으면 충원. masonTarget이 도구+무기 수요 통합.
   if ((counts.mason || 0) < masonTarget(v) && ((v.storage.stone || 0) >= 0.2 || (v.storage.wood || 0) > N * 0.5)) return 'mason';
-  // ★S2 대장장이(청동·철 무기) — 청동 자격(주석 산지·교역 허브) OR 철 풍부해야. smithTarget이 자격 없으면 0 반환 → 자연 스킵.
-  if ((counts.smith || 0) < smithTarget(v) && ((_bronzeCapable(v) && (v.storage.copper || 0) >= 0.3 && (v.storage.tin || 0) >= 0.12) || _ironWeaponCapable(v))) return 'smith';
+  // ★★[재민 확정] 채용 조건도 이산 분기를 뺀다.
+  //   전에는 "주석 산지거나 / 철 부자거나" 라는 **두 개의 문턱**이었다. 그런데 대장장이가
+  //   임의 배합을 녹일 수 있게 된 지금, 그 문턱은 자기 판단 기준이 아니다.
+  //   진짜 기준은 하나다 — **대장장이가 석공보다 나은 무기를 만들 수 있는가.**
+  //   순동 등급 0.466 < 마제석검 0.5 라서, 구리만 있는 마을은 저절로 석기를 유지한다
+  //   (고증 그대로 — 순동은 석기를 밀어내지 못했다). 주석 1%만 섞여도 0.63 이 되어 역전된다.
+  //   ★제련도 대장장이 일이다 — 금속이 아직 없어도 **원석이 있으면** 뽑아야 한다.
+  //     (금속이 없으면 _smithBeatsMason 이 false 라, 이 조건만 두면 "금속이 없어서 대장장이를 안 뽑고
+  //      대장장이가 없어서 금속이 안 생기는" 순환에 갇힌다. 실제로 v2 랩에서 그렇게 갇혀 있었다.)
+  if ((counts.smith || 0) < smithTarget(v) && (_smithBeatsMason(v) || smeltTarget(v) > 0)) return 'smith';
   if ((counts.armorsmith || 0) < armorsmithTarget(v) && (v.storage.hide || 0) > N * 0.3) return 'armorsmith';
   if ((counts.cook || 0) < cookTarget(v)) return 'cook';   // ★유령 박멸 #4: 요리사 — 스톡-플로우 노동목표(장인 패턴). 잉여 마을만(cookTarget 내 게이트)
   if ((counts.tailor || 0) < tailorTarget(v)) return 'tailor';   // ★의복(2026-07-12): 재봉사 — 스톡-플로우 노동목표(장인 패턴). 옷감 게이트는 tailorTarget 내(옷감 보온-eq<1 → 0 — 요리사 결함[픽커 후보 부재] 재발 방지로 여기 명시 등록)
@@ -2594,10 +3462,15 @@ function autoSwitchJob(v, day, world) {
       const OUT1 = { farmer: 1.5 * (v.land.fertility || 0), fisher: 1.2 * (v.land.water || 0), hunter: 0.7 * (v.land.game || 0),
         lumberjack: 0.9 * (v.land.wood || 0), miner: 0.7 * (v.land.ore || 0), forager: 0.8,
         mason: 1.0, smith: 0.9, weaponsmith: 0.8, armorsmith: 0.8, cook: 1.0, warrior: 0.3,
-        tailor: 0.5 };   // ★[재민 지시 "결함 전부 수정"] tailor 표 누락 보수(08071de 동형 — 없으면 전환가치가 식량가 폴백으로 계산돼 상시 보류)
+        tailor: 0.5 };   // ★[재민 지시 "결함 전부 수정"] tailor 누락 보수 — jdef.base 0.5(하루 옷 0.5벌)
       const OUTRES = { farmer: 'food', fisher: 'fish', hunter: 'meat', lumberjack: 'wood', miner: 'ore', forager: 'food',
         mason: 'tool', smith: 'weapon', weaponsmith: 'weapon', armorsmith: 'armor', cook: 'cooked_food', warrior: 'weapon',
         tailor: 'clothes' };   // ★S2 mason 산출=석기(tool) · smith 산출=청동/철 무기(weapon)
+      // ★★[재민 지시 "결함 전부 수정" 2026-08-01] tailor가 이 두 표에 없어서 needValue가 폴백
+      //   (0.5 × w('food'))로 계산됐다 — 재봉 전환의 가치를 **옷 가격이 아니라 식량 가격**으로 재던 것.
+      //   실측(시드7 rational): need='tailor' 92회 중 68회가 hold(0.50<…)로 보류 → 6마을 CLI 세계에선
+      //   800일 내내 재봉사 0·옷 0벌(의복 축 전체 사망 — 요리사 '유령 박멸 #4'와 같은 계열의 표 누락).
+      //   표 누락은 test-picker-tables.js가 상시 감시한다(merchant는 산출재 없음 — 명시 예외).
       const needValue = (OUT1[need] || 0.5) * w(OUTRES[need] || 'food');
       if (needValue < bestCost * 1.3) { v._dbgSwitch.did = 'hold(' + needValue.toFixed(2) + '<' + (bestCost * 1.3).toFixed(2) + ')'; return; }
     }
@@ -2613,14 +3486,25 @@ function tickTrade(world, day) {
   if (day % TRADE_INTERVAL !== 0) return;  // 매 3일 거래 사이클 (가격 변동 ↑)
 
   // 마을당 안전 reserve (인구 비례)
-  const RESERVE = {
-    food: 30, fish: 10, meat: 8, cooked_food: 5,
-    wood: 5, stone: 3, ore: 1, tool: 1.5,
-    weapon: 0.5, armor: 0.5,  // Phase 4d-7: warrior 1명당 1개 (수요)
-    fruit: 2, vegetable: 2, mushroom: 1, twig: 2, pebble: 1, hide: 1, herb: 0.5,   // ★약재(§9) — v1 레거시 교역로에도 유통
-    bone: 1, tigerhide: 0.03,   // ★§9 3차 — 뼈(무기장 투입 예비 1/인) · 호피(위신 포화점만 쥐고 잉여 수출)
-  };
+  const RESERVE = RESERVE_PC;   // ★공유표(위 RESERVE_PC) — 두 벌로 갈라지면 반드시 어긋난다
   const TRADABLE = Object.keys(RESERVE);
+  // ★위신재 — 웃돈 상한을 따로 둔다(v2 LUX_ADJ_MAX 와 같은 근거: 천장 있는 효용에 무한한 값 금지).
+  const LUXV1 = LUX_V1, LUXV1_ADJ_MAX = LUX_V1_ADJ_MAX;
+  // ★유효수요 — 세계 총공급 중 내 인구 몫을 넘는 목표를 세우지 않는다(v2 동형).
+  //   필수재는 제외한다: 식량은 세계에 없어도 원해야 기근 신호가 산다.
+  const ESSENTIAL = ESSENTIAL_V1;
+  let _wsCache = null;
+  const worldShare = (r, N) => {
+    if (!_wsCache) {
+      _wsCache = { stock: {}, pop: 0 };
+      for (const u of world.villages) {
+        _wsCache.pop += (u.npcs && u.npcs.length) || 0;
+        const st = u.storage || {};
+        for (const k in st) if (st[k] > 0) _wsCache.stock[k] = (_wsCache.stock[k] || 0) + st[k];
+      }
+    }
+    return (_wsCache.stock[r] || 0) * (N / Math.max(1, _wsCache.pop));
+  };
 
   // 1) 각 마을 가격표 + 잉여/부족 + merchant capacity 계산
   const data = [];
@@ -2633,10 +3517,12 @@ function tickTrade(world, day) {
     const offer  = {};
     const demand = {};
     for (const r of TRADABLE) {
-      const reserve = computeDynReserve(v, cons, r, RESERVE[r]);
+      let reserve = computeDynReserve(v, cons, r, RESERVE[r]);
+      if (!ESSENTIAL[r]) reserve = Math.min(reserve, Math.max(0.2, worldShare(r, N) * 1.5));   // 유효수요
       const stock = v.storage[r] || 0;
       const ratio = Math.max(-0.9, Math.min(2.0, (reserve - stock) / Math.max(1, reserve)));
-      const adj = Math.max(0.1, 1 + ratio * 2);
+      let adj = Math.max(0.1, 1 + ratio * 2);
+      if (LUXV1[r]) adj = Math.min(adj, LUXV1_ADJ_MAX);   // 위신재 웃돈 상한
       prices[r] = (BASE_VALUE[r] || 1) * adj;
       // offer/demand 임계도 동적 reserve 기준
       if (stock > reserve * 0.5) offer[r] = Math.max(0, stock - reserve * 0.3);
@@ -3031,7 +3917,13 @@ function main() {
     evDay += 200 + Math.floor(srand() * 300);
   }
 
-  const world = { villages, tradeLog: [], events, caravans: [] };
+  // ★[재민 지시 "결함 전부 수정" 2026-08-01] CLI 세계에 picker 필드가 없어 **legacy picker로 돌고 있었다**
+  //   — 실서버(central.js·villages.js)는 전부 'rational'이다. 계측기가 프로덕션과 다른 기계를 재던 것
+  //   (검증 원칙 ⑫ "본 게임의 것을 부른다"의 picker판). legacy엔 tailor 규칙 자체가 없어 CLI 세계 의복 축이
+  //   800일 내내 0이었다(옷 0벌·재봉사 0 — 프로덕션엔 없는 유령 결함). rational로 정렬한다.
+  //   ※회귀표 수치는 이 정렬로 재기준선이 된다(하네스는 수치를 출력만 하고 단정하지 않으므로 코드 파손 없음).
+  const world = { villages, tradeLog: [], events, caravans: [], picker: 'rational' };
+  for (const v of villages) v._world = world;   // ★백참조 — 이게 없으면 picker 판별부(v._world.picker)가 영영 legacy로 떨어진다(createWorld는 심는데 main은 안 심고 있었다)
 
   // 시뮬 루프
   for (let day = 1; day <= TOTAL_DAYS; day++) {
@@ -3218,29 +4110,54 @@ function computeDynReserve(v, cons, resourceKey, defaultPerPop) {
 // 마을 시세 (가격표) 계산 — 다른 마을 시세 비교용
 function computeVillagePrices(v) {
   const N = v.npcs.length || 1;
-  const RESERVE = {
-    food: 30, fish: 10, meat: 8, cooked_food: 5,
-    wood: 5, stone: 3, ore: 1, tool: 1.5,
-    weapon: 0.5, armor: 0.5,
-    fruit: 2, vegetable: 2, mushroom: 1, twig: 2, pebble: 1, hide: 1, herb: 0.5,   // ★약재(§9) — v1 레거시 교역로에도 유통
-    bone: 1, tigerhide: 0.03,   // ★§9 3차 — 뼈(무기장 투입 예비 1/인) · 호피(위신 포화점만 쥐고 잉여 수출)
-  };
-  // Phase 4d-8: 동적 수요 계산
   const cons = computeDailyConsumption(v);
   const prices = {};
-  for (const r of Object.keys(RESERVE)) {
-    const reserve = computeDynReserve(v, cons, r, RESERVE[r]);
+  // 유효수요 — 세계 총공급 중 내 몫(월드 문맥이 있을 때만). 없으면 기존 거동.
+  const w = v._world;
+  let ws = null;
+  if (w && Array.isArray(w.villages)) {
+    if (!w._rsCache || w._rsCacheDay !== w.day) {
+      const c = { stock: {}, pop: 0 };
+      for (const u of w.villages) {
+        c.pop += (u.npcs && u.npcs.length) || 0;
+        const st = u.storage || {};
+        for (const k in st) if (st[k] > 0) c.stock[k] = (c.stock[k] || 0) + st[k];
+      }
+      w._rsCache = c; w._rsCacheDay = w.day;
+    }
+    ws = w._rsCache;
+  }
+  for (const r of Object.keys(RESERVE_PC)) {
+    let reserve = computeDynReserve(v, cons, r, RESERVE_PC[r]);
+    if (ws && !ESSENTIAL_V1[r]) {
+      reserve = Math.min(reserve, Math.max(0.2, (ws.stock[r] || 0) * (N / Math.max(1, ws.pop)) * 1.5));
+    }
     const stock = v.storage[r] || 0;
     const ratio = Math.max(-0.85, Math.min(2.0, (reserve - stock) / Math.max(1, reserve)));
-    const adj = Math.max(0.3, 1 + ratio * 2);
+    let adj = Math.max(0.3, 1 + ratio * 2);
+    if (LUX_V1[r]) adj = Math.min(adj, LUX_V1_ADJ_MAX);
     prices[r] = (BASE_VALUE[r] || 1) * adj;
+  }
+  // ★중간재 상한 — 원석은 그것이 될 금속보다 비쌀 수 없다(v2 동일 규칙, 사유는 그쪽 주석 참조).
+  {
+    const mix = v.land && v.land.oreMix;
+    if (prices.ore != null && mix) {
+      let mv = 0, tot = 0;
+      for (const k in mix) { const q = mix[k]; if (!(q > 0)) continue; tot += q; mv += q * (prices[k === 'jade_raw' ? 'jade' : k] || 0); }
+      if (tot > 0) prices.ore = Math.min(prices.ore, SMELT_YIELD * (mv / tot));
+    }
   }
   return prices;
 }
 
 module.exports = {
+  _LEGACY_CONTRIBUTES: LEGACY_CONTRIBUTES,
+  totalFoodEquivalent,   // 진단 하네스가 병기고 식량안보 게이트를 정확히 재려면 필요
+  // 가치사슬 하네스(scripts/test-valuechain.js)가 상수를 **복제하지 않고** 읽도록 노출.
+  _SMELT_PER_LABOR: SMELT_PER_LABOR, _SMELT_YIELD: SMELT_YIELD, _MELT_TOTAL,
   createWorld,
   tickWorld,
+  tickTrade, tickCaravans,   // ★랩이 본 게임과 같은 루프를 돌려면 필요(누락돼 있어서 랩이 '교역 없는 세계'를 재고 있었다)
   serializeWorld,
   computeVillagePrices,
   computeDailyConsumption,
@@ -3320,8 +4237,10 @@ const BASE_VALUE_V2 = {
   herb: 4.0,   // ★약재(§9 2차): 채집 산출 ~15%·호골 — 노동집약 anchor(v1 BASE_VALUE와 동일)
   bone: 1.5, tigerhide: 40,   // ★§9 3차: 뼈(풍부 저가 투입재) · 호피(최고가 위신재 — 희소 0.3/일 사냥 위험이 anchor 근거, v1 동일)
   ramie: 6,   // ★모시(2026-07-13) — 고급 직물 앵커(거친 삼베 hemp 4보다↑·cotton 6급): 저마 방적·표백이 노동집약(한산모시 고증). 산지=고가 수출 특산
-  wood: 1.67, stone: 2.14, ore: 3.0,
-  tool: 3.0, weapon: 5.0, armor: 5.0,  // 8/5 → 5/3
+  // ★★노동가치 재정합(v1 BASE_VALUE 와 같은 근거 — scripts/test-valuechain.js 참조).
+  //   v2 는 v1 대비 무기·도구를 0.625 배로 낮춰 쓰던 이력이 있다(교역 쏠림 억제). 그 비를 유지한다.
+  wood: 1.67, stone: 1.67, ore: 1.0,
+  tool: 3.0, weapon: 7.5, armor: 7.5,   // v1 12 × 0.625(v2 관행 비)
   bronze_tool: 3.0, iron_tool: 3.0,   // ★도구 대체재(청동·철) — tool과 동일 anchor. satiation 판정용 기준값(누락 시 adj=1 고정→taper 무발동).
   fruit: 1.5, vegetable: 1.5, mushroom: 1.5, twig: 1.0, pebble: 1.0,
   obsidian: 15, jade: 80,   // ★S5 흑요석(예리 교역재, 화살촉·소형칼날) · 옥(위세품 교역재 — 고가). 비교우위 특산.
@@ -3500,6 +4419,36 @@ const FOOD_CLASSES = { food: 1, fish: 1, meat: 1, cooked_food: 1 };   // ★식�
 for (const _fk in (v1.FORAGE_FOOD_FACTOR || {})) FOOD_CLASSES[_fk] = 1;
 // ★위신재(사치) 수요 — 장식재의 use-value는 물리소비가 아니라 위신·심리(positional good). 1인당 목표 보유로 수요 부여.
 //   없는 마을은 교역으로 수입, 광산촌(부산물로 쟁여둠)은 잉여 수출 → 죽어있던 장식교역이 살아나고 광산촌 수입원 다각화.
+// ★위신재 지불의사 상한 — 기준가의 이 배수까지만 낸다.
+//   근거: 위신재는 **필수재가 아니다.** 없어도 마을이 안 망하므로 수요가 가격에 탄력적이다.
+//   지금까지는 식량과 같은 희소도 곱셈을 써서 "없으면 값이 발산"했다(상아 3,185 = 식량의 2,900배).
+//   그 위신재가 줄 수 있는 효용에는 천장이 있다(PRESTIGE_MOD_CAP 0.25 · sat 1인당 2개에서 포화) —
+//   천장이 있는 효용에 무한한 값을 치르는 건 경제적 오류다.
+const LUX_ADJ_MAX = 3.0;
+// ★유효수요(effective demand) — **구할 수 없는 것을 목표로 삼지 않는다.**
+//   전에는 target 이 오로지 인구 비례였다. 세계에 한 개도 없는 자원(상아 등)도 target 이 붙고
+//   stock 은 0(→0.1 바닥)이라 희소도가 발산했다 — 실측 상아 3,184.9 = 같은 마을 식량의 2,900배.
+//   경제학적으로 수요는 **실현 가능할 때만 유효**하다. 세계 총공급 중 내 인구 몫이 상한이다.
+//   ⚠"공급 0 이면 가격 0" 으로 하면 안 된다 — 그러면 아무도 캘 이유가 없어져 영영 공급이 안 생기는
+//     자기실현적 소멸이 된다(실측: 금·은·옥 재고가 전부 0 으로 사라졌다). 가격은 기준가 근처에 두고
+//     **목표만** 제한한다. 캘 유인은 남기고 발산만 막는 것이 옳다.
+const EFFDEM_SHARE = 1.5;   // 인구 비례 몫의 이 배수까지만 목표로 삼는다
+function _worldStockOf(v, r) {
+  const w = v._world;
+  if (!w || !Array.isArray(w.villages)) return null;    // 월드 문맥 없으면 판단 보류(기존 거동)
+  let c = w._effDemCache;
+  if (!c || c.day !== w.day) {
+    c = w._effDemCache = { day: w.day, stock: {}, pop: 0 };
+    for (const u of w.villages) {
+      c.pop += (u.npcs && u.npcs.length) || 0;
+      const st = u.storage || {};
+      for (const k in st) if (st[k] > 0) c.stock[k] = (c.stock[k] || 0) + st[k];
+      const pb = u.dailyProductionBuf || {};           // 오늘 생산분도 공급이다(첫 산출 즉시 반영)
+      for (const k in pb) if (pb[k] > 0) c.stock[k] = (c.stock[k] || 0) + pb[k] * 30;
+    }
+  }
+  return { stock: c.stock[r] || 0, pop: Math.max(1, c.pop) };
+}
 const LUX_TARGET_PC = 0.08;   // 1인당 위신재 목표(각 장식재). 이 근처서 만족(체감), 광산촌은 훨씬 위라 수출.
 // ★호피(§9 3차) 수출 유보점 = v1 위신 포화점(CAP/W = 0.025/인)×1.2 — 위신 상한을 채우는 만큼만 쥐고 잉여는 교역재(외생 수요는 ORNAMENTAL·LUX_TARGET_PC가 부여).
 const TIGERHIDE_KEEP_PC = 1.2 * ((v1.TIGERHIDE_PRESTIGE_CAP && v1.TIGERHIDE_PRESTIGE_W) ? v1.TIGERHIDE_PRESTIGE_CAP / v1.TIGERHIDE_PRESTIGE_W : 0.025);
@@ -3583,12 +4532,47 @@ function computeShadowPrices(v) {
         stock = Math.max(0.1, stock + v.surplusEMA.food * 30);
       }
     }
+    // ★★[재민 지적] "당장 필요하지 않은데 엄청난 자원을 들여 이상한 걸 사오는 장치가 있지는 않은가"
+    //   있었다. 두 겹이었다.
+    //   ① **세계에 존재하지도 않는 자원에 수요가 붙어 있었다.** specialty 196종이 전부 TRADABLE 로
+    //      들어오는데, 그중 상아(ivory) 같은 건 이 세계의 어떤 직업도 생산하지 않는다. 그런데
+    //      target 은 인구 비례로 붙고 stock 은 0(→ 0.1 바닥) 이라 희소도가 발산했다.
+    //      실측: 상아 그림자가격 **3,184.9** — 같은 마을 식량 1.09 의 **2,900배**다.
+    //      공급이 없어 거래가 성사되지 않았을 뿐, 누가 한 개라도 내놓는 순간 마을이 식량을 쏟아붓는다.
+    //      ⇒ **본 적도 없는 것을 원하지 않는다.** 세계 어디에도 공급된 적 없는 자원은 수요가 0이다.
+    //   ② 사치재는 웃돈에 상한이 있다 — 굶으면 식량에 전 재산을 내지만 위신재엔 그러지 않는다.
+    //      필수재의 희소도 곱셈을 위신재에 그대로 쓰면 "없으면 값이 무한대"가 된다.
+    //   ⇒ 목표를 **세계 총공급 중 내 인구 몫**으로 제한한다(위 _worldStockOf 주석 참조).
+    const _ws = _worldStockOf(v, r);
+    //   ⚠**필수재와 자본재는 제외한다.** 식량은 세계에 없어도 원해야 한다 — 그 절박함이 곧
+    //     기근 신호이고 교역을 부른다. 거기에 "구할 수 있는 만큼만 원해라"를 걸면 흉년에
+    //     가격이 안 올라 캐러밴이 식량을 안 옮긴다(실측: 삼림 마을 식량가격이 1000 으로 튀며 기근).
+    //     제한은 **없어도 죽지 않는 것들**(위신재·잡화 롱테일)에만 건다.
+    if (_ws && !SUBSISTENCE_PER_NPC[r] && CAP_TARGET[r] === undefined && !VARIETY_FOOD[r]) {
+      target = Math.min(target, Math.max(0.2, _ws.stock * (N / _ws.pop) * EFFDEM_SHARE));
+    }
     const scarcity = Math.pow(target / stock, elast);
     // ★효용가중 가격상한: 고효용(식량 util1.5→상한1000)은 격차 자유, 저효용 외래품(util0.1→상한16)은 억제.
     //   외래 부산물이 재고0→550배 폭발해 교역 독식하는 걸 막아 staple(돌·식량) 재분배가 캐러밴을 잡게 함.
-    const maxAdj = Math.min(PRICE_ADJ_MAX, 10 * Math.pow(10, util * 2));
+    let maxAdj = Math.min(PRICE_ADJ_MAX, 10 * Math.pow(10, util * 2));
+    if (ORNAMENTAL[r]) maxAdj = Math.min(maxAdj, LUX_ADJ_MAX);   // ②위신재는 웃돈 상한
     const adj = Math.max(PRICE_ADJ_MIN, Math.min(maxAdj, scarcity));
     prices[r] = base * adj;
+  }
+  // ★★[재민 지적] "중간재라 불렀나? 그게 오류를 만들지는 않겠지?" — 만들고 있었다.
+  //   실측: 원석 그림자가격 **39.81** vs 같은 마을 구리 **0.47**. 원석이 그것으로 만드는 금속보다
+  //   85배 비쌌다. 제련이 원석을 소진시키면 원석 재고가 0 이 되고, 희소도(target/stock)가 폭발한다.
+  //   그런데 금속은 쌓여서 가격이 바닥이다 — 그러면 "녹여봐야 손해"가 되어 제련이 **영구 정지**한다.
+  //   제련이 자기 원료를 비싸게 만들어 자기를 죽이는 악순환이다.
+  //   ⇒ 사슬 항등식을 가격에 직접 건다: **중간재는 그것이 될 최종재보다 비쌀 수 없다.**
+  //     P(원석) ≤ 제련수율 × P(그 마을 광종의 금속)
+  {
+    const mix = v.land && v.land.oreMix;
+    if (prices.ore != null && mix) {
+      let mv = 0, tot = 0;
+      for (const k in mix) { const q = mix[k]; if (!(q > 0)) continue; tot += q; mv += q * (prices[k === 'jade_raw' ? 'jade' : k] || 0); }
+      if (tot > 0) prices.ore = Math.min(prices.ore, (v1._SMELT_YIELD || 0.33) * (mv / tot));
+    }
   }
   return prices;
 }

@@ -3592,4 +3592,19 @@ module.exports = {
   warThreats,
   // P3 — 헤드리스 검증 훅(테스트 전용)
   __p3Bind,
+  // ★★[2026-08-01 재민 지적 "기존에 존재하던 전쟁실험실을 수정하면 되는데?"] 계측 훅.
+  //   랩이 마을 부존 추출을 **손으로 다시 짜지 못하게** 본 게임 함수를 그대로 내준다.
+  //   전에 복제했다가 두 번 당했다:
+  //     ① 스캔 환산을 손으로 써서 광맥 부존을 4~7배 낮게 재고 "광부 0" 가짜 결론을 냈다.
+  //     ② 그걸 고친 뒤에도 복제본은 arable·baseSize·sustain·marginalQ·특산·land.<금속> 을
+  //        통째로 빠뜨리고 있었다(extractSustain 미이식). 즉 랩엔 land.tin 이 아예 없었다.
+  //   시딩 선별(pickSeedVillages·VILLAGE_MAX)까지 함께 내준다 — 랩이 51곳을 돌리는 동안
+  //   본 게임은 20곳이었다.
+  __labProbe: {
+    makeTerrainAdapter, extractLandParamsApprox, findOpenCenter, pickSeedVillages,
+    setZoneId: (z) => { state.zoneId = z; },
+    get VILLAGE_MAX() { return VILLAGE_MAX; },
+    get INITIAL_POP() { return INITIAL_POP; },
+    get SZ() { return SZ; },
+  },
 };

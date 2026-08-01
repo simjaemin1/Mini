@@ -3,6 +3,14 @@
 // ★결과 파일을 매번 지우고 실행 실패를 잡는다. 안 그러면 옛 덤프를 읽어 거짓 통과가 난다.
 'use strict';
 const {execFileSync}=require('child_process'); const fs=require('fs');
+
+// ★★[2026-08-01] 회귀 숫자를 보기 **전에** 계측기 자체를 검사한다.
+//   이 세션에 여섯 번 — 스캔 환산 오차·stale dump·교역 누락·폐지된 이주·v1/v2 혼동·손으로 기운 번들 —
+//   전부 "랩이 본 게임과 다른 것을 재고 있었다"였다. 숫자가 맞는지 보기 전에
+//   **무엇을 재고 있는지**를 먼저 확인한다. 여기서 죽으면 아래 숫자는 볼 가치가 없다.
+try { execFileSync('node',['scripts/lab-wiring-check.js'],{cwd:'/root/minirepo',stdio:'inherit'}); }
+catch(e){ console.error('\n❌ 배선 검사 실패 — 회귀 중단. 랩이 본 게임과 다른 것을 재고 있다.'); process.exit(1); }
+
 const rows=[];
 for(const s of [42,7,19,101,256]){
   const f='/root/minirepo/sim/out/sim-'+s+'-800d.json';
