@@ -278,6 +278,23 @@ const CAPTIVE_JOB_BAN = { warrior: 1, hunter: 1 };   // 포로에게 무기를 �
 
 // 자원별 base value — 노동시간(생산 1단위에 드는 표준 일) 역수의 근사.
 //   교역 가격의 anchor. 마을 부족도가 여기 곱해져서 실제 가격 형성.
+// ★교역·가격이 공유하는 1인당 목표 재고표 — **한 곳에서만 정의한다.**
+//   전에는 tickTrade 와 computeVillagePrices 가 같은 표를 각자 복사해 갖고 있었다.
+//   한쪽에 금속을 추가하고 다른 쪽을 잊으면 "가격은 있는데 안 팔린다"가 된다.
+const RESERVE_PC = {
+  food: 30, fish: 10, meat: 8, cooked_food: 5,
+  wood: 5, stone: 3, ore: 1, tool: 1.5,
+  weapon: 0.5, armor: 0.5,
+  fruit: 2, vegetable: 2, mushroom: 1, twig: 2, pebble: 1, hide: 1, herb: 0.5,   // ★약재(§9)
+  bone: 1, tigerhide: 0.03,   // ★§9 3차 — 뼈 · 호피
+  // ★★[재민 지시] 금속·특수재도 교역재. 자본재라 목표가 작다. 주석이 가장 작다(전략재).
+  copper: 0.30, tin: 0.06, iron: 0.20, lead: 0.05, silver: 0.03, gold: 0.02,
+  jade: 0.05, obsidian: 0.10,
+};
+const LUX_V1 = { gold: 1, silver: 1, jade: 1 };      // 위신재 — 웃돈 상한 대상
+const LUX_V1_ADJ_MAX = 3.0;
+const ESSENTIAL_V1 = { food: 1, fish: 1, meat: 1, cooked_food: 1, wood: 1, stone: 1, tool: 1, weapon: 1, armor: 1 };
+
 const _SMELT_YIELD_UTIL = 0.33;   // = SMELT_YIELD(제련 수율). 파생수요 계산이 선언보다 위라 별도 상수.
 const BASE_VALUE = {
   food:        1.0,    // 농부 1.5/day → 1단위에 0.67일
@@ -2125,6 +2142,16 @@ function pickDeficitJob(v) {
   for (const j of JOB_NAMES) if (JOBS[j].toolDependent) _toolDeps += (counts[j] || 0);
   const toolPer = ((v.storage.tool || 0) + (v.storage.bronze_tool || 0) + (v.storage.iron_tool || 0)) / Math.max(1, _toolDeps);
   if (toolPer < 1.5 && hasSlot(v, 'mason', cap, counts)) return 'mason';   // ★S2 도구=석기 → 석공
+  // ★★[재민 질문 "전사 켜면 왜 광부가 0이 돼?"] 에 대한 답이자 그 수리.
+  //   광부는 이 picker 에서 **맨 마지막 7단계("풍부 토지 분야")에만** 있었다. 그래서
+  //   앞 단계 조건이 하나라도 오래 참이면 광부는 영영 안 뽑히고, 이미 있던 광부는
+  //   다른 직업 충원에 차출돼 사라진다(기회비용이 낮아 1순위로 뽑혀 나간다).
+  //   실측: 전사 게이트를 열자 **25일 만에 광부 0**, 원석 재고가 156 에 얼어붙어 800일 내내 그대로였다.
+  //   (석공 폭증은 500일 이후라 원인이 아니라 결과였다 — 도구·무기 결손이 누적된 것.)
+  //   ⇒ 채굴에도 **파생수요**를 준다: 녹일 원석이 모자라면 캘 사람을 뽑는다.
+  //     제련이 원석을 다 먹고 굶는데 광부를 안 뽑는 건 어느 모로 봐도 결함이다.
+  if ((v.land.ore || 0) > 0.15 && (v.storage.ore || 0) < N * ORE_STOCK_PC
+      && hasSlot(v, 'miner', cap, counts)) return 'miner';
   // ★★[재민 확정] 제련 — 광석이 쌓였으면 녹일 사람이 필요하다. **무기 수요와 무관한 상시 일감**이라
   //   전사 사슬(상인2→전사→무기부족→대장장이)을 안 거친다. 그 사슬은 첫 고리가 폐지된 직업이라 죽어 있었다.
   if ((counts.smith || 0) < smeltTarget(v) && hasSlot(v, 'smith', cap, counts)) return 'smith';
@@ -2306,6 +2333,7 @@ function _smithBeatsMason(v) {
 //   이게 무기 수요와 **독립**이라는 게 핵심이다. 전에는 대장장이가 오직 무기 때문에만 필요했고,
 //   무기 수요는 전사에서 왔고, 전사는 폐지된 직업(행상)에 막혀 있어서 사슬 전체가 죽어 있었다.
 //   광석이 있으면 녹일 사람이 필요하다 — 그건 누구의 허락도 필요 없다.
+const ORE_STOCK_PC = 0.5;   // 1인당 원석 재고 목표 — 이 아래면 광부를 뽑는다(제련 원료 파생수요)
 const SMELT_LABOR_CAP_PC = 0.05;   // 제련에 쓸 노동 상한(인구 비율) — 야금은 마을 노동의 일부일 뿐
 function smeltTarget(v) {
   const mix = v.land && v.land.oreMix;
@@ -3241,23 +3269,6 @@ function computeDynReserve(v, cons, resourceKey, defaultPerPop) {
   const dailyCons = cons[resourceKey] || 0;
   return Math.max(baseline, dailyCons * 30);  // 30일치 비축
 }
-
-// ★교역·가격이 공유하는 1인당 목표 재고표 — **한 곳에서만 정의한다.**
-//   전에는 tickTrade 와 computeVillagePrices 가 같은 표를 각자 복사해 갖고 있었다.
-//   한쪽에 금속을 추가하고 다른 쪽을 잊으면 "가격은 있는데 안 팔린다"가 된다.
-const RESERVE_PC = {
-  food: 30, fish: 10, meat: 8, cooked_food: 5,
-  wood: 5, stone: 3, ore: 1, tool: 1.5,
-  weapon: 0.5, armor: 0.5,
-  fruit: 2, vegetable: 2, mushroom: 1, twig: 2, pebble: 1, hide: 1, herb: 0.5,   // ★약재(§9)
-  bone: 1, tigerhide: 0.03,   // ★§9 3차 — 뼈 · 호피
-  // ★★[재민 지시] 금속·특수재도 교역재. 자본재라 목표가 작다. 주석이 가장 작다(전략재).
-  copper: 0.30, tin: 0.06, iron: 0.20, lead: 0.05, silver: 0.03, gold: 0.02,
-  jade: 0.05, obsidian: 0.10,
-};
-const LUX_V1 = { gold: 1, silver: 1, jade: 1 };      // 위신재 — 웃돈 상한 대상
-const LUX_V1_ADJ_MAX = 3.0;
-const ESSENTIAL_V1 = { food: 1, fish: 1, meat: 1, cooked_food: 1, wood: 1, stone: 1, tool: 1, weapon: 1, armor: 1 };
 
 // 마을 시세 (가격표) 계산 — 다른 마을 시세 비교용
 function computeVillagePrices(v) {
