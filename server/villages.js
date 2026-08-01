@@ -280,7 +280,13 @@ function makeTerrainAdapter(terrain, ZONE, deps) {
           const a1 = Math.acos(Math.max(-1, Math.min(1, c1))), a2 = Math.acos(Math.max(-1, Math.min(1, c2)));
           a = RR * RR * (a1 - Math.sin(2 * a1) / 2) + r * r * (a2 - Math.sin(2 * a2) / 2);
         }
-        if (a > 0) { _a0 += a; _ap += a * (o.pk || 0); _ad += a * d; mix[o.mineral] = (mix[o.mineral] || 0) + a * (o.pk || 0); }
+        if (a > 0) {
+          _a0 += a; _ap += a * (o.pk || 0); _ad += a * d;
+          // ★[재민 확정 2026-08-01 다광종] 광맥 하나가 광종 **분포**(o.minerals)를 가질 수 있다 —
+          //   방연석엔 은이 실려 있고(회취법), 구리 광상엔 금·은이 부산된다. 단광종(o.mineral)은 폴백.
+          const _dist = (o.minerals && typeof o.minerals === 'object') ? o.minerals : { [o.mineral]: 1 };
+          for (const _m in _dist) { const _sh = _dist[_m]; if (_sh > 0) mix[_m] = (mix[_m] || 0) + a * (o.pk || 0) * _sh; }
+        }
       }
       let tot = 0; for (const k in mix) tot += mix[k];
       if (tot > 0) for (const k in mix) mix[k] = +(mix[k] / tot).toFixed(4);

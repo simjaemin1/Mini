@@ -180,13 +180,15 @@ ok(T.oreProbAt('hanbando', cl.center[0] + 3000 * 32, cl.center[1]) === 0, '광�
   //   이제 등급기준은 하나(ORE_TIER_BASE)이고, 광맥마다의 차이는 **로그정규 지터**가 만든다.
   const byTier = { r130: [], r70: [], r22: [], minor: [] };
   for (const o of d0.ores) {
-    if (o.mineral !== 'iron') continue;   // ★광물 가치 배율을 아예 배제한다(철만 본다)
+    // ★광물 가치 배율을 아예 배제한다(한 광종만 본다). 철은 이제 주요 광맥에 없으므로(플레이어 전용)
+    //   주요·자잘 양쪽에 다 있는 **납**으로 본다 — 검사의 뜻(크기≠등급)은 동일하다.
+    if (o.mineral !== 'lead') continue;
     const rc = Math.round(o.radius / 32);
     byTier[rc >= 100 ? 'r130' : rc >= 50 ? 'r70' : rc >= 14 ? 'r22' : 'minor'].push(o.pk);
   }
   const mean = (a) => a.reduce((x, y) => x + y, 0) / Math.max(1, a.length);
   const mBig = mean(byTier.r130.concat(byTier.r70, byTier.r22)), mMin = mean(byTier.minor);
-  console.log('    철 광맥 p_peak 평균 — 대·중·소 ' + mBig.toFixed(3) + '(' +
+  console.log('    납 광맥 p_peak 평균 — 대·중·소 ' + mBig.toFixed(3) + '(' +
     (byTier.r130.length + byTier.r70.length + byTier.r22.length) + '개) vs 자잘 ' + mMin.toFixed(3) + '(' + byTier.minor.length + '개)');
   ok(Math.abs(mBig / mMin - 1) < 0.5, '★크기가 등급을 정하지 않는다 — 대·중·소와 자잘의 평균 품위가 비슷');
   const maxMin = Math.max(...byTier.minor), maxBig = Math.max(...byTier.r130.concat(byTier.r70, byTier.r22));
@@ -221,9 +223,13 @@ ok(T.oreProbAt('hanbando', cl.center[0] + 3000 * 32, cl.center[1]) === 0, '광�
   {
     // ①저장 광물 ≡ 풀 (대·중·소는 최소보장 보정이 걸리므로 자잘만 엄격히 본다)
     let bad = 0, n = 0;
+    // ★[재민 확정 2026-08-01 다광종 마이그레이션] 은 단독 광맥은 연은 광맥으로 흡수됐다
+    //   (자연에 은 단독 광상은 거의 없다 — 고대 은은 방연석에서 회취법으로 나왔다).
+    //   그래서 기대값에도 같은 변환을 적용한다: 풀 추첨이 silver 면 저장본은 lead 여야 한다.
+    const MIGRATE = (m) => (m === 'silver' ? 'lead' : m);
     for (const o of d0.ores) { if (!o.minor) continue; n++;
-      if (o.mineral !== HM.mineralAt(0, 0, h2(Math.floor(o.center[0]/32), Math.floor(o.center[1]/32), 731))) bad++; }
-    ok(bad === 0, '★자잘 광맥의 광종 ≡ 전역 풀 (' + bad + '/' + n + ' 불일치)');
+      if (o.mineral !== MIGRATE(HM.mineralAt(0, 0, h2(Math.floor(o.center[0]/32), Math.floor(o.center[1]/32), 731)))) bad++; }
+    ok(bad === 0, '★자잘 광맥의 광종 ≡ 전역 풀 + 마이그레이션 규칙 (' + bad + '/' + n + ' 불일치)');
   }
   {
     // ②지역 무관 — 구역별 광종 비율의 산포가 **이항분포 기대치와 같아야** 한다.
@@ -258,12 +264,21 @@ ok(T.oreProbAt('hanbando', cl.center[0] + 3000 * 32, cl.center[1]) === 0, '광�
     ok(worst < 1.35, '★광종에 **지역 편중이 없다** — 어느 구역을 떼도 비율이 같다(최대 비 ' + worst.toFixed(2) + ', 1.0 = 순수 무작위)');
   }
   {
-    // ③NPC 시야(대·중·소 63개)에 여덟 광종이 다 있는가 — 없으면 그 광종은 마을 경제에서 0 이 된다
-    const mc = {};
-    for (const o of d0.ores) if (!o.minor) mc[o.mineral] = (mc[o.mineral] || 0) + 1;
-    const miss = Object.keys(HM.POOL).filter((m) => (mc[m] || 0) < HM.MIN_MAJOR);
-    console.log('      대·중·소 광종: ' + Object.keys(HM.POOL).map((m) => m + ' ' + (mc[m]||0)).join(' · '));
-    ok(miss.length === 0, '★NPC 가 보는 광맥에 여덟 광종이 다 있다 (최소 ' + HM.MIN_MAJOR + '개씩) — 없으면 마을이 그 금속을 영영 못 만든다');
+    // ③NPC 시야(대·중·소)의 광종 커버리지 — [재민 확정 2026-08-01 시대 설계로 기준이 바뀌었다]
+    //   · 철: 주요 광맥에서 **의도적으로 0** — "철은 기본 마을에서는 안 생기도록. 플레이어가 탐험해서 찾는 거야"
+    //     자잘 광맥(플레이어 전용)에만 있다. 여기 철이 다시 나타나면 그게 회귀다.
+    //   · 은: 지배 광종으로는 0 이지만 **다광종 비중**(연은 .15 · 구리 부산 .05 · 일렉트럼 .20)으로 존재한다.
+    //   · 나머지 여섯(구리·주석·납·금·옥·흑요석)은 지배 광종으로 MIN_MAJOR 이상.
+    const mc = {}, sh = {};
+    for (const o of d0.ores) { if (o.minor) continue; mc[o.mineral] = (mc[o.mineral] || 0) + 1;
+      const dist = o.minerals || { [o.mineral]: 1 };
+      for (const m in dist) sh[m] = (sh[m] || 0) + dist[m] * (o.pk || 0); }
+    console.log('      대·중·소 지배광종: ' + Object.keys(HM.POOL).map((m) => m + ' ' + (mc[m]||0)).join(' · '));
+    const NEED = ['copper', 'tin', 'lead', 'gold', 'jade_raw', 'obsidian'];
+    const miss = NEED.filter((m) => (mc[m] || 0) < HM.MIN_MAJOR);
+    ok(miss.length === 0, '★청동기 광종 여섯이 주요 광맥에 다 있다 (최소 ' + HM.MIN_MAJOR + '개씩)' + (miss.length ? ' — 빠짐: ' + miss.join(',') : ''));
+    ok((mc.iron || 0) === 0, '★주요 광맥에 철이 없다 — 철은 플레이어 탐험 전용(자잘)이다 [재민 확정]');
+    ok((sh.silver || 0) > 0, '★은이 다광종 비중으로 존재한다 (연은·부산·일렉트럼 — 은 단독 광맥은 폐지)');
   }
 }
 

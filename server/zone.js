@@ -3668,15 +3668,24 @@ function _mineIdentify(player, mineral, isOre, lvlF) {
   // ★비대칭 채널(재민 확정): 초보는 **좋은 광석을 몰라보고 버리는 FN**이 많고,
   //   명백한 맥석에 속는 FP는 적다. 광석의 단서(광택·비중)는 "있으면 보이는" 신호라 놓치기 쉽고,
   //   맥석은 특징의 부재라 거르기 쉽다.  TPR = 0.5+0.45·s^1.6(느림) · TNR = 0.5+0.45·s^0.6(빠름)
-  const acc = Specialty.mineIdAcc(lvlF);
+  // ★[재민 확정 2026-08-01] ②층 — 종류 감정. 이름·가족은 전부 **추측 채널**(mineTypeGuess)에서 나온다.
+  //   전에는 FP(맥석을 광석으로 오판) 문구가 광맥의 진짜 광물명을 말해 맥석이 광맥 정체를 누설했다.
+  //   지금은 진짜 광석일 때만 typeAcc 확률로 정답이고, 오인은 겉모습 혼동 행렬(바보의 금 등)을 따른다.
   const hit = Math.random() < (isOre ? Specialty.mineTPR(lvlF) : Specialty.mineTNR(lvlF));
   const says = hit ? isOre : !isOre;                     // ★판단은 확률적 — 틀릴 수 있다
-  const phrase = Specialty.mineIdPhrase(acc, says, (Specialty.RESOURCES[mineral] || {}).ko || mineral);
-  // ★적중/오판 적산 — 선광 때 "판단 12/15 적중"으로 돌려준다. 숫자 HUD 없이 자기 눈을 얼마나
-  //   믿을지 배우는 유일한 창구다(학습 루프). 판단을 안 한 구간(acc<0.60)은 세지 않는다.
+  const guess = says ? Specialty.mineTypeGuess(mineral, isOre, lvlF, Math.random) : null;
+  const koOf = (m) => (Specialty.RESOURCES[m] || {}).ko || m;
+  const phrase = Specialty.mineIdPhrase(lvlF, says, guess, koOf);
+  // ★적중/오판 적산 — 선광 때 "눈대중 12/15 · 종류 7/9"로 돌려준다. 숫자 HUD 없이 자기 눈을
+  //   얼마나 믿을지 배우는 유일한 창구다(학습 루프). 판단을 안 한 구간(레벨 0~1)은 세지 않는다.
   if (phrase) {
-    if (!player.oreGuess || typeof player.oreGuess !== 'object') player.oreGuess = { n: 0, hit: 0 };
+    if (!player.oreGuess || typeof player.oreGuess !== 'object') player.oreGuess = { n: 0, hit: 0, tn: 0, thit: 0 };
     player.oreGuess.n++; if (says === isOre) player.oreGuess.hit++;
+    // 종류 성적은 **종 단위 문구**(7렙+)에서, 진짜 광석에 대해서만 센다 — 가족 문구는 종 주장이 아니다.
+    if (isOre && says && guess && Math.floor(lvlF) >= 7) {
+      player.oreGuess.tn = (player.oreGuess.tn || 0) + 1;
+      if (guess === mineral) player.oreGuess.thit = (player.oreGuess.thit || 0) + 1;
+    }
   }
   return phrase;
 }
@@ -3797,7 +3806,8 @@ function trySortOre(player) {
     const g = player.oreGuess;
     score = ` · 눈대중 ${g.hit}/${g.n} 적중`;
     if (g.hit < g.n) score += ` (${g.n - g.hit} 헛짐)`;
-    player.oreGuess = { n: 0, hit: 0 };   // 성적은 선광마다 리셋 — "이번 한 짐"의 성적이다
+    if (g.tn > 0) score += ` · 종류 ${g.thit}/${g.tn}`;   // ★②층 성적(7렙+ 종 단정만 집계)
+    player.oreGuess = { n: 0, hit: 0, tn: 0, thit: 0 };   // 성적은 선광마다 리셋 — "이번 한 짐"의 성적이다
   }
   send(player.ws, {
     type: 'notice',

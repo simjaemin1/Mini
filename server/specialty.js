@@ -547,11 +547,82 @@ function mineTPR(lvlF) { const s = Math.max(0, Math.min(10, lvlF)) / 10; return 
 //   p 는 셀마다 다른 연속장이다(광맥1 중심 0.372 · 가장자리 0.005). 사후로 문턱을 잡으면
 //   **문구가 그 자리의 p를 누설**한다 — 감정 스킬이 아니라 p 표시기가 된다.
 function mineIdAcc(lvlF) { return (mineTPR(lvlF) + mineTNR(lvlF)) / 2; }
-function mineIdPhrase(acc, saysOre, mineralKo) {
-  if (acc < 0.60) return null;                                   // 열에 여섯 — 아직 못 본다
-  if (acc < 0.78) return saysOre ? '광이 도는 것 같기도 하다' : '그냥 돌 같기도 하다';
-  if (acc < 0.90) return saysOre ? '질 좋은 덩이인 것 같다' : '맥석인 것 같다';
-  return saysOre ? (mineralKo + '이다') : '맥석이다';             // 열에 아홉 — 단정
+
+// ── 감정 ②층: **광물 종류** [재민 확정 2026-08-01 "광물 종류도 알 수 있는 거야? 그것도 FP가 있는 거고?"] ──
+//   이진(광석/맥석) 위에 종류 채널을 얹는다. 오인은 **겉모습**으로 일어난다 — 고증 그대로:
+//     금 ↔ 철      황철석(바보의 금) — 역사상 가장 유명한 감정 오류
+//     금 ↔ 구리    황동석(놋빛)
+//     납 ↔ 은      방연석 — 오인이 아니라 반쯤 정답(은은 실제로 방연석에 실려 나온다. 다광종 광맥이 이걸 실물로 만든다)
+//     주석 ↔ 철    석석·자철석 둘 다 검고 무겁다
+//     구리 ↔ 옥    공작석 초록
+//     흑요석       유리 광택 — 혼동 최소
+//   ※한 광물의 여러 광석상(황철석/자철석 등)은 이 행렬 하나로 추상한다 — 문구는 '지각된 정체'를 말한다.
+const ORE_CONFUSE = {
+  gold:     { iron: 3, copper: 2 },
+  iron:     { gold: 2, tin: 2, copper: 1 },
+  copper:   { gold: 2, jade_raw: 1.5 },
+  tin:      { iron: 3 },
+  lead:     { silver: 3, tin: 1 },
+  silver:   { lead: 3 },
+  jade_raw: { copper: 2 },
+  obsidian: { jade_raw: 0.5 },
+};
+// FP(맥석을 광석으로 오판)일 때 떠올리는 종류 — **광맥 진실과 무관**해야 한다.
+//   ★전에는 여기서 광맥의 진짜 광물명을 말해버려 맥석 문구가 광맥 정체를 누설했다(p 누설과 같은 계열).
+const ORE_FP_GUESS = { iron: 3, tin: 2, lead: 2, copper: 2, silver: 1, gold: 1, jade_raw: 1, obsidian: 1 };
+// 겉보기 가족(5~6레벨 문구) — 지각된 종류의 1차 인상
+const ORE_FAMILY_KO = {
+  gold: '누런 쇳돌', copper: '누런 쇳돌', iron: '검붉은 쇳돌', tin: '검은 쇳돌',
+  lead: '은빛 쇳돌', silver: '은빛 쇳돌', jade_raw: '푸른 돌', obsidian: '유리 같은 돌',
+};
+// 종류 정확도 — 이진보다 늦게 자란다(광석임을 아는 것과 무엇인지 아는 것은 다른 숙련이다).
+//   레벨 0..10 표 + 선형 보간. 7렙 오인 ~30% · 8렙 ~15% · 9렙 ~8% · 10렙 ~4%.
+const MINE_TYPE_ACC = [0, 0.05, 0.12, 0.20, 0.30, 0.45, 0.58, 0.70, 0.85, 0.92, 0.96];
+function mineTypeAcc(lvlF) {
+  const l = Math.max(0, Math.min(10, lvlF)), i = Math.floor(l), f = l - i;
+  return i >= 10 ? MINE_TYPE_ACC[10] : MINE_TYPE_ACC[i] + (MINE_TYPE_ACC[i + 1] - MINE_TYPE_ACC[i]) * f;
+}
+// 지각된 종류를 뽑는다 — 진짜 광석이면 typeAcc 확률로 정답, 아니면 혼동 행렬. 맥석 FP 면 FP 분포.
+function mineTypeGuess(trueMineral, isOre, lvlF, rnd) {
+  const r = typeof rnd === 'function' ? rnd : Math.random;
+  const pickW = (tbl) => {
+    let tot = 0; for (const k in tbl) tot += tbl[k];
+    if (!(tot > 0)) return null;
+    let x = r() * tot;
+    for (const k in tbl) { x -= tbl[k]; if (x <= 0) return k; }
+    return Object.keys(tbl)[0];
+  };
+  if (!isOre) return pickW(ORE_FP_GUESS);                       // 맥석 FP — 광맥 진실 무관(누설 차단)
+  if (r() < mineTypeAcc(lvlF)) return trueMineral;
+  const c = ORE_CONFUSE[trueMineral];
+  return (c && pickW(c)) || trueMineral;
+}
+// ── 문구 10단계 [재민 확정 "레벨별로 10단계로 나눌 수 있어?"] — 레벨이 눈금이다 ──
+//   guess 는 mineTypeGuess 의 지각된 종류(진실 아님). 이름·가족은 전부 추측 채널에서 나온다.
+function mineIdPhrase(lvlF, saysOre, guess, koOf) {
+  const L = Math.floor(Math.max(0, Math.min(10, lvlF)));
+  const ko = (m) => (koOf ? koOf(m) : m);
+  const fam = ORE_FAMILY_KO[guess] || '낯선 돌';
+  if (L <= 1) return null;                                                       // 0~1 — 아직 못 본다
+  if (!saysOre) {
+    if (L <= 3) return '그냥 돌 같기도 하다';
+    if (L <= 6) return '맥석인 것 같다';
+    return '맥석이다';
+  }
+  switch (L) {
+    case 2: return '광이 도는 것 같기도 하다';
+    case 3: return '예사 돌은 아닌 성싶다';
+    case 4: return '묵직한 게 광석 같다';
+    case 5: return fam + ' 같다';
+    case 6: {
+      const c = ORE_CONFUSE[guess];
+      const alt = c ? Object.keys(c).sort((a, b) => c[b] - c[a])[0] : null;
+      return alt ? (fam + ' — ' + ko(guess) + ' 아니면 ' + ko(alt)) : (fam + ' — ' + ko(guess) + ' 같다');
+    }
+    case 7: return ko(guess) + ' 같은데…';
+    case 8: return ko(guess) + '로 보인다';
+    default: return ko(guess) + '이다';                                          // 9~10 단정(오인 8→4%)
+  }
 }
 
 // ── NPC 광부의 감정 = **정광률 + 헛짐 운반비** [재민 확정] ────────────────
@@ -660,7 +731,13 @@ const ALLOY_E = {   // r 원자반지름(pm) · st 결정구조 · en 전기음�
   zinc:   { r: 134, st: 'hcp', en: 1.65, val: 2, mp: 420,  h0: 30,  rho: 7.14,  lus: 0.70 },
   silver: { r: 144, st: 'fcc', en: 1.93, val: 1, mp: 962,  h0: 25,  rho: 10.49, lus: 1.00 },
   gold:   { r: 144, st: 'fcc', en: 2.54, val: 1, mp: 1064, h0: 25,  rho: 19.30, lus: 0.90 },
-  iron:   { r: 126, st: 'bcc', en: 1.83, val: 2, mp: 1538, h0: 150, rho: 7.87,  lus: 0.60 },
+  // ★[재민 확정 2026-08-01 "철은 오직 도구 무기로만"] h0 150 → 80 고증 교정.
+  //   150 은 **강철**(침탄 후)의 경도다. 괴련로 연철(wrought iron)은 HB 60~100 — 잘 만든
+  //   주석청동(107)보다 무르다. 이게 "초기 철은 청동보다 나빴다"의 실체이고, 철이 청동을
+  //   이긴 건 성능이 아니라 **공급**이었다(철광석은 어디에나 있다). h0=150 이면 시대 전
+  //   플레이어 철검이 등급 1.4 최강무기가 돼 청동기 세계관이 무너진다. 강철의 경도는
+  //   나중에 침탄(carburizing, era.js iron 시대 tech)이 따로 표현한다.
+  iron:   { r: 126, st: 'bcc', en: 1.83, val: 2, mp: 1538, h0: 80,  rho: 7.87,  lus: 0.60 },
   nickel: { r: 124, st: 'fcc', en: 1.91, val: 2, mp: 1455, h0: 90,  rho: 8.91,  lus: 0.80 },
 };
 // 기지별 고용 한도 [최대 분율, 제2상 성격]  im=금속간화합물 · ss=고용체 · split=액상분리
@@ -775,6 +852,7 @@ if (typeof module !== 'undefined' && module.exports) {
     NPC_MINE_PER_DAY, MINE_HAUL, MINE_HAUL_TRIP, MINE_LABOR, MINE_HAULEFF, haulEff,
     itemWeight, inventoryWeight, CARRY_MAX_KG, EXTRA_WEIGHT,
     oreValueScale, orePeakFor, ORE_VALUE_EXP,
+    ORE_CONFUSE, ORE_FAMILY_KO, mineTypeAcc, mineTypeGuess,
     ORE_P_SCALE, ORE_TIER_BASE, ORE_LN_SIGMA, ORE_PK_MAX, oreGradeMult,
     mineLevelF, MINE_XP_MAX, mineChunkKg, mineChunkRoll, CHUNK_CV, CHUNK_Z_MAX,
     mineDepthCost, mineSwingsNeeded, mineToolWear,

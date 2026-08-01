@@ -423,14 +423,27 @@ function oreCandidatesAt(zoneId, x, y) {
 // 광석이 나왔다는 **조건 하에** 어느 광물인지. p_i 에 비례 추첨한다.
 //   (합성 p = 1−∏(1−p_i) 의 엄밀한 분해는 아니지만, 겹침이 얕은 구간에서 오차가 O(p²)로 작고
 //    "진한 쪽이 더 자주 나온다"는 직관이 정확히 성립한다.)
+// ★[재민 확정 2026-08-01 다광종] 광맥이 광종 분포(o.minerals)를 가지면 **광맥 안에서 2차 추첨**한다.
+//   방연석 광맥에서 나오는 덩이의 15%는 은이 실린 놈이다 — "이 덩이가 은 많은 놈인가"가
+//   광맥 정체를 알아도 매번 새 질문이 된다(감정 종류 채널이 광맥당 1회용으로 전락하는 문제의 해소).
+function _veinMineralPick(o, rnd) {
+  const dist = o && o.minerals;
+  if (!dist || typeof dist !== 'object') return (o && o.mineral) || 'iron';
+  let tot = 0; for (const k in dist) { const v = dist[k]; if (v > 0) tot += v; }
+  if (!(tot > 0)) return (o && o.mineral) || 'iron';
+  let r = ((typeof rnd === 'function') ? rnd() : Math.random()) * tot;
+  let last = (o && o.mineral) || 'iron';
+  for (const k in dist) { const v = dist[k]; if (!(v > 0)) continue; last = k; r -= v; if (r <= 0) return k; }
+  return last;
+}
 function oreMineralAt(zoneId, x, y, rnd) {
   const c = oreCandidatesAt(zoneId, x, y);
   if (!c.length) return null;
   let s = 0; for (const e of c) s += e.p;
-  if (!(s > 0)) return c[0].o.mineral || 'iron';
+  if (!(s > 0)) return _veinMineralPick(c[0].o, rnd);
   let r = ((typeof rnd === 'function') ? rnd() : Math.random()) * s;
-  for (const e of c) { r -= e.p; if (r <= 0) return e.o.mineral || 'iron'; }
-  return c[c.length - 1].o.mineral || 'iron';
+  for (const e of c) { r -= e.p; if (r <= 0) return _veinMineralPick(e.o, rnd); }
+  return _veinMineralPick(c[c.length - 1].o, rnd);
 }
 // ★[11차 재민 확인 "모든 광맥이 원 모양이 아니라 무작위 모양인 거 맞지?"]
 //   ...아니었다. p(품위)만 무작위였고 **경계는 완벽한 원**이었다(셀맵·oreShare·villages 전부 원을 봄).

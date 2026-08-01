@@ -1088,6 +1088,16 @@ function _trySmelt(v, laborBase) {
   const mix = Object.keys(om).length ? om : SMELT_PLACER;
   const have = v.storage.ore || 0;
   if (have < SMELT_MIN_ORE) return 0;
+  // ★★[끊김① 해소 2026-08-01] 금속이 이미 넘치면 녹이지 않는다 — 같은 판정이 채용 게이트(smeltTarget)에도
+  //   있지만, **이미 고용된** 대장장이의 행위는 안 막고 있었다. 실측(새 지도 임업2): 구리 529·주석 284 를
+  //   쌓아두고도 광부 10명이 원석을 계속 대니 누적 2,784 를 제련하며 주조를 한 번도 못 갔다.
+  //   재고가 넘치면 불을 끄고 주조로 넘어간다 — 주조가 재고를 소화하면 저절로 다시 녹인다(자기 조절).
+  {
+    const mix0 = Object.keys(om).length ? om : SMELT_PLACER;
+    let mhave = 0, mwant = 0; const N0 = v.npcs.length || 1;
+    for (const k in mix0) { const id = k === 'jade_raw' ? 'jade' : k; mhave += v.storage[id] || 0; mwant += (RESERVE_PC[id] || 0.1) * N0; }
+    if (mhave > mwant * 4) return 0;
+  }
   // ★★[2026-08-01 실측으로 잡음] 회수할 게 하나도 없으면 **아예 불을 때지 않는다.**
   //   시대 게이트를 넣고 재보니 인구 1,025 → 279 로 무너졌다. 원인은 게이트가 아니라 이것이었다:
   //   철만 나는 마을의 대장장이가 매일 원석을 노에 넣고, 철은 못 뽑으니 전량 슬래그로 버리고,
@@ -1604,8 +1614,16 @@ function tickVillage(v, day) {
       //   이게 대장장이에게 무기 수요와 무관한 **상시 일감**을 준다 — 광석이 있으면 할 일이 있다.
       //   고증: 청동기 제련은 노(爐)와 연료가 필요해 마을에서 했고, 광부의 일이 아니었다.
       //   ※무기 주조보다 우선한다. 금속이 없으면 무기도 못 만드니 순서가 자연히 그렇다.
+      // ★★[끊김① 해소 — 회부_v2배선_재측정 ① 의 (가), 재민 "쭉 구현해봐" 일괄 2026-08-01]
+      //   제련은 하루를 통째로 먹지 않는다. 전에는 `제련 성공 → return` 이라 광부가 매일 원석을 대는
+      //   마을의 대장장이가 **영원히** 제련만 했다(임업2: 300일 무기 0자루 → 새 지도에선 800일 0자루).
+      //   이제 제련에 쓴 노동 **비율만큼만** 하루에서 차감하고, 남은 노동으로 주조를 진행한다
+      //   (석공 _toolTaper 와 같은 관용). 원석이 넘치는 날은 여전히 하루를 다 제련에 쓴다.
+      const _smeltCap = jdef.base * skillMul * SMELT_PER_LABOR;   // 하루 전부를 쓰면 소화 가능한 양
       const _smelted = _trySmelt(v, jdef.base * skillMul);
-      if (_smelted > 0) { workNPC(npc); return; }   // 오늘은 제련으로 하루를 썼다
+      const _smeltFrac = _smeltCap > 0 ? Math.min(1, _smelted / _smeltCap) : 0;
+      if (_smeltFrac >= 0.999) { workNPC(npc); return; }   // 원석이 넘쳐 오늘 하루를 다 썼다
+      if (_smeltFrac > 0) amt *= (1 - _smeltFrac);          // 남은 노동으로만 주조
 
       const _melt = _alloyMelt(v);
       if (_melt && _melt.castF > 0) amt *= _melt.castF;   // ★주조성이 산출량을 정한다(위 _alloyMelt 주석)
@@ -1697,7 +1715,10 @@ function tickVillage(v, day) {
         //   ※oreMix 가 **없는** 호출부(랩·CLI)는 제련 층이 없던 시절 그대로 금속을 바로 낸다 —
         //     기존 회귀 기준선을 보존하기 위해서다. 지도가 있는 본 게임만 제련을 거친다.
         if (!(v.land && v.land.oreMix)) {
-          const bp = { copper: 0.22, iron: 0.03, silver: 0.05, gold: 0.02, gem: 0.01 };
+          // ★[2026-08-01] 폴백 dict 도 시대를 탄다 — v2 5시드 회귀에서 여기서 나온 철 840 이
+          //   쓸 데 없이 쌓였다(청동기 NPC 는 철을 못 다룬다). 시대가 모르는 금속은 뺀다.
+          const bp0 = { copper: 0.22, iron: 0.03, silver: 0.05, gold: 0.02, gem: 0.01 };
+          const bp = {}; for (const _k in bp0) { if (_ERA_METAL(_k) && !_eraKnows(_k)) continue; bp[_k] = bp0[_k]; }
           for (const r in bp) addProduce(r, oAmt * bp[r]);
         }
         addProduce('salt', oAmt * 0.05); addProduce('clay', oAmt * 0.08);   // ★소금=완충 교역재(광범위 수요 utility 0.8). 제거 시 교역균형 흔들려 취약 시드 boom-bust. 고증(소금길). 이제 광맥 채굴 부산물로 산출(돌 채석과 분리).
