@@ -655,6 +655,30 @@ const BOOMFIT_K = (typeof process !== 'undefined' && process.env && process.env.
 // ★부얼타운 픽커 게이트 — 광맥이 실한 **광산촌만** "농사 불가" 탈출구를 쓴다.
 //   ★★기본 OFF = 기각(위 BOOMFIT_K 주석). BOOMGATE=1 로 켠다.
 const BOOMGATE_ON = (typeof process !== 'undefined' && process.env && process.env.BOOMGATE === '1');
+// ═══════ ★★[2026-08-02c 소멸 0 튜닝] 좀비·소멸 3중 잠금 손잡이 — 각각 개별 A/B 용 ═══════
+//   실측(3시드 800일 · dz_*.json)이 인계 프롬프트의 진단("도구 0 → 잉여 0 → tickRecovery 게이트 미달")을
+//   **반증했다.** 좀비 마을은 굶지 않는다 — 어촌9(시드42)는 곳간 128 · 국고 현금 15,186 · 캐러밴 61회 ·
+//   식량수입 504 인데 인구 2 다. 실제 인과는 궤적(history)에서 나왔다:
+//     ① 0~360일: `day<365` 기아사망 보호막이 dP<0 을 삼켜 마을이 K 위로 과성장(임업3 54명 · 광산2 67명 고원).
+//     ② 365일: 보호막 해제 → dP=r·N·(1−(N/K)^4) 이 −maxDelta 로 폭주 → 40일 만에 54→5.
+//     ③ **prodK 가 실현흐름 기준**이라 인구가 줄면 K도 같이 줄어(양의 되먹임) 붕괴가 바닥까지 폭주한다.
+//     ④ 바닥(N=1)에서 ratio=N/max(1,K)=1 → 로지스틱 항이 정확히 0 → 영구 고착. K<1 인데 slot 121~203 ·
+//        fuel 42~2450 이다. 즉 **땅은 멀쩡한데 K 정의가 마을을 죽인다.**
+//   ⇒ 세 손잡이는 ③(PRODK_CAP)·도구 부트스트랩(TOOLBOOT)·바닥 탈출(SWITCH2)을 각각 끊는다.
+//
+// ★PRODK_CAP — prodK 를 **용량 기준**으로. fuelK 가 이미 이 판단을 내렸다(line ~2203 주석:
+//   "실현 흐름 기준은 벌목 인력 스냅샷에 K가 요동 → θ-로지스틱 과격 반응 → K붕괴 나선. 시드42 라 소멸로 확인, 폐기").
+//   prodK 만 마지막까지 실현흐름 기준으로 남아 리비히 min 안에서 홀로 N 을 따라다녔다. 같은 처방을 식량에도 준다.
+const PRODK_CAP_ON = (typeof process !== 'undefined' && process.env && process.env.PRODK_CAP === '1');
+// ★TOOLBOOT — 도구 자본 우선(석공) 안전망의 `N>=6` 문턱 해제. 인구 6 미만 마을은 맨손(×0.25)에서
+//   영원히 못 벗어난다 — 석공을 뽑을 자격 자체가 없다. 문턱을 1로 낮춘다(재료 게이트는 그대로).
+const TOOLBOOT_ON = (typeof process !== 'undefined' && process.env && process.env.TOOLBOOT === '1');
+// ★SWITCH2 — autoSwitchJob 의 `npcs.length < 3` 조기반환 해제(2명까지 정상 픽커 경로 허용).
+//   인구 2 마을은 **직업 전환이 통째로 꺼져 있다** — 어촌9는 800일 내내 어부 2명 고정이었다.
+const SWITCH2_ON = (typeof process !== 'undefined' && process.env && process.env.SWITCH2 === '1');
+// ★STONE_NET — 석재 결손이면 채집꾼을 석공보다 **먼저** 부른다 + 경계 `>0.25` → `>=0.25`(FLOOR.stone 정확히 0.25).
+//   궤적 실측: 임업3(d270)·광산2(d330)·어촌9(d210) 전부 **석재 고갈 → 석공 산출 0 → 도구 0 → 붕괴** 순서였다.
+const STONE_NET_ON = (typeof process !== 'undefined' && process.env && process.env.STONE_NET === '1');
 // ═══ ★★부얼타운(광산촌) 판정 — **단일 정의**. 시딩(villages.js)도 이 함수를 부른다(사본 금지) ═══
 //   ⚠1차 시도의 실패에서 배운 것: "식량 부양력이 하한 미달"만으로 잡으면 **너무 많이 잡힌다.**
 //     선별된 마을 20곳 중 절반 가까이가 부양력 1.3~2.0 구간이라, 거기에 식량을 얹고 농사 탈출구를
@@ -2122,7 +2146,32 @@ function tickVillage(v, day) {
   const dailyFoodProdPotential = totalFoodProductionEquivalent(dailyProductionPotential);
   // ★prodK 신뢰 관성(EMA ~33일): 날씨 이벤트(가뭄 7~14일)가 K를 직접 때려 θ=4 로지스틱이 과잉반응(대촌 ±100명 스윙)하지 않게.
   //   진짜 기근은 별도 실시간 항(hunger)이 처리하므로 안전성 손실 없음 — K만 계절·이벤트 노이즈에 둔감해짐.
-  const _prodKraw = (dailyFoodProdPotential + dailyImport) / DAILY_FOOD_CONSUMPTION;
+  // ★★[2026-08-02c 소멸 0] PRODK_CAP — 용량 기준 식량흐름. **fuelK 와 완전 동형**(같은 모양·같은 MSY 처리):
+  //     fuelK: (벌목 자리 × base × land.wood) ∧ woodSustain  + 볏짚 + 수입EMA + 재고/90
+  //     prodK: (농·어·렵·채집 자리 × base × landBoost) ∧ {fish,forage}Sustain + 수입EMA
+  //   실현흐름 기준(아래 _prodKraw)은 **인구가 줄면 K도 줄어** 붕괴가 자기증폭한다(위 손잡이 주석 ③).
+  //   자리 수는 slotK 가 이미 세므로 이중산입이 아니다 — slotK=자리, prodK=그 자리가 내는 흐름. min 이 더 빡빡한 쪽을 고른다.
+  //   ⚠보수적 하한: **부산물 식량환산(연어·새우·게·굴·견과…)을 뺐다.** 실측 산출의 상당분인데 자리당 발생률을
+  //     정확히 못 세우므로 넣지 않는다(과대평가보다 과소평가). 도구 배수도 뺐다 — fuelK 선례 그대로(용량은
+  //     "제대로 된 도구를 갖췄을 때"의 땅 능력이고, 도구 결손은 TOOLBOOT 안전망과 hunger 항이 실시간으로 처리한다).
+  let _prodKraw = (dailyFoodProdPotential + dailyImport) / DAILY_FOOD_CONSUMPTION;
+  if (PRODK_CAP_ON) {
+    const _cf = jobCapacity(v);
+    const _fishRawCap = (_cf.fisher || 0) * JOBS.fisher.base * (v.land.water || 0);
+    const _fishCap = (v.land.fishSustain != null && _fishRawCap > 0) ? Math.min(_fishRawCap, v.land.fishSustain) : _fishRawCap;
+    // 채집은 산출이 믹스라 식량환산 비율을 그 마을 실제 믹스(foragerYieldsFor)로 정확히 계산한다 — 임의 계수 없음.
+    const _fy = foragerYieldsFor(v);
+    let _fySum = 0, _fyFood = 0;
+    for (const _r in _fy) { _fySum += _fy[_r]; _fyFood += _fy[_r] * (FORAGE_FOOD_FACTOR[_r] || (_r === 'food' ? 1 : 0)); }
+    const _foodShare = _fySum > 0 ? _fyFood / _fySum : 0;
+    const _forRawCap = Math.floor((_cf.forager || 0) * 0.5) * JOBS.forager.base * JOBS.forager.landBoost(v);
+    const _forCap = (v.land.forageSustain != null && _forRawCap > 0) ? Math.min(_forRawCap, v.land.forageSustain) : _forRawCap;
+    const _capFlow = (_cf.farmer || 0) * JOBS.farmer.base * (v.land.fertility || 0) * _paddyMul * (v._clearedFrac != null ? v._clearedFrac : 1)
+                   + _fishCap
+                   + (_cf.hunter || 0) * JOBS.hunter.base * (v.land.game || 0)
+                   + _forCap * _foodShare;
+    _prodKraw = (_capFlow + dailyImport) / DAILY_FOOD_CONSUMPTION;
+  }
   v._prodKema = v._prodKema === undefined ? _prodKraw : 0.97 * v._prodKema + 0.03 * _prodKraw;
   const prodK = v._prodKema;
   // ★도구 마모 — 내구재라 천천히 닳음(반감기 ~19년). 인구 성장으로 1인당 도구가 희석되면 대장간이 보충.
@@ -2670,7 +2719,10 @@ function pickDeficitJob_rational(v, world) {
   // ★S2 도구 자본 우선(기근보다 앞): 도구(석기)가 치명적으로 부족하면(맨손 0.25× = 식량생산 폭락) 석공 먼저.
   //   도구는 자본재 — 1명이 도구 만들면 나머지 식량생산이 0.25×→1.0×로 회복(순이득 큼). 단 재료(돌) 있고 마을 충분히 클 때만.
   //   재료 없으면 아래 식량직(forage가 돌도 가져옴)으로 자연 회복. 죽음의 나선 방지.
-  if (N >= 6 && (v.storage.stone || 0) >= 0.2) {   // 석기 재료비(0.2/tool)에 맞춘 문턱
+  // ★★[2026-08-02c TOOLBOOT] `N>=6` 이 소촌을 맨손에 가둔다 — 인구 5 이하는 이 안전망을 **쓸 자격이 없어서**
+  //   도구 0 → 생산 ×0.25 → prodK 붕괴 → 더 못 자람 → 영원히 5 이하. 문턱을 1로 내린다(재료 게이트는 유지).
+  //   원래 문턱의 취지("마을이 충분히 클 때만")는 재료 게이트(돌 0.2)와 masonTarget 이 이미 지키고 있다.
+  if (N >= (TOOLBOOT_ON ? 1 : 6) && (v.storage.stone || 0) >= 0.2) {   // 석기 재료비(0.2/tool)에 맞춘 문턱
     const _td = toolDepCount(v);
     const _toolStock = (v.storage.tool || 0) + (v.storage.bronze_tool || 0) + (v.storage.iron_tool || 0);
     // 치명적 도구부족(커버리지<0.7)이고 석공이 노동목표 미달이면 기근보다 먼저 석공.
@@ -2714,6 +2766,16 @@ function pickDeficitJob_rational(v, world) {
   // ★자본재 장인 — 스톡-플로우 노동목표(정원 아님). 목표 미달이면 충원, 충족이면 건너뜀(0 수렴).
   //   재료 게이트: 대장간 돌, 무기장 돌, 갑옷장 가죽 필요. 충원 후엔 marginal 후보에서 빠져 식량·자원직과 경쟁 안 함.
   let _toolDeps = toolDepCount(v);
+  // ★★[2026-08-02c STONE_NET] **재료를 먼저 가져온다.** 실측 궤적(ts_42/tz_42)이 잡은 진짜 죽음의 고리:
+  //   석재 0 → 석공이 도구를 못 만든다(produceSpecial 게이트 `stone >= _stCost`) → 도구가 0 으로 감가 →
+  //   전 직업 생산 ×0.25(맨손) → prodK 붕괴 → K 붕괴 → 대량 아사 → 좀비.
+  //   그런데 그 상황에서 픽커가 부르는 건 **또 석공**이다 — 아래 채용줄의 `|| wood > N*0.5` 대안 때문에
+  //   돌이 0 이어도 석공이 뽑히고, 돌을 주워 올 채집꾼(아래 석재 안전망)까진 실행이 도달하지 못한다.
+  //   ⇒ 석재 결손이면 채집꾼을 **석공보다 먼저** 부른다. 경계도 `>` → `>=` 로 고친다:
+  //     livelihood.js 의 FLOOR.stone 이 정확히 0.25 라서, 바위 지형이 전혀 없는 마을(=가장 절실한 마을)이
+  //     엡실론 하나 차이로 통째로 제외돼 있었다. 그 바닥값 주석이 이미 "돌은 흔하다 — 누구나 조달"이다.
+  if (STONE_NET_ON && (v.land.stone || 0) >= 0.25 && (v.storage.stone || 0) < 0.2 * Math.max(1, masonTarget(v))
+      && hasSlot(v, 'forager', cap, counts)) return 'forager';
   // ★S2 석공(석기 도구 + 저티어 무기[마제석검·활]) — 돌 있으면 충원. masonTarget이 도구+무기 수요 통합.
   if ((counts.mason || 0) < masonTarget(v) && ((v.storage.stone || 0) >= 0.2 || (v.storage.wood || 0) > N * 0.5)) return 'mason';
   // ★★[재민 확정] 채용 조건도 이산 분기를 뺀다.
@@ -2741,7 +2803,8 @@ function pickDeficitJob_rational(v, world) {
   // ★주거 압박: 집이 거의 가득(인구 성장 막힘) + 집 지을 목재 부족 → 나무꾼. 집 지어야 인구가 늚 → 고리를 닫는 안전망.
   if (v.housing !== undefined && N >= v.housing * 0.95 && (v.storage.wood || 0) < N * 2 && hasSlot(v, 'lumberjack', cap, counts)) return 'lumberjack';
   // ★S1 석재 안전망: 돌은 채집자원 — 돌밭/강가(land.stone 충분) 마을이 석재 부족하면 채집꾼(광부 아님). 집·도구 석재 수요 → 채집. 돌 없으면(stone≤0.25) 안 함(교역 의존).
-  if ((v.land.stone || 0) > 0.25 && (v.storage.stone || 0) < N * 1.5 && hasSlot(v, 'forager', cap, counts)) return 'forager';
+  //   ★[2026-08-02c] STONE_NET 이 켜지면 경계는 위 선순위 줄에서 `>=0.25` 로 다시 잡힌다(여긴 재고 문턱 N*1.5 = 집·도구 통합 수요라 그대로 둔다).
+  if ((v.land.stone || 0) > (STONE_NET_ON ? 0.2499 : 0.25) && (v.storage.stone || 0) < N * 1.5 && hasSlot(v, 'forager', cap, counts)) return 'forager';
   // ★호위 안전망: 행상이 도적에게 죽은 적 있고(tradersKilled) 전사 부족 + 식량 여유면 전사 양성.
   //   → 전사가 무기·갑옷 수요 → 광석·석재 수요 → 채광. (도적→전사→광업 사슬을 닫음)
   if (v.tradeStats && (v.tradeStats.tradersKilled || 0) > 3 && (counts.warrior || 0) < warriorTarget(v) && foodEquiv > N * 40 && (v.storage.weapon || 0) >= (counts.warrior || 0) + 1 && hasSlot(v, 'warrior', cap, counts)) return 'warrior';   // ★무기(돌칼/철칼) 있어야 전사 + readiness 목표 이내
@@ -2819,7 +2882,11 @@ function pickDeficitJob_rational(v, world) {
 
 // 자율 직업 전환 — 매 7일 1명만
 function autoSwitchJob(v, day, world) {
-  if (v.npcs.length < 3) {
+  // ★★[2026-08-02c SWITCH2] 인구 2 마을은 **직업 전환이 통째로 꺼져 있었다.** 아래 조기반환 안의 안전망은
+  //   "식량직 0명 + 기근" 이라는 아주 좁은 조건만 본다 — 실측 좀비들(어촌9 어부2 · 광산2 농부1 어부1)은
+  //   전부 식량직이 차 있고 곳간도 넉넉해 이 안전망에 안 걸리고, 그대로 800일을 같은 직업으로 산다.
+  //   → 도구를 만들 석공으로도, 집을 지을 나무꾼으로도 못 바꾼다. 문턱을 2로 내려 정상 픽커 경로를 연다.
+  if (v.npcs.length < (SWITCH2_ON ? 2 : 3)) {
     // ★죽음의 나선 방지: 소수 인구 + 식량위기 + 식량생산자 0이면, 가장 맞는 식량직업으로 강제 전환(회복 보장).
     const c0 = jobCounts(v);
     const foodWorkers = (c0.farmer || 0) + (c0.fisher || 0) + (c0.hunter || 0) + (c0.forager || 0);

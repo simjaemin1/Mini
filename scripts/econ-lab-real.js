@@ -143,8 +143,18 @@ for (let d = 0; d < DAYS; d++) {
   econV2.tickWorldV2(world);
   if (process.env.LAB_DUMP && d % 10 === 0) {
     for (const v of world.villages) {
+      // ★[2026-08-02c 소멸 0 튜닝] K 3항·dP·도구를 궤적에 같이 실어야 "언제 무엇이 꺾였나"가 사후 재구성된다.
+      //   (최종 스냅샷만으론 day365 기아사망 해제 전후를 못 가른다 — 붕괴는 궤적에서만 보인다)
+      const _k = v._kDbg || null, _dp = v._dpDebug || null;
       (TRACE[v.name] || (TRACE[v.name] = [])).push({ d, p: v.npcs.length,
-        f: +((econ.totalFoodEquivalent ? econ.totalFoodEquivalent(v) : (v.storage.food || 0))).toFixed(0) });
+        f: +((econ.totalFoodEquivalent ? econ.totalFoodEquivalent(v) : (v.storage.food || 0))).toFixed(0),
+        ks: _k ? _k.slot : null, kp: _k ? _k.prod : null, kf: _k ? _k.fuel : null,
+        dp: _dp ? _dp.dP : null, hu: _dp ? _dp.hunger : null, ho: _dp ? _dp.housing : null, g: _dp ? (_dp.gated ? 1 : 0) : null,
+        tl: +(((v.storage.tool || 0) + (v.storage.bronze_tool || 0) + (v.storage.iron_tool || 0))).toFixed(1),
+        ms: (v.counts && v.counts.mason) || 0,
+        st: +(v.storage.stone || 0).toFixed(1), fg: (v.counts && v.counts.forager) || 0,
+        need: v._dbgSwitch ? v._dbgSwitch.need : null,
+        stImp: v.tradeStats ? +(v.tradeStats.stoneImported || 0).toFixed(0) : 0 });
     }
   }
   if (Era && d % 50 === 0 && d >= FLIP - 100) {
@@ -204,6 +214,9 @@ if (process.env.LAB_DUMP) {
       // 진단용 내부 스칼라 전부(_로 시작하는 수치 필드) — 게이트 산수를 밖에서 재현하려면 필요하다
       _int: Object.fromEntries(Object.keys(v).filter(k => k[0] === '_' && typeof v[k] === 'number')
         .map(k => [k, +v[k].toFixed(4)])),
+      // ★[2026-08-02c 소멸 0 튜닝] K 분해·인구 항 분해 — "이 마을은 뭐에 막혔나"의 직답.
+      //   _kDbg = {slot(경작 자리)·prod(식량 흐름)·fuel(연료 흐름)} 중 min 이 K · _dpDebug = 성장 항 분해
+      kDbg: v._kDbg || null, dpDebug: v._dpDebug || null,
       // ★인구·식량 궤적(10일 스냅샷, 최근 500일) — 마을 소멸의 사인 규명용
       history: TRACE[v.name] || [],   // {d,p(인구),f(식량환산)} — 랩 쪽 10일 표본(tickWorldV2 는 history 를 안 쌓는다)
     });
