@@ -247,5 +247,31 @@ console.log('\n⑦ 말 사역 — 열기 전 비트 동일 · 연 뒤 운반비�
   ok(netOpen > netClosed, '  말이 있으면 더 먼 곳까지 팔 값이 선다(교역 반경 확장)');
 }
 
+// ── ⑧ 구리 파생 투입수요 — 게이트 4개가 **전부** 물려야 양수다 (2026-08-02f ①-2) ──
+//   ★이 하네스가 존재하는 이유: 1차 구현이 "무기 커버리지 미달일 때만"이라 **한 번도 안 걸렸고**,
+//     3시드 800일이 기준선과 비트 동일하게 나왔다. 손잡이가 죽어 있는 걸 A/B 는 "무효과"로만 보고한다.
+//     그래서 **게이트가 실제로 열리는 상황**을 여기서 직접 만들어 확인한다(자명한 상황 통과 방지).
+console.log('\n⑧ 구리 파생 투입수요 — 게이트가 열리는가 · 닫히는가');
+{
+  const e1 = R('sim/economy-sim');
+  const mk = (st, cnt, q) => ({ storage: st, counts: cnt, npcs: [1, 2, 3], _weapQ: q });
+  const ON = process.env.COPPER_DERIV === '1';
+  ok(typeof e1.derivedInputTarget === 'function', 'v1 이 derivedInputTarget 을 노출한다(v2 가 부르는 단일 진실)');
+  if (!ON) {
+    ok(e1.derivedInputTarget(mk({ tin: 5 }, { mason: 2 }, 0.5), 'copper') === 0,
+      '★손잡이 OFF 면 어떤 마을에도 0 — Math.max(...,0) 이라 기준선과 비트 동일');
+    console.log('    (게이트 개폐 검사는 COPPER_DERIV=1 로 다시 돌려야 한다 — 아래는 그 실행의 결과다)');
+  } else {
+    const openV = e1.derivedInputTarget(mk({ tin: 5 }, { mason: 2 }, 0.5), 'copper');
+    ok(openV > 0, `★주석은 있는데 구리가 없는 마을 → 파생수요 ${openV.toFixed(3)} (부트스트랩 고리가 열린다)`);
+    ok(e1.derivedInputTarget(mk({}, { mason: 2 }, 0.5), 'copper') === 0,
+      '★합칠 것이 없으면 0 — **순동(등급 0.466)은 마제석검(0.5)보다 나쁘다**. 첫 구리는 정말 살 값어치가 없다');
+    ok(e1.derivedInputTarget(mk({ tin: 5 }, {}, 0.5), 'copper') === 0,
+      '무기 노동(석공·대장장이)이 0인 마을은 0 — 유령 수요 아님');
+    ok(e1.derivedInputTarget(mk({ tin: 5 }, { mason: 2 }, 0.5), 'iron') === 0,
+      '구리 외 재화에는 안 붙는다(수요를 시대로 자르지 않되, 이 장치는 구리 축 전용)');
+  }
+}
+
 console.log('\n결과: ' + (fail ? 'FAIL — ' + fail + '건' : 'PASS'));
 process.exit(fail ? 1 : 0);

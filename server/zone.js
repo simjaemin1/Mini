@@ -5047,6 +5047,8 @@ function __testBind() {
     mobs, MOB_DEFS, tryFeed, qtMobs: () => qtMobs,
     // ── 조업 진척 계약 E2E(2026-08-02e ⑤) ── 시간은 벽시계라 하네스가 job.until 을 당겨 검증한다
     SMELT_BASE_MS, SMELT_MIN_MS, KILN_BURN_MS, KILN_BATCH_MS_PER, _smeltDurationMs, _jobProgress,
+    // ── 조업 **페이싱** 실측(2026-08-02f ②) ── 단조까지 이어야 사슬 한 바퀴의 실시간이 나온다
+    doCraftEquipment, EQUIPMENT_RECIPES,
   };
 }
 module.exports = { __testBind, __furnaceBind: __testBind };

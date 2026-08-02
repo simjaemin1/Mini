@@ -89,6 +89,16 @@ const TRANSPORT_COST_PER_1000 = 2.0;
 //     그래서 닫힌 시대의 반환값은 곱셈 항등원 `1` 이다: IEEE 에서 `x * 1 === x` 라 **비트 동일**이다.
 //     (0.999 같은 '거의 1'을 쓰면 그 순간 궤적이 갈린다 — era-rehearsal 이 그걸 잡는다.)
 const HORSE_HAUL_MUL = 0.62;   // 말 보급 후 육상 운반비 배수(등짐 대비 바리·수레). 시대가 열려야 적용.
+// ═══ ★★[2026-08-02f ①-3] 원석 교역 금지 — **정합 판단이 먼저다** ════════════════════
+//   회부_구리부존과_원석적체 ③ 의 (나)안. 고증은 정확히 이쪽이다: 광석은 무겁고 값이 싸 멀리 안 갔다.
+//   ⚠그런데 그 회부가 쓰인 **뒤에** (가)안이 채택됐다 — `_oreMixEff`(원석 조성 장부, 배치 3).
+//     (나)는 (가)가 없던 세계의 처방이었다. "수입 원석은 영원히 못 녹는 죽은 돌"이라는 전제가
+//     지금은 **거짓**이다. 지금 (나)를 켜면 (가)의 유입 경로(캐러밴이 출발지 조성으로 폴드)가 통째로 죽는다.
+//     인계 문서가 그 채택을 "소멸 −50%·주조 +71%의 주역"이라 적는다.
+//   ⇒ 그래서 **논증이 아니라 실측으로** 판정한다: 금지 전후로 주조 마을 수·원석 적체·기준선을 같이 잰다.
+//     이 손잡이는 그 실측을 하기 위해 존재한다. 기본 OFF.
+const ORE_TRADE_BAN = (typeof process !== 'undefined' && process.env && process.env.ORE_TRADE_BAN === '1');
+const _oreBanned = (r) => ORE_TRADE_BAN && r === 'ore';
 let _eraModV2;
 function _eraV2() { if (_eraModV2 === undefined) { try { _eraModV2 = require('../server/era'); } catch (e) { _eraModV2 = null; } } return _eraModV2; }
 function haulMul() {
@@ -359,7 +369,10 @@ function computeShadowPrices(v) {
       //     안 쓰면 0이고, 플레이어가 철검을 들여와 마을이 쓰기 시작하면 _cons 가 잡혀 저절로 생긴다.
       //   ※장식재(ORNAMENTAL)의 위신 수요는 남긴다 — 그건 '쓰지 않는 재화'가 아니라 보유 자체가 효용이다.
       const buffer = ORNAMENTAL[r] ? N * LUX_TARGET_PC : 0;
-      target = Math.max(subs * 30, buffer, flowT);
+      // ★[2026-08-02f ①-2] 파생 투입수요 — 판정은 v1 한 곳에서만(사본 금지). 손잡이 OFF 면 항상 0.
+      //   동기 계약: 아래 `_priceParamsV2`·`tickDecay` 도 같은 줄을 갖는다.
+      const derivT = v1.derivedInputTarget ? v1.derivedInputTarget(v, r) : 0;
+      target = Math.max(subs * 30, buffer, flowT, derivT);
       // ★식량 다양성 수요 — 자체 생산 못 하는 식품군은 다양성 위해 소량 수입 목표. 자체 생산하면(≥0.05/명) 보너스 없음.
       //   ★식량안보 게이트: 주식(곡물) 25일치 이상일 때만 — 굶는 마을은 다양성보다 생존(주식) 우선(변방 마을 아사 방지).
       if (VARIETY_FOOD[r] && (v.dailyProductionBuf ? (v.dailyProductionBuf[r] || 0) / N : 0) < 0.05
@@ -454,7 +467,8 @@ function _priceParamsV2(v, r) {
     const subs = (SUBSISTENCE_PER_NPC[r] || 0) * N;
     const flowT = SUBSISTENCE_PER_NPC[r] ? 0 : ((v._consEMA || {})[r] || 0) * 30;   // ★flow-EMA(동기 계약: computeShadowPrices와 동일 공식·subs 가드)
     const buffer = ORNAMENTAL[r] ? N * LUX_TARGET_PC : N * (util * 1.2);
-    target = Math.max(subs * 30, buffer, flowT);
+    const derivT = v1.derivedInputTarget ? v1.derivedInputTarget(v, r) : 0;   // ★[2026-08-02f ①-2] 동기 계약
+    target = Math.max(subs * 30, buffer, flowT, derivT);
     if (VARIETY_FOOD[r] && (v.dailyProductionBuf ? (v.dailyProductionBuf[r] || 0) / N : 0) < 0.05
         && (v.storage.food || 0) / N > 25) target = Math.max(target, N * VARIETY_TARGET_PC);
     stock = Math.max(0.1, v.storage[r] || 0);
@@ -626,6 +640,7 @@ function tickTradeV2(world, day) {
       const huntN3 = (a.v.counts && a.v.counts.hunter) || 0;   // ★활(§9 3차): 사냥꾼 활도 마을 장비 — 수출 유보에 포함(마을 활을 팔아치우면 사냥 무장해제)
       const candidates = [];
       for (const r of TRADABLE) {
+        if (_oreBanned(r)) continue;   // ★[2026-08-02f ①-3] 원석은 산지에서만 녹인다 — 발주 후보에서 제외
         const stock = a.v.storage[r] || 0;
         const subs = (SUBSISTENCE_PER_NPC[r] || 0) * N;
         const buffer = N * 0.8;
@@ -1009,6 +1024,7 @@ function tickCaravansV2(world, day) {
         let bestR = null, bestRatio = 0;
         for (const r of TRADABLE) {
           if (r === c.giveRes) continue;
+          if (_oreBanned(r)) continue;   // ★[2026-08-02f ①-3] 귀환화물로도 원석을 싣지 않는다(발주와 같은 잣대)
           const bStock = c.to.storage[r] || 0;
           if (bStock <= 1) continue;
           if (_returnGlutted(r)) continue;   // ★return-glut-cap
@@ -1166,7 +1182,8 @@ function tickDecay(v) {
     const util = UTILITY_WEIGHT[r] || 0.1;
     const flowT = SUBSISTENCE_PER_NPC[r] ? 0 : ((v._consEMA || {})[r] || 0) * 30;   // ★flow-EMA(동기 계약·subs 가드) — 롱테일 작업 재고는 과잉부패에서 보호
     const buffer = N * (util * 1.2);
-    const target = Math.max(subs * 30, buffer, flowT);
+    const derivT = v1.derivedInputTarget ? v1.derivedInputTarget(v, r) : 0;   // ★[2026-08-02f ①-2] 동기 계약
+    const target = Math.max(subs * 30, buffer, flowT, derivT);
     // excess: target × mult 초과분은 비례 가속(쥐·곰팡이·도둑). 부패성 식량은 mult 낮아 ~60일에서 cap.
     const xm = DECAY_EXCESS_MULT[r] || 10;
     const excess = Math.max(0, s / Math.max(1, target * xm) - 1);

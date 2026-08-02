@@ -2475,13 +2475,13 @@ const CAST_OUT_REF = 0.81;    // 표준 청동(Cu88Sn12)의 주조성 — 산출
 const CAST_OUT_MAX = 1.8;     // 주조성 이득 상한(납을 무한정 붓는 걸 막는다)
 const _MELT_TOTAL = 0.15;   // ★무기 1자루 = 금속 1단위(옛 2.8단위). 노동가치 정합가를 23.2→14.7 로 낮춘다
 const _MELT_METALS = ['copper', 'tin', 'lead', 'silver', 'gold'];   // 청동기에 제련 가능한 것만
-function _alloyMelt(v) {
+// ★[2026-08-02f ①-2] 배합 탐색을 **공용 헬퍼**로 뽑았다 — 주조 결정(_alloyMelt)과
+//   구리 파생수요(derivedInputTarget)가 같은 탐색·같은 목적함수를 써야 한다(사본 금지).
+//   `price` 만 갈린다: 주조는 기회비용(_oppPrice), 파생수요는 **기준가**(자기 꼬리 물기 방지).
+function _meltSearch(st, price) {
   const SP = _spec(); if (!SP) return null;
-  const st = v.storage || {};
-  if (!((st.copper || 0) > 0.01)) return null;            // 구리 없이는 못 만든다(기지가 없다)
   // ★[2026-08-02c] 재료비·산출값 둘 다 **기회비용**으로 — "이 주석을 무기에 쓸까, 팔까"가 여기서 갈린다.
   //   ALLOY_OPP 가 꺼져 있거나 순수출가 주입이 없으면 _matPrice 와 바이트 동일(회귀 무영향). _oppPrice 주석 참조.
-  const price = _oppPrice(v);
   const adds = _MELT_METALS.filter((m) => m !== 'copper' && (st[m] || 0) > 0.01);
 
   // ★★[재민 확정] 대장장이는 **재고 비율대로 붓지 않는다.** 그건 대장장이가 아니라 쓰레기통이다.
@@ -2541,7 +2541,12 @@ function _alloyMelt(v) {
     }
   }
   if (!best) return null;
-  return { take: best.take, grade: best.grade, castF: best.castF, bronzeness: Math.min(1, (best.mix.tin || 0) / 0.12) };
+  return { take: best.take, mix: best.mix, grade: best.grade, castF: best.castF, bronzeness: Math.min(1, (best.mix.tin || 0) / 0.12) };
+}
+function _alloyMelt(v) {
+  const st = v.storage || {};
+  if (!((st.copper || 0) > 0.01)) return null;            // 구리 없이는 못 만든다(기지가 없다)
+  return _meltSearch(st, _oppPrice(v));
 }
 function _bronzeCapable(v) {
   if ((v.land && v.land.tin || 0) > 0) return true;                       // 주석 산지 — 자체 청동
@@ -3898,6 +3903,61 @@ const ORE_STOCK_PC = 0.5;   // 1인당 원석 재고 목표 — 이 아래면 �
 //   원석 적체가 안 줄었다 — **캡이 병목이 아니기 때문**이다(아래 smeltTarget 의 한계가치 게이트가 먼저 0을 낸다).
 const SMELT_LABOR_CAP_PC = (typeof process !== 'undefined' && process.env && process.env.SMELT_CAP != null)
   ? Number(process.env.SMELT_CAP) : 0.05;
+// ═══ ★★[2026-08-02f ①-2] 구리 **파생 투입수요** — 부트스트랩 닫힌 고리를 연다 ══════════
+//   회부_구리부존과_원석적체 ② (가). 실측된 고리는 이렇다:
+//     구리를 써 본 적 없는 마을 → `_consEMA.copper = 0` → `flowT = 0` → target 0 → 가격 바닥
+//     → 캐러밴이 영원히 안 싣는다 → 영원히 못 써 본다.
+//   그리고 전 마을에 구리 30 을 쥐여 주면 **19/19 가 800일 내내 주조했다** — 능력·사슬·노동은
+//   전혀 문제가 아니고 오직 **첫 구리가 안 온다**는 것뿐이었다.
+//   ★이것은 재민이 폐기한 "기본 비축 목표"와 **다르다**. 저건 용도와 무관하게 항상 깔리는 보유
+//     수요였고, 이건 **쓸 데가 실제로 있을 때만** 양수인 파생수요다(`smeltTarget` 이 원석에 쓰는 그 논리).
+//   ★유령이 되지 않게 게이트를 둘 건다:
+//     ① **무기 커버리지** — 무기가 이미 충분한 마을은 구리를 살 이유가 없다.
+//        잣대는 v2 `CAP_TARGET.weapon`(=max(2, 전사×1.2)) 을 그대로 쓴다(사본 금지 원칙).
+//     ② **주조 채산** — 순동 주조 1일의 이윤이 양수여야. `_alloyMelt` 의 목적함수와 같은 식이다.
+//        ⚠판정은 **기준가**로 한다. 시장가로 보면 수요가 값을 올리고 그 값이 게이트를 닫아
+//        수요가 사라지는 자기 꼬리 물기가 생긴다(`smeltTarget` 주석의 그 실측 그대로).
+//   ★크기는 **대장장이 한 명의 한 달치**(_MELT_TOTAL × 30 = 4.5)다. 비축이 아니라 조업 재고다.
+//   ★기본 OFF. 채택 조건(배치 지시): 합금 등급 평균이 1.0 아래로 안 내려갈 것 + 기준선 2줄 유지.
+const COPPER_DERIV_ON = (typeof process !== 'undefined' && process.env && process.env.COPPER_DERIV === '1');
+const COPPER_DERIV_DAYS = (typeof process !== 'undefined' && process.env && process.env.COPPER_DERIV_DAYS != null)
+  ? Number(process.env.COPPER_DERIV_DAYS) : 30;
+function derivedInputTarget(v, r) {
+  if (!COPPER_DERIV_ON || r !== 'copper' || !v || !v.storage) return 0;
+  if (_ERA_METAL('copper') && !_eraKnows('copper')) return 0;   // 시대가 모르는 금속은 파생수요도 없다
+  // ★★[1차 실측으로 뒤집은 게이트] 처음엔 "무기 커버리지(v2 CAP_TARGET.weapon)가 미달일 때만"으로 짰다.
+  //   3시드 800일 결과가 **기준선과 비트 동일**했다 — 한 번도 안 걸린 것이다. 이유는 명확하다:
+  //   마을은 무기가 **모자라지 않는다**(19마을 2,017자루). 모자란 건 **좋은** 무기다. 커버리지는
+  //   마제석검과 청동검을 **같은 1자루로 센다** — 그 잣대로는 구리의 한계가치가 영원히 안 보인다.
+  //   ⇒ 게이트를 **품질**로 바꾼다: 이 마을이 지금 만드는 무기보다 구리검이 나은가.
+  //     (배치 6 ②가 "무기는 수량이 아니라 품질보정 총량으로 판정한다"고 정한 것과 같은 결이다.)
+  const cnt = v.counts || {};
+  // 게이트① **무기를 만드는 마을인가** — 석공이든 대장장이든 무기 노동이 실재해야 한다.
+  //   (구리가 없어도 참인 신호라 부트스트랩 고리에 걸리지 않는다 — 순환 없음)
+  if (!((cnt.mason || 0) > 0 || (cnt.smith || 0) > 0)) return 0;
+  // ★★[2차 실측으로 다시 뒤집은 부분] "순동검이 석검보다 나은가"로 짰더니 **영원히 거짓**이었다:
+  //   순동 등급 0.466 < 마제석검 0.5. 모델이 옳다 — 순동은 무르고 잘 벼린 간돌검이 더 낫다.
+  //   ⇒ **첫 구리 한 덩이는 정말로 살 값어치가 없다**. 구리가 값을 하는 건 **합칠 것이 있을 때**다.
+  //     그래서 판정은 "순동"이 아니라 **이 마을이 지금 가진 다른 금속으로 짤 수 있는 최선의 배합**으로 한다.
+  //     주석 산지인데 구리가 없어 주조를 못 하던 마을(회부 ②의 어촌1 유형)이 정확히 여기서 열린다.
+  //   ★탐색은 `_meltSearch` 공용 헬퍼 — 주조 결정과 **같은 목적함수**다(사본 금지).
+  //     가격만 **기준가**로 준다: 시장가를 쓰면 수요가 값을 올리고 그 값이 게이트를 닫는다(자기 꼬리 물기).
+  const stHypo = Object.assign({}, v.storage);
+  stHypo.copper = Math.max(stHypo.copper || 0, _MELT_TOTAL);   // "구리가 있다면" — 딱 1회 주조분만 가정
+  const basePrice = (r) => (BASE_VALUE[r] > 0 ? BASE_VALUE[r] : 1);
+  const best = _meltSearch(stHypo, basePrice);
+  if (!best) return 0;
+  // 게이트② **품질이 나아지는가** — 이 마을 무기 스톡 품질(_weapQ EMA)보다 나아야 산다.
+  const qNew = Math.min(1.2, best.grade) * WEAP_Q_BRONZE;
+  const qNow = v._weapQ != null ? v._weapQ : WEAP_Q_STONE;
+  if (!(qNew > qNow)) return 0;
+  // 게이트③ **채산** — 그 배합 하루의 이윤이 양수여야(재료비는 구리를 포함한 전액).
+  const amtPerCast = (JOBS.smith.base || 0.45) * WEAPON_LABOR_MULT;
+  let cost = 0; for (const k in best.take) cost += best.take[k] * basePrice(k);
+  const gain = amtPerCast * best.castF * (BASE_VALUE.weapon || 1) * Math.min(1.2, best.grade);
+  if (!(gain - cost > 0)) return 0;
+  return (best.take.copper || _MELT_TOTAL) * COPPER_DERIV_DAYS;
+}
 function smeltTarget(v) {
   const mix = oreMixOf(v);   // ★유효 조성 — 수입 원석도 녹일 수 있다(2026-08-02b)
   if (!mix) return 0;
@@ -4967,6 +5027,7 @@ module.exports = {
   // ★유효 제련 조성(2026-08-02b) — v2 가격 상한·교역 층이 **같은 함수**를 쓰도록 노출(사본 금지).
   //   _trySmelt·smeltTarget 은 하네스(scripts/test-oremix.js)가 실제 제련을 돌려 보려고 노출한다.
   oreMixOf, foldOreMix, _trySmelt, smeltTarget,
+  derivedInputTarget,   // ★[2026-08-02f ①-2] 구리 파생 투입수요 — v2 가 가격 target 에 얹는다(단일 진실)
   // ★부얼타운 판정 — 시딩(villages.js)이 같은 함수를 쓰도록 노출(사본 금지)
   isBoomtown, veinScore, foodCapOf, BOOM_FOOD_MAX, BOOM_VEIN_MIN,
   createWorld,
@@ -5094,6 +5155,16 @@ const TRANSPORT_COST_PER_1000 = 2.0;
 //     그래서 닫힌 시대의 반환값은 곱셈 항등원 `1` 이다: IEEE 에서 `x * 1 === x` 라 **비트 동일**이다.
 //     (0.999 같은 '거의 1'을 쓰면 그 순간 궤적이 갈린다 — era-rehearsal 이 그걸 잡는다.)
 const HORSE_HAUL_MUL = 0.62;   // 말 보급 후 육상 운반비 배수(등짐 대비 바리·수레). 시대가 열려야 적용.
+// ═══ ★★[2026-08-02f ①-3] 원석 교역 금지 — **정합 판단이 먼저다** ════════════════════
+//   회부_구리부존과_원석적체 ③ 의 (나)안. 고증은 정확히 이쪽이다: 광석은 무겁고 값이 싸 멀리 안 갔다.
+//   ⚠그런데 그 회부가 쓰인 **뒤에** (가)안이 채택됐다 — `_oreMixEff`(원석 조성 장부, 배치 3).
+//     (나)는 (가)가 없던 세계의 처방이었다. "수입 원석은 영원히 못 녹는 죽은 돌"이라는 전제가
+//     지금은 **거짓**이다. 지금 (나)를 켜면 (가)의 유입 경로(캐러밴이 출발지 조성으로 폴드)가 통째로 죽는다.
+//     인계 문서가 그 채택을 "소멸 −50%·주조 +71%의 주역"이라 적는다.
+//   ⇒ 그래서 **논증이 아니라 실측으로** 판정한다: 금지 전후로 주조 마을 수·원석 적체·기준선을 같이 잰다.
+//     이 손잡이는 그 실측을 하기 위해 존재한다. 기본 OFF.
+const ORE_TRADE_BAN = (typeof process !== 'undefined' && process.env && process.env.ORE_TRADE_BAN === '1');
+const _oreBanned = (r) => ORE_TRADE_BAN && r === 'ore';
 let _eraModV2;
 function _eraV2() { if (_eraModV2 === undefined) { try { _eraModV2 = require('../server/era'); } catch (e) { _eraModV2 = null; } } return _eraModV2; }
 function haulMul() {
@@ -5364,7 +5435,10 @@ function computeShadowPrices(v) {
       //     안 쓰면 0이고, 플레이어가 철검을 들여와 마을이 쓰기 시작하면 _cons 가 잡혀 저절로 생긴다.
       //   ※장식재(ORNAMENTAL)의 위신 수요는 남긴다 — 그건 '쓰지 않는 재화'가 아니라 보유 자체가 효용이다.
       const buffer = ORNAMENTAL[r] ? N * LUX_TARGET_PC : 0;
-      target = Math.max(subs * 30, buffer, flowT);
+      // ★[2026-08-02f ①-2] 파생 투입수요 — 판정은 v1 한 곳에서만(사본 금지). 손잡이 OFF 면 항상 0.
+      //   동기 계약: 아래 `_priceParamsV2`·`tickDecay` 도 같은 줄을 갖는다.
+      const derivT = v1.derivedInputTarget ? v1.derivedInputTarget(v, r) : 0;
+      target = Math.max(subs * 30, buffer, flowT, derivT);
       // ★식량 다양성 수요 — 자체 생산 못 하는 식품군은 다양성 위해 소량 수입 목표. 자체 생산하면(≥0.05/명) 보너스 없음.
       //   ★식량안보 게이트: 주식(곡물) 25일치 이상일 때만 — 굶는 마을은 다양성보다 생존(주식) 우선(변방 마을 아사 방지).
       if (VARIETY_FOOD[r] && (v.dailyProductionBuf ? (v.dailyProductionBuf[r] || 0) / N : 0) < 0.05
@@ -5459,7 +5533,8 @@ function _priceParamsV2(v, r) {
     const subs = (SUBSISTENCE_PER_NPC[r] || 0) * N;
     const flowT = SUBSISTENCE_PER_NPC[r] ? 0 : ((v._consEMA || {})[r] || 0) * 30;   // ★flow-EMA(동기 계약: computeShadowPrices와 동일 공식·subs 가드)
     const buffer = ORNAMENTAL[r] ? N * LUX_TARGET_PC : N * (util * 1.2);
-    target = Math.max(subs * 30, buffer, flowT);
+    const derivT = v1.derivedInputTarget ? v1.derivedInputTarget(v, r) : 0;   // ★[2026-08-02f ①-2] 동기 계약
+    target = Math.max(subs * 30, buffer, flowT, derivT);
     if (VARIETY_FOOD[r] && (v.dailyProductionBuf ? (v.dailyProductionBuf[r] || 0) / N : 0) < 0.05
         && (v.storage.food || 0) / N > 25) target = Math.max(target, N * VARIETY_TARGET_PC);
     stock = Math.max(0.1, v.storage[r] || 0);
@@ -5631,6 +5706,7 @@ function tickTradeV2(world, day) {
       const huntN3 = (a.v.counts && a.v.counts.hunter) || 0;   // ★활(§9 3차): 사냥꾼 활도 마을 장비 — 수출 유보에 포함(마을 활을 팔아치우면 사냥 무장해제)
       const candidates = [];
       for (const r of TRADABLE) {
+        if (_oreBanned(r)) continue;   // ★[2026-08-02f ①-3] 원석은 산지에서만 녹인다 — 발주 후보에서 제외
         const stock = a.v.storage[r] || 0;
         const subs = (SUBSISTENCE_PER_NPC[r] || 0) * N;
         const buffer = N * 0.8;
@@ -6014,6 +6090,7 @@ function tickCaravansV2(world, day) {
         let bestR = null, bestRatio = 0;
         for (const r of TRADABLE) {
           if (r === c.giveRes) continue;
+          if (_oreBanned(r)) continue;   // ★[2026-08-02f ①-3] 귀환화물로도 원석을 싣지 않는다(발주와 같은 잣대)
           const bStock = c.to.storage[r] || 0;
           if (bStock <= 1) continue;
           if (_returnGlutted(r)) continue;   // ★return-glut-cap
@@ -6171,7 +6248,8 @@ function tickDecay(v) {
     const util = UTILITY_WEIGHT[r] || 0.1;
     const flowT = SUBSISTENCE_PER_NPC[r] ? 0 : ((v._consEMA || {})[r] || 0) * 30;   // ★flow-EMA(동기 계약·subs 가드) — 롱테일 작업 재고는 과잉부패에서 보호
     const buffer = N * (util * 1.2);
-    const target = Math.max(subs * 30, buffer, flowT);
+    const derivT = v1.derivedInputTarget ? v1.derivedInputTarget(v, r) : 0;   // ★[2026-08-02f ①-2] 동기 계약
+    const target = Math.max(subs * 30, buffer, flowT, derivT);
     // excess: target × mult 초과분은 비례 가속(쥐·곰팡이·도둑). 부패성 식량은 mult 낮아 ~60일에서 cap.
     const xm = DECAY_EXCESS_MULT[r] || 10;
     const excess = Math.max(0, s / Math.max(1, target * xm) - 1);

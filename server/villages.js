@@ -471,6 +471,17 @@ function pickSeedVillages(all, ta) {
   //     다시 재 볼 값이 있다. BOOMTOWN=2 로 켠다.
   const BOOMTOWN_MAX = (typeof process !== 'undefined' && process.env && process.env.BOOMTOWN != null)
     ? Number(process.env.BOOMTOWN) : 0;
+  // ═══ ★★[2026-08-02f ①-1] 광맥 슬롯 — **하한을 넘으면서 광맥이 실한 자리**를 예약한다 ══════
+  //   배치 지시: "광산 후보 슬롯 예약. 단 식량 바닥 2.0 하드 조건은 유지(광산이라도 굶는 터는 안 된다)."
+  //   부얼타운(위)과 **다른 손잡이**다 — 저건 하한을 넘고, 이건 하한 안에서 순서만 바꾼다.
+  //   ★지도를 먼저 읽고 넣었다(`scripts/probe-seedcands.js` 전수 스캔):
+  //     · 하한 통과 & 광맥 ≥1.0 인데 점수에 밀려 떨어지는 후보 = **광산5**(광맥 1.186 · 구리 0.195) 1곳
+  //     · 지금 선별 19곳의 구리 부존 합은 0.354, 구리 지수>0.1 인 곳은 2곳뿐이다 → 광산5 가 들어오면 +55%
+  //   ⚠VEINSLOT=1 은 **비트 동일(사문)**이다: 최고 광맥 광산4(1.218)는 이미 type 다양성 슬롯으로 들어온다.
+  //     실제로 지도를 바꾸는 최소값은 2다. 그래서 A/B 는 VEINSLOT=2 로 잰다.
+  //   ★자리는 공짜가 아니다 — 광산5 가 들어오면 점수순 꼬리 한 곳이 밀린다. 그 교환이 남는 장사인지가 A/B다.
+  const VEINSLOT_MAX = (typeof process !== 'undefined' && process.env && process.env.VEINSLOT != null)
+    ? Number(process.env.VEINSLOT) : 0;
   //   광맥 점수 = 부존 × 광종 가중(청동 재료를 높게) + 주석 산지 축. 실측 분포에서 자연 절단선이 1.0 이다:
   //     하한 미달 후보 중 1.0 이상은 광산6(1.073 · 구리90%) · 광산1(1.025 · 납85/은15) 둘뿐이고,
   //     그다음이 0.238 로 뚝 떨어진다 — 임의 문턱이 아니라 지도가 그어 준 선.
@@ -512,6 +523,17 @@ function pickSeedVillages(all, ta) {
     for (const v of boom) {
       if (picked.length >= Math.min(BOOMTOWN_MAX, VILLAGE_MAX)) break;
       if (farEnough(v)) { v._boomtown = 1; picked.push(v); }
+    }
+  }
+  // ⓪-b ★광맥 슬롯(2026-08-02f) — 하한 통과 후보 중 광맥 점수 상위 VEINSLOT_MAX 곳.
+  //   type 다양성보다 **먼저** 뽑는다: 나중에 두면 간격(MIN_SPACING_PX)과 20칸 상한에 밀려
+  //   부얼타운과 같은 이유로 사문이 된다(위 ⓪ 주석의 교훈 그대로).
+  if (ta && VEINSLOT_MAX > 0) {
+    const vs = scored.filter(v => v._land > 0 && v._vein >= VEIN_FLOOR).sort((a, b) => b._vein - a._vein);
+    let n = 0;
+    for (const v of vs) {
+      if (n >= VEINSLOT_MAX || picked.length >= VILLAGE_MAX) break;
+      if (!picked.includes(v) && farEnough(v)) { v._veinslot = 1; picked.push(v); n++; }
     }
   }
   // ① type 다양성 — 각 type 최고점 1곳 (품질순 정렬을 거친 뒤라, 같은 타입 중 가장 좋은 자리가 뽑힌다)
