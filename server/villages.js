@@ -1098,7 +1098,16 @@ function coarseOpen(ta, gx, gy) {
   }
   return 0;
 }
-function computeAndInjectDistMatrix(reason) {
+// ★★[2026-08-03d 배치 11 ①-2] **증분 계산** — 마을 하나가 늘 때 전쌍을 다시 돌지 않는다.
+//   실측 근거: 18마을 153쌍 BFS 가 **25.5초**다(그리드 547×1016 · 지형판정 476,112회). O(N²)라
+//   플레이어가 마을을 세울 때마다 전쌍을 다시 돌면 **서버가 그만큼 멎는다.**
+//   ⇒ `opts.incrementalFrom = K` 를 주면 **인덱스 K 이상인 마을만 소스로** BFS 를 돌리고,
+//     0..K-1 끼리의 쌍은 기존 행렬(`world._distMatrix`)에서 그대로 복사한다.
+//   ★정확성의 근거: BFS(Dial)는 무향 그래프의 **정확한** 최단거리라 소스가 누구든 같은 값이 나오고,
+//     `srcNode` 스냅도 마을 좌표만으로 결정돼 소스와 무관하다. 그래서 증분 결과 = 전쌍 결과다.
+//     ⚠추측으로 두지 않는다 — `scripts/test-distmatrix.js` 가 실지형에서 **완전 일치**를 검사한다.
+//   ★기존 행렬이 없거나 크기가 안 맞으면 **조용히 전쌍으로 떨어진다**(안전 폴백).
+function computeAndInjectDistMatrix(reason, opts) {
   const { ta, ZONE } = state._distCtx;
   const world = state.world;
   const villages = world.villages;
@@ -1126,16 +1135,27 @@ function computeAndInjectDistMatrix(reason) {
     }
     return -1; // 구제 불가 — 이 마을은 전쌍 Infinity(아래 로그에 잡힘)
   });
+  // ★증분 판정 — 기존 행렬이 정확히 K×K 여야 재사용한다(아니면 전쌍).
+  const _wantK = (opts && opts.incrementalFrom != null) ? opts.incrementalFrom : -1;
+  const _prev = (_wantK > 0 && world._distMatrix && world._distMatrix.length === _wantK
+                 && world._distMatrix[0] && world._distMatrix[0].length === _wantK) ? world._distMatrix : null;
+  const INCR = _prev ? _wantK : -1;
   const mat = []; for (let i = 0; i < M; i++) { const row = new Array(M).fill(Infinity); row[i] = 0; mat.push(row); }
+  if (_prev) for (let i = 0; i < INCR; i++) for (let j = 0; j < INCR; j++) mat[i][j] = _prev[i][j];
   const dist = new Int32Array(gw * gh);
   const DIRS = [[1, 0, 10], [-1, 0, 10], [0, 1, 10], [0, -1, 10], [1, 1, 14], [1, -1, 14], [-1, 1, 14], [-1, -1, 14]];
-  for (let s = 0; s < M; s++) {
+  let _srcRuns = 0;
+  for (let s = (_prev ? INCR : 0); s < M; s++) {
     if (srcNode[s] < 0) continue;
-    // 타깃: 뒤 인덱스 마을만(쌍 대칭 — 앞 인덱스와의 쌍은 그쪽 소스가 이미 채움)
+    // 타깃 선정. 전쌍 모드: 뒤 인덱스만(쌍 대칭 — 앞 인덱스와의 쌍은 그쪽 소스가 이미 채움).
+    //   증분 모드(s ≥ INCR): **기존 마을 전부**(j < INCR) + 자기 뒤 새 마을(j > s).
+    //   두 새 마을 사이의 쌍은 앞쪽 소스가 채우므로 INCR ≤ j < s 는 건너뛴다(중복 방지).
+    const _wants = (j) => j !== s && (_prev ? (j < INCR || j > s) : j > s);
     const nodeToTargets = new Map();
-    for (let j = s + 1; j < M; j++) if (srcNode[j] >= 0) {
+    for (let j = 0; j < M; j++) if (_wants(j) && srcNode[j] >= 0) {
       const arr = nodeToTargets.get(srcNode[j]) || []; arr.push(j); nodeToTargets.set(srcNode[j], arr);
     }
+    _srcRuns++;
     let remaining = 0; for (const arr of nodeToTargets.values()) remaining += arr.length;
     if (!remaining) continue;
     dist.fill(-1);
@@ -1175,7 +1195,7 @@ function computeAndInjectDistMatrix(reason) {
     const r = d / Math.max(1, eu);
     pairs++; sumR += r; if (r > maxR) maxR = r; if (r > 1.02) longer++; if (d > maxD) maxD = d;
   }
-  console.log(`[${state.zoneId}] 🏘️ 교역 BFS 거리행렬${reason ? `(${reason})` : ''}: ${M}마을 ${pairs + unreach}쌍 ${Date.now() - t0}ms (그리드 ${gw}×${gh}·step ${DIST_STEP}셀·지형판정 ${sampled}·다리구제 ${bridgeSaved}) — 유클리드 대비 평균 ×${pairs ? (sumR / pairs).toFixed(2) : '-'} 최대 ×${maxR.toFixed(2)} 우회쌍(>1.02배) ${longer} · 최장 ${maxD.toFixed(0)} · 도달불능 ${unreach}쌍`);
+  console.log(`[${state.zoneId}] 🏘️ 교역 BFS 거리행렬${reason ? `(${reason})` : ''}${_prev ? `[증분 ${INCR}→${M} · 소스 ${_srcRuns}회]` : ''}: ${M}마을 ${pairs + unreach}쌍 ${Date.now() - t0}ms (그리드 ${gw}×${gh}·step ${DIST_STEP}셀·지형판정 ${sampled}·다리구제 ${bridgeSaved}) — 유클리드 대비 평균 ×${pairs ? (sumR / pairs).toFixed(2) : '-'} 최대 ×${maxR.toFixed(2)} 우회쌍(>1.02배) ${longer} · 최장 ${maxD.toFixed(0)} · 도달불능 ${unreach}쌍`);
   if (M > 1 && pairs === 0) console.warn(`[${state.zoneId}] 🏘️ ⚠ 전 마을 상호 고립(BFS 도달 불능) — 지형 병리: 교역 전무 예상`);
 }
 
@@ -3769,5 +3789,13 @@ module.exports = {
     get VILLAGE_MAX() { return VILLAGE_MAX; },
     get INITIAL_POP() { return INITIAL_POP; },
     get SZ() { return SZ; },
+    // ★[2026-08-03d 배치 11 ①-2] 거리행렬 증분화 하네스용 —
+    //   `scripts/test-distmatrix.js` 가 **정본 함수 그대로** 전쌍/증분을 비교한다(사본 금지).
+    //   state 를 하네스가 직접 세팅해야 하므로 최소 주입구만 연다.
+    _distProbe: {
+      compute: (reason, opts) => computeAndInjectDistMatrix(reason, opts),
+      setup: (ta, ZONE, world, econ) => { state._distCtx = { ta, ZONE }; state.world = world; state.econ = econ; },
+      get DIST_STEP() { return DIST_STEP; },
+    },
   },
 };
