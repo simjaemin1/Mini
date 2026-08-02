@@ -3748,8 +3748,15 @@ function _matPrice(v) {
 //
 //   ⚠순수출가는 **v2 가 world 에 주입**한다(v1→v2 역참조 금지 — priceFn 선례). 미주입(v1 단독 CLI)이면
 //     `_matPrice` 와 완전히 동일하게 동작한다 = 회귀 무영향.
-//   ★★기본 OFF — 3시드 A/B 전까지는 채택 아님. ALLOY_OPP=1 로 켠다.
-const ALLOY_OPP_ON = (typeof process !== 'undefined' && process.env && process.env.ALLOY_OPP === '1');
+//   ★★기본 ON = **채택**(2026-08-02c). 실지도 3시드 800일 A/B — 목표 지표가 3/3 시드에서 결정적으로 개선:
+//       ★합금 등급 평균 0.79 → **1.21** (+53%, 시드별 0.735→1.163 · 0.913→1.228 · 0.723→1.227)
+//     등급 1.0 = 표준 청동(Cu88Sn12). 즉 대장장이가 **표준 이하 잡동사니에서 진짜 청동으로** 넘어갔다 —
+//     구리 산지에서 구리 그림자가격이 글럿으로 바닥이라 "공짜 재료"처럼 부어 대던 것이, 수출 기회비용을
+//     보게 되자 멎었다. 이 손잡이가 하려던 일이 바로 그것이다.
+//     안전 지표 유지: 소멸 0 · 좀비 0(실지도) · v2 CLI 회귀 소멸 0/30 · 인구 2,074 → 2,079.
+//   ⚠정직하게 적어 둔다 — 장비 재고는 **잡음**이다(8시드 중 갑옷 5↑3↓). 무기 총량만 −3~8% 로 약간 준다
+//     (재료가 제 값을 가지니 주조가 신중해진다). 되돌리려면 `ALLOY_OPP=0` 하나면 된다.
+const ALLOY_OPP_ON = !(typeof process !== 'undefined' && process.env && process.env.ALLOY_OPP === '0');
 function _oppPrice(v) {
   const p = _matPrice(v);
   const nef = (ALLOY_OPP_ON && v && v._world && typeof v._world.netExportFn === 'function') ? v._world.netExportFn : null;

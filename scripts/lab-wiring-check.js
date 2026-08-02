@@ -101,11 +101,12 @@ console.log('\n[A2] 엔진 A/B 손잡이 기본값');
   if (/process\.env\.BOOMGATE === '1'/.test(E)) ok('BOOMGATE 기본 OFF (실측 기각)');
   else bad('BOOMGATE 기본이 ON 이다 — 실측이 기각한 동작이 켜져 있다');
   //   ★2026-08-02c 소멸 0 튜닝: STONE_NET·PRODK_CAP 채택(기본 ON) · TOOLBOOT/SWITCH2 실측 무효(기본 OFF)
-  for (const [name, why] of [['STONE_NET', '채택 — 소멸 1.33→0'], ['PRODK_CAP', '채택 — STONE_NET 과 함께 좀비 0.67→0']]) {
+  for (const [name, why] of [['STONE_NET', '채택 — 소멸 1.33→0'], ['PRODK_CAP', '채택 — STONE_NET 과 함께 좀비 0.67→0'],
+                             ['ALLOY_OPP', '채택 — 배합↔교역 한 단위 통합, 합금 등급 0.79→1.21']]) {
     if (new RegExp(name + " === '0'").test(E)) ok(`${name} 기본 ON (${why})`);
     else bad(`${name} 기본이 OFF 다 — 채택값은 ON(꺼지면 소멸·좀비가 돌아온다)`);
   }
-  for (const [name, why] of [['TOOLBOOT', '실측 무효(기준선과 비트 동일)'], ['SWITCH2', '실측 무효(함께 켜면 되레 좀비 +0.67)'], ['ALLOY_OPP', '3시드 A/B 전']]) {
+  for (const [name, why] of [['TOOLBOOT', '실측 무효(기준선과 비트 동일)'], ['SWITCH2', '실측 무효(함께 켜면 되레 좀비 +0.67)']]) {
     if (new RegExp('process\\.env\\.' + name + " === '1'").test(E)) ok(`${name} 기본 OFF (${why})`);
     else bad(`${name} 기본이 ON 이다 — ${why} 인 손잡이가 켜져 있다`);
   }
