@@ -5092,6 +5092,10 @@ module.exports = {
   // ★[2026-08-03a ⑰] 국고 현금 배선 — 하네스가 **산술을 직접 재게** 노출한다(상수 복제 금지).
   //   `_treasuryTopUp` 은 실제 함수 그대로여야 검사가 그 코드를 밟는다(모형을 검사하면 의미가 없다).
   _treasuryTopUp, RESERVE_PC, _matPrice, expandCost,
+  // ★[2026-08-03b ① 청동 희소성 원인 규명] 주조 자격 판정의 **두 비용을 그대로** 노출한다.
+  //   엔진에 계수기를 박지 않는다 — 랩이 마지막 날에 부르면 되고, 그래야 로직이 안 흔들린다.
+  //   `_smithBeatsMason` 이 청동 생산의 마지막 관문이다: 여기서 막히면 재료가 있어도 안 만든다.
+  _smithWeaponCost, _masonWeaponCost, _smithBeatsMason, _alloyMelt, _bronzeCapable,
   _EXPAND_CELLS_PER_SLOT: EXPAND_CELLS_PER_SLOT,
   // ★부얼타운 판정 — 시딩(villages.js)이 같은 함수를 쓰도록 노출(사본 금지)
   isBoomtown, veinScore, foodCapOf, BOOM_FOOD_MAX, BOOM_VEIN_MIN,

@@ -134,7 +134,11 @@ world.day = 0;
 //   곧 잔차**가 되어, 원장이 "설명 못 한 몫이 있다"고 말할 때 그게 진짜 누수인지 내 누락인지 알 수 없다.
 //   Proxy 는 정의상 전부 잡으므로 **잔차가 구조적으로 0**이고, 남는 건 "어느 줄이 얼마를 썼나"뿐이다.
 //   태그는 스택의 첫 엔진 프레임(file:line) — 추측이 아니라 실제 호출 지점이다.
-const LEDGER_RES = process.env.LAB_LEDGER || '';
+// ★[2026-08-03b ① 청동 원인 규명] **여러 재화를 한 번에** 잡을 수 있게 넓힌다 —
+//   `LAB_LEDGER=tin,copper` 처럼 쉼표로. 주석과 구리는 **같은 마을에 모여야** 청동이 되므로
+//   따로 재면 "각각은 충분한데 청동은 없다"의 이유를 못 본다. 재화별로 원장을 나눠 적는다.
+const LEDGER_LIST = (process.env.LAB_LEDGER || '').split(',').map(x => x.trim()).filter(Boolean);
+const LEDGER_RES = LEDGER_LIST[0] || '';
 if (LEDGER_RES) {
   const _frame = () => {
     const st = new Error().stack || '';
@@ -150,18 +154,19 @@ if (LEDGER_RES) {
     const led = (v._led = {});
     v.storage = new Proxy(raw, {
       set(t, k, val) {
-        if (k === LEDGER_RES) {
+        if (LEDGER_LIST.includes(k)) {
           const d = (+val || 0) - (+t[k] || 0);
-          if (d) { const f = _frame(); led[f] = +((led[f] || 0) + d).toFixed(4); }
+          if (d) { const f = (LEDGER_LIST.length > 1 ? k + '|' : '') + _frame(); led[f] = +((led[f] || 0) + d).toFixed(4); }
         }
         t[k] = val; return true;
       },
       deleteProperty(t, k) {
-        if (k === LEDGER_RES && (+t[k] || 0)) { const f = _frame(); led[f] = +((led[f] || 0) - (+t[k] || 0)).toFixed(4); }
+        if (LEDGER_LIST.includes(k) && (+t[k] || 0)) { const f = (LEDGER_LIST.length > 1 ? k + '|' : '') + _frame(); led[f] = +((led[f] || 0) - (+t[k] || 0)).toFixed(4); }
         delete t[k]; return true;
       },
     });
     v._ledStart = +raw[LEDGER_RES] || 0;
+    v._ledStartAll = Object.fromEntries(LEDGER_LIST.map(k => [k, +raw[k] || 0]));
   }
   console.log(`  [원장] '${LEDGER_RES}' 전 쓰기 추적 ON (Proxy — 잔차가 구조적으로 0)`);
 }
@@ -262,7 +267,15 @@ if (process.env.LAB_DUMP) {
       //   _kDbg = {slot(경작 자리)·prod(식량 흐름)·fuel(연료 흐름)} 중 min 이 K · _dpDebug = 성장 항 분해
       kDbg: v._kDbg || null, dpDebug: v._dpDebug || null,
       // ★[2026-08-02d ② 석재 원장] 호출 지점별 순변화 + 시작/끝 재고. 합계가 (끝−시작)과 같아야 한다.
-      led: v._led || null, ledStart: v._ledStart,
+      led: v._led || null, ledStart: v._ledStart, ledStartAll: v._ledStartAll || null,
+      // ★[2026-08-03b ①] 주조 자격의 **마지막 관문** — 재료가 있어도 여기서 막히면 청동은 안 나온다.
+      //   엔진 함수를 그대로 부른다(사본 금지). 마지막 날 1회라 궤적에 영향 0.
+      bronzeGate: (() => { try {
+        const sc = econ._smithWeaponCost(v), mc = econ._masonWeaponCost(v);
+        return { smithCost: isFinite(sc) ? +sc.toFixed(3) : null, masonCost: +mc.toFixed(3),
+                 beats: !!econ._smithBeatsMason(v), capable: !!econ._bronzeCapable(v),
+                 melt: (() => { const m = econ._alloyMelt(v); return m ? { grade: +m.grade.toFixed(3), mix: m.mix } : null; })() };
+      } catch (e) { return { err: String(e.message || e).slice(0, 60) }; } })(),
       // ★인구·식량 궤적(10일 스냅샷, 최근 500일) — 마을 소멸의 사인 규명용
       history: TRACE[v.name] || [],   // {d,p(인구),f(식량환산)} — 랩 쪽 10일 표본(tickWorldV2 는 history 를 안 쌓는다)
     });
