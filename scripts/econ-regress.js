@@ -40,9 +40,12 @@ for (const s of SEEDS) {
   catch (e) { rows.push({ s, err: 1, msg: String(e.message || e).slice(0, 80) }); continue; }
   if (!fs.existsSync(f)) { rows.push({ s, err: 1, msg: '덤프 없음' }); continue; }
   const j = JSON.parse(fs.readFileSync(f, 'utf8'));
-  const r = { s, pop: 0, weap: 0, weapQ: 0, armor: 0, cloth: 0, cu: 0, tin: 0, iron: 0, smith: 0, miner: 0, tailor: 0, dead: 0, ex: 0, cash: 0, exSeen: 0 };
+  const r = { s, pop: 0, weap: 0, weapQ: 0, armor: 0, cloth: 0, cu: 0, tin: 0, iron: 0, smith: 0, miner: 0, tailor: 0, dead: 0, deadP: 0, pv: 0, ex: 0, cash: 0, exSeen: 0 };
   for (const v of j.villages || []) {
-    const n = v.finalPop || 0; r.pop += n; if (n <= 0) r.dead++;
+    // ★[2026-08-03d 배치 11] 소멸을 출처별로. `founder` 가 있으면 플레이어 창설 마을(필멸).
+    const n = v.finalPop || 0; r.pop += n;
+    if (v.founder) r.pv++;
+    if (n <= 0) { if (v.founder) r.deadP++; else r.dead++; }
     const st = v.finalStorage || {}, jb = v.jobs || {};
     r.weap += st.weapon || 0; r.armor += st.armor || 0; r.cloth += st.clothes || 0;
     // ★[2026-08-02e ②] 품질보정 무기 총량 — 수량×_weapQ(석검 0.5 ~ 명장 청동 1.0+). 합금 등급이 오르면
@@ -61,16 +64,16 @@ for (const s of SEEDS) {
   rows.push(r);
 }
 
-const H = ['시드', '인구', '무기', '무기Q', '갑옷', '옷', '구리', '주석', '철', '대장', '광부', '재봉', '소멸', '확장셀', '국고현금'];
-const W = [5, 6, 6, 7, 6, 6, 7, 7, 6, 5, 5, 5, 5, 7, 9];
+const H = ['시드', '인구', '무기', '무기Q', '갑옷', '옷', '구리', '주석', '철', '대장', '광부', '재봉', '소멸', '소멸P', '확장셀', '국고현금'];
+const W = [5, 6, 6, 7, 6, 6, 7, 7, 6, 5, 5, 5, 5, 6, 7, 9];
 const line = (cells) => cells.map((c, i) => String(c).padStart(W[i])).join('');
 console.log(`\n[v2 CLI 회귀] ${DAYS}일 · 마을 ${VILLAGES} · picker=rational · tickWorldV2 (프로덕션 동형)`);
 console.log(line(H));
 for (const r of rows) {
   if (r.err) { console.log(`  ${r.s} 실패 — ${r.msg || ''}`); continue; }
-  console.log(line([r.s, r.pop, r.weap, r.weapQ, r.armor, r.cloth, r.cu, r.tin, r.iron, r.smith, r.miner, r.tailor, r.dead, r.exSeen ? r.ex : '-', r.cash]));
+  console.log(line([r.s, r.pop, r.weap, r.weapQ, r.armor, r.cloth, r.cu, r.tin, r.iron, r.smith, r.miner, r.tailor, r.dead, r.pv > 0 ? `${r.deadP}/${r.pv}` : '0/0', r.exSeen ? r.ex : '-', r.cash]));
 }
 const ok = rows.filter(r => !r.err);
 const S = (k) => ok.reduce((a, r) => a + r[k], 0);
-if (ok.length) console.log(line(['합계', S('pop'), S('weap'), S('weapQ'), S('armor'), S('cloth'), S('cu'), S('tin').toFixed(1), S('iron'), S('smith'), S('miner'), S('tailor'), S('dead'), S('ex'), S('cash')]));
+if (ok.length) console.log(line(['합계', S('pop'), S('weap'), S('weapQ'), S('armor'), S('cloth'), S('cu'), S('tin').toFixed(1), S('iron'), S('smith'), S('miner'), S('tailor'), S('dead'), S('deadP') + '/' + S('pv'), S('ex'), S('cash')]));
 if (ok.length < rows.length) { console.error(`\n❌ ${rows.length - ok.length}개 시드 실패`); process.exit(1); }

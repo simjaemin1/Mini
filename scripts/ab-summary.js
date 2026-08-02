@@ -31,6 +31,10 @@ const SEEDS = [1020, 7, 42];
 const rows = [];
 for (const tag of tags) {
   let pop = 0, ext = 0, zomb = 0, tool = 0, n = 0, missing = [];
+  // ★[2026-08-03d 배치 11] 소멸을 **출처별로** 나눈다. 안 나누면 플레이어가 마을 하나 버릴 때마다
+  //   기준선(소멸 0/19)이 깨진 것처럼 찍힌다 — 지표가 틀리면 결론이 틀린다(배치 6·7·8 의 교훈).
+  //   판정: `founder == null` → NPC 시딩(불멸 원칙 대상) · 문자열 → 플레이어 창설(필멸).
+  let extP = 0, pvN = 0;
   let rw = 0, rn = 0, rse = 0, rc = 0;   // 산골 1인당 부(재화) · 산골 마을 수 · 석재 수출량 · 1인당 현금(누적 교역세 — 부가 아니다)
   // ★[2026-08-03a ⑰] 확장 셀 수 · 세계 1인당 현금 · **현금 기울기**(궤적 800일→끝의 1인당 증가)
   //   기울기가 판정 지표다: 쓰기 전용이면 선형(55→104), 확장에 쓰이면 **꺾여야** 성공이다.
@@ -41,7 +45,7 @@ for (const tag of tags) {
     const f = `/tmp/lab/${tag}_${s}.json`;
     if (!fs.existsSync(f)) { missing.push(s); continue; }
     const d = JSON.parse(fs.readFileSync(f, 'utf8'));
-    let p = 0, e = 0, z = 0, t = 0;
+    let p = 0, e = 0, z = 0, t = 0, eP = 0, pv = 0;
     let rockW = 0, rockN = 0, rockPop = 0, rockStoneExp = 0, rockCash = 0;
     let sEx = 0, sCash = 0, exSeen = false;
     let wq = 0, wRaw = 0;   // ★[2026-08-02e ②] 품질보정 무기 총량 Σ(수량×_weapQ) — "적지만 좋은 무기"를 세는 자
@@ -70,7 +74,8 @@ for (const tag of tags) {
         rockW += w; rockPop += cur; rockN++;
         rockStoneExp += ((v.tradeStats && v.tradeStats.exportBy && v.tradeStats.exportBy.stone) || 0);
       }
-      if (cur === 0) { e++; continue; }
+      if (v.founder) pv++;
+      if (cur === 0) { if (v.founder) eP++; else e++; continue; }
       const peak = (v.history || []).reduce((a, h) => Math.max(a, h.p), cur);
       if (cur < 10 && cur < peak * 0.5) z++;
       else if (cur < 10) z++;   // 처음부터 못 자란 마을도 좀비로 집계(재민 기준은 결과 인구)
@@ -88,13 +93,14 @@ for (const tag of tags) {
       if (a != null && b != null && dEnd > 800) { slope += (b - a) / (dEnd - Math.min(800, Math.floor(dEnd / 2))); slopeN++; }
     }
     ex += sEx; exN += exSeen ? 1 : 0; cashPc += p > 0 ? sCash / p : 0;
-    per.push({ s, p, e, z });
-    pop += p; ext += e; zomb += z; tool += t; n++;
+    per.push({ s, p, e, z, eP, pv });
+    pop += p; ext += e; zomb += z; tool += t; extP += eP; pvN += pv; n++;
     rw += rockPop > 0 ? rockW / rockPop : 0; rc += rockPop > 0 ? rockCash / rockPop : 0; rn += rockN; rse += rockStoneExp;
     wqs += wq; wrs += wRaw;
   }
   if (!n) { rows.push({ tag, err: '덤프 없음' }); continue; }
   rows.push({ tag, pop: +(pop / n).toFixed(0), ext: +(ext / n).toFixed(2), zomb: +(zomb / n).toFixed(2),
+    extP: +(extP / n).toFixed(2), pvN: +(pvN / n).toFixed(2),
     tool: +(tool / n).toFixed(0), rockW: +(rw / n).toFixed(1), rockCash: +(rc / n).toFixed(1), rockN: +(rn / n).toFixed(1),
     stoneExp: +(rse / n).toFixed(0), wq: +(wqs / n).toFixed(0), wRaw: +(wrs / n).toFixed(0),
     ex: exN ? +(ex / exN).toFixed(0) : null,   // ★null = '덤프에 그 필드가 없다'. 0 으로 찍으면 '확장 안 함'으로 오독된다
@@ -103,11 +109,11 @@ for (const tag of tags) {
     per, missing });
 }
 const pad = (s, w) => String(s).padEnd(w);
-console.log(pad('태그', 14) + pad('인구', 7) + pad('소멸/19', 9) + pad('좀비<10', 9) + pad('도구', 7)
+console.log(pad('태그', 14) + pad('인구', 7) + pad('소멸(NPC)', 11) + pad('소멸(P)', 9) + pad('좀비<10', 9) + pad('도구', 7)
   + pad('산골부(재화)', 13) + pad('확장셀', 8) + pad('현금/인', 9) + pad('현금기울기', 11) + pad('무기Q', 7) + pad('무기수', 7) + '시드별 (인구/소멸/좀비)');
 for (const r of rows) {
   if (r.err) { console.log(pad(r.tag, 14) + r.err); continue; }
-  console.log(pad(r.tag, 14) + pad(r.pop, 7) + pad(r.ext, 9) + pad(r.zomb, 9) + pad(r.tool, 7)
+  console.log(pad(r.tag, 14) + pad(r.pop, 7) + pad(r.ext, 11) + pad(r.pvN > 0 ? `${r.extP}/${r.pvN}` : '0/0', 9) + pad(r.zomb, 9) + pad(r.tool, 7)
     + pad(r.rockW, 13) + pad(r.ex == null ? '-' : r.ex, 8) + pad(r.cashPc, 9) + pad(r.slope == null ? '-' : r.slope, 11) + pad(r.wq, 7) + pad(r.wRaw, 7)
     + r.per.map(x => `s${x.s}:${x.p}/${x.e}/${x.z}`).join('  ')
     + (r.missing.length ? `  ⚠결측 ${r.missing.join(',')}` : ''));

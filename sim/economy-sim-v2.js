@@ -1520,6 +1520,7 @@ function main() {
         finalStorage: v.storage,
         finalTreasury: v.treasury,
         expansions: v.expansions || 0,   // ★[2026-08-03a ⑰] 확장 셀 수 — v2 CLI 회귀 판정 열
+        founder: v.founder || null,      // ★[2026-08-03d 배치 11] 출처 — null=NPC 시딩 · 문자열=플레이어 창설
         jobs: v1.jobCounts(v),
         // 계측용 내부 스칼라(제련량·주조등급·품질 EMA 등) — 회귀표 밖 진단에 쓴다
         _int: Object.fromEntries(Object.keys(v).filter(k => k[0] === '_' && typeof v[k] === 'number')

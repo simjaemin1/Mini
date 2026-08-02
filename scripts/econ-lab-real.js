@@ -256,6 +256,9 @@ if (process.env.LAB_DUMP) {
       oreMix: s.lp.oreMix || {}, oreGrade: s.lp.oreGrade, oreP: s.lp.oreP, oreDist: s.lp.oreDist,
       marginalQ: s.lp.marginalQ,
       jobs: jb, storage: st, counts: v.counts, expansions: v.expansions || 0,   // ★[2026-08-03a ⑰] 확장 셀 수 — 판정 열
+      // ★[2026-08-03d 배치 11] 마을 출처 — null=NPC 시딩(불멸 원칙), 문자열=플레이어 창설(필멸).
+      //   소멸 지표를 이 필드로 가른다. 랩은 NPC 마을만 만들므로 지금은 전부 null 이다.
+      founder: v.founder || null,
       alloyGrade: v._alloyGrade, bronzeWeaponMade: v._bronzeWeaponMade,
       stoneWeaponMade: v._stoneWeaponMade,
       treasury: Object.fromEntries(Object.entries(v.treasury || {}).filter(([, x]) => x > 0.01).map(([k, x]) => [k, +x.toFixed(2)])),

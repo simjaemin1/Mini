@@ -190,6 +190,7 @@
     "ramie": 1.6647827931547434
    },
    "expansions": 115,
+   "founder": null,
    "jobs": {
     "farmer": 5,
     "fisher": 1,
@@ -454,6 +455,7 @@
     "acorn": 23.25224349958962
    },
    "expansions": 311,
+   "founder": null,
    "jobs": {
     "farmer": 28,
     "fisher": 13,
@@ -717,6 +719,7 @@
     "ramie": 2.4733370641946375
    },
    "expansions": 195,
+   "founder": null,
    "jobs": {
     "farmer": 18,
     "fisher": 7,
@@ -982,6 +985,7 @@
     "ramie": 6.761048051263069
    },
    "expansions": 327,
+   "founder": null,
    "jobs": {
     "farmer": 20,
     "fisher": 7,
@@ -1241,6 +1245,7 @@
     "gold": 0.2868206835190044
    },
    "expansions": 385,
+   "founder": null,
    "jobs": {
     "farmer": 5,
     "fisher": 11,
@@ -1502,6 +1507,7 @@
     "ramie": 3.6318587750045497
    },
    "expansions": 180,
+   "founder": null,
    "jobs": {
     "farmer": 20,
     "fisher": 4,

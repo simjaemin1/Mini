@@ -190,6 +190,7 @@
     "acorn": 10.883467845134621
    },
    "expansions": 214,
+   "founder": null,
    "jobs": {
     "farmer": 10,
     "fisher": 2,
@@ -455,6 +456,7 @@
     "feather": 4.2071483456185055
    },
    "expansions": 212,
+   "founder": null,
    "jobs": {
     "farmer": 22,
     "fisher": 11,
@@ -717,6 +719,7 @@
     "ramie": 5.435639618786166
    },
    "expansions": 60,
+   "founder": null,
    "jobs": {
     "farmer": 12,
     "fisher": 9,
@@ -978,6 +981,7 @@
     "ramie": 8.377500355972984
    },
    "expansions": 233,
+   "founder": null,
    "jobs": {
     "farmer": 5,
     "fisher": 9,
@@ -1241,6 +1245,7 @@
     "ramie": 4.031477965350035
    },
    "expansions": 24,
+   "founder": null,
    "jobs": {
     "farmer": 5,
     "fisher": 2,
@@ -1501,6 +1506,7 @@
     "grape": 5.102431300790647
    },
    "expansions": 47,
+   "founder": null,
    "jobs": {
     "farmer": 23,
     "fisher": 13,

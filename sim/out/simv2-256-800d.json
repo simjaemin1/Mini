@@ -190,6 +190,7 @@
     "clay": 0.0418844285482909
    },
    "expansions": 758,
+   "founder": null,
    "jobs": {
     "farmer": 30,
     "fisher": 24,
@@ -451,6 +452,7 @@
     "ramie": 3.7446287375015084
    },
    "expansions": 1378,
+   "founder": null,
    "jobs": {
     "farmer": 35,
     "fisher": 11,
@@ -715,6 +717,7 @@
     "ramie": 4.977324079760416
    },
    "expansions": 421,
+   "founder": null,
    "jobs": {
     "farmer": 24,
     "fisher": 5,
@@ -979,6 +982,7 @@
     "resin": 3.6964776014504226
    },
    "expansions": 32,
+   "founder": null,
    "jobs": {
     "farmer": 12,
     "fisher": 1,
@@ -1243,6 +1247,7 @@
     "ramie": 6.514720306657441
    },
    "expansions": 1755,
+   "founder": null,
    "jobs": {
     "farmer": 47,
     "fisher": 7,
@@ -1506,6 +1511,7 @@
     "ramie": 4.6891622275453235
    },
    "expansions": 1376,
+   "founder": null,
    "jobs": {
     "farmer": 38,
     "fisher": 7,
