@@ -5085,6 +5085,22 @@ const TAU = 0.03;
 
 // 운반비 — 거리당. 1000 거리당 2.0 가치 손실 (iceberg).
 const TRANSPORT_COST_PER_1000 = 2.0;
+// ═══ ★★[2026-08-02e ⑥ 말 사역 — 시대 뒤에서 미리 완성] ═════════════════════
+//   재민 회부 ⑦의 답. "말 시대가 열리는 날 소비처가 없으면 길들이기만 하는 짐승이 된다."
+//   ★소비처를 **교역 EV 안**에 둔다 — `netExportValue`·발주 EV 가 이미 운반비 항을 갖고 있으므로,
+//     말은 그 항을 낮추는 것으로 자연 편입된다. 새 재화도, 새 직업도, 새 상태도 만들지 않는다.
+//     (고증: 등짐 → 바리·수레. 육상 운반비 하락이 말 보급의 실체다.)
+//   ★★열기 전 영향은 **정확히 0 이어야 한다**(배치 1 원칙 — 시대 열기 전후 흥망 분리).
+//     그래서 닫힌 시대의 반환값은 곱셈 항등원 `1` 이다: IEEE 에서 `x * 1 === x` 라 **비트 동일**이다.
+//     (0.999 같은 '거의 1'을 쓰면 그 순간 궤적이 갈린다 — era-rehearsal 이 그걸 잡는다.)
+const HORSE_HAUL_MUL = 0.62;   // 말 보급 후 육상 운반비 배수(등짐 대비 바리·수레). 시대가 열려야 적용.
+let _eraModV2;
+function _eraV2() { if (_eraModV2 === undefined) { try { _eraModV2 = require('../server/era'); } catch (e) { _eraModV2 = null; } } return _eraModV2; }
+function haulMul() {
+  const E = _eraV2();
+  if (!E || !E.canTame) return 1;
+  try { return E.canTame('horse') ? HORSE_HAUL_MUL : 1; } catch (e) { return 1; }
+}
 
 // 행상 carry capacity — 한 번에 N단위
 const CARGO_PER_TRIP = 100;   // ★처리량 ↑(50→100): 차익거래가 실제로 가격을 청산하도록(LOP 개선). 가격피드백이 과수출 방지.
@@ -5651,7 +5667,7 @@ function tickTradeV2(world, day) {
           const pFrom = a.prices[cand.res];
           const pTo = b.prices[cand.res] * FORWARD_PRICE_MARGIN; // 위험 마진
           const N_units = Math.min(cand.surplus, CARGO_PER_TRIP);
-          const transportCostPerUnit = (TRANSPORT_COST_PER_1000 * dist / 1000);
+          const transportCostPerUnit = (TRANSPORT_COST_PER_1000 * dist / 1000) * haulMul();   // ★말 사역(⑥): 닫힌 시대엔 ×1 = 비트 동일
           // ★도적 길목(§도적): 호스트(지형층)가 '이 마을쌍 경로 30m 내 도적단' 위험을 주입 — econ은 지형을 모름(계약).
           //   상인이 기대손실에 반영 → 위험한 길은 이익↓(기피·호위 강화가 창발). 훅 미설치(서버/단독)면 0 — 기존과 동일.
           const banditX0 = world.banditRouteRisk ? (world.banditRouteRisk(a.v, b.v) || 0) : 0;
@@ -6356,7 +6372,7 @@ function netExportValue(world, from, res) {
         expectedLossRatio = Math.max(expectedLossRatio, (1 - _repelP) * 0.6);
       }
     }
-    const net = pTo * (1 - TAU) * (1 - expectedLossRatio) - (TRANSPORT_COST_PER_1000 * dist / 1000);
+    const net = pTo * (1 - TAU) * (1 - expectedLossRatio) - (TRANSPORT_COST_PER_1000 * dist / 1000) * haulMul();   // ★말 사역(⑥) — 발주 EV 와 같은 항·같은 배수
     if (net > best) best = net;
   }
   C.val.set(vk, best);
@@ -6531,6 +6547,7 @@ module.exports = {
   tickWorldV2,
   computeShadowPrices,
   netExportValue, FORWARD_PRICE_MARGIN_NEV,   // ★배합↔교역 통합(2026-08-02c) — 하네스가 산술을 직접 재게 노출
+  haulMul, HORSE_HAUL_MUL, TRANSPORT_COST_PER_1000,   // ★말 사역(2026-08-02e ⑥) — 시대 전/후 비트 동일 검증용
   computeVillageStats,
   ELASTICITY,
   TAU,

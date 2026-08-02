@@ -76,7 +76,65 @@
 
 ---
 
-## 5. 절차 (재민 실행용)
+## 5-0. ★★라이브 리셋 — **복사·붙여넣기 한 블록** (2026-08-02e)
+
+> 재민 "DB는 리셋해도 된다고 했어". 다만 **배포·SSH 채널은 여전히 재민 전용**이라
+> 클로드는 `fly ssh`/`fly console` 을 **시도하지 않는다**(절대 규칙 1). 대신 여기에 그대로 붙여넣을
+> 명령 시퀀스를 둔다 — 위에서 아래로 순서대로, **한 줄씩** 실행하면 된다.
+>
+> ⚠순서가 곧 안전장치다: **세고 → 끄고 → 백업하고 → 지우고 → 켠다.**
+> 백업을 건너뛰면 되돌릴 수 없다(운철·플레이어 건축물·사유지가 전부 사라진다 — §2).
+
+```sh
+# ── ① 무엇을 잃는지 먼저 센다 (지우기 전에!) ───────────────────────────────
+fly ssh console -a <ZONE_APP> -C "sqlite3 /data/world-hanbando.db   'SELECT type, COUNT(*) FROM buildings GROUP BY type ORDER BY 2 DESC;'"
+fly ssh console -a <ZONE_APP> -C "sqlite3 /data/world-hanbando.db   'SELECT kind, COUNT(*) FROM claims GROUP BY kind;'"
+fly ssh console -a <ZONE_APP> -C "sqlite3 /data/world-hanbando.db   'SELECT COUNT(*) villages, SUM(population) pop FROM villages;'"
+
+# ── ② 백업 — 반드시 -wal 까지. WAL 모드라 최근 쓰기가 거기 있다 ─────────────
+fly ssh console -a <ZONE_APP> -C "sh -c 'cd /data && TS=\$(date +%Y%m%d-%H%M) &&   cp world-hanbando.db world-hanbando.db.bak-\$TS &&   cp world-hanbando.db-wal world-hanbando.db-wal.bak-\$TS 2>/dev/null;   cp world-hanbando.db-shm world-hanbando.db-shm.bak-\$TS 2>/dev/null; ls -la /data | tail -20'"
+
+# (선택) 백업을 로컬로 내려받아 둔다 — 볼륨째 날아가는 사고까지 대비
+fly ssh sftp get /data/world-hanbando.db.bak-<TS> ./world-hanbando.backup.db -a <ZONE_APP>
+
+# ── ③ 끈다 — 켠 채로 지우면 메모리 상태가 다시 써 버린다 ────────────────────
+fly scale count 0 -a <ZONE_APP> -y
+
+# ── ④ 지운다 (이게 리셋이다 — 부팅 시 스키마 자동 생성 + 시딩) ──────────────
+fly ssh console -a <ZONE_APP> -C "sh -c 'rm -f /data/world-hanbando.db /data/world-hanbando.db-wal /data/world-hanbando.db-shm && ls -la /data'"
+#   ⚠ scale 0 상태에선 ssh 가 안 붙는다. 그럴 땐 ③④ 순서를 바꿔라:
+#      ④'  먼저 파일을 지우고  →  ③'  즉시 `fly apps restart -a <ZONE_APP>`
+#      (지운 직후 살아 있는 프로세스가 다시 쓰기 전에 재시작하면 된다)
+
+# ── ⑤ 켜고 재시딩을 눈으로 확인한다 ────────────────────────────────────────
+fly scale count 1 -a <ZONE_APP> -y
+fly logs -a <ZONE_APP> | grep -E "마을 시딩 시작|시딩:|zone server up"
+#   기대: "🏘️ 마을 시딩 시작 — 후보 51 → 선별 19" → 마을별 "시딩:" 18줄 → "zone server up"
+#   부팅에 4~5분 걸린다(마을당 5~19초 — 생활층 실체화가 무겁다). 그동안 접속은 대기한다.
+
+# ── ⑥ 되돌리기 (마음이 바뀌면) ─────────────────────────────────────────────
+fly scale count 0 -a <ZONE_APP> -y
+fly ssh console -a <ZONE_APP> -C "sh -c 'cd /data && rm -f world-hanbando.db world-hanbando.db-wal world-hanbando.db-shm &&   cp world-hanbando.db.bak-<TS> world-hanbando.db && cp world-hanbando.db-wal.bak-<TS> world-hanbando.db-wal 2>/dev/null; ls -la'"
+fly scale count 1 -a <ZONE_APP> -y
+```
+
+`<ZONE_APP>` 은 `fly.korea.toml` 의 app 이름(존별로 다르다), `<TS>` 는 ②에서 찍힌 타임스탬프다.
+**central.db 는 건드리지 않는다** — 계정·인벤·장비가 거기 있고 리셋 대상이 아니다(§2).
+
+### 리셋으로 라이브가 얻는 것 (2026-08-02e 기준 실측)
+
+리셋해야만 발효하는 것이 **자리 선별**이라, 리셋 전후는 사실상 다른 세계다:
+
+| | 리셋 전(옛 시딩) | 리셋 후(현 시딩+엔진) |
+|---|---|---|
+| 실지도 3시드 800일 인구 | — | **3,424** |
+| 소멸 | — | **0/19 (3/3 시드)** |
+| 좀비(10명 미만) | — | **0** |
+| 품질보정 무기(Σ 수량×품질) | — | **616** |
+
+---
+
+## 5. 절차 (재민 실행용 — 로컬/도커 판)
 
 ### ① 먼저 세어 본다 — 무엇을 잃는지 알고 결정한다
 

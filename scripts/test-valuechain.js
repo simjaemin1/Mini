@@ -216,5 +216,36 @@ console.log('\n⑥ 배합↔교역 한 단위 통합 — 순수출가 산술 고
     '  풍년 마을의 opp(식량) = 순수출가 (현지 헐값이 아니라 이웃이 쳐 주는 값을 본다)');
 }
 
+// ── ⑦ 말 사역 — 시대 전 **비트 동일**, 시대 후 운반비만 정확히 내려간다 (2026-08-02e ⑥) ──
+//   재민 회부 ⑦의 답을 여기서 못박는다. 소비처를 새로 만들지 않고 **교역 EV 의 운반비 항**에 얹었으므로,
+//   검사도 그 항 하나면 된다: 닫힌 시대엔 곱셈 항등원(1), 열린 시대엔 정확히 HORSE_HAUL_MUL.
+console.log('\n⑦ 말 사역 — 열기 전 비트 동일 · 연 뒤 운반비만 내려간다');
+{
+  const v2b = R('sim/economy-sim-v2');
+  const EraB = R('server/era');
+  EraB.setEra('bronze');
+  const mulClosed = v2b.haulMul();
+  ok(mulClosed === 1, `닫힌 시대 배수 = ${mulClosed} — **곱셈 항등원**(IEEE x*1===x 라 궤적이 1비트도 안 갈린다)`);
+  EraB.setEra('early_iron');
+  const mulOpen = v2b.haulMul();
+  ok(mulOpen === v2b.HORSE_HAUL_MUL && mulOpen < 1, `열린 시대 배수 = ${mulOpen} (등짐 → 바리·수레)`);
+
+  // 같은 세계·같은 거리에서 순수출가가 **운반비 차이만큼** 오르는가(다른 항은 안 건드렸는지)
+  const w2 = v2b.createWorldV2({ villages: 2, seed: 7 });
+  const [A2, B2] = w2.villages;
+  B2.coord.x = A2.coord.x + 120; B2.coord.y = A2.coord.y;
+  A2.storage.food = 900; B2.storage.food = 0.5;
+  for (const v of [A2, B2]) v._near20 = w2.villages.filter((x) => x !== v);
+  const dist2 = econ.villageDist(A2, B2);
+  EraB.setEra('bronze');     w2._nevCache = null; const netClosed = v2b.netExportValue(w2, A2, 'food');
+  EraB.setEra('early_iron'); w2._nevCache = null; const netOpen = v2b.netExportValue(w2, A2, 'food');
+  EraB.setEra(null);
+  const expectGain = (v2b.TRANSPORT_COST_PER_1000 * dist2 / 1000) * (1 - v2b.HORSE_HAUL_MUL);
+  console.log(`    거리 ${dist2.toFixed(1)} · 순수출가 ${netClosed.toFixed(4)} → ${netOpen.toFixed(4)} (기대 상승 ${expectGain.toFixed(4)})`);
+  ok(Math.abs((netOpen - netClosed) - expectGain) < 1e-9,
+    '  상승분이 **운반비 절감분과 정확히 같다**(다른 항은 안 건드렸다 — 오차 <1e-9)');
+  ok(netOpen > netClosed, '  말이 있으면 더 먼 곳까지 팔 값이 선다(교역 반경 확장)');
+}
+
 console.log('\n결과: ' + (fail ? 'FAIL — ' + fail + '건' : 'PASS'));
 process.exit(fail ? 1 : 0);
