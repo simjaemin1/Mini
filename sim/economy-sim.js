@@ -655,10 +655,18 @@ const SHIELD_DAYS = 365;
 // ★SHIELD_AGE — 달력이 아니라 **마을 나이**로 센다. 원 의도('정착 부트스트랩')에 정확히 부합하고,
 //   라이브의 구멍도 메운다: 지금은 세계 900일째에 새로 선 마을이 보호를 **0일** 받는다(달력이 이미 지났으므로).
 //   ⚠랩에서는 전 마을이 day 0 생성이라 나이 == 달력 → **비트 동일**이 기대값이다(그걸 A/B 로 확인한다).
-const SHIELD_AGE_ON = (typeof process !== 'undefined' && process.env && process.env.SHIELD_AGE === '1');
+//   ★★기본 ON = **채택**(2026-08-02d). 랩 3시드 A/B 가 **비트 동일**(3,407/3,364/3,473 — cur 과 완전히 같다):
+//     전 마을이 day 0 생성이라 나이 == 달력이기 때문이다. 즉 **측정된 위험이 0**이고,
+//     값은 전적으로 라이브의 구멍(세계 900일째에 선 마을이 보호 0일)을 메우는 데 있다.
+const SHIELD_AGE_ON = !(typeof process !== 'undefined' && process.env && process.env.SHIELD_AGE === '0');
 // ★SHIELD_SOFT — 삼키지 말고 **감쇠**. 보호기간엔 음수 누적을 ×k 로 줄인다(지우지 않는다).
 //   압력이 새어나가 보호기간에도 사망이 조금씩 일어나고 → 인구가 K 를 크게 못 넘고 → 절벽이 경사가 된다.
-const SHIELD_SOFT_ON = (typeof process !== 'undefined' && process.env && process.env.SHIELD_SOFT === '1');
+//   ★★기본 ON = **채택**(2026-08-02d).
+//     · 채택 기준선 무손상: 실지도 3시드 인구 3,424(cur 3,415) · 소멸 0/19 · 좀비 0 · 도구 +6.6%.
+//     · 절벽 → 경사(음성 대조에서 측정): 한 창(20일) 최대 사망이 전체 사망에서 차지하는 비율이
+//       시드7 17.7% → **7.6%**, 시드1020 19.1% → 14.5%. 보호기간에 사망이 조금씩 분산돼
+//       366일째 몰림이 사라진다(시드7: 151명/창 → 74명/창).
+const SHIELD_SOFT_ON = !(typeof process !== 'undefined' && process.env && process.env.SHIELD_SOFT === '0');
 const SHIELD_SOFT_K = (typeof process !== 'undefined' && process.env && process.env.SHIELD_SOFT_K != null)
   ? Number(process.env.SHIELD_SOFT_K) : 0.25;
 // ★땅맞춤 초기 부존 배수 — 기본 1(채택값). LANDFIT=0 이면 2026-08-02 채택 **이전 동작**을 정확히 재현한다.
@@ -789,7 +797,11 @@ const FUEL_COLD_W = 0.6;            // 한랭 난방 연료 가중(겨울 취사
 //     ⇒ 인구 비례 '유지' 명목으로만 **32,254 = 생산의 55%** 가 나간다(둘을 합쳐서).
 //   ⚠v2 쪽을 못 줄이는 이유: `SUBSISTENCE_PER_NPC` 는 소비 말고 **가격·부패 목표(subs×30)**의 입력이라
 //     건드리면 석재 시장 전체가 흔들린다. 이 줄은 순수 소비라 여기가 수리 지점이다.
-//   기본값은 **현행 0.02 유지**(A/B 전 채택 금지) — `STONE_MAINT=0` 으로 중복분을 끈다.
+//   ★★기본 **0.02 유지 = 이월·회부**(2026-08-02d). 중복은 실재하지만 수리의 대가가 측정됐다:
+//     STONE_MAINT=0 단독 인구 3,357(−1.7%) · 다른 채택분과 함께면 3,274(−4.1%, 시드42 는 −11%).
+//     소멸 0·좀비 0 은 유지되지만 인구 기준선(~3,415)을 깎는다. 석재 수요는 "산골 마을이 석재 수출로
+//     식량을 사는" 축이라(v2 주석) 줄이면 광산촌 소득이 함께 준다 — **경제 설계 판단**이라 회부한다.
+//     `STONE_MAINT=0` 으로 언제든 켠다. 근거·원장은 회부_석재_이중차감.md.
 const STONE_MAINT_PC = (typeof process !== 'undefined' && process.env && process.env.STONE_MAINT != null)
   ? Number(process.env.STONE_MAINT) : 0.02;
 // ★제례·부장 봉헌율(/인/일, 식량여유 ×_secF 비례·수출 유보 초과분만) — 위세재 반복 실수요(매납·부장 고증).

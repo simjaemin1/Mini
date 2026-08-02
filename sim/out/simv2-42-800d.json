@@ -206,6 +206,7 @@
     "merchant": 0
    },
    "_int": {
+    "_bornDay": 0,
     "_tempDay": 17.6994,
     "_tempNight": 12.6994,
     "_coldStress": 0,
@@ -240,6 +241,8 @@
     "_woodImportEMA": 1.2096,
     "_fuelKema": 41.4382,
     "_dPAccum": 0.0191,
+    "_shieldAte": 0,
+    "_deathsToday": 0,
     "_potteryR": 0.5318,
     "_priceCacheDay": 800,
     "_tradingN": 0,
@@ -254,8 +257,10 @@
     "_cuWeapUsed": 24.3135,
     "_bronzeWeaponMade": 0,
     "_alloyGrade": 1.1293,
+    "_shieldAteTot": 318.1689,
     "_riteUsed": 23.8947,
     "_cookQ": 0.4948,
+    "_deadTot": 55,
     "_stoneWeaponMade": 12.6013,
     "_leatherGoods": 32.8,
     "_lgCov": 1,
@@ -461,6 +466,7 @@
     "merchant": 0
    },
    "_int": {
+    "_bornDay": 0,
     "_tempDay": 17.6994,
     "_tempNight": 12.6994,
     "_coldStress": 0,
@@ -495,6 +501,8 @@
     "_woodImportEMA": 1.413,
     "_fuelKema": 906.3984,
     "_dPAccum": -0.362,
+    "_shieldAte": 0,
+    "_deathsToday": 0,
     "_potteryR": 0.8136,
     "_priceCacheDay": 800,
     "_tradingN": 2,
@@ -515,7 +523,9 @@
     "_bronzeWeaponMade": 0,
     "_alloyGrade": 1.0829,
     "_riteUsed": 186.425,
-    "_selfToolMade": 4.64
+    "_shieldAteTot": 394.019,
+    "_selfToolMade": 4.64,
+    "_deadTot": 41
    }
   },
   {
@@ -716,6 +726,7 @@
     "merchant": 0
    },
    "_int": {
+    "_bornDay": 0,
     "_tempDay": 17.6994,
     "_tempNight": 12.6994,
     "_coldStress": 0,
@@ -750,6 +761,8 @@
     "_woodImportEMA": 4.2481,
     "_fuelKema": 97.6937,
     "_dPAccum": -0.3271,
+    "_shieldAte": 0,
+    "_deathsToday": 0,
     "_potteryR": 0.666,
     "_priceCacheDay": 800,
     "_tradingN": 1,
@@ -765,13 +778,15 @@
     "_bronzeWeaponMade": 0,
     "_alloyGrade": 1.1815,
     "_selfToolMade": 22.24,
+    "_shieldAteTot": 375.0248,
     "_leatherGoods": 3.6588,
     "_lgCov": 0.061,
     "_riteUsed": 51.2331,
     "_riteWeapon": 16.6477,
     "_tanned": 196.1927,
     "_tannedTrade": 321.9791,
-    "_cookQ": 0.5798
+    "_cookQ": 0.5798,
+    "_deadTot": 64
    }
   },
   {
@@ -972,6 +987,7 @@
     "merchant": 0
    },
    "_int": {
+    "_bornDay": 0,
     "_tempDay": 17.6994,
     "_tempNight": 12.6994,
     "_coldStress": 0,
@@ -1006,6 +1022,8 @@
     "_woodImportEMA": 10.3447,
     "_fuelKema": 210.302,
     "_dPAccum": -0.1612,
+    "_shieldAte": 0,
+    "_deathsToday": 1,
     "_potteryR": 0.9814,
     "_priceCacheDay": 800,
     "_tradingN": 0,
@@ -1023,11 +1041,13 @@
     "_bronzeWeaponMade": 20.2933,
     "_alloyGrade": 1.0388,
     "_cookQ": 0.64,
+    "_shieldAteTot": 137.1287,
     "_selfToolMade": 6.56,
     "_leatherGoods": 0,
     "_lgCov": 0,
     "_tanned": 26.4995,
     "_tannedTrade": 19.26,
+    "_deadTot": 27,
     "_obsUsed": 1.392
    }
   },
@@ -1225,6 +1245,7 @@
     "merchant": 0
    },
    "_int": {
+    "_bornDay": 0,
     "_tempDay": 17.6994,
     "_tempNight": 12.6994,
     "_coldStress": 0,
@@ -1259,6 +1280,8 @@
     "_woodImportEMA": 2.7668,
     "_fuelKema": 620.7062,
     "_dPAccum": 0.619,
+    "_shieldAte": 0,
+    "_deathsToday": 0,
     "_potteryR": 0,
     "_priceCacheDay": 800,
     "_tradingN": 1,
@@ -1273,12 +1296,14 @@
     "_leatherGoods": 0,
     "_lgCov": 0,
     "_selfToolMade": 25.9,
+    "_shieldAteTot": 240.3488,
     "_riteUsed": 86.6776,
     "_cookQ": 0.5799,
     "_cuWeapUsed": 24.858,
     "_bronzeWeaponMade": 0,
     "_alloyGrade": 1.1158,
     "_tanned": 93.6202,
+    "_deadTot": 44,
     "_tannedTrade": 11.9327
    }
   },
@@ -1480,6 +1505,7 @@
     "merchant": 0
    },
    "_int": {
+    "_bornDay": 0,
     "_tempDay": 17.6994,
     "_tempNight": 12.6994,
     "_coldStress": 0,
@@ -1514,6 +1540,8 @@
     "_woodImportEMA": 0.0638,
     "_fuelKema": 145.6273,
     "_dPAccum": 0.0888,
+    "_shieldAte": 0,
+    "_deathsToday": 0,
     "_potteryR": 0.5332,
     "_priceCacheDay": 800,
     "_tradingN": 1,
@@ -1525,6 +1553,7 @@
     "_bowMade": 4.6,
     "_boneUsed": 1.3398,
     "_bowR": 0.477,
+    "_shieldAteTot": 290.6333,
     "_selfToolMade": 8.68,
     "_leatherGoods": 28.13,
     "_lgCov": 0.7644,
@@ -1535,7 +1564,8 @@
     "_tanned": 164.8706,
     "_tannedTrade": 67.1662,
     "_riteWeapon": 9.9804,
-    "_cookQ": 0.5694
+    "_cookQ": 0.5694,
+    "_deadTot": 42
    }
   }
  ],

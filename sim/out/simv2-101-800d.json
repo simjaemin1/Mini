@@ -206,6 +206,7 @@
     "merchant": 0
    },
    "_int": {
+    "_bornDay": 0,
     "_tempDay": 17.6994,
     "_tempNight": 12.6994,
     "_coldStress": 0,
@@ -240,6 +241,8 @@
     "_woodImportEMA": 0.2348,
     "_fuelKema": 218.8824,
     "_dPAccum": 0.5824,
+    "_shieldAte": 0,
+    "_deathsToday": 0,
     "_potteryR": 0.0956,
     "_priceCacheDay": 800,
     "_tradingN": 1,
@@ -258,7 +261,9 @@
     "_stoneWeaponMade": 2.5038,
     "_leatherGoods": 0,
     "_lgCov": 0,
+    "_shieldAteTot": 483.4449,
     "_selfToolMade": 10.48,
+    "_deadTot": 96,
     "_tanned": 111.1249,
     "_tannedTrade": 11.1276
    }
@@ -461,6 +466,7 @@
     "merchant": 0
    },
    "_int": {
+    "_bornDay": 0,
     "_tempDay": 17.6994,
     "_tempNight": 12.6994,
     "_coldStress": 0,
@@ -495,6 +501,8 @@
     "_woodImportEMA": 6.0436,
     "_fuelKema": 125.8945,
     "_dPAccum": 0.5382,
+    "_shieldAte": 0,
+    "_deathsToday": 0,
     "_potteryR": 0.7003,
     "_priceCacheDay": 800,
     "_tradingN": 0,
@@ -514,7 +522,9 @@
     "_cookQ": 0.5158,
     "_leatherGoods": 0,
     "_lgCov": 0,
+    "_shieldAteTot": 47.0701,
     "_selfToolMade": 22.5,
+    "_deadTot": 48,
     "_tanned": 124.0972,
     "_tannedTrade": 55.8343
    }
@@ -712,6 +722,7 @@
     "merchant": 0
    },
    "_int": {
+    "_bornDay": 0,
     "_tempDay": 17.6994,
     "_tempNight": 12.6994,
     "_coldStress": 0,
@@ -746,6 +757,8 @@
     "_woodImportEMA": 3.9745,
     "_fuelKema": 89.6303,
     "_dPAccum": 0.8884,
+    "_shieldAte": 0,
+    "_deathsToday": 0,
     "_potteryR": 0,
     "_priceCacheDay": 800,
     "_tradingN": 1,
@@ -761,13 +774,15 @@
     "_riteWeapon": 14.9208,
     "_cookQ": 0.4007,
     "_selfToolMade": 11.22,
+    "_shieldAteTot": 74.8716,
     "_leatherGoods": 3.68,
     "_lgCov": 0.1,
     "_cuWeapUsed": 4.284,
     "_bronzeWeaponMade": 0,
     "_alloyGrade": 0.4661,
     "_tanned": 72.9094,
-    "_tannedTrade": 29.3671
+    "_tannedTrade": 29.3671,
+    "_deadTot": 30
    }
   },
   {
@@ -963,6 +978,7 @@
     "merchant": 0
    },
    "_int": {
+    "_bornDay": 0,
     "_tempDay": 17.6994,
     "_tempNight": 12.6994,
     "_coldStress": 0,
@@ -997,6 +1013,8 @@
     "_woodImportEMA": 5.7954,
     "_fuelKema": 148.1068,
     "_dPAccum": -0.7054,
+    "_shieldAte": 0,
+    "_deathsToday": 0,
     "_potteryR": 0,
     "_priceCacheDay": 800,
     "_tradingN": 1,
@@ -1012,11 +1030,13 @@
     "_leatherGoods": 7.81,
     "_lgCov": 0.1006,
     "_selfToolMade": 19.08,
+    "_shieldAteTot": 499.4429,
     "_riteUsed": 25.7249,
     "_tanned": 263.3353,
     "_cuWeapUsed": 15.279,
     "_bronzeWeaponMade": 0,
     "_alloyGrade": 1.0408,
+    "_deadTot": 65,
     "_tannedTrade": 298.0285
    }
   },
@@ -1218,6 +1238,7 @@
     "merchant": 0
    },
    "_int": {
+    "_bornDay": 0,
     "_tempDay": 17.6994,
     "_tempNight": 12.6994,
     "_coldStress": 0,
@@ -1252,6 +1273,8 @@
     "_woodImportEMA": 0.0025,
     "_fuelKema": 668.3331,
     "_dPAccum": 0.0043,
+    "_shieldAte": 0,
+    "_deathsToday": 0,
     "_potteryR": 0,
     "_priceCacheDay": 800,
     "_tradingN": 1,
@@ -1269,9 +1292,11 @@
     "_lgCov": 0,
     "_riteUsed": 69.965,
     "_cookQ": 0.6397,
+    "_shieldAteTot": 221.3589,
     "_clothQ": 0.3282,
     "_tanned": 122.9425,
-    "_tannedTrade": 89.184
+    "_tannedTrade": 89.184,
+    "_deadTot": 79
    }
   },
   {
@@ -1472,6 +1497,7 @@
     "merchant": 0
    },
    "_int": {
+    "_bornDay": 0,
     "_tempDay": 17.6994,
     "_tempNight": 12.6994,
     "_coldStress": 0,
@@ -1506,6 +1532,8 @@
     "_woodImportEMA": 2.39,
     "_fuelKema": 277.4004,
     "_dPAccum": -0.2822,
+    "_shieldAte": 0,
+    "_deathsToday": 0,
     "_potteryR": 0.3205,
     "_priceCacheDay": 800,
     "_tradingN": 1,
@@ -1525,7 +1553,9 @@
     "_cookQ": 0.4139,
     "_leatherGoods": 1.68,
     "_lgCov": 0.0304,
+    "_shieldAteTot": 359.3873,
     "_selfToolMade": 20.72,
+    "_deadTot": 57,
     "_tanned": 89.6,
     "_tannedTrade": 54.5141
    }

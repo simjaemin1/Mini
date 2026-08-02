@@ -106,6 +106,17 @@ console.log('\n[A2] 엔진 A/B 손잡이 기본값');
     if (new RegExp(name + " === '0'").test(E)) ok(`${name} 기본 ON (${why})`);
     else bad(`${name} 기본이 OFF 다 — 채택값은 ON(꺼지면 소멸·좀비가 돌아온다)`);
   }
+  //   ★2026-08-02d: SHIELD_AGE·SHIELD_SOFT 채택(기본 ON) · STONE_MAINT 은 이월(현행 0.02 유지)
+  for (const [name, why] of [['SHIELD_AGE', '채택 — 보호막을 마을 나이 기준으로(랩 비트 동일)'],
+                             ['SHIELD_SOFT', '채택 — 보호막이 삼키지 않고 감쇠(절벽→경사)']]) {
+    if (new RegExp(name + " === '0'").test(E)) ok(`${name} 기본 ON (${why})`);
+    else bad(`${name} 기본이 OFF 다 — 채택값은 ON`);
+  }
+  {
+    const m = E.match(/process\.env\.STONE_MAINT[\s\S]{0,120}?:\s*([\d.]+)/);
+    if (m && m[1] === '0.02') ok('STONE_MAINT 기본 0.02 (이월 — 이중차감 수리는 회부 중)');
+    else bad(`STONE_MAINT 기본이 ${m ? m[1] : '?'} 다 — 회부 결론 전 채택값은 0.02`);
+  }
   for (const [name, why] of [['TOOLBOOT', '실측 무효(기준선과 비트 동일)'], ['SWITCH2', '실측 무효(함께 켜면 되레 좀비 +0.67)']]) {
     if (new RegExp('process\\.env\\.' + name + " === '1'").test(E)) ok(`${name} 기본 OFF (${why})`);
     else bad(`${name} 기본이 ON 이다 — ${why} 인 손잡이가 켜져 있다`);
