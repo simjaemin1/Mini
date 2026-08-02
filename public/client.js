@@ -8081,7 +8081,36 @@ const SIM_JOB_EMOJI = {
         <div style="background:#2a1f15;padding:10px;border-radius:4px;font-size:12px;color:#c89070;margin-top:8px">
           ⚠️ 옛 즉시 빌드 시스템은 제거됨. 모든 건축물 = 제작→인벤→배치.
         </div>
+        <!-- 터 잡기(다단계 건축) — 아래 JS 주석 참조. 노·숯가마·움집은 아이템이 아니라 '터'다. -->
+        <div id="siteBuildBox" style="background:#1a1f25;padding:10px;border-radius:4px;font-size:12px;margin-top:8px">
+          <p style="margin:0 0 8px 0;color:#f0c674;font-weight:bold">⛏️ 터 잡기 (다단계 건축 — 자리부터 잡는다)</p>
+          <div id="siteBuildList" style="display:flex;flex-direction:column;gap:6px"></div>
+          <p style="margin:8px 0 0 0;color:#8a93a0">자리를 잡은 뒤 자재를 들고 터를 클릭하면 다음 단계가 올라간다.</p>
+        </div>
       </div>`;
+    // ★★[2026-08-02d 배치 5 ⑥ — 실클라 E2E 가 잡은 결함] 터 잡기(다단계 건축) 구획.
+    //   노·숯가마·움집은 **아이템이 아니라 터**다(제작→인벤→배치 계약에 안 들어간다 — 자리를 잡고
+    //   자재를 들고 가 단계를 올린다). 그런데 그 진입점이 #hud .hud-actions 안에만 있었고
+    //   그 컨테이너는 style.css:486 에서 display:none 이라 **플레이어가 도달할 방법이 없었다** —
+    //   키 바인딩도 0곳이고 제작 패널에도 없다. 서버 E2E(test-furnace 59/0)가 통과하는 동안
+    //   화면에서는 노를 **한 번도 지을 수 없었다.**
+    //   (배치 1 의 _claimFootprint 결함과 같은 계열: 계약은 멀쩡한데 실행 경로가 끊겨 있었다.
+    //    그때 교훈이 "소스 계약 검사로는 못 잡는다 — 실행해 봐야 한다"였고, 이번엔 한 층 더 위,
+    //    **실화면**이라야 잡혔다.)
+    //   ⇒ 여기서 로직을 복제하지 않는다. 정본 버튼(.hud-actions[data-action])을 그대로 눌러 준다.
+    {
+      const list = document.getElementById('siteBuildList');
+      const src = document.querySelectorAll('.hud-actions [data-action="hut_start"], .hud-actions [data-action="furnace_start"], .hud-actions [data-action="kiln_start"]');
+      for (const srcBtn of src) {
+        if (srcBtn.style && srcBtn.style.display === 'none') continue;   // 시대 미해금(괴련로 등)은 정본 그대로 숨긴다
+        const b = document.createElement('button');
+        b.textContent = (srcBtn.textContent || '').trim();
+        b.style.cssText = 'width:100%;padding:8px;background:#3a4a5a;color:#e8eaed;border:1px solid #4a5a6a;border-radius:4px;cursor:pointer;font-size:13px;text-align:left';
+        b.onclick = () => { srcBtn.click(); closeSide(); };   // ★정본 핸들러 호출 — 배치 모드 진입 후 패널을 비켜 준다
+        list.appendChild(b);
+      }
+      if (!list.children.length) list.innerHTML = '<span style="color:#8a93a0">(지금 잡을 수 있는 터가 없다)</span>';
+    }
     document.getElementById('buildToggleBtn').onclick = () => {
       buildMode = !buildMode;
       if (!buildMode) placementMode = null;
