@@ -189,6 +189,7 @@
     "bark": 14.736700766844143,
     "acorn": 8.842020460106466
    },
+   "expansions": 101,
    "jobs": {
     "farmer": 11,
     "fisher": 1,
@@ -450,6 +451,7 @@
     "ramie": 10.586131154654122,
     "feather": 5.165849254517173
    },
+   "expansions": 196,
    "jobs": {
     "farmer": 18,
     "fisher": 15,
@@ -710,6 +712,7 @@
     "acorn": 7.826216887484787,
     "ramie": 2.6286292354469682
    },
+   "expansions": 89,
    "jobs": {
     "farmer": 6,
     "fisher": 9,
@@ -968,6 +971,7 @@
     "wheat": 102.23113185631047,
     "ramie": 7.187705361119073
    },
+   "expansions": 96,
    "jobs": {
     "farmer": 8,
     "fisher": 9,
@@ -1226,6 +1230,7 @@
     "fur": 0.5440053622177603,
     "feather": 2.6664991285844173
    },
+   "expansions": 28,
    "jobs": {
     "farmer": 10,
     "fisher": 2,
@@ -1483,6 +1488,7 @@
     "honey": 2.947043810102612,
     "grape": 3.2233886080730256
    },
+   "expansions": 85,
    "jobs": {
     "farmer": 23,
     "fisher": 16,

@@ -2132,6 +2132,62 @@ function expandCost(v) {
   };
 }
 
+// ═══ ★★[2026-08-03a ⑰ 재민 확정] 국고 **현금**을 확장 회로에 잇는다 ═══════════════
+//   실측된 사실: `treasury._cash` 는 엔진에서 **쓰기 전용**이었다 — 교역세로만 늘고(v2 2곳)
+//   읽는 곳이 0이라 1,600일에 1인당 55.5 → 104.0 으로 **선형 누적**만 했다.
+//   그런데 국고는 이미 공공 사업을 하고 있다 — 바로 아래 확장 블록이 `treasury.food/wood/stone`
+//   을 쓰고, 모자라면 그날 `return` 으로 멈춘다. **현금만 그 회로 밖에 있었다.**
+//   ⇒ 화폐를 새로 설계하지 않는다. **멈추는 그 줄에서 현금으로 부족분을 산다.**
+//     새 재화 0 · 새 직업 0 · 새 효과 0 — 이미 있는 가격·재고·유보 기구를 그대로 쓴다.
+//
+//   ★네 가지를 지킨다(재민 지시 그대로):
+//     ① 가격을 새로 만들지 않는다 — `_matPrice(v)`(마을 그림자가격, 정본 함수)로 환산한다.
+//     ② 현금이 **실제로 그만큼** 줄어야 한다 — 무에서 재화를 만들지 않는다.
+//     ③ **시장 재고가 없으면 못 산다** — 현금은 만능이 아니다. 파는 쪽은 마을 곳간이고,
+//        살 수 있는 양은 **가계 유보(RESERVE_PC/인)를 넘는 잉여**뿐이다(정본 유보표 재사용).
+//        곳간을 유보 아래로 긁어 확장하면 그건 "부"가 아니라 마을을 파는 것이다.
+//     ④ **외상 금지 — 원자적이다.** 세 재화를 전부 못 채우거나 현금이 모자라면 **한 톨도 안 산다**
+//        (하네스가 반복해서 지켜 온 "거부인데 재료가 깎이지 않았다" 규약).
+//   ★★**채택(2026-08-03a · 기본 ON)** — 3시드 실측. 되돌리기: `TREASURY_BUY=0`.
+//     800일  : 인구 3,424 → 3,549(+3.7%) · 확장셀 2,667 → 3,756(+41%) · 현금/인 55.6 → 39.9
+//     1,600일: 인구 3,991 → **4,502(+12.8%)** · 무기Q 1,041 → **1,150(+10.5%)** · 확장셀 8,470 → 16,684
+//              · 현금 기울기 59.8 → **53.1**(−11% — 선형 누적이 꺾였다) · **소멸 0 · 좀비 0 유지**(하드 조건)
+//     발동 실측: 19마을 중 **11곳**이 실제로 매수(매입 재화 4,120 · 지출 현금 1,493) — 사문 아님.
+//   ⚠800일 시점만 보면 무기Q −3.6%·산골 1인당 부 −4.6% 로 **미달**이다. 그런데 시드별 방향이
+//     갈리고(무기Q 2/3 하락·1/3 상승) 1,600일엔 **3/3 상승(+6~19%)**으로 뒤집힌다. 확장 투자
+//     국면에서 자원이 땅으로 가느라 무기 축적이 늦고, 그 땅이 결실을 내면 앞선다 — 자연스러운 순서다.
+//     산골 1인당 부 −7% 도 같은 착시다: **총량은 +4.9%** 인데 인구가 12.8% 늘어 1인당이 희석된 것이다.
+const TREASURY_BUY_ON = !(typeof process !== 'undefined' && process.env && process.env.TREASURY_BUY === '0');
+function _treasuryTopUp(v, need) {
+  if (!TREASURY_BUY_ON) return false;
+  const cash = (v.treasury && v.treasury._cash) || 0;
+  if (!(cash > 0)) return false;
+  const price = _matPrice(v);
+  const N = v.npcs.length || 1;
+  const plan = [];
+  let total = 0;
+  for (const r in need) {
+    const deficit = need[r] - (v.treasury[r] || 0);
+    if (!(deficit > 0)) continue;
+    // 살 수 있는 것 = 곳간 잉여(가계 유보 초과분)뿐. 유보 잣대는 정본 RESERVE_PC (사본 금지).
+    const avail = (v.storage[r] || 0) - (RESERVE_PC[r] || 0) * N;
+    if (!(avail >= deficit)) return false;      // 시장에 물건이 없다 → 못 산다(부분 구매 없음)
+    const p = price(r);
+    if (!(p > 0)) return false;
+    plan.push({ r, qty: deficit, cost: deficit * p });
+    total += deficit * p;
+  }
+  if (!plan.length) return false;               // 살 게 없다(=애초에 부족하지 않았다) — 호출부 오류 방지
+  if (total > cash) return false;               // 돈이 모자라면 아무것도 안 산다(외상 금지)
+  for (const it of plan) {
+    v.storage[it.r] -= it.qty;                  // 곳간 → 국고. 재화는 **이동**할 뿐 생성되지 않는다
+    v.treasury[it.r] = (v.treasury[it.r] || 0) + it.qty;
+  }
+  v.treasury._cash = cash - total;              // 현금은 실제로 준다
+  v._tbBought = (v._tbBought || 0) + plan.reduce((a, x) => a + x.qty, 0);   // (계측 전용)
+  v._tbSpent = (v._tbSpent || 0) + total;
+  return true;
+}
 // 길드 금고로 영토 확장 시도 — ★셀 단위(사용자 승인 2026-07-12): 하루 최대 EXPAND_CELLS_PER_DAY셀 구매 루프.
 //   셀당 비용 = 슬롯 공식/25(현재 소수 size에서 ^1.3 연속 평가 — 주 80 뭉텅 지불이 일 ~3.2×n 스며듦으로).
 //   land.size는 소수 누적(+1/25). MB/MC는 셀마다 재평가(비율 비교라 단위 무관) — 금고 부족 or MB<MC면 그날 중단
@@ -2160,7 +2216,11 @@ function tryExpandTerritory(v, day) {
     const cellFood  = cost.food  / EXPAND_CELLS_PER_SLOT;
     const cellWood  = cost.wood  / EXPAND_CELLS_PER_SLOT;
     const cellStone = cost.stone / EXPAND_CELLS_PER_SLOT;
-    if (v.treasury.food < cellFood || v.treasury.wood < cellWood || v.treasury.stone < cellStone) return;   // 금고 부족 — 그날 중단
+    if (v.treasury.food < cellFood || v.treasury.wood < cellWood || v.treasury.stone < cellStone) {
+      // ★[2026-08-03a ⑰] 여기가 그 "그날 중단" 줄이다 — 현금이 있으면 곳간 잉여를 사서 채우고 계속한다.
+      //   손잡이 OFF 면 `_treasuryTopUp` 이 즉시 false 라 **아래 return 만 남는다**(비트 동일).
+      if (!_treasuryTopUp(v, { food: cellFood, wood: cellWood, stone: cellStone })) return;   // 금고 부족 — 그날 중단
+    }
     v.treasury.food  -= cellFood;
     v.treasury.wood  -= cellWood;
     v.treasury.stone -= cellStone;
@@ -4823,6 +4883,7 @@ function main() {
       finalPop: v.npcs.length,
       finalStorage: v.storage,
       finalTreasury: v.treasury,
+      expansions: v.expansions || 0,   // ★[2026-08-03a ⑰] 확장 셀 수 — v2 CLI 회귀 판정 열
       guild: v.guild,
       jobs: jobCounts(v),
       avgSkills: Object.fromEntries(FIELDS.map(f => {
@@ -5028,6 +5089,10 @@ module.exports = {
   //   _trySmelt·smeltTarget 은 하네스(scripts/test-oremix.js)가 실제 제련을 돌려 보려고 노출한다.
   oreMixOf, foldOreMix, _trySmelt, smeltTarget,
   derivedInputTarget,   // ★[2026-08-02f ①-2] 구리 파생 투입수요 — v2 가 가격 target 에 얹는다(단일 진실)
+  // ★[2026-08-03a ⑰] 국고 현금 배선 — 하네스가 **산술을 직접 재게** 노출한다(상수 복제 금지).
+  //   `_treasuryTopUp` 은 실제 함수 그대로여야 검사가 그 코드를 밟는다(모형을 검사하면 의미가 없다).
+  _treasuryTopUp, RESERVE_PC, _matPrice, expandCost,
+  _EXPAND_CELLS_PER_SLOT: EXPAND_CELLS_PER_SLOT,
   // ★부얼타운 판정 — 시딩(villages.js)이 같은 함수를 쓰도록 노출(사본 금지)
   isBoomtown, veinScore, foodCapOf, BOOM_FOOD_MAX, BOOM_VEIN_MIN,
   createWorld,
@@ -6585,6 +6650,7 @@ function main() {
         finalPop: v.npcs.length,
         finalStorage: v.storage,
         finalTreasury: v.treasury,
+        expansions: v.expansions || 0,   // ★[2026-08-03a ⑰] 확장 셀 수 — v2 CLI 회귀 판정 열
         jobs: v1.jobCounts(v),
         // 계측용 내부 스칼라(제련량·주조등급·품질 EMA 등) — 회귀표 밖 진단에 쓴다
         _int: Object.fromEntries(Object.keys(v).filter(k => k[0] === '_' && typeof v[k] === 'number')

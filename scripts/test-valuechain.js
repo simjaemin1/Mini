@@ -273,5 +273,73 @@ console.log('\n⑧ 구리 파생 투입수요 — 게이트가 열리는가 · �
   }
 }
 
+// ── ⑨ 국고 현금 배선 — 산술이 정확한가 · 못 살 때 정말 안 사는가 (2026-08-03a ⑰) ──
+//   ★검사 상황이 실제로 그 코드를 밟는지 assert 한다(검증 원칙: 자명한 상황을 골라 조용히 통과 금지).
+//     여기선 ① 부족분이 **양수**여야 하고 ② 매수가 **성공(true)**해야 산술 검사가 의미를 갖는다.
+console.log('\n⑨ 국고 현금 배선 — 부족분 × 그림자가격 = 현금 감소분');
+{
+  const e1 = R('sim/economy-sim');
+  const ON = !(process.env.TREASURY_BUY === '0');   // ★채택(2026-08-03a) 후 기본 ON — 되돌리기는 TREASURY_BUY=0
+  ok(typeof e1._treasuryTopUp === 'function', 'v1 이 _treasuryTopUp 을 노출한다(하네스가 실제 함수를 밟는다)');
+  const mkV = (storage, cash) => ({
+    npcs: Array.from({ length: 10 }, (_, i) => ({ id: 'n' + i })),
+    storage: Object.assign({}, storage),
+    treasury: { food: 0, wood: 0, stone: 0, _cash: cash },
+    land: {}, counts: {},
+  });
+  const RES = e1.RESERVE_PC, N = 10;
+  // 유보(RESERVE_PC/인)를 넘는 잉여를 넉넉히 둔 마을 — 살 수 있어야 한다
+  const rich = () => mkV({ food: RES.food * N + 50, wood: RES.wood * N + 50, stone: RES.stone * N + 50 }, 10000);
+  if (!ON) {
+    const v = rich();
+    ok(e1._treasuryTopUp(v, { food: 1, wood: 1, stone: 1 }) === false, '★TREASURY_BUY=0 이면 무조건 false — 채택 전 동작을 비트 동일로 재현한다');
+    ok(v.treasury._cash === 10000 && v.storage.food === RES.food * N + 50, '  OFF 일 때 현금·곳간 무변');
+    console.log('    (산술·거부 검사는 손잡이 ON 실행에서 돈다 — 지금은 TREASURY_BUY=0 채택전 재현 모드)');
+  } else {
+    // ⑨-a 산술 — 부족분 × 그림자가격 = 현금 감소분 (오차 <1e-9)
+    {
+      const v = rich();
+      const need = { food: 12, wood: 7, stone: 4 };
+      const price = e1._matPrice(v);
+      const cash0 = v.treasury._cash;
+      const st0 = { food: v.storage.food, wood: v.storage.wood, stone: v.storage.stone };
+      const expect = Object.keys(need).reduce((a, r) => a + need[r] * price(r), 0);
+      ok(expect > 0, `  ★검사 상황 확인: 기대 지불액이 양수다 (${expect.toFixed(3)}) — 0 = 0 통과 방지`);
+      const done = e1._treasuryTopUp(v, need);
+      ok(done === true, '  ★매수 성공 — 이 검사가 실제로 그 코드를 밟았다');
+      const spent = cash0 - v.treasury._cash;
+      ok(Math.abs(spent - expect) < 1e-9, `  부족분 × 그림자가격 = 현금 감소분 (${spent.toFixed(6)} vs ${expect.toFixed(6)}, 오차 <1e-9)`);
+      let moved = true;
+      for (const r of Object.keys(need)) {
+        if (Math.abs((st0[r] - v.storage[r]) - need[r]) > 1e-9) moved = false;
+        if (Math.abs(v.treasury[r] - need[r]) > 1e-9) moved = false;
+      }
+      ok(moved, '  ★재화는 **이동**했다 — 곳간에서 빠진 양 = 국고에 들어온 양(무에서 창조 0)');
+    }
+    // ⑨-b 시장 재고 0 → 불구매. 그리고 **한 톨도 안 깎인다**(외상 금지)
+    {
+      const v = mkV({ food: RES.food * N + 50, wood: RES.wood * N + 50, stone: RES.stone * N }, 10000);   // 돌 잉여 0
+      const cash0 = v.treasury._cash, w0 = v.storage.wood;
+      ok(e1._treasuryTopUp(v, { food: 1, wood: 1, stone: 1 }) === false, '★유보 초과 잉여가 없는 재화가 하나라도 있으면 불구매');
+      ok(v.treasury._cash === cash0, '  ★거부인데 현금이 안 줄었다(외상 없음)');
+      ok(v.storage.wood === w0 && !(v.treasury.wood > 0), '  ★거부인데 살 수 있었던 재화도 안 옮겼다(원자적)');
+    }
+    // ⑨-c 현금 부족 → 불구매(부분 구매 없음)
+    {
+      const v = rich(); v.treasury._cash = 0.001;
+      const st0 = v.storage.food;
+      ok(e1._treasuryTopUp(v, { food: 12, wood: 7, stone: 4 }) === false, '★현금이 모자라면 아무것도 안 산다');
+      ok(v.storage.food === st0 && v.treasury._cash === 0.001, '  거부 시 곳간·현금 무변');
+    }
+    // ⑨-d 곳간을 **가계 유보 아래로는** 못 긁는다 — 마을을 팔아 확장하지 않는다
+    {
+      const v = mkV({ food: RES.food * N + 5, wood: RES.wood * N + 50, stone: RES.stone * N + 50 }, 10000);
+      ok(e1._treasuryTopUp(v, { food: 5, wood: 1, stone: 1 }) === true, '  유보 초과분(5)까지는 살 수 있다');
+      const v2b = mkV({ food: RES.food * N + 5, wood: RES.wood * N + 50, stone: RES.stone * N + 50 }, 10000);
+      ok(e1._treasuryTopUp(v2b, { food: 6, wood: 1, stone: 1 }) === false, '★유보를 1이라도 침범하면 불구매 — 곳간 바닥을 긁지 않는다');
+    }
+  }
+}
+
 console.log('\n결과: ' + (fail ? 'FAIL — ' + fail + '건' : 'PASS'));
 process.exit(fail ? 1 : 0);

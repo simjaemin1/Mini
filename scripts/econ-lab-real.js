@@ -195,7 +195,10 @@ for (let d = 0; d < DAYS; d++) {
         // ★[2026-08-02d ①] 보호막 압력·사망 궤적 — "절벽인가 경사인가"의 직답.
         //   샘플이 10일 간격이라 그날치 값만 보면 놓친다 → 누적(shTot·deadTot)을 같이 싣는다.
         shAte: +(v._shieldAte || 0).toFixed(3), shTot: +(v._shieldAteTot || 0).toFixed(1),
-        dAcc: +(v._dPAccum || 0).toFixed(3), deadTot: (v._deadTot || 0) });
+        dAcc: +(v._dPAccum || 0).toFixed(3), deadTot: (v._deadTot || 0),
+        // ★[2026-08-03a ⑰] 국고 현금·확장 셀 — "선형 누적이 꺾이는가"는 **궤적에서만** 보인다.
+        //   최종값만 보면 "현금이 줄었다"와 "확장에 다 썼다"를 못 가른다.
+        cash: +(((v.treasury && v.treasury._cash) || 0)).toFixed(1), ex: v.expansions || 0 });
     }
   }
   if (Era && d % 50 === 0 && d >= FLIP - 100) {
@@ -247,7 +250,7 @@ if (process.env.LAB_DUMP) {
               ...Object.fromEntries(METALS.filter(m => v.land[m] != null).map(m => [m, v.land[m]])) },
       oreMix: s.lp.oreMix || {}, oreGrade: s.lp.oreGrade, oreP: s.lp.oreP, oreDist: s.lp.oreDist,
       marginalQ: s.lp.marginalQ,
-      jobs: jb, storage: st, counts: v.counts,
+      jobs: jb, storage: st, counts: v.counts, expansions: v.expansions || 0,   // ★[2026-08-03a ⑰] 확장 셀 수 — 판정 열
       alloyGrade: v._alloyGrade, bronzeWeaponMade: v._bronzeWeaponMade,
       stoneWeaponMade: v._stoneWeaponMade,
       treasury: Object.fromEntries(Object.entries(v.treasury || {}).filter(([, x]) => x > 0.01).map(([k, x]) => [k, +x.toFixed(2)])),

@@ -40,7 +40,7 @@ for (const s of SEEDS) {
   catch (e) { rows.push({ s, err: 1, msg: String(e.message || e).slice(0, 80) }); continue; }
   if (!fs.existsSync(f)) { rows.push({ s, err: 1, msg: '덤프 없음' }); continue; }
   const j = JSON.parse(fs.readFileSync(f, 'utf8'));
-  const r = { s, pop: 0, weap: 0, weapQ: 0, armor: 0, cloth: 0, cu: 0, tin: 0, iron: 0, smith: 0, miner: 0, tailor: 0, dead: 0 };
+  const r = { s, pop: 0, weap: 0, weapQ: 0, armor: 0, cloth: 0, cu: 0, tin: 0, iron: 0, smith: 0, miner: 0, tailor: 0, dead: 0, ex: 0, cash: 0, exSeen: 0 };
   for (const v of j.villages || []) {
     const n = v.finalPop || 0; r.pop += n; if (n <= 0) r.dead++;
     const st = v.finalStorage || {}, jb = v.jobs || {};
@@ -50,22 +50,27 @@ for (const s of SEEDS) {
     r.weapQ += (st.weapon || 0) * ((v._int && v._int._weapQ) || 0.5);
     r.cu += st.copper || 0; r.tin += st.tin || 0; r.iron += st.iron || 0;
     r.smith += jb.smith || 0; r.miner += jb.miner || 0; r.tailor += jb.tailor || 0;
+    // ★[2026-08-03a ⑰] 확장 셀 수 · 국고 현금 — 현금 배선이 v2 CLI 에서도 같은 방향으로 움직이는지
+    // ★[2026-08-03a] 없는 필드를 0 으로 찍으면 '확장 안 함'으로 **오독**된다(배치 7 오진의 교훈).
+    //   이 회귀는 v2 CLI 덤프를 읽는데, 그 덤프에 필드가 없으면 exSeen 이 false 로 남아 '-' 를 찍는다.
+    if (v.expansions != null) r.exSeen = 1;
+    r.ex += v.expansions || 0; r.cash += (v.finalTreasury && v.finalTreasury._cash) || 0;
   }
-  for (const k of ['weap', 'weapQ', 'armor', 'cloth', 'cu', 'iron']) r[k] = +r[k].toFixed(0);
+  for (const k of ['weap', 'weapQ', 'armor', 'cloth', 'cu', 'iron', 'ex', 'cash']) r[k] = +r[k].toFixed(0);
   r.tin = +r.tin.toFixed(1);
   rows.push(r);
 }
 
-const H = ['시드', '인구', '무기', '무기Q', '갑옷', '옷', '구리', '주석', '철', '대장', '광부', '재봉', '소멸'];
-const W = [5, 6, 6, 7, 6, 6, 7, 7, 6, 5, 5, 5, 5];
+const H = ['시드', '인구', '무기', '무기Q', '갑옷', '옷', '구리', '주석', '철', '대장', '광부', '재봉', '소멸', '확장셀', '국고현금'];
+const W = [5, 6, 6, 7, 6, 6, 7, 7, 6, 5, 5, 5, 5, 7, 9];
 const line = (cells) => cells.map((c, i) => String(c).padStart(W[i])).join('');
 console.log(`\n[v2 CLI 회귀] ${DAYS}일 · 마을 ${VILLAGES} · picker=rational · tickWorldV2 (프로덕션 동형)`);
 console.log(line(H));
 for (const r of rows) {
   if (r.err) { console.log(`  ${r.s} 실패 — ${r.msg || ''}`); continue; }
-  console.log(line([r.s, r.pop, r.weap, r.weapQ, r.armor, r.cloth, r.cu, r.tin, r.iron, r.smith, r.miner, r.tailor, r.dead]));
+  console.log(line([r.s, r.pop, r.weap, r.weapQ, r.armor, r.cloth, r.cu, r.tin, r.iron, r.smith, r.miner, r.tailor, r.dead, r.exSeen ? r.ex : '-', r.cash]));
 }
 const ok = rows.filter(r => !r.err);
 const S = (k) => ok.reduce((a, r) => a + r[k], 0);
-if (ok.length) console.log(line(['합계', S('pop'), S('weap'), S('weapQ'), S('armor'), S('cloth'), S('cu'), S('tin').toFixed(1), S('iron'), S('smith'), S('miner'), S('tailor'), S('dead')]));
+if (ok.length) console.log(line(['합계', S('pop'), S('weap'), S('weapQ'), S('armor'), S('cloth'), S('cu'), S('tin').toFixed(1), S('iron'), S('smith'), S('miner'), S('tailor'), S('dead'), S('ex'), S('cash')]));
 if (ok.length < rows.length) { console.error(`\n❌ ${rows.length - ok.length}개 시드 실패`); process.exit(1); }
