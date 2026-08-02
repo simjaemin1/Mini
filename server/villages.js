@@ -1795,7 +1795,10 @@ function init(deps) {
       } else {
         const sd = seededById.get(row.id);
         const lp = sd ? sd.landParams : extractLandParamsApprox(ta, row.cx, row.cy, { territory: [] });
-        ev = econ.createVillage({ ...lp, initialPop: INITIAL_POP, name: row.name });
+        // ★[2026-08-02d] bornDay — 기아사망 보호막을 마을 나이로 셀 때의 기준(SHIELD_AGE).
+        //   라이브에서 **세계가 이미 900일째일 때 새로 서는 마을**은 지금 보호를 0일 받는다(달력 기준이므로).
+        //   창설일을 심어 두면 그 구멍이 메워진다. 손잡이가 꺼져 있으면 읽히지 않는 값이라 무해.
+        ev = econ.createVillage({ ...lp, initialPop: INITIAL_POP, name: row.name, bornDay: row.day | 0 });
       }
       ev._world = world;
       // econ 좌표 = 셀×2.5 — 랩(4804행)과 동일 스케일: villageDist·운반비·약탈 확률이 랩 검증 범위에 머묾

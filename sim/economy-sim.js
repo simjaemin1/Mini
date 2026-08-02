@@ -641,6 +641,26 @@ const HOUSE_DECAY = 0.0015;    // 일일 노후화(완만 — 나무꾼 1명이�
 const HOUSE_BUFFER = 1.15;     // 인구보다 약간 여유 있게(성장 여지)
 const HOUSE_BUILD_MAX = 0.06;  // 하루 최대 증축률(인구 대비)
 const HOUSE_START = 20;        // 정착 초기 집(부트스트랩 — 이 크기까진 자라 나무꾼 산업 형성)
+// ═══ ★★[2026-08-02d ① 구조 부채] 기아사망 보호막 ═══════════════════════════
+// 2026-06-02 **최초 커밋부터** 있던 `if (day < 365)` 클램프다. 코드 고고학 — 원 주석의 의도:
+//   "시뮬 초기 365일은 보호 (자리 맞추기 + 교역 시작 시간 확보)"  ⇒ **정착 부트스트랩**이 의도다.
+//
+// 실측한 병리(음성 대조 시드42, 아래 두 손잡이 OFF):
+//   · 보호기간 동안 클램프가 음수 압력을 **누적 5,471 단위 지웠다**(그날치가 말기엔 40+/일).
+//   · 그동안 인구는 K 위로 계속 자랐다 — 대가가 없으니 멈출 이유가 없다(d360 인구 1,307).
+//   · 366일째 보호막이 걷히자 **20일 창에 433명 사망**. 800일 전체 사망 1,086 중 40%가 그 한 창이다.
+//   ⇒ 압력이 저장됐다 터지는 게 아니다. **N ≫ K 를 대가 없이 방치**하다가, 로지스틱의 즉시항이
+//     보호막이 사라진 그날부터 전액 청구되는 것이다. 절벽의 정체가 이것이다.
+const SHIELD_DAYS = 365;
+// ★SHIELD_AGE — 달력이 아니라 **마을 나이**로 센다. 원 의도('정착 부트스트랩')에 정확히 부합하고,
+//   라이브의 구멍도 메운다: 지금은 세계 900일째에 새로 선 마을이 보호를 **0일** 받는다(달력이 이미 지났으므로).
+//   ⚠랩에서는 전 마을이 day 0 생성이라 나이 == 달력 → **비트 동일**이 기대값이다(그걸 A/B 로 확인한다).
+const SHIELD_AGE_ON = (typeof process !== 'undefined' && process.env && process.env.SHIELD_AGE === '1');
+// ★SHIELD_SOFT — 삼키지 말고 **감쇠**. 보호기간엔 음수 누적을 ×k 로 줄인다(지우지 않는다).
+//   압력이 새어나가 보호기간에도 사망이 조금씩 일어나고 → 인구가 K 를 크게 못 넘고 → 절벽이 경사가 된다.
+const SHIELD_SOFT_ON = (typeof process !== 'undefined' && process.env && process.env.SHIELD_SOFT === '1');
+const SHIELD_SOFT_K = (typeof process !== 'undefined' && process.env && process.env.SHIELD_SOFT_K != null)
+  ? Number(process.env.SHIELD_SOFT_K) : 0.25;
 // ★땅맞춤 초기 부존 배수 — 기본 1(채택값). LANDFIT=0 이면 2026-08-02 채택 **이전 동작**을 정확히 재현한다.
 //   (계수를 임의로 흔들라는 손잡이가 아니라 A/B 재현용이다 — PEACE_W 선례. createVillage 참조.)
 const LANDFIT_K = (typeof process !== 'undefined' && process.env && process.env.LANDFIT != null)
@@ -1387,6 +1407,9 @@ function createVillage(opts) {
     lastExpansionDay: 0,
     isolated: false,
     isolatedUntilDay: 0,
+    // ★[2026-08-02d] 창설일 — 기아사망 보호막을 '달력'이 아니라 '마을 나이'로 셀 때의 기준(SHIELD_AGE).
+    //   호출측이 안 주면 0(=달력과 동일) → 회귀 무영향. 라이브는 villages.js 가 world.day 를 준다.
+    _bornDay: opts.bornDay || 0,
     history: [],
     // Phase 4d-6: 합리적 의사결정용 stats
     tradeStats: {
@@ -2348,10 +2371,25 @@ function tickVillage(v, day) {
   // 기아 사망 — dP 음수 누적 시 가장 늙은 NPC부터 사망.
   //   시뮬 초기 365일은 보호 (자리 맞추기 + 교역 시작 시간 확보).
   //   그 후부터 진짜 기아 사망 발생.
-  if (day < 365) {
-    if (v._dPAccum < 0) v._dPAccum = Math.max(v._dPAccum, -0.5);
+  // ★★[2026-08-02d 계측 — 행동 무영향] 보호막이 **삼킨 압력**을 센다.
+  //   `_shieldAte` = 그날 클램프가 지운 음수 누적량 · `_shieldAteTot` = 누적 · `_deathsToday` = 그날 아사자.
+  //   이 셋이 있어야 "보호막이 걷히는 날 한꺼번에 터진다"가 궤적으로 증명되거나 반증된다.
+  v._shieldAte = 0; v._deathsToday = 0;
+  // 보호 잔여 판정 — 기본은 달력(day), SHIELD_AGE 면 **마을 나이**(day − 창설일).
+  //   `_bornDay` 가 없으면(옛 DB·랩 초기 마을) 0 → 달력과 동일 = 회귀 무영향.
+  const _shieldT = SHIELD_AGE_ON ? (day - (v._bornDay || 0)) : day;
+  if (_shieldT < SHIELD_DAYS) {
+    if (v._dPAccum < 0) {
+      // (b) 감쇠: 지우지 않고 줄인다 — 남은 몫이 계속 누적돼 보호기간에도 압력이 새어나간다.
+      // (현행) 클램프: −0.5 아래를 통째로 지운다 — 그래서 대가 없이 K 를 넘어 자란다.
+      const _next = SHIELD_SOFT_ON ? (v._dPAccum * SHIELD_SOFT_K) : Math.max(v._dPAccum, -0.5);
+      v._shieldAte = _next - v._dPAccum;             // 지워진 음수 압력(≥0)
+      v._shieldAteTot = (v._shieldAteTot || 0) + v._shieldAte;
+      v._dPAccum = _next;
+    }
   }
   while (v._dPAccum <= -1 && v.npcs.length > POP_MIN) {
+    v._deathsToday++; v._deadTot = (v._deadTot || 0) + 1;
     let oldestIdx = 0;
     for (let i = 1; i < v.npcs.length; i++) {
       if (v.npcs[i].age > v.npcs[oldestIdx].age) oldestIdx = i;

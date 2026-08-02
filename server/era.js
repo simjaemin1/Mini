@@ -45,7 +45,9 @@ const UNLOCK = {
   bronze: {
     tech: ['pit_furnace', 'crucible', 'bellows', 'cupellation', 'charcoal_kiln'],
     npcMetals: ['copper', 'tin', 'lead', 'gold', 'silver'],
-    tame: ['dog', 'pig', 'cattle'],
+    // ★[2026-08-02d] id 정합 — `cattle`·`dog` 는 ANIMALS 카탈로그에 없는 이름이었다(실제 id 는 `cow`,
+    //   개는 카탈로그에 아예 없다). 표가 코드와 안 맞으면 게이트가 조용히 헛돈다.
+    tame: ['cow', 'pig'],
   },
   early_iron: {
     // ★괴련로(bloomery) — 철을 **녹이지 않고** 환원해 해면철을 얻는 노. 이게 철기시대의 실질이다.
@@ -127,7 +129,21 @@ function capsOf(era) {
   _capCache.set(e, out); return out;
 }
 const hasTech = (tag, era) => capsOf(era || currentEra()).tech.has(tag);
-const canTame = (animal, era) => capsOf(era || currentEra()).tame.has(animal);
+// ★★[2026-08-02d 배선] 길들이기 시대 게이트 — **화이트리스트가 아니라 '나중 시대 잠금'이다.**
+//   왜: UNLOCK 의 tame 목록은 "이 시대에 **새로 알려지는** 것"이라 **망라 목록이 아니다**(파일 머리말).
+//   그걸 화이트리스트로 쓰면 목록에 안 적힌 양·염소·닭·오리·벌·누에까지 전부 막힌다 —
+//   실측: breeding 13종 중 11종이 막힌다. 재민 확정은 "말 계열만" 이다.
+//   ⇒ 규칙: **UNLOCK 어디에도 없는 짐승은 시대와 무관**(항상 가능). 목록에 있으면 그 시대 이상이어야 한다.
+//     그러면 "말만 막힌다"가 하드코딩 없이 표에서 저절로 나온다(표에 한 줄 더하면 그게 곧 게이트다).
+function tameEraOf(animal) {
+  for (const e of ERAS) if (((UNLOCK[e] || {}).tame || []).includes(animal)) return e;
+  return null;   // 표에 없음 = 시대 축의 대상이 아님
+}
+function canTame(animal, era) {
+  const req = tameEraOf(animal);
+  if (!req) return true;
+  return atLeast(era || currentEra(), req);
+}
 
 // ★★NPC 생산 게이트 — econ 이 부르는 **유일한** 시대 함수.
 //   NPC 마을은 지식 전파의 대상이라 이진값이 맞다. "이 시대 마을이 이 금속을 다룰 줄 아는가."
@@ -218,6 +234,6 @@ const castableMetals = (era) => Object.keys(REDUCTION_T).concat([...ELECTRO_ONLY
 module.exports = {
   ERAS, UNLOCK, SCHEDULE, FURNACE, FUEL_CAP, BELLOWS_BONUS, REDUCTION_T, BOILING_T, METEORIC,
   currentEra, setEra, eraIndex, atLeast, capsOf,
-  hasTech, canTame, npcKnows, npcMetalList, KNOW_BLIND,
+  hasTech, canTame, tameEraOf, npcKnows, npcMetalList, KNOW_BLIND,
   furnaceTemp, smeltOutcome, smeltYield, bestSetup, castableMetals,
 };

@@ -147,7 +147,17 @@ say('\n[④ 문구 — 레벨이 오를수록 단정적이 된다]');
   ok(S.mineIdPhrase(0, true, 'gold', koOf) === null && S.mineIdPhrase(1, true, 'gold', koOf) === null,
     'lvl0~1 은 아무 말도 안 한다(아직 못 본다)');
   ok(/같기도/.test(S.mineIdPhrase(2, true, 'gold', koOf) || ''), 'lvl2 는 유보적("~같기도")');
-  ok(/이다$/.test(S.mineIdPhrase(10, true, 'gold', koOf) || ''), 'lvl10 은 단정("~이다")');
+  // ★[2026-08-02d] 기준을 어미('~이다')에서 **단정성**으로 바꿨다. `_ida` 직결이 '구리'에서
+  //   "구리다"(냄새가 고약하다)를 만들어 문구를 '틀림없는 X' 로 교체했기 때문이다 — 어미를 못박으면
+  //   하네스가 **표현을 고정**하지 유보/단정의 구분을 지키지 못한다. 검사할 것은 "유보어가 없는가"다.
+  {
+    const p10 = S.mineIdPhrase(10, true, 'gold', koOf) || '';
+    ok(/틀림없|이다$|다$/.test(p10) && !/같|듯|성싶|보인다|…/.test(p10), `lvl10 은 단정 — "${p10}"`);
+    // 전 광종 전수: 단정 문구가 어색하거나 뜻이 겹치는 낱말을 만들지 않는가(구리 → "구리다" 회귀 가드)
+    const weird = ['iron', 'copper', 'gold', 'silver', 'tin', 'lead', 'jade_raw', 'obsidian']
+      .map((m) => S.mineIdPhrase(10, true, m, koOf)).filter((s) => /^구리다$|^쓰다$|^질기다$/.test(String(s)));
+    ok(weird.length === 0, `단정 문구가 다른 뜻의 낱말이 되지 않는다 ${weird.length ? '— ' + weird.join(',') : ''}`);
+  }
   ok(!/금/.test(S.mineIdPhrase(4, true, 'gold', koOf) || ''), 'lvl4 이하는 종 이름을 말하지 않는다(가족·인상만)');
 }
 

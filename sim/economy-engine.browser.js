@@ -56,7 +56,9 @@ const UNLOCK = {
   bronze: {
     tech: ['pit_furnace', 'crucible', 'bellows', 'cupellation', 'charcoal_kiln'],
     npcMetals: ['copper', 'tin', 'lead', 'gold', 'silver'],
-    tame: ['dog', 'pig', 'cattle'],
+    // ★[2026-08-02d] id 정합 — `cattle`·`dog` 는 ANIMALS 카탈로그에 없는 이름이었다(실제 id 는 `cow`,
+    //   개는 카탈로그에 아예 없다). 표가 코드와 안 맞으면 게이트가 조용히 헛돈다.
+    tame: ['cow', 'pig'],
   },
   early_iron: {
     // ★괴련로(bloomery) — 철을 **녹이지 않고** 환원해 해면철을 얻는 노. 이게 철기시대의 실질이다.
@@ -138,7 +140,21 @@ function capsOf(era) {
   _capCache.set(e, out); return out;
 }
 const hasTech = (tag, era) => capsOf(era || currentEra()).tech.has(tag);
-const canTame = (animal, era) => capsOf(era || currentEra()).tame.has(animal);
+// ★★[2026-08-02d 배선] 길들이기 시대 게이트 — **화이트리스트가 아니라 '나중 시대 잠금'이다.**
+//   왜: UNLOCK 의 tame 목록은 "이 시대에 **새로 알려지는** 것"이라 **망라 목록이 아니다**(파일 머리말).
+//   그걸 화이트리스트로 쓰면 목록에 안 적힌 양·염소·닭·오리·벌·누에까지 전부 막힌다 —
+//   실측: breeding 13종 중 11종이 막힌다. 재민 확정은 "말 계열만" 이다.
+//   ⇒ 규칙: **UNLOCK 어디에도 없는 짐승은 시대와 무관**(항상 가능). 목록에 있으면 그 시대 이상이어야 한다.
+//     그러면 "말만 막힌다"가 하드코딩 없이 표에서 저절로 나온다(표에 한 줄 더하면 그게 곧 게이트다).
+function tameEraOf(animal) {
+  for (const e of ERAS) if (((UNLOCK[e] || {}).tame || []).includes(animal)) return e;
+  return null;   // 표에 없음 = 시대 축의 대상이 아님
+}
+function canTame(animal, era) {
+  const req = tameEraOf(animal);
+  if (!req) return true;
+  return atLeast(era || currentEra(), req);
+}
 
 // ★★NPC 생산 게이트 — econ 이 부르는 **유일한** 시대 함수.
 //   NPC 마을은 지식 전파의 대상이라 이진값이 맞다. "이 시대 마을이 이 금속을 다룰 줄 아는가."
@@ -229,7 +245,7 @@ const castableMetals = (era) => Object.keys(REDUCTION_T).concat([...ELECTRO_ONLY
 module.exports = {
   ERAS, UNLOCK, SCHEDULE, FURNACE, FUEL_CAP, BELLOWS_BONUS, REDUCTION_T, BOILING_T, METEORIC,
   currentEra, setEra, eraIndex, atLeast, capsOf,
-  hasTech, canTame, npcKnows, npcMetalList, KNOW_BLIND,
+  hasTech, canTame, tameEraOf, npcKnows, npcMetalList, KNOW_BLIND,
   furnaceTemp, smeltOutcome, smeltYield, bestSetup, castableMetals,
 };
 
@@ -269,7 +285,11 @@ const RESOURCES = {
   // ═══════════════════════════════════════════════════════════════════
   // 🪨 광물 32개
   // ═══════════════════════════════════════════════════════════════════
-  iron:        { ko: '철광석',       emoji: '⚙️', category: 'mineral', weight: 4.0, baseValue: 4,    utility: 0.5, contributes: { production: 1.0 },           harvest: 'mining' },
+  // ★[2026-08-02d 라벨 정합] '철광석' → '철'. econ 의 `iron` 은 **제련된 금속**이다(노가 iron_ore 를
+  //   먹고 iron 을 낸다 — zone.js tryFurnaceSmelt). 광석 개념은 `iron_ore`(정광)가 이미 따로 있고,
+  //   땅에 박힌 겉모습은 MINE_ID.iron = '검붉은 쇳돌' 이 따로 말한다. 형제 금속(구리·주석·납·은·금)이
+  //   전부 금속 이름인데 철만 '철광석'이라, NPC 시장이 **금속을 광석이라 부르고** 있었다.
+  iron:        { ko: '철',           emoji: '⚙️', category: 'mineral', weight: 4.0, baseValue: 4,    utility: 0.5, contributes: { production: 1.0 },           harvest: 'mining' },
   copper:      { ko: '구리',         emoji: '🟠', category: 'mineral', weight: 3.5, baseValue: 4,    utility: 0.4, contributes: { production: 0.8 },           harvest: 'mining' },
   tin:         { ko: '주석',         emoji: '⚪', category: 'mineral', weight: 3.0, baseValue: 4,    utility: 0.4, contributes: { production: 0.6 },           harvest: 'mining' },
   lead:        { ko: '납',           emoji: '⬛', category: 'mineral', weight: 5.0, baseValue: 4,    utility: 0.3, contributes: { production: 0.5 },           harvest: 'mining' },
@@ -882,7 +902,11 @@ function mineIdPhrase(lvlF, saysOre, guess, koOf) {
     }
     case 7: return ko(guess) + ' 같은데…';
     case 8: return _ro(ko(guess)) + ' 보인다';
-    default: return _ida(ko(guess));                                             // 9~10 단정(오인 8→4%)
+    // 9~10 단정(오인 8→4%). ★[2026-08-02d] `_ida` 직결을 뺐다 — '구리' + '다' = **"구리다"**
+    //   (한국어로 '냄새가 고약하다'). 명장 감정사가 광석을 보고 "구리다"라 말하는 화면이 나온다.
+    //   전 광종에 자연스러운 단정형으로 바꾼다: 틀림없는 구리 · 틀림없는 철 · 틀림없는 금.
+    //   (`_ida`·`_ro` 헬퍼는 lvl8 문구와 다른 곳이 계속 쓴다 — 남긴다.)
+    default: return '틀림없는 ' + ko(guess);
   }
 }
 
@@ -1777,6 +1801,26 @@ const HOUSE_DECAY = 0.0015;    // 일일 노후화(완만 — 나무꾼 1명이�
 const HOUSE_BUFFER = 1.15;     // 인구보다 약간 여유 있게(성장 여지)
 const HOUSE_BUILD_MAX = 0.06;  // 하루 최대 증축률(인구 대비)
 const HOUSE_START = 20;        // 정착 초기 집(부트스트랩 — 이 크기까진 자라 나무꾼 산업 형성)
+// ═══ ★★[2026-08-02d ① 구조 부채] 기아사망 보호막 ═══════════════════════════
+// 2026-06-02 **최초 커밋부터** 있던 `if (day < 365)` 클램프다. 코드 고고학 — 원 주석의 의도:
+//   "시뮬 초기 365일은 보호 (자리 맞추기 + 교역 시작 시간 확보)"  ⇒ **정착 부트스트랩**이 의도다.
+//
+// 실측한 병리(음성 대조 시드42, 아래 두 손잡이 OFF):
+//   · 보호기간 동안 클램프가 음수 압력을 **누적 5,471 단위 지웠다**(그날치가 말기엔 40+/일).
+//   · 그동안 인구는 K 위로 계속 자랐다 — 대가가 없으니 멈출 이유가 없다(d360 인구 1,307).
+//   · 366일째 보호막이 걷히자 **20일 창에 433명 사망**. 800일 전체 사망 1,086 중 40%가 그 한 창이다.
+//   ⇒ 압력이 저장됐다 터지는 게 아니다. **N ≫ K 를 대가 없이 방치**하다가, 로지스틱의 즉시항이
+//     보호막이 사라진 그날부터 전액 청구되는 것이다. 절벽의 정체가 이것이다.
+const SHIELD_DAYS = 365;
+// ★SHIELD_AGE — 달력이 아니라 **마을 나이**로 센다. 원 의도('정착 부트스트랩')에 정확히 부합하고,
+//   라이브의 구멍도 메운다: 지금은 세계 900일째에 새로 선 마을이 보호를 **0일** 받는다(달력이 이미 지났으므로).
+//   ⚠랩에서는 전 마을이 day 0 생성이라 나이 == 달력 → **비트 동일**이 기대값이다(그걸 A/B 로 확인한다).
+const SHIELD_AGE_ON = (typeof process !== 'undefined' && process.env && process.env.SHIELD_AGE === '1');
+// ★SHIELD_SOFT — 삼키지 말고 **감쇠**. 보호기간엔 음수 누적을 ×k 로 줄인다(지우지 않는다).
+//   압력이 새어나가 보호기간에도 사망이 조금씩 일어나고 → 인구가 K 를 크게 못 넘고 → 절벽이 경사가 된다.
+const SHIELD_SOFT_ON = (typeof process !== 'undefined' && process.env && process.env.SHIELD_SOFT === '1');
+const SHIELD_SOFT_K = (typeof process !== 'undefined' && process.env && process.env.SHIELD_SOFT_K != null)
+  ? Number(process.env.SHIELD_SOFT_K) : 0.25;
 // ★땅맞춤 초기 부존 배수 — 기본 1(채택값). LANDFIT=0 이면 2026-08-02 채택 **이전 동작**을 정확히 재현한다.
 //   (계수를 임의로 흔들라는 손잡이가 아니라 A/B 재현용이다 — PEACE_W 선례. createVillage 참조.)
 const LANDFIT_K = (typeof process !== 'undefined' && process.env && process.env.LANDFIT != null)
@@ -2523,6 +2567,9 @@ function createVillage(opts) {
     lastExpansionDay: 0,
     isolated: false,
     isolatedUntilDay: 0,
+    // ★[2026-08-02d] 창설일 — 기아사망 보호막을 '달력'이 아니라 '마을 나이'로 셀 때의 기준(SHIELD_AGE).
+    //   호출측이 안 주면 0(=달력과 동일) → 회귀 무영향. 라이브는 villages.js 가 world.day 를 준다.
+    _bornDay: opts.bornDay || 0,
     history: [],
     // Phase 4d-6: 합리적 의사결정용 stats
     tradeStats: {
@@ -3484,10 +3531,25 @@ function tickVillage(v, day) {
   // 기아 사망 — dP 음수 누적 시 가장 늙은 NPC부터 사망.
   //   시뮬 초기 365일은 보호 (자리 맞추기 + 교역 시작 시간 확보).
   //   그 후부터 진짜 기아 사망 발생.
-  if (day < 365) {
-    if (v._dPAccum < 0) v._dPAccum = Math.max(v._dPAccum, -0.5);
+  // ★★[2026-08-02d 계측 — 행동 무영향] 보호막이 **삼킨 압력**을 센다.
+  //   `_shieldAte` = 그날 클램프가 지운 음수 누적량 · `_shieldAteTot` = 누적 · `_deathsToday` = 그날 아사자.
+  //   이 셋이 있어야 "보호막이 걷히는 날 한꺼번에 터진다"가 궤적으로 증명되거나 반증된다.
+  v._shieldAte = 0; v._deathsToday = 0;
+  // 보호 잔여 판정 — 기본은 달력(day), SHIELD_AGE 면 **마을 나이**(day − 창설일).
+  //   `_bornDay` 가 없으면(옛 DB·랩 초기 마을) 0 → 달력과 동일 = 회귀 무영향.
+  const _shieldT = SHIELD_AGE_ON ? (day - (v._bornDay || 0)) : day;
+  if (_shieldT < SHIELD_DAYS) {
+    if (v._dPAccum < 0) {
+      // (b) 감쇠: 지우지 않고 줄인다 — 남은 몫이 계속 누적돼 보호기간에도 압력이 새어나간다.
+      // (현행) 클램프: −0.5 아래를 통째로 지운다 — 그래서 대가 없이 K 를 넘어 자란다.
+      const _next = SHIELD_SOFT_ON ? (v._dPAccum * SHIELD_SOFT_K) : Math.max(v._dPAccum, -0.5);
+      v._shieldAte = _next - v._dPAccum;             // 지워진 음수 압력(≥0)
+      v._shieldAteTot = (v._shieldAteTot || 0) + v._shieldAte;
+      v._dPAccum = _next;
+    }
   }
   while (v._dPAccum <= -1 && v.npcs.length > POP_MIN) {
+    v._deathsToday++; v._deadTot = (v._deadTot || 0) + 1;
     let oldestIdx = 0;
     for (let i = 1; i < v.npcs.length; i++) {
       if (v.npcs[i].age > v.npcs[oldestIdx].age) oldestIdx = i;

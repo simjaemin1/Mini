@@ -129,6 +129,43 @@ if (LAB_CU > 0) console.log(`  [A/B] 전 마을 초기 구리 +${LAB_CU}`);
 if (process.env.LANDFIT != null) console.log(`  [A/B] 땅맞춤 초기 부존 배수 LANDFIT=${process.env.LANDFIT}`);
 world.day = 0;
 
+// ── ★★[2026-08-02d ② 석재 원장] LAB_LEDGER=stone 이면 storage 를 Proxy 로 감싸 **모든 쓰기**를 잡는다 ──
+//   왜 엔진에 계수기를 안 박았나: 석재 변경 지점이 v1·v2 합쳐 15곳이 넘는다. 손으로 세면 **빠뜨린 곳이
+//   곧 잔차**가 되어, 원장이 "설명 못 한 몫이 있다"고 말할 때 그게 진짜 누수인지 내 누락인지 알 수 없다.
+//   Proxy 는 정의상 전부 잡으므로 **잔차가 구조적으로 0**이고, 남는 건 "어느 줄이 얼마를 썼나"뿐이다.
+//   태그는 스택의 첫 엔진 프레임(file:line) — 추측이 아니라 실제 호출 지점이다.
+const LEDGER_RES = process.env.LAB_LEDGER || '';
+if (LEDGER_RES) {
+  const _frame = () => {
+    const st = new Error().stack || '';
+    const lines = st.split('\n');
+    for (let i = 2; i < lines.length; i++) {
+      const m = lines[i].match(/\/(sim|server)\/([\w.-]+):(\d+):\d+/);
+      if (m) return `${m[2]}:${m[3]}`;
+    }
+    return '?';
+  };
+  for (const v of world.villages) {
+    const raw = v.storage;
+    const led = (v._led = {});
+    v.storage = new Proxy(raw, {
+      set(t, k, val) {
+        if (k === LEDGER_RES) {
+          const d = (+val || 0) - (+t[k] || 0);
+          if (d) { const f = _frame(); led[f] = +((led[f] || 0) + d).toFixed(4); }
+        }
+        t[k] = val; return true;
+      },
+      deleteProperty(t, k) {
+        if (k === LEDGER_RES && (+t[k] || 0)) { const f = _frame(); led[f] = +((led[f] || 0) - (+t[k] || 0)).toFixed(4); }
+        delete t[k]; return true;
+      },
+    });
+    v._ledStart = +raw[LEDGER_RES] || 0;
+  }
+  console.log(`  [원장] '${LEDGER_RES}' 전 쓰기 추적 ON (Proxy — 잔차가 구조적으로 0)`);
+}
+
 // ── 일 틱 — 본 게임 진입점(server/villages.js:2255) ────────────────────────────
 // ★시대 전환 실험 — ERA_FLIP_DAY=N 이면 N일차에 시대를 연다.
 //   [재민] "내가 시대를 언제 여는지에 따라 흥망성쇠가 크게 갈리면 안 돼" — 급변 폭을 실측한다.
@@ -154,7 +191,11 @@ for (let d = 0; d < DAYS; d++) {
         ms: (v.counts && v.counts.mason) || 0,
         st: +(v.storage.stone || 0).toFixed(1), fg: (v.counts && v.counts.forager) || 0,
         need: v._dbgSwitch ? v._dbgSwitch.need : null,
-        stImp: v.tradeStats ? +(v.tradeStats.stoneImported || 0).toFixed(0) : 0 });
+        stImp: v.tradeStats ? +(v.tradeStats.stoneImported || 0).toFixed(0) : 0,
+        // ★[2026-08-02d ①] 보호막 압력·사망 궤적 — "절벽인가 경사인가"의 직답.
+        //   샘플이 10일 간격이라 그날치 값만 보면 놓친다 → 누적(shTot·deadTot)을 같이 싣는다.
+        shAte: +(v._shieldAte || 0).toFixed(3), shTot: +(v._shieldAteTot || 0).toFixed(1),
+        dAcc: +(v._dPAccum || 0).toFixed(3), deadTot: (v._deadTot || 0) });
     }
   }
   if (Era && d % 50 === 0 && d >= FLIP - 100) {
@@ -217,6 +258,8 @@ if (process.env.LAB_DUMP) {
       // ★[2026-08-02c 소멸 0 튜닝] K 분해·인구 항 분해 — "이 마을은 뭐에 막혔나"의 직답.
       //   _kDbg = {slot(경작 자리)·prod(식량 흐름)·fuel(연료 흐름)} 중 min 이 K · _dpDebug = 성장 항 분해
       kDbg: v._kDbg || null, dpDebug: v._dpDebug || null,
+      // ★[2026-08-02d ② 석재 원장] 호출 지점별 순변화 + 시작/끝 재고. 합계가 (끝−시작)과 같아야 한다.
+      led: v._led || null, ledStart: v._ledStart,
       // ★인구·식량 궤적(10일 스냅샷, 최근 500일) — 마을 소멸의 사인 규명용
       history: TRACE[v.name] || [],   // {d,p(인구),f(식량환산)} — 랩 쪽 10일 표본(tickWorldV2 는 history 를 안 쌓는다)
     });

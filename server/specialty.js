@@ -32,7 +32,11 @@ const RESOURCES = {
   // ═══════════════════════════════════════════════════════════════════
   // 🪨 광물 32개
   // ═══════════════════════════════════════════════════════════════════
-  iron:        { ko: '철광석',       emoji: '⚙️', category: 'mineral', weight: 4.0, baseValue: 4,    utility: 0.5, contributes: { production: 1.0 },           harvest: 'mining' },
+  // ★[2026-08-02d 라벨 정합] '철광석' → '철'. econ 의 `iron` 은 **제련된 금속**이다(노가 iron_ore 를
+  //   먹고 iron 을 낸다 — zone.js tryFurnaceSmelt). 광석 개념은 `iron_ore`(정광)가 이미 따로 있고,
+  //   땅에 박힌 겉모습은 MINE_ID.iron = '검붉은 쇳돌' 이 따로 말한다. 형제 금속(구리·주석·납·은·금)이
+  //   전부 금속 이름인데 철만 '철광석'이라, NPC 시장이 **금속을 광석이라 부르고** 있었다.
+  iron:        { ko: '철',           emoji: '⚙️', category: 'mineral', weight: 4.0, baseValue: 4,    utility: 0.5, contributes: { production: 1.0 },           harvest: 'mining' },
   copper:      { ko: '구리',         emoji: '🟠', category: 'mineral', weight: 3.5, baseValue: 4,    utility: 0.4, contributes: { production: 0.8 },           harvest: 'mining' },
   tin:         { ko: '주석',         emoji: '⚪', category: 'mineral', weight: 3.0, baseValue: 4,    utility: 0.4, contributes: { production: 0.6 },           harvest: 'mining' },
   lead:        { ko: '납',           emoji: '⬛', category: 'mineral', weight: 5.0, baseValue: 4,    utility: 0.3, contributes: { production: 0.5 },           harvest: 'mining' },
@@ -645,7 +649,11 @@ function mineIdPhrase(lvlF, saysOre, guess, koOf) {
     }
     case 7: return ko(guess) + ' 같은데…';
     case 8: return _ro(ko(guess)) + ' 보인다';
-    default: return _ida(ko(guess));                                             // 9~10 단정(오인 8→4%)
+    // 9~10 단정(오인 8→4%). ★[2026-08-02d] `_ida` 직결을 뺐다 — '구리' + '다' = **"구리다"**
+    //   (한국어로 '냄새가 고약하다'). 명장 감정사가 광석을 보고 "구리다"라 말하는 화면이 나온다.
+    //   전 광종에 자연스러운 단정형으로 바꾼다: 틀림없는 구리 · 틀림없는 철 · 틀림없는 금.
+    //   (`_ida`·`_ro` 헬퍼는 lvl8 문구와 다른 곳이 계속 쓴다 — 남긴다.)
+    default: return '틀림없는 ' + ko(guess);
   }
 }
 

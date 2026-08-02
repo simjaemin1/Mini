@@ -304,10 +304,28 @@ say('\n[⑥ 숯가마 — 노와 같은 건설 계약 · 노천 탄화보다 나
       const kd = findBuilding('charcoal_kiln');
       ok(kd.length === 1, '숯가마 2단계로 완공(풀무 불필요 — 공기를 막는 설비다)');
       if (kd.length) {
+        // ★[2026-08-02d ④] 가득 채우기 — 인벤 통나무를 몫만큼 한 번에 굽는다.
+        //   그래서 여기 기대값은 "1회분"이 아니라 **n회분**이다: n = floor(재고/장입).
         const w0 = k.inventory.wood;
+        const n1 = Math.max(1, Math.min(20, Math.floor(w0 / H.CHARCOAL_KILN_WOOD)));
         H.tryKilnBurn(k, kd[0].id);
-        eq(k.inventory.wood, w0 - H.CHARCOAL_KILN_WOOD, `조업 통나무 ${H.CHARCOAL_KILN_WOOD} 장입`);
-        eq(k.inventory.charcoal, H.CHARCOAL_KILN_YIELD, `조업 숯 ${H.CHARCOAL_KILN_YIELD} 산출`);
+        eq(k.inventory.wood, w0 - H.CHARCOAL_KILN_WOOD * n1, `가득 채우기 — 통나무 ${H.CHARCOAL_KILN_WOOD}×${n1} 장입`);
+        eq(k.inventory.charcoal, H.CHARCOAL_KILN_YIELD * n1, `가득 채우기 — 숯 ${H.CHARCOAL_KILN_YIELD}×${n1} 산출`);
+        // ★수지 불변 — 배치라고 수율이 좋아지면 안 된다(클릭 수가 물리를 바꾸는 셈이 된다)
+        ok(Math.abs((H.CHARCOAL_KILN_YIELD * n1) / (H.CHARCOAL_KILN_WOOD * n1) - H.CHARCOAL_KILN_YIELD / H.CHARCOAL_KILN_WOOD) < 1e-12,
+          '  배치 수율 = 1회 수율 (클릭 수가 물리를 안 바꾼다)');
+        // 장입 1회분에 못 미치면 거부(부분 조업 없음)
+        {
+          const short = mkPlayer('부족', { inv: { wood: H.CHARCOAL_KILN_WOOD - 1 } });
+          at(short, spot4.cx, spot4.cy);
+          // 소유자가 아니면 권한에서 먼저 막히므로, 소유자 k 의 재고를 줄여서 검사한다
+          const keep = k.inventory.wood, keepC = k.inventory.charcoal;
+          k.inventory.wood = H.CHARCOAL_KILN_WOOD - 1;
+          H.tryKilnBurn(k, kd[0].id);
+          eq(k.inventory.wood, H.CHARCOAL_KILN_WOOD - 1, '  1회분 미만이면 조업 안 함(부분 조업 없음)');
+          eq(k.inventory.charcoal, keepC, '  실패 시 산출도 없음(외상 없음)');
+          k.inventory.wood = keep;
+        }
         const openAir = 2 / 3, kiln = H.CHARCOAL_KILN_YIELD / H.CHARCOAL_KILN_WOOD;
         ok(kiln > openAir, `★가마 수율 ${kiln.toFixed(2)} > 노천 탄화 ${openAir.toFixed(2)} (고증: 밀폐 가마가 낫다)`);
         // 타인 조업 거부

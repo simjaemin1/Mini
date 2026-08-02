@@ -6246,7 +6246,7 @@ const SIM_JOB_EMOJI = {
     ore_chunk: '원석(kg·미확인)',   // ★[11차] 캔 것은 정체를 모른다 — 마을에서 선광(O키)해야 광석/맥석이 갈린다. 덩이 크기가 숙련마다 달라 **kg 단위**로 센다
     // ★[2026-08-02 야금 사슬] 라벨이 없으면 인벤 창에 **영문 키가 그대로** 뜬다(ITEM_LABEL[k] || k).
     iron_ore: '철 정광', charcoal: '숯', meteoric_iron: '운철(隕鐵)', lead: '납', nickel: '니켈',
-    iron: '철광석', copper: '구리', tin: '주석', coal: '석탄', jade_raw: '옥 원석',
+    iron: '철', copper: '구리', tin: '주석', coal: '석탄', jade_raw: '옥 원석',   // ★[2026-08-02d] iron=제련 금속(정광은 iron_ore='철 정광')
     marble: '대리석', tungsten: '텅스텐', gold: '금', silver: '은',
     wood: '통나무', plank: '판자', stone: '돌',
     item_wall: '벽', item_floor: '바닥', item_door: '문', item_fence: '울타리',

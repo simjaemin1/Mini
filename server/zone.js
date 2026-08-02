@@ -2833,6 +2833,12 @@ function tryFeed(player) {
   if (!best) { send(player.ws, { type: 'notice', text: '근처에 동물이 없습니다' }); return; }
   const def = MOB_DEFS[best.type];
   if (!def?.tameFood) { send(player.ws, { type: 'notice', text: `${best.type}는 길들일 수 없음` }); return; }
+  // ★★[2026-08-02d] 시대 게이트 — era.js "송국리기엔 기마 없음" 이 코드로 지켜지는 유일한 자리.
+  //   `canTame` 은 UNLOCK 표만 본다(하드코딩 없음): 표에 없는 짐승은 통과, 나중 시대 항목은 차단.
+  //   ⚠메시지에 시대를 노출하지 않는다 — 플레이어에게 세계는 그냥 "아직 그런 짐승은 못 다룬다"여야 한다.
+  if (!require('./era').canTame(best.type)) {
+    send(player.ws, { type: 'notice', text: '아직 길들일 수 없는 짐승이다' }); return;
+  }
   // 이미 다른 사람 거면 거부
   if (best.tameOwner && best.tameOwner !== player.playerId) {
     send(player.ws, { type: 'notice', text: `${best.tameOwnerName}의 동물입니다` }); return;
@@ -3860,8 +3866,11 @@ function trySortOre(player) {
   }
   player.inventory.ore_chunk = 0; delete player.inventory.ore_chunk;
   player.oreLedger = led;
+  // ★[2026-08-02d 라벨 정합] RESOURCES 만 보면 **영문 키가 그대로 샌다**: 철 광맥을 선광하면 산출 키가
+  //   `iron_ore`(정광)인데 RESOURCES 엔 그 항목이 없어 플레이어에게 "iron_ore 3" 이라고 찍혔다.
+  //   서버 라벨표(ITEM_LABEL_SERVER)가 이미 '철 정광'을 안다 — 그걸 먼저 보고, 없으면 RESOURCES, 그 다음 키.
   const parts = Object.entries(got).filter(([k]) => k !== 'stone_waste')
-    .map(([k, v]) => `${(Specialty.RESOURCES[k] || {}).ko || k} ${v}`);
+    .map(([k, v]) => `${ITEM_LABEL_SERVER[k] || (Specialty.RESOURCES[k] || {}).ko || k} ${v}`);
   send(player.ws, { type: 'inventory', inventory: player.inventory });
   let score = '';
   if (player.oreGuess && player.oreGuess.n > 0) {
@@ -4740,6 +4749,9 @@ const CHARCOAL_KILN_STAGES = [
 ];
 const CHARCOAL_KILN_WOOD = 3;    // 1회 조업 장입량(통나무)
 const CHARCOAL_KILN_YIELD = 4;   // 1회 산출(숯) — 제작창 노천 탄화는 같은 통나무 3에 숯 2
+// ★[2026-08-02d ④] 가득 채우기 상한 — 한 번 클릭에 최대 몇 회분을 굽나. **가마 용량이 아니라 UI 폭주 방지**다
+//   (인벤 통나무 999를 한 클릭에 333회 돌려 로그·저장이 튀는 것만 막는다). 수지는 1회 조업 ×n 로 정확히 같다.
+const KILN_BATCH_MAX = 20;
 function _furnaceClaimOf(player, px, py) {
   // 이 좌표를 덮는 사유지 중 플레이어에게 권한이 있는 것 — 개인(본인) 또는 길드(같은 길드).
   for (const c of claims.values()) {
@@ -4875,10 +4887,15 @@ function tryKilnBurn(player, buildingId) {
   if (Math.hypot(b.x - player.x, b.y - player.y) > 120) { send(player.ws, { type: 'notice', text: '숯가마에서 너무 멀리 있습니다' }); return; }
   if (!_furnaceCanUse(player, b)) { send(player.ws, { type: 'notice', text: b.data.tribeId ? '우리 길드의 숯가마가 아닙니다' : '이 숯가마의 주인이 아닙니다' }); return; }
   if ((player.inventory.wood || 0) < CHARCOAL_KILN_WOOD) { send(player.ws, { type: 'notice', text: `통나무 부족 (1회 장입 ${player.inventory.wood || 0}/${CHARCOAL_KILN_WOOD})` }); return; }
-  player.inventory.wood -= CHARCOAL_KILN_WOOD;
-  player.inventory.charcoal = (player.inventory.charcoal || 0) + CHARCOAL_KILN_YIELD;
+  // ★★[2026-08-02d ④] 가득 채우기 — 통나무 3씩 클릭을 반복하는 지루함만 없앤다.
+  //   ⚠수지는 **1회 조업과 완전히 같다**(장입 3 → 숯 4를 n번). 배치라고 수율이 좋아지지 않는다 —
+  //     그러면 클릭 수가 물리를 바꾸는 셈이고, 그건 이 프로젝트가 계속 피해 온 것이다.
+  //   ⚠상한(KILN_BATCH_MAX)은 UI 폭주 방지용이지 가마 용량이 아니다. 용량 개념을 넣으려면 회부 대상.
+  const n = Math.max(1, Math.min(KILN_BATCH_MAX, Math.floor((player.inventory.wood || 0) / CHARCOAL_KILN_WOOD)));
+  player.inventory.wood -= CHARCOAL_KILN_WOOD * n;
+  player.inventory.charcoal = (player.inventory.charcoal || 0) + CHARCOAL_KILN_YIELD * n;
   send(player.ws, { type: 'inventory', inventory: player.inventory });
-  send(player.ws, { type: 'notice', text: `🪵 숯가마 조업 — 통나무 ${CHARCOAL_KILN_WOOD} → 숯 ${CHARCOAL_KILN_YIELD} (연도로 공기를 막아 구웠다)` });
+  send(player.ws, { type: 'notice', text: `🪵 숯가마 조업 ${n > 1 ? `×${n}회 ` : ''}— 통나무 ${CHARCOAL_KILN_WOOD * n} → 숯 ${CHARCOAL_KILN_YIELD * n} (연도로 공기를 막아 구웠다)` });
   savePlayer(player);
 }
 function tryFurnaceSmelt(player, buildingId) {
@@ -4927,6 +4944,8 @@ function __testBind() {
     newClaimId: () => `c${nextClaimId++}`,
     // ── 채광·선광 E2E(test-mining.js §⑨ 다광종) ──
     mineOreCell, trySortOre, minedCells, ITEM_LABEL_SERVER,
+    // ── 길들이기 시대 게이트 E2E(test-tame.js) ── 실서버 mobs/MOB_DEFS 와 실제 tryFeed 를 그대로 쓴다
+    mobs, MOB_DEFS, tryFeed, qtMobs: () => qtMobs,
   };
 }
 module.exports = { __testBind, __furnaceBind: __testBind };

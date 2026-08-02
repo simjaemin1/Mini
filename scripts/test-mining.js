@@ -609,6 +609,33 @@ console.log('\n⑨ 다광종 선광 E2E (실서버 mineOreCell → trySortOre)')
     ok(PI.MAT_GRADE.meteoric_iron < PI.MAT_GRADE.bronze, '  ★운철 < 청동 — 초기 철기가 청동을 못 이긴 고증 그대로');
   }
 
+  // ── ⑩ 플레이어에게 실제로 **뭐라고 찍히는가** (2026-08-02d 라벨 정합) ──────
+  //   ★grep 으로는 못 잡는 결함이다: 선광 산출 키가 `iron_ore` 인데 그 항목이 RESOURCES 에 없어서
+  //     `RESOURCES[k].ko || k` 가 **영문 키를 그대로** 흘렸다 — 플레이어 화면에 "iron_ore 3".
+  //     그래서 표를 읽지 말고 **실서버가 만든 notice 문자열**을 본다.
+  console.log('\n⑩ 선광·감정 문구 — 플레이어 화면에 영문 키가 새지 않는가');
+  {
+    const notices = [];
+    const mkWs = () => ({ readyState: 1, send: (s) => { try { const o = JSON.parse(s); if (o.type === 'notice') notices.push(o.text); } catch (e) {} } });
+    const p2 = { playerId: 'anon_lbl', name: '라벨', ws: mkWs(), x: 0, y: 0, floor: 0,
+                 inventory: {}, toolItems: [], equipped: null, craftSkill: { mining: 10 },
+                 oreLedger: { iron: S.CHUNK_KG * 3, copper: S.CHUNK_KG * 2 }, oreCarry: {}, hunger: 100, thirst: 100 };
+    p2.inventory.ore_chunk = S.CHUNK_KG * 5;
+    H.trySortOre(p2);
+    const txt = notices.join(' | ');
+    console.log(`    선광 문구: "${txt}"`);
+    ok(!/[a-z]+_[a-z]+ \d/.test(txt), '  선광 결과에 영문 키(iron_ore 등)가 안 샌다');
+    ok(/철 정광/.test(txt), '  철 광맥 선광 산출이 "철 정광" 으로 찍힌다');
+    ok((p2.inventory.iron_ore || 0) === 3 && !p2.inventory.iron, '  철은 정광으로만 나온다(금속 아님 — 노가 있어야 한다)');
+    // 감정 문구: iron 의 ko 가 '철' 이라 "철로 보인다"/"철이다" 로 읽혀야 한다(형제 금속과 동형)
+    const koOf = (m) => (S.RESOURCES[m] || {}).ko || m;
+    const ph8 = S.mineIdPhrase(8, true, 'iron', koOf), ph10 = S.mineIdPhrase(10, true, 'iron', koOf);
+    const phCu = S.mineIdPhrase(10, true, 'copper', koOf);
+    console.log(`    감정 문구: lvl8 "${ph8}" · lvl10 "${ph10}" (비교: 구리 "${phCu}")`);
+    ok(!/철광석/.test(String(ph8) + String(ph10)), '  감정 문구가 금속을 "철광석"이라 부르지 않는다');
+    ok(/철$/.test(String(ph10)) && /구리$/.test(String(phCu)), '  단정 문구가 전 광종에 자연스럽다(구리 → "구리다"[냄새] 회피)');
+  }
+
   zdb.upsertMinedCell = _upsert;   // 가속 원복
   for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fsx.unlinkSync(f); } catch (e) {} }
 }
