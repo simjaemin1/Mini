@@ -133,6 +133,17 @@ M['leafg']   = simple_mat("leafg",  (0.20, 0.38, 0.11), 0.55)
 M['leafg2']  = simple_mat("leafg2", (0.33, 0.52, 0.17), 0.55)
 M['flower']  = simple_mat("flower", (0.86, 0.82, 0.42), 0.5)
 M['charcoal']= simple_mat("charcoal",(0.10, 0.09, 0.08), 0.9)
+M['charc2']  = striped_mat("charc2", (0.018, 0.016, 0.015), (0.045, 0.042, 0.040), 26, 0.98)  # 숯 — 새까맣게 탄 목결(1차 0.055는 화면에서 회색으로 읽혔다)
+# ★[2026-08-02e ⑦ 야금 아이콘 8종] 배치 1 야금 사슬 산출물이 아이콘 없이 이모지 폴백이었다.
+#   고증 색: 적철석/자철석 = 검붉은~쇳빛 · 정광 = 부순 알갱이 · 연철 = 회흑색 무광(청동처럼 안 빛난다)
+#   운철 = 니켈 함유라 은빛에 가깝고 비드만슈테텐 무늬(줄무늬로 표현) · 납 = 무거운 청회색 · 주석 = 은백 무광
+M['ironore'] = bumped_mat("ironore",(0.24, 0.13, 0.10), (0.13, 0.08, 0.07), 11, 0.7, 0.9)   # 검붉은 쇳돌(적철석)
+M['ironmet'] = simple_mat("ironmet",(0.30, 0.29, 0.29), 0.55, metal=0.7)                     # 연철 — 회흑 무광(청동보다 덜 빛남)
+M['meteor']  = striped_mat("meteor",(0.40, 0.40, 0.41), (0.26, 0.26, 0.28), 20, 0.30)        # 운철 — 은빛 금속(1차 0.62는 흰 수정으로 읽혔다). 줄무늬=비드만슈테텐 결
+M['tinmet']  = simple_mat("tinmet", (0.72, 0.73, 0.74), 0.4, metal=0.65)                     # 주석 — 은백
+M['leadmet'] = simple_mat("leadmet",(0.40, 0.42, 0.46), 0.45, metal=0.6)                     # 납 — 청회색
+M['coppermet']=simple_mat("coppermet",(0.55, 0.28, 0.11), 0.32, metal=0.75)                  # 구리 금속(광석 결정보다 밝게)
+M['gangue']  = bumped_mat("gangue", (0.42, 0.40, 0.36), (0.26, 0.25, 0.22), 13, 0.6, 0.95)   # 맥석 섞인 잡석
 
 OBJS = []
 def add(o, mat):
@@ -344,6 +355,52 @@ def m_stone():    # 각진 돌덩이 (저폴리)
     ico(0.72, (0, 0, 0.50), subdiv=1, mat=M['stone'], scale=(1.15, 1.0, 0.9), jitter=0.26, smooth=False)
     ico(0.26, (0.55, 0.30, 0.20), subdiv=1, mat=M['stone'], jitter=0.30, smooth=False)
 
+def m_ore_chunk():  # 캔 것 — **정체 모를 원석 덩이**(선광 전). 맥석 섞인 잡석 3덩이, 금속기 없음
+    random.seed(201)
+    for i, (x, y, z, r) in enumerate([(0, 0, 0.40, 0.55), (0.52, 0.28, 0.26, 0.34), (-0.44, 0.34, 0.22, 0.28)]):
+        ico(r, (x, y, z), subdiv=1, mat=M['gangue'], scale=(1.2, 1.0, 0.8), jitter=0.30, smooth=False)
+
+def m_iron_ore():   # 철 정광 — 선광 뒤 **부순 알갱이 무더기**(원석과 달라야 한다: 잘고 균질하고 검붉다)
+    random.seed(202)
+    for i in range(14):
+        a = i * 0.9
+        rr = 0.10 + random.uniform(0, 0.055)
+        ico(rr, (math.cos(a) * random.uniform(0, 0.44), math.sin(a) * random.uniform(0, 0.40),
+                 0.10 + random.uniform(0, 0.20)), subdiv=1, mat=M['ironore'],
+            scale=(1.1, 1.0, 0.85), jitter=0.35, smooth=False)
+
+def m_charcoal():   # 숯 — 탄화한 나무 토막 3개(결이 남은 각재), 무광 검정
+    random.seed(203)
+    for (x, y, rot, ln) in [(-0.22, 0.10, 0.10, 1.05), (0.20, -0.06, -0.22, 0.95), (0.02, 0.30, 0.55, 0.80)]:
+        cyl(0.135, ln, (x, y, 0.16), rot=(math.radians(90), 0, rot), mat=M['charc2'], verts=7)
+
+def m_iron():       # 연철 괴(해면철을 두들겨 짠 것) — 각재에 가깝게 두들긴 덩이 + 망치 자국
+    random.seed(204)
+    box(1.20, 0.62, 0.34, (0, 0, 0.17), rot=(0, 0, math.radians(12)), mat=M['ironmet'])
+    box(0.86, 0.46, 0.22, (0.06, 0.10, 0.44), rot=(0, math.radians(-7), math.radians(-16)), mat=M['ironmet'])
+    ico(0.16, (-0.44, -0.18, 0.36), subdiv=1, mat=M['ironmet'], jitter=0.30, smooth=False)   # 떨어져 나간 슬래그 조각
+
+def m_meteoric_iron():  # 운철 — 은빛 각진 덩이 + 융단 굴곡(regmaglypt).
+    #   ⚠1차 시도는 subdiv=2 매끈 구체라 **골프공**으로 읽혔다. 각지게(subdiv=1·smooth=False) + 지터를 키운다.
+    random.seed(205)
+    ico(0.60, (0, 0, 0.44), subdiv=1, mat=M['meteor'], scale=(1.25, 0.90, 0.72), jitter=0.34, smooth=False)
+    for i in range(3):
+        a = i * 2.09 + 0.5
+        ico(0.19, (math.cos(a) * 0.36, math.sin(a) * 0.28, 0.30 + (i % 2) * 0.28),
+            subdiv=1, mat=M['meteor'], jitter=0.40, smooth=False)
+
+def _ingot(mat, seed):   # 금속 잉곳 — **납작한 빵떡 잉곳**(bun ingot: 도가니 바닥 모양 그대로 굳은 것).
+    #   ⚠1차 시도는 4각 뿔대 2개였는데 ISO 뷰에서 **초가지붕**으로 읽혔다 — 높이를 낮추고 지름을 키운다.
+    #   고증: 청동기 잉곳은 도가니·주형 바닥에서 굳어 위가 볼록하고 아래가 평평한 원반형이다.
+    random.seed(seed)
+    cyl(0.66, 0.20, (0, 0, 0.10), mat=mat, verts=14)                       # 아래 원반(평평한 바닥)
+    cone(0.66, 0.30, 0.16, (0, 0, 0.28), mat=mat, verts=14)                # 볼록한 위면
+    cyl(0.40, 0.15, (0.30, 0.34, 0.44), rot=(0, math.radians(72), math.radians(20)), mat=mat, verts=12)  # 기대 세운 두 번째 덩이
+
+def m_copper():   _ingot(M['coppermet'], 206)
+def m_tin():      _ingot(M['tinmet'], 207)
+def m_lead():     _ingot(M['leadmet'], 208)
+
 def m_item_wall():  # 통나무 벽 유닛 미니어처 — 굴립주 벽주 6개 + 상하 가로대
     random.seed(131)
     for i in range(9):
@@ -421,6 +478,10 @@ JOBS = [
     ("item_wall", m_item_wall), ("item_floor", m_item_floor), ("item_door", m_item_door),
     ("item_fence", m_item_fence), ("item_stair", m_item_stair), ("item_chest", m_item_chest),
     ("item_campfire", m_item_campfire), ("item_farmland", m_item_farmland),
+    # ★[2026-08-02e ⑦] 야금 사슬 8종 — 배치 1 산출물이 아이콘 없이 이모지 폴백이었다
+    ("ore_chunk", m_ore_chunk), ("iron_ore", m_iron_ore), ("charcoal", m_charcoal),
+    ("iron", m_iron), ("meteoric_iron", m_meteoric_iron),
+    ("copper", m_copper), ("tin", m_tin), ("lead", m_lead),
 ]
 
 def frame_and_render(objs, path):

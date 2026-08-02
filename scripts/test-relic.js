@@ -148,5 +148,28 @@ say('\n[⑥ 재질 — 철·운철 완성품만. 청동검은 위세품이 아�
   ]) ok(judge(inst) === want, `  ${label} → ${judge(inst) ? '위세품' : '아님'} (기대 ${want ? '위세품' : '아님'})`);
 }
 
+// ── ⑦ 시대 축 정합 — **수요는 안 자르고 공급만 자른다** (2026-08-02e ④) ─────
+//   캐논(DESIGN_DOC §10.5 · era.js 머리말): "청동기 사람에게 강철검을 쥐여 주면 기꺼이 쓰고 값도 치른다.
+//   못 만들 뿐이지 못 쓰는 게 아니다." ⇒ 위세 수요는 시대와 무관하게 살아 있어야 하고,
+//   철이 세상에 들어오는 통로는 **플레이어 공급**뿐이어야 한다(그쪽이 era 물리에 막혀 있다).
+console.log('\n⑦ 시대 축 — 수요 무게이트 · 공급만 게이트');
+{
+  const EraM = require(path.join(__dirname, '..', 'server', 'era.js'));
+  const fsx = require('fs');
+  const vsrc = fsx.readFileSync(path.join(__dirname, '..', 'server', 'villages.js'), 'utf8');
+  const fn = vsrc.slice(vsrc.indexOf('function lifeSellIronRelic'), vsrc.indexOf('function lifeSellIronRelic') + 2600);
+  ok(!/\bera\b|Era\./.test(fn), '판매(수요) 경로에 시대 게이트가 **없다** — 수요는 안 자른다');
+  const esrc = fsx.readFileSync(path.join(__dirname, '..', 'sim', 'economy-sim.js'), 'utf8');
+  ok(!/iron_relic/.test(esrc), 'NPC 생산 경로에 iron_relic 언급 0 — 세상에 들어오는 통로는 플레이어뿐');
+  // 공급은 시대가 막는다 — 같은 설비의 철 수율이 시대에 따라 갈린다(era 물리)
+  const setup = { furnace: 'crucible', fuel: 'charcoal', bellows: true };
+  EraM.setEra('bronze');      const yB = EraM.smeltYield('iron', setup);
+  EraM.setEra('early_iron');  const yI = EraM.smeltYield('iron', setup);
+  EraM.setEra(null);
+  console.log(`    같은 도가니로 철 수율: 청동기 ${(yB * 100).toFixed(1)}% → 초기철기 ${(yI * 100).toFixed(1)}%`);
+  ok(yI > yB * 5, '  공급은 시대가 연다 — 같은 설비 수율이 급등(닫힘/열림 양쪽 실측)');
+  ok(yB > 0, '  ★닫힌 시대에도 0 이 아니다 — "어렵게는 만들 수 있어야 한다"(재민 확정)');
+}
+
 say(`\n=== 철제 위세품 하네스: ${fail ? '실패 ' + fail + '건 ❌' : 'PASS ✅'} ===`);
 process.exit(fail ? 1 : 0);

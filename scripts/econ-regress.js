@@ -26,7 +26,10 @@ try { execFileSync('node', ['scripts/lab-wiring-check.js'], { cwd: ROOT, stdio: 
 catch (e) { console.error('\n❌ 배선 검사 실패 — 회귀 중단. 랩이 본 게임과 다른 것을 재고 있다.'); process.exit(1); }
 
 const rows = [];
-for (const s of [42, 7, 19, 101, 256]) {
+// ★[2026-08-02e ②] 시드 확장 손잡이 — 5시드로는 장비 재고 같은 저빈도 지표가 잡음에 묻힌다.
+//   `REGRESS_SEEDS=42,7,19,101,256,8,505,1020` 처럼 넘긴다. 기본은 기존 5시드(기준선 비교 가능성 보존).
+const SEEDS = (process.env.REGRESS_SEEDS || '42,7,19,101,256').split(',').map(x => parseInt(x.trim(), 10)).filter(Boolean);
+for (const s of SEEDS) {
   const f = `${ROOT}/sim/out/simv2-${s}-${DAYS}d.json`;
   // ★★옛 결과 파일이 남아 있으면 실행이 죽어도 그걸 다시 읽어 **거짓 통과**가 난다.
   //   실제로 그렇게 당했다: RESERVE_PC TDZ 로 CLI 가 죽는데 회귀는 "비트 동일"을 냈다.
@@ -37,29 +40,32 @@ for (const s of [42, 7, 19, 101, 256]) {
   catch (e) { rows.push({ s, err: 1, msg: String(e.message || e).slice(0, 80) }); continue; }
   if (!fs.existsSync(f)) { rows.push({ s, err: 1, msg: '덤프 없음' }); continue; }
   const j = JSON.parse(fs.readFileSync(f, 'utf8'));
-  const r = { s, pop: 0, weap: 0, armor: 0, cloth: 0, cu: 0, tin: 0, iron: 0, smith: 0, miner: 0, tailor: 0, dead: 0 };
+  const r = { s, pop: 0, weap: 0, weapQ: 0, armor: 0, cloth: 0, cu: 0, tin: 0, iron: 0, smith: 0, miner: 0, tailor: 0, dead: 0 };
   for (const v of j.villages || []) {
     const n = v.finalPop || 0; r.pop += n; if (n <= 0) r.dead++;
     const st = v.finalStorage || {}, jb = v.jobs || {};
     r.weap += st.weapon || 0; r.armor += st.armor || 0; r.cloth += st.clothes || 0;
+    // ★[2026-08-02e ②] 품질보정 무기 총량 — 수량×_weapQ(석검 0.5 ~ 명장 청동 1.0+). 합금 등급이 오르면
+    //   같은 수량이라도 전력은 는다. "무기가 줄었다"를 수량만으로 판정하면 개선을 퇴보로 오독한다.
+    r.weapQ += (st.weapon || 0) * ((v._int && v._int._weapQ) || 0.5);
     r.cu += st.copper || 0; r.tin += st.tin || 0; r.iron += st.iron || 0;
     r.smith += jb.smith || 0; r.miner += jb.miner || 0; r.tailor += jb.tailor || 0;
   }
-  for (const k of ['weap', 'armor', 'cloth', 'cu', 'iron']) r[k] = +r[k].toFixed(0);
+  for (const k of ['weap', 'weapQ', 'armor', 'cloth', 'cu', 'iron']) r[k] = +r[k].toFixed(0);
   r.tin = +r.tin.toFixed(1);
   rows.push(r);
 }
 
-const H = ['시드', '인구', '무기', '갑옷', '옷', '구리', '주석', '철', '대장', '광부', '재봉', '소멸'];
-const W = [5, 6, 6, 6, 6, 7, 7, 6, 5, 5, 5, 5];
+const H = ['시드', '인구', '무기', '무기Q', '갑옷', '옷', '구리', '주석', '철', '대장', '광부', '재봉', '소멸'];
+const W = [5, 6, 6, 7, 6, 6, 7, 7, 6, 5, 5, 5, 5];
 const line = (cells) => cells.map((c, i) => String(c).padStart(W[i])).join('');
 console.log(`\n[v2 CLI 회귀] ${DAYS}일 · 마을 ${VILLAGES} · picker=rational · tickWorldV2 (프로덕션 동형)`);
 console.log(line(H));
 for (const r of rows) {
   if (r.err) { console.log(`  ${r.s} 실패 — ${r.msg || ''}`); continue; }
-  console.log(line([r.s, r.pop, r.weap, r.armor, r.cloth, r.cu, r.tin, r.iron, r.smith, r.miner, r.tailor, r.dead]));
+  console.log(line([r.s, r.pop, r.weap, r.weapQ, r.armor, r.cloth, r.cu, r.tin, r.iron, r.smith, r.miner, r.tailor, r.dead]));
 }
 const ok = rows.filter(r => !r.err);
 const S = (k) => ok.reduce((a, r) => a + r[k], 0);
-if (ok.length) console.log(line(['합계', S('pop'), S('weap'), S('armor'), S('cloth'), S('cu'), S('tin').toFixed(1), S('iron'), S('smith'), S('miner'), S('tailor'), S('dead')]));
+if (ok.length) console.log(line(['합계', S('pop'), S('weap'), S('weapQ'), S('armor'), S('cloth'), S('cu'), S('tin').toFixed(1), S('iron'), S('smith'), S('miner'), S('tailor'), S('dead')]));
 if (ok.length < rows.length) { console.error(`\n❌ ${rows.length - ok.length}개 시드 실패`); process.exit(1); }
