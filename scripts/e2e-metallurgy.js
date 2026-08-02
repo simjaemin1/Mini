@@ -196,6 +196,27 @@ async function waitHttp(url, tries = 120) {
   ok(built || refusedKo, `노 배치 응답이 한국어 계약 메시지다 ${built ? '(착공)' : '(거부 사유 명시)'}`);
   ok(!nt.some((t) => /[a-z_]{3,}\s*\d|undefined|NaN/.test(t)), '알림에 영문 키·undefined·NaN 이 안 샌다');
 
+  // ── ★[2026-08-02e ⑦] 야금 아이콘 8종이 실제로 **로드되는가**(빈 사각형 금지) ─────
+  //   client.js preloadItemIcons 가 키마다 <img> 를 시도하고 성공한 것만 ITEM_ICON_IMG 에 담는다.
+  //   미배포면 이모지 폴백이라 화면은 안 비지만, 배포했다면 **이미지로** 떠야 한다.
+  {
+    const KEYS = ['ore_chunk', 'iron_ore', 'charcoal', 'iron', 'meteoric_iron', 'copper', 'tin', 'lead'];
+    const got = await page.evaluate(async (keys) => {
+      const out = {};
+      await Promise.all(keys.map((k) => new Promise((res) => {
+        const im = new Image();
+        im.onload = () => { out[k] = im.naturalWidth; res(); };
+        im.onerror = () => { out[k] = 0; res(); };
+        im.src = '/assets/icons/' + k + '.png?probe=1';
+      })));
+      return out;
+    }, KEYS);
+    console.log(`    아이콘 로드: ${JSON.stringify(got)}`);
+    const missing = KEYS.filter((k) => !(got[k] > 0));
+    ok(missing.length === 0, `야금 아이콘 8종이 전부 이미지로 로드된다 ${missing.length ? '— 누락 ' + missing.join(',') : ''}`);
+    ok(KEYS.every((k) => got[k] === 96), '아이콘이 규격(96×96)이다');
+  }
+
   // ── 인벤 라벨 — iron 계열이 한글로 뜨는가(⑤ 라벨 정합의 실화면 확인) ─────
   const lbl = await page.evaluate(() => {
     const t = window.__ITEM_LABEL_PROBE || null;

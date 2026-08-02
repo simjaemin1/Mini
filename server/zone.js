@@ -4752,6 +4752,36 @@ const CHARCOAL_KILN_YIELD = 4;   // 1회 산출(숯) — 제작창 노천 탄화
 // ★[2026-08-02d ④] 가득 채우기 상한 — 한 번 클릭에 최대 몇 회분을 굽나. **가마 용량이 아니라 UI 폭주 방지**다
 //   (인벤 통나무 999를 한 클릭에 333회 돌려 로그·저장이 튀는 것만 막는다). 수지는 1회 조업 ×n 로 정확히 같다.
 const KILN_BATCH_MAX = 20;
+// ═══ ★★[2026-08-02e ⑤ 재민 승인] 조업 진척 계약 — 장입 → 시간 → 출탕 ═══════════
+//   배치 5 에서 회부했던 것(회부_노_조업시간_계약.md)을 재민이 "전부 해결" 지시로 풀었다.
+//   ★NPC 크루 공식(`_crewD/L_BUILDSEC` = 현장 체류 초)은 **쓰지 않는다** — 플레이어 축엔
+//     '현장 체류 초'라는 상태가 없다. 플레이어 전용 상수를 새로 정의하되, era.js 물리와 모순되지 않게:
+//     **노가 뜨거울수록 짧다.** 시간의 근거를 온도에 두면 상수가 자의적이지 않고 era 축과 한 몸이 된다.
+//   ★계약(재민 지시 그대로):
+//     · 장입(정광·숯 즉시 차감) → `data.job = { until, ... }` → 완료 후 클릭하면 출탕
+//     · **대기 중 이탈해도 진척 보존** — 벽시계 기반이라 접속을 끊어도 흐른다(농지 readyAt 선례).
+//     · 숯가마도 같은 계약(통나무 장입 → 시간 → 숯 수거).
+//   ★왜 벽시계인가: 농지(`readyAt`)가 이미 그 계약이고, 서버 재시작·재접속을 자동으로 건너뛴다.
+//     "불 붙여 놓고 로그아웃"이 최적 전략이 되는 건 **의도한 것**이다 — 청동기 제련은 원래 몇 시간 걸린다.
+const SMELT_BASE_MS = 180000;        // 기준 조업 시간(3분) — 1,150℃(도가니로+숯+풀무) 기준
+const SMELT_MIN_MS  = 45000;         // 하한 45초(고로급이어도 클릭 연타 게임이 되지 않게)
+const KILN_BURN_MS  = 240000;        // 숯가마 1회분 4분 — 밀폐 탄화는 제련보다 느리다(고증)
+const KILN_BATCH_MS_PER = 30000;     // 배치 1회분 추가 시간(가득 채우면 그만큼 오래 걸린다 — 수지 불변 원칙의 시간판)
+// 노 온도(era.js furnaceTemp)가 높을수록 짧다: t = BASE × (1150 / T)^1.5, 하한 SMELT_MIN_MS.
+//   1150℃ → 180초 · 1300℃(괴련로) → 148초 · 1450℃(개량) → 126초. 물리가 시간을 정한다.
+function _smeltDurationMs(kind) {
+  const Era = require('./era');
+  const T = Era.furnaceTemp({ furnace: kind || 'crucible', fuel: 'charcoal', bellows: true });
+  if (!(T > 0)) return SMELT_BASE_MS;
+  return Math.max(SMELT_MIN_MS, Math.round(SMELT_BASE_MS * Math.pow(1150 / T, 1.5)));
+}
+// 진척 0~1 — 클라 게이지와 서버 판정이 **같은 식**을 쓰도록 서버가 계산해 내려 준다.
+function _jobProgress(job, now) {
+  if (!job || !job.until || !job.startedAt) return 0;
+  const span = job.until - job.startedAt;
+  if (!(span > 0)) return 1;
+  return Math.max(0, Math.min(1, (now - job.startedAt) / span));
+}
 function _furnaceClaimOf(player, px, py) {
   // 이 좌표를 덮는 사유지 중 플레이어에게 권한이 있는 것 — 개인(본인) 또는 길드(같은 길드).
   for (const c of claims.values()) {
@@ -4886,34 +4916,103 @@ function tryKilnBurn(player, buildingId) {
   if (!b || b.type !== 'charcoal_kiln') return;
   if (Math.hypot(b.x - player.x, b.y - player.y) > 120) { send(player.ws, { type: 'notice', text: '숯가마에서 너무 멀리 있습니다' }); return; }
   if (!_furnaceCanUse(player, b)) { send(player.ws, { type: 'notice', text: b.data.tribeId ? '우리 길드의 숯가마가 아닙니다' : '이 숯가마의 주인이 아닙니다' }); return; }
+  // ★★[2026-08-02e ⑤] 숯가마도 노와 **같은 진척 계약**이다 — 장입 → 시간 → 수거.
+  const nowK = Date.now();
+  if (b.data && b.data.job) {
+    const job = b.data.job;
+    if (nowK < job.until) {
+      const remain = Math.ceil((job.until - nowK) / 1000);
+      send(player.ws, { type: 'notice', text: `🪵 탄화 중 — ${remain}초 남음 (${Math.round(_jobProgress(job, nowK) * 100)}%). 연도를 막아 뒀으니 자리를 떠도 된다` });
+      return;
+    }
+    const got = CHARCOAL_KILN_YIELD * (job.n || 1);
+    player.inventory.charcoal = (player.inventory.charcoal || 0) + got;
+    delete b.data.job;
+    if (b.dbId) { try { db.updateBuildingData(b.dbId, JSON.stringify(b.data)); } catch (e) {} }
+    broadcast({ type: 'building_updated', building: { id: b.id, data: b.data } });
+    send(player.ws, { type: 'inventory', inventory: player.inventory });
+    send(player.ws, { type: 'notice', text: `🪵 가마를 헐었다 — 숯 ${got} 수거 (장입 ${job.n || 1}회분)` });
+    savePlayer(player);
+    return;
+  }
   if ((player.inventory.wood || 0) < CHARCOAL_KILN_WOOD) { send(player.ws, { type: 'notice', text: `통나무 부족 (1회 장입 ${player.inventory.wood || 0}/${CHARCOAL_KILN_WOOD})` }); return; }
   // ★★[2026-08-02d ④] 가득 채우기 — 통나무 3씩 클릭을 반복하는 지루함만 없앤다.
   //   ⚠수지는 **1회 조업과 완전히 같다**(장입 3 → 숯 4를 n번). 배치라고 수율이 좋아지지 않는다 —
   //     그러면 클릭 수가 물리를 바꾸는 셈이고, 그건 이 프로젝트가 계속 피해 온 것이다.
   //   ⚠상한(KILN_BATCH_MAX)은 UI 폭주 방지용이지 가마 용량이 아니다. 용량 개념을 넣으려면 회부 대상.
+  //   ★[2026-08-02e] 시간도 같은 원칙이다 — n회분을 한 번에 넣으면 **그만큼 오래 걸린다**.
+  //     안 그러면 "가득 채우기"가 시간을 공짜로 압축하는 치트가 된다.
   const n = Math.max(1, Math.min(KILN_BATCH_MAX, Math.floor((player.inventory.wood || 0) / CHARCOAL_KILN_WOOD)));
   player.inventory.wood -= CHARCOAL_KILN_WOOD * n;
-  player.inventory.charcoal = (player.inventory.charcoal || 0) + CHARCOAL_KILN_YIELD * n;
-  send(player.ws, { type: 'inventory', inventory: player.inventory });
-  send(player.ws, { type: 'notice', text: `🪵 숯가마 조업 ${n > 1 ? `×${n}회 ` : ''}— 통나무 ${CHARCOAL_KILN_WOOD * n} → 숯 ${CHARCOAL_KILN_YIELD * n} (연도로 공기를 막아 구웠다)` });
-  savePlayer(player);
+  {
+    const dur = KILN_BURN_MS + KILN_BATCH_MS_PER * (n - 1);
+    b.data.job = { kind: 'kiln', startedAt: nowK, until: nowK + dur, n, by: player.playerId };
+    if (b.dbId) { try { db.updateBuildingData(b.dbId, JSON.stringify(b.data)); } catch (e) {} }
+    broadcast({ type: 'building_updated', building: { id: b.id, data: b.data } });
+    send(player.ws, { type: 'inventory', inventory: player.inventory });
+    send(player.ws, { type: 'notice',
+      text: `🪵 장입 — 통나무 ${CHARCOAL_KILN_WOOD * n}${n > 1 ? ` (×${n}회분)` : ''} 을 재고 연도를 막았다. ${Math.round(dur / 1000)}초 뒤 가마를 헐어 숯을 꺼낸다` });
+    savePlayer(player);
+  }
 }
 function tryFurnaceSmelt(player, buildingId) {
   const b = buildings.get(buildingId);
   if (!b || b.type !== 'furnace') return;
   if (Math.hypot(b.x - player.x, b.y - player.y) > 120) { send(player.ws, { type: 'notice', text: '노에서 너무 멀리 있습니다' }); return; }
   if (!_furnaceCanUse(player, b)) { send(player.ws, { type: 'notice', text: b.data.tribeId ? '우리 길드의 노가 아닙니다' : '이 노의 주인이 아닙니다 — 개인 노엔 타인 관여 불가' }); return; }
+  const now = Date.now();
+  const kind = (b.data && b.data.kind) || 'crucible';
+  // ★★[2026-08-02e ⑤] 조업 중이면 — 아직이면 남은 시간을, 끝났으면 **출탕**한다.
+  //   진척은 벽시계라 자리를 떠도, 접속을 끊어도, 서버가 재시작해도 흐른다(농지 readyAt 선례).
+  if (b.data && b.data.job) {
+    const job = b.data.job;
+    if (now < job.until) {
+      const remain = Math.ceil((job.until - now) / 1000);
+      send(player.ws, { type: 'notice', text: `🔥 조업 중 — ${remain}초 남음 (${Math.round(_jobProgress(job, now) * 100)}%). 자리를 떠도 불은 계속 탄다` });
+      return;
+    }
+    // ── 출탕 — 장입 때 정한 수율로 산출한다(중간에 시대가 열려도 **장입 시점 물리**가 기준이다:
+    //    "이미 불을 지핀 노"의 결과가 소급해 좋아지면 그건 시간 계약이 아니라 도박이 된다).
+    const y2 = job.yield || 0;
+    const kg2 = Specialty.CHUNK_KG * y2;
+    const carry2 = (player.oreCarry && typeof player.oreCarry === 'object') ? player.oreCarry : (player.oreCarry = {});
+    const tot2 = (carry2._iron_smelt || 0) + kg2;
+    const whole2 = Math.floor(tot2 / Specialty.CHUNK_KG);
+    carry2._iron_smelt = +(tot2 - whole2 * Specialty.CHUNK_KG).toFixed(3);
+    let m2;
+    if (whole2 > 0) { player.inventory.iron = (player.inventory.iron || 0) + whole2; m2 = `🔥 출탕 — 철 ${whole2}덩이!`; }
+    else m2 = `🔥 출탕 — 해면철 부스러기 ${kg2.toFixed(2)}kg (누적 ${tot2.toFixed(2)}/${Specialty.CHUNK_KG}kg — 슬래그가 대부분이다)`;
+    delete b.data.job;
+    if (b.dbId) { try { db.updateBuildingData(b.dbId, JSON.stringify(b.data)); } catch (e) {} }
+    broadcast({ type: 'building_updated', building: { id: b.id, data: b.data } });
+    send(player.ws, { type: 'inventory', inventory: player.inventory });
+    send(player.ws, { type: 'notice', text: m2 + ` · 수율 ${(y2 * 100).toFixed(1)}%` });
+    savePlayer(player);
+    return;
+  }
   const ore = player.inventory.iron_ore || 0;
   if (ore < 1) { send(player.ws, { type: 'notice', text: '철 정광이 없다 — 철 광맥을 캐서 선광하면 나온다' }); return; }
   const fuelNeed = FURNACE_FUEL_PER_ORE;
   if ((player.inventory.charcoal || 0) < fuelNeed) { send(player.ws, { type: 'notice', text: `숯 부족 (정광 1덩이당 숯 ${fuelNeed} — 제작창 노천 탄화 또는 숯가마로 굽는다)` }); return; }
   // ★물리는 era.js 하나가 정한다 — 청동기 도가니로 3.4%, 시대 열리면 같은 노가 67.8%, 괴련로 88.1%.
   const Era = require('./era');
-  const setup = { furnace: (b.data && b.data.kind) || 'crucible', fuel: 'charcoal', bellows: true };
+  const setup = { furnace: kind, fuel: 'charcoal', bellows: true };
   const y = Era.smeltYield('iron', setup);
   if (!(y > 0)) { send(player.ws, { type: 'notice', text: '이 노로는 철이 안 나온다' }); return; }
   player.inventory.iron_ore -= 1;
   player.inventory.charcoal -= fuelNeed;
+  // ── 장입 — 재료는 **지금** 들어가고(불 속에 넣은 것은 돌려받지 못한다), 산출은 시간 뒤에 나온다
+  {
+    const dur = _smeltDurationMs(kind);
+    b.data.job = { kind: 'smelt', startedAt: now, until: now + dur, yield: y, by: player.playerId };
+    if (b.dbId) { try { db.updateBuildingData(b.dbId, JSON.stringify(b.data)); } catch (e) {} }
+    broadcast({ type: 'building_updated', building: { id: b.id, data: b.data } });
+    send(player.ws, { type: 'inventory', inventory: player.inventory });
+    send(player.ws, { type: 'notice',
+      text: `🔥 장입 — 정광 1·숯 ${fuelNeed} 을 넣고 불을 지폈다. ${Math.round(dur / 1000)}초 뒤 노를 클릭해 출탕한다 (자리를 떠도 된다)` });
+    savePlayer(player);
+    return;
+  }
   const kg = Specialty.CHUNK_KG * y;   // 덩이 3.5kg × 수율
   const carry = (player.oreCarry && typeof player.oreCarry === 'object') ? player.oreCarry : (player.oreCarry = {});
   const tot = (carry._iron_smelt || 0) + kg;
@@ -4946,6 +5045,8 @@ function __testBind() {
     mineOreCell, trySortOre, minedCells, ITEM_LABEL_SERVER,
     // ── 길들이기 시대 게이트 E2E(test-tame.js) ── 실서버 mobs/MOB_DEFS 와 실제 tryFeed 를 그대로 쓴다
     mobs, MOB_DEFS, tryFeed, qtMobs: () => qtMobs,
+    // ── 조업 진척 계약 E2E(2026-08-02e ⑤) ── 시간은 벽시계라 하네스가 job.until 을 당겨 검증한다
+    SMELT_BASE_MS, SMELT_MIN_MS, KILN_BURN_MS, KILN_BATCH_MS_PER, _smeltDurationMs, _jobProgress,
   };
 }
 module.exports = { __testBind, __furnaceBind: __testBind };

@@ -169,6 +169,13 @@ say('\n[③ 조업 — era.js 물리가 그대로 답한다(청동기)]');
   eq(owner.inventory.iron_ore, ore0 - 1, '정광 1 소모');
   eq(owner.inventory.charcoal, ch0 - H.FURNACE_FUEL_PER_ORE, `숯 ${H.FURNACE_FUEL_PER_ORE} 소모`);
   ok((owner.inventory.iron || 0) === 0, '★청동기 1회 조업으로는 철 덩이가 안 나온다(부스러기 이월)');
+  // ★[2026-08-02e ⑤] 이제 장입→시간→출탕이라, 부스러기는 **출탕할 때** 생긴다. 시간을 당겨 출탕한다.
+  {
+    const fb = [...H.buildings.values()].find((x) => x.id === furnaceId);
+    ok(!!(fb && fb.data && fb.data.job), '장입되어 조업 중');
+    if (fb && fb.data && fb.data.job) fb.data.job.until = Date.now() - 1;
+    H.tryFurnaceSmelt(owner, furnaceId);
+  }
   const carry = owner.oreCarry._iron_smelt || 0;
   ok(carry > 0, `해면철 부스러기 이월 ${carry.toFixed(3)}kg — 버리지 않는다`);
   ok(Math.abs(carry - H.Specialty.CHUNK_KG * yBronze) < 1e-3, '이월량 = 덩이무게×수율(era.js 와 일치 — 이월은 소수 3자리 저장)');
@@ -267,10 +274,12 @@ say('\n[⑤ 시대 축 — 같은 노가 시대에 따라 다른 답을 낸다]'
       if (bf) {
         // ★정광 1덩이(3.5kg) × 수율 88% = 3.08kg < 덩이 3.5kg — 1회로는 덩이가 안 떨어진다.
         //   광석 1덩이에서 금속 1덩이가 나오는 게 아니다(슬래그로 빠진 만큼 손해). 2회면 나온다.
+        // ★[2026-08-02e ⑤] 장입→시간→출탕이라 회차마다 시간을 당겨 준다(하네스가 3분을 기다리지 않는다).
+        const _cycle = () => { H.tryFurnaceSmelt(bp, bf.id); if (bf.data.job) { bf.data.job.until = Date.now() - 1; H.tryFurnaceSmelt(bp, bf.id); } };
         bp.inventory.iron_ore = 2; bp.inventory.charcoal = 10; bp.oreCarry = {};
-        H.tryFurnaceSmelt(bp, bf.id);
+        _cycle();
         const oneShot = bp.inventory.iron || 0;
-        H.tryFurnaceSmelt(bp, bf.id);
+        _cycle();
         eq(oneShot, 0, '정광 1덩이로는 철 덩이가 안 떨어진다(수율 88%<100% — 슬래그 손실)');
         ok((bp.inventory.iron || 0) >= 1, `★괴련로 정광 2덩이 → 철 ${bp.inventory.iron || 0}덩이 — 시대가 열리면 실용`);
         ok(bp.oreCarry._iron_smelt > 0, '남는 부스러기는 계속 이월된다');
@@ -304,21 +313,21 @@ say('\n[⑥ 숯가마 — 노와 같은 건설 계약 · 노천 탄화보다 나
       const kd = findBuilding('charcoal_kiln');
       ok(kd.length === 1, '숯가마 2단계로 완공(풀무 불필요 — 공기를 막는 설비다)');
       if (kd.length) {
-        // ★[2026-08-02d ④] 가득 채우기 — 인벤 통나무를 몫만큼 한 번에 굽는다.
-        //   그래서 여기 기대값은 "1회분"이 아니라 **n회분**이다: n = floor(재고/장입).
+        // ★[2026-08-02d ④] 가득 채우기 — 인벤 통나무를 몫만큼 한 번에 굽는다(n = floor(재고/장입)).
+        // ★[2026-08-02e ⑤] 이제 **장입 → 시간 → 수거** 계약이다. 여기서는 시간을 당겨 왕복을 확인한다.
         const w0 = k.inventory.wood;
         const n1 = Math.max(1, Math.min(20, Math.floor(w0 / H.CHARCOAL_KILN_WOOD)));
         H.tryKilnBurn(k, kd[0].id);
         eq(k.inventory.wood, w0 - H.CHARCOAL_KILN_WOOD * n1, `가득 채우기 — 통나무 ${H.CHARCOAL_KILN_WOOD}×${n1} 장입`);
-        eq(k.inventory.charcoal, H.CHARCOAL_KILN_YIELD * n1, `가득 채우기 — 숯 ${H.CHARCOAL_KILN_YIELD}×${n1} 산출`);
+        eq(k.inventory.charcoal || 0, 0, '장입 직후엔 숯이 없다(시간 계약)');
+        if (kd[0].data && kd[0].data.job) kd[0].data.job.until = Date.now() - 1;
+        H.tryKilnBurn(k, kd[0].id);
+        eq(k.inventory.charcoal, H.CHARCOAL_KILN_YIELD * n1, `수거 — 숯 ${H.CHARCOAL_KILN_YIELD}×${n1} 산출`);
         // ★수지 불변 — 배치라고 수율이 좋아지면 안 된다(클릭 수가 물리를 바꾸는 셈이 된다)
         ok(Math.abs((H.CHARCOAL_KILN_YIELD * n1) / (H.CHARCOAL_KILN_WOOD * n1) - H.CHARCOAL_KILN_YIELD / H.CHARCOAL_KILN_WOOD) < 1e-12,
           '  배치 수율 = 1회 수율 (클릭 수가 물리를 안 바꾼다)');
         // 장입 1회분에 못 미치면 거부(부분 조업 없음)
         {
-          const short = mkPlayer('부족', { inv: { wood: H.CHARCOAL_KILN_WOOD - 1 } });
-          at(short, spot4.cx, spot4.cy);
-          // 소유자가 아니면 권한에서 먼저 막히므로, 소유자 k 의 재고를 줄여서 검사한다
           const keep = k.inventory.wood, keepC = k.inventory.charcoal;
           k.inventory.wood = H.CHARCOAL_KILN_WOOD - 1;
           H.tryKilnBurn(k, kd[0].id);
@@ -335,6 +344,94 @@ say('\n[⑥ 숯가마 — 노와 같은 건설 계약 · 노천 탄화보다 나
         eq(th.inventory.wood, 9, '타인은 남의 숯가마를 못 쓴다');
       }
     }
+  }
+}
+
+// ══ ⑥ 조업 진척 계약 (2026-08-02e ⑤) ═══════════════════════════════════════
+//   장입 → 시간 → 출탕. 시간은 **벽시계**라 하네스는 `data.job.until` 을 과거로 당겨 "시간이 흘렀다"를 만든다
+//   (setTimeout 으로 3분을 기다리는 하네스는 아무도 안 돌린다 — 그러면 회귀 가드가 아니라 장식이 된다).
+say('\n⑥ 조업 진척 계약 — 장입 → 시간 → 출탕');
+{
+  const spotP = { cx: spot.cx + 12, cy: spot.cy };
+  const P = mkPlayer('제련공', { inv: { stone: 40, wood: 40, hide: 10, iron_ore: 3, charcoal: 40, wheat: 0 }, tools: ['pickaxe'] });
+  layClaims(spotP.cx, spotP.cy, P.playerId, P.name, 'personal', null);
+  at(P, spotP.cx, spotP.cy);
+  H.tryFurnaceStart(P, spotP.cx * SZ + 1, spotP.cy * SZ + 1, 'crucible');
+  let site = findBuilding('furnace_site');
+  if (site.length) { H.tryFurnaceAdvance(P, site[0].id); const s2 = findBuilding('furnace_site'); if (s2.length) H.tryFurnaceAdvance(P, s2[0].id); }
+  const fu = findBuilding('furnace').filter((x) => x.data && x.data.owner === P.playerId);
+  ok(fu.length === 1, '노 완공(진척 검증용 별도 1동)');
+  if (fu.length) {
+    const b = fu[0];
+    const ore0 = P.inventory.iron_ore, ch0 = P.inventory.charcoal;
+    // ── 장입: 재료는 즉시 빠지고 산출은 아직 없다
+    H.tryFurnaceSmelt(P, b.id);
+    eq(P.inventory.iron_ore, ore0 - 1, '장입 — 정광 1 즉시 차감(불에 넣은 건 못 돌려받는다)');
+    ok(P.inventory.charcoal < ch0, '장입 — 숯도 즉시 차감');
+    ok(!!(b.data && b.data.job), '장입 — 조업 상태(job)가 붙는다');
+    ok(!P.inventory.iron, '장입 직후엔 **산출이 없다**(즉시 제련이 아니다)');
+    ok(noticed(P, /장입/), '장입 안내가 나온다');
+    // ── 대기 중 클릭: 남은 시간만 알려주고 **아무것도 안 준다**(연타 치트 차단)
+    const ore1 = P.inventory.iron_ore, ch1 = P.inventory.charcoal;
+    H.tryFurnaceSmelt(P, b.id);
+    eq(P.inventory.iron_ore, ore1, '조업 중 재클릭 — 재료 추가 소모 없음');
+    eq(P.inventory.charcoal, ch1, '조업 중 재클릭 — 숯 추가 소모 없음');
+    ok(noticed(P, /조업 중/), '조업 중이라고 알려준다');
+    // ── 진척: 서버 계산이 0~1 안에 있고 단조 증가
+    const j = b.data.job;
+    const pMid = H._jobProgress(j, j.startedAt + (j.until - j.startedAt) / 2);
+    ok(Math.abs(pMid - 0.5) < 1e-6, `진척 계산이 정확하다(중간=${pMid.toFixed(3)})`);
+    // ── 시간 경과 → 출탕
+    b.data.job.until = Date.now() - 1;
+    H.tryFurnaceSmelt(P, b.id);
+    ok(!(b.data && b.data.job), '출탕 — 조업 상태가 사라진다');
+    ok(noticed(P, /출탕/), '출탕 안내가 나온다');
+    // ── 이탈 보존: 다른 사람이 와도 내 노는 내 것(소유 계약 그대로)
+    H.tryFurnaceSmelt(P, b.id);   // 재장입
+    ok(!!(b.data && b.data.job), '재장입 가능');
+    const th = mkPlayer('타인', { inv: { iron_ore: 5, charcoal: 20 } });
+    at(th, spotP.cx, spotP.cy);
+    const thOre = th.inventory.iron_ore;
+    H.tryFurnaceSmelt(th, b.id);
+    eq(th.inventory.iron_ore, thOre, '타인은 남의 노에 손대지 못한다(진척 중에도)');
+    // ── 온도가 시간을 정한다 — era 물리와 한 몸
+    //   ⚠닫힌 시대에선 괴련로가 `hasTech` 미해금이라 furnaceTemp=0 → 기본값 폴백이다.
+    //     그 상태로 비교하면 "뜨거운 노가 더 느리다"는 **거짓 결함**이 나온다(첫 시도에서 그랬다).
+    //     시대를 열고 비교해야 온도-시간 관계를 재는 것이다.
+    const tC = H._smeltDurationMs('crucible');
+    Era.setEra('early_iron');
+    const tC2 = H._smeltDurationMs('crucible'), tB = H._smeltDurationMs('bloomery');
+    Era.setEra(null);
+    say(`    조업 시간: 도가니로 ${(tC / 1000).toFixed(0)}초 · (시대 열림)괴련로 ${(tB / 1000).toFixed(0)}초`);
+    ok(tB < tC2, '★뜨거운 노일수록 빨리 끝난다(시간의 근거가 온도 — 자의적 상수 아님)');
+    ok(tC >= H.SMELT_MIN_MS, '하한(연타 게임 방지) 아래로 안 내려간다');
+    ok(H._smeltDurationMs('bloomery') === H.SMELT_BASE_MS, '미해금 노는 기본 시간으로 폴백(0초 치트 없음)');
+  }
+  // ── 숯가마도 같은 계약 + 배치는 시간도 비례
+  const spotK = { cx: spot.cx + 12, cy: spot.cy + 6 };
+  const K = mkPlayer('숯쟁이', { inv: { stone: 20, wood: 30 }, tools: ['pickaxe'] });
+  layClaims(spotK.cx, spotK.cy, K.playerId, K.name, 'personal', null);
+  at(K, spotK.cx, spotK.cy);
+  H.tryKilnStart(K, spotK.cx * SZ + 1, spotK.cy * SZ + 1);
+  const ks = findBuilding('kiln_site');
+  if (ks.length) H.tryKilnAdvance(K, ks[0].id);
+  const kd = findBuilding('charcoal_kiln').filter((x) => x.data && x.data.owner === K.playerId);
+  ok(kd.length >= 1, '숯가마 완공');
+  if (kd.length) {
+    const kb = kd[kd.length - 1];
+    const w0 = K.inventory.wood, c0 = K.inventory.charcoal || 0;
+    H.tryKilnBurn(K, kb.id);
+    ok(K.inventory.wood < w0, '숯가마 장입 — 통나무 즉시 차감');
+    eq(K.inventory.charcoal || 0, c0, '장입 직후엔 숯이 **없다**');
+    ok(!!(kb.data && kb.data.job), '숯가마 조업 상태가 붙는다');
+    const nBatch = kb.data.job.n;
+    const span = kb.data.job.until - kb.data.job.startedAt;
+    ok(span >= H.KILN_BURN_MS + H.KILN_BATCH_MS_PER * (nBatch - 1) - 5,
+      `★배치는 시간도 비례한다(${nBatch}회분 → ${(span / 1000).toFixed(0)}초) — 가득 채우기가 시간을 공짜로 압축하지 않는다`);
+    kb.data.job.until = Date.now() - 1;
+    H.tryKilnBurn(K, kb.id);
+    ok((K.inventory.charcoal || 0) === c0 + H.CHARCOAL_KILN_YIELD * nBatch, `수거 — 숯 ${H.CHARCOAL_KILN_YIELD * nBatch} (장입 ${nBatch}회분)`);
+    ok(!(kb.data && kb.data.job), '수거 후 조업 상태 소멸');
   }
 }
 

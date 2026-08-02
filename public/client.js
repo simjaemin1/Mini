@@ -5044,6 +5044,19 @@ const SIM_JOB_EMOJI = {
       ctx.textAlign = 'left';
       return;
     }
+    // ★★[2026-08-02e ⑤] 조업 진척 게이지 — 노·숯가마 공용. 서버가 data.job{startedAt,until} 을 내려 준다.
+    //   서버·클라가 **같은 식**을 쓴다(서버 _jobProgress 와 동일): (now−startedAt)/(until−startedAt).
+    const _jobBar = (bld, cx, cy) => {
+      const j = bld && bld.data && bld.data.job;
+      if (!j || !j.until || !j.startedAt) return null;
+      const now = Date.now();
+      const p = Math.max(0, Math.min(1, (now - j.startedAt) / Math.max(1, j.until - j.startedAt)));
+      const W = 34, H = 5;
+      ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(cx - W / 2, cy - 44, W, H);
+      ctx.fillStyle = p >= 1 ? '#7cd97c' : '#ff9a3c';
+      ctx.fillRect(cx - W / 2 + 1, cy - 43, (W - 2) * p, H - 2);
+      return { p, remain: Math.max(0, Math.ceil((j.until - now) / 1000)) };
+    };
     if (type === 'furnace_site' || type === 'furnace') {
       // ★노(爐) — 재민 확정(움집 동형 공정). 단계별 표현: 1=돌 기초, 2=노벽, 3=풀무, 완공=노+불.
       const st = (building?.data?.stage) | 0;
@@ -5058,7 +5071,9 @@ const SIM_JOB_EMOJI = {
           ctx.drawImage(_sp, _ax2 - _sp._ox, _ay2 - _sp._oy);
           const _kko2 = (_d.kind) === 'bloomery' ? '괴련로' : '노(爐)';
           ctx.font = 'bold 10px sans-serif'; ctx.fillStyle = '#ffe9b0'; ctx.textAlign = 'center';
-          ctx.fillText(done ? `${_kko2} — 클릭=제련` : `${_kko2} 터 ${st}/3단계 (클릭=시공)`, x, y - 28);
+          const _jb = done ? _jobBar(building, x, y) : null;
+          ctx.fillText(done ? (_jb ? (_jb.p >= 1 ? `${_kko2} — 클릭=출탕` : `${_kko2} 조업 중 ${_jb.remain}초`) : `${_kko2} — 클릭=장입`)
+                            : `${_kko2} 터 ${st}/3단계 (클릭=시공)`, x, y - 28);
           ctx.textAlign = 'left';
           return;
         }
@@ -5095,7 +5110,9 @@ const SIM_JOB_EMOJI = {
           const _ax2 = x + (_dx - _dy), _ay2 = y + (_dx + _dy) * 0.5;
           ctx.drawImage(_sp, _ax2 - _sp._ox, _ay2 - _sp._oy);
           ctx.font = 'bold 10px sans-serif'; ctx.fillStyle = '#e6d6b6'; ctx.textAlign = 'center';
-          ctx.fillText(done ? '숯가마 — 클릭=굽기' : `숯가마 터 ${st}/2단계 (클릭=시공)`, x, y - 28);
+          { const _jb = done ? _jobBar(building, x, y) : null;
+            ctx.fillText(done ? (_jb ? (_jb.p >= 1 ? '숯가마 — 클릭=수거' : `숯가마 탄화 중 ${_jb.remain}초`) : '숯가마 — 클릭=장입')
+                              : `숯가마 터 ${st}/2단계 (클릭=시공)`, x, y - 28); }
           ctx.textAlign = 'left';
           return;
         }
@@ -5115,7 +5132,9 @@ const SIM_JOB_EMOJI = {
         ctx.beginPath(); ctx.ellipse(x + 10, y - 24, 4, 3, 0, 0, Math.PI * 2); ctx.fill();
       }
       ctx.font = 'bold 10px sans-serif'; ctx.fillStyle = '#e6d6b6'; ctx.textAlign = 'center';
-      ctx.fillText(done ? '숯가마 — 클릭=굽기' : `숯가마 터 ${st}/2단계 (클릭=시공)`, x, y - 26);
+      { const _jb = done ? _jobBar(building, x, y) : null;
+        ctx.fillText(done ? (_jb ? (_jb.p >= 1 ? '숯가마 — 클릭=수거' : `숯가마 탄화 중 ${_jb.remain}초`) : '숯가마 — 클릭=장입')
+                          : `숯가마 터 ${st}/2단계 (클릭=시공)`, x, y - 26); }
       ctx.textAlign = 'left';
       return;
     }
