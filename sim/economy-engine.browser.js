@@ -1791,6 +1791,48 @@ const BOOMFIT_K = (typeof process !== 'undefined' && process.env && process.env.
 // ★부얼타운 픽커 게이트 — 광맥이 실한 **광산촌만** "농사 불가" 탈출구를 쓴다.
 //   ★★기본 OFF = 기각(위 BOOMFIT_K 주석). BOOMGATE=1 로 켠다.
 const BOOMGATE_ON = (typeof process !== 'undefined' && process.env && process.env.BOOMGATE === '1');
+// ═══════ ★★[2026-08-02c 소멸 0 튜닝] 좀비·소멸 3중 잠금 손잡이 — 각각 개별 A/B 용 ═══════
+//   실측(3시드 800일 · dz_*.json)이 인계 프롬프트의 진단("도구 0 → 잉여 0 → tickRecovery 게이트 미달")을
+//   **반증했다.** 좀비 마을은 굶지 않는다 — 어촌9(시드42)는 곳간 128 · 국고 현금 15,186 · 캐러밴 61회 ·
+//   식량수입 504 인데 인구 2 다. 실제 인과는 궤적(history)에서 나왔다:
+//     ① 0~360일: `day<365` 기아사망 보호막이 dP<0 을 삼켜 마을이 K 위로 과성장(임업3 54명 · 광산2 67명 고원).
+//     ② 365일: 보호막 해제 → dP=r·N·(1−(N/K)^4) 이 −maxDelta 로 폭주 → 40일 만에 54→5.
+//     ③ **prodK 가 실현흐름 기준**이라 인구가 줄면 K도 같이 줄어(양의 되먹임) 붕괴가 바닥까지 폭주한다.
+//     ④ 바닥(N=1)에서 ratio=N/max(1,K)=1 → 로지스틱 항이 정확히 0 → 영구 고착. K<1 인데 slot 121~203 ·
+//        fuel 42~2450 이다. 즉 **땅은 멀쩡한데 K 정의가 마을을 죽인다.**
+//   ⇒ 세 손잡이는 ③(PRODK_CAP)·도구 부트스트랩(TOOLBOOT)·바닥 탈출(SWITCH2)을 각각 끊는다.
+//
+// ★PRODK_CAP — prodK 를 **용량 기준**으로. fuelK 가 이미 이 판단을 내렸다(line ~2203 주석:
+//   "실현 흐름 기준은 벌목 인력 스냅샷에 K가 요동 → θ-로지스틱 과격 반응 → K붕괴 나선. 시드42 라 소멸로 확인, 폐기").
+//   prodK 만 마지막까지 실현흐름 기준으로 남아 리비히 min 안에서 홀로 N 을 따라다녔다. 같은 처방을 식량에도 준다.
+//   ★★단독으로는 **해롭다**(2026-08-02c 단독 A/B): 소멸 1.33 → **3.67**(악화) · 인구 1,610 → 1,454 · 도구 −29%.
+//     이유는 명확하다 — K 를 올려 놓고 **도구·석재 공급은 그대로**라 마을이 못 먹일 인구까지 자라 굶어 죽는다
+//     (좀비 8.33 → 1.0 은 개선이 아니라 **좀비가 시체가 된 것**이다).
+//   ★★그런데 STONE_NET 과 **함께면 채택**이다(같은 3시드):
+//       STONE_NET 단독   인구 3,128 · 소멸 0 · 좀비 0.67
+//       STONE_NET+PRODK  인구 3,466 · 소멸 0 · **좀비 0**   ← 채택
+//     순서가 전부였다: 재료(석재→도구) 사슬을 먼저 고쳐야 부양력 상향이 굶주림이 아니라 성장이 된다.
+//     PRODK_CAP=0 으로 채택 이전 동작을 정확히 재현한다.
+const PRODK_CAP_ON = !(typeof process !== 'undefined' && process.env && process.env.PRODK_CAP === '0');
+// ★TOOLBOOT — 도구 자본 우선(석공) 안전망의 `N>=6` 문턱 해제. 인구 6 미만 마을은 맨손(×0.25)에서
+//   영원히 못 벗어난다 — 석공을 뽑을 자격 자체가 없다. 문턱을 1로 낮춘다(재료 게이트는 그대로).
+//   ★★기본 OFF = **실측 무효**(2026-08-02c 단독 A/B): 3시드 전부 **기준선과 비트 동일**(1868/1711/1252, 소멸 1/1/2).
+//     이유 — 이 안전망은 `재고 돌 ≥ 0.2` 를 요구하는데, N<6 으로 쪼그라든 마을은 **돌도 0** 이라 어차피 안 걸린다.
+//     문턱이 아니라 재료가 binding 이었다. 진짜 처방은 STONE_NET(재료를 가져온다) 쪽이다.
+const TOOLBOOT_ON = (typeof process !== 'undefined' && process.env && process.env.TOOLBOOT === '1');
+// ★SWITCH2 — autoSwitchJob 의 `npcs.length < 3` 조기반환 해제(2명까지 정상 픽커 경로 허용).
+//   인구 2 마을은 **직업 전환이 통째로 꺼져 있다** — 어촌9는 800일 내내 어부 2명 고정이었다.
+//   ★★기본 OFF = **실측 무효**(2026-08-02c 단독 A/B): 인구 1,610 → 1,625(잡음) · 소멸 1.33 → 1.33 · 좀비 8.33 → 8.33.
+//     STONE_NET 과 함께 켜도(c_sts2) 좀비 0.67 → 1.33 으로 **되레 약간 나빠졌다.** 2명 마을에 전환을 열어 줘도
+//     바꿀 곳(석공)에 재료가 없으면 소용없고, 식량직 한 명을 빼는 손실만 남는다.
+const SWITCH2_ON = (typeof process !== 'undefined' && process.env && process.env.SWITCH2 === '1');
+// ★STONE_NET — 석재 결손이면 채집꾼을 석공보다 **먼저**(그리고 기근보다도 먼저) 부른다
+//   + 경계 `>0.25` → `>=0.25`(livelihood.js FLOOR.stone 이 정확히 0.25).
+//   궤적 실측: 임업3(d270)·광산2(d330)·어촌9(d210) 전부 **석재 고갈 → 석공 산출 0 → 도구 0 → 붕괴** 순서였다.
+//   ★★기본 ON = **채택**(2026-08-02c). 3시드 800일 단독 A/B:
+//     소멸 1.33 → **0.00** (3/3 시드 전부 0) · 좀비(<10명) 8.33 → **0.67** · 인구 1,610 → 3,128 · 도구 2,603 → 4,758.
+//     STONE_NET=0 으로 채택 이전 동작을 정확히 재현한다(LANDFIT 선례).
+const STONE_NET_ON = !(typeof process !== 'undefined' && process.env && process.env.STONE_NET === '0');
 // ═══ ★★부얼타운(광산촌) 판정 — **단일 정의**. 시딩(villages.js)도 이 함수를 부른다(사본 금지) ═══
 //   ⚠1차 시도의 실패에서 배운 것: "식량 부양력이 하한 미달"만으로 잡으면 **너무 많이 잡힌다.**
 //     선별된 마을 20곳 중 절반 가까이가 부양력 1.3~2.0 구간이라, 거기에 식량을 얹고 농사 탈출구를
@@ -2349,7 +2391,9 @@ function _alloyMelt(v) {
   const SP = _spec(); if (!SP) return null;
   const st = v.storage || {};
   if (!((st.copper || 0) > 0.01)) return null;            // 구리 없이는 못 만든다(기지가 없다)
-  const price = _matPrice(v);
+  // ★[2026-08-02c] 재료비·산출값 둘 다 **기회비용**으로 — "이 주석을 무기에 쓸까, 팔까"가 여기서 갈린다.
+  //   ALLOY_OPP 가 꺼져 있거나 순수출가 주입이 없으면 _matPrice 와 바이트 동일(회귀 무영향). _oppPrice 주석 참조.
+  const price = _oppPrice(v);
   const adds = _MELT_METALS.filter((m) => m !== 'copper' && (st[m] || 0) > 0.01);
 
   // ★★[재민 확정] 대장장이는 **재고 비율대로 붓지 않는다.** 그건 대장장이가 아니라 쓰레기통이다.
@@ -3258,7 +3302,32 @@ function tickVillage(v, day) {
   const dailyFoodProdPotential = totalFoodProductionEquivalent(dailyProductionPotential);
   // ★prodK 신뢰 관성(EMA ~33일): 날씨 이벤트(가뭄 7~14일)가 K를 직접 때려 θ=4 로지스틱이 과잉반응(대촌 ±100명 스윙)하지 않게.
   //   진짜 기근은 별도 실시간 항(hunger)이 처리하므로 안전성 손실 없음 — K만 계절·이벤트 노이즈에 둔감해짐.
-  const _prodKraw = (dailyFoodProdPotential + dailyImport) / DAILY_FOOD_CONSUMPTION;
+  // ★★[2026-08-02c 소멸 0] PRODK_CAP — 용량 기준 식량흐름. **fuelK 와 완전 동형**(같은 모양·같은 MSY 처리):
+  //     fuelK: (벌목 자리 × base × land.wood) ∧ woodSustain  + 볏짚 + 수입EMA + 재고/90
+  //     prodK: (농·어·렵·채집 자리 × base × landBoost) ∧ {fish,forage}Sustain + 수입EMA
+  //   실현흐름 기준(아래 _prodKraw)은 **인구가 줄면 K도 줄어** 붕괴가 자기증폭한다(위 손잡이 주석 ③).
+  //   자리 수는 slotK 가 이미 세므로 이중산입이 아니다 — slotK=자리, prodK=그 자리가 내는 흐름. min 이 더 빡빡한 쪽을 고른다.
+  //   ⚠보수적 하한: **부산물 식량환산(연어·새우·게·굴·견과…)을 뺐다.** 실측 산출의 상당분인데 자리당 발생률을
+  //     정확히 못 세우므로 넣지 않는다(과대평가보다 과소평가). 도구 배수도 뺐다 — fuelK 선례 그대로(용량은
+  //     "제대로 된 도구를 갖췄을 때"의 땅 능력이고, 도구 결손은 TOOLBOOT 안전망과 hunger 항이 실시간으로 처리한다).
+  let _prodKraw = (dailyFoodProdPotential + dailyImport) / DAILY_FOOD_CONSUMPTION;
+  if (PRODK_CAP_ON) {
+    const _cf = jobCapacity(v);
+    const _fishRawCap = (_cf.fisher || 0) * JOBS.fisher.base * (v.land.water || 0);
+    const _fishCap = (v.land.fishSustain != null && _fishRawCap > 0) ? Math.min(_fishRawCap, v.land.fishSustain) : _fishRawCap;
+    // 채집은 산출이 믹스라 식량환산 비율을 그 마을 실제 믹스(foragerYieldsFor)로 정확히 계산한다 — 임의 계수 없음.
+    const _fy = foragerYieldsFor(v);
+    let _fySum = 0, _fyFood = 0;
+    for (const _r in _fy) { _fySum += _fy[_r]; _fyFood += _fy[_r] * (FORAGE_FOOD_FACTOR[_r] || (_r === 'food' ? 1 : 0)); }
+    const _foodShare = _fySum > 0 ? _fyFood / _fySum : 0;
+    const _forRawCap = Math.floor((_cf.forager || 0) * 0.5) * JOBS.forager.base * JOBS.forager.landBoost(v);
+    const _forCap = (v.land.forageSustain != null && _forRawCap > 0) ? Math.min(_forRawCap, v.land.forageSustain) : _forRawCap;
+    const _capFlow = (_cf.farmer || 0) * JOBS.farmer.base * (v.land.fertility || 0) * _paddyMul * (v._clearedFrac != null ? v._clearedFrac : 1)
+                   + _fishCap
+                   + (_cf.hunter || 0) * JOBS.hunter.base * (v.land.game || 0)
+                   + _forCap * _foodShare;
+    _prodKraw = (_capFlow + dailyImport) / DAILY_FOOD_CONSUMPTION;
+  }
   v._prodKema = v._prodKema === undefined ? _prodKraw : 0.97 * v._prodKema + 0.03 * _prodKraw;
   const prodK = v._prodKema;
   // ★도구 마모 — 내구재라 천천히 닳음(반감기 ~19년). 인구 성장으로 1인당 도구가 희석되면 대장간이 보충.
@@ -3669,10 +3738,32 @@ function _matPrice(v) {
     return b > 0 ? b : 1;
   };
 }
-function _masonWeaponCost(v) { const p = _matPrice(v); return (STONE_PER_WEAPON * p('stone')) / WEAP_Q_STONE; }
+// ★★[2026-08-02c 배합↔교역 한 단위 통합 — 재민 승인] `opp(r) = max(내 마을 그림자가격, 최고 순수출가)`.
+//   `설계_배합과교역_한단위_통합.md` §2 (가)안. 두 결정이 **한 재화에 같은 값**을 매기게 하는 유일한 접점이다.
+//
+//   왜 산출(무기)까지 opp 로 재는가 — (가)안은 "재료비만" 이었지만, 재료만 바꾸면 **비대칭 편향**이 생긴다:
+//   투입은 수출 기회를 보는데 산출은 안 보므로, 무기가 밖에서 비싸게 팔리는 마을에서 주조가 부당하게 저평가된다.
+//   올바른 판정식은 "산출의 최선용도 값 − 투입의 최선대안 값" 이라 **양변 모두** opp 여야 한다.
+//   (재민 "비교가 필요해" 의 뜻이 그것이다 — 한쪽만 바꾸면 비교가 아니라 새 편향이다.)
+//
+//   ⚠순수출가는 **v2 가 world 에 주입**한다(v1→v2 역참조 금지 — priceFn 선례). 미주입(v1 단독 CLI)이면
+//     `_matPrice` 와 완전히 동일하게 동작한다 = 회귀 무영향.
+//   ★★기본 OFF — 3시드 A/B 전까지는 채택 아님. ALLOY_OPP=1 로 켠다.
+const ALLOY_OPP_ON = (typeof process !== 'undefined' && process.env && process.env.ALLOY_OPP === '1');
+function _oppPrice(v) {
+  const p = _matPrice(v);
+  const nef = (ALLOY_OPP_ON && v && v._world && typeof v._world.netExportFn === 'function') ? v._world.netExportFn : null;
+  if (!nef) return p;
+  return (r) => {
+    const local = p(r);
+    const exp = nef(v, r) || 0;
+    return exp > local ? exp : local;
+  };
+}
+function _masonWeaponCost(v) { const p = _oppPrice(v); return (STONE_PER_WEAPON * p('stone')) / WEAP_Q_STONE; }
 function _smithWeaponCost(v) {
   const m = _alloyMelt(v); if (!m) return Infinity;
-  const p = _matPrice(v);
+  const p = _oppPrice(v);
   let c = 0; for (const k in m.take) c += m.take[k] * p(k);
   return c / Math.max(0.01, Math.min(1.2, m.grade) * WEAP_Q_BRONZE);
 }
@@ -3806,11 +3897,28 @@ function pickDeficitJob_rational(v, world) {
   // ★S2 도구 자본 우선(기근보다 앞): 도구(석기)가 치명적으로 부족하면(맨손 0.25× = 식량생산 폭락) 석공 먼저.
   //   도구는 자본재 — 1명이 도구 만들면 나머지 식량생산이 0.25×→1.0×로 회복(순이득 큼). 단 재료(돌) 있고 마을 충분히 클 때만.
   //   재료 없으면 아래 식량직(forage가 돌도 가져옴)으로 자연 회복. 죽음의 나선 방지.
-  if (N >= 6 && (v.storage.stone || 0) >= 0.2) {   // 석기 재료비(0.2/tool)에 맞춘 문턱
+  // ★★[2026-08-02c TOOLBOOT] `N>=6` 이 소촌을 맨손에 가둔다 — 인구 5 이하는 이 안전망을 **쓸 자격이 없어서**
+  //   도구 0 → 생산 ×0.25 → prodK 붕괴 → 더 못 자람 → 영원히 5 이하. 문턱을 1로 내린다(재료 게이트는 유지).
+  //   원래 문턱의 취지("마을이 충분히 클 때만")는 재료 게이트(돌 0.2)와 masonTarget 이 이미 지키고 있다.
+  {
     const _td = toolDepCount(v);
     const _toolStock = (v.storage.tool || 0) + (v.storage.bronze_tool || 0) + (v.storage.iron_tool || 0);
-    // 치명적 도구부족(커버리지<0.7)이고 석공이 노동목표 미달이면 기근보다 먼저 석공.
-    if (_toolStock < _td * 0.7 && (counts.mason || 0) < masonTarget(v)) return 'mason';
+    const _toolCrit = _toolStock < _td * 0.7;   // 치명적 도구부족(커버리지<0.7)
+    if (N >= (TOOLBOOT_ON ? 1 : 6) && (v.storage.stone || 0) >= 0.2) {   // 석기 재료비(0.2/tool)에 맞춘 문턱
+      // 치명적 도구부족이고 석공이 노동목표 미달이면 기근보다 먼저 석공.
+      if (_toolCrit && (counts.mason || 0) < masonTarget(v)) return 'mason';
+    }
+    // ★★[2026-08-02c STONE_NET] **재료가 없으면 재료부터 — 이것도 기근보다 앞이다.**
+    //   바로 위 블록의 가정("재료 없으면 아래 식량직(forage가 돌도 가져옴)으로 자연 회복")이
+    //   **실측으로 거짓임이 드러났다.** 기근 게이트의 foodOpts 는 채집을 `forageLandMean×0.25` 로 매기는데,
+    //   돌밭 없는 마을(land.stone = FLOOR 0.25)이면 그 값이 0.14 라 농부(비옥×1.5 ≈ 1.4)에 **언제나** 진다.
+    //   즉 "자연 회복 경로"가 구조적으로 닫혀 있었다. 실측(k_stone 3시드): 살아남지 못한 마을은
+    //   **예외 없이 land.stone = 0.25** 였고(농촌12·농촌19·어촌6·농촌13·농촌16), 전부 궤적이 같다 —
+    //   석재 189 → 0 → 도구 0 → 생산 ×0.25 → 만성 기근 → 기근 게이트가 영구 점유 → 석재 영영 0.
+    //   ⇒ 도구가 치명적으로 부족한데 **재료조차 없으면** 채집꾼을 기근보다 먼저 부른다.
+    //     (도구가 멀쩡하면 발동 안 함 = 평시 노동 잠식 없음. 채집은 식량도 같이 가져오므로 기근 대응이기도 하다.)
+    if (STONE_NET_ON && _toolCrit && (v.land.stone || 0) >= 0.25 && (v.storage.stone || 0) < 0.2
+        && hasSlot(v, 'forager', cap, counts)) return 'forager';
   }
 
   // 진짜 기근 (food < N*30일치) — 식량 직업 강제. ★경제적 정당성: 자급경제는 맬서스 상한에서 돌고,
@@ -3850,6 +3958,16 @@ function pickDeficitJob_rational(v, world) {
   // ★자본재 장인 — 스톡-플로우 노동목표(정원 아님). 목표 미달이면 충원, 충족이면 건너뜀(0 수렴).
   //   재료 게이트: 대장간 돌, 무기장 돌, 갑옷장 가죽 필요. 충원 후엔 marginal 후보에서 빠져 식량·자원직과 경쟁 안 함.
   let _toolDeps = toolDepCount(v);
+  // ★★[2026-08-02c STONE_NET] **재료를 먼저 가져온다.** 실측 궤적(ts_42/tz_42)이 잡은 진짜 죽음의 고리:
+  //   석재 0 → 석공이 도구를 못 만든다(produceSpecial 게이트 `stone >= _stCost`) → 도구가 0 으로 감가 →
+  //   전 직업 생산 ×0.25(맨손) → prodK 붕괴 → K 붕괴 → 대량 아사 → 좀비.
+  //   그런데 그 상황에서 픽커가 부르는 건 **또 석공**이다 — 아래 채용줄의 `|| wood > N*0.5` 대안 때문에
+  //   돌이 0 이어도 석공이 뽑히고, 돌을 주워 올 채집꾼(아래 석재 안전망)까진 실행이 도달하지 못한다.
+  //   ⇒ 석재 결손이면 채집꾼을 **석공보다 먼저** 부른다. 경계도 `>` → `>=` 로 고친다:
+  //     livelihood.js 의 FLOOR.stone 이 정확히 0.25 라서, 바위 지형이 전혀 없는 마을(=가장 절실한 마을)이
+  //     엡실론 하나 차이로 통째로 제외돼 있었다. 그 바닥값 주석이 이미 "돌은 흔하다 — 누구나 조달"이다.
+  if (STONE_NET_ON && (v.land.stone || 0) >= 0.25 && (v.storage.stone || 0) < 0.2 * Math.max(1, masonTarget(v))
+      && hasSlot(v, 'forager', cap, counts)) return 'forager';
   // ★S2 석공(석기 도구 + 저티어 무기[마제석검·활]) — 돌 있으면 충원. masonTarget이 도구+무기 수요 통합.
   if ((counts.mason || 0) < masonTarget(v) && ((v.storage.stone || 0) >= 0.2 || (v.storage.wood || 0) > N * 0.5)) return 'mason';
   // ★★[재민 확정] 채용 조건도 이산 분기를 뺀다.
@@ -3877,7 +3995,8 @@ function pickDeficitJob_rational(v, world) {
   // ★주거 압박: 집이 거의 가득(인구 성장 막힘) + 집 지을 목재 부족 → 나무꾼. 집 지어야 인구가 늚 → 고리를 닫는 안전망.
   if (v.housing !== undefined && N >= v.housing * 0.95 && (v.storage.wood || 0) < N * 2 && hasSlot(v, 'lumberjack', cap, counts)) return 'lumberjack';
   // ★S1 석재 안전망: 돌은 채집자원 — 돌밭/강가(land.stone 충분) 마을이 석재 부족하면 채집꾼(광부 아님). 집·도구 석재 수요 → 채집. 돌 없으면(stone≤0.25) 안 함(교역 의존).
-  if ((v.land.stone || 0) > 0.25 && (v.storage.stone || 0) < N * 1.5 && hasSlot(v, 'forager', cap, counts)) return 'forager';
+  //   ★[2026-08-02c] STONE_NET 이 켜지면 경계는 위 선순위 줄에서 `>=0.25` 로 다시 잡힌다(여긴 재고 문턱 N*1.5 = 집·도구 통합 수요라 그대로 둔다).
+  if ((v.land.stone || 0) > (STONE_NET_ON ? 0.2499 : 0.25) && (v.storage.stone || 0) < N * 1.5 && hasSlot(v, 'forager', cap, counts)) return 'forager';
   // ★호위 안전망: 행상이 도적에게 죽은 적 있고(tradersKilled) 전사 부족 + 식량 여유면 전사 양성.
   //   → 전사가 무기·갑옷 수요 → 광석·석재 수요 → 채광. (도적→전사→광업 사슬을 닫음)
   if (v.tradeStats && (v.tradeStats.tradersKilled || 0) > 3 && (counts.warrior || 0) < warriorTarget(v) && foodEquiv > N * 40 && (v.storage.weapon || 0) >= (counts.warrior || 0) + 1 && hasSlot(v, 'warrior', cap, counts)) return 'warrior';   // ★무기(돌칼/철칼) 있어야 전사 + readiness 목표 이내
@@ -3955,7 +4074,11 @@ function pickDeficitJob_rational(v, world) {
 
 // 자율 직업 전환 — 매 7일 1명만
 function autoSwitchJob(v, day, world) {
-  if (v.npcs.length < 3) {
+  // ★★[2026-08-02c SWITCH2] 인구 2 마을은 **직업 전환이 통째로 꺼져 있었다.** 아래 조기반환 안의 안전망은
+  //   "식량직 0명 + 기근" 이라는 아주 좁은 조건만 본다 — 실측 좀비들(어촌9 어부2 · 광산2 농부1 어부1)은
+  //   전부 식량직이 차 있고 곳간도 넉넉해 이 안전망에 안 걸리고, 그대로 800일을 같은 직업으로 산다.
+  //   → 도구를 만들 석공으로도, 집을 지을 나무꾼으로도 못 바꾼다. 문턱을 2로 내려 정상 픽커 경로를 연다.
+  if (v.npcs.length < (SWITCH2_ON ? 2 : 3)) {
     // ★죽음의 나선 방지: 소수 인구 + 식량위기 + 식량생산자 0이면, 가장 맞는 식량직업으로 강제 전환(회복 보장).
     const c0 = jobCounts(v);
     const foodWorkers = (c0.farmer || 0) + (c0.fisher || 0) + (c0.hunter || 0) + (c0.forager || 0);
@@ -6063,6 +6186,64 @@ function printSummary(world, days) {
 }
 
 // =============================================================================
+// 6b. 순수출가 — "이 한 단위를 수출하면 손에 얼마가 남는가"
+// =============================================================================
+// ★★[2026-08-02c 배합↔교역 한 단위 통합 — 재민 "네가 이해한 게 맞아. 비교가 필요해. 단, 정확해야 해"]
+//   `설계_배합과교역_한단위_통합.md` (가)안의 `opp(r)` 우변이다. 주조 결정(_alloyMelt)과 교역 결정이
+//   **같은 단위(재화 1단위의 기대 순가치)**를 보게 만드는 접점.
+//
+//   ⚠산술은 `tickTradeV2` 발주 EV 의 **같은 항·같은 상수**여야 한다(근사 금지 — 재민 확정):
+//       발주 EV/단위 = pTo×MARGIN×(1−TAU)×(1−기대손실) − 운반비 − pFrom×(1+TAU)
+//                      └────────────── 이 부분이 순수취(netExportValue) ──────────────┘
+//     마지막 항 `−pFrom×(1+TAU)` 은 **바로 그 재화의 기회비용 자체**라 여기서 빼면 이중계상이다.
+//     (수출로 얻는 것과 국내에서 쓰는 것을 비교하는 게 목적이므로, 비교 대상은 '총수취'다.)
+//   ⚠기대손실도 발주 EV 와 동일: 경로 위험(RAID_BASE + 도적훅 + 거리) → ×0.5, 갱이 있으면 호위 충족도 재추정.
+//   ⚠후보 목적지도 동일: `_near20`(가까운 20곳) ∩ infoRange. 그래야 "실제로 팔 수 있는 곳"만 센다.
+//
+//   해상도: **하루 1회 산정 캐시**. tickTradeV2 자신이 `a.prices` 를 사이클당 1회 산정하고
+//   그 값으로 그날 모든 발주를 결정한다(line ~569 `_priceCacheDay`). 같은 해상도를 쓴다 —
+//   더 자주 재는 건 교역층보다 정밀해지는 것이라 정합이 아니라 불일치가 된다.
+const FORWARD_PRICE_MARGIN_NEV = 0.95;   // ★tickTradeV2 지역상수 FORWARD_PRICE_MARGIN 과 **같은 값**이어야 한다(test-valuechain ⑥ 이 두 리터럴의 일치를 감시)
+function netExportValue(world, from, res) {
+  if (!world || !from || !res) return 0;
+  const day = world.day || 0;
+  let C = world._nevCache;
+  if (!C || C.day !== day) C = world._nevCache = { day, px: new Map(), val: new Map() };
+  const vk = from.name + ' ' + res;
+  if (C.val.has(vk)) return C.val.get(vk);
+  const px = (b) => { let t = C.px.get(b); if (!t) { t = computeShadowPrices(b); C.px.set(b, t); } return t; };
+  const infoR = world.infoRange || 400;
+  const near = (from._near20 && from._near20.length) ? from._near20 : (world.villages || []);
+  let best = 0;
+  for (const b of near) {
+    if (!b || b === from || !b.npcs || b.npcs.length < 2) continue;   // 인구 2 미만은 교역 발주·수주 대상이 아니다(tickTradeV2 동일 게이트)
+    if (b.isolated && day < b.isolatedUntilDay) continue;
+    if (b._siegeBlock) continue;
+    if ((from._grudgeBlock && from._grudgeBlock[b.name]) || (b._grudgeBlock && b._grudgeBlock[from.name])) continue;
+    const dist = v1.villageDist(from, b);
+    if (dist > infoR) continue;
+    const pTo = (px(b)[res] || 0) * FORWARD_PRICE_MARGIN_NEV;
+    if (!(pTo > 0)) continue;
+    const banditX0 = world.banditRouteRisk ? (world.banditRouteRisk(from, b) || 0) : 0;
+    const raidProb = Math.min(RAID_MAX, RAID_BASE + banditX0 + (dist / 100) * (world.raidPer100 || RAID_PER_100));
+    let expectedLossRatio = raidProb * 0.5;
+    if (world.banditGang) {
+      const _g = world.banditGang(from, b);
+      if (_g && _g.n > 0) {
+        const _availW = (from.counts && from.counts.warrior) || 0;
+        const _escEst = Math.min(_availW, Math.ceil(_g.n * 1.5));
+        const _repelP = Math.max(0, Math.min(1, (_escEst - _g.n) / Math.max(1, _g.n * 0.5)));
+        expectedLossRatio = Math.max(expectedLossRatio, (1 - _repelP) * 0.6);
+      }
+    }
+    const net = pTo * (1 - TAU) * (1 - expectedLossRatio) - (TRANSPORT_COST_PER_1000 * dist / 1000);
+    if (net > best) best = net;
+  }
+  C.val.set(vk, best);
+  return best;
+}
+
+// =============================================================================
 // 7. main
 // =============================================================================
 function createWorldV2(opts = {}) {
@@ -6071,6 +6252,9 @@ function createWorldV2(opts = {}) {
   // v2 핵심: picker에 shadow price 주입 → 가격이 직업 선택에 진짜 영향
   world.priceFn = computeShadowPrices;
   world.priceBase = BASE_VALUE_V2;   // ★생산 포만(satiation) 판정용 — v1 tickVillage가 adj=가격/기준값으로 글럿 측정
+  // ★★[2026-08-02c 배합↔교역 한 단위 통합] 순수출가 주입 — priceFn 선례와 같은 계약(v1→v2 역참조 금지, world 로 주입).
+  //   v1 의 주조 결정(_alloyMelt)이 "이 주석을 이웃이 얼마에 사 주는가"를 볼 수 있게 한다.
+  world.netExportFn = (v, res) => netExportValue(world, v, res);
   // 직업 전환 빈도 21일 — 변동 줄여 안정성 ↑. (30일로 늘리니 반응 느려 기근↑→crisis-mode↑ 역효과 확인, 21 유지)
   world.autoSwitchInterval = 21;
   return world;
@@ -6226,6 +6410,7 @@ module.exports = {
   createWorldV2,
   tickWorldV2,
   computeShadowPrices,
+  netExportValue, FORWARD_PRICE_MARGIN_NEV,   // ★배합↔교역 통합(2026-08-02c) — 하네스가 산술을 직접 재게 노출
   computeVillageStats,
   ELASTICITY,
   TAU,

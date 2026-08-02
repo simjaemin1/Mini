@@ -151,5 +151,70 @@ console.log('\n⑤ 효용 사슬 — 제련하면 마을 stat 이 오르는가')
   ok(cuC > perMetal * oreC, '  제련하면 stat 기여가 는다 (아니면 녹일수록 마을이 가난해진다)');
 }
 
+// ── ⑥ 배합↔교역 한 단위 통합 — 순수출가 산술을 **못박는다** ───────────────
+//   ★★[2026-08-02c 재민 "비교가 필요해. 단, 정확해야 해"]
+//   `설계_배합과교역_한단위_통합.md` (가)안. 주조 결정과 교역 결정이 한 재화에 **같은 값**을 매기는지가
+//   이 통합의 전부다. 그래서 여기서 검사하는 건 결과 숫자가 아니라 **산술의 동일성**이다 —
+//   `netExportValue` 가 `tickTradeV2` 발주 EV 의 순수취 항과 한 항이라도 다르면 두 결정이 다시 갈라진다.
+console.log('\n⑥ 배합↔교역 한 단위 통합 — 순수출가 산술 고정');
+{
+  const v2 = R('sim/economy-sim-v2');
+  const src = require('fs').readFileSync(path.join(__dirname, '..', 'sim/economy-sim-v2.js'), 'utf8');
+
+  // (a) 상수 일치 — 두 곳의 forward margin 리터럴이 같은 값인가(한 곳만 고치면 두 결정이 갈라진다)
+  const mLocal = src.match(/const FORWARD_PRICE_MARGIN\s*=\s*([\d.]+)/);
+  ok(!!mLocal, '  tickTradeV2 의 FORWARD_PRICE_MARGIN 리터럴을 찾았다');
+  ok(mLocal && Number(mLocal[1]) === v2.FORWARD_PRICE_MARGIN_NEV,
+    `  forward margin 일치 (교역 ${mLocal ? mLocal[1] : '?'} = 순수출가 ${v2.FORWARD_PRICE_MARGIN_NEV})`);
+
+  // (b) 항 일치 — 순수취 = pTo×MARGIN×(1−TAU)×(1−손실) − 운반비. 각 항이 실제로 쓰이는지 소스에서 확인.
+  const nevSrc = src.slice(src.indexOf('function netExportValue'), src.indexOf('function createWorldV2'));
+  ok(/FORWARD_PRICE_MARGIN_NEV/.test(nevSrc), '  순수취에 forward margin 항이 있다');
+  ok(/\(1 - TAU\)/.test(nevSrc), '  순수취에 (1−TAU) 항이 있다');
+  ok(/\(1 - expectedLossRatio\)/.test(nevSrc), '  순수취에 (1−기대손실) 항이 있다');
+  ok(/TRANSPORT_COST_PER_1000 \* dist \/ 1000/.test(nevSrc), '  순수취에 운반비 항이 있다(교역식과 같은 식)');
+  ok(!/pFrom/.test(nevSrc), '  순수취에 −pFrom 항이 **없다**(그게 기회비용 자체라 빼면 이중계상)');
+  ok(/RAID_BASE[\s\S]{0,120}raidPer100/.test(nevSrc) && /expectedLossRatio = raidProb \* 0\.5/.test(nevSrc),
+    '  기대손실이 교역식과 같은 위험모형(RAID_BASE + 도적훅 + 거리, ×0.5)');
+  ok(/banditGang/.test(nevSrc) && /_repelP/.test(nevSrc), '  갱·호위 보정도 교역식과 동형');
+
+  // (c) 수치 재현 — 손으로 푼 값과 엔진 값이 **정확히** 같은가(2마을 인공 세계)
+  //   ⚠순수취가 **양수**인 상황을 만들어야 진짜 검사다(음수면 max(0,·) 로 뭉개져 0=0 자명 통과가 된다).
+  //     → 거리를 붙이고(운반비↓), 도착 마을은 그 재화가 **품귀**(그림자가격↑)가 되게 만든다.
+  const w = v2.createWorldV2({ villages: 2, seed: 7 });
+  const [A, B] = w.villages;
+  B.coord.x = A.coord.x + 60; B.coord.y = A.coord.y;     // 60 단위 이웃 — 운반비 0.12/단위
+  A.storage.food = 900; B.storage.food = 0.5;            // A 풍년 · B 기근 → B 의 식량 그림자가격 폭등
+  for (const v of [A, B]) { v._near20 = w.villages.filter(x => x !== v); }
+  const dist = econ.villageDist(A, B);
+  const pToB = v2.computeShadowPrices(B).food * v2.FORWARD_PRICE_MARGIN_NEV;
+  const raidProb = Math.min(0.5, 0.03 + (dist / 100) * (w.raidPer100 != null ? w.raidPer100 : 0.04));
+  const expect = pToB * (1 - v2.TAU) * (1 - raidProb * 0.5) - (2.0 * dist / 1000);
+  const got = v2.netExportValue(w, A, 'food');
+  console.log(`    거리 ${dist.toFixed(1)} · B 식량가 ${(pToB / v2.FORWARD_PRICE_MARGIN_NEV).toFixed(3)} → 순수취 손계산 ${expect.toFixed(6)} · 엔진 ${got.toFixed(6)}`);
+  ok(expect > 0.05, '  검사 상황이 유효하다(순수취가 양수 — 0=0 자명통과가 아님)');
+  ok(Math.abs(got - Math.max(0, expect)) < 1e-9, '  순수출가가 손계산과 정확히 일치(오차 < 1e-9)');
+  // (c2) 거리 의존 — 멀어지면 운반비만큼 정확히 준다(운반비 항이 진짜 살아 있는가)
+  {
+    B.coord.x = A.coord.x + 160; w._nevCache = null;
+    const d2 = econ.villageDist(A, B);
+    const r2 = Math.min(0.5, 0.03 + (d2 / 100) * (w.raidPer100 != null ? w.raidPer100 : 0.04));
+    const e2 = pToB * (1 - v2.TAU) * (1 - r2 * 0.5) - (2.0 * d2 / 1000);
+    const g2 = v2.netExportValue(w, A, 'food');
+    ok(Math.abs(g2 - Math.max(0, e2)) < 1e-9 && g2 < got, '  거리가 늘면 순수출가가 정확히 그만큼 준다(운반비·위험 항 생존)');
+    B.coord.x = A.coord.x + 60; w._nevCache = null; v2.netExportValue(w, A, 'food');   // 원상복구(아래 캐시 검사용)
+  }
+
+  // (d) 하루 1회 캐시가 **값을 바꾸지 않는가** (같은 날 두 번 불러도 같은 값)
+  ok(v2.netExportValue(w, A, 'food') === got, '  같은 날 재호출이 같은 값(캐시가 값을 바꾸지 않는다)');
+
+  // (e) opp = max(내 가격, 순수출가) — 두 결정이 같은 값을 본다. 여기서는 **수출가가 이겨야** 한다
+  //     (A 는 풍년이라 현지가가 바닥이고 이웃은 기근 — "팔면 훨씬 낫다"가 주조식에 실제로 보여야 통합이 된 것이다).
+  const pLocalA = v2.computeShadowPrices(A).food;
+  console.log(`    A 현지 식량가 ${pLocalA.toFixed(3)} vs 순수출가 ${got.toFixed(3)} → opp ${Math.max(pLocalA, got).toFixed(3)}`);
+  ok(Math.max(pLocalA, got) === got && got > pLocalA,
+    '  풍년 마을의 opp(식량) = 순수출가 (현지 헐값이 아니라 이웃이 쳐 주는 값을 본다)');
+}
+
 console.log('\n결과: ' + (fail ? 'FAIL — ' + fail + '건' : 'PASS'));
 process.exit(fail ? 1 : 0);

@@ -669,16 +669,34 @@ const BOOMGATE_ON = (typeof process !== 'undefined' && process.env && process.en
 // ★PRODK_CAP — prodK 를 **용량 기준**으로. fuelK 가 이미 이 판단을 내렸다(line ~2203 주석:
 //   "실현 흐름 기준은 벌목 인력 스냅샷에 K가 요동 → θ-로지스틱 과격 반응 → K붕괴 나선. 시드42 라 소멸로 확인, 폐기").
 //   prodK 만 마지막까지 실현흐름 기준으로 남아 리비히 min 안에서 홀로 N 을 따라다녔다. 같은 처방을 식량에도 준다.
-const PRODK_CAP_ON = (typeof process !== 'undefined' && process.env && process.env.PRODK_CAP === '1');
+//   ★★단독으로는 **해롭다**(2026-08-02c 단독 A/B): 소멸 1.33 → **3.67**(악화) · 인구 1,610 → 1,454 · 도구 −29%.
+//     이유는 명확하다 — K 를 올려 놓고 **도구·석재 공급은 그대로**라 마을이 못 먹일 인구까지 자라 굶어 죽는다
+//     (좀비 8.33 → 1.0 은 개선이 아니라 **좀비가 시체가 된 것**이다).
+//   ★★그런데 STONE_NET 과 **함께면 채택**이다(같은 3시드):
+//       STONE_NET 단독   인구 3,128 · 소멸 0 · 좀비 0.67
+//       STONE_NET+PRODK  인구 3,466 · 소멸 0 · **좀비 0**   ← 채택
+//     순서가 전부였다: 재료(석재→도구) 사슬을 먼저 고쳐야 부양력 상향이 굶주림이 아니라 성장이 된다.
+//     PRODK_CAP=0 으로 채택 이전 동작을 정확히 재현한다.
+const PRODK_CAP_ON = !(typeof process !== 'undefined' && process.env && process.env.PRODK_CAP === '0');
 // ★TOOLBOOT — 도구 자본 우선(석공) 안전망의 `N>=6` 문턱 해제. 인구 6 미만 마을은 맨손(×0.25)에서
 //   영원히 못 벗어난다 — 석공을 뽑을 자격 자체가 없다. 문턱을 1로 낮춘다(재료 게이트는 그대로).
+//   ★★기본 OFF = **실측 무효**(2026-08-02c 단독 A/B): 3시드 전부 **기준선과 비트 동일**(1868/1711/1252, 소멸 1/1/2).
+//     이유 — 이 안전망은 `재고 돌 ≥ 0.2` 를 요구하는데, N<6 으로 쪼그라든 마을은 **돌도 0** 이라 어차피 안 걸린다.
+//     문턱이 아니라 재료가 binding 이었다. 진짜 처방은 STONE_NET(재료를 가져온다) 쪽이다.
 const TOOLBOOT_ON = (typeof process !== 'undefined' && process.env && process.env.TOOLBOOT === '1');
 // ★SWITCH2 — autoSwitchJob 의 `npcs.length < 3` 조기반환 해제(2명까지 정상 픽커 경로 허용).
 //   인구 2 마을은 **직업 전환이 통째로 꺼져 있다** — 어촌9는 800일 내내 어부 2명 고정이었다.
+//   ★★기본 OFF = **실측 무효**(2026-08-02c 단독 A/B): 인구 1,610 → 1,625(잡음) · 소멸 1.33 → 1.33 · 좀비 8.33 → 8.33.
+//     STONE_NET 과 함께 켜도(c_sts2) 좀비 0.67 → 1.33 으로 **되레 약간 나빠졌다.** 2명 마을에 전환을 열어 줘도
+//     바꿀 곳(석공)에 재료가 없으면 소용없고, 식량직 한 명을 빼는 손실만 남는다.
 const SWITCH2_ON = (typeof process !== 'undefined' && process.env && process.env.SWITCH2 === '1');
-// ★STONE_NET — 석재 결손이면 채집꾼을 석공보다 **먼저** 부른다 + 경계 `>0.25` → `>=0.25`(FLOOR.stone 정확히 0.25).
+// ★STONE_NET — 석재 결손이면 채집꾼을 석공보다 **먼저**(그리고 기근보다도 먼저) 부른다
+//   + 경계 `>0.25` → `>=0.25`(livelihood.js FLOOR.stone 이 정확히 0.25).
 //   궤적 실측: 임업3(d270)·광산2(d330)·어촌9(d210) 전부 **석재 고갈 → 석공 산출 0 → 도구 0 → 붕괴** 순서였다.
-const STONE_NET_ON = (typeof process !== 'undefined' && process.env && process.env.STONE_NET === '1');
+//   ★★기본 ON = **채택**(2026-08-02c). 3시드 800일 단독 A/B:
+//     소멸 1.33 → **0.00** (3/3 시드 전부 0) · 좀비(<10명) 8.33 → **0.67** · 인구 1,610 → 3,128 · 도구 2,603 → 4,758.
+//     STONE_NET=0 으로 채택 이전 동작을 정확히 재현한다(LANDFIT 선례).
+const STONE_NET_ON = !(typeof process !== 'undefined' && process.env && process.env.STONE_NET === '0');
 // ═══ ★★부얼타운(광산촌) 판정 — **단일 정의**. 시딩(villages.js)도 이 함수를 부른다(사본 금지) ═══
 //   ⚠1차 시도의 실패에서 배운 것: "식량 부양력이 하한 미달"만으로 잡으면 **너무 많이 잡힌다.**
 //     선별된 마을 20곳 중 절반 가까이가 부양력 1.3~2.0 구간이라, 거기에 식량을 얹고 농사 탈출구를
@@ -1237,7 +1255,9 @@ function _alloyMelt(v) {
   const SP = _spec(); if (!SP) return null;
   const st = v.storage || {};
   if (!((st.copper || 0) > 0.01)) return null;            // 구리 없이는 못 만든다(기지가 없다)
-  const price = _matPrice(v);
+  // ★[2026-08-02c] 재료비·산출값 둘 다 **기회비용**으로 — "이 주석을 무기에 쓸까, 팔까"가 여기서 갈린다.
+  //   ALLOY_OPP 가 꺼져 있거나 순수출가 주입이 없으면 _matPrice 와 바이트 동일(회귀 무영향). _oppPrice 주석 참조.
+  const price = _oppPrice(v);
   const adds = _MELT_METALS.filter((m) => m !== 'copper' && (st[m] || 0) > 0.01);
 
   // ★★[재민 확정] 대장장이는 **재고 비율대로 붓지 않는다.** 그건 대장장이가 아니라 쓰레기통이다.
@@ -2582,10 +2602,32 @@ function _matPrice(v) {
     return b > 0 ? b : 1;
   };
 }
-function _masonWeaponCost(v) { const p = _matPrice(v); return (STONE_PER_WEAPON * p('stone')) / WEAP_Q_STONE; }
+// ★★[2026-08-02c 배합↔교역 한 단위 통합 — 재민 승인] `opp(r) = max(내 마을 그림자가격, 최고 순수출가)`.
+//   `설계_배합과교역_한단위_통합.md` §2 (가)안. 두 결정이 **한 재화에 같은 값**을 매기게 하는 유일한 접점이다.
+//
+//   왜 산출(무기)까지 opp 로 재는가 — (가)안은 "재료비만" 이었지만, 재료만 바꾸면 **비대칭 편향**이 생긴다:
+//   투입은 수출 기회를 보는데 산출은 안 보므로, 무기가 밖에서 비싸게 팔리는 마을에서 주조가 부당하게 저평가된다.
+//   올바른 판정식은 "산출의 최선용도 값 − 투입의 최선대안 값" 이라 **양변 모두** opp 여야 한다.
+//   (재민 "비교가 필요해" 의 뜻이 그것이다 — 한쪽만 바꾸면 비교가 아니라 새 편향이다.)
+//
+//   ⚠순수출가는 **v2 가 world 에 주입**한다(v1→v2 역참조 금지 — priceFn 선례). 미주입(v1 단독 CLI)이면
+//     `_matPrice` 와 완전히 동일하게 동작한다 = 회귀 무영향.
+//   ★★기본 OFF — 3시드 A/B 전까지는 채택 아님. ALLOY_OPP=1 로 켠다.
+const ALLOY_OPP_ON = (typeof process !== 'undefined' && process.env && process.env.ALLOY_OPP === '1');
+function _oppPrice(v) {
+  const p = _matPrice(v);
+  const nef = (ALLOY_OPP_ON && v && v._world && typeof v._world.netExportFn === 'function') ? v._world.netExportFn : null;
+  if (!nef) return p;
+  return (r) => {
+    const local = p(r);
+    const exp = nef(v, r) || 0;
+    return exp > local ? exp : local;
+  };
+}
+function _masonWeaponCost(v) { const p = _oppPrice(v); return (STONE_PER_WEAPON * p('stone')) / WEAP_Q_STONE; }
 function _smithWeaponCost(v) {
   const m = _alloyMelt(v); if (!m) return Infinity;
-  const p = _matPrice(v);
+  const p = _oppPrice(v);
   let c = 0; for (const k in m.take) c += m.take[k] * p(k);
   return c / Math.max(0.01, Math.min(1.2, m.grade) * WEAP_Q_BRONZE);
 }
@@ -2722,11 +2764,25 @@ function pickDeficitJob_rational(v, world) {
   // ★★[2026-08-02c TOOLBOOT] `N>=6` 이 소촌을 맨손에 가둔다 — 인구 5 이하는 이 안전망을 **쓸 자격이 없어서**
   //   도구 0 → 생산 ×0.25 → prodK 붕괴 → 더 못 자람 → 영원히 5 이하. 문턱을 1로 내린다(재료 게이트는 유지).
   //   원래 문턱의 취지("마을이 충분히 클 때만")는 재료 게이트(돌 0.2)와 masonTarget 이 이미 지키고 있다.
-  if (N >= (TOOLBOOT_ON ? 1 : 6) && (v.storage.stone || 0) >= 0.2) {   // 석기 재료비(0.2/tool)에 맞춘 문턱
+  {
     const _td = toolDepCount(v);
     const _toolStock = (v.storage.tool || 0) + (v.storage.bronze_tool || 0) + (v.storage.iron_tool || 0);
-    // 치명적 도구부족(커버리지<0.7)이고 석공이 노동목표 미달이면 기근보다 먼저 석공.
-    if (_toolStock < _td * 0.7 && (counts.mason || 0) < masonTarget(v)) return 'mason';
+    const _toolCrit = _toolStock < _td * 0.7;   // 치명적 도구부족(커버리지<0.7)
+    if (N >= (TOOLBOOT_ON ? 1 : 6) && (v.storage.stone || 0) >= 0.2) {   // 석기 재료비(0.2/tool)에 맞춘 문턱
+      // 치명적 도구부족이고 석공이 노동목표 미달이면 기근보다 먼저 석공.
+      if (_toolCrit && (counts.mason || 0) < masonTarget(v)) return 'mason';
+    }
+    // ★★[2026-08-02c STONE_NET] **재료가 없으면 재료부터 — 이것도 기근보다 앞이다.**
+    //   바로 위 블록의 가정("재료 없으면 아래 식량직(forage가 돌도 가져옴)으로 자연 회복")이
+    //   **실측으로 거짓임이 드러났다.** 기근 게이트의 foodOpts 는 채집을 `forageLandMean×0.25` 로 매기는데,
+    //   돌밭 없는 마을(land.stone = FLOOR 0.25)이면 그 값이 0.14 라 농부(비옥×1.5 ≈ 1.4)에 **언제나** 진다.
+    //   즉 "자연 회복 경로"가 구조적으로 닫혀 있었다. 실측(k_stone 3시드): 살아남지 못한 마을은
+    //   **예외 없이 land.stone = 0.25** 였고(농촌12·농촌19·어촌6·농촌13·농촌16), 전부 궤적이 같다 —
+    //   석재 189 → 0 → 도구 0 → 생산 ×0.25 → 만성 기근 → 기근 게이트가 영구 점유 → 석재 영영 0.
+    //   ⇒ 도구가 치명적으로 부족한데 **재료조차 없으면** 채집꾼을 기근보다 먼저 부른다.
+    //     (도구가 멀쩡하면 발동 안 함 = 평시 노동 잠식 없음. 채집은 식량도 같이 가져오므로 기근 대응이기도 하다.)
+    if (STONE_NET_ON && _toolCrit && (v.land.stone || 0) >= 0.25 && (v.storage.stone || 0) < 0.2
+        && hasSlot(v, 'forager', cap, counts)) return 'forager';
   }
 
   // 진짜 기근 (food < N*30일치) — 식량 직업 강제. ★경제적 정당성: 자급경제는 맬서스 상한에서 돌고,

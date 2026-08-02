@@ -1297,6 +1297,64 @@ function printSummary(world, days) {
 }
 
 // =============================================================================
+// 6b. 순수출가 — "이 한 단위를 수출하면 손에 얼마가 남는가"
+// =============================================================================
+// ★★[2026-08-02c 배합↔교역 한 단위 통합 — 재민 "네가 이해한 게 맞아. 비교가 필요해. 단, 정확해야 해"]
+//   `설계_배합과교역_한단위_통합.md` (가)안의 `opp(r)` 우변이다. 주조 결정(_alloyMelt)과 교역 결정이
+//   **같은 단위(재화 1단위의 기대 순가치)**를 보게 만드는 접점.
+//
+//   ⚠산술은 `tickTradeV2` 발주 EV 의 **같은 항·같은 상수**여야 한다(근사 금지 — 재민 확정):
+//       발주 EV/단위 = pTo×MARGIN×(1−TAU)×(1−기대손실) − 운반비 − pFrom×(1+TAU)
+//                      └────────────── 이 부분이 순수취(netExportValue) ──────────────┘
+//     마지막 항 `−pFrom×(1+TAU)` 은 **바로 그 재화의 기회비용 자체**라 여기서 빼면 이중계상이다.
+//     (수출로 얻는 것과 국내에서 쓰는 것을 비교하는 게 목적이므로, 비교 대상은 '총수취'다.)
+//   ⚠기대손실도 발주 EV 와 동일: 경로 위험(RAID_BASE + 도적훅 + 거리) → ×0.5, 갱이 있으면 호위 충족도 재추정.
+//   ⚠후보 목적지도 동일: `_near20`(가까운 20곳) ∩ infoRange. 그래야 "실제로 팔 수 있는 곳"만 센다.
+//
+//   해상도: **하루 1회 산정 캐시**. tickTradeV2 자신이 `a.prices` 를 사이클당 1회 산정하고
+//   그 값으로 그날 모든 발주를 결정한다(line ~569 `_priceCacheDay`). 같은 해상도를 쓴다 —
+//   더 자주 재는 건 교역층보다 정밀해지는 것이라 정합이 아니라 불일치가 된다.
+const FORWARD_PRICE_MARGIN_NEV = 0.95;   // ★tickTradeV2 지역상수 FORWARD_PRICE_MARGIN 과 **같은 값**이어야 한다(test-valuechain ⑥ 이 두 리터럴의 일치를 감시)
+function netExportValue(world, from, res) {
+  if (!world || !from || !res) return 0;
+  const day = world.day || 0;
+  let C = world._nevCache;
+  if (!C || C.day !== day) C = world._nevCache = { day, px: new Map(), val: new Map() };
+  const vk = from.name + ' ' + res;
+  if (C.val.has(vk)) return C.val.get(vk);
+  const px = (b) => { let t = C.px.get(b); if (!t) { t = computeShadowPrices(b); C.px.set(b, t); } return t; };
+  const infoR = world.infoRange || 400;
+  const near = (from._near20 && from._near20.length) ? from._near20 : (world.villages || []);
+  let best = 0;
+  for (const b of near) {
+    if (!b || b === from || !b.npcs || b.npcs.length < 2) continue;   // 인구 2 미만은 교역 발주·수주 대상이 아니다(tickTradeV2 동일 게이트)
+    if (b.isolated && day < b.isolatedUntilDay) continue;
+    if (b._siegeBlock) continue;
+    if ((from._grudgeBlock && from._grudgeBlock[b.name]) || (b._grudgeBlock && b._grudgeBlock[from.name])) continue;
+    const dist = v1.villageDist(from, b);
+    if (dist > infoR) continue;
+    const pTo = (px(b)[res] || 0) * FORWARD_PRICE_MARGIN_NEV;
+    if (!(pTo > 0)) continue;
+    const banditX0 = world.banditRouteRisk ? (world.banditRouteRisk(from, b) || 0) : 0;
+    const raidProb = Math.min(RAID_MAX, RAID_BASE + banditX0 + (dist / 100) * (world.raidPer100 || RAID_PER_100));
+    let expectedLossRatio = raidProb * 0.5;
+    if (world.banditGang) {
+      const _g = world.banditGang(from, b);
+      if (_g && _g.n > 0) {
+        const _availW = (from.counts && from.counts.warrior) || 0;
+        const _escEst = Math.min(_availW, Math.ceil(_g.n * 1.5));
+        const _repelP = Math.max(0, Math.min(1, (_escEst - _g.n) / Math.max(1, _g.n * 0.5)));
+        expectedLossRatio = Math.max(expectedLossRatio, (1 - _repelP) * 0.6);
+      }
+    }
+    const net = pTo * (1 - TAU) * (1 - expectedLossRatio) - (TRANSPORT_COST_PER_1000 * dist / 1000);
+    if (net > best) best = net;
+  }
+  C.val.set(vk, best);
+  return best;
+}
+
+// =============================================================================
 // 7. main
 // =============================================================================
 function createWorldV2(opts = {}) {
@@ -1305,6 +1363,9 @@ function createWorldV2(opts = {}) {
   // v2 핵심: picker에 shadow price 주입 → 가격이 직업 선택에 진짜 영향
   world.priceFn = computeShadowPrices;
   world.priceBase = BASE_VALUE_V2;   // ★생산 포만(satiation) 판정용 — v1 tickVillage가 adj=가격/기준값으로 글럿 측정
+  // ★★[2026-08-02c 배합↔교역 한 단위 통합] 순수출가 주입 — priceFn 선례와 같은 계약(v1→v2 역참조 금지, world 로 주입).
+  //   v1 의 주조 결정(_alloyMelt)이 "이 주석을 이웃이 얼마에 사 주는가"를 볼 수 있게 한다.
+  world.netExportFn = (v, res) => netExportValue(world, v, res);
   // 직업 전환 빈도 21일 — 변동 줄여 안정성 ↑. (30일로 늘리니 반응 느려 기근↑→crisis-mode↑ 역효과 확인, 21 유지)
   world.autoSwitchInterval = 21;
   return world;
@@ -1460,6 +1521,7 @@ module.exports = {
   createWorldV2,
   tickWorldV2,
   computeShadowPrices,
+  netExportValue, FORWARD_PRICE_MARGIN_NEV,   // ★배합↔교역 통합(2026-08-02c) — 하네스가 산술을 직접 재게 노출
   computeVillageStats,
   ELASTICITY,
   TAU,
