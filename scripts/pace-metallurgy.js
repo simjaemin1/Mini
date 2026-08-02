@@ -86,7 +86,8 @@ function layClaims(cx, cy, p) {
 }
 const raw = require(path.join(__dirname, '..', 'server', 'hanbando-terrain.json')).hanbando;
 function pickVein(want) {
-  for (const o of (raw.ores || []).filter((o) => o.minerals && (o.minerals[want] || 0) >= 0.5).sort((a, b) => (b.pk || 0) - (a.pk || 0))) {
+  // ★단일광종 광맥은 dict 가 없다 — `o.mineral === want` 가 조성 100% 와 같다(위 ⓪ 정정과 같은 fallback).
+  for (const o of (raw.ores || []).filter((o) => (o.minerals ? (o.minerals[want] || 0) >= 0.5 : o.mineral === want)).sort((a, b) => (b.pk || 0) - (a.pk || 0))) {
     const R = Math.max(4, Math.ceil(o.radius / 32));
     for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) {
       const x = Math.floor(o.center[0] / 32) + dx, y = Math.floor(o.center[1] / 32) + dy;
@@ -112,9 +113,13 @@ const row = (chain, step, sec, note) => { ROWS.push({ chain, step, sec, note });
   // ══ ⓪ 지도 전수 — 노에 넣을 것이 이 세계에 있는가 ═════════════════════════
   say('\n[⓪ 지도 전수 — 노의 입력이 실제로 존재하는가]');
   const ores = raw.ores || [];
-  const kinds = new Set(); for (const o of ores) for (const k in (o.minerals || {})) kinds.add(k);
+  // ★★[2026-08-02f 정정 — 재민 검증] 다광종 dict(`o.minerals`)만 훑으면 **단일광종 광맥 362개가
+  //   통째로 빠진다**(그중 철 자잘 184개 전부). 정본 판독(terrain.js oreMineralAt)은 dict 가 없으면
+  //   `o.mineral` 문자열로 떨어진다 — 전수 조사도 같은 fallback 을 밟아야 한다. 첫 판이 이걸 빠뜨려
+  //   "철이 든 광맥 = 0개"라는 거짓 회부(회부_노의_입력이_지도에_없다.md)를 낳았다.
+  const kinds = new Set(); for (const o of ores) { if (o.mineral) kinds.add(o.mineral); for (const k in (o.minerals || {})) kinds.add(k); }
   say(`    광맥 ${ores.length}개(주요 ${ores.filter(o => !o.minor).length} · 자잘 ${ores.filter(o => o.minor).length}) · 광종 {${[...kinds].join(', ')}}`);
-  const ironVeins = ores.filter(o => (o.minerals || {}).iron > 0).length;
+  const ironVeins = ores.filter(o => (o.minerals ? o.minerals.iron > 0 : o.mineral === 'iron')).length;
   const IRON_REACHABLE = ironVeins > 0;
   if (!IRON_REACHABLE) say(`    ⚠ 철이 든 광맥 = **0개**. 노의 유일한 입력(철 정광)을 채광으로 얻을 수 없다 — 아래 철 사슬은 정광을 주입해 **계약 시간만** 잰다`);
 
@@ -186,8 +191,27 @@ const row = (chain, step, sec, note) => { ROWS.push({ chain, step, sec, note });
   row('철', '숯가마(1회분 장입→수거)', kSec, `계약 ${(kSpan / 1000).toFixed(0)}초 · 숯 ${P.inventory.charcoal || 0}개 · "${lastNotice(P)}"`);
   ok((P.inventory.charcoal || 0) > 0, '★대기 후 클릭 한 번으로 숯을 거뒀다');
 
+  // ★★[2026-08-02f 정정] 주입이 아니라 **실채광**으로 정광을 얻는다 — 철 자잘 광맥이 실재한다(⓪ 정정).
+  //   자잘은 NPC 영구 비공개 캐논이지만 **플레이어 채광은 바로 그 발견 요소**다. 여기서 막히면
+  //   그때가 진짜 회부다 — 첫 판은 여길 재 보지도 않고 주입으로 건너뛰며 "입력이 없다"고 적었다.
+  const fe = pickVein('iron');
+  ok(!!fe, `철 광맥 확보${fe ? ` — "${fe.o.name}"(minor=${fe.o.minor ? 1 : 0}) p=${T.oreProbAt('hanbando', fe.cx * 32 + 16, fe.cy * 32 + 16).toFixed(2)}` : ''}`);
+  if (fe) {
+    P.x = fe.cx * 32 + 16; P.y = fe.cy * 32 + 16;
+    P.oreLedger = {}; P.oreCarry = {}; delete P.inventory.ore_chunk;
+    let feG = 0, feSw = 0;
+    while ((P.inventory.iron_ore || 0) < 1 && feG++ < 8000) {
+      P._mineT = 0;
+      if (!H.mineOreCell(P)) break;
+      feSw++;
+      if (Specialty.inventoryWeight(P.inventory || {}) > 20) H.trySortOre(P);
+    }
+    H.trySortOre(P);
+    row('철', '채광(정광 1개분)', feSw * SWING / 1000, `${feSw}타 · 정광 ${P.inventory.iron_ore || 0} · 장부 ${JSON.stringify(P.oreLedger || {})}`);
+  }
+  ok((P.inventory.iron_ore || 0) >= 1, '★채광→선광만으로 철 정광을 얻었다 — 주입 0 (노의 입력은 세계에 있다)');
+  if ((P.inventory.iron_ore || 0) < 1) P.inventory.iron_ore = 1;   // 실패 시에만 주입(계약 계측은 계속 — 위 ✗ 가 회부 사유가 된다)
   at(P, spot.cx, spot.cy);
-  P.inventory.iron_ore = 1;   // ⓪대로 채광으론 못 얻는다 — 계약 시간을 재기 위한 주입
   const fStart = Date.now();
   H.tryFurnaceSmelt(P, furn.id);
   ok(!!(furn.data && furn.data.job), `노 장입 — "${lastNotice(P)}"`);
