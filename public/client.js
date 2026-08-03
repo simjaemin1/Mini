@@ -75,6 +75,14 @@ const SIM_JOB_EMOJI = {
   let marketplaceUrl = '';
   let myName = '여행자';
   let myUsername = '';
+  // ★★[2026-08-03f 배치 13] **내 영속 신원.** 서버가 welcome 으로 알려 준다(등록 계정이면 username,
+  //   게스트면 `anon_<고정 접미사>`). 종전엔 클라가 제 playerId 를 몰라서 소유 표시를 `myUsername`
+  //   과 대조했고, 게스트는 그게 빈 문자열이라 **제 사유지도 남의 것으로 보였다.**
+  let myPlayerId = '';
+  // ★게스트 영속 신원 토큰 — localStorage 에만 산다. **화면·알림·로그 어디에도 그리지 않는다**
+  //   (토큰 유출 = 계정 탈취). 값 자체를 UI 로 흘리는 코드가 생기면 그게 곧 결함이다.
+  const GUEST_TOKEN_KEY = 'durango_guest_token';
+  let myGuestToken = '';
   let myHp = 100, myMaxHp = 100; // 로그인 시 username (= server의 player_id). 게스트면 ''
   let myPassword = ''; // 로그인 시 password
   let myColor = '#f0c674';
@@ -1366,6 +1374,9 @@ const SIM_JOB_EMOJI = {
   window.__sendPrimaryAt = sendPrimaryAt;
   window.__getInv = () => ({ ...inventory });   // ★진단 훅(읽기 전용) — 재료 선납 차감 실측용
   window.__getPrimaryZoneId = () => primaryZoneId;
+  // ★[2026-08-03f 배치 13] 진단 훅 — **내 영속 신원**(등록 계정이면 username, 게스트면 anon_<고정>).
+  //   토큰은 **노출하지 않는다** — 하네스도 localStorage 에서 직접 읽는다(코드가 값을 흘리지 않게).
+  window.__getPlayerId = () => myPlayerId;
 
   // === 부트 ===
   async function boot() {
@@ -1389,6 +1400,9 @@ const SIM_JOB_EMOJI = {
     if (savedName) document.getElementById('name').value = savedName;
     const savedColor = localStorage.getItem('durango_color');
     myColor = savedColor && COLORS.includes(savedColor) ? savedColor : COLORS[0];
+    // ★[배치 13] 게스트 영속 신원 토큰 복원 — 이게 있으면 서버가 **같은 사람**으로 맞아 준다.
+    //   화면에 표시하지 않는다(입력칸도 없다). 브라우저를 청소하면 새 사람이 되는 것이 정상이다.
+    try { myGuestToken = localStorage.getItem(GUEST_TOKEN_KEY) || ''; } catch (e) { myGuestToken = ''; }
 
     // 색상 팔레트 UI
     const picker = document.getElementById('colorPicker');
@@ -1954,6 +1968,9 @@ const SIM_JOB_EMOJI = {
       // 신규 접속 — 인증 정보 전송
       if (myUsername) params.set('username', myUsername);
       if (myPassword) params.set('password', myPassword);
+      // ★[배치 13] 게스트 영속 신원 — **등록 로그인이 아닐 때만** 토큰을 낸다.
+      //   (등록 계정은 username+password 가 신원이다. 둘을 섞으면 토큰이 계정 열쇠가 될 수 있다.)
+      if (!(myUsername && myPassword) && myGuestToken) params.set('guest_token', myGuestToken);
       params.set('name', myName);
       params.set('color', myColor);
     }
@@ -2014,6 +2031,17 @@ const SIM_JOB_EMOJI = {
         c._promoteSentAt = 0;
       }
       c.meta = msg.zone;
+      // ★★[2026-08-03f 배치 13] 영속 신원 수신.
+      //   `playerId` — 소유 표시(사유지 목록 등)가 대조할 **정본**이다. 등록 계정이면 username 과
+      //   같고, 게스트면 `anon_<고정 접미사>` 다. 종전엔 이 값이 없어서 게스트의 제 사유지가
+      //   화면에서 남의 것으로 보였다.
+      if (typeof msg.playerId === 'string' && msg.playerId) myPlayerId = msg.playerId;
+      //   `guestToken` — 다음 접속에 제시할 열쇠. **저장만 하고 절대 표시하지 않는다.**
+      //   (알림·채팅·콘솔 어디에도 찍지 않는다 — 토큰 유출 = 계정 탈취)
+      if (typeof msg.guestToken === 'string' && msg.guestToken && msg.guestToken !== myGuestToken) {
+        myGuestToken = msg.guestToken;
+        try { localStorage.setItem(GUEST_TOKEN_KEY, myGuestToken); } catch (e) {}
+      }
       // ★시대 게이트 — 건축 메뉴는 **이 세상에 알려진 노**만 보여준다(era.js 가 유일한 진실, 클라 표 없음).
       //   청동기엔 괴련로 버튼이 아예 없다: era.js 의 "지식 축은 순수 플레이어 지식" 원칙 — 있다는 것조차
       //   알려주지 않는다. 시대가 열리면 다음 접속 때 버튼이 생긴다.
@@ -7579,7 +7607,7 @@ const SIM_JOB_EMOJI = {
     const my = [];
     for (const c of conns.values()) {
       for (const cl of c.claims.values()) {
-        if (cl.ownerPid !== myUsername) continue;
+        if (cl.ownerPid !== (myPlayerId || myUsername)) continue;   // ★[배치 13] 영속 신원으로 대조 — 게스트도 제 사유지를 제 것으로 본다
         my.push(cl);
       }
     }
@@ -7668,7 +7696,7 @@ const SIM_JOB_EMOJI = {
     let p = 0, t = 0, g = 0;
     for (const c of conns.values()) {
       for (const cl of c.claims.values()) {
-        if (cl.ownerPid !== myUsername) continue;
+        if (cl.ownerPid !== (myPlayerId || myUsername)) continue;   // ★[배치 13] 영속 신원으로 대조 — 게스트도 제 사유지를 제 것으로 본다
         if (cl.kind === 'temporary') t++;
         else if (cl.kind === 'guild') g++;
         else p++;

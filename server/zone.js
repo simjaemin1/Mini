@@ -2349,6 +2349,10 @@ wss.on('connection', async (ws, req) => {
   let initFloor = 0;
   // 14.42-a: home (영구 부활 fallback). 게스트면 null로 유지.
   let initHomeZone = null, initHomeX = null, initHomeY = null;
+  // ★★[2026-08-03f 배치 13] 게스트 영속 신원 — 클라가 보관하던 토큰(있으면)과, 이번에 발급해
+  //   welcome 으로 **한 번만** 돌려줄 토큰. 그 외 어디에도 쓰지 않는다(로그·알림·채팅 금지).
+  const inGuestToken = url.searchParams.get('guest_token') || null;
+  let _guestTokenForWelcome = null;
 
   if (handoffToken && pendingHandoffs.has(handoffToken)) {
     const pending = pendingHandoffs.get(handoffToken);
@@ -2510,9 +2514,29 @@ wss.on('connection', async (ws, req) => {
           }
         } catch (e) { /* central 죽었으면 그냥 통과 — 게스트는 영속화 안 되니까 큰 문제 안 됨 */ }
       }
-      playerId = `anon_${Math.random().toString(36).slice(2,10)}`;
+      // ★★[2026-08-03f 배치 13] **게스트 영속 신원** — 소유가 접속을 넘어 살아남는다.
+      //   종전 한 줄: `playerId = \`anon_${Math.random()...}\`` — 접속마다 **다른 사람**이 됐다.
+      //   그런데 이 세계의 소유 판정은 전부 playerId 대조다(사유지 `ownerPid` · 건물 `ownerId` ·
+      //   노·숯가마·회관 `data.owner` · 마을 `founder`). 그래서 게스트는 끊겼다 붙는 순간
+      //   **제가 지은 것의 주인이 아니게 됐다** — 마을 건립이 들어온 지금은 마을을 통째로 잃는 구멍이다.
+      //   ⇒ central 이 불투명 토큰을 발급하고 클라가 localStorage 에 둔다. 다시 제시하면 같은 playerId.
+      //   ★계정 체계가 아니다 — 비밀번호도 이메일도 없다. `anon_` 접두사도 그대로 유지한다
+      //     (코드 전역이 그 접두사로 "등록 계정 아님"을 판정한다 — 그 정책은 안 건드린다).
+      //   ⚠발급된 토큰은 **welcome 으로 클라에 한 번 보내는 것 말고 어디에도 쓰지 않는다.**
+      //     로그·알림·채팅에 절대 찍지 않는다(토큰 유출 = 계정 탈취).
+      let guestTokenOut = null;
+      try {
+        const g = await central.guestIdentity(inGuestToken);
+        if (g && g.ok && g.player_id) { playerId = g.player_id; guestTokenOut = g.token || null; }
+      } catch (e) { /* central 불가 — 아래 폴백(1회용 신원)으로 떨어진다. 기존 동작과 동일 */ }
+      if (!playerId) {
+        // ★폴백: central 이 죽어 있으면 종전 그대로 1회용 신원. 접속 자체를 막지 않는다
+        //   (게스트에게 central 장애가 곧 '입장 불가'가 되면 그게 더 큰 퇴보다).
+        playerId = `anon_${Math.random().toString(36).slice(2, 10)}`;
+      }
+      _guestTokenForWelcome = guestTokenOut;
       name = inUsername || `여행자${nextPid}`;
-      console.log(`[${ZONE_ID}] 게스트 접속: ${name} (${playerId})`);
+      console.log(`[${ZONE_ID}] 게스트 접속: ${name} (${playerId})${guestTokenOut ? ' [영속 신원]' : ' [1회용 — central 불가]'}`);
       // 14.42-a: 게스트도 마을광장에서 시작
       const myMain = ZONE.mainSquare || { x: ZONE.zoneWidth/2, y: ZONE.zoneHeight/2 };
       sx = myMain.x; sy = myMain.y;
@@ -2597,6 +2621,16 @@ wss.on('connection', async (ws, req) => {
   send(ws, {
     type: 'welcome',
     pid,
+    // ★★[2026-08-03f 배치 13] **내가 누구인지 클라가 알아야 한다.**
+    //   종전 welcome 은 세션 손잡이(`pid` = p1·p2…)만 줬고 영속 신원(`playerId`)은 안 줬다.
+    //   그래서 클라의 소유 표시(사유지 목록 등)는 `myUsername`(로그인 입력값)과 대조하고 있었고,
+    //   게스트는 그게 빈 문자열이라 **제 사유지도 남의 것으로 보였다.**
+    //   등록 계정은 `player_id === username` 이라 우연히 맞았을 뿐이다.
+    playerId: player.playerId,
+    // ★게스트 영속 신원 토큰 — 게스트 접속에만 실린다(등록 계정·핸드오프는 null).
+    //   클라는 이걸 localStorage 에 넣고 다음 접속에 제시한다. **화면에 절대 그리지 않는다.**
+    //   매 접속 같은 값을 돌려준다(자가 치유 — 클라 저장이 어긋나도 다음 접속에 맞춰진다).
+    guestToken: _guestTokenForWelcome || null,
     zone: zonePublicMeta(),
     hardcodedTerrain: getHardcodedTerrainForZone(),
     resources: Array.from(resources.values()),

@@ -43,6 +43,14 @@ async function authenticate(username, password, color, homeZone = null, homeX = 
   return r.data;
 }
 
+// ★★[2026-08-03f 배치 13] 게스트 영속 신원 — 토큰을 주면 같은 playerId, 없으면 새로 발급.
+//   ⚠반환값의 `token` 은 **클라에게 한 번 보내는 것 말고는 어디에도 쓰지 않는다.**
+//     로그·알림·채팅에 절대 찍지 마라(토큰 유출 = 계정 탈취).
+async function guestIdentity(token) {
+  const r = await request('POST', '/guest', { token: token || null });
+  return r.data;
+}
+
 async function checkUsernameTaken(username) {
   const r = await request('POST', '/check_username', { username });
   return r.data?.taken;
@@ -77,4 +85,5 @@ async function getTribe(id) {
 }
 
 module.exports = { authenticate, checkUsernameTaken, getPlayer, updatePlayer, request,
+  guestIdentity,   // ★[2026-08-03f 배치 13] 게스트 영속 신원
   tribeAddVp, tribeTreasury, tribeNpcUpsert, getTribe };

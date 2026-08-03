@@ -270,6 +270,9 @@ async function waitHttp(url, tries = 240) {
       return null;
     });
     if (hall2) hall.id = hall2.id;
+    // ★재접속은 마을광장에서 시작할 수 있다 — 회관 열람은 **거리 제한 200px** 이 걸린다.
+    //   안 걸어가면 "너무 멀리"가 나고, 그걸 '소유 상실'로 오독하게 된다(사유를 갈라야 검사가 참이다).
+    if (originCell) await gotoCenter(originCell[0], originCell[1]);
   }
 
   // ── 재고 열람 — 인구 0 인 빈 터 ─────────────────────────────────────────────

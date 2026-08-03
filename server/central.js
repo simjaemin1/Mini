@@ -200,6 +200,20 @@ try {
     db.exec('ALTER TABLE players ADD COLUMN home_y REAL');
     console.log('[central/db] home_y 컬럼 추가됨');
   }
+  // ★★[2026-08-03f 배치 13] 게스트 영속 신원 — 소유가 접속을 넘어 살아남는다.
+  //   종전: 게스트는 접속마다 `anon_<난수>` 를 새로 받았다. 그런데 이 세계의 소유 판정은
+  //   **전부 playerId 대조**다(사유지 `ownerPid` · 건물 `ownerId` · 노/숯가마/회관 `data.owner` ·
+  //   마을 `founder`). 그래서 게스트가 한 번 끊겼다 붙으면 **제가 지은 것의 주인이 아니게 됐다.**
+  //   마을 건립이 들어온 지금 그건 불편이 아니라 **마을을 통째로 잃는 구멍**이다.
+  //   ⇒ 불투명 토큰을 발급해 브라우저(localStorage)에 두고, 재접속 때 제시하면 **같은 playerId** 를 준다.
+  //   ★계정 체계를 새로 만들지 않는다 — 비밀번호도 이메일도 없다. 토큰 하나가 곧 그 게스트다.
+  //   ⚠그래서 **토큰 유출 = 계정 탈취**다. 로그·알림·채팅·화면 어디에도 찍지 않는다(코드 전역 규약).
+  if (!cols.includes('guest_token')) {
+    db.exec('ALTER TABLE players ADD COLUMN guest_token TEXT');
+    console.log('[central/db] guest_token 컬럼 추가됨');
+  }
+  //   유니크 인덱스 = 토큰 대조가 O(log n) 이고, 같은 토큰이 두 사람이 되는 일이 구조적으로 없다.
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_players_guest_token ON players(guest_token) WHERE guest_token IS NOT NULL');
   // Phase 14.2 — tribes 테이블에 vp + treasury + is_npc + behavior_tier 컬럼
   const tribeCols = db.prepare("PRAGMA table_info(tribes)").all().map(c => c.name);
   if (!tribeCols.includes('vp')) {
@@ -257,6 +271,21 @@ const stmtUpdateProfile = db.prepare(`
   WHERE player_id = ?
 `);
 const stmtCountPlayers = db.prepare('SELECT COUNT(*) as cnt FROM players');
+// ★★[2026-08-03f 배치 13] 게스트 영속 신원 — 토큰 ↔ playerId
+//   ⚠아래 두 문장은 **토큰 값을 절대 로그로 내보내지 않는다.** 호출부도 마찬가지다(전역 규약).
+const stmtGetByGuestToken = db.prepare('SELECT * FROM players WHERE guest_token = ?');
+const stmtInsertGuest = db.prepare(`
+  INSERT INTO players (player_id, name, color, guest_token, created_at, last_seen)
+  VALUES (?, ?, ?, ?, ?, ?)
+`);
+const stmtTouchGuest = db.prepare('UPDATE players SET last_seen = ? WHERE player_id = ?');
+// 토큰은 **추측 불가**해야 한다 — 게임 로직의 `Math.random` 과 달리 암호학적 난수를 쓴다
+// (핸드오프 토큰 `generateToken()` 은 5초짜리 일회용이라 Math.random 로 충분했지만, 이건 영구 신원이다).
+function newGuestToken() { return crypto.randomBytes(32).toString('hex'); }
+// playerId 는 **`anon_` 접두사를 유지한다.** 코드 전역 28곳이 그 접두사로 "등록 계정이 아니다"를
+// 판정하고 있고(길드 생성·거래소 등), 이 배치는 그 정책을 바꾸지 않는다. 바뀌는 건 **접미사가
+// 접속을 넘어 같아진다**는 것 하나뿐이다.
+function newGuestPlayerId() { return 'anon_' + crypto.randomBytes(9).toString('base64url'); }
 
 // === HTTP 유틸 ===
 function jsonResp(res, status, obj) {
@@ -538,6 +567,36 @@ const server = http.createServer(async (req, res) => {
       const created = stmtGetPlayer.get(username);
       console.log(`[central] 신규 가입: ${username}  home=${homeZone} (${Math.round(homeX)},${Math.round(homeY)})`);
       return jsonResp(res, 200, { ok: true, player: created, isNew: true });
+    }
+    // ★★[2026-08-03f 배치 13] === 게스트 영속 신원 ===
+    // POST /guest { token? } → { ok, player_id, token, isNew }
+    //   · 토큰을 주면 그 게스트의 **같은 playerId** 를 돌려준다(재접속 = 같은 사람).
+    //   · 없거나 못 찾으면 새로 발급한다(첫 접속 · 브라우저 청소 · 토큰 위조).
+    //   ⚠응답의 `token` 은 **zone → 클라로만** 흐른다. 로그에 절대 찍지 않는다.
+    //   ⚠이 경로는 비밀번호를 만들지 않는다 — 계정 체계가 아니라 **신원의 영속화**다.
+    if (req.url === '/guest' && req.method === 'POST') {
+      const data = await readBody(req);
+      const tok = (typeof data.token === 'string' && /^[0-9a-f]{64}$/.test(data.token)) ? data.token : null;
+      const now = Date.now();
+      if (tok) {
+        const row = stmtGetByGuestToken.get(tok);
+        //   ★등록 계정으로 승격된 행(비밀번호가 생긴 행)은 이 경로로 되돌려주지 않는다 —
+        //     게스트 토큰이 등록 계정의 열쇠가 되면 그게 곧 계정 탈취다.
+        if (row && !row.password_hash) {
+          try { stmtTouchGuest.run(now, row.player_id); } catch (e) {}
+          return jsonResp(res, 200, { ok: true, player_id: row.player_id, token: tok, isNew: false });
+        }
+      }
+      // 새 게스트 — playerId 와 토큰을 함께 만든다. 충돌은 사실상 없지만 유니크 제약이 있으니 재시도한다.
+      for (let i = 0; i < 4; i++) {
+        const pid = newGuestPlayerId(), t = newGuestToken();
+        try {
+          stmtInsertGuest.run(pid, `여행자`, '#5a9ae0', t, now, now);
+          console.log(`[central] 게스트 신원 발급: ${pid}`);   // ★playerId 만 — 토큰은 절대 안 찍는다
+          return jsonResp(res, 200, { ok: true, player_id: pid, token: t, isNew: true });
+        } catch (e) { /* 충돌 — 다시 뽑는다 */ }
+      }
+      return jsonResp(res, 200, { ok: false, reason: 'guest_mint_failed' });
     }
     // === 게스트 username 검증 ===
     // POST /check_username { username } → { taken: bool }
