@@ -153,6 +153,45 @@ say('\n[②-d 아무도 안 사는 터에는 캐러밴이 안 간다 — 없는 
     ok(moved.length === 0, `빈 터의 곳간이 교역으로 전혀 안 건드려졌다 — 변동 ${moved.length ? moved.join(' · ') : '없음'}`); }
 }
 
+// ── ②-e 부패는 있는 것보다 많이 못 썩는다 — 곳간 음수의 진범 회귀 가드 ──────
+//   [2026-08-03e 재민 검증 세션] E2E 의 "곳간 음수 −45~−69"의 원인은 tickDecay 의 무클램프
+//   과잉재고 가속(rate>1 → s×(1−rate)<0)이었다. ②-d 가 이걸 못 잡은 이유는 빈 터에 **재고를
+//   안 넣어서**다(s≤0 은 부패 루프를 건너뛴다 — "자명한 상황을 골라 조용히 통과"의 재발).
+//   여기서는 인구 0 마을에 큰 재고를 실제로 넣어 그 갈래를 밟는다.
+say('\n[②-e 창설 대기 곳간은 가속 부패 면제 · 부패는 어떤 경우에도 음수를 못 만든다]');
+{
+  // (1) 창설 대기(founder && 인구 0): excess 면제 — 기본 부패만. 문턱 15 가 회복 창까지 산다.
+  const w = mkWorld();
+  const pv = mkPlayerV(w, '과잉곳간', 0);
+  pv.coord = { x: 300, y: 300 };
+  pv.storage.fruit = 202.43;                      // ★probe 실측 재현값 — 종전엔 다음 부패에서 −103.68
+  const s0 = pv.storage.fruit;
+  let negDays = 0;
+  for (let d = 1; d <= 60; d++) {
+    w.day = d; v2.tickWorldV2(w);
+    if ((pv.storage.fruit || 0) < -0.001) negDays++;
+  }
+  ok(negDays === 0, `창설 대기 곳간에 음수 없음 — 음수였던 날 ${negDays}일 (종전 202.43→−103.68)`);
+  ok((pv.storage.fruit || 0) > s0 * 0.8, `★창설 대기 비축은 가속 없이 천천히 썩는다 — 60일 뒤 ${(pv.storage.fruit || 0).toFixed(1)} > 투입의 80% (면제 전엔 하루 95%씩 사라져 회복 창을 못 버텼다)`);
+  // (2) 사람이 서면(인구 1) 가속이 **복귀**한다 — 그리고 rate 클램프 덕에 그래도 음수는 없다.
+  const w2 = mkWorld();
+  const pv2 = mkPlayerV(w2, '과잉곳간2', 0);
+  pv2.coord = { x: 320, y: 300 };
+  pv2.storage.food = 15;                          // 정본 경로로 첫 주민을 세운다(회복 창)
+  w2.day = 100; v2.tickRecovery(w2, 100);
+  ok(pv2.npcs.length >= 1, `검사 준비 — 첫 주민이 섰다(${pv2.npcs.length}명). 창설 대기 종료`);
+  pv2.storage.fruit = 202.43;
+  let neg2 = 0, min2 = pv2.storage.fruit;
+  for (let d = 1; d <= 30; d++) {
+    w2.day = d; v2.tickWorldV2(w2);
+    const s = pv2.storage.fruit || 0;
+    if (s < -0.001) neg2++;
+    if (s < min2) min2 = s;
+  }
+  ok(neg2 === 0, `인구 1 마을 과잉재고도 음수 없음 — rate 클램프(0.95) (종전 무클램프면 첫 부패에서 −103.68)`);
+  ok(min2 < s0 * 0.5, `★검사 전제 — 인구가 서면 가속 부패가 실제로 복귀한다(30일 내 최저 ${min2.toFixed(1)} < 투입 절반). 아니면 클램프 검사가 자명하다`);
+}
+
 // ── ③ NPC 경로 비트 동일 ─────────────────────────────────────────────────────
 say('\n[③ NPC 경로(founder == null) 는 한 비트도 안 바뀐다]');
 {

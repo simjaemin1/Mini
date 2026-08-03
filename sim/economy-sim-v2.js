@@ -1183,6 +1183,13 @@ function tickDecay(v) {
   if (_cTake > 0) { v.storage.clay -= _cTake; v1._cons(v, 'clay', _cTake); }   // ★flow-EMA(옹기 진흙)
   v._potteryR = v._potteryR === undefined ? (_cNeed > 0 ? _cTake / _cNeed : 0) : 0.98 * v._potteryR + 0.02 * (_cNeed > 0 ? _cTake / _cNeed : 0);
   const _potMul = 1 - POTTERY_DECAY_SAVE * Math.min(1, v._potteryR);
+  // ★[2026-08-03e 재민 확정 (마) 성립 조건] 창설 대기 마을(founder && 인구 0)은 **과잉재고
+  //   가속(excess 항)을 면제**한다 — 그 가속은 살아 있는 경제의 글럿(쓰지도 않으면서 쌓인 것)을
+  //   깎는 장치인데, 첫 주민을 기다리는 곳간은 글럿이 아니라 **바로 그 용도**다. 기본 부패율은
+  //   그대로 적용된다(식량은 여전히 천천히 썩는다). 인구 1 이 서는 순간 일반 규칙으로 복귀.
+  //   면제가 없으면 목표재고 ~1 인 빈 마을에서 rate 가 클램프(0.95)에 붙어 하루 95%씩 썩고,
+  //   회복 창(day%50)까지 문턱 15 를 못 버틴다 — E2E 실측: 82.4 → 4.1(하루 만에).
+  const _founding = !!(v.founder && v.npcs.length === 0);
   for (const [r, baseRate] of Object.entries(DECAY_V2)) {
     const s = v.storage[r] || 0;
     if (s <= 0) continue;
@@ -1194,8 +1201,16 @@ function tickDecay(v) {
     const target = Math.max(subs * 30, buffer, flowT, derivT);
     // excess: target × mult 초과분은 비례 가속(쥐·곰팡이·도둑). 부패성 식량은 mult 낮아 ~60일에서 cap.
     const xm = DECAY_EXCESS_MULT[r] || 10;
-    const excess = Math.max(0, s / Math.max(1, target * xm) - 1);
-    const rate = baseRate * (1 + excess * 5) * (POTTERY_FOODS[r] ? _potMul : 1);   // ★옹기 절감은 식량군만(장독=곡식·장 저장)
+    const excess = _founding ? 0 : Math.max(0, s / Math.max(1, target * xm) - 1);
+    // ★★[2026-08-03e 곳간 음수 수리 — 재민 검증 세션 실측] rate 는 **1을 못 넘는다.**
+    //   부패는 있는 것보다 많이 못 썩는다 — 그런데 이 줄이 무클램프라, 목표재고가 ~1인
+    //   마을(인구 0 플레이어 마을)에 큰 재고를 넣으면 excess≈s−1 → rate>1 → s×(1−rate)<0.
+    //   실측(probe): fruit 202.43 → −103.68 (rate 1.512 — E2E 의 "곳간 음수 −45~−69"의 원인).
+    //   회부_인구0마을_곳간음수.md 의 "econ 결백" 판정은 면죄 하네스가 빈 마을에 **재고를 안
+    //   넣어서** 생긴 오판이었다(s≤0 이면 이 루프를 건너뛴다). NPC 마을은 목표재고(subs×30 등)가
+    //   커서 rate 가 1 근처에 못 간다 — 클램프는 그 세계에서 no-op 이고(회귀 비트 동일로 검증),
+    //   과잉재고의 "최대 속도"는 하루 95% 손실로 남는다(쥐·곰팡이도 하루아침에 전부는 못 먹는다).
+    const rate = Math.min(0.95, baseRate * (1 + excess * 5) * (POTTERY_FOODS[r] ? _potMul : 1));
     v.storage[r] = s * (1 - rate);
   }
 }
