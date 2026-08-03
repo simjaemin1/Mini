@@ -214,6 +214,13 @@ try {
   }
   //   유니크 인덱스 = 토큰 대조가 O(log n) 이고, 같은 토큰이 두 사람이 되는 일이 구조적으로 없다.
   db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_players_guest_token ON players(guest_token) WHERE guest_token IS NOT NULL');
+  // ★★[2026-08-03g 배치 14 ①] 게스트 승계가 열리면서 **player_id ≠ name 인 계정**이 처음 생긴다
+  //   (승계는 `anon_…` 행에 이름·비밀번호만 얹는다 — playerId 가 바뀌면 소유를 통째로 잃으므로).
+  //   그래서 "이름이 이미 쓰였나"를 PK 로만 볼 수 없게 됐다. **계정 행의 이름에 유니크 제약**을 건다.
+  //   ⚠기존 등록 계정은 `player_id === name` 이라 이미 유일하므로 이 인덱스가 막을 것이 없다.
+  //     혹시 과거 데이터에 중복이 있으면 인덱스 생성만 실패하고(로그) 부팅은 계속된다.
+  try { db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_players_account_name ON players(name) WHERE password_hash IS NOT NULL'); }
+  catch (e) { console.warn('[central/db] 계정 이름 유니크 인덱스 생성 실패(중복 이름 존재?) — 승계 중복 검사는 조회로만 동작:', e.message); }
   // Phase 14.2 — tribes 테이블에 vp + treasury + is_npc + behavior_tier 컬럼
   const tribeCols = db.prepare("PRAGMA table_info(tribes)").all().map(c => c.name);
   if (!tribeCols.includes('vp')) {
@@ -279,6 +286,21 @@ const stmtInsertGuest = db.prepare(`
   VALUES (?, ?, ?, ?, ?, ?)
 `);
 const stmtTouchGuest = db.prepare('UPDATE players SET last_seen = ? WHERE player_id = ?');
+// ★★[2026-08-03g 배치 14 ①] **이름으로 계정 찾기.** 승계 뒤로는 `player_id ≠ name` 인 계정이 있으므로
+//   PK 조회(`stmtGetPlayer`)만으로는 못 찾는다. 로그인·중복검사 둘 다 이 술어를 쓴다(사본 금지).
+//   ⚠비밀번호가 있는 행만 '계정'이다 — 게스트 행의 이름('여행자')은 아무것도 예약하지 않는다.
+const stmtGetAccountByName = db.prepare(
+  'SELECT * FROM players WHERE password_hash IS NOT NULL AND (player_id = ? OR name = ?) LIMIT 1');
+function findAccount(username) { return username ? stmtGetAccountByName.get(username, username) : null; }
+// 승계 — **행을 바꾸지 않는다.** 이름·비밀번호를 얹고 게스트 토큰을 죽인다.
+//   토큰 무효화가 핵심이다: 배치 13 의 "비밀번호 생긴 행은 게스트 토큰으로 못 연다" 게이트와
+//   **벨트와 멜빵**이다 — 한쪽이 뚫려도 다른 쪽이 막는다.
+const stmtPromoteGuest = db.prepare(`
+  UPDATE players SET name = ?, password_hash = ?, password_salt = ?, color = ?,
+    guest_token = NULL, last_seen = ?,
+    home_zone = COALESCE(home_zone, ?), home_x = COALESCE(home_x, ?), home_y = COALESCE(home_y, ?)
+  WHERE player_id = ? AND password_hash IS NULL
+`);
 // 토큰은 **추측 불가**해야 한다 — 게임 로직의 `Math.random` 과 달리 암호학적 난수를 쓴다
 // (핸드오프 토큰 `generateToken()` 은 5초짜리 일회용이라 Math.random 로 충분했지만, 이건 영구 신원이다).
 function newGuestToken() { return crypto.randomBytes(32).toString('hex'); }
@@ -534,7 +556,9 @@ const server = http.createServer(async (req, res) => {
       const homeX = (typeof data.home_x === 'number') ? data.home_x : null;
       const homeY = (typeof data.home_y === 'number') ? data.home_y : null;
 
-      const existing = stmtGetPlayer.get(username);
+      // ★[2026-08-03g 배치 14 ①] 승계된 계정은 `player_id ≠ name` 이라 PK 조회로는 못 찾는다.
+      //   ⇒ 정본 술어(`findAccount`)로 찾고, 못 찾으면 종전대로 PK 행(비밀번호 없는 예약 행)을 본다.
+      const existing = findAccount(username) || stmtGetPlayer.get(username);
       if (existing) {
         if (!existing.password_hash) return jsonResp(res, 200, { ok: false, reason: 'username_taken' });
         if (!verifyPassword(password, existing.password_hash, existing.password_salt))
@@ -542,11 +566,11 @@ const server = http.createServer(async (req, res) => {
         // 14.42-a 마이그레이션: 기존 계정인데 home_zone 없으면 last_zone 기반으로 자동 할당
         if (!existing.home_zone && existing.last_zone) {
           db.prepare('UPDATE players SET home_zone=?, home_x=?, home_y=? WHERE player_id=?')
-            .run(existing.last_zone, existing.last_x, existing.last_y, username);
+            .run(existing.last_zone, existing.last_x, existing.last_y, existing.player_id);
           existing.home_zone = existing.last_zone;
           existing.home_x = existing.last_x;
           existing.home_y = existing.last_y;
-          console.log(`[central] 마이그레이션: ${username} home = ${existing.last_zone}`);
+          console.log(`[central] 마이그레이션: ${existing.player_id} home = ${existing.last_zone}`);
         }
         return jsonResp(res, 200, { ok: true, player: existing, isNew: false });
       }
@@ -584,7 +608,9 @@ const server = http.createServer(async (req, res) => {
         //     게스트 토큰이 등록 계정의 열쇠가 되면 그게 곧 계정 탈취다.
         if (row && !row.password_hash) {
           try { stmtTouchGuest.run(now, row.player_id); } catch (e) {}
-          return jsonResp(res, 200, { ok: true, player_id: row.player_id, token: tok, isNew: false });
+          // ★[2026-08-03g 배치 14 ②] **행 전체**를 준다 — zone 이 등록 계정과 같은 경로로 몸(인벤·좌표·
+          //   도구·숙련)을 복원한다. 게스트 전용 저장 경로를 새로 만들지 않기 위한 최소 변경.
+          return jsonResp(res, 200, { ok: true, player_id: row.player_id, token: tok, isNew: false, player: row });
         }
       }
       // 새 게스트 — playerId 와 토큰을 함께 만든다. 충돌은 사실상 없지만 유니크 제약이 있으니 재시도한다.
@@ -593,18 +619,63 @@ const server = http.createServer(async (req, res) => {
         try {
           stmtInsertGuest.run(pid, `여행자`, '#5a9ae0', t, now, now);
           console.log(`[central] 게스트 신원 발급: ${pid}`);   // ★playerId 만 — 토큰은 절대 안 찍는다
-          return jsonResp(res, 200, { ok: true, player_id: pid, token: t, isNew: true });
+          return jsonResp(res, 200, { ok: true, player_id: pid, token: t, isNew: true, player: stmtGetPlayer.get(pid) });
         } catch (e) { /* 충돌 — 다시 뽑는다 */ }
       }
       return jsonResp(res, 200, { ok: false, reason: 'guest_mint_failed' });
+    }
+    // ★★[2026-08-03g 배치 14 ①] === 게스트 → 등록 계정 **승계** ===
+    // POST /promote { token, username, password, color?, home_zone?, home_x?, home_y? }
+    //   → { ok, player } · { ok:false, reason }
+    //
+    //   **행을 갈아치우지 않는다.** 기존 `anon_…` 행에 이름·비밀번호를 얹을 뿐이다.
+    //   playerId 가 그대로여야 사유지·건물·노·마을 `founder` 가 **그대로 내 것**이기 때문이다
+    //   (종전엔 등록하는 순간 새 playerId 로 태어나 배치 13 이 지킨 소유를 통째로 잃었다).
+    //
+    //   ★거절 사유를 둘로 가른다 — 이게 이 경로의 안전핀이다:
+    //     · `username_taken` — 그 이름이 **남의 계정**이다(비밀번호가 안 맞는다) ⇒ zone 이 막는다
+    //     · `not_promotable` — 승계할 게 아니다(토큰 무효/이미 계정/그 이름이 **내 기존 계정**)
+    //                          ⇒ zone 이 **막지 않고** 평소 로그인으로 흘린다
+    //     후자가 없으면, 옛 게스트 토큰이 남아 있는 브라우저에서 기존 계정으로 로그인할 때
+    //     "이름 중복"으로 **제 계정에 못 들어가는** 사고가 난다.
+    if (req.url === '/promote' && req.method === 'POST') {
+      const data = await readBody(req);
+      const tok = (typeof data.token === 'string' && /^[0-9a-f]{64}$/.test(data.token)) ? data.token : null;
+      const username = (data.username || '').trim().slice(0, 16);
+      const password = data.password || '';
+      if (!tok || !username || !password) return jsonResp(res, 200, { ok: false, reason: 'not_promotable' });
+      const row = stmtGetByGuestToken.get(tok);
+      if (!row || row.password_hash) return jsonResp(res, 200, { ok: false, reason: 'not_promotable' });
+      const acct = findAccount(username);
+      if (acct) {
+        // 그 이름이 이미 계정이다 — 비밀번호가 맞으면 **본인의 기존 계정**이니 평소 로그인으로 보낸다.
+        if (verifyPassword(password, acct.password_hash, acct.password_salt)) return jsonResp(res, 200, { ok: false, reason: 'not_promotable' });
+        return jsonResp(res, 200, { ok: false, reason: 'username_taken' });
+      }
+      const color = (typeof data.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(data.color)) ? data.color : (row.color || '#5a9ae0');
+      const homeZone = (typeof data.home_zone === 'string' && data.home_zone.length <= 32) ? data.home_zone : null;
+      const homeX = (typeof data.home_x === 'number') ? data.home_x : null;
+      const homeY = (typeof data.home_y === 'number') ? data.home_y : null;
+      const { hash, salt } = hashPassword(password);
+      try {
+        const r = stmtPromoteGuest.run(username, hash, salt, color, Date.now(), homeZone, homeX, homeY, row.player_id);
+        if (!r.changes) return jsonResp(res, 200, { ok: false, reason: 'not_promotable' });
+      } catch (e) {
+        // 유니크 인덱스 충돌 = 그 이름이 방금 다른 사람에게 넘어갔다
+        return jsonResp(res, 200, { ok: false, reason: 'username_taken' });
+      }
+      const after = stmtGetPlayer.get(row.player_id);
+      console.log(`[central] 게스트 승계: ${row.player_id} → "${username}" (playerId 불변 — 소유 유지)`);
+      return jsonResp(res, 200, { ok: true, player: after });
     }
     // === 게스트 username 검증 ===
     // POST /check_username { username } → { taken: bool }
     if (req.url === '/check_username' && req.method === 'POST') {
       const { username } = await readBody(req);
       const u = (username || '').trim();
-      const ex = u ? stmtGetPlayer.get(u) : null;
-      return jsonResp(res, 200, { taken: !!(ex && ex.password_hash) });
+      // ★[2026-08-03g 배치 14 ①] 승계된 계정은 이름이 `name` 에만 있다 — PK 조회만 하면
+      //   그 이름을 **비어 있는 것으로 오판**해 중복 등록을 허용하게 된다. 정본 술어로 본다.
+      return jsonResp(res, 200, { taken: !!findAccount(u) });
     }
     // === 프로필 조회 ===
     if (req.url.startsWith('/player/') && req.method === 'GET') {

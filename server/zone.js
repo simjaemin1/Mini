@@ -230,8 +230,21 @@ function rebuildSpatialIndex() {
 }
 
 // 플레이어 변경을 central에 fire-and-forget 저장
+// ★★[2026-08-03g 배치 14 ②] **저장 대상인가** — 판정을 한 함수로 모은다(사본 금지).
+//   종전 판정은 `playerId.startsWith('anon_')` 하나였고, 그게 곧 "게스트는 저장 안 함" 정책이었다.
+//   배치 13 뒤로 `anon_` 은 **두 종류**다: central 이 발급한 영속 게스트(토큰 있음)와
+//   central 불가 시의 1회용 폴백. 접두사로는 못 가르므로 접속 때 정해지는 `player.persistent` 를 본다.
+//   ⚠NPC(`npc_*`)는 언제나 제외 — 저장 대상이 아니다.
+//   ⚠이 술어가 **한 곳에만** 있어야 한다. 종전엔 호출부 17곳이 각자 `anon_` 를 다시 검사하고 있었다
+//     — 그 사본들 때문에 게스트 저장을 켜도 대부분의 경로에서 조용히 안 켜졌을 것이다.
+function canPersist(player) {
+  if (!player || !player.playerId) return false;
+  if (player.playerId.startsWith('npc_')) return false;
+  if (player.playerId.startsWith('anon_')) return !!player.persistent;   // 영속 게스트만
+  return true;                                                            // 등록 계정
+}
 function savePlayer(player, extra = {}) {
-  if (!player.playerId || player.playerId.startsWith('anon_') || player.playerId.startsWith('npc_')) return;
+  if (!canPersist(player)) return;
   // wood/stone은 별도 컬럼, 나머지 아이템(berry, meat_raw 등)은 inventory_json에
   const inv = player.inventory || {};
   const { wood = 0, stone = 0, ...extInv } = inv;
@@ -2160,6 +2173,7 @@ const server = http.createServer((req, res) => {
         pendingHandoffs.set(data.token, {
           source_zone: data.source_zone || null,
           player_id: data.player_id || `anon_${Math.random().toString(36).slice(2,10)}`,
+          persistent: !!data.persistent,   // ★[배치 14 ②] 영속 신원 여부 — 존을 넘어도 저장이 이어진다
           name: (data.name || '여행자').slice(0, 16),
           color: (typeof data.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(data.color)) ? data.color : '#5a9ae0',
           x: Math.max(0, Math.min(ZONE.zoneWidth, +data.x || 0)),
@@ -2353,11 +2367,17 @@ wss.on('connection', async (ws, req) => {
   //   welcome 으로 **한 번만** 돌려줄 토큰. 그 외 어디에도 쓰지 않는다(로그·알림·채팅 금지).
   const inGuestToken = url.searchParams.get('guest_token') || null;
   let _guestTokenForWelcome = null;
+  // ★[2026-08-03g 배치 14] 아래 인증 분기에서 정해져 **welcome·player 생성까지 살아 있어야** 하는 둘.
+  //   (핸드오프 경로에서는 둘 다 기본값 — 핸드오프는 이미 신원이 증명된 이동이다.)
+  let _persistentIdentity = false;   // 이 신원이 영속인가 — `canPersist`/savePlayer 가 이걸 본다
+  let _promoted = false;             // 이번 접속에서 게스트 → 등록 계정 승계가 일어났나
 
   if (handoffToken && pendingHandoffs.has(handoffToken)) {
     const pending = pendingHandoffs.get(handoffToken);
     pendingHandoffs.delete(handoffToken);
     playerId = pending.player_id || `anon_${Math.random().toString(36).slice(2,10)}`;
+    //   ★[배치 14 ②] 등록 계정은 접두사로 판별되지만 **영속 게스트는 안 된다** — 출발 존이 실어 준 값을 쓴다.
+    _persistentIdentity = !!pending.persistent || !playerId.startsWith('anon_');
     name = pending.name;
     if (typeof pending.hunger === 'number') initHunger = pending.hunger;
     if (typeof pending.thirst === 'number') initThirst = pending.thirst;
@@ -2393,33 +2413,103 @@ wss.on('connection', async (ws, req) => {
     const incomingColor = url.searchParams.get('color');
     if (incomingColor && /^#[0-9a-fA-F]{6}$/.test(incomingColor)) color = incomingColor;
 
+    // ★★[2026-08-03g 배치 14] 신원 해석 → **공통 복원**.
+    //   종전엔 등록 계정만 central 행을 복원했고 게스트는 빈 몸으로 태어났다. 이제 게스트도
+    //   "비밀번호 없는 계정"이므로 **같은 행·같은 복원 경로**를 쓴다(게스트 전용 경로 금지 — 사본 금지).
+    //   ⇒ 아래 분기는 `acct`(central players 행)만 정하고, 복원은 그 아래 한 곳에서 한다.
+    let acct = null;              // central 행(등록 계정 또는 영속 게스트). null = 1회용 폴백
+    let acctLabel = '';
     if (inUsername && inPassword) {
       // 14.42-a: 신규 가입이면 client가 선택한 home_zone 전달.
       //  - 이 zone(접속 zone)이 곧 home zone임 (lobby에서 선택한 zone에 ws 연결되니까)
       //  - 그 zone의 마을광장이 home 좌표
       const myMain = ZONE.mainSquare || { x: ZONE.zoneWidth/2, y: ZONE.zoneHeight/2 };
-      let result;
-      try { result = await central.authenticate(inUsername, inPassword, color, ZONE_ID, myMain.x, myMain.y); }
-      catch (e) {
-        console.error(`[${ZONE_ID}] central 인증 실패:`, e.message);
-        send(ws, { type: 'auth_error', reason: 'central_unavailable' });
-        setTimeout(() => { try { ws.close(); } catch (e) {} }, 100);
-        return;
+      let result = null;
+      // ★★[배치 14 ①] **승계** — 게스트 토큰을 들고 이름·비밀번호를 처음 넣으면
+      //   **새 계정을 만들지 않고 그 게스트 행에 비밀번호를 얹는다.** playerId 가 안 바뀌므로
+      //   사유지·노·움집·마을 founder 가 **그대로 내 것**이다.
+      //   (종전엔 등록하는 순간 새 playerId 로 태어나 배치 13 이 지킨 소유를 통째로 잃었다 — 역설.)
+      if (inGuestToken) {
+        try {
+          const pr = await central.promoteGuest(inGuestToken, inUsername, inPassword, color, ZONE_ID, myMain.x, myMain.y);
+          if (pr && pr.ok) { result = { ok: true, player: pr.player, isNew: false }; _promoted = true; acctLabel = '게스트 승계'; }
+          else if (pr && pr.reason === 'username_taken') {
+            send(ws, { type: 'auth_error', reason: 'username_taken' });
+            setTimeout(() => { try { ws.close(); } catch (e) {} }, 100);
+            return;
+          }
+          // 그 밖의 사유(토큰 무효·이미 승계됨)는 **막지 않고** 평소 로그인으로 흘린다
+        } catch (e) { /* central 일시 장애 — 아래 authenticate 가 같은 사유로 다시 걸린다 */ }
       }
-      if (!result || !result.ok) {
-        send(ws, { type: 'auth_error', reason: result?.reason || 'unknown' });
-        setTimeout(() => { try { ws.close(); } catch (e) {} }, 100);
-        return;
+      if (!result) {
+        try { result = await central.authenticate(inUsername, inPassword, color, ZONE_ID, myMain.x, myMain.y); }
+        catch (e) {
+          console.error(`[${ZONE_ID}] central 인증 실패:`, e.message);
+          send(ws, { type: 'auth_error', reason: 'central_unavailable' });
+          setTimeout(() => { try { ws.close(); } catch (e) {} }, 100);
+          return;
+        }
+        if (!result || !result.ok) {
+          send(ws, { type: 'auth_error', reason: result?.reason || 'unknown' });
+          setTimeout(() => { try { ws.close(); } catch (e) {} }, 100);
+          return;
+        }
+        acctLabel = result.isNew ? '신규 가입' : '로그인';
       }
-      playerId = result.player.player_id;
-      name = result.player.name;
-      color = result.player.color || color;
+      acct = result.player;
+      _persistentIdentity = true;
+    } else {
+      // 게스트 모드 — central에 username 충돌만 확인
+      if (inUsername) {
+        try {
+          const taken = await central.checkUsernameTaken(inUsername);
+          if (taken) {
+            send(ws, { type: 'auth_error', reason: 'username_taken' });
+            setTimeout(() => { try { ws.close(); } catch (e) {} }, 100);
+            return;
+          }
+        } catch (e) { /* central 죽었으면 그냥 통과 — 1회용 폴백이라 영속화 안 됨 */ }
+      }
+      // ★★[2026-08-03f 배치 13] **게스트 영속 신원** — 소유가 접속을 넘어 살아남는다.
+      //   종전 한 줄: `playerId = \`anon_${Math.random()...}\`` — 접속마다 **다른 사람**이 됐다.
+      //   그런데 이 세계의 소유 판정은 전부 playerId 대조다(사유지 `ownerPid` · 건물 `ownerId` ·
+      //   노·숯가마·회관 `data.owner` · 마을 `founder`). 그래서 게스트는 끊겼다 붙는 순간
+      //   **제가 지은 것의 주인이 아니게 됐다** — 마을 건립이 들어온 지금은 마을을 통째로 잃는 구멍이다.
+      //   ⇒ central 이 불투명 토큰을 발급하고 클라가 localStorage 에 둔다. 다시 제시하면 같은 playerId.
+      //   ⚠발급된 토큰은 **welcome 으로 클라에 한 번 보내는 것 말고 어디에도 쓰지 않는다.**
+      //     로그·알림·채팅에 절대 찍지 않는다(토큰 유출 = 계정 탈취).
+      let guestTokenOut = null;
+      try {
+        const g = await central.guestIdentity(inGuestToken);
+        if (g && g.ok && g.player_id) {
+          playerId = g.player_id; guestTokenOut = g.token || null;
+          // ★[배치 14 ②] central 이 그 게스트의 **행 전체**를 함께 준다 — 등록 계정과 같은 복원 경로를 탄다.
+          if (g.player) { acct = g.player; _persistentIdentity = true; }
+        }
+      } catch (e) { /* central 불가 — 아래 폴백(1회용 신원)으로 떨어진다. 기존 동작과 동일 */ }
+      if (!playerId) {
+        // ★폴백: central 이 죽어 있으면 종전 그대로 1회용 신원. 접속 자체를 막지 않는다
+        //   (게스트에게 central 장애가 곧 '입장 불가'가 되면 그게 더 큰 퇴보다).
+        //   ⚠이 신원은 **저장하지 않는다**(`_persistentIdentity` false) — 1회용이니 저장할 대상이 아니다.
+        playerId = `anon_${Math.random().toString(36).slice(2, 10)}`;
+      }
+      _guestTokenForWelcome = guestTokenOut;
+      acctLabel = `게스트 접속${guestTokenOut ? ' [영속 신원]' : ' [1회용 — central 불가]'}`;
+    }
+
+    // ── 공통 복원 — central 행이 있으면 등록 계정이든 영속 게스트든 **같은 경로** ──────────
+    if (acct) {
+      playerId = acct.player_id;
+      //   ★표시 이름: 등록 계정은 계정 이름. 게스트는 이번에 입력한 이름이 있으면 그것(종전 동작),
+      //     없으면 저장된 이름. 소유 판정에 이름을 쓰는 곳은 0곳이다(배치 13 전수 — 배치 14 재실행).
+      name = (inUsername && inPassword) ? acct.name : (inUsername || acct.name || `여행자${nextPid}`);
+      color = acct.color || color;
       // wood/stone은 컬럼, 나머지는 inventory_json에
       let extInv = {};
-      try { extInv = result.player.inventory_json ? JSON.parse(result.player.inventory_json) : {}; }
+      try { extInv = acct.inventory_json ? JSON.parse(acct.inventory_json) : {}; }
       catch (e) { extInv = {}; }
-      inventory = { wood: result.player.wood | 0, stone: result.player.stone | 0, ...extInv };
-      try { tools = result.player.tools_json ? JSON.parse(result.player.tools_json) : {}; }
+      inventory = { wood: acct.wood | 0, stone: acct.stone | 0, ...extInv };
+      try { tools = acct.tools_json ? JSON.parse(acct.tools_json) : {}; }
       catch (e) { tools = {}; }
       // 플레이어 아이템(장비 인스턴스·장착 슬롯·제작 숙련) 복원 — tools_json blob에 piggyback(스키마 무변경). tools가 아래서 재대입되므로 여기서 캡처.
       if (tools && Array.isArray(tools.equipment)) _loadEquipment = tools.equipment;
@@ -2470,16 +2560,16 @@ wss.on('connection', async (ws, req) => {
       const _hotkey1 = hotkey1;
       tools = { __toolItems: _toolItems, __hotkey1: _hotkey1 }; // 임시 컨테이너 (player 만들 때 풀어줌)
       if (!inventory.plank) inventory.plank = 10; // 시작 판자 약간
-      equipped = result.player.equipped || null;
-      initHunger = (typeof result.player.hunger === 'number') ? result.player.hunger : HUNGER_MAX;
-      initThirst = (typeof result.player.thirst === 'number') ? result.player.thirst : THIRST_MAX;
-      initVp = (typeof result.player.violation_points === 'number') ? result.player.violation_points : 0;
-      initTribeId = result.player.tribe_id || null;
+      equipped = acct.equipped || null;
+      initHunger = (typeof acct.hunger === 'number') ? acct.hunger : HUNGER_MAX;
+      initThirst = (typeof acct.thirst === 'number') ? acct.thirst : THIRST_MAX;
+      initVp = (typeof acct.violation_points === 'number') ? acct.violation_points : 0;
+      initTribeId = acct.tribe_id || null;
       // 14.49-fix2: 옛 auto-stair 버그로 floor 1+에 stuck된 사용자 복구. 무조건 0F로 시작.
       initFloor = 0;
-      initHomeZone = result.player.home_zone || null;
-      initHomeX = (typeof result.player.home_x === 'number') ? result.player.home_x : null;
-      initHomeY = (typeof result.player.home_y === 'number') ? result.player.home_y : null;
+      initHomeZone = acct.home_zone || null;
+      initHomeX = (typeof acct.home_x === 'number') ? acct.home_x : null;
+      initHomeY = (typeof acct.home_y === 'number') ? acct.home_y : null;
       if (initTribeId) {
         // 부족 이름 한 번 더 조회 (캐시 가능)
         try {
@@ -2487,59 +2577,35 @@ wss.on('connection', async (ws, req) => {
           if (tr.status === 200 && tr.data?.tribe) initTribeName = tr.data.tribe.name;
         } catch (e) {}
       }
-      // 14.42-a: 등록 계정 — 우선순위로 spawn 좌표 산정
+      if (initTribeId) {
+        // 부족 이름 한 번 더 조회 (캐시 가능)
+        try {
+          const tr = await central.request('GET', `/tribe/${initTribeId}`);
+          if (tr.status === 200 && tr.data?.tribe) initTribeName = tr.data.tribe.name;
+        } catch (e) {}
+      }
+      // 14.42-a: 우선순위로 spawn 좌표 산정
       //  1) last_zone == THIS && last_x/y 있음 → 그 자리 (재로그인 정상)
       //  2) home_zone == THIS && home_x/y 있음 → home 마을광장 (신규 가입 직후)
-      //  3) 외 → zone center fallback
-      //  (다른 zone에 home/last가 있는 경우 cross-zone 라우팅은 14.42-b)
-      const p = result.player;
+      //  3) 외 → 폴백(등록 계정은 zone center · 게스트는 마을광장 — 각자 종전 그대로)
+      const p = acct;
+      const _fbMain = ZONE.mainSquare || { x: ZONE.zoneWidth / 2, y: ZONE.zoneHeight / 2 };
       if (p.last_zone === ZONE_ID && typeof p.last_x === 'number' && typeof p.last_y === 'number') {
         sx = p.last_x; sy = p.last_y;
       } else if (p.home_zone === ZONE_ID && typeof p.home_x === 'number' && typeof p.home_y === 'number') {
         sx = p.home_x; sy = p.home_y;
+      } else if (inUsername && inPassword) {
+        sx = ZONE.zoneWidth / 2; sy = ZONE.zoneHeight / 2;
       } else {
-        sx = ZONE.zoneWidth / 2;
-        sy = ZONE.zoneHeight / 2;
+        sx = _fbMain.x; sy = _fbMain.y;
       }
-      console.log(`[${ZONE_ID}] ${result.isNew ? '신규 가입' : '로그인'}: ${name}  tribe=${initTribeName || '없음'}  spawn=(${sx.toFixed(0)},${sy.toFixed(0)})`);
+      console.log(`[${ZONE_ID}] ${acctLabel}: ${name} (${playerId}) tribe=${initTribeName || '없음'} spawn=(${sx.toFixed(0)},${sy.toFixed(0)})`);
     } else {
-      // 게스트 모드 — central에 username 충돌만 확인
-      if (inUsername) {
-        try {
-          const taken = await central.checkUsernameTaken(inUsername);
-          if (taken) {
-            send(ws, { type: 'auth_error', reason: 'username_taken' });
-            setTimeout(() => { try { ws.close(); } catch (e) {} }, 100);
-            return;
-          }
-        } catch (e) { /* central 죽었으면 그냥 통과 — 게스트는 영속화 안 되니까 큰 문제 안 됨 */ }
-      }
-      // ★★[2026-08-03f 배치 13] **게스트 영속 신원** — 소유가 접속을 넘어 살아남는다.
-      //   종전 한 줄: `playerId = \`anon_${Math.random()...}\`` — 접속마다 **다른 사람**이 됐다.
-      //   그런데 이 세계의 소유 판정은 전부 playerId 대조다(사유지 `ownerPid` · 건물 `ownerId` ·
-      //   노·숯가마·회관 `data.owner` · 마을 `founder`). 그래서 게스트는 끊겼다 붙는 순간
-      //   **제가 지은 것의 주인이 아니게 됐다** — 마을 건립이 들어온 지금은 마을을 통째로 잃는 구멍이다.
-      //   ⇒ central 이 불투명 토큰을 발급하고 클라가 localStorage 에 둔다. 다시 제시하면 같은 playerId.
-      //   ★계정 체계가 아니다 — 비밀번호도 이메일도 없다. `anon_` 접두사도 그대로 유지한다
-      //     (코드 전역이 그 접두사로 "등록 계정 아님"을 판정한다 — 그 정책은 안 건드린다).
-      //   ⚠발급된 토큰은 **welcome 으로 클라에 한 번 보내는 것 말고 어디에도 쓰지 않는다.**
-      //     로그·알림·채팅에 절대 찍지 않는다(토큰 유출 = 계정 탈취).
-      let guestTokenOut = null;
-      try {
-        const g = await central.guestIdentity(inGuestToken);
-        if (g && g.ok && g.player_id) { playerId = g.player_id; guestTokenOut = g.token || null; }
-      } catch (e) { /* central 불가 — 아래 폴백(1회용 신원)으로 떨어진다. 기존 동작과 동일 */ }
-      if (!playerId) {
-        // ★폴백: central 이 죽어 있으면 종전 그대로 1회용 신원. 접속 자체를 막지 않는다
-        //   (게스트에게 central 장애가 곧 '입장 불가'가 되면 그게 더 큰 퇴보다).
-        playerId = `anon_${Math.random().toString(36).slice(2, 10)}`;
-      }
-      _guestTokenForWelcome = guestTokenOut;
+      // 1회용 게스트(central 불가) — 종전 그대로 빈 몸·마을광장
       name = inUsername || `여행자${nextPid}`;
-      console.log(`[${ZONE_ID}] 게스트 접속: ${name} (${playerId})${guestTokenOut ? ' [영속 신원]' : ' [1회용 — central 불가]'}`);
-      // 14.42-a: 게스트도 마을광장에서 시작
       const myMain = ZONE.mainSquare || { x: ZONE.zoneWidth/2, y: ZONE.zoneHeight/2 };
       sx = myMain.x; sy = myMain.y;
+      console.log(`[${ZONE_ID}] ${acctLabel}: ${name} (${playerId})`);
     }
 
     // 같은 player_id로 이 zone 내에 이미 접속 중이면 기존 세션 종료
@@ -2593,6 +2659,12 @@ wss.on('connection', async (ws, req) => {
     oreCarry: _loadOreCarry,    // 선광 소수분 이월(kg)
     hp: PLAYER_MAX_HP, maxHp: PLAYER_MAX_HP,
     hunger: initHunger, thirst: initThirst, vp: initVp,
+    // ★★[2026-08-03g 배치 14 ②] **이 신원이 영속인가.** `savePlayer` 가 이걸 본다.
+    //   종전 판정은 `playerId.startsWith('anon_')` 하나였는데, 배치 13 뒤로 `anon_` 은 두 종류다:
+    //     · central 이 발급한 **영속 게스트**(토큰 있음) — 저장해야 한다(이번 배치의 ②)
+    //     · central 불가 시의 **1회용 폴백** — 저장할 대상이 아니다(다음 접속에 다른 사람이 된다)
+    //   접두사로는 둘을 못 가른다 ⇒ 접속 때 정해진 이 불리언이 유일한 정답이다.
+    persistent: _persistentIdentity,
     tribeId: initTribeId, tribeName: initTribeName,
     pvpEnabled: false,
     floor: initFloor, // 2.5D — 현재 캐릭터 층 (영속화 + 핸드오프 캐리)
@@ -2631,6 +2703,9 @@ wss.on('connection', async (ws, req) => {
     //   클라는 이걸 localStorage 에 넣고 다음 접속에 제시한다. **화면에 절대 그리지 않는다.**
     //   매 접속 같은 값을 돌려준다(자가 치유 — 클라 저장이 어긋나도 다음 접속에 맞춰진다).
     guestToken: _guestTokenForWelcome || null,
+    // ★[2026-08-03g 배치 14 ①] 이번 접속에서 게스트 → 등록 계정 **승계**가 일어났나.
+    //   클라가 이걸 보고 죽은 토큰을 localStorage 에서 지운다(서버는 이미 NULL 로 만들었다).
+    promoted: _promoted || false,
     zone: zonePublicMeta(),
     hardcodedTerrain: getHardcodedTerrainForZone(),
     resources: Array.from(resources.values()),
@@ -3069,6 +3144,8 @@ function handleObserverMessage(ws, raw) {
     const pid = `p${nextPid++}`;
     const player = {
       pid, playerId: pending.player_id, ws,
+      // ★[2026-08-03g 배치 14 ②] 존 승격 경로에도 영속 여부를 실어 준다(핸드오프 경로와 동형).
+      persistent: !!pending.persistent || !String(pending.player_id || '').startsWith('anon_'),
       name: pending.name, color: pending.color,
       x: pending.x, y: pending.y,
       vx: pending.vx || 0, vy: pending.vy || 0,
@@ -3185,7 +3262,7 @@ function doCraftItem(player, recipeName) {
   if (recipe.requiresTool) consumeToolByType(player, recipe.requiresTool, 1);
   send(player.ws, { type: 'inventory', inventory: player.inventory });
   send(player.ws, { type: 'notice', text: `${recipe.label} 완료` });
-  if (!player.playerId.startsWith('anon_')) savePlayer(player);
+  if (canPersist(player)) savePlayer(player);   // ★[배치 14 ②] 정본 술어 — 영속 게스트도 저장된다
 }
 
 // 14.51: 건축물 = 인벤 아이템. craft 패널에서 만들면 인벤 추가.
@@ -3215,7 +3292,7 @@ function doCraftBuilding(player, recipeName) {
   if (recipe._useHammer) consumeToolByType(player, 'hammer', 1);
   send(player.ws, { type: 'inventory', inventory: player.inventory });
   send(player.ws, { type: 'notice', text: `${recipe.label} 제작 완료 (인벤에 추가됨)` });
-  if (!player.playerId.startsWith('anon_')) savePlayer(player);
+  if (canPersist(player)) savePlayer(player);   // ★[배치 14 ②] 정본 술어 — 영속 게스트도 저장된다
 }
 
 // 14.51: 건축 모드에서 인벤 아이템 → 월드 배치. 자원 소비는 없고 인벤 1개만 차감.
@@ -3240,7 +3317,7 @@ function doPlaceBuilding(player, itemType, atX, atY, floor, dir, side) {
   if (result === true) {
     player.inventory[itemType] -= 1;
     send(player.ws, { type: 'inventory', inventory: player.inventory });
-    if (!player.playerId.startsWith('anon_')) savePlayer(player);
+    if (canPersist(player)) savePlayer(player);   // ★[배치 14 ②] 정본 술어 — 영속 게스트도 저장된다
   }
 }
 
@@ -3319,7 +3396,7 @@ function doDismantleBuilding(player, buildingId) {
   stairCellDirty = true;
   send(player.ws, { type: 'inventory', inventory: player.inventory });
   send(player.ws, { type: 'notice', text: `${itemType ? BUILDING_RECIPES[itemType].label : b.type} 분해 → 인벤 환원` });
-  if (!player.playerId.startsWith('anon_')) savePlayer(player);
+  if (canPersist(player)) savePlayer(player);   // ★[배치 14 ②] 정본 술어 — 영속 게스트도 저장된다
 }
 
 // 14.50: 문 열기/닫기
@@ -3416,7 +3493,7 @@ function doCraftEquipment(player, itemType, material, rawMix) {
     sendEquipment(player);
     const alloyNm = Object.entries(cinst.mix).map(([k, v]) => `${k} ${v}%`).join(' · ');
     send(player.ws, { type: 'notice', text: `${PlayerItems.displayItem(cinst)} 주조 (${alloyNm})${lvl1 > lvl0 ? ` — ${recipe.skill} Lv${lvl1} 달성!` : ''}` });
-    if (!player.playerId.startsWith('anon_')) savePlayer(player);
+    if (canPersist(player)) savePlayer(player);   // ★[배치 14 ②] 정본 술어 — 영속 게스트도 저장된다
     return;
   }
   if (!recipe.accepts.includes(material)) { send(player.ws, { type: 'notice', text: `${recipe.label}에 못 쓰는 재료: ${material}` }); return; }
@@ -3436,7 +3513,7 @@ function doCraftEquipment(player, itemType, material, rawMix) {
   sendEquipment(player);
   const lvlUp = newLvl > lvl ? ` — ${recipe.skill} Lv${newLvl} 달성!` : '';
   send(player.ws, { type: 'notice', text: `${PlayerItems.displayItem(inst)} 제작${lvlUp}` });
-  if (!player.playerId.startsWith('anon_')) savePlayer(player);
+  if (canPersist(player)) savePlayer(player);   // ★[배치 14 ②] 정본 술어 — 영속 게스트도 저장된다
 }
 // 장착: 슬롯당 1개(교체). 파손 불가.
 function doEquipItem(player, id) {
@@ -3448,7 +3525,7 @@ function doEquipItem(player, id) {
   const slot = def ? def.slot : inst.type;
   player.equipSlots[slot] = inst.id;
   sendEquipment(player);
-  if (!player.playerId.startsWith('anon_')) savePlayer(player);
+  if (canPersist(player)) savePlayer(player);   // ★[배치 14 ②] 정본 술어 — 영속 게스트도 저장된다
 }
 // 해제: 슬롯 비움.
 function doUnequipItem(player, slot) {
@@ -3456,7 +3533,7 @@ function doUnequipItem(player, slot) {
   if (player.equipSlots[slot]) {
     delete player.equipSlots[slot];
     sendEquipment(player);
-    if (!player.playerId.startsWith('anon_')) savePlayer(player);
+    if (canPersist(player)) savePlayer(player);   // ★[배치 14 ②] 정본 술어 — 영속 게스트도 저장된다
   }
 }
 // 수선: 재료(절반)+숙련으로 내구 회복(설계 §5 — 인스턴스별이라 econ 전역 피드백 0).
@@ -3478,7 +3555,7 @@ function doRepairEquipment(player, id, material) {
     send(player.ws, { type: 'inventory', inventory: player.inventory });
     sendEquipment(player);
     send(player.ws, { type: 'notice', text: `${PlayerItems.displayItem(inst)} 수선 (같은 배합)` });
-    if (!player.playerId.startsWith('anon_')) savePlayer(player);
+    if (canPersist(player)) savePlayer(player);   // ★[배치 14 ②] 정본 술어 — 영속 게스트도 저장된다
     return;
   }
   const mat = material || inst.mat;
@@ -3492,7 +3569,7 @@ function doRepairEquipment(player, id, material) {
   send(player.ws, { type: 'inventory', inventory: player.inventory });
   sendEquipment(player);
   send(player.ws, { type: 'notice', text: `${PlayerItems.displayItem(inst)} 수선` });
-  if (!player.playerId.startsWith('anon_')) savePlayer(player);
+  if (canPersist(player)) savePlayer(player);   // ★[배치 14 ②] 정본 술어 — 영속 게스트도 저장된다
 }
 // 장비 효과 발현(설계 §8-3): 무기 attack→전투·도구 efficiency→노동. 장비 미장착 시 기존 행동 불변(additive).
 const WEAPON_EQUIP_ATK_SCALE = 0.2;  // weapon attack(24~100) → 데미지 +5~+20 (기본10 대비 명장 무기 실감)
@@ -3520,7 +3597,7 @@ function wearEquipment(player, slot, amount) {
   if (inst.broken || inst.dura === 0) {
     delete player.equipSlots[slot];   // 파손 시 자동 해제(수선 전까지 재장착 불가)
     send(player.ws, { type: 'notice', text: `${(EQUIPMENT_RECIPES[inst.type] && EQUIPMENT_RECIPES[inst.type].label) || inst.type} 파손 — 수선 필요` });
-    if (!player.playerId.startsWith('anon_')) savePlayer(player);
+    if (canPersist(player)) savePlayer(player);   // ★[배치 14 ②] 정본 술어 — 영속 게스트도 저장된다
   }
   sendEquipment(player);
 }
@@ -3555,7 +3632,7 @@ function doShopBuy(player, itemType, material) {
   send(player.ws, { type: 'inventory', inventory: player.inventory });
   sendEquipment(player);
   send(player.ws, { type: 'notice', text: `${vq.name} 장인 구매: ${PlayerItems.displayItem(inst)}` });
-  if (!player.playerId.startsWith('anon_')) savePlayer(player);
+  if (canPersist(player)) savePlayer(player);   // ★[배치 14 ②] 정본 술어 — 영속 게스트도 저장된다
 }
 // 판매: 장비 용해 → 재료 절반 회수(설계 §4 판매=용해). ★마을 EMA 넛지(sellNudge)는 econ write라 @1500 검증 후 별도 배선 — 현재 미적용(econ 무접촉 유지).
 function doShopSell(player, id) {
@@ -3585,7 +3662,7 @@ function doShopSell(player, id) {
   send(player.ws, { type: 'inventory', inventory: player.inventory });
   sendEquipment(player);
   send(player.ws, { type: 'notice', text: `용해: ${(recipe && recipe.label) || inst.type} → ${backTxt}` });
-  if (!player.playerId.startsWith('anon_')) savePlayer(player);
+  if (canPersist(player)) savePlayer(player);   // ★[배치 14 ②] 정본 술어 — 영속 게스트도 저장된다
 }
 
 // ═══ ★★[재민 확정 2026-08-02b] 철제 위세품 판매 — "세계 최초의 철검"의 값 ═══════
@@ -3624,7 +3701,7 @@ function doSellIronRelic(player, id) {
   send(player.ws, { type: 'notice',
     text: `🗡️ ${r.village}에 철기를 넘겼다 — ${parts.join(' · ') || '(대금 없음)'}  · 이 마을 철기 ${r.relics}점` });
   console.log(`[${ZONE_ID}] 🗡️ ${player.name} → ${r.village} 철제 위세품 판매 (값 ${r.price} · 대금가치 ${r.paidValue})`);
-  if (!player.playerId.startsWith('anon_')) savePlayer(player);
+  if (canPersist(player)) savePlayer(player);   // ★[배치 14 ②] 정본 술어 — 영속 게스트도 저장된다
 }
 
 function doCraft(player, recipeName) {
@@ -3647,9 +3724,7 @@ function doCraft(player, recipeName) {
   send(player.ws, { type: 'inventory', inventory: player.inventory });
   send(player.ws, { type: 'tools', toolItems: player.toolItems, equipped: player.equipped, hotkey1: player.hotkey1 || null });
   send(player.ws, { type: 'notice', text: `${recipe.label} 제작 완료 (인벤에 추가)` });
-  if (!player.playerId.startsWith('anon_')) {
-    savePlayer(player);
-  }
+  if (canPersist(player)) savePlayer(player);   // ★[배치 14 ②] 정본 술어
 }
 
 // 14.53: equip은 toolItemId 기반. null = 해제. 다른 거 들면 옛 거 자동 해제 (1개만 장착).
@@ -3669,7 +3744,7 @@ function doEquip(player, toolItemId) {
     player.equipped = inst.id; // 옛 거 자동 해제 (한 번에 1개)
   }
   send(player.ws, { type: 'tools', toolItems: player.toolItems, equipped: player.equipped, hotkey1: player.hotkey1 || null });
-  if (!player.playerId.startsWith('anon_')) savePlayer(player);
+  if (canPersist(player)) savePlayer(player);   // ★[배치 14 ②] 정본 술어 — 영속 게스트도 저장된다
 }
 
 // 14.53: hotkey1 슬롯에 도구 등록. null이면 슬롯 비움.
@@ -3685,7 +3760,7 @@ function doSetHotkey(player, toolItemId) {
     player.hotkey1 = inst.id;
   }
   send(player.ws, { type: 'tools', toolItems: player.toolItems, equipped: player.equipped, hotkey1: player.hotkey1 || null });
-  if (!player.playerId.startsWith('anon_')) savePlayer(player);
+  if (canPersist(player)) savePlayer(player);   // ★[배치 14 ②] 정본 술어 — 영속 게스트도 저장된다
 }
 
 // 14.53: 1키 = hotkey1 등록 도구 토글 (착용 ↔ 해제)
@@ -3705,7 +3780,7 @@ function doToggleHotkey(player) {
     }
   }
   send(player.ws, { type: 'tools', toolItems: player.toolItems, equipped: player.equipped, hotkey1: player.hotkey1 || null });
-  if (!player.playerId.startsWith('anon_')) savePlayer(player);
+  if (canPersist(player)) savePlayer(player);   // ★[배치 14 ②] 정본 술어 — 영속 게스트도 저장된다
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -6996,6 +7071,9 @@ async function fireHandoff(player, targetZoneId, newX, newY) {
       token,
       source_zone: ZONE_ID,
       player_id: player.playerId,
+      // ★[2026-08-03g 배치 14 ②] 이 신원이 영속인가 — 존을 넘어도 몸이 저장돼야 한다.
+      //   `anon_` 접두사만으로는 영속 게스트와 1회용 폴백을 못 가르므로 **명시적으로** 실어 보낸다.
+      persistent: !!player.persistent,
       name: player.name,
       color: player.color,
       x: newX, y: newY,
@@ -7136,7 +7214,7 @@ function gracefulShutdown(signal) {
     }
     let playersSaved = 0;
     for (const p of players.values()) {
-      if (!p.playerId || p.playerId.startsWith('anon_')) continue;
+      if (!canPersist(p)) continue;   // ★[배치 14 ②] 종료 flush 도 정본 술어 — 영속 게스트를 빠뜨리지 않는다
       // fire-and-forget — process.exit가 곧 따라오니 응답 못 받을 수도 있음
       savePlayer(p, { last_zone: ZONE_ID, last_x: p.x, last_y: p.y });
       playersSaved++;

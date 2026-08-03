@@ -1968,9 +1968,12 @@ const SIM_JOB_EMOJI = {
       // 신규 접속 — 인증 정보 전송
       if (myUsername) params.set('username', myUsername);
       if (myPassword) params.set('password', myPassword);
-      // ★[배치 13] 게스트 영속 신원 — **등록 로그인이 아닐 때만** 토큰을 낸다.
-      //   (등록 계정은 username+password 가 신원이다. 둘을 섞으면 토큰이 계정 열쇠가 될 수 있다.)
-      if (!(myUsername && myPassword) && myGuestToken) params.set('guest_token', myGuestToken);
+      // ★[배치 13→14] 게스트 영속 신원 토큰. **이름·비밀번호와 함께 보내도 된다** — 그게 곧
+      //   **승계**(게스트로 지은 것을 그대로 들고 계정이 되기) 요청이기 때문이다(배치 14 ①).
+      //   ⚠서버는 이 토큰만으로 남의 계정을 열지 않는다: 승계는 **비밀번호가 아직 없는 행**에만
+      //     허용되고, 그 이름이 이미 남의 계정이면 거절된다. 옛 토큰이 남아 있는 채로 기존 계정에
+      //     로그인하면 서버가 `not_promotable` 로 흘려보내 평소 로그인이 된다.
+      if (myGuestToken) params.set('guest_token', myGuestToken);
       params.set('name', myName);
       params.set('color', myColor);
     }
@@ -2041,6 +2044,12 @@ const SIM_JOB_EMOJI = {
       if (typeof msg.guestToken === 'string' && msg.guestToken && msg.guestToken !== myGuestToken) {
         myGuestToken = msg.guestToken;
         try { localStorage.setItem(GUEST_TOKEN_KEY, myGuestToken); } catch (e) {}
+      }
+      //   ★[배치 14 ①] 승계됐다 — 그 토큰은 서버에서 **이미 죽었다**(guest_token = NULL).
+      //   여기서도 지운다: 죽은 열쇠를 브라우저에 남겨 둘 이유가 없다(벨트와 멜빵).
+      if (msg.promoted) {
+        myGuestToken = '';
+        try { localStorage.removeItem(GUEST_TOKEN_KEY); } catch (e) {}
       }
       // ★시대 게이트 — 건축 메뉴는 **이 세상에 알려진 노**만 보여준다(era.js 가 유일한 진실, 클라 표 없음).
       //   청동기엔 괴련로 버튼이 아예 없다: era.js 의 "지식 축은 순수 플레이어 지식" 원칙 — 있다는 것조차

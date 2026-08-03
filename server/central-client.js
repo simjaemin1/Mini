@@ -51,6 +51,18 @@ async function guestIdentity(token) {
   return r.data;
 }
 
+// ★★[2026-08-03g 배치 14 ①] 게스트 → 등록 계정 **승계**. playerId 가 안 바뀌므로 소유가 유지된다.
+//   반환의 `reason`:
+//     · `username_taken`  — 남의 계정 이름 ⇒ 호출부가 막는다
+//     · `not_promotable` — 승계 대상이 아니다 ⇒ 호출부가 **막지 말고** 평소 로그인으로 흘려야 한다
+async function promoteGuest(token, username, password, color, homeZone = null, homeX = null, homeY = null) {
+  const r = await request('POST', '/promote', {
+    token: token || null, username, password, color,
+    home_zone: homeZone, home_x: homeX, home_y: homeY,
+  });
+  return r.data;
+}
+
 async function checkUsernameTaken(username) {
   const r = await request('POST', '/check_username', { username });
   return r.data?.taken;
@@ -85,5 +97,5 @@ async function getTribe(id) {
 }
 
 module.exports = { authenticate, checkUsernameTaken, getPlayer, updatePlayer, request,
-  guestIdentity,   // ★[2026-08-03f 배치 13] 게스트 영속 신원
+  guestIdentity, promoteGuest,   // ★[배치 13] 게스트 영속 신원 · ★[배치 14] 승계
   tribeAddVp, tribeTreasury, tribeNpcUpsert, getTribe };

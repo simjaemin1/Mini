@@ -99,6 +99,21 @@ async function waitHttp(url, tries = 240) {
     return await pg.evaluate(() => window.__getPlayerId && window.__getPlayerId());
   };
   const tokenOf = (pg) => pg.evaluate((k) => { try { return localStorage.getItem(k); } catch (e) { return null; } }, 'durango_guest_token');
+  // ★[2026-08-03g 배치 14 ①] 이름·비밀번호로 들어간다. **게스트 토큰이 남아 있으면 그게 곧 승계 요청**이다.
+  const enterWithAccount = async (pg, who, pw) => {
+    await pg.goto(`http://localhost:${CPORT}/`, { waitUntil: 'domcontentloaded' });
+    await sleep(2500);
+    const btn = await pg.$('button:has-text("월드 입장")');
+    if (!btn) return false;
+    await pg.fill('#name', who);
+    await pg.fill('#password', pw);
+    await btn.click();
+    for (let i = 0; i < 60 && !(await pg.evaluate(() => !!(window.__getMyAbs && window.__getMyAbs()))); i++) await sleep(500);
+    await sleep(1500);
+    return pg.evaluate(() => !!(window.__getMyAbs && window.__getMyAbs()));
+  };
+  const invOf = (pg) => pg.evaluate(() => (window.__getInv && window.__getInv()) || {});
+  const absOf = (pg) => pg.evaluate(() => { const a = window.__getMyAbs(); return { x: Math.round(a.x), y: Math.round(a.y) }; });
 
   // ══ 1막 — 게스트가 짓는다 ═══════════════════════════════════════════════════
   let ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
@@ -231,6 +246,17 @@ async function waitHttp(url, tries = 240) {
   ok(myClaims1 === 4, `내 사유지 ${myClaims1}칸 (재접속 뒤 그대로인지 볼 기준선)`);
   await snap('03-built');
 
+  // ★[2026-08-03g 배치 14 ②] **몸**의 기준선 — 종전엔 재접속하면 빈 몸으로 리스폰됐다.
+  //   여기서 인벤·좌표를 적어 두고, 재접속 뒤 같은지 본다.
+  await send({ type: '__e2e_give', items: { berry: 41 } });
+  await sleep(1200);
+  { const c = await cellOf(); await gotoCenter(c.cx + 2, c.cy + 2); }   // 스폰 자리에서 확실히 벗어난다
+  await sleep(1500);
+  const bodyInv = await invOf(page);
+  const bodyPos = await absOf(page);
+  ok((bodyInv.berry || 0) >= 41, `★검사 전제 — 몸에 물건이 실렸다(베리 ${bodyInv.berry})`);
+  await sleep(2500);   // savePlayer 는 fire-and-forget — central 쓰기가 끝날 틈을 준다
+
   // ══ 2막 — **브라우저 컨텍스트를 통째로 닫는다.** localStorage 만 들고 다시 온다 ══
   const state = await ctx.storageState();
   ok((state.origins || []).some((o) => (o.localStorage || []).some((e) => e.name === 'durango_guest_token')),
@@ -243,6 +269,14 @@ async function waitHttp(url, tries = 240) {
   ok(await enterAsGuest(page), '★새 컨텍스트로 다시 입장(브라우저를 껐다 켠 것과 같다)');
   const pid2 = await pidOf(page);
   ok(pid2 === pid1, `★★같은 사람으로 돌아왔다 — ${pid2} === ${pid1}`);
+  {
+    const inv2 = await invOf(page);
+    const pos2 = await absOf(page);
+    ok((inv2.berry || 0) === (bodyInv.berry || 0),
+      `★★재접속해도 **인벤이 그대로**다 — 베리 ${inv2.berry} (기준선 ${bodyInv.berry} · 종전엔 빈 몸이었다)`);
+    const d = Math.hypot(pos2.x - bodyPos.x, pos2.y - bodyPos.y);
+    ok(d <= 64, `★★**좌표도 그대로**다 — (${pos2.x},${pos2.y}) vs 기준선 (${bodyPos.x},${bodyPos.y}) 차 ${Math.round(d)}px`);
+  }
   await snap('04-reconnected');
 
   // 소유가 살아남았는가 — **눌러서** 확인한다(필드 비교가 아니라 서버 판정).
@@ -321,11 +355,65 @@ async function waitHttp(url, tries = 240) {
   await page3.screenshot({ path: `${SHOTS}/06-stranger-denied.png` }).catch(() => {});
   shots.push(`${SHOTS}/06-stranger-denied.png`);
 
-  // ── 마지막: 토큰이 화면 어디에도 안 나온다(두 컨텍스트 모두) ─────────────────
+  // ── 토큰이 화면 어디에도 안 나온다(재접속 뒤에도) ───────────────────────────
   {
     const t1 = await page.evaluate(() => document.body.innerText || '');
     const n1 = await page.evaluate(() => (window.__notices || []).join(' | '));
     ok(!t1.includes(tok1) && !n1.includes(tok1), '★토큰이 재접속 뒤에도 화면·알림에 안 보인다');
+  }
+
+  // ══ 4막 — **승계**: 게스트로 지은 것을 그대로 들고 계정이 된다 [배치 14 ①] ══════
+  {
+    const ACC = 'chonju' + String(Date.now()).slice(-5), PW = 'e2epw123456';
+    const okp = await enterWithAccount(page, ACC, PW);   // 토큰이 남아 있는 그 컨텍스트 = 승계 요청
+    ok(okp, `게스트가 이름·비밀번호를 넣고 들어갔다(승계 요청) — ${ACC}`);
+    const pidP = await pidOf(page);
+    ok(pidP === pid1, `★★★승계해도 **같은 playerId** — ${pidP} === ${pid1} (등록하는 순간 소유를 잃던 역설이 사라졌다)`);
+    const tokAfter = await tokenOf(page);
+    ok(!tokAfter, `★승계와 동시에 브라우저의 게스트 토큰이 지워진다 — ${tokAfter === null ? 'null' : JSON.stringify(tokAfter)}`);
+    const stateP = await ctx.storageState();
+    await ctx.close();
+    await sleep(1500);
+
+    // 완전히 새 컨텍스트 + **비밀번호 로그인**만으로 다시 들어온다(토큰 없음)
+    ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+    page = await ctx.newPage();
+    ok(await enterWithAccount(page, ACC, PW), '새 컨텍스트에서 **비밀번호 로그인**(게스트 토큰 없음)');
+    const pidL = await pidOf(page);
+    ok(pidL === pid1, `★★비밀번호 로그인도 **같은 playerId** — ${pidL}`);
+    if (spotV) await gotoCenter(spotV[0], spotV[1]);
+    if (hall) {
+      await page.evaluate(() => { window.__villageInv = null; window.__notices = []; });
+      for (let i = 0; i < 12 && !(await page.evaluate(() => window.__villageInv)); i++) { await send({ type: 'village_inventory', buildingId: hall.id }); await sleep(1000); }
+      const invP = await page.evaluate(() => window.__villageInv);
+      ok(!!invP, `★★★승계 뒤에도 **제 마을 재고를 연다** — ${invP ? invP.name : '(응답 없음)'}`);
+    }
+    if (furnace) {
+      if (spotF) await gotoCenter(spotF[0], spotF[1]);
+      await page.evaluate(() => { window.__notices = []; });
+      await send({ type: 'furnace_smelt', buildingId: furnace.id });
+      await sleep(900);
+      const nt = await page.evaluate(() => (window.__notices || []).slice());
+      ok(nt.length > 0 && !nt.some((t) => /주인이 아닙니다|길드의 노가 아닙니다|노에서 너무 멀리/.test(t)),
+        `★★승계 뒤에도 **제 노를 쓴다** — "${nt.slice(-1)[0] || '(응답 없음)'}"`);
+    }
+    { const n = (await claimCells()).length; ok(n === myClaims1, `★승계 뒤에도 사유지가 그대로다 — ${n}칸`); }
+    await snap('07-promoted');
+
+    // 구 게스트 토큰은 죽었다 — 그 토큰만 들고 오면 **다른 사람**이 된다
+    await ctx.close();
+    //   ★`state` = **승계 전** 스냅샷(그때의 토큰이 들어 있다). `stateP` 는 승계 후라 토큰이 없다.
+    //     죽은 토큰이 정말 죽었는지 보려면 **승계 전 스냅샷**으로 들어가야 한다.
+    ok((stateP.origins || []).every((o) => !(o.localStorage || []).some((e) => e.name === 'durango_guest_token')),
+      '★승계 후 스냅샷엔 토큰이 없다(브라우저에서도 지워졌다)');
+    const ctxOld = await browser.newContext({ viewport: { width: 900, height: 700 }, storageState: state });
+    const pageOld = await ctxOld.newPage();
+    ok(await enterAsGuest(pageOld), '구 게스트 토큰만 들고 재입장 시도');
+    const pidOld = await pidOf(pageOld);
+    ok(pidOld && pidOld !== pid1, `★★★구 게스트 토큰으로는 **더 못 들어온다** — ${pidOld} ≠ ${pid1} (승계와 동시에 죽었다)`);
+    await pageOld.screenshot({ path: `${SHOTS}/08-old-token-dead.png` }).catch(() => {});
+    shots.push(`${SHOTS}/08-old-token-dead.png`);
+    await ctxOld.close();
   }
 
   await browser.close();
