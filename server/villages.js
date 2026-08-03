@@ -1066,6 +1066,128 @@ function seedVillages(db, terrain, ta, ZONE) {
 }
 
 // =============================================================================
+// ★★[2026-08-03e 배치 12 ①] **플레이어가 세운 마을** — 런타임 마을 출생 경로
+//   재민 2026-08-03: *"철기는, 플레이어가 마을 아무데나 세울 수 있는 시스템을 만들 거라, 자연해소돼"*
+//
+//   `seedVillages` 는 부팅 1회·전 마을 일괄이라 그대로 쓸 수 없다. 그래서 **같은 정본 함수들을
+//   같은 순서로** 부르되 한 곳만 만든다(사본 금지 — 부존은 `extractLandParamsApprox`, econ 은
+//   `createVillage`, 거리행렬은 `computeAndInjectDistMatrix` 증분 경로).
+//
+//   ★NPC 시딩과 **의도적으로 다른 세 가지**(전부 설계안 §1 이 지적한 지점):
+//     ① 인구 0 — `initialPop: 0`. 초기 부존이 전부 `initN` 배라 **자동으로 0**이다(선물 없음).
+//        사람은 식량이 부른다(②의 `tickRecovery`) — 배치 12 ②, 재민 확정 (마).
+//     ② 영토는 **플레이어가 실제로 다진 터**만(반경 `PV_TERR_R` 셀). 2,850셀을 클릭 한 번에
+//        주지 않는다. 이후는 기존 `_terrGrow` 가 econ `land.size×25` 를 향해 하루 몇 셀씩 넓힌다.
+//     ③ 큰집(8×8)을 짓지 않는다 — **플레이어가 세운 회관이 그 마을의 회관**이다(zone.js `village_hall`).
+//        `materializeVillageStructures` 를 부르지 않는 이유가 이것이다.
+//
+//   ★`pickSeedVillages` 의 잣대(FOOD_FLOOR 2.0 · MIN_SPACING_PX 12000)는 **적용하지 않는다** —
+//     "아무데나"가 곧 그 잣대의 부정이고, 소멸 0 은 *NPC 가 자리를 못 고르기 때문에* 세운 원칙이다.
+//     대신 **남의 땅 위에는 못 짓는다**(기존 마을 영토 반경 침범 금지) — 이건 품질 기준이 아니라
+//     좌표 충돌 방지다(영토가 겹치면 두 마을이 같은 셀을 개간·경작한다).
+// =============================================================================
+const PV_TERR_R = Math.max(2, parseInt(process.env.PVILLAGE_TERR_R || '4', 10));   // 창설 직후 영토 반경(셀) — 회관 둘레의 '다진 터'
+const PV_GAP_CELLS = Math.max(0, parseInt(process.env.PVILLAGE_GAP || '10', 10));  // 기존 마을 영토 밖 여유(셀)
+const PV_MAX = Math.max(0, parseInt(process.env.PVILLAGE_MAX || String(VILLAGE_MAX), 10));   // 플레이어 마을 상한(기본 = NPC 상한과 같은 수)
+// 반환: { ok: true, vil } · { ok: false, err: '한국어 사유' }
+function foundPlayerVillage(opts) {
+  if (!ENABLED || !state.world || !state.db || !state.ta) return { ok: false, err: '마을 시뮬이 꺼져 있어 마을을 세울 수 없다' };
+  const ccx = opts.ccx | 0, ccy = opts.ccy | 0;
+  const founder = String(opts.founder || '');
+  if (!founder) return { ok: false, err: '창설자를 알 수 없다' };
+  const ta = state.ta, db = state.db, econ = state.econ, world = state.world;
+  // ── 상한 ────────────────────────────────────────────────────────────────
+  const pvNow = state.villages.filter((v) => v.econ && v.econ.founder).length;
+  if (pvNow >= PV_MAX) return { ok: false, err: `이 세상이 감당하는 새 마을 수를 넘었다 (${pvNow}/${PV_MAX})` };
+  // ── 남의 땅 위에는 못 짓는다 — 기존 마을 영토(+여유) 침범 금지 ─────────────
+  for (const vil of state.villages) {
+    const rCells = Math.max(PV_TERR_R, Math.round((vil._maxRPx || 0) / SZ)) + PV_GAP_CELLS;
+    if (Math.hypot(ccx - vil.ccx, ccy - vil.ccy) < rCells) {
+      return { ok: false, err: `[${vil.name}] 의 땅과 너무 가깝다 — ${rCells}셀은 떨어져야 한다` };
+    }
+  }
+  // ── 터: 반경 PV_TERR_R 안의 **막히지 않은** 셀만(물·바위는 터가 아니다) ──────
+  const territory = [];
+  for (let dy = -PV_TERR_R; dy <= PV_TERR_R; dy++) {
+    for (let dx = -PV_TERR_R; dx <= PV_TERR_R; dx++) {
+      if (dx * dx + dy * dy > PV_TERR_R * PV_TERR_R) continue;
+      const x = ccx + dx, y = ccy + dy;
+      if (ta.isBlocked(x, y)) continue;
+      territory.push([x, y]);
+    }
+  }
+  if (territory.length < 8) return { ok: false, err: '물·바위뿐이라 마을을 앉힐 터가 안 나온다' };
+  // ★착공 전 자리 확인(`dryRun`) — 여기까지가 "이 자리에 세울 수 있는가"의 전부다.
+  //   같은 함수를 쓰므로 착공 판정과 완공 판정이 **어긋날 수 없다**(따로 쓰면 그게 사본이다).
+  if (opts.dryRun) return { ok: true, dryRun: true, cells: territory.length };
+  // ── 부존·econ — 정본 함수 그대로(사본 금지) ────────────────────────────────
+  let lp;
+  try {
+    if (ta.prepareFert) ta.prepareFert(ccx, ccy, PV_TERR_R + 8);
+    lp = extractLandParamsApprox(ta, ccx, ccy, { territory });
+  } catch (e) { return { ok: false, err: `땅을 재지 못했다: ${e.message}` }; }
+  const day = world.day | 0;
+  let name = String(opts.name || '').trim() || `${opts.founderName || '누군가'}의 마을`;
+  if (state.claimedNames && state.claimedNames.has(name)) {   // 이름 유니크 — 레거시 디듀프·시세 패널이 이름으로 마을을 찾는다
+    let k = 2; while (state.claimedNames.has(`${name} ${k}`)) k++;
+    name = `${name} ${k}`;
+  }
+  const ev = econ.createVillage({ ...lp, initialPop: 0, name, bornDay: day, founder });
+  ev._world = world;
+  ev.coord = { x: ccx * 2.5, y: ccy * 2.5 };   // econ 좌표 = 셀×2.5 (시딩·랩과 같은 환산)
+  // ── DB — 마을 1행 + 회관 1행 + 영토 셀(시딩과 같은 스키마) ─────────────────
+  let dbId;
+  try {
+    db.db.exec('BEGIN');
+    dbId = db.insertVillage({ zone: state.zoneId, name, cx: ccx, cy: ccy, population: 0, econ_state: serializeEcon(ev), day });
+    db.insertVillageBuilding({
+      village_id: dbId, type: 'hall', cx: ccx, cy: ccy, floors: 1,
+      data: JSON.stringify({ typeLabel: 'player', land: lp, seedType: 'player', founder, bnd: territoryBoundary(territory, ccx, ccy) }),
+    });
+    for (const c of territory) db.insertVillageBuilding({ village_id: dbId, type: 'terr', cx: c[0], cy: c[1], floors: 0, data: null });
+    db.db.exec('COMMIT');
+  } catch (e) {
+    try { db.db.exec('ROLLBACK'); } catch (_) {}
+    return { ok: false, err: `마을을 기록하지 못했다: ${e.message}` };
+  }
+  // ── 런타임 등록 — init 의 마을 1곳분과 **같은 모양**으로 채운다 ─────────────
+  world.villages.push(ev);
+  const terrSet = new Set(territory.map((c) => c[0] + ',' + c[1]));
+  const vil = {
+    dbId, name, ccx, ccy, housesPx: [], econ: ev, npcPids: [], _bRows: [], _bnd: null,
+    _maxRPx: Math.round((PV_TERR_R + 3) * SZ), _farmN: 0, _dryN: 0,
+    _terrSet: terrSet, _potSet: new Set(), _farmSet: new Set(), _drySet: new Set(),
+    _granList: [], _houseCells: [], _pendSite: null, _site: null, _clearCrew: 0, _buildCrew: 0, _claim: new Set(),
+    _crop: new Map(), _cropClaim: new Set(), _ditch: [], _pHouses: [], _pSiteRows: [], _psite: null, _psiteCrew: 0,
+    _founder: founder, _tribeId: opts.tribeId || null,
+  };
+  { const _cw = Math.ceil((state.deps && state.deps.zoneWidth ? state.deps.zoneWidth : (require('./zone-config').ZONES[state.zoneId] || {}).zoneWidth || 1) / SZ);
+    vil._lonOff = +((ccx / Math.max(1, _cw)) * 0.045).toFixed(4); }
+  state.villages.push(vil);
+  state.byDbId.set(dbId, vil);
+  state.byEcon.set(ev, vil);
+  if (state.claimedNames) state.claimedNames.add(name);
+  // 영토 개간 — 마을 안엔 숲이 없다(시딩과 같은 규칙, 멱등)
+  try { if (state.deps.clearTreesInCells) state.deps.clearTreesInCells(terrSet); } catch (e) {}
+  // ── 교역 거리행렬 — **미루고 증분으로**(배치 11 ①-2 + 배치 12 실측) ─────────────
+  //   ★실측이 설계를 고쳤다: 건립 그 자리에서 돌렸더니 **서버가 10.5초 멎었다**(실클라 E2E 로그.
+  //     증분이라 BFS 는 1쌍인데 코스 셀 143,627칸 지형 판정이 비용의 전부다). 그 사이 클라 워치독이
+  //     재접속해 **게스트 playerId 가 바뀌었고**, 방금 제가 세운 마을을 "관리자가 아니다"로 거부당했다.
+  //     — 마을을 세울 때마다 10초씩 멎는 건 기능이 아니라 사고다.
+  //   ⇒ **이미 있는 지연 경로에 얹는다**: `state.distDirty` 는 게임일 경계에서 소비되는 기존 계약이다
+  //     (`onGameTick` 의 "무효화 훅 소비" 블록). 거기에 증분 시작점만 실어 보낸다 — 새 스케줄러 0.
+  //   ⚠그때까지 이 마을의 교역 거리는 유클리드 폴백이다. 갓 선 **빈 마을**은 팔 것도 살 것도 없으니
+  //     한 게임일의 근사는 무해하다(반대로 10초 정지는 유해하다).
+  //   ⚠벽·울타리 변화가 끼면 옛 쌍도 썩으므로 `invalidateTradeDistances` 가 증분을 취소하고 전쌍으로 돌린다.
+  if (state._distIncrFrom == null || !(state._distIncrFrom > 0)) {
+    state._distIncrFrom = (world._distMatrix && world._distMatrix.length) ? world._distMatrix.length : -1;
+  }
+  state.distDirty = true;
+  console.log(`[${state.zoneId}] 🏘️ ★플레이어 마을 건립 — [${name}] 셀(${ccx},${ccy}) 창설자 ${founder} · 인구 0 · 터 ${territory.length}셀 · land(F${lp.fertility}/W${lp.water}/S${lp.stone}/O${lp.ore}) day=${day}`);
+  return { ok: true, vil, dbId, name };
+}
+
+// =============================================================================
 // 교역 거리 행렬(BFS·지형) — villageDist의 유클리드가 강·산 우회를 몰라 운송비·약탈 확률·
 // 이동일(전부 거리 비례)이 왜곡되는 것을 교정. econ은 지형을 모름(계약) — 여기(호스트)서
 // 전쌍 최단거리를 계산해 econ.setDistMatrix(world, matrix)로 주입하면 villageDist가 우선 조회.
@@ -1116,7 +1238,19 @@ function computeAndInjectDistMatrix(reason, opts) {
   const cellsW = Math.ceil(ZONE.zoneWidth / SZ), cellsH = Math.ceil(ZONE.zoneHeight / SZ);
   const gw = Math.ceil(cellsW / DIST_STEP), gh = Math.ceil(cellsH / DIST_STEP);
   const half = DIST_STEP >> 1;
-  const blk = new Int8Array(gw * gh); // 0=미판정 1=열림 2=차단 — 이번 계산 안에서 소스 간 공유(재계산 시엔 새로 — 어댑터가 미래에 건물을 반영해도 안전)
+  // 0=미판정 1=열림 2=차단.
+  // ★★[2026-08-03e 배치 12 — 실측 개선] 이 메모를 **호출 간에도** 유지한다.
+  //   종전 주석은 "재계산 시엔 새로 — 어댑터가 미래에 건물을 반영해도 안전"이었다. 그 안전은
+  //   **매번 지형을 다시 재는 값**으로 샀는데, 실측이 그 값을 보여 줬다:
+  //   플레이어가 마을을 하나 세울 때 **서버가 9.8초 멎는다**(실클라 E2E 로그 — 증분 BFS 자체는
+  //   1쌍인데 코스 셀 143,628칸 지형 판정이 비용의 전부다). 마을을 세울 때마다 10초씩 멎으면
+  //   그건 기능이 아니라 사고다.
+  //   ⇒ **캐러밴 A* 격자와 똑같이** 캐시하고 `invalidateTradeDistances` 로 비운다
+  //     (`state._route.blk.fill(0)` 가 이미 그 선례다 — 새 기구가 아니라 같은 계약을 한 줄 더 쓴 것).
+  //     그 훅은 zone.js 의 벽·울타리 설치/철거/파괴 네 지점이 전부 부르고 있다(코스 격자를 바꾸는 건 그것뿐).
+  //   ★부팅 때 전쌍 계산이 이 격자를 이미 채우므로, 건립 시엔 BFS 만 남는다.
+  if (!state._distBlk || state._distBlk.length !== gw * gh) state._distBlk = new Int8Array(gw * gh);
+  const blk = state._distBlk;
   let sampled = 0, bridgeSaved = 0;
   const isBlk = (gx, gy) => {
     if (gx < 0 || gy < 0 || gx >= gw || gy >= gh) return true;
@@ -1779,6 +1913,8 @@ function invalidateTradeDistances(cx, cy) { // eslint-disable-line no-unused-var
   state.distDirty = true;
   if (state.routeCache) state.routeCache.clear();
   if (state._route) state._route.blk.fill(0);
+  if (state._distBlk) state._distBlk.fill(0);   // ★[배치 12] 교역 거리행렬 코스 격자도 같은 훅에서 비운다(캐러밴 A* 격자와 동형)
+  state._distIncrFrom = -1;   // ★[배치 12] 지형이 바뀌면 **옛 쌍도 썩는다** — 증분 취소, 다음 재계산은 전쌍
 }
 
 // =============================================================================
@@ -2486,7 +2622,9 @@ function onGameTick(now) {
     for (const vil of state.villages) { try { _lifeDaily(vil); } catch (e) { console.error(`[${state.zoneId}] 생활층 일일 훅 실패(${vil.name}):`, e.message); } }   // ★[생활 층] 크루 리셋·신축 판단 — econ 틱 직후(읽기 전용 결합)
     if (state.distDirty) { // 무효화 훅(스텁) 소비 — 게임일 경계(자정 큐 세팅 뒤) 전쌍 재계산. 건물 변화는 드물어 일 1회면 족함(정밀화는 Stage 4 — 위 훅 주석).
       state.distDirty = false;
-      try { computeAndInjectDistMatrix('무효화 재계산'); } catch (e) { console.error(`[${state.zoneId}] 🏘️ BFS 거리행렬 재계산 실패(기존 행렬 유지):`, e.message); }
+      // ★[배치 12] 마을이 늘어서 더러워진 것이면 **증분**으로(지형이 바뀐 것이면 `_distIncrFrom`이 −1 이라 전쌍).
+      const _k = state._distIncrFrom; state._distIncrFrom = -1;
+      try { computeAndInjectDistMatrix('무효화 재계산', (_k > 0) ? { incrementalFrom: _k } : undefined); } catch (e) { console.error(`[${state.zoneId}] 🏘️ BFS 거리행렬 재계산 실패(기존 행렬 유지):`, e.message); }
     }
     console.log(`[${state.zoneId}] 🏘️ 마을 econ day ${state.world.day}: 인구 ${econPop} · 스폰 NPC ${npcCount} · 캐러밴 실체 ${state.caravanBodies ? state.caravanBodies.size : 0}/${state.world.caravans.length}(+${carSync.spawned} 도착${carSync.arrived} 회수${carSync.removed}) · 저장큐 ${state.saveQueue.length}행 분산 · ${Date.now() - t0}ms`);
     // P1: 전쟁 활동 요약(활동 있을 때만 1줄 — 선포·전투·조공·활성전쟁) + P2 실체 전투(진행 중·오늘 승격 수)
@@ -3143,6 +3281,123 @@ function villageOwningCell(x, y) {
   return null;
 }
 
+// ═══ ★★[2026-08-03e 배치 12 ③] 길드 재고 UI — 서버측 정본 조회 ══════════════════
+//   재민: *"마을(길드) 관리자가 식량 등의 마을 재고 현황을 파악할 수 있도록 ui 할 거야"*
+//
+//   ★규약 셋(어기면 배치 6 의 지표 오독이 이번엔 **플레이어에게서** 재발한다):
+//     ① **`treasury._cash` 는 안 보여준다.** 그건 화폐가 아니라 **미상환 세곡 채권 장부**다
+//        (재민 세금 캐논: *"교역 세금은 물물교환할 때 드는 물건이고, 방문한 쪽이 더 낸다"* —
+//        `회부_국고_2차_소비처.md` 종결). 재화와 나란히 놓으면 "부"로 읽힌다. 배치 6 의
+//        '산골 1인당 부' 지표가 실은 이 값이어서 A/B 결론이 통째로 틀렸던 전례가 있다.
+//     ② **UI 쪽에서 다시 계산하지 않는다.** 식량 환산은 엔진 정본 `totalFoodEquivalent` 하나만 쓴다
+//        (사본 금지 — 계측기도 사본 금지 대상이라는 배치 7 의 교훈).
+//     ③ 곳간(`storage`)과 국고(`treasury` 실물)는 **다른 칸**이다. 국고는 세금으로 걷힌 실물이라
+//        마을 재고이긴 하나 가계 재고가 아니다 — 합치면 또 오독을 만든다.
+const PV_INV_GROUPS = [
+  { key: 'food',  ko: '식량',   items: ['food', 'fish', 'meat', 'cooked_food', 'fruit', 'vegetable', 'mushroom'] },
+  { key: 'build', ko: '건축·연료', items: ['wood', 'stone', 'twig', 'pebble'] },
+  { key: 'tool',  ko: '도구',   items: ['tool', 'iron_tool', 'bronze_tool'] },
+  { key: 'metal', ko: '광물·금속', items: ['ore', 'iron', 'copper', 'tin'] },
+  { key: 'war',   ko: '무장',   items: ['weapon', 'armor', 'hide', 'bone'] },
+  { key: 'misc',  ko: '기타',   items: ['clothes', 'herb', 'clay', 'charcoal', 'obsidian', 'jade', 'tigerhide'] },
+];
+// ★★[2026-08-03e 배치 12 ②] **곳간에 넣기** — 재민 확정 (마)의 실행 통로.
+//   *"플레이어가 농사지어서 식량 확보하면 그냥 늘어나는 거 아냐?"* — 그 "확보"가 여기서 일어난다.
+//   플레이어 인벤 품목과 econ 재화는 **이름 체계가 다르다**(플레이어는 `berry`·`meat_raw`,
+//   econ 은 `fruit`·`meat`). 그 대응을 여기 한 곳에만 둔다 — 두 군데 적으면 그게 사본이다.
+//   ⚠목록에 없는 물건은 **받지 않는다**(조용히 삼키지 않는다). 곡괭이·검을 곳간에 넣을 수는 없다.
+//   ⚠환산율은 잠정 **1:1**이고 손잡이다(`VILLAGE_DEPOSIT_RATE`). 균형 실측은 이 배치의 범위가 아니다 —
+//     지금 필요한 것은 "플레이어의 노동이 마을 곳간에 도달한다"는 **경로의 존재**다.
+const PV_DEPOSIT_MAP = {
+  berry: 'fruit', fish: 'fish', meat_raw: 'meat', hide: 'hide', herb: 'herb',
+  fish_cooked: 'cooked_food', meat_cooked: 'cooked_food', berry_jam: 'cooked_food',
+  wood: 'wood', stone: 'stone', ore: 'ore', iron_ore: 'iron',
+};
+const PV_DEPOSIT_RATE = (() => { const x = parseFloat(process.env.VILLAGE_DEPOSIT_RATE || '1'); return (isFinite(x) && x > 0) ? x : 1; })();
+function playerVillageDepositMap() { return PV_DEPOSIT_MAP; }
+// 반환: { ok, moved: {econRes: qty}, err }
+function playerVillageDeposit(vil, inventory, want) {
+  const v = vil && vil.econ;
+  if (!v) return { ok: false, err: '마을을 찾지 못했다' };
+  const moved = {}, taken = {};
+  for (const [item, q0] of Object.entries(want || {})) {
+    const res = PV_DEPOSIT_MAP[item];
+    if (!res) continue;                                   // 곳간이 받는 물건이 아니다(조용히 삼키지 않음 — 아래서 err)
+    const q = Math.floor(Number(q0));
+    if (!(q > 0)) continue;
+    const have = Math.floor(Number(inventory[item]) || 0);
+    const put = Math.min(q, have);
+    if (put <= 0) continue;
+    taken[item] = put;
+    moved[res] = +((moved[res] || 0) + put * PV_DEPOSIT_RATE).toFixed(3);
+  }
+  if (!Object.keys(taken).length) return { ok: false, err: '넣을 수 있는 물건이 없다(곳간은 식량·목재·석재·광물만 받는다)' };
+  for (const [item, q] of Object.entries(taken)) inventory[item] -= q;
+  for (const [res, q] of Object.entries(moved)) v.storage[res] = +((v.storage[res] || 0) + q).toFixed(3);
+  return { ok: true, moved, taken };
+}
+
+// 회관 셀(정확히 중심) → 그 마을. 플레이어가 세운 마을만 돌려준다(NPC 마을 회관은 이 UI 대상이 아니다).
+function playerVillageAt(ccx, ccy) {
+  for (const vil of state.villages) {
+    if (vil.ccx === (ccx | 0) && vil.ccy === (ccy | 0) && vil.econ && vil.econ.founder) return vil;
+  }
+  return null;
+}
+// 재고 스냅샷 — zone.js 가 이걸 그대로 클라에 보낸다(클라는 표시만 한다).
+function playerVillageInventory(vil) {
+  const v = vil && vil.econ;
+  if (!v) return null;
+  const econ = state.econ;
+  const st = v.storage || {}, tr = v.treasury || {};
+  const groups = [];
+  const seen = new Set();
+  for (const g of PV_INV_GROUPS) {
+    const items = [];
+    for (const r of g.items) {
+      seen.add(r);
+      const q = +(st[r] || 0);
+      if (q > 0.005) items.push({ r, q: +q.toFixed(2) });
+    }
+    if (items.length) groups.push({ key: g.key, ko: g.ko, items });
+  }
+  // 목록에 없는 재화가 엔진에 새로 생겨도 **조용히 사라지지 않게** 기타로 흘린다(지표 누락 방지).
+  //   ★`RESOURCES` 가 아니라 **곳간 실키**를 훑는다 — 삼(hemp)·모시(ramie)처럼 동적으로 붙는
+  //     재화가 RESOURCES 밖에 있어서, 상수 목록만 보면 화면에서 조용히 사라진다.
+  {
+    const extra = [];
+    for (const r of Object.keys(st)) {
+      if (seen.has(r) || r.charCodeAt(0) === 95) continue;   // `_` 내부 필드 제외
+      const q = +(st[r] || 0);
+      if (q > 0.005) extra.push({ r, q: +q.toFixed(2) });
+    }
+    if (extra.length) groups.push({ key: 'other', ko: '그 밖', items: extra });
+  }
+  // 국고 실물(세금으로 걷힌 물건) — `_cash` 는 뺀다(장부이지 재화가 아니다). `_` 제외가 곧 그 규약이다.
+  const treasury = [];
+  for (const r of Object.keys(tr)) {
+    if (r.charCodeAt(0) === 95) continue;
+    const q = +(tr[r] || 0); if (q > 0.005) treasury.push({ r, q: +q.toFixed(2) });
+  }
+  return {
+    name: vil.name, pop: v.npcs.length, day: (state.world && state.world.day) | 0,
+    foundedDay: v.foundedDay | 0, founder: v.founder || null,
+    // ★식량 환산·자립일수는 **엔진 정본 함수**로만 낸다(UI 재계산 금지)
+    foodEquiv: +econ.totalFoodEquivalent(v).toFixed(1),
+    foodDays: +(econ.totalFoodEquivalent(v) / Math.max(1, v.npcs.length)).toFixed(1),
+    housing: v.housing != null ? +(+v.housing).toFixed(1) : null,
+    // 첫 주민 문턱 — 인구 0 마을이 "식량 얼마면 사람이 오나"를 화면에서 알 수 있게.
+    //   ★숫자를 여기 다시 쓰지 않는다 — 엔진 정본(`recoveryFoodThreshold`/`recoveryFoodHave`)을 부른다(사본 금지).
+    //   `nextResidentHave` 는 지금 곳간의 **식량 환산**이다(곡식만이 아니다 — 생선·고기·채집물 포함).
+    nextResidentAt: (state.econV2 && state.econV2.recoveryFoodThreshold) ? +state.econV2.recoveryFoodThreshold(v).toFixed(1) : null,
+    nextResidentHave: (state.econV2 && state.econV2.recoveryFoodHave) ? +state.econV2.recoveryFoodHave(v).toFixed(1) : null,
+    // 곳간이 받는 품목(플레이어 인벤 키 → econ 재화). 화면이 "넣기" 버튼을 이 목록으로만 만든다 —
+    // 클라가 제 목록을 따로 갖지 않게(사본 금지). 서버는 어차피 이 목록으로 다시 검증한다.
+    accepts: PV_DEPOSIT_MAP,
+    groups, treasury,
+  };
+}
+
 function _lifeAddHouseSite(vil) {   // 랩 addHouseSite 동형(서버판): 2패스(잠재농지 회피→잠식 비용) + 전 하드 필터
   if (vil._site || !state.ta) return;
   if (!vil._wf) {   // 물거리 EDT 캐시(마을당 1회 — 영토 bbox±32, 랩 s._wf 동형)
@@ -3766,6 +4021,9 @@ module.exports = {
   ditchCells,
   // ★[11차 T4] 플레이어 의뢰 집 건설 — zone.js 배치 핸들러가 소비
   lifeRequestPlayerSite, villageOwningCell,
+  // ★★[2026-08-03e 배치 12] 플레이어 마을 건립 — zone.js `village_site` 완공 훅이 소비.
+  //   `playerVillageAt` 은 재고 UI 의 권한/조회 진입점(회관 셀 → 그 마을).
+  foundPlayerVillage, playerVillageInventory, playerVillageAt, playerVillageDeposit, playerVillageDepositMap,
   // 플레이어 구매/판매 경계계약(읽기전용 마을 품질 EMA — econ 무접촉)
   villageQualityAt,
   lifeSellIronRelic,   // ★철제 위세품 판매(플레이어→마을) — econ 접점은 이 함수 하나뿐

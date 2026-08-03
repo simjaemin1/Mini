@@ -191,6 +191,7 @@
    },
    "expansions": 276,
    "founder": null,
+   "everPop": 1,
    "jobs": {
     "farmer": 18,
     "fisher": 2,
@@ -209,6 +210,7 @@
    },
    "_int": {
     "_bornDay": 0,
+    "_everPop": 1,
     "_tempDay": 17.6994,
     "_tempNight": 12.6994,
     "_coldStress": 0,
@@ -455,6 +457,7 @@
    },
    "expansions": 1560,
    "founder": null,
+   "everPop": 1,
    "jobs": {
     "farmer": 48,
     "fisher": 4,
@@ -473,6 +476,7 @@
    },
    "_int": {
     "_bornDay": 0,
+    "_everPop": 1,
     "_tempDay": 17.6994,
     "_tempNight": 12.6994,
     "_coldStress": 0,
@@ -720,6 +724,7 @@
    },
    "expansions": 245,
    "founder": null,
+   "everPop": 1,
    "jobs": {
     "farmer": 27,
     "fisher": 5,
@@ -738,6 +743,7 @@
    },
    "_int": {
     "_bornDay": 0,
+    "_everPop": 1,
     "_tempDay": 17.6994,
     "_tempNight": 12.6994,
     "_coldStress": 0,
@@ -986,6 +992,7 @@
    },
    "expansions": 314,
    "founder": null,
+   "everPop": 1,
    "jobs": {
     "farmer": 24,
     "fisher": 2,
@@ -1004,6 +1011,7 @@
    },
    "_int": {
     "_bornDay": 0,
+    "_everPop": 1,
     "_tempDay": 17.6994,
     "_tempNight": 12.6994,
     "_coldStress": 0,
@@ -1247,6 +1255,7 @@
    },
    "expansions": 951,
    "founder": null,
+   "everPop": 1,
    "jobs": {
     "farmer": 37,
     "fisher": 7,
@@ -1265,6 +1274,7 @@
    },
    "_int": {
     "_bornDay": 0,
+    "_everPop": 1,
     "_tempDay": 17.6994,
     "_tempNight": 12.6994,
     "_coldStress": 0,
@@ -1512,6 +1522,7 @@
    },
    "expansions": 254,
    "founder": null,
+   "everPop": 1,
    "jobs": {
     "farmer": 17,
     "fisher": 1,
@@ -1530,6 +1541,7 @@
    },
    "_int": {
     "_bornDay": 0,
+    "_everPop": 1,
     "_tempDay": 17.6994,
     "_tempNight": 12.6994,
     "_coldStress": 0,

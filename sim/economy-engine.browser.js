@@ -2716,7 +2716,14 @@ function createVillage(opts) {
     Math.max(0.3, (v.land.fertility + v.land.wood + v.land.stone) / 3) * 0.25
   );
   // Phase 4d-7: sustainable cap 제거 — 비자급 마을도 정상 인구로 시작 (초기 식량 비축으로 교역 시간 확보)
-  const initN = opts.initialPop || 8;
+  // ★★[2026-08-03e 배치 12 ①] **0 을 0 으로 읽는다.** 종전 `opts.initialPop || 8` 은 `initialPop: 0`
+  //   창설을 조용히 8명으로 바꿔 놓았다 — 플레이어가 세운 마을은 **빈 터**로 태어나야 하므로
+  //   (설계안 §1 #4: *"8명·2,850셀을 클릭 한 번에 주는 건 마을이 아니라 선물이다"*) 그 폴백이
+  //   계약을 정면으로 어긴다. initN=0 이면 아래 초기 부존(식량 45일치·도구·목재·석재·LANDFIT·
+  //   BOOMFIT)이 **전부 0 을 곱해** 저절로 0 이 된다 — 부존 규칙을 새로 만들 필요가 없다.
+  //   ⚠기존 호출부는 전부 1 이상(8·20·pop)을 넘기므로 **비트 동일**이다(전수 확인: villages.js
+  //     INITIAL_POP · econ-lab-real · migrate-db-endowment · 하네스 6종 · v1 CLI 2곳).
+  const initN = (opts.initialPop != null) ? opts.initialPop : 8;
   for (let i = 0; i < initN; i++) {
     let job = pickInitialJob(v);   // ★전담 행상 폐지: 첫 NPC도 일반 직업(식량 위주). 교역은 잉여 생기면 기본 NPC가.
     const npc = createNPC({ job });
@@ -2775,6 +2782,12 @@ function createVillage(opts) {
   v.storage.herb = initN * 0.5;       // ★약재(§9): 정착민 상비약 반 근씩 — 재고0 희소폭등(가격 스파이크→채집 쏠림 과도) 방지 시드
   v.storage.weapon = Math.max(v.storage.weapon || 0, initN * 0.15);   // ★활 시드(§9 3차): 정착민 사냥꾼은 제 활을 들고 옴(~초기 사냥꾼 수) — t=0 무기 결손이 무기장 캐치업·교역을 흔드는 것 방지(herb 패턴)
   v.housing = Math.max(initN, HOUSE_START);   // ★주거 수용력. K = min(식량,생산) 안에서 인구가 이 값에 막힘(성장 게이트).
+  // ★★[2026-08-03e 배치 12 ②] **한 번이라도 사람이 살았는가** — 소멸 판정의 전제다(계측 전용, 로직 무관).
+  //   플레이어 마을은 인구 0 으로 태어난다. 그 상태를 `pop === 0` 으로만 세면 **태어나자마자 소멸**로
+  //   찍혀 지표가 통째로 거짓말이 된다(배치 6·7·8 이 반복해 만난 실패 유형: 지표가 틀리면 결론이 틀린다).
+  //   ⇒ 소멸(P) 는 **≥1 에 도달한 뒤 0 이 된 마을**만 센다. 아직 아무도 안 온 빈 터는 '소멸'이 아니라
+  //     '아직 시작 안 함'이다. NPC 마을은 initN=8 이라 언제나 1 — 기존 판정과 완전히 같다.
+  v._everPop = initN > 0 ? 1 : 0;
   return v;
 }
 
@@ -5825,6 +5838,14 @@ function tickTradeV2(world, day) {
         for (const nb of a.v._near20) {   // ★모든 마을 → top-20 근처만
           const b = evToData.get(nb);
           if (!b || a === b) continue;
+          // ★★[2026-08-03e 배치 12 — 실클라 E2E 가 잡은 결함] **아무도 안 사는 터는 교역 상대가 아니다.**
+          //   플레이어가 세운 마을은 인구 0 으로 태어난다. 그 마을이 목적지 후보에 남아 있으면
+          //   캐러밴이 찾아가 **없는 물건을 사 온다** — 실측: 곳간 식량 환산이 **−69.3** 까지 내려갔고,
+          //   그래서 아무리 식량을 부어도 회복 문턱을 영영 못 넘었다(사람이 안 왔다).
+          //   ⇒ 인구 0 마을은 발주 대상에서 뺀다. 발주 **주체**는 이미 `npcs.length < 2` 로 막혀 있었는데
+          //     **수주 쪽에만 그 조건이 없었다** — 대칭이 빠져 있던 것이다.
+          //   ⚠NPC 세계 영향 0: 소멸 0 이라 인구 0 마을이 애초에 없다(3시드 800일 비트 동일로 실측).
+          if (b.v.npcs.length === 0) continue;
           if (b.v.isolated && day < b.v.isolatedUntilDay) continue;
           if (b.v._siegeBlock) continue;   // ★[포위 봉쇄 훅] 포위된 마을은 목적지로도 제외(성문 봉쇄 — 들어가는 길이 없음). 미설치=무해
           if ((a.v._grudgeBlock && a.v._grudgeBlock[b.v.name]) || (b.v._grudgeBlock && b.v._grudgeBlock[a.v.name])) continue;   // ★[원한 제재 훅] 불의전 평판 — 원한(>문턱) 상대와 상호 교역 기피(발주·수주 대칭 차단). 호스트(전쟁 레이어)가 일일 발행, 미설치(undefined)=무해
@@ -6570,11 +6591,42 @@ function createWorldV2(opts = {}) {
 // === 작은 마을 자연 회복 (이주 OFF의 보완책) ===
 //   인구 < 5 + storage food 충분이면 매 50일 1명 출산.
 //   v2 r10: 토지 적합 직업으로 출산 (이전 무조건 farmer = 척박 마을엔 자살)
+// ★★[2026-08-03e 배치 12 ② — 재민 확정 (마)] **식량이 사람을 부른다.**
+//   원문: *"플레이어가 농사지어서 식량 확보하면 그냥 늘어나는 거 아냐?"*
+//   회부 문서(`회부_마을건립_초기인구.md`)가 낸 (가)~(라) 넷 — 인원 실어나르기·자연성장 신설·
+//   플레이어가 첫 주민·그냥 8명 주기 — 은 **전부 새 기구를 만드는 안**이었다. 재민의 답은 다섯째다:
+//   **이미 있는 기구를 인구 0 까지 넓힌다.**
+//   ⇒ 새 함수 0 · 새 상수 0 · 새 개념 0. `식량 ≥ N×15` 문턱을 그대로 쓰되 N 의 하한만 1 로 둔다
+//     (인구 0 이면 N×15 = 0 이라 **빈 곳간에도 사람이 생겨** 버린다 — 1인분이 문턱의 자연 하한이다).
+//
+//   ★캐논 충돌 없음 — 이 논거를 회부 종결부에 적었다:
+//     이 회복 기구는 원래부터 **"사람이 어디선가 온다"는 추상**이다(이주 폐지 후의 보완책이라고
+//     함수 헤더가 직접 말한다). NPC 마을 19곳이 800일 내내 그 추상으로 회복해 왔고 그게 소멸 0 의
+//     토대다. 플레이어 마을만 다른 잣대를 들이대면 그게 오히려 새 규칙이다.
+//     순간이동(`tickForceEvacuation`)도 이주(`tickMigration`)도 **여전히 OFF** — 둘 다 기존 마을의
+//     인구를 실제로 빼 오는 기구라서 껐던 것이고, 이건 아무 마을의 인구도 줄이지 않는다.
+//   ★문턱은 **함수 하나**다(사본 금지) — 화면(길드 재고 UI 의 '다음 주민' 표시)도 이 함수를 부른다.
+//     숫자를 UI 에 다시 적으면 문턱이 바뀔 때 화면만 거짓말을 하게 된다.
+function recoveryFoodThreshold(v) { return Math.max(1, (v.npcs && v.npcs.length) || 0) * 15; }
+// ★★[2026-08-03e 배치 12 ② — 실클라 E2E 가 잡은 것] "곳간에 든 식량"은 **곡식만이 아니다.**
+//   종전 게이트는 `v.storage.food`(곡식) 하나만 봤다. 그런데 이 엔진에서 "이 마을에 식량이 얼마나
+//   있나"의 정본은 `totalFoodEquivalent`(곡식+생선+고기+요리+채집물 환산)이고, 부양력 K·생산 포만·
+//   기근 판정이 전부 그걸 쓴다. 회복 게이트만 곡식을 보는 것은 **정본이 둘인 상태**였다.
+//   실증: 실클라에서 플레이어가 농사·채집으로 얻는 것은 베리(→`fruit`)라 곡식이 한 톨도 안 생긴다.
+//   그 상태로는 곳간을 가득 채워도 사람이 영영 안 온다 — 재민 확정 (마)가 화면에서 성립하지 않는다.
+//   ⇒ **정본 함수 하나로 통일한다.** 새 규칙이 아니라 *같은 질문에 같은 자를 쓰는 것*이다.
+//   ⚠NPC 경로 영향은 실측으로 확인했다(실지도 3시드 800일 — 아래 보고서 참조).
+function recoveryFoodHave(v) { return v1.totalFoodEquivalent(v); }
 function tickRecovery(world, day) {
   if (day % 50 !== 0 || day < 100) return;
   for (const v of world.villages) {
-    if (v.npcs.length === 0 || v.npcs.length >= 5) continue;
-    if ((v.storage.food || 0) < v.npcs.length * 15) continue;
+    if (v.npcs.length >= 5) continue;
+    // ★NPC 시딩 마을의 인구 0 = **소멸**이다. 죽은 마을을 식량으로 되살리는 기구가 아니므로
+    //   종전대로 잘라낸다 — `founder == null` 경로는 이 줄에서 한 비트도 안 바뀐다.
+    if (v.npcs.length === 0 && !v.founder) continue;
+    //   문턱은 **있는 것 그대로** N×15. N 하한 1 은 새 상수가 아니라 "1인분"이라는 같은 문턱의 자연 하한.
+    //   N ≥ 1 이면 `Math.max(1, N) === N` — NPC 경로 산술이 완전히 동일하다.
+    if (recoveryFoodHave(v) < recoveryFoodThreshold(v)) continue;
     // 토지 적합 식량 직업 — fertility/water/game 중 최고
     const opts = [
       ['farmer', v.land.fertility * 1.5],
@@ -6586,7 +6638,8 @@ function tickRecovery(world, day) {
     v.npcs.push(npc);
     v.counts = v.counts || {};
     v.counts[bestJob] = (v.counts[bestJob] || 0) + 1;
-    console.log(`  👶 Day ${day}: ${v.name} 인구 자연회복 → ${v.npcs.length}명 (${bestJob})`);
+    v._everPop = 1;   // ★첫 주민 도달 — 이후 인구가 0 이 되면 그때는 진짜 소멸이다(계측 전용)
+    console.log(`  👶 Day ${day}: ${v.name} 인구 ${v.founder ? '유입' : '자연회복'} → ${v.npcs.length}명 (${bestJob})`);
   }
 }
 
@@ -6680,6 +6733,7 @@ function main() {
         finalTreasury: v.treasury,
         expansions: v.expansions || 0,   // ★[2026-08-03a ⑰] 확장 셀 수 — v2 CLI 회귀 판정 열
         founder: v.founder || null,      // ★[2026-08-03d 배치 11] 출처 — null=NPC 시딩 · 문자열=플레이어 창설
+        everPop: v._everPop ? 1 : 0,     // ★[2026-08-03e 배치 12 ②] 한 번이라도 인구 ≥1 — 소멸 판정의 전제(빈 터 ≠ 소멸)
         jobs: v1.jobCounts(v),
         // 계측용 내부 스칼라(제련량·주조등급·품질 EMA 등) — 회귀표 밖 진단에 쓴다
         _int: Object.fromEntries(Object.keys(v).filter(k => k[0] === '_' && typeof v[k] === 'number')
@@ -6729,6 +6783,8 @@ module.exports = {
   _priceParamsV2, _impactSegs, _impactF, _impactBuyV2, _impactSellV2,
   // 기온 모델(2026-07-12) — 생활층(밤낮 시간 곡선)·프로브용 노출
   temperatureAt, CLIMATE,
+  // ★[2026-08-03e 배치 12 ②] 인구 유입 문턱 — 하네스·길드 재고 UI 가 **같은 함수**를 부른다(사본 금지)
+  tickRecovery, recoveryFoodThreshold, recoveryFoodHave,
 };
 
 ;return module.exports;})();

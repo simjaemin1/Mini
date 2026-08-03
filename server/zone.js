@@ -9,6 +9,8 @@ const http = require('http');
 const { ZONES, WORLD, isNight, worldPhase, darknessLevel, findZoneAt, worldDistance, worldDeltaX } = require('./zone-config');
 const db = require('./zone-local-db'); // 로컬 zone DB — players 없음
 const SimVillages = require('./villages'); // §4-4 NPC 마을 시뮬 — top-level은 상수뿐(실작업은 아래 init 호출, ENABLE_VILLAGES=0이면 완전 no-op)
+// ★[2026-08-03e 배치 12 · 테스트 전용 손잡이] 기본 OFF. `E2E_GIVE=1` 일 때만 `__e2e_give` 분기가 산다(입력 핸들러 참조).
+const E2E_GIVE = (process.env.E2E_GIVE === '1');
 const Wildlife = require('./wildlife'); // §4-4 동물 AI 블록(마을실험실 이식) — 야생 5종 생태. ENABLE_WILDLIFE=0 → 완전 no-op
 const Bandits = require('./bandits'); // §11 도적 캐논 1파(경제·수명주기 — 소굴·해체 전환·econ 약탈 훅). ENABLE_BANDITS=0 → 완전 no-op, ENABLE_VILLAGES=0이면 자동 휴면
 const Roads = require('./roads'); // §16 답압 길 4파(희소맵·게으른 감쇠·DB 영속·A* 할인). ENABLE_ROADS=0 → 완전 no-op
@@ -544,7 +546,7 @@ const CROP_GROW_MS = 60 * 1000;
 // 14.50: door도 닫혔을 때 blocking. fence는 cell 차지하지만 통과 가능 (사용자 의도: 시야는 통과, collider만 차단).
 const BLOCKING_BUILDINGS = new Set(['wall', 'fence', 'door']);
 // 14.49-e2: 층 높이 2배 (32 → 64). 벽·계단도 같이 2배.
-const BUILDING_HEIGHT = { wall: 64, floor: 4, fence: 32, door: 64, chest: 24, campfire: 20, farmland: 4, stair: 64, vtile: 2, guild_granary: 40, granary: 40, hut_site: 4, hut: 40, furnace_site: 4, furnace: 48, kiln_site: 4, charcoal_kiln: 36 };   // ★실체화 동기: 지면 타일·곳간·움집터·노(爐)·숯가마
+const BUILDING_HEIGHT = { wall: 64, floor: 4, fence: 32, door: 64, chest: 24, campfire: 20, farmland: 4, stair: 64, vtile: 2, guild_granary: 40, granary: 40, hut_site: 4, hut: 40, furnace_site: 4, furnace: 48, kiln_site: 4, charcoal_kiln: 36, village_site: 4, village_hall: 56 };   // ★실체화 동기: 지면 타일·곳간·움집터·노(爐)·숯가마·마을회관[배치 12]
 // Phase 14.25: chest 저장 가능 아이템 (모든 자원 + 도구 + 음식)
 const CHEST_ALLOWED_ITEMS = new Set([
   'wood', 'stone', 'ore', 'herb',
@@ -2760,6 +2762,27 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'furnace_smelt') tryFurnaceSmelt(player, msg.buildingId);          // ★노 조업(철 정광+숯 → era.js 물리)
   else if (msg.type === 'kiln_start') tryKilnStart(player, +msg.atX, +msg.atY);            // ★숯가마 건설 ①(노와 같은 계약)
   else if (msg.type === 'kiln_advance') tryKilnAdvance(player, msg.buildingId);            // ★숯가마 건설 ②·완공
+  else if (msg.type === 'village_start') tryVillageStart(player, +msg.atX, +msg.atY);      // ★[배치 12] 마을 회관 착공 — 완공이 곧 마을 등록
+  else if (msg.type === 'village_advance') tryVillageAdvance(player, msg.buildingId);      // ★[배치 12] 회관 ②③·완공
+  else if (msg.type === 'village_inventory') tryVillageInventory(player, msg.buildingId);  // ★[배치 12 ③] 회관 클릭 = 마을 재고 열람(권한 게이트)
+  else if (msg.type === 'village_deposit') tryVillageDeposit(player, msg.buildingId, msg.want);   // ★[배치 12 ②] 곳간에 넣기 — 식량이 사람을 부른다
+  // ★★[테스트 전용 · 기본 OFF] E2E 하네스가 재료를 채운다. `E2E_GIVE=1` 일 때만 **분기 자체가 존재**한다 —
+  //   기본 부팅에서는 이 메시지가 아무 일도 안 한다(라이브에 새 능력이 생기지 않는다).
+  //   왜 필요한가: 건립 사슬(돌·통나무·곡괭이 → 사유지 → 3단계)을 실클라에서 처음부터 캐게 하면
+  //   검사 대상(건립·재고 UI)이 아니라 채집 사슬의 흔들림을 재게 된다. `VILLAGE_DAY_MS` 와 같은 결의 손잡이다.
+  else if (E2E_GIVE && msg.type === '__e2e_give') {
+    for (const [k, q] of Object.entries(msg.items || {})) { const n = Number(q); if (isFinite(n) && n > 0) player.inventory[k] = (player.inventory[k] || 0) + Math.floor(n); }
+    // 도구는 인벤 수량이 아니라 **인스턴스**다(`toolItems` = {id, type, d}) — 정본 생성 경로와 같은 모양으로 만든다
+    for (const t of (msg.tools || [])) {
+      if (!player.toolItems) player.toolItems = [];
+      const mx = TOOL_MAX_DURABILITY[t] || 100;
+      player.toolItems.push({ id: genToolId(), type: t, d: mx, max: mx });
+    }
+    savePlayer(player);
+    send(player.ws, { type: 'inventory', inventory: player.inventory });
+    send(player.ws, { type: 'tools', toolItems: player.toolItems || [], equipped: player.equipped, hotkey1: player.hotkey1 || null });
+    send(player.ws, { type: 'notice', text: '[E2E] 재료 지급' });
+  }
   else if (msg.type === 'kiln_burn') tryKilnBurn(player, msg.buildingId);                  // ★숯가마 조업(통나무 3 → 숯 4)
   else if (msg.type === 'attack') { metrics.attacks++; tryAttack(player); }
   else if (msg.type === 'ranged_attack') { metrics.attacks++; tryRangedAttack(player, +msg.aimX, +msg.aimY); }
@@ -4878,6 +4901,12 @@ function _siteAdvance(player, b, spec) {
     broadcast({ type: 'building_added', building: done });
     send(player.ws, { type: 'notice', text: `${spec.icon} ${spec.ko} 완공! — ${spec.doneHint}` });
     console.log(`[${ZONE_ID}] ${spec.icon} ${player.name} ${spec.ko} 완공 @(${x0},${y0})`);
+    // ★★[2026-08-03e 배치 12 ①] 완공 훅 — 회관은 **완공이 곧 마을 등록**이다(노·숯가마는 훅이 없다).
+    //   실패해도 건물은 남긴다(플레이어가 쓴 재료를 삼키지 않는다) — 사유만 알리고 다시 시도하게 한다.
+    if (spec.onDone) {
+      try { spec.onDone(player, done, { x0, y0, tribeId, owner }); }
+      catch (e) { console.error(`[${ZONE_ID}] ${spec.icon} 완공 훅 실패:`, e.message); send(player.ws, { type: 'notice', text: `${spec.ko} 는 섰지만 마을 등록에 실패했다: ${e.message}` }); }
+    }
   }
   savePlayer(player);
   send(player.ws, { type: 'inventory', inventory: player.inventory });
@@ -4909,6 +4938,91 @@ function tryKilnAdvance(player, buildingId) {
   const b = buildings.get(buildingId);
   if (!b || b.type !== 'kiln_site') return;
   return _siteAdvance(player, b, KILN_SPEC);
+}
+
+// ═══ ★★[2026-08-03e 배치 12 ①] 마을 회관(村會館) — **마을을 세우는 건축** ═════════
+//   재민: *"플레이어가 마을 아무데나 세울 수 있는 시스템"*. 새 기구를 만들지 않는다 —
+//   노·숯가마가 쓰는 `_siteStart`/`_siteAdvance` 계약을 **그대로** 쓰고, 완공 훅 하나만 더 걸었다.
+//
+//   ★고증(송국리 환호 취락) — 단계가 곧 그 시대의 마을 세우는 순서다:
+//     ① **터 다지기·구획**: 구릉 사면을 깎아 평탄면을 낸다. 돌로 지경(地境)을 놓는다.
+//     ② **환호(둘레도랑)**: 취락을 두르는 도랑 — 송국리형 취락의 표지 유구다. 파낸 흙으로 토루,
+//        그 위에 목책. 공동 노동의 산물이라 재료가 가장 무겁다.
+//     ③ **회관(대형 굴립주 건물)**: 기둥을 땅에 박아 세우는 큰집. 마을의 중심이다.
+//   ⚠양은 노(괴련로 돌 24·통나무 10)의 **여러 배**다 — 마을을 세우는 일이 노 하나 놓는 일과
+//     같은 무게일 수 없다. 눈금은 손잡이다(`VILLAGE_FOUND_COST` — 1.0 이 기본, A/B 로 조절).
+const VF_COST = (() => { const x = parseFloat(process.env.VILLAGE_FOUND_COST || '1'); return (isFinite(x) && x > 0) ? x : 1; })();
+const _vfN = (o) => { const r = {}; for (const k in o) r[k] = Math.max(1, Math.round(o[k] * VF_COST)); return r; };
+const VILLAGE_FOUND_STAGES = [
+  { need: _vfN({ stone: 30 }),            tool: 'pickaxe', wear: 5, label: '① 터 다지기·지경 놓기(돌 %stone%)' },
+  { need: _vfN({ stone: 40, wood: 20 }),  tool: 'pickaxe', wear: 5, label: '② 환호(둘레도랑) 파고 목책 세우기(돌 %stone%·통나무 %wood%)' },
+  { need: _vfN({ wood: 60 }),                                       label: '③ 회관 굴립주 세우기(통나무 %wood%)' },
+].map((s) => ({ ...s, label: s.label.replace(/%(\w+)%/g, (_, k) => String(s.need[k] || 0)) }));
+const VILLAGE_SPEC = {
+  siteType: 'village_site', doneType: 'village_hall', ko: '마을 회관', icon: '🏘️',
+  stages: VILLAGE_FOUND_STAGES, kind: 'village_hall',
+  doneHint: '마을이 섰다 — 아직 사람은 없다. 곳간에 식량을 채우면 사람이 깃든다',
+  // ★완공 = 마을 등록. econ·DB·교역 거리행렬은 villages.js 정본이 전담한다(여기서 다시 만들지 않는다).
+  onDone: (player, done, ctx) => {
+    const ccx = ctx.x0, ccy = ctx.y0;   // 2×2 발자국의 좌상 셀을 마을 중심으로 삼는다(회관 좌표 = 그 셀)
+    const r = SimVillages.foundPlayerVillage
+      ? SimVillages.foundPlayerVillage({ ccx, ccy, founder: player.playerId, founderName: player.name, tribeId: ctx.tribeId || null, name: player.name ? `${player.name}의 마을` : null })
+      : { ok: false, err: '마을 시뮬이 이 서버에 없다' };
+    if (!r.ok) { send(player.ws, { type: 'notice', text: `🏘️ 회관은 섰지만 마을이 서지 못했다 — ${r.err}` }); return; }
+    done.data.villageDbId = r.dbId;   // 회관 ↔ 마을 결속(재고 UI 가 이 셀로 마을을 찾는다)
+    try { db.updateBuildingData(done.dbId, JSON.stringify(done.data)); } catch (e) {}
+    broadcast({ type: 'building_added', building: done });
+    send(player.ws, { type: 'notice', text: `🏘️ **[${r.name}]** 이(가) 섰다 — 인구 0. 곳간에 식량을 채우면 사람이 깃든다 (회관 클릭 = 재고)` });
+  },
+};
+function tryVillageStart(player, atX, atY) {
+  // ★착공 전에 **자리부터** 본다 — 3단계를 다 짓고 나서 "여긴 안 된다"고 하면 재료를 삼키는 것이다.
+  //   판정은 villages.js 정본과 같은 함수를 쓴다(사본 금지): dryRun 으로 물어본다.
+  const SZg = BUILDING_SIZE;
+  const cx = Math.floor(atX / SZg), cy = Math.floor(atY / SZg);
+  const chk = SimVillages.foundPlayerVillage ? SimVillages.foundPlayerVillage({ ccx: cx, ccy: cy, founder: player.playerId, dryRun: true }) : { ok: false, err: '마을 시뮬이 이 서버에 없다' };
+  if (!chk.ok) { send(player.ws, { type: 'notice', text: `🏘️ 여기엔 마을을 못 세운다 — ${chk.err}` }); return; }
+  return _siteStart(player, atX, atY, VILLAGE_SPEC);
+}
+function tryVillageAdvance(player, buildingId) {
+  const b = buildings.get(buildingId);
+  if (!b || b.type !== 'village_site') return;
+  return _siteAdvance(player, b, VILLAGE_SPEC);
+}
+// ★[배치 12 ③] 회관 클릭 = 재고 열람. 권한은 **노·숯가마와 같은 술어**(`_furnaceCanUse`)를 쓴다 —
+//   길드 땅에 세운 마을이면 길드원, 개인 땅이면 창설자 본인. 새 권한 개념을 만들지 않는다.
+function tryVillageInventory(player, buildingId) {
+  const b = buildings.get(buildingId);
+  if (!b || b.type !== 'village_hall') return;
+  if (Math.hypot(b.x - player.x, b.y - player.y) > 200) { send(player.ws, { type: 'notice', text: '회관에서 너무 멀리 있습니다' }); return; }
+  if (!_furnaceCanUse(player, b)) {
+    send(player.ws, { type: 'notice', text: b.data && b.data.tribeId ? '우리 길드의 마을이 아닙니다 — 재고를 볼 수 없다' : '이 마을의 관리자가 아닙니다 — 재고를 볼 수 없다' });
+    return;
+  }
+  const d = b.data || {};
+  const vil = SimVillages.playerVillageAt ? SimVillages.playerVillageAt(d.x0, d.y0) : null;
+  if (!vil) { send(player.ws, { type: 'notice', text: '이 회관에 딸린 마을을 찾지 못했다' }); return; }
+  const inv = SimVillages.playerVillageInventory(vil);
+  if (!inv) { send(player.ws, { type: 'notice', text: '재고를 읽지 못했다' }); return; }
+  send(player.ws, { type: 'village_inventory', inv });
+}
+// ★[배치 12 ②] 곳간에 넣기 — 권한·거리 규약은 열람과 **완전히 같다**(같은 회관, 같은 술어).
+function tryVillageDeposit(player, buildingId, want) {
+  const b = buildings.get(buildingId);
+  if (!b || b.type !== 'village_hall') return;
+  if (Math.hypot(b.x - player.x, b.y - player.y) > 200) { send(player.ws, { type: 'notice', text: '회관에서 너무 멀리 있습니다' }); return; }
+  if (!_furnaceCanUse(player, b)) { send(player.ws, { type: 'notice', text: '이 마을의 관리자가 아닙니다' }); return; }
+  const d = b.data || {};
+  const vil = SimVillages.playerVillageAt ? SimVillages.playerVillageAt(d.x0, d.y0) : null;
+  if (!vil) { send(player.ws, { type: 'notice', text: '이 회관에 딸린 마을을 찾지 못했다' }); return; }
+  const r = SimVillages.playerVillageDeposit(vil, player.inventory, want || {});
+  if (!r.ok) { send(player.ws, { type: 'notice', text: `🏘️ ${r.err}` }); return; }
+  savePlayer(player);
+  send(player.ws, { type: 'inventory', inventory: player.inventory });
+  const kv = Object.entries(r.taken).map(([k, q]) => `${ITEM_LABEL_SERVER[k] || k} ${q}`).join(' · ');
+  send(player.ws, { type: 'notice', text: `🏘️ 곳간에 넣었다 — ${kv}` });
+  const inv2 = SimVillages.playerVillageInventory(vil);
+  if (inv2) send(player.ws, { type: 'village_inventory', inv: inv2 });   // 넣은 즉시 화면이 갱신된다
 }
 // ★숯가마 조업 — 밀폐 탄화라 수율이 노천보다 좋다(통나무 3 → 숯 4 vs 제작창 3 → 2).
 function tryKilnBurn(player, buildingId) {

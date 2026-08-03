@@ -75,7 +75,11 @@ for (const tag of tags) {
         rockStoneExp += ((v.tradeStats && v.tradeStats.exportBy && v.tradeStats.exportBy.stone) || 0);
       }
       if (v.founder) pv++;
-      if (cur === 0) { if (v.founder) eP++; else e++; continue; }
+      // ★[2026-08-03e 배치 12 ②] **빈 터는 소멸이 아니다.** 플레이어 마을은 인구 0 으로 태어나
+      //   식량이 들어와야 첫 주민이 생긴다(재민 확정 (마)). `everPop` 없이 `pop===0` 만 세면
+      //   막 지은 마을이 전부 소멸로 찍혀 지표가 거짓말이 된다. NPC 마을은 항상 everPop=1 이라 동일.
+      //   덤프에 필드가 없는 구본(배치 11 이전)은 `!= 0` 이 true → 종전 판정 그대로(회귀 보존).
+      if (cur === 0) { if (v.founder) { if (v.everPop !== 0) eP++; } else e++; continue; }
       const peak = (v.history || []).reduce((a, h) => Math.max(a, h.p), cur);
       if (cur < 10 && cur < peak * 0.5) z++;
       else if (cur < 10) z++;   // 처음부터 못 자란 마을도 좀비로 집계(재민 기준은 결과 인구)

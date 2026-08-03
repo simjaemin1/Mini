@@ -1556,7 +1556,14 @@ function createVillage(opts) {
     Math.max(0.3, (v.land.fertility + v.land.wood + v.land.stone) / 3) * 0.25
   );
   // Phase 4d-7: sustainable cap 제거 — 비자급 마을도 정상 인구로 시작 (초기 식량 비축으로 교역 시간 확보)
-  const initN = opts.initialPop || 8;
+  // ★★[2026-08-03e 배치 12 ①] **0 을 0 으로 읽는다.** 종전 `opts.initialPop || 8` 은 `initialPop: 0`
+  //   창설을 조용히 8명으로 바꿔 놓았다 — 플레이어가 세운 마을은 **빈 터**로 태어나야 하므로
+  //   (설계안 §1 #4: *"8명·2,850셀을 클릭 한 번에 주는 건 마을이 아니라 선물이다"*) 그 폴백이
+  //   계약을 정면으로 어긴다. initN=0 이면 아래 초기 부존(식량 45일치·도구·목재·석재·LANDFIT·
+  //   BOOMFIT)이 **전부 0 을 곱해** 저절로 0 이 된다 — 부존 규칙을 새로 만들 필요가 없다.
+  //   ⚠기존 호출부는 전부 1 이상(8·20·pop)을 넘기므로 **비트 동일**이다(전수 확인: villages.js
+  //     INITIAL_POP · econ-lab-real · migrate-db-endowment · 하네스 6종 · v1 CLI 2곳).
+  const initN = (opts.initialPop != null) ? opts.initialPop : 8;
   for (let i = 0; i < initN; i++) {
     let job = pickInitialJob(v);   // ★전담 행상 폐지: 첫 NPC도 일반 직업(식량 위주). 교역은 잉여 생기면 기본 NPC가.
     const npc = createNPC({ job });
@@ -1615,6 +1622,12 @@ function createVillage(opts) {
   v.storage.herb = initN * 0.5;       // ★약재(§9): 정착민 상비약 반 근씩 — 재고0 희소폭등(가격 스파이크→채집 쏠림 과도) 방지 시드
   v.storage.weapon = Math.max(v.storage.weapon || 0, initN * 0.15);   // ★활 시드(§9 3차): 정착민 사냥꾼은 제 활을 들고 옴(~초기 사냥꾼 수) — t=0 무기 결손이 무기장 캐치업·교역을 흔드는 것 방지(herb 패턴)
   v.housing = Math.max(initN, HOUSE_START);   // ★주거 수용력. K = min(식량,생산) 안에서 인구가 이 값에 막힘(성장 게이트).
+  // ★★[2026-08-03e 배치 12 ②] **한 번이라도 사람이 살았는가** — 소멸 판정의 전제다(계측 전용, 로직 무관).
+  //   플레이어 마을은 인구 0 으로 태어난다. 그 상태를 `pop === 0` 으로만 세면 **태어나자마자 소멸**로
+  //   찍혀 지표가 통째로 거짓말이 된다(배치 6·7·8 이 반복해 만난 실패 유형: 지표가 틀리면 결론이 틀린다).
+  //   ⇒ 소멸(P) 는 **≥1 에 도달한 뒤 0 이 된 마을**만 센다. 아직 아무도 안 온 빈 터는 '소멸'이 아니라
+  //     '아직 시작 안 함'이다. NPC 마을은 initN=8 이라 언제나 1 — 기존 판정과 완전히 같다.
+  v._everPop = initN > 0 ? 1 : 0;
   return v;
 }
 

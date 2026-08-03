@@ -259,6 +259,9 @@ if (process.env.LAB_DUMP) {
       // ★[2026-08-03d 배치 11] 마을 출처 — null=NPC 시딩(불멸 원칙), 문자열=플레이어 창설(필멸).
       //   소멸 지표를 이 필드로 가른다. 랩은 NPC 마을만 만들므로 지금은 전부 null 이다.
       founder: v.founder || null,
+      // ★[2026-08-03e 배치 12 ②] 한 번이라도 인구 ≥1 이었나 — **소멸 판정의 전제**.
+      //   플레이어 마을은 인구 0 으로 태어나므로 이 필드 없이 `pop===0` 만 보면 태어나자마자 소멸로 찍힌다.
+      everPop: v._everPop ? 1 : 0,
       alloyGrade: v._alloyGrade, bronzeWeaponMade: v._bronzeWeaponMade,
       stoneWeaponMade: v._stoneWeaponMade,
       treasury: Object.fromEntries(Object.entries(v.treasury || {}).filter(([, x]) => x > 0.01).map(([k, x]) => [k, +x.toFixed(2)])),

@@ -45,7 +45,8 @@ for (const s of SEEDS) {
     // ★[2026-08-03d 배치 11] 소멸을 출처별로. `founder` 가 있으면 플레이어 창설 마을(필멸).
     const n = v.finalPop || 0; r.pop += n;
     if (v.founder) r.pv++;
-    if (n <= 0) { if (v.founder) r.deadP++; else r.dead++; }
+    // ★[2026-08-03e 배치 12 ②] 빈 터(아직 첫 주민이 안 온 플레이어 마을)는 소멸이 아니다 — ab-summary 와 같은 잣대.
+    if (n <= 0) { if (v.founder) { if (v.everPop !== 0) r.deadP++; } else r.dead++; }
     const st = v.finalStorage || {}, jb = v.jobs || {};
     r.weap += st.weapon || 0; r.armor += st.armor || 0; r.cloth += st.clothes || 0;
     // ★[2026-08-02e ②] 품질보정 무기 총량 — 수량×_weapQ(석검 0.5 ~ 명장 청동 1.0+). 합금 등급이 오르면

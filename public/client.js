@@ -86,6 +86,24 @@ const SIM_JOB_EMOJI = {
   window.__getMarkets = () => { const out = {}; for (const [zid, c] of conns) out[zid] = (c && c.markets) ? c.markets.slice() : null; return out; };
   // ★[11차 T3] 환호 진단 훅 — 클라가 도랑 페이로드를 받아 미러(_ditchAbs)에 실었는지(읽기 전용).
   window.__getDitches = () => { let recv = 0; for (const [, c] of conns) recv += (c && c.ditches) ? c.ditches.size : 0; return { recv, mirror: _ditchAbs.size }; };
+  // ★[2026-08-03e 배치 12] 건립 E2E 진단 훅 — 클라가 받은 건물·사유지를 **월드 절대좌표**로(읽기 전용).
+  //   `__getAllWalls` 와 같은 관례. 실클라 E2E 가 "회관이 실제로 완공됐는가"를 화면 상태로 확인한다.
+  window.__getAllBuildings = () => {
+    const out = [];
+    for (const c of conns.values()) {
+      const ox = c.meta?.worldOffsetX || 0, oy = c.meta?.worldOffsetY || 0;
+      for (const b of c.buildings.values()) out.push({ id: b.id, type: b.type, wx: ox + b.x, wy: oy + b.y, stage: (b.data && b.data.stage) | 0 });
+    }
+    return out;
+  };
+  window.__getClaims = () => {
+    const out = [];
+    for (const c of conns.values()) {
+      const ox = c.meta?.worldOffsetX || 0, oy = c.meta?.worldOffsetY || 0;
+      for (const cl of (c.claims ? c.claims.values() : [])) out.push({ id: cl.id, kind: cl.kind, wx: ox + cl.x, wy: oy + cl.y, w: cl.w, h: cl.h });
+    }
+    return out;
+  };
   // Phase 5-G debug: 미니맵에서 wall 위치 검증용
   window.__getAllWalls = () => {
     const walls = [];
@@ -1311,6 +1329,9 @@ const SIM_JOB_EMOJI = {
         showNotice(`🔥 ${kind === 'bloomery' ? '괴련로' : '노(爐)'} 터 배치 — 내 사유지/길드 사유지 안 2×2 (B=취소)`);
       }
       else if (a === 'kiln_start') { buildMode = true; placementMode = { special: 'kiln_site' }; showNotice('🪵 숯가마 터 배치 — 내 사유지/길드 사유지 안 2×2 (돌 4·곡괭이 · B=취소)'); }   // ★숯가마(노와 같은 계약)
+      // ★★[2026-08-03e 배치 12 ①] 마을 회관 — 노·숯가마와 **완전히 같은 배치 계약**(2×2·사유지·단계).
+      //   다른 건 완공이 곧 마을 등록이라는 것뿐이다. 자리 가능 여부는 서버가 착공 전에 판정한다.
+      else if (a === 'village_start') { buildMode = true; placementMode = { special: 'village_site' }; showNotice('🏘️ 마을 회관 터 배치 — 내 사유지/길드 사유지 안 2×2 (터 다지기 → 환호 → 굴립주 · B=취소)'); }
       // ★[11차 T4] 마을 크루에게 집 의뢰 — placementMode.special 재사용(발명 0). 검증·재료·배치는 서버 권위.
       else if (a === 'psite_request') { buildMode = true; placementMode = { special: 'psite' }; showNotice('🏠 집 의뢰 모드 — 마을 영토 안을 클릭 (기둥6·서까래8·이엉8 선납 · B=취소)'); }
       else if (a === 'harvest') sendPrimary({ type: 'harvest' });
@@ -1744,7 +1765,8 @@ const SIM_JOB_EMOJI = {
           // ★움집터·길드 곳간 — 커서 셀 기준 다중 셀 배치(검증·재료·배치는 서버 권위)
           const _sp = placementMode.special;
           const _mt = _sp === 'hut_site' ? 'hut_start' : (_sp === 'furnace_site' ? 'furnace_start'
-                    : (_sp === 'kiln_site' ? 'kiln_start' : (_sp === 'psite' ? 'request_village_house' : 'build_guild_granary')));
+                    : (_sp === 'kiln_site' ? 'kiln_start' : (_sp === 'village_site' ? 'village_start'   // ★[배치 12] 마을 회관 착공
+                    : (_sp === 'psite' ? 'request_village_house' : 'build_guild_granary'))));
           sendPrimaryAt({ type: _mt, atX: clickWx, atY: clickWy, kind: placementMode.kind || undefined });
           if (!e.shiftKey) { placementMode = null; showNotice('배치 요청'); }
           return;
@@ -1815,7 +1837,8 @@ const SIM_JOB_EMOJI = {
           const ox = c.meta.worldOffsetX || 0, oy = c.meta.worldOffsetY || 0;
           for (const b of c.buildings.values()) {
             if (b.type !== 'hut_site' && b.type !== 'furnace_site' && b.type !== 'furnace'
-                && b.type !== 'kiln_site' && b.type !== 'charcoal_kiln') continue;
+                && b.type !== 'kiln_site' && b.type !== 'charcoal_kiln'
+                && b.type !== 'village_site' && b.type !== 'village_hall') continue;   // ★[배치 12] 회관: 터=시공 · 완공=재고
             const absX = ox + b.x, absY = oy + b.y;
             const rx = b.type === 'hut_site' ? 48 : 34, ry = b.type === 'hut_site' ? 40 : 34;   // 노·숯가마는 2×2
             if (Math.abs(absX - clickWx) <= rx && Math.abs(absY - clickWy) <= ry) { hitSite = b; break; }
@@ -1827,6 +1850,8 @@ const SIM_JOB_EMOJI = {
           else if (hitSite.type === 'furnace_site') sendPrimary({ type: 'furnace_advance', buildingId: hitSite.id });
           else if (hitSite.type === 'charcoal_kiln') sendPrimary({ type: 'kiln_burn', buildingId: hitSite.id });   // ★숯가마 클릭 = 조업
           else if (hitSite.type === 'kiln_site') sendPrimary({ type: 'kiln_advance', buildingId: hitSite.id });
+          else if (hitSite.type === 'village_site') sendPrimary({ type: 'village_advance', buildingId: hitSite.id });   // ★[배치 12] 회관 시공
+          else if (hitSite.type === 'village_hall') { _pviHallId = hitSite.id; sendPrimary({ type: 'village_inventory', buildingId: hitSite.id }); } // ★[배치 12 ③] 완공 회관 클릭 = 마을 재고(권한은 서버가 본다)
           else sendPrimary({ type: 'hut_advance', buildingId: hitSite.id });
           return;
         }
@@ -2496,6 +2521,11 @@ const SIM_JOB_EMOJI = {
       if (typeof msg.vp === 'number') myVp = msg.vp;
       if (typeof msg.cold === 'boolean') myCold = msg.cold;
       updateHud();
+    } else if (msg.type === 'village_inventory') {
+      // ★★[2026-08-03e 배치 12 ③] 마을 재고 — **서버가 준 값을 그대로 그린다**(클라 재계산 0).
+      //   식량 환산·자립일수·다음 주민 문턱은 전부 엔진 정본 함수의 결과다(사본 금지).
+      //   `_cash`(미상환 세곡 채권 장부)는 서버가 아예 안 보낸다 — 재화와 나란히 놓으면 "부"로 오독된다.
+      showVillageInventory(msg.inv);
     } else if (msg.type === 'pvp_state') {
       myPvpEnabled = !!msg.enabled;
       updateHud();
@@ -5135,6 +5165,23 @@ const SIM_JOB_EMOJI = {
       { const _jb = done ? _jobBar(building, x, y) : null;
         ctx.fillText(done ? (_jb ? (_jb.p >= 1 ? '숯가마 — 클릭=수거' : `숯가마 탄화 중 ${_jb.remain}초`) : '숯가마 — 클릭=장입')
                           : `숯가마 터 ${st}/2단계 (클릭=시공)`, x, y - 26); }
+      ctx.textAlign = 'left';
+      return;
+    }
+    // ★★[2026-08-03e 배치 12 ①] 마을 회관 — 터(단계)와 완공. 노·숯가마 렌더와 같은 결(2×2 앵커+라벨).
+    if (type === 'village_site' || type === 'village_hall') {
+      const done = type === 'village_hall';
+      const st = (building?.data?.stage) | 0;
+      // 굴립주(기둥 박아 세운 큰집) — 기둥 넷 + 이엉 지붕. 터는 지경석만.
+      ctx.fillStyle = done ? '#6b5638' : '#57534a';
+      for (const [dx, dy] of [[-14, -4], [14, -4], [-14, 8], [14, 8]]) { ctx.fillRect(x + dx - 2, y + dy - (done ? 20 : 4), 4, done ? 22 : 6); }
+      if (done) {
+        ctx.fillStyle = '#8a6f42';
+        ctx.beginPath(); ctx.moveTo(x, y - 42); ctx.lineTo(x + 22, y - 20); ctx.lineTo(x - 22, y - 20); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = '#5c4a2c'; ctx.lineWidth = 1; ctx.stroke();
+      }
+      ctx.font = 'bold 10px sans-serif'; ctx.fillStyle = done ? '#ffe9b0' : '#e6d6b6'; ctx.textAlign = 'center';
+      ctx.fillText(done ? '마을 회관 — 클릭=재고' : `마을 회관 터 ${st}/3단계 (클릭=시공)`, x, y - (done ? 48 : 14));
       ctx.textAlign = 'left';
       return;
     }
@@ -8119,7 +8166,7 @@ const SIM_JOB_EMOJI = {
     //   ⇒ 여기서 로직을 복제하지 않는다. 정본 버튼(.hud-actions[data-action])을 그대로 눌러 준다.
     {
       const list = document.getElementById('siteBuildList');
-      const src = document.querySelectorAll('.hud-actions [data-action="hut_start"], .hud-actions [data-action="furnace_start"], .hud-actions [data-action="kiln_start"]');
+      const src = document.querySelectorAll('.hud-actions [data-action="hut_start"], .hud-actions [data-action="furnace_start"], .hud-actions [data-action="kiln_start"], .hud-actions [data-action="village_start"]');
       for (const srcBtn of src) {
         if (srcBtn.style && srcBtn.style.display === 'none') continue;   // 시대 미해금(괴련로 등)은 정본 그대로 숨긴다
         const b = document.createElement('button');
@@ -8138,6 +8185,94 @@ const SIM_JOB_EMOJI = {
       if (invOpen) renderInvPanel(document.getElementById('invBody'));
     };
   }
+
+  // ═══ ★★[2026-08-03e 배치 12 ③] 마을(길드) 재고 패널 ══════════════════════════
+  //   재민: *"마을(길드) 관리자가 식량 등의 마을 재고 현황을 파악할 수 있도록 ui 할 거야"*
+  //   ★이 함수는 **표시만** 한다. 합계·환산·문턱은 전부 서버(엔진 정본)가 계산해 보낸 값이다 —
+  //     화면에서 다시 계산하면 그게 사본이고, 사본은 언젠가 정본과 어긋난다(배치 7 오진의 형태).
+  //   ★`_cash` 는 애초에 안 온다(서버가 뺀다). 장부이지 재화가 아니기 때문이다.
+  const _PVI_LABEL = {
+    food: '곡식', fish: '생선', meat: '고기', cooked_food: '요리', fruit: '과일', vegetable: '나물', mushroom: '버섯',
+    wood: '통나무', stone: '돌', twig: '삭정이', pebble: '자갈',
+    tool: '간석기 도구', iron_tool: '철 도구', bronze_tool: '청동 도구',
+    ore: '원석', iron: '철', copper: '구리', tin: '주석',
+    weapon: '무기', armor: '갑옷', hide: '가죽', bone: '뼈',
+    clothes: '옷', herb: '약재', clay: '진흙', charcoal: '숯', obsidian: '흑요석', jade: '옥', tigerhide: '호피',
+    hemp: '삼베', ramie: '모시',
+  };
+  const _pviKo = (r) => _PVI_LABEL[r] || r;
+  function showVillageInventory(inv) {
+    if (!inv) return;
+    window.__villageInv = inv;   // ★진단 훅(읽기 전용) — E2E 가 '화면 표시값 = 서버 실값'을 assert 한다
+    let el = document.getElementById('villageInvPanel');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'villageInvPanel';
+      el.style.cssText = 'position:fixed;right:16px;top:64px;width:330px;max-height:72vh;overflow:auto;'
+        + 'background:#141a22;color:#e8eaed;border:1px solid #2a3340;border-radius:8px;z-index:900;'
+        + 'font-size:13px;box-shadow:0 6px 22px rgba(0,0,0,.5)';
+      document.body.appendChild(el);
+    }
+    el.style.display = 'block';
+    const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+    const empty = inv.pop === 0;
+    let h = `<div style="padding:10px;border-bottom:1px solid #2a3340;display:flex;justify-content:space-between;align-items:center">`
+      + `<b>🏘️ ${esc(inv.name)}</b><span id="pviClose" style="cursor:pointer;color:#8a93a0;padding:0 4px">✕</span></div>`;
+    h += `<div style="padding:8px 10px;color:#8fc8ff">👥 인구 <b>${inv.pop}</b>`
+      + (inv.housing != null ? ` <span style="color:#8a93a0">/ 주거 ${inv.housing}</span>` : '')
+      + ` · 📅 Day ${inv.day}<span style="color:#8a93a0"> (창설 ${inv.foundedDay})</span></div>`;
+    h += `<div style="padding:0 10px 8px">🌾 식량 환산 <b>${inv.foodEquiv}</b>`
+      + (inv.pop > 0 ? ` <span style="color:#8a93a0">(1인 ${inv.foodDays}일치)</span>` : '') + `</div>`;
+    if (empty) {
+      // ★인구 0 = "빈 터"다. 소멸이 아니라 **아직 시작 안 함**이라는 걸 화면이 말해야 한다.
+      const need = inv.nextResidentAt;
+      const have = (inv.nextResidentHave != null) ? inv.nextResidentHave : inv.foodEquiv;   // 서버가 준 정본 값(클라 재계산 0)
+      h += `<div style="margin:0 10px 10px;padding:8px;background:#1c2a1c;border:1px solid #2f4a2f;border-radius:6px;color:#cfe8cf">`
+        + `아직 아무도 살지 않는다. 곳간 <b>식량 ${need}</b>어치가 쌓이면 첫 주민이 깃든다`
+        + (need ? ` <span style="color:#8a93a0">(지금 <b data-pvi-have>${(+have).toFixed(1)}</b>)</span>` : '') + `.</div>`;
+    }
+    for (const g of (inv.groups || [])) {
+      h += `<div style="padding:6px 10px;border-top:1px solid #2a3340;color:#8a93a0">${esc(g.ko)}</div><table style="width:100%;font-size:12px;border-collapse:collapse">`;
+      for (const it of g.items) {
+        h += `<tr><td style="padding:2px 10px">${esc(_pviKo(it.r))}</td>`
+          + `<td align="right" style="padding:2px 10px;color:#fff" data-pvi="${esc(it.r)}">${it.q}</td></tr>`;
+      }
+      h += `</table>`;
+    }
+    if ((inv.treasury || []).length) {
+      h += `<div style="padding:6px 10px;border-top:1px solid #2a3340;color:#8a93a0">국고(걷힌 실물)</div><table style="width:100%;font-size:12px;border-collapse:collapse">`;
+      for (const it of inv.treasury) h += `<tr><td style="padding:2px 10px">${esc(_pviKo(it.r))}</td><td align="right" style="padding:2px 10px;color:#d8c898">${it.q}</td></tr>`;
+      h += `</table>`;
+    }
+    // ── 곳간에 넣기 — 내가 지금 들고 있는 것 중 **이 곳간이 받는 것**만 버튼으로 ──────
+    //   목록은 서버가 준 `accepts` 그대로다(클라가 제 목록을 따로 갖지 않는다 — 사본 금지).
+    const acc = inv.accepts || {};
+    const mine = Object.keys(acc).filter((k) => (inventory[k] || 0) > 0);
+    h += `<div style="padding:6px 10px;border-top:1px solid #2a3340;color:#8a93a0">곳간에 넣기 (내 짐)</div>`;
+    if (!mine.length) {
+      h += `<div style="padding:0 10px 8px;color:#6f7a88;font-size:11px">넣을 만한 걸 안 들고 있다.</div>`;
+    } else {
+      h += `<div style="padding:0 10px 10px;display:flex;flex-wrap:wrap;gap:6px">`;
+      for (const k of mine) {
+        h += `<button data-pvi-put="${esc(k)}" style="padding:5px 8px;background:#2b3a4a;color:#e8eaed;border:1px solid #3c4e60;border-radius:4px;cursor:pointer;font-size:12px">`
+          + `${esc(_pviKo(acc[k]))} ${inventory[k]} ▸ 넣기</button>`;
+      }
+      h += `</div>`;
+    }
+    h += `<div style="padding:8px 10px;color:#6f7a88;font-size:11px;border-top:1px solid #2a3340">회관을 다시 클릭하면 갱신된다</div>`;
+    el.innerHTML = h;
+    const cl = document.getElementById('pviClose');
+    if (cl) cl.onclick = () => { el.style.display = 'none'; };
+    for (const btn of el.querySelectorAll('[data-pvi-put]')) {
+      btn.onclick = () => {
+        const it = btn.getAttribute('data-pvi-put');
+        const q = inventory[it] || 0;
+        if (!(q > 0) || !_pviHallId) return;
+        sendPrimary({ type: 'village_deposit', buildingId: _pviHallId, want: { [it]: q } });   // 전부 넣는다(서버가 최종 판정)
+      };
+    }
+  }
+  let _pviHallId = null;   // 마지막으로 연 회관 — "넣기"가 어느 곳간인지
 
   // === 시세 패널 — 중앙 economy 모듈에서 마을별 가격 fetch + 비교 ===
   const RES_ICON = {
