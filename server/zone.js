@@ -2281,7 +2281,10 @@ wss.on('connection', async (ws, req) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
   const isObserver = url.searchParams.get('observer') === '1';
   // Phase 5-G trace: observer 연결 진단용
-  console.log(`[${ZONE_ID}] WS CONN attempt: observer=${isObserver} url=${req.url} from=${req.socket.remoteAddress}`);
+  // ★[2026-08-04 라이브 실측 — 토큰 누설 수리] guest_token 이 ws 접속 URL 쿼리로 오는데,
+  //   이 줄이 URL 을 통째로 찍어 **계정 열쇠가 서버 로그에 남았다**(배치 13 "토큰 로그 금지" 위반).
+  //   로그에는 마스킹본만 남긴다 — 원본 req.url 파싱은 아래 로직이 그대로 쓴다.
+  console.log(`[${ZONE_ID}] WS CONN attempt: observer=${isObserver} url=${String(req.url).replace(/guest_token=[0-9a-f]+/i, 'guest_token=***')} from=${req.socket.remoteAddress}`);
   ws.on('close', (code, reason) => {
     console.log(`[${ZONE_ID}] WS CLOSE: observer=${isObserver} code=${code} reason=${reason ? reason.toString() : '(empty)'}`);
   });
