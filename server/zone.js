@@ -298,10 +298,26 @@ const NEIGHBOR = {
 };
 // Phase 14.46-a: 마을 자동 생성 — 모듈 로드 시 mob spawn 등이 isNearVillage를 호출하므로 일찍 정의해야 함.
 // Phase 4b: canadia는 시뮬 통합 모드 — 자동 마을 비활성화 (시뮬에서 마을 받음)
-const VILLAGES = (ZONE_ID === 'canadia')
+// ★★[배치 15 ① 재민 확정 "끄자"] 레거시 마을 실체화 스위치 — 존 설정 `legacyVillages: false`.
+//   VILLAGES 는 **레거시 실체화 전용 목록**이다. 이게 비면 아래 전부가 자연히 0이 된다
+//   (레거시 소비처 전수 — grep VILLAGES 로 확인한 6곳이 전부다):
+//     · spawnVillagers()          — 한옥·농지·NPC 6명/마을     → 0
+//     · registerVillageGuilds()   — central NPC 길드 33 등록·금고·영토 → 0
+//     · isNearVillage()           — 늑대·맹수 팩 스폰 제외 원(레거시 좌표) → 없음
+//     · Wildlife legacyVillages   — 서식 밴드 완충·앵커 기준점 → 시뮬 마을 18곳만 남음(정합)
+//     · _villageAt()/NPC 부활 좌표 — 레거시 NPC·길드가 없으니 도달 불가
+//     · zonePublicMeta().villages — welcome 페이로드(클라 미사용: zonesMeta 는 central /zones 출처) → []
+//   ★후보 공급은 여기가 아니다 — villages.js seedVillages 가 terrain.getZoneVillages() 를 직접 부른다.
+//     디듀프 isLegacyVillageClaimed 도 villages.js state.claimedNames 소관이라 둘 다 무변이다.
+const LEGACY_VILLAGES_ON = !(ZONE.legacyVillages === false);   // 키 없으면 ON — 다른 존 회귀 0
+const VILLAGES = (ZONE_ID === 'canadia' || !LEGACY_VILLAGES_ON)
   ? []
   : ((ZONE.useHardcodedVillages && require('./terrain').getZoneVillages(ZONE_ID)) || generateVillagesForZone(ZONE));
-{ const _hv = ZONE.useHardcodedVillages && require('./terrain').getZoneVillages(ZONE_ID); if (_hv) console.log(`[${ZONE_ID}] 하드코딩 마을 ${_hv.length}개 사용 (v9). 성능 최적화 후에만 켬.`); }
+{
+  const _hv = ZONE.useHardcodedVillages && require('./terrain').getZoneVillages(ZONE_ID);
+  if (!LEGACY_VILLAGES_ON) console.log(`[${ZONE_ID}] 🏘️ 레거시 마을 실체화 OFF (zone-config legacyVillages:false) — 하드코딩 후보 ${(_hv || []).length}곳은 시딩 후보로만 살아 있다(실체화 0)`);
+  else if (_hv) console.log(`[${ZONE_ID}] 하드코딩 마을 ${_hv.length}개 사용 (v9). 성능 최적화 후에만 켬.`);
+}
 if (ZONE_ID === 'canadia') console.log(`[canadia] 자동 마을 비활성 (Phase 4b 시뮬 통합 모드)`);
 const VILLAGE_SAFE_RADIUS = 600; // 늑대 이 안에 spawn X (마을 안전구역). isNearVillage()도 이거 씀.
 
@@ -1356,6 +1372,8 @@ function spawnVillagers() {
   // §4-4 Stage 4A 레거시 디듀프: 시뮬 마을(villages.js)이 차지한 하드코딩 마을(이름 유니크)은
   //   레거시 스폰(NPC 6명·한옥·농지·길드영토) 전체를 스킵 — 같은 자리 이중 마을 방지.
   //   ENABLE_VILLAGES=0이면 isLegacyVillageClaimed가 항상 false → 기존 50곳 전부 스폰(불변).
+  // ★[배치 15 ①] legacyVillages:false 면 VILLAGES 가 [] 이라 이 루프 전체가 0회 — 한옥·농지·NPC·영토 0.
+  if (!LEGACY_VILLAGES_ON) { console.log(`[${ZONE_ID}] 🏘️ 레거시 스폰 스킵 — 한옥 0채·농지 0칸·NPC 0명·길드영토 0(설정 legacyVillages:false)`); return; }
   const _simSkipped = [];
   for (let v = 0; v < VILLAGES.length; v++) {
     const village = VILLAGES[v];

@@ -34,10 +34,26 @@ const economyWorld = economy.createWorld({
   picker: 'rational', // Phase 4d-6: 위험 조정 + 한계효용 기반 직업 의사결정
 });
 console.log(`[economy] world 초기화: ${economyWorld.villages.length} 마을`);
-setInterval(() => {
-  try { economy.tickWorld(economyWorld); }
-  catch (e) { console.error('[economy] tick error:', e.message); }
-}, ECONOMY_TICK_MS);
+// ★★[2026-08-04a 배치 15 ④] central 상시 CPU 의 정체 — **여기와 아래 canadia, 두 프로토타입 시뮬이다.**
+//   재민 라이브 관측("central 이 상시 CPU ~50% · 🌈풍요/💀캐러밴 약탈 Day 900+ · 검은숲·연어강·늑대골")의
+//   출처를 코드로 확인했다: 저 마을 이름들은 아래 CANADIA_NAMES 다. 존 마을이 아니라 프로토타입 시뮬 마을이다.
+//   ★로컬 실측(2코어): central 프로세스 5.9% ≈ v1 1.2% + v2 4.3% — central CPU 는 사실상 이 둘이 전부다.
+//     비용은 게임일에 따라 자라다 평탄해진다(v2 D0-500 2.2% → D1500-3000 4.1% → D4500-6000 4.3% / v1 1.2~1.8% 평탄).
+//     라이브의 ~50%는 코어가 느려 배율이 다를 뿐 같은 원인이다.
+//   ★실효 판정(전수):
+//     · economyWorld(v1·20마을) — **실효 있다.** 클라 시세 패널(Q키)이 캐나디아 아닌 존에서 /economy/prices 를 부른다.
+//       그래서 기본 ON 유지하고 손잡이만 단다. (다만 "한반도 플레이어가 존재하지 않는 20개 마을의 시세를 본다"는
+//       설계 자체는 재민 판단 사항 — 보고서 회부 항목.)
+//     · canadiaWorld(v2·7마을) — 아래 참조. 소비처 전부가 캐나디아 게이트 뒤에 있어 한반도 단독 운영에선 실효 0.
+const PROTO_ECON_ON = !(process.env.ENABLE_PROTO_ECON === '0');   // 채택값 = ON(현행). '0'만 끈다.
+if (PROTO_ECON_ON) {
+  setInterval(() => {
+    try { economy.tickWorld(economyWorld); }
+    catch (e) { console.error('[economy] tick error:', e.message); }
+  }, ECONOMY_TICK_MS);
+} else {
+  console.log(`[economy] 시뮬 OFF (ENABLE_PROTO_ECON=0) — /economy/prices·/economy/villages 는 day 0 정지 세계를 반환한다`);
+}
 
 // === Phase 4a: Canadia 전용 economy world — 게임 통합 prototype.
 //   캐나다 zone 안에 7개 마을 좌표 분산. 좌표는 zone 크기 (10240 × 10240) 기준.
@@ -71,10 +87,28 @@ function spreadCanadiaCoords() {
 spreadCanadiaCoords();
 console.log(`[canadia-econ] ${canadiaWorld.villages.length}개 마을 좌표 부여:`);
 canadiaWorld.villages.forEach(v => console.log(`  ${v.name} (${v.coord.x.toFixed(0)}, ${v.coord.y.toFixed(0)})`));
-setInterval(() => {
-  try { economyV2.tickWorldV2(canadiaWorld); }  // Phase 4d-13: v2 tick
-  catch (e) { console.error('[canadia-econ] tick error:', e.message); }
-}, ECONOMY_TICK_MS);
+// ★★[2026-08-04a 배치 15 ④] **지연 시작** — 캐나디아 미배포 상태에서 CPU 를 0 으로.
+//   실효 0 근거(추측 아님 · 소비처 전수):
+//     canadiaWorld 를 읽는 곳은 HTTP 4개(/economy/canadia/{villages,prices,tradelog,caravans})가 전부이고,
+//     클라에서 그 넷을 부르는 코드는 모두 `primaryZoneId === 'canadia'` 뒤에 있다(client.js 8323·8416·8442·8563·8569).
+//     한반도 단독 운영(재민 확정)에선 그 조건이 성립할 수 없다 → 아무도 안 읽는 세계를 1Hz 로 돌리고 있었다.
+//   ★그래서 '무조건 OFF' 가 아니라 **첫 요청에 켠다**: 캐나디아가 돌아오면 자동으로 되살아난다(죽은 세계 응답 금지).
+//   ENABLE_CANADIA_ECON=1 → 종전처럼 부팅 즉시 · =0 → 완전 정지 · 미설정(채택값) → 지연 시작.
+const CANADIA_ECON_ENV = process.env.ENABLE_CANADIA_ECON;
+let _canadiaTimer = null;
+function ensureCanadiaEcon(reason) {
+  if (CANADIA_ECON_ENV === '0') return false;
+  if (_canadiaTimer) return true;
+  _canadiaTimer = setInterval(() => {
+    try { economyV2.tickWorldV2(canadiaWorld); }  // Phase 4d-13: v2 tick
+    catch (e) { console.error('[canadia-econ] tick error:', e.message); }
+  }, ECONOMY_TICK_MS);
+  console.log(`[canadia-econ] ▶ 시뮬 시작 (${reason}) — 1초=1일`);
+  return true;
+}
+if (CANADIA_ECON_ENV === '1') ensureCanadiaEcon('ENABLE_CANADIA_ECON=1');
+else if (CANADIA_ECON_ENV === '0') console.log(`[canadia-econ] ⏸ 완전 정지 (ENABLE_CANADIA_ECON=0)`);
+else console.log(`[canadia-econ] ⏸ 대기 — /economy/canadia/* 첫 요청에 시작(캐나디아 미배포면 CPU 0). 즉시 켜려면 ENABLE_CANADIA_ECON=1`);
 
 // === zone 인구 캐시 — 5초마다 각 zone의 /health fetch ===
 const zonePopulation = {}; // zoneId -> { humans, cap, observers, ts }
@@ -446,6 +480,9 @@ const server = http.createServer(async (req, res) => {
       });
     }
     // === Phase 4a: Canadia 전용 마을 데이터 — zone canadia 서버가 fetch ===
+    // ★[배치 15 ④] 지연 시작 훅 — 캐나디아 소비처가 실제로 나타나는 유일한 지점이 여기 4개다.
+    //   (경로가 4개라 문자열 하나로 묶어 검사한다 — 새 캐나디아 엔드포인트가 생기면 여기 접두사에 걸린다.)
+    if (req.url.startsWith('/economy/canadia/')) ensureCanadiaEcon(`요청 ${req.url}`);
     if (req.url === '/economy/canadia/villages' && req.method === 'GET') {
       return jsonResp(res, 200, economy.serializeWorld(canadiaWorld));
     }

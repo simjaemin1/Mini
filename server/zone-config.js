@@ -181,9 +181,27 @@ const ZONES_BASE = {
     worldOffsetX: 41000, worldOffsetY: 5000, zoneWidth: 7000, zoneHeight: 13000, // ← BASE(×10): 실제 70016×130016px ≈ 2188×4063셀 ≈ 8.9M셀
     villageSeed: 1020, villageCount: 0, // procedural 마을 0 — 하드코딩(hanbando-terrain.json villages, 에디터 v9) 사용
     useHardcodedVillages: true, // v9 마을 50개 사용.
+    // ★★[배치 15 · 재민 확정 "끄자"] 레거시 하드코딩 마을 실체화 OFF.
+    //   무엇을 끄는가: hanbando-terrain.json 의 마을 좌표에 zone.js 가 세우던 **옛 실체**
+    //   (한옥 1채·무지붕·큰집 없음 + NPC 6명 + 물쪽 농지 15칸 + 길드 영토 폴리곤 + central NPC 길드 등록).
+    //   재민 실플레이의 "집 한 채에 지붕 날아감"이 바로 이것이었다 — 완전체(큰집·움집·마당·곳간)만 남긴다.
+    //   ★[v2] 최종 목표는 시딩 마을 **50곳**이다(재민 "최종적으로는 50개가 있어야 하거든").
+    //     후보 51곳 전수 시딩 실측은 보고_50마을_처방전.md — 전환은 선별 게이트 완화 + 리셋과 함께 재민이 한다.
+    //   ★안 끄는 것 둘(자르면 세계가 무너지는 뿌리):
+    //     ① 시딩 후보 공급 — villages.js seedVillages 는 terrain.getZoneVillages() 를 **직접** 부른다
+    //        (zone.js 의 VILLAGES 를 안 거친다). 후보 51 → 선별 19 는 그대로다.
+    //     ② 레거시 디듀프 — isLegacyVillageClaimed 는 villages.js state.claimedNames 를 읽는다.
+    //        시딩 마을 18곳의 이름·길드가 레거시 목록에서 온 그 경로는 무변이다.
+    //   다른 존은 이 키가 없으므로 종전대로 ON(회귀 0). 되돌리려면 이 줄을 지우거나 true 로.
+    legacyVillages: false,
     npcVillageHouses: true,     // NPC 집 ON. 진짜 병목은 서버 qtBuildings 매틱 전체재삽입(3.3만채=22%CPU)이었고, 활성청크만 인덱싱으로 수정.
     npcVillageTerritory: true,  // 길드영토 ON — claims는 welcome에 1회(텔포와 무관, 접속 OK 확인됨).
     npcPerVillage: 6, // 50 하드코딩 마을 × 6 = 300 NPC (1코어 안전선). dormancy로 액티브만 처리.
+    // ★[배치 15 v2 — 이월] 스폰 이동은 **50곳 세계로 전환한 뒤** 그 배치를 보고 정한다(재민 확정).
+    //   지금 값은 종전 그대로(벌말 광장, 셀 1093,2031). 다만 실측은 끝나 있다 —
+    //   이 자리는 가장 가까운 시딩 마을(농촌22)이 212셀(6,780px) 밖이라 청크 활성 반경(1,200px)의
+    //   5.6배다. 즉 **첫 화면이 빈 들판**이고, 그것이 라이브 `bld=5` 의 정체다(보고서 §4).
+    //   50곳 전환 시 후보: 농촌22 광장 = base {x:3084.8, y:5987.2} (큰집 남쪽 7셀 마당 · 겹침 0 실측).
     mainSquare: { x: 3500, y: 6500, name: '벌말 광장' },
     // Phase 5-K: cleanZone 해제 — 자원·몹 spawn 켜짐 (건축 재료 공급). 산맥·강은 hardcoded 차단 유지.
     // ★[다리 층] 통나무 널다리 — flat [cx,cy,...] 셀 목록. path-core 계약("물=차단, 다리 칸만 통행 —

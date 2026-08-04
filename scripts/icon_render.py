@@ -144,6 +144,23 @@ M['tinmet']  = simple_mat("tinmet", (0.72, 0.73, 0.74), 0.4, metal=0.65)        
 M['leadmet'] = simple_mat("leadmet",(0.40, 0.42, 0.46), 0.45, metal=0.6)                     # 납 — 청회색
 M['coppermet']=simple_mat("coppermet",(0.55, 0.28, 0.11), 0.32, metal=0.75)                  # 구리 금속(광석 결정보다 밝게)
 M['gangue']  = bumped_mat("gangue", (0.42, 0.40, 0.36), (0.26, 0.25, 0.22), 13, 0.6, 0.95)   # 맥석 섞인 잡석
+# ★[2026-08-04a 배치 15 ④] 남은 4종 — 인벤에서 404 나던 키(silver·gold·nickel·jade_raw).
+#   고증: 은·금은 청동기 npcMetals(era.js)라 잉곳이 맞다. 다만 주석 잉곳(0.72,0.73,0.74)과
+#   **96px 에서 구분이 안 되면 아이콘이 아니다** — 색만이 아니라 **형태로도** 갈라 놓는다
+#   (이 파일이 이미 쓴 수법: 잉곳이 초가지붕으로 읽혀 형태를 바꿨고, 운철이 골프공으로 읽혀 각지게 했다).
+#     · 은  = 산출이 적어 **작은 빵떡 여러 개**(변색 살짝 낀 은백)
+#     · 금  = 환원 불필요(REDUCTION_T gold=0 — 자연금)라 **작은 덩이 + 사금 알갱이**
+#     · 니켈 = era.js 상 steel 대의 금속 — 두들긴 **각진 괴**(iron 형태 계열, 색은 노란 기 도는 은백)
+#     · 옥 원석 = 금속이 아니다. 송국리기 곡옥·관옥의 원료 **연옥 원석** — 거친 겉면에 깨진 초록 속살
+#   ⚠1차 렌더에서 배운 것(대조 시트 실측): metal 을 0.9 이상 주면 월드 색(0.52,0.56,0.6 푸른빛)이
+#     반사로 얹혀 **금이 올리브색으로** 읽힌다. 이 씬에서 색이 사는 금속은 확산이 남아 있는 구리
+#     (metal 0.75·rough 0.32)다 — 금도 그 대역으로 맞춘다. 은/니켈은 반대로 명도와 거칠기로 갈랐다.
+M['silvermet'] = simple_mat("silvermet", (0.92, 0.92, 0.90), 0.18, metal=0.80)                # 은 — 밝고 매끈한 은백(니켈보다 확실히 밝게)
+M['silvertar'] = simple_mat("silvertar", (0.24, 0.21, 0.18), 0.60, metal=0.55)                # 은 변색(황화은) — 짙은 갈흑 띠. 은임을 알리는 단서
+M['goldmet']   = simple_mat("goldmet",   (0.92, 0.68, 0.13), 0.30, metal=0.72)                # 금 — 구리와 같은 대역(확산이 남아 색이 산다)
+M['nickelmet'] = simple_mat("nickelmet", (0.55, 0.54, 0.47), 0.62, metal=0.60)                # 니켈 — 탁한 회황백 무광(은과 명도 대비)
+M['jaderind']  = bumped_mat("jaderind",  (0.50, 0.48, 0.41), (0.33, 0.32, 0.27), 10, 0.60, 0.94)  # 옥 원석 겉껍질(풍화 회백)
+M['jadecore']  = simple_mat("jadecore",  (0.20, 0.42, 0.22), 0.34)                            # 깨진 면의 연옥 속살 — 연옥은 민트가 아니라 **누런 기 도는 시금치 녹색**(rough 0.16 은 반사가 세 파스텔로 떴다)
 
 OBJS = []
 def add(o, mat):
@@ -401,6 +418,38 @@ def m_copper():   _ingot(M['coppermet'], 206)
 def m_tin():      _ingot(M['tinmet'], 207)
 def m_lead():     _ingot(M['leadmet'], 208)
 
+# ★[2026-08-04a 배치 15 ④] 404 4종. 실루엣이 서로 다르도록 형태를 갈랐다(위 재질 주석 참조).
+def m_silver():   # 은 — 작은 빵떡 3개(산출이 적어 소형 잉곳). 가운데 덩이에 **굵은 황화 변색 띠**.
+    random.seed(209)
+    for (x, y, z, r, h) in [(0, 0, 0.09, 0.48, 0.19), (0.52, 0.34, 0.08, 0.36, 0.17), (-0.42, 0.36, 0.30, 0.31, 0.15)]:
+        cyl(r, h, (x, y, z), mat=M['silvermet'], verts=13)
+        cone(r, r * 0.42, h * 0.9, (x, y, z + h * 0.9), mat=M['silvermet'], verts=13)
+    cyl(0.492, 0.10, (0, 0, 0.155), mat=M['silvertar'], verts=13)      # 변색 띠(굵게) — 주석과 갈리는 단서
+
+def m_gold():     # 금 — 자연금(REDUCTION_T=0): 덩이 하나 + **굵은 사금 알갱이 4개**.
+    #   ⚠1차는 알갱이 9개가 잘아 96px 에서 얼룩으로 뭉갰다. 수를 줄이고 키운다.
+    random.seed(210)
+    cyl(0.50, 0.19, (-0.14, -0.10, 0.10), mat=M['goldmet'], verts=13)
+    cone(0.50, 0.24, 0.16, (-0.14, -0.10, 0.27), mat=M['goldmet'], verts=13)
+    for (x, y, r) in [(0.52, 0.30, 0.20), (0.30, 0.58, 0.16), (0.66, -0.02, 0.14), (0.14, 0.44, 0.12)]:
+        ico(r, (x, y, r * 0.85), subdiv=1, mat=M['goldmet'], jitter=0.36, smooth=False)
+
+def m_nickel():   # 니켈 — **세워 놓은 각괴**(빌릿) 2개 + 조각. 색은 탁한 회황백 무광.
+    #   ⚠1차는 iron 과 같은 '누운 각재 2단'이라 실루엣이 겹쳤다(대조 시트 실측). 세로로 세워 갈라 놓는다.
+    random.seed(211)
+    box(0.44, 0.44, 1.28, (-0.14, 0.06, 0.64), rot=(0, 0, math.radians(-12)), mat=M['nickelmet'])
+    box(0.36, 0.36, 0.92, (0.44, -0.20, 0.46), rot=(0, math.radians(4), math.radians(24)), mat=M['nickelmet'])
+    ico(0.16, (-0.02, -0.48, 0.16), subdiv=1, mat=M['nickelmet'], jitter=0.32, smooth=False)
+
+def m_jade_raw(): # 옥 원석 — 연옥 자갈: 풍화 회백 겉껍질 + **쪼갠 면에 드러난 초록 속살**(위세품 원료라 티가 나야 한다)
+    #   ⚠1차는 초록을 얇은 판으로 박아 '회색 돌에 그은 초록 선'으로 읽혔다. 쪼갠 면을 **덩이 절반 크기**로 키운다.
+    random.seed(212)
+    ico(0.62, (-0.10, 0.10, 0.46), subdiv=1, mat=M['jaderind'], scale=(1.15, 1.0, 0.85), jitter=0.22, smooth=False)
+    # 쪼갠 면 — 앞아래를 통째로 초록 덩이로(겉껍질 덩이와 맞물려 '반쪽이 깨진 자갈'로 읽힘)
+    ico(0.46, (0.34, -0.30, 0.34), subdiv=1, mat=M['jadecore'], scale=(1.0, 1.0, 0.90), jitter=0.16, smooth=False)
+    box(0.66, 0.62, 0.10, (0.34, -0.30, 0.70), rot=(math.radians(-12), math.radians(16), 0), mat=M['jadecore'])  # 매끈한 파단면
+    ico(0.20, (0.56, 0.42, 0.18), subdiv=1, mat=M['jadecore'], jitter=0.28, smooth=False)    # 떨어져 나온 초록 조각
+
 def m_item_wall():  # 통나무 벽 유닛 미니어처 — 굴립주 벽주 6개 + 상하 가로대
     random.seed(131)
     for i in range(9):
@@ -482,6 +531,8 @@ JOBS = [
     ("ore_chunk", m_ore_chunk), ("iron_ore", m_iron_ore), ("charcoal", m_charcoal),
     ("iron", m_iron), ("meteoric_iron", m_meteoric_iron),
     ("copper", m_copper), ("tin", m_tin), ("lead", m_lead),
+    # ★[2026-08-04a 배치 15 ④] 인벤 404 4종 — ITEM_ICONS 키 36개 중 파일이 없던 전부(전수 대조 결과)
+    ("silver", m_silver), ("gold", m_gold), ("nickel", m_nickel), ("jade_raw", m_jade_raw),
 ]
 
 def frame_and_render(objs, path):
