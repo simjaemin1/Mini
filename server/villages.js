@@ -436,18 +436,35 @@ function extractSustain(ta, ccx, ccy, layout, rockD, oreD, forD, huntD) {
 //     점수 내림차순. 단 econ 회로(도구·목재 사슬)에 광산·숲이 필요하므로 type별 최고
 //     1곳을 먼저 확보(다양성) 후 나머지를 점수순으로 채움.
 // =============================================================================
-function pickSeedVillages(all, ta) {
+function pickSeedVillages(all, ta, opts) {
   const TYPE_PRIOR = { plain: 1.0, riverside: 0.9, forest: 0.75, mining: 0.5 };
-  // ★★[2026-08-04a 배치 15 v2 · 재민 "최종적으로는 50개가 있어야 하거든"] 전수 시딩 손잡이.
-  //   `SEED_ALL=1` 이면 **후보를 하나도 안 버린다** — 식량 하한·간격·상한 셋 다 우회하고 전부 반환한다.
-  //   목적은 진단이다: "선별에서 떨어진 32곳을 실제로 심으면 누가 어떻게 죽나"를 실측해야
-  //   재민이 에디터에서 무엇을 고칠지 정할 수 있다(마을별 처방전 — 보고_50마을_처방전.md).
-  //   ⚠**랩/진단 전용이다.** 미설정이 채택값이라 프로덕션 시딩은 한 비트도 안 바뀐다
-  //   (이 줄 아래 로직 전체가 종전 그대로 실행된다 — 반환 지점만 하나 앞에 생겼다).
-  if (typeof process !== 'undefined' && process.env && process.env.SEED_ALL === '1') {
-    console.log(`[seed] ★SEED_ALL=1 — 선별 우회: 후보 ${all.length}곳 전부 시딩(식량 하한·간격·상한 무시). 진단 전용.`);
+  // ★★[2026-08-04b 배치 16 · 재민 "해봐"] **전수 시딩 — 이제 정식 존 설정이다.**
+  //   배치 15 실측이 전제: 후보 51곳을 전부 심어도 800일 3시드 생존 47/좀비 2/소멸 2(전부 1/3),
+  //   1,600일엔 소멸·좀비 0. 32곳이 빠진 이유는 땅이 아니라 **선별 게이트**였다
+  //   (`FOOD_FLOOR=2.0` 14곳 · `MIN_SPACING_PX=12000` 18곳. 상한은 병목이 아니었다 —
+  //    20→51 로 올려도 19곳 그대로였다). 보고_50마을_처방전.md §1·§2.
+  //   ⇒ 켜지는 경로는 둘이다:
+  //      · 존 설정 `seedAllVillages: true`  — 프로덕션(hanbando). ★채택값
+  //      · env `SEED_ALL=1`                 — 랩/진단(배치 15 부터). 존 설정 없이도 켠다.
+  //   ⚠**우회하는 것은 '품질 게이트'뿐이다**: 식량 하한·간격·상한. **터 미달 스킵은 그대로 산다** —
+  //     `seedVillages` 의 `findOpenCenter` 가 주변 24셀에 뭍이 없으면 건너뛴다(어촌6). 그건 품질
+  //     기준이 아니라 **물리**다: 물 위에는 마을을 못 세운다. 그래서 후보 51 → 실제 시딩 50 이 된다.
+  //   ★우선순위: **명시한 env 상한이 존 설정을 이긴다.** 하네스·프로브가 `VILLAGE_MAX=1` 로 1곳만
+  //     심어 빨리 도는 길을 막지 않기 위해서다(probe-roof.js 가 그렇게 쓴다). 프로덕션 컨테이너엔
+  //     이 env 가 없다(Dockerfile.zone·redeploy 스크립트 전수 확인) — 그래서 라이브는 전수 시딩이다.
+  //     ⚠거꾸로, 라이브 컨테이너에 옛 VILLAGE_MAX 가 남아 있으면 50곳 전환이 조용히 안 된다.
+  //       그래서 부팅 로그에 어느 쪽으로 갔는지 찍는다(런북 §6 이 그 줄을 확인 항목으로 삼는다).
+  const _envMaxSet = (typeof process !== 'undefined' && process.env && process.env.VILLAGE_MAX != null && process.env.VILLAGE_MAX !== '');
+  const _envAll = (typeof process !== 'undefined' && process.env && process.env.SEED_ALL === '1');
+  const _cfgAll = !!(opts && opts.seedAll) && !_envMaxSet;
+  if (_envAll || _cfgAll) {
+    console.log(`[seed] ★전수 시딩(${_cfgAll ? '존 설정 seedAllVillages' : 'env SEED_ALL=1'}) — 품질 게이트 우회: 후보 ${all.length}곳 전부. (터 미달은 시딩 단계에서 물리적으로 스킵)`);
     return all.slice();
   }
+  // ★상한 — 존 설정 `villageMax` 가 있으면 그것, 없으면 종전 env/기본(20).
+  //   ⚠`VILLAGE_MAX`(모듈 상수)는 **안 건드린다**: 그 값은 `PV_MAX`(플레이어 마을 상한)의 기본값이기도 해서,
+  //     NPC 시딩 상한을 올리려다 플레이어 마을 상한까지 조용히 바뀌는 걸 막는다.
+  const VMAX = _envMaxSet ? VILLAGE_MAX : ((opts && opts.max > 0) ? opts.max : VILLAGE_MAX);
   // ★★[재민 확정 2026-08-02] "존재하는 마을은 전부 어느 정도 부유한 상태여야 해."
   //   전에는 후보 51곳 중 20곳을 **타입 prior 만으로** 골랐다 — 땅이 실제로 먹여 살릴 수 있는지 안 봤다.
   //   그래서 비옥도만 좋고 돌·나무가 바닥(0.25/0.45)인 자리에 마을이 심겼고, 도구가 닳는 순간
@@ -531,7 +548,7 @@ function pickSeedVillages(all, ta) {
   if (ta && BOOMTOWN_MAX > 0) {
     const boom = scored.filter(v => !(v._land > 0) && _E.isBoomtown(lpOf(v))).sort((a, b) => b._vein - a._vein);
     for (const v of boom) {
-      if (picked.length >= Math.min(BOOMTOWN_MAX, VILLAGE_MAX)) break;
+      if (picked.length >= Math.min(BOOMTOWN_MAX, VMAX)) break;
       if (farEnough(v)) { v._boomtown = 1; picked.push(v); }
     }
   }
@@ -542,19 +559,19 @@ function pickSeedVillages(all, ta) {
     const vs = scored.filter(v => v._land > 0 && v._vein >= VEIN_FLOOR).sort((a, b) => b._vein - a._vein);
     let n = 0;
     for (const v of vs) {
-      if (n >= VEINSLOT_MAX || picked.length >= VILLAGE_MAX) break;
+      if (n >= VEINSLOT_MAX || picked.length >= VMAX) break;
       if (!picked.includes(v) && farEnough(v)) { v._veinslot = 1; picked.push(v); n++; }
     }
   }
   // ① type 다양성 — 각 type 최고점 1곳 (품질순 정렬을 거친 뒤라, 같은 타입 중 가장 좋은 자리가 뽑힌다)
   for (const type of ['plain', 'riverside', 'forest', 'mining']) {
-    if (picked.length >= VILLAGE_MAX) break;
+    if (picked.length >= VMAX) break;
     const cand = scored.find(v => v.type === type && !picked.includes(v) && farEnough(v) && (!ta || v._land > 0));
     if (cand) picked.push(cand);   // ★식량 하한 미달(_land 0)은 다양성 슬롯으로도 못 들어온다
   }
   // ② 나머지는 점수순 + 간격
   for (const v of scored) {
-    if (picked.length >= VILLAGE_MAX) break;
+    if (picked.length >= VMAX) break;
     if (ta && !(v._land > 0)) continue;   // 하한 미달 자리는 비워 둔다 — 20 미만이어도 나쁜 자리보단 낫다
     if (!picked.includes(v) && farEnough(v)) picked.push(v);
   }
@@ -990,8 +1007,11 @@ function territoryBoundary(territory, ccx, ccy) {
 function seedVillages(db, terrain, ta, ZONE) {
   const hard = terrain.getZoneVillages(state.zoneId) || [];
   if (!hard.length) { console.log(`[${state.zoneId}] 🏘️ 시딩 스킵 — 하드코딩 마을 없음`); return []; }
-  const picked = pickSeedVillages(hard, ta);   // ★땅 품질 시딩(재민 확정 — 위 함수 주석)
-  console.log(`[${state.zoneId}] 🏘️ 마을 시딩 시작 — 후보 ${hard.length} → 선별 ${picked.length} (VILLAGE_MAX=${VILLAGE_MAX})`);
+  // ★[배치 16] 선별 정책을 **존 설정**에서 받는다(hanbando = 전수 50곳. 다른 존은 키가 없어 종전 그대로).
+  const _seedOpts = { seedAll: !!(ZONE && ZONE.seedAllVillages), max: (ZONE && ZONE.villageMax) || 0 };
+  const picked = pickSeedVillages(hard, ta, _seedOpts);   // ★땅 품질 시딩(재민 확정 — 위 함수 주석)
+  const _maxStr = _seedOpts.seedAll ? '전수(seedAllVillages)' : `상한 ${_seedOpts.max || VILLAGE_MAX}`;
+  console.log(`[${state.zoneId}] 🏘️ 마을 시딩 시작 — 후보 ${hard.length} → 선별 ${picked.length} (${_maxStr})`);
   const rows = [];
   const VillageLayout = require('./village-layout');
   db.db.exec('BEGIN');
@@ -1072,6 +1092,9 @@ function seedVillages(db, terrain, ta, ZONE) {
     try { db.db.exec('ROLLBACK'); } catch {}
     throw e; // 원자성: 실패 시 0행 → 다음 부팅에서 재시도
   }
+  // ★[배치 16] 선별과 실제 시딩의 차이를 한 줄로 남긴다 — 터 미달(물 위) 스킵이 몇 곳이었는지가 여기 드러난다.
+  const _skipped = picked.length - rows.length;
+  console.log(`[${state.zoneId}] 🏘️ 마을 시딩 완료 — 후보 ${hard.length} → 선별 ${picked.length} → **시딩 ${rows.length}**${_skipped ? ` (터 미달 스킵 ${_skipped}곳)` : ''}`);
   return rows;
 }
 

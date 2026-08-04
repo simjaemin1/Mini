@@ -71,8 +71,12 @@ const ta = P.makeTerrainAdapter(T, ZONE, { isTerrainBlockedLocal, isWaterTileLoc
 // ── 마을 선별 + 부존 추출 — seedVillages(server/villages.js:830~845) 와 같은 순서 ──
 const hard = T.getZoneVillages(Z) || [];
 if (!hard.length) { console.error('마을 0 — 지형 로드 실패'); process.exit(1); }
-const picked = P.pickSeedVillages(hard, ta);   // ★땅 품질 시딩 — 본 게임과 같은 인자
-console.log(`실제 지도 — 후보 ${hard.length}곳 → 시딩 선별 ${picked.length}곳 (VILLAGE_MAX=${P.VILLAGE_MAX})`);
+// ★★[배치 16] 선별 정책도 **존 설정에서** 받는다 — seedVillages 와 같은 인자여야 랩이 같은 세계를 잰다.
+//   이 줄이 없으면 프로덕션은 50곳인데 랩은 19곳을 재는, 이 프로젝트가 다섯 번 당한 그 오진이 된다.
+//   (env SEED_ALL=1 은 존 설정 없이도 켜는 랩 전용 경로 — pickSeedVillages 안에서 OR 로 합쳐진다.)
+const _seedOpts = { seedAll: !!ZONE.seedAllVillages, max: ZONE.villageMax || 0 };
+const picked = P.pickSeedVillages(hard, ta, _seedOpts);   // ★땅 품질 시딩 — 본 게임과 같은 인자
+console.log(`실제 지도 — 후보 ${hard.length}곳 → 시딩 선별 ${picked.length}곳 (${_seedOpts.seedAll ? '전수 seedAllVillages' : `상한 ${_seedOpts.max || P.VILLAGE_MAX}`})`);
 
 const seeds = [];
 for (const hv of picked) {

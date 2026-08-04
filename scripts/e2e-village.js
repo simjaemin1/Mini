@@ -52,7 +52,11 @@ function boot(name, file, env) {
 function shutdown() { for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {} } }
 process.on('exit', shutdown);
 
-async function waitHttp(url, tries = 240) {
+// ★[2026-08-04b 배치 16] 대기 예산 240초 → 900초. 프로덕션이 **마을 50곳 전수 시딩**으로 바뀌면서
+//   존 첫 부팅이 로컬 2코어에서 ~7.6분 걸린다(18곳 시절 ~3.5분). 240초면 시딩 도중에 '기동 실패'로
+//   끊겨 **없는 결함**을 보고한다. 빨리 돌려야 하면 존 env 에 VILLAGE_MAX=1 을 주면 된다(그 env 가
+//   존 설정 seedAllVillages 를 이기도록 되어 있다) — 다만 그러면 프로덕션과 다른 세계를 재는 것이다.
+async function waitHttp(url, tries = 900) {
   for (let i = 0; i < tries; i++) {
     try { const r = await fetch(url); if (r.ok) return true; } catch (e) {}
     await sleep(1000);

@@ -45,7 +45,8 @@ function boot(name, file, env) {
 function shutdown() { for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {} } }
 process.on('exit', shutdown);
 
-async function waitHttp(url, tries = 120) {
+// ★[2026-08-04b 배치 16] 대기 예산 120초 → 900초 — 마을 50곳 전수 시딩으로 존 첫 부팅이 ~7.6분이다.
+async function waitHttp(url, tries = 900) {
   for (let i = 0; i < tries; i++) {
     try { const r = await fetch(url); if (r.ok) return true; } catch (e) {}
     await sleep(1000);

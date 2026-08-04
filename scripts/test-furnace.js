@@ -68,11 +68,17 @@ const lastNotice = (p) => p.notices[p.notices.length - 1] || '';
 const noticed = (p, re) => p.notices.some((t) => re.test(t));
 
 // ── 빈 땅 찾기(물·바위 없는 2×2 + 여유) ──────────────────────────────────────
+// ★[2026-08-04b 배치 16] **파생 자리까지 통째로** 비었는지 본다.
+//   전에는 spot 둘레 4×4 만 검사하고 spot2(+6,0)·spot3(0,+6)·spot4(+6,+6) 는 안 봤다. 그래서
+//   배치 16 이 농촌6 곁에 못을 놓자 spot=(200,206) 은 통과했는데 spot4=(206,212) 가 물에 잠겼고,
+//   숯가마가 안 지어진 채 그 뒤 ⑥ 진척 검증이 "노 완공/숯가마 완공 실패"로 **없는 결함을 보고**했다.
+//   지형이 바뀔 때마다 하네스가 거짓말하면 안 된다 — 쓰는 범위를 다 검사하고 고른다.
+const SPOT_SPAN = 9;   // spot .. spot+(6,6) 발자국 2×2 + 여유
 function findClearSpot() {
-  for (let cy = 200; cy < 900; cy += 3) {
-    for (let cx = 200; cx < 900; cx += 3) {
+  for (let cy = 200; cy < 1200; cy += 3) {
+    for (let cx = 200; cx < 1200; cx += 3) {
       let clear = true;
-      for (let x = cx - 1; x <= cx + 2 && clear; x++) for (let y = cy - 1; y <= cy + 2 && clear; y++) {
+      for (let x = cx - 1; x <= cx + SPOT_SPAN && clear; x++) for (let y = cy - 1; y <= cy + SPOT_SPAN && clear; y++) {
         if (H.isTerrainBlockedLocal(x * SZ + SZ / 2, y * SZ + SZ / 2)) clear = false;
       }
       if (clear) return { cx, cy };

@@ -75,6 +75,10 @@ console.log('\n[A~D] scripts/econ-lab-real.js — 실지도 랩');
   const seedCall = S.match(/pickSeedVillages\(([^)]*)\)/);
   if (seedCall && /,\s*ta\b/.test(seedCall[1])) ok('시딩 선별 = pickSeedVillages(hard, ta) — 땅 품질 인자 전달');
   else bad(`시딩 선별에 지형 어댑터(ta)가 안 간다 — 부유 시딩이 죽어 다른 마을 20곳을 잰다 (${seedCall ? seedCall[0] : '호출 없음'})`);
+  // ★[배치 16] 선별 **정책**(존 설정)도 같이 가야 한다. hanbando 는 seedAllVillages:true 로 50곳인데
+  //   랩이 이 인자를 빼면 19곳을 재게 된다 — 위 ta 누락과 정확히 같은 종류의 오진이다.
+  if (seedCall && /_seedOpts|seedAll/.test(seedCall[1])) ok('시딩 정책 = 존 설정 전달(seedAllVillages/villageMax) — 랩이 프로덕션과 같은 마을 수를 잰다');
+  else bad(`시딩 정책(존 설정)이 랩에 안 간다 — 프로덕션 50곳인데 랩은 19곳을 잰다 (${seedCall ? seedCall[0] : '호출 없음'})`);
   // ★랩 전용 A/B 손잡이가 **기본값에서 꺼져 있는가** — 켜진 채 커밋되면 회귀가 딴 세계를 잰다.
   for (const [k, re] of [['LAB_CU', /LAB_CU\s*=\s*parseFloat\(process\.env\.LAB_CU\s*\|\|\s*'0'\)/]]) {
     if (re.test(S)) ok(`A/B 손잡이 ${k} 기본 OFF`);
