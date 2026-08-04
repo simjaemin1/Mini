@@ -104,6 +104,17 @@ const SIM_JOB_EMOJI = {
     }
     return out;
   };
+  // ★[2026-08-04c 배치 17 ②] 낚시터 방황 진단 훅 — 클라가 **화면에 그리는 바로 그 좌표**를 월드 절대좌표로
+  //   (읽기 전용). 서버 /lifedbg 와 달리 "플레이어 눈에 보이는 것"을 재는 층이라, 수리 전/후 실화면 비교의
+  //   계측기가 된다. 좌표는 보간 전 권위값(c.others 의 x·y) — 렌더러가 쓰는 원본과 같다(사본 금지).
+  window.__getNpcs = () => {
+    const out = [];
+    for (const c of conns.values()) {
+      const ox = c.meta?.worldOffsetX || 0, oy = c.meta?.worldOffsetY || 0;
+      for (const p of c.others.values()) if (p.simJob) out.push({ pid: p.pid, wx: ox + p.x, wy: oy + p.y, job: p.simJob, act: p.act || null });
+    }
+    return out;
+  };
   window.__getClaims = () => {
     const out = [];
     for (const c of conns.values()) {
@@ -3707,6 +3718,15 @@ const SIM_JOB_EMOJI = {
         }
       }
       const _hutRs = [], _hutSeen = new Set();   // ★[침대 진입] 이번 프레임 움집 렉트+지붕 표시 여부 — 실내 NPC 가림 판정(others 루프 소비)
+      // ★★[2026-08-04c 배치 17 ①] **실내 컷어웨이가 한 번도 안 먹던 원인 — 좌표계 불일치.**
+      //   `data.hut`·`data.bld` 렉트는 **존 로컬 셀**이다(서버가 b.cx 로 굽는다). 그런데 실내 판정은
+      //   `myAbsPredicted`(월드 절대)를 32 로 나눠 비교하고 있었다. 한반도는 worldOffsetX=409,984 이라
+      //   플레이어 셀이 13,775 로 나오고 렉트는 960~967 이다 — **영원히 false.**
+      //   그래서 큰집·움집 안에 서 있어도 지붕이 안 걷히고, 남·동벽도 안 눕고, 실내 NPC 가림도 안 됐다.
+      //   (재민 실화면 재현: /tmp/b17-shots/in_hall.png — 큰집 안인데 지붕이 온전하고 플레이어가 그 위에 떠 있다.)
+      //   ⇒ 이 존의 **로컬 셀**로 바꾼다. 존을 여러 개 캐시해도 각자 제 원점으로 재므로 안전하다.
+      const _myLcx = Math.floor((myAbsPredicted.x - ox) / CL_BUILDING_SIZE);
+      const _myLcy = Math.floor((myAbsPredicted.y - oy) / CL_BUILDING_SIZE);
       for (const b of c.buildings.values()) {
         // ★움집 지붕: 서버 태그 data.hut=[x0,y0,x1,y1] — 지붕은 벽 유닛(64px) '위에' 얹힌 스프라이트[사용자 확정: 유닛 문법].
         //   벽은 항상 그대로 렌더(통나무 스킨·문=벽 개구·콜라이더 불변). 바닥만 밖에서 억제(지붕에 가림) + 캐리어 1셀이 지붕 합성.
@@ -3733,7 +3753,7 @@ const SIM_JOB_EMOJI = {
         const _hallI = _bldSpr.hall_roof || _hallRoofC;   // ★10차: 3D 스프라이트 우선
         const _bld2 = _hallI && b.data && b.data.bld;
         if (_bld2 && b.type === 'floor') {
-          const _mbx = Math.floor(myAbsPredicted.x / CL_BUILDING_SIZE), _mby = Math.floor(myAbsPredicted.y / CL_BUILDING_SIZE);
+          const _mbx = _myLcx, _mby = _myLcy;   // ★배치 17: 존 로컬 셀(위 주석 — 절대 좌표로 재던 것이 컷어웨이 불발의 원인)
           const _binside = (myFloor || 0) === 0 && ((_mbx >= _bld2[0] && _mbx <= _bld2[2] && _mby >= _bld2[1] && _mby <= _bld2[3])
             || (_mby === _bld2[3] + 1 && (_mbx === _bld2[0] + 3 || _mbx === _bld2[0] + 4)));
           { const _hk = 'B' + _bld2[0] + ',' + _bld2[1]; if (!_hutSeen.has(_hk)) { _hutSeen.add(_hk); _hutRs.push({ r: _bld2, roofOn: !_binside }); } }   // 실내 NPC 가림(움집과 동일 규칙)
@@ -3766,7 +3786,7 @@ const SIM_JOB_EMOJI = {
           }
         }
         if (_hut && b.type === 'floor') {
-          const _mcx = Math.floor(myAbsPredicted.x / CL_BUILDING_SIZE), _mcy = Math.floor(myAbsPredicted.y / CL_BUILDING_SIZE);
+          const _mcx = _myLcx, _mcy = _myLcy;   // ★배치 17: 존 로컬 셀
           const _inside = (myFloor || 0) === 0 && ((_mcx >= _hut[0] && _mcx <= _hut[2] && _mcy >= _hut[1] && _mcy <= _hut[3])
             || (_mcy === _hut[3] + 1 && (_mcx === _hut[0] + 2 || _mcx === _hut[0] + 3)));   // ★문 앞 1셀에서도 개방(열린 문으로 내부 엿보기 — PZ 관례)
           { const _hk = _hut[0] + ',' + _hut[1]; if (!_hutSeen.has(_hk)) { _hutSeen.add(_hk); _hutRs.push({ r: _hut, roofOn: !_inside }); } }   // ★[침대 진입] 렉트+지붕 여부 수집(움집당 1회)
@@ -3816,8 +3836,13 @@ const SIM_JOB_EMOJI = {
         const iso = w2i(ax, ay, bZ);
         let _bz = (ax + ay) * 0.5 + (b.floor || 0) * 0.5;
         if (b.type === 'vtile') _bz -= 960;   // ★지면 타일은 실셀 텍스처(64×32)로 승격 — 길(-950)·개체 아래 배경층으로
-        renderables.push({ z: _bz, kind: 'building', b, iso, ax, ay });
+        renderables.push({ z: _bz, kind: 'building', b, iso, ax, ay, off: ox, offY: oy });   // ★배치 17: off — 남·동벽 페이드가 존 로컬 셀을 재려면 원점이 필요하다
       }
+      // ★[2026-08-04c 배치 17 ①] 실내 컷어웨이 진단 훅 — 하네스가 "지붕이 실제로 걷혔나"를 계약 수준에서
+      //   확인할 수 있게 이번 프레임의 발자국 렉트·지붕 표시 여부·내 로컬 셀을 노출한다.
+      //   화면 픽셀 비교와 **둘 다** 봐야 자명 통과를 막는다(계약만 보면 렌더가 틀려도 통과한다).
+      if (_hutRs.length) window.__cutawayDbg = { lcx: _myLcx, lcy: _myLcy, zone: (c.meta && c.meta.id) || null,
+        rects: _hutRs.map((h) => ({ r: h.r.slice(), roofOn: !!h.roofOn })) };
       for (const m of c.mobs.values()) {
         const pos = sampleAt(m.buf, renderT, m.x, m.y);
         const ax = ox + pos.x, ay = oy + pos.y;
@@ -3843,7 +3868,7 @@ const SIM_JOB_EMOJI = {
         // ★[침대 진입 — PZ 동형] 움집 실내 NPC(취침·요양)는 그 집 지붕이 그려져 있으면(뷰어가 밖) 숨김 —
         //   플레이어 z(+500)가 지붕 z(캐리어+64)를 항상 이겨 '지붕 위에 누워 자는' 그림이 되기 때문. 들어가면(컷어웨이) 보인다.
         if ((o.floor || 0) === 0 && _hutRs.length) {
-          const _ncx = Math.floor(ax / CL_BUILDING_SIZE), _ncy = Math.floor(ay / CL_BUILDING_SIZE);
+          const _ncx = Math.floor(pos.x / CL_BUILDING_SIZE), _ncy = Math.floor(pos.y / CL_BUILDING_SIZE);   // ★배치 17: 렉트가 존 로컬이라 NPC 도 로컬 셀로(ax/ay 는 절대 — 영원히 불일치였다)
           let _hide = false;
           for (const _h of _hutRs) { if (_ncx >= _h.r[0] && _ncx <= _h.r[2] && _ncy >= _h.r[1] && _ncy <= _h.r[3]) { _hide = _h.roofOn; break; } }
           if (_hide) continue;
@@ -4246,7 +4271,12 @@ const SIM_JOB_EMOJI = {
           if (isCutaway) {
             const _rect = item.b.data?.hut || item.b.data?.bld;   // 움집/큰집 = 발자국 렉트 판정(문 개구로 방 BFS가 새는 구조)
             if (_rect) {
-              isCutaway = (myFloor || 0) === 0 && _renderMyCx >= _rect[0] && _renderMyCx <= _rect[2] && _renderMyCy >= _rect[1] && _renderMyCy <= _rect[3];
+              // ★★[배치 17 ①] 렉트는 **존 로컬 셀**이다 — `_renderMyCx`(절대)로 재던 것이
+              //   "남·동벽이 안 눕는다"의 원인이었다(한반도 offset 409,984 → 셀 13,775 vs 렉트 960~967).
+              //   renderable 에 실어 온 존 원점(off/offY)으로 로컬 셀을 다시 잰다.
+              const _lcx = Math.floor((myAbsPredicted.x - (item.off || 0)) / CL_BUILDING_SIZE);
+              const _lcy = Math.floor((myAbsPredicted.y - (item.offY || 0)) / CL_BUILDING_SIZE);
+              isCutaway = (myFloor || 0) === 0 && _lcx >= _rect[0] && _lcx <= _rect[2] && _lcy >= _rect[1] && _lcy <= _rect[3];
             } else if (_myRoom) {                                  // 일반 건물 = 방 시스템: 이 벽이 '내 방'에 접해 있을 때만
               let _wcx, _wcy, _ocx, _ocy;
               if (side === 'N') { _wcx = Math.floor(item.ax / CL_BUILDING_SIZE); _wcy = Math.floor(item.ay / CL_BUILDING_SIZE); _ocx = _wcx; _ocy = _wcy - 1; }

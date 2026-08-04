@@ -3038,6 +3038,11 @@ function lifeDebug() {   // ★[직접 서버 디버깅 — 사용자 요청] zo
       if (p._lifeAct) actN++;                                   // ★actNonNull 집계(라벨 가시성 정량)
       jobs[p.simJob || '(무)'] = (jobs[p.simJob || '(무)'] || 0) + 1;   // ★전 주민 simJob 히스토그램(샘플 8이 아니라 전수)
       if (sample.length < 8) sample.push({ job: p.simJob, act: p._lifeAct || null, x: Math.round(p.x), y: Math.round(p.y),
+        // ★[2026-08-04c 배치 17 ②] 밤 어부·낚시터 방황 규명용 — 이 셋이 없으면 "밤인데 왜 밖인가"를 못 가린다.
+        //   lon = §19 경도 오프셋 · fv = 이 마을의 로컬 태양시(밤 판정의 실제 입력) · beh/tgt = 이동 목표(방황 판별)
+        lon: p.simLonOff != null ? +p.simLonOff.toFixed(4) : null,
+        fv: (wpF && p.simLonOff != null) ? +(((wpF(now) + p.simLonOff) % 1)).toFixed(3) : null,
+        beh: p.behavior || null, tgt: (p.targetX != null ? [Math.round(p.targetX), Math.round(p.targetY)] : null),
         dHome: p.npcHomeX != null ? Math.round(Math.hypot(p.x - p.npcHomeX, p.y - p.npcHomeY)) : null,
         dBed: p.npcBedX != null ? Math.round(Math.hypot(p.x - p.npcBedX, p.y - p.npcBedY)) : null,
         rest: p._rest || 0, half: !!p._half, fOut: p._fOutD,
@@ -3936,7 +3941,28 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
     const ws = npc._workSite;
     if (Math.hypot(npc.x - ws.x, npc.y - ws.y) > 130) { npc.behavior = 'wander'; npc.targetX = ws.x; npc.targetY = ws.y; npc.gatherTarget = null; _lifeAct(npc, '출근'); return true; }
     if (!npc._lastFishAt || now - npc._lastFishAt > 8000) { npc._lastFishAt = now; if (npc.inventory) npc.inventory.fish = (npc.inventory.fish || 0) + 1; }   // 8초 1마리(구 ③-b 이관 — simJob 기준)
-    npc.behavior = 'wander'; npc.targetX = ws.x + (Math.random() - 0.5) * 40; npc.targetY = ws.y + (Math.random() - 0.5) * 40; npc.gatherTarget = null;
+    // ★★[2026-08-04c 배치 17 ②] **낚시터 미세 방황 수리** — 재민 관측 "낚시터에서 미세하게 자꾸 방황한다".
+    //   원인: 이 줄이 **결정 틱마다**(0.5~1.5초) 목표를 ±20px 로 새로 뽑고 있었다. 20px 는 한 셀(32px)도 안 되는
+    //   거리라 NPC 는 도착하기 전에 목표가 또 바뀐다 — 영원히 제자리에서 달달거린다.
+    //   실측(probe-nightlife, 3초 간격 391쌍): 이동거리 중앙 12.8px인데 **목표가 바뀐 비율 100%**.
+    //   ⇒ 다른 현장 직업(벌목·채광·채집)이 이미 쓰는 방식으로 맞춘다: **자리를 정하면 머문다.**
+    //     도착(12px 이내)했거나 체류 시간이 다 되면 그때만 물가를 따라 다음 자리를 고른다.
+    //     낚시는 원래 한 자리에서 드리우고 이따금 옮기는 일이라 고증에도 맞는다.
+    //   ⚠두 번째 원인도 같이 고친다: `ws ± 20px` 는 **물에 빠질 수 있다.** 어장 앵커(ws)는 '4방에 물이 있는
+    //     물가 셀'이라 셀 반폭(16px)만 벗어나도 옆 물칸이다. 목표가 물이면 도달 불가 → zone.js unstuckNpc 가
+    //     ±80px 무작위로 튕겨 내고 다음 결정이 다시 물가로 끌어당긴다 — 이것이 '달달거림'의 실체다.
+    //     ⇒ 자리는 **물가 셀 목록(bank)** 에서만 고른다. bank 는 영토 셀이라 정의상 뭍이다.
+    //   ★체류는 **시간만** 센다 — 1차 수리에서 "도착하면 다시 뽑기"를 넣었더니 도착 즉시 새 자리를 골라
+    //     3초 간격 표본에서 목표가 48% 나 바뀌었다(원래 100%). 낚시는 드리우고 **기다리는** 일이다.
+    if (npc._fishSpotX == null || !npc._fishT || now >= npc._fishT) {
+      // 앵커 주변 4셀(128px) 안의 물가 셀 중 하나 — 없으면 앵커 그 자리(물가 셀 중심이라 항상 뭍)
+      const near = [];
+      for (const s of sites) { if (Math.abs(s.x - ws.x) <= 128 && Math.abs(s.y - ws.y) <= 128) near.push(s); if (near.length >= 12) break; }
+      const pick = near.length ? near[(h + ((now / 1000) | 0)) % near.length] : ws;
+      npc._fishSpotX = pick.x; npc._fishSpotY = pick.y;
+      npc._fishT = now + 9000 + (h % 5) * 2000;   // 9~17초 체류(결정론 분산 — 마을 전원이 동시에 안 움직인다)
+    }
+    npc.behavior = 'wander'; npc.targetX = npc._fishSpotX; npc.targetY = npc._fishSpotY; npc.gatherTarget = null;
     _lifeAct(npc, '낚시');
     return true;
   }

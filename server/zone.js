@@ -1635,7 +1635,25 @@ function followNpcPath(npc, speedMult) {
   return false;
 }
 // stuck 감지: lastPos·lastPosAt 비교. 1.5s간 5px도 못 움직였으면 stuck.
+// ★★[2026-08-04c 배치 17 ②] **도착해서 서 있는 것은 stuck 이 아니다** — 낚시터 방황의 마지막 원인.
+//   stuck 의 정의는 "가려는데 못 간다"인데, 이 함수는 위치만 봐서 **목표에 도착해 가만히 선 NPC**도 stuck 으로
+//   판정했다. 1.5초마다 참이 되고 3연속(≈4.5초)이면 unstuckNpc 가 `npc.x + cos(랜덤)*80` 으로 튕겨 낸다.
+//   → 제자리에 서 있어야 할 NPC가 4.5초마다 무작위로 80px 씩 튀고 다음 결정이 도로 끌어당긴다. 이것이 재민이
+//     본 "미세하게 자꾸 방황"의 잔여분이다. 어부만의 문제가 아니라 **가만히 서는 모든 NPC**(취침·대기 포함)에
+//     걸리는 엔진 층 결함이다.
+//   실측(probe-nightlife 3초 간격, 낚시 목표 344표본): 목표 좌표가 셀중심(=어장 후보)이 아닌 표본 29개(8.4%)가
+//     전부 자기 위치에서 반경 ≤80.6px — unstuckNpc 의 무작위 튕김. 목표가 바뀐 126쌍 중 29쌍(23%)이 이것이었다.
+//   ⇒ 목표에 도착(경로 소진 + 12px 이내)했으면 stuck 이 아니다. 12px 은 followNpcPath 의 도착 판정(10px)과 맞춘 값.
+//     영구 정지 위험 없음: 도착지가 벽 안이든 물가든 **다음 결정**이 새 목표를 주고, 그때 거리가 12px 을 넘으면
+//     stuck 감지는 종전대로 작동한다.
 function detectStuck(npc, now) {
+  if (npc.targetX != null && npc.targetY != null
+      && (!npc.path || npc.pathIndex >= npc.path.length)
+      && Math.hypot(npc.x - npc.targetX, npc.y - npc.targetY) < 12) {
+    npc._stuckPos = { x: npc.x, y: npc.y, at: now };   // 서 있는 동안 타이머를 계속 리셋 — 떠날 때 즉시 오판 금지
+    npc._stuckN = 0;
+    return false;
+  }
   if (!npc._stuckPos) {
     npc._stuckPos = { x: npc.x, y: npc.y, at: now };
     return false;

@@ -45,15 +45,28 @@ console.log(`[economy] world 초기화: ${economyWorld.villages.length} 마을`)
 //       그래서 기본 ON 유지하고 손잡이만 단다. (다만 "한반도 플레이어가 존재하지 않는 20개 마을의 시세를 본다"는
 //       설계 자체는 재민 판단 사항 — 보고서 회부 항목.)
 //     · canadiaWorld(v2·7마을) — 아래 참조. 소비처 전부가 캐나디아 게이트 뒤에 있어 한반도 단독 운영에선 실효 0.
-const PROTO_ECON_ON = !(process.env.ENABLE_PROTO_ECON === '0');   // 채택값 = ON(현행). '0'만 끈다.
-if (PROTO_ECON_ON) {
-  setInterval(() => {
+// ★★[2026-08-04c 배치 17 ③] **v1 도 지연 시작으로 바꾼다.** 배치 15 이후에도 라이브 central 이 상시 100% 였다.
+//   (원인 둘: ⓐ 재민이 `--central` 없이 재배포하면 canadia 지연 시작 자체가 라이브에 안 올라간다 —
+//    redeploy-hanbando.sh 는 그 플래그가 있어야 central 이미지를 다시 굽는다. ⓑ 남은 v1 이 계속 돌고 있었다.)
+//   v1 은 실효가 **있다**(클라 Q키 시세 패널이 /economy/prices 를 부른다) — 그래서 끄지 않고, canadia 와 같은
+//   **첫 요청에 시작**으로 바꾼다. 아무도 Q 를 안 누르면 CPU 0, 누르는 순간 살아나 1초=1일로 흐른다.
+//   대가는 하나뿐이다: 처음 연 사람이 day 0 의 시세를 본다(존재하지 않는 20개 마을의 프로토타입 세계라
+//   그 자체가 회부 항목이다 — 보고_50마을_처방전.md §7-마). 종전처럼 부팅 즉시 돌리려면 ENABLE_PROTO_ECON=1.
+const PROTO_ECON_ENV = process.env.ENABLE_PROTO_ECON;
+let _protoTimer = null;
+function ensureProtoEcon(reason) {
+  if (PROTO_ECON_ENV === '0') return false;
+  if (_protoTimer) return true;
+  _protoTimer = setInterval(() => {
     try { economy.tickWorld(economyWorld); }
     catch (e) { console.error('[economy] tick error:', e.message); }
   }, ECONOMY_TICK_MS);
-} else {
-  console.log(`[economy] 시뮬 OFF (ENABLE_PROTO_ECON=0) — /economy/prices·/economy/villages 는 day 0 정지 세계를 반환한다`);
+  console.log(`[economy] ▶ 시뮬 시작 (${reason}) — 1초=1일`);
+  return true;
 }
+if (PROTO_ECON_ENV === '1') ensureProtoEcon('ENABLE_PROTO_ECON=1');
+else if (PROTO_ECON_ENV === '0') console.log(`[economy] ⏸ 완전 정지 (ENABLE_PROTO_ECON=0) — /economy/prices 는 day 0 정지 세계를 반환한다`);
+else console.log(`[economy] ⏸ 대기 — /economy/{prices,villages} 첫 요청에 시작(아무도 안 열면 CPU 0). 즉시 켜려면 ENABLE_PROTO_ECON=1`);
 
 // === Phase 4a: Canadia 전용 economy world — 게임 통합 prototype.
 //   캐나다 zone 안에 7개 마을 좌표 분산. 좌표는 zone 크기 (10240 × 10240) 기준.
@@ -463,6 +476,9 @@ const server = http.createServer(async (req, res) => {
       });
     }
     // === Economy: 전체 마을 상태 ===
+    // ★[배치 17 ③] v1 프로토 시뮬 지연 시작 훅 — 소비처가 실제로 나타나는 지점이 이 셋뿐이다
+    //   (/economy/villages · /economy/prices · /economy/prices/<마을>). canadia 경로는 아래 별도.
+    if (req.url === '/economy/villages' || req.url === '/economy/prices' || req.url.startsWith('/economy/prices/')) ensureProtoEcon(`요청 ${req.url}`);
     if (req.url === '/economy/villages' && req.method === 'GET') {
       return jsonResp(res, 200, economy.serializeWorld(economyWorld));
     }
