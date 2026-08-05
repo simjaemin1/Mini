@@ -117,7 +117,7 @@ function bilin(S,arr,wxp,wyp,fallback){ // wxp,wyp: 존-로컬 px
   return a+(b-a)*tx+(c-a)*ty+(a-b-c+d)*tx*ty;
 }
 
-function render(S,flow,scale,imgs,phase,view,waterOn){
+function render(S,flow,scale,imgs,phase,view,waterOn,sharp){
   const {w,h,cells}=S; const F=fields(S);
   const wMask=cells.map(r=>r.map(v=>v===1?1:0));
   const wDeep=F.dLand.map((r,y)=>r.map((d,x)=>cells[y][x]===1?Math.min(1,d/6):0));
@@ -140,7 +140,7 @@ function render(S,flow,scale,imgs,phase,view,waterOn){
 
   // ── 1) 지면: 화면 공간 풀 타일링 (각도 베이크 — 눌러붙임 없음) ──
   const pat=g.createPattern(imgs.grassA,'repeat');
-  const pm=new DOMMatrix(); pm.a=0.55; pm.d=0.55;   // 풀대 크기를 셀 축척에 맞춤
+  const pm=new DOMMatrix(); pm.a=0.295; pm.d=0.295;  // ★1셀=1m 정합: 베이크 153.6px/m ÷ 화면 45.25px/m (0.55는 풀이 1.86배 컸다 — 재민 지적)
   pat.setTransform(pm);
   g.save(); g.fillStyle=pat;
   g.fillRect(-TX,-TY,isoW,isoH); g.restore();
@@ -192,8 +192,16 @@ function render(S,flow,scale,imgs,phase,view,waterOn){
         const wpt=i2w(ix,iy);
         const wxp=wpt.wx+S.cx0*CELL*0, wyp=wpt.wy;   // 이미 존-로컬 iso 기준(장면 원점 0)
         // 장면 로컬 px → 셀계
-        const m=bilin(S,wMask,wpt.wx,wpt.wy,0);
-        if(m<0.42) continue;                          // 뭍
+        let m;
+        if(sharp){ const cx=Math.max(0,Math.min(S.w-1,Math.floor(wpt.wx/CELL))), cy=Math.max(0,Math.min(S.h-1,Math.floor(wpt.wy/CELL)));
+          m=wMask[cy][cx]?1:0.44+0.14*0; if(!wMask[cy][cx]) continue;
+          // 각진 판의 물가 판정: 물 셀인데 4방에 뭍 → shore 대역
+          const nb=(wMask[Math.max(0,cy-1)][cx]===0)||(wMask[Math.min(S.h-1,cy+1)][cx]===0)||(wMask[cy][Math.max(0,cx-1)]===0)||(wMask[cy][Math.min(S.w-1,cx+1)]===0);
+          m=nb?0.5:1;
+        } else {
+          m=bilin(S,wMask,wpt.wx,wpt.wy,0);
+          if(m<0.42) continue;                          // 뭍
+        }
         const deep=bilin(S,wDeep,wpt.wx,wpt.wy,0);
         const fx=bilin(S,cosF,wpt.wx,wpt.wy,1), fy=bilin(S,sinF,wpt.wx,wpt.wy,0);
         const fL=Math.hypot(fx,fy)||1, dx=fx/fL, dy=fy/fL;
@@ -204,8 +212,11 @@ function render(S,flow,scale,imgs,phase,view,waterOn){
         const ampMod=0.45+0.9*vnoise(wpt.wx/23+31,wpt.wy/23);   // 진폭 얼룩 — 골판지 제거
         const A1=0.85*ampMod,A2=0.55*ampMod;
         const p1=al*(2*Math.PI/64)+cr*0.02, p2=al*(2*Math.PI/32)+cr*0.07;
-        const n1=vnoise((wpt.wx-ADV*tt*dx)/8,(wpt.wy-ADV*tt*dy)/8)-0.5;
-        const n2=vnoise((wpt.wx-ADV*tt*dx)/3.2+17,(wpt.wy-ADV*tt*dy)/3.2+9)-0.5;   // 잔주름 옥타브
+        // ★루프 정합 크로스페이드: 노이즈 advection 은 한 주기가 안 맞아 루프점에서 되감긴다(재민: "순간이동")
+        //   t 와 t-1 두 표본을 tt 로 섞으면 루프가 이음새 없이 돈다. 실게임(연속 시간 셰이더)엔 불필요.
+        const nAt=(sc,ox,oy,ph)=>vnoise((wpt.wx-ADV*ph*dx)/sc+ox,(wpt.wy-ADV*ph*dy)/sc+oy);
+        const n1=((1-tt)*nAt(8,0,0,tt)+tt*nAt(8,0,0,tt-1))-0.5;
+        const n2=((1-tt)*nAt(3.2,17,9,tt)+tt*nAt(3.2,17,9,tt-1))-0.5;   // 잔주름 옥타브
         // 경사(노멀) — 해석 미분
         const s1=A1*Math.cos(p1)*(2*Math.PI/64), s2=A2*Math.cos(p2)*(2*Math.PI/32);
         const sn=n1*0.55+n2*0.38;
@@ -220,13 +231,13 @@ function render(S,flow,scale,imgs,phase,view,waterOn){
         // 물가 포말 + 얕은물 바닥 비침
         const shore=Math.min(1,Math.max(0,(m-0.42)/0.16));   // 0=뭍 경계,1=완전 물
         if(shore<1){
-          const fo=vnoise(wpt.wx/4.2+99,wpt.wy/4.2-ADV*tt/6);
+          const fo=(1-tt)*vnoise(wpt.wx/4.2+99,wpt.wy/4.2-ADV*tt/6)+tt*vnoise(wpt.wx/4.2+99,wpt.wy/4.2-ADV*(tt-1)/6);
           const foam=Math.max(0,(1-shore)*1.25*(fo-0.28))*1.5;   // 노이즈 문턱 — 띠가 아니라 얼룩
           if(foam>0){ const ff=Math.min(0.85,foam);
             r=r*(1-ff)+232*ff; gg=gg*(1-ff)+238*ff; b=b*(1-ff)+240*ff; }
         }
         const o=(py*W+pxi)*4;
-        const aBlend=Math.min(1,(m-0.42)/0.08);   // 물가 페더 — 셀 각 없는 곡선 경계
+        const aBlend=sharp?1:Math.min(1,(m-0.42)/0.08);   // 물가 페더(곡선판) / 경계 그대로(각진판)
         px[o]  =px[o]  *(1-aBlend)+r *aBlend;
         px[o+1]=px[o+1]*(1-aBlend)+gg*aBlend;
         px[o+2]=px[o+2]*(1-aBlend)+b *aBlend;
@@ -238,6 +249,7 @@ function render(S,flow,scale,imgs,phase,view,waterOn){
     // 젖은 띠(뭍 쪽) — 물가 바로 바깥 어둡고 차게
     // (픽셀 패스에서 m 0.30~0.42 대역을 살짝 어둡게 — 두 번째 미니 패스)
     const id2=g.getImageData(0,0,W,H); const p2=id2.data;
+    if(!sharp)
     for(let py=0;py<H;py++)for(let pxi=0;pxi<W;pxi++){
       const ix=pxi/scale-TX, iy=py/scale-TY; const wpt=i2w(ix,iy);
       const m=bilin(S,wMask,wpt.wx,wpt.wy,0);
@@ -274,12 +286,12 @@ function render(S,flow,scale,imgs,phase,view,waterOn){
 const imgs={}; let pend=0;
 for(const k in A){ pend++; const im=new Image(); im.onload=()=>{imgs[k]=im; if(--pend===0)go();}; im.src=A[k]; }
 function go(){
-  const c1=render(SCENES.river,FLOW.river,0.62,imgs,0,null,true); c1.id='cv-river'; document.body.appendChild(c1);
-  const c2=render(SCENES.ridge,null,0.62,imgs,0,null,false); c2.id='cv-ridge'; document.body.appendChild(c2);
-  const c3=render(SCENES.river,FLOW.river,1.0,imgs,0,{w:1000,h:640,tx:-300,ty:-140},true); c3.id='cv-close'; document.body.appendChild(c3);
+  const c1=render(SCENES.river,FLOW.river,0.62,imgs,0,null,true,false); c1.id='cv-river'; document.body.appendChild(c1);
+  const c3=render(SCENES.river,FLOW.river,1.0,imgs,0,{w:1000,h:640,tx:-300,ty:-140},true,false); c3.id='cv-close'; document.body.appendChild(c3);
+  const c4=render(SCENES.river,FLOW.river,1.0,imgs,0,{w:1000,h:640,tx:-300,ty:-140},true,true); c4.id='cv-sharp'; document.body.appendChild(c4);
   window._gif=[];
   for(let f=0;f<24;f++){
-    const c=render(SCENES.river,FLOW.river,1.0,imgs,f/24,{w:1000,h:640,tx:-300,ty:-140},true);
+    const c=render(SCENES.river,FLOW.river,1.0,imgs,f/24,{w:1000,h:640,tx:-300,ty:-140},true,false);
     window._gif.push(c.toDataURL('image/png'));
   }
   document.title='READY';
@@ -295,7 +307,7 @@ fs.writeFileSync('/tmp/mock-terrain-v4.html', html);
   await page.goto('file:///tmp/mock-terrain-v4.html');
   await page.waitForFunction(() => document.title === 'READY', { timeout: 180000 });
   fs.mkdirSync('/tmp/terrain-mock-v4', { recursive: true });
-  for (const id of ['cv-river', 'cv-ridge', 'cv-close']) {
+  for (const id of ['cv-river', 'cv-close', 'cv-sharp']) {
     const el = await page.$('#' + id);
     await el.screenshot({ path: `/tmp/terrain-mock-v4/${id.replace('cv-', '')}.png` });
   }
