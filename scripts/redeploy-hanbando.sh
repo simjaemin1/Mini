@@ -5,8 +5,11 @@
 #   DB(/srv/durango/hanbando)는 볼륨이라 절대 안 건드린다 — 리셋은 별도 절차(DB리셋_절차.md).
 #
 # 사용:
-#   bash /opt/Mini/scripts/redeploy-hanbando.sh              # 존만 (central 무변경일 때)
-#   bash /opt/Mini/scripts/redeploy-hanbando.sh --central    # central 도 (central.js/central-client.js 가 바뀐 배포)
+#   bash /opt/Mini/scripts/redeploy-hanbando.sh              # 존만 (central 이미지 무변경일 때)
+#   bash /opt/Mini/scripts/redeploy-hanbando.sh --central    # central 도
+#   ★--central 판정 기준(2026-08-05 정정): central.js 만이 아니라 **central 이미지에 들어가는
+#     파일 전부**다 — server/central*.js **+ public/**(클라는 central 이 서빙한다. central.js:1049).
+#     public/client.js 만 바뀐 배포도 --central 이 필요하다(배치 15 아이콘 404 · 배치 18 층 렌더가 그 실증).
 set -euo pipefail
 REPO_DIR="${REPO_DIR:-/opt/Mini}"
 cd "$REPO_DIR"
