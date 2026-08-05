@@ -19,6 +19,7 @@
 const path = require('path');
 const fs = require('fs');
 const { spawn, execSync } = require('child_process');
+const { PNG } = require('pngjs');
 const ROOT = path.join(__dirname, '..');
 const CPORT = 3010, ZPORT = 3020;
 const ZDB = process.env.ZDB || `/tmp/e2e-rooms-${process.pid}.db`;
@@ -44,8 +45,15 @@ async function waitHttp(url, tries = 900) {
   return false;
 }
 function writeWrap() {
+  // ★★계측 오염 제거 — **하루를 멈춘다.** 지붕 전/후 두 장을 2초 간격으로 찍는데, 그 사이 하루가
+  //   흘러 조명이 바뀌면 픽셀 지표가 통째로 흔들린다(1차 실행에서 실제로 그랬다: 대조군 '빈 땅'의
+  //   평균 절대차가 0.0 → 3.4 로 뛰었다 — 지붕이 아니라 해가 움직인 것이다).
+  //   하루를 24시간으로 늘리고 epoch 을 지금 **정오(phase 0.25)** 에 맞춘다 → 촬영 중 조명 변화 ≈ 0.
   fs.writeFileSync('/tmp/zone-wrap-rooms.js', `const path=require('path');const ROOT=${JSON.stringify(ROOT)};
 const cfg=require(path.join(ROOT,'server','zone-config'));const ZID=process.env.ZONE_ID||'hanbando';
+if(process.env.WRAP_DAY_MS){const d=parseInt(process.env.WRAP_DAY_MS,10);
+  cfg.WORLD.dayLengthMs=d; cfg.WORLD.worldEpoch=Date.now()-Math.round(d*0.25);
+  console.log('[wrap] 하루 정지 — dayLengthMs='+d+' · 지금 phase≈0.25(정오)');}
 try{const patch=JSON.parse(process.env.WRAP_ZONE_PATCH||'{}');Object.assign(cfg.ZONES[ZID],patch);
 console.log('[wrap] '+ZID+' 덮어쓰기: '+JSON.stringify(patch));}catch(e){}
 require(path.join(ROOT,'server','zone.js'));`);
@@ -116,7 +124,7 @@ const rget = async (q) => (await (await fetch(`http://localhost:${ZPORT}/roomdbg
   say('\n[ⓐ 부팅 — DB → 청크 활성화 → welcome → 클라]');
   const z = boot('zone', wrap, {
     PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
-    ENABLE_VILLAGES: '0', ENABLE_BANDITS: '0', E2E_GIVE: '1',
+    ENABLE_VILLAGES: '0', ENABLE_BANDITS: '0', E2E_GIVE: '1', WRAP_DAY_MS: '86400000',
     WRAP_ZONE_PATCH: JSON.stringify({ mainSquare: { x: IN.cx * SZ + 16, y: IN.cy * SZ + 16, name: 'ㄱ자 집 안' } }),
   });
   ok(await waitHttp(`http://localhost:${ZPORT}/health`), 'zone 기동');
@@ -205,7 +213,84 @@ const rget = async (q) => (await (await fetch(`http://localhost:${ZPORT}/roomdbg
   ok(cd && cd.indoors === true, '클라도 실내를 유지한다');
   await page.screenshot({ path: `${SHOTS}/03-door-open.png` });
 
-  await browser.close();
+  // ── ⓒ 자동 지붕 + 컷어웨이 (배치 18 ②) ────────────────────────────────────
+  say('\n[ⓒ 자동 지붕 — 닫힌 방 위에 지붕이 저절로 얹힌다]');
+  const rr = await page.evaluate(() => window.__roomRoofDbg || null).catch(() => null);
+  ok(!!rr, '방 지붕 진단 훅이 산다');
+  ok(rr && rr.myRoom === ROOMID, `안에서: 내 방을 안다 (${rr && rr.myRoom})`);
+  ok(rr && rr.roofs.length === 1 && rr.roofs[0].roofOn === false,
+    '★★내가 그 방 안이면 지붕을 안 그린다(컷어웨이 — 투명이 아니라 미표시)');
+  
+  await browser.close(); try { z.kill(); } catch (e) {}
+  await sleep(2500);
+
+  // 같은 집을 **밖에서** — 지붕이 그려져야 한다. 그리고 **카메라를 고정한 채** 방을 해체해
+  //   지붕이 사라지는 것을 같은 상자에서 잰다.
+  //   ★1차 작성은 '안 스크린샷 vs 밖 스크린샷'의 전체 화면 이엉 비율을 비교했는데 **계측기가 틀렸다**:
+  //     실내 바닥 판자도 이엉과 같은 카키라 안에서도 2.45% 가 잡혔다(지붕은 실제로 안 그려졌는데도).
+  //     카메라가 다르면 같은 상자를 못 쓴다 ⇒ **한 자리에서 전/후**로 바꾼다. 이러면 바뀐 것은 지붕뿐이다.
+  const OUT = { cx: 100, cy: 107 };   // ㄱ자 팔 남쪽 바로 밖 — 남벽(100,106,'N')에서 51px(분해 사거리 80px 안)
+  const z2 = boot('zone2', wrap, {
+    PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
+    ENABLE_VILLAGES: '0', ENABLE_BANDITS: '0', E2E_GIVE: '1', WRAP_DAY_MS: '86400000',
+    WRAP_ZONE_PATCH: JSON.stringify({ mainSquare: { x: OUT.cx * SZ + 16, y: OUT.cy * SZ + 16, name: 'ㄱ자 집 밖' } }),
+  });
+  ok(await waitHttp(`http://localhost:${ZPORT}/health`), 'zone 재기동(밖 스폰)');
+  await sleep(4000);
+  const b2 = await chromium.launch({ headless: true, executablePath: require('playwright').chromium.executablePath() });
+  const p2 = await (await b2.newContext({ viewport: { width: 1400, height: 900 } })).newPage();
+  await p2.goto(`http://localhost:${CPORT}/`); await sleep(2500);
+  for (const sel of ['#startBtn', 'button:has-text("시작")', 'button:has-text("입장")', 'text=게스트']) {
+    try { const bb = await p2.$(sel); if (bb) { await bb.click(); break; } } catch (e) {}
+  }
+  await sleep(15000);
+  await p2.screenshot({ path: `${SHOTS}/04-roof-on.png` });
+  const rr2 = await p2.evaluate(() => window.__roomRoofDbg || null).catch(() => null);
+  ok(rr2 && rr2.myRoom === null, '밖에서: 내 방이 없다(실외)');
+  ok(rr2 && rr2.roofs.length === 1 && rr2.roofs[0].roofOn === true, '★밖에서는 그 방 지붕이 그려진다');
+  ok(rr2 && rr2.roofs[0].boxes.length === 2, `★ㄱ자는 맞배 **2채**로 분해된다(날개마다 한 채) — 실측 ${rr2 && rr2.roofs[0].boxes.length}`);
+
+  // 카메라 고정 — 방을 해체한다(팔 남벽 한 장). 지붕이 사라져야 한다.
+  const armWallId = findBuildingId(ZDB, OUT.cx * SZ, (OUT.cy - 1) * SZ, 'wall');
+  ok(!!armWallId, `검사 전제 — 팔 남벽을 찾았다 (b${armWallId})`);
+  await p2.evaluate((id) => { window.__sendPrimary({ type: 'dismantle_building', buildingId: id }); }, `b${armWallId}`);
+  await sleep(2000);
+  await p2.screenshot({ path: `${SHOTS}/05-roof-off.png` });
+  const rr3 = await p2.evaluate(() => window.__roomRoofDbg || null).catch(() => null);
+  ok(rr3 && rr3.roofs.length === 0, '★방이 해체되자 지붕도 사라졌다(계약)');
+  await b2.close();
+
+  // ★화면 층 — **같은 상자**에서 전/후. 바뀐 것은 지붕뿐이다.
+  const onPng = PNG.sync.read(fs.readFileSync(`${SHOTS}/04-roof-on.png`));
+  const offPng = PNG.sync.read(fs.readFileSync(`${SHOTS}/05-roof-off.png`));
+  const clampBox = (b, g) => [Math.max(0, b[0]), Math.max(0, b[1]), Math.min(g.width, b[2]), Math.min(g.height, b[3])];
+  // ★이엉 판별식 — **밝은 황갈**(r>135 · r−b>60 · r>g>b). 따뜻한 초가 지붕의 서명이다.
+  //   ⚠e2e-cutaway 가 쓰는 옛 식(g−b>28 · |r−g|<30)을 그대로 가져왔다가 틀렸다: 그건 **밤** 화면에서
+  //     맞춘 값이라 대낮의 카키빛 지면·바닥 판자까지 같이 잡는다(ON 13.0% vs OFF 11.4% — 판별력 0).
+  //     실측으로 고른 이 식은 같은 자리에서 ON 29.0% vs OFF 10.6% 로 갈린다.
+  const khakiBox = (g, bx) => { const [x0, y0, x1, y1] = clampBox(bx, g); let n = 0, k = 0;
+    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) { const i = (y * g.width + x) * 4;
+      const r = g.data[i], gg = g.data[i + 1], b3 = g.data[i + 2]; n++;
+      if (r > 135 && r - b3 > 60 && r > gg && gg > b3) k++; }
+    return n ? k / n * 100 : 0; };
+  const diffBox = (a, b, bx) => { const [x0, y0, x1, y1] = clampBox(bx, a); let s2 = 0, n = 0;
+    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) { const i = (y * a.width + x) * 4;
+      s2 += Math.abs(a.data[i] - b.data[i]) + Math.abs(a.data[i + 1] - b.data[i + 1]) + Math.abs(a.data[i + 2] - b.data[i + 2]); n++; }
+    return n ? s2 / n / 3 : 0; };
+  const BOX = rr2.roofs[0].boxes[0];
+  const CTRL = [40, 700, 340, 870];   // 대조군 = 화면 좌하단 빈 땅
+  const kOn = khakiBox(onPng, BOX), kOff = khakiBox(offPng, BOX);
+  const dRoof = diffBox(onPng, offPng, BOX), dCtrl = diffBox(onPng, offPng, CTRL);
+  say(`    지붕 상자 [${BOX}] 이엉 — 지붕 ON ${kOn.toFixed(1)}% · OFF ${kOff.toFixed(1)}%`);
+  say(`    상자 평균 절대차 ${dRoof.toFixed(1)} · 대조군 ${dCtrl.toFixed(1)}`);
+  ok(kOn > 20, `★자명 통과 금지 — 지붕이 있을 때 그 상자에 이엉이 실제로 있다 (${kOn.toFixed(1)}% > 20%)`);
+  ok(kOff < kOn * 0.5, `★★방이 풀리자 그 이엉이 사라진다 (${kOff.toFixed(1)}% < ${kOn.toFixed(1)}% × 0.5)`);
+  // ★상자 평균 절대차의 문턱은 낮게 잡는다 — 상자는 **오버행 여백까지 포함한 지붕 이미지 전체**라
+  //   가장자리엔 바뀔 픽셀이 없어 평균이 희석된다(실측 19.5). 판별력은 위의 이엉 비율(19.9→5.1%)과
+  //   아래 대조군(정지 화면 0.0)에 있다. 여기서 문턱을 올리면 신호가 아니라 여백 비율을 재게 된다.
+  ok(dRoof > 10, `★지붕 영역이 실제로 바뀐다 (절대차 ${dRoof.toFixed(1)} > 10 · 상자에 오버행 여백 포함)`);
+  ok(dCtrl < 2, `★변화가 지붕 영역에만 있다 — 대조군(빈 땅)은 정지 (${dCtrl.toFixed(1)} < 2)`);
+
   say(`\n스크린샷: ${SHOTS}/`);
   for (const p of procs) { try { p.kill(); } catch (e) {} }
   say(`\n=== 방 판정 실클라 E2E: ${pass} 통과 / ${fail} 실패 ${fail ? '❌' : '✅'} ===`);
