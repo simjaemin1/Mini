@@ -59,7 +59,13 @@ fi
 
 echo
 echo "=== 4. 임시 브랜치로 받기(작업 트리 무변) ==="
-git fetch "$BUNDLE" HEAD:refs/heads/bundle-import
+# ★번들의 ref 이름은 만든 명령에 따라 다르다(HEAD / main / …). 있는 것을 읽어 쓴다.
+#   (2026-08-05 실측: `git bundle create f origin/main..HEAD` → HEAD, `…origin/main..main` → main.
+#    HEAD 를 하드코딩했다가 main 번들에서 "couldn't find remote ref HEAD"로 멈췄다.)
+REF=$(git bundle list-heads "$BUNDLE" | awk '$2=="HEAD"{print $2}' | head -1)
+[ -n "$REF" ] || REF=$(git bundle list-heads "$BUNDLE" | head -1 | awk '{print $2}')
+echo "   번들 ref = $REF"
+git fetch "$BUNDLE" "$REF:refs/heads/bundle-import"
 GOT=$(git rev-parse refs/heads/bundle-import)
 git log --oneline "$BASE..refs/heads/bundle-import"
 
