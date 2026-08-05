@@ -350,22 +350,24 @@ function render(S,flow,scale,imgs,phase,view,waterOn,sharp,mode){
       if(isW(x-1,y)) edges.push('W');
       if(!edges.length) continue;
       for(const e of edges){
-        const n=2+((hash(x,y,e.charCodeAt(0))*3)|0);   // 변마다 2~4포기(결정론)
-        for(let i=0;i<n;i++){
-          const t=0.15+0.7*hash(x,y,100+i+e.charCodeAt(0));
+        // ★변 '전체'를 따라 3px 간격 술 — 성긴 포기로는 절단선이 남는다(재민: "만나는 순간 잘려나가")
+        const N2=11, ec=e.charCodeAt(0);
+        for(let i=0;i<N2;i++){
+          const t=(i+0.5)/N2 + (hash(x,y,100+i+ec)-0.5)*0.06;
           let wx0,wy0;
-          if(e==='S'){wx0=(x+t)*CELL; wy0=(y+1)*CELL-1;}
-          else if(e==='E'){wx0=(x+1)*CELL-1; wy0=(y+t)*CELL;}
-          else if(e==='N'){wx0=(x+t)*CELL; wy0=y*CELL+1;}
-          else {wx0=x*CELL+1; wy0=(y+t)*CELL;}
+          if(e==='S'){wx0=(x+t)*CELL; wy0=(y+1)*CELL-1.5;}
+          else if(e==='E'){wx0=(x+1)*CELL-1.5; wy0=(y+t)*CELL;}
+          else if(e==='N'){wx0=(x+t)*CELL; wy0=y*CELL+1.5;}
+          else {wx0=x*CELL+1.5; wy0=(y+t)*CELL;}
           const c=w2i(wx0,wy0);
-          const hgt=7+7*hash(x,y,140+i), lean=(hash(x,y,160+i)-0.5)*7;
-          const g1=['#4e7a3c','#5d8a46','#43682f'][(hash(x,y,180+i)*3)|0];
-          g.strokeStyle=g1; g.lineWidth=1.1;
+          const hgt=6+8*hash(x,y,140+i+ec), lean=(hash(x,y,160+i+ec)-0.5)*8;
           for(let bld=0;bld<3;bld++){
-            const ox=(hash(x,y,200+i*3+bld)-0.5)*5;
-            g.beginPath(); g.moveTo(c.x+ox,c.y+HALF*0.5);
-            g.quadraticCurveTo(c.x+ox+lean*0.4, c.y+HALF*0.5-hgt*0.6, c.x+ox+lean, c.y+HALF*0.5-hgt*(0.8+0.35*hash(x,y,220+bld)));
+            const g1=['#4e7a3c','#5d8a46','#43682f','#6b8f4e'][(hash(x,y,180+i*3+bld+ec)*4)|0];
+            g.strokeStyle=g1; g.lineWidth=1.0+0.5*hash(x,y,240+bld+i);
+            const ox=(hash(x,y,200+i*3+bld+ec)-0.5)*4.5;
+            const base=c.y+2.5;
+            g.beginPath(); g.moveTo(c.x+ox,base);
+            g.quadraticCurveTo(c.x+ox+lean*0.4, base-hgt*0.6, c.x+ox+lean, base-hgt*(0.8+0.35*hash(x,y,220+bld+i)));
             g.stroke();
           }
         }
