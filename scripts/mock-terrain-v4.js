@@ -117,7 +117,7 @@ function bilin(S,arr,wxp,wyp,fallback){ // wxp,wyp: 존-로컬 px
   return a+(b-a)*tx+(c-a)*ty+(a-b-c+d)*tx*ty;
 }
 
-function render(S,flow,scale,imgs,phase,view,waterOn,sharp){
+function render(S,flow,scale,imgs,phase,view,waterOn,sharp,mode){
   const {w,h,cells}=S; const F=fields(S);
   const wMask=cells.map(r=>r.map(v=>v===1?1:0));
   const wDeep=F.dLand.map((r,y)=>r.map((d,x)=>cells[y][x]===1?Math.min(1,d/6):0));
@@ -193,7 +193,7 @@ function render(S,flow,scale,imgs,phase,view,waterOn,sharp){
         const wxp=wpt.wx+S.cx0*CELL*0, wyp=wpt.wy;   // 이미 존-로컬 iso 기준(장면 원점 0)
         // 장면 로컬 px → 셀계
         let m, edgeDist=99;
-        const DROP=5;   // ★수면이 뭍보다 '아주 살짝' 낮다(재민) — 위쪽 물가에 5px 흙 단면, 아래쪽은 뭍이 가려 무변
+        const DROP=(mode==='block')?11:5;
         if(sharp){ const cx=Math.max(0,Math.min(S.w-1,Math.floor(wpt.wx/CELL))), cy=Math.max(0,Math.min(S.h-1,Math.floor(wpt.wy/CELL)));
           if(!wMask[cy][cx]) continue;
           m=1;
@@ -216,11 +216,34 @@ function render(S,flow,scale,imgs,phase,view,waterOn,sharp){
         if(sharp){ const ux=Math.max(0,Math.min(S.w-1,Math.floor(uPt.wx/CELL))), uy=Math.max(0,Math.min(S.h-1,Math.floor(uPt.wy/CELL)));
           mUw=wMask[uy][ux]?1:0; }
         else mUw=bilin(S,wMask,uPt.wx,uPt.wy,0);
-        if(mUw<(sharp?1:0.42)){   // 단면(흙) — 두 평면 사이
+        if(mUw<(sharp?1:0.42)){   // 두 평면 사이 — 판별: 비탈(ramp) / 수직 단면(block)
+          // 단면 내 수직 위치 0(위=뭍 모서리)..1(아래=수면 접촉): 아래로 몇 px 더 가면 물이 되나
+          let vpos=1;
+          for(let k=1;k<=DROP;k++){ const q=i2w(ix,iy-DROP+k);
+            const mq=sharp?(wMask[Math.max(0,Math.min(S.h-1,Math.floor(q.wy/CELL)))][Math.max(0,Math.min(S.w-1,Math.floor(q.wx/CELL)))]?1:0)
+                          :bilin(S,wMask,q.wx,q.wy,0);
+            if(mq>=(sharp?1:0.42)){ vpos=k/DROP; break; } }
           const nz=vnoise(uPt.wx/3.1+55,uPt.wy/3.1+77);
           const o2=(py*W+pxi)*4;
-          px[o2]=78+34*nz; px[o2+1]=60+26*nz; px[o2+2]=40+18*nz;
+          if(mode==='ramp'){
+            // 진흙 비탈: 위쪽은 풀-흙 섞임, 아래로 갈수록 젖은 진흙(어둡고 차갑게) — 수직면이 아니라 잠기는 비탈
+            const t2=1-vpos;   // 0=수면 접촉,1=뭍 모서리
+            px[o2]  =(52+26*nz)*(0.7+0.5*t2);
+            px[o2+1]=(48+22*nz)*(0.75+0.5*t2);
+            px[o2+2]=(34+16*nz)*(0.8+0.45*t2);
+          } else {
+            // 블록 단면: 수직 명암(위 밝고 아래 어둡게) + 수면 접촉선 그림자
+            const sh=1-0.45*vpos;
+            px[o2]=(84+34*nz)*sh; px[o2+1]=(64+26*nz)*sh; px[o2+2]=(42+18*nz)*sh;
+            if(vpos>0.82){ px[o2]*=0.55; px[o2+1]*=0.55; px[o2+2]*=0.6; }   // 접지 그림자
+          }
           continue;
+        }
+        if(mode==='block'){ // 접촉선: 단면 바로 아래 수면 1.5px 어둡게(수면 쪽 절반)
+          const q=i2w(ix,iy-DROP-2);
+          const mq=sharp?(wMask[Math.max(0,Math.min(S.h-1,Math.floor(q.wy/CELL)))][Math.max(0,Math.min(S.w-1,Math.floor(q.wx/CELL)))]?1:0)
+                        :bilin(S,wMask,q.wx,q.wy,0);
+          if(mq<(sharp?1:0.42)) wpt._contact=1;
         }
         wpt.wx=uPt.wx; wpt.wy=uPt.wy;   // ★수면 표본점을 아래 평면으로 — 파동·수심·흐름·포말 전부 일관
         const deep=bilin(S,wDeep,wpt.wx,wpt.wy,0);
@@ -255,7 +278,8 @@ function render(S,flow,scale,imgs,phase,view,waterOn,sharp){
         if(!sharp&&shore<1){ // ★뭍이 남동(화면 아래)쪽이면 포말 생략 — 기울기로 뭍 방향 판정 [재민]
           const gx=bilin(S,wMask,wpt.wx+6,wpt.wy,0)-bilin(S,wMask,wpt.wx-6,wpt.wy,0);
           const gy=bilin(S,wMask,wpt.wx,wpt.wy+6,0)-bilin(S,wMask,wpt.wx,wpt.wy-6,0);
-          if(gx+gy<0.05) foamOK=false;   // ★문턱 0.05 — 꼭짓점 부근 기울기 요동(±0 근방)을 '없음'으로 확정
+          if(gx+gy<0.05) foamOK=false;   // 방향: 뭍이 북서일 때만
+          if(Math.hypot(gx,gy)<0.14) foamOK=false;   // ★크기: 곶 끝(기울기 뭉개짐)의 포말 흰 덩어리 제거[재민]
         }
         if(foamOK&&shore<1){
           const fo=vnoise(wpt.wx/4.2+99,wpt.wy/4.2);   // ★시간 고정 — 흐르는 포말이 꼭짓점 판정 경계에서 깜빡였다(재민 버그 보고)
@@ -263,6 +287,7 @@ function render(S,flow,scale,imgs,phase,view,waterOn,sharp){
           if(foam>0){ const ff=Math.min(0.85,foam);
             r=r*(1-ff)+232*ff; gg=gg*(1-ff)+238*ff; b=b*(1-ff)+240*ff; }
         }
+        if(wpt._contact){ r*=0.62; gg*=0.62; b*=0.68; }
         const o=(py*W+pxi)*4;
         const aBlend=sharp?1:Math.min(1,(m-0.42)/0.08);   // 물가 페더(곡선판) / 경계 그대로(각진판)
         px[o]  =px[o]  *(1-aBlend)+r *aBlend;
@@ -313,13 +338,13 @@ function render(S,flow,scale,imgs,phase,view,waterOn,sharp){
 const imgs={}; let pend=0;
 for(const k in A){ pend++; const im=new Image(); im.onload=()=>{imgs[k]=im; if(--pend===0)go();}; im.src=A[k]; }
 function go(){
-  const c1=render(SCENES.river,FLOW.river,0.62,imgs,0,null,true,false); c1.id='cv-river'; document.body.appendChild(c1);
-  const c3=render(SCENES.river,FLOW.river,1.0,imgs,0,{w:1000,h:640,tx:-300,ty:-140},true,false); c3.id='cv-close'; document.body.appendChild(c3);
-  const c4=render(SCENES.river,FLOW.river,1.0,imgs,0,{w:1000,h:640,tx:-300,ty:-140},true,true); c4.id='cv-sharp'; document.body.appendChild(c4);
+  const c1=render(SCENES.river,FLOW.river,0.62,imgs,0,null,true,false,'ramp'); c1.id='cv-river'; document.body.appendChild(c1);
+  const c3=render(SCENES.river,FLOW.river,1.0,imgs,0,{w:1000,h:640,tx:-300,ty:-140},true,false,'ramp'); c3.id='cv-close'; document.body.appendChild(c3);
+  const c4=render(SCENES.river,FLOW.river,1.0,imgs,0,{w:1000,h:640,tx:-300,ty:-140},true,false,'block'); c4.id='cv-sharp'; document.body.appendChild(c4);
   window._gif=[]; window._gifSharp=[];
   for(let f=0;f<24;f++){
-    window._gif.push(render(SCENES.river,FLOW.river,1.0,imgs,f/24,{w:1000,h:640,tx:-300,ty:-140},true,false).toDataURL('image/png'));
-    window._gifSharp.push(render(SCENES.river,FLOW.river,1.0,imgs,f/24,{w:1000,h:640,tx:-300,ty:-140},true,true).toDataURL('image/png'));
+    window._gif.push(render(SCENES.river,FLOW.river,1.0,imgs,f/24,{w:1000,h:640,tx:-300,ty:-140},true,false,'ramp').toDataURL('image/png'));
+    window._gifSharp.push(render(SCENES.river,FLOW.river,1.0,imgs,f/24,{w:1000,h:640,tx:-300,ty:-140},true,false,'block').toDataURL('image/png'));
   }
   document.title='READY';
 }
