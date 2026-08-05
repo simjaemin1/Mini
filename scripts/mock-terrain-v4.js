@@ -251,10 +251,10 @@ function render(S,flow,scale,imgs,phase,view,waterOn,sharp){
         if(!sharp&&shore<1){ // ★뭍이 남동(화면 아래)쪽이면 포말 생략 — 기울기로 뭍 방향 판정 [재민]
           const gx=bilin(S,wMask,wpt.wx+6,wpt.wy,0)-bilin(S,wMask,wpt.wx-6,wpt.wy,0);
           const gy=bilin(S,wMask,wpt.wx,wpt.wy+6,0)-bilin(S,wMask,wpt.wx,wpt.wy-6,0);
-          if(gx+gy<0) foamOK=false;   // m 이 남동으로 갈수록 줄면 = 뭍이 남동
+          if(gx+gy<0.05) foamOK=false;   // ★문턱 0.05 — 꼭짓점 부근 기울기 요동(±0 근방)을 '없음'으로 확정
         }
         if(foamOK&&shore<1){
-          const fo=(1-tt)*vnoise(wpt.wx/4.2+99,wpt.wy/4.2-ADV*tt/6)+tt*vnoise(wpt.wx/4.2+99,wpt.wy/4.2-ADV*(tt-1)/6);
+          const fo=vnoise(wpt.wx/4.2+99,wpt.wy/4.2);   // ★시간 고정 — 흐르는 포말이 꼭짓점 판정 경계에서 깜빡였다(재민 버그 보고)
           const foam=Math.max(0,(1-shore)*1.25*(fo-0.28))*1.5;   // 노이즈 문턱 — 띠가 아니라 얼룩
           if(foam>0){ const ff=Math.min(0.85,foam);
             r=r*(1-ff)+232*ff; gg=gg*(1-ff)+238*ff; b=b*(1-ff)+240*ff; }
