@@ -564,7 +564,7 @@ const SIM_JOB_EMOJI = {
   const WF_QUANT = 16;           // 원점 양자화(셀) — 이만큼 움직여야 다시 굽는다
   const WATER_DROP = 5;          // ★재민 확정: 수면은 지면보다 5px 아래
   const WF_DEPTH_MAX = 6;        // 수심 정규화 상한(셀)
-  const _wfCache = { key: null, ox: 0, oy: 0, lin: null, msk: null };
+  const _wfCache = { key: null, ox: 0, oy: 0, bbox: null, rect: null };
   const _flowCellCache = new Map();   // "cx_cy" → [dx,dy] (정적 — rivers 는 안 변한다)
   let _riverSegs = null;
   let _hardTerrain = null;   // /terrain.json 원본(위 선로딩이 채운다) — rivers path 의 유일한 출처
@@ -644,7 +644,14 @@ const SIM_JOB_EMOJI = {
       msk[p2 * 4] = msk[p2 * 4 + 1] = msk[p2 * 4 + 2] = 0;
       msk[p2 * 4 + 3] = wet[p2] ? 255 : 0;
     }
-    return { lin, msk };
+    // 이 창 안 물 셀의 바운딩 박스 — 셰이더를 화면 전체에 돌리지 않기 위한 것(아래 scissor)
+    let bx0 = 1e9, by0 = 1e9, bx1 = -1e9, by1 = -1e9;
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) if (wet[j * N + i]) {
+      const cx = ocx + i, cy = ocy + j;
+      if (cx < bx0) bx0 = cx; if (cx > bx1) bx1 = cx;
+      if (cy < by0) by0 = cy; if (cy > by1) by1 = cy;
+    }
+    return { lin, msk, bbox: bx1 < bx0 ? null : [bx0, by0, bx1 + 1, by1 + 1] };
   }
 
   const WATER_VS = 'attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}';
@@ -776,15 +783,38 @@ const SIM_JOB_EMOJI = {
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, WF_N, WF_N, 0, gl.RGBA, gl.UNSIGNED_BYTE, t.lin);
       gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, _wgl.texM);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, WF_N, WF_N, 0, gl.RGBA, gl.UNSIGNED_BYTE, t.msk);
-      _wfCache.key = key; _wfCache.ox = ocx; _wfCache.oy = ocy;
+      _wfCache.key = key; _wfCache.ox = ocx; _wfCache.oy = ocy; _wfCache.bbox = t.bbox;
     }
+    // ★★셰이더를 **물이 있는 화면 영역**에만 돌린다.
+    //   1패스 실측(headless SwiftShader): 화면 전체 오버레이가 프레임당 143ms 였고,
+    //   **물이 한 방울도 없는 초원에서도 137ms 를 냈다** — 순전한 낭비다.
+    //   흐름맵을 굽는 김에 물 셀 바운딩 박스를 같이 뽑아, 그 상자를 화면에 투영해 scissor 한다.
+    //   물이 화면에 없으면 draw 자체를 건너뛴다.
+    const bb = _wfCache.bbox;
+    if (!bb) return false;
+    let sx0 = 1e9, sy0 = 1e9, sx1 = -1e9, sy1 = -1e9;
+    for (const [cx, cy] of [[bb[0], bb[1]], [bb[2], bb[1]], [bb[0], bb[3]], [bb[2], bb[3]]]) {
+      const wx = cx * 32, wy = cy * 32;
+      const ix = wx - wy - camX2 + W2 / 2, iy = (wx + wy) / 2 - camY2 + H2 / 2;
+      if (ix < sx0) sx0 = ix; if (ix > sx1) sx1 = ix;
+      if (iy < sy0) sy0 = iy; if (iy > sy1) sy1 = iy;
+    }
+    sy0 -= WATER_DROP + 2; sy1 += 2;   // 수면이 내려간 만큼 여유
+    const rx0 = Math.max(0, Math.floor(sx0)), ry0 = Math.max(0, Math.floor(sy0));
+    const rx1 = Math.min(W2, Math.ceil(sx1)), ry1 = Math.min(H2, Math.ceil(sy1));
+    if (rx1 <= rx0 || ry1 <= ry0) return false;   // 화면에 물이 없다 — 셰이더를 아예 안 돌린다
+    const rw = rx1 - rx0, rh = ry1 - ry0;
+    gl.enable(gl.SCISSOR_TEST);
+    gl.scissor(rx0, H2 - ry1, rw, rh);   // GL 원점은 좌하단
     gl.uniform2f(_wgl.uni.uRes, W2, H2);
     gl.uniform2f(_wgl.uni.uCam, camX2, camY2);
     gl.uniform2f(_wgl.uni.uOrig, _wfCache.ox, _wfCache.oy);
     gl.uniform1f(_wgl.uni.uT, tSec);
     gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
-    ctx2.drawImage(_wgl.cv, 0, 0);
+    gl.disable(gl.SCISSOR_TEST);
+    ctx2.drawImage(_wgl.cv, rx0, ry0, rw, rh, rx0, ry0, rw, rh);
+    _wfCache.rect = [rx0, ry0, rw, rh];
     return true;
   }
   // ★블록 프리즘 단면 — 물에 접한 뭍 셀의 남·동 변에서 WATER_DROP 만큼 수직면.
@@ -826,7 +856,10 @@ const SIM_JOB_EMOJI = {
   // ★A/B 손잡이 — `__terrain19.legacy = true` 면 배치 19 이전(단색 다이아몬드)으로 정확히 돌아간다.
   //   하네스가 같은 프레임·같은 시계에서 before/after 를 얻는 유일한 길이고,
   //   `_tileAcc` 성능 비교도 이것 없이는 못 잰다. 기본값이 채택값이다(제품 UI 없음).
-  const _t19 = { legacy: false, waterOff: false, decoOff: false };
+  //   ★prismOff — 블록 프리즘 단면만 끈다. 단면은 5px 안에 밑면·물접촉선·풀넘김 셋이 겹쳐
+  //     '순수 단면색' 픽셀이 1px 도 안 남는다(하네스 1패스가 0.01% 를 보고 헛짚었다).
+  //     색으로 세는 대신 **켜고 끈 차이**로 재야 판정이 성립한다.
+  const _t19 = { legacy: false, waterOff: false, decoOff: false, prismOff: false };
   window.__terrain19 = _t19;
 
   // 지형 차단 통합 (물+바위) — 이동 예측용
@@ -4124,12 +4157,18 @@ const SIM_JOB_EMOJI = {
           if (wx2 < mnx) mnx = wx2; if (wx2 > mxx) mxx = wx2;
           if (wy2 < mny) mny = wy2; if (wy2 > mxy) mxy = wy2;
         }
-        _nPrism = _drawPrisms(ctx, toScreen, Math.floor(mnx / 32) - 1, Math.floor(mny / 32) - 1,
-                              Math.ceil(mxx / 32) + 1, Math.ceil(mxy / 32) + 1);
+        if (!_t19.prismOff)
+          _nPrism = _drawPrisms(ctx, toScreen, Math.floor(mnx / 32) - 1, Math.floor(mny / 32) - 1,
+                                Math.ceil(mxx / 32) + 1, Math.ceil(mxy / 32) + 1);
       }
     }
     window._waterAcc = (window._waterAcc || 0) + (performance.now() - _wtT0);
-    window.__waterDbg = { on: _waterOn, webgl: _wgl.ok, prisms: _nPrism, flowKey: _wfCache.key, segs: _riverSegs ? _riverSegs.length : 0 };
+    // 카메라 셀의 흐름 벡터 — 하네스가 "물이 **하류로** 흐르는가"를 재려면 기대 방향이 필요하다
+    //   (하네스가 rivers path 를 다시 파싱하면 그게 사본이다 — 정본 계산을 그대로 물어본다).
+    const _fw = _waterOn ? _flowAtCell(Math.floor(_camAbs.x / 32), Math.floor(_camAbs.y / 32)) : [0, 0];
+    window.__waterDbg = { on: _waterOn, webgl: _wgl.ok, prisms: _nPrism, flowKey: _wfCache.key,
+                          segs: _riverSegs ? _riverSegs.length : 0, flowAtCam: _fw, rect: _wfCache.rect,
+                          flowIso: [_fw[0] - _fw[1], (_fw[0] + _fw[1]) / 2] };
     // === 2) 엔티티 수집 (depth sort용) ===
     const renderables = [];
     const renderT = performance.now() - INTERP_DELAY_MS;
