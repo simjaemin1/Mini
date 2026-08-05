@@ -206,46 +206,14 @@ function render(S,flow,scale,imgs,phase,view,waterOn,sharp,mode){
           m=bilin(S,wMask,wpt.wx,wpt.wy,0);
           if(m<0.42) continue;                          // 뭍
         }
-        // ★정직한 두 평면 기하 [재민: "평행한 두 평면으로 렌더링한 게 맞아?" — 이전 판은 덧칠 근사였다]
-        //   위 평면(뭍, z=0)이 가리는 픽셀은 이미 continue 로 빠졌다(내 자리 m<문턱=뭍).
-        //   여기부터는 '지면 기준 물' 픽셀: 5px 위 표본(uPt)이 이 픽셀에 투영되는 아래 평면의 점이다.
-        //   uPt 가 뭍이면 = 두 평면 사이 수직 단면이 보이는 자리. 물이면 = 내려간 수면(파동·수심도 uPt 기준).
-        //   방향 판정 불필요 — 기하가 방향을 스스로 해결한다.
-        const uPt=i2w(ix,iy-DROP);
-        let mUw;
-        if(sharp){ const ux=Math.max(0,Math.min(S.w-1,Math.floor(uPt.wx/CELL))), uy=Math.max(0,Math.min(S.h-1,Math.floor(uPt.wy/CELL)));
-          mUw=wMask[uy][ux]?1:0; }
-        else mUw=bilin(S,wMask,uPt.wx,uPt.wy,0);
-        if(mUw<(sharp?1:0.42)){   // 두 평면 사이 — 판별: 비탈(ramp) / 수직 단면(block)
-          // 단면 내 수직 위치 0(위=뭍 모서리)..1(아래=수면 접촉): 아래로 몇 px 더 가면 물이 되나
-          let vpos=1;
-          for(let k=1;k<=DROP;k++){ const q=i2w(ix,iy-DROP+k);
-            const mq=sharp?(wMask[Math.max(0,Math.min(S.h-1,Math.floor(q.wy/CELL)))][Math.max(0,Math.min(S.w-1,Math.floor(q.wx/CELL)))]?1:0)
-                          :bilin(S,wMask,q.wx,q.wy,0);
-            if(mq>=(sharp?1:0.42)){ vpos=k/DROP; break; } }
-          const nz=vnoise(uPt.wx/3.1+55,uPt.wy/3.1+77);
-          const o2=(py*W+pxi)*4;
-          if(mode==='ramp'){
-            // 진흙 비탈: 위쪽은 풀-흙 섞임, 아래로 갈수록 젖은 진흙(어둡고 차갑게) — 수직면이 아니라 잠기는 비탈
-            const t2=1-vpos;   // 0=수면 접촉,1=뭍 모서리
-            px[o2]  =(52+26*nz)*(0.7+0.5*t2);
-            px[o2+1]=(48+22*nz)*(0.75+0.5*t2);
-            px[o2+2]=(34+16*nz)*(0.8+0.45*t2);
-          } else {
-            // 블록 단면: 수직 명암(위 밝고 아래 어둡게) + 수면 접촉선 그림자
-            const sh=1-0.45*vpos;
-            px[o2]=(84+34*nz)*sh; px[o2+1]=(64+26*nz)*sh; px[o2+2]=(42+18*nz)*sh;
-            if(vpos>0.82){ px[o2]*=0.55; px[o2+1]*=0.55; px[o2+2]*=0.6; }   // 접지 그림자
-          }
-          continue;
-        }
-        if(mode==='block'){ // 접촉선: 단면 바로 아래 수면 1.5px 어둡게(수면 쪽 절반)
-          const q=i2w(ix,iy-DROP-2);
-          const mq=sharp?(wMask[Math.max(0,Math.min(S.h-1,Math.floor(q.wy/CELL)))][Math.max(0,Math.min(S.w-1,Math.floor(q.wx/CELL)))]?1:0)
-                        :bilin(S,wMask,q.wx,q.wy,0);
-          if(mq<(sharp?1:0.42)) wpt._contact=1;
-        }
-        wpt.wx=uPt.wx; wpt.wy=uPt.wy;   // ★수면 표본점을 아래 평면으로 — 파동·수심·흐름·포말 전부 일관
+        // ★★메니스커스 수면 [재민 최종 지적 — 단면(밑면)이 '존재'하는 한 곶·꺾임에서 떠 있는 판으로 드러난다]
+        //   높이차를 뭍이 아니라 물에게 준다: 수면 높이 = −DROP × (물가에서의 거리 비율).
+        //   물가에서 0(뭍과 한 점에서 만남) → 안쪽으로 갈수록 −DROP. 수직 단면이 기하에서 소거된다.
+        //   어느 방향 물가든, 곶이든, 꺾임이든 드러날 '밑면'이 없다 — 예외 코드도 없다.
+        const mSm=sharp?bilin(S,wMask,wpt.wx,wpt.wy,0):m;   // 각진판도 '높이'만은 부드러운 마스크로
+        const dropHere=DROP*Math.min(1,Math.max(0,(mSm-0.42)/0.22));
+        const uPt=i2w(ix,iy-dropHere);
+        if(bilin(S,wMask,uPt.wx,uPt.wy,0)>=0.42){ wpt.wx=uPt.wx; wpt.wy=uPt.wy; }   // 표본이 물일 때만 하강 적용
         const deep=bilin(S,wDeep,wpt.wx,wpt.wy,0);
         const fx=bilin(S,cosF,wpt.wx,wpt.wy,1), fy=bilin(S,sinF,wpt.wx,wpt.wy,0);
         const fL=Math.hypot(fx,fy)||1, dx=fx/fL, dy=fy/fL;
@@ -287,7 +255,6 @@ function render(S,flow,scale,imgs,phase,view,waterOn,sharp,mode){
           if(foam>0){ const ff=Math.min(0.85,foam);
             r=r*(1-ff)+232*ff; gg=gg*(1-ff)+238*ff; b=b*(1-ff)+240*ff; }
         }
-        if(wpt._contact){ r*=0.62; gg*=0.62; b*=0.68; }
         const o=(py*W+pxi)*4;
         const aBlend=sharp?1:Math.min(1,(m-0.42)/0.08);   // 물가 페더(곡선판) / 경계 그대로(각진판)
         px[o]  =px[o]  *(1-aBlend)+r *aBlend;
