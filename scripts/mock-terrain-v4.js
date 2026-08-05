@@ -278,7 +278,9 @@ function render(S,flow,scale,imgs,phase,view,waterOn,sharp,mode){
         //   잠긴 바닥 = 이미 칠해진 지면 픽셀을 젖은 톤으로 눌러서 사용.
         {
           const wa=Math.min(1,0.42+0.58*deep);                      // 얕음 0.42 → 깊음 1.0
-          const gb_r=px[o]*0.52+18, gb_g=px[o+1]*0.55+16, gb_b=px[o+2]*0.5+14;   // 잠긴 흙빛 바닥
+          // ★잠긴 바닥은 '진흙 재질'이다 — 지면 풀 텍스처를 비치면 물가 풀대가 반투명해진다(재민 지적)
+          const bn=vnoise(wpt.wx/6+201,wpt.wy/6+87), bn2=vnoise(wpt.wx/2.3+41,wpt.wy/2.3+13);
+          const gb_r=62+34*bn+10*bn2, gb_g=54+30*bn+8*bn2, gb_b=40+22*bn+6*bn2;
           r=gb_r*(1-wa)+r*wa; gg=gb_g*(1-wa)+gg*wa; b=gb_b*(1-wa)+b*wa;
         }
         const aBlend=sharp?1:Math.min(1,(m-0.42)/0.08);   // 물가 페더(곡선판) / 경계 그대로(각진판)
@@ -332,6 +334,41 @@ function render(S,flow,scale,imgs,phase,view,waterOn,sharp,mode){
         g.fillStyle='rgba(15,25,35,0.5)'; g.fill();
         g.beginPath(); g.moveTo(a.x,a.y); g.lineTo(b.x,b.y); g.lineTo(b.x,b.y+2.2); g.lineTo(a.x,a.y+2.2); g.closePath();
         g.fillStyle='#526e44'; g.fill();
+      }
+    }
+  }
+
+  // ── 3.7) 물가 풀 포기: 물에 접한 뭍 셀의 물가 변에서 수면 위로 삐져나오는 블레이드 ──
+  if(waterOn){
+    for(let s3=0;s3<w+h-1;s3++) for(let x=Math.max(0,s3-h+1);x<=Math.min(w-1,s3);x++){
+      const y=s3-x; if(cells[y][x]===1) continue;
+      const isW=(xx,yy)=>{xx=Math.max(0,Math.min(w-1,xx));yy=Math.max(0,Math.min(h-1,yy));return cells[yy][xx]===1;};
+      const edges=[];
+      if(isW(x,y+1)) edges.push('S');
+      if(isW(x+1,y)) edges.push('E');
+      if(isW(x,y-1)) edges.push('N');
+      if(isW(x-1,y)) edges.push('W');
+      if(!edges.length) continue;
+      for(const e of edges){
+        const n=2+((hash(x,y,e.charCodeAt(0))*3)|0);   // 변마다 2~4포기(결정론)
+        for(let i=0;i<n;i++){
+          const t=0.15+0.7*hash(x,y,100+i+e.charCodeAt(0));
+          let wx0,wy0;
+          if(e==='S'){wx0=(x+t)*CELL; wy0=(y+1)*CELL-1;}
+          else if(e==='E'){wx0=(x+1)*CELL-1; wy0=(y+t)*CELL;}
+          else if(e==='N'){wx0=(x+t)*CELL; wy0=y*CELL+1;}
+          else {wx0=x*CELL+1; wy0=(y+t)*CELL;}
+          const c=w2i(wx0,wy0);
+          const hgt=7+7*hash(x,y,140+i), lean=(hash(x,y,160+i)-0.5)*7;
+          const g1=['#4e7a3c','#5d8a46','#43682f'][(hash(x,y,180+i)*3)|0];
+          g.strokeStyle=g1; g.lineWidth=1.1;
+          for(let bld=0;bld<3;bld++){
+            const ox=(hash(x,y,200+i*3+bld)-0.5)*5;
+            g.beginPath(); g.moveTo(c.x+ox,c.y+HALF*0.5);
+            g.quadraticCurveTo(c.x+ox+lean*0.4, c.y+HALF*0.5-hgt*0.6, c.x+ox+lean, c.y+HALF*0.5-hgt*(0.8+0.35*hash(x,y,220+bld)));
+            g.stroke();
+          }
+        }
       }
     }
   }
