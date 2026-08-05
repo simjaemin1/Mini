@@ -207,12 +207,22 @@ function render(S,flow,scale,imgs,phase,view,waterOn,sharp){
           if(m<0.42) continue;                          // 뭍
         }
         {
+          // ★턱은 '뭍이 북서쪽'인 물가에만 — 방향 무구분이면 동남 계단 꼭짓점마다 갈색 조각이 새고
+          //   문턱 어긋남(0.46 vs 0.42)이 동남 가장자리에 평행한 갈색 띠를 만든다(재민: "두 평면 평행")
           const uPt=i2w(ix,iy-DROP);
-          let mU;
-          if(sharp){ const ux=Math.max(0,Math.min(S.w-1,Math.floor(uPt.wx/CELL))), uy=Math.max(0,Math.min(S.h-1,Math.floor(uPt.wy/CELL)));
-            mU=wMask[uy][ux]; }
-          else mU=bilin(S,wMask,uPt.wx,uPt.wy,0);
-          if(mU<(sharp?1:0.46)){   // 둑 단면(흙) — 얇은 그늘 립
+          let lip=false;
+          if(sharp){
+            const cx0=Math.max(0,Math.min(S.w-1,Math.floor(wpt.wx/CELL))), cy0=Math.max(0,Math.min(S.h-1,Math.floor(wpt.wy/CELL)));
+            const ux=Math.max(0,Math.min(S.w-1,Math.floor(uPt.wx/CELL))), uy=Math.max(0,Math.min(S.h-1,Math.floor(uPt.wy/CELL)));
+            // 위 표본이 '정확히 내 셀의 북 또는 서 이웃'의 뭍일 때만
+            lip = !wMask[uy][ux] && ((ux===cx0&&uy===cy0-1)||(ux===cx0-1&&uy===cy0));
+          } else {
+            const mU=bilin(S,wMask,uPt.wx,uPt.wy,0);
+            const gxL=bilin(S,wMask,wpt.wx+6,wpt.wy,0)-bilin(S,wMask,wpt.wx-6,wpt.wy,0);
+            const gyL=bilin(S,wMask,wpt.wx,wpt.wy+6,0)-bilin(S,wMask,wpt.wx,wpt.wy-6,0);
+            lip = mU<0.42 && (gxL+gyL)>0.05;   // 문턱 정합 + 뭍이 북서일 때만
+          }
+          if(lip){
             const nz=vnoise(wpt.wx/3.1+55,wpt.wy/3.1+77);
             const o2=(py*W+pxi)*4;
             px[o2]=78+34*nz; px[o2+1]=60+26*nz; px[o2+2]=40+18*nz;
