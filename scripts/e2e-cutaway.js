@@ -48,8 +48,16 @@ async function waitHttp(url, tries = 900) {
   return false;
 }
 function writeWrap() {
+  // ★★[2026-08-04d 배치 18] **하루를 멈춘다.** 이 하네스는 안/밖 두 판을 **2분 간격**으로 띄워 찍는데,
+  //   그 사이 게임 시각이 두 시간 흘러 조명이 바뀌면 픽셀 지표가 통째로 흔들린다.
+  //   실제로 그렇게 깨졌다: 대조군(건물 밖 지면) 평균 절대차가 5.5 → **72.3** 으로 뛰어
+  //   "변화가 지붕에 몰려 있다"가 거짓이 됐다. 지붕 신호(이엉 11.6%→1.8%)는 멀쩡했는데도.
+  //   하루를 24시간으로 늘리고 epoch 을 정오에 앵커 → 촬영 중 조명 변화 ≈ 0.
   fs.writeFileSync('/tmp/zone-wrap.js', `const path=require('path');const ROOT=${JSON.stringify(ROOT)};
 const cfg=require(path.join(ROOT,'server','zone-config'));const ZID=process.env.ZONE_ID||'hanbando';
+if(process.env.WRAP_DAY_MS){const d=parseInt(process.env.WRAP_DAY_MS,10);
+  cfg.WORLD.dayLengthMs=d; cfg.WORLD.worldEpoch=Date.now()-Math.round(d*0.25);
+  console.log('[wrap] 하루 정지 — dayLengthMs='+d+' · phase≈0.25(정오)');}
 try{const patch=JSON.parse(process.env.WRAP_ZONE_PATCH||'{}');Object.assign(cfg.ZONES[ZID],patch);
 console.log('[wrap] '+ZID+' 덮어쓰기: '+JSON.stringify(patch));}catch(e){console.error('[wrap] patch 실패:',e.message);}
 require(path.join(ROOT,'server','zone.js'));`);
@@ -106,7 +114,7 @@ function boxDiff(a, b, x0, y0, x1, y1) {
   for (const [tag, at] of [['inside', IN], ['outside', OUT]]) {
     const z = boot('zone', wrap, {
       PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
-      ENABLE_VILLAGES: '1', ENABLE_BANDITS: '0',
+      ENABLE_VILLAGES: '1', ENABLE_BANDITS: '0', WRAP_DAY_MS: '86400000',
       WRAP_ZONE_PATCH: JSON.stringify({ mainSquare: { x: at.cx * 32 + 16, y: at.cy * 32 + 16, name: `컷어웨이 ${tag}` } }),
     });
     ok(await waitHttp(`http://localhost:${ZPORT}/health`), `zone 기동 (${tag})`);
