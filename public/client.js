@@ -344,6 +344,7 @@ const SIM_JOB_EMOJI = {
       for (const [zid, data] of Object.entries(all)) window.Terrain.setHardcoded(zid, data);
       _waterCellCache.clear();
       _rockCellCache.clear();
+      _groundTiles.clear();   // ★[배치 19] 지면 베이크는 지형 파생물 — 같은 지점에서 함께 버린다
       if (typeof window.__invalidateMinimapCache === 'function') window.__invalidateMinimapCache();
       console.log('[terrain] 전체 hardcoded 선로딩:', Object.keys(all).join(','));
     } catch (e) { console.warn('[terrain] preload 실패:', e.message); }
@@ -352,6 +353,7 @@ const SIM_JOB_EMOJI = {
     const TS = 32;
     _waterCellCache.clear(); // zonesMeta 갱신 — 셀 단위 캐시 무효화
     _rockCellCache.clear();
+    _groundTiles.clear();   // ★[배치 19] 지면 베이크도 함께
     for (const z of Object.values(zonesMeta)) {
       waterTilesByZone[z.id] = computeCoastlineWaterTiles(z, TS);
     }
@@ -399,6 +401,146 @@ const SIM_JOB_EMOJI = {
     _rockCellCache.set(key, v);
     return v;
   }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ★★[배치 19 실장 A] 지면 = **질감 타일링 + iso 타일 오프스크린 베이크**
+  //   재민 확정 문법: 풀은 **게임 카메라 각도(방위45·고도30)로 구운** 텍스처를 쓴다.
+  //   탑다운을 다이아몬드에 눌러 붙이면 옆으로 뭉개져 "풀 얼룩"이 된다(시안 왕복에서 확정).
+  //
+  //   ★타일 단위가 '월드 셀 청크'가 아니라 **iso 직사각형**인 이유:
+  //     셀 청크의 iso 바운딩 박스는 마름모라 절반이 낭비다(메모리 2배).
+  //     텍스처 주기가 iso 공간에서 정확히 512×256 px 이므로(bake-terrain-tex.py 머리말 참조)
+  //     iso 를 512×256 격자로 자르면 ⓐ낭비 0 ⓑ타일 원점이 항상 주기의 배수라
+  //     **패턴 오프셋이 0** 이다(setTransform 없이 이음새 없음).
+  //   ★지면은 정적이다 — 한 번 구워 두고 매 프레임 drawImage 만 한다.
+  //     무효화는 지형 캐시와 같은 지점(_waterCellCache 3곳)에서 함께.
+  // 셀 좌표 결정론 해시(0~1) — ★렌더 산포에 Math.random 을 쓰면 프레임마다 바뀐다(금지).
+  function _cellHash(cx, cy, salt) {
+    let h = (Math.imul(cx | 0, 374761393) + Math.imul(cy | 0, 668265263) + Math.imul(salt | 0, 1274126177)) | 0;
+    h = Math.imul(h ^ (h >>> 13), 1103515245); h ^= h >>> 16;
+    return (h >>> 0) / 4294967296;
+  }
+  const GT_W = 512, GT_H = 256;        // iso 타일 = 텍스처 주기(= 월드 8×8셀)
+  const GT_MASK_W = 1024, GT_MASK_H = 512;   // 맨땅 뙈기 마스크 주기(텍스처보다 크게 — 반복 티 감소)
+  const GT_MAX = 140;                  // 타일 캐시 상한(≈70MB) — 넘으면 카메라에서 먼 것부터 버린다
+  const GT_BAKE_PER_FRAME = 5;         // 프레임당 새로 굽는 타일 수(히치 방어)
+  const GT_ZONE_TINT = 0.18;           // 존 groundColor 를 텍스처 위에 얹는 세기(존 정체성 유지)
+  const _groundTiles = new Map();      // "itx_ity" → {cv, used}
+  const GTEX = {};
+  let _gtexReady = 0;
+  for (const k of ['grass_angled', 'dry_angled', 'mud_angled']) {
+    const im = new Image(); im.onload = () => { _gtexReady++; _groundTiles.clear(); }; im.src = '/assets/terrain/' + k + '.png';
+    GTEX[k] = im;
+  }
+  // 맨땅 뙈기 마스크 — ★셀 격자가 아니라 **저주파 노이즈**로 뿌린다.
+  //   셀마다 변주 타일을 고르면 다이아몬드 격자무늬가 그대로 드러난다(타일 게임의 흔한 실패).
+  //   주기 마스크라 타일 경계에서도 이어진다.
+  let _gtMaskCv = null;
+  function _gtMask() {
+    if (_gtMaskCv) return _gtMaskCv;
+    const cv = document.createElement('canvas'); cv.width = GT_MASK_W; cv.height = GT_MASK_H;
+    const g = cv.getContext('2d'); const id = g.createImageData(GT_MASK_W, GT_MASK_H);
+    const NG = 32;   // 주기 격자 — 마스크 크기의 약수여야 감았을 때 이어진다
+    const lat = new Float32Array(NG * NG);
+    for (let j = 0; j < NG; j++) for (let i = 0; i < NG; i++) lat[j * NG + i] = _cellHash(i, j, 913);
+    const vn = (u, v) => {
+      u = ((u % NG) + NG) % NG; v = ((v % NG) + NG) % NG;
+      const i0 = u | 0, j0 = v | 0, i1 = (i0 + 1) % NG, j1 = (j0 + 1) % NG, fu = u - i0, fv = v - j0;
+      const su = fu * fu * (3 - 2 * fu), sv = fv * fv * (3 - 2 * fv);
+      const a = lat[j0 * NG + i0], b = lat[j0 * NG + i1], c = lat[j1 * NG + i0], d = lat[j1 * NG + i1];
+      return a + (b - a) * su + (c - a) * sv + (a - b - c + d) * su * sv;
+    };
+    for (let y = 0; y < GT_MASK_H; y++) for (let x = 0; x < GT_MASK_W; x++) {
+      // 두 옥타브 — 큰 뙈기 + 잘게 부서진 가장자리("맨땅 뙈기는 잘게")
+      // ★3옥타브 — 1패스(2옥타브·문턱 0.56)는 뙈기가 크고 뭉툭했다. 재민 지시 "맨땅 뙈기는 잘게".
+      const n = vn(x / GT_MASK_W * NG, y / GT_MASK_H * NG) * 0.56
+              + vn(x / GT_MASK_W * NG * 2.5, y / GT_MASK_H * NG * 2.5) * 0.29
+              + vn(x / GT_MASK_W * NG * 6, y / GT_MASK_H * NG * 6) * 0.15;
+      const a = Math.max(0, Math.min(1, (n - 0.615) * 6.0));   // 문턱 — 대부분 풀, 일부만 맨땅
+      const i = (y * GT_MASK_W + x) * 4;
+      id.data[i] = 255; id.data[i + 1] = 255; id.data[i + 2] = 255; id.data[i + 3] = (a * 255) | 0;
+    }
+    g.putImageData(id, 0, 0);
+    return (_gtMaskCv = cv);
+  }
+  let _gtTmp = null;
+  function _bakeGroundTile(itx, ity, zlist) {
+    const X0 = itx * GT_W, Y0 = ity * GT_H;
+    const cv = document.createElement('canvas'); cv.width = GT_W; cv.height = GT_H;
+    const g = cv.getContext('2d');
+    // ① 풀 바탕 — 타일 원점이 주기의 배수라 패턴 오프셋 0
+    g.fillStyle = g.createPattern(GTEX.grass_angled, 'repeat'); g.fillRect(0, 0, GT_W, GT_H);
+    // ② 맨땅 뙈기 — 저주파 마스크로 마른땅 텍스처를 뚫어 얹는다
+    if (!_gtTmp) { _gtTmp = document.createElement('canvas'); _gtTmp.width = GT_W; _gtTmp.height = GT_H; }
+    { const t = _gtTmp.getContext('2d');
+      t.setTransform(1, 0, 0, 1, 0, 0); t.globalCompositeOperation = 'source-over';
+      t.clearRect(0, 0, GT_W, GT_H);
+      t.fillStyle = t.createPattern(GTEX.dry_angled, 'repeat'); t.fillRect(0, 0, GT_W, GT_H);
+      t.globalCompositeOperation = 'destination-in';
+      const mp = t.createPattern(_gtMask(), 'repeat');
+      const mm = new DOMMatrix(); mm.e = -(((X0 % GT_MASK_W) + GT_MASK_W) % GT_MASK_W); mm.f = -(((Y0 % GT_MASK_H) + GT_MASK_H) % GT_MASK_H);
+      mp.setTransform(mm); t.fillStyle = mp; t.fillRect(0, 0, GT_W, GT_H);
+      t.globalCompositeOperation = 'source-over';
+      g.drawImage(_gtTmp, 0, 0);
+    }
+    // ③ 셀별 마감 — 물·바위·위도 틴트·얼음 밴드(기존 문법 그대로, 텍스처 위에 얹는다)
+    //   이 타일에 걸치는 셀 범위를 iso 네 모서리의 역변환으로 구한다(i2w: wx=(2iy+ix)/2, wy=(2iy-ix)/2)
+    let mnx = Infinity, mxx = -Infinity, mny = Infinity, mxy = -Infinity;
+    for (const [ix, iy] of [[X0, Y0], [X0 + GT_W, Y0], [X0, Y0 + GT_H], [X0 + GT_W, Y0 + GT_H]]) {
+      const wx = (2 * iy + ix) / 2, wy = (2 * iy - ix) / 2;
+      if (wx < mnx) mnx = wx; if (wx > mxx) mxx = wx;
+      if (wy < mny) mny = wy; if (wy > mxy) mxy = wy;
+    }
+    const c0x = Math.floor(mnx / 32) - 1, c1x = Math.ceil(mxx / 32) + 1;
+    const c0y = Math.floor(mny / 32) - 1, c1y = Math.ceil(mxy / 32) + 1;
+    let nCell = 0;
+    for (let cx = c0x; cx <= c1x; cx++) for (let cy = c0y; cy <= c1y; cy++) {
+      const cxw = cx * 32 + 16, cyw = cy * 32 + 16;
+      const sx = (cxw - cyw) - X0, sy = (cxw + cyw) / 2 - Y0;
+      if (sx < -34 || sx > GT_W + 34 || sy < -18 || sy > GT_H + 18) continue;   // 이 타일 밖
+      nCell++;
+      let zMeta = null;
+      for (let zi = 0; zi < zlist.length; zi++) {
+        const zm = zlist[zi], ox = zm.worldOffsetX, oy = zm.worldOffsetY || 0;
+        if (cxw >= ox && cxw < ox + (zm.zoneWidth || 100000) && cyw >= oy && cyw < oy + (zm.zoneHeight || 100000)) { zMeta = zm; break; }
+      }
+      if (!zMeta) { _gtDiamond(g, sx, sy, (primaryZoneId && zonesMeta[primaryZoneId]?.groundColor) || '#3a5a3a', 1); continue; }
+      const isWater = isWaterAtAbs(cxw, cyw, zMeta);
+      const isRock = !isWater && isRockAtAbs(cxw, cyw, zMeta);
+      if (isWater) {
+        // (B 단계에서 물 셰이더 레이어가 이 위를 덮는다. 그 전까지는 종전 색 그대로 — 무회귀)
+        _gtDiamond(g, sx, sy, blendTint(zMeta.isOcean ? zMeta.groundColor : '#2a5a8a',
+                                        zMeta.isOcean ? zMeta.tintColor : '#1a4a7a', 0.07), 1);
+      } else if (isRock) {
+        // ★★[배치 20 영역 — 산] 종전 색·종전 문법 그대로다. 이 배치는 바위 렌더를 바꾸지 않는다.
+        _gtDiamond(g, sx, sy, blendTint('#6e6356', '#4a4138', 0.12), 1);
+      } else {
+        // 기존 문법 유지: 얼음 밴드 → 위도 보간 → 존 틴트. 단색 대신 **텍스처 위에 알파로** 얹는다.
+        const distFromPole = Math.min(cyw, worldHeight - cyw);
+        if (distFromPole < TUNDRA_BAND_PX) {
+          const t = distFromPole <= ICE_BAND_PX ? 1
+                  : 1 - (distFromPole - ICE_BAND_PX) / (TUNDRA_BAND_PX - ICE_BAND_PX);
+          _gtDiamond(g, sx, sy, ICE_COLOR, t);
+        }
+        const isIce = distFromPole <= ICE_BAND_PX;
+        if (GT_ZONE_TINT > 0) _gtDiamond(g, sx, sy, zMeta.groundColor, GT_ZONE_TINT);
+        _gtDiamond(g, sx, sy, isIce ? '#9bb5cc' : zMeta.tintColor, isIce ? 0.06 : 0.13);
+      }
+    }
+    return { cv, cells: nCell };
+  }
+  function _gtDiamond(g, cx, cy, color, alpha) {
+    if (alpha <= 0) return;
+    g.globalAlpha = alpha; g.fillStyle = color;
+    g.beginPath(); g.moveTo(cx, cy - 16); g.lineTo(cx + 32, cy); g.lineTo(cx, cy + 16); g.lineTo(cx - 32, cy);
+    g.closePath(); g.fill(); g.globalAlpha = 1;
+  }
+  // ★A/B 손잡이 — `__terrain19.legacy = true` 면 배치 19 이전(단색 다이아몬드)으로 정확히 돌아간다.
+  //   하네스가 같은 프레임·같은 시계에서 before/after 를 얻는 유일한 길이고,
+  //   `_tileAcc` 성능 비교도 이것 없이는 못 잰다. 기본값이 채택값이다(제품 UI 없음).
+  const _t19 = { legacy: false, waterOff: false, decoOff: false };
+  window.__terrain19 = _t19;
+
   // 지형 차단 통합 (물+바위) — 이동 예측용
   // ★[다리 층] 절대 셀 좌표 다리 집합(존 welcome에서 누적) — 서버 BRIDGE_CELLS 미러.
   const _bridgeAbs = new Set();
@@ -2109,6 +2251,7 @@ const SIM_JOB_EMOJI = {
         if (!_terrainAppliedZones.has(_zid)) {
           window.Terrain.setHardcoded(_zid, msg.hardcodedTerrain);
           _waterCellCache.clear(); // 최초 1회만 — 셀 단위 캐시 무효화
+          _groundTiles.clear();   // ★[배치 19] 지면 베이크도 함께
           _rockCellCache.clear();
           if (typeof window.__invalidateMinimapCache === 'function') window.__invalidateMinimapCache();
           _terrainAppliedZones.add(_zid);
@@ -3591,6 +3734,40 @@ const SIM_JOB_EMOJI = {
     const _tlT0 = performance.now();
     const _zlist = Object.values(zonesMeta);   // hoist — 타일마다 배열 재할당하던 것 제거 (GC 폭주 원인)
     const _halfTS = TS / 2;
+    // ★★[배치 19 실장 A] 지면은 **정적**이다 — iso 512×256 타일로 구워 두고 drawImage 만 한다.
+    //   종전엔 프레임마다 셀 다이아몬드 ~9,000장을 칠했다(반경 1,500px). 이제 화면을 덮는
+    //   타일 ~30장의 blit 이고, 굽는 비용은 그 타일을 처음 볼 때 한 번만 든다.
+    //   텍스처가 아직 안 왔거나 legacy 손잡이면 **종전 경로**로 그대로 떨어진다(무회귀).
+    const _LEG = !!_t19.legacy || _gtexReady < 3;
+    window.__groundDbg = { legacy: _LEG, tex: _gtexReady, tiles: 0, baked: 0, cached: _groundTiles.size };
+    if (!_LEG) {
+      const isoX0 = camX - W / 2, isoY0 = camY - H / 2;
+      const t0x = Math.floor(isoX0 / GT_W), t1x = Math.floor((isoX0 + W) / GT_W);
+      const t0y = Math.floor(isoY0 / GT_H), t1y = Math.floor((isoY0 + H) / GT_H);
+      const _fr = (window._tileFrames || 0);
+      let baked = 0, drawn = 0;
+      for (let ty = t0y; ty <= t1y; ty++) for (let tx = t0x; tx <= t1x; tx++) {
+        const key = tx + '_' + ty;
+        let ent = _groundTiles.get(key);
+        if (!ent) {
+          if (baked >= GT_BAKE_PER_FRAME) continue;   // 굽기 예산 초과 — 다음 프레임에(그 자리는 배경색)
+          ent = _bakeGroundTile(tx, ty, _zlist); _groundTiles.set(key, ent); baked++;
+        }
+        ent.used = _fr;
+        ctx.drawImage(ent.cv, Math.round(tx * GT_W - camX + W / 2), Math.round(ty * GT_H - camY + H / 2));
+        drawn++;
+      }
+      window.__groundDbg.tiles = drawn; window.__groundDbg.baked = baked; window.__groundDbg.cached = _groundTiles.size;
+      if (_groundTiles.size > GT_MAX) {   // 오래 안 쓴 타일부터 버린다(카메라가 멀어진 것)
+        const ks = [..._groundTiles.entries()].sort((a, b) => (a[1].used || 0) - (b[1].used || 0));
+        for (let i = 0; i < ks.length - GT_MAX; i++) _groundTiles.delete(ks[i][0]);
+      }
+    } else {
+    // ── 종전 경로(폴백·A/B 대조군): 셀 다이아몬드 단색 ─────────────────────────
+    const t0WX = Math.floor((worldCx - TILE_RENDER_RADIUS) / TS) * TS;
+    const t1WX = Math.ceil((worldCx + TILE_RENDER_RADIUS) / TS) * TS;
+    const t0WY = Math.floor((worldCy - TILE_RENDER_RADIUS) / TS) * TS;
+    const t1WY = Math.ceil((worldCy + TILE_RENDER_RADIUS) / TS) * TS;
     for (let wx = t0WX; wx < t1WX; wx += TS) {
       for (let wy = t0WY; wy < t1WY; wy += TS) {
         const cxw = wx + _halfTS, cyw = wy + _halfTS;
@@ -3598,7 +3775,6 @@ const SIM_JOB_EMOJI = {
         if (dist > TILE_RENDER_RADIUS) continue;   // 원형 컬링 — zone 조회/그리기 전에 모서리 스킵
         const iso = w2i(cxw, cyw);
         const s = toScreen(iso.x, iso.y);
-        // 어떤 zone에 속하는지 (hoisted 배열 재사용)
         let zMeta = null;
         for (let zi = 0; zi < _zlist.length; zi++) {
           const zm = _zlist[zi];
@@ -3611,7 +3787,7 @@ const SIM_JOB_EMOJI = {
           drawDiamond(s.x, s.y, TS, fallback);
           continue;
         }
-        const isWater = isWaterAtAbs(cxw, cyw, zMeta);   // zone 힌트 전달 — 중복 clientFindZoneAt 제거
+        const isWater = isWaterAtAbs(cxw, cyw, zMeta);
         const isRock = !isWater && isRockAtAbs(cxw, cyw, zMeta);
         let tileColor, tintColor, tintStrength;
         if (isWater) {
@@ -3629,12 +3805,13 @@ const SIM_JOB_EMOJI = {
           tintColor = isIce ? '#9bb5cc' : zMeta.tintColor;
           tintStrength = isIce ? 0.06 : 0.13;
         }
-        // 틴트를 미리 합성 → drawDiamond 1회 (캔버스 fill 2→1, visibility 항상 1).
         drawDiamond(s.x, s.y, TS, blendTint(tileColor, tintColor, tintStrength));
       }
     }
+    }
 
     window._tileAcc = (window._tileAcc||0) + (performance.now() - _tlT0);
+    window._tileFrames = (window._tileFrames||0) + 1;   // ★성능은 창 길이가 아니라 **프레임당 ms** 로 잰다
     // === 2) 엔티티 수집 (depth sort용) ===
     const renderables = [];
     const renderT = performance.now() - INTERP_DELAY_MS;

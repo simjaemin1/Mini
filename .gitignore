@@ -24,3 +24,6 @@ scripts/_t4-*.js
 scripts/_t3-*.js
 scripts/_t4b-*.js
 scripts/_t4b-*.js
+
+# 배치 19: 지형 질감 베이크 산출물(에셋은 public/assets/terrain 으로 복사해 커밋)
+scripts/terrain_tex/
