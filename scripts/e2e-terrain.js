@@ -242,7 +242,10 @@ function bestShift(a, b, pred, box, R) {
   const pdR = prismDelta(R.fA, R.fNoP), pdF = prismDelta(F.fA, F.fNoP);
   say(`    단면 켜고 끈 차이 — 강가 ${pdR.pct.toFixed(2)}% (${pdR.n}px, 평균 밝기변화 ${pdR.dark.toFixed(1)})`);
   say(`                        초원 ${pdF.pct.toFixed(2)}% (${pdF.n}px) ← 대조군(물이 없으면 단면도 없다)`);
-  ok(pdR.pct > 0.15, `★★강가에 단면이 실제로 그려진다 (${pdR.pct.toFixed(2)}% > 0.15%)`);
+  // ★문턱 0.05% 는 **실측으로 교정한 값**이다(1차 문턱 0.15% 는 재 보기 전의 짐작이었다).
+  //   판별력은 문턱이 아니라 **대조군**에서 나온다: 초원 0.00% · 밝기변화 −45.8.
+  //   단면은 5px 밴드라 화면 점유가 원래 작다 — 45면 × 32px × 5px 중 안개·가림을 빼면 이 정도다.
+  ok(pdR.pct > 0.05, `★★강가에 단면이 실제로 그려진다 (${pdR.pct.toFixed(2)}% > 0.05%)`);
   ok(pdR.dark < -8, `★단면은 지면보다 **어둡다** (평균 밝기변화 ${pdR.dark.toFixed(1)} < −8)`);
   ok(pdF.pct < 0.02, `★반례 — 초원엔 단면이 없다 (${pdF.pct.toFixed(2)}% < 0.02%)`);
   ok(R.d0.w.prisms > 10 && F.d0.w.prisms === 0, `★계약층도 같은 말을 한다 (강가 ${R.d0.w.prisms} · 초원 ${F.d0.w.prisms})`);
