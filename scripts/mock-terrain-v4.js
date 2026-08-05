@@ -354,12 +354,12 @@ const imgs={}; let pend=0;
 for(const k in A){ pend++; const im=new Image(); im.onload=()=>{imgs[k]=im; if(--pend===0)go();}; im.src=A[k]; }
 function go(){
   const c1=render(SCENES.river,FLOW.river,0.62,imgs,0,null,true,false,'ramp'); c1.id='cv-river'; document.body.appendChild(c1);
-  const c3=render(SCENES.river,FLOW.river,1.0,imgs,0,{w:1000,h:640,tx:-300,ty:-140},true,false,'ramp'); c3.id='cv-close'; document.body.appendChild(c3);
-  const c4=render(SCENES.river,FLOW.river,1.0,imgs,0,{w:1000,h:640,tx:-300,ty:-140},true,true,'blockcell'); c4.id='cv-sharp'; document.body.appendChild(c4);
+  const c3=render(SCENES.river,FLOW.river,1.0,imgs,0,{w:1000,h:640,tx:20,ty:-260},true,false,'ramp'); c3.id='cv-close'; document.body.appendChild(c3);
+  const c4=render(SCENES.river,FLOW.river,1.0,imgs,0,{w:1000,h:640,tx:20,ty:-260},true,true,'blockcell'); c4.id='cv-sharp'; document.body.appendChild(c4);
   window._gif=[]; window._gifSharp=[];
   for(let f=0;f<24;f++){
-    window._gif.push(render(SCENES.river,FLOW.river,1.0,imgs,f/24,{w:1000,h:640,tx:-300,ty:-140},true,false,'ramp').toDataURL('image/png'));
-    window._gifSharp.push(render(SCENES.river,FLOW.river,1.0,imgs,f/24,{w:1000,h:640,tx:-300,ty:-140},true,true,'blockcell').toDataURL('image/png'));
+    window._gif.push(render(SCENES.river,FLOW.river,1.0,imgs,f/24,{w:1000,h:640,tx:20,ty:-260},true,false,'ramp').toDataURL('image/png'));
+    window._gifSharp.push(render(SCENES.river,FLOW.river,1.0,imgs,f/24,{w:1000,h:640,tx:20,ty:-260},true,true,'blockcell').toDataURL('image/png'));
   }
   document.title='READY';
 }
