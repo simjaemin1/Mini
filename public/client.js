@@ -342,6 +342,10 @@ const SIM_JOB_EMOJI = {
       const all = await r.json();
       if (!window.Terrain || !window.Terrain.setHardcoded) return;
       for (const [zid, data] of Object.entries(all)) window.Terrain.setHardcoded(zid, data);
+      // ★[배치 19 B] 물 흐름의 정본 = 이 rivers path 다(상류→하류 순서). terrain.js 는 이걸
+      //   `window.Terrain` 으로 내보내지 않으므로(_getHardcoded 는 서버 전용 export) **여기서**
+      //   받은 원본을 그대로 잡아 둔다 — 서버 파일을 건드리지 않고 사본도 만들지 않는다.
+      _hardTerrain = all; _riverSegs = null; _flowCellCache.clear(); _wfCache.key = null;
       _waterCellCache.clear();
       _rockCellCache.clear();
       _groundTiles.clear();   // ★[배치 19] 지면 베이크는 지형 파생물 — 같은 지점에서 함께 버린다
@@ -508,9 +512,19 @@ const SIM_JOB_EMOJI = {
       const isWater = isWaterAtAbs(cxw, cyw, zMeta);
       const isRock = !isWater && isRockAtAbs(cxw, cyw, zMeta);
       if (isWater) {
-        // (B 단계에서 물 셰이더 레이어가 이 위를 덮는다. 그 전까지는 종전 색 그대로 — 무회귀)
-        _gtDiamond(g, sx, sy, blendTint(zMeta.isOcean ? zMeta.groundColor : '#2a5a8a',
-                                        zMeta.isOcean ? zMeta.tintColor : '#1a4a7a', 0.07), 1);
+        // ★물밑 바닥 = **진흙 재질**이다(재민 확정 ②). 풀 텍스처를 비치면 물가 풀대가
+        //   반투명해 보인다 — 시안 왕복에서 "반투명 풀" 로 반려된 그 증상이다.
+        //   물 셰이더 레이어가 이 위에 wa=0.42~1.0 으로 덮으므로 얕은 데서 이 진흙이 비친다.
+        //   WebGL 이 없는 환경에서는 덮을 것이 없으므로 종전 단색으로 떨어진다(기능 저하 허용).
+        if (_wgl.ok === true && !_t19.waterOff) {
+          g.save(); g.beginPath();
+          g.moveTo(sx, sy - 16); g.lineTo(sx + 32, sy); g.lineTo(sx, sy + 16); g.lineTo(sx - 32, sy); g.closePath(); g.clip();
+          g.fillStyle = g.createPattern(GTEX.mud_angled, 'repeat');
+          g.fillRect(sx - 32, sy - 16, 64, 32); g.restore();
+        } else {
+          _gtDiamond(g, sx, sy, blendTint(zMeta.isOcean ? zMeta.groundColor : '#2a5a8a',
+                                          zMeta.isOcean ? zMeta.tintColor : '#1a4a7a', 0.07), 1);
+        }
       } else if (isRock) {
         // ★★[배치 20 영역 — 산] 종전 색·종전 문법 그대로다. 이 배치는 바위 렌더를 바꾸지 않는다.
         _gtDiamond(g, sx, sy, blendTint('#6e6356', '#4a4138', 0.12), 1);
@@ -535,6 +549,280 @@ const SIM_JOB_EMOJI = {
     g.beginPath(); g.moveTo(cx, cy - 16); g.lineTo(cx + 32, cy); g.lineTo(cx, cy + 16); g.lineTo(cx - 32, cy);
     g.closePath(); g.fill(); g.globalAlpha = 1;
   }
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ★★[배치 19 실장 B] 물 — 흐름맵 + WebGL 셰이더 레이어
+  //   재민 확정 문법(시안 왕복 13회):
+  //     ① 수면 = 지면 −5px 평면. 내 자리가 뭍이면 뭍 / 5px 위 표본이 뭍이면 단면 / 둘 다 물이면 수면.
+  //     ② 얕은물 투명. 물밑 바닥 = **진흙 재질**(풀이 비치면 "반투명 풀" 사건). wa = 0.42+0.58×수심.
+  //     ③ 블록 프리즘 단면은 **벡터**로 그린다(픽셀 패스가 아니라 — 아래 _drawPrisms).
+  //     ④ 흐름맵 셰이더 물(유체 시뮬 아님·M&B 문법). 방향 = rivers path 최근접 구간(상류→하류).
+  //        하구에서 감쇠 → 호수는 무방향. 바다는 해안 거리장 방향.
+  //     ⑤ 포말 = **시간 고정**(흐르면 꼭짓점에서 깜빡인다) · 뭍이 북서일 때만 · 기울기 크기 문턱.
+  //   ★물가는 **각진 블록**이다 — 셀 경계 그대로(곡선 스무딩 금지. 물길 파기와 문법 통일).
+  //     ⇒ 마스크는 NEAREST 텍스처, 흐름·수심은 LINEAR 텍스처로 **따로** 보낸다.
+  const WF_N = 128;              // 흐름/수심 텍스처 한 변(셀) — 화면(약 50셀)보다 넉넉
+  const WF_QUANT = 16;           // 원점 양자화(셀) — 이만큼 움직여야 다시 굽는다
+  const WATER_DROP = 5;          // ★재민 확정: 수면은 지면보다 5px 아래
+  const WF_DEPTH_MAX = 6;        // 수심 정규화 상한(셀)
+  const _wfCache = { key: null, ox: 0, oy: 0, lin: null, msk: null };
+  const _flowCellCache = new Map();   // "cx_cy" → [dx,dy] (정적 — rivers 는 안 변한다)
+  let _riverSegs = null;
+  let _hardTerrain = null;   // /terrain.json 원본(위 선로딩이 채운다) — rivers path 의 유일한 출처
+  function _buildRiverSegs() {
+    // ★흐름 방향의 정본은 `hanbando-terrain.json` 의 rivers path 다(상류→하류 순서로 저장돼 있다).
+    //   서버가 welcome 으로 준 hardcoded terrain 을 그대로 읽는다 — 사본을 만들지 않는다.
+    _riverSegs = [];
+    try {
+      const H = _hardTerrain;
+      for (const zid in (H || {})) {
+        const z = zonesMeta[zid]; if (!z) continue;
+        const ox = z.worldOffsetX, oy = z.worldOffsetY || 0;
+        for (const r of (H[zid].rivers || [])) {
+          for (let i = 0; i + 1 < r.path.length; i++) {
+            const a = r.path[i].pos, b = r.path[i + 1].pos;
+            // 마지막 마디 = 하구 — 그 근처는 흐름을 감쇠시킨다(호수·바다는 무방향)
+            _riverSegs.push([ox + a[0], oy + a[1], ox + b[0], oy + b[1], i / Math.max(1, r.path.length - 2)]);
+          }
+        }
+      }
+    } catch (e) { console.warn('[water] rivers 읽기 실패:', e.message); }
+    return _riverSegs;
+  }
+  function _flowAtCell(cx, cy) {
+    const k = cx + '_' + cy;
+    const hit = _flowCellCache.get(k); if (hit) return hit;
+    const segs = _riverSegs || _buildRiverSegs();
+    const px = cx * 32 + 16, py = cy * 32 + 16;
+    let best = Infinity, bx = 0, by = 0;
+    for (let i = 0; i < segs.length; i++) {
+      const s2 = segs[i], ax = s2[0], ay = s2[1], dx = s2[2] - ax, dy = s2[3] - ay;
+      const L2 = dx * dx + dy * dy || 1;
+      let t = ((px - ax) * dx + (py - ay) * dy) / L2; t = t < 0 ? 0 : (t > 1 ? 1 : t);
+      const qx = ax + t * dx - px, qy = ay + t * dy - py, d = qx * qx + qy * qy;
+      if (d < best) { best = d; const L = Math.sqrt(L2); bx = dx / L; by = dy / L; }
+    }
+    // 강에서 멀면(호수·먼바다) 흐름 0 — 무방향 파문이 된다
+    const dist = Math.sqrt(best);
+    const w = dist > 1400 ? 0 : (dist > 700 ? (1400 - dist) / 700 : 1);
+    const v = [bx * w, by * w];
+    if (_flowCellCache.size > 400000) _flowCellCache.clear();
+    _flowCellCache.set(k, v);
+    return v;
+  }
+  function _buildFlowTex(gl, ocx, ocy) {
+    // 수심 = 물가 거리장(BFS) → 3×3 평균 스무딩. 마스크는 셀 그대로(각진 블록).
+    const N = WF_N, wet = new Uint8Array(N * N), dep = new Float32Array(N * N).fill(255);
+    const q = new Int32Array(N * N); let qh = 0, qt = 0;
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      const cx = ocx + i, cy = ocy + j;
+      const wtr = isWaterAtAbs(cx * 32 + 16, cy * 32 + 16);
+      wet[j * N + i] = wtr ? 1 : 0;
+      if (!wtr) { dep[j * N + i] = 0; q[qt++] = j * N + i; }
+    }
+    while (qh < qt) {   // 뭍에서 퍼지는 거리장
+      const p2 = q[qh++], i = p2 % N, j = (p2 / N) | 0, d = dep[p2] + 1;
+      if (d > WF_DEPTH_MAX) continue;
+      if (i > 0 && dep[p2 - 1] > d) { dep[p2 - 1] = d; q[qt++] = p2 - 1; }
+      if (i < N - 1 && dep[p2 + 1] > d) { dep[p2 + 1] = d; q[qt++] = p2 + 1; }
+      if (j > 0 && dep[p2 - N] > d) { dep[p2 - N] = d; q[qt++] = p2 - N; }
+      if (j < N - 1 && dep[p2 + N] > d) { dep[p2 + N] = d; q[qt++] = p2 + N; }
+    }
+    const lin = new Uint8Array(N * N * 4), msk = new Uint8Array(N * N * 4);
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      const p2 = j * N + i;
+      let sd = 0, n = 0;   // 3×3 평균 — 수심 계단을 없앤다
+      for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+        const jj = j + dj, ii = i + di; if (jj < 0 || ii < 0 || jj >= N || ii >= N) continue;
+        sd += Math.min(WF_DEPTH_MAX, dep[jj * N + ii]); n++;
+      }
+      const d01 = (sd / n) / WF_DEPTH_MAX;
+      const f = wet[p2] ? _flowAtCell(ocx + i, ocy + j) : [0, 0];
+      lin[p2 * 4] = ((f[0] * 0.5 + 0.5) * 255) | 0;
+      lin[p2 * 4 + 1] = ((f[1] * 0.5 + 0.5) * 255) | 0;
+      lin[p2 * 4 + 2] = (Math.min(1, d01) * 255) | 0;
+      lin[p2 * 4 + 3] = 255;
+      msk[p2 * 4] = msk[p2 * 4 + 1] = msk[p2 * 4 + 2] = 0;
+      msk[p2 * 4 + 3] = wet[p2] ? 255 : 0;
+    }
+    return { lin, msk };
+  }
+
+  const WATER_VS = 'attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}';
+  const WATER_FS = [
+    'precision highp float;',
+    'uniform vec2 uRes; uniform vec2 uCam; uniform float uT;',
+    'uniform sampler2D uLin; uniform sampler2D uMsk;',
+    'uniform vec2 uOrig; uniform float uN; uniform float uDrop;',
+    // ★★값 노이즈는 **주기 노이즈**여야 한다. 이유가 두 개다:
+    //   ⓐ 월드 좌표가 수만 px 이라 `fract(sin(dot(p,·)))` 의 인자가 1e7 급이 되면 float 정밀도가
+    //      무너져 해시가 뭉개진다 — 1패스 실화면에서 물이 **잔물결도 반짝임도 없는 뿌연 판**이었다.
+    //   ⓑ 그래서 흐름맵 원점(uOrig)을 빼서 국소 좌표로 쓰는데, 값 노이즈는 평행이동 불변이 아니라
+    //      원점이 512px 씩 옮겨갈 때마다 무늬가 튄다. 격자를 512px 의 약수 주기로 감으면 **불변**이 된다.
+    //   ⇒ 노이즈 스케일은 전부 512 의 약수(8·3.2·32·4)이고 주기는 512/스케일 이다.
+    'float h2(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}',
+    'float vn(vec2 p,float per){vec2 i=floor(p),f=fract(p);vec2 u=f*f*(3.-2.*f);',
+    '  vec2 a=mod(i,per), b=mod(i+vec2(1,0),per), c=mod(i+vec2(0,1),per), d=mod(i+vec2(1,1),per);',
+    '  return mix(mix(h2(a),h2(b),u.x),mix(h2(c),h2(d),u.x),u.y);}',
+    'vec2 cellUV(vec2 w){return (w/32.0-uOrig)/uN;}',
+    'void main(){',
+    '  float ix = gl_FragCoord.x - uRes.x*0.5 + uCam.x;',
+    '  float sy = (uRes.y-gl_FragCoord.y) - uRes.y*0.5 + uCam.y;',
+    // ★수면은 지면보다 uDrop 만큼 내려가 있다 ⇒ 이 화면 행에 보이는 수면점은 iso y-uDrop 의 역변환
+    '  float iy = sy - uDrop;',
+    '  vec2 w = vec2((2.0*iy+ix)*0.5,(2.0*iy-ix)*0.5);',
+    '  vec2 uv = cellUV(w);',
+    '  if(uv.x<0.0||uv.y<0.0||uv.x>1.0||uv.y>1.0) discard;',
+    '  if(texture2D(uMsk,uv).a < 0.5) discard;',            // 각진 블록 — 셀 경계 그대로
+    // 내 자리(지면 높이)가 뭍이면 그건 프리즘 면이 덮을 자리다 — 물을 그리지 않는다
+    '  vec2 wg = vec2((2.0*sy+ix)*0.5,(2.0*sy-ix)*0.5);',
+    '  vec2 uvg = cellUV(wg);',
+    '  vec4 L = texture2D(uLin,uv);',
+    '  vec2 dir = L.rg*2.0-1.0; float depth = L.b;',
+    '  float fl = length(dir);',
+    // 흐름이 없으면(호수·먼바다) 해안 거리장 기울기 = 파도 방향(해안 쪽에서 온다)
+    '  if(fl < 0.08){ float e=1.0/uN;',
+    '    float gx=texture2D(uLin,uv+vec2(e,0)).b-texture2D(uLin,uv-vec2(e,0)).b;',
+    '    float gy=texture2D(uLin,uv+vec2(0,e)).b-texture2D(uLin,uv-vec2(0,e)).b;',
+    '    vec2 g2=vec2(gx,gy); dir = length(g2)>0.0001? -normalize(g2) : vec2(1.0,0.0); }',
+    '  else dir = dir/fl;',
+    '  float ADV = 64.0;',
+    // ★사인 위상은 **전체 좌표**로 계산해도 된다(위상은 크기가 커도 매끄럽다). 노이즈만 국소 좌표.
+    '  vec2 wl = w - uOrig*32.0;',
+    '  float al = dot(w,dir) - ADV*uT;',
+    '  float cr = dot(w,vec2(-dir.y,dir.x));',
+    '  float ampMod = 0.45+0.9*vn(wl/32.0,16.0);',           // 진폭 얼룩 — 안 하면 골판지
+    '  float A1=0.85*ampMod, A2=0.55*ampMod;',
+    '  float p1 = al*(6.2831853/64.0)+cr*0.02;',
+    '  float p2 = al*(6.2831853/32.0)+cr*0.07;',
+    '  float n1 = vn((wl-ADV*uT*dir)/8.0,64.0)-0.5;',
+    '  float n2 = vn((wl-ADV*uT*dir)/3.2+vec2(17.0,9.0),160.0)-0.5;',
+    '  float s1 = A1*cos(p1)*(6.2831853/64.0), s2 = A2*cos(p2)*(6.2831853/32.0);',
+    '  float sn = n1*0.55+n2*0.38;',
+    '  vec3 nrm = normalize(vec3(-(s1+s2)*dir.x - sn*dir.x, -(s1+s2)*dir.y - sn*dir.y, 1.0));',
+    '  vec3 Ld = normalize(vec3(-0.42,-0.58,0.70));',        // 정본 태양(52°/35°)과 일관
+    '  vec3 Vd = normalize(vec3(0.5,-0.5,0.707));',
+    '  vec3 Hd = normalize(Ld+Vd);',
+    '  float diff = max(0.0,dot(nrm,Ld));',
+    '  float spec = pow(max(0.0,dot(nrm,Hd)),90.0)*(0.55+0.45*depth);',
+    '  float r = 26.0+(95.0-26.0)*(1.0-depth)*0.8;',
+    '  float g = 64.0+(150.0-64.0)*(1.0-depth)*0.8;',
+    '  float b = 96.0+(150.0-96.0)*(1.0-depth)*0.55;',
+    '  r = r*(0.55+0.5*diff)+118.0*0.16; g = g*(0.55+0.5*diff)+140.0*0.16; b = b*(0.6+0.45*diff)+160.0*0.20;',
+    '  r += spec*230.0; g += spec*240.0; b += spec*245.0;',
+    // ★포말 — 시간 고정(위치 함수) · 뭍이 북서일 때만 · 뭍에 맞닿은 변 7px 이내만
+    '  float e2=1.0/uN; float wa;',
+    '  float mN = texture2D(uMsk,uv-vec2(0.0,e2)).a, mW = texture2D(uMsk,uv-vec2(e2,0.0)).a;',
+    '  float ec = 99.0;',
+    '  vec2 lc = fract(w/32.0)*32.0;',
+    '  if(mN<0.5) ec=min(ec,lc.y);',
+    '  if(mW<0.5) ec=min(ec,lc.x);',
+    '  float shore = clamp(ec/7.0,0.0,1.0);',
+    '  if(shore<1.0){ float fo=vn(wl/4.0+vec2(99.0,0.0),128.0);',
+    '    float foam=max(0.0,(1.0-shore)*1.25*(fo-0.28))*1.5; foam=min(0.85,foam);',
+    '    r=r*(1.0-foam)+232.0*foam; g=g*(1.0-foam)+238.0*foam; b=b*(1.0-foam)+240.0*foam; }',
+    '  wa = min(1.0, 0.42+0.58*depth);',                     // ★얕은물 투명 — 물밑 진흙이 비친다
+    '  gl_FragColor = vec4(r/255.0*wa, g/255.0*wa, b/255.0*wa, wa);',   // premultiplied
+    '}',
+  ].join('\n');
+
+  const _wgl = { cv: null, gl: null, prog: null, ok: null, uni: {}, texL: null, texM: null };
+  let _waterT0 = null;   // 셰이더 시간 기준점(위 주석 — float 정밀도)
+  function _waterInit() {
+    if (_wgl.ok !== null) return _wgl.ok;
+    try {
+      const cv = document.createElement('canvas');
+      const gl = cv.getContext('webgl', { alpha: true, premultipliedAlpha: true, antialias: false, depth: false });
+      if (!gl) throw new Error('webgl 없음');
+      const mk = (t, src) => { const s2 = gl.createShader(t); gl.shaderSource(s2, src); gl.compileShader(s2);
+        if (!gl.getShaderParameter(s2, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s2)); return s2; };
+      const pr = gl.createProgram();
+      gl.attachShader(pr, mk(gl.VERTEX_SHADER, WATER_VS)); gl.attachShader(pr, mk(gl.FRAGMENT_SHADER, WATER_FS));
+      gl.linkProgram(pr);
+      if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(pr));
+      gl.useProgram(pr);
+      const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+      const loc = gl.getAttribLocation(pr, 'p'); gl.enableVertexAttribArray(loc);
+      gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+      for (const u of ['uRes', 'uCam', 'uT', 'uLin', 'uMsk', 'uOrig', 'uN', 'uDrop']) _wgl.uni[u] = gl.getUniformLocation(pr, u);
+      const mkTex = (filt) => { const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filt); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filt);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        return t; };
+      _wgl.texL = mkTex(gl.LINEAR); _wgl.texM = mkTex(gl.NEAREST);
+      gl.uniform1i(_wgl.uni.uLin, 0); gl.uniform1i(_wgl.uni.uMsk, 1);
+      gl.uniform1f(_wgl.uni.uN, WF_N); gl.uniform1f(_wgl.uni.uDrop, WATER_DROP);
+      gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);   // premultiplied
+      _wgl.cv = cv; _wgl.gl = gl; _wgl.prog = pr; _wgl.ok = true;
+      console.log('[water] WebGL 물 레이어 준비');
+    } catch (e) {
+      console.warn('[water] WebGL 불가 — 단색 폴백:', e.message); _wgl.ok = false;
+    }
+    return _wgl.ok;
+  }
+  function _drawWaterLayer(ctx2, W2, H2, camX2, camY2, tSec) {
+    if (!_waterInit()) return false;
+    const gl = _wgl.gl;
+    if (_wgl.cv.width !== W2 || _wgl.cv.height !== H2) { _wgl.cv.width = W2; _wgl.cv.height = H2; }
+    gl.viewport(0, 0, W2, H2);
+    // 흐름/수심/마스크 텍스처 — 카메라가 WF_QUANT 셀 이상 움직였을 때만 다시 굽는다
+    const wpt = { wx: (2 * camY2 + camX2) / 2, wy: (2 * camY2 - camX2) / 2 };
+    const ocx = Math.floor(wpt.wx / 32 / WF_QUANT) * WF_QUANT - (WF_N >> 1);
+    const ocy = Math.floor(wpt.wy / 32 / WF_QUANT) * WF_QUANT - (WF_N >> 1);
+    const key = ocx + '_' + ocy;
+    if (_wfCache.key !== key) {
+      const t = _buildFlowTex(gl, ocx, ocy);
+      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, _wgl.texL);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, WF_N, WF_N, 0, gl.RGBA, gl.UNSIGNED_BYTE, t.lin);
+      gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, _wgl.texM);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, WF_N, WF_N, 0, gl.RGBA, gl.UNSIGNED_BYTE, t.msk);
+      _wfCache.key = key; _wfCache.ox = ocx; _wfCache.oy = ocy;
+    }
+    gl.uniform2f(_wgl.uni.uRes, W2, H2);
+    gl.uniform2f(_wgl.uni.uCam, camX2, camY2);
+    gl.uniform2f(_wgl.uni.uOrig, _wfCache.ox, _wfCache.oy);
+    gl.uniform1f(_wgl.uni.uT, tSec);
+    gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    ctx2.drawImage(_wgl.cv, 0, 0);
+    return true;
+  }
+  // ★블록 프리즘 단면 — 물에 접한 뭍 셀의 남·동 변에서 WATER_DROP 만큼 수직면.
+  //   벽 셰이드 문법(남면 어둡게·동면 밝게) + 상단 풀 넘김 립 + 하단 물 접촉선 그림자.
+  //   북·서 변은 뭍이 가린다(면 없음). 픽셀 패스가 아니라 **벡터**로 그린다(재민 확정 ③).
+  function _drawPrisms(g, toScr, cx0, cy0, cx1, cy1) {
+    const D = WATER_DROP;
+    let n = 0;
+    for (let cy = cy0; cy <= cy1; cy++) for (let cx = cx0; cx <= cx1; cx++) {
+      const px = cx * 32 + 16, py = cy * 32 + 16;
+      if (isWaterAtAbs(px, py)) continue;                       // 뭍 셀만
+      const sW = isWaterAtAbs(px, py + 32), eW = isWaterAtAbs(px + 32, py);
+      if (!sW && !eW) continue;
+      n++;
+      if (sW) {   // 남면(물이 y+1) — 그늘
+        const a = w2i(cx * 32, (cy + 1) * 32), b = w2i((cx + 1) * 32, (cy + 1) * 32);
+        const A = toScr(a.x, a.y), B = toScr(b.x, b.y);
+        g.fillStyle = '#4a3a26';
+        g.beginPath(); g.moveTo(A.x, A.y); g.lineTo(B.x, B.y); g.lineTo(B.x, B.y + D); g.lineTo(A.x, A.y + D); g.closePath(); g.fill();
+        g.fillStyle = 'rgba(15,25,35,0.55)';
+        g.beginPath(); g.moveTo(A.x, A.y + D - 2); g.lineTo(B.x, B.y + D - 2); g.lineTo(B.x, B.y + D); g.lineTo(A.x, A.y + D); g.closePath(); g.fill();
+        g.fillStyle = '#4e6b40';
+        g.beginPath(); g.moveTo(A.x, A.y); g.lineTo(B.x, B.y); g.lineTo(B.x, B.y + 2.2); g.lineTo(A.x, A.y + 2.2); g.closePath(); g.fill();
+      }
+      if (eW) {   // 동면(물이 x+1) — 볕
+        const a = w2i((cx + 1) * 32, cy * 32), b = w2i((cx + 1) * 32, (cy + 1) * 32);
+        const A = toScr(a.x, a.y), B = toScr(b.x, b.y);
+        g.fillStyle = '#61492f';
+        g.beginPath(); g.moveTo(A.x, A.y); g.lineTo(B.x, B.y); g.lineTo(B.x, B.y + D); g.lineTo(A.x, A.y + D); g.closePath(); g.fill();
+        g.fillStyle = 'rgba(15,25,35,0.5)';
+        g.beginPath(); g.moveTo(A.x, A.y + D - 2); g.lineTo(B.x, B.y + D - 2); g.lineTo(B.x, B.y + D); g.lineTo(A.x, A.y + D); g.closePath(); g.fill();
+        g.fillStyle = '#526e44';
+        g.beginPath(); g.moveTo(A.x, A.y); g.lineTo(B.x, B.y); g.lineTo(B.x, B.y + 2.2); g.lineTo(A.x, A.y + 2.2); g.closePath(); g.fill();
+      }
+    }
+    return n;
+  }
+
   // ★A/B 손잡이 — `__terrain19.legacy = true` 면 배치 19 이전(단색 다이아몬드)으로 정확히 돌아간다.
   //   하네스가 같은 프레임·같은 시계에서 before/after 를 얻는 유일한 길이고,
   //   `_tileAcc` 성능 비교도 이것 없이는 못 잰다. 기본값이 채택값이다(제품 UI 없음).
@@ -3739,6 +4027,7 @@ const SIM_JOB_EMOJI = {
     //   타일 ~30장의 blit 이고, 굽는 비용은 그 타일을 처음 볼 때 한 번만 든다.
     //   텍스처가 아직 안 왔거나 legacy 손잡이면 **종전 경로**로 그대로 떨어진다(무회귀).
     const _LEG = !!_t19.legacy || _gtexReady < 3;
+    if (!_LEG) _waterInit();   // ★타일을 굽기 **전에** 물 가능 여부를 확정한다(진흙/단색 갈림이 타일에 굳는다)
     window.__groundDbg = { legacy: _LEG, tex: _gtexReady, tiles: 0, baked: 0, cached: _groundTiles.size };
     if (!_LEG) {
       const isoX0 = camX - W / 2, isoY0 = camY - H / 2;
@@ -3812,6 +4101,35 @@ const SIM_JOB_EMOJI = {
 
     window._tileAcc = (window._tileAcc||0) + (performance.now() - _tlT0);
     window._tileFrames = (window._tileFrames||0) + 1;   // ★성능은 창 길이가 아니라 **프레임당 ms** 로 잰다
+
+    // === 1-b) 물 레이어 (WebGL 셰이더) + 블록 프리즘 단면 ===
+    //   순서가 문법이다: 지면(진흙) → **물** → 프리즘 면 → (물가 술) → 엔티티.
+    //   프리즘 면이 물 뒤에 오는 이유 = 면이 물의 절단선을 덮어야 '블록'으로 읽힌다.
+    const _wtT0 = performance.now();
+    let _waterOn = false, _nPrism = 0;
+    if (!_LEG && !_t19.waterOff) {
+      // ★시간은 **게임 시계**다(프레임 시간 아님) — 같은 게임 시각이면 같은 그림이라 하네스가 재현 가능.
+      // ★★그런데 `worldNow()/1000` 을 그대로 넘기면 안 된다 — 1.7e9 초다. GLSL highp float 는
+      //   유효숫자 7자리라 `ADV*uT` 가 1.1e11 이 되면 **파동·노이즈 인자가 통째로 뭉개진다**
+      //   (1패스 실화면: 물이 흐르지도 반짝이지도 않는 뿌연 판이었다). 기준시각을 빼서 0 부터 센다.
+      if (_waterT0 === null) _waterT0 = worldNow();
+      const _tSec = (_t19.freezeT != null ? _t19.freezeT : (worldNow() - _waterT0) / 1000);
+      _waterOn = _drawWaterLayer(ctx, W, H, camX, camY, _tSec);
+      if (_waterOn) {
+        // 화면에 걸치는 셀 범위 — iso 네 모서리 역변환
+        let mnx = Infinity, mxx = -Infinity, mny = Infinity, mxy = -Infinity;
+        for (const [ix2, iy2] of [[camX - W / 2, camY - H / 2], [camX + W / 2, camY - H / 2],
+                                  [camX - W / 2, camY + H / 2], [camX + W / 2, camY + H / 2]]) {
+          const wx2 = (2 * iy2 + ix2) / 2, wy2 = (2 * iy2 - ix2) / 2;
+          if (wx2 < mnx) mnx = wx2; if (wx2 > mxx) mxx = wx2;
+          if (wy2 < mny) mny = wy2; if (wy2 > mxy) mxy = wy2;
+        }
+        _nPrism = _drawPrisms(ctx, toScreen, Math.floor(mnx / 32) - 1, Math.floor(mny / 32) - 1,
+                              Math.ceil(mxx / 32) + 1, Math.ceil(mxy / 32) + 1);
+      }
+    }
+    window._waterAcc = (window._waterAcc || 0) + (performance.now() - _wtT0);
+    window.__waterDbg = { on: _waterOn, webgl: _wgl.ok, prisms: _nPrism, flowKey: _wfCache.key, segs: _riverSegs ? _riverSegs.length : 0 };
     // === 2) 엔티티 수집 (depth sort용) ===
     const renderables = [];
     const renderT = performance.now() - INTERP_DELAY_MS;
