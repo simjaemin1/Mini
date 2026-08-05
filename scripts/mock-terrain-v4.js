@@ -193,7 +193,7 @@ function render(S,flow,scale,imgs,phase,view,waterOn,sharp,mode){
         const wxp=wpt.wx+S.cx0*CELL*0, wyp=wpt.wy;   // 이미 존-로컬 iso 기준(장면 원점 0)
         // 장면 로컬 px → 셀계
         let m, edgeDist=99;
-        const DROP=(mode==='block')?11:(mode==='blockcell'?10:5);
+        const DROP=5;   // ★재민 확정: 높이차 5px (블록판 10px 은 임의 확대였다 — 회귀)
         if(sharp){ const cx=Math.max(0,Math.min(S.w-1,Math.floor(wpt.wx/CELL))), cy=Math.max(0,Math.min(S.h-1,Math.floor(wpt.wy/CELL)));
           if(!wMask[cy][cx]) continue;
           m=1;
@@ -274,6 +274,13 @@ function render(S,flow,scale,imgs,phase,view,waterOn,sharp,mode){
             r=r*(1-ff)+232*ff; gg=gg*(1-ff)+238*ff; b=b*(1-ff)+240*ff; }
         }
         const o=(py*W+pxi)*4;
+        // ★얕은 물 투명(재민: "수영장 같아") — 물가는 바닥이 비치고 깊을수록 물색이 차오른다.
+        //   잠긴 바닥 = 이미 칠해진 지면 픽셀을 젖은 톤으로 눌러서 사용.
+        {
+          const wa=Math.min(1,0.42+0.58*deep);                      // 얕음 0.42 → 깊음 1.0
+          const gb_r=px[o]*0.52+18, gb_g=px[o+1]*0.55+16, gb_b=px[o+2]*0.5+14;   // 잠긴 흙빛 바닥
+          r=gb_r*(1-wa)+r*wa; gg=gb_g*(1-wa)+gg*wa; b=gb_b*(1-wa)+b*wa;
+        }
         const aBlend=sharp?1:Math.min(1,(m-0.42)/0.08);   // 물가 페더(곡선판) / 경계 그대로(각진판)
         px[o]  =px[o]  *(1-aBlend)+r *aBlend;
         px[o+1]=px[o+1]*(1-aBlend)+gg*aBlend;
@@ -301,7 +308,7 @@ function render(S,flow,scale,imgs,phase,view,waterOn,sharp,mode){
 
   // ── 3.5) 블록 프리즘 면 (blockcell): 물에 접한 뭍 셀의 남·동 변에서 수직면 ──
   if(waterOn&&mode==='blockcell'){
-    const DROPB=10;
+    const DROPB=5;   // 면 높이도 5px
     const dirtPat=g.createPattern(imgs.grassA,'repeat');   // 흙 대신 어두운 톤 오버레이로 — 질감은 단색+노이즈면 충분
     for(let s2=0;s2<w+h-1;s2++) for(let x=Math.max(0,s2-h+1);x<=Math.min(w-1,s2);x++){
       const y=s2-x; if(cells[y][x]===1) continue;   // 뭍 셀만
