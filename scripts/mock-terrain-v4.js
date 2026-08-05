@@ -192,15 +192,32 @@ function render(S,flow,scale,imgs,phase,view,waterOn,sharp){
         const wpt=i2w(ix,iy);
         const wxp=wpt.wx+S.cx0*CELL*0, wyp=wpt.wy;   // 이미 존-로컬 iso 기준(장면 원점 0)
         // 장면 로컬 px → 셀계
-        let m;
+        let m, edgeDist=99;
+        const DROP=5;   // ★수면이 뭍보다 '아주 살짝' 낮다(재민) — 위쪽 물가에 5px 흙 단면, 아래쪽은 뭍이 가려 무변
         if(sharp){ const cx=Math.max(0,Math.min(S.w-1,Math.floor(wpt.wx/CELL))), cy=Math.max(0,Math.min(S.h-1,Math.floor(wpt.wy/CELL)));
-          m=wMask[cy][cx]?1:0.44+0.14*0; if(!wMask[cy][cx]) continue;
-          // 각진 판의 물가 판정: 물 셀인데 4방에 뭍 → shore 대역
-          const nb=(wMask[Math.max(0,cy-1)][cx]===0)||(wMask[Math.min(S.h-1,cy+1)][cx]===0)||(wMask[cy][Math.max(0,cx-1)]===0)||(wMask[cy][Math.min(S.w-1,cx+1)]===0);
-          m=nb?0.5:1;
+          if(!wMask[cy][cx]) continue;
+          m=1;
+          // ★포말은 '뭍과 맞닿은 변'에서 7px 이내만 — 셀 전체에 뿌리면 이상한 문양이 된다(재민 지적)
+          const lx=wpt.wx-cx*CELL, ly=wpt.wy-cy*CELL;
+          // ★아래쪽 경계(남 y+1·동 x+1 변 — 화면 하단) 포말 제거, 위쪽(북·서 변)만 [재민]
+          if(cy>0        &&!wMask[cy-1][cx]) edgeDist=Math.min(edgeDist,ly);
+          if(cx>0        &&!wMask[cy][cx-1]) edgeDist=Math.min(edgeDist,lx);
         } else {
           m=bilin(S,wMask,wpt.wx,wpt.wy,0);
           if(m<0.42) continue;                          // 뭍
+        }
+        {
+          const uPt=i2w(ix,iy-DROP);
+          let mU;
+          if(sharp){ const ux=Math.max(0,Math.min(S.w-1,Math.floor(uPt.wx/CELL))), uy=Math.max(0,Math.min(S.h-1,Math.floor(uPt.wy/CELL)));
+            mU=wMask[uy][ux]; }
+          else mU=bilin(S,wMask,uPt.wx,uPt.wy,0);
+          if(mU<(sharp?1:0.46)){   // 둑 단면(흙) — 얇은 그늘 립
+            const nz=vnoise(wpt.wx/3.1+55,wpt.wy/3.1+77);
+            const o2=(py*W+pxi)*4;
+            px[o2]=78+34*nz; px[o2+1]=60+26*nz; px[o2+2]=40+18*nz;
+            continue;
+          }
         }
         const deep=bilin(S,wDeep,wpt.wx,wpt.wy,0);
         const fx=bilin(S,cosF,wpt.wx,wpt.wy,1), fy=bilin(S,sinF,wpt.wx,wpt.wy,0);
@@ -229,8 +246,14 @@ function render(S,flow,scale,imgs,phase,view,waterOn,sharp){
         r=r*(0.55+0.5*diff)+118*0.16; gg=gg*(0.55+0.5*diff)+140*0.16; b=b*(0.6+0.45*diff)+160*0.20;
         r+=spec*230; gg+=spec*240; b+=spec*245;
         // 물가 포말 + 얕은물 바닥 비침
-        const shore=Math.min(1,Math.max(0,(m-0.42)/0.16));   // 0=뭍 경계,1=완전 물
-        if(shore<1){
+        const shore=sharp?Math.min(1,edgeDist/7):Math.min(1,Math.max(0,(m-0.42)/0.16));   // 0=뭍 경계,1=완전 물
+        let foamOK=true;
+        if(!sharp&&shore<1){ // ★뭍이 남동(화면 아래)쪽이면 포말 생략 — 기울기로 뭍 방향 판정 [재민]
+          const gx=bilin(S,wMask,wpt.wx+6,wpt.wy,0)-bilin(S,wMask,wpt.wx-6,wpt.wy,0);
+          const gy=bilin(S,wMask,wpt.wx,wpt.wy+6,0)-bilin(S,wMask,wpt.wx,wpt.wy-6,0);
+          if(gx+gy<0) foamOK=false;   // m 이 남동으로 갈수록 줄면 = 뭍이 남동
+        }
+        if(foamOK&&shore<1){
           const fo=(1-tt)*vnoise(wpt.wx/4.2+99,wpt.wy/4.2-ADV*tt/6)+tt*vnoise(wpt.wx/4.2+99,wpt.wy/4.2-ADV*(tt-1)/6);
           const foam=Math.max(0,(1-shore)*1.25*(fo-0.28))*1.5;   // 노이즈 문턱 — 띠가 아니라 얼룩
           if(foam>0){ const ff=Math.min(0.85,foam);
@@ -289,10 +312,10 @@ function go(){
   const c1=render(SCENES.river,FLOW.river,0.62,imgs,0,null,true,false); c1.id='cv-river'; document.body.appendChild(c1);
   const c3=render(SCENES.river,FLOW.river,1.0,imgs,0,{w:1000,h:640,tx:-300,ty:-140},true,false); c3.id='cv-close'; document.body.appendChild(c3);
   const c4=render(SCENES.river,FLOW.river,1.0,imgs,0,{w:1000,h:640,tx:-300,ty:-140},true,true); c4.id='cv-sharp'; document.body.appendChild(c4);
-  window._gif=[];
+  window._gif=[]; window._gifSharp=[];
   for(let f=0;f<24;f++){
-    const c=render(SCENES.river,FLOW.river,1.0,imgs,f/24,{w:1000,h:640,tx:-300,ty:-140},true,false);
-    window._gif.push(c.toDataURL('image/png'));
+    window._gif.push(render(SCENES.river,FLOW.river,1.0,imgs,f/24,{w:1000,h:640,tx:-300,ty:-140},true,false).toDataURL('image/png'));
+    window._gifSharp.push(render(SCENES.river,FLOW.river,1.0,imgs,f/24,{w:1000,h:640,tx:-300,ty:-140},true,true).toDataURL('image/png'));
   }
   document.title='READY';
 }
@@ -313,6 +336,9 @@ fs.writeFileSync('/tmp/mock-terrain-v4.html', html);
   }
   const frames = await page.evaluate(() => window._gif);
   frames.forEach((d, i) => fs.writeFileSync(`/tmp/terrain-mock-v4/gif_${String(i).padStart(2, '0')}.png`,
+    Buffer.from(d.split(',')[1], 'base64')));
+  const framesS = await page.evaluate(() => window._gifSharp);
+  framesS.forEach((d, i) => fs.writeFileSync(`/tmp/terrain-mock-v4/gifs_${String(i).padStart(2, '0')}.png`,
     Buffer.from(d.split(',')[1], 'base64')));
   console.log('done:', frames.length, 'frames + 3 stills');
   await browser.close();
