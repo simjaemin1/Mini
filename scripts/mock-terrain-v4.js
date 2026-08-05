@@ -206,29 +206,23 @@ function render(S,flow,scale,imgs,phase,view,waterOn,sharp){
           m=bilin(S,wMask,wpt.wx,wpt.wy,0);
           if(m<0.42) continue;                          // 뭍
         }
-        {
-          // ★턱은 '뭍이 북서쪽'인 물가에만 — 방향 무구분이면 동남 계단 꼭짓점마다 갈색 조각이 새고
-          //   문턱 어긋남(0.46 vs 0.42)이 동남 가장자리에 평행한 갈색 띠를 만든다(재민: "두 평면 평행")
-          const uPt=i2w(ix,iy-DROP);
-          let lip=false;
-          if(sharp){
-            const cx0=Math.max(0,Math.min(S.w-1,Math.floor(wpt.wx/CELL))), cy0=Math.max(0,Math.min(S.h-1,Math.floor(wpt.wy/CELL)));
-            const ux=Math.max(0,Math.min(S.w-1,Math.floor(uPt.wx/CELL))), uy=Math.max(0,Math.min(S.h-1,Math.floor(uPt.wy/CELL)));
-            // 위 표본이 '정확히 내 셀의 북 또는 서 이웃'의 뭍일 때만
-            lip = !wMask[uy][ux] && ((ux===cx0&&uy===cy0-1)||(ux===cx0-1&&uy===cy0));
-          } else {
-            const mU=bilin(S,wMask,uPt.wx,uPt.wy,0);
-            const gxL=bilin(S,wMask,wpt.wx+6,wpt.wy,0)-bilin(S,wMask,wpt.wx-6,wpt.wy,0);
-            const gyL=bilin(S,wMask,wpt.wx,wpt.wy+6,0)-bilin(S,wMask,wpt.wx,wpt.wy-6,0);
-            lip = mU<0.42 && (gxL+gyL)>0.05;   // 문턱 정합 + 뭍이 북서일 때만
-          }
-          if(lip){
-            const nz=vnoise(wpt.wx/3.1+55,wpt.wy/3.1+77);
-            const o2=(py*W+pxi)*4;
-            px[o2]=78+34*nz; px[o2+1]=60+26*nz; px[o2+2]=40+18*nz;
-            continue;
-          }
+        // ★정직한 두 평면 기하 [재민: "평행한 두 평면으로 렌더링한 게 맞아?" — 이전 판은 덧칠 근사였다]
+        //   위 평면(뭍, z=0)이 가리는 픽셀은 이미 continue 로 빠졌다(내 자리 m<문턱=뭍).
+        //   여기부터는 '지면 기준 물' 픽셀: 5px 위 표본(uPt)이 이 픽셀에 투영되는 아래 평면의 점이다.
+        //   uPt 가 뭍이면 = 두 평면 사이 수직 단면이 보이는 자리. 물이면 = 내려간 수면(파동·수심도 uPt 기준).
+        //   방향 판정 불필요 — 기하가 방향을 스스로 해결한다.
+        const uPt=i2w(ix,iy-DROP);
+        let mUw;
+        if(sharp){ const ux=Math.max(0,Math.min(S.w-1,Math.floor(uPt.wx/CELL))), uy=Math.max(0,Math.min(S.h-1,Math.floor(uPt.wy/CELL)));
+          mUw=wMask[uy][ux]?1:0; }
+        else mUw=bilin(S,wMask,uPt.wx,uPt.wy,0);
+        if(mUw<(sharp?1:0.42)){   // 단면(흙) — 두 평면 사이
+          const nz=vnoise(uPt.wx/3.1+55,uPt.wy/3.1+77);
+          const o2=(py*W+pxi)*4;
+          px[o2]=78+34*nz; px[o2+1]=60+26*nz; px[o2+2]=40+18*nz;
+          continue;
         }
+        wpt.wx=uPt.wx; wpt.wy=uPt.wy;   // ★수면 표본점을 아래 평면으로 — 파동·수심·흐름·포말 전부 일관
         const deep=bilin(S,wDeep,wpt.wx,wpt.wy,0);
         const fx=bilin(S,cosF,wpt.wx,wpt.wy,1), fy=bilin(S,sinF,wpt.wx,wpt.wy,0);
         const fL=Math.hypot(fx,fy)||1, dx=fx/fL, dy=fy/fL;
