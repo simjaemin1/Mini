@@ -64,14 +64,15 @@ require(path.join(ROOT,'server','zone.js'));`);
 //   벽은 '바깥과 맞닿은 변'에만 — 사람이 짓는 방식과 같다(test-rooms.js encloseCells 와 동형).
 const SZ = 32;
 const RECT = (x0, y0, x1, y1) => { const o = []; for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) o.push([x, y]); return o; };
-function seedHouse(dbPath, cells, doorAt) {
+function seedHouse(dbPath, cells, doorAt, floor) {
   const { DatabaseSync } = require('node:sqlite');
   const db = new DatabaseSync(dbPath);
   const now = Date.now();
   const ins = db.prepare('INSERT INTO buildings (type, owner_id, owner_name, x, y, data, created_at) VALUES (?,?,?,?,?,?,?)');
   const S = new Set(cells.map(([x, y]) => `${x},${y}`));
   let nf = 0, nw = 0;
-  for (const [x, y] of cells) { ins.run('floor', 'e2e', 'E2E', x * SZ, y * SZ, JSON.stringify({ floor: 0 }), now); nf++; }
+  const F = floor | 0;
+  for (const [x, y] of cells) { ins.run('floor', 'e2e', 'E2E', x * SZ, y * SZ, JSON.stringify({ floor: F }), now); nf++; }
   const edges = [];
   for (const [x, y] of cells) {
     if (!S.has(`${x},${y - 1}`)) edges.push([x, y, 'N']);
@@ -82,7 +83,7 @@ function seedHouse(dbPath, cells, doorAt) {
   for (const [x, y, s] of edges) {
     const isDoor = doorAt && doorAt[0] === x && doorAt[1] === y && doorAt[2] === s;
     ins.run(isDoor ? 'door' : 'wall', 'e2e', 'E2E', x * SZ, y * SZ,
-      JSON.stringify(isDoor ? { side: s, floor: 0, open: true } : { side: s, floor: 0 }), now);
+      JSON.stringify(isDoor ? { side: s, floor: F, open: true } : { side: s, floor: F }), now);
     nw++;
   }
   db.close();
@@ -258,7 +259,8 @@ const rget = async (q) => (await (await fetch(`http://localhost:${ZPORT}/roomdbg
   await p2.screenshot({ path: `${SHOTS}/05-roof-off.png` });
   const rr3 = await p2.evaluate(() => window.__roomRoofDbg || null).catch(() => null);
   ok(rr3 && rr3.roofs.length === 0, '★방이 해체되자 지붕도 사라졌다(계약)');
-  await b2.close();
+  await b2.close(); try { z2.kill(); } catch (e) {}
+  await sleep(2500);   // ★포트 3020 이 풀릴 틈 — 안 주면 다음 존이 EADDRINUSE 로 죽고 그 결과를 결함으로 오독한다
 
   // ★화면 층 — **같은 상자**에서 전/후. 바뀐 것은 지붕뿐이다.
   const onPng = PNG.sync.read(fs.readFileSync(`${SHOTS}/04-roof-on.png`));
@@ -291,6 +293,71 @@ const rget = async (q) => (await (await fetch(`http://localhost:${ZPORT}/roomdbg
   ok(dRoof > 10, `★지붕 영역이 실제로 바뀐다 (절대차 ${dRoof.toFixed(1)} > 10 · 상자에 오버행 여백 포함)`);
   ok(dCtrl < 2, `★변화가 지붕 영역에만 있다 — 대조군(빈 땅)은 정지 (${dCtrl.toFixed(1)} < 2)`);
 
+  // ── ⓓ 다층 (배치 18 ③) ────────────────────────────────────────────────────
+  say('\n[ⓓ 다층 — 밖에서는 2층집이 2층집으로 보인다(전체 복원)]');
+  // ⓒ 에서 헐었던 팔 남벽을 되돌린다 — ⓓ 는 1층 방이 성립해야 성립한다(전제 복구)
+  restoreWall(ZDB, OUT.cx * SZ, (OUT.cy - 1) * SZ, 'N', 0);
+  // 1층 몸통 위에 2층 방을 얹는다(DB 직접 — 계단을 걸어 올라가는 건 별개 검사다)
+  const F2 = RECT(100, 100, 103, 102);
+  const s2 = seedHouse(ZDB, F2, null, 1);
+  ok(s2.floors === 12, `검사 전제 — 2층 방이 DB 에 들어갔다: 바닥 ${s2.floors}칸 · 벽 ${s2.walls}장`);
+  const z3 = boot('zone3', wrap, {
+    PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
+    ENABLE_VILLAGES: '0', ENABLE_BANDITS: '0', E2E_GIVE: '1', WRAP_DAY_MS: '86400000',
+    WRAP_ZONE_PATCH: JSON.stringify({ mainSquare: { x: OUT.cx * SZ + 16, y: OUT.cy * SZ + 16, name: '2층집 밖' } }),
+  });
+  ok(await waitHttp(`http://localhost:${ZPORT}/health`), 'zone 재기동(2층 세계)');
+  await sleep(4000);
+  const b3 = await chromium.launch({ headless: true, executablePath: require('playwright').chromium.executablePath() });
+  const p3 = await (await b3.newContext({ viewport: { width: 1400, height: 900 } })).newPage();
+  await p3.goto(`http://localhost:${CPORT}/`); await sleep(2500);
+  for (const sel of ['#startBtn', 'button:has-text("시작")', 'button:has-text("입장")', 'text=게스트']) {
+    try { const bb = await p3.$(sel); if (bb) { await bb.click(); break; } } catch (e) {}
+  }
+  await sleep(15000);
+  await p3.screenshot({ path: `${SHOTS}/06-two-floor-outside.png` });
+  const srv2 = await rget();
+  ok(srv2.rooms === 2, `★서버가 방 2개(1층·2층)를 판정했다 (실측 ${srv2.rooms})`);
+  ok(srv2.list.some((r) => r.floor === 1), '그중 하나는 2층 방이다');
+  const fv = await p3.evaluate(() => window.__floorViewDbg || null).catch(() => null);
+  ok(!!fv, '층 렌더 문법 진단 훅이 산다');
+  ok(fv && fv.indoors === false && fv.hideAbove === false, '★밖이면 위층을 숨기지 않는다(전체 복원)');
+  const rr4 = await p3.evaluate(() => window.__roomRoofDbg || null).catch(() => null);
+  ok(rr4 && rr4.roofs.length === 2, `★밖에서는 1층·2층 지붕이 **둘 다** 그려진다 (실측 ${rr4 && rr4.roofs.length})`);
+  ok(rr4 && rr4.roofs.every((r) => r.roofOn), '두 지붕 모두 표시 상태');
+  await b3.close(); try { z3.kill(); } catch (e) {}
+
+  // ★화면 층 — 2층이 실제로 화면에 더 그려졌는가(1층만일 때와 같은 자리 비교)
+  const twoPng = PNG.sync.read(fs.readFileSync(`${SHOTS}/06-two-floor-outside.png`));
+  const kTwo = khakiBox(twoPng, BOX), kOne = kOn;
+  const dTwo = diffBox(onPng, twoPng, BOX), dTwoCtrl = diffBox(onPng, twoPng, CTRL);
+  say(`    같은 상자 이엉 — 1층집 ${kOne.toFixed(1)}% · 2층집 ${kTwo.toFixed(1)}% · 두 장 절대차 ${dTwo.toFixed(1)}(대조군 ${dTwoCtrl.toFixed(1)})`);
+  // ★비율이 아니라 **자리**로 잰다: 2층 지붕은 한 층(64px) 위에 떠야 한다. 이엉 비율은 2층 지붕이
+  //   1층 지붕을 상당 부분 **가리므로** 크게 안 오른다(29.0 → 31.3) — 비율 문턱은 신호가 아니라 겹침을 잰다.
+  ok(kTwo >= kOne, `2층집 이엉이 1층집보다 적지 않다 (${kTwo.toFixed(1)}% ≥ ${kOne.toFixed(1)}%)`);
+  ok(dTwo > 15, `★★2층을 얹으면 같은 자리 화면이 크게 바뀐다 (절대차 ${dTwo.toFixed(1)} > 15)`);
+  ok(dTwoCtrl < 2, `★변화가 집에만 있다 — 대조군 정지 (${dTwoCtrl.toFixed(1)} < 2)`);
+  // ★층 리프트는 **같은 프레임 안에서** 잰다 — 다른 세션 스크린샷끼리 비교하면 카메라 차이가 섞인다
+  //   (1차 작성이 그렇게 재서 64px 이 나와야 할 자리에 35px 이 나왔다. 화면이 아니라 계측이 틀린 것이다.)
+  const f0 = rr4.roofs.find((r) => r.floor === 0), f1 = rr4.roofs.find((r) => r.floor === 1);
+  ok(!!f0 && !!f1, '한 프레임에 1층·2층 지붕이 둘 다 있다');
+  if (f0 && f1) {
+    // **같은 발자국 원점**을 가진 렉트끼리 비교한다. ㄱ자의 최대 렉트 분해는 (100,100)에서 시작하는
+    //   세로 2×6 이고 2층은 4×3 이라 **크기가 다르다** — 상자 좌표는 앵커가 크기마다 달라 못 쓴다
+    //   (1차 작성이 그렇게 재서 64 여야 할 값이 35 로 나왔다: 화면이 아니라 계측이 틀렸다).
+    say(`    1층 지붕 렉트: ${JSON.stringify(f0.origins.map((o) => o.r))}`);
+    say(`    2층 지붕 렉트: ${JSON.stringify(f1.origins.map((o) => o.r))}`);
+    // 두 층에서 **원점이 같은** 렉트 쌍을 찾는다(어느 분해가 나오든 성립하는 비교)
+    let o0 = null, o1 = null;
+    for (const a2 of f0.origins) { const m = f1.origins.find((b2) => b2.r[0] === a2.r[0] && b2.r[1] === a2.r[1]); if (m) { o0 = a2; o1 = m; break; } }
+    ok(!!o0 && !!o1, `두 층에 원점이 같은 지붕 렉트 쌍이 있다 ${o0 ? '(' + o0.r + ')' : ''}`);
+    if (o0 && o1) {
+      ok(o0.sx === o1.sx, `가로 자리는 같다 — 화면 x ${o0.sx} = ${o1.sx}`);
+      const dy = o0.sy - o1.sy;
+      ok(Math.abs(dy - 64) <= 1, `★★2층 지붕이 1층 지붕보다 정확히 **한 층(64px)** 위에 뜬다 (실측 ${dy}px)`);
+    }
+  }
+
   say(`\n스크린샷: ${SHOTS}/`);
   for (const p of procs) { try { p.kill(); } catch (e) {} }
   say(`\n=== 방 판정 실클라 E2E: ${pass} 통과 / ${fail} 실패 ${fail ? '❌' : '✅'} ===`);
@@ -312,4 +379,14 @@ function readDoorOpen(dbPath, id) {
     const r = db.prepare('SELECT data FROM buildings WHERE id=?').get(id);
     db.close(); return r ? !!JSON.parse(r.data).open : null;
   } catch (e) { return null; }
+}
+
+function restoreWall(dbPath, x, y, side, floor) {
+  try {
+    const { DatabaseSync } = require('node:sqlite');
+    const db = new DatabaseSync(dbPath);
+    db.prepare('INSERT INTO buildings (type, owner_id, owner_name, x, y, data, created_at) VALUES (?,?,?,?,?,?,?)')
+      .run('wall', 'e2e', 'E2E', x, y, JSON.stringify({ side, floor }), Date.now());
+    db.close(); return true;
+  } catch (e) { return false; }
 }

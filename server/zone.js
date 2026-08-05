@@ -4671,15 +4671,22 @@ function _tryBuildAt(player, type, floor = 0, side = null, dir = null, opts = nu
     }
   }
   // 위층(floor > 0) 건축은 아래층에 wall 또는 floor 있어야 (지지)
+  // ★★[2026-08-04d 배치 18 ③] **공중 건축 금지 — 위층은 아래층 '방' 위에만.**
+  //   재민 확정: "2층 배치는 1층 방 위에서만". 종전 규칙(아래층에 벽 **또는** 바닥 한 칸)은
+  //   허공에 벽 한 장 세우고 그 위에 2층을 이어 붙이는 길을 열어 뒀다.
+  //   ⇒ 아래 칸이 **닫힌 방**(①의 판정 — 벽·문으로 닫히고 바닥이 다 깔린 것)에 속해야 한다.
+  //     기둥 역학까지는 안 간다(인계: "구조 제약은 최소") — 방 하나면 충분히 설명되는 규칙이다.
+  //   ⚠계단이 만드는 자동 바닥(_autoFloorId)은 이 경로를 안 탄다(서버가 직접 넣는다) — 계단 착지는 그대로.
   if (floor > 0) {
-    let supported = false;
-    for (const b of nearBuilds) {
-      if (Math.abs(b.x - gx) < BUILDING_SIZE && Math.abs(b.y - gy) < BUILDING_SIZE && (b.floor || 0) === floor - 1
-          && (b.type === 'wall' || b.type === 'floor')) {
-        supported = true; break;
+    const _bcx = Math.floor(gx / BUILDING_SIZE), _bcy = Math.floor(gy / BUILDING_SIZE);
+    if (!Rooms.roomIdAt(_bcx, _bcy, floor - 1)) {
+      // 아래층이 방이 아니면, 그래도 **이미 그 층에 바닥이 깔린 칸**은 이어 짓게 둔다(2층 방을 완성하는 길).
+      let onOwnFloor = false;
+      for (const b of nearBuilds) {
+        if (Math.abs(b.x - gx) < BUILDING_SIZE && Math.abs(b.y - gy) < BUILDING_SIZE && (b.floor || 0) === floor && b.type === 'floor') { onOwnFloor = true; break; }
       }
+      if (!onOwnFloor) { send(player.ws, { type: 'notice', text: `${floor}F 는 ${floor - 1}F **방**(벽으로 닫히고 바닥이 다 깔린 곳) 위에만 지을 수 있습니다` }); return false; }
     }
-    if (!supported) { send(player.ws, { type: 'notice', text: `${floor}F 짓려면 ${floor-1}F에 벽/바닥 필요` }); return false; }
   }
 
   if (!skipCost) {

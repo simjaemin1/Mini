@@ -501,6 +501,8 @@ const SIM_JOB_EMOJI = {
   // ★[배치 18 ②] 방 지붕 — 임의 크기 맞배를 굽고 캐시한다. 화법·앵커 규약은 마을 지붕과 **완전히 같다**
   //   (`_bakeRoof` 그대로 · 처마 WALL_HEIGHT · 물매 19.2px/셀 · 앵커 = 로컬 원점(북서 오버행 모서리)).
   let _bakeRoofFn = null;
+  // ★[배치 18 ③] 보이는 층(히스테리시스) — 계단 위 깜빡임 방지. 충돌·판정은 myFloor 그대로.
+  let _viewFloor = 0, _viewFloorPend = 0, _viewFloorAt = 0;
   const _roofBakeCache = new Map();   // "DIxDJ" → canvas
   function roofImgFor(w, h) {
     if (!_bakeRoofFn) return null;
@@ -3930,10 +3932,13 @@ const SIM_JOB_EMOJI = {
     {
       const _mrx = Math.floor(myAbsPredicted.x / CL_BUILDING_SIZE), _mry = Math.floor(myAbsPredicted.y / CL_BUILDING_SIZE);
       const _mrRoom = cellRoomCache.get(`${_mrx}_${_mry}_${myFloor}`) || null;
+      const _roofHideAbove = !!_mrRoom, _roofViewFloor = myFloor;   // 지붕 블록은 정렬 앞이라 여기서 직접 잰다
       for (const room of srvRooms.values()) {
-        if ((room.floor | 0) !== (myFloor | 0)) continue;   // 다층은 ③에서 — 지금은 내 층의 방만
+        // ★[배치 18 ③] 실내면 **내 층보다 위** 방의 지붕은 안 그린다(그 층 자체가 숨김).
+        //   밖이면 전 층 지붕을 다 그린다 — 2층집 지붕이 보여야 2층집이다.
+        if (_roofHideAbove && (room.floor | 0) > (_roofViewFloor | 0)) continue;
         const inside = !!(_mrRoom && _mrRoom.id === room.id);
-        const _boxes = [];
+        const _boxes = [], _origins = [];
         for (const r of roomRects(room)) {
           const w = r[2] - r[0] + 1, h = r[3] - r[1] + 1;
           const img = roofImgFor(w, h);
@@ -3941,15 +3946,20 @@ const SIM_JOB_EMOJI = {
           const oax = (r[0] - 1) * CL_BUILDING_SIZE, oay = (r[1] - 1) * CL_BUILDING_SIZE;   // 지붕 로컬 원점(절대 px)
           const cax = r[2] * CL_BUILDING_SIZE, cay = r[3] * CL_BUILDING_SIZE;               // z 캐리어 = 남동 끝 칸
           if (Math.abs(cax - worldCx) > VIEW_RADIUS + 400 || Math.abs(cay - worldCy) > VIEW_RADIUS + 400) continue;
-          const _iso = w2i(oax, oay);
+          // ★[배치 18 ③] **층 z 리프트** — 2층 방 지붕은 한 층 높이만큼 떠야 한다.
+          //   빠져 있어서 2층 지붕이 1층 지붕과 같은 높이에 겹쳐 그려지고 있었다(E2E 가 잡았다).
+          const _iso = w2i(oax, oay, (room.floor | 0) * FLOOR_HEIGHT);
           // ★[배치 18 ②] 하네스가 **화면 어디를 봐야 하는지**를 클라 제 투영으로 알려 준다(사본 금지).
           //   지붕을 안 그릴 때도(컷어웨이) 상자는 계산한다 — 같은 자리에서 전/후를 재려면 필요하다.
           { const _s = toScreen(_iso.x, _iso.y);
-            _boxes.push([Math.round(_s.x - img._ox), Math.round(_s.y - img._oy), Math.round(_s.x - img._ox + img.width), Math.round(_s.y - img._oy + img.height)]); }
+            _boxes.push([Math.round(_s.x - img._ox), Math.round(_s.y - img._oy), Math.round(_s.x - img._ox + img.width), Math.round(_s.y - img._oy + img.height)]);
+            // 발자국과 **지붕 로컬 원점의 화면 좌표**도 같이 — 층 리프트를 재려면 이미지 크기에 안 흔들리는 값이 필요하다
+            //   (상자 좌표는 앵커 _ox/_oy 가 지붕 크기마다 달라 크기가 다른 두 지붕을 비교할 수 없다).
+            _origins.push({ r: r.slice(), sx: Math.round(_s.x), sy: Math.round(_s.y) }); }
           if (inside) continue;   // 컷어웨이 — 내가 그 방 안이면 지붕을 아예 안 그린다
-          renderables.push({ z: (cax + cay) * 0.5 + 64, kind: 'hutroof', img, iso: _iso });
+          renderables.push({ z: (cax + cay) * 0.5 + 64 + (room.floor | 0) * (FLOOR_HEIGHT * 0.5), kind: 'hutroof', img, iso: _iso, floor: room.floor | 0 });
         }
-        _roomRoofDbg.push({ id: room.id, roofOn: !inside, cells: room.cells.size, boxes: _boxes });
+        _roomRoofDbg.push({ id: room.id, floor: room.floor | 0, roofOn: !inside, cells: room.cells.size, boxes: _boxes, origins: _origins });
       }
       window.__roomRoofDbg = { myRoom: _mrRoom ? _mrRoom.id : null, floor: myFloor, roofs: _roomRoofDbg };
     }
@@ -3959,8 +3969,9 @@ const SIM_JOB_EMOJI = {
     // 14.49-e7ab/ag: 위층 BFS cutaway
     const _renderMyCx = Math.floor(myAbsPredicted.x / CL_BUILDING_SIZE);
     const _renderMyCy = Math.floor(myAbsPredicted.y / CL_BUILDING_SIZE);
-    const aboveCutawayWalls = computeAboveCutawayWalls(_renderMyCx, _renderMyCy, myFloor);
-    const aboveCutawayCells = computeAboveCutawayCells(_renderMyCx, _renderMyCy, myFloor);
+    // ★[배치 18 ③] 옛 위층 BFS 두 개는 소비처가 없어졌다 — 재민 확정 문법("위층 = 완전 숨김 ·
+    //   밖 = 전체 복원")이 골라 숨길 이유를 없앴다. 함수는 남겨 두되 매 프레임 돌리지 않는다.
+    //   (`aboveCutawayWalls` 는 배치 17 시점에 이미 계산만 하고 읽는 곳이 없는 죽은 값이었다.)
     // ★[사용자 지적 — 밖에서도 동벽이 눕던 버그] 방향성 남·동벽 페이드의 실내 게이트(프레임당 1회):
     //   내가 실내일 때만 발동 — 밖에서는 모든 벽 불투명.
     // ★[배치 18 ①] 이제 방은 **서버 판정**이다(rooms_update). 없으면 실외다 — 클라가 대신 계산하지 않는다.
@@ -3969,6 +3980,19 @@ const SIM_JOB_EMOJI = {
     let _myRoom = null;
     { const _mr = cellRoomCache.get(`${_renderMyCx}_${_renderMyCy}_${myFloor}`);
       _myRoom = (_mr && _mr.isIndoor) ? _mr : null; }
+    // ★★[2026-08-04d 배치 18 ③] **층 렌더 문법** (재민 확정: "1층에 들어가면 고층은 투명해지는 거 맞지?")
+    //   · 내 층   = 컷어웨이(지붕 걷힘 + 남·동벽 눕힘)
+    //   · 위층    = **완전 숨김**(투명이 아니라 미표시 — 반투명 위층은 아래를 읽기 어렵게 만든다)
+    //   · 아래층  = 그대로(내 바닥 밑으로 보인다)
+    //   · **밖    = 전체 복원** — 밖에서 2층집은 2층집으로 보여야 한다. 종전엔 밖에서도 위층을
+    //               부분적으로 숨겨(BFS) 2층이 반쯤 지워진 그림이었다.
+    //   ★히스테리시스: 계단 위에서 myFloor 가 오가면 위층이 깜빡인다. 층이 **250ms 동안 유지**돼야
+    //     렌더 층을 옮긴다. 판정·충돌은 종전대로 myFloor 를 쓴다 — 이건 **보이는 층**만의 값이다.
+    { const _nowMs = performance.now();
+      if (myFloor !== _viewFloorPend) { _viewFloorPend = myFloor; _viewFloorAt = _nowMs; }
+      if (_viewFloor !== _viewFloorPend && _nowMs - _viewFloorAt > 250) _viewFloor = _viewFloorPend; }
+    const _hideAbove = !!_myRoom;   // 실내일 때만 위층을 숨긴다(밖 = 전체 복원)
+    window.__floorViewDbg = { myFloor, viewFloor: _viewFloor, indoors: !!_myRoom, hideAbove: _hideAbove, room: _myRoom ? _myRoom.id : null };
 
     // 14.49-e7ae: mask composite를 entity render 전으로 (entity가 mask 위에 = mask 영향 X)
     // mask 자체는 entity render 후에 만들어짐 (현재 위치 그대로). 즉 1 frame 지연.
@@ -4288,39 +4312,16 @@ const SIM_JOB_EMOJI = {
         // - floor: 가장 위쪽(max floor)만 그림. BFS cutaway 안이면 skip.
         // - wall: 외벽만. BFS cutaway 안이면 skip.
         // - 그 외 (chest, farmland): BFS cutaway 안이면 skip. 그 외는 기존대로 skip.
-        else if (bf > myFloor) {
-          if (bType === 'floor') {
-            const cx = Math.floor(item.ax / CL_BUILDING_SIZE);
-            const cy = Math.floor(item.ay / CL_BUILDING_SIZE);
-            const cellKey = `${cx}_${cy}`;
-            if (aboveCutawayCells.has(cellKey)) continue; // BFS cutaway
-            const maxF = clMaxFloorMap.get(cellKey);
-            if (maxF !== undefined && bf !== maxF) continue; // 가장 위쪽 아님
-            ctx.globalAlpha = 1.0;
-          } else if (bType === 'wall' || bType === 'fence') {
-            const side = item.b.data?.side || 'N';
-            let absCx, absCy, cx2, cy2;
-            if (side === 'N') {
-              absCx = Math.floor(item.ax / CL_BUILDING_SIZE);
-              absCy = Math.floor(item.ay / CL_BUILDING_SIZE);
-              cx2 = absCx; cy2 = absCy - 1;
-            } else {
-              absCx = Math.floor(item.ax / CL_BUILDING_SIZE) - 1;
-              absCy = Math.floor(item.ay / CL_BUILDING_SIZE);
-              cx2 = absCx + 1; cy2 = absCy;
-            }
-            // BFS cutaway: 양쪽 cell 중 하나라도 in BFS면 skip
-            if (aboveCutawayCells.has(`${absCx}_${absCy}`) || aboveCutawayCells.has(`${cx2}_${cy2}`)) continue;
-            ensureWallMap();
-            const r1 = cellRoomCache.get(`${absCx}_${absCy}_${bf}`);
-            const r2 = cellRoomCache.get(`${cx2}_${cy2}_${bf}`);
-            const isOuter = (!r1 || !r1.isIndoor) || (!r2 || !r2.isIndoor);
-            if (!isOuter) continue;
-            ctx.globalAlpha = 0.85;
-          } else {
-            continue;
-          }
+        else if (bf > _viewFloor) {
+          // ★[배치 18 ③] 재민 확정 문법: **실내면 위층 완전 숨김 · 밖이면 전체 복원**.
+          //   밖에서는 아래 옛 BFS 부분 숨김을 타지 않는다 — 2층집이 2층집으로 보여야 한다.
+          if (!_hideAbove) { ctx.globalAlpha = 1.0; }
+          else continue;
         }
+        // ↑ 위 분기가 옛 '위층 부분 숨김(aboveCutawayCells BFS)'을 대체했다 — 재민 확정 문법이
+        //   "위층 = 완전 숨김 · 밖 = 전체 복원"이라 BFS 로 골라 숨길 이유가 없어졌다.
+        //   (그 BFS 는 '내 칸 **바로 위에** 천장 타일이 있을 때만' 켜져서, 천장에 구멍이 하나만 있어도
+        //    위층이 통째로 드러나던 반쪽 규칙이었다.)
         // 14.49-e7ac: wall edge 방향성 기반 cutaway
         // 가로 wall (side='N'): dy로 판정. dy > 8 = S 벽 → cutaway.
         // 세로 wall (side='E'): dx로 판정. dx > 8 = E 벽 → cutaway.
@@ -4376,7 +4377,7 @@ const SIM_JOB_EMOJI = {
         const bf = item.b.floor || 0;
         const cx = Math.floor(item.ax / CL_BUILDING_SIZE);
         const cy = Math.floor(item.ay / CL_BUILDING_SIZE);
-        if (bf > myFloor && aboveCutawayCells.has(`${cx}_${cy}`)) continue;
+        if (bf > _viewFloor && _hideAbove) continue;   // ★[배치 18 ③] 계단도 같은 문법 — 실내면 위층 숨김
         drawStairCellPart(s.x, s.y, item.cellN, item.b);
       } else if (item.kind === 'mob') {
         // 14.49-e7ad: 위층 mob 안 그림. 아래층은 정상 alpha.
