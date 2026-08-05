@@ -206,14 +206,29 @@ function render(S,flow,scale,imgs,phase,view,waterOn,sharp,mode){
           m=bilin(S,wMask,wpt.wx,wpt.wy,0);
           if(m<0.42) continue;                          // 뭍
         }
-        // ★★메니스커스 수면 [재민 최종 지적 — 단면(밑면)이 '존재'하는 한 곶·꺾임에서 떠 있는 판으로 드러난다]
-        //   높이차를 뭍이 아니라 물에게 준다: 수면 높이 = −DROP × (물가에서의 거리 비율).
-        //   물가에서 0(뭍과 한 점에서 만남) → 안쪽으로 갈수록 −DROP. 수직 단면이 기하에서 소거된다.
-        //   어느 방향 물가든, 곶이든, 꺾임이든 드러날 '밑면'이 없다 — 예외 코드도 없다.
-        const mSm=sharp?bilin(S,wMask,wpt.wx,wpt.wy,0):m;   // 각진판도 '높이'만은 부드러운 마스크로
-        const dropHere=DROP*Math.min(1,Math.max(0,(mSm-0.42)/0.22));
-        const uPt=i2w(ix,iy-dropHere);
-        if(bilin(S,wMask,uPt.wx,uPt.wy,0)>=0.42){ wpt.wx=uPt.wx; wpt.wy=uPt.wy; }   // 표본이 물일 때만 하강 적용
+        // ★★절충 [재민 확정: "갈색으로 뭍이 드러나는 게 좋아" + 곶 끝 떠 있는 판은 싫다]
+        //   두 평면 + 경사 단면은 유지하되, 단면은 '뒤의 뭍이 두꺼울 때만' 그린다.
+        //   얇은 혀(곶 끝 폭 <10px)에서는 단면을 생략하고 물이 지면 높이에서 그냥 만난다 —
+        //   떠 있는 판으로 읽힐 수 있는 자리에서만 밑면이 사라진다.
+        const uPt=i2w(ix,iy-DROP);
+        const mAt=(q)=>sharp?(wMask[Math.max(0,Math.min(S.h-1,Math.floor(q.wy/CELL)))][Math.max(0,Math.min(S.w-1,Math.floor(q.wx/CELL)))]?1:0)
+                            :bilin(S,wMask,q.wx,q.wy,0);
+        const thr=sharp?1:0.42;
+        if(mAt(uPt)<thr){   // 단면 후보
+          const back=mAt(i2w(ix,iy-DROP-10));   // 단면 뒤 10px 도 뭍인가 = 두꺼운 둑인가
+          if(back<thr){
+            // 경사 단면(진흙 비탈) — v4.6 문법
+            let vpos=1;
+            for(let k=1;k<=DROP;k++){ if(mAt(i2w(ix,iy-DROP+k))>=thr){ vpos=k/DROP; break; } }
+            const nz=vnoise(uPt.wx/3.1+55,uPt.wy/3.1+77);
+            const o2=(py*W+pxi)*4, t2=1-vpos;
+            px[o2]  =(52+26*nz)*(0.7+0.5*t2);
+            px[o2+1]=(48+22*nz)*(0.75+0.5*t2);
+            px[o2+2]=(34+16*nz)*(0.8+0.45*t2);
+            continue;
+          }
+          // 얇은 혀 — 단면 생략: 수면이 지면 높이로 만난다(하강 없이 제자리 표본)
+        } else { wpt.wx=uPt.wx; wpt.wy=uPt.wy; }   // 보통 물: 내려간 수면
         const deep=bilin(S,wDeep,wpt.wx,wpt.wy,0);
         const fx=bilin(S,cosF,wpt.wx,wpt.wy,1), fy=bilin(S,sinF,wpt.wx,wpt.wy,0);
         const fL=Math.hypot(fx,fy)||1, dx=fx/fL, dy=fy/fL;
