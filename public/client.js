@@ -722,25 +722,53 @@ const SIM_JOB_EMOJI = {
     ensureWallMap();
     return clWallCellMap.has(`${cellCx}_${cellCy}_${side}_${floor}`);
   }
-  // === 14.49-e6-b: BFS room flood fill — RimWorld식 정확한 indoor 판정 ===
+  // === 14.49-e6-b: wall edge 캐시 (콜라이더 미러 · 위층 컷어웨이 BFS 입력) ===
   // 1) clWallCellMap: 모든 wall edge 위치 O(1) lookup (절대 cell + side + floor)
-  // 2) cellRoomCache: 셀 → roomData (한 영역의 모든 cell이 같은 roomData 공유)
-  //    roomData = { id, cells: Set, isIndoor }
-  // BFS는 영역 단위 1번. 같은 영역의 모든 cell이 같이 cache됨.
-  // wall 변경 broadcast 시 양옆 cell BFS 즉시 재계산 (eager invalidate).
-  // 이 결과는 wall cutaway에만 사용. 시야와는 무관.
+  // ★★[2026-08-04d 배치 18 ①] **방 판정은 여기서 사라졌다 — 서버가 판정한다.**
+  //   종전: 클라가 제 손으로 BFS(`computeRoom`)를 돌려 방을 만들었다. 문제가 셋이었다.
+  //     ⓐ **열린 문으로 샜다** — 열린 문은 clWallCellMap 에서 빠지므로 방이 문 밖으로 흘러나갔다.
+  //        그래서 마을 건물은 방을 못 쓰고 발자국 렉트(data.hut/bld)로 우회해야 했다(4272행 주석).
+  //     ⓑ **문을 여닫을 때마다 전 맵 재구축**(clWallMapBuiltAt=0)이 걸렸다.
+  //     ⓒ 방 id 가 클라 로컬 카운터라 클라마다·순간마다 달랐다 — 서버와 대화할 수 없는 값.
+  //   이제 `server/rooms.js` 가 정본이고 클라는 **받아서 꽂기만** 한다(사본 방지 — 두 진실 금지).
+  //   자료구조와 소비처 계약은 그대로 둔다: `cellRoomCache` 는 여전히 "절대셀_층" → roomData 이고
+  //   roomData 는 여전히 `{ id, cells:Set, isIndoor }` 라 컷어웨이·위층 판정이 한 줄도 안 바뀐다.
+  //   서버가 준 방은 **정의상 실내**다(벽·문으로 닫혔고 바닥이 다 깔린 것만 방이다) → isIndoor 항상 true.
   const clWallCellMap = new Map(); // "cx_cy_side_floor" → true (절대 cell)
-  const cellRoomCache = new Map(); // "cx_cy_floor" → roomData
+  const cellRoomCache = new Map(); // "cx_cy_floor" → roomData  ★서버 방송(rooms_update)이 채운다
+  const srvRooms = new Map();      // roomId → roomData (같은 방의 모든 셀이 같은 객체를 공유 — 동일성 비교 유지)
   const clFloorCellMap = new Map(); // "cx_cy_floor" → true (위층 BFS cutaway용)
   const clFenceCellMap = new Map(); // "cx_cy_floor" → true (fence cell — clHasFenceAt O(1)용)
   const clMaxFloorMap = new Map(); // "cx_cy" → max floor (가장 위쪽 floor tile)
-  let nextRoomId = 1;
   let clWallMapBuiltAt = 0;
-  const ROOM_INDOOR_MAX = 200; // BFS 200 cell 이내에 escape 못 하면 indoor. 200 cell 넘으면 outdoor.
+  // 서버 방 수신 — 존 로컬 셀로 오므로 **그 존의 원점**으로 절대 셀로 옮긴다.
+  //   ★배치 17 의 교훈이 그대로 적용된다(렉트는 로컬·내 위치는 절대라 영원히 불일치였다).
+  function ingestRooms(list, removed, zoneMeta) {
+    const ox = Math.floor((zoneMeta?.worldOffsetX || 0) / CL_BUILDING_SIZE);
+    const oy = Math.floor((zoneMeta?.worldOffsetY || 0) / CL_BUILDING_SIZE);
+    for (const id of (removed || [])) {
+      const old = srvRooms.get(id);
+      if (!old) continue;
+      for (const k of old.cells) cellRoomCache.delete(`${k}_${old.floor}`);
+      srvRooms.delete(id);
+    }
+    for (const r of (list || [])) {
+      const old = srvRooms.get(r.id);
+      if (old) for (const k of old.cells) cellRoomCache.delete(`${k}_${old.floor}`);
+      const cells = new Set();
+      const flat = r.cells || [];
+      for (let i = 0; i + 1 < flat.length; i += 2) cells.add(`${ox + flat[i]}_${oy + flat[i + 1]}`);
+      const room = { id: r.id, floor: r.floor | 0, cells, isIndoor: true, bbox: r.bbox };
+      srvRooms.set(r.id, room);
+      for (const k of cells) cellRoomCache.set(`${k}_${room.floor}`, room);
+    }
+  }
 
   function clRebuildWallCellMap() {
     clWallCellMap.clear();
-    cellRoomCache.clear(); // wall 다 다시 → room도 다시
+    // ★[배치 18 ①] 여기서 `cellRoomCache.clear()` 를 **하면 안 된다.** 방은 이제 클라가 만드는 게 아니라
+    //   서버가 보내 준 값이다 — 벽 캐시를 다시 굽는다고 서버가 다시 보내 주지 않는다.
+    //   (E2E 가 잡았다: 문을 여닫으면 clWallMapBuiltAt=0 → 이 함수 → 방이 통째로 날아가 실내가 풀렸다.)
     clFloorCellMap.clear();
     clFenceCellMap.clear();
     clMaxFloorMap.clear();
@@ -848,72 +876,24 @@ const SIM_JOB_EMOJI = {
     if (dy === -1) return clWallCellMap.has(`${cx}_${cy}_N_${floor}`);
     return false;
   }
-  // BFS from (cx, cy): 영역 fill. 200 cell 미만이면 indoor, 넘으면 outdoor.
-  // 같은 영역의 모든 cell이 같은 roomData 공유.
-  function computeRoom(cx, cy, floor) {
-    ensureWallMap();
-    const visited = new Set();
-    const queue = [[cx, cy]];
-    const startKey = `${cx}_${cy}_${floor}`;
-    visited.add(`${cx}_${cy}`);
-    let capped = false;
-    while (queue.length > 0) {
-      if (visited.size >= ROOM_INDOOR_MAX) { capped = true; break; }
-      const [x, y] = queue.shift();
-      for (const [dx, dy] of [[0,-1],[0,1],[-1,0],[1,0]]) {
-        if (clHasWallBetween(x, y, dx, dy, floor)) continue;
-        const nx = x + dx, ny = y + dy;
-        const k = `${nx}_${ny}`;
-        if (visited.has(k)) continue;
-        visited.add(k);
-        queue.push([nx, ny]);
-      }
-    }
-    const room = {
-      id: nextRoomId++,
-      cells: visited,
-      isIndoor: !capped, // BFS가 cap 안 닿고 끝났으면 enclosed = indoor
-    };
-    // 영역 안의 모든 cell에 같은 roomData 박음
-    for (const k of visited) {
-      cellRoomCache.set(`${k}_${floor}`, room);
-    }
-    return room;
-  }
+  // ★[배치 18 ①] 방 조회 — 계산하지 않는다. 서버가 보내 준 것을 꺼내 볼 뿐이다.
   function isCellIndoor(cx, cy, floor) {
-    ensureWallMap();
-    const key = `${cx}_${cy}_${floor}`;
-    const cached = cellRoomCache.get(key);
-    if (cached) return cached.isIndoor;
-    const room = computeRoom(cx, cy, floor);
-    return room.isIndoor;
+    const cached = cellRoomCache.get(`${cx}_${cy}_${floor}`);
+    return !!(cached && cached.isIndoor);
   }
   function playerIsIndoors() {
     const cx = Math.floor(myAbsPredicted.x / CL_BUILDING_SIZE);
     const cy = Math.floor(myAbsPredicted.y / CL_BUILDING_SIZE);
     return isCellIndoor(cx, cy, myFloor);
   }
-  // Eager invalidate: 양옆 cell이 속한 room 전체 invalidate + 즉시 BFS 다시.
-  function invalidateRoomsAroundWall(absCx, absCy, side, floor) {
-    // wall side='N' on (cx,cy) → 양옆 cell = (cx, cy)와 (cx, cy-1)
-    // wall side='E' on (cx,cy) → 양옆 cell = (cx, cy)와 (cx+1, cy)
-    const pairs = side === 'E'
-      ? [[absCx, absCy], [absCx + 1, absCy]]
-      : [[absCx, absCy], [absCx, absCy - 1]];
-    const roomsToInvalidate = new Set();
-    for (const [cx, cy] of pairs) {
-      const r = cellRoomCache.get(`${cx}_${cy}_${floor}`);
-      if (r) roomsToInvalidate.add(r);
-    }
-    for (const r of roomsToInvalidate) {
-      for (const k of r.cells) cellRoomCache.delete(`${k}_${floor}`);
-    }
-    // 새로 BFS — 양옆 cell 둘 다 (같은 room이면 두 번째는 cache hit으로 skip됨)
-    for (const [cx, cy] of pairs) {
-      computeRoom(cx, cy, floor);
-    }
-  }
   window.playerIsIndoors = playerIsIndoors;
+  // ★[배치 18 ①] 방 진단 훅 — 하네스가 "지금 내가 어느 방인가"를 계약 수준에서 읽는다(읽기 전용).
+  window.__roomDbg = () => {
+    const cx = Math.floor(myAbsPredicted.x / CL_BUILDING_SIZE), cy = Math.floor(myAbsPredicted.y / CL_BUILDING_SIZE);
+    const r = cellRoomCache.get(`${cx}_${cy}_${myFloor}`) || null;
+    return { cx, cy, floor: myFloor, indoors: !!r, roomId: r ? r.id : null, roomCells: r ? r.cells.size : 0,
+      rooms: srvRooms.size, cachedCells: cellRoomCache.size };
+  };
   window.dbg = () => {
     ensureWallMap();
     const floors = {};
@@ -928,7 +908,7 @@ const SIM_JOB_EMOJI = {
       indoors: playerIsIndoors(),
       wallCells: clWallCellMap.size,
       wallsByFloor: floors,
-      rooms: new Set([...cellRoomCache.values()]).size,
+      rooms: srvRooms.size,            // ★서버 판정 방(배치 18) — 클라 BFS 는 없어졌다
       cachedCells: cellRoomCache.size,
     };
   };
@@ -2095,6 +2075,7 @@ const SIM_JOB_EMOJI = {
         for (const r of (msg.resources || [])) c.resources.set(r.id, r);
         for (const cl of (msg.claims || [])) c.claims.set(cl.id, cl);
         for (const b of (msg.buildings || [])) c.buildings.set(b.id, b);
+        if (msg.rooms) ingestRooms(msg.rooms, null, c.meta || msg.meta || zonesMeta[primaryZoneId]);   // ★[배치 18 ①] welcome 시 서버 방 스냅샷
         for (const m of (msg.mobs || [])) c.mobs.set(m.mid, m);
         for (const gi of (msg.groundItems || [])) c.groundItems.set(gi.id, gi);
         // §4-4 Stage 4A: 마을 시뮬 영토(경계 셀 or 반경 근사) — welcome 1회, 이후 sim_village_day가 pop만 갱신
@@ -2352,6 +2333,9 @@ const SIM_JOB_EMOJI = {
       const ids = msg.ids || [];
       for (let i = 0; i < ids.length; i++) c.buildings.delete(ids[i]);
       clWallMapBuiltAt = 0; clStairCacheBuildAt = 0;
+    } else if (msg.type === 'rooms_update') {
+      // ★[배치 18 ①] 서버 방 판정 수신 — 클라는 계산하지 않는다(사본 방지).
+      ingestRooms(msg.rooms, msg.removed, c.meta || zonesMeta[primaryZoneId]);
     } else if (msg.type === 'claim_added') {
       c.claims.set(msg.claim.id, msg.claim);
     } else if (msg.type === 'claim_updated') {
@@ -2407,7 +2391,7 @@ const SIM_JOB_EMOJI = {
       c.buildings.set(msg.building.id, msg.building);
       if (msg.building.type === 'stair') clStairCacheBuildAt = 0;
       if (msg.building.type === 'wall') {
-        // 14.49-e6-b: wall 위치 cache에 즉시 추가 + 양옆 room invalidate + 즉시 BFS
+        // 14.49-e6-b: wall 위치 cache에 즉시 추가 (콜라이더 미러). ★배치 18: 방 재계산은 서버 몫 — rooms_update 가 온다.
         const b = msg.building;
         const side = b.data?.side;
         if (side) {
@@ -2418,14 +2402,13 @@ const SIM_JOB_EMOJI = {
           const absCy = oy + Math.floor(b.y / CL_BUILDING_SIZE);
           const f = b.floor || 0;
           clWallCellMap.set(`${absCx}_${absCy}_${side}_${f}`, true);
-          invalidateRoomsAroundWall(absCx, absCy, side, f);
         }
       }
     } else if (msg.type === 'building_removed') {
       const b = c.buildings.get(msg.id);
       if (b?.type === 'stair') clStairCacheBuildAt = 0;
       if (b?.type === 'wall') {
-        // 14.49-e6-b: wall 위치 cache에서 즉시 제거 + 양옆 room invalidate + 즉시 BFS
+        // 14.49-e6-b: wall 위치 cache에서 즉시 제거 (콜라이더 미러). ★배치 18: 방 재계산은 서버 몫.
         const side = b.data?.side;
         if (side) {
           const zm = c.meta || zonesMeta[primaryZoneId];
@@ -2435,7 +2418,6 @@ const SIM_JOB_EMOJI = {
           const absCy = oy + Math.floor(b.y / CL_BUILDING_SIZE);
           const f = b.floor || 0;
           clWallCellMap.delete(`${absCx}_${absCy}_${side}_${f}`);
-          invalidateRoomsAroundWall(absCx, absCy, side, f);
         }
       }
       c.buildings.delete(msg.id);
@@ -3898,13 +3880,13 @@ const SIM_JOB_EMOJI = {
     const aboveCutawayWalls = computeAboveCutawayWalls(_renderMyCx, _renderMyCy, myFloor);
     const aboveCutawayCells = computeAboveCutawayCells(_renderMyCx, _renderMyCy, myFloor);
     // ★[사용자 지적 — 밖에서도 동벽이 눕던 버그] 방향성 남·동벽 페이드의 실내 게이트(프레임당 1회):
-    //   내가 실내(방 BFS enclosed)일 때만 발동 — 밖에서는 모든 벽 불투명. 문이 개구인 움집·큰집은
-    //   방 BFS가 새므로 발자국 렉트 태그(data.hut/data.bld)가 실내 판정 정본(벽 페이드 분기에서 처리).
+    //   내가 실내일 때만 발동 — 밖에서는 모든 벽 불투명.
+    // ★[배치 18 ①] 이제 방은 **서버 판정**이다(rooms_update). 없으면 실외다 — 클라가 대신 계산하지 않는다.
+    //   문이 개구(문 개체가 없는)인 마을 움집·큰집은 서버도 방을 못 만든다 → 종전대로 발자국 렉트
+    //   태그(data.hut/data.bld)가 그쪽 실내 판정 정본이다(벽 페이드 분기에서 처리 · 회귀 0).
     let _myRoom = null;
-    try {
-      const _mr = cellRoomCache.get(`${_renderMyCx}_${_renderMyCy}_${myFloor}`) || computeRoom(_renderMyCx, _renderMyCy, myFloor);
-      _myRoom = (_mr && _mr.isIndoor) ? _mr : null;
-    } catch (e) { _myRoom = null; }
+    { const _mr = cellRoomCache.get(`${_renderMyCx}_${_renderMyCy}_${myFloor}`);
+      _myRoom = (_mr && _mr.isIndoor) ? _mr : null; }
 
     // 14.49-e7ae: mask composite를 entity render 전으로 (entity가 mask 위에 = mask 영향 X)
     // mask 자체는 entity render 후에 만들어짐 (현재 위치 그대로). 즉 1 frame 지연.

@@ -14,6 +14,7 @@ const E2E_GIVE = (process.env.E2E_GIVE === '1');
 const Wildlife = require('./wildlife'); // §4-4 동물 AI 블록(마을실험실 이식) — 야생 5종 생태. ENABLE_WILDLIFE=0 → 완전 no-op
 const Bandits = require('./bandits'); // §11 도적 캐논 1파(경제·수명주기 — 소굴·해체 전환·econ 약탈 훅). ENABLE_BANDITS=0 → 완전 no-op, ENABLE_VILLAGES=0이면 자동 휴면
 const Roads = require('./roads'); // §16 답압 길 4파(희소맵·게으른 감쇠·DB 영속·A* 할인). ENABLE_ROADS=0 → 완전 no-op
+const Rooms = require('./rooms'); // ★[배치 18 ①] 방 판정 정본(벽·문으로 닫힌 '바닥 깔린' 셀 집합). 서버가 판정해 클라에 실어 준다 — 클라 재계산 금지(사본 방지)
 const SIM_LON_ON = process.env.VILLAGE_LON !== '0'; // §19 경도 로컬 태양시(마을 NPC 야간 귀가) 게이트 — 기본 켜짐
 const central = require('./central-client'); // central HTTP 클라이언트
 const { Quadtree } = require('./quadtree'); // spatial index — O(N²) 검색 회피
@@ -132,6 +133,7 @@ function materializeBuildingsInChunk(cx, cy) {
 function activateChunk(cx, cy) {
   // 건물 lazy-load: 이 청크 건물을 DB에서 메모리로 (cleanZone보다 먼저 — cleanZone엔 건물 0이라 무해).
   materializeBuildingsInChunk(cx, cy);
+  roomsScanChunk(cx, cy);   // ★[배치 18 ①] 건물이 메모리에 올라온 직후에 방을 찾는다(플레이어 바닥만 시드)
   // Phase 5-G: cleanZone (한반도 강·호수 검증용) — 자원 spawn skip
   if (ZONE.cleanZone) return;
   const seedResources = generateChunkResources(ZONE_ID, ZONE.biome, cx, cy, chunkManager.chunkSize, harvestedSeeds);
@@ -159,6 +161,7 @@ function deactivateChunk(cx, cy) {
   //   DB엔 그대로 남음 → 재활성 시 materializeBuildingsInChunk가 다시 로드(buildings_spawn).
   //   플레이어가 놓은 건물도 메모리에서만 내림(DB 보존) — 비활성 청크라 곁에 사람 없음.
   if (c.buildings.size) {
+    roomsDropChunk(c);   // ★[배치 18 ①] 건물을 내리기 전에 그 청크 방부터 내린다
     broadcast({ type: 'buildings_removed', ids: Array.from(c.buildings.keys()) });
     // 아직 안 보낸 큐의 이 청크 건물은 빼기 (보내자마자 제거되는 낭비·불일치 방지)
     if (_buildingSendQueue.length) { const _k = chunkManager.keyOf(cx, cy); _buildingSendQueue = _buildingSendQueue.filter(b => b._chunkKey !== _k); }
@@ -2136,6 +2139,22 @@ const server = http.createServer((req, res) => {
     catch (e) { res.end(JSON.stringify({ err: e.message })); }
     return;
   }
+  // ★[2026-08-04d 배치 18 ①] 방 판정 상태 읽기 전용 JSON — 하네스 정본 관측창.
+  //   `?cx=&cy=&floor=` 를 주면 그 칸의 방을 함께 답한다(실내 판정을 서버 값으로 직접 확인).
+  if (req.url && req.url.startsWith('/roomdbg') && req.method === 'GET') {
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+    try {
+      const u = new URL(req.url, 'http://x');
+      const out = { ...Rooms.stats(), maxCells: Rooms.MAX_ROOM_CELLS, list: Rooms.allRooms().map(Rooms.wireRoom) };
+      if (u.searchParams.has('cx')) {
+        const cx = +u.searchParams.get('cx'), cy = +u.searchParams.get('cy'), f = +(u.searchParams.get('floor') || 0);
+        const r = Rooms.roomAt(cx, cy, f);
+        out.at = { cx, cy, floor: f, room: r ? Rooms.wireRoom(r) : null };
+      }
+      res.end(JSON.stringify(out));
+    } catch (e) { res.end(JSON.stringify({ err: e.message })); }
+    return;
+  }
   if (req.url === '/metrics' && req.method === 'GET') {
     // Prometheus exposition format (간단 버전)
     res.writeHead(200, { 'Content-Type': 'text/plain' });
@@ -2366,6 +2385,7 @@ wss.on('connection', async (ws, req) => {
       bridges: (ZONE.bridges || null), // ★[다리 층] 통나무 널다리 셀 flat [cx,cy,...] — 정적(맵 사물)이라 welcome 1회
       ditches: ditchPayload(),         // ★[11차 T3 환호] 도랑 셀 flat [cx,cy,...] — 마을 소유 사물(부팅 후 불변)이라 welcome 1회
       buildings: activeChunkBuildings(),
+      rooms: Rooms.allRooms().map(Rooms.wireRoom),   // ★[배치 18 ①] 방은 서버가 판정한다 — 클라는 받아 쓰기만(사본 방지)
       worldClock: {
         epoch: WORLD.worldEpoch,
         dayLengthMs: WORLD.dayLengthMs,
@@ -2757,6 +2777,7 @@ wss.on('connection', async (ws, req) => {
     bridges: (ZONE.bridges || null), // ★[다리 층] 통나무 널다리 셀 flat [cx,cy,...] — 정적(맵 사물)이라 welcome 1회
     ditches: ditchPayload(),         // ★[11차 T3 환호] 도랑 셀 flat [cx,cy,...] — 마을 소유 사물(부팅 후 불변)이라 welcome 1회
     buildings: activeChunkBuildings(),
+    rooms: Rooms.allRooms().map(Rooms.wireRoom),   // ★[배치 18 ①] 방은 서버가 판정한다 — 클라는 받아 쓰기만(사본 방지)
     groundItems: Array.from(groundItems.values()), // Phase 14.23
     mobs: Array.from(mobs.values()).map(m => ({ mid: m.mid, type: m.type, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, tameOwner: m.tameOwner || null, tameOwnerName: m.tameOwnerName || null })),
     inventory: player.inventory,
@@ -3413,6 +3434,7 @@ function doDismantleBuilding(player, buildingId) {
   if (chunkManager && chunkManager.removeBuilding) chunkManager.removeBuilding(b);
   if (b.dbId) db.deleteBuilding(b.dbId);
   broadcast({ type: 'building_removed', id: buildingId });
+  roomsTouchBuilding(b);   // ★[배치 18 ①] 이미 buildings 에서 뺀 뒤라 재판정이 '없어진 상태'를 본다
   // §4-4 Stage 4B(§5.5b): 통행 차단형(wall/fence) 철거 = 개통 → 교역 거리행렬·캐러밴 경로 무효화
   if (b.type === 'wall' || b.type === 'fence') SimVillages.invalidateTradeDistances(Math.floor(b.x / BUILDING_SIZE), Math.floor(b.y / BUILDING_SIZE));
   // cascade로 함께 제거 (재귀 호출 X — 직접)
@@ -3423,6 +3445,7 @@ function doDismantleBuilding(player, buildingId) {
     if (chunkManager && chunkManager.removeBuilding) chunkManager.removeBuilding(cb);
     if (cb.dbId) db.deleteBuilding(cb.dbId);
     broadcast({ type: 'building_removed', id: cid });
+    roomsTouchBuilding(cb);   // ★[배치 18 ①] 계단 연쇄로 사라진 자동 바닥도 방을 해체시킨다
     // cascade한 stair도 인벤 환원? 사용자 의도: floor 해체 시 stair도 해체. 그러면 stair 인벤 환원해야.
     const cascItemType = BUILDING_TYPE_TO_ITEM[cb.type];
     if (cascItemType) {
@@ -3451,6 +3474,8 @@ function doDoorToggle(player, buildingId) {
   b.data.open = !b.data.open;
   db.updateBuildingData(b.dbId, JSON.stringify(b.data));
   broadcast({ type: 'building_updated', building: b });
+  // ★[배치 18 ①] 여기에 방 재계산이 **없는 것이 맞다.** 열린 문도 방 경계라 여닫아도 방이 안 바뀐다.
+  //   (종전 클라 BFS 는 열린 문으로 새어서 토글마다 전역 재구축을 걸었다 — 그 비용과 버그가 함께 사라졌다.)
 }
 
 // ══ 플레이어 장비: 제작·장착·수선 (econ 무접촉·본체 서버층. 엔진 = server/player-items.js) ══
@@ -4426,6 +4451,7 @@ function tryRepairBuilding(player) {
   send(player.ws, { type: 'inventory', inventory: player.inventory });
   send(player.ws, { type: 'notice', text: `🔧 ${best.type} 수리 (${best.data.hp}/${maxHp})${best.data.damaged ? '' : ' ✅ 복구'}` });
   broadcast({ type: 'building_damaged', id: best.id, hp: best.data.hp, maxHp, damaged: !!best.data.damaged });
+  roomsTouchBuilding(best);   // ★[배치 18 ①] 수리로 다시 경계가 됐다 → 방 복원
   savePlayer(player);
 }
 
@@ -4595,6 +4621,7 @@ function _tryBuildAt(player, type, floor = 0, side = null, dir = null, opts = nu
     send(player.ws, { type: 'inventory', inventory: player.inventory });
     savePlayer(player);
     broadcast({ type: 'building_added', building });
+    roomsTouchBuilding(building);   // ★[배치 18 ①] 벽·문·바닥이 생겼다 → 그 자리 방만 다시 본다
     // §4-4 Stage 4B(§5.5b): 통행 차단형(wall) 설치 → 교역 거리행렬·캐러밴 경로 무효화(다음 게임일 재계산)
     if (type === 'wall') SimVillages.invalidateTradeDistances(useCx, useCy);
     return true;
@@ -5771,6 +5798,7 @@ async function tryAttack(player) {
     }
     try { db.updateBuildingData(bestWall.dbId, JSON.stringify(bestWall.data)); } catch (e) {}
     broadcast({ type: 'building_damaged', id: bestWall.id, hp: bestWall.data.hp, maxHp, damaged: !!bestWall.data.damaged });
+    roomsTouchBuilding(bestWall);   // ★[배치 18 ①] 부서진 벽은 경계가 아니다 → 뚫린 방은 해체된다
   }
 }
 
@@ -5993,9 +6021,14 @@ function isInIceBand(y) {
 // E wall = cell (cx, cy)의 동쪽 edge = x = (cx+1)*BUILDING_SIZE 라인
 // 이동 (oldX, oldY) → (newX, newY)가 wall edge 가로지르면 차단.
 function cellOf(x, y) { return { cx: Math.floor(x / BUILDING_SIZE), cy: Math.floor(y / BUILDING_SIZE) }; }
-function findEdgeWall(cx, cy, side, floor) {
+// ★★[2026-08-04d 배치 18 ①] **한 순회, 두 술어.** 콜라이더와 방 판정은 같은 변을 보지만 답이 다르다:
+//   · 콜라이더(roomMode=false) — 열린 문은 **통과**한다(종전 그대로. 물리는 한 비트도 안 바뀐다).
+//   · 방 경계(roomMode=true)   — 열린 문도 **경계**다. 문은 드나드는 구멍이지 방이 새는 구멍이 아니다.
+//   종전엔 술어가 하나뿐이라 열린 문에서 방이 새어 나갔다(client.js 4272 주석이 그 실증).
+//   순회를 복제하지 않고 술어만 가른다 — 사본 금지.
+function _edgeScan(cx, cy, side, floor, roomMode) {
   // wall은 cell (cx,cy)의 좌상단(b.x=cx*32, b.y=cy*32)에 저장됨. data.side로 N/E 구분.
-  // door도 같은 edge 형식. open일 때는 차단 X.
+  // door도 같은 edge 형식. open일 때는 차단 X(콜라이더 한정 — 방 경계는 위 주석 참조).
   // fence는 14.50부터 cell 위치 (edge 아님). 여기선 check 안 함.
   const ex = cx * BUILDING_SIZE;
   const ey = cy * BUILDING_SIZE;
@@ -6003,8 +6036,8 @@ function findEdgeWall(cx, cy, side, floor) {
   for (const b of nearby) {
     if (b.type !== 'wall' && b.type !== 'door') continue;
     if ((b.floor || 0) !== floor) continue;
-    if (b.data?.damaged) continue;
-    if (b.type === 'door' && b.data?.open) continue; // 열린 door 통과 OK
+    if (b.data?.damaged) continue;   // 부서진 벽은 둘 다 아니다(뚫린 구멍 — 방도 해체된다)
+    if (!roomMode && b.type === 'door' && b.data?.open) continue; // 열린 door 통과 OK
     const bSide = b.data?.side;
     const bcx = Math.floor(b.x / BUILDING_SIZE);
     const bcy = Math.floor(b.y / BUILDING_SIZE);
@@ -6021,6 +6054,85 @@ function findEdgeWall(cx, cy, side, floor) {
     }
   }
   return false;
+}
+function findEdgeWall(cx, cy, side, floor) { return _edgeScan(cx, cy, side, floor, false); }
+function findEdgeBoundary(cx, cy, side, floor) { return _edgeScan(cx, cy, side, floor, true); }
+// 그 칸의 바닥 타일(방 판정 정본 입력). 계단이 만든 자동 바닥도 바닥이다.
+function findFloorTile(cx, cy, floor) {
+  const ax = cx * BUILDING_SIZE + BUILDING_SIZE / 2, ay = cy * BUILDING_SIZE + BUILDING_SIZE / 2;
+  const nearby = qtBuildings ? qtBuildings.queryCircle(ax, ay, BUILDING_SIZE) : Array.from(buildings.values());
+  for (const b of nearby) {
+    if (b.type !== 'floor') continue;
+    if ((b.floor || 0) !== floor) continue;
+    if (Math.floor(b.x / BUILDING_SIZE) === cx && Math.floor(b.y / BUILDING_SIZE) === cy) return b;
+  }
+  return null;
+}
+// 마을 정형 건물인가 — 발자국 렉트 태그(data.hut/bld/gran)가 그 표식이다(villages.js 가 전 행에 찍는다).
+//   이 태그가 있으면 **현행 렉트 컷어웨이 경로**가 정본이고 방 시스템은 손대지 않는다(회귀 0).
+function isVillageTaggedBuilding(b) { return !!(b && (b.sim || (b.data && (b.data.hut || b.data.bld || b.data.gran)))); }
+Rooms.init({ hasBoundaryEdge: findEdgeBoundary, floorTileAt: findFloorTile, isVillageTagged: isVillageTaggedBuilding });
+// ── 방 갱신 진입점 ───────────────────────────────────────────────────────────
+//   벽·문·바닥이 바뀐 **그 자리 주변만** 다시 본다(전역 재계산 금지 — 거리행렬 증분화 선례).
+//   ★문 여닫기에는 훅이 없다 — 열린 문도 경계라 방이 안 바뀐다(설계상 불필요, 비용 0).
+function _roomsApply(res) {
+  if (!res || (!res.changed.length && !res.removed.length)) return;
+  broadcast({ type: 'rooms_update', rooms: res.changed.map(Rooms.wireRoom), removed: res.removed });
+}
+// ★★스테일 인덱스 함정 — E2E 가 잡았다. 방 판정 입력(벽·문·바닥 조회)은 `qtBuildings` 를 쓰는데
+//   그 쿼드트리는 **틱마다 통째로 다시 만든다**(209행). 그래서 건물을 놓거나 헌 **바로 그 순간** 다시 재면
+//   방금 헌 벽이 아직 남아 보이고(→ 방이 안 풀린다) 방금 놓은 문은 아직 안 보인다(→ 방이 풀린다).
+//   ⇒ **다음 틱으로 미룬다.** 시드만 모아 두고 rebuildSpatialIndex() 직후에 한 번에 처리한다.
+//     지연은 한 틱(≈33ms)이라 사람 눈엔 없고, 연속 건축(벽 여러 장)은 자연히 한 번에 묶인다.
+const _roomPending = new Map();   // floor → Set("cx,cy")
+function _roomQueue(cells, floor) {
+  const f = floor | 0;
+  if (!_roomPending.has(f)) _roomPending.set(f, new Set());
+  const S = _roomPending.get(f);
+  for (const [cx, cy] of cells) S.add(`${cx},${cy}`);
+}
+function roomsFlush() {
+  if (!_roomPending.size) return;
+  for (const [f, S] of _roomPending) {
+    const cells = [];
+    for (const k of S) { const [x, y] = k.split(','); cells.push([+x, +y]); }
+    try { _roomsApply(Rooms.recomputeAround(cells, f)); } catch (e) { console.error('[rooms] flush:', e.message); }
+  }
+  _roomPending.clear();
+}
+function roomsTouchEdge(cx, cy, side, floor) { _roomQueue(Rooms.seedsForEdge(cx, cy, side), floor); }
+function roomsTouchCell(cx, cy, floor) { _roomQueue([[cx, cy]], floor); }
+// 건물 하나가 생기거나 사라졌을 때 — 종류를 보고 알맞은 시드로 넘긴다(호출부가 종류를 몰라도 되게)
+function roomsTouchBuilding(b) {
+  if (!b) return;
+  const cx = Math.floor(b.x / BUILDING_SIZE), cy = Math.floor(b.y / BUILDING_SIZE), f = b.floor || 0;
+  if (b.type === 'wall' || b.type === 'door') roomsTouchEdge(cx, cy, b.data?.side || 'N', f);
+  else if (b.type === 'floor') roomsTouchCell(cx, cy, f);
+}
+// 청크가 켜졌다 — 그 청크의 **플레이어 바닥**에서만 방을 찾는다.
+//   마을 태그 건물은 시드에서 빠지므로 50마을 세계에서도 비용이 0 에 가깝다(움집·큰집·곳간 전부 스킵).
+function roomsScanChunk(cx, cy) {
+  const c = chunkManager.chunks.get(chunkManager.keyOf(cx, cy));
+  if (!c || !c.buildings.size) return;
+  const seeds = new Map();   // floor → [[cx,cy]…]
+  for (const b of c.buildings.values()) {
+    if (b.type !== 'floor' || isVillageTaggedBuilding(b)) continue;
+    const f = b.floor || 0;
+    if (!seeds.has(f)) seeds.set(f, []);
+    seeds.get(f).push([Math.floor(b.x / BUILDING_SIZE), Math.floor(b.y / BUILDING_SIZE)]);
+  }
+  for (const [f, list] of seeds) _roomQueue(list, f);   // ★같은 이유로 다음 틱에 — 활성화 직후엔 쿼드트리에 아직 안 들어갔다
+}
+// 청크가 꺼졌다 — 그 청크 바닥이 속한 방을 내린다(건물이 메모리에서 내려가면 판정 입력이 사라진다).
+function roomsDropChunk(c) {
+  if (!c || !c.buildings.size) return;
+  const gone = [];
+  for (const b of c.buildings.values()) {
+    if (b.type !== 'floor') continue;
+    const id = Rooms.roomIdAt(Math.floor(b.x / BUILDING_SIZE), Math.floor(b.y / BUILDING_SIZE), b.floor || 0);
+    if (id && Rooms.dropRoom(id)) gone.push(id);
+  }
+  if (gone.length) broadcast({ type: 'rooms_update', rooms: [], removed: gone });
 }
 // 14.50: fence는 cell 위치 (edge 아님). cell 자체 진입 차단.
 function findCellFence(cx, cy, floor) {
@@ -6344,6 +6456,7 @@ setInterval(() => {
 
   // === Spatial index 재구축 — 모든 nearest-search가 이걸 씀 ===
   rebuildSpatialIndex();
+  roomsFlush();   // ★[배치 18 ①] 방 재판정은 **인덱스가 최신이 된 뒤**에(위 스테일 인덱스 주석 참조)
 
   // 입력 타임아웃 — 2.5초 동안 입력 없으면 정지
   // 14.46-b-smooth: 1000 → 2500. 평지에서 짧은 네트워크 hiccup으로 server가 멈췄다가 클라 예측이 앞서면
