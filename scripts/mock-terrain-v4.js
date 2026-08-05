@@ -193,7 +193,7 @@ function render(S,flow,scale,imgs,phase,view,waterOn,sharp,mode){
         const wxp=wpt.wx+S.cx0*CELL*0, wyp=wpt.wy;   // 이미 존-로컬 iso 기준(장면 원점 0)
         // 장면 로컬 px → 셀계
         let m, edgeDist=99;
-        const DROP=(mode==='block')?11:5;
+        const DROP=(mode==='block')?11:(mode==='blockcell'?10:5);
         if(sharp){ const cx=Math.max(0,Math.min(S.w-1,Math.floor(wpt.wx/CELL))), cy=Math.max(0,Math.min(S.h-1,Math.floor(wpt.wy/CELL)));
           if(!wMask[cy][cx]) continue;
           m=1;
@@ -214,10 +214,14 @@ function render(S,flow,scale,imgs,phase,view,waterOn,sharp,mode){
         const mAt=(q)=>sharp?(wMask[Math.max(0,Math.min(S.h-1,Math.floor(q.wy/CELL)))][Math.max(0,Math.min(S.w-1,Math.floor(q.wx/CELL)))]?1:0)
                             :bilin(S,wMask,q.wx,q.wy,0);
         const thr=sharp?1:0.42;
-        if(mAt(uPt)<thr){   // 단면 후보
-          const back=mAt(i2w(ix,iy-DROP-10));   // 단면 뒤 10px 도 뭍인가 = 두꺼운 둑인가
+        if(mode==='blockcell'){
+          // ★블록 문법 [재민: "그냥 블록으로 만들면 되는 거 아냐? 평면 말고"] — 뭍 셀 = 프리즘.
+          //   수면은 -DROP 평면(uPt 표본). 단면은 픽셀이 아니라 '벡터 프리즘 면'이 나중에 덮는다.
+          if(mAt(uPt)<thr) continue;   // 면이 덮을 자리 — 물 그리지 않음
+          wpt.wx=uPt.wx; wpt.wy=uPt.wy;
+        } else if(mAt(uPt)<thr){   // (구 절충 로직 — blockcell 외 모드용)
+          const back=mAt(i2w(ix,iy-DROP-10));
           if(back<thr){
-            // 경사 단면(진흙 비탈) — v4.6 문법
             let vpos=1;
             for(let k=1;k<=DROP;k++){ if(mAt(i2w(ix,iy-DROP+k))>=thr){ vpos=k/DROP; break; } }
             const nz=vnoise(uPt.wx/3.1+55,uPt.wy/3.1+77);
@@ -227,8 +231,7 @@ function render(S,flow,scale,imgs,phase,view,waterOn,sharp,mode){
             px[o2+2]=(34+16*nz)*(0.8+0.45*t2);
             continue;
           }
-          // 얇은 혀 — 단면 생략: 수면이 지면 높이로 만난다(하강 없이 제자리 표본)
-        } else { wpt.wx=uPt.wx; wpt.wy=uPt.wy; }   // 보통 물: 내려간 수면
+        } else { wpt.wx=uPt.wx; wpt.wy=uPt.wy; }
         const deep=bilin(S,wDeep,wpt.wx,wpt.wy,0);
         const fx=bilin(S,cosF,wpt.wx,wpt.wy,1), fy=bilin(S,sinF,wpt.wx,wpt.wy,0);
         const fL=Math.hypot(fx,fy)||1, dx=fx/fL, dy=fy/fL;
@@ -296,6 +299,36 @@ function render(S,flow,scale,imgs,phase,view,waterOn,sharp,mode){
     g.setTransform(scale,0,0,scale,TX*scale,TY*scale);
   }
 
+  // ── 3.5) 블록 프리즘 면 (blockcell): 물에 접한 뭍 셀의 남·동 변에서 수직면 ──
+  if(waterOn&&mode==='blockcell'){
+    const DROPB=10;
+    const dirtPat=g.createPattern(imgs.grassA,'repeat');   // 흙 대신 어두운 톤 오버레이로 — 질감은 단색+노이즈면 충분
+    for(let s2=0;s2<w+h-1;s2++) for(let x=Math.max(0,s2-h+1);x<=Math.min(w-1,s2);x++){
+      const y=s2-x; if(cells[y][x]===1) continue;   // 뭍 셀만
+      const isW=(xx,yy)=>{xx=Math.max(0,Math.min(w-1,xx));yy=Math.max(0,Math.min(h-1,yy));return cells[yy][xx]===1;};
+      // 남면 (물이 y+1) — 어둡게 0.58
+      if(isW(x,y+1)){
+        const a=w2i(x*CELL,(y+1)*CELL), b=w2i((x+1)*CELL,(y+1)*CELL);
+        g.beginPath(); g.moveTo(a.x,a.y); g.lineTo(b.x,b.y); g.lineTo(b.x,b.y+DROPB); g.lineTo(a.x,a.y+DROPB); g.closePath();
+        g.fillStyle='#4a3a26'; g.fill();
+        g.beginPath(); g.moveTo(a.x,a.y+DROPB-2); g.lineTo(b.x,b.y+DROPB-2); g.lineTo(b.x,b.y+DROPB); g.lineTo(a.x,a.y+DROPB); g.closePath();
+        g.fillStyle='rgba(15,25,35,0.55)'; g.fill();   // 물 접촉선
+        g.beginPath(); g.moveTo(a.x,a.y); g.lineTo(b.x,b.y); g.lineTo(b.x,b.y+2.2); g.lineTo(a.x,a.y+2.2); g.closePath();
+        g.fillStyle='#4e6b40'; g.fill();               // 풀 넘김
+      }
+      // 동면 (물이 x+1) — 밝게 0.74
+      if(isW(x+1,y)){
+        const a=w2i((x+1)*CELL,y*CELL), b=w2i((x+1)*CELL,(y+1)*CELL);
+        g.beginPath(); g.moveTo(a.x,a.y); g.lineTo(b.x,b.y); g.lineTo(b.x,b.y+DROPB); g.lineTo(a.x,a.y+DROPB); g.closePath();
+        g.fillStyle='#61492f'; g.fill();
+        g.beginPath(); g.moveTo(a.x,a.y+DROPB-2); g.lineTo(b.x,b.y+DROPB-2); g.lineTo(b.x,b.y+DROPB); g.lineTo(a.x,a.y+DROPB); g.closePath();
+        g.fillStyle='rgba(15,25,35,0.5)'; g.fill();
+        g.beginPath(); g.moveTo(a.x,a.y); g.lineTo(b.x,b.y); g.lineTo(b.x,b.y+2.2); g.lineTo(a.x,a.y+2.2); g.closePath();
+        g.fillStyle='#526e44'; g.fill();
+      }
+    }
+  }
+
   // ── 4) 소품 (실제 게임 스프라이트) ──
   for(let s=0;s<w+h-1;s++) for(let x=Math.max(0,s-h+1);x<=Math.min(w-1,s);x++){
     const y=s-x,v=cells[y][x];
@@ -322,11 +355,11 @@ for(const k in A){ pend++; const im=new Image(); im.onload=()=>{imgs[k]=im; if(-
 function go(){
   const c1=render(SCENES.river,FLOW.river,0.62,imgs,0,null,true,false,'ramp'); c1.id='cv-river'; document.body.appendChild(c1);
   const c3=render(SCENES.river,FLOW.river,1.0,imgs,0,{w:1000,h:640,tx:-300,ty:-140},true,false,'ramp'); c3.id='cv-close'; document.body.appendChild(c3);
-  const c4=render(SCENES.river,FLOW.river,1.0,imgs,0,{w:1000,h:640,tx:-300,ty:-140},true,true,'ramp'); c4.id='cv-sharp'; document.body.appendChild(c4);
+  const c4=render(SCENES.river,FLOW.river,1.0,imgs,0,{w:1000,h:640,tx:-300,ty:-140},true,true,'blockcell'); c4.id='cv-sharp'; document.body.appendChild(c4);
   window._gif=[]; window._gifSharp=[];
   for(let f=0;f<24;f++){
     window._gif.push(render(SCENES.river,FLOW.river,1.0,imgs,f/24,{w:1000,h:640,tx:-300,ty:-140},true,false,'ramp').toDataURL('image/png'));
-    window._gifSharp.push(render(SCENES.river,FLOW.river,1.0,imgs,f/24,{w:1000,h:640,tx:-300,ty:-140},true,true,'ramp').toDataURL('image/png'));
+    window._gifSharp.push(render(SCENES.river,FLOW.river,1.0,imgs,f/24,{w:1000,h:640,tx:-300,ty:-140},true,true,'blockcell').toDataURL('image/png'));
   }
   document.title='READY';
 }
