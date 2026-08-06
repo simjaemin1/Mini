@@ -66,7 +66,50 @@
     return n > base ? base : n;
   }
 
-  var API = { SOIL_MAX: SOIL_MAX, RUIN_SOIL: RUIN_SOIL, REGEN_PER_DAY: REGEN_PER_DAY, hash: hash, vnoise: vnoise, baseAt: baseAt, regen: regen };
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 바이옴 × 지질 램프 표 — "비옥도가 그 땅에서 **무엇으로 보이는가**"
+  //
+  // ★존마다 groundColor/tintColor 는 이미 다르다(색조). 여기서 정하는 건 그게 아니라
+  //   **비옥도 축이 식생으로 번역되는 방식**이다. 같은 토양치 800 이라도
+  //   정글이면 빽빽한 초록, 사바나면 마른 풀, 사막이면 여전히 모래여야 한다.
+  //
+  // 항목:
+  //   dry  [a,b] : 마른 흙이 드러나기 시작/가득 차는 토양치(낮을수록 빨리 메마른다)
+  //   grass[a,b] : 풀이 돋기 시작/가득 차는 토양치(높을수록 풀 되기 어렵다)
+  //   capG       : 풀 알파 **상한** — 이 바이옴에서 아무리 비옥해도 넘지 않는 초록
+  //                (사막이 토양치 1000 이라고 초원이 되면 안 된다 — 산터 램프와 같은 사고)
+  //   tint/tintA : 램프 층 위에 얹는 바이옴 색조(존 groundColor 와 별개의 식생 색)
+  //   propG      : 풀포기 색 3종 · propR : 자갈 색
+  //   rock [a,b] : 산터(암반) 위 이끼가 시작/가득 차는 토양치
+  //
+  // ⚠한반도(forest)만 라이브다. 나머지는 실게임에서 볼 수 없으므로 시안 대조표
+  //   (`scripts/mock-biome-ramps.js`)로 판단받아야 한다 — 눈으로 못 본 값을 확정하지 마라.
+  var BIOME = {
+    forest:      { dry: [120, 620], grass: [430, 980], capG: 1.00, tint: '#6f8a4a', tintA: 0.10,
+                   propG: ['#4e7a3c', '#5d8a46', '#6b8f4e'], propR: '#7a7268', rock: [400, 950] },
+    plains:      { dry: [160, 660], grass: [380, 900], capG: 0.95, tint: '#8a8a52', tintA: 0.12,
+                   propG: ['#6b8f4e', '#7d9450', '#8a9a58'], propR: '#8a8070', rock: [430, 960] },
+    jungle:      { dry: [40, 380],  grass: [250, 780], capG: 1.00, tint: '#2f6a28', tintA: 0.20,
+                   propG: ['#2f6a28', '#3d7a30', '#4a8a38'], propR: '#5e6a52', rock: [250, 700] },
+    savanna:     { dry: [260, 780], grass: [600, 1000], capG: 0.62, tint: '#a2965a', tintA: 0.16,
+                   propG: ['#8a8a52', '#9a9058', '#a89a60'], propR: '#9a8e74', rock: [520, 990] },
+    taiga:       { dry: [140, 640], grass: [450, 950], capG: 0.88, tint: '#4a6a42', tintA: 0.14,
+                   propG: ['#3d6a38', '#4a7a42', '#587a48'], propR: '#6e7268', rock: [360, 880] },
+    tundra:      { dry: [200, 700], grass: [700, 1000], capG: 0.48, tint: '#7a8a80', tintA: 0.16,
+                   propG: ['#6a8a70', '#7a9078', '#88968a'], propR: '#8a9090', rock: [300, 820] },
+    desert:      { dry: [0, 220],   grass: [880, 1000], capG: 0.22, tint: '#c9ad72', tintA: 0.18,
+                   propG: ['#9a9a5a', '#a8a068', '#b0a870'], propR: '#c0ab80', rock: [820, 1000] },
+    mountain:    { dry: [180, 700], grass: [600, 980], capG: 0.72, tint: '#6a7a52', tintA: 0.12,
+                   propG: ['#5a7a48', '#688050', '#748a58'], propR: '#7e7a72', rock: [380, 900] },
+    archipelago: { dry: [120, 600], grass: [420, 940], capG: 0.92, tint: '#4a8a5a', tintA: 0.14,
+                   propG: ['#3f8a52', '#4d9058', '#5c9862'], propR: '#a09880', rock: [420, 940] },
+    // 바다 존은 지면이 거의 없다(isOcean) — 자리만 두되 뭍이 나오면 도서 규칙을 쓴다.
+    ocean:       { dry: [120, 600], grass: [420, 940], capG: 0.92, tint: '#4a8a5a', tintA: 0.14,
+                   propG: ['#3f8a52', '#4d9058', '#5c9862'], propR: '#a09880', rock: [420, 940] },
+  };
+  function biomeOf(name) { return BIOME[name] || BIOME.forest; }
+
+  var API = { SOIL_MAX: SOIL_MAX, RUIN_SOIL: RUIN_SOIL, REGEN_PER_DAY: REGEN_PER_DAY, hash: hash, vnoise: vnoise, baseAt: baseAt, regen: regen, BIOME: BIOME, biomeOf: biomeOf };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   else root.SoilBase = API;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

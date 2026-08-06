@@ -527,6 +527,7 @@ const SIM_JOB_EMOJI = {
       // ★[배치 20 B] 이 셀의 상태 벡터. 레코드가 없으면 기준선(정적 지형 파생) — 손 안 댄 세계는
       //   서버 행 0 이고 그림은 SoilBase.baseAt 만으로 결정론적으로 나온다.
       let _st = null, _lcx = 0, _lcy = 0;
+      const _bio = (typeof SoilBase !== 'undefined') ? SoilBase.biomeOf(zMeta.biome) : null;
       if (_pat && _pz && !_t19.stateOff && zMeta.id === primaryZoneId) {
         _lcx = Math.floor((cxw - _pz.worldOffsetX) / 32); _lcy = Math.floor((cyw - (_pz.worldOffsetY || 0)) / 32);
         const _k = _lcx + ',' + _lcy;
@@ -551,7 +552,7 @@ const SIM_JOB_EMOJI = {
       // ★산터(부서진 산)는 **지형이 아직 바위여도** 산터 램프로 그린다 — 파괴는 동적 층이고
       //   지형 정본(terrain.json)은 한 바이트도 안 바뀌기 때문이다.
       if (!isWater && _st && _st.geo) {
-        _gtPaintState(g, sx, sy, _st, _lcx, _lcy, _pat); nState++;
+        _gtPaintState(g, sx, sy, _st, _lcx, _lcy, _pat, _bio); nState++;
         if (GT_ZONE_TINT > 0) _gtDiamond(g, sx, sy, zMeta.groundColor, GT_ZONE_TINT * 0.5);
         continue;
       }
@@ -575,7 +576,7 @@ const SIM_JOB_EMOJI = {
       } else {
         // ★[배치 20 B] 상태 레이어 — 비옥도·경작·답압·채굴을 **연속 램프**로 얹는다.
         //   위도/얼음/존 틴트보다 **아래**다(존 정체성이 그 위에 남아야 한다).
-        if (_st) { _gtPaintState(g, sx, sy, _st, _lcx, _lcy, _pat); nState++; }
+        if (_st) { _gtPaintState(g, sx, sy, _st, _lcx, _lcy, _pat, _bio); nState++; }
         // 기존 문법 유지: 얼음 밴드 → 위도 보간 → 존 틴트. 단색 대신 **텍스처 위에 알파로** 얹는다.
         const distFromPole = Math.min(cyw, worldHeight - cyw);
         if (distFromPole < TUNDRA_BAND_PX) {
@@ -728,8 +729,9 @@ const SIM_JOB_EMOJI = {
 
   // 한 셀의 상태 레이어를 타일 캔버스에 얹는다. sx,sy = 타일 안 셀 중심.
   //   pat: 이 타일에 이미 만들어 둔 패턴들(타일당 1회 생성 — 셀마다 createPattern 하면 베이크가 3배 느려진다)
-  function _gtPaintState(g, sx, sy, st, lcx, lcy, pat) {
+  function _gtPaintState(g, sx, sy, st, lcx, lcy, pat, bio) {
     const S = _SB(); if (!S) return;
+    const B = bio || S.biomeOf('forest');   // ★바이옴 램프 표 — 같은 토양치라도 땅마다 다르게 번역된다
     const clip = () => { g.save(); g.beginPath(); g.moveTo(sx, sy - 16); g.lineTo(sx + 32, sy); g.lineTo(sx, sy + 16); g.lineTo(sx - 32, sy); g.closePath(); g.clip(); };
     const fillPat = (p, a) => { if (a <= 0.004) return; g.globalAlpha = Math.min(1, a); g.fillStyle = p; g.fillRect(sx - 33, sy - 17, 66, 34); g.globalAlpha = 1; };
     // 문턱을 흔드는 저주파 잡음 — 셀 좌표계(4.8셀 규모 얼룩 = 시안의 x/38 과 같은 눈)
@@ -756,7 +758,7 @@ const SIM_JOB_EMOJI = {
       // 이끼 — 자리별 고유 문턱 400~950, 문턱 근처 ±90 에서 연속 증가(정수 개수 계단 없음)
       for (let k = 0; k < 5; k++) {
         const px = sx - 26 + S.hash(lcx, lcy, 91 + k) * 52, py = sy - 12 + S.hash(lcx, lcy, 111 + k) * 24;
-        const thr = 400 + 550 * S.hash(lcx, lcy, 131 + k);
+        const thr = B.rock[0] + (B.rock[1] - B.rock[0]) * S.hash(lcx, lcy, 131 + k);
         const a = _smooth(thr, thr + 90, st.soil) * (0.28 + 0.3 * S.hash(lcx, lcy, 151 + k));
         if (a > 0.02) { g.fillStyle = 'rgba(74,96,52,' + a.toFixed(3) + ')'; g.beginPath(); g.ellipse(px, py, 3 + 7 * S.hash(lcx, lcy, 171 + k), 2 + 4 * S.hash(lcx, lcy, 191 + k), 0, 0, 6.3); g.fill(); }
       }
@@ -766,7 +768,7 @@ const SIM_JOB_EMOJI = {
         const thr = 780 + 220 * S.hash(lcx, lcy, 99 + k);
         const a = _smooth(thr, thr + 70, st.soil);
         if (a > 0.02) {
-          g.globalAlpha = a; g.strokeStyle = ['#4e7a3c', '#5d8a46'][(S.hash(lcx, lcy, 100 + k) * 2) | 0]; g.lineWidth = 1.3;
+          g.globalAlpha = a; g.strokeStyle = B.propG[(S.hash(lcx, lcy, 100 + k) * 2) | 0]; g.lineWidth = 1.3;
           for (let b3 = 0; b3 < 3; b3++) {
             const oxp = (S.hash(lcx, lcy, 101 + k * 3 + b3) - 0.5) * 5, hgt = (5 + 6 * S.hash(lcx, lcy, 111 + k * 3 + b3)) * a, ln = (S.hash(lcx, lcy, 121 + k * 3 + b3) - 0.5) * 5;
             g.beginPath(); g.moveTo(px + oxp, py); g.quadraticCurveTo(px + oxp + ln * 0.4, py - hgt * 0.6, px + oxp + ln, py - hgt); g.stroke();
@@ -782,8 +784,11 @@ const SIM_JOB_EMOJI = {
     //   바탕(풀)은 이미 타일에 깔려 있다. 여기서는 **깎아 내려간다** — 시안과 같은 연속 함수의
     //   여집합이라 그림은 같고, 대부분(토양치 높음)의 셀에서 비용이 0 이다.
     const x = st.soil + jit;
-    const dryA = 1 - _smooth(430, 980, x);     // 시안 grA 의 여집합
-    const mudA = 1 - _smooth(120, 620, x);     // 시안 dryA 의 여집합
+    // ★바이옴 표의 문턱을 쓴다. capG 는 **초록 상한** — 사막이 토양치 1000 이어도 초원이 되지
+    //   않는다(산터 램프와 같은 사고: "돌만 놓으면 그게 산터냐" 의 바이옴판).
+    const grA0 = _smooth(B.grass[0], B.grass[1], x) * B.capG;
+    const dryA = 1 - grA0;
+    const mudA = 1 - _smooth(B.dry[0], B.dry[1], x);
     // ── ⑤-답압(길): 가운데부터 다져진다(mock-tile-axes 줄 1) ─────────────────
     const wearA = st.road === 2 ? 0.88 : (st.road === 1 ? _smooth(0, 1, 0.42 + (nz - 0.5) * 0.5) : 0);
     // ── ④-경작: 갈아엎은 흙 + 이랑(mock-tile-axes 줄 2) ─────────────────────
@@ -822,6 +827,7 @@ const SIM_JOB_EMOJI = {
         g.globalAlpha = 1;
       }
     }
+    if (B.tintA > 0) { g.globalAlpha = B.tintA; g.fillStyle = B.tint; g.fillRect(sx - 33, sy - 17, 66, 34); g.globalAlpha = 1; }   // 바이옴 식생 색조
     // 소품 — **자리별 고유 문턱**(해시) + 문턱 근처에서 알파·크기 연속 증가(정수 계단 제거)
     for (let k = 0; k < 2; k++) {
       const px = sx - 24 + S.hash(lcx, lcy, 11 + k) * 48, py = sy - 10 + S.hash(lcx, lcy, 21 + k) * 20;
@@ -829,7 +835,7 @@ const SIM_JOB_EMOJI = {
       const aR = 1 - _smooth(thrR, thrR + 80, st.soil);
       if (aR > 0.03) {
         const rr = (2.2 + 2.6 * S.hash(lcx, lcy, 41 + k)) * (0.5 + 0.5 * aR);
-        g.globalAlpha = Math.min(1, aR); g.fillStyle = '#7a7268';
+        g.globalAlpha = Math.min(1, aR); g.fillStyle = B.propR;
         g.beginPath(); g.ellipse(px, py, rr, rr * 0.62, 0, 0, 6.3); g.fill();
         g.fillStyle = 'rgba(48,45,41,0.55)'; g.beginPath(); g.ellipse(px, py + rr * 0.35, rr * 0.9, rr * 0.35, 0, 0, 6.3); g.fill();
         g.globalAlpha = 1;
@@ -838,7 +844,7 @@ const SIM_JOB_EMOJI = {
       const aT = _smooth(thrT, thrT + 60, st.soil) * (1 - Math.max(wearA, tillA));
       if (aT > 0.03) {
         g.globalAlpha = aT; g.lineWidth = 1.3;
-        g.strokeStyle = ['#4e7a3c', '#5d8a46', '#6b8f4e'][(S.hash(lcx, lcy, 61 + k) * 3) | 0];
+        g.strokeStyle = B.propG[(S.hash(lcx, lcy, 61 + k) * 3) | 0];
         for (let b3 = 0; b3 < 3; b3++) {
           const oxp = (S.hash(lcx, lcy, 71 + k * 3 + b3) - 0.5) * 6, hgt = (6 + 8 * S.hash(lcx, lcy, 81 + k * 3 + b3)) * aT, ln = (S.hash(lcx, lcy, 91 + k * 3 + b3) - 0.5) * 6;
           g.beginPath(); g.moveTo(px + oxp, py); g.quadraticCurveTo(px + oxp + ln * 0.4, py - hgt * 0.6, px + oxp + ln, py - hgt); g.stroke();
