@@ -2001,6 +2001,16 @@ const SIM_JOB_EMOJI = {
     g.drawImage(im, c.x - an.ox * sc, c.y - an.oy * sc * vy, im.naturalWidth * sc, im.naturalHeight * sc * vy);
   }
 
+  // ★[재민 확정 안개 게이트] 이번 프레임에 **실제로 그린** 개체의 자리 — 하네스 계측기.
+  //   하네스가 '봤다' 판정을 다시 짜면 사본이라 자명 통과다 ⇒ 여기서는 **자리만** 내보내고
+  //   판정은 하네스가 `window._seenChunks`(정본 저장소)를 직접 읽어서 한다.
+  const _gateDrawn = [];
+  window.__fogGateProbe = () => {
+    const out = [];
+    for (let i = 0; i < _gateDrawn.length; i += 3) out.push([_gateDrawn[i], _gateDrawn[i + 1], _gateDrawn[i + 2]]);
+    return out;
+  };
+
   // ★A/B 손잡이 — `__terrain19.legacy = true` 면 배치 19 이전(단색 다이아몬드)으로 정확히 돌아간다.
   //   하네스가 같은 프레임·같은 시계에서 before/after 를 얻는 유일한 길이고,
   //   `_tileAcc` 성능 비교도 이것 없이는 못 잰다. 기본값이 채택값이다(제품 UI 없음).
@@ -2022,7 +2032,9 @@ const SIM_JOB_EMOJI = {
   //     돌아간다. 기본은 덮개 배치(맨 바위 0.0%)다. 옛 배치는 맨 바위 39.9~70.9% 였다.
                  mtLegacy: false,
   //   ★[재민 2026-08-07] footOff — 기슭의 **대조군**. 끄면 산이 바위 경계에서 뚝 끊긴다.
-                 footOff: false };
+                 footOff: false,
+  //   ★[배치 21 5차] fogGateOff — 안개 게이트의 **대조군**. 끄면 안 가본 곳의 개체가 다시 보인다.
+                 fogGateOff: false };
   window.__terrain19 = _t19;
 
   // 지형 차단 통합 (물+바위) — 이동 예측용
@@ -5536,7 +5548,7 @@ const SIM_JOB_EMOJI = {
         const ax = ox + r.x, ay = oy + r.y;
         if (Math.abs(ax - worldCx) > VIEW_RADIUS || Math.abs(ay - worldCy) > VIEW_RADIUS) continue;
         const iso = w2i(ax, ay);
-        renderables.push({ z: iso.y, kind: 'resource', r, iso, ax, ay });
+        renderables.push({ z: iso.y, kind: 'resource', r, iso, ax, ay, wx: ax, wy: ay });
       }
       // Phase 14.23: ground item 렌더
       if (c.groundItems) {
@@ -5544,7 +5556,7 @@ const SIM_JOB_EMOJI = {
           const ax = ox + gi.x, ay = oy + gi.y;
           if (Math.abs(ax - worldCx) > VIEW_RADIUS || Math.abs(ay - worldCy) > VIEW_RADIUS) continue;
           const iso = w2i(ax, ay);
-          renderables.push({ z: iso.y + 5, kind: 'ground_item', gi, iso, ax, ay });
+          renderables.push({ z: iso.y + 5, kind: 'ground_item', gi, iso, ax, ay, wx: ax, wy: ay });
         }
       }
       for (const cl of c.claims.values()) {
@@ -5552,7 +5564,7 @@ const SIM_JOB_EMOJI = {
         const cax = ox + cl.x + cl.w/2, cay = oy + cl.y + cl.h/2;
         if (Math.abs(cax - worldCx) > VIEW_RADIUS + 200 || Math.abs(cay - worldCy) > VIEW_RADIUS + 200) continue;
         const baseZ = cl.kind === 'guild' ? -800 : -400;
-        renderables.push({ z: w2i(cax, cay).y + baseZ, kind: 'claim', cl, off: ox, offY: oy });
+        renderables.push({ z: w2i(cax, cay).y + baseZ, kind: 'claim', cl, off: ox, offY: oy, wx: cax, wy: cay });
       }
       // §16 답압 길: 등급 셀 바닥 틴트(베이크 무접촉 오버레이 — 흙길/다져진 길). 시야 내만 push.
       if (c.roads && c.roads.size) {
@@ -5560,7 +5572,7 @@ const SIM_JOB_EMOJI = {
           const ci = rk.indexOf(','); const rcx = +rk.slice(0, ci), rcy = +rk.slice(ci + 1);
           const rax = ox + rcx * CL_BUILDING_SIZE + 16, ray = oy + rcy * CL_BUILDING_SIZE + 16;
           if (Math.abs(rax - worldCx) > VIEW_RADIUS || Math.abs(ray - worldCy) > VIEW_RADIUS) continue;
-          renderables.push({ z: w2i(rax, ray).y - 950, kind: 'road', rcx: rax - 16, rcy: ray - 16, lv });
+          renderables.push({ z: w2i(rax, ray).y - 950, kind: 'road', rcx: rax - 16, rcy: ray - 16, lv, wx: rax, wy: ray });
         }
       }
       // ★[다리 층] 통나무 널다리 상판 — 길(-950)보다 위, 건물보다 아래(-930). 물 위 정적 사물.
@@ -5577,7 +5589,7 @@ const SIM_JOB_EMOJI = {
           const hiN = ax === 'x' ? c.bridges.has((bcx + 1) + ',' + bcy) : c.bridges.has(bcx + ',' + (bcy + 1));
           const loN = ax === 'x' ? c.bridges.has((bcx - 1) + ',' + bcy) : c.bridges.has(bcx + ',' + (bcy - 1));
           const bs = 'bridge_' + (!hiN ? 'cap1' : (!loN ? 'cap0' : 'mid')) + '_' + ax;
-          renderables.push({ z: w2i(bax, bay).y - 930, kind: 'bridge', bx: bax, by: bay, bk, bs });
+          renderables.push({ z: w2i(bax, bay).y - 930, kind: 'bridge', bx: bax, by: bay, bk, bs, wx: bax, wy: bay });
         }
       }
       // ★★[11차 T3 환호] 도랑 타일 — 길(-950)보다 위, 다리(-930)보다 아래(-940). 마을 소유 정적 사물.
@@ -5591,7 +5603,7 @@ const SIM_JOB_EMOJI = {
           const cnt = (dx, dy) => { let n = 0; for (let k = 1; k <= 2; k++) if (c.ditches.has((dcx + dx * k) + ',' + (dcy + dy * k))) n++; return n; };
           const hx = cnt(-1, 0) + cnt(1, 0), hy = cnt(0, -1) + cnt(0, 1);
           const ds = (hx >= 2 && hy >= 2) ? 'ditch_c' : (hx >= hy ? 'ditch_x' : 'ditch_y');
-          renderables.push({ z: w2i(dax, day2).y - 940, kind: 'ditch', bx: dax, by: day2, ds });
+          renderables.push({ z: w2i(dax, day2).y - 940, kind: 'ditch', bx: dax, by: day2, ds, wx: dax, wy: day2 });
         }
       }
       // ★[곳간② 재고 표시] 곳간 사다리 앞 칸(cx, cy+2)에 짐더미 — 재고 구간 2단계.
@@ -5603,11 +5615,11 @@ const SIM_JOB_EMOJI = {
           const ci = gk.indexOf(','); const gc0 = +gk.slice(0, ci), gcx = gc0, gcy = +gk.slice(ci + 1) + 2;   // 사다리 칸
           const gax = ox + gcx * CL_BUILDING_SIZE + 16, gay = oy + gcy * CL_BUILDING_SIZE + 16;
           if (Math.abs(gax - worldCx) > VIEW_RADIUS || Math.abs(gay - worldCy) > VIEW_RADIUS) continue;
-          renderables.push({ z: w2i(gax, gay).y, kind: 'granpile', gx: gax, gy: gay, st });
+          renderables.push({ z: w2i(gax, gay).y, kind: 'granpile', gx: gax, gy: gay, st, wx: gax, wy: gay });
           // ★[곳간 연출 세분화] 벽에 기대 놓은 소품(멍석 말이·삼태기) — 사다리 옆 칸(발자국 남동 모서리 밖).
           //   재고가 있는 곳간에만(=사람이 드나드는 곳간) 놓아 '쓰이는 창고'로 읽히게 한다.
           const pax = ox + (gc0 + 2) * CL_BUILDING_SIZE + 16, pay = gay;
-          renderables.push({ z: w2i(pax, pay).y, kind: 'granpile', gx: pax, gy: pay, prop: 1 });
+          renderables.push({ z: w2i(pax, pay).y, kind: 'granpile', gx: pax, gy: pay, prop: 1, wx: pax, wy: pay });
         }
       }
       // ★★[10차 T4 장마당] 캐러밴이 큰집 마당에 머무는 동안에만 좌판이 깔린다(서버 markets = phase 'linger' 목적지).
@@ -5619,7 +5631,7 @@ const SIM_JOB_EMOJI = {
           for (const [_mk, _mdx, _mdy] of MARKET_STALLS) {
             const _mx = ox + (mcx + _mdx) * CL_BUILDING_SIZE + 16, _my = oy + (mcy + _mdy) * CL_BUILDING_SIZE + 16;
             if (Math.abs(_mx - worldCx) > VIEW_RADIUS || Math.abs(_my - worldCy) > VIEW_RADIUS) continue;
-            renderables.push({ z: w2i(_mx, _my).y, kind: 'cellprop', key: _mk, gx: _mx, gy: _my });
+            renderables.push({ z: w2i(_mx, _my).y, kind: 'cellprop', key: _mk, gx: _mx, gy: _my, wx: _mx, wy: _my });
           }
         }
       }
@@ -5629,7 +5641,7 @@ const SIM_JOB_EMOJI = {
           const vcx = ox + v.cx * CL_BUILDING_SIZE + 16, vcy = oy + v.cy * CL_BUILDING_SIZE + 16;
           const cullR = (v.r || 1200);
           if (Math.abs(vcx - worldCx) > VIEW_RADIUS + cullR || Math.abs(vcy - worldCy) > VIEW_RADIUS + cullR) continue;
-          renderables.push({ z: w2i(vcx, vcy).y - 900, kind: 'simvil', v, off: ox, offY: oy });
+          renderables.push({ z: w2i(vcx, vcy).y - 900, kind: 'simvil', v, off: ox, offY: oy, wx: vcx, wy: vcy });
         }
       }
       // §11 도적: 소굴·야영 마커 1종(서버 bandit_camps) — 점유 단은 진하게, 빈 소굴은 흐리게
@@ -5637,7 +5649,7 @@ const SIM_JOB_EMOJI = {
         for (const bc of c.banditCamps) {
           const bx = ox + bc.x, by = oy + bc.y;
           if (Math.abs(bx - worldCx) > VIEW_RADIUS + 200 || Math.abs(by - worldCy) > VIEW_RADIUS + 200) continue;
-          renderables.push({ z: w2i(bx, by).y - 300, kind: 'banditcamp', bc, off: ox, offY: oy });
+          renderables.push({ z: w2i(bx, by).y - 300, kind: 'banditcamp', bc, off: ox, offY: oy, wx: bx, wy: by });
         }
       }
       const _hutRs = [], _hutSeen = new Set();   // ★[침대 진입] 이번 프레임 움집 렉트+지붕 표시 여부 — 실내 NPC 가림 판정(others 루프 소비)
@@ -5665,7 +5677,7 @@ const SIM_JOB_EMOJI = {
               const rax = ox + b.x, ray = oy + b.y;
               if (Math.abs(rax - worldCx) <= VIEW_RADIUS + 200 && Math.abs(ray - worldCy) <= VIEW_RADIUS + 200) {
                 const _giso = w2i(rax - 160, ray - 96);   // 지붕 로컬 원점=발자국 북서(x0-0.5,y0-0.5) — 캐리어(x1,y1)에서 (-5,-3)셀... x:(x0-0.5)-(x1+0.5)=-5셀=-160, y:-3셀=-96
-                renderables.push({ z: (rax + ray) * 0.5 + 40, kind: 'hutroof', img: _granI, iso: _giso });
+                renderables.push({ z: (rax + ray) * 0.5 + 40, kind: 'hutroof', img: _granI, iso: _giso, wx: rax, wy: ray });
               }
             }
           }
@@ -5686,7 +5698,7 @@ const SIM_JOB_EMOJI = {
               const rax = ox + b.x, ray = oy + b.y;
               if (Math.abs(rax - worldCx) <= VIEW_RADIUS + 300 && Math.abs(ray - worldCy) <= VIEW_RADIUS + 300) {
                 const _riso = w2i(rax - 128, ray - 256);   // 원점=북서(x0-0.5,y0-0.5): 캐리어(x0+3,y1)에서 (-4,-8)셀
-                renderables.push({ z: (rax + ray) * 0.5 + 80, kind: 'hutroof', img: _hallI, iso: _riso });   // ★벽 4면 상회: 8×8은 남벽 동단·동벽 남단=캐리어+72 — +80으로 전부 상회(움집 +64 논리 동형)
+                renderables.push({ z: (rax + ray) * 0.5 + 80, kind: 'hutroof', img: _hallI, iso: _riso, wx: rax, wy: ray });   // ★벽 4면 상회: 8×8은 남벽 동단·동벽 남단=캐리어+72 — +80으로 전부 상회(움집 +64 논리 동형)
               }
             }
             continue;   // 밖=실내 바닥 억제(지붕에 가림)
@@ -5704,7 +5716,7 @@ const SIM_JOB_EMOJI = {
             for (const [_pk, _pdx, _pdy] of [['yard_hearth', -2, 2], ['yard_jar1', 2, -2], ['yard_jar2', 4, -1]]) {
               const _px2 = ox + (_hut[2] + _pdx) * CL_BUILDING_SIZE + 16, _py2 = oy + (_hut[3] + _pdy) * CL_BUILDING_SIZE + 16;
               if (Math.abs(_px2 - worldCx) > VIEW_RADIUS || Math.abs(_py2 - worldCy) > VIEW_RADIUS) continue;
-              renderables.push({ z: w2i(_px2, _py2).y, kind: 'cellprop', key: _pk, gx: _px2, gy: _py2 });
+              renderables.push({ z: w2i(_px2, _py2).y, kind: 'cellprop', key: _pk, gx: _px2, gy: _py2, wx: _px2, wy: _py2 });
             }
           }
         }
@@ -5719,7 +5731,7 @@ const SIM_JOB_EMOJI = {
               const rax = ox + b.x, ray = oy + b.y;
               if (Math.abs(rax - worldCx) <= VIEW_RADIUS + 200 && Math.abs(ray - worldCy) <= VIEW_RADIUS + 200) {
                 const _riso = w2i(rax - 96, ray - 128);       // 지붕 로컬 원점 = 북서 오버행 모서리(캐리어 중심 - (3,4)셀)
-                renderables.push({ z: (rax + ray) * 0.5 + 64, kind: 'hutroof', img: _hutI, iso: _riso });   // ★지붕은 자기 집 벽 4면보다 무조건 앞[사용자 지적]: 벽 z 최대=남벽 동단·동벽 남단 (캐리어+56) — +24는 SE 구간 벽이 처마를 덮었음. +64로 전부 상회. 남측 개체는 지붕이 64px 떠 있어 픽셀 비겹침(플레이어는 +500 별도)이라 안전
+                renderables.push({ z: (rax + ray) * 0.5 + 64, kind: 'hutroof', img: _hutI, iso: _riso, wx: rax, wy: ray });   // ★지붕은 자기 집 벽 4면보다 무조건 앞[사용자 지적]: 벽 z 최대=남벽 동단·동벽 남단 (캐리어+56) — +24는 SE 구간 벽이 처마를 덮었음. +64로 전부 상회. 남측 개체는 지붕이 64px 떠 있어 픽셀 비겹침(플레이어는 +500 별도)이라 안전
               }
             }
             continue;
@@ -5747,7 +5759,7 @@ const SIM_JOB_EMOJI = {
             const iso = w2i(cAx, cAy, bZ);
             renderables.push({
               z: (cAx + cAy) * 0.5 + (b.floor || 0) * 0.5,
-              kind: 'stair_cell', b, iso, ax: cAx, ay: cAy, cellN, dv,
+              kind: 'stair_cell', b, iso, ax: cAx, ay: cAy, cellN, dv, wx: cAx, wy: cAy,
             });
           }
           continue;
@@ -5759,7 +5771,7 @@ const SIM_JOB_EMOJI = {
         const iso = w2i(ax, ay, bZ);
         let _bz = (ax + ay) * 0.5 + (b.floor || 0) * 0.5;
         if (b.type === 'vtile') _bz -= 960;   // ★지면 타일은 실셀 텍스처(64×32)로 승격 — 길(-950)·개체 아래 배경층으로
-        renderables.push({ z: _bz, kind: 'building', b, iso, ax, ay, off: ox, offY: oy });   // ★배치 17: off — 남·동벽 페이드가 존 로컬 셀을 재려면 원점이 필요하다
+        renderables.push({ z: _bz, kind: 'building', b, iso, ax, ay, off: ox, offY: oy, wx: ax, wy: ay });   // ★배치 17: off — 남·동벽 페이드가 존 로컬 셀을 재려면 원점이 필요하다
       }
       // ★[2026-08-04c 배치 17 ①] 실내 컷어웨이 진단 훅 — 하네스가 "지붕이 실제로 걷혔나"를 계약 수준에서
       //   확인할 수 있게 이번 프레임의 발자국 렉트·지붕 표시 여부·내 로컬 셀을 노출한다.
@@ -5774,14 +5786,14 @@ const SIM_JOB_EMOJI = {
         const mFloor = m.floor || 0;
         const mZ = mFloor * FLOOR_HEIGHT + (m.z || 0);
         const iso = w2i(ax, ay, mZ);
-        renderables.push({ z: iso.y, kind: 'mob', m, iso, ax, ay });
+        renderables.push({ z: iso.y, kind: 'mob', m, iso, ax, ay, wx: ax, wy: ay });
       }
       // Phase 5-7: 사체
       for (const co of c.corpses.values()) {
         const ax = ox + co.x, ay = oy + co.y;
         if (Math.abs(ax - worldCx) > VIEW_RADIUS || Math.abs(ay - worldCy) > VIEW_RADIUS) continue;
         const iso = w2i(ax, ay, 0);
-        renderables.push({ z: iso.y, kind: 'corpse', co, iso, ax, ay });
+        renderables.push({ z: iso.y, kind: 'corpse', co, iso, ax, ay, wx: ax, wy: ay });
       }
       for (const o of c.others.values()) {
         const pos = sampleAt(o.buf, renderT, o.x, o.y);
@@ -5802,7 +5814,7 @@ const SIM_JOB_EMOJI = {
         const oFloor = o.floor || 0;
         const oZ = oFloor * FLOOR_HEIGHT + (o.z || 0); // 14.49-d: 계단 위 z 포함
         const isoF = w2i(ax, ay, oZ);
-        renderables.push({ z: (ax + ay) * 0.5 + oFloor * 0.5 + 500, kind: 'player', pid: o.pid, name: displayName, color: o.color || '#5a9ae0', hp: o.hp, maxHp: o.maxHp, iso: isoF, ax, ay, floor: oFloor, lastAttackAt: o.lastAttackAt, vx: o.vx, vy: o.vy, _fvx: o._fvx, _fvy: o._fvy, _war: o._war, bt: o.bt, bs: o.bs, bc: o.bc, br: o.br, cap: o.cap, act: o.act });
+        renderables.push({ z: (ax + ay) * 0.5 + oFloor * 0.5 + 500, kind: 'player', wx: ax, wy: ay, pid: o.pid, name: displayName, color: o.color || '#5a9ae0', hp: o.hp, maxHp: o.maxHp, iso: isoF, ax, ay, floor: oFloor, lastAttackAt: o.lastAttackAt, vx: o.vx, vy: o.vy, _fvx: o._fvx, _fvy: o._fvy, _war: o._war, bt: o.bt, bs: o.bs, bc: o.bc, br: o.br, cap: o.cap, act: o.act });
       }
     }
     {
@@ -5810,7 +5822,7 @@ const SIM_JOB_EMOJI = {
       const myDisplay = myTribeName ? `[${myTribeName}] ${myName}` : myName;
       const myZ = myFloor * FLOOR_HEIGHT + (myStairZ || 0); // 14.49-c: 계단 z 추가
       const isoMe = w2i(_camAbs.x, _camAbs.y, myZ);
-      renderables.push({ z: (_camAbs.x + _camAbs.y) * 0.5 + myFloor * 0.5 + 500, kind: 'player', pid: myPid, name: myDisplay, color: myColor, hp: myHp, maxHp: myMaxHp, iso: isoMe, ax: _camAbs.x, ay: _camAbs.y, isMe: true });
+      renderables.push({ z: (_camAbs.x + _camAbs.y) * 0.5 + myFloor * 0.5 + 500, kind: 'player', wx: _camAbs.x, wy: _camAbs.y, pid: myPid, name: myDisplay, color: myColor, hp: myHp, maxHp: myMaxHp, iso: isoMe, ax: _camAbs.x, ay: _camAbs.y, isMe: true });
     }
 
     // ★★[2026-08-04d 배치 18 ②] **자동 지붕** — 닫힌 방 위엔 지붕이 저절로 얹힌다.
@@ -5847,7 +5859,7 @@ const SIM_JOB_EMOJI = {
             //   (상자 좌표는 앵커 _ox/_oy 가 지붕 크기마다 달라 크기가 다른 두 지붕을 비교할 수 없다).
             _origins.push({ r: r.slice(), sx: Math.round(_s.x), sy: Math.round(_s.y) }); }
           if (inside) continue;   // 컷어웨이 — 내가 그 방 안이면 지붕을 아예 안 그린다
-          renderables.push({ z: (cax + cay) * 0.5 + 64 + (room.floor | 0) * (FLOOR_HEIGHT * 0.5), kind: 'hutroof', img, iso: _iso, floor: room.floor | 0 });
+          renderables.push({ z: (cax + cay) * 0.5 + 64 + (room.floor | 0) * (FLOOR_HEIGHT * 0.5), kind: 'hutroof', img, iso: _iso, floor: room.floor | 0, wx: cax, wy: cay });
         }
         _roomRoofDbg.push({ id: room.id, floor: room.floor | 0, roofOn: !inside, cells: room.cells.size, boxes: _boxes, origins: _origins });
       }
@@ -5915,30 +5927,74 @@ const SIM_JOB_EMOJI = {
     //      풀·꽃은 지면 데코라 이 편이 낫다 — 산 세그먼트처럼 큰 물체였다면 반대였을 것이다.
     if (!_t19.natOff) for (const it of _natItems) _natDraw(ctx, it, toScreen);
 
-    // 14.49-e7ae: mask composite를 entity render 전으로 (entity가 mask 위에 = mask 영향 X)
-    // mask 자체는 entity render 후에 만들어짐 (현재 위치 그대로). 즉 1 frame 지연.
-    // window._shadowMask가 persistent canvas라 이전 frame mask가 보존됨. 첫 frame은 빈 mc (transparent).
-    // 카메라 델타 보정: mask는 만들 당시 위치(p0) 기준 스크린 좌표라, 이동 중엔 어둠 경계가
-    // 이동방향으로 frame당 이동량만큼 돌출해 보임 → p0→현재 iso 스크린 델타만큼 밀어서 합성.
+    // 3단계 안개 마스크(미탐사 검정 · 봤지만 시야 밖 0.2 · 시야 안 0) — **엔티티 렌더 앞**.
+    //   ★왜 여기인가(되돌린 이유, 실측): 마스크를 월드 렌더 **전체 뒤**로 옮겨 봤더니
+    //   **지붕·산처럼 높은 물체가 자기 발밑 셀의 안개에 눌렸다.** 가시성 폴리곤은 **지면**에서
+    //   벽을 광선으로 잘라 만드는데, 지붕은 그 셀보다 화면상 한참 위에 그려지기 때문이다.
+    //   실측: e2e-rooms 의 이엉 픽셀 **29.0% → 2.4%**(집 옆에 서 있는데 내 지붕이 캄캄해졌다),
+    //   e2e-cutaway 지붕 신호 41.6 → 28.2. ⇒ 3단계 감쇠는 **지면 전용**으로 되돌리고,
+    //   재민 규칙("안 가본 곳엔 아무것도")은 **미탐사 전용 2차 마스크**로 따로 건다(아래).
+    // mask 자체는 entity render 후에 만들어짐 — 즉 1 frame 지연. 카메라 델타로 보정한다.
     if (window._shadowMask) {
-      // mask canvas는 화면보다 사방 64px 큼 (FOG_MASK_M) — 델타만큼 밀어도 빈 띠 없음
       const _maskM = 64; // mask 생성부 FOG_MASK_M과 동일해야 함
       let mdx = 0, mdy = 0;
       if (window._shadowMaskPx !== undefined) {
         const p0x = window._shadowMaskPx, p0y = window._shadowMaskPy;
-        const p1x = _camAbs.x, p1y = _camAbs.y; // K22: 마스크 빌드/저장과 동일 기준(_camAbs). myAbsPredicted(계단) 쓰면 델타가 30Hz로 떨려 부채꼴 경계 떨림
-        // 정수로 반올림 — subpixel drawImage는 Safari에서 풀스크린 canvas 리샘플링을
-        // 강제해 프레임 드랍 + 마스크 경계가 매 frame 흐릿하게 떨리는 원인이 됨.
+        const p1x = _camAbs.x, p1y = _camAbs.y; // K22: 마스크 빌드/저장과 동일 기준(_camAbs)
+        // 정수로 반올림 — subpixel drawImage는 Safari 리샘플링 강제 + 경계 떨림의 원인
         mdx = Math.round((p0x - p0y) - (p1x - p1y));
         mdy = Math.round(((p0x + p0y) - (p1x + p1y)) / 2);
-        // margin 초과 점프(teleport/zone 이동 등)면 보정 포기 — 1 frame glitch는 기존과 동일
         if (Math.abs(mdx) > _maskM || Math.abs(mdy) > _maskM) { mdx = 0; mdy = 0; }
       }
       ctx.drawImage(window._shadowMask, mdx - _maskM, mdy - _maskM);
     }
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // ★★[재민 확정 2026-08-06] **한 번도 안 가본 곳은 그 어떤 것도 보여서는 안 된다.**
+    //   ⇒ 개체(entity)마다 **자기 셀이 '본 셀'인지** 보고, 아니면 아예 안 그린다.
+    //
+    //   ★왜 화면 마스크가 아니라 개체 단위인가 — 실측으로 두 번 확인했다.
+    //     안개 마스크를 월드 렌더 **전체 뒤**로 얹어 봤더니 **지붕·산처럼 높은 물체가
+    //     자기 뒤편 미탐사 셀에 잘렸다**. 가시성 폴리곤은 **지면**에서 벽을 광선으로 잘라
+    //     만드는데 지붕은 그 셀보다 화면상 한참 위에 그려지기 때문이다.
+    //     실측: e2e-rooms 이엉 픽셀 **29.0% → 2.8%**(집 옆에 서 있는데 내 지붕이 캄캄해졌다).
+    //     ⇒ 재민 규칙의 뜻은 "안 가본 셀 위 **픽셀** 금지"가 아니라 "안 가본 자리의 **사물** 금지"다.
+    //       그래서 **사물의 자리(wx,wy)** 로 판정한다. 내가 본 집이면 지붕은 온전히 보인다.
+    //
+    //   ★판정 정본은 `_seenChunks`(안개가 '봤다'를 기록하는 바로 그 자료)다 — 사본 금지.
+    //   ★구멍 금지: 모든 push 에 `wx/wy` 를 달았고, 없는 항목은 **세어서 내보낸다**
+    //     (`__fogGateDbg.missing`). 하네스가 0 을 요구한다 — 조용히 새는 종류가 없게.
+    // ═══════════════════════════════════════════════════════════════════════
+    let _gateSkipped = 0, _gateMissing = 0;
+    _gateDrawn.length = 0;
+    const _seenCell1 = (cx, cy) => {
+      const sc = window._seenChunks; if (!sc) return true;   // 첫 프레임(기록 전)은 통과
+      const chSet = sc.get((cx >> 4) + '_' + (cy >> 4));
+      return !!chSet && chSet.has(cx * 65536 + cy);
+    };
+    // ★★구조물은 **발자국 어느 한 칸이라도 봤으면** 보인다 — 앵커 한 칸으로 재면 안 된다.
+    //   실측 결함: 밖에서 지은 집은 **안에 들어가 본 적이 없다**. 벽이 시야를 막아 내부 셀이
+    //   영영 '본 셀'이 안 되고, 지붕 앵커가 그 내부라 **내가 지은 내 집 지붕이 사라졌다**
+    //   (e2e-rooms 이엉 29.0% → 3.2%). 안개의 목적은 '안 가본 땅'을 가리는 것이지
+    //   내가 지나쳐 본 건물을 숨기는 게 아니다.
+    //   ⇒ 구조물은 앵커 + 반경 R셀의 8방위까지 9칸을 본다(R 은 발자국 크기 기준).
+    const _GATE_R = { building: 4, hutroof: 4, simvil: 10, claim: 4, banditcamp: 4, stair_cell: 1 };
+    const _seenFor = (kind, wx, wy) => {
+      const cx = Math.floor(wx / CL_BUILDING_SIZE), cy = Math.floor(wy / CL_BUILDING_SIZE);
+      if (_seenCell1(cx, cy)) return true;
+      const R = _GATE_R[kind]; if (!R) return false;
+      for (let k = 0; k < 8; k++) {
+        const dx = [1, -1, 0, 0, 1, 1, -1, -1][k] * R, dy = [0, 0, 1, -1, 1, -1, 1, -1][k] * R;
+        if (_seenCell1(cx + dx, cy + dy)) return true;
+      }
+      return false;
+    };
+
     // === 3) 엔티티 그리기 ===
     for (const item of renderables) {
+      if (item.wx === undefined) { _gateMissing++; }
+      else if (!item.isMe && !_t19.fogGateOff && !_seenFor(item.kind, item.wx, item.wy)) { _gateSkipped++; continue; }
+      else if (item.wx !== undefined) _gateDrawn.push(item.wx, item.wy, item.kind);
       if (item.kind === 'claim') {
         const cl = item.cl, off = item.off, offY = item.offY || 0;
         const sc = (wx, wy) => { const pp = w2i(off + wx, offY + wy); return toScreen(pp.x, pp.y); };
@@ -6633,7 +6689,9 @@ const SIM_JOB_EMOJI = {
       mctx.setTransform(1, 0, 0, 1, 0, 0);
       mctx.globalCompositeOperation = 'destination-out';
       mctx.fillStyle = 'rgba(0,0,0,0.8)';
-      mctx.beginPath();
+      // ★경로를 Path2D 로 한 번만 만들어 두 마스크에 **같은 기하**로 뚫는다(사본 금지).
+      //   3단계 마스크는 0.8(살짝 어둠), 미탐사 마스크는 1.0(완전 제거) — 알파만 다르다.
+      const seenPath = new Path2D();
       const halfW = 32, halfH = 16, expand = 1;
       const FOG_DRAW_RANGE = 52; // 화면 끝까지 (옛 35는 가장자리 누락)
       const ch0x = (myCx - FOG_DRAW_RANGE) >> 4, ch1x = (myCx + FOG_DRAW_RANGE) >> 4;
@@ -6650,15 +6708,15 @@ const SIM_JOB_EMOJI = {
             const sxC = w2sx(wxC, wyC) + FOG_MASK_M;
             const syC = w2sy(wxC, wyC) + FOG_MASK_M;
             if (sxC < -64 || sxC > mc.width + 64 || syC < -32 || syC > mc.height + 32) continue;
-            mctx.moveTo(sxC - halfW - expand, syC);
-            mctx.lineTo(sxC, syC - halfH - expand);
-            mctx.lineTo(sxC + halfW + expand, syC);
-            mctx.lineTo(sxC, syC + halfH + expand);
-            mctx.closePath();
+            seenPath.moveTo(sxC - halfW - expand, syC);
+            seenPath.lineTo(sxC, syC - halfH - expand);
+            seenPath.lineTo(sxC + halfW + expand, syC);
+            seenPath.lineTo(sxC, syC + halfH + expand);
+            seenPath.closePath();
           }
         }
       }
-      mctx.fill();
+      mctx.fill(seenPath);
 
       // (ii) visible polygon: world → screen iso transform → destination-out alpha 1.0 (밝음)
       mctx.save();
@@ -6671,8 +6729,8 @@ const SIM_JOB_EMOJI = {
       window._shadowMaskPx = px;
       window._shadowMaskPy = py;
 
-      // 14.49-e7ae: mask composite는 다음 frame entity render 전에 합성 (entity가 mask 위)
-      // wall 2차 render 폐기 — entity가 mask 위에 그려지므로 mask 가림 X
+      // ★[재민 확정 2026-08-06] 합성은 **이 블록 아래**, 화살까지 다 그린 뒤에 한다.
+      //   (옛 주석: "다음 frame entity render 전에 합성" — 그 배치가 미탐사 위 누출의 원인이었다.)
     }
 
     // === Phase 5-I: 화살 발사체 렌더 (절대좌표 → 등속 외삽 → iso 화면) ===
@@ -6696,6 +6754,15 @@ const SIM_JOB_EMOJI = {
       }
     }
 
+    window.__fogGateDbg = { skipped: _gateSkipped, missing: _gateMissing, total: renderables.length,
+                            drawn: _gateDrawn.length / 3 };
+
+    // ↓↓ 여기부터는 **안개 위**다. 월드 사물을 여기서 그리면 미탐사 셀에 누출된다.
+    //   현재 안개 위에 남는 것 = 밤 오버레이(어둡게만) · 인접 존 방향 화살 · 전투 지시자 ·
+    //   HUD/미니맵 — 전부 **화면 UI**라 의도된 것이다.
+    //   ※단 하나 예외: 아래 '캐나디아 마을 작업장 시각화'는 월드 좌표 개발용 오버레이인데
+    //     `primaryZoneId === 'canadia'` 에서만 돈다(한반도 단독 운영이라 실행되지 않는다).
+    //     canadia 를 살릴 일이 생기면 그 블록을 이 합성 **위로** 옮겨라.
     // === 4-1) 밤 어두움 오버레이 — 푸른 톤, 시야는 더 좁아짐 ===
     const dk = darknessLevel();
     if (dk > 0) {

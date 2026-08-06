@@ -128,6 +128,27 @@ function diffCount(a, b) {            // 두 프레임에서 달라진 픽셀 �
     // ★안개 위로 뜨는 픽셀 계측 — 판정 정본은 `window._shadowMask` 의 **알파**다(하네스가 시야를
     //   다시 계산하면 그게 사본이다). 알파 248↑ = 한 번도 못 본 셀. 그 자리에 밝은 픽셀이 있으면
     //   무언가가 안개 위로 떠 있다는 뜻이다.
+    // ★개체 단위 안개 게이트 계측 — 그려진 개체의 자리를 받아 하네스가 `_seenChunks`(정본)로 직접 대조한다.
+    const gateCheck = () => page.evaluate(() => {
+      const sc = window._seenChunks;
+      const drawn = window.__fogGateProbe ? window.__fogGateProbe() : [];
+      //  구조물은 '발자국 어느 한 칸이라도 봤으면' 보인다 — 클라와 같은 규약을 하네스가
+      //  **원자료(_seenChunks)로 독립 재계산**한다(클라 판정 함수를 부르면 사본이다).
+      const R = { building: 4, hutroof: 4, simvil: 10, claim: 4, banditcamp: 4, stair_cell: 1 };
+      const seen1 = (cx, cy) => { const st = sc && sc.get((cx >> 4) + '_' + (cy >> 4)); return !!st && st.has(cx * 65536 + cy); };
+      let bad = 0; const badKinds = {};
+      for (const [wx, wy, kind] of drawn) {
+        const cx = Math.floor(wx / 32), cy = Math.floor(wy / 32);
+        let okc = seen1(cx, cy);
+        const r = R[kind];
+        if (!okc && r) for (let k = 0; k < 8 && !okc; k++) {
+          okc = seen1(cx + [1,-1,0,0,1,1,-1,-1][k] * r, cy + [0,0,1,-1,1,-1,1,-1][k] * r);
+        }
+        if (!okc) { bad++; badKinds[kind] = (badKinds[kind] || 0) + 1; }
+      }
+      let seenCells = 0; if (sc) for (const v of sc.values()) seenCells += v.size;
+      return { drawn: drawn.length, bad, badKinds, seenCells, dbg: window.__fogGateDbg };
+    }).catch(() => ({ drawn: 0, bad: 0, badKinds: {}, seenCells: 0, dbg: null }));
     const fogLit = () => page.evaluate(() => {
       const cv = document.querySelector('canvas'), mc = window._shadowMask;
       if (!mc) return { unseen: 0, lit: 0 };
@@ -149,6 +170,10 @@ function diffCount(a, b) {            // 두 프레임에서 달라진 픽셀 �
     const fOn = await grab('on'), fOn2 = await grab('on2');
     const probe = await page.evaluate(() => window.__natProbe());
     const fogOn = await fogLit();
+    const gate = await gateCheck();
+    await knob({ fogGateOff: true });
+    const gateOff = await gateCheck();
+    await knob({ fogGateOff: false });
     await knob({ natOff: true });
     const fogOff = await fogLit();
     await knob({ natOff: false, fringeOff: true });
@@ -161,7 +186,7 @@ function diffCount(a, b) {            // 두 프레임에서 달라진 픽셀 �
     await knob({ natOff: false, propNoAvoid: true });
     const probeNA = await page.evaluate(() => window.__natProbe());
     await knob({ propNoAvoid: false });
-    S[tag] = { d0, fOn, fOn2, fNoFr, fNoPr, fNoNat, probe, probeNA, cerr, bad: [...new Set(bad)], fogOn, fogOff };
+    S[tag] = { d0, fOn, fOn2, fNoFr, fNoPr, fNoNat, probe, probeNA, cerr, bad: [...new Set(bad)], fogOn, fogOff, gate, gateOff };
     await browser.close(); try { z.kill(); } catch (e) {}
     await sleep(2500);
   }
@@ -282,15 +307,30 @@ function diffCount(a, b) {            // 두 프레임에서 달라진 픽셀 �
   ok(dFr > 3000, `★손잡이가 실제로 무언가를 끈다 — 강가 술 ${dFr}px`);
   ok(dPr > 500, `★초원 소품 손잡이도 실제로 그린다 ${dPr}px`);
 
-  say('\n[7] ⓕ 안개 — 한 번도 못 본 셀 위에 자연물이 뜨지 않는가');
-  //  ★1패스 실결함(재민 지적): 자연물을 renderables 에 태웠더니 **마스크 합성이 엔티티 앞**이라
-  //    미탐사 새까만 셀 위에 풀·꽃이 그대로 보였다. 마스크 **앞**으로 옮겨 지면과 같은 3단계를 받게 했다.
+  say('\n[7] ⓕ 안개 — ★한 번도 안 가본 곳엔 **그 어떤 것도** 보이면 안 된다 [재민 확정]');
+  //  ★두 번 틀렸던 자리다. ①자연물을 renderables 에 태워 안개 위로 떴다.
+  //    ②고쳐서 마스크를 월드 렌더 전체 뒤로 옮겼더니 **지붕·산이 자기 뒤 미탐사 셀에 잘렸다**
+  //      (e2e-rooms 이엉 29.0%→2.8%). 화면 픽셀이 아니라 **개체의 자리**로 막는 게 규칙의 뜻이다.
+  //  ⇒ 판정: 그려진 개체 중 '안 본 셀'에 있는 것이 **0**. 계측 정본은 `_seenChunks` 를 하네스가
+  //    직접 읽는다(클라 판정 함수를 다시 부르면 사본이고 자명 통과다).
+  //  ⇒ 반례: `fogGateOff` 로 게이트를 끄면 위반이 **나와야** 한다.
+  //  ⇒ 지면 데코(자연물)는 마스크 앞에 그리므로 **화면 픽셀**로도 잰다(아래 두 줄).
   for (const [tag, s2] of [['강가', R], ['초원', F]]) {
-    const extra = s2.fogOn.lit - s2.fogOff.lit;
-    say(`    ${tag}: 미탐사 ${s2.fogOn.unseen}px · 밝은 픽셀 자연물ON ${s2.fogOn.lit} / OFF ${s2.fogOff.lit} (차이 ${extra})`);
-    ok(s2.fogOn.unseen > 50000, `★자명 통과 금지 — ${tag} 화면에 미탐사 영역이 실제로 크다 (${s2.fogOn.unseen}px)`);
-    ok(extra <= 40, `★★${tag} — 자연물이 안개 위로 뜨지 않는다 (ON−OFF = ${extra} ≤ 40)`);
+    const g = s2.gate, go = s2.gateOff;
+    say(`    ${tag}: 본 셀 ${g.seenCells} · 그린 개체 ${g.drawn} · 안 본 셀 위 개체 ${g.bad}` +
+        ` / 게이트 끄면 ${go.drawn}개 중 ${go.bad} ${JSON.stringify(go.badKinds).slice(0, 90)}`);
+    say(`      (지면 데코: 미탐사 ${s2.fogOn.unseen}px 위 밝은 픽셀 자연물ON ${s2.fogOn.lit} / OFF ${s2.fogOff.lit})`);
+    ok(g.dbg && g.dbg.missing === 0, `★구멍 없음 — 자리(wx,wy)가 없는 렌더 종류 0 (${g.dbg ? g.dbg.missing : 'n/a'})`);
+    //  ★자명 통과 금지 — '개체가 많다'는 문턱은 틀렸다(1패스 실측: 두 지점 다 황무지라 프레임당
+    //    개체가 2~6개뿐이다. 20을 요구했다가 없는 결함을 보고했다). 이 판정의 본뜻은
+    //    "게이트가 걸릴 상황이 실제로 있다"이므로 **반례가 나오는가**로 재는 게 맞다.
+    ok(g.drawn >= 2, `★${tag} 화면에 개체가 그려지고 있다 (${g.drawn})`);
+    ok(go.bad > 0, `★★자명 통과 금지 — ${tag} 는 게이트를 끄면 위반이 나오는 상황이다 (${go.bad}) — 통과가 공짜가 아니다`);
+    ok(g.bad === 0, `★★${tag} — 안 본 셀 위에 그려진 개체가 **하나도 없다** (${g.bad})`);
+    ok(s2.fogOn.lit - s2.fogOff.lit <= 40, `★${tag} — 지면 데코도 안개 위로 안 뜬다 (ON−OFF ${s2.fogOn.lit - s2.fogOff.lit})`);
   }
+  const anyOff = R.gateOff.bad + F.gateOff.bad;
+  ok(anyOff > 0, `★★반례 — 게이트를 끄면 위반이 나온다 (강가 ${R.gateOff.bad} + 초원 ${F.gateOff.bad} = ${anyOff}) = 게이트가 실제로 일한다`);
 
   say(`\n스크린샷: ${SHOTS}/`);
   say(`\n=== 자연물 E2E: ${pass} 통과 / ${fail} 실패 ${fail ? '❌' : '✅'} ===`);
