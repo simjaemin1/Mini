@@ -74,9 +74,44 @@ def mountain_material():
     except Exception: pass
     return m
 
-MAT = mountain_material()
+def forest_material():
+    m = bpy.data.materials.new('mtF'); m.use_nodes = True
+    nt = m.node_tree; p = nt.nodes.get('Principled BSDF')
+    geo = nt.nodes.new('ShaderNodeNewGeometry'); sep = nt.nodes.new('ShaderNodeSeparateXYZ')
+    nt.links.new(geo.outputs['Position'], sep.inputs['Vector'])
+    zr = nt.nodes.new('ShaderNodeMapRange'); zr.name = 'zrange'
+    zr.inputs['From Min'].default_value = 0.0; zr.inputs['From Max'].default_value = 3.4
+    nt.links.new(sep.outputs['Z'], zr.inputs['Value'])
+    noise = nt.nodes.new('ShaderNodeTexNoise'); noise.inputs['Scale'].default_value = 2.4; noise.inputs['Detail'].default_value = 7.0
+    ramp = nt.nodes.new('ShaderNodeValToRGB')
+    ramp.color_ramp.elements[0].position = 0.0
+    ramp.color_ramp.elements[0].color = (0.06, 0.10, 0.04, 1)      # 기슭 짙은 숲
+    e1 = ramp.color_ramp.elements.new(0.45); e1.color = (0.10, 0.155, 0.065, 1)  # 산허리 숲
+    e2 = ramp.color_ramp.elements.new(0.80); e2.color = (0.135, 0.175, 0.09, 1)  # 능선 숲
+    for el2 in ramp.color_ramp.elements:   # 기본 흰 요소 사냥 → 꼭대기 바위
+        if el2.color[0] > 0.9 and el2.color[1] > 0.9 and el2.color[2] > 0.9:
+            el2.color = (0.27, 0.255, 0.23, 1)
+    n0 = nt.nodes.new('ShaderNodeMath'); n0.operation = 'SUBTRACT'
+    nt.links.new(noise.outputs['Fac'], n0.inputs[0]); n0.inputs[1].default_value = 0.5
+    n1 = nt.nodes.new('ShaderNodeMath'); n1.operation = 'MULTIPLY'
+    nt.links.new(n0.outputs['Value'], n1.inputs[0]); n1.inputs[1].default_value = 0.35
+    add2 = nt.nodes.new('ShaderNodeMath'); add2.operation = 'ADD'
+    nt.links.new(zr.outputs['Result'], add2.inputs[0]); nt.links.new(n1.outputs['Value'], add2.inputs[1])
+    nt.links.new(add2.outputs['Value'], ramp.inputs['Fac'])
+    nt.links.new(ramp.outputs['Color'], p.inputs['Base Color'])
+    bn = nt.nodes.new('ShaderNodeTexNoise'); bn.inputs['Scale'].default_value = 9.0; bn.inputs['Detail'].default_value = 8.0
+    bp2 = nt.nodes.new('ShaderNodeBump'); bp2.inputs['Strength'].default_value = 0.5   # 수관 몽글몽글
+    nt.links.new(bn.outputs['Fac'], bp2.inputs['Height'])
+    nt.links.new(bp2.outputs['Normal'], p.inputs['Normal'])
+    p.inputs['Roughness'].default_value = 0.95
+    try: p.inputs['Specular IOR Level'].default_value = 0.08
+    except Exception: pass
+    return m
 
-def make_massif(name, base_r, height, subpeaks, seed):
+MAT = mountain_material()
+MATF = forest_material()
+
+def make_massif(name, base_r, height, subpeaks, seed, mat=None):
     random.seed(seed)
     objs = []
     peaks = [(0.0, 0.0, height, base_r)]
@@ -96,7 +131,7 @@ def make_massif(name, base_r, height, subpeaks, seed):
             v.co.y += rnd.uniform(-0.24, 0.24) * pr * f
             v.co.z += rnd.uniform(-0.10, 0.10) * ph
         me.update()
-        c.data.materials.append(MAT)
+        c.data.materials.append(mat or MAT)
         objs.append(c)
     for o in objs: o.select_set(True)
     bpy.context.view_layer.objects.active = objs[0]
@@ -128,21 +163,25 @@ SPECS = [
     ('mt_L1', 3.8, 7.2, 3, 53),
 ]
 for a in range(8):
-    for v in range(3):   # ★방위당 3변주 — 1종 반복이 '아코디언 벽'을 만든다(재민 지적 반복 무늬)
+    for v in range(3):   # 돌산(화강암) 세그먼트
         SPECS.append(('mt_G%dv%d' % (a, v), 2.4, 5.6 - 0.5 * v, 3 + (v % 2), 100 + a * 7 + v * 131,
                       (2.1, a * 22.5 + 90)))
+    for v in range(2):   # ★숲산 세그먼트 [재민 "무조건 돌산이네.. 다른 버전도 가능해?"] — 낮고 둥글게
+        SPECS.append(('mt_F%dv%d' % (a, v), 2.5, 4.2 - 0.4 * v, 3, 300 + a * 11 + v * 97,
+                      (2.1, a * 22.5 + 90), 'F'))
 
 anchors = {}
 for spec in SPECS:
     name, r, h, sp, seed = spec[:5]
+    isF = (len(spec) > 6 and spec[6] == 'F')
     for o in [o for o in scene.objects if o.type == 'MESH']:
         bpy.data.objects.remove(o, do_unlink=True)
-    m = make_massif(name, r, h, sp, seed)
-    if len(spec) > 5:
+    m = make_massif(name, r, h, sp, seed, MATF if isF else MAT)
+    if len(spec) > 5 and isinstance(spec[5], tuple):
         sx, rot = spec[5]
         m.scale[0] = sx; m.rotation_euler[2] = math.radians(rot)
         bpy.ops.object.transform_apply(scale=True, rotation=True)
-    MAT.node_tree.nodes['zrange'].inputs['From Max'].default_value = h * ZSQ * 0.95
+    (MATF if isF else MAT).node_tree.nodes['zrange'].inputs['From Max'].default_value = h * ZSQ * 0.95
     anchors[name] = render_sprite(name, m)
     print('[mt]', name, anchors[name])
 

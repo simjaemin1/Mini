@@ -76,7 +76,7 @@ const CELL=32,HALF=16,PPU_SCR=64/Math.SQRT2;
 const w2i=(wx,wy,wz=0)=>({x:wx-wy,y:(wx+wy)/2-wz});
 const hash=(x,y,s)=>{let n=(Math.imul(x|0,374761393)+Math.imul(y|0,668265263)+Math.imul(s|0,1274126177))|0;n=Math.imul(n^(n>>>13),1103515245);n^=n>>>16;return (n>>>0)/4294967296;};
 
-function placeAlong(hole){
+function placeAlong(DESTROY){
   const segs=[];
   for(const P of PATHS){
     const pts=P.pts;
@@ -88,17 +88,36 @@ function placeAlong(hole){
       const a=pts[i-1],b=pts[i],L=cum[i]-cum[i-1]||1,t=(sArc-cum[i-1])/L;
       return {x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t,ang:Math.atan2(b.y-a.y,b.x-a.x),w:a.w+(b.w-a.w)*t};
     }
-    const CROSS_U=10.1, ALONG_U=4.8;   // 세그먼트 모델 실측 — 단면 늘임 2.1×r2.4(수직), 진행 4.8
+    const CROSS_U=10.1, ALONG_U=4.8;
+    // ★실측 폭: 배치점에서 진행 수직으로 셀을 훑어 '이어진 바위 셀' 개수를 센다 [재민:
+    //   "산으로 되어 있는 셀들만 산으로 보여야 — 셀이 여러 개 모이면 큰 산"]. 고개(셀 없음)·파괴 셀 자동 반영.
+    function bandCells(px,py,ang){
+      const nx=-Math.sin(ang), ny=Math.cos(ang);   // 수직 단위
+      const cellRock=(wx,wy)=>{
+        const cx=Math.floor(wx/CELL), cy=Math.floor(wy/CELL);
+        if(cx<0||cy<0||cx>=S.w||cy>=S.h) return false;
+        if(DESTROY && DESTROY.has(cx+','+cy)) return false;
+        return S.cells[cy][cx]===2;
+      };
+      if(!cellRock(px,py)) return {n:0};
+      let a=0,b=0;
+      for(let k=1;k<=30;k++){ if(cellRock(px+nx*k*CELL,py+ny*k*CELL)) a=k; else break; }
+      for(let k=1;k<=30;k++){ if(cellRock(px-nx*k*CELL,py-ny*k*CELL)) b=k; else break; }
+      return {n:a+b+1, off:(a-b)/2};   // off: 중심 보정(셀 무게중심 쪽으로)
+    }
     const placed=[];
     let sArc=0;
     while(sArc<total){
       const p0=at(sArc);
-      const scW=(p0.w/32)/CROSS_U*0.96;      // ★단면 = 밴드 폭
-      const visLen=ALONG_U*32*scW;           // 진행 방향 실길이
-      placed.push({...p0, sc:scW});
+      const bc=bandCells(p0.x,p0.y,p0.ang);
+      const wCells=bc.n;
+      const scW=Math.max(0.6,wCells/CROSS_U*0.96);
+      const visLen=ALONG_U*32*scW;
+      placed.push({...p0, sc:scW, dead:wCells<2,
+        x:p0.x+(bc.off||0)*CELL*-Math.sin(p0.ang), y:p0.y+(bc.off||0)*CELL*Math.cos(p0.ang)});
       sArc+=Math.max(40, visLen*0.55);
     }
-    const alive=placed.map(p=> !hole || Math.hypot(p.x-hole.x,p.y-hole.y)>hole.r );
+    const alive=placed.map(p=>!p.dead);
     for(let i=0;i<placed.length;i++){
       if(!alive[i]) continue;
       const p=placed[i];
@@ -116,7 +135,8 @@ function placeAlong(hole){
       } else if(knot){
         segs.push({x:p.x,y:p.y,name:hash(i,oct,7)<0.5?'mt_M1':'mt_M2',sc:p.sc*1.25});
       } else {
-        segs.push({x:p.x,y:p.y,name:'mt_G'+oct+'v'+((hash(Math.round(p.x),Math.round(p.y),77)*3)|0),sc:p.sc,
+        const F=window._forceF||(P.name!=='한울대간');
+        segs.push({x:p.x,y:p.y,name:(F?('mt_F'+oct+'v'+((hash(Math.round(p.x),Math.round(p.y),77)*2)|0)):('mt_G'+oct+'v'+((hash(Math.round(p.x),Math.round(p.y),77)*3)|0))),sc:p.sc,
           vy:0.86+0.28*hash(Math.round(p.x),Math.round(p.y),78),   // 높이 지터 ±14%
           jx:(hash(Math.round(p.x),Math.round(p.y),11)-0.5)*p.w*0.05,
           jy:(hash(Math.round(p.x),Math.round(p.y),12)-0.5)*p.w*0.05});
@@ -130,7 +150,7 @@ function placeAlong(hole){
 const imgs={}; let pend=0;
 for(const k in A){ pend++; const im=new Image(); im.onload=()=>{imgs[k]=im; if(--pend===0)go();}; im.src=A[k]; }
 
-function render(hole){
+function render(DESTROY,forceF){
   const {w,h,cells}=S;
   const scale=0.22;
   const cv=document.createElement('canvas');
@@ -140,21 +160,22 @@ function render(hole){
   g.fillStyle='#0a0d10'; g.fillRect(-h*CELL-60,-190,isoW,isoH);
   const pat=g.createPattern(imgs.grassA,'repeat'); const pm=new DOMMatrix(); pm.a=0.295; pm.d=0.295; pat.setTransform(pm);
   g.fillStyle=pat; g.fillRect(-h*CELL-60,-190,isoW,isoH);
-  if(hole){
+  if(DESTROY&&DESTROY.size){
+    // ★파괴는 셀 단위 — 부서진 자리도 정사각 셀 다이아몬드 그대로 [재민 "한 셀이 정사각형인 거 잊었어?"]
     const mpat=g.createPattern(imgs.mud,'repeat'); const mm=new DOMMatrix(); mm.a=0.295; mm.d=0.295; mpat.setTransform(mm);
-    const c=w2i(hole.x,hole.y);
-    g.save(); g.beginPath();
-    g.ellipse(c.x,c.y,hole.r*1.35,hole.r*0.7,0,0,6.3); g.clip();
-    g.fillStyle=mpat; g.fillRect(c.x-hole.r*1.6,c.y-hole.r,hole.r*3.2,hole.r*2);
-    g.fillStyle='rgba(40,38,30,0.35)'; g.fillRect(c.x-hole.r*1.6,c.y-hole.r,hole.r*3.2,hole.r*2);
-    g.restore();
-    for(let i=0;i<14;i++){
-      const a=hash(i,3,41)*6.28, rr=hole.r*(0.2+0.75*hash(i,5,43));
-      const im=imgs.rockSpr; const sc2=(26+24*hash(i,7,45))/im.height;
-      const q=w2i(hole.x+Math.cos(a)*rr,hole.y+Math.sin(a)*rr*0.8);
-      g.drawImage(im,q.x-im.width*sc2/2,q.y-im.height*sc2,im.width*sc2,im.height*sc2);
+    for(const key of DESTROY){
+      const [cx,cy]=key.split(',').map(Number);
+      if(S.cells[cy]&&S.cells[cy][cx]!==2) continue;   // 원래 바위였던 셀만 바닥 노출
+      const iso=w2i(cx*CELL,cy*CELL);
+      g.beginPath(); g.moveTo(iso.x,iso.y); g.lineTo(iso.x+CELL,iso.y+HALF); g.lineTo(iso.x,iso.y+CELL); g.lineTo(iso.x-CELL,iso.y+HALF); g.closePath();
+      g.fillStyle=mpat; g.fill();
+      g.fillStyle='rgba(40,38,30,0.30)'; g.fill();
+      if(hash(cx,cy,45)>0.8){ const im=imgs.rockSpr; const sc2=(22+20*hash(cx,cy,46))/im.height;
+        const q=w2i(cx*CELL+HALF,cy*CELL+HALF);
+        g.drawImage(im,q.x-im.width*sc2/2,q.y+HALF-im.height*sc2,im.width*sc2,im.height*sc2); }
     }
   }
+  window._forceF=!!forceF;
   const tintCache={};
   function tinted(name,v){
     const key=name+v; if(tintCache[key])return tintCache[key];
@@ -166,7 +187,7 @@ function render(hole){
     tg.fillRect(0,0,t.width,t.height);
     tintCache[key]=t; return t;
   }
-  for(const sgm of placeAlong(hole)){
+  for(const sgm of placeAlong(DESTROY)){
     const an=AN[sgm.name];
     const im=tinted(sgm.name,(hash(Math.round(sgm.x),Math.round(sgm.y),91)<0.5)?0:1);
     const sc=PPU_SCR/an.ppu*sgm.sc, vy=sgm.vy||1;
@@ -186,7 +207,15 @@ function render(hole){
 
 function go(){
   const c1=render(null); c1.id='cv-range'; document.body.appendChild(c1);
-  const c2=render({x:S.w*CELL/2, y:S.h*CELL/2, r:430}); c2.id='cv-broken'; document.body.appendChild(c2);
+  // 파괴 블록: 실제 세그먼트 사슬 중간 앵커에, 밴드를 '관통'하는 40×16 셀 (정사각 — 원 금지)
+  //   ★밴드 폭(37셀)보다 좁은 블록은 벽을 못 끊는다 — 남은 셀 위로 산이 이어진다(직전 판의 실패)
+  const pre=placeAlong(null).filter(s3=>!s3.cap);
+  const anc=pre[Math.floor(pre.length*0.45)]||pre[0];
+  const mcx=Math.floor(anc.x/CELL), mcy=Math.floor(anc.y/CELL);
+  const D=new Set();
+  for(let dy=-8;dy<=8;dy++)for(let dx=-20;dx<=20;dx++) D.add((mcx+dx)+','+(mcy+dy));
+  const c2=render(D); c2.id='cv-broken'; document.body.appendChild(c2);
+  const c3=render(null,true); c3.id='cv-forest'; document.body.appendChild(c3);
   document.title='READY';
 }
 </script></body></html>`;
@@ -199,7 +228,7 @@ fs.writeFileSync('/tmp/mock-mountain3.html', html);
   page.on('pageerror', e => console.log('[pageerror]', String(e.message).slice(0, 300)));
   await page.goto('file:///tmp/mock-mountain3.html');
   await page.waitForFunction(() => document.title === 'READY', { timeout: 120000 });
-  for (const id of ['cv-range', 'cv-broken']) {
+  for (const id of ['cv-range', 'cv-broken', 'cv-forest']) {
     const el = await page.$('#' + id);
     await el.screenshot({ path: `/tmp/mock-mountain3-${id.replace('cv-', '')}.png` });
   }
