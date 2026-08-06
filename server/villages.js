@@ -2647,8 +2647,25 @@ function onGameTick(now) {
     }
     const terr = {};   // §19/§2 영토 크립(4파): econ land.size는 매일 자람(1셀 단위 구매) — 등가 반경(px)을 클라에 동기.
     for (const vil of state.villages) terr[vil.dbId] = Math.round(Math.sqrt(((vil.econ.land && vil.econ.land.size ? vil.econ.land.size * 25 : 2800)) / Math.PI) * SZ);
-    for (const cv of (state.clientPayload || [])) { if (pops[cv.id] != null) cv.pop = pops[cv.id]; if (terr[cv.id] != null) cv.tr = terr[cv.id]; }
-    state.deps.broadcast({ type: 'sim_village_day', day: state.world.day, jobs: jobChanges, pops, terr });
+    // ★★[날씨 축] econ 이 마을마다 돌리는 단기 날씨(가뭄·폭풍·풍요·안개)를 클라에 동기한다.
+    //   지금까지 이 상태는 **서버 머릿속에만** 있었다(`_weather` 가 zone.js·client.js 에 0회 등장) —
+    //   가뭄이 들어 fertility ×0.65 가 걸려도 땅에는 아무 일도 안 일어났다.
+    //   ★계수를 클라가 다시 적지 않는다. econ 이 실제로 쓰는 `mult.fertility` 를 **그대로 보낸다** —
+    //     표를 두 벌 두면 언젠가 갈린다(이 프로젝트에서 여러 번 났다). 클라는 받은 수를 쓰기만 한다.
+    //   ⇒ 화면의 마름/짙어짐이 **장식이 아니라 그 마을의 생산 함수 그 자체**가 된다.
+    const wx = {};
+    for (const vil of state.villages) {
+      const w = vil.econ && vil.econ._weather;
+      wx[vil.dbId] = (w && w.untilDay >= state.world.day)
+        ? [w.name, (w.mult && w.mult.fertility != null) ? w.mult.fertility : 1]
+        : null;
+    }
+    for (const cv of (state.clientPayload || [])) {
+      if (pops[cv.id] != null) cv.pop = pops[cv.id];
+      if (terr[cv.id] != null) cv.tr = terr[cv.id];
+      cv.wx = wx[cv.id] || null;   // welcome 재수신자도 최신 날씨를 받게(브로드캐스트와 같은 원천)
+    }
+    state.deps.broadcast({ type: 'sim_village_day', day: state.world.day, jobs: jobChanges, pops, terr, wx });
     // Stage 4B: econ 캐러밴 집합 ↔ 실체 동기(스폰·도착 전이·회수) — econ 틱 직후라 상태가 최신
     const carSync = syncCaravanBodies(now);
     state.saveQueue = state.villages.slice(); // 저장은 다음 틱부터 1마을/틱 — 19마을이면 0.63초에 걸쳐 완료(게임일 600s 대비 무시)

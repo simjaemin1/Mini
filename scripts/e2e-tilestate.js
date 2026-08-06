@@ -130,38 +130,44 @@ function meanLum(p, box) {
   //   |dx-dy| ≲ 17, |dx+dy| ≲ 12 여야 UI 를 피해 화면 중앙 띠에 들어온다.
   const OFFS = [[5, -9], [-9, 5], [8, -6], [-6, 8], [11, -3], [-3, 11], [7, 1], [1, 7], [10, -10], [-10, 10], [4, -12], [-12, 4]];
   let cam = null, PATCH = null, CTRL = null, BOX = null, BOXC = null, openG = 0, INBOX = null, INBOXC = null;
-  // ★스폰이 NPC 마을 한복판이다(영토 3,450셀 ≈ 반경 30셀). 마당 타일·지붕이 지면을 덮어
-  //   거기서 재면 전부 0 이 나온다 — 먼저 **마을 밖으로 걸어 나간다**.
+  // ★뙈기 고르기를 함수로 둔다 — 걸어서 자리를 옮긴 뒤에는 **반드시 다시 골라야** 한다.
+  //   1패스에서 걷고 나서 옛 절대 셀의 상자를 그대로 썼다가, 그 셀들이 화면 밖으로 나가
+  //   상자 넓이가 0 이 되고 모든 |Δ| 가 **NaN** 이 됐다(판정 5개가 거짓 실패).
+  async function pickPatches(label) {
+    for (let round = 0; round < 6; round++) {
+      cam = await page.evaluate(() => window.__camCellLocal());
+      const shot = await grab('00-scout-' + label + round);
+      const cands = [];
+      for (const [ox, oy] of OFFS) {
+        const cells = patchAt(cam, ox, oy);
+        const bx = await boxOf(cells);
+        if (bx[0] < 70 || bx[2] > 1330 || bx[1] < 260 || bx[3] > 850) continue;
+        const ib = innerOf(bx);
+        const kinds = await page.evaluate((cs) => cs.map(([a, b]) => window.__tileStateAt(a, b).kind), cells);
+        if (!kinds.every((k) => k === 'land')) continue;
+        cands.push({ ox, oy, cells, bx, ib, g: greenPct(shot, ib) });
+      }
+      cands.sort((a, b) => b.g - a.g);
+      say(`    [${label}] ${round}차 카메라 셀 ${cam} · 후보 ${cands.length} 최고 초록 ${cands.length ? cands[0].g.toFixed(1) : '-'}%`);
+      if (cands.length >= 2 && cands[0].g > 22) {
+        const far = cands.slice(1).find((c) => Math.abs(c.ox - cands[0].ox) + Math.abs(c.oy - cands[0].oy) >= 14 && c.g > 12);
+        if (far) {
+          PATCH = cands[0].cells; BOX = cands[0].bx; INBOX = cands[0].ib; openG = cands[0].g;
+          CTRL = far.cells; BOXC = far.bx; INBOXC = far.ib;
+          say(`    [${label}] → 시험 offset ${[cands[0].ox, cands[0].oy]}(초록 ${cands[0].g.toFixed(1)}%) · 대조 offset ${[far.ox, far.oy]}(${far.g.toFixed(1)}%)`);
+          return true;
+        }
+      }
+      for (let i = 0; i < 8; i++) await pulse(round % 2 ? 'a' : 's', 1700);
+    }
+    return false;
+  }
+  // ★스폰이 NPC 마을 한복판이다(영토 3,450셀). 마당 타일·지붕이 지면을 덮어 거기서 재면 전부 0 —
+  //   먼저 마을 밖으로 걸어 나간다.
   say('    마을 밖으로 이동 중…');
   for (let i = 0; i < 22; i++) await pulse('s', 1700);
   for (let i = 0; i < 10; i++) await pulse('a', 1700);
-  for (let round = 0; round < 6; round++) {
-    cam = await page.evaluate(() => window.__camCellLocal());
-    const shot = await grab('00-scout' + round);
-    const cands = [];
-    for (const [ox, oy] of OFFS) {
-      const cells = patchAt(cam, ox, oy);
-      const bx = await boxOf(cells);
-      if (bx[0] < 70 || bx[2] > 1330 || bx[1] < 260 || bx[3] > 850) continue;      // UI·화면 밖
-      const ib = innerOf(bx);
-      const kinds = await page.evaluate((cs) => cs.map(([a, b]) => window.__tileStateAt(a, b).kind), cells);
-      if (!kinds.every((k) => k === 'land')) continue;                             // 물·바위 위에선 비옥도 시험 불가
-      cands.push({ ox, oy, cells, bx, ib, g: greenPct(shot, ib) });
-    }
-    cands.sort((a, b) => b.g - a.g);
-    say(`    ${round}차 카메라 셀 ${cam} · 후보 ${cands.length}  최고 초록 ${cands.length ? cands[0].g.toFixed(1) : '-'}%`);
-    if (cands.length >= 2 && cands[0].g > 22) {
-      // 대조는 시험 뙈기에서 **충분히 떨어진** 후보(타일이 겹치면 국소성 판정이 무의미해진다)
-      const far = cands.slice(1).find((c) => Math.abs(c.ox - cands[0].ox) + Math.abs(c.oy - cands[0].oy) >= 14 && c.g > 12);
-      if (far) {
-        PATCH = cands[0].cells; BOX = cands[0].bx; INBOX = cands[0].ib; openG = cands[0].g;
-        CTRL = far.cells; BOXC = far.bx; INBOXC = far.ib;
-        say(`    → 시험 뙈기 offset ${[cands[0].ox, cands[0].oy]} (초록 ${cands[0].g.toFixed(1)}%) · 대조 offset ${[far.ox, far.oy]} (초록 ${far.g.toFixed(1)}%)`);
-        break;
-      }
-    }
-    for (let i = 0; i < 8; i++) await pulse(round % 2 ? 'a' : 's', 1700);   // 더 멀리
-  }
+  await pickPatches('init');
   ok(PATCH !== null, '맨 초원에 시험/대조 뙈기를 잡았다');
   if (!PATCH) { await browser.close(); try { z.kill(); } catch (e) {} for (const p2 of procs) { try { p2.kill(); } catch (e) {} } say(`\n=== 타일 상태계: 통과 ${pass} · 실패 ${fail} ===`); process.exit(1); }
   // ★카메라는 보간(트윈)이라 걷기 직후에도 미끄러진다. 그 상태로 재면 **대조 상자까지 변한다**
@@ -245,6 +251,86 @@ function meanLum(p, box) {
   ok(dRoadIn > 4, `★다져진 길이 그림에 나타난다 (|Δ| ${dRoadIn.toFixed(2)})`);
   ok(dRoadOut < dRoadIn / 5, `★반례 — 길을 안 넣은 대조 상자는 그대로다 (${dRoadOut.toFixed(2)})`);
   ok(greenPct(withRoad, INBOX) < greenPct(preRoad, INBOX) * 0.7, `길 위의 풀이 깎였다 (속살 초록 ${greenPct(preRoad, INBOX).toFixed(1)}% → ${greenPct(withRoad, INBOX).toFixed(1)}%)`);
+
+  // ── ⓕ-2 채굴 축 ──────────────────────────────────────────────────────────
+  //   ★이 판정이 늦게 붙었다: 배치 20 B 1차에서 ore 거울을 배선해 놓고 **한 판정도 안 걸었다**.
+  //     나머지 4축은 반례까지 붙여 쟀으면서 이것만 빠졌다 — 실측 없이 됐다고 적은 셈이라 메운다.
+  say('\n[ⓕ-2 채굴 축 — 판 자리가 땅에 남는가]');
+  await feedRoad(PATCH.map(([cx, cy]) => [cx, cy, 0]).flat());   // 길 축 원복(앞 절에서 넣은 것)
+  await feed(mk(900, 0));                                        // 토양치 고정 · 미채굴(ore 15)
+  const preOre = await grab('14-preore');
+  const of_ = []; for (const [cx, cy] of PATCH) of_.push(cx, cy, Math.round(900 / 16), 0, 0);   // ore 0 = 다 팠다
+  say(`    주입: 채굴 재고 0(다 팠다) 을 ${await feed(of_)}셀`);
+  const mined = await grab('15-ore0');
+  const dOreIn = meanAbsDiff(preOre, mined, INBOX), dOreOut = meanAbsDiff(preOre, mined, INBOXC);
+  say(`    변화량  시험 ${dOreIn.toFixed(2)}  ·  대조 ${dOreOut.toFixed(2)}`);
+  ok(dOreIn > 4, `★★판 자리가 그림에 남는다 (|Δ| ${dOreIn.toFixed(2)}) — 토양치는 900 으로 고정했으니 채굴 축만의 몫이다`);
+  ok(dOreOut < Math.max(0.5, dOreIn / 5), `★반례 — 안 판 대조 상자는 그대로다 (${dOreOut.toFixed(2)})`);
+  ok(meanLum(mined, INBOX) < meanLum(preOre, INBOX), `★판 자리가 **더 어둡다** (휘도 ${meanLum(preOre, INBOX).toFixed(1)} → ${meanLum(mined, INBOX).toFixed(1)}) — 1차 실장은 매끈한 밝은 흙이라 '판 데'로 안 읽혔다(96→109). 자갈·그늘을 넣어 뒤집었다`);
+  // 반례 ②: 재고를 만땅(15)으로 되돌리면 파기 전 그림으로 돌아온다 = 축이 ore 값을 실제로 읽는다
+  await feed(mk(900, 0));
+  const restored = await grab('16-ore15');
+  const dBack = meanAbsDiff(preOre, restored, INBOX);
+  say(`    재고를 만땅으로 되돌린 뒤 |Δ| = ${dBack.toFixed(2)} (파기 전 대비)`);
+  ok(dBack < 1.0, `★★반례 — 재고를 되돌리면 그림도 돌아온다 (|Δ| ${dBack.toFixed(2)}) — 우연한 변화가 아니라 ore 를 읽고 있다`);
+  // 중간값도 연속인가 — ore 8 은 0 과 15 사이 어딘가여야 한다
+  const om = []; for (const [cx, cy] of PATCH) om.push(cx, cy, Math.round(900 / 16), 0, 8);
+  await feed(om);
+  const half = await grab('17-ore8');
+  const dHalf = meanAbsDiff(preOre, half, INBOX);
+  say(`    ore 8(반쯤 팜) |Δ| = ${dHalf.toFixed(2)}  (0 일 때 ${dOreIn.toFixed(2)} · 15 일 때 ${dBack.toFixed(2)})`);
+  ok(dHalf > dBack && dHalf < dOreIn, `★채굴 축도 연속이다 (${dBack.toFixed(2)} < ${dHalf.toFixed(2)} < ${dOreIn.toFixed(2)})`);
+
+  // ── ⓕ-3 날씨 축 ──────────────────────────────────────────────────────────
+  //   ★econ 이 마을마다 돌리는 가뭄·풍요가 **지금까지 서버 머릿속에만** 있었다
+  //     (`_weather` 가 zone.js·client.js 에 0회 등장). 서버가 econ 이 쓰는 fertility 계수를
+  //     그대로 보내오므로, 여기서 재는 건 "그 수가 실제로 땅에 나타나는가" 다.
+  say('\n[ⓕ-3 날씨 축 — econ 의 가뭄·풍요가 땅에 나타나는가]');
+  await feed(mk(760, 0));   // 토양치 고정 — 아래 변화는 전부 날씨 몫이다
+  const wdbg0 = await page.evaluate(() => window.__wxDbg());
+  say(`    마을 ${wdbg0.villages}곳 · 가장 가까운 셋: ${wdbg0.nearest.map((v) => `${v.name}(거리 ${v.d}px·반경 ${v.R})`).join(' · ')}`);
+  ok(wdbg0.villages > 0, '마을 영토 정보가 클라에 있다(날씨 축의 좌표 원천)');
+  // 시험 뙈기가 어느 마을의 날씨 반경 안에 들어올 때까지 그쪽으로 걸어간다(시험의 전제 조건)
+  let inR = false, wxBase = null;
+  for (let tryN = 0; tryN < 4 && !inR; tryN++) {
+    const allDry = {}; for (const v of wdbg0.nearest) allDry[v.id] = ['🌵가뭄', 0.65];
+    const near = (await page.evaluate(() => window.__wxDbg())).nearest[0];
+    inR = near.d < near.R * 0.72;
+    say(`    ${tryN}차 — 가장 가까운 마을까지 ${near.d}px (반경 ${near.R}) · 반경 안 ${inR}`);
+    if (inR) break;
+    for (let i = 0; i < 6; i++) await pulse('w', 1600);   // 마을 쪽으로
+  }
+  ok(inR, '★시험 자리가 어느 마을의 날씨 반경 안이다 — 밖에서 재면 아무 변화도 안 나서 자명 통과가 된다');
+  ok(await pickPatches('wx'), '★걸어간 자리에서 뙈기를 **다시 골랐다** — 옛 절대 셀을 그대로 쓰면 상자가 화면 밖으로 나가 |Δ| 가 NaN 이 된다');
+  await feed(mk(760, 0));   // 새 뙈기에도 토양치 고정
+  await page.evaluate(() => window.__wxFeed({}));
+  await sleep(1200);
+  wxBase = await grab('18-wx-none');
+  const wdbg1 = await page.evaluate(() => window.__wxDbg());
+  const vid = wdbg1.nearest[0].id;
+  say(`    주입: ${wdbg1.nearest[0].name} 에 🌵가뭄(fertility ×0.65) — 갱신 ${await page.evaluate((i) => window.__wxFeed({ [i]: ['🌵가뭄', 0.65] }), vid)}곳`);
+  await sleep(1500);
+  const wxDry = await grab('19-wx-drought');
+  const dDry = meanAbsDiff(wxBase, wxDry, INBOX);
+  const gDry = greenPct(wxDry, INBOX), gBase2 = greenPct(wxBase, INBOX);
+  say(`    가뭄 |Δ| ${dDry.toFixed(2)} · 초록 ${gBase2.toFixed(1)}% → ${gDry.toFixed(1)}%`);
+  ok(dDry > 3, `★★가뭄이 땅에 나타난다 (|Δ| ${dDry.toFixed(2)}) — 토양치는 760 으로 고정했으니 날씨만의 몫이다`);
+  ok(gDry < gBase2, `★가뭄이 들면 풀이 준다 (${gBase2.toFixed(1)}% → ${gDry.toFixed(1)}%)`);
+  say(`    주입: 같은 마을에 🌈풍요(fertility ×1.25) — 갱신 ${await page.evaluate((i) => window.__wxFeed({ [i]: ['🌈풍요', 1.25] }), vid)}곳`);
+  await sleep(1500);
+  const wxRich = await grab('20-wx-bounty');
+  const gRich = greenPct(wxRich, INBOX);
+  say(`    풍요 초록 ${gRich.toFixed(1)}%  (가뭄 ${gDry.toFixed(1)}% · 무날씨 ${gBase2.toFixed(1)}%)`);
+  ok(gRich > gDry, `★★반례 — 같은 자리·같은 토양치인데 풍요는 가뭄보다 짙다 (${gRich.toFixed(1)}% > ${gDry.toFixed(1)}%) — 계수 부호를 실제로 읽는다`);
+  // 날씨를 걷으면 원래대로 — 저장된 토양치는 안 건드렸다는 증거
+  await page.evaluate((i) => window.__wxFeed({ [i]: null }), vid);
+  await sleep(1500);
+  const wxOffShot = await grab('21-wx-clear');
+  const dBack2 = meanAbsDiff(wxBase, wxOffShot, INBOX);
+  say(`    날씨를 걷은 뒤 |Δ| = ${dBack2.toFixed(2)} (무날씨 대비)`);
+  ok(dBack2 < 1.0, `★★날씨가 끝나면 땅이 그대로 돌아온다 (|Δ| ${dBack2.toFixed(2)}) — 저장된 토양치를 안 건드렸다는 증거(진실은 하나)`);
+  const stAt = await at(PATCH[0][0], PATCH[0][1]);
+  ok(Math.abs(stAt.soil - 760) < 20, `★저장값도 그대로다 (토양치 ${stAt.soil.toFixed(0)} ≈ 760) — 날씨는 **렌더 유효값**이지 두 번째 진실이 아니다`);
 
   // ── ⓖ 손잡이 · 결정론 ────────────────────────────────────────────────────
   say('\n[ⓖ 손잡이로 끄면 사라진다 · 결정론]');

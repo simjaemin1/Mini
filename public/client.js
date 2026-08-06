@@ -509,7 +509,8 @@ const SIM_JOB_EMOJI = {
     const _farm = _tsFarmSet(_pc);
     const _pat = (GTEX.dry_angled && GTEX.mud_angled)
       ? { dry: g.createPattern(GTEX.dry_angled, 'repeat'), mud: g.createPattern(GTEX.mud_angled, 'repeat') } : null;
-    let nState = 0;
+    const _wxL = _wxListOf(_pc);   // ★날씨 걸린 마을만(보통 0~5) — 없으면 셀 루프에서 비용 0
+    let nState = 0, nWx = 0;
     for (let cx = c0x; cx <= c1x; cx++) for (let cy = c0y; cy <= c1y; cy++) {
       const cxw = cx * 32 + 16, cyw = cy * 32 + 16;
       const sx = (cxw - cyw) - X0, sy = (cxw + cyw) / 2 - Y0;
@@ -532,8 +533,14 @@ const SIM_JOB_EMOJI = {
         const _rec = _soilMap ? _soilMap.get(_k) : null;
         const _isFarm = _farm ? _farm.has(_k) : false;
         const _S0 = (typeof SoilBase !== 'undefined') ? SoilBase : null;
+        const _soilRaw = _tsSoil(_lcx, _lcy, isWater ? 'water' : (isRock ? 'rock' : 'land'), _rec);
+        const _wxM = _wxL ? _wxMulAt(_wxL, cxw, cyw) : 1;
+        if (_wxM !== 1) nWx++;
         _st = {
-          soil: _tsSoil(_lcx, _lcy, isWater ? 'water' : (isRock ? 'rock' : 'land'), _rec),
+          // ★날씨는 **유효값**만 바꾼다 — 저장된 토양치(_rec.v)는 건드리지 않는다.
+          //   가뭄이 끝나면 곱이 1 로 돌아오고 땅도 그대로 돌아온다. 진실이 하나로 남는다.
+          soil: Math.max(0, Math.min(1000, _soilRaw * _wxM)),
+          soilRaw: _soilRaw, wx: _wxM,
           geo: _rec ? (_rec.geo | 0) : 0,
           ore: _rec ? (_rec.ore == null ? 15 : _rec.ore) : 15,
           road: _roadMap ? (_roadMap.get(_k) || 0) : 0,
@@ -581,7 +588,7 @@ const SIM_JOB_EMOJI = {
         _gtDiamond(g, sx, sy, isIce ? '#9bb5cc' : zMeta.tintColor, isIce ? 0.06 : 0.13);
       }
     }
-    return { cv, cells: nCell, state: nState };
+    return { cv, cells: nCell, state: nState, wx: nWx };
   }
   function _gtDiamond(g, cx, cy, color, alpha) {
     if (alpha <= 0) return;
@@ -637,6 +644,71 @@ const SIM_JOB_EMOJI = {
     }
     _gtInvalidateCells(c, flat, 5);   // ★바뀐 셀이 걸친 타일만 재베이크 — 전체 clear 는 히치다
     return n;
+  }
+  // ★★[날씨 축] econ 이 마을마다 돌리는 단기 날씨를 **땅에** 드러낸다.
+  //   지금까지 `_weather` 는 서버 머릿속에만 있었다 — 가뭄이 들어 생산이 ×0.65 가 돼도
+  //   지도에는 아무 일도 안 일어났다. 서버가 **econ 이 실제로 쓰는 fertility 계수를 그대로**
+  //   보내오므로(사본 없음), 여기서는 그 수로 **유효 토양치**를 곱하기만 한다:
+  //     soilEff = soil × (1 + (fert − 1) × 감쇠)
+  //   ⇒ 가뭄이 들면 그 마을 들판이 마르고, 끝나면 돌아온다. 저장은 한 바이트도 안 늘어난다
+  //     (동적 토양치는 그대로 — 날씨는 **렌더 전용 유효값**이다. 두 번째 진실을 만들지 않는다).
+  const WX_FALL = 0.72;        // 이 비율까지는 온전히, 그 밖으로 1.0 까지 부드럽게 사라진다
+  // ★날씨 세기 — econ 계수를 **그대로 곱하면 과하다.** 실측: 토양치 760 에 가뭄(×0.65)을 곱하면
+  //   494 가 되는데, 풀 램프의 가파른 구간(430~980) 한복판이라 초록이 78% → **0.5%** 로 무너졌다.
+  //   7~14일짜리 가뭄이 마을 들판을 사막으로 만드는 건 고증도 의도도 아니다.
+  //   ⇒ econ 계수는 **생산**에 걸리는 값이지 그림의 세기가 아니다. 부호와 비율은 그대로 두고
+  //     진폭만 눌러 "마른다/짙어진다"로 읽히게 한다(가뭄이면 유효 토양치 ×0.86 쯤).
+  const WX_STRENGTH = 0.40;
+  function _wxRadiusPx(v) { return Math.max(v.tr || 0, v.r || 0, 640) * 1.25; }
+  // 날씨 변경분 적재 — `sim_village_day` 방송과 하네스 주입이 **같은 입구**를 쓴다(우회로 금지).
+  //   wxMap: { 마을id → [이름, fertility계수] | null }
+  function _wxIngest(c, wxMap) {
+    if (!c || !c.simVillages || !wxMap) return 0;
+    let changed = 0;
+    for (const v of c.simVillages) {
+      const nw = wxMap[v.id] !== undefined ? (wxMap[v.id] || null) : (v.wx || null);
+      const ow = v.wx || null;
+      if ((!nw && !ow) || (nw && ow && nw[0] === ow[0] && nw[1] === ow[1])) continue;
+      v.wx = nw; changed++;
+      _gtInvalidateAround(c, v.cx, v.cy, _wxRadiusPx(v));   // 그 마을 둘레 타일만
+    }
+    return changed;
+  }
+  function _wxListOf(c) {      // 날씨가 걸린 마을만 — 보통 0~5곳이라 셀당 비용이 사실상 0
+    if (!c || !c.simVillages || _t19.wxOff) return null;
+    const ox = (c.meta && c.meta.worldOffsetX) || 0, oy = (c.meta && c.meta.worldOffsetY) || 0;
+    let out = null;
+    for (const v of c.simVillages) {
+      if (!v.wx || !(v.wx[1] >= 0) || v.wx[1] === 1) continue;   // 안개처럼 fertility 안 건드리는 건 땅에 안 그린다
+      const R = _wxRadiusPx(v);
+      (out || (out = [])).push({ x: ox + v.cx * CL_BUILDING_SIZE + 16, y: oy + v.cy * CL_BUILDING_SIZE + 16, R, f: v.wx[1] });
+    }
+    return out;
+  }
+  function _wxMulAt(list, wx2, wy2) {
+    if (!list) return 1;
+    let m = 1;
+    for (let i = 0; i < list.length; i++) {
+      const w = list[i], dx = wx2 - w.x, dy = wy2 - w.y;
+      const d = Math.sqrt(dx * dx + dy * dy); if (d >= w.R) continue;
+      const t = 1 - _smooth(w.R * WX_FALL, w.R, d);        // 안쪽은 1, 가장자리로 갈수록 0
+      const mm = 1 + (w.f - 1) * t * WX_STRENGTH;
+      if (Math.abs(mm - 1) > Math.abs(m - 1)) m = mm;      // 겹치면 **더 센 쪽**이 이긴다(합치면 과장된다)
+    }
+    return m;
+  }
+  // 월드 원(중심·반경 px) 안의 타일을 버린다 — 날씨가 바뀐 마을 둘레만.
+  function _gtInvalidateAround(c, vcx, vcy, rPx) {
+    if (!c || !c.meta) return;
+    const ox = c.meta.worldOffsetX || 0, oy = c.meta.worldOffsetY || 0;
+    const wx2 = ox + vcx * CL_BUILDING_SIZE + 16, wy2 = oy + vcy * CL_BUILDING_SIZE + 16;
+    // 월드 원 → iso 로 보내면 마름모라, 그 외접 사각형의 타일을 전부 버린다(넉넉히·안전하게)
+    const c0 = w2i(wx2 - rPx, wy2 - rPx), c1 = w2i(wx2 + rPx, wy2 - rPx);
+    const c2 = w2i(wx2 - rPx, wy2 + rPx), c3 = w2i(wx2 + rPx, wy2 + rPx);
+    const xs = [c0.x, c1.x, c2.x, c3.x], ys = [c0.y, c1.y, c2.y, c3.y];
+    const t0x = Math.floor(Math.min(...xs) / GT_W), t1x = Math.floor(Math.max(...xs) / GT_W);
+    const t0y = Math.floor(Math.min(...ys) / GT_H), t1y = Math.floor(Math.max(...ys) / GT_H);
+    for (let ty = t0y; ty <= t1y; ty++) for (let tx = t0x; tx <= t1x; tx++) _groundTiles.delete(tx + '_' + ty);
   }
   // 바뀐 셀이 걸친 타일만 버린다 — 전체 clear 는 화면 전체 재베이크라 히치가 된다.
   function _gtInvalidateCells(c, flat, stride) {
@@ -719,13 +791,24 @@ const SIM_JOB_EMOJI = {
     // ── ②-채굴(번영도 거울): 판 자리는 흙이 드러나고 어두워진다 ────────────────
     const oreA = st.ore < 15 ? (15 - st.ore) / 15 : 0;
 
-    const anyMud = Math.max(mudA, wearA, tillA, oreA * 0.75);
+    const anyMud = Math.max(mudA, wearA, tillA, oreA * 0.42);   // ★채굴분의 흙 알파를 낮춘다 — 매끈한 밝은 흙이 되면 '판 데'가 아니라 그냥 맨땅이다
     if (dryA <= 0.004 && anyMud <= 0.004) return;          // 손댈 게 없다(라이브 대다수가 여기)
     clip();
     if (dryA > 0.004) fillPat(pat.dry, dryA);
     if (anyMud > 0.004) fillPat(pat.mud, anyMud);
     if (wearA > 0.5) { g.globalAlpha = (wearA - 0.5) * 0.5; g.fillStyle = '#8a7a5e'; g.fillRect(sx - 33, sy - 17, 66, 34); g.globalAlpha = 1; }   // 다져진 흙 밝힘
-    if (oreA > 0.2) { g.globalAlpha = oreA * 0.28; g.fillStyle = '#4a4238'; g.fillRect(sx - 33, sy - 17, 66, 34); g.globalAlpha = 1; }           // 판 자리 그늘
+    if (oreA > 0.2) {
+      // ★판 자리는 **판 자국**이어야 한다 — 첫 실장은 매끈한 밝은 흙이라 "판 데"로 안 읽혔다
+      //   (실측: 휘도가 96 → 109 로 **밝아졌다**). 부순 돌 알갱이 + 그늘로 파헤친 결을 준다.
+      g.globalAlpha = oreA * 0.58; g.fillStyle = '#3a332b'; g.fillRect(sx - 33, sy - 17, 66, 34); g.globalAlpha = 1;
+      const S2 = _SB();
+      for (let k = 0; k < 10; k++) {
+        if (S2.hash(lcx, lcy, 611 + k) > oreA) continue;    // 많이 팔수록 자갈이 는다(연속)
+        const rx = sx - 28 + S2.hash(lcx, lcy, 621 + k) * 56, ry = sy - 13 + S2.hash(lcx, lcy, 641 + k) * 26;
+        g.fillStyle = S2.hash(lcx, lcy, 661 + k) < 0.5 ? 'rgba(46,42,36,0.62)' : 'rgba(128,120,108,0.5)';
+        g.fillRect(rx, ry, 2 + 3.5 * S2.hash(lcx, lcy, 681 + k), 1.4 + 2.6 * S2.hash(lcx, lcy, 701 + k));
+      }
+    }
     if (st.till > 0) {  // 이랑 — 경작 진행에 따라 또렷해짐. iso 다이아 결을 따르는 대각선.
       const rA = _smooth(350, 950, st.till);
       if (rA > 0.01) {
@@ -1483,6 +1566,25 @@ const SIM_JOB_EMOJI = {
     _natChunk.set(key, v);
     return v;
   }
+  // ★★[배치 20 B ↔ 배치 21 접합] 들꽃·풀숲이 **타일 상태를 따른다.**
+  //   두 배치가 따로 착지해 아무도 못 본 구멍이었다 — 파낸 광맥 자리 위에 들꽃이 피고,
+  //   토양치 60 의 맨흙에 풀포기가 돋고, 산터 암반에 꽃이 자랐다(실측 스크린샷으로 잡았다).
+  //   재민 확정 "비옥도에 따라 **모든 타일이** 디자인이 바뀌어야" 는 그 위의 소품까지다.
+  //   ★억제는 연속이다 — 자리마다 고유 난수(셀 해시)를 문턱과 견주므로, 토양치가 내려가면
+  //     소품이 **하나씩 사라진다**(개수의 계단이 아니라). Math.random() 미사용.
+  //   ★물가 술(fringe)은 건드리지 않는다 — 갈대는 진흙에서 자란다. 배치 21 이 검증한 계는 그대로.
+  function _natStateOk(p) {
+    if (_t19.stateOff) return true;
+    const c = (primaryZoneId && typeof conns !== 'undefined') ? conns.get(primaryZoneId) : null;
+    if (!c || !c.meta || typeof SoilBase === 'undefined') return true;
+    const lcx = Math.floor((p.x - c.meta.worldOffsetX) / 32), lcy = Math.floor((p.y - (c.meta.worldOffsetY || 0)) / 32);
+    const rec = c.soil ? c.soil.get(lcx + ',' + lcy) : null;
+    if (rec && rec.geo) return false;                       // 산터 암반 — 자체 램프(이끼·틈새 풀)가 따로 있다
+    const soil = rec ? rec.v : SoilBase.baseAt('land', lcx, lcy);
+    const h = SoilBase.hash(lcx, lcy, 9301);
+    if (rec && rec.ore < 15 && h < (15 - rec.ore) / 15) return false;   // 판 자리일수록 더 많이 사라진다
+    return h <= _smooth(180, 620, soil);                    // 척박할수록 성기게 — 620 위는 사실상 전부 남는다
+  }
   // ★회피 — 마을 영토·경작지·길·사유지. **판정은 전부 이미 클라에 온 값**이다(새 판정 금지).
   //   길·건축물은 셀 집합으로 한 번만 굽고, 목록 크기가 바뀔 때만 다시 굽는다.
   let _natBlockSet = null, _natBlockSig = '';
@@ -1542,6 +1644,7 @@ const SIM_JOB_EMOJI = {
         if (!_t19.propOff) for (const p of ch.pr) {
           if (Math.abs(p.x - cx0) > R || Math.abs(p.y - cy0) > R) continue;
           if (!_t19.propNoAvoid && _natBlocked(p.x, p.y)) continue;
+          if (!_natStateOk(p)) continue;   // ★[배치 20 B] 타일 상태 — 척박·판 자리·산터엔 안 돋는다
           out.push({ z: w2i(p.x, p.y).y, kind: 'natspr', s: p }); np++;
           _natLastPr.push(p);
         }
@@ -1593,7 +1696,7 @@ const SIM_JOB_EMOJI = {
   //     git stash 로 만든 "before" 는 다른 세계다).
   const _t19 = { legacy: false, waterOff: false, decoOff: false, prismOff: false, mtOff: false,
                  natOff: false, fringeOff: false, propOff: false, propNoAvoid: false, frFloor: 0,
-                 stateOff: false, slowFlow: false };
+                 stateOff: false, slowFlow: false, wxOff: false };
   window.__terrain19 = _t19;
 
   // 지형 차단 통합 (물+바위) — 이동 예측용
@@ -3604,6 +3707,7 @@ const SIM_JOB_EMOJI = {
       // §4-4 Stage 4A: 게임일 1회 — 마을 인구 라벨 + NPC 직업(simJob) 변경분 + §19 영토 크립 반경(tr) 갱신
       if (c.simVillages && msg.pops) for (const v of c.simVillages) { if (msg.pops[v.id] != null) v.pop = msg.pops[v.id]; if (msg.terr && msg.terr[v.id] != null) v.tr = msg.terr[v.id]; }
       if (msg.jobs) for (const [pid, job] of Object.entries(msg.jobs)) { const o = c.others.get(pid); if (o) o.simJob = job; }
+      if (_wxIngest(c, msg.wx)) needsRedraw = true;   // ★[날씨 축] — 방송과 하네스가 같은 입구
     } else if (msg.type === 'bandit_camps') {
       // §11 도적: 소굴·야영 마커 갱신(서버가 변경 시에만 방송)
       c.banditCamps = (msg.camps && msg.camps.length) ? msg.camps : null;
@@ -4808,9 +4912,8 @@ const SIM_JOB_EMOJI = {
     //   텍스처가 아직 안 왔거나 legacy 손잡이면 **종전 경로**로 그대로 떨어진다(무회귀).
     const _LEG = !!_t19.legacy || _gtexReady < 3;
     // 손잡이가 바뀌면 구워 둔 타일은 옛 문법이다 — 버린다(A/B 가 같은 프레임에서 성립하려면 필수)
-    if (_gtKnob !== (_LEG ? 'L' : '') + (_t19.stateOff ? 'S' : '')) {
-      _gtKnob = (_LEG ? 'L' : '') + (_t19.stateOff ? 'S' : ''); _groundTiles.clear();
-    }
+    { const _kf = (_LEG ? 'L' : '') + (_t19.stateOff ? 'S' : '') + (_t19.wxOff ? 'W' : '');
+      if (_gtKnob !== _kf) { _gtKnob = _kf; _groundTiles.clear(); } }
     if (!_LEG) _waterInit();   // ★타일을 굽기 **전에** 물 가능 여부를 확정한다(진흙/단색 갈림이 타일에 굳는다)
     window.__groundDbg = { legacy: _LEG, tex: _gtexReady, tiles: 0, baked: 0, cached: _groundTiles.size, stateCells: 0 };
     { // ★[배치 20 B] 타일 상태 계측·주입 — 하네스는 서버 방송과 **같은 입구**(_tsIngest)로만 들어온다.
@@ -4820,9 +4923,21 @@ const SIM_JOB_EMOJI = {
         soilCells: _c && _c.soil ? _c.soil.size : -1,
         roadCells: _c && _c.roads ? _c.roads.size : -1,
         farmCells: _farmCells ? _farmCells.size : -1,
+        wxActive: (_c && _c.simVillages) ? _c.simVillages.filter((v) => v.wx).length : -1,
         q: TS_SOIL_Q,
       };
       window.__tileStateFeed = (flat) => { const n = _tsIngest(_c, flat || []); needsRedraw = true; return n; };
+      // ★[날씨 축] 방송과 **같은 입구**. wxMap = { 마을id → [이름, fertility계수] | null }
+      window.__wxFeed = (m) => { const n = _wxIngest(_c, m || {}); needsRedraw = true; return n; };
+      window.__wxDbg = () => {
+        if (!_c || !_c.simVillages) return null;
+        const on = _c.simVillages.filter((v) => v.wx);
+        return { off: !!_t19.wxOff, villages: _c.simVillages.length, active: on.length,
+                 sample: on.slice(0, 4).map((v) => ({ id: v.id, name: v.name, cx: v.cx, cy: v.cy, wx: v.wx, R: Math.round(_wxRadiusPx(v)) })),
+                 nearest: _c.simVillages.map((v) => ({ id: v.id, name: v.name, cx: v.cx, cy: v.cy, R: Math.round(_wxRadiusPx(v)),
+                   d: Math.round(Math.hypot((_c.meta.worldOffsetX + v.cx * CL_BUILDING_SIZE) - _camAbs.x, ((_c.meta.worldOffsetY || 0) + v.cy * CL_BUILDING_SIZE) - _camAbs.y)) }))
+                   .sort((a, b) => a.d - b.d).slice(0, 3) };
+      };
       // 답압(길)도 방송과 **같은 입구**로 넣는다 — 하네스가 우회로를 쓰지 않게.
       window.__roadFeed = (flat) => {
         if (!_c) return 0;
