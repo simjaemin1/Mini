@@ -345,7 +345,8 @@ const SIM_JOB_EMOJI = {
       // ★[배치 19 B] 물 흐름의 정본 = 이 rivers path 다(상류→하류 순서). terrain.js 는 이걸
       //   `window.Terrain` 으로 내보내지 않으므로(_getHardcoded 는 서버 전용 export) **여기서**
       //   받은 원본을 그대로 잡아 둔다 — 서버 파일을 건드리지 않고 사본도 만들지 않는다.
-      _hardTerrain = all; _riverSegs = null; _flowCellCache.clear(); _wfCache.key = null;
+      _hardTerrain = all; _riverSegs = null; _flowCellCache.clear(); _flowCellOld.clear(); _segGrid.map = null;
+      _wfCache.key = null; _wfCache.pending = false; _wfPrev.wet = null;   // 지형이 갈렸으니 물 판정 재사용본도 버린다
       _waterCellCache.clear();
       _natChunk.clear();      // ★[배치 21] 자연물 청크 배치도 지형 파생 — 같은 지점에서 무효화
       _rockCellCache.clear();
@@ -500,6 +501,15 @@ const SIM_JOB_EMOJI = {
     const c0x = Math.floor(mnx / 32) - 1, c1x = Math.ceil(mxx / 32) + 1;
     const c0y = Math.floor(mny / 32) - 1, c1y = Math.ceil(mxy / 32) + 1;
     let nCell = 0;
+    // ★[배치 20 B] 타일 상태 원천 — **주 존만**(다른 존은 상태 데이터 자체가 없다).
+    //   패턴은 타일당 1회만 만든다(셀마다 createPattern 하면 베이크가 3배 느려진다 — 실측).
+    const _pc = (primaryZoneId && typeof conns !== 'undefined') ? conns.get(primaryZoneId) : null;
+    const _pz = (_pc && _pc.meta) ? _pc.meta : null;
+    const _soilMap = _pc ? _pc.soil : null, _roadMap = _pc ? _pc.roads : null;
+    const _farm = _tsFarmSet(_pc);
+    const _pat = (GTEX.dry_angled && GTEX.mud_angled)
+      ? { dry: g.createPattern(GTEX.dry_angled, 'repeat'), mud: g.createPattern(GTEX.mud_angled, 'repeat') } : null;
+    let nState = 0;
     for (let cx = c0x; cx <= c1x; cx++) for (let cy = c0y; cy <= c1y; cy++) {
       const cxw = cx * 32 + 16, cyw = cy * 32 + 16;
       const sx = (cxw - cyw) - X0, sy = (cxw + cyw) / 2 - Y0;
@@ -513,6 +523,31 @@ const SIM_JOB_EMOJI = {
       if (!zMeta) { _gtDiamond(g, sx, sy, (primaryZoneId && zonesMeta[primaryZoneId]?.groundColor) || '#3a5a3a', 1); continue; }
       const isWater = isWaterAtAbs(cxw, cyw, zMeta);
       const isRock = !isWater && isRockAtAbs(cxw, cyw, zMeta);
+      // ★[배치 20 B] 이 셀의 상태 벡터. 레코드가 없으면 기준선(정적 지형 파생) — 손 안 댄 세계는
+      //   서버 행 0 이고 그림은 SoilBase.baseAt 만으로 결정론적으로 나온다.
+      let _st = null, _lcx = 0, _lcy = 0;
+      if (_pat && _pz && !_t19.stateOff && zMeta.id === primaryZoneId) {
+        _lcx = Math.floor((cxw - _pz.worldOffsetX) / 32); _lcy = Math.floor((cyw - (_pz.worldOffsetY || 0)) / 32);
+        const _k = _lcx + ',' + _lcy;
+        const _rec = _soilMap ? _soilMap.get(_k) : null;
+        const _isFarm = _farm ? _farm.has(_k) : false;
+        const _S0 = (typeof SoilBase !== 'undefined') ? SoilBase : null;
+        _st = {
+          soil: _tsSoil(_lcx, _lcy, isWater ? 'water' : (isRock ? 'rock' : 'land'), _rec),
+          geo: _rec ? (_rec.geo | 0) : 0,
+          ore: _rec ? (_rec.ore == null ? 15 : _rec.ore) : 15,
+          road: _roadMap ? (_roadMap.get(_k) || 0) : 0,
+          // 경작 세기는 뙈기마다 다르다(자리 해시) — 작물 성장으로 매 프레임 흔들면 재베이크가 폭주한다
+          till: _isFarm ? (620 + 380 * (_S0 ? _S0.hash(_lcx, _lcy, 4241) : 0.5)) : 0,
+        };
+      }
+      // ★산터(부서진 산)는 **지형이 아직 바위여도** 산터 램프로 그린다 — 파괴는 동적 층이고
+      //   지형 정본(terrain.json)은 한 바이트도 안 바뀌기 때문이다.
+      if (!isWater && _st && _st.geo) {
+        _gtPaintState(g, sx, sy, _st, _lcx, _lcy, _pat); nState++;
+        if (GT_ZONE_TINT > 0) _gtDiamond(g, sx, sy, zMeta.groundColor, GT_ZONE_TINT * 0.5);
+        continue;
+      }
       if (isWater) {
         // ★물밑 바닥 = **진흙 재질**이다(재민 확정 ②). 풀 텍스처를 비치면 물가 풀대가
         //   반투명해 보인다 — 시안 왕복에서 "반투명 풀" 로 반려된 그 증상이다.
@@ -531,6 +566,9 @@ const SIM_JOB_EMOJI = {
         // ★★[배치 20 영역 — 산] 종전 색·종전 문법 그대로다. 이 배치는 바위 렌더를 바꾸지 않는다.
         _gtDiamond(g, sx, sy, blendTint('#6e6356', '#4a4138', 0.12), 1);
       } else {
+        // ★[배치 20 B] 상태 레이어 — 비옥도·경작·답압·채굴을 **연속 램프**로 얹는다.
+        //   위도/얼음/존 틴트보다 **아래**다(존 정체성이 그 위에 남아야 한다).
+        if (_st) { _gtPaintState(g, sx, sy, _st, _lcx, _lcy, _pat); nState++; }
         // 기존 문법 유지: 얼음 밴드 → 위도 보간 → 존 틴트. 단색 대신 **텍스처 위에 알파로** 얹는다.
         const distFromPole = Math.min(cyw, worldHeight - cyw);
         if (distFromPole < TUNDRA_BAND_PX) {
@@ -543,13 +581,188 @@ const SIM_JOB_EMOJI = {
         _gtDiamond(g, sx, sy, isIce ? '#9bb5cc' : zMeta.tintColor, isIce ? 0.06 : 0.13);
       }
     }
-    return { cv, cells: nCell };
+    return { cv, cells: nCell, state: nState };
   }
   function _gtDiamond(g, cx, cy, color, alpha) {
     if (alpha <= 0) return;
     g.globalAlpha = alpha; g.fillStyle = color;
     g.beginPath(); g.moveTo(cx, cy - 16); g.lineTo(cx + 32, cy); g.lineTo(cx, cy + 16); g.lineTo(cx - 32, cy);
     g.closePath(); g.fill(); g.globalAlpha = 1;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ★★[배치 20 실장 B] 타일 상태계 — 상태 벡터 → 레이어 합성
+  //   재민 확정: *"비옥도에 따라 모든 타일이 디자인이 바뀌어야… 번영도·경작·길·채굴에 따라서도"*
+  //              *"경계마다 딱딱 나누지 말고 연속적으로"*  *"돌만 놓으면 그게 산터냐"*
+  //   축 5개(합성 순서): ①기반 바이옴×지질 ②채굴(=번영도 거울) ③비옥도 ④경작 ⑤답압(길)
+  //   시안 정본: scripts/mock-fertility-gradient.js · mock-tile-axes.js (문턱·진폭 그대로).
+  //   ★전이는 전부 smoothstep + **셀 노이즈로 흔든 문턱** — 균일 페이드가 아니라 뙈기로 번진다.
+  //   ★Math.random() 금지: 소품 자리·문턱은 전부 셀 해시(결정론 — 프레임마다 안 흔들린다).
+  // ═══════════════════════════════════════════════════════════════════════════
+  const TS_SOIL_Q = 16;
+  const _smooth = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  // 이웃이 상관된 저주파 잡음(뙈기) — 기준선과 **같은 1부**(public/soil-base.js)를 쓴다. 사본 금지.
+  const _SB = () => (typeof SoilBase !== 'undefined' ? SoilBase : null);
+
+  // 상태 조회 ─ 전부 존-로컬 셀 좌표. 동적 레코드가 없으면 기준선(정적 지형 파생)이다.
+  function _tsSoil(lcx, lcy, kind, rec) {
+    if (rec) return rec.v;
+    const S = _SB(); return S ? S.baseAt(kind, lcx, lcy) : 800;
+  }
+  // 경작 셀 — farmland 건물 집합(그릴 때마다 건물 전체를 훑지 않게 캐시. 건물 수가 바뀌면 재구축)
+  let _farmCells = null, _farmVer = -1;
+  function _tsFarmSet(pc) {
+    if (!pc) return null;
+    if (_farmCells && _farmVer === pc.buildings.size) return _farmCells;
+    const s = new Set();
+    for (const b of pc.buildings.values()) {
+      if (b.type !== 'farmland') continue;
+      s.add(Math.floor(b.x / CL_BUILDING_SIZE) + ',' + Math.floor(b.y / CL_BUILDING_SIZE));
+    }
+    _farmCells = s; _farmVer = pc.buildings.size;
+    return s;
+  }
+  // 상태 변경분 적재 — `tile_state` 방송과 하네스 주입이 **같은 입구**를 쓴다(우회로 금지).
+  //   flat = [cx,cy,qv,geo,ore,...] · qv<0 은 기준선 복귀(레코드 삭제).
+  function _tsIngest(c, flat) {
+    if (!c) return 0;
+    if (!c.soil) c.soil = new Map();
+    let n = 0;
+    for (let i = 0; i + 4 < flat.length; i += 5) {
+      const k = flat[i] + ',' + flat[i + 1];
+      if (flat[i + 2] < 0) c.soil.delete(k);
+      else c.soil.set(k, { v: flat[i + 2] * TS_SOIL_Q, geo: flat[i + 3] | 0, ore: flat[i + 4] | 0 });
+      n++;
+    }
+    _gtInvalidateCells(c, flat, 5);   // ★바뀐 셀이 걸친 타일만 재베이크 — 전체 clear 는 히치다
+    return n;
+  }
+  // 바뀐 셀이 걸친 타일만 버린다 — 전체 clear 는 화면 전체 재베이크라 히치가 된다.
+  function _gtInvalidateCells(c, flat, stride) {
+    if (!flat || !flat.length || !c || !c.meta) return;
+    const ox = c.meta.worldOffsetX || 0, oy = c.meta.worldOffsetY || 0;
+    const seen = new Set();
+    for (let i = 0; i + 1 < flat.length; i += stride) {
+      const wx = (ox / CL_BUILDING_SIZE + flat[i] + 0.5) * 32, wy = (oy / CL_BUILDING_SIZE + flat[i + 1] + 0.5) * 32;
+      const ix = wx - wy, iy = (wx + wy) / 2;
+      // 셀 다이아(64×32)가 타일 경계를 걸칠 수 있어 ±반셀 네 귀퉁이를 전부 무효화한다
+      for (const [dx, dy] of [[-32, -16], [32, -16], [-32, 16], [32, 16]]) {
+        const k = Math.floor((ix + dx) / GT_W) + '_' + Math.floor((iy + dy) / GT_H);
+        if (seen.has(k)) continue; seen.add(k); _groundTiles.delete(k);
+      }
+    }
+  }
+
+  // 한 셀의 상태 레이어를 타일 캔버스에 얹는다. sx,sy = 타일 안 셀 중심.
+  //   pat: 이 타일에 이미 만들어 둔 패턴들(타일당 1회 생성 — 셀마다 createPattern 하면 베이크가 3배 느려진다)
+  function _gtPaintState(g, sx, sy, st, lcx, lcy, pat) {
+    const S = _SB(); if (!S) return;
+    const clip = () => { g.save(); g.beginPath(); g.moveTo(sx, sy - 16); g.lineTo(sx + 32, sy); g.lineTo(sx, sy + 16); g.lineTo(sx - 32, sy); g.closePath(); g.clip(); };
+    const fillPat = (p, a) => { if (a <= 0.004) return; g.globalAlpha = Math.min(1, a); g.fillStyle = p; g.fillRect(sx - 33, sy - 17, 66, 34); g.globalAlpha = 1; };
+    // 문턱을 흔드는 저주파 잡음 — 셀 좌표계(4.8셀 규모 얼룩 = 시안의 x/38 과 같은 눈)
+    const nz = S.vnoise(lcx / 4.8, lcy / 4.8), nz2 = S.vnoise(lcx / 1.7 + 31, lcy / 1.7 + 7);
+    const jit = (nz - 0.5) * 260 + (nz2 - 0.5) * 90;
+
+    if (st.geo) {
+      // ── ①-지질: 산터 램프 ────────────────────────────────────────────────
+      //   ★재민: "돌만 놓으면 그게 산터냐" — 기본 재질이 **암반**이다. 비옥도는 이끼·틈새 풀만
+      //     늘리고 **풀밭이 되지 않는다**(상한). 시안 정본 mock-fertility-gradient 줄 2 그대로.
+      clip();
+      g.fillStyle = '#6b665e'; g.fillRect(sx - 33, sy - 17, 66, 34);
+      for (let k = 0; k < 14; k++) {                       // 부순 돌 알갱이
+        const rx = sx - 30 + S.hash(lcx, lcy, 81 + k) * 60, ry = sy - 15 + S.hash(lcx, lcy, 141 + k) * 30;
+        g.fillStyle = S.hash(lcx, lcy, 201 + k) < 0.5 ? 'rgba(52,49,44,0.5)' : 'rgba(122,116,106,0.45)';
+        g.fillRect(rx, ry, 2 + 4 * S.hash(lcx, lcy, 261 + k), 1.6 + 3 * S.hash(lcx, lcy, 321 + k));
+      }
+      for (let k = 0; k < 3; k++) {                        // 균열
+        let px = sx - 28 + S.hash(lcx, lcy, 86 + k) * 56, py = sy - 14 + S.hash(lcx, lcy, 96 + k) * 12;
+        g.strokeStyle = 'rgba(38,35,31,0.7)'; g.lineWidth = 1.3; g.beginPath(); g.moveTo(px, py);
+        for (let s2 = 0; s2 < 3; s2++) { px += (S.hash(lcx * 7 + s2, lcy, 88 + k) - 0.5) * 18; py += 4 + S.hash(lcx * 7 + s2, lcy, 89 + k) * 8; g.lineTo(px, py); }
+        g.stroke();
+      }
+      // 이끼 — 자리별 고유 문턱 400~950, 문턱 근처 ±90 에서 연속 증가(정수 개수 계단 없음)
+      for (let k = 0; k < 5; k++) {
+        const px = sx - 26 + S.hash(lcx, lcy, 91 + k) * 52, py = sy - 12 + S.hash(lcx, lcy, 111 + k) * 24;
+        const thr = 400 + 550 * S.hash(lcx, lcy, 131 + k);
+        const a = _smooth(thr, thr + 90, st.soil) * (0.28 + 0.3 * S.hash(lcx, lcy, 151 + k));
+        if (a > 0.02) { g.fillStyle = 'rgba(74,96,52,' + a.toFixed(3) + ')'; g.beginPath(); g.ellipse(px, py, 3 + 7 * S.hash(lcx, lcy, 171 + k), 2 + 4 * S.hash(lcx, lcy, 191 + k), 0, 0, 6.3); g.fill(); }
+      }
+      // 틈새 풀 — 문턱 780~1000. ★상한이 낮아 토양치 1000 이어도 초원이 되지 않는다.
+      for (let k = 0; k < 2; k++) {
+        const px = sx - 20 + S.hash(lcx, lcy, 97 + k) * 40, py = sy - 8 + S.hash(lcx, lcy, 98 + k) * 16;
+        const thr = 780 + 220 * S.hash(lcx, lcy, 99 + k);
+        const a = _smooth(thr, thr + 70, st.soil);
+        if (a > 0.02) {
+          g.globalAlpha = a; g.strokeStyle = ['#4e7a3c', '#5d8a46'][(S.hash(lcx, lcy, 100 + k) * 2) | 0]; g.lineWidth = 1.3;
+          for (let b3 = 0; b3 < 3; b3++) {
+            const oxp = (S.hash(lcx, lcy, 101 + k * 3 + b3) - 0.5) * 5, hgt = (5 + 6 * S.hash(lcx, lcy, 111 + k * 3 + b3)) * a, ln = (S.hash(lcx, lcy, 121 + k * 3 + b3) - 0.5) * 5;
+            g.beginPath(); g.moveTo(px + oxp, py); g.quadraticCurveTo(px + oxp + ln * 0.4, py - hgt * 0.6, px + oxp + ln, py - hgt); g.stroke();
+          }
+          g.globalAlpha = 1;
+        }
+      }
+      g.restore();
+      return;
+    }
+
+    // ── ③-비옥도: 일반 타일 램프 ─────────────────────────────────────────────
+    //   바탕(풀)은 이미 타일에 깔려 있다. 여기서는 **깎아 내려간다** — 시안과 같은 연속 함수의
+    //   여집합이라 그림은 같고, 대부분(토양치 높음)의 셀에서 비용이 0 이다.
+    const x = st.soil + jit;
+    const dryA = 1 - _smooth(430, 980, x);     // 시안 grA 의 여집합
+    const mudA = 1 - _smooth(120, 620, x);     // 시안 dryA 의 여집합
+    // ── ⑤-답압(길): 가운데부터 다져진다(mock-tile-axes 줄 1) ─────────────────
+    const wearA = st.road === 2 ? 0.88 : (st.road === 1 ? _smooth(0, 1, 0.42 + (nz - 0.5) * 0.5) : 0);
+    // ── ④-경작: 갈아엎은 흙 + 이랑(mock-tile-axes 줄 2) ─────────────────────
+    const tillA = st.till > 0 ? _smooth(120, 520, st.till + (nz - 0.5) * 220) : 0;
+    // ── ②-채굴(번영도 거울): 판 자리는 흙이 드러나고 어두워진다 ────────────────
+    const oreA = st.ore < 15 ? (15 - st.ore) / 15 : 0;
+
+    const anyMud = Math.max(mudA, wearA, tillA, oreA * 0.75);
+    if (dryA <= 0.004 && anyMud <= 0.004) return;          // 손댈 게 없다(라이브 대다수가 여기)
+    clip();
+    if (dryA > 0.004) fillPat(pat.dry, dryA);
+    if (anyMud > 0.004) fillPat(pat.mud, anyMud);
+    if (wearA > 0.5) { g.globalAlpha = (wearA - 0.5) * 0.5; g.fillStyle = '#8a7a5e'; g.fillRect(sx - 33, sy - 17, 66, 34); g.globalAlpha = 1; }   // 다져진 흙 밝힘
+    if (oreA > 0.2) { g.globalAlpha = oreA * 0.28; g.fillStyle = '#4a4238'; g.fillRect(sx - 33, sy - 17, 66, 34); g.globalAlpha = 1; }           // 판 자리 그늘
+    if (st.till > 0) {  // 이랑 — 경작 진행에 따라 또렷해짐. iso 다이아 결을 따르는 대각선.
+      const rA = _smooth(350, 950, st.till);
+      if (rA > 0.01) {
+        g.globalAlpha = rA * 0.55;
+        for (let d = -16; d <= 16; d += 6.5) {
+          g.strokeStyle = '#4a3a26'; g.lineWidth = 2.2;
+          g.beginPath(); g.moveTo(sx - 32, sy + d + 16); g.lineTo(sx + 32, sy + d - 16); g.stroke();
+          g.strokeStyle = 'rgba(150,124,90,0.8)'; g.lineWidth = 1.1;
+          g.beginPath(); g.moveTo(sx - 32, sy + d + 13.5); g.lineTo(sx + 32, sy + d - 18.5); g.stroke();
+        }
+        g.globalAlpha = 1;
+      }
+    }
+    // 소품 — **자리별 고유 문턱**(해시) + 문턱 근처에서 알파·크기 연속 증가(정수 계단 제거)
+    for (let k = 0; k < 2; k++) {
+      const px = sx - 24 + S.hash(lcx, lcy, 11 + k) * 48, py = sy - 10 + S.hash(lcx, lcy, 21 + k) * 20;
+      const thrR = 400 * S.hash(lcx, lcy, 31 + k);                    // 자갈: 척박할수록 드러난다
+      const aR = 1 - _smooth(thrR, thrR + 80, st.soil);
+      if (aR > 0.03) {
+        const rr = (2.2 + 2.6 * S.hash(lcx, lcy, 41 + k)) * (0.5 + 0.5 * aR);
+        g.globalAlpha = Math.min(1, aR); g.fillStyle = '#7a7268';
+        g.beginPath(); g.ellipse(px, py, rr, rr * 0.62, 0, 0, 6.3); g.fill();
+        g.fillStyle = 'rgba(48,45,41,0.55)'; g.beginPath(); g.ellipse(px, py + rr * 0.35, rr * 0.9, rr * 0.35, 0, 0, 6.3); g.fill();
+        g.globalAlpha = 1;
+      }
+      const thrT = 700 + 300 * S.hash(lcx, lcy, 51 + k);              // 풀포기: 비옥해지면 돋는다
+      const aT = _smooth(thrT, thrT + 60, st.soil) * (1 - Math.max(wearA, tillA));
+      if (aT > 0.03) {
+        g.globalAlpha = aT; g.lineWidth = 1.3;
+        g.strokeStyle = ['#4e7a3c', '#5d8a46', '#6b8f4e'][(S.hash(lcx, lcy, 61 + k) * 3) | 0];
+        for (let b3 = 0; b3 < 3; b3++) {
+          const oxp = (S.hash(lcx, lcy, 71 + k * 3 + b3) - 0.5) * 6, hgt = (6 + 8 * S.hash(lcx, lcy, 81 + k * 3 + b3)) * aT, ln = (S.hash(lcx, lcy, 91 + k * 3 + b3) - 0.5) * 6;
+          g.beginPath(); g.moveTo(px + oxp, py); g.quadraticCurveTo(px + oxp + ln * 0.4, py - hgt * 0.6, px + oxp + ln, py - hgt); g.stroke();
+        }
+        g.globalAlpha = 1;
+      }
+    }
+    g.restore();
   }
   // ═══════════════════════════════════════════════════════════════════════════
   // ★★[배치 19 실장 B] 물 — 흐름맵 + WebGL 셰이더 레이어
@@ -566,8 +779,32 @@ const SIM_JOB_EMOJI = {
   const WF_QUANT = 16;           // 원점 양자화(셀) — 이만큼 움직여야 다시 굽는다
   const WATER_DROP = 5;          // ★재민 확정: 수면은 지면보다 5px 아래
   const WF_DEPTH_MAX = 6;        // 수심 정규화 상한(셀)
-  const _wfCache = { key: null, ox: 0, oy: 0, bbox: null, rect: null };
-  const _flowCellCache = new Map();   // "cx_cy" → [dx,dy] (정적 — rivers 는 안 변한다)
+  // ★한 프레임에 물 판정에 쓰는 **시간** 상한(물가 렉 수리). 개수가 아니라 시간인 이유는
+  //   아래 _buildFlowTex 주석 참조. 남은 칸은 다음 프레임에 마저 묻는다(_wfCache.pending).
+  const WF_ASK_MS = 9;
+  // ★물어볼 반경(셀). 창(WF_N=128, 반경 64)은 화면보다 **한참** 크다:
+  //   iso 1400×900 화면의 월드 AABB 반경은 (2·450+700)/2 = 800px = **25셀**이고,
+  //   원점이 WF_QUANT(16셀) 로 양자화돼 카메라가 중심에서 최대 8셀 어긋난다 ⇒ 33셀이면 덮는다.
+  //   나머지 바깥 링은 **영영 안 물어본다** — 화면에 절대 안 나오는데 셀당 75µs 를 무는 건 순손실이고,
+  //   그 링까지 채우려 들면 미결이 안 끝나 흐름 텍스처를 매 프레임 다시 굽게 된다(실측 92프레임 미수렴).
+  const WF_ASK_R = 40;
+  // 창 가운데부터 바깥으로 나가는 순회 순서(창 크기가 고정이라 한 번만 만든다 · 반경 밖은 제외)
+  let _wfOrd = null;
+  function _wfOrder(N) {
+    if (_wfOrd && _wfOrd.N === N) return _wfOrd.a;
+    const c = (N - 1) / 2, list = [];
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      const d = Math.max(Math.abs(i - c), Math.abs(j - c));   // 체비셰프 = 정사각 링
+      if (d > WF_ASK_R) continue;
+      list.push([j * N + i, d]);
+    }
+    list.sort((p, q2) => p[1] - q2[1]);
+    _wfOrd = { N, a: Int32Array.from(list.map((v) => v[0])) };
+    return _wfOrd.a;
+  }
+  const _wfCache = { key: null, ox: 0, oy: 0, bbox: null, rect: null, pending: false };
+  let _flowCellCache = new Map();     // "cx_cy" → [dx,dy] (정적 — rivers 는 안 변한다)
+  let _flowCellOld = new Map();       // 직전 세대(상한 초과 시 통째 clear 대신 밀어낸다 — 아래 주석)
   let _riverSegs = null;
   let _hardTerrain = null;   // /terrain.json 원본(위 선로딩이 채운다) — rivers path 의 유일한 출처
   function _buildRiverSegs() {
@@ -590,37 +827,129 @@ const SIM_JOB_EMOJI = {
     } catch (e) { console.warn('[water] rivers 읽기 실패:', e.message); }
     return _riverSegs;
   }
+  // ★★[배치 20 B 성능 수리 — 재민 실기 제보 "물 근처로 가니까 엄청나게 렉걸린다"]
+  //   원인: `_flowAtCell` 이 셀마다 **강 구간 전체**(한반도 4,700+ 개)를 훑었다. 흐름 텍스처는
+  //   128×128 = 16,384 셀이고 카메라가 16셀(512px) 움직일 때마다 통째로 다시 굽는다 ⇒ 새 지역에
+  //   들어서면 한 프레임 안에서 최대 **7,700만 번**의 구간 거리 계산이 메인스레드에서 돈다.
+  //   헤드리스 E2E 가 이걸 못 잡은 이유: 촬영을 **고정 지점**에서 했다 — 걷지 않으니 캐시가
+  //   식지 않는다. 계측기가 실사용의 그 동작을 안 했다(하네스 오류 7건째. 판정이 아니라 대본이 틀렸다).
+  //
+  //   수리: 강 구간 **공간 격자 색인**. 결과는 한 비트도 안 바뀐다 —
+  //   1400px 밖은 어차피 가중치 0(무방향)이라, 1400 반경 안만 뒤져도 '최근접'이 같기 때문이다.
+  const FLOW_R = 1400;                 // 이보다 멀면 흐름 0 (아래 w 식과 같은 수 — 사본 아님)
+  const _segGrid = { B: 1024, map: null, built: 0 };
+  function _buildSegGrid(segs) {
+    // ★등록은 구간의 **AABB 가 겹치는 칸 전부**. 이게 동치의 증명이다:
+    //   최근접점 q 는 반드시 구간의 AABB 안에 있고, |q−p| ≤ 1400 이면 bucket(q) 는 아래 탐색
+    //   범위 안이다 ⇒ 그 구간은 반드시 후보에 들어온다. (구간 위 점을 성기게 표본해 등록하면
+    //   대각으로 스쳐 지나는 칸을 빠뜨린다 — 실측 5,000점 중 33점 불일치로 잡았다.)
+    const B = _segGrid.B, m = new Map();
+    for (let i = 0; i < segs.length; i++) {
+      const s2 = segs[i];
+      const x0 = Math.floor(Math.min(s2[0], s2[2]) / B), x1 = Math.floor(Math.max(s2[0], s2[2]) / B);
+      const y0 = Math.floor(Math.min(s2[1], s2[3]) / B), y1 = Math.floor(Math.max(s2[1], s2[3]) / B);
+      for (let gy = y0; gy <= y1; gy++) for (let gx = x0; gx <= x1; gx++) {
+        const k = gx + ',' + gy; let a = m.get(k); if (!a) m.set(k, a = []); a.push(i);
+      }
+    }
+    _segGrid.map = m; _segGrid.built = segs.length;
+    return m;
+  }
   function _flowAtCell(cx, cy) {
     const k = cx + '_' + cy;
     const hit = _flowCellCache.get(k); if (hit) return hit;
+    const old = _flowCellOld.get(k); if (old) { _flowCellCache.set(k, old); return old; }   // 세대 승격
     const segs = _riverSegs || _buildRiverSegs();
+    if (!_segGrid.map || _segGrid.built !== segs.length) _buildSegGrid(segs);
     const px = cx * 32 + 16, py = cy * 32 + 16;
-    let best = Infinity, bx = 0, by = 0;
-    for (let i = 0; i < segs.length; i++) {
-      const s2 = segs[i], ax = s2[0], ay = s2[1], dx = s2[2] - ax, dy = s2[3] - ay;
-      const L2 = dx * dx + dy * dy || 1;
-      let t = ((px - ax) * dx + (py - ay) * dy) / L2; t = t < 0 ? 0 : (t > 1 ? 1 : t);
-      const qx = ax + t * dx - px, qy = ay + t * dy - py, d = qx * qx + qy * qy;
-      if (d < best) { best = d; const L = Math.sqrt(L2); bx = dx / L; by = dy / L; }
+    const B = _segGrid.B;
+    const _slow = !!_t19.slowFlow;   // 대조군: 색인 무시하고 전 구간 훑기(수리 전과 같은 비용)
+    const g0x = _slow ? 0 : Math.floor((px - FLOW_R) / B), g1x = _slow ? -1 : Math.floor((px + FLOW_R) / B);
+    const g0y = Math.floor((py - FLOW_R) / B), g1y = Math.floor((py + FLOW_R) / B);
+    let best = Infinity, bx = 0, by = 0, bi = Infinity;
+    if (_slow) {
+      for (let si = 0; si < segs.length; si++) {
+        const s2 = segs[si], ax = s2[0], ay = s2[1], dx = s2[2] - ax, dy = s2[3] - ay;
+        const L2 = dx * dx + dy * dy || 1;
+        let t = ((px - ax) * dx + (py - ay) * dy) / L2; t = t < 0 ? 0 : (t > 1 ? 1 : t);
+        const qx = ax + t * dx - px, qy = ay + t * dy - py, d = qx * qx + qy * qy;
+        if (d < best) { best = d; const L = Math.sqrt(L2); bx = dx / L; by = dy / L; }
+      }
+    }
+    for (let gy = g0y; gy <= g1y; gy++) for (let gx = g0x; gx <= g1x; gx++) {
+      const arr = _segGrid.map.get(gx + ',' + gy); if (!arr) continue;
+      for (let n = 0; n < arr.length; n++) {
+        const si = arr[n], s2 = segs[si], ax = s2[0], ay = s2[1], dx = s2[2] - ax, dy = s2[3] - ay;
+        const L2 = dx * dx + dy * dy || 1;
+        let t = ((px - ax) * dx + (py - ay) * dy) / L2; t = t < 0 ? 0 : (t > 1 ? 1 : t);
+        const qx = ax + t * dx - px, qy = ay + t * dy - py, d = qx * qx + qy * qy;
+        // ★동률은 **구간 번호가 작은 쪽**으로 깬다 — 폴리라인의 이웃 두 구간은 공유 꼭짓점에서
+        //   거리가 정확히 같고 방향은 다르다. 전수 순회(번호순)와 답을 맞추려면 이 규칙이 필요하다.
+        //   (이걸 안 넣으면 7,000 표본 중 4점이 갈렸다 — 전부 꼭짓점 최근접 점이었다.)
+        if (d < best || (d === best && si < bi)) { best = d; bi = si; const L = Math.sqrt(L2); bx = dx / L; by = dy / L; }
+      }
     }
     // 강에서 멀면(호수·먼바다) 흐름 0 — 무방향 파문이 된다
     const dist = Math.sqrt(best);
-    const w = dist > 1400 ? 0 : (dist > 700 ? (1400 - dist) / 700 : 1);
+    const w = dist > FLOW_R ? 0 : (dist > 700 ? (FLOW_R - dist) / 700 : 1);
     const v = [bx * w, by * w];
-    if (_flowCellCache.size > 400000) _flowCellCache.clear();
+    // ★전체 clear 금지 — 긴 강을 따라 걸으면 상한에서 캐시가 통째로 날아가 폭풍 재계산이 된다.
+    //   두 세대로 굴린다: 상한을 넘으면 현 세대를 구 세대로 밀고 현 세대만 비운다(작업 집합 생존).
+    if (_flowCellCache.size > 200000) { _flowCellOld = _flowCellCache; _flowCellCache = new Map(); }
     _flowCellCache.set(k, v);
     return v;
   }
+  const _wfPrev = { ox: 0, oy: 0, wet: null };
+  const _ZERO2 = [0, 0];   // 물 아닌 셀마다 배열을 새로 만들면 16,384개/장이 GC 로 간다
   function _buildFlowTex(gl, ocx, ocy) {
     // 수심 = 물가 거리장(BFS) → 3×3 평균 스무딩. 마스크는 셀 그대로(각진 블록).
     const N = WF_N, wet = new Uint8Array(N * N), dep = new Float32Array(N * N).fill(255);
     const q = new Int32Array(N * N); let qh = 0, qt = 0;
+    // ★★[성능 수리 2/2] 물 판정 재사용 — `isWaterCellLocal` 은 셀당 20µs 급이라 16,384셀이면
+    //   **331ms**(실측). 창은 WF_QUANT(16셀)씩만 움직이므로 직전 창과 87% 가 겹친다.
+    //   겹치는 칸은 다시 묻지 않고 베껴 온다 ⇒ 걷는 동안의 비용이 1/8 로 떨어진다.
+    //   (판정 자체는 그대로다 — 같은 셀의 답은 정적이라 베껴도 정본과 어긋날 수 없다.)
+    // ★★[성능 수리 2/2 — 진범] 물 판정이 이 함수 비용의 **95%** 다(실측 분해: 총 435ms 중 399ms).
+    //   `Terrain.isWaterCellLocal` 은 셀마다 강·호수 전체를 훑어 브라우저에서 셀당 ~75µs 다.
+    //   ⚠그 함수는 **콜라이더 정본**이라 한 바이트도 못 고친다 — 고치면 이동·스폰·econ 이 흔들린다.
+    //   ⇒ 렌더 쪽에서 두 겹으로 푼다:
+    //     ① 직전 창과 겹치는 칸은 다시 묻지 않는다(주행 한 칸이면 76% 가 겹친다).
+    //     ② 새로 물어야 할 칸은 **한 프레임에 정해진 개수까지만**. 남은 칸은 '아직 모름'(2)으로
+    //        두고 다음 프레임에 마저 묻는다. 모르는 칸은 물을 안 그린다 —
+    //        WF_N(128셀)은 화면(약 44셀)보다 훨씬 커서 미결 칸은 **화면 밖 여백**에 생긴다.
+    //     ⇒ 한 프레임 400ms 정지 대신 몇 프레임에 나눠 진다.
+    // wet 값: 0=뭍 · 1=물 · 2=아직 모름(다음 프레임에 다시 묻는다)
+    const P = _t19.slowFlow ? null : _wfPrev.wet, dxp = ocx - _wfPrev.ox, dyp = ocy - _wfPrev.oy;
+    let reused = 0, asked = 0, pending = 0;
+    const _tw0 = performance.now();
+    // ⓐ 겹치는 칸 베끼기 — 여기는 예산 밖이다(공짜).
     for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
-      const cx = ocx + i, cy = ocy + j;
-      const wtr = isWaterAtAbs(cx * 32 + 16, cy * 32 + 16);
-      wet[j * N + i] = wtr ? 1 : 0;
-      if (!wtr) { dep[j * N + i] = 0; q[qt++] = j * N + i; }
+      const pi = i + dxp, pj = j + dyp;
+      const pv = (P && pi >= 0 && pj >= 0 && pi < N && pj < N) ? P[pj * N + pi] : 2;
+      wet[j * N + i] = pv; if (pv !== 2) reused++;
     }
+    // ⓑ 남은 칸을 **가운데부터** 묻는다. ★순서가 중요하다: 창(128셀)은 화면(약 44셀)보다 훨씬
+    //   커서, 위에서부터 채우면 예산이 **화면 밖 여백**에 다 쓰이고 정작 눈앞의 물이 몇 프레임
+    //   비어 보인다. 가운데부터 채우면 화면 안이 먼저 정해진다(그리고 화면 안 셀은 지면 베이크가
+    //   이미 물어봐 캐시에 있어 사실상 공짜다).
+    //   예산은 **개수가 아니라 시간**이다 — 캐시 적중은 거의 0µs 라, 개수로 끊으면 싼 칸까지
+    //   막아 수렴이 느려진다.
+    const ord = _wfOrder(N);
+    const slow = !!_t19.slowFlow, tEnd = _tw0 + WF_ASK_MS;
+    const M = slow ? N * N : ord.length;      // 대조군은 수리 전과 똑같이 **창 전체**를 묻는다
+    for (let n = 0; n < M; n++) {
+      const o = slow ? n : ord[n];
+      if (wet[o] !== 2) continue;
+      if (!slow && (n & 63) === 0 && performance.now() > tEnd) break;   // 64칸마다 시계 확인(초과분 상한)
+      const i = o % N, j = (o / N) | 0;
+      asked++; wet[o] = isWaterAtAbs((ocx + i) * 32 + 16, (ocy + j) * 32 + 16) ? 1 : 0;
+    }
+    // 미결 집계는 **물어볼 반경 안만** 센다(바깥 링은 애초에 안 묻기로 한 곳이라 미결이 아니다).
+    for (let n = 0; n < M; n++) if (wet[slow ? n : ord[n]] === 2) pending++;
+    for (let o = 0; o < N * N; o++) if (wet[o] !== 1) { dep[o] = 0; q[qt++] = o; }   // 뭍·미결은 거리장 원점
+    _wfPrev.ox = ocx; _wfPrev.oy = ocy; _wfPrev.wet = wet;
+    window.__wfReuse = reused; window.__wfAsked = asked; window.__wfPending = pending;
+    window.__wfWetMs = performance.now() - _tw0;
     while (qh < qt) {   // 뭍에서 퍼지는 거리장
       const p2 = q[qh++], i = p2 % N, j = (p2 / N) | 0, d = dep[p2] + 1;
       if (d > WF_DEPTH_MAX) continue;
@@ -630,6 +959,7 @@ const SIM_JOB_EMOJI = {
       if (j < N - 1 && dep[p2 + N] > d) { dep[p2 + N] = d; q[qt++] = p2 + N; }
     }
     const lin = new Uint8Array(N * N * 4), msk = new Uint8Array(N * N * 4);
+    const _tf0 = performance.now(); let _flowN = 0;
     for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
       const p2 = j * N + i;
       let sd = 0, n = 0;   // 3×3 평균 — 수심 계단을 없앤다
@@ -638,22 +968,23 @@ const SIM_JOB_EMOJI = {
         sd += Math.min(WF_DEPTH_MAX, dep[jj * N + ii]); n++;
       }
       const d01 = (sd / n) / WF_DEPTH_MAX;
-      const f = wet[p2] ? _flowAtCell(ocx + i, ocy + j) : [0, 0];
+      const f = wet[p2] === 1 ? (_flowN++, _flowAtCell(ocx + i, ocy + j)) : _ZERO2;
       lin[p2 * 4] = ((f[0] * 0.5 + 0.5) * 255) | 0;
       lin[p2 * 4 + 1] = ((f[1] * 0.5 + 0.5) * 255) | 0;
       lin[p2 * 4 + 2] = (Math.min(1, d01) * 255) | 0;
       lin[p2 * 4 + 3] = 255;
       msk[p2 * 4] = msk[p2 * 4 + 1] = msk[p2 * 4 + 2] = 0;
-      msk[p2 * 4 + 3] = wet[p2] ? 255 : 0;
+      msk[p2 * 4 + 3] = wet[p2] === 1 ? 255 : 0;   // 미결(2)은 물이 아니다 — 그리지 않는다
     }
+    window.__wfFlowMs = performance.now() - _tf0; window.__wfFlowN = _flowN;
     // 이 창 안 물 셀의 바운딩 박스 — 셰이더를 화면 전체에 돌리지 않기 위한 것(아래 scissor)
     let bx0 = 1e9, by0 = 1e9, bx1 = -1e9, by1 = -1e9;
-    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) if (wet[j * N + i]) {
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) if (wet[j * N + i] === 1) {
       const cx = ocx + i, cy = ocy + j;
       if (cx < bx0) bx0 = cx; if (cx > bx1) bx1 = cx;
       if (cy < by0) by0 = cy; if (cy > by1) by1 = cy;
     }
-    return { lin, msk, bbox: bx1 < bx0 ? null : [bx0, by0, bx1 + 1, by1 + 1] };
+    return { lin, msk, bbox: bx1 < bx0 ? null : [bx0, by0, bx1 + 1, by1 + 1], pending };
   }
 
   const WATER_VS = 'attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}';
@@ -779,13 +1110,26 @@ const SIM_JOB_EMOJI = {
     const ocx = Math.floor(wpt.wx / 32 / WF_QUANT) * WF_QUANT - (WF_N >> 1);
     const ocy = Math.floor(wpt.wy / 32 / WF_QUANT) * WF_QUANT - (WF_N >> 1);
     const key = ocx + '_' + ocy;
-    if (_wfCache.key !== key) {
+    // ★미결 칸이 남아 있으면 다음 프레임에 마저 묻는다(예산제 — 위 _buildFlowTex 주석).
+    if (_wfCache.key !== key || _wfCache.pending) {
+      // ★[성능 계측] 흐름 텍스처를 굽는 시간 — 재민이 실기에서 겪은 "물가 렉"의 그 지점이다.
+      //   고정 지점 촬영으로는 절대 안 잡힌다(캐시가 안 식는다). 걷는 하네스가 이 수를 읽는다.
+      const _t0 = performance.now();
       const t = _buildFlowTex(gl, ocx, ocy);
+      const _ms = performance.now() - _t0;
+      window.__wfBuildMs = _ms;
+      window.__wfBuildN = (window.__wfBuildN || 0) + 1;
+      window.__wfBuildSum = (window.__wfBuildSum || 0) + _ms;
+      if (window.__wfBuildN === 1) { window.__wfFirstMs = _ms; }   // 첫 장은 **모든 캐시가 찬물** — 정상 주행과 성격이 다르다
+      else { window.__wfBuildMax = Math.max(window.__wfBuildMax || 0, _ms); window.__wfSteadyN = (window.__wfSteadyN || 0) + 1; window.__wfSteadySum = (window.__wfSteadySum || 0) + _ms; }
+      window.__wfLast = { ms: _ms, wet: window.__wfWetMs || 0, reuse: window.__wfReuse || 0 };
       gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, _wgl.texL);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, WF_N, WF_N, 0, gl.RGBA, gl.UNSIGNED_BYTE, t.lin);
       gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, _wgl.texM);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, WF_N, WF_N, 0, gl.RGBA, gl.UNSIGNED_BYTE, t.msk);
       _wfCache.key = key; _wfCache.ox = ocx; _wfCache.oy = ocy; _wfCache.bbox = t.bbox;
+      _wfCache.pending = (t.pending || 0) > 0;
+      window.__wfPendN = t.pending || 0;
     }
     // ★★셰이더를 **물이 있는 화면 영역**에만 돌린다.
     //   1패스 실측(headless SwiftShader): 화면 전체 오버레이가 프레임당 143ms 였고,
@@ -1242,8 +1586,13 @@ const SIM_JOB_EMOJI = {
   //     '순수 단면색' 픽셀이 1px 도 안 남는다(하네스 1패스가 0.01% 를 보고 헛짚었다).
   //     색으로 세는 대신 **켜고 끈 차이**로 재야 판정이 성립한다.
   //   ★[배치 21] natOff/fringeOff/propOff — 자연물 산포 전체/물가 술/초원 소품을 따로 끈다.
+  //   ★[배치 20 B] stateOff — 타일 상태 5축 레이어를 끈다(끄면 기준선 그림으로 돌아온다).
+  //   ★[배치 20 B] slowFlow — 물가 렉 수리의 **대조군**. 공간 색인·물판정 재사용을 꺼서
+  //     수리 전 코드와 같은 비용을 내게 한다(같은 세션·같은 시계에서 A/B —
+  //     git stash 로 만든 "before" 는 다른 세계다).
   const _t19 = { legacy: false, waterOff: false, decoOff: false, prismOff: false, mtOff: false,
-                 natOff: false, fringeOff: false, propOff: false, propNoAvoid: false, frFloor: 0 };
+                 natOff: false, fringeOff: false, propOff: false, propNoAvoid: false, frFloor: 0,
+                 stateOff: false, slowFlow: false };
   window.__terrain19 = _t19;
 
   // 지형 차단 통합 (물+바위) — 이동 예측용
@@ -2985,6 +3334,13 @@ const SIM_JOB_EMOJI = {
         // §16 답압 길: 등급 셀 flat [cx,cy,lv,...](welcome 1회, 이후 road_cells가 변경분 방송)
         c.roads = new Map();
         if (msg.roads) for (let i = 0; i < msg.roads.length; i += 3) c.roads.set(msg.roads[i] + ',' + msg.roads[i + 1], msg.roads[i + 2]);
+        // ★[배치 20 B] 타일 상태: 기준선에서 **벗어난 셀만** flat [cx,cy,qv,geo,ore,...](welcome 1회,
+        //   이후 tile_state 가 변경분 방송). 손 안 댄 셀은 여기 없고 `SoilBase.baseAt` 로 계산한다.
+        c.soil = new Map();
+        if (msg.soil) for (let i = 0; i + 4 < msg.soil.length; i += 5) {
+          c.soil.set(msg.soil[i] + ',' + msg.soil[i + 1], { v: msg.soil[i + 2] * 16, geo: msg.soil[i + 3] | 0, ore: msg.soil[i + 4] | 0 });
+        }
+        _groundTiles.clear();   // 상태가 들어왔으니 기준선으로 구운 타일은 버린다
         // ★[다리 층] 통나무 널다리 셀(정적 맵 사물 — welcome 1회). 렌더 + 클라 콜라이더 미러 둘 다에 쓴다.
         //   서버 isTerrainBlockedLocal이 이 셀에서 물 차단을 푸는데 클라가 안 풀면 예측이 물에 막혀
         //   러버밴딩·다리 위 스턱이 난다(좌표 단일 작성자 원칙상 클라 예측은 서버와 같은 판정이어야 함).
@@ -3255,6 +3611,11 @@ const SIM_JOB_EMOJI = {
       if (!c.roads) c.roads = new Map();
       const rc = msg.cells || [];
       for (let i = 0; i < rc.length; i += 3) { const k = rc[i] + ',' + rc[i + 1]; if (rc[i + 2]) c.roads.set(k, rc[i + 2]); else c.roads.delete(k); }
+      _gtInvalidateCells(c, rc, 3);
+      needsRedraw = true;
+    } else if (msg.type === 'tile_state') {
+      _tsIngest(c, msg.cells || []);
+      needsRedraw = true;
     } else if (msg.type === 'gran_stock') {
       // ★[곳간② 재고 표시] 물리 재고 델타(변한 곳간만 · 1초 스로틀) — flat [cx,cy,수량,…], 0이면 삭제.
       if (!c.granStock) c.granStock = new Map();
@@ -4446,7 +4807,27 @@ const SIM_JOB_EMOJI = {
     //   텍스처가 아직 안 왔거나 legacy 손잡이면 **종전 경로**로 그대로 떨어진다(무회귀).
     const _LEG = !!_t19.legacy || _gtexReady < 3;
     if (!_LEG) _waterInit();   // ★타일을 굽기 **전에** 물 가능 여부를 확정한다(진흙/단색 갈림이 타일에 굳는다)
-    window.__groundDbg = { legacy: _LEG, tex: _gtexReady, tiles: 0, baked: 0, cached: _groundTiles.size };
+    window.__groundDbg = { legacy: _LEG, tex: _gtexReady, tiles: 0, baked: 0, cached: _groundTiles.size, stateCells: 0 };
+    { // ★[배치 20 B] 타일 상태 계측·주입 — 하네스는 서버 방송과 **같은 입구**(_tsIngest)로만 들어온다.
+      const _c = (primaryZoneId && typeof conns !== 'undefined') ? conns.get(primaryZoneId) : null;
+      window.__tileStateDbg = {
+        off: !!_t19.stateOff, sb: (typeof SoilBase !== 'undefined'),
+        soilCells: _c && _c.soil ? _c.soil.size : -1,
+        roadCells: _c && _c.roads ? _c.roads.size : -1,
+        farmCells: _farmCells ? _farmCells.size : -1,
+        q: TS_SOIL_Q,
+      };
+      window.__tileStateFeed = (flat) => { const n = _tsIngest(_c, flat || []); needsRedraw = true; return n; };
+      window.__tileStateAt = (lcx, lcy) => {
+        if (!_c || !_c.meta) return null;
+        const rec = _c.soil ? _c.soil.get(lcx + ',' + lcy) : null;
+        const wx = _c.meta.worldOffsetX + lcx * 32 + 16, wy = (_c.meta.worldOffsetY || 0) + lcy * 32 + 16;
+        const kind = isWaterAtAbs(wx, wy) ? 'water' : (isRockAtAbs(wx, wy) ? 'rock' : 'land');
+        return { kind, soil: _tsSoil(lcx, lcy, kind, rec), base: (typeof SoilBase !== 'undefined' ? SoilBase.baseAt(kind, lcx, lcy) : null),
+                 geo: rec ? rec.geo : 0, ore: rec ? rec.ore : 15, road: _c.roads ? (_c.roads.get(lcx + ',' + lcy) || 0) : 0,
+                 dyn: !!rec, tiles: _groundTiles.size };
+      };
+    }
     if (!_LEG) {
       const isoX0 = camX - W / 2, isoY0 = camY - H / 2;
       const t0x = Math.floor(isoX0 / GT_W), t1x = Math.floor((isoX0 + W) / GT_W);
@@ -4465,6 +4846,7 @@ const SIM_JOB_EMOJI = {
         drawn++;
       }
       window.__groundDbg.tiles = drawn; window.__groundDbg.baked = baked; window.__groundDbg.cached = _groundTiles.size;
+      { let sc = 0; for (const e of _groundTiles.values()) sc += (e.state || 0); window.__groundDbg.stateCells = sc; }
       if (_groundTiles.size > GT_MAX) {   // 오래 안 쓴 타일부터 버린다(카메라가 멀어진 것)
         const ks = [..._groundTiles.entries()].sort((a, b) => (a[1].used || 0) - (b[1].used || 0));
         for (let i = 0; i < ks.length - GT_MAX; i++) _groundTiles.delete(ks[i][0]);
@@ -4553,7 +4935,38 @@ const SIM_JOB_EMOJI = {
     const _fw = _waterOn ? _flowAtCell(Math.floor(_camAbs.x / 32), Math.floor(_camAbs.y / 32)) : [0, 0];
     window.__waterDbg = { on: _waterOn, webgl: _wgl.ok, prisms: _nPrism, flowKey: _wfCache.key,
                           segs: _riverSegs ? _riverSegs.length : 0, flowAtCam: _fw, rect: _wfCache.rect,
-                          flowIso: [_fw[0] - _fw[1], (_fw[0] + _fw[1]) / 2] };
+                          flowIso: [_fw[0] - _fw[1], (_fw[0] + _fw[1]) / 2],
+                          camCell: [Math.floor(_camAbs.x / 32), Math.floor(_camAbs.y / 32)],
+                          pend: window.__wfPendN || 0, askR: WF_ASK_R,
+                          segGrid: _segGrid.map ? _segGrid.map.size : 0, flowCache: _flowCellCache.size,
+                          buildMs: window.__wfBuildMs || 0, buildMax: window.__wfBuildMax || 0,
+                          buildN: window.__wfBuildN || 0, wetReuse: window.__wfReuse || 0 };
+    // ★[물가 렉 계측] 흐름 텍스처 원점을 실제 주행처럼 옮겨 가며 **정본 `_buildFlowTex` 를 그대로**
+    //   호출해 장당 시간을 잰다. 계측기가 계산을 다시 쓰지 않는다(사본 금지) — 렌더러가 부르는
+    //   그 함수를 부른다. 걸어서 재려면 512px 마다 8초가 걸려 A/B 를 못 돈다.
+    //   step = 원점 이동(셀). 16 = 실제 주행 한 칸(겹침 87.5%) · 128 = 완전히 새 땅.
+    window.__wfProbe = (n, step) => {
+      const out = []; const bx = _wfCache.ox, by = _wfCache.oy;
+      const keepPrev = _wfPrev.wet, keepOx = _wfPrev.ox, keepOy = _wfPrev.oy, keepKey = _wfCache.key;
+      for (let i = 1; i <= n; i++) {
+        window.__wfFlowMs = 0; window.__wfFlowN = 0;
+        const t0 = performance.now();
+        _buildFlowTex(null, bx + i * step, by + i * step);
+        out.push({ ms: +(performance.now() - t0).toFixed(1), wet: +(window.__wfWetMs || 0).toFixed(1),
+                   flow: +(window.__wfFlowMs || 0).toFixed(1), flowN: window.__wfFlowN || 0,
+                   reuse: window.__wfReuse || 0, asked: window.__wfAsked || 0, pend: window.__wfPending || 0 });
+      }
+      _wfPrev.wet = keepPrev; _wfPrev.ox = keepOx; _wfPrev.oy = keepOy; _wfCache.key = keepKey;
+      return out;
+    };
+    // ★[물가 렉 A/B] 캐시를 식혀 **처음 보는 땅**의 비용을 다시 재게 한다. 같은 길을 두 번
+    //   걸어 손잡이만 바꿔 비교하려면 이게 있어야 한다(안 그러면 두 번째 주행이 캐시로 공짜다).
+    window.__wfReset = () => {
+      _flowCellCache.clear(); _flowCellOld.clear(); _wfPrev.wet = null; _wfCache.key = null; _wfCache.pending = false;
+      _waterCellCache.clear();
+      window.__wfBuildMs = 0; window.__wfBuildMax = 0; window.__wfBuildN = 0; window.__wfBuildSum = 0;
+      window.__wfFirstMs = 0; window.__wfSteadyN = 0; window.__wfSteadySum = 0;
+    };
     // === 2) 엔티티 수집 (depth sort용) ===
     const renderables = [];
     const renderT = performance.now() - INTERP_DELAY_MS;

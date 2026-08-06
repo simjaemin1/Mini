@@ -275,6 +275,29 @@ function getRoadCells(zone) { return stmtGetRoadCells.all(zone); }
 function upsertRoadCell(zone, key, v, d) { stmtUpsertRoadCell.run(zone, key | 0, v, d | 0); }
 function deleteRoadCell(zone, key) { stmtDeleteRoadCell.run(zone, key | 0); }
 
+// === [배치 20 B] 동적 토양치 + 지질 플래그(server/soil.js) ===
+// mined_cells 의 lazy 패턴을 그대로 베낀 것: **기준선에서 벗어난 셀만** 행을 갖는다.
+//   v   = 절대 토양치 0..1000 (public/soil-base.js SOIL_MAX 눈금)
+//   d   = 마지막 접근 게임일(게으른 리젠 — 일괄 패스 없음)
+//   geo = 지질 플래그 비트: 1 = wasMountain(부서진 산터. 파괴가 없어도 값은 영속이라 남는다)
+// ★geo 가 붙은 셀은 v 가 기준선에 도달해도 **행을 지우지 않는다**(지질은 회복되지 않는다).
+db.exec(`
+  CREATE TABLE IF NOT EXISTS soil_cells (
+    zone       TEXT    NOT NULL,
+    cell_key   INTEGER NOT NULL,
+    v          REAL    NOT NULL,
+    d          INTEGER NOT NULL,
+    geo        INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (zone, cell_key)
+  );
+`);
+const stmtGetSoilCells = db.prepare('SELECT cell_key, v, d, geo FROM soil_cells WHERE zone = ?');
+const stmtUpsertSoilCell = db.prepare('INSERT INTO soil_cells (zone, cell_key, v, d, geo) VALUES (?, ?, ?, ?, ?) ON CONFLICT(zone, cell_key) DO UPDATE SET v = excluded.v, d = excluded.d, geo = excluded.geo');
+const stmtDeleteSoilCell = db.prepare('DELETE FROM soil_cells WHERE zone = ? AND cell_key = ?');
+function getSoilCells(zone) { return stmtGetSoilCells.all(zone); }
+function upsertSoilCell(zone, key, v, d, geo) { stmtUpsertSoilCell.run(zone, key | 0, v, d | 0, geo | 0); }
+function deleteSoilCell(zone, key) { stmtDeleteSoilCell.run(zone, key | 0); }
+
 const stmtGetBanditState = db.prepare('SELECT * FROM bandit_state WHERE zone = ?');
 const stmtUpsertBanditState = db.prepare(
   'INSERT INTO bandit_state (zone, data, day, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(zone) DO UPDATE SET data = excluded.data, day = excluded.day, updated_at = excluded.updated_at'
@@ -312,4 +335,6 @@ module.exports = {
   getBanditState, upsertBanditState,
   // §16 답압 길 (roads.js)
   getRoadCells, upsertRoadCell, deleteRoadCell,
+  // [배치 20 B] 동적 토양치 · 지질 (soil.js)
+  getSoilCells, upsertSoilCell, deleteSoilCell,
 };

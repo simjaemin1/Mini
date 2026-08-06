@@ -14,6 +14,7 @@ const E2E_GIVE = (process.env.E2E_GIVE === '1');
 const Wildlife = require('./wildlife'); // §4-4 동물 AI 블록(마을실험실 이식) — 야생 5종 생태. ENABLE_WILDLIFE=0 → 완전 no-op
 const Bandits = require('./bandits'); // §11 도적 캐논 1파(경제·수명주기 — 소굴·해체 전환·econ 약탈 훅). ENABLE_BANDITS=0 → 완전 no-op, ENABLE_VILLAGES=0이면 자동 휴면
 const Roads = require('./roads'); // §16 답압 길 4파(희소맵·게으른 감쇠·DB 영속·A* 할인). ENABLE_ROADS=0 → 완전 no-op
+const Soil = require('./soil');   // [배치 20 B] 동적 토양치·지질(희소맵·게으른 리젠·DB 영속·렌더 전용). ENABLE_SOIL=0 → 기준선만
 const Rooms = require('./rooms'); // ★[배치 18 ①] 방 판정 정본(벽·문으로 닫힌 '바닥 깔린' 셀 집합). 서버가 판정해 클라에 실어 준다 — 클라 재계산 금지(사본 방지)
 const SIM_LON_ON = process.env.VILLAGE_LON !== '0'; // §19 경도 로컬 태양시(마을 NPC 야간 귀가) 게이트 — 기본 켜짐
 const central = require('./central-client'); // central HTTP 클라이언트
@@ -2033,6 +2034,8 @@ console.log(`[${ZONE_ID}] 🏰 환호 콜라이더: ${refreshDitchCells()}셀 �
 Bandits.init();
 // §16 답압 길 4파 — 존 셀 치수·게임일 시계로 독립 부팅(villages와 무관 — 스탬프는 이동 루프 편승).
 Roads.init({ zoneId: ZONE_ID, cellsW: Math.ceil(ZONE.zoneWidth / 32), cellsH: Math.ceil(ZONE.zoneHeight / 32), epoch: WORLD.worldEpoch || 0, dayMs: parseInt(process.env.VILLAGE_DAY_MS || '', 10) || WORLD.dayLengthMs, broadcast });
+// ★[배치 20 B] Soil.init 은 여기가 아니라 **minedCells 적재 뒤**(3900+)에 있다 —
+//   채굴 거울 씨앗이 minedCells 를 읽는데 그 const 선언이 아래라 TDZ 다(2027 의 Specialty 와 같은 함정).
 // §4-4 마지막 조각: 동물 AI 블록(마을실험실 야생 5종 🦌🐇🐗🐺🐯) — server/wildlife.js.
 //   뷰(LOD)=활성 청크 bbox, 스폰=서식 밴드(마을 완충 100~250m — SimVillages/레거시 마을 기준),
 //   agents=사람 플레이어+활성 NPC(지각·도주·맹수 위협 대상), 피해=damagePlayer 브리지.
@@ -2382,6 +2385,7 @@ wss.on('connection', async (ws, req) => {
       markets: SimVillages.marketVillages(),     // ★[10차 T4] 장마당 스냅샷 flat[ccx,ccy,…](이후 markets 방송) — 캐러밴 체류 중인 마을만
       banditCamps: Bandits.clientCamps(), // §11 도적: 소굴·야영 마커 1종 — 이후 bandit_camps가 변경분 방송
       roads: Roads.clientRoads(), // §16 답압 길: 등급 셀 flat [cx,cy,lv,...] — 이후 road_cells가 변경분 방송
+    soil: Soil.clientSoil(),    // [배치 20 B] 타일 상태: 기준선에서 벗어난 셀 flat [cx,cy,qv,geo,ore,...] — 이후 tile_state가 변경분 방송
       bridges: (ZONE.bridges || null), // ★[다리 층] 통나무 널다리 셀 flat [cx,cy,...] — 정적(맵 사물)이라 welcome 1회
       ditches: ditchPayload(),         // ★[11차 T3 환호] 도랑 셀 flat [cx,cy,...] — 마을 소유 사물(부팅 후 불변)이라 welcome 1회
       buildings: activeChunkBuildings(),
@@ -2774,6 +2778,7 @@ wss.on('connection', async (ws, req) => {
       markets: SimVillages.marketVillages(),     // ★[10차 T4] 장마당 스냅샷 flat[ccx,ccy,…](이후 markets 방송) — 캐러밴 체류 중인 마을만
     banditCamps: Bandits.clientCamps(), // §11 도적: 소굴·야영 마커 1종 — 이후 bandit_camps가 변경분 방송
     roads: Roads.clientRoads(), // §16 답압 길: 등급 셀 flat [cx,cy,lv,...] — 이후 road_cells가 변경분 방송
+    soil: Soil.clientSoil(),    // [배치 20 B] 타일 상태: 기준선에서 벗어난 셀 flat [cx,cy,qv,geo,ore,...] — 이후 tile_state가 변경분 방송
     bridges: (ZONE.bridges || null), // ★[다리 층] 통나무 널다리 셀 flat [cx,cy,...] — 정적(맵 사물)이라 welcome 1회
     ditches: ditchPayload(),         // ★[11차 T3 환호] 도랑 셀 flat [cx,cy,...] — 마을 소유 사물(부팅 후 불변)이라 welcome 1회
     buildings: activeChunkBuildings(),
@@ -3873,6 +3878,21 @@ const minedCells = new Map();
     if (minedCells.size) console.log(`[${ZONE_ID}] 광맥 파인 셀 ${minedCells.size}개 로드` + (migrated ? ` (구 번영도 ${migrated}개 → 재고 비율 이행)` : ''));
   } catch (e) { console.log(`[${ZONE_ID}] mined_cells 로드 실패: ${e.message}`); }
 }
+// [배치 20 B] 동적 토양치 — minedCells 적재 **뒤에** 띄운다(채굴 거울 씨앗이 그걸 읽는다).
+//   지형 술어는 **정본 래퍼를 주입**한다: soil.js 는 terrain 을 직접 읽지 않는다
+//   (지형 데이터·콜라이더·자원 스폰·econ 기준선 무접촉을 모듈 경계로 강제).
+Soil.init({
+  zoneId: ZONE_ID, cellsW: Math.ceil(ZONE.zoneWidth / 32), cellsH: Math.ceil(ZONE.zoneHeight / 32),
+  epoch: WORLD.worldEpoch || 0, dayMs: parseInt(process.env.VILLAGE_DAY_MS || '', 10) || WORLD.dayLengthMs, broadcast,
+  kindAt: (cx, cy) => (isWaterTileLocal(cx * 32 + 16, cy * 32 + 16) ? 'water'
+                     : (isRockTileLocal(cx * 32 + 16, cy * 32 + 16) ? 'rock' : 'land')),
+  oreSeed: function* () {   // 정본에서 **읽기만** 한다. 키는 'cx_cy'.
+    for (const [key, rec] of minedCells) {
+      const p = key.split('_'); if (p.length !== 2) continue;
+      yield [+p[0], +p[1], rec.s, Specialty.ORE_K];
+    }
+  },
+});
 // 게임일 길이(리젠 적분의 시간축). zone-config WORLD와 같은 원천.
 const _ORE_DAY_MS = (WORLD && WORLD.dayLengthMs) || 24 * 60 * 1000;   // 게임일 24분 — 리젠 적분의 시간축(zone-config WORLD 단일 원천)
 // 셀 레코드 확보 + lazy 리젠(닫힌 해로 한 번에 적분 — dt가 몇 달이어도 오차 0)
@@ -3884,6 +3904,19 @@ function _oreRec(key, now) {
   return rec;
 }
 function _oreSave(key, rec) {
+  // [배치 20 B] 채굴 축 — 렌더 거울 갱신 + **판 만큼** 토양치 하락(파기↓).
+  //   ★채광 정본(minedCells·mined_cells)은 아래 그대로다. 여기서 하는 건 읽어서 알려 주는 것뿐이고,
+  //     soil 은 별도 장부다(렌더 상태). 정본에 두 번째 작성자를 만들지 않는다.
+  try {
+    const _p = key.split('_');
+    if (_p.length === 2) {
+      const _cx = +_p[0], _cy = +_p[1];
+      const _drop = (rec._ms != null) ? Math.max(0, rec._ms - rec.s) : 0;
+      rec._ms = rec.s;
+      if (_drop > 0) Soil.dig(_cx, _cy, _drop * 0.25);
+      Soil.mirrorOre(_cx, _cy, rec.s, Specialty.ORE_K);
+    }
+  } catch (e) { }
   if (rec.s >= Specialty.ORE_K && rec.w <= 0 && !(rec.kg > 0)) { minedCells.delete(key); try { db.deleteMinedCell(key); } catch (e) { } return; }
   delete rec.fresh; minedCells.set(key, rec);
   try { db.upsertMinedCell(key, rec.s, rec.t, rec.w, rec.kg || 0); } catch (e) { }
@@ -6442,6 +6475,7 @@ setInterval(() => {
   Bandits.onGameTick(now);
   // §16 답압 길 — 게임일 경계 dirty 플러시·coarse 재구축·클라 변경분(평시 O(1) 비교)
   Roads.onGameTick(now);
+  Soil.onGameTick(now);   // [배치 20 B] 토양치 게임일 1회 플러시 + tile_state 변경분 방송
 
   // === 14.49-e3-perf5: idle zone skip ===
   // 사람 player(isNpc=false) + observer 모두 0명이면 tick 풀 처리 skip.
