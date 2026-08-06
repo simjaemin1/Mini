@@ -1054,7 +1054,15 @@ const SIM_JOB_EMOJI = {
     return t + (u - t) * sy;
   }
   function _natBuildChunk(ccx, ccy) {
-    const key = ccx + '_' + ccy;
+    // ★시안 손잡이 `frFloor` — 밀도 저주파 변주의 **바닥값**. 0(기본) 이면 문턱 아래 물가는
+    //   한 포기도 안 선다(= 재민 지시 "빈 구간이 셀 몇 개 단위로 교대"). >0 이면 빈 구간에도
+    //   최소 밀도가 깔려 절단선이 어디서나 덮이는 대신 군락 대비가 약해진다. 캐시 키에 넣어
+    //   런타임에 갈아 끼워도 배치가 다시 계산된다(하네스가 같은 프레임 A/B 를 얻는 길).
+    //   ★기본값 0 인 이유는 취향이 아니라 **실측**이다: 0.25 로 깔면 화면은 더 낫지만
+    //   물가 회랑의 '빈 블록'이 31%→15% 로 떨어져 e2e-nature ⓑ(≥18%)를 통과하지 못한다.
+    //   그 판정은 재민이 글로 못박은 "빈 구간이 셀 몇 개 단위로 교대"를 옮긴 것이라
+    //   **판정을 완화해서 취향을 통과시키지 않는다.** 시안은 보고서 §6 에 붙였다.
+    const key = ccx + '_' + ccy + '_' + (_t19.frFloor || 0);
     const hit = _natChunk.get(key); if (hit) return hit;
     const S = NAT_CH + NAT_PAD * 2;
     const wet = new Uint8Array(S * S), rock = new Uint8Array(S * S);
@@ -1087,7 +1095,9 @@ const SIM_JOB_EMOJI = {
         //  ★문턱 0.34 — 이 아래는 **한 포기도 안 선다**. "일부러 심은 느낌"을 깨는 건 밀도가 아니라
         //    빈 구간의 존재다. 문턱 위에서는 (q-0.34)/0.46 로 0→1 까지 부드럽게 빽빽해진다.
         const amp = (q - 0.34) / 0.46;
-        const dens = (band === 0 ? 2.8 : band === 1 ? 1.3 : 0.5) * (amp > 0 ? (amp > 1 ? 1 : amp) : 0);
+        const a2 = amp > 0 ? (amp > 1 ? 1 : amp) : 0;
+        const flr = _t19.frFloor || 0;
+        const dens = (band === 0 ? 2.8 : band === 1 ? 1.3 : 0.5) * (flr + (1 - flr) * a2);
         const n = Math.floor(dens + _cellHash(cx, cy, 4212));
         const L = Math.sqrt(sx2 * sx2 + sy2 * sy2) || 1, ux = sx2 / L, uy = sy2 / L;
         for (let i = 0; i < n; i++) {
@@ -1233,7 +1243,7 @@ const SIM_JOB_EMOJI = {
   //     색으로 세는 대신 **켜고 끈 차이**로 재야 판정이 성립한다.
   //   ★[배치 21] natOff/fringeOff/propOff — 자연물 산포 전체/물가 술/초원 소품을 따로 끈다.
   const _t19 = { legacy: false, waterOff: false, decoOff: false, prismOff: false, mtOff: false,
-                 natOff: false, fringeOff: false, propOff: false, propNoAvoid: false };
+                 natOff: false, fringeOff: false, propOff: false, propNoAvoid: false, frFloor: 0 };
   window.__terrain19 = _t19;
 
   // 지형 차단 통합 (물+바위) — 이동 예측용

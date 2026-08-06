@@ -30,3 +30,6 @@ scripts/terrain_tex/
 
 # 배치 20: 산 세그먼트 베이크 산출물(에셋은 public/assets/mountains 로 복사해 커밋)
 scripts/mountain_renders/
+
+# 배치 21: 자연물 베이크 산출물(에셋은 public/assets/{trees,nature} 로 복사해 커밋 — nature-postprocess.py)
+scripts/nature_renders/

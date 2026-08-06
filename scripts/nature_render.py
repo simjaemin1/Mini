@@ -374,7 +374,7 @@ M['bark_chest'] = bark_mat("bark_chest", (0.35, 0.28, 0.17), (0.20, 0.15, 0.09),
 M['bark_wil'] = bark_mat("bark_wil", (0.34, 0.28, 0.15), (0.19, 0.15, 0.08), 34.0, 0.9, 0.6)
 M['bark_jat'] = bark_mat("bark_jat", (0.31, 0.21, 0.11), (0.18, 0.11, 0.06), 26.0, 0.9, 0.55, plates=True)
 M['nd_pine'] = leaf_mat("nd_pine", _fix((0.18, 0.31, 0.14)), _fix((0.10, 0.20, 0.09)), 55.0, 0.78, 0.45)
-M['nd_jat'] = leaf_mat("nd_jat", _fix((0.19, 0.31, 0.17)), _fix((0.11, 0.21, 0.11)), 60.0, 0.8, 0.45)
+M['nd_jat'] = leaf_mat("nd_jat", _fix((0.23, 0.35, 0.18)), _fix((0.14, 0.24, 0.12)), 60.0, 0.8, 0.45)
 M['lf_oak'] = leaf_mat("lf_oak", _fix((0.24, 0.36, 0.13)), _fix((0.13, 0.23, 0.09)), 40.0, 0.72, 0.36)
 M['lf_chest'] = leaf_mat("lf_chest", _fix((0.30, 0.42, 0.15)), _fix((0.17, 0.28, 0.10)), 38.0, 0.7, 0.34)
 M['lf_wil'] = leaf_mat("lf_wil", _fix((0.36, 0.45, 0.17)), _fix((0.22, 0.32, 0.11)), 44.0, 0.7, 0.3)
@@ -425,20 +425,20 @@ def tree_pine(seed, h=3.6, spread=1.9):
     plates = []
     for i in range(nb):
         th = rng.r(-0.5, 0.5) + i * 6.2832 / nb
-        s0 = rng.r(0.55, 0.92)
+        s0 = rng.r(0.72, 0.99)
         base = V(pts[0]) + (top - V(pts[0])) * s0
-        rr = spread * rng.r(0.62, 1.0)
-        tip = base + V((math.cos(th) * rr, math.sin(th) * rr, h * rng.r(0.08, 0.20)))
-        tube(arc_pts(base, tip, h * 0.05, 5), [0.05, 0.04, 0.032, 0.024, 0.016],
+        rr = spread * rng.r(0.42, 0.80)
+        tip = base + V((math.cos(th) * rr, math.sin(th) * rr, h * rng.r(0.02, 0.11)))
+        tube(arc_pts(base, tip, h * 0.05, 5), [0.062, 0.052, 0.042, 0.032, 0.022],
              M['bark_pine'], seg=5, name="pine_br")
         plates.append((tip, rr))
     # 판상 솔잎 — 납작한 원반 껍질(가늘고 긴 카드 = 솔잎 다발)
     for (tip, rr) in plates:
-        pr = rr * rng.r(0.78, 1.02)
+        pr = spread * rng.r(0.52, 0.70)
         blob(tip + V((0, 0, 0.05)), pr * 0.42, M['in_dark'], rng, squash=0.34, disp=0.34, sub=2, name="pine_in")
         leaf_shell(tip + V((0, 0, 0.05)), pr, int(430 + 260 * rng.f()), 0.045, 0.30,
                    M['nd_pine'], rng, squash=0.42, droop=0.18, rmin=0.16, tilt=0.85, name="pine_nd")
-    tr = spread * rng.r(0.62, 0.80)
+    tr = spread * rng.r(0.70, 0.88)
     blob(top + V((0, 0, tr * 0.30)), tr * 0.42, M['in_dark'], rng, squash=0.42, disp=0.32, sub=2, name="pine_tin")
     leaf_shell(top + V((0, 0, tr * 0.30)), tr, 560, 0.045, 0.30, M['nd_pine'], rng,
                squash=0.52, droop=0.18, rmin=0.16, tilt=0.85, name="pine_top")
@@ -539,8 +539,8 @@ TREE_BUILD = [
     ("tree01", tree_pine, dict(seed=11, h=3.7, spread=1.95)),
     ("tree02", tree_pine, dict(seed=23, h=3.0, spread=1.65)),
     ("tree03", tree_pine, dict(seed=37, h=4.4, spread=2.15)),
-    ("tree04", tree_jat, dict(seed=41, h=4.4, spread=1.40)),
-    ("tree05", tree_jat, dict(seed=53, h=3.5, spread=1.18)),
+    ("tree04", tree_jat, dict(seed=41, h=4.4, spread=1.78)),
+    ("tree05", tree_jat, dict(seed=53, h=3.5, spread=1.50)),
     ("tree06", tree_oak, dict(seed=61, h=4.1, spread=2.15)),
     ("tree07", tree_oak, dict(seed=71, h=3.4, spread=1.85)),
     ("tree08", tree_oak, dict(seed=83, h=4.7, spread=2.45)),
