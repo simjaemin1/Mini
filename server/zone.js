@@ -3904,18 +3904,20 @@ function _oreRec(key, now) {
   return rec;
 }
 function _oreSave(key, rec) {
-  // [배치 20 B] 채굴 축 — 렌더 거울 갱신 + **판 만큼** 토양치 하락(파기↓).
-  //   ★채광 정본(minedCells·mined_cells)은 아래 그대로다. 여기서 하는 건 읽어서 알려 주는 것뿐이고,
-  //     soil 은 별도 장부다(렌더 상태). 정본에 두 번째 작성자를 만들지 않는다.
+  // [배치 20 B] 채굴 축 — 렌더 거울 갱신.
+  //   ★채광 정본(minedCells·mined_cells)은 아래 그대로다. 여기서 하는 건 읽어서 알려 주는 것뿐이다.
+  //
+  // ★★[배치 20 F — 재민 지적] 여기서 **토양치를 깎지 않는다.**
+  //   1차 실장은 판 만큼 `Soil.dig(cx, cy, drop*0.25)` 를 걸었는데, 재민 지적대로
+  //   **광맥을 팠다고 그 땅이 척박해지는 게 아니다.** 둘은 다른 것이다:
+  //     · 채굴 축 = "이 자리를 얼마나 팠나" — 이미 제 그림(파낸 흙·자갈·그늘)이 있다.
+  //     · 비옥도 축 = "이 흙이 얼마나 기름진가".
+  //   한 사건이 두 축을 밀면 비옥도가 "얼마나 기름진가"가 아니라 "얼마나 시달렸나"가 되어
+  //   재민이 세운 축 분리가 무너진다. 게다가 DB 에 영속돼 리젠 전까지 남는 **부작용**이었다.
+  //   ⇒ 거울만 갱신한다. (길·경작도 마찬가지로 토양치를 안 건드린다 — 각자 별개 레이어다.)
   try {
     const _p = key.split('_');
-    if (_p.length === 2) {
-      const _cx = +_p[0], _cy = +_p[1];
-      const _drop = (rec._ms != null) ? Math.max(0, rec._ms - rec.s) : 0;
-      rec._ms = rec.s;
-      if (_drop > 0) Soil.dig(_cx, _cy, _drop * 0.25);
-      Soil.mirrorOre(_cx, _cy, rec.s, Specialty.ORE_K);
-    }
+    if (_p.length === 2) Soil.mirrorOre(+_p[0], +_p[1], rec.s, Specialty.ORE_K);
   } catch (e) { }
   if (rec.s >= Specialty.ORE_K && rec.w <= 0 && !(rec.kg > 0)) { minedCells.delete(key); try { db.deleteMinedCell(key); } catch (e) { } return; }
   delete rec.fresh; minedCells.set(key, rec);
