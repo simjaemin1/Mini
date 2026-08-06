@@ -2072,6 +2072,11 @@ const SIM_JOB_EMOJI = {
     return 0; // 뒤 안 보임
   }
   // 14.49-e6-c: entity 가시성 = cone × LoS (벽 너머 mob/player 안 보임)
+  // ★★적용 범위(재민 확정 2026-08-06) — **살아 움직이는 것에만** 건다:
+  //     적용:   player(본인 제외) · mob(동물)
+  //     비적용: resource(나무·바위·광맥·덤불·약초) · ground_item · corpse
+  //             → 식물·무생물·시체·바닥템은 **항상 그려진다**. 뒤돌았다고 사라지면 안 된다.
+  //   ※ 이건 안개(fog of war)와 **다른 시스템**이다. 안개(_seenChunks)는 지면만 칠한다.
   // worldCx === myAbsPredicted.x (카메라 = 플레이어 중심) — 직접 사용해도 안전.
   function entityVisibility(ax, ay, dist) {
     const dwx = ax - myAbsPredicted.x;
@@ -6130,10 +6135,12 @@ const SIM_JOB_EMOJI = {
       } else if (item.kind === 'resource') {
         const s = toScreen(item.iso.x, item.iso.y);
         const d = Math.hypot(item.ax - worldCx, item.ay - worldCy);
-        // Phase 14.39: 자원도 entity — 시야 뒤면 안 보임. 단 거리 vignette는 부드럽게.
-        let vis = Math.max(0.15, 1 - Math.pow(d / VIEW_RADIUS, 1.4));
-        vis *= entityVisibility(item.ax, item.ay, d);
-        if (vis < 0.05) continue;
+        // ★★[재민 확정 2026-08-06] **식물·무생물은 항상 그려진다.** 뒤돌았다고 숲이 사라지면 안 된다.
+        //   Phase 14.39 가 자원에도 `entityVisibility`(현재 facing 부채꼴 × 벽 LoS)를 걸어 뒀는데,
+        //   그건 **살아 움직이는 것**(사람·동물)을 위한 판정이다. 나무·바위·광맥·덤불·약초는
+        //   지형에 가까운 정적 사물이라 시선 방향과 무관하게 그 자리에 있어야 한다.
+        //   거리 vignette 는 남긴다 — AOI(650px) 경계에서 튀어나오는 팝인을 무르게 하는 장치다.
+        const vis = Math.max(0.15, 1 - Math.pow(d / VIEW_RADIUS, 1.4));
         ctx.globalAlpha = vis;
         if (item.r.type === 'tree') drawTreeIso(s.x, s.y, item.r.r || 8, item.r.h || 60, item.ax, item.ay);
         else if (item.r.type === 'rock') drawRockIso(s.x, s.y, item.ax, item.ay);
@@ -6151,10 +6158,10 @@ const SIM_JOB_EMOJI = {
       } else if (item.kind === 'ground_item') {
         const s = toScreen(item.iso.x, item.iso.y);
         const gi = item.gi;
-        // Phase 14.39: 바닥 아이템도 entity cone
+        // ★[재민 확정 2026-08-06] 바닥에 떨어진 물건도 **항상 보인다** — 내가 떨군 걸 뒤돌았다고
+        //   못 찾으면 안 된다. 거리 vignette 만 남긴다.
         const d = Math.hypot(item.ax - worldCx, item.ay - worldCy);
-        const vis = entityVisibility(item.ax, item.ay, d);
-        if (vis < 0.05) continue;
+        const vis = Math.max(0.15, 1 - Math.pow(d / VIEW_RADIUS, 1.4));
         ctx.globalAlpha = vis;
         // 그림자
         ctx.fillStyle = 'rgba(0,0,0,0.4)';
@@ -6313,9 +6320,8 @@ const SIM_JOB_EMOJI = {
         // Phase 5-7: 사체 — emoji
         const s = toScreen(item.iso.x, item.iso.y);
         const d = Math.hypot(item.ax - worldCx, item.ay - worldCy);
-        let vis = Math.max(0.15, 1 - Math.pow(d / VIEW_RADIUS, 1.4));
-        vis *= entityVisibility(item.ax, item.ay, d);
-        if (vis < 0.05) continue;
+        // ★[재민 확정 2026-08-06] 시체도 **항상 보인다**(더는 살아 움직이는 것이 아니다).
+        const vis = Math.max(0.15, 1 - Math.pow(d / VIEW_RADIUS, 1.4));
         ctx.globalAlpha = vis;
         ctx.font = '24px sans-serif';
         ctx.textAlign = 'center';
