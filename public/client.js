@@ -5133,6 +5133,40 @@ const SIM_JOB_EMOJI = {
     const _nMt = _mtCollect(renderables, worldCx, worldCy);
     window._mtAcc = (window._mtAcc || 0) + (performance.now() - _mtT0);
     window.__mtDbg = { segs: _nMt, sprites: _mtLoaded + '/' + _mtWanted, cached: _mtSegCache.size, destroyed: _mtDestroyed.size };
+    // ★★[배치 20 C] 산 계측·파괴 훅 — 하네스가 배치 수학을 **다시 쓰지 않게** 정본이 만든
+    //   세그먼트를 그대로 내보낸다. 하네스가 능선 보행·밴드 실측을 재구현하면 그게 사본이라
+    //   둘이 같이 틀려도 통과한다(자명 통과).
+    window.__mtProbe = () => {
+      const H = _hardTerrain; if (!H || !_mtAnchors) return null;
+      const out = [];
+      for (const zid in H) {
+        const z = zonesMeta[zid]; if (!z || zid !== primaryZoneId) continue;
+        const ox = z.worldOffsetX, oy = z.worldOffsetY || 0;
+        const rs = H[zid].ridges || [];
+        for (let ri = 0; ri < rs.length; ri++) {
+          const segs = _mtPlaceRidge(zid, rs[ri], ox, oy, ri);
+          for (const g2 of segs) out.push({ ridge: rs[ri].name, ri, x: g2.x, y: g2.y, nm: g2.name, sc: g2.sc,
+                                            lcx: Math.floor((g2.x - ox) / 32), lcy: Math.floor((g2.y - oy) / 32) });
+        }
+      }
+      return out;
+    };
+    // 파괴 이벤트의 **클라 쪽 규격** — 서버 메커니즘이 생기면 방송이 이 함수를 부르면 된다.
+    //   (§A-6 실측: 서버에 바위 셀 제거 메커니즘이 아직 0건이다.)
+    window.__mtDestroy = (cells) => {
+      const c = (primaryZoneId && typeof conns !== 'undefined') ? conns.get(primaryZoneId) : null;
+      if (!c || !c.meta) return 0;
+      let n2 = 0;
+      for (const [lcx, lcy] of (cells || [])) {
+        const wx = c.meta.worldOffsetX + lcx * 32, wy = (c.meta.worldOffsetY || 0) + lcy * 32;
+        _mtDestroyed.add(primaryZoneId + '_' + Math.floor(wx / 32) + '_' + Math.floor(wy / 32)); n2++;
+      }
+      _mtSegCache.clear();                       // 밴드 실측이 바뀌었으니 배치를 다시 계산한다
+      _gtInvalidateCells(c, (cells || []).flat(), 2);   // 지면(바위색)도 그 자리만 다시 굽는다
+      needsRedraw = true;
+      return n2;
+    };
+    window.__mtClearDestroy = () => { const n2 = _mtDestroyed.size; _mtDestroyed.clear(); _mtSegCache.clear(); _groundTiles.clear(); needsRedraw = true; return n2; };
     // ★[배치 21] 자연물 산포 — 물가 술 + 초원 소품. 산 세그먼트와 같은 목록·같은 z 규약.
     const _natT0 = performance.now();
     const _nNat = _natCollect(renderables, worldCx, worldCy);
