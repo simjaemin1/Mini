@@ -33,3 +33,5 @@ scripts/mountain_renders/
 
 # 배치 21: 자연물 베이크 산출물(에셋은 public/assets/{trees,nature} 로 복사해 커밋 — nature-postprocess.py)
 scripts/nature_renders/
+# 푸시 번들(맥으로 전달용 · 레포에 넣지 않는다)
+미푸시_*.bundle
