@@ -85,7 +85,10 @@
   // ⚠한반도(forest)만 라이브다. 나머지는 실게임에서 볼 수 없으므로 시안 대조표
   //   (`scripts/mock-biome-ramps.js`)로 판단받아야 한다 — 눈으로 못 본 값을 확정하지 마라.
   var BIOME = {
-    forest:      { dry: [120, 620], grass: [430, 980], capG: 1.00, tint: '#6f8a4a', tintA: 0.10,
+    // ★forest 는 **라이브 존(한반도)** 이다. 문턱·색을 배치 19~21 이 검증한 값 그대로 두고
+    //   식생 색조도 0 으로 둔다 ⇒ 이 표를 들여도 **라이브 그림은 픽셀 단위로 안 바뀐다.**
+    //   (존 groundColor/tintColor 가 이미 그 몫을 하고 있다. 검증된 그림을 뜻 없이 흔들지 않는다.)
+    forest:      { dry: [120, 620], grass: [430, 980], capG: 1.00, tint: '#6f8a4a', tintA: 0.00,
                    propG: ['#4e7a3c', '#5d8a46', '#6b8f4e'], propR: '#7a7268', rock: [400, 950] },
     plains:      { dry: [160, 660], grass: [380, 900], capG: 0.95, tint: '#8a8a52', tintA: 0.12,
                    propG: ['#6b8f4e', '#7d9450', '#8a9a58'], propR: '#8a8070', rock: [430, 960] },
