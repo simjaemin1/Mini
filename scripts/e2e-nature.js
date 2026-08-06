@@ -125,12 +125,33 @@ function diffCount(a, b) {            // 두 프레임에서 달라진 픽셀 �
     const knob = async (o) => { await page.evaluate((k) => { Object.assign(window.__terrain19, k); }, o); await sleep(1500); };
     const grab = async (n) => { const p2 = `${SHOTS}/${tag}-${n}.png`; await page.screenshot({ path: p2 }); return PNG.sync.read(fs.readFileSync(p2)); };
     const dbg = () => page.evaluate(() => ({ nat: window.__natDbg, water: window.__waterDbg })).catch(() => null);
+    // ★안개 위로 뜨는 픽셀 계측 — 판정 정본은 `window._shadowMask` 의 **알파**다(하네스가 시야를
+    //   다시 계산하면 그게 사본이다). 알파 248↑ = 한 번도 못 본 셀. 그 자리에 밝은 픽셀이 있으면
+    //   무언가가 안개 위로 떠 있다는 뜻이다.
+    const fogLit = () => page.evaluate(() => {
+      const cv = document.querySelector('canvas'), mc = window._shadowMask;
+      if (!mc) return { unseen: 0, lit: 0 };
+      const M = 64, W = cv.width, H = cv.height;
+      const md = mc.getContext('2d').getImageData(0, 0, mc.width, mc.height).data;
+      const sd = cv.getContext('2d').getImageData(0, 0, W, H).data;
+      let unseen = 0, lit = 0;
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        if (md[((y + M) * mc.width + (x + M)) * 4 + 3] < 248) continue;
+        unseen++;
+        const si = (y * W + x) * 4;
+        if (sd[si] + sd[si + 1] + sd[si + 2] > 60) lit++;
+      }
+      return { unseen, lit };
+    }).catch(() => ({ unseen: 0, lit: 0 }));
 
     await knob({ legacy: false, freezeT: 100, natOff: false, fringeOff: false, propOff: false, propNoAvoid: false });
     const d0 = await dbg();
     const fOn = await grab('on'), fOn2 = await grab('on2');
     const probe = await page.evaluate(() => window.__natProbe());
-    await knob({ fringeOff: true });
+    const fogOn = await fogLit();
+    await knob({ natOff: true });
+    const fogOff = await fogLit();
+    await knob({ natOff: false, fringeOff: true });
     const fNoFr = await grab('nofringe');
     await knob({ fringeOff: false, propOff: true });
     const fNoPr = await grab('noprop');
@@ -140,7 +161,7 @@ function diffCount(a, b) {            // 두 프레임에서 달라진 픽셀 �
     await knob({ natOff: false, propNoAvoid: true });
     const probeNA = await page.evaluate(() => window.__natProbe());
     await knob({ propNoAvoid: false });
-    S[tag] = { d0, fOn, fOn2, fNoFr, fNoPr, fNoNat, probe, probeNA, cerr, bad: [...new Set(bad)] };
+    S[tag] = { d0, fOn, fOn2, fNoFr, fNoPr, fNoNat, probe, probeNA, cerr, bad: [...new Set(bad)], fogOn, fogOff };
     await browser.close(); try { z.kill(); } catch (e) {}
     await sleep(2500);
   }
@@ -260,6 +281,16 @@ function diffCount(a, b) {            // 두 프레임에서 달라진 픽셀 �
   say(`    강가 술 on/off 차이 ${dFr}px · 초원 소품 on/off 차이 ${dPr}px · 강가 자연물 전체 ${dPrR}px`);
   ok(dFr > 3000, `★손잡이가 실제로 무언가를 끈다 — 강가 술 ${dFr}px`);
   ok(dPr > 500, `★초원 소품 손잡이도 실제로 그린다 ${dPr}px`);
+
+  say('\n[7] ⓕ 안개 — 한 번도 못 본 셀 위에 자연물이 뜨지 않는가');
+  //  ★1패스 실결함(재민 지적): 자연물을 renderables 에 태웠더니 **마스크 합성이 엔티티 앞**이라
+  //    미탐사 새까만 셀 위에 풀·꽃이 그대로 보였다. 마스크 **앞**으로 옮겨 지면과 같은 3단계를 받게 했다.
+  for (const [tag, s2] of [['강가', R], ['초원', F]]) {
+    const extra = s2.fogOn.lit - s2.fogOff.lit;
+    say(`    ${tag}: 미탐사 ${s2.fogOn.unseen}px · 밝은 픽셀 자연물ON ${s2.fogOn.lit} / OFF ${s2.fogOff.lit} (차이 ${extra})`);
+    ok(s2.fogOn.unseen > 50000, `★자명 통과 금지 — ${tag} 화면에 미탐사 영역이 실제로 크다 (${s2.fogOn.unseen}px)`);
+    ok(extra <= 40, `★★${tag} — 자연물이 안개 위로 뜨지 않는다 (ON−OFF = ${extra} ≤ 40)`);
+  }
 
   say(`\n스크린샷: ${SHOTS}/`);
   say(`\n=== 자연물 E2E: ${pass} 통과 / ${fail} 실패 ${fail ? '❌' : '✅'} ===`);

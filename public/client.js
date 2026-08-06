@@ -5516,7 +5516,9 @@ const SIM_JOB_EMOJI = {
     window.__mtClearDestroy = () => { const n2 = _mtDestroyed.size; _mtDestroyed.clear(); _mtSegCache.clear(); _mtChunk.clear(); _groundTiles.clear(); needsRedraw = true; return n2; };
     // ★[배치 21] 자연물 산포 — 물가 술 + 초원 소품. 산 세그먼트와 같은 목록·같은 z 규약.
     const _natT0 = performance.now();
-    const _nNat = _natCollect(renderables, worldCx, worldCy);
+    const _natItems = [];
+    const _nNat = _natCollect(_natItems, worldCx, worldCy);
+    _natItems.sort((a, b) => a.z - b.z);
     window._natAcc = (window._natAcc || 0) + (performance.now() - _natT0);
     window.__natDbg = { fringe: _nNat[0], props: _nNat[1], sprites: _natLoaded + '/' + _natWanted,
                         chunks: _natChunk.size, blocked: _natBlockSet ? _natBlockSet.size : 0,
@@ -5892,6 +5894,22 @@ const SIM_JOB_EMOJI = {
     const _hideAbove = !!_myRoom;   // 실내일 때만 위층을 숨긴다(밖 = 전체 복원)
     window.__floorViewDbg = { myFloor, viewFloor: _viewFloor, indoors: !!_myRoom, hideAbove: _hideAbove, room: _myRoom ? _myRoom.id : null };
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // ★★[배치 21 수리] 자연물(물가 술·들꽃)은 **안개 마스크보다 먼저** 그린다.
+    //   1패스는 renderables 에 태워 엔티티와 z 정렬했는데(배치 20 산 세그먼트 본보기를 따랐다),
+    //   마스크 합성이 **엔티티 렌더 앞**이라 자연물이 안개 위로 떠올랐다 —
+    //   **한 번도 못 본 새까만 셀 위에 풀과 꽃이 그대로 보였다**(재민 지적).
+    //   실측(fogprobe): 미탐사 픽셀 450,566 중 밝은 픽셀 **1,142 → 자연물 끄면 9**.
+    //   99.2%가 이 층이었다. 서버 엔티티(나무·건물)는 AOI 650px 안에서만 오고 그 범위는
+    //   사실상 항상 '본 곳'이라 이 문제가 드러나지 않았는데, 자연물은 **클라가 1,500px 까지
+    //   스스로 만들어** 미탐사 영역까지 뻗는다. 그래서 이 층에서만 새로 터진 것이다.
+    //   ⇒ 마스크 앞으로 옮기면 지면과 **똑같은 3단계**를 그대로 받는다:
+    //      미탐사=완전히 가려짐 · 봤지만 시야 밖=지면과 같은 20% 어둠 · 시야 안=밝음.
+    //      (배치 19가 남긴 "지면 데코는 안개 마스크 앞" 계약이 바로 이 뜻이었다.)
+    //   ⇒ 대가: 엔티티가 항상 자연물 위에 그려진다(사람이 갈대 뒤에 서도 앞으로 나온다).
+    //      풀·꽃은 지면 데코라 이 편이 낫다 — 산 세그먼트처럼 큰 물체였다면 반대였을 것이다.
+    if (!_t19.natOff) for (const it of _natItems) _natDraw(ctx, it, toScreen);
+
     // 14.49-e7ae: mask composite를 entity render 전으로 (entity가 mask 위에 = mask 영향 X)
     // mask 자체는 entity render 후에 만들어짐 (현재 위치 그대로). 즉 1 frame 지연.
     // window._shadowMask가 persistent canvas라 이전 frame mask가 보존됨. 첫 frame은 빈 mc (transparent).
@@ -5997,8 +6015,6 @@ const SIM_JOB_EMOJI = {
         ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b2.x, b2.y); ctx.lineTo(c2.x, c2.y); ctx.lineTo(d2.x, d2.y); ctx.closePath(); ctx.fill();
       } else if (item.kind === 'mtseg') {
         _mtDraw(ctx, item, toScreen);
-      } else if (item.kind === 'natspr') {
-        _natDraw(ctx, item, toScreen);           // ★[배치 21] 물가 술 · 초원 소품
       } else if (item.kind === 'ditch') {
         // ★[11차 T3 환호] 도랑 — 8차 셀 정합 스프라이트(이미지 중심=셀 중심·128px). 없으면 파인 흙 다이아 폴백.
         if (!drawBridgeSprite(item.ds, item.bx, item.by, toScreen)) {
