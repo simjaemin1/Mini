@@ -347,6 +347,7 @@ const SIM_JOB_EMOJI = {
       //   받은 원본을 그대로 잡아 둔다 — 서버 파일을 건드리지 않고 사본도 만들지 않는다.
       _hardTerrain = all; _riverSegs = null; _flowCellCache.clear(); _wfCache.key = null;
       _waterCellCache.clear();
+      _natChunk.clear();      // ★[배치 21] 자연물 청크 배치도 지형 파생 — 같은 지점에서 무효화
       _rockCellCache.clear();
       _groundTiles.clear();   // ★[배치 19] 지면 베이크는 지형 파생물 — 같은 지점에서 함께 버린다
       if (typeof window.__invalidateMinimapCache === 'function') window.__invalidateMinimapCache();
@@ -356,6 +357,7 @@ const SIM_JOB_EMOJI = {
   function precomputeAllWaterTiles() {
     const TS = 32;
     _waterCellCache.clear(); // zonesMeta 갱신 — 셀 단위 캐시 무효화
+    _natChunk.clear();       // ★[배치 21] 자연물 청크 배치
     _rockCellCache.clear();
     _groundTiles.clear();   // ★[배치 19] 지면 베이크도 함께
     for (const z of Object.values(zonesMeta)) {
@@ -995,13 +997,243 @@ const SIM_JOB_EMOJI = {
     g.drawImage(im, c.x - an.ox * sc, c.y - an.oy * sc * vy, im0.naturalWidth * sc, im0.naturalHeight * sc * vy);
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ★★[배치 21 실장] 자연물 산포 — 물가 술(fringe) · 초원 소품(들꽃·풀숲)
+  //
+  //   ⓐ **왜 술인가**: 지면 질감이 물가에서 수직으로 잘려 '절단선'이 보인다(재민 지적).
+  //      술은 그 선 위로 넘어와 경계를 흐트러뜨리는 게 존재 이유다 — 그래서 **물 위로 민다**.
+  //   ⓑ **균일 간격 금지**(재민: 시안의 변 전체 균일 밀식 = "일부러 심은 느낌"):
+  //      · 밀도 저주파 변주 — 파장 5셀의 값 노이즈. 문턱 아래 구간은 **아예 0**(빈 물가)이다.
+  //      · 물가 안쪽 1~2셀 감쇠 산포 — 물가 '선'에만 몰리면 목걸이가 된다.
+  //      · 포기별 크기·높이 변주 + 종(풀포기/갈대/부들) 혼합. 전부 자리 해시(Math.random 금지).
+  //   ⓒ **갈대·부들은 고증의 본체**(송국리 저습지) — 물과 맞닿은 셀의 '빽빽한' 구간에만 선다.
+  //   ⓓ **그리는 순서 = 계약**: 물 셰이더 → `_drawPrisms` → **여기** → 안개 마스크.
+  //      renderables 에 태워 엔티티와 함께 z 정렬한다(배치 20 A 의 `kind:'mtseg'` 와 동형).
+  //      뒤에 그리면(안개 마스크 뒤) 캄캄한 땅 위에 풀이 뜬다 — 배치 19 실측.
+  //   ⓔ **비용**: 술은 개수가 많다. 8×8셀 청크 단위로 **정적 배치를 캐시**하고(지형은 정적),
+  //      청크 안에서 물 판정을 14×14 로 **한 번만** 훑어 셀마다 7×7 재조회하는 낭비를 없앤다.
+  //   ⓕ 초원 소품(들꽃·풀숲)은 자리는 정적이지만 **회피 판정은 동적**이다(길·사유지·경작지가
+  //      생긴다). 그래서 후보 자리만 캐시하고 회피는 수집 시점에 건다. **회피 판정은 전부
+  //      클라가 이미 받는 값**이다 — roads · claims · simVillages · buildings. 새로 만들지 않는다.
+  // ═══════════════════════════════════════════════════════════════════════════
+  const NAT_KINDS = { grass: 4, reed: 3, cattail: 3, flower: 4 };
+  const NATX = {};
+  let _natAnchors = null, _natLoaded = 0, _natWanted = 0;
+  (async () => {
+    try {
+      const r = await fetch('/assets/nature/nature_anchors.json');
+      if (!r.ok) return;
+      _natAnchors = await r.json();
+      for (const cls in NAT_KINDS) {
+        for (let i = 1; i <= NAT_KINDS[cls]; i++) {
+          const n = cls + String(i).padStart(2, '0');
+          if (!_natAnchors[n]) continue;
+          _natWanted++;
+          const im = new Image(); im.onload = () => _natLoaded++; im.src = '/assets/nature/' + n + '.png';
+          NATX[n] = im;
+        }
+      }
+      console.log('[nat] 자연물 스프라이트', _natWanted, '종 로드 시작');
+    } catch (e) { console.warn('[nat] 앵커 로드 실패:', e.message); }
+  })();
+
+  const NAT_VIEW_PAD = 1500;          // ★렌더 반경. AOI 의 VIEW_RADIUS(650)는 **렌더 함수 지역 상수**라
+  //                                   여기서 못 쓴다(1패스 실사고: ReferenceError 로 엔티티 패스가 통째로 죽었다).
+  //                                   지면 데코는 AOI 와 무관하게 화면 끝까지 보여야 하므로 자체 상수를 쓴다(산 1800 과 동형).
+  const NAT_WAVE = 5;                 // 저주파 밀도 파장(셀) — 군락 ↔ 빈 구간의 교대 주기
+  const NAT_CH = 8;                   // 청크 = 8×8셀(지면 베이크 타일과 같은 눈금)
+  const NAT_PAD = 3;                  // 청크 둘레 여유(물 거리 최대 3셀까지 본다)
+  const _natChunk = new Map();        // "ccx_ccy" → { fr: [...], pr: [...] }  (정적)
+  function _natNoise(cx, cy, salt) {  // 값 노이즈(부드러운 보간) — 해시만 쓰면 셀마다 튀어 군락이 안 생긴다
+    const gx = Math.floor(cx / NAT_WAVE), gy = Math.floor(cy / NAT_WAVE);
+    const fx = cx / NAT_WAVE - gx, fy = cy / NAT_WAVE - gy;
+    const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+    const a = _cellHash(gx, gy, salt), b = _cellHash(gx + 1, gy, salt);
+    const c = _cellHash(gx, gy + 1, salt), d = _cellHash(gx + 1, gy + 1, salt);
+    const t = a + (b - a) * sx, u = c + (d - c) * sx;
+    return t + (u - t) * sy;
+  }
+  function _natBuildChunk(ccx, ccy) {
+    const key = ccx + '_' + ccy;
+    const hit = _natChunk.get(key); if (hit) return hit;
+    const S = NAT_CH + NAT_PAD * 2;
+    const wet = new Uint8Array(S * S), rock = new Uint8Array(S * S);
+    for (let j = 0; j < S; j++) for (let i = 0; i < S; i++) {
+      const cx = ccx * NAT_CH + i - NAT_PAD, cy = ccy * NAT_CH + j - NAT_PAD;
+      const wx = cx * 32 + 16, wy = cy * 32 + 16;
+      wet[j * S + i] = isWaterAtAbs(wx, wy) ? 1 : 0;
+      rock[j * S + i] = isRockAtAbs(wx, wy) ? 1 : 0;
+    }
+    const fr = [], pr = [];
+    for (let dy = 0; dy < NAT_CH; dy++) for (let dx = 0; dx < NAT_CH; dx++) {
+      const i0 = dx + NAT_PAD, j0 = dy + NAT_PAD;
+      if (wet[j0 * S + i0] || rock[j0 * S + i0]) continue;
+      const cx = ccx * NAT_CH + dx, cy = ccy * NAT_CH + dy;
+      const wx = cx * 32 + 16, wy = cy * 32 + 16;
+      // 가장 가까운 물까지의 체비셰프 거리 + 그 물들이 있는 방향(합)
+      let best = 99, sx2 = 0, sy2 = 0;
+      for (let ny = -NAT_PAD; ny <= NAT_PAD; ny++) for (let nx = -NAT_PAD; nx <= NAT_PAD; nx++) {
+        if (!nx && !ny) continue;
+        const dd = Math.abs(nx) > Math.abs(ny) ? Math.abs(nx) : Math.abs(ny);
+        if (dd > best) continue;
+        if (!wet[(j0 + ny) * S + (i0 + nx)]) continue;
+        if (dd < best) { best = dd; sx2 = 0; sy2 = 0; }
+        sx2 += nx; sy2 += ny;
+      }
+      if (best <= NAT_PAD) {
+        // ── 물가 술 ──
+        const band = best - 1;                              // 0 = 물과 맞닿은 셀
+        const q = _natNoise(cx, cy, 4211);
+        //  ★문턱 0.34 — 이 아래는 **한 포기도 안 선다**. "일부러 심은 느낌"을 깨는 건 밀도가 아니라
+        //    빈 구간의 존재다. 문턱 위에서는 (q-0.34)/0.46 로 0→1 까지 부드럽게 빽빽해진다.
+        const amp = (q - 0.34) / 0.46;
+        const dens = (band === 0 ? 2.8 : band === 1 ? 1.3 : 0.5) * (amp > 0 ? (amp > 1 ? 1 : amp) : 0);
+        const n = Math.floor(dens + _cellHash(cx, cy, 4212));
+        const L = Math.sqrt(sx2 * sx2 + sy2 * sy2) || 1, ux = sx2 / L, uy = sy2 / L;
+        for (let i = 0; i < n; i++) {
+          const h1 = _cellHash(cx, cy, 4300 + i), h2 = _cellHash(cx, cy, 4400 + i);
+          const h3 = _cellHash(cx, cy, 4500 + i), h4 = _cellHash(cx, cy, 4700 + i);
+          let px, py;
+          if (band === 0) {
+            // ★물 쪽으로 민다 — 셀 반폭이 16px 이므로 12~28px 는 **물 위로 최대 12px** 넘어간다.
+            //   이 넘김이 곧 절단선 은폐다. 변을 따라서는 ±13px 흩는다(줄서기 방지).
+            const push = 12 + 16 * h1;
+            px = wx + ux * push - uy * (h2 - 0.5) * 26;
+            py = wy + uy * push + ux * (h2 - 0.5) * 26;
+          } else {
+            px = wx + (h1 - 0.5) * 26; py = wy + (h2 - 0.5) * 26;
+          }
+          let nm;
+          if (band === 0 && q > 0.62 && h3 > 0.40) nm = (h3 > 0.70 ? 'reed0' : 'cattail0') + (1 + ((h4 * 3) | 0));
+          else nm = 'grass0' + (1 + ((h4 * 4) | 0));
+          fr.push({ x: px, y: py, nm, sc: 0.66 + 0.40 * h3, vy: 0.86 + 0.30 * h2 });
+        }
+      } else {
+        // ── 초원 소품(들꽃·풀숲) — 밀도 낮게. 스폰 광장이 첫인상이라 과밀은 금물이다.
+        const q2 = _natNoise(cx, cy, 8117);
+        const thr = 0.978 - 0.055 * (q2 > 0.5 ? (q2 - 0.5) * 2 : 0);  // 0.978~0.923 — 빈 초원↔꽃밭이 저주파로 교대
+        const h0 = _cellHash(cx, cy, 8118);
+        if (h0 > thr) {
+          const h1 = _cellHash(cx, cy, 8201), h2 = _cellHash(cx, cy, 8202);
+          const h3 = _cellHash(cx, cy, 8203), h4 = _cellHash(cx, cy, 8204);
+          const isFl = h3 > 0.55;                        // 들꽃 45% · 풀숲 55%
+          pr.push({ x: wx + (h1 - 0.5) * 24, y: wy + (h2 - 0.5) * 24, cx, cy,
+                    nm: (isFl ? 'flower0' : 'grass0') + (1 + ((h4 * 4) | 0)),
+                    sc: 0.7 + 0.35 * h1, vy: 0.9 + 0.24 * h2 });
+        }
+      }
+    }
+    const v = { fr, pr };
+    if (_natChunk.size > 2400) _natChunk.clear();
+    _natChunk.set(key, v);
+    return v;
+  }
+  // ★회피 — 마을 영토·경작지·길·사유지. **판정은 전부 이미 클라에 온 값**이다(새 판정 금지).
+  //   길·건축물은 셀 집합으로 한 번만 굽고, 목록 크기가 바뀔 때만 다시 굽는다.
+  let _natBlockSet = null, _natBlockSig = '';
+  function _natBlocked(ax, ay) {
+    let sig = '';
+    for (const c of conns.values()) {
+      if (!c.meta) continue;
+      sig += (c.roads ? c.roads.size : 0) + '/' + (c.buildings ? c.buildings.size : 0) + '|';
+    }
+    if (sig !== _natBlockSig || !_natBlockSet) {
+      _natBlockSig = sig; _natBlockSet = new Set();
+      for (const c of conns.values()) {
+        if (!c.meta) continue;
+        const ox = c.meta.worldOffsetX, oy = c.meta.worldOffsetY || 0;
+        const ocx = Math.round(ox / CL_BUILDING_SIZE), ocy = Math.round(oy / CL_BUILDING_SIZE);
+        if (c.roads) for (const rk of c.roads.keys()) {
+          const ci = rk.indexOf(',');
+          _natBlockSet.add((ocx + +rk.slice(0, ci)) + ',' + (ocy + +rk.slice(ci + 1)));
+        }
+        if (c.buildings) for (const b of c.buildings.values()) {
+          const bx = Math.floor((ox + b.x) / CL_BUILDING_SIZE), by = Math.floor((oy + b.y) / CL_BUILDING_SIZE);
+          for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) _natBlockSet.add((bx + i) + ',' + (by + j));
+        }
+      }
+    }
+    if (_natBlockSet.has(Math.floor(ax / CL_BUILDING_SIZE) + ',' + Math.floor(ay / CL_BUILDING_SIZE))) return true;
+    for (const c of conns.values()) {
+      if (!c.meta) continue;
+      const ox = c.meta.worldOffsetX, oy = c.meta.worldOffsetY || 0;
+      const lx = ax - ox, ly = ay - oy;
+      for (const cl of (c.claims ? c.claims.values() : [])) {
+        if (lx >= cl.x && lx < cl.x + cl.w && ly >= cl.y && ly < cl.y + cl.h) return true;
+      }
+      if (c.simVillages) for (const v of c.simVillages) {
+        const vx = v.cx * CL_BUILDING_SIZE + 16, vy = v.cy * CL_BUILDING_SIZE + 16;
+        const rr = Math.max(v.r || 0, v.tr || 0) || 800;
+        const ddx = lx - vx, ddy = ly - vy;
+        if (ddx * ddx + ddy * ddy < rr * rr) return true;
+      }
+    }
+    return false;
+  }
+  function _natCollect(out, cx0, cy0) {
+    if (_t19.natOff || !_natAnchors || _natLoaded < _natWanted || !_natWanted) return [0, 0];
+    const R = NAT_VIEW_PAD;
+    const c0 = Math.floor((cx0 - R) / 32), c1 = Math.floor((cx0 + R) / 32);
+    const r0 = Math.floor((cy0 - R) / 32), r1 = Math.floor((cy0 + R) / 32);
+    let nf = 0, np = 0;
+    _natLastPr = [];
+    for (let ccy = Math.floor(r0 / NAT_CH); ccy <= Math.floor(r1 / NAT_CH); ccy++) {
+      for (let ccx = Math.floor(c0 / NAT_CH); ccx <= Math.floor(c1 / NAT_CH); ccx++) {
+        const ch = _natBuildChunk(ccx, ccy);
+        if (!_t19.fringeOff) for (const f of ch.fr) {
+          if (Math.abs(f.x - cx0) > R || Math.abs(f.y - cy0) > R) continue;
+          out.push({ z: w2i(f.x, f.y).y, kind: 'natspr', s: f }); nf++;
+        }
+        if (!_t19.propOff) for (const p of ch.pr) {
+          if (Math.abs(p.x - cx0) > R || Math.abs(p.y - cy0) > R) continue;
+          if (!_t19.propNoAvoid && _natBlocked(p.x, p.y)) continue;
+          out.push({ z: w2i(p.x, p.y).y, kind: 'natspr', s: p }); np++;
+          _natLastPr.push(p);
+        }
+      }
+    }
+    return [nf, np];
+  }
+  // ★하네스 계측기 — 이번 프레임에 **실제로 그려진** 소품 자리와, 회피 판정의 **원자료**를
+  //   함께 내보낸다. 하네스가 `_natBlocked` 를 다시 짜면 그게 사본이라 자명 통과가 된다.
+  //   ⇒ 하네스는 여기서 받은 원자료(길 셀·사유지 사각·마을 원)로 **독립 재계산**해서 대조한다.
+  //   ⇒ 그리고 `__terrain19.propNoAvoid = true` 로 회피를 끄면 위반이 실제로 나와야 한다(반례).
+  let _natLastPr = [];
+  window.__natProbe = () => {
+    const roads = [], claims = [], villages = [];
+    for (const c of conns.values()) {
+      if (!c.meta) continue;
+      const ox = c.meta.worldOffsetX, oy = c.meta.worldOffsetY || 0;
+      const ocx = Math.round(ox / CL_BUILDING_SIZE), ocy = Math.round(oy / CL_BUILDING_SIZE);
+      if (c.roads) for (const rk of c.roads.keys()) {
+        const ci = rk.indexOf(',');
+        roads.push([ocx + +rk.slice(0, ci), ocy + +rk.slice(ci + 1)]);
+      }
+      for (const cl of (c.claims ? c.claims.values() : [])) claims.push([ox + cl.x, oy + cl.y, cl.w, cl.h]);
+      if (c.simVillages) for (const v of c.simVillages)
+        villages.push([ox + v.cx * CL_BUILDING_SIZE + 16, oy + v.cy * CL_BUILDING_SIZE + 16,
+                       Math.max(v.r || 0, v.tr || 0) || 800]);
+    }
+    return { props: _natLastPr.map((p) => [p.x, p.y]), roads, claims, villages,
+             farms: (window.__getAllBuildings ? window.__getAllBuildings().filter((b) => b.type === 'farmland').map((b) => [b.wx, b.wy]) : []) };
+  };
+  function _natDraw(g, item, toScr) {
+    const s = item.s, an = _natAnchors && _natAnchors[s.nm], im = NATX[s.nm];
+    if (!an || !im || !im.complete || !im.naturalWidth) return;
+    const sc = (64 / Math.SQRT2) / an.ppu * s.sc, vy = s.vy || 1;
+    const p = w2i(s.x, s.y), c = toScr(p.x, p.y);
+    g.drawImage(im, c.x - an.ox * sc, c.y - an.oy * sc * vy, im.naturalWidth * sc, im.naturalHeight * sc * vy);
+  }
+
   // ★A/B 손잡이 — `__terrain19.legacy = true` 면 배치 19 이전(단색 다이아몬드)으로 정확히 돌아간다.
   //   하네스가 같은 프레임·같은 시계에서 before/after 를 얻는 유일한 길이고,
   //   `_tileAcc` 성능 비교도 이것 없이는 못 잰다. 기본값이 채택값이다(제품 UI 없음).
   //   ★prismOff — 블록 프리즘 단면만 끈다. 단면은 5px 안에 밑면·물접촉선·풀넘김 셋이 겹쳐
   //     '순수 단면색' 픽셀이 1px 도 안 남는다(하네스 1패스가 0.01% 를 보고 헛짚었다).
   //     색으로 세는 대신 **켜고 끈 차이**로 재야 판정이 성립한다.
-  const _t19 = { legacy: false, waterOff: false, decoOff: false, prismOff: false, mtOff: false };
+  //   ★[배치 21] natOff/fringeOff/propOff — 자연물 산포 전체/물가 술/초원 소품을 따로 끈다.
+  const _t19 = { legacy: false, waterOff: false, decoOff: false, prismOff: false, mtOff: false,
+                 natOff: false, fringeOff: false, propOff: false, propNoAvoid: false };
   window.__terrain19 = _t19;
 
   // 지형 차단 통합 (물+바위) — 이동 예측용
@@ -2714,6 +2946,7 @@ const SIM_JOB_EMOJI = {
         if (!_terrainAppliedZones.has(_zid)) {
           window.Terrain.setHardcoded(_zid, msg.hardcodedTerrain);
           _waterCellCache.clear(); // 최초 1회만 — 셀 단위 캐시 무효화
+          _natChunk.clear();       // ★[배치 21] 자연물 청크 배치
           _groundTiles.clear();   // ★[배치 19] 지면 베이크도 함께
           _rockCellCache.clear();
           if (typeof window.__invalidateMinimapCache === 'function') window.__invalidateMinimapCache();
@@ -4320,6 +4553,13 @@ const SIM_JOB_EMOJI = {
     const _nMt = _mtCollect(renderables, worldCx, worldCy);
     window._mtAcc = (window._mtAcc || 0) + (performance.now() - _mtT0);
     window.__mtDbg = { segs: _nMt, sprites: _mtLoaded + '/' + _mtWanted, cached: _mtSegCache.size, destroyed: _mtDestroyed.size };
+    // ★[배치 21] 자연물 산포 — 물가 술 + 초원 소품. 산 세그먼트와 같은 목록·같은 z 규약.
+    const _natT0 = performance.now();
+    const _nNat = _natCollect(renderables, worldCx, worldCy);
+    window._natAcc = (window._natAcc || 0) + (performance.now() - _natT0);
+    window.__natDbg = { fringe: _nNat[0], props: _nNat[1], sprites: _natLoaded + '/' + _natWanted,
+                        chunks: _natChunk.size, blocked: _natBlockSet ? _natBlockSet.size : 0,
+                        trees: _treeSpritesLoaded, treeDraw: { n: _treeDraw.n, h: _treeDraw.h, px: _treeDraw.px, aspect: _treeDraw.aspect } };
 
     for (const c of conns.values()) {
       if (!c.meta) continue;
@@ -4781,6 +5021,8 @@ const SIM_JOB_EMOJI = {
         ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b2.x, b2.y); ctx.lineTo(c2.x, c2.y); ctx.lineTo(d2.x, d2.y); ctx.closePath(); ctx.fill();
       } else if (item.kind === 'mtseg') {
         _mtDraw(ctx, item, toScreen);
+      } else if (item.kind === 'natspr') {
+        _natDraw(ctx, item, toScreen);           // ★[배치 21] 물가 술 · 초원 소품
       } else if (item.kind === 'ditch') {
         // ★[11차 T3 환호] 도랑 — 8차 셀 정합 스프라이트(이미지 중심=셀 중심·128px). 없으면 파인 흙 다이아 폴백.
         if (!drawBridgeSprite(item.ds, item.bx, item.by, toScreen)) {
@@ -6693,6 +6935,7 @@ const SIM_JOB_EMOJI = {
     TREE_SPRITES.push(_img);
   }
   const TREE_SPRITE_SCALE = 1.3;   // 나무 h 대비 스프라이트 높이 배수
+  const _treeDraw = { n: 0, h: 0, px: 0, aspect: 0 };   // ★[배치 21] 하네스용 — 스프라이트 경로로 **실제 그린** 횟수
 
   function drawTreeIso(x, y, r, h, seedX, seedY) {
     r = r || 8;
@@ -6707,6 +6950,7 @@ const SIM_JOB_EMOJI = {
         const _dh = h * TREE_SPRITE_SCALE;
         const _dw = _dh * (_img.naturalWidth / _img.naturalHeight);
         ctx.drawImage(_img, x - _dw / 2, y - _dh, _dw, _dh);
+        _treeDraw.n++; _treeDraw.h = h; _treeDraw.px = _dh; _treeDraw.aspect = _img.naturalWidth / _img.naturalHeight;
         return;
       }
     }
