@@ -611,6 +611,7 @@ const SIM_JOB_EMOJI = {
   }
   // 경작 셀 — farmland 건물 집합(그릴 때마다 건물 전체를 훑지 않게 캐시. 건물 수가 바뀌면 재구축)
   let _farmCells = null, _farmVer = -1;
+  let _gtKnob = null;   // 손잡이 상태 지문 — 바뀌면 구워 둔 타일을 버린다
   function _tsFarmSet(pc) {
     if (!pc) return null;
     if (_farmCells && _farmVer === pc.buildings.size) return _farmCells;
@@ -4806,6 +4807,10 @@ const SIM_JOB_EMOJI = {
     //   타일 ~30장의 blit 이고, 굽는 비용은 그 타일을 처음 볼 때 한 번만 든다.
     //   텍스처가 아직 안 왔거나 legacy 손잡이면 **종전 경로**로 그대로 떨어진다(무회귀).
     const _LEG = !!_t19.legacy || _gtexReady < 3;
+    // 손잡이가 바뀌면 구워 둔 타일은 옛 문법이다 — 버린다(A/B 가 같은 프레임에서 성립하려면 필수)
+    if (_gtKnob !== (_LEG ? 'L' : '') + (_t19.stateOff ? 'S' : '')) {
+      _gtKnob = (_LEG ? 'L' : '') + (_t19.stateOff ? 'S' : ''); _groundTiles.clear();
+    }
     if (!_LEG) _waterInit();   // ★타일을 굽기 **전에** 물 가능 여부를 확정한다(진흙/단색 갈림이 타일에 굳는다)
     window.__groundDbg = { legacy: _LEG, tex: _gtexReady, tiles: 0, baked: 0, cached: _groundTiles.size, stateCells: 0 };
     { // ★[배치 20 B] 타일 상태 계측·주입 — 하네스는 서버 방송과 **같은 입구**(_tsIngest)로만 들어온다.
@@ -4818,6 +4823,27 @@ const SIM_JOB_EMOJI = {
         q: TS_SOIL_Q,
       };
       window.__tileStateFeed = (flat) => { const n = _tsIngest(_c, flat || []); needsRedraw = true; return n; };
+      // 답압(길)도 방송과 **같은 입구**로 넣는다 — 하네스가 우회로를 쓰지 않게.
+      window.__roadFeed = (flat) => {
+        if (!_c) return 0;
+        if (!_c.roads) _c.roads = new Map();
+        for (let i = 0; i + 2 < flat.length; i += 3) {
+          const k = flat[i] + ',' + flat[i + 1];
+          if (flat[i + 2]) _c.roads.set(k, flat[i + 2]); else _c.roads.delete(k);
+        }
+        _gtInvalidateCells(_c, flat, 3); needsRedraw = true; return flat.length / 3;
+      };
+      // ★셀 → 화면 좌표. 하네스가 투영 수학을 **다시 쓰지 않게**(사본이면 둘이 같이 틀린다).
+      window.__cellScreen = (lcx, lcy) => {
+        if (!_c || !_c.meta) return null;
+        const wx = _c.meta.worldOffsetX + lcx * 32 + 16, wy = (_c.meta.worldOffsetY || 0) + lcy * 32 + 16;
+        const iso = w2i(wx, wy);
+        return { x: iso.x - camX + W / 2, y: iso.y - camY + H / 2 };
+      };
+      window.__camCellLocal = () => {
+        if (!_c || !_c.meta) return null;
+        return [Math.floor((_camAbs.x - _c.meta.worldOffsetX) / 32), Math.floor((_camAbs.y - (_c.meta.worldOffsetY || 0)) / 32)];
+      };
       window.__tileStateAt = (lcx, lcy) => {
         if (!_c || !_c.meta) return null;
         const rec = _c.soil ? _c.soil.get(lcx + ',' + lcy) : null;
