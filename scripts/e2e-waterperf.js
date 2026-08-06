@@ -157,8 +157,17 @@ const BOX = [40, 260, 1360, 860];
   //   **수리가 아니라 촬영 자리**를 재게 된다. 그래서 이 판의 물 많은 창 = 최악값을 쓴다.
   //   (재민이 겪은 렉도 '물 근처'에서만 나온다 — 그 자리를 재는 게 맞다.)
   const slowWorst = Math.max(slow.max, slowJ.max), fastWorst = Math.max(fast.max, fastJ.max);
-  say(`\n    두 탐침 최악값 — 대조 ${slowWorst.toFixed(0)}ms · 수리본 ${fastWorst.toFixed(0)}ms`);
-  ok(slowWorst > 200, `★★반례 — 수리를 끄면 실제로 느리다 (최악 ${slowWorst.toFixed(0)}ms > 200)`);
+  const FRAME = 1000 / 60;   // 60fps 한 프레임 = 16.7ms
+  const ratio = slowWorst / Math.max(0.01, fastWorst);
+  say(`\n    두 탐침 최악값 — 대조 ${slowWorst.toFixed(0)}ms(${(slowWorst / FRAME).toFixed(1)}프레임) · 수리본 ${fastWorst.toFixed(0)}ms(${(fastWorst / FRAME).toFixed(1)}프레임) · 배율 ${ratio.toFixed(1)}배`);
+  // ★반례를 **프레임 예산**으로 말한다. 절대 ms 문턱(200)은 두 번 거짓 실패를 냈다 —
+  //   `isWaterCellLocal` 비용이 창 안 물의 양에 비례해 자릿수로 갈리기 때문이다
+  //   (같은 판에서 대조군이 301ms 와 3ms 를 둘 다 냈고, 어떤 판은 최악이 172ms 였다).
+  //   그때마다 수리는 14~119배로 멀쩡했다 — 문턱이 **수리가 아니라 촬영 자리**를 재고 있었다.
+  //   ⇒ 두 주장을 함께 건다: ①대조는 한 프레임 예산을 4배 이상 날린다(=체감되는 히치)
+  //     ②수리본은 그보다 8배 이상 빠르다. 자리가 어디든 성립하고, 느슨해지지도 않는다.
+  ok(slowWorst > FRAME * 4, `★★반례 — 수리를 끄면 한 프레임 예산을 4배 넘긴다 (${slowWorst.toFixed(0)}ms = ${(slowWorst / FRAME).toFixed(1)}프레임 > 4)`);
+  ok(ratio >= 8, `★★수리본이 8배 이상 빠르다 (${ratio.toFixed(1)}배)`);
   ok(fastWorst < 120, `★★수리본은 최악값도 120ms 아래다 (${fastWorst.toFixed(0)}ms)`);
 
   say('\n[ⓒ 걸으면 실제로 창이 옮겨 간다 — 위 대리 측정이 실사용과 같은 동작이라는 근거]');
