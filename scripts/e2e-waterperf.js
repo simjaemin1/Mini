@@ -142,7 +142,6 @@ const BOX = [40, 260, 1360, 860];
   say('\n[ⓐ 걷는 속도로 창이 밀릴 때 — 흐름 텍스처 장당 시간 (step 16셀 = 실제 주행 한 칸)]');
   const slow = await probe('대조군(slowFlow=수리 전 비용)', { slowFlow: true }, 16);
   const fast = await probe('수리본', { slowFlow: false }, 16);
-  ok(slow.max > 200, `★반례 — 수리를 끄면 실제로 느리다 (한 장 최대 ${slow.max.toFixed(0)}ms > 200)`);
   ok(fast.max < slow.max / 3, `★★수리본이 한 장 최대에서 3배 이상 빠르다 (${fast.max.toFixed(0)}ms vs ${slow.max.toFixed(0)}ms)`);
   ok(fast.avg < slow.avg / 3, `★★평균도 3배 이상 (${fast.avg.toFixed(0)}ms vs ${slow.avg.toFixed(0)}ms)`);
   ok(fast.max < 120, `★★한 프레임이 120ms 아래다 (${fast.max.toFixed(0)}ms) — 헤드리스는 실기보다 느리므로 상한이다`);
@@ -151,6 +150,16 @@ const BOX = [40, 260, 1360, 860];
   const slowJ = await probe('대조군', { slowFlow: true }, 128);
   const fastJ = await probe('수리본', { slowFlow: false }, 128);
   ok(fastJ.max < slowJ.max / 3, `★겹침이 0 이어도 3배 이상 빠르다 (${fastJ.max.toFixed(0)}ms vs ${slowJ.max.toFixed(0)}ms)`);
+
+  // ★반례는 **두 탐침의 최악값**으로 잰다. `isWaterCellLocal` 의 비용이 자리에 따라 자릿수로
+  //   갈리기 때문이다 — 창 안에 강·호수가 많으면 셀당 ~75µs, 물이 없으면 사실상 0
+  //   (같은 판에서 대조군이 301ms 와 3ms 를 둘 다 냈다). 한 탐침의 절대값에 문턱을 걸면
+  //   **수리가 아니라 촬영 자리**를 재게 된다. 그래서 이 판의 물 많은 창 = 최악값을 쓴다.
+  //   (재민이 겪은 렉도 '물 근처'에서만 나온다 — 그 자리를 재는 게 맞다.)
+  const slowWorst = Math.max(slow.max, slowJ.max), fastWorst = Math.max(fast.max, fastJ.max);
+  say(`\n    두 탐침 최악값 — 대조 ${slowWorst.toFixed(0)}ms · 수리본 ${fastWorst.toFixed(0)}ms`);
+  ok(slowWorst > 200, `★★반례 — 수리를 끄면 실제로 느리다 (최악 ${slowWorst.toFixed(0)}ms > 200)`);
+  ok(fastWorst < 120, `★★수리본은 최악값도 120ms 아래다 (${fastWorst.toFixed(0)}ms)`);
 
   say('\n[ⓒ 걸으면 실제로 창이 옮겨 간다 — 위 대리 측정이 실사용과 같은 동작이라는 근거]');
   await knob({ slowFlow: false });

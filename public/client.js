@@ -4209,7 +4209,7 @@ const SIM_JOB_EMOJI = {
     { const _rA = performance.now(); render(); const _rd = performance.now() - _rA;
       window._gAcc = (window._gAcc||0)+_rd; window._gN = (window._gN||0)+1; if (_rd > (window._gMax||0)) window._gMax = _rd;
       if (window._gN >= 30) { if (window._renderDbg) { let _bn=0; for (const c of conns.values()) _bn += c.buildings.size;
-        console.log(`[render] avg=${(window._gAcc/window._gN).toFixed(1)}ms tiles=${((window._tileAcc||0)/window._gN).toFixed(1)}ms max=${window._gMax.toFixed(0)}ms bld=${_bn}`); } window._gAcc=0; window._gN=0; window._gMax=0; window._tileAcc=0; } }
+        console.log(`[render] avg=${(window._gAcc/window._gN).toFixed(1)}ms tiles=${((window._tileAccDbg||0)/window._gN).toFixed(1)}ms max=${window._gMax.toFixed(0)}ms bld=${_bn}`); } window._gAcc=0; window._gN=0; window._gMax=0; window._tileAccDbg=0; } }
     drawArrowFx();      // 사냥꾼 화살 비행(서버 arrow_fx)
     drawBuildOverlay(); // 14.51: hover outline
     drawPlacementGhost(); // 14.53-i: placement 시 실루엣 미리보기
@@ -4925,7 +4925,17 @@ const SIM_JOB_EMOJI = {
     }
     }
 
-    window._tileAcc = (window._tileAcc||0) + (performance.now() - _tlT0);
+    // ★★[배치 20 B 계측기 수리] `_tileAcc`/`_tileFrames` 는 **하네스 전용**이다 — 아무도 중간에
+    //   건드리면 안 된다. 30프레임마다 도는 `[render]` 디버그 블록이 `_tileAcc` 만 0 으로 되돌리고
+    //   `_tileFrames` 는 그대로 두는 바람에, 하네스가 "리셋 → 3초 대기 → 둘 다 읽기" 를 하면
+    //   **마지막 리셋 이후의 잔여분을 전체 프레임 수로 나눈 값**이 나왔다.
+    //   e2e-terrain ⑥ 이 legacy 지면 0.00ms/f · 비율 ×Infinity 를 내며 이 결함을 드러냈다.
+    //   ⇒ 디버그 블록은 제 몫(`_tileAccDbg`)을 따로 쌓는다. (계측기 오류 8건째 — 판정이 아니라 대본.)
+    //   ⚠배치 19 보고의 지면 3.34 → 0.08ms/f 도 이 깨진 계측기로 잰 값이다. 방향(타일 blit 이
+    //     셀 9,000장보다 싸다)은 맞지만 **숫자는 다시 재야 한다**.
+    const _tlDt = performance.now() - _tlT0;
+    window._tileAcc = (window._tileAcc||0) + _tlDt;
+    window._tileAccDbg = (window._tileAccDbg||0) + _tlDt;
     window._tileFrames = (window._tileFrames||0) + 1;   // ★성능은 창 길이가 아니라 **프레임당 ms** 로 잰다
 
     // === 1-b) 물 레이어 (WebGL 셰이더) + 블록 프리즘 단면 ===
