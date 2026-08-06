@@ -344,9 +344,14 @@ async function waitHttp(url, tries = 900) {
     if (in2) {
       await page2.evaluate(() => { window.__notices = []; window.__villageInv = null; });
       await page2.evaluate((id) => window.__sendPrimary({ type: 'village_inventory', buildingId: id }), hall.id);
-      await sleep(900);
+      // ★고정 900ms → 폴링 5초 [2026-08-06 검증 세션]: econ day-100 경계 틱(~1초 스파이크)과 겹치면
+      //   거부 알림이 900ms 를 넘겨 도착해 위양성 실패가 났다(2회 재현·코드 무변 구간).
+      //   판정(한국어 거부 계약)은 그대로 — 기다리는 방식만 견고하게.
+      let nt3 = [];
+      for (let i = 0; i < 25; i++) { await sleep(200);
+        nt3 = await page2.evaluate(() => (window.__notices || []).slice());
+        if (nt3.length) break; }
       const inv2 = await page2.evaluate(() => window.__villageInv);
-      const nt3 = await page2.evaluate(() => (window.__notices || []).slice());
       ok(inv2 == null, '★남의 마을 재고는 **안 온다**(응답 자체가 없다)');
       ok(nt3.some((t) => /관리자가 아닙니다|길드의 마을이 아닙니다|너무 멀리/.test(t)),
         `거부 사유가 한국어 계약 메시지다 — ${(nt3.slice(-1)[0] || '(없음)')}`);
