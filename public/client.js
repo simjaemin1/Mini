@@ -853,13 +853,155 @@ const SIM_JOB_EMOJI = {
     return n;
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ★★[배치 20 A] 산 — '장벽 세그먼트' 문법 (시안 왕복 12회로 확정)
+  //   단위 = **8방위 벽 세그먼트**. 늘임 축이 진행 방향의 **수직**이다(단면이 넓은 벽 슬라이스) —
+  //   진행 방향으로 늘이면 '가는 벽'이 된다(시안 실측).
+  //   배치 = ridges 폴리라인을 호길이로 걸으며, 배치점마다 **진행 수직으로 실제 바위 셀을 훑어
+  //   이어진 개수를 센다**. 그 수가 세그먼트 폭이다.
+  //     재민 확정: *"산으로 되어 있는 셀들만 산으로 보여야 — 셀이 여러 개 모이면 큰 산."*
+  //   ⇒ 고개(셀 0)는 산이 없고(사슬 절단), 파괴된 셀도 자동으로 반영된다.
+  //   ★이식 정본은 `scripts/mock-mountain.js` 의 placeAlong 이다. 다른 점은 딱 둘:
+  //     ⓐ 장면-로컬 격자 대신 **정본 판정 `isRockAtAbs`** 를 부른다(사본 금지).
+  //     ⓑ 결과를 renderables 에 태워 **엔티티와 함께 z 정렬**한다(앵커 wx+wy).
+  const MT_ROCK_RIDGES = new Set(['한울대간', '눈메']);   // 돌산(G). 나머지는 숲산(F) — 재민 확인 대기(시안 첨부)
+  const MT_CROSS_U = 10.1, MT_ALONG_U = 4.8;             // 시안 정본 상수
+  const MT_VIEW_PAD = 1800;                              // 이 반경 밖 능선은 배치조차 안 한다
+  const MTX = {};                        // 스프라이트
+  let _mtAnchors = null, _mtLoaded = 0, _mtWanted = 0;
+  const _mtSegCache = new Map();         // "zid_ridgeIdx" → 세그먼트 배열(정적 — 파괴 시 무효화)
+  const _mtDestroyed = new Set();        // 파괴된 바위 셀 "zid_cx_cy" — ★서버 이벤트 자리(§A-6 회부)
+  (async () => {
+    try {
+      const r = await fetch('/assets/mountains/mountain_anchors.json');
+      if (!r.ok) return;
+      _mtAnchors = await r.json();
+      const names = Object.keys(_mtAnchors); _mtWanted = names.length;
+      for (const n of names) { const im = new Image(); im.onload = () => _mtLoaded++; im.src = '/assets/mountains/' + n + '.png'; MTX[n] = im; }
+      console.log('[mt] 산 스프라이트', names.length, '종 로드 시작');
+    } catch (e) { console.warn('[mt] 앵커 로드 실패:', e.message); }
+  })();
+  function _mtRockAt(zid, wx, wy) {
+    // ★판정 정본을 부른다. 파괴 셀은 렌더 층에서만 걷어낸다(지형 데이터 무접촉).
+    const cx = Math.floor(wx / 32), cy = Math.floor(wy / 32);
+    if (_mtDestroyed.size && _mtDestroyed.has(zid + '_' + cx + '_' + cy)) return false;
+    return isRockAtAbs(cx * 32 + 16, cy * 32 + 16);
+  }
+  function _mtPlaceRidge(zid, ridge, ox, oy, ri) {
+    const key = zid + '_' + ri;
+    const hit = _mtSegCache.get(key); if (hit) return hit;
+    const pts = ridge.path.map((p) => ({ x: ox + p.pos[0], y: oy + p.pos[1], w: p.width }));
+    const cum = [0];
+    for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y));
+    const total = cum[cum.length - 1];
+    const at = (sArc) => {
+      let i = 1; while (i < cum.length - 1 && cum[i] < sArc) i++;
+      const a = pts[i - 1], b = pts[i], L = cum[i] - cum[i - 1] || 1, t = (sArc - cum[i - 1]) / L;
+      return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, ang: Math.atan2(b.y - a.y, b.x - a.x), w: a.w + (b.w - a.w) * t };
+    };
+    const bandCells = (px, py, ang) => {
+      const nx = -Math.sin(ang), ny = Math.cos(ang);
+      if (!_mtRockAt(zid, px, py)) return { n: 0, off: 0 };
+      let a = 0, b = 0;
+      for (let k = 1; k <= 30; k++) { if (_mtRockAt(zid, px + nx * k * 32, py + ny * k * 32)) a = k; else break; }
+      for (let k = 1; k <= 30; k++) { if (_mtRockAt(zid, px - nx * k * 32, py - ny * k * 32)) b = k; else break; }
+      return { n: a + b + 1, off: (a - b) / 2 };
+    };
+    const placed = [];
+    for (let sArc = 0; sArc < total;) {
+      const p0 = at(sArc);
+      const bc = bandCells(p0.x, p0.y, p0.ang);
+      const scW = Math.max(0.6, bc.n / MT_CROSS_U * 0.96);
+      placed.push({ ang: p0.ang, w: p0.w, sc: scW, dead: bc.n < 2,
+        x: p0.x + bc.off * 32 * -Math.sin(p0.ang), y: p0.y + bc.off * 32 * Math.cos(p0.ang) });
+      sArc += Math.max(40, MT_ALONG_U * 32 * scW * 0.55);
+    }
+    const isF = !MT_ROCK_RIDGES.has(ridge.name);
+    const segs = [];
+    for (let i = 0; i < placed.length; i++) {
+      const p = placed[i]; if (p.dead) continue;
+      let deg = (p.ang * 180 / Math.PI) % 180; if (deg < 0) deg += 180;
+      const oct = Math.round(deg / 22.5) % 8;
+      const rx = Math.round(p.x), ry = Math.round(p.y);
+      let knot = false;
+      if (i > 0 && i < placed.length - 1) {
+        let d2 = Math.abs(placed[i + 1].ang - placed[i - 1].ang);
+        if (d2 > Math.PI) d2 = 2 * Math.PI - d2;
+        if (d2 > 0.42) knot = true;
+      }
+      const cut = (i > 0 && placed[i - 1].dead) || (i < placed.length - 1 && placed[i + 1].dead);
+      if (cut) {   // 잘린 끝 = 캡(벽보다 낮게 — 주저앉는 전이)
+        segs.push({ x: p.x, y: p.y, name: _cellHash(i, oct, 9) < 0.5 ? 'mt_S1' : 'mt_S2', sc: p.sc * 0.95, vy: 1, jx: 0, jy: 0 });
+      } else if (knot) {
+        segs.push({ x: p.x, y: p.y, name: _cellHash(i, oct, 7) < 0.5 ? 'mt_M1' : 'mt_M2', sc: p.sc * 1.25, vy: 1, jx: 0, jy: 0 });
+      } else {
+        const v = isF ? ((_cellHash(rx, ry, 77) * 2) | 0) : ((_cellHash(rx, ry, 77) * 3) | 0);
+        segs.push({ x: p.x, y: p.y, name: (isF ? 'mt_F' : 'mt_G') + oct + 'v' + v, sc: p.sc,
+          vy: 0.86 + 0.28 * _cellHash(rx, ry, 78),                 // 높이 지터 ±14%(발치 고정)
+          jx: (_cellHash(rx, ry, 11) - 0.5) * p.w * 0.05,
+          jy: (_cellHash(rx, ry, 12) - 0.5) * p.w * 0.05 });
+      }
+    }
+    if (_mtSegCache.size > 400) _mtSegCache.clear();
+    _mtSegCache.set(key, segs);
+    return segs;
+  }
+  function _mtCollect(out, cx0, cy0) {
+    if (!_mtAnchors || _mtLoaded < _mtWanted || _t19.mtOff) return 0;
+    const H = _hardTerrain; if (!H) return 0;
+    let n = 0;
+    for (const zid in H) {
+      const z = zonesMeta[zid]; if (!z) continue;
+      const ox = z.worldOffsetX, oy = z.worldOffsetY || 0;
+      const rs = H[zid].ridges || [];
+      for (let ri = 0; ri < rs.length; ri++) {
+        // 능선 바운딩 박스로 먼저 거른다 — 전 존 능선을 매 프레임 훑지 않는다
+        const pp = rs[ri].path;
+        let mnx = Infinity, mxx = -Infinity, mny = Infinity, mxy = -Infinity;
+        for (let k = 0; k < pp.length; k += 8) {
+          const px = ox + pp[k].pos[0], py = oy + pp[k].pos[1];
+          if (px < mnx) mnx = px; if (px > mxx) mxx = px; if (py < mny) mny = py; if (py > mxy) mxy = py;
+        }
+        if (cx0 < mnx - MT_VIEW_PAD || cx0 > mxx + MT_VIEW_PAD || cy0 < mny - MT_VIEW_PAD || cy0 > mxy + MT_VIEW_PAD) continue;
+        for (const sg of _mtPlaceRidge(zid, rs[ri], ox, oy, ri)) {
+          if (Math.abs(sg.x - cx0) > MT_VIEW_PAD || Math.abs(sg.y - cy0) > MT_VIEW_PAD) continue;
+          out.push({ z: w2i(sg.x, sg.y).y, kind: 'mtseg', sg });
+          n++;
+        }
+      }
+    }
+    return n;
+  }
+  // ★세그먼트 톤 변주 — 방위당 변주 3종만으로는 같은 스프라이트가 줄줄이 서면 '아코디언 벽'이 된다.
+  //   시안 정본이 쓰던 2단 틴트를 그대로 옮긴다(오프스크린 1회 캐시 — 매 프레임 합성 아님).
+  const _mtTint = new Map();
+  function _mtTinted(name, v) {
+    const k = name + v; const hit = _mtTint.get(k); if (hit) return hit;
+    const im = MTX[name]; if (!im || !im.complete || !im.naturalWidth) return im;
+    const t = document.createElement('canvas'); t.width = im.naturalWidth; t.height = im.naturalHeight;
+    const tg = t.getContext('2d'); tg.drawImage(im, 0, 0);
+    tg.globalCompositeOperation = 'source-atop';
+    tg.fillStyle = v === 0 ? 'rgba(96,82,60,0.12)' : 'rgba(70,64,48,0.18)';
+    tg.fillRect(0, 0, t.width, t.height);
+    _mtTint.set(k, t); return t;
+  }
+  function _mtDraw(g, item, toScr) {
+    const sg = item.sg, an = _mtAnchors[sg.name], im0 = MTX[sg.name];
+    if (!an || !im0 || !im0.complete) return;
+    const im = _mtTinted(sg.name, _cellHash(Math.round(sg.x), Math.round(sg.y), 91) < 0.5 ? 0 : 1);
+    const sc = (64 / Math.SQRT2) / an.ppu * sg.sc, vy = sg.vy || 1;
+    const p = w2i(sg.x + (sg.jx || 0), sg.y + (sg.jy || 0)), c = toScr(p.x, p.y);
+    // 높이 지터는 **앵커(발치) 고정, 세로만 배율** — 능선 스카이라인이 출렁이게(시안 정본과 동일)
+    g.drawImage(im, c.x - an.ox * sc, c.y - an.oy * sc * vy, im0.naturalWidth * sc, im0.naturalHeight * sc * vy);
+  }
+
   // ★A/B 손잡이 — `__terrain19.legacy = true` 면 배치 19 이전(단색 다이아몬드)으로 정확히 돌아간다.
   //   하네스가 같은 프레임·같은 시계에서 before/after 를 얻는 유일한 길이고,
   //   `_tileAcc` 성능 비교도 이것 없이는 못 잰다. 기본값이 채택값이다(제품 UI 없음).
   //   ★prismOff — 블록 프리즘 단면만 끈다. 단면은 5px 안에 밑면·물접촉선·풀넘김 셋이 겹쳐
   //     '순수 단면색' 픽셀이 1px 도 안 남는다(하네스 1패스가 0.01% 를 보고 헛짚었다).
   //     색으로 세는 대신 **켜고 끈 차이**로 재야 판정이 성립한다.
-  const _t19 = { legacy: false, waterOff: false, decoOff: false, prismOff: false };
+  const _t19 = { legacy: false, waterOff: false, decoOff: false, prismOff: false, mtOff: false };
   window.__terrain19 = _t19;
 
   // 지형 차단 통합 (물+바위) — 이동 예측용
@@ -4172,6 +4314,12 @@ const SIM_JOB_EMOJI = {
     // === 2) 엔티티 수집 (depth sort용) ===
     const renderables = [];
     const renderT = performance.now() - INTERP_DELAY_MS;
+    // ★[배치 20 A] 산 세그먼트 — 엔티티와 **같은 목록**에 태워 z 정렬한다(앵커 wx+wy).
+    //   따로 그리면 산 뒤에 선 사람이 산 위로 뜬다.
+    const _mtT0 = performance.now();
+    const _nMt = _mtCollect(renderables, worldCx, worldCy);
+    window._mtAcc = (window._mtAcc || 0) + (performance.now() - _mtT0);
+    window.__mtDbg = { segs: _nMt, sprites: _mtLoaded + '/' + _mtWanted, cached: _mtSegCache.size, destroyed: _mtDestroyed.size };
 
     for (const c of conns.values()) {
       if (!c.meta) continue;
@@ -4631,6 +4779,8 @@ const SIM_JOB_EMOJI = {
         const d2 = toScreen(w2i(item.rcx, item.rcy + 32).x, w2i(item.rcx, item.rcy + 32).y);
         ctx.fillStyle = item.lv >= 2 ? 'rgba(168,134,88,0.42)' : 'rgba(150,124,86,0.26)';
         ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b2.x, b2.y); ctx.lineTo(c2.x, c2.y); ctx.lineTo(d2.x, d2.y); ctx.closePath(); ctx.fill();
+      } else if (item.kind === 'mtseg') {
+        _mtDraw(ctx, item, toScreen);
       } else if (item.kind === 'ditch') {
         // ★[11차 T3 환호] 도랑 — 8차 셀 정합 스프라이트(이미지 중심=셀 중심·128px). 없으면 파인 흙 다이아 폴백.
         if (!drawBridgeSprite(item.ds, item.bx, item.by, toScreen)) {
