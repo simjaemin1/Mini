@@ -1210,9 +1210,15 @@ const SIM_JOB_EMOJI = {
     '  vec2 uv = cellUV(w);',
     '  if(uv.x<0.0||uv.y<0.0||uv.x>1.0||uv.y>1.0) discard;',
     '  if(texture2D(uMsk,uv).a < 0.5) discard;',            // 각진 블록 — 셀 경계 그대로
-    // 내 자리(지면 높이)가 뭍이면 그건 프리즘 면이 덮을 자리다 — 물을 그리지 않는다
+    // ★★내 자리(지면 높이)가 뭍이면 그건 프리즘 면이 덮을 자리다 — 물을 그리지 않는다.
+    //   ※배치 19 가 `uvg` 를 **계산만 하고 discard 를 안 걸었다**(주석은 있는데 코드가 없다).
+    //     그 결과 수면이 uDrop 만큼 내려가 그려지면서 **남·동쪽 뭍 위로 흘러넘쳤고**,
+    //     물가를 따라 이어지는 **푸른 후광 = 재민이 말한 "테두리"** 가 됐다.
+    //     실측(재민 지적 뒤): 물 ON/OFF 같은 뭍 픽셀 비교 — 경계에서 파랑 **+26**, 11px 밖에도 **+6**.
+    //   ⇒ 원래 의도대로 한 줄을 마저 건다. 그 자리는 프리즘 단면이 덮는다.
     '  vec2 wg = vec2((2.0*sy+ix)*0.5,(2.0*sy-ix)*0.5);',
     '  vec2 uvg = cellUV(wg);',
+    '  if(uvg.x>=0.0&&uvg.y>=0.0&&uvg.x<=1.0&&uvg.y<=1.0&&texture2D(uMsk,uvg).a < 0.5) discard;',
     '  vec4 L = texture2D(uLin,uv);',
     '  vec2 dir = L.rg*2.0-1.0; float depth = L.b;',
     '  float fl = length(dir);',
