@@ -607,7 +607,42 @@ const SIM_JOB_EMOJI = {
   //   ★층 3장(길이 다른 잎)으로 알파를 떨어뜨리고 자리 해시로 길이를 흩어 **가장자리를 너덜하게** 한다.
   //     한 겹 균일 띠로 그리면 물가에 초록 테이프를 붙인 것처럼 보인다.
   //   ★순서: 물 셰이더 → 프리즘 단면 → **여기(넘김)** → 물가 술 → 안개.
-  const SH_LAYERS = [[10, 0.30], [6, 0.55], [3, 0.85]];   // [넘김 px, 알파] — 길수록 성기게
+  //   ★1패스 실패 — 재민: "물가에 어색한 띠 같은 게 왜 생긴 거야.. 너무 부자연스럽잖아."
+  //     맞다. 두 가지가 겹친 내 잘못이다:
+  //       ⓐ **반투명으로 깔았다**(알파 .30/.55/.85). 반투명 초록을 밝은 물 위에 얹으면
+  //          풀이 아니라 **뿌연 안개 띠**가 된다 — 잎이 아니라 색이 번진 것처럼 보인다.
+  //       ⓑ **셀 다이아몬드를 통째로 밀었다.** 한 셀의 변 전체가 같은 폭으로 나가니
+  //          결과가 **일정한 폭의 띠**다. 실루엣이 직선이면 뭘 해도 띠로 읽힌다.
+  //     ⇒ 고침: **불투명하게** 깔고(잎이 있는 곳은 진짜 풀색), 바깥쪽을 **얼룩 마스크로 갉아**
+  //       실루엣을 잎 단위로 부순다. 넘김 길이도 짧게(최대 7px) — 길수록 띠가 된다.
+  const SH_PUSH = 7;               // 최대 넘김(px). 길면 '물 위에 뜬 풀'이 되고 띠로 읽힌다
+  //     ★2패스도 실패했다 — 합성 얼룩(2px 격자 해시)으로 깎았더니 이번엔 **디더 격자 무늬**가 보였다.
+  //       규칙적으로 반복되는 마스크는 무엇을 해도 '무늬'로 읽힌다.
+  //     ⇒ 3패스: **풀 텍스처 자신의 잎 모양으로 깎는다.** 어두운 곳(잎 사이 틈)을 파내고
+  //       밝은 곳(잎)만 남기면 실루엣이 **진짜 잎 끝**을 따라간다. 마스크는 풀과 **정합**돼야
+  //       하므로 같은 변환 아래에서 같은 다이아몬드로 칠한다(translate 로 함께 민다).
+  let _shMask = null;
+  function _shBladeMask() {
+    if (_shMask) return _shMask;
+    const src = GTEX.grass_angled;
+    const w = src.naturalWidth || src.width, h = src.naturalHeight || src.height;
+    const t = document.createElement('canvas'); t.width = w; t.height = h;
+    const tg = t.getContext('2d', { willReadFrequently: true });
+    tg.drawImage(src, 0, 0);
+    const im = tg.getImageData(0, 0, w, h), d = im.data;
+    // 중앙값 근처를 문턱으로 — 텍스처가 바뀌어도 따라간다(고정 문턱은 텍스처 교체에 깨진다)
+    let sum = 0;
+    for (let i = 0; i < d.length; i += 4) sum += d[i] * 0.3 + d[i + 1] * 0.59 + d[i + 2] * 0.11;
+    const mid = sum / (d.length / 4);
+    for (let i = 0; i < d.length; i += 4) {
+      const lum = d[i] * 0.3 + d[i + 1] * 0.59 + d[i + 2] * 0.11;
+      // 어두울수록 많이 파낸다(잎 사이 틈) · 밝으면 남긴다(잎)
+      let a = (mid + 6 - lum) / 26; a = a < 0 ? 0 : a > 1 ? 1 : a;
+      d[i] = d[i + 1] = d[i + 2] = 0; d[i + 3] = Math.round(a * 255);
+    }
+    tg.putImageData(im, 0, 0);
+    _shMask = t; return t;
+  }
   const _shoreTiles = new Map();
   function _bakeShoreTile(itx, ity, zlist) {
     const X0 = itx * GT_W, Y0 = ity * GT_H;
@@ -619,7 +654,7 @@ const SIM_JOB_EMOJI = {
     }
     const c0x = Math.floor(mnx / 32) - 1, c1x = Math.ceil(mxx / 32) + 1;
     const c0y = Math.floor(mny / 32) - 1, c1y = Math.ceil(mxy / 32) + 1;
-    let cv = null, g = null, pat = null, n = 0;
+    let cv = null, g = null, pat = null, spat = null, n = 0;
     const dia = (gg, sx, sy) => { gg.beginPath(); gg.moveTo(sx, sy - 16); gg.lineTo(sx + 32, sy); gg.lineTo(sx, sy + 16); gg.lineTo(sx - 32, sy); gg.closePath(); };
     for (let cx = c0x; cx <= c1x; cx++) for (let cy = c0y; cy <= c1y; cy++) {
       const cxw = cx * 32 + 16, cyw = cy * 32 + 16;
@@ -627,25 +662,29 @@ const SIM_JOB_EMOJI = {
       if (sx < -46 || sx > GT_W + 46 || sy < -26 || sy > GT_H + 26) continue;
       if (!isWaterAtAbs(cxw, cyw)) continue;                 // 넘김은 **물 셀 안에만** 그린다
       for (let k = 0; k < 4; k++) {
-        const nx = [1, -1, 0, 0][k], ny = [0, 0, 1, -1][k];  // 이웃 뭍 → 이 물 셀 쪽으로 넘긴다
+        const nx = [1, -1, 0, 0][k], ny = [0, 0, 1, -1][k];
         const lxw = cxw - nx * 32, lyw = cyw - ny * 32;
         if (isWaterAtAbs(lxw, lyw) || isRockAtAbs(lxw, lyw)) continue;
         if (!cv) {
           cv = document.createElement('canvas'); cv.width = GT_W; cv.height = GT_H;
           g = cv.getContext('2d');
           pat = g.createPattern(GTEX.grass_angled, 'repeat');   // 타일 원점이 주기의 배수 → 오프셋 0
+          spat = g.createPattern(_shBladeMask(), 'repeat');      // 풀과 **정합**되는 잎 마스크
         }
         const lsx = (lxw - lyw) - X0, lsy = (lxw + lyw) / 2 - Y0;
-        for (let L = 0; L < SH_LAYERS.length; L++) {
-          const jit = 0.55 + 0.9 * _cellHash(cx, cy, 3100 + k * 7 + L);   // 자리별 잎 길이 — 너덜한 가장자리
-          const d = SH_LAYERS[L][0] * jit;
-          const ox = (nx * d) - (ny * d), oy = ((nx * d) + (ny * d)) / 2;  // 월드→iso
-          g.save(); dia(g, sx, sy); g.clip();                              // 물 셀 안으로만
-          g.globalAlpha = SH_LAYERS[L][1] * (0.82 + 0.32 * _cellHash(cx, cy, 3200 + k + L));
-          g.fillStyle = pat;
-          dia(g, lsx + ox, lsy + oy); g.fill();                            // 뭍 셀의 '자기 풀'을 밀어 넣는다
-          g.restore();
-        }
+        const d = SH_PUSH * (0.6 + 0.8 * _cellHash(cx, cy, 3100 + k));   // 자리별 길이 — 폭이 일정하면 띠다
+        const ox = (nx * d) - (ny * d), oy = ((nx * d) + (ny * d)) / 2;
+        g.save();
+        dia(g, sx, sy); g.clip();                       // 물 셀 안으로만
+        g.translate(ox, oy);                            // ★뭍의 풀을 **텍스처째** 민다(마스크와 정합)
+        g.globalAlpha = 1;                              // ★불투명 — 반투명은 풀이 아니라 안개가 된다
+        g.fillStyle = pat; dia(g, lsx, lsy); g.fill();
+        // 잎 사이 틈을 파낸다 — 실루엣이 진짜 잎 끝을 따라간다(합성 얼룩은 격자 무늬가 된다)
+        g.globalCompositeOperation = 'destination-out';
+        g.fillStyle = spat;
+        g.globalAlpha = 1;   dia(g, lsx + ox * 0.55, lsy + oy * 0.55); g.fill();  // 끝쪽 — 잎만 남는다
+        g.globalAlpha = 0.5; dia(g, lsx, lsy); g.fill();                          // 안쪽 — 절반만 성글게
+        g.restore();
         n++;
       }
     }
