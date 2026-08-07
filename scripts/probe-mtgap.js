@@ -110,6 +110,24 @@ function changedPct(a, b, box, thr) {
   console.log(`     ② 평지인데 산이 침범     : ${covOut.length}/${land.length} = ${(covOut.length / Math.max(1, land.length) * 100).toFixed(1)}%`);
   console.log(`  맨 바위 표본: ${JSON.stringify(bareList.slice(0, 8))}`);
   console.log(`  결함 표본: ${JSON.stringify(footOut.slice(0, 8))}`);
+  // ★[재민 "산 하나가 아니라 산 9개네?"] 셀당 몇 장이 서는지, 배율이 어떤지 센다
+  const grain = await page.evaluate(() => {
+    const cam = window.__camCellLocal();
+    const segs = (window.__mtProbe() || []).filter((g) => Math.abs(g.lcx - cam[0]) <= 18 && Math.abs(g.lcy - cam[1]) <= 18);
+    let rock = 0;
+    for (let dx = -18; dx <= 18; dx++) for (let dy = -18; dy <= 18; dy++)
+      if (window.__tileStateAt(cam[0] + dx, cam[1] + dy).kind === 'rock') rock++;
+    const sc = segs.map((g) => g.sc).sort((a, b) => a - b);
+    const tier = {}; for (const g of segs) tier[g.ridge] = (tier[g.ridge] || 0) + 1;
+    const q = (p2) => sc.length ? +sc[Math.min(sc.length - 1, Math.floor(sc.length * p2))].toFixed(2) : 0;
+    // 배율 1 = 발자국 약 10셀. 스프라이트 하나가 덮는 셀 수 ≈ (CROSS_U*sc)^2*0.5
+    return { rock, segs: segs.length, perCell: +(segs.length / Math.max(1, rock)).toFixed(2),
+             sc: { p10: q(0.1), med: q(0.5), p90: q(0.9), max: q(0.999) }, tier,
+             minCnt: sc.filter((v) => v <= 0.29).length };
+  });
+  console.log(`\n  ★결/알갱이 — 바위 ${grain.rock}셀에 세그먼트 ${grain.segs}장 = **셀당 ${grain.perCell}장**`);
+  console.log(`     배율 하위10% ${grain.sc.p10} · 중앙값 ${grain.sc.med} · 상위10% ${grain.sc.p90} · 최대 ${grain.sc.max}`);
+  console.log(`     하한(0.28)에 눌린 장수 ${grain.minCnt}/${grain.segs} (${(grain.minCnt / Math.max(1, grain.segs) * 100).toFixed(0)}%) · 계층 ${JSON.stringify(grain.tier)}`);
   const mt = await page.evaluate(() => window.__mtDbg);
   console.log(`  __mtDbg: ${JSON.stringify(mt)}`);
   // 맨 바위 셀이 능선 중심에서 얼마나 떨어져 있나 — 밴드 가장자리 가설 검증
