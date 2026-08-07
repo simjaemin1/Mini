@@ -131,9 +131,19 @@ const med = (v) => { const s = v.slice().sort((a, b) => a - b); return s.length 
   ok('⑦ ★반례 — 안 닿는 자리는 그대로다', farBest < 0.5, `가장 덜 바뀐 상자 |Δ| ${farBest.toFixed(2)}`);
 
   // ⑧ 결정론
+  //  ★[계측 격리 2026-08-07] 이 판정의 뜻은 **산 배치에 Math.random 이 없다**이지
+  //    "화면이 완전히 정지해 있다"가 아니다. 배치 21 이 자연물(술·들꽃)에 **바람 흔들림**을
+  //    넣으면서 두 프레임 사이에 풀이 실제로 움직인다 — 기준을 낮추면 안 되고,
+  //    **재는 층을 격리**하는 게 맞다(e2e-terrain ⓞ 와 같은 계보). 오염값도 같이 찍는다.
+  const aC = await shot('det0a'); await sleep(900); const bC = await shot('det0b');
+  const ddC = diff(aC, bC, [0, 200, 1400, 880]);
+  await knob({ windOff: true });
   const a2 = await shot('det1'); await sleep(900); const b2 = await shot('det2');
+  await knob({ windOff: false });
   const dd = diff(a2, b2, [0, 200, 1400, 880]);
-  ok('⑧ ★결정론 — 같은 상태 두 프레임 동일', dd < 0.05, `|Δ| ${dd.toFixed(3)}`);
+  console.log(`    [계측 격리] 바람 켠 채로 재면 |Δ| ${ddC.toFixed(3)} — 흔들리는 건 풀이지 산이 아니다`);
+  ok('⑧ ★결정론 — 같은 상태 두 프레임 동일(바람 격리)', dd < 0.05, `|Δ| ${dd.toFixed(3)}`);
+  ok('★대조군 — 바람을 켜면 화면이 실제로 움직인다', ddC > dd, `바람 ON |Δ| ${ddC.toFixed(3)} > OFF ${dd.toFixed(3)}`);
 
   console.log(`\n${pass}/${pass + fail} 통과${fail ? ' — ★실패 ' + fail : ''}`);
   await browser.close();

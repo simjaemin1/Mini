@@ -99,6 +99,14 @@ function meanLum(p, box) {
   await sleep(20000);
 
   const knob = async (o) => { await page.evaluate((k) => Object.assign(window.__terrain19, k), o); await sleep(1200); };
+  //   ★[계측 격리 2026-08-07] 배치 21 이 자연물(술·들꽃)에 **바람 흔들림**을 넣었다 — 화면은 이제
+  //     카메라가 멈춰도 완전히 정지하지 않는다. 이 하네스가 재는 건 **지면 타일 색**이니 흔들리는
+  //     풀은 순수한 잡음이다. 기준(정지 <0.02)을 낮추는 대신 **바람을 끈다.**
+  //     ★끄는 자리가 중요하다 — 1패스에서 정지 대기 **직전**에 `knob()` 으로 껐더니 그 안의
+  //       sleep(1200) 이 실험 타이밍을 밀어 **뙈기 선택이 바뀌었고**(offset 5,-9 → 11,-3)
+  //       stateOff A/B 가 10.36 → 3.23 으로 떨어졌다. 격리는 실험을 건드리면 안 된다.
+  //       ⇒ 측정 시작 **전에**, sleep 없이 끈다.
+  await page.evaluate(() => { window.__terrain19.windOff = true; });
   const grab = async (n) => { const p2 = `${SHOTS}/${n}.png`; await page.screenshot({ path: p2 }); return PNG.sync.read(fs.readFileSync(p2)); };
   const feed = async (flat) => { const n = await page.evaluate((f) => window.__tileStateFeed(f), flat); await sleep(1200); return n; };
   const feedRoad = async (flat) => { const n = await page.evaluate((f) => window.__roadFeed(f), flat); await sleep(1200); return n; };

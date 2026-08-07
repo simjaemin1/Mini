@@ -1854,7 +1854,7 @@ const SIM_JOB_EMOJI = {
       for (let gx = Math.floor(c0 / MT_CH); gx <= Math.floor(c1 / MT_CH); gx++) {
         for (const sg of _mtChunkSegs(zid, gx, gy)) {
           if (Math.abs(sg.x - cx0) > MT_VIEW_PAD || Math.abs(sg.y - cy0) > MT_VIEW_PAD) continue;
-          out.push({ z: w2i(sg.x, sg.y).y, kind: 'mtseg', sg });
+          out.push({ z: w2i(sg.x, sg.y).y, kind: 'mtseg', sg, wx: sg.x, wy: sg.y });
           n++;
         }
       }
@@ -1881,7 +1881,7 @@ const SIM_JOB_EMOJI = {
         if (cx0 < mnx - MT_VIEW_PAD || cx0 > mxx + MT_VIEW_PAD || cy0 < mny - MT_VIEW_PAD || cy0 > mxy + MT_VIEW_PAD) continue;
         for (const sg of _mtPlaceRidge(zid, rs[ri], ox, oy, ri)) {
           if (Math.abs(sg.x - cx0) > MT_VIEW_PAD || Math.abs(sg.y - cy0) > MT_VIEW_PAD) continue;
-          out.push({ z: w2i(sg.x, sg.y).y, kind: 'mtseg', sg });
+          out.push({ z: w2i(sg.x, sg.y).y, kind: 'mtseg', sg, wx: sg.x, wy: sg.y });
           n++;
         }
       }
@@ -6308,7 +6308,7 @@ const SIM_JOB_EMOJI = {
     //   ★구멍 금지: 모든 push 에 `wx/wy` 를 달았고, 없는 항목은 **세어서 내보낸다**
     //     (`__fogGateDbg.missing`). 하네스가 0 을 요구한다 — 조용히 새는 종류가 없게.
     // ═══════════════════════════════════════════════════════════════════════
-    let _gateSkipped = 0, _gateMissing = 0;
+    let _gateSkipped = 0, _gateMissing = 0, _gateFree = 0; const _gateMissKind = {};
     _gateDrawn.length = 0;
     const _seenCell1 = (cx, cy) => {
       const sc = window._seenChunks; if (!sc) return true;   // 첫 프레임(기록 전)은 통과
@@ -6321,6 +6321,22 @@ const SIM_JOB_EMOJI = {
     //   (e2e-rooms 이엉 29.0% → 3.2%). 안개의 목적은 '안 가본 땅'을 가리는 것이지
     //   내가 지나쳐 본 건물을 숨기는 게 아니다.
     //   ⇒ 구조물은 앵커 + 반경 R셀의 8방위까지 9칸을 본다(R 은 발자국 크기 기준).
+    //   ★★[리베이스 합류 2026-08-07] **산(mtseg)은 이 게이트에서 뺀다.** 근거는 취향이 아니라 실측이다:
+    //     ⓐ 산 세션이 `_mtCollectCover` 로 다시 쓰면서 내 5차가 달았던 wx/wy 가 사라졌고,
+    //        하네스 "구멍 0" 가 37건으로 잡았다. 그래서 자리는 다시 달았다(계측은 살아 있어야 한다).
+    //     ⓑ 그런데 자리를 달고 게이트를 걸었더니 **산이 사라졌다**:
+    //          앵커만(R=1) → 산 앞에 서도 **115장 중 10장**만 그려짐
+    //          발자국 반경 5 → **16장**   (대조군: origin/main 은 e2e-mtocc **10/10**)
+    //        원인은 명확하다 — **가시성 폴리곤은 바위에서 끊긴다.** 그래서 바위 셀은 사실상
+    //        영영 '본 셀'로 기록되지 않는다. 어떤 반경을 줘도 게이트는 '안 가본 산'이 아니라
+    //        **모든 산**을 지운다. 이 층에 게이트는 **틀린 도구**다.
+    //     ⓒ 규칙의 뜻으로 돌아가면: 재민 규칙은 **안 가본 곳의 '정보'가 새면 안 된다**였고
+    //        대상은 남의 집·논밭·영토였다. 산은 지형이고 실제로 수십 km 밖에서 보인다.
+    //     ⇒ **면제 목록에 명시**한다. 조용히 빠지는 게 아니라 이름을 적어 두고 하네스가 그 목록을
+    //        대조한다 — 나중에 누가 말없이 하나 더 빼면 판정이 깨진다.
+    //     ★재민 판단 회부: 산에도 안개를 적용하려면 게이트가 아니라 **안개 마스크 앞에 그리기**가
+    //        맞고, 그건 §6-c 1패스에서 지붕이 잘렸던 문제를 산에서 다시 풀어야 한다(별도 작업).
+    const _GATE_FREE = { mtseg: 1 };   // ★의도적 면제 — 지형이다. 추가하려면 위 근거처럼 실측을 남겨라.
     const _GATE_R = { building: 4, hutroof: 4, simvil: 10, claim: 4, banditcamp: 4, stair_cell: 1 };
     const _seenFor = (kind, wx, wy) => {
       const cx = Math.floor(wx / CL_BUILDING_SIZE), cy = Math.floor(wy / CL_BUILDING_SIZE);
@@ -6335,7 +6351,8 @@ const SIM_JOB_EMOJI = {
 
     // === 3) 엔티티 그리기 ===
     for (const item of renderables) {
-      if (item.wx === undefined) { _gateMissing++; }
+      if (item.wx === undefined) { _gateMissing++; _gateMissKind[item.kind] = (_gateMissKind[item.kind] || 0) + 1; }
+      else if (_GATE_FREE[item.kind]) { _gateFree++; }
       else if (!item.isMe && !_t19.fogGateOff && !_seenFor(item.kind, item.wx, item.wy)) { _gateSkipped++; continue; }
       else if (item.wx !== undefined) _gateDrawn.push(item.wx, item.wy, item.kind);
       if (item.kind === 'claim') {
@@ -7097,7 +7114,8 @@ const SIM_JOB_EMOJI = {
       }
     }
 
-    window.__fogGateDbg = { skipped: _gateSkipped, missing: _gateMissing, total: renderables.length,
+    window.__fogGateDbg = { skipped: _gateSkipped, missing: _gateMissing, missKind: _gateMissKind,
+                            free: _gateFree, freeKinds: Object.keys(_GATE_FREE).sort(), total: renderables.length,
                             drawn: _gateDrawn.length / 3 };
 
     // ↓↓ 여기부터는 **안개 위**다. 월드 사물을 여기서 그리면 미탐사 셀에 누출된다.
