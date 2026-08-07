@@ -19,6 +19,9 @@
 //   ④ ★산 전체가 흐려지면 안 된다 — 구멍 반경 밖 산 화소는 대조군과 **동일**해야 한다
 //   ⑥ 안 가릴 땐 값이 0          — 산 반대쪽으로 가면 가림 장수가 줄어야 한다
 //   ⑦ ★덮개 배치가 가림을 줄였나  — 같은 자리에서 mtLegacy 끔 ≤ 켬
+//   ⑧ ★★앞쪽 산이 **전부** 흐려진다 — 나를 안 덮는 앞쪽 산도 같이 흐려져야 한다
+//                                     (재민 2차 정정. 한 장만 흐리면 나머지가 여전히 가린다)
+//   ⑨ ★반례 — **뒤쪽 산은 그대로**   — 내 뒤(z 작은) 산은 나를 못 가리므로 손대면 안 된다
 //
 // 포트 3010/3020 공용 — E2E 동시 실행 금지.
 // =============================================================================
@@ -31,7 +34,9 @@ const CPORT = 3010, ZPORT = 3020;
 // ★자리는 `probe-mtocc-site.js` 가 데이터에서 골랐다 — 걸어서는 이 자리에 못 간다(바위=콜라이더).
 //   ★상자만 보면 안 된다 — 프레임의 86%가 투명 여백이라 상자 판정은 149곳을 2640곳으로 부풀린다.
 //   알파(문턱 0.35)까지 본 실제 가림 자리는 걸을 수 있는 곳 표본의 0.3%(149곳). 여기가 그중 최상.
-const SITE = { cx: 2174, cy: 1252 };
+//   ★2차 자리 — 덮개 배치에서도 가림이 나는 곳(__mtOccAt 로 격자 훑어 찾음).
+//     이 능선 주변 표본의 3.2%에서 가림이 나고, 그때 앞쪽 산이 72장이다.
+const SITE = { cx: 2143, cy: 1980 };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const procs = [];
 let pass = 0, fail = 0;
@@ -83,9 +88,7 @@ function diff(a, b, box) {
   const shot = async (n) => { const p2 = `/tmp/occ-${n}.png`; await page.screenshot({ path: p2 }); return PNG.sync.read(fs.readFileSync(p2)); };
   const knob = async (o) => { await page.evaluate((k) => Object.assign(window.__terrain19, k), o); await sleep(1200); };
 
-  // ── 기구 시험은 옛 배치에서 — 거기서만 큰 산이 멀리서 나를 덮는다.
-  await knob({ mtLegacy: true });
-  await sleep(1800);
+  // ── 기구는 **덮개 배치**(현행)에서 시험한다. 대조군은 occOff 손잡이다.
   const dbg = await page.evaluate(() => window.__mtOccDbg);
   console.log('\n[가림] ' + JSON.stringify(dbg));
   ok('① 가려지는 자리를 찾았다(반례 성립)', !!(dbg && dbg.n > 0), `가린 산 ${dbg && dbg.n}장`);
@@ -128,19 +131,78 @@ function diff(a, b, box) {
   ok('⑤b ★산이 사라지지는 않았다(반투명이지 투명이 아니다)', dMeOnNoMt > 2.0,
     `켬↔무산 내 자리 차 ${dMeOnNoMt.toFixed(1)} > 2.0 — 0 이면 산이 통째로 없어진 것이다`);
 
-  // ⑦ ★덮개 배치가 가림을 실제로 줄였나 — 같은 자리·같은 시계에서 배치만 바꿔 잰다
-  await knob({ mtLegacy: false });
-  await sleep(1800);
-  const cov = await page.evaluate(() => window.__mtOccDbg);
-  ok('⑦ ★덮개 배치가 가림을 줄인다', !!cov && cov.n <= dbg.n,
-    `덮개 ${cov && cov.n}장 ≤ 옛 배치 ${dbg.n}장 (배율이 5.8→1.6 이라 몸통이 멀리까지 안 뻗는다)`);
+  // ⑧⑨ ★앞쪽 산은 **전부** 흐려지고, 뒤쪽 산은 그대로다
+  //   ⑧ 은 화소 상자로 캐지 않는다 — 앞쪽 세그먼트의 **앵커는 늘 화면 아래**(z 차 500 = 화면 500px)라
+  //     상자를 못 잡는다. 대신 **정본 그리기 경로가 흐리게 그린 장수**를 그대로 읽는다.
+  const cov = dbg;
+  await knob({ occOff: true }); const cOff = await shot('cov-off');
+  await knob({ occOff: false }); const cOn = await shot('cov-on');
+  await knob({ mtOff: true }); const cNo = await shot('cov-nomt');
+  await knob({ mtOff: false });
+  await sleep(900);
+  const fd = await page.evaluate(() => window.__mtOccDbg);
+  ok('⑧ ★★가리는 한 장이 아니라 **앞쪽 산 전부**가 흐려진다',
+    !!fd && fd.faded > 3 && fd.front > 3 && fd.faded === fd.front,
+    `흐리게 그린 장수 ${fd && fd.faded} = 앞쪽 산 ${fd && fd.front}장 (나를 실제로 덮는 건 ${fd && fd.n}장뿐)`);
+
+  const picks = await page.evaluate(() => {
+    const me = window.__getMyAbs(); const mz = (me.x + me.y) * 0.5 + 500;
+    const segs = window.__mtProbe() || [];
+    let back = null;
+    for (const g of segs) {
+      const z = (g.x + g.y) * 0.5;
+      if (z >= mz - 400) continue;
+      const s2 = window.__cellScreen(g.lcx, g.lcy);   // ★lcx/lcy 는 로컬 — 절대 셀을 넣으면 화면 밖이다
+      if (!s2 || s2.x < 140 || s2.x > 1260 || s2.y < 300 || s2.y > 800) continue;
+      const far = Math.hypot(s2.x - 700, s2.y - 436);
+      if (!back || far > back.far) back = { x: s2.x, y: s2.y, far };
+    }
+    return { back };
+  });
+  if (picks.back) {
+    const bx = [Math.round(picks.back.x - 60), Math.round(picks.back.y - 70), Math.round(picks.back.x + 60), Math.round(picks.back.y + 10)];
+    const dB = diff(cOn, cOff, bx), dBm = diff(cOff, cNo, bx);
+    ok('⑨ ★반례 — **뒤쪽** 산은 그대로다', dB < 1.0 && dBm > 10,
+      `뒤쪽 산 상자 켬↔끔 |Δ| ${dB.toFixed(2)} (≈0) · 그 상자 산 함량 ${dBm.toFixed(1)}`);
+  } else ok('⑨ ★뒤쪽 산 상자를 찾았다', false, '뒤쪽 세그먼트가 화면 안에 없다 — 판정 불가');
+
+  // ⑦ ★가림은 **상시가 아니다** — 늘 반투명이면 그것도 틀린 그림이다.
+  //   정본 판정(__mtOccAt)으로 주변 격자를 훑어 비율을 잰다.
+  const sweep = await page.evaluate(() => {
+    const me = window.__getMyAbs(); let hit = 0, tot = 0;
+    for (let dx = -30; dx <= 30; dx += 2) for (let dy = -30; dy <= 30; dy += 2) {
+      const r = window.__mtOccAt(me.x + dx * 32, me.y + dy * 32);
+      if (!r) continue; tot++; if (r.n > 0) hit++;
+    }
+    return { hit, tot, pct: tot ? hit / tot * 100 : 0 };
+  });
+  ok('⑦ ★가림은 상시가 아니다(늘 반투명이면 그것도 틀렸다)', sweep.pct > 0 && sweep.pct < 25,
+    `주변 ${sweep.tot}자리 중 가림 ${sweep.hit} (${sweep.pct.toFixed(1)}%)`);
 
   // ⑥ 산에서 멀어지면 가림이 사라진다 — 상수 true 가 아님을 보인다
-  await knob({ mtLegacy: true });
-  for (let i = 0; i < 7; i++) { for (const k of ['s', 'd']) { await page.keyboard.down(k); await sleep(1400); await page.keyboard.up(k); } }
-  await sleep(1500);
-  const far = await page.evaluate(() => window.__mtOccDbg);
-  ok('⑥ 산 반대쪽으로 가면 가림이 준다 (상수 아님)', !!far && far.n < dbg.n, `남동 이동 후 가린 산 ${far && far.n}장 < 처음 ${dbg.n}장`);
+  // ⑥ 걸어서 벗어나면 반투명이 **꺼진다** — 방향은 눈대중이 아니라 정본 판정으로 고른다
+  const dir = await page.evaluate(() => {
+    const me = window.__getMyAbs();
+    const cand = [['s', 1, 1], ['d', 1, -1], ['a', -1, 1], ['w', -1, -1]];
+    let best = null;
+    for (const [k, sx, sy] of cand) {
+      let clear = 0;
+      for (let t = 4; t <= 24; t += 4) {
+        const r = window.__mtOccAt(me.x + sx * t * 32, me.y + sy * t * 32);
+        if (r && r.n === 0) clear++;
+      }
+      if (!best || clear > best.clear) best = { k, clear };
+    }
+    return best;
+  });
+  let far = null;
+  for (let i = 0; i < 12; i++) {
+    await page.keyboard.down(dir.k); await sleep(1200); await page.keyboard.up(dir.k);
+    far = await page.evaluate(() => window.__mtOccDbg);
+    if (far && far.n === 0 && far.fade < 0.2) break;
+  }
+  ok('⑥ 벗어나면 반투명이 꺼진다 (상수 아님)', !!far && far.n === 0 && far.fade < 0.5,
+    `'${dir.k}' 방향 이동 후 가린 산 ${far && far.n}장 · 반투명 진행도 ${far && far.fade}`);
 
   console.log(`\n${pass}/${pass + fail} 통과${fail ? ' — ★실패 ' + fail : ''}`);
   await browser.close();

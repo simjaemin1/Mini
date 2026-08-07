@@ -1654,8 +1654,8 @@ const SIM_JOB_EMOJI = {
   //   ⓒ **판정은 상자가 아니라 알파로** 한다. 스프라이트 프레임의 86%는 투명 여백이라
   //      상자로 재면 "닿지도 않은 산"이 흐려진다(자명 통과 금지 — 반례가 실제로 존재한다).
   //   ⓓ 가리는 **한 장만** 반투명하다. 화면의 다른 산은 그대로다 — 그게 반례이자 판정이다.
-  const MT_OCC_R = 82, MT_OCC_A = 0.38;   // 반투명 세기 — 산은 남고 뒤가 비친다
-  let _mtOcc = null, _mtOccN = 0;      // {x,y,z} — 이번 프레임 내 화면 좌표와 z · 가린 산 장수
+  const MT_OCC_A = 0.34, MT_FADE_MS = 220;   // 반투명 세기 · 켜고 끄는 시간(껌뻑임 방지)
+  let _mtOcc = null, _mtOccN = 0, _mtFadedN = 0, _mtFadeAmt = 0, _mtToScr = null;   // 내 화면 좌표·z · 가린 장수 · 반투명 진행도
   const _mtAlphaMap = new Map();
   function _mtAlphaAt(name, u, v) {
     let m = _mtAlphaMap.get(name);
@@ -1676,35 +1676,71 @@ const SIM_JOB_EMOJI = {
     if (!an || !im0 || !im0.complete) return;
     const im = _mtTinted(sg.name, _cellHash(Math.round(sg.x), Math.round(sg.y), 91) < 0.5 ? 0 : 1);
     const sc = (64 / Math.SQRT2) / an.ppu * sg.sc, vy = sg.vy || 1;
+    _mtToScr = toScr;
     const p = w2i(sg.x + (sg.jx || 0), sg.y + (sg.jy || 0)), c = toScr(p.x, p.y);
     // 높이 지터는 **앵커(발치) 고정, 세로만 배율** — 능선 스카이라인이 출렁이게(시안 정본과 동일)
     const W = im0.naturalWidth * sc, H = im0.naturalHeight * sc * vy;
     const dx = c.x - an.ox * sc, dy = c.y - an.oy * sc * vy;
-    let occ = false;
-    if (_mtOcc && W > 0 && H > 0) {
-      const u = (_mtOcc.x - dx) / W, v = (_mtOcc.y - dy) / H;
-      const inBox = u > 0 && u < 1 && v > 0 && v < 1;
-      const behind = item.z > _mtOcc.z;
-      const al = inBox ? _mtAlphaAt(sg.name, u, v) : 0;
-      if (behind && inBox && al > 0.35 && !_t19.occOff) occ = true;
-      // ★진단 — "왜 안 뚫렸나"를 수로 남긴다. 이게 없으면 반례를 못 찾아 판정이 자명해진다.
-      const D = window.__mtOccDbg;
-      if (D) {
-        D.tot++; if (behind) D.behind++; if (inBox) D.inBox++; if (behind && inBox) D.behindBox++;
-        const m = Math.abs(u - 0.5) + Math.abs(v - 0.5);
-        if (D.near == null || m < D.near) {
-          D.near = +m.toFixed(3);
-          D.nearSeg = { name: sg.name, u: +u.toFixed(2), v: +v.toFixed(2), dz: Math.round(item.z - _mtOcc.z), a: +al.toFixed(2), sc: +sg.sc.toFixed(2) };
-        }
+    // ★★[재민 2026-08-07 2차 정정] *"사실상 화면 전체 산이 다 반투명해져야 한다는 거야..
+    //   산에 어느 정도 가까이 가면.. 캐릭터가 가려지기 시작할 쯤부터.. 물론 북서쪽에 있을 때만"*
+    //   ⇒ **한 장이 아니라 앞쪽(내 남동) 산 전부**가 같이 흐려진다. 한 장만 흐려지면
+    //     그 산만 유리처럼 보이고 나머지가 여전히 나를 가린다 — 문제가 안 풀린다.
+    //   ⇒ 방아쇠는 "가려지기 시작할 때"다: 이번 프레임에 나를 실제로 덮는 산이 하나라도 있으면 켠다.
+    //   ⇒ **북서쪽에 있을 때만**: 내 뒤(z 작은 쪽) 산은 애초에 나를 못 가리므로 손대지 않는다.
+    const behind = _mtOcc ? item.z > _mtOcc.z : false;
+    const fade = _mtFadeAmt > 0.002 && behind && !_t19.occOff;
+    if (!fade) { g.drawImage(im, dx, dy, W, H); return; }
+    _mtFadedN++; if (window.__mtOccDbg) window.__mtOccDbg.faded = _mtFadedN;
+    g.save(); g.globalAlpha = 1 - (1 - MT_OCC_A) * _mtFadeAmt;
+    g.drawImage(im, dx, dy, W, H); g.restore();
+    return;
+  }
+  // 이 산 한 장이 나를 실제로 덮는가 — 스캔과 그리기가 **같은 식**을 쓴다(사본 금지)
+  function _mtOccludesMe(sg, z) {
+    if (!_mtOcc || z <= _mtOcc.z) return false;
+    const an = _mtAnchors[sg.name], im0 = MTX[sg.name];
+    if (!an || !im0 || !im0.complete || !im0.naturalWidth) return false;
+    const sc = (64 / Math.SQRT2) / an.ppu * sg.sc, vy = sg.vy || 1;
+    const W = im0.naturalWidth * sc, H = im0.naturalHeight * sc * vy;
+    const p = w2i(sg.x + (sg.jx || 0), sg.y + (sg.jy || 0));
+    const c = _mtToScr ? _mtToScr(p.x, p.y) : null; if (!c) return false;
+    const dx = c.x - an.ox * sc, dy = c.y - an.oy * sc * vy;
+    const u = (_mtOcc.x - dx) / W, v = (_mtOcc.y - dy) / H;
+    if (u <= 0 || u >= 1 || v <= 0 || v >= 1) return false;
+    // ★상자가 아니라 알파로 — 프레임의 86%가 투명 여백이라 상자로 재면 안 닿은 산도 걸린다
+    return _mtAlphaAt(sg.name, u, v) > 0.35;
+  }
+  // 프레임당 1회 — 나를 덮는 산이 하나라도 있나. 있으면 앞쪽 산 **전부**를 흐린다.
+  // ★튀지 않게 시간으로 완만히 켜고 끈다(경계에서 껌뻑이면 그게 더 거슬린다).
+  let _mtFadeT = 0;
+  function _mtFadeDt() {                     // ★시계는 프레임에서 온다 — Math.random 도, 고정 상수도 아니다
+    const now = (typeof performance !== 'undefined') ? performance.now() : 0;
+    const dt = _mtFadeT ? Math.min(120, now - _mtFadeT) : 16;
+    _mtFadeT = now; return dt;
+  }
+  let _mtLastRend = null;
+  function _mtUpdateFade(renderables, dtMs) {
+    _mtLastRend = renderables;
+    let hit = 0;
+    if (_mtOcc && !_t19.occOff) {
+      for (let i = 0; i < renderables.length; i++) {
+        const it = renderables[i];
+        if (it.kind !== 'mtseg') continue;
+        if (_mtOccludesMe(it.sg, it.z)) { hit++; break; }
       }
+      let fr = 0;
+      for (let i = 0; i < renderables.length; i++) {
+        const it = renderables[i];
+        if (it.kind === 'mtseg' && it.z > _mtOcc.z) fr++;
+      }
+      if (window.__mtOccDbg) window.__mtOccDbg.front = fr;
     }
-    if (occ) { _mtOccN++; if (window.__mtOccDbg) window.__mtOccDbg.n = _mtOccN; }
-    if (!occ) { g.drawImage(im, dx, dy, W, H); return; }
-    // ★★[재민 2026-08-07 정정] *"반투명하게 보이게 해달라는 거였어"*
-    //   1차 구현은 **내 자리만 구멍**을 뚫었다. 재민이 원한 건 **산 전체가 비치는 것**이다.
-    //   구멍은 "산에 뚫린 창"으로 읽히고, 반투명은 "산 너머가 비친다"로 읽힌다 — 다른 그림이다.
-    //   ⇒ 가리는 산 **한 장을 통째로** 낮은 알파로 그린다. 안 가리는 산은 손대지 않는다.
-    g.save(); g.globalAlpha = MT_OCC_A; g.drawImage(im, dx, dy, W, H); g.restore();
+    _mtOccN = hit;
+    if (window.__mtOccDbg) { window.__mtOccDbg.n = hit; window.__mtOccDbg.fade = +_mtFadeAmt.toFixed(2); }
+    const step = Math.min(1, Math.max(0, dtMs) / MT_FADE_MS);
+    _mtFadeAmt += ((hit ? 1 : 0) - _mtFadeAmt) * step;
+    if (_mtFadeAmt < 0.002) _mtFadeAmt = 0;
+    if (_mtFadeAmt > 0.998) _mtFadeAmt = 1;
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -5461,6 +5497,22 @@ const SIM_JOB_EMOJI = {
       needsRedraw = true;
       return n2;
     };
+    // ★가상 위치에서의 가림 계측 — 하네스가 자리를 찾을 때 **정본 판정을 그대로** 쓴다.
+    //   배치 수학을 node 쪽에서 다시 쓰면(사본) 둘이 같이 틀려도 통과한다.
+    window.__mtOccAt = (wx, wy) => {
+      if (!_mtToScr || !_mtAnchors || !_mtLastRend) return null;
+      const p = w2i(wx, wy), sp = _mtToScr(p.x, p.y);
+      const save = _mtOcc;
+      _mtOcc = { x: sp.x, y: sp.y - 14, z: (wx + wy) * 0.5 + 500 };
+      let n = 0, front = 0, back = 0;
+      for (const it of _mtLastRend) {
+        if (it.kind !== 'mtseg') continue;
+        if (it.z > _mtOcc.z) front++; else back++;
+        if (_mtOccludesMe(it.sg, it.z)) n++;
+      }
+      _mtOcc = save;
+      return { n, front, back };
+    };
     window.__mtClearDestroy = () => { const n2 = _mtDestroyed.size; _mtDestroyed.clear(); _mtSegCache.clear(); _mtChunk.clear(); _groundTiles.clear(); needsRedraw = true; return n2; };
     // ★[배치 21] 자연물 산포 — 물가 술 + 초원 소품. 산 세그먼트와 같은 목록·같은 z 규약.
     const _natT0 = performance.now();
@@ -5806,9 +5858,11 @@ const SIM_JOB_EMOJI = {
       _mtOcc = { x: _os.x, y: _os.y - 14, z: (myAbsPredicted.x + myAbsPredicted.y) * 0.5 + 500 };
     }
     // ★계측기는 판정을 **다시 유도하지 않는다** — `_mtDraw` 가 세는 수를 그대로 읽는다(사본 금지).
-    window.__mtOccDbg = { n: 0, tot: 0, behind: 0, inBox: 0, behindBox: 0, near: null, nearSeg: null,
-      pt: _mtOcc ? { x: Math.round(_mtOcc.x), y: Math.round(_mtOcc.y) } : null, z: _mtOcc ? Math.round(_mtOcc.z) : null, r: MT_OCC_R };
-    _mtOccN = 0;
+    _mtFadedN = 0;
+    window.__mtOccDbg = { n: 0, faded: 0, front: 0, fade: +_mtFadeAmt.toFixed(2),
+      pt: _mtOcc ? { x: Math.round(_mtOcc.x), y: Math.round(_mtOcc.y) } : null, z: _mtOcc ? Math.round(_mtOcc.z) : null };
+    _mtToScr = toScreen;
+    _mtUpdateFade(renderables, _mtFadeDt());
 
     // 14.49-e7ab/ag: 위층 BFS cutaway
     const _renderMyCx = Math.floor(myAbsPredicted.x / CL_BUILDING_SIZE);
