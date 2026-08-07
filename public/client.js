@@ -349,6 +349,7 @@ const SIM_JOB_EMOJI = {
       _wfCache.key = null; _wfCache.pending = false; _wfPrev.wet = null;   // 지형이 갈렸으니 물 판정 재사용본도 버린다
       _waterCellCache.clear();
       _natChunk.clear();      // ★[배치 21] 자연물 청크 배치도 지형 파생 — 같은 지점에서 무효화
+      _shoreTiles.clear();
       _rockCellCache.clear();
       _groundTiles.clear();   // ★[배치 19] 지면 베이크는 지형 파생물 — 같은 지점에서 함께 버린다
       if (typeof window.__invalidateMinimapCache === 'function') window.__invalidateMinimapCache();
@@ -359,6 +360,7 @@ const SIM_JOB_EMOJI = {
     const TS = 32;
     _waterCellCache.clear(); // zonesMeta 갱신 — 셀 단위 캐시 무효화
     _natChunk.clear();       // ★[배치 21] 자연물 청크 배치
+    _shoreTiles.clear();
     _rockCellCache.clear();
     _groundTiles.clear();   // ★[배치 19] 지면 베이크도 함께
     for (const z of Object.values(zonesMeta)) {
@@ -591,6 +593,65 @@ const SIM_JOB_EMOJI = {
     }
     return { cv, cells: nCell, state: nState, wx: nWx };
   }
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ★★[재민 지적 2026-08-06] "물가에서 풀의 튀어나온 부분이 물에 가려진다 — 3D가 아니라서 못 고치나?"
+  //   **3D 문제가 아니다.** 원인은 클리핑과 순서다:
+  //     ① `_bakeGroundTile` 이 풀 텍스처를 깔고, 물 셀 자리를 **진흙 다이아몬드로 덮어쓴다**
+  //        ⇒ 풀잎이 셀 다이아몬드 변에서 **칼로 자른 듯** 끊긴다.
+  //     ② 그 위에 물 셰이더가 또 덮는다.
+  //   ⇒ 고치는 법: **같은 풀 텍스처를 물 쪽으로 조금 더 그리되, 물보다 나중에** 그린다.
+  //      텍스처 자체가 이미 게임 카메라 각도로 구워져 있어 잎이 제대로 누워 있다 —
+  //      우리가 할 일은 그 잎을 **셀 경계에서 자르지 않는 것**뿐이다.
+  //
+  //   ★심는 게 아니다. 포기를 새로 얹지 않는다 — 뭍 셀의 **자기 풀**을 물 위로 몇 px 넘길 뿐이다.
+  //   ★층 3장(길이 다른 잎)으로 알파를 떨어뜨리고 자리 해시로 길이를 흩어 **가장자리를 너덜하게** 한다.
+  //     한 겹 균일 띠로 그리면 물가에 초록 테이프를 붙인 것처럼 보인다.
+  //   ★순서: 물 셰이더 → 프리즘 단면 → **여기(넘김)** → 물가 술 → 안개.
+  const SH_LAYERS = [[10, 0.30], [6, 0.55], [3, 0.85]];   // [넘김 px, 알파] — 길수록 성기게
+  const _shoreTiles = new Map();
+  function _bakeShoreTile(itx, ity, zlist) {
+    const X0 = itx * GT_W, Y0 = ity * GT_H;
+    let mnx = Infinity, mxx = -Infinity, mny = Infinity, mxy = -Infinity;
+    for (const [ix, iy] of [[X0, Y0], [X0 + GT_W, Y0], [X0, Y0 + GT_H], [X0 + GT_W, Y0 + GT_H]]) {
+      const wx = (2 * iy + ix) / 2, wy = (2 * iy - ix) / 2;
+      if (wx < mnx) mnx = wx; if (wx > mxx) mxx = wx;
+      if (wy < mny) mny = wy; if (wy > mxy) mxy = wy;
+    }
+    const c0x = Math.floor(mnx / 32) - 1, c1x = Math.ceil(mxx / 32) + 1;
+    const c0y = Math.floor(mny / 32) - 1, c1y = Math.ceil(mxy / 32) + 1;
+    let cv = null, g = null, pat = null, n = 0;
+    const dia = (gg, sx, sy) => { gg.beginPath(); gg.moveTo(sx, sy - 16); gg.lineTo(sx + 32, sy); gg.lineTo(sx, sy + 16); gg.lineTo(sx - 32, sy); gg.closePath(); };
+    for (let cx = c0x; cx <= c1x; cx++) for (let cy = c0y; cy <= c1y; cy++) {
+      const cxw = cx * 32 + 16, cyw = cy * 32 + 16;
+      const sx = (cxw - cyw) - X0, sy = (cxw + cyw) / 2 - Y0;
+      if (sx < -46 || sx > GT_W + 46 || sy < -26 || sy > GT_H + 26) continue;
+      if (!isWaterAtAbs(cxw, cyw)) continue;                 // 넘김은 **물 셀 안에만** 그린다
+      for (let k = 0; k < 4; k++) {
+        const nx = [1, -1, 0, 0][k], ny = [0, 0, 1, -1][k];  // 이웃 뭍 → 이 물 셀 쪽으로 넘긴다
+        const lxw = cxw - nx * 32, lyw = cyw - ny * 32;
+        if (isWaterAtAbs(lxw, lyw) || isRockAtAbs(lxw, lyw)) continue;
+        if (!cv) {
+          cv = document.createElement('canvas'); cv.width = GT_W; cv.height = GT_H;
+          g = cv.getContext('2d');
+          pat = g.createPattern(GTEX.grass_angled, 'repeat');   // 타일 원점이 주기의 배수 → 오프셋 0
+        }
+        const lsx = (lxw - lyw) - X0, lsy = (lxw + lyw) / 2 - Y0;
+        for (let L = 0; L < SH_LAYERS.length; L++) {
+          const jit = 0.55 + 0.9 * _cellHash(cx, cy, 3100 + k * 7 + L);   // 자리별 잎 길이 — 너덜한 가장자리
+          const d = SH_LAYERS[L][0] * jit;
+          const ox = (nx * d) - (ny * d), oy = ((nx * d) + (ny * d)) / 2;  // 월드→iso
+          g.save(); dia(g, sx, sy); g.clip();                              // 물 셀 안으로만
+          g.globalAlpha = SH_LAYERS[L][1] * (0.82 + 0.32 * _cellHash(cx, cy, 3200 + k + L));
+          g.fillStyle = pat;
+          dia(g, lsx + ox, lsy + oy); g.fill();                            // 뭍 셀의 '자기 풀'을 밀어 넣는다
+          g.restore();
+        }
+        n++;
+      }
+    }
+    return cv ? { cv, n } : { cv: null, n: 0 };
+  }
+
   function _gtDiamond(g, cx, cy, color, alpha) {
     if (alpha <= 0) return;
     g.globalAlpha = alpha; g.fillStyle = color;
@@ -2034,7 +2095,8 @@ const SIM_JOB_EMOJI = {
   //   ★[재민 2026-08-07] footOff — 기슭의 **대조군**. 끄면 산이 바위 경계에서 뚝 끊긴다.
                  footOff: false,
   //   ★[배치 21 5차] fogGateOff — 안개 게이트의 **대조군**. 끄면 안 가본 곳의 개체가 다시 보인다.
-                 fogGateOff: false };
+                 fogGateOff: false,
+                 shoreOff: false };
   window.__terrain19 = _t19;
 
   // 지형 차단 통합 (물+바위) — 이동 예측용
@@ -3753,6 +3815,8 @@ const SIM_JOB_EMOJI = {
           window.Terrain.setHardcoded(_zid, msg.hardcodedTerrain);
           _waterCellCache.clear(); // 최초 1회만 — 셀 단위 캐시 무효화
           _natChunk.clear();       // ★[배치 21] 자연물 청크 배치
+          _shoreTiles.clear();
+    _shoreTiles.clear();
           _groundTiles.clear();   // ★[배치 19] 지면 베이크도 함께
           _rockCellCache.clear();
           if (typeof window.__invalidateMinimapCache === 'function') window.__invalidateMinimapCache();
@@ -5400,7 +5464,7 @@ const SIM_JOB_EMOJI = {
     //   순서가 문법이다: 지면(진흙) → **물** → 프리즘 면 → (물가 술) → 엔티티.
     //   프리즘 면이 물 뒤에 오는 이유 = 면이 물의 절단선을 덮어야 '블록'으로 읽힌다.
     const _wtT0 = performance.now();
-    let _waterOn = false, _nPrism = 0;
+    let _waterOn = false, _nPrism = 0, _nShore = 0;
     if (!_LEG && !_t19.waterOff) {
       // ★시간은 **게임 시계**다(프레임 시간 아님) — 같은 게임 시각이면 같은 그림이라 하네스가 재현 가능.
       // ★★그런데 `worldNow()/1000` 을 그대로 넘기면 안 된다 — 1.7e9 초다. GLSL highp float 는
@@ -5421,13 +5485,26 @@ const SIM_JOB_EMOJI = {
         if (!_t19.prismOff)
           _nPrism = _drawPrisms(ctx, toScreen, Math.floor(mnx / 32) - 1, Math.floor(mny / 32) - 1,
                                 Math.ceil(mxx / 32) + 1, Math.ceil(mxy / 32) + 1);
+        // ★[재민 지적] 물가 풀 넘김 — 뭍의 **자기 풀 텍스처**를 물 위로 몇 px 넘겨 셀 경계의
+        //   칼자국을 없앤다. 물·프리즘 **뒤**라서 물에 안 가려진다. 지면 타일과 같은 격자·같은 캐시.
+        if (!_t19.shoreOff && !_LEG && _gtexReady >= 3) {
+          const _sx0 = Math.floor((camX - W / 2) / GT_W), _sx1 = Math.floor((camX + W / 2) / GT_W);
+          const _sy0 = Math.floor((camY - H / 2) / GT_H), _sy1 = Math.floor((camY + H / 2) / GT_H);
+          for (let ty = _sy0; ty <= _sy1; ty++) for (let tx = _sx0; tx <= _sx1; tx++) {
+            const k2 = tx + '_' + ty;
+            let e2 = _shoreTiles.get(k2);
+            if (!e2) { e2 = _bakeShoreTile(tx, ty, _zlist); _shoreTiles.set(k2, e2); }
+            if (e2.cv) { ctx.drawImage(e2.cv, Math.round(tx * GT_W - camX + W / 2), Math.round(ty * GT_H - camY + H / 2)); _nShore += e2.n; }
+          }
+          if (_shoreTiles.size > 400) _shoreTiles.clear();
+        }
       }
     }
     window._waterAcc = (window._waterAcc || 0) + (performance.now() - _wtT0);
     // 카메라 셀의 흐름 벡터 — 하네스가 "물이 **하류로** 흐르는가"를 재려면 기대 방향이 필요하다
     //   (하네스가 rivers path 를 다시 파싱하면 그게 사본이다 — 정본 계산을 그대로 물어본다).
     const _fw = _waterOn ? _flowAtCell(Math.floor(_camAbs.x / 32), Math.floor(_camAbs.y / 32)) : [0, 0];
-    window.__waterDbg = { on: _waterOn, webgl: _wgl.ok, prisms: _nPrism, flowKey: _wfCache.key,
+    window.__waterDbg = { on: _waterOn, webgl: _wgl.ok, prisms: _nPrism, shore: _nShore, shoreTiles: _shoreTiles.size, flowKey: _wfCache.key,
                           segs: _riverSegs ? _riverSegs.length : 0, flowAtCam: _fw, rect: _wfCache.rect,
                           flowIso: [_fw[0] - _fw[1], (_fw[0] + _fw[1]) / 2],
                           camCell: [Math.floor(_camAbs.x / 32), Math.floor(_camAbs.y / 32)],

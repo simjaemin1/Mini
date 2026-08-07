@@ -148,21 +148,21 @@ function bestShift(a, b, pred, box, R) {
       await sleep(3000); return page.evaluate(() => ({ t: window._tileAcc || 0, w: window._waterAcc || 0, f: window._tileFrames || 0 })); };
 
     // ★★[배치 21 정정] 이 하네스가 재는 건 **지면 질감과 물**이다. 배치 21 이 그 위에 얹은
-    //   자연물(물가 술)은 수면을 21.9% 덮는데, 술은 **정적**이라 물 무늬 이동을 재는
+    //   자연물(물가 술)과 **물가 풀 넘김**은 수면을 덮는데, 둘 다 **정적**이라 물 무늬 이동을 재는
     //   `bestShift` 의 물 마스크를 오염시킨다 — 어떤 이동을 시도해도 정지한 풀 가장자리가
     //   SAD 를 때려서 최적 이동이 (0,0)으로 눌린다. 실측: 술 켜면 이동 0.0px, 끄면 아래 수치.
     //   ⇒ **판정을 완화하지 않는다**(기준은 그대로 ≥3px·투영 >2.0). 계측 대상 층만 격리한다.
     //     (배치 19 §5-b 예고 그대로 — 대조군 오염은 상자/층을 옮겨서 푼다.)
     //   자연물 층 자체의 회귀는 `scripts/e2e-nature.js` 가 32판정으로 따로 본다.
-    await knob({ legacy: false, waterOff: false, freezeT: 100, natOff: true });
+    await knob({ legacy: false, waterOff: false, freezeT: 100, natOff: true, shoreOff: true });
     const d0 = await dbg();
     // 오염 실측 — 이 하네스가 왜 natOff 로 재는지 숫자로 남긴다(주석만 믿지 마라).
-    await knob({ natOff: false });
+    await knob({ natOff: false, shoreOff: false });
     const cA = await grab('nat100');
     await knob({ freezeT: 100.12 });
     const cB = await grab('nat10012');
     const cSh = bestShift(cA, cB, isWaterPx, BOX, 12);
-    await knob({ freezeT: 100, natOff: true });
+    await knob({ freezeT: 100, natOff: true, shoreOff: true });
     const fA = await grab('t100'), fA2 = await grab('t100b');       // 같은 시각 두 프레임 — 결정론/반례
     // ★Δt 선택은 실측으로 정했다: 이류 속도가 ADV=64 월드px/초라 0.9초면 iso 로 56px 밀리는데
     //   1패스의 검색창(±8px)을 훌쩍 넘어 "안 움직인다"는 **없는 결함**이 나왔다.
