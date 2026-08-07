@@ -22,5 +22,10 @@ run cutaway     900 node scripts/e2e-cutaway.js
 run metallurgy  900 node scripts/e2e-metallurgy.js
 run village    1200 node scripts/e2e-village.js
 run guest       900 node scripts/e2e-guest-reconnect.js
+# ★지형 렌더 계열 — 배치 19~22. 물·타일상태·산 덮개·산 가림.
+run waterperf  1200 node scripts/e2e-waterperf.js
+run tilestate  1500 node scripts/e2e-tilestate.js
+run mountain    900 node scripts/e2e-mountain.js
+run mtocc       900 node scripts/e2e-mtocc.js
 killport 3020; killport 3010
 echo "── 로그: $OUT/"
