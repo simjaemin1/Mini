@@ -8,7 +8,7 @@ const { spawn } = require('child_process');
 const { PNG } = require('pngjs');
 const ROOT = path.join(__dirname, '..');
 const CPORT = 3010, ZPORT = 3020;
-const SITE = { cx: 1750, cy: 74 };
+const SITE = { cx: parseInt(process.env.GAP_CX || "1750", 10), cy: parseInt(process.env.GAP_CY || "74", 10) };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const procs = [];
 function boot(name, file, env) {

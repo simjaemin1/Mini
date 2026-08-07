@@ -1649,16 +1649,14 @@ const SIM_JOB_EMOJI = {
   //      플레이어 뒤로 간다. 문제는 그보다 **멀리 남동쪽**에 있는 큰 산이다 — 발치는 화면
   //      아래쪽에 있는데 몸통이 위로 2000px 넘게 뻗어 올라와 나를 덮는다.
   //      ⇒ 즉 "내가 산의 서/북쪽"일 때만 생긴다. 재민 관찰과 정확히 일치한다.
-  //   ⓑ **왜 숨기지 않고 뚫나**: 집 지붕은 '미표시'(좀보이드 문법)지만 재민 지시는 **투명**이다.
-  //      산이 통째로 사라지면 지형이 없어져 방향 감각이 깨진다 — 산은 남고 **내 자리만** 비운다.
+  //   ⓑ **왜 숨기지 않고 반투명인가**: 집 지붕은 '미표시'(좀보이드 문법)지만 재민 지시는 **반투명**이다.
+  //      산이 통째로 사라지면 지형이 없어져 방향 감각이 깨진다 — 산은 남고 **뒤가 비친다**.
   //   ⓒ **판정은 상자가 아니라 알파로** 한다. 스프라이트 프레임의 86%는 투명 여백이라
   //      상자로 재면 "닿지도 않은 산"이 흐려진다(자명 통과 금지 — 반례가 실제로 존재한다).
-  //   ⓓ 구멍 안은 **큰 그림을 다시 래스터하지 않는다** — 구멍 크기 오프스크린에 한 번만
-  //      그리고 방사 감쇠를 파낸 뒤 되붙인다. 가려질 때만 드는 비용이고 상수 크기다.
-  const MT_OCC_R = 82, MT_OCC_A = 0.26;
+  //   ⓓ 가리는 **한 장만** 반투명하다. 화면의 다른 산은 그대로다 — 그게 반례이자 판정이다.
+  const MT_OCC_R = 82, MT_OCC_A = 0.38;   // 반투명 세기 — 산은 남고 뒤가 비친다
   let _mtOcc = null, _mtOccN = 0;      // {x,y,z} — 이번 프레임 내 화면 좌표와 z · 가린 산 장수
   const _mtAlphaMap = new Map();
-  let _mtHoleCv = null;
   function _mtAlphaAt(name, u, v) {
     let m = _mtAlphaMap.get(name);
     if (!m) {
@@ -1702,25 +1700,11 @@ const SIM_JOB_EMOJI = {
     }
     if (occ) { _mtOccN++; if (window.__mtOccDbg) window.__mtOccDbg.n = _mtOccN; }
     if (!occ) { g.drawImage(im, dx, dy, W, H); return; }
-    const R = MT_OCC_R;
-    g.save();                                   // 구멍 밖 — 원래대로(사각 CW + 원 CCW = 구멍)
-    g.beginPath();
-    g.rect(dx - 2, dy - 2, W + 4, H + 4);
-    g.arc(_mtOcc.x, _mtOcc.y, R, 0, Math.PI * 2, true);
-    g.clip(); g.drawImage(im, dx, dy, W, H); g.restore();
-    if (!_mtHoleCv) { _mtHoleCv = document.createElement('canvas'); _mtHoleCv.width = _mtHoleCv.height = R * 2; }
-    const hg = _mtHoleCv.getContext('2d');
-    hg.setTransform(1, 0, 0, 1, 0, 0); hg.globalCompositeOperation = 'source-over';
-    hg.clearRect(0, 0, R * 2, R * 2);
-    hg.drawImage(im, dx - (_mtOcc.x - R), dy - (_mtOcc.y - R), W, H);
-    hg.globalCompositeOperation = 'destination-out';
-    const grd = hg.createRadialGradient(R, R, 0, R, R, R);
-    const k = 1 - MT_OCC_A;
-    grd.addColorStop(0, 'rgba(0,0,0,' + k + ')');
-    grd.addColorStop(0.55, 'rgba(0,0,0,' + (k * 0.88) + ')');
-    grd.addColorStop(1, 'rgba(0,0,0,0)');
-    hg.fillStyle = grd; hg.fillRect(0, 0, R * 2, R * 2);
-    g.drawImage(_mtHoleCv, _mtOcc.x - R, _mtOcc.y - R);
+    // ★★[재민 2026-08-07 정정] *"반투명하게 보이게 해달라는 거였어"*
+    //   1차 구현은 **내 자리만 구멍**을 뚫었다. 재민이 원한 건 **산 전체가 비치는 것**이다.
+    //   구멍은 "산에 뚫린 창"으로 읽히고, 반투명은 "산 너머가 비친다"로 읽힌다 — 다른 그림이다.
+    //   ⇒ 가리는 산 **한 장을 통째로** 낮은 알파로 그린다. 안 가리는 산은 손대지 않는다.
+    g.save(); g.globalAlpha = MT_OCC_A; g.drawImage(im, dx, dy, W, H); g.restore();
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

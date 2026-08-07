@@ -99,31 +99,34 @@ function diff(a, b, box) {
   await knob({ mtOff: true });   const noMt = await shot('nomt');    // 산 자체가 없는 그림
   await knob({ mtOff: false });
 
-  // ★'구멍 밖 산 상자'는 **찍지 말고 재서 고른다**. 눈대중으로 잡았더니 산이 한 화소도
-  //   없는 빈 하늘이 걸렸고, 그러면 ⑤ 는 무엇을 재도 통과하는 자명 판정이 된다.
-  //   산 함량(끔↔무산 차)이 가장 큰 상자를 구멍 반경 밖에서 고른다.
+  // ★⑤ 는 규격이 바뀌면서 **재는 대상**이 바뀌었다.
+  //   1차 규격(구멍)일 땐 '구멍 밖 산은 그대로'가 반례였다.
+  //   재민 정정(전체 반투명) 후엔 그 반대가 판정이다 — **가리는 산이 고르게 흐려지는가**.
+  //   ★옛 구멍 구현이 정확히 이 판정의 반례다: 구멍에서 먼 자리는 |Δ|=0 이 나온다.
+  //   ★상자는 눈대중이 아니라 **재서 고른다**(덫 13번) — 산이 실제로 든 자리 중 나에게서 먼 곳.
   let farBox = null, farBest = 0;
   for (let bx = 40; bx < 1300; bx += 60) for (let by = 120; by < 800; by += 60) {
     const b = [bx, by, bx + 120, by + 90];
-    const cxm = bx + 60, cym = by + 45;
-    if (Math.hypot(cxm - P.x, cym - P.y) < R + 110) continue;   // 구멍(+여유) 밖만
-    const m = diff(off, noMt, b);
+    if (Math.hypot(bx + 60 - P.x, by + 45 - P.y) < 300) continue;   // 내 자리에서 멀리
+    const m = diff(off, noMt, b);                                   // 산 함량
     if (m > farBest) { farBest = m; farBox = b; }
   }
-  console.log(`  [상자] 산 함량 최대 상자 ${JSON.stringify(farBox)} · 산 함량 ${farBest.toFixed(1)} · 내 자리에서 ${Math.round(Math.hypot(farBox[0] + 60 - P.x, farBox[1] + 45 - P.y))}px`);
+  if (farBox) console.log(`  [상자] 나에게서 먼 산 상자 ${JSON.stringify(farBox)} · 산 함량 ${farBest.toFixed(1)} · 거리 ${Math.round(Math.hypot(farBox[0] + 60 - P.x, farBox[1] + 45 - P.y))}px`);
 
   const dMeOffNoMt = diff(off, noMt, meBox);
   const dMeOnOff = diff(on, off, meBox);
   const dMeOnNoMt = diff(on, noMt, meBox);
-  const dFar = diff(on, off, farBox);
-  const dFarNoMt = diff(off, noMt, farBox);
+  const dFar = farBox ? diff(on, off, farBox) : 0;
+  const dFarNoMt = farBest;
 
   ok('② 대조군에서 내 자리가 실제로 산에 덮여 있다', dMeOffNoMt > 12, `산 있음↔없음 내 자리 차 ${dMeOffNoMt.toFixed(1)}`);
-  ok('③ 구멍이 뚫렸다(대조군과 다르다)', dMeOnOff > 8, `켬↔끔 내 자리 차 ${dMeOnOff.toFixed(1)}`);
+  ok('③ 가리는 산이 반투명해졌다(대조군과 다르다)', dMeOnOff > 8, `켬↔끔 내 자리 차 ${dMeOnOff.toFixed(1)}`);
   ok('④ 뚫은 쪽이 "산 없는 그림"에 더 가깝다', dMeOnNoMt < dMeOffNoMt * 0.7,
     `켬↔무산 ${dMeOnNoMt.toFixed(1)} < 끔↔무산 ${dMeOffNoMt.toFixed(1)} 의 70%`);
-  ok('⑤ ★구멍 밖 산은 손대지 않았다', dFar < 1.0 && dFarNoMt > 12,
-    `밖 켬↔끔 ${dFar.toFixed(2)} (≈0) · 그 상자에 산이 있음 확인 ${dFarNoMt.toFixed(1)} ← 이게 0 이면 판정이 자명하다`);
+  ok('⑤ ★구멍이 아니라 **산 전체**가 흐려진다', !!farBox && dFarNoMt > 12 && dFar > 3 && dFar > dMeOnOff * 0.35,
+    `내 자리 |Δ| ${dMeOnOff.toFixed(1)} · 먼 자리 |Δ| ${dFar.toFixed(1)} (구멍 구현이면 여기가 0 이다) · 그 상자 산 함량 ${dFarNoMt.toFixed(1)}`);
+  ok('⑤b ★산이 사라지지는 않았다(반투명이지 투명이 아니다)', dMeOnNoMt > 2.0,
+    `켬↔무산 내 자리 차 ${dMeOnNoMt.toFixed(1)} > 2.0 — 0 이면 산이 통째로 없어진 것이다`);
 
   // ⑦ ★덮개 배치가 가림을 실제로 줄였나 — 같은 자리·같은 시계에서 배치만 바꿔 잰다
   await knob({ mtLegacy: false });
