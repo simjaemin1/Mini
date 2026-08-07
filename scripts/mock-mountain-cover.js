@@ -157,7 +157,7 @@ function placeA(){
 //     A 는 밴드 폭 하나를 한 장으로 받아 5~9배 확대(=뭉갬)를 만들었다. 여기선 나눠 덮는다.
 //     ⇒ 실루엣이 저절로 "높은 등성이 · 낮아지는 어깨 · 잔 자락"이 된다.
 //     ⇒ 높이 배율 vy 도 가장자리 거리에 태운다 — 안쪽일수록 높다(스카이라인이 산맥이 된다).
-let DE=null;
+let DE=null, DO=null;      // DE: 바위 **안쪽** 가장자리 거리 · DO: 바위 **바깥** 거리(기슭용)
 function buildDE(){
   const INF=1e6,d=new Float32Array(S.w*S.h);
   for(let y=0;y<S.h;y++)for(let x=0;x<S.w;x++)d[y*S.w+x]=(S.cells[y][x]===2)?INF:0;
@@ -167,6 +167,15 @@ function buildDE(){
   for(let y=S.h-1;y>=0;y--)for(let x=S.w-1;x>=0;x--){const i=y*S.w+x;if(d[i]===0)continue;
     d[i]=Math.min(d[i],at(x+1,y)+1,at(x,y+1)+1,at(x+1,y+1)+1.414,at(x-1,y+1)+1.414);}
   DE=d;
+  // ★바깥 거리 — 바위에서 몇 셀 떨어진 풀밭인가. 기슭이 여기에 선다.
+  const o=new Float32Array(S.w*S.h);
+  for(let y=0;y<S.h;y++)for(let x=0;x<S.w;x++)o[y*S.w+x]=(S.cells[y][x]===2)?0:INF;
+  const ao=(x,y)=>(x<0||y<0||x>=S.w||y>=S.h)?INF:o[y*S.w+x];
+  for(let y=0;y<S.h;y++)for(let x=0;x<S.w;x++){const i=y*S.w+x;if(o[i]===0)continue;
+    o[i]=Math.min(o[i],ao(x-1,y)+1,ao(x,y-1)+1,ao(x-1,y-1)+1.414,ao(x+1,y-1)+1.414);}
+  for(let y=S.h-1;y>=0;y--)for(let x=S.w-1;x>=0;x--){const i=y*S.w+x;if(o[i]===0)continue;
+    o[i]=Math.min(o[i],ao(x+1,y)+1,ao(x,y+1)+1,ao(x+1,y+1)+1.414,ao(x-1,y+1)+1.414);}
+  DO=o;
 }
 const edgeD=(cx,cy)=>(cx<0||cy<0||cx>=S.w||cy>=S.h)?0:DE[cy*S.w+cx];
 const TIERS=[
@@ -174,7 +183,11 @@ const TIERS=[
   {k:'M',minD: 3.5,step: 7.5,s0:1.18,s1:1.68,solo:['mt_M1','mt_M2'], sp:0.32,seed:412},
   {k:'S',minD:-1.0,step: 4.2,s0:0.70,s1:1.00,solo:['mt_S1','mt_S2'], sp:0.30,seed:413,maxD:5.0},
 ];
+// ★둥근/뾰족 혼합 [재민 2026-08-07: "여러 개 혼합해서 쓰자. 물론 한반도 지역은 둥근 거 위주로"]
+//   비율은 **배치 손잡이**다 — 굽기는 재료만 댄다. 0 = 전부 뾰족 · 1 = 전부 둥근.
+let ROUND_MIX=0;
 function pickName(cx,cy,ang,T){
+  const rnd = hash(cx,cy,T.seed+21) < ROUND_MIX && !!AN['mt_RG0v0'];
   if(hash(cx,cy,T.seed+7)<T.sp) return T.solo[(hash(cx,cy,T.seed+8)*T.solo.length)|0];
   // ★능선 각도에 ±14° 해시 흔들림 — 직선 능선에서 같은 옥탄트가 줄서는 걸 끊는다
   const jit=(hash(cx,cy,T.seed+9)-0.5)*28*Math.PI/180;
@@ -182,15 +195,16 @@ function pickName(cx,cy,ang,T){
   const oct=Math.round(deg/22.5)%8;
   const isF=!ROCKR.has(nearestRidge(cx*CELL+HALF,cy*CELL+HALF).name);
   const v=isF?((hash(cx,cy,77)*2)|0):((hash(cx,cy,77)*3)|0);
-  return (isF?'mt_F':'mt_G')+oct+'v'+v;
+  return (rnd?'mt_R':'mt_')+(isF?'F':'G')+oct+'v'+v;
 }
 function hgt(dE,cx,cy,seed){ // 높이 = 가장자리 거리 램프 + 자리 지터
+  // ★바닥을 0.74 → 0.58 로 내렸다. 자락이 낮아야 기슭(0.26~0.58)으로 **끊김 없이** 이어진다.
   const t=Math.max(0,Math.min(1,dE/14));
-  return 0.74+0.44*t+0.16*(hash(cx,cy,seed)-0.5);
+  return 0.58+0.60*t+0.16*(hash(cx,cy,seed)-0.5);
 }
-function placeC(mul){
+function placeC(mul,TT){
   const segs=[];
-  for(const T of TIERS){
+  for(const T of (TT||TIERS)){
     for(let gy=0;gy<S.h;gy+=T.step) for(let gx=0;gx<S.w;gx+=T.step){
       const j1=hash(Math.round(gx*13),Math.round(gy*13),T.seed), j2=hash(Math.round(gx*13),Math.round(gy*13),T.seed+1);
       const cx=Math.round(gx+(j1-0.5)*T.step*0.9), cy=Math.round(gy+(j2-0.5)*T.step*0.9);
@@ -206,6 +220,63 @@ function placeC(mul){
   }
   return segs;
 }
+// ── 기슭 [재민 3: "산과 풀의 경계가 뚝 끊긴다"] ─────────────────────────────
+//   ★기슭은 **작은 산이 아니라 납작한 산**이다. 크기만 줄이면 자갈로 읽히고,
+//     세로만 눌러야 '낮은 둔덕'으로 읽힌다. 그래서 sc 는 조금만 줄이고 vy 를 크게 눌렀다.
+//   ★균일 산포 금지(배치 21 재민 지적 "일부러 심은 느낌") — 밀도도 거리에 따라 준다.
+//   ★지형 데이터는 안 건드린다 — 순수 렌더다. 콜라이더·통행·자원 전부 그대로.
+const FOOT={step:3.0,dMax:5.2,s0:0.46,s1:0.95,vy0:0.26,vy1:0.58};
+function placeFoot(mul){
+  const segs=[];
+  for(let gy=0;gy<S.h;gy+=FOOT.step) for(let gx=0;gx<S.w;gx+=FOOT.step){
+    const j1=hash(Math.round(gx*17),Math.round(gy*17),811), j2=hash(Math.round(gx*17),Math.round(gy*17),812);
+    const cx=Math.round(gx+(j1-0.5)*FOOT.step*1.0), cy=Math.round(gy+(j2-0.5)*FOOT.step*1.0);
+    if(cx<0||cy<0||cx>=S.w||cy>=S.h) continue;
+    if(S.cells[cy][cx]!==0) continue;                 // 풀만 — 물·바위 제외
+    const dO=DO[cy*S.w+cx]; if(dO>FOOT.dMax||dO<=0) continue;
+    const t=1-dO/FOOT.dMax;                            // 1 = 바위 코앞
+    if(hash(cx,cy,631) > 0.18+0.72*t) continue;        // 밀도도 거리에 따라
+    const nr=nearestRidge(cx*CELL+HALF,cy*CELL+HALF);
+    segs.push({x:cx*CELL+HALF,y:cy*CELL+HALF,name:pickName(cx,cy,nr.ang,TIERS[2]),
+      sc:(FOOT.s0+(FOOT.s1-FOOT.s0)*t*(0.55+0.45*hash(cx,cy,813)))*mul,
+      vy:FOOT.vy0+(FOOT.vy1-FOOT.vy0)*t+0.10*(hash(cx,cy,814)-0.5),tier:'기슭'});
+  }
+  return segs;
+}
+// ── 주봉 [재민 2: "큰 봉우리가 잘 안 선다"] ──────────────────────────────────
+//   ★덩어리 **가장 깊은 안쪽**에만, 아주 성기게, 아주 크게. 한 화면에 한둘만 서야 '주봉'이다.
+//   ★배율 3 이상은 2048 판으로 못 버틴다(확대 한계 1.96) → 전용 mt_X 를 4096 으로 따로 굽는다.
+// ★두 번 헛다리를 짚었다. 기록해 둔다.
+//   1차 sc 2.9~3.9 → **화면을 통째로 먹었다.** 1:1 화면은 가로 22셀뿐이고 L 이 이미 17셀이다.
+//   2차 "이웃을 낮춰 대비를 벌리자" → 대비는 벌어졌지만 주봉은 여전히 **벽**이었다.
+//   ⇒ 진짜 이유: **땅에서 올려다보는 시점에서 '넓은 산'은 봉우리가 아니라 벽이다.**
+//     주봉이 선다는 건 **스카이라인 위로 솟는다**는 뜻이고, 그건 폭이 아니라 **높이**다.
+//   ⇒ 그래서 폭은 L 과 비슷하게 두고 **키가 큰 메시**(mt_X: 높이 11~12.6 = L1 의 1.9배)를 쓴다.
+//     발치 고정 세로 배율(vy)은 이미 렌더가 지원한다 — 새 기구가 필요 없다.
+const PEAK={minD:11,step:26,s0:1.90,s1:2.40};
+// 대비를 벌린 계층(주봉을 쓸 때만) — 이웃이 물러나야 주봉이 선다
+const TIERS_LOW=[
+  {k:'L',minD: 9.0,step:11.5,s0:1.45,s1:1.90,solo:['mt_L1'],         sp:0.34,seed:411},
+  {k:'M',minD: 3.5,step: 6.4,s0:0.95,s1:1.30,solo:['mt_M1','mt_M2'], sp:0.32,seed:412},
+  {k:'S',minD:-1.0,step: 3.6,s0:0.62,s1:0.88,solo:['mt_S1','mt_S2'], sp:0.30,seed:413,maxD:5.0},
+];
+function placePeak(mul,names){
+  const segs=[];
+  for(let lj=Math.floor(-1);lj<=Math.ceil(S.h/PEAK.step)+1;lj++)
+  for(let li=Math.floor(-1);li<=Math.ceil(S.w/PEAK.step)+1;li++){
+    const cx=Math.round(li*PEAK.step+(hash(li,lj,901)-0.5)*PEAK.step*0.8);
+    const cy=Math.round(lj*PEAK.step+(hash(li,lj,902)-0.5)*PEAK.step*0.8);
+    if(!isRock(cx,cy)) continue;
+    if(DE[cy*S.w+cx]<PEAK.minD) continue;
+    const nm=names[(hash(cx,cy,903)*names.length)|0];
+    if(!AN[nm]) continue;
+    segs.push({x:cx*CELL+HALF,y:cy*CELL+HALF,name:nm,
+      sc:(PEAK.s0+(PEAK.s1-PEAK.s0)*hash(cx,cy,904))*mul,
+      vy:1.02+0.16*(hash(cx,cy,905)-0.5),tier:'주봉'});
+  }
+  return segs;
+}
+
 // ★틈 메우기 — 눈이 아니라 알파로 찾는다. 남은 맨 바위 셀에 잔봉우리를 얹는다.
 function gapFill(segs,mul,rounds){
   let cur=segs.slice();
@@ -294,8 +365,25 @@ const RESULT=[];
 function go(){
   for(const sc of SCENES){
     S=sc; buildDE();
-    const cands=[['A 현행',placeA(),1]];
-    for(const m of SCALES) cands.push(['C 계층'+(SCALES.length>1?' ×'+m:''),gapFill(placeC(m),m,2),m]);
+    const XN=['mt_X1','mt_X2','mt_X3'].filter((n)=>AN[n]);
+    const PK=XN.length?XN:['mt_L1'];
+    const mk=(o)=>{ let g=placeC(1,o.low?TIERS_LOW:null);
+      if(o.peak) g=placePeak(1,PK).concat(g);
+      g=gapFill(g,1,2);
+      if(o.foot) g=g.concat(placeFoot(1));
+      return g; };
+    const mkR=(o,r)=>{ ROUND_MIX=r; const g=mk(o); ROUND_MIX=0; return g; };
+    // ★대안 — **새 스프라이트 없이** L 계층의 높이 변주만 넓힌다.
+    //   이 카메라(가로 22셀)에선 큰 산을 통째로 볼 수 없다. '주봉이 선다'가 눈에 들어오는 건
+    //   봉우리 하나를 알아보는 게 아니라 **스카이라인이 출렁이는** 것이다.
+    const skyline=(g)=>g.map((x)=>x.tier==='L'
+      ? Object.assign({},x,{vy:0.85+1.10*hash(Math.round(x.x),Math.round(x.y),977)}) : x);
+    const cands=[['① 지금 라이브 (뾰족 100%)',mkR({},0)],
+                 ['② +기슭',mkR({foot:1},0)],
+                 ['③ +기슭 +주봉',mkR({foot:1,peak:1,low:1},0)],
+                 ['③b +기슭 +스카이라인 변주(새 스프라이트 0)',skyline(mkR({foot:1},0))],
+                 ['④ ★+둥근 75% (한반도안)',mkR({foot:1,peak:1,low:1},0.75)],
+                 ['⑤ 둥근 100% (대조)',mkR({foot:1,peak:1,low:1},1.0)]];
     for(const [nm,segs] of cands){
       const b=bareCells(segs), z=cost(segs);
       const t={};for(const g of segs)t[g.tier]=(t[g.tier]||0)+1;

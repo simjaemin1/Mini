@@ -72,8 +72,11 @@ def mountain_material():
     bump = nt.nodes.new('ShaderNodeBump'); bump.inputs['Strength'].default_value = 0.38
     nt.links.new(bnoise.outputs['Fac'], bump.inputs['Height'])
     nt.links.new(bump.outputs['Normal'], p.inputs['Normal'])
-    p.inputs['Roughness'].default_value = 0.92
-    try: p.inputs['Specular IOR Level'].default_value = 0.12
+    # ★거울 반사 0 [2026-08-07 실측] — 0.12 로도 큰 매끈한 면(mt_X1)에서 흰 반점이 터진다.
+    #   화소의 5.5%가 250 초과로 날아갔다(작은 각면 스프라이트 mt_G0v0 은 0개라 안 보였다).
+    #   청동기 화강암에 하이라이트는 애초에 안 맞는다.
+    p.inputs['Roughness'].default_value = 0.97
+    try: p.inputs['Specular IOR Level'].default_value = 0.0
     except Exception: pass
     return m
 
@@ -114,25 +117,40 @@ def forest_material():
 MAT = mountain_material()
 MATF = forest_material()
 
-def make_massif(name, base_r, height, subpeaks, seed, mat=None):
+def make_massif(name, base_r, height, subpeaks, seed, mat=None, rnd_shape=False):
+    """rnd_shape=True → 둥근 산 [재민 2026-08-07 "둥근 버전도 만들어서 여러 개 혼합해서 쓰자"]
+
+    ★뾰족함이 어디서 오나: 원뿔 꼭지 radius2=0.06*pr(거의 점) + 면 9개(각지다)
+      + 정점 지터 ±24%(들쭉날쭉). 셋이 겹쳐 '종이접기 송곳'이 된다.
+    ★둥글게 하는 법: 꼭지를 뭉툭하게(0.34) · 면을 늘리고(20) · 지터를 절반으로 줄이고
+      · **섭디비전 1단 + 부드러운 셰이딩**. 한반도 산은 닳아 둥근 노년기 지형이다.
+    """
     random.seed(seed)
     objs = []
     peaks = [(0.0, 0.0, height, base_r)]
+    # ★부봉 비율 — 기본은 종전값. 주봉(mt_X)은 이걸 줄여 **으뜸 정상 하나**가 서게 한다.
+    sh = float(os.environ.get('MT_SUBH', '0')) or None
+    sr = float(os.environ.get('MT_SUBR', '0')) or None
     for i in range(subpeaks):
         a = random.uniform(0, 6.283); rr = base_r * random.uniform(0.45, 0.8)
         peaks.append((math.cos(a)*rr, math.sin(a)*rr,
-                      height*random.uniform(0.45, 0.75), base_r*random.uniform(0.45, 0.7)))
+                      height*random.uniform(0.28, sh) if sh else height*random.uniform(0.45, 0.75),
+                      base_r*random.uniform(0.26, sr) if sr else base_r*random.uniform(0.45, 0.7)))
+    nv = int(os.environ.get('MT_RNV', '14')) if rnd_shape else 9
+    r2 = float(os.environ.get('MT_RR2', '0.18')) if rnd_shape else 0.06
+    jxy = float(os.environ.get('MT_RJ', '0.20')) if rnd_shape else 0.24
+    jz = 0.07 if rnd_shape else 0.10
     for i, (px, py, ph, pr) in enumerate(peaks):
-        bpy.ops.mesh.primitive_cone_add(vertices=9, radius1=pr, radius2=0.06*pr, depth=ph,
+        bpy.ops.mesh.primitive_cone_add(vertices=nv, radius1=pr, radius2=r2*pr, depth=ph,
                                         location=(px, py, ph/2))
         c = bpy.context.object
         me = c.data
         rnd = random.Random(seed*31+i)
         for v in me.vertices:
             f = 1.0 - (v.co.z + ph/2) / ph * 0.55
-            v.co.x += rnd.uniform(-0.24, 0.24) * pr * f
-            v.co.y += rnd.uniform(-0.24, 0.24) * pr * f
-            v.co.z += rnd.uniform(-0.10, 0.10) * ph
+            v.co.x += rnd.uniform(-jxy, jxy) * pr * f
+            v.co.y += rnd.uniform(-jxy, jxy) * pr * f
+            v.co.z += rnd.uniform(-jz, jz) * ph
         me.update()
         c.data.materials.append(mat or MAT)
         objs.append(c)
@@ -140,6 +158,12 @@ def make_massif(name, base_r, height, subpeaks, seed, mat=None):
     bpy.context.view_layer.objects.active = objs[0]
     bpy.ops.object.join()
     mass = bpy.context.object; mass.name = name
+    if rnd_shape and os.environ.get('MT_RSUB') == '1':
+        # ★1차 시도에서 섭디비전 1단 + shade_smooth 를 넣었더니 **만두**가 됐다.
+        #   실루엣까지 뭉개져 저폴리 각면 화풍에서 벗어난다. 기본값은 끔.
+        m = mass.modifiers.new('sub', 'SUBSURF'); m.levels = 1; m.render_levels = 1
+        bpy.ops.object.modifier_apply(modifier=m.name)
+        bpy.ops.object.shade_smooth()
     mass.scale[2] = ZSQ
     bpy.ops.object.transform_apply(scale=True)
     return mass
@@ -172,15 +196,40 @@ for a in range(8):
     for v in range(2):   # ★숲산 세그먼트 [재민 "무조건 돌산이네.. 다른 버전도 가능해?"] — 낮고 둥글게
         SPECS.append(('mt_F%dv%d' % (a, v), 2.5, 4.2 - 0.4 * v, 3, 300 + a * 11 + v * 97,
                       (2.1, a * 22.5 + 90), 'F'))
+# ★★둥근 판 [재민 2026-08-07: "둥근 버전도 만들어서, 여러 개 혼합해서 쓰자.
+#   물론 한반도 지역은 둥근 거 위주로"] — 이름 규약: **접두 R = 둥근**.
+#   섞는 비율은 굽기가 아니라 **배치 쪽 손잡이**다(굽기는 재료만 댄다).
+for a in range(8):
+    for v in range(3):   # 둥근 돌산 — 닳은 화강암 능선
+        SPECS.append(('mt_RG%dv%d' % (a, v), float(os.environ.get('MT_RBR', '3.05')),
+                      float(os.environ.get('MT_RH', '3.9')) - 0.35 * v, 3 + (v % 2),
+                      700 + a * 7 + v * 131, (2.1, a * 22.5 + 90), 'R'))
+    for v in range(2):   # 둥근 숲산 — 노년기 구릉
+        SPECS.append(('mt_RF%dv%d' % (a, v), float(os.environ.get('MT_RBR', '3.05')) + 0.2,
+                      float(os.environ.get('MT_RH', '3.9')) - 0.7 - 0.3 * v, 3,
+                      900 + a * 11 + v * 97, (2.1, a * 22.5 + 90), 'FR'))
+# ★주봉 [재민 2: "큰 봉우리가 잘 안 선다"] — **별도 굽기**(MT_X=1 MT_RES=4096)로 배율 4.3 까지 선명.
+#   2048 로는 확대 없는 한계가 1.96 이라 주봉을 크게 세우면 다시 뭉갠다.
+SPECS_X = [
+    # ★1차 설계(밑변 5.4 · 부봉 4개 동급)는 **알 무더기**가 됐다 — 으뜸 정상이 없었다.
+    #   주봉 = 높은 정상 하나 + 낮은 어깨. 밑변을 줄이고 키를 올리고 부봉을 눌렀다(MT_SUBH/MT_SUBR).
+    ('mt_X1', 3.4, 12.0, 2, 61, (1.5, 90), 'R'),    # 둥근 주봉 — 한반도 주력
+    ('mt_X2', 3.0, 13.5, 2, 67, (1.3, 90), 'R'),
+    ('mt_X3', 3.6, 12.5, 3, 71, (1.5, 90), ''),     # 뾰족 주봉 — 돌산 지역용
+]
+if os.environ.get('MT_X'):
+    SPECS = SPECS_X
 
 anchors = {}
 for spec in SPECS:
     name, r, h, sp, seed = spec[:5]
     if ONLY and name not in ONLY: continue
-    isF = (len(spec) > 6 and spec[6] == 'F')
+    flags = spec[6] if len(spec) > 6 else ''
+    isF = 'F' in flags
+    isR = 'R' in flags
     for o in [o for o in scene.objects if o.type == 'MESH']:
         bpy.data.objects.remove(o, do_unlink=True)
-    m = make_massif(name, r, h, sp, seed, MATF if isF else MAT)
+    m = make_massif(name, r, h, sp, seed, MATF if isF else MAT, rnd_shape=isR)
     if len(spec) > 5 and isinstance(spec[5], tuple):
         sx, rot = spec[5]
         m.scale[0] = sx; m.rotation_euler[2] = math.radians(rot)
