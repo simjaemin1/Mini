@@ -252,12 +252,42 @@ async function waitHttp(url, tries = 900) {
 
   // ★[2026-08-03g 배치 14 ②] **몸**의 기준선 — 종전엔 재접속하면 빈 몸으로 리스폰됐다.
   //   여기서 인벤·좌표를 적어 두고, 재접속 뒤 같은지 본다.
-  await send({ type: '__e2e_give', items: { berry: 41 } });
-  await sleep(1200);
-  { const c = await cellOf(); await gotoCenter(c.cx + 2, c.cy + 2); }   // 스폰 자리에서 확실히 벗어난다
-  await sleep(1500);
-  const bodyInv = await invOf(page);
-  const bodyPos = await absOf(page);
+  // ★★[2026-08-07 검증 세션 — 하네스 오류 13건째] give 를 **한 번 쏘고 마는 건 계측기 결함**이다.
+  //   실측(3/4 재현): 클라 orphan 워치독("내 pid가 2초간 tick에 없음")이 2코어 헤드리스에서
+  //   주기적으로 primary 를 재연결하는데, `sendPrimary` 는 ws 가 OPEN 이 아니면 **조용히 버린다**
+  //   (client.js 3356 — 반환값도 없다). 재연결 사이클이 이 give~기준선 읽기 창과 겹치면
+  //   ①give 소실 ②welcome 직전의 빈 인벤을 기준선으로 읽음 ③재연결 리스폰 좌표를 기준선으로 읽음
+  //   → 실패 3개가 한 뿌리로 난다. **배치 20B·21 회귀가 아니다** — 배치 20A 베이스(08419f5)
+  //   워크트리에서 같은 서명으로 재현했다(같은 워치독 로그 · 같은 "베리 undefined").
+  //   ⇒ 판정은 한 글자도 안 바꾸고, **실릴 때까지 재송신**한다(서버 반영이 확인될 때까지).
+  //   그리고 한 겹 더(실측 1회): 그 재연결이 **central 순단**과 겹치면 zone 이 '1회용' 폴백
+  //   신원(anon_<8자리>)으로 떨어진다 — 그때부터 하네스는 **딴 사람 몸**을 재는 것이라
+  //   기준선 자체가 무효다(1회용에게 준 물건이 영속 안 되는 건 결함이 아니라 설계다).
+  //   ⇒ 기준선은 반드시 **pid1(영속 신원) 위에서** 잡는다. 신원이 갈렸으면 다시 들어간다
+  //     (localStorage 토큰이 그대로라 재입장 = 같은 사람. 그게 이 검사의 주제 그 자체다).
+  let bodyInv = {}, bodyPos = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    for (let tr = 0; tr < 8; tr++) {
+      await send({ type: '__e2e_give', items: { berry: 41 } });
+      await sleep(1500);
+      bodyInv = await invOf(page);
+      if ((bodyInv.berry || 0) >= 41) break;
+    }
+    { const c = await cellOf(); await gotoCenter(c.cx + 2, c.cy + 2); }   // 스폰 자리에서 확실히 벗어난다
+    await sleep(1500);
+    // 기준선도 **안정될 때까지** 읽는다 — 걷는 동안 재연결이 났으면 welcome 이 인벤을 되채울
+    // 때까지 잠깐 비는 순간이 있다(그 순간을 읽으면 '빈 몸'이라는 거짓 기준선이 된다).
+    for (let tr = 0; tr < 10; tr++) {
+      bodyInv = await invOf(page);
+      if ((bodyInv.berry || 0) >= 41) break;
+      await sleep(1000);
+    }
+    bodyPos = await absOf(page);
+    const bodyPid = await page.evaluate(() => window.__getPlayerId && window.__getPlayerId());
+    if (bodyPid === pid1 && (bodyInv.berry || 0) >= 41) break;
+    console.log(`  [!] 기준선 신원 갈림(${bodyPid} ≠ ${pid1}) 또는 give 미반영 — 재입장해 기준선을 다시 잡는다 (${attempt + 1}/3)`);
+    await enterAsGuest(page);
+  }
   ok((bodyInv.berry || 0) >= 41, `★검사 전제 — 몸에 물건이 실렸다(베리 ${bodyInv.berry})`);
   await sleep(2500);   // savePlayer 는 fire-and-forget — central 쓰기가 끝날 틈을 준다
 
