@@ -146,6 +146,11 @@ const rget = async (q) => (await (await fetch(`http://localhost:${ZPORT}/roomdbg
     try { const b = await page.$(sel); if (b) { await b.click(); break; } } catch (e) {}
   }
   await sleep(15000);
+  //   ★[계측 격리 2026-08-07] 배치 21 이 **지면 풀 카펫**을 흔들리게 했다 — 이 하네스의
+  //     '빈 땅 대조군은 정지' 판정은 이제 저절로 깨진다(실측 |Δ| 3.8 > 2). 배치 19 인계가
+  //     예고했던 그 오염이 드디어 실현됐다. **기준을 낮추지 않고 재는 층을 격리**한다.
+  //     sleep 없는 evaluate 로 곧바로 끈다 — 격리가 실험 타이밍을 밀면 안 된다.
+  await page.evaluate(() => { if (window.__terrain19) window.__terrain19.windOff = true; });
   await page.screenshot({ path: `${SHOTS}/01-inside.png` });
 
   const send = (m) => page.evaluate((mm) => { window.__sendPrimary(mm); return true; }, m);
@@ -245,6 +250,11 @@ const rget = async (q) => (await (await fetch(`http://localhost:${ZPORT}/roomdbg
     try { const bb = await p2.$(sel); if (bb) { await bb.click(); break; } } catch (e) {}
   }
   await sleep(15000);
+  //   ★[계측 격리 2026-08-07] 배치 21 이 **지면 풀 카펫**을 흔들리게 했다 — 이 하네스의
+  //     '빈 땅 대조군은 정지' 판정은 이제 저절로 깨진다(실측 |Δ| 3.8 > 2). 배치 19 인계가
+  //     예고했던 그 오염이 드디어 실현됐다. **기준을 낮추지 않고 재는 층을 격리**한다.
+  //     sleep 없는 evaluate 로 곧바로 끈다 — 격리가 실험 타이밍을 밀면 안 된다.
+  await p2.evaluate(() => { if (window.__terrain19) window.__terrain19.windOff = true; });
   await p2.screenshot({ path: `${SHOTS}/04-roof-on.png` });
   const rr2 = await p2.evaluate(() => window.__roomRoofDbg || null).catch(() => null);
   ok(rr2 && rr2.myRoom === null, '밖에서: 내 방이 없다(실외)');
@@ -315,6 +325,11 @@ const rget = async (q) => (await (await fetch(`http://localhost:${ZPORT}/roomdbg
     try { const bb = await p3.$(sel); if (bb) { await bb.click(); break; } } catch (e) {}
   }
   await sleep(15000);
+  //   ★[계측 격리 2026-08-07] 배치 21 이 **지면 풀 카펫**을 흔들리게 했다 — 이 하네스의
+  //     '빈 땅 대조군은 정지' 판정은 이제 저절로 깨진다(실측 |Δ| 3.8 > 2). 배치 19 인계가
+  //     예고했던 그 오염이 드디어 실현됐다. **기준을 낮추지 않고 재는 층을 격리**한다.
+  //     sleep 없는 evaluate 로 곧바로 끈다 — 격리가 실험 타이밍을 밀면 안 된다.
+  await p3.evaluate(() => { if (window.__terrain19) window.__terrain19.windOff = true; });
   await p3.screenshot({ path: `${SHOTS}/06-two-floor-outside.png` });
   const srv2 = await rget();
   ok(srv2.rooms === 2, `★서버가 방 2개(1층·2층)를 판정했다 (실측 ${srv2.rooms})`);

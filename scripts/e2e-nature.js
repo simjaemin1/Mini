@@ -62,6 +62,25 @@ const isWaterPx = (r, g, b) => b > r + 18 && b + g > r * 2 + 20;
 const isGreenPx = (r, g, b) => g - b > 18 && g > 40 && g < 225 && r < g + 20;
 const BOX = [40, 200, 1360, 880];
 function px(p, x, y) { const i = (y * p.width + x) * 4; return [p.data[i], p.data[i + 1], p.data[i + 2]]; }
+// ★[2026-08-07] 풀 카펫 항등식 검증용 — **문턱을 준** 차이. 8비트 반올림 때문에 '완전 동일'은
+//   구조를 쪼갠 뒤에는 성립하지 않는다. 성립해야 하는 건 "눈에 안 보일 만큼 같다"이다.
+function meanAbsDiff(a, b, box) {
+  let s2 = 0, n = 0;
+  for (let y = box[1]; y < box[3]; y++) for (let x = box[0]; x < box[2]; x++) {
+    const i = (y * a.width + x) * 4;
+    s2 += Math.abs(a.data[i] - b.data[i]) + Math.abs(a.data[i + 1] - b.data[i + 1]) + Math.abs(a.data[i + 2] - b.data[i + 2]);
+    n += 3;
+  }
+  return s2 / n;
+}
+function diffOver(a, b, box, thr) {
+  let n = 0;
+  for (let y = box[1]; y < box[3]; y++) for (let x = box[0]; x < box[2]; x++) {
+    const i = (y * a.width + x) * 4;
+    if (Math.abs(a.data[i] - b.data[i]) + Math.abs(a.data[i + 1] - b.data[i + 1]) + Math.abs(a.data[i + 2] - b.data[i + 2]) > thr) n++;
+  }
+  return n;
+}
 function diffCount(a, b) {            // 두 프레임에서 달라진 픽셀 수
   let n = 0;
   for (let y = BOX[1]; y < BOX[3]; y++) for (let x = BOX[0]; x < BOX[2]; x++) {
@@ -229,6 +248,29 @@ function diffCount(a, b) {            // 두 프레임에서 달라진 픽셀 �
     //   폭의 정본은 클라의 `_shoreMargin` 이다(하네스가 다시 짜면 사본 = 자명 통과).
     //   판정(빈 구간 비율·변동계수)만 여기서 한다.
     const shWidths = await page.evaluate(() => window.__shoreProbe(900)).catch(() => []);
+    // ── ⓘ 풀 카펫 흔들림 [2026-08-07 신설] ────────────────────────────────
+    //   ★재민 정정: 흔들려야 하는 건 흩뿌린 포기가 아니라 **초원에 깔린 지면 풀 텍스처**다.
+    //   구조: 바탕(평탄색) + 잎((tex−평탄색)×투과율)을 가로 띠로 어긋나게 가산 blit.
+    //   ⇒ 이 절의 핵심은 **항등식**이다 — 무풍이면 옛 그림과 픽셀이 같아야 한다.
+    //     (같지 않으면 "구조만 쪼갰다"가 아니라 그림을 바꾼 것이다.)
+    //   ★자연물·물을 꺼서 **카펫만** 남긴다 — 안 그러면 술과 수면이 움직인 픽셀을 카펫으로 오독한다.
+    await knob({ natOff: true, waterOff: true, windGrassOff: false, windForce: 0, freezeT: 100 });
+    const cpCalm = await grab('carpet-calm');
+    await knob({ windGrassOff: true });
+    const cpLegacy = await grab('carpet-legacy');
+    const cpDbgOff = await page.evaluate(() => window.__groundDbg).catch(() => null);
+    await knob({ windGrassOff: false, windForce: 0.9, freezeT: 100 });
+    //   ★띠 수는 **바람이 불 때** 재야 한다 — 무풍이면 어긋남이 0 이라 통짜 blit 로 떨어진다.
+    const cpDbgOn = await page.evaluate(() => window.__groundDbg).catch(() => null);
+    const cpW0 = await grab('carpet-w100');
+    await knob({ freezeT: 101.4 });
+    const cpW1 = await grab('carpet-w1014');
+    await knob({ windForce: 0, freezeT: 100 });
+    const cpC0 = await grab('carpet-c100');
+    await knob({ freezeT: 101.4 });
+    const cpC1 = await grab('carpet-c1014');
+    await knob({ natOff: false, waterOff: false, windForce: null, freezeT: 100 });
+
     const fMarginOn = await grab('margin-on');
     await knob({ shMargin: 0 });
     const shWidths0 = await page.evaluate(() => window.__shoreProbe(900)).catch(() => []);
@@ -236,7 +278,8 @@ function diffCount(a, b) {            // 두 프레임에서 달라진 픽셀 �
     await knob({ shMargin: 1 });
 
     S[tag] = { d0, fOn, fOn2, fNoFr, fNoPr, fNoNat, probe, probeNA, cerr, bad: [...new Set(bad)], fogOn, fogOff, gate, gateOff,
-               wOn100, wOn101, wCalm100, wCalm101, wBase100, wBase101, windFn, shWidths, shWidths0, fMarginOn, fMarginOff };
+               wOn100, wOn101, wCalm100, wCalm101, wBase100, wBase101, windFn, shWidths, shWidths0, fMarginOn, fMarginOff,
+               cpCalm, cpLegacy, cpW0, cpW1, cpC0, cpC1, cpDbgOn, cpDbgOff };
     await browser.close(); try { z.kill(); } catch (e) {}
     await sleep(2500);
   }
@@ -429,6 +472,28 @@ function diffCount(a, b) {            // 두 프레임에서 달라진 픽셀 �
     ok(d0n === 0, `★★반례 — 손잡이를 끄면 여백이 **하나도 안 생긴다** (${d0n}) = 판정이 손잡이를 실제로 본다`);
     ok(dpx > 1500, `★${tag} — 여백이 화면을 실제로 바꾼다 (${dpx}px)`);
   }
+
+  say('\n[10] ⓘ 풀 카펫 흔들림 — ★초원에 깔린 **지면 풀 텍스처** [재민 정정 2026-08-07]');
+  //  ★1패스에서 나는 흩뿌린 포기 스프라이트만 흔들고 카펫은 "비싸다"며 회부했다 — 그게 요청 대상이었다.
+  //    구조를 바탕+잎으로 쪼개 매 프레임 띠로 어긋나게 가산 blit 한다.
+  //    이 절의 제1판정은 **항등식**: 무풍이면 옛 그림과 픽셀이 같아야 한다.
+  const BOXC = [80, 260, 1330, 860];
+  for (const [tag, s2] of [['강가', R], ['초원', F]]) {
+    const mean = meanAbsDiff(s2.cpCalm, s2.cpLegacy, BOXC);
+    const over = diffOver(s2.cpCalm, s2.cpLegacy, BOXC, 10);
+    const tot = (BOXC[2] - BOXC[0]) * (BOXC[3] - BOXC[1]);
+    const mv = diffOver(s2.cpW0, s2.cpW1, BOXC, 10), cm = diffOver(s2.cpC0, s2.cpC1, BOXC, 10);
+    say(`    ${tag}: 항등식 평균 |Δ| ${mean.toFixed(3)} · 다른 픽셀 ${over}(${(over / tot * 100).toFixed(2)}%)`);
+    say(`      움직임 — 바람 0.9 로 시각 100→101.4 ${mv}px / 무풍 ${cm}px · 띠 ${s2.cpDbgOn ? s2.cpDbgOn.strips : 'n/a'} ↔ 손잡이 끄면 ${s2.cpDbgOff ? s2.cpDbgOff.strips : 'n/a'}`);
+    ok(mean < 1.2, `★★${tag} — **항등식**: 무풍이면 옛 그림과 같다 (평균 |Δ| ${mean.toFixed(3)} < 1.2) — 구조만 쪼갰지 그림은 안 바꿨다`);
+    ok(over / tot < 0.01, `★${tag} — 눈에 띄게 다른 픽셀이 1% 미만 (${(over / tot * 100).toFixed(2)}%)`);
+    ok(mv > 20000, `★★${tag} — **카펫이 실제로 흔들린다** (${mv}px · 자연물·물 끈 상태라 움직인 건 지면뿐이다)`);
+    //  ★'0 이어야 한다'로 못 박지 않는다 — 자연물을 껐어도 **동물·NPC**는 실시간으로 움직인다.
+    //    이 판정의 뜻은 "움직임의 출처가 바람이다"이므로 **바람 대비 비율**로 재는 게 맞다.
+    ok(cm < Math.max(400, mv * 0.02), `★★반례 — ${tag} 무풍이면 거의 안 움직인다 (${cm} < 바람의 2% = ${Math.round(mv * 0.02)}) = 움직임의 출처가 바람이다`);
+  }
+  ok(R.cpDbgOn && R.cpDbgOn.strips > 0, `★잎 층이 실제로 띠로 그려진다 (띠 ${R.cpDbgOn ? R.cpDbgOn.strips : 'n/a'})`);
+  ok(R.cpDbgOff && R.cpDbgOff.strips === 0, `★★반례 — 손잡이를 끄면 띠가 0 이다 (${R.cpDbgOff ? R.cpDbgOff.strips : 'n/a'}) = 옛 경로로 정확히 돌아간다`);
 
   say(`\n스크린샷: ${SHOTS}/`);
   say(`\n=== 자연물 E2E: ${pass} 통과 / ${fail} 실패 ${fail ? '❌' : '✅'} ===`);

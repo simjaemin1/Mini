@@ -92,6 +92,13 @@ const BOX = [40, 260, 1360, 860];
   await sleep(20000);
 
   const knob = async (o) => { await page.evaluate((k) => Object.assign(window.__terrain19, k), o); await sleep(600); };
+  //   ★[계측 격리 2026-08-07] 배치 21 이 **지면 풀 카펫**을 흔들리게 했다 — 이제 화면은
+  //     시각이 흐르면 저절로 바뀐다. 이 하네스는 서로 다른 시각에 찍은 두 프레임을 픽셀로
+  //     비교하므로, 안 끄면 **흔들린 풀을 '차이'로 오독한다**(실측: 산 반례 33.4%, 물 |Δ| 3.16).
+  //     기준을 낮추는 대신 **재는 층을 격리**한다. ★sleep 이 붙은 knob() 이 아니라 **측정 전에
+  //     곧바로** 끈다 — 격리가 실험 타이밍을 밀면 뙈기/자리 선택이 바뀐다(e2e-tilestate 에서 겪었다).
+  await page.evaluate(() => { window.__terrain19.windOff = true; });
+
   const grab = async (n) => { const p2 = `${SHOTS}/${n}.png`; await page.screenshot({ path: p2 }); return PNG.sync.read(fs.readFileSync(p2)); };
   const pulse = async (key, ms) => { await page.keyboard.down(key); await sleep(ms); await page.keyboard.up(key); await sleep(120); };
 

@@ -432,6 +432,11 @@ const SIM_JOB_EMOJI = {
   const GT_W = 512, GT_H = 256;        // iso 타일 = 텍스처 주기(= 월드 8×8셀)
   const GT_MASK_W = 1024, GT_MASK_H = 512;   // 맨땅 뙈기 마스크 주기(텍스처보다 크게 — 반복 티 감소)
   const GT_MAX = 140;                  // 타일 캐시 상한(≈70MB) — 넘으면 카메라에서 먼 것부터 버린다
+  const GT_MAX_WIND = 80;              // ★잎 층까지 들면 타일당 메모리가 2배다 — 상한을 낮춘다(화면은 ~30장)
+  const GT_STRIP = 16;                 // 잎 띠 높이(px) — 실측: 32px +0.27ms · 16px +0.53 · 8px +1.03
+  const GT_GRASS_AMP = 2.2;            // 카펫이 눕는 최대 폭(px). 잎이 6~10px 이라 이 이상은 '미끄러짐'으로 보인다
+  const GT_WAVE_K = 0.017;             // 파수(1/px) — 파장 ≈ 370px ≈ 11셀. 들판을 훑는 결
+  const GT_WAVE_W = 1.15;              // 각속도(rad/s, 게임 시계)
   const GT_BAKE_PER_FRAME = 5;         // 프레임당 새로 굽는 타일 수(히치 방어)
   const GT_ZONE_TINT = 0.18;           // 존 groundColor 를 텍스처 위에 얹는 세기(존 정체성 유지)
   const _groundTiles = new Map();      // "itx_ity" → {cv, used}
@@ -441,6 +446,58 @@ const SIM_JOB_EMOJI = {
   for (const k of ['grass_angled', 'dry_angled', 'mud_angled']) {
     const im = new Image(); im.onload = () => { _gtexReady++; _groundTiles.clear(); }; im.src = '/assets/terrain/' + k + '.png';
     GTEX[k] = im;
+  }
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ★★★[재민 정정 2026-08-07] "모든 초원에 그려져 있는 **그 풀**이 흔들려야 한다"
+  //   1패스에서 나는 **흩뿌린 포기 스프라이트**만 흔들고, 지면에 깔린 풀 카펫은
+  //   "재베이크가 필요해 비싸다"며 회부했다. 그게 바로 요청 대상이었다. 미룰 일이 아니었다.
+  //
+  //   ★구조가 걸림돌인 건 맞다 — 지면은 512×256 타일로 **한 번 구워 blit** 한다(0.04ms/f).
+  //     구워진 그림은 못 움직인다. 그래서 **굽는 걸 둘로 쪼갠다**:
+  //
+  //       바탕(cv)  = 지금 굽던 그대로. 단 ① 단계의 풀 텍스처를 **평탄한 한 색**으로 깐다.
+  //       잎(bl)    = (풀텍스처 − 그 평탄색) × **투과율 T**
+  //
+  //     여기서 T 는 "① 위에 칠해진 모든 것이 남긴 투과율"이다. 알파 합성은 배경에 대해
+  //     **선형**이라 `sharp = fixed + T·tex`, `flat = fixed + T·flat색` 이 성립하고,
+  //     따라서 `sharp = flat + T·(tex − flat색)` 이다. **근사가 아니라 항등식**이다.
+  //     ⇒ 매 프레임 `바탕 blit` 다음에 `잎`을 **가로 띠로 어긋나게 'lighter'(가산) blit** 하면
+  //       재베이크 없이 카펫이 눕는다. 띠마다 위상이 다르니 들판을 훑는 파가 된다.
+  //
+  //   ★T 는 추정하지 않는다 — 굽는 그 자리에서 **같은 알파로 같은 도형을 지우며** 만든다
+  //     (`destination-out` + globalAlpha = ×(1−α)). 뙈기·물·바위·틴트·상태 레이어 전부.
+  //   ★비용 실측(headless, 타일 30장 = 화면 가득):
+  //       지금(타일 1blit) 0.038ms/f · 띠 32px(240blit) 0.307 · **띠 16px(480blit) 0.566**
+  //     ⇒ 16px 띠 채택, 순수 추가 **+0.53ms/f**. 60fps 예산 16.7ms 안에서 싸다.
+  //   ★`windOff` 면 ① 단계가 **종전대로 선명한 텍스처**를 깐다 = 픽셀 단위로 옛 그림(대조군).
+  let _grassFlat = null, _grassBlade = null;
+  function _grassSplit() {
+    if (_grassBlade) return true;
+    const src = GTEX.grass_angled;
+    if (!src || !src.naturalWidth) return false;
+    const w = src.naturalWidth, h = src.naturalHeight;
+    const t = document.createElement('canvas'); t.width = w; t.height = h;
+    const tg = t.getContext('2d', { willReadFrequently: true });
+    tg.drawImage(src, 0, 0);
+    const im = tg.getImageData(0, 0, w, h), d = im.data;
+    // 평탄색 = **어두운 쪽**(잎 사이 그늘). 잎 = tex − 평탄색 ≥ 0 이어야 가산 합성이 성립한다.
+    //   백분위로 뽑는다(고정 상수는 텍스처를 갈아 끼우면 깨진다).
+    const ch = [[], [], []];
+    for (let i = 0; i < d.length; i += 4) { ch[0].push(d[i]); ch[1].push(d[i + 1]); ch[2].push(d[i + 2]); }
+    //   ★백분위 2% — 실측으로 골랐다. 옛 그림과의 |Δ|>10 픽셀: 6% → 4,221 · **2% → 3,694** · 0.5% → 4,116.
+    //     (0.5% 가 더 나빴다는 건 남은 오차가 `max(0,tex−flat)` **잘림**이 아니라는 뜻이다 —
+    //      진짜 출처는 상태 레이어의 투과율을 두 알파로 **근사**한 것이다. §보고 참조.)
+    const flat = ch.map((a3) => { a3.sort((x, y) => x - y); return a3[Math.floor(a3.length * 0.02)]; });
+    for (let i = 0; i < d.length; i += 4) {
+      d[i] = Math.max(0, d[i] - flat[0]);
+      d[i + 1] = Math.max(0, d[i + 1] - flat[1]);
+      d[i + 2] = Math.max(0, d[i + 2] - flat[2]);
+      d[i + 3] = 255;
+    }
+    tg.putImageData(im, 0, 0);
+    _grassBlade = t;
+    _grassFlat = 'rgb(' + flat[0] + ',' + flat[1] + ',' + flat[2] + ')';
+    return true;
   }
   // 맨땅 뙈기 마스크 — ★셀 격자가 아니라 **저주파 노이즈**로 뿌린다.
   //   셀마다 변주 타일을 고르면 다이아몬드 격자무늬가 그대로 드러난다(타일 게임의 흔한 실패).
@@ -473,13 +530,25 @@ const SIM_JOB_EMOJI = {
     g.putImageData(id, 0, 0);
     return (_gtMaskCv = cv);
   }
-  let _gtTmp = null;
+  let _gtTmp = null, _gtCov = null;
   function _bakeGroundTile(itx, ity, zlist) {
     const X0 = itx * GT_W, Y0 = ity * GT_H;
     const cv = document.createElement('canvas'); cv.width = GT_W; cv.height = GT_H;
     const g = cv.getContext('2d');
+    // ★풀 카펫 흔들림 — 켜져 있으면 ① 을 **평탄색**으로 깔고, 잎은 따로 굽는다(위 _grassSplit 주석).
+    //   꺼져 있으면 종전대로 선명한 텍스처 = 픽셀 단위로 옛 그림(대조군).
+    const _wg = !_t19.windOff && !_t19.windGrassOff && _grassSplit();
+    let gm = null;
+    if (_wg) {
+      if (!_gtCov) { _gtCov = document.createElement('canvas'); _gtCov.width = GT_W; _gtCov.height = GT_H; }
+      gm = _gtCov.getContext('2d');
+      gm.setTransform(1, 0, 0, 1, 0, 0); gm.globalCompositeOperation = 'source-over'; gm.globalAlpha = 1;
+      gm.fillStyle = '#fff'; gm.fillRect(0, 0, GT_W, GT_H);        // 투과율 T = 1 에서 시작
+      gm.globalCompositeOperation = 'destination-out';             // 이후 칠하는 것은 전부 **지우기**
+    }
     // ① 풀 바탕 — 타일 원점이 주기의 배수라 패턴 오프셋 0
-    g.fillStyle = g.createPattern(GTEX.grass_angled, 'repeat'); g.fillRect(0, 0, GT_W, GT_H);
+    g.fillStyle = _wg ? _grassFlat : g.createPattern(GTEX.grass_angled, 'repeat');
+    g.fillRect(0, 0, GT_W, GT_H);
     // ② 맨땅 뙈기 — 저주파 마스크로 마른땅 텍스처를 뚫어 얹는다
     if (!_gtTmp) { _gtTmp = document.createElement('canvas'); _gtTmp.width = GT_W; _gtTmp.height = GT_H; }
     { const t = _gtTmp.getContext('2d');
@@ -492,6 +561,7 @@ const SIM_JOB_EMOJI = {
       mp.setTransform(mm); t.fillStyle = mp; t.fillRect(0, 0, GT_W, GT_H);
       t.globalCompositeOperation = 'source-over';
       g.drawImage(_gtTmp, 0, 0);
+      if (gm) gm.drawImage(_gtTmp, 0, 0);        // 뙈기가 덮은 만큼 T 가 줄어든다(같은 알파)
     }
     // ③ 셀별 마감 — 물·바위·위도 틴트·얼음 밴드(기존 문법 그대로, 텍스처 위에 얹는다)
     //   이 타일에 걸치는 셀 범위를 iso 네 모서리의 역변환으로 구한다(i2w: wx=(2iy+ix)/2, wy=(2iy-ix)/2)
@@ -505,7 +575,7 @@ const SIM_JOB_EMOJI = {
     const c0y = Math.floor(mny / 32) - 1, c1y = Math.ceil(mxy / 32) + 1;
     // ②-b ★물가 여백 — 셀별 마감 **앞**에 깐다(그래야 위도 틴트·존 틴트를 똑같이 받는다)
     let nMargin = 0;
-    if (!_t19.shMarginOff) nMargin = _shoreMarginBake(g, X0, Y0, c0x, c1x, c0y, c1y, zlist);
+    if (!_t19.shMarginOff) nMargin = _shoreMarginBake(g, X0, Y0, c0x, c1x, c0y, c1y, zlist, gm);
     _shMarginN += nMargin;
     let nCell = 0;
     // ★[배치 20 B] 타일 상태 원천 — **주 존만**(다른 존은 상태 데이터 자체가 없다).
@@ -528,7 +598,7 @@ const SIM_JOB_EMOJI = {
         const zm = zlist[zi], ox = zm.worldOffsetX, oy = zm.worldOffsetY || 0;
         if (cxw >= ox && cxw < ox + (zm.zoneWidth || 100000) && cyw >= oy && cyw < oy + (zm.zoneHeight || 100000)) { zMeta = zm; break; }
       }
-      if (!zMeta) { _gtDiamond(g, sx, sy, (primaryZoneId && zonesMeta[primaryZoneId]?.groundColor) || '#3a5a3a', 1); continue; }
+      if (!zMeta) { _gtDiamond(g, sx, sy, (primaryZoneId && zonesMeta[primaryZoneId]?.groundColor) || '#3a5a3a', 1, gm); continue; }
       const isWater = isWaterAtAbs(cxw, cyw, zMeta);
       const isRock = !isWater && isRockAtAbs(cxw, cyw, zMeta);
       // ★[배치 20 B] 이 셀의 상태 벡터. 레코드가 없으면 기준선(정적 지형 파생) — 손 안 댄 세계는
@@ -559,8 +629,8 @@ const SIM_JOB_EMOJI = {
       // ★산터(부서진 산)는 **지형이 아직 바위여도** 산터 램프로 그린다 — 파괴는 동적 층이고
       //   지형 정본(terrain.json)은 한 바이트도 안 바뀌기 때문이다.
       if (!isWater && _st && _st.geo) {
-        _gtPaintState(g, sx, sy, _st, _lcx, _lcy, _pat, _bio); nState++;
-        if (GT_ZONE_TINT > 0) _gtDiamond(g, sx, sy, zMeta.groundColor, GT_ZONE_TINT * 0.5);
+        _gtPaintState(g, sx, sy, _st, _lcx, _lcy, _pat, _bio, gm); nState++;
+        if (GT_ZONE_TINT > 0) _gtDiamond(g, sx, sy, zMeta.groundColor, GT_ZONE_TINT * 0.5, gm);
         continue;
       }
       if (isWater) {
@@ -573,30 +643,42 @@ const SIM_JOB_EMOJI = {
           g.moveTo(sx, sy - 16); g.lineTo(sx + 32, sy); g.lineTo(sx, sy + 16); g.lineTo(sx - 32, sy); g.closePath(); g.clip();
           g.fillStyle = g.createPattern(GTEX.mud_angled, 'repeat');
           g.fillRect(sx - 32, sy - 16, 64, 32); g.restore();
+          if (gm) _covDia(gm, sx, sy, 1);            // 물밑 진흙은 불투명 — 잎 투과율 0
         } else {
           _gtDiamond(g, sx, sy, blendTint(zMeta.isOcean ? zMeta.groundColor : '#2a5a8a',
-                                          zMeta.isOcean ? zMeta.tintColor : '#1a4a7a', 0.07), 1);
+                                          zMeta.isOcean ? zMeta.tintColor : '#1a4a7a', 0.07), 1, gm);
         }
       } else if (isRock) {
         // ★★[배치 20 영역 — 산] 종전 색·종전 문법 그대로다. 이 배치는 바위 렌더를 바꾸지 않는다.
-        _gtDiamond(g, sx, sy, blendTint('#6e6356', '#4a4138', 0.12), 1);
+        _gtDiamond(g, sx, sy, blendTint('#6e6356', '#4a4138', 0.12), 1, gm);
       } else {
         // ★[배치 20 B] 상태 레이어 — 비옥도·경작·답압·채굴을 **연속 램프**로 얹는다.
         //   위도/얼음/존 틴트보다 **아래**다(존 정체성이 그 위에 남아야 한다).
-        if (_st) { _gtPaintState(g, sx, sy, _st, _lcx, _lcy, _pat, _bio); nState++; }
+        if (_st) { _gtPaintState(g, sx, sy, _st, _lcx, _lcy, _pat, _bio, gm); nState++; }
         // 기존 문법 유지: 얼음 밴드 → 위도 보간 → 존 틴트. 단색 대신 **텍스처 위에 알파로** 얹는다.
         const distFromPole = Math.min(cyw, worldHeight - cyw);
         if (distFromPole < TUNDRA_BAND_PX) {
           const t = distFromPole <= ICE_BAND_PX ? 1
                   : 1 - (distFromPole - ICE_BAND_PX) / (TUNDRA_BAND_PX - ICE_BAND_PX);
-          _gtDiamond(g, sx, sy, ICE_COLOR, t);
+          _gtDiamond(g, sx, sy, ICE_COLOR, t, gm);
         }
         const isIce = distFromPole <= ICE_BAND_PX;
-        if (GT_ZONE_TINT > 0) _gtDiamond(g, sx, sy, zMeta.groundColor, GT_ZONE_TINT);
-        _gtDiamond(g, sx, sy, isIce ? '#9bb5cc' : zMeta.tintColor, isIce ? 0.06 : 0.13);
+        if (GT_ZONE_TINT > 0) _gtDiamond(g, sx, sy, zMeta.groundColor, GT_ZONE_TINT, gm);
+        _gtDiamond(g, sx, sy, isIce ? '#9bb5cc' : zMeta.tintColor, isIce ? 0.06 : 0.13, gm);
       }
     }
-    return { cv, cells: nCell, state: nState, wx: nWx };
+    // ★잎 층 = (풀텍스처 − 평탄색) × 투과율 T. 이걸 매 프레임 가로 띠로 어긋나게 가산 blit 한다.
+    let bl = null;
+    if (_wg) {
+      bl = document.createElement('canvas'); bl.width = GT_W; bl.height = GT_H;
+      const bg = bl.getContext('2d');
+      bg.fillStyle = bg.createPattern(_grassBlade, 'repeat');   // 타일 원점이 주기의 배수 → 위상 0
+      bg.fillRect(0, 0, GT_W, GT_H);
+      bg.globalCompositeOperation = 'destination-in';
+      bg.drawImage(_gtCov, 0, 0);
+      bg.globalCompositeOperation = 'source-over';
+    }
+    return { cv, bl, cells: nCell, state: nState, wx: nWx };
   }
   // ═══════════════════════════════════════════════════════════════════════════
   // ★★★[재민 재지적 2026-08-06c] "이제 다시 풀이 어색하게 잘리지 않도록 해볼 수 있을까"
@@ -665,7 +747,7 @@ const SIM_JOB_EMOJI = {
     return w;
   };
   let _shTmp = null;
-  function _shoreMarginBake(g, X0, Y0, c0x, c1x, c0y, c1y, zlist) {
+  function _shoreMarginBake(g, X0, Y0, c0x, c1x, c0y, c1y, zlist, gm) {
     if (!GTEX.dry_angled || !GTEX.grass_angled || !GTEX.grass_angled.naturalWidth) return 0;
     if (!_shTmp) { _shTmp = document.createElement('canvas'); _shTmp.width = GT_W; _shTmp.height = GT_H; }
     const t = _shTmp.getContext('2d');
@@ -724,6 +806,9 @@ const SIM_JOB_EMOJI = {
     }
     t.globalCompositeOperation = 'source-over'; t.globalAlpha = 1;
     g.drawImage(_shTmp, 0, 0);
+    // ★잎 층 투과율에서도 같은 만큼 지운다 — 안 하면 **모래 위에 풀잎이 흔들린다**
+    //   (1패스 실측: 강가 항등식 평균 |Δ| 6.21 · 12.97% 어긋남. 초원은 0.395 라 여기가 범인이었다.)
+    if (gm) gm.drawImage(_shTmp, 0, 0);
     return n;
   }
   // ═══════════════════════════════════════════════════════════════════════════
@@ -835,11 +920,23 @@ const SIM_JOB_EMOJI = {
     return cv ? { cv, n } : { cv: null, n: 0 };
   }
 
-  function _gtDiamond(g, cx, cy, color, alpha) {
+  //   ★`gm` = 투과율 캔버스. 같은 도형·같은 알파로 지운다(destination-out) — T ×= (1−α).
+  function _covDia(gm, cx, cy, alpha) {
+    if (!gm || alpha <= 0) return;
+    gm.globalAlpha = Math.min(1, alpha); gm.fillStyle = '#000';
+    gm.beginPath(); gm.moveTo(cx, cy - 16); gm.lineTo(cx + 32, cy); gm.lineTo(cx, cy + 16); gm.lineTo(cx - 32, cy);
+    gm.closePath(); gm.fill(); gm.globalAlpha = 1;
+  }
+  function _gtDiamond(g, cx, cy, color, alpha, gm) {
     if (alpha <= 0) return;
     g.globalAlpha = alpha; g.fillStyle = color;
     g.beginPath(); g.moveTo(cx, cy - 16); g.lineTo(cx + 32, cy); g.lineTo(cx, cy + 16); g.lineTo(cx - 32, cy);
     g.closePath(); g.fill(); g.globalAlpha = 1;
+    if (gm) {
+      gm.globalAlpha = alpha; gm.fillStyle = '#000';
+      gm.beginPath(); gm.moveTo(cx, cy - 16); gm.lineTo(cx + 32, cy); gm.lineTo(cx, cy + 16); gm.lineTo(cx - 32, cy);
+      gm.closePath(); gm.fill(); gm.globalAlpha = 1;
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -973,7 +1070,10 @@ const SIM_JOB_EMOJI = {
 
   // 한 셀의 상태 레이어를 타일 캔버스에 얹는다. sx,sy = 타일 안 셀 중심.
   //   pat: 이 타일에 이미 만들어 둔 패턴들(타일당 1회 생성 — 셀마다 createPattern 하면 베이크가 3배 느려진다)
-  function _gtPaintState(g, sx, sy, st, lcx, lcy, pat, bio) {
+  //   ★[풀 카펫 흔들림] `gm` 은 잎 층의 **투과율** 캔버스다. 이 함수의 칠 로직은 한 줄도 안 바꾼다 —
+  //     각 갈래가 **실제로 덮는 총 알파**를 그 갈래에서 이미 계산하고 있으므로, 그 값으로
+  //     같은 다이아몬드를 지우기만 한다. (산터는 불투명 → 1)
+  function _gtPaintState(g, sx, sy, st, lcx, lcy, pat, bio, gm) {
     const S = _SB(); if (!S) return;
     const B = bio || S.biomeOf('forest');   // ★바이옴 램프 표 — 같은 토양치라도 땅마다 다르게 번역된다
     const clip = () => { g.save(); g.beginPath(); g.moveTo(sx, sy - 16); g.lineTo(sx + 32, sy); g.lineTo(sx, sy + 16); g.lineTo(sx - 32, sy); g.closePath(); g.clip(); };
@@ -983,6 +1083,7 @@ const SIM_JOB_EMOJI = {
     const jit = (nz - 0.5) * 260 + (nz2 - 0.5) * 90;
 
     if (st.geo) {
+      _covDia(gm, sx, sy, 1);            // 산터는 암반으로 통째로 덮는다 — 잎 0
       // ── ①-지질: 산터 램프 ────────────────────────────────────────────────
       //   ★재민: "돌만 놓으면 그게 산터냐" — 기본 재질이 **암반**이다. 비옥도는 이끼·틈새 풀만
       //     늘리고 **풀밭이 되지 않는다**(상한). 시안 정본 mock-fertility-gradient 줄 2 그대로.
@@ -1042,6 +1143,7 @@ const SIM_JOB_EMOJI = {
 
     const anyMud = Math.max(mudA, wearA, tillA, oreA * 0.42);   // ★채굴분의 흙 알파를 낮춘다 — 매끈한 밝은 흙이 되면 '판 데'가 아니라 그냥 맨땅이다
     if (dryA <= 0.004 && anyMud <= 0.004) return;          // 손댈 게 없다(라이브 대다수가 여기)
+    _covDia(gm, sx, sy, 1 - (1 - dryA) * (1 - anyMud));   // 두 층이 덮고 남긴 투과율만큼 잎도 줄어든다
     clip();
     if (dryA > 0.004) fillPat(pat.dry, dryA);
     if (anyMud > 0.004) fillPat(pat.mud, anyMud);
@@ -2351,7 +2453,7 @@ const SIM_JOB_EMOJI = {
   //   ★[배치 21 5차] fogGateOff — 안개 게이트의 **대조군**. 끄면 안 가본 곳의 개체가 다시 보인다.
                  fogGateOff: false,
                  shoreOff: true,
-                 shMarginOff: false, shMargin: 1, windOff: false, windForce: null };
+                 shMarginOff: false, shMargin: 1, windOff: false, windForce: null, windGrassOff: false };
   window.__terrain19 = _t19;
 
   // 지형 차단 통합 (물+바위) — 이동 예측용
@@ -5576,7 +5678,11 @@ const SIM_JOB_EMOJI = {
     // 손잡이가 바뀌면 구워 둔 타일은 옛 문법이다 — 버린다(A/B 가 같은 프레임에서 성립하려면 필수)
     // ★[배치 21 10차] 물가 여백도 **타일에 굳는다** — 지문에 같이 넣는다. 지문이 두 군데면
     //   서로의 캐시를 지우며 매 프레임 다시 굽는다(합칠 때 실제로 그럴 뻔했다).
+    //   ★`waterOff` 도 지문에 들어간다 — **굽는 그림이 바뀌기 때문**이다(물 셀이 진흙↔단색으로 갈린다).
+    //     빠져 있어서 물을 껐다 켜도 옛 타일이 그대로 남았다. 풀 카펫 항등식 판정이 이걸 잡았다
+    //     (강가만 평균 |Δ| 6.18 · 12.6% 어긋남 — 초원은 0.395 였다).
     { const _kf = (_LEG ? 'L' : '') + (_t19.stateOff ? 'S' : '') + (_t19.wxOff ? 'W' : '')
+                + (_t19.waterOff ? 'o' : '') + ((_t19.windOff || _t19.windGrassOff) ? 'g' : 'G')
                 + 'm' + (_t19.shMarginOff ? 'x' : (_t19.shMargin == null ? 1 : _t19.shMargin));
       if (_gtKnob !== _kf) { _gtKnob = _kf; _groundTiles.clear(); _shMarginN = 0; } }
     if (!_LEG) _waterInit();   // ★타일을 굽기 **전에** 물 가능 여부를 확정한다(진흙/단색 갈림이 타일에 굳는다)
@@ -5639,7 +5745,10 @@ const SIM_JOB_EMOJI = {
       const t0x = Math.floor(isoX0 / GT_W), t1x = Math.floor((isoX0 + W) / GT_W);
       const t0y = Math.floor(isoY0 / GT_H), t1y = Math.floor((isoY0 + H) / GT_H);
       const _fr = (window._tileFrames || 0);
-      let baked = 0, drawn = 0;
+      let baked = 0, drawn = 0, nStrip = 0;
+      //   바람 세기·시각은 자연물과 **같은 정본**을 쓴다(_windAt/_windT) — 날씨 훅도 같이 먹는다.
+      const _gwT = _windT() * GT_WAVE_W;
+      const _gw = (_t19.windOff || _t19.windGrassOff) ? 0 : _windAt(_windT()) * GT_GRASS_AMP;
       for (let ty = t0y; ty <= t1y; ty++) for (let tx = t0x; tx <= t1x; tx++) {
         const key = tx + '_' + ty;
         let ent = _groundTiles.get(key);
@@ -5648,15 +5757,42 @@ const SIM_JOB_EMOJI = {
           ent = _bakeGroundTile(tx, ty, _zlist); _groundTiles.set(key, ent); baked++;
         }
         ent.used = _fr;
-        ctx.drawImage(ent.cv, Math.round(tx * GT_W - camX + W / 2), Math.round(ty * GT_H - camY + H / 2));
+        const _dx = Math.round(tx * GT_W - camX + W / 2), _dy = Math.round(ty * GT_H - camY + H / 2);
+        ctx.drawImage(ent.cv, _dx, _dy);
+        // ★★풀 카펫 흔들림 — 잎 층을 **가로 띠**로 어긋나게 가산 blit 한다.
+        //   · 위상은 **iso 세로 좌표**(월드)로 준다 — 화면에 붙으면 카메라를 움직일 때 파도 따라온다.
+        //   · 띠 16px = 타일당 16장. 실측 +0.53ms/f(타일 30장 기준).
+        //   · 'lighter' = 가산. 바탕이 (텍스처−평탄색)만큼 어둡게 구워져 있어 합이 원본과 같다.
+        if (ent.bl && _gw > 0) {
+          ctx.globalCompositeOperation = 'lighter';
+          for (let sY = 0; sY < GT_H; sY += GT_STRIP) {
+            const sh = Math.min(GT_STRIP, GT_H - sY);
+            const isoY = ty * GT_H + sY;
+            const ph = isoY * GT_WAVE_K + _gwT;
+            const off = Math.sin(ph) * _gw;
+            // ★밀림만으로는 '미끄러진다'로 읽힌다 — 실제 밀밭은 돌풍이 지나갈 때 **빛도 함께 훑는다**.
+            //   가산 층이라 alpha 를 흔들면 그게 그대로 명암 물결이 된다(비용 0).
+            ctx.globalAlpha = 0.90 + 0.10 * Math.sin(ph * 1.0 + 1.1);
+            ctx.drawImage(ent.bl, 0, sY, GT_W, sh, _dx + off, _dy + sY, GT_W, sh);
+          }
+          ctx.globalAlpha = 1;
+          ctx.globalCompositeOperation = 'source-over';
+          nStrip += (GT_H / GT_STRIP) | 0;
+        } else if (ent.bl) {
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.drawImage(ent.bl, _dx, _dy);        // 무풍 — 어긋남 0. 그림은 옛것과 같아야 한다
+          ctx.globalCompositeOperation = 'source-over';
+        }
         drawn++;
       }
       window.__groundDbg.tiles = drawn; window.__groundDbg.baked = baked; window.__groundDbg.cached = _groundTiles.size;
+      window.__groundDbg.strips = nStrip; window.__groundDbg.gwind = _gw;
       { let sc = 0; for (const e of _groundTiles.values()) sc += (e.state || 0); window.__groundDbg.stateCells = sc; }
       window.__groundDbg.margins = _shMarginN;
-      if (_groundTiles.size > GT_MAX) {   // 오래 안 쓴 타일부터 버린다(카메라가 멀어진 것)
+      const _cap = (_t19.windOff || _t19.windGrassOff) ? GT_MAX : GT_MAX_WIND;   // 잎 층이 있으면 타일당 2배
+      if (_groundTiles.size > _cap) {   // 오래 안 쓴 타일부터 버린다(카메라가 멀어진 것)
         const ks = [..._groundTiles.entries()].sort((a, b) => (a[1].used || 0) - (b[1].used || 0));
-        for (let i = 0; i < ks.length - GT_MAX; i++) _groundTiles.delete(ks[i][0]);
+        for (let i = 0; i < ks.length - _cap; i++) _groundTiles.delete(ks[i][0]);
       }
     } else {
     // ── 종전 경로(폴백·A/B 대조군): 셀 다이아몬드 단색 ─────────────────────────
