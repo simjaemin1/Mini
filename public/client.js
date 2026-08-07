@@ -1782,7 +1782,34 @@ const SIM_JOB_EMOJI = {
     { k: 'S', minD: -1.0, step: 4.2, s0: 0.70, s1: 1.00, solo: ['mt_S1', 'mt_S2'], sp: 0.30, seed: 413, maxD: 5.0 },
   ];
   // 기슭 — 바위 바깥 자락. 크기가 아니라 **높이**를 눌러 둔덕으로 읽히게 한다.
-  const MT_FOOT = { step: 3.0, dMax: 5.2, s0: 0.46, s1: 0.95, vy0: 0.26, vy1: 0.58 };
+  // ★★[재민 2026-08-07 "정확하게 산 셀인 곳에만 산이 있어야 해"]
+  //   실측: 산이 바위 밖으로 **중앙값 3셀 · 최대 6셀** 나가 있었다.
+  //   원인은 기슭(10%)이 아니라 **스프라이트 발치가 퍼지는 것**(90%)이었다 —
+  //   배율 1짜리 밑변이 10셀이라, 가장자리 셀에 앵커를 둬도 5셀이 풀밭으로 넘친다.
+  //   ⇒ 배율을 **가장자리 거리로 묶는다**: 밑변 반지름(=CROSS_U/2×sc)이 dE+여유를 못 넘게.
+  //   여유 1셀이 재민이 말한 "정말 미세한 오차"다.
+  //   ★2차: 밑변만 묶어선 부족했다. 실측상 재민이 본 침범의 본체는 **몸통이 북서쪽 풀밭을
+  //   덮는 것**이었다(56셀 중 55셀). 렌더러 눈엔 '뒤에 가려진 것'이지만 플레이어 눈엔
+  //   **지도상 풀밭인데 산이 있는 것**이다 — 플레이어가 옳다.
+  //   ⇒ **높이도 묶는다**: 스프라이트가 화면 위로 덮는 셀 수가 앵커에서 북서로 이어진
+  //     바위 셀 수(dNW)를 못 넘게. 그러면 실루엣이 바위 마스크를 따라간다.
+  const MT_FIT_TOL = 0.35, MT_SC_MIN = 0.28, MT_VY_MIN = 0.30;   // ★하한 — 이보다 낮으면 틈 메우기 스프라이트가 제 셀도 못 덮는다(실측)
+  const _mtFit = (sc, dE) => {
+    if (_t19.fitOff) return sc;
+    const cap = (dE + MT_FIT_TOL) / (MT_CROSS_U / 2);
+    return sc < cap ? sc : (cap < MT_SC_MIN ? MT_SC_MIN : cap);
+  };
+  // 화면 위로 덮는 셀 수 = 앵커 위 화소 / 32. 이걸 dNW 로 묶어 세로 배율을 되돌린다.
+  const _mtFitVy = (name, sc, vy, dNW) => {
+    if (_t19.fitOff) return vy;
+    const an = _mtAnchors && _mtAnchors[name]; if (!an) return vy;
+    const px = an.oy * ((64 / Math.SQRT2) / an.ppu) * sc;      // vy=1 일 때 위로 덮는 화소
+    const upCells = px / 32; if (upCells <= 0) return vy;
+    const cap = (dNW + MT_FIT_TOL) / upCells;
+    return vy < cap ? vy : (cap < MT_VY_MIN ? MT_VY_MIN : cap);
+  };
+  // 기슭도 같은 규격 아래로 — 1.6셀 자락이면 '미세한 오차' 안이다(5.2셀은 침범이다)
+  const MT_FOOT = { step: 2.2, dMax: 1.6, s0: 0.26, s1: 0.46, vy0: 0.26, vy1: 0.52 };
   const _mtChunk = new Map();            // "gx_gy" → 세그먼트(절대 셀 청크 · 파괴 시 무효화)
   let _mtRidgeSeg = null;                // 전 존 능선 폴리라인을 절대 좌표로 편 목록(각도·숲/돌 판정용)
   function _mtRidgeSegs() {
@@ -1869,6 +1896,19 @@ const SIM_JOB_EMOJI = {
       return (i < 0 || j < 0 || i >= W || j >= W) ? INF : dOut[j * W + i]; };
     const isRk = (acx, acy) => { const i = acx - c0, j = acy - r0;
       return i >= 0 && j >= 0 && i < W && j < W && mask[j * W + i] === 1; };
+    // 화면 위쪽(북서)으로 이어진 바위 셀 수 — 스프라이트가 그 위로 넘어가면 풀밭을 덮는다.
+    // ★가운데 한 줄만 보면 안 된다 — 스프라이트는 폭이 있어서 **옆줄**이 먼저 풀밭 위로 넘친다.
+    //   폭(±halfW 셀, iso-x 방향 = (+1,-1))에 걸친 줄들의 **최소값**을 쓴다.
+    const upCol = (acx, acy) => { let k = 0; while (k < 40 && isRk(acx - k - 1, acy - k - 1)) k++; return k; };
+    const upRock = (acx, acy, halfW) => {
+      let m = upCol(acx, acy);
+      const w = Math.max(1, Math.round(halfW));
+      for (let i = 1; i <= w; i++) {
+        const a1 = upCol(acx + i, acy - i), a2 = upCol(acx - i, acy + i);
+        if (a1 < m) m = a1; if (a2 < m) m = a2;
+      }
+      return m;
+    };
 
     // ★여백까지 배치한다(덮개 판정에 쓰려고). **코어 것만 내보낸다.**
     const all = [], core = [];
@@ -1887,25 +1927,28 @@ const SIM_JOB_EMOJI = {
         if (T.maxD != null && dE > T.maxD) continue;
         const nr = _mtNearRidge(cx * 32 + 16, cy * 32 + 16);
         const sg = { x: cx * 32 + 16, y: cy * 32 + 16, name: _mtPick(cx, cy, nr.ang, nr.isF, T),
-                     sc: T.s0 + (T.s1 - T.s0) * _cellHash(cx, cy, T.seed + 2),
-                     vy: _mtHgt(dE, cx, cy, T.seed + 3), jx: 0, jy: 0, tier: T.k };
+                     sc: _mtFit(T.s0 + (T.s1 - T.s0) * _cellHash(cx, cy, T.seed + 2), dE),
+                     vy: 1, jx: 0, jy: 0, tier: T.k };
+        sg.vy = _mtFitVy(sg.name, sg.sc, _mtHgt(dE, cx, cy, T.seed + 3), upRock(cx, cy, MT_CROSS_U / 2 * sg.sc));
         all.push(sg);
         if (cx >= cLo && cx < cHi && cy >= rLo && cy < rHi) core.push(sg);
       }
     }
     // ★틈 메우기 — 코어의 맨 바위 셀을 알파로 찾아 잔봉우리를 얹는다(3셀 격자로 한 곳 한 장)
-    const seen = new Set();
+    // ★3셀 격자 중복 제거를 **뺐다** — 그게 덮개 보장을 깨고 있었다(같은 칸의 다른 셀이
+    //   처리되면 이 셀은 영영 건너뛰어진다. 실측에서 맨 바위 1셀이 그렇게 남았다).
+    //   대신 새로 얹은 스프라이트를 `all` 에 바로 넣어 **덮개 판정 자체가 중복을 막게** 한다.
     for (let acy = rLo; acy < rHi; acy++) for (let acx = cLo; acx < cHi; acx++) {
       if (!isRk(acx, acy)) continue;
       const p = w2i(acx * 32 + 16, acy * 32 + 16);
       let covered = false;
       for (let i = 0; i < all.length; i++) if (_mtCovers(all[i], p.x, p.y)) { covered = true; break; }
       if (covered) continue;
-      const k2 = ((acx / 3) | 0) + '_' + ((acy / 3) | 0); if (seen.has(k2)) continue; seen.add(k2);
       const nr = _mtNearRidge(acx * 32 + 16, acy * 32 + 16);
       const sg = { x: acx * 32 + 16, y: acy * 32 + 16, name: _mtPick(acx, acy, nr.ang, nr.isF, MT_TIERS[2]),
-                   sc: 0.78 + 0.30 * _cellHash(acx, acy, 515), vy: _mtHgt(edgeD(acx, acy), acx, acy, 516),
-                   jx: 0, jy: 0, tier: '틈' };
+                   sc: _mtFit(0.78 + 0.30 * _cellHash(acx, acy, 515), edgeD(acx, acy)),
+                   vy: 1, jx: 0, jy: 0, tier: '틈' };
+      sg.vy = _mtFitVy(sg.name, sg.sc, _mtHgt(edgeD(acx, acy), acx, acy, 516), upRock(acx, acy, MT_CROSS_U / 2 * sg.sc));
       all.push(sg); core.push(sg);
     }
     // ★★기슭 [재민 2026-08-07 "산과 풀의 경계가 뚝 끊긴다" → "고고"]
@@ -1931,9 +1974,10 @@ const SIM_JOB_EMOJI = {
           if (_cellHash(cx, cy, 631) > 0.18 + 0.72 * t) continue;
           const nr = _mtNearRidge(wx, wy);
           const sg = { x: wx, y: wy, name: _mtPick(cx, cy, nr.ang, nr.isF, MT_TIERS[2]),
-            sc: MT_FOOT.s0 + (MT_FOOT.s1 - MT_FOOT.s0) * t * (0.55 + 0.45 * _cellHash(cx, cy, 813)),
+            sc: _mtFit(MT_FOOT.s0 + (MT_FOOT.s1 - MT_FOOT.s0) * t * (0.55 + 0.45 * _cellHash(cx, cy, 813)), MT_FIT_TOL - dO),
             vy: MT_FOOT.vy0 + (MT_FOOT.vy1 - MT_FOOT.vy0) * t + 0.10 * (_cellHash(cx, cy, 814) - 0.5),
             jx: 0, jy: 0, tier: '기슭' };
+          sg.vy = _mtFitVy(sg.name, sg.sc, sg.vy, 0);
           core.push(sg);
         }
       }
@@ -1947,7 +1991,7 @@ const SIM_JOB_EMOJI = {
     const zid = primaryZoneId; if (!zid) return 0;
     // ★청크는 **굽는 시점의 손잡이 값**을 품는다 — 손잡이를 뒤집어도 캐시가 그대로면
     //   A/B 대조군이 그림에 안 나타난다(하네스가 이걸 잡았다). 서명이 바뀌면 다시 굽는다.
-    const sig = (_t19.footOff ? 'F' : '') + zid;
+    const sig = (_t19.footOff ? 'F' : '') + (_t19.fitOff ? 'X' : '') + zid;
     if (sig !== _mtChunkSig) { _mtChunkSig = sig; _mtChunk.clear(); }
     const c0 = Math.floor((cx0 - MT_VIEW_PAD) / 32), c1 = Math.floor((cx0 + MT_VIEW_PAD) / 32);
     const r0 = Math.floor((cy0 - MT_VIEW_PAD) / 32), r1 = Math.floor((cy0 + MT_VIEW_PAD) / 32);
@@ -2051,9 +2095,16 @@ const SIM_JOB_EMOJI = {
     const behind = _mtOcc ? item.z > _mtOcc.z : false;
     const fade = _mtFadeAmt > 0.002 && behind && !_t19.occOff;
     if (!fade) { g.drawImage(im, dx, dy, W, H); return; }
+    // ★★반투명은 **한 겹으로 모아** 한 번만 합성한다 [2026-08-07 실측].
+    //   장마다 알파를 걸면 겹칠수록 다시 불투명해진다 — 0.34 를 3겹 쌓으면 71% 다.
+    //   실측에서 앞쪽 산 128장이 흐려졌는데도 내 자리는 78% 나 남아 있었다(기대치 34%).
+    //   오프스크린에 **불투명으로 다 그린 뒤** 그 레이어를 알파로 한 번 덮으면 겹침이 안 쌓인다.
+    //   ⚠대가: 흐린 무리 사이에 낀 개체는 무리 뒤로 간다. 그 개체들은 어차피 산에 가려 있고
+    //     전부 내 앞(남동)이라 실害가 없다 — 나중에 문제가 되면 그때 z 를 쪼갠다.
     _mtFadedN++; if (window.__mtOccDbg) window.__mtOccDbg.faded = _mtFadedN;
-    g.save(); g.globalAlpha = 1 - (1 - MT_OCC_A) * _mtFadeAmt;
-    g.drawImage(im, dx, dy, W, H); g.restore();
+    const fg = _mtFadeLayer(g);
+    if (!fg) { g.save(); g.globalAlpha = 1 - (1 - MT_OCC_A) * _mtFadeAmt; g.drawImage(im, dx, dy, W, H); g.restore(); return; }
+    fg.drawImage(im, dx, dy, W, H);
     return;
   }
   // 이 산 한 장이 나를 실제로 덮는가 — 스캔과 그리기가 **같은 식**을 쓴다(사본 금지)
@@ -2073,6 +2124,32 @@ const SIM_JOB_EMOJI = {
   }
   // 프레임당 1회 — 나를 덮는 산이 하나라도 있나. 있으면 앞쪽 산 **전부**를 흐린다.
   // ★튀지 않게 시간으로 완만히 켜고 끈다(경계에서 껌뻑이면 그게 더 거슬린다).
+  // 흐린 산을 모으는 오프스크린 — 화면 크기, 프레임당 1회 비움
+  let _mtFadeCv = null, _mtFadeG = null, _mtFadeUsed = false;
+  function _mtFadeLayer(g) {
+    const cv = g.canvas; if (!cv) return null;
+    if (!_mtFadeCv) { _mtFadeCv = document.createElement('canvas'); }
+    if (_mtFadeCv.width !== cv.width || _mtFadeCv.height !== cv.height) {
+      _mtFadeCv.width = cv.width; _mtFadeCv.height = cv.height; _mtFadeG = null;
+    }
+    if (!_mtFadeG) _mtFadeG = _mtFadeCv.getContext('2d');
+    if (!_mtFadeUsed) {
+      _mtFadeUsed = true;
+      _mtFadeG.setTransform(1, 0, 0, 1, 0, 0);
+      _mtFadeG.clearRect(0, 0, _mtFadeCv.width, _mtFadeCv.height);
+      _mtFadeG.setTransform(g.getTransform());
+    }
+    return _mtFadeG;
+  }
+  function _mtFlushFade(g) {
+    if (!_mtFadeUsed || !_mtFadeCv) return;
+    _mtFadeUsed = false;
+    g.save();
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.globalAlpha = 1 - (1 - MT_OCC_A) * _mtFadeAmt;
+    g.drawImage(_mtFadeCv, 0, 0);
+    g.restore();
+  }
   let _mtFadeT = 0;
   function _mtFadeDt() {                     // ★시계는 프레임에서 온다 — Math.random 도, 고정 상수도 아니다
     const now = (typeof performance !== 'undefined') ? performance.now() : 0;
@@ -2448,8 +2525,13 @@ const SIM_JOB_EMOJI = {
   //   ★[재민 2026-08-07] mtLegacy — 산 배치의 **대조군**. 켜면 능선 중심선 보행(옛 배치)으로
   //     돌아간다. 기본은 덮개 배치(맨 바위 0.0%)다. 옛 배치는 맨 바위 39.9~70.9% 였다.
                  mtLegacy: false,
-  //   ★[재민 2026-08-07] footOff — 기슭의 **대조군**. 끄면 산이 바위 경계에서 뚝 끊긴다.
-                 footOff: false,
+  //   ★[재민 2026-08-07] footOff — 기슭. **기본이 끔**이다.
+  //     재민이 시안에서 "고고" 했지만 라이브에서 보고 "산이 비산맥 셀을 침범한다"고 했다.
+  //     기슭은 정의상 풀 셀에 앵커를 두므로 "정확하게 산 셀에만" 과 정면으로 부딪친다.
+  //     나중 지시가 이긴다 — 끄고, 손잡이는 남긴다(footOff = false 로 켜진다).
+                 footOff: true,
+  //   ★[재민 2026-08-07] fitOff — 배율 묶기의 **대조군**. 끄면 산이 바위 밖 6셀까지 퍼진다.
+                 fitOff: false,
   //   ★[배치 21 5차] fogGateOff — 안개 게이트의 **대조군**. 끄면 안 가본 곳의 개체가 다시 보인다.
                  fogGateOff: false,
                  shoreOff: true,
@@ -5988,6 +6070,36 @@ const SIM_JOB_EMOJI = {
     };
     // ★가상 위치에서의 가림 계측 — 하네스가 자리를 찾을 때 **정본 판정을 그대로** 쓴다.
     //   배치 수학을 node 쪽에서 다시 쓰면(사본) 둘이 같이 틀려도 통과한다.
+    // ★★셀 하나를 **누가** 덮는지 정본에서 묻는다 [재민 "정확하게 산 셀인 곳에만"]
+    //   앞서 두 번, 넘침을 '규칙'(남동 부채꼴 / 바위까지 거리)으로 가르려다 둘 다 헐거웠다.
+    //   정확한 기준은 스프라이트 자체에 있다: 앵커의 세로 위치 v0 = oy/h 를 기준으로
+    //     · v < v0  → 셀이 앵커보다 **화면 위** = 산 몸통 뒤에 가림(정상)
+    //     · v > v0  → 셀이 앵커보다 **화면 아래** = 산의 **앞 치맛자락**이 얹힘(결함)
+    //   여기에 앵커 셀이 바위가 아니면 그것도 결함이다.
+    window.__mtSpillAt = (lcx, lcy) => {
+      const z0 = zonesMeta[primaryZoneId]; if (!z0 || !_mtLastRend || !_mtToScr) return null;
+      const ox0 = z0.worldOffsetX, oy0 = z0.worldOffsetY || 0;
+      const wx = ox0 + lcx * 32 + 16, wy = oy0 + lcy * 32 + 16;
+      const pIso = w2i(wx, wy), ps = _mtToScr(pIso.x, pIso.y);
+      let cov = 0, foot = 0, offRock = 0;
+      for (const it of _mtLastRend) {
+        if (it.kind !== 'mtseg') continue;
+        const sg = it.sg, an = _mtAnchors[sg.name], im = MTX[sg.name];
+        if (!an || !im || !im.naturalWidth) continue;
+        const sc = (64 / Math.SQRT2) / an.ppu * sg.sc, vy = sg.vy || 1;
+        const W = im.naturalWidth * sc, H = im.naturalHeight * sc * vy;
+        const c = _mtToScr(w2i(sg.x, sg.y).x, w2i(sg.x, sg.y).y);
+        const dx = c.x - an.ox * sc, dy = c.y - an.oy * sc * vy;
+        const u = (ps.x - dx) / W, v = (ps.y - dy) / H;
+        if (u <= 0 || u >= 1 || v <= 0 || v >= 1) continue;
+        if (_mtAlphaAt(sg.name, u, v) <= 0.30) continue;
+        cov++;
+        const v0 = an.oy / im.naturalHeight;           // 앵커(발치)의 세로 위치
+        if (v > v0 + 0.02) foot++;                     // 앵커보다 아래 = 앞 치맛자락
+        if (!_mtRockAt(primaryZoneId, sg.x, sg.y)) offRock++;
+      }
+      return { cov, foot, offRock };
+    };
     window.__mtOccAt = (wx, wy) => {
       if (!_mtToScr || !_mtAnchors || !_mtLastRend) return null;
       const p = w2i(wx, wy), sp = _mtToScr(p.x, p.y);
@@ -6882,6 +6994,7 @@ const SIM_JOB_EMOJI = {
         ctx.globalAlpha = 1;
       }
     }
+    _mtFlushFade(ctx);   // ★흐린 산 한 겹을 여기서 한 번에 덮는다(겹침 누적 방지)
 
     // === 14.49-e7o: 옛 vignette/directional shadow 제거 — fog of war가 시야 전담 (3-state 깔끔) ===
 

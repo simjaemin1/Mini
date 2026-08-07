@@ -54,6 +54,11 @@ function changedPct(a, b, box, thr) {
   await sleep(2000);
 
   const shot = async (n) => { const p2 = `/tmp/gap-${n}.png`; await page.screenshot({ path: p2 }); return PNG.sync.read(fs.readFileSync(p2)); };
+  if (process.env.GAP_KNOBS) {
+    await page.evaluate((k) => Object.assign(window.__terrain19, JSON.parse(k)), process.env.GAP_KNOBS);
+    await sleep(1600);
+    console.log('  손잡이:', process.env.GAP_KNOBS);
+  }
   const on = await shot('on');
   await page.evaluate(() => { window.__terrain19.mtOff = true; }); await sleep(1600);
   const off = await shot('off');
@@ -80,35 +85,31 @@ function changedPct(a, b, box, thr) {
     const pct = changedPct(on, off, boxOf(r));
     if (pct < 5) { bare++; bareList.push({ cell: [r.a, r.b], pct: +pct.toFixed(1) }); } else covered++;
   }
-  // ★넘침을 둘로 가른다. 섞어 세면 고칠 것을 못 고른다.
-  //   ⓐ **발치 넘침(진짜 결함)** — 산 발치가 풀밭에 얹혔다. 걸어갈 수 있는데 산이 보인다.
-  //   ⓑ **몸통 가림(정상)** — 산 몸통이 제 뒤(북서) 풀밭을 가린다. 산이 원래 하는 일이고,
-  //      재민이 반투명으로 따로 답을 준 건이다.
-  //   가르는 규칙: 스프라이트는 앵커에서 **화면 위쪽(iso y 작은 쪽 = 북서)** 으로 뻗는다.
-  //   ⇒ 덮인 풀 셀의 **남동쪽**에 바위가 있으면 그 산의 몸통에 가린 것(ⓑ)이고,
-  //     남동쪽에 바위가 없으면 그 자리에 발치가 얹힌 것(ⓐ)이다.
-  const rockSet = new Set(info.filter((v) => v.kind === 'rock').map((v) => v.a + '_' + v.b));
-  const behindRock = (a, b) => {           // 남동(+wx,+wy) 부채꼴에 바위가 있나
-    for (let k = 1; k <= 26; k++) for (let w = -4; w <= 4; w++) {
-      if (rockSet.has((a + k + w) + '_' + (b + k - w))) return true;
-    }
-    return false;
-  };
-  let spillFoot = 0, spillBody = 0; const spillList = [];
-  for (const r of land) {
+  // ★★[재민 2026-08-07 지적] 앞선 분류(남동 부채꼴 w∈[-4,4])는 **너무 헐거웠다** —
+  //   옆으로 5셀 퍼진 발치까지 "몸통에 가려진 것"으로 삼켜 0.0% 를 냈다.
+  //   규칙으로 가르는 대신 **거리로 잰다**: 산이 덮은 비바위 셀이 바위에서 몇 셀 떨어졌나.
+  //   이건 해석의 여지가 없다 — "정말 미세한 오차"라는 재민 규격을 셀 수로 바로 옮긴다.
+  // ★★넘침 분류는 **정본에게 묻는다**(__mtSpillAt) — 규칙으로 가르려던 두 번의 시도가 다 헐거웠다.
+  //   앵커의 세로 위치 v0 기준: 셀이 그보다 아래면 앞 치맛자락(결함), 위면 몸통 뒤 가림(정상).
+  const spill = await page.evaluate((cs) => cs.map(([a, b]) => window.__mtSpillAt(a, b)), land.map((r) => [r.a, r.b]));
+  const covOut = [], footOut = [];
+  for (let i = 0; i < land.length; i++) {
+    const r = land[i], sp = spill[i]; if (!sp || !sp.cov) continue;
     const pct = changedPct(on, off, boxOf(r));
     if (pct < 25) continue;
-    if (behindRock(r.a, r.b)) spillBody++;
-    else { spillFoot++; spillList.push({ cell: [r.a, r.b], pct: +pct.toFixed(0) }); }
+    covOut.push({ cell: [r.a, r.b], cov: sp.cov, foot: sp.foot, offRock: sp.offRock });
+    if (sp.foot > 0 || sp.offRock > 0) footOut.push({ cell: [r.a, r.b], foot: sp.foot, offRock: sp.offRock });
   }
-  const spill = spillFoot;
   console.log(`\n화면 안 바위 셀 ${rocks.length}개 · 뭍(비바위) 셀 ${land.length}개`);
   console.log(`  산이 덮은 셀   ${covered}  (${(covered / rocks.length * 100).toFixed(1)}%)`);
   console.log(`  ★맨 바위 셀   ${bare}  (${(bare / rocks.length * 100).toFixed(1)}%)  ← 색칠만 되고 산이 없다`);
-  console.log(`  ★★발치 넘침  ${spillFoot}/${land.length}  (${(spillFoot / Math.max(1, land.length) * 100).toFixed(1)}%)  ← 진짜 결함: 걸을 수 있는데 산 발치가 얹혔다`);
-  console.log(`     몸통 가림  ${spillBody}/${land.length}  (${(spillBody / Math.max(1, land.length) * 100).toFixed(1)}%)  ← 정상: 산이 제 뒤(북서)를 가린다`);
+  console.log(`  ★★산이 덮은 비바위 셀 ${covOut.length}/${land.length} (${(covOut.length / Math.max(1, land.length) * 100).toFixed(1)}%)`);
+  console.log(`     (참고 — 그중 앞 치맛자락/비바위 앵커 ${footOut.length}, 나머지는 몸통이 덮은 것)`);
+  console.log(`\n  ★★★재민 규격 두 수치 — 둘 다 0% 에 가까워야 한다`);
+  console.log(`     ① 산인데 갈색으로 드러남 : ${bare}/${rocks.length} = ${(bare / Math.max(1, rocks.length) * 100).toFixed(1)}%`);
+  console.log(`     ② 평지인데 산이 침범     : ${covOut.length}/${land.length} = ${(covOut.length / Math.max(1, land.length) * 100).toFixed(1)}%`);
   console.log(`  맨 바위 표본: ${JSON.stringify(bareList.slice(0, 8))}`);
-  console.log(`  발치 넘침 표본: ${JSON.stringify(spillList.slice(0, 8))}`);
+  console.log(`  결함 표본: ${JSON.stringify(footOut.slice(0, 8))}`);
   const mt = await page.evaluate(() => window.__mtDbg);
   console.log(`  __mtDbg: ${JSON.stringify(mt)}`);
   // 맨 바위 셀이 능선 중심에서 얼마나 떨어져 있나 — 밴드 가장자리 가설 검증

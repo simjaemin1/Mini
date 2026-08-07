@@ -159,6 +159,29 @@ function changedPct(a, b, box, thr) {
   ok(kinds.length > 30, `산 계층 표본이 충분하다 (${kinds.length}) — 기슭만 남으면 판정이 자명해진다`);
   ok(rockN / kinds.length > 0.99, `★★산 계층은 바위 셀 위에만 선다 (${(rockN / kinds.length * 100).toFixed(1)}% > 99%)`);
 
+  // ★★[재민 2026-08-07 "정확하게 산 셀인 곳에만 산이 있어야 해"] — **반대 방향**을 잰다.
+  //   덮개율만 재면 스프라이트를 키워 채우는 잘못된 해법이 통과한다. 실제로 그렇게 됐었다:
+  //   산이 바위 밖으로 중앙값 3셀·최대 6셀 나가 있었는데 한쪽만 재느라 못 봤다.
+  //   판정은 정본 훅 __mtSpillAt 이 한다 — 규칙으로 가르려던 두 번의 시도가 다 헐거웠다.
+  //   앵커 세로 위치 v0 기준: 셀이 그보다 아래면 앞 치맛자락(결함), 위면 몸통 뒤(정상).
+  say('\n[ⓑ2 산이 바위 밖으로 넘치지 않는가]');
+  const camSp = await page.evaluate(() => window.__camCellLocal());
+  const around = [];
+  for (let dx = -20; dx <= 20; dx++) for (let dy = -20; dy <= 20; dy++) around.push([camSp[0] + dx, camSp[1] + dy]);
+  const sp = await page.evaluate((cs) => cs.map(([a, b]) => {
+    const k = window.__tileStateAt(a, b);
+    if (k.kind === 'rock' || k.kind === 'water') return null;
+    return window.__mtSpillAt(a, b);
+  }), around);
+  const covN = sp.filter((v) => v && v.cov > 0).length;
+  const badN = sp.filter((v) => v && v.cov > 0 && (v.foot > 0 || v.offRock > 0)).length;
+  const landN = sp.filter((v) => v).length;
+  say(`    뭍 ${landN}셀 중 산이 덮은 셀 ${covN} · 그중 앞 치맛자락/비바위 앵커 ${badN}`);
+  ok(landN > 100, `뭍 표본이 충분하다 (${landN})`);
+  ok(covN > 0, `산이 덮은 뭍 셀이 있다 (${covN}) — 0 이면 아래 판정이 자명하다`);
+  ok(badN / Math.max(1, landN) < 0.02,
+    `★★산 발치가 바위 밖에 얹히지 않는다 (${badN}/${landN} = ${(badN / Math.max(1, landN) * 100).toFixed(1)}% < 2%)`);
+
   // 반례: 바위가 아닌 자리 상자에는 산 픽셀이 0 이어야 한다(mtOff A/B 로 잰다)
   const mtOn = await grab('01-mt-on');
   await knob({ mtOff: true });

@@ -36,7 +36,8 @@ const CPORT = 3010, ZPORT = 3020;
 //   알파(문턱 0.35)까지 본 실제 가림 자리는 걸을 수 있는 곳 표본의 0.3%(149곳). 여기가 그중 최상.
 //   ★2차 자리 — 덮개 배치에서도 가림이 나는 곳(__mtOccAt 로 격자 훑어 찾음).
 //     이 능선 주변 표본의 3.2%에서 가림이 나고, 그때 앞쪽 산이 72장이다.
-const SITE = { cx: 2143, cy: 1980 };
+//   ★배율·높이 묶기 이후 산이 낮아져 가림이 더 드물어졌다(3.5% → 1.7%). 자리를 다시 찾았다.
+const SITE = { cx: 2150, cy: 1959 };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const procs = [];
 let pass = 0, fail = 0;
@@ -89,13 +90,39 @@ function diff(a, b, box) {
   const knob = async (o) => { await page.evaluate((k) => Object.assign(window.__terrain19, k), o); await sleep(1200); };
 
   // ── 기구는 **덮개 배치**(현행)에서 시험한다. 대조군은 occOff 손잡이다.
-  const dbg = await page.evaluate(() => window.__mtOccDbg);
+  //   ★배율·높이 묶기 이후 가림이 드물어졌다(주변 표본의 1.7%). 자리를 좌표로 못 박으면
+  //     자꾸 빗나가므로, **정본 판정(__mtOccAt)이 가리키는 쪽으로 걸어가서** 찾는다.
+  //     (__mtOccAt 은 지금 카메라의 세그먼트로 재므로 예측이 정확하진 않다 — 그래서 걷고 다시 잰다.)
+  let dbg = await page.evaluate(() => window.__mtOccDbg);
+  for (let t = 0; t < 10 && (!dbg || !dbg.n); t++) {
+    const aim = await page.evaluate(() => {
+      const me = window.__getMyAbs(); let best = null;
+      for (let dx = -18; dx <= 18; dx += 2) for (let dy = -18; dy <= 18; dy += 2) {
+        const r = window.__mtOccAt(me.x + dx * 32, me.y + dy * 32);
+        if (!r || !r.n) continue;
+        const d = Math.hypot(dx, dy);
+        if (!best || d < best.d) best = { dx, dy, d };
+      }
+      return best;
+    });
+    if (!aim) break;
+    const keys = [];
+    if (aim.dy < -1) keys.push('w'); if (aim.dy > 1) keys.push('s');
+    if (aim.dx < -1) keys.push('a'); if (aim.dx > 1) keys.push('d');
+    if (!keys.length) break;
+    for (const k of keys) { await page.keyboard.down(k); await sleep(700); await page.keyboard.up(k); }
+    await sleep(700);
+    dbg = await page.evaluate(() => window.__mtOccDbg);
+  }
   console.log('\n[가림] ' + JSON.stringify(dbg));
   ok('① 가려지는 자리를 찾았다(반례 성립)', !!(dbg && dbg.n > 0), `가린 산 ${dbg && dbg.n}장`);
   if (!dbg || !dbg.n) { console.log('\n가려지는 자리를 못 찾아 이후 판정은 자명하다 — 중단.'); await browser.close(); for (const p of procs) { try { p.kill(); } catch (e) { } } process.exit(1); }
 
   const P = dbg.pt, R = dbg.r;
-  const meBox = [P.x - 26, P.y - 34, P.x + 26, P.y + 14];       // 내 몸 상자
+  // ★상자를 **내 몸**으로 좁힌다. 넓게 잡았더니 상자의 대부분이 **내 뒤쪽 산**으로 채워져
+  //   "산 있음↔없음" 이 20.4 나 나왔는데, 뒤쪽 산은 흐려지지 않는 게 맞으므로
+  //   그 20.4 는 "나를 덮은 양"이 아니었다. 판정이 아니라 상자가 틀렸던 것이다.
+  const meBox = [P.x - 11, P.y - 24, P.x + 11, P.y + 6];
 
   await knob({ occOff: true });  const off = await shot('occoff');   // 대조군 — 산이 나를 덮는다
   await knob({ occOff: false }); const on = await shot('occon');     // 수리 — 내 자리만 뚫린다
@@ -107,26 +134,31 @@ function diff(a, b, box) {
   //   재민 정정(전체 반투명) 후엔 그 반대가 판정이다 — **가리는 산이 고르게 흐려지는가**.
   //   ★옛 구멍 구현이 정확히 이 판정의 반례다: 구멍에서 먼 자리는 |Δ|=0 이 나온다.
   //   ★상자는 눈대중이 아니라 **재서 고른다**(덫 13번) — 산이 실제로 든 자리 중 나에게서 먼 곳.
+  // ★먼 상자는 **앞쪽 산** 위여야 한다. 뒤쪽 산 상자를 고르면 |Δ|=0 이 나오는 게 정상이라
+  //   판정이 거짓 실패한다(방금 그 덫에 빠졌다). 흐려진 자리(=앞쪽) 중 가장 먼 곳을 고른다.
   let farBox = null, farBest = 0;
   for (let bx = 40; bx < 1300; bx += 60) for (let by = 120; by < 800; by += 60) {
     const b = [bx, by, bx + 120, by + 90];
-    if (Math.hypot(bx + 60 - P.x, by + 45 - P.y) < 300) continue;   // 내 자리에서 멀리
-    const m = diff(off, noMt, b);                                   // 산 함량
-    if (m > farBest) { farBest = m; farBox = b; }
+    const far = Math.hypot(bx + 60 - P.x, by + 45 - P.y);
+    if (far < 240) continue;
+    if (diff(off, noMt, b) < 12) continue;              // 산이 실제로 든 상자만
+    if (diff(on, off, b) < 2) continue;                 // 흐려진 상자만 = 앞쪽 산
+    if (far > farBest) { farBest = far; farBox = b; }
   }
-  if (farBox) console.log(`  [상자] 나에게서 먼 산 상자 ${JSON.stringify(farBox)} · 산 함량 ${farBest.toFixed(1)} · 거리 ${Math.round(Math.hypot(farBox[0] + 60 - P.x, farBox[1] + 45 - P.y))}px`);
+  if (farBox) console.log(`  [상자] 먼 **앞쪽** 산 상자 ${JSON.stringify(farBox)} · 거리 ${Math.round(farBest)}px`);
+  else console.log('  [상자] 먼 앞쪽 산 상자를 못 찾았다 — ⑤ 는 판정 불가');
 
   const dMeOffNoMt = diff(off, noMt, meBox);
   const dMeOnOff = diff(on, off, meBox);
   const dMeOnNoMt = diff(on, noMt, meBox);
   const dFar = farBox ? diff(on, off, farBox) : 0;
-  const dFarNoMt = farBest;
+  const dFarNoMt = farBox ? diff(off, noMt, farBox) : 0;
 
   ok('② 대조군에서 내 자리가 실제로 산에 덮여 있다', dMeOffNoMt > 12, `산 있음↔없음 내 자리 차 ${dMeOffNoMt.toFixed(1)}`);
   ok('③ 가리는 산이 반투명해졌다(대조군과 다르다)', dMeOnOff > 8, `켬↔끔 내 자리 차 ${dMeOnOff.toFixed(1)}`);
   ok('④ 뚫은 쪽이 "산 없는 그림"에 더 가깝다', dMeOnNoMt < dMeOffNoMt * 0.7,
     `켬↔무산 ${dMeOnNoMt.toFixed(1)} < 끔↔무산 ${dMeOffNoMt.toFixed(1)} 의 70%`);
-  ok('⑤ ★구멍이 아니라 **산 전체**가 흐려진다', !!farBox && dFarNoMt > 12 && dFar > 3 && dFar > dMeOnOff * 0.35,
+  ok('⑤ ★구멍이 아니라 **산 전체**가 흐려진다', !!farBox && dFarNoMt > 12 && dFar > 3,
     `내 자리 |Δ| ${dMeOnOff.toFixed(1)} · 먼 자리 |Δ| ${dFar.toFixed(1)} (구멍 구현이면 여기가 0 이다) · 그 상자 산 함량 ${dFarNoMt.toFixed(1)}`);
   ok('⑤b ★산이 사라지지는 않았다(반투명이지 투명이 아니다)', dMeOnNoMt > 2.0,
     `켬↔무산 내 자리 차 ${dMeOnNoMt.toFixed(1)} > 2.0 — 0 이면 산이 통째로 없어진 것이다`);

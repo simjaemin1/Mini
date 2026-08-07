@@ -24,7 +24,7 @@ const { PNG } = require('pngjs');
 const ROOT = path.join(__dirname, '..');
 const CPORT = 3010, ZPORT = 3020;
 const SITE = { cx: 1750, cy: 74 };            // 바위와 풀이 같이 보이는 자리(probe-mtgap 과 동일)
-const FOOT_DMAX = 5.2;
+const FOOT_DMAX = 1.6;   // ★재민 "정확하게 산 셀" 이후 5.2 → 1.6 (미세한 오차 범위)
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const procs = [];
 let pass = 0, fail = 0;
@@ -75,6 +75,8 @@ const med = (v) => { const s = v.slice().sort((a, b) => a - b); return s.length 
   const shot = async (n) => { const p2 = `/tmp/foot-${n}.png`; await page.screenshot({ path: p2 }); return PNG.sync.read(fs.readFileSync(p2)); };
   const knob = async (o) => { await page.evaluate((k) => Object.assign(window.__terrain19, k), o); await sleep(1400); };
 
+  // ★기슭은 이제 **기본이 끔**이다(재민 "정확하게 산 셀" 이후). 하네스는 켜고 시험한다.
+  await knob({ footOff: false });
   // ── 정본 세그먼트를 그대로 받는다(하네스가 배치 수학을 다시 쓰지 않는다 — 사본 금지)
   const probe = await page.evaluate(() => window.__mtProbe());
   const feet = probe.filter((p) => p.ridge === '기슭');
@@ -102,7 +104,7 @@ const med = (v) => { const s = v.slice().sort((a, b) => a - b); return s.length 
     }
     return best;
   }), cells);
-  const over = dists.filter((d) => d > 5.2 + 0.9).length;   // 격자 지터 여유 0.9셀
+  const over = dists.filter((d) => d > FOOT_DMAX + 0.9).length;   // 격자 지터 여유 0.9셀
   ok('③ ★바위 가까이만 선다', over === 0,
     `바위까지 거리 중앙값 ${med(dists).toFixed(1)}셀 · 최대 ${Math.max(...dists).toFixed(1)} · 한계 ${FOOT_DMAX} 초과 ${over}개`);
 
