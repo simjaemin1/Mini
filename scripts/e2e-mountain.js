@@ -137,11 +137,20 @@ function changedPct(a, b, box, thr) {
   if (!near) { await browser.close(); try { z.kill(); } catch (e) { } for (const p2 of procs) { try { p2.kill(); } catch (e) { } } say(`\n=== 산: 통과 ${pass} · 실패 ${fail} ===`); process.exit(1); }
 
   // ── ⓑ 세그먼트는 **바위 셀 위에만** ────────────────────────────────────────
+  //   ★★[2026-08-07 개정] 기슭이 들어오면서 이 판정이 73.3% 로 깨졌다. 기슭은 **일부러**
+  //     풀밭에 선다 — 규칙이 바뀐 것이지 코드가 틀린 게 아니다.
+  //     그렇다고 문턱을 낮추면(95→70) 판정이 아무것도 안 지킨다. **판정을 정확하게** 만든다:
+  //       · 산 계층(L·M·S·틈) → 바위 위에만        ← 여기서 100% 로 조인다
+  //       · 기슭             → 바위 **밖**에만     ← e2e-mtfoot ② 가 따로 100% 로 조인다
+  //     둘을 합쳐 세면 어느 쪽도 안 지켜진다.
   say('\n[ⓑ 세그먼트가 실제 바위 셀 위에만 서는가]');
-  const kinds = await page.evaluate((cs) => cs.map(([a, b]) => window.__tileStateAt(a, b).kind), probe.slice(0, 300).map((p2) => [p2.lcx, p2.lcy]));
+  const mtSegs = probe.filter((p2) => p2.ridge !== '기슭').slice(0, 300);
+  const footN = probe.filter((p2) => p2.ridge === '기슭').length;
+  const kinds = await page.evaluate((cs) => cs.map(([a, b]) => window.__tileStateAt(a, b).kind), mtSegs.map((p2) => [p2.lcx, p2.lcy]));
   const rockN = kinds.filter((k) => k === 'rock').length;
-  say(`    세그먼트 자리 ${kinds.length}개 중 바위 셀 ${rockN}개 (${(rockN / kinds.length * 100).toFixed(1)}%)`);
-  ok(rockN / kinds.length > 0.95, `★★세그먼트는 바위 셀 위에만 선다 (${(rockN / kinds.length * 100).toFixed(1)}% > 95%)`);
+  say(`    산 계층 자리 ${kinds.length}개 중 바위 셀 ${rockN}개 (${(rockN / kinds.length * 100).toFixed(1)}%) · 기슭 ${footN}장은 판정 밖(e2e-mtfoot 소관)`);
+  ok(kinds.length > 30, `산 계층 표본이 충분하다 (${kinds.length}) — 기슭만 남으면 판정이 자명해진다`);
+  ok(rockN / kinds.length > 0.99, `★★산 계층은 바위 셀 위에만 선다 (${(rockN / kinds.length * 100).toFixed(1)}% > 99%)`);
 
   // 반례: 바위가 아닌 자리 상자에는 산 픽셀이 0 이어야 한다(mtOff A/B 로 잰다)
   const mtOn = await grab('01-mt-on');

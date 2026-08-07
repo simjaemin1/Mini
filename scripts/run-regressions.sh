@@ -27,5 +27,6 @@ run waterperf  1200 node scripts/e2e-waterperf.js
 run tilestate  1500 node scripts/e2e-tilestate.js
 run mountain    900 node scripts/e2e-mountain.js
 run mtocc       900 node scripts/e2e-mtocc.js
+run mtfoot      900 node scripts/e2e-mtfoot.js
 killport 3020; killport 3010
 echo "── 로그: $OUT/"

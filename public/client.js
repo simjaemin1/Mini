@@ -1420,6 +1420,8 @@ const SIM_JOB_EMOJI = {
     { k: 'M', minD: 3.5, step: 7.5, s0: 1.18, s1: 1.68, solo: ['mt_M1', 'mt_M2'], sp: 0.32, seed: 412 },
     { k: 'S', minD: -1.0, step: 4.2, s0: 0.70, s1: 1.00, solo: ['mt_S1', 'mt_S2'], sp: 0.30, seed: 413, maxD: 5.0 },
   ];
+  // 기슭 — 바위 바깥 자락. 크기가 아니라 **높이**를 눌러 둔덕으로 읽히게 한다.
+  const MT_FOOT = { step: 3.0, dMax: 5.2, s0: 0.46, s1: 0.95, vy0: 0.26, vy1: 0.58 };
   const _mtChunk = new Map();            // "gx_gy" → 세그먼트(절대 셀 청크 · 파괴 시 무효화)
   let _mtRidgeSeg = null;                // 전 존 능선 폴리라인을 절대 좌표로 편 목록(각도·숲/돌 판정용)
   function _mtRidgeSegs() {
@@ -1493,6 +1495,17 @@ const SIM_JOB_EMOJI = {
       d[i] = Math.min(d[i], at(x + 1, y) + 1, at(x, y + 1) + 1, at(x + 1, y + 1) + 1.414, at(x - 1, y + 1) + 1.414); }
     const edgeD = (acx, acy) => { const i = acx - c0, j = acy - r0;
       return (i < 0 || j < 0 || i >= W || j >= W) ? 0 : d[j * W + i]; };
+    // ★바깥 거리 — 바위에서 몇 셀 떨어진 풀밭인가. 기슭이 여기 선다.
+    //   같은 패스에서 같이 굽는다(창을 두 번 훑지 않는다).
+    const dOut = new Float32Array(W * W);
+    for (let i = 0; i < W * W; i++) dOut[i] = mask[i] ? 0 : INF;
+    const ao = (x, y) => (x < 0 || y < 0 || x >= W || y >= W) ? INF : dOut[y * W + x];
+    for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) { const i = y * W + x; if (dOut[i] === 0) continue;
+      dOut[i] = Math.min(dOut[i], ao(x - 1, y) + 1, ao(x, y - 1) + 1, ao(x - 1, y - 1) + 1.414, ao(x + 1, y - 1) + 1.414); }
+    for (let y = W - 1; y >= 0; y--) for (let x = W - 1; x >= 0; x--) { const i = y * W + x; if (dOut[i] === 0) continue;
+      dOut[i] = Math.min(dOut[i], ao(x + 1, y) + 1, ao(x, y + 1) + 1, ao(x + 1, y + 1) + 1.414, ao(x - 1, y + 1) + 1.414); }
+    const outD = (acx, acy) => { const i = acx - c0, j = acy - r0;
+      return (i < 0 || j < 0 || i >= W || j >= W) ? INF : dOut[j * W + i]; };
     const isRk = (acx, acy) => { const i = acx - c0, j = acy - r0;
       return i >= 0 && j >= 0 && i < W && j < W && mask[j * W + i] === 1; };
 
@@ -1534,12 +1547,47 @@ const SIM_JOB_EMOJI = {
                    jx: 0, jy: 0, tier: '틈' };
       all.push(sg); core.push(sg);
     }
+    // ★★기슭 [재민 2026-08-07 "산과 풀의 경계가 뚝 끊긴다" → "고고"]
+    //   ⓐ **기슭은 '작은 산'이 아니라 '납작한 산'이다.** 크기만 줄이면 자갈로 읽히고,
+    //      세로만 눌러야(vy 0.26~0.58) 둔덕으로 읽힌다. 그래서 sc 는 조금만 줄이고 vy 를 눌렀다.
+    //   ⓑ 자락(S)의 높이 바닥을 0.58 로 내려 뒀다(_mtHgt) — 산→기슭이 끊김 없이 이어진다.
+    //   ⓒ **균일 산포 금지**(배치 21 재민 지적 "일부러 심은 느낌") — 밀도도 거리에 따라 준다.
+    //   ⓓ ★**지형 데이터 무접촉**: 순수 렌더다. 콜라이더·통행·자원·econ 전부 그대로다.
+    //      풀 셀 위에 그림만 얹는다 — 물 셀엔 안 선다(물가 술이 이미 그 자리 주인이다).
+    if (!_t19.footOff) {
+      for (let lj = Math.floor(r0 / MT_FOOT.step); lj <= Math.ceil((r0 + W) / MT_FOOT.step); lj++) {
+        for (let li = Math.floor(c0 / MT_FOOT.step); li <= Math.ceil((c0 + W) / MT_FOOT.step); li++) {
+          const j1 = _cellHash(li, lj, 811), j2 = _cellHash(li, lj, 812);
+          const cx = Math.round(li * MT_FOOT.step + (j1 - 0.5) * MT_FOOT.step);
+          const cy = Math.round(lj * MT_FOOT.step + (j2 - 0.5) * MT_FOOT.step);
+          if (cx < cLo || cx >= cHi || cy < rLo || cy >= rHi) continue;   // 코어만 내보낸다
+          if (isRk(cx, cy)) continue;                                     // 바위 위는 산이 이미 선다
+          const wx = cx * 32 + 16, wy = cy * 32 + 16;
+          if (isWaterAtAbs(wx, wy)) continue;
+          const dO = outD(cx, cy);
+          if (dO <= 0 || dO > MT_FOOT.dMax) continue;
+          const t = 1 - dO / MT_FOOT.dMax;                                // 1 = 바위 코앞
+          if (_cellHash(cx, cy, 631) > 0.18 + 0.72 * t) continue;
+          const nr = _mtNearRidge(wx, wy);
+          const sg = { x: wx, y: wy, name: _mtPick(cx, cy, nr.ang, nr.isF, MT_TIERS[2]),
+            sc: MT_FOOT.s0 + (MT_FOOT.s1 - MT_FOOT.s0) * t * (0.55 + 0.45 * _cellHash(cx, cy, 813)),
+            vy: MT_FOOT.vy0 + (MT_FOOT.vy1 - MT_FOOT.vy0) * t + 0.10 * (_cellHash(cx, cy, 814) - 0.5),
+            jx: 0, jy: 0, tier: '기슭' };
+          core.push(sg);
+        }
+      }
+    }
     if (_mtChunk.size > 220) _mtChunk.clear();
     _mtChunk.set(key, core);
     return core;
   }
+  let _mtChunkSig = '';
   function _mtCollectCover(out, cx0, cy0) {
     const zid = primaryZoneId; if (!zid) return 0;
+    // ★청크는 **굽는 시점의 손잡이 값**을 품는다 — 손잡이를 뒤집어도 캐시가 그대로면
+    //   A/B 대조군이 그림에 안 나타난다(하네스가 이걸 잡았다). 서명이 바뀌면 다시 굽는다.
+    const sig = (_t19.footOff ? 'F' : '') + zid;
+    if (sig !== _mtChunkSig) { _mtChunkSig = sig; _mtChunk.clear(); }
     const c0 = Math.floor((cx0 - MT_VIEW_PAD) / 32), c1 = Math.floor((cx0 + MT_VIEW_PAD) / 32);
     const r0 = Math.floor((cy0 - MT_VIEW_PAD) / 32), r1 = Math.floor((cy0 + MT_VIEW_PAD) / 32);
     let n = 0;
@@ -1952,7 +2000,9 @@ const SIM_JOB_EMOJI = {
                  occOff: false,
   //   ★[재민 2026-08-07] mtLegacy — 산 배치의 **대조군**. 켜면 능선 중심선 보행(옛 배치)으로
   //     돌아간다. 기본은 덮개 배치(맨 바위 0.0%)다. 옛 배치는 맨 바위 39.9~70.9% 였다.
-                 mtLegacy: false };
+                 mtLegacy: false,
+  //   ★[재민 2026-08-07] footOff — 기슭의 **대조군**. 끄면 산이 바위 경계에서 뚝 끊긴다.
+                 footOff: false };
   window.__terrain19 = _t19;
 
   // 지형 차단 통합 (물+바위) — 이동 예측용
@@ -5396,7 +5446,7 @@ const SIM_JOB_EMOJI = {
         for (let gy = Math.floor((rc - 60) / MT_CH); gy <= Math.floor((rc + 60) / MT_CH); gy++)
           for (let gx = Math.floor((cc - 60) / MT_CH); gx <= Math.floor((cc + 60) / MT_CH); gx++)
             for (const g2 of _mtChunkSegs(primaryZoneId, gx, gy))
-              out.push({ ridge: g2.tier, ri: 0, x: g2.x, y: g2.y, nm: g2.name, sc: g2.sc,
+              out.push({ ridge: g2.tier, ri: 0, x: g2.x, y: g2.y, nm: g2.name, sc: g2.sc, vy: g2.vy,
                          lcx: Math.floor((g2.x - ox0) / 32), lcy: Math.floor((g2.y - oy0) / 32) });
         return out;
       }

@@ -378,12 +378,10 @@ function go(){
     //   봉우리 하나를 알아보는 게 아니라 **스카이라인이 출렁이는** 것이다.
     const skyline=(g)=>g.map((x)=>x.tier==='L'
       ? Object.assign({},x,{vy:0.85+1.10*hash(Math.round(x.x),Math.round(x.y),977)}) : x);
-    const cands=[['① 지금 라이브 (뾰족 100%)',mkR({},0)],
-                 ['② +기슭',mkR({foot:1},0)],
-                 ['③ +기슭 +주봉',mkR({foot:1,peak:1,low:1},0)],
-                 ['③b +기슭 +스카이라인 변주(새 스프라이트 0)',skyline(mkR({foot:1},0))],
-                 ['④ ★+둥근 75% (한반도안)',mkR({foot:1,peak:1,low:1},0.75)],
-                 ['⑤ 둥근 100% (대조)',mkR({foot:1,peak:1,low:1},1.0)]];
+    const cands=[['① 지금 라이브 — 뾰족 100% · 기슭 없음',mkR({},0)],
+                 ['② ★종합안 — 둥근 75% + 기슭 + 스카이라인 변주',skyline(mkR({foot:1},0.75))],
+                 ['③ 대조 — 둥근 100%',skyline(mkR({foot:1},1.0))],
+                 ['④ 대조 — 뾰족 100% + 기슭 + 스카이라인',skyline(mkR({foot:1},0))]];
     for(const [nm,segs] of cands){
       const b=bareCells(segs), z=cost(segs);
       const t={};for(const g of segs)t[g.tier]=(t[g.tier]||0)+1;

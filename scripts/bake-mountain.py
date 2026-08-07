@@ -21,8 +21,13 @@ PPU = 64.0 / math.sqrt(2.0)
 ZSQ = 32.0 / (PPU * math.cos(math.radians(30.0)))   # 0.8165
 
 scene = bpy.context.scene
-scene.render.engine = 'CYCLES'; scene.cycles.samples = 64
-scene.cycles.use_denoising = bool(getattr(bpy.app.build_options, 'openimagedenoise', False))
+scene.render.engine = 'CYCLES'; scene.cycles.samples = int(os.environ.get('MT_SAMPLES', '64'))
+# ★파이어플라이 클램프 [2026-08-07 실측] — 샘플 64 로는 크고 매끈한 면에서 밝은 튀는 화소가 남고,
+#   디노이저가 그걸 **부드러운 흰 반점으로 뭉갠다**(mt_X1 에서 화소의 1.6%가 250 초과).
+#   해만 켜도·하늘만 켜도 똑같이 나온 게 증거다 — 광원이 아니라 표본 분산이다.
+scene.cycles.sample_clamp_direct = float(os.environ.get('MT_CLAMP', '2.0'))
+scene.cycles.sample_clamp_indirect = float(os.environ.get('MT_CLAMP', '2.0'))
+scene.cycles.use_denoising = (os.environ.get('MT_DENOISE','1') == '1') and bool(getattr(bpy.app.build_options, 'openimagedenoise', False))
 try: scene.view_settings.view_transform = 'Standard'
 except Exception: pass
 scene.render.film_transparent = True
@@ -30,8 +35,8 @@ scene.render.image_settings.file_format = 'PNG'; scene.render.image_settings.col
 if scene.world is None: scene.world = bpy.data.worlds.new("W")
 scene.world.use_nodes = True
 bg = scene.world.node_tree.nodes.get("Background")
-bg.inputs[0].default_value = (0.52, 0.56, 0.6, 1.0); bg.inputs[1].default_value = 0.55
-sun_d = bpy.data.lights.new("Sun", 'SUN'); sun_d.energy = 3.6; sun_d.angle = 0.2
+bg.inputs[0].default_value = (0.52, 0.56, 0.6, 1.0); bg.inputs[1].default_value = float(os.environ.get('MT_WORLD', '0.55'))
+sun_d = bpy.data.lights.new("Sun", 'SUN'); sun_d.energy = float(os.environ.get('MT_SUN', '3.6')); sun_d.angle = 0.2
 sun = bpy.data.objects.new("Sun", sun_d); scene.collection.objects.link(sun)
 sun.rotation_euler = (math.radians(52), 0, math.radians(-35))
 cam_d = bpy.data.cameras.new("Cam"); cam_d.type = 'ORTHO'
@@ -69,9 +74,11 @@ def mountain_material():
     nt.links.new(add2.outputs['Value'], ramp.inputs['Fac'])
     nt.links.new(ramp.outputs['Color'], p.inputs['Base Color'])
     bnoise = nt.nodes.new('ShaderNodeTexNoise'); bnoise.inputs['Scale'].default_value = 5.5; bnoise.inputs['Detail'].default_value = 8.0
-    bump = nt.nodes.new('ShaderNodeBump'); bump.inputs['Strength'].default_value = 0.38
+    bump = nt.nodes.new('ShaderNodeBump')
+    bump.inputs['Strength'].default_value = float(os.environ.get('MT_BUMP', '0.38'))
     nt.links.new(bnoise.outputs['Fac'], bump.inputs['Height'])
-    nt.links.new(bump.outputs['Normal'], p.inputs['Normal'])
+    if os.environ.get('MT_BUMP') != '0':
+        nt.links.new(bump.outputs['Normal'], p.inputs['Normal'])
     # ★거울 반사 0 [2026-08-07 실측] — 0.12 로도 큰 매끈한 면(mt_X1)에서 흰 반점이 터진다.
     #   화소의 5.5%가 250 초과로 날아갔다(작은 각면 스프라이트 mt_G0v0 은 0개라 안 보였다).
     #   청동기 화강암에 하이라이트는 애초에 안 맞는다.
