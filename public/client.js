@@ -2273,12 +2273,14 @@ const SIM_JOB_EMOJI = {
   //   ※나무는 안 흔든다 — 서버 엔티티라 그리는 자리가 다르고(안개 게이트 경유), 줄기는 원래 안 흔들린다.
   const WIND_DIR_X = 0.94, WIND_DIR_Y = 0.34;      // 바람이 부는 방향(월드) — 파의 진행 방향
   const WIND_AMP = { grass: 0.155, reed: 0.265, cattail: 0.235, flower: 0.125 };  // 기울기 tan(≈9°~15°)
-  let _natT0 = null;
+  // ★이름을 `_windT0` 로 둔다 — 병행 세션(산)이 렌더 함수 안에서 `_natT0` 를 **수집 계측용**으로
+  //   쓰고 있다(`window._natAcc`). 같은 이름이면 섀도잉이라 읽는 사람이 헷갈린다.
+  let _windT0 = null;
   let _natMs = 0;                                  // 자연물 그리기 패스 ms(이동평균) — `__natDbg.ms`
   function _windT() {
     if (_t19.freezeT != null) return _t19.freezeT;
-    if (_natT0 === null) _natT0 = (typeof worldNow === 'function' ? worldNow() : 0);
-    return ((typeof worldNow === 'function' ? worldNow() : 0) - _natT0) / 1000;
+    if (_windT0 === null) _windT0 = (typeof worldNow === 'function' ? worldNow() : 0);
+    return ((typeof worldNow === 'function' ? worldNow() : 0) - _windT0) / 1000;
   }
   function _windAt(t) {
     if (_t19.windForce != null) return _t19.windForce;      // ★날씨 훅 · 하네스 주입구
