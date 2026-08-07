@@ -1793,7 +1793,11 @@ const SIM_JOB_EMOJI = {
   //   **지도상 풀밭인데 산이 있는 것**이다 — 플레이어가 옳다.
   //   ⇒ **높이도 묶는다**: 스프라이트가 화면 위로 덮는 셀 수가 앵커에서 북서로 이어진
   //     바위 셀 수(dNW)를 못 넘게. 그러면 실루엣이 바위 마스크를 따라간다.
-  const MT_FIT_TOL = 0.35, MT_SC_MIN = 0.28, MT_VY_MIN = 0.30;   // ★하한 — 이보다 낮으면 틈 메우기 스프라이트가 제 셀도 못 덮는다(실측)
+  // ★여유 셀 [재민 2026-08-07 "살짝은 산에 침범당해도 돼"] — 손잡이로 열어 둔다.
+  //   0 에 가까울수록 산이 바위 마스크에 딱 붙지만 경계가 톱니가 되고 계층이 무너진다.
+  //   크게 둘수록 산다워지지만 평지 침범이 는다. 이 값은 그 저울이다.
+  let MT_FIT_TOL = 2.0;   // ★재민 "살짝은 침범당해도 돼" — 여유 0.35~4 실측 후 2.0 채택(톱니 소멸 · 하한눌림 0%)
+  const MT_SC_MIN = 0.28, MT_VY_MIN = 0.30;   // ★하한 — 이보다 낮으면 틈 메우기 스프라이트가 제 셀도 못 덮는다(실측)
   const _mtFit = (sc, dE) => {
     if (_t19.fitOff) return sc;
     const cap = (dE + MT_FIT_TOL) / (MT_CROSS_U / 2);
@@ -6100,6 +6104,8 @@ const SIM_JOB_EMOJI = {
       }
       return { cov, foot, offRock };
     };
+    // 여유 셀을 바꿔 가며 **한 번의 부팅으로 여러 값을 재기** 위한 훅(probe-mttol 이 쓴다)
+    window.__mtSetTol = (v) => { MT_FIT_TOL = +v; _mtChunk.clear(); needsRedraw = true; return MT_FIT_TOL; };
     window.__mtOccAt = (wx, wy) => {
       if (!_mtToScr || !_mtAnchors || !_mtLastRend) return null;
       const p = w2i(wx, wy), sp = _mtToScr(p.x, p.y);

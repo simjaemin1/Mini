@@ -129,7 +129,11 @@ const med = (v) => { const s = v.slice().sort((a, b) => a - b); return s.length 
     if (Math.hypot(bx - nearBox[0], by - nearBox[1]) < 260) continue;
     const m = diff(on, off, b); if (m < farBest) { farBest = m; farBox = b; }
   }
-  ok('⑥ 기슭이 그림을 실제로 바꾼다', nearBest > 6, `가장 많이 바뀐 상자 ${JSON.stringify(nearBox)} |Δ| ${nearBest.toFixed(1)}`);
+  // ★문턱 6 → 3 [재민 "살짝은 침범당해도 돼" → 여유 2.0 채택 후]
+  //   산이 커지면서 기슭 자리를 산이 더 많이 덮어, 기슭을 껐다 켜도 바뀌는 화소가 줄었다(6.7 → 4.7).
+  //   ★완화처럼 보이지만 판정을 지탱하는 건 ⑦ 이다 — **안 닿는 자리는 0.00** 이라야 한다.
+  //   4.7 대 0.00 은 여전히 뚜렷한 신호다. 신호가 사라지면 ⑦ 이 아니라 ⑥ 이 먼저 무너진다.
+  ok('⑥ 기슭이 그림을 실제로 바꾼다', nearBest > 3, `가장 많이 바뀐 상자 ${JSON.stringify(nearBox)} |Δ| ${nearBest.toFixed(1)} (안 닿는 자리는 ⑦ 에서 0.00)`);
   ok('⑦ ★반례 — 안 닿는 자리는 그대로다', farBest < 0.5, `가장 덜 바뀐 상자 |Δ| ${farBest.toFixed(2)}`);
 
   // ⑧ 결정론

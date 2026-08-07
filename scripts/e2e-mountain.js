@@ -176,11 +176,17 @@ function changedPct(a, b, box, thr) {
   const covN = sp.filter((v) => v && v.cov > 0).length;
   const badN = sp.filter((v) => v && v.cov > 0 && (v.foot > 0 || v.offRock > 0)).length;
   const landN = sp.filter((v) => v).length;
-  say(`    뭍 ${landN}셀 중 산이 덮은 셀 ${covN} · 그중 앞 치맛자락/비바위 앵커 ${badN}`);
+  say(`    뭍 ${landN}셀 중 산이 덮은 셀 ${covN} (${(covN / Math.max(1, landN) * 100).toFixed(1)}%) · 그중 앞 치맛자락/비바위 앵커 ${badN}`);
   ok(landN > 100, `뭍 표본이 충분하다 (${landN})`);
   ok(covN > 0, `산이 덮은 뭍 셀이 있다 (${covN}) — 0 이면 아래 판정이 자명하다`);
-  ok(badN / Math.max(1, landN) < 0.02,
-    `★★산 발치가 바위 밖에 얹히지 않는다 (${badN}/${landN} = ${(badN / Math.max(1, landN) * 100).toFixed(1)}% < 2%)`);
+  // ★★문턱 9% 의 근거 [재민 2026-08-07 "살짝은 산에 침범당해도 돼"]
+  //   · 고치기 전(배율 묶기 없음) : 18.1%   ← 이건 여전히 떨어뜨려야 한다
+  //   · 여유 0.35(톱니)          : 1.5%
+  //   · 여유 2.0(채택)           : 4.4~6.1%  ← 자리에 따라 흔들린다
+  //   재민이 "살짝"을 허용했으므로 문턱은 채택값 위·회귀 아래에 둔다.
+  //   ★완화가 아니라 **규격 변경 반영**이다 — 원래 잡으려던 회귀(18%)는 그대로 걸린다.
+  ok(covN / Math.max(1, landN) < 0.09,
+    `★★산이 바위 밖으로 넘치지 않는다 (${covN}/${landN} = ${(covN / Math.max(1, landN) * 100).toFixed(1)}% < 9%) — 고치기 전 18.1%`);
 
   // 반례: 바위가 아닌 자리 상자에는 산 픽셀이 0 이어야 한다(mtOff A/B 로 잰다)
   const mtOn = await grab('01-mt-on');
