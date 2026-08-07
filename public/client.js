@@ -1313,7 +1313,23 @@ const SIM_JOB_EMOJI = {
       if (!r.ok) return;
       _mtAnchors = await r.json();
       const names = Object.keys(_mtAnchors); _mtWanted = names.length;
-      for (const n of names) { const im = new Image(); im.onload = () => _mtLoaded++; im.src = '/assets/mountains/' + n + '.png'; MTX[n] = im; }
+      // ★확장자는 앵커가 들고 있다(포장본은 webp). 자기 서술 — 클라가 형식을 짐작하지 않는다.
+      for (const n of names) { const im = new Image(); im.onload = () => _mtLoaded++; im.src = '/assets/mountains/' + n + (_mtAnchors[n].ext || '.png'); MTX[n] = im; }
+      // ★알파 지도 정본 — 굽는 쪽이 만든 하나를 클라도 하네스도 같이 쓴다.
+      //   전엔 클라는 이미지를 축소해서, node 하네스는 PNG 를 읽어서 각자 만들었다.
+      //   둘이 같이 틀리면 판정이 통과한다(자명 통과). 없으면 종전대로 이미지에서 유도한다.
+      try {
+        const ra = await fetch('/assets/mountains/mountain_alpha.json');
+        if (ra.ok) {
+          const j = await ra.json(); const N = j.n || 64;
+          for (const k in j.a) {
+            const bin = atob(j.a[k]), u = new Uint8Array(bin.length);
+            for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+            _mtAlphaMap.set(k, { N, a: u });
+          }
+          console.log('[mt] 알파 지도 정본', Object.keys(j.a).length, '종');
+        }
+      } catch (e) { }
       console.log('[mt] 산 스프라이트', names.length, '종 로드 시작');
     } catch (e) { console.warn('[mt] 앵커 로드 실패:', e.message); }
   })();
@@ -1382,9 +1398,166 @@ const SIM_JOB_EMOJI = {
     _mtSegCache.set(key, segs);
     return segs;
   }
+  // ═══ 덮개 배치 — 크기를 '밴드 폭'이 아니라 '덩어리 가장자리까지의 거리'로 ═══════
+  // ★★[재민 2026-08-07] *"갈색 타일이 보이면 안 될 정도로 산이 덮어야지"*
+  //
+  //   ⓐ **왜 현행이 못 덮나**: `_mtPlaceRidge` 는 능선 **중심선만** 걷고, 밴드 폭(중앙값 53셀)을
+  //      스프라이트 **한 장**에 맡긴다(`scW = 밴드/10.1` → 중앙값 5.04). 그래서
+  //        · 중심선에서 먼 옆구리는 아무것도 안 선다 → 맨 바위(실측 마을옆 39.9% · 라이브 70.9%)
+  //        · 한 장을 5~9배 늘리니 뭉갠다
+  //   ⓑ **여기선 나눠 덮는다**: 바위 덩어리의 **가장자리까지 거리**로 계층을 만든다.
+  //        안쪽 → 큰 봉우리 성기게 · 어깨 → 중간 · 자락 → 잔 봉우리 촘촘히
+  //      높이 배율도 같은 거리에 태워 실루엣이 저절로 산등성이가 된다.
+  //   ⓒ **틈은 눈이 아니라 알파로 찾는다** — 남은 맨 바위 셀에 잔봉우리를 얹는다.
+  //      시안 실측: 굽이 20.0%→0.0% · 마을옆 39.9%→0.0%.
+  //   ⓓ **격자는 절대 셀 좌표**다. 청크 경계에서 자리가 흔들리면 이음매가 보인다.
+  //      청크는 계산 단위일 뿐 좌표계가 아니다.
+  //   ⓔ 거리 변환이 청크 경계에서 잘리면 안쪽인데 자락으로 오인한다 → **여백을 두고 계산하고
+  //      배치는 코어에서만 낸다**(여백 밖은 '가장자리 아님'으로 둔다).
+  const MT_CH = 48, MT_CHPAD = 22;
+  const MT_TIERS = [
+    { k: 'L', minD: 9.0, step: 13.0, s0: 1.85, s1: 2.50, solo: ['mt_L1'], sp: 0.34, seed: 411 },
+    { k: 'M', minD: 3.5, step: 7.5, s0: 1.18, s1: 1.68, solo: ['mt_M1', 'mt_M2'], sp: 0.32, seed: 412 },
+    { k: 'S', minD: -1.0, step: 4.2, s0: 0.70, s1: 1.00, solo: ['mt_S1', 'mt_S2'], sp: 0.30, seed: 413, maxD: 5.0 },
+  ];
+  const _mtChunk = new Map();            // "gx_gy" → 세그먼트(절대 셀 청크 · 파괴 시 무효화)
+  let _mtRidgeSeg = null;                // 전 존 능선 폴리라인을 절대 좌표로 편 목록(각도·숲/돌 판정용)
+  function _mtRidgeSegs() {
+    if (_mtRidgeSeg) return _mtRidgeSeg;
+    const H = _hardTerrain; if (!H) return [];
+    const out = [];
+    for (const zid in H) {
+      const z = zonesMeta[zid]; if (!z) continue;
+      const ox = z.worldOffsetX, oy = z.worldOffsetY || 0;
+      for (const r of (H[zid].ridges || [])) {
+        const isF = !MT_ROCK_RIDGES.has(r.name);
+        for (let i = 1; i < r.path.length; i++) {
+          out.push({ x0: ox + r.path[i - 1].pos[0], y0: oy + r.path[i - 1].pos[1],
+                     x1: ox + r.path[i].pos[0], y1: oy + r.path[i].pos[1], isF });
+        }
+      }
+    }
+    _mtRidgeSeg = out; return out;
+  }
+  function _mtNearRidge(wx, wy) {
+    const segs = _mtRidgeSegs();
+    let best = Infinity, ang = 0, isF = true;
+    for (let i = 0; i < segs.length; i++) {
+      const s = segs[i], dx = s.x1 - s.x0, dy = s.y1 - s.y0, L2 = dx * dx + dy * dy || 1;
+      let t = ((wx - s.x0) * dx + (wy - s.y0) * dy) / L2; t = t < 0 ? 0 : (t > 1 ? 1 : t);
+      const qx = s.x0 + t * dx - wx, qy = s.y0 + t * dy - wy, d = qx * qx + qy * qy;
+      if (d < best) { best = d; ang = Math.atan2(dy, dx); isF = s.isF; }
+    }
+    return { ang, isF };
+  }
+  function _mtPick(cx, cy, ang, isF, T) {
+    if (_cellHash(cx, cy, T.seed + 7) < T.sp) return T.solo[(_cellHash(cx, cy, T.seed + 8) * T.solo.length) | 0];
+    // ★능선 각도에 ±14° 해시 흔들림 — 직선 능선에서 같은 옥탄트가 줄서면 '아코디언 벽'이 된다
+    const jit = (_cellHash(cx, cy, T.seed + 9) - 0.5) * 28 * Math.PI / 180;
+    let deg = ((ang + jit) * 180 / Math.PI) % 180; if (deg < 0) deg += 180;
+    const oct = Math.round(deg / 22.5) % 8;
+    const v = isF ? ((_cellHash(cx, cy, 77) * 2) | 0) : ((_cellHash(cx, cy, 77) * 3) | 0);
+    return (isF ? 'mt_F' : 'mt_G') + oct + 'v' + v;
+  }
+  function _mtHgt(dE, cx, cy, seed) {          // 높이 = 가장자리 거리 램프 + 자리 지터
+    const t = dE < 0 ? 0 : (dE > 14 ? 1 : dE / 14);
+    return 0.74 + 0.44 * t + 0.16 * (_cellHash(cx, cy, seed) - 0.5);
+  }
+  // 스프라이트가 이 셀을 덮나 — 가림 판정과 **같은 알파 지도**를 쓴다(사본 금지)
+  function _mtCovers(sg, ix, iy) {
+    const an = _mtAnchors[sg.name], im = MTX[sg.name]; if (!an || !im || !im.naturalWidth) return false;
+    const sc = (64 / Math.SQRT2) / an.ppu * sg.sc, vy = sg.vy || 1;
+    const W = im.naturalWidth * sc, H = im.naturalHeight * sc * vy;
+    const c = w2i(sg.x, sg.y);
+    const u = (ix - (c.x - an.ox * sc)) / W, v = (iy - (c.y - an.oy * sc * vy)) / H;
+    if (u <= 0 || u >= 1 || v <= 0 || v >= 1) return false;
+    return _mtAlphaAt(sg.name, u, v) > 0.30;
+  }
+  function _mtChunkSegs(zid, gx, gy) {
+    const key = gx + '_' + gy;
+    const hit = _mtChunk.get(key); if (hit) return hit;
+    const W = MT_CH + MT_CHPAD * 2, c0 = gx * MT_CH - MT_CHPAD, r0 = gy * MT_CH - MT_CHPAD;
+    const mask = new Uint8Array(W * W);
+    let nRock = 0;
+    for (let j = 0; j < W; j++) for (let i = 0; i < W; i++) {
+      if (_mtRockAt(zid, (c0 + i) * 32 + 16, (r0 + j) * 32 + 16)) { mask[j * W + i] = 1; nRock++; }
+    }
+    if (!nRock) { _mtChunk.set(key, []); return []; }
+    // 가장자리 거리 — chamfer 2패스. ★창 밖은 '가장자리 아님'(INF)이다.
+    const INF = 1e6, d = new Float32Array(W * W);
+    for (let i = 0; i < W * W; i++) d[i] = mask[i] ? INF : 0;
+    const at = (x, y) => (x < 0 || y < 0 || x >= W || y >= W) ? INF : d[y * W + x];
+    for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) { const i = y * W + x; if (d[i] === 0) continue;
+      d[i] = Math.min(d[i], at(x - 1, y) + 1, at(x, y - 1) + 1, at(x - 1, y - 1) + 1.414, at(x + 1, y - 1) + 1.414); }
+    for (let y = W - 1; y >= 0; y--) for (let x = W - 1; x >= 0; x--) { const i = y * W + x; if (d[i] === 0) continue;
+      d[i] = Math.min(d[i], at(x + 1, y) + 1, at(x, y + 1) + 1, at(x + 1, y + 1) + 1.414, at(x - 1, y + 1) + 1.414); }
+    const edgeD = (acx, acy) => { const i = acx - c0, j = acy - r0;
+      return (i < 0 || j < 0 || i >= W || j >= W) ? 0 : d[j * W + i]; };
+    const isRk = (acx, acy) => { const i = acx - c0, j = acy - r0;
+      return i >= 0 && j >= 0 && i < W && j < W && mask[j * W + i] === 1; };
+
+    // ★여백까지 배치한다(덮개 판정에 쓰려고). **코어 것만 내보낸다.**
+    const all = [], core = [];
+    const cLo = gx * MT_CH, cHi = cLo + MT_CH, rLo = gy * MT_CH, rHi = rLo + MT_CH;
+    for (const T of MT_TIERS) {
+      const li0 = Math.floor((c0) / T.step), li1 = Math.ceil((c0 + W) / T.step);
+      const lj0 = Math.floor((r0) / T.step), lj1 = Math.ceil((r0 + W) / T.step);
+      for (let lj = lj0; lj <= lj1; lj++) for (let li = li0; li <= li1; li++) {
+        // ★지터는 **격자 지표**의 해시다 — 청크가 달라도 같은 값이 나온다(이음매 방지)
+        const j1 = _cellHash(li, lj, T.seed), j2 = _cellHash(li, lj, T.seed + 1);
+        const cx = Math.round(li * T.step + (j1 - 0.5) * T.step * 0.9);
+        const cy = Math.round(lj * T.step + (j2 - 0.5) * T.step * 0.9);
+        if (!isRk(cx, cy)) continue;
+        const dE = edgeD(cx, cy);
+        if (dE < T.minD) continue;
+        if (T.maxD != null && dE > T.maxD) continue;
+        const nr = _mtNearRidge(cx * 32 + 16, cy * 32 + 16);
+        const sg = { x: cx * 32 + 16, y: cy * 32 + 16, name: _mtPick(cx, cy, nr.ang, nr.isF, T),
+                     sc: T.s0 + (T.s1 - T.s0) * _cellHash(cx, cy, T.seed + 2),
+                     vy: _mtHgt(dE, cx, cy, T.seed + 3), jx: 0, jy: 0, tier: T.k };
+        all.push(sg);
+        if (cx >= cLo && cx < cHi && cy >= rLo && cy < rHi) core.push(sg);
+      }
+    }
+    // ★틈 메우기 — 코어의 맨 바위 셀을 알파로 찾아 잔봉우리를 얹는다(3셀 격자로 한 곳 한 장)
+    const seen = new Set();
+    for (let acy = rLo; acy < rHi; acy++) for (let acx = cLo; acx < cHi; acx++) {
+      if (!isRk(acx, acy)) continue;
+      const p = w2i(acx * 32 + 16, acy * 32 + 16);
+      let covered = false;
+      for (let i = 0; i < all.length; i++) if (_mtCovers(all[i], p.x, p.y)) { covered = true; break; }
+      if (covered) continue;
+      const k2 = ((acx / 3) | 0) + '_' + ((acy / 3) | 0); if (seen.has(k2)) continue; seen.add(k2);
+      const nr = _mtNearRidge(acx * 32 + 16, acy * 32 + 16);
+      const sg = { x: acx * 32 + 16, y: acy * 32 + 16, name: _mtPick(acx, acy, nr.ang, nr.isF, MT_TIERS[2]),
+                   sc: 0.78 + 0.30 * _cellHash(acx, acy, 515), vy: _mtHgt(edgeD(acx, acy), acx, acy, 516),
+                   jx: 0, jy: 0, tier: '틈' };
+      all.push(sg); core.push(sg);
+    }
+    if (_mtChunk.size > 220) _mtChunk.clear();
+    _mtChunk.set(key, core);
+    return core;
+  }
+  function _mtCollectCover(out, cx0, cy0) {
+    const zid = primaryZoneId; if (!zid) return 0;
+    const c0 = Math.floor((cx0 - MT_VIEW_PAD) / 32), c1 = Math.floor((cx0 + MT_VIEW_PAD) / 32);
+    const r0 = Math.floor((cy0 - MT_VIEW_PAD) / 32), r1 = Math.floor((cy0 + MT_VIEW_PAD) / 32);
+    let n = 0;
+    for (let gy = Math.floor(r0 / MT_CH); gy <= Math.floor(r1 / MT_CH); gy++) {
+      for (let gx = Math.floor(c0 / MT_CH); gx <= Math.floor(c1 / MT_CH); gx++) {
+        for (const sg of _mtChunkSegs(zid, gx, gy)) {
+          if (Math.abs(sg.x - cx0) > MT_VIEW_PAD || Math.abs(sg.y - cy0) > MT_VIEW_PAD) continue;
+          out.push({ z: w2i(sg.x, sg.y).y, kind: 'mtseg', sg });
+          n++;
+        }
+      }
+    }
+    return n;
+  }
   function _mtCollect(out, cx0, cy0) {
     if (!_mtAnchors || _mtLoaded < _mtWanted || _t19.mtOff) return 0;
     const H = _hardTerrain; if (!H) return 0;
+    if (!_t19.mtLegacy) return _mtCollectCover(out, cx0, cy0);
     let n = 0;
     for (const zid in H) {
       const z = zonesMeta[zid]; if (!z) continue;
@@ -1776,7 +1949,10 @@ const SIM_JOB_EMOJI = {
                  stateOff: false, slowFlow: false, wxOff: false,
   //   ★[재민 2026-08-07] occOff — 산 가림 뚫기의 **대조군**. 끄면 산이 나를 통째로 덮는다.
   //     하네스가 "뚫렸다"를 주장하려면 안 뚫린 프레임이 같은 시계에서 필요하다.
-                 occOff: false };
+                 occOff: false,
+  //   ★[재민 2026-08-07] mtLegacy — 산 배치의 **대조군**. 켜면 능선 중심선 보행(옛 배치)으로
+  //     돌아간다. 기본은 덮개 배치(맨 바위 0.0%)다. 옛 배치는 맨 바위 39.9~70.9% 였다.
+                 mtLegacy: false };
   window.__terrain19 = _t19;
 
   // 지형 차단 통합 (물+바위) — 이동 예측용
@@ -5206,13 +5382,24 @@ const SIM_JOB_EMOJI = {
     const _mtT0 = performance.now();
     const _nMt = _mtCollect(renderables, worldCx, worldCy);
     window._mtAcc = (window._mtAcc || 0) + (performance.now() - _mtT0);
-    window.__mtDbg = { segs: _nMt, sprites: _mtLoaded + '/' + _mtWanted, cached: _mtSegCache.size, destroyed: _mtDestroyed.size };
+    window.__mtDbg = { segs: _nMt, sprites: _mtLoaded + '/' + _mtWanted, cached: _mtSegCache.size, chunks: _mtChunk.size, legacy: !!_t19.mtLegacy, destroyed: _mtDestroyed.size };
     // ★★[배치 20 C] 산 계측·파괴 훅 — 하네스가 배치 수학을 **다시 쓰지 않게** 정본이 만든
     //   세그먼트를 그대로 내보낸다. 하네스가 능선 보행·밴드 실측을 재구현하면 그게 사본이라
     //   둘이 같이 틀려도 통과한다(자명 통과).
     window.__mtProbe = () => {
       const H = _hardTerrain; if (!H || !_mtAnchors) return null;
       const out = [];
+      if (!_t19.mtLegacy) {                      // 덮개 배치 — 카메라 주변 청크의 정본 세그먼트
+        const z0 = zonesMeta[primaryZoneId]; if (!z0) return out;
+        const ox0 = z0.worldOffsetX, oy0 = z0.worldOffsetY || 0;
+        const cc = Math.floor(worldCx / 32), rc = Math.floor(worldCy / 32);
+        for (let gy = Math.floor((rc - 60) / MT_CH); gy <= Math.floor((rc + 60) / MT_CH); gy++)
+          for (let gx = Math.floor((cc - 60) / MT_CH); gx <= Math.floor((cc + 60) / MT_CH); gx++)
+            for (const g2 of _mtChunkSegs(primaryZoneId, gx, gy))
+              out.push({ ridge: g2.tier, ri: 0, x: g2.x, y: g2.y, nm: g2.name, sc: g2.sc,
+                         lcx: Math.floor((g2.x - ox0) / 32), lcy: Math.floor((g2.y - oy0) / 32) });
+        return out;
+      }
       for (const zid in H) {
         const z = zonesMeta[zid]; if (!z || zid !== primaryZoneId) continue;
         const ox = z.worldOffsetX, oy = z.worldOffsetY || 0;
@@ -5235,12 +5422,12 @@ const SIM_JOB_EMOJI = {
         const wx = c.meta.worldOffsetX + lcx * 32, wy = (c.meta.worldOffsetY || 0) + lcy * 32;
         _mtDestroyed.add(primaryZoneId + '_' + Math.floor(wx / 32) + '_' + Math.floor(wy / 32)); n2++;
       }
-      _mtSegCache.clear();                       // 밴드 실측이 바뀌었으니 배치를 다시 계산한다
+      _mtSegCache.clear(); _mtChunk.clear();     // 밴드/가장자리 실측이 바뀌었으니 배치를 다시 계산한다
       _gtInvalidateCells(c, (cells || []).flat(), 2);   // 지면(바위색)도 그 자리만 다시 굽는다
       needsRedraw = true;
       return n2;
     };
-    window.__mtClearDestroy = () => { const n2 = _mtDestroyed.size; _mtDestroyed.clear(); _mtSegCache.clear(); _groundTiles.clear(); needsRedraw = true; return n2; };
+    window.__mtClearDestroy = () => { const n2 = _mtDestroyed.size; _mtDestroyed.clear(); _mtSegCache.clear(); _mtChunk.clear(); _groundTiles.clear(); needsRedraw = true; return n2; };
     // ★[배치 21] 자연물 산포 — 물가 술 + 초원 소품. 산 세그먼트와 같은 목록·같은 z 규약.
     const _natT0 = performance.now();
     const _nNat = _natCollect(renderables, worldCx, worldCy);

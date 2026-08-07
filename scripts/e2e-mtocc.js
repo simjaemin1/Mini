@@ -7,12 +7,18 @@
 //   대조군은 `__terrain19.occOff = true`(같은 세션·같은 시계·같은 카메라). git stash 로 만든
 //   "before" 는 다른 세계라 비교가 안 된다.
 //
+// ★★[2026-08-07 개정] 덮개 배치가 들어오면서 이 자리의 가림이 **사라졌다**(배율 5.8 → 1.6).
+//   그래서 가림 기구 자체는 `mtLegacy = true`(옛 배치 — 손잡이로 살아 있는 실제 코드 경로)에서
+//   시험하고, 덮개 배치가 가림을 실제로 줄였는지는 **따로 잰다**(⑦).
+//   기구를 안 도는 채로 "이제 안 가려진다"고 말하면 그 코드는 조용히 썩는다.
+//
 //   ① 애초에 가려지고 있나        — occOff 프레임에서 내 자리가 mtOff 프레임과 달라야 한다
 //                                   (안 그러면 아래 판정이 전부 자명하게 통과한다)
 //   ② 구멍이 뚫렸나              — 켠 프레임이 대조군과 내 자리에서 달라야 한다
 //   ③ 내가 보이나                — 켠 프레임의 내 자리가 **산 없는 그림 쪽에 더 가까워야** 한다
 //   ④ ★산 전체가 흐려지면 안 된다 — 구멍 반경 밖 산 화소는 대조군과 **동일**해야 한다
-//   ⑤ 안 가릴 땐 값이 0          — 산에서 멀리 떨어지면 가림 장수가 0 이어야 한다
+//   ⑥ 안 가릴 땐 값이 0          — 산 반대쪽으로 가면 가림 장수가 줄어야 한다
+//   ⑦ ★덮개 배치가 가림을 줄였나  — 같은 자리에서 mtLegacy 끔 ≤ 켬
 //
 // 포트 3010/3020 공용 — E2E 동시 실행 금지.
 // =============================================================================
@@ -77,7 +83,9 @@ function diff(a, b, box) {
   const shot = async (n) => { const p2 = `/tmp/occ-${n}.png`; await page.screenshot({ path: p2 }); return PNG.sync.read(fs.readFileSync(p2)); };
   const knob = async (o) => { await page.evaluate((k) => Object.assign(window.__terrain19, k), o); await sleep(1200); };
 
-  // ── 가려지는 자리를 찾는다. 없으면 판정이 전부 자명해지므로 **찾지 못하면 실패**다.
+  // ── 기구 시험은 옛 배치에서 — 거기서만 큰 산이 멀리서 나를 덮는다.
+  await knob({ mtLegacy: true });
+  await sleep(1800);
   const dbg = await page.evaluate(() => window.__mtOccDbg);
   console.log('\n[가림] ' + JSON.stringify(dbg));
   ok('① 가려지는 자리를 찾았다(반례 성립)', !!(dbg && dbg.n > 0), `가린 산 ${dbg && dbg.n}장`);
@@ -117,7 +125,15 @@ function diff(a, b, box) {
   ok('⑤ ★구멍 밖 산은 손대지 않았다', dFar < 1.0 && dFarNoMt > 12,
     `밖 켬↔끔 ${dFar.toFixed(2)} (≈0) · 그 상자에 산이 있음 확인 ${dFarNoMt.toFixed(1)} ← 이게 0 이면 판정이 자명하다`);
 
+  // ⑦ ★덮개 배치가 가림을 실제로 줄였나 — 같은 자리·같은 시계에서 배치만 바꿔 잰다
+  await knob({ mtLegacy: false });
+  await sleep(1800);
+  const cov = await page.evaluate(() => window.__mtOccDbg);
+  ok('⑦ ★덮개 배치가 가림을 줄인다', !!cov && cov.n <= dbg.n,
+    `덮개 ${cov && cov.n}장 ≤ 옛 배치 ${dbg.n}장 (배율이 5.8→1.6 이라 몸통이 멀리까지 안 뻗는다)`);
+
   // ⑥ 산에서 멀어지면 가림이 사라진다 — 상수 true 가 아님을 보인다
+  await knob({ mtLegacy: true });
   for (let i = 0; i < 7; i++) { for (const k of ['s', 'd']) { await page.keyboard.down(k); await sleep(1400); await page.keyboard.up(k); } }
   await sleep(1500);
   const far = await page.evaluate(() => window.__mtOccDbg);

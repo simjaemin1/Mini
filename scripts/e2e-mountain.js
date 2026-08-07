@@ -181,6 +181,18 @@ function changedPct(a, b, box, thr) {
   say(`    세그먼트 폭(sc) 분포 — 하위10% ${q1.toFixed(2)} · 상위10% ${q9.toFixed(2)} · 표본 ${scs.length}`);
   ok(scs.length > 20, `폭 표본이 충분하다 (${scs.length})`);
   ok(q9 > q1 * 1.5, `★★폭이 자리마다 다르다 (상위10% ${q9.toFixed(2)} > 하위10% ${q1.toFixed(2)}×1.5) — 한 폭으로 찍어내지 않는다`);
+  // ★★[2026-08-07 추가] **배율 상한** — 옛 하네스는 "폭이 다른가"만 봤고 "제정신인가"는 안 봤다.
+  //   그래서 배율 중앙값 5.8(= 512px 스프라이트를 5.8배 늘림 = 뭉갬)이 17/0 을 통과했다.
+  //   상한선은 스프라이트가 **확대 없이** 견디는 배율이다: ppu / PPU_SCR.
+  const _anMax = await page.evaluate(() => {
+    const a = window.__mtAnchorsDbg || null; if (a) return a;
+    return null;
+  });
+  const scMax = scs[scs.length - 1], scMed = scs[scs.length >> 1];
+  const SHARP = 98 / (64 / Math.SQRT2);              // 포장 뒤 ppu 98 기준 = 2.16
+  say(`    배율 중앙값 ${scMed.toFixed(2)} · 최대 ${scMax.toFixed(2)} · 확대 없는 한계 ${SHARP.toFixed(2)}`);
+  ok(scMed < SHARP, `★★배율 중앙값이 확대 한계 안이다 (${scMed.toFixed(2)} < ${SHARP.toFixed(2)}) — 옛 배치는 5.8 이었다`);
+  ok(scMax < SHARP * 1.35, `★배율 최대도 한계 근처다 (${scMax.toFixed(2)} < ${(SHARP * 1.35).toFixed(2)})`);
   ok(q1 > 0, '가장 좁은 세그먼트도 폭이 0 은 아니다');
 
   // ── ⓓ 파괴 후 재계산 ──────────────────────────────────────────────────────

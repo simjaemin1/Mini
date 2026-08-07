@@ -26,6 +26,7 @@ import os
 import sys
 
 from PIL import Image
+import base64
 
 SRC = sys.argv[1] if len(sys.argv) > 1 else '/tmp/mt2048'
 DST = sys.argv[2] if len(sys.argv) > 2 else '/tmp/mtpack'
@@ -37,6 +38,7 @@ PPU_SCR = 64.0 / (2 ** 0.5)
 os.makedirs(DST, exist_ok=True)
 an = json.load(open(os.path.join(SRC, 'mountain_anchors.json')))
 out = {}
+ALPHA = {}
 tot_src = tot_dst = 0
 worst = (0.0, '')
 ups = []
@@ -84,9 +86,17 @@ for name, a in sorted(an.items()):
 
     out[name] = {'ox': round(ox - x0, 1), 'oy': round(oy - y0, 1), 'ppu': round(ppu, 2),
                  'w_units': a['w_units'], 'h_units': a['h_units'],
-                 'w': cr.width, 'h': cr.height}
+                 'w': cr.width, 'h': cr.height, 'ext': '.webp'}
+
+    # ★알파 지도 64×64 — **정본 하나**를 클라와 하네스가 같이 쓴다.
+    #   전엔 클라는 이미지를 축소해서, node 하네스는 PNG 를 직접 읽어서 각자 알파를 만들었다.
+    #   둘이 같이 틀리면 판정이 통과한다(자명 통과). 원천을 하나로 묶는다.
+    N = 64
+    sm = cr.resize((N, N), Image.BILINEAR)
+    ALPHA[name] = base64.b64encode(bytes(sm.getchannel('A').tobytes())).decode('ascii')
 
 json.dump(out, open(os.path.join(DST, 'mountain_anchors.json'), 'w'), indent=1)
+json.dump({'n': 64, 'a': ALPHA}, open(os.path.join(DST, 'mountain_alpha.json'), 'w'))
 ppus = sorted(v['ppu'] for v in out.values())
 areas = [v['w'] * v['h'] for v in out.values()]
 print(f'{len(out)}종 · {tot_src/1e6:.1f}MB → {tot_dst/1e6:.2f}MB ({tot_dst/tot_src*100:.1f}%)')
@@ -94,3 +104,5 @@ print(f'  ppu {ppus[0]:.1f}~{ppus[-1]:.1f} (목표 {TARGET_PPU:.0f}) '
       f'→ 배율 {min(ppus)/PPU_SCR:.2f} 까지 확대 없음')
 print(f'  평균 면적 {sum(areas)/len(areas)/1e6:.2f}MP · '
       f'최대 화소차 {worst[0]:.2f} [{worst[1]}]  ← 8 이하면 눈에 안 보인다')
+print(f'  알파 지도 64×64 {len(ALPHA)}종 '
+      f'{os.path.getsize(os.path.join(DST, "mountain_alpha.json"))/1024:.0f}KB (클라·하네스 공용 정본)')

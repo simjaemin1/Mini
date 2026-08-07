@@ -17,26 +17,20 @@ const fs = require('fs'), path = require('path');
 const T = require('../server/terrain.js');
 const ROOT = path.join(__dirname, '..');
 const HARD = JSON.parse(fs.readFileSync(path.join(ROOT, 'server', 'hanbando-terrain.json'), 'utf8')).hanbando;
-const AN = JSON.parse(fs.readFileSync(path.join(__dirname, 'mountain_renders', 'mountain_anchors.json'), 'utf8'));
+const MTD = path.join(ROOT, 'public', 'assets', 'mountains');
+const AN = JSON.parse(fs.readFileSync(path.join(MTD, 'mountain_anchors.json'), 'utf8'));
 const CROSS_U = 10.1, ALONG_U = 4.8, PPU_SCR = 64 / Math.SQRT2;
-// ★알파 지도 — 클라 `_mtAlphaAt` 와 **같은 기준**(64×64 축소, 문턱 0.35). 상자만 보면
-//   투명 여백(프레임의 86%)에 서 있는 자리를 "가려졌다"고 잘못 고른다 — 방금 그 덫에 빠졌다.
-const { PNG } = require('pngjs');
+// ★알파 지도 — **굽는 쪽이 만든 정본**(`mountain_alpha.json`)을 클라와 함께 쓴다.
+//   전엔 여기서 PNG 를 직접 읽어 따로 만들었다. 둘이 같이 틀리면 판정이 통과한다(자명 통과).
+//   상자만 보면 투명 여백(프레임의 86%)에 선 자리를 "가려졌다"고 잘못 고른다 — 실제로 그 덫에 빠졌다.
+const _AJ = JSON.parse(fs.readFileSync(path.join(MTD, 'mountain_alpha.json'), 'utf8'));
+const AN_N = _AJ.n || 64;
 const ALPHA = {};
+for (const k in _AJ.a) ALPHA[k] = Buffer.from(_AJ.a[k], 'base64');
 function alphaAt(name, u, v) {
-  let m = ALPHA[name];
-  if (!m) {
-    const png = PNG.sync.read(fs.readFileSync(path.join(__dirname, 'mountain_renders', name + '.png')));
-    const N = 64, a = new Uint8Array(N * N);
-    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
-      const sx = Math.min(png.width - 1, Math.floor((x + 0.5) / N * png.width));
-      const sy = Math.min(png.height - 1, Math.floor((y + 0.5) / N * png.height));
-      a[y * N + x] = png.data[(sy * png.width + sx) * 4 + 3];
-    }
-    m = ALPHA[name] = { N, a };
-  }
-  const ix = Math.max(0, Math.min(m.N - 1, (u * m.N) | 0)), iy = Math.max(0, Math.min(m.N - 1, (v * m.N) | 0));
-  return m.a[iy * m.N + ix] / 255;
+  const m = ALPHA[name]; if (!m) return 1;
+  const ix = Math.max(0, Math.min(AN_N - 1, (u * AN_N) | 0)), iy = Math.max(0, Math.min(AN_N - 1, (v * AN_N) | 0));
+  return m[iy * AN_N + ix] / 255;
 }
 const ROCKR = new Set(['한울대간', '눈메']);
 const hash = (x, y, s) => { let n = (Math.imul(x | 0, 374761393) + Math.imul(y | 0, 668265263) + Math.imul(s | 0, 1274126177)) | 0; n = Math.imul(n ^ (n >>> 13), 1103515245); n ^= n >>> 16; return (n >>> 0) / 4294967296; };
@@ -79,7 +73,7 @@ function occluders(px, py) {
     const s = SEGS[i], an = AN[s.name]; if (!an) continue;
     const dz = (s.x + s.y) * 0.5 - pz; if (dz > 4000) break;
     const sc = PPU_SCR / an.ppu * s.sc, vy = s.vy;
-    const W = 512 * sc, H = 512 * sc * vy;
+    const W = (an.w || 512) * sc, H = (an.h || 512) * sc * vy;
     const iso = { x: s.x - s.y, y: (s.x + s.y) / 2 };
     const dx = iso.x - an.ox * sc, dy = iso.y - an.oy * sc * vy;
     const u = (pIso.x - dx) / W, v = (pIso.y - 14 - dy) / H;
