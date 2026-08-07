@@ -435,6 +435,7 @@ const SIM_JOB_EMOJI = {
   const GT_BAKE_PER_FRAME = 5;         // 프레임당 새로 굽는 타일 수(히치 방어)
   const GT_ZONE_TINT = 0.18;           // 존 groundColor 를 텍스처 위에 얹는 세기(존 정체성 유지)
   const _groundTiles = new Map();      // "itx_ity" → {cv, used}
+  let _shMarginN = 0;                  // 지금까지 구운 물가 여백 조각 수 — 하네스 계측기(자명 통과 금지)
   const GTEX = {};
   let _gtexReady = 0;
   for (const k of ['grass_angled', 'dry_angled', 'mud_angled']) {
@@ -502,6 +503,10 @@ const SIM_JOB_EMOJI = {
     }
     const c0x = Math.floor(mnx / 32) - 1, c1x = Math.ceil(mxx / 32) + 1;
     const c0y = Math.floor(mny / 32) - 1, c1y = Math.ceil(mxy / 32) + 1;
+    // ②-b ★물가 여백 — 셀별 마감 **앞**에 깐다(그래야 위도 틴트·존 틴트를 똑같이 받는다)
+    let nMargin = 0;
+    if (!_t19.shMarginOff) nMargin = _shoreMarginBake(g, X0, Y0, c0x, c1x, c0y, c1y, zlist);
+    _shMarginN += nMargin;
     let nCell = 0;
     // ★[배치 20 B] 타일 상태 원천 — **주 존만**(다른 존은 상태 데이터 자체가 없다).
     //   패턴은 타일당 1회만 만든다(셀마다 createPattern 하면 베이크가 3배 느려진다 — 실측).
@@ -594,6 +599,134 @@ const SIM_JOB_EMOJI = {
     return { cv, cells: nCell, state: nState, wx: nWx };
   }
   // ═══════════════════════════════════════════════════════════════════════════
+  // ★★★[재민 재지적 2026-08-06c] "이제 다시 풀이 어색하게 잘리지 않도록 해볼 수 있을까"
+  //
+  //   ★수리(§6-e)로 물 넘침을 걷어내고 **확대해서 다시 봤다.** 남아 있던 그림은 이거다:
+  //     풀 → (칼로 그은 듯한 **완전 직선 대각선**) → 물. 전이 구간이 **0px** 다.
+  //     특히 북·서 물가는 프리즘조차 없어서 **풀잎이 대각선에 그대로 잘린다.**
+  //   ★실측(수직 프로파일, 프리즘 남·동면 기준):
+  //       뭍 풀 σ 29~45 (질감) → 립 d=0 에서 σ **24.9** (프로파일 전체 최솟값 = 가장 띠답다)
+  //       → 프리즘 그늘 d=3~4 휘도 **38~40** ↔ 물 d=6 휘도 **106**. 명암 대비가 곧 **윤곽선**이다.
+  //
+  //   ★두 번 반려된 길을 다시 가지 않는다. 반려된 것은 `_bakeShoreTile` =
+  //     **물 위에 초록 띠를 하나 더 얹는 것**이었다(재민: "after가 여전히 더 심해").
+  //     그 실패에서 남는 교훈은 셋이다 — ⓐ물 위에 새 층을 얹지 마라 ⓑ폭이 일정하면 띠다
+  //     ⓒ규칙적 마스크는 무늬로 읽힌다.
+  //
+  //   ★그래서 이번엔 **뭍 쪽으로** 판다. 실제 물가에는 풀이 물까지 자라지 않는다 —
+  //     젖은 모래·자갈 **여백**이 있다. 그 여백을 **지면 베이크 안에서** 만든다:
+  //       · 새 레이어 0장(프레임 비용 0). 물 위에 아무것도 안 얹는다.
+  //       · 폭이 **저주파로 0↔13px 사이를 오간다** — 어떤 구간은 풀이 물까지 가고(여백 0),
+  //         어떤 구간은 넓은 모래톱이다. 폭이 0인 구간이 있어야 '띠'가 아니다.
+  //       · 폭의 정본은 **술 밀도와 같은 노이즈장**(salt 4211)이다 ⇒ 갈대가 빽빽한 구간은
+  //         여백 0(습지), 술이 한 포기도 없는 빈 구간은 넓은 모래톱. **한 장(場)이 둘을 설명한다.**
+  //       · 여백의 **안쪽 경계는 풀잎 모양으로 깎는다** — 풀 텍스처 자신의 잎 알파로 모래를
+  //         파내서 잎이 모래 쪽으로 삐져나오게 한다(합성 얼룩은 격자 무늬가 된다 — 2패스 실패).
+  //         마스크는 지면 바탕과 **같은 위상**(패턴 오프셋 0)이라 실제 잎 자리와 맞는다.
+  //   ⇒ 결과적으로 직선은 남지만 그 직선은 이제 **모래↔물**이다. 물가선이 날카로운 건 정상이다.
+  //     잘리는 건 풀이 아니라 모래다.
+  const SH_MARGIN_MAX = 13;         // 최대 여백(px). 셀 반폭 16 을 넘으면 셀을 통째로 먹는다
+  function _shoreMargin(cx, cy, k) {
+    // ★1패스는 여백 폭을 **술 밀도와 같은 장**(salt 4211)에 묶었다 — 개념은 예뻤지만 실측이 반박했다:
+    //   값 노이즈는 0.5 근처에 몰려서 '여백이 생기는 구간'이 화면에서 36조각뿐이었고, 실제 물가는
+    //   1패스 전과 거의 그대로였다(재민이 지적한 그 직선이 그대로 남았다).
+    //   ⇒ **자기 장**을 쓴다. 두 옥타브(파장 5셀 + 10셀)를 섞어 넓게 굽이치게 한다.
+    //   ※술과 굳이 안 묶어도 겹치지 않는다: band0 술은 셀 중심에서 물 쪽으로 12~28px 밀려
+    //     **물 위에** 서고, 여백은 변에서 **뭍 쪽으로** 최대 13px 다. 갈대는 모래톱 끝 물에 선다.
+    const u = 0.62 * _natNoise(cx, cy, 6120) + 0.38 * _natNoise(cx * 0.5, cy * 0.5, 6121);
+    // ★문턱 0.40 은 취향이 아니라 **판정에 맞춘 값**이다. 2패스에서 0.26 을 썼더니 물가 변의
+    //   **91%** 에 여백이 생겨 `e2e-nature` ⓗ(빈 구간 ≥20%)를 9% 로 못 넘었다 — 그건 곧 띠다.
+    //   판정을 낮추는 대신 **코드를 고쳤다.** (같은 규율: 배치 21 frFloor 시안 B 기각)
+    let w = (u - 0.40) / 0.22;                    // u≤0.40 → 여백 0(풀이 물까지 간다) · u≥0.62 → 최대
+    w = w < 0 ? 0 : w > 1 ? 1 : w;
+    // 자리별 배율 폭이 넓어야 '띠'가 아니다 — 같은 굽이 안에서도 셀마다 0.35~1.30 배로 흔든다
+    const sc = (_t19.shMargin == null ? 1 : _t19.shMargin);   // 시안·하네스 손잡이(0 = 끔)
+    return SH_MARGIN_MAX * sc * w * (0.35 + 0.95 * _cellHash(cx, cy, 5150 + k));
+  }
+  // ★하네스 계측기 — 물가 **변**마다 여백 폭을 내보낸다. 판정(빈 구간 비율·변동계수)은 하네스가 한다.
+  //   여기서 폭을 다시 계산하면 그게 사본이라 자명 통과가 된다 ⇒ **정본 `_shoreMargin` 을 그대로 부른다.**
+  //   ※자리를 안 주면 **이번 프레임 카메라 중심**을 쓴다 — 하네스가 존 오프셋을 다시 계산하다
+  //     틀리는 걸 막는다(1패스 실패: 존 로컬 좌표를 절대 좌표로 넘겨 표본 0이 나왔다).
+  window.__shoreProbe = (R, cx0, cy0) => {
+    R = R || 900;
+    if (cx0 == null) { cx0 = _natLastC[0]; cy0 = _natLastC[1]; }
+    const w = [];
+    const c0 = Math.floor((cx0 - R) / 32), c1 = Math.floor((cx0 + R) / 32);
+    const r0 = Math.floor((cy0 - R) / 32), r1 = Math.floor((cy0 + R) / 32);
+    for (let cx = c0; cx <= c1; cx++) for (let cy = r0; cy <= r1; cy++) {
+      const wx = cx * 32 + 16, wy = cy * 32 + 16;
+      if (isWaterAtAbs(wx, wy) || isRockAtAbs(wx, wy)) continue;
+      for (let k = 0; k < 4; k++) {
+        const nx = [1, -1, 0, 0][k], ny = [0, 0, 1, -1][k];
+        if (!isWaterAtAbs(wx + nx * 32, wy + ny * 32)) continue;
+        w.push(_shoreMargin(cx, cy, k));
+      }
+    }
+    return w;
+  };
+  let _shTmp = null;
+  function _shoreMarginBake(g, X0, Y0, c0x, c1x, c0y, c1y, zlist) {
+    if (!GTEX.dry_angled || !GTEX.grass_angled || !GTEX.grass_angled.naturalWidth) return 0;
+    if (!_shTmp) { _shTmp = document.createElement('canvas'); _shTmp.width = GT_W; _shTmp.height = GT_H; }
+    const t = _shTmp.getContext('2d');
+    t.setTransform(1, 0, 0, 1, 0, 0); t.globalCompositeOperation = 'source-over'; t.globalAlpha = 1;
+    t.clearRect(0, 0, GT_W, GT_H);
+    const dia = (gg, x, y) => { gg.beginPath(); gg.moveTo(x, y - 16); gg.lineTo(x + 32, y); gg.lineTo(x, y + 16); gg.lineTo(x - 32, y); gg.closePath(); };
+    let bp = null, n = 0;
+    const strips = [];
+    for (let cx = c0x; cx <= c1x; cx++) for (let cy = c0y; cy <= c1y; cy++) {
+      const cxw = cx * 32 + 16, cyw = cy * 32 + 16;
+      const sx = (cxw - cyw) - X0, sy = (cxw + cyw) / 2 - Y0;
+      if (sx < -46 || sx > GT_W + 46 || sy < -26 || sy > GT_H + 26) continue;
+      let zMeta = null;
+      for (let zi = 0; zi < zlist.length; zi++) {
+        const zm = zlist[zi], ox = zm.worldOffsetX, oy = zm.worldOffsetY || 0;
+        if (cxw >= ox && cxw < ox + (zm.zoneWidth || 100000) && cyw >= oy && cyw < oy + (zm.zoneHeight || 100000)) { zMeta = zm; break; }
+      }
+      if (!zMeta) continue;
+      if (isWaterAtAbs(cxw, cyw, zMeta) || isRockAtAbs(cxw, cyw, zMeta)) continue;   // 뭍 셀만
+      for (let k = 0; k < 4; k++) {
+        const nx = [1, -1, 0, 0][k], ny = [0, 0, 1, -1][k];
+        if (!isWaterAtAbs(cxw + nx * 32, cyw + ny * 32, zMeta)) continue;
+        const m = _shoreMargin(cx, cy, k);
+        if (m < 1.2) continue;                       // ★여백 0 구간 — 풀이 물까지 간다(있어야 띠가 아니다)
+        if (!bp) bp = t.createPattern(_shBladeMask(true), 'repeat');   // 잎 **모양** 알파(밝은 곳=잎)
+        // 이웃(물) 다이아몬드를 **뭍 쪽으로** m 밀면, 뭍 다이아몬드와 겹치는 부분 = 공유 변에서 폭 m 띠
+        const nsx = sx + (nx - ny) * 32, nsy = sy + (nx + ny) * 16;
+        const ox = (-nx + ny) * m, oy = -(nx + ny) * m / 2;           // 뭍 방향 m
+        t.save();
+        dia(t, sx, sy); t.clip();                                     // 뭍 셀 밖으로 안 샌다
+        t.fillStyle = '#fff'; dia(t, nsx + ox, nsy + oy); t.fill();   // 알파 = 여백 띠
+        // ★안쪽 경계를 잎 모양으로 판다. '뭍 다이아몬드를 물 쪽으로 f·m 민 것' = 깊이 ≥ f·m 영역.
+        t.globalCompositeOperation = 'destination-out';
+        t.fillStyle = bp;
+        t.globalAlpha = 1;    dia(t, sx - ox * 0.45, sy - oy * 0.45); t.fill();
+        t.globalAlpha = 0.55; dia(t, sx - ox * 0.18, sy - oy * 0.18); t.fill();
+        t.restore();
+        strips.push([sx, sy, nsx + ox * 0.42, nsy + oy * 0.42]);
+        n++;
+      }
+    }
+    if (!n) return 0;
+    // 색 입히기 — 마른 흙/모래 텍스처. 타일 원점이 주기의 배수라 **지면 바탕과 같은 위상**이다.
+    t.setTransform(1, 0, 0, 1, 0, 0); t.globalAlpha = 1;
+    t.globalCompositeOperation = 'source-in';
+    t.fillStyle = t.createPattern(GTEX.dry_angled, 'repeat'); t.fillRect(0, 0, GT_W, GT_H);
+    // ★물에 닿는 쪽만 **젖은 모래**로 어둡게. 여백 전체를 어둡게 하면 그게 또 띠다 —
+    //   마른 쪽(안)과 젖은 쪽(밖)이 갈려야 '모래톱'으로 읽힌다.
+    for (const [sx, sy, wx2, wy2] of strips) {
+      t.save();
+      dia(t, sx, sy); t.clip();
+      t.globalCompositeOperation = 'source-atop';
+      t.fillStyle = 'rgba(62,56,44,0.30)';
+      dia(t, wx2, wy2); t.fill();
+      t.restore();
+    }
+    t.globalCompositeOperation = 'source-over'; t.globalAlpha = 1;
+    g.drawImage(_shTmp, 0, 0);
+    return n;
+  }
+  // ═══════════════════════════════════════════════════════════════════════════
   // ★★[재민 지적 2026-08-06] "물가에서 풀의 튀어나온 부분이 물에 가려진다 — 3D가 아니라서 못 고치나?"
   //   **3D 문제가 아니다.** 원인은 클리핑과 순서다:
   //     ① `_bakeGroundTile` 이 풀 텍스처를 깔고, 물 셀 자리를 **진흙 다이아몬드로 덮어쓴다**
@@ -628,9 +761,12 @@ const SIM_JOB_EMOJI = {
   //     ⇒ 3패스: **풀 텍스처 자신의 잎 모양으로 깎는다.** 어두운 곳(잎 사이 틈)을 파내고
   //       밝은 곳(잎)만 남기면 실루엣이 **진짜 잎 끝**을 따라간다. 마스크는 풀과 **정합**돼야
   //       하므로 같은 변환 아래에서 같은 다이아몬드로 칠한다(translate 로 함께 민다).
-  let _shMask = null;
-  function _shBladeMask() {
-    if (_shMask) return _shMask;
+  //   ★`inv=true` 는 **반대 알파**다(밝은 곳 = 잎 = 알파 1). 물가 여백이 모래를 **잎 모양으로**
+  //     파낼 때 쓴다 — 잎 자리를 파야 풀잎이 모래 쪽으로 삐져나온다.
+  const _shMaskCache = { 0: null, 1: null };
+  function _shBladeMask(inv) {
+    const key = inv ? 1 : 0;
+    if (_shMaskCache[key]) return _shMaskCache[key];
     const src = GTEX.grass_angled;
     const w = src.naturalWidth || src.width, h = src.naturalHeight || src.height;
     const t = document.createElement('canvas'); t.width = w; t.height = h;
@@ -643,12 +779,13 @@ const SIM_JOB_EMOJI = {
     const mid = sum / (d.length / 4);
     for (let i = 0; i < d.length; i += 4) {
       const lum = d[i] * 0.3 + d[i + 1] * 0.59 + d[i + 2] * 0.11;
-      // 어두울수록 많이 파낸다(잎 사이 틈) · 밝으면 남긴다(잎)
-      let a = (mid + 6 - lum) / 26; a = a < 0 ? 0 : a > 1 ? 1 : a;
+      // 어두울수록 많이 파낸다(잎 사이 틈) · 밝으면 남긴다(잎)   ※inv = 그 반대(잎 자리를 판다)
+      let a = inv ? (lum - (mid - 6)) / 26 : (mid + 6 - lum) / 26;
+      a = a < 0 ? 0 : a > 1 ? 1 : a;
       d[i] = d[i + 1] = d[i + 2] = 0; d[i + 3] = Math.round(a * 255);
     }
     tg.putImageData(im, 0, 0);
-    _shMask = t; return t;
+    _shMaskCache[key] = t; return t;
   }
   const _shoreTiles = new Map();
   function _bakeShoreTile(itx, ity, zlist) {
@@ -1378,25 +1515,34 @@ const SIM_JOB_EMOJI = {
       const sW = isWaterAtAbs(px, py + 32), eW = isWaterAtAbs(px + 32, py);
       if (!sW && !eW) continue;
       n++;
+      // ★[2026-08-06c] 상단 립 = **위에 있는 것의 색**이어야 한다. 물가 여백(모래)이 있는 면에
+      //   초록 립을 그으면 모래 위에 초록 선이 뜬다. 높이도 자리마다 흔든다 —
+      //   전 구간 **같은 두께 단색 선**은 그 자체로 윤곽선이다(실측 σ 24.9 = 프로파일 최솟값).
+      //   ※립 자체를 없애지는 않는다: 없애면 단면 그늘이 곧장 풀에 닿아 대비가 더 세진다.
+      const _lip = (k, sunny) => {
+        const m = _t19.shMarginOff ? 0 : _shoreMargin(cx, cy, k);
+        const h = 1.3 + 1.9 * _cellHash(cx, cy, 5170 + k);
+        return [m >= 1.2 ? (sunny ? '#9a8663' : '#8a7757') : (sunny ? '#526e44' : '#4e6b40'), h];
+      };
       if (sW) {   // 남면(물이 y+1) — 그늘
         const a = w2i(cx * 32, (cy + 1) * 32), b = w2i((cx + 1) * 32, (cy + 1) * 32);
         const A = toScr(a.x, a.y), B = toScr(b.x, b.y);
         g.fillStyle = '#4a3a26';
         g.beginPath(); g.moveTo(A.x, A.y); g.lineTo(B.x, B.y); g.lineTo(B.x, B.y + D); g.lineTo(A.x, A.y + D); g.closePath(); g.fill();
-        g.fillStyle = 'rgba(15,25,35,0.55)';
+        g.fillStyle = 'rgba(15,25,35,' + (0.34 + 0.30 * _cellHash(cx, cy, 5190)).toFixed(3) + ')';
         g.beginPath(); g.moveTo(A.x, A.y + D - 2); g.lineTo(B.x, B.y + D - 2); g.lineTo(B.x, B.y + D); g.lineTo(A.x, A.y + D); g.closePath(); g.fill();
-        g.fillStyle = '#4e6b40';
-        g.beginPath(); g.moveTo(A.x, A.y); g.lineTo(B.x, B.y); g.lineTo(B.x, B.y + 2.2); g.lineTo(A.x, A.y + 2.2); g.closePath(); g.fill();
+        const [lc, lh] = _lip(2, false); g.fillStyle = lc;
+        g.beginPath(); g.moveTo(A.x, A.y); g.lineTo(B.x, B.y); g.lineTo(B.x, B.y + lh); g.lineTo(A.x, A.y + lh); g.closePath(); g.fill();
       }
       if (eW) {   // 동면(물이 x+1) — 볕
         const a = w2i((cx + 1) * 32, cy * 32), b = w2i((cx + 1) * 32, (cy + 1) * 32);
         const A = toScr(a.x, a.y), B = toScr(b.x, b.y);
         g.fillStyle = '#61492f';
         g.beginPath(); g.moveTo(A.x, A.y); g.lineTo(B.x, B.y); g.lineTo(B.x, B.y + D); g.lineTo(A.x, A.y + D); g.closePath(); g.fill();
-        g.fillStyle = 'rgba(15,25,35,0.5)';
+        g.fillStyle = 'rgba(15,25,35,' + (0.30 + 0.28 * _cellHash(cx, cy, 5191)).toFixed(3) + ')';
         g.beginPath(); g.moveTo(A.x, A.y + D - 2); g.lineTo(B.x, B.y + D - 2); g.lineTo(B.x, B.y + D); g.lineTo(A.x, A.y + D); g.closePath(); g.fill();
-        g.fillStyle = '#526e44';
-        g.beginPath(); g.moveTo(A.x, A.y); g.lineTo(B.x, B.y); g.lineTo(B.x, B.y + 2.2); g.lineTo(A.x, A.y + 2.2); g.closePath(); g.fill();
+        const [lc, lh] = _lip(0, true); g.fillStyle = lc;
+        g.beginPath(); g.moveTo(A.x, A.y); g.lineTo(B.x, B.y); g.lineTo(B.x, B.y + lh); g.lineTo(A.x, A.y + lh); g.closePath(); g.fill();
       }
     }
     return n;
@@ -1975,7 +2121,8 @@ const SIM_JOB_EMOJI = {
           let nm;
           if (band === 0 && q > 0.62 && h3 > 0.40) nm = (h3 > 0.70 ? 'reed0' : 'cattail0') + (1 + ((h4 * 3) | 0));
           else nm = 'grass0' + (1 + ((h4 * 4) | 0));
-          fr.push({ x: px, y: py, nm, sc: 0.66 + 0.40 * h3, vy: 0.86 + 0.30 * h2 });
+          fr.push({ x: px, y: py, nm, sc: 0.66 + 0.40 * h3, vy: 0.86 + 0.30 * h2,
+                    ph: _cellHash(cx, cy, 4800 + i) * 6.2832 });   // 바람 위상 — 포기마다 다르다
         }
       } else {
         // ── 초원 소품(들꽃·풀숲) — 밀도 낮게. 스폰 광장이 첫인상이라 과밀은 금물이다.
@@ -1988,7 +2135,8 @@ const SIM_JOB_EMOJI = {
           const isFl = h3 > 0.55;                        // 들꽃 45% · 풀숲 55%
           pr.push({ x: wx + (h1 - 0.5) * 24, y: wy + (h2 - 0.5) * 24, cx, cy,
                     nm: (isFl ? 'flower0' : 'grass0') + (1 + ((h4 * 4) | 0)),
-                    sc: 0.7 + 0.35 * h1, vy: 0.9 + 0.24 * h2 });
+                    sc: 0.7 + 0.35 * h1, vy: 0.9 + 0.24 * h2,
+                    ph: _cellHash(cx, cy, 8205) * 6.2832 });
         }
       }
     }
@@ -2058,7 +2206,9 @@ const SIM_JOB_EMOJI = {
     }
     return false;
   }
+  const _natLastC = [0, 0];              // 이번 프레임 카메라 중심(절대 월드 px) — __shoreProbe 기본값
   function _natCollect(out, cx0, cy0) {
+    _natLastC[0] = cx0; _natLastC[1] = cy0;
     if (_t19.natOff || !_natAnchors || _natLoaded < _natWanted || !_natWanted) return [0, 0];
     const R = NAT_VIEW_PAD;
     const c0 = Math.floor((cx0 - R) / 32), c1 = Math.floor((cx0 + R) / 32);
@@ -2106,11 +2256,61 @@ const SIM_JOB_EMOJI = {
     return { props: _natLastPr.map((p) => [p.x, p.y]), roads, claims, villages,
              farms: (window.__getAllBuildings ? window.__getAllBuildings().filter((b) => b.type === 'farmland').map((b) => [b.wx, b.wy]) : []) };
   };
-  function _natDraw(g, item, toScr) {
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ★★[재민 질문 2026-08-06c] "바람 흔들림 … 날씨에 따라 풀의 운동이 변하게 할 수 있나?"
+  //   ★게임에 **날씨 상태가 없다** — server/·sim/·public/ 전수 grep 0건이다. 없는 걸 있다고
+  //     보고하지 않는다. 대신 **바람 세기의 정본 함수 하나**(`_windAt`)를 세우고, 지금은
+  //     **게임 시계**로 채운다. 날씨 시스템이 생기면 **그 한 곳에 곱하면** 전부 따라온다.
+  //     `__terrain19.windForce` 가 바로 그 주입 자리다(하네스도 이 손잡이로 잰다).
+  //   ★시간은 **게임 시계**다(프레임 시간 아님) — 물 셰이더와 **같은 `freezeT` 경로**를 쓴다.
+  //     그래야 "시각 고정 두 프레임 동일" 결정론 판정이 안 깨진다.
+  //   ★돌풍은 **진행하는 파**다. 위상에 `바람방향·자리` 를 빼서 들판을 물결처럼 훑고 지나가게 한다.
+  //     전부 같은 위상으로 흔들면 '풀이 아니라 화면이 흔들리는' 그림이 된다.
+  //   ★변형은 **전단(shear)**: 밑동 고정, 꼭대기만 민다. 회전이 아니다 — 회전은 밑동이 땅에서 뜬다.
+  //   ★비용 실측(배치 21 8차): 자연물 패스 0.317ms/f(755장). 전단은 `setTransform` 1회 +
+  //     `drawImage` 1회로 끝난다(캐시는 **자리**를 담지 픽셀을 안 담으므로 무효화 없음).
+  //   ※지면 풀 **텍스처**는 안 흔든다 — 매 프레임 재베이크나 WebGL 이관이 필요해 비싸다(회부).
+  //   ※나무는 안 흔든다 — 서버 엔티티라 그리는 자리가 다르고(안개 게이트 경유), 줄기는 원래 안 흔들린다.
+  const WIND_DIR_X = 0.94, WIND_DIR_Y = 0.34;      // 바람이 부는 방향(월드) — 파의 진행 방향
+  const WIND_AMP = { grass: 0.155, reed: 0.265, cattail: 0.235, flower: 0.125 };  // 기울기 tan(≈9°~15°)
+  let _natT0 = null;
+  let _natMs = 0;                                  // 자연물 그리기 패스 ms(이동평균) — `__natDbg.ms`
+  function _windT() {
+    if (_t19.freezeT != null) return _t19.freezeT;
+    if (_natT0 === null) _natT0 = (typeof worldNow === 'function' ? worldNow() : 0);
+    return ((typeof worldNow === 'function' ? worldNow() : 0) - _natT0) / 1000;
+  }
+  function _windAt(t) {
+    if (_t19.windForce != null) return _t19.windForce;      // ★날씨 훅 · 하네스 주입구
+    // 큰 숨 — 주기가 다른 두 사인의 곱이라 '돌풍이 왔다 갔다' 하는 비주기 느낌이 난다
+    const breath = 0.58 + 0.42 * Math.sin(t * 0.21) * Math.sin(t * 0.083 + 1.7);
+    // 일주기 — 새벽 잔잔 → 한낮 최대 → 밤 다시 잔잔(실제 지표풍의 일변화). 시각 고정이면 고정값.
+    const ph = (_t19.freezeT != null) ? 0.30
+             : ((typeof worldClock !== 'undefined' && worldClock && typeof worldPhase === 'function') ? worldPhase() : 0.30);
+    const diur = 0.42 + 0.58 * Math.max(0, Math.sin((ph - 0.02) * 6.2832));
+    const w = breath * diur;
+    return w < 0 ? 0 : w > 1 ? 1 : w;
+  }
+  window.__windProbe = () => ({ t: _windT(), w: _windAt(_windT()), off: !!_t19.windOff, force: _t19.windForce });
+  function _natDraw(g, item, toScr, t, w) {
     const s = item.s, an = _natAnchors && _natAnchors[s.nm], im = NATX[s.nm];
     if (!an || !im || !im.complete || !im.naturalWidth) return;
     const sc = (64 / Math.SQRT2) / an.ppu * s.sc, vy = s.vy || 1;
     const p = w2i(s.x, s.y), c = toScr(p.x, p.y);
+    const amp = w > 0 ? WIND_AMP[s.nm.slice(0, -2)] : 0;
+    if (amp) {
+      // 진행하는 파 — 같은 시각에도 자리마다 위상이 다르다(파장 ≈ 210px ≈ 6.5셀)
+      const k = (s.x * WIND_DIR_X + s.y * WIND_DIR_Y) / 210;
+      const a = Math.sin(t * 1.35 - k + s.ph) * 0.64 + Math.sin(t * 2.63 - k * 1.7 + s.ph * 2.1) * 0.36;
+      const sh = a * w * amp;
+      // ★`setTransform` 이 아니라 `transform`(=현재 행렬에 곱하기) + save/restore 다.
+      //   메인 캔버스가 이미 변환을 걸고 있을 수 있다 — 항등으로 되돌리면 그 뒤 그림이 다 깨진다.
+      g.save();
+      g.transform(1, 0, sh, 1, -sh * c.y, 0);          // 밑동(c.y) 고정 전단
+      g.drawImage(im, c.x - an.ox * sc, c.y - an.oy * sc * vy, im.naturalWidth * sc, im.naturalHeight * sc * vy);
+      g.restore();
+      return;
+    }
     g.drawImage(im, c.x - an.ox * sc, c.y - an.oy * sc * vy, im.naturalWidth * sc, im.naturalHeight * sc * vy);
   }
 
@@ -2148,7 +2348,8 @@ const SIM_JOB_EMOJI = {
                  footOff: false,
   //   ★[배치 21 5차] fogGateOff — 안개 게이트의 **대조군**. 끄면 안 가본 곳의 개체가 다시 보인다.
                  fogGateOff: false,
-                 shoreOff: true };
+                 shoreOff: true,
+                 shMarginOff: false, shMargin: 1, windOff: false, windForce: null };
   window.__terrain19 = _t19;
 
   // 지형 차단 통합 (물+바위) — 이동 예측용
@@ -5371,8 +5572,11 @@ const SIM_JOB_EMOJI = {
     //   텍스처가 아직 안 왔거나 legacy 손잡이면 **종전 경로**로 그대로 떨어진다(무회귀).
     const _LEG = !!_t19.legacy || _gtexReady < 3;
     // 손잡이가 바뀌면 구워 둔 타일은 옛 문법이다 — 버린다(A/B 가 같은 프레임에서 성립하려면 필수)
-    { const _kf = (_LEG ? 'L' : '') + (_t19.stateOff ? 'S' : '') + (_t19.wxOff ? 'W' : '');
-      if (_gtKnob !== _kf) { _gtKnob = _kf; _groundTiles.clear(); } }
+    // ★[배치 21 10차] 물가 여백도 **타일에 굳는다** — 지문에 같이 넣는다. 지문이 두 군데면
+    //   서로의 캐시를 지우며 매 프레임 다시 굽는다(합칠 때 실제로 그럴 뻔했다).
+    { const _kf = (_LEG ? 'L' : '') + (_t19.stateOff ? 'S' : '') + (_t19.wxOff ? 'W' : '')
+                + 'm' + (_t19.shMarginOff ? 'x' : (_t19.shMargin == null ? 1 : _t19.shMargin));
+      if (_gtKnob !== _kf) { _gtKnob = _kf; _groundTiles.clear(); _shMarginN = 0; } }
     if (!_LEG) _waterInit();   // ★타일을 굽기 **전에** 물 가능 여부를 확정한다(진흙/단색 갈림이 타일에 굳는다)
     window.__groundDbg = { legacy: _LEG, tex: _gtexReady, tiles: 0, baked: 0, cached: _groundTiles.size, stateCells: 0 };
     { // ★[배치 20 B] 타일 상태 계측·주입 — 하네스는 서버 방송과 **같은 입구**(_tsIngest)로만 들어온다.
@@ -5447,6 +5651,7 @@ const SIM_JOB_EMOJI = {
       }
       window.__groundDbg.tiles = drawn; window.__groundDbg.baked = baked; window.__groundDbg.cached = _groundTiles.size;
       { let sc = 0; for (const e of _groundTiles.values()) sc += (e.state || 0); window.__groundDbg.stateCells = sc; }
+      window.__groundDbg.margins = _shMarginN;
       if (_groundTiles.size > GT_MAX) {   // 오래 안 쓴 타일부터 버린다(카메라가 멀어진 것)
         const ks = [..._groundTiles.entries()].sort((a, b) => (a[1].used || 0) - (b[1].used || 0));
         for (let i = 0; i < ks.length - GT_MAX; i++) _groundTiles.delete(ks[i][0]);
@@ -6054,7 +6259,14 @@ const SIM_JOB_EMOJI = {
     //      (배치 19가 남긴 "지면 데코는 안개 마스크 앞" 계약이 바로 이 뜻이었다.)
     //   ⇒ 대가: 엔티티가 항상 자연물 위에 그려진다(사람이 갈대 뒤에 서도 앞으로 나온다).
     //      풀·꽃은 지면 데코라 이 편이 낫다 — 산 세그먼트처럼 큰 물체였다면 반대였을 것이다.
-    if (!_t19.natOff) for (const it of _natItems) _natDraw(ctx, it, toScreen);
+    if (!_t19.natOff) {
+      const _wt = _windT(), _ww = _t19.windOff ? 0 : _windAt(_wt);
+      const _nt0 = performance.now();
+      for (const it of _natItems) _natDraw(ctx, it, toScreen, _wt, _ww);
+      // 자연물 패스 비용 — 32프레임 이동평균. 바람 on/off 비교의 정본 계측기다.
+      _natMs = _natMs * 0.969 + (performance.now() - _nt0) * 0.031;
+      if (window.__natDbg) { window.__natDbg.ms = _natMs; window.__natDbg.wind = _ww; }
+    }
 
     // 3단계 안개 마스크(미탐사 검정 · 봤지만 시야 밖 0.2 · 시야 안 0) — **엔티티 렌더 앞**.
     //   ★왜 여기인가(되돌린 이유, 실측): 마스크를 월드 렌더 **전체 뒤**로 옮겨 봤더니

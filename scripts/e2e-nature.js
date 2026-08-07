@@ -186,7 +186,50 @@ function diffCount(a, b) {            // 두 프레임에서 달라진 픽셀 �
     await knob({ natOff: false, propNoAvoid: true });
     const probeNA = await page.evaluate(() => window.__natProbe());
     await knob({ propNoAvoid: false });
-    S[tag] = { d0, fOn, fOn2, fNoFr, fNoPr, fNoNat, probe, probeNA, cerr, bad: [...new Set(bad)], fogOn, fogOff, gate, gateOff };
+
+    // ── ⓖ 바람 [2026-08-06c 신설] ─────────────────────────────────────────
+    //   시간은 **게임 시계**다. 같은 freezeT 면 그림이 같아야 하고(ⓔ 가 이미 봄),
+    //   시각을 옮기면 **움직여야** 한다. 그리고 `windForce` 를 주면 그 값이 **정본**이 돼야
+    //   한다 — 그 자리가 곧 날씨 시스템이 붙을 자리다(지금 게임엔 날씨 상태가 없다).
+    //   ★물을 끄고 잰다 — `freezeT` 는 **물 셰이더도** 굴린다. 안 끄면 수면이 흐른 픽셀을
+    //     "풀이 흔들렸다"로 오독한다(계측기 격리, §5-a 와 같은 계보).
+    await knob({ windOff: false, waterOff: true, windForce: 0.85, freezeT: 100 });
+    const wOn100 = await grab('wind-t100');
+    await knob({ freezeT: 100.9 });
+    const wOn101 = await grab('wind-t101');
+    //   반례 — 무풍(force 0)이면 시각을 옮겨도 자연물은 **안 움직인다**
+    await knob({ freezeT: 100, windForce: 0 });
+    const wCalm100 = await grab('wind-calm100');
+    await knob({ freezeT: 100.9 });
+    const wCalm101 = await grab('wind-calm101');
+    //   대조군 — 자연물 자체를 끈 두 프레임. NPC·동물·HUD 시계가 만드는 **잡음 바닥**이다.
+    await knob({ freezeT: 100, natOff: true });
+    const wBase100 = await grab('wind-base100');
+    await knob({ freezeT: 100.9 });
+    const wBase101 = await grab('wind-base101');
+    await knob({ natOff: false, waterOff: false });
+    const windFn = await page.evaluate(() => {
+      const T = window.__terrain19, keep = T.windForce, keepT = T.freezeT;
+      T.windForce = null; const out = [];
+      for (let t = 0; t < 120; t += 3) { T.freezeT = t; out.push(window.__windProbe().w); }
+      T.freezeT = 0.5; const forced = (T.windForce = 0.37, window.__windProbe().w);
+      T.windForce = keep; T.freezeT = keepT;
+      return { out, forced };
+    }).catch(() => ({ out: [], forced: null }));
+    await knob({ windForce: null, freezeT: 100 });
+
+    // ── ⓗ 물가 여백 [2026-08-06c 신설] ────────────────────────────────────
+    //   폭의 정본은 클라의 `_shoreMargin` 이다(하네스가 다시 짜면 사본 = 자명 통과).
+    //   판정(빈 구간 비율·변동계수)만 여기서 한다.
+    const shWidths = await page.evaluate(() => window.__shoreProbe(900)).catch(() => []);
+    const fMarginOn = await grab('margin-on');
+    await knob({ shMargin: 0 });
+    const shWidths0 = await page.evaluate(() => window.__shoreProbe(900)).catch(() => []);
+    const fMarginOff = await grab('margin-off');
+    await knob({ shMargin: 1 });
+
+    S[tag] = { d0, fOn, fOn2, fNoFr, fNoPr, fNoNat, probe, probeNA, cerr, bad: [...new Set(bad)], fogOn, fogOff, gate, gateOff,
+               wOn100, wOn101, wCalm100, wCalm101, wBase100, wBase101, windFn, shWidths, shWidths0, fMarginOn, fMarginOff };
     await browser.close(); try { z.kill(); } catch (e) {}
     await sleep(2500);
   }
@@ -331,6 +374,53 @@ function diffCount(a, b) {            // 두 프레임에서 달라진 픽셀 �
   }
   const anyOff = R.gateOff.bad + F.gateOff.bad;
   ok(anyOff > 0, `★★반례 — 게이트를 끄면 위반이 나온다 (강가 ${R.gateOff.bad} + 초원 ${F.gateOff.bad} = ${anyOff}) = 게이트가 실제로 일한다`);
+
+  say('\n[8] ⓖ 바람 — 게임 시계의 순수 함수 · 날씨가 붙을 자리 [재민 질문 2026-08-06c]');
+  //  ★게임에 날씨 상태가 없다(전수 grep 0). 그래서 "날씨에 따라"는 지금 못 만든다 —
+  //    대신 **바람 세기의 정본 함수**(`_windAt`)를 세우고 `windForce` 주입구를 두었다.
+  //    이 절은 그 주입구가 **실제로 정본을 갈아끼우는지**까지 본다(훅이 죽어 있으면 거짓말이 된다).
+  for (const [tag, s2] of [['강가', R], ['초원', F]]) {
+    const dMove = diffCount(s2.wOn100, s2.wOn101);
+    const dCalm = diffCount(s2.wCalm100, s2.wCalm101);
+    const dBase = diffCount(s2.wBase100, s2.wBase101);
+    const lim = dBase * 3 + 150;
+    say(`    ${tag}: 시각 100→100.9(물 끔) — 바람 0.85 ${dMove}px 움직임 / 무풍(0) ${dCalm}px / 대조군(자연물 OFF) ${dBase}px`);
+    ok(dMove > 2000, `★★${tag} — 시각이 흐르면 풀이 **실제로 흔들린다** (${dMove}px)`);
+    ok(dCalm <= lim, `★★반례 — ${tag} 무풍이면 잡음 바닥 수준이다 (${dCalm} ≤ 대조군×3+150 = ${lim}) = 움직임의 출처가 바람이다`);
+  }
+  const wv = R.windFn.out;
+  const wmin = Math.min(...wv), wmax = Math.max(...wv);
+  say(`    바람 세기 곡선(게임시각 0~120s, ${wv.length}표본): 최소 ${wmin.toFixed(3)} · 최대 ${wmax.toFixed(3)} · 평균 ${(wv.reduce((a, b) => a + b, 0) / wv.length).toFixed(3)}`);
+  ok(wv.length >= 30, `★바람 세기를 실제로 표본했다 (${wv.length})`);
+  ok(wmin >= 0 && wmax <= 1, `★세기가 [0,1] 을 벗어나지 않는다 (${wmin.toFixed(3)}~${wmax.toFixed(3)})`);
+  ok(wmax - wmin > 0.25, `★★한 값에 고정돼 있지 않다 — 잔잔↔돌풍이 실제로 오간다 (진폭 ${(wmax - wmin).toFixed(3)})`);
+  ok(Math.abs(R.windFn.forced - 0.37) < 1e-9, `★★날씨 훅이 살아 있다 — windForce 0.37 을 주면 정본이 그 값이 된다 (${R.windFn.forced})`);
+
+  say('\n[9] ⓗ 물가 여백 — 풀이 물가에서 칼로 잘리지 않게 [재민 지적 2026-08-06c]');
+  //  ★재민이 두 번 반려한 것은 "물 위에 띠를 하나 더 얹는" 길이었다. 그래서 이 판정의 본뜻은
+  //    ⓐ여백이 **실제로 생긴다** ⓑ그런데 **폭이 0인 구간이 남아 있다**(안 그러면 그게 띠다)
+  //    ⓒ폭이 **균일하지 않다**. 셋을 한꺼번에 만족해야 통과다.
+  ok((F.shWidths || []).length === 0, `★대조군 — 초원엔 물가 변이 없다(여백도 없다) = 여백은 물가에서만 생긴다 (${(F.shWidths || []).length})`);
+  for (const [tag, s2] of [['강가', R]]) {
+    const w = s2.shWidths || [];
+    const nz = w.filter((v) => v >= 1.2), zero = w.length - nz.length;
+    const mean = w.reduce((a, b) => a + b, 0) / w.length;
+    const sd = Math.sqrt(w.reduce((a, b) => a + (b - mean) * (b - mean), 0) / w.length);
+    const cv = sd / (mean || 1);
+    const d0n = (s2.shWidths0 || []).filter((v) => v >= 1.2).length;
+    const dpx = diffCount(s2.fMarginOn, s2.fMarginOff);
+    say(`    ${tag}: 물가 변 ${w.length} · 여백 있는 변 ${nz.length}(${(nz.length / w.length * 100).toFixed(0)}%) · **폭 0인 변 ${zero}(${(zero / w.length * 100).toFixed(0)}%)**`);
+    say(`      평균 폭 ${mean.toFixed(2)}px · 표준편차 ${sd.toFixed(2)} · 변동계수 ${cv.toFixed(2)} / 손잡이 끄면 여백 변 ${d0n} · 화면 차이 ${dpx}px`);
+    ok(w.length >= 60, `★자명 통과 금지 — ${tag} 에 물가 변이 실제로 많다 (${w.length})`);
+    ok(nz.length / w.length >= 0.35, `★★${tag} — 여백이 실제로 생긴다 (${(nz.length / w.length * 100).toFixed(0)}% ≥ 35%)`);
+    //  ★문턱 20% 의 근거는 **이 하네스가 이미 쓰는 규칙**이다 — ⓑ 물가 술의 '빈 블록 ≥18%'는
+    //    재민이 글로 못박은 "빈 구간이 셀 몇 개 단위로 교대"를 옮긴 것이고, 여백도 같은 물가의
+    //    같은 규칙을 받는다. 여백이 전 구간에 깔리면 그게 곧 두 번 반려된 '띠'다.
+    ok(zero / w.length >= 0.20, `★★${tag} — **폭 0인 구간이 남아 있다** = 띠가 아니다 (${(zero / w.length * 100).toFixed(0)}% ≥ 20%)`);
+    ok(cv >= 0.45, `★★${tag} — 폭이 균일하지 않다 (변동계수 ${cv.toFixed(2)} ≥ 0.45)`);
+    ok(d0n === 0, `★★반례 — 손잡이를 끄면 여백이 **하나도 안 생긴다** (${d0n}) = 판정이 손잡이를 실제로 본다`);
+    ok(dpx > 1500, `★${tag} — 여백이 화면을 실제로 바꾼다 (${dpx}px)`);
+  }
 
   say(`\n스크린샷: ${SHOTS}/`);
   say(`\n=== 자연물 E2E: ${pass} 통과 / ${fail} 실패 ${fail ? '❌' : '✅'} ===`);
