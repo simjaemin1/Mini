@@ -1421,6 +1421,37 @@ const SIM_JOB_EMOJI = {
     tg.fillRect(0, 0, t.width, t.height);
     _mtTint.set(k, t); return t;
   }
+  // ═══ 산이 나를 가리면 그 자리만 뚫는다 ═══════════════════════════════════════
+  // ★★[재민 2026-08-07] *"산의 서쪽이나 북쪽에 있어서 화면에 가려질 때에는 산은 투명해져야 해"*
+  //
+  //   ⓐ **왜 생기나(실측)**: 플레이어 z 에는 `+500` 편향이 있어 **31셀 안쪽** 산은 이미
+  //      플레이어 뒤로 간다. 문제는 그보다 **멀리 남동쪽**에 있는 큰 산이다 — 발치는 화면
+  //      아래쪽에 있는데 몸통이 위로 2000px 넘게 뻗어 올라와 나를 덮는다.
+  //      ⇒ 즉 "내가 산의 서/북쪽"일 때만 생긴다. 재민 관찰과 정확히 일치한다.
+  //   ⓑ **왜 숨기지 않고 뚫나**: 집 지붕은 '미표시'(좀보이드 문법)지만 재민 지시는 **투명**이다.
+  //      산이 통째로 사라지면 지형이 없어져 방향 감각이 깨진다 — 산은 남고 **내 자리만** 비운다.
+  //   ⓒ **판정은 상자가 아니라 알파로** 한다. 스프라이트 프레임의 86%는 투명 여백이라
+  //      상자로 재면 "닿지도 않은 산"이 흐려진다(자명 통과 금지 — 반례가 실제로 존재한다).
+  //   ⓓ 구멍 안은 **큰 그림을 다시 래스터하지 않는다** — 구멍 크기 오프스크린에 한 번만
+  //      그리고 방사 감쇠를 파낸 뒤 되붙인다. 가려질 때만 드는 비용이고 상수 크기다.
+  const MT_OCC_R = 82, MT_OCC_A = 0.26;
+  let _mtOcc = null, _mtOccN = 0;      // {x,y,z} — 이번 프레임 내 화면 좌표와 z · 가린 산 장수
+  const _mtAlphaMap = new Map();
+  let _mtHoleCv = null;
+  function _mtAlphaAt(name, u, v) {
+    let m = _mtAlphaMap.get(name);
+    if (!m) {
+      const im = MTX[name]; if (!im || !im.complete || !im.naturalWidth) return 1;
+      const N = 64, cv = document.createElement('canvas'); cv.width = N; cv.height = N;
+      const g2 = cv.getContext('2d'); g2.drawImage(im, 0, 0, N, N);
+      const d = g2.getImageData(0, 0, N, N).data, a = new Uint8Array(N * N);
+      for (let i = 0; i < N * N; i++) a[i] = d[i * 4 + 3];
+      m = { N, a }; _mtAlphaMap.set(name, m);
+    }
+    const ix = m.N - 1 < (u * m.N | 0) ? m.N - 1 : (u < 0 ? 0 : (u * m.N | 0));
+    const iy = m.N - 1 < (v * m.N | 0) ? m.N - 1 : (v < 0 ? 0 : (v * m.N | 0));
+    return m.a[iy * m.N + ix] / 255;
+  }
   function _mtDraw(g, item, toScr) {
     const sg = item.sg, an = _mtAnchors[sg.name], im0 = MTX[sg.name];
     if (!an || !im0 || !im0.complete) return;
@@ -1428,7 +1459,47 @@ const SIM_JOB_EMOJI = {
     const sc = (64 / Math.SQRT2) / an.ppu * sg.sc, vy = sg.vy || 1;
     const p = w2i(sg.x + (sg.jx || 0), sg.y + (sg.jy || 0)), c = toScr(p.x, p.y);
     // 높이 지터는 **앵커(발치) 고정, 세로만 배율** — 능선 스카이라인이 출렁이게(시안 정본과 동일)
-    g.drawImage(im, c.x - an.ox * sc, c.y - an.oy * sc * vy, im0.naturalWidth * sc, im0.naturalHeight * sc * vy);
+    const W = im0.naturalWidth * sc, H = im0.naturalHeight * sc * vy;
+    const dx = c.x - an.ox * sc, dy = c.y - an.oy * sc * vy;
+    let occ = false;
+    if (_mtOcc && W > 0 && H > 0) {
+      const u = (_mtOcc.x - dx) / W, v = (_mtOcc.y - dy) / H;
+      const inBox = u > 0 && u < 1 && v > 0 && v < 1;
+      const behind = item.z > _mtOcc.z;
+      const al = inBox ? _mtAlphaAt(sg.name, u, v) : 0;
+      if (behind && inBox && al > 0.35 && !_t19.occOff) occ = true;
+      // ★진단 — "왜 안 뚫렸나"를 수로 남긴다. 이게 없으면 반례를 못 찾아 판정이 자명해진다.
+      const D = window.__mtOccDbg;
+      if (D) {
+        D.tot++; if (behind) D.behind++; if (inBox) D.inBox++; if (behind && inBox) D.behindBox++;
+        const m = Math.abs(u - 0.5) + Math.abs(v - 0.5);
+        if (D.near == null || m < D.near) {
+          D.near = +m.toFixed(3);
+          D.nearSeg = { name: sg.name, u: +u.toFixed(2), v: +v.toFixed(2), dz: Math.round(item.z - _mtOcc.z), a: +al.toFixed(2), sc: +sg.sc.toFixed(2) };
+        }
+      }
+    }
+    if (occ) { _mtOccN++; if (window.__mtOccDbg) window.__mtOccDbg.n = _mtOccN; }
+    if (!occ) { g.drawImage(im, dx, dy, W, H); return; }
+    const R = MT_OCC_R;
+    g.save();                                   // 구멍 밖 — 원래대로(사각 CW + 원 CCW = 구멍)
+    g.beginPath();
+    g.rect(dx - 2, dy - 2, W + 4, H + 4);
+    g.arc(_mtOcc.x, _mtOcc.y, R, 0, Math.PI * 2, true);
+    g.clip(); g.drawImage(im, dx, dy, W, H); g.restore();
+    if (!_mtHoleCv) { _mtHoleCv = document.createElement('canvas'); _mtHoleCv.width = _mtHoleCv.height = R * 2; }
+    const hg = _mtHoleCv.getContext('2d');
+    hg.setTransform(1, 0, 0, 1, 0, 0); hg.globalCompositeOperation = 'source-over';
+    hg.clearRect(0, 0, R * 2, R * 2);
+    hg.drawImage(im, dx - (_mtOcc.x - R), dy - (_mtOcc.y - R), W, H);
+    hg.globalCompositeOperation = 'destination-out';
+    const grd = hg.createRadialGradient(R, R, 0, R, R, R);
+    const k = 1 - MT_OCC_A;
+    grd.addColorStop(0, 'rgba(0,0,0,' + k + ')');
+    grd.addColorStop(0.55, 'rgba(0,0,0,' + (k * 0.88) + ')');
+    grd.addColorStop(1, 'rgba(0,0,0,0)');
+    hg.fillStyle = grd; hg.fillRect(0, 0, R * 2, R * 2);
+    g.drawImage(_mtHoleCv, _mtOcc.x - R, _mtOcc.y - R);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -1702,7 +1773,10 @@ const SIM_JOB_EMOJI = {
   //     git stash 로 만든 "before" 는 다른 세계다).
   const _t19 = { legacy: false, waterOff: false, decoOff: false, prismOff: false, mtOff: false,
                  natOff: false, fringeOff: false, propOff: false, propNoAvoid: false, frFloor: 0,
-                 stateOff: false, slowFlow: false, wxOff: false };
+                 stateOff: false, slowFlow: false, wxOff: false,
+  //   ★[재민 2026-08-07] occOff — 산 가림 뚫기의 **대조군**. 끄면 산이 나를 통째로 덮는다.
+  //     하네스가 "뚫렸다"를 주장하려면 안 뚫린 프레임이 같은 시계에서 필요하다.
+                 occOff: false };
   window.__terrain19 = _t19;
 
   // 지형 차단 통합 (물+바위) — 이동 예측용
@@ -5501,6 +5575,19 @@ const SIM_JOB_EMOJI = {
     }
 
     renderables.sort((a, b) => a.z - b.z);
+
+    // ★[재민 2026-08-07] 산 가림 뚫기 기준점 — 내 화면 좌표와 내 z 를 프레임당 1회만 잡는다.
+    //   z 는 플레이어 renderable 과 **같은 식**을 써야 한다(사본 금지 — 여기서 어긋나면
+    //   "가리는데 안 뚫리는" 산이 생긴다). floor 는 산 판정과 무관해 0 으로 둔다.
+    _mtOcc = null;
+    if (_mtAnchors && myAbsPredicted) {
+      const _op = w2i(myAbsPredicted.x, myAbsPredicted.y), _os = toScreen(_op.x, _op.y);
+      _mtOcc = { x: _os.x, y: _os.y - 14, z: (myAbsPredicted.x + myAbsPredicted.y) * 0.5 + 500 };
+    }
+    // ★계측기는 판정을 **다시 유도하지 않는다** — `_mtDraw` 가 세는 수를 그대로 읽는다(사본 금지).
+    window.__mtOccDbg = { n: 0, tot: 0, behind: 0, inBox: 0, behindBox: 0, near: null, nearSeg: null,
+      pt: _mtOcc ? { x: Math.round(_mtOcc.x), y: Math.round(_mtOcc.y) } : null, z: _mtOcc ? Math.round(_mtOcc.z) : null, r: MT_OCC_R };
+    _mtOccN = 0;
 
     // 14.49-e7ab/ag: 위층 BFS cutaway
     const _renderMyCx = Math.floor(myAbsPredicted.x / CL_BUILDING_SIZE);

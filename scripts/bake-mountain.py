@@ -11,7 +11,10 @@ import bpy, math, os, json, random
 import mathutils
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-OUT = os.path.join(HERE, 'mountain_renders')
+OUT = os.environ.get('MT_OUT') or os.path.join(HERE, 'mountain_renders')
+os.makedirs(OUT, exist_ok=True)
+RES = int(os.environ.get('MT_RES', '512'))   # ★해상도만 바꿔도 월드 발자국은 그대로 — ppu 가 같이 커지고 클라가 PPU_SCR/ppu 로 나눈다
+ONLY = [x for x in (os.environ.get('MT_ONLY') or '').split(',') if x]
 os.makedirs(OUT, exist_ok=True)
 
 PPU = 64.0 / math.sqrt(2.0)
@@ -146,7 +149,7 @@ def render_sprite(name, obj, pad=1.3):
     cam_d.ortho_scale = dim * pad
     tgt.location = (0, 0, obj.dimensions.z*0.32)
     bpy.context.view_layer.update()
-    res = 512
+    res = RES
     scene.render.resolution_x = res; scene.render.resolution_y = res
     scene.render.filepath = os.path.join(OUT, name + '.png')
     bpy.ops.render.render(write_still=True)
@@ -173,6 +176,7 @@ for a in range(8):
 anchors = {}
 for spec in SPECS:
     name, r, h, sp, seed = spec[:5]
+    if ONLY and name not in ONLY: continue
     isF = (len(spec) > 6 and spec[6] == 'F')
     for o in [o for o in scene.objects if o.type == 'MESH']:
         bpy.data.objects.remove(o, do_unlink=True)
