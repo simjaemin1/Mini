@@ -433,9 +433,13 @@ const SIM_JOB_EMOJI = {
   const GT_MASK_W = 1024, GT_MASK_H = 512;   // 맨땅 뙈기 마스크 주기(텍스처보다 크게 — 반복 티 감소)
   const GT_MAX = 140;                  // 타일 캐시 상한(≈70MB) — 넘으면 카메라에서 먼 것부터 버린다
   const GT_MAX_WIND = 80;              // ★잎 층까지 들면 타일당 메모리가 2배다 — 상한을 낮춘다(화면은 ~30장)
+  const WATER_EDGE_FUZZ = 6.0;         // 물가선이 굽이치는 폭(월드 px) — 자로 그은 직선을 없앤다
   // ★[2026-08-09 실측 정정] 옛 주석의 "32px +0.27ms · 16px +0.53 · 8px +1.03" 은 **틀렸다**.
   //   실클라 짝 비교(켬/끔 5회 교대)로 재니 풀 카펫 흔들림 하나가 **16.3ms/f** 다 — 29배 차이.
   //   옛 수치는 격리·첫 blit 측정으로 보인다. 아래 값들은 전부 짝 비교로 다시 잰다.
+  //   ★[합류 2026-08-24] 재민이 "여전히 안 흔들려"라고 해서 내가 2.2 → 3.4 로 올렸는데,
+  //     병행 세션이 위 실측(16.3ms/f)을 근거로 2.2 로 되돌리고 2차 파를 뺐다. **그쪽을 취한다** —
+  //     성능 수리를 조용히 되돌릴 수는 없다. 세기 판단은 재민 몫으로 남긴다(보고서 §6-k 끝).
   let _gtFrac = false;                 // true = 옛 소수 목적지(A/B 대조군)
   let GT_STRIP = 16;                   // 잎 띠 높이(px) — 시험 손잡이 __gtStrip 으로 바꿀 수 있다
   const GT_GRASS_AMP = 2.2;            // 카펫이 눕는 최대 폭(px). 잎이 6~10px 이라 이 이상은 '미끄러짐'으로 보인다
@@ -1437,7 +1441,7 @@ const SIM_JOB_EMOJI = {
   const WATER_FS = [
     'precision highp float;',
     'uniform vec2 uRes; uniform vec2 uCam; uniform float uT;',
-    'uniform sampler2D uLin; uniform sampler2D uMsk;',
+    'uniform sampler2D uLin; uniform sampler2D uMsk; uniform float uFuzz;',
     'uniform vec2 uOrig; uniform float uN; uniform float uDrop;',
     // ★★값 노이즈는 **주기 노이즈**여야 한다. 이유가 두 개다:
     //   ⓐ 월드 좌표가 수만 px 이라 `fract(sin(dot(p,·)))` 의 인자가 1e7 급이 되면 float 정밀도가
@@ -1450,15 +1454,38 @@ const SIM_JOB_EMOJI = {
     '  vec2 a=mod(i,per), b=mod(i+vec2(1,0),per), c=mod(i+vec2(0,1),per), d=mod(i+vec2(1,1),per);',
     '  return mix(mix(h2(a),h2(b),u.x),mix(h2(c),h2(d),u.x),u.y);}',
     'vec2 cellUV(vec2 w){return (w/32.0-uOrig)/uN;}',
+    // ★물가선 굽이 — **main() 밖**에 둔다. 1패스에서 main() 안에 넣었다가 셰이더가 링크에 실패했고,
+    //   try/catch 가 삼켜서 `_wgl.ok=false` → 단색 물 폴백으로 조용히 떨어졌다.
+    //   그런데 화면엔 '물색'이 그대로 있어서 **측정값이 네 손잡이 값에서 전부 동일**하게 나왔다.
+    //   ⇒ 그 동일함이 단서였다. 이제 하네스가 `__waterDbg.ok` 를 함께 본다.
+    'vec2 fuzzW(vec2 p){ if(uFuzz<0.01) return p;',
+    '  return p + (vec2(vn(p/8.0,64.0), vn(p/8.0+vec2(37.3,11.9),64.0))-0.5)*uFuzz; }',
     'void main(){',
     '  float ix = gl_FragCoord.x - uRes.x*0.5 + uCam.x;',
     '  float sy = (uRes.y-gl_FragCoord.y) - uRes.y*0.5 + uCam.y;',
     // ★수면은 지면보다 uDrop 만큼 내려가 있다 ⇒ 이 화면 행에 보이는 수면점은 iso y-uDrop 의 역변환
     '  float iy = sy - uDrop;',
     '  vec2 w = vec2((2.0*iy+ix)*0.5,(2.0*iy-ix)*0.5);',
+    // ★★★[재민 2026-08-07 "여전히 물에 풀이 잘리는데"] **물가선 자체를 흔든다.**
+    //   12배 확대해서 보고 나서야 남은 게 뭔지 알았다: 풀↔모래 경계는 이미 잎 모양으로 너덜한데,
+    //   **모래↔물 경계가 자로 그은 완전 직선**이었다. 셀 다이아몬드 변을 그대로 쓰니 당연하다.
+    //   지면 쪽에서 아무리 너덜하게 만들어도 그 위를 **직선 물 폴리곤이 덮어** 다시 잘린다.
+    //   ⇒ 자를 없앤다: 마스크를 **월드 좌표를 흔든 자리**에서 읽는다. 경계가 ±uFuzz 만큼 굽이친다.
+    //   · 잡음 규약은 이 셰이더의 기존 것 그대로(`vn`, 스케일 8 = 512 의 약수 → 카메라 이동에 불변).
+    //   · 파장 ≈8월드px 라 **점점이 흩어지는 디더가 아니라 물결치는 선**이 된다.
+    //   ★배치 19 의 "각진 블록 — 셀 경계 그대로" 규약을 **의도적으로 좁게 깬다**: 블록감(수심·흐름의
+    //     셀 단위)은 그대로 두고 **바깥 윤곽만** 굽힌다. 손잡이 `edgeFuzz` 로 0 을 주면 옛 그림이다.
     '  vec2 uv = cellUV(w);',
     '  if(uv.x<0.0||uv.y<0.0||uv.x>1.0||uv.y>1.0) discard;',
-    '  if(texture2D(uMsk,uv).a < 0.5) discard;',            // 각진 블록 — 셀 경계 그대로
+    // ★굽이만으로는 부족했다 — **경계가 여전히 1px 만에 뚝 끊긴다**(딱딱한 discard).
+    //   그래서 4탭으로 **피복률**을 낸다: 굽힌 자리 주변 네 점 중 몇 개가 물인가.
+    //   ⇒ 경계가 0/0.25/0.5/0.75/1 로 부드러워진다 = 자로 그은 선이 아니라 젖어드는 가장자리.
+    '  float cov=0.0;',
+    '  cov += step(0.5, texture2D(uMsk, cellUV(fuzzW(w+vec2( 1.6, 0.6)))).a);',
+    '  cov += step(0.5, texture2D(uMsk, cellUV(fuzzW(w+vec2(-1.6,-0.6)))).a);',
+    '  cov += step(0.5, texture2D(uMsk, cellUV(fuzzW(w+vec2( 0.6,-1.6)))).a);',
+    '  cov += step(0.5, texture2D(uMsk, cellUV(fuzzW(w+vec2(-0.6, 1.6)))).a);',
+    '  cov *= 0.25;',
     // ★★내 자리(지면 높이)가 뭍이면 그건 프리즘 면이 덮을 자리다 — 물을 그리지 않는다.
     //   ※배치 19 가 `uvg` 를 **계산만 하고 discard 를 안 걸었다**(주석은 있는데 코드가 없다).
     //     그 결과 수면이 uDrop 만큼 내려가 그려지면서 **남·동쪽 뭍 위로 흘러넘쳤고**,
@@ -1467,7 +1494,13 @@ const SIM_JOB_EMOJI = {
     //   ⇒ 원래 의도대로 한 줄을 마저 건다. 그 자리는 프리즘 단면이 덮는다.
     '  vec2 wg = vec2((2.0*sy+ix)*0.5,(2.0*sy-ix)*0.5);',
     '  vec2 uvg = cellUV(wg);',
-    '  if(uvg.x>=0.0&&uvg.y>=0.0&&uvg.x<=1.0&&uvg.y<=1.0&&texture2D(uMsk,uvg).a < 0.5) discard;',
+    '  if(uvg.x>=0.0&&uvg.y>=0.0&&uvg.x<=1.0&&uvg.y<=1.0){ float cg=0.0;',
+    '    cg += step(0.5, texture2D(uMsk, cellUV(fuzzW(wg+vec2( 1.6, 0.6)))).a);',
+    '    cg += step(0.5, texture2D(uMsk, cellUV(fuzzW(wg+vec2(-1.6,-0.6)))).a);',
+    '    cg += step(0.5, texture2D(uMsk, cellUV(fuzzW(wg+vec2( 0.6,-1.6)))).a);',
+    '    cg += step(0.5, texture2D(uMsk, cellUV(fuzzW(wg+vec2(-0.6, 1.6)))).a);',
+    '    cov = min(cov, cg*0.25); }',
+    '  if(cov <= 0.001) discard;',
     '  vec4 L = texture2D(uLin,uv);',
     '  vec2 dir = L.rg*2.0-1.0; float depth = L.b;',
     '  float fl = length(dir);',
@@ -1513,6 +1546,7 @@ const SIM_JOB_EMOJI = {
     '    float foam=max(0.0,(1.0-shore)*1.25*(fo-0.28))*1.5; foam=min(0.85,foam);',
     '    r=r*(1.0-foam)+232.0*foam; g=g*(1.0-foam)+238.0*foam; b=b*(1.0-foam)+240.0*foam; }',
     '  wa = min(1.0, 0.42+0.58*depth);',                     // ★얕은물 투명 — 물밑 진흙이 비친다
+    '  wa *= cov;',                                        // ★경계 피복률 — 물가선이 젖어들 듯 끝난다
     '  gl_FragColor = vec4(r/255.0*wa, g/255.0*wa, b/255.0*wa, wa);',   // premultiplied
     '}',
   ].join('\n');
@@ -1536,7 +1570,7 @@ const SIM_JOB_EMOJI = {
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
       const loc = gl.getAttribLocation(pr, 'p'); gl.enableVertexAttribArray(loc);
       gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-      for (const u of ['uRes', 'uCam', 'uT', 'uLin', 'uMsk', 'uOrig', 'uN', 'uDrop']) _wgl.uni[u] = gl.getUniformLocation(pr, u);
+      for (const u of ['uRes', 'uCam', 'uT', 'uLin', 'uMsk', 'uOrig', 'uN', 'uDrop', 'uFuzz']) _wgl.uni[u] = gl.getUniformLocation(pr, u);
       const mkTex = (filt) => { const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filt); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filt);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
@@ -1608,6 +1642,8 @@ const SIM_JOB_EMOJI = {
     gl.uniform2f(_wgl.uni.uCam, camX2, camY2);
     gl.uniform2f(_wgl.uni.uOrig, _wfCache.ox, _wfCache.oy);
     gl.uniform1f(_wgl.uni.uT, tSec);
+    //   ★물가선 굽이 폭(월드 px). 0 이면 셀 경계 그대로 = 옛 그림(대조군).
+    gl.uniform1f(_wgl.uni.uFuzz, _t19.edgeFuzz == null ? WATER_EDGE_FUZZ : _t19.edgeFuzz);
     gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     gl.disable(gl.SCISSOR_TEST);
@@ -3724,7 +3760,7 @@ const SIM_JOB_EMOJI = {
   //   ★[배치 21 5차] fogGateOff — 안개 게이트의 **대조군**. 끄면 안 가본 곳의 개체가 다시 보인다.
                  fogGateOff: false,
                  shoreOff: true,
-                 shMarginOff: false, shMargin: 1, windOff: false, windForce: null, windGrassOff: false };
+                 shMarginOff: false, shMargin: 1, windOff: false, windForce: null, windGrassOff: false, edgeFuzz: null };
   // 시험 전용 — 띠 높이를 바꿔 "비용이 blit 횟수에 비례하나 픽셀 수에 비례하나"를 가른다.
   window.__gtStrip = (v) => { GT_STRIP = Math.max(4, v | 0); _groundTiles.clear(); needsRedraw = true; return GT_STRIP; };
   window.__gtFrac = (v) => { _gtFrac = !!v; needsRedraw = true; return _gtFrac; };
