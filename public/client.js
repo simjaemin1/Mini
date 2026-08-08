@@ -1927,8 +1927,15 @@ const SIM_JOB_EMOJI = {
         const cy = Math.round(lj * T.step + (j2 - 0.5) * T.step * 0.9);
         if (!isRk(cx, cy)) continue;
         const dE = edgeD(cx, cy);
-        if (dE < T.minD) continue;
-        if (T.maxD != null && dE > T.maxD) continue;
+        // ★★[재민 2026-08-07] **딱딱한 문턱을 뺐다.**
+        //   실측: 배율 2.18(폭 22셀) 봉우리가 **겉면 12셀**을 깎은 것만으로 통째로 사라졌다.
+        //   원인은 이 `dE < minD` 문턱이다 — 가장자리 거리가 임계를 지나는 순간 탈락해
+        //   "낮아지는" 게 아니라 "없어진다"(팝). 겉면만 부수는 규칙으로도 못 막는다.
+        //   부수는 위치와 무관하게 안쪽 거리가 줄면 언젠가 임계를 지나기 때문이다.
+        //   ⇒ 문턱을 없애고 **배율 상한(_mtFit)만** 남긴다. 그러면 깎을수록 봉우리가
+        //     사라지는 대신 **낮아진다** — 채석장에서 산이 물러나는 그림이다.
+        //   계층은 이제 '설 자리 조건'이 아니라 **격자 밀도**일 뿐이다(L 13셀·M 7.5·S 4.2).
+        //   크기는 전적으로 가장자리 거리가 정한다.
         const nr = _mtNearRidge(cx * 32 + 16, cy * 32 + 16);
         const sg = { x: cx * 32 + 16, y: cy * 32 + 16, name: _mtPick(cx, cy, nr.ang, nr.isF, T),
                      sc: _mtFit(T.s0 + (T.s1 - T.s0) * _cellHash(cx, cy, T.seed + 2), dE),
