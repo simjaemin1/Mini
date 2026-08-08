@@ -191,6 +191,9 @@ function diffCount(a, b) {            // 두 프레임에서 달라진 픽셀 �
       return { unseen, lit };
     }).catch(() => ({ unseen: 0, lit: 0 }));
 
+    // ★[재민 2026-08-07] 물가 술은 **반려**됐다 — 손잡이를 하나도 안 건드린 상태에서 0 이어야 한다.
+    //   (아래 절들은 그 뒤에 `fringeOff:false` 로 **일부러 켜서** 잠든 코드가 살아 있는지 본다.)
+    const dDefault = await dbg();
     await knob({ legacy: false, freezeT: 100, natOff: false, fringeOff: false, propOff: false, propNoAvoid: false });
     const d0 = await dbg();
     const fOn = await grab('on'), fOn2 = await grab('on2');
@@ -277,7 +280,7 @@ function diffCount(a, b) {            // 두 프레임에서 달라진 픽셀 �
     const fMarginOff = await grab('margin-off');
     await knob({ shMargin: 1 });
 
-    S[tag] = { d0, fOn, fOn2, fNoFr, fNoPr, fNoNat, probe, probeNA, cerr, bad: [...new Set(bad)], fogOn, fogOff, gate, gateOff,
+    S[tag] = { dDefault, d0, fOn, fOn2, fNoFr, fNoPr, fNoNat, probe, probeNA, cerr, bad: [...new Set(bad)], fogOn, fogOff, gate, gateOff,
                wOn100, wOn101, wCalm100, wCalm101, wBase100, wBase101, windFn, shWidths, shWidths0, fMarginOn, fMarginOff,
                cpCalm, cpLegacy, cpW0, cpW1, cpC0, cpC1, cpDbgOn, cpDbgOff };
     await browser.close(); try { z.kill(); } catch (e) {}
@@ -286,6 +289,14 @@ function diffCount(a, b) {            // 두 프레임에서 달라진 픽셀 �
   const R = S.river, F = S.field;
 
   say('\n[1] 계약 — __natDbg');
+  //  ★재민 확정(2026-08-07): "물가 근처에 추가적으로 배치하는 풀은 없애줘" ⇒ 기본값 OFF.
+  //    절단선은 이제 **지면 베이크 안의 물가 여백**이 직접 푼다 — 가리개가 필요 없어졌다.
+  for (const [tag, s2] of [['강가', R], ['초원', F]]) {
+    const df = s2.dDefault && s2.dDefault.nat;
+    say(`    ${tag} 기본값 — 물가 술 ${df ? df.fringe : 'n/a'} · 초원 소품 ${df ? df.props : 'n/a'}`);
+    ok(df && df.fringe === 0, `★★${tag} — 손잡이를 안 건드리면 물가 술이 **0** 이다 (${df ? df.fringe : 'n/a'}) [재민 반려]`);
+  }
+  ok(F.dDefault && F.dDefault.nat && F.dDefault.nat.props > 0, `★★반례 — 초원 소품은 **그대로 산다** (${F.dDefault && F.dDefault.nat ? F.dDefault.nat.props : 'n/a'}) — 없앤 건 '물가 근처'뿐이다`);
   say(`    강가: ${JSON.stringify(R.d0.nat)}`);
   say(`    초원: ${JSON.stringify(F.d0.nat)}`);
   if (R.cerr.length || F.cerr.length) say(`    ⚠콘솔: ${R.cerr.concat(F.cerr).slice(0, 4).join(' | ')}`);

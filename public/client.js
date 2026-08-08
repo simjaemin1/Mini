@@ -440,7 +440,8 @@ const SIM_JOB_EMOJI = {
   let GT_STRIP = 16;                   // 잎 띠 높이(px) — 시험 손잡이 __gtStrip 으로 바꿀 수 있다
   const GT_GRASS_AMP = 2.2;            // 카펫이 눕는 최대 폭(px). 잎이 6~10px 이라 이 이상은 '미끄러짐'으로 보인다
   const GT_WAVE_K = 0.017;             // 파수(1/px) — 파장 ≈ 370px ≈ 11셀. 들판을 훑는 결
-  const GT_WAVE_W = 1.15;              // 각속도(rad/s, 게임 시계)
+  const GT_WAVE_W = 2.10;              // 각속도(rad/s, 게임 시계) — 주기 ≈ 3.0초
+  const GT_WAVE_K2 = 0.041, GT_WAVE_W2 = 5.30, GT_AMP2 = 0.38;   // 2차 파 — 잔떨림(주기 ≈1.2초)
   const GT_BAKE_PER_FRAME = 5;         // 프레임당 새로 굽는 타일 수(히치 방어)
   const GT_ZONE_TINT = 0.18;           // 존 groundColor 를 텍스처 위에 얹는 세기(존 정체성 유지)
   const _groundTiles = new Map();      // "itx_ity" → {cv, used}
@@ -3380,6 +3381,13 @@ const SIM_JOB_EMOJI = {
   //      생긴다). 그래서 후보 자리만 캐시하고 회피는 수집 시점에 건다. **회피 판정은 전부
   //      클라가 이미 받는 값**이다 — roads · claims · simVillages · buildings. 새로 만들지 않는다.
   // ═══════════════════════════════════════════════════════════════════════════
+  // ★★★[재민 2026-08-07] **물가 술은 반려됐다 — 기본값 OFF(`fringeOff: true`).**
+  //   원문: *"일단 물가 근처에 추가적으로 배치하는 풀은 없애주고"*.
+  //   이 층의 원래 존재 이유는 "물가 절단선을 가리는 것"이었는데, 그 문제는 이제
+  //   **지면 베이크 안의 물가 여백**(§6-f `_shoreMarginBake`)이 직접 푼다 —
+  //   가리는 게 아니라 애초에 안 잘리게 만든다. 가리개는 필요 없어졌고, 재민 눈에는
+  //   **일부러 심은 것**으로 읽혔다. 코드는 손잡이 뒤에 남긴다(`fringeOff = false` 로 켜진다).
+  //   ※초원 소품(들꽃·풀숲)은 **그대로 산다** — 재민이 없애라고 한 건 '물가 근처'다.
   const NAT_KINDS = { grass: 4, reed: 3, cattail: 3, flower: 4 };
   const NATX = {};
   let _natAnchors = null, _natLoaded = 0, _natWanted = 0;
@@ -3698,7 +3706,7 @@ const SIM_JOB_EMOJI = {
   //     수리 전 코드와 같은 비용을 내게 한다(같은 세션·같은 시계에서 A/B —
   //     git stash 로 만든 "before" 는 다른 세계다).
   const _t19 = { legacy: false, waterOff: false, decoOff: false, prismOff: false, mtOff: false,
-                 natOff: false, fringeOff: false, propOff: false, propNoAvoid: false, frFloor: 0,
+                 natOff: false, fringeOff: true, propOff: false, propNoAvoid: false, frFloor: 0,
                  stateOff: false, slowFlow: false, wxOff: false,
   //   ★[재민 2026-08-07] occOff — 산 가림 뚫기의 **대조군**. 끄면 산이 나를 통째로 덮는다.
   //     하네스가 "뚫렸다"를 주장하려면 안 뚫린 프레임이 같은 시계에서 필요하다.
@@ -7013,7 +7021,7 @@ const SIM_JOB_EMOJI = {
       const _fr = (window._tileFrames || 0);
       let baked = 0, drawn = 0, nStrip = 0;
       //   바람 세기·시각은 자연물과 **같은 정본**을 쓴다(_windAt/_windT) — 날씨 훅도 같이 먹는다.
-      const _gwT = _windT() * GT_WAVE_W;
+      const _gwT = _windT() * GT_WAVE_W, _gwT2 = _windT() * GT_WAVE_W2;
       const _gw = (_t19.windOff || _t19.windGrassOff) ? 0 : _windAt(_windT()) * GT_GRASS_AMP;
       for (let ty = t0y; ty <= t1y; ty++) for (let tx = t0x; tx <= t1x; tx++) {
         const key = tx + '_' + ty;
