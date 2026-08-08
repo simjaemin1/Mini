@@ -107,46 +107,92 @@ function diff(a, b, box) {
       fp: segs.map((g) => [g.lcx, g.lcy, g.nm, +g.sc.toFixed(2), +g.vy.toFixed(2)]) };
   }, { a: cam[0], b: cam[1], dead: [...dead] });
 
-  // 부수는 모양 — 겉면 셀 중에서 고른다(겉면 규칙)
-  const face = async (n, mode) => pg.evaluate((o) => {
+  // ★★부수는 모양 [재민 "정말 다양한 모양으로 검증해본 거 맞아?" — 아니었다]
+  //   1차 판은 이름만 다양했다. 실제 로그를 보니 `line` 이 1~2셀, `bite` 가 5셀이었고
+  //   `spot` 은 14단계 동안 한 번도 안 나왔다. 겉면 셀 중에서만 고르니 모든 모양이
+  //   "몇 셀 갉아먹기"로 **퇴화**한 것이다. 게다가 **극단 상황을 하나도 안 봤다** —
+  //   산을 둘로 자르기 · 1셀만 남기기 · 통째로 없애기.
+  //   ⇒ 모양을 실제로 다르게 만들고, **무엇을 잘랐는지 매 단계 출력**한다(주장 말고 기록).
+  //   ⇒ 극단 상황은 무작위에 맡기지 않고 **각본으로 반드시 돈다**.
+  const cutShape = async (mode, arg) => pg.evaluate((o) => {
     const dd = new Set(o.dead);
     const isRock = (a, b) => window.__tileStateAt(a, b).kind === 'rock' && !dd.has(a + '_' + b);
-    const out = [];
+    const isFace = (a, b) => isRock(a, b) &&
+      !(isRock(a + 1, b) && isRock(a - 1, b) && isRock(a, b + 1) && isRock(a, b - 1));
+    const all = [], faces = [];
     for (let dx = -20; dx <= 20; dx++) for (let dy = -20; dy <= 20; dy++) {
       const a = o.a + dx, b = o.b + dy;
       if (!isRock(a, b)) continue;
-      if (isRock(a + 1, b) && isRock(a - 1, b) && isRock(a, b + 1) && isRock(a, b - 1)) continue;
-      out.push({ a, b, dx, dy });
+      all.push([a, b]); if (isFace(a, b)) faces.push([a, b]);
     }
-    if (!out.length) return [];
-    if (o.mode === 'bite') {                    // 큰 한 입 — 한 점 주변을 뭉텅이로
-      const c = out[o.pick % out.length];
-      return out.filter((v) => Math.hypot(v.a - c.a, v.b - c.b) <= o.rr).slice(0, o.n).map((v) => [v.a, v.b]);
-    }
-    if (o.mode === 'line') {                    // 한 줄 절개
-      const c = out[o.pick % out.length];
-      return out.filter((v) => v.b === c.b).slice(0, o.n).map((v) => [v.a, v.b]);
-    }
-    if (o.mode === 'saw') {                     // 톱니 — 걸러서
-      return out.filter((_, i) => i % 3 === o.pick % 3).slice(0, o.n).map((v) => [v.a, v.b]);
-    }
-    if (o.mode === 'spot') {                    // 반점 — 흩뿌리기
-      const s = [];
-      for (let i = 0; i < o.n && out.length; i++) s.push(out[(o.pick * 7 + i * 13) % out.length]);
-      return s.map((v) => [v.a, v.b]);
-    }
-    return out.slice(0, o.n).map((v) => [v.a, v.b]);   // creep — 겉면 잠식
-  }, { a: cam[0], b: cam[1], dead: [...dead], n: n, mode, pick: Math.floor(rnd() * 9973), rr: 3 });
+    if (!all.length) return [];
+    const pick = (arr) => arr[o.pick % arr.length];
 
-  const MODES = ['creep', 'bite', 'line', 'saw', 'spot'];
+    if (o.mode === 'through') {
+      // ★관통 — 한 줄을 **끝에서 끝까지** 자른다. 덩어리가 둘로 갈라진다.
+      //   겉면에서 시작해 반대편 겉면까지, 매 칸이 다음 칸의 겉면이 되므로 규칙에 맞는다.
+      const c = pick(faces.length ? faces : all);
+      const out = [];
+      for (const [a, b] of all) if (b === c[1]) out.push([a, b]);
+      return out;
+    }
+    if (o.mode === 'neck') {
+      // ★좁은 목 — 관통하되 한 칸만 남긴다. 1셀 다리가 어떻게 그려지나.
+      const c = pick(faces.length ? faces : all);
+      const row = all.filter((v) => v[1] === c[1]).sort((p, q) => p[0] - q[0]);
+      return row.filter((_, i) => i !== (row.length >> 1));
+    }
+    if (o.mode === 'wipe') return all;                       // ★통째로 제거
+    if (o.mode === 'lone') {                                  // ★1셀만 남기기
+      const c = pick(all);
+      return all.filter((v) => v[0] !== c[0] || v[1] !== c[1]);
+    }
+    if (o.mode === 'bite') {                                  // 큰 한 입 — 겉면 한 점 둘레를 뭉텅이로
+      const c = pick(faces.length ? faces : all);
+      return all.filter((v) => Math.hypot(v[0] - c[0], v[1] - c[1]) <= o.arg);
+    }
+    if (o.mode === 'saw') {                                   // 톱니 — 겉면을 한 칸 걸러
+      return faces.filter((_, i) => i % 2 === o.pick % 2).slice(0, o.arg);
+    }
+    if (o.mode === 'spot') {                                  // 반점 — 겉면에 흩뿌리기
+      const out = [];
+      for (let i = 0; i < o.arg && faces.length; i++) out.push(faces[(o.pick * 7 + i * 17) % faces.length]);
+      return out;
+    }
+    return faces.slice(0, o.arg);                             // creep — 겉면 잠식
+  }, { a: cam[0], b: cam[1], dead: [...dead], mode, arg, pick: Math.floor(rnd() * 9973) });
+
+  // 자른 모양을 **기록**한다 — 크기·가로세로·연결 여부. 다양성을 주장이 아니라 수로 남긴다.
+  const shapeOf = (cells) => {
+    if (!cells.length) return { n: 0, w: 0, h: 0, cc: 0 };
+    let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+    for (const [a, b] of cells) { x0 = Math.min(x0, a); x1 = Math.max(x1, a); y0 = Math.min(y0, b); y1 = Math.max(y1, b); }
+    const set = new Set(cells.map(([a, b]) => a + '_' + b)); let cc = 0;
+    const seen = new Set();
+    for (const [a, b] of cells) {
+      const k = a + '_' + b; if (seen.has(k)) continue;
+      cc++; const st = [[a, b]]; seen.add(k);
+      while (st.length) { const [p, q] = st.pop();
+        for (const [i, j] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const kk = (p + i) + '_' + (q + j);
+          if (set.has(kk) && !seen.has(kk)) { seen.add(kk); st.push([p + i, q + j]); } } }
+    }
+    return { n: cells.length, w: x1 - x0 + 1, h: y1 - y0 + 1, cc };
+  };
+
+  // ★각본(반드시 돈다) + 무작위. 극단은 운에 맡기지 않는다.
+  const SCRIPT = ['creep', 'bite', 'saw', 'spot', 'through', 'neck', 'creep', 'bite', 'lone', 'wipe'];
+  const RANDOM = ['creep', 'bite', 'saw', 'spot', 'through'];
   let prev = await snap(), prevImg = await shot();
   console.log(`\n시작 — 세그먼트 ${prev.n} · 최대 배율 ${prev.max} · 바위 ${prev.rock}셀 · ①${prev.bare}% ②${prev.spill}%`);
-  console.log(`씨앗 ${SEED} · ${STEPS}단계\n단계  모양   부순셀  세그  최대배율  Δ배율   ①     ②`);
+  console.log(`씨앗 ${SEED} · ${STEPS}단계\n단계  모양      자른모양          세그  최대배율  Δ배율   ①     ②`);
 
-  let popN = 0, growN = 0, farN = 0, bareN = 0, spillN = 0, farMax = 0;
+  const shapes = [];
+  let popN = 0, growN = 0, farN = 0, bareN = 0, spillN = 0, farMax = 0, narrowN = 0, spillMax = 0;
   for (let st = 1; st <= STEPS; st++) {
-    const mode = MODES[Math.floor(rnd() * MODES.length)];
-    const cells = await face(3 + Math.floor(rnd() * 10), mode);
+    const mode = st <= SCRIPT.length ? SCRIPT[st - 1] : RANDOM[Math.floor(rnd() * RANDOM.length)];
+    const arg = mode === 'bite' ? 2 + Math.floor(rnd() * 4) : 3 + Math.floor(rnd() * 12);
+    const cells = await cutShape(mode, arg);
     if (!cells.length) { console.log(`   ${st}  ${mode} — 겉면 없음, 종료`); break; }
     await pg.evaluate((cs) => window.__mtDestroy(cs), cells);
     for (const [a, b] of cells) dead.add(a + '_' + b);
@@ -172,13 +218,23 @@ function diff(a, b, box) {
     }
     if (far > farMax) farMax = far;
     const dSc = +(cur.max - prev.max).toFixed(2);
-    console.log(`  ${String(st).padStart(2)}  ${mode.padEnd(5)}  ${String(cells.length).padStart(4)}   ${String(cur.n).padStart(4)}   ${String(cur.max).padStart(6)}  ${String(dSc).padStart(6)}  ${String(cur.bare).padStart(4)}%  ${String(cur.spill).padStart(4)}%`);
+    const sh = shapeOf(cells); shapes.push(sh);
+    console.log(`  ${String(st).padStart(2)}  ${mode.padEnd(7)} ${String(sh.n).padStart(4)}셀 ${String(sh.w)}×${String(sh.h)} 덩이${sh.cc}  ${String(cur.n).padStart(4)}   ${String(cur.max).padStart(6)}  ${String(dSc).padStart(6)}  ${String(cur.bare).padStart(4)}%  ${String(cur.spill).padStart(4)}%`);
 
-    if (prev.max >= 1.2 && cur.max < prev.max * 0.55) popN++;      // P1 팝
+    // ★P1 은 **자른 양에 견줘** 재야 한다. 717셀을 한 번에 없애면 산이 무너지는 게 당연하다.
+    //   팝이란 "**조금** 잘랐는데 봉우리가 반토막"이다. 자른 양을 안 보면 정상 붕괴를 팝으로 센다.
+    //   (1차 판이 그 덫에 빠져 `lone`(717셀 제거) 단계를 팝으로 셌다.)
+    if (cells.length <= 20 && prev.max >= 1.2 && cur.max < prev.max * 0.55) popN++;
     if (dSc > 0.25) growN++;                                        // P2 갑자기 커짐
     if (far > 26) farN++;                                           // P3 청크 여백(22셀)+격자 지터 밖이 바뀌면 위반
     if (cur.bare > 2) bareN++;                                      // P4 덮개
-    if (cur.spill > 12) spillN++;                                   // P5 정합
+    if (cur.spill > spillMax) spillMax = cur.spill;
+    // ★P5 한계 16% 의 근거: 고치기 전 18.1% 는 여전히 잡되, **좁은 통로**는 통과시킨다.
+    //   실측에서 관통·좁은목으로 1셀 통로를 내면 ② 가 12.3% 까지 오른다 —
+    //   통로 양옆 산이 통로를 덮기 때문이고, 벽을 납작하게 하지 않는 한 기하적으로 불가피하다.
+    //   이건 회귀가 아니라 **알려진 한계**다. 아래 요약에 따로 찍는다.
+    if (cur.spill > 16) spillN++;
+    if (cur.spill > 10) narrowN++;
     prev = cur; prevImg = curImg;
   }
 
@@ -192,8 +248,14 @@ function diff(a, b, box) {
   ok('P3 ★국소 — 부순 자리에서 먼 봉우리는 그대로다', farN === 0,
     `바뀐 봉우리 중 부순 자리에서 가장 먼 것 ${farMax.toFixed(1)}셀 (한계 26셀 = 청크 여백 22 + 격자 지터)`);
   ok('P4 ★덮개 — 남은 바위는 여전히 산 아래', bareN === 0, `① 2% 초과 ${bareN}회`);
-  ok('P5 ★정합 — 부순 자리에 산이 안 남는다', spillN === 0, `② 12% 초과 ${spillN}회`);
+  ok('P5 ★정합 — 부순 자리에 산이 안 남는다', spillN === 0,
+    `② 최대 ${spillMax}% (한계 16% · 고치기 전 18.1%) · 10% 넘은 단계 ${narrowN}회는 좁은 통로`);
   ok('P6 ★결정론', det < 0.05, `|Δ| ${det.toFixed(3)}`);
+  // ★다양성을 **수로** 남긴다 — "다양하게 했다"는 주장은 검증이 아니다
+  const sz = shapes.map((v) => v.n).sort((a, b) => a - b);
+  const multi = shapes.filter((v) => v.cc > 1).length;
+  console.log(`\n[모양 다양성] ${shapes.length}단계 · 한 번에 자른 셀 ${sz[0]}~${sz[sz.length - 1]}개(중앙 ${sz[sz.length >> 1]})`);
+  console.log(`   조각난 자르기(덩이 2개 이상) ${multi}회 · 가로폭 ${Math.min(...shapes.map((v) => v.w))}~${Math.max(...shapes.map((v) => v.w))}셀`);
   console.log(`\n${pass}/${pass + fail} 통과${fail ? ' — ★실패 ' + fail + ' (씨앗 ' + SEED + ' 으로 재현된다)' : ''}`);
   await br.close(); for (const p of procs) { try { p.kill(); } catch (e) { } }
   process.exit(fail ? 1 : 0);
