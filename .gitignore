@@ -35,3 +35,5 @@ scripts/mountain_renders/
 scripts/nature_renders/
 # 푸시 번들(맥으로 전달용 · 레포에 넣지 않는다)
 미푸시_*.bundle
+
+scripts/__pycache__/
