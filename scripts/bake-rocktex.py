@@ -259,7 +259,9 @@ if __name__ == '__main__':
 
     # ★평균 100 은 산을 '어두운 덩어리'로 만든다. 알베도를 화강암 수준(≈132)으로 올린다.
     #   대비는 그대로 두고 평균만 옮긴다(곱셈이 아니라 덧셈 — 대비가 안 눌린다).
-    TGT = float(os.environ.get('TGT', 132))
+    # ★132 는 산을 **풀밭보다 2.2배 밝은 흰 벽**으로 만들었다(실측: 산 123 vs 풀 55).
+    #   이 게임의 지면 톤에 맞추려면 알베도가 풀과 비슷한 값대에 있어야 한다.
+    TGT = float(os.environ.get('TGT', 92))
     tile = np.clip(tile.astype(np.float32) + (TGT - tile.mean()), 0, 255).astype(np.uint8)
     Image.fromarray(tile, 'RGB').save(OUT)
     print(f'\n산출: {OUT} {Image.open(OUT).size} {os.path.getsize(OUT)/1024:.0f}KB')

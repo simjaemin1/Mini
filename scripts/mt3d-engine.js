@@ -77,14 +77,17 @@ window.MT3D = (function () {
               + 0.7 * (vn(ai / 1.6, aj / 1.6, 41) - 0.5));   // ★잔 결 강화 — 면이 갈라져야 3D 로 읽힌다
       hgt[j * W + i] = Math.max(0.12, h);
     }
-    const t2 = Float32Array.from(hgt);       // 평활 1패스 (3패스는 민둥산 — 1차 실측)
+    // 평활 — ★1패스 전부는 산을 '천 조각'처럼 매끈하게 만든다(재민 "민짜"). 절반만 섞는다.
+    //   3패스는 민둥산이 됐고(1차 실측), 0패스는 셀 계단이 남는다. 0.55 가 절충.
+    const SMB = 0.55;
+    const t2 = Float32Array.from(hgt);
     for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
       if (!isRock(i, j)) continue;
       let sum = t2[j * W + i] * 2, w = 2;
       for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]]) {
         const ii = i + a, jj = j + b; sum += (ii < 0 || jj < 0 || ii >= W || jj >= H) ? 0 : t2[jj * W + ii]; w++;
       }
-      hgt[j * W + i] = sum / w;
+      hgt[j * W + i] = t2[j * W + i] * (1 - SMB) + (sum / w) * SMB;
     }
     const hAt = (i, j) => (i < 0 || j < 0 || i >= W || j >= H) ? 0 : hgt[j * W + i];
     // ★꼭짓점 높이 = 그 점에 닿는 네 셀의 평균. 셀 평면으로 그리면 수직 벽(계단)이 남는다.
@@ -101,7 +104,7 @@ window.MT3D = (function () {
   // ★1차 목업 값(0.42/0.92)은 대비가 약해 "민짜 회색 벽"으로 보였다 — 재민 지적 그대로다.
   //   평지 배율 1.0 이라는 제약(지면 텍스처와 안 어긋나야 한다)은 유지한 채
   //   환경광을 내리고 직사광을 올려 면끼리의 차이를 벌린다.
-  const AMB = 0.32, DIR = 1.02;
+  const AMB = 0.24, DIR = 1.10;
   const K_FLAT = AMB + DIR * LAM_FLAT;
 
   // (A) PEAK 식 — 제한 팔레트 + 계단 음영
@@ -197,14 +200,39 @@ window.MT3D = (function () {
   //     숲의 느낌은 ④ 나무 스프라이트가 만든다 — 그게 mt_G(숲산)의 실제 구성이다.
   //   ★산자락(foot)은 **풀 텍스처 그대로**다. 여기서 색이 튀면 셀 경계 톱니가
   //     탄색 삼각형으로 도드라진다(1·2차 시안에서 그게 제일 눈에 거슬렸다).
-  const MATS = {
-    water: { tex: 'water', tint: null },
-    rock:  { tex: 'rock',  tint: null },                          // 맨바위 절벽
-    crag:  { tex: 'rock',  tint: 'rgba(96,112,76,0.34)' },        // 이끼낀 바위
-    scree: { tex: 'rock',  tint: 'rgba(88,110,62,0.46)' },        // 너덜
-    slope: { tex: 'rock',  tint: 'rgba(74,98,52,0.56)' },         // 숲 사면
-    foot:  { tex: 'grass', tint: null },                          // 산자락 — 지면과 같은 그림
+  //   팔레트는 **취향 갈림**이라 시안으로 낸다(B1 화강암 / B2 숲산 / B3 흙산).
+  const PALETTES = {
+    B1: {   // 화강암 — 회색 위주. 바위산 느낌.
+      rock:  null,
+      crag:  'rgba(122,124,116,0.26)',
+      scree: 'rgba(112,116,100,0.34)',
+      slope: 'rgba(96,108,78,0.40)',
+    },
+    B2: {   // 숲산 — 한반도 기본. 초록이 사면을 덮고 능선만 바위.
+      rock:  'rgba(120,124,112,0.14)',
+      crag:  'rgba(84,104,62,0.40)',
+      scree: 'rgba(70,96,48,0.56)',
+      slope: 'rgba(58,86,40,0.66)',
+    },
+    B3: {   // 흙산 — 황토·마사토. 남부 화강암 풍화 지대.
+      rock:  'rgba(150,128,96,0.24)',
+      crag:  'rgba(146,118,80,0.40)',
+      scree: 'rgba(134,106,68,0.50)',
+      slope: 'rgba(104,100,58,0.52)',
+    },
   };
+  function matsFor(pal) {
+    const P = PALETTES[pal] || PALETTES.B2;
+    return {
+      water: { tex: 'water', tint: null },
+      rock:  { tex: 'rock',  tint: P.rock },                      // 맨바위 절벽
+      crag:  { tex: 'rock',  tint: P.crag },                      // 이끼낀 바위
+      scree: { tex: 'rock',  tint: P.scree },                     // 너덜
+      slope: { tex: 'rock',  tint: P.slope },                     // 숲 사면
+      foot:  { tex: 'grass', tint: null },                        // 산자락 — 지면과 같은 그림
+    };
+  }
+  const MATS = matsFor('B2');
   function matOf(steep, hAvg, HM, water) {
     if (water) return 'water';
     // ★자락 판정을 **높이로 먼저** 한다. 경사로 먼저 재면 자락이 걸린다 —
@@ -333,7 +361,12 @@ window.MT3D = (function () {
       //   ★패턴을 높이만큼 위로 민다(−h·32px) → 질감이 지면에 **붙는다**.
       //     등각 높이맵의 변위는 화면 y 축 순수 평행이동이라 이게 정확히 맞는다.
       const mt = matOf(steep, hAvg, HM, water);
-      const pat = TEX[MATS[mt].tex], tint = MATS[mt].tint;
+      if (opt && opt.IDMAP) {   // 진단용 — 재질을 단색으로. 무엇이 어디에 깔렸는지 눈으로 본다.
+        const IDC = { water: '#2a5f8f', rock: '#e03030', crag: '#e0a020', scree: '#30b050', slope: '#3050e0', foot: '#b040c0' };
+        g.fillStyle = IDC[mt] || '#fff'; poly(g, pts); g.fill(); continue;
+      }
+      const MM = (opt && opt.PAL) ? matsFor(opt.PAL) : MATS;
+      const pat = TEX[MM[mt].tex], tint = MM[mt].tint;
       // ★자락 치마(SKIRT) — 높이가 0 에 가까운 셀은 음영을 **평지(배율 1.0)로 수렴**시킨다.
       //   ⑥ 톱니가 눈에 띄는 진짜 이유는 실루엣이 아니라 **자락 셀의 어두운 쐐기**다:
       //   가장자리 셀은 0→1.5칸을 한 셀에 올라 기울기가 가장 급해 제일 어둡게 칠해진다.
@@ -349,5 +382,5 @@ window.MT3D = (function () {
     }
   }
 
-  return { MATS, matOf, CELL, PPU_SCR, w2i, hash, vn, makeField, bakeBands, drawQuad, L, LAM_FLAT, K_FLAT, PAL_A };
+  return { MATS, matsFor, PALETTES, matOf, CELL, PPU_SCR, w2i, hash, vn, makeField, bakeBands, drawQuad, L, LAM_FLAT, K_FLAT, PAL_A };
 })();

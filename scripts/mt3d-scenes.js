@@ -132,6 +132,34 @@ function occlusionOf(o, objBox, segsAfter, OBJ, toScr) {
   // ═══ ① 재질 A/B ═══════════════════════════════════════════════════════════
   say('━━ ① 재질 A/B — 같은 장면 · 1:1 배율 · 실제 바위 마스크 ━━');
   const baked = {};
+  // ★재질 시안 — A(PEAK 식) + B 팔레트 3안. 팔레트는 취향 갈림이라 **고르라고** 낸다.
+  const VARIANTS = [['A', null, 'A · PEAK 식 플랫셰이딩 + 제한 팔레트'],
+                    ['B', 'B1', 'B1 · 화강암(회색)'],
+                    ['B', 'B2', 'B2 · 숲산(초록) — 한반도 기본'],
+                    ['B', 'B3', 'B3 · 흙산(황토)']];
+  for (const [MAT, PAL, nm] of VARIANTS) {
+    const id = PAL || 'A';
+    const cvv = newCanvas('mat' + id);
+    const Vv = makeView(cvv);
+    Vv.g.fillStyle = '#0a0d10'; Vv.g.fillRect(0, 0, VIEW.w, VIEW.h);
+    Vv.g.save(); Vv.g.translate(Vv.ox, Vv.oy); drawGround(Vv.g, TEX, F, S.CELLS); Vv.g.restore();
+    const bkv = M.bakeBands(F, S, { CH, BAND, TEX, MAT, PAL, JAG: 0 });
+    const tdv = performance.now();
+    for (const s2 of bkv.segs) drawSeg(Vv.g, s2, Vv.toScr);
+    R.shots.push({ id: 'mat' + id, file: '1_재질_' + id + '.png' });
+    say(`   ${nm}: 띠 ${bkv.segs.length}장 · 그리기 ${(performance.now() - tdv).toFixed(1)}ms/f`);
+  }
+  {
+    const cvI = newCanvas('matID');
+    const VI = makeView(cvI);
+    VI.g.fillStyle = '#101418'; VI.g.fillRect(0, 0, VIEW.w, VIEW.h);
+    const bkI = M.bakeBands(F, S, { CH, BAND, TEX, MAT: 'B', IDMAP: 1 });
+    for (const s2 of bkI.segs) drawSeg(VI.g, s2, VI.toScr);
+    VI.g.fillStyle = 'rgba(0,0,0,0.7)'; VI.g.fillRect(0, 0, 700, 22);
+    VI.g.fillStyle = '#fff'; VI.g.font = '13px sans-serif';
+    VI.g.fillText('재질 ID — 물 파랑 · 맨바위 빨강 · 이끼바위 주황 · 너덜 초록 · 숲사면 남색 · 자락 보라', 8, 15);
+    R.shots.push({ id: 'matID', file: '1_재질ID_진단.png' });
+  }
   for (const MAT of ['A', 'B']) {
     const cv = newCanvas('mat' + MAT);
     const V = makeView(cv);
