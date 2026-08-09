@@ -2012,14 +2012,41 @@ const SIM_JOB_EMOJI = {
   //     파괴는 `_mtRockAt`(정본) 이 이미 반영한다.
   //   ★실패하면 스프라이트 판으로 되돌아간다(아래 try/catch). 라이브를 못 세운다.
   // ═══════════════════════════════════════════════════════════════════════════
-  const MT3_CH = 8;                    // 청크(셀)
-  const MT3_PAD = 10;                  // 거리장을 위해 청크 밖으로 더 읽는 여유
+  // ★★[재민 2026-08-09 "산 근처에서 엄청나게 렉"] — 맞았다. 원인을 실측으로 다 찾았다.
+  //   뷰 반경(1800px=114셀) 안 청크 225개, 그중 산 청크 140개.
+  //   조각 **108만 개** → 캔버스 fill **326만 회**. 거리장 계산만 **6.7초**(캔버스 비용 제외).
+  //   전부 `_mtCollect` 안에서 **프레임 동기로** 돌았다. 걸어 들어가면 그대로 멈춘다.
+  //   다섯이 곱해지고 있었다:
+  //     ⓐ 프레임당 굽기 예산이 없었다 → 새로 보이는 청크를 한 프레임에 다 구웠다
+  //     ⓑ 뷰 반경 1800px 는 **스프라이트 시절 값**이다. 화면은 22셀인데 114셀을 구웠다
+  //     ⓒ 청크 8셀 + 여유 10셀 → 28×28=784셀 거리장을 64셀 쓰려고 계산(12배 낭비)
+  //     ⓓ SUBPX 6 → 셀당 조각 121개. 목업 판정용 값을 그대로 들고 왔다
+  //     ⓔ 청크마다 바위 판정을 1600번씩 다시 물었다(여유가 이웃과 겹치는데도)
+  //   결과: 조각 108만 → 14만(7.7배) · fill 326만 → 42만
+  const MT3_CH = 16;                   // 청크(셀) — 8 → 16. 여유 재계산 낭비 12배 → 5배
+  const MT3_PAD = 12;                  // 거리장 여유
   const MT3_HMAX = 9, MT3_LAM = 10;    // 완만형 — 재민 채택
-  const MT3_SUBPX = 6;                 // 한 조각이 화면에서 이 px 이하 (면이 안 보이게)
+  const MT3_SUBPX = 14;                // 한 조각의 화면 px. 6 은 셀당 121조각이라 라이브에 못 쓴다
+  const MT3_SUBMAX = 6;                // 조각 분할 상한(이식 초판은 24였다)
+  const MT3_VIEW = 1050;               // ★3D 전용 수집 반경. 화면 22셀 + 산 높이(288px) 여유
+  const MT3_BUDGET = 1;                // ★프레임당 새로 굽는 청크 수. 지면 타일(5)보다 훨씬 무겁다
   const MT3_L = [-0.452, -0.6455, 0.6157];       // 태양 52°/−35°
   const MT3_AMB = 0.24, MT3_DIR = 1.10;
   const MT3_KFLAT = MT3_AMB + MT3_DIR * MT3_L[2];
   const _mt3Chunk = new Map();         // "zid_gx_gy" → segs[]
+  const _mt3Dirty = new Set();         // 다시 구울 청크 키(파괴 근처만)
+  // ★셀별 바위 판정 캐시. 청크마다 여유(12셀)가 이웃과 겹치는데 매번 다시 물었다 —
+  //   청크당 40×40=1600번, 뷰 전체 35,200번. 그게 거리장 74ms/청크의 정체였다.
+  //   (`isRockCellLocal` 이 느린 건 알려진 사실이고 **고치지 말라**고 못박힌 정본이다.
+  //    그러니 정본을 고치는 게 아니라 **덜 부른다**. 뷰 전체 4,356번으로 8배 준다.)
+  const _mt3RockC = new Map();
+  function _mt3RockCell(zid, cx, cy) {
+    const k = cx * 1048576 + cy;
+    const v = _mt3RockC.get(k); if (v !== undefined) return v;
+    const r = _mtRockAt(zid, cx * 32 + 16, cy * 32 + 16);
+    if (_mt3RockC.size > 60000) _mt3RockC.clear();
+    _mt3RockC.set(k, r); return r;
+  }
   let _mt3Sig = '';
   const _mt3vn = (x, y, s) => {
     const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
@@ -2044,7 +2071,7 @@ const SIM_JOB_EMOJI = {
     const rock = new Uint8Array(N * N);
     let any = false;
     for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
-      const r = _mtRockAt(zid, (i0 + i) * 32 + 16, (j0 + j) * 32 + 16) ? 1 : 0;
+      const r = _mt3RockCell(zid, i0 + i, j0 + j) ? 1 : 0;
       rock[j * N + i] = r; if (r) any = true;
     }
     if (!any) return null;
@@ -2089,6 +2116,8 @@ const SIM_JOB_EMOJI = {
   function _mt3Bake(zid, gx, gy) {
     const key = zid + '_' + gx + '_' + gy;
     const hit = _mt3Chunk.get(key); if (hit) return hit;
+    if (_mt3Budget <= 0) return null;              // ★예산 소진 — 이번 프레임엔 안 굽는다
+    _mt3Budget--;
     const F = _mt3Field(zid, gx, gy);
     const segs = [];
     if (F) {
@@ -2126,7 +2155,10 @@ const SIM_JOB_EMOJI = {
         const ref = cells.reduce((a, b) => (a[0] + a[1] <= b[0] + b[1] ? a : b));
         const wx = (F.i0 + ref[0]) * 32 + 16, wy = (F.j0 + ref[1]) * 32 + 16;
         const rp = w2i((F.i0 + ref[0]) * 32 + 16, (F.j0 + ref[1]) * 32 + 16);
-        segs.push({ img: cv, x: wx, y: wy, ox: rp.x - x0, oy: rp.y - y0, sc: 1, mt3: 1 });
+        // ★알파는 **굽는 시점에** 떠 둔다. 프레임 중 getImageData 는 GPU 파이프를 세운다.
+        let al = null;
+        try { al = g.getImageData(x0, y0, bw, bh).data; } catch (e) { al = null; }
+        segs.push({ img: cv, x: wx, y: wy, ox: rp.x - x0, oy: rp.y - y0, sc: 1, mt3: 1, _a: al });
       }
     }
     if (_mt3Chunk.size > 260) _mt3Chunk.clear();
@@ -2137,12 +2169,12 @@ const SIM_JOB_EMOJI = {
   function _mt3Quad(g, F, i, j, RP, GP) {
     const H4 = [F.cor(i, j), F.cor(i + 1, j), F.cor(i + 1, j + 1), F.cor(i, j + 1)];
     const hmin = Math.min(H4[0], H4[1], H4[2], H4[3]), hmax = Math.max(H4[0], H4[1], H4[2], H4[3]);
-    let sub = Math.max(1, Math.min(24, Math.ceil(Math.max(64, (hmax - hmin) * 32 + 32) / MT3_SUBPX)));
+    let sub = Math.max(1, Math.min(MT3_SUBMAX, Math.ceil(Math.max(64, (hmax - hmin) * 32 + 32) / MT3_SUBPX)));
     const gx0 = (F.hAt(i + 1, j) - F.hAt(i - 1, j)) * 0.5, gy0 = (F.hAt(i, j + 1) - F.hAt(i, j - 1)) * 0.5;
     const st0 = 1 - 1 / Math.hypot(gx0, gy0, 1);
     let disp = null;
     if (st0 > 0.14) {
-      sub = Math.max(sub, st0 > 0.5 ? 8 : 4);
+      sub = Math.min(MT3_SUBMAX, Math.max(sub, st0 > 0.5 ? MT3_SUBMAX : 4));
       disp = (au, av, hh) => Math.min(1, hh / 1.6) * 0.42 *
         ((_mt3vn(au * 2.3, av * 2.3, 71) - 0.5) + (_mt3vn(au * 4.9, av * 4.9, 73) - 0.5) * 0.55);
     }
@@ -2206,17 +2238,22 @@ const SIM_JOB_EMOJI = {
       if (ca > 0.002) { g.fillStyle = 'rgba(' + Math.round(cr) + ',' + Math.round(cg) + ',' + Math.round(cb) + ',' + ca.toFixed(3) + ')'; path(); g.fill(); }
     }
   }
+  let _mt3Budget = 0;
   function _mt3Collect(out, cx0, cy0) {
     const zid = primaryZoneId; if (!zid) return 0;
-    const sig = zid + '|' + _mtDestroyed.size;
-    if (sig !== _mt3Sig) { _mt3Sig = sig; _mt3Chunk.clear(); }
-    const c0 = Math.floor((cx0 - MT_VIEW_PAD) / 32), c1 = Math.floor((cx0 + MT_VIEW_PAD) / 32);
-    const r0 = Math.floor((cy0 - MT_VIEW_PAD) / 32), r1 = Math.floor((cy0 + MT_VIEW_PAD) / 32);
+    if (zid !== _mt3Sig) { _mt3Sig = zid; _mt3Chunk.clear(); }
+    // ★파괴는 **그 근처 청크만** 다시 굽는다. 전부 비우면 곡괭이질 한 번에 화면이 멈춘다.
+    if (_mt3Dirty.size) { for (const k of _mt3Dirty) _mt3Chunk.delete(k); _mt3Dirty.clear(); }
+    _mt3Budget = MT3_BUDGET;
+    const c0 = Math.floor((cx0 - MT3_VIEW) / 32), c1 = Math.floor((cx0 + MT3_VIEW) / 32);
+    const r0 = Math.floor((cy0 - MT3_VIEW) / 32), r1 = Math.floor((cy0 + MT3_VIEW) / 32);
     let n = 0;
     for (let gy = Math.floor(r0 / MT3_CH); gy <= Math.floor(r1 / MT3_CH); gy++)
       for (let gx = Math.floor(c0 / MT3_CH); gx <= Math.floor(c1 / MT3_CH); gx++) {
-        for (const sg of _mt3Bake(zid, gx, gy)) {
-          if (Math.abs(sg.x - cx0) > MT_VIEW_PAD || Math.abs(sg.y - cy0) > MT_VIEW_PAD) continue;
+        const segs = _mt3Bake(zid, gx, gy);
+        if (!segs) { needsRedraw = true; continue; }   // 아직 안 구운 청크 — 다음 프레임에
+        for (const sg of segs) {
+          if (Math.abs(sg.x - cx0) > MT3_VIEW || Math.abs(sg.y - cy0) > MT3_VIEW) continue;
           // −0.5: 같은 셀 위에 선 개체가 산보다 **앞**에 오도록(라이브 z 규약과 동형)
           out.push({ z: w2i(sg.x, sg.y).y - 0.5, kind: 'mtseg', sg, wx: sg.x, wy: sg.y });
           n++;
@@ -2378,7 +2415,6 @@ const SIM_JOB_EMOJI = {
       const p3 = w2i(sg.x, sg.y), c3 = _mtToScr ? _mtToScr(p3.x, p3.y) : null; if (!c3) return false;
       const ux = Math.round(_mtOcc.x - (c3.x - sg.ox)), uy = Math.round(_mtOcc.y - (c3.y - sg.oy));
       if (ux < 0 || uy < 0 || ux >= sg.img.width || uy >= sg.img.height) return false;
-      if (!sg._a) { try { sg._a = sg.img.getContext('2d').getImageData(0, 0, sg.img.width, sg.img.height).data; } catch (e) { sg._a = null; } }
       if (!sg._a) return true;
       return sg._a[(uy * sg.img.width + ux) * 4 + 3] > 90;
     }
@@ -6295,7 +6331,7 @@ const SIM_JOB_EMOJI = {
     const _mtT0 = performance.now();
     const _nMt = _mtCollect(renderables, worldCx, worldCy);
     window._mtAcc = (window._mtAcc || 0) + (performance.now() - _mtT0);
-    window.__mtDbg = { mt3d: !_t19.mt3dOff, mt3chunks: _mt3Chunk.size, mt3fail: !!_mt3Fail, segs: _nMt, sprites: _mtLoaded + '/' + _mtWanted, cached: _mtSegCache.size, chunks: _mtChunk.size, legacy: !!_t19.mtLegacy, destroyed: _mtDestroyed.size };
+    window.__mtDbg = { mt3d: !_t19.mt3dOff, mt3budget: MT3_BUDGET, mt3view: MT3_VIEW, mt3rockc: _mt3RockC.size, mt3chunks: _mt3Chunk.size, mt3fail: !!_mt3Fail, segs: _nMt, sprites: _mtLoaded + '/' + _mtWanted, cached: _mtSegCache.size, chunks: _mtChunk.size, legacy: !!_t19.mtLegacy, destroyed: _mtDestroyed.size };
     // ★★[배치 20 C] 산 계측·파괴 훅 — 하네스가 배치 수학을 **다시 쓰지 않게** 정본이 만든
     //   세그먼트를 그대로 내보낸다. 하네스가 능선 보행·밴드 실측을 재구현하면 그게 사본이라
     //   둘이 같이 틀려도 통과한다(자명 통과).
@@ -6334,6 +6370,10 @@ const SIM_JOB_EMOJI = {
       for (const [lcx, lcy] of (cells || [])) {
         const wx = c.meta.worldOffsetX + lcx * 32, wy = (c.meta.worldOffsetY || 0) + lcy * 32;
         _mtDestroyed.add(primaryZoneId + '_' + Math.floor(wx / 32) + '_' + Math.floor(wy / 32)); n2++;
+        _mt3RockC.delete(Math.floor(wx / 32) * 1048576 + Math.floor(wy / 32));
+        { const gx0 = Math.floor(Math.floor(wx / 32) / MT3_CH), gy0 = Math.floor(Math.floor(wy / 32) / MT3_CH);
+          for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++)
+            _mt3Dirty.add(primaryZoneId + '_' + (gx0 + a) + '_' + (gy0 + b)); }
       }
       _mtSegCache.clear(); _mtChunk.clear();     // 밴드/가장자리 실측이 바뀌었으니 배치를 다시 계산한다
       _gtInvalidateCells(c, (cells || []).flat(), 2);   // 지면(바위색)도 그 자리만 다시 굽는다
