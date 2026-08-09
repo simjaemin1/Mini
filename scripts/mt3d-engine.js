@@ -313,6 +313,7 @@ window.MT3D = (function () {
   }
 
   function drawQuad(g, F, S, i, j, TEX, MAT, opt) {
+    const H4c = [F.cor(i, j), F.cor(i + 1, j), F.cor(i + 1, j + 1), F.cor(i, j + 1)];  // NW NE SE SW
     const JAG = (opt && opt.JAG) | 0;
     // 경계 셀(바위인데 이웃에 비바위가 있거나 그 반대)만 쪼갠다 — ⑥ 톱니 처리
     // ★★[재민 판정 2026-08-09 핵심] "가장 많이 보이는 면이 가장 정보가 없는 면"
@@ -321,7 +322,19 @@ window.MT3D = (function () {
     //   ⇒ 급경사 셀은 **쪼개고 변위를 준다**. 그래야 벽에 실제 요철이 생긴다.
     //   ★변위는 (ai+u, aj+v) 의 연속 노이즈다 — 이웃 셀과 격자점 값이 저절로 같아
     //     갈라짐(crack)이 구조적으로 안 생긴다. 진폭도 높이의 연속 함수로 재운다.
+    // ★[재민 2026-08-09] "정사각형들이 너무 큼직하다 — 안 보일 정도로 쪼갤 수 없나"
+    //   원인: 급경사 셀만 쪼갰다. 완만한 셀은 **다이아 하나를 통짜로 평면 셰이딩** 해서
+    //   64×32px 짜리 면이 그대로 보였다. 경사와 무관하게 **화면 픽셀 기준**으로 쪼갠다.
+    //   한 조각이 화면에서 SUBPX px 이하가 되게 — 그러면 면이 눈에 안 잡힌다.
+    //   ★비용은 **굽는 쪽**에만 붙는다(청크 캐시 대상). 매 프레임 blit 수는 그대로다.
+    const SUBPX = (opt && opt.SUBPX) || (typeof window !== 'undefined' && window.MT3D_SUBPX) || 8;
     let sub = 1;
+    {
+      const hmin = Math.min(H4c[0], H4c[1], H4c[2], H4c[3]), hmax = Math.max(H4c[0], H4c[1], H4c[2], H4c[3]);
+      const spanY = (hmax - hmin) * CELL + CELL;          // 화면 세로 폭(높이차가 늘린다)
+      const need = Math.max(64, spanY) / SUBPX;           // 가로는 항상 64px
+      sub = Math.max(1, Math.min(24, Math.ceil(need)));
+    }
     const DSUB = (opt && opt.DSUB !== undefined) ? opt.DSUB : 4;
     const DAMP = (opt && opt.DAMP !== undefined) ? opt.DAMP : 0.42;
     let disp = null;
@@ -331,7 +344,7 @@ window.MT3D = (function () {
       if (st0 > 0.14) {
         // ★급할수록 더 잘게. 벽에서는 한 조각이 높이 3칸을 덮어 층(1.7칸 주기)이
         //   에일리어싱으로 사라졌다 — 조각이 층보다 얇아야 층이 보인다(실측).
-        sub = Math.max(sub, st0 > 0.5 ? DSUB * 2 : DSUB);
+        sub = Math.max(sub, st0 > 0.5 ? DSUB * 2 : DSUB);   // 변위엔 최소 분할이 따로 필요
         disp = (au, av, hh) => {
           const w = Math.min(1, hh / 1.6);                 // 자락에선 0 → 지면과 매끈히 만난다
           return w * DAMP * ((vn(au * 2.3, av * 2.3, 71) - 0.5) * 1.0
@@ -370,7 +383,7 @@ window.MT3D = (function () {
     })();
     const macro = macroAt(i + S.cx0, j + S.cy0);
     // 꼭짓점 높이 — 쪼갤 때는 이중선형 보간
-    const H4 = [F.cor(i, j), F.cor(i + 1, j), F.cor(i + 1, j + 1), F.cor(i, j + 1)];  // NW NE SE SW
+    const H4 = H4c;
     const hBi = (u, v) => (H4[0] * (1 - u) + H4[1] * u) * (1 - v) + (H4[3] * (1 - u) + H4[2] * u) * v;
     const hAt2 = disp
       ? (u, v) => { const b0 = hBi(u, v); return Math.max(0, b0 + disp(i + S.cx0 + u, j + S.cy0 + v, b0)); }

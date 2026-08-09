@@ -170,9 +170,13 @@ function occlusionOf(o, objBox, segsAfter, OBJ, toScr) {
     const tb = performance.now();
     const bk = M.bakeBands(F, S, { CH, BAND, TEX, MAT });
     const tBake = performance.now() - tb;
+    // ★1회차 blit 에는 **굽는 비용이 섞인다** — 캔버스 2D 는 래스터화를 처음 쓸 때까지 미룬다.
+    //   (실측 증거: 세분을 늘리면 '그리기'가 '굽기'와 정비례로 같이 뛰었다. blit 량은 그대로인데.)
+    //   그래서 2·3회차를 재서 **정상 프레임 비용**을 낸다.
+    for (const s of bk.segs) drawSeg(V.g, s, V.toScr);          // 1회차 = 래스터화
     const td = performance.now();
-    for (const s of bk.segs) drawSeg(V.g, s, V.toScr);
-    const tDraw = performance.now() - td;
+    for (let rep = 0; rep < 3; rep++) for (const s of bk.segs) drawSeg(V.g, s, V.toScr);
+    const tDraw = (performance.now() - td) / 3;
     baked[MAT] = { bk, tBake, tDraw };
     R.shots.push({ id: 'mat' + MAT, file: '1_재질' + MAT + '.png' });
     say(`   ${MAT}: 띠 ${bk.segs.length}장 · 오프스크린 ${(bk.px * 4 / 1048576).toFixed(1)}MB · `
