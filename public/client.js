@@ -443,7 +443,7 @@ const SIM_JOB_EMOJI = {
   let _shMarginN = 0;                  // 지금까지 구운 물가 여백 조각 수 — 하네스 계측기(자명 통과 금지)
   const GTEX = {};
   let _gtexReady = 0;
-  for (const k of ['grass_angled', 'dry_angled', 'mud_angled']) {
+  for (const k of ['grass_angled', 'dry_angled', 'mud_angled', 'rock_angled']) {
     const im = new Image(); im.onload = () => { _gtexReady++; _groundTiles.clear(); }; im.src = '/assets/terrain/' + k + '.png';
     GTEX[k] = im;
   }
@@ -1997,6 +1997,234 @@ const SIM_JOB_EMOJI = {
     _mtChunk.set(key, core);
     return core;
   }
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ★★★ 3D 산 — 높이맵 메시를 청크×반대각선 띠로 구워 **mtseg 자리에 꽂는다**
+  //   [재민 2026-08-09 "일단 이대로 본게임 ㄱ"]
+  //
+  //   렌더러를 안 바꾼다. 산 "이미지의 출처"만 스프라이트 → 구운 메시로 바꾼다.
+  //   같은 앵커·같은 z정렬·같은 안개 게이트·같은 renderables wx/wy 규약을 그대로 쓴다.
+  //
+  //   ★1칸 = 화면 32px 이 정확히 떨어진다: PPU·cos30°·ZSQ = 45.2548×0.8660×0.8165 = 32.00
+  //     그래서 WebGL 없이 캔버스 2D 로 정확히 그려진다.
+  //   ★z: 셀 (i,j) 중심의 (wx+wy)/2 = 16(i+j)+16. 같은 반대각선은 z 가 같다.
+  //     띠 = 반대각선 하나 → 화가 알고리즘이 정확히 성립한다. 개체가 그 위에 서도록 −0.5.
+  //   ★높이는 **가장자리 거리장**에서 유도한다 — 지형 데이터 한 바이트 안 건드린다.
+  //     파괴는 `_mtRockAt`(정본) 이 이미 반영한다.
+  //   ★실패하면 스프라이트 판으로 되돌아간다(아래 try/catch). 라이브를 못 세운다.
+  // ═══════════════════════════════════════════════════════════════════════════
+  const MT3_CH = 8;                    // 청크(셀)
+  const MT3_PAD = 10;                  // 거리장을 위해 청크 밖으로 더 읽는 여유
+  const MT3_HMAX = 9, MT3_LAM = 10;    // 완만형 — 재민 채택
+  const MT3_SUBPX = 6;                 // 한 조각이 화면에서 이 px 이하 (면이 안 보이게)
+  const MT3_L = [-0.452, -0.6455, 0.6157];       // 태양 52°/−35°
+  const MT3_AMB = 0.24, MT3_DIR = 1.10;
+  const MT3_KFLAT = MT3_AMB + MT3_DIR * MT3_L[2];
+  const _mt3Chunk = new Map();         // "zid_gx_gy" → segs[]
+  let _mt3Sig = '';
+  const _mt3vn = (x, y, s) => {
+    const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
+    const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+    const a = _cellHash(xi, yi, s), b = _cellHash(xi + 1, yi, s);
+    const c = _cellHash(xi, yi + 1, s), e = _cellHash(xi + 1, yi + 1, s);
+    return (a * (1 - u) + b * u) * (1 - v) + (c * (1 - u) + e * u) * v;
+  };
+  const MT3_RAMP = [[0.00, 76, 104, 52, 0.00], [0.30, 62, 92, 44, 0.62],
+                    [0.62, 84, 104, 62, 0.40], [1.00, 126, 130, 120, 0.16]];
+  function _mt3Ramp(t) {
+    let i = 0; while (i < MT3_RAMP.length - 2 && t > MT3_RAMP[i + 1][0]) i++;
+    const a = MT3_RAMP[i], b = MT3_RAMP[i + 1];
+    const u = Math.max(0, Math.min(1, (t - a[0]) / Math.max(1e-6, b[0] - a[0])));
+    const m = (k) => a[k] + (b[k] - a[k]) * u;
+    return 'rgba(' + Math.round(m(1)) + ',' + Math.round(m(2)) + ',' + Math.round(m(3)) + ',' + m(4).toFixed(3) + ')';
+  }
+  // 청크 하나의 높이장 — 절대 셀 좌표 기준이라 청크 경계에 이음매가 없다
+  function _mt3Field(zid, gx, gy) {
+    const N = MT3_CH + MT3_PAD * 2;
+    const i0 = gx * MT3_CH - MT3_PAD, j0 = gy * MT3_CH - MT3_PAD;
+    const rock = new Uint8Array(N * N);
+    let any = false;
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      const r = _mtRockAt(zid, (i0 + i) * 32 + 16, (j0 + j) * 32 + 16) ? 1 : 0;
+      rock[j * N + i] = r; if (r) any = true;
+    }
+    if (!any) return null;
+    const INF = 1e6, d = new Float32Array(N * N);
+    for (let k = 0; k < N * N; k++) d[k] = rock[k] ? INF : 0;
+    const at = (i, j) => (i < 0 || j < 0 || i >= N || j >= N) ? INF : d[j * N + i];
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { const k = j * N + i; if (!d[k]) continue;
+      d[k] = Math.min(d[k], at(i - 1, j) + 1, at(i, j - 1) + 1, at(i - 1, j - 1) + 1.414, at(i + 1, j - 1) + 1.414); }
+    for (let j = N - 1; j >= 0; j--) for (let i = N - 1; i >= 0; i--) { const k = j * N + i; if (!d[k]) continue;
+      d[k] = Math.min(d[k], at(i + 1, j) + 1, at(i, j + 1) + 1, at(i + 1, j + 1) + 1.414, at(i - 1, j + 1) + 1.414); }
+    const hg = new Float32Array(N * N);
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      if (!rock[j * N + i]) continue;
+      const dE = d[j * N + i], ai = i0 + i, aj = j0 + j;
+      let h = MT3_HMAX * (1 - Math.exp(-dE / MT3_LAM));
+      const t = Math.min(1, dE / 3);
+      h += t * (3.4 * (_mt3vn(ai / 14, aj / 14, 29) - 0.5) + 2.0 * (_mt3vn(ai / 6, aj / 6, 31) - 0.5)
+              + 1.5 * (_mt3vn(ai / 2.9, aj / 2.9, 37) - 0.5) + 0.7 * (_mt3vn(ai / 1.6, aj / 1.6, 41) - 0.5));
+      const crest = Math.min(1, Math.max(0, (dE - 3) / 5));
+      h += crest * (2.2 * (_mt3vn(ai / 4.2, aj / 4.2, 43) - 0.5) + 1.1 * (_mt3vn(ai / 2.1, aj / 2.1, 47) - 0.5));
+      hg[j * N + i] = Math.max(0.12, h);
+    }
+    const t2 = Float32Array.from(hg), SMB = 0.55;
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      if (!rock[j * N + i]) continue;
+      let sum = t2[j * N + i] * 2, w = 2;
+      for (const o of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,-1],[1,-1],[-1,1]]) {
+        const ii = i + o[0], jj = j + o[1];
+        sum += (ii < 0 || jj < 0 || ii >= N || jj >= N) ? 0 : t2[jj * N + ii]; w++;
+      }
+      hg[j * N + i] = t2[j * N + i] * (1 - SMB) + (sum / w) * SMB;
+    }
+    const hAt = (i, j) => (i < 0 || j < 0 || i >= N || j >= N) ? 0 : hg[j * N + i];
+    const cor = (i, j) => (hAt(i - 1, j - 1) + hAt(i, j - 1) + hAt(i - 1, j) + hAt(i, j)) / 4;
+    const corS = (x, y) => { const xi = Math.floor(x), yi = Math.floor(y), fx = x - xi, fy = y - yi;
+      return (cor(xi, yi) * (1 - fx) + cor(xi + 1, yi) * fx) * (1 - fy)
+           + (cor(xi, yi + 1) * (1 - fx) + cor(xi + 1, yi + 1) * fx) * fy; };
+    return { N, i0, j0, rock, hAt, cor, corS,
+             isRock: (i, j) => i >= 0 && j >= 0 && i < N && j < N && !!rock[j * N + i] };
+  }
+  // ── 청크 하나를 **반대각선 띠**로 구워 세그먼트 배열로 ────────────────────
+  function _mt3Bake(zid, gx, gy) {
+    const key = zid + '_' + gx + '_' + gy;
+    const hit = _mt3Chunk.get(key); if (hit) return hit;
+    const F = _mt3Field(zid, gx, gy);
+    const segs = [];
+    if (F) {
+      const P = MT3_PAD;
+      // 이 청크가 그리는 셀 = 자기 몫 8×8 중 **메시 셀**(바위 ∪ 바위에 8-인접).
+      //   나눗셈으로 소유를 정하므로 중복도 누락도 구조적으로 불가능하다.
+      const mesh = [];
+      for (let b = 0; b < MT3_CH; b++) for (let a = 0; a < MT3_CH; a++) {
+        const i = P + a, j = P + b;
+        let m = F.isRock(i, j);
+        if (!m) for (let q = -1; q <= 1 && !m; q++) for (let r = -1; r <= 1; r++)
+          if (F.isRock(i + r, j + q)) { m = true; break; }
+        if (m) mesh.push([i, j]);
+      }
+      const byK = new Map();
+      for (const c of mesh) { const k = c[0] + c[1]; let a = byK.get(k); if (!a) byK.set(k, a = []); a.push(c); }
+      const pat = (GTEX.rock_angled && GTEX.rock_angled.naturalWidth) ? GTEX.rock_angled : null;
+      const gpat = (GTEX.grass_angled && GTEX.grass_angled.naturalWidth) ? GTEX.grass_angled : null;
+      for (const k of [...byK.keys()].sort((a, b) => a - b)) {
+        const cells = byK.get(k);
+        let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+        for (const [i, j] of cells) for (const o of [[0,0],[1,0],[1,1],[0,1]]) {
+          const gi = F.i0 + i + o[0], gj = F.j0 + j + o[1];
+          const c = w2i(gi * 32, gj * 32), Y = c.y - F.cor(i + o[0], j + o[1]) * 32;
+          if (c.x < x0) x0 = c.x; if (c.x > x1) x1 = c.x; if (Y < y0) y0 = Y; if (Y > y1) y1 = Y;
+        }
+        x0 = Math.floor(x0) - 2; y0 = Math.floor(y0) - 2;
+        const bw = Math.ceil(x1) + 2 - x0, bh = Math.ceil(y1) + 2 - y0;
+        if (bw <= 0 || bh <= 0 || bw > 4096 || bh > 4096) continue;
+        const cv = document.createElement('canvas'); cv.width = bw; cv.height = bh;
+        const g = cv.getContext('2d'); g.translate(-x0, -y0);
+        const RP = pat ? g.createPattern(pat, 'repeat') : null;
+        const GP = gpat ? g.createPattern(gpat, 'repeat') : null;
+        for (const [i, j] of cells) _mt3Quad(g, F, i, j, RP, GP);
+        const ref = cells.reduce((a, b) => (a[0] + a[1] <= b[0] + b[1] ? a : b));
+        const wx = (F.i0 + ref[0]) * 32 + 16, wy = (F.j0 + ref[1]) * 32 + 16;
+        const rp = w2i((F.i0 + ref[0]) * 32 + 16, (F.j0 + ref[1]) * 32 + 16);
+        segs.push({ img: cv, x: wx, y: wy, ox: rp.x - x0, oy: rp.y - y0, sc: 1, mt3: 1 });
+      }
+    }
+    if (_mt3Chunk.size > 260) _mt3Chunk.clear();
+    _mt3Chunk.set(key, segs);
+    return segs;
+  }
+  // 사각형 하나 — 화면 픽셀 기준 적응 분할 + 급경사 변위
+  function _mt3Quad(g, F, i, j, RP, GP) {
+    const H4 = [F.cor(i, j), F.cor(i + 1, j), F.cor(i + 1, j + 1), F.cor(i, j + 1)];
+    const hmin = Math.min(H4[0], H4[1], H4[2], H4[3]), hmax = Math.max(H4[0], H4[1], H4[2], H4[3]);
+    let sub = Math.max(1, Math.min(24, Math.ceil(Math.max(64, (hmax - hmin) * 32 + 32) / MT3_SUBPX)));
+    const gx0 = (F.hAt(i + 1, j) - F.hAt(i - 1, j)) * 0.5, gy0 = (F.hAt(i, j + 1) - F.hAt(i, j - 1)) * 0.5;
+    const st0 = 1 - 1 / Math.hypot(gx0, gy0, 1);
+    let disp = null;
+    if (st0 > 0.14) {
+      sub = Math.max(sub, st0 > 0.5 ? 8 : 4);
+      disp = (au, av, hh) => Math.min(1, hh / 1.6) * 0.42 *
+        ((_mt3vn(au * 2.3, av * 2.3, 71) - 0.5) + (_mt3vn(au * 4.9, av * 4.9, 73) - 0.5) * 0.55);
+    }
+    const hBi = (u, v) => (H4[0] * (1 - u) + H4[1] * u) * (1 - v) + (H4[3] * (1 - u) + H4[2] * u) * v;
+    const hS = disp ? (u, v) => { const b = hBi(u, v); return Math.max(0, b + disp(F.i0 + i + u, F.j0 + j + v, b)); } : hBi;
+    const P = (u, v) => {
+      const c = w2i((F.i0 + i + u) * 32, (F.j0 + j + v) * 32), hh = hS(u, v);
+      let jx = 0;
+      if (disp) jx = (_mt3vn((F.i0 + i + u) * 2.1, (F.j0 + j + v) * 2.1, 79) - 0.5) * Math.min(1, hh / 1.6) * 0.42 * 26;
+      return [c.x + jx, c.y - hh * 32];
+    };
+    const soft = (x, y) => {
+      const e = F.corS(x + 1, y), w = F.corS(x - 1, y), n = F.corS(x, y - 1), s2 = F.corS(x, y + 1), c = F.corS(x, y);
+      const gx = (e - w) * 0.5, gy = (s2 - n) * 0.5, nl = Math.hypot(gx, gy, 1) || 1;
+      const d2 = (-gx / nl) * MT3_L[0] + (-gy / nl) * MT3_L[1] + (1 / nl) * MT3_L[2];
+      return { lam: Math.max(0.14, d2) + Math.max(0, -d2) * 0.20, conc: (e + w + n + s2) / 4 - c };
+    };
+    for (let sv = 0; sv < sub; sv++) for (let su = 0; su < sub; su++) {
+      const u0 = su / sub, u1 = (su + 1) / sub, v0 = sv / sub, v1 = (sv + 1) / sub;
+      const cx = i + (u0 + u1) / 2, cy = j + (v0 + v1) / 2, so = soft(cx, cy);
+      const A = P(u0, v0), B = P(u1, v0), C2 = P(u1, v1), D = P(u0, v1);
+      const hNW = hS(u0, v0), hNE = hS(u1, v0), hSE = hS(u1, v1), hSW = hS(u0, v1);
+      const cw = 32 / sub;
+      const ux = [cw, cw, (hSE - hNW) * 32], vx = [cw, -cw, (hNE - hSW) * 32];
+      let nx = ux[1] * vx[2] - ux[2] * vx[1], ny = ux[2] * vx[0] - ux[0] * vx[2], nz = ux[0] * vx[1] - ux[1] * vx[0];
+      const ln = Math.hypot(nx, ny, nz) || 1; nx /= ln; ny /= ln; nz /= ln;
+      if (nz < 0) { nx = -nx; ny = -ny; nz = -nz; }
+      const lamD = nx * MT3_L[0] + ny * MT3_L[1] + nz * MT3_L[2];
+      const lam = (Math.max(0.14, lamD) + Math.max(0, -lamD) * 0.20) * 0.52 + so.lam * 0.48;
+      const hAvg = (hNW + hNE + hSE + hSW) / 4, steep = 1 - nz;
+      // 무게중심으로 살짝 부풀려 실틈 방지(조명도 같은 도형에 얹힌다)
+      let px = 0, py = 0; const pts = [A, B, C2, D];
+      for (const q of pts) { px += q[0]; py += q[1]; } px /= 4; py /= 4;
+      const inf = pts.map(q => { const dx = q[0] - px, dy = q[1] - py, l = Math.hypot(dx, dy) || 1;
+        return [q[0] + dx / l * 0.55, q[1] + dy / l * 0.55]; });
+      const path = () => { g.beginPath(); g.moveTo(inf[0][0], inf[0][1]);
+        for (let n2 = 1; n2 < 4; n2++) g.lineTo(inf[n2][0], inf[n2][1]); g.closePath(); };
+      const macro = (_mt3vn((F.i0 + cx) / 21, (F.j0 + cy) / 21, 61) - 0.5) * 1.5
+                  + (_mt3vn((F.i0 + cx) / 8.5, (F.j0 + cy) / 8.5, 63) - 0.5) * 0.7
+                  + (_mt3vn((F.i0 + cx) / 3.1, (F.j0 + cy) / 3.1, 67) - 0.5) * 0.35;
+      let t = Math.max(0, Math.min(1, (steep - 0.10) / 0.62)) * 0.68
+            + Math.max(0, Math.min(1, (hAvg / MT3_HMAX - 0.10) / 0.80)) * 0.32 + macro * 0.20;
+      t = Math.max(0, Math.min(1, t * Math.max(0, Math.min(1, (hAvg - 0.2) / 1.0))));
+      const use = (t < 0.10 ? GP : RP);
+      if (use) { use.setTransform(new DOMMatrix().translate(0, -Math.round(hAvg * 32)).scale(t < 0.10 ? 1 : 0.35, t < 0.10 ? 1 : 0.35));
+                 g.fillStyle = use; } else g.fillStyle = t < 0.10 ? '#5a7040' : '#6b6b6b';
+      path(); g.fill();
+      g.fillStyle = _mt3Ramp(t); path(); g.fill();
+      // 램버트·AO·층·접지·대기원근을 **한 겹**으로 (여러 겹이면 겹친 자리에 줄이 남는다)
+      const k = (MT3_AMB + MT3_DIR * lam) / MT3_KFLAT;
+      let cr = 0, cg = 0, cb = 0, ca = 0;
+      const add = (r2, g2, b2, a2) => { if (a2 <= 0.002) return; const na = ca + a2 * (1 - ca); if (na <= 0) return;
+        const w2 = a2 * (1 - ca) / na; cr = cr * (1 - w2) + r2 * w2; cg = cg * (1 - w2) + g2 * w2; cb = cb * (1 - w2) + b2 * w2; ca = na; };
+      if (k < 1) add(12, 15, 20, Math.min(0.88, (1 - k) * 1.05)); else if (k > 1) add(255, 247, 226, Math.min(0.55, (k - 1) * 0.62));
+      if (so.conc > 0.02) add(16, 20, 26, Math.min(0.42, so.conc * 0.36));
+      else if (so.conc < -0.02) add(255, 250, 236, Math.min(0.22, -so.conc * 0.19));
+      if (steep > 0.30) { const bt = Math.abs(((hAvg / 2.2) % 1) - 0.5) * 2;
+        add(22, 24, 28, Math.max(0, (0.30 - bt) / 0.30) * Math.min(0.42, (steep - 0.30) * 0.80)); }
+      if (F.isRock(i, j)) { const dd = Math.max(0, 1.6 - (hAvg > 0 ? 1.6 : 0)); void dd; }
+      if (hAvg > 0.5) add(186, 200, 216, Math.min(0.09, (hAvg / MT3_HMAX) * 0.09));
+      if (ca > 0.002) { g.fillStyle = 'rgba(' + Math.round(cr) + ',' + Math.round(cg) + ',' + Math.round(cb) + ',' + ca.toFixed(3) + ')'; path(); g.fill(); }
+    }
+  }
+  function _mt3Collect(out, cx0, cy0) {
+    const zid = primaryZoneId; if (!zid) return 0;
+    const sig = zid + '|' + _mtDestroyed.size;
+    if (sig !== _mt3Sig) { _mt3Sig = sig; _mt3Chunk.clear(); }
+    const c0 = Math.floor((cx0 - MT_VIEW_PAD) / 32), c1 = Math.floor((cx0 + MT_VIEW_PAD) / 32);
+    const r0 = Math.floor((cy0 - MT_VIEW_PAD) / 32), r1 = Math.floor((cy0 + MT_VIEW_PAD) / 32);
+    let n = 0;
+    for (let gy = Math.floor(r0 / MT3_CH); gy <= Math.floor(r1 / MT3_CH); gy++)
+      for (let gx = Math.floor(c0 / MT3_CH); gx <= Math.floor(c1 / MT3_CH); gx++) {
+        for (const sg of _mt3Bake(zid, gx, gy)) {
+          if (Math.abs(sg.x - cx0) > MT_VIEW_PAD || Math.abs(sg.y - cy0) > MT_VIEW_PAD) continue;
+          // −0.5: 같은 셀 위에 선 개체가 산보다 **앞**에 오도록(라이브 z 규약과 동형)
+          out.push({ z: w2i(sg.x, sg.y).y - 0.5, kind: 'mtseg', sg, wx: sg.x, wy: sg.y });
+          n++;
+        }
+      }
+    return n;
+  }
+  let _mt3Fail = 0;
   let _mtChunkSig = '';
   function _mtCollectCover(out, cx0, cy0) {
     const zid = primaryZoneId; if (!zid) return 0;
@@ -2019,7 +2247,18 @@ const SIM_JOB_EMOJI = {
     return n;
   }
   function _mtCollect(out, cx0, cy0) {
-    if (!_mtAnchors || _mtLoaded < _mtWanted || _t19.mtOff) return 0;
+    if (_t19.mtOff) return 0;
+    // ★[재민 2026-08-09 "이대로 본게임 ㄱ"] 기본은 3D. 손잡이 `mt3dOff` 로 스프라이트 복귀.
+    //   ★어떤 이유로든 터지면 **스프라이트 판으로 되돌아간다** — 라이브를 못 세운다.
+    if (!_t19.mt3dOff) {
+      try {
+        const n3 = _mt3Collect(out, cx0, cy0);
+        if (n3 > 0 || !_mt3Fail) return n3;
+      } catch (e) {
+        if (!_mt3Fail) { _mt3Fail = 1; console.warn('[mt3d] 실패 — 스프라이트 판으로 되돌아간다:', e && e.message); }
+      }
+    }
+    if (!_mtAnchors || _mtLoaded < _mtWanted) return 0;
     const H = _hardTerrain; if (!H) return 0;
     if (!_t19.mtLegacy) return _mtCollectCover(out, cx0, cy0);
     let n = 0;
@@ -2088,7 +2327,20 @@ const SIM_JOB_EMOJI = {
     return m.a[iy * m.N + ix] / 255;
   }
   function _mtDraw(g, item, toScr) {
-    const sg = item.sg, an = _mtAnchors[sg.name], im0 = MTX[sg.name];
+    const sg = item.sg;
+    if (sg.mt3) {                       // ★3D 띠 — 구운 캔버스를 앵커로 꽂는다
+      _mtToScr = toScr;
+      const p3 = w2i(sg.x, sg.y), c3 = toScr(p3.x, p3.y);
+      const dx3 = Math.round(c3.x - sg.ox), dy3 = Math.round(c3.y - sg.oy);
+      const fade3 = _mtFadeAmt > 0.002 && (_mtOcc ? item.z > _mtOcc.z : false) && !_t19.occOff;
+      if (!fade3) { g.drawImage(sg.img, dx3, dy3); return; }
+      _mtFadedN++; if (window.__mtOccDbg) window.__mtOccDbg.faded = _mtFadedN;
+      const fg3 = _mtFadeLayer(g);
+      if (!fg3) { g.save(); g.globalAlpha = 1 - (1 - MT_OCC_A) * _mtFadeAmt; g.drawImage(sg.img, dx3, dy3); g.restore(); return; }
+      fg3.drawImage(sg.img, dx3, dy3);
+      return;
+    }
+    const an = _mtAnchors[sg.name], im0 = MTX[sg.name];
     if (!an || !im0 || !im0.complete) return;
     const im = _mtTinted(sg.name, _cellHash(Math.round(sg.x), Math.round(sg.y), 91) < 0.5 ? 0 : 1);
     const sc = (64 / Math.SQRT2) / an.ppu * sg.sc, vy = sg.vy || 1;
@@ -2121,6 +2373,15 @@ const SIM_JOB_EMOJI = {
   // 이 산 한 장이 나를 실제로 덮는가 — 스캔과 그리기가 **같은 식**을 쓴다(사본 금지)
   function _mtOccludesMe(sg, z) {
     if (!_mtOcc || z <= _mtOcc.z) return false;
+    if (sg.mt3) {
+      // 구운 캔버스의 **실제 알파**를 읽는다. 상자로 재면 투명 여백에 선 자리를 잘못 잡는다.
+      const p3 = w2i(sg.x, sg.y), c3 = _mtToScr ? _mtToScr(p3.x, p3.y) : null; if (!c3) return false;
+      const ux = Math.round(_mtOcc.x - (c3.x - sg.ox)), uy = Math.round(_mtOcc.y - (c3.y - sg.oy));
+      if (ux < 0 || uy < 0 || ux >= sg.img.width || uy >= sg.img.height) return false;
+      if (!sg._a) { try { sg._a = sg.img.getContext('2d').getImageData(0, 0, sg.img.width, sg.img.height).data; } catch (e) { sg._a = null; } }
+      if (!sg._a) return true;
+      return sg._a[(uy * sg.img.width + ux) * 4 + 3] > 90;
+    }
     const an = _mtAnchors[sg.name], im0 = MTX[sg.name];
     if (!an || !im0 || !im0.complete || !im0.naturalWidth) return false;
     const sc = (64 / Math.SQRT2) / an.ppu * sg.sc, vy = sg.vy || 1;
@@ -6034,7 +6295,7 @@ const SIM_JOB_EMOJI = {
     const _mtT0 = performance.now();
     const _nMt = _mtCollect(renderables, worldCx, worldCy);
     window._mtAcc = (window._mtAcc || 0) + (performance.now() - _mtT0);
-    window.__mtDbg = { segs: _nMt, sprites: _mtLoaded + '/' + _mtWanted, cached: _mtSegCache.size, chunks: _mtChunk.size, legacy: !!_t19.mtLegacy, destroyed: _mtDestroyed.size };
+    window.__mtDbg = { mt3d: !_t19.mt3dOff, mt3chunks: _mt3Chunk.size, mt3fail: !!_mt3Fail, segs: _nMt, sprites: _mtLoaded + '/' + _mtWanted, cached: _mtSegCache.size, chunks: _mtChunk.size, legacy: !!_t19.mtLegacy, destroyed: _mtDestroyed.size };
     // ★★[배치 20 C] 산 계측·파괴 훅 — 하네스가 배치 수학을 **다시 쓰지 않게** 정본이 만든
     //   세그먼트를 그대로 내보낸다. 하네스가 능선 보행·밴드 실측을 재구현하면 그게 사본이라
     //   둘이 같이 틀려도 통과한다(자명 통과).
