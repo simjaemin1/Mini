@@ -74,7 +74,12 @@ window.MT3D = (function () {
       h += t * (3.4 * (vn(ai / 14, aj / 14, 29) - 0.5)
               + 2.0 * (vn(ai / 6, aj / 6, 31) - 0.5)
               + 1.5 * (vn(ai / 2.9, aj / 2.9, 37) - 0.5)
-              + 0.7 * (vn(ai / 1.6, aj / 1.6, 41) - 0.5));   // ★잔 결 강화 — 면이 갈라져야 3D 로 읽힌다
+              + 0.7 * (vn(ai / 1.6, aj / 1.6, 41) - 0.5));   // ★잔 결 — 면이 갈라져야 3D 로 읽힌다
+      // ★[재민 판정] "마루선이 민짜 고래등이다" — 능선(가장자리에서 먼 곳)일수록
+      //   저주파 요철을 더 준다. 실루엣이 흔들려야 산등성이로 읽힌다.
+      const crest = Math.min(1, Math.max(0, (dE - 3) / 5));
+      h += crest * (2.2 * (vn(ai / 4.2, aj / 4.2, 43) - 0.5)
+                  + 1.1 * (vn(ai / 2.1, aj / 2.1, 47) - 0.5));
       hgt[j * W + i] = Math.max(0.12, h);
     }
     // 평활 — ★1패스 전부는 산을 '천 조각'처럼 매끈하게 만든다(재민 "민짜"). 절반만 섞는다.
@@ -233,19 +238,31 @@ window.MT3D = (function () {
     };
   }
   const MATS = matsFor('B2');
-  function matOf(steep, hAvg, HM, water) {
+  // ★[재민 판정 2026-08-09] "재질이 텍스처가 아니라 틴트다 / slope 1% — 사실상 2재질 이진값"
+  //   ⇒ **2스케일**로 간다:
+  //     매크로(10~20셀 노이즈)가 문턱 자체를 흔들어 crag/scree/slope 가 **밴드로 섞이고**,
+  //     디테일(1~2셀 반복 텍스처)이 가까이서 볼 결을 만든다.
+  //   macro 는 절대 셀 좌표 해시라 청크 경계에 이음매가 없다.
+  function macroAt(ai, aj) {
+    return (vn(ai / 17, aj / 17, 61) - 0.5) * 2      // 큰 지질 밴드
+         + (vn(ai / 6.5, aj / 6.5, 63) - 0.5) * 0.9; // 중간 얼룩
+  }
+  function matOf(steep, hAvg, HM, water, macro) {
     if (water) return 'water';
+    const m = macro || 0;
+    // 문턱을 매크로로 밀어 준다 — 같은 경사라도 자리에 따라 바위/너덜/숲이 갈린다.
+    const st = steep - m * 0.16, hh = hAvg / HM - m * 0.13;
     // ★자락 판정을 **높이로 먼저** 한다. 경사로 먼저 재면 자락이 걸린다 —
     //   가장자리 셀은 0 → 1.5칸을 한 셀에 오르느라 기울기가 가장 급해서
     //   'rock' 으로 분류됐고, 그래서 초록 풀밭에 **탄색 삼각 톱니**가 났다(실측 시안 2·3판).
     if (hAvg < 0.9) return 'foot';
-    if (steep > 0.66) return 'rock';
-    if (steep > 0.46 || hAvg > HM * 0.86) return 'crag';
-    if (steep > 0.26 || hAvg > HM * 0.50) return 'scree';
+    if (st > 0.72) return 'rock';
+    if (st > 0.52 || hh > 0.88) return 'crag';
+    if (st > 0.30 || hh > 0.58) return 'scree';
     return 'slope';
   }
 
-  const INFL = 0.75;
+  const INFL = 0.55;
   function inflate(pts) {
     let cx = 0, cy = 0;
     for (const p of pts) { cx += p[0]; cy += p[1]; }
@@ -270,32 +287,94 @@ window.MT3D = (function () {
     return (s / n) - h;                      // >0 오목(골) · <0 볼록(능선)
   }
 
-  function shadeFill(g, pts, k, hAvg, HMAX, conc) {
-    // 조명 — 알베도와 분리. 평지는 배율 1.0(= 아무것도 안 얹음)이라 게임 그림과 안 어긋난다.
-    if (k < 1) { g.fillStyle = 'rgba(12,15,20,' + Math.min(0.88, (1 - k) * 1.05) + ')'; poly(g, pts); g.fill(); }
-    else if (k > 1) { g.fillStyle = 'rgba(255,247,226,' + Math.min(0.55, (k - 1) * 0.62) + ')'; poly(g, pts); g.fill(); }
-    // 골 그늘(AO) — 3D 로 보이게 하는 데 램버트보다 이게 더 크게 기여한다.
-    if (conc > 0.02) { g.fillStyle = 'rgba(18,22,26,' + Math.min(0.40, conc * 0.34) + ')'; poly(g, pts); g.fill(); }
-    else if (conc < -0.02) { g.fillStyle = 'rgba(255,250,236,' + Math.min(0.24, -conc * 0.20) + ')'; poly(g, pts); g.fill(); }
-    // 대기 원근 — ★0.22 는 산을 하얗게 씻어냈다(재민 "민짜"). 0.09 로 낮춘다.
-    if (hAvg > 0.5) { g.fillStyle = 'rgba(186,200,216,' + Math.min(0.09, (hAvg / HMAX) * 0.09) + ')'; poly(g, pts); g.fill(); }
+  // ★[재민 판정] "띠 이음매 세로줄" — 원인은 **반투명 칠을 여러 겹 쌓은 것**이다.
+  //   사각형을 0.75px 부풀려 실틈을 막는데, 그 겹친 띠에서 4겹이 두 번 합성돼 선으로 남았다.
+  //   ⇒ 램버트·AO·대기원근을 **한 색 한 겹**으로 합쳐 칠한다. 겹쳐도 한 번만 더해진다.
+  function shadeFill(g, pts, k, hAvg, HMAX, conc, band, contact) {
+    let r = 0, gg = 0, b = 0, a = 0;
+    const add = (cr, cg, cb, ca) => {
+      if (ca <= 0.002) return;
+      const na = a + ca * (1 - a);
+      if (na <= 0) return;
+      const w = ca * (1 - a) / na;
+      r = r * (1 - w) + cr * w; gg = gg * (1 - w) + cg * w; b = b * (1 - w) + cb * w; a = na;
+    };
+    if (k < 1) add(12, 15, 20, Math.min(0.88, (1 - k) * 1.05));
+    else if (k > 1) add(255, 247, 226, Math.min(0.55, (k - 1) * 0.62));
+    if (conc > 0.02) add(16, 20, 26, Math.min(0.42, conc * 0.36));          // 골 그늘(AO)
+    else if (conc < -0.02) add(255, 250, 236, Math.min(0.22, -conc * 0.19));
+    if (band > 0) add(22, 24, 28, band);                                    // 절벽 층(등고선 결)
+    if (contact > 0) add(10, 14, 18, contact);                              // ★자락 접지 AO
+    if (hAvg > 0.5) add(186, 200, 216, Math.min(0.09, (hAvg / HMAX) * 0.09));
+    if (a > 0.002) {
+      g.fillStyle = 'rgba(' + Math.round(r) + ',' + Math.round(gg) + ',' + Math.round(b) + ',' + a.toFixed(3) + ')';
+      poly(g, pts); g.fill();
+    }
   }
 
   function drawQuad(g, F, S, i, j, TEX, MAT, opt) {
     const JAG = (opt && opt.JAG) | 0;
     // 경계 셀(바위인데 이웃에 비바위가 있거나 그 반대)만 쪼갠다 — ⑥ 톱니 처리
+    // ★★[재민 판정 2026-08-09 핵심] "가장 많이 보이는 면이 가장 정보가 없는 면"
+    //   원인을 기하로 찾았다: 남서 앞면은 능선에서 자락까지 **3셀 남짓**이 화면 400px 로
+    //   늘어난 벽이다. 셀이 3개뿐이니 셀 단위 재질·음영으로는 거기에 정보를 못 넣는다.
+    //   ⇒ 급경사 셀은 **쪼개고 변위를 준다**. 그래야 벽에 실제 요철이 생긴다.
+    //   ★변위는 (ai+u, aj+v) 의 연속 노이즈다 — 이웃 셀과 격자점 값이 저절로 같아
+    //     갈라짐(crack)이 구조적으로 안 생긴다. 진폭도 높이의 연속 함수로 재운다.
     let sub = 1;
+    const DSUB = (opt && opt.DSUB !== undefined) ? opt.DSUB : 4;
+    const DAMP = (opt && opt.DAMP !== undefined) ? opt.DAMP : 0.42;
+    let disp = null;
+    if (DSUB > 1 && DAMP > 0) {
+      const st0 = 1 - 1 / Math.hypot((F.hAt(i + 1, j) - F.hAt(i - 1, j)) * 0.5,
+                                     (F.hAt(i, j + 1) - F.hAt(i, j - 1)) * 0.5, 1);
+      if (st0 > 0.14) {
+        // ★급할수록 더 잘게. 벽에서는 한 조각이 높이 3칸을 덮어 층(1.7칸 주기)이
+        //   에일리어싱으로 사라졌다 — 조각이 층보다 얇아야 층이 보인다(실측).
+        sub = Math.max(sub, st0 > 0.5 ? DSUB * 2 : DSUB);
+        disp = (au, av, hh) => {
+          const w = Math.min(1, hh / 1.6);                 // 자락에선 0 → 지면과 매끈히 만난다
+          return w * DAMP * ((vn(au * 2.3, av * 2.3, 71) - 0.5) * 1.0
+                           + (vn(au * 4.9, av * 4.9, 73) - 0.5) * 0.55);
+        };
+      }
+    }
     if (JAG >= 2) {
       let mixed = false; const me = F.isRock(i, j);
       for (let b = -1; b <= 1 && !mixed; b++) for (let a = -1; a <= 1; a++)
         if (F.isRock(i + a, j + b) !== me) { mixed = true; break; }
-      if (mixed) sub = 3;
+      if (mixed) sub = Math.max(sub, 3);
     }
     const conc = concavity(F, i, j);
     const HM = S.HMAX;
+    // 셀 중심의 완만한 법선(2셀 스텐실) — 정점 보간 대용
+    let lamW = null;
+    {
+      const gx = (F.hAt(i + 1, j) - F.hAt(i - 1, j)) * 0.5, gy = (F.hAt(i, j + 1) - F.hAt(i, j - 1)) * 0.5;
+      const nl = Math.hypot(gx, gy, 1) || 1;
+      const d2 = (-gx / nl) * L[0] + (-gy / nl) * L[1] + (1 / nl) * L[2];
+      lamW = Math.max(0.14, d2) + Math.max(0, -d2) * 0.20;
+    }
+    // ★[재민 판정] "지금 산엔 '층'이 없다" — 급경사에 가로 방향 절벽 밴드(등고선 결).
+    //   높이를 1.7칸 주기로 잘라 경계에 그늘을 넣는다. 층리(bedding)로 읽힌다.
+    const bandOf = (hh, steep) => {
+      if (steep < 0.30) return 0;
+      const t = Math.abs(((hh / 2.2) % 1) - 0.5) * 2;      // 0 경계 ~ 1 중앙
+      return Math.max(0, (0.30 - t) / 0.30) * Math.min(0.42, (steep - 0.30) * 0.80);
+    };
+    // ★자락 접지 AO — 산이 지면과 만나는 첫 칸을 어둡게. 붙어 있는 느낌이 여기서 난다.
+    const contact = (() => {
+      if (!F.isRock(i, j)) return 0;
+      const dE2 = F.dAt(i, j);
+      return dE2 <= 1.6 ? 0.20 * (1 - dE2 / 1.6) : 0;
+    })();
+    const macro = macroAt(i + S.cx0, j + S.cy0);
     // 꼭짓점 높이 — 쪼갤 때는 이중선형 보간
     const H4 = [F.cor(i, j), F.cor(i + 1, j), F.cor(i + 1, j + 1), F.cor(i, j + 1)];  // NW NE SE SW
-    const hAt2 = (u, v) => (H4[0] * (1 - u) + H4[1] * u) * (1 - v) + (H4[3] * (1 - u) + H4[2] * u) * v;
+    const hBi = (u, v) => (H4[0] * (1 - u) + H4[1] * u) * (1 - v) + (H4[3] * (1 - u) + H4[2] * u) * v;
+    const hAt2 = disp
+      ? (u, v) => { const b0 = hBi(u, v); return Math.max(0, b0 + disp(i + S.cx0 + u, j + S.cy0 + v, b0)); }
+      : hBi;
     // ★꼭짓점 지터 — 실루엣의 완벽한 지그재그를 깬다. 셀 해시라 결정적이고 이음매가 없다.
     //   격자점 공유가 깨지면 틈이 생기므로 **격자점 좌표의 해시**로 흔든다(양쪽이 같은 값).
     const JAM = JAG >= 1 ? (opt.JAMP === undefined ? 7.0 : opt.JAMP) : 0;
@@ -304,6 +383,12 @@ window.MT3D = (function () {
     const P = (u, v) => {
       const gi = i + u, gj = j + v, hh = hAt2(u, v);
       const c = w2i(gi * CELL, gj * CELL);
+      // ★가로 변위 — 높이만 흔들면 **수직 벽은 수직 벽 그대로** 보인다(실측).
+      //   화면 x 로도 흔들어야 벽에 결이 생긴다. 격자점 절대 좌표의 연속 노이즈라 이음매 없음.
+      if (disp) {
+        const au2 = gi + S.cx0, av2 = gj + S.cy0;
+        c.x += (vn(au2 * 2.1, av2 * 2.1, 79) - 0.5) * Math.min(1, hh / 1.6) * DAMP * 26;
+      }
       // 지터는 **경계 격자점에만** — 산 안쪽을 흔들면 무늬가 흐트러진다
       let jx = 0, jy = 0;
       // ★격자점이 **정수**일 때만 만진다. 세분한 안쪽 점에 isRock 을 물으면 소수 첨자로
@@ -338,7 +423,10 @@ window.MT3D = (function () {
       // ★채움광 — 반대편에서 약하게. 없으면 남·동 사면이 통째로 까맣게 죽어
       //   "어두운 덩어리"로만 보인다(실측 시안 4판). 스타일라이즈드 렌더의 상식적 처리.
       const lamD = nx * L[0] + ny * L[1] + nz * L[2];
-      const lam = Math.max(0.14, lamD) + Math.max(0, -lamD) * 0.20;
+      let lam = Math.max(0.14, lamD) + Math.max(0, -lamD) * 0.20;
+      // ★[재민 판정] "상면 셀 체커 무늬" — 면마다 법선을 하나씩 쓰면 다이아 격자가 그대로 뜬다.
+      //   셀 중심의 **넓은 스텐실 법선**과 섞어 계단을 지운다(세분 4배 비용 없이 같은 효과).
+      if (lamW != null) lam = lam * 0.52 + lamW * 0.48;
       const hAvg = (hNW + hNE + hSE + hSW) / 4;
       const steep = 1 - nz;
       const water = S.CELLS[j] && S.CELLS[j][i] === 1;
@@ -347,7 +435,7 @@ window.MT3D = (function () {
       if (MAT === 'A') {
         // (A) 는 팔레트만 쓴다 — 아래 matOf 와 무관
         // ── (A) PEAK 식 — 제한 팔레트 + 계단 음영 ────────────────────────────
-        const t = Math.max(0, Math.min(0.999, (hAvg / HM) * 0.75 + steep * 0.55));
+        const t = Math.max(0, Math.min(0.999, (hAvg / HM) * 0.75 + steep * 0.55 + macro * 0.10));
         const c = water ? [58, 82, 108] : PAL_A[Math.floor(t * PAL_A.length)];
         const q = Math.round(lam * STEPS_A) / STEPS_A;
         const kk = (AMB + DIR * q) / K_FLAT;
@@ -360,7 +448,7 @@ window.MT3D = (function () {
       // ── (B) 질감 판 — 게임 지면과 **같은 화면공간 패턴** ──────────────────
       //   ★패턴을 높이만큼 위로 민다(−h·32px) → 질감이 지면에 **붙는다**.
       //     등각 높이맵의 변위는 화면 y 축 순수 평행이동이라 이게 정확히 맞는다.
-      const mt = matOf(steep, hAvg, HM, water);
+      const mt = matOf(steep, hAvg, HM, water, macro);
       if (opt && opt.IDMAP) {   // 진단용 — 재질을 단색으로. 무엇이 어디에 깔렸는지 눈으로 본다.
         const IDC = { water: '#2a5f8f', rock: '#e03030', crag: '#e0a020', scree: '#30b050', slope: '#3050e0', foot: '#b040c0' };
         g.fillStyle = IDC[mt] || '#fff'; poly(g, pts); g.fill(); continue;
@@ -373,12 +461,18 @@ window.MT3D = (function () {
       //   기하는 그대로 두고 **음영만** 지면으로 녹이면 톱니가 안 읽힌다.
       const SK = opt && opt.SKIRT ? opt.SKIRT : 0;
       const skirt = SK > 0 ? Math.min(1, hAvg / SK) : 1;
-      // ★질감을 1.35배로 키운다 — 512×256 원본은 결이 너무 잘아 산에선 회색 판으로 뭉갠다.
-      pat.setTransform(new DOMMatrix().translate(0, -Math.round(hAvg * CELL)).scale(1.35, 1.35));
-      g.fillStyle = pat; poly(g, pts); g.fill();
+      // ★[재민 판정] "한 장을 크게 늘여 바르니 대리석/시멘트처럼 뭉개진다"
+      //   ⇒ 디테일 텍스처는 **1~2셀 주기로 잘게**. 512×256 타일이 8×8셀이므로 0.22 배면
+      //     약 2.8셀 주기가 된다(0.22=1.8셀은 너무 잘아 회색 잡음으로 보였다 — 실측).
+      //     큰 변화는 위의 매크로 밴드가 맡는다(2스케일).
+      pat.setTransform(new DOMMatrix().translate(0, -Math.round(hAvg * CELL)).scale(0.35, 0.35));
+      if (opt && opt.FLATTEX) {                  // 질감 끔 — 계측 반례용(같은 기하, 평탄색)
+        g.fillStyle = mt === 'foot' ? '#5a7040' : '#5b5b5b'; poly(g, pts); g.fill();
+      } else { g.fillStyle = pat; poly(g, pts); g.fill(); }
       if (tint) { g.fillStyle = tint; poly(g, pts); g.fill(); }
       const kRaw = (AMB + DIR * lam) / K_FLAT;
-      shadeFill(g, pts, 1 + (kRaw - 1) * skirt, hAvg, HM, conc * skirt);
+      shadeFill(g, pts, 1 + (kRaw - 1) * skirt, hAvg, HM, conc * skirt,
+                bandOf(hAvg, steep) * skirt, contact * skirt);
     }
   }
 

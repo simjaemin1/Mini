@@ -199,7 +199,16 @@ function occlusionOf(o, objBox, segsAfter, OBJ, toScr) {
       }
       return n ? s / n : 0;
     };
-    const a = detail(dA), b = detail(dB);
+    // ★[재민 판정 반영] 이 자를 갈았다. A 와 비교하던 판정은 이제 **무의미**하다 —
+    //   급경사 변위 세분이 들어가면서 A 도 기하 요철을 얻어 결이 같이 올라간다(A 0.43→2.01).
+    //   질감이 있는지 물으려면 **질감만 뺀 같은 기하**와 비교해야 한다.
+    const cvN = document.createElement('canvas'); cvN.width = VIEW.w; cvN.height = VIEW.h;
+    const VN = makeView(cvN);
+    VN.g.fillStyle = '#0a0d10'; VN.g.fillRect(0, 0, VIEW.w, VIEW.h);
+    const bkN = M.bakeBands(F, S, { CH, BAND, TEX, MAT: 'B', PAL: 'B2', FLATTEX: 1 });
+    for (const s2 of bkN.segs) drawSeg(VN.g, s2, VN.toScr);
+    const dN = VN.g.getImageData(0, 0, VIEW.w, VIEW.h).data;
+    const a = detail(dN), b = detail(dB);
     // 재질 분포 — **정본 matOf 를 그대로 부른다**(사본 금지). 온 사면이 맨바위면 여기서 드러난다.
     {
       const cnt = {}; let n = 0;
@@ -217,8 +226,8 @@ function occlusionOf(o, objBox, segsAfter, OBJ, toScr) {
       judge(bare < 0.55, '맨바위·너덜이 사면을 다 덮지 않는다 — 맨바위류 ' + (bare * 100).toFixed(0) + '% < 55% (한반도는 숲산)');
     }
     say(`   (산 픽셀에만 측정 — 표본 ${(() => { let n = 0; for (let q = 3; q < MK.length; q += 4) if (MK[q] > 200) n++; return n; })()}px)`);
-    say(`   결(가로 인접 픽셀차 평균): A ${a.toFixed(2)} · B ${b.toFixed(2)}`);
-    judge(b > a * 1.8, `B 가 A 보다 결이 ${(b / a).toFixed(1)}배 — "민짜 회색 벽"이 아니다 (1.8배 이상)`);
+    say(`   결(가로 인접 픽셀차 평균): 질감끔 ${a.toFixed(2)} · 채택 ${b.toFixed(2)}`);
+    judge(b > a * 1.35, `질감을 끈 같은 기하보다 결이 ${(b / a).toFixed(2)}배 — 질감이 실제로 얹혀 있다 (1.35배 이상)`);
   }
 
   if (SCENE === 'matAB') { R.report = lines.join('\n'); R.fail = FAIL > 0; window.__R = R; window.__done = true; return; }
@@ -283,6 +292,7 @@ function occlusionOf(o, objBox, segsAfter, OBJ, toScr) {
       for (const o of objs) boxes.set(o, drawObj(V.g, o, OBJ, V.toScr));
     } else {
       const rend = [...segsB.map(s2 => ({ z: s2.z, kind: 'mtseg', s: s2 })),
+                    ...forest.map(o => ({ z: o.z, kind: 'obj', o })),
                     ...objs.map(o => ({ z: o.z, kind: 'obj', o }))];
       rend.sort((p, q) => p.z - q.z);
       const _t = performance.now();
@@ -294,6 +304,22 @@ function occlusionOf(o, objBox, segsAfter, OBJ, toScr) {
     }
     return boxes;
   };
+
+  // ★판정 그림은 **2_합성 구도**다(재민 규약): 산 + 나무 + 개체가 한 화면에.
+  //   그래서 숲을 여기서 미리 만들어 같이 태운다.
+  const forest = [];
+  for (let j = J0; j < J1; j++) for (let i = I0; i < I1; i++) {
+    const h = F.hAt(i, j);
+    if (h <= 0.05 || h > S.HMAX * 0.92) continue;
+    const gx = (F.hAt(i + 1, j) - F.hAt(i - 1, j)) * 0.5, gy = (F.hAt(i, j + 1) - F.hAt(i, j - 1)) * 0.5;
+    if (1 - 1 / Math.hypot(gx, gy, 1) > 0.62) continue;
+    if (M.hash(i + S.cx0, j + S.cy0, 77) > 0.34) continue;
+    const nm = ['tree01', 'tree03', 'tree06', 'tree09', 'bush02'][Math.floor(M.hash(i + S.cx0, j + S.cy0, 78) * 5)];
+    if (!OBJ[nm]) continue;
+    const A3 = ABS(i, j);
+    forest.push({ nm, wx: A3.wx, wy: A3.wy, ci: i, cj: j, h, sc: 0.8 + M.hash(i, j, 79) * 0.35, z: absZ(i, j) });
+  }
+  say(`   숲 ${forest.length}그루 (수목한계 ${(S.HMAX * 0.92).toFixed(1)}칸 · 절벽 제외)`);
 
   const cv2 = newCanvas('compose');
   const V2 = makeView(cv2);
@@ -557,8 +583,14 @@ function occlusionOf(o, objBox, segsAfter, OBJ, toScr) {
   for (let j = J0; j < J1; j++) for (let i = I0; i < I1; i++) {
     const h = F.hAt(i, j);
     if (h <= 0.05) continue;
-    if (h > S.HMAX * 0.72) continue;                       // 정상부는 나무가 없다(수목한계)
-    if (M.hash(i + S.cx0, j + S.cy0, 77) > 0.16) continue;  // 결정적 산포
+    // ★[재민 판정] "숲산인데 앞면에 나무가 0그루" — 수목한계를 0.72 로 잡으니 앞사면이
+    //   통째로 한계 위였다. 한계는 유지하되 **0.92 로 올리고**, 대신 **급절벽만** 뺀다.
+    //   (나무가 못 붙는 건 높이가 아니라 절벽이다.)
+    if (h > S.HMAX * 0.92) continue;
+    const gx = (F.hAt(i + 1, j) - F.hAt(i - 1, j)) * 0.5, gy = (F.hAt(i, j + 1) - F.hAt(i, j - 1)) * 0.5;
+    const stC = 1 - 1 / Math.hypot(gx, gy, 1);
+    if (stC > 0.62) continue;                              // 절벽엔 안 선다
+    if (M.hash(i + S.cx0, j + S.cy0, 77) > 0.34) continue;  // 결정적 산포(0.16 → 0.34)
     const nm = ['tree01', 'tree03', 'tree06', 'tree09'][Math.floor(M.hash(i + S.cx0, j + S.cy0, 78) * 4)];
     if (!OBJ[nm]) continue;
     const A2 = ABS(i, j);
