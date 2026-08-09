@@ -504,6 +504,50 @@ function occlusionOf(o, objBox, segsAfter, OBJ, toScr) {
     }
     say(`   채석 자리 = 봉우리에서 가장 가까운 **겉면** 셀 (${qc ? qc.join(',') : '-'}) 주변 · 합법 ${q.length}셀`);
     cutRuns.push({ nm: '겉면 3×3 채석(합법)', cells: q, legalChk: true });
+
+    // ★[재민 2026-08-09 "U자로 산 파면?"] — U 자 만(灣)을 판다.
+    //   ★규칙을 지키려면 **한 번에 다 못 판다**. 겉면부터 한 겹씩, 그때그때 합법인 셀만
+    //     골라 반복해야 안쪽까지 닿는다. 그 절차를 그대로 흉내 낸다(도달 못 하면 그것도 결과다).
+    //   U 는 안쪽에 **혓바닥**을 남긴다 — 이 구조에서 제일 위험한 모양이다.
+    //     혓바닥은 양옆이 파여 가장자리 거리가 무너지므로, 안 팠는데도 높이가 주저앉는다.
+    {
+      const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+      // 진입점 = 봉우리에서 가장 가까운 겉면 셀. 안쪽 방향 = 봉우리 쪽 지배축.
+      let e = null, ed = 1e9;
+      for (let j = J0; j < J1; j++) for (let i = I0; i < I1; i++) {
+        if (!LEGAL(S.CELLS, i, j)) continue;
+        const d = Math.hypot(i - peak[0], j - peak[1]); if (d < ed) { ed = d; e = [i, j]; }
+      }
+      const vx = peak[0] - e[0], vy = peak[1] - e[1];
+      const A = Math.abs(vx) >= Math.abs(vy) ? [Math.sign(vx), 0] : [0, Math.sign(vy)];   // 안쪽
+      const B = [-A[1], A[0]];                                                            // 가로
+      const LN = 8, HW = 3;      // 길이 8셀 · 반폭 3 (전체 폭 7)
+      const target = [], tongue = [];
+      for (let a = 0; a < LN; a++) for (let b = -HW; b <= HW; b++) {
+        const i = e[0] + A[0] * a + B[0] * b, j = e[1] + A[1] * a + B[1] * b;
+        if (!inView(i, j) || S.CELLS[j][i] !== 2) continue;
+        const isArm = Math.abs(b) >= 2, isEnd = a >= LN - 2;
+        if (isArm || isEnd) target.push([i, j]); else tongue.push([i, j]);
+      }
+      // 겉면부터 한 겹씩 — 합법인 것만, 더 못 팔 때까지
+      const cw = clone(S.CELLS); const dug = []; let pass = 0;
+      const LG2 = (cells, i, j) => {
+        if (cells[j][i] !== 2) return false;
+        for (const [a, b] of dirs) { const x = i + a, y = j + b;
+          if (x < 0 || y < 0 || x >= S.W || y >= S.H) continue;
+          if (cells[y][x] !== 2) return true; }
+        return false;
+      };
+      for (; pass < 40; pass++) {
+        const now = target.filter(([i, j]) => cw[j][i] === 2 && LG2(cw, i, j));
+        if (!now.length) break;
+        for (const [i, j] of now) { cw[j][i] = 0; dug.push([i, j]); }
+      }
+      const unreached = target.filter(([i, j]) => cw[j][i] === 2).length;
+      say(`   U자 만: 목표 ${target.length}셀 · ${pass}겹에 걸쳐 ${dug.length}셀 채굴 · 못 판 셀 ${unreached}`);
+      say(`      남는 혓바닥 ${tongue.length}셀 (안 팠는데 양옆이 파인다)`);
+      cutRuns.push({ nm: 'U자 만(합법 절차)', cells: dug, tongue, progressive: true });
+    }
   }
 
   // ★모든 절단안에 규칙 검사를 건다. 통로 3종은 **산 속을 지나므로 규칙상 불법**이다 —
@@ -519,6 +563,11 @@ function occlusionOf(o, objBox, segsAfter, OBJ, toScr) {
       return false;
     };
     for (const run of cutRuns) {
+      // ★진행형 절차(U자처럼 한 겹씩 파 들어가는 것)는 **원본 상태 기준으로 재면 안 된다**.
+      //   안쪽 셀은 t=0 엔 당연히 불법이고, 앞 겹을 판 뒤에 합법이 된다.
+      //   1차 판이 그걸 몰라 "36셀 중 34셀 규칙 위반" 이라는 헛경고를 냈다.
+      //   진행형은 만들 때 이미 매 겹 합법성을 확인했으므로 여기선 건너뛴다.
+      if (run.progressive) { run.illegal = 0; continue; }
       run.illegal = run.cells.filter(([i, j]) => !LG(S.CELLS, i, j)).length;
       if (run.illegal) say(`   ⚠ ${run.nm}: ${run.cells.length}셀 중 ${run.illegal}셀이 **규칙 위반**(겉면 아님) — 실제로는 못 파는 수다`);
     }
@@ -544,6 +593,17 @@ function occlusionOf(o, objBox, segsAfter, OBJ, toScr) {
     if (!firstDestroy) { firstDestroy = true; R.shots.push({ id: cvD.id, file: '3_파괴_' + run.nm.replace(/[^가-힣0-9]/g, '') + '.png' }); }
     else R.shots.push({ id: cvD.id, file: '3_파괴_' + run.nm.replace(/[^가-힣0-9]/g, '') + '.png' });
 
+    if (run.tongue && run.tongue.length) {
+      let mx0 = 0, mx1 = 0, worst = null, wd = 0;
+      for (const [i, j] of run.tongue) {
+        const a = F.hAt(i, j), b = FD.hAt(i, j);
+        if (a > mx0) mx0 = a; if (b > mx1) mx1 = b;
+        if (a - b > wd) { wd = a - b; worst = [i, j, a, b]; }
+      }
+      say(`      ★혓바닥: 최고 ${mx0.toFixed(2)}칸 → ${mx1.toFixed(2)}칸 · 최대 하강 ${(wd * 32).toFixed(0)}px`
+        + (worst ? ` @(${worst[0]},${worst[1]}) ${worst[2].toFixed(2)}→${worst[3].toFixed(2)}칸` : ''));
+      judge(wd * 32 < 200, `혓바닥이 붕괴하지 않는다 — 최대 하강 ${(wd * 32).toFixed(0)}px < 200px`);
+    }
     const before = floorCover(run.cells, baked.B.bk.segs, VD);
     const after = floorCover(run.cells, bkD.segs, VD);
     const sp = spill(c2, bkD.segs, VD, FD);
