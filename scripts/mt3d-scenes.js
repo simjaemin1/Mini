@@ -476,10 +476,54 @@ function occlusionOf(o, objBox, segsAfter, OBJ, toScr) {
     cutRuns.push({ nm: '남북 통로(열 i=' + bi + ')', cells: nsRun });
     cutRuns.push({ nm: '동서 통로(행 j=' + bj + ')', cells: ewRun });
     cutRuns.push({ nm: '북동–남서 통로(화면 가로)', cells: dgRun });
-    const q = []; for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) {
-      const i = peak[0] + a, j = peak[1] + b;
-      if (inView(i, j) && S.CELLS[j][i] === 2) q.push([i, j]); }
-    cutRuns.push({ nm: '봉우리 3×3 채석', cells: q });
+    // ★★[재민 2026-08-09] "가장자리에서만 팔 수 있다는 거 잊은 건 아니지? 봉우리를 왜 파냐"
+    //   맞다. **봉우리 3×3 은 애초에 불가능한 수**다. 그런데 하네스가 그걸 만들어 재고
+    //   그림까지 뽑았다 — 계측기가 게임 규칙을 어기고 있었다.
+    //   ⇒ 규칙을 여기 못 박는다: 평지(비바위)와 4-인접한 바위 셀만 부술 수 있다.
+    //     불법 셀이 하나라도 섞이면 **판정을 실패시킨다**(조용히 걸러내면 또 잊는다).
+    const LEGAL = (cells, i, j) => {
+      if (!inView(i, j) || cells[j][i] !== 2) return false;
+      for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const x = i + a, y = j + b;
+        if (x < 0 || y < 0 || x >= S.W || y >= S.H) continue;
+        if (cells[y][x] !== 2) return true;
+      }
+      return false;
+    };
+    // 채석 자리 = **봉우리에 가장 가까운 합법(겉면) 셀** 주변 3×3 중 합법인 것만.
+    let qc = null, qd = 1e9;
+    for (let j = J0; j < J1; j++) for (let i = I0; i < I1; i++) {
+      if (!LEGAL(S.CELLS, i, j)) continue;
+      const d = Math.hypot(i - peak[0], j - peak[1]);
+      if (d < qd) { qd = d; qc = [i, j]; }
+    }
+    const q = [];
+    if (qc) for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) {
+      const i = qc[0] + a, j = qc[1] + b;
+      if (LEGAL(S.CELLS, i, j)) q.push([i, j]);
+    }
+    say(`   채석 자리 = 봉우리에서 가장 가까운 **겉면** 셀 (${qc ? qc.join(',') : '-'}) 주변 · 합법 ${q.length}셀`);
+    cutRuns.push({ nm: '겉면 3×3 채석(합법)', cells: q, legalChk: true });
+  }
+
+  // ★모든 절단안에 규칙 검사를 건다. 통로 3종은 **산 속을 지나므로 규칙상 불법**이다 —
+  //   그 사실 자체를 숫자로 남긴다(지우지 않는다. 3D 채택 판단에 필요한 정보다).
+  {
+    const LG = (cells, i, j) => {
+      if (cells[j][i] !== 2) return false;
+      for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const x = i + a, y = j + b;
+        if (x < 0 || y < 0 || x >= S.W || y >= S.H) continue;
+        if (cells[y][x] !== 2) return true;
+      }
+      return false;
+    };
+    for (const run of cutRuns) {
+      run.illegal = run.cells.filter(([i, j]) => !LG(S.CELLS, i, j)).length;
+      if (run.illegal) say(`   ⚠ ${run.nm}: ${run.cells.length}셀 중 ${run.illegal}셀이 **규칙 위반**(겉면 아님) — 실제로는 못 파는 수다`);
+    }
+    const legalRuns = cutRuns.filter(r => !r.illegal);
+    judge(legalRuns.length > 0, `합법 절단안이 표본에 있다 (${legalRuns.length}/${cutRuns.length})`);
   }
 
   let firstDestroy = null, tRemeshTot = 0;
