@@ -226,6 +226,38 @@ window.MT3D = (function () {
       slope: 'rgba(104,100,58,0.52)',
     },
   };
+  // ★★[재민 2026-08-09] "저 망할 알록달록 사각형들 때문에 현실적인 산처럼 안 보인다"
+  //   원인 두 개였다:
+  //   ⓐ 매크로 노이즈를 **셀 단위**로 쟀다 → 재질 경계가 셀 다이아에 딱 맞아 마름모가 됐다.
+  //      (조각은 4px 로 잘게 쪼갰는데 **재질만 셀 해상도**였으니 아무리 쪼개도 안 사라진다.)
+  //   ⓑ 재질이 foot/slope/scree/crag/rock **5단 이산**이라 경계가 칼같이 끊긴다.
+  //      한 칸 차이로 색이 확 바뀌니 알록달록해 보인다.
+  //   ⇒ 재질을 **연속 램프**로 바꾼다. t(0=자락 → 1=맨바위) 하나를 만들고 색·알파를
+  //     그 위에서 보간한다. 경계가 아예 없어진다. t 는 조각마다(=4px마다) 계산한다.
+  const RAMP = {
+    // [t, r,g,b,a] — a=0 이면 텍스처 원색. 팔레트별 정거장.
+    B1: [[0.00, 96, 116, 68, 0.00], [0.30, 116, 122, 100, 0.30], [0.62, 122, 124, 116, 0.26], [1.00, 150, 150, 148, 0.10]],
+    B2: [[0.00, 76, 104, 52, 0.00], [0.30, 62, 92, 44, 0.62], [0.62, 84, 104, 62, 0.40], [1.00, 126, 130, 120, 0.16]],
+    B3: [[0.00, 104, 100, 58, 0.00], [0.30, 130, 106, 66, 0.50], [0.62, 146, 118, 80, 0.38], [1.00, 158, 140, 112, 0.18]],
+  };
+  function rampAt(pal, t) {
+    const R = RAMP[pal] || RAMP.B2;
+    let i = 0; while (i < R.length - 2 && t > R[i + 1][0]) i++;
+    const a = R[i], b = R[i + 1];
+    const u = Math.max(0, Math.min(1, (t - a[0]) / Math.max(1e-6, b[0] - a[0])));
+    const m = (k) => a[k] + (b[k] - a[k]) * u;
+    return 'rgba(' + Math.round(m(1)) + ',' + Math.round(m(2)) + ',' + Math.round(m(3)) + ',' + m(4).toFixed(3) + ')';
+  }
+  // t — 자락 0 → 맨바위 1. 경사·높이·매크로의 **연속** 합성.
+  function rockiness(steep, hAvg, HM, macro) {
+    const a = Math.max(0, Math.min(1, (steep - 0.10) / 0.62));
+    const b = Math.max(0, Math.min(1, (hAvg / HM - 0.10) / 0.80));
+    let t = a * 0.68 + b * 0.32 + macro * 0.20;
+    // 자락(높이 1.2칸 이하)은 지면과 같은 그림이어야 톱니가 안 읽힌다 → t 를 0 으로 당긴다
+    t *= Math.max(0, Math.min(1, (hAvg - 0.2) / 1.0));
+    return Math.max(0, Math.min(1, t));
+  }
+
   function matsFor(pal) {
     const P = PALETTES[pal] || PALETTES.B2;
     return {
@@ -244,8 +276,9 @@ window.MT3D = (function () {
   //     디테일(1~2셀 반복 텍스처)이 가까이서 볼 결을 만든다.
   //   macro 는 절대 셀 좌표 해시라 청크 경계에 이음매가 없다.
   function macroAt(ai, aj) {
-    return (vn(ai / 17, aj / 17, 61) - 0.5) * 2      // 큰 지질 밴드
-         + (vn(ai / 6.5, aj / 6.5, 63) - 0.5) * 0.9; // 중간 얼룩
+    return (vn(ai / 21, aj / 21, 61) - 0.5) * 1.5    // 큰 지질 밴드
+         + (vn(ai / 8.5, aj / 8.5, 63) - 0.5) * 0.7   // 중간 얼룩
+         + (vn(ai / 3.1, aj / 3.1, 67) - 0.5) * 0.35; // 잔 얼룩(셀보다 커야 격자로 안 읽힌다)
   }
   function matOf(steep, hAvg, HM, water, macro) {
     if (water) return 'water';
@@ -358,16 +391,24 @@ window.MT3D = (function () {
         if (F.isRock(i + a, j + b) !== me) { mixed = true; break; }
       if (mixed) sub = Math.max(sub, 3);
     }
-    const conc = concavity(F, i, j);
     const HM = S.HMAX;
-    // 셀 중심의 완만한 법선(2셀 스텐실) — 정점 보간 대용
-    let lamW = null;
-    {
-      const gx = (F.hAt(i + 1, j) - F.hAt(i - 1, j)) * 0.5, gy = (F.hAt(i, j + 1) - F.hAt(i, j - 1)) * 0.5;
+    // ★★[재민 "알록달록 사각형" 2차 원인] 조각은 4px 로 쪼갰는데 **완만한 법선(lamW)과
+    //   골 그늘(conc)을 아직 셀 하나당 하나씩** 계산하고 있었다. lamW 는 음영의 48% 를
+    //   차지하니, 아무리 잘게 쪼개도 셀 크기의 밝기 얼룩이 그대로 남는다. 그게 그 사각형이다.
+    //   ⇒ 꼭짓점 높이장을 **이중선형으로 연속 샘플링**해서 조각 위치에서 다시 계산한다.
+    //     cor 은 격자점 함수라 셀 경계에서 이어진다 → 이음매도 안 생긴다.
+    const corS = (x, y) => {
+      const xi = Math.floor(x), yi = Math.floor(y), fx = x - xi, fy = y - yi;
+      return (F.cor(xi, yi) * (1 - fx) + F.cor(xi + 1, yi) * fx) * (1 - fy)
+           + (F.cor(xi, yi + 1) * (1 - fx) + F.cor(xi + 1, yi + 1) * fx) * fy;
+    };
+    const softAt = (x, y) => {
+      const e = corS(x + 1, y), w = corS(x - 1, y), n = corS(x, y - 1), s2 = corS(x, y + 1), c = corS(x, y);
+      const gx = (e - w) * 0.5, gy = (s2 - n) * 0.5;
       const nl = Math.hypot(gx, gy, 1) || 1;
       const d2 = (-gx / nl) * L[0] + (-gy / nl) * L[1] + (1 / nl) * L[2];
-      lamW = Math.max(0.14, d2) + Math.max(0, -d2) * 0.20;
-    }
+      return { lam: Math.max(0.14, d2) + Math.max(0, -d2) * 0.20, conc: (e + w + n + s2) / 4 - c };
+    };
     // ★[재민 판정] "지금 산엔 '층'이 없다" — 급경사에 가로 방향 절벽 밴드(등고선 결).
     //   높이를 1.7칸 주기로 잘라 경계에 그늘을 넣는다. 층리(bedding)로 읽힌다.
     const bandOf = (hh, steep) => {
@@ -417,6 +458,8 @@ window.MT3D = (function () {
 
     for (let sv = 0; sv < sub; sv++) for (let su = 0; su < sub; su++) {
       const u0 = su / sub, u1 = (su + 1) / sub, v0 = sv / sub, v1 = (sv + 1) / sub;
+      const cxS0 = i + (u0 + u1) / 2, cyS0 = j + (v0 + v1) / 2;
+      const soft = softAt(cxS0, cyS0);
       const A = P(u0, v0), B = P(u1, v0), C2 = P(u1, v1), D = P(u0, v1);
       const hNW = hAt2(u0, v0), hNE = hAt2(u1, v0), hSE = hAt2(u1, v1), hSW = hAt2(u0, v1);
       // ★자락 침식 — 세분한 조각 중 **네 꼭짓점이 전부 바닥(≈0)** 인 것은 안 그린다.
@@ -439,7 +482,7 @@ window.MT3D = (function () {
       let lam = Math.max(0.14, lamD) + Math.max(0, -lamD) * 0.20;
       // ★[재민 판정] "상면 셀 체커 무늬" — 면마다 법선을 하나씩 쓰면 다이아 격자가 그대로 뜬다.
       //   셀 중심의 **넓은 스텐실 법선**과 섞어 계단을 지운다(세분 4배 비용 없이 같은 효과).
-      if (lamW != null) lam = lam * 0.52 + lamW * 0.48;
+      lam = lam * 0.52 + soft.lam * 0.48;
       const hAvg = (hNW + hNE + hSE + hSW) / 4;
       const steep = 1 - nz;
       const water = S.CELLS[j] && S.CELLS[j][i] === 1;
@@ -448,7 +491,7 @@ window.MT3D = (function () {
       if (MAT === 'A') {
         // (A) 는 팔레트만 쓴다 — 아래 matOf 와 무관
         // ── (A) PEAK 식 — 제한 팔레트 + 계단 음영 ────────────────────────────
-        const t = Math.max(0, Math.min(0.999, (hAvg / HM) * 0.75 + steep * 0.55 + macro * 0.10));
+        const t = Math.max(0, Math.min(0.999, (hAvg / HM) * 0.75 + steep * 0.55 + macroAt(i + S.cx0 + (u0 + u1) / 2, j + S.cy0 + (v0 + v1) / 2) * 0.10));
         const c = water ? [58, 82, 108] : PAL_A[Math.floor(t * PAL_A.length)];
         const q = Math.round(lam * STEPS_A) / STEPS_A;
         const kk = (AMB + DIR * q) / K_FLAT;
@@ -484,10 +527,10 @@ window.MT3D = (function () {
       } else { g.fillStyle = pat; poly(g, pts); g.fill(); }
       if (tint) { g.fillStyle = tint; poly(g, pts); g.fill(); }
       const kRaw = (AMB + DIR * lam) / K_FLAT;
-      shadeFill(g, pts, 1 + (kRaw - 1) * skirt, hAvg, HM, conc * skirt,
+      shadeFill(g, pts, 1 + (kRaw - 1) * skirt, hAvg, HM, soft.conc * skirt,
                 bandOf(hAvg, steep) * skirt, contact * skirt);
     }
   }
 
-  return { MATS, matsFor, PALETTES, matOf, CELL, PPU_SCR, w2i, hash, vn, makeField, bakeBands, drawQuad, L, LAM_FLAT, K_FLAT, PAL_A };
+  return { MATS, matsFor, PALETTES, matOf, rockiness, rampAt, CELL, PPU_SCR, w2i, hash, vn, makeField, bakeBands, drawQuad, L, LAM_FLAT, K_FLAT, PAL_A };
 })();
