@@ -94,10 +94,27 @@ window.MT3D = (function () {
       }
       hgt[j * W + i] = t2[j * W + i] * (1 - SMB) + (sum / w) * SMB;
     }
+    // ★[재민 ⑥] 톱니의 정체는 **이진 마스크의 셀 계단**이다. 높이를 아무리 다듬어도
+    //   '어디까지가 산인가'를 셀 단위 0/1 로 정하는 한 실루엣은 다이아 계단으로 남는다.
+    //   ⇒ 마스크를 부드럽게 만든 뒤 **0.5 등고선**으로 자른다(마칭스퀘어와 같은 원리).
+    //     셀별 3×3 바위 비율 → 격자에서 이중선형 → 조각(4~8px) 단위로 안팎을 가른다.
+    const mk = new Float32Array(W * H);
+    for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
+      let c = 0, n = 0;
+      for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) { n++; if (isRock(i + a, j + b)) c++; }
+      mk[j * W + i] = c / n;
+    }
+    const mCell = (i, j) => (i < 0 || j < 0 || i >= W || j >= H) ? 0 : mk[j * W + i];
+    const mS = (x, y) => {                    // x,y 는 셀 좌표(셀 중심 = 정수+0.5)
+      const px = x - 0.5, py = y - 0.5;
+      const xi = Math.floor(px), yi = Math.floor(py), fx = px - xi, fy = py - yi;
+      return (mCell(xi, yi) * (1 - fx) + mCell(xi + 1, yi) * fx) * (1 - fy)
+           + (mCell(xi, yi + 1) * (1 - fx) + mCell(xi + 1, yi + 1) * fx) * fy;
+    };
     const hAt = (i, j) => (i < 0 || j < 0 || i >= W || j >= H) ? 0 : hgt[j * W + i];
     // ★꼭짓점 높이 = 그 점에 닿는 네 셀의 평균. 셀 평면으로 그리면 수직 벽(계단)이 남는다.
     const cor = (i, j) => (hAt(i - 1, j - 1) + hAt(i, j - 1) + hAt(i - 1, j) + hAt(i, j)) / 4;
-    return { W, H, d, hgt, hAt, cor, isRock,
+    return { W, H, d, hgt, hAt, cor, isRock, mS,
              dAt: (i, j) => (i < 0 || j < 0 || i >= W || j >= H) ? 0 : d[j * W + i] };
   }
 
@@ -467,9 +484,16 @@ window.MT3D = (function () {
       //   손봐도(2안) 발자국이 안 바뀌니 실측이 1.53px 그대로였다. 세분만 해도(지터 없이)
       //   발자국은 한 픽셀도 안 변한다 — 조각을 **빼야** 경계가 1/3셀 계단으로 잘아진다.
       //   빠진 자리는 지면이 그대로 보인다(높이 0 이라 원래 지면과 같은 그림).
+      if (sub > 1 && opt && opt.SMASK && F.mS) {
+        // 0.5 등고선 밖이면 안 그린다 — 실루엣이 셀 계단 대신 곡선이 된다.
+        if (F.mS(i + (u0 + u1) / 2, j + (v0 + v1) / 2) < opt.SMASK) continue;
+      }
       if (sub > 1 && opt && opt.ERODE) {
-        const hm = Math.max(hNW, hNE, hSE, hSW);
-        if (hm < opt.ERODE) continue;
+        // ★1차 판은 **네 꼭짓점의 최댓값**을 0.10 과 비교했다. 그런데 바위 셀 높이엔
+        //   하한 0.12 가 걸려 있어 최댓값이 0.10 밑으로 내려갈 수가 없다 —
+        //   침식이 **한 번도 발동하지 않았다**(세 안의 톱니 진폭이 6.15/6.15/6.17 로 같았던 이유).
+        //   평균으로 재고 문턱을 하한 위로 올린다.
+        if ((hNW + hNE + hSE + hSW) / 4 < opt.ERODE) continue;
       }
       const cw = CELL / sub;
       const u = [cw, cw, (hSE - hNW) * CELL], v = [cw, -cw, (hNE - hSW) * CELL];

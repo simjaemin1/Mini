@@ -2155,10 +2155,10 @@ const SIM_JOB_EMOJI = {
         const ref = cells.reduce((a, b) => (a[0] + a[1] <= b[0] + b[1] ? a : b));
         const wx = (F.i0 + ref[0]) * 32 + 16, wy = (F.j0 + ref[1]) * 32 + 16;
         const rp = w2i((F.i0 + ref[0]) * 32 + 16, (F.j0 + ref[1]) * 32 + 16);
-        // ★알파는 **굽는 시점에** 떠 둔다. 프레임 중 getImageData 는 GPU 파이프를 세운다.
-        let al = null;
-        try { al = g.getImageData(x0, y0, bw, bh).data; } catch (e) { al = null; }
-        segs.push({ img: cv, x: wx, y: wy, ox: rp.x - x0, oy: rp.y - y0, sc: 1, mt3: 1, _a: al });
+        // ★알파 사본을 **안 뜬다**. 굽는 시점에 뜨면 띠마다 GPU 리드백 1회 +
+        //   힙에 캔버스와 같은 크기(실측 56MB)를 한 벌 더 든다 — 렉 잡겠다고 넣은 게 렉이었다.
+        //   가림 판정은 z 게이트를 통과한 극소수 띠에서만 1px 만 읽는다.
+        segs.push({ img: cv, x: wx, y: wy, ox: rp.x - x0, oy: rp.y - y0, sc: 1, mt3: 1 });
       }
     }
     if (_mt3Chunk.size > 260) _mt3Chunk.clear();
@@ -2415,8 +2415,7 @@ const SIM_JOB_EMOJI = {
       const p3 = w2i(sg.x, sg.y), c3 = _mtToScr ? _mtToScr(p3.x, p3.y) : null; if (!c3) return false;
       const ux = Math.round(_mtOcc.x - (c3.x - sg.ox)), uy = Math.round(_mtOcc.y - (c3.y - sg.oy));
       if (ux < 0 || uy < 0 || ux >= sg.img.width || uy >= sg.img.height) return false;
-      if (!sg._a) return true;
-      return sg._a[(uy * sg.img.width + ux) * 4 + 3] > 90;
+      try { return sg.img.getContext('2d').getImageData(ux, uy, 1, 1).data[3] > 90; } catch (e) { return true; }
     }
     const an = _mtAnchors[sg.name], im0 = MTX[sg.name];
     if (!an || !im0 || !im0.complete || !im0.naturalWidth) return false;
