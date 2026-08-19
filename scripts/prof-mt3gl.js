@@ -29,7 +29,10 @@ const sd = (z) => { const m = avg(z); return Math.sqrt(z.reduce((x, y) => x + (y
     ENABLE_VILLAGES: '0', ENABLE_BANDITS: '0', WRAP_ZONE_PATCH: JSON.stringify({ mainSquare: { x: SITE.cx * 32 + 16, y: SITE.cy * 32 + 16, name: '산' } }) });
   await waitHttp(`http://localhost:${ZPORT}/health`); await sleep(2500);
   const { chromium } = require('playwright');
-  const br = await chromium.launch({ headless: true, args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+  // NOGLARGS=1 이면 **예전 프로파일러와 같은 기동 인자**(인자 없음)로 띄운다.
+  //   28.7ms 기준선이 그 조건에서 나온 숫자라, 절대값을 견주려면 조건을 맞춰야 한다.
+  const GLARGS = process.env.NOGLARGS ? [] : ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'];
+  const br = await chromium.launch({ headless: true, args: GLARGS });
   const pg = await (await br.newContext({ viewport: { width: 1400, height: 900 } })).newPage();
   pg.on('pageerror', (e) => console.log('[err]', String(e.message).slice(0, 200)));
   await pg.goto(`http://localhost:${CPORT}/`); await sleep(2000);
@@ -60,5 +63,18 @@ const sd = (z) => { const m = avg(z); return Math.sqrt(z.reduce((x, y) => x + (y
   await pg.evaluate(() => window.__mt3gl(1)); await sleep(SETTLE);
   const base = await pg.evaluate(`(${M})(3000)`);
   console.log(`  전부 켠 기준선(GPU 판): med ${base.med} p95 ${base.p95} max ${base.max}`);
+  // ★"산이 아예 없을 때"의 바닥값 — 절대값 목표(28.7ms)가 어디서 온 숫자인지 가르는 대조군.
+  //   산 켬/끔 차이가 크면 목표치는 '산 있는 화면'의 값이 아니었다는 뜻이다.
+  const mOn = [], mOff = [];
+  for (let r = 0; r < 3; r++) {
+    await pg.evaluate(`window.__terrain19.mtOff=false`); await sleep(1200);
+    mOn.push((await pg.evaluate(`(${M})(2500)`)).med);
+    await pg.evaluate(`window.__terrain19.mtOff=true`); await sleep(1200);
+    mOff.push((await pg.evaluate(`(${M})(2500)`)).med);
+  }
+  const dm = avg(mOn) - avg(mOff), sem = Math.sqrt((sd(mOn) ** 2 + sd(mOff) ** 2) / 3);
+  console.log(`\n[대조군 — 산 자체를 끄면] 산 켬 ${avg(mOn).toFixed(2)} · 산 끔 ${avg(mOff).toFixed(2)}` +
+    `  ★${dm >= 0 ? '+' : ''}${dm.toFixed(2)}ms (SE ${sem.toFixed(2)}) ${Math.abs(dm) > 2 * sem ? '유의' : '잡음'}`);
+  await pg.evaluate(`window.__terrain19.mtOff=false`);
   await br.close(); for (const p of procs) { try { p.kill(); } catch (e) {} } process.exit(0);
 })().catch(e => { console.error(e); for (const p of procs) { try { p.kill(); } catch (_) {} } process.exit(1); });
