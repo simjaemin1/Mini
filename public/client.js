@@ -2035,8 +2035,8 @@ const SIM_JOB_EMOJI = {
   const MT3_CH = 16;                   // 청크(셀) — 8 → 16. 여유 재계산 낭비 12배 → 5배
   const MT3_PAD = 12;                  // 거리장 여유
   const MT3_HMAX = 9, MT3_LAM = 10;    // 완만형 — 재민 채택
-  const MT3_SUBPX = 14;                // 한 조각의 화면 px. 6 은 셀당 121조각이라 라이브에 못 쓴다
-  const MT3_SUBMAX = 6;                // 조각 분할 상한(이식 초판은 24였다)
+  //   ★세분은 **상수**여야 한다 — 이웃 셀과 다르면 공유 변에 T-접합이 생겨 틈이 벌어진다.
+  const MT3_SUB = 6;                   // 셀당 6×6 조각 (한 조각 ≈ 10px)
   const MT3_VIEW = 1050;               // ★3D 전용 수집 반경. 화면 22셀 + 산 높이(288px) 여유
   const MT3_BUDGET = 1;                // ★프레임당 새로 굽는 청크 수. 지면 타일(5)보다 훨씬 무겁다
   const MT3_L = [-0.452, -0.6455, 0.6157];       // 태양 52°/−35°
@@ -2115,7 +2115,9 @@ const SIM_JOB_EMOJI = {
     }
     const hAt = (i, j) => (i < 0 || j < 0 || i >= N || j >= N) ? 0 : hg[j * N + i];
     const cor = (i, j) => (hAt(i - 1, j - 1) + hAt(i, j - 1) + hAt(i - 1, j) + hAt(i, j)) / 4;
-    const corS = (x, y) => { const xi = Math.floor(x), yi = Math.floor(y), fx = x - xi, fy = y - yi;
+    // ★같은 이유로 여기도 smoothstep — 부드러운 법선까지 셀 격자에서 꺾이면 소용이 없다.
+    const corS = (x, y) => { const xi = Math.floor(x), yi = Math.floor(y);
+      const a = x - xi, b = y - yi, fx = a * a * (3 - 2 * a), fy = b * b * (3 - 2 * b);
       return (cor(xi, yi) * (1 - fx) + cor(xi + 1, yi) * fx) * (1 - fy)
            + (cor(xi, yi + 1) * (1 - fx) + cor(xi + 1, yi + 1) * fx) * fy; };
     return { N, i0, j0, rock, hAt, cor, corS,
@@ -2153,8 +2155,12 @@ const SIM_JOB_EMOJI = {
           const c = w2i(gi * 32, gj * 32), Y = c.y - F.cor(i + o[0], j + o[1]) * 32;
           if (c.x < x0) x0 = c.x; if (c.x > x1) x1 = c.x; if (Y < y0) y0 = Y; if (Y > y1) y1 = Y;
         }
-        x0 = Math.floor(x0) - 2; y0 = Math.floor(y0) - 2;
-        const bw = Math.ceil(x1) + 2 - x0, bh = Math.ceil(y1) + 2 - y0;
+        // ★[재민 "검은 점·선"] bbox 를 **변위 없는** 꼭짓점으로 잡고 있었다.
+        //   실제로 그릴 때는 급경사 조각이 세로 ±0.42칸(±13px)·가로 ±11px 로 밀린다.
+        //   그만큼이 캔버스 밖으로 잘려 **표면에 검은 슬리버**가 생겼다. 여유를 준다.
+        const MPAD = 18;
+        x0 = Math.floor(x0) - MPAD; y0 = Math.floor(y0) - MPAD;
+        const bw = Math.ceil(x1) + MPAD - x0, bh = Math.ceil(y1) + MPAD - y0;
         if (bw <= 0 || bh <= 0 || bw > 4096 || bh > 4096) continue;
         const cv = document.createElement('canvas'); cv.width = bw; cv.height = bh;
         const g = cv.getContext('2d'); g.translate(-x0, -y0);
@@ -2178,21 +2184,47 @@ const SIM_JOB_EMOJI = {
   function _mt3Quad(g, F, i, j, RP, GP) {
     const H4 = [F.cor(i, j), F.cor(i + 1, j), F.cor(i + 1, j + 1), F.cor(i, j + 1)];
     const hmin = Math.min(H4[0], H4[1], H4[2], H4[3]), hmax = Math.max(H4[0], H4[1], H4[2], H4[3]);
-    let sub = Math.max(1, Math.min(MT3_SUBMAX, Math.ceil(Math.max(64, (hmax - hmin) * 32 + 32) / MT3_SUBPX)));
-    const gx0 = (F.hAt(i + 1, j) - F.hAt(i - 1, j)) * 0.5, gy0 = (F.hAt(i, j + 1) - F.hAt(i, j - 1)) * 0.5;
-    const st0 = 1 - 1 / Math.hypot(gx0, gy0, 1);
-    let disp = null;
-    if (st0 > 0.14) {
-      sub = Math.min(MT3_SUBMAX, Math.max(sub, st0 > 0.5 ? MT3_SUBMAX : 4));
-      disp = (au, av, hh) => Math.min(1, hh / 1.6) * 0.42 *
-        ((_mt3vn(au * 2.3, av * 2.3, 71) - 0.5) + (_mt3vn(au * 4.9, av * 4.9, 73) - 0.5) * 0.55);
-    }
-    const hBi = (u, v) => (H4[0] * (1 - u) + H4[1] * u) * (1 - v) + (H4[3] * (1 - u) + H4[2] * u) * v;
-    const hS = disp ? (u, v) => { const b = hBi(u, v); return Math.max(0, b + disp(F.i0 + i + u, F.j0 + j + v, b)); } : hBi;
+    // ★★[재민 "검은 점·선" 진짜 원인] **T-접합**이다.
+    //   세분 수(sub)를 셀마다 경사·높이로 다르게 정했다. 이웃한 두 셀의 sub 가 다르면
+    //   공유 변의 조각 꼭짓점이 **서로 안 맞는다**. 변위까지 얹히면 그 틈이 벌어져
+    //   표면에 검은 슬리버로 남는다. bbox 여유를 줘도 안 없어진 이유가 이것이다.
+    //   ⇒ sub 를 **상수**로 고정한다. 공유 변의 꼭짓점이 양쪽에서 같은 자리에 찍힌다.
+    //   ★변위도 `st0 > 0.14` 로 **셀 단위 on/off** 였다 — 급한 셀은 밀고 옆의 완만한 셀은
+    //     안 밀어서 공유 변이 한쪽만 찢어졌다. 높이(연속량)로만 재운다.
+    const sub = MT3_SUB;
+    //   ★단, 높이만으로 재우면 **온 사면이 자글자글해진다**(실측: 완만한 곳까지 울퉁불퉁).
+    //     변위는 절벽에만 있어야 한다. 그런데 '절벽인가'를 **셀 단위**로 물으면 다시 찢어진다.
+    //     ⇒ 꼭짓점 자리에서 **연속 기울기**(corS 차분)를 재서 진폭을 재운다. 양쪽 셀이 같은 값을 본다.
+    const steepAt = (x, y) => {
+      const gx = F.corS(x + 0.5, y) - F.corS(x - 0.5, y);
+      const gy = F.corS(x, y + 0.5) - F.corS(x, y - 0.5);
+      return 1 - 1 / Math.hypot(gx, gy, 1);
+    };
+    const disp = (lx, ly, hh) => {
+      const st = steepAt(lx, ly);
+      const w = Math.min(1, Math.max(0, (st - 0.16) / 0.34)) * Math.min(1, Math.max(0, (hh - 0.6) / 1.6));
+      if (w <= 0) return 0;
+      const au = F.i0 + lx, av = F.j0 + ly;
+      return w * 0.42 * ((_mt3vn(au * 2.3, av * 2.3, 71) - 0.5) + (_mt3vn(au * 4.9, av * 4.9, 73) - 0.5) * 0.55);
+    };
+    // ★★[재민 2026-08-09 "아직도 정사각형 타일 흔적이 남는다"] — 원인은 여기다.
+    //   높이를 셀 안에서 **이중선형**으로 폈다. 값은 셀 경계에서 이어지지만 **기울기가 꺾인다**
+    //   (C0 이지 C1 이 아니다). 법선은 기울기에서 나오므로 경계마다 음영이 툭 꺾이고,
+    //   그 꺾임선이 정확히 셀 격자 = 다이아 무늬로 읽힌다. 조각을 아무리 잘게 쪼개도
+    //   꺾임은 셀 경계에 그대로 남는다 — 그래서 세분으로는 안 없어졌다.
+    //   ⇒ u,v 에 smoothstep 을 먹인다. 경계에서 도함수가 0 이 되어 양쪽이 **매끈히 이어진다**(C1).
+    //     추가 표본 없이 곱셈 몇 번이라 굽기 비용은 그대로다.
+    const hBi = (u, v) => {
+      const su = u * u * (3 - 2 * u), sv = v * v * (3 - 2 * v);
+      return (H4[0] * (1 - su) + H4[1] * su) * (1 - sv) + (H4[3] * (1 - su) + H4[2] * su) * sv;
+    };
+    const hS = (u, v) => { const b = hBi(u, v); return Math.max(0, b + disp(i + u, j + v, b)); };
     const P = (u, v) => {
       const c = w2i((F.i0 + i + u) * 32, (F.j0 + j + v) * 32), hh = hS(u, v);
-      let jx = 0;
-      if (disp) jx = (_mt3vn((F.i0 + i + u) * 2.1, (F.j0 + j + v) * 2.1, 79) - 0.5) * Math.min(1, hh / 1.6) * 0.42 * 26;
+      // 가로 변위도 **높이만**으로 재운다(셀 단위 조건이 들어가면 공유 변이 찢어진다)
+      const jw = Math.min(1, Math.max(0, (steepAt(i + u, j + v) - 0.16) / 0.34))
+               * Math.min(1, Math.max(0, (hh - 0.6) / 1.6));
+      const jx = (_mt3vn((F.i0 + i + u) * 2.1, (F.j0 + j + v) * 2.1, 79) - 0.5) * jw * 0.42 * 26;
       return [c.x + jx, c.y - hh * 32];
     };
     const soft = (x, y) => {
@@ -2217,10 +2249,19 @@ const SIM_JOB_EMOJI = {
       // 무게중심으로 살짝 부풀려 실틈 방지(조명도 같은 도형에 얹힌다)
       let px = 0, py = 0; const pts = [A, B, C2, D];
       for (const q of pts) { px += q[0]; py += q[1]; } px /= 4; py /= 4;
+      // ★부풀리기는 **모든 층이 같은 값**을 써야 한다. 불투명만 부풀리고 반투명을 안 부풀리면
+      //   조각마다 0.55px 의 **안 칠해진 테두리**가 남아 밝은 그물이 된다(실제로 그렇게 됐다).
+      //   반대로 둘 다 부풀리면 겹친 자리가 두 번 어두워져 어두운 그물이 된다.
+      //   ⇒ 값을 조각 크기(10px)에 견줘 무시할 만큼 줄인다: 0.55 → 0.18px.
       const inf = pts.map(q => { const dx = q[0] - px, dy = q[1] - py, l = Math.hypot(dx, dy) || 1;
-        return [q[0] + dx / l * 0.55, q[1] + dy / l * 0.55]; });
+        return [q[0] + dx / l * 0.18, q[1] + dy / l * 0.18]; });
+      // ★[재민 "잔 격자"] 실틈 막으려 0.55px 부풀린 도형에 **반투명**(틴트·음영)까지 얹으면
+      //   조각 경계에서 두 번 합성돼 격자 그물이 남는다. 조각이 10px 이라 그물도 10px 이다.
+      //   ⇒ **불투명 바탕만 부풀리고**(겹쳐도 무해), 반투명 층은 부풀리지 않은 도형에 얹는다.
       const path = () => { g.beginPath(); g.moveTo(inf[0][0], inf[0][1]);
         for (let n2 = 1; n2 < 4; n2++) g.lineTo(inf[n2][0], inf[n2][1]); g.closePath(); };
+      const pathT = () => { g.beginPath(); g.moveTo(pts[0][0], pts[0][1]);
+        for (let n2 = 1; n2 < 4; n2++) g.lineTo(pts[n2][0], pts[n2][1]); g.closePath(); };
       const macro = (_mt3vn((F.i0 + cx) / 21, (F.j0 + cy) / 21, 61) - 0.5) * 1.5
                   + (_mt3vn((F.i0 + cx) / 8.5, (F.j0 + cy) / 8.5, 63) - 0.5) * 0.7
                   + (_mt3vn((F.i0 + cx) / 3.1, (F.j0 + cy) / 3.1, 67) - 0.5) * 0.35;
