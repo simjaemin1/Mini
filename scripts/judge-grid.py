@@ -118,7 +118,10 @@ def peak_ratio(P, f, excl_pts):
     return pk / bg if bg > 0 else float('nan')
 
 
-def measure(img, box, subs=(6,), extra=(11,)):
+# ★반례ⓒ의 주기는 **중간대**로 잡아야 한다. s=11 은 주기 5.8px 로 나이키스트(2px) 코앞이라
+#   고역통과 뒤 남은 앨리어싱·질감 잡음이 그대로 잡혀 어떤 그림에서나 6배가 나왔다(실측).
+#   s=4(주기 16px)는 어느 판도 안 쓰는 주기이고 대역 한가운데라 대조군 구실을 한다.
+def measure(img, box, subs=(6,), extra=(4,)):
     y = highpass(lum(img.crop(box)))
     P = power(y)
     allp = targets(1.0) + [t for s in set(list(subs) + list(extra)) for t in targets(1.0 / s)]
