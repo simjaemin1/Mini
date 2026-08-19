@@ -2087,9 +2087,17 @@ const SIM_JOB_EMOJI = {
     _mt3RockC.set(k, r); return r;
   }
   let _mt3Sig = '';
+  // ★★[35m 판 줄무늬의 정체 — 계측으로 특정] 사면의 등고선식 띠는 거리장 계단이 아니었다.
+  //   높이장을 3×3 으로 1·3·6회 블러해도 **그대로 남았다**(스윕 그림). 스펙트럼으로 재니
+  //   봉우리가 **2.1셀 주기**에 섰다(배수 4.54) — 마루 결 옥타브 `_mt3vn(ai/2.1, …)` 의 격자다.
+  //   원인: 값 잡음의 보간이 smoothstep(3t²−2t³)이라 격자선에서 **곡률이 튄다**(C1 이고 C2 아님).
+  //   음영은 기울기의 변화에 민감해서 그 곡률 불연속이 주름으로 보인다. HMAX 9 에선 결의
+  //   진폭이 작아 안 보였을 뿐이고, 35m 로 키우자 드러났다.
+  //   ⇒ quintic(6t⁵−15t⁴+10t³). 격자에서 1차·2차 도함수가 둘 다 0 이라 주름이 안 생긴다.
+  //     (셀 경계의 smoothstep 을 Catmull-Rom 으로 걷어낸 것과 **같은 종류의 수리**다.)
   const _mt3vn = (x, y, s) => {
     const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
-    const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+    const u = xf * xf * xf * (xf * (xf * 6 - 15) + 10), v = yf * yf * yf * (yf * (yf * 6 - 15) + 10);
     const a = _cellHash(xi, yi, s), b = _cellHash(xi + 1, yi, s);
     const c = _cellHash(xi, yi + 1, s), e = _cellHash(xi + 1, yi + 1, s);
     return (a * (1 - u) + b * u) * (1 - v) + (c * (1 - u) + e * u) * v;
@@ -2263,7 +2271,8 @@ const SIM_JOB_EMOJI = {
     //   sin 의 인자가 수십만이 되어 정밀도가 무너진다. 곱셈·fract 만 쓰는 해시로 바꾼다.
     'float hash21(vec2 q){ vec3 p3 = fract(vec3(q.xyx)*0.1031); p3 += dot(p3, p3.yzx+33.33);',
     '  return fract((p3.x+p3.y)*p3.z); }',
-    'float vn2(vec2 q){ vec2 i=floor(q), f=fract(q); f=f*f*(3.0-2.0*f);',
+    // 격자 주름을 없애려 quintic — CPU 쪽 _mt3vn 과 **같은 보간**이어야 두 판이 안 엇갈린다
+    'float vn2(vec2 q){ vec2 i=floor(q), f=fract(q); f=f*f*f*(f*(f*6.0-15.0)+10.0);',
     '  return mix(mix(hash21(i),hash21(i+vec2(1.0,0.0)),f.x),mix(hash21(i+vec2(0.0,1.0)),hash21(i+vec2(1.0,1.0)),f.x),f.y); }',
     'void main(){',
     '  float h; vec2 g; float mean;',
@@ -2789,6 +2798,12 @@ const SIM_JOB_EMOJI = {
     const iy = m.N - 1 < (v * m.N | 0) ? m.N - 1 : (v < 0 ? 0 : (v * m.N | 0));
     return m.a[iy * m.N + ix] / 255;
   }
+  // ★[35m 판] 하네스가 "뒤쪽 산 상자"를 셀 좌표로 **추측**하고 있었다. 산이 9m 일 땐 맞았지만
+  //   35m 면 앞쪽 띠가 앵커보다 1120px 위까지 그려서 그 상자를 덮는다 — 상자가 더는 뒤쪽 전용이 아니다.
+  //   ⇒ 정본 그리기 경로가 **실제로 그린 사각형과 z** 를 그대로 내준다. 높이가 얼마든 안 틀린다.
+  let _mt3Rects = null;
+  window.__mt3Rects = (on) => { _mt3Rects = on ? [] : null; return !!_mt3Rects; };
+  window.__mt3RectsGet = () => _mt3Rects;
   function _mtDraw(g, item, toScr) {
     const sg = item.sg;
     if (sg.mt3) {                       // ★3D 띠 — 구운 캔버스를 앵커로 꽂는다
@@ -2796,6 +2811,7 @@ const SIM_JOB_EMOJI = {
       const p3 = w2i(sg.x, sg.y), c3 = toScr(p3.x, p3.y);
       const dx3 = Math.round(c3.x - sg.ox), dy3 = Math.round(c3.y - sg.oy);
       const fade3 = _mtFadeAmt > 0.002 && (_mtOcc ? item.z > _mtOcc.z : false) && !_t19.occOff;
+      if (_mt3Rects) _mt3Rects.push({ x: dx3, y: dy3, w: sg.img.width, h: sg.img.height, z: item.z, faded: !!fade3 });
       if (!fade3) { g.drawImage(sg.img, dx3, dy3); return; }
       _mtFadedN++; if (window.__mtOccDbg) window.__mtOccDbg.faded = _mtFadedN;
       const fg3 = _mtFadeLayer(g);

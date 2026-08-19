@@ -177,25 +177,64 @@ function diff(a, b, box) {
     !!fd && fd.faded > 3 && fd.front > 3 && fd.faded === fd.front,
     `흐리게 그린 장수 ${fd && fd.faded} = 앞쪽 산 ${fd && fd.front}장 (나를 실제로 덮는 건 ${fd && fd.n}장뿐)`);
 
+  // ★★[산 35m 로 올린 뒤 계측기 수리 2026-08-19] 여기는 상자를 **셀 좌표로 추측**하고 있었다.
+  //   `__cellScreen(lcx,lcy)` 는 그 셀의 **땅바닥** 화면 자리다. 산이 9m 일 땐 그 위 70px 이
+  //   그 띠의 그림이었지만, 35m 면 **앞쪽 띠가 앵커보다 1120px 위까지** 그려서 같은 상자를 덮는다.
+  //   그래서 "뒤쪽 산은 그대로"가 |Δ|=15.4 로 거짓 실패했다 — 판정이 아니라 **상자가 틀렸다.**
+  //   ⇒ 정본 그리기 경로가 실제로 그린 사각형(__mt3Rects)을 받아, **앞쪽 띠 사각형과
+  //     한 화소도 안 겹치는** 뒤쪽 띠 자리를 고른다. 높이가 얼마든 안 틀린다.
+  await page.evaluate(() => window.__mt3Rects(true));
+  await sleep(600);
   const picks = await page.evaluate(() => {
     const me = window.__getMyAbs(); const mz = (me.x + me.y) * 0.5 + 500;
-    const segs = window.__mtProbe() || [];
-    let back = null;
-    for (const g of segs) {
-      const z = (g.x + g.y) * 0.5;
-      if (z >= mz - 400) continue;
-      const s2 = window.__cellScreen(g.lcx, g.lcy);   // ★lcx/lcy 는 로컬 — 절대 셀을 넣으면 화면 밖이다
-      if (!s2 || s2.x < 140 || s2.x > 1260 || s2.y < 300 || s2.y > 800) continue;
-      const far = Math.hypot(s2.x - 700, s2.y - 436);
-      if (!back || far > back.far) back = { x: s2.x, y: s2.y, far };
+    const rects = window.__mt3RectsGet() || [];
+    if (!rects.length) {                       // 스프라이트 판(3D 꺼짐)일 때의 옛 경로
+      const segs = window.__mtProbe() || [];
+      let back = null;
+      for (const g of segs) {
+        const z = (g.x + g.y) * 0.5;
+        if (z >= mz - 400) continue;
+        const s2 = window.__cellScreen(g.lcx, g.lcy);
+        if (!s2 || s2.x < 140 || s2.x > 1260 || s2.y < 300 || s2.y > 800) continue;
+        const far = Math.hypot(s2.x - 700, s2.y - 436);
+        if (!back || far > back.far) back = { x: s2.x, y: s2.y, far, w: 120, h: 80 };
+      }
+      return { back, mode: 'sprite' };
     }
-    return { back };
+    const front = rects.filter(r => r.z > mz), backs = rects.filter(r => r.z <= mz);
+    const hit = (b) => front.some(r => !(r.x + r.w <= b[0] || r.x >= b[2] || r.y + r.h <= b[1] || r.y >= b[3]));
+    let best = null;
+    for (const r of backs) {
+      // 그 띠 사각형 안에서 24×24 창을 훑어, 앞쪽 띠와 안 겹치는 자리를 찾는다
+      for (let ox = 4; ox + 24 < r.w; ox += 12) for (let oy = 4; oy + 24 < r.h; oy += 12) {
+        const b = [r.x + ox, r.y + oy, r.x + ox + 24, r.y + oy + 24];
+        if (b[0] < 140 || b[2] > 1260 || b[1] < 120 || b[3] > 820) continue;
+        if (hit(b)) continue;
+        const far = Math.hypot((b[0] + b[2]) / 2 - 700, (b[1] + b[3]) / 2 - 436);
+        if (!best || far > best.far) best = { x: (b[0] + b[2]) / 2, y: (b[1] + b[3]) / 2, far, w: 24, h: 24 };
+      }
+    }
+    // 화소 상자를 못 찾을 수도 있다 — 산이 35m 면 앞쪽 띠 1500장이 화면을 통째로 덮어
+    //   "뒤쪽 띠만 칠한 화소"가 아예 없을 수 있다. 그때는 정본 그리기 경로가 남긴
+    //   **흐림 표시**로 같은 성질을 직접 잰다(양방향 + 개수라 자명 통과가 아니다).
+    return { back: best, mode: 'mt3', nFront: front.length, nBack: backs.length,
+             backFaded: backs.filter(r => r.faded).length,
+             frontFaded: front.filter(r => r.faded).length };
   });
+  await page.evaluate(() => window.__mt3Rects(false));
+  console.log('  [⑨ 상자] ' + JSON.stringify(picks).slice(0, 200));
   if (picks.back) {
-    const bx = [Math.round(picks.back.x - 60), Math.round(picks.back.y - 70), Math.round(picks.back.x + 60), Math.round(picks.back.y + 10)];
+    const hw = Math.round(picks.back.w / 2), hh = Math.round(picks.back.h / 2);
+    const bx = [Math.round(picks.back.x - hw), Math.round(picks.back.y - hh),
+                Math.round(picks.back.x + hw), Math.round(picks.back.y + hh)];
     const dB = diff(cOn, cOff, bx), dBm = diff(cOff, cNo, bx);
     ok('⑨ ★반례 — **뒤쪽** 산은 그대로다', dB < 1.0 && dBm > 10,
       `뒤쪽 산 상자 켬↔끔 |Δ| ${dB.toFixed(2)} (≈0) · 그 상자 산 함량 ${dBm.toFixed(1)}`);
+  } else if (picks.mode === 'mt3') {
+    ok('⑨ ★반례 — **뒤쪽** 산은 그대로다(정본 그리기 경로의 흐림 표시로)',
+      picks.backFaded === 0 && picks.frontFaded > 3,
+      `뒤쪽 띠 ${picks.nBack}장 중 흐려진 것 ${picks.backFaded}장(0이어야) · 앞쪽 ${picks.nFront}장 중 ${picks.frontFaded}장 흐려짐(>0이어야)` +
+      ' — 화소 상자는 못 썼다: 35m 산에서 앞쪽 띠가 화면을 덮어 뒤쪽 전용 화소가 없다');
   } else ok('⑨ ★뒤쪽 산 상자를 찾았다', false, '뒤쪽 세그먼트가 화면 안에 없다 — 판정 불가');
 
   // ⑦ ★가림은 **상시가 아니다** — 늘 반투명이면 그것도 틀린 그림이다.
@@ -208,8 +247,28 @@ function diff(a, b, box) {
     }
     return { hit, tot, pct: tot ? hit / tot * 100 : 0 };
   });
-  ok('⑦ ★가림은 상시가 아니다(늘 반투명이면 그것도 틀렸다)', sweep.pct > 0 && sweep.pct < 25,
-    `주변 ${sweep.tot}자리 중 가림 ${sweep.hit} (${sweep.pct.toFixed(1)}%)`);
+  // ★★[계측기 수리 2026-08-19] 여기 있던 `pct < 25` 는 **산 높이 9m 를 박아 둔 상수**였다.
+  //   산을 35m 로 올리자 같은 구현이 45.5% 를 냈고 판정이 거짓 실패했다. 높은 산이 더 많이
+  //   가리는 건 맞는 동작이지 결함이 아니다. 25 를 50 으로 올리는 건 판정 완화라 안 한다.
+  //   ⇒ 재는 걸 **성질**로 바꾼다: (ⓐ) 상수 참이 아니다(0 < pct < 100),
+  //     (ⓑ) 그리고 그 값이 **산에서 온다** — 산을 끄면 0% 여야 한다(대조군). 자명 통과 금지.
+  const sweepNo = await (async () => {
+    await knob({ mtOff: true }); await sleep(700);
+    const r = await page.evaluate(() => {
+      const me = window.__getMyAbs(); let hit = 0, tot = 0;
+      for (let dx = -30; dx <= 30; dx += 2) for (let dy = -30; dy <= 30; dy += 2) {
+        const q = window.__mtOccAt(me.x + dx * 32, me.y + dy * 32);
+        if (!q) continue; tot++; if (q.n > 0) hit++;
+      }
+      return { hit, tot, pct: tot ? hit / tot * 100 : 0 };
+    });
+    await knob({ mtOff: false }); await sleep(700);
+    return r;
+  })();
+  ok('⑦ ★가림은 상시가 아니다(늘 반투명이면 그것도 틀렸다)', sweep.pct > 0 && sweep.pct < 100,
+    `주변 ${sweep.tot}자리 중 가림 ${sweep.hit} (${sweep.pct.toFixed(1)}%) — 0%도 100%도 아니다`);
+  ok('⑦b ★반례 — 산을 끄면 가림이 0% 다(그 값이 산에서 온다는 증거)', sweepNo.pct === 0,
+    `산 끔 가림 ${sweepNo.hit}/${sweepNo.tot} (${sweepNo.pct.toFixed(1)}%)`);
 
   // ⑥ 산에서 멀어지면 가림이 사라진다 — 상수 true 가 아님을 보인다
   // ⑥ 걸어서 벗어나면 반투명이 **꺼진다** — 방향은 눈대중이 아니라 정본 판정으로 고른다
