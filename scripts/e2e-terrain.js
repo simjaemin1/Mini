@@ -191,7 +191,16 @@ function bestShift(a, b, pred, box, R) {
   say('\n[ⓐ 계약 — __groundDbg / __waterDbg]');
   say(`    강가: ${JSON.stringify(R.d0)}`);
   say(`    초원: ${JSON.stringify(F.d0)}`);
-  ok(R.d0.g && R.d0.g.tex === 3 && !R.d0.g.legacy, '지면 텍스처 3종 로드 · 질감 경로로 그린다');
+  // ★[2026-08-09] 개수(3)를 못박고 있었다. 3D 산이 `rock_angled` 를 지면 로더에 추가하며
+  //   4가 되자 실패했다 — 계약이 바뀐 것이지 결함이 아니다. 다만 **개수만 세면 무엇이 빠졌는지
+  //   모른다**(그래서 이 실패가 무슨 뜻인지 로그만 보고는 알 수 없었다). 이름으로 판정한다.
+  {
+    const need = ['grass_angled', 'dry_angled', 'mud_angled', 'rock_angled'];
+    const got = (R.d0.g && R.d0.g.texNames) || [];
+    const miss = need.filter(n => !got.includes(n));
+    ok(R.d0.g && !R.d0.g.legacy && miss.length === 0,
+       `지면 텍스처 ${need.length}종 로드 · 질감 경로로 그린다` + (miss.length ? ` — 빠짐: ${miss.join(',')}` : ` (${got.join(',')})`));
+  }
   ok(R.d0.w && R.d0.w.webgl === true && R.d0.w.on === true, 'WebGL 물 레이어가 실제로 켜졌다');
   ok(R.d0.w.segs > 1000, `rivers path 구간을 실제로 읽었다 (${R.d0.w.segs})`);
   ok(R.d0.w.prisms > 10, `★강가에 블록 프리즘 면이 선다 (${R.d0.w.prisms})`);

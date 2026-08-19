@@ -6088,7 +6088,7 @@ const SIM_JOB_EMOJI = {
                 + 'm' + (_t19.shMarginOff ? 'x' : (_t19.shMargin == null ? 1 : _t19.shMargin));
       if (_gtKnob !== _kf) { _gtKnob = _kf; _groundTiles.clear(); _shMarginN = 0; } }
     if (!_LEG) _waterInit();   // ★타일을 굽기 **전에** 물 가능 여부를 확정한다(진흙/단색 갈림이 타일에 굳는다)
-    window.__groundDbg = { legacy: _LEG, tex: _gtexReady, tiles: 0, baked: 0, cached: _groundTiles.size, stateCells: 0 };
+    window.__groundDbg = { legacy: _LEG, tex: _gtexReady, texNames: Object.keys(GTEX).filter(k => GTEX[k] && GTEX[k].naturalWidth), tiles: 0, baked: 0, cached: _groundTiles.size, stateCells: 0 };
     { // ★[배치 20 B] 타일 상태 계측·주입 — 하네스는 서버 방송과 **같은 입구**(_tsIngest)로만 들어온다.
       const _c = (primaryZoneId && typeof conns !== 'undefined') ? conns.get(primaryZoneId) : null;
       window.__tileStateDbg = {
