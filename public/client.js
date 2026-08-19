@@ -2034,11 +2034,40 @@ const SIM_JOB_EMOJI = {
   //   결과: 조각 108만 → 14만(7.7배) · fill 326만 → 42만
   const MT3_CH = 16;                   // 청크(셀) — 8 → 16. 여유 재계산 낭비 12배 → 5배
   const MT3_PAD = 12;                  // 거리장 여유
-  const MT3_HMAX = 9, MT3_LAM = 10;    // 완만형 — 재민 채택
+  // ★★[재민 확정 2026-08-19] **산은 벽이다.** 실측이 전제를 뒤집었다(scripts/measure-mtscale.js):
+  //   산괴는 178×232 · 183×224 · 220×173 셀 = **폭 180~230m** 로 이미 크다. 눌린 건 높이뿐이었다.
+  //   옛 규약(HMAX 9 / LAM 10)은 그 200m 산괴의 마루를 8.9m 로 깎았다 — 성목이 3~8m 다.
+  //   길드가 며칠 걸려 1셀을 뚫는 대가가 **0.9m 턱**이었으니 규칙과 그림이 반대 말을 했다.
+  //   ⇒ 발자국은 한 셀도 안 건드리고 **수직만 편다**. 상징 지리(마을 거리·강폭·사냥 밴드) 무영향.
+  //   HMAX 35 / LAM 2.5 → 마루 35m(나무의 6.4배) · 가장자리 **14m/셀**(1셀 파면 절벽이 열린다).
+  //   ★★LAM 2.5(가장자리 14m/셀)는 **이 기법으로 못 그린다.** 실측 스크린샷이 답이었다:
+  //     1셀 = 가로 32px 이고 1m = 세로 32px 이라, 14m/셀 이면 셀 하나가 가로:세로 1:14 로
+  //     늘어난 조각이 된다 — 무슨 짓을 해도 셀 격자가 그대로 보인다(말뚝 울타리 2차).
+  //     아이소 높이장이 견디는 한계는 대략 3m/셀(화면 71°)이다.
+  //   ⇒ 마루 35m 는 지키고 **경사 길이만** 12셀로 편다. 가장자리 3m/셀(사람 키의 두 배 턱),
+  //     5셀 들어가면 12m, 더 들어가면 25m — 길드가 파 들어갈수록 벽이 자란다.
+  let MT3_HMAX = 35, MT3_LAM = 12;
+  //   ★★35m 로 올리자마자 **말뚝 울타리**가 나왔다(실측 스크린샷). 원인은 옛 높이식이다:
+  //     h 가 가장자리 거리 dE 만의 함수라 **경계 셀이 전부 같은 높이**가 되고, 면이 수직에
+  //     가까워지면 그 균일함이 셀 격자 그대로 드러난다. HMAX 9 에선 완만해서 안 보였을 뿐이다.
+  //   ⇒ 경사 길이(LAM)와 마루 높이(HMAX)를 **자리마다 흔든다** — 버트레스·구유·안부가 생긴다.
+  const MT3_LAMV = 0.60;               // 경사 길이 흔들기(로그 폭). ×0.55 ~ ×1.82 = 6.6~21.8셀
+                                       //   (1.15 는 ×0.32 까지 내려가 3.8셀=9m/셀 절벽을 만들어 다시 격자가 났다)
+  const MT3_HV = 0.62;                 // 마루 높이 흔들기 폭(0.55 ~ 1.17배)
+  const MT3_ROUGH = 0.25;              // 결의 진폭(HMAX 대비). 국소 높이에 **비례**해 얹는다
   //   ★세분은 **상수**여야 한다 — 이웃 셀과 다르면 공유 변에 T-접합이 생겨 틈이 벌어진다.
   const MT3_SUB = 6;                   // 셀당 6×6 조각 (한 조각 ≈ 10px)
-  let MT3_TENT = 2;                    // 보간 전 높이장 3×3 텐트 횟수(등고선 계단)
-  const MT3_VIEW = 1050;               // ★3D 전용 수집 반경. 화면 22셀 + 산 높이(288px) 여유
+  let MT3_TENT = 1;                    // 보간 전 높이장 3×3 텐트 횟수(등고선 계단).
+                                       //   LAM 2.5 에선 계단이 절벽 쪽뿐이라 1회면 되고,
+                                       //   2회면 마루의 결(수관이 앉을 기복)까지 뭉갠다.
+  // ★★수집 범위를 **화면 좌표로 정확히** 자른다. [산 높이 35m 확정과 함께]
+  //   옛 값 1050 은 "화면 22셀 + 산 높이 288px" 을 뭉뚱그린 월드 정사각형이었다.
+  //   높이가 9→35m 가 되면 산은 앵커보다 **1120px 위**까지 그려지므로, 같은 방식으로 늘리면
+  //   반경 1900 → 굽는 넓이가 3.2배가 된다. 대부분 화면에 안 걸리는 청크다.
+  //   ⇒ 셀이 화면에 걸릴 조건을 그대로 쓴다:
+  //       화면x = (wx−wy) − (camx−camy),  화면y = (wx+wy)/2 − (camx+camy)/2 − h·32
+  //     세로는 **아래쪽만** h·32 만큼 더 본다(위쪽은 늘릴 이유가 없다 — 산은 위로만 자란다).
+  const MT3_VIEW = 2400;               // 안전 상한(계산 실패 시의 하드 캡). 실제 컷은 아래 화면식.
   const MT3_BUDGET = 1;                // ★프레임당 새로 굽는 청크 수. 지면 타일(5)보다 훨씬 무겁다
   const MT3_L = [-0.452, -0.6455, 0.6157];       // 태양 52°/−35°
   const MT3_AMB = 0.24, MT3_DIR = 1.10;
@@ -2096,12 +2125,22 @@ const SIM_JOB_EMOJI = {
     for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
       if (!rock[j * N + i]) continue;
       const dE = d[j * N + i], ai = i0 + i, aj = j0 + j;
-      let h = MT3_HMAX * (1 - Math.exp(-dE / MT3_LAM));
-      const t = Math.min(1, dE / 3);
-      h += t * (3.4 * (_mt3vn(ai / 14, aj / 14, 29) - 0.5) + 2.0 * (_mt3vn(ai / 6, aj / 6, 31) - 0.5)
-              + 1.5 * (_mt3vn(ai / 2.9, aj / 2.9, 37) - 0.5) + 0.7 * (_mt3vn(ai / 1.6, aj / 1.6, 41) - 0.5));
+      // 자리마다 다른 경사 길이 — 어떤 스트레치는 수직 절벽, 어떤 데는 비스듬한 너덜.
+      //   로그로 흔들어 기하평균은 MT3_LAM 그대로 둔다(가장자리 14m/셀 이라는 규약 유지).
+      const lamL = MT3_LAM * Math.exp(MT3_LAMV * (2 * _mt3vn(ai / 26, aj / 26, 53) - 1));
+      // 자리마다 다른 마루 높이 — 봉우리와 안부(鞍部)가 생긴다.
+      const hmaxL = MT3_HMAX * (1 - MT3_HV * 0.5 + MT3_HV * _mt3vn(ai / 37, aj / 37, 59));
+      let h = hmaxL * (1 - Math.exp(-dE / lamL));
+      // ★결은 **국소 높이에 비례**해서 얹는다. 절대량으로 얹으면 11m 짜리 가장자리 셀이
+      //   음수로 꺼져 산자락에 구멍이 뚫린다(옛 판은 dE/3 로 결을 죽여서 벽이 균일해졌다).
+      const rel = Math.min(1, h / MT3_HMAX);
+      h += rel * MT3_HMAX * MT3_ROUGH * (0.64 * (_mt3vn(ai / 14, aj / 14, 29) - 0.5)
+              + 0.38 * (_mt3vn(ai / 6, aj / 6, 31) - 0.5)
+              + 0.26 * (_mt3vn(ai / 2.9, aj / 2.9, 37) - 0.5)
+              + 0.12 * (_mt3vn(ai / 1.6, aj / 1.6, 41) - 0.5));
       const crest = Math.min(1, Math.max(0, (dE - 3) / 5));
-      h += crest * (2.2 * (_mt3vn(ai / 4.2, aj / 4.2, 43) - 0.5) + 1.1 * (_mt3vn(ai / 2.1, aj / 2.1, 47) - 0.5));
+      h += crest * MT3_HMAX * MT3_ROUGH * (0.28 * (_mt3vn(ai / 4.2, aj / 4.2, 43) - 0.5)
+              + 0.14 * (_mt3vn(ai / 2.1, aj / 2.1, 47) - 0.5));
       hg[j * N + i] = Math.max(0.12, h);
     }
     const t2 = Float32Array.from(hg), SMB = 0.55;
@@ -2177,6 +2216,7 @@ const SIM_JOB_EMOJI = {
   const MT3_ROCKS = 0.35;              // 바위 결 배율(캔버스 판의 setTransform(0.35) 과 같은 값)
   const MT3_OV = 0.008;                // 띠 겹침(셀). 가로 0.5px·세로 0.26px — 실루엣 부풀림은 무시할 수준
   let MT3_CV0 = 128;                   // GL 캔버스 초깃값. 띠가 크면 128 배수로 자란다
+  let MT3_MPAD = 18;                   // 띠 캔버스 여백(px) — 손잡이로 갈아 끼워 잘림 여부를 가린다
   const _mgl = { cv: null, gl: null, pr: null, ok: null, uni: {}, hTex: null, rTex: null, gTex: null,
                  vbo: null, buf: null, hKey: '', lp: -1, lc: -1 };
   const MT3_VS = [
@@ -2242,21 +2282,41 @@ const SIM_JOB_EMOJI = {
     '  float lam = max(0.14, lamD) + max(0.0, -lamD)*0.20;',
     '  float k = (0.24 + 1.10*lam) / (0.24 + 1.10*0.6157);',
     '  float steep = 1.0 - nrm.z;',
-    // ── 재질: 연속 램프. 이산 재질도, 조각 단위 blit 도 없다. ──
+    // ── 재질 [재민 확정 2026-08-19] **가장자리 암벽 + 윗면 숲** ──
+    //   옛 판은 높이가 높을수록 바위였다 — 그래서 마루가 헐벗은 메사가 됐다.
+    //   높이 항을 걷어내고 **경사만** 바위로 읽는다. LAM 2.5 면 가장자리는 기울기 14m/셀이라
+    //   자동으로 암벽이 되고, 마루는 평평해 숲이 앉는다. 북한산·월출산 계열의 인상이다.
     '  float macro = (vn2(w/21.0)-0.5)*1.5 + (vn2(w/8.5)-0.5)*0.7 + (vn2(w/3.1)-0.5)*0.35;',
-    '  float t = clamp((steep-0.10)/0.62,0.0,1.0)*0.68 + clamp((h/uHmax-0.10)/0.80,0.0,1.0)*0.32 + macro*0.20;',
-    '  t = clamp(t*clamp((h-0.2)/1.0,0.0,1.0),0.0,1.0);',
+    '  float t = clamp((steep - 0.20 + macro*0.10)/0.45, 0.0, 1.0);',
+    // 산기슭 아래(높이 1m 미만)는 들판 풀 — 평지와 이어져야 이음매가 안 보인다
+    '  float onMt = clamp((h-0.8)/2.2, 0.0, 1.0);',
+    '  float canopy = (1.0-t) * onMt;',
     // ★질감 UV 는 **월드 앵커**다 — 카메라·조각·청크와 무관한 하나의 연속 함수.
     //   *_angled 텍스처는 이미 아이소 각으로 구워져 있으니 월드 좌표를 같은 각으로 눕혀 읽는다.
     //   (조각마다 pattern.setTransform 을 다시 걸던 옛 판이 32px 주기 누비이불의 한 축이었다.)
     '  vec2 iso = vec2(w.x - w.y, (w.x + w.y)*0.5) * 32.0;',
     '  vec3 gcol = texture2D(uGrass, iso/uTex).rgb;',
     '  vec3 rcol = texture2D(uRock,  iso/(uTex*uRockS)).rgb;',
-    '  vec3 base = mix(gcol, rcol, smoothstep(0.06,0.16,t));',
+    '  vec3 base = mix(gcol, rcol, smoothstep(0.10,0.45,t));',
     '  vec3 tint = mix(vec3(0.298,0.408,0.204), vec3(0.494,0.510,0.470), smoothstep(0.30,1.0,t));',
     '  float ta = mix(0.0,0.62,smoothstep(0.0,0.30,t)) * mix(1.0,0.26,smoothstep(0.30,1.0,t));',
     '  vec3 col = mix(base, tint, ta);',
     '  col *= k;',
+    // ── 수관(樹冠) — 산 본체는 밟을 수 없으니 **개별 나무를 안 세우고 재질로 올린다** ──
+    //   지름 3~5m 덩어리. 주기는 3.3·1.35셀 — 32px(=1셀) 격자와 무관하게 잡는다.
+    //   기하는 안 건드린다(실루엣은 꼭짓점이 정한다). 요철은 **법선과 명암**으로만 낸다.
+    '  if (canopy > 0.01) {',
+    '    float e2 = 0.42;',
+    '    float k0 = vn2(w/3.3)*0.68 + vn2(w/1.35)*0.32;',
+    '    float kx = vn2(w/3.3+vec2(e2,0.0))*0.68 + vn2(w/1.35+vec2(e2,0.0))*0.32;',
+    '    float ky = vn2(w/3.3+vec2(0.0,e2))*0.68 + vn2(w/1.35+vec2(0.0,e2))*0.32;',
+    '    vec3 cn = normalize(vec3(-(kx-k0)*7.0, -(ky-k0)*7.0, 1.0));',
+    '    float cl = max(0.10, dot(cn, uL));',
+    '    vec3 leaf = mix(vec3(0.106,0.196,0.098), vec3(0.235,0.361,0.169), k0);',   // 짙은 침엽 → 밝은 활엽
+    '    leaf *= (0.42 + 1.05*cl);',
+    '    leaf *= mix(0.72, 1.0, smoothstep(0.30,0.62,k0));',                        // 수관 사이 그늘
+    '    col = mix(col, leaf, canopy*0.92);',
+    '  }',
     // AO — hAll 이 이미 들고 있는 4×4 평균과의 차(오목하면 어둡다). 추가 표본 0.
     '  float conc = mean - h;',
     '  col *= 1.0 - clamp(conc*0.16, 0.0, 0.40);',
@@ -2404,6 +2464,11 @@ const SIM_JOB_EMOJI = {
   // 시험 손잡이 — GL 캔버스를 강제로 n×n 으로 잡는다. "굽기 비용이 캔버스 넓이에 비례하나"의 대조군.
   // 지금 GL 캔버스 실제 크기 — 계측기가 명목값 대신 이걸로 넓이를 잡는다
   window.__mt3glcv = () => (_mgl.cv ? [_mgl.cv.width, _mgl.cv.height] : [0, 0]);
+  // 시험 손잡이 — 높이 규약과 띠 여백. 같은 자리에서 갈아 끼워 원인을 가른다.
+  window.__mt3h = (hm, lm) => { MT3_HMAX = hm; if (lm) MT3_LAM = lm;
+    if (_mgl.gl) { _mgl.gl.useProgram(_mgl.pr); _mgl.gl.uniform1f(_mgl.uni.uHmax, MT3_HMAX); }
+    _mgl.hKey = ''; _mt3Chunk.clear(); _mt3Sig = ''; return [MT3_HMAX, MT3_LAM]; };
+  window.__mt3mpad = (v) => { MT3_MPAD = v | 0; _mt3Chunk.clear(); _mt3Sig = ''; return MT3_MPAD; };
   window.__mt3cv = (n) => { MT3_CV0 = n | 0; if (_mgl.cv) { _mgl.cv.width = _mgl.cv.height = MT3_CV0; }
     _mt3Chunk.clear(); _mt3Sig = ''; return MT3_CV0; };
   // ── 청크 하나를 **반대각선 띠**로 구워 세그먼트 배열로 ────────────────────
@@ -2441,7 +2506,7 @@ const SIM_JOB_EMOJI = {
         // ★[재민 "검은 점·선"] bbox 를 **변위 없는** 꼭짓점으로 잡고 있었다.
         //   실제로 그릴 때는 급경사 조각이 세로 ±0.42칸(±13px)·가로 ±11px 로 밀린다.
         //   그만큼이 캔버스 밖으로 잘려 **표면에 검은 슬리버**가 생겼다. 여유를 준다.
-        const MPAD = 18;
+        const MPAD = MT3_MPAD;
         x0 = Math.floor(x0) - MPAD; y0 = Math.floor(y0) - MPAD;
         const bw = Math.ceil(x1) + MPAD - x0, bh = Math.ceil(y1) + MPAD - y0;
         if (bw <= 0 || bh <= 0 || bw > 4096 || bh > 4096) continue;
@@ -2555,9 +2620,8 @@ const SIM_JOB_EMOJI = {
       const macro = (_mt3vn((F.i0 + cx) / 21, (F.j0 + cy) / 21, 61) - 0.5) * 1.5
                   + (_mt3vn((F.i0 + cx) / 8.5, (F.j0 + cy) / 8.5, 63) - 0.5) * 0.7
                   + (_mt3vn((F.i0 + cx) / 3.1, (F.j0 + cy) / 3.1, 67) - 0.5) * 0.35;
-      let t = Math.max(0, Math.min(1, (steep - 0.10) / 0.62)) * 0.68
-            + Math.max(0, Math.min(1, (hAvg / MT3_HMAX - 0.10) / 0.80)) * 0.32 + macro * 0.20;
-      t = Math.max(0, Math.min(1, t * Math.max(0, Math.min(1, (hAvg - 0.2) / 1.0))));
+      // 폴백도 같은 규칙 — **경사만** 바위, 마루는 숲(높이 항 제거)
+      let t = Math.max(0, Math.min(1, (steep - 0.20 + macro * 0.10) / 0.45));
       const use = (t < 0.10 ? GP : RP);
       if (use) { use.setTransform(new DOMMatrix().translate(0, -Math.round(hAvg * 32)).scale(t < 0.10 ? 1 : 0.35, t < 0.10 ? 1 : 0.35));
                  g.fillStyle = use; } else g.fillStyle = t < 0.10 ? '#5a7040' : '#6b6b6b';
@@ -2575,6 +2639,10 @@ const SIM_JOB_EMOJI = {
         add(22, 24, 28, Math.max(0, (0.30 - bt) / 0.30) * Math.min(0.42, (steep - 0.30) * 0.80)); }
       if (F.isRock(i, j)) { const dd = Math.max(0, 1.6 - (hAvg > 0 ? 1.6 : 0)); void dd; }
       if (hAvg > 0.5) add(186, 200, 216, Math.min(0.09, (hAvg / MT3_HMAX) * 0.09));
+      // 마루의 숲 — GPU 판의 수관을 캔버스에서 한 겹으로 흉내낸다(폴백이라 간략)
+      { const onMt = Math.max(0, Math.min(1, (hAvg - 0.8) / 2.2)), cn = (1 - t) * onMt;
+        if (cn > 0.02) { const kk = _mt3vn((F.i0 + cx) / 3.3, (F.j0 + cy) / 3.3, 83);
+          add(27 + 33 * kk, 50 + 42 * kk, 25 + 18 * kk, cn * 0.88); } }
       if (ca > 0.002) { g.fillStyle = 'rgba(' + Math.round(cr) + ',' + Math.round(cg) + ',' + Math.round(cb) + ',' + ca.toFixed(3) + ')'; path(); g.fill(); }
     }
   }
@@ -2585,17 +2653,35 @@ const SIM_JOB_EMOJI = {
     // ★파괴는 **그 근처 청크만** 다시 굽는다. 전부 비우면 곡괭이질 한 번에 화면이 멈춘다.
     if (_mt3Dirty.size) { for (const k of _mt3Dirty) _mt3Chunk.delete(k); _mt3Dirty.clear(); }
     _mt3Budget = MT3_BUDGET;
-    const c0 = Math.floor((cx0 - MT3_VIEW) / 32), c1 = Math.floor((cx0 + MT3_VIEW) / 32);
-    const r0 = Math.floor((cy0 - MT3_VIEW) / 32), r1 = Math.floor((cy0 + MT3_VIEW) / 32);
+    // 카메라의 화면 원점(= toScreen 이 쓰는 것과 같은 식)
+    const U0 = cx0 - cy0, V0 = (cx0 + cy0) * 0.5;
+    const MX = W * 0.5 + 96, MYU = H * 0.5 + 96, MYD = H * 0.5 + MT3_HMAX * 32 + 96;
+    // 화면에 걸릴 수 있는 셀의 (i−j)·(i+j) 범위
+    const dLo = (U0 - MX) / 32, dHi = (U0 + MX) / 32;
+    const sLo = (V0 - MYU) / 16, sHi = (V0 + MYD) / 16;
+    const cap = MT3_VIEW / 32;
+    const iLo = Math.max(Math.floor((sLo + dLo) / 2), Math.floor(cx0 / 32 - cap));
+    const iHi = Math.min(Math.ceil((sHi + dHi) / 2), Math.ceil(cx0 / 32 + cap));
+    const jLo = Math.max(Math.floor((sLo - dHi) / 2), Math.floor(cy0 / 32 - cap));
+    const jHi = Math.min(Math.ceil((sHi - dLo) / 2), Math.ceil(cy0 / 32 + cap));
     let n = 0;
-    for (let gy = Math.floor(r0 / MT3_CH); gy <= Math.floor(r1 / MT3_CH); gy++)
-      for (let gx = Math.floor(c0 / MT3_CH); gx <= Math.floor(c1 / MT3_CH); gx++) {
+    for (let gy = Math.floor(jLo / MT3_CH); gy <= Math.floor(jHi / MT3_CH); gy++)
+      for (let gx = Math.floor(iLo / MT3_CH); gx <= Math.floor(iHi / MT3_CH); gx++) {
+        // 청크의 (i−j)·(i+j) 구간이 화면 구간과 안 겹치면 아예 굽지 않는다
+        const i0 = gx * MT3_CH, i1 = i0 + MT3_CH - 1, j0 = gy * MT3_CH, j1 = j0 + MT3_CH - 1;
+        if (i0 - j1 > dHi || i1 - j0 < dLo) continue;
+        if (i0 + j0 > sHi || i1 + j1 < sLo) continue;
         const segs = _mt3Bake(zid, gx, gy);
         if (!segs) { needsRedraw = true; continue; }   // 아직 안 구운 청크 — 다음 프레임에
         for (const sg of segs) {
-          if (Math.abs(sg.x - cx0) > MT3_VIEW || Math.abs(sg.y - cy0) > MT3_VIEW) continue;
+          // ★띠는 **구운 사각형**으로 자른다. 앵커가 화면 밖이어도 몸통이 걸칠 수 있다
+          //   (한 띠가 반대각선 16셀까지 뻗어 가로로 540px 을 덮는다).
+          const p = w2i(sg.x, sg.y);
+          const l = p.x - U0 - sg.ox, t = p.y - V0 - sg.oy;
+          if (l > W * 0.5 || l + sg.img.width < -W * 0.5) continue;
+          if (t > H * 0.5 || t + sg.img.height < -H * 0.5) continue;
           // −0.5: 같은 셀 위에 선 개체가 산보다 **앞**에 오도록(라이브 z 규약과 동형)
-          out.push({ z: w2i(sg.x, sg.y).y - 0.5, kind: 'mtseg', sg, wx: sg.x, wy: sg.y });
+          out.push({ z: p.y - 0.5, kind: 'mtseg', sg, wx: sg.x, wy: sg.y });
           n++;
         }
       }
