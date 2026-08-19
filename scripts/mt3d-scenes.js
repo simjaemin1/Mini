@@ -443,6 +443,9 @@ function occlusionOf(o, objBox, segsAfter, OBJ, toScr) {
     R.shots.push({ id: 'judge' + nm2, file: '0_판정_' + nm2 + '.png' });
   }
   say(`   판정 그림 4장(재질 후보별 · 나무 ${forest.length}그루 포함) 냈다`);
+  // ★판정 그림만 뽑을 때는 여기서 끝낸다 — 뒤의 ③ 파괴가 굽기를 10번 더 해
+  //   페이지가 OOM 으로 죽으면 **스크린샷 단계까지 못 가서 그림이 안 나온다**(실제로 그랬다).
+  if (window.ONLYJUDGE) { R.report = lines.join('\n'); R.fail = FAIL > 0; window.__R = R; window.__done = true; return; }
 
   // ═══ ③ 파괴 ═══════════════════════════════════════════════════════════════
   say('');
@@ -716,16 +719,20 @@ function occlusionOf(o, objBox, segsAfter, OBJ, toScr) {
       // ★[타 세션 지적] 3·7·13셀이 **정확히 같은 10%** 라는 건 어떤 바닥값이 상수로
       //   잡히고 있다는 신호다. 그게 뭔지 분해해서 찍는다 — 안 짚으면 ⑦ 설명이 안 닫힌다.
       //   셀마다 덮임률을 따로 내서, "몇 개 셀이 100% 덮이고 몇 개가 0% 인지"를 본다.
-      const per = [];
-      for (const c of walk[0].cells) per.push(floorCover([c], bkw.segs, Vw));
-      const perIn = walk[0].cells.map(c => floorCover([c], bkw.segs, Vw, 2));
-      const full = per.filter(v => v > 90).length, none = per.filter(v => v < 10).length;
+      // ★셀별 분해는 **조사용**이다(캔버스를 셀마다 만들어 메모리를 크게 쓴다).
+      //   기본은 끄고 DECOMP=1 일 때만 켠다 — 판정 그림과 같이 돌리면 페이지가 OOM 으로 죽는다.
+      const per = [], perIn = [];
+      if (window.DECOMP) {
+        for (const c of walk[0].cells) per.push(floorCover([c], bkw.segs, Vw));
+        for (const c of walk[0].cells) perIn.push(floorCover([c], bkw.segs, Vw, 2));
+      }
       sweep.push({ w: halfW >= 99 ? 0 : halfW * 2 + 1, cov: floorCover(walk[0].cells, bkw.segs, Vw),
-                   n: per.length, full, none, per, perIn,
+                   n: per.length, full: per.filter(v => v > 90).length, none: per.filter(v => v < 10).length, per, perIn,
                    covIn: perIn.reduce((a, b) => a + b, 0) / Math.max(1, perIn.length) });
     }
     say('   폭 스윕(가운데 열 바닥 덮임): ' + sweep.map(r => (r.w ? `${r.w}셀` : '산 전체 제거') + ` ${r.cov.toFixed(0)}%`).join(' · '));
     for (const r of sweep) {
+      if (!window.DECOMP) continue;
       say(`      ${r.w ? r.w + '셀' : '전체제거'}: 통로 ${r.n}셀 중 완전덮임 ${r.full} · 완전노출 ${r.none}`
         + ` · 셀별 ${r.per.map(v => v.toFixed(0)).join(',')}`);
       say(`         └ 다이아 2px 안쪽으로 재면: 평균 ${r.covIn.toFixed(1)}% · 셀별 ${r.perIn.map(v => v.toFixed(0)).join(',')}`);
