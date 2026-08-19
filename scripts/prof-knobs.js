@@ -32,22 +32,50 @@ const M=`(ms)=>new Promise(res=>{const t=[];let last=performance.now();const t0=
   for(const sel of ['#startBtn','button:has-text("시작")','button:has-text("입장")','text=게스트']){try{const b=await pg.$(sel);if(b){await b.click();break;}}catch(e){}}
   await sleep(18000);
   console.log('__mtDbg =', JSON.stringify(await pg.evaluate(()=>window.__mtDbg)));
-  // ★한 번씩 재면 못 믿는다 — 이 장면의 잡음 바닥이 ±12ms 로 컸다(음수 '절감'이 −12.2 까지 나왔다).
-  //   그래서 **한 손잡이를 켬/끔으로 번갈아 여러 번** 재서 짝지어 비교한다(단일 변인 + 반복).
-  const K = process.env.KNOB || 'windOff', REP = +(process.env.REP || 5);
-  const onA = [], offA = [];
-  for (let r = 0; r < REP; r++) {
-    await pg.evaluate((kk)=>{ window.__terrain19[kk] = false; }, K); await sleep(1200);
-    onA.push((await pg.evaluate(`(${M})(2500)`)).med);
-    await pg.evaluate((kk)=>{ window.__terrain19[kk] = true; }, K); await sleep(1200);
-    offA.push((await pg.evaluate(`(${M})(2500)`)).med);
-  }
+  const REP = +(process.env.REP || 3);
   const avg=(z)=>z.reduce((x,y)=>x+y,0)/z.length;
   const sd=(z)=>{const m=avg(z);return Math.sqrt(z.reduce((x,y)=>x+(y-m)*(y-m),0)/z.length);};
-  console.log(`\n손잡이 ${K} — ${REP}회 교차 측정 (med, ms)`);
-  console.log(`  켬 : ${onA.map(v=>v.toFixed(1)).join(', ')}   평균 ${avg(onA).toFixed(1)} ±${sd(onA).toFixed(1)}`);
-  console.log(`  끔 : ${offA.map(v=>v.toFixed(1)).join(', ')}   평균 ${avg(offA).toFixed(1)} ±${sd(offA).toFixed(1)}`);
-  const d = avg(onA)-avg(offA), pooled = Math.sqrt((sd(onA)**2+sd(offA)**2)/REP);
-  console.log(`  ★차이 ${d.toFixed(1)}ms (표준오차 ${pooled.toFixed(1)}) → ${Math.abs(d) > 2*pooled ? '유의하다' : '잡음과 구분 안 된다'}`);
+  const pair = async (label, on1, off1, rep) => {
+    const R = rep || REP, on=[],off=[];
+    for (let r=0;r<R;r++){
+      await pg.evaluate(on1); await sleep(1000); on.push((await pg.evaluate(`(${M})(2000)`)).med);
+      await pg.evaluate(off1); await sleep(1000); off.push((await pg.evaluate(`(${M})(2000)`)).med);
+    }
+    const d=avg(on)-avg(off), se=Math.sqrt((sd(on)**2+sd(off)**2)/R);
+    console.log(`${label.padEnd(24)} 켬 ${avg(on).toFixed(1)}  끔 ${avg(off).toFixed(1)}  ★${d.toFixed(1)}ms (SE ${se.toFixed(1)}) ${Math.abs(d)>2*se?'유의':'잡음'}`);
+    return {d,se};
+  };
+  if (!process.env.ONLYKNOBS) {
+  // ── 그림 짝 (item 5): 정수 어긋남이 화법을 바꿨나 ─────────────────────────
+  await pg.evaluate(()=>{window.__terrain19.windGrassOff=false;window.__terrain19.windForce=1;window.__terrain19.freezeT=0.30;});
+  await sleep(1800);
+  await pg.evaluate(()=>window.__gtFrac(true));  await sleep(1200); await pg.screenshot({path:'/tmp/sway_frac.png'});
+  await pg.evaluate(()=>window.__gtFrac(false)); await sleep(1200); await pg.screenshot({path:'/tmp/sway_int.png'});
+  await pg.evaluate(()=>{window.__terrain19.freezeT=null;window.__terrain19.windForce=null;});
+  console.log('그림 짝 저장: /tmp/sway_frac.png · /tmp/sway_int.png');
+
+  // ── item 1 판정: 흔들림 비용 ────────────────────────────────────────────
+  console.log('\n[흔들림]');
+  await pair('정수 어긋남(채택)', ()=>{window.__gtFrac(false);window.__terrain19.windForce=1;},
+                                  ()=>{window.__gtFrac(false);window.__terrain19.windForce=0;}, 5);
+  await pair('소수 어긋남(옛판)', ()=>{window.__gtFrac(true);window.__terrain19.windForce=1;},
+                                  ()=>{window.__gtFrac(true);window.__terrain19.windForce=0;}, 5);
+  await pg.evaluate(()=>{window.__gtFrac(false);window.__terrain19.windForce=null;});
+
+  }
+  // ── item 3: 남은 바닥값 분해 ────────────────────────────────────────────
+  console.log('\n[남은 바닥값 — 손잡이별 짝 비교]');
+  const KN = ['mtOff','natOff','waterOff','propOff','prismOff','fringeOff','stateOff','shoreOff','wxOff','decoOff'];
+  const tab = [];
+  for (const k of KN) {
+    // ★함수를 넘기면 클로저 변수(k)가 페이지로 안 간다 — 문자열로 평가한다(실제로 여기서 터졌다).
+    const r = await pair(k, `window.__terrain19.${k}=false`, `window.__terrain19.${k}=true`, 3);
+    tab.push({k, d:r.d, se:r.se});
+    await pg.evaluate(`window.__terrain19.${k}=false`); await sleep(600);
+  }
+  tab.sort((x,y)=>y.d-x.d);
+  console.log('\n★비용 큰 순: ' + tab.map(t=>`${t.k} ${t.d.toFixed(1)}±${t.se.toFixed(1)}`).join(' · '));
+  const base = await pg.evaluate(`(${M})(3000)`);
+  console.log(`전부 켠 기준선 med ${base.med} p95 ${base.p95} (60fps=16.7ms)`);
   await br.close();for(const p of procs){try{p.kill();}catch(e){}}process.exit(0);
 })().catch(e=>{console.error(e);for(const p of procs){try{p.kill();}catch(_){}}process.exit(1);});

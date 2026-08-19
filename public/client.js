@@ -433,7 +433,11 @@ const SIM_JOB_EMOJI = {
   const GT_MASK_W = 1024, GT_MASK_H = 512;   // 맨땅 뙈기 마스크 주기(텍스처보다 크게 — 반복 티 감소)
   const GT_MAX = 140;                  // 타일 캐시 상한(≈70MB) — 넘으면 카메라에서 먼 것부터 버린다
   const GT_MAX_WIND = 80;              // ★잎 층까지 들면 타일당 메모리가 2배다 — 상한을 낮춘다(화면은 ~30장)
-  const GT_STRIP = 16;                 // 잎 띠 높이(px) — 실측: 32px +0.27ms · 16px +0.53 · 8px +1.03
+  // ★[2026-08-09 실측 정정] 옛 주석의 "32px +0.27ms · 16px +0.53 · 8px +1.03" 은 **틀렸다**.
+  //   실클라 짝 비교(켬/끔 5회 교대)로 재니 풀 카펫 흔들림 하나가 **16.3ms/f** 다 — 29배 차이.
+  //   옛 수치는 격리·첫 blit 측정으로 보인다. 아래 값들은 전부 짝 비교로 다시 잰다.
+  let _gtFrac = false;                 // true = 옛 소수 목적지(A/B 대조군)
+  let GT_STRIP = 16;                   // 잎 띠 높이(px) — 시험 손잡이 __gtStrip 으로 바꿀 수 있다
   const GT_GRASS_AMP = 2.2;            // 카펫이 눕는 최대 폭(px). 잎이 6~10px 이라 이 이상은 '미끄러짐'으로 보인다
   const GT_WAVE_K = 0.017;             // 파수(1/px) — 파장 ≈ 370px ≈ 11셀. 들판을 훑는 결
   const GT_WAVE_W = 1.15;              // 각속도(rad/s, 게임 시계)
@@ -452,7 +456,8 @@ const SIM_JOB_EMOJI = {
   //   1패스에서 나는 **흩뿌린 포기 스프라이트**만 흔들고, 지면에 깔린 풀 카펫은
   //   "재베이크가 필요해 비싸다"며 회부했다. 그게 바로 요청 대상이었다. 미룰 일이 아니었다.
   //
-  //   ★구조가 걸림돌인 건 맞다 — 지면은 512×256 타일로 **한 번 구워 blit** 한다(0.04ms/f).
+  //   ★구조가 걸림돌인 건 맞다 — 지면은 512×256 타일로 **한 번 구워 blit** 한다.
+  //     (옛 주석의 "0.04ms/f" 는 격리 측정이다. 짝 비교로는 지면 계열 손잡이가 전부 잡음 수준이었다.)
   //     구워진 그림은 못 움직인다. 그래서 **굽는 걸 둘로 쪼갠다**:
   //
   //       바탕(cv)  = 지금 굽던 그대로. 단 ① 단계의 풀 텍스처를 **평탄한 한 색**으로 깐다.
@@ -467,8 +472,12 @@ const SIM_JOB_EMOJI = {
   //   ★T 는 추정하지 않는다 — 굽는 그 자리에서 **같은 알파로 같은 도형을 지우며** 만든다
   //     (`destination-out` + globalAlpha = ×(1−α)). 뙈기·물·바위·틴트·상태 레이어 전부.
   //   ★비용 실측(headless, 타일 30장 = 화면 가득):
-  //       지금(타일 1blit) 0.038ms/f · 띠 32px(240blit) 0.307 · **띠 16px(480blit) 0.566**
-  //     ⇒ 16px 띠 채택, 순수 추가 **+0.53ms/f**. 60fps 예산 16.7ms 안에서 싸다.
+  //   ★★[2026-08-09 실측 정정] 위 "0.038 / 0.307 / 0.566ms/f" 는 **전부 틀렸다.**
+  //     실클라 짝 비교(windForce 1↔0, 굽기 경로 고정, 5회 교대):
+  //         소수 어긋남(옛판) **15.2ms/f**  ·  정수 어긋남(채택) **4.6ms/f**
+  //     띠 높이는 무관했다(16/32/64px → 13.0/16.1/17.6ms, 전부 잡음 안).
+  //     ⇒ 범인은 띠 개수도 픽셀 수도 아니라 **소수 목적지의 이중선형 재샘플링**이었다.
+  //       옛 수치는 격리·첫 blit 측정으로 보인다. 이 파일의 ms/f 주석은 그렇게 못 믿는다.
   //   ★`windOff` 면 ① 단계가 **종전대로 선명한 텍스처**를 깐다 = 픽셀 단위로 옛 그림(대조군).
   let _grassFlat = null, _grassBlade = null;
   function _grassSplit() {
@@ -2753,7 +2762,8 @@ const SIM_JOB_EMOJI = {
   //   ★돌풍은 **진행하는 파**다. 위상에 `바람방향·자리` 를 빼서 들판을 물결처럼 훑고 지나가게 한다.
   //     전부 같은 위상으로 흔들면 '풀이 아니라 화면이 흔들리는' 그림이 된다.
   //   ★변형은 **전단(shear)**: 밑동 고정, 꼭대기만 민다. 회전이 아니다 — 회전은 밑동이 땅에서 뜬다.
-  //   ★비용 실측(배치 21 8차): 자연물 패스 0.317ms/f(755장). 전단은 `setTransform` 1회 +
+  //   ★비용(배치 21 8차 격리 측정): 자연물 패스 0.317ms/f(755장). ※짝 비교로는 natOff 가
+  //     1.1±0.9ms — 잡음과 구분 안 된다. 격리 수치는 참고만 하라. 전단은 `setTransform` 1회 +
   //     `drawImage` 1회로 끝난다(캐시는 **자리**를 담지 픽셀을 안 담으므로 무효화 없음).
   //   ※지면 풀 **텍스처**는 안 흔든다 — 매 프레임 재베이크나 WebGL 이관이 필요해 비싸다(회부).
   //   ※나무는 안 흔든다 — 서버 엔티티라 그리는 자리가 다르고(안개 게이트 경유), 줄기는 원래 안 흔들린다.
@@ -2843,6 +2853,9 @@ const SIM_JOB_EMOJI = {
                  fogGateOff: false,
                  shoreOff: true,
                  shMarginOff: false, shMargin: 1, windOff: false, windForce: null, windGrassOff: false };
+  // 시험 전용 — 띠 높이를 바꿔 "비용이 blit 횟수에 비례하나 픽셀 수에 비례하나"를 가른다.
+  window.__gtStrip = (v) => { GT_STRIP = Math.max(4, v | 0); _groundTiles.clear(); needsRedraw = true; return GT_STRIP; };
+  window.__gtFrac = (v) => { _gtFrac = !!v; needsRedraw = true; return _gtFrac; };
   window.__terrain19 = _t19;
 
   // 지형 차단 통합 (물+바위) — 이동 예측용
@@ -6150,23 +6163,39 @@ const SIM_JOB_EMOJI = {
         ctx.drawImage(ent.cv, _dx, _dy);
         // ★★풀 카펫 흔들림 — 잎 층을 **가로 띠**로 어긋나게 가산 blit 한다.
         //   · 위상은 **iso 세로 좌표**(월드)로 준다 — 화면에 붙으면 카메라를 움직일 때 파도 따라온다.
-        //   · 띠 16px = 타일당 16장. 실측 +0.53ms/f(타일 30장 기준).
+        //   · 띠 16px = 타일당 16장. 실측(짝 비교) **+4.6ms/f** — 옛 주석 +0.53 은 틀렸다.
         //   · 'lighter' = 가산. 바탕이 (텍스처−평탄색)만큼 어둡게 구워져 있어 합이 원본과 같다.
         if (ent.bl && _gw > 0) {
+          // ★★[렉 라운드 2026-08-09] 흔들림 비용은 **픽셀(필레이트)** 에 비례한다 —
+          //   띠 높이를 16/32/64px 로 바꿔도 18.6/16.2/17.6ms 로 잡음 안이었다(짝 비교 실측).
+          //   ⇒ 띠 개수를 줄이는 안(ⓐ)은 0ms 다. 줄일 건 **그리는 픽셀**뿐이다.
+          //   ⇒ 화면 밖은 잘라 낸다: 타일 격자(512×256)가 캔버스를 넘어 최대 2048×1280 을
+          //     그리고 1400×900 만 쓴다 — **52% 가 화면 밖**이었다.
           ctx.globalCompositeOperation = 'lighter';
           for (let sY = 0; sY < GT_H; sY += GT_STRIP) {
             const sh = Math.min(GT_STRIP, GT_H - sY);
             const isoY = ty * GT_H + sY;
             const ph = isoY * GT_WAVE_K + _gwT;
-            const off = Math.sin(ph) * _gw;
+            // ★[렉 라운드 실측] 목적지가 **소수**면 캔버스가 이중선형 재샘플링을 탄다.
+            //   띠 개수·픽셀 수를 바꿔도 비용이 안 변한 이유가 이것이다. 진폭이 ±2.2px 라
+            //   정수로 반올림해도 파도는 그대로 읽힌다. (손잡이 __gtFrac 로 A/B 가능)
+            const off = _gtFrac ? (Math.sin(ph) * _gw) : Math.round(Math.sin(ph) * _gw);
+            // 화면 사각형으로 잘라 낸다(그림은 안 변한다 — 잘린 건 원래 안 보이던 픽셀이다)
+            const dX = _dx + off, dY = _dy + sY;
+            let sx = 0, sw = GT_W, sy = sY, sHh = sh, ddx = dX, ddy = dY;
+            if (dX < 0) { sx = -dX; sw -= sx; ddx = 0; }
+            if (dX + GT_W > W) sw -= (dX + GT_W - W);
+            if (dY < 0) { const c = -dY; sy += c; sHh -= c; ddy = 0; }
+            if (dY + sh > H) sHh -= (dY + sh - H);
+            if (sw <= 0 || sHh <= 0) continue;                  // 완전히 화면 밖인 띠
             // ★밀림만으로는 '미끄러진다'로 읽힌다 — 실제 밀밭은 돌풍이 지나갈 때 **빛도 함께 훑는다**.
             //   가산 층이라 alpha 를 흔들면 그게 그대로 명암 물결이 된다(비용 0).
             ctx.globalAlpha = 0.90 + 0.10 * Math.sin(ph * 1.0 + 1.1);
-            ctx.drawImage(ent.bl, 0, sY, GT_W, sh, _dx + off, _dy + sY, GT_W, sh);
+            ctx.drawImage(ent.bl, sx, sy, sw, sHh, ddx, ddy, sw, sHh);
+            nStrip++;
           }
           ctx.globalAlpha = 1;
           ctx.globalCompositeOperation = 'source-over';
-          nStrip += (GT_H / GT_STRIP) | 0;
         } else if (ent.bl) {
           ctx.globalCompositeOperation = 'lighter';
           ctx.drawImage(ent.bl, _dx, _dy);        // 무풍 — 어긋남 0. 그림은 옛것과 같아야 한다
