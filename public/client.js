@@ -2170,9 +2170,13 @@ const SIM_JOB_EMOJI = {
   // ═══════════════════════════════════════════════════════════════════════════
   let MT3_GL = 1;                      // 산 표면을 GPU 로 그린다(0 이면 옛 캔버스 폴리곤 판)
   const MT3_HTEX = 64;                 // 높이 텍스처 한 변(청크 N = CH+2·PAD = 40 이하로 맞춘다)
-  const MT3_GSUB = 6;                  // 메쉬 세분(실루엣 전용 — 음영은 프래그먼트라 여기와 무관)
+  let MT3_GSUB = 6;                    // 메쉬 세분. 음영은 프래그먼트라 여기와 무관하지만,
+                                       //   조각 안에서 vC 를 **선형 보간**하므로 곡률이 큰 곳에
+                                       //   조각 주기의 미세한 꺾임이 남는다(진폭 ∝ 1/GSUB²).
   const MT3_TW = 512, MT3_TH = 256;    // terrain 텍스처 한 장이 덮는 화면 크기(8×8셀 다이아)
   const MT3_ROCKS = 0.35;              // 바위 결 배율(캔버스 판의 setTransform(0.35) 과 같은 값)
+  const MT3_OV = 0.008;                // 띠 겹침(셀). 가로 0.5px·세로 0.26px — 실루엣 부풀림은 무시할 수준
+  let MT3_CV0 = 128;                   // GL 캔버스 초깃값. 띠가 크면 128 배수로 자란다
   const _mgl = { cv: null, gl: null, pr: null, ok: null, uni: {}, hTex: null, rTex: null, gTex: null,
                  vbo: null, buf: null, hKey: '', lp: -1, lc: -1 };
   const MT3_VS = [
@@ -2214,7 +2218,11 @@ const SIM_JOB_EMOJI = {
     '  }',
     '}',
     // ── 잔 결: **32px(=1셀) 과 무관한 주기**로. 셀 격자에 안 붙는다. ──
-    'float hash21(vec2 q){ return fract(sin(dot(q,vec2(127.1,311.7)))*43758.5453); }',
+    // ★sin 해시를 안 쓴다. 프래그먼트마다 잔결·매크로로 vn2 를 여러 번 부르니 sin 이 4배씩
+    //   붙는다(소프트웨어 래스터라이저에서 특히 비싸다). 게다가 월드 좌표가 커지면
+    //   sin 의 인자가 수십만이 되어 정밀도가 무너진다. 곱셈·fract 만 쓰는 해시로 바꾼다.
+    'float hash21(vec2 q){ vec3 p3 = fract(vec3(q.xyx)*0.1031); p3 += dot(p3, p3.yzx+33.33);',
+    '  return fract((p3.x+p3.y)*p3.z); }',
     'float vn2(vec2 q){ vec2 i=floor(q), f=fract(q); f=f*f*(3.0-2.0*f);',
     '  return mix(mix(hash21(i),hash21(i+vec2(1.0,0.0)),f.x),mix(hash21(i+vec2(0.0,1.0)),hash21(i+vec2(1.0,1.0)),f.x),f.y); }',
     'void main(){',
@@ -2222,11 +2230,13 @@ const SIM_JOB_EMOJI = {
     '  hAll(vC, h, g, mean);',
     '  vec2 w = uOrig + vC;',                 // 절대 셀 좌표 — 청크가 바뀌어도 이어진다
     // 잔 결의 기울기를 법선에 얹는다(높이 자체는 안 흔든다 — 실루엣은 꼭짓점이 정한다)
+    // 중앙차분(2회/축)이 아니라 **전방차분**(중앙 1 + 축당 1)으로 척도당 3회만 부른다.
+    //   잔결의 기울기는 장식이라 한쪽으로 반 칸 치우쳐도 눈에 안 띈다 — 호출 8회 → 6회.
     '  float e = 0.31;',
-    '  g.x += (vn2(w/2.7+vec2(e,0.0))-vn2(w/2.7-vec2(e,0.0)))*0.60',
-    '       + (vn2(w/1.13+vec2(e,0.0))-vn2(w/1.13-vec2(e,0.0)))*0.30;',
-    '  g.y += (vn2(w/2.7+vec2(0.0,e))-vn2(w/2.7-vec2(0.0,e)))*0.60',
-    '       + (vn2(w/1.13+vec2(0.0,e))-vn2(w/1.13-vec2(0.0,e)))*0.30;',
+    '  float aC = vn2(w/2.7), aX = vn2(w/2.7+vec2(e,0.0)), aY = vn2(w/2.7+vec2(0.0,e));',
+    '  float bC = vn2(w/1.13), bX = vn2(w/1.13+vec2(e,0.0)), bY = vn2(w/1.13+vec2(0.0,e));',
+    '  g.x += (aX-aC)*1.20 + (bX-bC)*0.60;',
+    '  g.y += (aY-aC)*1.20 + (bY-bC)*0.60;',
     '  vec3 nrm = normalize(vec3(-g.x, -g.y, 1.0));',
     '  float lamD = dot(nrm, uL);',
     '  float lam = max(0.14, lamD) + max(0.0, -lamD)*0.20;',
@@ -2259,7 +2269,10 @@ const SIM_JOB_EMOJI = {
     if (_mgl.ok !== null) return _mgl.ok;
     try {
       if (typeof document === 'undefined') throw new Error('document 없음');
-      const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 1024;
+      // ★캔버스는 **작게 시작해 필요한 만큼만 키운다.** 2D 로 넘길 때(drawImage) 구현에 따라
+      //   원본 **표면 전체**를 스냅샷하므로, 띠 하나(≈600×400)를 그리려고 1024×1024 를 들고 있으면
+      //   띠마다 그 차액을 그대로 복사한다. 띠는 261개다 — 낭비가 261배로 곱해진다.
+      const cv = document.createElement('canvas'); cv.width = cv.height = MT3_CV0;
       // ★★antialias 는 **꺼야 한다.** 띠 하나 = 반대각선 하나라 한 띠 안의 셀들은 서로 안 닿고,
       //   **모든 셀 변이 띠 경계**다. MSAA 를 켜면 그 변마다 알파가 0.5 로 깎여, 두 띠를
       //   source-over 로 겹쳐도 1 이 안 된다(0.5 + 0.5·0.5 = 0.75) → 셀 격자 그대로 **어두운 그물**.
@@ -2331,9 +2344,16 @@ const SIM_JOB_EMOJI = {
     const gl = _mgl.gl;
     if (bw > _mgl.cv.width || bh > _mgl.cv.height) {
       if (bw > 4096 || bh > 4096) return false;
-      _mgl.cv.width = Math.max(_mgl.cv.width, bw); _mgl.cv.height = Math.max(_mgl.cv.height, bh);
+      // 128 배수로 올림해 **서로 다른 크기 수를 줄인다**(리사이즈는 GL 표면 재생성이라 비싸다).
+      const q = (v) => Math.min(4096, Math.ceil(v / 128) * 128);
+      _mgl.cv.width = Math.max(_mgl.cv.width, q(bw)); _mgl.cv.height = Math.max(_mgl.cv.height, q(bh));
     }
-    const sub = MT3_GSUB, S = sub + 1;
+    // ★★띠 경계의 **점선 틈**을 없앤다. 스냅(1/64px)까지 해도 뷰포트 변환이 float32 라
+    //   공유 변이 ~1e-4px 어긋나고, 그 확률로 어느 띠에도 안 잡히는 픽셀이 산발한다(실측: 점선).
+    //   ⇒ 셀의 매개변수 영역을 바깥으로 MT3_OV 셀만큼 **넓혀 겹친다**.
+    //   겹쳐도 안 보이는 이유가 이 판의 핵심이다: **프래그먼트 색이 월드 좌표만의 함수**라
+    //   겹친 자리를 두 띠가 **같은 색**으로 칠한다(옛 캔버스 판은 조각마다 색이 달라 그물이 됐다).
+    const sub = MT3_GSUB, S = sub + 1, OV = MT3_OV, SP = (1 + 2 * OV) / sub;
     const need = cells.length * sub * sub * 6 * 4;
     if (!_mgl.buf || _mgl.buf.length < need) _mgl.buf = new Float32Array(Math.max(need, 4096));
     const V = _mgl.buf; let n = 0;
@@ -2341,7 +2361,7 @@ const SIM_JOB_EMOJI = {
     for (const cell of cells) {
       const i = cell[0], j = cell[1];
       for (let b = 0; b < S; b++) for (let a = 0; a < S; a++) {
-        const ci = i + a / sub, cj = j + b / sub;
+        const ci = i - OV + a * SP, cj = j - OV + b * SP;
         const wxp = (F.i0 + ci) * 32, wyp = (F.j0 + cj) * 32;
         // ★절대 화면 좌표를 **1/64px 격자에 스냅**한 뒤 띠 원점을 뺀다.
         //   x0·y0 은 정수라 뺄셈이 정확하고, float32 로 내려도 이웃 띠가 **같은 변**을 얻는다.
@@ -2351,7 +2371,8 @@ const SIM_JOB_EMOJI = {
       }
       for (let b = 0; b < sub; b++) for (let a = 0; a < sub; a++) {
         const k00 = b * S + a, k10 = k00 + 1, k01 = k00 + S, k11 = k01 + 1;
-        const u0 = i + a / sub, u1 = i + (a + 1) / sub, v0 = j + b / sub, v1 = j + (b + 1) / sub;
+        const u0 = i - OV + a * SP, u1 = i - OV + (a + 1) * SP,
+              v0 = j - OV + b * SP, v1 = j - OV + (b + 1) * SP;
         const put = (kk, cu, cv2) => { V[n] = px[kk]; V[n + 1] = py[kk]; V[n + 2] = cu; V[n + 3] = cv2; n += 4; };
         put(k00, u0, v0); put(k10, u1, v0); put(k11, u1, v1);
         put(k00, u0, v0); put(k11, u1, v1); put(k01, u0, v1);
@@ -2379,6 +2400,12 @@ const SIM_JOB_EMOJI = {
   // 시험 손잡이 — 짝 비교 프로파일러/스크린샷이 GPU 판과 캔버스 판을 같은 자리에서 갈아 끼운다
   window.__mt3gl = (v) => { MT3_GL = v ? 1 : 0; _mt3Chunk.clear(); _mt3Sig = ''; return MT3_GL; };
   window.__mt3tent = (v) => { MT3_TENT = v | 0; _mt3Chunk.clear(); _mt3Sig = ''; return MT3_TENT; };
+  window.__mt3sub  = (v) => { MT3_GSUB = Math.max(1, v | 0); _mt3Chunk.clear(); _mt3Sig = ''; return MT3_GSUB; };
+  // 시험 손잡이 — GL 캔버스를 강제로 n×n 으로 잡는다. "굽기 비용이 캔버스 넓이에 비례하나"의 대조군.
+  // 지금 GL 캔버스 실제 크기 — 계측기가 명목값 대신 이걸로 넓이를 잡는다
+  window.__mt3glcv = () => (_mgl.cv ? [_mgl.cv.width, _mgl.cv.height] : [0, 0]);
+  window.__mt3cv = (n) => { MT3_CV0 = n | 0; if (_mgl.cv) { _mgl.cv.width = _mgl.cv.height = MT3_CV0; }
+    _mt3Chunk.clear(); _mt3Sig = ''; return MT3_CV0; };
   // ── 청크 하나를 **반대각선 띠**로 구워 세그먼트 배열로 ────────────────────
   function _mt3Bake(zid, gx, gy) {
     const key = zid + '_' + gx + '_' + gy;

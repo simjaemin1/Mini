@@ -34,11 +34,20 @@ require(path.join(ROOT,'server','zone.js'));`);
   await sleep(3000);
   const cam=await pg.evaluate(()=>window.__mtDbg||null);
   console.log('__mtDbg =',JSON.stringify(cam));
-  for(const [tag,v] of [['A_현행_캔버스',0],['B_새판_webgl',1]]){
-    const r=await pg.evaluate((vv)=>window.__mt3gl(vv), v);
+  // SHOTS 로 어떤 판들을 찍을지 정한다. 기본은 현행/새판 한 쌍.
+  //   gsub:N 을 주면 세분만 바꿔 찍는다 — 조각 주기 봉우리가 세분을 따라가는지 보는 대조군.
+  const SHOTS = (process.env.SHOTS||'A_현행_캔버스:gl0,B_새판_webgl:gl1').split(',');
+  for(const spec of SHOTS){
+    const [tag,how]=spec.split(':');
+    if(how==='gl0') await pg.evaluate(()=>window.__mt3gl(0));
+    else { await pg.evaluate(()=>window.__mt3gl(1));
+           const m=/^gsub(\d+)$/.exec(how);
+           if(m) await pg.evaluate((n)=>window.__mt3sub(n), +m[1]);
+           const t=/^tent(\d+)$/.exec(how);
+           if(t) await pg.evaluate((n)=>window.__mt3tent(n), +t[1]); }
     await sleep(6000);                        // 예산 1청크/프레임 — 뷰 전체 다시 굽는 데 충분히
     await pg.screenshot({path:path.join(OUT,tag+'.png')});
-    console.log(tag,'knob=',r);
+    console.log(tag, how);
   }
   console.log('--- 콘솔 ---'); for(const l of [...new Set(logs)]) console.log(' ',l);
   console.log('저장:',OUT);
