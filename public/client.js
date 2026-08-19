@@ -2037,6 +2037,7 @@ const SIM_JOB_EMOJI = {
   const MT3_HMAX = 9, MT3_LAM = 10;    // 완만형 — 재민 채택
   //   ★세분은 **상수**여야 한다 — 이웃 셀과 다르면 공유 변에 T-접합이 생겨 틈이 벌어진다.
   const MT3_SUB = 6;                   // 셀당 6×6 조각 (한 조각 ≈ 10px)
+  let MT3_TENT = 2;                    // 보간 전 높이장 3×3 텐트 횟수(등고선 계단)
   const MT3_VIEW = 1050;               // ★3D 전용 수집 반경. 화면 22셀 + 산 높이(288px) 여유
   const MT3_BUDGET = 1;                // ★프레임당 새로 굽는 청크 수. 지면 타일(5)보다 훨씬 무겁다
   const MT3_L = [-0.452, -0.6455, 0.6157];       // 태양 52°/−35°
@@ -2113,16 +2114,271 @@ const SIM_JOB_EMOJI = {
       }
       hg[j * N + i] = t2[j * N + i] * (1 - SMB) + (sum / w) * SMB;
     }
+    // ★★[타 세션 판정 2026-08-09 "셋째, 능선 쪽의 등고선식 계단"] — 원인은 거리장이다.
+    //   h = HMAX(1−e^(−dE/LAM)) 에서 dE 는 챔퍼 변환의 **이산 값**(1, 1.414, 2, …)이라
+    //   같은 dE 를 가진 셀들이 통째로 **같은 높이**가 된다 — 그게 등고선 문턱이다.
+    //   위의 무작위 결을 얹어도 계단은 남는다(결은 dE 에 **곱해졌을** 뿐이다).
+    //   ⇒ 보간 전에 3×3 텐트를 먹인다. 단, 산자락이 깎이면 안 되므로 바위가 아닌 이웃은
+    //     **중앙값으로 대체**(replicate)한다 — 실루엣은 그대로 두고 계단만 지운다.
+    const TENT = [1, 2, 1];
+    for (let pass = 0; pass < MT3_TENT; pass++) {
+      const src = Float32Array.from(hg);
+      for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+        if (!rock[j * N + i]) continue;
+        const c0 = src[j * N + i];
+        let sum = 0, w = 0;
+        for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) {
+          const ii = i + a, jj = j + b, wt = TENT[a + 1] * TENT[b + 1];
+          const ok = ii >= 0 && jj >= 0 && ii < N && jj < N && rock[jj * N + ii];
+          sum += (ok ? src[jj * N + ii] : c0) * wt; w += wt;
+        }
+        hg[j * N + i] = sum / w;
+      }
+    }
     const hAt = (i, j) => (i < 0 || j < 0 || i >= N || j >= N) ? 0 : hg[j * N + i];
     const cor = (i, j) => (hAt(i - 1, j - 1) + hAt(i, j - 1) + hAt(i - 1, j) + hAt(i, j)) / 4;
-    // ★같은 이유로 여기도 smoothstep — 부드러운 법선까지 셀 격자에서 꺾이면 소용이 없다.
-    const corS = (x, y) => { const xi = Math.floor(x), yi = Math.floor(y);
-      const a = x - xi, b = y - yi, fx = a * a * (3 - 2 * a), fy = b * b * (3 - 2 * b);
-      return (cor(xi, yi) * (1 - fx) + cor(xi + 1, yi) * fx) * (1 - fy)
-           + (cor(xi, yi + 1) * (1 - fx) + cor(xi + 1, yi + 1) * fx) * fy; };
+    // ★★[타 세션 판정] **smoothstep 은 걷어냈다.** 경계에서 도함수를 0 으로 만드니 C1 은 됐지만
+    //   셀마다 기울기가 0→최대→0 으로 오르내려 **베개(누비이불) 무늬**가 생겼다(판정 둘째 층).
+    //   ⇒ Catmull-Rom 바이큐빅(4×4 이웃). 값도 기울기도 이어지면서 셀 안에 강제 극점이 없다.
+    //   ★셰이더의 hAll() 과 **같은 식**이어야 실루엣(꼭짓점)과 음영(프래그먼트)이 안 엇갈린다.
+    const _cr1 = (a, b, c, d, t) => 0.5 * ((2 * b) + (-a + c) * t
+              + (2 * a - 5 * b + 4 * c - d) * t * t + (-a + 3 * b - 3 * c + d) * t * t * t);
+    const corS = (x, y) => {
+      const fx = Math.floor(x), fy = Math.floor(y), tx = x - fx, ty = y - fy;
+      const r = [0, 0, 0, 0];
+      for (let m = 0; m < 4; m++) { const yy = fy + m - 1;
+        r[m] = _cr1(cor(fx - 1, yy), cor(fx, yy), cor(fx + 1, yy), cor(fx + 2, yy), tx); }
+      return _cr1(r[0], r[1], r[2], r[3], ty);
+    };
     return { N, i0, j0, rock, hAt, cor, corS,
              isRock: (i, j) => i >= 0 && j >= 0 && i < N && j < N && !!rock[j * N + i] };
   }
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ★★★ 산 표면을 **WebGL 높이장 메쉬**로 [타 세션 판정 2026-08-09]
+  //
+  //   판정 그대로다: 캔버스 2D 폴리곤 수천 개로 곡면을 그리는 한
+  //     ⓐ 조각 이음새의 AA 틈(밝은 철망), ⓑ 셀 정렬 세분/보간이 만드는 누비이불 띠,
+  //     ⓒ 셀별 법선 계단 — 셋 다 안 사라진다. 부풀리기·smoothstep·세분 고정은 증상 완화였다.
+  //   ⇒ GPU 로 옮긴다. 꼭짓점을 공유하는 삼각형으로 한 번에 래스터화하면 이음새가 없고,
+  //     법선을 **프래그먼트에서** 높이장 바이큐빅으로 뽑으면 셀 정렬 음영이 사라진다.
+  //
+  //   ★물 컨텍스트를 **재사용하지 않았다.** 물은 매 프레임 화면 크기 전면 패스이고
+  //     산은 띠마다 작은 패스라, 한 캔버스를 공유하면 프레임마다 리사이즈가 붙는다
+  //     (캔버스 재할당은 비싸다). 컨텍스트 2개는 한도(≈16) 안이다.
+  //   ★띠(mtseg) 구조는 그대로 둔다 — 안개 게이트·z 정렬·개체 가림 계약이 거기 걸려 있다.
+  //     띠 경계는 월드 셀 경계와 같아 양쪽 삼각형이 정확히 맞물린다.
+  // ═══════════════════════════════════════════════════════════════════════════
+  let MT3_GL = 1;                      // 산 표면을 GPU 로 그린다(0 이면 옛 캔버스 폴리곤 판)
+  const MT3_HTEX = 64;                 // 높이 텍스처 한 변(청크 N = CH+2·PAD = 40 이하로 맞춘다)
+  const MT3_GSUB = 6;                  // 메쉬 세분(실루엣 전용 — 음영은 프래그먼트라 여기와 무관)
+  const MT3_TW = 512, MT3_TH = 256;    // terrain 텍스처 한 장이 덮는 화면 크기(8×8셀 다이아)
+  const MT3_ROCKS = 0.35;              // 바위 결 배율(캔버스 판의 setTransform(0.35) 과 같은 값)
+  const _mgl = { cv: null, gl: null, pr: null, ok: null, uni: {}, hTex: null, rTex: null, gTex: null,
+                 vbo: null, buf: null, hKey: '', lp: -1, lc: -1 };
+  const MT3_VS = [
+    'attribute vec2 p; attribute vec2 c;',
+    'uniform vec2 uRes; varying vec2 vC;',
+    // p 는 띠 캔버스 픽셀(왼쪽 위 원점). y 를 뒤집어 캔버스 좌표계로 맞춘다.
+    'void main(){ vC = c; vec2 n = (p / uRes) * 2.0 - 1.0; gl_Position = vec4(n.x, -n.y, 0.0, 1.0); }'
+  ].join('\n');
+  const MT3_FS = [
+    'precision highp float;',
+    'varying vec2 vC;',
+    'uniform sampler2D uH; uniform sampler2D uRock; uniform sampler2D uGrass;',
+    'uniform float uN; uniform float uHmax; uniform vec3 uL; uniform vec2 uOrig;',
+    'uniform vec2 uTex; uniform float uRockS;',
+    // ── 높이: 16비트(R=상위, G=하위)로 실어 NEAREST 로 텍셀을 직접 읽는다 ──
+    'float hT(vec2 c){ vec2 uv=(clamp(c,0.0,uN-1.0)+0.5)/uN; vec4 t=texture2D(uH,uv); return (t.r + t.g/255.0)*uHmax; }',
+    // ── Catmull-Rom 기저와 그 도함수 ──
+    //   smoothstep(옛 판)은 셀 경계에서 기울기를 **0 으로 강제**해 베개 무늬를 만들었다.
+    //   Catmull-Rom 은 값·기울기를 이어 붙이면서 셀 안에 강제 극점을 안 만든다.
+    'vec4 crW(float t){ float a=t*t, b=a*t;',
+    '  return 0.5*vec4(-t+2.0*a-b, 2.0-5.0*a+3.0*b, t+4.0*a-3.0*b, -a+b); }',
+    'vec4 crD(float t){ float a=t*t;',
+    '  return 0.5*vec4(-1.0+4.0*t-3.0*a, -10.0*t+9.0*a, 1.0+8.0*t-9.0*a, -2.0*t+3.0*a); }',
+    // ★4×4 이웃을 **한 번만** 읽어 h·∂h/∂x·∂h/∂y·평균을 동시에 뽑는다.
+    //   중앙차분으로 법선을 구하면 바이큐빅을 5번 = 텍스처 80번 읽어야 한다(띠마다 수천만 번).
+    //   해석 도함수는 16번으로 끝나고, 같은 곡면의 **정확한** 기울기라 근사 오차도 없다.
+    'void hAll(vec2 c, out float h, out vec2 g, out float mean){',
+    '  vec2 f = floor(c), t = c - f;',
+    '  vec4 wx = crW(t.x), dx = crD(t.x), wy = crW(t.y), dy = crD(t.y);',
+    '  h = 0.0; g = vec2(0.0); mean = 0.0;',
+    '  for(int m=0;m<4;m++){',
+    '    float y = f.y + float(m) - 1.0;',
+    '    vec4 s = vec4(hT(vec2(f.x-1.0,y)), hT(vec2(f.x,y)), hT(vec2(f.x+1.0,y)), hT(vec2(f.x+2.0,y)));',
+    '    float rv = dot(s,wx), rd = dot(s,dx);',
+    '    h    += rv * wy[m];',
+    '    g.x  += rd * wy[m];',
+    '    g.y  += rv * dy[m];',
+    '    mean += dot(s, vec4(0.0625));',
+    '  }',
+    '}',
+    // ── 잔 결: **32px(=1셀) 과 무관한 주기**로. 셀 격자에 안 붙는다. ──
+    'float hash21(vec2 q){ return fract(sin(dot(q,vec2(127.1,311.7)))*43758.5453); }',
+    'float vn2(vec2 q){ vec2 i=floor(q), f=fract(q); f=f*f*(3.0-2.0*f);',
+    '  return mix(mix(hash21(i),hash21(i+vec2(1.0,0.0)),f.x),mix(hash21(i+vec2(0.0,1.0)),hash21(i+vec2(1.0,1.0)),f.x),f.y); }',
+    'void main(){',
+    '  float h; vec2 g; float mean;',
+    '  hAll(vC, h, g, mean);',
+    '  vec2 w = uOrig + vC;',                 // 절대 셀 좌표 — 청크가 바뀌어도 이어진다
+    // 잔 결의 기울기를 법선에 얹는다(높이 자체는 안 흔든다 — 실루엣은 꼭짓점이 정한다)
+    '  float e = 0.31;',
+    '  g.x += (vn2(w/2.7+vec2(e,0.0))-vn2(w/2.7-vec2(e,0.0)))*0.60',
+    '       + (vn2(w/1.13+vec2(e,0.0))-vn2(w/1.13-vec2(e,0.0)))*0.30;',
+    '  g.y += (vn2(w/2.7+vec2(0.0,e))-vn2(w/2.7-vec2(0.0,e)))*0.60',
+    '       + (vn2(w/1.13+vec2(0.0,e))-vn2(w/1.13-vec2(0.0,e)))*0.30;',
+    '  vec3 nrm = normalize(vec3(-g.x, -g.y, 1.0));',
+    '  float lamD = dot(nrm, uL);',
+    '  float lam = max(0.14, lamD) + max(0.0, -lamD)*0.20;',
+    '  float k = (0.24 + 1.10*lam) / (0.24 + 1.10*0.6157);',
+    '  float steep = 1.0 - nrm.z;',
+    // ── 재질: 연속 램프. 이산 재질도, 조각 단위 blit 도 없다. ──
+    '  float macro = (vn2(w/21.0)-0.5)*1.5 + (vn2(w/8.5)-0.5)*0.7 + (vn2(w/3.1)-0.5)*0.35;',
+    '  float t = clamp((steep-0.10)/0.62,0.0,1.0)*0.68 + clamp((h/uHmax-0.10)/0.80,0.0,1.0)*0.32 + macro*0.20;',
+    '  t = clamp(t*clamp((h-0.2)/1.0,0.0,1.0),0.0,1.0);',
+    // ★질감 UV 는 **월드 앵커**다 — 카메라·조각·청크와 무관한 하나의 연속 함수.
+    //   *_angled 텍스처는 이미 아이소 각으로 구워져 있으니 월드 좌표를 같은 각으로 눕혀 읽는다.
+    //   (조각마다 pattern.setTransform 을 다시 걸던 옛 판이 32px 주기 누비이불의 한 축이었다.)
+    '  vec2 iso = vec2(w.x - w.y, (w.x + w.y)*0.5) * 32.0;',
+    '  vec3 gcol = texture2D(uGrass, iso/uTex).rgb;',
+    '  vec3 rcol = texture2D(uRock,  iso/(uTex*uRockS)).rgb;',
+    '  vec3 base = mix(gcol, rcol, smoothstep(0.06,0.16,t));',
+    '  vec3 tint = mix(vec3(0.298,0.408,0.204), vec3(0.494,0.510,0.470), smoothstep(0.30,1.0,t));',
+    '  float ta = mix(0.0,0.62,smoothstep(0.0,0.30,t)) * mix(1.0,0.26,smoothstep(0.30,1.0,t));',
+    '  vec3 col = mix(base, tint, ta);',
+    '  col *= k;',
+    // AO — hAll 이 이미 들고 있는 4×4 평균과의 차(오목하면 어둡다). 추가 표본 0.
+    '  float conc = mean - h;',
+    '  col *= 1.0 - clamp(conc*0.16, 0.0, 0.40);',
+    '  col *= 1.0 + clamp(-conc*0.10, 0.0, 0.16);',
+    '  col += vec3(0.73,0.78,0.85) * min(0.09, (h/uHmax)*0.09);',   // 대기 원근
+    '  gl_FragColor = vec4(clamp(col,0.0,1.0), 1.0);',
+    '}'
+  ].join('\n');
+  function _mt3GlInit() {
+    if (_mgl.ok !== null) return _mgl.ok;
+    try {
+      if (typeof document === 'undefined') throw new Error('document 없음');
+      const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 1024;
+      // ★★antialias 는 **꺼야 한다.** 띠 하나 = 반대각선 하나라 한 띠 안의 셀들은 서로 안 닿고,
+      //   **모든 셀 변이 띠 경계**다. MSAA 를 켜면 그 변마다 알파가 0.5 로 깎여, 두 띠를
+      //   source-over 로 겹쳐도 1 이 안 된다(0.5 + 0.5·0.5 = 0.75) → 셀 격자 그대로 **어두운 그물**.
+      //   끄면 픽셀 중심이 어느 한쪽 삼각형에만 들어가 틈도 겹침도 없다.
+      const gl = cv.getContext('webgl', { alpha: true, premultipliedAlpha: false, antialias: false, depth: false });
+      if (!gl) throw new Error('webgl 없음');
+      const mk = (t, src) => { const sh = gl.createShader(t); gl.shaderSource(sh, src); gl.compileShader(sh);
+        if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh)); return sh; };
+      const pr = gl.createProgram();
+      gl.attachShader(pr, mk(gl.VERTEX_SHADER, MT3_VS)); gl.attachShader(pr, mk(gl.FRAGMENT_SHADER, MT3_FS));
+      gl.linkProgram(pr);
+      if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(pr));
+      gl.useProgram(pr);
+      _mgl.vbo = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, _mgl.vbo);
+      _mgl.lp = gl.getAttribLocation(pr, 'p'); _mgl.lc = gl.getAttribLocation(pr, 'c');
+      gl.enableVertexAttribArray(_mgl.lp); gl.vertexAttribPointer(_mgl.lp, 2, gl.FLOAT, false, 16, 0);
+      gl.enableVertexAttribArray(_mgl.lc); gl.vertexAttribPointer(_mgl.lc, 2, gl.FLOAT, false, 16, 8);
+      for (const u of ['uRes', 'uH', 'uRock', 'uGrass', 'uN', 'uHmax', 'uL', 'uOrig', 'uTex', 'uRockS'])
+        _mgl.uni[u] = gl.getUniformLocation(pr, u);
+      const mkTex = (filt, wrap) => { const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filt); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filt);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap);
+        return t; };
+      _mgl.hTex = mkTex(gl.NEAREST, gl.CLAMP_TO_EDGE);
+      _mgl.rTex = mkTex(gl.LINEAR, gl.REPEAT);
+      _mgl.gTex = mkTex(gl.LINEAR, gl.REPEAT);
+      const pot = (n) => n > 0 && (n & (n - 1)) === 0;
+      const up = (tex, im) => {
+        if (!im || !im.naturalWidth) throw new Error('텍스처 미로드');
+        // WebGL1 은 2의 거듭제곱이 아니면 REPEAT 를 못 쓴다. 512×256 이라 통과하지만, 바뀌면 여기서 폴백된다.
+        if (!pot(im.naturalWidth) || !pot(im.naturalHeight)) throw new Error('텍스처가 2의 거듭제곱이 아니다 — REPEAT 불가');
+        gl.bindTexture(gl.TEXTURE_2D, tex); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, im); };
+      up(_mgl.rTex, GTEX.rock_angled); up(_mgl.gTex, GTEX.grass_angled);
+      gl.uniform1i(_mgl.uni.uH, 0); gl.uniform1i(_mgl.uni.uRock, 1); gl.uniform1i(_mgl.uni.uGrass, 2);
+      gl.uniform1f(_mgl.uni.uN, MT3_HTEX); gl.uniform1f(_mgl.uni.uHmax, MT3_HMAX);
+      gl.uniform3f(_mgl.uni.uL, MT3_L[0], MT3_L[1], MT3_L[2]);
+      gl.uniform2f(_mgl.uni.uTex, MT3_TW, MT3_TH); gl.uniform1f(_mgl.uni.uRockS, MT3_ROCKS);
+      gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, _mgl.rTex);
+      gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, _mgl.gTex);
+      gl.activeTexture(gl.TEXTURE0);
+      gl.disable(gl.DEPTH_TEST); gl.disable(gl.BLEND);
+      _mgl.cv = cv; _mgl.gl = gl; _mgl.pr = pr; _mgl.ok = true;
+      console.log('[mt3d] WebGL 산 메쉬 준비');
+    } catch (e) { console.warn('[mt3d] WebGL 불가 — 캔버스 폴리곤 경로 유지:', e && e.message); _mgl.ok = false; }
+    return _mgl.ok;
+  }
+  // 청크 높이장을 16비트(RG) 텍스처로 올린다. 같은 청크를 연달아 구우면 재업로드를 건너뛴다.
+  function _mt3GlUploadH(F, key) {
+    if (_mgl.hKey === key) return;
+    const gl = _mgl.gl, N = MT3_HTEX;
+    const buf = new Uint8Array(N * N * 4);
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      const h = (i <= F.N && j <= F.N) ? F.cor(i, j) : 0;
+      const v = Math.max(0, Math.min(1, h / MT3_HMAX)) * 255;
+      const hi = Math.floor(v), lo = Math.round((v - hi) * 255);
+      const k = (j * N + i) * 4;
+      buf[k] = hi; buf[k + 1] = lo; buf[k + 2] = 0; buf[k + 3] = 255;
+    }
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, _mgl.hTex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, N, N, 0, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+    _mgl.hKey = key;
+  }
+  // ── 띠 하나를 GPU 로 그려 띠 캔버스에 붙인다 ──────────────────────────────
+  //   cells = 이 띠(반대각선)에 속한 청크-지역 셀 [i,j] 목록.
+  //   꼭짓점 높이는 셰이더의 hAll 과 **같은 Catmull-Rom**(F.corS)로 뽑는다 —
+  //   실루엣(꼭짓점)과 음영(프래그먼트)이 같은 곡면을 봐야 가장자리가 안 어긋난다.
+  function _mt3GlBand(g2d, F, key, cells, x0, y0, bw, bh) {
+    const gl = _mgl.gl;
+    if (bw > _mgl.cv.width || bh > _mgl.cv.height) {
+      if (bw > 4096 || bh > 4096) return false;
+      _mgl.cv.width = Math.max(_mgl.cv.width, bw); _mgl.cv.height = Math.max(_mgl.cv.height, bh);
+    }
+    const sub = MT3_GSUB, S = sub + 1;
+    const need = cells.length * sub * sub * 6 * 4;
+    if (!_mgl.buf || _mgl.buf.length < need) _mgl.buf = new Float32Array(Math.max(need, 4096));
+    const V = _mgl.buf; let n = 0;
+    const px = new Float32Array(S * S), py = new Float32Array(S * S);
+    for (const cell of cells) {
+      const i = cell[0], j = cell[1];
+      for (let b = 0; b < S; b++) for (let a = 0; a < S; a++) {
+        const ci = i + a / sub, cj = j + b / sub;
+        const wxp = (F.i0 + ci) * 32, wyp = (F.j0 + cj) * 32;
+        // ★절대 화면 좌표를 **1/64px 격자에 스냅**한 뒤 띠 원점을 뺀다.
+        //   x0·y0 은 정수라 뺄셈이 정확하고, float32 로 내려도 이웃 띠가 **같은 변**을 얻는다.
+        //   (스냅을 안 하면 띠마다 반올림이 달라져 공유 변에 1px 틈이 산발한다.)
+        px[b * S + a] = Math.round((wxp - wyp) * 64) / 64 - x0;
+        py[b * S + a] = Math.round(((wxp + wyp) * 0.5 - F.corS(ci, cj) * 32) * 64) / 64 - y0;
+      }
+      for (let b = 0; b < sub; b++) for (let a = 0; a < sub; a++) {
+        const k00 = b * S + a, k10 = k00 + 1, k01 = k00 + S, k11 = k01 + 1;
+        const u0 = i + a / sub, u1 = i + (a + 1) / sub, v0 = j + b / sub, v1 = j + (b + 1) / sub;
+        const put = (kk, cu, cv2) => { V[n] = px[kk]; V[n + 1] = py[kk]; V[n + 2] = cu; V[n + 3] = cv2; n += 4; };
+        put(k00, u0, v0); put(k10, u1, v0); put(k11, u1, v1);
+        put(k00, u0, v0); put(k11, u1, v1); put(k01, u0, v1);
+      }
+    }
+    if (n === 0) return false;
+    _mt3GlUploadH(F, key);
+    const H = _mgl.cv.height;
+    gl.bindBuffer(gl.ARRAY_BUFFER, _mgl.vbo);
+    gl.bufferData(gl.ARRAY_BUFFER, V.subarray(0, n), gl.DYNAMIC_DRAW);
+    gl.vertexAttribPointer(_mgl.lp, 2, gl.FLOAT, false, 16, 0);
+    gl.vertexAttribPointer(_mgl.lc, 2, gl.FLOAT, false, 16, 8);
+    gl.uniform2f(_mgl.uni.uRes, bw, bh);
+    gl.uniform2f(_mgl.uni.uOrig, F.i0, F.j0);
+    // 뷰포트를 캔버스 **왼쪽 위**에 둔다(GL 원점은 왼쪽 아래) → blit 원본이 (0,0) 이 된다.
+    gl.viewport(0, H - bh, bw, bh);
+    gl.enable(gl.SCISSOR_TEST); gl.scissor(0, H - bh, bw, bh);
+    gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.drawArrays(gl.TRIANGLES, 0, n / 4);
+    gl.disable(gl.SCISSOR_TEST);
+    // ★같은 태스크 안에서 곧바로 읽는다(preserveDrawingBuffer 없이 안전한 유일한 시점).
+    g2d.drawImage(_mgl.cv, 0, 0, bw, bh, 0, 0, bw, bh);
+    return true;
+  }
+  // 시험 손잡이 — 짝 비교 프로파일러/스크린샷이 GPU 판과 캔버스 판을 같은 자리에서 갈아 끼운다
+  window.__mt3gl = (v) => { MT3_GL = v ? 1 : 0; _mt3Chunk.clear(); _mt3Sig = ''; return MT3_GL; };
+  window.__mt3tent = (v) => { MT3_TENT = v | 0; _mt3Chunk.clear(); _mt3Sig = ''; return MT3_TENT; };
   // ── 청크 하나를 **반대각선 띠**로 구워 세그먼트 배열로 ────────────────────
   function _mt3Bake(zid, gx, gy) {
     const key = zid + '_' + gx + '_' + gy;
@@ -2163,10 +2419,20 @@ const SIM_JOB_EMOJI = {
         const bw = Math.ceil(x1) + MPAD - x0, bh = Math.ceil(y1) + MPAD - y0;
         if (bw <= 0 || bh <= 0 || bw > 4096 || bh > 4096) continue;
         const cv = document.createElement('canvas'); cv.width = bw; cv.height = bh;
-        const g = cv.getContext('2d'); g.translate(-x0, -y0);
-        const RP = pat ? g.createPattern(pat, 'repeat') : null;
-        const GP = gpat ? g.createPattern(gpat, 'repeat') : null;
-        for (const [i, j] of cells) _mt3Quad(g, F, i, j, RP, GP);
+        const g = cv.getContext('2d');
+        // ★표면은 GPU 로. 실패하면 그 자리에서 캔버스 폴리곤 판으로 되돌아간다(라이브를 못 세운다).
+        let drawn = false;
+        if (MT3_GL && _mt3GlInit()) {
+          try { drawn = _mt3GlBand(g, F, key, cells, x0, y0, bw, bh); }
+          catch (e) { console.warn('[mt3d] GL 띠 실패 — 캔버스로:', e && e.message); _mgl.ok = false; drawn = false; }
+        }
+        if (!drawn) {
+          g.save(); g.translate(-x0, -y0);
+          const RP = pat ? g.createPattern(pat, 'repeat') : null;
+          const GP = gpat ? g.createPattern(gpat, 'repeat') : null;
+          for (const [i, j] of cells) _mt3Quad(g, F, i, j, RP, GP);
+          g.restore();
+        }
         const ref = cells.reduce((a, b) => (a[0] + a[1] <= b[0] + b[1] ? a : b));
         const wx = (F.i0 + ref[0]) * 32 + 16, wy = (F.j0 + ref[1]) * 32 + 16;
         const rp = w2i((F.i0 + ref[0]) * 32 + 16, (F.j0 + ref[1]) * 32 + 16);
@@ -2182,8 +2448,6 @@ const SIM_JOB_EMOJI = {
   }
   // 사각형 하나 — 화면 픽셀 기준 적응 분할 + 급경사 변위
   function _mt3Quad(g, F, i, j, RP, GP) {
-    const H4 = [F.cor(i, j), F.cor(i + 1, j), F.cor(i + 1, j + 1), F.cor(i, j + 1)];
-    const hmin = Math.min(H4[0], H4[1], H4[2], H4[3]), hmax = Math.max(H4[0], H4[1], H4[2], H4[3]);
     // ★★[재민 "검은 점·선" 진짜 원인] **T-접합**이다.
     //   세분 수(sub)를 셀마다 경사·높이로 다르게 정했다. 이웃한 두 셀의 sub 가 다르면
     //   공유 변의 조각 꼭짓점이 **서로 안 맞는다**. 변위까지 얹히면 그 틈이 벌어져
@@ -2212,12 +2476,11 @@ const SIM_JOB_EMOJI = {
     //   (C0 이지 C1 이 아니다). 법선은 기울기에서 나오므로 경계마다 음영이 툭 꺾이고,
     //   그 꺾임선이 정확히 셀 격자 = 다이아 무늬로 읽힌다. 조각을 아무리 잘게 쪼개도
     //   꺾임은 셀 경계에 그대로 남는다 — 그래서 세분으로는 안 없어졌다.
-    //   ⇒ u,v 에 smoothstep 을 먹인다. 경계에서 도함수가 0 이 되어 양쪽이 **매끈히 이어진다**(C1).
-    //     추가 표본 없이 곱셈 몇 번이라 굽기 비용은 그대로다.
-    const hBi = (u, v) => {
-      const su = u * u * (3 - 2 * u), sv = v * v * (3 - 2 * v);
-      return (H4[0] * (1 - su) + H4[1] * su) * (1 - sv) + (H4[3] * (1 - su) + H4[2] * su) * sv;
-    };
+    //   ⇒ 1차 시도는 u,v 의 smoothstep 이었다. C1 은 됐지만 셀마다 기울기가 0→최대→0 이라
+    //     **베개=누비이불**이라는 두 번째 격자 흔적을 낳았다 — **걷어냈다.**
+    //     Catmull-Rom(F.corS)은 값·기울기를 이으면서 셀 안에 강제 극점을 안 만든다.
+    //     GPU 판(_mt3GlBand)의 hAll() 과 같은 식이라 두 경로의 곡면이 동일하다.
+    const hBi = (u, v) => F.corS(i + u, j + v);
     const hS = (u, v) => { const b = hBi(u, v); return Math.max(0, b + disp(i + u, j + v, b)); };
     const P = (u, v) => {
       const c = w2i((F.i0 + i + u) * 32, (F.j0 + j + v) * 32), hh = hS(u, v);
