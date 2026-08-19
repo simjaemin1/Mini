@@ -94,6 +94,7 @@ const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
 <script>
 const S = ${JSON.stringify(S)};
 window.MT3D_SUBPX = ${+(process.env.SUBPX || 8)};
+window.JUDGE = ${process.env.JUDGE === '0' ? 0 : 1};
 const CH = ${CH}, BAND = ${BAND}, SCENE = ${JSON.stringify(SCENE)};
 const TEXSRC = ${JSON.stringify(TEXSRC)}, OBJSRC = ${JSON.stringify(OBJSRC)}, BLDSRC = ${JSON.stringify(BLDSRC)};
 const NATA = ${JSON.stringify(natAnchors)};

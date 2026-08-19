@@ -429,7 +429,7 @@ function occlusionOf(o, objBox, segsAfter, OBJ, toScr) {
   // ═══ 판정 그림 — 2_합성 구도로 **재질 후보별 1장씩** [재민 판정 규약] ══════════
   //   판정자는 재민이고 기준은 "옆의 블렌더 스프라이트와 같은 게임으로 보이는가"다.
   //   그래서 산만 낸 그림이 아니라 **나무·개체가 같이 있는 구도**로 낸다.
-  for (const [MAT2, PAL2, nm2] of [['A', null, 'A'], ['B', 'B1', 'B1'], ['B', 'B2', 'B2'], ['B', 'B3', 'B3']]) {
+  for (const [MAT2, PAL2, nm2] of (window.JUDGE === 0 ? [] : [['A', null, 'A'], ['B', 'B1', 'B1'], ['B', 'B2', 'B2'], ['B', 'B3', 'B3']])) {
     const cvJ = newCanvas('judge' + nm2);
     const VJ = makeView(cvJ);
     VJ.g.fillStyle = '#0a0d10'; VJ.g.fillRect(0, 0, VIEW.w, VIEW.h);
@@ -450,12 +450,21 @@ function occlusionOf(o, objBox, segsAfter, OBJ, toScr) {
 
   // 바닥 덮임 — "부순 셀의 **바닥(높이 0)** 이 화면에 실제로 보이나".
   //   ★부수기 전에도 같은 자를 댄다: 그때는 산 속이라 100% 여야 한다(자가 검사).
-  const floorCover = (list, segs, V) => {
+  //   ★[타 세션 지적] 3·7·13셀이 **정확히 같은 10%** — 상수가 잡혀 있다.
+  //     셀별로 갈라 보니 15칸이 전부 **2%** 였다(끝 칸만 99%). 그 2% 의 정체를 가른다:
+  //     내가 실틈 막으려고 넣은 **도형 부풀리기(0.55px)** 가 이웃 셀 다이아 안으로
+  //     삐져 들어온 테두리인지. 다이아를 1px 안으로 줄여 재서 사라지면 그게 맞다.
+  const floorCover = (list, segs, V, inset) => {
     let tot = 0, cov = 0;
     for (const [i, j] of list) {
       const z = absZ(i, j);
-      const pts = [[i, j], [i + 1, j], [i + 1, j + 1], [i, j + 1]].map(([a, b]) => {
+      let pts = [[i, j], [i + 1, j], [i + 1, j + 1], [i, j + 1]].map(([a, b]) => {
         const c = w2i(a * CELL, b * CELL); return V.toScr(c.x, c.y); });   // ★높이 0 = 바닥
+      if (inset) {                       // 무게중심 쪽으로 inset px 줄인다
+        const mx = (pts[0].x + pts[1].x + pts[2].x + pts[3].x) / 4, my = (pts[0].y + pts[1].y + pts[2].y + pts[3].y) / 4;
+        pts = pts.map(q => { const dx = q.x - mx, dy = q.y - my, l = Math.hypot(dx, dy) || 1;
+          return { x: q.x - dx / l * inset, y: q.y - dy / l * inset }; });
+      }
       let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
       for (const p of pts) { x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y); }
       x0 = Math.max(0, Math.floor(x0)); y0 = Math.max(0, Math.floor(y0));
@@ -704,9 +713,23 @@ function occlusionOf(o, objBox, segsAfter, OBJ, toScr) {
       const Fw = M.makeField(Sw), bkw = M.bakeBands(Fw, Sw, { CH, BAND, TEX, MAT: 'B', JAG: 2 });
       const cvw = document.createElement('canvas'); cvw.width = VIEW.w; cvw.height = VIEW.h;
       const Vw = makeView(cvw);
-      sweep.push({ w: halfW >= 99 ? 0 : halfW * 2 + 1, cov: floorCover(walk[0].cells, bkw.segs, Vw) });
+      // ★[타 세션 지적] 3·7·13셀이 **정확히 같은 10%** 라는 건 어떤 바닥값이 상수로
+      //   잡히고 있다는 신호다. 그게 뭔지 분해해서 찍는다 — 안 짚으면 ⑦ 설명이 안 닫힌다.
+      //   셀마다 덮임률을 따로 내서, "몇 개 셀이 100% 덮이고 몇 개가 0% 인지"를 본다.
+      const per = [];
+      for (const c of walk[0].cells) per.push(floorCover([c], bkw.segs, Vw));
+      const perIn = walk[0].cells.map(c => floorCover([c], bkw.segs, Vw, 2));
+      const full = per.filter(v => v > 90).length, none = per.filter(v => v < 10).length;
+      sweep.push({ w: halfW >= 99 ? 0 : halfW * 2 + 1, cov: floorCover(walk[0].cells, bkw.segs, Vw),
+                   n: per.length, full, none, per, perIn,
+                   covIn: perIn.reduce((a, b) => a + b, 0) / Math.max(1, perIn.length) });
     }
     say('   폭 스윕(가운데 열 바닥 덮임): ' + sweep.map(r => (r.w ? `${r.w}셀` : '산 전체 제거') + ` ${r.cov.toFixed(0)}%`).join(' · '));
+    for (const r of sweep) {
+      say(`      ${r.w ? r.w + '셀' : '전체제거'}: 통로 ${r.n}셀 중 완전덮임 ${r.full} · 완전노출 ${r.none}`
+        + ` · 셀별 ${r.per.map(v => v.toFixed(0)).join(',')}`);
+      say(`         └ 다이아 2px 안쪽으로 재면: 평균 ${r.covIn.toFixed(1)}% · 셀별 ${r.perIn.map(v => v.toFixed(0)).join(',')}`);
+    }
     const wid = sweep.filter(r => r.w);
     if (sweep[sweep.length - 1].cov > 50) {
       say(`   ✗ 자가 검사 실패 — **산을 통째로 지워도** 바닥이 덮여 있다고 나온다.`);
