@@ -2235,6 +2235,8 @@ const SIM_JOB_EMOJI = {
   let MT3_AOBOX = 0;                   // 1 이면 **옛 AO**(4×4 상자 평균 = 조각별 상수) — 반례 전용
   const MT3_OV = 0.008;                // 띠 겹침(셀). 가로 0.5px·세로 0.26px — 실루엣 부풀림은 무시할 수준
   let MT3_CV0 = 128;                   // GL 캔버스 초깃값. 띠가 크면 128 배수로 자란다
+  let MT3_TREEP = 0.020;               // ③ 돌출목 — 셀당 확률(낮게 시작). 0 이면 끔
+  let MT3_TREEPX = 30;                 // 그리는 높이(px). 실물(78px)이 아니라 **작은 축척**
   let MT3_MPAD = 18;                   // 띠 캔버스 여백(px) — 손잡이로 갈아 끼워 잘림 여부를 가린다
   const _mgl = { cv: null, gl: null, pr: null, ok: null, uni: {}, hTex: null, rTex: null, gTex: null,
                  vbo: null, buf: null, hKey: '', lp: -1, lc: -1 };
@@ -2542,6 +2544,8 @@ const SIM_JOB_EMOJI = {
     if (_mgl.gl) { _mgl.gl.useProgram(_mgl.pr); _mgl.gl.uniform1f(_mgl.uni.uHmax, MT3_HMAX); }
     _mgl.hKey = ''; _mt3Chunk.clear(); _mt3Sig = ''; return [MT3_HMAX, MT3_LAM]; };
   window.__mt3mpad = (v) => { MT3_MPAD = v | 0; _mt3Chunk.clear(); _mt3Sig = ''; return MT3_MPAD; };
+  window.__mt3trees = (p, px) => { MT3_TREEP = +p; if (px) MT3_TREEPX = +px;
+    _mt3Chunk.clear(); _mt3Sig = ''; return [MT3_TREEP, MT3_TREEPX]; };
   window.__mt3tex = (v) => { MT3_TEXON = v ? 1 : 0; _mt3Chunk.clear(); _mt3Sig = ''; return MT3_TEXON; };
   window.__mt3ao = (v) => { MT3_AOON = v ? 1 : 0; _mt3Chunk.clear(); _mt3Sig = ''; return MT3_AOON; };
   // 반례 손잡이 — 옛 AO(조각별 상수)로 되돌린다. 고친 게 정말 그거였는지 같은 판에서 보인다.
@@ -2585,7 +2589,9 @@ const SIM_JOB_EMOJI = {
         //   실제로 그릴 때는 급경사 조각이 세로 ±0.42칸(±13px)·가로 ±11px 로 밀린다.
         //   그만큼이 캔버스 밖으로 잘려 **표면에 검은 슬리버**가 생겼다. 여유를 준다.
         const MPAD = MT3_MPAD;
-        x0 = Math.floor(x0) - MPAD; y0 = Math.floor(y0) - MPAD;
+        // ★돌출목은 표면보다 **위로** 자란다 — 위쪽 여백만 그만큼 더 준다(옆·아래는 그대로).
+        const TPAD = (MT3_TREEP > 0) ? MT3_TREEPX + 6 : 0;
+        x0 = Math.floor(x0) - MPAD; y0 = Math.floor(y0) - MPAD - TPAD;
         const bw = Math.ceil(x1) + MPAD - x0, bh = Math.ceil(y1) + MPAD - y0;
         if (bw <= 0 || bh <= 0 || bw > 4096 || bh > 4096) continue;
         const cv = document.createElement('canvas'); cv.width = bw; cv.height = bh;
@@ -2635,6 +2641,35 @@ const SIM_JOB_EMOJI = {
               }
               px = row;
             }
+          }
+        }
+        // ── ③ 돌출목 — 수관 위로 드문드문 솟은 소나무 ─────────────────────────
+        //   ★산 본체엔 **개별 실물 나무를 안 세운다**(재민 확정). 여기 얹는 건 수관 덮개 위로
+        //     머리를 내민 **돌출목**이고, 닿을 수 없는 곳이라 축척을 상징으로 내려 그린다.
+        //   ★균일 간격 금지 — 물가 술 규약과 같이 **셀 해시**로 유무·위치·종류를 정한다.
+        //     Math.random 금지(같은 자리는 늘 같은 그림이어야 한다).
+        //   ★띠 캔버스에 **구워 넣는다**. 그래야 안개 게이트·z 정렬·가림 계약이 그대로다
+        //     (mtseg 한 장으로 남는다 — renderables 계약 무변경).
+        if (MT3_TREEP > 0 && _treeSpritesLoaded >= 12) {
+          for (const [i, j] of cells) {
+            const ax = F.i0 + i, ay = F.j0 + j;
+            if (_cellHash(ax, ay, 137) >= MT3_TREEP) continue;
+            const hc = F.corS(i + 0.5, j + 0.5);
+            if (hc < 6) continue;                     // 산자락 암벽 띠에는 안 세운다
+            // 능선·급경사(바위로 드러나는 자리)도 피한다 — 수관 위여야 한다
+            const gx = F.corS(i + 1, j) - F.corS(i - 1, j), gy = F.corS(i, j + 1) - F.corS(i, j - 1);
+            if (Math.hypot(gx, gy) * 0.5 > 3.2) continue;
+            const jx = (_cellHash(ax, ay, 139) - 0.5) * 22, jy = (_cellHash(ax, ay, 149) - 0.5) * 22;
+            const wxp = ax * 32 + 16 + jx, wyp = ay * 32 + 16 + jy;
+            const c = w2i(wxp, wyp);
+            const sxp = c.x - x0, syp = c.y - hc * 32 - y0;
+            const im = TREE_SPRITES[(_cellHash(ax, ay, 151) * TREE_SPRITES.length) | 0];
+            if (!im || !im.complete || !im.naturalHeight) continue;
+            const hpx = MT3_TREEPX * (0.78 + 0.44 * _cellHash(ax, ay, 157));
+            const wpx = hpx * (im.naturalWidth / im.naturalHeight);
+            g.globalAlpha = 0.92;
+            g.drawImage(im, sxp - wpx / 2, syp - hpx, wpx, hpx);
+            g.globalAlpha = 1;
           }
         }
         const ref = cells.reduce((a, b) => (a[0] + a[1] <= b[0] + b[1] ? a : b));
@@ -9607,7 +9642,9 @@ const SIM_JOB_EMOJI = {
   let _treeSpritesLoaded = 0;
   for (let _ti = 1; _ti <= 12; _ti++) {
     const _img = new Image();
-    _img.onload = () => { _treeSpritesLoaded++; };
+    _img.onload = () => { _treeSpritesLoaded++;
+      // ★다 로드되면 산 청크를 한 번 비운다 — 안 그러면 '나무 없는' 상태로 구워진 채 남는다
+      if (_treeSpritesLoaded === 12) { try { _mt3Chunk.clear(); _mt3Sig = ''; } catch (e) {} } };
     _img.src = '/assets/trees/tree' + String(_ti).padStart(2, '0') + '.png';
     TREE_SPRITES.push(_img);
   }
