@@ -1703,6 +1703,8 @@ const SIM_JOB_EMOJI = {
       console.log('[mt] 산 스프라이트', names.length, '종 로드 시작');
     } catch (e) { console.warn('[mt] 앵커 로드 실패:', e.message); }
   })();
+  // 하네스용 — 그 자리가 바위(=못 걷는 곳)인가. 정본 술어를 그대로 부른다(사본 금지).
+  window.__isRockAt = (wx, wy) => !!_mtRockAt(primaryZoneId, wx, wy);
   function _mtRockAt(zid, wx, wy) {
     // ★판정 정본을 부른다. 파괴 셀은 렌더 층에서만 걷어낸다(지형 데이터 무접촉).
     const cx = Math.floor(wx / 32), cy = Math.floor(wy / 32);
@@ -2136,28 +2138,12 @@ const SIM_JOB_EMOJI = {
       d[k] = Math.min(d[k], at(i - 1, j) + 1, at(i, j - 1) + 1, at(i - 1, j - 1) + 1.414, at(i + 1, j - 1) + 1.414); }
     for (let j = N - 1; j >= 0; j--) for (let i = N - 1; i >= 0; i--) { const k = j * N + i; if (!d[k]) continue;
       d[k] = Math.min(d[k], at(i + 1, j) + 1, at(i, j + 1) + 1, at(i + 1, j + 1) + 1.414, at(i - 1, j + 1) + 1.414); }
-    // ★★[④ 거시 fBm 을 넣자 셀 격자가 되살아났다 — 계측: 셀32px 봉우리 0.34 → 7.27]
-    //   원인은 거리장이다. 챔퍼 dE 는 1·1.414·2·… 로 **이산**인데, 거시항이 dE 를 배로 밀면
-    //   그 계단도 같이 커진다. 높이장을 나중에 블러해도 이미 계단으로 굳은 뒤다.
-    //   ⇒ **거리장 자체를 먼저** 매끄럽게 한다(3×3 텐트 2회, 바위 아닌 이웃은 중앙값 대체).
-    //     원천에서 없애면 뒤에 뭘 곱하든 계단이 안 생긴다.
-    {
-      const TN = [1, 2, 1];
-      for (let pass = 0; pass < 2; pass++) {
-        const src = Float32Array.from(d);
-        for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
-          if (!rock[j * N + i]) continue;
-          const c0 = src[j * N + i];
-          let sum = 0, w = 0;
-          for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) {
-            const ii = i + a, jj = j + b, wt = TN[a + 1] * TN[b + 1];
-            const ok = ii >= 0 && jj >= 0 && ii < N && jj < N && rock[jj * N + ii];
-            sum += (ok ? src[jj * N + ii] : c0) * wt; w += wt;
-          }
-          d[j * N + i] = sum / w;
-        }
-      }
-    }
+    // ★[되돌림 — 실측] 거리장을 3×3 텐트로 먼저 흐리는 안을 넣었다가 뺐다. 이유 둘:
+    //   ① 노린 효과가 없었다(셀 격자 봉우리 7.27 → 7.85, 오히려 소폭 상승)
+    //   ② **가장자리 암벽 띠를 지워 버렸다.** 바위 아닌 이웃을 중앙값으로 대체하니
+    //      경계 셀의 d 가 안쪽 값 쪽으로 끌려 올라가, h 가 2.8m 에서 훌쩍 뛰어
+    //      edgeC(=낮은 h) 가 0 이 된다. 실측: 바위 비중 9.4% → **0.0%**.
+    //   거리장의 이산성은 남지만, 그건 높이장 텐트(MT3_TENT)와 Catmull-Rom 이 받는다.
     const hg = new Float32Array(N * N);
     for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
       if (!rock[j * N + i]) continue;
@@ -2365,6 +2351,9 @@ const SIM_JOB_EMOJI = {
     //   숲이 정상까지 덮고, **능선(볼록한 마루)과 산자락 절벽**에만 바위가 드러난다.
     //   ⇒ 바위 = (급경사 **그리고** 능선) ∪ (가장자리 암벽 띠). 나머지는 전부 수관.
     '  float concR = mean - h;',                       // <0 = 볼록(마루·능선), >0 = 오목(골)
+    // ★문턱을 더 낮춰(0.26/0.95/0.62) 능선 노출을 늘려 봤더니 바위가 **0.0%** 로 사라졌다.
+    //   t 가 중간대(0.3~0.6)로 넓게 퍼지면서 canopy=(1−t) 가 남아 잎이 덮어 버린 것이다.
+    //   '더 넓게 칠하면 더 보인다'가 아니다 — 되돌린다(실측 9.4% 판이 더 낫다).
     '  float steepG = smoothstep(0.34, 0.74, steep);',   // 급경사 문턱
     '  float ridge  = clamp(-concR*0.55, 0.0, 1.0);',     // 능선(볼록)일수록 1
     // ★암벽 띠는 **좁게**. 12m 로 잡았더니 카메라를 마주 보는 앞사면이 통째로 회색이 됐다

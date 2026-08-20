@@ -272,26 +272,52 @@ function diff(a, b, box) {
 
   // ⑥ 산에서 멀어지면 가림이 사라진다 — 상수 true 가 아님을 보인다
   // ⑥ 걸어서 벗어나면 반투명이 **꺼진다** — 방향은 눈대중이 아니라 정본 판정으로 고른다
-  const dir = await page.evaluate(() => {
+  // ★★[계측기 수리 2026-08-20] 방향 탐색이 **4방향 × 24셀**까지였다. 산이 9m 일 땐 그 안에
+  //   빈 자리가 있었지만 35m 벽은 가리는 범위가 훨씬 넓어, 네 방향 모두 24셀 안에 빈 자리가
+  //   없으면 아무 방향이나 골라 걷다가 못 빠져나온다 — 판정이 아니라 **탐색 반경이 낡았다.**
+  //   (⑦ 이 이미 '±30셀 안에 안 가려지는 자리가 있다'를 보였으므로 빠져나갈 곳은 있다.)
+  //   ⇒ 8방향 × 60셀까지 훑어 **가장 가까운 빈 자리**를 고르고, 걸으면서 매번 다시 고른다.
+  const pick = () => page.evaluate(() => {
     const me = window.__getMyAbs();
-    const cand = [['s', 1, 1], ['d', 1, -1], ['a', -1, 1], ['w', -1, -1]];
+    const cand = [['s', 1, 1], ['d', 1, -1], ['a', -1, 1], ['w', -1, -1],
+                  ['sd', 1, 0], ['sa', 0, 1], ['wd', 0, -1], ['wa', -1, 0]];
     let best = null;
     for (const [k, sx, sy] of cand) {
-      let clear = 0;
-      for (let t = 4; t <= 24; t += 4) {
-        const r = window.__mtOccAt(me.x + sx * t * 32, me.y + sy * t * 32);
-        if (r && r.n === 0) clear++;
+      // ★★목표만 보고 고르면 안 된다 — **가는 길**이 뚫려 있어야 한다.
+      //   바위 안은 아무것도 안 가리지만 갈 수가 없고(첫 함정), 목표가 뭍이어도 중간이
+      //   막혀 있으면 못 간다(둘째 함정). 실측: 40번 걸어 11셀만 가고 벽에 붙어 미끄러졌다.
+      //   ⇒ 한 셀씩 나아가며 **바위를 만나면 그 방향은 포기**하고, 그 전에 나온 빈 자리만 센다.
+      for (let t = 1; t <= 60; t++) {
+        const qx = me.x + sx * t * 32, qy = me.y + sy * t * 32;
+        if (window.__isRockAt && window.__isRockAt(qx, qy)) break;   // 길이 막혔다 — 이 방향 포기
+        const r = window.__mtOccAt(qx, qy);
+        if (r && r.n === 0) { if (!best || t < best.d) best = { k, d: t }; break; }
       }
-      if (!best || clear > best.clear) best = { k, clear };
     }
     return best;
   });
-  let far = null;
-  for (let i = 0; i < 12; i++) {
-    await page.keyboard.down(dir.k); await sleep(1200); await page.keyboard.up(dir.k);
+  const dir0 = await pick();
+  const st = await page.evaluate(() => { const m = window.__getMyAbs(); return [Math.round(m.x / 32), Math.round(m.y / 32)]; });
+  console.log('  [⑥ 탈출] ' + JSON.stringify(dir0) + ' · 출발 셀 ' + st);
+  let far = null, dir = dir0 || { k: 's', d: 99 };
+  for (let i = 0; i < 40; i++) {
+    for (const kk of dir.k.split('')) await page.keyboard.down(kk);
+    await sleep(1100);
+    for (const kk of dir.k.split('')) await page.keyboard.up(kk);
     far = await page.evaluate(() => window.__mtOccDbg);
     if (far && far.n === 0 && far.fade < 0.2) break;
+    // ★방향을 매번 다시 고르면 앞뒤로 **진동**한다(실측). 길이 막혔을 때만 바꾼다.
+    if (i % 6 === 5) { const nd = await pick(); if (nd) dir = nd; }
   }
+  // ★두 판정이 어긋나는지 본다: 위치 탐색용 __mtOccAt 과 실제로 그려진 것 기준 __mtOccDbg
+  const cross = await page.evaluate(() => {
+    const me = window.__getMyAbs();
+    const a = window.__mtOccAt(me.x, me.y);
+    return { at: a && a.n, dbg: window.__mtOccDbg && window.__mtOccDbg.n, me: [Math.round(me.x / 32), Math.round(me.y / 32)] };
+  });
+  console.log('  [⑥ 대조] __mtOccAt.n=' + cross.at + ' vs __mtOccDbg.n=' + cross.dbg +
+              ' · 출발 ' + st + ' → 도착 ' + cross.me +
+              ' (이동 ' + Math.round(Math.hypot(cross.me[0] - st[0], cross.me[1] - st[1])) + '셀)');
   ok('⑥ 벗어나면 반투명이 꺼진다 (상수 아님)', !!far && far.n === 0 && far.fade < 0.5,
     `'${dir.k}' 방향 이동 후 가린 산 ${far && far.n}장 · 반투명 진행도 ${far && far.fade}`);
 
