@@ -2055,6 +2055,8 @@ const SIM_JOB_EMOJI = {
                                        //   (1.15 는 ×0.32 까지 내려가 3.8셀=9m/셀 절벽을 만들어 다시 격자가 났다)
   const MT3_HV = 0.62;                 // 마루 높이 흔들기 폭(0.55 ~ 1.17배)
   const MT3_ROUGH = 0.25;              // 결의 진폭(HMAX 대비). 국소 높이에 **비례**해 얹는다
+  let MT3_MACRO = 0.42;                // ④ 거시 fBm 이 가장자리 거리를 미는 세기(지릉·골)
+  let MT3_MACROH = 0.16;               // 거시 fBm 이 마루 높이에 더하는 세기(HMAX 대비)
   //   ★세분은 **상수**여야 한다 — 이웃 셀과 다르면 공유 변에 T-접합이 생겨 틈이 벌어진다.
   const MT3_SUB = 6;                   // 셀당 6×6 조각 (한 조각 ≈ 10px)
   let MT3_TENT = 1;                    // 보간 전 높이장 3×3 텐트 횟수(등고선 계단).
@@ -2134,6 +2136,28 @@ const SIM_JOB_EMOJI = {
       d[k] = Math.min(d[k], at(i - 1, j) + 1, at(i, j - 1) + 1, at(i - 1, j - 1) + 1.414, at(i + 1, j - 1) + 1.414); }
     for (let j = N - 1; j >= 0; j--) for (let i = N - 1; i >= 0; i--) { const k = j * N + i; if (!d[k]) continue;
       d[k] = Math.min(d[k], at(i + 1, j) + 1, at(i, j + 1) + 1, at(i + 1, j + 1) + 1.414, at(i - 1, j + 1) + 1.414); }
+    // ★★[④ 거시 fBm 을 넣자 셀 격자가 되살아났다 — 계측: 셀32px 봉우리 0.34 → 7.27]
+    //   원인은 거리장이다. 챔퍼 dE 는 1·1.414·2·… 로 **이산**인데, 거시항이 dE 를 배로 밀면
+    //   그 계단도 같이 커진다. 높이장을 나중에 블러해도 이미 계단으로 굳은 뒤다.
+    //   ⇒ **거리장 자체를 먼저** 매끄럽게 한다(3×3 텐트 2회, 바위 아닌 이웃은 중앙값 대체).
+    //     원천에서 없애면 뒤에 뭘 곱하든 계단이 안 생긴다.
+    {
+      const TN = [1, 2, 1];
+      for (let pass = 0; pass < 2; pass++) {
+        const src = Float32Array.from(d);
+        for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+          if (!rock[j * N + i]) continue;
+          const c0 = src[j * N + i];
+          let sum = 0, w = 0;
+          for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) {
+            const ii = i + a, jj = j + b, wt = TN[a + 1] * TN[b + 1];
+            const ok = ii >= 0 && jj >= 0 && ii < N && jj < N && rock[jj * N + ii];
+            sum += (ok ? src[jj * N + ii] : c0) * wt; w += wt;
+          }
+          d[j * N + i] = sum / w;
+        }
+      }
+    }
     const hg = new Float32Array(N * N);
     for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
       if (!rock[j * N + i]) continue;
@@ -2143,7 +2167,18 @@ const SIM_JOB_EMOJI = {
       const lamL = MT3_LAM * Math.exp(MT3_LAMV * (2 * _mt3vn(ai / 26, aj / 26, 53) - 1));
       // 자리마다 다른 마루 높이 — 봉우리와 안부(鞍部)가 생긴다.
       const hmaxL = MT3_HMAX * (1 - MT3_HV * 0.5 + MT3_HV * _mt3vn(ai / 37, aj / 37, 59));
-      let h = hmaxL * (1 - Math.exp(-dE / lamL));
+      // ★★[④ 지형 문법] 거시 fBm(8~40셀). 옥타브마다 **격자 회전 + 도메인 워프**(와플 재발 방지).
+      //   높이에 그냥 더하면 봉우리만 출렁이고 **지릉·골이 안 생긴다**. 대신 **가장자리 거리 dE 를
+      //   안팎으로 민다** — 등고선이 밀려 들어가면 골, 밀려 나오면 지릉이 된다. 능선이 갈라진다.
+      const Wu = ai + 5.5 * (_mt3rvn(ai / 17, aj / 17, 81, 0.41) - 0.5);
+      const Wv = aj + 5.5 * (_mt3rvn(ai / 17, aj / 17, 83, 2.23) - 0.5);
+      const MAC = 0.55 * (_mt3rvn(Wu / 40, Wv / 40, 61, 0.29) - 0.5)
+                + 0.30 * (_mt3rvn(Wu / 19, Wv / 19, 63, 1.77) - 0.5)
+                + 0.15 * (_mt3rvn(Wu / 8.5, Wv / 8.5, 67, 2.61) - 0.5);
+      const dEff = Math.max(0, dE * (1 + MT3_MACRO * 2 * MAC));
+      let h = hmaxL * (1 - Math.exp(-dEff / lamL));
+      h += Math.min(1, Math.max(0, (dE - 2) / 6)) * MT3_HMAX * MT3_MACROH * 2 * MAC;
+      h = Math.max(0, h);
       // ★결은 **국소 높이에 비례**해서 얹는다. 절대량으로 얹으면 11m 짜리 가장자리 셀이
       //   음수로 꺼져 산자락에 구멍이 뚫린다(옛 판은 dE/3 로 결을 죽여서 벽이 균일해졌다).
       const rel = Math.min(1, h / MT3_HMAX);
@@ -2546,6 +2581,8 @@ const SIM_JOB_EMOJI = {
   window.__mt3mpad = (v) => { MT3_MPAD = v | 0; _mt3Chunk.clear(); _mt3Sig = ''; return MT3_MPAD; };
   window.__mt3trees = (p, px) => { MT3_TREEP = +p; if (px) MT3_TREEPX = +px;
     _mt3Chunk.clear(); _mt3Sig = ''; return [MT3_TREEP, MT3_TREEPX]; };
+  window.__mt3macro = (a, b) => { MT3_MACRO = +a; if (b != null) MT3_MACROH = +b;
+    _mt3Chunk.clear(); _mt3Sig = ''; return [MT3_MACRO, MT3_MACROH]; };
   window.__mt3tex = (v) => { MT3_TEXON = v ? 1 : 0; _mt3Chunk.clear(); _mt3Sig = ''; return MT3_TEXON; };
   window.__mt3ao = (v) => { MT3_AOON = v ? 1 : 0; _mt3Chunk.clear(); _mt3Sig = ''; return MT3_AOON; };
   // 반례 손잡이 — 옛 AO(조각별 상수)로 되돌린다. 고친 게 정말 그거였는지 같은 판에서 보인다.
