@@ -2323,9 +2323,20 @@ const SIM_JOB_EMOJI = {
     //   높이 항을 걷어내고 **경사만** 바위로 읽는다. LAM 2.5 면 가장자리는 기울기 14m/셀이라
     //   자동으로 암벽이 되고, 마루는 평평해 숲이 앉는다. 북한산·월출산 계열의 인상이다.
     '  float macro = (fbm(w/21.0, 0.58, 0.28, 0.14)-0.5)*2.55;',
-    '  float t = clamp((steep - 0.20 + macro*0.10)/0.45, 0.0, 1.0);',
+    // ── 재질 [재민 확정 + 타 세션 ② 2026-08-20] **전신 바위산이 아니다** ──
+    //   앞 판은 '경사만 바위'라 35m 벽의 사면이 통째로 회색이 됐다. 한국 육산은 그렇지 않다:
+    //   숲이 정상까지 덮고, **능선(볼록한 마루)과 산자락 절벽**에만 바위가 드러난다.
+    //   ⇒ 바위 = (급경사 **그리고** 능선) ∪ (가장자리 암벽 띠). 나머지는 전부 수관.
+    '  float concR = mean - h;',                       // <0 = 볼록(마루·능선), >0 = 오목(골)
+    '  float steepG = smoothstep(0.34, 0.74, steep);',   // 급경사 문턱
+    '  float ridge  = clamp(-concR*0.55, 0.0, 1.0);',     // 능선(볼록)일수록 1
+    // ★암벽 띠는 **좁게**. 12m 로 잡았더니 카메라를 마주 보는 앞사면이 통째로 회색이 됐다
+    //   (셀로는 4칸이어도 마주 본 사면은 화면 절반으로 늘어난다). 첫 ~2셀만.
+    '  float edgeC  = 1.0 - smoothstep(1.5, 6.0, h);',
+    '  float scarp  = smoothstep(0.74, 0.93, steep);',    // 아주 급한 벼랑은 능선이 아니어도 노출
+    '  float t = clamp(max(edgeC, max(steepG*ridge, scarp*0.85)) + macro*0.12, 0.0, 1.0);',
     // 산기슭 아래(높이 1m 미만)는 들판 풀 — 평지와 이어져야 이음매가 안 보인다
-    '  float onMt = clamp((h-0.8)/2.2, 0.0, 1.0);',
+    '  float onMt = clamp((h-0.5)/1.6, 0.0, 1.0);',
     '  float canopy = (1.0-t) * onMt;',
     // ★질감 UV 는 **월드 앵커**다 — 카메라·조각·청크와 무관한 하나의 연속 함수.
     //   *_angled 텍스처는 이미 아이소 각으로 구워져 있으니 월드 좌표를 같은 각으로 눕혀 읽는다.
@@ -2349,13 +2360,13 @@ const SIM_JOB_EMOJI = {
     '    float ky = vn2(rot((w+vec2(0.0,e2))/3.3,2.49))*0.68 + vn2(rot((w+vec2(0.0,e2))/1.35,0.83))*0.32;',
     '    vec3 cn = normalize(vec3(-(kx-k0)*7.0, -(ky-k0)*7.0, 1.0));',
     '    float cl = max(0.10, dot(cn, uL));',
-    '    vec3 leaf = mix(vec3(0.106,0.196,0.098), vec3(0.235,0.361,0.169), k0);',   // 짙은 침엽 → 밝은 활엽
-    '    leaf *= (0.42 + 1.05*cl);',
-    '    leaf *= mix(0.72, 1.0, smoothstep(0.30,0.62,k0));',                        // 수관 사이 그늘
+    '    vec3 leaf = mix(vec3(0.082,0.153,0.075), vec3(0.212,0.318,0.137), k0);',   // 짙은 침엽 → 활엽
+    '    leaf *= (0.55 + 0.72*cl);',                                                // 밝기 폭을 줄여 씻긴 느낌 제거
+    '    leaf *= mix(0.68, 1.0, smoothstep(0.30,0.62,k0));',                        // 수관 사이 그늘
     '    col = mix(col, leaf, canopy*0.92);',
     '  }',
     // AO — hAll 이 이미 들고 있는 4×4 평균과의 차(오목하면 어둡다). 추가 표본 0.
-    '  float conc = (mean - h) * uAoOn;',
+    '  float conc = concR * uAoOn;',
     '  col *= 1.0 - clamp(conc*0.16, 0.0, 0.40);',
     '  col *= 1.0 + clamp(-conc*0.10, 0.0, 0.16);',
     '  col += vec3(0.73,0.78,0.85) * min(0.09, (h/uHmax)*0.09);',   // 대기 원근
@@ -2730,8 +2741,11 @@ const SIM_JOB_EMOJI = {
       const macro = (_mt3vn((F.i0 + cx) / 21, (F.j0 + cy) / 21, 61) - 0.5) * 1.5
                   + (_mt3vn((F.i0 + cx) / 8.5, (F.j0 + cy) / 8.5, 63) - 0.5) * 0.7
                   + (_mt3vn((F.i0 + cx) / 3.1, (F.j0 + cy) / 3.1, 67) - 0.5) * 0.35;
-      // 폴백도 같은 규칙 — **경사만** 바위, 마루는 숲(높이 항 제거)
-      let t = Math.max(0, Math.min(1, (steep - 0.20 + macro * 0.10) / 0.45));
+      // 폴백도 같은 규칙 — 바위 = (급경사 ∧ 능선) ∪ 가장자리 암벽 띠
+      const _sg = Math.max(0, Math.min(1, (steep - 0.42) / 0.38));
+      const _rg = Math.max(0, Math.min(1, -so.conc * 0.75));
+      const _ec = 1 - Math.max(0, Math.min(1, (hAvg - 2.5) / 7.0));
+      let t = Math.max(0, Math.min(1, Math.max(_ec, _sg * _rg) + macro * 0.10));
       const use = (t < 0.10 ? GP : RP);
       if (use) { use.setTransform(new DOMMatrix().translate(0, -Math.round(hAvg * 32)).scale(t < 0.10 ? 1 : 0.35, t < 0.10 ? 1 : 0.35));
                  g.fillStyle = use; } else g.fillStyle = t < 0.10 ? '#5a7040' : '#6b6b6b';

@@ -53,6 +53,7 @@ require(path.join(ROOT,'server','zone.js'));`);
            await pg.evaluate((v)=>window.__mt3ao(v),  how.indexOf('noao')<0?1:0);
            await pg.evaluate((v)=>window.__mt3aobox(v), how.indexOf('aobox')>=0?1:0);
            await pg.evaluate((v)=>window.__mt3cull(v), how.indexOf('cull0')>=0?0:1);
+           await pg.evaluate((v)=>{window.__terrain19.mtOff=v;}, how.indexOf('mtoff')>=0);
            const rs=/^rocks([0-9p]+)$/.exec(how);
            if(rs) await pg.evaluate((v)=>window.__mt3rocks(v), +rs[1].replace('p','.')); }
     await sleep(6000);                        // 예산 1청크/프레임 — 뷰 전체 다시 굽는 데 충분히
