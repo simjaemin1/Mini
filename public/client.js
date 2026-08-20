@@ -2095,6 +2095,11 @@ const SIM_JOB_EMOJI = {
   //   진폭이 작아 안 보였을 뿐이고, 35m 로 키우자 드러났다.
   //   ⇒ quintic(6t⁵−15t⁴+10t³). 격자에서 1차·2차 도함수가 둘 다 0 이라 주름이 안 생긴다.
   //     (셀 경계의 smoothstep 을 Catmull-Rom 으로 걷어낸 것과 **같은 종류의 수리**다.)
+  // 옥타브마다 격자를 돌려 부르는 헬퍼 — 셰이더의 rot() 과 같은 처방(와플 방지)
+  const _mt3rvn = (x, y, s, a) => {
+    const c = Math.cos(a), sn = Math.sin(a);
+    return _mt3vn(c * x - sn * y, sn * x + c * y, s);
+  };
   const _mt3vn = (x, y, s) => {
     const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
     const u = xf * xf * xf * (xf * (xf * 6 - 15) + 10), v = yf * yf * yf * (yf * (yf * 6 - 15) + 10);
@@ -2142,13 +2147,17 @@ const SIM_JOB_EMOJI = {
       // ★결은 **국소 높이에 비례**해서 얹는다. 절대량으로 얹으면 11m 짜리 가장자리 셀이
       //   음수로 꺼져 산자락에 구멍이 뚫린다(옛 판은 dE/3 로 결을 죽여서 벽이 균일해졌다).
       const rel = Math.min(1, h / MT3_HMAX);
-      h += rel * MT3_HMAX * MT3_ROUGH * (0.64 * (_mt3vn(ai / 14, aj / 14, 29) - 0.5)
-              + 0.38 * (_mt3vn(ai / 6, aj / 6, 31) - 0.5)
-              + 0.26 * (_mt3vn(ai / 2.9, aj / 2.9, 37) - 0.5)
-              + 0.12 * (_mt3vn(ai / 1.6, aj / 1.6, 41) - 0.5));
+      // ★옥타브마다 **다른 각으로 돌린 격자** + 도메인 워프.
+      //   전부 같은 축에 정렬된 값 잡음을 겹치면 격자선이 쌓여 등각 축의 **와플 주름**이 된다.
+      const wu = ai + 3.2 * (_mt3rvn(ai / 9, aj / 9, 71, 0.9) - 0.5);
+      const wv = aj + 3.2 * (_mt3rvn(ai / 9, aj / 9, 73, 2.7) - 0.5);
+      h += rel * MT3_HMAX * MT3_ROUGH * (0.64 * (_mt3rvn(wu / 14, wv / 14, 29, 0.37) - 0.5)
+              + 0.38 * (_mt3rvn(wu / 6, wv / 6, 31, 1.31) - 0.5)
+              + 0.26 * (_mt3rvn(wu / 2.9, wv / 2.9, 37, 2.49) - 0.5)
+              + 0.12 * (_mt3rvn(wu / 1.6, wv / 1.6, 41, 0.83) - 0.5));
       const crest = Math.min(1, Math.max(0, (dE - 3) / 5));
-      h += crest * MT3_HMAX * MT3_ROUGH * (0.28 * (_mt3vn(ai / 4.2, aj / 4.2, 43) - 0.5)
-              + 0.14 * (_mt3vn(ai / 2.1, aj / 2.1, 47) - 0.5));
+      h += crest * MT3_HMAX * MT3_ROUGH * (0.28 * (_mt3rvn(wu / 4.2, wv / 4.2, 43, 1.94) - 0.5)
+              + 0.14 * (_mt3rvn(wu / 2.1, wv / 2.1, 47, 0.52) - 0.5));
       hg[j * N + i] = Math.max(0.12, h);
     }
     const t2 = Float32Array.from(hg), SMB = 0.55;
@@ -2221,7 +2230,9 @@ const SIM_JOB_EMOJI = {
                                        //   조각 안에서 vC 를 **선형 보간**하므로 곡률이 큰 곳에
                                        //   조각 주기의 미세한 꺾임이 남는다(진폭 ∝ 1/GSUB²).
   const MT3_TW = 512, MT3_TH = 256;    // terrain 텍스처 한 장이 덮는 화면 크기(8×8셀 다이아)
-  const MT3_ROCKS = 0.35;              // 바위 결 배율(캔버스 판의 setTransform(0.35) 과 같은 값)
+  let MT3_ROCKS = 0.35;                // 바위 결 배율(캔버스 판의 setTransform(0.35) 과 같은 값)
+  let MT3_TEXON = 1, MT3_AOON = 1;     // 시험 손잡이 — 질감/AO 를 빼서 무늬의 출처를 가른다
+  let MT3_AOBOX = 0;                   // 1 이면 **옛 AO**(4×4 상자 평균 = 조각별 상수) — 반례 전용
   const MT3_OV = 0.008;                // 띠 겹침(셀). 가로 0.5px·세로 0.26px — 실루엣 부풀림은 무시할 수준
   let MT3_CV0 = 128;                   // GL 캔버스 초깃값. 띠가 크면 128 배수로 자란다
   let MT3_MPAD = 18;                   // 띠 캔버스 여백(px) — 손잡이로 갈아 끼워 잘림 여부를 가린다
@@ -2238,9 +2249,14 @@ const SIM_JOB_EMOJI = {
     'varying vec2 vC;',
     'uniform sampler2D uH; uniform sampler2D uRock; uniform sampler2D uGrass;',
     'uniform float uN; uniform float uHmax; uniform vec3 uL; uniform vec2 uOrig;',
-    'uniform vec2 uTex; uniform float uRockS;',
+    'uniform vec2 uTex; uniform float uRockS; uniform float uTexOn; uniform float uAoOn; uniform float uAoBox;',
     // ── 높이: 16비트(R=상위, G=하위)로 실어 NEAREST 로 텍셀을 직접 읽는다 ──
-    'float hT(vec2 c){ vec2 uv=(clamp(c,0.0,uN-1.0)+0.5)/uN; vec4 t=texture2D(uH,uv); return (t.r + t.g/255.0)*uHmax; }',
+    // R,G = 높이(16비트) · B = **미리 흐려 둔 높이**(8비트).
+    //   ★AO 를 4×4 표본의 **상자 평균**으로 내고 있었다. 그 값은 floor(c) 에서 툭 바뀌는
+    //     **조각별 상수**라, 셀 격자마다 명암이 계단으로 끊긴다 — 색 경로에 남은 무보간 자료다.
+    //   ⇒ 흐린 높이를 텍스처에 실어, **높이와 똑같은 Catmull-Rom** 으로 읽는다(표본 추가 0).
+    'vec2 hT(vec2 c){ vec2 uv=(clamp(c,0.0,uN-1.0)+0.5)/uN; vec4 t=texture2D(uH,uv);',
+    '  return vec2((t.r + t.g/255.0)*uHmax, t.b*uHmax); }',
     // ── Catmull-Rom 기저와 그 도함수 ──
     //   smoothstep(옛 판)은 셀 경계에서 기울기를 **0 으로 강제**해 베개 무늬를 만들었다.
     //   Catmull-Rom 은 값·기울기를 이어 붙이면서 셀 안에 강제 극점을 안 만든다.
@@ -2257,12 +2273,15 @@ const SIM_JOB_EMOJI = {
     '  h = 0.0; g = vec2(0.0); mean = 0.0;',
     '  for(int m=0;m<4;m++){',
     '    float y = f.y + float(m) - 1.0;',
-    '    vec4 s = vec4(hT(vec2(f.x-1.0,y)), hT(vec2(f.x,y)), hT(vec2(f.x+1.0,y)), hT(vec2(f.x+2.0,y)));',
+    '    vec2 a0 = hT(vec2(f.x-1.0,y)), a1 = hT(vec2(f.x,y));',
+    '    vec2 a2 = hT(vec2(f.x+1.0,y)), a3 = hT(vec2(f.x+2.0,y));',
+    '    vec4 s = vec4(a0.x, a1.x, a2.x, a3.x);',
+    '    vec4 sb = vec4(a0.y, a1.y, a2.y, a3.y);',
     '    float rv = dot(s,wx), rd = dot(s,dx);',
     '    h    += rv * wy[m];',
     '    g.x  += rd * wy[m];',
     '    g.y  += rv * dy[m];',
-    '    mean += dot(s, vec4(0.0625));',
+    '    mean += mix(dot(sb,wx), dot(sb,vec4(0.25)), uAoBox) * wy[m];',     // 흐린 높이도 **같은 바이큐빅** — 조각별 상수가 아니다
     '  }',
     '}',
     // ── 잔 결: **32px(=1셀) 과 무관한 주기**로. 셀 격자에 안 붙는다. ──
@@ -2274,6 +2293,14 @@ const SIM_JOB_EMOJI = {
     // 격자 주름을 없애려 quintic — CPU 쪽 _mt3vn 과 **같은 보간**이어야 두 판이 안 엇갈린다
     'float vn2(vec2 q){ vec2 i=floor(q), f=fract(q); f=f*f*f*(f*(f*6.0-15.0)+10.0);',
     '  return mix(mix(hash21(i),hash21(i+vec2(1.0,0.0)),f.x),mix(hash21(i+vec2(0.0,1.0)),hash21(i+vec2(1.0,1.0)),f.x),f.y); }',
+    // ★★[와플 주름] 값 잡음은 **자기 격자**를 갖는다. 옥타브를 여럿 겹쳐도 전부 같은 축에
+    //   정렬돼 있으면 격자선이 겹쳐 쌓여 등각 축 방향의 **와플**이 된다.
+    //   ⇒ 옥타브마다 격자를 다른 각으로 **돌리고**(rot), 좌표를 한 번 **휘어**(도메인 워프) 쓴다.
+    //     회전각은 서로 무리수에 가까운 비로 골라 어느 두 옥타브도 축을 공유하지 않게 한다.
+    'vec2 rot(vec2 p, float a){ float c=cos(a), s2=sin(a); return vec2(c*p.x - s2*p.y, s2*p.x + c*p.y); }',
+    'float fbm(vec2 q, float o1, float o2, float o3){',
+    '  vec2 wq = q + 0.30*vec2(vn2(rot(q*0.55, 0.9))-0.5, vn2(rot(q*0.55, 2.7))-0.5);',
+    '  return o1*vn2(rot(wq, 0.37)) + o2*vn2(rot(wq*2.03, 1.31)) + o3*vn2(rot(wq*4.11, 2.49)); }',
     'void main(){',
     '  float h; vec2 g; float mean;',
     '  hAll(vC, h, g, mean);',
@@ -2282,8 +2309,8 @@ const SIM_JOB_EMOJI = {
     // 중앙차분(2회/축)이 아니라 **전방차분**(중앙 1 + 축당 1)으로 척도당 3회만 부른다.
     //   잔결의 기울기는 장식이라 한쪽으로 반 칸 치우쳐도 눈에 안 띈다 — 호출 8회 → 6회.
     '  float e = 0.31;',
-    '  float aC = vn2(w/2.7), aX = vn2(w/2.7+vec2(e,0.0)), aY = vn2(w/2.7+vec2(0.0,e));',
-    '  float bC = vn2(w/1.13), bX = vn2(w/1.13+vec2(e,0.0)), bY = vn2(w/1.13+vec2(0.0,e));',
+    '  float aC = vn2(rot(w/2.7,0.37)), aX = vn2(rot((w+vec2(e,0.0))/2.7,0.37)), aY = vn2(rot((w+vec2(0.0,e))/2.7,0.37));',
+    '  float bC = vn2(rot(w/1.13,1.31)), bX = vn2(rot((w+vec2(e,0.0))/1.13,1.31)), bY = vn2(rot((w+vec2(0.0,e))/1.13,1.31));',
     '  g.x += (aX-aC)*1.20 + (bX-bC)*0.60;',
     '  g.y += (aY-aC)*1.20 + (bY-bC)*0.60;',
     '  vec3 nrm = normalize(vec3(-g.x, -g.y, 1.0));',
@@ -2295,7 +2322,7 @@ const SIM_JOB_EMOJI = {
     //   옛 판은 높이가 높을수록 바위였다 — 그래서 마루가 헐벗은 메사가 됐다.
     //   높이 항을 걷어내고 **경사만** 바위로 읽는다. LAM 2.5 면 가장자리는 기울기 14m/셀이라
     //   자동으로 암벽이 되고, 마루는 평평해 숲이 앉는다. 북한산·월출산 계열의 인상이다.
-    '  float macro = (vn2(w/21.0)-0.5)*1.5 + (vn2(w/8.5)-0.5)*0.7 + (vn2(w/3.1)-0.5)*0.35;',
+    '  float macro = (fbm(w/21.0, 0.58, 0.28, 0.14)-0.5)*2.55;',
     '  float t = clamp((steep - 0.20 + macro*0.10)/0.45, 0.0, 1.0);',
     // 산기슭 아래(높이 1m 미만)는 들판 풀 — 평지와 이어져야 이음매가 안 보인다
     '  float onMt = clamp((h-0.8)/2.2, 0.0, 1.0);',
@@ -2304,8 +2331,9 @@ const SIM_JOB_EMOJI = {
     //   *_angled 텍스처는 이미 아이소 각으로 구워져 있으니 월드 좌표를 같은 각으로 눕혀 읽는다.
     //   (조각마다 pattern.setTransform 을 다시 걸던 옛 판이 32px 주기 누비이불의 한 축이었다.)
     '  vec2 iso = vec2(w.x - w.y, (w.x + w.y)*0.5) * 32.0;',
-    '  vec3 gcol = texture2D(uGrass, iso/uTex).rgb;',
-    '  vec3 rcol = texture2D(uRock,  iso/(uTex*uRockS)).rgb;',
+    // uTexOn=0 이면 **질감을 빼고 평탄색**으로 — 남은 무늬가 질감에서 왔는지 음영에서 왔는지 가른다
+    '  vec3 gcol = mix(vec3(0.353,0.439,0.251), texture2D(uGrass, iso/uTex).rgb, uTexOn);',
+    '  vec3 rcol = mix(vec3(0.478,0.478,0.478), texture2D(uRock,  iso/(uTex*uRockS)).rgb, uTexOn);',
     '  vec3 base = mix(gcol, rcol, smoothstep(0.10,0.45,t));',
     '  vec3 tint = mix(vec3(0.298,0.408,0.204), vec3(0.494,0.510,0.470), smoothstep(0.30,1.0,t));',
     '  float ta = mix(0.0,0.62,smoothstep(0.0,0.30,t)) * mix(1.0,0.26,smoothstep(0.30,1.0,t));',
@@ -2316,9 +2344,9 @@ const SIM_JOB_EMOJI = {
     //   기하는 안 건드린다(실루엣은 꼭짓점이 정한다). 요철은 **법선과 명암**으로만 낸다.
     '  if (canopy > 0.01) {',
     '    float e2 = 0.42;',
-    '    float k0 = vn2(w/3.3)*0.68 + vn2(w/1.35)*0.32;',
-    '    float kx = vn2(w/3.3+vec2(e2,0.0))*0.68 + vn2(w/1.35+vec2(e2,0.0))*0.32;',
-    '    float ky = vn2(w/3.3+vec2(0.0,e2))*0.68 + vn2(w/1.35+vec2(0.0,e2))*0.32;',
+    '    float k0 = vn2(rot(w/3.3,2.49))*0.68 + vn2(rot(w/1.35,0.83))*0.32;',
+    '    float kx = vn2(rot((w+vec2(e2,0.0))/3.3,2.49))*0.68 + vn2(rot((w+vec2(e2,0.0))/1.35,0.83))*0.32;',
+    '    float ky = vn2(rot((w+vec2(0.0,e2))/3.3,2.49))*0.68 + vn2(rot((w+vec2(0.0,e2))/1.35,0.83))*0.32;',
     '    vec3 cn = normalize(vec3(-(kx-k0)*7.0, -(ky-k0)*7.0, 1.0));',
     '    float cl = max(0.10, dot(cn, uL));',
     '    vec3 leaf = mix(vec3(0.106,0.196,0.098), vec3(0.235,0.361,0.169), k0);',   // 짙은 침엽 → 밝은 활엽
@@ -2327,7 +2355,7 @@ const SIM_JOB_EMOJI = {
     '    col = mix(col, leaf, canopy*0.92);',
     '  }',
     // AO — hAll 이 이미 들고 있는 4×4 평균과의 차(오목하면 어둡다). 추가 표본 0.
-    '  float conc = mean - h;',
+    '  float conc = (mean - h) * uAoOn;',
     '  col *= 1.0 - clamp(conc*0.16, 0.0, 0.40);',
     '  col *= 1.0 + clamp(-conc*0.10, 0.0, 0.16);',
     '  col += vec3(0.73,0.78,0.85) * min(0.09, (h/uHmax)*0.09);',   // 대기 원근
@@ -2359,27 +2387,37 @@ const SIM_JOB_EMOJI = {
       _mgl.lp = gl.getAttribLocation(pr, 'p'); _mgl.lc = gl.getAttribLocation(pr, 'c');
       gl.enableVertexAttribArray(_mgl.lp); gl.vertexAttribPointer(_mgl.lp, 2, gl.FLOAT, false, 16, 0);
       gl.enableVertexAttribArray(_mgl.lc); gl.vertexAttribPointer(_mgl.lc, 2, gl.FLOAT, false, 16, 8);
-      for (const u of ['uRes', 'uH', 'uRock', 'uGrass', 'uN', 'uHmax', 'uL', 'uOrig', 'uTex', 'uRockS'])
+      for (const u of ['uRes', 'uH', 'uRock', 'uGrass', 'uN', 'uHmax', 'uL', 'uOrig', 'uTex', 'uRockS', 'uTexOn', 'uAoOn', 'uAoBox'])
         _mgl.uni[u] = gl.getUniformLocation(pr, u);
-      const mkTex = (filt, wrap) => { const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filt); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filt);
+      const mkTex = (filt, wrap, minf) => { const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, minf || filt); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filt);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap);
         return t; };
       _mgl.hTex = mkTex(gl.NEAREST, gl.CLAMP_TO_EDGE);
-      _mgl.rTex = mkTex(gl.LINEAR, gl.REPEAT);
-      _mgl.gTex = mkTex(gl.LINEAR, gl.REPEAT);
+      // ★★[격자 3층 원인 — 계측으로 특정 2026-08-19] 사면을 지배하던 7~9px 무늬의 정체.
+      //   바위 질감을 uRockS=0.35 로 **2.86배 축소** 표본화하면서 밉맵을 안 만들었다.
+      //   축소인데 필터가 LINEAR 뿐이면 화소마다 텍셀 2.86개를 **한 점만 찍어** 읽는다 —
+      //   전형적인 에일리어싱이고, 화면 격자와 결이 맞물려 규칙적인 모아레가 선다.
+      //   손잡이 실측: 질감을 끄면 배수 58.6→11.8(진폭 1.14→0.16계조), 배율을 1.0 으로
+      //   올리면(축소 없음) 58.6→28.9 — 봉우리가 **배율을 따라 움직였다.** AO 는 무관(58.6→58.6).
+      //   ⇒ 밉맵을 만들고 MIN 필터를 LINEAR_MIPMAP_LINEAR 로. 512×256 이라 2의 거듭제곱 조건도 만족한다.
+      _mgl.rTex = mkTex(gl.LINEAR, gl.REPEAT, gl.LINEAR_MIPMAP_LINEAR);
+      _mgl.gTex = mkTex(gl.LINEAR, gl.REPEAT, gl.LINEAR_MIPMAP_LINEAR);
       const pot = (n) => n > 0 && (n & (n - 1)) === 0;
       const up = (tex, im) => {
         if (!im || !im.naturalWidth) throw new Error('텍스처 미로드');
         // WebGL1 은 2의 거듭제곱이 아니면 REPEAT 를 못 쓴다. 512×256 이라 통과하지만, 바뀌면 여기서 폴백된다.
         if (!pot(im.naturalWidth) || !pot(im.naturalHeight)) throw new Error('텍스처가 2의 거듭제곱이 아니다 — REPEAT 불가');
         gl.bindTexture(gl.TEXTURE_2D, tex); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, im); };
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, im);
+        gl.generateMipmap(gl.TEXTURE_2D); };
       up(_mgl.rTex, GTEX.rock_angled); up(_mgl.gTex, GTEX.grass_angled);
       gl.uniform1i(_mgl.uni.uH, 0); gl.uniform1i(_mgl.uni.uRock, 1); gl.uniform1i(_mgl.uni.uGrass, 2);
       gl.uniform1f(_mgl.uni.uN, MT3_HTEX); gl.uniform1f(_mgl.uni.uHmax, MT3_HMAX);
       gl.uniform3f(_mgl.uni.uL, MT3_L[0], MT3_L[1], MT3_L[2]);
       gl.uniform2f(_mgl.uni.uTex, MT3_TW, MT3_TH); gl.uniform1f(_mgl.uni.uRockS, MT3_ROCKS);
+      gl.uniform1f(_mgl.uni.uTexOn, MT3_TEXON); gl.uniform1f(_mgl.uni.uAoOn, MT3_AOON);
+      gl.uniform1f(_mgl.uni.uAoBox, MT3_AOBOX);
       gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, _mgl.rTex);
       gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, _mgl.gTex);
       gl.activeTexture(gl.TEXTURE0);
@@ -2394,12 +2432,24 @@ const SIM_JOB_EMOJI = {
     if (_mgl.hKey === key) return;
     const gl = _mgl.gl, N = MT3_HTEX;
     const buf = new Uint8Array(N * N * 4);
+    const raw = new Float32Array(N * N);
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++)
+      raw[j * N + i] = (i <= F.N && j <= F.N) ? F.cor(i, j) : 0;
+    // B 채널 = 3×3 텐트로 흐린 높이. 셰이더의 AO 가 이걸 **같은 바이큐빅**으로 읽는다.
     for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
-      const h = (i <= F.N && j <= F.N) ? F.cor(i, j) : 0;
+      let sum = 0, w = 0;
+      for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) {
+        const ii = i + a, jj = j + b; if (ii < 0 || jj < 0 || ii >= N || jj >= N) continue;
+        const wt = (a ? 1 : 2) * (b ? 1 : 2);
+        sum += raw[jj * N + ii] * wt; w += wt;
+      }
+      const h = raw[j * N + i];
       const v = Math.max(0, Math.min(1, h / MT3_HMAX)) * 255;
       const hi = Math.floor(v), lo = Math.round((v - hi) * 255);
       const k = (j * N + i) * 4;
-      buf[k] = hi; buf[k + 1] = lo; buf[k + 2] = 0; buf[k + 3] = 255;
+      buf[k] = hi; buf[k + 1] = lo;
+      buf[k + 2] = Math.round(Math.max(0, Math.min(1, (w ? sum / w : h) / MT3_HMAX)) * 255);
+      buf[k + 3] = 255;
     }
     gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, _mgl.hTex);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, N, N, 0, gl.RGBA, gl.UNSIGNED_BYTE, buf);
@@ -2456,6 +2506,9 @@ const SIM_JOB_EMOJI = {
     gl.vertexAttribPointer(_mgl.lc, 2, gl.FLOAT, false, 16, 8);
     gl.uniform2f(_mgl.uni.uRes, bw, bh);
     gl.uniform2f(_mgl.uni.uOrig, F.i0, F.j0);
+    gl.uniform1f(_mgl.uni.uTexOn, MT3_TEXON); gl.uniform1f(_mgl.uni.uAoOn, MT3_AOON);
+    gl.uniform1f(_mgl.uni.uAoBox, MT3_AOBOX);
+    gl.uniform1f(_mgl.uni.uRockS, MT3_ROCKS);
     // 뷰포트를 캔버스 **왼쪽 위**에 둔다(GL 원점은 왼쪽 아래) → blit 원본이 (0,0) 이 된다.
     gl.viewport(0, H - bh, bw, bh);
     gl.enable(gl.SCISSOR_TEST); gl.scissor(0, H - bh, bw, bh);
@@ -2478,6 +2531,11 @@ const SIM_JOB_EMOJI = {
     if (_mgl.gl) { _mgl.gl.useProgram(_mgl.pr); _mgl.gl.uniform1f(_mgl.uni.uHmax, MT3_HMAX); }
     _mgl.hKey = ''; _mt3Chunk.clear(); _mt3Sig = ''; return [MT3_HMAX, MT3_LAM]; };
   window.__mt3mpad = (v) => { MT3_MPAD = v | 0; _mt3Chunk.clear(); _mt3Sig = ''; return MT3_MPAD; };
+  window.__mt3tex = (v) => { MT3_TEXON = v ? 1 : 0; _mt3Chunk.clear(); _mt3Sig = ''; return MT3_TEXON; };
+  window.__mt3ao = (v) => { MT3_AOON = v ? 1 : 0; _mt3Chunk.clear(); _mt3Sig = ''; return MT3_AOON; };
+  // 반례 손잡이 — 옛 AO(조각별 상수)로 되돌린다. 고친 게 정말 그거였는지 같은 판에서 보인다.
+  window.__mt3aobox = (v) => { MT3_AOBOX = v ? 1 : 0; _mt3Chunk.clear(); _mt3Sig = ''; return MT3_AOBOX; };
+  window.__mt3rocks = (v) => { MT3_ROCKS = +v; _mt3Chunk.clear(); _mt3Sig = ''; return MT3_ROCKS; };
   window.__mt3cv = (n) => { MT3_CV0 = n | 0; if (_mgl.cv) { _mgl.cv.width = _mgl.cv.height = MT3_CV0; }
     _mt3Chunk.clear(); _mt3Sig = ''; return MT3_CV0; };
   // ── 청크 하나를 **반대각선 띠**로 구워 세그먼트 배열로 ────────────────────

@@ -48,7 +48,12 @@ require(path.join(ROOT,'server','zone.js'));`);
            const hh=/^h(\d+)_(\d+)$/.exec(how);
            if(hh) await pg.evaluate((a)=>window.__mt3h(a[0],a[1]), [+hh[1],+hh[2]]);
            const mp=/^mpad(\d+)$/.exec(how);
-           if(mp) await pg.evaluate((n)=>window.__mt3mpad(n), +mp[1]); }
+           if(mp) await pg.evaluate((n)=>window.__mt3mpad(n), +mp[1]);
+           await pg.evaluate((v)=>window.__mt3tex(v), how.indexOf('notex')<0?1:0);
+           await pg.evaluate((v)=>window.__mt3ao(v),  how.indexOf('noao')<0?1:0);
+           await pg.evaluate((v)=>window.__mt3aobox(v), how.indexOf('aobox')>=0?1:0);
+           const rs=/^rocks([0-9p]+)$/.exec(how);
+           if(rs) await pg.evaluate((v)=>window.__mt3rocks(v), +rs[1].replace('p','.')); }
     await sleep(6000);                        // 예산 1청크/프레임 — 뷰 전체 다시 굽는 데 충분히
     await pg.screenshot({path:path.join(OUT,tag+'.png')});
     console.log(tag, how);
