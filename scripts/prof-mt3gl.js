@@ -76,5 +76,18 @@ const sd = (z) => { const m = avg(z); return Math.sqrt(z.reduce((x, y) => x + (y
   console.log(`\n[대조군 — 산 자체를 끄면] 산 켬 ${avg(mOn).toFixed(2)} · 산 끔 ${avg(mOff).toFixed(2)}` +
     `  ★${dm >= 0 ? '+' : ''}${dm.toFixed(2)}ms (SE ${sem.toFixed(2)}) ${Math.abs(dm) > 2 * sem ? '유의' : '잡음'}`);
   await pg.evaluate(`window.__terrain19.mtOff=false`);
+  // 산 비용의 내부 분해 — 반투명(가림 페이드) 경로 / 컬링이 실제로 버는 값
+  for (const arm of [['가림 페이드', 'window.__terrain19.occOff=false', 'window.__terrain19.occOff=true'],
+                     ['가림 컬링', 'window.__mt3cull(1)', 'window.__mt3cull(0)']]) {
+    const A = [], B = [];
+    for (let r = 0; r < 3; r++) {
+      await pg.evaluate(arm[1]); await sleep(1500); A.push((await pg.evaluate(`(${M})(2200)`)).med);
+      await pg.evaluate(arm[2]); await sleep(1500); B.push((await pg.evaluate(`(${M})(2200)`)).med);
+    }
+    const dd = avg(A) - avg(B), se2 = Math.sqrt((sd(A) ** 2 + sd(B) ** 2) / 3);
+    console.log(`[${arm[0]}] 켬 ${avg(A).toFixed(2)} · 끔 ${avg(B).toFixed(2)}  ★${dd >= 0 ? '+' : ''}${dd.toFixed(2)}ms (SE ${se2.toFixed(2)}) ${Math.abs(dd) > 2 * se2 ? '유의' : '잡음'}`);
+  }
+  await pg.evaluate('window.__terrain19.occOff=false'); await pg.evaluate('window.__mt3cull(1)');
+  console.log('__mtDbg =', JSON.stringify(await pg.evaluate(() => window.__mtDbg)));
   await br.close(); for (const p of procs) { try { p.kill(); } catch (e) {} } process.exit(0);
 })().catch(e => { console.error(e); for (const p of procs) { try { p.kill(); } catch (_) {} } process.exit(1); });

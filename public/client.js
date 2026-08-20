@@ -2592,13 +2592,56 @@ const SIM_JOB_EMOJI = {
           for (const [i, j] of cells) _mt3Quad(g, F, i, j, RP, GP);
           g.restore();
         }
+        // ★★[오버드로] 화가 알고리즘이라 **앞 띠에 완전히 가린 띠도 전부 그린다.**
+        //   35m 벽이 화면을 채우니 그 낭비가 실측 +20.13ms 였다(9m 때는 +8.50ms).
+        //   ⇒ 띠마다 **열별 윤곽**(그려지는 최상단·최하단 y)을 굽는 김에 같이 낸다.
+        //     알파를 되읽지 않는다 — 기하에서 바로 나온다(옛날에 getImageData 로 뜨다가
+        //     56MB + 리드백 324회를 만든 적이 있다. 같은 실수 반복 금지).
+        const colT = new Int16Array(bw).fill(32767), colB = new Int16Array(bw).fill(-32768);
+        {
+          const SS = 4;                       // 셀당 4×4 표본이면 윤곽으로 충분하다
+          for (const [ci, cj] of cells) {
+            let px = null;
+            for (let b = 0; b <= SS; b++) {
+              const row = [];
+              for (let a = 0; a <= SS; a++) {
+                const u = ci + a / SS, v = cj + b / SS;
+                const wxp = (F.i0 + u) * 32, wyp = (F.j0 + v) * 32;
+                row.push([(wxp - wyp) - x0, (wxp + wyp) * 0.5 - F.corS(u, v) * 32 - y0]);
+              }
+              if (px) for (let a = 0; a < SS; a++) {
+                // 사각 조각 하나가 덮는 열 범위에 위/아래를 기록한다
+                const q = [px[a], px[a + 1], row[a + 1], row[a]];
+                let lo = 1e9, hi = -1e9, ty = 1e9, by = -1e9;
+                for (const p of q) { if (p[0] < lo) lo = p[0]; if (p[0] > hi) hi = p[0];
+                                     if (p[1] < ty) ty = p[1]; if (p[1] > by) by = p[1]; }
+                const c0 = Math.max(0, Math.floor(lo)), c1 = Math.min(bw - 1, Math.ceil(hi));
+                const t0 = Math.round(ty), b0 = Math.round(by);
+                for (let x = c0; x <= c1; x++) {
+                  if (t0 < colT[x]) colT[x] = t0;
+                  if (b0 > colB[x]) colB[x] = b0;
+                }
+              }
+              px = row;
+            }
+          }
+        }
         const ref = cells.reduce((a, b) => (a[0] + a[1] <= b[0] + b[1] ? a : b));
         const wx = (F.i0 + ref[0]) * 32 + 16, wy = (F.j0 + ref[1]) * 32 + 16;
         const rp = w2i((F.i0 + ref[0]) * 32 + 16, (F.j0 + ref[1]) * 32 + 16);
         // ★알파 사본을 **안 뜬다**. 굽는 시점에 뜨면 띠마다 GPU 리드백 1회 +
         //   힙에 캔버스와 같은 크기(실측 56MB)를 한 벌 더 든다 — 렉 잡겠다고 넣은 게 렉이었다.
         //   가림 판정은 z 게이트를 통과한 극소수 띠에서만 1px 만 읽는다.
-        segs.push({ img: cv, x: wx, y: wy, ox: rp.x - x0, oy: rp.y - y0, sc: 1, mt3: 1 });
+        // 실제로 칠해지는 최소 사각형 — blit 을 여기로 좁힌다(여백·투명 모서리를 안 옮긴다)
+        let bx0 = bw, bx1 = -1, by0 = bh, by1 = -1;
+        for (let a = 0; a < bw; a++) {
+          if (colT[a] > colB[a]) continue;
+          if (a < bx0) bx0 = a; if (a > bx1) bx1 = a;
+          if (colT[a] < by0) by0 = colT[a]; if (colB[a] > by1) by1 = colB[a];
+        }
+        const pb = (bx1 >= bx0) ? [Math.max(0, bx0), Math.max(0, Math.min(bh - 1, by0)),
+                                   Math.min(bw - 1, bx1), Math.min(bh - 1, by1)] : null;
+        segs.push({ img: cv, x: wx, y: wy, ox: rp.x - x0, oy: rp.y - y0, sc: 1, mt3: 1, colT, colB, pb });
       }
     }
     if (_mt3Chunk.size > 260) _mt3Chunk.clear();
@@ -2732,6 +2775,7 @@ const SIM_JOB_EMOJI = {
     const jLo = Math.max(Math.floor((sLo - dHi) / 2), Math.floor(cy0 / 32 - cap));
     const jHi = Math.min(Math.ceil((sHi - dLo) / 2), Math.ceil(cy0 / 32 + cap));
     let n = 0;
+    const cand = [];
     for (let gy = Math.floor(jLo / MT3_CH); gy <= Math.floor(jHi / MT3_CH); gy++)
       for (let gx = Math.floor(iLo / MT3_CH); gx <= Math.floor(iHi / MT3_CH); gx++) {
         // 청크의 (i−j)·(i+j) 구간이 화면 구간과 안 겹치면 아예 굽지 않는다
@@ -2748,10 +2792,118 @@ const SIM_JOB_EMOJI = {
           if (l > W * 0.5 || l + sg.img.width < -W * 0.5) continue;
           if (t > H * 0.5 || t + sg.img.height < -H * 0.5) continue;
           // −0.5: 같은 셀 위에 선 개체가 산보다 **앞**에 오도록(라이브 z 규약과 동형)
-          out.push({ z: p.y - 0.5, kind: 'mtseg', sg, wx: sg.x, wy: sg.y });
-          n++;
+          cand.push({ z: p.y - 0.5, kind: 'mtseg', sg, wx: sg.x, wy: sg.y,
+                      sx: Math.round(l + W * 0.5), sy: Math.round(t + H * 0.5) });
         }
       }
+    n = _mt3Cull(out, cand);
+    return n;
+  }
+  // ── 완전 은폐 컬링 ────────────────────────────────────────────────────────
+  //   화면 열마다 **이미 불투명하게 덮인 지평선**(그 y 아래로는 다 덮였다)을 들고,
+  //   가까운 띠부터(z 큰 순) 훑는다. 어떤 띠의 열별 최상단이 모든 열에서 지평선 아래면
+  //   그 띠는 한 화소도 안 보인다 — 안 그린다.
+  //   ★지평선은 **이미 덮인 구간과 맞닿을 때만** 위로 넓힌다. 산 표면은 열마다 연속이라
+  //     이 조건이 성립하고, 안 맞닿으면(사이에 하늘이 있으면) 넓히지 않아 과잉 컬링이 없다.
+  // ★★[실측 결론 — 지시 ① 은 이 장면에서 **손해다**]
+  //   "앞 띠에 완전 은폐된 띠를 스킵" 을 그대로 넣고 쟀다:
+  //     · 컬링된 띠 **0 / 162장** (90% 이상 가려진 띠조차 2장뿐)
+  //     · 그런데 매 프레임 띠×열 훑기 때문에 **+2.87ms (SE 0.82) 유의하게 느려졌다**
+  //   왜 안 걸리나: 낭비는 '완전히 가린 띠'가 아니다. 오버드로가 화면 넓이의 **4.65배**인데,
+  //   그 정체는 3m/셀 벽을 **반대각선 띠마다 다시 칠하는 것**이다. 셀 하나의 벽이 세로 ~90px
+  //   인데 띠 간격은 16px 이라, 같은 화소를 대략 6~7번 칠한다. 띠 단위로는 아무도 '완전히'
+  //   가려지지 않는다 — 서로 조금씩 삐져나온다.
+  //   ⇒ 기본은 **끔**. 코드는 손잡이 뒤에 남겨 둔다(뒷사면처럼 자기가림이 큰 자리에선 쓸모가 있다).
+  //   ⇒ 남은 +24.7ms 를 없애려면 산을 **한 번에 깊이버퍼로** 그려야 하는데, 그건 띠 사이에
+  //     개체가 끼는 계약을 깬다 — 재민 결정 사항으로 회부한다.
+  let MT3_CULL = 0, _mt3Culled = 0, _mt3Over = 0, _mt3OverT = 0, _mt3OverP = 0, _mt3Near = 0, _mt3HorT = null, _mt3HorB = null;
+  window.__mt3cull = (v) => { MT3_CULL = v ? 1 : 0; return MT3_CULL; };
+  function _mt3Cull(out, cand) {
+    if (!MT3_CULL) { for (const it of cand) out.push(it); _mt3Culled = 0; return cand.length; }
+    // ★덮인 구간을 [위, 아래] **둘 다** 들고 간다. 위만 들고 "그 아래는 다 덮였다"고 하면
+    //   띠 아래쪽의 안 덮인 부분을 덮였다고 우겨 과잉 컬링이 난다.
+    if (!_mt3HorT || _mt3HorT.length < W) { _mt3HorT = new Int32Array(W); _mt3HorB = new Int32Array(W); }
+    const hT = _mt3HorT, hB = _mt3HorB;
+    hT.fill(2147483647); hB.fill(-2147483648);
+    cand.sort((a, b) => b.z - a.z);              // 가까운 것부터
+    let n = 0; _mt3Culled = 0;
+    const keep = [];
+    for (const it of cand) {
+      const sg = it.sg, cT = sg.colT, cB = sg.colB;
+      const x0 = it.sx - sg.ox, y0 = it.sy - sg.oy;   // 띠 캔버스의 화면 원점
+      let vis = false;
+      if (!cT) vis = true;                       // 윤곽이 없는 띠(옛 세그)는 안전하게 그린다
+      else {
+        const a0 = Math.max(0, -x0), a1 = Math.min(sg.img.width - 1, W - 1 - x0);
+        for (let a = a0; a <= a1; a++) {
+          if (cT[a] > cB[a]) continue;           // 이 열엔 그려지는 게 없다
+          const x = x0 + a;
+          if (y0 + cT[a] < hT[x] || y0 + cB[a] > hB[x]) { vis = true; break; }
+        }
+        if (a1 < a0) vis = true;                 // 화면 밖 — 판정 불가, 그냥 둔다
+      }
+      if (!vis) { _mt3Culled++; continue; }
+      // 지평선 갱신 — 맞닿는 열만
+      if (cT) {
+        const a0 = Math.max(0, -x0), a1 = Math.min(sg.img.width - 1, W - 1 - x0);
+        for (let a = a0; a <= a1; a++) {
+          if (cT[a] > cB[a]) continue;
+          const t = y0 + cT[a], b = y0 + cB[a], x = x0 + a;
+          if (hT[x] > hB[x]) { hT[x] = t; hB[x] = b; }          // 이 열의 첫 덮개
+          else if (b + 1 >= hT[x] && t - 1 <= hB[x]) {          // 맞닿거나 겹칠 때만 넓힌다
+            if (t < hT[x]) hT[x] = t;
+            if (b > hB[x]) hB[x] = b;
+          }
+        }
+      }
+      keep.push(it); n++;
+    }
+    // 계측 — 오버드로가 실제로 얼마나 있나(화면 화소 대비 그려지는 띠 화소 합)
+    { let a = 0;
+      for (const it of keep) {
+        const sg = it.sg, x0 = it.sx - sg.ox, y0 = it.sy - sg.oy;
+        const w2 = Math.min(W, x0 + sg.img.width) - Math.max(0, x0);
+        const h2 = Math.min(H, y0 + sg.img.height) - Math.max(0, y0);
+        if (w2 > 0 && h2 > 0) a += w2 * h2;
+      }
+      _mt3Over = a / Math.max(1, W * H);
+      // 같은 띠들을 **실제로 칠해지는 최소 사각형**으로 재면 얼마가 되나
+      let at = 0, ap = 0;
+      for (const it of keep) {
+        const sg = it.sg, cT = sg.colT, cB = sg.colB; if (!cT) { at += 0; continue; }
+        const x0 = it.sx - sg.ox, y0 = it.sy - sg.oy;
+        let lo = 1e9, hi = -1e9, ty = 1e9, by = -1e9, col = 0;
+        for (let a2 = 0; a2 < sg.img.width; a2++) {
+          if (cT[a2] > cB[a2]) continue;
+          col++;
+          if (a2 < lo) lo = a2; if (a2 > hi) hi = a2;
+          if (cT[a2] < ty) ty = cT[a2]; if (cB[a2] > by) by = cB[a2];
+          ap += Math.min(H, y0 + cB[a2]) - Math.max(0, y0 + cT[a2]) + 1;   // 열별 실제 높이 합
+        }
+        if (!col) continue;
+        const w2 = Math.min(W, x0 + hi + 1) - Math.max(0, x0 + lo);
+        const h2 = Math.min(H, y0 + by + 1) - Math.max(0, y0 + ty);
+        if (w2 > 0 && h2 > 0) at += w2 * h2;
+      }
+      _mt3OverT = at / Math.max(1, W * H);
+      _mt3OverP = ap / Math.max(1, W * H);
+      let cov = 0;
+      for (const it of cand) {
+        const sg = it.sg, cT = sg.colT, cB = sg.colB; if (!cT) continue;
+        const x0 = it.sx - sg.ox, y0 = it.sy - sg.oy;
+        let tot = 0, hid = 0;
+        for (let a2 = Math.max(0, -x0); a2 <= Math.min(sg.img.width - 1, W - 1 - x0); a2++) {
+          if (cT[a2] > cB[a2]) continue; tot++;
+          const x = x0 + a2;
+          if (y0 + cT[a2] >= hT[x] && y0 + cB[a2] <= hB[x]) hid++;
+        }
+        if (tot && hid / tot > 0.9) cov++;
+      }
+      _mt3Near = cov;
+    }
+    // 그리기는 원래 순서(z 오름차순)로 — 화가 알고리즘 계약은 그대로다
+    keep.sort((a, b) => a.z - b.z);
+    for (const it of keep) out.push(it);
     return n;
   }
   let _mt3Fail = 0;
@@ -2870,6 +3022,9 @@ const SIM_JOB_EMOJI = {
       const dx3 = Math.round(c3.x - sg.ox), dy3 = Math.round(c3.y - sg.oy);
       const fade3 = _mtFadeAmt > 0.002 && (_mtOcc ? item.z > _mtOcc.z : false) && !_t19.occOff;
       if (_mt3Rects) _mt3Rects.push({ x: dx3, y: dy3, w: sg.img.width, h: sg.img.height, z: item.z, faded: !!fade3 });
+      // ★[되돌림 — 실측] blit 을 '칠해지는 사각형'으로 좁혀 봤다. 넓이는 17% 줄었는데
+      //   프레임은 **더 느려졌다**(산 비용 +20.13 → +29.67ms). 9인자 drawImage 가
+      //   빠른 경로를 놓치는 값이 17% 이득보다 컸다. 좁히지 않는다.
       if (!fade3) { g.drawImage(sg.img, dx3, dy3); return; }
       _mtFadedN++; if (window.__mtOccDbg) window.__mtOccDbg.faded = _mtFadedN;
       const fg3 = _mtFadeLayer(g);
@@ -6850,7 +7005,7 @@ const SIM_JOB_EMOJI = {
     const _mtT0 = performance.now();
     const _nMt = _mtCollect(renderables, worldCx, worldCy);
     window._mtAcc = (window._mtAcc || 0) + (performance.now() - _mtT0);
-    window.__mtDbg = { mt3d: !_t19.mt3dOff, mt3budget: MT3_BUDGET, mt3view: MT3_VIEW, mt3rockc: _mt3RockC.size, mt3chunks: _mt3Chunk.size, mt3fail: !!_mt3Fail, segs: _nMt, sprites: _mtLoaded + '/' + _mtWanted, cached: _mtSegCache.size, chunks: _mtChunk.size, legacy: !!_t19.mtLegacy, destroyed: _mtDestroyed.size };
+    window.__mtDbg = { mt3d: !_t19.mt3dOff, mt3budget: MT3_BUDGET, mt3view: MT3_VIEW, mt3rockc: _mt3RockC.size, mt3chunks: _mt3Chunk.size, mt3fail: !!_mt3Fail, mt3culled: _mt3Culled, mt3cull: MT3_CULL, mt3over: +_mt3Over.toFixed(2), mt3overTight: +_mt3OverT.toFixed(2), mt3overPaint: +_mt3OverP.toFixed(2), mt3near90: _mt3Near, segs: _nMt, sprites: _mtLoaded + '/' + _mtWanted, cached: _mtSegCache.size, chunks: _mtChunk.size, legacy: !!_t19.mtLegacy, destroyed: _mtDestroyed.size };
     // ★★[배치 20 C] 산 계측·파괴 훅 — 하네스가 배치 수학을 **다시 쓰지 않게** 정본이 만든
     //   세그먼트를 그대로 내보낸다. 하네스가 능선 보행·밴드 실측을 재구현하면 그게 사본이라
     //   둘이 같이 틀려도 통과한다(자명 통과).
