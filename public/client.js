@@ -7177,6 +7177,14 @@ const SIM_JOB_EMOJI = {
       _mtOcc = save;
       return { n, front, back };
     };
+    // 정본 바위 술어(파괴 반영) — 하네스가 '가장자리에서만 판다' 규칙을 **사본 없이** 검사한다
+    window.__mtIsRock = (lcx, lcy) => {
+      const c = (primaryZoneId && typeof conns !== 'undefined') ? conns.get(primaryZoneId) : null;
+      if (!c || !c.meta) return null;
+      const cx = Math.floor((c.meta.worldOffsetX + lcx * 32) / 32);
+      const cy = Math.floor(((c.meta.worldOffsetY || 0) + lcy * 32) / 32);
+      return !!_mt3RockCell(primaryZoneId, cx, cy);
+    };
     window.__mtClearDestroy = () => { const n2 = _mtDestroyed.size; _mtDestroyed.clear(); _mtSegCache.clear(); _mtChunk.clear(); _groundTiles.clear(); needsRedraw = true; return n2; };
     // ★[배치 21] 자연물 산포 — 물가 술 + 초원 소품. 산 세그먼트와 같은 목록·같은 z 규약.
     const _natT0 = performance.now();

@@ -321,6 +321,51 @@ function diff(a, b, box) {
   ok('⑥ 벗어나면 반투명이 꺼진다 (상수 아님)', !!far && far.n === 0 && far.fade < 0.5,
     `'${dir.k}' 방향 이동 후 가린 산 ${far && far.n}장 · 반투명 진행도 ${far && far.fade}`);
 
+  // ── ⑩ **경계 왕복** — 알파가 떠는가 ─────────────────────────────────────
+  //   [타 세션 지적 2026-08-20] "걷다 보면 경계에서 알파가 껌뻑거릴 수 있다."
+  //   지금 코드엔 lerp(220ms)만 있고 켜짐/꺼짐 문턱이 분리된 히스테리시스는 없다.
+  //   그래서 **재고 나서** 필요하면 넣는다 — 없는 결함을 미리 고치지 않는다.
+  //   재는 것 둘:
+  //     ⓐ 경계에 **멈춰 서** 있을 때 n 이 뒤집히는가(정지 채터). 뒤집히면 판정 자체가 떤다.
+  //        ★청크 굽기가 예산제(프레임당 1)라 띠가 늦게 들어오면 정지 상태에서도 n 이 바뀔 수 있다 —
+  //          그게 바로 이 판정이 노리는 실제 기구다.
+  //     ⓑ 경계를 4번 오갈 때 n 이 **4번보다 훨씬 많이** 뒤집히는가(이동 채터).
+  const sample = (ms) => page.evaluate((m) => new Promise((res) => {
+    const out = []; const t0 = performance.now();
+    const step = () => { const d = window.__mtOccDbg || {};
+      out.push([+(performance.now() - t0).toFixed(0), d.n | 0, +(d.fade || 0)]);
+      if (performance.now() - t0 < m) requestAnimationFrame(step); else res(out); };
+    requestAnimationFrame(step);
+  }), ms);
+  const flips = (a) => { let f = 0; for (let i = 1; i < a.length; i++) if ((a[i][1] > 0) !== (a[i - 1][1] > 0)) f++; return f; };
+
+  // 경계로 되돌아간다 — ⑥에서 빠져나온 방향의 반대로 한 탭씩, n>0 이 될 때까지
+  const back = { s: 'w', w: 's', a: 'd', d: 'a', sd: 'wa', wa: 'sd', sa: 'wd', wd: 'sa' }[dir.k] || 'w';
+  let atEdge = null;
+  for (let t = 0; t < 40; t++) {
+    for (const k of back) { await page.keyboard.down(k); await sleep(120); await page.keyboard.up(k); }
+    await sleep(140);
+    atEdge = await page.evaluate(() => window.__mtOccDbg);
+    if (atEdge && atEdge.n > 0) break;
+  }
+  const still = await sample(2500);                         // ⓐ 멈춰서 2.5초
+  const fStill = flips(still);
+  ok('⑩ ★경계에 멈춰 서면 가림 판정이 안 떤다(정지 채터 없음)', fStill === 0,
+    `정지 ${still.length}프레임 중 n 뒤집힘 ${fStill}회 · 알파 ${still[0][2]}→${still[still.length - 1][2]}`);
+
+  // ⓑ 경계를 4번 오간다
+  const trip = [];
+  for (let r = 0; r < 4; r++) {
+    for (const k of (r % 2 ? back : dir.k)) { await page.keyboard.down(k); await sleep(260); await page.keyboard.up(k); }
+    trip.push(...(await sample(420)));
+  }
+  const fTrip = flips(trip);
+  let jump = 0;
+  for (let i = 1; i < trip.length; i++) jump = Math.max(jump, Math.abs(trip[i][2] - trip[i - 1][2]));
+  ok('⑩b ★왕복 4회에 뒤집힘이 그 두 배를 안 넘는다(이동 채터 없음)', fTrip <= 8,
+    `왕복 4회 · n 뒤집힘 ${fTrip}회 · 프레임당 알파 최대 변화 ${jump.toFixed(3)}`);
+  console.log(`  [⑩ 표본] 정지 ${JSON.stringify(still.slice(0, 3))} … 왕복 뒤집힘 ${fTrip}`);
+
   console.log(`\n${pass}/${pass + fail} 통과${fail ? ' — ★실패 ' + fail : ''}`);
   await browser.close();
   for (const p of procs) { try { p.kill(); } catch (e) { } }
