@@ -2290,16 +2290,16 @@ const SIM_JOB_EMOJI = {
   let MT3_TREEPX = 30;                 // 그리는 높이(px). 실물(78px)이 아니라 **작은 축척**
   let MT3_MPAD = 18;                   // 띠 캔버스 여백(px) — 손잡이로 갈아 끼워 잘림 여부를 가린다
   const _mgl = { cv: null, gl: null, pr: null, ok: null, uni: {}, hTex: null, rTex: null, gTex: null,
-                 vbo: null, buf: null, hKey: '', lp: -1, lc: -1 };
+                 vbo: null, buf: null, hKey: '', lp: -1, lc: -1, lm: -1 };
   const MT3_VS = [
-    'attribute vec2 p; attribute vec2 c;',
-    'uniform vec2 uRes; varying vec2 vC;',
+    'attribute vec2 p; attribute vec2 c; attribute float m;',
+    'uniform vec2 uRes; varying vec2 vC; varying float vM;',
     // p 는 띠 캔버스 픽셀(왼쪽 위 원점). y 를 뒤집어 캔버스 좌표계로 맞춘다.
-    'void main(){ vC = c; vec2 n = (p / uRes) * 2.0 - 1.0; gl_Position = vec4(n.x, -n.y, 0.0, 1.0); }'
+    'void main(){ vC = c; vM = m; vec2 n = (p / uRes) * 2.0 - 1.0; gl_Position = vec4(n.x, -n.y, 0.0, 1.0); }'
   ].join('\n');
   const MT3_FS = [
     'precision highp float;',
-    'varying vec2 vC;',
+    'varying vec2 vC; varying float vM;',
     'uniform sampler2D uH; uniform sampler2D uRock; uniform sampler2D uGrass;',
     'uniform float uN; uniform float uHmax; uniform vec3 uL; uniform vec2 uOrig;',
     'uniform vec2 uTex; uniform float uRockS; uniform float uTexOn; uniform float uAoOn; uniform float uAoBox;',
@@ -2355,6 +2355,26 @@ const SIM_JOB_EMOJI = {
     '  vec2 wq = q + 0.30*vec2(vn2(rot(q*0.55, 0.9))-0.5, vn2(rot(q*0.55, 2.7))-0.5);',
     '  return o1*vn2(rot(wq, 0.37)) + o2*vn2(rot(wq*2.03, 1.31)) + o3*vn2(rot(wq*4.11, 2.49)); }',
     'void main(){',
+    // ★★갱(shaft) — 파낸 셀의 **옆면·바닥**. 높이장은 한 셀에 높이 하나뿐이라
+    //   "38m 벽에 둘러싸인 0m 바닥"을 표현할 수 없다(실측: 도려내기만 하면 지면이 비친다).
+    //   ⇒ 이 조각들은 표면이 아니라 **수직면**이다. vC 의 뜻도 다르다:
+    //     옆면 = (변을 따라간 월드 좌표, 높이m) · 바닥 = 셀 좌표.
+    //   vM: 0=표면 · 1..4=옆면(법선 +x/−x/+y/−y) · 5=바닥
+    '  if (vM > 0.5) {',
+    '    vec3 wn = (vM<1.5)? vec3(1.0,0.0,0.0) : (vM<2.5)? vec3(-1.0,0.0,0.0)',
+    '           : (vM<3.5)? vec3(0.0,1.0,0.0) : (vM<4.5)? vec3(0.0,-1.0,0.0) : vec3(0.0,0.0,1.0);',
+    '    float ld = dot(wn, uL);',
+    '    float lm = max(0.18, ld) + max(0.0, -ld)*0.15;',
+    '    float kk = (0.24 + 1.10*lm) / (0.24 + 1.10*0.6157);',
+    // 갓 깎은 바위 — 수관·풀 금지. 옆면은 세로 결이 서도록 UV 를 (변, 높이)로 쓴다.
+    '    vec2 uvw = (vM<4.5) ? vec2(vC.x, -vC.y)*32.0 : vec2(vC.x - vC.y, (vC.x + vC.y)*0.5)*32.0;',
+    '    vec3 rc = texture2D(uRock, uvw/(uTex*uRockS)).rgb;',
+    '    float gr = vn2(rot(uvw/26.0, 0.37))*0.28 + vn2(rot(uvw/7.0, 1.31))*0.14;',
+    '    vec3 cw = rc * (0.78 + 0.5*gr) * kk;',
+    // 바닥으로 갈수록 어둡게 — 갱 속의 그늘
+    '    if (vM < 4.5) cw *= mix(0.55, 1.0, clamp(-vC.y/8.0, 0.0, 1.0));',
+    '    gl_FragColor = vec4(clamp(cw,0.0,1.0), 1.0); return;',
+    '  }',
     '  float h; vec2 g; float mean;',
     '  hAll(vC, h, g, mean);',
     '  vec2 w = uOrig + vC;',                 // 절대 셀 좌표 — 청크가 바뀌어도 이어진다
@@ -2452,8 +2472,10 @@ const SIM_JOB_EMOJI = {
       gl.useProgram(pr);
       _mgl.vbo = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, _mgl.vbo);
       _mgl.lp = gl.getAttribLocation(pr, 'p'); _mgl.lc = gl.getAttribLocation(pr, 'c');
-      gl.enableVertexAttribArray(_mgl.lp); gl.vertexAttribPointer(_mgl.lp, 2, gl.FLOAT, false, 16, 0);
-      gl.enableVertexAttribArray(_mgl.lc); gl.vertexAttribPointer(_mgl.lc, 2, gl.FLOAT, false, 16, 8);
+      _mgl.lm = gl.getAttribLocation(pr, 'm');
+      gl.enableVertexAttribArray(_mgl.lp); gl.vertexAttribPointer(_mgl.lp, 2, gl.FLOAT, false, 20, 0);
+      gl.enableVertexAttribArray(_mgl.lc); gl.vertexAttribPointer(_mgl.lc, 2, gl.FLOAT, false, 20, 8);
+      gl.enableVertexAttribArray(_mgl.lm); gl.vertexAttribPointer(_mgl.lm, 1, gl.FLOAT, false, 20, 16);
       for (const u of ['uRes', 'uH', 'uRock', 'uGrass', 'uN', 'uHmax', 'uL', 'uOrig', 'uTex', 'uRockS', 'uTexOn', 'uAoOn', 'uAoBox'])
         _mgl.uni[u] = gl.getUniformLocation(pr, u);
       const mkTex = (filt, wrap, minf) => { const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
@@ -2526,7 +2548,7 @@ const SIM_JOB_EMOJI = {
   //   cells = 이 띠(반대각선)에 속한 청크-지역 셀 [i,j] 목록.
   //   꼭짓점 높이는 셰이더의 hAll 과 **같은 Catmull-Rom**(F.corS)로 뽑는다 —
   //   실루엣(꼭짓점)과 음영(프래그먼트)이 같은 곡면을 봐야 가장자리가 안 어긋난다.
-  function _mt3GlBand(g2d, F, key, cells, x0, y0, bw, bh) {
+  function _mt3GlBand(g2d, F, key, cells, cuts, x0, y0, bw, bh) {
     const gl = _mgl.gl;
     if (bw > _mgl.cv.width || bh > _mgl.cv.height) {
       if (bw > 4096 || bh > 4096) return false;
@@ -2540,8 +2562,8 @@ const SIM_JOB_EMOJI = {
     //   겹쳐도 안 보이는 이유가 이 판의 핵심이다: **프래그먼트 색이 월드 좌표만의 함수**라
     //   겹친 자리를 두 띠가 **같은 색**으로 칠한다(옛 캔버스 판은 조각마다 색이 달라 그물이 됐다).
     const sub = MT3_GSUB, S = sub + 1, OV = MT3_OV, SP = (1 + 2 * OV) / sub;
-    const need = cells.length * sub * sub * 6 * 4;
-    if (!_mgl.buf || _mgl.buf.length < need) _mgl.buf = new Float32Array(Math.max(need, 4096));
+    const need = (cells.length * sub * sub + (cuts ? cuts.length * 6 : 0)) * 6 * 5;
+    if (!_mgl.buf || _mgl.buf.length < need) _mgl.buf = new Float32Array(Math.max(need, 8192));
     const V = _mgl.buf; let n = 0;
     const px = new Float32Array(S * S), py = new Float32Array(S * S);
     for (const cell of cells) {
@@ -2559,9 +2581,52 @@ const SIM_JOB_EMOJI = {
         const k00 = b * S + a, k10 = k00 + 1, k01 = k00 + S, k11 = k01 + 1;
         const u0 = i - OV + a * SP, u1 = i - OV + (a + 1) * SP,
               v0 = j - OV + b * SP, v1 = j - OV + (b + 1) * SP;
-        const put = (kk, cu, cv2) => { V[n] = px[kk]; V[n + 1] = py[kk]; V[n + 2] = cu; V[n + 3] = cv2; n += 4; };
+        const put = (kk, cu, cv2) => { V[n] = px[kk]; V[n + 1] = py[kk]; V[n + 2] = cu; V[n + 3] = cv2; V[n + 4] = 0; n += 5; };
         put(k00, u0, v0); put(k10, u1, v0); put(k11, u1, v1);
         put(k00, u0, v0); put(k11, u1, v1); put(k01, u0, v1);
+      }
+    }
+    // ── 갱 기하 — 파낸 셀의 바닥과 옆면 ──────────────────────────────────
+    //   옆면은 파낸 셀과 **안 파낸 바위 셀**이 맞닿는 변마다. 바깥(비바위)으로 난 변은
+    //   통로 입구라 벽을 안 세운다. 벽 높이는 **원본 높이장의 모서리 값**이라
+    //   이웃 표면의 가장자리와 정확히 맞물린다.
+    if (cuts && cuts.length) {
+      const SP2 = (v) => Math.round(v * 64) / 64;
+      const scr = (ci, cj, hh) => {
+        const wxp = (F.i0 + ci) * 32, wyp = (F.j0 + cj) * 32;
+        return [SP2(wxp - wyp) - x0, SP2((wxp + wyp) * 0.5 - hh * 32) - y0];
+      };
+      const tri = (a, b, c2, ca, cb, cc, mode) => {
+        for (const [q, cq] of [[a, ca], [b, cb], [c2, cc]]) {
+          V[n] = q[0]; V[n + 1] = q[1]; V[n + 2] = cq[0]; V[n + 3] = cq[1]; V[n + 4] = mode; n += 5;
+        }
+      };
+      for (const [i, j] of cuts) {
+        // 바닥 — 지면 높이
+        const f00 = scr(i, j, 0), f10 = scr(i + 1, j, 0), f11 = scr(i + 1, j + 1, 0), f01 = scr(i, j + 1, 0);
+        const c00 = [F.i0 + i, F.j0 + j], c10 = [F.i0 + i + 1, F.j0 + j];
+        const c11 = [F.i0 + i + 1, F.j0 + j + 1], c01 = [F.i0 + i, F.j0 + j + 1];
+        tri(f00, f10, f11, c00, c10, c11, 5); tri(f00, f11, f01, c00, c11, c01, 5);
+        // 옆면 4방 — [이웃 offset, 변의 두 모서리(로컬), 법선 모드]
+        const sides = [
+          [[-1, 0], [i, j], [i, j + 1], 1],          // 서쪽 이웃의 안쪽 면 → 법선 +x
+          [[1, 0], [i + 1, j], [i + 1, j + 1], 2],   // 동쪽 → 법선 −x
+          [[0, -1], [i, j], [i + 1, j], 3],          // 북쪽 → 법선 +y
+          [[0, 1], [i, j + 1], [i + 1, j + 1], 4],   // 남쪽 → 법선 −y
+        ];
+        for (const [off, A, B, mode] of sides) {
+          const ni = i + off[0], nj = j + off[1];
+          if (!F.isRock(ni, nj) || F.isCut(ni, nj)) continue;   // 입구이거나 통로가 이어진다
+          const hA = F.corS(A[0], A[1]), hB = F.corS(B[0], B[1]);
+          if (hA < 0.3 && hB < 0.3) continue;
+          const aT = scr(A[0], A[1], hA), bT = scr(B[0], B[1], hB);
+          const aF = scr(A[0], A[1], 0), bF = scr(B[0], B[1], 0);
+          // UV = (변을 따라간 월드 좌표, 높이m) — 세로 결이 서고 이웃 벽과 이어진다
+          const sA = (off[1] === 0) ? (F.j0 + A[1]) : (F.i0 + A[0]);
+          const sB = (off[1] === 0) ? (F.j0 + B[1]) : (F.i0 + B[0]);
+          tri(aF, bF, bT, [sA, 0], [sB, 0], [sB, hB], mode);
+          tri(aF, bT, aT, [sA, 0], [sB, hB], [sA, hA], mode);
+        }
       }
     }
     if (n === 0) return false;
@@ -2569,8 +2634,9 @@ const SIM_JOB_EMOJI = {
     const H = _mgl.cv.height;
     gl.bindBuffer(gl.ARRAY_BUFFER, _mgl.vbo);
     gl.bufferData(gl.ARRAY_BUFFER, V.subarray(0, n), gl.DYNAMIC_DRAW);
-    gl.vertexAttribPointer(_mgl.lp, 2, gl.FLOAT, false, 16, 0);
-    gl.vertexAttribPointer(_mgl.lc, 2, gl.FLOAT, false, 16, 8);
+    gl.vertexAttribPointer(_mgl.lp, 2, gl.FLOAT, false, 20, 0);
+    gl.vertexAttribPointer(_mgl.lc, 2, gl.FLOAT, false, 20, 8);
+    gl.vertexAttribPointer(_mgl.lm, 1, gl.FLOAT, false, 20, 16);
     gl.uniform2f(_mgl.uni.uRes, bw, bh);
     gl.uniform2f(_mgl.uni.uOrig, F.i0, F.j0);
     gl.uniform1f(_mgl.uni.uTexOn, MT3_TEXON); gl.uniform1f(_mgl.uni.uAoOn, MT3_AOON);
@@ -2580,7 +2646,7 @@ const SIM_JOB_EMOJI = {
     gl.viewport(0, H - bh, bw, bh);
     gl.enable(gl.SCISSOR_TEST); gl.scissor(0, H - bh, bw, bh);
     gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
-    gl.drawArrays(gl.TRIANGLES, 0, n / 4);
+    gl.drawArrays(gl.TRIANGLES, 0, n / 5);
     gl.disable(gl.SCISSOR_TEST);
     // ★같은 태스크 안에서 곧바로 읽는다(preserveDrawingBuffer 없이 안전한 유일한 시점).
     g2d.drawImage(_mgl.cv, 0, 0, bw, bh, 0, 0, bw, bh);
@@ -2621,7 +2687,7 @@ const SIM_JOB_EMOJI = {
       const P = MT3_PAD;
       // 이 청크가 그리는 셀 = 자기 몫 8×8 중 **메시 셀**(바위 ∪ 바위에 8-인접).
       //   나눗셈으로 소유를 정하므로 중복도 누락도 구조적으로 불가능하다.
-      const mesh = [];
+      const mesh = [], cuts = [];
       for (let b = 0; b < MT3_CH; b++) for (let a = 0; a < MT3_CH; a++) {
         const i = P + a, j = P + b;
         let m = F.isRock(i, j);
@@ -2629,19 +2695,32 @@ const SIM_JOB_EMOJI = {
           if (F.isRock(i + r, j + q)) { m = true; break; }
         // ★파낸 셀은 **안 그린다**. 낮춰 그리면 옆벽까지 끌려 내려가 도랑이 된다 —
         //   도려내면 이웃 셀의 표면이 제 높이로 서고, 그 사이로 바닥이 보인다(협곡).
-        if (m && !F.isCut(i, j)) mesh.push([i, j]);
+        if (!m) continue;
+        // 파낸 셀은 표면이 아니라 **갱**으로 그린다(바닥 + 옆면). 목록을 갈라 둔다.
+        if (F.isCut(i, j)) cuts.push([i, j]); else mesh.push([i, j]);
       }
-      const byK = new Map();
+      const byK = new Map(), cutK = new Map();
       for (const c of mesh) { const k = c[0] + c[1]; let a = byK.get(k); if (!a) byK.set(k, a = []); a.push(c); }
+      for (const c of cuts) { const k = c[0] + c[1]; let a = cutK.get(k); if (!a) cutK.set(k, a = []); a.push(c);
+                              if (!byK.has(k)) byK.set(k, []); }
       const pat = (GTEX.rock_angled && GTEX.rock_angled.naturalWidth) ? GTEX.rock_angled : null;
       const gpat = (GTEX.grass_angled && GTEX.grass_angled.naturalWidth) ? GTEX.grass_angled : null;
       for (const k of [...byK.keys()].sort((a, b) => a - b)) {
-        const cells = byK.get(k);
+        const cells = byK.get(k), cutCells = cutK.get(k) || [];
+        if (!cells.length && !cutCells.length) continue;
         let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
         for (const [i, j] of cells) for (const o of [[0,0],[1,0],[1,1],[0,1]]) {
           const gi = F.i0 + i + o[0], gj = F.j0 + j + o[1];
           const c = w2i(gi * 32, gj * 32), Y = c.y - F.cor(i + o[0], j + o[1]) * 32;
           if (c.x < x0) x0 = c.x; if (c.x > x1) x1 = c.x; if (Y < y0) y0 = Y; if (Y > y1) y1 = Y;
+        }
+        // ★갱은 **바닥(h=0)부터 마루까지** 걸친다 — 상자를 아래로도 열어 줘야 벽면이 안 잘린다.
+        for (const [i, j] of cutCells) for (const o of [[0,0],[1,0],[1,1],[0,1]]) {
+          const gi = F.i0 + i + o[0], gj = F.j0 + j + o[1];
+          const c = w2i(gi * 32, gj * 32);
+          const yTop = c.y - F.corS(i + o[0], j + o[1]) * 32, yBot = c.y;
+          if (c.x < x0) x0 = c.x; if (c.x > x1) x1 = c.x;
+          if (yTop < y0) y0 = yTop; if (yBot > y1) y1 = yBot;
         }
         // ★[재민 "검은 점·선"] bbox 를 **변위 없는** 꼭짓점으로 잡고 있었다.
         //   실제로 그릴 때는 급경사 조각이 세로 ±0.42칸(±13px)·가로 ±11px 로 밀린다.
@@ -2657,7 +2736,7 @@ const SIM_JOB_EMOJI = {
         // ★표면은 GPU 로. 실패하면 그 자리에서 캔버스 폴리곤 판으로 되돌아간다(라이브를 못 세운다).
         let drawn = false;
         if (MT3_GL && _mt3GlInit()) {
-          try { drawn = _mt3GlBand(g, F, key, cells, x0, y0, bw, bh); }
+          try { drawn = _mt3GlBand(g, F, key, cells, cutCells, x0, y0, bw, bh); }
           catch (e) { console.warn('[mt3d] GL 띠 실패 — 캔버스로:', e && e.message); _mgl.ok = false; drawn = false; }
         }
         if (!drawn) {
@@ -2730,7 +2809,8 @@ const SIM_JOB_EMOJI = {
             g.globalAlpha = 1;
           }
         }
-        const ref = cells.reduce((a, b) => (a[0] + a[1] <= b[0] + b[1] ? a : b));
+        const refPool = cells.length ? cells : cutCells;
+        const ref = refPool.reduce((a, b) => (a[0] + a[1] <= b[0] + b[1] ? a : b));
         const wx = (F.i0 + ref[0]) * 32 + 16, wy = (F.j0 + ref[1]) * 32 + 16;
         const rp = w2i((F.i0 + ref[0]) * 32 + 16, (F.j0 + ref[1]) * 32 + 16);
         // ★알파 사본을 **안 뜬다**. 굽는 시점에 뜨면 띠마다 GPU 리드백 1회 +
