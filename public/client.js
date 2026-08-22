@@ -7237,6 +7237,27 @@ const SIM_JOB_EMOJI = {
       const F = _mt3Field(primaryZoneId, gx, gy); if (!F) return 0;
       return +F.hAt(cx - F.i0, cy - F.j0).toFixed(2);
     };
+    // 격자 조회 — 청크마다 필드를 **한 번만** 굽고 그 안의 셀을 몰아서 읽는다.
+    //   (셀마다 __mtHeightAt 를 부르면 청크 필드를 매번 다시 굽는다 — 40×40 챔퍼 × 셀 수.)
+    window.__mtHeightGrid = (lcx0, lcy0, w, h) => {
+      const c = (primaryZoneId && typeof conns !== 'undefined') ? conns.get(primaryZoneId) : null;
+      if (!c || !c.meta) return null;
+      const bx = Math.floor(c.meta.worldOffsetX / 32), by = Math.floor((c.meta.worldOffsetY || 0) / 32);
+      const out = new Float32Array(w * h);
+      const byChunk = new Map();
+      for (let b = 0; b < h; b++) for (let a = 0; a < w; a++) {
+        const cx = bx + lcx0 + a, cy = by + lcy0 + b;
+        const k = Math.floor(cx / MT3_CH) + '_' + Math.floor(cy / MT3_CH);
+        let arr = byChunk.get(k); if (!arr) byChunk.set(k, arr = []);
+        arr.push([cx, cy, b * w + a]);
+      }
+      for (const [k, arr] of byChunk) {
+        const p = k.split('_');
+        const F = _mt3Field(primaryZoneId, +p[0], +p[1]);
+        for (const [cx, cy, idx] of arr) out[idx] = F ? F.hAt(cx - F.i0, cy - F.j0) : 0;
+      }
+      return Array.from(out);
+    };
     window.__mtDual = (v) => { MT3_DUAL = v ? 1 : 0; _mt3Chunk.clear(); _mt3Sig = ''; needsRedraw = true; return MT3_DUAL; };
     window.__mtZOcc = (v) => { MT_OCC_ZB = +v; needsRedraw = true; return MT_OCC_ZB; };
     window.__mtClearDestroy = () => { const n2 = _mtDestroyed.size; _mtDestroyed.clear(); _mtSegCache.clear(); _mtChunk.clear(); _groundTiles.clear(); needsRedraw = true; return n2; };

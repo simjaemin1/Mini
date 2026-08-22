@@ -24,26 +24,33 @@ const ZID = 'hanbando';
 const rock = (i, j) => T.isRockCellLocal(ZID, i * 32 + 16, j * 32 + 16);
 const water = (i, j) => T.isWaterCellLocal(ZID, i * 32 + 16, j * 32 + 16);
 function pickSite() {
-  // ★1차 시도는 빗나갔다: 입구가 카메라 쪽으로 열린 통로를 골랐더니 가림이 0 이었다.
-  //   플레이어 z 에는 **+500 편향**이 있어(client.js L7170) 대략 **31셀 안쪽** 산은
-  //   애초에 나를 못 덮는다. 그러니 "통로 속 플레이어가 앞 벽에 가려지는" 그림을 보려면
-  //   플레이어 아래쪽(=i+j 가 큰 쪽) 대각선으로 **36셀 넘게 산이 이어져야** 한다.
-  //   동시에 서쪽(−i) 가장자리는 가까워야 통로가 짧다.
-  for (let j = 60; j < 700; j += 2) for (let i = 1760; i < 2240; i += 2) {
-    if (!rock(i, j) || water(i, j)) continue;
-    let wd = 0;                                   // 서쪽으로 몇 칸 가면 뚫리나
-    while (wd < 34 && rock(i - wd - 1, j)) wd++;
-    // ★얕은 자리를 고르면 이원화 효과가 안 보인다 — 원본 높이 자체가 낮기 때문이다.
-    //   h = 35(1−e^(−dE/12)) 이므로 **가장자리에서 20셀쯤**은 들어가야 벽이 30m 로 선다.
-    if (wd < 18 || wd >= 34) continue;
-    if (water(i - wd - 1, j)) continue;
-    let deep = 0;                                 // 카메라 쪽(+i,+j) 대각선으로 산이 이어지나
-    for (let k = 1; k <= 44; k++) if (rock(i + k, j + k)) deep++;
-    if (deep < 38) continue;
-    if (!rock(i, j + 1) || !rock(i, j - 1)) continue;   // 옆벽이 있어야 '통로'다
-    return { i, j, wd };
+  // ★★[MT3_PAD 라운드 실측 2026-08-22] PAD 추정은 **기각됐다**(scripts/probe-mtpad.js):
+  //   산괴 최심부 h = 40.5m, 격자의 28.9%가 30m 초과, 청크 경계 단차도 없다(비 0.85배).
+  //   앞선 통로가 3~7m 였던 건 창 잘림이 아니라 **얇은 자락에 팠기 때문**이었다.
+  //   ⇒ 자리를 '가장자리에서 가까운 곳'이 아니라 **가장자리에서 가장 먼 곳**으로 고른다.
+  //     삽질이 길어지지만(수십 칸) 그건 프로그램이 하면 된다.
+  const I0 = 1740, J0 = 0, W = 520, H = 720;
+  const R = new Uint8Array(W * H);
+  for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) R[j * W + i] = rock(I0 + i, J0 + j) ? 1 : 0;
+  const INF = 1e6, d = new Float32Array(W * H);
+  for (let k = 0; k < W * H; k++) d[k] = R[k] ? INF : 0;
+  // ★★[계측기 수리] 창 밖을 INF(=미해결 바위)로 봤다. 그러면 창 **가장자리 셀**의 거리가
+  //   바깥 땅에 안 잘려 부풀고, "최심부"로 뽑힌다. 실제로 j=719(창 맨 아랫줄)가 dE 47.4 로
+  //   뽑혔고 가 보니 맨땅이었다. ⇒ 창 밖은 **땅(0)** 으로 본다(깊이의 하한이 된다).
+  //   그리고 테두리에서 60셀 안쪽 셀만 후보로 삼는다 — 창에 잘린 값을 최댓값으로 못 쓰게.
+  const at = (i, j) => (i < 0 || j < 0 || i >= W || j >= H) ? 0 : d[j * W + i];
+  for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) { const k = j * W + i; if (!d[k]) continue;
+    d[k] = Math.min(d[k], at(i-1,j)+1, at(i,j-1)+1, at(i-1,j-1)+1.414, at(i+1,j-1)+1.414); }
+  for (let j = H-1; j >= 0; j--) for (let i = W-1; i >= 0; i--) { const k = j * W + i; if (!d[k]) continue;
+    d[k] = Math.min(d[k], at(i+1,j)+1, at(i,j+1)+1, at(i+1,j+1)+1.414, at(i-1,j+1)+1.414); }
+  let best = 0, bi = 0, bj = 0;
+  const MG = 60;
+  for (let j = MG; j < H - MG; j++) for (let i = MG; i < W - MG; i++) {
+    const v = d[j * W + i];
+    if (v < 1e5 && v > best) { best = v; bi = I0 + i; bj = J0 + j; }
   }
-  return null;
+  let wd = 0; while (wd < 120 && rock(bi - wd - 1, bj)) wd++;   // 서쪽 가장자리까지
+  return { i: bi, j: bj, wd, dE: +best.toFixed(1) };
 }
 
 const M = `(ms)=>new Promise(res=>{const t=[];let last=performance.now();const t0=last;
@@ -57,7 +64,7 @@ const M = `(ms)=>new Promise(res=>{const t=[];let last=performance.now();const t
   const tgt = { i: site.i, j: site.j };                       // 플레이어가 설 통로 끝(안쪽)
   const digCells = [];
   for (let k = site.wd; k >= 0; k--) digCells.push([site.i - k, site.j]);   // 가장자리 → 안쪽
-  console.log('플레이어 자리', tgt, '· 서쪽 가장자리까지', site.wd, '셀 · 삽질', digCells.length, '칸');
+  console.log('플레이어 자리', tgt, '· 가장자리 거리 dE', site.dE, '· 서쪽까지', site.wd, '셀 · 삽질', digCells.length, '칸');
 
   fs.writeFileSync('/tmp/zw-corr.js', `const path=require('path');const ROOT=${JSON.stringify(ROOT)};
 const cfg=require(path.join(ROOT,'server','zone-config'));const ZID='hanbando';
