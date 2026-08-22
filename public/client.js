@@ -2103,6 +2103,18 @@ const SIM_JOB_EMOJI = {
     if (_mt3RockC.size > 60000) _mt3RockC.clear();
     _mt3RockC.set(k, r); return r;
   }
+  // ★원본 마스크도 **캐시한다.** 이원화를 넣으면서 굽기 경로가 캐시 없는 _mtRockAt0 를
+  //   셀마다 부르게 됐다 — 청크 하나가 40×40=1600 셀이고 그게 정본 술어(ridge 경로 순회)를
+  //   매번 다시 탄다. 원본 마스크는 파괴와 무관해 **영구 불변**이라 캐시가 특히 안전하다.
+  //   (재민 규약: `isWaterCellLocal`/`isRockCellLocal` 이 느리다고 고치지 마라 → 덜 부른다.)
+  const _mt3Rock0C = new Map();
+  function _mt3RockCell0(zid, cx, cy) {
+    const k = cx * 1048576 + cy;
+    const v = _mt3Rock0C.get(k); if (v !== undefined) return v;
+    const r = _mtRockAt0(zid, cx * 32 + 16, cy * 32 + 16);
+    if (_mt3Rock0C.size > 60000) _mt3Rock0C.clear();
+    _mt3Rock0C.set(k, r); return r;
+  }
   let _mt3Sig = '';
   // ★★[35m 판 줄무늬의 정체 — 계측으로 특정] 사면의 등고선식 띠는 거리장 계단이 아니었다.
   //   높이장을 3×3 으로 1·3·6회 블러해도 **그대로 남았다**(스윕 그림). 스펙트럼으로 재니
@@ -2142,8 +2154,7 @@ const SIM_JOB_EMOJI = {
     let any = false;
     for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
       const cx = i0 + i, cy = j0 + j;
-      const r = (MT3_DUAL ? _mtRockAt0(zid, cx * 32 + 16, cy * 32 + 16)
-                          : _mt3RockCell(zid, cx, cy)) ? 1 : 0;
+      const r = (MT3_DUAL ? _mt3RockCell0(zid, cx, cy) : _mt3RockCell(zid, cx, cy)) ? 1 : 0;
       rock[j * N + i] = r; if (r) any = true;
       if (r && MT3_DUAL && _mtIsCut(zid, cx, cy)) cut[j * N + i] = 1;
     }
