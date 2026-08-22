@@ -1711,6 +1711,19 @@ const SIM_JOB_EMOJI = {
     if (_mtDestroyed.size && _mtDestroyed.has(zid + '_' + cx + '_' + cy)) return false;
     return isRockAtAbs(cx * 32 + 16, cy * 32 + 16);
   }
+  // ★★[마스크 이원화 2026-08-22] **파괴를 무시한** 원본 바위 판정.
+  //   왜 필요한가: 높이는 `h = f(가장자리까지의 거리)` 다. 한 셀을 부수면 그 셀이 마스크에서
+  //   빠지면서 **이웃들의 가장자리 거리까지 줄어**, 통로 옆벽이 같이 주저앉는다.
+  //   그래서 1셀을 파면 35m 협곡이 아니라 3.5m **도랑**이 났다(실측).
+  //   ⇒ 높이·렌더는 원본 마스크로 잡고, 통행·부수기는 지금 마스크(파괴 반영) 그대로 둔다.
+  //     파괴 셀은 '낮아진 산'이 아니라 **메시에서 도려낸 구멍**으로 처리한다 — 옆벽은 제 높이로 선다.
+  function _mtRockAt0(zid, wx, wy) {
+    const cx = Math.floor(wx / 32), cy = Math.floor(wy / 32);
+    return isRockAtAbs(cx * 32 + 16, cy * 32 + 16);
+  }
+  function _mtIsCut(zid, cx, cy) {
+    return !!(_mtDestroyed.size && _mtDestroyed.has(zid + '_' + cx + '_' + cy));
+  }
   function _mtPlaceRidge(zid, ridge, ox, oy, ri) {
     const key = zid + '_' + ri;
     const hit = _mtSegCache.get(key); if (hit) return hit;
@@ -2124,11 +2137,15 @@ const SIM_JOB_EMOJI = {
   function _mt3Field(zid, gx, gy) {
     const N = MT3_CH + MT3_PAD * 2;
     const i0 = gx * MT3_CH - MT3_PAD, j0 = gy * MT3_CH - MT3_PAD;
-    const rock = new Uint8Array(N * N);
+    // ★마스크 둘: rock = **원본**(높이·렌더 기준) · cut = 파낸 셀(메시에서 도려낼 자리)
+    const rock = new Uint8Array(N * N), cut = new Uint8Array(N * N);
     let any = false;
     for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
-      const r = _mt3RockCell(zid, i0 + i, j0 + j) ? 1 : 0;
+      const cx = i0 + i, cy = j0 + j;
+      const r = (MT3_DUAL ? _mtRockAt0(zid, cx * 32 + 16, cy * 32 + 16)
+                          : _mt3RockCell(zid, cx, cy)) ? 1 : 0;
       rock[j * N + i] = r; if (r) any = true;
+      if (r && MT3_DUAL && _mtIsCut(zid, cx, cy)) cut[j * N + i] = 1;
     }
     if (!any) return null;
     const INF = 1e6, d = new Float32Array(N * N);
@@ -2227,7 +2244,8 @@ const SIM_JOB_EMOJI = {
         r[m] = _cr1(cor(fx - 1, yy), cor(fx, yy), cor(fx + 1, yy), cor(fx + 2, yy), tx); }
       return _cr1(r[0], r[1], r[2], r[3], ty);
     };
-    return { N, i0, j0, rock, hAt, cor, corS,
+    return { N, i0, j0, rock, cut, hAt, cor, corS,
+             isCut: (i, j) => i >= 0 && j >= 0 && i < N && j < N && !!cut[j * N + i],
              isRock: (i, j) => i >= 0 && j >= 0 && i < N && j < N && !!rock[j * N + i] };
   }
   // ═══════════════════════════════════════════════════════════════════════════
@@ -2256,6 +2274,7 @@ const SIM_JOB_EMOJI = {
   let MT3_AOBOX = 0;                   // 1 이면 **옛 AO**(4×4 상자 평균 = 조각별 상수) — 반례 전용
   const MT3_OV = 0.008;                // 띠 겹침(셀). 가로 0.5px·세로 0.26px — 실루엣 부풀림은 무시할 수준
   let MT3_CV0 = 128;                   // GL 캔버스 초깃값. 띠가 크면 128 배수로 자란다
+  let MT3_DUAL = 1;                    // ⑶ 마스크 이원화 — 0 이면 옛 판(파괴가 높이를 낮춘다)
   let MT3_TREEP = 0.020;               // ③ 돌출목 — 셀당 확률(낮게 시작). 0 이면 끔
   let MT3_TREEPX = 30;                 // 그리는 높이(px). 실물(78px)이 아니라 **작은 축척**
   let MT3_MPAD = 18;                   // 띠 캔버스 여백(px) — 손잡이로 갈아 끼워 잘림 여부를 가린다
@@ -2597,7 +2616,9 @@ const SIM_JOB_EMOJI = {
         let m = F.isRock(i, j);
         if (!m) for (let q = -1; q <= 1 && !m; q++) for (let r = -1; r <= 1; r++)
           if (F.isRock(i + r, j + q)) { m = true; break; }
-        if (m) mesh.push([i, j]);
+        // ★파낸 셀은 **안 그린다**. 낮춰 그리면 옆벽까지 끌려 내려가 도랑이 된다 —
+        //   도려내면 이웃 셀의 표면이 제 높이로 서고, 그 사이로 바닥이 보인다(협곡).
+        if (m && !F.isCut(i, j)) mesh.push([i, j]);
       }
       const byK = new Map();
       for (const c of mesh) { const k = c[0] + c[1]; let a = byK.get(k); if (!a) byK.set(k, a = []); a.push(c); }
@@ -7195,6 +7216,17 @@ const SIM_JOB_EMOJI = {
       return !!_mt3RockCell(primaryZoneId, cx, cy);
     };
     // 시험 손잡이 — 가림 판정의 플레이어 z 편향. 0=앞 벽 전부, 500=현행
+    // 정본 높이장에서 그 셀의 높이(m)를 읽는다 — 하네스가 벽 높이를 사본 없이 잰다
+    window.__mtHeightAt = (lcx, lcy) => {
+      const c = (primaryZoneId && typeof conns !== 'undefined') ? conns.get(primaryZoneId) : null;
+      if (!c || !c.meta) return null;
+      const cx = Math.floor((c.meta.worldOffsetX + lcx * 32) / 32);
+      const cy = Math.floor(((c.meta.worldOffsetY || 0) + lcy * 32) / 32);
+      const gx = Math.floor(cx / MT3_CH), gy = Math.floor(cy / MT3_CH);
+      const F = _mt3Field(primaryZoneId, gx, gy); if (!F) return 0;
+      return +F.hAt(cx - F.i0, cy - F.j0).toFixed(2);
+    };
+    window.__mtDual = (v) => { MT3_DUAL = v ? 1 : 0; _mt3Chunk.clear(); _mt3Sig = ''; needsRedraw = true; return MT3_DUAL; };
     window.__mtZOcc = (v) => { MT_OCC_ZB = +v; needsRedraw = true; return MT_OCC_ZB; };
     window.__mtClearDestroy = () => { const n2 = _mtDestroyed.size; _mtDestroyed.clear(); _mtSegCache.clear(); _mtChunk.clear(); _groundTiles.clear(); needsRedraw = true; return n2; };
     // ★[배치 21] 자연물 산포 — 물가 술 + 초원 소품. 산 세그먼트와 같은 목록·같은 z 규약.

@@ -32,8 +32,10 @@ function pickSite() {
   for (let j = 60; j < 700; j += 2) for (let i = 1760; i < 2240; i += 2) {
     if (!rock(i, j) || water(i, j)) continue;
     let wd = 0;                                   // 서쪽으로 몇 칸 가면 뚫리나
-    while (wd < 12 && rock(i - wd - 1, j)) wd++;
-    if (wd >= 12 || wd < 2) continue;             // 너무 깊지도, 가장자리에 붙지도 않게
+    while (wd < 34 && rock(i - wd - 1, j)) wd++;
+    // ★얕은 자리를 고르면 이원화 효과가 안 보인다 — 원본 높이 자체가 낮기 때문이다.
+    //   h = 35(1−e^(−dE/12)) 이므로 **가장자리에서 20셀쯤**은 들어가야 벽이 30m 로 선다.
+    if (wd < 18 || wd >= 34) continue;
     if (water(i - wd - 1, j)) continue;
     let deep = 0;                                 // 카메라 쪽(+i,+j) 대각선으로 산이 이어지나
     for (let k = 1; k <= 44; k++) if (rock(i + k, j + k)) deep++;
@@ -96,6 +98,25 @@ require(path.join(ROOT,'server','zone.js'));`);
   await sleep(4000);
   await pg.screenshot({ path: path.join(OUT, 'B_통로_투명화켬.png') });
   const on = await pg.evaluate(() => window.__mtOccDbg);
+
+  // ── ⑶ 마스크 이원화 짝 — 같은 통로에서 옛 판(도랑) vs 새 판(협곡) ──
+  for (const [tag, dual] of [['D_옛판_도랑', 0], ['D_새판_협곡', 1]]) {
+    await pg.evaluate((v) => window.__mtDual(v), dual);
+    await sleep(5000);
+    await pg.screenshot({ path: path.join(OUT, tag + '.png') });
+    console.log('  이원화', dual, '→', tag);
+  }
+  // 통로 옆벽이 실제로 몇 m 로 서는지 — 정본 높이장에서 직접 읽는다
+  const wall = await pg.evaluate((a) => {
+    const out = {};
+    for (const d of [0, 1]) {
+      window.__mtDual(d);
+      out[d] = window.__mtHeightAt ? [window.__mtHeightAt(a.i, a.j - 1), window.__mtHeightAt(a.i, a.j + 1)] : null;
+    }
+    window.__mtDual(1);
+    return out;
+  }, { i: tgt.i, j: tgt.j });
+  console.log('  통로 옆벽 높이(m) 옛판/새판 =', JSON.stringify(wall));
 
   // ── 편향 스윕 — 가림 판정의 플레이어 z 편향을 줄이며 그림·발동률을 함께 잰다 ──
   //   z 32 = 한 축 2셀. 500 = 현행(31셀).
