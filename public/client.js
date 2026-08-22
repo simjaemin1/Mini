@@ -3066,6 +3066,15 @@ const SIM_JOB_EMOJI = {
   //   ⓒ **판정은 상자가 아니라 알파로** 한다. 스프라이트 프레임의 86%는 투명 여백이라
   //      상자로 재면 "닿지도 않은 산"이 흐려진다(자명 통과 금지 — 반례가 실제로 존재한다).
   //   ⓓ 가리는 **한 장만** 반투명하다. 화면의 다른 산은 그대로다 — 그게 반례이자 판정이다.
+  // ★★[통로 연출 2026-08-22] 가림 판정에 쓰는 **플레이어 z 편향**을 상수로 뺀다.
+  //   재민 명세는 "앞에 가리면 투명"인데, 편향 500(=한 축 31셀)이 **가까운 앞 벽을
+  //   가림 후보에서 통째로 빼** 버려 명세가 발동할 기회 자체가 없었다.
+  //   ★정렬은 **안 건드린다**. 흐린 무리는 이미 _mtFlushFade 로 렌더 루프 **끝**에
+  //     한 겹으로 덮이므로(플레이어보다 뒤), 판정만 열어 주면 "반투명 앞 벽 뒤의 사람"이 나온다.
+  //     즉 z-순서 계약을 만질 필요가 없다 — 타 세션 지시 1항이 상정한 것보다 훨씬 작은 수술이다.
+  //   ★플레이어가 사라질 수 없는 것도 구조가 보장한다: 흐린 겹은 알파 0.34 로 덮이고,
+  //     안 흐린 앞 띠는 여전히 플레이어보다 **먼저** 그려진다.
+  let MT_OCC_ZB = 500;                       // 0 이면 앞 벽 전부가 가림 후보(z 32 = 한 축 2셀)
   const MT_OCC_A = 0.34, MT_FADE_MS = 220;   // 반투명 세기 · 켜고 끄는 시간(껌뻑임 방지)
   let _mtOcc = null, _mtOccN = 0, _mtFadedN = 0, _mtFadeAmt = 0, _mtToScr = null;   // 내 화면 좌표·z · 가린 장수 · 반투명 진행도
   const _mtAlphaMap = new Map();
@@ -7167,7 +7176,7 @@ const SIM_JOB_EMOJI = {
       if (!_mtToScr || !_mtAnchors || !_mtLastRend) return null;
       const p = w2i(wx, wy), sp = _mtToScr(p.x, p.y);
       const save = _mtOcc;
-      _mtOcc = { x: sp.x, y: sp.y - 14, z: (wx + wy) * 0.5 + 500 };
+      _mtOcc = { x: sp.x, y: sp.y - 14, z: (wx + wy) * 0.5 + MT_OCC_ZB };
       let n = 0, front = 0, back = 0;
       for (const it of _mtLastRend) {
         if (it.kind !== 'mtseg') continue;
@@ -7185,6 +7194,8 @@ const SIM_JOB_EMOJI = {
       const cy = Math.floor(((c.meta.worldOffsetY || 0) + lcy * 32) / 32);
       return !!_mt3RockCell(primaryZoneId, cx, cy);
     };
+    // 시험 손잡이 — 가림 판정의 플레이어 z 편향. 0=앞 벽 전부, 500=현행
+    window.__mtZOcc = (v) => { MT_OCC_ZB = +v; needsRedraw = true; return MT_OCC_ZB; };
     window.__mtClearDestroy = () => { const n2 = _mtDestroyed.size; _mtDestroyed.clear(); _mtSegCache.clear(); _mtChunk.clear(); _groundTiles.clear(); needsRedraw = true; return n2; };
     // ★[배치 21] 자연물 산포 — 물가 술 + 초원 소품. 산 세그먼트와 같은 목록·같은 z 규약.
     const _natT0 = performance.now();
@@ -7529,7 +7540,7 @@ const SIM_JOB_EMOJI = {
     _mtOcc = null;
     if (_mtAnchors && myAbsPredicted) {
       const _op = w2i(myAbsPredicted.x, myAbsPredicted.y), _os = toScreen(_op.x, _op.y);
-      _mtOcc = { x: _os.x, y: _os.y - 14, z: (myAbsPredicted.x + myAbsPredicted.y) * 0.5 + 500 };
+      _mtOcc = { x: _os.x, y: _os.y - 14, z: (myAbsPredicted.x + myAbsPredicted.y) * 0.5 + MT_OCC_ZB };
     }
     // ★계측기는 판정을 **다시 유도하지 않는다** — `_mtDraw` 가 세는 수를 그대로 읽는다(사본 금지).
     _mtFadedN = 0;

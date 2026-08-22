@@ -97,6 +97,28 @@ require(path.join(ROOT,'server','zone.js'));`);
   await pg.screenshot({ path: path.join(OUT, 'B_통로_투명화켬.png') });
   const on = await pg.evaluate(() => window.__mtOccDbg);
 
+  // ── 편향 스윕 — 가림 판정의 플레이어 z 편향을 줄이며 그림·발동률을 함께 잰다 ──
+  //   z 32 = 한 축 2셀. 500 = 현행(31셀).
+  const sweep = [];
+  for (const zb of (process.env.ZBS || '500,96,48,0').split(',').map(Number)) {
+    await pg.evaluate((v) => window.__mtZOcc(v), zb);
+    await sleep(1600);
+    const d = await pg.evaluate(() => window.__mtOccDbg);
+    // 이 자리에서 fade 가 켜지나 + 주변 961자리 발동률
+    const rate = await pg.evaluate(() => {
+      const me = window.__getMyAbs(); let hit = 0, tot = 0;
+      for (let dx = -30; dx <= 30; dx += 2) for (let dy = -30; dy <= 30; dy += 2) {
+        const r = window.__mtOccAt(me.x + dx * 32, me.y + dy * 32);
+        if (!r) continue; tot++; if (r.n > 0) hit++;
+      }
+      return { hit, tot, pct: tot ? +(hit / tot * 100).toFixed(1) : 0 };
+    });
+    await pg.screenshot({ path: path.join(OUT, `Z_${zb}.png`) });
+    sweep.push({ zb, n: d.n, fade: d.fade, front: d.front, rate: rate.pct });
+    console.log(`  편향 ${String(zb).padStart(3)} → 가림 ${d.n}장 · 알파진행 ${d.fade} · 앞 띠 ${d.front} · 주변 발동률 ${rate.pct}%`);
+  }
+  await pg.evaluate(() => window.__mtZOcc(500)); await sleep(800);
+
   await pg.evaluate(() => { window.__terrain19.occOff = true; }); await sleep(1500);
   await pg.screenshot({ path: path.join(OUT, 'C_통로_투명화끔.png') });
   const off = await pg.evaluate(() => window.__mtOccDbg);
@@ -116,7 +138,7 @@ require(path.join(ROOT,'server','zone.js'));`);
   console.log('가림 상태 켬 =', JSON.stringify(on));
   console.log('가림 상태 끔 =', JSON.stringify(off));
   console.log('띠 흐림 =', JSON.stringify(rects));
-  fs.writeFileSync(path.join(OUT, 'meta.json'), JSON.stringify({ site, tgt, dig, on, off, rects }, null, 1));
+  fs.writeFileSync(path.join(OUT, 'meta.json'), JSON.stringify({ site, tgt, dig, on, off, rects, sweep }, null, 1));
   console.log('저장:', OUT);
   await br.close(); for (const p of procs) { try { p.kill(); } catch (e) {} } process.exit(0);
 })().catch(e => { console.error(e); for (const p of procs) { try { p.kill(); } catch (_) {} } process.exit(1); });
