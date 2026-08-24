@@ -3322,6 +3322,20 @@ const SIM_JOB_EMOJI = {
     const dt = _mtFadeT ? Math.min(120, now - _mtFadeT) : 16;
     _mtFadeT = now; return dt;
   }
+  // ── 프레임 **단계별** 화소 계측기 ────────────────────────────────────────
+  //   "띠는 칠했는데 화면은 다르다"를 스크린샷 대조로 풀면 프레임이 어긋난다.
+  //   같은 프레임 안에서 여러 단계의 **같은 점**을 읽어야 '누가 덮었나'가 좁혀진다.
+  //   ★사본 금지 — 정본 ctx 를 그 자리에서 읽는다(별도 캔버스 재현 아님).
+  let _mtStagePts = null, _mtStageLog = null;
+  function _mtStage(g, tag) {
+    if (!_mtStagePts) return;
+    const row = { s: tag, px: [] };
+    for (const q of _mtStagePts) {
+      try { const d = g.getImageData(q[0], q[1], 1, 1).data; row.px.push([d[0], d[1], d[2], d[3]]); }
+      catch (e) { row.px.push(null); }
+    }
+    _mtStageLog.push(row);
+  }
   let _mtLastRend = null;
   function _mtUpdateFade(renderables, dtMs) {
     _mtLastRend = renderables;
@@ -7346,6 +7360,72 @@ const SIM_JOB_EMOJI = {
       }
       return Array.from(out);
     };
+    // 화면 한 점을 **어느 띠가 실제로 칠했나** — 정본이 그린 캔버스의 알파를 직접 읽는다.
+    //   '띠가 덮는다'와 '그 화소를 칠한다'는 다른 말이다. 후자를 재야 원인이 좁혀진다.
+    window.__mtPaintAt = (sx, sy) => {
+      if (!_mtToScr || !_mtLastRend) return null;
+      let cover = 0, paint = 0; const hits = [];
+      for (const it of _mtLastRend) {
+        if (it.kind !== 'mtseg') continue;
+        const sg = it.sg; if (!sg.mt3 || !sg.img) continue;
+        const p = w2i(sg.x, sg.y), c = _mtToScr(p.x, p.y);
+        const ux = Math.round(sx - (c.x - sg.ox)), uy = Math.round(sy - (c.y - sg.oy));
+        if (ux < 0 || uy < 0 || ux >= sg.img.width || uy >= sg.img.height) continue;
+        cover++;
+        let a = 0;
+        try { a = sg.img.getContext('2d').getImageData(ux, uy, 1, 1).data[3]; } catch (e) { a = -1; }
+        if (a > 8) { paint++; if (hits.length < 6) { let px = null;
+          try { const d = sg.img.getContext('2d').getImageData(ux, uy, 1, 1).data; px = [d[0], d[1], d[2], d[3]]; } catch (e) {}
+          hits.push({ z: Math.round(it.z), rgba: px, w: sg.img.width, h: sg.img.height, uy }); } }
+      }
+      return { cover, paint, hits };
+    };
+    // 화면 한 점을 **어느 셀의 표면이 덮어야 하는가** — 정본 필드(corS)로 직접 푼다.
+    //   "안 칠했다"는 관측을 셀 이름까지 좁히는 계측기. 칠한 띠를 세는 __mtPaintAt 의 짝이다.
+    window.__mtWhoCovers = (sx, sy, R) => {
+      if (!_mtToScr) return null;
+      const c = (primaryZoneId && typeof conns !== 'undefined') ? conns.get(primaryZoneId) : null;
+      if (!c || !c.meta) return null;
+      const me = window.__getMyAbs ? window.__getMyAbs() : null; if (!me) return null;
+      const pi = Math.floor(me.x / 32), pj = Math.floor(me.y / 32);
+      R = R || 70;
+      const Fc = new Map();
+      const fieldOf = (cx, cy) => {
+        const gx = Math.floor(cx / MT3_CH), gy = Math.floor(cy / MT3_CH), k = gx + ',' + gy;
+        if (!Fc.has(k)) Fc.set(k, _mt3Field(primaryZoneId, gx, gy) || null);
+        return Fc.get(k);
+      };
+      const P = (F, ci, cj) => {                       // 셀 국소좌표 → 화면
+        const wxp = (F.i0 + ci) * 32, wyp = (F.j0 + cj) * 32;
+        return _mtToScr(wxp - wyp, (wxp + wyp) * 0.5 - F.corS(ci, cj) * 32);
+      };
+      const inQuad = (q, x, y) => {                    // 볼록 사각형 포함 판정
+        let pos = 0, neg = 0;
+        for (let k = 0; k < 4; k++) { const a = q[k], b = q[(k + 1) & 3];
+          const d = (b.x - a.x) * (y - a.y) - (b.y - a.y) * (x - a.x);
+          if (d > 0) pos++; else if (d < 0) neg++; }
+        return !(pos && neg);
+      };
+      const out = { hit: [], scanned: 0, noField: 0 };
+      for (let dj = -R; dj <= R; dj++) for (let di = -R; di <= R; di++) {
+        const cx = pi + di, cy = pj + dj;
+        const F = fieldOf(cx, cy); if (!F) { out.noField++; continue; }
+        const i = cx - F.i0, j = cy - F.j0;
+        if (!F.isRock(i, j)) continue;
+        out.scanned++;
+        const q = [P(F, i, j), P(F, i + 1, j), P(F, i + 1, j + 1), P(F, i, j + 1)];
+        let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+        for (const t of q) { if (t.x < x0) x0 = t.x; if (t.x > x1) x1 = t.x; if (t.y < y0) y0 = t.y; if (t.y > y1) y1 = t.y; }
+        if (sx < x0 || sx > x1 || sy < y0 || sy > y1) continue;
+        if (!inQuad(q, sx, sy)) continue;
+        out.hit.push({ i: cx, j: cy, h: +F.corS(i + 0.5, j + 0.5).toFixed(1), cut: !!F.isCut(i, j),
+                       z: Math.round((cx * 32 + 16 + cy * 32 + 16) * 0.5) });
+      }
+      out.hit.sort((a, b) => b.z - a.z);
+      return out;
+    };
+    window.__mtStage = (pts) => { _mtStagePts = (pts && pts.length) ? pts : null; _mtStageLog = null; needsRedraw = true; return _mtStagePts ? _mtStagePts.length : 0; };
+    window.__mtStageGet = () => _mtStageLog;
     window.__mtDual = (v) => { MT3_DUAL = v ? 1 : 0; _mt3Chunk.clear(); _mt3Sig = ''; needsRedraw = true; return MT3_DUAL; };
     window.__mtZOcc = (v) => { MT_OCC_ZB = +v; needsRedraw = true; return MT_OCC_ZB; };
     window.__mtClearDestroy = () => { const n2 = _mtDestroyed.size; _mtDestroyed.clear(); _mtSegCache.clear(); _mtChunk.clear(); _groundTiles.clear(); needsRedraw = true; return n2; };
@@ -7743,6 +7823,7 @@ const SIM_JOB_EMOJI = {
     //      (배치 19가 남긴 "지면 데코는 안개 마스크 앞" 계약이 바로 이 뜻이었다.)
     //   ⇒ 대가: 엔티티가 항상 자연물 위에 그려진다(사람이 갈대 뒤에 서도 앞으로 나온다).
     //      풀·꽃은 지면 데코라 이 편이 낫다 — 산 세그먼트처럼 큰 물체였다면 반대였을 것이다.
+    _mtStageLog = _mtStagePts ? [] : null; _mtStage(ctx, 'A_지면');
     if (!_t19.natOff) {
       const _wt = _windT(), _ww = _t19.windOff ? 0 : _windAt(_wt);
       const _nt0 = performance.now();
@@ -7773,6 +7854,7 @@ const SIM_JOB_EMOJI = {
       }
       ctx.drawImage(window._shadowMask, mdx - _maskM, mdy - _maskM);
     }
+    _mtStage(ctx, 'B_안개후');
 
     // ═══════════════════════════════════════════════════════════════════════
     // ★★[재민 확정 2026-08-06] **한 번도 안 가본 곳은 그 어떤 것도 보여서는 안 된다.**
@@ -7832,6 +7914,7 @@ const SIM_JOB_EMOJI = {
     };
 
     // === 3) 엔티티 그리기 ===
+    _mtStage(ctx, 'C_루프전');
     for (const item of renderables) {
       if (item.wx === undefined) { _gateMissing++; _gateMissKind[item.kind] = (_gateMissKind[item.kind] || 0) + 1; }
       else if (_GATE_FREE[item.kind]) { _gateFree++; }
@@ -8228,7 +8311,9 @@ const SIM_JOB_EMOJI = {
         ctx.globalAlpha = 1;
       }
     }
+    _mtStage(ctx, 'D_루프후');
     _mtFlushFade(ctx);   // ★흐린 산 한 겹을 여기서 한 번에 덮는다(겹침 누적 방지)
+    _mtStage(ctx, 'E_흐림후');
 
     // === 14.49-e7o: 옛 vignette/directional shadow 제거 — fog of war가 시야 전담 (3-state 깔끔) ===
 
@@ -8618,6 +8703,7 @@ const SIM_JOB_EMOJI = {
       ctx.fillStyle = nightGrad;
       ctx.fillRect(0, 0, W, H);
     }
+    _mtStage(ctx, 'F_밤후');
 
     // === Phase 4d-4: 캐나디아 마을 작업장 시각화 (각 직업 work area) ===
     if (primaryZoneId === 'canadia' && _canadiaVillages.length) {

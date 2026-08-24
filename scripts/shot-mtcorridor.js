@@ -173,6 +173,69 @@ require(path.join(ROOT,'server','zone.js'));`);
   });
   await pg.evaluate(() => window.__mt3Rects(false));
   console.log('띠가 덮는가 =', JSON.stringify(cover));
+  await pg.screenshot({ path: path.join(OUT, 'P_probe.png') });   // 프로브와 **같은 순간**의 그림
+  const paint = await pg.evaluate(() => [[700,700],[900,600],[500,750],[700,436],[700,300]]
+    .map(([x,y]) => ({ x, y, r: window.__mtPaintAt(x, y) })));
+  for (const q of paint) console.log(`  (${q.x},${q.y}) 덮음 ${q.r.cover} · **칠함 ${q.r.paint}** · 예: ${JSON.stringify(q.r.hits.slice(0,2))}`);
+  // ── 단계별 화소 — **같은 프레임 안**에서 어느 패스가 그 점을 바꾸는가 ──────────
+  //   스크린샷 대조는 프레임이 어긋난다. 정본 ctx 를 A~F 여섯 단계에서 같은 점으로 읽는다.
+  //   ★자명 통과 금지 — 대조군 둘을 같이 잰다:
+  //     ⓐ 산 끄기(mtOff): C→D 가 **모든 점에서 변하지 않아야** 한다(변하면 계측기가 산을 못 보는 것).
+  //     ⓑ 산 켜기: 산이 분명히 칠하는 점에서는 C→D 가 **반드시 변해야** 한다.
+  const PTS = [[700, 700], [900, 600], [500, 750], [700, 436], [700, 300], [700, 450]];
+  const stageRun = async (tag) => {
+    await pg.evaluate((pts) => window.__mtStage(pts), PTS);
+    await sleep(1400);
+    const lg = await pg.evaluate(() => window.__mtStageGet());
+    await pg.evaluate(() => window.__mtStage(null));
+    console.log(`── 단계별 화소 [${tag}]`);
+    if (!lg) { console.log('  (로그 없음)'); return null; }
+    for (let k = 0; k < PTS.length; k++) {
+      const row = lg.map(r => `${r.s}=${(r.px[k] || []).slice(0, 3).join(',')}`).join('  ');
+      console.log(`  (${PTS[k][0]},${PTS[k][1]})  ${row}`);
+    }
+    return lg;
+  };
+  const stgOn = await stageRun('산 켬');
+  await pg.evaluate(() => { window.__terrain19.mtOff = true; }); await sleep(2500);
+  const stgOff = await stageRun('산 끔(대조군)');
+  await pg.evaluate(() => { window.__terrain19.mtOff = false; }); await sleep(2500);
+  // 판정: C→D 가 바뀐 점 수 (산 켬 > 0, 산 끔 == 0 이어야 계측기가 옳다)
+  const dCD = (lg) => { if (!lg) return null; const C = lg.find(r => r.s.startsWith('C_')), D = lg.find(r => r.s.startsWith('D_'));
+    if (!C || !D) return null; let n = 0; for (let k = 0; k < PTS.length; k++) {
+      const a = C.px[k] || [], b = D.px[k] || []; if (a.join() !== b.join()) n++; } return n; };
+  console.log(`판정 C→D 변한 점: 산 켬 ${dCD(stgOn)}/${PTS.length} · 산 끔(대조) ${dCD(stgOff)}/${PTS.length}`);
+
+  // ── 구멍 자리 추적 — **흐림을 끈 상태**에서 지면색으로 남은 점을 찾아 "어느 셀이 덮었어야 하나"를 묻는다
+  //   ★대조군 필수: 같은 계측기를 **산이 분명히 칠한 초록 점**에도 돌린다. 거기서 hit=0 이 나오면
+  //     계측기가 틀린 것이지 구멍이 있는 게 아니다.
+  await pg.evaluate(() => { window.__terrain19.occOff = true; }); await sleep(2500);
+  const gap = await pg.evaluate(() => {
+    const cv = document.querySelector('canvas'); const g = cv.getContext('2d');
+    const W = cv.width, H = cv.height;
+    const d = g.getImageData(0, 0, W, H).data;
+    const at = (x, y) => { const k = (y * W + x) * 4; return [d[k], d[k+1], d[k+2]]; };
+    const okZone = (x, y) => x > 60 && y > 150 && y < H - 60 && !(x > 1000 && y < 280) && !(x > 1240 && y > 780);
+    const brown = [], green = [];
+    for (let y = 160; y < H - 60; y += 7) for (let x = 60; x < W - 20; x += 7) {
+      if (!okZone(x, y)) continue;
+      const [r, gg, b] = at(x, y);
+      if (r > gg + 6 && r > 90 && b < r - 12) { if (brown.length < 400) brown.push([x, y, [r, gg, b]]); }
+      else if (gg > r + 12 && gg > 35) { if (green.length < 400) green.push([x, y, [r, gg, b]]); }
+    }
+    const pick = (a, n) => { const o = []; for (let k = 0; k < n && a.length; k++) o.push(a[Math.floor(k * (a.length - 1) / Math.max(1, n - 1))]); return o; };
+    const res = { brownN: brown.length, greenN: green.length, q: [] };
+    for (const [x, y, c] of pick(brown, 4)) res.q.push({ kind: '갈색', x, y, c, w: window.__mtWhoCovers(x, y), p: window.__mtPaintAt(x, y) });
+    for (const [x, y, c] of pick(green, 2)) res.q.push({ kind: '초록(대조)', x, y, c, w: window.__mtWhoCovers(x, y), p: window.__mtPaintAt(x, y) });
+    return res;
+  });
+  console.log(`── 구멍 추적 (흐림 끔) · 갈색 화소 ${gap.brownN} · 초록 ${gap.greenN}`);
+  for (const q of gap.q) {
+    const hs = (q.w && q.w.hit || []).slice(0, 3).map(h => `(${h.i},${h.j}) h=${h.h}${h.cut ? ' 파냄' : ''}`).join(' ');
+    console.log(`  ${q.kind} (${q.x},${q.y}) rgb=${q.c}  덮어야 할 셀 ${q.w ? q.w.hit.length : '?'}장 [${hs}] · 실제 칠함 ${q.p ? q.p.paint : '?'}/${q.p ? q.p.cover : '?'}`);
+  }
+  await pg.evaluate(() => { window.__terrain19.occOff = false; }); await sleep(1500);
+
   console.log('가림 상태 켬 =', JSON.stringify(on));
   console.log('가림 상태 끔 =', JSON.stringify(off));
   console.log('띠 흐림 =', JSON.stringify(rects));
