@@ -242,7 +242,9 @@ require(path.join(ROOT,'server','zone.js'));`);
       await sleep(2000); t += 2000;
       const d = await pg.evaluate(() => { const q = window.__mtDbg; return [q.mt3chunks, q.segs]; });
       const k = d.join(',');
-      if (k === last) { if (++same >= 3) return { ms: t, chunks: d[0], segs: d[1] }; } else { same = 0; last = k; }
+      // ★0 에서 멈춘 걸 '안정'으로 읽으면 안 된다 — 굽기가 아직 시작도 안 한 것이다(실측 사고).
+      if (k === last && d[1] > 0) { if (++same >= 3) return { ms: t, chunks: d[0], segs: d[1] }; }
+      else { same = 0; last = k; }
     }
     return { ms: t, timeout: true };
   };
@@ -292,6 +294,31 @@ require(path.join(ROOT,'server','zone.js'));`);
     console.log(`  치마 ${v} → 지면색 ${r.ex}/${r.tot} = ${r.pct}% · 쿼드 ${nq.quads}/${nq.blanket} (절감 ${nq.save}%) (굽기 ${st.ms}ms · 띠 ${st.segs})`);
   }
   await pg.evaluate(() => window.__mt3skirt(0));
+  // ── GPU 판 vs 캔버스 폴리곤 판 — **래스터라이저를 통째로 갈아 끼우는** 반례 장치.
+  //   같은 셀 집합을 전혀 다른 방식으로 그린다. 리본이 사라지면 원인은 GL 경로에 있고,
+  //   남으면 원인은 '그리는 방법'이 아니라 '그릴 셀 집합'에 있다.
+  // ── 거리장 여유(MT3_PAD) A/B — 청크마다 dE 를 자기 창에서만 푼다. 산 깊은 곳은
+  //   창 안에 비바위가 없어 dE=INF(=마루 높이)가 되고, 창에 비바위가 걸리는 이웃 청크는
+  //   같은 자리를 **낮게** 푼다. 그 단차가 리본이라는 가설의 반례 장치.
+  const padAB = [];
+  for (const pd of (process.env.PADS || '12,28,48').split(',').map(Number)) {
+    await pg.evaluate((v) => window.__mt3pad(v), pd);
+    const st = await settle(120000);
+    const r = await groundPct();
+    await pg.screenshot({ path: path.join(OUT, `P_여유_${pd}.png`) });
+    padAB.push({ pd, ...r, settle: st.ms, segs: st.segs });
+    console.log(`  거리장여유 ${pd} → 지면색 ${r.ex}/${r.tot} = ${r.pct}% (굽기 ${st.ms}ms · 띠 ${st.segs})`);
+  }
+  await pg.evaluate(() => window.__mt3pad(12));
+  const glAB = [];
+  for (const g of (process.env.SKIPGL ? [] : [1, 0, 1])) {
+    await pg.evaluate((v) => window.__mt3gl(v), g);
+    const st = await settle();
+    const r = await groundPct();
+    await pg.screenshot({ path: path.join(OUT, `G_gl_${g}_${glAB.length}.png`) });
+    glAB.push({ g, ...r, settle: st.ms, segs: st.segs });
+    console.log(`  GL ${g} → 지면색 ${r.ex}/${r.tot} = ${r.pct}% (굽기 ${st.ms}ms · 띠 ${st.segs})`);
+  }
   // ── 수집 창 A/B — 리본이 **수집 범위** 탓인지 가른다(반례 장치) ──────────────
   const viewAB = [];
   for (const [vw, ht] of [[2400, 54.25], [6000, 120], [12000, 240]]) {
@@ -350,7 +377,7 @@ require(path.join(ROOT,'server','zone.js'));`);
   console.log('가림 상태 켬 =', JSON.stringify(on));
   console.log('가림 상태 끔 =', JSON.stringify(off));
   console.log('띠 흐림 =', JSON.stringify(rects));
-  fs.writeFileSync(path.join(OUT, 'meta.json'), JSON.stringify({ site, tgt, dig, on, off, rects, sweep, gap, mpadAB, skirtAB, viewAB }, null, 1));
+  fs.writeFileSync(path.join(OUT, 'meta.json'), JSON.stringify({ site, tgt, dig, on, off, rects, sweep, gap, mpadAB, skirtAB, viewAB, glAB, padAB }, null, 1));
   console.log('저장:', OUT);
   await br.close(); for (const p of procs) { try { p.kill(); } catch (e) {} } process.exit(0);
 })().catch(e => { console.error(e); for (const p of procs) { try { p.kill(); } catch (_) {} } process.exit(1); });

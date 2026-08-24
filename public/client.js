@@ -2123,7 +2123,7 @@ const SIM_JOB_EMOJI = {
   //     ⓔ 청크마다 바위 판정을 1600번씩 다시 물었다(여유가 이웃과 겹치는데도)
   //   결과: 조각 108만 → 14만(7.7배) · fill 326만 → 42만
   const MT3_CH = 16;                   // 청크(셀) — 8 → 16. 여유 재계산 낭비 12배 → 5배
-  const MT3_PAD = 12;                  // 거리장 여유
+  let MT3_PAD = 12;                    // 거리장 여유 — ★창 밖은 INF 라 dE 가 창에서 **잘린다**
   // ★★[재민 확정 2026-08-19] **산은 벽이다.** 실측이 전제를 뒤집었다(scripts/measure-mtscale.js):
   //   산괴는 178×232 · 183×224 · 220×173 셀 = **폭 180~230m** 로 이미 크다. 눌린 건 높이뿐이었다.
   //   옛 규약(HMAX 9 / LAM 10)은 그 200m 산괴의 마루를 8.9m 로 깎았다 — 성목이 3~8m 다.
@@ -2785,6 +2785,10 @@ const SIM_JOB_EMOJI = {
   //   창을 넓혀 리본이 닫히면 원인은 기하가 아니라 수집이다.
   window.__mt3view = (v) => { MT3_VIEW = +v; _mt3Chunk.clear(); _mt3Sig = ''; needsRedraw = true; return MT3_VIEW; };
   window.__mt3htop = (v) => { MT3_HTOP = +v; _mt3Chunk.clear(); _mt3Sig = ''; needsRedraw = true; return MT3_HTOP; };
+  // 거리장 여유 손잡이 — 청크마다 dE 를 자기 창(40×40)에서만 푸는데, 산 깊은 곳은
+  //   창 안에 비바위가 없어 dE=INF 가 된다. 이웃 청크의 창에 비바위가 걸리면 같은 셀을
+  //   **다른 높이**로 푼다 — 청크 경계에 단차가 생긴다는 가설의 반례 장치.
+  window.__mt3pad = (v) => { MT3_PAD = v | 0; _mt3Chunk.clear(); _mt3Sig = ''; needsRedraw = true; return MT3_PAD; };
   window.__mt3rocks = (v) => { MT3_ROCKS = +v; _mt3Chunk.clear(); _mt3Sig = ''; return MT3_ROCKS; };
   window.__mt3cv = (n) => { MT3_CV0 = n | 0; if (_mgl.cv) { _mgl.cv.width = _mgl.cv.height = MT3_CV0; }
     _mt3Chunk.clear(); _mt3Sig = ''; return MT3_CV0; };
