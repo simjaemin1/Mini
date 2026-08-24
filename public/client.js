@@ -2159,7 +2159,7 @@ const SIM_JOB_EMOJI = {
   //   ⇒ 셀이 화면에 걸릴 조건을 그대로 쓴다:
   //       화면x = (wx−wy) − (camx−camy),  화면y = (wx+wy)/2 − (camx+camy)/2 − h·32
   //     세로는 **아래쪽만** h·32 만큼 더 본다(위쪽은 늘릴 이유가 없다 — 산은 위로만 자란다).
-  const MT3_VIEW = 2400;               // 안전 상한(계산 실패 시의 하드 캡). 실제 컷은 아래 화면식.
+  let MT3_VIEW = 2400;               // 안전 상한(계산 실패 시의 하드 캡). 실제 컷은 아래 화면식.
   const MT3_BUDGET = 1;                // ★프레임당 새로 굽는 청크 수. 지면 타일(5)보다 훨씬 무겁다
   const MT3_L = [-0.452, -0.6455, 0.6157];       // 태양 52°/−35°
   const MT3_AMB = 0.24, MT3_DIR = 1.10;
@@ -2360,8 +2360,10 @@ const SIM_JOB_EMOJI = {
   let MT3_AOBOX = 0;                   // 1 이면 **옛 AO**(4×4 상자 평균 = 조각별 상수) — 반례 전용
   const MT3_OV = 0.008;                // 띠 겹침(셀). 가로 0.5px·세로 0.26px — 실루엣 부풀림은 무시할 수준
   let MT3_CV0 = 128;                   // GL 캔버스 초깃값. 띠가 크면 128 배수로 자란다
-  const MT3_HTOP = MT3_HMAX * 1.55;    // 실제 최대 높이 상한(수집 여유용). 실측 최대 48.8m
+  let MT3_HTOP = MT3_HMAX * 1.55;    // 실제 최대 높이 상한(수집 여유용). 실측 최대 48.8m
   let MT3_DUAL = 1;                    // ⑶ 마스크 이원화 — 0 이면 옛 판(파괴가 높이를 낮춘다)
+  let MT3_SKIRT = 0;                   // ★치마 — 메시 **테두리** 변의 마루 높이가 이 값(m)을 넘으면 밑까지 벽을 세운다. 0=끔(기본)
+  let _mt3SkirtQ = 0, _mt3SkirtAll = 0;// 실제 세운 쿼드 / 무조건 세웠을 때 (절감 보고용)
   let MT3_TREEP = 0.020;               // ③ 돌출목 — 셀당 확률(낮게 시작). 0 이면 끔
   let MT3_TREEPX = 30;                 // 그리는 높이(px). 실물(78px)이 아니라 **작은 축척**
   let MT3_MPAD = 18;                   // 띠 캔버스 여백(px) — 손잡이로 갈아 끼워 잘림 여부를 가린다
@@ -2638,7 +2640,8 @@ const SIM_JOB_EMOJI = {
     //   겹쳐도 안 보이는 이유가 이 판의 핵심이다: **프래그먼트 색이 월드 좌표만의 함수**라
     //   겹친 자리를 두 띠가 **같은 색**으로 칠한다(옛 캔버스 판은 조각마다 색이 달라 그물이 됐다).
     const sub = MT3_GSUB, S = sub + 1, OV = MT3_OV, SP = (1 + 2 * OV) / sub;
-    const need = (cells.length * sub * sub + (cuts ? cuts.length * 6 : 0)) * 6 * 5;
+    // ★치마 쿼드(셀당 최대 2장)까지 넣어 잡는다 — 모자라면 타입드배열이 **조용히** 버려 구멍이 다시 생긴다
+    const need = (cells.length * (sub * sub + 2) + (cuts ? cuts.length * 6 : 0)) * 6 * 5;
     if (!_mgl.buf || _mgl.buf.length < need) _mgl.buf = new Float32Array(Math.max(need, 8192));
     const V = _mgl.buf; let n = 0;
     const px = new Float32Array(S * S), py = new Float32Array(S * S);
@@ -2666,17 +2669,29 @@ const SIM_JOB_EMOJI = {
     //   옆면은 파낸 셀과 **안 파낸 바위 셀**이 맞닿는 변마다. 바깥(비바위)으로 난 변은
     //   통로 입구라 벽을 안 세운다. 벽 높이는 **원본 높이장의 모서리 값**이라
     //   이웃 표면의 가장자리와 정확히 맞물린다.
+    const SP2 = (v) => Math.round(v * 64) / 64;
+    const scr = (ci, cj, hh) => {
+      const wxp = (F.i0 + ci) * 32, wyp = (F.j0 + cj) * 32;
+      return [SP2(wxp - wyp) - x0, SP2((wxp + wyp) * 0.5 - hh * 32) - y0];
+    };
+    const tri = (a, b, c2, ca, cb, cc, mode) => {
+      for (const [q, cq] of [[a, ca], [b, cb], [c2, cc]]) {
+        V[n] = q[0]; V[n + 1] = q[1]; V[n + 2] = cq[0]; V[n + 3] = cq[1]; V[n + 4] = mode; n += 5;
+      }
+    };
+    // 한 변에 벽 한 장 — 갱 옆면과 치마가 **같은 식**을 쓴다(사본 금지)
+    const wall = (A, B, mode, along) => {
+      const hA = F.corS(A[0], A[1]), hB = F.corS(B[0], B[1]);
+      if (hA < 0.3 && hB < 0.3) return false;
+      const aT = scr(A[0], A[1], hA), bT = scr(B[0], B[1], hB);
+      const aF = scr(A[0], A[1], 0), bF = scr(B[0], B[1], 0);
+      const sA = along ? (F.j0 + A[1]) : (F.i0 + A[0]);
+      const sB = along ? (F.j0 + B[1]) : (F.i0 + B[0]);
+      tri(aF, bF, bT, [sA, 0], [sB, 0], [sB, hB], mode);
+      tri(aF, bT, aT, [sA, 0], [sB, hB], [sA, hA], mode);
+      return true;
+    };
     if (cuts && cuts.length) {
-      const SP2 = (v) => Math.round(v * 64) / 64;
-      const scr = (ci, cj, hh) => {
-        const wxp = (F.i0 + ci) * 32, wyp = (F.j0 + cj) * 32;
-        return [SP2(wxp - wyp) - x0, SP2((wxp + wyp) * 0.5 - hh * 32) - y0];
-      };
-      const tri = (a, b, c2, ca, cb, cc, mode) => {
-        for (const [q, cq] of [[a, ca], [b, cb], [c2, cc]]) {
-          V[n] = q[0]; V[n + 1] = q[1]; V[n + 2] = cq[0]; V[n + 3] = cq[1]; V[n + 4] = mode; n += 5;
-        }
-      };
       for (const [i, j] of cuts) {
         // 바닥 — 지면 높이
         const f00 = scr(i, j, 0), f10 = scr(i + 1, j, 0), f11 = scr(i + 1, j + 1, 0), f01 = scr(i, j + 1, 0);
@@ -2693,16 +2708,29 @@ const SIM_JOB_EMOJI = {
         for (const [off, A, B, mode] of sides) {
           const ni = i + off[0], nj = j + off[1];
           if (!F.isRock(ni, nj) || F.isCut(ni, nj)) continue;   // 입구이거나 통로가 이어진다
-          const hA = F.corS(A[0], A[1]), hB = F.corS(B[0], B[1]);
-          if (hA < 0.3 && hB < 0.3) continue;
-          const aT = scr(A[0], A[1], hA), bT = scr(B[0], B[1], hB);
-          const aF = scr(A[0], A[1], 0), bF = scr(B[0], B[1], 0);
-          // UV = (변을 따라간 월드 좌표, 높이m) — 세로 결이 서고 이웃 벽과 이어진다
-          const sA = (off[1] === 0) ? (F.j0 + A[1]) : (F.i0 + A[0]);
-          const sB = (off[1] === 0) ? (F.j0 + B[1]) : (F.i0 + B[0]);
-          tri(aF, bF, bT, [sA, 0], [sB, 0], [sB, hB], mode);
-          tri(aF, bT, aT, [sA, 0], [sB, hB], [sA, hA], mode);
+          wall(A, B, mode, off[1] === 0);
         }
+      }
+    }
+    // ── 치마(skirt) — 메시 **테두리**의 카메라 쪽 변에만 밑까지 벽을 세운다 ────────
+    //   ★실측 근거(2026-08-24): 안정된 화면의 **13.6%가 지면색 정확 일치**인데, 그 자리를
+    //     정본이 그린 사각형이 64~320장 덮고 띠도 4~20장 덮는데 **칠한 띠가 0장**이다
+    //     (대조군 산색 점은 전부 1장). 즉 수집·굽기·상자 문제가 아니라 **시트가 그 자리에
+    //     닿지 않는다** — 높이장에 밑면이 없어 산자락 너머로 **자기 발밑 지면 타일**이 비친다.
+    //     리본의 두께(~100px)가 산자락 마루 높이(≈2.8m=90px)와 맞는다.
+    //   ★여백(MT3_MPAD 18→48→96)은 **한 화소도** 안 바꿨다 — 상자 잘림 가설은 기각됐다.
+    //   ★왜 +i·+j 두 변만인가: z=(wx+wy)/2 라 화면에서 앞을 향한 면은 +i·+j 쪽뿐이다.
+    //   ★★[기각 2026-08-24] **이 가설은 실측에서 떨어졌다.** 안정 후 A/B:
+    //     치마 0 → 지면색 28776/211059 · 치마 0.30 → **28776/211059(한 화소도 같다)**.
+    //     이유도 같이 나왔다: 시야 안 6963셀 중 카메라 쪽 변이 **비바위와 맞닿은 것은 139개뿐**
+    //     (13926 중 1%)이다. 즉 보이는 산괴는 거의 통짜라 **깎아 낼 테두리 자체가 없다.**
+    //   ★그래도 코드를 남긴다 — 반례 장치다. 기본 0(끔), `__mt3skirt` 로 언제든 되켠다.
+    //     지우면 다음 사람이 같은 가설을 처음부터 다시 세운다.
+    if (MT3_SKIRT > 0) {
+      for (const [i, j] of cells) {
+        _mt3SkirtAll += 2;
+        if (!F.isRock(i + 1, j) && wall([i + 1, j], [i + 1, j + 1], 2, true)) _mt3SkirtQ++;
+        if (!F.isRock(i, j + 1) && wall([i, j + 1], [i + 1, j + 1], 4, false)) _mt3SkirtQ++;
       }
     }
     if (n === 0) return false;
@@ -2748,6 +2776,15 @@ const SIM_JOB_EMOJI = {
   window.__mt3ao = (v) => { MT3_AOON = v ? 1 : 0; _mt3Chunk.clear(); _mt3Sig = ''; return MT3_AOON; };
   // 반례 손잡이 — 옛 AO(조각별 상수)로 되돌린다. 고친 게 정말 그거였는지 같은 판에서 보인다.
   window.__mt3aobox = (v) => { MT3_AOBOX = v ? 1 : 0; _mt3Chunk.clear(); _mt3Sig = ''; return MT3_AOBOX; };
+  // 치마 A/B 손잡이 — 같은 자리에서 갈아 끼워야 '치마가 닫았다'가 증명된다
+  window.__mt3skirt = (v) => { MT3_SKIRT = +v; _mt3Chunk.clear(); _mt3Sig = '';
+    _mt3SkirtQ = 0; _mt3SkirtAll = 0; return MT3_SKIRT; };
+  window.__mt3skirtN = () => ({ skirt: MT3_SKIRT, quads: _mt3SkirtQ, blanket: _mt3SkirtAll,
+    save: _mt3SkirtAll ? +(100 - _mt3SkirtQ / _mt3SkirtAll * 100).toFixed(1) : null });
+  // 수집 창 손잡이 — "띠가 덮는데 안 칠한다"가 **수집 범위** 때문인지 가르는 반례 장치.
+  //   창을 넓혀 리본이 닫히면 원인은 기하가 아니라 수집이다.
+  window.__mt3view = (v) => { MT3_VIEW = +v; _mt3Chunk.clear(); _mt3Sig = ''; needsRedraw = true; return MT3_VIEW; };
+  window.__mt3htop = (v) => { MT3_HTOP = +v; _mt3Chunk.clear(); _mt3Sig = ''; needsRedraw = true; return MT3_HTOP; };
   window.__mt3rocks = (v) => { MT3_ROCKS = +v; _mt3Chunk.clear(); _mt3Sig = ''; return MT3_ROCKS; };
   window.__mt3cv = (n) => { MT3_CV0 = n | 0; if (_mgl.cv) { _mgl.cv.width = _mgl.cv.height = MT3_CV0; }
     _mt3Chunk.clear(); _mt3Sig = ''; return MT3_CV0; };
@@ -2789,6 +2826,15 @@ const SIM_JOB_EMOJI = {
           const gi = F.i0 + i + o[0], gj = F.j0 + j + o[1];
           const c = w2i(gi * 32, gj * 32), Y = c.y - F.cor(i + o[0], j + o[1]) * 32;
           if (c.x < x0) x0 = c.x; if (c.x > x1) x1 = c.x; if (Y < y0) y0 = Y; if (Y > y1) y1 = Y;
+        }
+        // ★치마가 서는 셀도 **밑(h=0)까지** 걸친다 — 상자를 안 열면 벽이 잘려 다시 구멍이 된다.
+        if (MT3_SKIRT > 0) for (const [i, j] of cells) {
+          if (F.isRock(i + 1, j) && F.isRock(i, j + 1)) continue;
+          if (Math.max(F.corS(i + 1, j), F.corS(i, j + 1), F.corS(i + 1, j + 1)) < 0.3) continue;
+          for (const o of [[1, 0], [0, 1], [1, 1]]) {
+            const c = w2i((F.i0 + i + o[0]) * 32, (F.j0 + j + o[1]) * 32);
+            if (c.x < x0) x0 = c.x; if (c.x > x1) x1 = c.x; if (c.y > y1) y1 = c.y;
+          }
         }
         // ★갱은 **바닥(h=0)부터 마루까지** 걸친다 — 상자를 아래로도 열어 줘야 벽면이 안 잘린다.
         for (const [i, j] of cutCells) for (const o of [[0,0],[1,0],[1,1],[0,1]]) {
@@ -7502,13 +7548,18 @@ const SIM_JOB_EMOJI = {
         const wxp = (F.i0 + ci) * 32, wyp = (F.j0 + cj) * 32;
         return _mtToScr(wxp - wyp, (wxp + wyp) * 0.5 - F.corS(ci, cj) * 32);
       };
-      const inQuad = (q, x, y) => {                    // 볼록 사각형 포함 판정
-        let pos = 0, neg = 0;
-        for (let k = 0; k < 4; k++) { const a = q[k], b = q[(k + 1) & 3];
-          const d = (b.x - a.x) * (y - a.y) - (b.y - a.y) * (x - a.x);
-          if (d > 0) pos++; else if (d < 0) neg++; }
-        return !(pos && neg);
+      // ★★[계측기 수리 2026-08-24] 볼록 부호 판정을 쓰다가 **틀린 관측**을 냈다.
+      //   급경사에서는 모서리 높이차(최대 96px)가 셀 다이아(32px)보다 커서 사각형이
+      //   **나비넥타이(자기교차)** 가 된다. 볼록 판정은 그때 전부 '바깥'이라 답한다.
+      //   그 탓에 "갈색 6점 중 5점은 덮을 셀이 0장"이라는 결론을 냈었다 — 철회한다.
+      //   ⇒ GL 이 실제로 그리는 대로 **삼각형 둘**로 나눠 본다(사본이 아니라 같은 분할).
+      const inTri = (a, b, c, x, y) => {
+        const d1 = (b.x - a.x) * (y - a.y) - (b.y - a.y) * (x - a.x);
+        const d2 = (c.x - b.x) * (y - b.y) - (c.y - b.y) * (x - b.x);
+        const d3 = (a.x - c.x) * (y - c.y) - (a.y - c.y) * (x - c.x);
+        return !((d1 < 0 || d2 < 0 || d3 < 0) && (d1 > 0 || d2 > 0 || d3 > 0));
       };
+      const inQuad = (q, x, y) => inTri(q[0], q[1], q[2], x, y) || inTri(q[0], q[2], q[3], x, y);
       const out = { hit: [], scanned: 0, noField: 0 };
       for (let dj = -R; dj <= R; dj++) for (let di = -R; di <= R; di++) {
         const cx = pi + di, cy = pj + dj;

@@ -263,12 +263,94 @@ require(path.join(ROOT,'server','zone.js'));`);
     await pg.screenshot({ path: path.join(OUT, 'DUMP.png') });
     console.log(`덤프 저장 (굽기 안정 ${st0.ms}ms · 청크 ${st0.chunks} · 띠 ${st0.segs}) · 격자 ${dump.W}`);
   }
+  // ── 띠 여백 A/B — "덮개는 100%인데 지면색이 13.6%" 를 가른다 ────────────────
+  //   ★가설: 띠 상자를 **꼭짓점 4개(F.cor)** 로만 잡는데, 실제로 그리는 건 6×6 세분된
+  //     조각을 **corS(Catmull-Rom)** 로 밀어 올린 것이다. 9m 시절 ±13px 여유(MPAD 18)로
+  //     충분했지만 35m 에서는 밀림이 ~4배다. 상자 밖으로 나간 조각이 잘려 **구멍**이 된다.
+  //   ★판정: 지면색(106,95,82) **정확 일치** 화소의 비율. 여백을 키워 이 값이 떨어지면 가설이 맞다.
+  //     ─ 반례: 여백을 키워도 안 변하면 상자 잘림이 아니다(그 자리에서 가설을 버린다).
+  const groundPct = async () => pg.evaluate(() => {
+    const cv = document.querySelector('canvas'); const g = cv.getContext('2d');
+    const W = cv.width, H = cv.height, d = g.getImageData(0, 0, W, H).data;
+    let ex = 0, tot = 0;
+    for (let y = 160; y < H - 60; y += 2) for (let x = 60; x < W - 20; x += 2) {
+      if ((x > 1000 && y < 280) || (x > 1240 && y > 780)) continue;
+      const k = (y * W + x) * 4; tot++;
+      if (Math.abs(d[k] - 106) < 4 && Math.abs(d[k+1] - 95) < 4 && Math.abs(d[k+2] - 82) < 4) ex++;
+    }
+    return { ex, tot, pct: +(ex / tot * 100).toFixed(2) };
+  });
+  // ── 치마 A/B — 안정될 때까지 기다린 뒤 **지면색 정확 일치** 비율로 판정한다 ──────
+  const skirtAB = [];
+  for (const v of (process.env.SKIRTS || '0,0.30').split(',').map(Number)) {
+    await pg.evaluate((q) => window.__mt3skirt(q), v);
+    const st = await settle();
+    const r = await groundPct();
+    const nq = await pg.evaluate(() => window.__mt3skirtN());
+    await pg.screenshot({ path: path.join(OUT, `S_치마_${v}.png`) });
+    skirtAB.push({ v, ...r, ...nq, settle: st.ms, segs: st.segs });
+    console.log(`  치마 ${v} → 지면색 ${r.ex}/${r.tot} = ${r.pct}% · 쿼드 ${nq.quads}/${nq.blanket} (절감 ${nq.save}%) (굽기 ${st.ms}ms · 띠 ${st.segs})`);
+  }
+  await pg.evaluate(() => window.__mt3skirt(0));
+  // ── 수집 창 A/B — 리본이 **수집 범위** 탓인지 가른다(반례 장치) ──────────────
+  const viewAB = [];
+  for (const [vw, ht] of [[2400, 54.25], [6000, 120], [12000, 240]]) {
+    await pg.evaluate((a) => { window.__mt3view(a[0]); window.__mt3htop(a[1]); }, [vw, ht]);
+    const st = await settle();
+    const r = await groundPct();
+    const db = await pg.evaluate(() => window.__mtDbg);
+    await pg.screenshot({ path: path.join(OUT, `V_창_${vw}.png`) });
+    viewAB.push({ vw, ht, ...r, chunks: db.mt3chunks, segs: db.segs, settle: st.ms });
+    console.log(`  창 ${vw}/${ht} → 지면색 ${r.pct}% · 청크 ${db.mt3chunks} · 띠 ${db.segs} (굽기 ${st.ms}ms)`);
+  }
+  await pg.evaluate(() => { window.__mt3view(2400); window.__mt3htop(35 * 1.55); });
+  const mpadAB = [];
+  for (const mp of (process.env.MPADS || '').split(',').filter(Boolean).map(Number)) {
+    await pg.evaluate((v) => window.__mt3mpad(v), mp);
+    const st = await settle();
+    const r = await groundPct();
+    await pg.screenshot({ path: path.join(OUT, `M_여백_${mp}.png`) });
+    mpadAB.push({ mp, ...r, settle: st.ms, segs: st.segs });
+    console.log(`  여백 ${String(mp).padStart(3)} → 지면색 ${r.ex}/${r.tot} = ${r.pct}% (굽기 ${st.ms}ms · 띠 ${st.segs})`);
+  }
+  await pg.evaluate(() => window.__mt3mpad(18));
+  // ── 리본 추적 — 안정된 화면에서 **지면색 리본**을 뽑아, 정본 그리기 경로가 남긴
+  //   사각형(__mt3Rects)이 그 자리를 덮는지 묻는다. 덮는데 안 칠하면 '칠하기' 문제,
+  //   아예 안 덮으면 '수집/굽기' 문제다. 둘은 고쳐야 할 곳이 다르다.
+  //   ★대조군: 같은 방식으로 뽑은 **초록(산) 점**도 같이 묻는다.
+  {
+    await settle();
+    await pg.evaluate(() => window.__mt3Rects(true)); await sleep(900);
+    const rib = await pg.evaluate(() => {
+      const cv = document.querySelector('canvas'); const g = cv.getContext('2d');
+      const W = cv.width, H = cv.height, d = g.getImageData(0, 0, W, H).data;
+      const at = (x, y) => { const k = (y * W + x) * 4; return [d[k], d[k+1], d[k+2]]; };
+      const isG = (c) => Math.abs(c[0]-106) < 4 && Math.abs(c[1]-95) < 4 && Math.abs(c[2]-82) < 4;
+      const gp = [], mp = [];
+      for (let y = 170; y < H - 70; y += 11) for (let x = 70; x < W - 30; x += 11) {
+        if ((x > 1000 && y < 280) || (x > 1240 && y > 780)) continue;
+        const c = at(x, y);
+        if (isG(c)) gp.push([x, y]); else if (c[1] > c[0] + 12) mp.push([x, y]);
+      }
+      const R = window.__mt3RectsGet() || [];
+      const cover = (x, y) => R.filter(q => x >= q.x && x < q.x + q.w && y >= q.y && y < q.y + q.h).length;
+      const take = (a, n) => { const o = []; for (let k = 0; k < n && a.length; k++) o.push(a[Math.floor(k * (a.length - 1) / Math.max(1, n - 1))]); return o; };
+      const row = (kind, a) => take(a, 6).map(([x, y]) => {
+        const pa = window.__mtPaintAt(x, y);
+        return { kind, x, y, rect: cover(x, y), paint: pa ? pa.paint : -1, cov: pa ? pa.cover : -1 };
+      });
+      return { nG: gp.length, nM: mp.length, rects: R.length, q: row('지면색', gp).concat(row('산색(대조)', mp)) };
+    });
+    await pg.evaluate(() => window.__mt3Rects(false));
+    console.log(`── 리본 추적 · 지면색 표본 ${rib.nG} · 산색 ${rib.nM} · 그린 사각형 ${rib.rects}`);
+    for (const q of rib.q) console.log(`  ${q.kind} (${q.x},${q.y}) 그린사각형 ${q.rect}장 · 띠덮음 ${q.cov} · **칠함 ${q.paint}**`);
+  }
   await pg.evaluate(() => { window.__terrain19.occOff = false; }); await sleep(1500);
 
   console.log('가림 상태 켬 =', JSON.stringify(on));
   console.log('가림 상태 끔 =', JSON.stringify(off));
   console.log('띠 흐림 =', JSON.stringify(rects));
-  fs.writeFileSync(path.join(OUT, 'meta.json'), JSON.stringify({ site, tgt, dig, on, off, rects, sweep }, null, 1));
+  fs.writeFileSync(path.join(OUT, 'meta.json'), JSON.stringify({ site, tgt, dig, on, off, rects, sweep, gap, mpadAB, skirtAB, viewAB }, null, 1));
   console.log('저장:', OUT);
   await br.close(); for (const p of procs) { try { p.kill(); } catch (e) {} } process.exit(0);
 })().catch(e => { console.error(e); for (const p of procs) { try { p.kill(); } catch (_) {} } process.exit(1); });
