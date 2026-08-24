@@ -107,7 +107,7 @@ require(path.join(ROOT,'server','zone.js'));`);
   const on = await pg.evaluate(() => window.__mtOccDbg);
 
   // ── ⑶ 마스크 이원화 짝 — 같은 통로에서 옛 판(도랑) vs 새 판(협곡) ──
-  for (const [tag, dual] of [['D_옛판_도랑', 0], ['D_새판_협곡', 1]]) {
+  for (const [tag, dual] of (process.env.FAST ? [] : [['D_옛판_도랑', 0], ['D_새판_협곡', 1]])) {
     await pg.evaluate((v) => window.__mtDual(v), dual);
     await sleep(5000);
     await pg.screenshot({ path: path.join(OUT, tag + '.png') });
@@ -128,7 +128,7 @@ require(path.join(ROOT,'server','zone.js'));`);
   // ── 편향 스윕 — 가림 판정의 플레이어 z 편향을 줄이며 그림·발동률을 함께 잰다 ──
   //   z 32 = 한 축 2셀. 500 = 현행(31셀).
   const sweep = [];
-  for (const zb of (process.env.ZBS || '500,96,48,0').split(',').map(Number)) {
+  for (const zb of (process.env.FAST ? [] : (process.env.ZBS || '500,96,48,0').split(',').map(Number))) {
     await pg.evaluate((v) => window.__mtZOcc(v), zb);
     await sleep(1600);
     const d = await pg.evaluate(() => window.__mtOccDbg);
@@ -233,6 +233,35 @@ require(path.join(ROOT,'server','zone.js'));`);
   for (const q of gap.q) {
     const hs = (q.w && q.w.hit || []).slice(0, 3).map(h => `(${h.i},${h.j}) h=${h.h}${h.cut ? ' 파냄' : ''}`).join(' ');
     console.log(`  ${q.kind} (${q.x},${q.y}) rgb=${q.c}  덮어야 할 셀 ${q.w ? q.w.hit.length : '?'}장 [${hs}] · 실제 칠함 ${q.p ? q.p.paint : '?'}/${q.p ? q.p.cover : '?'}`);
+  }
+  // 청크 굽기가 끝날 때까지 기다린다 — 예산이 프레임당 1청크라 몇 초로는 화면이 안 찬다.
+  //   (안 기다리면 **굽기 지연을 결과로** 읽는다 — 앞선 A/B 가 그래서 "차이 0"이 나왔다.)
+  const settle = async (maxMs = 90000) => {
+    let last = -1, same = 0, t = 0;
+    while (t < maxMs) {
+      await sleep(2000); t += 2000;
+      const d = await pg.evaluate(() => { const q = window.__mtDbg; return [q.mt3chunks, q.segs]; });
+      const k = d.join(',');
+      if (k === last) { if (++same >= 3) return { ms: t, chunks: d[0], segs: d[1] }; } else { same = 0; last = k; }
+    }
+    return { ms: t, timeout: true };
+  };
+  // ── 덤프 — 정본 높이장·바위 마스크·카메라를 내보내 **오프라인에서 덮개를 래스터화**한다.
+  //   화면 어디가 "표면이 아예 안 닿는 자리"인지 그림으로 봐야 기하를 옳게 얹는다.
+  if (process.env.DUMP) {
+    const st0 = await settle();
+    const dump = await pg.evaluate((t) => {
+      const R = 130, i0 = t.i - R, j0 = t.j - R, W = R * 2 + 1;
+      const hg = window.__mtHeightGrid(i0, j0, W, W);
+      const rk = []; for (let j = 0; j < W; j++) { const row = [];
+        for (let i = 0; i < W; i++) row.push(window.__mtIsRock(i0 + i, j0 + j) ? 1 : 0); rk.push(row.join('')); }
+      const cv = document.querySelector('canvas');
+      return { i0, j0, W, h: Array.from(hg), rock: rk, me: window.__getMyAbs(),
+               pl: { x: t.i * 32 + 16, y: t.j * 32 + 16 }, cw: cv.width, ch: cv.height, dbg: window.__mtDbg };
+    }, tgt);
+    fs.writeFileSync(path.join(OUT, 'dump.json'), JSON.stringify(dump));
+    await pg.screenshot({ path: path.join(OUT, 'DUMP.png') });
+    console.log(`덤프 저장 (굽기 안정 ${st0.ms}ms · 청크 ${st0.chunks} · 띠 ${st0.segs}) · 격자 ${dump.W}`);
   }
   await pg.evaluate(() => { window.__terrain19.occOff = false; }); await sleep(1500);
 
