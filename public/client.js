@@ -434,6 +434,24 @@ const SIM_JOB_EMOJI = {
   const GT_MAX = 140;                  // 타일 캐시 상한(≈70MB) — 넘으면 카메라에서 먼 것부터 버린다
   const GT_MAX_WIND = 80;              // ★잎 층까지 들면 타일당 메모리가 2배다 — 상한을 낮춘다(화면은 ~30장)
   const WATER_EDGE_FUZZ = 6.0;         // 물가선이 굽이치는 폭(월드 px) — 자로 그은 직선을 없앤다
+  // ★[재민 2026-08-24 "1셀 두께로 줄무늬"] 파도 **잔결** 노이즈. 스케일은 512 의 약수만(주기=512/스케일).
+  //   3.2 월드px 는 화면에서 3px 남짓이라 픽셀 격자와 부딪쳐 물결이 아니라 **디더 점**으로 깨졌다.
+  const WATER_RIP_SCALE = 3.2, WATER_RIP_W = 0.38;
+  // ★잔결 **전체 세기**. 1.00(옛값)은 얕은 물에서 물결이 아니라 **점묘**로 깨졌다.
+  //   시안 A1.00/B0.65/C0.40/D0.20 실측(줄무늬 띠 고주파): 3.89 / 3.04 / 2.64 / 2.44.
+  //   ★★그런데 0.40 으로 낮췄더니 `e2e-terrain` ①이 잡았다 — **물이 안 움직인다**
+  //     (0.12초 최적 이동 8.1px → 0.0px · SAD 1.9 = 무이동과 같음). 물결의 **이동을 눈에 보이게
+  //     하는 성분이 바로 이 잔결**이었다. 사인파는 파장 32·64px 이라 저대비 저주파라서 못 끈다.
+  //   ⇒ **세기를 낮추는 안은 폐기**. 판정을 낮추는 대신 원인을 바꾼다: 잔결의 **격자 크기**를 키워
+  //     픽셀 격자와 안 부딪치게 한다(아래 SCALE1). 세기는 1.00 그대로.
+  const WATER_RIP_AMP = 1.00;
+  // ★잔결 1차 노이즈 격자(월드px). 8 은 화면에서 8px 남짓이라 얕은 물의 저진폭 구간에서
+  //   점묘로 깨졌다. 스케일은 512 의 약수만(주기 = 512/스케일).
+  const WATER_RIP_S1 = 8.0, WATER_RIP_W1 = 0.55;
+  // ★디더는 **기본 끔(0)** — 시안 A없음/B1.0/C2.0/D3.0 을 재 봤는데 줄무늬 띠 구조가
+  //   전혀 안 깨졌다(고주파 3.89 / 4.01 / 4.32 / 4.76 — 노이즈만 늘었다). 양자화 가설도 기각.
+  //   손잡이는 남긴다(다른 화면에서 계단이 보이면 켜서 재 볼 수 있게).
+  const WATER_DITHER = 0.0;            // ±(값/2) LSB. 0 = 출시본 그대로
   // ★[2026-08-09 실측 정정] 옛 주석의 "32px +0.27ms · 16px +0.53 · 8px +1.03" 은 **틀렸다**.
   //   실클라 짝 비교(켬/끔 5회 교대)로 재니 풀 카펫 흔들림 하나가 **16.3ms/f** 다 — 29배 차이.
   //   옛 수치는 격리·첫 blit 측정으로 보인다. 아래 값들은 전부 짝 비교로 다시 잰다.
@@ -653,10 +671,10 @@ const SIM_JOB_EMOJI = {
         //   물 셰이더 레이어가 이 위에 wa=0.42~1.0 으로 덮으므로 얕은 데서 이 진흙이 비친다.
         //   WebGL 이 없는 환경에서는 덮을 것이 없으므로 종전 단색으로 떨어진다(기능 저하 허용).
         if (_wgl.ok === true && !_t19.waterOff) {
-          g.save(); g.beginPath();
-          g.moveTo(sx, sy - 16); g.lineTo(sx + 32, sy); g.lineTo(sx, sy + 16); g.lineTo(sx - 32, sy); g.closePath(); g.clip();
+          // ★이음매 방지 — 클립 도형도 부풀린다(무늬는 월드 정렬 반복이라 겹쳐 그려도 같은 그림이다).
+          g.save(); _diaPath(g, sx, sy, true); g.clip();
           g.fillStyle = g.createPattern(GTEX.mud_angled, 'repeat');
-          g.fillRect(sx - 32, sy - 16, 64, 32); g.restore();
+          g.fillRect(sx - 34, sy - 18, 68, 36); g.restore();
           if (gm) _covDia(gm, sx, sy, 1);            // 물밑 진흙은 불투명 — 잎 투과율 0
         } else {
           _gtDiamond(g, sx, sy, blendTint(zMeta.isOcean ? zMeta.groundColor : '#2a5a8a',
@@ -934,22 +952,34 @@ const SIM_JOB_EMOJI = {
     return cv ? { cv, n } : { cv: null, n: 0 };
   }
 
+  // ★★[재민 2026-08-24 "1셀 두께로 줄무늬, 위치가 엇갈려 있다"] 다이아몬드 **이음매**.
+  //   셀을 한 장씩 칠하면 맞닿은 변에서 캔버스 안티앨리어싱이 양쪽 다 부분 피복을 내고,
+  //   둘을 겹쳐도 100% 가 안 돼(0.5 + 0.5·0.5 = 0.75) **1px 짜리 틈**이 남는다.
+  //   실측: 물밑 상자에서 픽셀의 **7.07%** 가 가로 어두운 선이었다. 초원에서는 풀 질감이 가려
+  //   안 보이는데, 반투명한 얕은 물 밑은 배경이 매끈해서 그대로 드러난다(재민이 본 그 격자).
+  //   ⇒ **불투명하게 칠하는 경우에만** 도형을 수직으로 GT_DIA_GROW 만큼 부풀려 이웃과 겹친다.
+  //     반투명 층은 부풀리면 겹친 자리가 두 번 섞여 **반대 부호의 줄**이 생기므로 건드리지 않는다.
+  //     (중심에서 변까지 거리는 32·16/√(32²+16²) = 14.31px 이라 배율은 1 + grow/14.31 이다.)
+  const GT_DIA_GROW = 0.75;
+  const GT_DIA_K = 1 + GT_DIA_GROW / 14.311;
+  function _diaPath(g, cx, cy, grow) {
+    const dx = grow ? 32 * GT_DIA_K : 32, dy = grow ? 16 * GT_DIA_K : 16;
+    g.beginPath(); g.moveTo(cx, cy - dy); g.lineTo(cx + dx, cy); g.lineTo(cx, cy + dy); g.lineTo(cx - dx, cy); g.closePath();
+  }
   //   ★`gm` = 투과율 캔버스. 같은 도형·같은 알파로 지운다(destination-out) — T ×= (1−α).
   function _covDia(gm, cx, cy, alpha) {
     if (!gm || alpha <= 0) return;
     gm.globalAlpha = Math.min(1, alpha); gm.fillStyle = '#000';
-    gm.beginPath(); gm.moveTo(cx, cy - 16); gm.lineTo(cx + 32, cy); gm.lineTo(cx, cy + 16); gm.lineTo(cx - 32, cy);
-    gm.closePath(); gm.fill(); gm.globalAlpha = 1;
+    _diaPath(gm, cx, cy, alpha >= 0.999); gm.fill(); gm.globalAlpha = 1;
   }
   function _gtDiamond(g, cx, cy, color, alpha, gm) {
     if (alpha <= 0) return;
+    const grow = alpha >= 0.999;
     g.globalAlpha = alpha; g.fillStyle = color;
-    g.beginPath(); g.moveTo(cx, cy - 16); g.lineTo(cx + 32, cy); g.lineTo(cx, cy + 16); g.lineTo(cx - 32, cy);
-    g.closePath(); g.fill(); g.globalAlpha = 1;
+    _diaPath(g, cx, cy, grow); g.fill(); g.globalAlpha = 1;
     if (gm) {
       gm.globalAlpha = alpha; gm.fillStyle = '#000';
-      gm.beginPath(); gm.moveTo(cx, cy - 16); gm.lineTo(cx + 32, cy); gm.lineTo(cx, cy + 16); gm.lineTo(cx - 32, cy);
-      gm.closePath(); gm.fill(); gm.globalAlpha = 1;
+      _diaPath(gm, cx, cy, grow); gm.fill(); gm.globalAlpha = 1;
     }
   }
 
@@ -1480,6 +1510,14 @@ const SIM_JOB_EMOJI = {
     'precision highp float;',
     'uniform vec2 uRes; uniform vec2 uCam; uniform float uT;',
     'uniform sampler2D uLin; uniform sampler2D uMsk; uniform float uFuzz;',
+    // ★[재민 2026-08-24 "물방울 같은 것"·"1셀 두께 줄무늬"] 층 분해용 A/B 스위치.
+    //   x=반짝임(spec) · y=포말(foam) · z=사인파(s1+s2) · w=잔결 노이즈(sn). 각각 0 이면 그 항만 끈다.
+    //   결함을 눈으로 지목만 해서는 못 고친다 — **어느 항이 그리는지**를 끄고 재서 가른다.
+    'uniform vec4 uDbg;',
+    // ★[재민 2026-08-24 "1셀 두께 줄무늬"] 잔결 노이즈 손잡이 — x=스케일 · y=주기 · z=세기.
+    //   ※스케일×주기 = 512 여야 한다(카메라가 512px 움직여도 무늬가 안 튀는 조건 — 위 주석 ⓑ).
+    //     그래서 CPU 가 주기를 512/스케일 로 계산해 넣는다. 스케일은 512 의 약수만 쓴다.
+    'uniform vec3 uRip; uniform vec3 uRip1; uniform float uDith;',
     'uniform vec2 uOrig; uniform float uN; uniform float uDrop;',
     // ★★값 노이즈는 **주기 노이즈**여야 한다. 이유가 두 개다:
     //   ⓐ 월드 좌표가 수만 px 이라 `fract(sin(dot(p,·)))` 의 인자가 1e7 급이 되면 float 정밀도가
@@ -1557,16 +1595,17 @@ const SIM_JOB_EMOJI = {
     '  float A1=0.85*ampMod, A2=0.55*ampMod;',
     '  float p1 = al*(6.2831853/64.0)+cr*0.02;',
     '  float p2 = al*(6.2831853/32.0)+cr*0.07;',
-    '  float n1 = vn((wl-ADV*uT*dir)/8.0,64.0)-0.5;',
-    '  float n2 = vn((wl-ADV*uT*dir)/3.2+vec2(17.0,9.0),160.0)-0.5;',
+    '  float n1 = vn((wl-ADV*uT*dir)/uRip1.x,uRip1.y)-0.5;',
+    '  float n2 = vn((wl-ADV*uT*dir)/uRip.x+vec2(17.0,9.0),uRip.y)-0.5;',
     '  float s1 = A1*cos(p1)*(6.2831853/64.0), s2 = A2*cos(p2)*(6.2831853/32.0);',
-    '  float sn = n1*0.55+n2*0.38;',
-    '  vec3 nrm = normalize(vec3(-(s1+s2)*dir.x - sn*dir.x, -(s1+s2)*dir.y - sn*dir.y, 1.0));',
+    '  float sn = n1*uRip1.z+n2*uRip.z;',
+    '  float sw = -(s1+s2)*uDbg.z - sn*uDbg.w;',
+    '  vec3 nrm = normalize(vec3(sw*dir.x, sw*dir.y, 1.0));',
     '  vec3 Ld = normalize(vec3(-0.42,-0.58,0.70));',        // 정본 태양(52°/35°)과 일관
     '  vec3 Vd = normalize(vec3(0.5,-0.5,0.707));',
     '  vec3 Hd = normalize(Ld+Vd);',
     '  float diff = max(0.0,dot(nrm,Ld));',
-    '  float spec = pow(max(0.0,dot(nrm,Hd)),90.0)*(0.55+0.45*depth);',
+    '  float spec = pow(max(0.0,dot(nrm,Hd)),90.0)*(0.55+0.45*depth)*uDbg.x;',
     '  float r = 26.0+(95.0-26.0)*(1.0-depth)*0.8;',
     '  float g = 64.0+(150.0-64.0)*(1.0-depth)*0.8;',
     '  float b = 96.0+(150.0-96.0)*(1.0-depth)*0.55;',
@@ -1581,8 +1620,19 @@ const SIM_JOB_EMOJI = {
     '  if(mW<0.5) ec=min(ec,lc.x);',
     '  float shore = clamp(ec/7.0,0.0,1.0);',
     '  if(shore<1.0){ float fo=vn(wl/4.0+vec2(99.0,0.0),128.0);',
-    '    float foam=max(0.0,(1.0-shore)*1.25*(fo-0.28))*1.5; foam=min(0.85,foam);',
+    '    float foam=max(0.0,(1.0-shore)*1.25*(fo-0.28))*1.5*uDbg.y; foam=min(0.85,foam);',
     '    r=r*(1.0-foam)+232.0*foam; g=g*(1.0-foam)+238.0*foam; b=b*(1.0-foam)+240.0*foam; }',
+    // ★★[재민 2026-08-24 "1셀 두께로 엇갈린 줄무늬"] **8비트 계단**을 깬다.
+    //   얕은 물은 wa 가 0.42 까지 내려가 물결이 화면에서 밝기 1~2단계 폭으로만 그려진다.
+    //   그 저대비 경사를 8비트로 자르면 매끈한 물결이 아니라 **딱딱한 등고선**이 되고,
+    //   셀 격자와 겹쳐 '엇갈린 줄무늬'로 읽힌다. 실측으로 갈랐다:
+    //     · 잔결을 **줄이면**(1.0→0.4) 띠는 3.89→2.64 로 옅어지지만 **물이 안 움직인다**
+    //       (하네스 ① 이동 8.1px → 0.0px). 판정을 낮출 수는 없다 ⇒ 폐기.
+    //     · 잔결 **격자**를 8→12.8→16→25.6 으로 키워도 띠는 3.89→3.94→3.91→3.91. 무효 ⇒ 폐기.
+    //   ⇒ 남은 건 양자화다. 색을 자르기 직전에 **±0.5 LSB 디더**를 얹는다 — 물결의 세기도
+    //     이동도 한 톨 안 줄이고 계단만 흩는다.
+    '  float dth = (h2(gl_FragCoord.xy)-0.5)*uDith;',
+    '  r += dth; g += dth; b += dth;',
     '  wa = min(1.0, 0.42+0.58*depth);',                     // ★얕은물 투명 — 물밑 진흙이 비친다
     '  wa *= cov;',                                        // ★경계 피복률 — 물가선이 젖어들 듯 끝난다
     '  gl_FragColor = vec4(r/255.0*wa, g/255.0*wa, b/255.0*wa, wa);',   // premultiplied
@@ -1608,7 +1658,7 @@ const SIM_JOB_EMOJI = {
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
       const loc = gl.getAttribLocation(pr, 'p'); gl.enableVertexAttribArray(loc);
       gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-      for (const u of ['uRes', 'uCam', 'uT', 'uLin', 'uMsk', 'uOrig', 'uN', 'uDrop', 'uFuzz']) _wgl.uni[u] = gl.getUniformLocation(pr, u);
+      for (const u of ['uRes', 'uCam', 'uT', 'uLin', 'uMsk', 'uOrig', 'uN', 'uDrop', 'uFuzz', 'uDbg', 'uRip', 'uRip1', 'uDith']) _wgl.uni[u] = gl.getUniformLocation(pr, u);
       const mkTex = (filt) => { const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filt); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filt);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
@@ -1682,6 +1732,14 @@ const SIM_JOB_EMOJI = {
     gl.uniform1f(_wgl.uni.uT, tSec);
     //   ★물가선 굽이 폭(월드 px). 0 이면 셀 경계 그대로 = 옛 그림(대조군).
     gl.uniform1f(_wgl.uni.uFuzz, _t19.edgeFuzz == null ? WATER_EDGE_FUZZ : _t19.edgeFuzz);
+    gl.uniform4f(_wgl.uni.uDbg, _t19.specOff ? 0 : 1, _t19.foamOff ? 0 : 1,
+                (_t19.waveOff || _t19.sineOff) ? 0 : 1,
+                (_t19.waveOff || _t19.ripOff) ? 0 : (_t19.ripAmp == null ? WATER_RIP_AMP : _t19.ripAmp));
+    { const rs = _t19.ripScale == null ? WATER_RIP_SCALE : _t19.ripScale;
+      gl.uniform3f(_wgl.uni.uRip, rs, 512 / rs, _t19.ripW == null ? WATER_RIP_W : _t19.ripW);
+      const r1 = _t19.ripScale1 == null ? WATER_RIP_S1 : _t19.ripScale1;
+      gl.uniform3f(_wgl.uni.uRip1, r1, 512 / r1, _t19.ripW1 == null ? WATER_RIP_W1 : _t19.ripW1); }
+    gl.uniform1f(_wgl.uni.uDith, _t19.ditherOff ? 0 : (_t19.dither == null ? WATER_DITHER : _t19.dither));
     gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     gl.disable(gl.SCISSOR_TEST);
@@ -3864,7 +3922,14 @@ const SIM_JOB_EMOJI = {
   //   ★[재민 2026-08-24] flowRawDist — 흐름 주인을 고르는 **대조군**. 켜면 폭을 무시한 옛
   //     '생거리 최근접'(=합류부에 뒤집힌 띠가 다시 생긴다). 손잡이를 바꾼 뒤에는 `__wfReset()` 을
   //     불러야 셀 캐시가 식는다 — 안 그러면 A/B 가 옛 값으로 오염된다.
-                 flowRawDist: false };
+                 flowRawDist: false,
+  //   ★[재민 2026-08-24] 물 층 분해 스위치 — specOff(반짝임) · foamOff(포말) · waveOff(파도).
+  //     "물방울 같은 게 뭐냐"·"1셀 두께 줄무늬" 를 **어느 항이 그리는지** 끄고 재서 가르려고 만들었다.
+                 specOff: false, foamOff: false, waveOff: false, sineOff: false, ripOff: false,
+  //   ★[재민 2026-08-24] ripAmp — 잔결 노이즈 **전체** 세기(n1·n2 둘 다). 1 이 지금 값.
+  //     점묘의 주범은 n2(스케일 손잡이로 재 봤더니 아니었다)가 아니라 **n1(가중 0.55·8월드px)** 였다.
+                 ripAmp: null, ripScale: null, ripW: null, ripScale1: null, ripW1: null,
+                 ditherOff: false, dither: null };
   // 시험 전용 — 띠 높이를 바꿔 "비용이 blit 횟수에 비례하나 픽셀 수에 비례하나"를 가른다.
   window.__gtStrip = (v) => { GT_STRIP = Math.max(4, v | 0); _groundTiles.clear(); needsRedraw = true; return GT_STRIP; };
   window.__gtFrac = (v) => { _gtFrac = !!v; needsRedraw = true; return _gtFrac; };
