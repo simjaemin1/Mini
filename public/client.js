@@ -2285,6 +2285,7 @@ const SIM_JOB_EMOJI = {
   let MT3_AOBOX = 0;                   // 1 이면 **옛 AO**(4×4 상자 평균 = 조각별 상수) — 반례 전용
   const MT3_OV = 0.008;                // 띠 겹침(셀). 가로 0.5px·세로 0.26px — 실루엣 부풀림은 무시할 수준
   let MT3_CV0 = 128;                   // GL 캔버스 초깃값. 띠가 크면 128 배수로 자란다
+  const MT3_HTOP = MT3_HMAX * 1.55;    // 실제 최대 높이 상한(수집 여유용). 실측 최대 48.8m
   let MT3_DUAL = 1;                    // ⑶ 마스크 이원화 — 0 이면 옛 판(파괴가 높이를 낮춘다)
   let MT3_TREEP = 0.020;               // ③ 돌출목 — 셀당 확률(낮게 시작). 0 이면 끔
   let MT3_TREEPX = 30;                 // 그리는 높이(px). 실물(78px)이 아니라 **작은 축척**
@@ -2730,7 +2731,7 @@ const SIM_JOB_EMOJI = {
         const TPAD = (MT3_TREEP > 0) ? MT3_TREEPX + 6 : 0;
         x0 = Math.floor(x0) - MPAD; y0 = Math.floor(y0) - MPAD - TPAD;
         const bw = Math.ceil(x1) + MPAD - x0, bh = Math.ceil(y1) + MPAD - y0;
-        if (bw <= 0 || bh <= 0 || bw > 4096 || bh > 4096) continue;
+        if (bw <= 0 || bh <= 0 || bw > 4096 || bh > 4096) { _mt3Skip++; _mt3SkipMax = Math.max(_mt3SkipMax, bh); continue; }
         const cv = document.createElement('canvas'); cv.width = bw; cv.height = bh;
         const g = cv.getContext('2d');
         // ★표면은 GPU 로. 실패하면 그 자리에서 캔버스 폴리곤 판으로 되돌아간다(라이브를 못 세운다).
@@ -2943,7 +2944,7 @@ const SIM_JOB_EMOJI = {
       if (ca > 0.002) { g.fillStyle = 'rgba(' + Math.round(cr) + ',' + Math.round(cg) + ',' + Math.round(cb) + ',' + ca.toFixed(3) + ')'; path(); g.fill(); }
     }
   }
-  let _mt3Budget = 0;
+  let _mt3Budget = 0, _mt3Skip = 0, _mt3SkipMax = 0;
   function _mt3Collect(out, cx0, cy0) {
     const zid = primaryZoneId; if (!zid) return 0;
     if (zid !== _mt3Sig) { _mt3Sig = zid; _mt3Chunk.clear(); }
@@ -2952,7 +2953,14 @@ const SIM_JOB_EMOJI = {
     _mt3Budget = MT3_BUDGET;
     // 카메라의 화면 원점(= toScreen 이 쓰는 것과 같은 식)
     const U0 = cx0 - cy0, V0 = (cx0 + cy0) * 0.5;
-    const MX = W * 0.5 + 96, MYU = H * 0.5 + 96, MYD = H * 0.5 + MT3_HMAX * 32 + 96;
+    // ★★[갱 안에서 지면이 비치던 진짜 원인 2026-08-22] 여기가 **MT3_HMAX 로** 여유를 잡고 있었다.
+    //   실제 높이는 HMAX 를 넘는다 — hmaxL 변조(×0.69~1.31)와 결이 얹혀 **실측 최대 48.8m**다
+    //   (scripts/probe-mtpad.js). 그래서 아래쪽 여유가 1120px 밖에 안 되고,
+    //   그보다 높은 곳에 있는 **화면에 걸리는 띠가 통째로 잘려** 나갔다.
+    //   증상: 산 속 깊은 자리에서 벽 너머로 맨 지면이 비친다(산에 밑면이 없어서가 **아니었다** —
+    //   내려가는 사면이 잘려 안 그려진 것이다). 실측: 청크 25개만 수집, 사면 가장자리는 범위 밖.
+    //   ⇒ 실제 상한으로 잡는다. HMAX×1.55 ≈ 54m — 측정 최대 48.8m 위로 여유를 둔다.
+    const MX = W * 0.5 + 96, MYU = H * 0.5 + 96, MYD = H * 0.5 + MT3_HTOP * 32 + 96;
     // 화면에 걸릴 수 있는 셀의 (i−j)·(i+j) 범위
     const dLo = (U0 - MX) / 32, dHi = (U0 + MX) / 32;
     const sLo = (V0 - MYU) / 16, sHi = (V0 + MYD) / 16;
@@ -7201,7 +7209,7 @@ const SIM_JOB_EMOJI = {
     const _mtT0 = performance.now();
     const _nMt = _mtCollect(renderables, worldCx, worldCy);
     window._mtAcc = (window._mtAcc || 0) + (performance.now() - _mtT0);
-    window.__mtDbg = { mt3d: !_t19.mt3dOff, mt3budget: MT3_BUDGET, mt3view: MT3_VIEW, mt3rockc: _mt3RockC.size, mt3chunks: _mt3Chunk.size, mt3fail: !!_mt3Fail, mt3culled: _mt3Culled, mt3cull: MT3_CULL, mt3over: +_mt3Over.toFixed(2), mt3overTight: +_mt3OverT.toFixed(2), mt3overPaint: +_mt3OverP.toFixed(2), mt3near90: _mt3Near, segs: _nMt, sprites: _mtLoaded + '/' + _mtWanted, cached: _mtSegCache.size, chunks: _mtChunk.size, legacy: !!_t19.mtLegacy, destroyed: _mtDestroyed.size };
+    window.__mtDbg = { mt3d: !_t19.mt3dOff, mt3budget: MT3_BUDGET, mt3view: MT3_VIEW, mt3rockc: _mt3RockC.size, mt3chunks: _mt3Chunk.size, mt3fail: !!_mt3Fail, mt3culled: _mt3Culled, mt3cull: MT3_CULL, mt3over: +_mt3Over.toFixed(2), mt3overTight: +_mt3OverT.toFixed(2), mt3overPaint: +_mt3OverP.toFixed(2), mt3near90: _mt3Near, mt3skip: _mt3Skip, mt3skipMaxH: _mt3SkipMax, segs: _nMt, sprites: _mtLoaded + '/' + _mtWanted, cached: _mtSegCache.size, chunks: _mtChunk.size, legacy: !!_t19.mtLegacy, destroyed: _mtDestroyed.size };
     // ★★[배치 20 C] 산 계측·파괴 훅 — 하네스가 배치 수학을 **다시 쓰지 않게** 정본이 만든
     //   세그먼트를 그대로 내보낸다. 하네스가 능선 보행·밴드 실측을 재구현하면 그게 사본이라
     //   둘이 같이 틀려도 통과한다(자명 통과).

@@ -163,6 +163,16 @@ require(path.join(ROOT,'server','zone.js'));`);
   });
   await pg.evaluate(() => window.__mt3Rects(false));
 
+  console.log('__mtDbg =', JSON.stringify(await pg.evaluate(() => window.__mtDbg)));
+  // 갈색 자리를 덮는 띠가 있나 — 정본 그리기 경로가 남긴 사각형으로 직접 묻는다
+  await pg.evaluate(() => window.__mt3Rects(true)); await sleep(700);
+  const cover = await pg.evaluate(() => {
+    const r = window.__mt3RectsGet() || [];
+    const pts = [[700,700],[900,600],[500,750],[700,436]];
+    return pts.map(([x,y]) => ({ x, y, n: r.filter(q => x>=q.x && x<q.x+q.w && y>=q.y && y<q.y+q.h).length }));
+  });
+  await pg.evaluate(() => window.__mt3Rects(false));
+  console.log('띠가 덮는가 =', JSON.stringify(cover));
   console.log('가림 상태 켬 =', JSON.stringify(on));
   console.log('가림 상태 끔 =', JSON.stringify(off));
   console.log('띠 흐림 =', JSON.stringify(rects));
