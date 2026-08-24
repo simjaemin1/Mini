@@ -2124,6 +2124,8 @@ const SIM_JOB_EMOJI = {
   //   결과: 조각 108만 → 14만(7.7배) · fill 326만 → 42만
   const MT3_CH = 16;                   // 청크(셀) — 8 → 16. 여유 재계산 낭비 12배 → 5배
   let MT3_PAD = 12;                    // 거리장 여유 — ★창 밖은 INF 라 dE 가 창에서 **잘린다**
+  let MT3_DCAP = 0;                    // ★가장자리 거리 상한(셀). 0=끔. PAD 이하로 자르면 **모든 청크가
+                                       //   같은 답**을 낸다(창 크기와 무관) — 이음매가 원리적으로 사라진다.
   // ★★[재민 확정 2026-08-19] **산은 벽이다.** 실측이 전제를 뒤집었다(scripts/measure-mtscale.js):
   //   산괴는 178×232 · 183×224 · 220×173 셀 = **폭 180~230m** 로 이미 크다. 눌린 건 높이뿐이었다.
   //   옛 규약(HMAX 9 / LAM 10)은 그 200m 산괴의 마루를 8.9m 로 깎았다 — 성목이 3~8m 다.
@@ -2250,7 +2252,8 @@ const SIM_JOB_EMOJI = {
     const hg = new Float32Array(N * N);
     for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
       if (!rock[j * N + i]) continue;
-      const dE = d[j * N + i], ai = i0 + i, aj = j0 + j;
+      // ★상한을 걸면 청크마다 창이 달라도 **같은 dE** 를 얻는다(PAD 이하일 때). 0 이면 현행 그대로.
+      const dE = (MT3_DCAP > 0) ? Math.min(d[j * N + i], MT3_DCAP) : d[j * N + i], ai = i0 + i, aj = j0 + j;
       // 자리마다 다른 경사 길이 — 어떤 스트레치는 수직 절벽, 어떤 데는 비스듬한 너덜.
       //   로그로 흔들어 기하평균은 MT3_LAM 그대로 둔다(가장자리 14m/셀 이라는 규약 유지).
       const lamL = MT3_LAM * Math.exp(MT3_LAMV * (2 * _mt3vn(ai / 26, aj / 26, 53) - 1));
@@ -2788,16 +2791,20 @@ const SIM_JOB_EMOJI = {
   // 거리장 여유 손잡이 — 청크마다 dE 를 자기 창(40×40)에서만 푸는데, 산 깊은 곳은
   //   창 안에 비바위가 없어 dE=INF 가 된다. 이웃 청크의 창에 비바위가 걸리면 같은 셀을
   //   **다른 높이**로 푼다 — 청크 경계에 단차가 생긴다는 가설의 반례 장치.
+  window.__mt3dcap = (v) => { MT3_DCAP = +v; _mt3Chunk.clear(); _mt3Sig = ''; needsRedraw = true; return MT3_DCAP; };
+  window.__mt3bakeRst = () => { _mt3BakeMs = 0; _mt3BakeN = 0; return 1; };
   window.__mt3pad = (v) => { MT3_PAD = v | 0; _mt3Chunk.clear(); _mt3Sig = ''; needsRedraw = true; return MT3_PAD; };
   window.__mt3rocks = (v) => { MT3_ROCKS = +v; _mt3Chunk.clear(); _mt3Sig = ''; return MT3_ROCKS; };
   window.__mt3cv = (n) => { MT3_CV0 = n | 0; if (_mgl.cv) { _mgl.cv.width = _mgl.cv.height = MT3_CV0; }
     _mt3Chunk.clear(); _mt3Sig = ''; return MT3_CV0; };
   // ── 청크 하나를 **반대각선 띠**로 구워 세그먼트 배열로 ────────────────────
+  let _mt3BakeMs = 0, _mt3BakeN = 0;             // 굽기 비용 — 짝 비교 프로파일러의 정본 계측기
   function _mt3Bake(zid, gx, gy) {
     const key = zid + '_' + gx + '_' + gy;
     const hit = _mt3Chunk.get(key); if (hit) return hit;
     if (_mt3Budget <= 0) return null;              // ★예산 소진 — 이번 프레임엔 안 굽는다
     _mt3Budget--;
+    const _bt0 = performance.now();
     const F = _mt3Field(zid, gx, gy);
     const segs = [];
     if (F) {
@@ -2956,6 +2963,7 @@ const SIM_JOB_EMOJI = {
     }
     if (_mt3Chunk.size > 260) _mt3Chunk.clear();
     _mt3Chunk.set(key, segs);
+    _mt3BakeMs += performance.now() - _bt0; _mt3BakeN++;
     return segs;
   }
   // 사각형 하나 — 화면 픽셀 기준 적응 분할 + 급경사 변위
@@ -7376,7 +7384,8 @@ const SIM_JOB_EMOJI = {
     const _mtT0 = performance.now();
     const _nMt = _mtCollect(renderables, worldCx, worldCy);
     window._mtAcc = (window._mtAcc || 0) + (performance.now() - _mtT0);
-    window.__mtDbg = { mt3d: !_t19.mt3dOff, mt3budget: MT3_BUDGET, mt3view: MT3_VIEW, mt3rockc: _mt3RockC.size, mt3chunks: _mt3Chunk.size, mt3fail: !!_mt3Fail, mt3culled: _mt3Culled, mt3cull: MT3_CULL, mt3over: +_mt3Over.toFixed(2), mt3overTight: +_mt3OverT.toFixed(2), mt3overPaint: +_mt3OverP.toFixed(2), mt3near90: _mt3Near, mt3skip: _mt3Skip, mt3skipMaxH: _mt3SkipMax, segs: _nMt, sprites: _mtLoaded + '/' + _mtWanted, cached: _mtSegCache.size, chunks: _mtChunk.size, legacy: !!_t19.mtLegacy, destroyed: _mtDestroyed.size };
+    window.__mtDbg = { mt3d: !_t19.mt3dOff, mt3budget: MT3_BUDGET, mt3view: MT3_VIEW, mt3rockc: _mt3RockC.size, mt3chunks: _mt3Chunk.size, mt3fail: !!_mt3Fail, mt3culled: _mt3Culled, mt3cull: MT3_CULL, mt3over: +_mt3Over.toFixed(2), mt3overTight: +_mt3OverT.toFixed(2), mt3overPaint: +_mt3OverP.toFixed(2), mt3near90: _mt3Near, mt3skip: _mt3Skip, mt3skipMaxH: _mt3SkipMax, mt3pad: MT3_PAD, mt3dcap: MT3_DCAP,
+      mt3bakeMs: +_mt3BakeMs.toFixed(1), mt3bakeN: _mt3BakeN, segs: _nMt, sprites: _mtLoaded + '/' + _mtWanted, cached: _mtSegCache.size, chunks: _mtChunk.size, legacy: !!_t19.mtLegacy, destroyed: _mtDestroyed.size };
     // ★★[배치 20 C] 산 계측·파괴 훅 — 하네스가 배치 수학을 **다시 쓰지 않게** 정본이 만든
     //   세그먼트를 그대로 내보낸다. 하네스가 능선 보행·밴드 실측을 재구현하면 그게 사본이라
     //   둘이 같이 틀려도 통과한다(자명 통과).

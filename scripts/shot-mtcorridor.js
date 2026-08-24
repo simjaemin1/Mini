@@ -300,16 +300,56 @@ require(path.join(ROOT,'server','zone.js'));`);
   // ── 거리장 여유(MT3_PAD) A/B — 청크마다 dE 를 자기 창에서만 푼다. 산 깊은 곳은
   //   창 안에 비바위가 없어 dE=INF(=마루 높이)가 되고, 창에 비바위가 걸리는 이웃 청크는
   //   같은 자리를 **낮게** 푼다. 그 단차가 리본이라는 가설의 반례 장치.
+  //   ★합법 범위: MT3_HTEX=64 가 N = CH+2·PAD ≤ 64, 즉 **PAD ≤ 24** 로 묶는다.
+  //   ★왕복(…,12)을 끝에 붙인다 — 값이 손잡이 때문인지 표류인지 가른다.
   const padAB = [];
-  for (const pd of (process.env.PADS || '12,28,48').split(',').map(Number)) {
-    await pg.evaluate((v) => window.__mt3pad(v), pd);
-    const st = await settle(120000);
+  const setPad = async (v) => pg.evaluate((x) => { const r = window.__mt3pad(x); window.__mt3bakeRst(); return r; }, v);
+  for (const pd of (process.env.PADS || '12,16,20,24,12').split(',').map(Number)) {
+    await setPad(pd);
+    const st = await settle(150000);
     const r = await groundPct();
-    await pg.screenshot({ path: path.join(OUT, `P_여유_${pd}.png`) });
-    padAB.push({ pd, ...r, settle: st.ms, segs: st.segs });
-    console.log(`  거리장여유 ${pd} → 지면색 ${r.ex}/${r.tot} = ${r.pct}% (굽기 ${st.ms}ms · 띠 ${st.segs})`);
+    const db = await pg.evaluate(() => window.__mtDbg);
+    const per = db.mt3bakeN ? +(db.mt3bakeMs / db.mt3bakeN).toFixed(2) : null;
+    await pg.screenshot({ path: path.join(OUT, `P_여유_${pd}_${padAB.length}.png`) });
+    padAB.push({ pd, ...r, per, n: db.mt3bakeN, segs: db.segs, settle: st.ms });
+    console.log(`  거리장여유 ${String(pd).padStart(2)} → 지면색 ${r.ex}/${r.tot} = ${String(r.pct).padStart(5)}% · 청크 굽기 ${per}ms×${db.mt3bakeN} · 띠 ${db.segs}`);
   }
-  await pg.evaluate(() => window.__mt3pad(12));
+  // ── ⓒ 상한(dE clamp) — 창 크기와 무관하게 **모든 청크가 같은 답**을 내게 한다.
+  //   PAD 이하로 자르면 어느 청크에서 풀든 값이 같아 이음매가 원리적으로 0 이 된다.
+  //   대가: 마루가 HMAX(1−e^(−cap/LAM)) 로 낮아진다 — 높이 보정과 함께 재민이 고를 문제다.
+  const capAB = [];
+  for (const [pd, cap] of [[12, 0], [24, 0], [24, 24], [12, 12], [12, 0]]) {
+    await pg.evaluate((a) => { window.__mt3pad(a[0]); window.__mt3dcap(a[1]); window.__mt3bakeRst(); }, [pd, cap]);
+    const st = await settle(150000);
+    const r = await groundPct();
+    const db = await pg.evaluate(() => window.__mtDbg);
+    const per = db.mt3bakeN ? +(db.mt3bakeMs / db.mt3bakeN).toFixed(1) : null;
+    const hm = await pg.evaluate((t) => window.__mtHeightAt(t.i, t.j - 1), tgt);
+    await pg.screenshot({ path: path.join(OUT, `C_여유${pd}_상한${cap}.png`) });
+    capAB.push({ pd, cap, ...r, per, wall: hm, segs: db.segs });
+    console.log(`  여유 ${String(pd).padStart(2)} · 상한 ${String(cap).padStart(2)} → 지면색 ${String(r.ex).padStart(5)} = ${String(r.pct).padStart(5)}% · 옆벽 ${hm}m · 굽기 ${per}ms · 띠 ${db.segs}`);
+  }
+  await pg.evaluate(() => { window.__mt3pad(12); window.__mt3dcap(0); });
+  // ── 짝 프로파일 — 12/24 를 번갈아 5회. 평균±표준편차·표준오차, 2σ 로 유의/잡음 판정 ──
+  const padProf = { 12: [], 24: [] };
+  for (let k = 0; k < +(process.env.REPS || 5); k++) {
+    for (const pd of [12, 24]) {
+      await setPad(pd);
+      const st = await settle(150000);
+      const db = await pg.evaluate(() => window.__mtDbg);
+      if (db.mt3bakeN >= 5) padProf[pd].push(db.mt3bakeMs / db.mt3bakeN);
+    }
+    process.stdout.write(`  짝 ${k + 1}/${process.env.REPS || 5}\r`);
+  }
+  const stat = (a) => { const n = a.length, m = a.reduce((x, y) => x + y, 0) / n;
+    const sd = Math.sqrt(a.reduce((x, y) => x + (y - m) * (y - m), 0) / Math.max(1, n - 1));
+    return { n, m, sd, se: sd / Math.sqrt(n) }; };
+  const A = stat(padProf[12]), B = stat(padProf[24]);
+  const dse = Math.sqrt(A.se * A.se + B.se * B.se), diff = B.m - A.m;
+  console.log(`  청크 굽기 비용 — 여유 12: ${A.m.toFixed(2)}±${A.sd.toFixed(2)}ms (SE ${A.se.toFixed(2)}, n=${A.n})`);
+  console.log(`                   여유 24: ${B.m.toFixed(2)}±${B.sd.toFixed(2)}ms (SE ${B.se.toFixed(2)}, n=${B.n})`);
+  console.log(`                   차 ${diff >= 0 ? '+' : ''}${diff.toFixed(2)}ms (${(diff / A.m * 100).toFixed(0)}%) · 2σ=${(2 * dse).toFixed(2)} → ${Math.abs(diff) > 2 * dse ? '유의' : '잡음'}`);
+  await setPad(12);
   const glAB = [];
   for (const g of (process.env.SKIPGL ? [] : [1, 0, 1])) {
     await pg.evaluate((v) => window.__mt3gl(v), g);
@@ -377,7 +417,7 @@ require(path.join(ROOT,'server','zone.js'));`);
   console.log('가림 상태 켬 =', JSON.stringify(on));
   console.log('가림 상태 끔 =', JSON.stringify(off));
   console.log('띠 흐림 =', JSON.stringify(rects));
-  fs.writeFileSync(path.join(OUT, 'meta.json'), JSON.stringify({ site, tgt, dig, on, off, rects, sweep, gap, mpadAB, skirtAB, viewAB, glAB, padAB }, null, 1));
+  fs.writeFileSync(path.join(OUT, 'meta.json'), JSON.stringify({ site, tgt, dig, on, off, rects, sweep, gap, mpadAB, skirtAB, viewAB, glAB, padAB, capAB, padProf, padStat: { A, B, diff } }, null, 1));
   console.log('저장:', OUT);
   await br.close(); for (const p of procs) { try { p.kill(); } catch (e) {} } process.exit(0);
 })().catch(e => { console.error(e); for (const p of procs) { try { p.kill(); } catch (_) {} } process.exit(1); });
