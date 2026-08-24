@@ -178,7 +178,18 @@ function bestShift(a, b, pred, box, R) {
     const pLeg = await perf({ legacy: true, waterOff: false });
     const pNew = await perf({ legacy: false, waterOff: false });
     const pNoW = await perf({ legacy: false, waterOff: true });
-    S[tag] = { d0, fA, fA2, fB, fNoP, fMud, fLeg, pLeg, pNew, pNoW, cSh };
+    // ★★[재민 2026-08-24 "물은 북→남인데 화면에서 반대로 흐르는 띠가 있다"] 흐름 **방향** 채집.
+    //   ①(bestShift)은 움직임의 **크기**만 본다 — 뒤집힌 띠는 이웃과 속도가 같아서 안 잡힌다.
+    //   계측은 정본 `_flowAtCell` 을 그대로 묻는 `window.__flowMap` 으로 한다(사본 금지).
+    //   여기(한여울강 × 닛폰대천 합류부)가 마침 그 자리라 별도 지점이 필요 없다.
+    let fmRaw = null, fmNew = null;
+    if (tag === 'river') {
+      await page.evaluate(() => { window.__terrain19.flowRawDist = true; window.__wfReset(); });
+      await sleep(2500); fmRaw = await page.evaluate(() => window.__flowMap(46));
+      await page.evaluate(() => { window.__terrain19.flowRawDist = false; window.__wfReset(); });
+      await sleep(2500); fmNew = await page.evaluate(() => window.__flowMap(46));
+    }
+    S[tag] = { d0, fA, fA2, fB, fNoP, fMud, fLeg, pLeg, pNew, pNoW, cSh, fmRaw, fmNew };
     await browser.close(); try { z.kill(); } catch (e) {}
     await sleep(2500);
   }
@@ -301,6 +312,50 @@ function bestShift(a, b, pred, box, R) {
   const gr = Object.values(S).map((s) => (s.pLeg.f >= 3 && s.pNoW.f >= 3) ? (s.pNoW.t / s.pNoW.f) / (s.pLeg.t / s.pLeg.f) : null).filter((v) => v != null);
   ok(gr.length > 0, '지면 비용 비율을 잴 수 있다');
   if (gr.length) ok(Math.max(...gr) < 1.0, `★★지면 단계가 **더 싸졌다** (셀 9,000장 → 타일 blit · 최악 ×${Math.max(...gr).toFixed(2)})`);
+
+  // ═══ ⑦ 흐름 **방향** — 합류부에서 물이 갈라지지 않는가 ══════════════════════════════
+  //  ★[재민 2026-08-24] "물이 북→남으로 흐르는데 화면에서 반대 방향으로 흐르는 띠가 존재한다."
+  //    ①(bestShift)은 **크기**만 재서 이걸 못 봤다 — 뒤집힌 띠는 이웃과 속도가 같다.
+  //    진범: 흐름 주인을 '생거리 최근접'으로 골랐다. 여기 합류부에서
+  //      한여울강(폭 1,027 · 545px) vs 닛폰대천(폭 235 · 575px) ⇒ 30px 차로 **지류가 본류 한복판을
+  //      빼앗고**, 두 강의 이등분선을 경계로 방향이 한 칸 만에 뒤집힌다.
+  //    수리: 거리를 **강폭 단위**(u = 거리/반폭)로 재서 주인을 고른다.
+  //    ※대조군 `flowRawDist=true` 가 옛 규칙 그대로다 — 없으면 아래가 전부 자명 통과다.
+  say('\n  ⑦ 흐름 방향 — 합류부(한여울강 × 닛폰대천)에서 물이 갈라지지 않는가');
+  const isoOf = (dx, dy) => [dx - dy, (dx + dy) / 2];
+  const flowStat = (M) => {
+    if (!M) return null;
+    const ang = new Map(); let up = 0, wrong = 0, tot = 0;
+    for (const c of M.cells) {
+      const dx = c[2], dy = c[3], u = c[4];
+      if (Math.hypot(dx, dy) < 0.08) continue;          // 무방향(호수·먼바다)은 방향 판정 대상이 아니다
+      const [ix, iy] = isoOf(dx, dy); tot++;
+      ang.set(c[0] + '_' + c[1], Math.atan2(iy, ix) * 180 / Math.PI);
+      // iy<0 = 화면에서 **위로** 흐른다 = 북→남(iy>0)의 반대
+      if (iy < 0) { up++; if (u > 1.0) wrong++; }       // u>1 = 제 물길 **밖**인데 그 강 방향을 따른다
+    }
+    let over = 0, mx = 0, pairs = 0;
+    for (const c of M.cells) {
+      const a = ang.get(c[0] + '_' + c[1]); if (a == null) continue;
+      for (const [ex, ey] of [[1, 0], [0, 1]]) {
+        const b = ang.get((c[0] + ex) + '_' + (c[1] + ey)); if (b == null) continue;
+        let d = Math.abs(a - b) % 360; if (d > 180) d = 360 - d;
+        pairs++; if (d > 30) over++; if (d > mx) mx = d;
+      }
+    }
+    return { tot, up, wrong, over, mx, pairs };
+  };
+  const sRaw = flowStat(R.fmRaw), sNew = flowStat(R.fmNew);
+  if (!sRaw || !sNew) { ok(false, '흐름 방향 지도를 얻었다 (__flowMap)'); }
+  else {
+    say(`    대조군(옛 생거리): 흐르는 칸 ${sRaw.tot} · 화면 위로 ${sRaw.up} · 그중 제 물길 밖(u>1) ${sRaw.wrong} · 이웃 30°초과 ${sRaw.over}/${sRaw.pairs} · 최대 ${sRaw.mx.toFixed(1)}°`);
+    say(`    채택  (강폭 단위): 흐르는 칸 ${sNew.tot} · 화면 위로 ${sNew.up} · 그중 제 물길 밖(u>1) ${sNew.wrong} · 이웃 30°초과 ${sNew.over}/${sNew.pairs} · 최대 ${sNew.mx.toFixed(1)}°`);
+    ok(sRaw.tot > 800, `★자명 통과 금지 — 이 창에 흐르는 물 칸이 실제로 많다 (${sRaw.tot})`);
+    ok(sRaw.wrong > 100, `★★반례 — 대조군(옛 규칙)에서는 제 물길 밖에서 역류하는 칸이 실제로 나온다 (${sRaw.wrong}) = 이 계측기가 결함을 본다`);
+    ok(sNew.wrong === 0, `★★본류 물속에서 지류 방향을 따르는 칸이 0 (${sRaw.wrong} → ${sNew.wrong}) — 남은 역류는 전부 제 물길 안(지류의 진짜 흐름)`);
+    ok(sNew.up < sRaw.up * 0.85, `★화면에서 역류하는 칸이 줄었다 (${sRaw.up} → ${sNew.up})`);
+    ok(sNew.over < sRaw.over * 0.8, `★방향 이음매(이웃 30°초과)가 줄었다 (${sRaw.over} → ${sNew.over})`);
+  }
 
   say(`\n스크린샷: ${SHOTS}/`);
   for (const p of procs) { try { p.kill(); } catch (e) {} }

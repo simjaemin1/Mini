@@ -1269,8 +1269,11 @@ const SIM_JOB_EMOJI = {
         for (const r of (H[zid].rivers || [])) {
           for (let i = 0; i + 1 < r.path.length; i++) {
             const a = r.path[i].pos, b = r.path[i + 1].pos;
+            // ★[재민 2026-08-24] 마디의 **폭**을 같이 싣는다. 흐름 주인을 '생거리 최근접'으로 고르면
+            //   폭 235px 짜리 지류가 폭 1,027px 짜리 본류의 한복판을 빼앗는다(아래 _flowAtCell 주석).
+            const wa = r.path[i].width || 0, wb = r.path[i + 1].width || 0;
             // 마지막 마디 = 하구 — 그 근처는 흐름을 감쇠시킨다(호수·바다는 무방향)
-            _riverSegs.push([ox + a[0], oy + a[1], ox + b[0], oy + b[1], i / Math.max(1, r.path.length - 2)]);
+            _riverSegs.push([ox + a[0], oy + a[1], ox + b[0], oy + b[1], i / Math.max(1, r.path.length - 2), wa, wb]);
           }
         }
       }
@@ -1286,14 +1289,19 @@ const SIM_JOB_EMOJI = {
   //
   //   수리: 강 구간 **공간 격자 색인**. 결과는 한 비트도 안 바뀐다 —
   //   1400px 밖은 어차피 가중치 0(무방향)이라, 1400 반경 안만 뒤져도 '최근접'이 같기 때문이다.
-  const FLOW_R = 1400;                 // 이보다 멀면 흐름 0 (아래 w 식과 같은 수 — 사본 아님)
-  const _segGrid = { B: 1024, map: null, built: 0 };
+  // ★[재민 2026-08-24] 영향 반경. 세기 감쇠를 **강폭 배수**로 재게 바꾸면서 함께 올렸다:
+  //   한반도에서 가장 넓은 강이 width 1,783 이라 반폭 892, 영향 끝(반폭 2배)이 1,784px 다.
+  //   1400 으로 두면 그 강의 바깥 링에서 후보 집합이 잘려 **공간 색인이 전수 순회와 갈린다**
+  //   (색인 동치의 증명이 "반경 밖은 가중치 0" 에 걸려 있다 — 아래 _buildSegGrid 주석).
+  const FLOW_R = 1800;                 // 이보다 멀면 흐름 0 (아래 w 식과 같은 수 — 사본 아님)
+  const _segGrid = { B: 1024, map: null, ux: null, uy: null, built: 0 };
   function _buildSegGrid(segs) {
     // ★등록은 구간의 **AABB 가 겹치는 칸 전부**. 이게 동치의 증명이다:
     //   최근접점 q 는 반드시 구간의 AABB 안에 있고, |q−p| ≤ 1400 이면 bucket(q) 는 아래 탐색
     //   범위 안이다 ⇒ 그 구간은 반드시 후보에 들어온다. (구간 위 점을 성기게 표본해 등록하면
     //   대각으로 스쳐 지나는 칸을 빠뜨린다 — 실측 5,000점 중 33점 불일치로 잡았다.)
     const B = _segGrid.B, m = new Map();
+    const ux = new Float32Array(segs.length), uy = new Float32Array(segs.length);
     for (let i = 0; i < segs.length; i++) {
       const s2 = segs[i];
       const x0 = Math.floor(Math.min(s2[0], s2[2]) / B), x1 = Math.floor(Math.max(s2[0], s2[2]) / B);
@@ -1301,8 +1309,11 @@ const SIM_JOB_EMOJI = {
       for (let gy = y0; gy <= y1; gy++) for (let gx = x0; gx <= x1; gx++) {
         const k = gx + ',' + gy; let a = m.get(k); if (!a) m.set(k, a = []); a.push(i);
       }
+      // 단위 방향은 구간마다 불변이라 여기서 한 번만 낸다(셀마다 sqrt 를 다시 물지 않는다).
+      const dx = s2[2] - s2[0], dy = s2[3] - s2[1], L = Math.sqrt(dx * dx + dy * dy) || 1;
+      ux[i] = dx / L; uy[i] = dy / L;
     }
-    _segGrid.map = m; _segGrid.built = segs.length;
+    _segGrid.map = m; _segGrid.ux = ux; _segGrid.uy = uy; _segGrid.built = segs.length;
     return m;
   }
   function _flowAtCell(cx, cy) {
@@ -1316,33 +1327,60 @@ const SIM_JOB_EMOJI = {
     const _slow = !!_t19.slowFlow;   // 대조군: 색인 무시하고 전 구간 훑기(수리 전과 같은 비용)
     const g0x = _slow ? 0 : Math.floor((px - FLOW_R) / B), g1x = _slow ? -1 : Math.floor((px + FLOW_R) / B);
     const g0y = Math.floor((py - FLOW_R) / B), g1y = Math.floor((py + FLOW_R) / B);
-    let best = Infinity, bx = 0, by = 0, bi = Infinity;
-    if (_slow) {
-      for (let si = 0; si < segs.length; si++) {
-        const s2 = segs[si], ax = s2[0], ay = s2[1], dx = s2[2] - ax, dy = s2[3] - ay;
-        const L2 = dx * dx + dy * dy || 1;
-        let t = ((px - ax) * dx + (py - ay) * dy) / L2; t = t < 0 ? 0 : (t > 1 ? 1 : t);
-        const qx = ax + t * dx - px, qy = ay + t * dy - py, d = qx * qx + qy * qy;
-        if (d < best) { best = d; const L = Math.sqrt(L2); bx = dx / L; by = dy / L; }
-      }
-    }
+    // ★★[재민 2026-08-24 "물이 북→남으로 흐르는데 화면에서 반대로 흐르는 띠가 있다"]
+    //   진범은 **흐름 주인을 '생거리 최근접'으로 골랐던 것**이다. 여기(한여울강 × 닛폰대천 합류부)에서
+    //     · 한여울강 — width 1,027 (반폭 513) · 중심선까지 545px  ⇒ 이 칸은 **본류 물속**이다
+    //     · 닛폰대천 — width   235 (반폭 118) · 중심선까지 575px  ⇒ 제 물길에서 **반폭 4.9배** 밖
+    //   인데 생거리로는 545 vs 575 라 30px 차로 갈릴 뿐이고, 두 강의 이등분선을 경계로 방향이
+    //   **한 칸 만에 뒤집힌다**. 실측: 화면 안 물 셀 709개 중 228개가 화면 위로 흘렀고(닛폰대천 = 동→서),
+    //   실제 픽셀 이동으로도 64px 블록 75개 중 9개가 -150°(나머지는 150°)였다.
+    //   ※지금까지 세 번의 계측이 못 본 이유는 셋 다 움직임의 **크기**만 쟀기 때문이다 — 뒤집힌 띠는
+    //     이웃과 속도가 같다. 방향을 재고 나서야 보였다.
+    //   ⇒ 거리를 **강폭 단위**로 잰다: u = 중심선까지 거리 / 반폭. 그러면 본류 안에서는 본류가 이기고,
+    //     지류는 제 물길 근처에서만 이긴다(그리고 거기선 실제로 지류 방향이 맞다).
+    //   ※방향을 '섞는' 안은 **버렸다**. 이 셰이더의 파도 위상이 `dot(w, dir)` 인데 w 가 절대 월드
+    //     좌표(≈4.6e5)라, dir 이 조금이라도 공간에 따라 변하면 위상 기울기가 |w|·|∇dir| 만큼
+    //     증폭돼 파도가 통째로 에일리어싱된다. 실측: 물 픽셀 |라플라시안| 3.39 → 6.81 (2배),
+    //     12배 확대에서 파도 줄무늬가 **모래알**로 무너졌다. 승자독식은 구역 안에서 ∇dir=0 이라 안전하다.
+    let best = Infinity, bx = 0, by = 0, bi = Infinity, bhw = 1, bd2 = Infinity;
+    const SU = _segGrid.ux, SV = _segGrid.uy;
+    const _raw = !!_t19.flowRawDist;   // 대조군: 폭을 무시한 옛 생거리 최근접
+    // 느린 대조군과 색인 경로가 **같은 식**을 쓰도록 본문을 한 군데만 둔다(둘이 갈리면 A/B 가 무의미).
+    const _one = (si) => {
+      const s2 = segs[si], ax = s2[0], ay = s2[1], dx = s2[2] - ax, dy = s2[3] - ay;
+      const L2 = dx * dx + dy * dy || 1;
+      let t = ((px - ax) * dx + (py - ay) * dy) / L2; t = t < 0 ? 0 : (t > 1 ? 1 : t);
+      const qx = ax + t * dx - px, qy = ay + t * dy - py, d2 = qx * qx + qy * qy;
+      // 반폭은 마디 두 끝의 폭을 t 로 보간한다(폭은 상·하류로 서서히 변한다)
+      const hw = Math.max(48, ((s2[5] + (s2[6] - s2[5]) * t) || 96) * 0.5);
+      const sc = _raw ? d2 : d2 / (hw * hw);   // 폭 단위 거리의 제곱
+      // ★동률은 **구간 번호가 작은 쪽**으로 깬다 — 폴리라인의 이웃 두 구간은 공유 꼭짓점에서
+      //   거리가 정확히 같고 방향은 다르다. 전수 순회(번호순)와 답을 맞추려면 이 규칙이 필요하다.
+      //   (이걸 안 넣으면 7,000 표본 중 4점이 갈렸다 — 전부 꼭짓점 최근접 점이었다.)
+      if (sc < best || (sc === best && si < bi)) { best = sc; bi = si; bx = SU[si]; by = SV[si]; bhw = hw; bd2 = d2; }
+    };
+    if (_slow) { for (let si = 0; si < segs.length; si++) _one(si); }
     for (let gy = g0y; gy <= g1y; gy++) for (let gx = g0x; gx <= g1x; gx++) {
       const arr = _segGrid.map.get(gx + ',' + gy); if (!arr) continue;
-      for (let n = 0; n < arr.length; n++) {
-        const si = arr[n], s2 = segs[si], ax = s2[0], ay = s2[1], dx = s2[2] - ax, dy = s2[3] - ay;
-        const L2 = dx * dx + dy * dy || 1;
-        let t = ((px - ax) * dx + (py - ay) * dy) / L2; t = t < 0 ? 0 : (t > 1 ? 1 : t);
-        const qx = ax + t * dx - px, qy = ay + t * dy - py, d = qx * qx + qy * qy;
-        // ★동률은 **구간 번호가 작은 쪽**으로 깬다 — 폴리라인의 이웃 두 구간은 공유 꼭짓점에서
-        //   거리가 정확히 같고 방향은 다르다. 전수 순회(번호순)와 답을 맞추려면 이 규칙이 필요하다.
-        //   (이걸 안 넣으면 7,000 표본 중 4점이 갈렸다 — 전부 꼭짓점 최근접 점이었다.)
-        if (d < best || (d === best && si < bi)) { best = d; bi = si; const L = Math.sqrt(L2); bx = dx / L; by = dy / L; }
-      }
+      for (let n = 0; n < arr.length; n++) _one(arr[n]);
     }
-    // 강에서 멀면(호수·먼바다) 흐름 0 — 무방향 파문이 된다
-    const dist = Math.sqrt(best);
-    const w = dist > FLOW_R ? 0 : (dist > 700 ? (FLOW_R - dist) / 700 : 1);
-    const v = [bx * w, by * w];
+    // 세기: 물길 안(반폭 이내)은 1, 반폭 2배에서 0. 강에서 멀면(호수·먼바다) 0 — 무방향 파문이 된다.
+    //   ※옛 식은 700px 까지 1, 1400px 에서 0 인 **절대 거리**였다. 그러면 폭 235px 짜리 실개천이
+    //     제 물길 밖 700px 까지 온 사방을 제 방향으로 물들인다 — 위 진범의 절반이 이것이었다.
+    const dist = Math.sqrt(bd2);
+    let w;
+    if (_raw) {
+      // 대조군은 **출시본 그대로** — 절대 거리 700/1400. (FLOW_R 을 1800 으로 넓힌 건 후보를 더
+      //  찾을 뿐이라 이 식의 답을 바꾸지 않는다: 1400 밖은 어느 구간이 이기든 세기가 0 이다.)
+      w = dist > 1400 ? 0 : (dist > 700 ? (1400 - dist) / 700 : 1);
+    } else {
+      const u = dist / bhw;
+      w = dist > FLOW_R ? 0 : (u > 1 ? Math.max(0, 2 - u) : 1);
+    }
+    // 3번째 값 u = **강폭 단위 거리**(중심선까지 거리 / 반폭). 소비자는 [0],[1] 만 쓴다.
+    //   하네스가 "역류하는 칸이 제 물길 **안**인가(u≤1 — 지류의 진짜 흐름)"를 판정하려면 이 값이
+    //   필요한데, 하네스가 다시 계산하면 사본이다.
+    const v = [bx * w, by * w, dist / bhw];
     // ★전체 clear 금지 — 긴 강을 따라 걸으면 상한에서 캐시가 통째로 날아가 폭풍 재계산이 된다.
     //   두 세대로 굴린다: 상한을 넘으면 현 세대를 구 세대로 밀고 현 세대만 비운다(작업 집합 생존).
     if (_flowCellCache.size > 200000) { _flowCellOld = _flowCellCache; _flowCellCache = new Map(); }
@@ -1350,7 +1388,7 @@ const SIM_JOB_EMOJI = {
     return v;
   }
   const _wfPrev = { ox: 0, oy: 0, wet: null };
-  const _ZERO2 = [0, 0];   // 물 아닌 셀마다 배열을 새로 만들면 16,384개/장이 GC 로 간다
+  const _ZERO2 = [0, 0, 99];   // 물 아닌 셀마다 배열을 새로 만들면 16,384개/장이 GC 로 간다
   function _buildFlowTex(gl, ocx, ocy) {
     // 수심 = 물가 거리장(BFS) → 3×3 평균 스무딩. 마스크는 셀 그대로(각진 블록).
     const N = WF_N, wet = new Uint8Array(N * N), dep = new Float32Array(N * N).fill(255);
@@ -3760,7 +3798,11 @@ const SIM_JOB_EMOJI = {
   //   ★[배치 21 5차] fogGateOff — 안개 게이트의 **대조군**. 끄면 안 가본 곳의 개체가 다시 보인다.
                  fogGateOff: false,
                  shoreOff: true,
-                 shMarginOff: false, shMargin: 1, windOff: false, windForce: null, windGrassOff: false, edgeFuzz: null };
+                 shMarginOff: false, shMargin: 1, windOff: false, windForce: null, windGrassOff: false, edgeFuzz: null,
+  //   ★[재민 2026-08-24] flowRawDist — 흐름 주인을 고르는 **대조군**. 켜면 폭을 무시한 옛
+  //     '생거리 최근접'(=합류부에 뒤집힌 띠가 다시 생긴다). 손잡이를 바꾼 뒤에는 `__wfReset()` 을
+  //     불러야 셀 캐시가 식는다 — 안 그러면 A/B 가 옛 값으로 오염된다.
+                 flowRawDist: false };
   // 시험 전용 — 띠 높이를 바꿔 "비용이 blit 횟수에 비례하나 픽셀 수에 비례하나"를 가른다.
   window.__gtStrip = (v) => { GT_STRIP = Math.max(4, v | 0); _groundTiles.clear(); needsRedraw = true; return GT_STRIP; };
   window.__gtFrac = (v) => { _gtFrac = !!v; needsRedraw = true; return _gtFrac; };
@@ -7237,6 +7279,23 @@ const SIM_JOB_EMOJI = {
     //   호출해 장당 시간을 잰다. 계측기가 계산을 다시 쓰지 않는다(사본 금지) — 렌더러가 부르는
     //   그 함수를 부른다. 걸어서 재려면 512px 마다 8초가 걸려 A/B 를 못 돈다.
     //   step = 원점 이동(셀). 16 = 실제 주행 한 칸(겹침 87.5%) · 128 = 완전히 새 땅.
+    // ★[재민 2026-08-24 "물은 북→남인데 반대로 흐르는 띠가 있다"] 흐름 **방향**을 화면 좌표로 뽑는다.
+    //   지금까지 세 번의 계측이 전부 헛다리였던 이유: 셋 다 움직임의 **크기**만 쟀다(열별 표준편차·
+    //   경사 이음매·모션 히트맵). 방향이 뒤집힌 띠는 크기가 이웃과 똑같아서 셋 다 못 본다.
+    //   계측기가 방향을 다시 계산하면 사본이다 — 셰이더가 읽는 그 값(`_flowAtCell`)을 그대로 묻고,
+    //   화면 좌표도 렌더러와 **같은 식**(iso = wx-wy, (wx+wy)/2)으로 낸다.
+    window.__flowMap = (R) => {
+      R = R || 40;
+      const c0 = Math.floor(_camAbs.x / 32), c1 = Math.floor(_camAbs.y / 32);
+      const out = [];
+      for (let j = -R; j <= R; j++) for (let i = -R; i <= R; i++) {
+        const cx = c0 + i, cy = c1 + j;
+        if (!isWaterAtAbs(cx * 32 + 16, cy * 32 + 16)) continue;
+        const f = _flowAtCell(cx, cy);
+        out.push([cx, cy, +f[0].toFixed(4), +f[1].toFixed(4), +(f[2] || 0).toFixed(3)]);
+      }
+      return { cam: [camX, camY], camCell: [c0, c1], drop: WATER_DROP, W: W, H: H, cells: out };
+    };
     window.__wfProbe = (n, step) => {
       const out = []; const bx = _wfCache.ox, by = _wfCache.oy;
       const keepPrev = _wfPrev.wet, keepOx = _wfPrev.ox, keepOy = _wfPrev.oy, keepKey = _wfCache.key;
