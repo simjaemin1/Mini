@@ -24,7 +24,10 @@ for (let j = 0; j < N; j++) for (let i = 0; i < N; i++)
 function heights(mask) {
   const INF = 1e6, d = new Float32Array(N * N);
   for (let k = 0; k < N * N; k++) d[k] = mask[k] ? INF : 0;
-  const at = (i, j) => (i < 0 || j < 0 || i >= N || j >= N) ? INF : d[j * N + i];
+  // ★★[창 밖 INF 족 버그 수리 2026-08-25] 창 밖을 INF(=미해결 바위)로 보면 창 가장자리에
+  //   걸친 셀의 dE 가 바깥 땅에 안 잘려 **부푼다**(measure-mtscale 에서 dmax 47.0 → 35.3 으로 정정).
+  //   ⇒ 창 밖은 **땅(0)** 으로 본다 — 깊이의 하한이 되어 절대 부풀지 않는다.
+  const at = (i, j) => (i < 0 || j < 0 || i >= N || j >= N) ? 0 : d[j * N + i];
   for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { const k = j * N + i; if (!d[k]) continue;
     d[k] = Math.min(d[k], at(i - 1, j) + 1, at(i, j - 1) + 1, at(i - 1, j - 1) + 1.414, at(i + 1, j - 1) + 1.414); }
   for (let j = N - 1; j >= 0; j--) for (let i = N - 1; i >= 0; i--) { const k = j * N + i; if (!d[k]) continue;
