@@ -2498,6 +2498,8 @@ const SIM_JOB_EMOJI = {
   let MT3_CV0 = 128;                   // GL 캔버스 초깃값. 띠가 크면 128 배수로 자란다
   let MT3_HTOP = MT3_HMAX * 1.55;    // 실제 최대 높이 상한(수집 여유용). 실측 최대 48.8m
   let MT3_DUAL = 1;                    // ⑶ 마스크 이원화 — 0 이면 옛 판(파괴가 높이를 낮춘다)
+  let MT3_FRINGE = 0;                  // ★⑤ 자락 톱니 처리 — 0=현행(기본) · 1=경계선 잡음 · 2=알파 페더
+  const MT3_FR_H = 1.6;                // 자락으로 볼 높이(m). 이보다 낮은 곳에만 손댄다 — 마루는 안 건드린다
   let MT3_MERGE = 0;                   // ★④ 오버드로 시제품 — **속이 꽉 찬 청크**의 띠를 한 장으로 병합. 0=끔(기본)
   let _mt3MergedN = 0, _mt3BandN = 0;  // 병합된 청크 수 / 만든 띠 수 (판정용)
   let MT3_SKIRT = 0;                   // ★치마 — 메시 **테두리** 변의 마루 높이가 이 값(m)을 넘으면 밑까지 벽을 세운다. 0=끔(기본)
@@ -2519,6 +2521,7 @@ const SIM_JOB_EMOJI = {
     'uniform sampler2D uH; uniform sampler2D uRock; uniform sampler2D uGrass;',
     'uniform float uN; uniform float uHmax; uniform vec3 uL; uniform vec2 uOrig;',
     'uniform vec2 uTex; uniform float uRockS; uniform float uTexOn; uniform float uAoOn; uniform float uAoBox;',
+    'uniform float uFringe; uniform float uFrH;',
     // ── 높이: 16비트(R=상위, G=하위)로 실어 NEAREST 로 텍셀을 직접 읽는다 ──
     // R,G = 높이(16비트) · B = **미리 흐려 둔 높이**(8비트).
     //   ★AO 를 4×4 표본의 **상자 평균**으로 내고 있었다. 그 값은 floor(c) 에서 툭 바뀌는
@@ -2662,7 +2665,12 @@ const SIM_JOB_EMOJI = {
     '  col *= 1.0 - clamp(conc*0.16, 0.0, 0.40);',
     '  col *= 1.0 + clamp(-conc*0.10, 0.0, 0.16);',
     '  col += vec3(0.73,0.78,0.85) * min(0.09, (h/uHmax)*0.09);',   // 대기 원근
-    '  gl_FragColor = vec4(clamp(col,0.0,1.0), 1.0);',
+    // ── ⑤ 자락 톱니 시안 2 — **알파 페더**. 자락(낮은 곳) 한 칸 폭에서 알파를 0 으로 떨군다.
+    //   ★높이만의 함수라 이웃 띠·이웃 청크가 **같은 값**을 얻는다 — 이음매가 원리적으로 안 생긴다.
+    //   ★마루는 h 가 커서 1.0 그대로다(마루 실루엣 무접촉 규약).
+    '  float aOut = 1.0;',
+    '  if (uFringe > 1.5) aOut = clamp(h / uFrH, 0.0, 1.0);',
+    '  gl_FragColor = vec4(clamp(col,0.0,1.0) * aOut, aOut);',
     '}'
   ].join('\n');
   function _mt3GlInit() {
@@ -2692,7 +2700,7 @@ const SIM_JOB_EMOJI = {
       gl.enableVertexAttribArray(_mgl.lp); gl.vertexAttribPointer(_mgl.lp, 2, gl.FLOAT, false, 20, 0);
       gl.enableVertexAttribArray(_mgl.lc); gl.vertexAttribPointer(_mgl.lc, 2, gl.FLOAT, false, 20, 8);
       gl.enableVertexAttribArray(_mgl.lm); gl.vertexAttribPointer(_mgl.lm, 1, gl.FLOAT, false, 20, 16);
-      for (const u of ['uRes', 'uH', 'uRock', 'uGrass', 'uN', 'uHmax', 'uL', 'uOrig', 'uTex', 'uRockS', 'uTexOn', 'uAoOn', 'uAoBox'])
+      for (const u of ['uRes', 'uH', 'uRock', 'uGrass', 'uN', 'uHmax', 'uL', 'uOrig', 'uTex', 'uRockS', 'uTexOn', 'uAoOn', 'uAoBox', 'uFringe', 'uFrH'])
         _mgl.uni[u] = gl.getUniformLocation(pr, u);
       const mkTex = (filt, wrap, minf) => { const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, minf || filt); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filt);
@@ -2723,6 +2731,7 @@ const SIM_JOB_EMOJI = {
       gl.uniform2f(_mgl.uni.uTex, MT3_TW, MT3_TH); gl.uniform1f(_mgl.uni.uRockS, MT3_ROCKS);
       gl.uniform1f(_mgl.uni.uTexOn, MT3_TEXON); gl.uniform1f(_mgl.uni.uAoOn, MT3_AOON);
       gl.uniform1f(_mgl.uni.uAoBox, MT3_AOBOX);
+    gl.uniform1f(_mgl.uni.uFringe, MT3_FRINGE); gl.uniform1f(_mgl.uni.uFrH, MT3_FR_H);
       gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, _mgl.rTex);
       gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, _mgl.gTex);
       gl.activeTexture(gl.TEXTURE0);
@@ -2787,7 +2796,20 @@ const SIM_JOB_EMOJI = {
       const i = cell[0], j = cell[1];
       for (let b = 0; b < S; b++) for (let a = 0; a < S; a++) {
         const ci = i - OV + a * SP, cj = j - OV + b * SP;
-        const wxp = (F.i0 + ci) * 32, wyp = (F.j0 + cj) * 32;
+        let wxp = (F.i0 + ci) * 32, wyp = (F.j0 + cj) * 32;
+        // ── ⑤ 자락 톱니 시안 1 — **경계선만 국소 잡음으로 흔든다**(셀 다이아 정렬 깨기) ──
+        //   ★가중치를 '자락 셀이냐'가 아니라 **높이의 함수**로 잡는다. 그래야 이웃 띠·이웃 청크와
+        //     공유하는 꼭짓점이 **같은 값**을 얻어 틈이 안 생긴다(셀 종류로 가르면 경계에 균열).
+        //   ★가로만 민다 — 높이는 그대로라 **마루 실루엣은 손대지 않는다**(회귀 이력).
+        if (MT3_FRINGE === 1) {
+          const hv = F.corS(ci, cj);
+          const wgt = Math.max(0, 1 - hv / MT3_FR_H);
+          if (wgt > 0) {
+            const d = wgt * 26;
+            wxp += (_mt3vn(wxp / 96, wyp / 96, 191) - 0.5) * 2 * d;
+            wyp += (_mt3vn(wxp / 51, wyp / 51, 193) - 0.5) * 2 * d;
+          }
+        }
         // ★절대 화면 좌표를 **1/64px 격자에 스냅**한 뒤 띠 원점을 뺀다.
         //   x0·y0 은 정수라 뺄셈이 정확하고, float32 로 내려도 이웃 띠가 **같은 변**을 얻는다.
         //   (스냅을 안 하면 띠마다 반올림이 달라져 공유 변에 1px 틈이 산발한다.)
@@ -2883,6 +2905,7 @@ const SIM_JOB_EMOJI = {
     gl.uniform2f(_mgl.uni.uOrig, F.i0, F.j0);
     gl.uniform1f(_mgl.uni.uTexOn, MT3_TEXON); gl.uniform1f(_mgl.uni.uAoOn, MT3_AOON);
     gl.uniform1f(_mgl.uni.uAoBox, MT3_AOBOX);
+    gl.uniform1f(_mgl.uni.uFringe, MT3_FRINGE); gl.uniform1f(_mgl.uni.uFrH, MT3_FR_H);
     gl.uniform1f(_mgl.uni.uRockS, MT3_ROCKS);
     // 뷰포트를 캔버스 **왼쪽 위**에 둔다(GL 원점은 왼쪽 아래) → blit 원본이 (0,0) 이 된다.
     gl.viewport(0, H - bh, bw, bh);
@@ -2916,6 +2939,10 @@ const SIM_JOB_EMOJI = {
   window.__mt3aobox = (v) => { MT3_AOBOX = v ? 1 : 0; _mt3Chunk.clear(); _mt3Sig = ''; return MT3_AOBOX; };
   // 치마 A/B 손잡이 — 같은 자리에서 갈아 끼워야 '치마가 닫았다'가 증명된다
   // ④ 병합 손잡이 — 기본 0(끔). 켜고 끈 **같은 자리 화소**가 판정이다.
+  // ⑤ 자락 톱니 손잡이 — 0=현행(기본) · 1=경계선 잡음 · 2=알파 페더
+  window.__mt3fringe = (v) => { MT3_FRINGE = v | 0;
+    if (_mgl.gl) { _mgl.gl.useProgram(_mgl.pr); _mgl.gl.uniform1f(_mgl.uni.uFringe, MT3_FRINGE); }
+    _mt3Chunk.clear(); _mt3Sig = ''; needsRedraw = true; return MT3_FRINGE; };
   window.__mt3merge = (v) => { MT3_MERGE = v ? 1 : 0; _mt3Chunk.clear(); _mt3Sig = '';
     _mt3MergedN = 0; _mt3BandN = 0; return MT3_MERGE; };
   window.__mt3mergeN = () => ({ merge: MT3_MERGE, mergedChunks: _mt3MergedN, bands: _mt3BandN });
