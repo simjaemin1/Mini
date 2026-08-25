@@ -2578,9 +2578,21 @@ const SIM_JOB_EMOJI = {
   let MT3_CV0 = 128;                   // GL 캔버스 초깃값. 띠가 크면 128 배수로 자란다
   let MT3_HTOP = MT3_HMAX * 1.55;    // 실제 최대 높이 상한(수집 여유용). 실측 최대 48.8m
   let MT3_DUAL = 1;                    // ⑶ 마스크 이원화 — 0 이면 옛 판(파괴가 높이를 낮춘다)
-  let MT3_FRINGE = 0;                  // ★⑤ 자락 톱니 처리 — 0=현행(기본) · 1=경계선 잡음 · 2=알파 페더
+  // ★[재민 확정 2026-08-25] 자락 톱니 **1안 채택**(경계선 잡음). 0=옛 현행 · 2=알파 페더(기각).
+  //   기각 근거: 2안은 judge-grid 세분6 대역 봉우리 8.12 — **새 주기를 만든다**.
+  let MT3_FRINGE = 1;                  // 0=옛 현행 · **1=경계선 잡음(채택)** · 2=알파 페더(기각)
   const MT3_FR_H = 1.6;                // 자락으로 볼 높이(m). 이보다 낮은 곳에만 손댄다 — 마루는 안 건드린다
-  let MT3_MERGE = 0;                   // ★④ 오버드로 시제품 — **속이 꽉 찬 청크**의 띠를 한 장으로 병합. 0=끔(기본)
+  // ★[재민 확정 2026-08-25] 띠 병합 **채택**. 자락도 통로도 없는 청크의 띠를 한 장으로 묶는다.
+  //   실측: 띠 877 → 127 · 프레임 51.74±2.16 → 29.02±2.34ms (**−43.9%**, 2σ 2.85 → 유의)
+  //   화소: 켬/끔 차이 140 vs **재현 바닥 139** — 바닥과 구별되지 않는다(돌출목 순서 수리 후).
+  //   0 으로 끄면 옛 판으로 돌아간다(반례 장치).
+  let MT3_MERGE = 1;
+  // ★★[실측 2026-08-25] 병합 판의 앵커를 **가장 큰 k** 로 잡은 게 틀렸다.
+  //   "그래야 이웃 띠 뒤로 안 눌린다"는 내 추론이었는데, 실측이 정반대를 말했다:
+  //     앵커 가장 큰 k → 켬/끔 차이 **1062화소** · 앵커 **가장 작은 k → 1화소**(재현 바닥 0).
+  //   안 병합 판의 띠도 앵커가 **가장 작은 k** 다. 같은 규칙을 쓰면 정렬이 그대로 재현된다.
+  //   ⇒ 기본 0(=가장 작은 k, 안 병합 판과 같은 규칙). 1 은 반례 장치로만 남긴다.
+  let MT3_MERGEZ = 0;                  // 병합 앵커: 0=가장 작은 k(채택) · 1=가장 큰 k(반례 장치)
   let _mt3MergedN = 0, _mt3BandN = 0;  // 병합된 청크 수 / 만든 띠 수 (판정용)
   let MT3_SKIRT = 0;                   // ★치마 — 메시 **테두리** 변의 마루 높이가 이 값(m)을 넘으면 밑까지 벽을 세운다. 0=끔(기본)
   let _mt3SkirtQ = 0, _mt3SkirtAll = 0;// 실제 세운 쿼드 / 무조건 세웠을 때 (절감 보고용)
@@ -2853,7 +2865,7 @@ const SIM_JOB_EMOJI = {
   //   cells = 이 띠(반대각선)에 속한 청크-지역 셀 [i,j] 목록.
   //   꼭짓점 높이는 셰이더의 hAll 과 **같은 Catmull-Rom**(F.corS)로 뽑는다 —
   //   실루엣(꼭짓점)과 음영(프래그먼트)이 같은 곡면을 봐야 가장자리가 안 어긋난다.
-  function _mt3GlBand(g2d, F, key, cells, cuts, x0, y0, bw, bh) {
+  function _mt3GlBand(g2d, F, key, cells, cuts, x0, y0, bw, bh, clip) {
     const gl = _mgl.gl;
     if (bw > _mgl.cv.width || bh > _mgl.cv.height) {
       if (bw > 4096 || bh > 4096) return false;
@@ -2994,7 +3006,10 @@ const SIM_JOB_EMOJI = {
     gl.drawArrays(gl.TRIANGLES, 0, n / 5);
     gl.disable(gl.SCISSOR_TEST);
     // ★같은 태스크 안에서 곧바로 읽는다(preserveDrawingBuffer 없이 안전한 유일한 시점).
-    g2d.drawImage(_mgl.cv, 0, 0, bw, bh, 0, 0, bw, bh);
+    // ★clip 이 오면 그 사각형만 옮긴다 — 병합 판이 **띠마다** 같은 캔버스에 얹을 때 쓴다.
+    //   전체를 옮기면 앞 띠가 지워지는 게 아니라(투명은 안 덮는다) 비용만 는다.
+    if (clip) { const [cx, cy, cw, ch] = clip; if (cw > 0 && ch > 0) g2d.drawImage(_mgl.cv, cx, cy, cw, ch, cx, cy, cw, ch); }
+    else g2d.drawImage(_mgl.cv, 0, 0, bw, bh, 0, 0, bw, bh);
     return true;
   }
   // 시험 손잡이 — 짝 비교 프로파일러/스크린샷이 GPU 판과 캔버스 판을 같은 자리에서 갈아 끼운다
@@ -3023,6 +3038,7 @@ const SIM_JOB_EMOJI = {
   window.__mt3fringe = (v) => { MT3_FRINGE = v | 0;
     if (_mgl.gl) { _mgl.gl.useProgram(_mgl.pr); _mgl.gl.uniform1f(_mgl.uni.uFringe, MT3_FRINGE); }
     _mt3Chunk.clear(); _mt3Sig = ''; needsRedraw = true; return MT3_FRINGE; };
+  window.__mt3mergez = (v) => { MT3_MERGEZ = v ? 1 : 0; _mt3Chunk.clear(); _mt3Sig = ''; return MT3_MERGEZ; };
   window.__mt3merge = (v) => { MT3_MERGE = v ? 1 : 0; _mt3Chunk.clear(); _mt3Sig = '';
     _mt3MergedN = 0; _mt3BandN = 0; return MT3_MERGE; };
   window.__mt3mergeN = () => ({ merge: MT3_MERGE, mergedChunks: _mt3MergedN, bands: _mt3BandN });
@@ -3077,16 +3093,36 @@ const SIM_JOB_EMOJI = {
       //   ★기본은 0(끔) — 재민이 실기기 체감과 함께 정한다.
       const mergeOK = MT3_MERGE && cuts.length === 0 && mesh.length > 0 &&
                       mesh.every(([i, j]) => F.isRock(i, j));
-      if (mergeOK) {
-        // 한 장 안에서의 그리는 순서 = 띠 순서(i+j 오름차순). 깊이버퍼 없이 화가 순서를 유지한다.
-        byK.set(0, mesh.slice().sort((a, b) => (a[0] + a[1]) - (b[0] + b[1])));
-        _mt3MergedN++;
-      } else
+      //   ★★[돌출목 수리 2026-08-25] 처음엔 전 셀을 **한 번의 GL 호출**로 그렸다. 그러면
+      //     '전 띠 표면 → 전 나무' 순이 돼 나무가 뒤 띠 표면에 안 가린다(실측 476화소).
+      //     ⇒ 띠는 **그대로 나누어** 그리되 **캔버스 하나를 공유**한다:
+      //        띠k 표면 blit → 띠k 나무 → 띠k+1 표면 blit → … (안 병합 판과 **같은 순서**)
+      //     프레임당 비용은 그대로다(청크당 캔버스 1장을 blit) — 성능 이득은 안 깎인다.
+      //     늘어나는 건 **굽는 순간**의 GL 호출 수뿐이고, blit 은 띠 상자로 좁혀 옮긴다.
+      if (mergeOK) _mt3MergedN++;
       for (const c of mesh) { const k = c[0] + c[1]; let a = byK.get(k); if (!a) byK.set(k, a = []); a.push(c); }
       for (const c of cuts) { const k = c[0] + c[1]; let a = cutK.get(k); if (!a) cutK.set(k, a = []); a.push(c);
                               if (!byK.has(k)) byK.set(k, []); }
       const pat = (GTEX.rock_angled && GTEX.rock_angled.naturalWidth) ? GTEX.rock_angled : null;
       const gpat = (GTEX.grass_angled && GTEX.grass_angled.naturalWidth) ? GTEX.grass_angled : null;
+      // 병합: 전 셀을 덮는 **하나의** 상자·캔버스를 미리 만들어 띠마다 그 위에 얹는다
+      let U = null;
+      if (mergeOK) {
+        let ax0 = 1e9, ax1 = -1e9, ay0 = 1e9, ay1 = -1e9;
+        for (const [i, j] of mesh) for (const o of [[0,0],[1,0],[1,1],[0,1]]) {
+          const gi = F.i0 + i + o[0], gj = F.j0 + j + o[1];
+          const c = w2i(gi * 32, gj * 32), Y = c.y - F.cor(i + o[0], j + o[1]) * 32;
+          if (c.x < ax0) ax0 = c.x; if (c.x > ax1) ax1 = c.x; if (Y < ay0) ay0 = Y; if (Y > ay1) ay1 = Y;
+        }
+        const MP = MT3_MPAD, TP = (MT3_TREEP > 0) ? MT3_TREEPX + 6 : 0;
+        const ux0 = Math.floor(ax0) - MP, uy0 = Math.floor(ay0) - MP - TP;
+        const ubw = Math.ceil(ax1) + MP - ux0, ubh = Math.ceil(ay1) + MP - uy0;
+        if (ubw > 0 && ubh > 0 && ubw <= 4096 && ubh <= 4096) {
+          const ucv = document.createElement('canvas'); ucv.width = ubw; ucv.height = ubh;
+          U = { x0: ux0, y0: uy0, bw: ubw, bh: ubh, cv: ucv, g: ucv.getContext('2d'),
+                colT: new Int16Array(ubw).fill(32767), colB: new Int16Array(ubw).fill(-32768) };
+        }
+      }
       for (const k of [...byK.keys()].sort((a, b) => a - b)) {
         const cells = byK.get(k), cutCells = cutK.get(k) || [];
         if (!cells.length && !cutCells.length) continue;
@@ -3122,12 +3158,22 @@ const SIM_JOB_EMOJI = {
         x0 = Math.floor(x0) - MPAD; y0 = Math.floor(y0) - MPAD - TPAD;
         const bw = Math.ceil(x1) + MPAD - x0, bh = Math.ceil(y1) + MPAD - y0;
         if (bw <= 0 || bh <= 0 || bw > 4096 || bh > 4096) { _mt3Skip++; _mt3SkipMax = Math.max(_mt3SkipMax, bh); continue; }
-        const cv = document.createElement('canvas'); cv.width = bw; cv.height = bh;
-        const g = cv.getContext('2d');
+        // 병합이면 이 띠의 상자를 **공유 캔버스 좌표**로 옮겨 blit 범위로만 쓴다
+        let clip = null, CV, G, BX0, BY0, BW, BH;
+        if (U) {
+          clip = [Math.max(0, x0 - U.x0), Math.max(0, y0 - U.y0),
+                  Math.min(U.bw - Math.max(0, x0 - U.x0), bw), Math.min(U.bh - Math.max(0, y0 - U.y0), bh)];
+          CV = U.cv; G = U.g; BX0 = U.x0; BY0 = U.y0; BW = U.bw; BH = U.bh;
+        } else {
+          CV = document.createElement('canvas'); CV.width = bw; CV.height = bh; G = CV.getContext('2d');
+          BX0 = x0; BY0 = y0; BW = bw; BH = bh;
+        }
+        const cv = CV, g = G;
+        x0 = BX0; y0 = BY0;
         // ★표면은 GPU 로. 실패하면 그 자리에서 캔버스 폴리곤 판으로 되돌아간다(라이브를 못 세운다).
         let drawn = false;
         if (MT3_GL && _mt3GlInit()) {
-          try { drawn = _mt3GlBand(g, F, key, cells, cutCells, x0, y0, bw, bh); }
+          try { drawn = _mt3GlBand(g, F, key, cells, cutCells, x0, y0, BW, BH, clip); }
           catch (e) { console.warn('[mt3d] GL 띠 실패 — 캔버스로:', e && e.message); _mgl.ok = false; drawn = false; }
         }
         if (!drawn) {
@@ -3142,7 +3188,8 @@ const SIM_JOB_EMOJI = {
         //   ⇒ 띠마다 **열별 윤곽**(그려지는 최상단·최하단 y)을 굽는 김에 같이 낸다.
         //     알파를 되읽지 않는다 — 기하에서 바로 나온다(옛날에 getImageData 로 뜨다가
         //     56MB + 리드백 324회를 만든 적이 있다. 같은 실수 반복 금지).
-        const colT = new Int16Array(bw).fill(32767), colB = new Int16Array(bw).fill(-32768);
+        const colT = U ? U.colT : new Int16Array(BW).fill(32767);
+        const colB = U ? U.colB : new Int16Array(BW).fill(-32768);
         {
           const SS = 4;                       // 셀당 4×4 표본이면 윤곽으로 충분하다
           for (const [ci, cj] of cells) {
@@ -3160,7 +3207,7 @@ const SIM_JOB_EMOJI = {
                 let lo = 1e9, hi = -1e9, ty = 1e9, by = -1e9;
                 for (const p of q) { if (p[0] < lo) lo = p[0]; if (p[0] > hi) hi = p[0];
                                      if (p[1] < ty) ty = p[1]; if (p[1] > by) by = p[1]; }
-                const c0 = Math.max(0, Math.floor(lo)), c1 = Math.min(bw - 1, Math.ceil(hi));
+                const c0 = Math.max(0, Math.floor(lo)), c1 = Math.min(BW - 1, Math.ceil(hi));
                 const t0 = Math.round(ty), b0 = Math.round(by);
                 for (let x = c0; x <= c1; x++) {
                   if (t0 < colT[x]) colT[x] = t0;
@@ -3201,27 +3248,45 @@ const SIM_JOB_EMOJI = {
           }
         }
         const refPool = cells.length ? cells : cutCells;
-        //   ★병합 판은 앵커를 **가장 큰 k**로 잡는다. z 는 앵커에서 나오므로, 그래야 이 청크가
-        //     이웃 청크의 띠들 뒤로 눌리지 않는다(병합 전에는 띠마다 제 z 를 가졌다).
-        const ref = mergeOK
-          ? refPool.reduce((a, b) => (a[0] + a[1] >= b[0] + b[1] ? a : b))
-          : refPool.reduce((a, b) => (a[0] + a[1] <= b[0] + b[1] ? a : b));
+        const ref = refPool.reduce((a, b) => (a[0] + a[1] <= b[0] + b[1] ? a : b));   // 앵커 = 가장 작은 k
         const wx = (F.i0 + ref[0]) * 32 + 16, wy = (F.j0 + ref[1]) * 32 + 16;
         const rp = w2i((F.i0 + ref[0]) * 32 + 16, (F.j0 + ref[1]) * 32 + 16);
         // ★알파 사본을 **안 뜬다**. 굽는 시점에 뜨면 띠마다 GPU 리드백 1회 +
         //   힙에 캔버스와 같은 크기(실측 56MB)를 한 벌 더 든다 — 렉 잡겠다고 넣은 게 렉이었다.
         //   가림 판정은 z 게이트를 통과한 극소수 띠에서만 1px 만 읽는다.
         // 실제로 칠해지는 최소 사각형 — blit 을 여기로 좁힌다(여백·투명 모서리를 안 옮긴다)
-        let bx0 = bw, bx1 = -1, by0 = bh, by1 = -1;
-        for (let a = 0; a < bw; a++) {
+        if (U) continue;                 // 병합: 세그먼트는 루프가 끝난 뒤 **하나만** 낸다
+        let bx0 = BW, bx1 = -1, by0 = BH, by1 = -1;
+        for (let a = 0; a < BW; a++) {
           if (colT[a] > colB[a]) continue;
           if (a < bx0) bx0 = a; if (a > bx1) bx1 = a;
           if (colT[a] < by0) by0 = colT[a]; if (colB[a] > by1) by1 = colB[a];
         }
-        const pb = (bx1 >= bx0) ? [Math.max(0, bx0), Math.max(0, Math.min(bh - 1, by0)),
-                                   Math.min(bw - 1, bx1), Math.min(bh - 1, by1)] : null;
+        const pb = (bx1 >= bx0) ? [Math.max(0, bx0), Math.max(0, Math.min(BH - 1, by0)),
+                                   Math.min(BW - 1, bx1), Math.min(BH - 1, by1)] : null;
         _mt3BandN++;
-        segs.push({ img: cv, x: wx, y: wy, ox: rp.x - x0, oy: rp.y - y0, sc: 1, mt3: 1, colT, colB, pb, merged: mergeOK ? 1 : 0 });
+        segs.push({ img: cv, x: wx, y: wy, ox: rp.x - x0, oy: rp.y - y0, sc: 1, mt3: 1, colT, colB, pb, merged: 0 });
+      }
+      // ── 병합: 청크 하나를 **세그먼트 한 장**으로 낸다 ─────────────────────
+      //   앵커는 **가장 작은 k** — 안 병합 판의 띠와 같은 규칙이라 정렬이 그대로 재현된다
+      //   (앵커를 가장 큰 k 로 잡았다가 켬/끔 차이 1062화소를 냈다. 실측이 내 추론을 뒤집었다).
+      if (U && mesh.length) {
+        const ref = MT3_MERGEZ
+          ? mesh.reduce((a, b) => (a[0] + a[1] >= b[0] + b[1] ? a : b))
+          : mesh.reduce((a, b) => (a[0] + a[1] <= b[0] + b[1] ? a : b));
+        const wx = (F.i0 + ref[0]) * 32 + 16, wy = (F.j0 + ref[1]) * 32 + 16;
+        const rp = w2i(wx, wy);
+        let bx0 = U.bw, bx1 = -1, by0 = U.bh, by1 = -1;
+        for (let a = 0; a < U.bw; a++) {
+          if (U.colT[a] > U.colB[a]) continue;
+          if (a < bx0) bx0 = a; if (a > bx1) bx1 = a;
+          if (U.colT[a] < by0) by0 = U.colT[a]; if (U.colB[a] > by1) by1 = U.colB[a];
+        }
+        const pb = (bx1 >= bx0) ? [Math.max(0, bx0), Math.max(0, Math.min(U.bh - 1, by0)),
+                                   Math.min(U.bw - 1, bx1), Math.min(U.bh - 1, by1)] : null;
+        _mt3BandN++;
+        segs.push({ img: U.cv, x: wx, y: wy, ox: rp.x - U.x0, oy: rp.y - U.y0, sc: 1, mt3: 1,
+                    colT: U.colT, colB: U.colB, pb, merged: 1 });
       }
     }
     if (_mt3Chunk.size > 260) _mt3Chunk.clear();
@@ -3621,7 +3686,7 @@ const SIM_JOB_EMOJI = {
       const p3 = w2i(sg.x, sg.y), c3 = toScr(p3.x, p3.y);
       const dx3 = Math.round(c3.x - sg.ox), dy3 = Math.round(c3.y - sg.oy);
       const fade3 = _mtFadeAmt > 0.002 && (_mtOcc ? item.z > _mtOcc.z : false) && !_t19.occOff;
-      if (_mt3Rects) _mt3Rects.push({ x: dx3, y: dy3, w: sg.img.width, h: sg.img.height, z: item.z, faded: !!fade3 });
+      if (_mt3Rects) _mt3Rects.push({ x: dx3, y: dy3, w: sg.img.width, h: sg.img.height, z: item.z, faded: !!fade3, merged: sg.merged ? 1 : 0 });
       // ★[되돌림 — 실측] blit 을 '칠해지는 사각형'으로 좁혀 봤다. 넓이는 17% 줄었는데
       //   프레임은 **더 느려졌다**(산 비용 +20.13 → +29.67ms). 9인자 drawImage 가
       //   빠른 경로를 놓치는 값이 17% 이득보다 컸다. 좁히지 않는다.

@@ -96,20 +96,18 @@ require(path.join(ROOT,'server','zone.js'));`);
   //   병합 판은 '전 띠 표면 → 전 나무' 순이라 **나무가 뒤 띠에 안 가린다**. 기본 끔이라 라이브 무영향.
   ok(dMerge.n <= dSelf.n + 20, `★★병합 켬/끔 그림이 같다 (다른 화소 ${dMerge.n}, 재현 바닥 ${dSelf.n})`);
 
-  // ⑵ 통로가 생기면 그 청크는 병합에서 빠진다
-  say('\n[⑵ 통로가 생기면 그 청크는 병합에서 빠진다]');
-  const digCells = []; for (let k = site.wd; k >= 0; k--) digCells.push([site.i - k, site.j]);
-  await pg.evaluate((cs) => { for (const [i,j] of cs) {
-    const isR = window.__mtIsRock(i,j);
-    const edge = [[1,0],[-1,0],[0,1],[0,-1]].some(([a,b]) => window.__mtIsRock(i+a,j+b) === false);
-    if (isR && edge) window.__mtDestroy([[i,j]]); } }, digCells);
-  await setM(1); const onDug = await grab('D-병합켬_통로');
-  const nDug = await pg.evaluate(() => window.__mt3mergeN());
-  await setM(0); const offDug = await grab('E-병합끔_통로');
-  const dDug = diffPx(offDug, onDug);
-  say(`    통로 뚫은 뒤 병합 청크 ${nDug.mergedChunks} (통로 전 ${nOn.mergedChunks}) · 끔↔켬 다른 화소 ${dDug.n} (${dDug.pct}%)`);
-  ok(nDug.mergedChunks < nOn.mergedChunks, `★★통로가 지나는 청크가 병합에서 빠졌다 (${nOn.mergedChunks} → ${nDug.mergedChunks})`);
-  ok(dDug.n <= dSelf.n + 20, `★★통로가 있어도 병합 켬/끔 그림이 같다 (다른 화소 ${dDug.n})`);
+  // ⑴b **원인 확증** — 돌출목을 끄고 같은 비교를 한다. 차이가 0 이 되면 원인은 나무다.
+  //   ★한 손잡이만 돌린다(정본 `__mt3trees`). 추정을 실측으로 바꾸는 자리다.
+  say('\n[⑴b 원인 확증 — 돌출목을 끄고 같은 비교]');
+  await pg.evaluate(() => window.__mt3trees(0));
+  await setM(0); const offT = await grab('A2-나무끔_병합끔');
+  await setM(1); const onT = await grab('B2-나무끔_병합켬');
+  await setM(0); const offT2 = await grab('C2-나무끔_병합끔재현');
+  const dSelfT = diffPx(offT, offT2), dMergeT = diffPx(offT, onT);
+  say(`    나무 끔 — 재현 바닥 ${dSelfT.n} · 병합 켬/끔 차이 ${dMergeT.n} (나무 켬일 때 ${dMerge.n})`);
+  ok(dMergeT.n <= dSelfT.n + 20, `★★★원인 확증 — **돌출목을 끄면 병합 차이가 사라진다** (${dMerge.n} → ${dMergeT.n})`);
+  await pg.evaluate(() => window.__mt3trees(0.020));
+  await setM(0);
 
   // ⑶ 성능 짝
   say('\n[⑶ 성능 짝 — 병합 끔/켬 교대 5회]');
@@ -134,6 +132,26 @@ require(path.join(ROOT,'server','zone.js'));`);
   say(`    켬 — 그린 사각형 ${f1.total} · 앞 ${f1.front} · 그중 흐림 ${f1.frontFaded}`);
   ok(f0.front > 0 && f0.frontFaded === f0.front, `★대조군 — 병합 끔에서 앞 띠는 전부 흐려진다 (${f0.frontFaded}/${f0.front})`);
   ok(f1.front > 0 && f1.frontFaded === f1.front, `★★병합 켬에서도 앞 판이 **통째로** 흐려진다 (${f1.frontFaded}/${f1.front})`);
+  // ★통로 판정은 **맨 뒤**로 옮겼다 — 뚫고 나면 병합 청크가 줄어 성능·fade 판정이 오염된다
+  //   (실측: 통로를 먼저 뚫었더니 병합 청크가 0 이 돼 성능 짝이 16.66 vs 16.66 으로 나왔다).
+  // ⑵ 통로가 생기면 그 청크는 병합에서 빠진다
+  say('\n[⑵ 통로가 생기면 그 청크는 병합에서 빠진다]');
+  // ★fade 를 다시 꺼 놓고 잰다 — ⑷ 에서 켰던 상태로 두면 알파가 프레임마다 달라
+  //   두 그림이 통째로 어긋난다(실측 205572화소 = 16.3%. 통로 탓이 아니라 fade 탓이었다).
+  await pg.evaluate(() => { window.__terrain19.occOff = true; }); await sleep(2500);
+  const digCells = []; for (let k = site.wd; k >= 0; k--) digCells.push([site.i - k, site.j]);
+  await pg.evaluate((cs) => { for (const [i,j] of cs) {
+    const isR = window.__mtIsRock(i,j);
+    const edge = [[1,0],[-1,0],[0,1],[0,-1]].some(([a,b]) => window.__mtIsRock(i+a,j+b) === false);
+    if (isR && edge) window.__mtDestroy([[i,j]]); } }, digCells);
+  await setM(1); const onDug = await grab('D-병합켬_통로');
+  const nDug = await pg.evaluate(() => window.__mt3mergeN());
+  await setM(0); const offDug = await grab('E-병합끔_통로');
+  const dDug = diffPx(offDug, onDug);
+  say(`    통로 뚫은 뒤 병합 청크 ${nDug.mergedChunks} (통로 전 ${nOn.mergedChunks}) · 끔↔켬 다른 화소 ${dDug.n} (${dDug.pct}%)`);
+  ok(nDug.mergedChunks < nOn.mergedChunks, `★★통로가 지나는 청크가 병합에서 빠졌다 (${nOn.mergedChunks} → ${nDug.mergedChunks})`);
+  ok(dDug.n <= dSelf.n + 20, `★★통로가 있어도 병합 켬/끔 그림이 같다 (다른 화소 ${dDug.n})`);
+
   await setM(0);
   say(`\n=== ④ 병합 시제품: 통과 ${pass} · 실패 ${fail} ===`);
   fs.writeFileSync(path.join(OUT,'merge.json'), JSON.stringify({site,nOff,nOn,nDug,dSelf,dMerge,dDug,A,B,diff,f0,f1},null,1));
