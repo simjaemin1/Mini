@@ -60,6 +60,14 @@ function pickFresh(world, L, want) {
   }
   return null;
 }
+// ★[B-1 물리 상한 이후] 의뢰가 서려면 마을이 **실제로 갚을 수 있어야** 한다.
+//   종전 판은 잉여가 1 만 있어도 보상을 깎아서 걸었지만, 이제는 못 깎는다(전액 아니면 미게시).
+//   그래서 "의뢰가 선다"를 검사하려는 절은 **갚을 수 있는 마을**을 만들어야 한다 — 그게 이 헬퍼다.
+//   (상황을 지어내는 게 아니라, 검사 대상이 아닌 전제를 고정하는 것이다. 전제는 각 절이 assert 한다.)
+function makePayable(v, exceptItem, deliverable, amount) {
+  for (const r of deliverable) { if (r !== exceptItem) { v.storage[r] = (amount || 100000); return r; } }
+  return null;
+}
 const vidOf = (v, i) => i;
 const mkLedger = (world, cfg) => {
   const L = Events.createLedger({ econV2, vidOf, depositMap: Villages.playerVillageDepositMap(), cfg });
@@ -226,6 +234,8 @@ let REQ_CTX = null;
   ok(!!tgt, '④a 전제: 낼 수 있는 품목이 부족하고 갚을 잉여가 있는 마을이 있다', tgt ? `${tgt.v.name}/${tgt.r}` : '없음');
   if (tgt) {
     const { v, r, vid } = tgt;
+    const _pay = makePayable(v, r, deliverable);
+    ok(!!_pay, '④a1 전제: 이 마을이 **갚을 수 있는** 잉여를 갖췄다(물리 상한 이후 필수 전제)', `${_pay}`);
     const thr = (+v._consEMA[r]) * L.cfg.SHORT_DAYS;
     ok(+v.storage[r] > thr, '④a2 전제: 고갈 전 재고 > 문턱(래치 꺼짐 보장)', `${(+v.storage[r]).toFixed(2)} > ${thr.toFixed(2)}`);
     v.storage[r] = thr * 0.2;
@@ -269,6 +279,7 @@ let REQ_CTX = null;
   if (!tgt) { ok(false, '⑦a 전제: 경쟁 검사용 의뢰를 세울 마을이 없다'); }
   else {
     const { v, r, vid } = tgt;
+    makePayable(v, r, DEP);
     v.storage[r] = (+v._consEMA[r]) * L.cfg.SHORT_DAYS * 0.1;
     L.scanDay(world, world.day + 1, {});
     const req = L.board(vid).find((q) => q.item === r);
@@ -323,6 +334,7 @@ if (REQ_CTX) {
   const tgt = pickFresh(world, L0, { deliverable: DEP, needSurplus: true, surplusMin: 5 });
   ok(!!tgt, '⑬a 전제: 표적 (마을,품목) 확보', tgt ? `${tgt.v.name}/${tgt.r}` : '없음');
   if (tgt) {
+    makePayable(tgt.v, tgt.r, DEP);
     tgt.v.storage[tgt.r] = tgt.thr * 0.2;
     const L = mkLedger(world);                        // ★부족이 **이미 진행 중**인 상태에서 새 장부
     const evs = L.scanDay(world, world.day + 1, {}).filter((e) => e.item === tgt.r && e.type === 'STOCK_SHORTAGE');
@@ -413,6 +425,103 @@ if (REQ_CTX) {
   const ring = L.ringOf(0);
   ok(ring.length > 0, '⑫a 전제: 링버퍼에 사건이 쌓였다', `${ring.length}건`);
   ok(ring.every((e) => e.day >= day - 10), '⑫ 링버퍼는 KEEP_DAYS 밖을 버린다', `최고(古) ${ring[0].day} · 오늘 ${day}`);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ⑭⑮⑯⑰ B-1 보상 **물리 상한** [재민 확정 2026-08-25]
+//   규약: 게시된 보상은 **반드시 전액 지급 가능**해야 한다. 보상을 깎지 않고,
+//   못 갚으면 ⓐ다른 잉여 → ⓑ요청 qty 축소 → ⓒ미게시 로 흡수한다.
+//   ★세 갈래를 각각 **실제로 밟는** 상황을 만들어 잰다(자명 통과 방지).
+// ─────────────────────────────────────────────────────────────────────────────
+{
+  const DEPMAP = Villages.playerVillageDepositMap();
+  const DELIV = new Set(Object.values(DEPMAP));
+  // 마을 하나를 완전히 통제한다: 낼 수 있는 품목만 남기고 잉여를 내가 정한다.
+  function stage(seed, opts) {
+    const world = makeWorld(120, seed);
+    const v = world.villages[0];
+    // 부족시킬 품목 W — 낼 수 있고 소비가 있는 것
+    let W = null;
+    for (const [r, e] of Object.entries(v._consEMA || {})) if (DELIV.has(r) && e > 0.3) { W = r; break; }
+    if (!W) return null;
+    // 보상 후보를 내가 고른 하나(R)만 남긴다 — 나머지 낼 수 있는 품목 재고를 0 으로
+    let R = null;
+    for (const r of DELIV) if (r !== W) { R = r; break; }
+    for (const r of DELIV) if (r !== W) v.storage[r] = 0;
+    v.storage[R] = opts.rewStock;
+    v.storage[W] = (+v._consEMA[W]) * 5 * 0.1;          // 문턱 아래 = 부족
+    const L = Events.createLedger({ econV2, vidOf, depositMap: DEPMAP, cfg: opts.cfg });
+    L.prime(world);
+    L.scanDay(world, world.day + 1, {});
+    return { world, v, W, R, L, req: L.board(0).find((q) => q.item === W) || null };
+  }
+
+  // ⓐ 잉여가 넉넉 → 요청 그대로, 전액 지급 가능
+  const A = stage(9, { rewStock: 100000 });
+  ok(!!A && !!A.req, '⑭a 전제: 잉여가 넉넉한 마을에 의뢰가 섰다', A && A.req ? `${A.req.item} ${A.req.qty} → ${A.req.rewItem} ${A.req.rewQty}` : 'X');
+  if (A && A.req) {
+    ok(A.req.fit === 'full', '⑭ ⓐ 갈래: 요청량 그대로 게시(축소 없음)', `fit=${A.req.fit}`);
+    ok(A.req.rewQty <= Math.floor((+A.v.storage[A.req.rewItem]) * A.L.cfg.REW_STOCK_FRAC),
+      '⑭b 보상 ≤ 재고 × REW_STOCK_FRAC (물리 상한)', `${A.req.rewQty} ≤ ${Math.floor((+A.v.storage[A.req.rewItem]) * A.L.cfg.REW_STOCK_FRAC)}`);
+  }
+
+  // ⓑ 잉여가 빠듯 → **요청이 줄어야** 한다(보상은 안 깎는다)
+  //   재고를 조금씩 낮춰 가며 축소 갈래를 실제로 밟는 지점을 찾는다.
+  //   ⚠두 번 헛짚었다. 적어 둔다 — 축소 갈래는 아무렇게나 안 밟힌다:
+  //     ① `qty` 가 1 이면 **축소 자체가 성립하지 않는다**(최소가 1이라 full 아니면 미게시).
+  //        ⇒ REQ_DAYS 를 키워 요청량을 크게 만든다.
+  //     ② 보상 **재고를 낮추면 그 품목 시세가 같이 오른다** — 지불 가능량과 필요 수량이
+  //        나란히 줄어 창을 그냥 지나친다. 재고 스윕으로는 못 잡는다.
+  //        ⇒ 재고(=가격)를 고정한 채 **물리 상한 비율만** 조인다. 그게 이 갈래의 진짜 손잡이다.
+  const SHRINK_CFG = { REQ_DAYS: 12 };
+  let Bst = null;
+  for (const fr of [0.30, 0.22, 0.16, 0.11, 0.07, 0.05, 0.03, 0.02, 0.012, 0.006]) {
+    const t = stage(9, { rewStock: 100000, cfg: { ...SHRINK_CFG, REW_STOCK_FRAC: fr } });
+    if (t && t.req && t.req.fit === 'shrunk') { Bst = t; Bst.frac = fr; break; }
+  }
+  ok(!!Bst, '⑮a 전제: **축소 갈래를 실제로 밟는** 설정을 찾았다(이 갈래가 죽어 있으면 검사가 무의미)',
+    Bst ? `FRAC=${Bst.frac} · ${Bst.req.item} ${Bst.req.qty} → ${Bst.req.rewItem} ${Bst.req.rewQty}` : '못 찾음');
+  if (Bst) {
+    const full = stage(9, { rewStock: 100000, cfg: { ...SHRINK_CFG, REW_STOCK_FRAC: 0.9 } });
+    ok(Bst.req.qty < full.req.qty, '⑮ ⓑ 갈래: 못 갚으면 **요청 qty 를 줄인다**(보상을 깎지 않는다)',
+      `축소 ${Bst.req.qty} < 원래 ${full.req.qty}`);
+    ok(Bst.req.rewQty <= Math.floor((+Bst.v.storage[Bst.req.rewItem]) * Bst.L.cfg.REW_STOCK_FRAC),
+      '⑮b 축소본도 물리 상한 안', `${Bst.req.rewQty} ≤ ${Math.floor((+Bst.v.storage[Bst.req.rewItem]) * Bst.L.cfg.REW_STOCK_FRAC)}`);
+  }
+
+  // ⓒ 낼 수 있는 잉여가 아예 없음 → **미게시**
+  const C2 = stage(9, { rewStock: 0 });
+  ok(!!C2, '⑯a 전제: 마을 상태를 구성했다');
+  if (C2) {
+    ok(!C2.req, '⑯ ⓒ 갈래: 갚을 잉여가 없으면 **의뢰를 걸지 않는다**(못 갚을 약속 금지)');
+    ok(C2.L.stats.reqNoPay > 0, '⑯b 그 갈래를 실제로 밟았다(reqNoPay 계수)', `reqNoPay=${C2.L.stats.reqNoPay}`);
+  }
+
+  // ⑰ 게시된 의뢰는 **납품 시 전액** 지급된다 + 못 갚게 되면 물건을 안 받는다
+  if (A && A.req) {
+    const { v, L, W } = A, req = A.req;
+    const it = (L.deliverable.items.get(W) || [])[0];
+    const inv = { [it]: req.qty + 10 };
+    const rewBefore = +v.storage[req.rewItem];
+    const r = Events.deliverToVillage({ ledger: L, vil: { econ: v }, vid: 0, inventory: inv, item: W, want: req.qty, deposit: Villages.playerVillageDeposit });
+    ok(r.ok && r.rew === req.rewQty, '⑰ 전량 납품 → **게시된 보상 전액** 지급(깎이지 않는다)', `${r.rew} / 게시 ${req.rewQty}`);
+    ok(near(+v.storage[req.rewItem], rewBefore - req.rewQty, 0.01), '⑰b 마을 잉여가 정확히 그만큼 줄었다');
+  }
+
+  // ⑱ 게시 뒤 마을이 갚을 수 없게 되면 — **물건을 받지 않는다**(받아 놓고 못 갚으면 사기다)
+  const D2 = stage(9, { rewStock: 100000 });
+  if (D2 && D2.req) {
+    const { v, L, W, req } = D2;
+    const it = (L.deliverable.items.get(W) || [])[0];
+    const inv = { [it]: req.qty + 10 }, before = inv[it];
+    v.storage[req.rewItem] = Math.max(0, req.rewQty - 1);      // 딱 한 개 모자라게
+    ok(Math.floor(+v.storage[req.rewItem]) < req.rewQty, '⑱a 전제: 마을이 게시액을 못 갚는 상태가 됐다',
+      `재고 ${Math.floor(+v.storage[req.rewItem])} < 게시 ${req.rewQty}`);
+    const r2 = Events.deliverToVillage({ ledger: L, vil: { econ: v }, vid: 0, inventory: inv, item: W, want: req.qty, deposit: Villages.playerVillageDeposit });
+    ok(!r2.ok, '⑱ 못 갚으면 납품을 거절한다', r2.err || '받아버림');
+    ok(inv[it] === before, '⑱b 거절 시 플레이어 물건은 그대로다(물건이 사라지지 않는다)', `${it} ${inv[it]}`);
+    ok(L.board(0).find((q) => q.item === W).remain === req.qty, '⑱c 거절은 잔여를 갉아먹지 않는다(원자적 되돌림)');
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

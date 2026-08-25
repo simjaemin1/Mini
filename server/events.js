@@ -80,12 +80,15 @@ const CFG = {
   MAX_DAY: _num('EV_MAX_DAY', 0),            // 마을당 하루 사건 상한(0=무제한). 잘린 수는 stats.capped 로 보고
   REQ_DAYS: _num('EV_REQ_DAYS', 1),          // 의뢰 수량 = 소비EMA × 이 일수
   REQ_PREMIUM: _num('EV_REQ_PREMIUM', 0.20), // 보상 프리미엄 +20%
-  REQ_MAX_PC: _num('EV_REQ_MAX_PC', 0.25),   // 보상은 그 품목 마을 재고의 이 비율을 넘지 않는다
+  // ★★[재민 확정 2026-08-25 · B-1] **물리 상한**. 비율 캡으로 값을 깎지 않는다 —
+  //   보상은 마을 **실재고**에서만 나오고, 한 의뢰가 그 품목 재고의 이 비율을 넘겨 지불할 수 없다.
+  //   "마을은 없는 걸 못 준다"가 유일한 제한이고, 그 제한은 **보상이 아니라 의뢰 크기**로 흡수한다.
+  REW_STOCK_FRAC: _num('EV_REW_STOCK_FRAC', 0.25),
+  REQ_MAX_PC: _num('EV_REQ_MAX_PC', 0.25),   // (구명 — REW_STOCK_FRAC 로 대체. 호환용으로만 남긴다)
   REQ_COOLDOWN: _num('EV_REQ_COOLDOWN', 3),  // 다 채워진 의뢰를 다시 걸기까지 쉬는 일수
-  // ★보상 수량 상한(0=무제한). 보상은 **시세 등가**라 극단 시세에선 수량이 크게 나온다 —
-  //   실클라 E2E 실측: 나무가 바닥나고 가죽이 넘치는 마을에서 `나무 1 → 가죽 64`.
-  //   경제적으로는 옳다(그게 그 마을에서 나무의 값이다). 다만 게임적 남용 여지가 있어
-  //   **손잡이만 내고 기본은 끈다** — 조이는 것은 밸런스 판단이라 회부 대상이다.
+  // ★비율 상한(0=무제한, **기본 OFF 유지가 재민 확정**). 극단 시세는 극단 부족의 신호고,
+  //   그 보상이 플레이어를 걷게 만드는 게 의뢰 생성기의 존재 이유다 — 보이지 않는 손으로 깎지 않는다.
+  //   켜면 **게시된 보상이 등가보다 낮아진다**(그게 이 손잡이의 뜻이다). 기본값은 끔.
   REQ_REW_CAP: _num('EV_REQ_REW_CAP', 0),
   BRIEF_N: _num('EV_BRIEF_N', 3),            // 촌장이 한 번에 전하는 건수
 };
@@ -157,7 +160,8 @@ function createLedger(opts) {
     return d;
   };
 
-  const stats = { days: 0, emitted: 0, capped: 0, byType: {}, scanMs: 0, reqOpened: 0, reqClosed: 0, reqFilled: 0 };
+  const stats = { days: 0, emitted: 0, capped: 0, byType: {}, scanMs: 0, reqOpened: 0, reqClosed: 0, reqFilled: 0,
+    reqShrunk: 0, reqNoPay: 0, reqRevalidated: 0, reqRefused: 0 };
   for (const t of TYPES) stats.byType[t] = 0;
 
   let lastSeason = null;
@@ -341,6 +345,8 @@ function createLedger(opts) {
           if (onRequest) { try { onRequest(req, 'close'); } catch (e) {} }
         }
       }
+      // ①b 약속 재검증 — 갚을 수 없게 된 의뢰는 조건을 바꾸지 않고 거두거나 받은 만큼으로 닫는다
+      revalidate(s, v, day);
       // ② 게시 — 부족이 서 있고, 플레이어가 낼 수 있고, 쉬는 기간이 지난 품목
       let prices = null;
       for (const [item, d] of s.det) {
@@ -357,34 +363,86 @@ function createLedger(opts) {
     });
   }
 
+  // ★★[재민 확정 2026-08-25 · B-1] **게시된 보상은 반드시 전액 지급 가능해야 한다.**
+  //   종전 판은 `rewQty = min(등가, 재고×비율)` 이었다 — 그건 **조용히 덜 주는 것**이다.
+  //   게시판에 걸린 값과 실제 값이 갈리면 그게 보이지 않는 손이다(일관성 원칙 위반).
+  //   ⇒ 보상은 **깎지 않는다**. 못 갚으면 **구하는 양을 줄인다**. 그것도 안 되면 **안 건다**.
+  //     ⓐ 지금 요청량을 전액 갚을 수 있는 잉여 품목이 있으면 그것으로
+  //     ⓑ 아무도 전액을 못 갚으면 갚을 수 있는 선까지 **요청 qty 축소**
+  //     ⓒ 최소 단위(1)도 못 갚으면 **미게시** — 못 갚을 의뢰는 의뢰가 아니라 거짓말이다
   function makeRequest(s, v, item, prices, day) {
     const ema = +((v._consEMA || {})[item]) || 0;
-    const qty = Math.max(1, Math.round(ema * cfg.REQ_DAYS));
-    // 보상 품목 — 잉여를 준다: ①지금 글럿인 것 ②없으면 최다 재고. 둘 다 **플레이어가 받을 수 있는** 것만.
-    let rewItem = null, rewStock = 0;
+    const wantQty = Math.max(1, Math.round(ema * cfg.REQ_DAYS));
+    const pWant = +prices[item] || 0;
+    if (!(pWant > 0)) return null;
     const sto = v.storage || {};
-    for (const [r, d] of s.det) {
-      if (!d.glut || r === item || !DEL.toEcon.has(r)) continue;
-      const q = +sto[r] || 0;
-      if (q > rewStock) { rewStock = q; rewItem = r; }
+
+    // 후보 잉여 — 플레이어가 **받을 수 있고** 재고·시세가 있는 품목만.
+    //   우선순위: ①글럿인 것(정말 남아도는 것부터) ②지불 가능량 많은 순.
+    const cands = [];
+    for (const r of Object.keys(sto)) {
+      if (r === item || r.charCodeAt(0) === 95 || !DEL.toEcon.has(r)) continue;
+      const stock = +sto[r] || 0, pRew = +prices[r] || 0;
+      if (!(stock > 0) || !(pRew > 0)) continue;
+      const d = s.det.get(r);
+      cands.push({ r, stock, pRew, glut: !!(d && d.glut), payable: Math.floor(stock * cfg.REW_STOCK_FRAC) });
     }
-    if (!rewItem) {
-      for (const r of Object.keys(sto)) {
-        if (r === item || r.charCodeAt(0) === 95 || !DEL.toEcon.has(r)) continue;
-        const q = +sto[r] || 0;
-        if (q > rewStock) { rewStock = q; rewItem = r; }
+    if (!cands.length) { stats.reqNoPay++; return null; }
+    cands.sort((a, b) => ((b.glut ? 1 : 0) - (a.glut ? 1 : 0)) || (b.payable - a.payable));
+
+    // 시세 등가 + 프리미엄 — **이 값은 깎지 않는다**(REQ_REW_CAP 을 명시적으로 켠 경우 제외)
+    const rewFor = (q, c) => {
+      let rq = Math.max(1, Math.round(q * (pWant / c.pRew) * (1 + cfg.REQ_PREMIUM)));
+      if (cfg.REQ_REW_CAP > 0) rq = Math.min(rq, cfg.REQ_REW_CAP);
+      return rq;
+    };
+
+    // ⓐ 요청량 그대로 전액 지급 가능한 잉여
+    for (const c of cands) {
+      if (c.payable <= 0) continue;
+      const rq = rewFor(wantQty, c);
+      if (rq <= c.payable) return { vid: s.vid, item, qty: wantQty, filled: 0, rewItem: c.r, rewQty: rq, day, fit: 'full' };
+    }
+    // ⓑ 요청 축소 — 갚을 수 있는 만큼만 구한다. 가장 많이 구할 수 있는 후보를 고른다.
+    let best = null;
+    for (const c of cands) {
+      if (c.payable <= 0) continue;
+      const maxQty = Math.floor((c.payable * c.pRew) / (pWant * (1 + cfg.REQ_PREMIUM)));
+      if (maxQty < 1) continue;
+      const q = Math.min(wantQty, maxQty);
+      const rq = rewFor(q, c);
+      if (rq > c.payable) continue;
+      if (!best || q > best.qty) best = { vid: s.vid, item, qty: q, filled: 0, rewItem: c.r, rewQty: rq, day, fit: 'shrunk' };
+    }
+    if (best) { stats.reqShrunk++; return best; }
+    // ⓒ 못 갚으면 안 건다
+    stats.reqNoPay++;
+    return null;
+  }
+
+  // ★게시된 약속이 아직 유효한가 — 하루 경계마다 다시 본다.
+  //   마을 재고는 계속 움직인다(NPC 가 먹고 캐러밴이 실어 간다). 어제 갚을 수 있던 것을
+  //   오늘 못 갚을 수 있고, 그 상태로 두면 **플레이어가 낸 뒤에 거절당한다**.
+  function revalidate(s, v, day) {
+    const sto = v.storage || {};
+    for (const [item, req] of [...s.reqs]) {
+      const remainQty = req.qty - req.filled;
+      if (remainQty <= 0) continue;
+      const remainRew = Math.round(req.rewQty * (remainQty / req.qty));
+      if (Math.floor(+sto[req.rewItem] || 0) >= remainRew) continue;   // 아직 갚을 수 있다
+      stats.reqRevalidated++;
+      if (req.filled > 0) {
+        // 이미 일부를 받았다 — 조건을 바꾸지 않는다. 받은 만큼으로 닫는다("그만하면 됐네").
+        req.qty = req.filled;
+        continue;
       }
+      // 아무도 안 냈다 — 거둔다. 다음 게시 때 지금 재고로 다시 계산된다(ⓐⓑⓒ).
+      s.reqs.delete(item);
+      stats.reqClosed++;
+      const d = s.det.get(item);
+      if (d) d.reqClosedDay = -Infinity;   // 갚을 게 생기면 바로 다시 걸 수 있게(쉬는 기간 없음)
+      if (onRequest) { try { onRequest(req, 'close'); } catch (e) {} }
     }
-    if (!rewItem || rewStock <= 0) return null;        // 낼 게 없는 마을은 의뢰를 걸지 않는다
-    const pWant = +prices[item] || 0, pRew = +prices[rewItem] || 0;
-    if (!(pWant > 0) || !(pRew > 0)) return null;
-    // 시세 등가 + 프리미엄. 마을이 실제로 가진 것을 넘겨 약속하지 않는다.
-    let rewQty = Math.round(qty * (pWant / pRew) * (1 + cfg.REQ_PREMIUM));
-    const cap = Math.floor(rewStock * cfg.REQ_MAX_PC);
-    rewQty = Math.max(1, Math.min(rewQty, Math.max(1, cap)));
-    if (cfg.REQ_REW_CAP > 0) rewQty = Math.min(rewQty, cfg.REQ_REW_CAP);
-    if (rewQty > rewStock) return null;
-    return { vid: s.vid, item, qty, filled: 0, rewItem, rewQty, day };
   }
 
   // 납품 — **원자적**. 남은 몫만 받고 초과분은 거절한다(동시 납품 경쟁 조건).
@@ -512,6 +570,17 @@ function deliverToVillage(a) {
   const c = ledger.claim(vid, item, want);
   if (!c.ok) return c;
 
+  // ①b ★**갚을 수 있는지 먼저 본다.** 물건을 받아 놓고 못 갚으면 그게 사기다.
+  //   (게시 시점엔 갚을 수 있었어도 그 사이 마을 재고가 줄 수 있다 — 하루 경계 재검증과 이 줄이 짝이다.)
+  const _rewRes = c.rewItem, _rewItem0 = D.toEcon.get(_rewRes);
+  if (c.rew > 0) {
+    const have = Math.floor(+((v.storage || {})[_rewRes] || 0));
+    if (!_rewItem0 || have < c.rew) {
+      ledger.unclaim(vid, item, c.take);
+      ledger.stats.reqRefused++;
+      return { ok: false, err: '마을이 지금 갚을 것이 없다 — 촌장이 면목없어 한다' };
+    }
+  }
   // ② 실물 이동 — 정본 함수. 내가 가진 아이템에서 c.take 개만큼 골라 낸다.
   const give = {};
   let left = c.take;
@@ -523,15 +592,14 @@ function deliverToVillage(a) {
   const dep = deposit(vil, inventory, give);
   if (!dep || !dep.ok) { ledger.unclaim(vid, item, c.take); return { ok: false, err: (dep && dep.err) || '곳간이 받지 않았다' }; }
 
-  // ③ 보상 — 마을 잉여를 실제로 덜어 준다(물물. `_cash` 는 쓰지 않는다 — 재민 세금 캐논)
-  const rewRes = c.rewItem, rewPlayerItem = D.toEcon.get(rewRes);
+  // ③ 보상 — 마을 잉여를 실제로 덜어 준다(물물. `_cash` 는 쓰지 않는다 — 재민 세금 캐논).
+  //   ★**전액 아니면 0**. 위 ①b 가 이미 보장하므로 여기서 깎이는 일은 없다.
+  const rewRes = _rewRes, rewPlayerItem = _rewItem0;
   let rewPaid = 0;
   if (rewPlayerItem && c.rew > 0) {
-    rewPaid = Math.min(c.rew, Math.floor(+((v.storage || {})[rewRes] || 0)));
-    if (rewPaid > 0) {
-      v.storage[rewRes] = +(((v.storage[rewRes] || 0) - rewPaid)).toFixed(3);
-      inventory[rewPlayerItem] = (inventory[rewPlayerItem] || 0) + rewPaid;
-    }
+    rewPaid = c.rew;
+    v.storage[rewRes] = +(((v.storage[rewRes] || 0) - rewPaid)).toFixed(3);
+    inventory[rewPlayerItem] = (inventory[rewPlayerItem] || 0) + rewPaid;
   }
   return { ok: true, take: c.take, refused: c.refused, taken: dep.taken, moved: dep.moved,
     rew: rewPaid, rewRes, rewItem: rewPlayerItem, done: c.done, req: c.req };

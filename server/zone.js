@@ -2434,6 +2434,10 @@ wss.on('connection', async (ws, req) => {
   //   (핸드오프 경로에서는 둘 다 기본값 — 핸드오프는 이미 신원이 증명된 이동이다.)
   let _persistentIdentity = false;   // 이 신원이 영속인가 — `canPersist`/savePlayer 가 이걸 본다
   let _promoted = false;             // 이번 접속에서 게스트 → 등록 계정 승계가 일어났나
+  // ★★[2026-08-25 재민 확정 · 회부 B-6] **살아 있는 몸 인수인계.**
+  //   같은 신원으로 새 소켓이 붙었는데 **옛 세션이 아직 이 존의 메모리에 서 있으면**,
+  //   그 몸이 진실이다 — central 행이 아니라. 아래 중복 차단 루프가 여기에 담는다.
+  let _takeover = null;
 
   if (handoffToken && pendingHandoffs.has(handoffToken)) {
     const pending = pendingHandoffs.get(handoffToken);
@@ -2675,10 +2679,21 @@ wss.on('connection', async (ws, req) => {
     for (const [pid, p] of players) {
       if (p.playerId === playerId && p.ws !== ws) {
         console.log(`[${ZONE_ID}] 동일 zone 중복 차단: ${name}`);
+        // ★★[2026-08-25 재민 확정 · B-6] **그 몸을 물려받는다.**
+        //   왜: `savePlayer` 는 접속·종료·핸드오프·행동 때만 돌고 **주기 저장이 없다**.
+        //   그래서 걷기만 한 몇 초는 central 에 없다. 그런데 클라의 `ensurePrimaryConnection` 은
+        //   같은 틱에 close→connect 하므로, 새 소켓의 central 읽기가 **옛 소켓의 close 플러시보다 먼저**
+        //   도착한다. 그러면 새 세션은 낡은 좌표로 태어나고 그 사이 걸은 거리는 사라진다.
+        //   ⇒ 옛 세션이 **아직 메모리에 서 있다면 그게 최신이다.** 저장본을 볼 이유가 없다.
+        //   (일관성 원칙: 몸은 순간이동하지도 사라지지도 않는다. 소켓이 바뀔 뿐이다.)
+        _takeover = p;
         send(p.ws, { type: 'kicked', reason: 'duplicate_login' });
         const wsToClose = p.ws;
         players.delete(pid);
         broadcast({ type: 'player_left', pid });
+        // ★옛 소켓의 close 핸들러가 **낡은 좌표로 덮어쓰지 못하게** 표식을 남긴다
+        //   (close 는 비동기라 이 새 세션이 저장한 뒤에 도착할 수 있다).
+        p._supersededBy = ws;
         setTimeout(() => { try { wsToClose.close(); } catch (e) {} }, 300);
         break;
       }
@@ -2742,6 +2757,29 @@ wss.on('connection', async (ws, req) => {
     _arrivedAt: Date.now(), // Phase 5-K: 핸드오프 직후 재핸드오프 쿨다운 기준
 
   };
+  // ★★[2026-08-25 재민 확정 · B-6] 살아 있던 몸을 그대로 이어받는다.
+  //   **몸의 상태만** 가져온다 — 신원·사회 정보(playerId·tribe·home)는 central 이 정본이다.
+  //   여기서 가져오지 않으면 그 값들은 "마지막 저장" 시점으로 되돌아간다.
+  if (_takeover) {
+    player.x = _takeover.x; player.y = _takeover.y;
+    player.floor = _takeover.floor || 0;
+    player.inventory = _takeover.inventory || player.inventory;
+    player.toolItems = _takeover.toolItems || player.toolItems;
+    player.equipped = _takeover.equipped !== undefined ? _takeover.equipped : player.equipped;
+    player.hotkey1 = _takeover.hotkey1 !== undefined ? _takeover.hotkey1 : player.hotkey1;
+    player.equipment = _takeover.equipment || player.equipment;
+    player.equipSlots = _takeover.equipSlots || player.equipSlots;
+    player.craftSkill = _takeover.craftSkill || player.craftSkill;
+    player.oreLedger = _takeover.oreLedger || player.oreLedger;
+    player.oreCarry = _takeover.oreCarry !== undefined ? _takeover.oreCarry : player.oreCarry;
+    if (typeof _takeover.hp === 'number') player.hp = _takeover.hp;
+    if (typeof _takeover.hunger === 'number') player.hunger = _takeover.hunger;
+    if (typeof _takeover.thirst === 'number') player.thirst = _takeover.thirst;
+    if (typeof _takeover.vp === 'number') player.vp = _takeover.vp;
+    if (_takeover.isDown) { player.isDown = true; player.downedAt = _takeover.downedAt; }
+    sx = player.x; sy = player.y;   // 아래 저장·로그·welcome 이 같은 값을 봐야 한다
+    console.log(`[${ZONE_ID}] ↻ 몸 승계: ${name} (${playerId}) @ (${sx.toFixed(0)}, ${sy.toFixed(0)}) — 저장본 대신 살아 있던 몸`);
+  }
   players.set(pid, player);
 
   // 활성 청크 즉시 갱신 — 이 player 주변 청크의 시드 자원 spawn → welcome.resources에 포함됨
@@ -3303,6 +3341,13 @@ function attachPlayerHandlers(ws, player) {
   });
   ws.on('close', () => {
     metrics.ws_closes++;
+    // ★★[2026-08-25 · B-6] 이 세션이 **새 세션에 밀려난 것**이면 저장하지 않는다.
+    //   몸은 이미 새 세션이 물려받았고(위 `_takeover`), 여기서 또 쓰면 **낡은 좌표가 나중에 도착해**
+    //   방금 이어받은 자리를 덮어쓴다(fire-and-forget 이라 순서 보장이 없다).
+    if (player._supersededBy) {
+      players.delete(player.pid);
+      return;   // player_left 는 승계 시점에 이미 방송했다
+    }
     savePlayer(player, { last_zone: ZONE_ID, last_x: player.x, last_y: player.y });
     players.delete(player.pid);
     console.log(`[${ZONE_ID}] - ${player.name} (${player.pid})  total=${players.size}`);
