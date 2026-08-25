@@ -1521,12 +1521,19 @@ const SIM_JOB_EMOJI = {
         const bx2 = new Float32Array(N * N), by2 = new Float32Array(N * N);
         for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
           const p2 = j * N + i; if (wet[p2] !== 1) continue;
+          // ★전단선을 건너 평균하지 마라. 맞부딪치는 두 강(각차 179°)에서 단위벡터 둘을 더하면
+          //   합이 0 근처가 되고, 그걸 원래 세기로 되돌리면 **방향이 난수**가 된다.
+          //   내 방향과 90° 넘게 어긋나는 이웃은 남의 강이다 — 빼고 평균한다.
+          const cL = Math.hypot(ax[p2], ay[p2]);
+          const cux = cL > 1e-6 ? ax[p2] / cL : 0, cuy = cL > 1e-6 ? ay[p2] / cL : 0;
           let sx = 0, sy = 0, n2 = 0;
           for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
             const jj = j + dj, ii = i + di; if (jj < 0 || ii < 0 || jj >= N || ii >= N) continue;
             const q = jj * N + ii; if (wet[q] !== 1) continue;
             const L2 = Math.hypot(ax[q], ay[q]); if (L2 < 1e-6) continue;
-            sx += ax[q] / L2; sy += ay[q] / L2; n2++;
+            const qux = ax[q] / L2, quy = ay[q] / L2;
+            if (!_t19.shearRaw && cL > 1e-6 && (qux * cux + quy * cuy) <= 0) continue;   // 남의 강
+            sx += qux; sy += quy; n2++;
           }
           const L3 = Math.hypot(sx, sy);
           const mag = Math.hypot(ax[p2], ay[p2]);
@@ -1544,11 +1551,22 @@ const SIM_JOB_EMOJI = {
         const p2 = j * N + i; if (wet[p2] !== 1) continue;
         let acc2 = 0, n2 = 0;
         // 이웃 n 에서 본 나의 위상 = Φ_n + 32·(n→나 방향의 흐름 성분)
+        // ★변의 방향은 **내 방향**으로 잰다(두 방향의 평균이 아니라). 맞부딪치는 자리에서
+        //   평균은 0 근처가 되고 그 방향은 난수라 Φ 에 잡음을 주입한다.
+        //   그리고 90° 넘게 어긋나는 이웃과는 **위상을 안 잇는다** — 남의 강이다.
+        const cL0 = Math.hypot(fdx[p2], fdy[p2]);
+        if (cL0 < 1e-6) continue;
+        const cux0 = fdx[p2] / cL0, cuy0 = fdy[p2] / cL0;
         for (const [di, dj] of _WF_NB) {
           const q = (j + dj) * N + (i + di); if (wet[q] !== 1) continue;
-          const ux = (fdx[p2] + fdx[q]) * 0.5, uy = (fdy[p2] + fdy[q]) * 0.5;
-          const L2 = Math.hypot(ux, uy); if (L2 < 1e-6) continue;
-          acc2 += phi[q] + 32 * (di * ux + dj * uy) / L2; n2++;
+          const qL = Math.hypot(fdx[q], fdy[q]); if (qL < 1e-6) continue;
+          if (_t19.shearRaw) {
+            const ux = (fdx[p2] + fdx[q]) * 0.5, uy = (fdy[p2] + fdy[q]) * 0.5;
+            const L2 = Math.hypot(ux, uy); if (L2 < 1e-6) continue;
+            acc2 += phi[q] + 32 * (di * ux + dj * uy) / L2; n2++; continue;
+          }
+          if ((fdx[q] * cux0 + fdy[q] * cuy0) / qL <= 0) continue;   // 남의 강
+          acc2 += phi[q] + 32 * (di * cux0 + dj * cuy0); n2++;
         }
         if (n2) phi[p2] = acc2 / n2;
       }
@@ -4115,7 +4133,9 @@ const SIM_JOB_EMOJI = {
                  ditherOff: false, dither: null, lakeSnap: null, dirLinear: false, phaseLegacy: false,
   //   ★[재민 2026-08-25] phaseRelax — Φ 완화 반복수(기본 36 · 0 이면 강 호장 그대로).
   //     dirRawCell — CPU 방향 평활을 끄고 셀 단위 방향(NEAREST)으로 되돌리는 대조군.
-                 phaseRelax: null, dirRawCell: false };
+  //     shearRaw — 전단선(맞부딪치는 두 강) 보호를 끄는 대조군. 켜면 90° 넘는 이웃까지
+  //     평균·연결한다 = 단위벡터가 상쇄돼 방향이 난수가 되던 옛 동작.
+                 phaseRelax: null, dirRawCell: false, shearRaw: false };
   // 시험 전용 — 띠 높이를 바꿔 "비용이 blit 횟수에 비례하나 픽셀 수에 비례하나"를 가른다.
   window.__gtStrip = (v) => { GT_STRIP = Math.max(4, v | 0); _groundTiles.clear(); needsRedraw = true; return GT_STRIP; };
   window.__gtFrac = (v) => { _gtFrac = !!v; needsRedraw = true; return _gtFrac; };
