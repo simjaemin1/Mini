@@ -72,9 +72,10 @@ require(path.join(ROOT,'server','zone.js'));`);
     console.log(`  삽질 ${r.dug} · 위반 ${r.bad}`);}
   await settle();
   const rows=[];
+  for(const clip of (process.env.CLIPS||'1').split(',').map(Number))
   for(const zoff of (process.env.ZOFFS||'500,0,32,64').split(',').map(Number)){
     for(const zsoft of (process.env.ZSOFTS||'0').split(',').map(Number)){
-      await pg.evaluate((a)=>{window.__mtFadeZOff(a[0]);window.__mtFadeZSoft(a[1]);},[zoff,zsoft]);
+      await pg.evaluate((a)=>{window.__mtFadeZOff(a[0]);window.__mtFadeZSoft(a[1]);window.__mtFadeClip(a[2]);},[zoff,zsoft,clip]);
       await sleep(3000);
       const d=await pg.evaluate(()=>window.__mtOccDbg);
       const r=await pg.evaluate(()=>{window.__mt3Rects(true);return 1;}); await sleep(900);
@@ -83,9 +84,9 @@ require(path.join(ROOT,'server','zone.js'));`);
         const f=q.filter(a=>a.z>fz), b=q.filter(a=>a.z<=fz);
         return {front:f.length, frontFaded:f.filter(a=>a.faded).length, back:b.length, backFaded:b.filter(a=>a.faded).length};});
       await pg.evaluate(()=>window.__mt3Rects(false));
-      await pg.screenshot({path:path.join(OUT,`Z_${zoff}_s${zsoft}.png`)});
-      rows.push({zoff,zsoft,n:d.n,fade:d.fade,...rc});
-      console.log(`  오프셋 ${String(zoff).padStart(3)} · 그라데이션 ${String(zsoft).padStart(2)} → 가림 ${d.n} · 알파 ${d.fade} · 앞 ${rc.front}(흐림 ${rc.frontFaded}) · 뒤 ${rc.back}(흐림 ${rc.backFaded})`);
+      await pg.screenshot({path:path.join(OUT,`Z_${zoff}_s${zsoft}_c${clip}.png`)});
+      rows.push({clip,zoff,zsoft,n:d.n,fade:d.fade,line:d.lineY,...rc});
+      console.log(`  가로줄 ${clip} · 오프셋 ${String(zoff).padStart(3)} · 줄 y=${d.lineY} → 가림 ${d.n} · 알파 ${d.fade} · 앞 ${rc.front}(흐림 ${rc.frontFaded}) · 뒤 ${rc.back}(흐림 ${rc.backFaded})`);
     }
   }
   // 성능 짝 — 옛 명세(500)와 채택값(32)을 번갈아 5회. 흐림 대상이 늘면 느려질 수 있다.

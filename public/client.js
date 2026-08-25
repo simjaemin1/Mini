@@ -3669,7 +3669,26 @@ const SIM_JOB_EMOJI = {
   //   셋은 그림이 거의 같았다(앞 띠 800/783/725, 뒤 띠 흐림 0장으로 동일). 경계가 캐릭터를
   //   반 가르지 않게 **발치보다 조금 위**를 고른다 — 스프라이트 키가 ~40px 이므로 32(2셀).
   let MT_FADE_ZOFF = 32;                     // 경계를 발치에서 위로 미는 양(화면 px = z)
-  let MT_FADE_ZSOFT = 0;                     // 경계 그라데이션 폭(z=px). 0 = 딱 끊김. ④에서 A/B 로 고른다
+  let MT_FADE_ZSOFT = 0;                     // 경계 그라데이션 폭(z=px). 0 = 딱 끊김
+  // ★★[재민 2026-08-26] *"화면을 기준으로 자르는 거니까 경계선이 가로줄로 나와야 하는 거 아냐?"*
+  //   맞는 지적이고, **z 문턱만으로는 안 나온다.** 흐림 판정이 **띠 단위**라서다:
+  //   띠 하나는 z 가 하나지만 그 띠가 **칠하는 화소**는 지면 행보다 최대 h·32(35m ⇒ 1120px)
+  //   위까지 퍼진다. 그래서 "z 로 자른 집합"의 화면 모양은 가로줄이 아니라 들쭉날쭉한 덩어리다.
+  //   ⇒ 진짜 가로줄을 얻으려면 **화면에서 잘라야** 한다: 흐림 겹을 합성할 때
+  //     플레이어 발치 행 **위는 α 0.34 · 아래는 α 1.0** 으로 두 번 나눠 그린다.
+  //     겹침 누적이 없는 그룹 알파 성질은 그대로다(같은 오프스크린을 두 번 그릴 뿐).
+  //   ★★[정정 2026-08-26] 재민이 옳았다 — 산은 z=0 평면에 앉아 있으니 화면과 평행한 평면으로
+  //     자르면 **z=0 과의 교선이 경계로 반드시 생기고**, 그건 화면에서 곧은 가로줄이다.
+  //     내가 "평면은 선으로 안 보인다"고 한 건 틀렸다(평면 자체와 **잘린 산의 경계**를 혼동했다).
+  //     실제로 가로줄이 안 나온 건 기하 탓이 아니라 **흐림이 띠 단위**라서다 — 띠 한 장은
+  //     통째로 흐리거나 통째로 안 흐린다.
+  //   ★진짜 경계식: 화면y = s − 32h · 깊이 = s + 32h ⇒ **화면y = const − 64h**.
+  //     h=0 에서 곧은 가로줄, 높이 1단위(32px)마다 64px 위로 굽는다.
+  //     아래 CLIP 은 그 식의 **h=0 항만** 맞는 반쪽이다(위쪽까지 수평으로 잘라 버린다).
+  //     그래서 기본은 **0(끔)**. 픽셀 단위 평면 절단은 재민 결정 후 별도로 붙인다.
+  let MT_FADE_CLIP = 0;                      // 1 = 화면 가로줄로 자른다 · 0 = 끔(기본)
+  let MT_FADE_YOFF = 6;                      // 가로줄을 발치에서 **아래로** 미는 화면 px(몸통을 안 가르게)
+  let _mtFadeLineY = null;                   // 이번 프레임의 가로줄 화면 y
   let _mtFadeZ = null;                       // 이번 프레임의 흐림 문턱(플레이어 z + 오프셋)
   const MT_OCC_A = 0.34, MT_FADE_MS = 220;   // 반투명 세기 · 켜고 끄는 시간(껌뻑임 방지)
   let _mtOcc = null, _mtOccN = 0, _mtFadedN = 0, _mtFadeAmt = 0, _mtToScr = null;   // 내 화면 좌표·z · 가린 장수 · 반투명 진행도
@@ -3796,10 +3815,26 @@ const SIM_JOB_EMOJI = {
   function _mtFlushFade(g) {
     if (!_mtFadeUsed || !_mtFadeCv) return;
     _mtFadeUsed = false;
+    const aFade = 1 - (1 - MT_OCC_A) * _mtFadeAmt;
     g.save();
     g.setTransform(1, 0, 0, 1, 0, 0);
-    g.globalAlpha = 1 - (1 - MT_OCC_A) * _mtFadeAmt;
-    g.drawImage(_mtFadeCv, 0, 0);
+    if (MT_FADE_CLIP && _mtFadeLineY != null) {
+      // ★화면 가로줄로 자른다 — 줄 **위**는 반투명(플레이어가 비친다), **아래**는 불투명.
+      //   같은 오프스크린을 두 번 그리므로 겹침 누적은 여전히 없다(그룹 알파 성질 유지).
+      const H = _mtFadeCv.height, W = _mtFadeCv.width;
+      const ly = Math.max(0, Math.min(H, Math.round(_mtFadeLineY)));
+      if (ly > 0) {                                   // 위 — 반투명
+        g.save(); g.beginPath(); g.rect(0, 0, W, ly); g.clip();
+        g.globalAlpha = aFade; g.drawImage(_mtFadeCv, 0, 0); g.restore();
+      }
+      if (ly < H) {                                   // 아래 — 불투명
+        g.save(); g.beginPath(); g.rect(0, ly, W, H - ly); g.clip();
+        g.globalAlpha = 1; g.drawImage(_mtFadeCv, 0, 0); g.restore();
+      }
+    } else {
+      g.globalAlpha = aFade;
+      g.drawImage(_mtFadeCv, 0, 0);
+    }
     g.restore();
   }
   let _mtFadeT = 0;
@@ -8035,6 +8070,9 @@ const SIM_JOB_EMOJI = {
     // ② 경계 오프셋 손잡이 — 발치(0)에서 위로 미는 화면 px. 후보를 그림 짝으로 고른다.
     window.__mtFadeZOff = (v) => { MT_FADE_ZOFF = +v; needsRedraw = true; return MT_FADE_ZOFF; };
     window.__mtFadeZSoft = (v) => { MT_FADE_ZSOFT = +v; needsRedraw = true; return MT_FADE_ZSOFT; };
+    // 화면 가로줄 손잡이 — 1=자른다(기본) · 0=옛 방식(띠 z 만). 아래로 미는 여유는 px.
+    window.__mtFadeClip = (v) => { MT_FADE_CLIP = v ? 1 : 0; needsRedraw = true; return MT_FADE_CLIP; };
+    window.__mtFadeYOff = (v) => { MT_FADE_YOFF = +v; needsRedraw = true; return MT_FADE_YOFF; };
     window.__mtClearDestroy = () => {
       const n2 = _mtDestroyed.size;
       // ★되돌릴 때도 **부술 때와 같은 무효화**를 돌려야 3D 띠가 다시 구워진다.
@@ -8393,12 +8431,15 @@ const SIM_JOB_EMOJI = {
       _mtOcc = { x: _os.x, y: _os.y - 14, z: (myAbsPredicted.x + myAbsPredicted.y) * 0.5 + MT_OCC_ZB };
       // ★흐림 문턱은 **편향 없이** 내 z 그대로 + 캐릭터 키 오프셋. 방아쇠(_mtOcc.z)와 일부러 다르다.
       _mtFadeZ = (myAbsPredicted.x + myAbsPredicted.y) * 0.5 + MT_FADE_ZOFF;
-    } else _mtFadeZ = null;
+      // 가로줄 = 내 **발치 화면 y** + 아래로 미는 여유(몸통을 안 가르게)
+      _mtFadeLineY = _os.y + MT_FADE_YOFF;
+    } else { _mtFadeZ = null; _mtFadeLineY = null; }
     // ★계측기는 판정을 **다시 유도하지 않는다** — `_mtDraw` 가 세는 수를 그대로 읽는다(사본 금지).
     _mtFadedN = 0;
     window.__mtOccDbg = { n: 0, faded: 0, front: 0, fade: +_mtFadeAmt.toFixed(2),
       pt: _mtOcc ? { x: Math.round(_mtOcc.x), y: Math.round(_mtOcc.y) } : null, z: _mtOcc ? Math.round(_mtOcc.z) : null,
-      fz: _mtFadeZ != null ? Math.round(_mtFadeZ) : null, zoff: MT_FADE_ZOFF, zsoft: MT_FADE_ZSOFT };
+      fz: _mtFadeZ != null ? Math.round(_mtFadeZ) : null, zoff: MT_FADE_ZOFF, zsoft: MT_FADE_ZSOFT,
+      clip: MT_FADE_CLIP, lineY: _mtFadeLineY != null ? Math.round(_mtFadeLineY) : null, yoff: MT_FADE_YOFF };
     _mtToScr = toScreen;
     _mtUpdateFade(renderables, _mtFadeDt());
 
