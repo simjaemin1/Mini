@@ -2498,6 +2498,8 @@ const SIM_JOB_EMOJI = {
   let MT3_CV0 = 128;                   // GL 캔버스 초깃값. 띠가 크면 128 배수로 자란다
   let MT3_HTOP = MT3_HMAX * 1.55;    // 실제 최대 높이 상한(수집 여유용). 실측 최대 48.8m
   let MT3_DUAL = 1;                    // ⑶ 마스크 이원화 — 0 이면 옛 판(파괴가 높이를 낮춘다)
+  let MT3_MERGE = 0;                   // ★④ 오버드로 시제품 — **속이 꽉 찬 청크**의 띠를 한 장으로 병합. 0=끔(기본)
+  let _mt3MergedN = 0, _mt3BandN = 0;  // 병합된 청크 수 / 만든 띠 수 (판정용)
   let MT3_SKIRT = 0;                   // ★치마 — 메시 **테두리** 변의 마루 높이가 이 값(m)을 넘으면 밑까지 벽을 세운다. 0=끔(기본)
   let _mt3SkirtQ = 0, _mt3SkirtAll = 0;// 실제 세운 쿼드 / 무조건 세웠을 때 (절감 보고용)
   let MT3_TREEP = 0.020;               // ③ 돌출목 — 셀당 확률(낮게 시작). 0 이면 끔
@@ -2913,6 +2915,10 @@ const SIM_JOB_EMOJI = {
   // 반례 손잡이 — 옛 AO(조각별 상수)로 되돌린다. 고친 게 정말 그거였는지 같은 판에서 보인다.
   window.__mt3aobox = (v) => { MT3_AOBOX = v ? 1 : 0; _mt3Chunk.clear(); _mt3Sig = ''; return MT3_AOBOX; };
   // 치마 A/B 손잡이 — 같은 자리에서 갈아 끼워야 '치마가 닫았다'가 증명된다
+  // ④ 병합 손잡이 — 기본 0(끔). 켜고 끈 **같은 자리 화소**가 판정이다.
+  window.__mt3merge = (v) => { MT3_MERGE = v ? 1 : 0; _mt3Chunk.clear(); _mt3Sig = '';
+    _mt3MergedN = 0; _mt3BandN = 0; return MT3_MERGE; };
+  window.__mt3mergeN = () => ({ merge: MT3_MERGE, mergedChunks: _mt3MergedN, bands: _mt3BandN });
   window.__mt3skirt = (v) => { MT3_SKIRT = +v; _mt3Chunk.clear(); _mt3Sig = '';
     _mt3SkirtQ = 0; _mt3SkirtAll = 0; return MT3_SKIRT; };
   window.__mt3skirtN = () => ({ skirt: MT3_SKIRT, quads: _mt3SkirtQ, blanket: _mt3SkirtAll,
@@ -2955,6 +2961,20 @@ const SIM_JOB_EMOJI = {
         if (F.isCut(i, j)) cuts.push([i, j]); else mesh.push([i, j]);
       }
       const byK = new Map(), cutK = new Map();
+      // ── ④ 띠 병합(시제품, 기본 끔) ──────────────────────────────────────
+      //   ★근거: 산은 **못 밟는다.** 개체가 띠 **사이**에 낄 수 있는 자리는 통로(cut)와
+      //     자락(비바위 메시 셀)뿐이다. 그 둘이 하나도 없는 청크는 **속이 꽉 찬 바위**라
+      //     전 띠를 한 장으로 묶어도 개체-띠 정렬 계약이 깨질 여지가 없다.
+      //   ★지시문보다 **좁게** 잡았다: '산괴 전체'가 아니라 '자락도 통로도 없는 청크'다.
+      //     자락 셀은 걸을 수 있어서 그 위에 선 사람이 병합 z 하나에 눌릴 수 있다.
+      //   ★기본은 0(끔) — 재민이 실기기 체감과 함께 정한다.
+      const mergeOK = MT3_MERGE && cuts.length === 0 && mesh.length > 0 &&
+                      mesh.every(([i, j]) => F.isRock(i, j));
+      if (mergeOK) {
+        // 한 장 안에서의 그리는 순서 = 띠 순서(i+j 오름차순). 깊이버퍼 없이 화가 순서를 유지한다.
+        byK.set(0, mesh.slice().sort((a, b) => (a[0] + a[1]) - (b[0] + b[1])));
+        _mt3MergedN++;
+      } else
       for (const c of mesh) { const k = c[0] + c[1]; let a = byK.get(k); if (!a) byK.set(k, a = []); a.push(c); }
       for (const c of cuts) { const k = c[0] + c[1]; let a = cutK.get(k); if (!a) cutK.set(k, a = []); a.push(c);
                               if (!byK.has(k)) byK.set(k, []); }
@@ -3074,7 +3094,11 @@ const SIM_JOB_EMOJI = {
           }
         }
         const refPool = cells.length ? cells : cutCells;
-        const ref = refPool.reduce((a, b) => (a[0] + a[1] <= b[0] + b[1] ? a : b));
+        //   ★병합 판은 앵커를 **가장 큰 k**로 잡는다. z 는 앵커에서 나오므로, 그래야 이 청크가
+        //     이웃 청크의 띠들 뒤로 눌리지 않는다(병합 전에는 띠마다 제 z 를 가졌다).
+        const ref = mergeOK
+          ? refPool.reduce((a, b) => (a[0] + a[1] >= b[0] + b[1] ? a : b))
+          : refPool.reduce((a, b) => (a[0] + a[1] <= b[0] + b[1] ? a : b));
         const wx = (F.i0 + ref[0]) * 32 + 16, wy = (F.j0 + ref[1]) * 32 + 16;
         const rp = w2i((F.i0 + ref[0]) * 32 + 16, (F.j0 + ref[1]) * 32 + 16);
         // ★알파 사본을 **안 뜬다**. 굽는 시점에 뜨면 띠마다 GPU 리드백 1회 +
@@ -3089,7 +3113,8 @@ const SIM_JOB_EMOJI = {
         }
         const pb = (bx1 >= bx0) ? [Math.max(0, bx0), Math.max(0, Math.min(bh - 1, by0)),
                                    Math.min(bw - 1, bx1), Math.min(bh - 1, by1)] : null;
-        segs.push({ img: cv, x: wx, y: wy, ox: rp.x - x0, oy: rp.y - y0, sc: 1, mt3: 1, colT, colB, pb });
+        _mt3BandN++;
+        segs.push({ img: cv, x: wx, y: wy, ox: rp.x - x0, oy: rp.y - y0, sc: 1, mt3: 1, colT, colB, pb, merged: mergeOK ? 1 : 0 });
       }
     }
     if (_mt3Chunk.size > 260) _mt3Chunk.clear();
