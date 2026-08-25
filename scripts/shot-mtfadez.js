@@ -88,7 +88,23 @@ require(path.join(ROOT,'server','zone.js'));`);
       console.log(`  오프셋 ${String(zoff).padStart(3)} · 그라데이션 ${String(zsoft).padStart(2)} → 가림 ${d.n} · 알파 ${d.fade} · 앞 ${rc.front}(흐림 ${rc.frontFaded}) · 뒤 ${rc.back}(흐림 ${rc.backFaded})`);
     }
   }
-  await pg.evaluate(()=>{window.__mtFadeZOff(0);window.__mtFadeZSoft(0);});
+  // 성능 짝 — 옛 명세(500)와 채택값(32)을 번갈아 5회. 흐림 대상이 늘면 느려질 수 있다.
+  if(process.env.PERF){
+    const MED=`(ms)=>new Promise(res=>{const a=[];let l=performance.now();const t0=l;
+      const st=()=>{const n=performance.now();a.push(n-l);l=n;
+        if(n-t0<ms)requestAnimationFrame(st);else{const s2=a.slice().sort((x,y)=>x-y);res(+s2[s2.length>>1].toFixed(2));}};requestAnimationFrame(st);})`;
+    const prof={500:[],32:[]};
+    for(let k=0;k<5;k++)for(const z of [500,32]){
+      await pg.evaluate(v=>window.__mtFadeZOff(v),z); await sleep(1500);
+      prof[z].push(await pg.evaluate('('+MED+')(2200)'));
+    }
+    const st2=(a)=>{const n=a.length,m=a.reduce((x,y)=>x+y,0)/n;
+      const sd=Math.sqrt(a.reduce((x,y)=>x+(y-m)**2,0)/Math.max(1,n-1));return {m,sd,se:sd/Math.sqrt(n),n};};
+    const A=st2(prof[500]),B=st2(prof[32]),dse=Math.hypot(A.se,B.se),diff=B.m-A.m;
+    console.log(`  성능 짝 — 옛(500) ${A.m.toFixed(2)}±${A.sd.toFixed(2)} (SE ${A.se.toFixed(2)}) · 새(32) ${B.m.toFixed(2)}±${B.sd.toFixed(2)}ms (SE ${B.se.toFixed(2)})`);
+    console.log(`            차 ${diff>=0?'+':''}${diff.toFixed(2)}ms · 2σ ${(2*dse).toFixed(2)} → ${Math.abs(diff)>2*dse?'유의':'잡음'}`);
+  }
+  await pg.evaluate(()=>{window.__mtFadeZOff(32);window.__mtFadeZSoft(0);});
   fs.writeFileSync(path.join(OUT,'rows.json'),JSON.stringify({scene:SCENE,site,rows},null,1));
   console.log('저장:',OUT);
   await br.close(); die(0);
