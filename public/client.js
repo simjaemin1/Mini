@@ -2305,6 +2305,25 @@ const SIM_JOB_EMOJI = {
     if (_mt3Rock0C.size > 60000) _mt3Rock0C.clear();
     _mt3Rock0C.set(k, r); return r;
   }
+  // ★★[실측 2026-08-25] 파괴와 **복원이 같은 무효화**를 쓰게 묶는다.
+  //   전에는 `__mtDestroy` 만 `_mt3RockC` 를 지우고 `_mt3Dirty` 를 채웠고,
+  //   `__mtClearDestroy` 는 `_mtSegCache`·`_mtChunk`·`_groundTiles` 만 비웠다.
+  //   3D 판의 구운 띠는 `_mt3Chunk` 에 남아 **되돌려도 산이 안 돌아왔다**
+  //   (e2e-mountain ⓓ: 상태는 완전 복원 — 마스크 0불일치·높이 |Δ|0.000m — 인데 그림은 그대로).
+  //   ⇒ 무효화를 한 함수로 뽑아 양쪽이 **같은 식**을 쓴다(사본 금지).
+  // 이 셀이 **메시에 드는가** — 굽는 쪽과 재는 쪽이 같은 식을 쓴다(사본 금지).
+  //   규약: 바위 ∪ 바위에 8-인접(자락 한 칸). 자락은 **일부러** 넣는다 — 테두리를 닫으려고.
+  function _mt3IsMesh(F, i, j) {
+    if (F.isRock(i, j)) return true;
+    for (let q = -1; q <= 1; q++) for (let r = -1; r <= 1; r++) if (F.isRock(i + r, j + q)) return true;
+    return false;
+  }
+  function _mt3InvalidateCell(zid, cx, cy) {
+    _mt3RockC.delete(cx * 1048576 + cy);
+    const gx0 = Math.floor(cx / MT3_CH), gy0 = Math.floor(cy / MT3_CH);
+    for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++)
+      _mt3Dirty.add(zid + '_' + (gx0 + a) + '_' + (gy0 + b));
+  }
   let _mt3Sig = '';
   // ★★[35m 판 줄무늬의 정체 — 계측으로 특정] 사면의 등고선식 띠는 거리장 계단이 아니었다.
   //   높이장을 3×3 으로 1·3·6회 블러해도 **그대로 남았다**(스윕 그림). 스펙트럼으로 재니
@@ -2928,9 +2947,7 @@ const SIM_JOB_EMOJI = {
       const mesh = [], cuts = [];
       for (let b = 0; b < MT3_CH; b++) for (let a = 0; a < MT3_CH; a++) {
         const i = P + a, j = P + b;
-        let m = F.isRock(i, j);
-        if (!m) for (let q = -1; q <= 1 && !m; q++) for (let r = -1; r <= 1; r++)
-          if (F.isRock(i + r, j + q)) { m = true; break; }
+        const m = _mt3IsMesh(F, i, j);
         // ★파낸 셀은 **안 그린다**. 낮춰 그리면 옆벽까지 끌려 내려가 도랑이 된다 —
         //   도려내면 이웃 셀의 표면이 제 높이로 서고, 그 사이로 바닥이 보인다(협곡).
         if (!m) continue;
@@ -7558,10 +7575,7 @@ const SIM_JOB_EMOJI = {
       for (const [lcx, lcy] of (cells || [])) {
         const wx = c.meta.worldOffsetX + lcx * 32, wy = (c.meta.worldOffsetY || 0) + lcy * 32;
         _mtDestroyed.add(primaryZoneId + '_' + Math.floor(wx / 32) + '_' + Math.floor(wy / 32)); n2++;
-        _mt3RockC.delete(Math.floor(wx / 32) * 1048576 + Math.floor(wy / 32));
-        { const gx0 = Math.floor(Math.floor(wx / 32) / MT3_CH), gy0 = Math.floor(Math.floor(wy / 32) / MT3_CH);
-          for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++)
-            _mt3Dirty.add(primaryZoneId + '_' + (gx0 + a) + '_' + (gy0 + b)); }
+        _mt3InvalidateCell(primaryZoneId, Math.floor(wx / 32), Math.floor(wy / 32));
       }
       _mtSegCache.clear(); _mtChunk.clear();     // 밴드/가장자리 실측이 바뀌었으니 배치를 다시 계산한다
       _gtInvalidateCells(c, (cells || []).flat(), 2);   // 지면(바위색)도 그 자리만 다시 굽는다
@@ -7581,9 +7595,13 @@ const SIM_JOB_EMOJI = {
       const ox0 = z0.worldOffsetX, oy0 = z0.worldOffsetY || 0;
       const wx = ox0 + lcx * 32 + 16, wy = oy0 + lcy * 32 + 16;
       const pIso = w2i(wx, wy), ps = _mtToScr(pIso.x, pIso.y);
-      let cov = 0, foot = 0, offRock = 0;
+      let cov = 0, foot = 0, offRock = 0, mt3Skipped = 0;
       for (const it of _mtLastRend) {
         if (it.kind !== 'mtseg') continue;
+        // ★이 훅은 **스프라이트 판 전용**이다. 높이장 판(sg.mt3)은 sg.name 이 없어 아래에서
+        //   전부 걸러진다 — 조용히 0 을 돌려주면 "넘침 0%"가 자명 통과가 된다.
+        //   ⇒ 몇 장을 못 봤는지 **세어서 내보낸다**. 하네스가 이 값으로 훅의 눈멂을 잡는다.
+        if (it.sg && it.sg.mt3) { mt3Skipped++; continue; }
         const sg = it.sg, an = _mtAnchors[sg.name], im = MTX[sg.name];
         if (!an || !im || !im.naturalWidth) continue;
         const sc = (64 / Math.SQRT2) / an.ppu * sg.sc, vy = sg.vy || 1;
@@ -7598,7 +7616,7 @@ const SIM_JOB_EMOJI = {
         if (v > v0 + 0.02) foot++;                     // 앵커보다 아래 = 앞 치맛자락
         if (!_mtRockAt(primaryZoneId, sg.x, sg.y)) offRock++;
       }
-      return { cov, foot, offRock };
+      return { cov, foot, offRock, mt3Skipped };
     };
     // 여유 셀을 바꿔 가며 **한 번의 부팅으로 여러 값을 재기** 위한 훅(probe-mttol 이 쓴다)
     window.__mtSetTol = (v) => { MT_FIT_TOL = +v; _mtChunk.clear(); needsRedraw = true; return MT_FIT_TOL; };
@@ -7727,9 +7745,37 @@ const SIM_JOB_EMOJI = {
     };
     window.__mtStage = (pts) => { _mtStagePts = (pts && pts.length) ? pts : null; _mtStageLog = null; needsRedraw = true; return _mtStagePts ? _mtStagePts.length : 0; };
     window.__mtStageGet = () => _mtStageLog;
+    // 이 셀이 메시에 드는가 — ⓑ2("산이 바위 밖으로 넘치지 않는가")의 정본 판정기.
+    //   ★스프라이트 시절의 `__mtSpillAt` 은 높이장 판(sg.mt3)을 **못 본다**(sg.name 이 없다).
+    //     그 훅으로 재면 cov 가 늘 0 이라 "넘침 0%"가 자명 통과가 된다. 메시 소속으로 잰다.
+    window.__mt3MeshAt = (lcx, lcy) => {
+      const c = (primaryZoneId && typeof conns !== 'undefined') ? conns.get(primaryZoneId) : null;
+      if (!c || !c.meta) return null;
+      const cx = Math.floor((c.meta.worldOffsetX + lcx * 32) / 32);
+      const cy = Math.floor(((c.meta.worldOffsetY || 0) + lcy * 32) / 32);
+      const F = _mt3Field(primaryZoneId, Math.floor(cx / MT3_CH), Math.floor(cy / MT3_CH));
+      if (!F) return { mesh: false, rock: false, adj: false, cut: false };
+      const i = cx - F.i0, j = cy - F.j0;
+      const rock = !!F.isRock(i, j);
+      let adj = false;
+      for (let q = -1; q <= 1 && !adj; q++) for (let r = -1; r <= 1; r++)
+        if (F.isRock(i + r, j + q)) { adj = true; break; }
+      return { mesh: _mt3IsMesh(F, i, j), rock, adj, cut: !!F.isCut(i, j) };
+    };
     window.__mtDual = (v) => { MT3_DUAL = v ? 1 : 0; _mt3Chunk.clear(); _mt3Sig = ''; needsRedraw = true; return MT3_DUAL; };
     window.__mtZOcc = (v) => { MT_OCC_ZB = +v; needsRedraw = true; return MT_OCC_ZB; };
-    window.__mtClearDestroy = () => { const n2 = _mtDestroyed.size; _mtDestroyed.clear(); _mtSegCache.clear(); _mtChunk.clear(); _groundTiles.clear(); needsRedraw = true; return n2; };
+    window.__mtClearDestroy = () => {
+      const n2 = _mtDestroyed.size;
+      // ★되돌릴 때도 **부술 때와 같은 무효화**를 돌려야 3D 띠가 다시 구워진다.
+      //   키는 `zid_cx_cy` — 존 이름에 '_' 가 있어도 안전하게 **뒤에서** 자른다.
+      for (const k of _mtDestroyed) {
+        const i2 = k.lastIndexOf('_'); if (i2 < 1) continue;
+        const i1 = k.lastIndexOf('_', i2 - 1); if (i1 < 0) continue;
+        _mt3InvalidateCell(k.slice(0, i1), +k.slice(i1 + 1, i2), +k.slice(i2 + 1));
+      }
+      _mtDestroyed.clear(); _mtSegCache.clear(); _mtChunk.clear(); _groundTiles.clear();
+      needsRedraw = true; return n2;
+    };
     // ★[배치 21] 자연물 산포 — 물가 술 + 초원 소품. 산 세그먼트와 같은 목록·같은 z 규약.
     const _natT0 = performance.now();
     const _natItems = [];

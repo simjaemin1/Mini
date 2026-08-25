@@ -106,8 +106,33 @@ function changedPct(a, b, box, thr) {
   await page.evaluate(() => { window.__terrain19.windOff = true; });
 
   const grab = async (n) => { const p2 = `${SHOTS}/${n}.png`; await page.screenshot({ path: p2 }); return PNG.sync.read(fs.readFileSync(p2)); };
+  // ★★[계측기 수리] 고정 sleep 은 **굽기 지연을 결과로 읽는다.**
+  //   청크 재굽기 예산이 프레임당 1개라, 49셀을 부수면 여러 청크가 더러워지고
+  //   다 구워지기까지 프레임이 여러 장 든다. 2200ms 가 어떤 날은 충분하고 어떤 날은 모자라
+  //   같은 트리에서 |Δ| 34.94 와 1.78 이 번갈아 나왔다(실측).
+  //   ⇒ **연속 두 장이 같아질 때까지** 기다린다. 장면 상수가 아니라 성질이다.
+  const settleShot = async (tag, box, maxMs = 60000) => {
+    let prev = await grab(tag + '-s0'), t = 0, k = 0;
+    while (t < maxMs) {
+      await sleep(700); t += 700; k++;
+      const cur = await grab(tag + '-s' + k);
+      if (meanAbsDiff(prev, cur, box) < 0.05) return { img: cur, ms: t };
+      prev = cur;
+    }
+    return { img: prev, ms: t, timeout: true };
+  };
   const scr = (lcx, lcy) => page.evaluate(([a, b]) => window.__cellScreen(a, b), [lcx, lcy]);
   const boxAt = async (lcx, lcy, w, h) => { const p2 = await scr(lcx, lcy); return [Math.round(p2.x - w), Math.round(p2.y - h), Math.round(p2.x + w), Math.round(p2.y + h)]; };
+  // ★★[계측기 수리 2026-08-25] 산 상자는 셀의 **발치**가 아니라 **표면**을 봐야 한다.
+  //   높이 1칸 = 32화소 규약이라 35m 산의 표면은 발치보다 ~1120화소 위에 그려진다.
+  //   9m 시절에 잡아 둔 발치 상자는 35m 에서 산을 통째로 놓친다 — 실측에서 파괴 |Δ| 가
+  //   34.94(운 좋은 날) 와 1.78(상자 밖) 사이를 오갔다. 정본 `__mtHeightAt` 으로 올린다.
+  const boxSurf = async (lcx, lcy, w, h) => {
+    const p2 = await scr(lcx, lcy);
+    const hh = await page.evaluate(([a, b]) => window.__mtHeightAt(a, b), [lcx, lcy]);
+    const y = p2.y - hh * 32;
+    return [Math.round(p2.x - w), Math.round(y - h), Math.round(p2.x + w), Math.round(y + h)];
+  };
   const onScreen = (bx) => bx[0] > 60 && bx[2] < 1340 && bx[1] > 250 && bx[3] < 860;
 
   // ── ⓐ 계약 ────────────────────────────────────────────────────────────────
@@ -165,37 +190,49 @@ function changedPct(a, b, box, thr) {
   //   판정은 정본 훅 __mtSpillAt 이 한다 — 규칙으로 가르려던 두 번의 시도가 다 헐거웠다.
   //   앵커 세로 위치 v0 기준: 셀이 그보다 아래면 앞 치맛자락(결함), 위면 몸통 뒤(정상).
   say('\n[ⓑ2 산이 바위 밖으로 넘치지 않는가]');
+  // ★★[계측기 수리 2026-08-25] 옛 판정은 `__mtSpillAt`(스프라이트 전용 훅)으로 쟀다.
+  //   높이장 판의 띠는 `sg.name` 이 없어 그 훅에서 **전부 걸러진다** — cov 가 늘 0 이라
+  //   "넘침 0%" 가 자명 통과가 됐다(자명 통과 금지 가드가 실제로 이걸 잡아 적신호를 냈다).
+  //   ⇒ 높이장에서 "넘친다"의 뜻을 정확히 쓴다: **메시에 든 비바위 셀은 자락 한 칸뿐이어야 한다.**
+  //     (굽기 규약이 '바위 ∪ 바위에 8-인접'이므로, 바위에 안 붙은 비바위 셀이 메시에 들면 그게 넘침이다.)
+  //     화소 덮개로 재면 안 된다 — 35m 산은 **뒤쪽 산이 앞 땅의 화면 자리를 덮는 게 정상**이다(원근).
   const camSp = await page.evaluate(() => window.__camCellLocal());
   const around = [];
   for (let dx = -20; dx <= 20; dx++) for (let dy = -20; dy <= 20; dy++) around.push([camSp[0] + dx, camSp[1] + dy]);
-  const sp = await page.evaluate((cs) => cs.map(([a, b]) => {
+  const mm = await page.evaluate((cs) => cs.map(([a, b]) => {
     const k = window.__tileStateAt(a, b);
-    if (k.kind === 'rock' || k.kind === 'water') return null;
-    return window.__mtSpillAt(a, b);
+    if (k.kind === 'water') return null;
+    const m = window.__mt3MeshAt(a, b);
+    return m ? { rock: m.rock, mesh: m.mesh, adj: m.adj } : null;
   }), around);
-  const covN = sp.filter((v) => v && v.cov > 0).length;
-  const badN = sp.filter((v) => v && v.cov > 0 && (v.foot > 0 || v.offRock > 0)).length;
-  const landN = sp.filter((v) => v).length;
-  say(`    뭍 ${landN}셀 중 산이 덮은 셀 ${covN} (${(covN / Math.max(1, landN) * 100).toFixed(1)}%) · 그중 앞 치맛자락/비바위 앵커 ${badN}`);
-  ok(landN > 100, `뭍 표본이 충분하다 (${landN})`);
-  ok(covN > 0, `산이 덮은 뭍 셀이 있다 (${covN}) — 0 이면 아래 판정이 자명하다`);
-  // ★★문턱 9% 의 근거 [재민 2026-08-07 "살짝은 산에 침범당해도 돼"]
-  //   · 고치기 전(배율 묶기 없음) : 18.1%   ← 이건 여전히 떨어뜨려야 한다
-  //   · 여유 0.35(톱니)          : 1.5%
-  //   · 여유 2.0(채택)           : 4.4~6.1%  ← 자리에 따라 흔들린다
-  //   재민이 "살짝"을 허용했으므로 문턱은 채택값 위·회귀 아래에 둔다.
-  //   ★완화가 아니라 **규격 변경 반영**이다 — 원래 잡으려던 회귀(18%)는 그대로 걸린다.
-  ok(covN / Math.max(1, landN) < 0.09,
-    `★★산이 바위 밖으로 넘치지 않는다 (${covN}/${landN} = ${(covN / Math.max(1, landN) * 100).toFixed(1)}% < 9%) — 고치기 전 18.1%`);
+  const sm = mm.filter(Boolean);
+  const meshNonRock = sm.filter((v) => v.mesh && !v.rock);
+  const spill = meshNonRock.filter((v) => !v.adj);
+  const meshRock = sm.filter((v) => v.mesh && v.rock);
+  say(`    표본 ${sm.length}셀 · 메시 든 바위 ${meshRock.length} · 메시 든 **비바위** ${meshNonRock.length}(자락) · 그중 바위에 안 붙은 것 ${spill.length}`);
+  ok(sm.length > 100, `표본이 충분하다 (${sm.length})`);
+  ok(meshRock.length > 0, `★자명 통과 금지 — 이 창에 메시에 든 바위 셀이 실제로 있다 (${meshRock.length})`);
+  ok(meshNonRock.length > 0, `★자명 통과 금지 — 자락(비바위 메시 셀)이 실제로 있다 (${meshNonRock.length}) — 0 이면 넘침 판정이 자명하다`);
+  ok(spill.length === 0, `★★산이 바위 밖으로 넘치지 않는다 — 바위에 안 붙은 메시 셀 ${spill.length}개`);
+  // ★옛 훅이 눈멀었다는 사실 자체를 회귀로 박제한다 — 나중에 mt3 를 보게 고치면 이 판정이 알려 준다.
+  const spProbe = await page.evaluate(([a, b]) => window.__mtSpillAt(a, b), around[Math.floor(around.length / 2)]);
+  say(`    (옛 훅 __mtSpillAt: cov ${spProbe ? spProbe.cov : '?'} · **못 본 mt3 띠 ${spProbe ? spProbe.mt3Skipped : '?'}장**)`);
+  ok(!spProbe || spProbe.mt3Skipped > 0,
+    `★__mtSpillAt 은 높이장 띠를 못 본다는 사실이 드러나 있다 (건너뛴 띠 ${spProbe ? spProbe.mt3Skipped : '?'}장) — 조용히 0 을 돌려주지 않는다`);
 
   // 반례: 바위가 아닌 자리 상자에는 산 픽셀이 0 이어야 한다(mtOff A/B 로 잰다)
   const mtOn = await grab('01-mt-on');
   await knob({ mtOff: true });
   const mtOffShot = await grab('02-mt-off');
   await knob({ mtOff: false });
-  const bxRock = await boxAt(near.lcx, near.lcy, 90, 60);
-  ok(onScreen(bxRock), `산 상자가 화면 안(UI 밖)이다 ${JSON.stringify(bxRock)}`);
+  const bxRock = await boxSurf(near.lcx, near.lcy, 90, 110);   // ★표면 기준 · 7×7 이 걸치게 세로를 넓힌다
   const pctRock = changedPct(mtOn, mtOffShot, bxRock);
+  // ★★[계측기 수리] 옛 가드는 `y > 250` 같은 **화면 상수**로 "UI 밖"을 쟀다. 35m 표면은
+  //   발치보다 1120화소 위라 그 띠를 벗어난다 — 상수를 늘리는 건 완화다.
+  //   ⇒ 성질로 바꾼다: 상자가 캔버스 안이고, **산을 끄면 그 상자가 실제로 바뀐다**(=UI 가 아니라 세계다).
+  const inCanvas = (b) => b[0] > 20 && b[1] > 20 && b[2] < mtOn.width - 20 && b[3] < mtOn.height - 20;
+  ok(inCanvas(bxRock), `산 상자가 캔버스 안이다 ${JSON.stringify(bxRock)}`);
+  ok(pctRock > 0, `★산 상자는 UI 가 아니라 **세계**다 — 산을 끄면 ${pctRock.toFixed(1)}% 가 바뀐다`);
   // 바위가 아닌 셀 중 화면 안인 곳을 고른다
   const cam2 = await page.evaluate(() => window.__camCellLocal());
   let bxFlat = null, flatCell = null;
@@ -245,23 +282,60 @@ function changedPct(a, b, box, thr) {
   //   ★정사각 셀 집합으로 판다(재민: "한 셀이 정사각형인 거 잊었어?" — 원형 금지).
   const cells = [];
   for (let a = -3; a <= 3; a++) for (let b = -3; b <= 3; b++) cells.push([near.lcx + a, near.lcy + b]);
-  const before = await grab('03-before-destroy');
+  // ★기준 프레임도 **멈춘 뒤에** 떠야 한다. 안 그러면 파기 전/후 차이가 아니라
+  //   '아직 굽는 중이던 프레임' 과의 차이를 재게 된다(실측: dDes 와 dBack 이 **같은 1.78**로 나왔다).
+  const stB = await settleShot('03-before-destroy', bxRock);
+  const before = stB.img;
+  say(`    (파기 전 그림이 멈추기까지 ${stB.ms}ms${stB.timeout ? ' ※시간초과' : ''})`);
+  // ★파기 **전** 정본 상태(마스크·높이)를 떠 둔다 — 복원 판정의 기준값이다.
+  const hDestroyBase = await page.evaluate((cs) => cs.map(([a, b]) =>
+    [window.__mtIsRock(a, b) ? 1 : 0, window.__mtHeightAt(a, b)]), cells);
   const nDes = await page.evaluate((cs) => window.__mtDestroy(cs), cells);
-  await sleep(2200);
-  const after = await grab('04-after-destroy');
+  const stA = await settleShot('04-after-destroy', bxRock);
+  const after = stA.img;
+  say(`    (파괴 뒤 그림이 멈추기까지 ${stA.ms}ms${stA.timeout ? ' ※시간초과' : ''})`);
   const dDes = meanAbsDiff(before, after, bxRock);
   const dDesOut = bxFlat ? meanAbsDiff(before, after, bxFlat) : 0;
   say(`    ${nDes}셀(7×7 정사각) 파괴 → 그 상자 |Δ| ${dDes.toFixed(2)} · 먼 상자 |Δ| ${dDesOut.toFixed(2)}`);
   ok(nDes === 49, `★정사각 셀 집합으로 팠다 (${nDes}셀 = 7×7)`);
   ok(dDes > 4, `★★판 자리의 산이 실제로 다시 계산됐다 (|Δ| ${dDes.toFixed(2)})`);
   ok(dDesOut < Math.max(1.0, dDes / 4), `★반례 — 안 판 먼 상자는 그대로다 (${dDesOut.toFixed(2)})`);
-  // 파괴를 되돌리면 원래 그림으로 — 우연한 변화가 아니라 파괴 집합을 읽는다는 증거
+  // ═══════════════════════════════════════════════════════════════════════
+  // ★★[계측기 수리 2026-08-25] "되돌리면 산이 그대로 돌아온다"가 참일 때 **무엇이 참이어야 하나**
+  //   ⑴ 상태: __mtClearDestroy() 뒤의 상태는 파기 전과 **같은 상태**다.
+  //      ⇒ 그 49셀의 `__mtIsRock` 이 다시 true 이고, `__mtHeightAt` 이 파기 전 값과 **정확히** 같다.
+  //        이건 화면 애니메이션과 무관한 **정확 판정**이라 여기가 1차 판정이어야 한다.
+  //   ⑵ 화소: 같은 상태면 같은 카메라·같은 시각의 그림도 같다. 단 화면에는 산 말고도
+  //      시간에 따라 변하는 것이 있다(사람 대기 동작·자연물). 그러니 "같다"의 기준은
+  //      **같은 간격의 무변화 대조군**(잡음 바닥)이지 장면 상수가 아니다.
+  //      옛 판정은 `dBack < 1.5` 라는 **하드코딩 상수**였다 — 바닥이 그보다 높으면
+  //      어떤 올바른 구현도 통과할 수 없다. 바닥을 재서 그것과 비교한다.
+  // ═══════════════════════════════════════════════════════════════════════
+  const hOf = async () => page.evaluate((cs) => cs.map(([a, b]) =>
+    [window.__mtIsRock(a, b) ? 1 : 0, window.__mtHeightAt(a, b)]), cells);
+  const hBefore = hDestroyBase;                         // 파기 **전**에 떠 둔 정본 상태
   await page.evaluate(() => window.__mtClearDestroy());
+  const stR = await settleShot('05-restored', bxRock);
+  const restored = stR.img;
+  say(`    (복원 뒤 그림이 멈추기까지 ${stR.ms}ms${stR.timeout ? ' ※시간초과' : ''})`);
+  const hAfter = await hOf();
+  let rockBad = 0, hMax = 0;
+  for (let k = 0; k < hBefore.length; k++) {
+    if (hBefore[k][0] !== hAfter[k][0]) rockBad++;
+    hMax = Math.max(hMax, Math.abs(hBefore[k][1] - hAfter[k][1]));
+  }
+  say(`    ⑴ 상태 복원 — 바위 마스크 불일치 ${rockBad}/${cells.length} · 높이 최대 |Δ| ${hMax.toFixed(3)}m`);
+  ok(rockBad === 0, `★★⑴ 되돌리면 **바위 마스크**가 그대로 돌아온다 (불일치 ${rockBad}칸)`);
+  ok(hMax < 0.01, `★★⑴ 되돌리면 **높이장**이 그대로 돌아온다 (최대 |Δ| ${hMax.toFixed(3)}m)`);
+  // ⑵ 잡음 바닥 — 아무것도 안 바꾸고 같은 간격을 띄운 두 장. 이 차이가 화소 판정의 바닥이다.
+  const nz0 = await grab('05b-noise-a');
   await sleep(2200);
-  const restored = await grab('05-restored');
+  const nz1 = await grab('05c-noise-b');   // 무변화 대조군 — 같은 간격, 같은 상자
+  const dNoise = meanAbsDiff(nz0, nz1, bxRock);
   const dBack = meanAbsDiff(before, restored, bxRock);
-  say(`    파괴를 되돌린 뒤 |Δ| = ${dBack.toFixed(2)} (파기 전 대비)`);
-  ok(dBack < 1.5, `★★되돌리면 산이 그대로 돌아온다 (|Δ| ${dBack.toFixed(2)}) — 파괴 집합을 실제로 읽는다`);
+  say(`    ⑵ 화소 — 복원 |Δ| ${dBack.toFixed(2)} · **잡음 바닥** |Δ| ${dNoise.toFixed(2)} (같은 상자·같은 간격·무변화)`);
+  ok(dNoise < dDes / 4, `★반례 — 잡음 바닥이 파괴 신호보다 훨씬 작다 (${dNoise.toFixed(2)} ≪ ${dDes.toFixed(2)}) — 바닥이 판정을 삼키지 않는다`);
+  ok(dBack < Math.max(0.3, dNoise * 2), `★★⑵ 복원 그림이 **잡음 바닥과 구별되지 않는다** (${dBack.toFixed(2)} vs 바닥 ${dNoise.toFixed(2)})`);
 
   // ── ⓔ 결정론 ──────────────────────────────────────────────────────────────
   say('\n[ⓔ 결정론]');
