@@ -158,10 +158,40 @@ function diff(a, b, box) {
   ok('③ 가리는 산이 반투명해졌다(대조군과 다르다)', dMeOnOff > 8, `켬↔끔 내 자리 차 ${dMeOnOff.toFixed(1)}`);
   ok('④ 뚫은 쪽이 "산 없는 그림"에 더 가깝다', dMeOnNoMt < dMeOffNoMt * 0.7,
     `켬↔무산 ${dMeOnNoMt.toFixed(1)} < 끔↔무산 ${dMeOffNoMt.toFixed(1)} 의 70%`);
-  ok('⑤ ★구멍이 아니라 **산 전체**가 흐려진다', !!farBox && dFarNoMt > 12 && dFar > 3,
-    `내 자리 |Δ| ${dMeOnOff.toFixed(1)} · 먼 자리 |Δ| ${dFar.toFixed(1)} (구멍 구현이면 여기가 0 이다) · 그 상자 산 함량 ${dFarNoMt.toFixed(1)}`);
+  // ★★[명세 변경 2026-08-26 재민 확정] **"산괴 전체 흐림" 폐기.**
+  //   새 명세: 흐리는 대상 = 플레이어보다 **화면 앞(z 큰)** 띠만 · 뒤 띠는 불투명 ·
+  //            경계는 **한 행**(문턱 하나로 갈린다).
+  //   ★이건 판정 **완화가 아니라 명세 변경**이다. 옛 판정("전체가 흐려진다")은 이제
+  //     **틀린 그림**을 통과시키므로 그대로 두면 안 된다. 대신 새 성질 셋을 잰다 —
+  //     ⑴ 앞 띠 흐림 100% · ⑵ 뒤 띠 흐림 0장 · ⑶ 경계 단조(섞이지 않는다).
+  //   ★자명 통과 금지: 앞·뒤 띠가 **둘 다 실제로 존재**해야 판정이 성립한다.
+  await page.evaluate(() => window.__mt3Rects(true));
+  await new Promise((r) => setTimeout(r, 900));
+  const sp5 = await page.evaluate(() => {
+    const fz = window.__mtOccDbg.fz;
+    const q = window.__mt3RectsGet() || [];
+    const f = q.filter(a => a.z > fz), b = q.filter(a => a.z <= fz);
+    const fFaded = f.filter(a => a.faded).length, bFaded = b.filter(a => a.faded).length;
+    // 경계 단조 — 안 흐린 것의 최대 z 가 흐린 것의 최소 z 보다 작아야 '한 행'이다
+    const zNo = q.filter(a => !a.faded).map(a => a.z), zYes = q.filter(a => a.faded).map(a => a.z);
+    return { fz, front: f.length, fFaded, back: b.length, bFaded,
+             maxNo: zNo.length ? Math.max(...zNo) : null, minYes: zYes.length ? Math.min(...zYes) : null };
+  });
+  await page.evaluate(() => window.__mt3Rects(false));
+  console.log('  [⑤ 명세] ' + JSON.stringify(sp5));
+  ok('⑤ ★자명 통과 금지 — 앞 띠와 뒤 띠가 **둘 다** 실제로 있다',
+    sp5.front > 3 && sp5.back > 3, `앞 ${sp5.front}장 · 뒤 ${sp5.back}장`);
+  ok('⑤ ★★플레이어보다 **앞** 띠는 전부 흐려진다', sp5.front > 0 && sp5.fFaded === sp5.front,
+    `앞 ${sp5.front}장 중 흐림 ${sp5.fFaded}장 (전부여야)`);
+  ok('⑤ ★★플레이어보다 **뒤** 띠는 하나도 안 흐려진다', sp5.bFaded === 0,
+    `뒤 ${sp5.back}장 중 흐림 ${sp5.bFaded}장 (0이어야)`);
+  ok('⑤ ★★경계는 **한 행**이다 — 흐린 것과 안 흐린 것이 z 로 안 섞인다',
+    sp5.maxNo === null || sp5.minYes === null || sp5.maxNo <= sp5.minYes,
+    `안 흐림 최대 z ${sp5.maxNo} ≤ 흐림 최소 z ${sp5.minYes} · 문턱 ${sp5.fz}`);
   ok('⑤b ★산이 사라지지는 않았다(반투명이지 투명이 아니다)', dMeOnNoMt > 2.0,
-    `켬↔무산 내 자리 차 ${dMeOnNoMt.toFixed(1)} > 2.0 — 0 이면 산이 통째로 없어진 것이다`);
+    `켬↔무산 내 자리 차 ${dMeOnNoMt.toFixed(1)} > 2`);
+  ok('⑤c ★멀리 있는 **앞쪽** 산도 흐려진다(구멍이 아니다)', !!farBox && dFarNoMt > 12 && dFar > 3,
+    farBox ? `먼 앞쪽 상자 산 함량 ${dFarNoMt.toFixed(1)} · 켬↔끔 ${dFar.toFixed(1)}` : '상자 없음');
 
   // ⑧⑨ ★앞쪽 산은 **전부** 흐려지고, 뒤쪽 산은 그대로다
   //   ⑧ 은 화소 상자로 캐지 않는다 — 앞쪽 세그먼트의 **앵커는 늘 화면 아래**(z 차 500 = 화면 500px)라
@@ -186,7 +216,9 @@ function diff(a, b, box) {
   await page.evaluate(() => window.__mt3Rects(true));
   await sleep(600);
   const picks = await page.evaluate(() => {
-    const me = window.__getMyAbs(); const mz = (me.x + me.y) * 0.5 + 500;
+    // ★★[명세 변경 2026-08-26] 흐림 문턱은 **정본이 쓰는 값**을 그대로 읽는다(사본 금지).
+    //   옛 판은 여기서 `(me.x+me.y)/2 + 500` 을 다시 유도했다 — 정본이 바뀌면 조용히 어긋난다.
+    const mz = window.__mtOccDbg.fz;
     const rects = window.__mt3RectsGet() || [];
     if (!rects.length) {                       // 스프라이트 판(3D 꺼짐)일 때의 옛 경로
       const segs = window.__mtProbe() || [];

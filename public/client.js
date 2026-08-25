@@ -3660,6 +3660,17 @@ const SIM_JOB_EMOJI = {
   //   ★플레이어가 사라질 수 없는 것도 구조가 보장한다: 흐린 겹은 알파 0.34 로 덮이고,
   //     안 흐린 앞 띠는 여전히 플레이어보다 **먼저** 그려진다.
   let MT_OCC_ZB = 500;                       // 0 이면 앞 벽 전부가 가림 후보(z 32 = 한 축 2셀)
+  // ★★[재민 확정 2026-08-26 명세 변경] **"산괴 전체 흐림" 폐기.**
+  //   흐리는 대상 = 플레이어보다 **화면 앞(z 큰)** 띠만. 뒤 띠는 불투명. 경계는 플레이어 행에서 가로로.
+  //   ★발동 방아쇠(`_mtOccludesMe`, `_mtOcc.z` = 내 z + MT_OCC_ZB)는 **그대로 둔다** — 언제 켜지나는 안 바뀐다.
+  //     바뀐 건 켜졌을 때 **누가 흐려지나**뿐이다.
+  //   z 는 화면 픽셀과 같은 단위다(지면 z = (wx+wy)/2, 화면 y 와 1:1). 한 축 한 칸 = 16.
+  // ② 실측으로 정한 값 — 후보 0(발치)/32(2셀)/64(4셀) 를 같은 자리에서 찍어 비교했다.
+  //   셋은 그림이 거의 같았다(앞 띠 800/783/725, 뒤 띠 흐림 0장으로 동일). 경계가 캐릭터를
+  //   반 가르지 않게 **발치보다 조금 위**를 고른다 — 스프라이트 키가 ~40px 이므로 32(2셀).
+  let MT_FADE_ZOFF = 32;                     // 경계를 발치에서 위로 미는 양(화면 px = z)
+  let MT_FADE_ZSOFT = 0;                     // 경계 그라데이션 폭(z=px). 0 = 딱 끊김. ④에서 A/B 로 고른다
+  let _mtFadeZ = null;                       // 이번 프레임의 흐림 문턱(플레이어 z + 오프셋)
   const MT_OCC_A = 0.34, MT_FADE_MS = 220;   // 반투명 세기 · 켜고 끄는 시간(껌뻑임 방지)
   let _mtOcc = null, _mtOccN = 0, _mtFadedN = 0, _mtFadeAmt = 0, _mtToScr = null;   // 내 화면 좌표·z · 가린 장수 · 반투명 진행도
   const _mtAlphaMap = new Map();
@@ -3689,7 +3700,7 @@ const SIM_JOB_EMOJI = {
       _mtToScr = toScr;
       const p3 = w2i(sg.x, sg.y), c3 = toScr(p3.x, p3.y);
       const dx3 = Math.round(c3.x - sg.ox), dy3 = Math.round(c3.y - sg.oy);
-      const fade3 = _mtFadeAmt > 0.002 && (_mtOcc ? item.z > _mtOcc.z : false) && !_t19.occOff;
+      const fade3 = _mtFadeAmt > 0.002 && (_mtFadeZ != null ? item.z > _mtFadeZ : false) && !_t19.occOff;
       if (_mt3Rects) _mt3Rects.push({ x: dx3, y: dy3, w: sg.img.width, h: sg.img.height, z: item.z, faded: !!fade3, merged: sg.merged ? 1 : 0 });
       // ★[되돌림 — 실측] blit 을 '칠해지는 사각형'으로 좁혀 봤다. 넓이는 17% 줄었는데
       //   프레임은 **더 느려졌다**(산 비용 +20.13 → +29.67ms). 9인자 drawImage 가
@@ -3698,6 +3709,16 @@ const SIM_JOB_EMOJI = {
       _mtFadedN++; if (window.__mtOccDbg) window.__mtOccDbg.faded = _mtFadedN;
       const fg3 = _mtFadeLayer(g);
       if (!fg3) { g.save(); g.globalAlpha = 1 - (1 - MT_OCC_A) * _mtFadeAmt; g.drawImage(sg.img, dx3, dy3); g.restore(); return; }
+      // ★경계 그라데이션(A/B) — 문턱 바로 앞 MT_FADE_ZSOFT 안의 띠는 **교차 페이드**한다.
+      //   t=0(문턱) → 불투명 그대로 · t=1(창 끝) → 완전히 흐림 무리로. 0 이면 옛날처럼 딱 끊긴다.
+      if (MT_FADE_ZSOFT > 0) {
+        const t = Math.min(1, (item.z - _mtFadeZ) / MT_FADE_ZSOFT);
+        if (t < 1) {
+          g.save(); g.globalAlpha = 1 - t; g.drawImage(sg.img, dx3, dy3); g.restore();
+          fg3.save(); fg3.globalAlpha = t; fg3.drawImage(sg.img, dx3, dy3); fg3.restore();
+          return;
+        }
+      }
       fg3.drawImage(sg.img, dx3, dy3);
       return;
     }
@@ -3716,7 +3737,7 @@ const SIM_JOB_EMOJI = {
     //     그 산만 유리처럼 보이고 나머지가 여전히 나를 가린다 — 문제가 안 풀린다.
     //   ⇒ 방아쇠는 "가려지기 시작할 때"다: 이번 프레임에 나를 실제로 덮는 산이 하나라도 있으면 켠다.
     //   ⇒ **북서쪽에 있을 때만**: 내 뒤(z 작은 쪽) 산은 애초에 나를 못 가리므로 손대지 않는다.
-    const behind = _mtOcc ? item.z > _mtOcc.z : false;
+    const behind = _mtFadeZ != null ? item.z > _mtFadeZ : false;   // ★명세 변경: 흐림 대상은 **플레이어 앞**만
     const fade = _mtFadeAmt > 0.002 && behind && !_t19.occOff;
     if (!fade) { g.drawImage(im, dx, dy, W, H); return; }
     // ★★반투명은 **한 겹으로 모아** 한 번만 합성한다 [2026-08-07 실측].
@@ -3814,7 +3835,7 @@ const SIM_JOB_EMOJI = {
       let fr = 0;
       for (let i = 0; i < renderables.length; i++) {
         const it = renderables[i];
-        if (it.kind === 'mtseg' && it.z > _mtOcc.z) fr++;
+        if (it.kind === 'mtseg' && _mtFadeZ != null && it.z > _mtFadeZ) fr++;   // ★'앞'의 뜻이 바뀌었다(플레이어 기준)
       }
       if (window.__mtOccDbg) window.__mtOccDbg.front = fr;
     }
@@ -7835,7 +7856,7 @@ const SIM_JOB_EMOJI = {
       let n = 0, front = 0, back = 0;
       for (const it of _mtLastRend) {
         if (it.kind !== 'mtseg') continue;
-        if (it.z > _mtOcc.z) front++; else back++;
+        if (_mtFadeZ != null && it.z > _mtFadeZ) front++; else back++;   // ★'앞' = 플레이어보다 화면 앞
         if (_mtOccludesMe(it.sg, it.z)) n++;
       }
       _mtOcc = save;
@@ -7971,6 +7992,9 @@ const SIM_JOB_EMOJI = {
     };
     window.__mtDual = (v) => { MT3_DUAL = v ? 1 : 0; _mt3Chunk.clear(); _mt3Sig = ''; needsRedraw = true; return MT3_DUAL; };
     window.__mtZOcc = (v) => { MT_OCC_ZB = +v; needsRedraw = true; return MT_OCC_ZB; };
+    // ② 경계 오프셋 손잡이 — 발치(0)에서 위로 미는 화면 px. 후보를 그림 짝으로 고른다.
+    window.__mtFadeZOff = (v) => { MT_FADE_ZOFF = +v; needsRedraw = true; return MT_FADE_ZOFF; };
+    window.__mtFadeZSoft = (v) => { MT_FADE_ZSOFT = +v; needsRedraw = true; return MT_FADE_ZSOFT; };
     window.__mtClearDestroy = () => {
       const n2 = _mtDestroyed.size;
       // ★되돌릴 때도 **부술 때와 같은 무효화**를 돌려야 3D 띠가 다시 구워진다.
@@ -8327,11 +8351,14 @@ const SIM_JOB_EMOJI = {
     if (_mtAnchors && myAbsPredicted) {
       const _op = w2i(myAbsPredicted.x, myAbsPredicted.y), _os = toScreen(_op.x, _op.y);
       _mtOcc = { x: _os.x, y: _os.y - 14, z: (myAbsPredicted.x + myAbsPredicted.y) * 0.5 + MT_OCC_ZB };
-    }
+      // ★흐림 문턱은 **편향 없이** 내 z 그대로 + 캐릭터 키 오프셋. 방아쇠(_mtOcc.z)와 일부러 다르다.
+      _mtFadeZ = (myAbsPredicted.x + myAbsPredicted.y) * 0.5 + MT_FADE_ZOFF;
+    } else _mtFadeZ = null;
     // ★계측기는 판정을 **다시 유도하지 않는다** — `_mtDraw` 가 세는 수를 그대로 읽는다(사본 금지).
     _mtFadedN = 0;
     window.__mtOccDbg = { n: 0, faded: 0, front: 0, fade: +_mtFadeAmt.toFixed(2),
-      pt: _mtOcc ? { x: Math.round(_mtOcc.x), y: Math.round(_mtOcc.y) } : null, z: _mtOcc ? Math.round(_mtOcc.z) : null };
+      pt: _mtOcc ? { x: Math.round(_mtOcc.x), y: Math.round(_mtOcc.y) } : null, z: _mtOcc ? Math.round(_mtOcc.z) : null,
+      fz: _mtFadeZ != null ? Math.round(_mtFadeZ) : null, zoff: MT_FADE_ZOFF, zsoft: MT_FADE_ZSOFT };
     _mtToScr = toScreen;
     _mtUpdateFade(renderables, _mtFadeDt());
 
