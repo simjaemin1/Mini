@@ -3161,8 +3161,12 @@ const SIM_JOB_EMOJI = {
         // 병합이면 이 띠의 상자를 **공유 캔버스 좌표**로 옮겨 blit 범위로만 쓴다
         let clip = null, CV, G, BX0, BY0, BW, BH;
         if (U) {
-          clip = [Math.max(0, x0 - U.x0), Math.max(0, y0 - U.y0),
-                  Math.min(U.bw - Math.max(0, x0 - U.x0), bw), Math.min(U.bh - Math.max(0, y0 - U.y0), bh)];
+          // ★상자를 **여유 있게** 잡는다. 띠의 겹침(MT3_OV)과 조각 벌어짐은 상자 밖으로 조금 나가는데,
+          //   딱 맞게 자르면 띠 경계마다 1화소가 안 옮겨져 **흩어진 점**이 남는다(실측 140화소).
+          //   GL 캔버스에는 **이 띠만** 그려져 있으므로(호출마다 clear) 넓게 옮겨도 남의 그림을 안 옮긴다.
+          const CP = MT3_MPAD + 4;
+          const cx = Math.max(0, Math.floor(x0 - U.x0) - CP), cy = Math.max(0, Math.floor(y0 - U.y0) - CP);
+          clip = [cx, cy, Math.min(U.bw - cx, bw + CP * 2), Math.min(U.bh - cy, bh + CP * 2)];
           CV = U.cv; G = U.g; BX0 = U.x0; BY0 = U.y0; BW = U.bw; BH = U.bh;
         } else {
           CV = document.createElement('canvas'); CV.width = bw; CV.height = bh; G = CV.getContext('2d');
