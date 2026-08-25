@@ -114,7 +114,8 @@ const BOX = [40, 260, 1360, 860];
     const ms = t.map((v) => v.ms);
     const max = Math.max(...ms), avg = ms.reduce((a, b) => a + b, 0) / ms.length;
     say(`    ${label}: 장당 ${ms.map((v) => v.toFixed(0)).join('·')}ms → 최대 ${max.toFixed(0)} 평균 ${avg.toFixed(0)}` +
-        `  (마지막 장 물판정 ${t[t.length - 1].wet}ms · 새질문 ${t[t.length - 1].asked} · 흐름 ${t[t.length - 1].flow}ms)`);
+        `  (마지막 장 물판정 ${t[t.length - 1].wet}ms · 새질문 ${t[t.length - 1].asked} · 흐름 ${t[t.length - 1].flow}ms` +
+        ` · 방향매끈+Φ ${t[t.length - 1].phi}ms)`);
     return { max, avg, n: ms.length, last: t[t.length - 1] };
   }
   // 미결 칸이 0 이 될 때까지 기다린다(예산제는 몇 프레임에 나눠 채운다 — 그림 비교는 그 뒤에)

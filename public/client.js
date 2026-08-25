@@ -1428,7 +1428,8 @@ const SIM_JOB_EMOJI = {
     return v;
   }
   const _wfPrev = { ox: 0, oy: 0, wet: null };
-  const _ZERO2 = [0, 0, 99, 0];   // 물 아닌 셀마다 배열을 새로 만들면 16,384개/장이 GC 로 간다
+  const _ZERO2 = [0, 0, 99, 0];
+  const _WF_NB = [[1, 0], [-1, 0], [0, 1], [0, -1]];   // 물 아닌 셀마다 배열을 새로 만들면 16,384개/장이 GC 로 간다
   function _buildFlowTex(gl, ocx, ocy) {
     // 수심 = 물가 거리장(BFS) → 3×3 평균 스무딩. 마스크는 셀 그대로(각진 블록).
     const N = WF_N, wet = new Uint8Array(N * N), dep = new Float32Array(N * N).fill(255);
@@ -1488,6 +1489,71 @@ const SIM_JOB_EMOJI = {
     }
     const lin = new Uint8Array(N * N * 4), msk = new Uint8Array(N * N * 4);
     const _tf0 = performance.now(); let _flowN = 0;
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ★★★[재민 2026-08-24 "해결해야 해"] 파도를 **연속 스칼라 장 Φ** 위에 세운다.
+    //   여기까지의 실측이 남긴 사실 두 가지:
+    //     ⓐ 위상을 `dot(w, dir)` 로 내면 w 가 절대 월드 좌표(≈4.6e5)라 dir 이 **조금만** 변해도
+    //        위상이 파장 대비 난수로 튄다 ⇒ 방향을 매끄럽게 하면 온 화면이 얼룩 띠(3.14),
+    //        방향을 셀 단위로 끊으면 셀 경계마다 금(=번개 계단). **둘 다 같은 병의 두 얼굴이다.**
+    //     ⓑ 위상을 '강을 따라 잰 거리'로 바꾸면 한 강 안에서는 이어지지만, **다른 강과 만나는
+    //        경계**에서는 두 강의 거리 원점이 무관해 여전히 튄다(재민이 본 그 자리가 합류부다).
+    //   ⇒ 그러니 위상은 **∇Φ = 흐름 방향**을 만족하는 장이어야 한다. 그런 Φ 를 창마다 **푼다**:
+    //     · 초기값 = 강을 따라 잰 거리(거의 정답이라 몇 번만 돌려도 수렴한다)
+    //     · 완화   = 이웃 넷과 `Φ_i ≈ Φ_n + 32·(방향의 그 축 성분)` 이 되도록 가우스-자이델
+    //     ⇒ 강이 갈리는 자리에서도 Φ 가 **매끄럽게 이어지도록 스스로 자리를 잡는다.**
+    //   그리고 방향은 **다시 매끄럽게**(3×3 평균) 만든다 — 위상이 `w−셀중심`(≤23px)만 쓰므로
+    //   증폭이 없어져서 이제 매끄러운 방향이 안전하다. 마루가 도는 것도 서서히 돈다.
+    // ═══════════════════════════════════════════════════════════════════════════
+    const fdx = new Float32Array(N * N), fdy = new Float32Array(N * N), phi = new Float32Array(N * N);
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      const p2 = j * N + i;
+      if (wet[p2] !== 1) continue;
+      _flowN++;
+      const f = _flowAtCell(ocx + i, ocy + j);
+      fdx[p2] = f[0]; fdy[p2] = f[1]; phi[p2] = f[3] || 0;
+    }
+    // ★[계측] ⓐ+ⓑ 가 배치 21 이 **새로 더한** 비용이다. 따로 잰다(하네스가 장당 찍는다).
+    const _tp0 = performance.now();
+    // ⓐ 방향 매끄럽게 — 세기는 그대로 두고 **단위 방향만** 3×3 평균(2패스)
+    if (!_t19.dirRawCell) {
+      let ax = fdx, ay = fdy;
+      for (let pass = 0; pass < 2; pass++) {
+        const bx2 = new Float32Array(N * N), by2 = new Float32Array(N * N);
+        for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+          const p2 = j * N + i; if (wet[p2] !== 1) continue;
+          let sx = 0, sy = 0, n2 = 0;
+          for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+            const jj = j + dj, ii = i + di; if (jj < 0 || ii < 0 || jj >= N || ii >= N) continue;
+            const q = jj * N + ii; if (wet[q] !== 1) continue;
+            const L2 = Math.hypot(ax[q], ay[q]); if (L2 < 1e-6) continue;
+            sx += ax[q] / L2; sy += ay[q] / L2; n2++;
+          }
+          const L3 = Math.hypot(sx, sy);
+          const mag = Math.hypot(ax[p2], ay[p2]);
+          if (n2 && L3 > 1e-6) { bx2[p2] = sx / L3 * mag; by2[p2] = sy / L3 * mag; }
+          else { bx2[p2] = ax[p2]; by2[p2] = ay[p2]; }
+        }
+        ax = bx2; ay = by2;
+      }
+      fdx.set(ax); fdy.set(ay);
+    }
+    // ⓑ Φ 완화 — ∇Φ = 단위 흐름 방향. 물 셀만, 가우스-자이델(제자리 갱신이라 전파가 빠르다).
+    const ITER = _t19.phaseRelax == null ? 36 : _t19.phaseRelax;
+    for (let it = 0; it < ITER; it++) {
+      for (let j = 1; j < N - 1; j++) for (let i = 1; i < N - 1; i++) {
+        const p2 = j * N + i; if (wet[p2] !== 1) continue;
+        let acc2 = 0, n2 = 0;
+        // 이웃 n 에서 본 나의 위상 = Φ_n + 32·(n→나 방향의 흐름 성분)
+        for (const [di, dj] of _WF_NB) {
+          const q = (j + dj) * N + (i + di); if (wet[q] !== 1) continue;
+          const ux = (fdx[p2] + fdx[q]) * 0.5, uy = (fdy[p2] + fdy[q]) * 0.5;
+          const L2 = Math.hypot(ux, uy); if (L2 < 1e-6) continue;
+          acc2 += phi[q] + 32 * (di * ux + dj * uy) / L2; n2++;
+        }
+        if (n2) phi[p2] = acc2 / n2;
+      }
+    }
+    window.__wfPhiMs = performance.now() - _tp0;
     for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
       const p2 = j * N + i;
       let sd = 0, n = 0;   // 3×3 평균 — 수심 계단을 없앤다
@@ -1496,21 +1562,13 @@ const SIM_JOB_EMOJI = {
         sd += Math.min(WF_DEPTH_MAX, dep[jj * N + ii]); n++;
       }
       const d01 = (sd / n) / WF_DEPTH_MAX;
-      const f = wet[p2] === 1 ? (_flowN++, _flowAtCell(ocx + i, ocy + j)) : _ZERO2;
-      lin[p2 * 4] = ((f[0] * 0.5 + 0.5) * 255) | 0;
-      lin[p2 * 4 + 1] = ((f[1] * 0.5 + 0.5) * 255) | 0;
+      lin[p2 * 4] = ((fdx[p2] * 0.5 + 0.5) * 255) | 0;
+      lin[p2 * 4 + 1] = ((fdy[p2] * 0.5 + 0.5) * 255) | 0;
       lin[p2 * 4 + 2] = (Math.min(1, d01) * 255) | 0;
       lin[p2 * 4 + 3] = 255;
-      // ★★★[재민 2026-08-24 "물살 세로줄"] 흐름 **방향**을 마스크 텍스처(NEAREST)에도 싣는다.
-      //   uLin 은 LINEAR 라 방향이 다른 두 셀 사이에서 dir 이 **한 셀에 걸쳐 매끄럽게 돌아간다**.
-      //   그런데 파도 위상이 `dot(w, dir)` 이고 w 가 절대 월드 좌표(≈4.6e5)라, 그 미세한 회전이
-      //   |w|·|∇dir| 로 증폭돼 그 한 셀 폭(화면 약 64px)이 통째로 **디더 얼룩 띠**가 된다.
-      //   ⇒ 방향만 NEAREST 로 읽으면 셀 안에서 상수(∇dir=0)라 띠가 사라진다. 셀 경계에는
-      //     1px 이음매가 남지만, 64px 짜리 얼룩 띠보다 훨씬 낫다.
-      //   ※수심(uLin.b)은 그대로 LINEAR — 얕은→깊은 그라데이션은 매끄러워야 한다.
-      //   b = **강을 따라 잰 거리 mod 64**(파장). 위상은 64 주기라 mod 로 실어도 손실이 없다.
+      // uMsk: rg = 방향(NEAREST · 대조군용) · b = **Φ mod 64**(파장) · a = 물 마스크
       msk[p2 * 4] = lin[p2 * 4]; msk[p2 * 4 + 1] = lin[p2 * 4 + 1];
-      msk[p2 * 4 + 2] = wet[p2] === 1 ? ((((f[3] || 0) % 64) / 64) * 255) | 0 : 0;
+      msk[p2 * 4 + 2] = wet[p2] === 1 ? ((((phi[p2] % 64) + 64) % 64) / 64 * 255) | 0 : 0;
       msk[p2 * 4 + 3] = wet[p2] === 1 ? 255 : 0;   // 미결(2)은 물이 아니다 — 그리지 않는다
     }
     window.__wfFlowMs = performance.now() - _tf0; window.__wfFlowN = _flowN;
@@ -1536,7 +1594,7 @@ const SIM_JOB_EMOJI = {
     // ★[재민 2026-08-24 "1셀 두께 줄무늬"] 잔결 노이즈 손잡이 — x=스케일 · y=주기 · z=세기.
     //   ※스케일×주기 = 512 여야 한다(카메라가 512px 움직여도 무늬가 안 튀는 조건 — 위 주석 ⓑ).
     //     그래서 CPU 가 주기를 512/스케일 로 계산해 넣는다. 스케일은 512 의 약수만 쓴다.
-    'uniform vec3 uRip; uniform vec3 uRip1; uniform float uDith; uniform float uSnap; uniform float uDirLin; uniform vec2 uDirC; uniform float uPhLeg;',
+    'uniform vec3 uRip; uniform vec3 uRip1; uniform float uDith; uniform float uSnap; uniform float uDirLin; uniform vec2 uDirC; uniform float uPhLeg; uniform float uDirNear;',
     'uniform vec2 uOrig; uniform float uN; uniform float uDrop;',
     // ★★값 노이즈는 **주기 노이즈**여야 한다. 이유가 두 개다:
     //   ⓐ 월드 좌표가 수만 px 이라 `fract(sin(dot(p,·)))` 의 인자가 1e7 급이 되면 float 정밀도가
@@ -1600,7 +1658,10 @@ const SIM_JOB_EMOJI = {
     '  vec4 M = texture2D(uMsk,uv);',
     // ★방향은 NEAREST(uMsk.rg)에서 — 셀 안에서 상수라야 위상이 안 무너진다(위 _buildFlowTex 주석).
     //   uDirLin 이 1 이면 옛 그림(uLin.rg LINEAR + dot(w,dir) 위상) — A/B 대조군.
-    '  vec2 dir = mix(M.rg, L.rg, uDirLin)*2.0-1.0; float depth = L.b;',
+    // ★방향은 **LINEAR**(uLin.rg) 로 다시 읽는다 — 위상이 `w−셀중심`(≤23px)만 쓰므로
+    //   |w| 증폭이 사라졌고, 그래서 매끄러운 방향이 이제 안전하다. 마루도 서서히 돈다.
+    //   `dirRawCell` 손잡이를 켜면 CPU 에서 방향 평활을 끄고 NEAREST(uMsk.rg)로 읽는다(대조군).
+    '  vec2 dir = mix(L.rg, M.rg, uDirNear)*2.0-1.0; float depth = L.b;',
     '  float fl = length(dir);',
     '  float ADV = 64.0;',
     '  vec2 wl = w - uOrig*32.0;',
@@ -1624,7 +1685,7 @@ const SIM_JOB_EMOJI = {
     // ★★★[재민 2026-08-24 "번개모양 경계"] 위상의 정본은 **강을 따라 잰 거리 s**(uMsk.b, 셀당 상수)다.
     //   옛 식 `dot(w, dir)` 은 w 가 절대 월드 좌표(≈4.6e5)라 dir 이 조금만 달라져도 값이 파장 대비
     //   난수처럼 튄다 ⇒ 방향이 바뀌는 셀 경계마다 **다이아몬드 계단 = 번개 모양 크리스**가 남았다.
-    //   s 는 폴리라인을 따라 연속이고 ∇s = dir 이라, 셀을 건너도 위상이 이어진다:
+    //   Φ 는 창마다 ∇Φ=dir 이 되도록 완화해 푼 장이라, 강이 갈리는 자리에서도 이어진다:
     //     A 칸: s_A + dot(w−c_A, d) · B 칸: s_B + dot(w−c_B, d) 이고 s_B ≈ s_A + dot(c_B−c_A, d)
     //     ⇒ 경계에서 두 식이 같은 값을 낸다(1차까지 정확). mod 64 로 실어도 cos 이 64주기라 무손실.
     '    al = M.b*64.0 + dot(w-cc,dir); }',
@@ -1704,7 +1765,7 @@ const SIM_JOB_EMOJI = {
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
       const loc = gl.getAttribLocation(pr, 'p'); gl.enableVertexAttribArray(loc);
       gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-      for (const u of ['uRes', 'uCam', 'uT', 'uLin', 'uMsk', 'uOrig', 'uN', 'uDrop', 'uFuzz', 'uDbg', 'uRip', 'uRip1', 'uDith', 'uSnap', 'uDirLin', 'uDirC', 'uPhLeg']) _wgl.uni[u] = gl.getUniformLocation(pr, u);
+      for (const u of ['uRes', 'uCam', 'uT', 'uLin', 'uMsk', 'uOrig', 'uN', 'uDrop', 'uFuzz', 'uDbg', 'uRip', 'uRip1', 'uDith', 'uSnap', 'uDirLin', 'uDirC', 'uPhLeg', 'uDirNear']) _wgl.uni[u] = gl.getUniformLocation(pr, u);
       const mkTex = (filt) => { const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filt); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filt);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
@@ -1789,6 +1850,7 @@ const SIM_JOB_EMOJI = {
     gl.uniform1f(_wgl.uni.uSnap, _t19.lakeSnap == null ? WATER_LAKE_SNAP : _t19.lakeSnap);
     gl.uniform1f(_wgl.uni.uDirLin, _t19.dirLinear ? 1 : 0);
     gl.uniform1f(_wgl.uni.uPhLeg, _t19.phaseLegacy ? 1 : 0);
+    gl.uniform1f(_wgl.uni.uDirNear, (_t19.dirRawCell || _t19.dirLinear === 'near') ? 1 : 0);
     { const fc = _flowAtCell(Math.round(wpt.wx / 32), Math.round(wpt.wy / 32));
       const fl = Math.hypot(fc[0], fc[1]);
       gl.uniform2f(_wgl.uni.uDirC, fl > 1e-4 ? fc[0] / fl : 1, fl > 1e-4 ? fc[1] / fl : 0); }
@@ -4050,7 +4112,10 @@ const SIM_JOB_EMOJI = {
   //   ★[재민 2026-08-24] ripAmp — 잔결 노이즈 **전체** 세기(n1·n2 둘 다). 1 이 지금 값.
   //     점묘의 주범은 n2(스케일 손잡이로 재 봤더니 아니었다)가 아니라 **n1(가중 0.55·8월드px)** 였다.
                  ripAmp: null, ripScale: null, ripW: null, ripScale1: null, ripW1: null,
-                 ditherOff: false, dither: null, lakeSnap: null, dirLinear: false, phaseLegacy: false };
+                 ditherOff: false, dither: null, lakeSnap: null, dirLinear: false, phaseLegacy: false,
+  //   ★[재민 2026-08-25] phaseRelax — Φ 완화 반복수(기본 36 · 0 이면 강 호장 그대로).
+  //     dirRawCell — CPU 방향 평활을 끄고 셀 단위 방향(NEAREST)으로 되돌리는 대조군.
+                 phaseRelax: null, dirRawCell: false };
   // 시험 전용 — 띠 높이를 바꿔 "비용이 blit 횟수에 비례하나 픽셀 수에 비례하나"를 가른다.
   window.__gtStrip = (v) => { GT_STRIP = Math.max(4, v | 0); _groundTiles.clear(); needsRedraw = true; return GT_STRIP; };
   window.__gtFrac = (v) => { _gtFrac = !!v; needsRedraw = true; return _gtFrac; };
@@ -7565,6 +7630,7 @@ const SIM_JOB_EMOJI = {
         const t0 = performance.now();
         _buildFlowTex(null, bx + i * step, by + i * step);
         out.push({ ms: +(performance.now() - t0).toFixed(1), wet: +(window.__wfWetMs || 0).toFixed(1),
+                   phi: +(window.__wfPhiMs || 0).toFixed(1),
                    flow: +(window.__wfFlowMs || 0).toFixed(1), flowN: window.__wfFlowN || 0,
                    reuse: window.__wfReuse || 0, asked: window.__wfAsked || 0, pend: window.__wfPending || 0 });
       }
