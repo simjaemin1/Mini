@@ -89,6 +89,16 @@ require(path.join(ROOT,'server','zone.js'));`);
   await sleep(2000);
 
   const cell = () => pg.evaluate(() => { const m = window.__getMyAbs(); return [Math.floor(m.x / 32), Math.floor(m.y / 32)]; });
+  const cellLocal = () => pg.evaluate(() => window.__camCellLocal());
+  // ★연결이 잠깐 끊기면 정본 훅이 null 을 돌려준다. 그걸 결과로 읽지 않는다 — 값이 올 때까지 기다린다.
+  const evalRetry = async (fn, arg, tries = 12) => {
+    for (let k = 0; k < tries; k++) {
+      const v = await pg.evaluate(fn, arg);
+      if (v !== null && v !== undefined && !(v && typeof v === 'object' && v.cutRock === null)) return v;
+      await sleep(1500);
+    }
+    return null;
+  };
   // 키 하나 또는 **동시 두 개**를 누른다 — 등각 조작이라 축 이동은 두 키를 같이 눌러야 한다.
   const press = async (k, ms) => {
     for (const c of k) await pg.keyboard.down(c);
@@ -103,26 +113,45 @@ require(path.join(ROOT,'server','zone.js'));`);
   //   ★등각 조작이라 단일 키는 **대각**(±1,±1)으로 움직인다. 축 이동은 두 키를 같이 눌러야 한다.
   //     그래서 단일 4가지 + 조합 4가지를 다 배운다. 하드코딩 대신 **실측**이다.
   const OPP = { w: 's', s: 'w', a: 'd', d: 'a' };
-  const learned = {};
-  for (const k of ['w', 'a', 's', 'd', 'ws', 'wd', 'as', 'ad', 'sd', 'wa']) {
-    if (k.length === 2 && OPP[k[0]] === k[1]) continue;            // 서로 반대면 제자리
-    const p0 = await cell();
-    await press(k, 900);
-    const p1 = await cell();
-    const d = [p1[0] - p0[0], p1[1] - p0[1]];
-    learned[k] = d;
-    if (d[0] || d[1]) await press([...k].map((c) => OPP[c]).join(''), 900);   // 움직였을 때만 되돌린다
+  //   ★한 번 눌러 안 움직였다고 '그 방향은 못 간다'로 적으면 안 된다 — 그 순간 나무·바위에
+  //     막혔을 수 있다(실측: 같은 자리에서 'sd' 가 어떤 판엔 (1,0), 어떤 판엔 (0,0) 이었다).
+  //     ⇒ 조합마다 **최대 3번** 시도하고, 그래도 안 움직이면 '모름'으로 남긴다.
+  //     그래도 축과 딱 맞는 조작을 못 찾으면 **자리를 옮겨** 한 번 더 배운다.
+  const KEYS = ['w', 'a', 's', 'd', 'ws', 'wd', 'as', 'ad', 'sd', 'wa'];
+  const learnOnce = async () => {
+    const out = {};
+    for (const k of KEYS) {
+      if (k.length === 2 && OPP[k[0]] === k[1]) continue;
+      for (let t = 0; t < 3; t++) {
+        const p0 = await cell();
+        await press(k, 900);
+        const p1 = await cell();
+        const d = [p1[0] - p0[0], p1[1] - p0[1]];
+        if (d[0] || d[1]) { out[k] = d; await press([...k].map((c) => OPP[c]).join(''), 900); break; }
+        if (t === 2) out[k] = null;
+      }
+    }
+    return out;
+  };
+  const bestOf = (L) => { let key = null, dot = 0;
+    for (const [k, v] of Object.entries(L)) { if (!v) continue;
+      const n = Math.hypot(v[0], v[1]); if (!n) continue;
+      const c = (v[0] * site.dx + v[1] * site.dy) / n; if (c > dot) { dot = c; key = k; } }
+    return { key, dot }; };
+  let learned = await learnOnce();
+  let pick = bestOf(learned);
+  if (pick.dot < 0.95) {                                     // 자리를 옮겨 한 번 더
+    const mover = Object.entries(learned).find(([, v]) => v && (v[0] || v[1]));
+    if (mover) { for (let t = 0; t < 3; t++) await press(mover[0], 900); }
+    say('    (축과 딱 맞는 조작을 못 찾아 자리를 옮겨 다시 배운다)');
+    const L2 = await learnOnce();
+    for (const [k, v] of Object.entries(L2)) if (v) learned[k] = v;
+    pick = bestOf(learned);
   }
   say(`    ${JSON.stringify(learned)}`);
-  const moved = Object.values(learned).filter((v) => v[0] || v[1]).length;
+  const moved = Object.values(learned).filter((v) => v && (v[0] || v[1])).length;
   ok(moved >= 4, `★대조군 — 빈 땅에서는 걸으면 실제로 움직인다 (${moved}/${Object.keys(learned).length} 조합)`);
-  // 통로 축 방향과 **가장 잘 맞는** 조합(코사인 최대, 옆으로 새는 성분이 작은 것)
-  let key = null, bestDot = 0;
-  for (const [k, v] of Object.entries(learned)) {
-    const n = Math.hypot(v[0], v[1]); if (!n) continue;
-    const dot = (v[0] * site.dx + v[1] * site.dy) / n;
-    if (dot > bestDot) { bestDot = dot; key = k; }
-  }
+  const key = pick.key, bestDot = pick.dot;
   say(`    통로 방향 (${site.dx},${site.dy}) 에 맞는 키 = '${key}' (일치도 ${bestDot.toFixed(2)})`);
   ok(!!key && bestDot > 0.95, `★통로 축과 **정확히** 맞는 조작을 실측으로 찾았다 ('${key}', 일치도 ${bestDot.toFixed(2)})`);
 
@@ -180,15 +209,26 @@ require(path.join(ROOT,'server','zone.js'));`);
   // ── ⓓ 오늘 규격 — 서버는 파괴를 모른다: 걸어서 못 들어간다 ─────────────────
   say('\n[ⓓ 오늘 규격 — 파낸 통로는 **렌더만** 열린다(서버 통행 이벤트 §A-6 미구현)]');
   //   ★입구 앞에 정확히 서서 축으로만 민다. 옆으로 샜으면 '들어갔다'가 아니다 — 두 성분을 다 본다.
-  const p0 = await cell();
-  for (let s = 0; s < 10; s++) await press(key, 900);
-  const p1 = await cell();
+  //   ★판정은 '몇 칸 갔나'가 아니라 **'파낸 칸을 밟았나'** 다. 스폰이 한두 칸 밀릴 수 있어
+  //     걸음 수로 재면 그 밀림을 '진입'으로 잘못 센다(실측에서 그렇게 틀렸다).
+  const p0 = await cell(), l0 = await cellLocal();
+  //   ★한 걸음마다 밟은 칸을 적는다 — '끝에 어디 있나'가 아니라 **'가는 동안 파낸 칸을 밟았나'** 를 본다.
+  const path2 = [];
+  for (let s = 0; s < 10; s++) { await press(key, 900); path2.push(await cellLocal()); }
+  const p1 = await cell(), l1 = path2[path2.length - 1];
   const dI = p1[0] - p0[0], dJ = p1[1] - p0[1];
-  const into = dI * site.dx + dJ * site.dy;                       // 통로 축 성분
+  const into = dI * site.dx + dJ * site.dy;                       // 통로 축 성분(참고값)
   const side = Math.abs(dI * site.dy - dJ * site.dx);             // 축에서 벗어난 성분
-  say(`    출발 ${p0} → 도착 ${p1} · 축 진행 ${into}셀 · 축 이탈 ${side}셀`);
-  ok(side <= 1, `★조작이 통로 축을 벗어나지 않았다 (이탈 ${side}셀) — 옆길로 샌 이동을 '진입'으로 세지 않는다`);
-  ok(into <= 1, `★★오늘은 파낸 통로로 **걸어 들어갈 수 없다** (축 진행 ${into}셀) — 서버 통행 판정이 산을 막는다`);
+  const onDug = digCells.some(([a, b]) => a === l1[0] && b === l1[1]);
+  const wasRock = rock(l1[0], l1[1]);                             // 정본 술어 — 원래 바위였나
+  say(`    출발 ${p0}(로컬 ${l0}) → 도착 ${p1}(로컬 ${l1}) · 축 진행 ${into}셀 · 이탈 ${side}셀 · 파낸 칸 위? ${onDug} · 원래 바위? ${wasRock}`);
+  //   ★옆으로 밀린 건 결함이 아니다 — 벽에 부딪히면 면을 따라 미끄러진다(서버 이동 규약).
+  //     "옆길로 샌 걸 진입으로 세지 않는다"는 목적은 아래 두 판정이 **정확히** 대신한다.
+  const touchedDug = path2.filter((c) => digCells.some(([a, b]) => a === c[0] && b === c[1])).length;
+  say(`    걸은 자취 ${path2.length}칸 중 파낸 칸을 밟은 횟수 ${touchedDug} (벽에 밀려 면을 따라 ${side}셀 미끄러짐)`);
+  ok(touchedDug === 0, `★★걸어가는 **동안에도** 파낸 칸을 한 번도 못 밟는다 (${touchedDug}회)`);
+  ok(!onDug, `★★도착 칸도 통로 밖이다 (${l1})`);
+  ok(!wasRock, `★★도착 칸은 원래 바위가 아니다 — 서버 통행 판정이 산을 막는다`);
   ok(moved >= 2, `★반례 — 다리가 안 움직인 게 아니다(위 ⓐ에서 빈 땅 이동 확인)`);
   await shot('C-걸어서진입시도');
 
@@ -196,15 +236,15 @@ require(path.join(ROOT,'server','zone.js'));`);
   say('\n[ⓔ 복원하면 렌더가 닫힌다]');
   await pg.evaluate(() => window.__mtClearDestroy());
   await sleep(4000);
-  const rc2 = await pg.evaluate((m) => ({
+  const rc2 = await evalRetry((m) => ({
     cutRock: window.__mtIsRock(m[0], m[1]),
     mesh: window.__mt3MeshAt(m[0], m[1]),
     h: window.__mtHeightAt(m[0], m[1]),
   }), mid);
-  say(`    복원 뒤 — 렌더 바위 ${rc2.cutRock} · cut ${rc2.mesh && rc2.mesh.cut} · 높이 ${rc2.h}m`);
-  ok(rc2.cutRock === true, `★★복원하면 파낸 셀이 다시 바위다`);
-  ok(!(rc2.mesh && rc2.mesh.cut), `★복원하면 갱 표시가 사라진다`);
-  ok(Math.abs(rc2.h - hMid0) < 0.01, `★★복원하면 그 자리 높이가 **파기 전 값 그대로** 돌아온다 (${rc2.h}m vs ${hMid0}m)`);
+  say(`    복원 뒤 — 렌더 바위 ${rc2 && rc2.cutRock} · cut ${rc2 && rc2.mesh && rc2.mesh.cut} · 높이 ${rc2 && rc2.h}m`);
+  ok(!!rc2 && rc2.cutRock === true, `★★복원하면 파낸 셀이 다시 바위다`);
+  ok(!!rc2 && !(rc2.mesh && rc2.mesh.cut), `★복원하면 갱 표시가 사라진다`);
+  ok(!!rc2 && Math.abs(rc2.h - hMid0) < 0.01, `★★복원하면 그 자리 높이가 **파기 전 값 그대로** 돌아온다 (${rc2.h}m vs ${hMid0}m)`);
   await shot('D-복원뒤');
 
   say(`\n=== 통로(갱) E2E: 통과 ${pass} · 실패 ${fail} ===`);
