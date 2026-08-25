@@ -1,0 +1,213 @@
+#!/usr/bin/env node
+// =============================================================================
+// e2e-mtcorridor — **통로(갱)** 실클라 회귀. 산 아크의 세일즈 포인트를 박제한다.
+//
+// ★사실부터: 산 부수기의 **서버 이벤트가 아직 없다**(client.js `_mtDestroyed` 주석 "§A-6 회부",
+//   server/terrain.js "산은 완벽한 콜라이더다 — 뚫려 있는 곳은 처음부터 뚫려 있는 두 종류뿐").
+//   `__mtDestroy` 는 **렌더 층만** 연다. 서버 통행 판정(isTerrainBlockedLocal → isRockCellLocal)은
+//   그대로 막는다. 그래서 "파낸 통로를 걸어서 통과"는 **오늘 규격에서 불가능**하다.
+//   ⇒ 이 회귀는 두 가지를 한다:
+//      ⑴ 오늘 지켜지는 것(렌더 계약·부수기 합법성·복원)을 **정확히** 박제하고,
+//      ⑵ 아직 없는 것(서버 통행 이벤트)을 **판정으로 고정**해 둔다 — 생기는 날 이 회귀가 알려 준다.
+//   판정을 느슨하게 둔 게 아니라, **없는 기능을 있는 척 통과시키지 않기 위해** 이렇게 쓴다.
+//
+// ★자명 통과 금지 — 걸음이 막힌 게 '다리가 안 움직여서'가 아님을 대조군으로 증명한다.
+// ★텔레포트 금지 — 이동은 키 입력뿐. 키→방향 대응은 **빈 땅에서 실측으로 배운다**(하드코딩 금지).
+// 사용: node scripts/e2e-mtcorridor.js
+// =============================================================================
+'use strict';
+const path = require('path'), fs = require('fs');
+const { spawn } = require('child_process');
+const ROOT = path.join(__dirname, '..'), CPORT = 3010, ZPORT = 3020;
+const SHOTS = process.env.SHOTS || '/tmp/e2e-mtcorridor';
+fs.mkdirSync(SHOTS, { recursive: true });
+const DEPTH = +(process.env.DEPTH || 12);
+let pass = 0, fail = 0;
+const say = (s) => console.log(s);
+const ok = (c, m) => { if (c) { pass++; say(`  ✓ ${m}`); } else { fail++; say(`  ✗ ${m}`); } };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const procs = [];
+function boot(f, env) { const p = spawn('node', [f], { env: { ...process.env, ...env }, stdio: ['ignore', 'pipe', 'pipe'], cwd: ROOT }); procs.push(p); return p; }
+async function waitHttp(u, n = 600) { for (let i = 0; i < n; i++) { try { const r = await fetch(u); if (r.ok) return true; } catch (e) {} await sleep(1000); } return false; }
+const die = (c) => { for (const p of procs) { try { p.kill(); } catch (e) {} } process.exit(c); };
+
+// ── 자리 고르기: 정본 술어로 **산 가장자리**를 찾는다(입구는 뭍, 안쪽으로 DEPTH칸 바위) ──
+const T = require(path.join(ROOT, 'server', 'terrain.js'));
+const ZID = 'hanbando';
+const rock = (i, j) => T.isRockCellLocal(ZID, i * 32 + 16, j * 32 + 16);
+const water = (i, j) => T.isWaterCellLocal(ZID, i * 32 + 16, j * 32 + 16);
+function pickSite() {
+  // 축 방향 네 가지 중, 입구(뭍)에서 안으로 DEPTH칸이 전부 바위이고 물이 없는 자리
+  const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  for (let j = 200; j < 900; j += 3) {
+    for (let i = 1760; i < 2260; i += 3) {
+      if (rock(i, j) || water(i, j)) continue;                 // 입구는 뭍이어야 한다
+      for (const [dx, dy] of DIRS) {
+        let okAll = true;
+        for (let k = 1; k <= DEPTH + 2; k++) {
+          const a = i + dx * k, b = j + dy * k;
+          if (!rock(a, b) || water(a, b)) { okAll = false; break; }
+        }
+        if (!okAll) continue;
+        // 입구 반대쪽도 뭍이어야 걸어 들어가는 그림이 된다
+        if (rock(i - dx, j - dy) || water(i - dx, j - dy)) continue;
+        return { i, j, dx, dy };
+      }
+    }
+  }
+  return null;
+}
+
+(async () => {
+  say('\n=== 통로(갱) 실클라 E2E ===');
+  const site = pickSite();
+  if (!site) { console.error('통로 자리를 못 찾았다'); die(1); }
+  say(`  자리: 입구 셀 (${site.i},${site.j}) · 방향 (${site.dx},${site.dy}) · 깊이 ${DEPTH}`);
+  const digCells = [];
+  for (let k = 1; k <= DEPTH; k++) digCells.push([site.i + site.dx * k, site.j + site.dy * k]);
+
+  fs.writeFileSync('/tmp/zw-corr-e2e.js', `const path=require('path');const ROOT=${JSON.stringify(ROOT)};
+const cfg=require(path.join(ROOT,'server','zone-config'));const ZID='hanbando';
+cfg.WORLD.dayLengthMs=86400000; cfg.WORLD.worldEpoch=Date.now()-21600000;
+Object.assign(cfg.ZONES[ZID],JSON.parse(process.env.WRAP_ZONE_PATCH||'{}'));
+require(path.join(ROOT,'server','zone.js'));`);
+  boot(path.join(ROOT, 'server', 'central.js'), { PORT: '' + CPORT, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
+  await sleep(2000);
+  boot('/tmp/zw-corr-e2e.js', { PORT: '' + ZPORT, ZONE_ID: 'hanbando', DB_PATH: '/tmp/corr-e2e.db',
+    CENTRAL_URL: `http://localhost:${CPORT}`, ENABLE_VILLAGES: '0', ENABLE_BANDITS: '0',
+    WRAP_ZONE_PATCH: JSON.stringify({ mainSquare: { x: site.i * 32 + 16, y: site.j * 32 + 16, name: '통로입구' } }) });
+  await waitHttp(`http://localhost:${ZPORT}/health`); await sleep(2500);
+
+  const { chromium } = require('playwright');
+  const br = await chromium.launch({ headless: true, args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+  const pg = await (await br.newContext({ viewport: { width: 1400, height: 900 } })).newPage();
+  pg.on('pageerror', (e) => say('  [err] ' + String(e.message).slice(0, 160)));
+  await pg.goto(`http://localhost:${CPORT}/`); await sleep(2000);
+  for (const sel of ['#startBtn', 'button:has-text("시작")', 'button:has-text("입장")', 'text=게스트']) { try { const b = await pg.$(sel); if (b) { await b.click(); break; } } catch (e) {} }
+  await sleep(20000);
+  await pg.evaluate(() => { window.__terrain19.freezeT = 0.30; window.__terrain19.windOff = true; });
+  await sleep(2000);
+
+  const cell = () => pg.evaluate(() => { const m = window.__getMyAbs(); return [Math.floor(m.x / 32), Math.floor(m.y / 32)]; });
+  // 키 하나 또는 **동시 두 개**를 누른다 — 등각 조작이라 축 이동은 두 키를 같이 눌러야 한다.
+  const press = async (k, ms) => {
+    for (const c of k) await pg.keyboard.down(c);
+    await sleep(ms);
+    for (const c of k) await pg.keyboard.up(c);
+    await sleep(220);
+  };
+  const shot = (n) => pg.screenshot({ path: path.join(SHOTS, n + '.png') });
+
+  // ── ⓐ 키 → 방향 대응을 **실측으로 배운다** (하드코딩 금지) ─────────────────
+  say('\n[ⓐ 키→방향 대응을 빈 땅에서 배운다]');
+  //   ★등각 조작이라 단일 키는 **대각**(±1,±1)으로 움직인다. 축 이동은 두 키를 같이 눌러야 한다.
+  //     그래서 단일 4가지 + 조합 4가지를 다 배운다. 하드코딩 대신 **실측**이다.
+  const OPP = { w: 's', s: 'w', a: 'd', d: 'a' };
+  const learned = {};
+  for (const k of ['w', 'a', 's', 'd', 'ws', 'wd', 'as', 'ad', 'sd', 'wa']) {
+    if (k.length === 2 && OPP[k[0]] === k[1]) continue;            // 서로 반대면 제자리
+    const p0 = await cell();
+    await press(k, 900);
+    const p1 = await cell();
+    const d = [p1[0] - p0[0], p1[1] - p0[1]];
+    learned[k] = d;
+    if (d[0] || d[1]) await press([...k].map((c) => OPP[c]).join(''), 900);   // 움직였을 때만 되돌린다
+  }
+  say(`    ${JSON.stringify(learned)}`);
+  const moved = Object.values(learned).filter((v) => v[0] || v[1]).length;
+  ok(moved >= 4, `★대조군 — 빈 땅에서는 걸으면 실제로 움직인다 (${moved}/${Object.keys(learned).length} 조합)`);
+  // 통로 축 방향과 **가장 잘 맞는** 조합(코사인 최대, 옆으로 새는 성분이 작은 것)
+  let key = null, bestDot = 0;
+  for (const [k, v] of Object.entries(learned)) {
+    const n = Math.hypot(v[0], v[1]); if (!n) continue;
+    const dot = (v[0] * site.dx + v[1] * site.dy) / n;
+    if (dot > bestDot) { bestDot = dot; key = k; }
+  }
+  say(`    통로 방향 (${site.dx},${site.dy}) 에 맞는 키 = '${key}' (일치도 ${bestDot.toFixed(2)})`);
+  ok(!!key && bestDot > 0.95, `★통로 축과 **정확히** 맞는 조작을 실측으로 찾았다 ('${key}', 일치도 ${bestDot.toFixed(2)})`);
+
+  // ── ⓑ 부수기 — 가장자리 규칙을 정본 술어로 매 삽 검사 ─────────────────────
+  say('\n[ⓑ 통로를 정본 부수기로 뚫는다 — 가장자리에서만]');
+  await shot('A-부수기전');
+  const mid0 = digCells[Math.floor(DEPTH / 2)];
+  const hMid0 = await pg.evaluate((m) => window.__mtHeightAt(m[0], m[1]), mid0);   // ★파기 **전** 높이(복원 기준값)
+  const dig = await pg.evaluate((cs) => {
+    const out = { dug: 0, illegal: 0 };
+    for (const [i, j] of cs) {
+      const isR = window.__mtIsRock(i, j);
+      const edge = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => window.__mtIsRock(i + a, j + b) === false);
+      if (!isR || !edge) { out.illegal++; continue; }
+      window.__mtDestroy([[i, j]]); out.dug++;
+    }
+    return out;
+  }, digCells);
+  say(`    삽질 ${dig.dug}칸 · 규칙 위반 ${dig.illegal}칸`);
+  ok(dig.dug === DEPTH, `★통로 ${DEPTH}칸을 다 뚫었다 (${dig.dug})`);
+  ok(dig.illegal === 0, `★★가장자리에서만 팠다 (위반 ${dig.illegal})`);
+  await sleep(4000);
+  await shot('B-부순뒤');
+
+  // ── ⓒ 렌더 계약 — 파낸 셀은 렌더에서 열리고, 옆벽은 제 높이로 선다 ─────────
+  say('\n[ⓒ 렌더 계약 — 파낸 셀은 도려내지고 옆벽은 제 높이]');
+  const mid = digCells[Math.floor(DEPTH / 2)];
+  const rc = await pg.evaluate((m) => ({
+    cutRock: window.__mtIsRock(m[0], m[1]),
+    mesh: window.__mt3MeshAt(m[0], m[1]),
+    hSide: [window.__mtHeightAt(m[0] + 1, m[1]), window.__mtHeightAt(m[0] - 1, m[1]),
+            window.__mtHeightAt(m[0], m[1] + 1), window.__mtHeightAt(m[0], m[1] - 1)],
+  }), mid);
+  const wallMax = Math.max(...rc.hSide);
+  say(`    가운데 셀 (${mid}) — 렌더 바위 ${rc.cutRock} · cut ${rc.mesh && rc.mesh.cut} · 옆 4칸 높이 ${JSON.stringify(rc.hSide)}`);
+  ok(rc.cutRock === false, `★파낸 셀은 렌더 판정에서 바위가 아니다`);
+  ok(!!(rc.mesh && rc.mesh.cut), `★파낸 셀이 메시에서 **갱(cut)** 으로 표시된다`);
+  // ★★"협곡이냐 도랑이냐"는 **장면 상수**로 못 가른다(자리마다 dE 가 달라 마루가 다르다).
+  //   정본 대조군: 마스크 이원화를 끄면(옛 판) 옆벽이 파낸 깊이만큼 **같이 주저앉는다**.
+  //   켠 판이 끈 판보다 확실히 높아야 '협곡'이다.
+  const wallAB = await pg.evaluate(async (m) => {
+    const out = {};
+    for (const d of [0, 1]) {
+      window.__mtDual(d);
+      out[d] = Math.max(window.__mtHeightAt(m[0] + 1, m[1]), window.__mtHeightAt(m[0] - 1, m[1]),
+                        window.__mtHeightAt(m[0], m[1] + 1), window.__mtHeightAt(m[0], m[1] - 1));
+    }
+    window.__mtDual(1);
+    return out;
+  }, mid);
+  say(`    옆벽 높이 — 이원화 끔(옛 판/도랑) ${wallAB[0].toFixed(2)}m · 켬(협곡) ${wallAB[1].toFixed(2)}m`);
+  ok(wallAB[0] > 0.5, `★자명 통과 금지 — 옛 판에서도 높이가 0 은 아니다 (${wallAB[0].toFixed(2)}m)`);
+  ok(wallAB[1] > wallAB[0] * 2.5, `★★옆벽이 제 높이로 선다 — 협곡 ${wallAB[1].toFixed(2)}m 가 도랑 ${wallAB[0].toFixed(2)}m 의 2.5배 넘는다`);
+
+  // ── ⓓ 오늘 규격 — 서버는 파괴를 모른다: 걸어서 못 들어간다 ─────────────────
+  say('\n[ⓓ 오늘 규격 — 파낸 통로는 **렌더만** 열린다(서버 통행 이벤트 §A-6 미구현)]');
+  //   ★입구 앞에 정확히 서서 축으로만 민다. 옆으로 샜으면 '들어갔다'가 아니다 — 두 성분을 다 본다.
+  const p0 = await cell();
+  for (let s = 0; s < 10; s++) await press(key, 900);
+  const p1 = await cell();
+  const dI = p1[0] - p0[0], dJ = p1[1] - p0[1];
+  const into = dI * site.dx + dJ * site.dy;                       // 통로 축 성분
+  const side = Math.abs(dI * site.dy - dJ * site.dx);             // 축에서 벗어난 성분
+  say(`    출발 ${p0} → 도착 ${p1} · 축 진행 ${into}셀 · 축 이탈 ${side}셀`);
+  ok(side <= 1, `★조작이 통로 축을 벗어나지 않았다 (이탈 ${side}셀) — 옆길로 샌 이동을 '진입'으로 세지 않는다`);
+  ok(into <= 1, `★★오늘은 파낸 통로로 **걸어 들어갈 수 없다** (축 진행 ${into}셀) — 서버 통행 판정이 산을 막는다`);
+  ok(moved >= 2, `★반례 — 다리가 안 움직인 게 아니다(위 ⓐ에서 빈 땅 이동 확인)`);
+  await shot('C-걸어서진입시도');
+
+  // ── ⓔ 복원 — 렌더가 닫힌다 ───────────────────────────────────────────────
+  say('\n[ⓔ 복원하면 렌더가 닫힌다]');
+  await pg.evaluate(() => window.__mtClearDestroy());
+  await sleep(4000);
+  const rc2 = await pg.evaluate((m) => ({
+    cutRock: window.__mtIsRock(m[0], m[1]),
+    mesh: window.__mt3MeshAt(m[0], m[1]),
+    h: window.__mtHeightAt(m[0], m[1]),
+  }), mid);
+  say(`    복원 뒤 — 렌더 바위 ${rc2.cutRock} · cut ${rc2.mesh && rc2.mesh.cut} · 높이 ${rc2.h}m`);
+  ok(rc2.cutRock === true, `★★복원하면 파낸 셀이 다시 바위다`);
+  ok(!(rc2.mesh && rc2.mesh.cut), `★복원하면 갱 표시가 사라진다`);
+  ok(Math.abs(rc2.h - hMid0) < 0.01, `★★복원하면 그 자리 높이가 **파기 전 값 그대로** 돌아온다 (${rc2.h}m vs ${hMid0}m)`);
+  await shot('D-복원뒤');
+
+  say(`\n=== 통로(갱) E2E: 통과 ${pass} · 실패 ${fail} ===`);
+  say(`  ※미구현으로 남긴 것: **서버 바위 파괴 이벤트**(§A-6). 생기면 ⓓ 판정이 뒤집혀 알려 준다.`);
+  await br.close(); die(fail ? 1 : 0);
+})().catch((e) => { console.error(e); die(1); });
