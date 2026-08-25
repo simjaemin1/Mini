@@ -71,10 +71,13 @@ console.log(`실지도 ${seeds.length}곳 · 시드 ${SEED} · ${DAYS}일`);
 //   1차 스윕(시드 1020)에서 ±40%(1.94일)는 목표를 **넘겼고**(너무 잦다) ±55~70% 가 2.0~2.2일로 들어왔다.
 //   결선 3종만 3시드로 다시 잰다. SHORT_DAYS 는 **안 건드린다** — 그 값은 게시판 의뢰의 정의이기도 해서
 //   밀도 맞추자고 흔들면 "부족"의 뜻이 바뀐다(밀도 튜닝이 게임 규칙을 바꾸면 안 된다).
+//   ⚠2026-08-26 수리: 'A' 를 `cfg: {}` 로 뒀더니 **채택 뒤에는 A 와 C 가 같은 값**이 나왔다
+//     (기본값이 이미 ±70·H1.6 이 됐으므로). 라벨은 A 인데 내용은 C 인, 조용히 무의미해진 열이었다.
+//     ⇒ 채택 전 값을 **명시**한다. 열이 스스로 뜻을 갖게.
 const CANDS = BASE_ONLY ? [] : [
-  { tag: 'A 기본(±40 · H1.35)', cfg: {} },
+  { tag: 'A 채택전(±40 · H1.35)', cfg: { PRICE_UP: 0.40, PRICE_DOWN: 0.40, HYST: 1.35 } },
   { tag: 'B ±55 · H1.6', cfg: { PRICE_UP: 0.55, PRICE_DOWN: 0.55, HYST: 1.6 } },
-  { tag: 'C ±70 · H1.6', cfg: { PRICE_UP: 0.70, PRICE_DOWN: 0.70, HYST: 1.6 } },
+  { tag: 'C ±70 · H1.6 ★채택', cfg: { PRICE_UP: 0.70, PRICE_DOWN: 0.70, HYST: 1.6 } },
 ];
 const depositMap = Villages.playerVillageDepositMap();
 const LS = CANDS.map((c) => {
@@ -122,6 +125,8 @@ for (const x of LS) {
   console.log(`  ${x.tag.padEnd(24)} 최다 ${String(per[0] || 0).padStart(4)} · 상위25% ${String(q(0.25)).padStart(4)} · 중앙 ${String(q(0.5)).padStart(4)} · 하위25% ${String(q(0.75)).padStart(4)} · 최소 ${String(per[per.length - 1] || 0).padStart(4)}`);
 }
 console.log(`\nⓓ 의뢰(플레이어 없음 → 납품 0 · 게시/철회만)`);
-for (const x of LS) console.log(`  ${x.tag.padEnd(24)} 게시 ${String(x.L.stats.reqOpened).padStart(6)} · 철회 ${String(x.L.stats.reqClosed).padStart(6)} · 마을·일당 ${(x.L.stats.reqOpened / Math.max(1, live * DAYS)).toFixed(4)}`);
+for (const x of LS) console.log(`  ${x.tag.padEnd(24)} 게시 ${String(x.L.stats.reqOpened).padStart(6)} · 철회 ${String(x.L.stats.reqClosed).padStart(6)}`
+  + ` · 축소 ${String(x.L.stats.reqShrunk).padStart(5)} · 못갚아미게시 ${String(x.L.stats.reqNoPay).padStart(6)} · 재검증철회 ${String(x.L.stats.reqRevalidated).padStart(5)}`
+  + ` · 마을·일당 ${(x.L.stats.reqOpened / Math.max(1, live * DAYS)).toFixed(4)}`);
 console.log(`\n※ CARAVAN_LATE 는 랩(econ 단독)에 실체 캐러밴이 없어 **구조적으로 0**이다 — 실서버에서만 난다.`);
 try { require('fs').unlinkSync(process.env.DB_PATH); } catch (e) {}

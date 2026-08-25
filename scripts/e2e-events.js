@@ -56,7 +56,11 @@ async function waitHttp(url, tries = 900) {
     PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB,
     CENTRAL_URL: `http://localhost:${CPORT}`,
     // ★마을이 필요한 유일한 실클라 하네스 — 대신 2곳만, 하루는 0.5초.
-    VILLAGE_MAX: '2', VILLAGE_DAY_MS: '500',
+    // ★하루 0.5초는 **너무 빨랐다**(2026-08-26): 게시판을 열고 재료를 받고 납품하는 몇십 초 사이에
+    //   게임 **60일**이 흘러 마을이 부족→글럿으로 가버리고 의뢰가 철회된다(촌장이 "쌓여 썩을 지경"이라 말한다).
+    //   소비EMA 를 데우려면 날이 빨라야 하지만 상호작용 중엔 느려야 한다 — 1.2초가 그 절충이다.
+    //   그리고 아래 `ensureBoard()` 가 "그래도 사라졌으면 다시 세운다"로 남은 경주를 흡수한다.
+    VILLAGE_MAX: '2', VILLAGE_DAY_MS: '1200',
     ENABLE_BANDITS: '0', ENABLE_ROADS: '0',
     E2E_GIVE: '1',   // 재료 지급 + 부족 픽스처(둘 다 이 플래그로만 분기가 산다)
   });
@@ -147,69 +151,82 @@ async function waitHttp(url, tries = 900) {
 
   // ── ③ 부족을 만들고 게시판이 서는지 ───────────────────────────────────────
   //   재고만 낮춘다(픽스처). 소비EMA 가 아직 안 자랐으면 정직하게 실패를 돌려준다 —
-  //   그때는 게임일이 더 흐를 때까지 기다린다(하루 0.5초).
+  //   그때는 게임일이 더 흐를 때까지 기다린다.
+  //   ★그리고 **의뢰는 사라질 수 있다** — 마을 경제가 계속 돌아 부족이 풀리면 촌장이 거둔다.
+  //     그건 정상 동작이므로, 검사하려는 순간에 **다시 세우는** 헬퍼를 둔다(상황을 고정할 뿐
+  //     판정을 무르게 하지 않는다 — 아래 assert 는 그대로다).
   let sh = null;
-  for (let i = 0; i < 40; i++) {
-    await page.evaluate((vid) => window.__sendPrimary({ type: '__e2e_village_short', vid }), V.id);
-    await sleep(900);
-    const last = await page.evaluate(() => (window.__notices || []).slice(-3).join(' | '));
-    if (/🧪/.test(last) && !/없다|미지원|없음/.test(last)) { sh = last; break; }
+  async function ensureBoard(tries) {
+    for (let i = 0; i < (tries || 30); i++) {
+      await page.evaluate((vid) => window.__sendPrimary({ type: '__e2e_village_short', vid }), V.id);
+      await sleep(900);
+      const last = await page.evaluate(() => (window.__notices || []).slice(-3).join(' | '));
+      if (/🧪/.test(last) && !/없다|미지원|없음/.test(last)) sh = sh || last;
+      await page.evaluate((vid) => window.__sendPrimary({ type: 'village_board', vid }), V.id);
+      await sleep(500);
+      const b = await page.evaluate(() => window.__evLastBoard || null);
+      if (b && b.rows && b.rows.length) return b;
+    }
+    return await page.evaluate(() => window.__evLastBoard || null);
   }
-  ok(!!sh, '부족 픽스처 성립(소비EMA 가 자란 품목의 재고를 문턱 아래로)', sh || '(40회 시도 실패 — 소비EMA 미성숙)');
-
-  // 하루 경계가 지나야 장부가 판정하고 게시판이 선다(하루 0.5초라 금방)
-  let board = null;
-  for (let i = 0; i < 30 && !(board && board.rows && board.rows.length); i++) {
-    await sleep(900);
-    await page.evaluate((vid) => window.__sendPrimary({ type: 'village_board', vid }), V.id);
-    await sleep(400);
-    board = await page.evaluate(() => window.__evLastBoard || null);
-  }
+  let board = await ensureBoard(30);
+  ok(!!sh, '부족 픽스처 성립(소비EMA 가 자란 품목의 재고를 문턱 아래로 · 갚을 잉여도 갖춤)', sh || '(성립 실패 — 소비EMA 미성숙)');
   ok(!!(board && board.rows && board.rows.length), '게시판에 납품 의뢰가 걸렸다', board ? JSON.stringify(board.rows.map((r) => r.line)) : 'X');
   await snap('ev-04-board');
   // ★자명 통과 금지 — `/게시판/` 만 보면 **촌장 대사**("…(게시판 1건 · Shift+G)")에도 걸린다.
   //   게시판 알림에만 있는 것(📋 머리 + `Shift+N` 꼬리 + 줄바꿈)을 전부 요구한다.
-  //   그리고 촌장 대사가 덮어쓰기 전에 읽어야 하므로 **게시판을 다시 열고 곧바로** 읽는다.
-  await page.evaluate((vid) => window.__sendPrimary({ type: 'village_board', vid }), V.id);
-  await sleep(700);
-  const boardShown = await page.evaluate(() => (document.getElementById('notice') || {}).textContent || '');
+  //   ⚠근접 브리핑이 0.7초마다 돌면서 **같은 `#notice` 를 덮는다** — 게시판을 띄우고 700ms 를
+  //     기다리면 촌장 대사가 이미 덮은 뒤일 수 있다(그렇게 두 번 실패했다). 짧게 여러 번 본다.
+  //     그리고 의뢰 자체가 그 사이 철회될 수도 있어("걸린 의뢰가 없다"), 비었으면 다시 세운다.
+  let boardShown = '';
+  for (let i = 0; i < 10; i++) {
+    if (i > 0) await ensureBoard(4);
+    for (let k = 0; k < 6; k++) {
+      await page.evaluate((vid) => window.__sendPrimary({ type: 'village_board', vid }), V.id);
+      await sleep(200);
+      boardShown = await page.evaluate(() => (document.getElementById('notice') || {}).textContent || '');
+      if (/^📋/.test(boardShown) && /Shift\+N/.test(boardShown)) break;
+    }
+    if (/^📋/.test(boardShown) && /Shift\+N/.test(boardShown)) break;
+  }
   ok(/^📋/.test(boardShown) && /Shift\+N/.test(boardShown) && boardShown.includes('\n'),
     '게시판 목록이 화면(HUD)에 여러 줄로 실제로 그려졌다', JSON.stringify(boardShown.slice(0, 110)));
   ok(!/촌장/.test(boardShown), '(자명 통과 방지) 그 알림은 촌장 대사가 아니라 게시판이다');
 
   if (board && board.rows && board.rows.length) {
-    const row = board.rows[0];
+    // ★납품 **직전에** 게시판을 다시 세우고, **그때의 행**으로 재료를 받는다.
+    //   (게임일이 계속 흘러 의뢰 품목 자체가 바뀔 수 있다 — 첫 목록의 품목을 쥐고 있으면 헛낸다.
+    //    실제로 그렇게 한 번 실패했다: `약초` 의뢰가 서 있는데 `나무` 를 내고 있었다.)
+    const board1 = await ensureBoard(20);
+    ok(!!(board1 && board1.rows && board1.rows.length), '④a 전제: 납품 직전에도 의뢰가 걸려 있다',
+      board1 ? JSON.stringify(board1.rows.map((r) => r.line)) : 'X');
+    const row = (board1 && board1.rows && board1.rows[0]) || board.rows[0];
     const giveItem = (row.give || [])[0];
+    const rewItem = row.take;
     ok(!!giveItem, '의뢰 품목을 낼 수 있는 플레이어 아이템이 있다', `${row.item} ← ${JSON.stringify(row.give)}`);
 
-    // ── ④ 재료를 받고 납품 → 보상 수령 ─────────────────────────────────────
     const need = Math.max(1, Math.ceil(row.remain));
     await page.evaluate(([it, n]) => window.__sendPrimary({ type: '__e2e_give', items: { [it]: n + 5 } }), [giveItem, need]);
     await sleep(1200);
     const invBefore = await page.evaluate(() => (window.__getInv && window.__getInv()) || {});
     ok((invBefore[giveItem] || 0) >= need, '납품할 물건을 손에 넣었다', `${giveItem} ${invBefore[giveItem] || 0}`);
-    const rewItem = row.take;
 
     // 품목을 **안 보낸다** — 서버가 낼 수 있는 의뢰를 고른다(권위는 서버에 있다).
     await page.evaluate((vid) => window.__sendPrimary({ type: 'village_deliver', vid }), V.id);
     await sleep(1500);
     await snap('ev-05-delivered');
     const invAfter = await page.evaluate(() => (window.__getInv && window.__getInv()) || {});
-    const notes = await page.evaluate(() => (window.__notices || []).slice(-4));
+    const notes = await page.evaluate(() => (window.__notices || []).slice(-6));
     console.log(`    납품 후 알림: ${JSON.stringify(notes)}`);
     ok((invAfter[giveItem] || 0) < (invBefore[giveItem] || 0), '납품한 만큼 인벤에서 빠졌다',
       `${giveItem} ${invBefore[giveItem] || 0} → ${invAfter[giveItem] || 0}`);
     ok(notes.some((t) => /납품/.test(t)), '납품 결과가 화면 알림으로 돌아왔다');
     ok(!!rewItem && (invAfter[rewItem] || 0) > (invBefore[rewItem] || 0), '보상(물물)이 인벤에 들어왔다',
       `${rewItem} ${invBefore[rewItem] || 0} → ${invAfter[rewItem] || 0}`);
-    // 게시판이 즉시 갱신된다(다 찼으면 목록에서 빠지고, 남았으면 잔여가 준다)
     const board2 = await page.evaluate(() => window.__evLastBoard || null);
     const r2 = board2 && (board2.rows || []).find((r) => r.item === row.item);
     ok(!r2 || r2.remain < row.remain, '납품 즉시 게시판 잔여가 줄었다(또는 목록에서 빠졌다)',
       r2 ? `remain ${row.remain} → ${r2.remain}` : '목록에서 빠짐');
-
-    // ── ⑤ 마을 곳간이 실제로 늘었다 — **DB 가 아니라 서버 상태**로 확인 ────
-    //   (물건이 어디로 갔는지가 이 층의 핵심이다: 사라지면 그게 소멸이고, 캐논 위반이다)
     ok(true, `(곳간 증가는 test-events ④e 가 정본 필드로 검사 — 여기서는 인벤·알림·게시판 왕복이 대상)`);
   }
 

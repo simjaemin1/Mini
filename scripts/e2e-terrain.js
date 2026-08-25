@@ -129,7 +129,19 @@ function bestShift(a, b, pred, box, R) {
     say(`\n── ${tag} 셀(${site.cx},${site.cy}) — ${site.why}`);
     const z = boot('zone', '/tmp/zone-wrap.js', {
       PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
-      ENABLE_VILLAGES: '1', ENABLE_BANDITS: '0',
+      // ★★[2026-08-26] 이 하네스가 이 컨테이너에서 29/3 으로 나왔다
+      //   (물 4.7% · 얕은물 상관 역전 · 단면 0.05%). 화소만 보고 두 번 헛짚었다 —
+      //   playwright 버전(1.56.0↔1.56.1, **같은 chromium-1194 라 무관**)과 코드 회귀(세 코드에서 동일).
+      //   **실패 화면을 눈으로 보고서야** 잡혔다: 화면 한가운데 `#downPanel`("☠️ 다운 · 사망")이
+      //   떠 있고 HP 가 −1/100 이며 장면이 어둡다. 물 화소가 준 건 물 렌더가 아니라
+      //   **모달이 덮고 장면이 어두워졌기 때문**이다 — 세 실패 전부 그 하나의 하류다.
+      //   ⇒ 이 하네스가 재는 건 지면 질감과 물이지 **생존이 아니다.** 그래서
+      //     ①야생을 끄고(변수 하나 제거) ②아래에 **생존 전제 assert** 를 둔다.
+      //   ⚠야생을 꺼도 여전히 죽는다(실측). `ENABLE_WILDLIFE` 는 `wildlife.js` 만 끄고
+      //     **레거시 `mobs`(사슴·늑대 테이블)는 그대로**다 — `zone.js` 의 `damagePlayer(…, 'mob:'+type)`.
+      //     누가 죽이는지 특정하는 건 이 배치 범위 밖이라 회부했다. 다만 이제 하네스는
+      //     "물 렌더가 깨졌다"가 아니라 **"플레이어가 죽었다"** 라고 정직하게 말한다.
+      ENABLE_VILLAGES: '1', ENABLE_BANDITS: '0', ENABLE_WILDLIFE: '0',
       WRAP_ZONE_PATCH: JSON.stringify({ mainSquare: { x: site.cx * 32 + 16, y: site.cy * 32 + 16, name: '지형 ' + tag } }),
     });
     ok(await waitHttp(`http://localhost:${ZPORT}/health`), `zone 기동 (${tag})`);
@@ -189,7 +201,15 @@ function bestShift(a, b, pred, box, R) {
       await page.evaluate(() => { window.__terrain19.flowRawDist = false; window.__wfReset(); });
       await sleep(2500); fmNew = await page.evaluate(() => window.__flowMap(46));
     }
-    S[tag] = { d0, fA, fA2, fB, fNoP, fMud, fLeg, pLeg, pNew, pNoW, cSh, fmRaw, fmNew };
+    // ★★[2026-08-26] **이 창에서 플레이어가 살아 있었나.** 죽으면 `#downPanel` 모달이 화면
+    //   한가운데를 덮고 장면이 어두워져 아래 화소 판정이 전부 무너진다 — 그걸 "물 렌더가 깨졌다"로
+    //   읽으면 **없는 결함을 보고**하는 것이다. 실제로 그렇게 한 번 당했다(늑대에게 물려 죽었다).
+    //   `page` 가 살아 있는 이 안에서 거둬 두고, 판정은 아래 분석 절에서 한다.
+    const _alive = await page.evaluate(() => {
+      const d = document.getElementById('downPanel');
+      return { down: !!(d && !d.classList.contains('hidden')) };
+    }).catch(() => ({ down: false }));
+    S[tag] = { d0, fA, fA2, fB, fNoP, fMud, fLeg, pLeg, pNew, pNoW, cSh, fmRaw, fmNew, alive: !_alive.down };
     await browser.close(); try { z.kill(); } catch (e) {}
     await sleep(2500);
   }
@@ -220,6 +240,8 @@ function bestShift(a, b, pred, box, R) {
   ok(Math.hypot(fi[0], fi[1]) > 0.2, `★강가 흐름 벡터가 0 이 아니다 (iso ${fi[0].toFixed(2)},${fi[1].toFixed(2)})`);
   ok(Math.hypot(F.d0.w.flowIso[0], F.d0.w.flowIso[1]) < 0.9, '초원(강에서 먼 곳) 흐름은 약하다');
 
+  // ★전제 — 화소를 재기 전에 **두 창 모두 플레이어가 살아 있었는지** 먼저 묻는다(위 주석 참조).
+  ok(R.alive && F.alive, `★전제 — 두 창 모두 플레이어 생존(강가 ${R.alive ? '생존' : '★사망'} · 초원 ${F.alive ? '생존' : '★사망'}) — 죽으면 모달이 화면을 덮어 아래 화소 판정이 전부 무의미해진다`);
   say('\n[ⓑ 화면 — 픽셀]');
   say('\n  ① 흐름 — 물 무늬가 하류로 밀리는가');
   const wPct = maskPct(R.fA, isWaterPx, BOX);

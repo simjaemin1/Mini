@@ -4265,16 +4265,26 @@ function __e2eForceShortage(vid) {
   let best = null;
   for (const [r, e] of Object.entries(v._consEMA || {})) {
     if (!D.fromEcon.has(r) || !(e > 0)) continue;
-    // 갚을 잉여가 있어야 의뢰가 선다 — 그 조건까지 만족하는 품목을 고른다
-    let sur = 0; for (const [r2, q] of Object.entries(v.storage || {})) if (r2 !== r && D.toEcon.has(r2) && q > sur) sur = q;
-    if (sur <= 0) continue;
-    if (!best || e > best.e) best = { r, e, sur };
+    // 갚을 잉여 후보가 하나라도 있어야 한다(수량은 아래에서 보장한다)
+    let sur = null, surQ = 0;
+    for (const [r2, q] of Object.entries(v.storage || {})) if (r2 !== r && D.toEcon.has(r2) && q > surQ) { surQ = q; sur = r2; }
+    if (!sur) continue;
+    if (!best || e > best.e) best = { r, e, sur, surQ };
   }
   if (!best) return { err: `마을 ${vil.name}: 낼 수 있고 갚을 잉여가 있는 소비 품목이 없다(econ day ${state.world.day})` };
   const thr = best.e * C.SHORT_DAYS;
   const before = +(v.storage[best.r] || 0);
   v.storage[best.r] = +(thr * 0.1).toFixed(3);
-  return { ok: true, vid: vid | 0, name: vil.name, item: best.r, ema: +best.e.toFixed(3), thr: +thr.toFixed(3), before: +before.toFixed(3), after: v.storage[best.r], day: state.world.day | 0 };
+  // ★★[2026-08-26 · B-1 물리 상한 이후] 잉여가 **있기만** 해서는 의뢰가 안 선다 —
+  //   이제 마을은 **전액 갚을 수 있을 때만** 건다(못 갚으면 축소하거나 안 건다).
+  //   이 픽스처의 목적은 "게시판 납품 흐름을 실화면으로 재는 것"이지 마을 살림 형편을 재는 게
+  //   아니므로, 갚을 잉여를 넉넉히 채워 **검사 대상이 아닌 전제를 고정**한다.
+  //   (하네스가 이 값을 assert 로 확인한다 — 지어낸 상황을 조용히 통과시키지 않는다.)
+  const surBefore = +(v.storage[best.sur] || 0);
+  v.storage[best.sur] = Math.max(surBefore, 100000);
+  return { ok: true, vid: vid | 0, name: vil.name, item: best.r, ema: +best.e.toFixed(3), thr: +thr.toFixed(3),
+    before: +before.toFixed(3), after: v.storage[best.r], day: state.world.day | 0,
+    payWith: best.sur, payStock: v.storage[best.sur] };
 }
 
 

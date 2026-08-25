@@ -2989,7 +2989,7 @@ function handlePlayerInput(player, raw) {
   else if (E2E_GIVE && msg.type === '__e2e_village_short') {
     // ★테스트 전용(E2E_GIVE=1 일 때만 분기 존재) — 게시판 납품 흐름을 실화면으로 재기 위한 부족 픽스처.
     const r = SimVillages.__e2eForceShortage ? SimVillages.__e2eForceShortage(msg.vid | 0) : { err: '미지원' };
-    send(player.ws, { type: 'notice', text: r.ok ? `🧪 ${r.name} ${r.item} ${r.before}→${r.after} (문턱 ${r.thr})` : `🧪 ${r.err}` });
+    send(player.ws, { type: 'notice', text: r.ok ? `🧪 ${r.name} ${r.item} ${r.before}→${r.after} (문턱 ${r.thr} · 갚을거 ${r.payWith} ${r.payStock})` : `🧪 ${r.err}` });
   }
   else if (E2E_GIVE && msg.type === '__e2e_give') {
     for (const [k, q] of Object.entries(msg.items || {})) { const n = Number(q); if (isFinite(n) && n > 0) player.inventory[k] = (player.inventory[k] || 0) + Math.floor(n); }
