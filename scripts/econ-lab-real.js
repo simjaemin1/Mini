@@ -175,6 +175,22 @@ if (LEDGER_RES) {
   console.log(`  [원장] '${LEDGER_RES}' 전 쓰기 추적 ON (Proxy — 잔차가 구조적으로 0)`);
 }
 
+// ── ★[2026-08-25 사건 레이어] 사건 장부 관측(EV_SCAN=1) ──────────────────────
+//   랩을 복제하지 않는다 — 본 게임과 **같은 모듈**(server/events.js)을 이 루프에 그대로 건다.
+//   장부는 관측자이므로 켜도 궤적이 변하면 안 된다(그 사실을 아래 EV_BITCHECK 가 검사한다).
+//   실체 캐러밴이 없는 랩에서는 CARAVAN_LATE 가 구조적으로 0 이다 — 그 사실은 보고에 적는다.
+const EV_ON = process.env.EV_SCAN === '1';
+const Events = EV_ON ? R('server/events') : null;
+let EVL = null;
+if (EV_ON) {
+  EVL = Events.createLedger({
+    econV2, vidOf: (v, i) => i,
+    depositMap: R('server/villages').playerVillageDepositMap(),
+  });
+  EVL.prime(world);
+  console.log(`  [사건] 장부 ON — 문턱: 부족 ${EVL.cfg.SHORT_DAYS}일치 · 글럿 ${EVL.cfg.GLUT_DAYS}일치 · 가격 ±${(EVL.cfg.PRICE_UP * 100).toFixed(0)}% (창 ${EVL.cfg.PRICE_WIN}일) · 히스테리시스 ×${EVL.cfg.HYST}`);
+}
+
 // ── 일 틱 — 본 게임 진입점(server/villages.js:2255) ────────────────────────────
 // ★시대 전환 실험 — ERA_FLIP_DAY=N 이면 N일차에 시대를 연다.
 //   [재민] "내가 시대를 언제 여는지에 따라 흥망성쇠가 크게 갈리면 안 돼" — 급변 폭을 실측한다.
@@ -187,6 +203,7 @@ const TRACE = {};
 for (let d = 0; d < DAYS; d++) {
   if (Era && d === FLIP) { Era.setEra(FLIP_TO); console.log(`\n⚡ Day ${d}: 시대 전환 → ${FLIP_TO}\n`); }
   econV2.tickWorldV2(world);
+  if (EVL) EVL.scanDay(world, world.day, {});
   if (process.env.LAB_DUMP && d % 10 === 0) {
     for (const v of world.villages) {
       // ★[2026-08-02c 소멸 0 튜닝] K 3항·dP·도구를 궤적에 같이 실어야 "언제 무엇이 꺾였나"가 사후 재구성된다.
@@ -242,6 +259,22 @@ console.log(`  ★구리:주석 재고비 ${stock.tin > 0 ? (stock.copper / stoc
 {
   const top = Object.entries(stock).filter(([, x]) => x > 1).sort((a, b) => b[1] - a[1]).slice(0, 12);
   console.log('  재고 상위: ' + top.map(([k, v]) => `${k} ${v.toFixed(0)}`).join(' · '));
+}
+
+// ── ★사건 밀도 실측 ──────────────────────────────────────────────────────────
+if (EVL) {
+  const live = world.villages.filter((v) => (v.npcs || []).length > 0).length;
+  const S = EVL.stats;
+  const perVilDay = S.emitted / Math.max(1, live * S.days);
+  console.log(`\n=== 사건 장부 (${S.days}일 × 인구있는 마을 ${live}곳) ===`);
+  console.log(`  총 ${S.emitted}건 · 마을·일당 ${perVilDay.toFixed(4)}건 → 마을당 ${(1 / Math.max(1e-9, perVilDay)).toFixed(2)}일에 1건  [목표 2~3일]`);
+  console.log('  타입별: ' + Object.entries(S.byType).map(([k, n]) => `${k} ${n}`).join(' · '));
+  console.log(`  의뢰: 게시 ${S.reqOpened} · 철회 ${S.reqClosed} · (플레이어 없음 → 납품 0)`);
+  console.log(`  하루 경계 비용: 총 ${S.scanMs.toFixed(1)}ms / ${S.days}일 = **${(S.scanMs / Math.max(1, S.days)).toFixed(4)} ms/일**`);
+  if (S.capped) console.log(`  ⚠일일 상한(EV_MAX_DAY=${EVL.cfg.MAX_DAY})으로 잘린 사건 ${S.capped}건 — 조용한 절단이 아님을 여기 적는다`);
+  // 마을별 분포 — 평균 뒤에 숨은 편중을 본다(한 마을이 다 내고 나머지는 조용한 게 최악)
+  const per = EVL.vids.map((vid) => EVL.ringOf(vid).length).sort((a, b) => b - a);
+  console.log(`  마을별 최근 ${EVL.cfg.KEEP_DAYS}일 보유: 최다 ${per[0] || 0} · 중앙 ${per[(per.length / 2) | 0] || 0} · 최소 ${per[per.length - 1] || 0}`);
 }
 
 // ── 마을별 덤프 — LAB_DUMP=경로 를 주면 쓴다(같은 실행을 여러 번 안 돌리려고) ──

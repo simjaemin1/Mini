@@ -1,0 +1,540 @@
+// === server/events.js — 사건 장부(event ledger) ================================
+//
+// ★설계 근거: `설계_게임성_사건레이어_TODO.md` §3.1/§3.2/§3.3 [재민 확정 2026-08-25]
+//   "tickVillage 하루 경계에서 유의미한 변화를 사건 레코드로 영속화 …
+//    소비처 전부 이 장부 하나에서: 소문·게시판·의뢰·연대기·복귀 브리핑. 따로 만들지 말 것."
+//
+// ─────────────────────────────────────────────────────────────────────────────
+// ★★이 파일의 제1 규약: **장부는 관측자다. econ 을 건드리지 않는다.**
+//
+//   · 재고·소비EMA·가격은 **econ 정본 필드·함수**를 그대로 읽는다. 장부용으로 다시 계산하지 않는다.
+//     (배치 7 오진의 재발 방지 — 계측 스크립트가 정본 판독기 대신 JSON 을 직접 파싱해서
+//      "지도에 철 0개"라는 **틀린 회부**를 냈다. 엔진엔 "사본 금지"를 지키고 계측기에서 어겼다.)
+//   · 검출기 상태(가격 EMA·래치)는 **이 모듈 안에만** 산다. econ 마을 객체에 필드를 붙이지 않는다
+//     — 붙이면 serializeEcon 이 DB 로 퍼 나르고, 언젠가 그게 econ 상태인 척한다.
+//   · `world.events` 는 **이미 econ 이 쓰는 이름**(재해 이벤트 큐, economy-sim.js:3575 processEvents).
+//     장부는 그 근처에도 안 간다.
+//   ⇒ 검사: `scanDay()` 전후로 econ 상태가 비트 동일해야 한다(test-events ⑧).
+//
+// ★제2 규약: **뉴스는 평소에서 벗어난 것**이므로 사건은 **에지 트리거**다.
+//   "오늘도 소금이 없다"는 뉴스가 아니다. 조건이 **거짓→참으로 바뀌는 그 날** 1건만 낸다.
+//   경계에서 떠는 것(chatter)은 히스테리시스 밴드로 막는다(들어갈 때와 나올 때 문턱이 다르다).
+//
+// ★제3 규약: **문턱은 전부 env 손잡이 · 기본값이 채택값**(A/B 재현 규약, lab-wiring-check [A2] 정신).
+//
+// ★★채택 근거 — 실지도 51마을 3시드(1020·7·42) 800일 실측(`scripts/ev-density.js`).
+//   재민 확정 목표는 "마을당 2~3일에 1건"이다. 세 후보를 **같은 틱 스트림 위에** 동시에 얹어 쟀다
+//   (장부는 관측자라 여러 개를 한 세계에 달 수 있다 — 카오스 잡음 0 인 A/B):
+//     A ±40% · H1.35 : 1.94 / 1.92 / 1.92 일  ← **목표 밖**(너무 잦다)
+//     B ±55% · H1.60 : 2.08 / 2.08 / 2.07 일  ← 목표 하단
+//     C ±70% · H1.60 : 2.21 / 2.22 / 2.22 일  ← **채택**(구간 한가운데 · 비용도 제일 싸다)
+//   되돌리기: `EV_PRICE_UP=0.40 EV_PRICE_DOWN=0.40 EV_HYST=1.35` 로 채택 전 값이 정확히 재현된다.
+//   ⚠`SHORT_DAYS`(부족 정의)는 밀도 튜닝에 **쓰지 않았다** — 그 값은 게시판 의뢰의 정의이기도 해서
+//     밀도 맞추자고 흔들면 "부족"의 뜻이 바뀐다. 밀도는 가격 문턱과 히스테리시스로만 맞췄다.
+//
+// mag 의 정의 — 전 타입 공통 **관측값 ÷ 기준값**:
+//   STOCK_SHORTAGE  mag = 재고 ÷ (소비EMA×SHORT_DAYS)     → <1, 작을수록 심각
+//   STOCK_GLUT      mag = 재고 ÷ (소비EMA×GLUT_DAYS)      → >1, 클수록 심각
+//   PRICE_SPIKE     mag = 오늘가 ÷ 30일 자기평균           → >1+UP
+//   PRICE_DROP      mag = 오늘가 ÷ 30일 자기평균           → <1−DOWN
+//   CARAVAN_LATE    mag = 지연일수 ÷ LATE_DAYS             → ≥1
+//   SEASON_CHANGE   mag = 1 (이상이 아니라 달력)
+//   ⇒ 심각도 정렬은 |ln(mag)| 하나로 전 타입을 견줄 수 있다(briefing 상위 N 선정).
+'use strict';
+
+const path = require('path');
+
+// 한글 이름 — **표시 전용**이다(경제 로직 아님). specialty 정본에 있으면 그것을 쓰고,
+// 없는 기초 재화만 여기서 채운다(specialty.js 는 특산물 표라 food/wood/stone 이 없다).
+let _SPEC = null;
+try { _SPEC = require(path.join(__dirname, 'specialty')).RESOURCES; } catch (e) { _SPEC = null; }
+const KO_BASE = {
+  food: '곡식', fish: '생선', meat: '고기', cooked_food: '익힌 음식', fruit: '열매',
+  vegetable: '남새', mushroom: '버섯', wood: '나무', stone: '돌', twig: '삭정이',
+  pebble: '자갈', tool: '연장', iron_tool: '쇠연장', bronze_tool: '청동 연장',
+  ore: '광석', iron: '철', copper: '구리', tin: '주석', lead: '납', silver: '은', gold: '금',
+  weapon: '무기', armor: '갑옷', hide: '가죽', bone: '뼈', clothes: '옷', herb: '약초',
+  clay: '진흙', charcoal: '숯', hemp: '삼', ramie: '모시', salt: '소금', water: '물',
+};
+function koRes(r) {
+  if (KO_BASE[r]) return KO_BASE[r];
+  if (_SPEC && _SPEC[r] && _SPEC[r].ko) return _SPEC[r].ko;
+  return r;
+}
+
+// ── 손잡이 ────────────────────────────────────────────────────────────────────
+const _num = (envName, def) => {
+  const x = parseFloat(process.env[envName] != null ? process.env[envName] : '');
+  return isFinite(x) ? x : def;
+};
+const CFG = {
+  SHORT_DAYS: _num('EV_SHORT_DAYS', 5),      // 재고 < 소비EMA×이 일수 → 부족
+  GLUT_DAYS: _num('EV_GLUT_DAYS', 45),       // 재고 > 소비EMA×이 일수 → 과잉(소비EMA>0 일 때만)
+  HYST: _num('EV_HYST', 1.60),               // 히스테리시스 폭 — 해제는 진입 문턱×이 배수 ★채택값
+  PRICE_WIN: _num('EV_PRICE_WIN', 30),       // 자기평균 창(EMA α=1/WIN — _consEMA 와 같은 문법)
+  PRICE_UP: _num('EV_PRICE_UP', 0.70),       // +70% 이탈 → 급등 ★채택값
+  PRICE_DOWN: _num('EV_PRICE_DOWN', 0.70),   // −70% 이탈 → 급락 ★채택값
+  PRICE_MIN: _num('EV_PRICE_MIN', 0.05),     // 이보다 싼 시세는 판정 제외(0 근방 비율 폭발 차단)
+  LATE_DAYS: _num('EV_LATE_DAYS', 1),        // 교역 도착 지연 이 일수 이상 → 지연 사건
+  KEEP_DAYS: _num('EV_KEEP_DAYS', 90),       // 마을당 링버퍼·DB 보존 일수
+  MAX_DAY: _num('EV_MAX_DAY', 0),            // 마을당 하루 사건 상한(0=무제한). 잘린 수는 stats.capped 로 보고
+  REQ_DAYS: _num('EV_REQ_DAYS', 1),          // 의뢰 수량 = 소비EMA × 이 일수
+  REQ_PREMIUM: _num('EV_REQ_PREMIUM', 0.20), // 보상 프리미엄 +20%
+  REQ_MAX_PC: _num('EV_REQ_MAX_PC', 0.25),   // 보상은 그 품목 마을 재고의 이 비율을 넘지 않는다
+  REQ_COOLDOWN: _num('EV_REQ_COOLDOWN', 3),  // 다 채워진 의뢰를 다시 걸기까지 쉬는 일수
+  // ★보상 수량 상한(0=무제한). 보상은 **시세 등가**라 극단 시세에선 수량이 크게 나온다 —
+  //   실클라 E2E 실측: 나무가 바닥나고 가죽이 넘치는 마을에서 `나무 1 → 가죽 64`.
+  //   경제적으로는 옳다(그게 그 마을에서 나무의 값이다). 다만 게임적 남용 여지가 있어
+  //   **손잡이만 내고 기본은 끈다** — 조이는 것은 밸런스 판단이라 회부 대상이다.
+  REQ_REW_CAP: _num('EV_REQ_REW_CAP', 0),
+  BRIEF_N: _num('EV_BRIEF_N', 3),            // 촌장이 한 번에 전하는 건수
+};
+
+const TYPES = ['STOCK_SHORTAGE', 'STOCK_GLUT', 'PRICE_SPIKE', 'PRICE_DROP', 'CARAVAN_LATE', 'SEASON_CHANGE'];
+
+// ★게시판이 다루는 품목은 **플레이어가 실제로 낼 수 있는 것**뿐이다.
+//   정본은 `villages.playerVillageDepositMap()`(플레이어 아이템 ↔ econ 재화 대응표) 하나다 —
+//   여기서 그 표를 다시 적지 않고 **주입받는다**(사본 금지). 주입이 없으면 게시판은 조용히 비어 있다:
+//   낼 수 없는 의뢰는 의뢰가 아니라 벽이다.
+function buildDeliverable(depositMap) {
+  const items = new Map();    // econ 재화 → [플레이어 아이템…] (cooked_food 처럼 여럿이 매핑된다)
+  const toEcon = new Map();   // econ 재화 → 대표 플레이어 아이템(보상 지급용 역방향)
+  const fromEcon = new Set(); // 플레이어가 낼 수 있는 econ 재화(의뢰 대상)
+  for (const [item, res] of Object.entries(depositMap || {})) {
+    fromEcon.add(res);
+    if (!items.has(res)) items.set(res, []);
+    items.get(res).push(item);
+    if (!toEcon.has(res)) toEcon.set(res, item);   // 첫 항목이 대표
+  }
+  return { items, toEcon, fromEcon };
+}
+
+// ── 계절 — econ 정본 함수를 그대로 부른다(사본 금지) ──────────────────────────
+let _econV2 = null;
+function seasonOf(day) {
+  if (!_econV2) _econV2 = require(path.join(__dirname, '..', 'sim', 'economy-sim-v2'));
+  // economy-sim-v2 는 seasonOf 를 export 하지 않는다 — 대신 SEASON 경계와 **같은 산수**를
+  // 쓰는 대신, 공개된 temperatureAt 로 우회하지 않고 여기 한 줄로 둔다.
+  // ⚠이 줄은 economy-sim-v2.js:210 `seasonOf` 와 동기 계약이다(둘 다 365일 4분기 · d<90/180/270).
+  //   엔진이 계절 경계를 바꾸면 여기도 바꿔야 한다 — 그 사실을 test-events ③ 이 검사한다.
+  const d = ((day % 365) + 365) % 365;
+  return d < 90 ? 'spring' : d < 180 ? 'summer' : d < 270 ? 'autumn' : 'winter';
+}
+const KO_SEASON = { spring: '봄', summer: '여름', autumn: '가을', winter: '겨울' };
+
+// ── 가격 — econ 정본 함수/캐시를 그대로 읽는다 ────────────────────────────────
+//   tickTradeV2 는 매일 교역 자격이 있는 마을의 `_priceCache` 를 **그날 시세로** 덮는다
+//   (economy-sim-v2.js:602). 그 값이 오늘 것이면 그대로 쓰고(추가 비용 0),
+//   아니면(고립·포위·인구<2) 정본 함수를 부른다. 어느 쪽이든 **장부가 가격을 계산하지 않는다.**
+function pricesOf(econV2, v, day) {
+  if (v._priceCache && v._priceCacheDay === day) return v._priceCache;
+  return econV2.computeShadowPrices(v);
+}
+
+// ── 장부 ──────────────────────────────────────────────────────────────────────
+function createLedger(opts) {
+  const o = opts || {};
+  const cfg = Object.assign({}, CFG, o.cfg || {});
+  const vidOf = o.vidOf || ((v, i) => i);
+  const econV2 = o.econV2 || require(path.join(__dirname, '..', 'sim', 'economy-sim-v2'));
+  const DEL = buildDeliverable(o.depositMap);
+  const onEvent = o.onEvent || null;          // (ev) => void — 영속화 훅(서버가 DB 에 꽂는다)
+  const onRequest = o.onRequest || null;      // (req, 'open'|'close') => void
+
+  // 마을별 상태. 전부 이 Map 안에만 산다(econ 객체 무오염).
+  //   det: Map<item, {pEma,pN,short,glut,up,down}>
+  //   ring: 최근 KEEP_DAYS 사건
+  //   reqs: Map<item, request>
+  const byVid = new Map();
+  const st = (vid) => {
+    let s = byVid.get(vid);
+    if (!s) { s = { vid, det: new Map(), ring: [], reqs: new Map() }; byVid.set(vid, s); }
+    return s;
+  };
+  const det = (s, r) => {
+    let d = s.det.get(r);
+    if (!d) { d = { pEma: null, pN: 0, short: false, glut: false, up: false, down: false }; s.det.set(r, d); }
+    return d;
+  };
+
+  const stats = { days: 0, emitted: 0, capped: 0, byType: {}, scanMs: 0, reqOpened: 0, reqClosed: 0, reqFilled: 0 };
+  for (const t of TYPES) stats.byType[t] = 0;
+
+  let lastSeason = null;
+
+  // 이 마을에서 이 품목이 **뉴스거리인가** — 소비하거나 갖고 있는 것만.
+  //   (마을이 평생 본 적 없는 재화의 시세 요동은 그 마을 사람에게 뉴스가 아니다.)
+  const relevant = (ema, stock) => (ema > 0 || stock > 0.5);
+
+  // 후보 품목 = 소비EMA 키 ∪ 곳간 키. `_` 로 시작하는 내부 필드는 제외(`_cash` 등).
+  //   ★매일 Set 을 새로 짓지 않는다 — 재화 목록은 거의 안 바뀌는데 51마을×800일이면 4만 번이다.
+  //     키 개수가 바뀐 날에만 다시 짓는다(재화가 늘거나 곳간이 비어 키가 지워진 날).
+  function itemsOf(s, v) {
+    const e = v._consEMA || {}, sto = v.storage || {};
+    let ne = 0; for (const _k in e) ne++;
+    let ns = 0; for (const _k in sto) ns++;
+    if (s.itemList && s.itemNE === ne && s.itemNS === ns) return s.itemList;
+    const set = new Set();
+    for (const r in e) if (r.charCodeAt(0) !== 95) set.add(r);
+    for (const r in sto) if (r.charCodeAt(0) !== 95) set.add(r);
+    s.itemNE = ne; s.itemNS = ns; s.itemList = [...set];
+    return s.itemList;
+  }
+
+  // ── 프라이밍: 지금 상태를 래치에 **소리 없이** 심는다 ───────────────────────
+  //   왜: 서버 재기동 직후 첫 하루 경계에서 "이미 몇 달째 부족하던 품목" 전부가 한꺼번에
+  //   터지면 그건 뉴스가 아니라 재기동 잡음이다. 시작 상태는 사건이 아니라 **배경**이다.
+  function prime(world) {
+    const day = world.day | 0;
+    lastSeason = seasonOf(day);
+    world.villages.forEach((v, i) => {
+      const vid = vidOf(v, i);
+      if (vid == null) return;
+      const s = st(vid);
+      const prices = pricesOf(econV2, v, day);
+      const e = v._consEMA || {}, sto = v.storage || {};
+      for (const r of itemsOf(s, v)) {
+        const d = det(s, r);
+        const ema = +e[r] || 0, stock = +sto[r] || 0;
+        d.short = ema > 0 && stock < ema * cfg.SHORT_DAYS;
+        d.glut = ema > 0 && stock > ema * cfg.GLUT_DAYS;
+        const p = +prices[r] || 0;
+        if (p > 0) { d.pEma = p; d.pN = 1; }
+      }
+    });
+    return byVid.size;
+  }
+
+  // ── 하루 경계 스캔 ─────────────────────────────────────────────────────────
+  //   extra.caravanDelays: [{ vid, days, from, to }] — 호스트(server/villages.js)가
+  //   실체 캐러밴의 `body.delayedDays` 증분을 그대로 넘긴다. 랩(econ 단독)엔 실체가 없으니 빈 배열이다.
+  function scanDay(world, day, extra) {
+    const t0 = process.hrtime.bigint();
+    const out = [];
+    const season = seasonOf(day);
+    const seasonTurned = (lastSeason != null && season !== lastSeason);
+    lastSeason = season;
+
+    world.villages.forEach((v, i) => {
+      const vid = vidOf(v, i);
+      if (vid == null) return;
+      if (!v.npcs || v.npcs.length === 0) return;   // 사람이 없는 마을엔 소식이 없다
+      const s = st(vid);
+      const mine = [];
+      const prices = pricesOf(econV2, v, day);
+      const e = v._consEMA || {}, sto = v.storage || {};
+
+      for (const r of itemsOf(s, v)) {
+        const ema = +e[r] || 0, stock = +sto[r] || 0;
+        const d = det(s, r);
+
+        // ① 재고 부족 — 소비가 있는 품목만(소비 0 이면 문턱 0 → 애초에 성립 불가)
+        if (ema > 0) {
+          const thr = ema * cfg.SHORT_DAYS;
+          if (!d.short && stock < thr) {
+            d.short = true;
+            mine.push({ day, vid, type: 'STOCK_SHORTAGE', item: r, mag: +(stock / thr).toFixed(4), meta: { stock: +stock.toFixed(2), thr: +thr.toFixed(2) } });
+          } else if (d.short && stock > thr * cfg.HYST) d.short = false;
+
+          // ② 재고 과잉 — ★소비EMA>0 인 품목만. 소비 없는 품목의 허위 글럿 금지(재민 명시).
+          const thrG = ema * cfg.GLUT_DAYS;
+          if (!d.glut && stock > thrG) {
+            d.glut = true;
+            mine.push({ day, vid, type: 'STOCK_GLUT', item: r, mag: +(stock / thrG).toFixed(4), meta: { stock: +stock.toFixed(2), thr: +thrG.toFixed(2) } });
+          } else if (d.glut && stock < thrG / cfg.HYST) d.glut = false;
+        } else {
+          // 소비가 끊긴 품목은 래치를 푼다(다시 소비가 살아나면 그때 새 사건이 난다)
+          d.short = false; d.glut = false;
+        }
+
+        // ③④ 가격 이탈 — **어제까지의** 자기평균과 오늘 값을 견준다(오늘 값을 평균에 먼저 섞지 않는다).
+        const p = +prices[r] || 0;
+        if (p > cfg.PRICE_MIN) {
+          const warm = d.pEma != null && d.pN >= cfg.PRICE_WIN;
+          if (warm && relevant(ema, stock)) {
+            const ratio = p / d.pEma;
+            const upOn = 1 + cfg.PRICE_UP, upOff = 1 + cfg.PRICE_UP * 0.6;
+            const dnOn = 1 - cfg.PRICE_DOWN, dnOff = 1 - cfg.PRICE_DOWN * 0.6;
+            if (!d.up && ratio > upOn) {
+              d.up = true;
+              mine.push({ day, vid, type: 'PRICE_SPIKE', item: r, mag: +ratio.toFixed(4), meta: { p: +p.toFixed(3), avg: +d.pEma.toFixed(3) } });
+            } else if (d.up && ratio < upOff) d.up = false;
+            if (!d.down && ratio < dnOn) {
+              d.down = true;
+              mine.push({ day, vid, type: 'PRICE_DROP', item: r, mag: +ratio.toFixed(4), meta: { p: +p.toFixed(3), avg: +d.pEma.toFixed(3) } });
+            } else if (d.down && ratio > dnOff) d.down = false;
+          }
+          // 폴드는 판정 뒤에(EMA α=1/WIN — _consEMA 와 같은 문법)
+          d.pEma = (d.pEma == null) ? p : d.pEma * (1 - 1 / cfg.PRICE_WIN) + p * (1 / cfg.PRICE_WIN);
+          d.pN++;
+        }
+      }
+
+      // ⑤ 계절 전환 — 전환일에 마을당 1건(촌장 인사의 근거)
+      if (seasonTurned) mine.push({ day, vid, type: 'SEASON_CHANGE', item: null, mag: 1, meta: { season } });
+
+      commit(s, mine, out);
+    });
+
+    // ⑥ 교역 도착 지연 — 실체 층(server/villages.js `body.delayedDays`)이 있을 때만.
+    //    econ 단독(랩)엔 실체가 없어 0건이다. **없는 데이터를 억지로 만들지 않는다.**
+    for (const cd of ((extra && extra.caravanDelays) || [])) {
+      if (cd == null || cd.vid == null) continue;
+      const days = +cd.days || 0;
+      if (days < cfg.LATE_DAYS) continue;
+      const s = st(cd.vid);
+      commit(s, [{ day, vid: cd.vid, type: 'CARAVAN_LATE', item: null, mag: +(days / cfg.LATE_DAYS).toFixed(4),
+        meta: { days, from: cd.from || null, to: cd.to || null } }], out);
+    }
+
+    // ⑦ 의뢰 — 부족 **래치**가 서 있으면 걸려 있고, 회복하면 거둔다(사건 에지가 아니라 상태)
+    syncRequests(world, day);
+
+    stats.days++;
+    stats.scanMs += Number(process.hrtime.bigint() - t0) / 1e6;
+    return out;
+  }
+
+  // 하루치 사건을 링버퍼·영속·통계에 밀어넣는다(상한이 있으면 |ln(mag)| 큰 것부터 남긴다).
+  function commit(s, mine, out) {
+    if (!mine.length) return;
+    let keep = mine;
+    if (cfg.MAX_DAY > 0 && mine.length > cfg.MAX_DAY) {
+      keep = mine.slice().sort((a, b) => sev(b) - sev(a)).slice(0, cfg.MAX_DAY);
+      stats.capped += mine.length - keep.length;   // ★잘린 수를 반드시 보고한다(조용한 절단 금지)
+    }
+    for (const ev of keep) {
+      s.ring.push(ev);
+      out.push(ev);
+      stats.emitted++;
+      stats.byType[ev.type] = (stats.byType[ev.type] || 0) + 1;
+      if (onEvent) { try { onEvent(ev); } catch (err) { /* 영속화 실패가 틱을 죽이지 않는다 */ } }
+    }
+    // 링버퍼 — 최근 KEEP_DAYS 일. 오래된 것부터 버린다.
+    const cut = keep[keep.length - 1].day - cfg.KEEP_DAYS;
+    while (s.ring.length && s.ring[0].day < cut) s.ring.shift();
+  }
+  const sev = (ev) => Math.abs(Math.log(Math.max(1e-6, ev.mag || 1)));
+
+  // ── 게시판 의뢰 ────────────────────────────────────────────────────────────
+  // ★사건은 **에지**지만 의뢰는 **상태**다 — 이 구분이 이 층의 핵심이다.
+  //   소금이 떨어진 날 촌장이 한 번 말하는 것(사건)과, 소금 의뢰가 게시판에 **걸려 있는 것**(상태)은
+  //   다른 것이다. 의뢰를 사건 에지에만 걸면 두 가지가 깨진다:
+  //     ① 서버가 재기동하면 이미 몇 달째 부족하던 품목의 의뢰가 영영 안 걸린다(에지가 지났으므로).
+  //     ② 한 번 채워졌는데 아직도 부족한 마을이 다시 걸지 못한다 — **1개 내고 끝**.
+  //   ⇒ 의뢰는 **부족 래치가 서 있는 동안** 걸려 있고, 래치가 풀리면 거둔다.
+  //   채워진 뒤의 재게시는 COOLDOWN 일 쉰다(같은 의뢰를 매일 갈아 먹는 되풀이 차단).
+  function syncRequests(world, day) {
+    world.villages.forEach((v, i) => {
+      const vid = vidOf(v, i);
+      if (vid == null) return;
+      const s = byVid.get(vid);
+      if (!s) return;
+      // ① 철회 — 부족 래치가 풀렸거나(재고 회복) 다 채워졌으면
+      for (const [item, req] of [...s.reqs]) {
+        const d = s.det.get(item);
+        const filled = req.filled >= req.qty;
+        if (!d || !d.short || filled) {
+          s.reqs.delete(item);
+          stats.reqClosed++;
+          if (d) d.reqClosedDay = filled ? day : -Infinity;   // 회복으로 거둔 건 쉬지 않는다(다시 떨어지면 바로 건다)
+          if (onRequest) { try { onRequest(req, 'close'); } catch (e) {} }
+        }
+      }
+      // ② 게시 — 부족이 서 있고, 플레이어가 낼 수 있고, 쉬는 기간이 지난 품목
+      let prices = null;
+      for (const [item, d] of s.det) {
+        if (!d.short || s.reqs.has(item)) continue;
+        if (!DEL.fromEcon.has(item)) continue;                 // 낼 수 없는 의뢰는 의뢰가 아니라 벽이다
+        if (d.reqClosedDay != null && (day - d.reqClosedDay) < cfg.REQ_COOLDOWN) continue;
+        if (!prices) prices = pricesOf(econV2, v, day);
+        const req = makeRequest(s, v, item, prices, day);
+        if (!req) continue;
+        s.reqs.set(item, req);
+        stats.reqOpened++;
+        if (onRequest) { try { onRequest(req, 'open'); } catch (e) {} }
+      }
+    });
+  }
+
+  function makeRequest(s, v, item, prices, day) {
+    const ema = +((v._consEMA || {})[item]) || 0;
+    const qty = Math.max(1, Math.round(ema * cfg.REQ_DAYS));
+    // 보상 품목 — 잉여를 준다: ①지금 글럿인 것 ②없으면 최다 재고. 둘 다 **플레이어가 받을 수 있는** 것만.
+    let rewItem = null, rewStock = 0;
+    const sto = v.storage || {};
+    for (const [r, d] of s.det) {
+      if (!d.glut || r === item || !DEL.toEcon.has(r)) continue;
+      const q = +sto[r] || 0;
+      if (q > rewStock) { rewStock = q; rewItem = r; }
+    }
+    if (!rewItem) {
+      for (const r of Object.keys(sto)) {
+        if (r === item || r.charCodeAt(0) === 95 || !DEL.toEcon.has(r)) continue;
+        const q = +sto[r] || 0;
+        if (q > rewStock) { rewStock = q; rewItem = r; }
+      }
+    }
+    if (!rewItem || rewStock <= 0) return null;        // 낼 게 없는 마을은 의뢰를 걸지 않는다
+    const pWant = +prices[item] || 0, pRew = +prices[rewItem] || 0;
+    if (!(pWant > 0) || !(pRew > 0)) return null;
+    // 시세 등가 + 프리미엄. 마을이 실제로 가진 것을 넘겨 약속하지 않는다.
+    let rewQty = Math.round(qty * (pWant / pRew) * (1 + cfg.REQ_PREMIUM));
+    const cap = Math.floor(rewStock * cfg.REQ_MAX_PC);
+    rewQty = Math.max(1, Math.min(rewQty, Math.max(1, cap)));
+    if (cfg.REQ_REW_CAP > 0) rewQty = Math.min(rewQty, cfg.REQ_REW_CAP);
+    if (rewQty > rewStock) return null;
+    return { vid: s.vid, item, qty, filled: 0, rewItem, rewQty, day };
+  }
+
+  // 납품 — **원자적**. 남은 몫만 받고 초과분은 거절한다(동시 납품 경쟁 조건).
+  //   실물 이동(플레이어 인벤 ↔ 마을 곳간)은 호스트가 정본 함수로 한다. 장부는 몫만 센다.
+  function claim(vid, item, want) {
+    const s = byVid.get(vid);
+    const req = s && s.reqs.get(item);
+    if (!req) return { ok: false, err: '그런 의뢰가 없다' };
+    const room = req.qty - req.filled;
+    if (!(room > 0)) return { ok: false, err: '이미 다 채워진 의뢰다' };
+    const n = Math.floor(Number(want) || 0);
+    if (!(n > 0)) return { ok: false, err: '낼 수량이 없다' };
+    const take = Math.min(n, room);                   // ★초과분 거절 — 여기서 즉시 확정(await 없음 = 원자적)
+    req.filled += take;
+    const rew = Math.max(0, Math.round(req.rewQty * (take / req.qty)));
+    const done = req.filled >= req.qty;
+    stats.reqFilled += take;
+    return { ok: true, take, refused: n - take, rew, rewItem: req.rewItem, done, req };
+  }
+  // 정산 실패 시 되돌리기(호스트가 실물 이동에 실패했을 때만)
+  function unclaim(vid, item, take) {
+    const s = byVid.get(vid); const req = s && s.reqs.get(item);
+    if (req) { req.filled = Math.max(0, req.filled - (Number(take) || 0)); stats.reqFilled -= (Number(take) || 0); }
+  }
+
+  // ── 읽기 ───────────────────────────────────────────────────────────────────
+  function recent(vid, n) {
+    const s = byVid.get(vid);
+    if (!s) return [];
+    const k = Math.max(1, n | 0 || cfg.BRIEF_N);
+    return s.ring.slice(-k * 4)                       // 최근 구간에서
+      .slice().sort((a, b) => (b.day - a.day) || (sev(b) - sev(a)))   // 최신·심각 순
+      .slice(0, k);
+  }
+  function board(vid) {
+    const s = byVid.get(vid);
+    if (!s) return [];
+    return [...s.reqs.values()].map((r) => ({ ...r, remain: r.qty - r.filled }));
+  }
+  function ringOf(vid) { const s = byVid.get(vid); return s ? s.ring.slice() : []; }
+  function detOf(vid, item) { const s = byVid.get(vid); return s ? (s.det.get(item) || null) : null; }
+  // ★영속 복구 — DB 에서 읽어 온 과거 사건을 링버퍼에 되돌린다(래치는 prime 이 따로 심는다)
+  function loadRing(vid, evs) {
+    const s = st(vid);
+    s.ring = (evs || []).slice().sort((a, b) => a.day - b.day);
+    return s.ring.length;
+  }
+  // ★의뢰 복구 — 저장된 납품 진척(filled)을 되돌린다.
+  //   이게 없으면 재기동이 곧 의뢰 초기화가 되어 **낸 사람만 손해**다(물건은 이미 곳간에 갔다).
+  //   ⚠ prime() **뒤에** 불러야 한다: 지금 부족이 아닌 품목의 의뢰는 어차피 다음 경계에 철회된다.
+  function loadRequest(vid, req) {
+    if (!req || !req.item) return false;
+    const s = st(vid);
+    const q = +req.qty || 0, f = Math.max(0, Math.min(q, +req.filled || 0));
+    if (!(q > 0) || f >= q) return false;
+    s.reqs.set(req.item, { vid, item: req.item, qty: q, filled: f, rewItem: req.rewItem, rewQty: +req.rewQty || 0, day: req.day | 0 });
+    return true;
+  }
+
+  return {
+    cfg, stats, TYPES,
+    prime, scanDay, recent, board, claim, unclaim, ringOf, detOf, loadRing, loadRequest,
+    get vids() { return [...byVid.keys()]; },
+    deliverable: DEL,
+  };
+}
+
+// ── 전달 층 — 사건 → 촌장의 말 ────────────────────────────────────────────────
+// ★대시보드 톤 금지(설계 §3.2). 수치를 읊지 않는다 — 사람이 하는 말이다.
+// 조사 — 받침 유무로 고른다. 한글 음절 블록 (가~힣) 의 코드로 종성을 뽑는다:
+//   (code − 0xAC00) % 28 === 0 이면 받침 없음. 한글이 아닌 이름(폴백 id)은 받침 없음으로 친다.
+function josa(word, withBatchim, withoutBatchim) {
+  const ch = String(word || '').slice(-1);
+  const c = ch.charCodeAt(0);
+  const hangul = c >= 0xac00 && c <= 0xd7a3;
+  const has = hangul && ((c - 0xac00) % 28 !== 0);
+  return has ? withBatchim : withoutBatchim;
+}
+const LINES = {
+  STOCK_SHORTAGE: (ev) => { const n = koRes(ev.item); return `요즘 ${n}${josa(n, '이', '가')} 달리는군.`; },
+  STOCK_GLUT: (ev) => { const n = koRes(ev.item); return `${n}${josa(n, '은', '는')} 곳간에 쌓여 썩을 지경이야.`; },
+  PRICE_SPIKE: (ev) => `${koRes(ev.item)} 값이 부쩍 올랐어.`,
+  PRICE_DROP: (ev) => `${koRes(ev.item)} 값이 영 시원찮네.`,
+  CARAVAN_LATE: (ev) => `행상이 여태 안 오는군. 고갯길에 무슨 일이 있나.`,
+  SEASON_CHANGE: (ev) => {
+    const s = ev.meta && ev.meta.season;
+    return s === 'spring' ? '봄일세. 밭에 나갈 때야.'
+      : s === 'summer' ? '여름이군. 물가를 조심하게.'
+        : s === 'autumn' ? '가을일세. 거둘 것이 많아.'
+          : '겨울이 왔네. 땔감은 넉넉한가.';
+  },
+};
+function briefLine(ev) {
+  const f = LINES[ev.type];
+  return f ? f(ev) : '';
+}
+// 게시판 한 줄 — "무엇을 얼마 가져오면 무엇으로 갚는다"
+function boardLine(req) {
+  const remain = (req.remain != null ? req.remain : (req.qty - req.filled));
+  return `${koRes(req.item)} ${remain} → ${koRes(req.rewItem)} ${req.rewQty}`;
+}
+
+// ── 납품 정산 ─────────────────────────────────────────────────────────────────
+// ★한 구현만 둔다. 서버(zone.js→villages.js)도 하네스도 **이 함수**를 부른다 —
+//   두 군데 적으면 그게 사본이고, 이 프로젝트는 그걸로 여러 번 데였다.
+//   실물 이동은 스스로 하지 않고 **정본 함수를 주입받아** 부른다:
+//     deposit = villages.playerVillageDeposit(vil, inventory, want)  ← 플레이어 아이템→econ 재화 대응·곳간 가산의 정본
+//   순서가 계약이다: ①몫 확정(원자적) → ②실물 이동 → ③실패면 몫 되돌림 → ④보상 지급.
+function deliverToVillage(a) {
+  const { ledger, vil, vid, inventory, item, deposit } = a;
+  const v = vil && vil.econ;
+  if (!v) return { ok: false, err: '마을을 찾지 못했다' };
+  const D = ledger.deliverable;
+  const playerItems = (D.items.get(item) || []);
+  if (!playerItems.length) return { ok: false, err: '곳간이 받는 물건이 아니다' };
+
+  // 이 의뢰에 낼 수 있는 내 물건을 센다(여러 아이템이 한 재화로 갈 수 있다 — 익힌 음식 등)
+  let have = 0;
+  for (const it of playerItems) have += Math.floor(Number(inventory[it]) || 0);
+  const want = (a.want != null) ? Math.floor(Number(a.want) || 0) : have;
+  if (!(want > 0)) return { ok: false, err: '낼 물건이 없다' };
+  if (want > have) return { ok: false, err: '그만큼 갖고 있지 않다' };
+
+  // ① 몫 확정 — 여기서 초과분이 거절된다(동시 납품 경쟁의 유일한 관문)
+  const c = ledger.claim(vid, item, want);
+  if (!c.ok) return c;
+
+  // ② 실물 이동 — 정본 함수. 내가 가진 아이템에서 c.take 개만큼 골라 낸다.
+  const give = {};
+  let left = c.take;
+  for (const it of playerItems) {
+    if (left <= 0) break;
+    const q = Math.min(left, Math.floor(Number(inventory[it]) || 0));
+    if (q > 0) { give[it] = q; left -= q; }
+  }
+  const dep = deposit(vil, inventory, give);
+  if (!dep || !dep.ok) { ledger.unclaim(vid, item, c.take); return { ok: false, err: (dep && dep.err) || '곳간이 받지 않았다' }; }
+
+  // ③ 보상 — 마을 잉여를 실제로 덜어 준다(물물. `_cash` 는 쓰지 않는다 — 재민 세금 캐논)
+  const rewRes = c.rewItem, rewPlayerItem = D.toEcon.get(rewRes);
+  let rewPaid = 0;
+  if (rewPlayerItem && c.rew > 0) {
+    rewPaid = Math.min(c.rew, Math.floor(+((v.storage || {})[rewRes] || 0)));
+    if (rewPaid > 0) {
+      v.storage[rewRes] = +(((v.storage[rewRes] || 0) - rewPaid)).toFixed(3);
+      inventory[rewPlayerItem] = (inventory[rewPlayerItem] || 0) + rewPaid;
+    }
+  }
+  return { ok: true, take: c.take, refused: c.refused, taken: dep.taken, moved: dep.moved,
+    rew: rewPaid, rewRes, rewItem: rewPlayerItem, done: c.done, req: c.req };
+}
+
+module.exports = { createLedger, CFG, TYPES, briefLine, boardLine, koRes, josa, seasonOf, KO_SEASON, buildDeliverable, deliverToVillage };

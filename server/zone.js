@@ -2940,10 +2940,19 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'village_advance') tryVillageAdvance(player, msg.buildingId);      // ★[배치 12] 회관 ②③·완공
   else if (msg.type === 'village_inventory') tryVillageInventory(player, msg.buildingId);  // ★[배치 12 ③] 회관 클릭 = 마을 재고 열람(권한 게이트)
   else if (msg.type === 'village_deposit') tryVillageDeposit(player, msg.buildingId, msg.want);   // ★[배치 12 ②] 곳간에 넣기 — 식량이 사람을 부른다
+  // ★★[2026-08-25 사건 레이어] 촌장 브리핑 · 게시판 · 납품. 셋 다 **자기 마을 것만** 준다(소식의 물리 전파).
+  else if (msg.type === 'village_brief') tryVillageBrief(player, msg.vid);
+  else if (msg.type === 'village_board') tryVillageBoard(player, msg.vid);
+  else if (msg.type === 'village_deliver') tryVillageDeliver(player, msg.vid, msg.item, msg.want);
   // ★★[테스트 전용 · 기본 OFF] E2E 하네스가 재료를 채운다. `E2E_GIVE=1` 일 때만 **분기 자체가 존재**한다 —
   //   기본 부팅에서는 이 메시지가 아무 일도 안 한다(라이브에 새 능력이 생기지 않는다).
   //   왜 필요한가: 건립 사슬(돌·통나무·곡괭이 → 사유지 → 3단계)을 실클라에서 처음부터 캐게 하면
   //   검사 대상(건립·재고 UI)이 아니라 채집 사슬의 흔들림을 재게 된다. `VILLAGE_DAY_MS` 와 같은 결의 손잡이다.
+  else if (E2E_GIVE && msg.type === '__e2e_village_short') {
+    // ★테스트 전용(E2E_GIVE=1 일 때만 분기 존재) — 게시판 납품 흐름을 실화면으로 재기 위한 부족 픽스처.
+    const r = SimVillages.__e2eForceShortage ? SimVillages.__e2eForceShortage(msg.vid | 0) : { err: '미지원' };
+    send(player.ws, { type: 'notice', text: r.ok ? `🧪 ${r.name} ${r.item} ${r.before}→${r.after} (문턱 ${r.thr})` : `🧪 ${r.err}` });
+  }
   else if (E2E_GIVE && msg.type === '__e2e_give') {
     for (const [k, q] of Object.entries(msg.items || {})) { const n = Number(q); if (isFinite(n) && n > 0) player.inventory[k] = (player.inventory[k] || 0) + Math.floor(n); }
     // 도구는 인벤 수량이 아니라 **인스턴스**다(`toolItems` = {id, type, d}) — 정본 생성 경로와 같은 모양으로 만든다
@@ -5241,6 +5250,38 @@ function tryVillageDeposit(player, buildingId, want) {
   const inv2 = SimVillages.playerVillageInventory(vil);
   if (inv2) send(player.ws, { type: 'village_inventory', inv: inv2 });   // 넣은 즉시 화면이 갱신된다
 }
+// ═══[2026-08-25 사건 레이어] 촌장 브리핑 · 마을 게시판 · 납품 ═══════════════
+//   설계 §3.2: **대시보드 UI 금지 — 촌장 대사·게시판 의뢰로 번역**한다.
+//   서버가 하는 일: 거리 게이트 + 자기 마을 것만. 나머지 판정은 villages.js→events.js 정본.
+//   ⚠권한 게이트(`_furnaceCanUse`)는 여기 **없다** — 회관 재고 열람과 달리 촌장의 말과 게시판은
+//     그 마을 사람이 아니어도 듣고 볼 수 있어야 한다(온보딩 §9.4: 이방인이 촌장에게 첫 의뢰를 받는다).
+//     남의 곳간을 여는 게 아니라 **공개 게시판을 읽는 것**이라 다른 계약이다.
+function tryVillageBrief(player, vid) {
+  if (!SimVillages.villageBrief) return;
+  const r = SimVillages.villageBrief(vid | 0, player.x, player.y);
+  if (r.err) { send(player.ws, { type: 'notice', text: `🏘️ ${r.err}` }); return; }
+  send(player.ws, { type: 'village_brief', brief: r });
+}
+function tryVillageBoard(player, vid) {
+  if (!SimVillages.villageBoard) return;
+  const r = SimVillages.villageBoard(vid | 0, player.x, player.y);
+  if (r.err) { send(player.ws, { type: 'notice', text: `🏘️ ${r.err}` }); return; }
+  send(player.ws, { type: 'village_board', board: r });
+}
+function tryVillageDeliver(player, vid, item, want) {
+  if (!SimVillages.villageDeliver) return;
+  const r = SimVillages.villageDeliver(vid | 0, player.x, player.y, player.inventory, item, want);
+  if (r.err) { send(player.ws, { type: 'notice', text: `📋 ${r.err}` }); return; }
+  savePlayer(player);
+  send(player.ws, { type: 'inventory', inventory: player.inventory });
+  const gave = Object.entries(r.taken || {}).map(([k, q]) => `${ITEM_LABEL_SERVER[k] || k} ${q}`).join(' · ');
+  const got = r.rew > 0 ? ` → ${ITEM_LABEL_SERVER[r.rewItem] || r.rewItem} ${r.rew}` : '';
+  send(player.ws, { type: 'notice', text: `📋 ${r.name}에 납품 — ${gave}${got}${r.refused > 0 ? ` (${r.refused}개는 남은 몫을 넘어 돌려받음)` : ''}` });
+  // 낸 즉시 게시판이 갱신된다(다 찼으면 목록에서 빠진다)
+  const b = SimVillages.villageBoard(vid | 0, player.x, player.y);
+  if (b && b.ok) send(player.ws, { type: 'village_board', board: b });
+}
+
 // ★숯가마 조업 — 밀폐 탄화라 수율이 노천보다 좋다(통나무 3 → 숯 4 vs 제작창 3 → 2).
 function tryKilnBurn(player, buildingId) {
   const b = buildings.get(buildingId);

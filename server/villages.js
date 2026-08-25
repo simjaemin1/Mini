@@ -129,6 +129,8 @@ const state = {
   _warTickAt: 0,       // war-live 실dt 스텝 앵커(30Hz)
   warBodies: null,     // P3: Map<w.id, wbody> — 실체 행군/전투/귀환 몸(캐러밴 body 동형). pid 병사·대형·econ 페이싱 소유.
   _warThreatBuf: null, // P3: warThreats() 재사용 버퍼(야생 agrid 주입 — GC 최소)
+  // ★[2026-08-25 사건 레이어] 사건 장부 — server/events.js 인스턴스. 관측자라 econ 에 필드를 안 남긴다.
+  ledger: null,
 };
 
 // 게임 절대일 — zone-config WORLD(worldEpoch=0, dayLengthMs=10분)와 같은 시계 원천(Date.now).
@@ -2061,6 +2063,7 @@ function init(deps) {
     state.byDbId = new Map(state.villages.map(v => [v.dbId, v]));
     state.byEcon = new Map(state.villages.map(v => [v.econ, v])); // Stage 4B: econ 마을 객체 → 공간 마을(캐러밴 from/to 해석)
     state.claimedNames = new Set(state.villages.map(v => v.name)); // 레거시 디듀프 대상(이름 유니크 — 50곳 검증됨)
+    _initLedger();   // ★[2026-08-25 사건 레이어] 사건 장부 — byEcon/byDbId 가 선 뒤에(vid 해석에 필요)
     // Stage 4B: 캐러밴 실체 상태 — world.caravans는 비영속(재부팅 시 빈 배열)이라 복원 불필요
     state.caravanBodies = new Map();
     state.routeCache = new Map();
@@ -2668,6 +2671,11 @@ function onGameTick(now) {
     state.deps.broadcast({ type: 'sim_village_day', day: state.world.day, jobs: jobChanges, pops, terr, wx });
     // Stage 4B: econ 캐러밴 집합 ↔ 실체 동기(스폰·도착 전이·회수) — econ 틱 직후라 상태가 최신
     const carSync = syncCaravanBodies(now);
+    // ★★[2026-08-25 사건 레이어 · 재민 확정] 사건 장부 하루 경계 판정.
+    //   위치의 근거: econ 틱(tickWorldV2)이 끝나 재고·소비EMA·시세가 오늘 값이고,
+    //   캐러밴 실체 동기까지 끝나 `body.delayedDays` 도 최신인 **바로 이 지점**이다.
+    //   장부는 관측자다 — 이 호출이 econ 을 바꾸면 안 된다(test-events ⑧ 가 그걸 검사한다).
+    try { _scanEventsDaily(); } catch (e) { console.error(`[${state.zoneId}] 📜 사건 장부 실패(틱은 계속):`, e.message); }
     state.saveQueue = state.villages.slice(); // 저장은 다음 틱부터 1마을/틱 — 19마을이면 0.63초에 걸쳐 완료(게임일 600s 대비 무시)
     for (const vil of state.villages) { try { _lifeDaily(vil); } catch (e) { console.error(`[${state.zoneId}] 생활층 일일 훅 실패(${vil.name}):`, e.message); } }   // ★[생활 층] 크루 리셋·신축 판단 — econ 틱 직후(읽기 전용 결합)
     if (state.distDirty) { // 무효화 훅(스텁) 소비 — 게임일 경계(자정 큐 세팅 뒤) 전쌍 재계산. 건물 변화는 드물어 일 1회면 족함(정밀화는 Stage 4 — 위 훅 주석).
@@ -4085,6 +4093,191 @@ function _lifeOtherIndex(vil, npc) {
   return v === undefined ? (_pidHash(npc.pid) % 36) : v;
 }
 
+// =============================================================================
+// ★[2026-08-25 사건 레이어] 사건 장부 — server/events.js 배선
+// =============================================================================
+//   설계 근거: `설계_게임성_사건레이어_TODO.md` §3.1~§3.3 [재민 확정 2026-08-25].
+//   이 파일이 하는 일은 **세 가지뿐**이다: ①vid 해석 ②영속화 ③실체 캐러밴 지연 수집.
+//   판정 산수는 전부 events.js 에 있다 — 두 군데 적으면 그게 사본이다.
+const EV_BRIEF_PX = Math.max(32, parseInt(process.env.EV_BRIEF_PX || '260', 10));   // 촌장 목소리가 닿는 거리(px)
+let Events = null;
+function _initLedger() {
+  try { Events = require('./events'); } catch (e) { console.error(`[${state.zoneId}] 📜 events.js 로드 실패:`, e.message); return; }
+  const zone = state.zoneId;
+  state.ledger = Events.createLedger({
+    econV2: state.econV2,
+    // econ 마을 객체 → dbId. 랩은 인덱스를 쓰고 서버는 dbId 를 쓴다 — 장부는 어느 쪽이든 상관 안 한다.
+    vidOf: (ev) => { const vil = state.byEcon.get(ev); return vil ? vil.dbId : null; },
+    depositMap: playerVillageDepositMap(),
+    onEvent: (e) => { try { state.db.insertVillageEvent(zone, e); } catch (err) {} },
+    onRequest: (r, kind) => {
+      try {
+        if (kind === 'open') state.db.upsertVillageRequest(zone, r);
+        else state.db.deleteVillageRequest(zone, r.vid, r.item);
+      } catch (err) {}
+    },
+  });
+  // 과거 사건 복구 — 링버퍼를 DB 에서 되돌린다(브리핑이 재기동으로 백지가 되지 않게).
+  try {
+    const since = (state.world.day | 0) - state.ledger.cfg.KEEP_DAYS;
+    const rows = state.db.getVillageEventsSince(zone, since);
+    const byVid = new Map();
+    for (const r of rows) {
+      if (!state.byDbId.has(r.vid)) continue;   // 사라진 마을의 잔재는 버린다
+      let a = byVid.get(r.vid); if (!a) byVid.set(r.vid, a = []);
+      let meta = null; try { meta = r.meta ? JSON.parse(r.meta) : null; } catch (e) {}
+      a.push({ day: r.day, vid: r.vid, type: r.type, item: r.item, mag: r.mag, meta });
+    }
+    let n = 0; for (const [vid, a] of byVid) n += state.ledger.loadRing(vid, a);
+    state.db.pruneVillageEvents(zone, since);
+    // ★래치는 복구하지 않는다 — **지금 상태**로 다시 심는다(prime). 그게 옳은 이유:
+    //   래치를 DB 에 담아 되살리면 "쉬는 동안 회복됐다가 다시 떨어진" 마을을 놓친다.
+    //   지금 상태가 진실이고, 시작 상태는 사건이 아니라 배경이다.
+    state.ledger.prime(state.world);
+    console.log(`[${state.zoneId}] 📜 사건 장부 — 과거 ${n}건 복구 · 마을 ${state.villages.length}곳 프라이밍 · 문턱 부족 ${state.ledger.cfg.SHORT_DAYS}일치·글럿 ${state.ledger.cfg.GLUT_DAYS}일치·가격 ±${(state.ledger.cfg.PRICE_UP * 100) | 0}%`);
+  } catch (e) { console.error(`[${state.zoneId}] 📜 사건 장부 복구 실패(빈 장부로 시작):`, e.message); }
+  // 게시판 의뢰 복구 — 저장된 진척(filled)을 되돌린다. 실물은 이미 곳간에 들어갔으므로
+  //   이걸 안 되살리면 **재기동이 곧 의뢰 초기화**가 되어 낸 사람만 손해다.
+  try {
+    const rows = state.db.getVillageRequests(zone);
+    let n = 0;
+    for (const r of rows) {
+      if (!state.byDbId.has(r.vid)) { state.db.deleteVillageRequest(zone, r.vid, r.item); continue; }
+      if (state.ledger.loadRequest(r.vid, { vid: r.vid, item: r.item, qty: r.qty, filled: r.filled, rewItem: r.rew_item, rewQty: r.rew_qty, day: r.day })) n++;
+    }
+    if (n) console.log(`[${state.zoneId}] 📜 게시판 의뢰 ${n}건 복구(납품 진척 포함)`);
+  } catch (e) { console.error(`[${state.zoneId}] 📜 게시판 복구 실패:`, e.message); }
+}
+
+// 실체 캐러밴의 **오늘치 지연 증분** — econ 단독(랩)엔 실체가 없어 빈 배열이 된다.
+//   `body.delayedDays` 는 이미 정본 계측이다(caravanBlockedResponse·도착 임박 가드가 올린다).
+//   장부는 그걸 **다시 계산하지 않고** 어제 본 값과의 차이만 넘긴다.
+function _caravanDelaysToday() {
+  const out = [];
+  if (!state.caravanBodies) return out;
+  for (const body of state.caravanBodies.values()) {
+    const seen = body._evSeenDelay || 0;
+    const now = body.delayedDays || 0;
+    if (now > seen) {
+      body._evSeenDelay = now;
+      const toVil = state.byEcon.get(body.toV);
+      const c = body.c;
+      const fromVil = c && c.from ? state.byEcon.get(c.from) : null;
+      if (toVil) out.push({ vid: toVil.dbId, days: now - seen, from: fromVil ? fromVil.name : null, to: toVil.name });
+    }
+  }
+  return out;
+}
+
+function _scanEventsDaily() {
+  if (!state.ledger) return;
+  const t0 = Date.now();
+  const evs = state.ledger.scanDay(state.world, state.world.day, { caravanDelays: _caravanDelaysToday() });
+  // 의뢰 진척 저장은 납품 시점에 한다(여기선 게시/철회만 — onRequest 훅이 이미 했다).
+  if (state.world.day % 30 === 0) {
+    try { state.db.pruneVillageEvents(state.zoneId, state.world.day - state.ledger.cfg.KEEP_DAYS); } catch (e) {}
+  }
+  if (evs.length) {
+    const S = state.ledger.stats;
+    console.log(`[${state.zoneId}] 📜 사건 ${evs.length}건(누적 ${S.emitted} · 게시판 ${S.reqOpened - S.reqClosed}건 게시 중) · ${Date.now() - t0}ms`);
+  }
+}
+
+// ── 마을 앵커 · 근접 판정 ─────────────────────────────────────────────────────
+//   마을 중심(회관 셀)의 월드 픽셀. 클라의 `simVillages` 와 **같은 환산**(cx*SZ + SZ/2)이다.
+function villageAnchorPx(vil) { return { x: vil.ccx * SZ + SZ / 2, y: vil.ccy * SZ + SZ / 2 }; }
+function _villageNear(vid, px, py) {
+  const vil = state.byDbId && state.byDbId.get(vid | 0);
+  if (!vil) return { err: '그런 마을이 없다' };
+  const a = villageAnchorPx(vil);
+  const d = Math.hypot(a.x - px, a.y - py);
+  if (d > EV_BRIEF_PX) return { err: '마을 중심에서 너무 멀다' };
+  return { vil };
+}
+
+// ★촌장 브리핑 — **그 마을 것만**. 전 서버 브로드캐스트 금지(소식의 물리 전파 원칙).
+//   이웃 마을 소문은 행상인이 나르는 층이고, 그건 이번 배치의 범위가 아니다(회부).
+function villageBrief(vid, px, py) {
+  if (!state.ledger) return { err: '아직 장부가 없다' };
+  const g = _villageNear(vid, px, py);
+  if (g.err) return g;
+  const evs = state.ledger.recent(vid | 0, state.ledger.cfg.BRIEF_N);
+  const lines = evs.map((e) => Events.briefLine(e)).filter(Boolean);
+  if (!lines.length) lines.push('별일 없네. 자네도 몸 성히 지내게.');
+  const board = state.ledger.board(vid | 0);
+  return { ok: true, vid: vid | 0, name: g.vil.name, day: state.world.day | 0, lines, board: board.length };
+}
+
+// ★게시판 — 걸려 있는 납품 의뢰 목록(자기 마을 것만)
+function villageBoard(vid, px, py) {
+  if (!state.ledger) return { err: '아직 장부가 없다' };
+  const g = _villageNear(vid, px, py);
+  if (g.err) return g;
+  const rows = state.ledger.board(vid | 0).map((r) => ({
+    item: r.item, remain: r.remain, qty: r.qty, rewItem: r.rewItem, rewQty: r.rewQty,
+    line: Events.boardLine(r),
+    give: (state.ledger.deliverable.items.get(r.item) || []),   // 어떤 플레이어 아이템으로 낼 수 있나
+    take: state.ledger.deliverable.toEcon.get(r.rewItem) || null,
+  }));
+  return { ok: true, vid: vid | 0, name: g.vil.name, rows };
+}
+
+// ★납품 — 서버 권위. 실물 이동은 `playerVillageDeposit`(정본), 몫 확정은 장부(원자적).
+function villageDeliver(vid, px, py, inventory, item, want) {
+  if (!state.ledger) return { err: '아직 장부가 없다' };
+  const g = _villageNear(vid, px, py);
+  if (g.err) return g;
+  // ★품목 미지정 = "낼 수 있는 걸 내겠다". **서버가** 고른다 — 클라가 고르면 그건 클라 권위다.
+  //   순서: 가장 급한 의뢰(잔여 비율이 큰 것)부터, 내가 실제로 들고 있는 것 중에서.
+  if (!item) {
+    const rows = state.ledger.board(vid | 0)
+      .filter((r) => (state.ledger.deliverable.items.get(r.item) || []).some((it) => (Number(inventory[it]) || 0) >= 1))
+      .sort((a, b) => (b.remain / Math.max(1, b.qty)) - (a.remain / Math.max(1, a.qty)));
+    if (!rows.length) return { err: '지금 낼 수 있는 의뢰가 없다' };
+    item = rows[0].item;
+  }
+  const r = Events.deliverToVillage({
+    ledger: state.ledger, vil: g.vil, vid: vid | 0, inventory,
+    item: String(item), want, deposit: playerVillageDeposit,
+  });
+  if (!r.ok) return { err: r.err };
+  // 진척 영속 — 남았으면 갱신, 다 찼으면 다음 하루 경계에 철회되지만 그때까지의 진척도 남긴다.
+  try {
+    if (r.req && r.req.filled < r.req.qty) state.db.upsertVillageRequest(state.zoneId, r.req);
+    else if (r.req) state.db.deleteVillageRequest(state.zoneId, r.req.vid, r.req.item);
+  } catch (e) {}
+  return Object.assign({ ok: true, vid: vid | 0, name: g.vil.name }, r);
+}
+
+// 클라가 마을 근처인지 스스로 알 수 있게 반경만 알려 준다(판정은 서버가 한다)
+function briefRadiusPx() { return EV_BRIEF_PX; }
+
+// ★★[테스트 전용 · zone.js 가 `E2E_GIVE=1` 로 게이트] 실클라 E2E 가 부족을 만든다.
+//   왜 필요한가: 게시판 납품 흐름을 실화면으로 재려면 **의뢰가 걸려 있어야** 하는데,
+//   자연 발생을 기다리면 검사 대상(브리핑·게시판·정산)이 아니라 시뮬 운을 재게 된다.
+//   ⚠재고만 낮춘다 — 소비EMA·가격을 **지어내지 않는다**. 마을이 실제로 쓰는 품목이 없으면
+//     그대로 실패를 돌려준다(가짜 상황을 만들어 자명 통과시키지 않는다).
+function __e2eForceShortage(vid) {
+  if (!state.ledger) return { err: '장부 없음' };
+  const vil = state.byDbId && state.byDbId.get(vid | 0);
+  if (!vil) return { err: '그런 마을 없음' };
+  const v = vil.econ, D = state.ledger.deliverable, C = state.ledger.cfg;
+  let best = null;
+  for (const [r, e] of Object.entries(v._consEMA || {})) {
+    if (!D.fromEcon.has(r) || !(e > 0)) continue;
+    // 갚을 잉여가 있어야 의뢰가 선다 — 그 조건까지 만족하는 품목을 고른다
+    let sur = 0; for (const [r2, q] of Object.entries(v.storage || {})) if (r2 !== r && D.toEcon.has(r2) && q > sur) sur = q;
+    if (sur <= 0) continue;
+    if (!best || e > best.e) best = { r, e, sur };
+  }
+  if (!best) return { err: `마을 ${vil.name}: 낼 수 있고 갚을 잉여가 있는 소비 품목이 없다(econ day ${state.world.day})` };
+  const thr = best.e * C.SHORT_DAYS;
+  const before = +(v.storage[best.r] || 0);
+  v.storage[best.r] = +(thr * 0.1).toFixed(3);
+  return { ok: true, vid: vid | 0, name: vil.name, item: best.r, ema: +best.e.toFixed(3), thr: +thr.toFixed(3), before: +before.toFixed(3), after: v.storage[best.r], day: state.world.day | 0 };
+}
+
+
 module.exports = {
   init, onGameTick, invalidateTradeDistances, npcLifeTick, lifeDebug,
   // Stage 4A — zone.js 소비: 농지 lazy 실물화 / welcome 영토 페이로드 / 레거시 디듀프 판정
@@ -4100,6 +4293,10 @@ module.exports = {
   // ★★[2026-08-03e 배치 12] 플레이어 마을 건립 — zone.js `village_site` 완공 훅이 소비.
   //   `playerVillageAt` 은 재고 UI 의 권한/조회 진입점(회관 셀 → 그 마을).
   foundPlayerVillage, playerVillageInventory, playerVillageAt, playerVillageDeposit, playerVillageDepositMap,
+  // ★[2026-08-25 사건 레이어] 촌장 브리핑 · 게시판 · 납품 — zone.js 핸들러가 소비
+  villageBrief, villageBoard, villageDeliver, villageAnchorPx, briefRadiusPx,
+  __e2eForceShortage,   // ★테스트 전용 — zone.js 가 E2E_GIVE 로 게이트한다(기본 부팅에선 도달 불가)
+  get eventLedger() { return state.ledger; },
   // 플레이어 구매/판매 경계계약(읽기전용 마을 품질 EMA — econ 무접촉)
   villageQualityAt,
   lifeSellIronRelic,   // ★철제 위세품 판매(플레이어→마을) — econ 접점은 이 함수 하나뿐

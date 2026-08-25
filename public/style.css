@@ -265,6 +265,8 @@ html, body { margin: 0; padding: 0; height: 100%; font-family: -apple-system, "S
   font-size: 12px; max-width: 320px; min-height: 18px;
   border: 1px solid rgba(255,255,255,0.08);
   color: #c5cad3;
+  /* ★[2026-08-25 사건 레이어] 게시판 목록은 여러 줄이다 — 새 패널을 만들지 않고 이 한 줄로 늘린다. */
+  white-space: pre-line;
 }
 
 #minimap {

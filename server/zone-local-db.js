@@ -298,6 +298,51 @@ function getSoilCells(zone) { return stmtGetSoilCells.all(zone); }
 function upsertSoilCell(zone, key, v, d, geo) { stmtUpsertSoilCell.run(zone, key | 0, v, d | 0, geo | 0); }
 function deleteSoilCell(zone, key) { stmtDeleteSoilCell.run(zone, key | 0); }
 
+// === [2026-08-25 사건 레이어] 사건 장부 · 게시판 의뢰 — 추가 전용 스키마 ===
+//   village_events   : 하루 경계 판정이 낸 사건. 마을당 EV_KEEP_DAYS 일치만 남기고 오래된 것부터 버린다.
+//   village_requests : 게시판에 걸려 있는 납품 의뢰. (zone,vid,item) 유일 — 동일 품목 중복 금지가 스키마 계약이다.
+//   ⚠ vid 는 `villages.id`(dbId). 마을이 지워지면 남는 행은 다음 부팅의 prune 이 걷는다.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS village_events (
+    id     INTEGER PRIMARY KEY AUTOINCREMENT,
+    zone   TEXT    NOT NULL,
+    vid    INTEGER NOT NULL,
+    day    INTEGER NOT NULL,
+    type   TEXT    NOT NULL,
+    item   TEXT,
+    mag    REAL    NOT NULL,
+    meta   TEXT
+  );
+  CREATE INDEX IF NOT EXISTS idx_village_events_vid ON village_events (zone, vid, day);
+  CREATE TABLE IF NOT EXISTS village_requests (
+    zone     TEXT    NOT NULL,
+    vid      INTEGER NOT NULL,
+    item     TEXT    NOT NULL,
+    qty      REAL    NOT NULL,
+    filled   REAL    NOT NULL DEFAULT 0,
+    rew_item TEXT    NOT NULL,
+    rew_qty  REAL    NOT NULL,
+    day      INTEGER NOT NULL,
+    PRIMARY KEY (zone, vid, item)
+  );
+`);
+const stmtInsertVillageEvent = db.prepare('INSERT INTO village_events (zone, vid, day, type, item, mag, meta) VALUES (?, ?, ?, ?, ?, ?, ?)');
+const stmtGetVillageEvents = db.prepare('SELECT vid, day, type, item, mag, meta FROM village_events WHERE zone = ? AND day >= ? ORDER BY day');
+const stmtPruneVillageEvents = db.prepare('DELETE FROM village_events WHERE zone = ? AND day < ?');
+function insertVillageEvent(zone, e) {
+  stmtInsertVillageEvent.run(zone, e.vid | 0, e.day | 0, String(e.type), e.item == null ? null : String(e.item),
+    +e.mag || 0, e.meta ? JSON.stringify(e.meta) : null);
+}
+function getVillageEventsSince(zone, day) { return stmtGetVillageEvents.all(zone, day | 0); }
+function pruneVillageEvents(zone, beforeDay) { stmtPruneVillageEvents.run(zone, beforeDay | 0); }
+
+const stmtUpsertVillageRequest = db.prepare('INSERT INTO village_requests (zone, vid, item, qty, filled, rew_item, rew_qty, day) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(zone, vid, item) DO UPDATE SET qty = excluded.qty, filled = excluded.filled, rew_item = excluded.rew_item, rew_qty = excluded.rew_qty, day = excluded.day');
+const stmtDeleteVillageRequest = db.prepare('DELETE FROM village_requests WHERE zone = ? AND vid = ? AND item = ?');
+const stmtGetVillageRequests = db.prepare('SELECT vid, item, qty, filled, rew_item, rew_qty, day FROM village_requests WHERE zone = ?');
+function upsertVillageRequest(zone, r) { stmtUpsertVillageRequest.run(zone, r.vid | 0, String(r.item), +r.qty || 0, +r.filled || 0, String(r.rewItem), +r.rewQty || 0, r.day | 0); }
+function deleteVillageRequest(zone, vid, item) { stmtDeleteVillageRequest.run(zone, vid | 0, String(item)); }
+function getVillageRequests(zone) { return stmtGetVillageRequests.all(zone); }
+
 const stmtGetBanditState = db.prepare('SELECT * FROM bandit_state WHERE zone = ?');
 const stmtUpsertBanditState = db.prepare(
   'INSERT INTO bandit_state (zone, data, day, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(zone) DO UPDATE SET data = excluded.data, day = excluded.day, updated_at = excluded.updated_at'
@@ -331,6 +376,9 @@ module.exports = {
   // §4-4 마을 시뮬 (villages.js)
   getVillagesByZone, insertVillage, updateVillageState, insertVillageBuilding, getVillageBuildings,
   getVillageFarmInCellRect,
+  // [2026-08-25 사건 레이어] 사건 장부·게시판 (events.js / villages.js)
+  insertVillageEvent, getVillageEventsSince, pruneVillageEvents,
+  upsertVillageRequest, deleteVillageRequest, getVillageRequests,
   // §11 도적 (bandits.js)
   getBanditState, upsertBanditState,
   // §16 답압 길 (roads.js)

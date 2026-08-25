@@ -4935,6 +4935,13 @@ const SIM_JOB_EMOJI = {
   let chatActive = false;
   const chatLog = []; // {name, color, text, t}
   const speechBubbles = new Map(); // pid -> {text, until}
+  // ★★[2026-08-25 사건 레이어] 촌장 브리핑 — 마을 중심에 뜨는 말풍선.
+  //   전달은 UI 보고서가 아니라 **세계 안의 말**이다(설계 §3.2). 대시보드를 만들지 않는다.
+  const villageBubbles = new Map();  // vid -> {lines, until}
+  let evBoardCache = null;           // 마지막으로 받은 게시판(납품 키가 쓴다)
+  let evNearVid = null;              // 지금 목소리가 닿는 마을
+  const evBriefedDay = new Map();    // vid -> 마지막으로 브리핑 받은 게임일(하루 한 번)
+  const EV_BRIEF_PX = 260;           // 서버 `EV_BRIEF_PX` 와 같은 값 — 판정은 서버가 하고 여긴 발신 게이트일 뿐
 
   // === 월드 시계 (Day/Night) ===
   // serverNow = clientNow + serverNowOffset 으로 보정한 timestamp 기준 phase 계산.
@@ -5122,6 +5129,15 @@ const SIM_JOB_EMOJI = {
     else if (k === 'p') sendPrimary({ type: 'build', buildType: 'farmland', floor: myBuildFloor });
     else if (k === 'o') sendPrimary({ type: 'harvest' });
     else if (k === 'g') sendPrimary({ type: 'feed' });
+    else if (k === 'n' && e.shiftKey) {
+      // ★납품 — 품목을 안 보낸다. **서버가** 낼 수 있는 첫 의뢰를 고른다(권위는 서버에 있다).
+      if (evNearVid == null) showNotice('📋 마을 중심에서 너무 멀다');
+      else sendPrimary({ type: 'village_deliver', vid: evNearVid });
+    }
+    else if (k === 'g' && e.shiftKey) {
+      if (evNearVid == null) showNotice('📋 마을 중심에서 너무 멀다');
+      else sendPrimary({ type: 'village_board', vid: evNearVid });
+    }
     else if (k === 'n') toggleTribePanel();
     else if (k === 'v') sendPrimary({ type: 'pvp_set', enabled: !myPvpEnabled });
     else if (k === 'z') { myBuildFloor = Math.min(5, myBuildFloor + 1); showNotice(`건축 층: ${myBuildFloor}F`); updateHud(); }
@@ -6243,6 +6259,7 @@ const SIM_JOB_EMOJI = {
     } else if (msg.type === 'claim_removed') {
       c.claims.delete(msg.id);
     } else if (msg.type === 'sim_village_day') {
+      window.__evGameDay = msg.day | 0;   // ★[사건 레이어] 촌장 브리핑 "하루 한 번" 의 시계
       // §4-4 Stage 4A: 게임일 1회 — 마을 인구 라벨 + NPC 직업(simJob) 변경분 + §19 영토 크립 반경(tr) 갱신
       if (c.simVillages && msg.pops) for (const v of c.simVillages) { if (msg.pops[v.id] != null) v.pop = msg.pops[v.id]; if (msg.terr && msg.terr[v.id] != null) v.tr = msg.terr[v.id]; }
       if (msg.jobs) for (const [pid, job] of Object.entries(msg.jobs)) { const o = c.others.get(pid); if (o) o.simJob = job; }
@@ -6461,6 +6478,21 @@ const SIM_JOB_EMOJI = {
       //   식량 환산·자립일수·다음 주민 문턱은 전부 엔진 정본 함수의 결과다(사본 금지).
       //   `_cash`(미상환 세곡 채권 장부)는 서버가 아예 안 보낸다 — 재화와 나란히 놓으면 "부"로 오독된다.
       showVillageInventory(msg.inv);
+    } else if (msg.type === 'village_brief') {
+      // ★촌장 브리핑 — 말풍선(세계 안) + 알림 한 줄(놓치지 않게). 수치는 안 보여 준다.
+      const b = msg.brief || {};
+      window.__evLastBrief = b;
+      if (b.lines && b.lines.length) {
+        villageBubbles.set(b.vid, { lines: b.lines.slice(0, 3), until: performance.now() + 9000 });
+        showNotice(`🧓 ${b.name} 촌장 — ${b.lines[0]}` + (b.board ? `  (게시판 ${b.board}건 · Shift+G)` : ''), 5000);
+        needsRedraw = true;
+      }
+    } else if (msg.type === 'village_board') {
+      const bd = msg.board || {};
+      evBoardCache = bd;
+      window.__evLastBoard = bd;
+      if (!bd.rows || !bd.rows.length) showNotice(`📋 ${bd.name} 게시판 — 걸린 의뢰가 없다`, 3500);
+      else showNotice(`📋 ${bd.name} 게시판\n` + bd.rows.map((r) => ' · ' + r.line).join('\n') + '\n(Shift+N 으로 낼 수 있는 것부터 납품)', 9000);
     } else if (msg.type === 'pvp_state') {
       myPvpEnabled = !!msg.enabled;
       updateHud();
@@ -7346,6 +7378,7 @@ const SIM_JOB_EMOJI = {
   function applyServerCorrection(absX, absY, ackSeq) {
     const ex = absX - myAbsPredicted.x, ey = absY - myAbsPredicted.y;
     const dist = Math.hypot(ex, ey);
+    window.__corrN = (window.__corrN | 0) + 1; window.__corrLast = Math.round(dist);   // 진단 훅(읽기 전용)
     // === 러버밴딩 계측 (기본 OFF — window._desyncDbg=true로 켬) ===
     if (dist > 48 && window._desyncDbg === true) {
       const wallBetween = clientIsBlockedByWall(absX, absY, myAbsPredicted.x, myAbsPredicted.y, myFloor);
@@ -8895,6 +8928,21 @@ const SIM_JOB_EMOJI = {
     _mtStage(ctx, 'D_루프후');
     _mtFlushFade(ctx);   // ★흐린 산 한 겹을 여기서 한 번에 덮는다(겹침 누적 방지)
     _mtStage(ctx, 'E_흐림후');
+
+    // ★★[2026-08-25 사건 레이어] 촌장 말풍선 — 마을 중심 위. 렌더러블 루프 **뒤**라 건물에 안 가린다.
+    //   설계 §3.2: 소식은 대시보드가 아니라 **세계 안의 말**로 온다. 그래서 HUD 가 아니라 여기 그린다.
+    if (villageBubbles.size) {
+      const nowMs = performance.now();
+      for (const [vid, bb] of [...villageBubbles]) {
+        if (nowMs >= bb.until) { villageBubbles.delete(vid); continue; }
+        const a = _evVillageAnchorAbs(vid);
+        if (!a) continue;
+        const p0 = w2i(a.x, a.y), sp = toScreen(p0.x, p0.y);
+        if (sp.x < -260 || sp.y < -160 || sp.x > canvas.width + 260 || sp.y > canvas.height + 160) continue;
+        let y = sp.y - 54;
+        for (let i = bb.lines.length - 1; i >= 0; i--) { drawSpeechBubble(sp.x, y, bb.lines[i]); y -= 26; }
+      }
+    }
 
     // === 14.49-e7o: 옛 vignette/directional shadow 제거 — fog of war가 시야 전담 (3-state 깔끔) ===
 
@@ -10702,6 +10750,48 @@ const SIM_JOB_EMOJI = {
     ctx.restore();
   }
 
+  // ★마을 중심의 **절대** 월드 좌표 — 서버 `villageAnchorPx`(ccx*SZ + SZ/2)와 같은 환산에
+  //   존 오프셋만 더한 것. 좌표 혼선은 이 프로젝트가 여러 번 당한 함정이라 한 곳에만 둔다.
+  function _evVillageAnchorAbs(vid) {
+    for (const [, c] of conns) {
+      if (!c.simVillages) continue;
+      const ox = (c.meta && c.meta.worldOffsetX) || 0, oy = (c.meta && c.meta.worldOffsetY) || 0;
+      for (const v of c.simVillages) if (v.id === vid) return { x: ox + v.cx * CL_BUILDING_SIZE + 16, y: oy + v.cy * CL_BUILDING_SIZE + 16, v, c };
+    }
+    return null;
+  }
+  // ★근접 브리핑 — 마을 중심에 다가가면 촌장이 말을 건다(하루 한 번).
+  //   판정(거리·내용)은 서버가 한다. 여기 있는 건 **발신 게이트**뿐이다 — 매 프레임 보내지 않게.
+  function _evProximityTick() {
+    let bestVid = null, bestD = EV_BRIEF_PX, seen = 0, minD = Infinity;
+    for (const [, c] of conns) {
+      if (!c.simVillages) continue;
+      const ox = (c.meta && c.meta.worldOffsetX) || 0, oy = (c.meta && c.meta.worldOffsetY) || 0;
+      for (const v of c.simVillages) {
+        seen++;
+        const d = Math.hypot((ox + v.cx * CL_BUILDING_SIZE + 16) - myAbsPredicted.x, (oy + v.cy * CL_BUILDING_SIZE + 16) - myAbsPredicted.y);
+        if (d < minD) minD = d;
+        if (d < bestD) { bestD = d; bestVid = v.id; }
+      }
+    }
+    // ★진단 훅 — 조용한 try/catch 는 **없는 결함을 숨긴다**. 왜 안 잡혔는지 밖에서 보이게 남긴다.
+    //   `me`(예측)와 `srv`(서버 권위)를 **둘 다** 낸다: 둘이 갈리면 그건 근접 판정이 아니라 리컨실리에이션 문제다.
+    window.__evDbg = { seen, minD: Math.round(minD), gate: EV_BRIEF_PX,
+      me: { x: Math.round(myAbsPredicted.x), y: Math.round(myAbsPredicted.y) },
+      srv: myAbsPos ? { x: Math.round(myAbsPos.x), y: Math.round(myAbsPos.y) } : null,
+      pid: myPid, corrN: window.__corrN | 0, corrLast: window.__corrLast | 0 };
+    evNearVid = bestVid;
+    window.__evNearVid = bestVid;
+    if (bestVid == null) return;
+    const day = window.__evGameDay | 0;
+    if (evBriefedDay.get(bestVid) === day) return;   // 하루 한 번 — 왔다 갔다 해도 촌장이 앵무새가 되지 않는다
+    evBriefedDay.set(bestVid, day);
+    sendPrimary({ type: 'village_brief', vid: bestVid });
+  }
+  setInterval(() => { try { _evProximityTick(); } catch (e) { window.__evTickErr = String(e && e.message || e); } }, 700);
+  // ★하네스 훅 — **읽기 전용만**. 발신은 이미 있는 `window.__sendPrimary` 를 쓴다(새 능력 0).
+  window.__evBubbles = () => [...villageBubbles].map(([vid, b]) => ({ vid, lines: b.lines }));
+
   function drawSpeechBubble(x, y, text) {
     if (!text) return;
     ctx.font = '12px sans-serif';
@@ -12033,14 +12123,17 @@ const SIM_JOB_EMOJI = {
   }
 
   let noticeTimer;
-  function showNotice(text) {
+  // ★[2026-08-25 사건 레이어] `ms` 인자 추가 — 게시판 목록은 한 줄보다 오래 떠야 읽힌다.
+  //   새 패널을 만들지 않는다(설계 §3.2 "대시보드 UI 금지" · 배치 지시 "기존 HUD 문법 재사용").
+  //   여러 줄은 `\n` 그대로 — `#notice` 에 `white-space: pre-line` 을 줬다.
+  function showNotice(text, ms) {
     // ★진단 훅(읽기 전용): 최근 알림 40건 — 하네스가 '재료 부족/의뢰 성공' 같은 서버 응답을 실측하는 통로.
     (window.__notices = window.__notices || []).push(text); if (window.__notices.length > 40) window.__notices.shift();
     document.getElementById('notice').textContent = text;
     clearTimeout(noticeTimer);
     noticeTimer = setTimeout(() => {
       document.getElementById('notice').textContent = '';
-    }, 2500);
+    }, ms || 2500);
   }
 
   boot();
