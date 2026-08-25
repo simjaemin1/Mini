@@ -452,6 +452,8 @@ const SIM_JOB_EMOJI = {
   //   전혀 안 깨졌다(고주파 3.89 / 4.01 / 4.32 / 4.76 — 노이즈만 늘었다). 양자화 가설도 기각.
   //   손잡이는 남긴다(다른 화면에서 계단이 보이면 켜서 재 볼 수 있게).
   const WATER_DITHER = 0.0;            // ±(값/2) LSB. 0 = 출시본 그대로
+  // ★강 영향권 밖(호수·먼바다) 폴백 방향의 각도 눈금 수. 0 이면 옛 그림(매끄러운 방향 = 디더 띠).
+  const WATER_LAKE_SNAP = 16.0;
   // ★[2026-08-09 실측 정정] 옛 주석의 "32px +0.27ms · 16px +0.53 · 8px +1.03" 은 **틀렸다**.
   //   실클라 짝 비교(켬/끔 5회 교대)로 재니 풀 카펫 흔들림 하나가 **16.3ms/f** 다 — 29배 차이.
   //   옛 수치는 격리·첫 blit 측정으로 보인다. 아래 값들은 전부 짝 비교로 다시 잰다.
@@ -1491,7 +1493,14 @@ const SIM_JOB_EMOJI = {
       lin[p2 * 4 + 1] = ((f[1] * 0.5 + 0.5) * 255) | 0;
       lin[p2 * 4 + 2] = (Math.min(1, d01) * 255) | 0;
       lin[p2 * 4 + 3] = 255;
-      msk[p2 * 4] = msk[p2 * 4 + 1] = msk[p2 * 4 + 2] = 0;
+      // ★★★[재민 2026-08-24 "물살 세로줄"] 흐름 **방향**을 마스크 텍스처(NEAREST)에도 싣는다.
+      //   uLin 은 LINEAR 라 방향이 다른 두 셀 사이에서 dir 이 **한 셀에 걸쳐 매끄럽게 돌아간다**.
+      //   그런데 파도 위상이 `dot(w, dir)` 이고 w 가 절대 월드 좌표(≈4.6e5)라, 그 미세한 회전이
+      //   |w|·|∇dir| 로 증폭돼 그 한 셀 폭(화면 약 64px)이 통째로 **디더 얼룩 띠**가 된다.
+      //   ⇒ 방향만 NEAREST 로 읽으면 셀 안에서 상수(∇dir=0)라 띠가 사라진다. 셀 경계에는
+      //     1px 이음매가 남지만, 64px 짜리 얼룩 띠보다 훨씬 낫다.
+      //   ※수심(uLin.b)은 그대로 LINEAR — 얕은→깊은 그라데이션은 매끄러워야 한다.
+      msk[p2 * 4] = lin[p2 * 4]; msk[p2 * 4 + 1] = lin[p2 * 4 + 1]; msk[p2 * 4 + 2] = 0;
       msk[p2 * 4 + 3] = wet[p2] === 1 ? 255 : 0;   // 미결(2)은 물이 아니다 — 그리지 않는다
     }
     window.__wfFlowMs = performance.now() - _tf0; window.__wfFlowN = _flowN;
@@ -1517,7 +1526,7 @@ const SIM_JOB_EMOJI = {
     // ★[재민 2026-08-24 "1셀 두께 줄무늬"] 잔결 노이즈 손잡이 — x=스케일 · y=주기 · z=세기.
     //   ※스케일×주기 = 512 여야 한다(카메라가 512px 움직여도 무늬가 안 튀는 조건 — 위 주석 ⓑ).
     //     그래서 CPU 가 주기를 512/스케일 로 계산해 넣는다. 스케일은 512 의 약수만 쓴다.
-    'uniform vec3 uRip; uniform vec3 uRip1; uniform float uDith;',
+    'uniform vec3 uRip; uniform vec3 uRip1; uniform float uDith; uniform float uSnap; uniform float uDirLin;',
     'uniform vec2 uOrig; uniform float uN; uniform float uDrop;',
     // ★★값 노이즈는 **주기 노이즈**여야 한다. 이유가 두 개다:
     //   ⓐ 월드 좌표가 수만 px 이라 `fract(sin(dot(p,·)))` 의 인자가 1e7 급이 되면 float 정밀도가
@@ -1578,13 +1587,22 @@ const SIM_JOB_EMOJI = {
     '    cov = min(cov, cg*0.25); }',
     '  if(cov <= 0.001) discard;',
     '  vec4 L = texture2D(uLin,uv);',
-    '  vec2 dir = L.rg*2.0-1.0; float depth = L.b;',
+    // ★방향은 NEAREST(uMsk.rg)에서 — 셀 안에서 상수라야 위상이 안 무너진다(위 _buildFlowTex 주석).
+    //   uDirLin 이 1 이면 옛 그림(uLin.rg, LINEAR) — A/B 대조군.
+    '  vec2 dir = mix(texture2D(uMsk,uv).rg, L.rg, uDirLin)*2.0-1.0; float depth = L.b;',
     '  float fl = length(dir);',
     // 흐름이 없으면(호수·먼바다) 해안 거리장 기울기 = 파도 방향(해안 쪽에서 온다)
     '  if(fl < 0.08){ float e=1.0/uN;',
     '    float gx=texture2D(uLin,uv+vec2(e,0)).b-texture2D(uLin,uv-vec2(e,0)).b;',
     '    float gy=texture2D(uLin,uv+vec2(0,e)).b-texture2D(uLin,uv-vec2(0,e)).b;',
-    '    vec2 g2=vec2(gx,gy); dir = length(g2)>0.0001? -normalize(g2) : vec2(1.0,0.0); }',
+    '    vec2 g2=vec2(gx,gy); dir = length(g2)>0.0001? -normalize(g2) : vec2(1.0,0.0);',
+    // ★★★[재민 2026-08-24 "물살 세로줄"] 이 폴백 방향은 **픽셀마다 매끄럽게 변한다**(수심 기울기).
+    //   그런데 파도 위상이 `dot(w, dir)` 이고 w 가 절대 월드 좌표(≈4.6e5)라, dir 이 조금만 변해도
+    //   위상 기울기가 |w|·|∇dir| 로 증폭돼 파도가 **디더 얼룩 띠**로 무너진다(§6-k 폐기안과 같은 병).
+    //   그래서 강 영향권 밖 + 물가 6셀 안(수심이 아직 변하는 곳)에만 **띠 모양으로** 나타났다.
+    //   ⇒ 방향을 **각도 눈금에 스냅**해 구역 안에서 상수로 만든다(∇dir=0). 눈금 경계만 가는 선이 된다.
+    '    if(uSnap>0.5){ float aa=atan(dir.y,dir.x); float st=6.2831853/uSnap;',
+    '      aa=floor(aa/st+0.5)*st; dir=vec2(cos(aa),sin(aa)); } }',
     '  else dir = dir/fl;',
     '  float ADV = 64.0;',
     // ★사인 위상은 **전체 좌표**로 계산해도 된다(위상은 크기가 커도 매끄럽다). 노이즈만 국소 좌표.
@@ -1658,7 +1676,7 @@ const SIM_JOB_EMOJI = {
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
       const loc = gl.getAttribLocation(pr, 'p'); gl.enableVertexAttribArray(loc);
       gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-      for (const u of ['uRes', 'uCam', 'uT', 'uLin', 'uMsk', 'uOrig', 'uN', 'uDrop', 'uFuzz', 'uDbg', 'uRip', 'uRip1', 'uDith']) _wgl.uni[u] = gl.getUniformLocation(pr, u);
+      for (const u of ['uRes', 'uCam', 'uT', 'uLin', 'uMsk', 'uOrig', 'uN', 'uDrop', 'uFuzz', 'uDbg', 'uRip', 'uRip1', 'uDith', 'uSnap', 'uDirLin']) _wgl.uni[u] = gl.getUniformLocation(pr, u);
       const mkTex = (filt) => { const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filt); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filt);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
@@ -1740,6 +1758,8 @@ const SIM_JOB_EMOJI = {
       const r1 = _t19.ripScale1 == null ? WATER_RIP_S1 : _t19.ripScale1;
       gl.uniform3f(_wgl.uni.uRip1, r1, 512 / r1, _t19.ripW1 == null ? WATER_RIP_W1 : _t19.ripW1); }
     gl.uniform1f(_wgl.uni.uDith, _t19.ditherOff ? 0 : (_t19.dither == null ? WATER_DITHER : _t19.dither));
+    gl.uniform1f(_wgl.uni.uSnap, _t19.lakeSnap == null ? WATER_LAKE_SNAP : _t19.lakeSnap);
+    gl.uniform1f(_wgl.uni.uDirLin, _t19.dirLinear ? 1 : 0);
     gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     gl.disable(gl.SCISSOR_TEST);
@@ -3929,7 +3949,7 @@ const SIM_JOB_EMOJI = {
   //   ★[재민 2026-08-24] ripAmp — 잔결 노이즈 **전체** 세기(n1·n2 둘 다). 1 이 지금 값.
   //     점묘의 주범은 n2(스케일 손잡이로 재 봤더니 아니었다)가 아니라 **n1(가중 0.55·8월드px)** 였다.
                  ripAmp: null, ripScale: null, ripW: null, ripScale1: null, ripW1: null,
-                 ditherOff: false, dither: null };
+                 ditherOff: false, dither: null, lakeSnap: null, dirLinear: false };
   // 시험 전용 — 띠 높이를 바꿔 "비용이 blit 횟수에 비례하나 픽셀 수에 비례하나"를 가른다.
   window.__gtStrip = (v) => { GT_STRIP = Math.max(4, v | 0); _groundTiles.clear(); needsRedraw = true; return GT_STRIP; };
   window.__gtFrac = (v) => { _gtFrac = !!v; needsRedraw = true; return _gtFrac; };
@@ -7228,6 +7248,14 @@ const SIM_JOB_EMOJI = {
       //   바람 세기·시각은 자연물과 **같은 정본**을 쓴다(_windAt/_windT) — 날씨 훅도 같이 먹는다.
       const _gwT = _windT() * GT_WAVE_W, _gwT2 = _windT() * GT_WAVE_W2;
       const _gw = (_t19.windOff || _t19.windGrassOff) ? 0 : _windAt(_windT()) * GT_GRASS_AMP;
+      // ★★★[재민 2026-08-24 "아니 세로줄"] 잎 층은 **모든 바탕을 깐 뒤에** 따로 그린다.
+      //   한 타일씩 (바탕 → 잎)을 반복하면, 잎을 off 만큼 오른쪽으로 밀어 옆 타일 영역까지
+      //   넘겨 그려 놓고 **그 다음 타일의 불투명 바탕이 그 넘어온 잎을 덮어 버린다**.
+      //   그러면 타일 경계마다 폭 |off| 만큼 잎 빛이 사라져 **세로 검은 줄**이 남는다.
+      //   실측: 열별 최장 연속 98행 @x=988 · 89행 @x=476 (간격 512 = GT_W).
+      //     바람 0 → 사라짐 · 바람 2.5 → 줄이 굵어지고 x=994 로 이동 · 잎 층 끔 → 사라짐.
+      //   ⇒ 2패스. 바탕을 전부 깔고 나서 잎을 얹으면 덮을 바탕이 더 없다.
+      const _blPass = [];
       for (let ty = t0y; ty <= t1y; ty++) for (let tx = t0x; tx <= t1x; tx++) {
         const key = tx + '_' + ty;
         let ent = _groundTiles.get(key);
@@ -7242,43 +7270,48 @@ const SIM_JOB_EMOJI = {
         //   · 위상은 **iso 세로 좌표**(월드)로 준다 — 화면에 붙으면 카메라를 움직일 때 파도 따라온다.
         //   · 띠 16px = 타일당 16장. 실측(짝 비교) **+4.6ms/f** — 옛 주석 +0.53 은 틀렸다.
         //   · 'lighter' = 가산. 바탕이 (텍스처−평탄색)만큼 어둡게 구워져 있어 합이 원본과 같다.
-        if (ent.bl && _gw > 0) {
-          // ★★[렉 라운드 2026-08-09] 흔들림 비용은 **픽셀(필레이트)** 에 비례한다 —
-          //   띠 높이를 16/32/64px 로 바꿔도 18.6/16.2/17.6ms 로 잡음 안이었다(짝 비교 실측).
-          //   ⇒ 띠 개수를 줄이는 안(ⓐ)은 0ms 다. 줄일 건 **그리는 픽셀**뿐이다.
-          //   ⇒ 화면 밖은 잘라 낸다: 타일 격자(512×256)가 캔버스를 넘어 최대 2048×1280 을
-          //     그리고 1400×900 만 쓴다 — **52% 가 화면 밖**이었다.
-          ctx.globalCompositeOperation = 'lighter';
-          for (let sY = 0; sY < GT_H; sY += GT_STRIP) {
-            const sh = Math.min(GT_STRIP, GT_H - sY);
-            const isoY = ty * GT_H + sY;
-            const ph = isoY * GT_WAVE_K + _gwT;
-            // ★[렉 라운드 실측] 목적지가 **소수**면 캔버스가 이중선형 재샘플링을 탄다.
-            //   띠 개수·픽셀 수를 바꿔도 비용이 안 변한 이유가 이것이다. 진폭이 ±2.2px 라
-            //   정수로 반올림해도 파도는 그대로 읽힌다. (손잡이 __gtFrac 로 A/B 가능)
-            const off = _gtFrac ? (Math.sin(ph) * _gw) : Math.round(Math.sin(ph) * _gw);
-            // 화면 사각형으로 잘라 낸다(그림은 안 변한다 — 잘린 건 원래 안 보이던 픽셀이다)
-            const dX = _dx + off, dY = _dy + sY;
-            let sx = 0, sw = GT_W, sy = sY, sHh = sh, ddx = dX, ddy = dY;
-            if (dX < 0) { sx = -dX; sw -= sx; ddx = 0; }
-            if (dX + GT_W > W) sw -= (dX + GT_W - W);
-            if (dY < 0) { const c = -dY; sy += c; sHh -= c; ddy = 0; }
-            if (dY + sh > H) sHh -= (dY + sh - H);
-            if (sw <= 0 || sHh <= 0) continue;                  // 완전히 화면 밖인 띠
-            // ★밀림만으로는 '미끄러진다'로 읽힌다 — 실제 밀밭은 돌풍이 지나갈 때 **빛도 함께 훑는다**.
-            //   가산 층이라 alpha 를 흔들면 그게 그대로 명암 물결이 된다(비용 0).
-            ctx.globalAlpha = 0.90 + 0.10 * Math.sin(ph * 1.0 + 1.1);
-            ctx.drawImage(ent.bl, sx, sy, sw, sHh, ddx, ddy, sw, sHh);
-            nStrip++;
-          }
-          ctx.globalAlpha = 1;
-          ctx.globalCompositeOperation = 'source-over';
-        } else if (ent.bl) {
-          ctx.globalCompositeOperation = 'lighter';
-          ctx.drawImage(ent.bl, _dx, _dy);        // 무풍 — 어긋남 0. 그림은 옛것과 같아야 한다
-          ctx.globalCompositeOperation = 'source-over';
-        }
+        if (ent.bl) _blPass.push(ent, _dx, _dy, ty);
         drawn++;
+      }
+      // ── 2패스: 잎 층(가산) ─ 위 주석 참조. 바탕을 전부 깐 뒤라 덮일 일이 없다.
+      for (let bi = 0; bi < _blPass.length; bi += 4) {
+        const ent = _blPass[bi], _dx = _blPass[bi + 1], _dy = _blPass[bi + 2], ty = _blPass[bi + 3];
+          if (_gw > 0) {
+            // ★★[렉 라운드 2026-08-09] 흔들림 비용은 **픽셀(필레이트)** 에 비례한다 —
+            //   띠 높이를 16/32/64px 로 바꿔도 18.6/16.2/17.6ms 로 잡음 안이었다(짝 비교 실측).
+            //   ⇒ 띠 개수를 줄이는 안(ⓐ)은 0ms 다. 줄일 건 **그리는 픽셀**뿐이다.
+            //   ⇒ 화면 밖은 잘라 낸다: 타일 격자(512×256)가 캔버스를 넘어 최대 2048×1280 을
+            //     그리고 1400×900 만 쓴다 — **52% 가 화면 밖**이었다.
+            ctx.globalCompositeOperation = 'lighter';
+            for (let sY = 0; sY < GT_H; sY += GT_STRIP) {
+              const sh = Math.min(GT_STRIP, GT_H - sY);
+              const isoY = ty * GT_H + sY;
+              const ph = isoY * GT_WAVE_K + _gwT;
+              // ★[렉 라운드 실측] 목적지가 **소수**면 캔버스가 이중선형 재샘플링을 탄다.
+              //   띠 개수·픽셀 수를 바꿔도 비용이 안 변한 이유가 이것이다. 진폭이 ±2.2px 라
+              //   정수로 반올림해도 파도는 그대로 읽힌다. (손잡이 __gtFrac 로 A/B 가능)
+              const off = _gtFrac ? (Math.sin(ph) * _gw) : Math.round(Math.sin(ph) * _gw);
+              // 화면 사각형으로 잘라 낸다(그림은 안 변한다 — 잘린 건 원래 안 보이던 픽셀이다)
+              const dX = _dx + off, dY = _dy + sY;
+              let sx = 0, sw = GT_W, sy = sY, sHh = sh, ddx = dX, ddy = dY;
+              if (dX < 0) { sx = -dX; sw -= sx; ddx = 0; }
+              if (dX + GT_W > W) sw -= (dX + GT_W - W);
+              if (dY < 0) { const c = -dY; sy += c; sHh -= c; ddy = 0; }
+              if (dY + sh > H) sHh -= (dY + sh - H);
+              if (sw <= 0 || sHh <= 0) continue;                  // 완전히 화면 밖인 띠
+              // ★밀림만으로는 '미끄러진다'로 읽힌다 — 실제 밀밭은 돌풍이 지나갈 때 **빛도 함께 훑는다**.
+              //   가산 층이라 alpha 를 흔들면 그게 그대로 명암 물결이 된다(비용 0).
+              ctx.globalAlpha = 0.90 + 0.10 * Math.sin(ph * 1.0 + 1.1);
+              ctx.drawImage(ent.bl, sx, sy, sw, sHh, ddx, ddy, sw, sHh);
+              nStrip++;
+            }
+            ctx.globalAlpha = 1;
+            ctx.globalCompositeOperation = 'source-over';
+          } else if (ent.bl) {
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.drawImage(ent.bl, _dx, _dy);        // 무풍 — 어긋남 0. 그림은 옛것과 같아야 한다
+            ctx.globalCompositeOperation = 'source-over';
+          }
       }
       window.__groundDbg.tiles = drawn; window.__groundDbg.baked = baked; window.__groundDbg.cached = _groundTiles.size;
       window.__groundDbg.strips = nStrip; window.__groundDbg.gwind = _gw;
