@@ -29,5 +29,7 @@ run mountain    900 node scripts/e2e-mountain.js
 run mtocc       900 node scripts/e2e-mtocc.js
 run mtfuzz      900 node scripts/e2e-mtfuzz.js
 run mtfoot      900 node scripts/e2e-mtfoot.js
+run mtcorridor 1200 node scripts/e2e-mtcorridor.js
+run mtcut      1500 node scripts/e2e-mtcut.js
 killport 3020; killport 3010
 echo "── 로그: $OUT/"

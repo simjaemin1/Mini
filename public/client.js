@@ -4004,6 +4004,132 @@ const SIM_JOB_EMOJI = {
     dLo: +e.sg.dLo.toFixed(1), dHi: +e.sg.dHi.toFixed(1),
     sLo: +e.sg.sLo.toFixed(1), sHi: +e.sg.sHi.toFixed(1), hHi: +(e.sg.hHi || 0).toFixed(2),
     bw: e.sg.rec.bw, bh: e.sg.rec.bh, merged: e.sg.merged ? 1 : 0, bands: e.sg.rec.bands.length }));
+  // ── 판정기 — 걸친 띠를 **픽셀로 되짚는다** ──────────────────────────────
+  //   ★사본 금지: 높이는 굽는 쪽이 쓰는 **정본 F.corS** 를 그 화소의 매개변수에서 다시 부른다.
+  function _mtCutDbgW(sg, which, cc) {
+    const R = sg.rec; if (!R || !_mt3GlInit()) return null;
+    const cv = document.createElement('canvas'); cv.width = R.bw; cv.height = R.bh;
+    const g2 = cv.getContext('2d', { willReadFrequently: true });
+    for (const b of R.bands)
+      _mt3GlBand(g2, R.F, R.key, b.cells, b.cuts, R.x0, R.y0, R.bw, R.bh, b.clip, { dbgW: which, c: cc });
+    return g2.getImageData(0, 0, R.bw, R.bh);
+  }
+  //   ★굽는 쪽은 지우개를 안 쓴다 — 재현도 그대로 한다.
+  //   ★★첫 호출이 나무 가장자리 알파에서 몇 화소 어긋난다(워밍업). 그래서 판정기는 **두 번 그려
+  //     서로 비교한 값(재현 바닥)** 을 같이 낸다 — 바닥이 0 이어야 원본과의 차를 그대로 읽는다.
+  function _mtCutReRender(sg) {
+    const R = sg.rec; if (!R || !_mt3GlInit()) return null;
+    const cv = document.createElement('canvas'); cv.width = R.bw; cv.height = R.bh;
+    const g2 = cv.getContext('2d', { willReadFrequently: true });
+    for (const b of R.bands) {
+      _mt3GlBand(g2, R.F, R.key, b.cells, b.cuts, R.x0, R.y0, R.bw, R.bh, b.clip, null);
+      for (const t of b.trees) { g2.globalAlpha = 0.92; g2.drawImage(t.im, t.x, t.y, t.w, t.h); g2.globalAlpha = 1; }
+    }
+    return g2.getImageData(0, 0, R.bw, R.bh);
+  }
+  window.__mtCutProbe = (idx, opt) => {
+    const E = _mtSplitSegs[idx | 0]; if (!E) return null;
+    const sg = E.sg, R = sg.rec, c = E.c;
+    if (!R || c == null) return null;
+    const o = opt || {}, hGnd = o.hGnd != null ? o.hGnd : 0.012, maxS = o.maxS != null ? o.maxS : 40;
+    const cP = o.c != null ? +o.c : c;                       // 반례용 — 일부러 틀린 문턱
+    const KK = (window.__mtOccDbg && window.__mtOccDbg.plane) ? 64 : 32;   // 지금 쓰는 절단면의 계수
+    const gWin = KK * hGnd + 0.5;                            // 지면 창에서 공차를 **유도한다**
+    const W = R.bw, H = R.bh;
+    const mk = () => { const q = document.createElement('canvas'); q.width = W; q.height = H;
+                       return q.getContext('2d', { willReadFrequently: true }); };
+    const ctxA = mk(), ctxB = mk();
+    if (!_mt3CutSide(sg, c, 1, ctxA) || !_mt3CutSide(sg, c, -1, ctxB)) return null;
+    const A = ctxA.getImageData(0, 0, W, H).data, B = ctxB.getImageData(0, 0, W, H).data;
+    // ★행 구간 지름길이 **전 화소 가리개**와 같은 그림인지 — 최적화가 그림을 바꾸면 여기서 걸린다.
+    let abDiff = -1;
+    if (o.fresh !== 0) {
+      const fA = mk(), fB = mk(); abDiff = 0;
+      _mt3CutSide(sg, c, 1, fA, 1); _mt3CutSide(sg, c, -1, fB, 1);
+      const da = fA.getImageData(0, 0, W, H).data, db = fB.getImageData(0, 0, W, H).data;
+      for (let q = 3; q < da.length; q += 4)
+        if ((da[q] > 8) !== (A[q] > 8) || (db[q] > 8) !== (B[q] > 8)) abDiff++;
+    }
+    const O = (sg.img.getContext('2d')).getImageData(0, 0, W, H).data;
+    const wx = _mtCutDbgW(sg, 1), wy = _mtCutDbgW(sg, 2);
+    if (!wx || !wy) return null;
+    let reDiff = -1, reSelf = -1, RE = null;
+    if (o.fresh !== 0) {
+      const R2 = _mtCutReRender(sg), R1 = _mtCutReRender(sg);
+      if (R1 && R2) { reSelf = 0; for (let q = 3; q < R1.data.length; q += 4)
+        if ((R1.data[q] > 8) !== (R2.data[q] > 8)) reSelf++; }
+      RE = R1;
+      if (RE) { reDiff = 0; for (let q = 3; q < RE.data.length; q += 4)
+        if ((RE.data[q] > 8) !== (O[q] > 8)) reDiff++; }
+    }
+    const dec = (d, i) => ((d[i] * 255 + d[i + 1]) / 255) / 255 * 72 - 4;   // 16비트 → 셀 [-4,68]
+    const hAt = new Float32Array(W * H), hOk = new Uint8Array(W * H);
+    let cov = 0, onlyA = 0, onlyB = 0, both = 0, none = 0;
+    let pred = 0, bad = 0, badFar = 0, maxErr = 0, wall = 0, bothOK = 0, bothBad = 0;
+    let gA = -1e9, gB = 1e9, gN = 0, gAn = 0, gBn = 0, gStrict = 0, gStrictBad = 0, gNear = 0;
+    let hMin = 1e9, hMax = -1e9, bn = 0;
+    const EH = new Int32Array(34), side = new Int8Array(W * H), BP = [], oddS = [], samples = [];
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const i = (y * W + x) * 4;
+      const oa = O[i + 3] > 8, aa = A[i + 3] > 8, ba = B[i + 3] > 8;
+      if (oa) { cov++;
+        if (aa && ba) { both++;
+          // 겹친 화소: 합성이 A(불투명) → B(흐림) 순이라 **B 가 맨 위**여야 순서가 맞다.
+          const dA = Math.abs(A[i]-O[i]) + Math.abs(A[i+1]-O[i+1]) + Math.abs(A[i+2]-O[i+2]);
+          const dB = Math.abs(B[i]-O[i]) + Math.abs(B[i+1]-O[i+1]) + Math.abs(B[i+2]-O[i+2]);
+          if (dB <= dA) bothOK++; else bothBad++;
+          if (oddS.length < 12) oddS.push({ k: 'both', x, y, o: O[i+3], a: A[i+3], b: B[i+3] }); }
+        else if (aa) onlyA++; else if (ba) onlyB++;
+        else { none++; if (oddS.length < 12) oddS.push({ k: 'none', x, y, o: O[i+3],
+                 m: wx.data[i+2], re: RE ? RE.data[i+3] : -1 }); } }
+      if (!aa && !ba) continue;
+      side[y * W + x] = (aa && !ba) ? 1 : ((ba && !aa) ? -1 : 0);
+      if (wx.data[i + 3] < 8) continue;
+      // ★표면(vM=0)만 되짚는다. 갱 옆면·바닥은 vC 의 뜻이 셀 좌표가 아니라 못 읽는다 — 수를 낸다.
+      if (Math.round(wx.data[i + 2] / 255 * 8 - 1) !== 0) { wall++; continue; }
+      const cu = dec(wx.data, i), cvv = dec(wy.data, i);
+      const h = R.F.corS(cu, cvv);                            // ★정본 함수 그대로
+      if (h < hMin) hMin = h; if (h > hMax) hMax = h;
+      const d = (R.y0 + y + 0.5) + KK * h;                    // v4: s = 화면y + 32h
+      const want = d <= cP ? 1 : -1, got = side[y * W + x];
+      if (!got) continue;
+      pred++;
+      const err = Math.abs(d - cP);
+      if (got !== want) { bad++; if (err > 1) { badFar++; if (err > maxErr) maxErr = err;
+        if (samples.length < maxS) samples.push({ x, y, sy: R.y0 + y, h: +h.toFixed(3),
+                                                  d: +d.toFixed(2), err: +err.toFixed(2), want, got }); } }
+      hAt[y * W + x] = h; hOk[y * W + x] = 1;
+      if (Math.abs(h) < hGnd) {                               // ── 지면 구간(|h|≈0) ──
+        const sy = R.y0 + y + 0.5; gN++;
+        if (got === 1) { gAn++; if (R.y0 + y > gA) gA = R.y0 + y; }
+        if (got === -1) { gBn++; if (R.y0 + y < gB) gB = R.y0 + y; }
+        if (Math.abs(sy - cP) <= gWin) gNear++;
+        else { gStrict++; if ((sy <= cP ? 1 : -1) !== got) gStrictBad++; }
+      }
+    }
+    for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
+      const k = y * W + x, sv = side[k];
+      if (!sv || !hOk[k]) continue;
+      // ★**같은 곡면** 위의 경계만 센다(띠 실루엣은 절단 경계가 아니다).
+      let adj = false;
+      for (const q of [k - 1, k + 1, k - W, k + W])
+        if (side[q] === -sv && hOk[q] && Math.abs(hAt[q] - hAt[k]) < 0.25) { adj = true; break; }
+      if (!adj) continue;
+      const h = hAt[k], sy = R.y0 + y + 0.5;
+      bn++;
+      EH[Math.min(33, Math.floor(Math.abs(sy + KK * h - cP) / 0.25))]++;
+      // ★경계 화소의 (h, 화면y−c) 를 **날것으로** 낸다 — 계수를 밖에서 갈아 끼워 볼 수 있게.
+      if (BP.length < 40000) { BP.push(+h.toFixed(4)); BP.push(+(sy - c).toFixed(3)); }
+    }
+    return { idx: idx | 0, c, cP, K: KK, x0: R.x0, y0: R.y0, bw: W, bh: H, dx: E.dx, dy: E.dy,
+             sLo: +sg.sLo.toFixed(2), sHi: +sg.sHi.toFixed(2), bands: R.bands.length,
+             cov, onlyA, onlyB, both, bothOK, bothBad, none, pred, bad, badFar,
+             maxErr: +maxErr.toFixed(2), samples, wall, oddS, BP, bn,
+             hMin: hMin < 1e9 ? +hMin.toFixed(3) : null, hMax: hMax > -1e9 ? +hMax.toFixed(3) : null,
+             gN, gAn, gBn, gStrict, gStrictBad, gNear, hGnd, gWin: +gWin.toFixed(2),
+             reDiff, reSelf, abDiff,
+             gMaxA: gN && gA > -1e9 ? gA : null, gMinB: gN && gB < 1e9 ? gB : null };
+  };
   function _mtDraw(g, item, toScr) {
     const sg = item.sg;
     if (sg.mt3) {                       // ★3D 띠 — 구운 캔버스를 앵커로 꽂는다

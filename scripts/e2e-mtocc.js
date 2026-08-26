@@ -167,27 +167,47 @@ function diff(a, b, box) {
   //   ★자명 통과 금지: 앞·뒤 띠가 **둘 다 실제로 존재**해야 판정이 성립한다.
   await page.evaluate(() => window.__mt3Rects(true));
   await new Promise((r) => setTimeout(r, 900));
+  // ★★[명세 변경 2026-08-26 v4] '앞/뒤'의 자가 **띠 z → 지면 깊이 s** 로 바뀌었다.
+  //   "나를 가릴 수 있는 것(발자국이 내 앞)만 흐림, 뒤 산은 높이 무관 불투명."
+  //   ⇒ 깊이 3분류로 잰다. 옛 z 판정은 ⑤d 에서 **절단을 끄고** 그대로 건다.
+  //   ★rect 마다 **그 프레임의 fz** 로 가른다 — 마지막 문턱으로 전 프레임을 재면 걷는 동안 어긋난다.
   const sp5 = await page.evaluate(() => {
-    const fz = window.__mtOccDbg.fz;
-    const q = window.__mt3RectsGet() || [];
-    const f = q.filter(a => a.z > fz), b = q.filter(a => a.z <= fz);
-    const fFaded = f.filter(a => a.faded).length, bFaded = b.filter(a => a.faded).length;
-    // 경계 단조 — 안 흐린 것의 최대 z 가 흐린 것의 최소 z 보다 작아야 '한 행'이다
-    const zNo = q.filter(a => !a.faded).map(a => a.z), zYes = q.filter(a => a.faded).map(a => a.z);
-    return { fz, front: f.length, fFaded, back: b.length, bFaded,
-             maxNo: zNo.length ? Math.max(...zNo) : null, minYes: zYes.length ? Math.min(...zYes) : null };
+    const q = (window.__mt3RectsGet() || []).filter(a => a.sLo != null && a.fz != null);
+    const f = q.filter(a => a.sLo > a.fz), b = q.filter(a => a.sHi <= a.fz);
+    const m = q.filter(a => a.sLo <= a.fz && a.sHi > a.fz);
+    return { fz: window.__mtOccDbg.fz, front: f.length, fFaded: f.filter(a => a.faded).length,
+             back: b.length, bFaded: b.filter(a => a.faded).length,
+             strad: m.length, sSplit: m.filter(a => a.split === 1).length };
   });
   await page.evaluate(() => window.__mt3Rects(false));
   console.log('  [⑤ 명세] ' + JSON.stringify(sp5));
-  ok('⑤ ★자명 통과 금지 — 앞 띠와 뒤 띠가 **둘 다** 실제로 있다',
-    sp5.front > 3 && sp5.back > 3, `앞 ${sp5.front}장 · 뒤 ${sp5.back}장`);
-  ok('⑤ ★★플레이어보다 **앞** 띠는 전부 흐려진다', sp5.front > 0 && sp5.fFaded === sp5.front,
+  ok('⑤ ★자명 통과 금지 — **깊이로** 앞 띠와 뒤 띠가 둘 다 실제로 있다',
+    sp5.front > 3 && sp5.back > 3, `전부앞 ${sp5.front}장 · 전부뒤 ${sp5.back}장 · 걸친 ${sp5.strad}장`);
+  ok('⑤ ★★발자국이 **전부 내 앞**인 띠는 전부 흐려진다', sp5.front > 0 && sp5.fFaded === sp5.front,
     `앞 ${sp5.front}장 중 흐림 ${sp5.fFaded}장 (전부여야)`);
-  ok('⑤ ★★플레이어보다 **뒤** 띠는 하나도 안 흐려진다', sp5.bFaded === 0,
+  ok('⑤ ★★발자국이 **전부 내 뒤**인 띠는 하나도 안 흐려진다(높이 무관)', sp5.bFaded === 0,
     `뒤 ${sp5.back}장 중 흐림 ${sp5.bFaded}장 (0이어야)`);
-  ok('⑤ ★★경계는 **한 행**이다 — 흐린 것과 안 흐린 것이 z 로 안 섞인다',
-    sp5.maxNo === null || sp5.minYes === null || sp5.maxNo <= sp5.minYes,
-    `안 흐림 최대 z ${sp5.maxNo} ≤ 흐림 최소 z ${sp5.minYes} · 문턱 ${sp5.fz}`);
+  ok('⑤ ★★걸친 띠는 통째로 안 흐린다 — **전부 갈라 그린다**',
+    sp5.strad === 0 || sp5.sSplit === sp5.strad, `걸친 ${sp5.strad}장 중 갈라 그린 것 ${sp5.sSplit}장`);
+  // ⑤d 옛 판(띠 z 통째) — 반례 장치가 아직 산다. 절단을 끄면 z 경계가 **한 행**이어야 한다.
+  const sp5d = await (async () => {
+    await page.evaluate(() => window.__mtFadeCut(0));
+    await sleep(1400);
+    await page.evaluate(() => window.__mt3Rects(true)); await sleep(900);
+    const r = await page.evaluate(() => {
+      const fz = window.__mtOccDbg.fz, q = window.__mt3RectsGet() || [];
+      const zNo = q.filter(a => !a.faded).map(a => a.z), zYes = q.filter(a => a.faded).map(a => a.z);
+      return { fz, no: zNo.length, yes: zYes.length,
+               maxNo: zNo.length ? Math.max(...zNo) : null, minYes: zYes.length ? Math.min(...zYes) : null };
+    });
+    await page.evaluate(() => { window.__mt3Rects(false); window.__mtFadeCut(1); });
+    await sleep(1200);
+    return r;
+  })();
+  console.log('  [⑤d 옛 판] ' + JSON.stringify(sp5d));
+  ok('⑤d ★반례 장치 — 절단을 끄면 옛 **띠 z 통째** 판이 그대로 돌고 경계가 한 행이다',
+    sp5d.no > 3 && sp5d.yes > 3 && sp5d.maxNo <= sp5d.minYes,
+    `안 흐림 최대 z ${sp5d.maxNo} ≤ 흐림 최소 z ${sp5d.minYes}`);
   ok('⑤b ★산이 사라지지는 않았다(반투명이지 투명이 아니다)', dMeOnNoMt > 2.0,
     `켬↔무산 내 자리 차 ${dMeOnNoMt.toFixed(1)} > 2`);
   ok('⑤c ★멀리 있는 **앞쪽** 산도 흐려진다(구멍이 아니다)', !!farBox && dFarNoMt > 12 && dFar > 3,
@@ -233,7 +253,10 @@ function diff(a, b, box) {
       }
       return { back, mode: 'sprite' };
     }
-    const front = rects.filter(r => r.z > mz), backs = rects.filter(r => r.z <= mz);
+    // ★지면 깊이 기준(v4) — sLo/sHi 가 있으면 그걸 쓰고, 없으면 옛 z 로 떨어진다
+    const dep = rects.length && rects[0].sLo != null;
+    const front = rects.filter(r => dep ? r.sHi > mz : r.z > mz);
+    const backs = rects.filter(r => dep ? r.sHi <= mz : r.z <= mz);
     const hit = (b) => front.some(r => !(r.x + r.w <= b[0] || r.x >= b[2] || r.y + r.h <= b[1] || r.y >= b[3]));
     let best = null;
     for (const r of backs) {

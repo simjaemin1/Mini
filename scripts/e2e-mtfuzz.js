@@ -91,18 +91,32 @@ function diff(a, b, box) {
     const dd = new Set(o.dead);
     const segs = (window.__mtProbe() || []).filter((g) => Math.abs(g.lcx - o.a) <= 20 && Math.abs(g.lcy - o.b) <= 20);
     const sc = segs.map((g) => g.sc).sort((p, q) => q - p);
-    let rock = 0, bareCand = 0, spill = 0, land = 0;
+    // ★★[계측기 수리 2026-08-26] `__mtSpillAt` 은 **스프라이트 판 전용**이라 높이장 띠(sg.mt3)를
+    //   한 장도 못 본다(sg.name 이 없다). 그래서 라이브 기본값에서 ①이 **늘 100%**, ②가 늘 0% 였다 —
+    //   P4 는 항상 실패, P5 는 자명 통과. origin/main(c9b9667) worktree 에서도 같은 값이 나왔다.
+    //   ⇒ 높이장 판은 **정본 메시 판정**(`__mt3MeshAt`)으로 잰다:
+    //     · 남은 바위 = 표면으로 그려져야 한다 ⟺ mesh && !cut
+    //     · 부순 셀   = 갱(바닥+옆면)으로 그려져야 한다 ⟺ cut
+    let rock = 0, bareCand = 0, spill = 0, land = 0, dug = 0, dugBad = 0, skipped = 0, mode3 = 0;
     for (let dx = -18; dx <= 18; dx++) for (let dy = -18; dy <= 18; dy++) {
       const a = o.a + dx, b = o.b + dy, k = window.__tileStateAt(a, b).kind;
       if (k === 'water') continue;
-      const isRock = k === 'rock' && !dd.has(a + '_' + b);
+      const isDug = dd.has(a + '_' + b);
+      const isRock = k === 'rock' && !isDug;
       const sp = window.__mtSpillAt(a, b);
-      if (isRock) { rock++; if (!sp || !sp.cov) bareCand++; }
-      else { land++; if (sp && sp.cov > 0) spill++; }
+      if (sp && sp.mt3Skipped) { skipped = Math.max(skipped, sp.mt3Skipped); mode3 = 1; }
+      const M = (typeof window.__mt3MeshAt === 'function') ? window.__mt3MeshAt(a, b) : null;
+      const cov3 = M ? (M.mesh && !M.cut) : null;
+      if (isDug) { dug++; if (M && !M.cut) dugBad++; }
+      if (isRock) { rock++;
+        if (!(mode3 && M ? cov3 : !!(sp && sp.cov))) bareCand++; }
+      else { land++;
+        if (mode3 && M ? (cov3 && !M.adj) : !!(sp && sp.cov > 0)) spill++; }
     }
     return { n: segs.length, max: sc.length ? +sc[0].toFixed(2) : 0,
       bare: rock ? +(bareCand / rock * 100).toFixed(1) : 0,
       spill: land ? +(spill / land * 100).toFixed(1) : 0, rock, land,
+      dug, dugBad, skipped, mode3,
       // 세그먼트 지문 — 자리·이름·배율·높이. 국소성 판정이 이걸 비교한다.
       fp: segs.map((g) => [g.lcx, g.lcy, g.nm, +g.sc.toFixed(2), +g.vy.toFixed(2)]) };
   }, { a: cam[0], b: cam[1], dead: [...dead] });
@@ -189,6 +203,7 @@ function diff(a, b, box) {
 
   const shapes = [];
   let popN = 0, growN = 0, farN = 0, bareN = 0, spillN = 0, farMax = 0, narrowN = 0, spillMax = 0;
+  let dugBadN = 0, dugTot = 0, mode3N = 0, skipMax = 0;
   for (let st = 1; st <= STEPS; st++) {
     const mode = st <= SCRIPT.length ? SCRIPT[st - 1] : RANDOM[Math.floor(rnd() * RANDOM.length)];
     const arg = mode === 'bite' ? 2 + Math.floor(rnd() * 4) : 3 + Math.floor(rnd() * 12);
@@ -228,6 +243,8 @@ function diff(a, b, box) {
     if (dSc > 0.25) growN++;                                        // P2 갑자기 커짐
     if (far > 26) farN++;                                           // P3 청크 여백(22셀)+격자 지터 밖이 바뀌면 위반
     if (cur.bare > 2) bareN++;                                      // P4 덮개
+    if (cur.dugBad > 0) dugBadN++;                                  // P4b 부순 셀은 갱으로
+    dugTot += cur.dug; if (cur.mode3) mode3N++; skipMax = Math.max(skipMax, cur.skipped);
     if (cur.spill > spillMax) spillMax = cur.spill;
     // ★P5 한계 16% 의 근거: 고치기 전 18.1% 는 여전히 잡되, **좁은 통로**는 통과시킨다.
     //   실측에서 관통·좁은목으로 1셀 통로를 내면 ② 가 12.3% 까지 오른다 —
@@ -248,6 +265,10 @@ function diff(a, b, box) {
   ok('P3 ★국소 — 부순 자리에서 먼 봉우리는 그대로다', farN === 0,
     `바뀐 봉우리 중 부순 자리에서 가장 먼 것 ${farMax.toFixed(1)}셀 (한계 26셀 = 청크 여백 22 + 격자 지터)`);
   ok('P4 ★덮개 — 남은 바위는 여전히 산 아래', bareN === 0, `① 2% 초과 ${bareN}회`);
+  ok('P4b ★★부순 셀은 **갱으로** 그려진다(표면으로 남지 않는다)', dugBadN === 0 && dugTot > 0,
+    `부순 셀 누계 ${dugTot} · 표면으로 남은 단계 ${dugBadN}회`);
+  ok('P4c ★계측기 눈멂 고정 — `__mtSpillAt` 은 높이장 띠를 못 본다(그래서 메시 판정으로 잰다)',
+    mode3N === 0 || skipMax > 0, `못 본 띠 최대 ${skipMax}장 · 높이장 단계 ${mode3N}회`);
   ok('P5 ★정합 — 부순 자리에 산이 안 남는다', spillN === 0,
     `② 최대 ${spillMax}% (한계 16% · 고치기 전 18.1%) · 10% 넘은 단계 ${narrowN}회는 좁은 통로`);
   ok('P6 ★결정론', det < 0.05, `|Δ| ${det.toFixed(3)}`);
