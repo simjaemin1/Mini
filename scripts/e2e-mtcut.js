@@ -200,20 +200,32 @@ require(path.join(ROOT,'server','zone.js'));`);
   ok('ⓒ3 ★흐림 겹은 프레임당 **한 번만** 합성된다', fdbg.fadeFlush === 1, `합성 ${fdbg.fadeFlush}회`);
   ok('ⓒ4 ★흐림 겹에 알파 1 아닌 얹기가 없다(그룹 알파 성질 유지)', fdbg.fadeSoft === 0, `${fdbg.fadeSoft}회`);
 
+  // ★★[계측기 수리 2026-08-26] 판정 상자를 **걸친 띠**에서 잡으면 안 된다.
+  //   `pr` 은 `_mtSplitSegs` — **걸친 띠만** 들어 있다. 걸친 띠의 사각형은 위쪽이 불투명(α=1),
+  //   아래쪽이 흐림(α=0.34)이라 "한 번 섞기" 모형이 애초에 성립하지 않는다.
+  //   옛 판이 통과하던 건 상자(사각형 아래 55~98%)가 우연히 흐림 구간 안에 다 들어갔을 때뿐 —
+  //   기하 제비뽑기였다. 실측 실패판: 한 번 섞기 오차 23.35 vs 두 번 32.36(비 1.39).
+  //   ⇒ **통째로 흐려진 띠**(faded && !split)에서만 잡는다. 그게 그룹 알파가 말하는 대상이다.
+  await page.evaluate(() => window.__mt3Rects(true));
+  await sleep(1300);
+  const drawn = (await page.evaluate(() => window.__mt3RectsGet()) || []);
+  await page.evaluate(() => window.__mt3Rects(false));
   const aFade = await page.evaluate(() => 1 - (1 - 0.34) * window.__mtOccDbg.fade);
   const nowS = await shot('now');
   await knob({ occOff: true });  const opq = await shot('opaque');
   await knob({ occOff: false, mtOff: true }); const bg = await shot('bg');
   await knob({ mtOff: false }); await settle();
-  let R0 = null, bestA = 0;
-  for (const r of pr) {
-    const ax = Math.max(0, r.dx), ay = Math.max(0, r.dy + r.bh * 0.5);
-    const bx2 = Math.min(1400, r.dx + r.bw), by2 = Math.min(860, r.dy + r.bh);
+  let R0 = null, bestA = 0, wholeN = 0;
+  for (const r of drawn) {
+    if (!r.faded || r.split) continue;
+    wholeN++;
+    const ax = Math.max(0, r.x), ay = Math.max(0, r.y + r.h * 0.5);
+    const bx2 = Math.min(1400, r.x + r.w), by2 = Math.min(860, r.y + r.h);
     const a = Math.max(0, bx2 - ax) * Math.max(0, by2 - ay);
     if (a > bestA) { bestA = a; R0 = r; }
   }
-  const bx = R0 ? [Math.max(4, R0.dx + R0.bw * 0.1) | 0, Math.max(4, R0.dy + R0.bh * 0.55) | 0,
-                   Math.min(1396, R0.dx + R0.bw * 0.9) | 0, Math.min(856, R0.dy + R0.bh * 0.98) | 0] : [0, 0, 0, 0];
+  const bx = R0 ? [Math.max(4, R0.x + R0.w * 0.1) | 0, Math.max(4, R0.y + R0.h * 0.55) | 0,
+                   Math.min(1396, R0.x + R0.w * 0.9) | 0, Math.min(856, R0.y + R0.h * 0.98) | 0] : [0, 0, 0, 0];
   const err = (mode) => {
     let s = 0, t = 0;
     for (let y = bx[1]; y < bx[3]; y++) for (let x = bx[0]; x < bx[2]; x++) {
@@ -228,6 +240,8 @@ require(path.join(ROOT,'server','zone.js'));`);
   const [e1, nPx] = err(1), [e2] = err(2);
   console.log(`[ⓒ5] 산 든 화소 ${nPx} · 한 번 섞기 오차 ${e1.toFixed(2)} · 두 번 섞기 ${e2.toFixed(2)} (α=${aFade.toFixed(3)})`);
   ok('ⓒ5 ★자명 금지 — 판정 상자에 산이 실제로 들었다', nPx > 500, `${nPx}화소`);
+  ok('ⓒ5a ★자명 금지 — **통째로 흐려진 띠**가 실제로 있고 거기서 상자를 잡았다',
+     wholeN > 0 && R0 != null, `통째 흐림 띠 ${wholeN}장 · 상자 ${bx.join(',')}`);
   ok('ⓒ5b ★★화면색이 **한 번 섞은 식**과 맞는다(두 번 섞은 식과는 뚜렷이 다르다)',
      nPx > 500 && e1 < 8 && e2 > e1 * 2.5, `한 번 ${e1.toFixed(2)} vs 두 번 ${e2.toFixed(2)}`);
 
