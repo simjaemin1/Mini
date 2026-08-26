@@ -85,10 +85,12 @@ if [ "$#" -gt 0 ]; then
 else
   LIST=(
     test-events.js
+    test-fishing.js
     test-guest-rejoin.js
     test-save-periodic.js
     test-guest-identity.js
     e2e-events.js
+    e2e-fishing.js
     e2e-guest-reconnect.js
     e2e-mountain.js
     e2e-mtcorridor.js

@@ -1168,6 +1168,13 @@ function foundPlayerVillage(opts) {
     name = `${name} ${k}`;
   }
   const ev = econ.createVillage({ ...lp, initialPop: 0, name, bornDay: day, founder });
+  // ★★[낚시 v2 2026-08-26] **어장 MSY 기준값을 여기서 붙잡아 둔다.**
+  //   `extractSustain`(=server/sustain.js)이 잰 `fishSustain` 은 `createVillage` 의 land 화이트리스트에
+  //   없어서 **조용히 버려진다**(woodSustain·forageSustain·marginalQ 도 같다 — 11차 배선이 통째로 사장돼 있다.
+  //   `회부_MSY상한_사장.md` 참조). 그 배선을 되살리는 건 econ 산출을 바꾸는 결정이라 이번 배치 밖이다.
+  //   ⇒ 여기서는 **값만 보관**한다. `land.fishSustain` 은 플레이어가 실제로 그 물을 긁기 전까지
+  //     여전히 undefined 라서 NPC 산출은 **오늘과 비트 동일**하다(상한 미적용 = 현행 보존).
+  { const _fb = (lp && lp.fishSustain != null) ? lp.fishSustain : null; if (_fb != null) ev.land._fishBase = _fb; }
   ev._world = world;
   ev.coord = { x: ccx * 2.5, y: ccy * 2.5 };   // econ 좌표 = 셀×2.5 (시딩·랩과 같은 환산)
   // ── DB — 마을 1행 + 회관 1행 + 영토 셀(시딩과 같은 스키마) ─────────────────
@@ -2012,6 +2019,8 @@ function init(deps) {
         //   라이브에서 **세계가 이미 900일째일 때 새로 서는 마을**은 지금 보호를 0일 받는다(달력 기준이므로).
         //   창설일을 심어 두면 그 구멍이 메워진다. 손잡이가 꺼져 있으면 읽히지 않는 값이라 무해.
         ev = econ.createVillage({ ...lp, initialPop: INITIAL_POP, name: row.name, bornDay: row.day | 0 });
+        // ★[낚시 v2] 어장 MSY 기준값 보관 — 위 createVillage 옆 주석과 같은 이유(값만 들고 있는다).
+        { const _fb = (lp && lp.fishSustain != null) ? lp.fishSustain : null; if (_fb != null) ev.land._fishBase = _fb; }
       }
       ev._world = world;
       // econ 좌표 = 셀×2.5 — 랩(4804행)과 동일 스케일: villageDist·운반비·약탈 확률이 랩 검증 범위에 머묾
@@ -4276,6 +4285,65 @@ function __e2eDayFreeze(on) {
   return { ok: true, frozen: state.dayFreeze, day: state.world ? state.world.day : null };
 }
 
+// =============================================================================
+// 낚시 v2 — 어장 결손을 econ 에 물린다 [재민 확정 2026-08-26]
+// =============================================================================
+// ★★이 접점이 이 배치의 **일관성 원칙** 그 자체다.
+//   재민 확정: "플레이어 어획은 그 마을 수역의 fisher 산출과 **같은 자원 풀**에서 나온다.
+//   플레이어가 긁어가면 그 수역이 체감하고, NPC 어부와 같은 물을 쓴다.
+//   존재하지 않는 물고기를 주사위로 만들어내지 마라."
+//
+// ★econ 을 **한 줄도 고치지 않는다.** 엔진은 이미 `v.land.fishSustain`(어장 MSY 상한)을
+//   매 틱 읽어 `_fishScale = min(1, fishSustain / _fishRaw)` 로 어부 산출을 물리고 있다.
+//   그러니 플레이어가 퍼 간 만큼 **그 키를 낮추면** 그게 곧 "같은 물을 쓴다"이다.
+//   (반대로 econ 안에 플레이어 항을 넣었다면 econ 3사본을 전부 재인라인해야 했고,
+//    기준선이 흔들릴 위험을 지는 대신 얻는 게 없었다.)
+//
+// ★결손 → econ 환산은 `sustain.js` 정본 계수 그대로다(`Fishing.stockToEcon`). 사본 금지.
+//   모든 셀이 만땅이면 결손 0 → 값이 **씨딩 때와 정확히 같다** = 헤드리스 기준선 불변.
+function _fishingMod() { try { return require('./fishing'); } catch (e) { return null; } }
+
+// 이 물 좌표(px)를 자기 어장으로 치는 마을 — 노동권(sustain.LABOR_R 셀) 안에서 가장 가까운 곳.
+function waterVillageAt(px, py) {
+  const S = require('./sustain');
+  const cx = Math.floor(px / SZ), cy = Math.floor(py / SZ);
+  let best = null, bd = Infinity;
+  for (const v of state.villages) {
+    const d = Math.hypot(v.ccx - cx, v.ccy - cy);
+    if (d > S.LABOR_R) continue;
+    if (d < bd) { bd = d; best = v; }
+  }
+  return best;
+}
+
+// 그 마을 어장 상한을 지금 재고로 다시 매긴다. 어획 직후와 주기 갱신 때 부른다.
+//   ★기준값(씨딩 때 잰 MSY)은 처음 볼 때 한 번만 붙잡아 둔다 — 안 그러면 감산이 누적된다.
+function refreshFishSustain(vil, now) {
+  const F = _fishingMod();
+  if (!F || !vil || !vil.econ || !vil.econ.land) return null;
+  const L = vil.econ.land;
+  if (L.fishSustain == null && L._fishBase == null) return null;   // 물 없는 마을 = 상한 미적용(현행 보존)
+  if (L._fishBase == null) L._fishBase = L.fishSustain;
+  const S = require('./sustain');
+  const R = S.LABOR_R;
+  const def = F.deficitBy((key) => {
+    const i = key.indexOf('_'); if (i < 0) return false;
+    const kx = +key.slice(0, i), ky = +key.slice(i + 1);
+    return Math.hypot(kx - vil.ccx, ky - vil.ccy) <= R;
+  }, now || Date.now());
+  const cut = F.stockToEcon(def);
+  const next = Math.max(0, +(L._fishBase - cut).toFixed(4));
+  L.fishSustain = next;
+  return { base: L._fishBase, deficitStock: +def.toFixed(4), cut: +cut.toFixed(4), fishSustain: next };
+}
+
+// 모든 마을 갱신 — 회복(로지스틱 재생)이 어획 없이도 보이게 하려면 주기적으로 한 번씩 돌아야 한다.
+function refreshAllFishSustain(now) {
+  let n = 0;
+  for (const v of state.villages) { if (refreshFishSustain(v, now)) n++; }
+  return n;
+}
+
 function __e2eForceShortage(vid) {
   if (!state.ledger) return { err: '장부 없음' };
   const vil = state.byDbId && state.byDbId.get(vid | 0);
@@ -4343,6 +4411,8 @@ module.exports = {
   foundPlayerVillage, playerVillageInventory, playerVillageAt, playerVillageDeposit, playerVillageDepositMap,
   // ★[2026-08-25 사건 레이어] 촌장 브리핑 · 게시판 · 납품 — zone.js 핸들러가 소비
   villageBrief, villageBoard, villageDeliver, villageAnchorPx, briefRadiusPx,
+  // ★[2026-08-26 낚시 v2] 어장 결손 접점 — zone.js 낚시 경로가 소비한다(econ 무수정)
+  waterVillageAt, refreshFishSustain, refreshAllFishSustain,
   __e2eForceShortage, __e2eDayFreeze,   // ★테스트 전용 — zone.js 가 E2E_GIVE 로 게이트한다(기본 부팅에선 도달 불가)
   get eventLedger() { return state.ledger; },
   // 플레이어 구매/판매 경계계약(읽기전용 마을 품질 EMA — econ 무접촉)

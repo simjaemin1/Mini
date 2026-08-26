@@ -197,6 +197,23 @@ function upsertMinedCell(key, stock, lastT, swings, kgsum) { stmtUpsertMined.run
 function getAllMinedCells() { return stmtGetAllMined.all(); }
 function deleteMinedCell(key) { stmtDeleteMined.run(key); }
 
+// === 낚시 v2 [재민 확정 2026-08-26] — 어장 셀 재고 ===========================
+//   `mined_cells` 와 **같은 문법**: 만땅인 셀은 저장하지 않는다(암묵적 만땅) → 테이블이 작다.
+//   stock = 그 셀에 남은 어군(0..FISH_CELL_K) · last_t = 마지막 갱신(로지스틱 lazy 적분의 기준)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS fish_cells (
+    cell_key  TEXT PRIMARY KEY,
+    stock     REAL NOT NULL,
+    last_t    INTEGER NOT NULL
+  );
+`);
+const stmtUpsertFish = db.prepare('INSERT INTO fish_cells (cell_key, stock, last_t) VALUES (?, ?, ?) ON CONFLICT(cell_key) DO UPDATE SET stock=excluded.stock, last_t=excluded.last_t');
+const stmtGetAllFish = db.prepare('SELECT cell_key, stock, last_t FROM fish_cells');
+const stmtDeleteFish = db.prepare('DELETE FROM fish_cells WHERE cell_key = ?');
+function upsertFishCell(key, stock, lastT) { stmtUpsertFish.run(key, stock, lastT); }
+function getAllFishCells() { return stmtGetAllFish.all(); }
+function deleteFishCell(key) { stmtDeleteFish.run(key); }
+
 // === §4-4 Stage 1: NPC 마을 시뮬 (server/villages.js) — 추가 전용 스키마 ===
 // 기존 테이블 불변. CREATE TABLE IF NOT EXISTS라 구DB에도 마이그레이션 안전.
 //   villages: 마을 1행 = econ 인스턴스 1개. econ_state = tickVillage 재개에 필요한 전체
@@ -373,6 +390,7 @@ module.exports = {
   getClaims, insertClaim,
   insertHarvestedSeed, getAllHarvestedSeeds,
   upsertMinedCell, getAllMinedCells, deleteMinedCell,
+  upsertFishCell, getAllFishCells, deleteFishCell,
   // §4-4 마을 시뮬 (villages.js)
   getVillagesByZone, insertVillage, updateVillageState, insertVillageBuilding, getVillageBuildings,
   getVillageFarmInCellRect,

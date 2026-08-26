@@ -292,6 +292,7 @@ function savePlayer(player, extra = {}) {
       craftSkill: player.craftSkill || {},  // 제작 숙련 xp
       oreLedger: player.oreLedger || {},    // ★[11차] 캔 원석의 **숨은 정체 장부**(kg) — 선광 전까지 클라에 안 보낸다
       oreCarry: player.oreCarry || {},      // ★선광 소수분 이월(kg) — 버리지 않는다
+      fishStats: player.fishStats || null,  // ★[낚시 v2] 어획 기록 — 이력서 패널(§8.4)의 첫 씨앗
     }),
     equipped: player.equipped || null,
     last_zone: extra.last_zone ?? null, // 명시적으로 넘긴 zone만 변경
@@ -2445,6 +2446,7 @@ wss.on('connection', async (ws, req) => {
   let playerId, name, sx, sy, ivx = 0, ivy = 0, inventory = { wood: 0, stone: 0, ..._testInv }, color = '#5a9ae0';
   let tools = {}, equipped = null;
   let _loadEquipment = [], _loadEquipSlots = {}, _loadCraftSkill = {}, _loadOreLedger = {}, _loadOreCarry = {}; // 플레이어 아이템(품질·속성·내구·숙련)·원석 정체 장부 복원 버퍼 — tools_json blob piggyback
+  let _loadFishStats = null;   // ★[낚시 v2] 어획 기록(마릿수·최대·놓친 최대) — 같은 blob 에 얹는다
   let initHunger = HUNGER_MAX, initThirst = THIRST_MAX, initVp = 0;
   let initTribeId = null, initTribeName = null;
   let initFloor = 0;
@@ -2608,6 +2610,7 @@ wss.on('connection', async (ws, req) => {
       if (tools && tools.craftSkill && typeof tools.craftSkill === 'object') _loadCraftSkill = tools.craftSkill;
       if (tools && tools.oreLedger && typeof tools.oreLedger === 'object') _loadOreLedger = tools.oreLedger;   // ★[11차] 원석 정체 장부 복원
       if (tools && tools.oreCarry && typeof tools.oreCarry === 'object') _loadOreCarry = tools.oreCarry;
+      if (tools && tools.fishStats && typeof tools.fishStats === 'object') _loadFishStats = tools.fishStats;   // ★[낚시 v2] 어획 기록 복원
       // 14.53: 옛 tools (object 또는 number 형식) → 새 toolItems list 변환
       // tools_json 안에 옛 형식 또는 새 형식 {toolItems, equipped, hotkey1} 둘 다 처리
       let toolItems = [];
@@ -2759,6 +2762,7 @@ wss.on('connection', async (ws, req) => {
     craftSkill: _loadCraftSkill,// 제작 숙련 xp {tailoring,smithing,toolmaking,cooking,mining}
     oreLedger: _loadOreLedger,  // ★[11차] 원석 덩이의 숨은 정체(kg — 선광 때 소비)
     oreCarry: _loadOreCarry,    // 선광 소수분 이월(kg)
+    fishStats: _loadFishStats,  // ★[낚시 v2] 어획 기록 — 재접속·크래시를 넘어 살아남는다
     hp: PLAYER_MAX_HP, maxHp: PLAYER_MAX_HP,
     hunger: initHunger, thirst: initThirst, vp: initVp,
     // ★★[2026-08-03g 배치 14 ②] **이 신원이 영속인가.** `savePlayer` 가 이걸 본다.
@@ -3069,6 +3073,9 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'eat') doEat(player, msg.item);
   else if (msg.type === 'cook') doCook(player, msg.recipe);
   else if (msg.type === 'eat_dish') doEatDish(player, msg.id);
+  else if (msg.type === 'fish_cast') tryFishCast(player);      // ★[낚시 v2] 던지기 — 이미 던져 뒀으면 챔질로 넘어간다
+  else if (msg.type === 'fish_strike') tryFishStrike(player);  // ★[낚시 v2] 챔질(서버 시각으로만 판정)
+  else if (msg.type === 'fish_reel') { if (player._fish) { player._fish = null; send(player.ws, { type: 'fish_state', state: 'idle' }); send(player.ws, { type: 'notice', text: '🎣 줄을 거뒀다' }); } }
   else if (msg.type === 'harvest') tryHarvest(player);
   else if (msg.type === 'feed') tryFeed(player);
   else if (msg.type === 'tribe_set') {
@@ -4007,6 +4014,160 @@ function _oreSave(key, rec) {
   try { db.upsertMinedCell(key, rec.s, rec.t, rec.w, rec.kg || 0); } catch (e) { }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 낚시 v2 — 판단·위험·손맛 [재민 확정 2026-08-26]
+// ═══════════════════════════════════════════════════════════════════════════
+//   물리·자리 판정은 전부 `server/fishing.js` 정본이다. 여기 있는 건 **왕복**뿐이다:
+//   던짐 예약 → 입질 알림 → 챔질 판정 → 어획 → 어장 감소 → 마을 econ 반영 → 기록.
+//   ★서버 권위: 입질 시각도 챔질 창도 **서버가 정하고 서버가 잰다.** 클라는 "지금 챘다"만 보낸다
+//     (클라가 보낸 시각은 **안 믿는다** — `test-fishing ②` 가 조작을 시도해 거절을 확인한다).
+const Fishing = require('./fishing');
+Fishing.setDayMs(parseInt(process.env.VILLAGE_DAY_MS || '', 10) || (WORLD && WORLD.dayLengthMs) || 24 * 60 * 1000);
+{ // 부팅: 파인 어장 셀 로드(만땅 셀은 애초에 저장 안 됨 — mined_cells 와 같은 문법)
+  try {
+    for (const r of db.getAllFishCells()) Fishing.fishCells.set(r.cell_key, { s: r.stock, t: r.last_t });
+    if (Fishing.fishCells.size) console.log(`[${ZONE_ID}] 🎣 파인 어장 셀 ${Fishing.fishCells.size}개 로드`);
+  } catch (e) { console.log(`[${ZONE_ID}] fish_cells 로드 실패: ${e.message}`); }
+}
+function _fishSave(key, r) {
+  if (r.s >= Fishing.CFG.CELL_K) { Fishing.fishCells.delete(key); try { db.deleteFishCell(key); } catch (e) {} return; }
+  try { db.upsertFishCell(key, r.s, r.t); } catch (e) {}
+}
+// 회복은 **어획이 없어도** 보여야 한다 — 5분마다 만땅 셀을 정리하고 마을 어장 상한을 다시 매긴다.
+const FISH_TICK_MS = Math.max(5000, parseInt(process.env.FISH_TICK_MS || '', 10) || 60000);
+let _fishTickAt = Date.now();
+setInterval(() => {
+  const now = Date.now();
+  const dtDays = (now - _fishTickAt) / Fishing.DAY_MS;
+  _fishTickAt = now;
+  const r = Fishing.diffuse(dtDays, _fishSave);
+  let pruned = 0;
+  for (const [key, rec] of [...Fishing.fishCells]) {
+    if (rec.s >= Fishing.CFG.CELL_K - 1e-4) { Fishing.fishCells.delete(key); try { db.deleteFishCell(key); } catch (e) {} pruned++; }
+  }
+  try { SimVillages.refreshAllFishSustain && SimVillages.refreshAllFishSustain(now); } catch (e) {}
+  if (pruned) console.log(`[${ZONE_ID}] 🎣 어장 셀 ${pruned}개 만땅 회복 (번짐 ${r.moved} · 재생 ${r.regen})`);
+}, FISH_TICK_MS);
+
+// 바이옴별 어종 — ★v1 의 목록을 **그대로 쓴다**(어종 확장은 이번 범위 밖 = 회부).
+function _fishSpeciesFor(biome) {
+  if (biome === 'taiga' || biome === 'tundra') return ['salmon', 'cod', 'herring', 'trout', 'pollock'];
+  if (biome === 'forest' || biome === 'plains') return ['trout', 'carp', 'pollock'];
+  if (biome === 'jungle' || biome === 'savanna') return ['carp', 'shrimp', 'crab'];
+  if (biome === 'desert') return ['carp'];
+  if (biome === 'archipelago' || biome === 'ocean') return ['cod', 'herring', 'sardine', 'anchovy', 'shrimp', 'crab', 'oyster', 'octopus', 'squid', 'seaweed'];
+  if (biome === 'mountain') return ['trout'];
+  return ['carp', 'trout'];
+}
+// 던질 자리 — 플레이어 주변에서 **가장 좋은 물 칸**을 서버가 고른다(클라가 자리를 못 속인다).
+function _castTargetFor(player) {
+  const R = Fishing.CFG.REACH_PX;
+  let best = null, bestScore = -1;
+  for (let dy = -R; dy <= R; dy += 32) {
+    for (let dx = -R; dx <= R; dx += 32) {
+      if (dx * dx + dy * dy > R * R) continue;
+      const x = player.x + dx, y = player.y + dy;
+      if (!isWaterTileLocal(x, y)) continue;
+      const sp = Fishing.spotAt(_terrain, ZONE_ID, x, y);
+      if (!sp.water) continue;
+      const sc = Fishing.spotScore(sp);
+      const v = sc.rate * sc.size;
+      if (v > bestScore) { bestScore = v; best = { x, y, sp }; }
+    }
+  }
+  return best;
+}
+function _fishStats(player) {
+  if (!player.fishStats || typeof player.fishStats !== 'object') {
+    player.fishStats = { casts: 0, caught: 0, missed: 0, kg: 0, maxKg: 0, maxMissedKg: 0 };
+  }
+  return player.fishStats;
+}
+// ① 던지기 / 챔질 — 같은 키 하나로 상태 기계를 돈다(새 패널 없음).
+function tryFishCast(player) {
+  if (!player || player.isDown) return;
+  const now = Date.now();
+  const cur = player._fish;
+  if (cur && cur.state === 'wait') {   // 이미 던져 놨다 → 이건 **챔질**이다
+    return tryFishStrike(player);
+  }
+  const tgt = _castTargetFor(player);
+  if (!tgt) { send(player.ws, { type: 'notice', text: '🎣 여기선 물에 닿지 않는다 — 물가로 더 가까이' }); return; }
+  const cx = Math.floor(tgt.x / 32), cy = Math.floor(tgt.y / 32);
+  const stock01 = Fishing.stockRatioAt(cx, cy, now);
+  const pl = Fishing.plan(tgt.sp, stock01, now, Math.random);
+  player._fish = {
+    state: 'wait', x: tgt.x, y: tgt.y, cx, cy, sp: tgt.sp,
+    biteAt: pl.biteAt, kg: pl.kg, windowMs: pl.windowMs, castAt: now, stock01,
+  };
+  _fishStats(player).casts++;
+  send(player.ws, { type: 'fish_state', state: 'wait', x: tgt.x, y: tgt.y,
+    hint: `🎣 던졌다 — ${Fishing.spotAt(_terrain, ZONE_ID, tgt.x, tgt.y).kind === 'lake' ? '잔잔한 물' : '흐르는 물'}` });
+  send(player.ws, { type: 'notice', text: '🎣 던졌다. 찌를 봐라 — 흔들리면 Shift+F' });
+}
+// ② 챔질 — **서버 시각으로만** 판정한다.
+function tryFishStrike(player) {
+  const f = player && player._fish;
+  const now = Date.now();
+  if (!f || f.state !== 'wait') { send(player.ws, { type: 'notice', text: '🎣 아직 안 던졌다 (Shift+F)' }); return; }
+  const st = _fishStats(player);
+  if (now < f.biteAt) {   // 성급한 챔질 — 입질 전이다
+    player._fish = null;
+    st.missed++;
+    send(player.ws, { type: 'fish_state', state: 'idle' });
+    send(player.ws, { type: 'notice', text: '🎣 성급했다 — 아직 안 물었는데 챘다' });
+    return;
+  }
+  const late = now - f.biteAt;
+  if (late > f.windowMs + Fishing.CFG.WIN_LAT_MS) {   // 창을 놓쳤다
+    player._fish = null;
+    st.missed++;
+    if (f.kg > st.maxMissedKg) st.maxMissedKg = +f.kg.toFixed(2);
+    const big = f.kg >= Fishing.CFG.BIG_KG;
+    send(player.ws, { type: 'fish_state', state: 'idle' });
+    send(player.ws, { type: 'notice', text: big
+      ? `🎣 놓쳤다 — **묵직한 놈**이었다(${f.kg.toFixed(1)}kg). 물결만 남았다`
+      : '🎣 놓쳤다 — 미끼만 따 먹혔다' });
+    savePlayer(player);
+    return;
+  }
+  // ── 걸었다 ──────────────────────────────────────────────────────────────
+  const kg = f.kg;
+  // ★어장에서 **실제로 뺀 만큼만** 준다 — 없는 물고기를 주사위로 만들지 않는다.
+  //   재고가 모자라면 잡히는 양도 그만큼 준다(빈 자리는 빈 바늘로 답한다).
+  const wantStock = kg / Fishing.CFG.KG_PER_STOCK;
+  const took = Fishing.drawStock(f.cx, f.cy, wantStock, now, _fishSave);
+  const gotKg = took <= 0 ? 0 : +(took * Fishing.CFG.KG_PER_STOCK).toFixed(3);
+  player._fish = null;
+  send(player.ws, { type: 'fish_state', state: 'idle' });
+  if (gotKg <= 0.01) {
+    st.missed++;
+    send(player.ws, { type: 'notice', text: '🎣 빈 바늘 — 이 자리는 씨가 말랐다. 자리를 옮겨라' });
+    savePlayer(player);
+    return;
+  }
+  const n = Math.max(1, Math.round(gotKg / Fishing.CFG.KG_PER_ITEM));
+  const species = _fishSpeciesFor(ZONE.biome);
+  const sp = species[Math.floor(Math.random() * species.length)];
+  player.inventory[sp] = (player.inventory[sp] || 0) + n;
+  st.caught++; st.kg = +(st.kg + gotKg).toFixed(2);
+  const isRecord = gotKg > st.maxKg;
+  if (isRecord) st.maxKg = +gotKg.toFixed(2);
+  // ★일관성 — 그 수역 마을의 어장 상한을 지금 재고로 다시 매긴다(NPC 어부가 같은 물을 쓴다).
+  let vinfo = null;
+  try {
+    const vil = SimVillages.waterVillageAt ? SimVillages.waterVillageAt(f.x, f.y) : null;
+    if (vil) vinfo = SimVillages.refreshFishSustain(vil, now);
+  } catch (e) {}
+  send(player.ws, { type: 'inventory', inventory: player.inventory });
+  const big = gotKg >= Fishing.CFG.BIG_KG;
+  send(player.ws, { type: 'fish_catch', kg: +gotKg.toFixed(2), n, item: sp, big, record: isRecord });
+  send(player.ws, { type: 'notice', text: (big ? '🎣🐟 **월척!** ' : '🎣 ')
+    + `${ITEM_LABEL_SERVER[sp] || sp} ${gotKg.toFixed(1)}kg ×${n}`
+    + (isRecord ? ' — 여태 잡은 것 중 가장 크다' : '') });
+  savePlayer(player);
+}
+
 { // 부팅: 광맥 클러스터에 광물 배정 (v8 미지정이면 biome+위치 해시로)
   const t = _terrain.ZONE_TERRAIN[ZONE_ID];
   if (t && t.ores && t.ores.length) {
@@ -4219,22 +4380,12 @@ function tryGather(player) {
       const before = player.thirst || 0;
       player.thirst = Math.min(100, before + 30);
       let msg = `💧 물 마심 (+${Math.round(player.thirst - before)})`;
-      // Phase 5-11: 어업 — 50% 확률로 자원 획득 (zone biome에 따라 종류)
-      if (Math.random() < 0.5) {
-        const biome = ZONE.biome;
-        let fishList;
-        if (biome === 'taiga' || biome === 'tundra') fishList = ['salmon', 'cod', 'herring', 'trout', 'pollock'];
-        else if (biome === 'forest' || biome === 'plains') fishList = ['trout', 'carp', 'pollock'];
-        else if (biome === 'jungle' || biome === 'savanna') fishList = ['carp', 'shrimp', 'crab'];
-        else if (biome === 'desert') fishList = ['carp'];
-        else if (biome === 'archipelago' || biome === 'ocean') fishList = ['cod', 'herring', 'sardine', 'anchovy', 'shrimp', 'crab', 'oyster', 'octopus', 'squid', 'seaweed'];
-        else if (biome === 'mountain') fishList = ['trout'];
-        else fishList = ['carp', 'trout'];
-        const fish = fishList[Math.floor(Math.random() * fishList.length)];
-        player.inventory[fish] = (player.inventory[fish] || 0) + 1;
-        send(player.ws, { type: 'inventory', inventory: player.inventory });
-        msg += ` + 🐟 ${fish}`;
-      }
+      // ★★[낚시 v2 · 재민 확정 2026-08-26] 여기 있던 **어업 동전 던지기를 걷어냈다.**
+      //   종전: 물 옆에서 E → `Math.random() < 0.5` 로 어종 하나. 자리도 시간도 기술도 고갈도 없었다.
+      //   그게 정확히 §2 가 말한 "입력이 같고 결과가 확실한" 진행바다.
+      //   ⇒ 낚시는 이제 **제 동사**(Shift+F)를 갖는다: 자리를 고르고, 기다리고, 챔질하고, 놓친다.
+      //   E 는 목 축이는 것만 한다(그것도 세계의 일이다). 처음 오는 사람을 위해 한 줄로 알려 준다.
+      if (!player._fishHinted) { player._fishHinted = true; msg += ' · 🎣 낚시는 Shift+F'; }
       send(player.ws, { type: 'notice', text: msg });
       send(player.ws, { type: 'self_stat', thirst: Math.round(player.thirst) });
       savePlayer(player);
@@ -5497,6 +5648,11 @@ function __testBind() {
     doCraftEquipment, EQUIPMENT_RECIPES,
     // ── 주기 저장 비용 실측(2026-08-26) ── 하네스가 저장 건수·누적 ms 를 그대로 읽는다
     _saveStats: () => ({ ..._saveStats, intervalMs: SAVE_INTERVAL_MS }),
+    // ── 낚시 v2 E2E(2026-08-26) ── **정본 함수를 그대로 내준다**(하네스가 물리를 다시 짜면 사본이다).
+    Fishing, tryFishCast, tryFishStrike, _fishPoll, _castTargetFor, _fishSave, _fishSpeciesFor,
+    _fishStats, _fishPollStats: () => ({ ..._fishStats2 }),
+    isWaterTileLocal, terrain: _terrain, ZONE_ID, ZONE,
+    players, savePlayer,
   };
 }
 module.exports = { __testBind, __furnaceBind: __testBind };
@@ -7348,9 +7504,38 @@ setInterval(() => {
   // ★★[2026-08-26] 주기 저장 — 위 SAVE_INTERVAL_MS 주석 참조.
   //   비용: 저장 1건 = central HTTP 1회(fire-and-forget). 틱당 **한 명만** 처리해 스파이크를 없앤다
   //   (자정 DB 드레인과 같은 결 — villages.js saveQueue 선례).
+  _fishPoll(now);
   _periodicSave(now);
   { const _td = Date.now() - now; global._tt = (global._tt||0)+_td; global._tn = (global._tn||0)+1; if (_td > (global._tmx||0)) global._tmx = _td; }
 }, TICK_MS);
+
+// ★[낚시 v2] 입질·만료 폴링 — 찌가 흔들리는 순간과, 창을 그냥 지나친 순간을 서버가 알린다.
+//   왜 틱에 얹나: `setTimeout` 을 사람마다 걸면 재접속·승계·크래시에서 타이머가 새고,
+//   **서버 시각이 정본**이라는 규약도 흐려진다. 틱은 이미 돌고 있고 값이 싸다(사람 수만큼의 비교).
+const _fishStats2 = { bites: 0, expired: 0 };
+function _fishPoll(now) {
+  for (const [, p] of players) {
+    const f = p._fish;
+    if (!f || f.state !== 'wait') continue;
+    if (!f.bit && now >= f.biteAt) {
+      f.bit = true; _fishStats2.bites++;
+      // ★손맛 — 찌가 흔들린다. 클라가 이 상태로 찌 애니메이션을 바꾼다(HUD 아니라 세계 안).
+      send(p.ws, { type: 'fish_state', state: 'bite', x: f.x, y: f.y, windowMs: f.windowMs, biteAt: f.biteAt, srvNow: now });
+    }
+    if (f.bit && now - f.biteAt > f.windowMs + Fishing.CFG.WIN_LAT_MS) {
+      const st = _fishStats(p);
+      st.missed++;
+      if (f.kg > st.maxMissedKg) st.maxMissedKg = +f.kg.toFixed(2);
+      const big = f.kg >= Fishing.CFG.BIG_KG;
+      p._fish = null; _fishStats2.expired++;
+      send(p.ws, { type: 'fish_state', state: 'idle' });
+      send(p.ws, { type: 'notice', text: big
+        ? `🎣 놓쳤다 — **묵직한 놈**이었다(${f.kg.toFixed(1)}kg). 물결만 남았다`
+        : '🎣 놓쳤다 — 미끼만 따 먹혔다' });
+      savePlayer(p);
+    }
+  }
+}
 
 // 주기 저장 — 틱당 최대 1명(분산). 대상: 살아 있는 세션 · 영속 신원 · **실제로 움직인** 사람.
 let _saveCursor = 0;

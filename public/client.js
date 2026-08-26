@@ -5419,6 +5419,10 @@ const SIM_JOB_EMOJI = {
   // ★★[2026-08-25 사건 레이어] 촌장 브리핑 — 마을 중심에 뜨는 말풍선.
   //   전달은 UI 보고서가 아니라 **세계 안의 말**이다(설계 §3.2). 대시보드를 만들지 않는다.
   const villageBubbles = new Map();  // vid -> {lines, until}
+  // ★★[낚시 v2 2026-08-26] 찌 상태 — 서버가 정본이다. 클라는 **그리기만** 한다(시각을 스스로 세지 않는다).
+  //   { state:'wait'|'bite', x, y, since, windowMs }
+  let fishState = null;
+  let fishFx = null;   // 잡은 직후의 한 순간(크기가 눈에 보이는 자리)
   let evBoardCache = null;           // 마지막으로 받은 게시판(납품 키가 쓴다)
   let evNearVid = null;              // 지금 목소리가 닿는 마을
   const evBriefedDay = new Map();    // vid -> 마지막으로 브리핑 받은 게임일(하루 한 번)
@@ -5584,6 +5588,7 @@ const SIM_JOB_EMOJI = {
     else if (k === 't' && !e.shiftKey) sendPrimary({ type: 'claim', kind: 'temporary' });  // 임시 사유지 (1 grid)
     else if (k === 't') sendPrimary({ type: 'trade_offer', give: 'wood' });
     else if (k === 'y') sendPrimary({ type: 'trade_offer', give: 'stone' });
+    else if (k === 'f' && e.shiftKey) sendPrimary({ type: 'fish_cast' });   // ★[낚시 v2] 던지기 → (입질 뒤) 챔질. 서버가 상태로 가른다
     else if (k === 'f') { sendPrimary({ type: 'attack' }); myLastAttackAt = performance.now(); }
     else if (k === 'g') {
       // Phase 5-I: 원거리 공격 — 마우스 방향으로 화살. aim은 primary zone-local 좌표.
@@ -6968,6 +6973,24 @@ const SIM_JOB_EMOJI = {
         showNotice(`🧓 ${b.name} 촌장 — ${b.lines[0]}` + (b.board ? `  (게시판 ${b.board}건 · Shift+G)` : ''), 5000);
         needsRedraw = true;
       }
+    } else if (msg.type === 'fish_state') {
+      // ★손맛의 정본 상태. 'bite' 로 바뀌는 그 순간이 이 동사의 전부다.
+      // ★★서버가 보내는 좌표는 **존 로컬**이다. 렌더러는 **절대 월드** 좌표를 쓴다(`item.wx` 규약).
+      //   변환을 빼먹으면 찌가 40만 픽셀 밖에 그려져 **화면에 아무것도 안 뜬다** —
+      //   상태·알림은 멀쩡한데 손맛만 사라지는, 눈으로만 잡히는 종류의 결함이다(실제로 1차에 그랬다).
+      if (msg.state === 'idle') fishState = null;
+      else {
+        const _c = conns.get(primaryZoneId);
+        const _ox = (_c && _c.meta && _c.meta.worldOffsetX) || 0, _oy = (_c && _c.meta && _c.meta.worldOffsetY) || 0;
+        fishState = { state: msg.state, x: msg.x + _ox, y: msg.y + _oy, lx: msg.x, ly: msg.y,
+                      since: performance.now(), windowMs: msg.windowMs || 0, biteAt: msg.biteAt || 0 };
+      }
+      window.__fishState = fishState ? { ...fishState } : null;
+      needsRedraw = true;
+    } else if (msg.type === 'fish_catch') {
+      fishFx = { kg: msg.kg, n: msg.n, item: msg.item, big: !!msg.big, record: !!msg.record, until: performance.now() + 2200 };
+      window.__fishLast = { kg: msg.kg, n: msg.n, item: msg.item, big: !!msg.big, record: !!msg.record };
+      needsRedraw = true;
     } else if (msg.type === 'village_board') {
       const bd = msg.board || {};
       evBoardCache = bd;
@@ -9453,6 +9476,53 @@ const SIM_JOB_EMOJI = {
         if (sp.x < -260 || sp.y < -160 || sp.x > canvas.width + 260 || sp.y > canvas.height + 160) continue;
         let y = sp.y - 54;
         for (let i = bb.lines.length - 1; i >= 0; i--) { drawSpeechBubble(sp.x, y, bb.lines[i]); y -= 26; }
+      }
+    }
+
+    // ★★[낚시 v2] 찌 — 대기는 잔물결, 입질은 **확 잠긴다**. 이 한 장면이 이 동사의 손맛 전부다.
+    //   HUD 가 아니라 **세계 안**에 그린다(말풍선과 같은 규약 · 새 패널 금지).
+    if (fishState) {
+      const nowMs = performance.now();
+      const p0 = w2i(fishState.x, fishState.y), sp = toScreen(p0.x, p0.y);
+      if (!(sp.x < -80 || sp.y < -80 || sp.x > canvas.width + 80 || sp.y > canvas.height + 80)) {
+        const bite = fishState.state === 'bite';
+        const t = (nowMs - fishState.since) / 1000;
+        // 대기: 느린 상하 1px. 입질: 빠르게 흔들리며 아래로 잠긴다(잠김 깊이가 남은 시간을 말한다).
+        const bob = bite ? Math.sin(t * 26) * 3 + Math.min(7, t * 14) : Math.sin(t * 2.2) * 1.2;
+        ctx.save();
+        // 물결
+        ctx.strokeStyle = bite ? 'rgba(255,225,150,0.85)' : 'rgba(210,235,255,0.5)';
+        ctx.lineWidth = bite ? 2 : 1;
+        for (let i = 0; i < (bite ? 3 : 2); i++) {
+          const rr = (bite ? 7 : 5) + i * 6 + (bite ? (t * 26 % 6) : (t * 8 % 5));
+          ctx.beginPath(); ctx.ellipse(sp.x, sp.y + 2, rr, rr * 0.5, 0, 0, Math.PI * 2); ctx.stroke();
+        }
+        // 찌 — 서 있는 막대 + 붉은 머리
+        const by = sp.y + bob;
+        ctx.strokeStyle = 'rgba(240,240,235,0.95)'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(sp.x, by - 12); ctx.lineTo(sp.x, by + 2); ctx.stroke();
+        ctx.fillStyle = bite ? '#ff5a3c' : '#e04a2f';
+        ctx.beginPath(); ctx.arc(sp.x, by - 14, bite ? 4.5 : 3.5, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      }
+    }
+    // 잡은 직후 — **크기가 눈에 보인다**(대어는 크게). 숫자를 읽게 하지 않는다.
+    if (fishFx) {
+      const nowMs = performance.now();
+      if (nowMs >= fishFx.until) fishFx = null;
+      else {
+        const k = 1 - (fishFx.until - nowMs) / 2200;
+        const cx = canvas.width / 2, cy = canvas.height / 2 - 70 - k * 34;
+        const size = Math.round(20 + Math.min(34, fishFx.kg * 7));
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, 1 - k * k);
+        ctx.font = `${size}px system-ui, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.fillText('🐟', cx, cy);
+        ctx.font = `bold ${Math.round(13 + Math.min(9, fishFx.kg * 2))}px system-ui, sans-serif`;
+        ctx.fillStyle = fishFx.big ? '#ffd27a' : '#dfe8f0';
+        ctx.fillText(`${fishFx.kg.toFixed(1)}kg${fishFx.record ? ' ★' : ''}`, cx, cy + size * 0.7);
+        ctx.restore();
       }
     }
 
