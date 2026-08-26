@@ -2594,24 +2594,35 @@ const SIM_JOB_EMOJI = {
   //   ⇒ 기본 0(=가장 작은 k, 안 병합 판과 같은 규칙). 1 은 반례 장치로만 남긴다.
   let MT3_MERGEZ = 0;                  // 병합 앵커: 0=가장 작은 k(채택) · 1=가장 큰 k(반례 장치)
   let _mt3MergedN = 0, _mt3BandN = 0;  // 병합된 청크 수 / 만든 띠 수 (판정용)
+  let _mt3BandD = null;                // 방금 그린 띠의 [dMin,dMax,sMin,sMax,hMax]
   let MT3_SKIRT = 0;                   // ★치마 — 메시 **테두리** 변의 마루 높이가 이 값(m)을 넘으면 밑까지 벽을 세운다. 0=끔(기본)
   let _mt3SkirtQ = 0, _mt3SkirtAll = 0;// 실제 세운 쿼드 / 무조건 세웠을 때 (절감 보고용)
   let MT3_TREEP = 0.020;               // ③ 돌출목 — 셀당 확률(낮게 시작). 0 이면 끔
   let MT3_TREEPX = 30;                 // 그리는 높이(px). 실물(78px)이 아니라 **작은 축척**
   let MT3_MPAD = 18;                   // 띠 캔버스 여백(px) — 손잡이로 갈아 끼워 잘림 여부를 가린다
   const _mgl = { cv: null, gl: null, pr: null, ok: null, uni: {}, hTex: null, rTex: null, gTex: null,
-                 vbo: null, buf: null, hKey: '', lp: -1, lc: -1, lm: -1 };
+                 vbo: null, buf: null, hKey: '', lp: -1, lc: -1, lm: -1, lh: -1 };
   const MT3_VS = [
-    'attribute vec2 p; attribute vec2 c; attribute float m;',
-    'uniform vec2 uRes; varying vec2 vC; varying float vM;',
+    'attribute vec2 p; attribute vec2 c; attribute float m; attribute float hh;',
+    'uniform vec2 uRes; varying vec2 vC; varying float vM; varying float vH;',
     // p 는 띠 캔버스 픽셀(왼쪽 위 원점). y 를 뒤집어 캔버스 좌표계로 맞춘다.
-    'void main(){ vC = c; vM = m; vec2 n = (p / uRes) * 2.0 - 1.0; gl_Position = vec4(n.x, -n.y, 0.0, 1.0); }'
+    // ★hh = **이 꼭짓점을 놓는 데 쓴 높이(m)** 그대로. p.y 가 (s − 32h) 라
+    //   프래그먼트의 (화면y + 32·vH) = 보간된 **지면 깊이 s** 가 항등식으로 나온다.
+    'void main(){ vC = c; vM = m; vH = hh; vec2 n = (p / uRes) * 2.0 - 1.0; gl_Position = vec4(n.x, -n.y, 0.0, 1.0); }'
   ].join('\n');
   const MT3_FS = [
     'precision highp float;',
-    'varying vec2 vC; varying float vM;',
+    'varying vec2 vC; varying float vM; varying float vH;',
     'uniform sampler2D uH; uniform sampler2D uRock; uniform sampler2D uGrass;',
     'uniform float uN; uniform float uHmax; uniform vec3 uL; uniform vec2 uOrig;',
+    // ── 픽셀 절단 ──────────────────────────────────────────────────────
+    //   uCut     = 0 (문턱은 uCutBase 에 미리 빼 둔다 — 29만대 수를 float32 로 넘기면 ULP 0.031px)
+    //   uCutSide = 0 끔 · +1 뒤쪽만(기준 ≤ c) · −1 앞쪽만(> c) · 2 = **가리개 한 판**
+    //   uCutBase = (y0 + bh) − 문턱 ⇒ 화면y − 문턱 = uCutBase − gl_FragCoord.y
+    //   uCutK    = **32**(v4 수직 평면, 지면 깊이 s) · 64(옛 v3 화면 평행 평면, s+32h)
+    //   uDbgW    = 1 → vC.x · 2 → vC.y · 3 → 기준값 (판정기 전용)
+    'uniform float uCut; uniform float uCutSide; uniform float uCutBase; uniform float uDbgW;',
+    'uniform float uCutK;',
     'uniform vec2 uTex; uniform float uRockS; uniform float uTexOn; uniform float uAoOn; uniform float uAoBox;',
     'uniform float uFringe; uniform float uFrH;',
     // ── 높이: 16비트(R=상위, G=하위)로 실어 NEAREST 로 텍셀을 직접 읽는다 ──
@@ -2666,6 +2677,28 @@ const SIM_JOB_EMOJI = {
     '  vec2 wq = q + 0.30*vec2(vn2(rot(q*0.55, 0.9))-0.5, vn2(rot(q*0.55, 2.7))-0.5);',
     '  return o1*vn2(rot(wq, 0.37)) + o2*vn2(rot(wq*2.03, 1.31)) + o3*vn2(rot(wq*4.11, 2.49)); }',
     'void main(){',
+    // ── 절단 — **표면·옆면·바닥 모두** 같은 식이다 ────────────────────
+    //   화면y = s − 32h ⇒ 지면 깊이 s = 화면y + 32h. 경계는 **화면y = c − 32h**(등고선).
+    '  float dCut = (uCutBase - gl_FragCoord.y) + uCutK * vH;',
+    // ★uCutSide = 2 → **가리개 한 판**. 음영·질감·잡음을 전부 건너뛰어 색 패스보다 훨씬 싸다.
+    //   블렌딩이 꺼져 있어 나중 조각이 덮어쓰므로 **맨 위 조각이 결정**한다.
+    '  if (uCutSide > 1.5) { gl_FragColor = vec4(1.0, 1.0, 1.0, dCut <= uCut ? 1.0 : 0.0); return; }',
+    // ★★discard 가 **아니라 투명 출력**이다. discard 로 하면 잘린 자리에 **밑에 깔린 조각**이
+    //   드러나 화가 순서가 뒤집힌다(실측 70화소).
+    '  if (uCutSide > 0.5) { if (dCut > uCut) { gl_FragColor = vec4(0.0); return; } }',
+    '  else if (uCutSide < -0.5) { if (dCut <= uCut) { gl_FragColor = vec4(0.0); return; } }',
+    // 판정 전용 — 이 프래그먼트가 **어느 셀**인지. 판정기가 정본 높이장으로 되짚어
+    //   (화면y + 32h) 를 **독립으로** 다시 세워 문턱과 맞춘다. 알파는 덮임 표시 전용(자료 금지).
+    '  if (uDbgW > 0.5) {',
+    '    if (uDbgW > 2.5) {',
+    '      float e = clamp((dCut - uCut + 512.0) / 1024.0, 0.0, 1.0);',
+    '      gl_FragColor = vec4(floor(e * 255.0) / 255.0, fract(e * 255.0), (vM + 1.0) / 8.0, 1.0); return;',
+    '    }',
+    '    float q = (uDbgW < 1.5) ? vC.x : vC.y;',
+    '    float t = clamp((q + 4.0) / 72.0, 0.0, 1.0);',
+    '    float hi = floor(t * 255.0) / 255.0, lo = fract(t * 255.0);',
+    '    gl_FragColor = vec4(hi, lo, (vM + 1.0) / 8.0, 1.0); return;',
+    '  }',
     // ★★갱(shaft) — 파낸 셀의 **옆면·바닥**. 높이장은 한 셀에 높이 하나뿐이라
     //   "38m 벽에 둘러싸인 0m 바닥"을 표현할 수 없다(실측: 도려내기만 하면 지면이 비친다).
     //   ⇒ 이 조각들은 표면이 아니라 **수직면**이다. vC 의 뜻도 다르다:
@@ -2788,11 +2821,13 @@ const SIM_JOB_EMOJI = {
       gl.useProgram(pr);
       _mgl.vbo = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, _mgl.vbo);
       _mgl.lp = gl.getAttribLocation(pr, 'p'); _mgl.lc = gl.getAttribLocation(pr, 'c');
-      _mgl.lm = gl.getAttribLocation(pr, 'm');
-      gl.enableVertexAttribArray(_mgl.lp); gl.vertexAttribPointer(_mgl.lp, 2, gl.FLOAT, false, 20, 0);
-      gl.enableVertexAttribArray(_mgl.lc); gl.vertexAttribPointer(_mgl.lc, 2, gl.FLOAT, false, 20, 8);
-      gl.enableVertexAttribArray(_mgl.lm); gl.vertexAttribPointer(_mgl.lm, 1, gl.FLOAT, false, 20, 16);
-      for (const u of ['uRes', 'uH', 'uRock', 'uGrass', 'uN', 'uHmax', 'uL', 'uOrig', 'uTex', 'uRockS', 'uTexOn', 'uAoOn', 'uAoBox', 'uFringe', 'uFrH'])
+      _mgl.lm = gl.getAttribLocation(pr, 'm'); _mgl.lh = gl.getAttribLocation(pr, 'hh');
+      gl.enableVertexAttribArray(_mgl.lp); gl.vertexAttribPointer(_mgl.lp, 2, gl.FLOAT, false, 24, 0);
+      gl.enableVertexAttribArray(_mgl.lc); gl.vertexAttribPointer(_mgl.lc, 2, gl.FLOAT, false, 24, 8);
+      gl.enableVertexAttribArray(_mgl.lm); gl.vertexAttribPointer(_mgl.lm, 1, gl.FLOAT, false, 24, 16);
+      gl.enableVertexAttribArray(_mgl.lh); gl.vertexAttribPointer(_mgl.lh, 1, gl.FLOAT, false, 24, 20);
+      for (const u of ['uRes', 'uH', 'uRock', 'uGrass', 'uN', 'uHmax', 'uL', 'uOrig', 'uTex', 'uRockS', 'uTexOn', 'uAoOn', 'uAoBox', 'uFringe', 'uFrH',
+                       'uCut', 'uCutSide', 'uCutBase', 'uDbgW', 'uCutK'])
         _mgl.uni[u] = gl.getUniformLocation(pr, u);
       const mkTex = (filt, wrap, minf) => { const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, minf || filt); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filt);
@@ -2865,7 +2900,9 @@ const SIM_JOB_EMOJI = {
   //   cells = 이 띠(반대각선)에 속한 청크-지역 셀 [i,j] 목록.
   //   꼭짓점 높이는 셰이더의 hAll 과 **같은 Catmull-Rom**(F.corS)로 뽑는다 —
   //   실루엣(꼭짓점)과 음영(프래그먼트)이 같은 곡면을 봐야 가장자리가 안 어긋난다.
-  function _mt3GlBand(g2d, F, key, cells, cuts, x0, y0, bw, bh, clip) {
+  // cut = null(안 자름) · { c, side } · side 2 = 가리개 · { dbgW } 판정기 · { rows, cols } 그 사각형만
+  //     · { cache } 꼭짓점 재사용 · { op } 2D 합성 방식
+  function _mt3GlBand(g2d, F, key, cells, cuts, x0, y0, bw, bh, clip, cut) {
     const gl = _mgl.gl;
     if (bw > _mgl.cv.width || bh > _mgl.cv.height) {
       if (bw > 4096 || bh > 4096) return false;
@@ -2878,12 +2915,25 @@ const SIM_JOB_EMOJI = {
     //   ⇒ 셀의 매개변수 영역을 바깥으로 MT3_OV 셀만큼 **넓혀 겹친다**.
     //   겹쳐도 안 보이는 이유가 이 판의 핵심이다: **프래그먼트 색이 월드 좌표만의 함수**라
     //   겹친 자리를 두 띠가 **같은 색**으로 칠한다(옛 캔버스 판은 조각마다 색이 달라 그물이 됐다).
+    // ★★기하는 **정적**이다. 가리개를 프레임마다 만들려면 여기서 꼭짓점을 다시 짜면 안 된다 —
+    //   셀마다 corS 를 49회 부르고 잡음까지 얹는다. cut.cache 가 오면 한 번 짜서 들고 쓴다.
+    const CA = cut && cut.cache;
+    if (CA && CA.V) {
+      _mt3BandD = [CA.dLo, CA.dHi, CA.sLo, CA.sHi, CA.hHi];
+      return _mt3GlDraw(g2d, F, key, CA.V, CA.n, x0, y0, bw, bh, clip, cut);
+    }
     const sub = MT3_GSUB, S = sub + 1, OV = MT3_OV, SP = (1 + 2 * OV) / sub;
     // ★치마 쿼드(셀당 최대 2장)까지 넣어 잡는다 — 모자라면 타입드배열이 **조용히** 버려 구멍이 다시 생긴다
-    const need = (cells.length * (sub * sub + 2) + (cuts ? cuts.length * 6 : 0)) * 6 * 5;
+    const need = (cells.length * (sub * sub + 2) + (cuts ? cuts.length * 6 : 0)) * 6 * 6;
     if (!_mgl.buf || _mgl.buf.length < need) _mgl.buf = new Float32Array(Math.max(need, 8192));
     const V = _mgl.buf; let n = 0;
-    const px = new Float32Array(S * S), py = new Float32Array(S * S);
+    // ★띠의 **지면 깊이 범위**(sLo/sHi)와 깊이 범위(dLo/dHi), 높이 상한(hHi)을 정점에서 모은다.
+    //   삼각형 안의 값은 꼭짓점 값의 선형 보간이라 이 min/max 를 못 벗어난다 ⇒ 3분류의 근거.
+    let dLo = Infinity, dHi = -Infinity, sLo = Infinity, sHi = -Infinity, hHi = 0;
+    const dAcc = (pyv, hv) => { const d = pyv + y0 + 64 * hv; if (d < dLo) dLo = d; if (d > dHi) dHi = d;
+      const sv = pyv + y0 + 32 * hv; if (sv < sLo) sLo = sv; if (sv > sHi) sHi = sv;
+      if (hv > hHi) hHi = hv; };
+    const px = new Float32Array(S * S), py = new Float32Array(S * S), ph = new Float32Array(S * S);
     for (const cell of cells) {
       const i = cell[0], j = cell[1];
       for (let b = 0; b < S; b++) for (let a = 0; a < S; a++) {
@@ -2905,14 +2955,18 @@ const SIM_JOB_EMOJI = {
         // ★절대 화면 좌표를 **1/64px 격자에 스냅**한 뒤 띠 원점을 뺀다.
         //   x0·y0 은 정수라 뺄셈이 정확하고, float32 로 내려도 이웃 띠가 **같은 변**을 얻는다.
         //   (스냅을 안 하면 띠마다 반올림이 달라져 공유 변에 1px 틈이 산발한다.)
+        const hv = F.corS(ci, cj);
         px[b * S + a] = Math.round((wxp - wyp) * 64) / 64 - x0;
-        py[b * S + a] = Math.round(((wxp + wyp) * 0.5 - F.corS(ci, cj) * 32) * 64) / 64 - y0;
+        py[b * S + a] = Math.round(((wxp + wyp) * 0.5 - hv * 32) * 64) / 64 - y0;
+        ph[b * S + a] = hv;
+        dAcc(py[b * S + a], hv);
       }
       for (let b = 0; b < sub; b++) for (let a = 0; a < sub; a++) {
         const k00 = b * S + a, k10 = k00 + 1, k01 = k00 + S, k11 = k01 + 1;
         const u0 = i - OV + a * SP, u1 = i - OV + (a + 1) * SP,
               v0 = j - OV + b * SP, v1 = j - OV + (b + 1) * SP;
-        const put = (kk, cu, cv2) => { V[n] = px[kk]; V[n + 1] = py[kk]; V[n + 2] = cu; V[n + 3] = cv2; V[n + 4] = 0; n += 5; };
+        const put = (kk, cu, cv2) => { V[n] = px[kk]; V[n + 1] = py[kk]; V[n + 2] = cu; V[n + 3] = cv2;
+                                       V[n + 4] = 0; V[n + 5] = ph[kk]; n += 6; };
         put(k00, u0, v0); put(k10, u1, v0); put(k11, u1, v1);
         put(k00, u0, v0); put(k11, u1, v1); put(k01, u0, v1);
       }
@@ -2922,13 +2976,18 @@ const SIM_JOB_EMOJI = {
     //   통로 입구라 벽을 안 세운다. 벽 높이는 **원본 높이장의 모서리 값**이라
     //   이웃 표면의 가장자리와 정확히 맞물린다.
     const SP2 = (v) => Math.round(v * 64) / 64;
+    // ★세 번째 성분에 **그 꼭짓점을 놓은 높이**를 같이 싣는다 — 절단식이 화면y 와 h 를
+    //   같은 자리에서 읽어야 항등식이 성립한다(따로 구하면 사본이 되고 어긋난다).
     const scr = (ci, cj, hh) => {
       const wxp = (F.i0 + ci) * 32, wyp = (F.j0 + cj) * 32;
-      return [SP2(wxp - wyp) - x0, SP2((wxp + wyp) * 0.5 - hh * 32) - y0];
+      const yy = SP2((wxp + wyp) * 0.5 - hh * 32) - y0;
+      dAcc(yy, hh);
+      return [SP2(wxp - wyp) - x0, yy, hh];
     };
     const tri = (a, b, c2, ca, cb, cc, mode) => {
       for (const [q, cq] of [[a, ca], [b, cb], [c2, cc]]) {
-        V[n] = q[0]; V[n + 1] = q[1]; V[n + 2] = cq[0]; V[n + 3] = cq[1]; V[n + 4] = mode; n += 5;
+        V[n] = q[0]; V[n + 1] = q[1]; V[n + 2] = cq[0]; V[n + 3] = cq[1];
+        V[n + 4] = mode; V[n + 5] = q[2]; n += 6;
       }
     };
     // 한 변에 벽 한 장 — 갱 옆면과 치마가 **같은 식**을 쓴다(사본 금지)
@@ -2985,31 +3044,73 @@ const SIM_JOB_EMOJI = {
         if (!F.isRock(i, j + 1) && wall([i, j + 1], [i + 1, j + 1], 4, false)) _mt3SkirtQ++;
       }
     }
-    if (n === 0) return false;
+    if (n === 0) { _mt3BandD = null; return false; }
+    _mt3BandD = [dLo, dHi, sLo, sHi, hHi];
+    if (CA) { CA.V = V.slice(0, n); CA.n = n; CA.dLo = dLo; CA.dHi = dHi; CA.sLo = sLo; CA.sHi = sHi; CA.hHi = hHi;
+              return _mt3GlDraw(g2d, F, key, CA.V, CA.n, x0, y0, bw, bh, clip, cut); }
+    return _mt3GlDraw(g2d, F, key, V, n, x0, y0, bw, bh, clip, cut);
+  }
+  // GL 로 한 판 그리고 2D 로 옮긴다 — 꼭짓점은 위에서 짜 왔거나 캐시에서 온다
+  function _mt3GlDraw(g2d, F, key, V, n, x0, y0, bw, bh, clip, cut) {
+    const gl = _mgl.gl;
     _mt3GlUploadH(F, key);
     const H = _mgl.cv.height;
     gl.bindBuffer(gl.ARRAY_BUFFER, _mgl.vbo);
-    gl.bufferData(gl.ARRAY_BUFFER, V.subarray(0, n), gl.DYNAMIC_DRAW);
-    gl.vertexAttribPointer(_mgl.lp, 2, gl.FLOAT, false, 20, 0);
-    gl.vertexAttribPointer(_mgl.lc, 2, gl.FLOAT, false, 20, 8);
-    gl.vertexAttribPointer(_mgl.lm, 1, gl.FLOAT, false, 20, 16);
+    gl.bufferData(gl.ARRAY_BUFFER, V.length === n ? V : V.subarray(0, n), gl.DYNAMIC_DRAW);
+    gl.vertexAttribPointer(_mgl.lp, 2, gl.FLOAT, false, 24, 0);
+    gl.vertexAttribPointer(_mgl.lc, 2, gl.FLOAT, false, 24, 8);
+    gl.vertexAttribPointer(_mgl.lm, 1, gl.FLOAT, false, 24, 16);
+    gl.vertexAttribPointer(_mgl.lh, 1, gl.FLOAT, false, 24, 20);
     gl.uniform2f(_mgl.uni.uRes, bw, bh);
     gl.uniform2f(_mgl.uni.uOrig, F.i0, F.j0);
     gl.uniform1f(_mgl.uni.uTexOn, MT3_TEXON); gl.uniform1f(_mgl.uni.uAoOn, MT3_AOON);
     gl.uniform1f(_mgl.uni.uAoBox, MT3_AOBOX);
     gl.uniform1f(_mgl.uni.uFringe, MT3_FRINGE); gl.uniform1f(_mgl.uni.uFrH, MT3_FR_H);
     gl.uniform1f(_mgl.uni.uRockS, MT3_ROCKS);
-    // 뷰포트를 캔버스 **왼쪽 위**에 둔다(GL 원점은 왼쪽 아래) → blit 원본이 (0,0) 이 된다.
-    gl.viewport(0, H - bh, bw, bh);
-    gl.enable(gl.SCISSOR_TEST); gl.scissor(0, H - bh, bw, bh);
+    // ★★큰 수 뺄셈은 **CPU 에서 배정도로** 끝낸다(y0 가 29만대라 float32 ULP 0.031px).
+    const cRef = cut && cut.c != null ? cut.c : 0;
+    gl.uniform1f(_mgl.uni.uCutBase, (y0 + bh) - cRef);
+    gl.uniform1f(_mgl.uni.uCut, 0);
+    gl.uniform1f(_mgl.uni.uCutK, MT_FADE_PLANE ? 64 : 32);
+    gl.uniform1f(_mgl.uni.uCutSide, cut && cut.side ? cut.side : 0);
+    gl.uniform1f(_mgl.uni.uDbgW, cut && cut.dbgW ? cut.dbgW : 0);
+    // ★★뷰포트를 캔버스 **왼쪽 아래(0,0)** 에 고정한다. (0, H−bh) 로 두면 공유 캔버스가 커질 때
+    //   원점이 바뀌고 창 좌표에 큰 상수가 더해져 float32 하위 비트가 흔들려 **변 위 화소가
+    //   덮임을 뒤집는다**(구운 판 vs 되그린 판 12화소 차).
+    gl.viewport(0, 0, bw, bh);
+    const rw = cut && cut.rows, ry0 = rw ? Math.max(0, rw[0]) : 0, ry1 = rw ? Math.min(bh, rw[1]) : bh;
+    const cwv = cut && cut.cols, rx0 = cwv ? Math.max(0, cwv[0]) : 0, rx1 = cwv ? Math.min(bw, cwv[1]) : bw;
+    if (ry1 <= ry0 || rx1 <= rx0) return false;
+    gl.enable(gl.SCISSOR_TEST); gl.scissor(rx0, bh - ry1, rx1 - rx0, ry1 - ry0);
     gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
-    gl.drawArrays(gl.TRIANGLES, 0, n / 5);
+    const _p1 = performance.now();
+    gl.drawArrays(gl.TRIANGLES, 0, n / 6);
     gl.disable(gl.SCISSOR_TEST);
+    const _p2 = performance.now();
     // ★같은 태스크 안에서 곧바로 읽는다(preserveDrawingBuffer 없이 안전한 유일한 시점).
     // ★clip 이 오면 그 사각형만 옮긴다 — 병합 판이 **띠마다** 같은 캔버스에 얹을 때 쓴다.
     //   전체를 옮기면 앞 띠가 지워지는 게 아니라(투명은 안 덮는다) 비용만 는다.
-    if (clip) { const [cx, cy, cw, ch] = clip; if (cw > 0 && ch > 0) g2d.drawImage(_mgl.cv, cx, cy, cw, ch, cx, cy, cw, ch); }
-    else g2d.drawImage(_mgl.cv, 0, 0, bw, bh, 0, 0, bw, bh);
+    const sy0 = H - bh;                    // 뷰포트가 캔버스 아래쪽이라 원본을 그만큼 내려 잡는다
+    // ★★가리개는 **drawImage 로 옮기지 않는다.** GL 캔버스를 2D 로 drawImage 하면 구현이
+    //   **표면 전체**를 스냅샷한다 — 1152×1280 을 매번 떠서 호출당 15.3ms 였다(실측 프로파일).
+    //   readPixels 는 **읽는 사각형**에만 비례한다. 행 순서만 뒤집어 준다.
+    if (rw) {
+      const cw2 = rx1 - rx0, ch2 = ry1 - ry0, need2 = cw2 * ch2 * 4;
+      if (!_mgl.rb || _mgl.rb.length < need2) _mgl.rb = new Uint8Array(need2);
+      gl.readPixels(rx0, bh - ry1, cw2, ch2, gl.RGBA, gl.UNSIGNED_BYTE, _mgl.rb);
+      if (!_mgl.id || _mgl.id.width !== cw2 || _mgl.id.height !== ch2) _mgl.id = g2d.createImageData(cw2, ch2);
+      const D = _mgl.id.data, RB = _mgl.rb, rw4 = cw2 * 4;
+      for (let r = 0; r < ch2; r++) D.set(RB.subarray((ch2 - 1 - r) * rw4, (ch2 - r) * rw4), r * rw4);
+      g2d.putImageData(_mgl.id, rx0, ry0);     // putImageData 는 **덮어쓴다** — 지우기도 겸한다
+      _mtP.draw += _p2 - _p1; _mtP.blit += performance.now() - _p2; _mtP.n++;
+      _mtP.tri += n / 18; _mtP.cvpx += cw2 * ch2;
+    } else {
+      const op0 = g2d.globalCompositeOperation;
+      if (cut && cut.op) g2d.globalCompositeOperation = cut.op;
+      if (clip) { const [cx, cy, cw, ch] = clip; if (cw > 0 && ch > 0) g2d.drawImage(_mgl.cv, cx, cy + sy0, cw, ch, cx, cy, cw, ch); }
+      else g2d.drawImage(_mgl.cv, 0, sy0, bw, bh, 0, 0, bw, bh);
+      if (cut && cut.op) g2d.globalCompositeOperation = op0;
+    }
     return true;
   }
   // 시험 손잡이 — 짝 비교 프로파일러/스크린샷이 GPU 판과 캔버스 판을 같은 자리에서 갈아 끼운다
@@ -3123,9 +3224,12 @@ const SIM_JOB_EMOJI = {
                 colT: new Int16Array(ubw).fill(32767), colB: new Int16Array(ubw).fill(-32768) };
         }
       }
+      // 픽셀 절단용 — 세그먼트의 깊이·지면·높이 범위와 **되그릴 재료**(같은 순서로 다시 그린다)
+      let bLo = Infinity, bHi = -Infinity, sLo2 = Infinity, sHi2 = -Infinity, hHi2 = 0, glAll = true, recipe = [];
       for (const k of [...byK.keys()].sort((a, b) => a - b)) {
         const cells = byK.get(k), cutCells = cutK.get(k) || [];
         if (!cells.length && !cutCells.length) continue;
+        if (!U) { bLo = Infinity; bHi = -Infinity; sLo2 = Infinity; sHi2 = -Infinity; hHi2 = 0; glAll = true; recipe = []; }
         let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
         for (const [i, j] of cells) for (const o of [[0,0],[1,0],[1,1],[0,1]]) {
           const gi = F.i0 + i + o[0], gj = F.j0 + j + o[1];
@@ -3175,11 +3279,17 @@ const SIM_JOB_EMOJI = {
         const cv = CV, g = G;
         x0 = BX0; y0 = BY0;
         // ★표면은 GPU 로. 실패하면 그 자리에서 캔버스 폴리곤 판으로 되돌아간다(라이브를 못 세운다).
-        let drawn = false;
+        let drawn = false; _mt3BandD = null;
         if (MT3_GL && _mt3GlInit()) {
           try { drawn = _mt3GlBand(g, F, key, cells, cutCells, x0, y0, BW, BH, clip); }
           catch (e) { console.warn('[mt3d] GL 띠 실패 — 캔버스로:', e && e.message); _mgl.ok = false; drawn = false; }
         }
+        // ★범위는 **GL 판에서만** 잡힌다. 캔버스 폴리곤 판으로 떨어지면 null 로 두어
+        //   그 세그먼트는 **통째 분류**(옛 띠 z)로 되돌아간다 — 조용히 틀리는 것보다 낫다.
+        if (!drawn || !_mt3BandD) { glAll = false; }
+        else { if (_mt3BandD[0] < bLo) bLo = _mt3BandD[0]; if (_mt3BandD[1] > bHi) bHi = _mt3BandD[1];
+               if (_mt3BandD[2] < sLo2) sLo2 = _mt3BandD[2]; if (_mt3BandD[3] > sHi2) sHi2 = _mt3BandD[3];
+               if (_mt3BandD[4] > hHi2) hHi2 = _mt3BandD[4]; }
         if (!drawn) {
           g.save(); g.translate(-x0, -y0);
           const RP = pat ? g.createPattern(pat, 'repeat') : null;
@@ -3229,6 +3339,8 @@ const SIM_JOB_EMOJI = {
         //     Math.random 금지(같은 자리는 늘 같은 그림이어야 한다).
         //   ★띠 캔버스에 **구워 넣는다**. 그래야 안개 게이트·z 정렬·가림 계약이 그대로다
         //     (mtseg 한 장으로 남는다 — renderables 계약 무변경).
+        //   ★그리는 목록을 먼저 만든다 — 되그릴 때 같은 목록을 같은 순서로 쓴다.
+        const bandTrees = [];
         if (MT3_TREEP > 0 && _treeSpritesLoaded >= 12) {
           for (const [i, j] of cells) {
             const ax = F.i0 + i, ay = F.j0 + j;
@@ -3246,11 +3358,15 @@ const SIM_JOB_EMOJI = {
             if (!im || !im.complete || !im.naturalHeight) continue;
             const hpx = MT3_TREEPX * (0.78 + 0.44 * _cellHash(ax, ay, 157));
             const wpx = hpx * (im.naturalWidth / im.naturalHeight);
-            g.globalAlpha = 0.92;
-            g.drawImage(im, sxp - wpx / 2, syp - hpx, wpx, hpx);
-            g.globalAlpha = 1;
+            bandTrees.push({ im, x: sxp - wpx / 2, y: syp - hpx, w: wpx, h: hpx, d: c.y + 32 * hc, s: c.y });
           }
         }
+        for (const t of bandTrees) {
+          if (t.d < bLo) bLo = t.d; if (t.d > bHi) bHi = t.d;
+          if (t.s < sLo2) sLo2 = t.s; if (t.s > sHi2) sHi2 = t.s;
+          g.globalAlpha = 0.92; g.drawImage(t.im, t.x, t.y, t.w, t.h); g.globalAlpha = 1;
+        }
+        recipe.push({ cells, cuts: cutCells, trees: bandTrees, clip });
         const refPool = cells.length ? cells : cutCells;
         const ref = refPool.reduce((a, b) => (a[0] + a[1] <= b[0] + b[1] ? a : b));   // 앵커 = 가장 작은 k
         const wx = (F.i0 + ref[0]) * 32 + 16, wy = (F.j0 + ref[1]) * 32 + 16;
@@ -3269,7 +3385,10 @@ const SIM_JOB_EMOJI = {
         const pb = (bx1 >= bx0) ? [Math.max(0, bx0), Math.max(0, Math.min(BH - 1, by0)),
                                    Math.min(BW - 1, bx1), Math.min(BH - 1, by1)] : null;
         _mt3BandN++;
-        segs.push({ img: cv, x: wx, y: wy, ox: rp.x - x0, oy: rp.y - y0, sc: 1, mt3: 1, colT, colB, pb, merged: 0 });
+        segs.push({ img: cv, x: wx, y: wy, ox: rp.x - x0, oy: rp.y - y0, sc: 1, mt3: 1, colT, colB, pb, merged: 0,
+                    dLo: glAll ? bLo : null, dHi: glAll ? bHi : null,
+                    sLo: glAll ? sLo2 : null, sHi: glAll ? sHi2 : null, hHi: glAll ? hHi2 : 0,
+                    rec: glAll ? { F, key, x0, y0, bw: BW, bh: BH, bands: recipe } : null });
       }
       // ── 병합: 청크 하나를 **세그먼트 한 장**으로 낸다 ─────────────────────
       //   앵커는 **가장 작은 k** — 안 병합 판의 띠와 같은 규칙이라 정렬이 그대로 재현된다
@@ -3290,7 +3409,10 @@ const SIM_JOB_EMOJI = {
                                    Math.min(U.bw - 1, bx1), Math.min(U.bh - 1, by1)] : null;
         _mt3BandN++;
         segs.push({ img: U.cv, x: wx, y: wy, ox: rp.x - U.x0, oy: rp.y - U.y0, sc: 1, mt3: 1,
-                    colT: U.colT, colB: U.colB, pb, merged: 1 });
+                    colT: U.colT, colB: U.colB, pb, merged: 1,
+                    dLo: glAll ? bLo : null, dHi: glAll ? bHi : null,
+                    sLo: glAll ? sLo2 : null, sHi: glAll ? sHi2 : null, hHi: glAll ? hHi2 : 0,
+                    rec: glAll ? { F, key, x0: U.x0, y0: U.y0, bw: U.bw, bh: U.bh, bands: recipe } : null });
       }
     }
     if (_mt3Chunk.size > 260) _mt3Chunk.clear();
@@ -3686,6 +3808,20 @@ const SIM_JOB_EMOJI = {
   //     h=0 에서 곧은 가로줄, 높이 1단위(32px)마다 64px 위로 굽는다.
   //     아래 CLIP 은 그 식의 **h=0 항만** 맞는 반쪽이다(위쪽까지 수평으로 잘라 버린다).
   //     그래서 기본은 **0(끔)**. 픽셀 단위 평면 절단은 재민 결정 후 별도로 붙인다.
+  // ★★[재민 확정 2026-08-26] **픽셀 절단 v4 — 수직 평면.**
+  //   "나를 가릴 수 있는 것(발자국이 내 앞)만 흐림, 뒤 산은 높이 무관 불투명."
+  //   증명 한 줄: 산 조각이 내 스프라이트 화소에 오려면 화면y = s − 32h 가 내 화면y 와 같아야 하는데,
+  //   발자국이 내 뒤(s < 내 s)면 h < 0 이어야 해서 **불가능하다**.
+  //   덤: 화가 순서도 지면 s 로 정렬하므로 "명세는 깊이인데 순서는 지면 z"라는 어긋남이 소멸한다.
+  let MT_FADE_CUT = 1;
+  // 0 = 수직 평면(지면 깊이 s, 채택) · 1 = 화면 평행 평면(s+32h, 옛 v3 — 반례 장치)
+  let MT_FADE_PLANE = 0;
+  // ★[실측] 문턱 눈금 — 걸으면 문턱이 매 프레임 바뀌어 걸친 띠를 다 다시 만든다.
+  //   v4 이동 중: 눈금 0 → 902.5±93.7ms · **8 → 41.3±4.0** · 24 → 37.2±2.2 (절단 끔 정지 16.92).
+  let MT_FADE_CQ = 8;
+  let _mtSplitN = 0, _mtCutRenderN = 0, _mtCutBuiltN = 0;
+  const _mtSplitSegs = [];
+  let _mtFadeFlush = 0, _mtFadeSoftN = 0;
   let MT_FADE_CLIP = 0;                      // 1 = 화면 가로줄로 자른다 · 0 = 끔(기본)
   let MT_FADE_YOFF = 6;                      // 가로줄을 발치에서 **아래로** 미는 화면 px(몸통을 안 가르게)
   let _mtFadeLineY = null;                   // 이번 프레임의 가로줄 화면 y
@@ -3713,14 +3849,179 @@ const SIM_JOB_EMOJI = {
   let _mt3Rects = null;
   window.__mt3Rects = (on) => { _mt3Rects = on ? [] : null; return !!_mt3Rects; };
   window.__mt3RectsGet = () => _mt3Rects;
+  let _mtMaskCv = null, _mtMaskG = null, _mtStripCv = null, _mtStripG = null;
+  const _mtCutHold = [];
+  const _mtP = { draw: 0, blit: 0, strip: 0, rect: 0, n: 0, tri: 0, cvpx: 0, rows: 0 };
+  window.__mtCutProf = (reset) => { const o = { ..._mtP }; if (reset) for (const k in _mtP) _mtP[k] = 0; return o; };
+  // ★이 띠가 **흐림 대상인가** — 그리는 쪽·세는 쪽이 이 술어 하나를 쓴다(사본 금지).
+  function _mtFadeSide(sg, z) {
+    if (_mtFadeZ == null) return false;
+    if (MT_FADE_CUT && sg && sg.dLo != null && sg.sLo != null && sg.rec)
+      return (MT_FADE_PLANE ? sg.dHi : sg.sHi) > _mtFadeZ;
+    return z > _mtFadeZ;
+  }
+  function _mtStraddle(sg) { return (MT_FADE_PLANE ? sg.dLo : sg.sLo) <= _mtFadeZ; }
+  //   ★v4(수직 평면, K=32): 화소 판정은 s = 화면y + 32h > c.
+  //     · 화면y > c ⇒ h ≥ 0 이므로 s ≥ 화면y > c ⇒ **전부 흐림**
+  //     · 화면y < c − 32·hMax ⇒ s < c ⇒ **전부 불투명**  ⇒ 그 사이만 가리개. **위 = 불투명**.
+  //   ★v3(화면 평행, K=64): 띠 안에서 d = 2s − y 라 경계 행이 [2sLo−c, 2sHi−c] 로 좁다.
+  //     **위 = 흐림**(방향이 반대다 — 헷갈리기 쉬워 topSide 로 같이 낸다).
+  function _mt3CutRows(sg, c) {
+    const R = sg.rec;
+    if (MT_FADE_PLANE) {
+      const rT = Math.max(0, Math.min(R.bh, Math.floor(2 * sg.sLo - c - R.y0)));
+      const rB = Math.max(rT, Math.min(R.bh, Math.ceil(2 * sg.sHi - c - R.y0)));
+      return [rT, rB, -1];
+    }
+    const rT = Math.max(0, Math.min(R.bh, Math.floor(c - 32 * (sg.hHi || 0) - R.y0)));
+    const rB = Math.max(rT, Math.min(R.bh, Math.ceil(c - R.y0) + 1));
+    return [rT, rB, 1];
+  }
+  // ── 가리개 한 판 ──────────────────────────────────────────────────────
+  //   ★셀을 **띠 순서대로 이어 붙여 한 번에** 그린다. 블렌딩이 없어 나중 조각이 덮으므로
+  //     여러 번 부른 것과 같은 '맨 위 조각' 결과가 나온다(병합 청크는 cuts 가 0 이라 순서 문제도 없다).
+  function _mt3CutMask(sg, c, rT, rB, cL, cR) {
+    const R = sg.rec;
+    if (!R || !MT3_GL || !_mt3GlInit()) return null;
+    if (!_mtMaskCv) { _mtMaskCv = document.createElement('canvas'); _mtMaskCv.width = _mtMaskCv.height = 128; }
+    if (_mtMaskCv.width < R.bw || _mtMaskCv.height < R.bh) {
+      _mtMaskCv.width = Math.max(_mtMaskCv.width, Math.ceil(R.bw / 128) * 128);
+      _mtMaskCv.height = Math.max(_mtMaskCv.height, Math.ceil(R.bh / 128) * 128);
+      _mtMaskG = null;
+    }
+    if (!_mtMaskG) _mtMaskG = _mtMaskCv.getContext('2d');
+    const g2 = _mtMaskG;
+    g2.setTransform(1, 0, 0, 1, 0, 0); g2.globalAlpha = 1; g2.globalCompositeOperation = 'source-over';
+    let cells = R.bands[0].cells, cuts = R.bands[0].cuts;
+    if (R.bands.length > 1) {
+      cells = []; cuts = [];
+      for (const b of R.bands) { for (const q of b.cells) cells.push(q); for (const q of b.cuts) cuts.push(q); }
+    }
+    if (!R.mcache) R.mcache = {};
+    try { if (!_mt3GlBand(g2, R.F, R.key, cells, cuts, R.x0, R.y0, R.bw, R.bh, null,
+                          { c, side: 2, rows: [rT, rB], cols: [cL, cR], cache: R.mcache })) return null; }
+    catch (e) { return null; }
+    return _mtMaskCv;
+  }
+  // 띠 하나를 (side) 쪽만 목표 문맥에 그린다. **프레임도 판정기도 이 함수 하나를 쓴다**(사본 금지).
+  function _mt3CutBlit(sg, c, side, g2, dx, dy, rows, mask, cols) {
+    const R = sg.rec, W = R.bw, Hh = R.bh;
+    const rr = rows || _mt3CutRows(sg, c);
+    const rT = rr[0], rB = rr[1], top = rr[2];
+    const cL = cols ? cols[0] : 0, cR = cols ? cols[1] : W;
+    if (side === top && rT > 0) g2.drawImage(sg.img, 0, 0, W, rT, dx, dy, W, rT);
+    if (side === -top && rB < Hh) g2.drawImage(sg.img, 0, rB, W, Hh - rB, dx, dy + rB, W, Hh - rB);
+    if (rB <= rT || cR <= cL) return true;
+    const _t0 = performance.now();
+    const M = mask || _mt3CutMask(sg, c, rT, rB, cL, cR); if (!M) return false;
+    const SW = cR - cL, SH = rB - rT;
+    if (!_mtStripCv) { _mtStripCv = document.createElement('canvas'); _mtStripCv.width = _mtStripCv.height = 128; }
+    if (_mtStripCv.width < SW || _mtStripCv.height < SH) {
+      _mtStripCv.width = Math.max(_mtStripCv.width, Math.ceil(SW / 128) * 128);
+      _mtStripCv.height = Math.max(_mtStripCv.height, Math.ceil(SH / 128) * 128);
+      _mtStripG = null;
+    }
+    if (!_mtStripG) _mtStripG = _mtStripCv.getContext('2d');
+    const T = _mtStripG;
+    T.setTransform(1, 0, 0, 1, 0, 0); T.globalAlpha = 1; T.globalCompositeOperation = 'source-over';
+    T.clearRect(0, 0, SW, SH);
+    T.drawImage(sg.img, cL, rT, SW, SH, 0, 0, SW, SH);
+    T.globalCompositeOperation = side > 0 ? 'destination-in' : 'destination-out';
+    T.drawImage(M, cL, rT, SW, SH, 0, 0, SW, SH);
+    T.globalCompositeOperation = 'source-over';
+    g2.drawImage(_mtStripCv, 0, 0, SW, SH, dx + cL, dy + rT, SW, SH);
+    _mtP.strip += performance.now() - _t0; _mtP.rows += SH;
+    return true;
+  }
+  function _mt3CutSide(sg, c, side, g2, full) {
+    const R = sg.rec;
+    g2.setTransform(1, 0, 0, 1, 0, 0); g2.globalAlpha = 1; g2.globalCompositeOperation = 'source-over';
+    g2.clearRect(0, 0, R.bw, R.bh);
+    return _mt3CutBlit(sg, c, side, g2, 0, 0, full ? [0, R.bh, _mt3CutRows(sg, c)[2]] : null);
+  }
+  // 걸친 띠 — 되그리기 없이 **바로** 두 쪽에 그린다.
+  function _mt3CutDraw(sg, c, gMain, gFade, dx, dy, canvasH) {
+    const R = sg.rec;
+    if (!R || !MT3_GL || !_mt3GlInit()) return false;
+    let [rT, rB, top] = _mt3CutRows(sg, c);
+    // ★경계 구간은 **카메라와 무관하게** 잡는다(pb 기준) — 화면으로 자르면 걸을 때마다 캐시가 깨진다.
+    let cL = 0, cR = R.bw;
+    if (sg.pb) { cL = sg.pb[0]; cR = sg.pb[2] + 1;
+                 rT = Math.max(rT, sg.pb[1]); rB = Math.min(rB, sg.pb[3] + 1);
+                 if (cR < cL) cR = cL; if (rB < rT) rB = rT; }
+    const vT = Math.max(0, -dy), vB = Math.min(R.bh, canvasH - dy);
+    if (rB <= vT) { rT = rB = vT; } else if (rT >= vB) { rT = rB = vB; }
+    const cols = [cL, cR];
+    const SW = cR - cL, SH = rB - rT, need = SH > 0 && SW > 0;
+    const hit = need && sg._cs && sg._cs.c === c && sg._cs.rT === rT && sg._cs.rB === rB &&
+                sg._cs.cL === cL && sg._cs.cR === cR && sg._cs.pl === MT_FADE_PLANE;
+    let M = null;
+    if (need && !hit) { M = _mt3CutMask(sg, c, rT, rB, cL, cR); if (!M) return false; }
+    if (top === 1 && rT > 0) gMain.drawImage(sg.img, 0, 0, R.bw, rT, dx, dy, R.bw, rT);
+    if (top === -1 && rB < R.bh) gMain.drawImage(sg.img, 0, rB, R.bw, R.bh - rB, dx, dy + rB, R.bw, R.bh - rB);
+    if (need) {
+      if (hit) gMain.drawImage(sg._cs.cv, 0, 0, SW, SH, dx + cL, dy + rT, SW, SH);
+      else if (!_mt3CutBlit(sg, c, 1, gMain, dx, dy, [rT, rB, top], M, cols)) return false;
+    }
+    if (top === -1 && rT > 0) gFade.drawImage(sg.img, 0, 0, R.bw, rT, dx, dy, R.bw, rT);
+    if (top === 1 && rB < R.bh) gFade.drawImage(sg.img, 0, rB, R.bw, R.bh - rB, dx, dy + rB, R.bw, R.bh - rB);
+    if (need) {
+      // 흐림 쪽 = 원본 − A. **A 자리를 파내면 그 아래 먼저 그린 흐림 띠도 지워진다 — 그게 맞다**
+      // (A 는 본 캔버스에 불투명으로 서 있고 화가 순서상 이 띠가 그것들보다 앞이다).
+      gFade.drawImage(sg.img, cL, rT, SW, SH, dx + cL, dy + rT, SW, SH);
+      gFade.globalCompositeOperation = 'destination-out';
+      gFade.drawImage(hit ? sg._cs.cv : _mtStripCv, 0, 0, SW, SH, dx + cL, dy + rT, SW, SH);
+      gFade.globalCompositeOperation = 'source-over';
+    }
+    if (need && !hit) {
+      _mtCutBuiltN++;
+      if (!sg._cs) {
+        _mtCutHold.push(sg);
+        if (_mtCutHold.length > 64) for (const q of _mtCutHold.splice(0, _mtCutHold.length - 48)) {
+          q._cs = null; if (q.rec) q.rec.mcache = null; }
+      }
+      if (!sg._cs || !sg._cs.cv || sg._cs.cv.width < SW || sg._cs.cv.height < SH) {
+        const q = document.createElement('canvas'); q.width = SW; q.height = SH;
+        sg._cs = { cv: q, g: q.getContext('2d') };
+      }
+      const G2 = sg._cs.g;
+      G2.setTransform(1, 0, 0, 1, 0, 0); G2.globalAlpha = 1; G2.globalCompositeOperation = 'copy';
+      G2.drawImage(_mtStripCv, 0, 0, SW, SH, 0, 0, SW, SH);
+      G2.globalCompositeOperation = 'source-over';
+      sg._cs.c = c; sg._cs.rT = rT; sg._cs.rB = rB; sg._cs.cL = cL; sg._cs.cR = cR; sg._cs.pl = MT_FADE_PLANE;
+    }
+    _mtCutRenderN++;
+    return true;
+  }
+  window.__mtCutN = () => ({ cut: MT_FADE_CUT, cq: MT_FADE_CQ, plane: MT_FADE_PLANE, split: _mtSplitN,
+                             rendered: _mtCutRenderN, built: _mtCutBuiltN, hold: _mtCutHold.length });
+  window.__mtFadeCut = (v) => { MT_FADE_CUT = v ? 1 : 0; needsRedraw = true; return MT_FADE_CUT; };
+  window.__mtFadeCQ = (v) => { MT_FADE_CQ = Math.max(0, +v || 0); needsRedraw = true; return MT_FADE_CQ; };
+  window.__mtFadePlane = (v) => { MT_FADE_PLANE = v ? 1 : 0;
+    for (const q of _mtCutHold) { q._cs = null; }
+    needsRedraw = true; return MT_FADE_PLANE; };
+  window.__mtCutList = () => _mtSplitSegs.map((e, i) => ({ i, dx: e.dx, dy: e.dy, z: e.z,
+    dLo: +e.sg.dLo.toFixed(1), dHi: +e.sg.dHi.toFixed(1),
+    sLo: +e.sg.sLo.toFixed(1), sHi: +e.sg.sHi.toFixed(1), hHi: +(e.sg.hHi || 0).toFixed(2),
+    bw: e.sg.rec.bw, bh: e.sg.rec.bh, merged: e.sg.merged ? 1 : 0, bands: e.sg.rec.bands.length }));
   function _mtDraw(g, item, toScr) {
     const sg = item.sg;
     if (sg.mt3) {                       // ★3D 띠 — 구운 캔버스를 앵커로 꽂는다
       _mtToScr = toScr;
       const p3 = w2i(sg.x, sg.y), c3 = toScr(p3.x, p3.y);
       const dx3 = Math.round(c3.x - sg.ox), dy3 = Math.round(c3.y - sg.oy);
-      const fade3 = _mtFadeAmt > 0.002 && (_mtFadeZ != null ? item.z > _mtFadeZ : false) && !_t19.occOff;
-      if (_mt3Rects) _mt3Rects.push({ x: dx3, y: dy3, w: sg.img.width, h: sg.img.height, z: item.z, faded: !!fade3, merged: sg.merged ? 1 : 0 });
+      // ── 3분류 ─────────────────────────────────────────────────────────
+      //   v4 는 **지면 깊이 s**: sLo > c 통째 흐림 · sHi ≤ c 통째 불투명 · 걸친 띠만 화소로 가른다.
+      const onFade = _mtFadeAmt > 0.002 && _mtFadeZ != null && !_t19.occOff;
+      const cutOK = onFade && MT_FADE_CUT && sg.dLo != null && sg.sLo != null && sg.rec;
+      const fade3 = onFade && _mtFadeSide(sg, item.z);
+      let split3 = (cutOK && fade3 && _mtStraddle(sg)) ? 1 : 0;
+      // ★fz 를 **그 프레임 값으로** 같이 적는다 — 여러 프레임을 모아 보는 하네스가
+      //   마지막 문턱으로 전 프레임을 재면 걷는 동안 분류가 어긋난다(실측: 429 중 99만 split).
+      if (_mt3Rects) _mt3Rects.push({ x: dx3, y: dy3, w: sg.img.width, h: sg.img.height, z: item.z,
+                                      faded: !!fade3, merged: sg.merged ? 1 : 0, split: split3, fz: _mtFadeZ,
+                                      dLo: sg.dLo != null ? sg.dLo : null, dHi: sg.dHi != null ? sg.dHi : null,
+                                      sLo: sg.sLo != null ? sg.sLo : null, sHi: sg.sHi != null ? sg.sHi : null });
       // ★[되돌림 — 실측] blit 을 '칠해지는 사각형'으로 좁혀 봤다. 넓이는 17% 줄었는데
       //   프레임은 **더 느려졌다**(산 비용 +20.13 → +29.67ms). 9인자 drawImage 가
       //   빠른 경로를 놓치는 값이 17% 이득보다 컸다. 좁히지 않는다.
@@ -3728,11 +4029,20 @@ const SIM_JOB_EMOJI = {
       _mtFadedN++; if (window.__mtOccDbg) window.__mtOccDbg.faded = _mtFadedN;
       const fg3 = _mtFadeLayer(g);
       if (!fg3) { g.save(); g.globalAlpha = 1 - (1 - MT_OCC_A) * _mtFadeAmt; g.drawImage(sg.img, dx3, dy3); g.restore(); return; }
+      // ★걸친 띠: 발자국이 내 뒤인 쪽은 **본 캔버스에 불투명**, 앞인 쪽만 흐림 겹에.
+      if (split3) {
+        if (_mt3CutDraw(sg, _mtFadeZ, g, fg3, dx3, dy3, g.canvas.height)) {
+          _mtSplitN++; _mtSplitSegs.push({ sg, dx: dx3, dy: dy3, z: item.z, c: _mtFadeZ });
+          return;
+        }
+        // 가리개를 못 만들면 **통째 흐림**으로 떨어진다(구멍보다 낫다)
+      }
       // ★경계 그라데이션(A/B) — 문턱 바로 앞 MT_FADE_ZSOFT 안의 띠는 **교차 페이드**한다.
       //   t=0(문턱) → 불투명 그대로 · t=1(창 끝) → 완전히 흐림 무리로. 0 이면 옛날처럼 딱 끊긴다.
-      if (MT_FADE_ZSOFT > 0) {
+      if (MT_FADE_ZSOFT > 0 && !split3) {
         const t = Math.min(1, (item.z - _mtFadeZ) / MT_FADE_ZSOFT);
         if (t < 1) {
+          _mtFadeSoftN++;
           g.save(); g.globalAlpha = 1 - t; g.drawImage(sg.img, dx3, dy3); g.restore();
           fg3.save(); fg3.globalAlpha = t; fg3.drawImage(sg.img, dx3, dy3); fg3.restore();
           return;
@@ -3814,7 +4124,7 @@ const SIM_JOB_EMOJI = {
   }
   function _mtFlushFade(g) {
     if (!_mtFadeUsed || !_mtFadeCv) return;
-    _mtFadeUsed = false;
+    _mtFadeUsed = false; _mtFadeFlush++;
     const aFade = 1 - (1 - MT_OCC_A) * _mtFadeAmt;
     g.save();
     g.setTransform(1, 0, 0, 1, 0, 0);
@@ -3870,7 +4180,7 @@ const SIM_JOB_EMOJI = {
       let fr = 0;
       for (let i = 0; i < renderables.length; i++) {
         const it = renderables[i];
-        if (it.kind === 'mtseg' && _mtFadeZ != null && it.z > _mtFadeZ) fr++;   // ★'앞'의 뜻이 바뀌었다(플레이어 기준)
+        if (it.kind === 'mtseg' && _mtFadeSide(it.sg, it.z)) fr++;   // ★'앞' = 정본 술어 그대로
       }
       if (window.__mtOccDbg) window.__mtOccDbg.front = fr;
     }
@@ -7931,7 +8241,7 @@ const SIM_JOB_EMOJI = {
       let n = 0, front = 0, back = 0;
       for (const it of _mtLastRend) {
         if (it.kind !== 'mtseg') continue;
-        if (_mtFadeZ != null && it.z > _mtFadeZ) front++; else back++;   // ★'앞' = 플레이어보다 화면 앞
+        if (_mtFadeSide(it.sg, it.z)) front++; else back++;   // ★'앞' = 정본 술어 그대로
         if (_mtOccludesMe(it.sg, it.z)) n++;
       }
       _mtOcc = save;
@@ -8430,15 +8740,20 @@ const SIM_JOB_EMOJI = {
       const _op = w2i(myAbsPredicted.x, myAbsPredicted.y), _os = toScreen(_op.x, _op.y);
       _mtOcc = { x: _os.x, y: _os.y - 14, z: (myAbsPredicted.x + myAbsPredicted.y) * 0.5 + MT_OCC_ZB };
       // ★흐림 문턱은 **편향 없이** 내 z 그대로 + 캐릭터 키 오프셋. 방아쇠(_mtOcc.z)와 일부러 다르다.
-      _mtFadeZ = (myAbsPredicted.x + myAbsPredicted.y) * 0.5 + MT_FADE_ZOFF;
+      // ★문턱을 1/4 px 격자에 맞춘다(그 아래 자릿수는 그림에 못 나타나고 캐시만 깨진다).
+      _mtFadeZ = Math.round(((myAbsPredicted.x + myAbsPredicted.y) * 0.5 + MT_FADE_ZOFF) * 4) / 4;
+      if (MT_FADE_CQ > 0) _mtFadeZ = Math.round(_mtFadeZ / MT_FADE_CQ) * MT_FADE_CQ;
       // 가로줄 = 내 **발치 화면 y** + 아래로 미는 여유(몸통을 안 가르게)
       _mtFadeLineY = _os.y + MT_FADE_YOFF;
     } else { _mtFadeZ = null; _mtFadeLineY = null; }
     // ★계측기는 판정을 **다시 유도하지 않는다** — `_mtDraw` 가 세는 수를 그대로 읽는다(사본 금지).
-    _mtFadedN = 0;
+    _mtFadedN = 0; _mtSplitN = 0; _mtCutRenderN = 0; _mtCutBuiltN = 0;
+    _mtSplitSegs.length = 0; _mtFadeFlush = 0; _mtFadeSoftN = 0;
     window.__mtOccDbg = { n: 0, faded: 0, front: 0, fade: +_mtFadeAmt.toFixed(2),
       pt: _mtOcc ? { x: Math.round(_mtOcc.x), y: Math.round(_mtOcc.y) } : null, z: _mtOcc ? Math.round(_mtOcc.z) : null,
-      fz: _mtFadeZ != null ? Math.round(_mtFadeZ) : null, zoff: MT_FADE_ZOFF, zsoft: MT_FADE_ZSOFT,
+      // ★fz 는 **정본 문턱 그대로**(반올림 안 한다) — 판정기가 이 값으로 앞/뒤를 가른다.
+      fz: _mtFadeZ, zoff: MT_FADE_ZOFF, zsoft: MT_FADE_ZSOFT, cut: MT_FADE_CUT, cq: MT_FADE_CQ,
+      plane: MT_FADE_PLANE, split: 0, cutRender: 0, fadeFlush: 0, fadeSoft: 0,
       clip: MT_FADE_CLIP, lineY: _mtFadeLineY != null ? Math.round(_mtFadeLineY) : null, yoff: MT_FADE_YOFF };
     _mtToScr = toScreen;
     _mtUpdateFade(renderables, _mtFadeDt());
@@ -8983,6 +9298,9 @@ const SIM_JOB_EMOJI = {
     }
     _mtStage(ctx, 'D_루프후');
     _mtFlushFade(ctx);   // ★흐린 산 한 겹을 여기서 한 번에 덮는다(겹침 누적 방지)
+    // ★계측기는 **그린 뒤** 그대로 받아 적는다(사본 금지)
+    if (window.__mtOccDbg) { const D = window.__mtOccDbg;
+      D.split = _mtSplitN; D.cutRender = _mtCutRenderN; D.fadeFlush = _mtFadeFlush; D.fadeSoft = _mtFadeSoftN; }
     _mtStage(ctx, 'E_흐림후');
 
     // ★★[2026-08-25 사건 레이어] 촌장 말풍선 — 마을 중심 위. 렌더러블 루프 **뒤**라 건물에 안 가린다.
