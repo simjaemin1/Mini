@@ -10,6 +10,12 @@
 //   여기서는 진짜 Chromium 을 띄우고 사람이 하듯 마을에 다가가 → 촌장 말을 듣고 →
 //   게시판을 열고 → 납품하고 → 보상을 받는다.
 //
+// ★★시간 모드 [2026-08-26]: **데울 땐 흐르고, 상호작용 땐 얼린다.**
+//   소비EMA 를 데우려면 날이 빨라야 하는데(0.5초/일), 그 속도면 게시판을 열고 재료를 받고 납품하는
+//   몇십 초 사이에 게임 수십 일이 흘러 **의뢰가 철회되고 품목이 바뀐다** — 상호작용을 재려던 검사가
+//   경제 속도를 재게 된다. 그래서 부족을 세운 뒤 `__e2e_day_freeze` 로 날을 멈추고 상호작용을 잰다.
+//   (사건 하루 경계·의뢰 철회처럼 **시간이 주제인** 검사는 `test-events` 가 맡는다 — 거긴 안 얼린다.)
+//
 // 실행: node scripts/e2e-events.js [--headed]
 //   ★이 검사만 `ENABLE_VILLAGES` 를 켠다(다른 실클라 하네스는 부팅 시간 때문에 끈다).
 //     대신 `VILLAGE_MAX=2` 로 마을 2곳만 시딩해 부팅을 짧게 한다 —
@@ -56,11 +62,8 @@ async function waitHttp(url, tries = 900) {
     PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB,
     CENTRAL_URL: `http://localhost:${CPORT}`,
     // ★마을이 필요한 유일한 실클라 하네스 — 대신 2곳만, 하루는 0.5초.
-    // ★하루 0.5초는 **너무 빨랐다**(2026-08-26): 게시판을 열고 재료를 받고 납품하는 몇십 초 사이에
-    //   게임 **60일**이 흘러 마을이 부족→글럿으로 가버리고 의뢰가 철회된다(촌장이 "쌓여 썩을 지경"이라 말한다).
-    //   소비EMA 를 데우려면 날이 빨라야 하지만 상호작용 중엔 느려야 한다 — 1.2초가 그 절충이다.
-    //   그리고 아래 `ensureBoard()` 가 "그래도 사라졌으면 다시 세운다"로 남은 경주를 흡수한다.
-    VILLAGE_MAX: '2', VILLAGE_DAY_MS: '1200',
+    // 하루 0.5초 — **데우기용**이다. 상호작용은 아래에서 날을 얼리고 잰다(머리 주석 참조).
+    VILLAGE_MAX: '2', VILLAGE_DAY_MS: '500',
     ENABLE_BANDITS: '0', ENABLE_ROADS: '0',
     E2E_GIVE: '1',   // 재료 지급 + 부족 픽스처(둘 다 이 플래그로만 분기가 산다)
   });
@@ -158,6 +161,19 @@ async function waitHttp(url, tries = 900) {
   let sh = null;
   async function ensureBoard(tries) {
     for (let i = 0; i < (tries || 30); i++) {
+      // ★★[2026-08-26] **픽스처를 부르기 전에 먼저 본다.**
+      //   픽스처는 재고를 깎는 행위다 — 부를 때마다 세계를 흔든다. 이미 의뢰가 걸려 있는데도
+      //   매 회 깎았더니, 열린 의뢰가 **보상으로 약속한 품목**을 깎아 마을이 못 갚게 만들었다
+      //   (`돌 2 → 나무 9` 인데 wood 를 55.6→1.83 으로). 서버 픽스처 쪽도 같이 막았지만,
+      //   하네스도 **필요할 때만** 흔드는 게 옳다.
+      //   단, `sh` 가 아직 없으면(=픽스처가 한 번도 성립 안 함) 반드시 부른다 —
+      //   아래 `부족 픽스처 성립` assert 가 **자명 통과**하면 안 되기 때문이다.
+      if (sh) {
+        await page.evaluate((vid) => window.__sendPrimary({ type: 'village_board', vid }), V.id);
+        await sleep(400);
+        const b0 = await page.evaluate(() => window.__evLastBoard || null);
+        if (b0 && b0.rows && b0.rows.length) return b0;
+      }
       await page.evaluate((vid) => window.__sendPrimary({ type: '__e2e_village_short', vid }), V.id);
       await sleep(900);
       const last = await page.evaluate(() => (window.__notices || []).slice(-3).join(' | '));
@@ -170,6 +186,11 @@ async function waitHttp(url, tries = 900) {
     return await page.evaluate(() => window.__evLastBoard || null);
   }
   let board = await ensureBoard(30);
+  // ★여기서부터 상호작용 — **날을 얼린다.** 이 아래로는 의뢰가 제 발로 철회되거나 품목이 바뀌지 않는다.
+  await page.evaluate(() => window.__sendPrimary({ type: '__e2e_day_freeze', on: true }));
+  await sleep(800);
+  ok((await page.evaluate(() => (window.__notices || []).slice(-4).join(' | '))).includes('게임일 정지'),
+    '★게임일 정지(상호작용 구간) — 여기부터 경제가 검사를 앞지르지 않는다');
   ok(!!sh, '부족 픽스처 성립(소비EMA 가 자란 품목의 재고를 문턱 아래로 · 갚을 잉여도 갖춤)', sh || '(성립 실패 — 소비EMA 미성숙)');
   ok(!!(board && board.rows && board.rows.length), '게시판에 납품 의뢰가 걸렸다', board ? JSON.stringify(board.rows.map((r) => r.line)) : 'X');
   await snap('ev-04-board');
@@ -218,6 +239,12 @@ async function waitHttp(url, tries = 900) {
     const invAfter = await page.evaluate(() => (window.__getInv && window.__getInv()) || {});
     const notes = await page.evaluate(() => (window.__notices || []).slice(-6));
     console.log(`    납품 후 알림: ${JSON.stringify(notes)}`);
+    // ★이 한 줄이 2026-08-26 의 회귀를 이름으로 잡는다 —
+    //   아래 세 개(인벤 차감·보상 수령·잔여 감소)는 **이것 하나가 무너지면 같이** 무너져서,
+    //   원인이 "납품이 안 됐다" 로만 보이고 **왜** 안 됐는지는 말해 주지 않았다.
+    ok(!notes.some((t) => /갚을 것이 없다/.test(t)),
+      '★마을이 약속한 보상을 갚을 수 있다(픽스처가 게시판의 보상 품목을 깎지 않았다)',
+      notes.filter((t) => /갚을 것이 없다/.test(t)).join(' | ') || '(거절 없음)');
     ok((invAfter[giveItem] || 0) < (invBefore[giveItem] || 0), '납품한 만큼 인벤에서 빠졌다',
       `${giveItem} ${invBefore[giveItem] || 0} → ${invAfter[giveItem] || 0}`);
     ok(notes.some((t) => /납품/.test(t)), '납품 결과가 화면 알림으로 돌아왔다');

@@ -43,7 +43,7 @@ try { execSync(`pkill -f "serve[r]/zone.js" ; pkill -f "centra[l].js" ; pkill -f
 const procs = [];
 function boot(name, file, env) {
   const p = spawn('node', [file], { env: { ...process.env, ...env }, stdio: ['ignore', 'pipe', 'pipe'], cwd: ROOT });
-  p.stdout.on('data', (d) => { const s = d.toString(); if (/server up|Error/i.test(s)) process.stdout.write(`  [${name}] ` + s.slice(0, 120)); });
+  p.stdout.on('data', (d) => { const s = d.toString(); if (/server up|Error|☠️/i.test(s)) process.stdout.write(`  [${name}] ` + s.slice(0, 200)); });
   p.stderr.on('data', (d) => { const s = d.toString(); if (!/Warning/.test(s)) process.stdout.write(`  [${name}!] ` + s.slice(0, 120)); });
   procs.push(p); return p;
 }

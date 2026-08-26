@@ -4173,6 +4173,13 @@ const SIM_JOB_EMOJI = {
   //   하네스가 '봤다' 판정을 다시 짜면 사본이라 자명 통과다 ⇒ 여기서는 **자리만** 내보내고
   //   판정은 하네스가 `window._seenChunks`(정본 저장소)를 직접 읽어서 한다.
   const _gateDrawn = [];
+  // ★★[2026-08-26] **생물이 그려진 화면 자리** — 하네스 전용 읽기 훅(기본 꺼짐, 라이브 비용 0).
+  //   왜 필요한가: `e2e-nature` 의 "시각을 고정하면 두 프레임이 동일" 판정이 **사슴 한 마리**에
+  //   깨졌다(실측 1007화소). 그 판정의 뜻은 "자연물 자리 해시가 순수 함수"이지 "짐승도 멈춰 있다"가
+  //   아니다. 그렇다고 하네스가 화면 변환을 **베껴 쓰면** 그게 사본 계측기다(이 레포가 열 번 당한 함정).
+  //   ⇒ 클라가 **자기 변환으로** 자리를 알려 주고, 하네스는 그 자리만 가린다.
+  const _entBoxes = [];
+  window.__entBoxes = () => { const o = []; for (let i = 0; i < _entBoxes.length; i += 3) o.push([_entBoxes[i], _entBoxes[i + 1], _entBoxes[i + 2]]); return o; };
   window.__fogGateProbe = () => {
     const out = [];
     for (let i = 0; i < _gateDrawn.length; i += 3) out.push([_gateDrawn[i], _gateDrawn[i + 1], _gateDrawn[i + 2]]);
@@ -8488,6 +8495,7 @@ const SIM_JOB_EMOJI = {
     // ═══════════════════════════════════════════════════════════════════════
     let _gateSkipped = 0, _gateMissing = 0, _gateFree = 0; const _gateMissKind = {};
     _gateDrawn.length = 0;
+    _entBoxes.length = 0;
     const _seenCell1 = (cx, cy) => {
       const sc = window._seenChunks; if (!sc) return true;   // 첫 프레임(기록 전)은 통과
       const chSet = sc.get((cx >> 4) + '_' + (cy >> 4));
@@ -8533,7 +8541,14 @@ const SIM_JOB_EMOJI = {
       if (item.wx === undefined) { _gateMissing++; _gateMissKind[item.kind] = (_gateMissKind[item.kind] || 0) + 1; }
       else if (_GATE_FREE[item.kind]) { _gateFree++; }
       else if (!item.isMe && !_t19.fogGateOff && !_seenFor(item.kind, item.wx, item.wy)) { _gateSkipped++; continue; }
-      else if (item.wx !== undefined) _gateDrawn.push(item.wx, item.wy, item.kind);
+      else if (item.wx !== undefined) {
+        _gateDrawn.push(item.wx, item.wy, item.kind);
+        //  ★생물만, 손잡이가 켜졌을 때만 — 라이브에선 이 줄이 한 번도 안 돈다.
+        if (_t19.entBoxes && (item.kind === 'mob' || item.kind === 'player' || item.kind === 'corpse')) {
+          const _pp = w2i(item.wx, item.wy), _sp = toScreen(_pp.x, _pp.y);
+          _entBoxes.push(item.kind, Math.round(_sp.x), Math.round(_sp.y));
+        }
+      }
       if (item.kind === 'claim') {
         const cl = item.cl, off = item.off, offY = item.offY || 0;
         const sc = (wx, wy) => { const pp = w2i(off + wx, offY + wy); return toScreen(pp.x, pp.y); };

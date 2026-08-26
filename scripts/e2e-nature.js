@@ -89,6 +89,34 @@ function diffCount(a, b) {            // 두 프레임에서 달라진 픽셀 �
   }
   return n;
 }
+// ★★[2026-08-26] **생물을 가린 차이** — 결정론 판정 전용.
+//   "시각을 고정하면 두 프레임이 동일"의 뜻은 *자연물 자리 해시가 순수 함수*다.
+//   그런데 종전엔 화면 전체를 견줬고, **사슴 한 마리가 걸어 들어오면** 1007화소가 달라져
+//   같은 코드가 한 판은 73/0, 다음 판은 72/1 로 갈렸다(실측 · 두 프레임을 눈으로 대조해 확인).
+//   짐승이 걷는 건 결함이 아니다. 그래서 **생물이 그려진 자리만** 판정에서 뺀다 —
+//   자리는 클라가 자기 변환으로 내준다(`window.__entBoxes()`), 하네스가 화면 변환을 베끼지 않는다.
+//   ⚠가린 넓이를 **같이 보고**한다. 다 가려 놓고 "0" 이라 말하는 자명 통과를 막기 위해서다.
+const ENT_DX = 80, ENT_UP = 120, ENT_DN = 48;
+//  두 프레임 비교의 **정본 술어** — 각 프레임이 들고 온 생물 자리의 합집합을 가린다.
+const D = (a, b) => diffCountNoEnts(a, b, [...(a._ents || []), ...(b._ents || [])]).n;
+function diffCountNoEnts(a, b, ents) {
+  const W = a.width;
+  const mask = new Uint8Array(W * a.height);
+  let masked = 0;
+  for (const [, sx, sy] of (ents || [])) {
+    const x0 = Math.max(BOX[0], sx - ENT_DX), x1 = Math.min(BOX[2], sx + ENT_DX);
+    const y0 = Math.max(BOX[1], sy - ENT_UP), y1 = Math.min(BOX[3], sy + ENT_DN);
+    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) { if (!mask[y * W + x]) { mask[y * W + x] = 1; masked++; } }
+  }
+  let n = 0;
+  for (let y = BOX[1]; y < BOX[3]; y++) for (let x = BOX[0]; x < BOX[2]; x++) {
+    if (mask[y * W + x]) continue;
+    const i = (y * W + x) * 4;
+    if (a.data[i] !== b.data[i] || a.data[i + 1] !== b.data[i + 1] || a.data[i + 2] !== b.data[i + 2]) n++;
+  }
+  const area = (BOX[2] - BOX[0]) * (BOX[3] - BOX[1]);
+  return { n, masked, area, ents: (ents || []).length };
+}
 
 (async () => {
   say('=== 자연물 실장 실클라 E2E (배치 21) ===');
@@ -142,7 +170,22 @@ function diffCount(a, b) {            // 두 프레임에서 달라진 픽셀 �
     }
     await sleep(20000);
     const knob = async (o) => { await page.evaluate((k) => { Object.assign(window.__terrain19, k); }, o); await sleep(1500); };
-    const grab = async (n) => { const p2 = `${SHOTS}/${tag}-${n}.png`; await page.screenshot({ path: p2 }); return PNG.sync.read(fs.readFileSync(p2)); };
+    // ★★[2026-08-26] 프레임마다 **그 순간 생물이 그려진 화면 자리**를 같이 들고 다닌다.
+    //   이 하네스의 픽셀 판정은 전부 *지형·자연물·바람*이 대상이지 **짐승이 아니다**.
+    //   그런데 사슴 한 마리가 걸어 들어오면 결정론 판정(1007px)도, 무풍 잡음 바닥 판정(202 > 153)도
+    //   같이 무너진다 — 같은 코드가 판마다 73/0 과 72/1 을 오갔다.
+    //   자리는 클라가 **자기 변환으로** 내준다(`__entBoxes()`). 하네스가 화면 변환을 베끼지 않는다.
+    //   스크린샷과 훅 읽기 사이에도 프레임이 더 그려지므로 **전·후 두 번** 읽어 합집합을 쓴다.
+    const ents = () => page.evaluate(() => (window.__entBoxes ? window.__entBoxes() : [])).catch(() => []);
+    const grab = async (n) => {
+      const p2 = `${SHOTS}/${tag}-${n}.png`;
+      const e0 = await ents();
+      await page.screenshot({ path: p2 });
+      const e1 = await ents();
+      const img = PNG.sync.read(fs.readFileSync(p2));
+      img._ents = [...e0, ...e1];
+      return img;
+    };
     const dbg = () => page.evaluate(() => ({ nat: window.__natDbg, water: window.__waterDbg })).catch(() => null);
     // ★안개 위로 뜨는 픽셀 계측 — 판정 정본은 `window._shadowMask` 의 **알파**다(하네스가 시야를
     //   다시 계산하면 그게 사본이다). 알파 248↑ = 한 번도 못 본 셀. 그 자리에 밝은 픽셀이 있으면
@@ -194,9 +237,10 @@ function diffCount(a, b) {            // 두 프레임에서 달라진 픽셀 �
     // ★[재민 2026-08-07] 물가 술은 **반려**됐다 — 손잡이를 하나도 안 건드린 상태에서 0 이어야 한다.
     //   (아래 절들은 그 뒤에 `fringeOff:false` 로 **일부러 켜서** 잠든 코드가 살아 있는지 본다.)
     const dDefault = await dbg();
-    await knob({ legacy: false, freezeT: 100, natOff: false, fringeOff: false, propOff: false, propNoAvoid: false });
+    await knob({ legacy: false, freezeT: 100, natOff: false, fringeOff: false, propOff: false, propNoAvoid: false, entBoxes: true });
     const d0 = await dbg();
     const fOn = await grab('on'), fOn2 = await grab('on2');
+    const entPx = [...(fOn._ents || []), ...(fOn2._ents || [])];
     const probe = await page.evaluate(() => window.__natProbe());
     const fogOn = await fogLit();
     const gate = await gateCheck();
@@ -280,7 +324,7 @@ function diffCount(a, b) {            // 두 프레임에서 달라진 픽셀 �
     const fMarginOff = await grab('margin-off');
     await knob({ shMargin: 1 });
 
-    S[tag] = { dDefault, d0, fOn, fOn2, fNoFr, fNoPr, fNoNat, probe, probeNA, cerr, bad: [...new Set(bad)], fogOn, fogOff, gate, gateOff,
+    S[tag] = { dDefault, d0, fOn, fOn2, entPx, fNoFr, fNoPr, fNoNat, probe, probeNA, cerr, bad: [...new Set(bad)], fogOn, fogOff, gate, gateOff,
                wOn100, wOn101, wCalm100, wCalm101, wBase100, wBase101, windFn, shWidths, shWidths0, fMarginOn, fMarginOff,
                cpCalm, cpLegacy, cpW0, cpW1, cpC0, cpC1, cpDbgOn, cpDbgOff };
     await browser.close(); try { z.kill(); } catch (e) {}
@@ -403,10 +447,36 @@ function diffCount(a, b) {            // 두 프레임에서 달라진 픽셀 �
   ok(vOff.v > 0, `★★반례 — 회피를 끄면 위반이 나온다 (${vOff.v}) = 판정이 실제로 일하고 있다`);
 
   say('\n[6] ⓔ 결정론 · 대조군');
-  const dSame = diffCount(R.fOn, R.fOn2);
-  say(`    시각 고정 두 프레임 차이 픽셀 = ${dSame}`);
-  ok(dSame === 0, '★시각을 고정하면 두 프레임이 동일 — 자리 해시가 순수 함수다(Math.random 없음)');
-  const dFr = diffCount(R.fOn, R.fNoFr), dPr = diffCount(F.fOn, F.fNoPr), dPrR = diffCount(R.fOn, R.fNoNat);
+  const DS = diffCountNoEnts(R.fOn, R.fOn2, R.entPx);
+  const dRaw = diffCount(R.fOn, R.fOn2);
+  say(`    시각 고정 두 프레임 차이 픽셀 = ${DS.n} (생물 가리기 전 ${dRaw} · 생물 ${DS.ents}자리 · 가린 넓이 ${DS.masked}/${DS.area}px)`);
+  //  ★자명 통과 금지 — 다 가려 놓고 0 이라 말하면 안 된다. 판정 대상이 실제로 남아 있어야 한다.
+  ok(DS.masked < DS.area * 0.25, `★가린 넓이가 판정 대상을 삼키지 않았다 (${(DS.masked / DS.area * 100).toFixed(1)}% < 25%)`);
+  ok(DS.n === 0, '★시각을 고정하면 두 프레임이 동일 — 자리 해시가 순수 함수다(Math.random 없음)');
+  //  ★★반례 장치 — **가리기가 실제로 일하는지**를 증명한다.
+  //    안 그러면 이 판정은 "짐승이 안 지나간 판에서만 통과"와 구별되지 않는다(=가리기가 죽어 있어도
+  //    통과한다). 사슴이 지나가 주기를 기다리는 대신, **생물 자리에 가짜 얼룩**을 찍어 본다:
+  //    가리기 없이는 잡히고, 가리면 안 잡혀야 한다. 자리는 클라가 준 실제 생물 좌표다.
+  const _blob = (src, sx, sy) => {
+    const o = { width: src.width, height: src.height, data: Buffer.from(src.data) };
+    for (let y = sy - 40; y < sy + 20; y++) for (let x = sx - 30; x < sx + 30; x++) {
+      if (x < 0 || y < 0 || x >= src.width || y >= src.height) continue;
+      const i = (y * src.width + x) * 4; o.data[i] = 255; o.data[i + 1] = 0; o.data[i + 2] = 255;
+    }
+    return o;
+  };
+  const _anchor = (R.entPx || []).find(([, sx, sy]) =>
+    sx > BOX[0] + 90 && sx < BOX[2] - 90 && sy > BOX[1] + 130 && sy < BOX[3] - 60);
+  ok(!!_anchor, `★반례 전제 — 화면 안에 생물 자리가 실제로 있다 (${(R.entPx || []).length}자리)`,
+    JSON.stringify((R.entPx || []).slice(0, 4)));
+  if (_anchor) {
+    const A2 = _blob(R.fOn2, _anchor[1], _anchor[2]);
+    const rawB = diffCount(R.fOn, A2), mskB = diffCountNoEnts(R.fOn, A2, R.entPx).n;
+    say(`    반례: 생물 자리(${_anchor[0]} ${_anchor[1]},${_anchor[2]})에 가짜 얼룩 → 가리기 전 ${rawB}px · 가린 뒤 ${mskB}px`);
+    ok(rawB > 1000 && mskB === 0,
+      `★★반례 — 생물 자리의 변화는 가려지고, 안 가리면 잡힌다 (${rawB} → ${mskB})`);
+  }
+  const dFr = D(R.fOn, R.fNoFr), dPr = D(F.fOn, F.fNoPr), dPrR = D(R.fOn, R.fNoNat);
   say(`    강가 술 on/off 차이 ${dFr}px · 초원 소품 on/off 차이 ${dPr}px · 강가 자연물 전체 ${dPrR}px`);
   ok(dFr > 3000, `★손잡이가 실제로 무언가를 끈다 — 강가 술 ${dFr}px`);
   ok(dPr > 500, `★초원 소품 손잡이도 실제로 그린다 ${dPr}px`);
@@ -442,9 +512,9 @@ function diffCount(a, b) {            // 두 프레임에서 달라진 픽셀 �
   //    대신 **바람 세기의 정본 함수**(`_windAt`)를 세우고 `windForce` 주입구를 두었다.
   //    이 절은 그 주입구가 **실제로 정본을 갈아끼우는지**까지 본다(훅이 죽어 있으면 거짓말이 된다).
   for (const [tag, s2] of [['강가', R], ['초원', F]]) {
-    const dMove = diffCount(s2.wOn100, s2.wOn101);
-    const dCalm = diffCount(s2.wCalm100, s2.wCalm101);
-    const dBase = diffCount(s2.wBase100, s2.wBase101);
+    const dMove = D(s2.wOn100, s2.wOn101);
+    const dCalm = D(s2.wCalm100, s2.wCalm101);
+    const dBase = D(s2.wBase100, s2.wBase101);
     const lim = dBase * 3 + 150;
     say(`    ${tag}: 시각 100→100.9(물 끔) — 바람 0.85 ${dMove}px 움직임 / 무풍(0) ${dCalm}px / 대조군(자연물 OFF) ${dBase}px`);
     ok(dMove > 2000, `★★${tag} — 시각이 흐르면 풀이 **실제로 흔들린다** (${dMove}px)`);
@@ -470,7 +540,7 @@ function diffCount(a, b) {            // 두 프레임에서 달라진 픽셀 �
     const sd = Math.sqrt(w.reduce((a, b) => a + (b - mean) * (b - mean), 0) / w.length);
     const cv = sd / (mean || 1);
     const d0n = (s2.shWidths0 || []).filter((v) => v >= 1.2).length;
-    const dpx = diffCount(s2.fMarginOn, s2.fMarginOff);
+    const dpx = D(s2.fMarginOn, s2.fMarginOff);
     say(`    ${tag}: 물가 변 ${w.length} · 여백 있는 변 ${nz.length}(${(nz.length / w.length * 100).toFixed(0)}%) · **폭 0인 변 ${zero}(${(zero / w.length * 100).toFixed(0)}%)**`);
     say(`      평균 폭 ${mean.toFixed(2)}px · 표준편차 ${sd.toFixed(2)} · 변동계수 ${cv.toFixed(2)} / 손잡이 끄면 여백 변 ${d0n} · 화면 차이 ${dpx}px`);
     ok(w.length >= 60, `★자명 통과 금지 — ${tag} 에 물가 변이 실제로 많다 (${w.length})`);

@@ -12,6 +12,28 @@ const SimVillages = require('./villages'); // §4-4 NPC 마을 시뮬 — top-le
 // ★[2026-08-03e 배치 12 · 테스트 전용 손잡이] 기본 OFF. `E2E_GIVE=1` 일 때만 `__e2e_give` 분기가 산다(입력 핸들러 참조).
 const E2E_GIVE = (process.env.E2E_GIVE === '1');
 const Wildlife = require('./wildlife'); // §4-4 동물 AI 블록(마을실험실 이식) — 야생 5종 생태. ENABLE_WILDLIFE=0 → 완전 no-op
+// ★★[2026-08-26 재민 확정] `ENABLE_WILDLIFE=0` 의 뜻 = **적대 개체 전부 OFF**.
+//   왜 의미를 넓혔나: 종전엔 이 플래그가 `wildlife.js`(§4-4 생태 블록)만 껐고
+//   **레거시 `mobs`(늑대·자칼 무리)는 그대로 살아 있었다.** 그래서 `ENABLE_WILDLIFE=0` 으로
+//   "야생 껐다"고 믿은 하네스에서 **검사 플레이어가 늑대에게 물려 죽었고**
+//   (실측 로그: `☠️ 여행자(p401) 사망 — by mob:wolf`), 그 사망 모달이 화면을 덮어
+//   `e2e-terrain` 이 **없는 물 렌더 결함 3건**을 보고했다. 원인을 좇는 데 두 배치가 들었다.
+//   ⇒ **플래그를 새로 만들지 않는다.** 두 개가 되면 다음 세션이 하나만 끄는 사고가 그대로 재생산된다.
+//     이 플래그 하나가 ①`wildlife.js` no-op ②레거시 공격 개체 스폰·리스폰 금지
+//     ③**몹→플레이어 피해 0** 을 전부 뜻한다. 평화 개체(사슴·양)는 그대로 둔다 — 적대가 아니다.
+//   ⚠기본은 **켜짐**. 이 값을 끄는 곳은 전부 하네스·스크립트다(운영 사용처 0):
+//     e2e-terrain · test-tame · test-mining · test-furnace · pace-metallurgy · era-rehearsal.
+//     전부 "야생 없는 결정론"을 원해서 끄던 것이라, 의미가 넓어지면 **더 조용해질 뿐** 깨지지 않는다.
+const HOSTILES_ON = process.env.ENABLE_WILDLIFE !== '0';
+// ★★[2026-08-26 재민 확정] **주기 저장.** 종전엔 `savePlayer` 가 접속·종료·핸드오프·행동 때만 돌았다.
+//   그래서 **걷기만 한 진행은 어디에도 없었다** — 서버가 죽거나 재시작하면 마지막 행동 이후가 증발한다.
+//   (B-6 수리는 "두 세션이 겹치는" 갈래만 막았다. 크래시 갈래는 그대로였다.)
+//   기본 30초. 전원 일괄이 아니라 **틱 분산**(플레이어마다 다음 저장 시각을 흩어 둔다)이고,
+//   **움직인 사람만** 쓴다(인벤·행동은 원래 그 자리에서 저장하므로 위치만 보면 된다).
+//   ⚠B-6 규칙과의 정합: **밀려난 세션(`_supersededBy`)은 주기 저장에서도 제외**한다 —
+//     아니면 낡은 좌표 덮어쓰기가 뒷문으로 부활한다(그 갈래를 `test-guest-rejoin` 이 밟는다).
+const SAVE_INTERVAL_MS = Math.max(1000, parseInt(process.env.SAVE_INTERVAL_MS || '', 10) || 30000);
+const SAVE_MOVE_EPS = 2;   // 이만큼도 안 움직였으면 쓸 게 없다(px)
 const Bandits = require('./bandits'); // §11 도적 캐논 1파(경제·수명주기 — 소굴·해체 전환·econ 약탈 훅). ENABLE_BANDITS=0 → 완전 no-op, ENABLE_VILLAGES=0이면 자동 휴면
 const Roads = require('./roads'); // §16 답압 길 4파(희소맵·게으른 감쇠·DB 영속·A* 할인). ENABLE_ROADS=0 → 완전 no-op
 const Soil = require('./soil');   // [배치 20 B] 동적 토양치·지질(희소맵·게으른 리젠·DB 영속·렌더 전용). ENABLE_SOIL=0 → 기준선만
@@ -990,8 +1012,10 @@ function spawnMob(type, opts = {}) {
       for (let i = 0; i < 50; i++) spawnMob('sheep');
     }
     // aggressive — 무리. wolf/jackal/hyena 같은 pack
+    //   ★ENABLE_WILDLIFE=0 이면 **아예 안 낳는다**(적대 개체 전부 OFF — 위 상수 주석 참조).
     let spawned = 0, packNum = 0;
-    while (aggressive.length > 0 && spawned < TOTAL_AGGRESSIVE) {
+    if (!HOSTILES_ON && aggressive.length) console.log(`[${ZONE_ID}] 🐾 ENABLE_WILDLIFE=0 — 공격 개체 스폰 생략(${aggressive.length}종)`);
+    while (HOSTILES_ON && aggressive.length > 0 && spawned < TOTAL_AGGRESSIVE) {
       const id = aggressive[Math.floor(Math.random() * aggressive.length)];
       const def = ANIMALS[id];
       const targetSize = def.pack || 1;
@@ -1813,7 +1837,7 @@ function npcStep(npc, dt, now) {
           broadcast({ type: 'mob_removed', mid: target.mid });
           // 일정 시간 후 같은 종 리스폰
           const respawnType = target.type;
-          setTimeout(() => {
+          if (HOSTILES_ON || !(ANIMALS[respawnType] && ANIMALS[respawnType].aggressive)) setTimeout(() => {
             const m = spawnMob(respawnType);
             broadcast({ type: 'mob_spawn', mob: { mid: m.mid, type: m.type, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, tameOwner: null, tameOwnerName: null } });
           }, 15000);
@@ -2986,6 +3010,11 @@ function handlePlayerInput(player, raw) {
   //   기본 부팅에서는 이 메시지가 아무 일도 안 한다(라이브에 새 능력이 생기지 않는다).
   //   왜 필요한가: 건립 사슬(돌·통나무·곡괭이 → 사유지 → 3단계)을 실클라에서 처음부터 캐게 하면
   //   검사 대상(건립·재고 UI)이 아니라 채집 사슬의 흔들림을 재게 된다. `VILLAGE_DAY_MS` 와 같은 결의 손잡이다.
+  else if (E2E_GIVE && msg.type === '__e2e_day_freeze') {
+    // ★테스트 전용(E2E_GIVE=1 일 때만 분기 존재) — 상호작용을 재는 동안 게임일을 얼린다.
+    const r = SimVillages.__e2eDayFreeze ? SimVillages.__e2eDayFreeze(!!msg.on) : { err: '미지원' };
+    send(player.ws, { type: 'notice', text: r.ok ? `🧊 게임일 ${r.frozen ? '정지' : '재개'} (day ${r.day})` : `🧊 ${r.err}` });
+  }
   else if (E2E_GIVE && msg.type === '__e2e_village_short') {
     // ★테스트 전용(E2E_GIVE=1 일 때만 분기 존재) — 게시판 납품 흐름을 실화면으로 재기 위한 부족 픽스처.
     const r = SimVillages.__e2eForceShortage ? SimVillages.__e2eForceShortage(msg.vid | 0) : { err: '미지원' };
@@ -5466,6 +5495,8 @@ function __testBind() {
     SMELT_BASE_MS, SMELT_MIN_MS, KILN_BURN_MS, KILN_BATCH_MS_PER, _smeltDurationMs, _jobProgress,
     // ── 조업 **페이싱** 실측(2026-08-02f ②) ── 단조까지 이어야 사슬 한 바퀴의 실시간이 나온다
     doCraftEquipment, EQUIPMENT_RECIPES,
+    // ── 주기 저장 비용 실측(2026-08-26) ── 하네스가 저장 건수·누적 ms 를 그대로 읽는다
+    _saveStats: () => ({ ..._saveStats, intervalMs: SAVE_INTERVAL_MS }),
   };
 }
 module.exports = { __testBind, __furnaceBind: __testBind };
@@ -5843,7 +5874,7 @@ async function tryAttack(player) {
       mobs.delete(bestMob.mid);
       broadcast({ type: 'mob_removed', mid: bestMob.mid });
       // 일정 시간 후 리스폰 — §4-4 wildlife 몹은 제외(개체수는 랩 생태(updateMobs 스폰 target)가 관리)
-      if (!bestMob.isWild) {
+      if (!bestMob.isWild && (HOSTILES_ON || !(ANIMALS[bestMob.type] && ANIMALS[bestMob.type].aggressive))) {
         const respawnType = bestMob.type;
         setTimeout(() => {
           const m = spawnMob(respawnType);
@@ -6015,6 +6046,11 @@ function damagePlayer(p, dmg, source) {
       }, NPC_RESPAWN_MS);
       return;
     }
+    // ★★[2026-08-26] **누가 죽였는지 로그에 남긴다.** `source` 는 예전부터 인자로 받고 있었는데
+    //   사람 플레이어 사망에서는 한 번도 찍지 않았다 — 그래서 e2e-terrain 의 검사 플레이어가
+    //   왜 죽는지 알아내는 데 화면 스크린샷까지 동원해야 했다(그러고도 못 좁혔다).
+    //   운영에서도 "왜 죽었나"는 첫 질문이다. 사망은 드문 사건이라 로그 부담도 없다.
+    console.log(`[${ZONE_ID}] ☠️ ${p.name}(${p.pid}) 사망 — by ${source || '?'} @ (${p.x.toFixed(0)},${p.y.toFixed(0)}) hp0 배고픔 ${Math.round(p.hunger)} 목마름 ${Math.round(p.thirst)}`);
     // Phase 14.41: 휴먼 플레이어 — 자동 부활 없음. downed 상태 진입.
     // 0~10초: 같은 길드원이 R 키로 구조 가능 + 임시/개인 사유지 즉시 부활 가능.
     // 10초 후: 임시/개인 사유지 부활만 가능. 사용자 선택 전엔 부활 안 함.
@@ -7166,7 +7202,9 @@ setInterval(() => {
           m.vx = 0; m.vy = 0;
           const sameFloor = (t.floor || 0) === (m.floor || 0);
           const realDist = Math.hypot(t.x - m.x, t.y - m.y);
-          if (sameFloor && realDist < 50 && now - m.lastAttackAt > 1000) {
+          //   ★ENABLE_WILDLIFE=0 이면 **몹은 플레이어를 때리지 못한다**(DB 에서 로드된 개체까지 포함 —
+          //     스폰만 막으면 옛 DB 를 쓰는 하네스에서 그대로 물린다).
+          if (HOSTILES_ON && sameFloor && realDist < 50 && now - m.lastAttackAt > 1000) {
             m.lastAttackAt = now;
             damagePlayer(t, Math.round(def.damage * dmgMult), `mob:${m.type}`);
           }
@@ -7307,8 +7345,43 @@ setInterval(() => {
       mobs: visibleMobs(data.viewerX, data.viewerY, data.viewerState),
     });
   }
+  // ★★[2026-08-26] 주기 저장 — 위 SAVE_INTERVAL_MS 주석 참조.
+  //   비용: 저장 1건 = central HTTP 1회(fire-and-forget). 틱당 **한 명만** 처리해 스파이크를 없앤다
+  //   (자정 DB 드레인과 같은 결 — villages.js saveQueue 선례).
+  _periodicSave(now);
   { const _td = Date.now() - now; global._tt = (global._tt||0)+_td; global._tn = (global._tn||0)+1; if (_td > (global._tmx||0)) global._tmx = _td; }
 }, TICK_MS);
+
+// 주기 저장 — 틱당 최대 1명(분산). 대상: 살아 있는 세션 · 영속 신원 · **실제로 움직인** 사람.
+let _saveCursor = 0;
+const _saveStats = { saved: 0, skippedClean: 0, skippedSuperseded: 0, ms: 0 };
+function _periodicSave(now) {
+  if (!players.size) return;
+  const arr = players; let n = 0;
+  for (const [, p] of arr) {
+    if (n++ < _saveCursor) continue;
+    _saveCursor = n;
+    if (p.isNpc) continue;
+    // ★밀려난 세션은 저장하지 않는다(B-6). 몸은 새 세션이 물려받았다.
+    if (p._supersededBy) { _saveStats.skippedSuperseded++; continue; }
+    if (!p._nextSaveAt) { // 첫 배정 — 사람마다 흩어 둔다(같은 순간에 몰리지 않게)
+      p._nextSaveAt = now + Math.floor(Math.random() * SAVE_INTERVAL_MS);
+      p._savedX = p.x; p._savedY = p.y;
+      continue;
+    }
+    if (now < p._nextSaveAt) continue;
+    p._nextSaveAt = now + SAVE_INTERVAL_MS;
+    if (Math.abs(p.x - (p._savedX || 0)) < SAVE_MOVE_EPS && Math.abs(p.y - (p._savedY || 0)) < SAVE_MOVE_EPS) {
+      _saveStats.skippedClean++; return;   // 안 움직였으면 쓸 게 없다
+    }
+    const t0 = Date.now();
+    savePlayer(p, { last_zone: ZONE_ID, last_x: p.x, last_y: p.y });
+    p._savedX = p.x; p._savedY = p.y;
+    _saveStats.saved++; _saveStats.ms += Date.now() - t0;
+    return;   // ★틱당 한 명 — 스파이크 금지
+  }
+  _saveCursor = 0;   // 한 바퀴 돌았다
+}
 
 // Phase 5-I: 이웃 zone에 ghost 스냅샷 주기 송신 (10Hz — 경계 전투 표적 위치 공유)
 setInterval(() => { try { syncGhostsToNeighbors(); } catch (e) {} }, 100);

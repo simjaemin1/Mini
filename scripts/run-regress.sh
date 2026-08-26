@@ -45,7 +45,11 @@ run_one() {
   local out rc
   out="$(timeout "$TIMEOUT_SEC" node "scripts/$f" 2>&1)"
   rc=$?
-  echo "$out" | grep -E "통과|PASS|실패|FAIL|EADDRINUSE|Error:|MODULE_NOT_FOUND" | tail -5
+  # ★실패한 줄이 **자기 이름을 말하게** 한다 [2026-08-26] —
+  #   종전엔 요약줄만 `tail -5` 로 남아서 "72/1 실패"만 보이고 **무엇이** 실패했는지는
+  #   로그를 다시 돌려야 알 수 있었다(실제로 두 번 그랬다). ✗ 줄을 먼저, 따로 보여 준다.
+  echo "$out" | grep -E "^\s*✗|실패|FAIL" | grep -vE "실패 0|FAIL 0" | head -6
+  echo "$out" | grep -E "통과|PASS|EADDRINUSE|Error:|MODULE_NOT_FOUND" | tail -4
   # ★"결과 줄이 없으면 크래시다" — 종료코드만 믿지 않는다(하네스가 0 으로 죽을 수도 있다).
   local summary
   summary="$(echo "$out" | grep -cE "통과|PASS [0-9]|=== .*(통과|PASS)")"
@@ -82,6 +86,7 @@ else
   LIST=(
     test-events.js
     test-guest-rejoin.js
+    test-save-periodic.js
     test-guest-identity.js
     e2e-events.js
     e2e-guest-reconnect.js

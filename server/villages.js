@@ -2591,6 +2591,15 @@ function onGameTick(now) {
     const vil = state.saveQueue.shift();
     try { state.db.updateVillageState(vil.dbId, serializeEcon(vil.econ), vil.econ.npcs.length, state.world.day); } catch (e) { console.error(`[${state.zoneId}] 🏘️ 마을 저장 실패(재큐):`, e.message); state.saveQueue.push(vil); }
   }
+  // ★★[2026-08-26 재민 확정 · 테스트 전용] **게임일 정지.**
+  //   왜: 실클라 하네스는 하루가 0.5~1.2초라, 게시판을 열고 재료를 받고 납품하는 몇십 초 사이에
+  //   게임 **수십 일**이 흐른다. 그러면 의뢰가 철회되고 품목이 바뀌어, **상호작용을 재려던 검사가
+  //   경제 속도를 재게 된다**(직전 배치에서 하네스 세 군데를 개별로 기웠다).
+  //   ⇒ 구조적 답: 하네스가 **소비EMA 를 데울 동안은 날을 흘리고, 상호작용 동안만 얼린다.**
+  //   ⚠새 env 플래그를 만들지 않았다 — ①의 교훈("플래그 두 개면 다음 세션이 하나만 끈다").
+  //     기존 테스트 픽스처 게이트(`E2E_GIVE`)를 그대로 타는 **런타임 메시지**다. 운영엔 분기 자체가 없다.
+  //   ⚠**시간 흐름 자체가 주제인 검사는 얼리지 마라**(의뢰 철회·사건 하루 경계·계절).
+  if (state.dayFreeze) return;
   const day = gameDayOf(now);
   if (day <= state.lastGameDay) return;
   state.lastGameDay = day;
@@ -4257,24 +4266,53 @@ function briefRadiusPx() { return EV_BRIEF_PX; }
 //   자연 발생을 기다리면 검사 대상(브리핑·게시판·정산)이 아니라 시뮬 운을 재게 된다.
 //   ⚠재고만 낮춘다 — 소비EMA·가격을 **지어내지 않는다**. 마을이 실제로 쓰는 품목이 없으면
 //     그대로 실패를 돌려준다(가짜 상황을 만들어 자명 통과시키지 않는다).
+// ★★[테스트 전용 · zone.js 가 `E2E_GIVE=1` 로 게이트] 게임일을 얼리거나 푼다.
+//   얼리면 `gameDayOf` 가 앞서 가도 `state.lastGameDay` 를 올리지 않는다 — 풀면 **그 순간의 날로
+//   기준을 다시 잡아**(따라잡기 없음) 얼어 있던 동안의 날이 한꺼번에 쏟아지지 않게 한다.
+function __e2eDayFreeze(on) {
+  const was = !!state.dayFreeze;
+  state.dayFreeze = !!on;
+  if (was && !state.dayFreeze) state.lastGameDay = gameDayOf(Date.now());   // 해동 = 지금부터 다시 센다
+  return { ok: true, frozen: state.dayFreeze, day: state.world ? state.world.day : null };
+}
+
 function __e2eForceShortage(vid) {
   if (!state.ledger) return { err: '장부 없음' };
   const vil = state.byDbId && state.byDbId.get(vid | 0);
   if (!vil) return { err: '그런 마을 없음' };
   const v = vil.econ, D = state.ledger.deliverable, C = state.ledger.cfg;
+  // ★★[2026-08-26] 픽스처는 **자기가 재려는 것을 망가뜨리면 안 된다**.
+  //   게시판에 이미 걸린 의뢰의 **보상 품목**을 부족으로 만들면 마을은 약속한 값을 못 갚게 되고,
+  //   납품은 B-1 의 **정당한** 거절("마을이 지금 갚을 것이 없다")로 끝난다.
+  //   제품은 옳게 굴렀는데 하네스만 빨개지는, 가장 나쁜 종류의 실패다.
+  //   (게임일을 얼려 둔 구간이면 revalidate 가 안 돌아 철회로 자정되지도 않는다.)
+  //   실제로 그렇게 났다: 열린 의뢰가 `돌 2 → 나무 9` 인데 이 픽스처가 wood 를 55.6→1.83 으로 깎아
+  //   `e2e-events` 가 3건 실패했다(단독 실행에선 안 나고 **다른 하네스 뒤에서만** 났다 —
+  //    앞 하네스가 남긴 부하로 흐른 게임일 수가 달라져 보상 품목이 바뀌었기 때문).
+  //   ⇒ 열린 의뢰가 약속한 보상 품목은 **후보에서 뺀다**.
+  const lockedRew = new Set(((state.ledger.board(vid | 0)) || []).map((r) => r.rewItem).filter(Boolean));
   let best = null;
   for (const [r, e] of Object.entries(v._consEMA || {})) {
     if (!D.fromEcon.has(r) || !(e > 0)) continue;
+    if (lockedRew.has(r)) continue;   // ★게시판이 약속한 보상은 깎지 않는다
     // 갚을 잉여 후보가 하나라도 있어야 한다(수량은 아래에서 보장한다)
     let sur = null, surQ = 0;
     for (const [r2, q] of Object.entries(v.storage || {})) if (r2 !== r && D.toEcon.has(r2) && q > surQ) { surQ = q; sur = r2; }
     if (!sur) continue;
     if (!best || e > best.e) best = { r, e, sur, surQ };
   }
-  if (!best) return { err: `마을 ${vil.name}: 낼 수 있고 갚을 잉여가 있는 소비 품목이 없다(econ day ${state.world.day})` };
+  if (!best) return { err: `마을 ${vil.name}: 낼 수 있고 갚을 잉여가 있는 소비 품목이 없다(econ day ${state.world.day}`
+    + `${lockedRew.size ? ` · 보상으로 잠긴 품목 ${[...lockedRew].join(',')} 제외` : ''})` };
   const thr = best.e * C.SHORT_DAYS;
   const before = +(v.storage[best.r] || 0);
-  v.storage[best.r] = +(thr * 0.1).toFixed(3);
+  // ★★[2026-08-26] **문턱 바로 아래**로 내린다(종전 `thr*0.1` = 사실상 0).
+  //   바닥까지 비우면 그 품목의 그림자 시세가 폭발해서, 갚을 잉여를 10만으로 채워 놔도
+  //   `makeRequest` 의 ⓐ·ⓑ 가 둘 다 못 갚아 **의뢰가 아예 안 걸린다**(ⓒ 미게시).
+  //   그건 제품의 옳은 동작이지만(재민 확정: 극단 시세는 극단 부족의 신호),
+  //   "게시판 왕복을 재겠다"는 이 픽스처의 목적은 그 자리에서 무너진다 —
+  //   실제로 `wood 0→1.55` 인 판에서 30회를 걸어도 게시판이 비어 있었다.
+  //   부족의 **정의**(재고 < 소비EMA×SHORT_DAYS)는 그대로 지키면서 시세만 온전하게 둔다.
+  v.storage[best.r] = +(thr * 0.9).toFixed(3);
   // ★★[2026-08-26 · B-1 물리 상한 이후] 잉여가 **있기만** 해서는 의뢰가 안 선다 —
   //   이제 마을은 **전액 갚을 수 있을 때만** 건다(못 갚으면 축소하거나 안 건다).
   //   이 픽스처의 목적은 "게시판 납품 흐름을 실화면으로 재는 것"이지 마을 살림 형편을 재는 게
@@ -4284,7 +4322,7 @@ function __e2eForceShortage(vid) {
   v.storage[best.sur] = Math.max(surBefore, 100000);
   return { ok: true, vid: vid | 0, name: vil.name, item: best.r, ema: +best.e.toFixed(3), thr: +thr.toFixed(3),
     before: +before.toFixed(3), after: v.storage[best.r], day: state.world.day | 0,
-    payWith: best.sur, payStock: v.storage[best.sur] };
+    payWith: best.sur, payStock: v.storage[best.sur], lockedRew: [...lockedRew] };
 }
 
 
@@ -4305,7 +4343,7 @@ module.exports = {
   foundPlayerVillage, playerVillageInventory, playerVillageAt, playerVillageDeposit, playerVillageDepositMap,
   // ★[2026-08-25 사건 레이어] 촌장 브리핑 · 게시판 · 납품 — zone.js 핸들러가 소비
   villageBrief, villageBoard, villageDeliver, villageAnchorPx, briefRadiusPx,
-  __e2eForceShortage,   // ★테스트 전용 — zone.js 가 E2E_GIVE 로 게이트한다(기본 부팅에선 도달 불가)
+  __e2eForceShortage, __e2eDayFreeze,   // ★테스트 전용 — zone.js 가 E2E_GIVE 로 게이트한다(기본 부팅에선 도달 불가)
   get eventLedger() { return state.ledger; },
   // 플레이어 구매/판매 경계계약(읽기전용 마을 품질 EMA — econ 무접촉)
   villageQualityAt,
