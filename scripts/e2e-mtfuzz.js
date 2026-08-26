@@ -18,7 +18,11 @@
 //   P3 국소성 — 부순 자리에서 먼 곳의 그림은 **한 화소도** 안 바뀐다.
 //   P4 덮개   — 남은 바위 셀은 여전히 전부 산 아래 (①≈0).
 //   P5 정합   — 부순 셀(이제 평지)에 산이 남아 있지 않다 (②가 안 는다).
-//   P6 결정론 — 같은 마스크면 같은 그림. 두 프레임 동일.
+//   P6 결정론 — 같은 마스크면 같은 그림. **가라앉힌 뒤** 두 프레임 동일.
+//               (굽기 예산이 프레임당 1장이라 부수기 직후엔 아직 안 구운 청크가 남는다.
+//                가라앉히지 않고 재면 "결정론"이 아니라 "가라앉았나"를 재게 된다 — 아래 P6 주석)
+//   P6b 가라앉히기가 실제로 일을 했다 — 위 수리가 자명 통과로 굳지 않게 수로 남긴다.
+//   P6c 반례 — 가라앉기 전에 재면 정말 다르다. 계측기가 여전히 날카롭다는 증거.
 //
 // 부수는 모양 (무작위 씨앗 · 재현 가능)
 //   겉면 잠식 · 한 줄 절개 · 톱니 · 반점 · 큰 한 입 · 좁은 목 만들기
@@ -255,9 +259,42 @@ function diff(a, b, box) {
     prev = cur; prevImg = curImg;
   }
 
-  // P6 결정론
+  // ══ P6 결정론 ═════════════════════════════════════════════════════════════
+  // ★★[계측기 수리 2026-08-26] 옛 P6 은 **가라앉기 전에** 쟀다 — 경주였다.
+  //   청크 굽기 예산은 **프레임당 1장**이다(MT3_BUDGET=1). 부수기 직후에는 아직 안 구운
+  //   청크가 남아 있다(실측: 절단 켬 4장 · 끔 6장). 그 상태로 찍은 첫 장은 **반쯤 구운 그림**이고,
+  //   900ms 뒤 두 번째 장은 다 구운 그림이다. 둘을 비교하면 "결정론"이 아니라
+  //   **"가라앉았나"** 를 재게 된다. 실측 |Δ| 2.691 · 다른 화소 183,582 (상자 0,260~482,859).
+  //   ⇒ 첫 장 하나만 튀고 그 뒤 프레임끼리는 전부 0.000 이었다(16장 연속 확인).
+  //   ⚠절단을 끄면 통과했던 건 고쳐져서가 아니라 **경주에서 이겨서**다 —
+  //     끈 쪽 굽기 잔량이 오히려 더 많았다(6 > 4). 즉 옛 P6 은 요행으로 통과하고 있었다.
+  //   ⇒ 판정을 완화하지 않는다. **가라앉힌 뒤** 같은 엄격도(0.05)로 잰다.
+  //     그리고 아래 P6b·P6c 로 "가라앉히기가 실제로 일을 했다"와
+  //     "가라앉기 전에 재면 정말 다르다"를 **수로** 남긴다(자명 통과 금지).
+  const BOX = [0, 260, 1400, 860];
+  const mtdbg = () => pg.evaluate(() => ({ bn: window.__mtDbg.mt3bakeN, ch: window.__mtDbg.mt3chunks }));
+  // 굽기 잔량이 **연속 3회 그대로**일 때까지 기다린다. 기다린 동안 구운 장수를 돌려준다.
+  const settle = async (capMs = 6000) => {
+    let prev = await mtdbg(); const t0 = Date.now(); let same = 0, baked = 0;
+    while (Date.now() - t0 < capMs) {
+      await sleep(70);
+      const cur = await mtdbg();
+      baked += cur.bn - prev.bn;
+      same = (cur.bn === prev.bn && cur.ch === prev.ch) ? same + 1 : 0;
+      prev = cur;
+      if (same >= 3) break;
+    }
+    return baked;
+  };
+  const baked1 = await settle();
   const d1 = await shot(); await sleep(900); const d2 = await shot();
-  const det = diff(d1, d2, [0, 260, 1400, 860]);
+  const det = diff(d1, d2, BOX);
+  // 반례 — 청크 캐시만 비워 **같은 잔량 상태**를 일부러 다시 만든다(설정값은 그대로 넣는다).
+  await pg.evaluate(() => window.__mt3pad(window.__mtDbg.mt3pad));
+  const u1 = await shot();
+  const baked2 = await settle();
+  const u2 = await shot();
+  const unset = diff(u1, u2, BOX);
 
   console.log('');
   ok('P1 ★팝 없음 — 봉우리가 한 번에 반토막 나지 않는다', popN === 0, `팝 ${popN}회`);
@@ -271,7 +308,11 @@ function diff(a, b, box) {
     mode3N === 0 || skipMax > 0, `못 본 띠 최대 ${skipMax}장 · 높이장 단계 ${mode3N}회`);
   ok('P5 ★정합 — 부순 자리에 산이 안 남는다', spillN === 0,
     `② 최대 ${spillMax}% (한계 16% · 고치기 전 18.1%) · 10% 넘은 단계 ${narrowN}회는 좁은 통로`);
-  ok('P6 ★결정론', det < 0.05, `|Δ| ${det.toFixed(3)}`);
+  ok('P6 ★결정론 — 가라앉은 뒤 두 프레임이 같다', det < 0.05, `|Δ| ${det.toFixed(3)} (가라앉히며 구운 청크 ${baked1}장)`);
+  ok('P6b ★가라앉히기가 실제로 일을 했다(옛 P6 이 경주였다는 증거)', baked1 > 0,
+    `부수기 직후 남은 굽기 ${baked1}장 — 0 이면 이 수리가 무의미해진 것이니 다시 봐야 한다`);
+  ok('P6c ★★반례 — 가라앉기 **전에** 재면 정말 다르다(계측기가 여전히 날카롭다)',
+    unset > 0.05 && baked2 > 0, `|Δ| ${unset.toFixed(3)} · 되구운 청크 ${baked2}장`);
   // ★다양성을 **수로** 남긴다 — "다양하게 했다"는 주장은 검증이 아니다
   const sz = shapes.map((v) => v.n).sort((a, b) => a - b);
   const multi = shapes.filter((v) => v.cc > 1).length;

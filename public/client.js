@@ -3819,7 +3819,8 @@ const SIM_JOB_EMOJI = {
   // ★[실측] 문턱 눈금 — 걸으면 문턱이 매 프레임 바뀌어 걸친 띠를 다 다시 만든다.
   //   v4 이동 중: 눈금 0 → 902.5±93.7ms · **8 → 41.3±4.0** · 24 → 37.2±2.2 (절단 끔 정지 16.92).
   let MT_FADE_CQ = 8;
-  let _mtSplitN = 0, _mtCutRenderN = 0, _mtCutBuiltN = 0;
+  let _mtFadeZQ = null;                      // 눈금에 물린 문턱(히스테리시스용)
+  let _mtSplitN = 0, _mtCutRenderN = 0, _mtCutBuiltN = 0, _mtCutFailN = 0;
   const _mtSplitSegs = [];
   let _mtFadeFlush = 0, _mtFadeSoftN = 0;
   let MT_FADE_CLIP = 0;                      // 1 = 화면 가로줄로 자른다 · 0 = 끔(기본)
@@ -3994,9 +3995,10 @@ const SIM_JOB_EMOJI = {
     return true;
   }
   window.__mtCutN = () => ({ cut: MT_FADE_CUT, cq: MT_FADE_CQ, plane: MT_FADE_PLANE, split: _mtSplitN,
-                             rendered: _mtCutRenderN, built: _mtCutBuiltN, hold: _mtCutHold.length });
+                             rendered: _mtCutRenderN, built: _mtCutBuiltN, fail: _mtCutFailN,
+                             hold: _mtCutHold.length });
   window.__mtFadeCut = (v) => { MT_FADE_CUT = v ? 1 : 0; needsRedraw = true; return MT_FADE_CUT; };
-  window.__mtFadeCQ = (v) => { MT_FADE_CQ = Math.max(0, +v || 0); needsRedraw = true; return MT_FADE_CQ; };
+  window.__mtFadeCQ = (v) => { MT_FADE_CQ = Math.max(0, +v || 0); _mtFadeZQ = null; needsRedraw = true; return MT_FADE_CQ; };
   window.__mtFadePlane = (v) => { MT_FADE_PLANE = v ? 1 : 0;
     for (const q of _mtCutHold) { q._cs = null; }
     needsRedraw = true; return MT_FADE_PLANE; };
@@ -4161,6 +4163,7 @@ const SIM_JOB_EMOJI = {
           _mtSplitN++; _mtSplitSegs.push({ sg, dx: dx3, dy: dy3, z: item.z, c: _mtFadeZ });
           return;
         }
+        _mtCutFailN++;
         // 가리개를 못 만들면 **통째 흐림**으로 떨어진다(구멍보다 낫다)
       }
       // ★경계 그라데이션(A/B) — 문턱 바로 앞 MT_FADE_ZSOFT 안의 띠는 **교차 페이드**한다.
@@ -8868,12 +8871,21 @@ const SIM_JOB_EMOJI = {
       // ★흐림 문턱은 **편향 없이** 내 z 그대로 + 캐릭터 키 오프셋. 방아쇠(_mtOcc.z)와 일부러 다르다.
       // ★문턱을 1/4 px 격자에 맞춘다(그 아래 자릿수는 그림에 못 나타나고 캐시만 깨진다).
       _mtFadeZ = Math.round(((myAbsPredicted.x + myAbsPredicted.y) * 0.5 + MT_FADE_ZOFF) * 4) / 4;
-      if (MT_FADE_CQ > 0) _mtFadeZ = Math.round(_mtFadeZ / MT_FADE_CQ) * MT_FADE_CQ;
+      // ★★눈금에 **히스테리시스**를 준다. 그냥 반올림하면 원값이 눈금 경계에 앉았을 때
+      //   예측 좌표의 미세한 떨림만으로 문턱이 두 값 사이를 오간다 — 경계가 8px 씩 깜빡이고
+      //   결정론 판정(같은 상태 두 프레임 동일)이 깨진다(실측 |Δ| 2.69).
+      //   ⇒ 지금 값에서 눈금의 0.75 배 넘게 벗어날 때만 옮긴다.
+      if (MT_FADE_CQ > 0) {
+        const q = MT_FADE_CQ;
+        if (_mtFadeZQ == null || Math.abs(_mtFadeZ - _mtFadeZQ) > q * 0.75)
+          _mtFadeZQ = Math.round(_mtFadeZ / q) * q;
+        _mtFadeZ = _mtFadeZQ;
+      } else _mtFadeZQ = null;
       // 가로줄 = 내 **발치 화면 y** + 아래로 미는 여유(몸통을 안 가르게)
       _mtFadeLineY = _os.y + MT_FADE_YOFF;
     } else { _mtFadeZ = null; _mtFadeLineY = null; }
     // ★계측기는 판정을 **다시 유도하지 않는다** — `_mtDraw` 가 세는 수를 그대로 읽는다(사본 금지).
-    _mtFadedN = 0; _mtSplitN = 0; _mtCutRenderN = 0; _mtCutBuiltN = 0;
+    _mtFadedN = 0; _mtSplitN = 0; _mtCutRenderN = 0; _mtCutBuiltN = 0; _mtCutFailN = 0;
     _mtSplitSegs.length = 0; _mtFadeFlush = 0; _mtFadeSoftN = 0;
     window.__mtOccDbg = { n: 0, faded: 0, front: 0, fade: +_mtFadeAmt.toFixed(2),
       pt: _mtOcc ? { x: Math.round(_mtOcc.x), y: Math.round(_mtOcc.y) } : null, z: _mtOcc ? Math.round(_mtOcc.z) : null,
