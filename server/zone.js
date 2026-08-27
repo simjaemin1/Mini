@@ -293,6 +293,7 @@ function savePlayer(player, extra = {}) {
       oreLedger: player.oreLedger || {},    // ★[11차] 캔 원석의 **숨은 정체 장부**(kg) — 선광 전까지 클라에 안 보낸다
       oreCarry: player.oreCarry || {},      // ★선광 소수분 이월(kg) — 버리지 않는다
       fishStats: player.fishStats || null,  // ★[낚시 v2] 어획 기록 — 이력서 패널(§8.4)의 첫 씨앗
+      body: Body.toSave(player),            // ★[신체 상태 §7] 추위·피로·부상·사기(허기·갈증은 전용 컬럼)
     }),
     equipped: player.equipped || null,
     last_zone: extra.last_zone ?? null, // 명시적으로 넘긴 zone만 변경
@@ -452,7 +453,10 @@ const MOVE_SPEED = 64; // px/sec — ★2m/s(32px=1m). 마을실험실 정본(2�
 // Phase 14.40 — Shift 달리기: 2.5× 속도(걷기2 × 2.5 = 5m/s, 고증 달리기), hunger/thirst 1.5× 빠른 감소.
 // 단 hunger/thirst가 5 이하면 자동 해제 (지쳐서 못 뜀).
 const SPRINT_MULT = 2.5;
-const SPRINT_DRAIN_MULT = 1.5;
+// ⚠[신체 상태 §7 2026-08-26] **사장(死藏)됨** — 감쇠·추위는 이제 `server/body.js` 정본이다.
+//   지우지 않고 남기면 다음 사람이 "여기가 정본"이라 믿고 여기를 고친다(아무 일도 안 일어난다).
+//   ⇒ 이름으로 죽여 둔다. 손잡이는 `BODY_SPRINT_MULT` 다.
+const SPRINT_DRAIN_MULT__DEAD_SEE_body_js = 1.5;
 const SPRINT_MIN_GAUGE = 5;
 // Phase 14.41 — 사망/구조: downed 상태 유지 시간, 구조 가능 윈도우.
 // 0~10초: 구조 가능 + 즉시 부활 가능.  10초 후: 부활만 가능.
@@ -821,6 +825,9 @@ function genEquipId() { return `e${Date.now().toString(36)}${(_nextEquipId++).to
 // 음식 효과: hunger/thirst 회복량. 'eat' 메시지로 소비.
 const FOOD_EFFECTS = {
   berry:        { hunger: 6,  thirst: 4 },
+  // ★[신체 상태 §7] 약초 — 배를 채우진 못해도 **부상 회복을 재촉한다**(doEat 이 Body.onHerb 를 부른다).
+  //   §7 "부상 = 회복 기간 + 약초(medicinal_herb) 수요"의 실배선. 채집물 `herb` 가 그 품목이다.
+  herb:         { hunger: 1,  thirst: 1 },
   meat_raw:     { hunger: 8,  thirst: 0, hpDelta: -3 }, // 날고기는 약간 해로움
   meat_cooked:  { hunger: 40, thirst: 0 },
   berry_jam:    { hunger: 18, thirst: 6 },
@@ -831,8 +838,10 @@ const WATER_DRINK_AMOUNT = 35;
 // 생존 게이지 상수
 const HUNGER_MAX = 100;
 const THIRST_MAX = 100;
-const HUNGER_DRAIN_PER_SEC = 100 / 600; // 약 10분에 0까지
-const THIRST_DRAIN_PER_SEC = 100 / 420; // 약 7분에 0까지
+// ⚠**사장됨** — `server/body.js` 의 `BODY_HUNGER_SEC`(1800)·`BODY_THIRST_SEC`(1200)가 정본이다.
+//   종전 값(10분/7분)은 1시간에 6끼라 잔소리였다. 재민 지시 "1시간 세션에 2~3회"로 늦췄다.
+const HUNGER_DRAIN_PER_SEC__DEAD_SEE_body_js = 100 / 600;
+const THIRST_DRAIN_PER_SEC__DEAD_SEE_body_js = 100 / 420;
 // (제거) STARVATION_HP_PER_SEC — 아사 폐지(사용자 확정): 식량 사망 = econ 기근 인구감소 단일 경로. 기갈은 디버프만.
 // 장착 시 효과 — 채집/공격 데미지 배수
 // 채집은 자원 hp 깎는 1회 데미지를 배수 적용. 기본 1.
@@ -2447,6 +2456,7 @@ wss.on('connection', async (ws, req) => {
   let tools = {}, equipped = null;
   let _loadEquipment = [], _loadEquipSlots = {}, _loadCraftSkill = {}, _loadOreLedger = {}, _loadOreCarry = {}; // 플레이어 아이템(품질·속성·내구·숙련)·원석 정체 장부 복원 버퍼 — tools_json blob piggyback
   let _loadFishStats = null;   // ★[낚시 v2] 어획 기록(마릿수·최대·놓친 최대) — 같은 blob 에 얹는다
+  let _loadBody = null;        // ★[신체 상태 §7] 추위·피로·부상·사기
   let initHunger = HUNGER_MAX, initThirst = THIRST_MAX, initVp = 0;
   let initTribeId = null, initTribeName = null;
   let initFloor = 0;
@@ -2611,6 +2621,7 @@ wss.on('connection', async (ws, req) => {
       if (tools && tools.oreLedger && typeof tools.oreLedger === 'object') _loadOreLedger = tools.oreLedger;   // ★[11차] 원석 정체 장부 복원
       if (tools && tools.oreCarry && typeof tools.oreCarry === 'object') _loadOreCarry = tools.oreCarry;
       if (tools && tools.fishStats && typeof tools.fishStats === 'object') _loadFishStats = tools.fishStats;   // ★[낚시 v2] 어획 기록 복원
+      if (tools && tools.body && typeof tools.body === 'object') _loadBody = tools.body;   // ★[신체 상태] 로그아웃 시점 그대로 — 오프라인 감쇠 없음
       // 14.53: 옛 tools (object 또는 number 형식) → 새 toolItems list 변환
       // tools_json 안에 옛 형식 또는 새 형식 {toolItems, equipped, hotkey1} 둘 다 처리
       let toolItems = [];
@@ -2763,6 +2774,7 @@ wss.on('connection', async (ws, req) => {
     oreLedger: _loadOreLedger,  // ★[11차] 원석 덩이의 숨은 정체(kg — 선광 때 소비)
     oreCarry: _loadOreCarry,    // 선광 소수분 이월(kg)
     fishStats: _loadFishStats,  // ★[낚시 v2] 어획 기록 — 재접속·크래시를 넘어 살아남는다
+    body: _loadBody ? { cold: 0, fatigue: 0, injury: 0, morale: 0, herbUntil: 0, stages: {}, ..._loadBody } : null,
     hp: PLAYER_MAX_HP, maxHp: PLAYER_MAX_HP,
     hunger: initHunger, thirst: initThirst, vp: initVp,
     // ★★[2026-08-03g 배치 14 ②] **이 신원이 영속인가.** `savePlayer` 가 이걸 본다.
@@ -3014,6 +3026,19 @@ function handlePlayerInput(player, raw) {
   //   기본 부팅에서는 이 메시지가 아무 일도 안 한다(라이브에 새 능력이 생기지 않는다).
   //   왜 필요한가: 건립 사슬(돌·통나무·곡괭이 → 사유지 → 3단계)을 실클라에서 처음부터 캐게 하면
   //   검사 대상(건립·재고 UI)이 아니라 채집 사슬의 흔들림을 재게 된다. `VILLAGE_DAY_MS` 와 같은 결의 손잡이다.
+  // ★[신체 상태] 테스트 픽스처 — 몸 상태를 **직접 세운다**. `E2E_GIVE` 게이트라 기본 부팅에선 도달 불가.
+  //   ⚠이 픽스처는 **저장을 부르지 않는다**(오프라인 불변 검사를 오염시키지 않게 — 족보 ㊻).
+  else if (E2E_GIVE && msg.type === '__e2e_body') {
+    const b = Body.ensure(player);
+    if (typeof msg.hunger === 'number') player.hunger = Math.max(0, Math.min(100, msg.hunger));
+    if (typeof msg.thirst === 'number') player.thirst = Math.max(0, Math.min(100, msg.thirst));
+    for (const k of ['cold', 'fatigue', 'injury', 'morale']) {
+      if (typeof msg[k] === 'number') b[k] = Math.max(0, Math.min(1, msg[k]));
+    }
+    send(player.ws, { type: 'gauges', hunger: Math.round(player.hunger), thirst: Math.round(player.thirst),
+      vp: Math.round(player.vp || 0), cold: !!player._cold, body: Body.selfPayload(player) });
+    if (msg.quiet !== true) send(player.ws, { type: 'notice', text: `🧪 몸 상태 세움 — ${JSON.stringify(Body.toSave(player))}` });
+  }
   else if (E2E_GIVE && msg.type === '__e2e_day_freeze') {
     // ★테스트 전용(E2E_GIVE=1 일 때만 분기 존재) — 상호작용을 재는 동안 게임일을 얼린다.
     const r = SimVillages.__e2eDayFreeze ? SimVillages.__e2eDayFreeze(!!msg.on) : { err: '미지원' };
@@ -3193,9 +3218,16 @@ function doEat(player, item) {
   if (eff.thirst)   player.thirst = Math.min(THIRST_MAX, (player.thirst ?? THIRST_MAX) + eff.thirst);
   if (eff.hpDelta)  { player.hp = Math.max(0, Math.min(player.maxHp, player.hp + eff.hpDelta));
                       broadcast({ type: 'player_damaged', pid: player.pid, hp: player.hp }); }
+  // ★[신체 상태 §7] 사기 = **당근**. 심심함·스트레스는 기각됐고, 대신 좋은 음식이 버프를 준다.
+  //   조리식(meat_cooked·berry_jam)이 생식보다 크다 — 요리와 화덕 수요의 실체.
+  const _cooked = /cooked|jam|dish|stew|soup/.test(item);
+  Body.onEat(player, { cooked: _cooked });
+  // 약초는 부상 회복을 재촉한다(§7 "부상 = 회복 기간 + 약초 수요")
+  if (item === 'medicinal_herb' || item === 'herb') Body.onHerb(player, Date.now());
   send(player.ws, { type: 'inventory', inventory: player.inventory });
-  send(player.ws, { type: 'gauges', hunger: Math.round(player.hunger), thirst: Math.round(player.thirst) });
-  send(player.ws, { type: 'notice', text: `${item} 섭취 (+허기 ${eff.hunger||0})` });
+  send(player.ws, { type: 'gauges', hunger: Math.round(player.hunger), thirst: Math.round(player.thirst), body: Body.selfPayload(player) });
+  send(player.ws, { type: 'notice', text: `${item} 섭취 (+허기 ${eff.hunger||0})`
+    + (_cooked ? ' · ✨ 잘 먹었다(사기↑)' : '') });
   savePlayer(player);
 }
 
@@ -3734,8 +3766,9 @@ function doRepairEquipment(player, id, material) {
 const WEAPON_EQUIP_ATK_SCALE = 0.2;  // weapon attack(24~100) → 데미지 +5~+20 (기본10 대비 명장 무기 실감)
 const TOOL_EQUIP_EFF_SCALE = 0.03;   // tool efficiency(24~100) → 채집 dmg +1~+3 (노동 절약)
 // 밤 추위(설계: 옷 방한→coldStress 완화의 플레이어층 아날로그 — econ coldStress는 NPC 전용이라 별개 신설). 방한·모닥불이 완화.
-const COLD_WARMTH_FULL = 50;      // 방한 50↑ = 완전 보온(추위 0)
-const COLD_NIGHT_EXTRA = 0.6;     // 맨몸 밤 = 허기 드레인 +60%(에너지 소모↑)
+// ⚠**사장됨** — 같은 뜻의 값이 `body.js` 의 `BODY_WARMTH_FULL`·`BODY_COLD_HUNGER_EXTRA` 로 옮겨갔다.
+const COLD_WARMTH_FULL__DEAD_SEE_body_js = 50;
+const COLD_NIGHT_EXTRA__DEAD_SEE_body_js = 0.6;
 const COLD_CLOTH_WEAR_MS = 30000; // 추위 노출 시 옷 마모 간격(30초당 내구 1 — 서서히)
 // 슬롯에 장착된 장비 인스턴스 조회
 function getEquippedEquipment(player, slot) {
@@ -3743,6 +3776,31 @@ function getEquippedEquipment(player, slot) {
   return (player.equipment || []).find(e => e.id === player.equipSlots[slot]) || null;
 }
 // 모닥불 근처(100px)면 따뜻 — 밤 추위 완화. qtBuildings 사용(비싸지 않게).
+// ★[신체 상태 §7] 실내인가 — **방 판정 정본**(`server/rooms.js`)에게 물어본다.
+//   클라도 서버도 이 하나만 본다(배치 18 규약: 방 판정은 서버가 정본, 클라 재계산 금지).
+function isIndoorAt(p) {
+  try {
+    const cx = Math.floor(p.x / 32), cy = Math.floor(p.y / 32);
+    return !!Rooms.roomAt(cx, cy, p.floor || 0);
+  } catch (e) { return false; }
+}
+// ★계절 추위 0..1 — 계절 정본은 `server/events.js seasonOf`(econ 과 동기 계약이 적힌 그 한 줄)를 **그대로 부른다**.
+//   여기서 계절 산수를 또 쓰면 그게 세 번째 사본이다.
+let _seasonCache = { day: -1, v: 0 };
+const _SEASON_DAY_MS = (parseInt(process.env.VILLAGE_DAY_MS || '', 10) || (WORLD && WORLD.dayLengthMs) || 24 * 60 * 1000);
+function seasonColdNow() {
+  try {
+    // ★게임일은 **존 자체 시계**로 센다 — `ENABLE_VILLAGES=0` 이어도 계절은 있어야 하기 때문이다
+    //   (마을 시뮬에 의존시키면 하네스마다 계절이 사라진다).
+    const day = Math.floor((Date.now() - ((WORLD && WORLD.worldEpoch) || 0)) / _SEASON_DAY_MS);
+    if (_seasonCache.day === day) return _seasonCache.v;
+    const se = require('./events').seasonOf(day);
+    // 겨울 1 · 가을/봄 0.35 · 여름 0 — 옷·모닥불 수요의 계절 곡선(§7 "추위는 계절 배율·옷감 수요와 연결")
+    const v = se === 'winter' ? 1 : (se === 'summer' ? 0 : 0.35);
+    _seasonCache = { day, v };
+    return v;
+  } catch (e) { return 0; }
+}
 function isNearCampfire(p) {
   const near = qtBuildings ? qtBuildings.queryCircle(p.x, p.y, 100) : Array.from(buildings.values());
   for (const b of near) { if (b.type === 'campfire' && Math.hypot(b.x - p.x, b.y - p.y) < 100) return true; }
@@ -4021,6 +4079,7 @@ function _oreSave(key, rec) {
 //   던짐 예약 → 입질 알림 → 챔질 판정 → 어획 → 어장 감소 → 마을 econ 반영 → 기록.
 //   ★서버 권위: 입질 시각도 챔질 창도 **서버가 정하고 서버가 잰다.** 클라는 "지금 챘다"만 보낸다
 //     (클라가 보낸 시각은 **안 믿는다** — `test-fishing ②` 가 조작을 시도해 거절을 확인한다).
+const Body = require('./body');   // ★[신체 상태 §7] 5축·연속 효과 곡선의 정본. 아래 생존 틱이 이걸 부른다.
 const Fishing = require('./fishing');
 Fishing.setDayMs(parseInt(process.env.VILLAGE_DAY_MS || '', 10) || (WORLD && WORLD.dayLengthMs) || 24 * 60 * 1000);
 { // 부팅: 파인 어장 셀 로드(만땅 셀은 애초에 저장 안 됨 — mined_cells 와 같은 문법)
@@ -4132,6 +4191,7 @@ function tryFishStrike(player) {
     return;
   }
   // ── 걸었다 ──────────────────────────────────────────────────────────────
+  Body.onLabor(player, 0.6);   // ★[신체 상태] 챔질도 노동이다(채광보다 가볍다)
   const kg = f.kg;
   // ★어장에서 **실제로 뺀 만큼만** 준다 — 없는 물고기를 주사위로 만들지 않는다.
   //   재고가 모자라면 잡히는 양도 그만큼 준다(빈 자리는 빈 바늘로 답한다).
@@ -4222,6 +4282,7 @@ function _mineIdentify(player, mineral, isOre, lvlF) {
   return phrase;
 }
 function mineOreCell(player) {
+  Body.onLabor(player, 1.0);   // ★[신체 상태] 채광 1타 = 노동 1. 하루 종일 파면 저녁에 손이 느려진다.
   const eq = getEquippedTool(player);
   if (!eq || eq.type !== 'pickaxe') return false;
   const now = Date.now();
@@ -5143,6 +5204,7 @@ function tryRequestVillageHouse(player, atX, atY) {
   console.log(`[${ZONE_ID}] 🏠 ${player.name} → ${vil.name} 집 의뢰 @(${cx},${cy}) 선납 ${costStr}`);
 }
 function tryHutAdvance(player, buildingId) {
+  Body.onLabor(player, 1.5);   // ★[신체 상태] 건설이 제일 고되다
   const b = buildings.get(buildingId);
   if (!b || b.type !== 'hut_site') return;
   if (Math.hypot(b.x - player.x, b.y - player.y) > 120) { send(player.ws, { type: 'notice', text: '움집터에서 너무 멀리 있습니다' }); return; }
@@ -5653,6 +5715,9 @@ function __testBind() {
     _fishStats, _fishPollStats: () => ({ ..._fishStats2 }),
     isWaterTileLocal, terrain: _terrain, ZONE_ID, ZONE,
     players, savePlayer,
+    // ── 신체 상태 §7 E2E(2026-08-26) ── **정본 모듈을 그대로 내준다**(하네스가 곡선을 다시 짜면 사본이다).
+    Body, damagePlayer, doEat, isIndoorAt, seasonColdNow, FOOD_EFFECTS,
+    HUNGER_MAX, THIRST_MAX, MOVE_SPEED,
   };
 }
 module.exports = { __testBind, __furnaceBind: __testBind };
@@ -6183,6 +6248,15 @@ function damagePlayer(p, dmg, source) {
   p.hp -= dmg;
   p.lastDamagedAt = Date.now();
   broadcast({ type: 'player_damaged', pid: p.pid, hp: p.hp });
+  // ★[신체 상태 §7] 부상 — **주사위가 아니라 피해량 문턱**이다(일관성 원칙: 같은 상황이면 같은 결과).
+  //   잔타는 안 다치고 늑대 한 대는 다친다. 회복은 시간 + 약초(medicinal_herb 가 재촉한다).
+  if (!p.isNpc) {
+    const add = Body.onDamage(p, dmg);
+    if (add > 0) {
+      const inj = Body.ensure(p).injury;
+      send(p.ws, { type: 'notice', text: `🩹 다쳤다 — ${source ? source.replace('mob:', '') + '에게 ' : ''}크게 맞았다 (부상 ${(inj * 100).toFixed(0)}%)` });
+    }
+  }
   if (p.hp <= 0) {
     p.hp = 0;
     if (p.isNpc) {
@@ -6949,9 +7023,13 @@ setInterval(() => {
         const canSprint = (p.hunger ?? HUNGER_MAX) > SPRINT_MIN_GAUGE && (p.thirst ?? THIRST_MAX) > SPRINT_MIN_GAUGE;
         p.sprint = inp.sprint && canSprint;
         const spMult = p.sprint ? SPRINT_MULT : 1.0;
+        // ★★[신체 상태] 몸 상태가 걸음을 늦춘다. **이 값은 반드시 클라에도 같은 수로 가야 한다** —
+        //   클라 예측(`predictStep` 의 speed)과 어긋나면 매 틱 보정이 나서 **러버밴딩**이 된다.
+        //   그래서 `gauges.body.moveMult` 로 실어 보내고 클라가 같은 배율을 쓴다(호환: 안 오면 1).
+        const bodyMult = Body.effects(p).moveMult;
         const hyp = Math.hypot(inp.vx, inp.vy), len = hyp || 1;
-        p.vx = (inp.vx / len) * MOVE_SPEED * Math.min(1, hyp) * spMult;
-        p.vy = (inp.vy / len) * MOVE_SPEED * Math.min(1, hyp) * spMult;
+        p.vx = (inp.vx / len) * MOVE_SPEED * Math.min(1, hyp) * spMult * bodyMult;
+        p.vy = (inp.vy / len) * MOVE_SPEED * Math.min(1, hyp) * spMult * bodyMult;
         p.lastInputSeq = inp.seq;
         movePlayerStep(p);
         consumed++;
@@ -7173,23 +7251,22 @@ setInterval(() => {
     //   유일한 식량 사망 경로). 기존엔 canadia만 면제라 활성 청크의 마을 NPC가 게이지 드레인→기아 hp 드레인을 맞았고,
     //   이것이 '관측할수록 마을이 굶는' 임업3 요양 사태(24/24 hp<60%)의 원인이었다. 도적·캐러밴·병사도 랩에 개체 허기 없음.
     if (p.isNpc) { p.hunger = HUNGER_MAX; p.thirst = THIRST_MAX; continue; }
-    // Phase 14.40: 달리는 중이면 1.5× 빠르게 감소 (실제로 이동 중일 때만)
+    // ★★[신체 상태 §7 · 2026-08-26] 여기 있던 허기·갈증·밤추위 계산을 **`server/body.js` 로 옮겼다.**
+    //   종전엔 감쇠는 여기, 추위는 여기 안 지역변수(`p._cold`), 효과는 여기저기 흩어져 있었다.
+    //   축이 다섯이 되면 그 흩어짐이 곧 사고다 ⇒ **정본 하나**로 모은다. 여기 남는 건 **맥락 수집**뿐이다.
+    //   ⚠오프라인 감쇠 없음은 그대로다 — 이 루프가 `players`(접속자)만 돌고,
+    //     `Body.tick` 은 **넘겨 준 dt 만** 적분한다(따라잡기 코드가 없다 · `test-body ①`).
     const moving = Math.hypot(p.vx || 0, p.vy || 0) > 1;
-    const drainMult = (p.sprint && moving) ? SPRINT_DRAIN_MULT : 1.0;
-    // 밤 추위: 방한 없으면 허기 가속(추울수록 에너지 소모). 옷 방한·모닥불이 완화. econ 무접촉·순 플레이어층.
-    let coldMult = 1.0; p._cold = false;
-    if (!p.isNpc && isNight(now)) {
-      const clothes = getEquippedEquipment(p, 'clothes');
-      const warmth = (clothes && clothes.attrs && clothes.attrs.warmth) || 0;
-      const coldFactor = Math.max(0, 1 - warmth / COLD_WARMTH_FULL); // 0(완전방한)~1(맨몸)
-      if (coldFactor > 0 && !isNearCampfire(p)) {
-        coldMult = 1 + COLD_NIGHT_EXTRA * coldFactor;
-        p._cold = true;
-        if (clothes && now - (p._coldWearAt || 0) > COLD_CLOTH_WEAR_MS) { p._coldWearAt = now; wearEquipment(p, 'clothes', 1); }
-      }
+    const clothes = getEquippedEquipment(p, 'clothes');
+    const warmth = (clothes && clothes.attrs && clothes.attrs.warmth) || 0;
+    const _night = isNight(now), _fire = isNearCampfire(p), _indoor = isIndoorAt(p);
+    Body.tick(p, dt, { night: _night, nearFire: _fire, indoor: _indoor, warmth,
+                       seasonCold: seasonColdNow(), moving, sprint: p.sprint, now });
+    p._cold = Body.ensure(p).cold > 0.05;
+    // 옷은 추위를 막는 동안 닳는다(종전 규약 유지 — 옷감 수요의 실체)
+    if (p._cold && clothes && !_fire && !_indoor && now - (p._coldWearAt || 0) > COLD_CLOTH_WEAR_MS) {
+      p._coldWearAt = now; wearEquipment(p, 'clothes', 1);
     }
-    p.hunger = Math.max(0, (p.hunger ?? HUNGER_MAX) - HUNGER_DRAIN_PER_SEC * dt * drainMult * coldMult);
-    p.thirst = Math.max(0, (p.thirst ?? THIRST_MAX) - THIRST_DRAIN_PER_SEC * dt * drainMult);
     // 게이지가 sprint 하한 밑으로 떨어지면 자동 해제
     if (p.sprint && (p.hunger <= SPRINT_MIN_GAUGE || p.thirst <= SPRINT_MIN_GAUGE)) {
       p.sprint = false;
@@ -7223,7 +7300,9 @@ setInterval(() => {
         hunger: Math.round(p.hunger ?? HUNGER_MAX),
         thirst: Math.round(p.thirst ?? THIRST_MAX),
         vp: Math.round(p.vp ?? 0),
-        cold: !!p._cold,  // 밤 추위(방한 부족) — 클라 표시
+        cold: !!p._cold,  // 밤 추위(방한 부족) — 클라 표시(구 필드 · 호환 유지)
+        // ★[§8.3] **본인에겐 연속값**. 남에겐 단계만 나간다(`Body.peerPayload` — 소비자는 외형 배치에서).
+        body: Body.selfPayload(p),
       });
     }
   }
@@ -7551,17 +7630,21 @@ function _periodicSave(now) {
     if (p._supersededBy) { _saveStats.skippedSuperseded++; continue; }
     if (!p._nextSaveAt) { // 첫 배정 — 사람마다 흩어 둔다(같은 순간에 몰리지 않게)
       p._nextSaveAt = now + Math.floor(Math.random() * SAVE_INTERVAL_MS);
-      p._savedX = p.x; p._savedY = p.y;
+      p._savedX = p.x; p._savedY = p.y; p._savedBody = Body.snapshot(p);
       continue;
     }
     if (now < p._nextSaveAt) continue;
     p._nextSaveAt = now + SAVE_INTERVAL_MS;
-    if (Math.abs(p.x - (p._savedX || 0)) < SAVE_MOVE_EPS && Math.abs(p.y - (p._savedY || 0)) < SAVE_MOVE_EPS) {
-      _saveStats.skippedClean++; return;   // 안 움직였으면 쓸 게 없다
+    // ★[신체 상태 §7] 판정에 **몸 상태 변화**를 더한다. 종전엔 '움직였나'만 봤는데,
+    //   그러면 **가만히 앉아 회복한 사람**의 상태가 크래시에 통째로 날아간다(주기 저장의 뜻이 반쪽이 된다).
+    const _moved = !(Math.abs(p.x - (p._savedX || 0)) < SAVE_MOVE_EPS && Math.abs(p.y - (p._savedY || 0)) < SAVE_MOVE_EPS);
+    const _bodyDirty = Body.dirtySince(p, p._savedBody);
+    if (!_moved && !_bodyDirty) {
+      _saveStats.skippedClean++; return;   // 안 움직이고 몸도 그대로면 쓸 게 없다
     }
     const t0 = Date.now();
     savePlayer(p, { last_zone: ZONE_ID, last_x: p.x, last_y: p.y });
-    p._savedX = p.x; p._savedY = p.y;
+    p._savedX = p.x; p._savedY = p.y; p._savedBody = Body.snapshot(p);
     _saveStats.saved++; _saveStats.ms += Date.now() - t0;
     return;   // ★틱당 한 명 — 스파이크 금지
   }

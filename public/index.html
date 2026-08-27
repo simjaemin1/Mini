@@ -44,6 +44,7 @@
     <div id="sidebar">
       <div class="sb-icon" data-side="craft"><span class="sb-emo">🔨</span><span class="sb-hint">제작 (K)</span></div>
       <div class="sb-icon" data-side="build"><span class="sb-emo">🏗️</span><span class="sb-hint">건축 (Shift+B)</span></div>
+      <div class="sb-icon" data-side="body"><span class="sb-emo">🫀</span><span class="sb-hint">상태 (Shift+H)</span></div>
       <div class="sb-icon" data-side="skills"><span class="sb-emo">📚</span><span class="sb-hint">스킬 (P)</span></div>
       <div class="sb-icon" data-side="claims"><span class="sb-emo">🏛️</span><span class="sb-hint">사유지 (Y)</span></div>
       <div class="sb-icon" data-side="tribe"><span class="sb-emo">🛡️</span><span class="sb-hint">길드 (N)</span></div>
@@ -67,6 +68,10 @@
       <div class="sp-body" id="spBody"></div>
     </div>
 
+    <!-- ★[신체 상태 §8.3] 무들 — 화면 **모서리**. 연속값을 3~4단계로 양자화해 기호로만 말한다.
+         전환에만 히스테리시스가 걸려 경계에서 깜빡이지 않는다(서버 `body.js stageOf` 가 정본). -->
+    <div id="moodles"></div>
+    <div id="bodyVignette"></div>
     <div id="hud">
       <div class="hud-row">
         <span class="badge" id="zoneBadge">…</span>

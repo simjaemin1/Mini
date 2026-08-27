@@ -1,35 +1,14 @@
 #!/usr/bin/env bash
-# 회귀 전수 — **순차 실행 전용**(포트 3010/3020 공유라 동시에 돌리면 EADDRINUSE 로 거짓 실패한다).
-# 사용: bash scripts/run-regressions.sh  → /tmp/reg/*.log · 요약은 stdout
-set -u
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"; cd "$ROOT"
-OUT=${OUT:-/tmp/reg}; mkdir -p "$OUT"
-killport() { local p=$1 pids; pids=$(ss -lptn "sport = :$p" 2>/dev/null | grep -o 'pid=[0-9]*' | cut -d= -f2 | sort -u); [ -n "$pids" ] && kill $pids 2>/dev/null; sleep 2; }
-
-run() { # run <이름> <타임아웃초> <명령...>
-  local name=$1 to=$2; shift 2
-  killport 3020; killport 3010
-  echo "▶ $name …"
-  ( ZDB="/tmp/reg-$name.db" timeout "$to" "$@" ) > "$OUT/$name.log" 2>&1
-  local rc=$?
-  local last; last=$(grep -Eo '[0-9]+ *(통과|pass)[^0-9]*[0-9]+ *(실패|fail)|통과 [0-9]+ · 실패 [0-9]+|[0-9]+ 통과 / [0-9]+ 실패' "$OUT/$name.log" | tail -1)
-  echo "   $name rc=$rc  ${last:-$(tail -1 "$OUT/$name.log" | cut -c1-100)}"
-}
-
-rm -f /tmp/reg-*.db
-run rooms       900 node scripts/e2e-rooms.js
-run cutaway     900 node scripts/e2e-cutaway.js
-run metallurgy  900 node scripts/e2e-metallurgy.js
-run village    1200 node scripts/e2e-village.js
-run guest       900 node scripts/e2e-guest-reconnect.js
-# ★지형 렌더 계열 — 배치 19~22. 물·타일상태·산 덮개·산 가림.
-run waterperf  1200 node scripts/e2e-waterperf.js
-run tilestate  1500 node scripts/e2e-tilestate.js
-run mountain    900 node scripts/e2e-mountain.js
-run mtocc       900 node scripts/e2e-mtocc.js
-run mtfuzz      900 node scripts/e2e-mtfuzz.js
-run mtfoot      900 node scripts/e2e-mtfoot.js
-run mtcorridor 1200 node scripts/e2e-mtcorridor.js
-run mtcut      1500 node scripts/e2e-mtcut.js
-killport 3020; killport 3010
-echo "── 로그: $OUT/"
+# === scripts/run-regressions.sh — **위임 전용**(2026-08-26 러너 통합) ============
+#
+# 이 파일에는 이제 목록이 없다. 정본은 `scripts/run-regress.sh` 하나다.
+#
+# ★왜 합쳤나: 두 러너가 각자 목록을 들고 있었고 그 목록이 갈렸다 —
+#   `run-regress.sh` 만 돌리면 mtcut·mtfoot·mtfuzz·tilestate·waterperf 5종을,
+#   `run-regressions.sh` 만 돌리면 events·fishing·body·save-periodic·guest 계열 7종을
+#   **통째로 빼먹었다**. "전원 통과"라는 보고가 그때마다 절반만 참이었다.
+#   ⇒ 호출처(문서·습관)가 남아 있으므로 지우지 않고 **위임**한다.
+#
+# 옛 규약 메모(보존): 이 러너는 순차 전용이었고 로그를 /tmp/reg/*.log 로 남겼다.
+#   지금은 `run-regress.sh` 가 종료코드를 파이프 앞에서 잡고 ✗ 줄을 먼저 찍는다.
+exec bash "$(dirname "$0")/run-regress.sh" "$@"

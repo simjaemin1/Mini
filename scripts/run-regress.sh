@@ -23,6 +23,10 @@
 #   bash scripts/run-regress.sh --selftest # ★러너 자신이 크래시를 실패로 잡는지 검사
 #   bash scripts/run-regress.sh a.js b.js  # 지정한 것만
 #
+# ★★[2026-08-26] **러너는 이 파일 하나다.** 한때 `run-regressions.sh`(복수형)가 따로 있었고
+#   목록이 갈려서, 어느 쪽을 돌리든 **상대편 하네스 5~7종을 통째로 빼먹었다**.
+#   이제 복수형은 이 파일로 위임하는 한 줄이다. 하네스를 추가하면 **여기 목록에만** 넣어라.
+#
 # ⚠CPU 2코어다. **순차 단독**이 규약이고 이 스크립트가 그걸 강제한다.
 set -u
 
@@ -85,11 +89,13 @@ if [ "$#" -gt 0 ]; then
 else
   LIST=(
     test-events.js
+    test-body.js
     test-fishing.js
     test-guest-rejoin.js
     test-save-periodic.js
     test-guest-identity.js
     e2e-events.js
+    e2e-ui.js
     e2e-fishing.js
     e2e-guest-reconnect.js
     e2e-mountain.js
@@ -101,6 +107,14 @@ else
     e2e-cutaway.js
     e2e-metallurgy.js
     e2e-village.js
+    # ★★[2026-08-26 러너 통합] 아래 다섯은 **병행 세션의 `run-regressions.sh` 에만** 있던 것들이다.
+    #   러너가 둘로 갈린 동안 내 쪽은 이 다섯을 **한 번도 안 돌렸다** — 정확히 그 위험이 있었다.
+    #   (`run-regressions.sh` 는 이제 이 파일로 위임한다. 목록은 여기 하나뿐이다.)
+    e2e-mtcut.js
+    e2e-mtfoot.js
+    e2e-mtfuzz.js
+    e2e-tilestate.js
+    e2e-waterperf.js
   )
 fi
 

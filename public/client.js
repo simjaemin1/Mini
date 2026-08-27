@@ -5418,6 +5418,8 @@ const SIM_JOB_EMOJI = {
   const speechBubbles = new Map(); // pid -> {text, until}
   // ★★[2026-08-25 사건 레이어] 촌장 브리핑 — 마을 중심에 뜨는 말풍선.
   //   전달은 UI 보고서가 아니라 **세계 안의 말**이다(설계 §3.2). 대시보드를 만들지 않는다.
+  // ★[신체 상태 §7] 서버가 보낸 몸 상태. 연속값은 **본인 것만** 온다(§8.3).
+  let myBody = null;
   const villageBubbles = new Map();  // vid -> {lines, until}
   // ★★[낚시 v2 2026-08-26] 찌 상태 — 서버가 정본이다. 클라는 **그리기만** 한다(시각을 스스로 세지 않는다).
   //   { state:'wait'|'bite', x, y, since, windowMs }
@@ -6958,6 +6960,9 @@ const SIM_JOB_EMOJI = {
       if (typeof msg.thirst === 'number') myThirst = msg.thirst;
       if (typeof msg.vp === 'number') myVp = msg.vp;
       if (typeof msg.cold === 'boolean') myCold = msg.cold;
+      // ★★[신체 상태 §8.3] 서버가 정본이다. 클라는 **그린다**(단계도 서버가 매겨 보낸다 —
+      //   여기서 다시 양자화하면 히스테리시스가 두 벌이 되어 깜빡임이 되살아난다).
+      if (msg.body) { myBody = msg.body; window.__bodyState = msg.body; renderMoodles(); if (activeSide === 'body') renderSide('body'); }
       updateHud();
     } else if (msg.type === 'village_inventory') {
       // ★★[2026-08-03e 배치 12 ③] 마을 재고 — **서버가 준 값을 그대로 그린다**(클라 재계산 0).
@@ -7248,7 +7253,12 @@ const SIM_JOB_EMOJI = {
     // ★유령 클라 fix: 서버에 내 실체가 없는 동안(_selfGone)은 예측 정지 — 유령이 걸어다니지 않게.
     if (myIsDown || _selfGone || (wx === 0 && wy === 0)) return;
     const canSprintClient = sprint && myHunger > 5 && myThirst > 5;
-    const speed = 64 * (canSprintClient ? 2.5 : 1);   // ★서버 MOVE_SPEED=64·SPRINT_MULT=2.5와 일치(불일치 시 예측 오버슈트→러버밴딩)
+    // ★★[신체 상태 2026-08-26] 몸 상태 배율을 **여기에도** 곱한다. 서버는 `Body.effects().moveMult` 로
+    //   같은 값을 쓰고 그 수를 `gauges.body.moveMult` 로 실어 보낸다 —
+    //   **안 맞추면 매 틱 보정이 나서 러버밴딩**이 된다(이 줄의 원래 주석이 경고하던 바로 그것).
+    //   호환: 아직 안 받았으면 1(=종전과 동일).
+    const bodyMult = (myBody && typeof myBody.moveMult === 'number') ? myBody.moveMult : 1;
+    const speed = 64 * (canSprintClient ? 2.5 : 1) * bodyMult;
     let mwx = wx, mwy = wy;
     {
       const curCx = Math.floor(myAbsPredicted.x / CL_BUILDING_SIZE);
@@ -11373,6 +11383,12 @@ const SIM_JOB_EMOJI = {
   setInterval(() => { try { _evProximityTick(); } catch (e) { window.__evTickErr = String(e && e.message || e); } }, 700);
   // ★하네스 훅 — **읽기 전용만**. 발신은 이미 있는 `window.__sendPrimary` 를 쓴다(새 능력 0).
   window.__evBubbles = () => [...villageBubbles].map(([vid, b]) => ({ vid, lines: b.lines }));
+  // ★[신체 상태] 하네스 읽기 훅 — 보내기는 기존 `__sendPrimary` 를 쓴다(새 창구 안 만든다).
+  window.__moodles = () => [...document.querySelectorAll('#moodles .moodle')]
+    .map((el) => ({ axis: el.dataset.axis, stage: +el.dataset.stage }));
+  window.__panelOpen = () => activeSide || null;
+  window.__panelText = () => (document.getElementById('spBody') || {}).textContent || '';
+  window.__vignetteOn = () => !!(document.getElementById('bodyVignette') || {}).classList?.contains('on');
 
   function drawSpeechBubble(x, y, text) {
     if (!text) return;
@@ -12731,8 +12747,11 @@ const SIM_JOB_EMOJI = {
     document.querySelectorAll('.sb-icon').forEach(t => t.classList.toggle('active', t.dataset.side === name));
     document.getElementById('spTitle').textContent = ({
       craft: '🔨 제작', build: '🏗️ 건축', tribe: '🛡️ 길드', market: '🏪 시세',
-      skills: '📚 스킬', claims: '🏛️ 사유지',
+      skills: '📚 스킬', claims: '🏛️ 사유지', body: '🫀 상태',
     })[name] || name;
+    // ★[§8.2 패널 프레임 규약] 이 표에 없는 이름은 **영문 키가 그대로 제목에 뜬다**(실제로 `body` 가 그랬다).
+    //   다음 패널을 붙이는 사람에게: ①`#sidebar` 에 `.sb-icon[data-side]` 한 줄(단축키 병기)
+    //   ②이 표에 한글 제목 ③`renderSide` 에 분기 — 셋을 다 해야 탭이 완성된다.
     renderSide(name);
   }
   function closeSide() {
@@ -12802,15 +12821,71 @@ const SIM_JOB_EMOJI = {
     const k = e.key.toLowerCase();
     if (k === 'i') { toggleInv(); e.preventDefault(); }
     else if (k === 'k') { toggleSide('craft'); e.preventDefault(); }
+    else if (k === 'h' && e.shiftKey) { toggleSide('body'); e.preventDefault(); }   // ★[신체 상태] 상태 패널
     else if (k === 'b' && e.shiftKey) { toggleSide('build'); e.preventDefault(); }
     else if (k === 'y') { toggleSide('claims'); e.preventDefault(); }
     else if (k === 'p') { toggleSide('skills'); e.preventDefault(); }
     else if (k === 'q') { toggleSide('market'); e.preventDefault(); }
   });
 
+  // ★★[신체 상태 §8.3] 무들 — **서버가 매긴 단계만** 그린다. 3단계에서만 가장자리 한 겹.
+  function renderMoodles() {
+    const box = document.getElementById('moodles');
+    if (!box) return;
+    const ms = (myBody && myBody.moodles) || [];
+    box.innerHTML = ms.map((m) =>
+      `<div class="moodle s${m.stage}" data-axis="${m.axis}" data-stage="${m.stage}">`
+      + `<span class="mo-emo">${m.emo}</span><span>${m.ko}</span></div>`).join('');
+    const vg = document.getElementById('bodyVignette');
+    if (vg) vg.classList.toggle('on', ms.some((m) => m.stage >= 3));
+  }
+  // ★§8.6 이 창의 존재 이유: **"왜 내가 지금 이렇지"에 답하는 것.**
+  //   그래서 수치를 나열하지 않고 **효과를 원인과 함께** 적는다 — "이속 −8% (피로 0.62)".
+  //   그 문장의 재료(parts)는 서버가 계산해 보낸다(하네스도 클라도 곡선을 다시 안 푼다).
+  function renderBodyPanel(body) {
+    const b = myBody;
+    if (!b) { body.innerHTML = '<div class="bd-none">몸 상태를 아직 못 받았다 — 잠시 뒤 다시 열어 보라.</div>'; return; }
+    const pct = (v) => Math.max(0, Math.min(100, v));
+    const need = (emo, name, v) => {
+      const cls = v < 25 ? 'bad' : (v < 50 ? 'warn' : '');
+      return `<div class="bd-row"><span class="bd-emo">${emo}</span><span class="bd-name">${name}</span>`
+        + `<span class="bd-bar"><span class="bd-fill ${cls}" style="width:${pct(v)}%"></span></span>`
+        + `<span class="bd-num">${Math.round(v)}%</span></div>`;
+    };
+    const sev = (emo, name, v) => {
+      const p2 = pct(v * 100), cls = v > 0.7 ? 'bad' : (v > 0.4 ? 'warn' : '');
+      return `<div class="bd-row"><span class="bd-emo">${emo}</span><span class="bd-name">${name}</span>`
+        + `<span class="bd-bar"><span class="bd-fill ${cls}" style="width:${p2}%"></span></span>`
+        + `<span class="bd-num">${Math.round(p2)}%</span></div>`;
+    };
+    let h = '<div class="bd-sec">욕구</div>';
+    h += need('🍖', '배고픔', b.hunger) + need('💧', '목마름', b.thirst);
+    h += '<div class="bd-sec">몸</div>';
+    h += sev('🥶', '추위', b.cold) + sev('😮‍💨', '피로', b.fatigue) + sev('🩹', '부상', b.injury);
+    if (b.injury > 0.01) {
+      h += `<div class="bd-why">부상은 시간이 낫게 한다${b.herb ? ' · <b>약초가 듣는 중</b>(회복 빨라짐)' : ' — <b>약초(herb)</b>를 먹으면 빨라진다'}</div>`;
+    }
+    h += '<div class="bd-sec">지금 걸린 효과</div>';
+    const parts = (b.parts || []).filter((x) => x.move < 0.999 || x.work < 0.999 || x.axis === 'morale');
+    if (!parts.length) h += '<div class="bd-none">없다 — 몸이 성하다.</div>';
+    else {
+      for (const x of parts) {
+        const bits = [];
+        if (x.move < 0.999) bits.push(`이속 ${Math.round((x.move - 1) * 100)}%`);
+        if (x.work < 0.999) bits.push(`작업 ${Math.round((x.work - 1) * 100)}%`);
+        if (x.work > 1.001) bits.push(`작업 +${Math.round((x.work - 1) * 100)}%`);
+        h += `<div class="bd-why">${x.emo} ${bits.join(' · ')} <b>(${x.ko} ${x.sev.toFixed(2)})</b></div>`;
+      }
+    }
+    h += `<div class="bd-sec">합계</div><div class="bd-why">이속 <b>×${b.moveMult.toFixed(2)}</b> · 작업속도 <b>×${b.workMult.toFixed(2)}</b></div>`;
+    if (b.floored) h += '<div class="bd-floor">★바닥이 걸렸다 — 아무리 나빠져도 이보다 느려지지 않는다(죽음의 나선 방지).</div>';
+    body.innerHTML = h;
+  }
+
   function renderSide(name) {
     const body = document.getElementById('spBody');
-    if (name === 'craft') renderCraftPanel2(body);
+    if (name === 'body') renderBodyPanel(body);
+    else if (name === 'craft') renderCraftPanel2(body);
     else if (name === 'build') renderBuildPanel(body);
     else if (name === 'claims') renderClaimsPanel(body);
     else if (name === 'tribe') { body.innerHTML = '<div id="tribeBody"></div>'; renderTribePanel(); }
