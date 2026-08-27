@@ -112,6 +112,18 @@ function buildDeliverable(depositMap) {
   return { items, toEcon, fromEcon };
 }
 
+// ★★[거래소 배치 2026-08-27] **물리 상한 부품 — 여기가 정본이다.**
+//   B-1 이 세운 규칙: *마을은 없는 걸 못 준다.* 한 거래가 그 품목 재고의 `frac` 을 넘겨 가져갈 수 없다.
+//   게시판 보상(`makeRequest`)과 거래소(`server/trade.js`)가 **같은 이 함수를 부른다** —
+//   두 벌로 두면 한쪽만 고쳐지는 날이 오고, 그날 "게시판은 되는데 거래소는 안 되는" 마을이 생긴다.
+//   ⚠**환산(가격 비율 × 배수)은 공유하지 않는다.** 게시판은 프리미엄을 얹고 최소 1을 보장하지만
+//     (의뢰는 0 보상이면 의뢰가 아니다), 거래소에서 최소 1 보장은 **공짜 물건**이 된다. 뜻이 다르다.
+function payableQty(stock, frac) {
+  const s = Number(stock) || 0, f = Number(frac) || 0;
+  if (!(s > 0) || !(f > 0)) return 0;
+  return Math.floor(s * f);
+}
+
 // ── 계절 — econ 정본 함수를 그대로 부른다(사본 금지) ──────────────────────────
 let _econV2 = null;
 function seasonOf(day) {
@@ -133,6 +145,15 @@ function pricesOf(econV2, v, day) {
   if (v._priceCache && v._priceCacheDay === day) return v._priceCache;
   return econV2.computeShadowPrices(v);
 }
+// ★[거래소 2026-08-27] **캐시를 무시하고 지금 재고로** 다시 매긴 시세.
+//   왜 필요한가 ①: 거래소가 큰 거래를 **한 조각씩** 값을 매기려면(trade.js `planSliced`),
+//   조각마다 재고가 달라진 뒤의 시세를 봐야 한다. 하루 캐시를 보면 그 움직임이 안 보인다.
+//   왜 필요한가 ② [`e2e-trade ⑤` 실측]: 거래소의 **표시·견적**도 이걸 써야 한다.
+//   하루 캐시로 표시하면 플레이어가 재고를 ±30% 움직여도 화면 값이 소수점까지 그대로라
+//   (ⓐ 이 배치의 존재 이유가 화면에서 사라지고 ⓑ 표시된 비율과 실제 수령량이 갈린다).
+//   ⚠여전히 **정본 함수 하나**를 부를 뿐이다 — 가격을 여기서 계산하지 않는다.
+//   ⚠NPC 교역(`tickTradeV2`)은 종전대로 하루 캐시를 읽는다 — 이 접근자는 그 경로를 안 건드린다.
+function pricesFresh(econV2, v) { return econV2.computeShadowPrices(v); }
 
 // ── 장부 ──────────────────────────────────────────────────────────────────────
 function createLedger(opts) {
@@ -385,7 +406,7 @@ function createLedger(opts) {
       const stock = +sto[r] || 0, pRew = +prices[r] || 0;
       if (!(stock > 0) || !(pRew > 0)) continue;
       const d = s.det.get(r);
-      cands.push({ r, stock, pRew, glut: !!(d && d.glut), payable: Math.floor(stock * cfg.REW_STOCK_FRAC) });
+      cands.push({ r, stock, pRew, glut: !!(d && d.glut), payable: payableQty(stock, cfg.REW_STOCK_FRAC) });
     }
     if (!cands.length) { stats.reqNoPay++; return null; }
     cands.sort((a, b) => ((b.glut ? 1 : 0) - (a.glut ? 1 : 0)) || (b.payable - a.payable));
@@ -605,4 +626,5 @@ function deliverToVillage(a) {
     rew: rewPaid, rewRes, rewItem: rewPlayerItem, done: c.done, req: c.req };
 }
 
-module.exports = { createLedger, CFG, TYPES, briefLine, boardLine, koRes, josa, seasonOf, KO_SEASON, buildDeliverable, deliverToVillage };
+module.exports = { createLedger, CFG, TYPES, briefLine, boardLine, koRes, josa, seasonOf, KO_SEASON,
+  buildDeliverable, deliverToVillage, pricesOf, pricesFresh, payableQty };

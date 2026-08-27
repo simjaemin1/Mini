@@ -3022,6 +3022,14 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'village_brief') tryVillageBrief(player, msg.vid);
   else if (msg.type === 'village_board') tryVillageBoard(player, msg.vid);
   else if (msg.type === 'village_deliver') tryVillageDeliver(player, msg.vid, msg.item, msg.want);
+  else if (msg.type === 'village_trade') tryVillageTrade(player, msg.vid);                                   // ★[거래소] 시세표
+  else if (msg.type === 'village_trade_exec') tryVillageTradeExec(player, msg.vid, msg.give, msg.take, msg.qty);  // ★[거래소] 교환
+  else if (msg.type === 'village_trade_quote') {                                                            // ★[거래소] 견적(확정 전 표시)
+    if (SimVillages.villageTradeQuote) {
+      const q = SimVillages.villageTradeQuote(msg.vid | 0, player.x, player.y, msg.give, msg.take, msg.qty);
+      send(player.ws, { type: 'village_trade_quote', quote: q, vid: msg.vid | 0 });
+    }
+  }
   // ★★[테스트 전용 · 기본 OFF] E2E 하네스가 재료를 채운다. `E2E_GIVE=1` 일 때만 **분기 자체가 존재**한다 —
   //   기본 부팅에서는 이 메시지가 아무 일도 안 한다(라이브에 새 능력이 생기지 않는다).
   //   왜 필요한가: 건립 사슬(돌·통나무·곡괭이 → 사유지 → 3단계)을 실클라에서 처음부터 캐게 하면
@@ -5555,6 +5563,29 @@ function tryVillageBoard(player, vid) {
   if (r.err) { send(player.ws, { type: 'notice', text: `🏘️ ${r.err}` }); return; }
   send(player.ws, { type: 'village_board', board: r });
 }
+// ★[거래소 2026-08-27] 시세표 — **그 마을 앞에서만** 답한다(게이트는 villages.js `_villageNear`).
+function tryVillageTrade(player, vid) {
+  if (!SimVillages.villageTradeBoard) return;
+  const r = SimVillages.villageTradeBoard(vid | 0, player.x, player.y, player.inventory);
+  if (r.err) { send(player.ws, { type: 'notice', text: `🏪 ${r.err}` }); return; }
+  send(player.ws, { type: 'village_trade', trade: r });
+}
+// ★교환 — 서버 권위. 비율도 상한도 서버가 정하고, 클라는 "이거 내고 저거 받겠다"만 말한다.
+function tryVillageTradeExec(player, vid, giveRes, takeRes, qty) {
+  if (!SimVillages.villageTradeExec) return;
+  const r = SimVillages.villageTradeExec(vid | 0, player.x, player.y, player.inventory, giveRes, takeRes, qty);
+  if (r.err) { send(player.ws, { type: 'notice', text: `🏪 ${r.err}` }); return; }
+  savePlayer(player);
+  send(player.ws, { type: 'inventory', inventory: player.inventory });
+  const gave = Object.entries(r.gaveItems || {}).map(([k, q]) => `${ITEM_LABEL_SERVER[k] || k} ${q}`).join(' · ');
+  send(player.ws, { type: 'notice', text: `🏪 ${r.name} 거래소 — ${gave} → ${ITEM_LABEL_SERVER[r.tookItem] || r.tookItem} ${r.take}`
+    + (r.capped ? ` (마을 재고가 모자라 ${r.wanted}→${r.give}개만 받았다)` : '') });
+  // ★시세표를 **다시 보내 준다** — 방금 내 거래가 시세를 움직였을 수 있고, 그걸 보는 게 이 배치의 요점이다.
+  try {
+    const b = SimVillages.villageTradeBoard(vid | 0, player.x, player.y, player.inventory);
+    if (!b.err) send(player.ws, { type: 'village_trade', trade: b, after: { giveRes: r.giveRes, takeRes: r.takeRes } });
+  } catch (e) {}
+}
 function tryVillageDeliver(player, vid, item, want) {
   if (!SimVillages.villageDeliver) return;
   const r = SimVillages.villageDeliver(vid | 0, player.x, player.y, player.inventory, item, want);
@@ -5717,6 +5748,9 @@ function __testBind() {
     players, savePlayer,
     // ── 신체 상태 §7 E2E(2026-08-26) ── **정본 모듈을 그대로 내준다**(하네스가 곡선을 다시 짜면 사본이다).
     Body, damagePlayer, doEat, isIndoorAt, seasonColdNow, FOOD_EFFECTS,
+    // ── 거래소 E2E(2026-08-27) ── 정본을 그대로 내준다(하네스가 가격을 다시 풀면 사본이다)
+    Trade: require('./trade'), Events: require('./events'), SimVillages,
+    tryVillageTrade, tryVillageTradeExec,
     HUNGER_MAX, THIRST_MAX, MOVE_SPEED,
   };
 }

@@ -4267,6 +4267,46 @@ function villageDeliver(vid, px, py, inventory, item, want) {
   return Object.assign({ ok: true, vid: vid | 0, name: g.vil.name }, r);
 }
 
+// =============================================================================
+// 거래소 — 플레이어 물물교환 [재민 확정 2026-08-27]
+// =============================================================================
+// ★★**원격 조회 API 를 만들지 않는다.** 둘 다 `_villageNear`(브리핑과 같은 260px 게이트)를 통과해야 한다 —
+//   이웃 마을 시세는 **걸어가서 보는 것**이고, 그 정보 비대칭이 곧 콘텐츠다(§3.2 캐논).
+//   그래서 이 두 함수의 첫 줄이 게이트이고, 게이트 없는 우회로는 어디에도 없다(`test-trade ⑦`).
+//
+// ★가격·상한은 `server/trade.js` → `server/events.js` 정본으로 흐른다. 여기서 계산하는 건 없다.
+// ★[2026-08-27] 게임일을 안 넘긴다 — 거래소 시세는 **지금 재고의 함수**다(하루 캐시 금지 · trade.js 머리 주석).
+const Trade = require('./trade');
+
+function villageTradeBoard(vid, px, py, inventory) {
+  if (!state.ledger) return { err: '아직 장부가 없다' };
+  const g = _villageNear(vid, px, py);
+  if (g.err) return g;
+  return Object.assign({ ok: true }, Trade.board(state.ledger, state.econV2, g.vil, vid | 0, inventory));
+}
+
+// 견적(마른 실행) — 패널이 "확정" 전에 비율·최대량을 보여 주려면 필요하다. 실행과 **같은 게이트**를 통과한다.
+function villageTradeQuote(vid, px, py, giveRes, takeRes, qty) {
+  if (!state.ledger) return { err: '아직 장부가 없다' };
+  const g = _villageNear(vid, px, py);
+  if (g.err) return g;
+  return Trade.quote(state.ledger, state.econV2, g.vil, vid | 0, String(giveRes || ''), String(takeRes || ''), qty);
+}
+
+function villageTradeExec(vid, px, py, inventory, giveRes, takeRes, qty) {
+  if (!state.ledger) return { err: '아직 장부가 없다' };
+  const g = _villageNear(vid, px, py);
+  if (g.err) return g;
+  const r = Trade.exchange({
+    ledger: state.ledger, econV2: state.econV2, vil: g.vil, vid: vid | 0, inventory,
+    giveRes: String(giveRes || ''), takeRes: String(takeRes || ''), giveQty: qty,
+    deposit: playerVillageDeposit,   // ★실물 이동은 정본 하나(게시판 납품과 같은 함수)
+  });
+  if (!r.ok) return { err: r.err };
+  // ★어장(낚시 v2)처럼 **가격 갱신 코드가 없다** — 재고가 움직였으니 다음 조회에서 시세가 저절로 달라진다.
+  return r;
+}
+
 // 클라가 마을 근처인지 스스로 알 수 있게 반경만 알려 준다(판정은 서버가 한다)
 function briefRadiusPx() { return EV_BRIEF_PX; }
 
@@ -4411,6 +4451,8 @@ module.exports = {
   foundPlayerVillage, playerVillageInventory, playerVillageAt, playerVillageDeposit, playerVillageDepositMap,
   // ★[2026-08-25 사건 레이어] 촌장 브리핑 · 게시판 · 납품 — zone.js 핸들러가 소비
   villageBrief, villageBoard, villageDeliver, villageAnchorPx, briefRadiusPx,
+  // ★[2026-08-27 거래소] 물물교환 — zone.js 가 소비. 둘 다 260px 게이트 안에서만 답한다.
+  villageTradeBoard, villageTradeQuote, villageTradeExec,
   // ★[2026-08-26 낚시 v2] 어장 결손 접점 — zone.js 낚시 경로가 소비한다(econ 무수정)
   waterVillageAt, refreshFishSustain, refreshAllFishSustain,
   __e2eForceShortage, __e2eDayFreeze,   // ★테스트 전용 — zone.js 가 E2E_GIVE 로 게이트한다(기본 부팅에선 도달 불가)

@@ -5420,6 +5420,8 @@ const SIM_JOB_EMOJI = {
   //   전달은 UI 보고서가 아니라 **세계 안의 말**이다(설계 §3.2). 대시보드를 만들지 않는다.
   // ★[신체 상태 §7] 서버가 보낸 몸 상태. 연속값은 **본인 것만** 온다(§8.3).
   let myBody = null;
+  // ★[거래소 2026-08-27] 그 마을 시세표 + 지금 고른 짝. **서버가 정본**이고 클라는 고르기만 한다.
+  let myTrade = null, trGive = null, trTake = null, trQty = 1, trQuote = null;
   const villageBubbles = new Map();  // vid -> {lines, until}
   // ★★[낚시 v2 2026-08-26] 찌 상태 — 서버가 정본이다. 클라는 **그리기만** 한다(시각을 스스로 세지 않는다).
   //   { state:'wait'|'bite', x, y, since, windowMs }
@@ -6978,6 +6980,14 @@ const SIM_JOB_EMOJI = {
         showNotice(`🧓 ${b.name} 촌장 — ${b.lines[0]}` + (b.board ? `  (게시판 ${b.board}건 · Shift+G)` : ''), 5000);
         needsRedraw = true;
       }
+    } else if (msg.type === 'village_trade') {
+      myTrade = msg.trade; window.__tradeBoard = msg.trade;
+      // ★교환 직후엔 서버가 시세표를 다시 보낸다 — 방금 내 거래가 값을 움직였을 수 있고, 그걸 보는 게 요점이다.
+      if (msg.after) { trQuote = null; }
+      if (activeSide === 'trade') renderSide('trade');
+    } else if (msg.type === 'village_trade_quote') {
+      trQuote = msg.quote; window.__tradeQuote = msg.quote;
+      if (activeSide === 'trade') renderSide('trade');
     } else if (msg.type === 'fish_state') {
       // ★손맛의 정본 상태. 'bite' 로 바뀌는 그 순간이 이 동사의 전부다.
       // ★★서버가 보내는 좌표는 **존 로컬**이다. 렌더러는 **절대 월드** 좌표를 쓴다(`item.wx` 규약).
@@ -11387,6 +11397,7 @@ const SIM_JOB_EMOJI = {
   window.__moodles = () => [...document.querySelectorAll('#moodles .moodle')]
     .map((el) => ({ axis: el.dataset.axis, stage: +el.dataset.stage }));
   window.__panelOpen = () => activeSide || null;
+  window.__tradeSel = () => ({ give: trGive, take: trTake, qty: trQty });
   window.__panelText = () => (document.getElementById('spBody') || {}).textContent || '';
   window.__vignetteOn = () => !!(document.getElementById('bodyVignette') || {}).classList?.contains('on');
 
@@ -12747,11 +12758,17 @@ const SIM_JOB_EMOJI = {
     document.querySelectorAll('.sb-icon').forEach(t => t.classList.toggle('active', t.dataset.side === name));
     document.getElementById('spTitle').textContent = ({
       craft: '🔨 제작', build: '🏗️ 건축', tribe: '🛡️ 길드', market: '🏪 시세',
-      skills: '📚 스킬', claims: '🏛️ 사유지', body: '🫀 상태',
+      skills: '📚 스킬', claims: '🏛️ 사유지', body: '🫀 상태', trade: '🏪 거래소',
     })[name] || name;
     // ★[§8.2 패널 프레임 규약] 이 표에 없는 이름은 **영문 키가 그대로 제목에 뜬다**(실제로 `body` 가 그랬다).
     //   다음 패널을 붙이는 사람에게: ①`#sidebar` 에 `.sb-icon[data-side]` 한 줄(단축키 병기)
     //   ②이 표에 한글 제목 ③`renderSide` 에 분기 — 셋을 다 해야 탭이 완성된다.
+    // ★거래소는 **열 때 서버에 물어본다** — 시세를 클라가 캐시해 두면 그게 곧 낡은 시세다.
+    if (name === 'trade') {
+      const vid = window.__evNearVid;
+      if (vid == null) { myTrade = null; }
+      else window.__sendPrimary({ type: 'village_trade', vid });
+    }
     renderSide(name);
   }
   function closeSide() {
@@ -12822,6 +12839,7 @@ const SIM_JOB_EMOJI = {
     if (k === 'i') { toggleInv(); e.preventDefault(); }
     else if (k === 'k') { toggleSide('craft'); e.preventDefault(); }
     else if (k === 'h' && e.shiftKey) { toggleSide('body'); e.preventDefault(); }   // ★[신체 상태] 상태 패널
+    else if (k === 't' && e.shiftKey) { toggleSide('trade'); e.preventDefault(); }  // ★[거래소] 마을 시세표
     else if (k === 'b' && e.shiftKey) { toggleSide('build'); e.preventDefault(); }
     else if (k === 'y') { toggleSide('claims'); e.preventDefault(); }
     else if (k === 'p') { toggleSide('skills'); e.preventDefault(); }
@@ -12882,9 +12900,77 @@ const SIM_JOB_EMOJI = {
     body.innerHTML = h;
   }
 
+  // ★★[거래소 §8.5 문법] 세 클릭 안에 끝난다: **낼 것 고르기 → 받을 것 고르기 → 확정**.
+  //   수치는 전부 서버가 준 것을 그대로 그린다 — 클라가 비율을 다시 풀면 그게 사본이고,
+  //   화면과 실제가 갈리는 순간 그게 "보이지 않는 손"이 된다(일관성 원칙).
+  function renderTradePanel(body) {
+    if (!myTrade) {
+      body.innerHTML = '<div class="bd-none">거래소는 <b>마을 중심 가까이</b>에서만 열린다 — 이웃 마을 시세는 걸어가서 보는 것이다.</div>';
+      return;
+    }
+    const t = myTrade;
+    const kg = (r) => r.ko || r.res;
+    let h = `<div class="tr-head"><span>🏪 <b>${t.name}</b> 거래소</span>`
+      + `<span>시세는 <b>${t.numeraireKo}</b> 환산 · 마을 몫 ${Math.round(t.spread * 100)}%</span></div>`;
+    h += '<div class="tr-hdr"><span></span><span>품목</span><span class="tr-num">시세</span>'
+      + '<span class="tr-num">마을</span><span class="tr-num">내것</span></div>';
+    for (const r of t.rows) {
+      const cls = (trGive === r.res) ? ' give' : (trTake === r.res ? ' take' : '');
+      const off = (!r.canGive && !r.canTake) ? ' off' : '';
+      h += `<div class="tr-row${cls}${off}" data-res="${r.res}">`
+        + `<span>${trGive === r.res ? '📤' : (trTake === r.res ? '📥' : '')}</span>`
+        + `<span>${kg(r)}</span>`
+        + `<span class="tr-num">${r.num == null ? '—' : r.num}</span>`
+        + `<span class="tr-num">${r.sell}</span>`
+        + `<span class="tr-num">${r.mine}</span></div>`;
+    }
+    h += '<div class="tr-deal">';
+    if (!trGive) h += '<div class="tr-line">낼 물건을 고르라 (📤)</div>';
+    else if (!trTake) h += `<div class="tr-line">📤 <b>${kg(t.rows.find((r) => r.res === trGive) || {})}</b> — 이제 <b>받을</b> 물건을 고르라 (📥)</div>`;
+    else if (trQuote && trQuote.err) h += `<div class="tr-line">⚠ ${trQuote.err}</div>`;
+    else if (trQuote && trQuote.ok) {
+      const gk = kg(t.rows.find((r) => r.res === trGive) || {}), tk = kg(t.rows.find((r) => r.res === trTake) || {});
+      h += `<div class="tr-line">📤 ${gk} <b>${trQuote.give}</b> → 📥 ${tk} <b>${trQuote.take}</b></div>`;
+      h += `<div class="tr-line">한 개당 ${trQuote.ratio}${trQuote.avgRatio && Math.abs(trQuote.avgRatio - trQuote.ratio) > 1e-4
+        ? ` · 이 물량 평균 <b>${trQuote.avgRatio}</b>(많이 낼수록 값이 나빠진다)` : ''}</div>`;
+      if (trQuote.capped) h += `<div class="tr-warn">마을이 내줄 수 있는 건 ${trQuote.cap}까지 — ${trQuote.maxGive}개만 받는다</div>`;
+    } else h += '<div class="tr-line">…</div>';
+    h += `<div class="tr-qty"><input id="trQty" type="number" min="1" value="${trQty}">`
+      + `<button class="tr-btn" id="trGo"${(trGive && trTake && trQuote && trQuote.ok && trQuote.take > 0) ? '' : ' disabled'}>바꾼다</button></div>`;
+    h += '<div class="tr-hint">시세 = 이 마을이 지금 매기는 값이다. 내가 팔면 흔해져 떨어지고, 사면 귀해져 오른다.<br>'
+      + '마을이 원하는 물건은 게시판(Shift+G)에 걸린다 — 그쪽이 늘 값이 낫다.</div>';
+    h += '</div>';
+    body.innerHTML = h;
+    const vid = window.__evNearVid;
+    const ask = () => {
+      if (trGive && trTake) window.__sendPrimary({ type: 'village_trade_quote', vid, give: trGive, take: trTake, qty: trQty });
+    };
+    body.querySelectorAll('.tr-row').forEach((el) => {
+      el.onclick = () => {
+        const res = el.dataset.res;
+        const row = t.rows.find((r) => r.res === res);
+        if (!row) return;
+        if (trGive === res) { trGive = null; }
+        else if (trTake === res) { trTake = null; }
+        else if (!trGive && row.canGive) trGive = res;
+        else if (!trTake && row.canTake && res !== trGive) trTake = res;
+        else if (row.canGive) { trGive = res; if (trTake === res) trTake = null; }
+        trQuote = null; renderSide('trade'); ask();
+      };
+    });
+    const qi = document.getElementById('trQty');
+    if (qi) qi.onchange = () => { trQty = Math.max(1, parseInt(qi.value, 10) || 1); ask(); };
+    const go = document.getElementById('trGo');
+    if (go) go.onclick = () => {
+      window.__sendPrimary({ type: 'village_trade_exec', vid, give: trGive, take: trTake, qty: trQty });
+      trQuote = null;
+    };
+  }
+
   function renderSide(name) {
     const body = document.getElementById('spBody');
-    if (name === 'body') renderBodyPanel(body);
+    if (name === 'trade') renderTradePanel(body);
+    else if (name === 'body') renderBodyPanel(body);
     else if (name === 'craft') renderCraftPanel2(body);
     else if (name === 'build') renderBuildPanel(body);
     else if (name === 'claims') renderClaimsPanel(body);
