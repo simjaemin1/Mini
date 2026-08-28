@@ -631,3 +631,13 @@ html, body { margin: 0; padding: 0; height: 100%; font-family: -apple-system, "S
   background:rgba(80,140,80,.30);color:#cfe8cf;font:600 12px system-ui,sans-serif;cursor:pointer}
 .tr-btn[disabled]{opacity:.4;cursor:default}
 .tr-hint{color:#7f8d9a;font:500 11px/1.45 system-ui,sans-serif;margin-top:6px}
+
+/* ★[무게 배치 2026-08-27] 소지 무게 · 과적 · 넘침 딱지 */
+#carryHud.over b { color: #e08060; }
+#carryHud.over { text-shadow: 0 0 6px rgba(224,128,96,.35); }
+.it-kg { color: #7d8794; font-size: 11px; margin-left: 4px; }
+.bd-dim { color: #7d8794; font-size: 11px; }
+.tr-row.glut { opacity: .82; }
+.tr-glut { font-style: normal; font-size: 10px; color: #c9a227; border: 1px solid #6b5a1a;
+           border-radius: 3px; padding: 0 3px; margin-left: 4px; vertical-align: middle; }
+.moodle[data-axis="carry"] { border-color: #6b5a1a; }

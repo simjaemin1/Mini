@@ -3393,11 +3393,21 @@ const PV_DEPOSIT_MAP = {
   berry: 'fruit', fish: 'fish', meat_raw: 'meat', hide: 'hide', herb: 'herb',
   fish_cooked: 'cooked_food', meat_cooked: 'cooked_food', berry_jam: 'cooked_food',
   wood: 'wood', stone: 'stone', ore: 'ore', iron_ore: 'iron',
+  // ★★[재민 확정 2026-08-27 · 곡물 품목화] 곡물이 플레이어 손에 들어온다.
+  //   이 한 줄이면 게시판 의뢰·보상·거래소가 **특별 취급 코드 없이** 곡물을 다룬다
+  //   (`events.buildDeliverable` 이 이 표에서 파생되기 때문이다 — 사본을 만들지 않는 설계의 값).
+  //   여태 곡식은 "표시 기준(numeraire)인데 정작 표에 없는" 재화였다(거래소 배치 회부 B-2).
+  food: 'food', food_cooked: 'cooked_food',
 };
 const PV_DEPOSIT_RATE = (() => { const x = parseFloat(process.env.VILLAGE_DEPOSIT_RATE || '1'); return (isFinite(x) && x > 0) ? x : 1; })();
 function playerVillageDepositMap() { return PV_DEPOSIT_MAP; }
 // 반환: { ok, moved: {econRes: qty}, err }
-function playerVillageDeposit(vil, inventory, want) {
+// ★★[무게 배치 2026-08-27] `unitsOf(item, n)` — **개체 무게를 재화 단위로 환산**하는 선택 콜백.
+//   왜 여기인가: 실물 이동의 정본이 이 함수 하나라, 여기에 얹으면 **게시판 납품과 거래소가 같은 환산**을 쓴다.
+//   2kg 물고기 한 마리는 표준 0.9kg 짜리 2.2마리어치다 — 그게 게시판에서만 통하고 거래소에선 안 통하면
+//   그 순간 "같은 물건이 어디서 파느냐에 따라 다른 값"이 되고, 그게 보이지 않는 손이다.
+//   ⚠콜백이 없으면 **종전 그대로**(개수 × 환산율)다 — 이 배치 이전 경로는 한 줄도 안 달라진다.
+function playerVillageDeposit(vil, inventory, want, unitsOf) {
   const v = vil && vil.econ;
   if (!v) return { ok: false, err: '마을을 찾지 못했다' };
   const moved = {}, taken = {};
@@ -3410,7 +3420,9 @@ function playerVillageDeposit(vil, inventory, want) {
     const put = Math.min(q, have);
     if (put <= 0) continue;
     taken[item] = put;
-    moved[res] = +((moved[res] || 0) + put * PV_DEPOSIT_RATE).toFixed(3);
+    const units = (typeof unitsOf === 'function') ? Number(unitsOf(item, put)) : put;
+    const u = Number.isFinite(units) && units > 0 ? units : put;
+    moved[res] = +((moved[res] || 0) + u * PV_DEPOSIT_RATE).toFixed(3);
   }
   if (!Object.keys(taken).length) return { ok: false, err: '넣을 수 있는 물건이 없다(곳간은 식량·목재·석재·광물만 받는다)' };
   for (const [item, q] of Object.entries(taken)) inventory[item] -= q;
@@ -4241,7 +4253,7 @@ function villageBoard(vid, px, py) {
 }
 
 // ★납품 — 서버 권위. 실물 이동은 `playerVillageDeposit`(정본), 몫 확정은 장부(원자적).
-function villageDeliver(vid, px, py, inventory, item, want) {
+function villageDeliver(vid, px, py, inventory, item, want, unitsOf) {
   if (!state.ledger) return { err: '아직 장부가 없다' };
   const g = _villageNear(vid, px, py);
   if (g.err) return g;
@@ -4257,6 +4269,7 @@ function villageDeliver(vid, px, py, inventory, item, want) {
   const r = Events.deliverToVillage({
     ledger: state.ledger, vil: g.vil, vid: vid | 0, inventory,
     item: String(item), want, deposit: playerVillageDeposit,
+    unitsOf,                       // ★[무게] 개체 무게 → 재화 단위(거래소와 같은 환산)
   });
   if (!r.ok) return { err: r.err };
   // 진척 영속 — 남았으면 갱신, 다 찼으면 다음 하루 경계에 철회되지만 그때까지의 진척도 남긴다.
@@ -4286,20 +4299,30 @@ function villageTradeBoard(vid, px, py, inventory) {
 }
 
 // 견적(마른 실행) — 패널이 "확정" 전에 비율·최대량을 보여 주려면 필요하다. 실행과 **같은 게이트**를 통과한다.
-function villageTradeQuote(vid, px, py, giveRes, takeRes, qty) {
+function villageTradeQuote(vid, px, py, giveRes, takeRes, qty, unitsOf) {
   if (!state.ledger) return { err: '아직 장부가 없다' };
   const g = _villageNear(vid, px, py);
   if (g.err) return g;
-  return Trade.quote(state.ledger, state.econV2, g.vil, vid | 0, String(giveRes || ''), String(takeRes || ''), qty);
+  // ★[무게] 개수 → 단위. 콜백이 없으면 1개=1단위(종전 그대로).
+  const D = state.ledger.deliverable;
+  let u = Math.max(0, Number(qty) || 0);
+  if (typeof unitsOf === 'function') {
+    const items = D.items.get(String(giveRes || '')) || [];
+    if (items.length) { const per = Number(unitsOf(items[0], 1)); if (Number.isFinite(per) && per > 0) u = u * per; }
+  }
+  const q = Trade.quote(state.ledger, state.econV2, g.vil, vid | 0, String(giveRes || ''), String(takeRes || ''), u);
+  if (q && !q.err) { q.giveItems = Math.max(0, Math.floor(Number(qty) || 0)); q.giveUnits = +u.toFixed(3); }
+  return q;
 }
 
-function villageTradeExec(vid, px, py, inventory, giveRes, takeRes, qty) {
+function villageTradeExec(vid, px, py, inventory, giveRes, takeRes, qty, unitsOf) {
   if (!state.ledger) return { err: '아직 장부가 없다' };
   const g = _villageNear(vid, px, py);
   if (g.err) return g;
   const r = Trade.exchange({
     ledger: state.ledger, econV2: state.econV2, vil: g.vil, vid: vid | 0, inventory,
     giveRes: String(giveRes || ''), takeRes: String(takeRes || ''), giveQty: qty,
+    unitsOf,                          // ★[무게] 개체 무게 → 재화 단위(게시판 납품과 같은 환산)
     deposit: playerVillageDeposit,   // ★실물 이동은 정본 하나(게시판 납품과 같은 함수)
   });
   if (!r.ok) return { err: r.err };

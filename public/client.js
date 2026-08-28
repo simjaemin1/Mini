@@ -5422,6 +5422,9 @@ const SIM_JOB_EMOJI = {
   let myBody = null;
   // ★[거래소 2026-08-27] 그 마을 시세표 + 지금 고른 짝. **서버가 정본**이고 클라는 고르기만 한다.
   let myTrade = null, trGive = null, trTake = null, trQty = 1, trQuote = null;
+  let myCarry = null;              // ★[무게] { kg, cap, ratio, over, moveMult, combined, stage, … }
+  let itemWeights = null;          // ★[무게] kg 카탈로그 — **서버가 준다**(클라가 표를 갖지 않는다)
+  let carryCfg = null;
   const villageBubbles = new Map();  // vid -> {lines, until}
   // ★★[낚시 v2 2026-08-26] 찌 상태 — 서버가 정본이다. 클라는 **그리기만** 한다(시각을 스스로 세지 않는다).
   //   { state:'wait'|'bite', x, y, since, windowMs }
@@ -5590,8 +5593,8 @@ const SIM_JOB_EMOJI = {
     else if (k === 'c' && e.shiftKey) sendPrimary({ type: 'claim', kind: 'guild' });  // 길드 영토 (Shift+C)
     else if (k === 'c') sendPrimary({ type: 'claim', kind: 'personal' });  // 개인 사유지 (1 grid)
     else if (k === 't' && !e.shiftKey) sendPrimary({ type: 'claim', kind: 'temporary' });  // 임시 사유지 (1 grid)
-    else if (k === 't') sendPrimary({ type: 'trade_offer', give: 'wood' });
-    else if (k === 'y') sendPrimary({ type: 'trade_offer', give: 'stone' });
+    // ★[재민 확정 2026-08-27] T/Y 물물교환 **제거** — 동의 없는 인벤 이동이자 경제 우회였다.
+    //   플레이어 간 거래는 양방향 제안·수락으로 다시 설계한다(회부_무게_다음층.md P항).
     else if (k === 'f' && e.shiftKey) sendPrimary({ type: 'fish_cast' });   // ★[낚시 v2] 던지기 → (입질 뒤) 챔질. 서버가 상태로 가른다
     else if (k === 'f') { sendPrimary({ type: 'attack' }); myLastAttackAt = performance.now(); }
     else if (k === 'g') {
@@ -5703,8 +5706,6 @@ const SIM_JOB_EMOJI = {
       const a = btn.dataset.action;
       if (a === 'gather') sendPrimary({ type: 'gather' });
       else if (a === 'claim') sendPrimary({ type: 'claim' });
-      else if (a === 'trade_wood') sendPrimary({ type: 'trade_offer', give: 'wood' });
-      else if (a === 'trade_stone') sendPrimary({ type: 'trade_offer', give: 'stone' });
       else if (a === 'attack') sendPrimary({ type: 'attack' });
       else if (a === 'build_wall') sendPrimary({ type: 'build', buildType: 'wall', floor: myBuildFloor });
       else if (a === 'build_chest') sendPrimary({ type: 'build', buildType: 'chest', floor: myBuildFloor });
@@ -6536,6 +6537,9 @@ const SIM_JOB_EMOJI = {
         if (msg.itemRecipes) itemRecipes = msg.itemRecipes;
         if (msg.buildingRecipes) buildingRecipes = msg.buildingRecipes;
         if (msg.cookRecipes) cookRecipes = msg.cookRecipes;
+        // ★[무게 배치] kg 카탈로그·용량 규격을 **서버에서 받는다**(사본 금지 — 클라가 표를 들면 갈린다)
+        if (msg.itemWeights) { itemWeights = msg.itemWeights; window.__itemWeights = msg.itemWeights; }
+        if (msg.carryCfg) { carryCfg = msg.carryCfg; window.__carryCfg = msg.carryCfg; }
         if (msg.foodEffects) foodEffects = msg.foodEffects;
         // 플레이어 장비
         if (msg.equipmentRecipes) equipmentRecipes = msg.equipmentRecipes;
@@ -6965,6 +6969,9 @@ const SIM_JOB_EMOJI = {
       // ★★[신체 상태 §8.3] 서버가 정본이다. 클라는 **그린다**(단계도 서버가 매겨 보낸다 —
       //   여기서 다시 양자화하면 히스테리시스가 두 벌이 되어 깜빡임이 되살아난다).
       if (msg.body) { myBody = msg.body; window.__bodyState = msg.body; renderMoodles(); if (activeSide === 'body') renderSide('body'); }
+      // ★★[무게 배치 2026-08-27] 소지 무게·과적. **서버가 정본**이고 클라는 그린다.
+      //   `combined`(신체×과적, 바닥 적용)는 예측 속도에도 그대로 쓴다 — 안 그러면 러버밴딩이다.
+      if (msg.carry) { myCarry = msg.carry; window.__carryState = msg.carry; renderMoodles(); if (activeSide === 'body') renderSide('body'); }
       updateHud();
     } else if (msg.type === 'village_inventory') {
       // ★★[2026-08-03e 배치 12 ③] 마을 재고 — **서버가 준 값을 그대로 그린다**(클라 재계산 0).
@@ -7267,7 +7274,10 @@ const SIM_JOB_EMOJI = {
     //   같은 값을 쓰고 그 수를 `gauges.body.moveMult` 로 실어 보낸다 —
     //   **안 맞추면 매 틱 보정이 나서 러버밴딩**이 된다(이 줄의 원래 주석이 경고하던 바로 그것).
     //   호환: 아직 안 받았으면 1(=종전과 동일).
-    const bodyMult = (myBody && typeof myBody.moveMult === 'number') ? myBody.moveMult : 1;
+    // ★★[무게 배치] 신체 **× 과적**의 합산 배율. 서버 `moveMultOf()` 가 낸 그 수를 그대로 쓴다 —
+    //   여기서 둘을 따로 곱하면 바닥(0.35) 규칙이 두 벌이 되고, 그 순간 러버밴딩이다.
+    const bodyMult = (myCarry && typeof myCarry.combined === 'number') ? myCarry.combined
+                   : ((myBody && typeof myBody.moveMult === 'number') ? myBody.moveMult : 1);
     const speed = 64 * (canSprintClient ? 2.5 : 1) * bodyMult;
     let mwx = wx, mwy = wy;
     {
@@ -11649,6 +11659,7 @@ const SIM_JOB_EMOJI = {
     berry: '베리', fiber: '풀', meat_raw: '날고기', meat_cooked: '구운고기',
     hide: '가죽', berry_jam: '베리잼', water_bottle: '물병',
     seed_berry: '베리씨앗', herb: '약초', ore: '광물',
+    food: '곡식', food_cooked: '익힌 곡식', fish: '생선', fish_cooked: '구운생선',   // ★[곡물 품목화 2026-08-27]
     ore_chunk: '원석(kg·미확인)',   // ★[11차] 캔 것은 정체를 모른다 — 마을에서 선광(O키)해야 광석/맥석이 갈린다. 덩이 크기가 숙련마다 달라 **kg 단위**로 센다
     // ★[2026-08-02 야금 사슬] 라벨이 없으면 인벤 창에 **영문 키가 그대로** 뜬다(ITEM_LABEL[k] || k).
     iron_ore: '철 정광', charcoal: '숯', meteoric_iron: '운철(隕鐵)', lead: '납', nickel: '니켈',
@@ -11784,6 +11795,14 @@ const SIM_JOB_EMOJI = {
     const plankEl = document.getElementById('invPlank');
     if (plankEl) plankEl.textContent = inventory.plank || 0;
     document.getElementById('invStone').textContent = inventory.stone || 0;
+    // ★[무게 배치] 소지 무게 한 줄. 넘치면 붉어진다(§8.2 — 숫자 하나가 판단을 만든다).
+    const ckg = document.getElementById('carryKg'), ccap = document.getElementById('carryCap');
+    if (ckg && myCarry) {
+      ckg.textContent = (myCarry.kg || 0).toFixed(1);
+      if (ccap) ccap.textContent = String(myCarry.cap || 0);
+      const box = document.getElementById('carryHud');
+      if (box) box.classList.toggle('over', !!myCarry.over);
+    }
     const eqEl = document.getElementById('equippedBadge');
     if (eqEl) {
       const icons = { axe: '🪓', pickaxe: '⛏️', sword: '⚔️' };
@@ -12850,7 +12869,10 @@ const SIM_JOB_EMOJI = {
   function renderMoodles() {
     const box = document.getElementById('moodles');
     if (!box) return;
-    const ms = (myBody && myBody.moodles) || [];
+    // ★[무게 배치] **무거움**은 신체 무들과 같은 프레임에 얹는다(§8.3 — 겉은 계단).
+    //   단계는 서버가 매겨 보낸다(클라가 다시 양자화하면 히스테리시스가 두 벌이 되어 깜빡인다).
+    const ms = ((myBody && myBody.moodles) || []).slice();
+    if (myCarry && myCarry.stage > 0) ms.push({ axis: 'carry', ko: '무거움', emo: '🎒', stage: myCarry.stage });
     box.innerHTML = ms.map((m) =>
       `<div class="moodle s${m.stage}" data-axis="${m.axis}" data-stage="${m.stage}">`
       + `<span class="mo-emo">${m.emo}</span><span>${m.ko}</span></div>`).join('');
@@ -12895,7 +12917,19 @@ const SIM_JOB_EMOJI = {
         h += `<div class="bd-why">${x.emo} ${bits.join(' · ')} <b>(${x.ko} ${x.sev.toFixed(2)})</b></div>`;
       }
     }
-    h += `<div class="bd-sec">합계</div><div class="bd-why">이속 <b>×${b.moveMult.toFixed(2)}</b> · 작업속도 <b>×${b.workMult.toFixed(2)}</b></div>`;
+    // ★★[무게 배치 2026-08-27 · §8.6 확정 항목] **총 무게 → 이동 배율**.
+    //   "왜 내가 지금 이렇지"의 답이 몸만이 아니라 **짐**일 수 있다 — 그 자리를 여기 만든다.
+    if (myCarry) {
+      const c = myCarry;
+      h += '<div class="bd-sec">짐</div>';
+      h += `<div class="bd-why">🎒 <b>${(c.kg || 0).toFixed(1)}kg</b> / 용량 ${c.cap}kg`
+        + `${c.over ? ` — <b>${Math.round((c.ratio - 1) * 100)}% 초과</b>` : ''}</div>`;
+      if (c.moveMult < 0.999) h += `<div class="bd-why">🎒 이속 ${Math.round((c.moveMult - 1) * 100)}% · 피로 ×${(c.fatigueMult || 1).toFixed(2)} <b>(짐 ${(c.ratio).toFixed(2)}배)</b></div>`;
+      if (c.floored) h += '<div class="bd-floor">★과적 바닥 — 더 실어도 이보다 느려지진 않는다(대신 피로는 계속 는다).</div>';
+    }
+    h += `<div class="bd-sec">합계</div><div class="bd-why">이속 <b>×${(myCarry && typeof myCarry.combined === 'number' ? myCarry.combined : b.moveMult).toFixed(2)}</b>`
+      + `${myCarry && myCarry.moveMult < 0.999 ? ` <span class="bd-dim">(몸 ×${b.moveMult.toFixed(2)} × 짐 ×${myCarry.moveMult.toFixed(2)})</span>` : ''}`
+      + ` · 작업속도 <b>×${b.workMult.toFixed(2)}</b></div>`;
     if (b.floored) h += '<div class="bd-floor">★바닥이 걸렸다 — 아무리 나빠져도 이보다 느려지지 않는다(죽음의 나선 방지).</div>';
     body.innerHTML = h;
   }
@@ -12917,9 +12951,11 @@ const SIM_JOB_EMOJI = {
     for (const r of t.rows) {
       const cls = (trGive === r.res) ? ' give' : (trTake === r.res ? ' take' : '');
       const off = (!r.canGive && !r.canTake) ? ' off' : '';
-      h += `<div class="tr-row${cls}${off}" data-res="${r.res}">`
+      // ★★[재민 확정 2026-08-27] **넘침 딱지** — 가격 바닥에 붙어 "아무리 팔아도 값이 안 내려가는" 품목.
+      //   판정은 서버가 정본 가격 함수에 직접 물어본 결과다(클라가 다시 풀지 않는다).
+      h += `<div class="tr-row${cls}${off}${r.glut ? ' glut' : ''}" data-res="${r.res}">`
         + `<span>${trGive === r.res ? '📤' : (trTake === r.res ? '📥' : '')}</span>`
-        + `<span>${kg(r)}</span>`
+        + `<span>${kg(r)}${r.glut ? ' <i class="tr-glut" title="이 마을엔 이미 남아돈다 — 더 갖다 줘도 값이 더 내려가지 않는다">넘침</i>' : ''}</span>`
         + `<span class="tr-num">${r.num == null ? '—' : r.num}</span>`
         + `<span class="tr-num">${r.sell}</span>`
         + `<span class="tr-num">${r.mine}</span></div>`;
@@ -12934,6 +12970,16 @@ const SIM_JOB_EMOJI = {
       h += `<div class="tr-line">한 개당 ${trQuote.ratio}${trQuote.avgRatio && Math.abs(trQuote.avgRatio - trQuote.ratio) > 1e-4
         ? ` · 이 물량 평균 <b>${trQuote.avgRatio}</b>(많이 낼수록 값이 나빠진다)` : ''}</div>`;
       if (trQuote.capped) h += `<div class="tr-warn">마을이 내줄 수 있는 건 ${trQuote.cap}까지 — ${trQuote.maxGive}개만 받는다</div>`;
+      // ★★[무게 배치] **용량 초과 경고** — 막지는 않는다(과적은 플레이어 선택이다).
+      //   넘치게 사서 뒤뚱거리며 나르는 것도 플레이라, 화면은 사실만 말하고 결정은 사람이 한다.
+      if (myCarry && itemWeights) {
+        const wIn = (itemWeights[trQuote.takeRes] || 0) * (trQuote.take || 0);
+        const wOut = (itemWeights[trGive] || 0) * (trQuote.give || 0);
+        const after = Math.max(0, (myCarry.kg || 0) + wIn - wOut);
+        if (after > (myCarry.cap || 0)) {
+          h += `<div class="tr-warn">받으면 <b>${after.toFixed(1)}kg</b> — 용량 ${myCarry.cap}kg 를 넘는다(느려지고 피로가 빨리 찬다). 그래도 살 수 있다.</div>`;
+        }
+      }
     } else h += '<div class="tr-line">…</div>';
     h += `<div class="tr-qty"><input id="trQty" type="number" min="1" value="${trQty}">`
       + `<button class="tr-btn" id="trGo"${(trGive && trTake && trQuote && trQuote.ok && trQuote.take > 0) ? '' : ' disabled'}>바꾼다</button></div>`;
@@ -13106,6 +13152,7 @@ const SIM_JOB_EMOJI = {
   const ITEM_CAT = {
     wood: '자재', stone: '자재', ore: '자재', pillar: '자재', rafter: '자재', thatch: '자재',
     berry: '음식', meat_raw: '음식', meat_cooked: '음식', berry_jam: '음식', herb: '약초',
+    food: '음식', food_cooked: '음식', fish: '음식', fish_cooked: '음식',   // ★[곡물 품목화]
     water_bottle: '음료',
     fiber: '잡화', seed_berry: '씨앗', hide: '잡화',
     axe: '도구', pickaxe: '도구', sword: '도구',
@@ -13199,7 +13246,12 @@ const SIM_JOB_EMOJI = {
         const btn = canMove
           ? `<button data-move="${kind}" data-item="${k}" data-cid="${chestId || ''}">${isContainerItem ? '↑' : '↓'}</button>`
           : '';
-        return `<tr><td class="it-icon">${icon}</td><td class="it-name">${label} <span class="it-count">×${v}</span></td><td class="it-cat">${cat}</td><td class="it-action">${btn}</td></tr>`;
+        // ★★[무게 배치 2026-08-27 · §8.1 첫 실장] 개당 kg 과 그 줄의 총 무게를 **한 줄로만** 적는다.
+        //   (아이템 상세 표 전체는 아직 아니다 — 회부. 지금 필요한 건 "이게 얼마나 무거운가" 하나다.)
+        //   수치는 서버가 준 카탈로그에서 온다(클라가 표를 갖지 않는다).
+        const _w = itemWeights ? itemWeights[k] : null;
+        const _wt = _w ? ` <span class="it-kg" title="개당 ${_w}kg">${(_w * v).toFixed(1)}kg</span>` : '';
+        return `<tr><td class="it-icon">${icon}</td><td class="it-name">${label} <span class="it-count">×${v}</span>${_wt}</td><td class="it-cat">${cat}</td><td class="it-action">${btn}</td></tr>`;
       }).join('');
     };
 

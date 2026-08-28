@@ -130,10 +130,20 @@ async function waitWelcome(s, ms = 15000) {
   const savedBefore = await savedPos(A.playerId);
   ok(!!savedBefore, '①b 전제: central 에 좌표가 저장돼 있다', savedBefore ? `(${Math.round(savedBefore.x)},${Math.round(savedBefore.y)})` : 'X');
 
-  await walk(A, 4, 1, 0.35);                            // ★진짜 이동 — 저장 없음
-  const moved = { ...A.pos };
-  const drift = savedBefore ? Math.hypot(moved.x - savedBefore.x, moved.y - savedBefore.y) : 0;
-  ok(drift > 200, '★①c 전제: **미저장 드리프트가 실제로 생겼다** — 이게 거짓이면 이 검사는 아무것도 안 잰다',
+  // ★★[2026-08-27 무게 배치] **걸린 시간이 아니라 벌어진 거리**로 멈춘다.
+  //   왜 바꿨나: 무게 모델이 들어오면서 검사 플레이어가 **느려졌다**(시작 지급 33.6kg + 베리 41개 20.5kg
+  //   = 용량 25kg 의 216% → 이속 ×0.58). 4초 고정으로 걷던 종전 판은 250px 나가던 것이 **145px** 이 됐고,
+  //   `drift > 200` 전제가 깨졌다 — 제품은 옳은데 하네스가 자기 걸음 속도를 상수로 박아 둔 것이었다.
+  //   ⇒ 목표 거리까지 **걷고 다시 재는** 모양으로 고친다. 앞으로 걸음 배율이 또 바뀌어도 안 깨진다.
+  const DRIFT_MIN = 200;
+  let moved = { ...A.pos }, drift = 0;
+  for (let round = 0; round < 6; round++) {
+    await walk(A, 4, 1, 0.35);                          // ★진짜 이동 — 저장 없음
+    moved = { ...A.pos };
+    drift = savedBefore ? Math.hypot(moved.x - savedBefore.x, moved.y - savedBefore.y) : 0;
+    if (drift > DRIFT_MIN) break;
+  }
+  ok(drift > DRIFT_MIN, '★①c 전제: **미저장 드리프트가 실제로 생겼다** — 이게 거짓이면 이 검사는 아무것도 안 잰다',
     `저장된 (${Math.round((savedBefore||{}).x)},${Math.round((savedBefore||{}).y)}) vs 몸 (${Math.round(moved.x)},${Math.round(moved.y)}) = ${Math.round(drift)}px`);
   const invA = { ...A.inv };
   const token = A.guestToken, pidA = A.playerId;
@@ -158,10 +168,15 @@ async function waitWelcome(s, ms = 15000) {
   B.send({ type: '__e2e_give', items: { stone: 7 } });
   await sleep(1500);
   const savedMid = await savedPos(pidA);
-  await walk(B, 4, -1, 0.6);                            // 다시 미저장 드리프트를 만든다
-  const moved2 = { ...B.pos };
-  const drift2 = savedMid ? Math.hypot(moved2.x - savedMid.x, moved2.y - savedMid.y) : 0;
-  ok(drift2 > 200, '③a 전제: 두 번째 세션도 **미저장 드리프트**를 만들었다', `${Math.round(drift2)}px`);
+  // ★같은 이유로 여기도 거리 기준이다(위 ①c 주석 참조 — 짐이 무거우면 4초로는 200px 을 못 간다).
+  let moved2 = { ...B.pos }, drift2 = 0;
+  for (let round = 0; round < 6; round++) {
+    await walk(B, 4, -1, 0.6);                          // 다시 미저장 드리프트를 만든다
+    moved2 = { ...B.pos };
+    drift2 = savedMid ? Math.hypot(moved2.x - savedMid.x, moved2.y - savedMid.y) : 0;
+    if (drift2 > DRIFT_MIN) break;
+  }
+  ok(drift2 > DRIFT_MIN, '③a 전제: 두 번째 세션도 **미저장 드리프트**를 만들었다', `${Math.round(drift2)}px`);
   const C = openSession(token);              // ★B 를 닫지 않는다
   await C.ready;
   ok(await waitWelcome(C), '③ 겹친 재접속 — welcome 도달');

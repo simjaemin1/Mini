@@ -294,6 +294,8 @@ function savePlayer(player, extra = {}) {
       oreCarry: player.oreCarry || {},      // ★선광 소수분 이월(kg) — 버리지 않는다
       fishStats: player.fishStats || null,  // ★[낚시 v2] 어획 기록 — 이력서 패널(§8.4)의 첫 씨앗
       body: Body.toSave(player),            // ★[신체 상태 §7] 추위·피로·부상·사기(허기·갈증은 전용 컬럼)
+      kgLedger: Carry.toSave(player),       // ★[무게] 개체 실제 kg 장부(1.7kg 물고기 ≠ 0.4kg 물고기)
+      lots: Lots.toSave(player),            // ★[무게] 식품 로트(취득일) — 부패 곡선이 앉을 자리
     }),
     equipped: player.equipped || null,
     last_zone: extra.last_zone ?? null, // 명시적으로 넘긴 zone만 변경
@@ -774,6 +776,9 @@ for (const [item, r] of Object.entries(BUILDING_RECIPES)) {
 const COOK_RECIPES = {
   meat_cooked: { cost: { meat_raw: 1 }, produces: { meat_cooked: 1 }, label: '구운 고기' },
   berry_jam:   { cost: { berry: 3 },    produces: { berry_jam: 1 },   label: '베리잼' },
+  // ★[곡물 배치] 생곡 → 익힌 곡식. 생곡(7)과 조리(34)의 격차가 화덕 수요의 실체다.
+  food_cooked: { cost: { food: 1 },     produces: { food_cooked: 1 }, label: '익힌 곡식' },
+  fish_cooked: { cost: { fish: 1 },     produces: { fish_cooked: 1 }, label: '구운 생선' },
 };
 
 // ── 플레이어 장비 제작 (플레이어_아이템_속성_설계.md — econ 무접촉·본체 서버층) ──
@@ -831,6 +836,12 @@ const FOOD_EFFECTS = {
   meat_raw:     { hunger: 8,  thirst: 0, hpDelta: -3 }, // 날고기는 약간 해로움
   meat_cooked:  { hunger: 40, thirst: 0 },
   berry_jam:    { hunger: 18, thirst: 6 },
+  // ★★[무게·곡물 배치 2026-08-27] **곡물이 플레이어 품목이 됐다.**
+  //   생곡은 비효율이다 — 청동기 곡물은 갈고 익혀야 먹을 수 있는 것이라 날로 씹으면 배가 덜 찬다.
+  //   조리 경로(`COOK_RECIPES.food_cooked`)를 거치면 제값(=조리식 계열)이 된다.
+  food:         { hunger: 7,  thirst: 0 },
+  food_cooked:  { hunger: 34, thirst: 2 },
+  fish_cooked:  { hunger: 32, thirst: 0 },   // ★구운 생선이 표에 없었다(먹을 수 없는 조리식이었다)
 };
 // 음료 (water_pool에서 E로 즉시 회복 — 인벤토리 아이템 아님)
 const WATER_DRINK_AMOUNT = 35;
@@ -2457,6 +2468,8 @@ wss.on('connection', async (ws, req) => {
   let _loadEquipment = [], _loadEquipSlots = {}, _loadCraftSkill = {}, _loadOreLedger = {}, _loadOreCarry = {}; // 플레이어 아이템(품질·속성·내구·숙련)·원석 정체 장부 복원 버퍼 — tools_json blob piggyback
   let _loadFishStats = null;   // ★[낚시 v2] 어획 기록(마릿수·최대·놓친 최대) — 같은 blob 에 얹는다
   let _loadBody = null;        // ★[신체 상태 §7] 추위·피로·부상·사기
+  let _loadKgLedger = null;    // ★[무게] 개체 실제 kg 장부
+  let _loadLots = null;        // ★[무게] 식품 로트(취득일)
   let initHunger = HUNGER_MAX, initThirst = THIRST_MAX, initVp = 0;
   let initTribeId = null, initTribeName = null;
   let initFloor = 0;
@@ -2622,6 +2635,8 @@ wss.on('connection', async (ws, req) => {
       if (tools && tools.oreCarry && typeof tools.oreCarry === 'object') _loadOreCarry = tools.oreCarry;
       if (tools && tools.fishStats && typeof tools.fishStats === 'object') _loadFishStats = tools.fishStats;   // ★[낚시 v2] 어획 기록 복원
       if (tools && tools.body && typeof tools.body === 'object') _loadBody = tools.body;   // ★[신체 상태] 로그아웃 시점 그대로 — 오프라인 감쇠 없음
+      if (tools && tools.kgLedger && typeof tools.kgLedger === 'object') _loadKgLedger = tools.kgLedger;   // ★[무게] 개체 kg 장부
+      if (tools && tools.lots && typeof tools.lots === 'object') _loadLots = tools.lots;                   // ★[무게] 식품 로트(취득일)
       // 14.53: 옛 tools (object 또는 number 형식) → 새 toolItems list 변환
       // tools_json 안에 옛 형식 또는 새 형식 {toolItems, equipped, hotkey1} 둘 다 처리
       let toolItems = [];
@@ -2774,6 +2789,8 @@ wss.on('connection', async (ws, req) => {
     oreLedger: _loadOreLedger,  // ★[11차] 원석 덩이의 숨은 정체(kg — 선광 때 소비)
     oreCarry: _loadOreCarry,    // 선광 소수분 이월(kg)
     fishStats: _loadFishStats,  // ★[낚시 v2] 어획 기록 — 재접속·크래시를 넘어 살아남는다
+    kgLedger: _loadKgLedger,    // ★[무게] 개체 실제 kg — 재접속을 넘어 살아남는다(하네스 ⑦)
+    lots: _loadLots,            // ★[무게] 식품 취득일 — 나이를 잃으면 로트가 거짓말이 된다
     body: _loadBody ? { cold: 0, fatigue: 0, injury: 0, morale: 0, herbUntil: 0, stages: {}, ..._loadBody } : null,
     hp: PLAYER_MAX_HP, maxHp: PLAYER_MAX_HP,
     hunger: initHunger, thirst: initThirst, vp: initVp,
@@ -2812,6 +2829,8 @@ wss.on('connection', async (ws, req) => {
     player.craftSkill = _takeover.craftSkill || player.craftSkill;
     player.oreLedger = _takeover.oreLedger || player.oreLedger;
     player.oreCarry = _takeover.oreCarry !== undefined ? _takeover.oreCarry : player.oreCarry;
+    player.kgLedger = _takeover.kgLedger || player.kgLedger;   // ★[무게] 들고 있던 개체 그대로
+    player.lots = _takeover.lots || player.lots;               // ★[무게] 식품 나이 그대로
     if (typeof _takeover.hp === 'number') player.hp = _takeover.hp;
     if (typeof _takeover.hunger === 'number') player.hunger = _takeover.hunger;
     if (typeof _takeover.thirst === 'number') player.thirst = _takeover.thirst;
@@ -2874,6 +2893,11 @@ wss.on('connection', async (ws, req) => {
     buildingRecipes: BUILDING_RECIPES, // 14.51
     cookRecipes: COOK_RECIPES,
     foodEffects: FOOD_EFFECTS,
+    // ★★[무게 배치 2026-08-27] kg 카탈로그를 **서버가 실어 보낸다** — 클라가 표를 들고 있으면
+    //   그게 사본이고, 표가 갈리는 날 화면과 실제가 어긋난다(거래소 배치에서 배운 그것).
+    itemWeights: Weights.catalog(),
+    carryCfg: { capKg: Carry.CFG.CAP_KG, moveFloor: Carry.CFG.MOVE_FLOOR,
+                combinedFloor: Carry.CFG.COMBINED_FLOOR, stageAt: Carry.STAGE_AT },
     self: { x: player.x, y: player.y, hp: player.hp, maxHp: player.maxHp,
             hunger: Math.round(player.hunger), thirst: Math.round(player.thirst),
             vp: Math.round(player.vp ?? 0),
@@ -2935,7 +2959,7 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'pickup_item') tryPickupItem(player, msg.giId);
   else if (msg.type === 'repair_building') tryRepairBuilding(player);
   else if (msg.type === 'unclaim') tryUnclaim(player, msg.claimId);
-  else if (msg.type === 'trade_offer') tryTrade(player, msg);
+  // ★★[재민 확정 2026-08-27] `trade_offer`(T/Y) **제거됨**. 왜 지웠는지는 아래 함수 자리의 주석 참조.
   else if (msg.type === 'ping') { player.lastSeen = Date.now(); send(ws, { type: 'pong', t: msg.t }); }
   else if (msg.type === 'war_command_join') {
     // §4-4 P4: 플레이어 전투 지휘 참가 요청(client.js 송신). warId=null → 지휘 해제.
@@ -3026,7 +3050,7 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'village_trade_exec') tryVillageTradeExec(player, msg.vid, msg.give, msg.take, msg.qty);  // ★[거래소] 교환
   else if (msg.type === 'village_trade_quote') {                                                            // ★[거래소] 견적(확정 전 표시)
     if (SimVillages.villageTradeQuote) {
-      const q = SimVillages.villageTradeQuote(msg.vid | 0, player.x, player.y, msg.give, msg.take, msg.qty);
+      const q = SimVillages.villageTradeQuote(msg.vid | 0, player.x, player.y, msg.give, msg.take, msg.qty, _unitsOfFor(player));
       send(player.ws, { type: 'village_trade_quote', quote: q, vid: msg.vid | 0 });
     }
   }
@@ -3103,7 +3127,7 @@ function handlePlayerInput(player, raw) {
   }
   else if (msg.type === 'set_hotkey') doSetHotkey(player, msg.toolItemId || null);
   else if (msg.type === 'toggle_hotkey') doToggleHotkey(player);
-  else if (msg.type === 'eat') doEat(player, msg.item);
+  else if (msg.type === 'eat') doEat(player, msg.item, msg.amount);   // ★[무게] amount 생략 = 1개(종전 그대로)
   else if (msg.type === 'cook') doCook(player, msg.recipe);
   else if (msg.type === 'eat_dish') doEatDish(player, msg.id);
   else if (msg.type === 'fish_cast') tryFishCast(player);      // ★[낚시 v2] 던지기 — 이미 던져 뒀으면 챔질로 넘어간다
@@ -3213,18 +3237,36 @@ function tryHarvest(player) {
 }
 
 // === 음식 먹기 ===
-function doEat(player, item) {
+// ★★[무게 배치 2026-08-27] **부분 소비**를 받는다(재민: "한 입 0.25단위 식 부분 소비 —
+//   무게·포만감 정확히 비례 차감"). 로트 품목이면 **오래된 로트부터** 깎고, 회복량도 그만큼만 준다.
+//   기본값 1 이라 기존 호출부는 한 줄도 안 달라진다.
+function doEat(player, item, amount) {
   const eff = FOOD_EFFECTS[item];
   if (!eff) {
     send(player.ws, { type: 'notice', text: `먹을 수 없는 아이템: ${item}` }); return;
   }
-  if ((player.inventory[item] || 0) < 1) {
+  const isLot = Lots.isLot(item);
+  const want = Math.max(0, Number(amount) > 0 ? Number(amount) : 1);
+  const today = zoneGameDay();
+  if (isLot) Lots.reconcile(player, item, player.inventory, today);
+  const stock = isLot ? Lots.sum(player, item) : (player.inventory[item] || 0);
+  if (stock < Math.min(want, 1e-6)) {
     send(player.ws, { type: 'notice', text: `${item} 부족` }); return;
   }
-  player.inventory[item] -= 1;
-  if (eff.hunger)   player.hunger = Math.min(HUNGER_MAX, (player.hunger ?? HUNGER_MAX) + eff.hunger);
-  if (eff.thirst)   player.thirst = Math.min(THIRST_MAX, (player.thirst ?? THIRST_MAX) + eff.thirst);
-  if (eff.hpDelta)  { player.hp = Math.max(0, Math.min(player.maxHp, player.hp + eff.hpDelta));
+  let ate = Math.min(want, stock);
+  if (isLot) {
+    const r = Lots.consume(player, item, ate, player.inventory, today);
+    ate = r.taken;
+  } else {
+    ate = Math.min(want, Math.floor(stock) || stock);
+    if (ate < 1) { send(player.ws, { type: 'notice', text: `${item} 부족` }); return; }
+    ate = Math.floor(ate);
+    player.inventory[item] -= ate;
+  }
+  // ★회복은 **먹은 양에 정확히 비례**한다 — 0.25단위를 먹으면 0.25배 찬다.
+  if (eff.hunger)   player.hunger = Math.min(HUNGER_MAX, (player.hunger ?? HUNGER_MAX) + eff.hunger * ate);
+  if (eff.thirst)   player.thirst = Math.min(THIRST_MAX, (player.thirst ?? THIRST_MAX) + eff.thirst * ate);
+  if (eff.hpDelta)  { player.hp = Math.max(0, Math.min(player.maxHp, player.hp + eff.hpDelta * ate));
                       broadcast({ type: 'player_damaged', pid: player.pid, hp: player.hp }); }
   // ★[신체 상태 §7] 사기 = **당근**. 심심함·스트레스는 기각됐고, 대신 좋은 음식이 버프를 준다.
   //   조리식(meat_cooked·berry_jam)이 생식보다 크다 — 요리와 화덕 수요의 실체.
@@ -3233,7 +3275,7 @@ function doEat(player, item) {
   // 약초는 부상 회복을 재촉한다(§7 "부상 = 회복 기간 + 약초 수요")
   if (item === 'medicinal_herb' || item === 'herb') Body.onHerb(player, Date.now());
   send(player.ws, { type: 'inventory', inventory: player.inventory });
-  send(player.ws, { type: 'gauges', hunger: Math.round(player.hunger), thirst: Math.round(player.thirst), body: Body.selfPayload(player) });
+  send(player.ws, { type: 'gauges', hunger: Math.round(player.hunger), thirst: Math.round(player.thirst), body: Body.selfPayload(player), carry: Object.assign(Carry.payload(player), { combined: moveMultOf(player) }) });
   send(player.ws, { type: 'notice', text: `${item} 섭취 (+허기 ${eff.hunger||0})`
     + (_cooked ? ' · ✨ 잘 먹었다(사기↑)' : '') });
   savePlayer(player);
@@ -3796,11 +3838,15 @@ function isIndoorAt(p) {
 //   여기서 계절 산수를 또 쓰면 그게 세 번째 사본이다.
 let _seasonCache = { day: -1, v: 0 };
 const _SEASON_DAY_MS = (parseInt(process.env.VILLAGE_DAY_MS || '', 10) || (WORLD && WORLD.dayLengthMs) || 24 * 60 * 1000);
+// ★게임일은 **존 자체 시계**로 센다 — `ENABLE_VILLAGES=0` 이어도 계절·로트 나이는 있어야 하기 때문이다
+//   (마을 시뮬에 의존시키면 하네스마다 계절이 사라진다). 이 한 줄이 존의 게임일 정본이다.
+function zoneGameDay() { return Math.floor((Date.now() - ((WORLD && WORLD.worldEpoch) || 0)) / _SEASON_DAY_MS); }
+// ★★[무게 배치] 걸음 배율의 **정본 하나** — 서버 이동과 클라 예측이 같은 수를 써야 러버밴딩이 안 난다.
+//   신체(§7) × 과적, 곱 폭주는 바닥에서 자른다. 이 함수를 안 거치는 배율 계산을 새로 만들지 마라.
+function moveMultOf(p) { return Carry.combinedMove(Body.effects(p).moveMult, Carry.effects(p).moveMult); }
 function seasonColdNow() {
   try {
-    // ★게임일은 **존 자체 시계**로 센다 — `ENABLE_VILLAGES=0` 이어도 계절은 있어야 하기 때문이다
-    //   (마을 시뮬에 의존시키면 하네스마다 계절이 사라진다).
-    const day = Math.floor((Date.now() - ((WORLD && WORLD.worldEpoch) || 0)) / _SEASON_DAY_MS);
+    const day = zoneGameDay();
     if (_seasonCache.day === day) return _seasonCache.v;
     const se = require('./events').seasonOf(day);
     // 겨울 1 · 가을/봄 0.35 · 여름 0 — 옷·모닥불 수요의 계절 곡선(§7 "추위는 계절 배율·옷감 수요와 연결")
@@ -4088,6 +4134,12 @@ function _oreSave(key, rec) {
 //   ★서버 권위: 입질 시각도 챔질 창도 **서버가 정하고 서버가 잰다.** 클라는 "지금 챘다"만 보낸다
 //     (클라가 보낸 시각은 **안 믿는다** — `test-fishing ②` 가 조작을 시도해 거절을 확인한다).
 const Body = require('./body');   // ★[신체 상태 §7] 5축·연속 효과 곡선의 정본. 아래 생존 틱이 이걸 부른다.
+// ★★[무게 배치 2026-08-27] 재민: "모든 아이템은 좀보이드처럼 무게를 가져야 해."
+//   `weights` = kg 정본(specialty 를 읽고, 없는 것만 스스로 정한다) · `carry` = 합산·용량·과적 ·
+//   `lots` = 식품 취득일 장부(3층 인벤의 가운데 층). 셋 다 **플레이어 층 전용**이다(econ 무접촉).
+const Weights = require('./weights');
+const Carry = require('./carry');
+const Lots = require('./lots');
 const Fishing = require('./fishing');
 Fishing.setDayMs(parseInt(process.env.VILLAGE_DAY_MS || '', 10) || (WORLD && WORLD.dayLengthMs) || 24 * 60 * 1000);
 { // 부팅: 파인 어장 셀 로드(만땅 셀은 애초에 저장 안 됨 — mined_cells 와 같은 문법)
@@ -4214,10 +4266,16 @@ function tryFishStrike(player) {
     savePlayer(player);
     return;
   }
-  const n = Math.max(1, Math.round(gotKg / Fishing.CFG.KG_PER_ITEM));
+  // ★★[무게 배치 2026-08-27] **한 마리는 한 마리다.**
+  //   종전엔 `round(kg / KG_PER_ITEM)` 로 2.4kg 물고기를 0.8kg 짜리 세 마리로 뭉갰다 —
+  //   낚시 v2 가 애써 낸 개체 무게가 그 줄에서 사라지고 있었다(§0 실측으로 확인).
+  //   이제 **개수는 1, 무게는 그 물고기의 실제 kg** 이고, 그 kg 가 인벤 무게·거래 환산에 그대로 쓰인다.
+  const n = 1;
   const species = _fishSpeciesFor(ZONE.biome);
   const sp = species[Math.floor(Math.random() * species.length)];
   player.inventory[sp] = (player.inventory[sp] || 0) + n;
+  Carry.noteInstance(player, sp, gotKg);                       // 개체 kg 장부
+  Lots.note(player, sp, n, zoneGameDay());                     // 식품 로트(취득일)
   st.caught++; st.kg = +(st.kg + gotKg).toFixed(2);
   const isRecord = gotKg > st.maxKg;
   if (isRecord) st.maxKg = +gotKg.toFixed(2);
@@ -4742,10 +4800,14 @@ function tryDropItem(player, item, amount) {
     send(player.ws, { type: 'notice', text: `${ITEM_LABEL_SERVER[item] || item} 부족` }); return;
   }
   player.inventory[item] = have - amount;
+  // ★[무게 배치] 버린 개체를 장부에서도 뺀다 — 2kg 물고기를 버리면 2kg 이 빠져야 한다.
+  //   그 kg 을 바닥 아이템에 실어 보내, 다시 주우면 **그 무게 그대로** 돌아온다(개체가 안 뭉개진다).
+  const _dropKg = Carry.takeKg(player, item, amount);
+  Lots.reconcile(player, item, player.inventory, zoneGameDay());
   // 위치: 사용자 발 옆 (살짝 랜덤 offset)
   const ox = (Math.random() - 0.5) * 16, oy = 8 + Math.random() * 8;
   const gid = `g${nextGiId++}`;
-  const gi = { id: gid, x: player.x + ox, y: player.y + oy, item, count: amount, droppedAt: Date.now() };
+  const gi = { id: gid, x: player.x + ox, y: player.y + oy, item, count: amount, droppedAt: Date.now(), kg: _dropKg };
   groundItems.set(gid, gi);
   send(player.ws, { type: 'inventory', inventory: player.inventory });
   savePlayer(player);
@@ -4801,6 +4863,12 @@ function tryPickupItem(player, gid) {
     send(player.ws, { type: 'notice', text: '바닥 아이템에서 너무 멀리 있습니다' }); return;
   }
   player.inventory[gi.item] = (player.inventory[gi.item] || 0) + gi.count;
+  // ★[무게 배치] 버릴 때 실어 둔 개체 무게를 되돌린다(없으면 표준 무게로 친다 — 옛 바닥 아이템 호환).
+  if (gi.kg > 0 && gi.count > 0) {
+    const per = gi.kg / gi.count;
+    for (let i = 0; i < gi.count; i++) Carry.noteInstance(player, gi.item, per);
+  }
+  Lots.note(player, gi.item, gi.count, zoneGameDay());
   groundItems.delete(gid);
   send(player.ws, { type: 'inventory', inventory: player.inventory });
   send(player.ws, { type: 'notice', text: `🤚 ${ITEM_LABEL_SERVER[gi.item] || gi.item} ×${gi.count} 주움` });
@@ -4816,6 +4884,7 @@ const ITEM_LABEL_SERVER = {
   meat_raw: '날고기', meat_cooked: '구운고기', hide: '가죽',
   berry_jam: '베리잼', water_bottle: '물병', seed_berry: '베리씨앗',
   herb: '약초', ore: '광물',
+  food: '곡식', food_cooked: '익힌 곡식',   // ★[곡물 품목화 2026-08-27]
   axe: '도끼', pickaxe: '곡괭이', sword: '검',
 };
 
@@ -4830,42 +4899,15 @@ setInterval(() => {
   }
 }, 5000);
 
-function tryTrade(player, msg) {
-  // 가장 가까운 다른 플레이어에게 trade_request 전달
-  const TRADE_RANGE = 80;
-  let target = null;
-  let bestDist = TRADE_RANGE;
-  for (const p of players.values()) {
-    if (p.pid === player.pid) continue;
-    const d = Math.hypot(p.x - player.x, p.y - player.y);
-    if (d < bestDist) { target = p; bestDist = d; }
-  }
-  if (!target) {
-    send(player.ws, { type: 'notice', text: `근처에 거래 상대가 없습니다.` });
-    return;
-  }
-  // 간단 거래: 내 wood 1 ↔ 상대 stone 1 (또는 반대)
-  const give = msg.give; // 'wood' or 'stone'
-  const get = give === 'wood' ? 'stone' : 'wood';
-  if ((player.inventory[give] || 0) < 1) {
-    send(player.ws, { type: 'notice', text: `${give} 부족` });
-    return;
-  }
-  if ((target.inventory[get] || 0) < 1) {
-    send(player.ws, { type: 'notice', text: `${target.name}에게 ${get} 부족` });
-    return;
-  }
-  player.inventory[give] -= 1;
-  player.inventory[get] = (player.inventory[get] || 0) + 1;
-  target.inventory[get] -= 1;
-  target.inventory[give] = (target.inventory[give] || 0) + 1;
-  send(player.ws, { type: 'inventory', inventory: player.inventory });
-  send(target.ws, { type: 'inventory', inventory: target.inventory });
-  send(player.ws, { type: 'notice', text: `${target.name}와 거래 성공: ${give}→${get}` });
-  send(target.ws, { type: 'notice', text: `${player.name}와 거래 성공: ${get}→${give}` });
-  savePlayer(player);
-  savePlayer(target);
-}
+// ★★[재민 확정 2026-08-27] **`tryTrade`(T/Y) 제거됨.**
+//   무엇이었나: `t`/`y` 키가 80px 안 **가장 가까운 플레이어**와 나무 1 ↔ 돌 1 을 맞바꿨다.
+//   왜 지웠나 셋:
+//     ① **상대 동의 절차가 없었다** — 남의 인벤에서 물건을 가져가고 알림만 보냈다.
+//     ② **경제를 통째로 우회했다** — 같은 마을 거래소가 매기는 값은 나무 1.75 · 돌 0.1677(곡식 환산)로
+//        **10배 차이**다. 이 배치가 "값은 마을이 매긴다"를 세운 뒤에도 그 옆에 1:1 고정 교환이 남아 있었다.
+//     ③ 프로토타입 화석이었다 — 거래 UI 도 수량 선택도 없이 두 품목이 하드코딩돼 있었다.
+//   ★진짜 플레이어 간 거래(**양방향 제안·수락**)는 분업 경제의 핵심이라 언젠가 반드시 필요하다 —
+//     설계 골자는 `회부_무게_다음층.md` P항에 적어 뒀다. 여기에 되살리지 마라.
 
 // === 건축 ===
 function tryBuild(player, type, floor = 0, side = null, atX, atY, dir = null) {
@@ -5564,6 +5606,16 @@ function tryVillageBoard(player, vid) {
   send(player.ws, { type: 'village_board', board: r });
 }
 // ★[거래소 2026-08-27] 시세표 — **그 마을 앞에서만** 답한다(게이트는 villages.js `_villageNear`).
+// ★★[무게 배치] 개체 무게 → 재화 단위 환산 콜백. **정본은 `Carry.peekKg` 하나**이고
+//   거래소·게시판이 **같은 이걸** 쓴다(둘이 다른 환산을 쓰면 그게 보이지 않는 손이다).
+//   n개를 낼 때의 실제 kg ÷ 표준 kg = 그 제안의 재화 단위.
+function _unitsOfFor(player) {
+  return (item, n) => {
+    const std = Weights.kgOfOrDefault(item);
+    if (!(std > 0)) return n;
+    return +(Carry.peekKg(player, item, n) / std).toFixed(4);
+  };
+}
 function tryVillageTrade(player, vid) {
   if (!SimVillages.villageTradeBoard) return;
   const r = SimVillages.villageTradeBoard(vid | 0, player.x, player.y, player.inventory);
@@ -5573,8 +5625,11 @@ function tryVillageTrade(player, vid) {
 // ★교환 — 서버 권위. 비율도 상한도 서버가 정하고, 클라는 "이거 내고 저거 받겠다"만 말한다.
 function tryVillageTradeExec(player, vid, giveRes, takeRes, qty) {
   if (!SimVillages.villageTradeExec) return;
-  const r = SimVillages.villageTradeExec(vid | 0, player.x, player.y, player.inventory, giveRes, takeRes, qty);
+  const r = SimVillages.villageTradeExec(vid | 0, player.x, player.y, player.inventory, giveRes, takeRes, qty, _unitsOfFor(player));
   if (r.err) { send(player.ws, { type: 'notice', text: `🏪 ${r.err}` }); return; }
+  // ★내준 개체를 장부에서 **실제로 뺀다** — 위 환산은 `peekKg`(보기)였다. 안 빼면 무게가 안 준다.
+  for (const [it, n] of Object.entries(r.gaveItems || {})) Carry.takeKg(player, it, n);
+  Carry.reconcile(player, player.inventory);
   savePlayer(player);
   send(player.ws, { type: 'inventory', inventory: player.inventory });
   const gave = Object.entries(r.gaveItems || {}).map(([k, q]) => `${ITEM_LABEL_SERVER[k] || k} ${q}`).join(' · ');
@@ -5588,8 +5643,10 @@ function tryVillageTradeExec(player, vid, giveRes, takeRes, qty) {
 }
 function tryVillageDeliver(player, vid, item, want) {
   if (!SimVillages.villageDeliver) return;
-  const r = SimVillages.villageDeliver(vid | 0, player.x, player.y, player.inventory, item, want);
+  const r = SimVillages.villageDeliver(vid | 0, player.x, player.y, player.inventory, item, want, _unitsOfFor(player));
   if (r.err) { send(player.ws, { type: 'notice', text: `📋 ${r.err}` }); return; }
+  for (const [it, n] of Object.entries(r.taken || {})) Carry.takeKg(player, it, n);   // ★납품한 개체를 장부에서 뺀다
+  Carry.reconcile(player, player.inventory);
   savePlayer(player);
   send(player.ws, { type: 'inventory', inventory: player.inventory });
   const gave = Object.entries(r.taken || {}).map(([k, q]) => `${ITEM_LABEL_SERVER[k] || k} ${q}`).join(' · ');
@@ -5748,6 +5805,8 @@ function __testBind() {
     players, savePlayer,
     // ── 신체 상태 §7 E2E(2026-08-26) ── **정본 모듈을 그대로 내준다**(하네스가 곡선을 다시 짜면 사본이다).
     Body, damagePlayer, doEat, isIndoorAt, seasonColdNow, FOOD_EFFECTS,
+    // ── 무게 모델(2026-08-27) ── 정본 모듈을 그대로 내준다(하네스가 곡선을 다시 짜면 사본이다)
+    Weights, Carry, Lots, moveMultOf, zoneGameDay, COOK_RECIPES, doCook, _unitsOfFor,
     // ── 거래소 E2E(2026-08-27) ── 정본을 그대로 내준다(하네스가 가격을 다시 풀면 사본이다)
     Trade: require('./trade'), Events: require('./events'), SimVillages,
     tryVillageTrade, tryVillageTradeExec,
@@ -7060,7 +7119,9 @@ setInterval(() => {
         // ★★[신체 상태] 몸 상태가 걸음을 늦춘다. **이 값은 반드시 클라에도 같은 수로 가야 한다** —
         //   클라 예측(`predictStep` 의 speed)과 어긋나면 매 틱 보정이 나서 **러버밴딩**이 된다.
         //   그래서 `gauges.body.moveMult` 로 실어 보내고 클라가 같은 배율을 쓴다(호환: 안 오면 1).
-        const bodyMult = Body.effects(p).moveMult;
+        //   ★★[무게 배치] 여기에 **과적**이 곱해진다. 곱 폭주는 `Carry.combinedMove` 가 바닥에서 자른다
+        //     (신체 0.6 × 과적 0.4 = 0.24 → 0.35). 이 합산값도 그대로 클라에 실어 보낸다.
+        const bodyMult = moveMultOf(p);
         const hyp = Math.hypot(inp.vx, inp.vy), len = hyp || 1;
         p.vx = (inp.vx / len) * MOVE_SPEED * Math.min(1, hyp) * spMult * bodyMult;
         p.vy = (inp.vy / len) * MOVE_SPEED * Math.min(1, hyp) * spMult * bodyMult;
@@ -7329,6 +7390,16 @@ setInterval(() => {
     if (p.isNpc) continue;  // NPC는 클라(ws) 없음 — 게이지 전송 불필요. 600명 순회·메시지 생성 절약
     if (!p._lastGaugeSentAt || now - p._lastGaugeSentAt > 1000) {
       p._lastGaugeSentAt = now;
+      // ★★[무게 배치] 로트·개체 장부를 인벤과 맞춘다(초당 1회).
+      //   왜 여기서 쓸어 담나: 아이템이 늘어나는 경로는 채집·요리·납품보상·거래·바닥줍기·픽스처로 흩어져 있다.
+      //   **하나하나에 `note` 를 심는 대신** 인벤을 정본으로 두고 `reconcile` 이 차이를 메운다 —
+      //   남은 몫은 "오늘 얻은 것"이 되는데, 취득 직후 1초 안에 도는 이 쓸개가 그걸 **사실로** 만든다.
+      //   (경로 하나를 빠뜨려도 수량이 틀리는 일은 구조적으로 없다 — 나이만 오늘로 잡힌다.)
+      try {
+        const _today = zoneGameDay();
+        for (const it of Object.keys(p.inventory || {})) if (Lots.isLot(it)) Lots.reconcile(p, it, p.inventory, _today);
+        Carry.reconcile(p, p.inventory);
+      } catch (e) {}
       send(p.ws, {
         type: 'gauges',
         hunger: Math.round(p.hunger ?? HUNGER_MAX),
@@ -7337,6 +7408,9 @@ setInterval(() => {
         cold: !!p._cold,  // 밤 추위(방한 부족) — 클라 표시(구 필드 · 호환 유지)
         // ★[§8.3] **본인에겐 연속값**. 남에겐 단계만 나간다(`Body.peerPayload` — 소비자는 외형 배치에서).
         body: Body.selfPayload(p),
+        // ★[무게 배치] 소지 무게·용량·과적 배율. **클라 예측이 같은 수를 써야** 러버밴딩이 안 난다 —
+        //   그래서 `combined`(신체×과적, 바닥 적용)를 실어 보내고 클라는 그걸 쓴다.
+        carry: Object.assign(Carry.payload(p), { combined: moveMultOf(p) }),
       });
     }
   }

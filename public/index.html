@@ -112,6 +112,8 @@
         <span class="inv" title="판자 (통나무 1 → 판자 2, 톱 필요). 망치로 건축 가능">🪚 <b id="invPlank">0</b></span>
         <span class="inv">🪨 <b id="invStone">0</b></span>
         <span class="inv">🔧 <b id="equippedBadge">맨손</b></span>
+        <!-- ★[무게 배치 2026-08-27] 소지 무게/용량. 넘치면 `over` 클래스로 붉어진다. -->
+        <span class="inv" id="carryHud" title="소지 무게 / 용량 — 넘치면 느려지고 피로가 빨리 찬다">🎒 <b id="carryKg">0</b>/<b id="carryCap">0</b>kg</span>
       </div>
       <div class="hud-row" id="invFoodRow"></div>
       <div id="notice"></div>
@@ -141,8 +143,6 @@
         <button data-action="market">거래소 (M)</button>
       </div>
       <div class="hud-row hud-actions">
-        <button data-action="trade_wood">나무→돌 (T)</button>
-        <button data-action="trade_stone">돌→나무 (Y)</button>
       </div>
     </div>
 

@@ -49,6 +49,9 @@ const CFG = {
   // ★★조각 수 — 한 거래를 몇 조각으로 나눠 값을 매기나. 아래 `planSliced` 주석이 이유다.
   SLICES: Math.max(1, Math.round(_num('TRADE_SLICES', 12))),
   DEPOSIT_RATE: _num('VILLAGE_DEPOSIT_RATE', 1),   // playerVillageDeposit 와 같은 값(환산율)
+  // ★넘침 프로브 — 재고를 이만큼 늘려 보고도 값이 안 내려가면 "바닥"이다(아래 `gluttedAt`).
+  GLUT_PROBE_FRAC: _num('TRADE_GLUT_PROBE_FRAC', 0.5),
+  GLUT_PROBE_MIN: _num('TRADE_GLUT_PROBE_MIN', 5),
 };
 const KO_NUM = { food: '곡식', fish: '생선', wood: '나무', stone: '돌' };
 
@@ -77,6 +80,30 @@ function tradableOut(ledger, vid) {
   return out;
 }
 
+// ── ★★넘침 판정 — "아무리 팔아도 값이 안 내려간다"를 화면이 말한다 ─────────────
+//
+// ★[재민 확정 2026-08-27] 왜 필요한가: `e2e-trade ⑤` 에서 **하네스가 세 번 속았다** —
+//   과잉 재고 품목은 그림자가격이 바닥에 붙어 재고가 더 늘어도 값이 안 움직이는데,
+//   화면은 그걸 말하지 않으니 "내 거래가 시세를 못 움직였다"로 읽힌다.
+//   계측기가 속은 자리에서 **플레이어도 똑같이 속는다.** 그래서 딱지를 붙인다.
+//
+// ★★판정을 **다시 계산하지 않는다.** 바닥 상수(`PRICE_ADJ_MIN`)를 여기 옮겨 적으면 그게 사본이고,
+//   econ 이 그 상수를 바꾸는 날 화면만 거짓말을 하게 된다. 대신 **정본에게 물어본다**:
+//   그 품목 재고를 잠깐 크게 늘려 보고 **값이 그래도 안 움직이면** 바닥이다.
+//   (`planSliced` 와 같은 문법 — 재고를 건드렸다가 `finally` 로 되돌린다. 계산이지 거래가 아니다.)
+function gluttedAt(econV2, v, res, stock) {
+  const st = v.storage || {};
+  const before = +st[res] || 0;
+  const p0 = +Events.pricesFresh(econV2, v)[res] || 0;
+  if (!(p0 > 0)) return false;
+  try {
+    st[res] = before + Math.max(CFG.GLUT_PROBE_MIN, before * CFG.GLUT_PROBE_FRAC);
+    const p1 = +Events.pricesFresh(econV2, v)[res] || 0;
+    // 재고를 크게 늘렸는데 값이 **한 톨도** 안 내려가면 바닥이다.
+    return !(p1 < p0 * (1 - 1e-9));
+  } finally { st[res] = before; }
+}
+
 // ── 시세표 — 그 마을 앞에서만 부른다(원격 조회 API 를 만들지 않는다 · §3.2 정보 비대칭) ──
 //   ★표시 세 칸이면 충분하다: 시세(기준 품목 환산) · 마을이 **사줄 여력** · 마을이 **팔 재고**.
 function board(ledger, econV2, vil, vid, inventory) {
@@ -101,6 +128,7 @@ function board(ledger, econV2, vil, vid, inventory) {
       stock: +stock.toFixed(2),
       sell: Events.payableQty(stock, CFG.STOCK_FRAC),   // 마을이 지금 내줄 수 있는 양(물리 상한)
       mine: inventory ? (D.items.get(res) || []).reduce((n, it) => n + Math.floor(Number(inventory[it]) || 0), 0) : 0,
+      glut: gluttedAt(econV2, v, res, stock),           // ★넘침 — 아래 함수 주석 참조
     });
   }
   rows.sort((a, b) => (b.num || 0) - (a.num || 0));
@@ -177,7 +205,9 @@ function quote(ledger, econV2, vil, vid, giveRes, takeRes, giveQty) {
   const s = CFG.SPREAD;
   const stock = +((v.storage || {})[takeRes] || 0);
   const cap = Events.payableQty(stock, CFG.STOCK_FRAC);
-  const q = Math.max(0, Math.floor(Number(giveQty) || 0));
+  // ★[무게 배치] **분수 수량을 허용한다** — 2kg 물고기 한 마리는 표준 0.9kg 짜리 2.22 '단위'다.
+  //   개수는 정수지만 **재화 단위는 개체 무게에 비례**하므로 여기서 자르면 큰 물고기가 손해를 본다.
+  const q = Math.max(0, Number(giveQty) || 0);
   // 한계비율(첫 조각) — 표시용. 실제 수령량은 아래 planSliced 가 곡선을 따라 낸다.
   const ratio = (pA * (1 - s)) / (pB * (1 + s));
   const plan = q > 0 ? planSliced(econV2, v, giveRes, takeRes, q, cap) : { gave: 0, took: 0 };
@@ -210,12 +240,9 @@ function quote(ledger, econV2, vil, vid, giveRes, takeRes, giveQty) {
 function exchange(a) {
   const { ledger, econV2, vil, vid, inventory, giveRes, takeRes, deposit } = a;
   const v = vil.econ;
-  const q0 = Math.max(0, Math.floor(Number(a.giveQty) || 0));
+  const q0 = Math.max(0, Math.floor(Number(a.giveQty) || 0));   // ★플레이어가 내는 건 **개수**다
   if (q0 < CFG.MIN_GIVE) return { ok: false, err: `${CFG.MIN_GIVE}개 이상은 내야 한다` };
   const D = ledger.deliverable;
-
-  const qt = quote(ledger, econV2, vil, vid, giveRes, takeRes, q0);
-  if (qt.err) return { ok: false, err: qt.err };
 
   // 내가 실제로 들고 있는가 — 한 재화에 여러 아이템이 매핑된다(익힌 음식 등)
   const playerItems = D.items.get(giveRes) || [];
@@ -223,11 +250,30 @@ function exchange(a) {
   for (const it of playerItems) have += Math.floor(Number(inventory[it]) || 0);
   if (have < q0) return { ok: false, err: '그만큼 갖고 있지 않다' };
 
+  // ★★[무게 배치 2026-08-27] **개수 → 재화 단위** 환산. 큰 물고기는 여러 단위어치다.
+  //   `unitsOf(item, n)` 이 없으면 1개=1단위(종전 그대로) — 이 배치 이전 경로는 안 달라진다.
+  const unitsOf = (typeof a.unitsOf === 'function') ? a.unitsOf : null;
+  const _pick = (cnt) => {                        // 개수 cnt 를 어느 아이템에서 몇 개씩 뺄지(정본 순서)
+    const w = {}; let left = cnt;
+    for (const it of playerItems) { if (left <= 0) break;
+      const n = Math.min(left, Math.floor(Number(inventory[it]) || 0)); if (n > 0) { w[it] = n; left -= n; } }
+    return w;
+  };
+  const _units = (w) => { let u = 0; for (const [it, n] of Object.entries(w)) u += unitsOf ? Number(unitsOf(it, n)) || n : n; return u; };
+  const u0 = _units(_pick(q0));
+  const perItem = q0 > 0 ? u0 / q0 : 1;           // 이 제안의 **평균 단위/개** — 견적을 세우는 데만 쓴다
+
+  const qt = quote(ledger, econV2, vil, vid, giveRes, takeRes, u0);
+  if (qt.err) return { ok: false, err: qt.err };
+
   // 물리 상한 — 넘치면 **거절이 아니라 절삭**이다(살 수 있는 만큼은 산다).
   //   ★수량은 견적과 **같은 조각 계획**에서 나온다(견적과 실행이 다른 수를 쓰면 그게 보이지 않는 손이다).
-  let give = Math.min(q0, Math.max(0, Math.floor(qt.give && qt.capped ? qt.maxGive : q0)));
-  if (give > qt.maxGive) give = qt.maxGive;
-  const pl = give > 0 ? planSliced(econV2, v, giveRes, takeRes, give, qt.cap) : { took: 0 };
+  //   ★상한은 **단위**로 걸리므로 개수로 되돌린다(평균 단위/개로 나눈 뒤 내림 — 넘치게 주지 않는다).
+  let give = q0;
+  if (qt.capped && perItem > 0) give = Math.min(q0, Math.floor(qt.maxGive / perItem));
+  const wantW = _pick(give);
+  const giveUnits = _units(wantW);                // ★실행은 **고른 그 개체들의 실제 무게**로 다시 잰다
+  const pl = giveUnits > 0 ? planSliced(econV2, v, giveRes, takeRes, giveUnits, qt.cap) : { took: 0 };
   let take = Math.floor(pl.took);
   if (!(give > 0) || !(take > 0)) {
     // ★★여기 메시지가 거짓말을 하면 안 된다. 1차 실장에서 "더 내야 한다"고 했는데,
@@ -248,14 +294,8 @@ function exchange(a) {
   v.storage[takeRes] = +(before - take).toFixed(3);
 
   // ③④ 내 물건 → 곳간(정본 deposit). 실패하면 ⑤ 되돌린다.
-  const want = {};
-  let left = give;
-  for (const it of playerItems) {
-    if (left <= 0) break;
-    const n = Math.min(left, Math.floor(Number(inventory[it]) || 0));
-    if (n > 0) { want[it] = n; left -= n; }
-  }
-  const dep = deposit(vil, inventory, want);
+  const want = wantW;
+  const dep = deposit(vil, inventory, want, unitsOf || undefined);
   if (!dep || !dep.ok) {
     v.storage[takeRes] = before;                      // ⑤ 되돌림
     return { ok: false, err: (dep && dep.err) || '곳간이 받지 않았다' };
@@ -266,6 +306,7 @@ function exchange(a) {
 
   return { ok: true, vid, name: vil.name, giveRes, takeRes, give, take,
            gaveItems: dep.taken, tookItem: takeItem, ratio: qt.ratio,
+           giveUnits: +giveUnits.toFixed(3), perItem: +perItem.toFixed(3),
            capped: q0 !== give, wanted: q0,
            stockAfter: +v.storage[takeRes].toFixed(3) };
 }

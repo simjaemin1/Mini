@@ -95,8 +95,10 @@ else
     test-save-periodic.js
     test-guest-identity.js
     test-trade.js
+    test-weight.js
     e2e-events.js
     e2e-trade.js
+    e2e-weight.js
     e2e-ui.js
     e2e-fishing.js
     e2e-guest-reconnect.js

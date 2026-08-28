@@ -153,10 +153,14 @@ async function waitHttp(url, tries = 600) {
   // ── ⑥ 무들 — 단계로만 말하고, 경계에서 깜빡이지 않는다 ────────────────────
   await page.evaluate(() => window.__sendPrimary({ type: '__e2e_body', hunger: 100, thirst: 100, fatigue: 0, injury: 0, cold: 0 }));
   await sleep(800);
-  ok((await page.evaluate(() => window.__moodles())).length === 0, '★전제 — 성한 몸엔 무들이 없다');
+  // ★★[2026-08-27 무게 배치] 이 절의 주제는 **몸**이다. 무게 배치가 같은 무들 프레임에 `carry`(🎒 무거움)를
+  //   얹으면서, 시작 지급(33.6kg > 용량 25kg)만으로 짐 무들이 떠 이 전제가 깨졌다 — **제품은 옳다**.
+  //   ⇒ 판정을 **몸 축으로 좁힌다**(짐 무들은 `e2e-weight ④` 가 따로 잰다). 검사의 뜻은 그대로다.
+  const bodyMoodles = () => page.evaluate(() => window.__moodles().filter((m) => m.axis !== 'carry'));
+  ok((await bodyMoodles()).length === 0, '★전제 — 성한 몸엔 (몸) 무들이 없다');
   await page.evaluate(() => window.__sendPrimary({ type: '__e2e_body', fatigue: 0.9 }));
   await sleep(800);
-  const md = await page.evaluate(() => window.__moodles());
+  const md = await bodyMoodles();
   ok(md.some((m) => m.axis === 'fatigue' && m.stage >= 2), '★★⑥ 나빠지면 무들이 **단계와 함께** 뜬다',
     JSON.stringify(md));
   ok(md.length <= 3, '★⑥ 동시 표시 상한(3)을 지킨다', `${md.length}개`);
@@ -166,14 +170,14 @@ async function waitHttp(url, tries = 600) {
   //   출발 상태를 안 정해 놓고 세면 계측기가 자기 준비과정을 결함으로 읽는다(산 아크 교훈 ②).
   await page.evaluate(() => window.__sendPrimary({ type: '__e2e_body', fatigue: 0.70, quiet: true }));
   await sleep(900);
-  const settled = (await page.evaluate(() => window.__moodles())).find((m) => m.axis === 'fatigue');
+  const settled = (await bodyMoodles()).find((m) => m.axis === 'fatigue');
   console.log(`    진동 전 가라앉힌 단계: ${settled ? settled.stage : 0}`);
   let flips = 0, prevStage = null;
   for (let i = 0; i < 14; i++) {
     const v = 0.70 + ((i % 2) ? 0.008 : -0.008);   // 피로 1단계 경계(0.700) 둘레를 오간다
     await page.evaluate((vv) => window.__sendPrimary({ type: '__e2e_body', fatigue: vv, quiet: true }), v);
     await sleep(260);
-    const cur = (await page.evaluate(() => window.__moodles())).find((m) => m.axis === 'fatigue');
+    const cur = (await bodyMoodles()).find((m) => m.axis === 'fatigue');
     const st = cur ? cur.stage : 0;
     if (prevStage !== null && st !== prevStage) flips++;
     prevStage = st;
@@ -182,10 +186,10 @@ async function waitHttp(url, tries = 600) {
   // ★자명 통과 금지 — 확실히 넘기면 단계는 실제로 바뀌어야 한다(무들이 죽어 있으면 위도 0 이다)
   await page.evaluate(() => window.__sendPrimary({ type: '__e2e_body', fatigue: 0.0, quiet: true }));
   await sleep(500);
-  const off = (await page.evaluate(() => window.__moodles())).find((m) => m.axis === 'fatigue');
+  const off = (await bodyMoodles()).find((m) => m.axis === 'fatigue');
   await page.evaluate(() => window.__sendPrimary({ type: '__e2e_body', fatigue: 0.95, quiet: true }));
   await sleep(500);
-  const on = (await page.evaluate(() => window.__moodles())).find((m) => m.axis === 'fatigue');
+  const on = (await bodyMoodles()).find((m) => m.axis === 'fatigue');
   ok(!off && on && on.stage >= 2, '★★자명 통과 금지 — 확실히 넘기면 무들이 **실제로 켜지고 꺼진다**',
     `off=${off ? off.stage : '없음'} on=${on ? on.stage : '없음'}`);
   await snap('ui-04-moodles');

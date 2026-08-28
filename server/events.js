@@ -610,7 +610,9 @@ function deliverToVillage(a) {
     const q = Math.min(left, Math.floor(Number(inventory[it]) || 0));
     if (q > 0) { give[it] = q; left -= q; }
   }
-  const dep = deposit(vil, inventory, give);
+  // ★[무게 배치 2026-08-27] 개체 무게 환산을 **게시판 납품에도** 그대로 태운다 —
+  //   같은 물고기가 거래소에선 2.2단위, 게시판에선 1단위면 그게 보이지 않는 손이다.
+  const dep = deposit(vil, inventory, give, a.unitsOf);
   if (!dep || !dep.ok) { ledger.unclaim(vid, item, c.take); return { ok: false, err: (dep && dep.err) || '곳간이 받지 않았다' }; }
 
   // ③ 보상 — 마을 잉여를 실제로 덜어 준다(물물. `_cash` 는 쓰지 않는다 — 재민 세금 캐논).
