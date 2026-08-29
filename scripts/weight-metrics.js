@@ -43,8 +43,13 @@ const scen = [];
 }
 {
   const n = 10;
-  scen.push({ name: `판자 나르기(${n}장 · 시작 지급)`, kg: +(n * W.kgOf('plank')).toFixed(1),
-              note: `${W.kgOf('plank')}kg/장 — ★새 플레이어 시작 지급이 이것이다` });
+  scen.push({ name: `판자 나르기(${n}장)`, kg: +(n * W.kgOf('plank')).toFixed(1),
+              note: `${W.kgOf('plank')}kg/장 — ※시작 지급이었으나 2026-08-28 빈손 배치로 폐지` });
+}
+{
+  // ★[빈손 시작 2026-08-28] 조잡한 석기 한 벌 — 빈손이 처음 갖는 무게
+  const kg = W.kgOf('crude_axe') + W.kgOf('crude_pick') + W.kgOf('crude_blade');
+  scen.push({ name: '조잡한 석기 한 벌(3종)', kg: +kg.toFixed(1), note: '빈손이 처음 갖는 짐 — 정품 3.6kg 보다 무겁다' });
 }
 {
   scen.push({ name: '통나무 한 짐(참나무 4)', kg: +(4 * W.kgOf('oak_log')).toFixed(1),

@@ -195,16 +195,35 @@ async function waitHttp(url, tries = 900) {
 
   // ── ③ 물고기를 내고 무언가를 받는다 — 세 클릭 ─────────────────────────────
   const GIVE = 'fish';
+  const GIVE_N_PLAN = 12;      // ★아래 GIVE_N 과 같은 수 — 후보를 고를 때 미리 알아야 해서 앞에 둔다
   const giveRow = board.rows.find((r) => r.res === GIVE);
   ok(!!giveRow && giveRow.canGive, '★전제 — 물고기는 낼 수 있는 품목이다', giveRow ? `시세 ${giveRow.num}` : '없음');
   // 받을 품목: 살아 있는 것 중 **마을이 실제로 내줄 수 있는 양이 가장 큰** 것(상한에 안 걸리게).
-  const takeRow = board.rows.filter((r) => r.canTake && r.res !== GIVE && r.sell > 0 && r.num > 0)
-    .sort((a, b) => b.sell - a.sell)[0];
-  ok(!!takeRow, '★전제 — 마을이 내줄 수 있는 품목이 있다', takeRow ? `${takeRow.ko} 재고 ${takeRow.stock} · 팔 수 있는 양 ${takeRow.sell}` : '없음');
+  // ★★[2026-08-28] 그런데 그것만으로는 부족하다 — **낼 물건 값으로 한 개도 못 사는 쌍**이 뽑힌다.
+  //   실제로 그랬다: 생선(0.004728) 12개 = 0.057 곡식 → 곡식(1) **0개**. 견적은 정상으로 서고
+  //   버튼만 죽는다(제품은 옳다 — 못 사는 걸 팔 수는 없다). 그런데 하네스는 그걸 **회귀로** 보고했다.
+  //   ⇒ 족보 (56)의 재적용: "X 가 변하는가"를 묻기 전에 **X 가 변할 수 있는 쌍인지** 먼저 확인한다.
+  //   ⚠이건 값 문제가 아니라 **후보 선택** 문제다. 시세는 매 판 다르고(부팅 지연만큼 게임일이 흐른다)
+  //     어떤 판에선 성사되고 어떤 판에선 안 된다 — 그게 이 검사가 간헐적으로 빨개진 이유다.
+  const SPREAD = 0.9;          // 마을 몫 10% 를 뺀 몫(패널이 화면에 그대로 밝히는 수)
+  const WANT_UNITS = 2;        // ④가 "+n 들어왔다"를 세려면 최소 2개는 와야 안전하다
+  const _afford = (r) => (GIVE_N_PLAN * (giveRow ? giveRow.num : 0) * SPREAD) / r.num;
+  const _cands = board.rows.filter((r) => r.canTake && r.res !== GIVE && r.sell > 0 && r.num > 0);
+  const _feasible = _cands.filter((r) => _afford(r) >= WANT_UNITS && r.sell >= WANT_UNITS);
+  const takeRow = _feasible.sort((a, b) => b.sell - a.sell)[0];
+  if (!takeRow) {
+    console.log(`    ⚠살 수 있는 후보 없음 — 후보 ${_cands.length}종: ` +
+      _cands.map((r) => `${r.ko}(${r.num}·최대 ${_afford(r).toFixed(2)}개)`).join(' '));
+  } else {
+    console.log(`    후보 ${_cands.length}종 중 살 수 있는 것 ${_feasible.length}종 → ` +
+      `${takeRow.ko} (낼 값으로 ${_afford(takeRow).toFixed(1)}개까지)`);
+  }
+  ok(!!takeRow, '★전제 — 마을이 내줄 수 있고 **내 물건 값으로 살 수 있는** 품목이 있다',
+    takeRow ? `${takeRow.ko} 재고 ${takeRow.stock} · 팔 수 있는 양 ${takeRow.sell}` : '없음');
   if (!giveRow || !takeRow) { console.log('\n교환 가능한 쌍 없음 — 중단'); await browser.close(); shutdown(); process.exit(1); }
   console.log(`    고른 쌍: 📤 ${giveRow.ko}(${giveRow.num}) → 📥 ${takeRow.ko}(${takeRow.num})  ※지시의 "곡물"은 위 머리 주석 참조`);
 
-  const GIVE_N = 12;
+  const GIVE_N = GIVE_N_PLAN;
   await page.evaluate((n) => window.__sendPrimary({ type: '__e2e_give', items: { fish: n } }), GIVE_N + 8);
   await sleep(900);
   await closePanel(); await openTrade();
@@ -314,6 +333,22 @@ async function waitHttp(url, tries = 900) {
              tS0: stockOf(bfr, tRow.res), tS1: stockOf(aft, tRow.res),
              others: others0.length, movedN: moved.length };
   }
+
+  // ★★[2026-08-28] **놀고 있는 동안 값이 움직이는가** — 날 얼림의 직접 대조.
+  //   종전 대조는 "무관 품목이 **전부** 움직였으면 날이 흐른 것"이라고 읽었다. 그건 틀렸다:
+  //   그림자 가격은 **바구니 전체를 한꺼번에** 푸는 값이라, 큰 거래 하나면 무관 품목도 같이 움직인다
+  //   (`push` 는 일부러 수량 100000 을 6번 밀어 넣는다 — 작을 수가 없다).
+  //   실제로 이 판정은 **어떤 품목이 뽑히느냐에 따라** 통과·실패가 갈렸다(약초면 통과, 익힌 음식이면 실패).
+  //   ⇒ 재고를 안 건드리고 **같은 시간만큼 기다렸다가** 다시 읽는다. 여기서 0 이 나와야
+  //     "방금 움직인 건 내 거래 때문"이 성립한다. 독립성 가정을 안 쓴다.
+  async function idleDrift(times = 6) {
+    const bfr = await askBoard();
+    const before = bfr.filter((r) => r.num > 0).map((r) => [r.res, r.num]);
+    await sleep(600 + times * 650);
+    const aft = await askBoard();
+    const moved = before.filter(([res, v]) => Math.abs((numOf(aft, res) || 0) - v) > 1e-12);
+    return { n: before.length, movedN: moved.length, moved: moved.map(([r]) => r) };
+  }
   // 후보 풀. ★짝을 고를 때 **마을이 값을 치를 수 있는지**를 먼저 본다 —
   //   비싼 물건 한 개 값이 마을이 내줄 수 있는 전량보다 비싸면 교환은 성립조차 안 한다(ⓓ).
   const pool = async () => {
@@ -346,10 +381,13 @@ async function waitHttp(url, tries = 900) {
     sellHit ? `${sellHit.g.ko} ${sellHit.r.gN0} → ${sellHit.r.gN1} (${sellHit.g.ko}→${sellHit.t.ko} 성사 ${sellHit.r.dealt}회)`
             : `실제로 거래된 후보 ${sellTried.length}종 전부 안 움직임: ${sellTried.join(' · ') || '(성사된 거래가 없다)'}`);
   if (sellHit) {
-    // ★자명 통과 금지 — 전부 흔들렸다면 그건 내 거래가 아니라 날이 흐른 것이다(대조).
-    ok(sellHit.r.others > 0 && sellHit.r.movedN < sellHit.r.others,
-      '★★⑤ 대조 — **안 건드린 품목은 그대로다**(움직인 게 내 거래 때문임을 못 박는다)',
-      `무관 ${sellHit.r.others}품목 중 ${sellHit.r.movedN}개만 이동`);
+    // ★자명 통과 금지 — **아무것도 안 하면 아무것도 안 움직여야** 한다(날 얼림의 직접 대조).
+    const idle = await idleDrift();
+    console.log(`    [대조] 거래 없이 같은 시간 대기 → ${idle.n}품목 중 ${idle.movedN} 이동` +
+      (idle.movedN ? ` (${idle.moved.join(' ')})` : ''));
+    ok(idle.n > 0 && idle.movedN === 0,
+      '★★⑤ 대조 — **거래를 안 하면 값이 안 움직인다**(방금 움직인 게 내 거래 때문임을 못 박는다)',
+      `놀린 ${idle.n}품목 중 ${idle.movedN} 이동`);
     // ★★그리고 그 값이 **진짜 화면에 그려져 있다** — 페이로드만 바뀌고 DOM 이 안 바뀌면 없는 기능이다.
     const shown = await page.evaluate(() => window.__panelText());
     ok(shown.includes(String(sellHit.r.gN1)),

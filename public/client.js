@@ -5759,6 +5759,11 @@ const SIM_JOB_EMOJI = {
   window.__sendPrimary = sendPrimary;
   window.__sendPrimaryAt = sendPrimaryAt;
   window.__getInv = () => ({ ...inventory });   // ★진단 훅(읽기 전용) — 재료 선납 차감 실측용
+  // ★[빈손 시작 2026-08-28] 도구·장비 진단 훅(읽기 전용) — `e2e-emptystart` 가 두 단 사다리를 밟는 데 쓴다.
+  window.__getTools = () => (toolItems || []).map((t) => ({ ...t }));
+  window.__getEquipped = () => equipped || null;
+  // ★[빈손 시작 2026-08-28] 내구도 함께 노출 — 하네스가 "자작 vs 정품"의 **층**을 화면 값으로 잰다(읽기 전용).
+  window.__getEquipment = () => (equipment || []).map((e) => ({ type: e.type, id: e.id, dura: e.dura, durMax: e.durMax }));
   window.__getPrimaryZoneId = () => primaryZoneId;
   // ★[2026-08-03f 배치 13] 진단 훅 — **내 영속 신원**(등록 계정이면 username, 게스트면 anon_<고정>).
   //   토큰은 **노출하지 않는다** — 하네스도 localStorage 에서 직접 읽는다(코드가 값을 흘리지 않게).
@@ -11660,6 +11665,8 @@ const SIM_JOB_EMOJI = {
     hide: '가죽', berry_jam: '베리잼', water_bottle: '물병',
     seed_berry: '베리씨앗', herb: '약초', ore: '광물',
     food: '곡식', food_cooked: '익힌 곡식', fish: '생선', fish_cooked: '구운생선',   // ★[곡물 품목화 2026-08-27]
+    twig: '잔가지', pebble: '자갈',   // ★[빈손 시작 2026-08-28] 땅에서 줍는 것
+    crude_axe: '조잡한 돌도끼', crude_pick: '조잡한 돌괭이', crude_blade: '조잡한 돌칼',
     ore_chunk: '원석(kg·미확인)',   // ★[11차] 캔 것은 정체를 모른다 — 마을에서 선광(O키)해야 광석/맥석이 갈린다. 덩이 크기가 숙련마다 달라 **kg 단위**로 센다
     // ★[2026-08-02 야금 사슬] 라벨이 없으면 인벤 창에 **영문 키가 그대로** 뜬다(ITEM_LABEL[k] || k).
     iron_ore: '철 정광', charcoal: '숯', meteoric_iron: '운철(隕鐵)', lead: '납', nickel: '니켈',
@@ -13153,6 +13160,7 @@ const SIM_JOB_EMOJI = {
     wood: '자재', stone: '자재', ore: '자재', pillar: '자재', rafter: '자재', thatch: '자재',
     berry: '음식', meat_raw: '음식', meat_cooked: '음식', berry_jam: '음식', herb: '약초',
     food: '음식', food_cooked: '음식', fish: '음식', fish_cooked: '음식',   // ★[곡물 품목화]
+    twig: '자재', pebble: '자재',   // ★[빈손 시작] 줍는 재료
     water_bottle: '음료',
     fiber: '잡화', seed_berry: '씨앗', hide: '잡화',
     axe: '도구', pickaxe: '도구', sword: '도구',
@@ -13550,17 +13558,23 @@ const SIM_JOB_EMOJI = {
   let craftCat = 'tool';
   function renderCraftPanel2(body) {
     // 14.50/14.51: 서버에서 받은 동적 recipes 사용 (axe/saw/hammer + 건축물 + 가공)
-    const TOOL_ICON = { axe: '🪓', pickaxe: '⛏️', sword: '⚔️', saw: '🪚', hammer: '🔨' };
+    const TOOL_ICON = { axe: '🪓', pickaxe: '⛏️', sword: '⚔️', saw: '🪚', hammer: '🔨',
+      // ★[빈손 시작 2026-08-28] 조잡한 석기 — 정품과 **한눈에 구별**돼야 한다(같은 아이콘이면 속는다)
+      crude_axe: '🪨', crude_pick: '🪨', crude_blade: '🔪' };
     let items = [];
     if (craftCat === 'tool') {
       // recipes = { axe: {wood,stone,label}, ... } (server에서 받음)
+      // ★[2026-08-28] **일반 cost** — 조잡한 석기는 잔가지·자갈·풀로 만든다(나무/돌 두 칸으론 표현이 안 된다).
+      //   서버가 `cost` 를 실어 보내고 클라는 그걸 그대로 그린다(재료 표를 클라가 다시 적지 않는다).
       items = Object.entries(recipes || {}).map(([id, r]) => ({
         id, msgType: 'craft', icon: TOOL_ICON[id] || '🔧',
-        name: r.label || id,
-        cost: { wood: r.wood || 0, stone: r.stone || 0 },
+        name: r.label || id, crude: !!r.crude,
+        cost: r.cost || { wood: r.wood || 0, stone: r.stone || 0 },
         have: hasToolAlive(id) ? 1 : 0,
         durStr: toolDurStr(id),
       }));
+      // ★§8.5 "맨손 = 소목록" — **조잡한 석기를 맨 위로**. 빈손으로 들어온 사람이 처음 보는 줄이어야 한다.
+      items.sort((a, b) => (b.crude ? 1 : 0) - (a.crude ? 1 : 0));
     } else if (craftCat === 'building') {
       // 14.51 buildingRecipes — 제작 → 인벤 → 건축 모드에서 배치
       items = Object.entries(buildingRecipes || {}).map(([id, r]) => {

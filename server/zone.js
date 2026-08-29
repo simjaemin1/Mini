@@ -670,12 +670,27 @@ function aggroPackmates(sourceWolf, targetPid) {
 // === Crafting ===
 // 도구 레시피: 인벤토리에 도구로 들어감 (player.tools)
 // 14.50: saw/hammer 추가 (목공 도구). plank 변환 레시피는 별도 (saw 필요).
+// ★★[재민 확정 2026-08-28 · 조잡한 석기] `cost` 로 **아무 재료나** 받는다.
+//   종전엔 `doCraft` 가 `recipe.wood`·`recipe.stone` 두 칸만 읽어서, 통나무·석괴 말고는 레시피를 쓸 수 없었다.
+//   빈손 사다리의 첫 칸은 **땅에서 주운 것**(잔가지·자갈·풀)이라 그 두 칸으론 표현이 안 된다.
+//   ⇒ `cost` 를 정본으로 쓰고, 옛 `wood/stone` 표기는 그대로 두어 하위 호환(클라 표시 포함)을 지킨다.
+const CRUDE_EFF_FRAC = (() => { const x = parseFloat(process.env.CRUDE_EFF_FRAC || ''); return Number.isFinite(x) ? x : 0.5; })();
+const CRUDE_DURA_FRAC = (() => { const x = parseFloat(process.env.CRUDE_DURA_FRAC || ''); return Number.isFinite(x) ? x : 0.25; })();
 const RECIPES = {
-  axe:     { wood: 5, stone: 2, label: '도끼' },
-  pickaxe: { wood: 3, stone: 5, label: '곡괭이' },
-  sword:   { wood: 2, stone: 8, label: '검' },
-  saw:     { wood: 2, stone: 4, label: '톱' },    // 통나무 → 판자 가공용
-  hammer:  { wood: 3, stone: 3, label: '망치' },  // 건축 시 필수
+  axe:     { wood: 5, stone: 2, cost: { wood: 5, stone: 2 }, label: '도끼' },
+  pickaxe: { wood: 3, stone: 5, cost: { wood: 3, stone: 5 }, label: '곡괭이' },
+  sword:   { wood: 2, stone: 8, cost: { wood: 2, stone: 8 }, label: '검' },
+  saw:     { wood: 2, stone: 4, cost: { wood: 2, stone: 4 }, label: '톱' },    // 통나무 → 판자 가공용
+  hammer:  { wood: 3, stone: 3, cost: { wood: 3, stone: 3 }, label: '망치' },  // 건축 시 필수
+  // ── ★★조잡한 석기 — **맨손으로, 주운 것만으로** [재민 확정 2026-08-28] ──────────────
+  //   재민 원문: *"돌멩이를 줍고 나뭇가지를 줍고"*. 빈손으로 도착한 사람이 **오늘을 버티게** 해 주는 물건이다.
+  //   고증: 청동기 후기에도 서민의 일상 도구는 돌이었고, 급하면 자갈을 깨 날을 세워 나뭇가지에
+  //   섬유로 동여맸다(뗀석기 급조). 위세축·청동과는 무관한 층이다 — 이걸 갖고 자랑하지 않는다.
+  //   ★★**명확히 나빠야 한다**: 효율은 정품이 준 이득의 절반(`CRUDE_EFF_FRAC`),
+  //     내구는 정품의 1/4(`CRUDE_DURA_FRAC`). 자급이 충분해지면 마을 장인 경제가 죽는다(듀랑고의 자급자족 병).
+  crude_axe:   { cost: { pebble: 2, twig: 1, fiber: 2 }, label: '조잡한 돌도끼', crude: true },
+  crude_pick:  { cost: { pebble: 3, twig: 1, fiber: 2 }, label: '조잡한 돌괭이', crude: true },
+  crude_blade: { cost: { pebble: 2, twig: 1, fiber: 1 }, label: '조잡한 돌칼',   crude: true },
 };
 // 14.50: 자원 변환 레시피 (도구 필요). saw로 통나무→판자.
 const ITEM_RECIPES = {
@@ -709,6 +724,11 @@ const TOOL_MAX_DURABILITY = {
   saw:     120, // 톱은 가공 전용이라 좀 길게
   hammer:  150, // 망치는 건축 전용이라 가장 길게
 };
+// ★조잡본 내구도 — 정품의 `CRUDE_DURA_FRAC`(기본 1/4). **금방 닳아 다시 만들게** 하는 게 이 층의 리듬이다.
+//   자급이 편해지면 마을 장인이 죽으므로, 이 값이 "자작 vs 구매"의 손익을 가른다(대리 지표 ②).
+TOOL_MAX_DURABILITY.crude_axe   = Math.max(1, Math.round(TOOL_MAX_DURABILITY.axe * CRUDE_DURA_FRAC));
+TOOL_MAX_DURABILITY.crude_pick  = Math.max(1, Math.round(TOOL_MAX_DURABILITY.pickaxe * CRUDE_DURA_FRAC));
+TOOL_MAX_DURABILITY.crude_blade = Math.max(1, Math.round(TOOL_MAX_DURABILITY.sword * CRUDE_DURA_FRAC));
 // 14.53: 도구는 instance 기반. player.toolItems = [{id, type, d, max}].
 // 같은 종류 여러 개 OK, 각각 다른 내구도. equipped = toolItemId.
 let _nextToolId = 1;
@@ -863,6 +883,14 @@ const TOOL_EFFECTS = {
   saw:     { gatherWoodMult: 1, gatherStoneMult: 1, attackMult: 0.7 }, // 톱 = 건축 가공용, 전투 약함
   hammer:  { gatherWoodMult: 1, gatherStoneMult: 1, attackMult: 1.3 }, // 망치 = 건축 + 약간 강함
 };
+// ★★[조잡한 석기 2026-08-28] 조잡본 효과는 **정품 표에서 유도한다** — 숫자를 두 벌로 적지 않는다.
+//   맨손이 1 이고 정품이 m 이면, 조잡본은 **그 이득의 절반**: 1 + (m−1)×`CRUDE_EFF_FRAC`.
+//   ⇒ 맨손 < 조잡 < 정품 이 **정의상** 성립한다(하네스 ⑤가 그 사이값을 assert 한다).
+//     `CRUDE_EFF_FRAC` 을 바꾸면 세 값이 같이 움직이므로 순서가 깨질 길이 없다.
+const _crudeOf = (m) => 1 + (Math.max(1, m) - 1) * CRUDE_EFF_FRAC;
+TOOL_EFFECTS.crude_axe   = { gatherWoodMult: _crudeOf(TOOL_EFFECTS.axe.gatherWoodMult),     gatherStoneMult: 1, attackMult: 1.0 };
+TOOL_EFFECTS.crude_pick  = { gatherWoodMult: 1, gatherStoneMult: _crudeOf(TOOL_EFFECTS.pickaxe.gatherStoneMult), attackMult: 1.0 };
+TOOL_EFFECTS.crude_blade = { gatherWoodMult: 1, gatherStoneMult: 1, attackMult: _crudeOf(TOOL_EFFECTS.sword.attackMult) };
 const PLAYER_MAX_HP = 100;
 const PLAYER_ATTACK_RANGE = 60;
 const PLAYER_ATTACK_DAMAGE = 10;
@@ -2661,25 +2689,28 @@ wss.on('connection', async (ws, req) => {
         }
       }
       tools = toolItems; // 호환용 — 아래에서 player.toolItems로 저장
-      // 14.50: 시작 도구 (목공 시작 enable). 한 번도 만들지 않은 신규 player에게 1개씩.
-      const ensureStart = (tn) => {
-        if (!toolItems.some(t => t.type === tn)) {
-          const mx = TOOL_MAX_DURABILITY[tn] || 100;
-          toolItems.push({ id: genToolId(), type: tn, d: mx, max: mx });
-        }
-      };
-      if (toolItems.length === 0) {
-        ensureStart('saw');
-        ensureStart('hammer');
-        ensureStart('axe');
-      }
+      // ★★★[재민 확정 2026-08-28] **시작 지급 제거됨.** 재민 원문: *"지급 아이템은 없어야 할 거 같은데"*
+      //   여기 있던 것: `toolItems.length === 0` 이면 톱·망치·도끼를 하나씩 넣어 줬다.
+      //
+      //   ★왜 지웠나 — 온보딩 캐논 §9 는 "나루터에서 온 이방인"이 **빈손으로 배고픈 채** 도착한다고 못 박는다.
+      //     무료 보상 세례는 결핍을 없애고, 결핍이 첫 30분의 엔진이다. 지급받은 도끼로 시작하면
+      //     "도끼를 갖고 싶다"가 사라지고, 그 순간 채집·제작·의뢰가 전부 이유를 잃는다.
+      //
+      //   ★★그리고 실측해 보니 이건 **시작 지급이 아니라 매 접속 지급**이었다 —
+      //     조건이 "신규 플레이어"가 아니라 **"도구가 하나도 없으면"**이라, 도구를 다 부순 사람이
+      //     로그아웃했다 들어오면 **새 도구 세 자루가 다시 생겼다**. 무한 수도꼭지였다.
+      //     (아래 판자 10장도 `if (!inventory.plank)` 라 똑같이 매 접속 채워졌다.)
+      //
+      //   ⇒ 대신 **맨손에서 시작하는 사다리**를 놓았다(이 배치 §3·§3-b):
+      //     ⓐ 땅에서 잔가지·자갈·풀을 줍는다(E) → ⓑ **조잡한 석기**를 맨손으로 엮는다(효율 절반·금방 닳는다)
+      //     → ⓒ 나무·돌을 모아 제대로 된 도구를 만든다 → ⓓ 마을 장인의 정품을 **벌어서 산다**.
+      //   ⚠기존 플레이어의 소지품은 **안 건드린다** — 위 복원 경로가 저장본을 그대로 읽는다.
       // 저장용: 임시 wrap 객체 (savePlayer가 tools_json으로 직렬화)
       // — 실제 player.toolItems / player.hotkey1 / player.equipped는 player 생성 시 할당됨 (아래)
       // 임시 변수에 저장
       const _toolItems = toolItems;
       const _hotkey1 = hotkey1;
       tools = { __toolItems: _toolItems, __hotkey1: _hotkey1 }; // 임시 컨테이너 (player 만들 때 풀어줌)
-      if (!inventory.plank) inventory.plank = 10; // 시작 판자 약간
       equipped = acct.equipped || null;
       initHunger = (typeof acct.hunger === 'number') ? acct.hunger : HUNGER_MAX;
       initThirst = (typeof acct.thirst === 'number') ? acct.thirst : THIRST_MAX;
@@ -3981,12 +4012,16 @@ function doCraft(player, recipeName) {
     send(player.ws, { type: 'notice', text: `알 수 없는 레시피: ${recipeName}` });
     return;
   }
-  if ((player.inventory.wood || 0) < recipe.wood || (player.inventory.stone || 0) < recipe.stone) {
-    send(player.ws, { type: 'notice', text: `${recipe.label} 제작에는 나무 ${recipe.wood}, 돌 ${recipe.stone} 필요` });
+  // ★[2026-08-28] **일반 cost** — 잔가지·자갈·풀처럼 나무/돌이 아닌 재료도 받는다(조잡한 석기).
+  //   옛 `{wood, stone}` 표기는 `cost` 로 흡수돼 있으므로 이 한 줄이 두 경로를 다 덮는다.
+  const cost = recipe.cost || { wood: recipe.wood || 0, stone: recipe.stone || 0 };
+  const lack = Object.entries(cost).filter(([k, v]) => (player.inventory[k] || 0) < v);
+  if (lack.length) {
+    const need = Object.entries(cost).map(([k, v]) => `${ITEM_LABEL_SERVER[k] || k} ${v}`).join(', ');
+    send(player.ws, { type: 'notice', text: `${recipe.label} 제작에는 ${need} 필요` });
     return;
   }
-  player.inventory.wood -= recipe.wood;
-  player.inventory.stone -= recipe.stone;
+  for (const [k, v] of Object.entries(cost)) player.inventory[k] = (player.inventory[k] || 0) - v;
   // 14.53: 새 instance 추가 (자동 장착 X — 사용자가 인벤에서 직접 착용)
   if (!player.toolItems) player.toolItems = [];
   const mx = TOOL_MAX_DURABILITY[recipeName] || 100;
@@ -4500,10 +4535,58 @@ setInterval(() => {
   }
 }, 15 * 60 * 1000);
 
+// ★★★[재민 확정 2026-08-28 · 빈손 시작] **맨손 채집 — 이미 렌더된 자연물이 채집원이다.**
+//   재민 확정: *"낙하물 스캐터 금지"* — 땅에 아이템을 흩뿌리지 않는다
+//   ("소품 밀도 낮게, 스폰 광장이 첫인상" 캐논 위반). 대신 **눈에 보이는 것**에 손을 얹는다:
+//     덤불 → 잔가지 · 갈대 군락(물가) → 풀 · 물가 바위밭/자갈 지형 → 자갈 · 숲 바닥 → 잔가지.
+//
+// ★고갈·리필은 `server/forage.js` 정본이 한다(개체별 lazy 번영도 — 낚시 자리·광맥과 같은 문법).
+//   여기서 하는 건 **어느 개체인지 고르고, 정본에 물어보고, 결과를 말하는 것**뿐이다.
+//   ⚠1차 실장은 `getStoneMultiplier` 로 자갈 자리를 갈랐다가 **풀이 한 번도 안 나왔다** —
+//     실측하니 이 세계의 `stoneMult` 는 어디서나 1.00 고정이라 판별에 못 쓴다(3000표본 min=max=1.00).
+//     죽은 신호를 읽는 규칙은 조용히 한쪽으로만 답한다. 지형 술어를 쓸 땐 **분포부터 재라.**
+const Forage = require('./forage');
+function _forageCtx(player) {
+  return {
+    forestMult: (x, y) => (_terrain.getForestMultiplier ? _terrain.getForestMultiplier(ZONE_ID, x, y) : 1),
+    isRock: (x, y) => isRockTileLocal(x, y),
+    isWater: (x, y) => isWaterTileLocal(x, y),
+  };
+}
+function tryForage(player) {
+  const now = Date.now();
+  if (player._forageAt && now - player._forageAt < Forage.CFG.COOLDOWN_MS) return;
+  player._forageAt = now;
+  const src = Forage.sourceAt(player.x, player.y, _forageCtx(player));
+  if (!src) {
+    send(player.ws, { type: 'notice', text: '🤏 여긴 주울 게 없다 — 덤불·물가·숲을 찾아라' });
+    return;
+  }
+  const got = Forage.take(src.key, now, 1);
+  if (!got) {
+    // ★반독점의 얼굴 — 한 자리를 훑으면 그 자리만 마른다. 옆 개체는 멀쩡하다.
+    send(player.ws, { type: 'notice', text: `🤏 ${src.where} — 여긴 다 훑었다. 잠시 뒤 다시 자란다(옆 것을 찾아라)` });
+    return;
+  }
+  player.inventory[src.kind] = (player.inventory[src.kind] || 0) + got;
+  // (로트 없음 — 잔가지·자갈·풀은 무기한 벌크다. 나이가 뜻이 없다.)
+  send(player.ws, { type: 'inventory', inventory: player.inventory });
+  send(player.ws, { type: 'notice',
+    text: `🤏 ${src.where}에서 ${ITEM_LABEL_SERVER[src.kind] || src.kind} ${got} (남은 양 ${Forage.left(src.key, now).toFixed(1)})` });
+  if (canPersist(player)) savePlayer(player);
+}
+
 function tryGather(player) {
   // Phase 5-9: 물 채취 — 강/호수 인접 시 thirst 회복 + 어업 (Phase 5-11)
   for (const [dx, dy] of [[32, 0], [-32, 0], [0, 32], [0, -32]]) {
     if (isWaterTileLocal(player.x + dx, player.y + dy)) {
+      // ★★[빈손 시작 2026-08-28] **목이 안 마르면 갈대를 벤다.**
+      //   종전엔 여기가 막다른 길이었다(물만 마시고 끝). 물가에 선 사람이 할 일이 하나 더 있어야 한다 —
+      //   재민 확정의 "갈대 군락 E = 섬유"가 이 자리다(새 개체 없이, 이미 있는 물가에 판정만 얹는다).
+      // ★갈증이 **거의 찼으면** 갈대를 벤다. `>= THIRST_MAX` 로 하면 안 된다 —
+      //   갈증은 매 틱 조금씩 줄어서 **정확히 100 인 순간이 거의 없고**, 그러면 이 갈래가
+      //   영영 안 열린다(1차 실장이 그랬다: 실클라에서 갈대가 한 번도 안 잘렸다).
+      if ((player.thirst ?? THIRST_MAX) >= THIRST_MAX * 0.95) { tryForage(player); return; }
       const before = player.thirst || 0;
       player.thirst = Math.min(100, before + 30);
       let msg = `💧 물 마심 (+${Math.round(player.thirst - before)})`;
@@ -4556,7 +4639,7 @@ function tryGather(player) {
     const d = Math.hypot(r.x - player.x, r.y - player.y);
     if (d < bestDist) { best = r; bestDist = d; }
   }
-  if (!best) return;
+  if (!best) { tryForage(player); return; }
 
   // 토지 보호 체크: 다른 사람이 클레임한 땅 안의 자원
   //   - 주인 vp >= VP_THRESHOLD (주인이 같은 zone 접속 중일 때만 확인 가능) → 보호 해제 → 채집 허용 (vp 안 늘림)
@@ -4617,7 +4700,10 @@ function tryGather(player) {
     if (best.type === 'tree')        loot = { wood: 3 + Math.floor((best.r || 8) / 3) };  // 크기 비례: r4~20 → wood 4~9
     else if (best.type === 'rock')   loot = { stone: 1 };
     else if (best.type === 'berry_bush') {
-      loot = { berry: 2, fiber: 1 };
+      // ★[재민 확정 2026-08-28] **덤불 E = 잔가지.** 열매·풀과 **함께** 삭정이가 나온다 —
+      //   덤불을 헤치면 마른 가지가 딸려 나오는 게 자연스럽고, 조잡한 석기의 세 재료 중 둘이
+      //   여기서 한꺼번에 나와 **빈손의 첫 걸음이 막히지 않는다**(잔가지는 숲 바닥에도 있다 — 소스 다종화).
+      loot = { berry: 2, fiber: 1, twig: 1 };
       if (Math.random() < 0.3) loot.seed_berry = 1;
     }
     else if (best.type === 'herb')   loot = { herb: 2 };       // Phase 14.3
@@ -4885,6 +4971,9 @@ const ITEM_LABEL_SERVER = {
   berry_jam: '베리잼', water_bottle: '물병', seed_berry: '베리씨앗',
   herb: '약초', ore: '광물',
   food: '곡식', food_cooked: '익힌 곡식',   // ★[곡물 품목화 2026-08-27]
+  // ★[빈손 시작 2026-08-28] 땅에서 줍는 것 + 그걸로 엮는 조잡한 석기
+  twig: '잔가지', pebble: '자갈',
+  crude_axe: '조잡한 돌도끼', crude_pick: '조잡한 돌괭이', crude_blade: '조잡한 돌칼',
   axe: '도끼', pickaxe: '곡괭이', sword: '검',
 };
 
@@ -5807,6 +5896,10 @@ function __testBind() {
     Body, damagePlayer, doEat, isIndoorAt, seasonColdNow, FOOD_EFFECTS,
     // ── 무게 모델(2026-08-27) ── 정본 모듈을 그대로 내준다(하네스가 곡선을 다시 짜면 사본이다)
     Weights, Carry, Lots, moveMultOf, zoneGameDay, COOK_RECIPES, doCook, _unitsOfFor,
+    // ── 빈손 시작(2026-08-28) ── 줍기·제작·도구 표를 **정본 그대로** 내준다
+    RECIPES, TOOL_EFFECTS, TOOL_MAX_DURABILITY, EQUIPMENT_RECIPES, CRUDE_EFF_FRAC, CRUDE_DURA_FRAC,
+    doCraft, doEquip, tryForage, Forage, _forageCtx, getEquippedTool, consumeEquippedDurability,
+    TOOL_EQUIP_EFF_SCALE, PlayerItems,
     // ── 거래소 E2E(2026-08-27) ── 정본을 그대로 내준다(하네스가 가격을 다시 풀면 사본이다)
     Trade: require('./trade'), Events: require('./events'), SimVillages,
     tryVillageTrade, tryVillageTradeExec,

@@ -88,12 +88,13 @@ async function waitHttp(url, tries = 900) {
   ok(!!c0, '★① 소지 무게 상태가 온다', c0 ? `${c0.kg}kg / ${c0.cap}kg` : '안 옴');
   const inv0 = await page.evaluate(() => window.__getInv());
   console.log(`    시작 인벤: ${JSON.stringify(inv0)}  → ${c0 ? c0.kg : '?'}kg (용량 ${c0 ? c0.cap : '?'}kg)`);
-  // ★★[실측 발견 · 회부] **새 플레이어는 태어나자마자 과적이다.**
-  //   시작 지급이 톱·망치·도끼 + **판자 10장**인데 판자만 30kg 이라 기본 용량 25kg 을 넘긴다.
-  //   이건 하네스 결함이 아니라 제품의 사실이라 **판정으로 박아 둔다** — 손잡이(`CARRY_CAP_KG`)나
-  //   시작 지급 중 하나가 바뀌어야 하고, 그건 재민 판단이다(회부_무게_다음층.md C항).
-  ok(c0.kg > c0.cap, '★★[실측·회부] 시작 지급(판자 10 + 도구 3)만으로 **기본 용량을 넘긴다**',
-    `${c0.kg}kg > ${c0.cap}kg — 새 플레이어가 태어나자마자 ×${c0.moveMult} 로 느리다`);
+  // ★★[2026-08-28 갱신 — 뒤집혔다] 종전엔 여기서 "**시작 지급만으로 용량을 넘긴다**"를 판정으로 박아 뒀다
+  //   (판자 10장 30kg + 도구 3.6kg = 33.6kg > 25kg). **빈손 배치가 그 지급을 통째로 없앴다** —
+  //   그래서 판정도 반대로 세운다: 새 플레이어는 **빈손이고 안 느리다**.
+  //   (빈손 시작 자체의 전수 검사는 `test-emptystart`·`e2e-emptystart` 소관이다.)
+  ok(c0.kg === 0 && !c0.over && c0.moveMult === 1,
+    '★★① 새 플레이어는 **빈손이다** — 지급이 없으니 과적도 없다',
+    `${c0.kg}kg / ${c0.cap}kg ×${c0.moveMult}`);
   const hud0 = await page.evaluate(() => (document.getElementById('carryHud') || {}).textContent || '');
   ok(/kg/.test(hud0), '★★① **HUD 에 kg 이 그려져 있다**', hud0.trim());
   await snap('wt-01-light');
@@ -106,10 +107,10 @@ async function waitHttp(url, tries = 900) {
   ok(Math.abs(parseFloat(hud1) - c1.kg) < 0.06, '★★② HUD 숫자가 **서버 값 그대로**다(클라가 다시 안 센다)', `HUD ${hud1} vs ${c1.kg}`);
 
   // ── ③ 가벼울 때의 걸음 — 대조군 ───────────────────────────────────────────
-  //   ★대조군을 만들려면 **가벼워져야** 한다. 새 픽스처를 만들지 않고 **게임 경로**(버리기)를 쓴다.
-  //   (1차 실행은 이걸 안 해서 "가벼움" 대조군이 이미 r=2.14 과적이었고, 그 위에서 잰
-  //    감속률 −19%를 배율 −46%와 견주다 실패했다 — 대조군이 대조군이 아니었다.)
-  await page.evaluate(() => window.__sendPrimary({ type: 'drop_item', item: 'plank', amount: 10 }));
+  //   ★대조군은 이제 **거저 생긴다** — 빈손 배치 뒤로 새 플레이어가 빈손이기 때문이다.
+  //   (종전엔 시작 지급 판자 10장을 버려서 만들었다. 그 지급이 사라졌다.)
+  //   ⚠단 위 ②에서 돌을 받았으니, 그 돌을 버려 다시 가볍게 만든다 — **게임 경로**(버리기)로만.
+  await page.evaluate(() => window.__sendPrimary({ type: 'drop_item', item: 'stone', amount: 5 }));
   await sleep(1600);
   const cLight = await carry();
   ok(!cLight.over && cLight.moveMult === 1, '★★③ 짐을 버려 **가벼워졌다**(대조군 성립)', `${cLight.kg}kg / ${cLight.cap}kg ×${cLight.moveMult}`);
