@@ -101,6 +101,7 @@ else
     e2e-trade.js
     e2e-weight.js
     e2e-emptystart.js
+    e2e-forage-village.js
     e2e-ui.js
     e2e-fishing.js
     e2e-guest-reconnect.js

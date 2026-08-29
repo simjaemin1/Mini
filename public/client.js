@@ -5768,6 +5768,8 @@ const SIM_JOB_EMOJI = {
   // ★[2026-08-03f 배치 13] 진단 훅 — **내 영속 신원**(등록 계정이면 username, 게스트면 anon_<고정>).
   //   토큰은 **노출하지 않는다** — 하네스도 localStorage 에서 직접 읽는다(코드가 값을 흘리지 않게).
   window.__getPlayerId = () => myPlayerId;
+  // ★[배산임수 감사 2026-08-29] 게이지 진단 훅 — 하네스가 "둠벙에서 실제로 마셔지는가"를 화면 값으로 잰다(읽기 전용).
+  window.__getGauges = () => ({ hunger: myHunger, thirst: myThirst, vp: myVp });
 
   // === 부트 ===
   async function boot() {

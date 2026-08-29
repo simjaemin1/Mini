@@ -314,6 +314,47 @@ function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet) 
     }
   }
 
+  // === ★★채집 군락(groves) — 마을 어귀에 심은 덤불·바위·둠벙 [재민 확정 2026-08-29] ===
+  //   ★왜: 51마을 전수 감사(`scripts/audit-village-forage.js`)가 **도보 15초 안에 시작 재료가 없는
+  //     마을 25곳**을 잡았다. 재민 판정 — 이건 의도된 마찰이 아니라 **배산임수 캐논 위반**이다
+  //     (마을은 원래 물가와 숲 옆에 선다 · `설계_마을_배산임수_레이아웃.md`).
+  //   ★처방은 **낙하물 스캐터가 아니다**(그건 기각됐다). 이미 있는 개체 종류 셋 — 덤불·바위·웅덩이 —
+  //     을 **마을 어귀 바깥 링**에 군락으로 심는다. 새 개체도, 새 스프라이트도, 새 지형장도 없다.
+  //   ★자리는 손으로 안 찍는다 — `scripts/plan-village-forage.js` 가 계산해 `groves` 에 적는다
+  //     (plan-* 계보 · 데이터 손편집 금지). 여기는 **그 데이터를 개체로 실체화**할 뿐이다.
+  //   ★결정론: 좌표는 군락 번호와 점 번호로만 정해진다(재부팅해도 같은 자리) ·
+  //     `seedKey` 를 주므로 캐면 사라지고 다시 안 난다(자잘 광맥·운철과 같은 규약).
+  //   ★군락 모양: 극좌표 `r·√u` — 중심이 촘촘하고 가장자리가 성기다(**균일 간격 금지** 캐논).
+  {
+    const t = terrain.ZONE_TERRAIN ? terrain.ZONE_TERRAIN[zoneId] : null;
+    const groves = (t && t.groves) || [];
+    const cs = chunkSize;
+    const x0 = cx * cs, y0 = cy * cs;
+    for (let gi = 0; gi < groves.length; gi++) {
+      const g = groves[gi];
+      if (!g || !g.center) continue;
+      const gr = g.r || 140;
+      if (g.center[0] + gr < x0 || g.center[0] - gr > x0 + cs) continue;
+      if (g.center[1] + gr < y0 || g.center[1] - gr > y0 + cs) continue;
+      const gn = Math.max(1, Math.round(g.n || 3));
+      for (let i = 0; i < gn; i++) {
+        const u = seedRand(zoneId, 700000 + gi, i, 1);
+        const a = seedRand(zoneId, 700000 + gi, i, 2) * Math.PI * 2;
+        const rr = gr * Math.sqrt(u);
+        const x = g.center[0] + Math.cos(a) * rr;
+        const y = g.center[1] + Math.sin(a) * rr;
+        if (Math.floor(x / cs) !== cx || Math.floor(y / cs) !== cy) continue;   // 제 청크에서만 낳는다(중복 금지)
+        if (terrain.isWaterCellLocal(zoneId, x, y)) continue;
+        if (typeof terrain.isRockCellLocal === 'function' && terrain.isRockCellLocal(zoneId, x, y)) continue;
+        const seedKey = `gv${gi}_${i}`;
+        if (harvestedSet && harvestedSet.has(seedKey)) continue;
+        const type = g.kind || 'berry_bush';
+        const maxHp = RESOURCE_HP_TABLE[type] || 3;
+        result.push({ id: `s_${seedKey}`, seedKey, isSeed: true, x, y, type, hp: maxHp, maxHp });
+      }
+    }
+  }
+
   // === 숲 나무 — 빽빽한 지터드 그리드 (그린 타원 안에만 쫙 깔림) ===
   // 청크가 숲에 걸치는지 + 밀도 — 중심/4모서리 중 max (경계 청크도 빽빽하게)
   const qd = chunkSize * 0.3;

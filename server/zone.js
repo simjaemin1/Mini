@@ -943,6 +943,39 @@ const RESOURCE_HP = {
   tree: 3, rock: 4, berry_bush: 2, water_pool: 999, herb: 1, ore: 5,
 };
 
+// ★★[재민 확정 2026-08-29 · 배산임수 감사] **자연물 전리품 정본 — 표는 하나다.**
+//   종전엔 이 표가 **두 벌**이었다(플레이어 채집 하나 · NPC 채집 하나). 빈손 배치가 덤불에 잔가지를
+//   넣을 때 한쪽만 고쳐서 **같은 덤불이 누가 뜯느냐에 따라 다른 걸 내는** 상태가 됐다(회부 B-3).
+//   이번에 둘을 이 함수 하나로 합친다 — 앞으로 한쪽만 고칠 방법이 없다.
+//
+// ★★그리고 **감사가 시킨 확장**을 여기서 한다.
+//   51마을 전수 감사(`scripts/audit-village-forage.js`)가 가른 사실:
+//     · 임업3 은 **나무가 564그루**인데 잔가지를 못 줍는 마을이었다(지형 술어만 봤으니까).
+//     · 어촌·평지 마을 24곳은 **바위·물이 반경에 없어 자갈이 0** 이었다.
+//   ⇒ 옮기기 전에 **판정 목록부터** 넓힌다(지시서 §2 마지막 줄). 새 개체를 만들지 않는다 —
+//     **이미 렌더돼 서 있는 나무와 바위**가 제 몫을 내게 할 뿐이다("이미 렌더된 자연물이 채집원이다").
+//       나무 → 목재 + **삭정이 1**(가지를 치면 잔가지가 딸려 나온다)
+//       바위 → 석재 + **자갈 2**(돌을 깨면 잔돌이 나온다)
+//   ⚠수량은 **부산물 급**이다. 이 값이 채집의 주 경로가 되면 안 된다(덤불·지형이 주 경로).
+function lootOfResource(r) {
+  const t = r && r.type;
+  if (t === 'tree')       return { wood: 3 + Math.floor((r.r || 8) / 3), twig: 1 };   // 크기 비례: r4~20 → wood 4~9
+  if (t === 'rock')       return { stone: 1, pebble: 2 };
+  if (t === 'berry_bush') {
+    // ★[재민 확정 2026-08-28] **덤불 E = 잔가지.** 열매·풀과 **함께** 삭정이가 나온다 —
+    //   덤불을 헤치면 마른 가지가 딸려 나오는 게 자연스럽고, 조잡한 석기의 세 재료 중 둘이
+    //   여기서 한꺼번에 나와 **빈손의 첫 걸음이 막히지 않는다**(잔가지는 숲 바닥에도 있다 — 소스 다종화).
+    const l = { berry: 2, fiber: 1, twig: 1 };
+    if (Math.random() < 0.3) l.seed_berry = 1;
+    return l;
+  }
+  if (t === 'herb')       return { herb: 2 };
+  if (t === 'ore')        return { ore: 1, stone: 1 };
+  // ★운철 — **제련하지 않는다**. 이미 금속이라 그대로 단조 재료가 된다(era.js §METEORIC).
+  if (t === 'meteorite')  return { meteoric_iron: 2 + Math.floor(Math.random() * 2) };
+  return {};
+}
+
 function spawnOneResource() {
   const x = 32 + Math.random() * (ZONE.zoneWidth - 64);
   const y = 32 + Math.random() * (ZONE.zoneHeight - 64);
@@ -1925,12 +1958,7 @@ function npcStep(npc, dt, now) {
         // 직접 채집 (tryGather 로직 간소화)
         r.hp -= 1;
         if (r.hp <= 0) {
-          let loot = {};
-          if (r.type === 'tree') loot = { wood: 3 + Math.floor((r.r || 8) / 3) };  // 크기 비례
-          else if (r.type === 'rock') loot = { stone: 1 };
-          else if (r.type === 'berry_bush') { loot = { berry: 2, fiber: 1 }; if (Math.random() < 0.3) loot.seed_berry = 1; }
-          else if (r.type === 'herb') loot = { herb: 2 };
-          else if (r.type === 'ore') loot = { ore: 1, stone: 1 };
+          const loot = lootOfResource(r);   // ★정본 하나 — 플레이어와 같은 표를 쓴다(사본 금지)
           for (const [k, v] of Object.entries(loot)) npc.inventory[k] = (npc.inventory[k] || 0) + v;
           resources.delete(r.id);
           chunkManager.removeResource(r);
@@ -4695,23 +4723,10 @@ function tryGather(player) {
   // 장착 도구 내구도 -1
   if (eqInst) consumeEquippedDurability(player, 1);
   if (best.hp <= 0) {
-    // 자원 종류별 산출물
-    let loot = {};
-    if (best.type === 'tree')        loot = { wood: 3 + Math.floor((best.r || 8) / 3) };  // 크기 비례: r4~20 → wood 4~9
-    else if (best.type === 'rock')   loot = { stone: 1 };
-    else if (best.type === 'berry_bush') {
-      // ★[재민 확정 2026-08-28] **덤불 E = 잔가지.** 열매·풀과 **함께** 삭정이가 나온다 —
-      //   덤불을 헤치면 마른 가지가 딸려 나오는 게 자연스럽고, 조잡한 석기의 세 재료 중 둘이
-      //   여기서 한꺼번에 나와 **빈손의 첫 걸음이 막히지 않는다**(잔가지는 숲 바닥에도 있다 — 소스 다종화).
-      loot = { berry: 2, fiber: 1, twig: 1 };
-      if (Math.random() < 0.3) loot.seed_berry = 1;
-    }
-    else if (best.type === 'herb')   loot = { herb: 2 };       // Phase 14.3
-    else if (best.type === 'ore')    loot = { ore: 1, stone: 1 }; // Phase 14.3 — ore + 부산물 stone
-    // ★운철 — **제련하지 않는다**. 이미 금속이라 그대로 단조 재료가 된다(era.js §METEORIC).
-    //   그래서 노가 없어도, 시대가 청동기여도 철제 물건을 만들 수 있다. 그게 '거의 불가능'의 '거의'다.
-    else if (best.type === 'meteorite') {
-      loot = { meteoric_iron: 2 + Math.floor(Math.random() * 2) };   // 2~3 — 한 자루치 남짓
+    // 자원 종류별 산출물 — ★정본 하나(`lootOfResource`). NPC 채집도 같은 표를 쓴다.
+    const loot = lootOfResource(best);
+    //   운철만 말이 붙는다(전리품은 정본이 내고, 여기선 그 뜻을 사람에게 알린다).
+    if (best.type === 'meteorite') {
       send(player.ws, { type: 'notice', text: '☄️ 하늘에서 떨어진 쇠 — 불에 넣지 않아도 이미 금속이다. 두들기면 바로 날이 선다.' });
     }
     for (const [item, amt] of Object.entries(loot)) {
@@ -5898,7 +5913,7 @@ function __testBind() {
     Weights, Carry, Lots, moveMultOf, zoneGameDay, COOK_RECIPES, doCook, _unitsOfFor,
     // ── 빈손 시작(2026-08-28) ── 줍기·제작·도구 표를 **정본 그대로** 내준다
     RECIPES, TOOL_EFFECTS, TOOL_MAX_DURABILITY, EQUIPMENT_RECIPES, CRUDE_EFF_FRAC, CRUDE_DURA_FRAC,
-    doCraft, doEquip, tryForage, Forage, _forageCtx, getEquippedTool, consumeEquippedDurability,
+    doCraft, doEquip, tryForage, Forage, _forageCtx, lootOfResource, getEquippedTool, consumeEquippedDurability,
     TOOL_EQUIP_EFF_SCALE, PlayerItems,
     // ── 거래소 E2E(2026-08-27) ── 정본을 그대로 내준다(하네스가 가격을 다시 풀면 사본이다)
     Trade: require('./trade'), Events: require('./events'), SimVillages,

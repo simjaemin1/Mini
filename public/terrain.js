@@ -79,6 +79,12 @@ function _getZoneTerrain(zoneId) {
     data.passes    = hc.passes  || [];
     data.valleys   = hc.valleys || [];   // ★[11차] 계곡 = 산맥을 가로지르는 선형 통로(서버 terrain.js와 동일 규약)
     data.forests   = hc.forests || [];
+    // ★★[재민 확정 2026-08-29] **채집 군락** — 마을 어귀에 심은 덤불·바위·둠벙
+    //   (`scripts/plan-village-forage.js` 가 계산해 적는다 · `chunk.generateChunkResources` 가 개체로 실체화).
+    //   ⚠여기 한 줄을 빼먹으면 **데이터는 있는데 세계엔 없다** — 실제로 그렇게 한 번 헛돌았다.
+    //   ⚠클라 `public/terrain.js` 도 같은 거울이다(개체는 서버가 보내므로 클라는 아직 안 읽지만,
+    //     한쪽만 고치면 다음 사람이 유령을 만난다 — `add-valley.js` 가 남긴 규약).
+    data.groves    = hc.groves || [];
     data.mountains = [];
     // data.ores 는 절차생성 그대로 둔다.
   }
