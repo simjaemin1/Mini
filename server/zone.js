@@ -296,6 +296,7 @@ function savePlayer(player, extra = {}) {
       body: Body.toSave(player),            // ★[신체 상태 §7] 추위·피로·부상·사기(허기·갈증은 전용 컬럼)
       kgLedger: Carry.toSave(player),       // ★[무게] 개체 실제 kg 장부(1.7kg 물고기 ≠ 0.4kg 물고기)
       lots: Lots.toSave(player),            // ★[무게] 식품 로트(취득일) — 부패 곡선이 앉을 자리
+      craftLog: player.craftLog || {},      // ★[시설 제작창] 제작 이력(횟수·최고 품질) — §8.4 스킬 패널이 읽을 씨앗
     }),
     equipped: player.equipped || null,
     last_zone: extra.last_zone ?? null, // 명시적으로 넘긴 zone만 변경
@@ -603,12 +604,17 @@ const BUILDING_COST = {
   campfire: { wood: 3 },                                           // 통나무 3 (목공 X)
   farmland: { seed: 'seed_berry' },                                // 씨앗
   stair:    { plank: 4, _needHammer: true },                       // 판자 4 + 망치
+  // ★★[재민 확정 2026-08-29 · 시설 제작창] **작업대** — 정품 간석기를 만드는 자리.
+  //   왜 새 건물인가: 화덕(요리)·노(제련)는 이미 있는데 **도구를 만드는 시설만 없었다**.
+  //   그래서 `doCraftEquipment` 가 어디서나 즉석으로 돌았다 — "제작은 시설 앞의 물리 행위"의 반례.
+  //   값: 통나무 4 + 석재 2. 망치를 요구하지 않는다 — **빈손이 도달할 수 있어야** 첫 사다리가 이어진다.
+  workbench: { wood: 4, stone: 2 },
 };
 const CROP_GROW_MS = 60 * 1000;
 // 14.50: door도 닫혔을 때 blocking. fence는 cell 차지하지만 통과 가능 (사용자 의도: 시야는 통과, collider만 차단).
 const BLOCKING_BUILDINGS = new Set(['wall', 'fence', 'door']);
 // 14.49-e2: 층 높이 2배 (32 → 64). 벽·계단도 같이 2배.
-const BUILDING_HEIGHT = { wall: 64, floor: 4, fence: 32, door: 64, chest: 24, campfire: 20, farmland: 4, stair: 64, vtile: 2, guild_granary: 40, granary: 40, hut_site: 4, hut: 40, furnace_site: 4, furnace: 48, kiln_site: 4, charcoal_kiln: 36, village_site: 4, village_hall: 56 };   // ★실체화 동기: 지면 타일·곳간·움집터·노(爐)·숯가마·마을회관[배치 12]
+const BUILDING_HEIGHT = { workbench: 26, wall: 64, floor: 4, fence: 32, door: 64, chest: 24, campfire: 20, farmland: 4, stair: 64, vtile: 2, guild_granary: 40, granary: 40, hut_site: 4, hut: 40, furnace_site: 4, furnace: 48, kiln_site: 4, charcoal_kiln: 36, village_site: 4, village_hall: 56 };   // ★실체화 동기: 지면 타일·곳간·움집터·노(爐)·숯가마·마을회관[배치 12]
 // Phase 14.25: chest 저장 가능 아이템 (모든 자원 + 도구 + 음식)
 const CHEST_ALLOWED_ITEMS = new Set([
   'wood', 'stone', 'ore', 'herb',
@@ -715,6 +721,8 @@ const BUILDING_RECIPES = {
   item_chest:    { plank: 4,          _useHammer: true, _buildType: 'chest',    label: '상자 (Chest)' },
   item_campfire: { wood: 3,                              _buildType: 'campfire', label: '모닥불 (Campfire)' },
   item_farmland: { seed_berry: 1,                        _buildType: 'farmland', label: '농지 (Farmland)' },
+  // ★[시설 제작창 2026-08-29] 작업대 — 망치 없이 지을 수 있다(빈손 사다리가 끊기지 않게).
+  item_workbench: { wood: 4, stone: 2,                   _buildType: 'workbench', label: '작업대 (Workbench)' },
 };
 // 14.52: 모든 도구의 최대 내구도 (제작 시 부여, 사용 시 1씩 감소, 0 되면 인벤서 제거)
 const TOOL_MAX_DURABILITY = {
@@ -2521,7 +2529,7 @@ wss.on('connection', async (ws, req) => {
   if (process.env.ZONE_TEST_INV) for (const kv of process.env.ZONE_TEST_INV.split(',')) { const [k, v] = kv.split(':'); if (k && +v > 0) _testInv[k.trim()] = +v; }
   let playerId, name, sx, sy, ivx = 0, ivy = 0, inventory = { wood: 0, stone: 0, ..._testInv }, color = '#5a9ae0';
   let tools = {}, equipped = null;
-  let _loadEquipment = [], _loadEquipSlots = {}, _loadCraftSkill = {}, _loadOreLedger = {}, _loadOreCarry = {}; // 플레이어 아이템(품질·속성·내구·숙련)·원석 정체 장부 복원 버퍼 — tools_json blob piggyback
+  let _loadEquipment = [], _loadEquipSlots = {}, _loadCraftSkill = {}, _loadCraftLog = {}, _loadOreLedger = {}, _loadOreCarry = {}; // 플레이어 아이템(품질·속성·내구·숙련)·원석 정체 장부 복원 버퍼 — tools_json blob piggyback
   let _loadFishStats = null;   // ★[낚시 v2] 어획 기록(마릿수·최대·놓친 최대) — 같은 blob 에 얹는다
   let _loadBody = null;        // ★[신체 상태 §7] 추위·피로·부상·사기
   let _loadKgLedger = null;    // ★[무게] 개체 실제 kg 장부
@@ -2687,6 +2695,7 @@ wss.on('connection', async (ws, req) => {
       if (tools && Array.isArray(tools.equipment)) _loadEquipment = tools.equipment;
       if (tools && tools.equipSlots && typeof tools.equipSlots === 'object') _loadEquipSlots = tools.equipSlots;
       if (tools && tools.craftSkill && typeof tools.craftSkill === 'object') _loadCraftSkill = tools.craftSkill;
+      if (tools && tools.craftLog && typeof tools.craftLog === 'object') _loadCraftLog = tools.craftLog;   // ★[시설 제작창] 제작 이력 복원
       if (tools && tools.oreLedger && typeof tools.oreLedger === 'object') _loadOreLedger = tools.oreLedger;   // ★[11차] 원석 정체 장부 복원
       if (tools && tools.oreCarry && typeof tools.oreCarry === 'object') _loadOreCarry = tools.oreCarry;
       if (tools && tools.fishStats && typeof tools.fishStats === 'object') _loadFishStats = tools.fishStats;   // ★[낚시 v2] 어획 기록 복원
@@ -2845,6 +2854,7 @@ wss.on('connection', async (ws, req) => {
     equipment: _loadEquipment,  // 플레이어 아이템: 장비 인스턴스 [{type,q,attrs,dura...}]
     equipSlots: _loadEquipSlots,// 슬롯→인스턴스 id (clothes/armor/weapon/tool)
     craftSkill: _loadCraftSkill,// 제작 숙련 xp {tailoring,smithing,toolmaking,cooking,mining}
+    craftLog: _loadCraftLog,    // ★[시설 제작창] 제작 이력(횟수·최고 품질) — §8.4 스킬 패널 대기
     oreLedger: _loadOreLedger,  // ★[11차] 원석 덩이의 숨은 정체(kg — 선광 때 소비)
     oreCarry: _loadOreCarry,    // 선광 소수분 이월(kg)
     fishStats: _loadFishStats,  // ★[낚시 v2] 어획 기록 — 재접속·크래시를 넘어 살아남는다
@@ -3160,6 +3170,9 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'craft_item') doCraftItem(player, msg.recipe);
   // 플레이어 장비(품질·속성·내구 인스턴스) — econ 무접촉
   else if (msg.type === 'craft_equipment') doCraftEquipment(player, msg.itemType, msg.material, msg.mix);
+  else if (msg.type === 'craft_collect') doCraftCollect(player, msg.buildingId);      // ★[시설 제작창] 대기열 수령
+  else if (msg.type === 'craft_queue_ask') sendCraftQueue(player);                    // ★[시설 제작창] 대기열 조회
+  else if (msg.type === 'facility_ask') sendFacility(player);                         // ★[시설 제작창] 지금 내 곁의 시설(창 자동 개방)
   else if (msg.type === 'cast_preview') doCastPreview(player, msg.itemType, msg.mix);
   else if (msg.type === 'equip_item') doEquipItem(player, msg.id);
   else if (msg.type === 'unequip_item') doUnequipItem(player, msg.slot);
@@ -3346,15 +3359,11 @@ function doCook(player, recipeName) {
   if (!recipe) {
     send(player.ws, { type: 'notice', text: `알 수 없는 요리: ${recipeName}` }); return;
   }
-  // campfire 근처(96px) 확인
-  let nearFire = false;
-  for (const b of buildings.values()) {
-    if (b.type !== 'campfire') continue;
-    if (Math.hypot(b.x - player.x, b.y - player.y) < 96) { nearFire = true; break; }
-  }
-  if (!nearFire) {
-    send(player.ws, { type: 'notice', text: '모닥불 근처여야 요리 가능' }); return;
-  }
+  // ★[시설 제작창 2026-08-29] 화덕 판정을 **정본에게 물어본다**(`facility.js`) — 반경 상수를 여기 또 적지 않는다.
+  //   종전엔 이 함수가 전 건물을 훑으며 96px 를 손으로 비교했다(같은 수가 두 곳에 있었다).
+  const _fc = facilityFor(player, 'cook');
+  if (!_fc) { send(player.ws, { type: 'notice', text: '🔥 모닥불·화덕 앞에서만 요리한다' }); return; }
+  if (!_facilityMine(player, _fc.b)) { send(player.ws, { type: 'notice', text: `${_fc.ko}은(는) 내 것이 아니다` }); return; }
   // 재료 확인
   for (const [item, amt] of Object.entries(recipe.cost)) {
     if ((player.inventory[item] || 0) < amt) {
@@ -3370,14 +3379,18 @@ function doCook(player, recipeName) {
   const dish = PlayerItems.craftItem('food', cookLvl, recipe.cost);
   dish.id = genEquipId();
   dish.label = recipe.label;
-  dish.craftedAtMs = Date.now();
-  player.dishes.push(dish);
-  player.craftSkill.cooking = (player.craftSkill.cooking || 0) + 1; // cooking 숙련 xp(유효 완성품)
-  const newCookLvl = playerCraftLevel(player, 'cooking');
+  // ★신선도는 **꺼낼 때** 찍는다 — 불에 올려 둔 동안 식지 않는다(다 되면 그때가 갓 지은 때다).
+  const rk = Facility.enqueue(_fc.b, { id: dish.id, kind: 'cook', label: recipe.label,
+    owner: player.playerId, dish }, Date.now());
+  if (!rk.ok) {
+    for (const [item, amt] of Object.entries(recipe.cost)) player.inventory[item] += amt;
+    send(player.ws, { type: 'notice', text: rk.err }); return;
+  }
+  markBuildingDirty(_fc.b);
   send(player.ws, { type: 'inventory', inventory: player.inventory });
-  sendDishes(player);
-  const cookUp = newCookLvl > cookLvl ? ` — cooking Lv${newCookLvl}!` : '';
-  send(player.ws, { type: 'notice', text: `${recipe.label} 완성 [영양 ${dish.attrs.nutrition} · 버프 ${Math.round(dish.attrs.buff * 100)}% · 갓 지음]${cookUp}` });
+  sendCraftQueue(player);
+  send(player.ws, { type: 'notice', text: `🔥 ${_fc.ko}에 얹었다 — ${recipe.label} · ${Math.ceil(rk.job.ms / 1000)}초${rk.ahead ? ` (앞에 ${rk.ahead}개)` : ''}` });
+  void cookLvl;
   savePlayer(player);
 }
 // 요리 섭취: 신선도로 영양·버프 스케일(갓 지은 요리 최고). 버프 = 즉시 HP 회복(웰빙).
@@ -3772,6 +3785,17 @@ function doCraftEquipment(player, itemType, material, rawMix) {
   ensurePlayerItems(player);
   const recipe = EQUIPMENT_RECIPES[itemType];
   if (!recipe) { send(player.ws, { type: 'notice', text: `알 수 없는 장비: ${itemType}` }); return; }
+  // ★★[재민 확정 2026-08-29] **시설 게이트.** 종전엔 이 함수가 **어디서나 즉석으로** 돌았다 —
+  //   들판 한복판에서 청동검이 나왔다. 그건 §8.5 헌법("제작은 시설 앞의 물리 행위")의 정면 반례다.
+  //   단일 재료(깎기·두드리기)는 **작업대**, 배합 주조(녹이기)는 **노**. 창이 다르면 시설도 다르다.
+  //   ⚠조잡한 석기(`doCraft` 의 crude_*)는 **그대로 맨손**이다 — 빈손 배치의 계약이라 안 건드린다.
+  const _kind = (rawMix && typeof rawMix === 'object' && Object.keys(rawMix).length) ? 'smelt' : 'tool';
+  const _fac = facilityFor(player, _kind);
+  if (!_fac) {
+    send(player.ws, { type: 'notice', text: _kind === 'smelt' ? '🔥 노 앞에서만 녹인다' : '🪵 작업대 앞에서만 만든다 — 통나무 4 · 석재 2 로 짓는다' });
+    return;
+  }
+  if (!_facilityMine(player, _fac.b)) { send(player.ws, { type: 'notice', text: `${_fac.ko}은(는) 내 것이 아니다` }); return; }
   // ── 주조 경로: 금속 여러 개를 배합해 녹인다(품질 = 합금 모델 × 숙련) ──
   if (rawMix && typeof rawMix === 'object' && Object.keys(rawMix).length) {
     if (!recipe.cast) { send(player.ws, { type: 'notice', text: `${recipe.label}은(는) 주조하지 않습니다` }); return; }
@@ -3786,14 +3810,12 @@ function doCraftEquipment(player, itemType, material, rawMix) {
     for (const k in nm.mix) cinst.mix[k] = +(nm.mix[k] * 100).toFixed(1);
     cinst.mat = Object.keys(nm.mix).reduce((a, k) => (nm.mix[k] > nm.mix[a] ? k : a), Object.keys(nm.mix)[0]);
     for (const k in nm.use) player.inventory[k] = Math.max(0, +((player.inventory[k] || 0) - nm.use[k]).toFixed(4));
-    player.equipment.push(cinst);
-    player.craftSkill[recipe.skill] = (player.craftSkill[recipe.skill] || 0) + 1;
-    const lvl1 = playerCraftLevel(player, recipe.skill);
-    send(player.ws, { type: 'inventory', inventory: player.inventory });
-    sendEquipment(player);
     const alloyNm = Object.entries(cinst.mix).map(([k, v]) => `${k} ${v}%`).join(' · ');
-    send(player.ws, { type: 'notice', text: `${PlayerItems.displayItem(cinst)} 주조 (${alloyNm})${lvl1 > lvl0 ? ` — ${recipe.skill} Lv${lvl1} 달성!` : ''}` });
+    const rz = _enqueueCraft(player, _fac, 'smelt', cinst, `${PlayerItems.displayItem(cinst)} (${alloyNm})`, recipe.skill);
+    if (!rz.ok) { for (const k in nm.use) player.inventory[k] = (player.inventory[k] || 0) + nm.use[k]; send(player.ws, { type: 'notice', text: rz.err }); return; }
+    send(player.ws, { type: 'inventory', inventory: player.inventory });
     if (canPersist(player)) savePlayer(player);   // ★[배치 14 ②] 정본 술어 — 영속 게스트도 저장된다
+    void lvl0;
     return;
   }
   if (!recipe.accepts.includes(material)) { send(player.ws, { type: 'notice', text: `${recipe.label}에 못 쓰는 재료: ${material}` }); return; }
@@ -3806,14 +3828,63 @@ function doCraftEquipment(player, itemType, material, rawMix) {
   inst.id = genEquipId();
   inst.mat = material;   // 대표 재료(수선·표시용)
   player.inventory[material] = have - recipe.qty;
-  player.equipment.push(inst);
-  player.craftSkill[recipe.skill] = (player.craftSkill[recipe.skill] || 0) + 1; // 유효 완성품 = xp(설계 §3)
-  const newLvl = playerCraftLevel(player, recipe.skill);
+  const rq = _enqueueCraft(player, _fac, 'tool', inst, PlayerItems.displayItem(inst), recipe.skill);
+  if (!rq.ok) { player.inventory[material] = have; send(player.ws, { type: 'notice', text: rq.err }); return; }
   send(player.ws, { type: 'inventory', inventory: player.inventory });
-  sendEquipment(player);
-  const lvlUp = newLvl > lvl ? ` — ${recipe.skill} Lv${newLvl} 달성!` : '';
-  send(player.ws, { type: 'notice', text: `${PlayerItems.displayItem(inst)} 제작${lvlUp}` });
   if (canPersist(player)) savePlayer(player);   // ★[배치 14 ②] 정본 술어 — 영속 게스트도 저장된다
+  void lvl;
+}
+
+// ★★제작을 **시설에 걸어 둔다**. 완성품 인스턴스는 이미 만들어져 있고(품질은 정본이 그때 정한다),
+//   여기서 하는 건 **언제 손에 오는가**를 정하는 것뿐이다. 대기열은 시설에 붙고 lazy 하게 흐른다.
+//   ⇒ 접속을 끊어도 진행된다(가마는 밤새 탄다). 수령만 사람이 한다.
+function _enqueueCraft(player, fac, kind, inst, label, skill) {
+  const r = Facility.enqueue(fac.b, {
+    id: inst.id, kind, label, owner: player.playerId, skill,
+    inst,                                   // 완성품 — 꺼낼 때 그대로 장비로 들어간다
+  }, Date.now());
+  if (!r.ok) return r;
+  markBuildingDirty(fac.b);
+  const secs = Math.ceil(r.job.ms / 1000);
+  send(player.ws, { type: 'notice',
+    text: `🪵 ${fac.ko}에 걸었다 — ${label} · ${secs}초${r.ahead ? ` (앞에 ${r.ahead}개)` : ''}` });
+  sendCraftQueue(player);
+  return r;
+}
+// 수령 — 끝난 것만, 내 것만, 시설 앞에서.
+function doCraftCollect(player, buildingId) {
+  ensurePlayerItems(player);
+  const b = buildingId ? buildings.get(buildingId) : (facilityFor(player, 'tool') || facilityFor(player, 'smelt') || {}).b;
+  if (!b || !Facility.FACILITIES[b.type]) { send(player.ws, { type: 'notice', text: '시설이 없다' }); return; }
+  const f = Facility.FACILITIES[b.type];
+  if (Math.hypot(b.x - player.x, b.y - player.y) > f.range + 8) { send(player.ws, { type: 'notice', text: `${f.ko} 앞으로 가야 받는다` }); return; }
+  const got = Facility.collect(b, player.playerId, Date.now());
+  if (!got.length) {
+    const mine = Facility.view(b, Date.now()).filter((j) => j.owner === player.playerId);
+    send(player.ws, { type: 'notice', text: mine.length ? `아직 만드는 중 — ${Math.ceil(mine[0].leftMs / 1000)}초 남음` : '받을 게 없다' });
+    sendCraftQueue(player); return;
+  }
+  markBuildingDirty(b);
+  for (const j of got) {
+    if (j.inst) {
+      player.equipment.push(j.inst);
+      if (j.skill) player.craftSkill[j.skill] = (player.craftSkill[j.skill] || 0) + 1;   // 유효 완성품 = xp
+      // ★제작 이력(§8.4 스킬 패널 대기 — 지금은 **데이터만** 쌓는다)
+      player.craftLog = player.craftLog || {};
+      const cl = player.craftLog[j.inst.type] || (player.craftLog[j.inst.type] = { n: 0, bestQ: 0 });
+      cl.n++; cl.bestQ = Math.max(cl.bestQ, j.inst.q || 0);
+    } else if (j.items) {
+      for (const [k, n] of Object.entries(j.items)) player.inventory[k] = (player.inventory[k] || 0) + n;
+    } else if (j.dish) {
+      j.dish.craftedAtMs = Date.now();   // ★신선도는 **꺼낸 때**부터 — 불 위에서 식지 않는다
+      player.dishes.push(j.dish);
+      player.craftSkill.cooking = (player.craftSkill.cooking || 0) + 1;
+    }
+  }
+  send(player.ws, { type: 'inventory', inventory: player.inventory });
+  sendEquipment(player); sendDishes(player); sendCraftQueue(player);
+  send(player.ws, { type: 'notice', text: `✅ ${f.ko}에서 받았다 — ${got.map((j) => j.label).join(' · ')}` });
+  if (canPersist(player)) savePlayer(player);
 }
 // 장착: 슬롯당 1개(교체). 파손 불가.
 function doEquipItem(player, id) {
@@ -4574,6 +4645,108 @@ setInterval(() => {
 //     실측하니 이 세계의 `stoneMult` 는 어디서나 1.00 고정이라 판별에 못 쓴다(3000표본 min=max=1.00).
 //     죽은 신호를 읽는 규칙은 조용히 한쪽으로만 답한다. 지형 술어를 쓸 땐 **분포부터 재라.**
 const Forage = require('./forage');
+
+// ═══ 시설 제작창 [재민 확정 2026-08-29 · §8.5] ══════════════════════════════
+//   재민: **"제작창 = 시설의 창"** — 화덕=요리 · 작업대=도구 · 노=제련. 전 레시피 대목록 금지.
+//   헌법: **제작은 마법 메뉴가 아니라 시설 앞의 물리 행위다.** ⇒ ①시설 반경 ②제작 시간.
+//   시설·대기열 정본은 `server/facility.js` 하나(여기서 규칙을 다시 짜지 않는다).
+const Facility = require('./facility');
+// ★시설만 모아 두는 작은 목록 — 시설은 드물다(모닥불·작업대·노·숯가마).
+//   ⚠1차 실장은 `qtBuildings`(활성청크 인덱스)만 봤다가 **테스트 부팅에서 시설을 못 찾았다** —
+//     청크에 안 실린 건물은 인덱스에 없기 때문이다. 그렇다고 매번 전 건물(3만+채)을 훑을 수도 없다.
+//   ⇒ 건물 수가 바뀌거나 5초가 지나면 다시 모은다(시설은 몇 개뿐이라 목록이 작다).
+const _facIdx = { n: -1, at: 0, list: [] };
+function _facilities(now) {
+  const t = now || Date.now();
+  if (buildings.size !== _facIdx.n || t - _facIdx.at > 5000) {
+    _facIdx.list = [];
+    for (const b of buildings.values()) if (Facility.FACILITIES[b.type]) _facIdx.list.push(b);
+    _facIdx.n = buildings.size; _facIdx.at = t;
+  }
+  return _facIdx.list;
+}
+function _bldNear(x, y, r) {
+  const out = [];
+  for (const b of _facilities()) if (Math.hypot(b.x - x, b.y - y) <= r) out.push(b);
+  return out;
+}
+// 이 사람이 지금 쓸 수 있는 시설(창) — 없으면 null.
+function facilityFor(player, kind) {
+  const r = (Facility.FACILITIES.workbench.range) + 8;
+  return Facility.nearest(kind, player.x, player.y, _bldNear(player.x, player.y, r), (b) => _facilityMine(player, b));
+}
+// ★사유지 시설 = 소유자만(남의 가마 사용권·사용료는 회부). 마을(NPC) 시설도 이번엔 못 쓴다.
+function _facilityMine(player, b) {
+  if (!b) return false;
+  if (b.ownerId == null && b.owner_id == null) return true;      // 주인 없는 것(테스트 픽스처)
+  const own = b.ownerId != null ? b.ownerId : b.owner_id;
+  return own === player.playerId;
+}
+// 대기열 페이로드 — 클라가 "몇 초 남았나"를 화면에 그린다(남은 시간은 조회 시각의 함수).
+function craftQueuePayload(player) {
+  const now = Date.now();
+  const out = [];
+  for (const b of _bldNear(player.x, player.y, 1200)) {
+    if (!Facility.FACILITIES[b.type]) continue;
+    const jobs = Facility.view(b, now).filter((j) => j.owner === player.playerId);
+    if (!jobs.length) continue;
+    out.push({ bid: b.id, type: b.type, ko: Facility.FACILITIES[b.type].ko, jobs });
+  }
+  return out;
+}
+function sendCraftQueue(player) { send(player.ws, { type: 'craft_queue', queue: craftQueuePayload(player) }); }
+// 대기열이 바뀌면 건물 data 를 영속한다 — **오프라인 진행의 근거**다(재부팅해도 가마는 타고 있다).
+//   ⚠완성품 인스턴스가 통째로 들어가지만 `data_json` 은 블롭이라 스키마 변경이 없다(tools_json 선례).
+function markBuildingDirty(b) {
+  if (!b || !b.dbId) return;
+  try { db.updateBuildingData(b.dbId, JSON.stringify(b.data)); } catch (e) {}
+}
+
+// ★★[재민 확정 2026-08-29 · §8.5] **제작창 = 시설의 창.**
+//   전 레시피 대목록을 만들지 않는다 — 내 곁의 시설이 **자기 레시피만** 편다.
+//   정렬 기본은 "지금 가능 / **재료 하나 모자람**" — 뒤엣것이 오늘의 할 일이고, 장에 갈 이유다.
+function _facilityRecipes(player, kind) {
+  const inv = player.inventory || {};
+  const rows = [];
+  const push = (r) => {
+    const missing = Object.entries(r.cost).filter(([k, n]) => (inv[k] || 0) < n)
+      .map(([k, n]) => ({ item: k, need: n, have: Math.floor(inv[k] || 0) }));
+    rows.push(Object.assign({}, r, { can: missing.length === 0, missing }));
+  };
+  if (kind === 'cook') {
+    for (const [id, r] of Object.entries(COOK_RECIPES)) push({ id, label: r.label, kind, cost: r.cost });
+  } else if (kind === 'tool' || kind === 'smelt') {
+    for (const [t, r] of Object.entries(EQUIPMENT_RECIPES)) {
+      if (kind === 'smelt' && !r.cast) continue;
+      const lvl = playerCraftLevel(player, r.skill);
+      // ★재료 선택이 곧 **판단**이다 — 등급(MAT_GRADE)이 다르면 산출 품질이 다르다.
+      //   품질 공식을 여기서 다시 쓰지 않는다: `PlayerItems.craftItem` 정본을 **미리 한 번 돌려** 보여 준다.
+      const options = [];
+      for (const m of r.accepts) {
+        const have = Math.floor(inv[m] || 0);
+        let q = null;
+        try { q = PlayerItems.craftItem(t, lvl, { [m]: r.qty }).q; } catch (e) {}
+        options.push({ material: m, have, need: r.qty, q, can: have >= r.qty });
+      }
+      options.sort((a, b) => (b.can - a.can) || ((b.q || 0) - (a.q || 0)));
+      const best = options.find((o) => o.can) || options[0];
+      push({ id: t, label: r.label, kind, skill: r.skill, lvl, options,
+             cost: best ? { [best.material]: r.qty } : {}, cast: !!r.cast });
+    }
+  }
+  // "가능"이 먼저, 그다음 **하나만 모자란 것**, 그다음 나머지(모자란 개수 오름차순)
+  rows.sort((a, b) => (b.can - a.can) || (a.missing.length - b.missing.length) || String(a.id).localeCompare(String(b.id)));
+  return rows;
+}
+function sendFacility(player) {
+  const near = Facility.anyNear(player.x, player.y, _bldNear(player.x, player.y, 200), (b) => _facilityMine(player, b));
+  const mine = near ? _facilityMine(player, near.b) : false;
+  send(player.ws, { type: 'facility',
+    near: near ? { bid: near.b.id, btype: near.b.type, ko: near.ko, kind: near.kind, mine,
+                   craftMs: Facility.CRAFT_MS[near.kind] || 0 } : null,
+    recipes: near && mine ? _facilityRecipes(player, near.kind) : [],
+    queue: craftQueuePayload(player) });
+}
 function _forageCtx(player) {
   return {
     forestMult: (x, y) => (_terrain.getForestMultiplier ? _terrain.getForestMultiplier(ZONE_ID, x, y) : 1),
@@ -5899,7 +6072,9 @@ function __testBind() {
     // ── 조업 진척 계약 E2E(2026-08-02e ⑤) ── 시간은 벽시계라 하네스가 job.until 을 당겨 검증한다
     SMELT_BASE_MS, SMELT_MIN_MS, KILN_BURN_MS, KILN_BATCH_MS_PER, _smeltDurationMs, _jobProgress,
     // ── 조업 **페이싱** 실측(2026-08-02f ②) ── 단조까지 이어야 사슬 한 바퀴의 실시간이 나온다
-    doCraftEquipment, EQUIPMENT_RECIPES,
+    doCraftEquipment, EQUIPMENT_RECIPES, Facility, facilityFor, _facilityMine, doCraftCollect,
+    sendFacility, _facilityRecipes, craftQueuePayload, BUILDING_COST, BUILDING_RECIPES, PlayerItems,
+    playerCraftLevel, doShopBuy,
     // ── 주기 저장 비용 실측(2026-08-26) ── 하네스가 저장 건수·누적 ms 를 그대로 읽는다
     _saveStats: () => ({ ..._saveStats, intervalMs: SAVE_INTERVAL_MS }),
     // ── 낚시 v2 E2E(2026-08-26) ── **정본 함수를 그대로 내준다**(하네스가 물리를 다시 짜면 사본이다).

@@ -146,34 +146,42 @@ function plan() {
     }
     return cur;
   };
-  // ★진짜 걷는다 — 서버가 권위인 입력 스트림으로. 도착은 **거리**로 판정한다(족보 60).
-  //   ⚠걸음 루프는 **페이지 안에서** 돈다. 1차 실장은 입력 한 개마다 `page.evaluate` 왕복을 해서
-  //     초당 ~17개밖에 못 보냈고(넷코드는 입력 1개 = 1스텝), 그래서 **하네스가 절반 속도로 걸었다**
-  //     — 실측 26px/s vs 정본 64px/s. 그건 세계의 사실이 아니라 **계측기의 사실**이다.
-  //     지금은 33ms 간격 루프를 브라우저 안에서 돌려 왕복을 없앴다.
+  // ★★진짜 걷는다 — **키보드로**. 도착은 **거리**로 판정한다(족보 60).
+  //   ⚠⚠[2026-08-29 B-3 귀속] 1·2차 실장은 `__sendPrimary({type:'input'})` 를 손으로 쏘았다.
+  //     그건 **클라 자기 루프와 싸운다** — 클라는 키가 안 눌린 동안 33ms마다 **정지 입력**을
+  //     보내기 때문에(`if (!moving && now-lastInputSentAt>33) sendStepInput(seq,0,0)`),
+  //     내 입력과 정지 입력이 번갈아 들어가 **절반 속도**로 걷거나(30px/s) 아예 안 걸었다(0px/s).
+  //     ⇒ 탐침으로 갈랐다: **키보드로 걸으면 65.1px/s = 정본 64 의 102%**(빈손 배율 1.0 · rAF 47fps).
+  //     즉 "실측 걸음이 정본의 47%"는 **세계의 사실이 아니라 계측기의 사실**이었다.
+  //     감사 기준 960px = 도보 15초는 **그대로 맞다.**
+  const KEY = { E: 'KeyD', W: 'KeyA', S: 'KeyS', N: 'KeyW' };
+  let _held = new Set();
+  const setKeys = async (want) => {
+    for (const k of [..._held]) if (!want.has(k)) { await page.keyboard.up(k); _held.delete(k); }
+    for (const k of want) if (!_held.has(k)) { await page.keyboard.down(k); _held.add(k); }
+  };
   const walkTo = async (x, y, capMs = 60000) => {
     const t0 = Date.now();
-    const r = await page.evaluate(async ([tx, ty, cap]) => {
-      const sl = (ms) => new Promise((z) => setTimeout(z, ms));
-      const t1 = Date.now(); let moved = 0, prev = null;
-      while (Date.now() - t1 < cap) {
-        const cur = window.__getMyAbs();
-        if (!cur || !Number.isFinite(cur.x)) break;
-        if (prev) moved += Math.hypot(cur.x - prev.x, cur.y - prev.y);
-        prev = { x: cur.x, y: cur.y };
-        const dx = tx - cur.x, dy = ty - cur.y, d = Math.hypot(dx, dy);
-        if (d <= 40) break;
-        window.__sendPrimary({ type: 'input', vx: dx / d, vy: dy / d, seq: (window.__seqE2E = (window.__seqE2E || 1e6) + 1), sprint: false });
-        await sl(33);
-      }
-      window.__sendPrimary({ type: 'input', vx: 0, vy: 0, seq: (window.__seqE2E = (window.__seqE2E || 1e6) + 1), sprint: false });
-      const fin = window.__getMyAbs();
-      return { moved: Number.isFinite(moved) ? moved : 0, left: fin ? Math.hypot(fin.x - tx, fin.y - ty) : 1e9 };
-    }, [x + WOX, y + WOY, capMs]);
+    const tx = x + WOX, ty = y + WOY;
+    let cur = await me(), start = cur, left = Infinity;
+    while (Date.now() - t0 < capMs) {
+      cur = await me();
+      if (!cur) break;
+      const dx = tx - cur.x, dy = ty - cur.y;
+      left = Math.hypot(dx, dy);
+      if (left <= 40) break;
+      const want = new Set();
+      if (dx > 12) want.add(KEY.E); else if (dx < -12) want.add(KEY.W);
+      if (dy > 12) want.add(KEY.S); else if (dy < -12) want.add(KEY.N);
+      await setKeys(want);
+      await sleep(180);
+    }
+    await setKeys(new Set());
     await sleep(400);
-    const cur = await me();
-    const left = cur ? Math.hypot(cur.x - (x + WOX), cur.y - (y + WOY)) : Infinity;
-    return { sec: (Date.now() - t0) / 1000, left, moved: (r && Number.isFinite(r.moved)) ? r.moved : 0 };
+    cur = await me();
+    left = cur ? Math.hypot(cur.x - tx, cur.y - ty) : Infinity;
+    const straight = start && cur ? Math.hypot(cur.x - start.x, cur.y - start.y) : 0;
+    return { sec: (Date.now() - t0) / 1000, left, moved: straight };
   };
 
   await warp(v.x, v.y);

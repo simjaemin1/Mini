@@ -170,8 +170,18 @@ const row = (chain, step, sec, note) => { ROWS.push({ chain, step, sec, note });
   const t0 = Date.now(); H.trySortOre(P); row('청동', '선광', (Date.now() - t0) / 1000, '강제 대기 없음 — 채광이 이미 시간을 냈다');
   const t1 = Date.now();
   if ((P.inventory.copper || 0) < need) P.inventory.copper = need;
+  // ★[시설 제작창 2026-08-29] 단조에도 **작업대**가 필요해졌다(제작은 시설 앞의 물리 행위).
+  //   계측기는 그 시설을 픽스처로 세운다 — 여기서 재는 건 "짓는 시간"이 아니라 **단조 시간**이다.
+  //   ⚠그리고 이제 **즉석이 아니라 대기열**이라, 완성까지의 벽시계를 그대로 기다렸다 받는다.
+  H.buildings.set('pm_wb', { id: 'pm_wb', dbId: null, type: 'workbench', ownerId: P.playerId, ownerName: P.name, x: P.x + 20, y: P.y, data: {} });
   H.doCraftEquipment(P, 'weapon', 'copper', null);
-  row('청동', '단조', (Date.now() - t1) / 1000, `"${lastNotice(P)}"`);
+  const _fw = require('path').join(__dirname, '..', 'server', 'facility.js');
+  const _F = require(_fw);
+  const _wait = _F.CRAFT_MS.tool + 200;
+  const _sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  await _sleep(_wait);
+  H.doCraftCollect(P, 'pm_wb');
+  row('청동', '단조', (Date.now() - t1) / 1000, `"${lastNotice(P)}" (제작 시간 ${_F.CRAFT_MS.tool}ms 포함)`);
 
   // ══ B. 철 사슬 — 숯가마 → 노 (벽시계 실측) ════════════════════════════════
   say('\n[B. 철 사슬 — 숯가마·노 대기를 벽시계로 실측]');

@@ -87,6 +87,7 @@ const DERIVED_KG = {
   item_stair:  12.00,  // plank 4
   item_chest:  12.00,  // plank 4
   item_campfire: 9.00, // wood 3
+  item_workbench: 20.00, // ★[시설 제작창 2026-08-29] 통나무 4(12.0) + 석재 2(8.0) — 재료 합 그대로(짜 맞춘 널판 작업대)
   item_farmland: 0.02, // seed_berry 1
 };
 

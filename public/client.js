@@ -183,6 +183,11 @@ const SIM_JOB_EMOJI = {
   let recipes = {};   // 서버에서 받은 도구 레시피
   let itemRecipes = {}; // 14.50: 아이템 가공 레시피 (plank 등)
   let buildingRecipes = {}; // 14.51: 건축물 제작 레시피 (제작창에서 만들면 인벤 아이템)
+  // ★★[시설 제작창 2026-08-29 · §8.5] "제작창 = 시설의 창" — 내 곁의 시설이 자기 레시피만 편다.
+  let myFacility = null;      // { near:{bid,btype,ko,kind,mine,craftMs}|null, recipes:[], queue:[] }
+  let facilityPick = {};      // 레시피별로 **무엇으로 만들지**(재료 선택 = 판단)
+  let _facAutoOpened = null;  // 자동 개방은 시설에 **들어설 때 한 번**만 — 닫아 놓은 걸 다시 열지 않는다
+  let _facAskAt = 0;
   let cookRecipes = {}; // 서버에서 받은 요리 레시피
   let foodEffects = {}; // 서버에서 받은 음식 효과 정보 (표시용)
   // 플레이어 장비(품질·속성·내구 인스턴스) — econ 무접촉·본체 서버층
@@ -5770,6 +5775,9 @@ const SIM_JOB_EMOJI = {
   window.__getPlayerId = () => myPlayerId;
   // ★[배산임수 감사 2026-08-29] 게이지 진단 훅 — 하네스가 "둠벙에서 실제로 마셔지는가"를 화면 값으로 잰다(읽기 전용).
   window.__getGauges = () => ({ hunger: myHunger, thirst: myThirst, vp: myVp });
+  // ★[시설 제작창 2026-08-29] 진단 훅 — 하네스가 "창이 실제로 열렸는가 · 대기열이 도는가"를 화면 상태로 잰다(읽기 전용).
+  window.__getFacility = () => myFacility;
+  window.__getActiveSide = () => activeSide;
 
   // === 부트 ===
   async function boot() {
@@ -6706,6 +6714,20 @@ const SIM_JOB_EMOJI = {
         const spB = document.getElementById('spBody');
         if (spB && craftCat === 'trade' && typeof renderCraftPanel2 === 'function') renderCraftPanel2(spB);
       }
+    } else if (msg.type === 'facility') {
+      // ★★[시설 제작창 §8.5] 시설의 창 — **들어서면 열리고**(§8.2 의 유일한 예외: 맥락 창), 나가면 닫힌다.
+      const was = myFacility && myFacility.near ? myFacility.near.bid : null;
+      myFacility = msg;
+      const now = msg.near ? msg.near.bid : null;
+      if (now && now !== was && now !== _facAutoOpened && msg.near.mine) {
+        _facAutoOpened = now;
+        openSide('facility');
+      }
+      if (!now) { _facAutoOpened = null; if (activeSide === 'facility') closeSide(); }
+      if (activeSide === 'facility') renderSide('facility');
+    } else if (msg.type === 'craft_queue') {
+      if (myFacility) myFacility.queue = msg.queue || [];
+      if (activeSide === 'facility') renderSide('facility');
     } else if (msg.type === 'dishes') {
       dishes = Array.isArray(msg.dishes) ? msg.dishes : [];
       if (cookOpen) renderCookPanel();
@@ -7399,6 +7421,9 @@ const SIM_JOB_EMOJI = {
       _renderCurr = { x: myAbsPredicted.x, y: myAbsPredicted.y };
       _renderReady = true;
     }
+    // ★[시설 제작창] 내 곁의 시설을 주기적으로 묻는다(1.2초) — 들어서면 창이 열려야 하니까.
+    //   ⚠클라가 시설 목록을 캐시해 두면 그게 곧 낡은 목록이다(거래소가 하루 캐시로 배운 것과 같은 함정).
+    if (now - _facAskAt > 1200) { _facAskAt = now; try { sendPrimary({ type: 'facility_ask' }); } catch (e) {} }
     // 멈춤/다운: 스텝이 입력을 안 보내는 구간 — 서버가 멈추도록 주기적 zero-input 전송 (seq 포함).
     if (!moving && (now - lastInputSentAt > 33)) {
       inputSeq++;
@@ -10953,6 +10978,21 @@ const SIM_JOB_EMOJI = {
       ctx.moveTo(aX, aY - 5); ctx.lineTo(aX - 5, aY + 2); ctx.lineTo(aX + 5, aY + 2);
       ctx.closePath(); ctx.stroke(); ctx.fill();
       // 14.49-e7b: 라벨 제거 (자동 계단이라 키 안내 불필요)
+    } else if (type === 'workbench') {
+      // ★★[시설 제작창 2026-08-29] **작업대** — 널판 상판 + 다리 넷 + 얹힌 돌.
+      //   ⚠**발판 도형이다**(회부: 시설 신규 스프라이트). 자연물·건물 정본 에셋으로 교체 예정.
+      //   지금 벡터로 그리는 이유: 스프라이트를 새로 그리는 건 이 배치의 일이 아니고,
+      //   그렇다고 안 그리면 **"데이터는 있는데 세계엔 없는"** 시설이 된다(족보 67 과 같은 함정).
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.beginPath(); ctx.ellipse(x, y + 5, 17, 6, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#4a3520';
+      ctx.fillRect(x - 13, y - 2, 3, 8); ctx.fillRect(x + 10, y - 2, 3, 8);      // 다리
+      ctx.fillStyle = '#7a5a33';                                                  // 상판(널판)
+      ctx.beginPath(); ctx.moveTo(x, y - 12); ctx.lineTo(x + 18, y - 3); ctx.lineTo(x, y + 6); ctx.lineTo(x - 18, y - 3); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#5a4123'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x - 9, y - 7.5); ctx.lineTo(x + 9, y + 1.5); ctx.stroke();
+      ctx.fillStyle = '#8d8d8d';                                                  // 얹힌 숫돌
+      ctx.beginPath(); ctx.ellipse(x + 3, y - 6, 5, 2.6, 0, 0, Math.PI * 2); ctx.fill();
     } else if (type === 'campfire') {
       // 모닥불 — 통나무 + 흔들리는 불꽃
       ctx.fillStyle = 'rgba(0,0,0,0.4)';
@@ -11619,16 +11659,21 @@ const SIM_JOB_EMOJI = {
     iron: '⚙️', copper: '🟠', tin: '⚪', lead: '⬜', silver: '🥈', gold: '🥇', nickel: '⚪', jade_raw: '🟢',
     // 14.51: 건축물 아이템 (인벤에 들어가는 형태)
     item_wall: '🧱', item_floor: '⬜', item_door: '🚪', item_fence: '🪵',
-    item_stair: '🪜', item_chest: '📦', item_campfire: '🔥', item_farmland: '🌱',
+    item_stair: '🪜', item_chest: '📦', item_campfire: '🔥', item_farmland: '🌱', item_workbench: '🪚',
   };
   // === 에셋 5차: 인벤 아이콘 3D 렌더(Blender icon_render.py) ===
   // /assets/icons/<key>.png (96×96 알파, 자연물과 동일 씬·조명). 로드 성공한 키만 이미지로 교체 —
   // 실패/미배포 시 위 이모지가 그대로 폴백이라 어느 쪽이든 UI가 비지 않는다.
   const ITEM_ICON_IMG = {};
   let _iconImgLoaded = 0;
+  // ★[시설 제작창 2026-08-29] **아직 렌더가 없는 키** — 이모지 폴백으로 간다.
+  //   여기 없는 키는 전부 `/assets/icons/<key>.png` 가 있다는 규약이라(37종 중 36종 실재 확인),
+  //   목록에 안 적고 두면 **404 가 난다** — `e2e-nature` 가 "자산 요청 404 없음"으로 그걸 잡는다(실제로 잡았다).
+  //   ⚠교체 예정: 작업대 아이콘은 Blender `icon_render.py` 로 뽑아 이 목록에서 빼면 된다(회부: 시설 스프라이트).
+  const ICON_NO_RENDER = new Set(['item_workbench']);
   (function preloadItemIcons() {
     if (typeof Image !== 'function') return;
-    const keys = Object.keys(ITEM_ICONS);
+    const keys = Object.keys(ITEM_ICONS).filter((k) => !ICON_NO_RENDER.has(k));
     let settled = 0;
     const done = () => {
       if (++settled === keys.length) { try { updateHud(); } catch (e) {} }
@@ -11676,7 +11721,7 @@ const SIM_JOB_EMOJI = {
     marble: '대리석', tungsten: '텅스텐', gold: '금', silver: '은',
     wood: '통나무', plank: '판자', stone: '돌',
     item_wall: '벽', item_floor: '바닥', item_door: '문', item_fence: '울타리',
-    item_stair: '계단', item_chest: '상자', item_campfire: '모닥불', item_farmland: '농지',
+    item_stair: '계단', item_chest: '상자', item_campfire: '모닥불', item_farmland: '농지', item_workbench: '작업대',
   };
 
   // 14.53: 우클릭 컨텍스트 메뉴 — 임의 옵션 list 받아서 마우스 위치에 띄움.
@@ -12787,6 +12832,7 @@ const SIM_JOB_EMOJI = {
     document.getElementById('spTitle').textContent = ({
       craft: '🔨 제작', build: '🏗️ 건축', tribe: '🛡️ 길드', market: '🏪 시세',
       skills: '📚 스킬', claims: '🏛️ 사유지', body: '🫀 상태', trade: '🏪 거래소',
+      facility: (myFacility && myFacility.near) ? `🪚 ${myFacility.near.ko}` : '🪚 제작창',
     })[name] || name;
     // ★[§8.2 패널 프레임 규약] 이 표에 없는 이름은 **영문 키가 그대로 제목에 뜬다**(실제로 `body` 가 그랬다).
     //   다음 패널을 붙이는 사람에게: ①`#sidebar` 에 `.sb-icon[data-side]` 한 줄(단축키 병기)
@@ -12865,6 +12911,7 @@ const SIM_JOB_EMOJI = {
     if (document.activeElement === ci) return;
     const k = e.key.toLowerCase();
     if (k === 'i') { toggleInv(); e.preventDefault(); }
+    else if (k === 'k' && e.shiftKey) { toggleSide('facility'); e.preventDefault(); }  // ★[시설 제작창] 시설의 창(자동으로도 열린다)
     else if (k === 'k') { toggleSide('craft'); e.preventDefault(); }
     else if (k === 'h' && e.shiftKey) { toggleSide('body'); e.preventDefault(); }   // ★[신체 상태] 상태 패널
     else if (k === 't' && e.shiftKey) { toggleSide('trade'); e.preventDefault(); }  // ★[거래소] 마을 시세표
@@ -13032,6 +13079,66 @@ const SIM_JOB_EMOJI = {
     else if (name === 'tribe') { body.innerHTML = '<div id="tribeBody"></div>'; renderTribePanel(); }
     else if (name === 'market') renderMarketPanel(body);
     else if (name === 'skills') renderSkillsPanel(body);
+    else if (name === 'facility') renderFacilityPanel(body);
+  }
+
+  // ★★[시설 제작창 · 재민 확정 2026-08-29 · §8.5] **제작창 = 시설의 창.**
+  //   전 레시피 대목록을 만들지 않는다 — 지금 내 앞에 선 시설이 **자기 레시피만** 편다.
+  //   정렬은 서버(정본)가 이미 해서 준다: 가능 → **하나 모자람** → 나머지.
+  //   "하나 모자람"이 오늘의 할 일이고, 그게 시장에 갈 이유다.
+  function renderFacilityPanel(el) {
+    const F = myFacility;
+    if (!F || !F.near) { el.innerHTML = '<div class="hint">시설 앞에 서면 그 시설의 제작창이 열린다 — 🔥모닥불(요리) · 🪚작업대(도구) · 🏭노(제련)</div>'; return; }
+    if (!F.near.mine) { el.innerHTML = `<div class="hint">${F.near.ko}은(는) 내 것이 아니다 — 남의 시설 사용권은 아직 없다.</div>`; return; }
+    const secs = Math.round((F.near.craftMs || 0) / 1000);
+    let h = `<div class="hint" style="margin-bottom:8px">🪵 <b>${F.near.ko}</b> — 여기서 만들 수 있는 것만 보인다 · 한 개 ${secs}초</div>`;
+    // ── 대기열 ──
+    const q = (F.queue || []).find((x) => x.bid === F.near.bid);
+    if (q && q.jobs.length) {
+      h += '<div class="hint" style="font-weight:bold;margin:6px 0 4px">— 걸어 둔 것 —</div>';
+      for (const j of q.jobs) {
+        const left = Math.ceil(j.leftMs / 1000);
+        h += `<div class="craft-recipe ${j.done ? 'can-make' : ''}">
+          <div class="cr-icon">${j.done ? '✅' : '⏳'}</div>
+          <div class="cr-info"><div class="cr-name">${j.label}</div>
+          <div class="cr-cost">${j.done ? '다 됐다 — 받아 가라' : `${left}초 남음`}</div></div>
+          ${j.done ? '<button data-fcollect="1">받기</button>' : ''}</div>`;
+      }
+    }
+    // ── 레시피 ──
+    h += '<div class="hint" style="font-weight:bold;margin:10px 0 4px">— 만들 수 있는 것 —</div>';
+    for (const r of (F.recipes || [])) {
+      const pick = facilityPick[r.id] || (r.options && (r.options.find((o) => o.can) || r.options[0]) || {}).material;
+      let costStr, q2 = null;
+      if (r.options) {
+        const o = r.options.find((x) => x.material === pick) || r.options[0] || {};
+        costStr = `${itemIconHtml(o.material, 18, o.material)} ${o.need} <span style="color:#8a93a0">(보유 ${o.have})</span>`;
+        q2 = o.q;
+      } else {
+        costStr = Object.entries(r.cost).map(([k, n]) => `${itemIconHtml(k, 18, k)} ${n}`).join(' · ');
+      }
+      const lack = r.missing.length ? `<span style="color:#e88">— ${r.missing.map((m) => `${m.item} ${m.have}/${m.need}`).join(' · ')}</span>` : '';
+      h += `<div class="craft-recipe ${r.can ? 'can-make' : ''}">
+        <div class="cr-icon">${r.kind === 'cook' ? '🍲' : '🔧'}</div>
+        <div class="cr-info">
+          <div class="cr-name">${r.label}${q2 != null ? ` <span style="color:#8a93a0;font-weight:normal">· 예상 품질 ${Math.round(q2 * 100)}%${r.lvl != null ? ` (${r.skill} Lv${r.lvl})` : ''}</span>` : ''}</div>
+          <div class="cr-cost">${costStr} ${lack}</div>
+          ${r.options ? `<div class="cr-cost" style="margin-top:3px">${r.options.map((o) => `<button data-fpick="${r.id}" data-fmat="${o.material}" style="margin:1px 2px 1px 0;${o.material === pick ? 'outline:1px solid #7c9' : ''}" ${o.can ? '' : 'disabled'}>${o.material} ${o.q != null ? Math.round(o.q * 100) + '%' : ''}</button>`).join('')}</div>` : ''}
+        </div>
+        <button data-fmake="${r.id}" ${r.can ? '' : 'disabled'}>만들기</button>
+      </div>`;
+    }
+    el.innerHTML = h;
+    el.querySelectorAll('[data-fpick]').forEach((b) => b.onclick = () => { facilityPick[b.dataset.fpick] = b.dataset.fmat; renderSide('facility'); });
+    el.querySelectorAll('[data-fcollect]').forEach((b) => b.onclick = () => sendPrimary({ type: 'craft_collect', buildingId: F.near.bid }));
+    el.querySelectorAll('[data-fmake]').forEach((b) => b.onclick = () => {
+      const id = b.dataset.fmake;
+      const r = (F.recipes || []).find((x) => x.id === id);
+      if (!r) return;
+      if (r.options) sendPrimary({ type: 'craft_equipment', itemType: id, material: facilityPick[id] || (r.options.find((o) => o.can) || {}).material });
+      else sendPrimary({ type: 'cook', recipe: id });
+      setTimeout(() => sendPrimary({ type: 'facility_ask' }), 400);
+    });
   }
 
   // 14.49-e7an: 스킬 패널 프로토타입 (UI only, hardcoded values)
