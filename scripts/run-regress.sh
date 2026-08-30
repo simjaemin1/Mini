@@ -99,6 +99,7 @@ else
     test-emptystart.js
     test-craft.js
     test-ledger.js
+    test-move.js
     e2e-events.js
     e2e-trade.js
     e2e-weight.js
@@ -126,6 +127,8 @@ else
     e2e-mtfuzz.js
     e2e-tilestate.js
     e2e-waterperf.js
+    # ★[이동 모델 2026-08-30] 실클라 이동/조준 계측 — legacy·accel 두 판을 스스로 띄운다(각 판 뒤 배수).
+    e2e-move.js
   )
 fi
 

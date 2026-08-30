@@ -64,6 +64,16 @@ const SIM_JOB_EMOJI = {
   // (1,0,0) → (1, 0.5), (0,1,0) → (-1, 0.5), (0,0,1) → (0, -1) 형태.
   // 모든 호출자는 z=0 기본 — Phase 13.2에서 건물/계단에 z>0 도입.
   const FLOOR_HEIGHT = 64; // 14.49-e2: 32 → 64 (한 층 2배)
+  // === 화면(canvas px) → 월드 절대 좌표 ==========================================
+  //   ★렌더가 실제로 쓴 **카메라 iso 원점**(`_lastCamIso`)을 쓴다. 종전엔 `myAbsPredicted` 로 따로
+  //   투영해서 보간 한 스텝만큼(수 px) 어긋나 있었고, 조준 시야 밀기가 들어오면 그 어긋남이
+  //   오프셋(최대 180px)만큼 커진다 — 커서가 가리키는 곳과 실제 조준선이 갈린다.
+  function screenToWorldAbs(px, py) {
+    const cam = _lastCamIso || w2i(myAbsPredicted.x, myAbsPredicted.y);
+    const ix = px - W / 2 + cam.x;
+    const iy = (py + (myFloor || 0) * FLOOR_HEIGHT) - H / 2 + cam.y;
+    return { wx: ix * 0.5 + iy, wy: iy - ix * 0.5 };
+  }
   function w2i(wx, wy, wz = 0) {
     return { x: (wx - wy), y: (wx + wy) * 0.5 - wz };
   }
@@ -90,6 +100,16 @@ const SIM_JOB_EMOJI = {
   let myAbsPredicted = { x: 0, y: 0 };
   // Phase 5-2-mini: 미니맵에서 access
   window.__getMyAbs = () => myAbsPredicted;
+  // ★[이동 모델 2026-08-30] 진단 훅(읽기 전용) — `e2e-move` 가 이걸로 잰다.
+  //   속도는 **모델 상태**를 그대로 읽는다(화면 미분이 아니라) — 계측기가 렌더 보간을 재는 함정 회피.
+  window.__moveDbg = () => ({
+    model: _moveParams.model, vx: myVel.vx, vy: myVel.vy,
+    speed: Math.hypot(myVel.vx, myVel.vy),
+    aiming: !!_aiming, aimLook: [_aimLookX, _aimLookY], aimDir: [_aimDirX, _aimDirY],
+    facing: [myFacingVx, myFacingVy], camIso: _lastCamIso,
+    cfg: _moveParams, pos: { x: myAbsPredicted.x, y: myAbsPredicted.y },
+    corrN: window.__corrN | 0, corrLast: window.__corrLast | 0,
+  });
   // ★[10차 T4] 장마당 진단 훅 — 클라가 서버 markets 플래그를 실제로 받았는지 확인용(읽기 전용, 기존 __get* 관례).
   window.__getMarkets = () => { const out = {}; for (const [zid, c] of conns) out[zid] = (c && c.markets) ? c.markets.slice() : null; return out; };
   // ★[11차 T3] 환호 진단 훅 — 클라가 도랑 페이로드를 받아 미러(_ditchAbs)에 실었는지(읽기 전용).
@@ -240,6 +260,21 @@ const SIM_JOB_EMOJI = {
   let lastMouseSx = 0, lastMouseSy = 0; // 캔버스 좌표 (px)
   let myLastAttackAt = 0; // Phase 14.35: 공격 모션
   let myFacingVx = 1, myFacingVy = 0; // Phase 14.37: 본인 마지막 facing (기본 동쪽)
+  // === [조준 모드 2026-08-30 재민 확정] 우클릭 홀드 = 조준 ======================
+  //   ⓐ 조준 방향이 이동과 **분리**된다(커서 방향) → 옆걸음·뒷걸음이 자연 발생
+  //   ⓑ 이속이 `MOVE_AIM_SPEED_FRAC` 로 준다 (서버 권위와 같은 수 — 입력에 aim 을 실어 보낸다)
+  //   ⓒ 시야 밀기 — **카메라만** 커서 쪽으로 밀린다
+  //   ★★안개 계약: 시야(안개) 계산 원점은 **캐릭터 그대로**다. 오프셋은 화면 변환(camX/camY)에만
+  //     더한다 — `_camAbs`(월드)는 손대지 않으므로 안개 원점·내 스프라이트 위치가 불변이다.
+  //     (커서로 안개를 걷으면 정찰이 공짜가 된다. 시야 확장은 나중에 **설계할 일**이지
+  //      카메라의 부작용이면 안 된다 — 회부.)
+  let _aiming = false;
+  const AIM_LOOK_PX = 180;      // 시야 밀기 최대 오프셋(화면 px). 손잡이는 튜닝 배치에서.
+  const AIM_LOOK_TAU = 0.12;    // 이징 시정수(초) — 뚝 이동 금지
+  let _aimLookX = 0, _aimLookY = 0;      // 현재(이징된) 화면 오프셋
+  let _lastCamIso = null;                // 직전 프레임 카메라 iso 원점 — 커서→월드 투영이 이걸 쓴다
+  let _aimDirX = 1, _aimDirY = 0;        // 조준 월드 방향(정규화)
+  let _aimT = 0;                         // 이징용 직전 프레임 시각
   // Phase 14.40: Shift 달리기
   let mySprint = false;
   // ★유령 클라 fix: 서버에 내 플레이어 실체가 없는 구간(사망 제거·orphan 판정·재연결 대기) 플래그.
@@ -258,7 +293,7 @@ const SIM_JOB_EMOJI = {
       const t = el.querySelector('.nl-why');
       if (t) t.textContent = netStalled ? (why || '서버 응답 없음') : '';
     }
-    if (netStalled) { pendingInputs.length = 0; _predAccum = 0; }   // 쌓인 미ack 입력을 버린다(재접속 뒤 순간이동 방지)
+    if (netStalled) { pendingInputs.length = 0; _predAccum = 0; myVel.vx = 0; myVel.vy = 0; }   // 쌓인 미ack 입력을 버린다(재접속 뒤 순간이동 방지) + ★관성도 끊는다(이동 모델)
     else console.log('[recover] 서버 틱 복구 — 예측 재개');
   }
   window.__netStalled = () => netStalled;
@@ -6117,12 +6152,8 @@ const SIM_JOB_EMOJI = {
       const px = (e.clientX - rect.left) * (canvas.width / rect.width);
       const py = (e.clientY - rect.top) * (canvas.height / rect.height);
       lastMouseSx = px; lastMouseSy = py;
-      const myIso = w2i(myAbsPredicted.x, myAbsPredicted.y);
-      // 14.53-g fix: 2층 이상 player일 때, 마우스 py에 floor*FLOOR_HEIGHT 더해 그 층의 plane으로 투영
-      const ix = px - W/2 + myIso.x;
-      const iy = (py + (myFloor || 0) * FLOOR_HEIGHT) - H/2 + myIso.y;
-      const wx = ix * 0.5 + iy;
-      const wy = iy - ix * 0.5;
+      const _m = screenToWorldAbs(px, py);
+      const wx = _m.wx, wy = _m.wy;
       window._lastMouseWx = wx; window._lastMouseWy = wy; // Phase 5-I: 원거리 조준용 (절대 월드)
       if (placementMode) {
         placementCursor.wx = wx;
@@ -6231,6 +6262,23 @@ const SIM_JOB_EMOJI = {
       }
       showNotice(`회전: ${placementMode.dir}`);
     });
+    // === [조준 모드 2026-08-30] 우클릭 홀드 = 조준 · 조준 중 좌클릭 = 공격 =========
+    //   ★기존 상호작용을 잡아먹지 않는다: 우클릭은 preventDefault 만(위 contextmenu 가 이미 한다),
+    //     좌클릭 공격은 **조준 중이고 배치/건축 모드가 아닐 때만**. click 핸들러(배치·상자)는 그대로 산다.
+    canvas.addEventListener('mousedown', (e) => {
+      if (e.button === 2) { _aiming = true; e.preventDefault(); return; }
+      if (e.button === 0 && _aiming && !placementMode && !buildMode) {
+        // ★배선까지만 — 타격 판정 아크·타이밍·애니는 **전투 층 배치의 몫**이다(회부).
+        //   서버 tryAttack 의 "범위 안 가장 가까운 mob" 판정은 무수정. 조준 방향은 싣기만 한다.
+        sendPrimary({ type: 'attack', aimX: _aimDirX, aimY: _aimDirY });
+        myLastAttackAt = performance.now();
+      }
+    });
+    const _aimOff = () => { _aiming = false; };
+    canvas.addEventListener('mouseup', (e) => { if (e.button === 2) _aimOff(); });
+    canvas.addEventListener('mouseleave', _aimOff);
+    window.addEventListener('blur', _aimOff);
+
     // Phase 14.22: 캔버스 클릭 → screen → world 좌표 변환 → chest bbox hit-test
     canvas.addEventListener('click', (e) => {
       const rect = canvas.getBoundingClientRect();
@@ -6631,6 +6679,9 @@ const SIM_JOB_EMOJI = {
         // ★[무게 배치] kg 카탈로그·용량 규격을 **서버에서 받는다**(사본 금지 — 클라가 표를 들면 갈린다)
         if (msg.itemWeights) { itemWeights = msg.itemWeights; window.__itemWeights = msg.itemWeights; }
         if (msg.carryCfg) { carryCfg = msg.carryCfg; window.__carryCfg = msg.carryCfg; }
+        // ★★[이동 모델 2026-08-30] 손잡이 표는 **서버가 준다**(클라가 표를 갖지 않는다).
+        //   여기서 못 받으면 모듈 기본값(legacy) — 옛 서버와도 그대로 돈다.
+        if (msg.moveCfg) { _moveParams = window.MoveModel.paramsFrom(msg.moveCfg); window.__moveCfg = _moveParams; }
         if (msg.foodEffects) foodEffects = msg.foodEffects;
         // 플레이어 장비
         if (msg.equipmentRecipes) equipmentRecipes = msg.equipmentRecipes;
@@ -6655,6 +6706,7 @@ const SIM_JOB_EMOJI = {
         // welcome = 풀 권위 리싱크(재연결/존이동) → 텔포처럼 취급: 미ack 입력 비우고 앵커.
         // ★유령 클라 fix: 앵커는 어떤 조건으로도 우회되지 않는다(primary welcome = 무조건 재앵커).
         pendingInputs.length = 0;
+        myVel.vx = 0; myVel.vy = 0;   // ★관성도 끊는다(존 전환/재연결)
         _predAccum = 0;
         myAbsPredicted = { x: absX, y: absY };
         _renderPrev = { x: absX, y: absY };
@@ -6691,7 +6743,7 @@ const SIM_JOB_EMOJI = {
           const absY = (c.meta.worldOffsetY || 0) + pp.y;
           myAbsPos = { x: absX, y: absY };
           // 리컨실리에이션: 권위 위치 + ackSeq(tick top-level)로 미ack 입력 replay
-          applyServerCorrection(absX, absY, msg.ackSeq);
+          applyServerCorrection(absX, absY, msg.ackSeq, msg.selfVx, msg.selfVy);
           lastTickWithMyPidAt = now;
         } else {
           // 서버가 메타 필드(name/color/maxHp/tribeName)를 첫 visible 때만 보냄. 나머진 prev 캐시 유지.
@@ -7019,6 +7071,7 @@ const SIM_JOB_EMOJI = {
           correctionUntil = 0;
           // 부활 = 텔포 → 미ack 입력 비우고 렌더 앵커 리싱크 (카메라가 텔포 구간 lerp 방지)
           pendingInputs.length = 0;
+          myVel.vx = 0; myVel.vy = 0;   // ★관성도 끊는다(부활=텔포)
           _predAccum = 0;
           _renderPrev = { x: absX, y: absY };
           _renderCurr = { x: absX, y: absY };
@@ -7068,6 +7121,7 @@ const SIM_JOB_EMOJI = {
         myPid = null;                 // 이후 어떤 tick도 "나"로 오인되지 않게
         lastTickWithMyPidAt = 0;      // orphan 워치독 비활성(재연결 welcome이 다시 켬)
         pendingInputs.length = 0;
+        myVel.vx = 0; myVel.vy = 0;   // ★관성도 끊는다(존 전환/재연결)
         _predAccum = 0;
         if (conns.has(zoneId)) closeConnection(zoneId); // 다음 프레임 ensurePrimaryConnection이 재연결
         return;
@@ -7318,6 +7372,11 @@ const SIM_JOB_EMOJI = {
   // sendInput/loop/applyServerCorrection 보다 먼저 선언 — TDZ 회피.
   let _predAccum = 0;
   const PRED_STEP = 1 / 30;           // 서버 TICK_HZ=30 과 동일
+  // ★★[이동 모델 2026-08-30] 적분은 **공유 모듈 한 곳**(`public/move-model.js`) — 서버 zone.js 가
+  //   같은 파일을 require 한다. 이동을 고치려면 그 파일만 고쳐라.
+  //   `myVel` 은 **가속 모델의 상태**다. legacy 에선 쓰이지 않는다(속도가 입력의 함수라 상태가 없다).
+  let _moveParams = window.MoveModel.paramsFrom({});   // 서버 welcome.moveCfg 가 덮어쓴다
+  let myVel = { vx: 0, vy: 0 };
   let inputSeq = 0;
   const pendingInputs = [];           // [{seq, wx, wy, sprint}] — ack 안 된 입력 (replay용)
   // 렌더 보간(60fps): 직전 스텝 위치 ↔ 현재 스텝 위치 사이를 _predAccum 비율로 lerp.
@@ -7344,13 +7403,14 @@ const SIM_JOB_EMOJI = {
     }
     const { wx, wy } = worldKeysDir();
     const sp = !!mySprint;
+    const am = !!_aiming;
     inputSeq++;
-    pendingInputs.push({ seq: inputSeq, wx, wy, sprint: sp });
+    pendingInputs.push({ seq: inputSeq, wx, wy, sprint: sp, aim: am });
     if (pendingInputs.length > 200) pendingInputs.shift();
-    sendStepInput(inputSeq, wx, wy, sp);
+    sendStepInput(inputSeq, wx, wy, sp, am);
     // 이 즉시 스텝만큼 미리 시뮬 + accumulator 차감 (loop while 중복 방지)
     if (_renderReady) _renderPrev = { x: myAbsPredicted.x, y: myAbsPredicted.y };
-    predictStep(PRED_STEP, wx, wy, sp);
+    predictStep(PRED_STEP, wx, wy, sp, am);
     if (_renderReady) { _renderCurr = { x: myAbsPredicted.x, y: myAbsPredicted.y }; }
     _predAccum -= PRED_STEP;
     if (_predAccum < 0) _predAccum = 0;
@@ -7378,10 +7438,16 @@ const SIM_JOB_EMOJI = {
 
   // 고정 스텝 1회 이동 — myAbsPredicted 를 직접 변형.
   // sprint 인자: live는 mySprint, replay는 각 입력의 sprint 상태를 넘김 (속도에 영향).
-  function predictStep(dt, wx, wy, sprint) {
+  function predictStep(dt, wx, wy, sprint, aim) {
     // ★유령 클라 fix: 서버에 내 실체가 없는 동안(_selfGone)은 예측 정지 — 유령이 걸어다니지 않게.
     // ★[정비 배치] `netStalled` 를 `_selfGone` 과 나란히 — 서버 틱이 없는 동안 걸으면 그게 유령이다.
-    if (myIsDown || _selfGone || netStalled || (wx === 0 && wy === 0)) return;
+    // ★[이동 모델] 그리고 **예측이 멈추면 관성도 멈춘다** — 서버 input 핸들러의 `isDown → p.vx=0`
+    //   미러이자 정지 계약. 재개 첫 틱에 서버 `selfVx/selfVy` 로 다시 앵커된다.
+    //   legacy 에선 myVel 이 안 쓰여 무영향(플래그 OFF 회귀 불변).
+    if (myIsDown || _selfGone || netStalled) { myVel.vx = 0; myVel.vy = 0; return; }
+    // ★legacy: 입력 0 이면 no-op(종전 그대로). accel: 입력 0 은 **감속 스텝**이다 — 빠지면 안 선다.
+    const _accel = (_moveParams.model === 'accel');
+    if (!_accel && wx === 0 && wy === 0) return;
     const canSprintClient = sprint && myHunger > 5 && myThirst > 5;
     // ★★[신체 상태 2026-08-26] 몸 상태 배율을 **여기에도** 곱한다. 서버는 `Body.effects().moveMult` 로
     //   같은 값을 쓰고 그 수를 `gauges.body.moveMult` 로 실어 보낸다 —
@@ -7391,8 +7457,22 @@ const SIM_JOB_EMOJI = {
     //   여기서 둘을 따로 곱하면 바닥(0.35) 규칙이 두 벌이 되고, 그 순간 러버밴딩이다.
     const bodyMult = (myCarry && typeof myCarry.combined === 'number') ? myCarry.combined
                    : ((myBody && typeof myBody.moveMult === 'number') ? myBody.moveMult : 1);
-    const speed = 64 * (canSprintClient ? 2.5 : 1) * bodyMult;
-    let mwx = wx, mwy = wy;
+    // ★★적분 — 공유 모듈. 서버 zone.js 가 **같은 함수를 같은 인자로** 부른다.
+    const _mv = window.MoveModel.stepMove(
+      myVel, { wx: wx, wy: wy, sprint: canSprintClient, bodyMult: bodyMult, aim: !!aim },
+      dt, _moveParams);
+    myVel.vx = _mv.vx; myVel.vy = _mv.vy;
+    let stepVx = _mv.vx, stepVy = _mv.vy;
+    // ★★스피드핵 경계 미러(서버 movePlayerStep 과 같은 상한·같은 여유). legacy 에선 걸릴 수 없다.
+    {
+      const _cap = window.MoveModel.maxStepPx(_moveParams, dt, 1) * 1.25;
+      const _mag = Math.hypot(stepVx * dt, stepVy * dt);
+      if (_mag > _cap) { const _k = _cap / _mag; stepVx *= _k; stepVy *= _k; }
+    }
+    // 계단 축 투영 — ★서버는 **속도에** 건다(movePlayerStep 의 stepVx/stepVy). 여기도 같게 맞춘다.
+    //   legacy 에선 proj(k·v) = k·proj(v) 이고 dv 성분이 정확히 0/±1 이라 **비트 동일**이다.
+    //   accel 에선 다르다: 입력에 걸면 목표속도가 바뀌고 속도에 걸면 실제속도가 바뀐다 ⇒ 서버와 맞춰야 한다.
+    //   ★myVel 자체는 투영하지 않는다(서버도 p.vx 를 그대로 둔다 — 지역 사본만 투영).
     {
       const curCx = Math.floor(myAbsPredicted.x / CL_BUILDING_SIZE);
       const curCy = Math.floor(myAbsPredicted.y / CL_BUILDING_SIZE);
@@ -7401,11 +7481,12 @@ const SIM_JOB_EMOJI = {
         const dir = stairHit.stair.data?.dir || 'N';
         const dv = (dir === 'E') ? { x: 1, y: 0 } : (dir === 'W') ? { x: -1, y: 0 }
                  : (dir === 'S') ? { x: 0, y: 1 } : { x: 0, y: -1 };
-        const proj = mwx * dv.x + mwy * dv.y;
-        mwx = proj * dv.x;
-        mwy = proj * dv.y;
+        const proj = stepVx * dv.x + stepVy * dv.y;
+        stepVx = proj * dv.x;
+        stepVy = proj * dv.y;
       }
     }
+    const speed = 64 * (canSprintClient ? 2.5 : 1) * bodyMult;   // auto-eject 밀어내기 전용(종전 식 보존)
     if (isTerrainBlockedAtAbs(myAbsPredicted.x, myAbsPredicted.y)) {
       let ejX = 0, ejY = 0, found = false;
       for (let r = 32; r <= 32 * 16 && !found; r += 32) {
@@ -7419,13 +7500,14 @@ const SIM_JOB_EMOJI = {
         myAbsPredicted.x += (ejX / len) * push;
         myAbsPredicted.y += (ejY / len) * push;
       }
+      myVel.vx = 0; myVel.vy = 0;   // ★서버 movePlayerStep 의 `p.vx=0; p.vy=0; return;` 미러(accel 상태 일치)
     } else {
-      let nx = myAbsPredicted.x + mwx * speed * dt;
-      let ny = myAbsPredicted.y + mwy * speed * dt;
+      let nx = myAbsPredicted.x + stepVx * dt;
+      let ny = myAbsPredicted.y + stepVy * dt;
       if (clientIsBlockedByWall(nx, myAbsPredicted.y, myAbsPredicted.x, myAbsPredicted.y, myFloor)) nx = myAbsPredicted.x;
       if (clientIsBlockedByWall(myAbsPredicted.x, ny, myAbsPredicted.x, myAbsPredicted.y, myFloor)) ny = myAbsPredicted.y;
       if (clientIsBlockedByWall(nx, ny, myAbsPredicted.x, myAbsPredicted.y, myFloor)) { nx = myAbsPredicted.x; ny = myAbsPredicted.y; }
-      if (myFloor === 0 && (mwx || mwy)) {
+      if (myFloor === 0 && (stepVx || stepVy)) {
         const trees = clientNearbyTrees(myAbsPredicted.x, myAbsPredicted.y);
         // ★탈출 밸브(서버 movePlayerStep 미러): 현재 위치가 이미 콜라이더 안이면 차단 해제 — 걸어나올 수 있게
         if (trees && !clientIsBlockedByTree(myAbsPredicted.x, myAbsPredicted.y, trees)) {
@@ -7456,11 +7538,12 @@ const SIM_JOB_EMOJI = {
   }
 
   // 고정 스텝마다 입력 1개를 서버로 전송 (seq 포함). sendInput 의 send 경로 재사용.
-  function sendStepInput(seq, wx, wy, sprint) {
+  function sendStepInput(seq, wx, wy, sprint, aim) {
     if (!primaryZoneId) return;
     const c = conns.get(primaryZoneId);
     if (!c || c.ws.readyState !== 1) return;
-    c.ws.send(JSON.stringify({ type: 'input', seq, vx: wx, vy: wy, sprint: !!sprint }));
+    // ★[조준 모드] aim 이 **입력에 실려야** 서버 권위와 클라 예측이 같은 이속을 낸다.
+    c.ws.send(JSON.stringify({ type: 'input', seq, vx: wx, vy: wy, sprint: !!sprint, aim: !!aim }));
     lastInputSentAt = performance.now();
   }
 
@@ -7494,11 +7577,13 @@ const SIM_JOB_EMOJI = {
       if (!_stepped) { _renderPrev = { x: myAbsPredicted.x, y: myAbsPredicted.y }; _stepped = true; }
       inputSeq++;
       const sp = !!mySprint;
+      const am = !!_aiming;
       // 적용 전에 기록 — replay가 그대로 재현하도록.
-      pendingInputs.push({ seq: inputSeq, wx, wy, sprint: sp });
+      pendingInputs.push({ seq: inputSeq, wx, wy, sprint: sp, aim: am });
       if (pendingInputs.length > 200) pendingInputs.shift();
-      sendStepInput(inputSeq, wx, wy, sp);
-      predictStep(PRED_STEP, wx, wy, sp);   // moving=false 면 내부에서 early-return (위치 불변)
+      sendStepInput(inputSeq, wx, wy, sp, am);
+      // legacy: moving=false 면 내부 early-return(위치 불변). accel: 감속 스텝으로 들어간다.
+      predictStep(PRED_STEP, wx, wy, sp, am);
       _predAccum -= PRED_STEP;
     }
     if (_stepped) {
@@ -7511,7 +7596,21 @@ const SIM_JOB_EMOJI = {
     // 멈춤/다운: 스텝이 입력을 안 보내는 구간 — 서버가 멈추도록 주기적 zero-input 전송 (seq 포함).
     if (!moving && (now - lastInputSentAt > 33)) {
       inputSeq++;
-      sendStepInput(inputSeq, 0, 0, false);
+      if (_moveParams.model === 'accel') {
+        // ★★[이동 모델 2026-08-30] accel 에선 **정지 입력도 감속 스텝**이다.
+        //   legacy 에선 이 키프레임을 기록도 시뮬도 안 했다(정지 입력이 위치를 안 바꾸니 무해했다).
+        //   가속 모델에선 서버만 한 스텝 더 감속해 **곧바로 갈린다** ⇒ 불변식대로 기록·시뮬한다:
+        //   "보낸 입력은 모두 seq 를 갖고 pendingInputs 에 기록되며 predictStep 으로 시뮬된다".
+        pendingInputs.push({ seq: inputSeq, wx: 0, wy: 0, sprint: false, aim: !!_aiming });
+        if (pendingInputs.length > 200) pendingInputs.shift();
+        sendStepInput(inputSeq, 0, 0, false, !!_aiming);
+        if (!_stepped) { _renderPrev = { x: myAbsPredicted.x, y: myAbsPredicted.y }; _stepped = true; }
+        predictStep(PRED_STEP, 0, 0, false, !!_aiming);
+        _renderCurr = { x: myAbsPredicted.x, y: myAbsPredicted.y };
+        _renderReady = true;
+      } else {
+        sendStepInput(inputSeq, 0, 0, false);
+      }
     }
     // 렌더 위치 — myAbsPredicted(30Hz 예측 + 매 틱 리컨실리에이션 보정)로 '지수평활' 수렴(60fps).
     //   lerp(prev,curr)는 리컨실리에이션이 스텝 사이 myAbsPredicted를 ±수십px 보정하면 스텝 경계에서 점프로 받아 떨림.
@@ -8025,7 +8124,11 @@ const SIM_JOB_EMOJI = {
   // predictStep 이 서버 per-tick move 와 동일하므로 replay 결과 == 서버가 곧 도달할 위치.
   // 매 tick anchor+replay 라 어긋남이 누적되지 않음 → 벽에서 스턱/슬립 없음.
   // 옛 correctionVel/Until/IgnoreWall lerp 머신은 리컨실리에이션이 완전 대체 — 항상 0/false 로 비워둠.
-  function applyServerCorrection(absX, absY, ackSeq) {
+  // ★★[이동 모델 2026-08-30] **보정은 위치+속도 한 쌍이다.**
+  //   가속 모델에서 속도는 상태다 — 위치만 스냅하면 스냅 직후 두 적분 곡선이 다시 벌어져
+  //   보정이 영원히 반복된다(그게 곧 떨림). 서버가 tick.selfVx/selfVy 로 짝을 보낸다.
+  //   legacy 에선 서버가 안 보내고 여기서도 안 쓴다(속도가 입력의 함수 = 상태 없음).
+  function applyServerCorrection(absX, absY, ackSeq, srvVx, srvVy) {
     const ex = absX - myAbsPredicted.x, ey = absY - myAbsPredicted.y;
     const dist = Math.hypot(ex, ey);
     window.__corrN = (window.__corrN | 0) + 1; window.__corrLast = Math.round(dist);   // 진단 훅(읽기 전용)
@@ -8046,6 +8149,7 @@ const SIM_JOB_EMOJI = {
     if (dist > 2000) {
       myAbsPredicted = { x: absX, y: absY };
       pendingInputs.length = 0;
+      myVel.vx = 0; myVel.vy = 0;   // 텔포/핸드오프 — 관성도 함께 끊는다
       // 텔포 — 렌더 보간 앵커도 즉시 권위로 (카메라가 텔포 구간을 lerp 하지 않게)
       _renderPrev = { x: absX, y: absY };
       _renderCurr = { x: absX, y: absY };
@@ -8053,12 +8157,13 @@ const SIM_JOB_EMOJI = {
       _predAccum = 0;
       return;
     }
-    // 1) 권위에 anchor
+    // 1) 권위에 anchor — 위치**와 속도** 둘 다
     myAbsPredicted = { x: absX, y: absY };
+    if (typeof srvVx === 'number' && typeof srvVy === 'number') { myVel.vx = srvVx; myVel.vy = srvVy; }
     // 2) ack 된 입력 drop
     while (pendingInputs.length && pendingInputs[0].seq <= ack) pendingInputs.shift();
-    // 3) 남은 미ack 입력 replay (각 입력의 sprint 상태로 — 속도 재현)
-    for (const ip of pendingInputs) predictStep(PRED_STEP, ip.wx, ip.wy, ip.sprint);
+    // 3) 남은 미ack 입력 replay (각 입력의 sprint/aim 상태로 — 속도 재현)
+    for (const ip of pendingInputs) predictStep(PRED_STEP, ip.wx, ip.wy, ip.sprint, ip.aim);
   }
 
   // === Orphan 감지 — 서버에서 내 플레이어가 사라졌는데 클라는 모르는 경우 ===
@@ -8072,6 +8177,7 @@ const SIM_JOB_EMOJI = {
       _selfGone = true;
       myPid = null;
       pendingInputs.length = 0;
+      myVel.vx = 0; myVel.vy = 0;   // ★관성도 끊는다(유령 클라 복구)
       _predAccum = 0;
       lastTickWithMyPidAt = 0; // 0으로 리셋 — 재연결 WS가 첫 틱 받을 때까지 orphan 검사 비활성. now()로 두면 느린 연결(사파리/Private Relay)에서 establishing 중인 WS를 2초마다 죽여 무한루프가 됨.
       if (conns.has(primaryZoneId)) closeConnection(primaryZoneId);
@@ -8104,7 +8210,35 @@ const SIM_JOB_EMOJI = {
     // §19 4파: 뷰(카메라) 경도 오프셋 갱신 — 존 폭 대비 0~4.5%(하루 비율). worldPhase()가 로컬 태양시로 소비.
     { const _lz = clientFindZoneAt(_camAbs.x, _camAbs.y); _lonView = _lz ? ((_camAbs.x - _lz.worldOffsetX) / Math.max(1, _lz.zoneWidth)) * 0.045 : 0; }
     const myIso = w2i(_camAbs.x, _camAbs.y);
-    const camX = myIso.x, camY = myIso.y;
+    // === [조준 시야 밀기 2026-08-30] ==========================================
+    //   ★★오프셋은 **화면 변환(camX/camY)에만** 더한다. `_camAbs`(월드)는 한 비트도 안 건드린다
+    //     ⇒ 안개 원점·내 스프라이트 위치·물 흐름 표본이 전부 **캐릭터 그대로**다.
+    //     (커서로 안개를 걷으면 정찰이 공짜가 된다 — 시야 확장은 설계할 일이지 카메라의 부작용이 아니다.)
+    //   ★조준 안 할 땐 오프셋이 정확히 0 ⇒ `myIso.x + 0 === myIso.x`(IEEE754 정확) — 화면 불변.
+    {
+      const _tn = performance.now();
+      const _adt = Math.min(0.1, (_tn - (_aimT || _tn)) / 1000); _aimT = _tn;
+      let _tx = 0, _ty = 0;
+      if (_aiming) {
+        // 커서가 화면 중심에서 얼마나 떨어졌나 → 그 절반만큼, 최대 AIM_LOOK_PX 만큼 민다.
+        const _dx = lastMouseSx - W / 2, _dy = lastMouseSy - H / 2;
+        const _m = Math.hypot(_dx, _dy);
+        if (_m > 1e-6) { const _k = Math.min(AIM_LOOK_PX, _m * 0.5) / _m; _tx = _dx * _k; _ty = _dy * _k; }
+      }
+      const _e = 1 - Math.exp(-_adt / AIM_LOOK_TAU);   // 부드러운 이징 — 뚝 이동 금지
+      _aimLookX += (_tx - _aimLookX) * _e;
+      _aimLookY += (_ty - _aimLookY) * _e;
+      if (!_aiming && Math.abs(_aimLookX) < 0.01 && Math.abs(_aimLookY) < 0.01) { _aimLookX = 0; _aimLookY = 0; }
+    }
+    const camX = myIso.x + _aimLookX, camY = myIso.y + _aimLookY;
+    _lastCamIso = { x: camX, y: camY };   // 커서→월드 투영이 **렌더가 실제로 쓴** 원점을 쓰게
+    // 조준 월드 방향 — 몸에서 커서로. (공격 배선·페이싱이 이걸 쓴다)
+    if (_aiming) {
+      const _cw = screenToWorldAbs(lastMouseSx, lastMouseSy);
+      const _ax = _cw.wx - _camAbs.x, _ay = _cw.wy - _camAbs.y;
+      const _al = Math.hypot(_ax, _ay);
+      if (_al > 1e-6) { _aimDirX = _ax / _al; _aimDirY = _ay / _al; myFacingVx = _aimDirX; myFacingVy = _aimDirY; }
+    }
     const toScreen = (ix, iy) => ({ x: ix - camX + W / 2, y: iy - camY + H / 2 });
 
     // 배경 — 검정 (시야 밖)
@@ -9469,7 +9603,9 @@ const SIM_JOB_EMOJI = {
         if (item.isMe) {
           const { wx, wy } = worldKeysDir();
           moving = (wx !== 0 || wy !== 0);
-          if (moving) { myFacingVx = wx; myFacingVy = wy; }
+          // ★[조준 모드] 조준 중엔 페이싱이 **커서**를 따른다(render 상단에서 이미 세팅됨) —
+          //   이동 방향이 덮어쓰면 옆걸음·뒷걸음이 안 나온다.
+          if (moving && !_aiming) { myFacingVx = wx; myFacingVy = wy; }
           fvx = myFacingVx; fvy = myFacingVy;
           const dt = now - myLastAttackAt;
           if (dt < 300) attackPhase = 1 - dt / 300;
@@ -9684,6 +9820,7 @@ const SIM_JOB_EMOJI = {
       // K21: fog도 카메라와 같은 보간 위치(_camAbs=myAbsRender) 기준. myAbsPredicted(30Hz 계단)을 쓰면
       //   땅은 myAbsRender로 매끄럽게 흐르는데 부채꼴만 30Hz로 어긋나 경계가 떨림. 같은 기준으로 묶어 떨림 제거.
       const px = _camAbs.x, py = _camAbs.y;
+      window.__fogOrigin = { x: px, y: py };   // ★진단 훅 — 조준 중에도 **캐릭터 그대로**여야 한다
       const myCx = Math.floor(px / CL_BUILDING_SIZE);
       const myCy = Math.floor(py / CL_BUILDING_SIZE);
       // wall iteration radius (벽 수집 범위) vs ray cast range (광선 닿는 거리)

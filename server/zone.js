@@ -453,9 +453,22 @@ const LATENCY_MS = parseInt(process.env.LATENCY_MS || String(ZONE.simulatedLaten
 
 const TICK_HZ = 30;
 const MOVE_SPEED = 64; // px/sec — ★2m/s(32px=1m). 마을실험실 정본(2셀/초)과 통일. 무기 든 전투 유닛은 이보다 느림(행군<2·돌격<5)
+// === [이동 모델 2026-08-30] 공유 적분기 — **사본 금지** ===
+//   `public/move-model.js` 를 서버·클라가 **같은 파일**로 읽는다(soil-base.js 규약).
+//   이동을 고치려면 그 파일만 고쳐라. 여기는 부르기만 한다.
+const MoveModel = require('../public/move-model.js');
+// ★플래그 기본 legacy — 손맛 확정 전엔 회귀가 legacy 로 안정되게 돈다(기본값 전환은 튜닝 배치).
+const MOVE_MODEL = (process.env.MOVE_MODEL === 'accel') ? 'accel' : 'legacy';
+const MOVE_ACCEL_T = parseFloat(process.env.MOVE_ACCEL_T || '') || 0.20;
+const MOVE_DECEL_T = parseFloat(process.env.MOVE_DECEL_T || '') || 0.15;
+const MOVE_AIM_SPEED_FRAC = parseFloat(process.env.MOVE_AIM_SPEED_FRAC || '') || 0.45;
 // Phase 14.40 — Shift 달리기: 2.5× 속도(걷기2 × 2.5 = 5m/s, 고증 달리기), hunger/thirst 1.5× 빠른 감소.
 // 단 hunger/thirst가 5 이하면 자동 해제 (지쳐서 못 뜀).
 const SPRINT_MULT = 2.5;
+const MOVE_PARAMS = MoveModel.paramsFrom({
+  model: MOVE_MODEL, baseSpeed: MOVE_SPEED, sprintMult: SPRINT_MULT,
+  accelT: MOVE_ACCEL_T, decelT: MOVE_DECEL_T, aimSpeedFrac: MOVE_AIM_SPEED_FRAC,
+});
 // ⚠[신체 상태 §7 2026-08-26] **사장(死藏)됨** — 감쇠·추위는 이제 `server/body.js` 정본이다.
 //   지우지 않고 남기면 다음 사람이 "여기가 정본"이라 믿고 여기를 고친다(아무 일도 안 일어난다).
 //   ⇒ 이름으로 죽여 둔다. 손잡이는 `BODY_SPRINT_MULT` 다.
@@ -2978,6 +2991,9 @@ wss.on('connection', async (ws, req) => {
       ghostStallMs: parseInt(process.env.GHOST_STALL_MS || '5000', 10) || 5000,          // 딱지·예측 정지
       ghostReconnectMs: parseInt(process.env.GHOST_RECONNECT_MS || '10000', 10) || 10000, // 소켓 강제 끊기
     },
+    // ★★[이동 모델 2026-08-30] 손잡이 표를 **서버가 실어 보낸다** — 클라가 표를 들고 있으면
+    //   그게 사본이고, env 를 서버에서만 바꾼 날 예측과 권위가 갈린다(itemWeights·uiCfg 와 같은 규약).
+    moveCfg: MOVE_PARAMS,
     self: { x: player.x, y: player.y, hp: player.hp, maxHp: player.maxHp,
             hunger: Math.round(player.hunger), thirst: Math.round(player.thirst),
             vp: Math.round(player.vp ?? 0),
@@ -3022,6 +3038,9 @@ function handlePlayerInput(player, raw) {
     player.inputQueue.push({
       seq: (typeof msg.seq === 'number') ? msg.seq : 0,
       vx: clamp(Number(msg.vx) || 0, -1, 1), vy: clamp(Number(msg.vy) || 0, -1, 1), sprint: !!msg.sprint,
+      // ★[조준 모드 2026-08-30] 조준 중엔 이속이 `MOVE_AIM_SPEED_FRAC` 로 준다.
+      //   이 플래그가 **입력에 실려야** 서버 권위와 클라 예측이 같은 속도를 낸다(안 실으면 매 틱 보정).
+      aim: !!msg.aim,
     });
     if (player.inputQueue.length > 120) player.inputQueue.shift(); // 4초 안전상한. GC로 밀린 버스트도 드롭 안 함(구동 루프가 틱당 8개 흡수)
     player.lastSeen = Date.now();
@@ -3202,7 +3221,16 @@ function handlePlayerInput(player, raw) {
     send(player.ws, { type: 'notice', text: '[E2E] 재료 지급' });
   }
   else if (msg.type === 'kiln_burn') tryKilnBurn(player, msg.buildingId);                  // ★숯가마 조업(통나무 3 → 숯 4)
-  else if (msg.type === 'attack') { metrics.attacks++; tryAttack(player); }
+  else if (msg.type === 'attack') {
+    metrics.attacks++;
+    // ★[조준 모드 2026-08-30] 조준 방향을 **싣기만** 한다 — 타격 판정 아크·타이밍·애니는
+    //   전투 층 배치의 몫이다(회부). tryAttack 의 "범위 안 가장 가까운 mob" 판정은 **무수정**.
+    if (typeof msg.aimX === 'number' && typeof msg.aimY === 'number') {
+      const _al = Math.hypot(msg.aimX, msg.aimY);
+      if (_al > 1e-6 && isFinite(_al)) { player.aimX = msg.aimX / _al; player.aimY = msg.aimY / _al; }
+    }
+    tryAttack(player);
+  }
   else if (msg.type === 'ranged_attack') { metrics.attacks++; tryRangedAttack(player, +msg.aimX, +msg.aimY); }
   else if (msg.type === 'craft') doCraft(player, msg.recipe);
   else if (msg.type === 'craft_item') doCraftItem(player, msg.recipe);
@@ -7437,6 +7465,15 @@ setInterval(() => {
         stepVy = proj * dv.y;
       }
     }
+    // ★★[이동 모델 2026-08-30] 스피드핵 경계 — 한 스텝의 위치 델타 상한.
+    //   상한 = **모델이 허용하는 최대**(가속 포함: 가속 모델도 최고속이 상한이다) + 여유 25%.
+    //   플레이어만 — NPC 는 답압 길 배속(_rdMul)·도주 2.5배 등 다른 예산으로 산다.
+    //   legacy 에선 걸릴 수가 없다(64×2.5×dt = 5.33px < 상한 6.67px) ⇒ 회귀 무영향.
+    if (!p.isNpc) {
+      const _cap = MoveModel.maxStepPx(MOVE_PARAMS, moveDt, 1) * 1.25;
+      const _mag = Math.hypot(stepVx * moveDt, stepVy * moveDt);
+      if (_mag > _cap) { const _k = _cap / _mag; stepVx *= _k; stepVy *= _k; }
+    }
     let nx = p.x + stepVx * moveDt;
     let ny = p.y + stepVy * moveDt;
 
@@ -7533,22 +7570,30 @@ setInterval(() => {
         const inp = p.inputQueue.shift();
         const canSprint = (p.hunger ?? HUNGER_MAX) > SPRINT_MIN_GAUGE && (p.thirst ?? THIRST_MAX) > SPRINT_MIN_GAUGE;
         p.sprint = inp.sprint && canSprint;
-        const spMult = p.sprint ? SPRINT_MULT : 1.0;
+        // (옛 `spMult` 지역변수 제거 — 달리기 배율은 이제 공유 모듈이 `SPRINT_MULT` 로 곱한다)
         // ★★[신체 상태] 몸 상태가 걸음을 늦춘다. **이 값은 반드시 클라에도 같은 수로 가야 한다** —
         //   클라 예측(`predictStep` 의 speed)과 어긋나면 매 틱 보정이 나서 **러버밴딩**이 된다.
         //   그래서 `gauges.body.moveMult` 로 실어 보내고 클라가 같은 배율을 쓴다(호환: 안 오면 1).
         //   ★★[무게 배치] 여기에 **과적**이 곱해진다. 곱 폭주는 `Carry.combinedMove` 가 바닥에서 자른다
         //     (신체 0.6 × 과적 0.4 = 0.24 → 0.35). 이 합산값도 그대로 클라에 실어 보낸다.
         const bodyMult = moveMultOf(p);
-        const hyp = Math.hypot(inp.vx, inp.vy), len = hyp || 1;
-        p.vx = (inp.vx / len) * MOVE_SPEED * Math.min(1, hyp) * spMult * bodyMult;
-        p.vy = (inp.vy / len) * MOVE_SPEED * Math.min(1, hyp) * spMult * bodyMult;
+        // ★★[이동 모델 2026-08-30] 적분은 **공유 모듈 한 곳**이다(`public/move-model.js`).
+        //   클라 `predictStep` 이 같은 함수를 같은 인자로 부른다 — 두 벌이면 보정이 매 틱 싸운다.
+        //   legacy 모드의 이 두 줄은 옛 식과 **글자 그대로 같다**(비트 동일 — `test-move` ④ 가 못 박는다).
+        const _mv = MoveModel.stepMove(
+          { vx: p.vx, vy: p.vy },
+          { wx: inp.vx, wy: inp.vy, sprint: p.sprint, bodyMult: bodyMult, aim: !!inp.aim },
+          moveDt, MOVE_PARAMS);
+        p.vx = _mv.vx; p.vy = _mv.vy;
         p.lastInputSeq = inp.seq;
         movePlayerStep(p);
         consumed++;
         if (p.handingOff) break; // 핸드오프 발생 → 이 zone에선 더 안 움직임
       }
-      if (consumed === 0) { p.vx = 0; p.vy = 0; } // 입력 없는 틱 — 정지 (유령 이동 방지)
+      // 입력 없는 틱 — 정지 (유령 이동 방지).
+      //   ★accel 에선 속도를 **지우지 않는다**: 속도가 상태이므로 지우면 클라 예측과 갈라진다.
+      //     어차피 움직이지도 않는다(movePlayerStep 을 안 부른다) — 다음 입력이 오면 이어서 감속한다.
+      if (consumed === 0 && MOVE_PARAMS.model !== 'accel') { p.vx = 0; p.vy = 0; }
     }
   }
   sepNpcs(dt);   // ★[생활 층 ①] NPC 상호 분리 — 이동 적용 직후(같은 틱 위치에 보정) 틱당 1회
@@ -8096,6 +8141,10 @@ setInterval(() => {
       selfZ: p.z || 0,
       // 클라 리컨실리에이션: 마지막으로 처리한 입력 seq. 클라가 이 seq 이하 입력을 drop하고 나머지만 replay.
       ackSeq: p.lastInputSeq || 0,
+      // ★★[이동 모델 2026-08-30] **보정은 위치+속도 한 쌍이다.** 가속 모델에서 속도는 상태다 —
+      //   위치만 스냅하면 스냅 직후 두 적분 곡선이 다시 벌어져 보정이 영원히 반복된다.
+      //   legacy 에선 속도가 입력의 함수라 상태가 없다 ⇒ 안 보낸다(페이로드 바이트 동일).
+      ...(MOVE_PARAMS.model === 'accel' ? { selfVx: p.vx || 0, selfVy: p.vy || 0 } : {}),
     });
   }
   for (const [ws, data] of observers) {
