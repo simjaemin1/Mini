@@ -80,7 +80,14 @@
     <div id="vgAxes"></div>
     <!-- ★★[정비 배치 2026-08-30] **연결 끊김.** 서버 틱이 안 오는데 예측만 도는 "유령 클라"를
          화면이 말하지 않아 실기 판정이 통째로 오염됐다. 이 딱지가 뜨는 동안 예측은 멈춘다. -->
-    <div id="netLost"><span class="nl-dot"></span><span class="nl-txt">연결 끊김 — 재접속 중</span><span class="nl-why"></span></div>
+    <!-- ★★[접속 진단 배치 2026-08-30] **기다리면 되는 건지 진짜 에러인지**를 화면이 말한다.
+         노랑 = 기다리는 중(대개 들어가진다) · 빨강 = 오류(기다려도 안 된다 · 새로고침 단추가 뜬다).
+         판정 재료는 서버가 준다: conn_hello(받았다) · pong{stage}(살아 있고 이 단계다) · conn_error(던졌다). -->
+    <div id="netLost" data-state="" data-hard="0">
+      <span class="nl-dot"></span>
+      <span class="nl-body"><span class="nl-txt">연결 끊김 — 재접속 중</span><span class="nl-why"></span></span>
+      <button class="nl-reload" hidden onclick="location.reload()">새로고침</button>
+    </div>
     <div id="hud">
       <div class="hud-row">
         <span class="badge" id="zoneBadge">…</span>

@@ -110,6 +110,12 @@ const SIM_JOB_EMOJI = {
     cfg: _moveParams, pos: { x: myAbsPredicted.x, y: myAbsPredicted.y },
     corrN: window.__corrN | 0, corrLast: window.__corrLast | 0,
   });
+  // ★★[접속 진단 배치 2026-08-30] **입장했는가**를 정직하게 답하는 훅.
+  //   `__getMyAbs()` 는 `{x:0,y:0}` 로 시작해 **언제나 truthy** 다 — 그걸 입장 게이트로 쓴
+  //   하네스들(`!!(window.__getMyAbs && window.__getMyAbs())`)은 **자명 통과**였다.
+  //   (이번 배치의 `e2e-conn` 이 실패를 만들어 보다가 잡았다: 접속이 확정 오류인데도 true 였다.)
+  //   여기서는 **welcome 을 받았는가**(=서버가 나를 들였는가)를 그대로 답한다.
+  window.__inWorld = () => !!(connEverReady && myPid);
   // ★[10차 T4] 장마당 진단 훅 — 클라가 서버 markets 플래그를 실제로 받았는지 확인용(읽기 전용, 기존 __get* 관례).
   window.__getMarkets = () => { const out = {}; for (const [zid, c] of conns) out[zid] = (c && c.markets) ? c.markets.slice() : null; return out; };
   // ★[11차 T3] 환호 진단 훅 — 클라가 도랑 페이로드를 받아 미러(_ditchAbs)에 실었는지(읽기 전용).
@@ -284,16 +290,92 @@ const SIM_JOB_EMOJI = {
   // ★[정비 배치] 유령 클라 — 서버 틱이 안 오는 동안은 **예측을 멈추고** 그 사실을 화면에 적는다.
   let netStalled = false;
   let _ghostCutAt = 0;          // 강제 close 를 한 번만 하기 위한 빗장(회복하면 풀린다)
+  // ★★[접속 진단 배치 2026-08-30 재민 확정] **기다리면 되는 건지 진짜 에러인지 화면이 말한다.**
+  //
+  //   재민 원문: *"자꾸 언제는 기다리면 됐다가 언제는 안 됐다 그래.. 이게 기다리면 되는 건지,
+  //   진짜 에러인지 사용자한테 구분 가게 해야 하는 거 아냐?"*
+  //
+  //   구분의 재료는 **서버가 준다**(클라가 추측하지 않는다):
+  //     · `conn_hello`  접속 즉시 — "받았다"
+  //     · `pong{stage}` 입장 처리 중에도 답한다 — "살아 있고, 지금 이 단계다"
+  //     · `conn_error`  던졌다 — "확정 오류. 기다려도 안 된다"
+  //   그래서 세 갈래가 **증거로** 갈린다:
+  //     hello·pong 도 없음 → 서버/망이 죽었다(기다림)   hello 는 오는데 welcome 이 없음 → 입장이 막혔다
+  //     conn_error → 확정 오류
+  let connPhase = 'idle';        // idle | connecting | entering | ready | error
+  let connAttempts = 0, connStartedAt = 0, connHelloAt = 0, connEverReady = false;
+  // ★★시계는 **이번 끊김 전체**를 잰다(시도마다 리셋하면 안 된다).
+  //   1차 실장이 `connStartedAt`(시도 시작)으로 쟀더니, 백오프로 재시도할 때마다 0초로 돌아가
+  //   **6번째 시도인데 "0초 경과"** 가 떴다 — 영원히 노랑에 머물러 "오래됐다"를 말할 수가 없었다.
+  let connOutageAt = 0;
+  let _reconnAt = 0;             // 재연결 백오프 시계(성공하면 푼다)
+  let connReason = '', connStage = '', connRef = '';
+  function connMark(phase, extra) {
+    connPhase = phase;
+    if (extra) { if (extra.reason !== undefined) connReason = extra.reason;
+                 if (extra.stage !== undefined) connStage = extra.stage;
+                 if (extra.ref !== undefined) connRef = extra.ref; }
+    paintConnBanner();
+  }
+  // 문턱 — 여기 넘으면 "기다림"이 아니라 "오류일 수 있음"으로 말이 바뀐다.
+  const CONN_WAIT_WARN_MS = 25000;   // hello 도 못 받은 채 이만큼
+  const CONN_ENTER_WARN_MS = 20000;  // hello 는 받았는데 welcome 이 이만큼 안 옴
+  // ★유예 — 정상 접속·존 핸드오프는 1초 안에 끝난다. 그 사이에도 배너를 띄우면
+  //   **문 하나 지날 때마다 경고가 번쩍인다**(늑대 소년). 이만큼 지나서도 못 들어갔을 때만 말한다.
+  const CONN_QUIET_MS = 2000;
+  function paintConnBanner() {
+    const el = document.getElementById('netLost');
+    if (!el) return;
+    const now = performance.now();
+    const el2 = (cls) => el.querySelector(cls);
+    let state = null, title = '', why = '', hard = false;
+
+    if (connPhase === 'error') {
+      state = 'error'; hard = true;
+      title = '서버에 들어가지 못했다 — 기다려도 해결되지 않는다';
+      why = `원인: ${connReason || '알 수 없음'}${connStage ? ` · 단계 ${connStage}` : ''}${connRef ? ` · ref ${connRef}` : ''}`;
+    } else if (connPhase === 'entering') {
+      const el3 = now - (connOutageAt || connHelloAt || now);
+      if (el3 < CONN_QUIET_MS) { el.classList.remove('on'); return; }   // ★유예 — 번쩍임 방지
+      hard = el3 > CONN_ENTER_WARN_MS;
+      state = hard ? 'error' : 'entering';
+      title = hard ? '서버가 입장 처리를 못 끝내고 있다 — 오류일 수 있다'
+                   : '서버가 받았다 — 입장 처리 중';
+      why = `${(el3 / 1000).toFixed(0)}초 경과${connStage ? ` · 단계 ${connStage}` : ''}${connRef ? ` · ref ${connRef}` : ''}`;
+    } else if (connPhase === 'connecting') {
+      const el3 = now - (connOutageAt || connStartedAt || now);
+      if (el3 < CONN_QUIET_MS) { el.classList.remove('on'); return; }   // ★유예 — 번쩍임 방지
+      hard = el3 > CONN_WAIT_WARN_MS;
+      state = hard ? 'error' : 'waiting';
+      title = hard ? '서버가 응답하지 않는다 — 계속 재시도 중이지만 오류일 수 있다'
+                   : '서버 응답을 기다리는 중 — 잠시 기다리면 대개 들어가진다';
+      why = `${(el3 / 1000).toFixed(0)}초 경과 · ${connAttempts}번째 시도`;
+    } else if (netStalled) {
+      state = 'lost'; hard = true;
+      title = '연결 끊김 — 재접속 중';
+      why = connReason || '서버 응답 없음';
+    }
+
+    if (!state) { el.classList.remove('on'); return; }
+    el.classList.add('on');
+    el.dataset.state = state;
+    el.dataset.hard = hard ? '1' : '0';
+    const t = el2('.nl-txt'); if (t) t.textContent = title;
+    const w = el2('.nl-why'); if (w) w.textContent = why;
+    const b = el2('.nl-reload'); if (b) b.hidden = !hard;
+  }
+  setInterval(paintConnBanner, 500);
+  window.__connState = () => ({ phase: connPhase, attempts: connAttempts, hello: !!connHelloAt,
+    reason: connReason, stage: connStage, ref: connRef, everReady: connEverReady,
+    state: (document.getElementById('netLost') || {}).dataset?.state || '',
+    hard: ((document.getElementById('netLost') || {}).dataset?.hard === '1') });
   function setNetStalled(on, why) {
     if (netStalled === !!on) return;
     netStalled = !!on;
-    const el = document.getElementById('netLost');
-    if (el) {
-      el.classList.toggle('on', netStalled);
-      const t = el.querySelector('.nl-why');
-      if (t) t.textContent = netStalled ? (why || '서버 응답 없음') : '';
-    }
-    if (netStalled) { pendingInputs.length = 0; _predAccum = 0; myVel.vx = 0; myVel.vy = 0; }   // 쌓인 미ack 입력을 버린다(재접속 뒤 순간이동 방지) + ★관성도 끊는다(이동 모델)
+    if (netStalled) connReason = why || '서버 응답 없음';
+    paintConnBanner();   // ★배너는 한 곳에서만 그린다(상태 넷을 한 함수가 판정 — 두 벌 금지)
+    // 쌓인 미ack 입력을 버린다(재접속 뒤 순간이동 방지) + ★관성도 끊는다(이동 모델 — 병행 배치)
+    if (netStalled) { pendingInputs.length = 0; _predAccum = 0; myVel.vx = 0; myVel.vy = 0; }
     else console.log('[recover] 서버 틱 복구 — 예측 재개');
   }
   window.__netStalled = () => netStalled;
@@ -6514,7 +6596,17 @@ const SIM_JOB_EMOJI = {
       corpses: new Map(),     // Phase 5-7 — 동물 사체
     };
     conns.set(zoneId, c);
-    if (role === 'primary') primaryZoneId = zoneId;
+    if (role === 'primary') {
+      primaryZoneId = zoneId;
+      // ★[접속 진단] 이 시도의 시작을 적는다 — 배너가 "몇 초째 · 몇 번째"를 말할 재료다.
+      // ★여기 도달했다는 건 **새 소켓을 실제로 연다**는 뜻이다(살아 있는 연결은 위에서 일찍 나간다).
+      //   그러니 이전 상태가 ready 였든 아니든 지금은 connecting 이다 —
+      //   1차 실장이 `!== 'ready'` 로 막았더니, 잘 놀다가 끊긴 경우엔 **상태가 ready 로 굳어**
+      //   시도 횟수도 안 세고 배너도 안 떴다(재민이 본 침묵의 한 갈래가 정확히 이것이다).
+      connAttempts++; connStartedAt = performance.now(); connHelloAt = 0;
+      if (!connOutageAt) connOutageAt = connStartedAt;   // ★끊김의 **시작**은 한 번만 찍는다
+      connMark('connecting', { stage: '', ref: '' });
+    }
     // ★유령 클라 fix: 자기 conn 객체(c)를 같이 넘김. 교체된 옛 소켓이 close 직전 흘리는 잔여 메시지가
     //   zoneId 재조회로 "새 연결"의 상태에 섞여 들어가던 경로 차단(myPid/좌표/엔티티 오염).
     ws.onmessage = (ev) => handleMessage(zoneId, JSON.parse(ev.data), c);
@@ -6724,6 +6816,10 @@ const SIM_JOB_EMOJI = {
         lastTickWithMyPidAt = performance.now();
         updateHud();
       }
+      // ★[접속 진단] 여기까지 왔으면 **들어간 것**이다. 배너를 걷고 시도 횟수를 0으로.
+      if (c.role === 'primary') { connEverReady = true; connAttempts = 0; connHelloAt = 0; connOutageAt = 0;
+        _reconnAt = 0;   // ★백오프 시계도 푼다 — 다음 끊김은 곧바로 한 번 시도한다
+        connMark('ready', { reason: '', stage: '', ref: '' }); }
       if (typeof _wStart === 'number') {
         const _proc = performance.now() - _wStart;
         if (_proc > 5) console.log('[handoff] ⏱ welcome 처리 =', _proc.toFixed(0), 'ms');
@@ -7273,10 +7369,26 @@ const SIM_JOB_EMOJI = {
       err.textContent = text;
       err.classList.remove('hidden');
       return;
+    } else if (msg.type === 'conn_hello') {
+      // ★[접속 진단] 서버가 **받았다**. 인증·로드보다 먼저 오는 신호라,
+      //   이게 오면 "서버/망이 죽었다"는 갈래가 지워진다.
+      if (c.role === 'primary' && connPhase !== 'ready') {
+        connHelloAt = performance.now();
+        connMark('entering', { ref: msg.ref || '', stage: 'accepted' });
+      }
+    } else if (msg.type === 'conn_error') {
+      // ★[접속 진단] 서버가 **던졌다**. 기다려도 안 되는 종류다 — 그 사실을 그대로 말한다.
+      console.error('[conn] 서버가 접속 처리에 실패했다:', msg.stage, msg.msg, msg.ref);
+      if (c.role === 'primary') connMark('error', { reason: msg.msg || '서버 오류', stage: msg.stage || '', ref: msg.ref || '' });
     } else if (msg.type === 'pong') {
       // 14.43: watchdog용 — 최근 pong 시각 기록
       c.lastPongAt = performance.now();
       if (c.role === 'primary') lastRttMs = c.lastPongAt - msg.t;
+      // ★[접속 진단] 입장 처리 중의 pong 은 **단계**를 싣고 온다 — 어디서 막혔는지 화면이 안다.
+      if (c.role === 'primary' && msg.stage && connPhase !== 'ready') {
+        if (!connHelloAt) connHelloAt = performance.now();
+        connMark('entering', { stage: msg.stage, ref: msg.ref || connRef });
+      }
     } else if (msg.type === 'chat') {
       // 같은 zone(또는 observer zone)에서 온 채팅. 길드 채팅이면 prefix 표시.
       const prefix = msg.tribe ? `[길드:${msg.tribe}] ` : '';
@@ -8079,6 +8191,16 @@ const SIM_JOB_EMOJI = {
   }
 
   // === Primary WS가 죽으면 자동 재연결 (predicted 위치 그대로) ===
+  // ★★[접속 진단 배치 2026-08-30] **백오프.** 종전엔 매 프레임 즉시 재연결이라,
+  //   서버가 계속 실패하는 동안 15초마다 붙었다 끊었다를 **영원히** 반복했다(실기 로그 그대로).
+  //   그건 서버에도 부담이고, 화면엔 아무 말도 안 나와 사용자에겐 그냥 멈춘 게임이다.
+  //   ⇒ 시도 간격을 늘린다(1·2·4·8·15초 상한). 자동 회복은 그대로 살아 있다 — 느려질 뿐이다.
+  //   ⇒ 확정 오류(`conn_error`)면 처음부터 상한 간격 — 같은 오류를 빨리 반복해 봐야 소용없다.
+  function _reconnectDelayMs() {
+    if (connPhase === 'error') return 15000;
+    const n = Math.max(0, connAttempts - 1);
+    return Math.min(15000, 1000 * Math.pow(2, n));
+  }
   function ensurePrimaryConnection() {
     if (kicked) return;
     if (!primaryZoneId) return;
@@ -8086,6 +8208,9 @@ const SIM_JOB_EMOJI = {
     if (c && c.ws.readyState <= 1) return;
     const pm = zonesMeta[primaryZoneId];
     if (!pm) return;
+    const now = performance.now();
+    if (_reconnAt && now - _reconnAt < _reconnectDelayMs()) return;
+    _reconnAt = now;
     // ★유령 클라 fix: 옛 소켓을 확실히 닫고 지운다(닫지 않고 지우면 잔여 메시지가 새 conn으로 샌다).
     if (c) { try { c.ws.close(); } catch (e) {} conns.delete(primaryZoneId); }
     // 재연결 = 서버가 새 pid로 스폰(좌표 인자는 서버가 쓰지 않음) → 옛 pid는 즉시 폐기하고

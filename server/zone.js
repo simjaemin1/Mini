@@ -2456,8 +2456,89 @@ const server = http.createServer((req, res) => {
 
 const wss = new WebSocket.Server({ server });
 
-wss.on('connection', async (ws, req) => {
+// ★★[접속 진단 배치 2026-08-30] **조용히 실패하지 않는다.**
+//
+//   실기 실측(라이브): 소켓은 열리는데 `welcome` 도 `pong` 도 안 와서, 클라가 15초마다
+//   끊고 다시 붙기를 **무한 반복**했다. 화면에는 아무 말도 안 나왔고, 재민은 그게
+//   **"기다리면 되는 것"인지 "진짜 에러"인지 구분할 방법이 없었다.**
+//
+//   원인 구조: 이 핸들러가 `async` 인데 **try/catch 가 없었다.** 중간 어디서든 던지면
+//     · 소켓은 **열린 채로 남고**(클라 readyState=1)
+//     · `attachPlayerHandlers` 에 도달하지 못해 **메시지 핸들러가 아예 안 붙는다**
+//     · 그래서 welcome 도 pong 도 영영 안 온다 = **완벽한 침묵**
+//   침묵은 진단 불가능한 상태다. 로그도 없고(unhandledRejection 핸들러도 없었다) 화면도 없다.
+//
+//   수리 셋:
+//     ① **본문을 함수로 빼고 `.catch` 를 건다** — 던지면 `conn_error`(단계·사유·ref)를 보내고 닫는다.
+//     ② **접속 즉시 `conn_hello`** — "받았다"를 인증보다 **먼저** 알린다.
+//     ③ **조기 ping 응답** — 입장 처리가 끝나기 전에도 pong 을 돌려준다.
+//        ⇒ 이 셋으로 클라가 **세 상태를 구분**한다:
+//           pong 도 없음 = 서버/망이 죽었다 · pong 은 오는데 welcome 이 없음 = 입장 처리가 막혔다 ·
+//           conn_error = 확정 오류(기다려도 안 된다).
+let _connSeq = 0;
+// 마감액 — env 로 조절한다(하네스가 짧게 줄여 검사한다).
+const CONN_DEADLINE_MS = parseInt(process.env.CONN_DEADLINE_MS || '30000', 10) || 30000;
+// ★반쯤 등록된 몸을 치운다 — 안 치우면 서버에 **아무도 조종하지 않는 유령**이 남고,
+//   그 pid 가 틱에 계속 실려 남들 화면에 서 있는다(인원수·PLAYER_CAP 도 갉아먹는다).
+function _connCleanupHalf(C) {
+  if (!C || !C.pid || !players.has(C.pid)) return;
+  try { players.delete(C.pid); broadcast({ type: 'player_left', pid: C.pid }); } catch (_) {}
+  console.error(`[${ZONE_ID}]   ↳ 반쪽 등록 정리: ${C.pid}`);
+}
+wss.on('connection', (ws, req) => {
+  const C = { ref: `c${++_connSeq}`, stage: 'accepted', at: Date.now() };
+  ws.__conn = C;
+  // ① 받았다 — 인증·로드보다 **먼저**. 이 한 줄이 "서버가 살아는 있다"의 증거다.
+  try { ws.send(JSON.stringify({ type: 'conn_hello', zone: ZONE_ID, ref: C.ref, serverNow: C.at })); } catch (e) {}
+  // ② 조기 ping 응답 — `attachPlayerHandlers` 가 붙기 **전에도** 살아 있음을 답한다.
+  //   `ws.__ready` 가 서면 이 핸들러는 손을 뗀다(진짜 핸들러가 ping 을 맡는다 — 이중 pong 금지).
+  ws.on('message', (raw) => {
+    if (ws.__ready) return;
+    let m; try { m = JSON.parse(raw.toString()); } catch (e) { return; }
+    if (m && m.type === 'ping') { try { ws.send(JSON.stringify({ type: 'pong', t: m.t, stage: C.stage, ref: C.ref })); } catch (e) {} }
+  });
+  // ④ **마감액** — try/catch 가 못 잡는 반쪽을 막는다.
+  //   던지는 실패는 ③이 잡는다. 그런데 `await` 가 **영영 안 돌아오면** 던지지도 않는다
+  //   (central 이 느리거나 응답을 안 끝내는 경우가 그렇다) — 그때도 화면은 똑같이 침묵한다.
+  //   ⇒ 시간으로 끊고 **단계를 이름으로** 말한다. 클라 경고(20초)보다 뒤에 서게 둔다(30초).
+  const _dl = setTimeout(() => {
+    if (ws.__ready) return;
+    console.error(`[${ZONE_ID}] ✗✗ 접속 처리 시간 초과 ref=${C.ref} stage=${C.stage} (${CONN_DEADLINE_MS}ms)`);
+    _connCleanupHalf(C);
+    try { ws.send(JSON.stringify({ type: 'conn_error', ref: C.ref, stage: C.stage,
+      msg: `입장 처리 시간 초과(${Math.round(CONN_DEADLINE_MS / 1000)}초) — 단계 ${C.stage} 에서 멈췄다` })); } catch (_) {}
+    setTimeout(() => { try { ws.close(4002, 'conn_timeout'); } catch (_) {} }, 150);
+  }, CONN_DEADLINE_MS);
+  const _clear = () => clearTimeout(_dl);
+  ws.on('close', _clear);
+  // ③ 에러 경계 — 던지면 **사유를 들고** 닫는다. 열린 채 침묵하는 길을 없앤다.
+  _acceptConnection(ws, req, C).then(_clear).catch((e) => {
+    _clear();
+    const msg = String((e && e.message) || e).slice(0, 200);
+    console.error(`[${ZONE_ID}] ✗✗ 접속 처리 실패 ref=${C.ref} stage=${C.stage}: ${msg}\n${(e && e.stack) || ''}`);
+    _connCleanupHalf(C);
+    try { ws.send(JSON.stringify({ type: 'conn_error', ref: C.ref, stage: C.stage, msg })); } catch (_) {}
+    setTimeout(() => { try { ws.close(4001, 'conn_error'); } catch (_) {} }, 150);
+  });
+});
+
+// ★[테스트 전용 손잡이 · `E2E_GIVE=1` 일 때만 산다] 지정한 단계에서 **일부러 던진다**.
+//   에러 경계가 진짜로 잡는지는 실패를 만들어 봐야만 증명된다 — 안 그러면 하네스가 자명 통과다.
+const E2E_CONN_FAIL = (process.env.E2E_GIVE === '1') ? (process.env.E2E_CONN_FAIL || '') : '';
+const E2E_CONN_HANG = (process.env.E2E_GIVE === '1') ? (process.env.E2E_CONN_HANG || '') : '';
+function _connFailPoint(stage) {
+  if (E2E_CONN_FAIL && E2E_CONN_FAIL === stage) throw new Error('[E2E] 일부러 던진다');
+}
+// ★[테스트 전용] 지정 단계에서 **영영 안 돌아온다** — 마감액이 진짜 끊는지 증명하려면
+//   던지는 실패 말고 **안 끝나는 실패**를 만들어 봐야 한다(둘은 다른 결함이다).
+function _connHangPoint(stage) {
+  if (E2E_CONN_HANG && E2E_CONN_HANG === stage) return new Promise(() => {});
+  return null;
+}
+
+async function _acceptConnection(ws, req, C) {
   metrics.ws_connects++;
+  _connFailPoint('accepted');
   const url = new URL(req.url, `http://localhost:${PORT}`);
   const isObserver = url.searchParams.get('observer') === '1';
   // Phase 5-G trace: observer 연결 진단용
@@ -2529,7 +2610,9 @@ wss.on('connection', async (ws, req) => {
         .filter(p => Math.hypot(p.x - obs.viewerX, p.y - obs.viewerY) < AOI_RADIUS)
         .map(p => ({ pid: p.pid, x: p.x, y: p.y, name: p.name, color: p.color })),
     });
+    C.stage = 'observer';
     attachObserverHandlers(ws);
+    ws.__ready = true;   // ★조기 ping 응답 종료(관찰자 핸들러가 맡는다 — 이중 pong 금지)
     return;
   }
 
@@ -2635,6 +2718,7 @@ wss.on('connection', async (ws, req) => {
         } catch (e) { /* central 일시 장애 — 아래 authenticate 가 같은 사유로 다시 걸린다 */ }
       }
       if (!result) {
+        C.stage = 'auth'; _connFailPoint('auth');
         try { result = await central.authenticate(inUsername, inPassword, color, ZONE_ID, myMain.x, myMain.y); }
         catch (e) {
           console.error(`[${ZONE_ID}] central 인증 실패:`, e.message);
@@ -2699,6 +2783,7 @@ wss.on('connection', async (ws, req) => {
       color = acct.color || color;
       // wood/stone은 컬럼, 나머지는 inventory_json에
       let extInv = {};
+      C.stage = 'load'; _connFailPoint('load');
       try { extInv = acct.inventory_json ? JSON.parse(acct.inventory_json) : {}; }
       catch (e) { extInv = {}; }
       inventory = { wood: acct.wood | 0, stone: acct.stone | 0, ...extInv };
@@ -2921,7 +3006,9 @@ wss.on('connection', async (ws, req) => {
     sx = player.x; sy = player.y;   // 아래 저장·로그·welcome 이 같은 값을 봐야 한다
     console.log(`[${ZONE_ID}] ↻ 몸 승계: ${name} (${playerId}) @ (${sx.toFixed(0)}, ${sy.toFixed(0)}) — 저장본 대신 살아 있던 몸`);
   }
+  C.stage = 'spawn'; _connFailPoint('spawn');
   players.set(pid, player);
+  C.pid = pid;   // ★뒤에서 던지면 이 반쪽 등록을 치워야 한다(안 치우면 유령 몸이 남는다)
 
   // 활성 청크 즉시 갱신 — 이 player 주변 청크의 시드 자원 spawn → welcome.resources에 포함됨
   updateActiveChunks();
@@ -2932,6 +3019,8 @@ wss.on('connection', async (ws, req) => {
   console.log(`[${ZONE_ID}] + ${name} (${pid}) @ (${sx.toFixed(0)}, ${sy.toFixed(0)})  total=${players.size}`);
 
   // 환영 메시지 — 존 정보와 현재 상태 모두 전달
+  C.stage = 'welcome'; _connFailPoint('welcome');
+  { const _h = _connHangPoint('welcome'); if (_h) await _h; }
   send(ws, {
     type: 'welcome',
     pid,
@@ -3012,8 +3101,11 @@ wss.on('connection', async (ws, req) => {
   sendCorpsesInit(ws);
 
   // ws에 player input/close 핸들러 attach
+  C.stage = 'handlers';
   attachPlayerHandlers(ws, player);
-});
+  ws.__ready = true;          // ★조기 ping 응답은 여기서 손을 뗀다(진짜 핸들러가 맡는다)
+  C.stage = 'ready';
+}
 
 // === 외부 player 핸들러 (observer promotion에서 재사용) ===
 function handlePlayerInput(player, raw) {
@@ -8394,6 +8486,21 @@ function zonePublicMeta() {
 server.listen(PORT, () => {
   console.log(`[${ZONE_ID}] 🌏 zone server up on :${PORT}  latency=${LATENCY_MS}ms (RTT≈${LATENCY_MS*2}ms)  [netcode=K19 입력1개=1스텝]`);
   console.log(`        biome=${ZONE.biome}  rect=(${ZONE.worldOffsetX},${ZONE.worldOffsetY},${ZONE.zoneWidth}x${ZONE.zoneHeight})  neighbors=W:${NEIGHBOR.hasWest?'✓':'∅'} E:${NEIGHBOR.hasEast?'✓':'∅'} N:${NEIGHBOR.hasNorth?'✓':'∅'} S:${NEIGHBOR.hasSouth?'✓':'∅'}`);
+});
+
+// ★★[접속 진단 배치 2026-08-30] **조용히 죽지 않는다.**
+//   종전엔 프로세스 차원 핸들러가 **하나도 없었다** — `async` 연결 핸들러가 던지면
+//   Node 기본값(unhandled-rejections=throw)이 프로세스를 죽이는데, 로그에 쓸 만한 게 안 남았다.
+//   ⇒ 동작(죽는다)은 그대로 두고 **스택만 확실히 남긴다**. 마스킹은 토큰 규약 그대로.
+const _mask = (s) => String(s).replace(/guest_token=[0-9a-f]+/gi, 'guest_token=***')
+                              .replace(/password=[^&\s]+/gi, 'password=***');
+process.on('unhandledRejection', (e) => {
+  console.error(`[${ZONE_ID}] ✗✗ unhandledRejection: ${_mask((e && e.message) || e)}\n${_mask((e && e.stack) || '')}`);
+  process.exit(1);   // ★기본 동작 유지 — 여기서 삼키면 반쯤 죽은 서버가 남는다(더 나쁘다)
+});
+process.on('uncaughtException', (e) => {
+  console.error(`[${ZONE_ID}] ✗✗ uncaughtException: ${_mask((e && e.message) || e)}\n${_mask((e && e.stack) || '')}`);
+  process.exit(1);
 });
 
 // === Graceful shutdown — 종료 직전 모든 mob/플레이어 상태 flush ===

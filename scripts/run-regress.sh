@@ -107,6 +107,7 @@ else
     e2e-forage-village.js
     e2e-craft.js
     e2e-inv.js
+    e2e-conn.js
     e2e-ui.js
     e2e-fishing.js
     e2e-guest-reconnect.js
