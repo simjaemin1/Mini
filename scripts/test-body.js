@@ -67,11 +67,24 @@ function codeOnly(src) {
   say('\n⓪ 전제 — 축과 곡선이 실제로 서 있는가');
   ok(B.AXES.length === 5, '★다섯 축이다(심심함·스트레스는 §7 에서 기각 — 넣지 않았다)', B.AXES.join(','));
   ok(!B.AXES.includes('boredom') && !B.AXES.includes('stress'), '★★기각된 축이 슬쩍 들어와 있지 않다');
-  for (const a of B.AXES) {
+  // ★★[3층 재배선 2026-08-30 갱신] 축이 **두 갈래**로 나뉘었다:
+  //   이속·작업에 걸리는 축(추위·피로·부상) vs **회복 배율로만** 작용하는 축(허기·갈증).
+  ok(JSON.stringify(B.EFFECT_AXES) === JSON.stringify(['cold', 'fatigue', 'injury']),
+    '★★⓪ 이속·작업 곡선을 갖는 축은 셋뿐이다', B.EFFECT_AXES.join(','));
+  ok(JSON.stringify(B.RECOVER_AXES) === JSON.stringify(['hunger', 'thirst']),
+    '★★⓪ 허기·갈증은 **회복 배율 축**이다', B.RECOVER_AXES.join(','));
+  ok(!B.CURVES.hunger && !B.CURVES.thirst,
+    '★★⓪ 허기·갈증이 이속·작업 곡선을 **안 갖는다**(재민 확정: 직접 페널티 금지)');
+  for (const a of B.EFFECT_AXES) {
     const c = B.CURVES[a];
     ok(c && c.move.length >= 4 && c.move.length <= 6, `★${B.KO[a]} 곡선 제어점 4~6개(§8.3)`, c ? c.move.length : 'X');
   }
-  say(`    단계 경계(1단계 = 이속 −5% 체감점, 곡선에서 **유도**한 값):`);
+  for (const a of B.RECOVER_AXES) {
+    const c = B.RECOVER[a];
+    ok(c && c.length >= 4 && c.length <= 6, `★${B.KO[a]} 회복 곡선 제어점 4~6개`, c ? c.length : 'X');
+    ok(c[c.length - 1][1] === 0, `★★⓪ ${B.KO[a]} 극단에서 회복 **정지**(0) — 감소가 아니다`, c[c.length - 1][1]);
+  }
+  say(`    단계 경계(1단계 = 처음 체감되는 자리, 곡선에서 **유도**한 값):`);
   for (const a of B.AXES) say(`      ${B.KO[a].padEnd(4)} ${B.STAGE_AT[a].map((x) => x.toFixed(3)).join(' / ')}`);
 
   // ═══ ① 오프라인 불변 ═══════════════════════════════════════════════════════
@@ -179,7 +192,10 @@ function codeOnly(src) {
   say('\n③ 연속성 — 문턱 절벽이 없다(§8.3 "속은 연속")');
   const STEP = 0.002;
   let worstJump = 0, worstAt = null;
-  for (const a of B.AXES) {
+  // ★[3층 재배선 2026-08-30 갱신] 이속·작업 곡선은 이제 **세 축만** 갖는다.
+  //   허기·갈증은 회복 곡선을 갖고, 그것도 같은 잣대(절벽 없음)로 잰다 — 축이 나뉘었지
+  //   "속은 연속" 규약이 느슨해진 게 아니다.
+  for (const a of B.EFFECT_AXES) {
     for (let x = 0; x <= 1.0001; x += STEP) {
       const y0 = B.lerpCurve(B.CURVES[a].move, x), y1 = B.lerpCurve(B.CURVES[a].move, x + STEP);
       const w0b = B.lerpCurve(B.CURVES[a].work, x), w1b = B.lerpCurve(B.CURVES[a].work, x + STEP);
@@ -187,12 +203,22 @@ function codeOnly(src) {
       if (j > worstJump) { worstJump = j; worstAt = `${B.KO[a]} @ ${x.toFixed(3)}`; }
     }
   }
-  const bound = STEP * 1.2;   // 0.002 폭에서 이보다 크게 뛰면 그건 절벽이다
+  for (const a of B.RECOVER_AXES) {
+    for (let x = 0; x <= 1.0001; x += STEP) {
+      const r0 = B.lerpCurve(B.RECOVER[a], x), r1 = B.lerpCurve(B.RECOVER[a], x + STEP);
+      const j = Math.abs(r1 - r0);
+      if (j > worstJump) { worstJump = j; worstAt = `${B.KO[a]}(회복) @ ${x.toFixed(3)}`; }
+    }
+  }
+  const bound = STEP * 4;   // 0.002 폭에서 이보다 크게 뛰면 그건 절벽이다(회복 곡선이 더 가파르다)
   ok(worstJump < bound, `★★③ 인접 표본 최대 도약 ${worstJump.toFixed(5)} < ${bound.toFixed(5)} = **절벽 없음**`, worstAt);
   // ★자명 통과 금지 — 곡선이 아예 평평하면 위가 공짜다. 실제로 내려가는지 본다.
-  const dropAll = B.AXES.map((a) => 1 - B.lerpCurve(B.CURVES[a].move, 1));
+  const dropAll = B.EFFECT_AXES.map((a) => 1 - B.lerpCurve(B.CURVES[a].move, 1));
   ok(dropAll.every((d) => d > 0.05), '★★자명 통과 금지 — 각 축이 최악에서 실제로 이속을 깎는다',
-    dropAll.map((d, i) => `${B.KO[B.AXES[i]]} −${(d * 100).toFixed(0)}%`).join(' · '));
+    dropAll.map((d, i) => `${B.KO[B.EFFECT_AXES[i]]} −${(d * 100).toFixed(0)}%`).join(' · '));
+  const recDrop = B.RECOVER_AXES.map((a) => 1 - B.lerpCurve(B.RECOVER[a], 1));
+  ok(recDrop.every((d) => d > 0.5), '★★자명 통과 금지 — 회복 축도 최악에서 실제로 깎는다(멈춘다)',
+    recDrop.map((d, i) => `${B.KO[B.RECOVER_AXES[i]]} −${(d * 100).toFixed(0)}%`).join(' · '));
 
   // ═══ ④ 바닥 클램프 — 죽음의 나선 방지 ══════════════════════════════════════
   say('\n④ 바닥 — 죽음의 나선 방지(§7 재민 확정)');
@@ -238,6 +264,139 @@ function codeOnly(src) {
     '★★⑦ **주기 저장이 그 판정을 실제로 본다** — zone.js 에서 확인(안 그러면 앉아서 쉰 진행이 크래시에 날아간다)');
   ok(/body: Body\.toSave\(player\)/.test(zsrc), '★⑦ 저장 payload 에 몸 상태가 실린다');
   ok(/tools\.body/.test(zsrc), '★⑦ 복원 경로도 있다(저장만 하고 안 읽으면 반쪽이다)');
+
+  // ═══ ⑨ 스태미나 — 달리기의 유일한 관문(3층 재배선) ═══════════════════════════
+  say('\n⑨ 스태미나 — 달리기가 쓰고, 짐이 무겁게 하고, 서면 찬다');
+  {
+    const mk = () => ({ hunger: 100, thirst: 100, inventory: {}, toolItems: [], equipment: [] });
+    const P = mk();
+    ok(B.stamina(P) === 1 && B.canSprint(P) === true, '★⑨ 새 몸은 가득이고 달릴 수 있다', B.stamina(P));
+    // 전력질주 — 빈손
+    let t = 0; while (B.canSprint(P) && t < 200) { B.tick(P, 1, { sprint: true, moving: true, carryRatio: 0 }); t++; }
+    ok(t > 5 && t < 100, `★⑨ 빈손으로 **${t}초** 달리면 바닥난다`, `설정 ${B.CFG.STAM_SPRINT_SEC}초`);
+    ok(Math.abs(t - B.CFG.STAM_SPRINT_SEC) <= 3, '★⑨ 손잡이(`BODY_STAM_SPRINT_SEC`)와 실측이 맞는다', `${t} vs ${B.CFG.STAM_SPRINT_SEC}`);
+    ok(B.ensure(P).stamLock === true, '★★⑨ 바닥나면 **빗장이 걸린다**(0 근처에서 달렸다 걸었다 깜빡이지 않게)');
+    ok(B.canSprint(P) === false, '★⑨ 빗장이 걸린 동안은 못 달린다');
+    // 회복 — 서서
+    let r = 0; while (!B.canSprint(P) && r < 300) { B.tick(P, 1, { sprint: false, moving: false }); r++; }
+    ok(r > 1 && r < 200, `★⑨ 서서 **${r}초** 쉬면 다시 달릴 수 있다`, `재개 문턱 ${B.CFG.STAM_RESUME}`);
+    ok(B.ensure(P).stam >= B.CFG.STAM_RESUME, '★⑨ 재개 문턱을 실제로 넘겼다', B.ensure(P).stam.toFixed(3));
+    // 짐 가중 — 같은 시간을 달렸을 때 남는 양을 견준다
+    const A = mk(), C = mk();
+    for (let i = 0; i < 5; i++) { B.tick(A, 1, { sprint: true, moving: true, carryRatio: 0 }); B.tick(C, 1, { sprint: true, moving: true, carryRatio: 1 }); }
+    ok(B.stamina(A) > B.stamina(C), '★★⑨ **짐이 무거우면 더 빨리 준다**',
+      `빈손 ${B.stamina(A).toFixed(3)} vs 가득 ${B.stamina(C).toFixed(3)}`);
+    ok(B.stamina(A) < 1, '(상황) 빈손도 실제로 줄긴 했다 — 안 줄면 위 비교가 자명 통과다', B.stamina(A).toFixed(3));
+    // 걸으면서는 덜 찬다
+    const D = mk(), E = mk();
+    B.ensure(D).stam = 0.2; B.ensure(E).stam = 0.2;
+    for (let i = 0; i < 5; i++) { B.tick(D, 1, { moving: false }); B.tick(E, 1, { moving: true }); }
+    ok(B.stamina(D) > B.stamina(E), '★⑨ 서면 걸을 때보다 빨리 찬다',
+      `서서 ${B.stamina(D).toFixed(3)} vs 걸으며 ${B.stamina(E).toFixed(3)}`);
+  }
+
+  // ═══ ⑩ 허기·갈증은 이속을 **안** 깎는다 — 회복 배율로만 ═══════════════════════
+  say('\n⑩ 허기·갈증 재배선 — 걸음은 그대로, 숨 고르기와 아묾만 느려진다');
+  {
+    const P = { hunger: 100, thirst: 100 };
+    const full = B.effects(P).moveMult;
+    P.hunger = 0; P.thirst = 0;
+    const empty = B.effects(P).moveMult;
+    ok(full === 1, '(상황) 만복일 때 이속 배율이 1 이다');
+    ok(empty === full, '★★⑩ **공복·탈수여도 이속이 안 깎인다**(재민 확정: 직접 페널티 금지)',
+      `만복 ×${full} vs 공복 ×${empty}`);
+    ok(B.effects(P).workMult === 1, '★⑩ 작업속도도 안 깎인다', `×${B.effects(P).workMult}`);
+    // 회복 배율로는 확실히 작용한다(자명 통과 방지 — "아무 일도 안 한다"가 아니어야 한다)
+    const P2 = { hunger: 100, thirst: 100 };
+    ok(B.recoverMult(P2) === 1, '(상황) 만복 회복 배율 1', B.recoverMult(P2));
+    ok(B.recoverMult(P) === 0, '★★⑩ 극단에서 회복 배율이 **0** = 회복 정지', B.recoverMult(P));
+    const P3 = { hunger: 50, thirst: 50 };
+    const mid = B.recoverMult(P3);
+    ok(mid > 0 && mid < 1, '★⑩ 그 사이는 **연속**이다(절벽 없음 · §8.3)', mid);
+    // 스태미나 회복이 실제로 그 배율을 탄다
+    const Q = { hunger: 100, thirst: 100 }, R = { hunger: 12, thirst: 12 };
+    B.ensure(Q).stam = 0.1; B.ensure(R).stam = 0.1;
+    for (let i = 0; i < 5; i++) { B.tick(Q, 1, { moving: false }); B.tick(R, 1, { moving: false }); }
+    ok(B.stamina(Q) > B.stamina(R), '★★⑩ 배고프면 **숨 고르기가 느리다**(그 배율이 실배선돼 있다)',
+      `만복 ${B.stamina(Q).toFixed(3)} vs 배고픔 ${B.stamina(R).toFixed(3)}`);
+  }
+
+  // ═══ ⑪ 감쇠 고증치 + 상태 의존 곡선 ═════════════════════════════════════════
+  say('\n⑪ 감쇠 — 허기 게임 2일(48분) · 갈증 1일(24분) · 위 절반이 1/3 시간');
+  {
+    const run = (key, sec) => {
+      const P = { hunger: 100, thirst: 100 };
+      let t = 0, half = -1;
+      while (P[key] > 0 && t < sec * 3) {
+        B.tick(P, 1, {});
+        t++;
+        if (half < 0 && P[key] <= 50) half = t;
+      }
+      return { total: t, half };
+    };
+    const H = run('hunger', B.CFG.HUNGER_SEC), T = run('thirst', B.CFG.THIRST_SEC);
+    ok(Math.abs(H.total - 2880) / 2880 < 0.10, `★★⑪ 허기 만복→공복 **${(H.total / 60).toFixed(1)}분** (목표 48분 ±10%)`, `${H.total}초`);
+    ok(Math.abs(T.total - 1440) / 1440 < 0.10, `★★⑪ 갈증 만복→공복 **${(T.total / 60).toFixed(1)}분** (목표 24분 ±10%)`, `${T.total}초`);
+    const hf = H.half / H.total, tf = T.half / T.total;
+    ok(Math.abs(hf - 1 / 3) < 0.06, `★★⑪ 허기 **위 절반이 전체의 ${(hf * 100).toFixed(0)}%**(목표 33%)`, `${H.half}/${H.total}초`);
+    ok(Math.abs(tf - 1 / 3) < 0.06, `★★⑪ 갈증 위 절반 **${(tf * 100).toFixed(0)}%**(목표 33%)`, `${T.half}/${T.total}초`);
+    ok(B.decayRate(100, 2880) > B.decayRate(10, 2880) * 1.8,
+      '★★⑪ 배부를 때가 배고플 때보다 **거의 2배 빨리** 준다(배부름은 금방 꺼진다)',
+      `${B.decayRate(100, 2880).toFixed(5)} vs ${B.decayRate(10, 2880).toFixed(5)}`);
+  }
+
+  // ═══ ⑫ ★아사 폐지 캐논 — 극단에서 HP 는 **절대** 안 깎인다 ═══════════════════
+  say('\n⑫ 아사 폐지 — 굶어도 죽지 않는다(재민 재확정: 죽음 설계 배치 전까지 보류)');
+  {
+    const P = { hunger: 0, thirst: 0, hp: 55, maxHp: 100, inventory: {} };
+    const hp0 = P.hp;
+    for (let i = 0; i < 600; i++) B.tick(P, 1, { moving: false });
+    ok(P.hp === hp0, '★★⑫ 공복·탈수로 10분을 버텨도 **HP 가 한 점도 안 깎인다**', `${hp0} → ${P.hp}`);
+    ok(B.recoverMult(P) === 0, '★⑫ 대신 회복이 멈춘다(벌은 여기까지다)', B.recoverMult(P));
+    // ★코드에도 아사 경로가 없다 — 주석 걷어내고 확인(다음 사람이 슬쩍 넣는 걸 막는다)
+    const bsrc = codeOnly(fs.readFileSync(path.join(ROOT, 'server', 'body.js'), 'utf8'));
+    ok(!/\bp\.hp\s*(-=|=[^=])/.test(bsrc), '★★⑫ `body.js` 안에 HP 를 깎는 줄이 **아예 없다**');
+    ok(/recoverMult/.test(zsrc) && !/hunger[^\n]*hp\s*-=/.test(zsrc),
+      '★⑫ zone.js 의 HP 회복이 **배율**을 쓴다(하드 게이트·감소가 아니라)');
+  }
+
+  // ═══ ⑬ 추위 — 평형 수렴(밤에 오르고 낮에 내린다) ═════════════════════════════
+  say('\n⑬ 추위 — 주변이 목표점을 만들고 몸이 거기로 간다');
+  {
+    // 목표점부터 — 곡선을 다시 짜지 않고 정본 함수에 물어본다
+    const tSummerDay = B.coldTarget({ night: false, seasonCold: 0, warmth: 0 });
+    const tSummerNight = B.coldTarget({ night: true, seasonCold: 0, warmth: 0 });
+    const tWinterDay = B.coldTarget({ night: false, seasonCold: 1, warmth: 0 });
+    const tWinterNight = B.coldTarget({ night: true, seasonCold: 1, warmth: 0 });
+    say(`     목표점 — 여름낮 ${tSummerDay} · 여름밤 ${tSummerNight} · 겨울낮 ${tWinterDay} · 겨울밤 ${tWinterNight}`);
+    ok(tSummerNight > tSummerDay, '★⑬ 밤이 낮보다 춥다');
+    ok(tWinterNight > tSummerNight, '★★⑬ **겨울 평형점이 여름보다 높다**(겨울은 옷·불 없이는 안 내려간다)');
+    ok(tWinterDay > tSummerDay, '★⑬ 겨울은 낮에도 춥다');
+    ok(B.coldTarget({ night: true, seasonCold: 1, warmth: B.CFG.WARMTH_FULL }) === 0,
+      '★★⑬ 방한 가득한 옷이면 겨울밤에도 목표점 0');
+    ok(B.coldTarget({ night: true, seasonCold: 1, warmth: 0, nearFire: true }) <= B.CFG.COLD_FIRE_TARGET,
+      '★⑬ 모닥불 옆은 목표점이 확 내려간다');
+    ok(B.coldTarget({ night: true, seasonCold: 1, warmth: 0, indoor: true }) < tWinterNight, '★⑬ 실내가 밖보다 낫다');
+
+    // ★★밤→낮 사이클 — **해소 행동 없이** 오르고 내리는가(누적식이면 안 내려간다)
+    const P = { hunger: 100, thirst: 100 };
+    const step = (n, ctx) => { for (let i = 0; i < n; i++) B.tick(P, 1, ctx); };
+    step(600, { night: true, seasonCold: 0.35, warmth: 0 });
+    const peak = B.ensure(P).cold;
+    step(900, { night: false, seasonCold: 0.35, warmth: 0 });
+    const dawn = B.ensure(P).cold;
+    ok(peak > 0.2, '(상황) 밤에 실제로 추워졌다 — 안 그러면 아래가 자명 통과다', peak.toFixed(3));
+    ok(dawn < peak * 0.5, '★★⑬ **낮이 오면 저절로 내려간다**(불·실내 없이) — 누적식이면 안 내려간다',
+      `밤 끝 ${peak.toFixed(3)} → 낮 ${dawn.toFixed(3)}`);
+    // 겨울 평형은 실제로 높은 데서 멈춘다(1 로 끝없이 오르는 게 아니라)
+    const W = { hunger: 100, thirst: 100 };
+    for (let i = 0; i < 3000; i++) B.tick(W, 1, { night: false, seasonCold: 1, warmth: 0 });
+    ok(Math.abs(B.ensure(W).cold - tWinterDay) < 0.02,
+      '★★⑬ 오래 두면 **목표점에 수렴**한다(끝없이 1 로 가지 않는다)', `${B.ensure(W).cold.toFixed(3)} ≈ ${tWinterDay}`);
+    // 모닥불 접근 → 수렴점이 내려간다
+    for (let i = 0; i < 600; i++) B.tick(W, 1, { night: false, seasonCold: 1, warmth: 0, nearFire: true });
+    ok(B.ensure(W).cold < 0.15, '★★⑬ 모닥불로 가면 내려간다', B.ensure(W).cold.toFixed(3));
+  }
 
   // ═══ ⑧ 픽스처 결백 ═════════════════════════════════════════════════════════
   say('\n⑧ 픽스처 결백(족보 ㊻)');

@@ -2686,7 +2686,9 @@ function onGameTick(now) {
       if (terr[cv.id] != null) cv.tr = terr[cv.id];
       cv.wx = wx[cv.id] || null;   // welcome 재수신자도 최신 날씨를 받게(브로드캐스트와 같은 원천)
     }
-    state.deps.broadcast({ type: 'sim_village_day', day: state.world.day, jobs: jobChanges, pops, terr, wx });
+    // ★[달력 2026-08-30] 날짜가 바뀌었으니 달력도 같이 보낸다 — 클라가 매핑을 다시 하지 않는다.
+    let _cal = null; try { _cal = require('./events').calendarOf(state.world.day | 0); } catch (e) {}
+    state.deps.broadcast({ type: 'sim_village_day', day: state.world.day, jobs: jobChanges, pops, terr, wx, calendar: _cal });
     // Stage 4B: econ 캐러밴 집합 ↔ 실체 동기(스폰·도착 전이·회수) — econ 틱 직후라 상태가 최신
     const carSync = syncCaravanBodies(now);
     // ★★[2026-08-25 사건 레이어 · 재민 확정] 사건 장부 하루 경계 판정.
@@ -4457,8 +4459,20 @@ function __e2eForceShortage(vid) {
 }
 
 
+// ★★[달력 2026-08-30] econ 게임일 — **화면의 유일한 날짜 원천**.
+//   왜 이게 필요한가: 이 레포엔 시계가 둘이다 —
+//     ⓐ `zoneGameDay()`  벽시계 파생(에폭부터 흐른 실시간 / 하루 길이)
+//     ⓑ `state.world.day` econ 틱 카운터(하루 경계마다 +1 · **따라잡기 없음**)
+//   서버가 꺼져 있던 동안 ⓐ는 뛰고 ⓑ는 안 뛴다 ⇒ 둘은 **영구히 벌어진다**.
+//   마을 재고창이 이미 ⓑ 를 그리고 있으므로, 달력도 ⓑ 를 써야 화면에 날짜가 하나로 남는다.
+//   (econ 계절·작물·사건이 전부 ⓑ 를 보므로 "지금 무슨 계절인가"의 진실도 ⓑ 다.)
+//   ★`null` 을 낸다(0 이 아니라) — **day 0 은 정당한 값**이다(세계가 막 시작한 날).
+//     `|| 0` 로 뭉개면 "0 = 없음" 이 되어 첫날에 벽시계로 잘못 떨어진다(하네스에서 실제로 그랬다:
+//     달력이 "3402년 봄 1일" 로 떴다 — 에폭이 먼 과거라 벽시계 일수가 컸던 것이다).
+function econDay() { return (state.world && Number.isFinite(state.world.day)) ? (state.world.day | 0) : null; }
+
 module.exports = {
-  init, onGameTick, invalidateTradeDistances, npcLifeTick, lifeDebug,
+  init, onGameTick, invalidateTradeDistances, npcLifeTick, lifeDebug, econDay,
   // Stage 4A — zone.js 소비: 농지 lazy 실물화 / welcome 영토 페이로드 / 레거시 디듀프 판정
   farmTilesInRect, clientVillages, isLegacyVillageClaimed,
   // ★곳간② 클라 표시 — welcome 스냅샷(델타는 onGameTick에서 gran_stock 방송)

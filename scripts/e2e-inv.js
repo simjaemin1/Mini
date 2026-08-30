@@ -218,6 +218,53 @@ async function waitHttp(url, tries = 900) {
     '★★⑥ **지목한 그 로트가** 빠졌다 (FIFO 였다면 반대가 나갔다)', JSON.stringify(lots6.berry));
   await snap('inv-06-lots');
 
+  // ── ⑥-b 빈 행 · 도구 · 상자 왕복 · 달력 [튜닝 배치 2026-08-30] ────────────
+  console.log('\n⑥-b 인벤 마무리 — 빈 행 · 도구 개체 · 상자 왕복 · 달력');
+  {
+    // ★빈 행 — 수량 0 은 **페이로드에 아예 없다**(클라 필터에만 맡기지 않는다)
+    const inv0 = await inv();
+    const zeros = Object.entries(inv0).filter(([, v]) => !(v > 0));
+    ok(zeros.length === 0, '★★⑥-b 인벤 페이로드에 **수량 0 품목이 없다**', JSON.stringify(zeros));
+    const rowsNow = await rows('mine');
+    ok(rowsNow.every((r) => !/×0\b/.test(r.text)), '★⑥-b 화면에도 ×0 줄이 없다',
+      rowsNow.map((r) => r.text.trim()).join(' / ').slice(0, 90));
+
+    // ★달력 — HUD 에 연·계절·일이 뜨고, 서버가 준 값과 같다
+    const cal = await page.evaluate(() => window.__calendar());
+    ok(!!cal, '★⑥-b 달력을 받았다', cal ? `${cal.year}년 ${cal.seasonKo} ${cal.dayOfSeason}일` : '없음');
+    const calTxt = await page.evaluate(() => (document.getElementById('calBadge') || {}).textContent || '');
+    ok(!!cal && calTxt.includes(`${cal.year}년`) && calTxt.includes(cal.seasonKo),
+      '★★⑥-b HUD 배지가 **서버가 준 그대로** 그린다(클라 매핑 사본 없음)', calTxt);
+    ok(!!cal && cal.dayOfSeason >= 1 && cal.dayOfSeason <= cal.seasonDays, '★⑥-b 계절 안 날짜가 범위 안', cal && `${cal.dayOfSeason}/${cal.seasonDays}`);
+
+    // ★도구 — 통일 목록에 서고, 버리면 바닥에 개체로 떨어지고, 주우면 내구도가 돌아온다
+    await give({ tools: ['axe', 'axe'] });
+    await page.evaluate(() => { window.__closeInv(); window.__openInv('ground'); });
+    await sleep(600);
+    const rAxe = (await rows('mine')).find((r) => r.item === 'axe');
+    ok(!!rAxe, '★★⑥-b 도구가 **통일 목록에** 선다(옛 도구 전용 표는 삭제됐다)', rAxe && rAxe.text.trim());
+    ok(!!rAxe && rAxe.hasCaret && rAxe.kids === 2, '★⑥-b 도끼 2자루라 ▶ 로 펼쳐진다', rAxe && `kids=${rAxe.kids}`);
+    ok(!!rAxe && !!rAxe.drag && !!rAxe.drag.toolId, '★⑥-b 도구 줄이 **인스턴스 id** 를 들고 있다');
+    const before = await page.evaluate(() => (window.__getTools ? window.__getTools() : null));
+    await page.evaluate((d) => window.__sendPrimary({ type: 'drop_item', item: d.item, toolId: d.toolId }), rAxe.drag);
+    await sleep(900);
+    // ★바닥엔 앞 절(로트 드롭)이 남긴 베리도 있다 — **도끼만** 골라 본다(전체 개수로 재면 위양성).
+    const gAxe = (await ground()).filter((g) => g.item === 'axe');
+    ok(gAxe.length === 1, '★★⑥-b 도구가 바닥에 떨어진다(종전엔 버릴 방법이 없었다)', JSON.stringify(gAxe[0] || null));
+    ok(!!gAxe[0] && !!gAxe[0].tool, '★★⑥-b 바닥템이 **정체(내구도)** 를 싣고 있다', JSON.stringify(gAxe[0] && gAxe[0].tool));
+    const dur0 = gAxe[0] && gAxe[0].tool ? gAxe[0].tool.d : -1;
+    await page.evaluate((gid) => window.__sendPrimary({ type: 'pickup_item', giId: gid }), gAxe[0].id);
+    await sleep(900);
+    const rAxe2 = (await rows('mine')).find((r) => r.item === 'axe');
+    ok(!!rAxe2 && rAxe2.kids === 2, '★★⑥-b 주우면 **도구로** 돌아온다(수량이 아니라 개체로)', rAxe2 && `kids=${rAxe2.kids}`);
+    const subs2 = await subs('mine', 'axe');
+    ok(subs2.some((x) => x.text.includes(`${dur0}/`)), '★★⑥-b **내구도가 그대로** 돌아왔다',
+      `버릴 때 ${dur0} · 지금 ${subs2.map((x) => x.text.trim()).join(' / ')}`);
+    ok((await ground()).filter((g) => g.item === 'axe').length === 0, '★⑥-b 바닥에서 도끼가 사라졌다');
+    ok(!(await inv()).axe, '★★⑥-b 도구가 **인벤 수량으로 새지 않았다**(개체로만 산다)', JSON.stringify((await inv()).axe));
+    void before;
+  }
+
   // ── ⑦ 비네트가 **원인 축**을 말하는가 ───────────────────────────────────
   console.log('\n⑦ 비네트 원인 축 — 갈증 3단계');
   const vg0 = await page.evaluate(() => ({ on: window.__vignetteOn(), axes: window.__vgAxes(), axis: window.__vgAxis() }));

@@ -137,6 +137,51 @@ function seasonOf(day) {
 }
 const KO_SEASON = { spring: '봄', summer: '여름', autumn: '가을', winter: '겨울' };
 
+// ── ★★달력 — [재민 확정 2026-08-30] **원천은 econ 계절 정본 하나다.** ─────────
+//   재민 지시: *"원천은 econ 계절 정본 하나 — 새 시계·새 매핑 상수 금지(사본 금지)."*
+//   ⇒ 아래 셋은 **오직 `seasonOf` 만** 부른다. 365·90·180·270 같은 수를 여기 한 번도 안 적는다.
+//     엔진이 계절 경계를 바꾸면 달력이 **저절로** 따라간다(고칠 곳이 없다).
+//   ★비용: 경계 탐색은 계절 길이만큼(≈95회) 도는데, 결과를 캐시해 하루 1회만 돈다.
+let _yearDays = 0;
+function yearDaysOf() {
+  if (_yearDays) return _yearDays;
+  const first = seasonOf(0);
+  let d = 1;
+  // 첫 계절이 **다시 시작하는** 날 = 한 해의 길이. 상수를 안 쓰고 정본에서 읽어 낸다.
+  while (d < 100000) { if (seasonOf(d) === first && seasonOf(d - 1) !== first) break; d++; }
+  _yearDays = d;
+  return _yearDays;
+}
+const _sStartCache = new Map();
+function seasonStartOf(day) {
+  const key = day | 0;
+  if (_sStartCache.has(key)) return _sStartCache.get(key);
+  const s = seasonOf(key);
+  let d = key;
+  while (d > 0 && seasonOf(d - 1) === s) d--;
+  if (_sStartCache.size > 4096) _sStartCache.clear();
+  _sStartCache.set(key, d);
+  return d;
+}
+// 화면이 그릴 것 — "0년 여름 42일" 의 재료. **클라는 이걸 받아 쓰기만 한다**(매핑 사본 금지).
+function calendarOf(day) {
+  const d = Math.max(0, day | 0);
+  const yd = yearDaysOf();
+  const season = seasonOf(d);
+  const start = seasonStartOf(d);
+  let end = start;
+  while (end < start + yd && seasonOf(end) === season) end++;
+  return {
+    day: d,
+    year: Math.floor(d / yd),
+    dayOfYear: d % yd,
+    yearDays: yd,
+    season, seasonKo: KO_SEASON[season] || season,
+    dayOfSeason: d - start + 1,
+    seasonDays: end - start,
+  };
+}
+
 // ── 가격 — econ 정본 함수/캐시를 그대로 읽는다 ────────────────────────────────
 //   tickTradeV2 는 매일 교역 자격이 있는 마을의 `_priceCache` 를 **그날 시세로** 덮는다
 //   (economy-sim-v2.js:602). 그 값이 오늘 것이면 그대로 쓰고(추가 비용 0),
@@ -629,4 +674,5 @@ function deliverToVillage(a) {
 }
 
 module.exports = { createLedger, CFG, TYPES, briefLine, boardLine, koRes, josa, seasonOf, KO_SEASON,
+  yearDaysOf, seasonStartOf, calendarOf,
   buildDeliverable, deliverToVillage, pricesOf, pricesFresh, payableQty };

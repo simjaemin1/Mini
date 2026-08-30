@@ -247,6 +247,13 @@ function diffCountNoEnts(a, b, ents) {
     await knob({ fogGateOff: true });
     const gateOff = await gateCheck();
     await knob({ fogGateOff: false });
+    // ★★[안개 위 논밭 2026-08-30] 영토 경계 셀의 안개 판정 — 수리본과 대조군을 나란히 잰다.
+    //   계측 정본은 클라가 프레임마다 세는 `__simvilProbe`(그 안이 `_seenChunks` 로 판정한다).
+    const svProbe = () => page.evaluate(() => (window.__simvilProbe ? window.__simvilProbe() : null)).catch(() => null);
+    const simvilOn = await svProbe();
+    await knob({ simvilCellGateOff: true });
+    const simvilOff = await svProbe();
+    await knob({ simvilCellGateOff: false });
     await knob({ natOff: true });
     const fogOff = await fogLit();
     await knob({ natOff: false, fringeOff: true });
@@ -324,7 +331,7 @@ function diffCountNoEnts(a, b, ents) {
     const fMarginOff = await grab('margin-off');
     await knob({ shMargin: 1 });
 
-    S[tag] = { dDefault, d0, fOn, fOn2, entPx, fNoFr, fNoPr, fNoNat, probe, probeNA, cerr, bad: [...new Set(bad)], fogOn, fogOff, gate, gateOff,
+    S[tag] = { dDefault, d0, fOn, fOn2, entPx, fNoFr, fNoPr, fNoNat, probe, probeNA, cerr, bad: [...new Set(bad)], fogOn, fogOff, gate, gateOff, simvilOn, simvilOff,
                wOn100, wOn101, wCalm100, wCalm101, wBase100, wBase101, windFn, shWidths, shWidths0, fMarginOn, fMarginOff,
                cpCalm, cpLegacy, cpW0, cpW1, cpC0, cpC1, cpDbgOn, cpDbgOff };
     await browser.close(); try { z.kill(); } catch (e) {}
@@ -480,6 +487,38 @@ function diffCountNoEnts(a, b, ents) {
   say(`    강가 술 on/off 차이 ${dFr}px · 초원 소품 on/off 차이 ${dPr}px · 강가 자연물 전체 ${dPrR}px`);
   ok(dFr > 3000, `★손잡이가 실제로 무언가를 끈다 — 강가 술 ${dFr}px`);
   ok(dPr > 500, `★초원 소품 손잡이도 실제로 그린다 ${dPr}px`);
+
+  // ═══ [7b] ★★안개 위 논밭·경계선 — 재민 실기로 **재현된** 결함 [2026-08-30] ═════
+  //   기전: 마을 영토(`simvil`)는 `renderables` 에 **마을 중심 하나**로 실린다. 개체 게이트는
+  //   그 한 점만 보므로, 중심을 한 번 본 마을이면 **반경 1,200px 의 경계 셀 전부가 그려졌다** —
+  //   한 번도 안 가본 새까만 땅 위에 논밭 띠와 경계선이 떴다.
+  //   (배치 21이 자연물에서 고친 것과 **같은 결함의 다른 층**: 클라가 스스로 넓게 그리는 것은
+  //    개체 하나로 게이트하면 반드시 샌다.)
+  //   ⇒ 수리: 경계 셀을 **셀마다** `_seenChunks` 로 판정.
+  //   ⇒ 자명 통과 금지: `simvilCellGateOff` 대조군에서 위반이 **나와야** 한다.
+  say('\n[7b] ⓖ 안개 위 논밭·경계선 — 영토는 **셀마다** 안개를 본다 [재민 실기 재현]');
+  //   기전: 마을 영토(`simvil`)는 `renderables` 에 **마을 중심 하나**로 실린다. 개체 게이트는
+  //   그 한 점만 보므로, 중심을 한 번 본 마을이면 **반경 1,200px 의 경계 셀 전부가 그려졌다** —
+  //   한 번도 안 가본 새까만 땅 위에 논밭 띠와 경계선이 떴다.
+  //   (배치 21이 자연물에서 고친 것과 **같은 결함의 다른 층**: 클라가 스스로 넓게 그리는 것은
+  //    개체 하나로 게이트하면 반드시 샌다.)
+  //   ⇒ 수리: 경계 셀을 **셀마다** `_seenChunks` 로 판정. 자명 통과 금지: 대조군에서 위반이 나와야 한다.
+  {
+    let anyCand = 0, anyUnseen = 0, viol = 0, ctrl = 0, sample = null;
+    for (const [tag, s2] of [['강가', R], ['초원', F]]) {
+      const on = s2.simvilOn, off = s2.simvilOff;
+      if (!on || !off) { say(`    ${tag}: 계측 없음`); continue; }
+      say(`    ${tag}: 수리본 후보 ${on.cand}셀 · 안 본 셀 ${on.unseen} · 안 본 셀에 그림 ${on.drawnUnseen}`
+        + `  |  대조군 후보 ${off.cand} · 안 본 셀 ${off.unseen} · 안 본 셀에 그림 ${off.drawnUnseen}`);
+      anyCand += on.cand; anyUnseen += off.unseen; viol += on.drawnUnseen; ctrl += off.drawnUnseen;
+      if (!sample && off.samples && off.samples.length) sample = off.samples.slice(0, 2);
+    }
+    ok(anyCand > 0, '(상황) 화면에 영토 경계 셀이 실제로 있다 — 0이면 아래가 자명 통과다', `${anyCand}셀`);
+    ok(anyUnseen > 0, '★★(상황) 그중 **안 가본 셀이 실제로 있다** — 없으면 이 검사는 아무것도 안 잰다',
+      `${anyUnseen}셀 · 예 ${JSON.stringify(sample)}`);
+    ok(viol === 0, '★★★ⓖ 안 가본 셀에는 영토·논밭이 **한 셀도 안 그려진다**', `${viol}셀`);
+    ok(ctrl > 0, '★★ⓖ 대조군(셀 게이트 끔)에서는 위반이 **나온다** — 검사가 진짜 재고 있다', `${ctrl}셀`);
+  }
 
   say('\n[7] ⓕ 안개 — ★한 번도 안 가본 곳엔 **그 어떤 것도** 보이면 안 된다 [재민 확정]');
   //  ★두 번 틀렸던 자리다. ①자연물을 renderables 에 태워 안개 위로 떴다.

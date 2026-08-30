@@ -242,6 +242,13 @@ const SIM_JOB_EMOJI = {
   let dishes = []; // 요리 인스턴스(신선도·버프) — [{id,label,q,nutrition,buff,freshness}]
   let shopVillage = null; // 거래: 가까운 마을 품질 EMA(shop_info 응답)
   let myHunger = 100, myThirst = 100, myVp = 0;
+  // ★★[신체 3층 재배선 2026-08-30] 스태미나 — **달리기 관문의 정본은 서버**다.
+  //   클라는 서버가 준 `canSprint` 를 그대로 쓴다(허기로 다시 판정하면 그게 사본이고,
+  //   두 판정이 갈리는 순간 러버밴딩이다 — 이속 배율에서 이미 배운 그것).
+  let myStam = 1, myStamLock = false, myCanSprint = true, myRecover = 1;
+  // ★★[달력 2026-08-30 재민 확정] 연·계절·일 — **서버가 econ 정본에서 유도해 준 것**을 그대로 그린다.
+  //   클라가 day→계절 매핑을 갖는 순간 그게 사본이고, 엔진이 계절 경계를 바꾸면 화면만 거짓말한다.
+  let myCalendar = null;
   let myCold = false; // 밤 추위(방한 부족) — HUD 표시
   const VP_THRESHOLD = 50; // 클라 표시용 — 서버와 동일해야 함
   let myTribeId = null, myTribeName = null;
@@ -4808,6 +4815,10 @@ const SIM_JOB_EMOJI = {
   //   ⇒ 클라가 **자기 변환으로** 자리를 알려 주고, 하네스는 그 자리만 가린다.
   const _entBoxes = [];
   window.__entBoxes = () => { const o = []; for (let i = 0; i < _entBoxes.length; i += 3) o.push([_entBoxes[i], _entBoxes[i + 1], _entBoxes[i + 2]]); return o; };
+  // ★[안개 위 논밭 2026-08-30] 영토 경계선이 **안 본 셀 위에** 그려졌는지 — 프레임마다 센다.
+  //   판정 정본은 `_seenChunks` 다(하네스가 직접 대조할 수 있게 자리를 그대로 낸다).
+  window.__simvilCells = { cand: 0, unseen: 0, drawnUnseen: 0, samples: [] };
+  window.__simvilProbe = () => JSON.parse(JSON.stringify(window.__simvilCells));
   window.__fogGateProbe = () => {
     const out = [];
     for (let i = 0; i < _gateDrawn.length; i += 3) out.push([_gateDrawn[i], _gateDrawn[i + 1], _gateDrawn[i + 2]]);
@@ -4843,6 +4854,9 @@ const SIM_JOB_EMOJI = {
                  fitOff: false,
   //   ★[배치 21 5차] fogGateOff — 안개 게이트의 **대조군**. 끄면 안 가본 곳의 개체가 다시 보인다.
                  fogGateOff: false,
+                 // ★[안개 위 논밭 2026-08-30] 영토 셀 게이트의 **대조군**. 켜면 옛 동작(중심 하나로 게이트)
+                 //   으로 돌아가 위반이 다시 나온다 — 그게 나와야 수리 판정이 자명 통과가 아니다.
+                 simvilCellGateOff: false,
                  shoreOff: true,
                  shMarginOff: false, shMargin: 1, windOff: false, windForce: null, windGrassOff: false, edgeFuzz: null,
   //   ★[재민 2026-08-24] flowRawDist — 흐름 주인을 고르는 **대조군**. 켜면 폭을 무시한 옛
@@ -5923,7 +5937,9 @@ const SIM_JOB_EMOJI = {
   //   토큰은 **노출하지 않는다** — 하네스도 localStorage 에서 직접 읽는다(코드가 값을 흘리지 않게).
   window.__getPlayerId = () => myPlayerId;
   // ★[배산임수 감사 2026-08-29] 게이지 진단 훅 — 하네스가 "둠벙에서 실제로 마셔지는가"를 화면 값으로 잰다(읽기 전용).
-  window.__getGauges = () => ({ hunger: myHunger, thirst: myThirst, vp: myVp });
+  window.__calendar = () => (myCalendar ? JSON.parse(JSON.stringify(myCalendar)) : null);
+  window.__getGauges = () => ({ hunger: myHunger, thirst: myThirst, vp: myVp,
+    stam: myStam, stamLock: myStamLock, canSprint: myCanSprint, recover: myRecover });
   // ★[시설 제작창 2026-08-29] 진단 훅 — 하네스가 "창이 실제로 열렸는가 · 대기열이 도는가"를 화면 상태로 잰다(읽기 전용).
   window.__getFacility = () => myFacility;
   window.__getActiveSide = () => activeSide;
@@ -6102,6 +6118,29 @@ const SIM_JOB_EMOJI = {
         refreshZoneOptions();
       } catch (e) {}
     }, 10000);
+
+    // ★★[게스트 안내 2026-08-30] 저장된 게스트 몸이 있을 때만 안내를 띄운다(없으면 할 말이 없다).
+    //   ★토큰은 **절대 화면에 안 찍는다**(배치 13 규약) — 있다/없다만 말한다.
+    (function _guestNoteInit() {
+      const box = document.getElementById('guestNote');
+      if (!box) return;
+      const paint = () => {
+        const has = !!(myGuestToken || localStorage.getItem(GUEST_TOKEN_KEY));
+        const named = (document.getElementById('name').value || '').trim();
+        box.classList.toggle('hidden', !has || !!named);   // 계정명을 적었으면 게스트가 아니다
+      };
+      paint();
+      const nameEl = document.getElementById('name');
+      if (nameEl) nameEl.addEventListener('input', paint);
+      const rst = document.getElementById('guestReset');
+      if (rst) rst.onclick = () => {
+        // 새 몸 = **토큰 폐기**. 옛 몸은 서버에 그대로 남는다(지우지 않는다 — 되돌릴 수 없는 일은 안 한다).
+        try { localStorage.removeItem(GUEST_TOKEN_KEY); } catch (e) {}
+        myGuestToken = null;
+        box.innerHTML = '🌱 <b>새 몸으로 시작합니다.</b> 옛 게스트 캐릭터는 서버에 남아 있지만'
+          + ' 이 브라우저에서는 다시 열 수 없습니다(열쇠를 버렸습니다).';
+      };
+    })();
 
     document.getElementById('enter').onclick = () => {
       const inputName = document.getElementById('name').value.trim();
@@ -6783,6 +6822,7 @@ const SIM_JOB_EMOJI = {
         if (msg.equipSlots) equipSlots = msg.equipSlots;
         if (msg.craftSkill) craftSkill = msg.craftSkill;
         if (msg.self.hp !== undefined) { myHp = msg.self.hp; myMaxHp = msg.self.maxHp; }
+        if (msg.calendar) myCalendar = msg.calendar;   // ★[달력] 입장 즉시 — 첫 날짜 경계를 기다리지 않는다
         if (typeof msg.self.hunger === 'number') myHunger = msg.self.hunger;
         if (typeof msg.self.thirst === 'number') myThirst = msg.self.thirst;
         if (typeof msg.self.vp === 'number') myVp = msg.self.vp;
@@ -7016,6 +7056,7 @@ const SIM_JOB_EMOJI = {
       c.claims.delete(msg.id);
     } else if (msg.type === 'sim_village_day') {
       window.__evGameDay = msg.day | 0;   // ★[사건 레이어] 촌장 브리핑 "하루 한 번" 의 시계
+      if (msg.calendar) { myCalendar = msg.calendar; updateHud(); }   // ★[달력] 날짜가 바뀌었다
       // §4-4 Stage 4A: 게임일 1회 — 마을 인구 라벨 + NPC 직업(simJob) 변경분 + §19 영토 크립 반경(tr) 갱신
       if (c.simVillages && msg.pops) for (const v of c.simVillages) { if (msg.pops[v.id] != null) v.pop = msg.pops[v.id]; if (msg.terr && msg.terr[v.id] != null) v.tr = msg.terr[v.id]; }
       if (msg.jobs) for (const [pid, job] of Object.entries(msg.jobs)) { const o = c.others.get(pid); if (o) o.simJob = job; }
@@ -7232,7 +7273,15 @@ const SIM_JOB_EMOJI = {
       if (typeof msg.cold === 'boolean') myCold = msg.cold;
       // ★★[신체 상태 §8.3] 서버가 정본이다. 클라는 **그린다**(단계도 서버가 매겨 보낸다 —
       //   여기서 다시 양자화하면 히스테리시스가 두 벌이 되어 깜빡임이 되살아난다).
-      if (msg.body) { myBody = msg.body; window.__bodyState = msg.body; renderMoodles(); if (activeSide === 'body') renderSide('body'); }
+      if (msg.body) {
+        myBody = msg.body; window.__bodyState = msg.body;
+        // ★[3층 재배선] 스태미나·회복 배율은 몸 페이로드에 실려 온다(별도 창구 안 만든다).
+        if (typeof msg.body.stam === 'number') myStam = msg.body.stam;
+        if (typeof msg.body.stamLock === 'boolean') myStamLock = msg.body.stamLock;
+        if (typeof msg.body.canSprint === 'boolean') myCanSprint = msg.body.canSprint;
+        if (typeof msg.body.recover === 'number') myRecover = msg.body.recover;
+        updateHud(); renderMoodles(); if (activeSide === 'body') renderSide('body');
+      }
       // ★★[무게 배치 2026-08-27] 소지 무게·과적. **서버가 정본**이고 클라는 그린다.
       //   `combined`(신체×과적, 바닥 적용)는 예측 속도에도 그대로 쓴다 — 안 그러면 러버밴딩이다.
       if (msg.carry) { myCarry = msg.carry; window.__carryState = msg.carry; renderMoodles(); if (activeSide === 'body') renderSide('body'); }
@@ -7564,7 +7613,10 @@ const SIM_JOB_EMOJI = {
     // ★[캐릭 시트] legacy 에서도 `myVel` 이 **지금 속도의 진실**이어야 한다 — 애니 상태기계가 이걸 읽는다.
     //   legacy 는 상태가 없으므로(속도=입력의 함수) 여기서 0 을 써도 이동은 한 비트도 안 바뀐다.
     if (!_accel && wx === 0 && wy === 0) { myVel.vx = 0; myVel.vy = 0; return; }
-    const canSprintClient = sprint && myHunger > 5 && myThirst > 5;
+    // ★[3층 재배선] 달리기 판정은 **서버가 준 것 하나**다(사본 금지) — 옛 `myHunger>5 && myThirst>5` 는
+    //   허기·갈증이 달리기를 막던 시절의 사본이다. 이제 막는 건 스태미나이고 그 판정은 서버가 한다.
+    const canSprintClient = sprint && myCanSprint;
+
     // ★★[신체 상태 2026-08-26] 몸 상태 배율을 **여기에도** 곱한다. 서버는 `Body.effects().moveMult` 로
     //   같은 값을 쓰고 그 수를 `gauges.body.moveMult` 로 실어 보낸다 —
     //   **안 맞추면 매 틱 보정이 나서 러버밴딩**이 된다(이 줄의 원래 주석이 경고하던 바로 그것).
@@ -9422,6 +9474,7 @@ const SIM_JOB_EMOJI = {
     let _gateSkipped = 0, _gateMissing = 0, _gateFree = 0; const _gateMissKind = {};
     _gateDrawn.length = 0;
     _entBoxes.length = 0;
+    if (window.__simvilCells) { const _p = window.__simvilCells; _p.cand = 0; _p.unseen = 0; _p.drawnUnseen = 0; _p.samples.length = 0; }
     const _seenCell1 = (cx, cy) => {
       const sc = window._seenChunks; if (!sc) return true;   // 첫 프레임(기록 전)은 통과
       const chSet = sc.get((cx >> 4) + '_' + (cy >> 4));
@@ -9609,12 +9662,31 @@ const SIM_JOB_EMOJI = {
         const v = item.v, off = item.off, offY = item.offY || 0;
         const S = CL_BUILDING_SIZE;
         const sc = (wx, wy) => { const pp = w2i(off + wx, offY + wy); return toScreen(pp.x, pp.y); };
+        // ★★[안개 위 논밭 수리 2026-08-30 재민 실기 재현] **셀마다** 안개를 본다.
+        //   결함 기전: 이 항목은 `renderables` 에 **마을 중심 좌표 하나**(wx,wy)로 실린다.
+        //   개체 안개 게이트는 그 한 점만 보므로, **중심을 한 번 본 마을이면 반경 1,200px 의
+        //   영토 셀 전부가 그려졌다** — 한 번도 안 가본 새까만 땅 위에 논밭 띠와 경계선이 떴다.
+        //   (배치 21이 자연물에서 고친 것과 **같은 결함의 다른 층**이다: 클라가 스스로 만들어
+        //    내는 넓은 그림은 개체 하나로 게이트하면 반드시 샌다.)
+        //   ⇒ 재민 규칙("안 가본 자리의 사물 금지")을 **셀 단위**로 적용한다.
+        //     판정 정본은 `_seenCell1`(= `_seenChunks`) 하나다 — 사본 금지.
+        const _cellSeen = (cx, cy) => _t19.simvilCellGateOff || _seenCell1(off / 32 + cx, offY / 32 + cy);
         const fill = 'rgba(150,205,130,0.13)', stroke = 'rgba(175,225,145,0.9)';
         if (v.b && v.b.length) {
           // 경계 셀 은은한 채움 (띠) + 외곽변만 실선 → 정확한 영토 외곽선
           ctx.fillStyle = fill; ctx.beginPath();
           for (let i = 0; i < v.b.length; i += 3) {
             const cx = v.cx + v.b[i], cy = v.cy + v.b[i + 1];
+            // ★계측 — 후보 셀 · 그중 안 본 셀 · **안 본 셀인데 그린 것**(= 위반).
+            //   `unseen>0` 이어야 이 검사가 자명 통과가 아니고, `drawnUnseen===0` 이어야 수리된 것이다.
+            const _seen = _seenCell1(off / 32 + cx, offY / 32 + cy);
+            const _draw = _cellSeen(cx, cy);
+            const _pr = window.__simvilCells;
+            if (_pr) {
+              _pr.cand++;
+              if (!_seen) { _pr.unseen++; if (_draw) { _pr.drawnUnseen++; if (_pr.samples.length < 8) _pr.samples.push([off / 32 + cx, offY / 32 + cy]); } }
+            }
+            if (!_draw) continue;   // ★안 가본 셀엔 안 그린다
             const a = sc(cx * S, cy * S), b2 = sc((cx + 1) * S, cy * S), c2 = sc((cx + 1) * S, (cy + 1) * S), d2 = sc(cx * S, (cy + 1) * S);
             ctx.moveTo(a.x, a.y); ctx.lineTo(b2.x, b2.y); ctx.lineTo(c2.x, c2.y); ctx.lineTo(d2.x, d2.y); ctx.closePath();
           }
@@ -9622,6 +9694,7 @@ const SIM_JOB_EMOJI = {
           ctx.strokeStyle = stroke; ctx.lineWidth = 2; ctx.beginPath();
           for (let i = 0; i < v.b.length; i += 3) {
             const cx = v.cx + v.b[i], cy = v.cy + v.b[i + 1], m = v.b[i + 2];
+            if (!_cellSeen(cx, cy)) continue;   // ★외곽선도 같은 게이트
             const a = sc(cx * S, cy * S), b2 = sc((cx + 1) * S, cy * S), c2 = sc((cx + 1) * S, (cy + 1) * S), d2 = sc(cx * S, (cy + 1) * S);
             if (m & 1) { ctx.moveTo(a.x, a.y); ctx.lineTo(b2.x, b2.y); }
             if (m & 2) { ctx.moveTo(b2.x, b2.y); ctx.lineTo(c2.x, c2.y); }
@@ -9629,8 +9702,9 @@ const SIM_JOB_EMOJI = {
             if (m & 8) { ctx.moveTo(d2.x, d2.y); ctx.lineTo(a.x, a.y); }
           }
           ctx.stroke();
-        } else {
+        } else if (_cellSeen(v.cx, v.cy)) {
           // 구DB(경계 미영속) 폴백 — 중심+반경 점선 원 (월드 좌표 24각형 → 투영·줌에 자동 정합)
+          //   ★원은 셀 단위로 자를 수 없다 ⇒ **중심 셀을 본 경우에만** 그린다(안 본 마을은 통째로 숨는다).
           const r = v.r || 800;
           ctx.strokeStyle = stroke; ctx.lineWidth = 2; ctx.setLineDash([10, 6]);
           ctx.beginPath();
@@ -9643,13 +9717,13 @@ const SIM_JOB_EMOJI = {
         }
         // §19/§2 4파: 영토 크립 링 — econ land.size(매일 1셀 단위 성장)의 등가 반경(호박색 점선·sim_village_day 갱신).
         //   공간 실물화(bnd)는 시딩 스냅샷(부채 — 계획서 §2) — 이 링이 경제 영토의 '현재 크기'를 정직 표시.
-        if (v.tr) {
+        if (v.tr && _cellSeen(v.cx, v.cy)) {   // ★크립 링도 중심 셀을 본 마을만
           ctx.strokeStyle = 'rgba(222,202,132,0.5)'; ctx.lineWidth = 1.5; ctx.setLineDash([6, 8]);
           ctx.beginPath();
           for (let a2 = 0; a2 <= 28; a2++) { const th = a2 / 28 * Math.PI * 2; const p = sc(v.cx * S + 16 + Math.cos(th) * v.tr, v.cy * S + 16 + Math.sin(th) * v.tr); if (a2 === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y); }
           ctx.stroke(); ctx.setLineDash([]);
         }
-        { // 라벨 — 회관 위 (길드 라벨과 동급, 인구는 sim_village_day가 갱신)
+        if (_cellSeen(v.cx, v.cy)) { // 라벨 — 회관 위. ★안 가본 마을의 이름·인구는 안 알려 준다(정찰이 공짜가 되면 안 된다)
           const ctr = sc(v.cx * S + 16, v.cy * S + 16);
           ctx.fillStyle = stroke; ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center';
           ctx.fillText(`🏘️ ${v.name}${v.pop != null ? ' · ' + v.pop + '명' : ''}`, ctr.x, ctr.y - 46);
@@ -11849,7 +11923,7 @@ const SIM_JOB_EMOJI = {
   window.__ulShape = (col) => {
     const tb = document.querySelector(`.inv-col[data-ul-col="${col}"] .inv-table tbody`);
     if (!tb) return null;
-    const rows = [...tb.querySelectorAll('tr')].filter((tr) => !tr.dataset.toolid);
+    const rows = [...tb.querySelectorAll('tr')];   // ★도구도 같은 컴포넌트를 쓴다(옛 `data-toolid` 제외 필터 삭제)
     return rows.map((tr) => tr.className.trim() + ':' + [...tr.children].map((td) => td.className.trim()).join('|')).join(' / ');
   };
   window.__ledger = () => JSON.parse(JSON.stringify(myLedger || {}));
@@ -11858,7 +11932,7 @@ const SIM_JOB_EMOJI = {
   // ★[캐릭 시트] 성능 짝 비교 전용 토글 — **같은 화면·같은 순간**에 ON/OFF 를 견주려면 필요하다
   //   (라이브 rAF 짝 비교 캐논). 서버 env 정본은 안 바꾼다 — 이 세션의 화면만 뒤집는다.
   window.__setCharSprite = (v) => { const p = uiCfg.charSprite; uiCfg.charSprite = !!v; return p; };
-  window.__ground = () => nearbyGroundItems().map(({ gi }) => ({ id: gi.id, item: gi.item, count: gi.count, kg: gi.kg, led: gi.led || null }));
+  window.__ground = () => nearbyGroundItems().map(({ gi }) => ({ id: gi.id, item: gi.item, count: gi.count, kg: gi.kg, led: gi.led || null, tool: gi.tool || null }));
 
   function drawSpeechBubble(x, y, text) {
     if (!text) return;
@@ -12425,6 +12499,15 @@ const SIM_JOB_EMOJI = {
       thirstEl.style.width = `${Math.max(0, myThirst)}%`;
       document.getElementById('thirstText').textContent = `💧 ${Math.round(myThirst)}`;
     }
+    // ★[신체 3층 재배선] 스태미나 — 잠기면(바닥나 숨 고르는 중) 색이 바뀐다.
+    //   회복 배율이 1 이 아니면 그 사실도 적는다("왜 안 차는가"를 화면이 말한다).
+    const stamEl = document.getElementById('stamFill');
+    if (stamEl) {
+      stamEl.style.width = `${Math.max(0, Math.min(100, myStam * 100))}%`;
+      stamEl.classList.toggle('locked', !!myStamLock);
+      const rTxt = (myRecover < 0.999) ? ` <span style="opacity:.75">회복 ×${myRecover.toFixed(2)}</span>` : '';
+      document.getElementById('stamText').innerHTML = `⚡ ${Math.round(myStam * 100)}${rTxt}`;
+    }
     const vpEl = document.getElementById('vpFill');
     if (vpEl) {
       vpEl.style.width = `${Math.max(0, Math.min(100, myVp))}%`;
@@ -12442,11 +12525,11 @@ const SIM_JOB_EMOJI = {
         sprintBadge = document.createElement('span');
         sprintBadge.id = 'sprintBadge';
         sprintBadge.className = 'badge';
-        sprintBadge.title = 'Shift = 달리기 (배고픔/목마름 1.5배 소모)';
+        sprintBadge.title = 'Shift = 달리기 — 스태미나를 쓴다(짐이 무거우면 더). 배고프면 숨 고르기가 느리다.';
         pvpBadgeForSprint.parentNode.insertBefore(sprintBadge, pvpBadgeForSprint);
       }
-      const canSp = mySprint && myHunger > 5 && myThirst > 5;
-      sprintBadge.textContent = canSp ? '🏃 달리기' : (mySprint ? '😩 지침' : '🚶 걷기');
+      const canSp = mySprint && myCanSprint;
+      sprintBadge.textContent = canSp ? '🏃 달리기' : (myStamLock ? '😩 숨참' : (mySprint ? '😩 지침' : '🚶 걷기'));
       sprintBadge.style.background = canSp ? 'rgba(80,180,80,0.35)' : '';
     }
     // PvP 뱃지
@@ -12521,6 +12604,17 @@ const SIM_JOB_EMOJI = {
       else if (p < 0.95) icon = '🌙';
       else icon = '🌄';
       tb.textContent = `${icon} ${gameTimeString()}${isNight() ? ' (밤)' : ''}`;
+    }
+    // ★★[달력 2026-08-30 재민 확정] 시각 옆에 **연·계절·일**. 표시값은 서버가 econ 정본에서
+    //   유도해 준 것 그대로다 — 클라는 문장만 만든다(매핑 사본 금지).
+    const cb = document.getElementById('calBadge');
+    if (cb) {
+      if (myCalendar) {
+        cb.textContent = `📅 ${myCalendar.year}년 ${myCalendar.seasonKo} ${myCalendar.dayOfSeason}일`;
+        cb.title = `econ 게임일 ${myCalendar.day} · 연중 ${myCalendar.dayOfYear + 1}/${myCalendar.yearDays}일`
+          + ` · 이 계절 ${myCalendar.seasonDays}일`;
+        cb.hidden = false;
+      } else cb.hidden = true;
     }
   }
   // 좌표는 실시간 갱신이 자연스러워서 더 자주
@@ -13525,6 +13619,25 @@ const SIM_JOB_EMOJI = {
     };
     let h = '<div class="bd-sec">욕구</div>';
     h += need('🍖', '배고픔', b.hunger) + need('💧', '목마름', b.thirst);
+    // ★★[신체 3층 재배선 2026-08-30] 스태미나는 **욕구가 아니라 힘**이다 — 따로 세운다.
+    //   그리고 "왜 안 차는가"를 여기서 답한다: 허기·갈증이 하는 일은 **이것 하나**다.
+    h += '<div class="bd-sec">힘</div>';
+    if (typeof b.stam === 'number') {
+      const sp = pct(b.stam * 100), scls = b.stamLock ? 'bad' : (b.stam < 0.35 ? 'warn' : '');
+      h += `<div class="bd-row"><span class="bd-emo">⚡</span><span class="bd-name">스태미나</span>`
+        + `<span class="bd-bar"><span class="bd-fill ${scls}" style="width:${sp}%"></span></span>`
+        + `<span class="bd-num">${Math.round(sp)}%</span></div>`;
+      h += `<div class="bd-why">달리기는 이걸 쓴다 — <b>짐이 무거우면 더 빨리</b> 준다. `
+        + (b.stamLock ? '<b>지금은 바닥나 숨을 고르는 중</b>이다(어느 정도 차야 다시 달린다).'
+                      : (b.canSprint === false ? '지금은 달릴 수 없다.' : '지금은 달릴 수 있다.')) + '</div>';
+      const rp = (b.recoverParts || []).filter((x) => x.recover < 0.999);
+      if (typeof b.recover === 'number' && b.recover < 0.999) {
+        const why = rp.map((x) => `${x.emo}${x.ko} ×${x.recover.toFixed(2)}`).join(' · ');
+        h += `<div class="bd-why">회복 속도 <b>×${b.recover.toFixed(2)}</b>${why ? ` — ${why}` : ''}`
+          + `<br>배고픔·목마름은 <b>걸음을 늦추지 않는다</b>. 대신 <b>숨 고르기와 아묾</b>이 느려진다.`
+          + (b.recover <= 0 ? ' <b>지금은 아예 멈춰 있다</b>(그래도 체력이 깎이지는 않는다).' : '') + '</div>';
+      }
+    }
     h += '<div class="bd-sec">몸</div>';
     h += sev('🥶', '추위', b.cold) + sev('😮‍💨', '피로', b.fatigue) + sev('🩹', '부상', b.injury);
     if (b.injury > 0.01) {
@@ -13943,6 +14056,34 @@ const SIM_JOB_EMOJI = {
   }
 
   // ── 컬럼별 줄 만들기 — **모양은 하나**다: { item, count, kg, kids, drag } ──
+  // ★★[인벤 마무리 2026-08-30 재민 확정] **도구도 같은 목록에 선다.**
+  //   종전엔 도구만 딴 표(`toolRowsHtml`)였다 — 착용·단축키 버튼이 있어서였는데,
+  //   그 때문에 "같은 물건인데 목록이 둘"이라는 **비대칭이 도구 쪽에 남아 있었다**.
+  //   이제 도구도 접힘/펼침/드롭을 그대로 받는다. 착용·단축키는 **하위 줄의 우클릭**으로 간다.
+  //   도구는 태생이 개체라 하위 줄이 곧 그 도구다(원장이 필요 없다 — 무게 3층의 1층).
+  function ulRowsTools() {
+    const by = new Map();
+    for (const t of (toolItems || [])) {
+      if (!t || !t.type) continue;
+      if (!by.has(t.type)) by.set(t.type, []);
+      by.get(t.type).push(t);
+    }
+    const out = [];
+    for (const [type, list] of by) {
+      const w = (itemWeights && itemWeights[type]) || 0;
+      const kids = list.length >= 2 ? list.map((t) => ({
+        k: 't' + t.id,
+        label: `내구 ${t.d}/${t.max}` + (equipped === t.id ? ' <span class="ul-age">✓장착</span>' : '')
+             + (hotkey1 === t.id ? ' <span class="ul-age">⌨1</span>' : ''),
+        drag: { kind: 'mine', item: type, toolId: t.id, n: 1 },
+      })) : null;
+      out.push({ item: type, count: list.length, kg: w ? w * list.length : null, kids, tool: true,
+        badge: list.some((t) => equipped === t.id) ? '✓' : '',
+        drag: { kind: 'mine', item: type, toolId: list[0].id, n: 1, toolIds: list.map((t) => t.id) } });
+    }
+    return out;
+  }
+
   function ulRowsMine(inv) {
     const out = [];
     for (const [item, v] of Object.entries(inv || {})) {
@@ -13993,12 +14134,26 @@ const SIM_JOB_EMOJI = {
   }
   function ulRowsChest(data, cid) {
     const out = [];
+    // ★★[상자 원장 2026-08-30] 상자도 개체를 담는다 — `data._led[item] = [{kg,d?}]`.
+    //   그래서 상자 줄도 **펼쳐진다**. 종전엔 "하위 줄이 없는 게 사실"이었지만 이제 아니다.
+    const led = (data && data._led && typeof data._led === 'object') ? data._led : null;
     for (const [item, v] of Object.entries(data || {})) {
       const n = Math.floor(Number(v) || 0);
-      if (n <= 0 || item === 'floor' || item === 'tribe_id') continue;
+      if (n <= 0 || item === 'floor' || item === 'tribe_id' || item.startsWith('_')) continue;
       const w = (itemWeights && itemWeights[item]) || 0;
-      // ⚠상자는 스칼라 맵이라 개체 정체를 못 담는다(회부: 상자 원장) → 하위 줄이 **없는 게 사실이다**.
-      out.push({ item, count: n, kg: w ? w * n : null, kids: null, drag: { kind: 'chest', item, cid, n } });
+      const arr = led && Array.isArray(led[item]) ? led[item] : null;
+      let kg = w ? w * n : null;
+      if (arr && arr.length) {
+        let sum = 0; for (const e of arr) sum += e.kg || 0;
+        if (arr.length < n) sum += (n - arr.length) * w;
+        kg = sum;
+      }
+      // ★상자 안 개체는 **주소가 없다**(원장 id 를 상자에 안 싣는다 — FIFO 로만 나온다).
+      //   그래서 하위 줄은 **보여 주기만** 한다(개별 인출은 회부 — 그 줄엔 드래그 짐을 안 단다).
+      const kids = (arr && arr.length >= 2) ? arr.map((e, i) => ({
+        k: 'c' + i, label: `${(e.kg || 0).toFixed(2)}kg`, drag: null,
+      })) : null;
+      out.push({ item, count: n, kg, kids, drag: { kind: 'chest', item, cid, n } });
     }
     return out;
   }
@@ -14025,16 +14180,20 @@ const SIM_JOB_EMOJI = {
         : `<span class="ul-caret ul-none"></span>`;
       const btn = opts.act ? `<button class="ul-act" data-ul-act="1" title="${opts.actTitle || ''}">${opts.act}</button>` : '';
       const dragAttr = _ulEsc(JSON.stringify(r.drag));
-      let h = `<tr class="ul-row" draggable="true" data-col="${col}" data-item="${r.item}" data-ulkey="${key}" data-kids="${nKids}" data-drag='${dragAttr}'>`
+      const eqTxt = r.badge ? ` <span class="ul-age">${r.badge}장착</span>` : '';
+      // ★도구 줄도 **클래스는 같다**(`ul-row`) — `e2e-inv` ④의 DOM 구조 지문이 클래스로 동일성을 재기
+      //   때문이다. 도구임은 `data-tool` 로만 표시한다(구조가 아니라 성질이다).
+      let h = `<tr class="ul-row" draggable="true" data-col="${col}" data-item="${r.item}" data-ulkey="${key}" data-kids="${nKids}"${r.tool ? ' data-tool="1"' : ''} data-drag='${dragAttr}'>`
         + `<td class="it-icon">${icon}</td>`
-        + `<td class="it-name">${caret}${label} <span class="it-count">×${r.count}</span>${kgTxt}</td>`
+        + `<td class="it-name">${caret}${label} <span class="it-count">×${r.count}</span>${kgTxt}${eqTxt}</td>`
         + `<td class="it-cat">${cat}</td><td class="it-action">${btn}</td></tr>`;
       if (nKids >= 2) {
         for (const c of r.kids) {
-          h += `<tr class="ul-sub" draggable="true" data-col="${col}" data-item="${r.item}" data-ulparent="${key}" data-drag='${_ulEsc(JSON.stringify(c.drag))}'${open ? '' : ' hidden'}>`
+          const cd = c.drag ? ` draggable="true" data-drag='${_ulEsc(JSON.stringify(c.drag))}'` : '';
+          h += `<tr class="ul-sub" data-col="${col}" data-item="${r.item}" data-ulparent="${key}"${cd}${open ? '' : ' hidden'}>`
             + `<td class="it-icon"></td>`
             + `<td class="it-name ul-subname">└ ${c.label}</td>`
-            + `<td class="it-cat"></td><td class="it-action">${btn}</td></tr>`;
+            + `<td class="it-cat"></td><td class="it-action">${c.drag ? btn : ''}</td></tr>`;
         }
       }
       return h;
@@ -14061,28 +14220,9 @@ const SIM_JOB_EMOJI = {
     // ★도구·장비는 **이미 개체**라 원장이 필요 없다(무게 3층의 1층에 원래부터 있었다).
     //   equip/단축키 같은 제 affordance 가 있어 통일 목록에 억지로 밀어 넣지 않는다(회부: 도구 줄 통합).
     const TOOL_ICON_MAP = { axe: '🪓', pickaxe: '⛏️', sword: '⚔️', saw: '🪚', hammer: '🔨' };
-    const toolRowsHtml = () => {
-      if (!toolItems || toolItems.length === 0) return '';
-      return toolItems.map(t => {
-        const isEq = (equipped === t.id);
-        const isHot = (hotkey1 === t.id);
-        const icon = TOOL_ICON_MAP[t.type] || '🔧';
-        const durColor = t.d > t.max * 0.5 ? '#7cd97c' : (t.d > t.max * 0.2 ? '#e0c060' : '#e07060');
-        const eqBadge = isEq ? '<span style="color:#7cd97c;font-weight:bold">✓장착</span>' : '';
-        const hotBadge = isHot ? '<span style="color:#f0c674">⌨1</span>' : '';
-        return `<tr draggable="true" data-toolid="${t.id}" data-tooltype="${t.type}" style="cursor:grab;${isEq?'background:rgba(124,217,124,0.08)':''}">
-          <td class="it-icon">${icon}</td>
-          <td class="it-name">
-            <div>${t.type} ${eqBadge} ${hotBadge}</div>
-            <div style="font-size:10px;color:${durColor}">내구도 ${t.d}/${t.max}</div>
-          </td>
-          <td class="it-cat">도구</td>
-          <td class="it-action">
-            <button data-equiptool="${t.id}" title="${isEq?'해제':'착용'}">${isEq?'해제':'착용'}</button>
-          </td>
-        </tr>`;
-      }).join('');
-    };
+    // ★[인벤 마무리 2026-08-30] 옛 `toolRowsHtml`(도구 전용 표)은 **삭제**됐다.
+    //   도구는 이제 `ulRowsTools()` 로 통일 목록에 선다. 착용·단축키는 아래 결선에서
+    //   **줄 우클릭**이 맡는다(버튼 칸을 도구만 다르게 쓰면 그게 다시 두 벌이다).
 
     // 좌: 내 인벤 (toolItems 먼저, 그다음 통일 목록)
     const mineTgt = activeC ? activeC.id : (isGround ? 'ground' : null);
@@ -14091,7 +14231,7 @@ const SIM_JOB_EMOJI = {
       <div style="flex:1;overflow:auto;background:#0e1217;border-radius:4px">
         <table class="inv-table">
           <thead><tr><th></th><th>아이템</th><th>분류</th><th></th></tr></thead>
-          <tbody>${toolRowsHtml()}${ulRenderRows(ulRowsMine(inventory), 'mine', { act: mineTgt ? '↓' : '', actTitle: '1개 옮기기' })}</tbody>
+          <tbody>${ulRenderRows(ulRowsTools().concat(ulRowsMine(inventory)), 'mine', { act: mineTgt ? '↓' : '', actTitle: '1개 옮기기' })}</tbody>
         </table>
       </div></div>`;
 
@@ -14194,27 +14334,23 @@ const SIM_JOB_EMOJI = {
       });
     });
 
-    // 14.53: 도구 instance 착용/해제 + 드래그 (hotkey 등록)
-    body.querySelectorAll('[data-equiptool]').forEach(btn => btn.onclick = (e) => {
-      e.stopPropagation();
-      const id = btn.dataset.equiptool;
-      if (equipped === id) sendPrimary({ type: 'equip', toolItemId: null });
-      else sendPrimary({ type: 'equip', toolItemId: id });
-    });
-    body.querySelectorAll('tr[data-toolid]').forEach(tr => {
-      tr.addEventListener('dragstart', (e) => {
-        e.dataTransfer.setData('text/x-tool-instance', tr.dataset.toolid);
-        e.dataTransfer.effectAllowed = 'copy';
-      });
+    // ★[인벤 마무리 2026-08-30] 도구 줄 — 착용·단축키·버리기를 **우클릭 하나**로.
+    //   부모 줄(도끼 ×2)은 그 종류의 **첫 도구**를 대상으로 한다(펼치면 하나씩 고를 수 있다).
+    body.querySelectorAll('.inv-col[data-ul-col="mine"] tr[data-tool], .inv-col[data-ul-col="mine"] tr.ul-sub').forEach((tr) => {
+      const d = _drag(tr); if (!d || !d.toolId) return;
       tr.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
-        const id = tr.dataset.toolid;
-        const isEq = (equipped === id);
-        const isHot = (hotkey1 === id);
+        e.preventDefault(); e.stopPropagation();
+        const id = d.toolId, isEq = (equipped === id), isHot = (hotkey1 === id);
         showContextMenu(e.clientX, e.clientY, [
           { label: isEq ? '해제' : '착용', onClick: () => sendPrimary({ type: 'equip', toolItemId: isEq ? null : id }) },
           { label: isHot ? '1번 슬롯에서 빼기' : '1번 슬롯에 등록', onClick: () => sendPrimary({ type: 'set_hotkey', toolItemId: isHot ? null : id }) },
+          { label: '🗑 이 도구 버리기 (바닥)', onClick: () => sendPrimary({ type: 'drop_item', item: d.item, toolId: id }) },
         ]);
+      });
+      // 좌클릭 = 착용/해제(가장 잦은 조작 — 우클릭까지 안 가게)
+      tr.addEventListener('click', (ev) => {
+        if (ev.target.tagName === 'BUTTON' || ev.target.classList.contains('ul-caret')) return;
+        sendPrimary({ type: 'equip', toolItemId: (equipped === d.toolId) ? null : d.toolId });
       });
     });
     body.querySelectorAll('[data-cid]').forEach(t => {
@@ -14248,7 +14384,7 @@ const SIM_JOB_EMOJI = {
       t.addEventListener('dragleave', () => t.classList.remove('drag-over'));
       t.addEventListener('drop', (e) => {
         e.preventDefault(); t.classList.remove('drag-over');
-        try { ulSend(JSON.parse(e.dataTransfer.getData('text/plain')), t.dataset.cid, null); } catch (err) {}
+        try { ulSend(JSON.parse(e.dataTransfer.getData('text/plain')), t.dataset.cid, ulDragAmount(e)); } catch (err) {}
       });
     });
     body.querySelectorAll('[data-drop-target]').forEach(col => {
@@ -14256,7 +14392,7 @@ const SIM_JOB_EMOJI = {
       col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
       col.addEventListener('drop', (e) => {
         e.preventDefault(); col.classList.remove('drag-over');
-        try { ulSend(JSON.parse(e.dataTransfer.getData('text/plain')), col.dataset.dropTarget, null); } catch (err) {}
+        try { ulSend(JSON.parse(e.dataTransfer.getData('text/plain')), col.dataset.dropTarget, ulDragAmount(e)); } catch (err) {}
       });
     });
   }
@@ -14266,6 +14402,16 @@ const SIM_JOB_EMOJI = {
   //   수량은 수정키(Shift=10 · Ctrl=99)로 밖에서 얹었다. 이제 줄이 `ids`/`lotDay`/`giIds` 를
   //   직접 실어 보낸다 — **"몇 개"가 아니라 "어느 것"** 을 말할 수 있어야 펼친 줄이 따로 움직인다.
   //   `amount === null` 이면 그 줄 전부(부모면 전량 — 재민 확정), 수면 그만큼.
+  // ★★[인벤 마무리 2026-08-30 재민 확정] **수정키 복원.**
+  //   정비 배치에서 "부모 드래그 = 전량"(재민 확정)을 넣으며 Shift/Ctrl 수정키가 사라졌다 —
+  //   그래서 부분 이동이 버튼(1개)과 우클릭 메뉴밖에 없었다(회부 B-2 로 적어 뒀던 그 건).
+  //   ⇒ 둘을 **양립**시킨다: 수정키 **없으면 전량**(재민 확정 그대로) · 있으면 그만큼.
+  //     Shift=10 · Ctrl/Alt/Meta=99 — 종전 문법 그대로다(새 조작을 만들지 않는다).
+  function ulDragAmount(e) {
+    if (e && (e.ctrlKey || e.altKey || e.metaKey)) return 99;
+    if (e && e.shiftKey) return 10;
+    return null;   // null = 그 줄 전부
+  }
   function ulSend(d, target, amount) {
     if (!d || !d.item) return;
     const item = d.item;
@@ -14274,11 +14420,18 @@ const SIM_JOB_EMOJI = {
     if (d.kind === 'mine') {
       if (target === 'mine' || !target) return;
       if (target === 'ground') {
+        // ★[인벤 마무리] 도구는 **인스턴스 id** 로 버린다(수량이 아니다 — 내구도가 딸린 개체다).
+        if (d.toolId) {
+          const ids = (n > 1 && d.toolIds) ? d.toolIds.slice(0, n) : [d.toolId];
+          for (const tid of ids) sendPrimary({ type: 'drop_item', item, toolId: tid });
+          return;
+        }
         if (d.ids && d.ids.length) { sendPrimary({ type: 'drop_item', item, ids: d.ids.slice(0, n) }); return; }
         if (Number.isFinite(d.lotDay)) { sendPrimary({ type: 'drop_item', item, amount: n, lotDay: d.lotDay }); return; }
         sendPrimary({ type: 'drop_item', item, amount: n });
         return;
       }
+      if (d.toolId) { showNotice('도구는 상자에 못 넣는다 — 바닥에만 내려놓을 수 있다'); return; }
       // 상자 — ⚠개체 정체를 못 담는다(회부: 상자 원장). 수량만 간다.
       sendPrimary({ type: 'chest_put', buildingId: target, item, amount: (d.ids && d.ids.length) ? Math.min(n, d.ids.length) : n });
       return;
@@ -14313,7 +14466,7 @@ const SIM_JOB_EMOJI = {
   canvas.addEventListener('drop', (e) => {
     e.preventDefault();
     canvas.classList.remove('drag-over-ground');
-    try { ulSend(JSON.parse(e.dataTransfer.getData('text/plain')), 'ground', null); } catch (err) {}
+    try { ulSend(JSON.parse(e.dataTransfer.getData('text/plain')), 'ground', ulDragAmount(e)); } catch (err) {}
   });
 
   // === 제작창 (카테고리 + 레시피) ===
@@ -14525,7 +14678,13 @@ const SIM_JOB_EMOJI = {
       + `<b>🏘️ ${esc(inv.name)}</b><span id="pviClose" style="cursor:pointer;color:#8a93a0;padding:0 4px">✕</span></div>`;
     h += `<div style="padding:8px 10px;color:#8fc8ff">👥 인구 <b>${inv.pop}</b>`
       + (inv.housing != null ? ` <span style="color:#8a93a0">/ 주거 ${inv.housing}</span>` : '')
-      + ` · 📅 Day ${inv.day}<span style="color:#8a93a0"> (창설 ${inv.foundedDay})</span></div>`;
+      + ` · 📅 Day ${inv.day}<span style="color:#8a93a0"> (창설 ${inv.foundedDay})</span>`
+      // ★★[시세 창 day 판정 2026-08-30] 여기 Day 는 **econ 게임일**이다(벽시계가 아니다).
+      //   재민 목격 "몇 초마다 day 5씩"의 정체: 이 서버의 하루 길이(`VILLAGE_DAY_MS`)가 짧으면
+      //   econ 일이 그만큼 빨리 흐른다 — 표기 버그가 아니라 **그 서버의 시계**다.
+      //   그래서 날짜 옆에 **달력을 같이** 적는다. HUD 배지와 같은 값이면 시계가 하나라는 증거다.
+      + (myCalendar ? `<span style="color:#8a93a0"> · ${myCalendar.year}년 ${myCalendar.seasonKo} ${myCalendar.dayOfSeason}일</span>` : '')
+      + `</div>`;
     h += `<div style="padding:0 10px 8px">🌾 식량 환산 <b>${inv.foodEquiv}</b>`
       + (inv.pop > 0 ? ` <span style="color:#8a93a0">(1인 ${inv.foodDays}일치)</span>` : '') + `</div>`;
     if (empty) {

@@ -23,24 +23,45 @@
 const _num = (k, d) => { const v = parseFloat(process.env[k]); return Number.isFinite(v) ? v : d; };
 
 const CFG = {
-  // ── 감쇠(초당) ─────────────────────────────────────────────────────────────
-  //   ★채택 근거: 종전은 허기 10분·갈증 7분에 0 이었다 — 1시간에 6끼라 **잔소리**다.
-  //   재민 지시의 목표는 **"1시간 세션에 식사 2~3회"**.
-  //   ★채택은 실측으로 잡았다(`scripts/body-metrics.js` ②):
-  //     1800s(30분) → 조리 고기 한 덩이 기준 **4끼/시간** — 목표보다 잦다
-  //     2700s(45분) → **3끼/시간** = 목표 상단. 1단계(체감점)는 31분에 온다.
-  //   ⇒ 2700 채택. 한겨울 밤엔 추위가 허기를 밀어 더 자주 먹게 되는데, 그건 **의도**다
-  //     (겨울 준비 = 옷·불·비축이라는 판단이 생긴다 · §7 "추위는 옷감 수요와 연결").
-  HUNGER_SEC: _num('BODY_HUNGER_SEC', 2700),   // 100 → 0 까지 초
-  THIRST_SEC: _num('BODY_THIRST_SEC', 1200),   // 물은 강가에서 공짜라 더 빨라도 된다(물가로 끄는 힘)
-  SPRINT_MULT: _num('BODY_SPRINT_MULT', 1.5),
+  // ── 감쇠(초당) — ★★[3층 재배선 2026-08-30 재민 확정] 고증치로 재산정 ────────
+  //   재민 확정: **허기 = 게임 2일 · 갈증 = 게임 1일**(하루 24분 기준).
+  //     허기 2일 = 실시간 48분 = 2,880초 · 갈증 1일 = 24분 = 1,440초.
+  //   ⇒ "1시간 세션에 식사 1~2회". 종전(허기 2700s)보다 **느리다** — 종전은 게임일과
+  //     무관한 값이라 "며칠째 겨울"이라는 감각과 어긋났다. 이제 하루가 단위다.
+  HUNGER_SEC: _num('BODY_HUNGER_SEC', 2880),   // 100 → 0 까지 초 (= 게임 2일)
+  THIRST_SEC: _num('BODY_THIRST_SEC', 1440),   // 100 → 0 까지 초 (= 게임 1일)
+  // ★★상태 의존 감쇠 — **배부름은 금방 꺼지고 진짜 배고픔은 천천히 깊어진다.**
+  //   대사 고증(간 글리코겐이 먼저 빠지고 그 뒤가 느리다) + 게임적으로는 **유예**다:
+  //   경고가 뜬 뒤에도 손쓸 시간이 길다. 위(100→50)가 전체의 1/3, 아래(50→0)가 2/3.
+  //   ⇒ 위쪽 감쇠율이 아래쪽의 **정확히 2배**(기본값 기준). 총 소요는 위 `*_SEC` 그대로다.
+  DECAY_SPLIT: _num('BODY_DECAY_SPLIT', 0.5),      // 게이지 분기점(0.5 = 절반)
+  DECAY_TOP_FRAC: _num('BODY_DECAY_TOP_FRAC', 1 / 3), // 위 절반이 쓰는 시간 비중
   COLD_HUNGER_EXTRA: _num('BODY_COLD_HUNGER_EXTRA', 0.6),   // 추울수록 에너지를 더 쓴다
 
-  // ── 추위 ───────────────────────────────────────────────────────────────────
-  COLD_RISE_SEC: _num('BODY_COLD_RISE_SEC', 600),    // 맨몸·한밤에 0→1 까지
-  COLD_FALL_SEC: _num('BODY_COLD_FALL_SEC', 180),    // 불가·실내에서 1→0 까지
-  WARMTH_FULL: _num('BODY_WARMTH_FULL', 50),         // 옷 방한 이 값이면 추위 0(기존 상수와 같은 뜻)
-  COLD_SEASON_W: _num('BODY_COLD_SEASON_W', 1.0),    // 계절 배율의 세기
+  // ── 스태미나(신설 · 단기 자원) ──────────────────────────────────────────────
+  //   ★★재민 확정: **달릴 수 있는지는 스태미나가 정한다 — 허기가 아니라.**
+  //   "배고파도 뛸 수는 있는데 숨 고르기가 안 된다." 허기·갈증은 **회복 배율**로만 관여한다.
+  //   `b.stam` 은 자원이라 **1 = 가득**(다른 축은 1 = 최악 — 방향이 반대다. severity 로 뒤집어 쓴다).
+  STAM_SPRINT_SEC: _num('BODY_STAM_SPRINT_SEC', 22),   // 빈손 전력질주 가득→바닥
+  STAM_REST_SEC: _num('BODY_STAM_REST_SEC', 30),       // 서서 쉬면 바닥→가득
+  STAM_MOVE_MULT: _num('BODY_STAM_MOVE_MULT', 0.35),   // 걸으면서는 덜 찬다
+  STAM_LOAD_W: _num('BODY_STAM_LOAD_W', 1.2),          // 짐 적재율 1 이면 소모 ×(1+이 값)
+  STAM_MIN: _num('BODY_STAM_MIN', 0.02),               // 이 아래면 달리기 끊긴다
+  STAM_RESUME: _num('BODY_STAM_RESUME', 0.25),         // 끊긴 뒤 이만큼 차야 다시 달린다(깜빡임 방지)
+
+  // ── 추위 — ★★평형 수렴 모델(재민 확정) ─────────────────────────────────────
+  //   종전은 **누적식**이었다: 노출이 0보다 크기만 하면 `cold` 가 1 까지 **끝없이 올랐다**.
+  //   그래서 얇은 옷을 입어도 밤이 길면 결국 최악에 닿았고, 낮이 와도 "해소 행동"(불·실내)
+  //   없이는 안 내려갔다. 몸이 아니라 **적립금**이었다.
+  //   ⇒ 이제 주변이 **목표점**을 만들고 몸이 거기로 **지수 수렴**한다.
+  //     밤에 오르고 낮에 저절로 내려간다. 겨울엔 평형점 자체가 높아 옷·불 없이는 안 내려간다.
+  COLD_TAU_SEC: _num('BODY_COLD_TAU_SEC', 240),     // 수렴 시정수(63% 도달까지)
+  COLD_NIGHT_W: _num('BODY_COLD_NIGHT_W', 0.45),    // 밤이 목표점에 더하는 몫
+  COLD_DAY_W: _num('BODY_COLD_DAY_W', 0.0),         // 낮의 기저
+  COLD_SEASON_W: _num('BODY_COLD_SEASON_W', 0.7),   // 계절(겨울 1 · 봄가을 0.35 · 여름 0)의 몫
+  COLD_INDOOR_MULT: _num('BODY_COLD_INDOOR_MULT', 0.30),  // 실내는 목표점을 이만큼으로
+  COLD_FIRE_TARGET: _num('BODY_COLD_FIRE_TARGET', 0.05),  // 불 옆 목표점 상한
+  WARMTH_FULL: _num('BODY_WARMTH_FULL', 50),        // 옷 방한 이 값이면 노출 0(기존 상수와 같은 뜻)
 
   // ── 피로 ───────────────────────────────────────────────────────────────────
   //   ★"24분 하루의 자연 마디"(§7). 하루 종일 일하면 저녁에 효율이 떨어지는 **정도**다.
@@ -81,11 +102,12 @@ const CFG = {
 // ★문턱 절벽 없음(§8.3). x = 그 축의 **심각도**(0 좋음 … 1 최악), y = 배율.
 //   ★1단계(=아이콘이 처음 뜨는 자리)는 **효과 체감점(이속 −5%)** 에 맞춘다 —
 //     아래 `STAGE_AT` 이 각 곡선에서 y=0.95 가 되는 x 를 그대로 쓴다(상수로 박지 않는다).
+//   ★★[3층 재배선 2026-08-30 재민 확정] **허기·갈증은 여기서 빠진다.**
+//   재민 확정: *"허기·갈증은 이속·달리기에 직접 페널티 금지 — 스태미나·HP 의 회복 속도 배율로만."*
+//   왜: 배고프다고 걸음이 느려지는 건 몸의 진실이 아니고, 게임에선 **이중 벌**이었다
+//   (느려지고 + 못 뛰고 + 회복도 안 되고). 이제 결핍은 **숨 고르기와 아묾**에만 걸린다.
+//   ⇒ 두 축은 `move`/`work` 를 안 갖는다. 대신 아래 `RECOVER` 곡선을 갖는다.
 const CURVES = {
-  hunger: { move: [[0, 1], [0.45, 1], [0.7, 0.95], [0.9, 0.88], [1, 0.82]],
-            work: [[0, 1], [0.4, 1], [0.7, 0.92], [1, 0.78]] },
-  thirst: { move: [[0, 1], [0.45, 1], [0.7, 0.95], [0.9, 0.87], [1, 0.80]],
-            work: [[0, 1], [0.5, 1], [0.8, 0.93], [1, 0.85]] },
   cold:   { move: [[0, 1], [0.35, 1], [0.65, 0.95], [0.85, 0.90], [1, 0.85]],
             work: [[0, 1], [0.3, 1], [0.6, 0.93], [1, 0.80]] },
   fatigue:{ move: [[0, 1], [0.4, 1], [0.7, 0.95], [1, 0.88]],
@@ -93,7 +115,19 @@ const CURVES = {
   injury: { move: [[0, 1], [0.15, 0.97], [0.5, 0.88], [1, 0.72]],
             work: [[0, 1], [0.2, 0.96], [0.6, 0.86], [1, 0.75]] },
 };
+// ★★회복 배율 곡선 — x = 심각도(0 배부름 … 1 공복), y = **스태미나·HP 회복 속도 배율**.
+//   ★극단(x=1)에서 **0** 이다: 회복이 **멈춘다**. 그래도 HP 가 **깎이지는 않는다** —
+//     ★아사 폐지 캐논(재민 재확정 2026-08-30: 죽음 설계 배치 전까지 보류)을 그대로 지킨다.
+//     `test-body ④` 가 "극단에서 HP 불감소"를 못 박는다.
+const RECOVER = {
+  hunger: [[0, 1], [0.40, 1], [0.65, 0.75], [0.90, 0.25], [1, 0]],
+  thirst: [[0, 1], [0.35, 1], [0.60, 0.70], [0.90, 0.20], [1, 0]],
+};
 const AXES = ['hunger', 'thirst', 'cold', 'fatigue', 'injury'];
+// 이속·작업 곡선을 갖는 축(허기·갈증은 빠졌다)
+const EFFECT_AXES = ['cold', 'fatigue', 'injury'];
+// 회복 배율로만 작용하는 축
+const RECOVER_AXES = ['hunger', 'thirst'];
 const KO = { hunger: '배고픔', thirst: '목마름', cold: '추위', fatigue: '피로', injury: '부상', morale: '사기' };
 const EMO = { hunger: '🍖', thirst: '💧', cold: '🥶', fatigue: '😮‍💨', injury: '🩹', morale: '✨' };
 
@@ -120,9 +154,13 @@ function xWhereBelow(pts, y) {
   return 1;
 }
 // 단계 경계 — 1단계는 **이속 −5% 지점**(체감점), 2·3단계는 그 사이를 고르게.
+//   ★[3층 재배선] 허기·갈증은 이속 곡선이 없어졌다 ⇒ **회복 곡선**에서 같은 방식으로 유도한다.
+//     "1단계 = 처음 체감되는 자리"라는 뜻은 그대로고, 무엇이 체감되는지가 바뀐 것이다.
+//     (상수로 박지 않는다 — 곡선을 고치면 단계가 따라온다. 종전 규약 그대로.)
 const STAGE_AT = {};
 for (const a of AXES) {
-  const s1 = xWhereBelow(CURVES[a].move, 0.95);
+  const src = CURVES[a] ? CURVES[a].move : RECOVER[a];
+  const s1 = xWhereBelow(src, 0.95);
   STAGE_AT[a] = [s1, s1 + (1 - s1) * 0.45, s1 + (1 - s1) * 0.8];
 }
 
@@ -132,9 +170,12 @@ for (const a of AXES) {
 //   새 축만 `p.body` 에 0..1 로 담는다(0 좋음 … 1 최악, 사기만 0 없음 … 1 최고).
 function ensure(p) {
   if (!p.body || typeof p.body !== 'object') {
-    p.body = { cold: 0, fatigue: 0, injury: 0, morale: 0, herbUntil: 0, stages: {} };
+    p.body = { cold: 0, fatigue: 0, injury: 0, morale: 0, herbUntil: 0, stages: {}, stam: 1, stamLock: false };
   }
   if (!p.body.stages) p.body.stages = {};
+  // ★[3층 재배선] 옛 저장본엔 스태미나가 없다 — 가득으로 시작한다(불이익 없이 승격).
+  if (!Number.isFinite(p.body.stam)) p.body.stam = 1;
+  if (typeof p.body.stamLock !== 'boolean') p.body.stamLock = false;
   return p.body;
 }
 // 각 축의 **심각도** 0..1 — 곡선의 입력. 여기가 단위 환산의 유일한 자리다.
@@ -154,7 +195,7 @@ function effects(p) {
   const sev = severity(p), b = ensure(p);
   let move = 1, work = 1;
   const parts = [];
-  for (const a of AXES) {
+  for (const a of EFFECT_AXES) {   // ★[3층 재배선] 허기·갈증은 여기 없다(회복 배율로만 작용)
     const s = sev[a];
     const m = lerpCurve(CURVES[a].move, s), w = lerpCurve(CURVES[a].work, s);
     move *= m; work *= w;
@@ -173,6 +214,58 @@ function effects(p) {
     floored: move < CFG.MOVE_FLOOR || work < CFG.WORK_FLOOR,
     parts,
   };
+}
+
+// ── ★★회복 배율 — 허기·갈증이 하는 **유일한** 일 ────────────────────────────
+//   스태미나 회복과 HP 자연 회복이 이 값을 곱한다. 둘 다 여기 하나를 본다(사본 금지).
+//   반환 0..1. 0 = 회복 정지(HP 감소는 **아니다** — 아사 폐지 캐논).
+function recoverMult(p) {
+  const sev = severity(p);
+  let m = 1;
+  for (const a of RECOVER_AXES) m *= lerpCurve(RECOVER[a], sev[a]);
+  return +Math.max(0, Math.min(1, m)).toFixed(4);
+}
+// 각 축이 회복에 얼마를 곱하는지 — 상태 패널이 "왜 안 낫는가"를 말할 재료.
+function recoverParts(p) {
+  const sev = severity(p);
+  return RECOVER_AXES.map((a) => ({ axis: a, ko: KO[a], emo: EMO[a], sev: +sev[a].toFixed(3),
+    recover: +lerpCurve(RECOVER[a], sev[a]).toFixed(4) })).filter((x) => x.recover < 0.999);
+}
+
+// ── ★★스태미나 — 달리기의 유일한 관문 ───────────────────────────────────────
+//   ★히스테리시스: 바닥나면 `stamLock` 이 서고, `STAM_RESUME` 까지 차야 풀린다.
+//     안 그러면 0 근처에서 **달렸다 걸었다**가 초당 여러 번 깜빡인다(겉은 계단 규약과 같은 뜻).
+function canSprint(p) {
+  const b = ensure(p);
+  if (b.stamLock) return b.stam >= CFG.STAM_RESUME;
+  return b.stam > CFG.STAM_MIN;
+}
+function stamina(p) { return ensure(p).stam; }
+
+// ── ★★추위 목표점 — 주변이 만드는 **평형점**(몸은 여기로 수렴할 뿐이다) ──────
+//   입력: 밤·계절·옷·실내·불. 종전에 `tick` 안에 흩어져 있던 것을 여기 하나로 모은다.
+//   ⇒ 하네스가 "겨울 평형점이 여름보다 높은가"를 **곡선을 다시 짜지 않고** 물어볼 수 있다.
+function coldTarget(ctx) {
+  const c = ctx || {};
+  const exposure = Math.max(0, 1 - (c.warmth || 0) / CFG.WARMTH_FULL);   // 옷이 막는 몫
+  let t = (c.night ? CFG.COLD_NIGHT_W : CFG.COLD_DAY_W) + (c.seasonCold || 0) * CFG.COLD_SEASON_W;
+  t *= exposure;
+  if (c.indoor) t *= CFG.COLD_INDOOR_MULT;
+  if (c.nearFire) t = Math.min(t, CFG.COLD_FIRE_TARGET);
+  return +Math.max(0, Math.min(1, t)).toFixed(4);
+}
+
+// ── ★상태 의존 감쇠율 — 게이지 위치에 따라 빠르기가 다르다 ───────────────────
+//   g: 0..100 현재 게이지 · totalSec: 100→0 총 소요. 반환 = 지금의 초당 감소량.
+//   위 절반(g > SPLIT)이 전체 시간의 TOP_FRAC 을 쓰고, 아래가 나머지를 쓴다.
+//   ⇒ 총합은 정확히 `totalSec` 로 보존된다(하네스 ③이 실측으로 확인한다).
+function decayRate(g, totalSec) {
+  const sp = Math.max(0.05, Math.min(0.95, CFG.DECAY_SPLIT));
+  const tf = Math.max(0.05, Math.min(0.95, CFG.DECAY_TOP_FRAC));
+  const gate = sp * 100;
+  return (g > gate)
+    ? (100 * sp) / (totalSec * tf)              // 위 절반
+    : (100 * (1 - sp)) / (totalSec * (1 - tf)); // 아래 절반
 }
 
 // ── 단계(겉은 계단) — 전환에만 히스테리시스 ──────────────────────────────────
@@ -206,19 +299,33 @@ function tick(p, dtSec, ctx) {
   if (!(dtSec > 0)) return;
   const b = ensure(p);
   const c = ctx || {};
-  // 추위 — 밤·계절이 올리고, 불·실내·옷이 내린다.
-  const coldFactor = Math.max(0, 1 - (c.warmth || 0) / CFG.WARMTH_FULL);
-  const exposure = Math.max(0, Math.min(1, (c.night ? 1 : 0) * 0.7 + (c.seasonCold || 0) * CFG.COLD_SEASON_W * 0.6)) * coldFactor;
-  if (c.nearFire || c.indoor || exposure <= 0) {
-    b.cold = Math.max(0, b.cold - dtSec / CFG.COLD_FALL_SEC);
+  // ★★추위 — **평형 수렴**(재민 확정 2026-08-30). 주변이 목표점을 만들고 몸이 거기로 간다.
+  //   종전은 누적식이라 노출이 조금만 있어도 결국 1 에 닿았다(적립금). 이제는 밤에 올랐다가
+  //   **낮이 오면 해소 행동 없이도 내려간다** — 겨울엔 평형점 자체가 높아 옷·불이 필요하다.
+  const tgt = coldTarget(c);
+  const k = 1 - Math.exp(-dtSec / Math.max(1, CFG.COLD_TAU_SEC));
+  b.cold = Math.max(0, Math.min(1, b.cold + (tgt - b.cold) * k));
+
+  // ★★허기·갈증 — **상태 의존 감쇠**. 배부름은 금방 꺼지고 진짜 배고픔은 천천히 깊어진다.
+  //   ★달리기 가속은 **없앴다**: 달리기의 대가는 이제 **스태미나**다(3층 재배선).
+  //     종전엔 달리면 허기가 1.5배로 줄었는데, 그건 "달리기 = 식량 소모"라는 두 번째 벌이었다.
+  const cm = 1 + CFG.COLD_HUNGER_EXTRA * b.cold;   // 추우면 에너지를 더 쓴다(허기만)
+  const h0 = (p.hunger == null ? 100 : p.hunger);
+  const t0 = (p.thirst == null ? 100 : p.thirst);
+  p.hunger = Math.max(0, h0 - decayRate(h0, CFG.HUNGER_SEC) * dtSec * cm);
+  p.thirst = Math.max(0, t0 - decayRate(t0, CFG.THIRST_SEC) * dtSec);
+
+  // ★★스태미나 — 달리면 줄고(짐이 무거우면 더), 서면 찬다(허기·갈증이 그 속도를 정한다).
+  const load = Math.max(0, Number(c.carryRatio) || 0);
+  if (c.sprint && c.moving) {
+    const drain = (1 / CFG.STAM_SPRINT_SEC) * (1 + CFG.STAM_LOAD_W * load);
+    b.stam = Math.max(0, b.stam - drain * dtSec);
+    if (b.stam <= CFG.STAM_MIN) b.stamLock = true;      // 바닥 — 다시 차야 달린다
   } else {
-    b.cold = Math.min(1, b.cold + (dtSec / CFG.COLD_RISE_SEC) * exposure);
+    const rec = (1 / CFG.STAM_REST_SEC) * (c.moving ? CFG.STAM_MOVE_MULT : 1) * recoverMult(p);
+    b.stam = Math.min(1, b.stam + rec * dtSec);
+    if (b.stamLock && b.stam >= CFG.STAM_RESUME) b.stamLock = false;
   }
-  // 허기·갈증 — 달리면 빨리, 추우면 허기만 더.
-  const dm = (c.sprint && c.moving) ? CFG.SPRINT_MULT : 1;
-  const cm = 1 + CFG.COLD_HUNGER_EXTRA * b.cold;
-  p.hunger = Math.max(0, (p.hunger == null ? 100 : p.hunger) - (100 / CFG.HUNGER_SEC) * dtSec * dm * cm);
-  p.thirst = Math.max(0, (p.thirst == null ? 100 : p.thirst) - (100 / CFG.THIRST_SEC) * dtSec * dm);
   // 피로 — 일하면 오르고(그건 onLabor 가 한다) 쉬면 내린다.
   let restMult = c.indoor ? CFG.FATIGUE_INDOOR_MULT : 1;
   if (c.moving) restMult *= CFG.FATIGUE_MOVE_MULT;
@@ -258,6 +365,9 @@ function selfPayload(p) {
     thirst: +(p.thirst == null ? 100 : p.thirst).toFixed(2),
     cold: +b.cold.toFixed(4), fatigue: +b.fatigue.toFixed(4),
     injury: +b.injury.toFixed(4), morale: +b.morale.toFixed(4),
+    // ★[3층 재배선] 스태미나·회복 배율 — 화면이 "왜 못 뛰나 / 왜 안 낫나"를 말할 재료.
+    stam: +b.stam.toFixed(4), stamLock: !!b.stamLock, canSprint: canSprint(p),
+    recover: recoverMult(p), recoverParts: recoverParts(p),
     herb: (b.herbUntil || 0) > Date.now(),
     moveMult: e.moveMult, workMult: e.workMult, floored: e.floored,
     parts: e.parts.map((x) => ({ axis: x.axis, ko: x.ko, emo: x.emo, sev: x.sev,
@@ -270,11 +380,11 @@ function selfPayload(p) {
 function peerPayload(p) { return { moodles: moodles(p).map((m) => ({ axis: m.axis, stage: m.stage })) }; }
 
 // 저장/복원 — 주기 저장(`SAVE_INTERVAL_MS`) 경로에 실린다.
-function toSave(p) { const b = ensure(p); return { cold: +b.cold.toFixed(4), fatigue: +b.fatigue.toFixed(4), injury: +b.injury.toFixed(4), morale: +b.morale.toFixed(4) }; }
+function toSave(p) { const b = ensure(p); return { cold: +b.cold.toFixed(4), fatigue: +b.fatigue.toFixed(4), injury: +b.injury.toFixed(4), morale: +b.morale.toFixed(4), stam: +b.stam.toFixed(4) }; }
 function fromSave(p, saved) {
   const b = ensure(p);
   if (!saved || typeof saved !== 'object') return b;
-  for (const k of ['cold', 'fatigue', 'injury', 'morale']) {
+  for (const k of ['cold', 'fatigue', 'injury', 'morale', 'stam']) {   // ★[3층 재배선] 스태미나도 산다
     if (typeof saved[k] === 'number' && Number.isFinite(saved[k])) b[k] = Math.max(0, Math.min(1, saved[k]));
   }
   return b;
@@ -294,6 +404,7 @@ function snapshot(p) { const b = ensure(p); return { hunger: p.hunger, thirst: p
 module.exports = {
   CFG, CURVES, AXES, KO, EMO, STAGE_AT,
   lerpCurve, xWhereBelow, ensure, severity, effects, stageOf, moodles,
+  RECOVER, EFFECT_AXES, RECOVER_AXES, recoverMult, recoverParts, canSprint, stamina, coldTarget, decayRate,
   tick, onLabor, onDamage, onEat, onHerb,
   selfPayload, peerPayload, toSave, fromSave, dirtySince, snapshot,
 };

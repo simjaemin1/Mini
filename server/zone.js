@@ -473,7 +473,10 @@ const MOVE_PARAMS = MoveModel.paramsFrom({
 //   지우지 않고 남기면 다음 사람이 "여기가 정본"이라 믿고 여기를 고친다(아무 일도 안 일어난다).
 //   ⇒ 이름으로 죽여 둔다. 손잡이는 `BODY_SPRINT_MULT` 다.
 const SPRINT_DRAIN_MULT__DEAD_SEE_body_js = 1.5;
-const SPRINT_MIN_GAUGE = 5;
+// ⚠[신체 3층 재배선 2026-08-30] **사장(死藏)됨** — 달리기 관문은 이제 스태미나다(`Body.canSprint`).
+//   지우지 않고 이름으로 죽여 둔다: 다음 사람이 "여기가 관문"이라 믿고 여기를 고치면
+//   아무 일도 안 일어난다(같은 함정을 `SPRINT_DRAIN_MULT__DEAD_SEE_body_js` 가 이미 겪었다).
+const SPRINT_MIN_GAUGE__DEAD_SEE_body_canSprint = 5;
 // Phase 14.41 — 사망/구조: downed 상태 유지 시간, 구조 가능 윈도우.
 // 0~10초: 구조 가능 + 즉시 부활 가능.  10초 후: 부활만 가능.
 const RESCUE_WINDOW_MS = 10000;
@@ -2238,6 +2241,15 @@ if (ZONE_ID === 'hanbando') {
 
 // === HTTP + WebSocket ===
 const server = http.createServer((req, res) => {
+  // ★★[RTT 상관 계측 2026-08-30 재민 지시] **수리가 아니라 계측이다.**
+  //   재민 실기: RTT 가 이따금 튄다. 후보는 econ 하루 틱(실측 346ms)과 주기 저장이다.
+  //   추정으로 고치지 않는다 — 무거운 작업이 **언제 얼마나** 걸렸는지 남기고,
+  //   클라가 잰 RTT 와 **시간 상관**을 본다(`scripts/rtt-metrics.js`).
+  if (req.url === '/perf' && req.method === 'GET') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ zone: ZONE_ID, now: Date.now(), events: _perfRing.slice() }));
+    return;
+  }
   if (req.url === '/health' && req.method === 'GET') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     let humans = 0;
@@ -2584,6 +2596,7 @@ async function _acceptConnection(ws, req, C) {
       resources: Array.from(resources.values()),
       claims: Array.from(claims.values()),
       simVillages: SimVillages.clientVillages(), // §4-4 Stage 4A: 마을 영토(경계 셀)·이름·인구 — 1회
+    calendar: calendarNow(),                   // ★[달력 2026-08-30] 연·계절·일 — econ 정본에서 유도
       granStocks: SimVillages.granStocks(),      // ★곳간② 물리 재고 스냅샷(이후 gran_stock 델타) — 사다리 앞 짐더미 연출
       markets: SimVillages.marketVillages(),     // ★[10차 T4] 장마당 스냅샷 flat[ccx,ccy,…](이후 markets 방송) — 캐러밴 체류 중인 마을만
       banditCamps: Bandits.clientCamps(), // §11 도적: 소굴·야영 마커 1종 — 이후 bandit_camps가 변경분 방송
@@ -3042,6 +3055,7 @@ async function _acceptConnection(ws, req, C) {
     resources: Array.from(resources.values()),
     claims: Array.from(claims.values()),
     simVillages: SimVillages.clientVillages(), // §4-4 Stage 4A: 마을 영토(경계 셀)·이름·인구 — 1회
+    calendar: calendarNow(),                   // ★[달력 2026-08-30] 연·계절·일 — econ 정본에서 유도
       granStocks: SimVillages.granStocks(),      // ★곳간② 물리 재고 스냅샷(이후 gran_stock 델타) — 사다리 앞 짐더미 연출
       markets: SimVillages.marketVillages(),     // ★[10차 T4] 장마당 스냅샷 flat[ccx,ccy,…](이후 markets 방송) — 캐러밴 체류 중인 마을만
     banditCamps: Bandits.clientCamps(), // §11 도적: 소굴·야영 마커 1종 — 이후 bandit_camps가 변경분 방송
@@ -3053,7 +3067,7 @@ async function _acceptConnection(ws, req, C) {
     rooms: Rooms.allRooms().map(Rooms.wireRoom),   // ★[배치 18 ①] 방은 서버가 판정한다 — 클라는 받아 쓰기만(사본 방지)
     groundItems: Array.from(groundItems.values()), // Phase 14.23
     mobs: Array.from(mobs.values()).map(m => ({ mid: m.mid, type: m.type, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, tameOwner: m.tameOwner || null, tameOwnerName: m.tameOwnerName || null })),
-    inventory: player.inventory,
+    inventory: invPayload(player.inventory),
     toolItems: player.toolItems || [], hotkey1: player.hotkey1 || null, equipped: player.equipped || null,
     equipment: player.equipment || [], craftSkill: player.craftSkill || {}, // 플레이어 아이템 인스턴스·숙련
     tools: player.tools, // 옛 호환 (사용 X)
@@ -3153,7 +3167,7 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'claim') tryClaim(player, msg.kind || 'personal');
   // ★[원장 승격 2026-08-30] 지목 드롭/줍기 — `ids`(개체 원장 id) · `lotDay`(로트 취득일) · `giIds`(바닥 여러 덩이).
   //   옛 인자(`item`+`amount`, `giId`)는 그대로 산다 — 하네스·옛 클라가 안 깨진다.
-  else if (msg.type === 'drop_item') tryDropItem(player, msg.item, msg.amount || 1, { ids: msg.ids, lotDay: msg.lotDay });
+  else if (msg.type === 'drop_item') tryDropItem(player, msg.item, msg.amount || 1, { ids: msg.ids, lotDay: msg.lotDay, toolId: msg.toolId });
   else if (msg.type === 'pickup_item') {
     if (Array.isArray(msg.giIds)) for (const g of msg.giIds.slice(0, 64)) tryPickupItem(player, g);
     else tryPickupItem(player, msg.giId);
@@ -3644,7 +3658,7 @@ function handleObserverMessage(ws, raw) {
       zone: zonePublicMeta(),
       hardcodedTerrain: getHardcodedTerrainForZone(),
       // Phase 5-K4: mobs도 생략 — observer가 tick(visibleMobs)으로 이미 받고 갱신 중.
-      inventory: player.inventory,
+      inventory: invPayload(player.inventory),
       toolItems: player.toolItems || [], hotkey1: player.hotkey1 || null, equipped: player.equipped || null,
       equipment: player.equipment || [], craftSkill: player.craftSkill || {}, // 플레이어 아이템 인스턴스·숙련
       tools: player.tools,
@@ -3828,6 +3842,10 @@ function doDismantleBuilding(player, buildingId) {
       if (typeof v === 'number' && v > 0) {
         player.inventory[k] = (player.inventory[k] || 0) + v;
       }
+    }
+    // ★[상자 원장 2026-08-30] 부수면 개체도 같이 돌아온다 — 안 그러면 철거가 **무게 세탁기**가 된다.
+    if (b.data._led && typeof b.data._led === 'object') {
+      for (const [k, arr] of Object.entries(b.data._led)) if (Array.isArray(arr)) Carry.noteEntries(player, k, arr);
     }
   }
   // 14.54-a: stair ↔ auto floor cascade
@@ -4130,6 +4148,24 @@ const _SEASON_DAY_MS = (parseInt(process.env.VILLAGE_DAY_MS || '', 10) || (WORLD
 // ★게임일은 **존 자체 시계**로 센다 — `ENABLE_VILLAGES=0` 이어도 계절·로트 나이는 있어야 하기 때문이다
 //   (마을 시뮬에 의존시키면 하네스마다 계절이 사라진다). 이 한 줄이 존의 게임일 정본이다.
 function zoneGameDay() { return Math.floor((Date.now() - ((WORLD && WORLD.worldEpoch) || 0)) / _SEASON_DAY_MS); }
+// ★[RTT 상관 계측] 무거운 작업 기록 — 최근 400건 링. `/perf` 가 그대로 내준다.
+//   ⚠계측기지 손잡이가 아니다: 아무 동작도 바꾸지 않는다(관측자 규약).
+const _perfRing = [];
+function perfMark(kind, ms, extra) {
+  if (!(ms >= 0)) return;
+  _perfRing.push(Object.assign({ t: Date.now(), kind, ms: Math.round(ms * 100) / 100 }, extra || {}));
+  if (_perfRing.length > 400) _perfRing.splice(0, _perfRing.length - 400);
+}
+// ★★[달력 2026-08-30 재민 확정] 화면에 나갈 연·계절·일. **새 매핑을 여기서 만들지 않는다** —
+//   `Events.calendarOf` 가 econ `seasonOf` 하나만 보고 전부 유도한다(상수 0개).
+//   날짜는 **econ 게임일**을 쓴다(마을 재고창과 같은 시계 — 화면에 날짜가 둘이면 그게 곧 거짓말이다).
+//   마을 시뮬이 꺼진 존에서는 벽시계 파생(`zoneGameDay`)으로 떨어진다.
+function calendarNow() {
+  let d = null;
+  try { d = (SimVillages.econDay ? SimVillages.econDay() : null); } catch (e) {}
+  if (d === null || d === undefined) d = zoneGameDay();   // 마을 시뮬이 없는 존만 벽시계로 떨어진다
+  try { return require('./events').calendarOf(d); } catch (e) { return null; }
+}
 // ★★[무게 배치] 걸음 배율의 **정본 하나** — 서버 이동과 클라 예측이 같은 수를 써야 러버밴딩이 안 난다.
 //   신체(§7) × 과적, 곱 폭주는 바닥에서 자른다. 이 함수를 안 거치는 배율 계산을 새로 만들지 마라.
 function moveMultOf(p) { return Carry.combinedMove(Body.effects(p).moveMult, Carry.effects(p).moveMult); }
@@ -5247,6 +5283,19 @@ function consumeItem(player, item, n) {
 //   (전리품 표 두 벌 사고의 전송판). 한 메시지 = 한 스냅샷이라야 클라가 셋을 맞춰 그린다.
 //   보내기 직전에 쓸개(reconcile)를 돌리고 **불변식을 검사한다** — 어긋나면 조용히 넘어가지 않는다.
 //   ★클라가 "무엇이 개체형인가" 표를 들지 않는다: 원장이 실려 오면 펼치고, 안 오면 못 펼친다.
+// ★[인벤 마무리 2026-08-30 재민 확정] **수량 0 은 화면에 없다.**
+//   서버 맵에는 0 키가 남는다(옛 경로들이 `-=` 로 그렇게 해 왔고 지우면 순회 동작이 조용히 바뀐다).
+//   대신 **나가는 페이로드에서** 턴다 — 클라가 0 을 못 받으니 0 행이 구조적으로 안 생긴다.
+//   (클라 필터에만 맡기면 다음에 새 목록을 만드는 사람이 또 빠뜨린다 — 원천에서 막는다.)
+function invPayload(inv) {
+  const out = {};
+  for (const [k, v] of Object.entries(inv || {})) {
+    const n = Math.floor(Number(v) || 0);
+    if (n > 0) out[k] = n;
+  }
+  return out;
+}
+
 function sendInventory(player, where) {
   if (!player || player.isNpc || !player.ws) return;
   const inv = player.inventory || {};
@@ -5263,7 +5312,7 @@ function sendInventory(player, where) {
     for (const it of Object.keys(inv)) if (Lots.isLot(it)) Lots.reconcile(player, it, inv, today);
     lots = Lots.viewAll(player, inv, today);
   } catch (e) { console.warn('[inv] 원장 조립 실패:', e && e.message); }
-  send(player.ws, { type: 'inventory', inventory: inv, ledger: led, lots });
+  send(player.ws, { type: 'inventory', inventory: invPayload(inv), ledger: led, lots });
 }
 
 // === Phase 14.23: 바닥 아이템 (좀보이드 world item) ===
@@ -5278,6 +5327,8 @@ function _spawnGroundItems(player, item, parcels) {
     const gid = `g${nextGiId++}`;
     const gi = { id: gid, x: player.x + ox, y: player.y + oy, item, count: pc.n, droppedAt: Date.now(), kg: +(+pc.kg).toFixed(3) };
     if (pc.led && pc.led.length) gi.led = pc.led.map((e) => (Number.isFinite(e.d) ? { kg: e.kg, d: e.d } : { kg: e.kg }));
+    // ★[인벤 마무리] 도구 개체 — 내구도까지 그대로 싣는다(주우면 그 도구가 그대로 돌아온다).
+    if (pc.tool) gi.tool = { type: pc.tool.type, d: pc.tool.d | 0, max: pc.tool.max | 0 };
     groundItems.set(gid, gi);
     broadcast({ type: 'ground_item_added', gi });
     out.push(gi);
@@ -5292,6 +5343,25 @@ function tryDropItem(player, item, amount, opts) {
   opts = opts || {};
   const have = player.inventory[item] || 0;
   const _short = () => send(player.ws, { type: 'notice', text: `${ITEM_LABEL_SERVER[item] || item} 부족` });
+
+  // ── ⓪ 도구 개체 지목 — ★[인벤 마무리 2026-08-30] 도구는 인벤 수량이 아니라 **인스턴스**다.
+  //   `toolItems` 는 `{id, type, d, max}` 라 스칼라 맵에 없다 ⇒ 드롭 경로가 아예 없었다
+  //   (재민 실기: "도구를 버릴 수가 없다"). 바닥엔 **정체 그대로** 떨어지고 주우면 내구도까지 돌아온다.
+  if (opts.toolId) {
+    const arr = player.toolItems || [];
+    const ix = arr.findIndex((t) => t && t.id === opts.toolId);
+    if (ix < 0) { send(player.ws, { type: 'notice', text: '그 도구가 없다' }); return; }
+    const inst = arr.splice(ix, 1)[0];
+    if (player.equipped === inst.id) { player.equipped = null; }      // 들고 있던 것이면 손에서 놓는다
+    if (player.hotkey1 === inst.id) { player.hotkey1 = null; }
+    const kg = Weights.kgOfOrDefault(inst.type);
+    _spawnGroundItems(player, inst.type, [{ n: 1, kg, tool: { type: inst.type, d: inst.d, max: inst.max } }]);
+    sendInventory(player, 'drop:tool');
+    send(player.ws, { type: 'tools', toolItems: player.toolItems || [], equipped: player.equipped, hotkey1: player.hotkey1 || null });
+    send(player.ws, { type: 'notice', text: `🪓 ${ITEM_LABEL_SERVER[inst.type] || inst.type} 버림 (내구 ${inst.d}/${inst.max})` });
+    savePlayer(player);
+    return;
+  }
 
   // ── ① 개체 지목 — 2kg 물고기 하나를 골라 버린다 ────────────────────────
   const ids = Array.isArray(opts.ids) ? opts.ids.map(Number).filter(Number.isFinite) : null;
@@ -5385,6 +5455,20 @@ function tryPickupItem(player, gid) {
   const dist = Math.hypot(gi.x - player.x, gi.y - player.y);
   if (dist > 80) {
     send(player.ws, { type: 'notice', text: '바닥 아이템에서 너무 멀리 있습니다' }); return;
+  }
+  // ★[인벤 마무리 2026-08-30] 도구 개체는 **인벤 수량이 아니라 인스턴스**로 돌아온다.
+  //   id 는 새로 매긴다(남의 주소를 물려받지 않는다 — 개체 원장과 같은 규약). 내구도는 그대로.
+  if (gi.tool && gi.tool.type) {
+    if (!player.toolItems) player.toolItems = [];
+    const mx = gi.tool.max || TOOL_MAX_DURABILITY[gi.tool.type] || 100;
+    player.toolItems.push({ id: genToolId(), type: gi.tool.type, d: Math.max(0, Math.min(mx, gi.tool.d | 0)), max: mx });
+    groundItems.delete(gid);
+    sendInventory(player, 'pickup:tool');
+    send(player.ws, { type: 'tools', toolItems: player.toolItems, equipped: player.equipped, hotkey1: player.hotkey1 || null });
+    send(player.ws, { type: 'notice', text: `🤚 ${ITEM_LABEL_SERVER[gi.tool.type] || gi.tool.type} 주움 (내구 ${gi.tool.d}/${mx})` });
+    savePlayer(player);
+    broadcast({ type: 'ground_item_removed', id: gid });
+    return;
   }
   player.inventory[gi.item] = (player.inventory[gi.item] || 0) + gi.count;
   // ★★[원장 승격] 개체가 실려 있으면 **그대로** 원장에 돌린다(id 는 새로 매긴다 — 내 주소로 받는다).
@@ -6472,11 +6556,18 @@ function tryChestPut(player, buildingId, item, amount) {
   if ((player.inventory[item] || 0) < amount) {
     send(player.ws, { type: 'notice', text: `${item} 부족` }); return;
   }
-  // ★[원장 승격 2026-08-30] 상자에 넣은 개체를 원장에서도 뺀다(정본 `consumeItem`).
-  //   ⚠상자는 스칼라 맵이라 **개체 정체를 못 담는다** — 넣었다 빼면 표준 kg 로 돌아온다(회부: 상자 원장).
-  //   그래도 여기서 빼는 이유: 안 빼면 쓸개가 **뒤에서** 잘라 "어느 물고기가 사라졌는지" 가 임의가 된다.
-  consumeItem(player, item, amount);
+  // ★★[상자 원장 2026-08-30 재민 확정] **왕복 보존을 상자까지.** 2kg 물고기를 넣었다 빼도 2kg 이다.
+  //   구조: `b.data._led[item] = [{kg, d?}, …]`. 밑줄 접두사라 기존 두 소비자가 **이미** 걸러낸다 —
+  //     · `guild-treasury.granaryItems` : `k.startsWith('_')` 스킵
+  //     · 철거 반환 루프(`typeof v === 'number'`) : 배열이라 스킵
+  //   그래서 곳간 회계·철거를 건드리지 않고 얹힌다(그 둘이 안 걸러 냈다면 이건 회부감이었다).
+  const _took = consumeItem(player, item, amount);
   b.data = b.data || {};
+  if (_took && _took.entries && _took.entries.length) {
+    if (!b.data._led || typeof b.data._led !== 'object') b.data._led = {};
+    if (!Array.isArray(b.data._led[item])) b.data._led[item] = [];
+    for (const e of _took.entries) b.data._led[item].push(Number.isFinite(e.d) ? { kg: e.kg, d: e.d } : { kg: e.kg });
+  }
   // 기존 wood/stone만 초기화되어 있던 chest는 다른 키 보존
   b.data[item] = (b.data[item] || 0) + amount;
   db.updateBuildingData(b.dbId, JSON.stringify(b.data));
@@ -6554,6 +6645,15 @@ async function tryChestTake(player, buildingId, item, amount) {
   }
   b.data[item] -= takeAmt;
   player.inventory[item] = (player.inventory[item] || 0) + takeAmt;
+  // ★★[상자 원장 2026-08-30] 넣어 둔 **그 개체**를 꺼낸다(FIFO). 없으면 표준 kg 로 떨어진다(옛 상자 호환).
+  //   여기서 안 꺼내면 쓸개가 표준 kg 로 메워, 2kg 물고기가 상자를 거치며 조용히 0.9kg 이 된다.
+  const _cl = (b.data._led && Array.isArray(b.data._led[item])) ? b.data._led[item] : null;
+  if (_cl && _cl.length) {
+    const got = _cl.splice(0, takeAmt);
+    Carry.noteEntries(player, item, got);
+    if (!_cl.length) delete b.data._led[item];
+    if (b.data._led && !Object.keys(b.data._led).length) delete b.data._led;
+  }
   db.updateBuildingData(b.dbId, JSON.stringify(b.data));
   syncGuildGranary(b);   // ★인출·약탈도 같은 경로로 회계 반영(물리에서 빠진 만큼 총자산 감소)
   savePlayer(player);
@@ -7460,7 +7560,9 @@ setInterval(() => {
 
   // §4-4 Stage 3: 마을 econ 일일 틱 훅 — 게임일 '경계'에서만 동작(평시 O(1) 검사, 30Hz 물리와 분리).
   //   idle skip보다 앞: 무인 존에서도 마을 경제 진행(오프라인 경제). ENABLE_VILLAGES=0 → no-op.
-  SimVillages.onGameTick(now);
+  // ★[RTT 상관 계측 2026-08-30] 하루 경계 틱은 평시 O(1) 이고 **경계에서만** 무겁다.
+  //   그 무거운 순간을 남긴다(동작은 안 바꾼다 — 관측자).
+  { const _t0 = Date.now(); SimVillages.onGameTick(now); const _d = Date.now() - _t0; if (_d >= 5) perfMark('econ_day', _d); }
   // §11 도적 일일 훅 — villages 옆(econ 틱이 world.day를 민 직후 같은 경계에서 데일리 1회). 평시 O(1) 정수 비교.
   Bandits.onGameTick(now);
   // §16 답압 길 — 게임일 경계 dirty 플러시·coarse 재구축·클라 변경분(평시 O(1) 비교)
@@ -7665,8 +7767,11 @@ setInterval(() => {
       let consumed = 0;
       while (p.inputQueue && p.inputQueue.length && consumed < 8) {
         const inp = p.inputQueue.shift();
-        const canSprint = (p.hunger ?? HUNGER_MAX) > SPRINT_MIN_GAUGE && (p.thirst ?? THIRST_MAX) > SPRINT_MIN_GAUGE;
-        p.sprint = inp.sprint && canSprint;
+        // ★★[신체 3층 재배선 2026-08-30 재민 확정] **달릴 수 있는지는 스태미나가 정한다.**
+        //   종전엔 허기·갈증이 5 아래면 못 뛰었다 — 배고픔이 다리를 묶는 이중 벌이었다.
+        //   이제 허기·갈증은 **스태미나 회복 속도**에만 관여한다("배고파도 뛸 수는 있는데
+        //   숨 고르기가 안 된다"). 관문 판정의 정본은 `Body.canSprint` 하나다(사본 금지).
+        p.sprint = inp.sprint && Body.canSprint(p);
         // (옛 `spMult` 지역변수 제거 — 달리기 배율은 이제 공유 모듈이 `SPRINT_MULT` 로 곱한다)
         // ★★[신체 상태] 몸 상태가 걸음을 늦춘다. **이 값은 반드시 클라에도 같은 수로 가야 한다** —
         //   클라 예측(`predictStep` 의 speed)과 어긋나면 매 틱 보정이 나서 **러버밴딩**이 된다.
@@ -7915,17 +8020,19 @@ setInterval(() => {
     const clothes = getEquippedEquipment(p, 'clothes');
     const warmth = (clothes && clothes.attrs && clothes.attrs.warmth) || 0;
     const _night = isNight(now), _fire = isNearCampfire(p), _indoor = isIndoorAt(p);
+    // ★[3층 재배선] 짐 적재율을 넘긴다 — 스태미나 소모가 무게에 가중된다.
+    //   정본은 `Carry.effects(p).ratio` 하나다(무게를 여기서 다시 세지 않는다).
+    let _cr = 0; try { _cr = Carry.effects(p).ratio || 0; } catch (e) {}
     Body.tick(p, dt, { night: _night, nearFire: _fire, indoor: _indoor, warmth,
-                       seasonCold: seasonColdNow(), moving, sprint: p.sprint, now });
+                       seasonCold: seasonColdNow(), moving, sprint: p.sprint, carryRatio: _cr, now });
     p._cold = Body.ensure(p).cold > 0.05;
     // 옷은 추위를 막는 동안 닳는다(종전 규약 유지 — 옷감 수요의 실체)
     if (p._cold && clothes && !_fire && !_indoor && now - (p._coldWearAt || 0) > COLD_CLOTH_WEAR_MS) {
       p._coldWearAt = now; wearEquipment(p, 'clothes', 1);
     }
-    // 게이지가 sprint 하한 밑으로 떨어지면 자동 해제
-    if (p.sprint && (p.hunger <= SPRINT_MIN_GAUGE || p.thirst <= SPRINT_MIN_GAUGE)) {
-      p.sprint = false;
-    }
+    // ★[3층 재배선] 스태미나가 바닥나면 자동 해제 — 판정은 `Body.canSprint` 하나가 한다.
+    //   (옛 허기·갈증 하한 게이트는 여기서 사라졌다. `SPRINT_MIN_GAUGE` 도 같이 죽였다.)
+    if (p.sprint && !Body.canSprint(p)) p.sprint = false;
     // vp 시간당 감소
     if ((p.vp ?? 0) > 0) p.vp = Math.max(0, p.vp - VP_DECAY_PER_SEC * dt);
     // ★아사(기아 hp 드레인) 제거 — 사용자 확정: 식량 사망은 econ 기근 인구감소가 유일, 별도 아사 기능은 중복이라 폐지.
@@ -7939,9 +8046,12 @@ setInterval(() => {
     //   초당 회복은 랩에 없음: 부상=수일 노동손실이 요양·약재 수요의 실체라 초당 10hp면 그 경제가 통째로 사라진다.
     if (p.isNpc && p.simVillageId != null) continue;
     if (p.hp > 0 && p.hp < p.maxHp && now - p.lastDamagedAt > 1000) {
-      if ((p.hunger ?? HUNGER_MAX) > 10 && (p.thirst ?? THIRST_MAX) > 10) {
-        p.hp = Math.min(p.maxHp, p.hp + 2 * dt * 5); // 초당 ~10hp
-      }
+      // ★★[신체 3층 재배선] 하드 게이트(허기>10 && 갈증>10)를 **회복 배율**로 바꾼다.
+      //   종전엔 10 을 경계로 회복이 **뚝 끊겼다**(§8.3 "속은 연속" 위반 · 절벽).
+      //   이제 결핍이 깊어질수록 **천천히** 아물고, 극단(0)에서 정확히 멈춘다.
+      //   ★HP 를 **깎지는 않는다** — 아사 폐지 캐논(`test-body ④`가 못 박는다).
+      const _rm = p.isNpc ? 1 : Body.recoverMult(p);
+      if (_rm > 0) p.hp = Math.min(p.maxHp, p.hp + 2 * dt * 5 * _rm); // 만복 기준 초당 ~10hp
     }
   }
 
@@ -8260,7 +8370,9 @@ setInterval(() => {
   //   비용: 저장 1건 = central HTTP 1회(fire-and-forget). 틱당 **한 명만** 처리해 스파이크를 없앤다
   //   (자정 DB 드레인과 같은 결 — villages.js saveQueue 선례).
   _fishPoll(now);
-  _periodicSave(now);
+  { const _t0 = Date.now(); _periodicSave(now); const _d = Date.now() - _t0; if (_d >= 5) perfMark('save', _d); }
+  // ★[RTT 상관 계측] 틱 전체가 예산(33ms)을 넘긴 순간도 남긴다 — 원인이 위 둘이 아닐 수도 있다.
+  { const _tot = Date.now() - now; if (_tot >= 33) perfMark('tick', _tot); }
   { const _td = Date.now() - now; global._tt = (global._tt||0)+_td; global._tn = (global._tn||0)+1; if (_td > (global._tmx||0)) global._tmx = _td; }
 }, TICK_MS);
 
@@ -8376,7 +8488,7 @@ async function fireHandoff(player, targetZoneId, newX, newY) {
       color: player.color,
       x: newX, y: newY,
       vx: carryVx, vy: carryVy,   // ★ 핸드오프 시점의 속도 보존
-      inventory: player.inventory,
+      inventory: invPayload(player.inventory),
       tools: player.tools,
       equipped: player.equipped,
       hunger: Math.round(player.hunger ?? HUNGER_MAX),

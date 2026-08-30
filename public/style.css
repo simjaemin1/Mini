@@ -139,6 +139,9 @@ html, body { margin: 0; padding: 0; height: 100%; font-family: -apple-system, "S
 .hunger-bar, .thirst-bar { width: 108px; height: 14px; margin-right: 4px; }
 .hunger-fill { background: linear-gradient(90deg, #c87a2a, #e6a55a); }
 .thirst-fill { background: linear-gradient(90deg, #2a6aa8, #5aaaff); }
+/* ★[신체 3층 재배선 2026-08-30] 스태미나 — 노랑 계열(허기 갈색·갈증 파랑과 구분). 바닥나 잠기면 붉게. */
+.stam-fill { background: linear-gradient(90deg, #d8b23a, #f0d874); }
+.stam-fill.locked { background: linear-gradient(90deg, #c0603a, #e08a5a); }
 .hunger-bar .hp-text, .thirst-bar .hp-text { font-size: 9px; }
 .vp-bar { width: 220px; height: 14px; }
 .vp-fill { background: linear-gradient(90deg, #6a6a6a, #b03030); }

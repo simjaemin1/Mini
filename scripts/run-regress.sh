@@ -99,6 +99,7 @@ else
     test-emptystart.js
     test-craft.js
     test-ledger.js
+    test-calendar.js
     test-move.js
     test-charsheet.js
     e2e-events.js
