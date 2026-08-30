@@ -37,3 +37,5 @@ scripts/nature_renders/
 미푸시_*.bundle
 
 scripts/__pycache__/
+scripts/char_renders/
+assets-src/*.blend1

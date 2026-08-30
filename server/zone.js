@@ -3079,6 +3079,11 @@ async function _acceptConnection(ws, req, C) {
       moodleShowMax: (Body.CFG && Body.CFG.SHOW_MAX) || 3,
       ghostStallMs: parseInt(process.env.GHOST_STALL_MS || '5000', 10) || 5000,          // 딱지·예측 정지
       ghostReconnectMs: parseInt(process.env.GHOST_RECONNECT_MS || '10000', 10) || 10000, // 소켓 강제 끊기
+      // ★[캐릭 시트 2026-08-30] 플래그 기본 OFF — 종전 도형 렌더가 기본이다(병행 안전).
+      //   기본 전환은 재민 실기 뒤 튜닝 배치. 문턱도 env 정본(클라 상수 금지).
+      charSprite: process.env.CHAR_SPRITE === 'on',
+      charWalkMin: parseFloat(process.env.CHAR_WALK_MIN || '') || 4,
+      charRunMin: parseFloat(process.env.CHAR_RUN_MIN || '') || 102,
     },
     // ★★[이동 모델 2026-08-30] 손잡이 표를 **서버가 실어 보낸다** — 클라가 표를 들고 있으면
     //   그게 사본이고, env 를 서버에서만 바꾼 날 예측과 권위가 갈린다(itemWeights·uiCfg 와 같은 규약).
@@ -8177,7 +8182,11 @@ setInterval(() => {
       // §18 3파: 포로 표식(회색 테두리·밧줄) — 동적 1비트(호송 전환·해제가 일중 일어남: br 패턴)
       if (o.simCaptive) e.cap = 1;
       // §4-4 Stage 4A: simJob(마을 시뮬 NPC 직업 — npcJob과 별개)도 메타로 1회. 일중 변경분은 sim_village_day 브로드캐스트가 갱신.
-      if (isNew) { e.name = o.name; e.color = o.color; e.maxHp = o.maxHp; e.tribeName = o.tribeName || null; if (o.simJob) e.simJob = o.simJob; }
+      if (isNew) { e.name = o.name; e.color = o.color; e.maxHp = o.maxHp; e.tribeName = o.tribeName || null; if (o.simJob) e.simJob = o.simJob;
+        // ★[캐릭 시트 2026-08-30] **신원 1비트**(애니 상태가 아니다 — 애니는 기존 값에서 유도한다).
+        //   이게 없으면 클라가 NPC 와 사람 플레이어를 못 가른다(`simJob` 은 마을 시뮬 NPC 에만 있다).
+        //   ⇒ 사람 시트가 마을 주민에게까지 입혀진다 = **회부된 별도 배치를 몰래 하는 것**이다. 그래서 실어 보낸다.
+        if (o.isNpc) e.npc = 1; }
       // ★[액션 라벨 가시화 — 생활 층 100%] 행동 라벨(모내기·잠행·개간·건축·취침…): 변경 후 1.2s 윈도우 + 최초가시에만
       //   문자열 전송(무상태 델타 — 뷰어별 추적 없이 25틱 중복이 상한). 클라는 수신 시 갱신·미수신 시 유지. ''=라벨 제거.
       if (o._lifeAct !== undefined && (isNew || now - (o._lifeActAt || 0) < 1200)) e.act = o._lifeAct;

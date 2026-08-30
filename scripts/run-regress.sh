@@ -100,6 +100,7 @@ else
     test-craft.js
     test-ledger.js
     test-move.js
+    test-charsheet.js
     e2e-events.js
     e2e-trade.js
     e2e-weight.js
@@ -130,6 +131,8 @@ else
     e2e-waterperf.js
     # ★[이동 모델 2026-08-30] 실클라 이동/조준 계측 — legacy·accel 두 판을 스스로 띄운다(각 판 뒤 배수).
     e2e-move.js
+    # ★[캐릭 시트] 실클라 애니 — 두 클라 짝. Blender 는 안 돌린다(2코어 캐논: 렌더와 e2e 를 겹치지 마라).
+    e2e-charsprite.js
   )
 fi
 

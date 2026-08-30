@@ -1,0 +1,211 @@
+{
+ "_": "char_render.py \uc0b0\ubb3c \u2014 \uc190\ud3b8\uc9d1 \uae08\uc9c0. \uaddc\uc57d\uc740 \uadf8 \ud30c\uc77c\uc774 \uc815\ubcf8.",
+ "anchorX": 54.5,
+ "anchorY": 81.358,
+ "clips": {
+  "aim": {
+   "fps": 2.0,
+   "frames": 2,
+   "loop": true
+  },
+  "idle": {
+   "fps": 0.9,
+   "frames": 4,
+   "loop": true
+  },
+  "run": {
+   "fps": 14.0,
+   "frames": 8,
+   "loop": true
+  },
+  "swing": {
+   "fps": 14.0,
+   "frames": 6,
+   "loop": false
+  },
+  "walk": {
+   "fps": 10.0,
+   "frames": 8,
+   "loop": true
+  }
+ },
+ "dirOrder": "d = round(atan2(fy,fx)/(PI/4)) mod 8 \u2014 \uc6d4\ub4dc \ubc29\ud5a5. d=0 \uc740 +x(\ub3d9).",
+ "dirs": 8,
+ "frameH": 90,
+ "frameW": 109,
+ "heightM": 1.7,
+ "layers": [
+  "body",
+  "clothes_hemp",
+  "tool_axe",
+  "tool_rod"
+ ],
+ "ppu": 45.2548,
+ "pxPerMeterH": 32.0,
+ "renderPpu": 135.7645,
+ "rowOrder": "\ud589 0 = \ubc29\ud5a5 0, \uc704\uc5d0\uc11c \uc544\ub798\ub85c. \uc5f4 = \ud504\ub808\uc784 0..n-1, \uc67c\ucabd\uc5d0\uc11c \uc624\ub978\ucabd\uc73c\ub85c.",
+ "sheets": {
+  "body_aim": {
+   "clip": "aim",
+   "cols": 2,
+   "h": 720,
+   "layer": "body",
+   "rows": 8,
+   "w": 218
+  },
+  "body_idle": {
+   "clip": "idle",
+   "cols": 4,
+   "h": 720,
+   "layer": "body",
+   "rows": 8,
+   "w": 436
+  },
+  "body_run": {
+   "clip": "run",
+   "cols": 8,
+   "h": 720,
+   "layer": "body",
+   "rows": 8,
+   "w": 872
+  },
+  "body_swing": {
+   "clip": "swing",
+   "cols": 6,
+   "h": 720,
+   "layer": "body",
+   "rows": 8,
+   "w": 654
+  },
+  "body_walk": {
+   "clip": "walk",
+   "cols": 8,
+   "h": 720,
+   "layer": "body",
+   "rows": 8,
+   "w": 872
+  },
+  "clothes_hemp_aim": {
+   "clip": "aim",
+   "cols": 2,
+   "h": 720,
+   "layer": "clothes_hemp",
+   "rows": 8,
+   "w": 218
+  },
+  "clothes_hemp_idle": {
+   "clip": "idle",
+   "cols": 4,
+   "h": 720,
+   "layer": "clothes_hemp",
+   "rows": 8,
+   "w": 436
+  },
+  "clothes_hemp_run": {
+   "clip": "run",
+   "cols": 8,
+   "h": 720,
+   "layer": "clothes_hemp",
+   "rows": 8,
+   "w": 872
+  },
+  "clothes_hemp_swing": {
+   "clip": "swing",
+   "cols": 6,
+   "h": 720,
+   "layer": "clothes_hemp",
+   "rows": 8,
+   "w": 654
+  },
+  "clothes_hemp_walk": {
+   "clip": "walk",
+   "cols": 8,
+   "h": 720,
+   "layer": "clothes_hemp",
+   "rows": 8,
+   "w": 872
+  },
+  "tool_axe_aim": {
+   "clip": "aim",
+   "cols": 2,
+   "h": 720,
+   "layer": "tool_axe",
+   "rows": 8,
+   "w": 218
+  },
+  "tool_axe_idle": {
+   "clip": "idle",
+   "cols": 4,
+   "h": 720,
+   "layer": "tool_axe",
+   "rows": 8,
+   "w": 436
+  },
+  "tool_axe_run": {
+   "clip": "run",
+   "cols": 8,
+   "h": 720,
+   "layer": "tool_axe",
+   "rows": 8,
+   "w": 872
+  },
+  "tool_axe_swing": {
+   "clip": "swing",
+   "cols": 6,
+   "h": 720,
+   "layer": "tool_axe",
+   "rows": 8,
+   "w": 654
+  },
+  "tool_axe_walk": {
+   "clip": "walk",
+   "cols": 8,
+   "h": 720,
+   "layer": "tool_axe",
+   "rows": 8,
+   "w": 872
+  },
+  "tool_rod_aim": {
+   "clip": "aim",
+   "cols": 2,
+   "h": 720,
+   "layer": "tool_rod",
+   "rows": 8,
+   "w": 218
+  },
+  "tool_rod_idle": {
+   "clip": "idle",
+   "cols": 4,
+   "h": 720,
+   "layer": "tool_rod",
+   "rows": 8,
+   "w": 436
+  },
+  "tool_rod_run": {
+   "clip": "run",
+   "cols": 8,
+   "h": 720,
+   "layer": "tool_rod",
+   "rows": 8,
+   "w": 872
+  },
+  "tool_rod_swing": {
+   "clip": "swing",
+   "cols": 6,
+   "h": 720,
+   "layer": "tool_rod",
+   "rows": 8,
+   "w": 654
+  },
+  "tool_rod_walk": {
+   "clip": "walk",
+   "cols": 8,
+   "h": 720,
+   "layer": "tool_rod",
+   "rows": 8,
+   "w": 872
+  }
+ },
+ "ss": 3,
+ "zsq": 0.8165
+}

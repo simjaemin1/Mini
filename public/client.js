@@ -225,7 +225,8 @@ const SIM_JOB_EMOJI = {
   // 펼침 상태 — 인벤 메시지마다 패널이 다시 그려지므로 **재렌더를 넘어 살아남아야** 한다.
   const ulOpen = new Set();
   // ★[정비 배치] 클라 손잡이 — welcome 의 `uiCfg` 가 덮어쓴다(정본은 서버 env · `carryCfg` 와 같은 규약).
-  let uiCfg = { vignetteTint: true, moodleShowMax: 3, ghostStallMs: 5000, ghostReconnectMs: 10000 };
+  let uiCfg = { vignetteTint: true, moodleShowMax: 3, ghostStallMs: 5000, ghostReconnectMs: 10000,
+                charSprite: false, charWalkMin: 4, charRunMin: 102 };   // ★[캐릭 시트] 기본 OFF
   // ★비네트 색조 — **축 계열**. 새 아트를 만들지 않고 색만 바꾼다(§8.3 아날로그 채널은 최소로).
   //   갈증=청 · 허기=황 · 추위=창백한 하늘색 · 피로=보라 · 부상=적 · 과적=흙빛.
   const VIGNETTE_RGB = {
@@ -6870,6 +6871,7 @@ const SIM_JOB_EMOJI = {
             maxHp: pp.maxHp ?? prev?.maxHp ?? 100,
             tribeName: pp.tribeName !== undefined ? pp.tribeName : prev?.tribeName,
             simJob: pp.simJob !== undefined ? pp.simJob : prev?.simJob, // §4-4 Stage 4A: 마을 NPC 직업(첫 visible 메타 + sim_village_day 갱신)
+            npc: pp.npc !== undefined ? pp.npc : prev?.npc,             // ★[캐릭 시트] NPC 신원 1비트(첫 가시 메타)
             act: pp.act !== undefined ? pp.act : prev?.act, // ★[액션 라벨] 생활 층 행동(모내기·잠행·개간…) — 변경 시에만 수신, 미수신=유지
             cap: pp.cap | 0, // §18 3파: 포로 표식(동적 1비트 — 회색 테두리 렌더)
             buf,
@@ -7559,7 +7561,9 @@ const SIM_JOB_EMOJI = {
     if (myIsDown || _selfGone || netStalled) { myVel.vx = 0; myVel.vy = 0; return; }
     // ★legacy: 입력 0 이면 no-op(종전 그대로). accel: 입력 0 은 **감속 스텝**이다 — 빠지면 안 선다.
     const _accel = (_moveParams.model === 'accel');
-    if (!_accel && wx === 0 && wy === 0) return;
+    // ★[캐릭 시트] legacy 에서도 `myVel` 이 **지금 속도의 진실**이어야 한다 — 애니 상태기계가 이걸 읽는다.
+    //   legacy 는 상태가 없으므로(속도=입력의 함수) 여기서 0 을 써도 이동은 한 비트도 안 바뀐다.
+    if (!_accel && wx === 0 && wy === 0) { myVel.vx = 0; myVel.vy = 0; return; }
     const canSprintClient = sprint && myHunger > 5 && myThirst > 5;
     // ★★[신체 상태 2026-08-26] 몸 상태 배율을 **여기에도** 곱한다. 서버는 `Body.effects().moveMult` 로
     //   같은 값을 쓰고 그 수를 `gauges.body.moveMult` 로 실어 보낸다 —
@@ -9235,7 +9239,7 @@ const SIM_JOB_EMOJI = {
         const oFloor = o.floor || 0;
         const oZ = oFloor * FLOOR_HEIGHT + (o.z || 0); // 14.49-d: 계단 위 z 포함
         const isoF = w2i(ax, ay, oZ);
-        renderables.push({ z: (ax + ay) * 0.5 + oFloor * 0.5 + 500, kind: 'player', wx: ax, wy: ay, pid: o.pid, name: displayName, color: o.color || '#5a9ae0', hp: o.hp, maxHp: o.maxHp, iso: isoF, ax, ay, floor: oFloor, lastAttackAt: o.lastAttackAt, vx: o.vx, vy: o.vy, _fvx: o._fvx, _fvy: o._fvy, _war: o._war, bt: o.bt, bs: o.bs, bc: o.bc, br: o.br, cap: o.cap, act: o.act });
+        renderables.push({ z: (ax + ay) * 0.5 + oFloor * 0.5 + 500, kind: 'player', wx: ax, wy: ay, pid: o.pid, name: displayName, color: o.color || '#5a9ae0', hp: o.hp, maxHp: o.maxHp, iso: isoF, ax, ay, floor: oFloor, lastAttackAt: o.lastAttackAt, vx: o.vx, vy: o.vy, _fvx: o._fvx, _fvy: o._fvy, npc: o.npc, _war: o._war, bt: o.bt, bs: o.bs, bc: o.bc, br: o.br, cap: o.cap, act: o.act });
       }
     }
     {
@@ -9744,7 +9748,19 @@ const SIM_JOB_EMOJI = {
         }
         // Phase 14.41: 다운 상태 — 본인은 myIsDown, 다른 사람은 downStates Map
         const downFlag = item.isMe ? myIsDown : !!downStates.get(item.pid);
-        drawPlayerIso(s.x, s.y, item.name, item.color, item.isMe, { moving, attackPhase, fvx, fvy, isDown: downFlag, war: item._war, bt: item.bt, bs: item.bs, bc: item.bc, br: item.br, cap: item.cap, act: item.act });
+        // ★[캐릭터 스프라이트] 플래그가 켜져 있고 시트가 다 떠 있으면 시트로, 아니면 종전 도형으로.
+        //   ⚠**NPC 주민은 제외**한다 — 사람 시트를 마을에 입히는 건 별도 배치다(회부).
+        //     서버가 첫 가시 메타에 `npc` 1비트를 실어 준다(makeEntry — 애니용 필드가 아니라 신원).
+        //   다운/전쟁 병사/포로는 종전 도형 경로 유지(누운 모습·병종색·밧줄은 시트에 없다).
+        const _spriteOk = !downFlag && !item._war && !item.cap && !item.npc &&
+          drawCharSprite(s.x, s.y, !!item.isMe, {
+            pid: item.pid, fvx, fvy,
+            speed: item.isMe ? Math.hypot(myVel.vx, myVel.vy)
+                             : Math.hypot(item.vx || 0, item.vy || 0),
+            aiming: item.isMe ? !!_aiming : false,
+            attackAt: item.isMe ? myLastAttackAt : (item.lastAttackAt || 0),
+          });
+        if (!_spriteOk) drawPlayerIso(s.x, s.y, item.name, item.color, item.isMe, { moving, attackPhase, fvx, fvy, isDown: downFlag, war: item._war, bt: item.bt, bs: item.bs, bc: item.bc, br: item.br, cap: item.cap, act: item.act });
         // HP bar for others (전쟁 병사는 만피여도 항상 표시 + 진영색 테두리)
         if (!item.isMe) {
           const o = item.hp !== undefined ? item : null;
@@ -11839,6 +11855,9 @@ const SIM_JOB_EMOJI = {
   window.__ledger = () => JSON.parse(JSON.stringify(myLedger || {}));
   window.__lots = () => JSON.parse(JSON.stringify(myLots || {}));
   window.__uiCfg = () => JSON.parse(JSON.stringify(uiCfg || {}));
+  // ★[캐릭 시트] 성능 짝 비교 전용 토글 — **같은 화면·같은 순간**에 ON/OFF 를 견주려면 필요하다
+  //   (라이브 rAF 짝 비교 캐논). 서버 env 정본은 안 바꾼다 — 이 세션의 화면만 뒤집는다.
+  window.__setCharSprite = (v) => { const p = uiCfg.charSprite; uiCfg.charSprite = !!v; return p; };
   window.__ground = () => nearbyGroundItems().map(({ gi }) => ({ id: gi.id, item: gi.item, count: gi.count, kg: gi.kg, led: gi.led || null }));
 
   function drawSpeechBubble(x, y, text) {
@@ -11889,6 +11908,144 @@ const SIM_JOB_EMOJI = {
   // Phase 14.35: 걷기 + 공격 모션
   // - moving: walking bob (sin wave) + 다리 교차
   // - attackPhase 0~1: 무기 휘두름 (앞으로 lunge + 회복)
+  // ═══════════════ [캐릭터 스프라이트 2026-08-30] 애니 상태기계 ═══════════════
+  //   ★재민 확정: **게임엔 3D 가 아니라 스프라이트로 들어간다**(좀보이드 구빌드·디아블로 방식).
+  //   시트·메타는 `scripts/char_render.py` 산물(`/assets/char/`). **클라는 규격을 하드코딩하지 않는다** —
+  //   프레임 크기·앵커·행/열 순서·클립 fps 를 전부 `char_meta.json` 에서 읽는다.
+  //
+  //   ★입력은 **이미 오는 값에서 유도**한다(애니를 위한 새 네트워크 필드 0):
+  //     · 속도  — 나: 이동 모델 상태 `myVel` / 남: tick 의 `vx,vy`      → idle / walk / run
+  //     · 방향  — 나: `myFacingVx/Vy`(조준 중엔 커서) / 남: `_fvx/_fvy`  → 시트 행
+  //     · 공격  — `myLastAttackAt` / `others[].lastAttackAt`(기존 broadcast) → swing 원샷
+  //     · 조준  — 나: `_aiming`.  ⚠남의 조준은 **네트워크에 없다** → 남은 aim 자세가 안 나온다(회부).
+  //   ★프레임 진행은 렌더 프레임(rAF) 기준, 상태는 서버 권위 값에서 유도 — 이 둘을 섞지 않는다.
+  let _charMeta = null, _charMetaTried = false;
+  const _charImg = new Map();        // key -> {img, ok}
+  const _charAnim = new Map();       // pid -> {clip, t, one, oneT, lastAtk, lastT}
+
+  function charMeta() {
+    if (_charMeta || _charMetaTried) return _charMeta;
+    _charMetaTried = true;
+    fetch('/assets/char/char_meta.json').then((r) => r.ok ? r.json() : null)
+      .then((j) => {
+        if (!j || !j.frameW) return;
+        _charMeta = j; window.__charMeta = j;
+        // ★★전 시트를 **한꺼번에** 미리 받는다. 클립을 처음 쓸 때 게으르게 받으면
+        //   ⓐ 그 순간 스프라이트가 도형으로 튀고 ⓑ 상태는 이미 진행했는데 그림만 안 나가
+        //   진단 훅이 **낡은 값을 들고 있게** 된다(1차 실행에서 실제로 그렇게 오독했다).
+        for (const key of Object.keys(j.sheets || {})) charSheet(key);
+      })
+      .catch(() => {});
+    return null;
+  }
+
+  function charSheet(key) {
+    let e = _charImg.get(key);
+    if (e) return e.ok ? e.img : null;
+    const img = new Image();
+    e = { img, ok: false };
+    _charImg.set(key, e);
+    img.onload = () => { e.ok = true; };
+    img.onerror = () => { e.ok = false; };
+    img.src = '/assets/char/' + key + '.png';
+    return null;
+  }
+
+  // 월드 방향 → 시트 행. ★메타가 정의한 그 식 그대로(눈대중 금지 — 족보 74).
+  function charDirRow(fx, fy) {
+    if (!fx && !fy) return 0;
+    let d = Math.round(Math.atan2(fy, fx) / (Math.PI / 4));
+    return ((d % 8) + 8) % 8;
+  }
+
+  // 착장 → 레이어 키. 없는 착장은 레이어 생략.
+  //   ⚠남의 착장은 네트워크에 없다 — 기본 베옷만 입힌다(알몸으로 보이지 않게). 회부.
+  function charLayersFor(isMe) {
+    const L = ['body', 'clothes_hemp'];        // 베옷은 기본 — 알몸 금지(고증: 서민 삼베 한 벌)
+    if (!isMe) return L;                       // ⚠남의 착장은 네트워크에 없다(회부)
+    // ★손에 든 것 = **도구 인스턴스 정본**(`getEquippedInstance`) 우선, 없으면 장비 무기 슬롯.
+    //   시트는 실루엣 두 종뿐이다: 자루+날(axe) / 긴 장대(rod). 종류 확장은 목록 한 줄 + 재렌더.
+    let t = '';
+    const ti = getEquippedInstance();
+    if (ti && ti.type) t = String(ti.type);
+    if (!t && equipSlots && equipSlots.weapon) {
+      const wi = (equipment || []).find((q) => q.id === equipSlots.weapon);
+      if (wi && wi.type) t = String(wi.type);
+    }
+    if (!t) return L;                          // 맨손 — 도구 레이어 생략
+    if (/rod|fish|낚/i.test(t)) L.push('tool_rod');
+    else L.push('tool_axe');
+    return L;
+  }
+
+  function charState(pid, speed, aiming, attackAt, dtSec) {
+    let st = _charAnim.get(pid);
+    if (!st) { st = { clip: 'idle', t: 0, one: null, oneT: 0, lastAtk: attackAt || 0 }; _charAnim.set(pid, st); }
+    const m = _charMeta;
+    // 공격 트리거 = lastAttackAt 이 **커졌을 때** 한 번(에지). 값 자체가 아니라 변화를 본다.
+    if (attackAt && attackAt > st.lastAtk) { st.lastAtk = attackAt; st.one = 'swing'; st.oneT = 0; }
+    if (st.one) {
+      const c = m.clips[st.one];
+      st.oneT += dtSec;
+      if (st.oneT * c.fps >= c.frames) st.one = null;   // 원샷 끝 → 이전 상태 복귀
+    }
+    let clip = 'idle';
+    if (speed > (uiCfg.charRunMin || 102)) clip = 'run';
+    else if (speed > (uiCfg.charWalkMin || 4)) clip = 'walk';
+    if (aiming && clip === 'idle') clip = 'aim';
+    if (st.clip !== clip) { st.clip = clip; st.t = 0; }
+    st.t += dtSec;
+    const active = st.one || st.clip;
+    const c = m.clips[active];
+    let fi;
+    if (st.one) fi = Math.min(c.frames - 1, Math.floor(st.oneT * c.fps));
+    else fi = Math.floor(st.t * c.fps) % c.frames;
+    return { clip: active, frame: fi };
+  }
+
+  /** 스프라이트로 그린다. 성공하면 true — 실패(시트 미로딩·플래그 OFF)면 false 로 도형 경로에 넘긴다. */
+  function drawCharSprite(x, y, isMe, opts) {
+    if (!uiCfg.charSprite) return false;
+    const m = charMeta();
+    if (!m) return false;
+    const layers = charLayersFor(isMe);
+    // ★한 장이라도 안 떠 있으면 **아무것도 안 그린다** — 반쪽 합성(몸만·옷만)이 화면에 나가면
+    //   "픽셀 정렬 0px" 계약이 지켜지는지 눈으로 볼 수 없다. 다 뜰 때까지 도형으로 버틴다.
+    const st0 = _charAnim.get(opts.pid);
+    const now = performance.now();
+    const dtSec = st0 && st0.lastT ? Math.min(0.25, (now - st0.lastT) / 1000) : 0;
+    const stt = charState(opts.pid, opts.speed || 0, !!opts.aiming, opts.attackAt || 0, dtSec);
+    _charAnim.get(opts.pid).lastT = now;
+    const imgs = [];
+    for (const L of layers) {
+      const img = charSheet(L + '_' + stt.clip);
+      if (!img) {
+        // ★훅은 여기서도 갱신한다 — 안 그러면 "안 그려짐"이 "낡은 값"으로 위장한다.
+        if (!window.__charDbg) window.__charDbg = {};
+        window.__charDbg[opts.pid] = { on: false, why: 'sheet:' + L + '_' + stt.clip,
+                                       clip: stt.clip, isMe: !!isMe, t: performance.now() };
+        return false;
+      }
+      imgs.push(img);
+    }
+    const row = charDirRow(opts.fvx, opts.fvy);
+    const fw = m.frameW, fh = m.frameH;
+    const sx = stt.frame * fw, sy = row * fh;
+    const dx = Math.round(x - m.anchorX), dy = Math.round(y - m.anchorY);
+    // 발밑 그림자 — 도형 경로와 같은 자리·같은 크기(시트가 바뀌어도 접지감은 유지)
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.beginPath(); ctx.ellipse(x, y + 2, 8, 3, 0, 0, Math.PI * 2); ctx.fill();
+    for (const img of imgs) ctx.drawImage(img, sx, sy, fw, fh, dx, dy, fw, fh);
+    // ★진단 훅은 **pid 별**이다 — 마지막에 그린 하나만 남기면 "타 플레이어도 같은 애니"를 못 잰다.
+    if (!window.__charDbg) window.__charDbg = {};
+    window.__charDbg[opts.pid] = { on: true, clip: stt.clip, frame: stt.frame, row,
+                         layers: layers.slice(), speed: +(opts.speed || 0).toFixed(2),
+                         aiming: !!opts.aiming, isMe: !!isMe, fw, fh,
+                         facing: [+(opts.fvx || 0).toFixed(4), +(opts.fvy || 0).toFixed(4)],
+                         anchor: [m.anchorX, m.anchorY], t: performance.now() };
+    return true;
+  }
+
   function drawPlayerIso(x, y, name, color, isMe = false, opts = {}) {
     const t = performance.now() * 0.01;
     const moving = opts.moving || false;

@@ -1,0 +1,22 @@
+{
+ "body_aim": "354b8a58e7fced90",
+ "body_idle": "606cdef1995b8de2",
+ "body_run": "f2b204218218568e",
+ "body_swing": "683f5fb926852363",
+ "body_walk": "ef84a68dc61ed84d",
+ "clothes_hemp_aim": "360dfdce31186cc1",
+ "clothes_hemp_idle": "6afa9e8a8eab903d",
+ "clothes_hemp_run": "ca7a0a564364fbb0",
+ "clothes_hemp_swing": "4cc91fec0941d423",
+ "clothes_hemp_walk": "6fb4a8adf6c74013",
+ "tool_axe_aim": "dbbfcfa048b48c0e",
+ "tool_axe_idle": "e74b993c33cf2faa",
+ "tool_axe_run": "c16dd0c06a565ce4",
+ "tool_axe_swing": "64f6be8943732ade",
+ "tool_axe_walk": "0744d7fc6587c4f1",
+ "tool_rod_aim": "9bb1be08d3488ae9",
+ "tool_rod_idle": "0a02d08b39852aa6",
+ "tool_rod_run": "98c97d9f5e15c014",
+ "tool_rod_swing": "a87ffa9459297530",
+ "tool_rod_walk": "97930d516e6106b7"
+}
