@@ -111,6 +111,8 @@ else
     e2e-inv.js
     e2e-conn.js
     e2e-ui.js
+    # ★[온도 곡선 2026-08-31] 겨울 야생 밤 → 마을 안전망 → 모닥불 — 배선과 화면 도달
+    e2e-cold.js
     e2e-fishing.js
     e2e-guest-reconnect.js
     e2e-mountain.js

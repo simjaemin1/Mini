@@ -4335,6 +4335,37 @@ function villageTradeExec(vid, px, py, inventory, giveRes, takeRes, qty, unitsOf
 // 클라가 마을 근처인지 스스로 알 수 있게 반경만 알려 준다(판정은 서버가 한다)
 function briefRadiusPx() { return EV_BRIEF_PX; }
 
+// ═══ ★★[겨울 난이도 2026-08-31 재민 확정] 마을 미기후 — "마을 = 안전망" ═══════
+//   재민 확정: *"시간은 절대 바꾸면 안 돼. 차라리 겨울 버티는 난이도를 수정."*
+//   ⇒ 겨울을 진짜 위험하게 만들되, **마을 안에서는 버틸 수 있어야** 한다. 그래야
+//     "밖은 위험하고 마을은 집"이라는 구조가 서고, 겨울이 접속 차단이 아니라 **선택**이 된다.
+//
+//   디에게틱 근거(손잡이가 아니라 장소의 성질이다): 집과 담이 바람을 죽이고, 마당 어딘가엔
+//   늘 불기운이 있고, 사람이 모여 있다. 실제 취락의 미기후가 그렇다.
+//   ⇒ 반환 0(야생) … 1(마을 한복판). `zone.js` 가 이걸 `Body.tick(ctx.villageShelter)` 로 넘긴다.
+//
+//   ⚠**econ 무접촉**: 마을 상태를 읽기만 한다(좌표·반경). 아무것도 안 바꾼다.
+//   ⚠경계는 **부드럽다**(smoothstep) — "속은 연속"(§8.3). 한 걸음에 목표점이 뚝 떨어지면
+//     그건 벽이지 마을이 아니다. 바깥 SHELTER_EDGE 만큼이 사그라드는 구간이다.
+const SHELTER_EDGE = (() => { const v = parseFloat(process.env.VILLAGE_SHELTER_EDGE); return Number.isFinite(v) ? v : 0.35; })();
+function shelterAt(px, py) {
+  if (!state.ready || !state.villages || !state.villages.length) return 0;
+  if (!Number.isFinite(px) || !Number.isFinite(py)) return 0;
+  let best = 0;
+  for (const vil of state.villages) {
+    const R = Math.max(200, vil._maxRPx || 800);
+    const dx = (vil.ccx * SZ + SZ / 2) - px, dy = (vil.ccy * SZ + SZ / 2) - py;
+    const d2 = dx * dx + dy * dy;
+    if (d2 >= R * R) continue;
+    const inner = R * (1 - Math.max(0.02, Math.min(0.9, SHELTER_EDGE)));
+    const d = Math.sqrt(d2);
+    let s = d <= inner ? 1 : 1 - (d - inner) / (R - inner);
+    s = s * s * (3 - 2 * s);                     // smoothstep — 가장자리에서 기울기 0(C1)
+    if (s > best) { best = s; if (best >= 0.9999) break; }
+  }
+  return +best.toFixed(4);
+}
+
 // ★★[테스트 전용 · zone.js 가 `E2E_GIVE=1` 로 게이트] 실클라 E2E 가 부족을 만든다.
 //   왜 필요한가: 게시판 납품 흐름을 실화면으로 재려면 **의뢰가 걸려 있어야** 하는데,
 //   자연 발생을 기다리면 검사 대상(브리핑·게시판·정산)이 아니라 시뮬 운을 재게 된다.
@@ -4488,6 +4519,8 @@ module.exports = {
   foundPlayerVillage, playerVillageInventory, playerVillageAt, playerVillageDeposit, playerVillageDepositMap,
   // ★[2026-08-25 사건 레이어] 촌장 브리핑 · 게시판 · 납품 — zone.js 핸들러가 소비
   villageBrief, villageBoard, villageDeliver, villageAnchorPx, briefRadiusPx,
+  // ★[겨울 난이도 2026-08-31] 마을 미기후(추위 완충) — zone.js 가 Body.tick 으로 넘긴다
+  shelterAt,
   // ★[2026-08-27 거래소] 물물교환 — zone.js 가 소비. 둘 다 260px 게이트 안에서만 답한다.
   villageTradeBoard, villageTradeQuote, villageTradeExec,
   // ★[2026-08-26 낚시 v2] 어장 결손 접점 — zone.js 낚시 경로가 소비한다(econ 무수정)

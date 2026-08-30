@@ -55,12 +55,27 @@ const CFG = {
   //   없이는 안 내려갔다. 몸이 아니라 **적립금**이었다.
   //   ⇒ 이제 주변이 **목표점**을 만들고 몸이 거기로 **지수 수렴**한다.
   //     밤에 오르고 낮에 저절로 내려간다. 겨울엔 평형점 자체가 높아 옷·불 없이는 안 내려간다.
-  COLD_TAU_SEC: _num('BODY_COLD_TAU_SEC', 240),     // 수렴 시정수(63% 도달까지)
-  COLD_NIGHT_W: _num('BODY_COLD_NIGHT_W', 0.45),    // 밤이 목표점에 더하는 몫
-  COLD_DAY_W: _num('BODY_COLD_DAY_W', 0.0),         // 낮의 기저
-  COLD_SEASON_W: _num('BODY_COLD_SEASON_W', 0.7),   // 계절(겨울 1 · 봄가을 0.35 · 여름 0)의 몫
+  //   ★★[온도 곡선 2026-08-31] 시정수 240 → 130. **겨울 난이도는 여기서 조정한다** —
+  //     재민 확정: *"시간은 절대 바꾸면 안 돼. 차라리 겨울 버티는 난이도를 수정."*
+  //     하루 24분·1년 365일은 캐논이라 손대지 않고, "야생 한겨울 밤 맨몸 = 5~8분에 3단계"를
+  //     **수렴 속도**로 맞춘다. 240 이면 14분이라 하룻밤(12분)에 3단계가 아예 안 왔다 —
+  //     겨울이 이름만 겨울이었던 진짜 이유가 이 상수였다.
+  //     120 = 실측 7.0분(목표 5~8분의 한가운데 · `scripts/cold-matrix.js` 12년 표본).
+  COLD_TAU_SEC: _num('BODY_COLD_TAU_SEC', 120),     // 수렴 시정수(63% 도달까지)
+  //   ★아래 셋은 이제 **폴백(4단 계단) 전용**이다 — `ctx.day` 가 오면 `server/weather.js` 가
+  //     econ 기온 정본에서 유도한 연속 곡선을 쓴다. 값은 튜닝1 앵커 그대로 남겨 둔다:
+  //     하네스 ⑭이 "폴백 계단의 네 점 = 곡선의 네 앵커"를 매번 못 박는다(사본 표류 방지).
+  COLD_NIGHT_W: _num('BODY_COLD_NIGHT_W', 0.45),    // (폴백) 여름밤 앵커
+  COLD_DAY_W: _num('BODY_COLD_DAY_W', 0.0),         // (폴백) 여름낮 앵커
+  COLD_SEASON_W: _num('BODY_COLD_SEASON_W', 0.7),   // (폴백) 겨울낮 앵커
   COLD_INDOOR_MULT: _num('BODY_COLD_INDOOR_MULT', 0.30),  // 실내는 목표점을 이만큼으로
   COLD_FIRE_TARGET: _num('BODY_COLD_FIRE_TARGET', 0.05),  // 불 옆 목표점 상한
+  //   ★★[겨울 난이도 2026-08-31 재민 확정] **마을 = 안전망 · 야생 = 위험.**
+  //     마을 안은 바람이 죽고(집·담·나무), 어딘가 늘 불기운이 있고, 사람이 있다 —
+  //     디에게틱 근거가 있는 **미기후**다. 목표점을 이 비율만큼 깎는다.
+  //     0.65 ⇒ 한겨울 밤 야생 1.00 이 마을에선 0.35(=1단계 아래). 그래서 **마을 안에선 안 죽는다.**
+  //     ⚠이건 "마을 안이 안전하다"는 **설계 약속**이지 미세 튜닝 손잡이가 아니다. 낮추려면 회부.
+  COLD_VILLAGE_SHELTER: _num('BODY_COLD_VILLAGE_SHELTER', 0.65),
   WARMTH_FULL: _num('BODY_WARMTH_FULL', 50),        // 옷 방한 이 값이면 노출 0(기존 상수와 같은 뜻)
 
   // ── 피로 ───────────────────────────────────────────────────────────────────
@@ -243,12 +258,45 @@ function canSprint(p) {
 function stamina(p) { return ensure(p).stam; }
 
 // ── ★★추위 목표점 — 주변이 만드는 **평형점**(몸은 여기로 수렴할 뿐이다) ──────
-//   입력: 밤·계절·옷·실내·불. 종전에 `tick` 안에 흩어져 있던 것을 여기 하나로 모은다.
-//   ⇒ 하네스가 "겨울 평형점이 여름보다 높은가"를 **곡선을 다시 짜지 않고** 물어볼 수 있다.
+//   입력: 날(연중 곡선) · 밤 · 마을 · 옷 · 실내 · 불. 종전에 `tick` 안에 흩어져 있던 것을 여기로 모았고,
+//   이번엔 **계절 계단을 연중 연속 곡선으로 갈아끼운다**(`server/weather.js`).
+//   ⇒ 하네스가 "한겨울이 초겨울보다 추운가"를 **곡선을 다시 짜지 않고** 물어볼 수 있다.
+//
+// ★★[온도 곡선 2026-08-31 재민 확정] 계단 폐지:
+//   *"12월과 1월과 2월이 같은 강도는 아니지."* 종전 `seasonCold` 는 4단 계단(겨울 1·봄가을 0.35·여름 0)
+//   이라 겨울 내내 **완전히 같은 추위**였고 계절이 바뀌는 날 밤에 몸이 한 칸 뚝 떨어졌다.
+//   이제 `ctx.day`(게임일)가 있으면 연중 곡선을 쓴다.
+//
+//   **앵커 보존** — 튜닝1(2026-08-30) 채택 4점을 곡선 위에 그대로 얹는다:
+//     여름 중앙 낮 0.00 · 여름 중앙 밤 0.45 · 겨울 중앙 낮 0.70 · 겨울 중앙 밤 **1.00(클램프 없이)**.
+//     밤 몫을 계절로 보간(0.45→0.30)하는 이유가 이것이다 — 종전엔 겨울밤이 0.7+0.45=1.15 라
+//     **잘려서** 초겨울 밤도 한겨울 밤도 똑같이 1.0 이었다(계단이 클램프에서 부활했다).
+//
+//   ⚠`ctx.day` 가 없으면(옛 호출부·일부 하네스) 종전 `ctx.seasonCold` 계단으로 **그대로** 떨어진다.
+//     econ `seasonOf`·계절 배율은 **정본 그대로**다 — 여기서 바뀌는 건 몸이 느끼는 온도뿐이다.
+let _Weather = null;
+function _weather() {
+  if (_Weather === null) { try { _Weather = require('./weather'); } catch (e) { _Weather = false; } }
+  return _Weather || null;
+}
 function coldTarget(ctx) {
   const c = ctx || {};
   const exposure = Math.max(0, 1 - (c.warmth || 0) / CFG.WARMTH_FULL);   // 옷이 막는 몫
-  let t = (c.night ? CFG.COLD_NIGHT_W : CFG.COLD_DAY_W) + (c.seasonCold || 0) * CFG.COLD_SEASON_W;
+  let t;
+  const W = Number.isFinite(c.day) ? _weather() : null;
+  const outdoor = (W && W.available()) ? W.outdoorCold(c.day, !!c.night, 0) : null;
+  if (outdoor !== null) {
+    // ★연중 연속 — 계절 이름이 아니라 **그날의 기온(℃)** 이 추위를 정한다(econ `temperatureAt` 정본).
+    t = outdoor;
+  } else {
+    // 폴백 — 종전 4단 계단(`ctx.day` 를 못 받는 호출부·구 하네스 호환)
+    t = (c.night ? CFG.COLD_NIGHT_W : CFG.COLD_DAY_W) + (c.seasonCold || 0) * CFG.COLD_SEASON_W;
+  }
+  t = Math.max(0, Math.min(1, t));
+  // ★★마을 안전망 — 바깥 환경을 깎는다(옷보다 **먼저**: 미기후는 몸이 아니라 장소의 성질이다).
+  //   `villageShelter` 는 0(야생) … 1(마을 한복판). 야생은 **완충이 없다** — 그게 위험의 정의다.
+  const sh = Math.max(0, Math.min(1, Number(c.villageShelter) || 0));
+  if (sh > 0) t *= (1 - CFG.COLD_VILLAGE_SHELTER * sh);
   t *= exposure;
   if (c.indoor) t *= CFG.COLD_INDOOR_MULT;
   if (c.nearFire) t = Math.min(t, CFG.COLD_FIRE_TARGET);
@@ -293,7 +341,8 @@ function moodles(p) {
 }
 
 // ── 시간 진행 ────────────────────────────────────────────────────────────────
-//   ctx: { night, nearFire, indoor, warmth, seasonCold(0..1), moving, sprint }
+//   ctx: { day(게임일 — 연중 온도 곡선), night, nearFire, indoor, warmth, villageShelter(0..1),
+//         seasonCold(0..1 · day 없을 때의 폴백), moving, sprint, carryRatio, now }
 //   ★**호출된 만큼만** 흐른다. 오프라인 따라잡기 없음.
 function tick(p, dtSec, ctx) {
   if (!(dtSec > 0)) return;

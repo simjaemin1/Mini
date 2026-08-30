@@ -249,6 +249,9 @@ const SIM_JOB_EMOJI = {
   // ★★[달력 2026-08-30 재민 확정] 연·계절·일 — **서버가 econ 정본에서 유도해 준 것**을 그대로 그린다.
   //   클라가 day→계절 매핑을 갖는 순간 그게 사본이고, 엔진이 계절 경계를 바꾸면 화면만 거짓말한다.
   let myCalendar = null;
+  // ★★[온도 곡선 2026-08-31] 바깥 날씨 { cold, ko, emo, night, shelter } — **서버가 준 그대로** 그린다.
+  //   클라가 게임일→온도 매핑을 갖는 순간 그게 사본이고, 곡선을 고치면 화면만 거짓말한다(달력과 같은 규약).
+  let myWeather = null;
   let myCold = false; // 밤 추위(방한 부족) — HUD 표시
   const VP_THRESHOLD = 50; // 클라 표시용 — 서버와 동일해야 함
   let myTribeId = null, myTribeName = null;
@@ -5938,6 +5941,7 @@ const SIM_JOB_EMOJI = {
   window.__getPlayerId = () => myPlayerId;
   // ★[배산임수 감사 2026-08-29] 게이지 진단 훅 — 하네스가 "둠벙에서 실제로 마셔지는가"를 화면 값으로 잰다(읽기 전용).
   window.__calendar = () => (myCalendar ? JSON.parse(JSON.stringify(myCalendar)) : null);
+  window.__wx = () => (myWeather ? JSON.parse(JSON.stringify(myWeather)) : null);   // ★[온도] 하네스 훅(읽기 전용)
   window.__getGauges = () => ({ hunger: myHunger, thirst: myThirst, vp: myVp,
     stam: myStam, stamLock: myStamLock, canSprint: myCanSprint, recover: myRecover });
   // ★[시설 제작창 2026-08-29] 진단 훅 — 하네스가 "창이 실제로 열렸는가 · 대기열이 도는가"를 화면 상태로 잰다(읽기 전용).
@@ -6823,6 +6827,7 @@ const SIM_JOB_EMOJI = {
         if (msg.craftSkill) craftSkill = msg.craftSkill;
         if (msg.self.hp !== undefined) { myHp = msg.self.hp; myMaxHp = msg.self.maxHp; }
         if (msg.calendar) myCalendar = msg.calendar;   // ★[달력] 입장 즉시 — 첫 날짜 경계를 기다리지 않는다
+        if (msg.weather) myWeather = msg.weather;     // ★[온도] 입장 즉시 — 첫 gauges 를 기다리지 않는다
         if (typeof msg.self.hunger === 'number') myHunger = msg.self.hunger;
         if (typeof msg.self.thirst === 'number') myThirst = msg.self.thirst;
         if (typeof msg.self.vp === 'number') myVp = msg.self.vp;
@@ -7273,6 +7278,7 @@ const SIM_JOB_EMOJI = {
       if (typeof msg.cold === 'boolean') myCold = msg.cold;
       // ★★[신체 상태 §8.3] 서버가 정본이다. 클라는 **그린다**(단계도 서버가 매겨 보낸다 —
       //   여기서 다시 양자화하면 히스테리시스가 두 벌이 되어 깜빡임이 되살아난다).
+      if (msg.weather) { myWeather = msg.weather; window.__weather = msg.weather; }   // ★[온도] 바깥 날씨 + 마을 완충
       if (msg.body) {
         myBody = msg.body; window.__bodyState = msg.body;
         // ★[3층 재배선] 스태미나·회복 배율은 몸 페이로드에 실려 온다(별도 창구 안 만든다).
@@ -12615,6 +12621,25 @@ const SIM_JOB_EMOJI = {
           + ` · 이 계절 ${myCalendar.seasonDays}일`;
         cb.hidden = false;
       } else cb.hidden = true;
+    }
+    // ★★[온도 곡선 2026-08-31] 바깥 날씨 배지 — **왜 덜 추운지까지 말한다**.
+    //   재민 확정 "12월과 1월과 2월이 같은 강도는 아니지" ⇒ 계절 이름이 아니라 **그날의 세기**를 보여 준다.
+    //   툴팁이 마을 완충을 밝히는 이유: 마을이 안전망이라는 걸 화면이 말해야 플레이어가 그걸 **선택**할 수 있다.
+    const wb = document.getElementById('wxBadge');
+    if (wb) {
+      if (myWeather) {
+        const sh = Math.max(0, Math.min(1, myWeather.shelter || 0));
+        const txt = `${myWeather.emo} ${myWeather.ko}${sh > 0.15 ? ' · 마을' : ''}`;
+        const tip = `바깥 ${myWeather.tempC != null ? myWeather.tempC + '℃ · ' : ''}추위 ${Math.round(myWeather.cold * 100)}%${myWeather.night ? ' (밤)' : ' (낮)'}`
+          + (sh > 0.01 ? ` · 마을 미기후가 ${Math.round((myWeather.cut || 0) * 100)}% 막아 준다` : ' · 야생 — 막아 주는 것이 없다')
+          + ' · 옷·모닥불·실내는 여기에 더해 몸에 적용된다';
+        // ★값이 그대로면 **DOM 을 안 건드린다** — `updateHud` 는 100ms 마다 도는데 날씨는 초당 1회
+        //   바뀔까 말까다. 매번 쓰면 그때마다 HUD 줄의 스타일·레이아웃이 다시 계산된다
+        //   (헤드리스 SwiftShader 에서 실제로 프레임에 얹힌다 — `e2e-waterperf` 배율이 그걸 잡았다).
+        if (wb.textContent !== txt) wb.textContent = txt;
+        if (wb.title !== tip) wb.title = tip;
+        if (wb.hidden) wb.hidden = false;
+      } else if (!wb.hidden) wb.hidden = true;
     }
   }
   // 좌표는 실시간 갱신이 자연스러워서 더 자주

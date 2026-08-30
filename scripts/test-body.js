@@ -398,6 +398,158 @@ function codeOnly(src) {
     ok(B.ensure(W).cold < 0.15, '★★⑬ 모닥불로 가면 내려간다', B.ensure(W).cold.toFixed(3));
   }
 
+  // ═══ ⑭ 연중 연속 온도 곡선 — [온도 소배치 2026-08-31 재민 확정] ══════════════
+  //   재민: *"12월과 1월과 2월이 같은 강도는 아니지."* · *"매년 7월 1일이 같으면 안 된다"*
+  //         *"시간은 절대 바꾸면 안 돼. 차라리 겨울 버티는 난이도를 수정."*
+  say('\n⑭ 온도 곡선 — 계절 계단 폐지 · econ 기온 정본 유도');
+  {
+    const Wx = require(path.join(ROOT, 'server', 'weather.js'));
+    const Econ = require(path.join(ROOT, 'sim', 'economy-sim-v2.js'));
+    ok(Wx.available(), '★★⑭ 전제 — econ 기온 정본(`temperatureAt`)을 실제로 물었다(못 물면 아래가 전부 무의미)');
+    const A = Wx.anchors();
+    const out = (d, n) => B.coldTarget({ day: d, night: n, warmth: 0 });
+
+    // ── ㉠ 곡선이 econ 정본에서 왔는가(사본 금지) ────────────────────────────
+    //   ★weather.js 안에 90/180/270/315/365 같은 **날짜 상수가 한 개도 없어야** 한다.
+    //     (365 는 계측기 보폭으로만 쓰이고 이 파일엔 없다.)
+    const wsrc = codeOnly(fs.readFileSync(path.join(ROOT, 'server', 'weather.js'), 'utf8'));
+    const dateConst = (wsrc.match(/\b(90|180|270|315|365|182\.5)\b/g) || []);
+    ok(dateConst.length === 0, '★★⑭㉠ `weather.js` 에 계절·연 길이 상수가 **한 개도 없다**(전부 econ 에서 유도)',
+      dateConst.join(',') || '0개');
+    ok(/economy-sim-v2/.test(wsrc) && /temperatureAt/.test(wsrc),
+      '★⑭㉠ econ `temperatureAt` 을 **직접** 부른다(자기 코사인을 새로 만들지 않았다)');
+    // 앵커가 econ 곡선의 극값과 정말 같은가 — 여기서 다시 계산해 맞대 본다(계측기 사본이 아니라 교차검증)
+    let lo = 0, hi = 0;
+    for (let d = 0; d < 366; d += 0.25) {
+      if (Econ.temperatureAt(d, null, 0) < Econ.temperatureAt(lo, null, 0)) lo = d;
+      if (Econ.temperatureAt(d, null, 0) > Econ.temperatureAt(hi, null, 0)) hi = d;
+    }
+    ok(A.winterMid === lo && A.summerMid === hi,
+      '★★⑭㉠ 최한·최난 앵커가 **econ 기온 곡선의 극값 그 자체**다', `겨울 ${A.winterMid} · 여름 ${A.summerMid}`);
+
+    // ── ㉡ 튜닝1 앵커 4점 보존 — 잡음을 끄면 정확히 그 값이 나온다 ────────────
+    //   ★잡음은 env 로만 끈다(모듈을 고쳐서 끄면 그건 다른 코드를 재는 것이다).
+    {
+      const code = [
+        `const B=require(${JSON.stringify(path.join(ROOT, 'server', 'body.js'))});`,
+        `const W=require(${JSON.stringify(path.join(ROOT, 'server', 'weather.js'))});`,
+        'const a=W.anchors();',
+        'const v=[B.coldTarget({day:a.summerMid,night:false}),B.coldTarget({day:a.summerMid,night:true}),',
+        'B.coldTarget({day:a.winterMid,night:false}),B.coldTarget({day:a.winterMid,night:true})];',
+        "process.stdout.write('ANCHORS'+JSON.stringify(v));",
+      ].join('');
+      const r = require('child_process').spawnSync(process.execPath, ['-e', code],
+        { env: Object.assign({}, process.env, { WEATHER_DEV_C: '0', WEATHER_AMP_NOISE: '0' }), encoding: 'utf8' });
+      let got = null;
+      try { got = JSON.parse((r.stdout || '').split('ANCHORS')[1]); } catch (e) {}
+      ok(got && JSON.stringify(got) === JSON.stringify([0, 0.45, 0.7, 1]),
+        '★★⑭㉡ 튜닝1 채택 4점(여름낮 0 · 여름밤 0.45 · 겨울낮 0.7 · **겨울밤 1.00 클램프 없이**)이 곡선 위에 그대로 있다',
+        JSON.stringify(got));
+    }
+    // 폴백 계단의 네 점이 앵커와 같은 값인가(사본 표류 방지 — 두 경로가 같은 수를 말해야 한다)
+    ok(B.coldTarget({ seasonCold: 0, night: false }) === Wx.CFG.A_SUMMER_DAY
+      && B.coldTarget({ seasonCold: 0, night: true }) === Wx.CFG.A_SUMMER_NIGHT
+      && B.coldTarget({ seasonCold: 1, night: false }) === Wx.CFG.A_WINTER_DAY
+      && B.coldTarget({ seasonCold: 1, night: true }) === Wx.CFG.A_WINTER_NIGHT,
+      '★★⑭㉡ **폴백 4단 계단의 네 점 = 곡선의 네 앵커** (두 경로가 같은 값을 말한다)');
+
+    // ── ㉢ 연속성 — 어디에도 계단이 없다(연말 경계 포함) ─────────────────────
+    let worst = 0, worstAt = 0;
+    for (let d = 0; d < 365 * 3; d += 0.25) {
+      for (const n of [false, true]) {
+        const j = Math.abs(out(d + 0.25, n) - out(d, n));
+        if (j > worst) { worst = j; worstAt = d; }
+      }
+    }
+    ok(worst < 0.02, `★★⑭㉢ 3년 내내 인접 0.25일 최대 도약 ${worst.toFixed(5)} < 0.02 = **계단 없음**`, `day ${worstAt}`);
+    // ★자명 통과 금지 — 곡선이 실제로 크게 움직이긴 하는가
+    const span = (() => { let mn = 9, mx = -9; for (let d = 0; d < 365; d++) { const v = out(d, true); mn = Math.min(mn, v); mx = Math.max(mx, v); } return mx - mn; })();
+    ok(span > 0.5, '★★⑭㉢ 자명 통과 금지 — 연중 밤 추위가 실제로 크게 변한다', `진폭 ${span.toFixed(3)}`);
+
+    // ── ㉣ 극값 정렬 · 초겨울 < 한겨울 ───────────────────────────────────────
+    //   ★날씨 편차가 하루 표본을 뒤집을 수 있다 ⇒ **여러 해 평균**으로 묻는다(계측기 교훈).
+    const mean = (doy, n) => { let s2 = 0; for (let k = 0; k < 24; k++) s2 += out(doy + 365 * k, n); return s2 / 24; };
+    const mEarly = mean(275, true), mDeep = mean(Math.round(A.winterMid), true), mSummer = mean(Math.round(A.summerMid), true);
+    ok(mDeep > mEarly, '★★⑭㉣ **한겨울 밤이 초겨울 밤보다 춥다**(재민이 지적한 "같은 강도" 폐지)',
+      `초겨울 ${mEarly.toFixed(3)} < 한겨울 ${mDeep.toFixed(3)}`);
+    ok(mDeep > mSummer + 0.4, '★⑭㉣ 겨울이 여름보다 확실히 춥다', `${mSummer.toFixed(3)} → ${mDeep.toFixed(3)}`);
+    ok(mean(Math.round(A.winterMid), false) > mean(275, false),
+      '★⑭㉣ 낮에도 한겨울이 초겨울보다 춥다');
+
+    // ── ㉤ 씨앗 결정론 · 해마다 다름 · 비반전 ────────────────────────────────
+    const s1 = [], s2 = [];
+    for (let d = 300; d < 340; d++) s1.push(Wx.devCOf(d));
+    for (let d = 300; d < 340; d++) s2.push(Wx.devCOf(d));
+    ok(JSON.stringify(s1) === JSON.stringify(s2), '★⑭㉤ 같은 날은 언제 물어도 같다(결정론 — 존·재시작 무관)');
+    const yearDiff = [];
+    for (let k = 0; k < 5; k++) yearDiff.push(+out(181 + 365 * k, true).toFixed(4));
+    ok(new Set(yearDiff).size >= 4, '★★⑭㉤ **매년 같은 날짜가 서로 다르다**(재민: "매년 7월 1일이 같으면 안 된다")',
+      yearDiff.join(' / '));
+    ok(Math.max(...s1.map(Math.abs)) <= Wx.CFG.DEV_C + 1e-9,
+      '★⑭㉤ 편차가 손잡이 한도(±DEV_C ℃) 안에 있다', `${Math.max(...s1.map(Math.abs)).toFixed(2)}℃ ≤ ${Wx.CFG.DEV_C}℃`);
+    ok(mDeep > mEarly && mean(Math.round(A.summerMid), true) < mean(224, true),
+      '★★⑭㉤ 잡음이 **계절 순서를 뒤집지 않는다**(여러 해 평균에서 여름 < 가을 < 겨울)');
+
+    // ── ㉥ 일교차 변조 — 여름 밤 몫이 겨울보다 크다(곡선의 비선형이 만든다) ──
+    const gapSummer = mean(Math.round(A.summerMid), true) - mean(Math.round(A.summerMid), false);
+    const gapWinter = mDeep - mean(Math.round(A.winterMid), false);
+    ok(gapSummer > gapWinter, '★★⑭㉥ 밤이 더하는 몫이 **여름 > 겨울**(한겨울 낮은 이미 천장 근처라 밤이 더할 여지가 작다)',
+      `여름 ${gapSummer.toFixed(3)} > 겨울 ${gapWinter.toFixed(3)}`);
+    const amps = []; for (let d = 0; d < 200; d++) amps.push(Wx.ampMultOf(d));
+    ok(Math.min(...amps) >= Wx.CFG.AMP_MIN - 1e-9 && Math.max(...amps) <= Wx.CFG.AMP_MAX + 1e-9,
+      '★⑭㉥ 일교차 배율이 한도 안에 있다', `${Math.min(...amps).toFixed(2)}~${Math.max(...amps).toFixed(2)}`);
+    ok(new Set(amps.map((x) => x.toFixed(3))).size > 50, '★⑭㉥ 자명 통과 금지 — 일교차가 날마다 실제로 다르다');
+
+    // ── ㉦ 마을 안전망 · 야생 무완충 ─────────────────────────────────────────
+    const wd = Math.round(A.winterMid);
+    const wild = B.coldTarget({ day: wd, night: true, warmth: 0, villageShelter: 0 });
+    const vil = B.coldTarget({ day: wd, night: true, warmth: 0, villageShelter: 1 });
+    const edge = B.coldTarget({ day: wd, night: true, warmth: 0, villageShelter: 0.5 });
+    ok(vil < wild, '★★⑭㉦ **마을이 야생보다 따뜻하다**(재민: 마을 = 안전망 · 야생 = 위험)', `${wild} → ${vil}`);
+    ok(edge > vil && edge < wild, '★⑭㉦ 가장자리는 그 사이다(벽이 아니라 사그라듦)', `${edge}`);
+    ok(vil < B.STAGE_AT.cold[0], '★★⑭㉦ 마을 한겨울 밤 평형이 **1단계 아래** — 맨몸으로 무한히 버틴다',
+      `${vil} < ${B.STAGE_AT.cold[0].toFixed(3)}`);
+    // 실제로 재 본다 — 30분을 마을에서 버텨도 3단계가 안 온다 / 야생은 5~8분에 온다
+    const S3 = B.STAGE_AT.cold[2] + B.CFG.STAGE_HYST;
+    const clock = (ctx) => { const P = { hunger: 100, thirst: 100 }; B.ensure(P);
+      for (let s = 1; s <= 3600; s++) { B.tick(P, 1, ctx); if (B.ensure(P).cold >= S3) return s; } return null; };
+    const tVil = clock({ day: wd, night: true, warmth: 0, villageShelter: 1 });
+    ok(tVil === null, '★★⑭㉦ 마을에선 한 시간을 버텨도 3단계가 **안 온다**', tVil === null ? '안 옴' : `${tVil}초`);
+    // ★야생은 **여러 해**로 묻는다 — 날씨 편차가 있으니 "그 하루"가 아니라 "그 무렵의 밤"이 기준이다.
+    //   (초안은 day 315 하루만 찍었다가 그 해가 마침 포근해서 실패했다. 곡선이 아니라 질문이 틀렸던 것.)
+    const nights = [];
+    for (let k = 0; k < 24; k++) nights.push(clock({ day: wd + 365 * k, night: true, warmth: 0, villageShelter: 0 }));
+    const hitW = nights.filter((x) => x !== null).sort((a2, b2) => a2 - b2);
+    const medW = hitW.length ? hitW[Math.floor(hitW.length / 2)] : null;
+    ok(medW !== null && medW >= 300 && medW <= 480,
+      '★★⑭㉦ 야생 맨몸 한겨울 밤은 **5~8분에 3단계**(재민 확정 목표 시작점 · 24년 표본 중앙값)',
+      medW === null ? '안 옴' : `${(medW / 60).toFixed(1)}분 · ${hitW.length}/24 밤`);
+    ok(hitW.length >= 8, '★⑭㉦ 한겨울 밤 상당수가 실제로 3단계까지 간다(야생 = 위험)', `${hitW.length}/24`);
+    // ★★이 배치의 요점 그 자체 — 초겨울 밤은 한겨울 밤보다 **덜 위험하다**
+    let earlyHits = 0;
+    for (let k = 0; k < 24; k++) if (clock({ day: 275 + 365 * k, night: true, warmth: 0, villageShelter: 0 }) !== null) earlyHits++;
+    ok(earlyHits < hitW.length,
+      '★★⑭㉦ **초겨울 밤은 한겨울 밤보다 3단계에 덜 간다**(12월과 1월이 같은 강도가 아니다)',
+      `초겨울 ${earlyHits}/24 < 한겨울 ${hitW.length}/24`);
+    ok(/shelterAt/.test(codeOnly(fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8'))),
+      '★⑭㉦ 존이 마을 완충을 `SimVillages.shelterAt` 정본에서 받는다(사본 계산 없음)');
+
+    // ── ㉧ HP 불감소 유지 · 시간 구조 불변 캐논 ──────────────────────────────
+    {
+      const P = { hunger: 100, thirst: 100, hp: 77 };
+      for (let s = 0; s < 1800; s++) B.tick(P, 1, { day: wd, night: true, warmth: 0, villageShelter: 0 });
+      ok(P.hp === 77 && B.ensure(P).cold > 0.9,
+        '★★⑭㉧ 한겨울 야생에서 30분을 얼어도 **HP 는 한 점도 안 깎인다**(죽음 설계 배치 전까지 캐논)',
+        `hp ${P.hp} · cold ${B.ensure(P).cold.toFixed(3)}`);
+    }
+    const cfgSrc = fs.readFileSync(path.join(ROOT, 'server', 'zone-config.js'), 'utf8');
+    ok(/dayLengthMs:\s*24\s*\*\s*60\s*\*\s*1000/.test(cfgSrc),
+      '★★⑭㉧ **하루 = 24분** 그대로다(시간 구조 불변 캐논 — 겨울 난이도는 시간이 아니라 곡선·완충으로 고친다)');
+    const esrc = fs.readFileSync(path.join(ROOT, 'sim', 'economy-sim-v2.js'), 'utf8');
+    ok(/const d = day % 365;/.test(esrc) && /CLIMATE = \{ zoneLatBase: 12, annualAmp: 12, diurnalAmp: 5/.test(esrc),
+      '★★⑭㉧ **econ 무수정** — `seasonOf` 365일 4분기도, `CLIMATE` 도 정본 그대로다');
+  }
+
   // ═══ ⑧ 픽스처 결백 ═════════════════════════════════════════════════════════
   say('\n⑧ 픽스처 결백(족보 ㊻)');
   // ★①(오프라인 불변)이 자명 통과하지 않으려면, 그 절이 **저장을 건드리지 않아야** 한다.

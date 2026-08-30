@@ -2597,6 +2597,7 @@ async function _acceptConnection(ws, req, C) {
       claims: Array.from(claims.values()),
       simVillages: SimVillages.clientVillages(), // §4-4 Stage 4A: 마을 영토(경계 셀)·이름·인구 — 1회
     calendar: calendarNow(),                   // ★[달력 2026-08-30] 연·계절·일 — econ 정본에서 유도
+    weather: weatherNow(),                     // ★[온도 곡선 2026-08-31] 바깥 날씨 — 입장 즉시 배지
       granStocks: SimVillages.granStocks(),      // ★곳간② 물리 재고 스냅샷(이후 gran_stock 델타) — 사다리 앞 짐더미 연출
       markets: SimVillages.marketVillages(),     // ★[10차 T4] 장마당 스냅샷 flat[ccx,ccy,…](이후 markets 방송) — 캐러밴 체류 중인 마을만
       banditCamps: Bandits.clientCamps(), // §11 도적: 소굴·야영 마커 1종 — 이후 bandit_camps가 변경분 방송
@@ -3056,6 +3057,7 @@ async function _acceptConnection(ws, req, C) {
     claims: Array.from(claims.values()),
     simVillages: SimVillages.clientVillages(), // §4-4 Stage 4A: 마을 영토(경계 셀)·이름·인구 — 1회
     calendar: calendarNow(),                   // ★[달력 2026-08-30] 연·계절·일 — econ 정본에서 유도
+    weather: weatherNow(),                     // ★[온도 곡선 2026-08-31] 바깥 날씨 — 입장 즉시 배지
       granStocks: SimVillages.granStocks(),      // ★곳간② 물리 재고 스냅샷(이후 gran_stock 델타) — 사다리 앞 짐더미 연출
       markets: SimVillages.marketVillages(),     // ★[10차 T4] 장마당 스냅샷 flat[ccx,ccy,…](이후 markets 방송) — 캐러밴 체류 중인 마을만
     banditCamps: Bandits.clientCamps(), // §11 도적: 소굴·야영 마커 1종 — 이후 bandit_camps가 변경분 방송
@@ -3285,6 +3287,15 @@ function handlePlayerInput(player, raw) {
     send(player.ws, { type: 'gauges', hunger: Math.round(player.hunger), thirst: Math.round(player.thirst),
       vp: Math.round(player.vp || 0), cold: !!player._cold, body: Body.selfPayload(player) });
     if (msg.quiet !== true) send(player.ws, { type: 'notice', text: `🧪 몸 상태 세움 — ${JSON.stringify(Body.toSave(player))}` });
+  }
+  else if (E2E_GIVE && msg.type === '__e2e_clock') {
+    // ★테스트 전용 — 몸·날씨가 보는 날짜/밤을 세운다. null 을 주면 원래 시계로 돌아간다.
+    _e2eClock = (msg.day == null && msg.night == null) ? null
+      : { day: Number.isFinite(msg.day) ? (msg.day | 0) : (_e2eClock && _e2eClock.day),
+          night: (typeof msg.night === 'boolean') ? msg.night : (_e2eClock && _e2eClock.night) };
+    _wxHint = { at: 0, v: null };   // 힌트 캐시를 즉시 무효화(1초 기다리게 하지 않는다)
+    for (const q of players.values()) q._shelter = null;
+    send(player.ws, { type: 'notice', text: `🧪 시계 세움 — ${JSON.stringify(_e2eClock)} · ${JSON.stringify(weatherNow())}` });
   }
   else if (E2E_GIVE && msg.type === '__e2e_day_freeze') {
     // ★테스트 전용(E2E_GIVE=1 일 때만 분기 존재) — 상호작용을 재는 동안 게임일을 얼린다.
@@ -4160,11 +4171,63 @@ function perfMark(kind, ms, extra) {
 //   `Events.calendarOf` 가 econ `seasonOf` 하나만 보고 전부 유도한다(상수 0개).
 //   날짜는 **econ 게임일**을 쓴다(마을 재고창과 같은 시계 — 화면에 날짜가 둘이면 그게 곧 거짓말이다).
 //   마을 시뮬이 꺼진 존에서는 벽시계 파생(`zoneGameDay`)으로 떨어진다.
-function calendarNow() {
+// ★[테스트 전용 · `E2E_GIVE=1` 일 때만 세워진다] 온도 배선을 재려면 **겨울 밤**이 필요한데,
+//   실기로는 한 해가 6시간이고 밤이 12분이라 하네스가 그걸 기다릴 수 없다.
+//   ⇒ `gameDayNow`·`bodyNight` 만 갈아끼운다(하늘 렌더러·econ 틱은 그대로 — 세계를 바꾸지 않는다).
+//   ⚠기본 부팅에선 이 값을 세우는 코드 경로가 아예 없다(핸들러 분기가 `E2E_GIVE` 안에서만 존재).
+let _e2eClock = null;
+
+// ★★[온도 곡선 2026-08-31] **날짜 시계는 하나다.** 달력이 "겨울 12일"이라 말하는 그날과
+//   몸이 느끼는 온도의 그날이 다르면, 그건 화면이 거짓말을 하는 것이다(두 시계는 영구히 어긋난다 —
+//   `zoneGameDay` 는 벽시계 파생, econ `world.day` 는 틱 카운터라 따라잡기가 없다).
+//   ⇒ 달력·온도·계절 힌트가 **전부 이 함수 하나**를 쓴다. 새 날짜 해석기를 만들지 마라.
+function gameDayNow() {
+  if (_e2eClock && Number.isFinite(_e2eClock.day)) return _e2eClock.day;
   let d = null;
   try { d = (SimVillages.econDay ? SimVillages.econDay() : null); } catch (e) {}
   if (d === null || d === undefined) d = zoneGameDay();   // 마을 시뮬이 없는 존만 벽시계로 떨어진다
-  try { return require('./events').calendarOf(d); } catch (e) { return null; }
+  return d;
+}
+function calendarNow() {
+  try { return require('./events').calendarOf(gameDayNow()); } catch (e) { return null; }
+}
+// 몸·날씨가 보는 밤 — 평시엔 `isNight` 그대로다(하네스만 이걸 갈아끼운다).
+function bodyNight(now) {
+  if (_e2eClock && typeof _e2eClock.night === 'boolean') return _e2eClock.night;
+  return isNight(now);
+}
+// ★[온도 곡선] HUD 가 보여 줄 바깥 날씨 한 줄 — 옷·불·실내·마을을 **뺀** "밖이 얼마나 추운가".
+//   ⚠몸 상태(무들)와 다른 것이다: 무들은 "내가 얼마나 추운가", 이건 "밖이 얼마나 추운가"다.
+//   ⚠클라가 날짜→온도 매핑을 **갖지 않는다**(달력과 같은 규약 — 사본 금지). 서버가 문장 재료를 준다.
+let _wxHint = { at: 0, v: null };
+function weatherNow() {
+  const now = Date.now();
+  if (_wxHint.v && now - _wxHint.at < 1000) return _wxHint.v;
+  let v = null;
+  try { v = require('./weather').hintOf(gameDayNow(), bodyNight(now)); } catch (e) { v = null; }
+  _wxHint = { at: now, v };
+  return v;
+}
+// 그 플레이어가 보는 날씨 — 바깥 날씨 + **지금 마을이 얼마나 막아 주는가**.
+//   ★비네트가 원인 축을 말하게 하는 것과 같은 규약: 화면이 "왜 덜 추운지"를 말해야 한다.
+function weatherFor(p, now) {
+  const w = weatherNow();
+  if (!w) return null;
+  const sh = villageShelterOf(p, now || Date.now());
+  // ★`cut` 은 "마을이 실제로 몇 % 깎아 주는가" — 클라가 `COLD_VILLAGE_SHELTER` 사본을 갖지 않게 여기서 낸다.
+  const cut = +(Math.max(0, Math.min(1, sh)) * Body.CFG.COLD_VILLAGE_SHELTER).toFixed(4);
+  return Object.assign({}, w, { shelter: sh, cut });
+}
+// ★[겨울 난이도] 마을 완충 — 플레이어별 캐시(초당 1회·64px 이동 이상일 때만 재계산).
+//   마을 스캔은 싸지만(≤50개) 매 틱 전원분은 낭비다. 완충은 걸어서 바뀌는 값이라 1초면 충분하다.
+const _SHELTER_TTL_MS = 1000, _SHELTER_MOVE_PX = 64;
+function villageShelterOf(p, now) {
+  const c = p._shelter;
+  if (c && (now - c.at) < _SHELTER_TTL_MS && Math.hypot(p.x - c.x, p.y - c.y) < _SHELTER_MOVE_PX) return c.v;
+  let v = 0;
+  try { v = (SimVillages.shelterAt ? SimVillages.shelterAt(p.x, p.y) : 0) || 0; } catch (e) { v = 0; }
+  p._shelter = { at: now, x: p.x, y: p.y, v };
+  return v;
 }
 // ★★[무게 배치] 걸음 배율의 **정본 하나** — 서버 이동과 클라 예측이 같은 수를 써야 러버밴딩이 안 난다.
 //   신체(§7) × 과적, 곱 폭주는 바닥에서 자른다. 이 함수를 안 거치는 배율 계산을 새로 만들지 마라.
@@ -8019,11 +8082,16 @@ setInterval(() => {
     const moving = Math.hypot(p.vx || 0, p.vy || 0) > 1;
     const clothes = getEquippedEquipment(p, 'clothes');
     const warmth = (clothes && clothes.attrs && clothes.attrs.warmth) || 0;
-    const _night = isNight(now), _fire = isNearCampfire(p), _indoor = isIndoorAt(p);
+    const _night = bodyNight(now), _fire = isNearCampfire(p), _indoor = isIndoorAt(p);
     // ★[3층 재배선] 짐 적재율을 넘긴다 — 스태미나 소모가 무게에 가중된다.
     //   정본은 `Carry.effects(p).ratio` 하나다(무게를 여기서 다시 세지 않는다).
     let _cr = 0; try { _cr = Carry.effects(p).ratio || 0; } catch (e) {}
-    Body.tick(p, dt, { night: _night, nearFire: _fire, indoor: _indoor, warmth,
+    // ★★[온도 곡선 2026-08-31] `day` 를 넘긴다 ⇒ `coldTarget` 이 **연중 연속 곡선**을 쓴다.
+    //   `seasonCold` 는 그대로 같이 넘긴다 — `day` 가 없는 호출부를 위한 **폴백 계약**이라
+    //   여기선 안 쓰이지만, 계약이 살아 있다는 걸 호출부가 보여 주는 편이 낫다.
+    //   ★[겨울 난이도] 마을 완충은 여기서만 계산한다(사본 금지 — `SimVillages.shelterAt` 이 정본).
+    Body.tick(p, dt, { day: gameDayNow(), night: _night, nearFire: _fire, indoor: _indoor, warmth,
+                       villageShelter: villageShelterOf(p, now),
                        seasonCold: seasonColdNow(), moving, sprint: p.sprint, carryRatio: _cr, now });
     p._cold = Body.ensure(p).cold > 0.05;
     // 옷은 추위를 막는 동안 닳는다(종전 규약 유지 — 옷감 수요의 실체)
@@ -8078,6 +8146,8 @@ setInterval(() => {
         cold: !!p._cold,  // 밤 추위(방한 부족) — 클라 표시(구 필드 · 호환 유지)
         // ★[§8.3] **본인에겐 연속값**. 남에겐 단계만 나간다(`Body.peerPayload` — 소비자는 외형 배치에서).
         body: Body.selfPayload(p),
+        // ★[온도 곡선 2026-08-31] 바깥 날씨 + 마을 완충 — HUD 배지의 유일한 원천(클라 사본 금지)
+        weather: weatherFor(p, now),
         // ★[무게 배치] 소지 무게·용량·과적 배율. **클라 예측이 같은 수를 써야** 러버밴딩이 안 난다 —
         //   그래서 `combined`(신체×과적, 바닥 적용)를 실어 보내고 클라는 그걸 쓴다.
         carry: Object.assign(Carry.payload(p), { combined: moveMultOf(p) }),
