@@ -103,6 +103,30 @@ function consume(p, item, amount, inventory, day) {
   if (!arr.length) delete all(p)[item];
   return { taken: +taken.toFixed(6), ages };
 }
+// ★★[원장 승격 2026-08-30] **지목 소비** — 펼친 로트 줄 하나를 골라 버리는 길.
+//   `consume` 은 오래된 것부터(FIFO)라 "3일 전 것만 버린다"를 표현할 수 없었다.
+//   FIFO 를 없애는 게 아니라 **옆에 지목 경로를 하나 더** 낸다(먹기는 그대로 FIFO 가 맞다).
+function consumeFrom(p, item, day, amount, inventory) {
+  if (!isLot(item)) return { taken: 0 };
+  const arr = of(p, item);
+  const i = arr.findIndex((l) => l.d === (day | 0));
+  if (i < 0) return { taken: 0 };
+  const take = Math.min(Math.max(0, Number(amount) || 0), arr[i].n);
+  arr[i].n = +(arr[i].n - take).toFixed(6);
+  if (arr[i].n <= CFG.EPS) arr.splice(i, 1);
+  if (inventory) inventory[item] = Math.floor(sum(p, item) + CFG.EPS);
+  if (!arr.length) delete all(p)[item];
+  return { taken: +take.toFixed(6) };
+}
+// ★UI 가 그릴 것 — 로트가 있는 품목만. 원장과 같은 규약(클라가 표를 안 든다).
+function viewAll(p, inventory, day) {
+  const out = {};
+  for (const item of Object.keys(all(p))) {
+    const v = view(p, item, inventory, day);
+    if (v && v.lots && v.lots.length) out[item] = v.lots;
+  }
+  return out;
+}
 // 표시용 — 겹쳐 보여 주되 펼치면 로트가 보인다("감자 4.2 (0.84kg)" → 로트별 나이).
 function view(p, item, inventory, day) {
   if (!isLot(item)) return null;
@@ -129,4 +153,4 @@ function fromSave(p, saved) {
   }
   return all(p);
 }
-module.exports = { CFG, LOT_CORE, isLot, all, of, sum, note, reconcile, consume, view, toSave, fromSave };
+module.exports = { CFG, LOT_CORE, isLot, all, of, sum, note, reconcile, consume, consumeFrom, view, viewAll, toSave, fromSave };

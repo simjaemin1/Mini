@@ -98,12 +98,14 @@ else
     test-weight.js
     test-emptystart.js
     test-craft.js
+    test-ledger.js
     e2e-events.js
     e2e-trade.js
     e2e-weight.js
     e2e-emptystart.js
     e2e-forage-village.js
     e2e-craft.js
+    e2e-inv.js
     e2e-ui.js
     e2e-fishing.js
     e2e-guest-reconnect.js

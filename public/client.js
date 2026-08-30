@@ -193,6 +193,20 @@ const SIM_JOB_EMOJI = {
   // 플레이어 장비(품질·속성·내구 인스턴스) — econ 무접촉·본체 서버층
   let equipmentRecipes = {}, equipmentMeta = null; // 장비 제작 레시피·미리보기 메타(서버 공식 단일진실)
   let equipment = [], equipSlots = {}, craftSkill = {}; // 장비 인스턴스·장착 슬롯·제작 숙련 xp
+  // ★★[정비 배치 2026-08-30] 개체 원장·식품 로트 — **서버가 준 것만** 쓴다(클라가 표를 들면 사본이다).
+  //   `myLedger[item] = [{id, kg, d?}, …]` · `myLots[item] = [{day, n, ageDays, coalesced}, …]`
+  let myLedger = {}, myLots = {};
+  // 펼침 상태 — 인벤 메시지마다 패널이 다시 그려지므로 **재렌더를 넘어 살아남아야** 한다.
+  const ulOpen = new Set();
+  // ★[정비 배치] 클라 손잡이 — welcome 의 `uiCfg` 가 덮어쓴다(정본은 서버 env · `carryCfg` 와 같은 규약).
+  let uiCfg = { vignetteTint: true, moodleShowMax: 3, ghostStallMs: 5000, ghostReconnectMs: 10000 };
+  // ★비네트 색조 — **축 계열**. 새 아트를 만들지 않고 색만 바꾼다(§8.3 아날로그 채널은 최소로).
+  //   갈증=청 · 허기=황 · 추위=창백한 하늘색 · 피로=보라 · 부상=적 · 과적=흙빛.
+  const VIGNETTE_RGB = {
+    thirst: '90,150,220', hunger: '210,170,60', cold: '150,190,225',
+    fatigue: '140,110,190', injury: '200,60,50', carry: '150,120,80',
+    _: '120,20,14',   // 기본(옛 색) — 축을 모를 때·색조를 껐을 때
+  };
   let craftEquipSel = {}; // UI: 유형별 선택 재료 {clothes:'hide',...}
   // ★주조(합금) UI — 유형별 배합 가중치 {weapon:{copper:83,tin:17}}, 켬/끔, 서버 미리보기 캐시.
   //   합금 물성은 **서버(server/specialty.js)가 단독 계산**한다. 클라에 복제하지 않는다 —
@@ -232,6 +246,23 @@ const SIM_JOB_EMOJI = {
   //   true 동안 클라 예측(predictStep)을 정지시켜, 실체 없는 좌표로 계속 걸어가는 "유령 클라"를 원천 차단.
   //   해제는 오직 primary welcome 앵커에서만(= 서버 권위 좌표를 받은 순간).
   let _selfGone = false;
+  // ★[정비 배치] 유령 클라 — 서버 틱이 안 오는 동안은 **예측을 멈추고** 그 사실을 화면에 적는다.
+  let netStalled = false;
+  let _ghostCutAt = 0;          // 강제 close 를 한 번만 하기 위한 빗장(회복하면 풀린다)
+  function setNetStalled(on, why) {
+    if (netStalled === !!on) return;
+    netStalled = !!on;
+    const el = document.getElementById('netLost');
+    if (el) {
+      el.classList.toggle('on', netStalled);
+      const t = el.querySelector('.nl-why');
+      if (t) t.textContent = netStalled ? (why || '서버 응답 없음') : '';
+    }
+    if (netStalled) { pendingInputs.length = 0; _predAccum = 0; }   // 쌓인 미ack 입력을 버린다(재접속 뒤 순간이동 방지)
+    else console.log('[recover] 서버 틱 복구 — 예측 재개');
+  }
+  window.__netStalled = () => netStalled;
+  window.__tickGap = () => (lastTickAt ? Math.round(performance.now() - lastTickAt) : -1);
   // Phase 14.41: 사망/구조
   let myIsDown = false;
   let myDownedAt = 0;
@@ -6002,6 +6033,49 @@ const SIM_JOB_EMOJI = {
       c.ws.send(JSON.stringify({ type: 'ping', t: now }));
     }, 1000);
 
+    // ★★[정비 배치 2026-08-30 재민 확정 §4] **유령 클라 감시 — 서버 틱 미수신.**
+    //
+    //   실기 실측(2026-08-29): 서버 틱이 **초당 0**인데 화면은 멀쩡히 "돌아가고" 있었다.
+    //   클라 예측이 계속 걸었고, 이미 받아 둔 청크가 계속 그려졌기 때문이다.
+    //   그 상태에서 매긴 실기 판정은 **전부 오염**된다(실제로 1차의 ①·⑤가 그랬다).
+    //
+    //   왜 종전 감시가 못 잡았나: 좀비 판정이 ⓐ pong 미수신 ⓑ `visibilitychange` 두 곳에만 있었다.
+    //   ⓐ는 소켓이 살아 있으면 통과하고(서버는 ping 에 답만 하고 틱을 못 보낼 수 있다),
+    //   ⓑ는 **탭이 계속 보이는 동안엔 아예 안 돈다**. 이 경우가 정확히 그 사각지대였다.
+    //
+    //   수리: 틱 도착 시각(`lastTickAt`)을 **상시** 감시한다 → 넘으면
+    //     ① 화면에 **명시적 "연결 끊김"** ② 입력 예측 정지(유령이 걸어다니지 않게)
+    //     ③ 기존 재연결 경로 재사용(`ensurePrimaryConnection` — 같은 토큰이면 같은 몸 · B-6 규약).
+    //   틱이 다시 오면 자동 해제된다(`welcome`/`tick` 이 `lastTickAt` 을 갱신한다).
+    setInterval(() => {
+      if (kicked || !primaryZoneId) return;
+      if (document.visibilityState !== 'visible') return;   // 백그라운드는 ⓑ 경로가 맡는다(rAF 가 멈춘다)
+      const c = conns.get(primaryZoneId);
+      const now = performance.now();
+      const gap = lastTickAt ? (now - lastTickAt) : 0;
+      // ★★문턱을 **둘로 가른다**(표시 ≠ 재연결). 하나로 두면 서버가 잠깐 느린 것만으로
+      //   멀쩡한 소켓을 끊게 되고, 부하가 걸린 판에서는 그게 **재연결 폭풍**이 된다
+      //   (실측: 2코어에 브라우저 둘 띄운 회귀에서 옆 하네스의 요청이 그 창에 삼켜졌다).
+      //     · `ghostStallMs`(기본 5초)  = **말한다** — 딱지 + 예측 정지. 싸고 되돌릴 수 있다.
+      //     · `ghostReconnectMs`(10초)  = **끊는다** — 진짜 유령일 때만. 비싸고 되돌릴 수 없다.
+      const showAt = Math.max(1000, uiCfg.ghostStallMs | 0);
+      const cutAt = Math.max(showAt, uiCfg.ghostReconnectMs | 0);
+      const stalled = !!lastTickAt && gap > showAt;
+      if (stalled && !netStalled) {
+        console.warn(`[recover] ★서버 틱 ${(gap / 1000).toFixed(1)}초간 없음 — 유령 클라. 예측 정지`);
+        setNetStalled(true, `서버 응답 ${(gap / 1000).toFixed(0)}초 없음`);
+      } else if (!stalled && netStalled) {
+        setNetStalled(false);
+      }
+      // 끊기는 **한 번만**(재연결이 또 틱을 못 받으면 `lastTickAt` 이 그대로라 계속 참이다).
+      if (!!lastTickAt && gap > cutAt && !_ghostCutAt) {
+        _ghostCutAt = now;
+        console.warn(`[recover] ★서버 틱 ${(gap / 1000).toFixed(1)}초 — 소켓 강제 close · 재연결`);
+        if (c) { try { c.ws.close(); } catch (e) {} }        // ensurePrimaryConnection 이 다음 프레임에 재연결
+      }
+      if (!stalled) _ghostCutAt = 0;
+    }, 1000);
+
     // 14.43: 탭이 다시 보이면 — 백그라운드 동안 RAF 멈춰서 watchdog/checkOrphan 안 돌았을 수 있음.
     // 마지막 tick 5초 넘으면 primary 좀비로 간주, 강제 끊고 즉시 재연결 트리거.
     document.addEventListener('visibilitychange', () => {
@@ -6543,6 +6617,8 @@ const SIM_JOB_EMOJI = {
       if (!msg.observer) {
         myPid = msg.pid;
         inventory = msg.inventory;
+        myLedger = msg.ledger || {}; myLots = msg.lots || {};      // ★[원장 승격] 인벤과 같은 스냅샷
+        if (msg.uiCfg) uiCfg = Object.assign(uiCfg, msg.uiCfg);    // ★클라 손잡이는 서버 env 가 정본
         if (msg.tools) tools = msg.tools;
         if (Array.isArray(msg.toolItems)) toolItems = msg.toolItems;
         if (msg.equipped !== undefined) equipped = msg.equipped;
@@ -6605,6 +6681,7 @@ const SIM_JOB_EMOJI = {
       if (c.role === 'primary') {
         if (lastTickAt) lastServerPingMs = now - lastTickAt;
         lastTickAt = now;
+        if (netStalled) setNetStalled(false);   // ★[정비 배치] 틱이 돌아왔다 = 유령 상태 해제·예측 재개
         // 14.49-c: 계단 z (0~32) — 서버 권위 값을 클라가 부드럽게 따라감
         if (typeof msg.selfZ === 'number') myStairZ = msg.selfZ;
       }
@@ -6691,7 +6768,13 @@ const SIM_JOB_EMOJI = {
         for (const mid of c.mobs.keys()) if (!aliveMobs.has(mid)) c.mobs.delete(mid);
       }
     } else if (msg.type === 'inventory') {
-      inventory = msg.inventory; updateHud(); renderCraftPanel(); if (cookOpen) renderCookPanel();
+      // ★[원장 승격] 스칼라·원장·로트는 **한 메시지 = 한 스냅샷**이다. 따로 받으면 반드시 어긋난다.
+      inventory = msg.inventory;
+      if (msg.ledger) myLedger = msg.ledger;
+      if (msg.lots) myLots = msg.lots;
+      updateHud(); renderCraftPanel(); if (cookOpen) renderCookPanel();
+      // 종전엔 여기서 인벤 패널을 안 그려서 1초짜리 gauges 가 올 때까지 화면이 옛것이었다.
+      if (invOpen) renderInvPanel(document.getElementById('invBody'));
     } else if (msg.type === 'cast_preview') {
       castPv[msg.itemType] = msg;   // 서버가 계산한 합금 물성 — 읽어서 그리기만 한다
       paintCastReadout(msg.itemType);
@@ -7297,7 +7380,8 @@ const SIM_JOB_EMOJI = {
   // sprint 인자: live는 mySprint, replay는 각 입력의 sprint 상태를 넘김 (속도에 영향).
   function predictStep(dt, wx, wy, sprint) {
     // ★유령 클라 fix: 서버에 내 실체가 없는 동안(_selfGone)은 예측 정지 — 유령이 걸어다니지 않게.
-    if (myIsDown || _selfGone || (wx === 0 && wy === 0)) return;
+    // ★[정비 배치] `netStalled` 를 `_selfGone` 과 나란히 — 서버 틱이 없는 동안 걸으면 그게 유령이다.
+    if (myIsDown || _selfGone || netStalled || (wx === 0 && wy === 0)) return;
     const canSprintClient = sprint && myHunger > 5 && myThirst > 5;
     // ★★[신체 상태 2026-08-26] 몸 상태 배율을 **여기에도** 곱한다. 서버는 `Body.effects().moveMult` 로
     //   같은 값을 쓰고 그 수를 `gauges.body.moveMult` 로 실어 보낸다 —
@@ -11457,6 +11541,43 @@ const SIM_JOB_EMOJI = {
   window.__tradeSel = () => ({ give: trGive, take: trTake, qty: trQty });
   window.__panelText = () => (document.getElementById('spBody') || {}).textContent || '';
   window.__vignetteOn = () => !!(document.getElementById('bodyVignette') || {}).classList?.contains('on');
+  // ★[정비 배치 2026-08-30] 하네스 읽기 훅 — **읽기 전용만**. 발신은 기존 `__sendPrimary` 를 쓴다.
+  //   비네트가 **원인 축을 말하는가**를 밖에서 볼 수 있어야 ②가 검증된다.
+  window.__vgAxis = () => ((document.getElementById('bodyVignette') || {}).dataset || {}).axis || '';
+  window.__vgTint = () => {
+    const el = document.getElementById('bodyVignette');
+    return el ? (el.style.getPropertyValue('--vg-rgb') || '').trim() : '';
+  };
+  window.__vgAxes = () => [...document.querySelectorAll('#vgAxes .vg-axis')]
+    .map((el) => ({ axis: el.dataset.axis, stage: +el.dataset.stage, emo: (el.querySelector('.vg-emo') || {}).textContent }));
+  // ★통일 목록 — **DOM 에서** 읽는다. "같은 컴포넌트인가"는 구조로만 증명된다(내부 변수를 보면 자기 증명이다).
+  window.__ulRows = (col) => [...document.querySelectorAll(`.inv-col[data-ul-col="${col}"] tr.ul-row`)].map((tr) => ({
+    item: tr.dataset.item, kids: +tr.dataset.kids || 0,
+    open: !!tr.querySelector('.ul-caret.open'),
+    hasCaret: !!tr.querySelector('.ul-caret:not(.ul-none)'),
+    text: (tr.querySelector('.it-name') || {}).textContent || '',
+    drag: (() => { try { return JSON.parse(tr.dataset.drag); } catch (e) { return null; } })(),
+  }));
+  window.__ulSubs = (col, item) => [...document.querySelectorAll(`.inv-col[data-ul-col="${col}"] tr.ul-sub[data-item="${item}"]`)].map((tr) => ({
+    item: tr.dataset.item, hidden: tr.hasAttribute('hidden'),
+    text: (tr.querySelector('.it-name') || {}).textContent || '',
+    drag: (() => { try { return JSON.parse(tr.dataset.drag); } catch (e) { return null; } })(),
+  }));
+  window.__ulToggle = (col, item) => {
+    const el = document.querySelector(`.inv-col[data-ul-col="${col}"] tr.ul-row[data-item="${item}"] .ul-caret[data-ul-toggle]`);
+    if (!el) return false; el.click(); return true;
+  };
+  // 통일성 판정용 — 컬럼별 DOM 구조 지문(클래스 조합). 두 벌로 갈리면 지문이 달라진다.
+  window.__ulShape = (col) => {
+    const tb = document.querySelector(`.inv-col[data-ul-col="${col}"] .inv-table tbody`);
+    if (!tb) return null;
+    const rows = [...tb.querySelectorAll('tr')].filter((tr) => !tr.dataset.toolid);
+    return rows.map((tr) => tr.className.trim() + ':' + [...tr.children].map((td) => td.className.trim()).join('|')).join(' / ');
+  };
+  window.__ledger = () => JSON.parse(JSON.stringify(myLedger || {}));
+  window.__lots = () => JSON.parse(JSON.stringify(myLots || {}));
+  window.__uiCfg = () => JSON.parse(JSON.stringify(uiCfg || {}));
+  window.__ground = () => nearbyGroundItems().map(({ gi }) => ({ id: gi.id, item: gi.item, count: gi.count, kg: gi.kg, led: gi.led || null }));
 
   function drawSpeechBubble(x, y, text) {
     if (!text) return;
@@ -12872,6 +12993,14 @@ const SIM_JOB_EMOJI = {
     document.getElementById('invDropdown').classList.remove('open');
   }
   function toggleInv() { invOpen ? closeInv() : openInv(); }
+  // ★[정비 배치] 하네스가 인벤을 열고 닫는 창구 — 새 능력 0(키 이벤트와 같은 함수를 부른다).
+  window.__openInv = (cid) => { if (cid) activeContainerId = cid; openInv(); return true; };
+  window.__closeInv = () => { closeInv(); return true; };
+  window.__invOpen = () => invOpen;
+  // ★[정비 배치] 유령 클라 하네스용 — primary 소켓 자체를 내준다(읽기 전용 진단 훅).
+  //   왜 소켓이 필요한가: "소켓은 살아 있는데 **틱만** 안 오는" 상태를 재현해야 이 감시가 검증된다.
+  //   소켓을 닫아 버리면 옛 감시(onclose→재연결)가 먼저 잡아 새 감시를 안 거친다.
+  window.__primaryWs = () => { const c = conns.get(primaryZoneId); return c ? c.ws : null; };
 
   document.querySelectorAll('.sb-icon').forEach(t => {
     t.addEventListener('click', () => toggleSide(t.dataset.side));
@@ -12932,8 +13061,29 @@ const SIM_JOB_EMOJI = {
     box.innerHTML = ms.map((m) =>
       `<div class="moodle s${m.stage}" data-axis="${m.axis}" data-stage="${m.stage}">`
       + `<span class="mo-emo">${m.emo}</span><span>${m.ko}</span></div>`).join('');
+    // ★★[정비 배치 2026-08-30 재민 확정 §3] **비네트가 원인 축을 말한다.**
+    //   실기 실측: 화면이 붉은데 재민이 원인을 **무게로 오독**했다. 방금 판자를 버린 사람이
+    //   붉은 화면을 보면 당연히 무게를 의심한다 — 그런데 무게는 1단계였고 3단계는 다른 축이었다.
+    //   아날로그 채널이 "심각함"만 외치고 **"무엇이"** 를 안 말한 것이 결함이다.
+    //   수리 둘: ⓐ 3단계 축 아이콘을 화면 가장자리에 **크게** ⓑ 비네트 **색조를 축 계열로**.
+    //   ★새 아트 금지 — 기존 무들 이모지를 키워 쓴다. §7 동시 표시 상한(`moodleShowMax`)을 그대로 지킨다.
+    const sev3 = ms.filter((m) => m.stage >= 3)
+      .sort((a, b) => (b.sev || 0) - (a.sev || 0))
+      .slice(0, Math.max(1, uiCfg.moodleShowMax | 0));
     const vg = document.getElementById('bodyVignette');
-    if (vg) vg.classList.toggle('on', ms.some((m) => m.stage >= 3));
+    if (vg) {
+      vg.classList.toggle('on', sev3.length > 0);
+      const tint = (uiCfg.vignetteTint && sev3.length) ? (VIGNETTE_RGB[sev3[0].axis] || VIGNETTE_RGB._) : VIGNETTE_RGB._;
+      vg.style.setProperty('--vg-rgb', tint);
+      vg.dataset.axis = sev3.length ? sev3[0].axis : '';
+    }
+    const bigBox = document.getElementById('vgAxes');
+    if (bigBox) {
+      bigBox.innerHTML = sev3.map((m) =>
+        `<div class="vg-axis" data-axis="${m.axis}" data-stage="${m.stage}" style="--vg-rgb:${VIGNETTE_RGB[m.axis] || VIGNETTE_RGB._}">`
+        + `<span class="vg-emo">${m.emo || '⚠'}</span><span class="vg-ko">${m.ko || m.axis}</span></div>`).join('');
+      bigBox.classList.toggle('on', sev3.length > 0);
+    }
   }
   // ★§8.6 이 창의 존재 이유: **"왜 내가 지금 이렇지"에 답하는 것.**
   //   그래서 수치를 나열하지 않고 **효과를 원인과 함께** 적는다 — "이속 −8% (피로 0.62)".
@@ -13334,6 +13484,144 @@ const SIM_JOB_EMOJI = {
     return list;
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ★★[정비 배치 2026-08-30 재민 확정] **목록은 한 벌이다.**
+  //
+  //   실기 1차가 잡은 결함: 바닥은 드롭 인스턴스마다 한 줄, 인벤은 품목마다 한 줄 —
+  //   **같은 물건인데 목록의 종류가 달랐다.** 재민 원문: *"바닥에 떨어진 아이템 목록과
+  //   인벤토리 안의 아이템 목록이 같은 종류의 인스턴스가 아닌가봐?"* 맞다. 원인은 UI 취향이 아니라
+  //   **두 벌로 짜인 코드**였다(전리품 표가 두 벌이라 플레이어와 NPC가 다른 걸 줍던 그 사고의 UI판).
+  //
+  //   재민이 준 답(좀보이드 문법): *"기본적으로 한 줄로 나오되, 펼칠 수 있게. 펼칠 수 있어지면
+  //   각 줄을 따로 드롭도 가능하고, 원래 한 줄을 드래그하면 모든 아이템이 드롭되고."*
+  //
+  //   규칙:
+  //     · 같은 품목은 **기본 접힘** — "물고기 ×3 · 4.2kg"
+  //     · 펼칠 것이 **둘 이상**일 때만 ▶ 가 돋는다(하나면 펼쳐도 같은 줄이라 뜻이 없다)
+  //     · 하위 줄 = 개체(개별 kg) 또는 로트(취득일·나이) — **어느 쪽인지는 서버 페이로드가 정한다**
+  //     · 무기한 벌크(잔가지·섬유)는 하위 줄이 없다 = ▶ 없음 (무게 3층 캐논 그대로)
+  //     · 버튼 = 1개 · 드래그 = 그 줄 전부(부모면 전량)
+  //
+  //   ★클라는 "무엇이 개체형인가" 표를 **들지 않는다.** 원장이 실려 오면 펼치고, 안 오면 못 펼친다.
+  //     표를 클라에 두는 순간 그게 사본이고, 어종이 늘면 갈린다.
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  const ULK = (col, item) => col + '|' + item;
+  const _ulEsc = (s) => String(s).replace(/&/g, '&amp;').replace(/'/g, '&#39;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  const _ulN = (n) => (Math.abs(n - Math.round(n)) < 1e-6 ? String(Math.round(n)) : n.toFixed(2).replace(/0+$/, '').replace(/\.$/, ''));
+
+  // 이 품목 n개의 실제 무게 — 원장이 있으면 **원장 합**, 없으면 표준 kg × 수량.
+  //   (원장이 개수보다 짧을 일은 서버 쓸개가 없앴지만, 옛 페이로드가 섞여도 안 틀리게 남겨 둔다.)
+  function ulKg(item, n) {
+    const led = myLedger && myLedger[item];
+    const std = (itemWeights && itemWeights[item]) || 0;
+    if (Array.isArray(led) && led.length) {
+      let s = 0; for (const e of led) s += e.kg || 0;
+      if (led.length < n) s += (n - led.length) * std;
+      return s;
+    }
+    return std ? std * n : null;
+  }
+
+  // ── 컬럼별 줄 만들기 — **모양은 하나**다: { item, count, kg, kids, drag } ──
+  function ulRowsMine(inv) {
+    const out = [];
+    for (const [item, v] of Object.entries(inv || {})) {
+      const n = Math.floor(Number(v) || 0);
+      if (n <= 0 || item === 'floor' || item === 'tribe_id' || item === 'sim' || item === 'kind') continue;
+      const led = myLedger && myLedger[item], lot = myLots && myLots[item];
+      let kids = null;
+      if (Array.isArray(led) && led.length >= 2) {
+        // 개체 — 낱개마다 제 무게가 있다. 지목 드롭은 원장 id 로 간다.
+        kids = led.map((e) => ({
+          k: 'i' + e.id,
+          // 나이는 **있을 때만** 적는다 — "0일째"는 뜻 없는 소음이고, 로트 줄과 말투도 맞춘다.
+          label: `${e.kg.toFixed(2)}kg` + (() => {
+            const age = Number.isFinite(e.d) ? Math.max(0, (window.__evGameDay | 0) - e.d) : 0;
+            return age > 0 ? ` <span class="ul-age">${age}일 전</span>` : '';
+          })(),
+          drag: { kind: 'mine', item, ids: [e.id], n: 1 },
+        }));
+      } else if (Array.isArray(lot) && lot.length >= 2) {
+        // 로트 — 취득일이 다르면 다른 몫이다(부패 곡선이 앉을 자리 · 지금은 나이만 말한다).
+        kids = lot.map((l) => ({
+          k: 'l' + l.day,
+          label: `${_ulN(l.n)}개 <span class="ul-age">${l.ageDays}일 전</span>` + (l.coalesced ? ' <span class="ul-age">(묶임)</span>' : ''),
+          drag: { kind: 'mine', item, lotDay: l.day, n: Math.max(1, Math.floor(l.n)) },
+        }));
+      }
+      out.push({ item, count: n, kg: ulKg(item, n), kids, drag: { kind: 'mine', item, n } });
+    }
+    return out;
+  }
+  function ulRowsGround(gItems) {
+    const by = new Map();
+    for (const { gi } of gItems) { if (!by.has(gi.item)) by.set(gi.item, []); by.get(gi.item).push(gi); }
+    const out = [];
+    for (const [item, gis] of by) {
+      const count = gis.reduce((s, g) => s + (g.count || 0), 0);
+      let kg = 0, anyKg = false;
+      for (const g of gis) { if (g.kg > 0) { kg += g.kg; anyKg = true; } else { const w = (itemWeights && itemWeights[item]) || 0; kg += w * (g.count || 0); if (w) anyKg = true; } }
+      // 바닥은 **덩이가 둘 이상일 때** 펼친다 — 실제로 서로 다른 더미가 둘이라는 사실 그대로다.
+      const kids = gis.length >= 2 ? gis.map((g) => ({
+        k: 'g' + g.id,
+        label: `×${g.count}` + (g.kg > 0 ? ` · ${g.kg.toFixed(2)}kg` : ''),
+        drag: { kind: 'ground', item, giIds: [g.id], n: g.count },
+      })) : null;
+      out.push({ item, count, kg: anyKg ? kg : null, kids, drag: { kind: 'ground', item, giIds: gis.map((g) => g.id), n: count } });
+    }
+    return out;
+  }
+  function ulRowsChest(data, cid) {
+    const out = [];
+    for (const [item, v] of Object.entries(data || {})) {
+      const n = Math.floor(Number(v) || 0);
+      if (n <= 0 || item === 'floor' || item === 'tribe_id') continue;
+      const w = (itemWeights && itemWeights[item]) || 0;
+      // ⚠상자는 스칼라 맵이라 개체 정체를 못 담는다(회부: 상자 원장) → 하위 줄이 **없는 게 사실이다**.
+      out.push({ item, count: n, kg: w ? w * n : null, kids: null, drag: { kind: 'chest', item, cid, n } });
+    }
+    return out;
+  }
+
+  // ── 한 벌뿐인 렌더러 ────────────────────────────────────────────────────────
+  //   세 컬럼이 이 함수를 쓴다. e2e 가 DOM 구조 동일성(.ul-row/.ul-sub/.ul-caret)을 지킨다.
+  function ulRenderRows(rows, col, opts) {
+    opts = opts || {};
+    if (!rows.length) return `<tr class="ul-empty"><td colspan="4" style="color:#6c7686;text-align:center;padding:20px">${opts.empty || '(비어있음)'}</td></tr>`;
+    rows.sort((a, b) => {
+      const ca = ITEM_CAT[a.item] || 'zzz', cb = ITEM_CAT[b.item] || 'zzz';
+      return ca.localeCompare(cb) || a.item.localeCompare(b.item);
+    });
+    return rows.map((r) => {
+      const key = ULK(col, r.item);
+      const open = ulOpen.has(key);
+      const nKids = r.kids ? r.kids.length : 0;
+      const icon = itemIconHtml(r.item, 22);
+      const label = (ITEM_LABEL && ITEM_LABEL[r.item]) || r.item;
+      const cat = ITEM_CAT[r.item] || '기타';
+      const kgTxt = (r.kg != null && r.kg > 0) ? ` <span class="it-kg">${r.kg.toFixed(1)}kg</span>` : '';
+      const caret = nKids >= 2
+        ? `<span class="ul-caret${open ? ' open' : ''}" data-ul-toggle="${key}" title="${open ? '접기' : '펼치기'}">${open ? '▼' : '▶'}</span>`
+        : `<span class="ul-caret ul-none"></span>`;
+      const btn = opts.act ? `<button class="ul-act" data-ul-act="1" title="${opts.actTitle || ''}">${opts.act}</button>` : '';
+      const dragAttr = _ulEsc(JSON.stringify(r.drag));
+      let h = `<tr class="ul-row" draggable="true" data-col="${col}" data-item="${r.item}" data-ulkey="${key}" data-kids="${nKids}" data-drag='${dragAttr}'>`
+        + `<td class="it-icon">${icon}</td>`
+        + `<td class="it-name">${caret}${label} <span class="it-count">×${r.count}</span>${kgTxt}</td>`
+        + `<td class="it-cat">${cat}</td><td class="it-action">${btn}</td></tr>`;
+      if (nKids >= 2) {
+        for (const c of r.kids) {
+          h += `<tr class="ul-sub" draggable="true" data-col="${col}" data-item="${r.item}" data-ulparent="${key}" data-drag='${_ulEsc(JSON.stringify(c.drag))}'${open ? '' : ' hidden'}>`
+            + `<td class="it-icon"></td>`
+            + `<td class="it-name ul-subname">└ ${c.label}</td>`
+            + `<td class="it-cat"></td><td class="it-action">${btn}</td></tr>`;
+        }
+      }
+      return h;
+    }).join('');
+  }
+
   function renderInvPanel(body) {
     // 14.53-e: 재렌더 전 각 컬럼의 scrollTop 저장 (mine + chest)
     const _savedScroll = {};
@@ -13347,33 +13635,12 @@ const SIM_JOB_EMOJI = {
     if (!activeContainerId) activeContainerId = conts.length > 0 ? conts[0].b.id : 'ground';
     const activeC = (activeContainerId !== 'ground' && activeContainerId) ? conts.find(c => c.b.id === activeContainerId)?.b : null;
     const isGround = (activeContainerId === 'ground');
-
-    const rowsHtml = (inv, kind, chestId) => {
-      const entries = Object.entries(inv).filter(([k, v]) => v > 0 && k !== 'floor' && k !== 'tribe_id' && k !== 'sim' && k !== 'kind').sort((a, b) => {   // ★메타키(층·길드id)는 아이템 아님
-        const ca = ITEM_CAT[a[0]] || 'zzz', cb = ITEM_CAT[b[0]] || 'zzz';
-        return ca.localeCompare(cb) || a[0].localeCompare(b[0]);
-      });
-      if (entries.length === 0) return `<tr><td colspan="4" style="color:#6c7686;text-align:center;padding:20px">(비어있음)</td></tr>`;
-      return entries.map(([k, v]) => {
-        const icon = itemIconHtml(k, 22);
-        const label = (ITEM_LABEL && ITEM_LABEL[k]) || k;
-        const cat = ITEM_CAT[k] || '기타';
-        const isContainerItem = (kind === 'chest');
-        const canMove = isContainerItem ? true : !!chestId;
-        const btn = canMove
-          ? `<button data-move="${kind}" data-item="${k}" data-cid="${chestId || ''}">${isContainerItem ? '↑' : '↓'}</button>`
-          : '';
-        // ★★[무게 배치 2026-08-27 · §8.1 첫 실장] 개당 kg 과 그 줄의 총 무게를 **한 줄로만** 적는다.
-        //   (아이템 상세 표 전체는 아직 아니다 — 회부. 지금 필요한 건 "이게 얼마나 무거운가" 하나다.)
-        //   수치는 서버가 준 카탈로그에서 온다(클라가 표를 갖지 않는다).
-        const _w = itemWeights ? itemWeights[k] : null;
-        const _wt = _w ? ` <span class="it-kg" title="개당 ${_w}kg">${(_w * v).toFixed(1)}kg</span>` : '';
-        return `<tr><td class="it-icon">${icon}</td><td class="it-name">${label} <span class="it-count">×${v}</span>${_wt}</td><td class="it-cat">${cat}</td><td class="it-action">${btn}</td></tr>`;
-      }).join('');
-    };
+    const gItems = nearbyGroundItems();
 
     const myCount = Object.values(inventory).filter(v => v > 0).length + (toolItems ? toolItems.length : 0);
     // 14.53: toolItems row (각 instance 별 행)
+    // ★도구·장비는 **이미 개체**라 원장이 필요 없다(무게 3층의 1층에 원래부터 있었다).
+    //   equip/단축키 같은 제 affordance 가 있어 통일 목록에 억지로 밀어 넣지 않는다(회부: 도구 줄 통합).
     const TOOL_ICON_MAP = { axe: '🪓', pickaxe: '⛏️', sword: '⚔️', saw: '🪚', hammer: '🔨' };
     const toolRowsHtml = () => {
       if (!toolItems || toolItems.length === 0) return '';
@@ -13397,45 +13664,37 @@ const SIM_JOB_EMOJI = {
         </tr>`;
       }).join('');
     };
-    // 좌: 내 인벤 (toolItems 먼저, 그다음 자원)
-    const myTable = `<div class="inv-col" data-drop-target="mine">
+
+    // 좌: 내 인벤 (toolItems 먼저, 그다음 통일 목록)
+    const mineTgt = activeC ? activeC.id : (isGround ? 'ground' : null);
+    const myTable = `<div class="inv-col" data-drop-target="mine" data-ul-col="mine">
       <div class="inv-col-head">🎒 내 인벤토리<span class="col-count">(${myCount}종)</span></div>
       <div style="flex:1;overflow:auto;background:#0e1217;border-radius:4px">
         <table class="inv-table">
           <thead><tr><th></th><th>아이템</th><th>분류</th><th></th></tr></thead>
-          <tbody>${toolRowsHtml()}${rowsHtml(inventory, 'mine', activeC ? activeC.id : (isGround ? 'ground' : null))}</tbody>
+          <tbody>${toolRowsHtml()}${ulRenderRows(ulRowsMine(inventory), 'mine', { act: mineTgt ? '↓' : '', actTitle: '1개 옮기기' })}</tbody>
         </table>
       </div></div>`;
 
-    // 가운데: 활성 컨테이너 내용
+    // 가운데: 활성 컨테이너 내용 — **같은 컴포넌트**로 그린다(두 벌 금지)
     let chestTable;
     if (isGround) {
-      // 바닥 — ground items 다 모아 보여줌 (각 행이 별도 gi)
-      const gItems = nearbyGroundItems();
-      const giRows = gItems.length === 0
-        ? `<tr><td colspan="4" style="color:#6c7686;text-align:center;padding:20px">(바닥에 아이템 없음 — 드롭하면 여기에 표시됩니다)</td></tr>`
-        : gItems.map(({ gi }) => {
-            const icon = itemIconHtml(gi.item, 22);
-            const label = (ITEM_LABEL[gi.item]) || gi.item;
-            const cat = ITEM_CAT[gi.item] || '기타';
-            return `<tr><td class="it-icon">${icon}</td><td class="it-name">${label} <span class="it-count">×${gi.count}</span></td><td class="it-cat">${cat}</td><td class="it-action"><button data-pickup="${gi.id}">↑</button></td></tr>`;
-          }).join('');
-      chestTable = `<div class="inv-col" data-drop-target="ground">
-        <div class="inv-col-head">🌍 바닥 (근처 ${gItems.length}개)</div>
+      chestTable = `<div class="inv-col" data-drop-target="ground" data-ul-col="ground">
+        <div class="inv-col-head">🌍 바닥 (근처 ${gItems.length}덩이)</div>
         <div style="flex:1;overflow:auto;background:#0e1217;border-radius:4px">
           <table class="inv-table">
             <thead><tr><th></th><th>아이템</th><th>분류</th><th></th></tr></thead>
-            <tbody>${giRows}</tbody>
+            <tbody>${ulRenderRows(ulRowsGround(gItems), 'ground', { act: '↑', actTitle: '줍기', empty: '(바닥에 아이템 없음 — 드롭하면 여기에 표시됩니다)' })}</tbody>
           </table>
         </div></div>`;
     } else if (activeC) {
-      const chestCount = Object.entries(activeC.data || {}).filter(([k, v]) => v > 0 && k !== 'floor' && k !== 'tribe_id').length;
-      chestTable = `<div class="inv-col" data-drop-target="${activeC.id}">
-        <div class="inv-col-head">📦 ${activeC.ownerName || '?'}<span class="col-count">(${chestCount}종)</span></div>
+      const chestRows = ulRowsChest(activeC.data || {}, activeC.id);
+      chestTable = `<div class="inv-col" data-drop-target="${activeC.id}" data-ul-col="chest">
+        <div class="inv-col-head">📦 ${activeC.ownerName || '?'}<span class="col-count">(${chestRows.length}종)</span></div>
         <div style="flex:1;overflow:auto;background:#0e1217;border-radius:4px">
           <table class="inv-table">
             <thead><tr><th></th><th>아이템</th><th>분류</th><th></th></tr></thead>
-            <tbody>${rowsHtml(activeC.data || {}, 'chest', activeC.id)}</tbody>
+            <tbody>${ulRenderRows(chestRows, 'chest', { act: '↑', actTitle: '1개 꺼내기' })}</tbody>
           </table>
         </div></div>`;
     } else {
@@ -13451,10 +13710,9 @@ const SIM_JOB_EMOJI = {
         <div class="ct-count">${total}</div>
       </div>`;
     }).join('');
-    const gCount = nearbyGroundItems().length;
     const groundTab = `<div class="cont-tab ${isGround ? 'active' : ''}" data-cid="ground" title="근처 바닥 아이템">
       <div class="ct-icon">🌍</div>
-      <div class="ct-count">${gCount}</div>
+      <div class="ct-count">${gItems.length}</div>
     </div>`;
     const tabsCol = `<div class="cont-tabs">${chestTabs}${groundTab}</div>`;
 
@@ -13465,30 +13723,62 @@ const SIM_JOB_EMOJI = {
       if (typeof _savedScroll[tgt] === 'number') el.scrollTop = _savedScroll[tgt];
     });
 
-    // 액션 버튼 (↑ ↓ 픽업)
-    body.querySelectorAll('[data-move]').forEach(btn => btn.onclick = () => {
-      const kind = btn.dataset.move;
-      const item = btn.dataset.item;
-      const cid = btn.dataset.cid;
-      if (!cid) return;
-      // 바닥으로 → drop_item
-      if (cid === 'ground') {
-        if (kind !== 'mine') return; // 바닥→mine은 픽업 버튼 따로
-        sendPrimary({ type: 'drop_item', item, amount: 1 });
-        return;
-      }
-      // chest로/에서 — 모든 아이템 (Phase 14.25)
-      if (kind === 'mine') sendPrimary({ type: 'chest_put', buildingId: cid, item, amount: 1 });
-      else sendPrimary({ type: 'chest_take', buildingId: cid, item, amount: 1 });
+    // ── 통일 목록 결선 ────────────────────────────────────────────────────────
+    const _drag = (tr) => { try { return JSON.parse(tr.dataset.drag); } catch (e) { return null; } };
+    // ▶ 펼치기/접기 — 상태는 `ulOpen` 에 남아 재렌더를 넘어 산다(인벤 메시지마다 다시 그려진다).
+    body.querySelectorAll('[data-ul-toggle]').forEach((el) => el.onclick = (e) => {
+      e.stopPropagation();
+      const k = el.dataset.ulToggle;
+      if (ulOpen.has(k)) ulOpen.delete(k); else ulOpen.add(k);
+      renderInvPanel(body);
     });
-    body.querySelectorAll('[data-pickup]').forEach(btn => btn.onclick = () => {
-      sendPrimary({ type: 'pickup_item', giId: btn.dataset.pickup });
+    // 버튼 = **1개**. 드래그가 전량이라 버튼은 낱개 쪽을 맡는다.
+    body.querySelectorAll('.ul-act').forEach((btn) => btn.onclick = (e) => {
+      e.stopPropagation();
+      const tr = btn.closest('tr'); const d = _drag(tr); if (!d) return;
+      const col = tr.dataset.col;
+      if (col === 'mine') { if (!mineTgt) return; ulSend(d, mineTgt, 1); }
+      else ulSend(d, 'mine', 1);
     });
+    // 드래그 — 그 줄 전부(부모면 전량). ★재민 확정: "원래 한 줄을 드래그하면 모든 아이템이 드롭되고"
+    body.querySelectorAll('.ul-row, .ul-sub').forEach((tr) => {
+      tr.addEventListener('dragstart', (e) => {
+        const d = _drag(tr); if (!d) return;
+        e.dataTransfer.setData('text/plain', JSON.stringify(d));
+        e.dataTransfer.effectAllowed = 'move';
+        tr.classList.add('dragging');
+        const ghost = document.createElement('div');
+        ghost.className = 'drag-ghost';
+        ghost.innerHTML = `${itemIconHtml(d.item, 18)} ${(ITEM_LABEL && ITEM_LABEL[d.item]) || d.item}${d.n > 1 ? ` ×${d.n}` : ''}`;
+        document.body.appendChild(ghost);
+        e.dataTransfer.setDragImage(ghost, 18, 18);
+        setTimeout(() => ghost.remove(), 0);
+      });
+      tr.addEventListener('dragend', () => {
+        tr.classList.remove('dragging');
+        document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+        document.querySelectorAll('.drag-over-ground').forEach(el => el.classList.remove('drag-over-ground'));
+      });
+    });
+    // 우클릭 — 먹기 / 버리기. 부모 줄과 하위 줄 **둘 다** 받는다(하위면 그 줄만 간다).
+    body.querySelectorAll('.inv-col[data-ul-col="mine"] .ul-row, .inv-col[data-ul-col="mine"] .ul-sub').forEach((tr) => {
+      tr.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        const d = _drag(tr); if (!d) return;
+        const item = d.item, sub = tr.classList.contains('ul-sub');
+        const opts = [];
+        if (foodEffects && foodEffects[item] && !sub) opts.push({ label: '🍴 먹기', onClick: () => sendPrimary({ type: 'eat', item }) });
+        opts.push({ label: sub ? '🗑 이 줄 버리기' : '🗑 1개 버리기 (바닥)', onClick: () => ulSend(d, 'ground', sub ? d.n : 1) });
+        if (!sub && (inventory[item] || 0) >= 10) opts.push({ label: '🗑 10개 버리기', onClick: () => ulSend(d, 'ground', 10) });
+        if (!sub && (inventory[item] || 0) > 1) opts.push({ label: `🗑 전부 버리기 (${inventory[item]}개)`, onClick: () => ulSend(d, 'ground', d.n) });
+        if (opts.length) showContextMenu(e.clientX, e.clientY, opts);
+      });
+    });
+
     // 14.53: 도구 instance 착용/해제 + 드래그 (hotkey 등록)
     body.querySelectorAll('[data-equiptool]').forEach(btn => btn.onclick = (e) => {
       e.stopPropagation();
       const id = btn.dataset.equiptool;
-      // 이미 장착이면 해제, 아니면 장착
       if (equipped === id) sendPrimary({ type: 'equip', toolItemId: null });
       else sendPrimary({ type: 'equip', toolItemId: id });
     });
@@ -13497,37 +13787,15 @@ const SIM_JOB_EMOJI = {
         e.dataTransfer.setData('text/x-tool-instance', tr.dataset.toolid);
         e.dataTransfer.effectAllowed = 'copy';
       });
-      // 14.53: 도구 우클릭 메뉴
       tr.addEventListener('contextmenu', (e) => {
         e.preventDefault();
         const id = tr.dataset.toolid;
-        const type = tr.dataset.tooltype;
         const isEq = (equipped === id);
         const isHot = (hotkey1 === id);
         showContextMenu(e.clientX, e.clientY, [
           { label: isEq ? '해제' : '착용', onClick: () => sendPrimary({ type: 'equip', toolItemId: isEq ? null : id }) },
           { label: isHot ? '1번 슬롯에서 빼기' : '1번 슬롯에 등록', onClick: () => sendPrimary({ type: 'set_hotkey', toolItemId: isHot ? null : id }) },
         ]);
-      });
-    });
-    // 14.53: 자원/음식 행 우클릭 메뉴 (먹기 / 드롭)
-    body.querySelectorAll('.inv-col[data-drop-target="mine"] .inv-table tbody tr:not([data-toolid])').forEach(tr => {
-      const btn = tr.querySelector('[data-move][data-item]');
-      if (!btn) return;
-      const item = btn.dataset.item;
-      if (!item) return;
-      tr.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
-        const opts = [];
-        // 음식이면 먹기
-        if (foodEffects && foodEffects[item]) {
-          opts.push({ label: '🍴 먹기', onClick: () => sendPrimary({ type: 'eat', item }) });
-        }
-        opts.push({ label: '🗑 1개 버리기 (바닥)', onClick: () => sendPrimary({ type: 'drop_item', item, amount: 1 }) });
-        if ((inventory[item] || 0) >= 10) {
-          opts.push({ label: '🗑 10개 버리기', onClick: () => sendPrimary({ type: 'drop_item', item, amount: 10 }) });
-        }
-        if (opts.length) showContextMenu(e.clientX, e.clientY, opts);
       });
     });
     body.querySelectorAll('[data-cid]').forEach(t => {
@@ -13537,60 +13805,23 @@ const SIM_JOB_EMOJI = {
 
     // 14.51: 건축 모드 ON일 때 — 내 인벤의 건축물 row 강조 + 클릭 시 placement mode 진입
     if (buildMode) {
-      body.querySelectorAll('.inv-col[data-drop-target="mine"] .inv-table tbody tr').forEach(tr => {
-        const btn = tr.querySelector('[data-move][data-item]');
-        if (!btn) return;
-        const item = btn.dataset.item;
+      body.querySelectorAll('.inv-col[data-ul-col="mine"] .ul-row').forEach(tr => {
+        const item = tr.dataset.item;
         if (!item || !item.startsWith('item_')) return;
-        // 강조 스타일
         tr.style.cursor = 'pointer';
         tr.style.outline = '2px solid #f0c674';
         tr.style.background = 'rgba(240,198,116,0.1)';
         tr.title = '클릭 → 건축 모드에서 배치';
         tr.onclick = (e) => {
-          // ↑↓ 버튼 클릭은 기존 동작 유지
-          if (e.target.tagName === 'BUTTON') return;
-          // 기본 dir 결정
+          if (e.target.tagName === 'BUTTON' || e.target.classList.contains('ul-caret')) return;
           let dir = 'N';
           if (item === 'item_fence') dir = 'NS';
-          // 14.54-c2: stair는 N 또는 W만
-          // 14.53-h: 항상 현재 player floor에서만 배치 (다른 층 설치 차단)
           placementMode = { itemType: item, floor: myFloor, dir };
           placingDir = dir;
           showNotice(`📍 ${ITEM_LABEL[item] || item} 배치 모드 — 좌클릭=배치, 우클릭=회전, ESC=취소`);
-          // 인벤은 그대로 열어 두어도 OK. 닫고 싶으면 toggleInv() 호출.
         };
       });
     }
-
-    // === Phase 14.24: HTML5 드래그 + 폴리시 ===
-    body.querySelectorAll('.inv-table tbody tr').forEach(tr => {
-      const btn = tr.querySelector('[data-move]');
-      if (!btn) return;
-      tr.setAttribute('draggable', 'true');
-      tr.addEventListener('dragstart', (e) => {
-        const item = btn.dataset.item;
-        const payload = { kind: btn.dataset.move, item, cid: btn.dataset.cid };
-        e.dataTransfer.setData('text/plain', JSON.stringify(payload));
-        e.dataTransfer.effectAllowed = 'move';
-        tr.classList.add('dragging');
-        // 작은 ghost (이모지 + 라벨)
-        const icon = itemIconHtml(item, 18);
-        const label = (ITEM_LABEL && ITEM_LABEL[item]) || item;
-        const ghost = document.createElement('div');
-        ghost.className = 'drag-ghost';
-        ghost.innerHTML = `${icon} ${label}`;
-        document.body.appendChild(ghost);
-        e.dataTransfer.setDragImage(ghost, 18, 18);
-        setTimeout(() => ghost.remove(), 0);
-      });
-      tr.addEventListener('dragend', () => {
-        tr.classList.remove('dragging');
-        // 모든 drop-zone class 정리
-        document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
-        document.querySelectorAll('.drag-over-ground').forEach(el => el.classList.remove('drag-over-ground'));
-      });
-    });
 
     // drop targets
     body.querySelectorAll('.cont-tab').forEach(t => {
@@ -13598,11 +13829,7 @@ const SIM_JOB_EMOJI = {
       t.addEventListener('dragleave', () => t.classList.remove('drag-over'));
       t.addEventListener('drop', (e) => {
         e.preventDefault(); t.classList.remove('drag-over');
-        try {
-          const payload = JSON.parse(e.dataTransfer.getData('text/plain'));
-          const amount = dragAmountFromEvent(e);
-          handleDrop(payload, t.dataset.cid, amount);
-        } catch (err) {}
+        try { ulSend(JSON.parse(e.dataTransfer.getData('text/plain')), t.dataset.cid, null); } catch (err) {}
       });
     });
     body.querySelectorAll('[data-drop-target]').forEach(col => {
@@ -13610,57 +13837,64 @@ const SIM_JOB_EMOJI = {
       col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
       col.addEventListener('drop', (e) => {
         e.preventDefault(); col.classList.remove('drag-over');
-        try {
-          const payload = JSON.parse(e.dataTransfer.getData('text/plain'));
-          const amount = dragAmountFromEvent(e);
-          handleDrop(payload, col.dataset.dropTarget, amount);
-        } catch (err) {}
+        try { ulSend(JSON.parse(e.dataTransfer.getData('text/plain')), col.dataset.dropTarget, null); } catch (err) {}
       });
     });
   }
 
-  // Phase 14.24 — Shift=10, Ctrl/Alt/Meta=99, 평소=1
-  function dragAmountFromEvent(e) {
-    if (e.ctrlKey || e.altKey || e.metaKey) return 99;
-    if (e.shiftKey) return 10;
-    return 1;
+  // ★★[정비 배치 2026-08-30] **한 줄이 제 인자를 들고 다닌다.**
+  //   종전엔 드래그 짐이 `{kind, item, cid}` 뿐이라 "어느 개체인지"를 말할 수가 없었고,
+  //   수량은 수정키(Shift=10 · Ctrl=99)로 밖에서 얹었다. 이제 줄이 `ids`/`lotDay`/`giIds` 를
+  //   직접 실어 보낸다 — **"몇 개"가 아니라 "어느 것"** 을 말할 수 있어야 펼친 줄이 따로 움직인다.
+  //   `amount === null` 이면 그 줄 전부(부모면 전량 — 재민 확정), 수면 그만큼.
+  function ulSend(d, target, amount) {
+    if (!d || !d.item) return;
+    const item = d.item;
+    const n = (amount == null) ? Math.max(1, d.n | 0) : Math.max(1, amount | 0);
+
+    if (d.kind === 'mine') {
+      if (target === 'mine' || !target) return;
+      if (target === 'ground') {
+        if (d.ids && d.ids.length) { sendPrimary({ type: 'drop_item', item, ids: d.ids.slice(0, n) }); return; }
+        if (Number.isFinite(d.lotDay)) { sendPrimary({ type: 'drop_item', item, amount: n, lotDay: d.lotDay }); return; }
+        sendPrimary({ type: 'drop_item', item, amount: n });
+        return;
+      }
+      // 상자 — ⚠개체 정체를 못 담는다(회부: 상자 원장). 수량만 간다.
+      sendPrimary({ type: 'chest_put', buildingId: target, item, amount: (d.ids && d.ids.length) ? Math.min(n, d.ids.length) : n });
+      return;
+    }
+    if (d.kind === 'ground') {
+      const ids = (d.giIds || []).slice(0, 64);
+      if (!ids.length) return;
+      if (target === 'ground') return;
+      if (target === 'mine') { sendPrimary({ type: 'pickup_item', giIds: ids }); return; }
+      // 바닥 → 상자: 줍고 나서 넣는다(서버에 직행 경로가 없다 — 옛 규약 그대로).
+      sendPrimary({ type: 'pickup_item', giIds: ids });
+      setTimeout(() => sendPrimary({ type: 'chest_put', buildingId: target, item, amount: Math.max(1, d.n | 0) }), 140);
+      return;
+    }
+    if (d.kind === 'chest') {
+      if (target === d.cid) return;
+      if (target === 'mine') { sendPrimary({ type: 'chest_take', buildingId: d.cid, item, amount: n }); return; }
+      if (target === 'ground') {
+        sendPrimary({ type: 'chest_take', buildingId: d.cid, item, amount: n });
+        setTimeout(() => sendPrimary({ type: 'drop_item', item, amount: n }), 140);
+        return;
+      }
+      // 상자 → 다른 상자
+      sendPrimary({ type: 'chest_take', buildingId: d.cid, item, amount: n });
+      setTimeout(() => sendPrimary({ type: 'chest_put', buildingId: target, item, amount: n }), 140);
+    }
   }
 
-  // 드래그 결과 처리: payload(원본) → target(목적지) + amount
-  function handleDrop(payload, target, amount = 1) {
-    const { kind, item, cid: srcCid } = payload;
-    if (kind === 'mine' && target === 'mine') return;
-    if (kind === 'chest' && target === srcCid) return;
-    if (kind === 'mine' && target === 'ground') {
-      sendPrimary({ type: 'drop_item', item, amount });
-      return;
-    }
-    if (kind === 'mine' && target && target !== 'ground' && target !== 'mine') {
-      // Phase 14.25: 모든 아이템 상자 OK
-      sendPrimary({ type: 'chest_put', buildingId: target, item, amount });
-      return;
-    }
-    if (kind === 'chest' && target === 'mine') {
-      sendPrimary({ type: 'chest_take', buildingId: srcCid, item, amount });
-      return;
-    }
-    if (kind === 'chest' && target === 'ground') {
-      sendPrimary({ type: 'chest_take', buildingId: srcCid, item, amount });
-      setTimeout(() => sendPrimary({ type: 'drop_item', item, amount }), 120);
-      return;
-    }
-  }
-
-  // 빈 화면(canvas) drop → 바닥에 떨어뜨리기 (Shift=10, Ctrl=99)
+  // 빈 화면(canvas) drop → 바닥에 떨어뜨리기
   canvas.addEventListener('dragover', (e) => { e.preventDefault(); canvas.classList.add('drag-over-ground'); });
   canvas.addEventListener('dragleave', () => canvas.classList.remove('drag-over-ground'));
   canvas.addEventListener('drop', (e) => {
     e.preventDefault();
     canvas.classList.remove('drag-over-ground');
-    try {
-      const payload = JSON.parse(e.dataTransfer.getData('text/plain'));
-      handleDrop(payload, 'ground', dragAmountFromEvent(e));
-    } catch (err) {}
+    try { ulSend(JSON.parse(e.dataTransfer.getData('text/plain')), 'ground', null); } catch (err) {}
   });
 
   // === 제작창 (카테고리 + 레시피) ===
