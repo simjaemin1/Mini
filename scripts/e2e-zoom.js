@@ -1,5 +1,9 @@
 #!/usr/bin/env node
-// === scripts/e2e-zoom.js — 마우스 휠 확대/축소 **실클라** 계측 [재민 확정 2026-08-31] ======
+// === scripts/e2e-zoom.js — 마우스 휠 확대 **실클라** 계측 [재민 확정 2026-08-31] ============
+//
+// ★[2차 2026-08-31] **축소는 뺐다**(재민 "일단 축소는 없애자"). 표가 [1, 1.5, 2] 다.
+//   ⇒ 오프스크린이 늘 화면보다 **작다**. 확대가 1배보다 오히려 싸다는 게 이 판의 성질이다.
+//   하네스는 배율 표를 **클라에게 물어서** 돈다 — 표를 되돌려도 이 파일은 안 고쳐도 된다.
 //
 // ★★이 배치의 제1 계약: **ZOOM === 1 이면 종전과 코드 경로가 같다.**
 //   말이 아니라 수치로 센다 — ⓪-다 가 "오프스크린이 아예 없다"를, ⑤ 가 "1 로 돌아오면 화면이
@@ -109,12 +113,11 @@ function pxdiff(a, b) {
   const upShot = await shot('02-zoomin');
   const dUp = pxdiff(base, upShot);
   ok(dUp > 2, '★자명 통과 금지 — 화면이 실제로 달라졌다', `평균 화소 차 ${dUp.toFixed(2)}`);
-  await page.mouse.wheel(0, 120); await sleep(700);
-  await page.mouse.wheel(0, 120); await sleep(700);           // 아래로 두 번 = 축소
+  await page.mouse.wheel(0, 120); await sleep(700);           // 아래로 = 한 단 내려감
   const zDn = await zdbg();
-  ok(zDn.zoom < 1, '휠 아래 → 축소', `${zUp.zoom} → ${zDn.zoom}`);
+  ok(zDn.zoom < zUp.zoom, '휠 아래 → 한 단 내려감', `${zUp.zoom} → ${zDn.zoom}`);
 
-  // 경계 — 더 굴려도 안 넘어간다
+  // 경계 — 더 굴려도 안 넘어간다. ★축소를 뺐으니 아래 끝은 **1** 이어야 한다(1 미만으로 안 내려간다).
   for (let i = 0; i < 6; i++) { await page.mouse.wheel(0, 120); }
   await sleep(700);
   const zMin = (await zdbg()).zoom;
@@ -123,6 +126,8 @@ function pxdiff(a, b) {
   const zMax = (await zdbg()).zoom;
   ok(zMin === z0.steps[0] && zMax === z0.steps[z0.steps.length - 1],
      '★경계에서 안 넘어간다', `최소 ${zMin} · 최대 ${zMax} (표 ${z0.steps.join('/')})`);
+  ok(zMin === 1, '★★축소가 없다 — 아래 끝이 1 이다 (재민 확정: 축소 제거)', `아래 끝 ${zMin}`);
+  ok(z0.steps.every((z) => z >= 1), '★배율 표에 1 미만이 없다', z0.steps.join('/'));
 
   // ── ② 커서 → 월드 → 커서 왕복 · 배율마다 ───────────────────────────────
   console.log('\n=== ② 커서가 가리키는 곳 = 실제로 집히는 곳 ===');
@@ -145,8 +150,9 @@ function pxdiff(a, b) {
   }
   ok(worst < 0.5, `★화면→월드→화면 왕복이 전 배율에서 제자리 (최악 ${worst.toFixed(4)}px)`);
   // 자명 통과 금지 — 배율이 다르면 같은 화면 점이 **다른 월드 점**을 가리켜야 한다
-  const sep = Math.hypot(worldAt[0.5][0][0] - worldAt[2][0][0], worldAt[0.5][0][1] - worldAt[2][0][1]);
-  ok(sep > 100, '★자명 통과 금지 — 배율이 다르면 같은 화면 점이 다른 월드 점이다', `0.5배 vs 2배 거리 ${sep.toFixed(0)}px`);
+  const zLo = z0.steps[0], zHi = z0.steps[z0.steps.length - 1];
+  const sep = Math.hypot(worldAt[zLo][0][0] - worldAt[zHi][0][0], worldAt[zLo][0][1] - worldAt[zHi][0][1]);
+  ok(sep > 100, '★자명 통과 금지 — 배율이 다르면 같은 화면 점이 다른 월드 점이다', `${zLo}배 vs ${zHi}배 거리 ${sep.toFixed(0)}px`);
 
   // ── ③ 안개 원점 불변 (조준 배치의 계약과 동형) ─────────────────────────
   console.log('\n=== ③ 안개 원점은 배율에 안 흔들린다 ===');
@@ -154,7 +160,7 @@ function pxdiff(a, b) {
   const fog1 = await page.evaluate(() => window.__fogOrigin && { x: window.__fogOrigin.x, y: window.__fogOrigin.y });
   await setZ(2);
   const fog2 = await page.evaluate(() => window.__fogOrigin && { x: window.__fogOrigin.x, y: window.__fogOrigin.y });
-  await setZ(0.5);
+  await setZ(1.5);
   const fog3 = await page.evaluate(() => window.__fogOrigin && { x: window.__fogOrigin.x, y: window.__fogOrigin.y });
   const fogOk = fog1 && fog2 && fog3;
   // ★안개 원점은 **화면 좌표**다(화면 중앙). 배율이 바뀌어도 화면 중앙은 그대로여야 한다.
@@ -162,16 +168,14 @@ function pxdiff(a, b) {
   ok(fogOk, '안개 원점 훅이 살아 있다', fogOk ? `z1(${fog1.x.toFixed(0)},${fog1.y.toFixed(0)})` : '없음');
   ok(fogOk && fogD < 1.5, '★배율을 바꿔도 안개 원점이 안 움직인다', `최대 이동 ${fogD.toFixed(3)}px`);
 
-  // ── ④ 축소는 실제로 세계를 더 보여 준다 ────────────────────────────────
-  console.log('\n=== ④ 축소 = 더 넓게 ===');
-  await setZ(1);
-  const seen1 = await page.evaluate(() => { const d = window.__zoomDbg(); const a = window.__s2w(0, 0), b = window.__s2w(d.screen[0], d.screen[1]); return Math.hypot(b.wx - a.wx, b.wy - a.wy); });
-  await setZ(0.5);
-  const seen05 = await page.evaluate(() => { const d = window.__zoomDbg(); const a = window.__s2w(0, 0), b = window.__s2w(d.screen[0], d.screen[1]); return Math.hypot(b.wx - a.wx, b.wy - a.wy); });
-  await setZ(2);
-  const seen2 = await page.evaluate(() => { const d = window.__zoomDbg(); const a = window.__s2w(0, 0), b = window.__s2w(d.screen[0], d.screen[1]); return Math.hypot(b.wx - a.wx, b.wy - a.wy); });
-  ok(Math.abs(seen05 / seen1 - 2) < 0.02 && Math.abs(seen2 / seen1 - 0.5) < 0.02,
-     '★보이는 월드 폭이 배율에 정확히 반비례', `1배 ${seen1.toFixed(0)} · 0.5배 ${seen05.toFixed(0)}(×${(seen05 / seen1).toFixed(3)}) · 2배 ${seen2.toFixed(0)}(×${(seen2 / seen1).toFixed(3)})`);
+  // ── ④ 확대는 실제로 세계를 덜 보여 준다 ────────────────────────────────
+  console.log('\n=== ④ 확대 = 더 좁게 ===');
+  const seenAt = async (z) => { await setZ(z); return page.evaluate(() => { const d = window.__zoomDbg(); const a = window.__s2w(0, 0), b = window.__s2w(d.screen[0], d.screen[1]); return Math.hypot(b.wx - a.wx, b.wy - a.wy); }); };
+  const seen1 = await seenAt(1), seen15 = await seenAt(1.5), seen2 = await seenAt(2);
+  // ★기대값을 손으로 안 적는다 — 보이는 폭은 배율에 **반비례**해야 한다(1/z).
+  const r15 = seen15 / seen1, r2 = seen2 / seen1;
+  ok(Math.abs(r15 - 1 / 1.5) < 0.02 && Math.abs(r2 - 0.5) < 0.02,
+     '★보이는 월드 폭이 배율에 정확히 반비례', `1배 ${seen1.toFixed(0)} · 1.5배 ×${r15.toFixed(3)}(기대 ${(1 / 1.5).toFixed(3)}) · 2배 ×${r2.toFixed(3)}(기대 0.500)`);
 
   // ── ⑤ 1 로 돌아오면 처음 화면 그대로 (되돌림 실증) ─────────────────────
   console.log('\n=== ⑤ 배율 1 복귀 = 종전 화면 그대로 ===');
@@ -180,7 +184,7 @@ function pxdiff(a, b) {
   const dBack = pxdiff(base, back);
   const zBack = await zdbg();
   ok(zBack.off === null, '★배율 1 로 돌아오면 오프스크린이 사라진다');
-  ok(dBack < 1.0, '★★1 → 2 → 0.5 → 1 을 돌고 와도 화면이 처음과 같다 (바람 격리)', `평균 화소 차 ${dBack.toFixed(3)} (확대 때는 ${dUp.toFixed(2)} 였다)`);
+  ok(dBack < 1.0, '★★1 → 1.5 → 2 → 1 을 돌고 와도 화면이 처음과 같다 (바람 격리)', `평균 화소 차 ${dBack.toFixed(3)} (확대 때는 ${dUp.toFixed(2)} 였다)`);
   await wind(false);
 
   // ── ⑥ 성능 — 축소는 세계 화소가 1/z² 로 는다 ───────────────────────────
@@ -195,16 +199,46 @@ function pxdiff(a, b) {
   //   절대값에 문턱을 걸면 줌이 아니라 **컨테이너 부하**를 재게 된다.
   //   ⇒ 재는 것은 **비율**이다: 축소는 세계 화소가 1/z² 로 느니 0.5배는 4배 근처여야 한다.
   //   그리고 기준선을 앞뒤로 두 번 재어 하네스 자신의 드리프트를 분리한다(그게 크면 비율이 거짓말이다).
+  // ★[하네스 결함 수리] 처음엔 절대값에 문턱을 걸었다가 빨개졌다. 이 컨테이너는 **소프트웨어
+  //   렌더(SwiftShader)**라 1배 기준선이 수십~수백 ms 로 널뛴다 — 절대값에 문턱을 걸면
+  //   줌이 아니라 **컨테이너 부하**를 재게 된다. ⇒ 재는 것은 **비율**이고, 기준선을 앞뒤로
+  //   두 번 재어 하네스 자신의 드리프트를 분리한다(드리프트가 크면 비율이 거짓말이다).
   await setZ(1); await sleep(600); const r1a = await rafMed();
-  await setZ(0.5); await sleep(600); const r05 = await rafMed();
-  await setZ(2); await sleep(600); const r2 = await rafMed();
+  await setZ(2); await sleep(600); const rz2 = await rafMed();
   await setZ(1); await sleep(600); const r1b = await rafMed();
   const r1 = Math.min(r1a, r1b);
   const drift = Math.abs(r1a - r1b) / Math.max(1, Math.min(r1a, r1b));
-  console.log(`    프레임 간격 중앙값 — 1배 ${r1a}→${r1b}ms · 0.5배 ${r05}ms · 2배 ${r2}ms  (기준선 드리프트 ${(drift * 100).toFixed(0)}%)`);
+  console.log(`    프레임 간격 중앙값 — 1배 ${r1a}→${r1b}ms · 2배 ${rz2}ms  (기준선 드리프트 ${(drift * 100).toFixed(0)}%)`);
   ok(drift < 0.6, '★기준선이 앞뒤로 크게 안 흔들린다 — 아래 비율을 믿을 근거', `1배 ${r1a} vs ${r1b}ms`);
-  ok(r05 / r1 > 1.8 && r05 / r1 < 9, '★축소 비용이 화소 수(1/z²=4배)를 따라간다', `0.5배 / 1배 = ×${(r05 / r1).toFixed(1)}`);
-  ok(r2 <= r1 * 1.2 + 4, '★★확대는 세계 화소가 **줄어** 더 싸다 — 갈래 A 의 값', `2배 ${r2}ms ≤ 1배 ${r1}ms`);
+  ok(rz2 <= r1 * 1.2 + 4,
+     '★★확대는 세계 화소가 **줄어** 1배보다 싸다 — 축소를 뺀 판의 성질', `2배 ${rz2}ms ≤ 1배 ${r1}ms`);
+
+  // ── ⑥-나 표에서 사라진 옛 배율이 저장돼 있으면 ───────────────────────────
+  console.log('\n=== ⑥-나 옛 배율이 localStorage 에 남아 있어도 안전한가 ===');
+  {
+    // ★축소를 뺐으니, 축소를 쓰던 사람의 브라우저엔 0.5 가 남아 있다. 그대로 읽으면
+    //   표에 없는 배율로 게임이 뜬다 — **표를 줄이는 변경의 진짜 위험은 여기다.**
+    await page.evaluate(() => localStorage.setItem('durango_zoom', '0.5'));
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await sleep(2500);
+    const e2 = await page.$('button:has-text("월드 입장")');
+    if (e2) await e2.click();
+    for (let i = 0; i < 60 && !(await page.evaluate(() => !!(window.__getMyAbs && window.__getMyAbs()))); i++) await sleep(500);
+    await sleep(1500);
+    const zr = await zdbg();
+    ok(zr && zr.zoom === 1, '★표에 없는 옛 값(0.5)은 무시하고 1 로 뜬다', zr ? `zoom=${zr.zoom}` : 'null');
+    ok(zr && zr.off === null, '★그 상태에서도 오프스크린이 없다 (종전 경로)');
+    // 자명 통과 금지 — 표에 **있는** 값은 실제로 기억된다
+    await page.evaluate(() => localStorage.setItem('durango_zoom', '2'));
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await sleep(2500);
+    const e3 = await page.$('button:has-text("월드 입장")');
+    if (e3) await e3.click();
+    for (let i = 0; i < 60 && !(await page.evaluate(() => !!(window.__getMyAbs && window.__getMyAbs()))); i++) await sleep(500);
+    await sleep(1500);
+    const zk = await zdbg();
+    ok(zk && zk.zoom === 2, '★자명 통과 금지 — 표에 있는 값(2)은 실제로 기억된다', zk ? `zoom=${zk.zoom}` : 'null');
+  }
 
   // ── ⑦ 콘솔 오류 ────────────────────────────────────────────────────────
   console.log('\n=== ⑦ 콘솔 오류 ===');

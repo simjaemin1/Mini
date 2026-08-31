@@ -81,7 +81,11 @@ const SIM_JOB_EMOJI = {
   //     그건 "확대하면 더 선명" 을 택할 때의 값이고, 재민은 "큰 화소" 를 택했다.
   //   ★그리기 코드 95군데의 W/H 를 한 줄도 안 건드린다 — W/H 자체를 가상 크기로 바꾸므로
   //     컬링·중심 계산이 저절로 맞는다.
-  const ZOOM_STEPS = [0.5, 0.75, 1, 1.5, 2];
+  //   ★[재민 확정 2026-08-31 · 2차] **축소를 뺐다.** 세계 화소가 1/z² 로 늘어 0.5배가 4배 그리기이고
+  //     (실측 1배 260ms → 0.5배 943ms, ×3.6) 이름표 글자도 같이 줄어 안 읽혔다.
+  //     확대만 남기면 오프스크린이 늘 화면보다 **작아** 확대가 1배보다 오히려 싸다(실측 70ms).
+  //     되돌리려면 이 표에 0.75·0.5 를 넣기만 하면 된다 — 아래 코드는 배율이 1 미만이어도 맞다.
+  const ZOOM_STEPS = [1, 1.5, 2];
   const ZOOM_KEY = 'durango_zoom';
   let ZOOM = 1;
   try { const _z = parseFloat(localStorage.getItem(ZOOM_KEY)); if (ZOOM_STEPS.includes(_z)) ZOOM = _z; } catch (_) {}
@@ -103,7 +107,9 @@ const SIM_JOB_EMOJI = {
     if (!on) return;
     ctx = _mainCtx; W = W0; H = H0;
     const prev = ctx.imageSmoothingEnabled;
-    ctx.imageSmoothingEnabled = (ZOOM < 1);             // 확대는 큰 화소, 축소는 보간
+    // 확대는 보간 끔(큰 화소가 계약) · 축소는 켬. 지금 표엔 1 미만이 없어 늘 꺼지지만,
+    // 조건을 남겨 둔다 — 표에 축소를 되돌리면 이 줄이 저절로 맞는다(하드코딩 false 는 그때 틀린다).
+    ctx.imageSmoothingEnabled = (ZOOM < 1);
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.drawImage(_zoomCv, 0, 0, _zoomCv.width, _zoomCv.height, 0, 0, W0, H0);
     ctx.imageSmoothingEnabled = prev;
