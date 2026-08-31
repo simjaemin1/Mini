@@ -4,8 +4,15 @@
 // === CLIENT BUILD: Phase 5-G (한반도 강·호수 hardcoded + observer storm fix) ===
 console.log('%c[durango-mini] client build = Phase 5-K26 (길드 영토 셀 집합 렌더 — 격자 단위)', 'color:#5a9ae0;font-weight:bold;font-size:14px');
 
+// ★★[부패·보존 배치 2026-08-31] 신선도 3단계의 **표시**(값은 서버가 준다 — 여기 문턱을 적지 않는다).
+//   `server/spoil.js` 의 STAGE_KO/STAGE_EMO 와 짝이다. 클라는 곡선을 계산하지 않는다.
+const PRESERVE_STAGE_KO = { fresh: '신선', wilt: '시듦', spoiled: '상함' };
+const PRESERVE_STAGE_EMO = { fresh: '🟢', wilt: '🟡', spoiled: '🔴' };
+const PRESERVE_STAGE_COLOR = { fresh: '#7ec98a', wilt: '#d9b45a', spoiled: '#e07575' };
+
 // Phase 4d-16-c: facility 종류별 emoji
 const FACILITY_EMOJI = {
+  drying_rack: '🧺',   // ★[보존 배치] 건조대
   house: '🏠',
   farmland: '🌾',  // default — farmStage 있으면 override
   forge: '🔥',
@@ -11446,6 +11453,31 @@ const SIM_JOB_EMOJI = {
       ctx.beginPath(); ctx.moveTo(x - 9, y - 7.5); ctx.lineTo(x + 9, y + 1.5); ctx.stroke();
       ctx.fillStyle = '#8d8d8d';                                                  // 얹힌 숫돌
       ctx.beginPath(); ctx.ellipse(x + 3, y - 6, 5, 2.6, 0, 0, Math.PI * 2); ctx.fill();
+    } else if (type === 'drying_rack') {
+      // ★★[부패·보존 배치 2026-08-31] **건조대** — 장대 둘 + 가로대 + 걸린 것들.
+      //   ⚠작업대와 같은 규약의 **발판 도형**이다(회부: 시설 신규 스프라이트).
+      //   안 그리면 "데이터는 있는데 세계엔 없는" 시설이 된다(족보 67) — 그 함정을 다시 밟지 않는다.
+      ctx.fillStyle = 'rgba(0,0,0,0.32)';
+      ctx.beginPath(); ctx.ellipse(x, y + 5, 16, 5.5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#6b4f2a';                                                   // 장대 둘
+      ctx.fillRect(x - 14, y - 20, 3, 26);
+      ctx.fillRect(x + 11, y - 20, 3, 26);
+      ctx.fillStyle = '#8a6a3c';                                                   // 가로대
+      ctx.fillRect(x - 15, y - 21, 30, 3);
+      ctx.strokeStyle = '#9d8a5f'; ctx.lineWidth = 1;                              // 풀 끈
+      ctx.beginPath(); ctx.moveTo(x - 14, y - 17); ctx.lineTo(x - 10, y - 21); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x + 14, y - 17); ctx.lineTo(x + 10, y - 21); ctx.stroke();
+      // 걸린 것 셋 — 마르는 중인 물건(바람에 아주 조금 흔들린다)
+      const _sw = Math.sin(performance.now() * 0.0016) * 0.9;
+      for (let i = -1; i <= 1; i++) {
+        const hx = x + i * 9 + _sw * (i === 0 ? 0.6 : 1);
+        ctx.strokeStyle = '#7d6b48'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(x + i * 9, y - 18); ctx.lineTo(hx, y - 13); ctx.stroke();
+        ctx.fillStyle = i === 0 ? '#c9a97a' : '#b9976a';
+        ctx.beginPath(); ctx.ellipse(hx, y - 8, 3.2, 5.4, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = 'rgba(90,70,40,0.7)';
+        ctx.beginPath(); ctx.moveTo(hx, y - 12.5); ctx.lineTo(hx, y - 3.5); ctx.stroke();
+      }
     } else if (type === 'campfire') {
       // 모닥불 — 통나무 + 흔들리는 불꽃
       ctx.fillStyle = 'rgba(0,0,0,0.4)';
@@ -12291,6 +12323,9 @@ const SIM_JOB_EMOJI = {
     // 14.51: 건축물 아이템 (인벤에 들어가는 형태)
     item_wall: '🧱', item_floor: '⬜', item_door: '🚪', item_fence: '🪵',
     item_stair: '🪜', item_chest: '📦', item_campfire: '🔥', item_farmland: '🌱', item_workbench: '🪚',
+    // ★[부패·보존 배치 2026-08-31] 건조대 + 보존식 4종 + 소금
+    item_drying_rack: '🧺',
+    dried_fish: '🐟', dried_fruit: '🍇', smoked_meat: '🥓', pickled_veg: '🫙', salt: '🧂',
   };
   // === 에셋 5차: 인벤 아이콘 3D 렌더(Blender icon_render.py) ===
   // /assets/icons/<key>.png (96×96 알파, 자연물과 동일 씬·조명). 로드 성공한 키만 이미지로 교체 —
@@ -12301,7 +12336,10 @@ const SIM_JOB_EMOJI = {
   //   여기 없는 키는 전부 `/assets/icons/<key>.png` 가 있다는 규약이라(37종 중 36종 실재 확인),
   //   목록에 안 적고 두면 **404 가 난다** — `e2e-nature` 가 "자산 요청 404 없음"으로 그걸 잡는다(실제로 잡았다).
   //   ⚠교체 예정: 작업대 아이콘은 Blender `icon_render.py` 로 뽑아 이 목록에서 빼면 된다(회부: 시설 스프라이트).
-  const ICON_NO_RENDER = new Set(['item_workbench']);
+  //   ★[보존 배치 2026-08-31] 건조대·보존식 4종·소금도 아직 렌더가 없다 — **여기 안 적으면 404 다**
+  //     (`e2e-nature` 가 "자산 요청 404 없음"으로 잡는다. 앞 배치가 실제로 그 자리를 밟았다.)
+  const ICON_NO_RENDER = new Set(['item_workbench', 'item_drying_rack',
+    'dried_fish', 'dried_fruit', 'smoked_meat', 'pickled_veg', 'salt']);
   (function preloadItemIcons() {
     if (typeof Image !== 'function') return;
     const keys = Object.keys(ITEM_ICONS).filter((k) => !ICON_NO_RENDER.has(k));
@@ -12353,6 +12391,9 @@ const SIM_JOB_EMOJI = {
     wood: '통나무', plank: '판자', stone: '돌',
     item_wall: '벽', item_floor: '바닥', item_door: '문', item_fence: '울타리',
     item_stair: '계단', item_chest: '상자', item_campfire: '모닥불', item_farmland: '농지', item_workbench: '작업대',
+    // ★[부패·보존 배치 2026-08-31]
+    item_drying_rack: '건조대',
+    dried_fish: '건어물', dried_fruit: '말린 과실', smoked_meat: '훈제육', pickled_veg: '절임', salt: '소금',
   };
 
   // 14.53: 우클릭 컨텍스트 메뉴 — 임의 옵션 list 받아서 마우스 위치에 띄움.
@@ -13808,7 +13849,7 @@ const SIM_JOB_EMOJI = {
   //   "하나 모자람"이 오늘의 할 일이고, 그게 시장에 갈 이유다.
   function renderFacilityPanel(el) {
     const F = myFacility;
-    if (!F || !F.near) { el.innerHTML = '<div class="hint">시설 앞에 서면 그 시설의 제작창이 열린다 — 🔥모닥불(요리) · 🪚작업대(도구) · 🏭노(제련)</div>'; return; }
+    if (!F || !F.near) { el.innerHTML = '<div class="hint">시설 앞에 서면 그 시설의 제작창이 열린다 — 🔥모닥불(요리·훈제) · 🪚작업대(도구·절임) · 🏭노(제련) · 🥬건조대(말리기)</div>'; return; }
     if (!F.near.mine) { el.innerHTML = `<div class="hint">${F.near.ko}은(는) 내 것이 아니다 — 남의 시설 사용권은 아직 없다.</div>`; return; }
     const secs = Math.round((F.near.craftMs || 0) / 1000);
     let h = `<div class="hint" style="margin-bottom:8px">🪵 <b>${F.near.ko}</b> — 여기서 만들 수 있는 것만 보인다 · 한 개 ${secs}초</div>`;
@@ -13839,9 +13880,15 @@ const SIM_JOB_EMOJI = {
       }
       const lack = r.missing.length ? `<span style="color:#e88">— ${r.missing.map((m) => `${m.item} ${m.have}/${m.need}`).join(' · ')}</span>` : '';
       h += `<div class="craft-recipe ${r.can ? 'can-make' : ''}">
-        <div class="cr-icon">${r.kind === 'cook' ? '🍲' : '🔧'}</div>
+        <div class="cr-icon">${r.preserve ? '🧺' : r.kind === 'cook' ? '🍲' : '🔧'}</div>
         <div class="cr-info">
-          <div class="cr-name">${r.label}${q2 != null ? ` <span style="color:#8a93a0;font-weight:normal">· 예상 품질 ${Math.round(q2 * 100)}%${r.lvl != null ? ` (${r.skill} Lv${r.lvl})` : ''}</span>` : ''}</div>
+          <div class="cr-name">${r.label}${q2 != null ? ` <span style="color:#8a93a0;font-weight:normal">· 예상 품질 ${Math.round(q2 * 100)}%${r.lvl != null ? ` (${r.skill} Lv${r.lvl})` : ''}</span>` : ''}${
+            /* ★[보존 배치 2026-08-31] 재료 선택이 판단이 되게 — 지금 재료의 신선도와 수율·보관일을 미리 보여 준다.
+               도구의 "예상 품질 %"와 같은 자리다(새 컴포넌트 없음). 수치는 전부 서버 정본이 계산해 보낸 것. */
+            r.preserve ? ` <span style="color:#8a93a0;font-weight:normal">· ${r.outKo} · ${r.days}일`
+              + (r.stageKo ? ` · 재료 ${PRESERVE_STAGE_EMO[r.stage] || ''}${r.stageKo}` : '')
+              + (r.yieldPct != null ? ` → 수율 ${r.yieldPct}%` : '')
+              + ` · 보관 ${r.shelfDays}일</span>` : ''}</div>
           <div class="cr-cost">${costStr} ${lack}</div>
           ${r.options ? `<div class="cr-cost" style="margin-top:3px">${r.options.map((o) => `<button data-fpick="${r.id}" data-fmat="${o.material}" style="margin:1px 2px 1px 0;${o.material === pick ? 'outline:1px solid #7c9' : ''}" ${o.can ? '' : 'disabled'}>${o.material} ${o.q != null ? Math.round(o.q * 100) + '%' : ''}</button>`).join('')}</div>` : ''}
         </div>
@@ -13856,6 +13903,8 @@ const SIM_JOB_EMOJI = {
       const r = (F.recipes || []).find((x) => x.id === id);
       if (!r) return;
       if (r.options) sendPrimary({ type: 'craft_equipment', itemType: id, material: facilityPick[id] || (r.options.find((o) => o.can) || {}).material });
+      // ★[보존 배치 2026-08-31] 한 번에 한 단위 — 요리와 같은 규약이다(수량 선택은 다음 층 · 회부 F).
+      else if (r.preserve) sendPrimary({ type: 'preserve', recipe: id, amount: 1 });
       else sendPrimary({ type: 'cook', recipe: id });
       setTimeout(() => sendPrimary({ type: 'facility_ask' }), 400);
     });
@@ -14140,11 +14189,16 @@ const SIM_JOB_EMOJI = {
           })(),
           drag: { kind: 'mine', item, ids: [e.id], n: 1 },
         }));
-      } else if (Array.isArray(lot) && lot.length >= 2) {
-        // 로트 — 취득일이 다르면 다른 몫이다(부패 곡선이 앉을 자리 · 지금은 나이만 말한다).
+      } else if (Array.isArray(lot) && (lot.length >= 2 || lot.some((l) => l.stage && l.stage !== 'fresh'))) {
+        // ★★[부패 배치 2026-08-31] 로트 — 취득일이 다르면 다른 몫이다. **파 둔 자리에 신선도 칸을 채운다**
+        //   (새 컴포넌트 0 · 값은 전부 서버가 준 것 — 클라가 곡선을 다시 계산하면 그게 사본이다).
+        //   ★펼침 조건이 `>= 2` 였다: 로트가 하나면 접혀서 **시들어 가는 걸 볼 수가 없었다.**
+        //     이제 **성하지 않은 로트가 하나라도 있으면** 편다 — 상하는 중인 건 보여야 한다.
         kids = lot.map((l) => ({
           k: 'l' + l.day,
-          label: `${_ulN(l.n)}개 <span class="ul-age">${l.ageDays}일 전</span>` + (l.coalesced ? ' <span class="ul-age">(묶임)</span>' : ''),
+          label: `${_ulN(l.n)}개 <span class="ul-age">${l.ageDays}일 전</span>`
+            + (l.stage ? ` <span class="ul-age" style="color:${PRESERVE_STAGE_COLOR[l.stage] || '#8a93a0'}">${PRESERVE_STAGE_EMO[l.stage] || ''}${PRESERVE_STAGE_KO[l.stage] || ''}${l.stage === 'spoiled' ? '' : ` ${Math.round((l.fresh || 0) * 100)}%`}</span>` : '')
+            + (l.coalesced ? ' <span class="ul-age">(묶임)</span>' : ''),
           drag: { kind: 'mine', item, lotDay: l.day, n: Math.max(1, Math.floor(l.n)) },
         }));
       }

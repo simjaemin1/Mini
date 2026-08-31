@@ -99,6 +99,8 @@ else
     test-emptystart.js
     test-craft.js
     test-ledger.js
+    # ★[부패·보존 배치 2026-08-31] 부패 곡선(결정론·연속·순서) · 보존 3종 · 상함 = 확정 탈 · 거래 판정
+    test-preserve.js
     test-calendar.js
     test-move.js
     test-charsheet.js
@@ -108,6 +110,8 @@ else
     e2e-emptystart.js
     e2e-forage-village.js
     e2e-craft.js
+    # ★[부패·보존 배치 2026-08-31] 실클라 — 방치→시듦→상함 표시 · 건조대 말리기 · 상한 것 먹고 탈
+    e2e-preserve.js
     e2e-inv.js
     e2e-conn.js
     e2e-ui.js

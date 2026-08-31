@@ -47,6 +47,9 @@ const PathCore = require('../sim/path-core.js'); // ★[생활 층 100% ①] 랩
 const { ANIMALS } = require('./animals');  // Phase 5-6: 동물 mob 36종 catalog
 const GuildTreasury = require('./guild-treasury'); // 길드 곳간(물리) ↔ central 금고(회계) 정합 — 장부 계약은 그 파일 상단 참조
 const PlayerItems = require('./player-items'); // 플레이어 아이템 인스턴스(품질·속성·내구) — econ 무접촉·본체 서버층(설계: 플레이어_아이템_속성_설계.md)
+// ★[부패·보존 배치 2026-08-31] 부패 곡선·보존 가공의 정본. 여기(아래 FOOD_EFFECTS 보다 위)에서
+//   부르는 이유: 식품 효과표가 보존식 4종을 **이 모듈에서 파생**하기 때문이다(목록 두 벌 금지).
+const Spoil = require('./spoil');
 const harvestedSeeds = new Set(); // 채집된 시드 자원 (DB에서 load)
 
 // === 활성 청크 (12.2.b) — 사람 player + observer 위치 주변 청크만 시뮬레이션 ===
@@ -625,12 +628,17 @@ const BUILDING_COST = {
   //   그래서 `doCraftEquipment` 가 어디서나 즉석으로 돌았다 — "제작은 시설 앞의 물리 행위"의 반례.
   //   값: 통나무 4 + 석재 2. 망치를 요구하지 않는다 — **빈손이 도달할 수 있어야** 첫 사다리가 이어진다.
   workbench: { wood: 4, stone: 2 },
+  // ★★[부패·보존 배치 2026-08-31] **건조대** — 통나무 2 + 풀 4(재민 지시 "통나무·섬유로 건축").
+  //   망치를 요구하지 않는다(작업대 선례): 첫 겨울을 나야 하는 사람이 도구 사슬을 다 통과한
+  //   뒤에야 말릴 수 있다면, 보존은 이미 늦은 것이다. **빈손 사다리 위에 놓는다.**
+  //   값이 작업대(통나무4+돌2)보다 싼 이유: 장대 둘에 풀 끈이면 서는 물건이다.
+  drying_rack: { wood: 2, fiber: 4 },
 };
 const CROP_GROW_MS = 60 * 1000;
 // 14.50: door도 닫혔을 때 blocking. fence는 cell 차지하지만 통과 가능 (사용자 의도: 시야는 통과, collider만 차단).
 const BLOCKING_BUILDINGS = new Set(['wall', 'fence', 'door']);
 // 14.49-e2: 층 높이 2배 (32 → 64). 벽·계단도 같이 2배.
-const BUILDING_HEIGHT = { workbench: 26, wall: 64, floor: 4, fence: 32, door: 64, chest: 24, campfire: 20, farmland: 4, stair: 64, vtile: 2, guild_granary: 40, granary: 40, hut_site: 4, hut: 40, furnace_site: 4, furnace: 48, kiln_site: 4, charcoal_kiln: 36, village_site: 4, village_hall: 56 };   // ★실체화 동기: 지면 타일·곳간·움집터·노(爐)·숯가마·마을회관[배치 12]
+const BUILDING_HEIGHT = { drying_rack: 34, workbench: 26, wall: 64, floor: 4, fence: 32, door: 64, chest: 24, campfire: 20, farmland: 4, stair: 64, vtile: 2, guild_granary: 40, granary: 40, hut_site: 4, hut: 40, furnace_site: 4, furnace: 48, kiln_site: 4, charcoal_kiln: 36, village_site: 4, village_hall: 56 };   // ★실체화 동기: 지면 타일·곳간·움집터·노(爐)·숯가마·마을회관[배치 12]
 // Phase 14.25: chest 저장 가능 아이템 (모든 자원 + 도구 + 음식)
 const CHEST_ALLOWED_ITEMS = new Set([
   'wood', 'stone', 'ore', 'herb',
@@ -639,7 +647,10 @@ const CHEST_ALLOWED_ITEMS = new Set([
   'fish', 'fish_cooked',            // Phase 5-econ-game-2: 어부 어획물
   'axe', 'pickaxe', 'sword',
   'plank', 'pillar', 'rafter', 'thatch',   // ★건축재(판자는 기존 누락 보수 — 조합법 체계와 함께 저장 허용)
+  'salt',   // ★[보존 배치] 절임 재료. 세계 조달은 아직 회부지만 **넣을 자리는 막지 않는다**
 ]);
+// ★[보존 배치 2026-08-31] 보존식은 상자에 넣는다 — 목록은 `spoil` 이 정본(두 벌 금지).
+for (const k of Object.keys(Spoil.PRESERVED_ITEMS)) CHEST_ALLOWED_ITEMS.add(k);
 // Phase 14.14: 건축물 maxHp — 손상=상태 전이 (영구파괴 X, 수리 가능)
 const BUILDING_MAX_HP = { wall: 80, fence: 30, chest: 50, campfire: 20, farmland: 10, stair: 60, floor: 40 };
 const FLOOR_HEIGHT = 64; // 14.49-e2: 32 → 64
@@ -739,6 +750,9 @@ const BUILDING_RECIPES = {
   item_farmland: { seed_berry: 1,                        _buildType: 'farmland', label: '농지 (Farmland)' },
   // ★[시설 제작창 2026-08-29] 작업대 — 망치 없이 지을 수 있다(빈손 사다리가 끊기지 않게).
   item_workbench: { wood: 4, stone: 2,                   _buildType: 'workbench', label: '작업대 (Workbench)' },
+  // ★[보존 배치 2026-08-31] 건조대 — 비용은 `BUILDING_COST.drying_rack` 과 같은 값이어야 한다
+  //   (하네스 ⑥이 두 표의 일치를 검사한다 — 작업대가 이미 밟은 자리다).
+  item_drying_rack: { wood: 2, fiber: 4,                 _buildType: 'drying_rack', label: '건조대 (Drying Rack)' },
 };
 // 14.52: 모든 도구의 최대 내구도 (제작 시 부여, 사용 시 1씩 감소, 0 되면 인벤서 제거)
 const TOOL_MAX_DURABILITY = {
@@ -887,6 +901,21 @@ const FOOD_EFFECTS = {
   food_cooked:  { hunger: 34, thirst: 2 },
   fish_cooked:  { hunger: 32, thirst: 0 },   // ★구운 생선이 표에 없었다(먹을 수 없는 조리식이었다)
 };
+// ★★[부패·보존 배치 2026-08-31] **보존식 4종** — 목록은 `spoil.PRESERVED_ITEMS` 가 정본이고
+//   여기서는 **효과만** 붙인다(품목 이름을 두 벌로 적지 않는다).
+//   ★값의 근거: 보존은 **수분을 빼는 일**이다. 같은 무게에 열량이 몰리므로 단위당 회복이 크지만,
+//     `weights.js` 에서 원물보다 **가볍게** 잡혀(건어물 0.35 vs 생선 0.90) 짐 예산으로는 이득이 아니다.
+//     짜고 마른 것을 먹으면 목이 마르다 — 그래서 보존식은 **갈증을 준다**(thirst 음수).
+//     이 한 줄이 겨울나기를 "식량만 쌓으면 되는 문제"에서 "물도 있어야 하는 문제"로 만든다.
+const PRESERVED_EFFECTS = {
+  dried_fish:  { hunger: 30, thirst: -6 },
+  dried_fruit: { hunger: 16, thirst: -2 },
+  smoked_meat: { hunger: 38, thirst: -5 },
+  pickled_veg: { hunger: 14, thirst: -4 },
+};
+for (const k of Object.keys(Spoil.PRESERVED_ITEMS)) {
+  if (PRESERVED_EFFECTS[k]) FOOD_EFFECTS[k] = PRESERVED_EFFECTS[k];
+}
 // 음료 (water_pool에서 E로 즉시 회복 — 인벤토리 아이템 아님)
 const WATER_DRINK_AMOUNT = 35;
 
@@ -3299,7 +3328,10 @@ function handlePlayerInput(player, raw) {
   }
   else if (E2E_GIVE && msg.type === '__e2e_day_freeze') {
     // ★테스트 전용(E2E_GIVE=1 일 때만 분기 존재) — 상호작용을 재는 동안 게임일을 얼린다.
+    // ★★[2026-08-31] **플레이어 시계도 같이 얼린다** — 마을 날만 얼리던 게 반쪽이었다(위 주석).
+    const z = __e2eFreezeZoneDay(!!msg.on);
     const r = SimVillages.__e2eDayFreeze ? SimVillages.__e2eDayFreeze(!!msg.on) : { err: '미지원' };
+    if (r && r.ok) r.zoneDay = z.day;
     send(player.ws, { type: 'notice', text: r.ok ? `🧊 게임일 ${r.frozen ? '정지' : '재개'} (day ${r.day})` : `🧊 ${r.err}` });
   }
   else if (E2E_GIVE && msg.type === '__e2e_village_short') {
@@ -3390,6 +3422,9 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'eat') doEat(player, msg.item, msg.amount);   // ★[무게] amount 생략 = 1개(종전 그대로)
   else if (msg.type === 'cook') doCook(player, msg.recipe);
   else if (msg.type === 'eat_dish') doEatDish(player, msg.id);
+  // ★[보존 배치 2026-08-31] 말리기·훈제·절임 — 새 패널 0. 제작창(시설의 창)에 항목만 늘어난다.
+  else if (msg.type === 'preserve') doPreserve(player, msg.recipe, msg.amount);
+  else if (msg.type === 'preserve_menu_ask') send(player.ws, { type: 'preserve_menu', recipes: preserveMenuPayload() });
   else if (msg.type === 'fish_cast') tryFishCast(player);      // ★[낚시 v2] 던지기 — 이미 던져 뒀으면 챔질로 넘어간다
   else if (msg.type === 'fish_strike') tryFishStrike(player);  // ★[낚시 v2] 챔질(서버 시각으로만 판정)
   else if (msg.type === 'fish_reel') { if (player._fish) { player._fish = null; send(player.ws, { type: 'fish_state', state: 'idle' }); send(player.ws, { type: 'notice', text: '🎣 줄을 거뒀다' }); } }
@@ -3514,9 +3549,16 @@ function doEat(player, item, amount) {
     send(player.ws, { type: 'notice', text: `${item} 부족` }); return;
   }
   let ate = Math.min(want, stock);
+  // ★★[부패 배치 2026-08-31] 신선도는 **먹은 그 로트들**에서 나온다.
+  //   `Lots.consume` 은 오래된 것부터(FIFO) 깎고 `ages:[{d,n}]` 를 돌려준다 — 로트를 다시 뒤지지
+  //   않고 그걸 그대로 `Spoil.ofAges` 에 넘긴다(사본 금지). 신선한 몫과 상한 몫이 **따로** 나온다:
+  //   회복은 신선한 몫에서만 나오고, 탈은 상한 몫에서 난다. 평균 하나로 뭉개면 둘 다 거짓말이다.
+  let fresh = 1, spoiledQty = 0;
   if (isLot) {
     const r = Lots.consume(player, item, ate, player.inventory, today);
     ate = r.taken;
+    const fr = Spoil.ofAges(item, r.ages, today);
+    fresh = fr.fresh; spoiledQty = fr.spoiled;
   } else {
     ate = Math.min(want, Math.floor(stock) || stock);
     if (ate < 1) { send(player.ws, { type: 'notice', text: `${item} 부족` }); return; }
@@ -3524,10 +3566,25 @@ function doEat(player, item, amount) {
     consumeItem(player, item, ate);   // ★[원장 승격] 인벤+원장 동시 차감(정본 하나)
   }
   // ★회복은 **먹은 양에 정확히 비례**한다 — 0.25단위를 먹으면 0.25배 찬다.
-  if (eff.hunger)   player.hunger = Math.min(HUNGER_MAX, (player.hunger ?? HUNGER_MAX) + eff.hunger * ate);
-  if (eff.thirst)   player.thirst = Math.min(THIRST_MAX, (player.thirst ?? THIRST_MAX) + eff.thirst * ate);
+  // ★그리고 **신선도에 비례**한다(연속). 상함(f=0)이면 곱해서 0 이 된다 — 별도 분기가 없다.
+  const _nut = Spoil.nutritionMult(fresh);
+  if (eff.hunger)   player.hunger = Math.min(HUNGER_MAX, (player.hunger ?? HUNGER_MAX) + eff.hunger * ate * _nut);
+  // ★보존식은 짜고 말라 갈증을 준다(thirst 음수) — 0 아래로는 안 내려간다.
+  //   갈증 항은 신선도로 안 깎는다: 마른 건어물은 상해도 여전히 짜다.
+  if (eff.thirst)   player.thirst = Math.max(0, Math.min(THIRST_MAX, (player.thirst ?? THIRST_MAX) + eff.thirst * ate));
   if (eff.hpDelta)  { player.hp = Math.max(0, Math.min(player.maxHp, player.hp + eff.hpDelta * ate));
                       broadcast({ type: 'player_damaged', pid: player.pid, hp: player.hp }); }
+  // ★★상한 걸 먹으면 **확정적으로** 탈이 난다 — 주사위 없음(재민 확정: 식중독 확률 모델 금지).
+  //   새 축을 안 만든다: 신체 §7 의 **부상** 축 하나를 재사용한다(HP 는 안 건드린다 — 아사 폐지 캐논).
+  //   부상 축이 이미 이속·작업 배율 곡선과 바닥(0.72)을 갖고 있어 죽음의 나선이 안 난다.
+  let _ill = 0;
+  if (spoiledQty > 0) {
+    _ill = Spoil.illnessFor(spoiledQty);
+    if (_ill > 0) {
+      const _b = Body.ensure(player);
+      _b.injury = Math.min(1, _b.injury + _ill);
+    }
+  }
   // ★[신체 상태 §7] 사기 = **당근**. 심심함·스트레스는 기각됐고, 대신 좋은 음식이 버프를 준다.
   //   조리식(meat_cooked·berry_jam)이 생식보다 크다 — 요리와 화덕 수요의 실체.
   const _cooked = /cooked|jam|dish|stew|soup/.test(item);
@@ -3536,7 +3593,13 @@ function doEat(player, item, amount) {
   if (item === 'medicinal_herb' || item === 'herb') Body.onHerb(player, Date.now());
   sendInventory(player);
   send(player.ws, { type: 'gauges', hunger: Math.round(player.hunger), thirst: Math.round(player.thirst), body: Body.selfPayload(player), carry: Object.assign(Carry.payload(player), { combined: moveMultOf(player) }) });
-  send(player.ws, { type: 'notice', text: `${item} 섭취 (+허기 ${eff.hunger||0})`
+  // ★[부패] 화면이 **왜 덜 찼는지**를 말한다 — 안 말하면 "회복량이 이상하다"로만 보인다
+  //   (거래소 배치의 교훈: 계측기가 속은 자리에서 플레이어도 똑같이 속는다).
+  const _stg = Spoil.stageOf(fresh);
+  const _gain = Math.round((eff.hunger || 0) * ate * _nut);
+  send(player.ws, { type: 'notice', text: `${ITEM_LABEL_SERVER[item] || item} 섭취 (+허기 ${_gain})`
+    + (_stg !== 'fresh' && isLot ? ` · ${Spoil.STAGE_EMO[_stg]} ${Spoil.STAGE_KO[_stg]}` : '')
+    + (_ill > 0 ? ' · 🤢 탈이 났다(부상↑)' : '')
     + (_cooked ? ' · ✨ 잘 먹었다(사기↑)' : '') });
   savePlayer(player);
 }
@@ -3578,6 +3641,98 @@ function doCook(player, recipeName) {
   send(player.ws, { type: 'notice', text: `🔥 ${_fc.ko}에 얹었다 — ${recipe.label} · ${Math.ceil(rk.job.ms / 1000)}초${rk.ahead ? ` (앞에 ${rk.ahead}개)` : ''}` });
   void cookLvl;
   savePlayer(player);
+}
+
+// === ★★보존 가공 (말리기·훈제·절임) [재민 확정 2026-08-31] =====================
+//
+// ★"제작창 = 시설의 창" 문법 그대로다 — `doCook` 과 **같은 뼈대**를 쓴다:
+//   시설 판정은 `facilityFor` 정본에게 묻고, 시간은 시설 대기열(`Facility.enqueue`)에 맡긴다.
+//   ⇒ **오프라인에도 진행된다**(가마는 밤새 탄다 · 건조대는 밤새 마른다). 수령만 접속해서 한다.
+//
+// ★★**보존의 본질 = 부패 시계의 리셋.** 산출은 취득일이 **완성일**인 새 로트다.
+//   ⚠요리(`dish.craftedAtMs = 꺼낸 때`)와 **다르게** 잡았다. 이유가 있다:
+//     요리 대기열은 20초라 "언제부터 세느냐"가 무의미하지만, 보존은 **며칠**이다.
+//     수령일로 잡으면 건조대가 **무한 정지 상자**가 된다(걸어 두면 안 상하는 창고).
+//     완성일로 잡으면 "말렸으면 가져가라"가 성립한다 — 그게 보존식이지 마법 상자가 아니다.
+//   ⇒ 이 차이는 알고 낸 것이고 `회부_부패_다음층.md` D 에 적었다.
+function doPreserve(player, recipeKey, amount) {
+  const r = Spoil.PRESERVE[recipeKey];
+  if (!r) { send(player.ws, { type: 'notice', text: `알 수 없는 가공: ${recipeKey}` }); return; }
+  // ① 시설 — 정본에게 묻는다(반경 상수를 여기 또 적지 않는다)
+  const fc = facilityFor(player, r.kind);
+  if (!fc) { send(player.ws, { type: 'notice', text: `${r.facilityKo} 앞에서만 ${r.label}를 한다` }); return; }
+  if (!_facilityMine(player, fc.b)) { send(player.ws, { type: 'notice', text: `${fc.ko}은(는) 내 것이 아니다` }); return; }
+  // ② 입력 로트 — 얼마나 있나
+  const today = zoneGameDay();
+  Lots.reconcile(player, r.from, player.inventory, today);
+  const stock = Lots.sum(player, r.from);
+  const want = Math.max(1, Math.floor(Number(amount) > 0 ? Number(amount) : 1));
+  if (stock < 1) { send(player.ws, { type: 'notice', text: `${r.from} 부족` }); return; }
+  const take = Math.min(want, Math.floor(stock));
+  if (take < 1) { send(player.ws, { type: 'notice', text: `${r.from} 부족` }); return; }
+  // ③ 부재료 — 소금·땔감. **먼저 확인만** 한다(뺐다가 되돌리는 경로를 안 만든다).
+  for (const [k, n] of Object.entries(r.needs || {})) {
+    if ((player.inventory[k] || 0) < n * take) {
+      send(player.ws, { type: 'notice', text: `${ITEM_LABEL_SERVER[k] || k} ${n * take}개 필요 — ${r.label}에는 ${k === 'salt' ? '소금이' : '땔감이'} 든다` });
+      return;
+    }
+  }
+  // ★대기열 자리도 **미리** 본다 — 재료를 뺀 뒤에 "대기열이 찼다"로 되돌리는 길을 아예 없앤다.
+  //   (되돌리기는 나이 분포를 근사로 뭉갠다. 안 하는 게 낫다.)
+  if (Facility.view(fc.b, Date.now()).length >= Facility.MAX_QUEUE) {
+    send(player.ws, { type: 'notice', text: `${fc.ko} 대기열이 찼다(${Facility.MAX_QUEUE})` }); return;
+  }
+  // ④ 입력을 깎는다 — **오래된 로트부터**(`consume` 정본 하나). 그래서 "말릴 거면 오래된 것부터"가
+  //   저절로 성립하고, 동시에 **싱싱할 때 말릴 이유**가 생긴다(수율이 신선도에 비례하므로).
+  const got = Lots.consume(player, r.from, take, player.inventory, today);
+  const fr = Spoil.ofAges(r.from, got.ages, today);
+  // ★되돌릴 땐 **나이 분포까지 그대로** 돌려놓는다 — `ages` 를 로트별로 다시 적는다.
+  //   한 날짜로 뭉개면 장부가 거짓말을 한다(로트 병합 금지 규약).
+  const _undo = () => {
+    for (const a of got.ages) Lots.note(player, r.from, a.n, a.d);
+    player.inventory[r.from] = Math.floor(Lots.sum(player, r.from) + 1e-6);
+    sendInventory(player);
+  };
+  const gate = Spoil.canPreserve(recipeKey, fr.fresh);
+  if (!gate.ok) { _undo(); send(player.ws, { type: 'notice', text: gate.err }); return; }   // 상한 재료는 삼키지 않는다
+  const outQty = Spoil.outputQty(got.taken, fr.fresh);
+  if (outQty < 1) {
+    _undo();
+    send(player.ws, { type: 'notice', text: `너무 적거나 시들어 ${r.label} 한 개도 안 나온다` }); return;
+  }
+  for (const [k, n] of Object.entries(r.needs || {})) consumeItem(player, k, n * take);
+  // ⑤ 대기열 — 시간은 **게임일로 적고** 하루 길이로 환산한다(새 시계 금지).
+  const ms = Spoil.preserveMs(recipeKey, _SEASON_DAY_MS);
+  const rk = Facility.enqueue(fc.b, {
+    id: genEquipId(), kind: 'preserve', label: `${r.label}(${Spoil.PRESERVED_ITEMS[r.out].ko} ×${outQty})`,
+    owner: player.playerId, ms,
+    items: { [r.out]: outQty }, lotItems: { [r.out]: outQty },   // ★lotItems = 수령 때 로트로 적을 것
+  }, Date.now());
+  if (!rk.ok) {
+    // ★위에서 자리를 미리 봤으니 여기는 사실상 도달 불가다 — 그래도 방어한다(재료를 삼키지 않는다).
+    _undo();
+    for (const [k, n] of Object.entries(r.needs || {})) player.inventory[k] = (player.inventory[k] || 0) + n * take;
+    sendInventory(player);
+    send(player.ws, { type: 'notice', text: rk.err }); return;
+  }
+  markBuildingDirty(fc.b);
+  sendInventory(player);
+  sendCraftQueue(player);
+  const _stg = Spoil.stageOf(fr.fresh);
+  send(player.ws, { type: 'notice',
+    text: `${fc.ko}에 걸었다 — ${r.label} · ${r.from} ${got.taken}(${Spoil.STAGE_KO[_stg]}) → ${Spoil.PRESERVED_ITEMS[r.out].ko} ${outQty}개`
+        + ` · ${r.days}일(${Math.ceil(ms / 60000)}분)${rk.ahead ? ` (앞에 ${rk.ahead}개)` : ''}` });
+  savePlayer(player);
+}
+// 클라가 그릴 목록 — 서버가 정본을 그대로 내보낸다(클라가 표를 안 든다).
+function preserveMenuPayload() {
+  const out = [];
+  for (const [key, r] of Object.entries(Spoil.PRESERVE)) {
+    out.push({ key, label: r.label, kind: r.kind, facilityKo: r.facilityKo,
+               from: r.from, out: r.out, outKo: Spoil.PRESERVED_ITEMS[r.out].ko,
+               days: r.days, needs: r.needs, shelfDays: Spoil.shelfOf(r.out) });
+  }
+  return out;
 }
 // 요리 섭취: 신선도로 영양·버프 스케일(갓 지은 요리 최고). 버프 = 즉시 HP 회복(웰빙).
 function doEatDish(player, id) {
@@ -4063,6 +4218,13 @@ function doCraftCollect(player, buildingId) {
       cl.n++; cl.bestQ = Math.max(cl.bestQ, j.inst.q || 0);
     } else if (j.items) {
       for (const [k, n] of Object.entries(j.items)) player.inventory[k] = (player.inventory[k] || 0) + n;
+      // ★★[보존 배치 2026-08-31] 로트 품목은 **장부에도 적는다** — 취득일 = **완성일**.
+      //   `reconcile` 이 남는 몫을 "오늘"로 잡는 근사에 맡기지 않는다: 그러면 사흘 전에 다 마른
+      //   건어물이 수령한 날 갓 만든 것으로 둔갑한다(건조대가 정지 상자가 되는 바로 그 구멍).
+      if (j.lotItems) {
+        const _d = _gameDayAt(j.doneAt || Date.now());
+        for (const [k, n] of Object.entries(j.lotItems)) if (Lots.isLot(k)) Lots.note(player, k, n, _d);
+      }
     } else if (j.dish) {
       j.dish.craftedAtMs = Date.now();   // ★신선도는 **꺼낸 때**부터 — 불 위에서 식지 않는다
       player.dishes.push(j.dish);
@@ -4158,7 +4320,33 @@ let _seasonCache = { day: -1, v: 0 };
 const _SEASON_DAY_MS = (parseInt(process.env.VILLAGE_DAY_MS || '', 10) || (WORLD && WORLD.dayLengthMs) || 24 * 60 * 1000);
 // ★게임일은 **존 자체 시계**로 센다 — `ENABLE_VILLAGES=0` 이어도 계절·로트 나이는 있어야 하기 때문이다
 //   (마을 시뮬에 의존시키면 하네스마다 계절이 사라진다). 이 한 줄이 존의 게임일 정본이다.
-function zoneGameDay() { return Math.floor((Date.now() - ((WORLD && WORLD.worldEpoch) || 0)) / _SEASON_DAY_MS); }
+// ★★[하네스 결함 수리 2026-08-31 · 부패 배치가 드러냈다] **`__e2e_day_freeze` 가 반쪽이었다.**
+//   `e2e-trade` 는 `VILLAGE_DAY_MS=500`(하루 0.5초)으로 마을 시뮬을 데운 뒤 날을 얼리고 상호작용을
+//   잰다. 그런데 얼린 건 **마을 시뮬의 날**(`villages.state.dayFreeze`)뿐이었고, 플레이어 층의
+//   시계인 이 함수는 **벽시계 파생이라 계속 돌았다** — 초당 두 날씩.
+//   여태는 티가 안 났다. 로트의 나이는 화면에 "N일 전"으로만 쓰였으니까.
+//   부패 곡선이 들어온 지금은 **초당 두 날**이 곧 "생선이 1.25초 만에 상한다"는 뜻이고,
+//   그래서 하네스가 거래하려던 생선이 거래 전에 썩었다(실제로 e2e-trade ④⑤ 5건이 그렇게 죽었다).
+//   ⇒ **제품이 아니라 하네스가 틀렸다**(`test-guest-rejoin` 이 걸음 속도를 상수로 박아 둔 그 족보).
+//     "날을 멈춘다"고 했으면 **플레이어 시계도 멈춰야** 한다. 여기서 그렇게 고친다.
+//   ⚠**E2E_GIVE 게이트 뒤에서만** 설정된다 — 기본 부팅에선 `_e2eDayFrozen` 이 영원히 null 이라
+//     아래 두 함수는 종전과 **비트 동일**하다.
+let _e2eDayFrozen = null;   // 얼린 순간의 날(raw)
+let _e2eDayOffset = 0;      // 얼어 있던 날수 누적 — 해동해도 시간이 건너뛰지 않는다
+function _rawGameDay(ms) {
+  const t = (ms == null) ? Date.now() : Number(ms);
+  return Math.floor((t - ((WORLD && WORLD.worldEpoch) || 0)) / _SEASON_DAY_MS);
+}
+function zoneGameDay() { return (_e2eDayFrozen !== null ? _e2eDayFrozen : _rawGameDay()) - _e2eDayOffset; }
+// ★[보존 배치 2026-08-31] **임의 시각의 게임일.** `zoneGameDay` 와 같은 산수를 쓰되 지금이 아닌
+//   때를 묻는다 — 보존 산출의 취득일(=완성일)이 이걸 부른다. 수를 두 벌로 적지 않으려고 나눴다.
+function _gameDayAt(ms) { return _rawGameDay(ms) - _e2eDayOffset; }
+// 테스트 전용 — 위 주석 참조. 얼면 멈추고, 녹으면 **멈춰 있던 만큼 빼고** 이어 센다.
+function __e2eFreezeZoneDay(on) {
+  if (on) { if (_e2eDayFrozen === null) _e2eDayFrozen = _rawGameDay(); }
+  else if (_e2eDayFrozen !== null) { _e2eDayOffset += _rawGameDay() - _e2eDayFrozen; _e2eDayFrozen = null; }
+  return { frozen: _e2eDayFrozen !== null, day: zoneGameDay() };
+}
 // ★[RTT 상관 계측] 무거운 작업 기록 — 최근 400건 링. `/perf` 가 그대로 내준다.
 //   ⚠계측기지 손잡이가 아니다: 아무 동작도 바꾸지 않는다(관측자 규약).
 const _perfRing = [];
@@ -5009,6 +5197,33 @@ function _facilityRecipes(player, kind) {
              cost: best ? { [best.material]: r.qty } : {}, cast: !!r.cast });
     }
   }
+  // ★★[부패·보존 배치 2026-08-31] **보존 가공을 그 시설의 창에 얹는다 — 새 패널 0.**
+  //   화덕엔 요리와 훈제가, 작업대엔 도구와 절임이, 건조대엔 말리기만 뜬다("시설의 창" 그대로).
+  //   ★재료 선택이 판단이 되게 **지금 내 재료의 신선도와 그래서 몇 개 나오는지**를 미리 보여 준다
+  //     (도구의 "예상 품질 %"와 같은 자리 · 공식은 정본을 그대로 부른다 — 사본 없음).
+  {
+    const today = zoneGameDay();
+    for (const [id, r] of Object.entries(Spoil.PRESERVE)) {
+      if (r.kind !== kind) continue;
+      const have = Math.floor(Lots.sum(player, r.from));
+      const off = Spoil.peekOffer(r.from, Lots.of(player, r.from), Math.max(1, have), today);
+      push({ id, label: r.label, kind: 'preserve', preserve: true,
+             cost: Object.assign({ [r.from]: 1 }, r.needs),
+             from: r.from, out: r.out, outKo: Spoil.PRESERVED_ITEMS[r.out].ko,
+             days: r.days, shelfDays: Spoil.shelfOf(r.out),
+             fresh: have > 0 ? off.fresh : null,
+             stage: have > 0 ? Spoil.stageOf(off.fresh) : null,
+             stageKo: have > 0 ? Spoil.STAGE_KO[Spoil.stageOf(off.fresh)] : null,
+             yieldPct: have > 0 ? Math.round(Spoil.yieldMult(off.fresh) * 100) : null });
+      // ★상한 재료는 **버튼이 꺼져 있어야** 한다 — 눌러 보고 거절당하는 건 화면이 거짓말한 것이다.
+      //   (`doPreserve` 가 서버 게이트로 다시 막는다 — 화면은 게이트가 아니라 안내다.)
+      const row = rows[rows.length - 1];
+      if (have > 0 && off.fresh <= 0) {
+        row.can = false;
+        row.missing = [{ item: `${ITEM_LABEL_SERVER[r.from] || r.from}(성한 것)`, need: 1, have: 0 }];
+      }
+    }
+  }
   // "가능"이 먼저, 그다음 **하나만 모자란 것**, 그다음 나머지(모자란 개수 오름차순)
   rows.sort((a, b) => (b.can - a.can) || (a.missing.length - b.missing.length) || String(a.id).localeCompare(String(b.id)));
   return rows;
@@ -5582,7 +5797,10 @@ const ITEM_LABEL_SERVER = {
   twig: '잔가지', pebble: '자갈',
   crude_axe: '조잡한 돌도끼', crude_pick: '조잡한 돌괭이', crude_blade: '조잡한 돌칼',
   axe: '도끼', pickaxe: '곡괭이', sword: '검',
+  salt: '소금',
 };
+// ★[보존 배치 2026-08-31] 보존식 이름은 `spoil.PRESERVED_ITEMS.ko` 가 정본이다 — 옮겨 적지 않는다.
+for (const [k, v] of Object.entries(Spoil.PRESERVED_ITEMS)) ITEM_LABEL_SERVER[k] = v.ko;
 
 // === 자동 decay: 10분 이상된 ground item 정리 (5초마다 체크) ===
 setInterval(() => {
@@ -6305,12 +6523,53 @@ function tryVillageBoard(player, vid) {
 // ★★[무게 배치] 개체 무게 → 재화 단위 환산 콜백. **정본은 `Carry.peekKg` 하나**이고
 //   거래소·게시판이 **같은 이걸** 쓴다(둘이 다른 환산을 쓰면 그게 보이지 않는 손이다).
 //   n개를 낼 때의 실제 kg ÷ 표준 kg = 그 제안의 재화 단위.
+// ★★[부패 배치 2026-08-31] **신선도도 같은 자리에서 곱한다.**
+//   재민 지시: *"시듦은 가치 하락(정본 가격 × 신선도 — **가격 사본 금지, 배율만**)."*
+//   ⇒ `trade.js` 는 한 줄도 안 건드렸다. 가격을 만지는 대신 **재화 단위**를 만진다:
+//     시든 생선은 무게가 같아도 **더 적은 단위어치**다. 무게가 이미 그렇게 하고 있는 축이라
+//     새 개념이 아니라 **같은 축에 항 하나**를 더한 것이다.
+//   ★★그리고 이 자리가 정확히 맞는 이유: `_unitsOfFor` 는 **거래소와 게시판이 같이 쓰는**
+//     환산 하나다. 여기 얹으면 "같은 물고기가 거래소에선 2.2단위, 게시판에선 1단위"가 될 길이 없다
+//     (무게 배치가 못 박은 그 규약을 신선도가 그대로 물려받는다).
 function _unitsOfFor(player) {
+  const today = zoneGameDay();
   return (item, n) => {
     const std = Weights.kgOfOrDefault(item);
-    if (!(std > 0)) return n;
-    return +(Carry.peekKg(player, item, n) / std).toFixed(4);
+    const base = (std > 0) ? +(Carry.peekKg(player, item, n) / std).toFixed(4) : n;
+    if (!Lots.isLot(item)) return base;
+    const off = Spoil.peekOffer(item, Lots.of(player, item), n, today);
+    return +(base * Spoil.nutritionMult(off.fresh)).toFixed(4);
   };
+}
+// ★상함은 **배율이 아니라 거절**이다 — 0 단위로 조용히 넘기면 화면엔 "그 양으론 한 개도 못
+//   바꾼다 — 더 내야 한다"가 뜬다. 원인이 정반대인 거짓말이다(거래소 배치가 똑같은 자리에서
+//   한 번 겪은 실수 — 그때 남긴 교훈이 "메시지가 거짓말을 하면 안 된다"였다).
+//
+// ★★판정이 **정확한 이유**: 로트 소비는 언제나 **오래된 것부터**(FIFO)다. 그러니 어떤 제안이든
+//   가장 오래된 로트를 반드시 포함한다 — **그 로트가 상했으면 그 제안은 상한 것을 포함한다.**
+//   덕분에 `trade.js` 의 `_pick`(어느 아이템에서 몇 개를 뺄지)을 **여기서 다시 짤 필요가 없다**
+//   (그걸 옮겨 적었으면 그게 사본이고, 두 곳이 갈리는 날이 온다).
+//   거래소·게시판 두 입구가 이 함수 하나를 부른다.
+//   반환: 막을 이유가 있으면 문자열, 없으면 null.
+function _spoiledGuardItems(player, items) {
+  const today = zoneGameDay();
+  for (const it of items) {
+    if (!Lots.isLot(it)) continue;
+    const arr = Lots.of(player, it);
+    if (!arr.length) continue;
+    if (Spoil.freshnessOf(it, Spoil._day(today) - Spoil._day(arr[0].d)) > 0) continue;
+    const bad = Math.floor(arr[0].n);
+    const okLeft = Math.floor(Lots.sum(player, it) - arr[0].n);
+    return `${ITEM_LABEL_SERVER[it] || it} 중 ${bad > 0 ? bad : arr[0].n}개가 상했다 — 마을은 상한 것을 받지 않는다`
+         + `. 먼저 버려라(성한 것 ${okLeft}개는 그대로 낼 수 있다)`;
+  }
+  return null;
+}
+// econ 재화 하나에 대응하는 플레이어 아이템들 — 대응표 정본(`playerVillageDepositMap`)에게 묻는다.
+function _spoiledGuardRes(player, res) {
+  const map = (SimVillages.playerVillageDepositMap && SimVillages.playerVillageDepositMap()) || {};
+  const items = Object.keys(map).filter((it) => map[it] === res);
+  return _spoiledGuardItems(player, items);
 }
 function tryVillageTrade(player, vid) {
   if (!SimVillages.villageTradeBoard) return;
@@ -6321,6 +6580,8 @@ function tryVillageTrade(player, vid) {
 // ★교환 — 서버 권위. 비율도 상한도 서버가 정하고, 클라는 "이거 내고 저거 받겠다"만 말한다.
 function tryVillageTradeExec(player, vid, giveRes, takeRes, qty) {
   if (!SimVillages.villageTradeExec) return;
+  const _sp = _spoiledGuardRes(player, giveRes);   // ★[부패] 상한 것은 거래소가 안 받는다
+  if (_sp) { send(player.ws, { type: 'notice', text: `🏪 ${_sp}` }); return; }
   const r = SimVillages.villageTradeExec(vid | 0, player.x, player.y, player.inventory, giveRes, takeRes, qty, _unitsOfFor(player));
   if (r.err) { send(player.ws, { type: 'notice', text: `🏪 ${r.err}` }); return; }
   // ★내준 개체를 장부에서 **실제로 뺀다** — 위 환산은 `peekKg`(보기)였다. 안 빼면 무게가 안 준다.
@@ -6339,6 +6600,8 @@ function tryVillageTradeExec(player, vid, giveRes, takeRes, qty) {
 }
 function tryVillageDeliver(player, vid, item, want) {
   if (!SimVillages.villageDeliver) return;
+  const _sp = _spoiledGuardItems(player, [item]);   // ★[부패] 게시판 납품도 같은 판정(같은 함수)
+  if (_sp) { send(player.ws, { type: 'notice', text: `📋 ${_sp}` }); return; }
   const r = SimVillages.villageDeliver(vid | 0, player.x, player.y, player.inventory, item, want, _unitsOfFor(player));
   if (r.err) { send(player.ws, { type: 'notice', text: `📋 ${r.err}` }); return; }
   for (const [it, n] of Object.entries(r.taken || {})) Carry.takeKg(player, it, n);   // ★납품한 개체를 장부에서 뺀다
@@ -6505,6 +6768,9 @@ function __testBind() {
     Body, damagePlayer, doEat, isIndoorAt, seasonColdNow, FOOD_EFFECTS,
     // ── 무게 모델(2026-08-27) ── 정본 모듈을 그대로 내준다(하네스가 곡선을 다시 짜면 사본이다)
     Weights, Carry, Lots, moveMultOf, zoneGameDay, COOK_RECIPES, doCook, _unitsOfFor,
+    // ★[부패·보존 배치 2026-08-31] 하네스가 잡을 손잡이들
+    Spoil, doPreserve, preserveMenuPayload, _spoiledGuardItems, _spoiledGuardRes, _gameDayAt, __e2eFreezeZoneDay,
+    PRESERVED_EFFECTS, BUILDING_COST, BUILDING_RECIPES, ITEM_LABEL_SERVER,
     // ── 원장 승격(2026-08-30) ── 드롭·줍기·바닥 지도를 **정본 그대로**. 하네스가 바닥템을 손으로 빚으면 사본이다.
     tryDropItem, tryPickupItem, groundItems, sendInventory, consumeItem, handlePlayerInput,
     // ── 빈손 시작(2026-08-28) ── 줍기·제작·도구 표를 **정본 그대로** 내준다

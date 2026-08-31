@@ -25,6 +25,12 @@ const FACILITIES = {
   furnace:       { kind: 'smelt', ko: '노',      range: _num('FACILITY_RANGE_PX', 96) },
   charcoal_kiln: { kind: 'smelt', ko: '숯가마',  range: _num('FACILITY_RANGE_PX', 96) },
   workbench:     { kind: 'tool',  ko: '작업대',  range: _num('FACILITY_RANGE_PX', 96) },
+  // ★★[부패·보존 배치 2026-08-31] **건조대** — 말리는 자리. 이 배치가 만드는 유일한 새 시설이다.
+  //   왜 새 시설이어야 하나: 훈제는 불(모닥불·화덕)이 하고 절임은 손(작업대)이 하는데,
+  //   **말리기는 둘 다 아니다** — 바람과 볕에 걸어 두는 일이라 불도 손도 필요 없다.
+  //   작업대에 얹으면 "작업대 하나면 뭐든 된다"가 되어 "제작창 = 시설의 창"이 무너진다.
+  //   ⇒ 시설 표에 한 줄. 나머지(창 매핑·대기열·거리 판정)는 전부 기존 배선이 그대로 처리한다.
+  drying_rack:   { kind: 'dry',   ko: '건조대',  range: _num('FACILITY_RANGE_PX', 96) },
 };
 // 창 → 그 창을 여는 시설 종류들
 const KIND_TYPES = {};
@@ -37,6 +43,10 @@ const CRAFT_MS = {
   cook:    Math.max(0, Math.round(_num('CRAFT_COOK_MS', 20 * 1000))),
   tool:    Math.max(0, Math.round(_num('CRAFT_TOOL_MS', 180 * 1000))),   // 정품 간석기 3분
   smelt:   Math.max(0, Math.round(_num('CRAFT_SMELT_MS', 120 * 1000))),
+  // ★[보존 배치] 건조대의 기본 시간. 실제로는 **레시피가 자기 ms 를 들고 온다**
+  //   (`spoil.preserveMs` — 게임일로 적고 하루 길이로 환산한다). 이 값은 폴백이다.
+  //   ⚠보존은 **며칠급**이라 여기 유일하게 시간이 길다. `enqueue` 가 `job.ms` 를 우선한다.
+  dry:     Math.max(0, Math.round(_num('CRAFT_DRY_MS', 3 * 24 * 60 * 1000))),
 };
 const MAX_QUEUE = Math.max(1, Math.round(_num('CRAFT_QUEUE_MAX', 5)));
 
