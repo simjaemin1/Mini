@@ -222,6 +222,49 @@ function openSpot() {
   ok(afterD && afterD.layers.includes('tool_axe'),
      `도구 장착 → tool_axe 레이어 등장`, `${before.join(',')} → ${afterD ? afterD.layers.join(',') : '?'}`);
   await A.screenshot({ path: path.join(SHOTS, 'cs-02-axe.png') });
+
+  // ── ④-나 가림 수리 ⓐ — 방향별 z 순서가 **실제로 그려졌는가** ────────────
+  //   ★족보 57: 하네스는 자기 행동이 실제로 일어났는지 먼저 센다.
+  //     메타의 순서표(`toolBehind`)를 클라가 정말 따르는지, 훅의 `toolFirst` 로 센다.
+  //     기대값은 **클라가 보고한 clip·row·frame** 에서 메타로 되짚어 만든다 —
+  //     방향을 손으로 적으면 또 틀린다(족보 74).
+  {
+    let n = 0, bad = 0, sawT = 0, sawF = 0;
+    for (const k of ['KeyD', 'KeyS', 'KeyA', 'KeyW', 'KeyD']) {
+      await A.keyboard.down(k);
+      for (let t = 0; t < 6; t++) {
+        await sleep(160);
+        const d = await dbgOf(A);
+        if (!d || !d.on || !d.layers.includes('tool_axe')) continue;
+        const want = await A.evaluate(([clip, row, fr]) => {
+          const m = window.__charMeta;
+          const tb = m && m.toolBehind && m.toolBehind[clip] && m.toolBehind[clip].axe;
+          return !!(tb && tb[row] && tb[row][fr]);
+        }, [d.clip, d.row, d.frame]);
+        n++;
+        if (want) sawT++; else sawF++;
+        if (!!d.toolFirst !== !!want) {
+          bad++;
+          console.log(`    ✗ clip=${d.clip} row=${d.row} f=${d.frame} 기대 toolFirst=${want} 실제 ${d.toolFirst}`);
+        }
+      }
+      await A.keyboard.up(k); await sleep(200);
+    }
+    ok(n >= 8, `순서 표본 ${n}개 확보 (도구를 든 프레임만)`);
+    ok(sawT > 0 && sawF > 0, `★자명 통과 금지 — 앞으로 그린 프레임 ${sawF}개 · 뒤로 그린 프레임 ${sawT}개 둘 다 밟았다`);
+    ok(bad === 0, `★그린 순서가 메타의 깊이 측정과 ${n}/${n} 일치 (가림 수리 ⓐ 배선 실증)`);
+    // ★여기서 A 를 원래 자리로 되돌린다 — 위에서 6초쯤 걸었다.
+    //   안 되돌리면 ⑤(두 클라 짝)에서 B 가 A 의 화면 밖이라 "남이 안 보인다"로 빨개진다.
+    //   (실제로 그렇게 4판정이 빨개져서 이 줄이 생겼다 — 하네스가 제 발을 밟은 것이다.)
+    for (let i = 0; i < 20; i++) {
+      await A.evaluate(([a, b]) => window.__sendPrimary({ type: 'teleport_debug', x: a, y: b }), [SPOT.x, SPOT.y]);
+      await sleep(700);
+      const c = (await A.evaluate(() => (window.__getSrvAbs ? window.__getSrvAbs() : null))) || (await meAbs(A));
+      if (c && Math.hypot(c.x - (SPOT.x + SPOT.WOX), c.y - (SPOT.y + SPOT.WOY)) <= 120) break;
+    }
+    await sleep(600);
+  }
+
   // 해제하면 사라진다 (자명 통과 금지 — 반대 방향도 밟는다)
   await A.evaluate(() => window.__sendPrimary({ type: 'equip', toolItemId: null }));
   await sleep(900);

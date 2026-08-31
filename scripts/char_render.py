@@ -15,6 +15,22 @@
 #   .blend 를 손으로 고쳐도 다음 렌더가 덮는다. **모양을 바꾸려면 이 파일을 고쳐라.**
 #   (자연물·건물 자산이 전부 .py 정본인 그 규약 그대로. 손편집 금지 캐논 동형.)
 #
+# ═══ 소체 조형 [재민 확정 2026-08-31 — 「직육면체로만 만든 거 아냐?」] ═══
+#   1차(08-30)는 몸 전체가 테이퍼 직육면체 25개·플랫 셰이딩이었다. 실측해 보니 이 레포에서
+#   **곡면 프리미티브가 0개소인 자산 스크립트는 여기뿐**이었다(nature 3 · building 10 ·
+#   bridge 7 · crop 2 · icon 12 개소). "기존 자연물과 같은 급"을 폴리곤 수로만 읽고
+#   **표면 문법을 안 맞춘 것**이다. 그래서 2차에서:
+#     · 팔·다리·몸통·옷·자루 → n각 프리즘(옆면 스무스 · 뚜껑 플랫)
+#     · 머리·머리칼·손·관절(어깨·팔꿈치·무릎) → 타원체(전면 스무스)
+#     · 짚신·돌도끼날 → 상자 유지(각진 물건이라 그게 맞다)
+#   폴리곤은 200 → 1300 정점으로 늘었지만 **비용은 사실상 0**이다 — 어차피 PNG 로 굽고
+#   Cycles 비용은 샘플링이 지배한다(전 클립 굽는 시간 변화 측정치는 인계 문서에).
+#
+# ═══ 진짜 천장은 폴리곤이 아니라 화소다 ═══
+#   키 54.4px · **머리 7px** · 어깨 폭 ~10px. 이 크기에서 조형을 더 정교하게 해도
+#   화소가 없다. 그래서 비례 손잡이(HEAD_K 등)를 열어 두되 **기본은 1.0(고증 비례)**이고,
+#   과장안은 재민 판정 대기다(회부 문서 B-8).
+#
 # ═══ 리그 ═══
 #   단순 휴머노이드 아마추어 12본 + **강체 웨이팅**(파트마다 정점 100% 를 본 하나에).
 #   ★자동 웨이트(automatic weights)를 안 쓴다 — 54px 스프라이트에서 스킨 품질은 안 보이고,
@@ -45,6 +61,27 @@ ZSQ = 32.0 / (PPU0 * math.cos(math.radians(30.0)))    # 높이 압축 0.8165 —
 SS = 3                                                # 슈퍼샘플(소품 급) — 메타에 ppu 를 적어 클라가 되돌린다
 MARGIN = 3                                            # 공유 상자 여백(px, 슈퍼샘플 좌표계)
 
+# ── 조형 손잡이 [이번 배치 신설] ────────────────────────────────────────────
+SEG = 14          # 팔·다리·몸통 프리즘의 각 수. 54px 에선 12 이상이면 실루엣이 매끈하다
+RINGS = 8         # 타원체(머리·손·관절)의 위도 분할
+
+# ── 실루엣 강화 [이번 배치 신설 · 재민 선택] ────────────────────────────────
+#   ★조명은 자산 정본이라 **못 건드린다**(태양 52°/−35°). 그래서 대비는 **후처리**로 준다:
+#     실루엣 안쪽 한 겹(불투명이면서 이웃이 비어 있는 화소)의 RGB 를 EDGE_K 배로 낮춘다.
+#   ★반투명(안티에일리어싱) 화소는 **건드리지 않는다** — 거기를 어둡게 하면 프린지가 되고,
+#     그건 test-charsheet ④ 가 잡는 바로 그 증상이다.
+EDGE_K = 0.78     # 1.0 = 끔. 0.78 = 은은한 자체 아웃라인(기존 자연물엔 아웃라인이 없다 — 세기 판정은 재민)
+EDGE_A = 0.60     # "불투명" 문턱(알파)
+
+# ── 비례 손잡이 [이번 배치 신설 · 기본 1.0 = 고증 비례 무변경] ──────────────
+#   ★54px 에서 머리는 7px 다. 좀보이드·디아블로가 머리·손발을 키우는 건 사실성을 버려서가
+#     아니라 그 크기에서 "사람으로 읽히게" 하는 유일한 길이 과장이기 때문이다.
+#   ★기본값을 1.0 으로 둔다 — 과장은 **고증보다 가독성을 택하는 판단**이라 재민 몫이다.
+HEAD_K = 1.0      # 머리·머리칼 크기 배수
+SHLD_K = 1.0      # 어깨 반폭 배수
+LIMB_K = 1.0      # 팔·다리 굵기 배수(길이는 안 건드린다 — 키가 변하면 축척 캐논이 흔들린다)
+HAND_K = 1.0      # 손·발 크기 배수
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 OUTDIR = os.path.join(HERE, "char_renders")           # .gitignore (배치 19~21 산출물 규약)
@@ -55,6 +92,7 @@ os.makedirs(SHEETDIR, exist_ok=True)
 
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 ONLY_META = "--only-meta" in ARGS
+RAWDUMP = "--rawdump" in ARGS      # 실루엣 강화 전 시트를 OUTDIR 에 남긴다(세기 비교용)
 CLIP_FILTER = set(a for a in ARGS if not a.startswith("--")) or None
 
 DIRS = 8   # 8방향. 16방향은 회부(연속 페이싱 재론과 함께)
@@ -209,53 +247,124 @@ def box(name, cx, cy, cz, sx, sy, sz, material, bucket, taper=1.0):
     return ob
 
 
+
+def _mkobj(name, verts, faces, material, bucket, smooth_n):
+    """faces 앞쪽 smooth_n 장만 스무스. (프리즘은 옆면만, 타원체는 전부)"""
+    me = bpy.data.meshes.new(name)
+    me.from_pydata(verts, [], faces)
+    me.update()
+    me.materials.append(material)
+    for i, pg in enumerate(me.polygons):
+        pg.use_smooth = (i < smooth_n)
+    ob = bpy.data.objects.new(name, me)
+    scene.collection.objects.link(ob)
+    bucket.append(ob)
+    ALLOBJ.append(ob)
+    return ob
+
+
+def prism(name, cx, cy, cz, sx, sy, sz, material, bucket, taper=1.0, seg=SEG):
+    """타원 단면 프리즘 — 팔·다리·몸통·소매·자루. box() 와 **인자 규약이 같다**
+       (sx,sy 는 지름, sz 는 길이, taper<1 이면 윗면이 좁아진다)."""
+    hx, hy, hz = sx * 0.5, sy * 0.5, sz * 0.5
+    tx, ty = hx * taper, hy * taper
+    verts = []
+    for k in range(seg):
+        a = 2 * math.pi * k / seg
+        verts.append((cx + hx * math.cos(a), cy + hy * math.sin(a), cz - hz))
+    for k in range(seg):
+        a = 2 * math.pi * k / seg
+        verts.append((cx + tx * math.cos(a), cy + ty * math.sin(a), cz + hz))
+    faces = [(k, (k + 1) % seg, seg + (k + 1) % seg, seg + k) for k in range(seg)]
+    faces.append(tuple(range(seg - 1, -1, -1)))      # 아랫 뚜껑(플랫)
+    faces.append(tuple(range(seg, 2 * seg)))         # 윗 뚜껑(플랫)
+    return _mkobj(name, verts, faces, material, bucket, smooth_n=seg)
+
+
+def ball(name, cx, cy, cz, sx, sy, sz, material, bucket, rings=RINGS, seg=SEG):
+    """타원체 — 머리·머리칼·손·관절 구슬. 전면 스무스."""
+    hx, hy, hz = sx * 0.5, sy * 0.5, sz * 0.5
+    verts = [(cx, cy, cz + hz)]
+    for i in range(1, rings):
+        phi = math.pi * i / rings
+        sp, cp = math.sin(phi), math.cos(phi)
+        for k in range(seg):
+            a = 2 * math.pi * k / seg
+            verts.append((cx + hx * sp * math.cos(a), cy + hy * sp * math.sin(a), cz + hz * cp))
+    verts.append((cx, cy, cz - hz))
+    bot = len(verts) - 1
+    faces = [(0, 1 + (k + 1) % seg, 1 + k) for k in range(seg)]
+    for i in range(rings - 2):
+        r0, r1 = 1 + i * seg, 1 + (i + 1) * seg
+        for k in range(seg):
+            k2 = (k + 1) % seg
+            faces.append((r0 + k, r0 + k2, r1 + k2, r1 + k))
+    r = 1 + (rings - 2) * seg
+    faces += [(bot, r + k, r + (k + 1) % seg) for k in range(seg)]
+    return _mkobj(name, verts, faces, material, bucket, smooth_n=len(faces))
+
+
 # ═══════════════ 소체 치수 (미터 · 1셀=1m 규약) ═══════════════
 #   ★로우폴리 — 기존 자연물과 **같은 급**이다(고폴리 금지). 화면에선 키 1.70m = 54px.
 H_TOT = 1.70
 Z_ANKLE, Z_KNEE, Z_HIP, Z_WAIST, Z_SHLD, Z_NECK = 0.09, 0.46, 0.90, 1.04, 1.39, 1.47
-SH_W = 0.19          # 어깨 반폭
-HIP_W = 0.115        # 골반 반폭
+SH_W = 0.19 * SHLD_K   # 어깨 반폭 (★뼈대도 이 값을 쓴다 — 손잡이를 돌리면 리그가 따라온다)
+HIP_W = 0.115          # 골반 반폭
+ARM_Y = SH_W + 0.045   # 팔 중심 y
+HD_H = 0.21 * HEAD_K   # 머리 높이 — 목 위에서 위로 자란다(발이 안 뜨게)
 
 # ── 몸(살) ───────────────────────────────────────────────────────────────────
-o_pelvis = box("pelvis", 0, 0, (Z_HIP + Z_WAIST) * 0.5, 0.225, 0.255, Z_WAIST - Z_HIP, M['skin'], BODY)
-o_torso = box("torso", 0, 0, (Z_WAIST + Z_SHLD) * 0.5, 0.25, 0.30, Z_SHLD - Z_WAIST, M['skin'], BODY, taper=1.06)
-o_neck = box("neck", 0, 0, (Z_SHLD + Z_NECK) * 0.5, 0.085, 0.09, Z_NECK - Z_SHLD, M['skin'], BODY)
-o_head = box("head", 0.005, 0, Z_NECK + 0.105, 0.155, 0.165, 0.21, M['skin'], BODY, taper=0.92)
-o_hair = box("hair", 0.0, 0, Z_NECK + 0.163, 0.163, 0.173, 0.105, M['hair'], BODY, taper=0.86)
+#   ★프리즘/타원체다(상자 아님). 인자 규약은 box() 와 같아 치수를 그대로 옮겨 왔다 —
+#     즉 **1차와 실루엣 치수는 동일**하고 표면만 둥글어졌다(공정 비교를 위해).
+o_pelvis = prism("pelvis", 0, 0, (Z_HIP + Z_WAIST) * 0.5, 0.225, 0.255, Z_WAIST - Z_HIP, M['skin'], BODY)
+o_torso = prism("torso", 0, 0, (Z_WAIST + Z_SHLD) * 0.5, 0.25, 0.30, Z_SHLD - Z_WAIST, M['skin'], BODY, taper=1.06)
+o_neck = prism("neck", 0, 0, (Z_SHLD + Z_NECK) * 0.5, 0.085, 0.09, Z_NECK - Z_SHLD, M['skin'], BODY)
+o_head = ball("head", 0.005, 0, Z_NECK + HD_H * 0.5, 0.155 * HEAD_K, 0.165 * HEAD_K, HD_H, M['skin'], BODY)
+o_hair = ball("hair", 0.0, 0, Z_NECK + HD_H * 0.5 + 0.058 * HEAD_K,
+              0.163 * HEAD_K, 0.173 * HEAD_K, 0.105 * HEAD_K, M['hair'], BODY)
 
-o_uarmL = box("uarmL", 0, +SH_W + 0.045, Z_SHLD - 0.145, 0.085, 0.085, 0.30, M['skin'], BODY, taper=0.92)
-o_larmL = box("larmL", 0, +SH_W + 0.045, Z_SHLD - 0.42, 0.075, 0.075, 0.28, M['skin'], BODY, taper=0.88)
-o_uarmR = box("uarmR", 0, -SH_W - 0.045, Z_SHLD - 0.145, 0.085, 0.085, 0.30, M['skin'], BODY, taper=0.92)
-o_larmR = box("larmR", 0, -SH_W - 0.045, Z_SHLD - 0.42, 0.075, 0.075, 0.28, M['skin'], BODY, taper=0.88)
+o_uarmL = prism("uarmL", 0, +ARM_Y, Z_SHLD - 0.145, 0.085 * LIMB_K, 0.085 * LIMB_K, 0.30, M['skin'], BODY, taper=0.92)
+o_larmL = prism("larmL", 0, +ARM_Y, Z_SHLD - 0.42, 0.075 * LIMB_K, 0.075 * LIMB_K, 0.28, M['skin'], BODY, taper=0.88)
+o_uarmR = prism("uarmR", 0, -ARM_Y, Z_SHLD - 0.145, 0.085 * LIMB_K, 0.085 * LIMB_K, 0.30, M['skin'], BODY, taper=0.92)
+o_larmR = prism("larmR", 0, -ARM_Y, Z_SHLD - 0.42, 0.075 * LIMB_K, 0.075 * LIMB_K, 0.28, M['skin'], BODY, taper=0.88)
 
-o_thighL = box("thighL", 0, +HIP_W * 0.62, (Z_KNEE + Z_HIP) * 0.5, 0.105, 0.115, Z_HIP - Z_KNEE, M['skin'], BODY, taper=0.90)
-o_shinL = box("shinL", 0, +HIP_W * 0.62, (Z_ANKLE + Z_KNEE) * 0.5, 0.105, 0.105, Z_KNEE - Z_ANKLE, M['skin'], BODY, taper=0.88)
-o_footL = box("footL", 0.035, +HIP_W * 0.62, Z_ANKLE * 0.5, 0.17, 0.105, Z_ANKLE, M['straw'], BODY)
-o_thighR = box("thighR", 0, -HIP_W * 0.62, (Z_KNEE + Z_HIP) * 0.5, 0.105, 0.115, Z_HIP - Z_KNEE, M['skin'], BODY, taper=0.90)
-o_shinR = box("shinR", 0, -HIP_W * 0.62, (Z_ANKLE + Z_KNEE) * 0.5, 0.105, 0.105, Z_KNEE - Z_ANKLE, M['skin'], BODY, taper=0.88)
-o_footR = box("footR", 0.035, -HIP_W * 0.62, Z_ANKLE * 0.5, 0.17, 0.105, Z_ANKLE, M['straw'], BODY)
+o_thighL = prism("thighL", 0, +HIP_W * 0.62, (Z_KNEE + Z_HIP) * 0.5, 0.105 * LIMB_K, 0.115 * LIMB_K, Z_HIP - Z_KNEE, M['skin'], BODY, taper=0.90)
+o_shinL = prism("shinL", 0, +HIP_W * 0.62, (Z_ANKLE + Z_KNEE) * 0.5, 0.105 * LIMB_K, 0.105 * LIMB_K, Z_KNEE - Z_ANKLE, M['skin'], BODY, taper=0.88)
+o_footL = box("footL", 0.035, +HIP_W * 0.62, Z_ANKLE * 0.5, 0.17 * HAND_K, 0.105 * HAND_K, Z_ANKLE, M['straw'], BODY)
+o_thighR = prism("thighR", 0, -HIP_W * 0.62, (Z_KNEE + Z_HIP) * 0.5, 0.105 * LIMB_K, 0.115 * LIMB_K, Z_HIP - Z_KNEE, M['skin'], BODY, taper=0.90)
+o_shinR = prism("shinR", 0, -HIP_W * 0.62, (Z_ANKLE + Z_KNEE) * 0.5, 0.105 * LIMB_K, 0.105 * LIMB_K, Z_KNEE - Z_ANKLE, M['skin'], BODY, taper=0.88)
+o_footR = box("footR", 0.035, -HIP_W * 0.62, Z_ANKLE * 0.5, 0.17 * HAND_K, 0.105 * HAND_K, Z_ANKLE, M['straw'], BODY)
+
+# ── 관절 구슬·손 [2차 신설] ──────────────────────────────────────────────────
+#   ★상자 소체엔 없던 것이다. 팔·다리가 접히는 자리에 **빈 쐐기**가 생기던 걸 메운다.
+#     손은 도끼를 쥔 자리에 살덩이가 아예 없어 자루가 허공에서 시작하던 걸 고친다.
+for _sg, _sf in ((+1, 'L'), (-1, 'R')):
+    ball("jt_sh" + _sf, 0, _sg * ARM_Y, Z_SHLD, 0.105 * LIMB_K, 0.105 * LIMB_K, 0.105 * LIMB_K, M['skin'], BODY)
+    ball("jt_el" + _sf, 0, _sg * ARM_Y, Z_SHLD - 0.30, 0.082 * LIMB_K, 0.082 * LIMB_K, 0.082 * LIMB_K, M['skin'], BODY)
+    ball("palm" + _sf, 0, _sg * ARM_Y, Z_SHLD - 0.60, 0.082 * HAND_K, 0.076 * HAND_K, 0.098 * HAND_K, M['skin'], BODY)
+    ball("jt_kn" + _sf, 0, _sg * HIP_W * 0.62, Z_KNEE, 0.100 * LIMB_K, 0.100 * LIMB_K, 0.100 * LIMB_K, M['skin'], BODY)
 
 # ── 옷(베옷 한 벌) — 몸을 **살짝 감싸는** 별도 레이어 ────────────────────────
-o_tunic = box("tunic", 0, 0, (Z_WAIST + Z_SHLD) * 0.5 - 0.02, 0.275, 0.335, Z_SHLD - Z_WAIST + 0.30, M['hemp'], CLOTH, taper=1.02)
-o_belt = box("belt", 0, 0, Z_WAIST - 0.055, 0.285, 0.345, 0.055, M['hemp2'], CLOTH)
-o_skirt = box("skirt", 0, 0, Z_HIP - 0.085, 0.285, 0.30, 0.24, M['hemp'], CLOTH, taper=1.12)
-o_slvL = box("slvL", 0, +SH_W + 0.045, Z_SHLD - 0.115, 0.115, 0.115, 0.25, M['hemp'], CLOTH, taper=0.94)
-o_slvR = box("slvR", 0, -SH_W - 0.045, Z_SHLD - 0.115, 0.115, 0.115, 0.25, M['hemp'], CLOTH, taper=0.94)
+o_tunic = prism("tunic", 0, 0, (Z_WAIST + Z_SHLD) * 0.5 - 0.02, 0.275, 0.335, Z_SHLD - Z_WAIST + 0.30, M['hemp'], CLOTH, taper=1.02)
+o_belt = prism("belt", 0, 0, Z_WAIST - 0.055, 0.285, 0.345, 0.055, M['hemp2'], CLOTH)
+o_skirt = prism("skirt", 0, 0, Z_HIP - 0.085, 0.285, 0.30, 0.24, M['hemp'], CLOTH, taper=1.12)
+o_slvL = prism("slvL", 0, +ARM_Y, Z_SHLD - 0.115, 0.115 * LIMB_K, 0.115 * LIMB_K, 0.25, M['hemp'], CLOTH, taper=0.94)
+o_slvR = prism("slvR", 0, -ARM_Y, Z_SHLD - 0.115, 0.115 * LIMB_K, 0.115 * LIMB_K, 0.25, M['hemp'], CLOTH, taper=0.94)
 
 # ── 도구(손에 드는 것) — 오른손(모델 −y) 기준 ───────────────────────────────
 #   ★목록 주도: 여기 한 줄을 더하면 파이프라인이 자동으로 그 도구 시트를 굽는다.
 def build_axe():
     L = []
-    box("axe_haft", 0.02, -SH_W - 0.045, Z_SHLD - 0.60, 0.045, 0.045, 0.62, M['wood'], L)
-    box("axe_head", 0.02, -SH_W - 0.045, Z_SHLD - 0.30, 0.075, 0.155, 0.115, M['stone'], L)
-    box("axe_bind", 0.02, -SH_W - 0.045, Z_SHLD - 0.365, 0.055, 0.075, 0.045, M['cord'], L)
+    prism("axe_haft", 0.02, -ARM_Y, Z_SHLD - 0.60, 0.045, 0.045, 0.62, M['wood'], L, seg=8)
+    box("axe_head", 0.02, -ARM_Y, Z_SHLD - 0.30, 0.075, 0.155, 0.115, M['stone'], L)   # 돌날은 각진 게 맞다
+    prism("axe_bind", 0.02, -ARM_Y, Z_SHLD - 0.365, 0.055, 0.075, 0.045, M['cord'], L, seg=8)
     return L
 
 
 def build_rod():
     L = []
-    box("rod_pole", 0.02, -SH_W - 0.045, Z_SHLD - 0.42, 0.032, 0.032, 1.05, M['wood'], L, taper=0.55)
-    box("rod_grip", 0.02, -SH_W - 0.045, Z_SHLD - 0.86, 0.042, 0.042, 0.14, M['cord'], L)
+    prism("rod_pole", 0.02, -ARM_Y, Z_SHLD - 0.42, 0.032, 0.032, 1.05, M['wood'], L, taper=0.55, seg=8)
+    prism("rod_grip", 0.02, -ARM_Y, Z_SHLD - 0.86, 0.042, 0.042, 0.14, M['cord'], L, seg=8)
     return L
 
 
@@ -305,6 +414,9 @@ WEIGHT = {
     'tunic': 'spine', 'belt': 'root', 'skirt': 'root', 'slvL': 'uarmL', 'slvR': 'uarmR',
     'axe_haft': 'handR', 'axe_head': 'handR', 'axe_bind': 'handR',
     'rod_pole': 'handR', 'rod_grip': 'handR',
+    # ── 2차 신설: 관절 구슬·손 ──
+    'jt_shL': 'uarmL', 'jt_elL': 'larmL', 'palmL': 'larmL', 'jt_knL': 'shinL',
+    'jt_shR': 'uarmR', 'jt_elR': 'larmR', 'palmR': 'handR', 'jt_knR': 'shinR',
 }
 for ob in ALLOBJ:
     bone = WEIGHT.get(ob.name)
@@ -316,6 +428,18 @@ for ob in ALLOBJ:
     md = ob.modifiers.new("Arm", 'ARMATURE')
     md.object = rig
     ob.parent = rig
+
+# ═══════════════ ★★z 압축(ZSQ) — 2026-08-31 수리 ═══════════════
+#   ★1차의 버그: `ZSQ` 를 **화면 bbox 계산에만** 곱하고 **기하에는 안 걸었다**.
+#     자연물(`nature_render.py:318`)·건물(`building_render.py:300`)은 정점 z 에 직접 곱한다
+#     (`v.co.z *= ZSQ`). 그래서 캐릭터만 1m = 39.2px 로 구워졌다 — 나머지 세상은 32px/m.
+#     실측: 시트의 발밑→정수리가 67.3px(1.694m → 39.7px/m). 즉 **24% 너무 컸다.**
+#     (자연물 대조: bush01 은 1.49m 를 47.7px 로 굽는다 = 32.0px/m.)
+#   ★고치는 자리가 정점이 아니라 **리그 오브젝트 스케일**인 이유: 뼈가 있는 몸은
+#     "누른 다음 포즈"와 "포즈한 다음 누르기"가 다르다. 세상이 보는 건 후자다.
+#     리그를 (1,1,ZSQ) 로 스케일하면 자식 메시가 전부 **포즈된 결과 위에** 눌린다.
+rig.scale = (1.0, 1.0, ZSQ)
+bpy.context.view_layer.update()
 
 # ═══════════════ 클립 = 포즈 함수 (해석적 · 결정론) ═══════════════
 #   반환: {본이름: (rx, ry, rz)} 라디안. 없는 본은 rest.
@@ -420,7 +544,7 @@ def apply_pose(clip, fi, nframes, dirIdx):
     if clip in ('walk', 'run'):
         amp = 0.012 if clip == 'walk' else 0.022
         bob = amp * abs(math.sin(u * 2 * math.pi))
-    rig.location = (0.0, 0.0, bob)
+    rig.location = (0.0, 0.0, bob * ZSQ)   # ★location 은 제 오브젝트 스케일을 안 먹는다
     rig.rotation_euler = (0.0, 0.0, dirIdx * (2 * math.pi / DIRS))
     bpy.context.view_layer.update()
 
@@ -432,8 +556,10 @@ CLIP_FPS = {c[0]: c[3] for c in CLIPS}
 
 # ═══════════════ 공유 프레임 박스 ═══════════════
 def screen_bbox_now(objs):
-    """지금 포즈에서 objs 의 화면 bbox(px, 슈퍼샘플 좌표계). z 압축(ZSQ)을 여기서 반영한다.
-       ★정점은 **평가된 depsgraph**에서 읽는다 — 아마추어 변형이 반영된 실제 좌표."""
+    """지금 포즈에서 objs 의 화면 bbox(px, 슈퍼샘플 좌표계).
+       ★정점은 **평가된 depsgraph**에서 읽는다 — 아마추어 변형이 반영된 실제 좌표.
+       ★z 압축은 **여기서 곱하지 않는다** — 리그 스케일이 이미 matrix_world 에 들어 있다.
+         (1차는 여기서만 곱하고 기하엔 안 걸어 렌더가 24% 더 컸다. 두 번 누르지 마라.)"""
     dg = bpy.context.evaluated_depsgraph_get()
     PPU = PPU0 * SS
     umin = wmin = 1e18
@@ -444,13 +570,29 @@ def screen_bbox_now(objs):
         mw = eo.matrix_world
         for v in me.vertices:
             p = mw @ v.co
-            p = V((p.x, p.y, p.z * ZSQ))
             u = p.dot(RHAT) * PPU
             w = -p.dot(UHAT) * PPU
             umin = min(umin, u); umax = max(umax, u)
             wmin = min(wmin, w); wmax = max(wmax, w)
         eo.to_mesh_clear()
     return umin, umax, wmin, wmax
+
+
+def mean_depth(objs):
+    """카메라 축(NHAT) 위 평균 깊이. **클수록 카메라에 가깝다**(cam = CTR + NHAT*300).
+       ★부호를 눈대중으로 적지 않는다(족보 74) — 카메라 위치식에서 그대로 따온 축이다."""
+    dg = bpy.context.evaluated_depsgraph_get()
+    tot = 0.0
+    n = 0
+    for ob in objs:
+        eo = ob.evaluated_get(dg)
+        me = eo.to_mesh()
+        mw = eo.matrix_world
+        for v in me.vertices:
+            tot += (mw @ v.co).dot(NHAT)
+            n += 1
+        eo.to_mesh_clear()
+    return (tot / n) if n else 0.0
 
 
 def all_layer_objects():
@@ -460,17 +602,30 @@ def all_layer_objects():
     return objs
 
 
-print("[char] 공유 프레임 박스 계산 — 전 클립×전 방향×전 프레임×전 레이어")
+print("[char] 공유 프레임 박스 계산 + 도구 깊이 측정 — 전 클립×전 방향×전 프레임×전 레이어")
 UMIN = WMIN = 1e18
 UMAX = WMAX = -1e18
 _probe = all_layer_objects()
+# ★가림 수리 ⓐ [회부_캐릭시트_다음층.md B-1 · 2026-08-31 실장]
+#   화가 순서(몸→옷→도구) 합성은 깊이를 모른다. 도구가 몸 **뒤로** 가야 하는 방향에서도 앞에 뜬다.
+#   여기서 **몸통 대비 도구의 카메라 깊이**를 프레임마다 재어 메타에 적고, 클라가 그 순서로 그린다.
+#   ★눈대중 금지: 방향별로 "d7 은 뒤" 같은 표를 손으로 적지 않는다 — 실제 포즈 기하에서 잰다.
+_TORSO = [o for o in BODY if o.name in ('torso', 'pelvis')]
+TOOL_BEHIND = {}
 for cname, n, loop, _fps in CLIPS:
+    TOOL_BEHIND[cname] = {t: [[0] * n for _ in range(DIRS)] for t in TOOLS}
     for d in range(DIRS):
         for fi in range(n):
             apply_pose(cname, fi, n, d)
             a, b, c2, d2 = screen_bbox_now(_probe)
             UMIN = min(UMIN, a); UMAX = max(UMAX, b)
             WMIN = min(WMIN, c2); WMAX = max(WMAX, d2)
+            zbody = mean_depth(_TORSO)
+            for tname, tobjs in TOOLS.items():
+                TOOL_BEHIND[cname][tname][d][fi] = 1 if mean_depth(tobjs) < zbody else 0
+_nb = sum(sum(sum(r) for r in v[t]) for v in TOOL_BEHIND.values() for t in v)
+_nt = sum(len(r) for v in TOOL_BEHIND.values() for t in v for r in v[t])
+print(f"[char] 도구가 몸 뒤인 프레임 {_nb}/{_nt} — 그 프레임은 클라가 **도구를 먼저** 그린다")
 
 def _ceil_ss(v):
     n = int(math.ceil(v)) + MARGIN * 2
@@ -543,6 +698,31 @@ def downsample(px, w, h, k):
     return out, ow, oh
 
 
+def edge_darken(sheet, w, h, k, athr=EDGE_A, mask=None):
+    """실루엣 안쪽 한 겹의 RGB 를 k 배로 낮춘다 — **자체 아웃라인**.
+       mask 를 주면 그 알파를 실루엣으로 삼는다(몸·옷은 **합집합** 실루엣을 쓴다 —
+       레이어마다 제 실루엣을 그으면 살↔옷 경계에 없는 선이 하나 더 생긴다).
+       ★불투명(a>=athr) 화소 중 4이웃에 비어 있는(a<athr) 화소가 있는 것만 건드린다.
+         반투명(안티에일리어싱) 화소는 손대지 않는다 — 거기를 어둡게 하면 그게 검은 프린지이고,
+         test-charsheet ④ 가 정확히 그 증상을 잡는다.
+       ★읽기용 사본을 먼저 뜬다 — 제자리 수정하면 어두워진 화소가 다음 화소의 이웃 판정에
+         끼어들어 아웃라인이 안쪽으로 번진다(1겹 계약 위반)."""
+    if k >= 0.999:
+        return sheet
+    a = mask if mask is not None else [sheet[i * 4 + 3] for i in range(w * h)]
+    for y in range(h):
+        for x in range(w):
+            i = y * w + x
+            if a[i] < athr or sheet[i * 4 + 3] < athr:   # 실루엣 위 + 제 화소도 불투명일 것
+                continue
+            edge = (x == 0 or a[i - 1] < athr or x == w - 1 or a[i + 1] < athr
+                    or y == 0 or a[i - w] < athr or y == h - 1 or a[i + w] < athr)
+            if edge:
+                o = i * 4
+                sheet[o] *= k; sheet[o + 1] *= k; sheet[o + 2] *= k
+    return sheet
+
+
 def blank_sheet(w, h):
     return [0.0] * (w * h * 4)
 
@@ -596,7 +776,13 @@ META = {
     "dirOrder": "d = round(atan2(fy,fx)/(PI/4)) mod 8 — 월드 방향. d=0 은 +x(동).",
     "rowOrder": "행 0 = 방향 0, 위에서 아래로. 열 = 프레임 0..n-1, 왼쪽에서 오른쪽으로.",
     "heightM": H_TOT,
+    # ★이 시트를 만든 조형 손잡이 — 시트만 보고도 무엇이 적용됐는지 알 수 있게 남긴다
+    "shape": {"seg": SEG, "rings": RINGS, "edgeK": EDGE_K, "edgeA": EDGE_A,
+              "headK": HEAD_K, "shldK": SHLD_K, "limbK": LIMB_K, "handK": HAND_K},
     "clips": {c[0]: {"frames": c[1], "loop": c[2], "fps": c[3]} for c in CLIPS},
+    # ★가림 수리 ⓐ — toolBehind[clip][도구][방향][프레임] = 1 이면 **도구를 몸보다 먼저** 그린다.
+    #   화가 순서 합성이 깊이를 모르는 문제의 부분해다(완전해 ⓑ 홀드아웃은 여전히 회부).
+    "toolBehind": {c: {t: TOOL_BEHIND[c][t] for t in TOOL_BEHIND[c]} for c in TOOL_BEHIND},
     "layers": [l[0] for l in LAYERS if l[0] != 'probeall'],
     "sheets": {},
 }
@@ -628,15 +814,35 @@ def rebuild_sheets():
                     "rows": DIRS, "layer": lay, "clip": clip}
     return out
 
+# ★몸·옷은 **한 몸의 실루엣**을 공유한다(도구는 항상 맨 위에 그려지니 제 실루엣).
+SILHOUETTE_GROUP = set(l[0] for l in LAYERS if l[0] == 'body' or l[0].startswith('clothes'))
+
 if not ONLY_META:
     for clip, n, loop, fps in CLIPS:
         if CLIP_FILTER and clip not in CLIP_FILTER:
             continue
+        built = []
         for lname, getter in LAYERS:
-            key = f"{lname}_{clip}"
             sheet, SW, SH = render_layer(lname, getter(), clip, n)
-            outp = os.path.join(SHEETDIR, key + ".png")
-            save_sheet(sheet, SW, SH, outp)
+            built.append([lname, sheet, SW, SH])
+            if RAWDUMP:   # 실루엣 강화 **전** 원본 — 세기 비교판을 재렌더 없이 만들려고 남긴다
+                save_sheet(sheet, SW, SH, os.path.join(OUTDIR, f"raw_{lname}_{clip}.png"))
+        if EDGE_K < 0.999:
+            SW, SH = built[0][2], built[0][3]
+            uni = [0.0] * (SW * SH)
+            for lname, sheet, _w, _h in built:
+                if lname not in SILHOUETTE_GROUP:
+                    continue
+                for i in range(SW * SH):
+                    av = sheet[i * 4 + 3]
+                    if av > uni[i]:
+                        uni[i] = av
+            for lname, sheet, _w, _h in built:
+                edge_darken(sheet, SW, SH, EDGE_K,
+                            mask=(uni if lname in SILHOUETTE_GROUP else None))
+        for lname, sheet, SW, SH in built:
+            key = f"{lname}_{clip}"
+            save_sheet(sheet, SW, SH, os.path.join(SHEETDIR, key + ".png"))
             print(f"[char] {key}: {SW}x{SH}")
 
 META["sheets"] = rebuild_sheets()

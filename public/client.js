@@ -12152,6 +12152,14 @@ const SIM_JOB_EMOJI = {
       imgs.push(img);
     }
     const row = charDirRow(opts.fvx, opts.fvy);
+    // ★가림 수리 ⓐ — 도구가 몸 **뒤**로 가야 하는 프레임에선 도구를 먼저 그린다.
+    //   순서표는 렌더러가 **기하에서 재어** 메타에 적어 둔 것이다(`toolBehind[클립][도구][방향][프레임]`).
+    //   화가 순서 합성이 깊이를 모르는 문제의 부분해다 — 완전해(홀드아웃)는 회부 상태.
+    if (m.toolBehind && layers.length === 3) {
+      const tb = m.toolBehind[stt.clip] && m.toolBehind[stt.clip][layers[2].replace(/^tool_/, '')];
+      const rowTb = tb && tb[row];
+      if (rowTb && rowTb[stt.frame]) imgs.unshift(imgs.pop());   // 도구를 맨 앞(=가장 먼저 그림)으로
+    }
     const fw = m.frameW, fh = m.frameH;
     const sx = stt.frame * fw, sy = row * fh;
     const dx = Math.round(x - m.anchorX), dy = Math.round(y - m.anchorY);
@@ -12162,7 +12170,10 @@ const SIM_JOB_EMOJI = {
     // ★진단 훅은 **pid 별**이다 — 마지막에 그린 하나만 남기면 "타 플레이어도 같은 애니"를 못 잰다.
     if (!window.__charDbg) window.__charDbg = {};
     window.__charDbg[opts.pid] = { on: true, clip: stt.clip, frame: stt.frame, row,
-                         layers: layers.slice(), speed: +(opts.speed || 0).toFixed(2),
+                         layers: layers.slice(),
+                         toolFirst: !!(imgs.length === 3 && layers.length === 3 &&
+                                       imgs[0] === charSheet(layers[2] + '_' + stt.clip)),
+                         speed: +(opts.speed || 0).toFixed(2),
                          aiming: !!opts.aiming, isMe: !!isMe, fw, fh,
                          facing: [+(opts.fvx || 0).toFixed(4), +(opts.fvy || 0).toFixed(4)],
                          anchor: [m.anchorX, m.anchorY], t: performance.now() };

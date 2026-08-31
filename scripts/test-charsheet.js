@@ -94,6 +94,35 @@ console.log('\n=== ① 시트 ↔ 메타 정합 ===');
   ok(META.pxPerMeterH === 32.0, `★1m 높이 = ${META.pxPerMeterH}px — 자산 정본 축척(자연물·건물과 같은 자)`);
   ok(Math.abs(META.heightM * META.pxPerMeterH - 54.4) < 0.5,
      `키 ${META.heightM}m → 화면 ${(META.heightM * META.pxPerMeterH).toFixed(1)}px`);
+
+  // ★★약속한 축척을 **시트에서 직접 잰다** — 위 두 줄은 메타 안의 상수끼리 견준 것이라
+  //   "굽는 쪽이 실제로 그 자로 구웠는가"는 하나도 안 본다.
+  //   2026-08-31 에 정확히 그 구멍으로 버그가 살았다: `char_render.py` 가 z 압축(ZSQ)을
+  //   화면 bbox 계산에만 곱하고 **기하에는 안 걸어**, 캐릭터만 1m=39.7px 로 구워졌다.
+  //   (자연물·건물은 정점 z 에 직접 곱한다 — `nature_render.py:318` · `building_render.py:300`.)
+  //   세상은 32px/m 인데 사람만 24% 컸다. 아래가 그걸 잡는 자다.
+  {
+    const im = readPng(path.join(DIR, 'body_idle.png'));
+    const FW = META.frameW, FH = META.frameH, N = META.clips.idle.frames;
+    let crown = -1;            // 발밑(anchorY)에서 정수리까지, px — 전 방향·전 프레임 최댓값
+    for (let d = 0; d < META.dirs; d++) {
+      for (let f = 0; f < N; f++) {
+        for (let y = 0; y < FH; y++) {
+          let any = false;
+          for (let x = 0; x < FW; x++) {
+            if (im.px[(((d * FH + y) * im.w) + (f * FW + x)) * 4 + 3] > 8) { any = true; break; }
+          }
+          if (any) { const h = META.anchorY - y; if (h > crown) crown = h; break; }
+        }
+      }
+    }
+    const want = META.heightM * META.pxPerMeterH;
+    // 여유 5px: 정수리는 머리칼 꼭대기(모델 1.694m)이고, 방향에 따라 머리의 x/y 폭이
+    // 화면 세로로 ±2px 만큼 새어 들어온다. 24% 오차(=13px)는 이 여유로 절대 못 숨는다.
+    ok(Math.abs(crown - want) <= 5,
+       `★★시트 실측 발밑→정수리 ${crown.toFixed(1)}px ≈ 약속 ${want.toFixed(1)}px (1m=${META.pxPerMeterH}px)`,
+       Math.abs(crown - want) > 5 ? `실측 ${(crown / META.heightM).toFixed(1)}px/m — 기하에 z 압축을 안 걸었나?` : '');
+  }
 }
 
 console.log('\n=== ② 레이어 픽셀 정렬 — 어긋남 0px ===');
@@ -131,7 +160,9 @@ console.log('\n=== ③ 가림(occlusion) 오차 — 합성은 깊이를 모른�
 {
   // ★대조군: `--probe` 로 몸+옷+도끼를 **한 번에** 구운 시트(깊이가 맞다).
   //   런타임 합성(화가 순서)과 견주면 "도구가 몸 뒤로 가야 하는데 앞에 뜨는" 화소 수가 나온다.
-  //   ★이건 통과/실패가 아니라 **수치 보고**다 — 크면 방향별 z 순서가 필요하다는 뜻(회부).
+  //   ★이건 통과/실패가 아니라 **수치 보고**다 — 크면 방향별 z 순서가 필요하다는 뜻.
+  //   ★2026-08-31: 그 방향별 z 순서(ⓐ)를 실장했다. 여기서도 **메타의 순서표대로** 겹친다 —
+  //     안 그러면 클라가 고친 것을 하네스가 못 본다.
   const pp = path.join(DIR, 'probeall_walk.png');
   if (!fs.existsSync(pp)) {
     ok(true, '(대조군 없음 — `--probe` 로 굽지 않았다. 측정 생략)');
@@ -147,9 +178,14 @@ console.log('\n=== ③ 가림(occlusion) 오차 — 합성은 깊이를 모른�
       for (let y = r * FH; y < (r + 1) * FH; y++) {
         for (let x = 0; x < W; x++) {
           const i = (y * W + x) * 4;
-          // 화가 순서 합성: 몸 → 옷 → 도구
+          // 화가 순서 합성 — ★클라와 **같은 순서**로 겹친다.
+          //   메타의 toolBehind 가 1 인 프레임은 클라가 도구를 먼저 그린다(가림 수리 ⓐ).
+          //   하네스가 옛 순서를 고집하면 클라가 고친 것을 "안 고쳐졌다"고 재게 된다.
+          const fIdx = Math.floor(x / META.frameW);
+          const tb = META.toolBehind && META.toolBehind.walk && META.toolBehind.walk.axe;
+          const toolFirst = !!(tb && tb[r] && tb[r][fIdx]);
           let a = 0, R = 0, G = 0, B = 0;
-          for (const L of [body, cloth, tool]) {
+          for (const L of (toolFirst ? [tool, body, cloth] : [body, cloth, tool])) {
             const la = L.px[i + 3] / 255;
             if (la <= 0) continue;
             R = L.px[i] * la + R * (1 - la); G = L.px[i + 1] * la + G * (1 - la);
