@@ -19,6 +19,11 @@
 //   (랩 A/B 선행 · `회부_무게_다음층.md` M항). econ 교역 경로는 한 줄도 안 건드렸다.
 'use strict';
 const Specialty = require('./specialty');
+// ★★[작물 층 2026-08-31] 작물 34종 + 씨앗의 kg — **`server/crops.js` 가 파생 정본**이다.
+//   12종은 specialty 가 무게를 갖고 있고(그쪽이 정본), 없는 22종만 분류 앵커에서 유도한다.
+//   여기서 표를 다시 적지 않는다 — 읽기만 한다(이 파일의 머리 규약 그대로).
+let Crops = null;
+try { Crops = require('./crops'); } catch (e) { Crops = null; }
 
 // ── ⓐ 코어 재화 — 고증표 §1. specialty 에 **없는** econ 재화들 ────────────────
 //   (있는 것은 여기 적지 않는다: leather·fur·bone·armor·clothes·hemp·mushroom·obsidian·
@@ -108,6 +113,8 @@ function kgOf(id) {
   if (sp && sp.weight > 0) return sp.weight;
   if (CORE_KG[key] > 0) return CORE_KG[key];
   if (DERIVED_KG[id] > 0) return DERIVED_KG[id];
+  // ★[작물 층] specialty·코어·유도표에 없는 작물/씨앗 — crops 정본에게 묻는다(마지막 갈래).
+  if (Crops) { if (Crops.isCrop(id)) return Crops.kgOf(id); if (Crops.isSeed(id)) return Crops.SEED_KG; }
   return null;
 }
 // 못 찾으면 0 이 아니라 **기본값**을 준다 — 0 이면 "무게 없는 물건"이 조용히 생긴다.
@@ -122,6 +129,7 @@ function catalog() {
   for (const k of Object.keys(CORE_KG)) if (out[k] == null) out[k] = CORE_KG[k];
   for (const k of Object.keys(DERIVED_KG)) if (out[k] == null) out[k] = DERIVED_KG[k];
   for (const [item, key] of Object.entries(ITEM_ALIAS)) if (out[item] == null && out[key] != null) out[item] = out[key];
+  if (Crops) for (const [k, w] of Object.entries(Crops.weightMap())) if (out[k] == null) out[k] = w;
   return out;
 }
 // 알려진 아이디 전부(하네스 전수 스윕용)

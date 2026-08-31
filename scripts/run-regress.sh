@@ -101,6 +101,8 @@ else
     test-ledger.js
     # ★[부패·보존 배치 2026-08-31] 부패 곡선(결정론·연속·순서) · 보존 3종 · 상함 = 확정 탈 · 거래 판정
     test-preserve.js
+    # ★[작물 층 2026-08-31] 카탈로그 34종 → 게임(전사·차등·유도·파종철·월동·발아율·씨앗 조달)
+    test-crops.js
     test-calendar.js
     test-move.js
     test-charsheet.js

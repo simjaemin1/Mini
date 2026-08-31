@@ -6837,6 +6837,7 @@ const SIM_JOB_EMOJI = {
         //   여기서 못 받으면 모듈 기본값(legacy) — 옛 서버와도 그대로 돈다.
         if (msg.moveCfg) { _moveParams = window.MoveModel.paramsFrom(msg.moveCfg); window.__moveCfg = _moveParams; }
         if (msg.foodEffects) foodEffects = msg.foodEffects;
+        if (msg.crops) applyCropPayload(msg.crops);          // ★[작물 층] 이름·아이콘·파종철
         // 플레이어 장비
         if (msg.equipmentRecipes) equipmentRecipes = msg.equipmentRecipes;
         if (msg.equipmentMeta) equipmentMeta = msg.equipmentMeta;
@@ -12400,6 +12401,25 @@ const SIM_JOB_EMOJI = {
     dried_fish: '건어물', dried_fruit: '말린 과실', smoked_meat: '훈제육', pickled_veg: '절임', salt: '소금',
   };
 
+  // ★★[작물 층 2026-08-31] 작물 표는 **서버가 준다**(`welcome.crops`) — 클라가 표를 들지 않는다.
+  //   이름표·아이콘·심기 메뉴가 전부 이 페이로드에서 파생된다(무게·원장과 같은 규약).
+  const CROP_BY_ID = {};          // id → 작물
+  const CROP_OF_SEED = {};        // seed_<id> → 작물
+  // ★계절은 **이미 오는 달력에서 읽는다**(`msg.calendar.season` — econ 정본 파생).
+  //   계절을 따로 받으면 그게 사본이고, 달력과 어긋나는 날이 온다.
+  function cropSeasonNow() { return (myCalendar && myCalendar.season) || 'spring'; }
+  const SEASON_KO = { spring: '봄', summer: '여름', autumn: '가을', winter: '겨울' };
+  function applyCropPayload(list) {
+    if (!Array.isArray(list)) return;
+    for (const c of list) {
+      CROP_BY_ID[c.id] = c; CROP_OF_SEED['seed_' + c.id] = c;
+      ITEM_ICONS[c.id] = c.emoji; ITEM_ICONS['seed_' + c.id] = '🌰';
+      ITEM_LABEL[c.id] = c.ko;    ITEM_LABEL['seed_' + c.id] = c.ko + ' 씨앗';
+      // ★렌더 PNG 가 없다 → 이모지 폴백으로 보낸다(안 넣으면 404 · `e2e-nature` 가 잡는다)
+      ICON_NO_RENDER.add(c.id);   ICON_NO_RENDER.add('seed_' + c.id);
+    }
+  }
+
   // 14.53: 우클릭 컨텍스트 메뉴 — 임의 옵션 list 받아서 마우스 위치에 띄움.
   let _ctxMenuEl = null;
   function hideContextMenu() {
@@ -14423,6 +14443,17 @@ const SIM_JOB_EMOJI = {
         const item = d.item, sub = tr.classList.contains('ul-sub');
         const opts = [];
         if (foodEffects && foodEffects[item] && !sub) opts.push({ label: '🍴 먹기', onClick: () => sendPrimary({ type: 'eat', item }) });
+        // ★★[작물 층 2026-08-31] **씨앗 우클릭 = 심기.** 작물 고르는 창을 따로 만들지 않는다 —
+        //   씨앗이 곧 작물이고, 인벤이 이미 내가 가진 씨앗을 보여 주고 있다(새 패널 0).
+        //   ★심을 수 있는 철인지는 **서버가 판정**한다. 여기선 언제 심는지 이름표로만 알려 준다.
+        if (!sub && CROP_OF_SEED[item]) {
+          const _c = CROP_OF_SEED[item];
+          const _ok = _c.sow && _c.sow.indexOf(cropSeasonNow()) >= 0;
+          opts.push({
+            label: '🌱 ' + _c.ko + ' 심기' + (_ok ? '' : ' (' + (_c.sow || []).map((x) => SEASON_KO[x] || x).join('·') + '에 심는다)'),
+            onClick: () => sendPrimary({ type: 'plant', crop: _c.id }),
+          });
+        }
         opts.push({ label: sub ? '🗑 이 줄 버리기' : '🗑 1개 버리기 (바닥)', onClick: () => ulSend(d, 'ground', sub ? d.n : 1) });
         if (!sub && (inventory[item] || 0) >= 10) opts.push({ label: '🗑 10개 버리기', onClick: () => ulSend(d, 'ground', 10) });
         if (!sub && (inventory[item] || 0) > 1) opts.push({ label: `🗑 전부 버리기 (${inventory[item]}개)`, onClick: () => ulSend(d, 'ground', d.n) });

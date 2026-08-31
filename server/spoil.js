@@ -95,6 +95,18 @@ const PRESERVED_ITEMS = {
 };
 for (const [k, v] of Object.entries(PRESERVED_ITEMS)) SHELF_DAYS[k] = v.shelf;
 
+// ── ★★[작물 층 2026-08-31] 작물·씨앗의 보관일은 **카탈로그 저장성 축에서 온다** ──────
+//   재민 질문: *"작물별로 부패 속도가 다 다를 텐데 — 지금 맞나?"* → 그때는 **아니었다**.
+//   위 표는 품목군 5버킷이고, 34종 작물이 전부 같은 버킷에 들어 있었다(채소 = 전부 6일).
+//   ★재민의 `한국작물_카탈로그.xlsx` 에 **저장성(1~5)** 축이 이미 있었다 —
+//     `server/crops.js` 가 그 축을 보관일로 옮긴다. 여기서는 **읽어서 덮기만** 한다(두 벌 금지).
+//   ★★그리고 놀랍게도 **위 5버킷이 그 축 위에 정확히 있었다**: 채소 6일 = 저장성 2 ·
+//     곡물 180일 = 저장성 5 · 보존식 45일 = 저장성 4. 버킷이 틀린 게 아니라 **거칠었던 것**이고,
+//     축으로 바꾸니 상추 3일 / 배추 6 / 무 14 / 기장 45 / 쌀 180 으로 저절로 갈렸다.
+let Crops = null;
+try { Crops = require('./crops'); } catch (e) { Crops = null; }
+if (Crops) { for (const [k, d] of Object.entries(Crops.shelfMap())) SHELF_DAYS[k] = d; }
+
 function shelfOf(item) {
   const s = SHELF_DAYS[item];
   return Number.isFinite(s) && s > 0 ? s : D.DEFAULT;
@@ -290,7 +302,7 @@ function orderCheck() {
 }
 
 module.exports = {
-  D, SHELF_DAYS, PRESERVED_ITEMS, PRESERVE, PRESERVE_DAYS,
+  Crops, D, SHELF_DAYS, PRESERVED_ITEMS, PRESERVE, PRESERVE_DAYS,
   FRESH_AT, STAGE_KO, STAGE_EMO, SPOIL_INJURY, YIELD_FLOOR,
   _day, shelfOf, isPreserved, freshnessOf, stageOf, stageOfAge, isSpoiled,
   nutritionMult, illnessFor, ofAges, bestOf, peekAges, peekOffer,

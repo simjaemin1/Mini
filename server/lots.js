@@ -47,6 +47,12 @@ const LOT_CORE = new Set(['food', 'berry', 'fruit', 'vegetable', 'meat', 'meat_r
 // ★[부패 배치 2026-08-31] 보존식도 **로트다** — 오래 가지만 영원하진 않다.
 //   목록을 여기 옮겨 적지 않고 `spoil.PRESERVED_ITEMS` 를 **읽는다**(정본 하나).
 for (const k of Object.keys(Spoil.PRESERVED_ITEMS)) LOT_CORE.add(k);
+// ★★[작물 층 2026-08-31] 작물과 **씨앗**도 로트다.
+//   작물: 34종 중 12종은 specialty agri 라 이미 로트였지만 나머지 22종은 아니었다 — 목록을 맞춘다.
+//   씨앗: 종자도 늙는다(발아율). 목록 정본은 `server/crops.js` — 여기 옮겨 적지 않는다.
+if (Spoil.Crops) {
+  for (const c of Spoil.Crops.list()) { LOT_CORE.add(c.id); LOT_CORE.add(Spoil.Crops.seedOf(c.id)); }
+}
 function isLot(item) {
   if (!item) return false;
   if (LOT_CORE.has(item)) return true;
