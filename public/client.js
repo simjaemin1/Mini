@@ -97,9 +97,18 @@ const SIM_JOB_EMOJI = {
   let myPassword = ''; // 로그인 시 password
   let myColor = '#f0c674';
   let myAbsPos = { x: 0, y: 0 };
+  let myAbsPosAt = 0;        // ★권위 위치를 **마지막으로 받은** 시각(0 = 아직 못 받음)
   let myAbsPredicted = { x: 0, y: 0 };
   // Phase 5-2-mini: 미니맵에서 access
   window.__getMyAbs = () => myAbsPredicted;
+  // ★★[핫픽스 2026-08-31] **서버 권위 위치** 훅(읽기 전용).
+  //   `__getMyAbs()` 는 **클라 예측**이다. 재접속·orphan 복구 직후엔 권위와 수만 px 갈릴 수 있다 —
+  //   실측: 서버가 텔레포트를 7번 다 받아들였는데(공지 증거) 예측은 3만px 밖에 머물렀다.
+  //   그걸 **도착 판정**으로 쓴 하네스는 멀쩡한 워프를 "미도달"로 찍고, 그 뒤 판정이 통째로 헛것이 된다.
+  //   ⇒ 족보 ㊹("예측 vs 권위를 둘 다 찍어라")의 훅 판. `__evDbg` 가 이미 쓰던 그 짝을 밖에 낸다.
+  //   ★null 은 "아직 내 몸의 틱을 못 받았다"는 뜻이다 — 0,0 으로 **자명 통과**시키지 않는다.
+  window.__getSrvAbs = () => (myAbsPosAt
+    ? { x: myAbsPos.x, y: myAbsPos.y, at: myAbsPosAt } : null);
   // ★[이동 모델 2026-08-30] 진단 훅(읽기 전용) — `e2e-move` 가 이걸로 잰다.
   //   속도는 **모델 상태**를 그대로 읽는다(화면 미분이 아니라) — 계측기가 렌더 보간을 재는 함정 회피.
   window.__moveDbg = () => ({
@@ -6840,7 +6849,7 @@ const SIM_JOB_EMOJI = {
         myHomeY = (typeof msg.self.homeY === 'number') ? msg.self.homeY : null;
         const absX = msg.zone.worldOffsetX + msg.self.x;
         const absY = (msg.zone.worldOffsetY || 0) + msg.self.y;
-        myAbsPos = { x: absX, y: absY };
+        myAbsPos = { x: absX, y: absY }; myAbsPosAt = performance.now();
         // welcome = 풀 권위 리싱크(재연결/존이동) → 텔포처럼 취급: 미ack 입력 비우고 앵커.
         // ★유령 클라 fix: 앵커는 어떤 조건으로도 우회되지 않는다(primary welcome = 무조건 재앵커).
         pendingInputs.length = 0;
@@ -6883,7 +6892,7 @@ const SIM_JOB_EMOJI = {
         if (pp.pid === myPid && c.role === 'primary') {
           const absX = c.meta.worldOffsetX + pp.x;
           const absY = (c.meta.worldOffsetY || 0) + pp.y;
-          myAbsPos = { x: absX, y: absY };
+          myAbsPos = { x: absX, y: absY }; myAbsPosAt = performance.now();
           // 리컨실리에이션: 권위 위치 + ackSeq(tick top-level)로 미ack 입력 replay
           applyServerCorrection(absX, absY, msg.ackSeq, msg.selfVx, msg.selfVy);
           lastTickWithMyPidAt = now;
@@ -7209,7 +7218,7 @@ const SIM_JOB_EMOJI = {
         if (msg.x !== undefined && c.meta) {
           const absX = c.meta.worldOffsetX + msg.x;
           const absY = (c.meta.worldOffsetY || 0) + msg.y;
-          myAbsPos = { x: absX, y: absY };
+          myAbsPos = { x: absX, y: absY }; myAbsPosAt = performance.now();
           myAbsPredicted = { x: absX, y: absY };
           correctionVel = { x: 0, y: 0 };
           correctionUntil = 0;

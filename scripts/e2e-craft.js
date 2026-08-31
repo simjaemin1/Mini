@@ -83,7 +83,9 @@ async function waitHttp(u, n = 900) { for (let i = 0; i < n; i++) { try { const 
   const warp = async (x, y) => { for (let i = 0; i < 20; i++) {
     await page.evaluate(([a, b]) => window.__sendPrimary({ type: 'teleport_debug', x: a, y: b }), [x, y]);
     await sleep(800);
-    const c = await me(); if (c && Math.hypot(c.x - (x + WOX), c.y - (y + WOY)) <= 200) return c; } return null; };
+    // ★[핫픽스 2026-08-31 · 족보 ㊹] 도착은 **서버 권위**로 — 예측은 재접속 뒤 낡을 수 있다.
+    const c = (await page.evaluate(() => (window.__getSrvAbs ? window.__getSrvAbs() : null))) || (await me());
+    if (c && Math.hypot(c.x - (x + WOX), c.y - (y + WOY)) <= 200) return c; } return null; };
   await warp(site.x, site.y);
 
   // ── ① 시설이 없으면 창이 안 열린다 ────────────────────────────────────────

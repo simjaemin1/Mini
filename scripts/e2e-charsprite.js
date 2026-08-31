@@ -115,7 +115,8 @@ function openSpot() {
   for (let i = 0; i < 20; i++) {
     await A.evaluate(([a, b]) => window.__sendPrimary({ type: 'teleport_debug', x: a, y: b }), [SPOT.x, SPOT.y]);
     await sleep(700);
-    const c = await meAbs(A);
+      // ★[핫픽스 2026-08-31 · 족보 ㊹] 도착은 **서버 권위**로 — 예측은 재접속 뒤 낡을 수 있다.
+    const c = (await A.evaluate(() => (window.__getSrvAbs ? window.__getSrvAbs() : null))) || (await meAbs(A));
     if (c && Math.hypot(c.x - (SPOT.x + SPOT.WOX), c.y - (SPOT.y + SPOT.WOY)) <= 120) break;
   }
   await sleep(800);
@@ -235,7 +236,8 @@ function openSpot() {
   for (let i = 0; i < 20; i++) {
     await B.evaluate(([a, b]) => window.__sendPrimary({ type: 'teleport_debug', x: a, y: b }), [SPOT.x + 60, SPOT.y]);
     await sleep(700);
-    const c = await meAbs(B);
+      // ★[핫픽스 2026-08-31 · 족보 ㊹] 도착은 **서버 권위**로 — 예측은 재접속 뒤 낡을 수 있다.
+    const c = (await B.evaluate(() => (window.__getSrvAbs ? window.__getSrvAbs() : null))) || (await meAbs(B));
     if (c && Math.hypot(c.x - (SPOT.x + SPOT.WOX + 60), c.y - (SPOT.y + SPOT.WOY)) <= 140) break;
   }
   await sleep(1200);

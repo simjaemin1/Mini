@@ -141,7 +141,8 @@ function plan() {
     for (let i = 0; i < 20; i++) {
       await page.evaluate(([a, b]) => window.__sendPrimary({ type: 'teleport_debug', x: a, y: b }), [x, y]);
       await sleep(800);
-      cur = await me();
+      // ★[핫픽스 2026-08-31 · 족보 ㊹] 도착은 **서버 권위**로 — 예측은 재접속 뒤 낡을 수 있다.
+      cur = (await page.evaluate(() => (window.__getSrvAbs ? window.__getSrvAbs() : null))) || (await me());
       if (cur && Math.hypot(cur.x - (x + WOX), cur.y - (y + WOY)) <= tol) return cur;
     }
     return cur;

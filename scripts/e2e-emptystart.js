@@ -117,15 +117,26 @@ function findForageSpots() {
     // ⚠좌표계를 섞지 마라(이 레포가 이미 배운 것): `teleport_debug` 는 **존 로컬**,
     //   `__getMyAbs()` 는 **월드 절대**다. 1차 도착 판정은 이걸 섞어서 멀쩡한 워프를 전부
     //   "미도달"로 찍었다. 오프셋은 **정본**(`zone-config.js`)에서 읽는다 — 하네스가 상수를 베끼지 않는다.
-    let cur = null;
+    //
+    // ★★[핫픽스 2026-08-31 · 족보 ㊹] **도착은 서버 권위로 판정한다.**
+    //   2차 실장은 `__getMyAbs()`(**클라 예측**)로 판정했다. 실측: 서버는 텔레포트를 7번 다
+    //   받아들였는데(공지 "🌀 텔레포트 → (14032,78032)" ×7 이 증거) 예측은 **3만px 밖**에 머물렀다 —
+    //   재접속·orphan 복구 직후 예측이 권위와 갈리기 때문이다. 그 상태로 ⑤가 진행되면
+    //   "마을 밖에서 거래"가 되어 **간헐로** 실패하고, 실패 이유는 화면에 안 남는다.
+    //   ⇒ 권위(`__getSrvAbs`)를 기준으로 삼고, 예측은 **참고로 같이 찍는다**(둘이 갈리면 그게 단서다).
+    let pred = null, srv = null;
     for (let i = 0; i < 20; i++) {
       await page.evaluate(([a, b]) => window.__sendPrimary({ type: 'teleport_debug', x: a, y: b }), [x, y]);
       await sleep(900);
-      cur = await page.evaluate(() => window.__getMyAbs());
-      if (cur && Math.hypot(cur.x - (x + WOX), cur.y - (y + WOY)) <= tolPx) return cur;
+      pred = await page.evaluate(() => window.__getMyAbs());
+      srv = await page.evaluate(() => (window.__getSrvAbs ? window.__getSrvAbs() : null));
+      const ref = srv || pred;   // 권위가 아직 없으면(첫 틱 전) 예측으로 버틴다
+      if (ref && Math.hypot(ref.x - (x + WOX), ref.y - (y + WOY)) <= tolPx) return ref;
     }
-    console.log(`    ⚠ 워프 미도달 → 로컬(${x},${y})=절대(${x + WOX},${y + WOY}) / 현재 ${cur ? `${Math.round(cur.x)},${Math.round(cur.y)}` : '없음'}`);
-    return cur;
+    const d = (p) => (p ? `${Math.round(p.x)},${Math.round(p.y)}` : '없음');
+    console.log(`    ⚠ 워프 미도달 → 로컬(${x},${y})=절대(${x + WOX},${y + WOY})`);
+    console.log(`      권위(srv)=${d(srv)}  예측(me)=${d(pred)}  ${srv && pred && Math.hypot(srv.x - pred.x, srv.y - pred.y) > 500 ? '★둘이 갈렸다 — 리컨실리에이션 문제다' : ''}`);
+    return null;   // ★못 갔으면 **null 을 돌려준다** — 호출측이 그걸 모르고 진행하면 안 된다
   };
 
   await page.goto(`http://localhost:${CPORT}/`, { waitUntil: 'domcontentloaded' });
@@ -162,7 +173,7 @@ function findForageSpots() {
     let done = false;
     for (const sp of spots[k]) {
       if (done) break;
-      await warp(sp.x, sp.y);
+      await warp(sp.x, sp.y);   // ★도착은 warp 내부가 권위로 판정한다(핫픽스 2026-08-31)
       await sleep(700);
       const before = { ...(await inv()) };
       for (let i = 0; i < 4 && !done; i++) {
@@ -223,7 +234,12 @@ function findForageSpots() {
   ok(rows.length > 0, '★전제 — 마을이 시딩됐다', rows.map((r) => r.name).join(' '));
   if (rows.length) {
     const V = rows[0];
-    await warp(V.cx * 32 + 16, V.cy * 32 + 16);
+    // ★★[핫픽스 2026-08-31] **도착을 판정으로 세운다.** 종전엔 워프가 씹혀도 조용히 진행해서,
+    //   실패가 "장인에게 못 산다"(하류 증상)로 찍혔다 — 진짜 사실은 "마을에 못 갔다"였다.
+    //   하네스는 **제 행동이 실제로 일어났는지 먼저 센다**(족보 57).
+    const arrived = await warp(V.cx * 32 + 16, V.cy * 32 + 16);
+    ok(!!arrived, `★전제 — ${V.name} 마을에 **도착했다**(서버 권위 기준)`,
+       arrived ? `권위 ${Math.round(arrived.x)},${Math.round(arrived.y)}` : '미도달 — 아래 ⑤는 볼 가치가 없다');
     await sleep(1200);
     // ★재료는 픽스처로 준다 — "벌어서 산다"의 **버는 쪽**은 게시판·거래소 하네스가 따로 잰다.
     //   여기서 잴 것은 **살 수 있는 경로가 실재하는가**(빈손이 도달할 곳이 있는가)다.
