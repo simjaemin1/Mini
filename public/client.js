@@ -55,14 +55,76 @@ const SIM_JOB_EMOJI = {
 
 (() => {
   const canvas = document.getElementById('canvas');
-  const ctx = canvas.getContext('2d');
-  let W = canvas.width, H = canvas.height;
+  // ★`let` 이다 — 줌이 켜지면 월드 패스 동안만 오프스크린 컨텍스트로 갈아 끼운다(아래 zoomBegin).
+  let ctx = canvas.getContext('2d');
+  const _mainCtx = ctx;
+  let W = canvas.width, H = canvas.height;      // ★월드 패스 중에는 **가상 뷰포트** 크기가 된다
+  let W0 = W, H0 = H;                           // 실제 캔버스 크기(HUD·마우스는 이걸 쓴다)
   // Phase 14.19: 전체화면 — viewport 가득. resize 시 동적 재조정.
   function resizeCanvas() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
-    W = canvas.width; H = canvas.height;
+    W0 = canvas.width; H0 = canvas.height;
+    W = W0; H = H0;
   }
+
+  // ═══════════════ 줌 [재민 확정 2026-08-31 · 갈래 A "큰 화소"] ═══════════════
+  //   ★계약: **ZOOM === 1 이면 종전과 코드 경로가 같다.** 오프스크린을 만들지도 않는다.
+  //     (`__zoomDbg().off === null` 로 하네스가 그걸 센다 — 회귀 위험 0 을 말이 아니라 수치로.)
+  //   ★방식: 세계를 **1:1 로 오프스크린에 그린 뒤 화면 전체를 통째로 늘리거나 줄인다.**
+  //     - 확대(z>1): 오프스크린이 화면보다 **작다**(W0/z). 늘리면 화소가 정직하게 커진다.
+  //       보간을 끈다 — 이게 좀보이드의 `IsoSprite > ForceNearestMagFilter` 와 같은 선택이다.
+  //     - 축소(z<1): 오프스크린이 화면보다 **크다**(W0/z). 줄이며 보간을 켠다(계단 방지).
+  //   ★왜 `ctx.setTransform(z,...)` 이 아닌가: 그 방식은 타일을 배율 좌표에 그려서 정수가 아닌
+  //     배율에서 **반화소 이음새**가 생긴다(지형이 512×256 패턴 블릿이라 특히). 통째 확대는
+  //     이음새가 원리적으로 안 생긴다. 대신 자연물이 가진 3~9배 해상도 여유는 못 쓴다 —
+  //     그건 "확대하면 더 선명" 을 택할 때의 값이고, 재민은 "큰 화소" 를 택했다.
+  //   ★그리기 코드 95군데의 W/H 를 한 줄도 안 건드린다 — W/H 자체를 가상 크기로 바꾸므로
+  //     컬링·중심 계산이 저절로 맞는다.
+  const ZOOM_STEPS = [0.5, 0.75, 1, 1.5, 2];
+  const ZOOM_KEY = 'durango_zoom';
+  let ZOOM = 1;
+  try { const _z = parseFloat(localStorage.getItem(ZOOM_KEY)); if (ZOOM_STEPS.includes(_z)) ZOOM = _z; } catch (_) {}
+  let _zoomCv = null, _zoomCtx = null;
+
+  function zoomBegin() {
+    if (ZOOM === 1) return false;                       // ★종전 경로 그대로
+    const vw = Math.max(1, Math.ceil(W0 / ZOOM)), vh = Math.max(1, Math.ceil(H0 / ZOOM));
+    if (!_zoomCv) { _zoomCv = document.createElement('canvas'); _zoomCtx = _zoomCv.getContext('2d'); }
+    if (_zoomCv.width !== vw || _zoomCv.height !== vh) { _zoomCv.width = vw; _zoomCv.height = vh; }
+    _zoomCtx.setTransform(1, 0, 0, 1, 0, 0);
+    _zoomCtx.globalAlpha = 1; _zoomCtx.globalCompositeOperation = 'source-over';
+    _zoomCtx.clearRect(0, 0, vw, vh);
+    ctx = _zoomCtx; W = vw; H = vh;
+    return true;
+  }
+
+  function zoomEnd(on) {
+    if (!on) return;
+    ctx = _mainCtx; W = W0; H = H0;
+    const prev = ctx.imageSmoothingEnabled;
+    ctx.imageSmoothingEnabled = (ZOOM < 1);             // 확대는 큰 화소, 축소는 보간
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(_zoomCv, 0, 0, _zoomCv.width, _zoomCv.height, 0, 0, W0, H0);
+    ctx.imageSmoothingEnabled = prev;
+  }
+
+  function setZoom(z) {
+    const i = ZOOM_STEPS.indexOf(z);
+    if (i < 0) return false;
+    if (z === ZOOM) return false;
+    ZOOM = z;
+    try { localStorage.setItem(ZOOM_KEY, String(z)); } catch (_) {}
+    if (ZOOM === 1 && _zoomCv) { _zoomCv = null; _zoomCtx = null; }   // 계약: z=1 이면 오프스크린이 없다
+    return true;
+  }
+  function stepZoom(dir) {                              // dir +1 = 확대, -1 = 축소
+    const i = ZOOM_STEPS.indexOf(ZOOM);
+    return setZoom(ZOOM_STEPS[Math.max(0, Math.min(ZOOM_STEPS.length - 1, i + dir))]);
+  }
+  window.__zoomDbg = () => ({ zoom: ZOOM, steps: ZOOM_STEPS.slice(), off: _zoomCv ? [_zoomCv.width, _zoomCv.height] : null,
+                              screen: [W0, H0] });
+  window.__setZoom = (z) => stepZoom(0) || setZoom(z);
   resizeCanvas();
   window.addEventListener('resize', resizeCanvas);
 
@@ -77,10 +139,21 @@ const SIM_JOB_EMOJI = {
   //   오프셋(최대 180px)만큼 커진다 — 커서가 가리키는 곳과 실제 조준선이 갈린다.
   function screenToWorldAbs(px, py) {
     const cam = _lastCamIso || w2i(myAbsPredicted.x, myAbsPredicted.y);
-    const ix = px - W / 2 + cam.x;
-    const iy = (py + (myFloor || 0) * FLOOR_HEIGHT) - H / 2 + cam.y;
+    // ★줌: 실제 화면에서 중심으로부터의 거리를 배율로 나눠 **가상 공간**으로 옮긴다.
+    //   ZOOM=1 이면 아래 두 줄은 종전 식과 대수적으로 완전히 같다(층 항은 월드 양이라 나누지 않는다).
+    const ix = (px - W0 / 2) / ZOOM + cam.x;
+    const iy = (py - H0 / 2) / ZOOM + (myFloor || 0) * FLOOR_HEIGHT + cam.y;
     return { wx: ix * 0.5 + iy, wy: iy - ix * 0.5 };
   }
+  // ★역방향(월드 → 실제 화면 px) — 하네스가 왕복을 재려면 이게 있어야 한다(족보: 계약은 양쪽으로 센다).
+  function worldAbsToScreen(wx, wy) {
+    const cam = _lastCamIso || w2i(myAbsPredicted.x, myAbsPredicted.y);
+    const iso = w2i(wx, wy);
+    return { px: (iso.x - cam.x) * ZOOM + W0 / 2,
+             py: (iso.y - (myFloor || 0) * FLOOR_HEIGHT - cam.y) * ZOOM + H0 / 2 };
+  }
+  window.__s2w = (px, py) => screenToWorldAbs(px, py);
+  window.__w2s = (wx, wy) => worldAbsToScreen(wx, wy);
   function w2i(wx, wy, wz = 0) {
     return { x: (wx - wy), y: (wx + wy) * 0.5 - wz };
   }
@@ -6364,8 +6437,16 @@ const SIM_JOB_EMOJI = {
     });
 
     // 14.53-g/i: 건축 모드 마우스 휠 — placement 중이면 회전, hover 중이면 cycle
+    // ★[줌 2026-08-31] 건축 모드의 회전·사이클이 **먼저**다(종전 동작 보존). 거기 해당이 없으면 줌.
     canvas.addEventListener('wheel', (e) => {
-      if (!buildMode) return;
+      const _bmBusy = buildMode && ((placementMode && placementMode.itemType) || hoverList.length > 1);
+      if (!_bmBusy) {
+        e.preventDefault();
+        if (stepZoom(e.deltaY > 0 ? -1 : +1)) {        // 위로 굴리면 확대
+          showNotice(`확대 ${ZOOM}×`, 700);
+        }
+        return;
+      }
       const delta = (e.deltaY > 0) ? 1 : -1;
       // placement 중 → 회전 (wall/door = N→E→S→W, fence = NS↔EW, stair = N→E→S→W)
       if (placementMode && placementMode.itemType) {
@@ -6429,14 +6510,13 @@ const SIM_JOB_EMOJI = {
       // 캔버스 안 픽셀 좌표 (canvas.width/height와 css width/height 다를 수 있으니 스케일)
       const px = (e.clientX - rect.left) * (canvas.width / rect.width);
       const py = (e.clientY - rect.top) * (canvas.height / rect.height);
-      // toScreen 역: ix = px - W/2 + camX; iy = py - H/2 + camY
-      // 14.53-g fix: 2층+ player일 때 py에 floor*FLOOR_HEIGHT 더해 그 층 plane으로 투영
-      const myIso = w2i(myAbsPredicted.x, myAbsPredicted.y);
-      const ix = px - W/2 + myIso.x;
-      const iy = (py + (myFloor || 0) * FLOOR_HEIGHT) - H/2 + myIso.y;
-      // iso 역변환: wx = ix/2 + iy, wy = iy - ix/2
-      const clickWx = ix * 0.5 + iy;
-      const clickWy = iy - ix * 0.5;
+      // ★[줌 2026-08-31] 투영을 **`screenToWorldAbs` 한 군데로** 모았다.
+      //   종전엔 여기서 같은 식을 손으로 다시 썼는데, 원점이 `myAbsPredicted` 라
+      //   조준 시야 밀기(최대 180px)가 켜지면 **커서와 클릭 지점이 갈렸다** — 조준 배치가
+      //   `screenToWorldAbs` 를 만들면서 조준선만 고치고 이 줄은 옛 식으로 남겨 둔 자리다.
+      //   줌까지 얹히면 두 번째로 갈릴 뻔했다. 식이 두 벌이면 언젠가 갈린다.
+      const _cw = screenToWorldAbs(px, py);
+      const clickWx = _cw.wx, clickWy = _cw.wy;
       // Phase 14.30 / 14.51: placement mode 우선 — 그 위치에 3초 progress → 빌드
       if (placementMode) {
         // 사용자 위치에서 거리 체크 (160px)
@@ -7823,6 +7903,7 @@ const SIM_JOB_EMOJI = {
     ensurePrimaryConnection();
     checkOrphan();
     manageNeighborSubscriptions();
+    const _zOn = zoomBegin();          // ★여기부터 월드 패스 — ZOOM=1 이면 아무 일도 안 일어난다
     { const _rA = performance.now(); render(); const _rd = performance.now() - _rA;
       window._gAcc = (window._gAcc||0)+_rd; window._gN = (window._gN||0)+1; if (_rd > (window._gMax||0)) window._gMax = _rd;
       if (window._gN >= 30) { if (window._renderDbg) { let _bn=0; for (const c of conns.values()) _bn += c.buildings.size;
@@ -7830,6 +7911,7 @@ const SIM_JOB_EMOJI = {
     drawArrowFx();      // 사냥꾼 화살 비행(서버 arrow_fx)
     drawBuildOverlay(); // 14.51: hover outline
     drawPlacementGhost(); // 14.53-i: placement 시 실루엣 미리보기
+    zoomEnd(_zOn);      // ★월드 패스 끝 — 오프스크린을 화면에 통째로 늘리거나 줄여 얹는다
     updateBuildProgressEl(); // 14.51: 3초 progress bar (DOM)
     updateMinimap();
     requestAnimationFrame(loop);
@@ -8427,7 +8509,9 @@ const SIM_JOB_EMOJI = {
       let _tx = 0, _ty = 0;
       if (_aiming) {
         // 커서가 화면 중심에서 얼마나 떨어졌나 → 그 절반만큼, 최대 AIM_LOOK_PX 만큼 민다.
-        const _dx = lastMouseSx - W / 2, _dy = lastMouseSy - H / 2;
+        // ★마우스는 **실제 화면** 좌표다. 이 블록은 월드 패스 안이라 W/H 가 가상 크기이므로
+        //   W0/H0 로 재고 배율로 나눠 가상 공간으로 옮긴다(ZOOM=1 이면 종전과 같은 값).
+        const _dx = (lastMouseSx - W0 / 2) / ZOOM, _dy = (lastMouseSy - H0 / 2) / ZOOM;
         const _m = Math.hypot(_dx, _dy);
         if (_m > 1e-6) { const _k = Math.min(AIM_LOOK_PX, _m * 0.5) / _m; _tx = _dx * _k; _ty = _dy * _k; }
       }
