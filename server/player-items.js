@@ -96,11 +96,24 @@ if (Specialty && Specialty.alloyGrade) {
 }
 
 // ── 제작: 플레이어 숙련 × 재료 → 인스턴스 (설계 §3 숙련 진행 가시화) ──
+// ★★[옷 티어 2026-08-31 재민 확정] 옷은 **재료가 곧 이름**이다 — 겨울에 뭘 입었는지가 보여야 한다.
+//   고증(송국리기): 마직(삼)·저마(모시)가 일상복, 겨울은 수피·모피다.
+//   `갖옷(裘)` 은 모피 옷을 가리키는 우리말 정본이다.
+//   ⚠재료 이름표(events.RES_KO 등)를 옮겨 적는 게 아니다 — 이건 **완성품의 이름**이라 여기가 유일한 자리다.
+const CLOTH_KO = {
+  fur: '갖옷', leather: '가죽옷', hide: '생가죽옷', ramie: '모시옷', hemp: '삼베옷', fiber: '풀 엮은 옷',
+};
+function _domMat(materials) {
+  let best = null, bv = -1;
+  for (const k in (materials || {})) { const v = Number(materials[k]) || 0; if (v > bv) { bv = v; best = k; } }
+  return best;
+}
 function craftItem(type, skillLevel, materials) {
   const def = ITEM_TYPES[type];
   if (!def) throw new Error('unknown item type: ' + type);
   const q = qSkill(skillLevel) * matGrade(materials, CAST_KIND[type]);   // 0.24(초보·삼베) ~ 1.0(만렙·모피/청동)
   const inst = { type, q: +q.toFixed(3), craftedSkill: skillLevel, attrs: {} };
+  if (type === 'clothes') { const m = _domMat(materials); if (m && CLOTH_KO[m]) inst.mat = m; }
   for (const a in def.attrs) {
     if (a === 'buff') inst.attrs.buff = +q.toFixed(2);
     else if (a === 'freshness') continue;
@@ -137,12 +150,16 @@ function decayFreshness(inst, nowGameDays) {
 
 // ── 경계 계약 (설계 §4): 구매 = 마을 품질 EMA(_clothQ/_weapQ/_cookQ 0~1) ±소분산 샘플로 실체화 ──
 //   대표 재료 등급은 마을 품질을 역산 근사(플레이어 제작과 같은 척도).
-function materializeFromVillage(type, villageQ, rand) {
+function materializeFromVillage(type, villageQ, rand, materials) {
   const r = (typeof rand === 'function' ? rand() : Math.random());
   const q = Math.max(0.1, Math.min(1, (villageQ || 0.6) + (r - 0.5) * 0.2));
   // q = qSkill(lvl) × matGrade ≈ q → 대표 숙련 역산(재료 등급 0.8 가정)
   const lvl = Math.max(0, Math.min(10, Math.round((q / 0.8 - (1 - Q_SKILL_SPAN)) / Q_SKILL_SPAN * 10)));
-  return craftItem(type, lvl, { _proxy: 0.8 * 1 });   // _proxy 등급 0.8 대표
+  // ★★[옷 티어 2026-08-31] **가져간 재료가 물건을 정한다.** 종전엔 `_proxy 0.8` 하나라
+  //   장인에게 삼을 주나 모피를 주나 **똑같은 옷**이 나왔다. 이제 이름이 재료를 말하는데
+  //   성능이 안 따라오면 그게 곧 화면의 거짓말이다 ⇒ 실제 등급으로 짓는다.
+  //   (재료를 안 넘기는 옛 호출부는 종전 그대로 — 대표 등급 0.8.)
+  return craftItem(type, lvl, materials || { _proxy: 0.8 * 1 });
 }
 // 판매 = 용해 + 품질이 마을 EMA 넛지(명장 플레이어가 마을 스톡 품질 견인 — 남획이 gameRich에 기록되는 것 동형).
 function sellNudge(villageQ, inst, weight) {
@@ -153,6 +170,8 @@ function sellNudge(villageQ, inst, weight) {
 // ── 표시: "가죽 외투 [방한 62 · 내구 85/85] — 재봉 Lv7 제작" (설계 §3 뿌듯함) ──
 function displayItem(inst) {
   const def = ITEM_TYPES[inst.type] || { label: inst.type, attrs: {} };
+  // ★[옷 티어] 옷은 재료 이름으로 부른다 — "옷 [방한 55]" 보다 "갖옷 [방한 55]" 가 정보다.
+  const label = (inst.type === 'clothes' && inst.mat && CLOTH_KO[inst.mat]) ? CLOTH_KO[inst.mat] : def.label;
   const parts = [];
   for (const a in inst.attrs) {
     const lbl = def.attrs[a] || (a === 'freshness' ? '신선도' : a);
@@ -162,10 +181,10 @@ function displayItem(inst) {
   // 주조품은 배합을 이름에 달아준다 — "무기[공격 109]" 보다 "무기(구리83·주석17)" 가 정보다.
   const alloy = inst.mix && Object.keys(inst.mix).length
     ? '(' + Object.entries(inst.mix).map(([k, v]) => (MAT_KO[k] || k) + Math.round(v) + '%').join('·') + ')' : '';
-  return def.label + alloy + ' [' + parts.join(' · ') + ']' + (inst.craftedSkill != null ? ' — Lv' + inst.craftedSkill + ' 제작' : '');
+  return label + alloy + ' [' + parts.join(' · ') + ']' + (inst.craftedSkill != null ? ' — Lv' + inst.craftedSkill + ' 제작' : '');
 }
 
-module.exports = { MAT_GRADE, ITEM_TYPES, Q_SKILL_SPAN, DURA_SPAN, qSkill, matGrade, craftItem, wearItem, repairItem, decayFreshness, materializeFromVillage, sellNudge, displayItem,
+module.exports = { MAT_GRADE, ITEM_TYPES, CLOTH_KO, Q_SKILL_SPAN, DURA_SPAN, qSkill, matGrade, craftItem, wearItem, repairItem, decayFreshness, materializeFromVillage, sellNudge, displayItem,
   castable, castKinds, castGrade, CAST_KIND, CAST_MAX_KINDS, CAST_GRADE_MAX, CAST_ERA, MAT_KO };
 
 // ── 자가검증 (node server/player-items.js) ──

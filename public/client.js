@@ -5951,6 +5951,8 @@ const SIM_JOB_EMOJI = {
   // ★[배산임수 감사 2026-08-29] 게이지 진단 훅 — 하네스가 "둠벙에서 실제로 마셔지는가"를 화면 값으로 잰다(읽기 전용).
   window.__calendar = () => (myCalendar ? JSON.parse(JSON.stringify(myCalendar)) : null);
   window.__wx = () => (myWeather ? JSON.parse(JSON.stringify(myWeather)) : null);   // ★[온도] 하네스 훅(읽기 전용)
+  // ★[옷 티어 2026-08-31] 장비 진단 훅(읽기 전용) — 하네스가 '무엇을 입었나'를 화면 상태로 잰다.
+  window.__equipState = () => JSON.parse(JSON.stringify({ equipment: equipment || [], slots: equipSlots || {} }));
   window.__getGauges = () => ({ hunger: myHunger, thirst: myThirst, vp: myVp,
     stam: myStam, stamLock: myStamLock, canSprint: myCanSprint, recover: myRecover });
   // ★[시설 제작창 2026-08-29] 진단 훅 — 하네스가 "창이 실제로 열렸는가 · 대기열이 도는가"를 화면 상태로 잰다(읽기 전용).
@@ -12640,8 +12642,10 @@ const SIM_JOB_EMOJI = {
         const sh = Math.max(0, Math.min(1, myWeather.shelter || 0));
         const txt = `${myWeather.emo} ${myWeather.ko}${sh > 0.15 ? ' · 마을' : ''}`;
         const tip = `바깥 ${myWeather.tempC != null ? myWeather.tempC + '℃ · ' : ''}추위 ${Math.round(myWeather.cold * 100)}%${myWeather.night ? ' (밤)' : ' (낮)'}`
+          // ★[옷 티어] 옷이 **몇 ℃ 를 벌어 주는지**를 말한다 — 그래야 "가죽옷을 살까"가 판단이 된다.
+          + (myWeather.insC > 0 ? ` · 입은 옷이 체감 +${myWeather.insC}℃` : ' · 맨몸 — 옷이 없다')
           + (sh > 0.01 ? ` · 마을 미기후가 ${Math.round((myWeather.cut || 0) * 100)}% 막아 준다` : ' · 야생 — 막아 주는 것이 없다')
-          + ' · 옷·모닥불·실내는 여기에 더해 몸에 적용된다';
+          + ' · 모닥불·실내는 여기에 더해 몸에 적용된다';
         // ★값이 그대로면 **DOM 을 안 건드린다** — `updateHud` 는 100ms 마다 도는데 날씨는 초당 1회
         //   바뀔까 말까다. 매번 쓰면 그때마다 HUD 줄의 스타일·레이아웃이 다시 계산된다
         //   (헤드리스 SwiftShader 에서 실제로 프레임에 얹힌다 — `e2e-waterperf` 배율이 그걸 잡았다).

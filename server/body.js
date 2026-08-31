@@ -70,6 +70,24 @@ const CFG = {
   COLD_SEASON_W: _num('BODY_COLD_SEASON_W', 0.7),   // (폴백) 겨울낮 앵커
   COLD_INDOOR_MULT: _num('BODY_COLD_INDOOR_MULT', 0.30),  // 실내는 목표점을 이만큼으로
   COLD_FIRE_TARGET: _num('BODY_COLD_FIRE_TARGET', 0.05),  // 불 옆 목표점 상한
+  // ── ★★[옷 티어 2026-08-31 재민 확정] 옷은 **체감 기온을 올린다**(곱셈 노출 폐기) ──────
+  //   재민 확정: *"조잡한 베옷은 한겨울 야생 밤을 못 막는다 — 겨울 = 가죽·모피 수요."*
+  //
+  //   ★왜 곱셈을 버렸나 — **실측이 곱셈 모델을 기각했다.** 종전 `노출 = 1 − warmth/50` 로
+  //     한겨울 자정 야생 24년 도달률을 재면:
+  //       warmth 0 → 13/24 · warmth 2 → 9/24 · **warmth 4 → 0/24**
+  //     방한 4점짜리 넝마 한 장이 겨울을 통째로 지운다. 티어가 설 자리가 아예 없다
+  //     (곱셈은 추위 전체를 깎으니 평형이 3단계 문턱 아래로 한 번에 내려간다).
+  //   ⇒ 옷을 **℃ 로** 말하게 한다. 그러면 옷·고도 감률(−6.5℃/km)·날씨 편차(±5℃)가
+  //     **같은 단위**가 되어 서로 상쇄·가산된다. 물리적으로도 이게 단열(insulation)의 정의다.
+  //     같은 실측을 단열 모델로 다시 재면 사다리가 선다:
+  //       +0.5℃ → 12/24 · +1℃ → 10/24 · +1.5℃ → 7/24 · +2℃ → 4/24 · +3℃ → 0/24
+  //
+  //   ★`WARMTH_MIN` — 헐거운 옷은 **바람이 지나간다.** 방한 값이 이 아래면 단열이 0 이다.
+  //     고증: 조잡한 마직 홑옷은 여미지 못해 체열이 그냥 빠진다. 겹쳐 입거나 가죽이라야 막힌다.
+  //     ⇒ 이 한 줄이 "첫 한 벌이 겨울을 지우는" 문제를 없앤다(재민 회부 B-2 그 자체).
+  WARMTH_C_PER: _num('BODY_WARMTH_C_PER', 0.09),   // 방한 1점 → 체감 기온 +℃
+  WARMTH_MIN: _num('BODY_WARMTH_MIN', 10),         // 이 아래는 단열 0(바람이 지나간다)
   //   ★★[겨울 난이도 2026-08-31 재민 확정] **마을 = 안전망 · 야생 = 위험.**
   //     마을 안은 바람이 죽고(집·담·나무), 어딘가 늘 불기운이 있고, 사람이 있다 —
   //     디에게틱 근거가 있는 **미기후**다. 목표점을 이 비율만큼 깎는다.
@@ -274,6 +292,15 @@ function stamina(p) { return ensure(p).stam; }
 //
 //   ⚠`ctx.day` 가 없으면(옛 호출부·일부 하네스) 종전 `ctx.seasonCold` 계단으로 **그대로** 떨어진다.
 //     econ `seasonOf`·계절 배율은 **정본 그대로**다 — 여기서 바뀌는 건 몸이 느끼는 온도뿐이다.
+/**
+ * 옷의 **단열**(체감 기온을 몇 ℃ 올리는가). `warmth` 는 아이템 속성(0~62 급).
+ * ★`WARMTH_MIN` 아래는 0 — 헐거운 옷은 바람이 지나간다(그래서 첫 한 벌이 겨울을 못 지운다).
+ * ★고도 감률·날씨 편차와 **같은 단위**라 서로 상쇄된다: 갖옷 +4.7℃ vs 1km 고도 −6.5℃.
+ */
+function warmthInsC(warmth) {
+  const w = Math.max(0, Number(warmth) || 0);
+  return Math.max(0, w - CFG.WARMTH_MIN) * CFG.WARMTH_C_PER;
+}
 let _Weather = null;
 function _weather() {
   if (_Weather === null) { try { _Weather = require('./weather'); } catch (e) { _Weather = false; } }
@@ -281,26 +308,37 @@ function _weather() {
 }
 function coldTarget(ctx) {
   const c = ctx || {};
-  const exposure = Math.max(0, 1 - (c.warmth || 0) / CFG.WARMTH_FULL);   // 옷이 막는 몫
+  //   ★[옷 티어] 곡선 경로에선 옷이 **℃** 로 작용한다(아래 폴백만 종전 곱셈 노출을 쓴다).
+  const exposure = Math.max(0, 1 - (c.warmth || 0) / CFG.WARMTH_FULL);   // (폴백 전용) 옷이 막는 몫
   let t;
   const W = Number.isFinite(c.day) ? _weather() : null;
-  const outdoor = (W && W.available()) ? W.outdoorCold(c.day, !!c.night, 0) : null;
+  //   ★[천장 해제] `elevKm` 을 넘긴다 — econ 감률(−6.5℃/km)이 그대로 걸린다.
+  //     ⚠이 세계의 산은 35m 라 실제 기여는 0.23℃(추위 0.007)뿐이고, 게다가 바위 셀이 통행 불가라
+  //       플레이어가 설 수 있는 고도가 지금은 0 뿐이다. **배선은 살렸고 세계가 아직 낮다**(회부).
+  const outdoor = (W && W.available())
+    ? W.outdoorCold(c.day, !!c.night, +c.elevKm || 0, warmthInsC(c.warmth)) : null;
   if (outdoor !== null) {
     // ★연중 연속 — 계절 이름이 아니라 **그날의 기온(℃)** 이 추위를 정한다(econ `temperatureAt` 정본).
+    //   옷은 이미 ℃ 로 더해져 들어왔다 ⇒ 여기서 `exposure` 를 곱하지 않는다(이중 계산 금지).
     t = outdoor;
   } else {
     // 폴백 — 종전 4단 계단(`ctx.day` 를 못 받는 호출부·구 하네스 호환)
-    t = (c.night ? CFG.COLD_NIGHT_W : CFG.COLD_DAY_W) + (c.seasonCold || 0) * CFG.COLD_SEASON_W;
+    //   ★[천장 해제] 천장은 **곡선 경로만** 열었다. 이 계단은 종전 계약 그대로 1 에서 자른다
+    //     (겨울밤 0.7+0.45=1.15 → 1.00 이 이 경로의 채택값이다 — `test-body ⑭㉡` 이 못 박는다).
+    t = Math.min(1, (c.night ? CFG.COLD_NIGHT_W : CFG.COLD_DAY_W) + (c.seasonCold || 0) * CFG.COLD_SEASON_W);
   }
-  t = Math.max(0, Math.min(1, t));
+  // ★★[천장 해제 2026-08-31] **여기서 1 로 자르지 않는다.** 자르면 −5℃ 도 −15℃ 도 같은 밤이 된다.
+  //   상태값(`b.cold`)은 여전히 0~1 이고 `tick` 이 거기서 자른다 — 넘친 몫은 **속도**로만 나타난다.
+  t = Math.max(0, t);
   // ★★마을 안전망 — 바깥 환경을 깎는다(옷보다 **먼저**: 미기후는 몸이 아니라 장소의 성질이다).
   //   `villageShelter` 는 0(야생) … 1(마을 한복판). 야생은 **완충이 없다** — 그게 위험의 정의다.
   const sh = Math.max(0, Math.min(1, Number(c.villageShelter) || 0));
   if (sh > 0) t *= (1 - CFG.COLD_VILLAGE_SHELTER * sh);
-  t *= exposure;
+  if (outdoor === null) t *= exposure;   // ★폴백 경로에서만 — 곡선 경로는 ℃ 로 이미 반영됐다
   if (c.indoor) t *= CFG.COLD_INDOOR_MULT;
   if (c.nearFire) t = Math.min(t, CFG.COLD_FIRE_TARGET);
-  return +Math.max(0, Math.min(1, t)).toFixed(4);
+  // ★[천장 해제] 상한 없음. 하한만 0. (상태값의 0~1 은 `tick` 이 지킨다 — `test-body ⑮` 가 못 박는다.)
+  return +Math.max(0, t).toFixed(4);
 }
 
 // ── ★상태 의존 감쇠율 — 게이지 위치에 따라 빠르기가 다르다 ───────────────────
@@ -341,7 +379,7 @@ function moodles(p) {
 }
 
 // ── 시간 진행 ────────────────────────────────────────────────────────────────
-//   ctx: { day(게임일 — 연중 온도 곡선), night, nearFire, indoor, warmth, villageShelter(0..1),
+//   ctx: { day(게임일 — 연중 온도 곡선), elevKm(고도 — econ 감률), night, nearFire, indoor, warmth, villageShelter(0..1),
 //         seasonCold(0..1 · day 없을 때의 폴백), moving, sprint, carryRatio, now }
 //   ★**호출된 만큼만** 흐른다. 오프라인 따라잡기 없음.
 function tick(p, dtSec, ctx) {
@@ -351,9 +389,12 @@ function tick(p, dtSec, ctx) {
   // ★★추위 — **평형 수렴**(재민 확정 2026-08-30). 주변이 목표점을 만들고 몸이 거기로 간다.
   //   종전은 누적식이라 노출이 조금만 있어도 결국 1 에 닿았다(적립금). 이제는 밤에 올랐다가
   //   **낮이 오면 해소 행동 없이도 내려간다** — 겨울엔 평형점 자체가 높아 옷·불이 필요하다.
+  //   ★★[천장 해제 2026-08-31] **규약 한 줄: 상태는 0~1, 목표점은 무제한.**
+  //     목표점이 1.2 면 몸은 1 에서 멈추되 (tgt − cold) 가 커서 **더 빨리** 거기 닿는다.
+  //     새 속도 식을 짜지 않았다 — 아래 지수 수렴은 종전 그대로고, 위 `coldTarget` 의 클램프만 뺐다.
   const tgt = coldTarget(c);
   const k = 1 - Math.exp(-dtSec / Math.max(1, CFG.COLD_TAU_SEC));
-  b.cold = Math.max(0, Math.min(1, b.cold + (tgt - b.cold) * k));
+  b.cold = Math.max(0, Math.min(1, b.cold + (tgt - b.cold) * k));   // ★상태는 여기서만 잘린다
 
   // ★★허기·갈증 — **상태 의존 감쇠**. 배부름은 금방 꺼지고 진짜 배고픔은 천천히 깊어진다.
   //   ★달리기 가속은 **없앴다**: 달리기의 대가는 이제 **스태미나**다(3층 재배선).
@@ -453,7 +494,7 @@ function snapshot(p) { const b = ensure(p); return { hunger: p.hunger, thirst: p
 module.exports = {
   CFG, CURVES, AXES, KO, EMO, STAGE_AT,
   lerpCurve, xWhereBelow, ensure, severity, effects, stageOf, moodles,
-  RECOVER, EFFECT_AXES, RECOVER_AXES, recoverMult, recoverParts, canSprint, stamina, coldTarget, decayRate,
+  RECOVER, EFFECT_AXES, RECOVER_AXES, recoverMult, recoverParts, canSprint, stamina, coldTarget, warmthInsC, decayRate,
   tick, onLabor, onDamage, onEat, onHerb,
   selfPayload, peerPayload, toSave, fromSave, dirtySince, snapshot,
 };

@@ -202,6 +202,69 @@ async function waitHttp(url, tries = 600) {
     `불 없음 ${noFire.drop.toFixed(4)} → 불 옆 ${withFire.drop.toFixed(4)}`);
   await snap('cold-04-fire');
 
+  // ── ⑤ 옷 티어 — **입은 옷이 겨울을 가른다** [추위 2차 2026-08-31] ──────────
+  //   재민: *"조잡한 베옷은 한겨울 야생 밤을 못 막는다 — 겨울 = 가죽·모피 수요."*
+  //   ★픽스처로 옷을 빚지 않는다 — **정본 구매 경로**(`craft_buy` = 마을 장인)로 짓는다.
+  //     재료만 지급하고 나머지는 게임이 한다. 그래야 "화면에서 실제로 되는가"를 재는 것이다.
+  //   ⚠여기서 재는 건 **같은 장인이 지은 두 옷의 차이**다. "맨손 조잡한 베옷은 절반의 밤에
+  //     3단계까지 간다"는 **분포** 주장이라 24년 표본이 필요하고, 그건 `test-body ⑮㉣` 의 몫이다
+  //     (실클라로 24년을 돌 수는 없다 — 하네스마다 잴 수 있는 것이 다르다).
+  await warpTo(vx, vy, (w) => (w.shelter || 0) > 0.5, 8);   // 장인은 마을에 있다
+  await page.evaluate(() => window.__sendPrimary({ type: '__e2e_give', items: { hemp: 9, leather: 9, fur: 9 } }));
+  await sleep(900);
+  const buyWear = async (mat) => {
+    await page.evaluate(() => { window.__notices = []; });
+    await page.evaluate((m) => window.__sendPrimary({ type: 'craft_buy', itemType: 'clothes', material: m }), mat);
+    await sleep(1600);
+    const ns = await page.evaluate(() => (window.__notices || []).slice(-2));
+    const id = await page.evaluate(() => {
+      const st = window.__equipState && window.__equipState();
+      const cl = ((st && st.equipment) || []).filter((e) => e.type === 'clothes');
+      return cl.length ? cl[cl.length - 1].id : null;
+    });
+    if (id) { await page.evaluate((i2) => window.__sendPrimary({ type: 'equip_item', id: i2 }), id); await sleep(1400); }
+    const wx2 = await page.evaluate(() => (window.__wx ? window.__wx() : null));
+    return { notices: ns, insC: wx2 ? wx2.insC : null, worn: id };
+  };
+  // ★★불에서 **멀리** 떨어진 야생으로 간다 — ④에서 피운 모닥불이 그 자리에 아직 탄다.
+  //   (초안은 같은 좌표로 돌아가 옷 대신 **모닥불을 재고 있었다**: 삼베·갖옷 둘 다 Δ−0.069 로
+  //    똑같이 나왔는데, 그게 불 옆 목표점 0.05 였다. 계측기가 먼저 틀린 자리 — 족보 ㊻.)
+  const FAR = [wildAt[0] + 1200, wildAt[1] + 1200];
+  const goFar = async () => {
+    const w = await warpTo(FAR[0], FAR[1], (q) => (q.shelter || 0) < 0.01, 8);
+    return w;
+  };
+  const settle = async (secs) => {
+    await page.evaluate(() => window.__sendPrimary({ type: '__e2e_body', cold: 0.9, quiet: true }));
+    await sleep(900);
+    const a2 = await page.evaluate(() => (window.__bodyState || {}).cold);
+    await sleep(secs * 1000);
+    const b2 = await page.evaluate(() => (window.__bodyState || {}).cold);
+    return { a: a2, b: b2, d: b2 - a2 };
+  };
+  const hemp = await buyWear('hemp');
+  ok(hemp.notices.some((t) => /삼베옷/.test(t)), '★★⑤ 장인이 **삼베옷**이라 부른다(재료가 곧 이름 — 고증)',
+    JSON.stringify(hemp.notices));
+  const wxFar = await goFar();
+  ok(wxFar && (wxFar.shelter || 0) < 0.01, '★⑤ 불도 마을도 없는 야생이다(옷만 남는다)', `shelter ${wxFar && wxFar.shelter}`);
+  const sHemp = await settle(45);
+  const wxHemp = await page.evaluate(() => (window.__wx ? window.__wx() : null));
+
+  await warpTo(vx, vy, (w) => (w.shelter || 0) > 0.5, 8);
+  const fur = await buyWear('fur');
+  ok(fur.notices.some((t) => /갖옷/.test(t)), '★★⑤ 모피를 맡기면 **갖옷**이 나온다', JSON.stringify(fur.notices));
+  ok(fur.insC > (wxHemp ? wxHemp.insC : 0), '★★⑤ 배지가 **옷이 몇 ℃ 를 벌어 주는지** 말한다(삼베 < 갖옷)',
+    `삼베 +${wxHemp && wxHemp.insC}℃ → 갖옷 +${fur.insC}℃`);
+  await goFar();
+  const sFur = await settle(45);
+  ok(sFur.b < sHemp.b - 0.005,
+    '★★⑤ **같은 밤·같은 자리·같은 0.9 에서 시작해도 갖옷 쪽이 결정적으로 덜 춥다**',
+    `삼베옷 ${sHemp.b} → 갖옷 ${sFur.b} (차 ${(sHemp.b - sFur.b).toFixed(4)})`);
+  ok(sFur.d < 0 && sFur.d < sHemp.d,
+    '★★⑤ 자명 통과 금지 — 갖옷이 삼베옷보다 **더 많이 되돌린다**',
+    `삼베 Δ${sHemp.d.toFixed(4)} vs 갖옷 Δ${sFur.d.toFixed(4)}`);
+  await snap('cold-05-clothes');
+
   // ── ⑤ 클라가 온도 산수를 **혼자 하지 않는다**(사본 금지 — 달력과 같은 규약) ─
   const csrc = fs.readFileSync(path.join(ROOT, 'public', 'client.js'), 'utf8')
     .split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');

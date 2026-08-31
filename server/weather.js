@@ -135,12 +135,25 @@ function _coldPts() {
   return [[a.tWinterNight, CFG.A_WINTER_NIGHT], [a.tWinterDay, CFG.A_WINTER_DAY],
           [a.tSummerNight, CFG.A_SUMMER_NIGHT], [a.tSummerDay, CFG.A_SUMMER_DAY]];
 }
+// ★★[천장 해제 2026-08-31 재민 확정] **추운 쪽 끝을 붙잡지 않는다 — 마지막 기울기로 잇는다.**
+//   종전엔 가장 추운 제어점(−5℃ → 1.00)에서 표가 **평평해졌다**. 그게 진짜 천장이었다:
+//   −5℃ 도 −15℃ 도 똑같이 1.00 이라, 한겨울 밤의 절반이 같은 값에 붙고 고도 감률도 죽었다.
+//   ⇒ 이제 −5℃ 아래는 **첫 구간의 기울기(0.03/℃)를 그대로 연장**한다. 새 식이 아니라
+//     "붙잡기(clamp)를 안 하는 것"이다 — 곡선은 그대로고 끝만 안 자른다.
+//   ⇒ 반환이 1 을 넘을 수 있다. **상태값은 여전히 0~1** 이다(`tick` 이 거기서 자른다) —
+//     넘친 몫은 세기가 아니라 **속도**로 나타난다(목표점−현재 가 크니 지수 수렴이 가팔라진다).
+//   ⚠따뜻한 쪽(29℃ 위)은 그대로 붙잡는다. 더위 축은 이 세계에 없다(있으면 그건 다른 배치다).
 function coldOfC(tempC) {
   const pts = _coldPts();
   if (!pts) return 0;
-  if (tempC <= pts[0][0]) return pts[0][1];
   const last = pts[pts.length - 1];
   if (tempC >= last[0]) return last[1];
+  if (tempC <= pts[0][0]) {
+    // ★외삽 — 첫 구간의 기울기를 그대로 쓴다(꺾이지 않는다 ⇒ 어디서도 C0 연속)
+    const [x0, y0] = pts[0], [x1, y1] = pts[1];
+    const slope = (y1 - y0) / (x1 - x0 || 1);           // 음수(추울수록 큰 값)
+    return y0 + slope * (tempC - x0);
+  }
   for (let i = 1; i < pts.length; i++) {
     const [x0, y0] = pts[i - 1], [x1, y1] = pts[i];
     if (tempC <= x1) return y0 + (y1 - y0) * ((tempC - x0) / (x1 - x0 || 1));
@@ -158,7 +171,9 @@ function ampMultOf(day) {
 
 /**
  * 그 시각의 기온(℃). elevKm 을 주면 econ 감률(−6.5℃/km)이 그대로 걸린다.
- * ⚠지금 `Body` 는 elevKm=0 으로만 부른다 — 산 추위는 회부(추위 축 천장 문제와 묶여 있다).
+ * ★[천장 해제] 이제 감률이 **살아 있다** — 목표점이 1 에서 안 잘리므로 높은 곳이 실제로 더 빨리 언다.
+ * ⚠다만 **이 세계의 산은 35m 다**(산 높이 캐논) ⇒ 0.23℃ ≈ 추위 0.007. 모델은 살았지만 세계가 낮다.
+ *   게다가 바위 셀은 **통행 불가**라 플레이어가 설 수 있는 고도가 지금은 0 뿐이다 — 회부.
  */
 function tempAt(day, night, elevKm) {
   const E = _E(), a = _anchors();
@@ -166,25 +181,31 @@ function tempAt(day, night, elevKm) {
   const mean = E.temperatureAt(day, null, elevKm || 0);
   return mean + devCOf(day) + (night ? -1 : 1) * a.diurnalAmp * ampMultOf(day);
 }
-/** 옷·불·실내·마을을 **뺀** "밖이 얼마나 추운가"(0..1). `Body.coldTarget` 의 바깥 항.
+/** 불·실내·마을을 **뺀** "얼마나 추운가"(옷의 단열 `insC` ℃ 는 반영). ★**1 을 넘을 수 있다**(하한만 0).
  *  ★한 틱의 모든 플레이어가 **같은 (day, night, elev)** 를 묻는다 ⇒ 한 칸 메모로 적중률이 사실상 100%다.
  *    (fBm 3옥타브 + 코사인을 플레이어 수만큼 다시 도는 건 그냥 낭비다. 결과는 순수 함수라 같다.) */
 let _oc = { k: null, v: null };
-function outdoorCold(day, night, elevKm) {
-  const k = `${day}|${night ? 1 : 0}|${elevKm || 0}`;
+function outdoorCold(day, night, elevKm, insC) {
+  const k = `${day}|${night ? 1 : 0}|${elevKm || 0}|${insC || 0}`;
   if (_oc.k === k) return _oc.v;
-  const t = tempAt(day, night, elevKm);
-  const v = (t === null) ? null : +Math.max(0, Math.min(1, coldOfC(t))).toFixed(4);
+  // ★[옷 티어] `insC` = 옷의 단열(℃). 고도 감률·날씨 편차와 **같은 단위**라 그냥 더한다.
+  const t0 = tempAt(day, night, elevKm);
+  const t = (t0 === null) ? null : t0 + (+insC || 0);
+  const v = (t === null) ? null : +Math.max(0, coldOfC(t)).toFixed(4);   // ★상한 없음(천장 해제)
   _oc = { k, v };
   return v;
 }
 
 // ── 겉은 계단(§8.3) — 표시는 6단계. 몸 상태가 아니라 **바깥 날씨**의 이름이다 ──
+//   ★[천장 해제] 1 초과 구간이 생겼다 — 화면이 "여기서 더 갈 데가 있다"고 말해야 한다.
+//   ⚠맨 윗칸을 '살인적'이라 부르지 않는다: **추위는 아직 HP 를 안 깎는다**(아사 폐지 캐논).
+//     화면이 죽음을 약속하면 그건 거짓말이다. 대신 몸으로 느껴지는 말을 쓴다.
 const _LABELS = [[0.15, '포근함', '🌤'], [0.35, '선선함', '🍃'], [0.55, '쌀쌀함', '🌬'],
-                 [0.75, '추움', '❄️'], [0.92, '혹한', '🥶'], [2, '맹추위', '🧊']];
+                 [0.75, '추움', '❄️'], [0.92, '혹한', '🥶'], [1.05, '맹추위', '🧊'],
+                 [99, '살을 에는 추위', '🩸']];
 function label(cold) {
   for (const [at, ko, emo] of _LABELS) if (cold < at) return { ko, emo };
-  return { ko: '맹추위', emo: '🧊' };
+  return { ko: '살을 에는 추위', emo: '🩸' };
 }
 function hintOf(day, night, elevKm) {
   const cold = outdoorCold(day, night, elevKm);

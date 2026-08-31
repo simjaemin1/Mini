@@ -59,9 +59,16 @@ const DAYS = [
   ['한여름', Math.round(A.summerMid)], ['가을중', Math.round((A.summerMid + A.winterMid) / 2)],
   ['초겨울', 275], ['한겨울', Math.round(A.winterMid)], ['늦겨울', 350], ['이른봄', 20],
 ];
+// ★옷은 **게임이 만드는 그대로** 가져온다(하네스가 warmth 를 지어내지 않는다 — 사본 금지).
+const PI = require('../server/player-items');
+const gear = (mat, lv) => PI.craftItem('clothes', lv, { [mat]: 3 }).attrs.warmth;
+const W_HEMP = gear('hemp', 0), W_HIDE = gear('hide', 3), W_LEATHER = gear('leather', 5), W_FUR = gear('fur', 8);
 const PLACES = [
   ['야생 맨몸', { villageShelter: 0, warmth: 0 }],
-  ['야생 조잡한옷(w15)', { villageShelter: 0, warmth: 15 }],
+  [`야생 삼베옷(w${W_HEMP})`, { villageShelter: 0, warmth: W_HEMP }],
+  [`야생 생가죽옷(w${W_HIDE})`, { villageShelter: 0, warmth: W_HIDE }],
+  [`야생 가죽옷(w${W_LEATHER})`, { villageShelter: 0, warmth: W_LEATHER }],
+  [`야생 갖옷(w${W_FUR})`, { villageShelter: 0, warmth: W_FUR }],
   ['마을 맨몸', { villageShelter: 1, warmth: 0 }],
   ['마을 가장자리', { villageShelter: 0.5, warmth: 0 }],
   ['야생 모닥불', { villageShelter: 0, warmth: 0, nearFire: true }],
@@ -87,6 +94,27 @@ for (const [pn, pctx] of PLACES) {
   }
 }
 if (!csv) {
+  // ── ★[천장 해제] 가장 추운 밤이 평범한 밤보다 **빠른가** ─────────────────────
+  console.log('\n■ 천장 해제 — 한겨울 자정 24년, 목표점 순 정렬');
+  {
+    const wd = Math.round(A.winterMid), rows = [];
+    for (let k = 0; k < 24; k++) { const d = wd + 365 * k; rows.push(Object.assign({ d }, run({ day: d, night: true, warmth: 0, villageShelter: 0 }))); }
+    rows.sort((a, b) => b.tgt - a.tgt);
+    const f = (r) => `목표 ${r.tgt.toFixed(3)} → ${r.t3 === null ? '안 옴' : (r.t3 / 60).toFixed(1) + '분'}`;
+    console.log(`  가장 추운 밤  ${f(rows[0])}`);
+    console.log(`  중앙          ${f(rows[12])}`);
+    console.log(`  가장 포근한 밤 ${f(rows[23])}`);
+    const hit = rows.filter((r) => r.t3 !== null).map((r) => +(r.t3 / 60).toFixed(1));
+    console.log(`  도달 ${hit.length}/24 · 시간 ${[...new Set(hit)].sort((a, b) => a - b).join(' / ')}분`);
+    console.log('  ★종전(천장 있음)엔 도달한 밤이 **전부 7.0분 하나**였다 — 가장 추운 밤이 안 추웠다.');
+  }
+  // ── ★고도 감률 — 모델은 살았는가(세계가 낮은 것과 별개로) ────────────────────
+  console.log('\n■ 고도 감률(econ −6.5℃/km) — 같은 밤 · 야생 맨몸');
+  for (const el of [0, 0.035, 0.25, 0.5, 1, 2]) {
+    const r = run({ day: Math.round(A.winterMid), night: true, warmth: 0, elevKm: el });
+    console.log(`  ${String(el).padStart(5)}km  목표 ${r.tgt.toFixed(4)}  → ${r.t3 === null ? '안 옴' : (r.t3 / 60).toFixed(1) + '분'}`
+      + (el === 0.035 ? '   ← ★이 세계의 산 높이 캐논(35m). 게다가 바위 셀은 통행 불가다.' : ''));
+  }
   console.log('\n— 판정 목표 —');
   const wn = sample(Math.round(A.winterMid), { night: true, villageShelter: 0, warmth: 0 });
   const vn = sample(Math.round(A.winterMid), { night: true, villageShelter: 1, warmth: 0 });

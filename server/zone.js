@@ -4213,11 +4213,27 @@ function weatherNow() {
 function weatherFor(p, now) {
   const w = weatherNow();
   if (!w) return null;
+  // ★[옷 티어 2026-08-31] 지금 입은 옷이 **몇 ℃ 를 벌어 주는지** — 화면이 그걸 말해야
+  //   "가죽옷을 사야 하나"가 판단이 된다(비네트가 원인 축을 말하게 하는 규약과 같은 자리).
+  let insC = 0;
+  try {
+    const cl = getEquippedEquipment(p, 'clothes');
+    insC = Body.warmthInsC((cl && cl.attrs && cl.attrs.warmth) || 0);
+  } catch (e) {}
   const sh = villageShelterOf(p, now || Date.now());
   // ★`cut` 은 "마을이 실제로 몇 % 깎아 주는가" — 클라가 `COLD_VILLAGE_SHELTER` 사본을 갖지 않게 여기서 낸다.
   const cut = +(Math.max(0, Math.min(1, sh)) * Body.CFG.COLD_VILLAGE_SHELTER).toFixed(4);
-  return Object.assign({}, w, { shelter: sh, cut });
+  return Object.assign({}, w, { shelter: sh, cut, insC: +insC.toFixed(2) });
 }
+// ★★[천장 해제 2026-08-31] 그 자리의 고도(km) — econ 기온 감률(−6.5℃/km)의 입력.
+//   ★★실측 보고(이 배치 §0): **지금은 언제나 0 이다. 그게 거짓말이 아니라 세계의 사실이다.**
+//     ① 산 높이 캐논이 **35m** 다(client.js:2514 "산 높이 35m 확정") ⇒ 감률 기여 0.23℃ ≈ 추위 0.007.
+//     ② 바위 셀은 **통행 불가**다(`isRockTileLocal` — Phase 5-H) ⇒ 플레이어가 산 위에 설 수 없다.
+//        고개(pass)는 걸을 수 있지만 그건 산을 **뚫고 지나가는 길**이라 고도가 아니다.
+//   ⇒ 그래서 **없는 고도를 지어내지 않는다.** 배선만 정본으로 살려 두고(모델은 `test-body ⑮㉢`가
+//     elevKm 스윕으로 매번 확인한다), 걸을 수 있는 고도가 생기는 날 **이 함수 하나만** 고치면 된다.
+//   ⚠여기에 "산 근처면 0.5km" 같은 대리값을 넣지 마라 — 그건 지형이 아니라 소원이다.
+function elevKmAt(p) { return 0; }
 // ★[겨울 난이도] 마을 완충 — 플레이어별 캐시(초당 1회·64px 이동 이상일 때만 재계산).
 //   마을 스캔은 싸지만(≤50개) 매 틱 전원분은 낭비다. 완충은 걸어서 바뀌는 값이라 1초면 충분하다.
 const _SHELTER_TTL_MS = 1000, _SHELTER_MOVE_PX = 64;
@@ -4283,7 +4299,8 @@ function doShopBuy(player, itemType, material) {
   const qkey = EQUIP_TYPE_QKEY[itemType];
   const villageQ = (vq[qkey] != null ? vq[qkey] : 0.6);   // 마을 품질 EMA(없으면 기본)
   let inst;
-  try { inst = PlayerItems.materializeFromVillage(itemType, villageQ, Math.random); }
+  // ★[옷 티어] 가져간 재료를 넘긴다 — 장인이 모피로 지으면 갖옷이 나와야 한다(이름 = 성능).
+  try { inst = PlayerItems.materializeFromVillage(itemType, villageQ, Math.random, { [material]: recipe.qty }); }
   catch (e) { send(player.ws, { type: 'notice', text: `구매 실패: ${e.message}` }); return; }
   inst.id = genEquipId(); inst.mat = material;
   player.inventory[material] = have - recipe.qty;
@@ -8090,7 +8107,7 @@ setInterval(() => {
     //   `seasonCold` 는 그대로 같이 넘긴다 — `day` 가 없는 호출부를 위한 **폴백 계약**이라
     //   여기선 안 쓰이지만, 계약이 살아 있다는 걸 호출부가 보여 주는 편이 낫다.
     //   ★[겨울 난이도] 마을 완충은 여기서만 계산한다(사본 금지 — `SimVillages.shelterAt` 이 정본).
-    Body.tick(p, dt, { day: gameDayNow(), night: _night, nearFire: _fire, indoor: _indoor, warmth,
+    Body.tick(p, dt, { day: gameDayNow(), elevKm: elevKmAt(p), night: _night, nearFire: _fire, indoor: _indoor, warmth,
                        villageShelter: villageShelterOf(p, now),
                        seasonCold: seasonColdNow(), moving, sprint: p.sprint, carryRatio: _cr, now });
     p._cold = Body.ensure(p).cold > 0.05;

@@ -550,6 +550,144 @@ function codeOnly(src) {
       '★★⑭㉧ **econ 무수정** — `seasonOf` 365일 4분기도, `CLIMATE` 도 정본 그대로다');
   }
 
+  // ═══ ⑮ 추위 2차 — 천장 해제 · 옷 티어 [재민 확정 2026-08-31] ═════════════════
+  //   재민: *"가장 추운 밤은 '더 춥게'가 아니라 '더 빨리'"* ·
+  //         *"조잡한 베옷은 한겨울 야생 밤을 못 막는다 — 겨울 = 가죽·모피 수요"*
+  say('\n⑮ 추위 2차 — 목표점 천장 해제 · 옷 티어 분화');
+  {
+    const Wx = require(path.join(ROOT, 'server', 'weather.js'));
+    const PI = require(path.join(ROOT, 'server', 'player-items.js'));
+    const A = Wx.anchors();
+    const wd = Math.round(A.winterMid);
+    const S3 = B.STAGE_AT.cold[2] + B.CFG.STAGE_HYST;
+    const clock = (ctx) => { const P = { hunger: 100, thirst: 100 }; B.ensure(P);
+      for (let s2 = 1; s2 <= 3600; s2++) { B.tick(P, 1, ctx); if (B.ensure(P).cold >= S3) return s2; } return null; };
+    const years = (ctx, doy) => { let h = 0; const ts = [];
+      for (let k = 0; k < 24; k++) { const t = clock(Object.assign({ day: (doy == null ? wd : doy) + 365 * k }, ctx)); if (t !== null) { h++; ts.push(t); } }
+      ts.sort((a2, b2) => a2 - b2); return { hit: h, med: ts.length ? ts[ts.length >> 1] : null }; };
+
+    // ── ㉠ 천장 해제 — 목표점은 1 을 넘고, 상태는 **절대** 안 넘는다 ─────────
+    const tHigh = B.coldTarget({ day: wd, night: true, warmth: 0, elevKm: 1 });
+    ok(tHigh > 1, '★★⑮㉠ 목표점이 **1 을 넘는다**(천장 해제) — 종전엔 여기서 잘렸다', tHigh);
+    ok(Wx.coldOfC(-15) > Wx.coldOfC(-5), '★⑮㉠ ℃ 곡선이 추운 끝에서 **평평하지 않다**',
+      `−15℃ ${Wx.coldOfC(-15).toFixed(3)} > −5℃ ${Wx.coldOfC(-5).toFixed(3)}`);
+    // ★상태값 불변 — 1 초과 목표점을 오래 먹여도 저장·페이로드가 1 을 넘지 않는다
+    {
+      const P = { hunger: 100, thirst: 100 };
+      for (let s2 = 0; s2 < 1800; s2++) B.tick(P, 1, { day: wd, night: true, warmth: 0, elevKm: 2 });
+      const bd = B.ensure(P);
+      ok(bd.cold <= 1 && bd.cold > 0.99, '★★⑮㉠ **상태는 0~1** — 목표점 1.32 를 30분 먹여도 1 에서 멈춘다', bd.cold);
+      ok(B.toSave(P).cold <= 1 && B.selfPayload(P).cold <= 1, '★★⑮㉠ 저장·페이로드에도 1 초과가 안 샌다',
+        `save ${B.toSave(P).cold} · self ${B.selfPayload(P).cold}`);
+      ok(B.severity(P).cold <= 1 && B.moodles(P).every((m) => m.sev <= 1), '★⑮㉠ 심각도·무들 단계도 0~1 규약 그대로');
+    }
+    // 소스 계약 — `tick` 만이 상태를 자른다(coldTarget 에 상한 클램프가 되살아나면 여기서 걸린다)
+    const bsrc2 = codeOnly(fs.readFileSync(path.join(ROOT, 'server', 'body.js'), 'utf8'));
+    const ctSrc = bsrc2.split('function coldTarget')[1].split('\nfunction ')[0];
+    //   ★목표점 `t` 를 1 로 자르는 줄만 본다(마을 완충 비율의 0~1 클램프는 다른 것이다).
+    //     폴백 계단은 종전 계약대로 1 에서 자르므로 그 한 줄은 허용한다 — 곡선 경로엔 없어야 한다.
+    const ctClamps = (ctSrc.match(/Math\.min\(1,\s*t\b|Math\.min\(1,\s*Math\.max\(0,\s*t\b/g) || []);
+    ok(ctClamps.length === 0, '★★⑮㉠ `coldTarget` 이 **목표점을 1 로 자르지 않는다**(천장이 되살아나지 않았다)',
+      ctClamps.join(' | ') || '0개');
+    ok(/Math\.min\(1, b\.cold/.test(bsrc2), '★⑮㉠ 대신 `tick` 이 상태를 자른다(0~1 규약의 유일한 자리)');
+
+    // ── ㉡ 가장 추운 밤이 **더 빨리** 3단계 ───────────────────────────────────
+    const nights = [];
+    for (let k = 0; k < 24; k++) { const d = wd + 365 * k; nights.push({ tgt: B.coldTarget({ day: d, night: true, warmth: 0 }), t3: clock({ day: d, night: true, warmth: 0 }) }); }
+    nights.sort((a2, b2) => b2.tgt - a2.tgt);
+    const reached = nights.filter((n) => n.t3 !== null);
+    ok(reached.length >= 8, '(상황) 24년 중 3단계에 닿는 밤이 실제로 여럿이다 — 아니면 아래가 자명하다', `${reached.length}/24`);
+    ok(nights[0].t3 !== null && nights[0].t3 < reached[Math.floor(reached.length / 2)].t3,
+      '★★⑮㉡ **가장 추운 밤이 평범한 한겨울 밤보다 빨리** 3단계에 닿는다(강도가 아니라 속도)',
+      `최한 ${(nights[0].t3 / 60).toFixed(1)}분 < 중앙 ${(reached[Math.floor(reached.length / 2)].t3 / 60).toFixed(1)}분`);
+    ok(new Set(reached.map((n) => n.t3)).size >= 5,
+      '★★⑮㉡ 도달 시간이 **여러 값으로 갈린다** — 종전엔 클램프 때문에 전부 같은 한 값이었다',
+      `${new Set(reached.map((n) => n.t3)).size}가지`);
+    // 초겨울은 여전히 훨씬 덜 위험하다(1차 배치의 약속이 안 깨졌다)
+    const early = years({ night: true, warmth: 0 }, 275);
+    ok(early.hit < reached.length, '★⑮㉡ 초겨울 밤은 여전히 한겨울보다 덜 간다',
+      `초겨울 ${early.hit}/24 < 한겨울 ${reached.length}/24`);
+
+    // ── ㉢ 고도 감률 부활 — elevKm 스윕이 **단조** ────────────────────────────
+    const sweep = [0, 0.25, 0.5, 1, 2].map((el) => ({ el, tgt: B.coldTarget({ day: wd, night: true, warmth: 0, elevKm: el }), t3: clock({ day: wd, night: true, warmth: 0, elevKm: el }) }));
+    let mono = true;
+    for (let i = 1; i < sweep.length; i++) if (!(sweep[i].tgt > sweep[i - 1].tgt)) mono = false;
+    ok(mono, '★★⑮㉢ **높을수록 목표점이 높다**(econ 감률 −6.5℃/km 가 살아 있다)',
+      sweep.map((x) => `${x.el}km ${x.tgt}`).join(' · '));
+    const hi = sweep.filter((x) => x.t3 !== null);
+    let monoT = true;
+    for (let i = 1; i < hi.length; i++) if (!(hi[i].t3 < hi[i - 1].t3)) monoT = false;
+    ok(hi.length >= 3 && monoT, '★★⑮㉢ **높을수록 빨리** 3단계에 닿는다',
+      hi.map((x) => `${x.el}km ${(x.t3 / 60).toFixed(1)}분`).join(' · '));
+    // ★정직 보고 — 이 세계의 산은 35m 다. 모델은 살았지만 세계가 낮다.
+    const at35 = B.coldTarget({ day: wd, night: true, warmth: 0, elevKm: 0.035 });
+    say(`     ⚠산 높이 캐논 35m 에서의 실제 기여: ${(at35 - sweep[0].tgt).toFixed(4)} (사실상 0) — 게다가 바위 셀은 통행 불가다. 회부.`);
+
+    // ── ㉣ 옷 티어 — 실제로 **계단**이 서는가 ────────────────────────────────
+    //   ★옷은 게임이 만드는 그대로 쓴다(하네스가 warmth 를 지어내지 않는다).
+    const tier = (mat, lv) => PI.craftItem('clothes', lv, { [mat]: 3 }).attrs.warmth;
+    const W_BARE = 0, W_HEMP = tier('hemp', 0), W_LEATHER = tier('leather', 5), W_FUR = tier('fur', 8);
+    ok(W_HEMP < W_LEATHER && W_LEATHER < W_FUR, '(상황) 재료가 실제로 다른 방한값을 낸다',
+      `삼베 ${W_HEMP} < 가죽 ${W_LEATHER} < 모피 ${W_FUR}`);
+    const rBare = years({ night: true, warmth: W_BARE });
+    const rHemp = years({ night: true, warmth: W_HEMP });
+    const rLeat = years({ night: true, warmth: W_LEATHER });
+    const rFur = years({ night: true, warmth: W_FUR });
+    say(`     한겨울 자정 야생 24년 도달 — 맨몸 ${rBare.hit} · 삼베옷 ${rHemp.hit} · 가죽옷 ${rLeat.hit} · 갖옷 ${rFur.hit}`);
+    ok(rHemp.hit >= 12, '★★⑮㉣ **삼베옷은 한겨울 야생 밤을 못 막는다**(≥50%)', `${rHemp.hit}/24`);
+    ok(rLeat.hit <= 2, '★★⑮㉣ **가죽옷이면 버틸 만하다**(≤10%)', `${rLeat.hit}/24`);
+    ok(rFur.hit === 0, '★★⑮㉣ **갖옷이면 한겨울 밤이 안전하다**(≈0%)', `${rFur.hit}/24`);
+    ok(rBare.hit >= rHemp.hit && rHemp.hit > rLeat.hit && rLeat.hit >= rFur.hit,
+      '★★⑮㉣ 티어가 **단조 계단**이다(뒤집힘 없음)');
+    // ★자명 통과 금지 — 옷이 초겨울·마을에서는 실제로 쓸모가 있다(전부 무용지물이 아니다)
+    ok(B.coldTarget({ day: wd, night: true, warmth: W_HEMP }) < B.coldTarget({ day: wd, night: true, warmth: 0 }),
+      '★⑮㉣ 삼베옷도 목표점을 낮추긴 한다(쓸모 0 이 아니다)');
+
+    // ── ㉤ 단열 모델 — ℃ 로 작용하고, 문턱 아래는 0 ──────────────────────────
+    ok(B.warmthInsC(B.CFG.WARMTH_MIN) === 0 && B.warmthInsC(B.CFG.WARMTH_MIN - 1) === 0,
+      '★★⑮㉤ 방한이 문턱 아래면 단열 **0** — 헐거운 옷은 바람이 지나간다', `문턱 ${B.CFG.WARMTH_MIN}`);
+    ok(B.warmthInsC(W_FUR) > B.warmthInsC(W_LEATHER) && B.warmthInsC(W_LEATHER) > 0,
+      '★⑮㉤ 문턱 위에서는 방한에 비례해 단열이 는다',
+      `가죽 +${B.warmthInsC(W_LEATHER).toFixed(2)}℃ · 갖옷 +${B.warmthInsC(W_FUR).toFixed(2)}℃`);
+    // ★옷과 고도가 **같은 단위**라 상쇄된다 — 이게 ℃ 모델을 택한 이유다
+    const insFur = B.warmthInsC(W_FUR);
+    const elevSame = insFur / 6.5;   // econ 감률 −6.5℃/km 의 역
+    const a = B.coldTarget({ day: wd, night: true, warmth: 0, elevKm: 0 });
+    const c2 = B.coldTarget({ day: wd, night: true, warmth: W_FUR, elevKm: elevSame });
+    ok(Math.abs(a - c2) < 0.01, '★★⑮㉤ **갖옷 +4.7℃ 와 고도 −4.7℃ 가 정확히 상쇄된다**(같은 단위)',
+      `평지 맨몸 ${a} ≈ ${elevSame.toFixed(3)}km 갖옷 ${c2}`);
+    // 이중 계산 금지 — 곡선 경로에선 곱셈 노출을 안 쓴다
+    const ctSrc2 = ctSrc;
+    ok(/if \(outdoor === null\) t \*= exposure/.test(ctSrc2),
+      '★★⑮㉤ 곡선 경로에서 **곱셈 노출을 안 곱한다**(옷은 ℃ 로 이미 들어갔다 — 이중 계산 금지)');
+
+    // ── ㉥ 폴백(4단 계단) 경로는 **종전 그대로** ─────────────────────────────
+    const fb = B.coldTarget({ seasonCold: 1, night: true, warmth: 25 });
+    const fbExpect = +(1.0 * Math.max(0, 1 - 25 / B.CFG.WARMTH_FULL)).toFixed(4);
+    ok(fb === fbExpect, '★⑮㉥ `day` 없는 폴백은 종전 **곱셈 노출** 계약 그대로다', `${fb} = ${fbExpect}`);
+
+    // ── ㉦ HP 불감소 · econ 무수정 ───────────────────────────────────────────
+    {
+      const P = { hunger: 100, thirst: 100, hp: 63 };
+      for (let s2 = 0; s2 < 1800; s2++) B.tick(P, 1, { day: wd, night: true, warmth: 0, elevKm: 2 });
+      ok(P.hp === 63, '★★⑮㉦ 목표점 1.3 짜리 밤에 30분을 얼어도 **HP 는 한 점도 안 깎인다**', `hp ${P.hp} · cold ${B.ensure(P).cold}`);
+    }
+    const esrc2 = fs.readFileSync(path.join(ROOT, 'sim', 'economy-sim-v2.js'), 'utf8');
+    ok(/CLIMATE = \{ zoneLatBase: 12, annualAmp: 12, diurnalAmp: 5/.test(esrc2) && /const d = day % 365;/.test(esrc2),
+      '★★⑮㉦ **econ 무수정** — 기온 모델도 계절도 정본 그대로');
+
+    // ── ㉧ 옷 이름 = 재료(고증) · 장인 구매도 재료를 따른다 ──────────────────
+    ok(/갖옷/.test(PI.displayItem(PI.craftItem('clothes', 8, { fur: 3 })))
+      && /삼베옷/.test(PI.displayItem(PI.craftItem('clothes', 0, { hemp: 3 }))),
+      '★⑮㉧ 옷이 **재료 이름**으로 불린다(갖옷·삼베옷 — 고증)',
+      PI.displayItem(PI.craftItem('clothes', 8, { fur: 3 })));
+    const buyHemp = PI.materializeFromVillage('clothes', 0.8, () => 0.5, { hemp: 3 });
+    const buyFur = PI.materializeFromVillage('clothes', 0.8, () => 0.5, { fur: 3 });
+    ok(buyFur.attrs.warmth > buyHemp.attrs.warmth,
+      '★★⑮㉧ **장인 구매도 가져간 재료를 따른다** — 이름이 성능을 말한다(종전엔 재료 무관 동일값)',
+      `삼베 ${buyHemp.attrs.warmth} < 모피 ${buyFur.attrs.warmth}`);
+  }
+
   // ═══ ⑧ 픽스처 결백 ═════════════════════════════════════════════════════════
   say('\n⑧ 픽스처 결백(족보 ㊻)');
   // ★①(오프라인 불변)이 자명 통과하지 않으려면, 그 절이 **저장을 건드리지 않아야** 한다.

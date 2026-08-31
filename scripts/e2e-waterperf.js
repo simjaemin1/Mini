@@ -147,36 +147,58 @@ const BOX = [40, 260, 1360, 860];
   }
   ok(wp > 3, `★자명 통과 금지 — 실제로 물을 보고 있다 (${wp.toFixed(1)}%)`);
 
-  say('\n[ⓐ 걷는 속도로 창이 밀릴 때 — 흐름 텍스처 장당 시간 (step 16셀 = 실제 주행 한 칸)]');
-  const slow = await probe('대조군(slowFlow=수리 전 비용)', { slowFlow: true }, 16);
-  const fast = await probe('수리본', { slowFlow: false }, 16);
-  ok(fast.max < slow.max / 3, `★★수리본이 한 장 최대에서 3배 이상 빠르다 (${fast.max.toFixed(0)}ms vs ${slow.max.toFixed(0)}ms)`);
-  ok(fast.avg < slow.avg / 3, `★★평균도 3배 이상 (${fast.avg.toFixed(0)}ms vs ${slow.avg.toFixed(0)}ms)`);
-  ok(fast.max < 120, `★★한 프레임이 120ms 아래다 (${fast.max.toFixed(0)}ms) — 헤드리스는 실기보다 느리므로 상한이다`);
-
-  say('\n[ⓑ 완전히 새 땅(step 128셀 = 겹침 0) — 순간이동·존 진입의 최악값]');
-  const slowJ = await probe('대조군', { slowFlow: true }, 128);
-  const fastJ = await probe('수리본', { slowFlow: false }, 128);
-  ok(fastJ.max < slowJ.max / 3, `★겹침이 0 이어도 3배 이상 빠르다 (${fastJ.max.toFixed(0)}ms vs ${slowJ.max.toFixed(0)}ms)`);
-
-  // ★반례는 **두 탐침의 최악값**으로 잰다. `isWaterCellLocal` 의 비용이 자리에 따라 자릿수로
-  //   갈리기 때문이다 — 창 안에 강·호수가 많으면 셀당 ~75µs, 물이 없으면 사실상 0
-  //   (같은 판에서 대조군이 301ms 와 3ms 를 둘 다 냈다). 한 탐침의 절대값에 문턱을 걸면
-  //   **수리가 아니라 촬영 자리**를 재게 된다. 그래서 이 판의 물 많은 창 = 최악값을 쓴다.
-  //   (재민이 겪은 렉도 '물 근처'에서만 나온다 — 그 자리를 재는 게 맞다.)
-  const slowWorst = Math.max(slow.max, slowJ.max), fastWorst = Math.max(fast.max, fastJ.max);
+  // ═══ ★★[짝 비교 전환 2026-08-31 재민 확정] 한 판 단일 측정 → **번갈아 여러 판** ═══
+  //
+  //   재민 확정: *"ms 는 기계 의존 — 같은 순간 A/B 로만."*
+  //   종전엔 slow/fast 를 **한 번씩만** 재고 그 배율에 문턱 8 을 걸었다. 2코어 컨테이너에서
+  //   `max of 8 frames` 는 꼬리가 두꺼워, **베이스 커밋도** 5.2~9.4 로 흔들렸다(온도 배치 실측 17판).
+  //   문턱이 분포 한가운데에 걸려 있었던 것이다 — 그건 수리가 아니라 **그날의 CPU** 를 재는 판정이다.
+  //
+  //   ⇒ 고치는 방향은 **문턱을 낮추는 게 아니라**(그건 판정을 느슨하게 만드는 것) **통계를 고치는 것**:
+  //     ① 한 라운드 안에서 slow → fast 를 **붙여서** 잰다(같은 순간 = 같은 CPU 부하를 공유).
+  //     ② 라운드를 여러 번 돌려 **라운드별 배율의 중앙값**으로 판정한다(꼬리를 자른다).
+  //   ⇒ 문턱 8 은 그대로 둔다. 느슨해지지 않았고, 오히려 잡음이 빠져 더 엄해졌다.
+  const ROUNDS = parseInt(process.env.WATERPERF_ROUNDS || '5', 10) || 5;
   const FRAME = 1000 / 60;   // 60fps 한 프레임 = 16.7ms
-  const ratio = slowWorst / Math.max(0.01, fastWorst);
-  say(`\n    두 탐침 최악값 — 대조 ${slowWorst.toFixed(0)}ms(${(slowWorst / FRAME).toFixed(1)}프레임) · 수리본 ${fastWorst.toFixed(0)}ms(${(fastWorst / FRAME).toFixed(1)}프레임) · 배율 ${ratio.toFixed(1)}배`);
-  // ★반례를 **프레임 예산**으로 말한다. 절대 ms 문턱(200)은 두 번 거짓 실패를 냈다 —
-  //   `isWaterCellLocal` 비용이 창 안 물의 양에 비례해 자릿수로 갈리기 때문이다
-  //   (같은 판에서 대조군이 301ms 와 3ms 를 둘 다 냈고, 어떤 판은 최악이 172ms 였다).
-  //   그때마다 수리는 14~119배로 멀쩡했다 — 문턱이 **수리가 아니라 촬영 자리**를 재고 있었다.
-  //   ⇒ 두 주장을 함께 건다: ①대조는 한 프레임 예산을 4배 이상 날린다(=체감되는 히치)
-  //     ②수리본은 그보다 8배 이상 빠르다. 자리가 어디든 성립하고, 느슨해지지도 않는다.
-  ok(slowWorst > FRAME * 4, `★★반례 — 수리를 끄면 한 프레임 예산을 4배 넘긴다 (${slowWorst.toFixed(0)}ms = ${(slowWorst / FRAME).toFixed(1)}프레임 > 4)`);
-  ok(ratio >= 8, `★★수리본이 8배 이상 빠르다 (${ratio.toFixed(1)}배)`);
-  ok(fastWorst < 120, `★★수리본은 최악값도 120ms 아래다 (${fastWorst.toFixed(0)}ms)`);
+  const med = (a) => { const b = a.slice().sort((x, y) => x - y); return b[b.length >> 1]; };
+  say(`\n[ⓐ 같은 순간 짝 비교 — slow↔fast 를 붙여서 ${ROUNDS}라운드, 배율의 중앙값으로 판정]`);
+  const R = [];
+  for (let i = 0; i < ROUNDS; i++) {
+    // 걷는 속도(16셀 = 창이 밀릴 때) · 새 땅(128셀 = 겹침 0 · 순간이동 최악값) 둘 다 한 라운드에 넣는다
+    const s16 = await probe(`R${i + 1} 대조(16)`, { slowFlow: true }, 16);
+    const f16 = await probe(`R${i + 1} 수리(16)`, { slowFlow: false }, 16);
+    const s128 = await probe(`R${i + 1} 대조(128)`, { slowFlow: true }, 128);
+    const f128 = await probe(`R${i + 1} 수리(128)`, { slowFlow: false }, 128);
+    const sw = Math.max(s16.max, s128.max), fw = Math.max(f16.max, f128.max);
+    R.push({ sw, fw, r: sw / Math.max(0.01, fw), s16: s16.max, f16: f16.max, s16a: s16.avg, f16a: f16.avg });
+    say(`    R${i + 1}: 대조 최악 ${sw.toFixed(0)}ms · 수리 최악 ${fw.toFixed(0)}ms → 배율 ${R[i].r.toFixed(1)}배`);
+  }
+  const rMed = med(R.map((x) => x.r)), swMed = med(R.map((x) => x.sw)), fwMed = med(R.map((x) => x.fw));
+  say(`\n    ★중앙값 — 대조 ${swMed.toFixed(0)}ms(${(swMed / FRAME).toFixed(1)}프레임) · 수리본 ${fwMed.toFixed(0)}ms(${(fwMed / FRAME).toFixed(1)}프레임) · **배율 ${rMed.toFixed(1)}배**`
+    + `   [판별 폭 ${Math.min(...R.map((x) => x.r)).toFixed(1)}~${Math.max(...R.map((x) => x.r)).toFixed(1)}]`);
+  ok(med(R.map((x) => x.f16)) < med(R.map((x) => x.s16)) / 3,
+    `★★수리본이 한 장 최대에서 3배 이상 빠르다 (${med(R.map((x) => x.f16)).toFixed(0)}ms vs ${med(R.map((x) => x.s16)).toFixed(0)}ms · 중앙값)`);
+  ok(med(R.map((x) => x.f16a)) < med(R.map((x) => x.s16a)) / 3,
+    `★★평균도 3배 이상 (${med(R.map((x) => x.f16a)).toFixed(0)}ms vs ${med(R.map((x) => x.s16a)).toFixed(0)}ms · 중앙값)`);
+  ok(fwMed < 120, `★★한 프레임이 120ms 아래다 (${fwMed.toFixed(0)}ms) — 헤드리스는 실기보다 느리므로 상한이다`);
+  ok(swMed > FRAME * 4, `★★반례 — 수리를 끄면 한 프레임 예산을 4배 넘긴다 (${swMed.toFixed(0)}ms = ${(swMed / FRAME).toFixed(1)}프레임 > 4)`);
+  ok(rMed >= 8, `★★수리본이 8배 이상 빠르다 (중앙값 ${rMed.toFixed(1)}배 · ${ROUNDS}라운드 짝 비교)`);
+  // ── ★★자명 통과 금지 — **판정이 실패할 줄 아는가**를 같은 판에서 증명한다 ──────────
+  //   중앙값 판정으로 바꿨으니, 그 판정이 "무엇을 넣어도 통과"하는 건 아닌지 **여기서** 보여야 한다.
+  //   ⇒ 수리본 자리에 **일부러 대조군을 넣어** 한 라운드를 더 돈다. 배율은 1 근처로 떨어져야 하고,
+//     같은 문턱(8)에 걸려 **실패해야** 한다. 안 떨어지면 판정이 아무것도 안 재고 있는 것이다.
+  {
+    const sA = await probe('반례 대조(16)', { slowFlow: true }, 16);
+    const sB = await probe('반례 "수리"(실은 대조·16)', { slowFlow: true }, 16);
+    const sC = await probe('반례 대조(128)', { slowFlow: true }, 128);
+    const sD = await probe('반례 "수리"(실은 대조·128)', { slowFlow: true }, 128);
+    const rSab = Math.max(sA.max, sC.max) / Math.max(0.01, Math.max(sB.max, sD.max));
+    say(`    반례 배율 ${rSab.toFixed(2)}배 (수리를 끄고 같은 걸 두 번 잰 것)`);
+    ok(rSab < 8, `★★자명 통과 금지 — 수리 없는 짝은 같은 문턱(8)에 **걸린다** (${rSab.toFixed(2)}배 < 8)`);
+    ok(rMed > rSab * 2, `★★수리 있는 짝이 없는 짝보다 **압도적이다** (${rMed.toFixed(1)}배 vs ${rSab.toFixed(2)}배)`);
+  }
+  // ★기계 간 비교용 기계 판독 출력 — `scripts/perf-pair.js` 가 이 줄만 읽는다(사람 눈 문장은 위에).
+  say(`WATERPERF_JSON ${JSON.stringify({ rMed, swMed, fwMed, rounds: R.map((x) => +x.r.toFixed(3)) })}`);
 
   say('\n[ⓒ 걸으면 실제로 창이 옮겨 간다 — 위 대리 측정이 실사용과 같은 동작이라는 근거]');
   await knob({ slowFlow: false });
