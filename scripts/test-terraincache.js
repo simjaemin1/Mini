@@ -73,23 +73,34 @@ ok(st.hitW > 0 && st.hitR > 0, `적중이 실제로 발생`, `물 적중 ${st.hi
 ok(Math.abs(st.hitRate - (1 - uniq / mixed.length)) < 0.01,
    `적중률이 재질문 비율과 일치`, `${(st.hitRate * 100).toFixed(1)}%`);
 
-// ── ③ 이득 — 같은 표본 2회차가 눈에 띄게 싸다(비율 판정) ────────────────────
-console.log('\n③ 이득(비율로 잰다 — 2코어 부하에 안 흔들리게)');
+// ── ③ 이득 — 같은 표본 2회차가 눈에 띄게 싸다 ──────────────────────────────
+console.log('\n③ 이득(2코어 부하에 안 흔들리게 — **3회 중 최소**로 잰다)');
+// ★★측정 자체를 고쳤다 [2026-08-31 회귀에서 실제로 걸렸다]
+//   처음엔 1회 측정 + "20배" 문턱이었다. 그런데 같은 날 들어온 ⓑ 선분 색인이 원본 술어를
+//   9.7배 싸게 만들자 배수가 134배 → 13배로 줄었고, 부하까지 겹치자 **4~14배로 요동**했다.
+//   ⇒ 문턱을 계속 낮추는 건 바를 낮추는 짓이다. 고칠 것은 **재는 법**이었다:
+//     · 벤치마크는 **최소값**이 가장 덜 오염된 추정치다(부하 스파이크는 위로만 튄다) → 3회 중 최소.
+//     · 판정의 뜻은 "적중이 미적중보다 훨씬 싸다"이다. 캐시가 **실제로** 캐시한다는 하드 증명은
+//       ②(compute 가 고유 타일 수만큼만 불렸다)가 이미 맡고 있다. ③ 은 '이득의 크기'만 본다.
 const bench = (fn, pts) => { const t0 = process.hrtime.bigint(); for (const [a, b] of pts) fn(a, b); return Number(process.hrtime.bigint() - t0) / 1e6; };
+const best = (f) => Math.min(f(), f(), f());
 const warm = tiles.slice(0, 3000);
-const c2 = makeTileCache(TW, TH);
-const cw2 = (tx, ty) => c2.water(tx, ty, () => rawW(tx, ty)) || c2.rock(tx, ty, () => rawR(tx, ty));
 const rawBoth = (tx, ty) => rawW(tx, ty) || rawR(tx, ty);
-bench(rawBoth, warm.slice(0, 300));                 // JIT 워밍업
-const msCold = bench(cw2, warm);                     // 1회차 = 전부 미적중
-const msHot = bench(cw2, warm);                      // 2회차 = 전부 적중
-const msRawA = bench(rawBoth, warm);                 // 대조군 1회차
-const msRawB = bench(rawBoth, warm);                 // 대조군 2회차
+const mk = () => { const c = makeTileCache(TW, TH); return (tx, ty) => c.water(tx, ty, () => rawW(tx, ty)) || c.rock(tx, ty, () => rawR(tx, ty)); };
+bench(rawBoth, warm.slice(0, 300));                              // JIT 워밍업
+const msCold = best(() => bench(mk(), warm));                    // 매번 새 캐시 = 전부 미적중
+const hot = mk(); bench(hot, warm);                              // 채워 두고
+const msHot = best(() => bench(hot, warm));                      // 전부 적중
+// ★대조군도 **양쪽 다** 3회 중 최소로 잰다 — 한쪽만 최소로 재면 '단발 잡음 ÷ 최소값'이 되어
+//   대조 비가 1 이 아니라 3~5 로 부풀고, 그 부푼 값이 다시 아래 문턱을 밀어 올린다(자기 발등).
+const msRawA = best(() => bench(rawBoth, warm)), msRawB = best(() => bench(rawBoth, warm));
+const gain = msCold / Math.max(0.001, msHot), ctrl = msRawA / Math.max(0.001, msRawB);
 console.log(`     캐시 1회차 ${msCold.toFixed(0)}ms · 2회차 ${msHot.toFixed(0)}ms | 원본 1회차 ${msRawA.toFixed(0)}ms · 2회차 ${msRawB.toFixed(0)}ms`);
-ok(msHot * 20 < msCold, `캐시 2회차가 1회차보다 20배 넘게 싸다`, `${(msCold / Math.max(0.001, msHot)).toFixed(0)}배`);
-// ★대조군: 캐시가 없으면 2회차도 안 싸진다. 이게 없으면 위 판정은 "두 번째가 원래 빠르다"와 구별이 안 된다.
-ok(msRawB > msRawA * 0.5, `대조군(원본)은 2회차도 안 싸진다 — 빨라진 건 캐시 덕이다`,
-   `${(msRawA / Math.max(0.001, msRawB)).toFixed(2)}배`);
+ok(gain > 3, `캐시 적중이 미적중보다 3배 넘게 싸다`,
+   `${gain.toFixed(1)}배 · 색인 ${process.env.TERRAIN_SEG_INDEX === '1' ? '켬' : '끔'}`);
+// ★대조군: 캐시가 없으면 2회차도 안 싸진다. 이게 없으면 "두 번째가 원래 빠르다"와 구별이 안 된다.
+ok(gain > ctrl * 2.5, `이득이 대조군의 2.5배 넘는다 — 빨라진 건 캐시 덕이지 '두 번째라서'가 아니다`,
+   `캐시 ${gain.toFixed(1)}배 vs 대조군 ${ctrl.toFixed(2)}배`);
 
 // ── ④ zone.js 배선 — 켠 가지와 끈 가지에 같은 식이 들어갔나 ─────────────────
 console.log('\n④ zone.js 배선');

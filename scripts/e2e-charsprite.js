@@ -234,13 +234,21 @@ function openSpot() {
   const B = await newClient('B');
   ok(!!(await B.evaluate(() => window.__getMyAbs())), '[B] 존 입장');
   const sp = await meAbs(A);
+  let bDist = Infinity;
   for (let i = 0; i < 20; i++) {
     await B.evaluate(([a, b]) => window.__sendPrimary({ type: 'teleport_debug', x: a, y: b }), [SPOT.x + 60, SPOT.y]);
     await sleep(700);
       // ★[핫픽스 2026-08-31 · 족보 ㊹] 도착은 **서버 권위**로 — 예측은 재접속 뒤 낡을 수 있다.
     const c = (await B.evaluate(() => (window.__getSrvAbs ? window.__getSrvAbs() : null))) || (await meAbs(B));
-    if (c && Math.hypot(c.x - (SPOT.x + SPOT.WOX + 60), c.y - (SPOT.y + SPOT.WOY)) <= 140) break;
+    if (c) bDist = Math.hypot(c.x - (SPOT.x + SPOT.WOX + 60), c.y - (SPOT.y + SPOT.WOY));
+    if (bDist <= 140) break;
   }
+  // ★★[2026-08-31 밤 · 족보 57] **하네스는 자기 행동이 실제로 일어났는지 먼저 세라.**
+  //   위 반복문은 20번 시도하고 **말없이** 빠져나올 수 있다. 그러면 B 가 엉뚱한 데 있는데도
+  //   아래 두 판정이 "[A] 화면에 남이 0명" 으로 빨개진다 — 원인이 아니라 **증상**을 가리키는 실패다.
+  //   실제로 회귀 러너 끝에서 그렇게 한 번 나왔고, 단독 실행에선 34/0 이었다.
+  //   ⇒ 남을 보기 **전에** 남이 그 자리에 왔는지부터 센다. 여기서 깨지면 원인이 바로 읽힌다.
+  ok(bDist <= 140, `[B] 짝이 A 옆에 도착했다(서버 권위)`, `거리 ${Number.isFinite(bDist) ? bDist.toFixed(0) : '측정 실패'}px ≤ 140`);
   // ★[2026-08-31 · 족보 ㊾] **시계로 기다리지 마라 — 조건으로 기다려라.**
   //   여기가 `await sleep(1200)` 한 줄이었다. 단독 실행에선 늘 통과했는데 러너 끝(하네스 40종을
   //   지난 뒤)에서만 "[A] 화면에 남이 0명" 으로 두 판정이 빨개졌다. 회귀가 아니라 **시간**이다 —

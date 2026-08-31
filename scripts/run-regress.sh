@@ -106,6 +106,8 @@ else
     test-calendar.js
     # ★[멎음 수리 2026-08-31] 타일 지형 메모 — 등가·적중·zone.js 배선(기본 꺼짐)
     test-terraincache.js
+    # ★[멎음 수리 2026-08-31] 선분 격자 색인 — 자식 둘(켬/끔) 비트 대조·후보 수·기본 꺼짐
+    test-segindex.js
     test-move.js
     test-charsheet.js
     e2e-events.js

@@ -135,6 +135,9 @@ const ZONE_TERRAIN = new Proxy({}, {
 });
 
 // === helpers ===
+// ★선분 격자 색인 스위치 — 기본 꺼짐(TERRAIN_SEG_INDEX=1 로 켠다). terrain-segindex.js 머리말 참조.
+const _SEG_INDEX_ON = process.env.TERRAIN_SEG_INDEX === '1';
+const _buildSegIndex = _SEG_INDEX_ON ? require('./terrain-segindex').buildSegIndex : null;
 function _pointToSegmentDist(px, py, x1, y1, x2, y2) {
   const dx = x2 - x1, dy = y2 - y1;
   const lenSq = dx * dx + dy * dy;
@@ -202,7 +205,20 @@ function _isPointInRiver(x, y, river) {
     bb = river._bbox = [bx0 - m, by0 - m, bx1 + m, by1 + m];
   }
   if (x < bb[0] || x > bb[2] || y < bb[1] || y > bb[3]) return false;
-  for (let i = 0; i < river.path.length - 1; i++) {
+  // ★[부팅·냉질의 수리 2026-08-31 · 기본 꺼짐] 선분 격자 색인 — 근거·등가성은 terrain-segindex.js 머리말.
+  //   bbox 를 통과한 뒤의 **선형 주사**가 이 함수의 비용 전부다(강 최대 674선분·산맥 733선분).
+  //   색인이 있으면 질의점이 속한 칸의 후보만 본다. 없거나 꺼져 있으면 아래 종전 주사 그대로.
+  //   ★후보 목록은 '참일 수 있는 모든 선분'을 포함한다(구간 halfWidth 상한 = max(w1,w2)/2 로 확장 적재).
+  let idx = null;
+  if (_SEG_INDEX_ON) {
+    idx = river._segIdx;
+    if (idx === undefined) idx = river._segIdx = _buildSegIndex(river);
+  }
+  const N = river.path.length - 1;
+  const cand = idx ? idx.at(x, y) : null;
+  const cnt = cand ? cand.length : N;
+  for (let c = 0; c < cnt; c++) {
+    const i = cand ? cand[c] : c;
     const p1 = river.path[i], p2 = river.path[i + 1];
     const x1 = p1.pos ? p1.pos[0] : p1[0];
     const y1 = p1.pos ? p1.pos[1] : p1[1];
