@@ -372,6 +372,13 @@ console.log(`[${ZONE_ID}] 🌊 해안선: ${WATER_TILES.size} water tiles (ocean
 // Phase 5-1-fix: inland water (강·호수)는 zone start pre-compute 안 함 (수 분 timeout).
 // 콜라이더 호출 시 terrain.isWaterCellLocal로 동적 검사 — cell center 기준 (시각과 일치).
 const _terrain = require('./terrain');
+// ★[멎음 수리 2026-08-31 · 기본 꺼짐] 타일 지형 판정 메모 — 근거·등가성은 terrain-tilecache.js 머리말.
+//   요지: 아래 두 술어는 입력을 타일로 양자화한 뒤 그 타일 **중심 한 점**만 묻는다 = (tx,ty)의 순수 함수.
+//   지형 원천은 기동 1회 적재 후 불변이라 무효화가 없다. 끄면 배열조차 안 만들고 종전 경로 그대로.
+const _TERR_CACHE = (process.env.TERRAIN_TILE_CACHE === '1' && !ZONE.isOcean)
+  ? require('./terrain-tilecache').makeTileCache(Math.ceil(ZONE.zoneWidth / 32), Math.ceil(ZONE.zoneHeight / 32))
+  : null;
+if (_TERR_CACHE) console.log(`[${ZONE_ID}] 🗺️ 타일 지형 메모 ON — ${_TERR_CACHE.tilesW}×${_TERR_CACHE.tilesH} 타일 · ${(_TERR_CACHE.bytes / 1048576).toFixed(1)}MB`);
 function isWaterTileLocal(localX, localY) {
   if (ZONE.isOcean) return true;
   if (localX < 0 || localY < 0 || localX >= ZONE.zoneWidth || localY >= ZONE.zoneHeight) return false;
@@ -382,6 +389,8 @@ function isWaterTileLocal(localX, localY) {
   // sub-pixel 좌표 그대로 쓰면 콜라이더는 sub-pixel, 시각은 cell-grid → mismatch.
   const cellCx = tx * 32 + 16;
   const cellCy = ty * 32 + 16;
+  // ★메모는 위 가드 **뒤에만** 건다 — 경계·해양·해안선 판정은 매번 그대로 돈다(WATER_TILES 는 캐시 밖).
+  if (_TERR_CACHE) return _TERR_CACHE.water(tx, ty, () => _terrain.isWaterCellLocal(ZONE_ID, cellCx, cellCy));
   return _terrain.isWaterCellLocal(ZONE_ID, cellCx, cellCy);
 }
 // Phase 5-H: 산맥 바위 셀 — 통행 불가. 물 > 바위 우선·고개 처리는 terrain.isRockCellLocal에서.
@@ -390,7 +399,9 @@ function isRockTileLocal(localX, localY) {
   if (localX < 0 || localY < 0 || localX >= ZONE.zoneWidth || localY >= ZONE.zoneHeight) return false;
   const tx = Math.floor(localX / 32);
   const ty = Math.floor(localY / 32);
-  return typeof _terrain.isRockCellLocal === 'function' && _terrain.isRockCellLocal(ZONE_ID, tx * 32 + 16, ty * 32 + 16);
+  if (typeof _terrain.isRockCellLocal !== 'function') return false;
+  if (_TERR_CACHE) return _TERR_CACHE.rock(tx, ty, () => _terrain.isRockCellLocal(ZONE_ID, tx * 32 + 16, ty * 32 + 16));
+  return _terrain.isRockCellLocal(ZONE_ID, tx * 32 + 16, ty * 32 + 16);
 }
 // 지형 차단 통합 (물 + 바위) — 이동·스폰·경로·텔레포트 검증 공용
 // ★[다리 층] 통나무 널다리 셀 — zone-config ZONES[zone].bridges(flat [cx,cy,...])에서 1회 구축.

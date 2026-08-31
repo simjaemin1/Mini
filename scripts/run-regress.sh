@@ -104,6 +104,8 @@ else
     # ★[작물 층 2026-08-31] 카탈로그 34종 → 게임(전사·차등·유도·파종철·월동·발아율·씨앗 조달)
     test-crops.js
     test-calendar.js
+    # ★[멎음 수리 2026-08-31] 타일 지형 메모 — 등가·적중·zone.js 배선(기본 꺼짐)
+    test-terraincache.js
     test-move.js
     test-charsheet.js
     e2e-events.js
