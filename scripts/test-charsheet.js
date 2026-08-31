@@ -161,8 +161,8 @@ console.log('\n=== ③ 가림(occlusion) 오차 — 합성은 깊이를 모른�
   // ★대조군: `--probe` 로 몸+옷+도끼를 **한 번에** 구운 시트(깊이가 맞다).
   //   런타임 합성(화가 순서)과 견주면 "도구가 몸 뒤로 가야 하는데 앞에 뜨는" 화소 수가 나온다.
   //   ★이건 통과/실패가 아니라 **수치 보고**다 — 크면 방향별 z 순서가 필요하다는 뜻.
-  //   ★2026-08-31: 그 방향별 z 순서(ⓐ)를 실장했다. 여기서도 **메타의 순서표대로** 겹친다 —
-  //     안 그러면 클라가 고친 것을 하네스가 못 본다.
+  //   ★2026-08-31 3차: ⓐ(순서표) 대신 ⓑ(홀드아웃)로 갔다. 순서는 고정이고 어긋남이 남으면
+  //     그건 홀드아웃이 못 덮는 자리(옷↔도구)다.
   const pp = path.join(DIR, 'probeall_walk.png');
   if (!fs.existsSync(pp)) {
     ok(true, '(대조군 없음 — `--probe` 로 굽지 않았다. 측정 생략)');
@@ -178,14 +178,11 @@ console.log('\n=== ③ 가림(occlusion) 오차 — 합성은 깊이를 모른�
       for (let y = r * FH; y < (r + 1) * FH; y++) {
         for (let x = 0; x < W; x++) {
           const i = (y * W + x) * 4;
-          // 화가 순서 합성 — ★클라와 **같은 순서**로 겹친다.
-          //   메타의 toolBehind 가 1 인 프레임은 클라가 도구를 먼저 그린다(가림 수리 ⓐ).
-          //   하네스가 옛 순서를 고집하면 클라가 고친 것을 "안 고쳐졌다"고 재게 된다.
-          const fIdx = Math.floor(x / META.frameW);
-          const tb = META.toolBehind && META.toolBehind.walk && META.toolBehind.walk.axe;
-          const toolFirst = !!(tb && tb[r] && tb[r][fIdx]);
+          // 화가 순서 합성: 몸 → 옷 → 도구 — 클라와 **같은 고정 순서**다.
+          //   깊이는 굽는 쪽 홀드아웃이 잡는다(char_render.py set_visible). 여기서 재는 건
+          //   "그 홀드아웃이 정말 통했는가" 다.
           let a = 0, R = 0, G = 0, B = 0;
-          for (const L of (toolFirst ? [tool, body, cloth] : [body, cloth, tool])) {
+          for (const L of [body, cloth, tool]) {
             const la = L.px[i + 3] / 255;
             if (la <= 0) continue;
             R = L.px[i] * la + R * (1 - la); G = L.px[i + 1] * la + G * (1 - la);
@@ -208,6 +205,31 @@ console.log('\n=== ③ 가림(occlusion) 오차 — 합성은 깊이를 모른�
     ok(worst.pct < 12, `★최악 방향도 ${worst.pct.toFixed(1)}% < 12% — 화가 순서 합성이 쓸 만하다`,
        worst.pct >= 12 ? '방향별 z 순서 필요(회부)' : '');
   }
+}
+
+console.log('\n=== ③-나 홀드아웃이 실제로 통했는가 ===');
+{
+  // ★자명 통과 금지: ③ 의 어긋남이 작다고 "홀드아웃이 통했다"가 되지 않는다 —
+  //   애초에 겹칠 일이 없었을 수도 있다. **잘려 나간 자리**를 직접 센다.
+  //   ★첫 시도는 "사방이 불투명에 둘린 투명 화소(안쪽 구멍)"를 셌는데 0 이 나왔다.
+  //     홀드아웃이 내는 자국은 대개 실루엣 가장자리에서 파고드는 **만입**이지 섬 구멍이 아니다.
+  //     그래서 **가로줄 기준**으로 센다: 그 줄에서 옷이 좌·우로 있는데 가운데가 비었고,
+  //     그 자리에 **몸이 불투명**하면 = 몸이 앞이라 옷이 잘린 자리다.
+  const cl = readPng(path.join(DIR, 'clothes_hemp_walk.png'));
+  const bd = readPng(path.join(DIR, 'body_walk.png'));
+  const W = cl.w, H = cl.h;
+  const CA = (x, y) => cl.px[(y * W + x) * 4 + 3];
+  const BA = (x, y) => bd.px[(y * W + x) * 4 + 3];
+  let cut = 0, rows = 0;
+  for (let y = 0; y < H; y++) {
+    let l = -1, r = -1;
+    for (let x = 0; x < W; x++) if (CA(x, y) > 200) { if (l < 0) l = x; r = x; }
+    if (l < 0 || r - l < 3) continue;
+    rows++;
+    for (let x = l + 1; x < r; x++) if (CA(x, y) < 8 && BA(x, y) > 200) cut++;
+  }
+  ok(cut > 0, `옷이 몸에 잘린 화소 ${cut}개 (옷이 있는 가로줄 ${rows}개 기준) — 홀드아웃이 실제로 팠다`,
+     cut ? '' : '홀드아웃이 안 걸렸거나 겹칠 일이 없었다 — ③ 이 자명 통과일 수 있다');
 }
 
 console.log('\n=== ④ 알파 위생 ===');
