@@ -472,3 +472,29 @@ B: **상자가 개체 정체를 못 담는다**(넣었다 빼면 표준 kg) · �
 
 ---
 
+
+---
+
+## ★[T38 2026-09-01] 이름표(라벨 표)가 어디 있나 — **둘이었다**
+
+```
+  정본  server/zone.js  ITEM_LABEL_SERVER  (108키 · L6370 근처)
+        salt.js BRINE_KO · spoil.js PRESERVED_ITEMS.ko · crops.js labelMap() 에서 **가져온다**
+  사본  public/client/41-h-char.js  ITEM_LABEL  — 손으로 유지
+```
+
+**정본은 클라로 안 간다**(서버 notice 문구 전용). 그래서 새 품목이 들어오면
+클라 사본만 뒤처져 **화면에 영문 키가 뜬다** — 자염의 `brine` 이 그랬다.
+
+T38 이 한 것: 서버가 제작 목록에 이름표를 **실어 보낸다**(`_facilityRecipes` 의 `costKo` · `missing[].ko`),
+클라(`50-i-panel.js`)는 그걸 **먼저** 보고 자기 표는 폴백으로만 쓴다.
+아이콘 폴백에 키를 그대로 넣던 자리 14곳(50-i-panel 12 · 51-s-side 2)을 `itemKo(k)` 로 바꿨다.
+
+**새 품목을 들일 때 할 일**: `ITEM_LABEL_SERVER` 에 한 줄. 클라는 안 건드려도 된다.
+검사: `node scripts/test-itemlabel.js` — 제작 비용 키 전수를 서버 표와 대조한다(등재됨).
+
+**아직 남은 것(회부 T38-b)**: 클라 사본 `ITEM_LABEL` 자체는 못 지웠다(`41-h-char.js` 소유).
+`welcome` 에 이름표를 실으면 지울 수 있다 — 작물 층(`welcome.crops`)과 같은 규약.
+
+⚠**인벤 창은 다른 결**이다. 목록이 `Object.keys(ITEM_ICONS)` 를 돌기 때문에 아이콘 없는 품목은
+영문으로 뜨는 게 아니라 **아예 안 보인다.** 이건 안 건드렸다.
