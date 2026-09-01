@@ -30,8 +30,38 @@ const fs = require('fs');
 const { spawn } = require('child_process');
 const WS = require(path.join(__dirname, '..', 'node_modules', 'ws'));
 
+const net = require('net');
 const ROOT = path.join(__dirname, '..');
-const CPORT = 3010, ZPORT = 3020;
+// ★★[T10-① 2026-09-01] **고정 포트를 버렸다.** 이유는 추측이 아니라 실측이다:
+//   앞 하네스의 central·zone 이 3010/3020 을 아직 쥐고 있으면 —
+//     ① 이 하네스가 띄운 자식 둘은 EADDRINUSE 로 **즉시 죽는다**
+//     ② 그런데 `boot()` 는 자식의 죽음을 안 봤고 stderr 를 버렸다(조용한 죽음)
+//     ③ `waitHttp` 는 **남의 서버**에 붙어 "기동 OK" 로 통과한다
+//     ④ 그 뒤 모든 검사는 **남의 세계**를 잰다. 그 세계엔 E2E_GIVE 가 없으니
+//        `__e2e_give` 가 아무 일도 안 하고 인벤 검사 4건이 떨어진다.
+//   ⇒ 화면에는 "게스트 재접속이 인벤을 잃는다"로 보인다. **없는 회귀를 보고하는 판**이다.
+//   재현: 3010/3020 에 서버를 띄워 두고 이 하네스를 돌리면 PASS 22 / FAIL 4 (전부 인벤 검사).
+//   ⇒ 고침 셋(전부 하네스 쪽 — 본문 판정은 한 글자도 안 건드렸다):
+//     ⓐ 포트를 **부팅 직전에 빈 것으로 고른다**(pid 기반 시작점 · bind 로 실제 확인)
+//     ⓑ 자식이 죽으면 **즉시** 그 사실과 stderr 꼬리를 찍고 실패한다(300초 기다리지 않는다)
+//     ⓒ zone 에게 central 위치를 **읽히는 이름**으로 준다(아래 CENTRAL_PORT 주석 참조)
+let CPORT = 0, ZPORT = 0;
+function portFree(port) {
+  return new Promise((res) => {
+    const s = net.createServer();
+    s.once('error', () => res(false));
+    s.once('listening', () => s.close(() => res(true)));
+    s.listen(port, '127.0.0.1');
+  });
+}
+async function pickPorts() {
+  const base = 34000 + ((process.pid * 2) % 8000);   // 같은 순간 두 하네스가 겹칠 확률을 낮춘다
+  for (let i = 0; i < 500; i++) {
+    const c = base + i * 2, z = c + 1;
+    if (await portFree(c) && await portFree(z)) return [c, z];
+  }
+  throw new Error('빈 포트 쌍을 못 찾았다');
+}
 const CDB = `/tmp/gj-central-${process.pid}.db`, ZDB = `/tmp/gj-zone-${process.pid}.db`;
 for (const f of [CDB, ZDB, CDB + '-wal', ZDB + '-wal', CDB + '-shm', ZDB + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
 
@@ -45,14 +75,29 @@ function boot(name, file, env) {
     cwd: ROOT, env: Object.assign({}, process.env, env), stdio: ['ignore', 'pipe', 'pipe'],
   });
   p.stdout.on('data', (b) => { const s = String(b); if (/중복 차단|1회용|승계/.test(s)) process.stdout.write(`      [srv] ${s.trim().slice(0, 120)}\n`); });
-  p.stderr.on('data', () => {});
+  // ★stderr 를 버리지 않는다 — 종전엔 `() => {}` 였고, 그래서 EADDRINUSE 가 **한 글자도 안 보였다.**
+  p._name = name; p._err = ''; p._died = null;
+  p.stderr.on('data', (b) => { p._err = (p._err + String(b)).slice(-4000); });
+  p.on('exit', (code, sig) => { p._died = `code=${code} sig=${sig}`; });
   procs.push(p);
   return p;
 }
 function shutdown() { for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {} } }
 process.on('exit', shutdown);
-async function waitHttp(url, tries = 300) {
-  for (let i = 0; i < tries; i++) { try { const r = await fetch(url); if (r.ok) return true; } catch (e) {} await sleep(1000); }
+// ★자식이 죽었으면 **그 자리에서** 끝낸다. 종전엔 죽은 줄 모르고 300초를 기다렸고,
+//   그 사이 남의 서버가 답하면 "기동 OK" 로 통과했다(위 ③).
+async function waitUp(p, url, tries = 300) {
+  for (let i = 0; i < tries; i++) {
+    if (p._died) {
+      console.log(`  ✗ ${p._name} 가 떠보지도 못하고 죽었다 (${p._died})`);
+      const tail = p._err.trim().split('\n').filter(Boolean).slice(-4).join(' | ');
+      if (tail) console.log(`      stderr: ${tail.slice(0, 300)}`);
+      return false;
+    }
+    try { const r = await fetch(url); if (r.ok) return true; } catch (e) {}
+    await sleep(1000);
+  }
+  console.log(`  ✗ ${p._name} 가 ${tries}초 안에 안 떴다 — ${url}`);
   return false;
 }
 
@@ -105,13 +150,28 @@ async function waitWelcome(s, ms = 15000) {
 
 (async () => {
   console.log('\n=== 게스트 재접속 — 몸이 보존되는가 (B-6) ===');
-  boot('central', 'central.js', { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
-  boot('zone', 'zone.js', {
-    PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
+  [CPORT, ZPORT] = await pickPorts();
+  console.log(`  [격리] central :${CPORT} · zone :${ZPORT} (부팅 직전에 빈 것으로 고름) · DB ${CDB}`);
+  const cp = boot('central', 'central.js', { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
+  const zp = boot('zone', 'zone.js', {
+    PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB,
+    // ★★zone 은 `CENTRAL_URL` 을 **안 읽는다**(zone-config.js:423~424 는 CENTRAL_HOST/CENTRAL_PORT 다).
+    //   종전 판이 준 CENTRAL_URL 은 아무도 안 보는 값이었고, 3010 이 기본값이라 **우연히** 맞았다.
+    //   포트를 옮기는 순간 그 우연이 깨지므로 읽히는 이름으로 준다. (CENTRAL_URL 은 남겨 둔다 — 무해)
+    CENTRAL_HOST: 'localhost', CENTRAL_PORT: String(CPORT), CENTRAL_URL: `http://localhost:${CPORT}`,
     ENABLE_VILLAGES: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', E2E_GIVE: '1',
   });
-  ok(await waitHttp(`http://localhost:${CPORT}/zones`), 'central 기동');
-  ok(await waitHttp(`http://localhost:${ZPORT}/health`), 'zone 기동');
+  const cUp = await waitUp(cp, `http://localhost:${CPORT}/zones`);
+  ok(cUp, 'central 기동');
+  const zUp = await waitUp(zp, `http://localhost:${ZPORT}/health`);
+  ok(zUp, 'zone 기동');
+  // ★기동에 실패하면 **여기서 끝낸다.** 종전엔 그대로 진행해 뒤 검사가 전부 엉뚱한 이유로 떨어졌고,
+  //   보고서에는 "게스트 재접속이 인벤을 잃는다"로 보였다(없는 회귀).
+  if (!cUp || !zUp) {
+    console.log('\n  ★기동 실패라 검사를 진행하지 않는다 — 아래 숫자는 "안 쟀다"는 뜻이다.');
+    console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
+    shutdown(); process.exit(1);
+  }
   await sleep(2000);
 
   // ── ① 첫 입장 — 몸을 만들고 **움직이고 물건을 얻는다** ────────────────────

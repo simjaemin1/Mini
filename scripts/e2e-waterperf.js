@@ -107,7 +107,13 @@ const BOX = [40, 260, 1360, 860];
   // ★주행 비용은 **정본 `_buildFlowTex` 를 그대로 불러** 잰다(하네스가 계산을 다시 쓰지 않는다).
   //   걸어서 재려면 512px 마다 8초라 A/B 두 바퀴가 안 돈다 — 아래 ⓒ 에서 "걸으면 실제로 다시
   //   굽는다"를 따로 증명하므로, 이 대리 측정이 실사용과 같은 동작이라는 근거가 있다.
+  // ★★[T10-② 2026-09-01] 자기 실패 검사기 — `WATERPERF_SABOTAGE=1` 이면 **수리를 몰래 끈다.**
+  //   판정을 비율의 비율로 바꿨으니, 그 판정이 "무엇을 넣어도 통과"하지 않는다는 걸
+  //   **밖에서 한 번 돌려 빨간 걸 보이는** 방법이 있어야 한다(대조군).
+  //   기본 부팅에선 분기 자체가 없다 — 라이브·러너 동작은 한 글자도 안 바뀐다.
+  const SABOTAGE = process.env.WATERPERF_SABOTAGE === '1';
   async function probe(label, opts, step) {
+    if (SABOTAGE) opts = { ...opts, slowFlow: true };   // '수리' 자리에도 대조를 넣는다 ⇒ 배율 ≈ 1
     await knob(opts);
     await page.evaluate(() => window.__wfReset && window.__wfReset());
     await sleep(400);
@@ -181,25 +187,55 @@ const BOX = [40, 260, 1360, 860];
     `★★수리본이 한 장 최대에서 3배 이상 빠르다 (${med(R.map((x) => x.f16)).toFixed(0)}ms vs ${med(R.map((x) => x.s16)).toFixed(0)}ms · 중앙값)`);
   ok(med(R.map((x) => x.f16a)) < med(R.map((x) => x.s16a)) / 3,
     `★★평균도 3배 이상 (${med(R.map((x) => x.f16a)).toFixed(0)}ms vs ${med(R.map((x) => x.s16a)).toFixed(0)}ms · 중앙값)`);
-  ok(fwMed < 120, `★★한 프레임이 120ms 아래다 (${fwMed.toFixed(0)}ms) — 헤드리스는 실기보다 느리므로 상한이다`);
-  ok(swMed > FRAME * 4, `★★반례 — 수리를 끄면 한 프레임 예산을 4배 넘긴다 (${swMed.toFixed(0)}ms = ${(swMed / FRAME).toFixed(1)}프레임 > 4)`);
-  ok(rMed >= 8, `★★수리본이 8배 이상 빠르다 (중앙값 ${rMed.toFixed(1)}배 · ${ROUNDS}라운드 짝 비교)`);
+  // ═══ ★★[T10-② 2026-09-01] **절대 문턱은 판정에서 뺐다 — 참고 출력으로 내린다** ═══
+  //
+  //   왜(실측): 이 판을 5회 돌려 판정량의 분포를 먼저 쟀다(러너와 같은 규약 · 순차 단독).
+  //     rMed  9.36 · 9.41 · 9.54 · 9.65 · 10.66      (문턱 8 과의 여유 17%)
+  //     라운드 낱개  6.09 ~ 12.20                     ← 낱개는 문턱 아래로 내려간다
+  //     rSab  1.004 ~ 1.082                          ← 같은 순간 대조 짝(수리 없음)
+  //   ⇒ 중앙값 도입이 판정량을 5.2~9.4(문턱에 걸쳐 있던 분포)에서 9.4~10.7 로 올린 건 맞다.
+  //     그러나 8 은 여전히 **꼬리 바로 위**에 서 있다 — 기계가 하루 나빠지면 다시 빨개진다.
+  //     반면 `rSab` 는 1.00~1.08 로 아주 좁다. **같은 순간 대조가 진짜 자다.**
+  //   ⇒ 판정을 **비율의 비율**로 옮긴다: `rMed > rSab × K`.
+  //     K 는 재서 고른다 — 수리 있는 짝 8.81~10.00(=rMed/rSab), 수리 없는 짝 1.0.
+  //     둘 사이 로그 중앙이 ≈3.0 이므로 **K=4**: 잡음(1.0)에서 4배 위 · 실측 최소(8.81)에서 2.2배 아래.
+  //   ⇒ 절대값 셋(120ms · 4프레임 · 8배)은 **지우지 않고 찍는다.** 사람이 읽을 값이지 판정할 값이 아니다.
+  //     (족보 80 — 살아 있는 세계의 ms 를 절대값으로 읽으면 없는 회귀를 본다)
+  //   ⚠판정에서 뺀 것이 잃는 것도 있다: `fwMed < 120` 은 "실기에서 한 프레임 안에 든다"는
+  //     **사용자 쪽 주장**이었다. 그 주장은 이제 이 하네스가 안 지킨다 — 회부에 적었다.
+  const REF = [];
+  REF.push(`한 프레임 ${fwMed.toFixed(0)}ms (참고 상한 120ms · ${fwMed < 120 ? '안' : '★밖'})`);
+  REF.push(`대조 ${(swMed / FRAME).toFixed(1)}프레임 (참고 하한 4프레임 · ${swMed > FRAME * 4 ? '넘음' : '★못 넘음'})`);
+  REF.push(`배율 중앙값 ${rMed.toFixed(1)}배 (참고 문턱 8 · ${rMed >= 8 ? '위' : '★아래'})`);
+  say(`    [참고 — 판정 아님] ${REF.join(' · ')}`);
+
+  ok(med(R.map((x) => x.f16)) < med(R.map((x) => x.s16)) / 3,
+    `★★수리본이 한 장 최대에서 3배 이상 빠르다 (${med(R.map((x) => x.f16)).toFixed(0)}ms vs ${med(R.map((x) => x.s16)).toFixed(0)}ms · 중앙값 · 같은 순간 짝)`);
+  ok(med(R.map((x) => x.f16a)) < med(R.map((x) => x.s16a)) / 3,
+    `★★평균도 3배 이상 (${med(R.map((x) => x.f16a)).toFixed(0)}ms vs ${med(R.map((x) => x.s16a)).toFixed(0)}ms · 중앙값 · 같은 순간 짝)`);
+
   // ── ★★자명 통과 금지 — **판정이 실패할 줄 아는가**를 같은 판에서 증명한다 ──────────
-  //   중앙값 판정으로 바꿨으니, 그 판정이 "무엇을 넣어도 통과"하는 건 아닌지 **여기서** 보여야 한다.
-  //   ⇒ 수리본 자리에 **일부러 대조군을 넣어** 한 라운드를 더 돈다. 배율은 1 근처로 떨어져야 하고,
-//     같은 문턱(8)에 걸려 **실패해야** 한다. 안 떨어지면 판정이 아무것도 안 재고 있는 것이다.
+  //   수리본 자리에 **일부러 대조군을 넣어** 한 라운드를 더 돈다. 이 짝의 배율(rSab)이
+  //   판정의 **분모**다 — 즉 이 하네스는 자기 잡음 바닥을 매 판 다시 재서 그 위에서 판정한다.
+  const RR_K = parseFloat(process.env.WATERPERF_RR_K || '4') || 4;
+  let rSab = 0;
   {
     const sA = await probe('반례 대조(16)', { slowFlow: true }, 16);
     const sB = await probe('반례 "수리"(실은 대조·16)', { slowFlow: true }, 16);
     const sC = await probe('반례 대조(128)', { slowFlow: true }, 128);
     const sD = await probe('반례 "수리"(실은 대조·128)', { slowFlow: true }, 128);
-    const rSab = Math.max(sA.max, sC.max) / Math.max(0.01, Math.max(sB.max, sD.max));
-    say(`    반례 배율 ${rSab.toFixed(2)}배 (수리를 끄고 같은 걸 두 번 잰 것)`);
-    ok(rSab < 8, `★★자명 통과 금지 — 수리 없는 짝은 같은 문턱(8)에 **걸린다** (${rSab.toFixed(2)}배 < 8)`);
-    ok(rMed > rSab * 2, `★★수리 있는 짝이 없는 짝보다 **압도적이다** (${rMed.toFixed(1)}배 vs ${rSab.toFixed(2)}배)`);
+    rSab = Math.max(sA.max, sC.max) / Math.max(0.01, Math.max(sB.max, sD.max));
+    say(`    반례 배율 ${rSab.toFixed(3)}배 (수리를 끄고 같은 걸 두 번 잰 것 — 참값 1)`);
+    // ★자가 믿을 만한가: 대조 짝이 2배씩 흔들리면 그 판의 어떤 배율도 못 믿는다.
+    //   실측 1.004~1.082 라 2 는 넉넉하다(느슨해진 게 아니라 종전 8 에서 **조인** 것이다).
+    ok(rSab < 2, `★★계기 신뢰 — 같은 걸 두 번 잰 짝이 2배 안에 든다 (${rSab.toFixed(3)}배 < 2)`);
+    // ★★이게 이 하네스의 **판정**이다 — 비율의 비율.
+    ok(rMed > rSab * RR_K,
+      `★★수리 있는 짝이 없는 짝보다 ${RR_K}배 넘게 낫다 — 비율의 비율 ${(rMed / Math.max(0.01, rSab)).toFixed(2)} > ${RR_K}`
+      + `  (수리 ${rMed.toFixed(1)}배 vs 잡음 ${rSab.toFixed(3)}배)`);
   }
   // ★기계 간 비교용 기계 판독 출력 — `scripts/perf-pair.js` 가 이 줄만 읽는다(사람 눈 문장은 위에).
-  say(`WATERPERF_JSON ${JSON.stringify({ rMed, swMed, fwMed, rounds: R.map((x) => +x.r.toFixed(3)) })}`);
+  say(`WATERPERF_JSON ${JSON.stringify({ rMed, swMed, fwMed, rSab: +rSab.toFixed(3), rr: +(rMed / Math.max(0.01, rSab)).toFixed(3), rounds: R.map((x) => +x.r.toFixed(3)) })}`);
 
   say('\n[ⓒ 걸으면 실제로 창이 옮겨 간다 — 위 대리 측정이 실사용과 같은 동작이라는 근거]');
   await knob({ slowFlow: false });
