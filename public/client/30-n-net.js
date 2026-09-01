@@ -240,6 +240,7 @@
       };
     })();
 
+    onbLobbyInit();   // ★[온보딩 v2] 시작 화면 — 마을 선택 지도(§9.1). 판정·목록은 전부 서버(`server/onboarding.js`).
     document.getElementById('enter').onclick = () => {
       const inputName = document.getElementById('name').value.trim();
       const inputPw = document.getElementById('password').value;
@@ -726,6 +727,7 @@
       if (myGuestToken) params.set('guest_token', myGuestToken);
       params.set('name', myName);
       params.set('color', myColor);
+      if (onbStartVid != null) params.set('start_vid', String(onbStartVid));   // ★[온보딩 v2] 시작 화면에서 고른 마을 — 서버가 그 마을 도착 지점으로 앉힌다
     }
     const url = `${meta.wsUrl}/?${params.toString()}`;
     const ws = new WebSocket(url);
@@ -1442,6 +1444,8 @@
       window.__evLastBoard = bd;
       if (!bd.rows || !bd.rows.length) showNotice(`📋 ${bd.name} 게시판 — 걸린 의뢰가 없다`, 3500);
       else showNotice(`📋 ${bd.name} 게시판\n` + bd.rows.map((r) => ' · ' + r.line).join('\n') + '\n(Shift+N 으로 낼 수 있는 것부터 납품)', 9000);
+    } else if (msg.type === 'onboarding_state' || msg.type === 'onboarding_quest' || msg.type === 'onboarding_fx' || msg.type === 'onboarding_day') {
+      onbOnMessage(msg);   // ★[온보딩 v2] 대본 상태·첫 의뢰·곳간 이펙트·하루 정산 — 그리기는 `70-lobby.js`
     } else if (msg.type === 'pvp_state') {
       myPvpEnabled = !!msg.enabled;
       updateHud();

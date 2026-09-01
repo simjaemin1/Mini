@@ -54,6 +54,7 @@ const Spoil = require('./spoil');
 //   보관일·포만감·무게·성장일·파종철·수확량이 전부 그 표에서 파생된다(이 파일에 표를 안 적는다).
 const Crops = require('./crops');
 const Salt = require('./salt');            // ★[자염 배치 2026-09-01] 염도·수율·땔감·시간 정본 하나
+const Onboarding = require('./onboarding');   // ★[온보딩 v2 2026-09-01] 도착 지점·30분 대본·빈터 권리 정본(§9). init 전엔 완전 no-op
 const harvestedSeeds = new Set(); // 채집된 시드 자원 (DB에서 load)
 
 // === 활성 청크 (12.2.b) — 사람 player + observer 위치 주변 청크만 시뮬레이션 ===
@@ -2435,6 +2436,11 @@ if (ZONE_ID === 'hanbando') {
   console.log(`[${ZONE_ID}] 📦 디버그 public chest 3개 @ (5120,5120) 옆`);
 }
 
+// ★[온보딩 v2] 도착 지점·대본 상태 — 정본은 `server/onboarding.js`. 여기서는 **이미 있는 것만 넘긴다**(사본 금지).
+Onboarding.init({ SimVillages, terrain: _terrain, ZONE, ZONE_ID, db: db.db, send, players, Events: require('./events'),
+  isTerrainBlockedLocal, isWaterTileLocal, isBridgeLocal: isBridgeTileLocal, isSeaTileLocal,
+  foodItems: new Set(Object.keys(FOOD_EFFECTS)), gameDay: zoneGameDay });
+
 // Phase 12.2.e: 자원 respawn 제거 — 청크 활성화 시 시드로 자동 생성됨
 
 // === HTTP + WebSocket ===
@@ -2486,6 +2492,8 @@ const server = http.createServer((req, res) => {
     } catch (e) { res.end(JSON.stringify({ err: e.message })); }
     return;
   }
+  // ★[온보딩 v2] 시작 화면이 읽는 마을 목록 — CORS 개방(`/lifedbg` 와 같은 규약: 민감 정보 없음)
+  if (req.url && req.url.startsWith('/startinfo') && req.method === 'GET') return Onboarding.httpStartInfo(req, res);
   if (req.url && req.url.startsWith('/lifedbg') && req.method === 'GET') {
     // ★[직접 서버 디버깅 — 사용자 "네가 직접 서버에서 디버깅하는 방법은 없어?"] 생활 층 내부 상태 읽기 전용 JSON.
     //   CORS *: 게임 페이지·외부 도구에서 크로스오리진 fetch 허용(민감정보 없음 — NPC 시뮬 상태만).
@@ -3157,6 +3165,10 @@ async function _acceptConnection(ws, req, C) {
       const fb = ZONE.mainSquare || { x: ZONE.zoneWidth/2, y: ZONE.zoneHeight/2 };
       sx = fb.x; sy = fb.y;
     }
+    // ★★[온보딩 v2 §9.2] **캐릭터는 발생하지 않고 도착한다.** 첫 접속이면 시작 화면에서 고른 마을의
+    //   어귀(나루터·길목)에 앉는다. 이어하기(last_x/y·home)면 `arriveFor` 가 null 이라 있던 자리 그대로다.
+    const _onbArr = Onboarding.arriveFor(url.searchParams.get('start_vid'), acct, ZONE_ID, playerId);
+    if (_onbArr) { sx = _onbArr.x; sy = _onbArr.y; const _g = Onboarding.startGauges(); initHunger = _g.hunger; initThirst = _g.thirst; }
     // Phase 5-G: spawn 좌표를 cell center에 정확히 snap (시각 NE 16px 치우침 fix)
     // cell center = cellTile * 32 + 16. 모든 entity가 cell 격자에 align되어 보임.
     sx = Math.floor(sx / 32) * 32 + 16;
@@ -3530,6 +3542,7 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'village_board') tryVillageBoard(player, msg.vid);
   else if (msg.type === 'village_chronicle') tryVillageChronicle(player, msg.vid, msg.year);   // ★[T18] 연대기
   else if (msg.type === 'village_deliver') tryVillageDeliver(player, msg.vid, msg.item, msg.want);
+  else if (msg.type === 'onboarding_state' || msg.type === 'onboarding_greet' || msg.type === 'onboarding_day') Onboarding.handleMsg(player, msg);   // ★[온보딩 v2] 대본 상태·촌장 첫 마디·하루 정산
   else if (msg.type === 'village_trade') tryVillageTrade(player, msg.vid);                                   // ★[거래소] 시세표
   else if (msg.type === 'village_trade_exec') tryVillageTradeExec(player, msg.vid, msg.give, msg.take, msg.qty);  // ★[거래소] 교환
   else if (msg.type === 'village_trade_quote') {                                                            // ★[거래소] 견적(확정 전 표시)
@@ -6117,7 +6130,9 @@ function tryClaim(player, kind = 'personal') {
   }
 
   // 개인 사유지(personal)는 자기 길드의 길드 영토 안에만 설치 가능
-  if (kind === 'personal') {
+  // ★[온보딩 v2 §9.5] 예외 하나 — **마을 어귀 빈터**. 누적 기여를 채운 사람은 그 구역에서만 길드 요건이 면제된다(구역 밖은 종전 그대로).
+  const _onbLot = Onboarding.vacantLotAllows(player, cx + SZ / 2, cy + SZ / 2);
+  if (kind === 'personal' && !_onbLot) {
     if (!player.tribeId) {
       send(player.ws, { type: 'notice', text: '개인 사유지는 길드 영토 안에만 설치 가능 (길드 가입 또는 임시 사유지 T 사용)' });
       return;
@@ -7293,6 +7308,7 @@ function tryVillageDeliver(player, vid, item, want) {
   const gave = Object.entries(r.taken || {}).map(([k, q]) => `${ITEM_LABEL_SERVER[k] || k} ${q}`).join(' · ');
   const got = r.rew > 0 ? ` → ${ITEM_LABEL_SERVER[r.rewItem] || r.rewItem} ${r.rew}` : '';
   send(player.ws, { type: 'notice', text: `📋 ${r.name}에 납품 — ${gave}${got}${r.refused > 0 ? ` (${r.refused}개는 남은 몫을 넘어 돌려받음)` : ''}` });
+  Onboarding.onDeliver(player, r, vid | 0);   // ★[온보딩 v2] 누적 기여(=T11 이 재사용할 하나의 카운터)·곳간 이펙트·훅 대사·빈터 권리
   // 낸 즉시 게시판이 갱신된다(다 찼으면 목록에서 빠진다)
   const b = SimVillages.villageBoard(vid | 0, player.x, player.y);
   if (b && b.ok) send(player.ws, { type: 'village_board', board: b });

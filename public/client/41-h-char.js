@@ -633,6 +633,7 @@
     }
   }
   function updateHud() {
+    onbHudLine();   // ★[온보딩 v2] 하루 정산·기여 한 줄(§9.4) — 새 패널 0, HUD 한 줄
     document.getElementById('invWood').textContent = inventory.wood || 0;
     const plankEl = document.getElementById('invPlank');
     if (plankEl) plankEl.textContent = inventory.plank || 0;
