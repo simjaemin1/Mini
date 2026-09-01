@@ -7,13 +7,16 @@
 ## 지금 main 의 상태
 
 ```
-  커밋      f789547d  안개 정렬 · 로비 세로글자 · 재배포는 바뀐 만큼만 [재민 실기 2026-09-01]
-            (그 위에 0번 분할 배치 2커밋 — 인계 분리 · 러너 자동 발견)
-  러너      49개 자동 발견(`// @regress` 표 기준) — 결과는 아래 "최근 러너"
+  커밋      85d5f60  클라 분할 ⑶/3 — 이름 충돌 감사기 러너 등재 [재민 확정 2026-09-01 ⓐ]
+            (T0-b 3커밋: 95c873c 껍데기 제거 · 02a2675 영역 14조각 · 85d5f60 감사기)
+  러너      51개 자동 발견(`// @regress`) — 49 통과 / 1 실패(e2e-mtfoot ⑤ 기지 · 수치 불변)
   econ 기준선  3시드 800일 51마을 인구 6,280 / 5,993 / 6,072 · 소멸 0/51
               econ-regress 5시드 합계 2,616 · 651 · 13,473
-  클라      `public/client.js` 15,946줄 — **아직 한 파일이다**
-            (분할은 전제가 깨져 중단 · `회부_클라분할_다음층.md`)
+  클라      ★**분할 완료** — `public/client/*.js` **14조각**(00-const … 99-main).
+            `public/client.js` 는 없다(두 정본 금지). 등록은 `index.html` 의 @area client 블록.
+            새 기능 = 새 파일 + 등록 1줄 · 최상위 실행문은 99-main.js 에만.
+            검사: `bash scripts/split-verify.sh`(결합 diff) · `node scripts/test-client-globals.js`(이름 충돌)
+            규약 전문과 실측은 `공통.md` ⓒ · 보고서는 `보고/T0b_2026-09-01.md`
   배포      main 푸시는 **세션이** 한다. 재민 몫은 배포 한 줄:
             cd ~/Mini/durango-mini && bash scripts/redeploy-hanbando.sh --central
 ```

@@ -13,7 +13,17 @@
 #   bash scripts/split-verify.sh --selftest      # ★검사기 자신을 검사(한 글자 오염)
 set -uo pipefail
 cd "$(dirname "$0")/.."
-BASE="${BASE:-95c873c}"            # 커밋 ⑴ — 껍데기 제거본(분할 전 정본)
+# ★정본 커밋을 **해시로 박지 않는다.** 리베이스하면 해시가 바뀌고, 새 클론엔 옛 객체가 없어
+#   검사기가 조용히 죽는다(실제로 리베이스 직후 그럴 뻔했다 — 로컬에 dangling 으로 남아 통과했다).
+#   ⇒ `public/client.js` 를 **지운 커밋**(=분할 커밋 ⑵)을 찾아 그 부모가 분할 전 정본이다.
+BASE="${BASE:-}"
+if [ -z "$BASE" ]; then
+  DEL="$(git log --diff-filter=D -1 --format=%H -- public/client.js 2>/dev/null)"
+  [ -n "$DEL" ] && BASE="${DEL}^"
+fi
+if [ -z "$BASE" ] || ! git rev-parse -q --verify "${BASE}:public/client.js" >/dev/null 2>&1; then
+  echo "분할 전 정본을 못 찾았다. BASE=<커밋> 으로 지정해라." >&2; exit 2
+fi
 
 rebuild() {                        # 조각 → 재결합본을 stdout 으로
   node -e '
