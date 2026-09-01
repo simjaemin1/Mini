@@ -2496,6 +2496,19 @@ const server = http.createServer((req, res) => {
   // ★[T47 테스트 전용 · `E2E_GIVE=1` 게이트] **몸의 정본을 그대로** 내준다(읽기 전용).
   //   왜 필요한가: welcome 은 몸의 일부만 싣는다(도구·인벤). 왕복 전후로 **13가지가 다 같은가**를
   //   재려면 `serializeBody` 그 자체를 봐야 한다 — 다른 표를 만들면 그 표가 먼저 틀린다(사본 금지).
+  // ★[T42 테스트 전용 · `E2E_GIVE=1` 게이트] 교역로 캐시 관측·감사(읽기 전용 + 명시적 무효화).
+  //   `?audit=N` — 캐시에 든 N 쌍을 **실제로 다시 계산해** 비교(영속이 답을 안 바꾼다는 증명).
+  //   `?invalidate=1` — **진짜** `invalidateTradeDistances` 를 부른다(하네스가 사본을 만들지 않게).
+  if (req.url && req.url.startsWith('/routedbg') && req.method === 'GET' && process.env.E2E_GIVE === '1') {
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+    try {
+      const u = new URL(req.url, 'http://x');
+      res.end(JSON.stringify(SimVillages.routeDebug
+        ? SimVillages.routeDebug({ audit: parseInt(u.searchParams.get('audit') || '0', 10) || 0, invalidate: u.searchParams.get('invalidate') === '1' })
+        : { err: 'routeDebug 미탑재' }));
+    } catch (e) { res.end(JSON.stringify({ err: e.message })); }
+    return;
+  }
   if (req.url && req.url.startsWith('/bodydbg') && req.method === 'GET' && process.env.E2E_GIVE === '1') {
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
     try {

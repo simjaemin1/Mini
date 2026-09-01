@@ -1439,6 +1439,120 @@ function computeRoutePts(x0, y0, x1, y1) {
   return pts;
 }
 const _routeWarned = new Set();
+// ★★[T42 2026-09-01] **교역로 캐시를 존 DB 에 영속한다.**
+//
+//   실측: 콜드 A* 한 번이 **1,265~1,695ms**. 그게 조각 최대이고(캐러밴 한 대 = 한 조각),
+//   하필 **게임일 경계**에 몰린다 — 캐러밴이 그때 출발하기 때문이다. 8일에 40쌍이 새로 덥혀졌고
+//   아직도 늘고 있었다(쓰이는 쌍이 수백이라 워밍업이 백일 단위로 간다).
+//   ⇒ 계산을 싸게 만드는 게 아니라(그건 `sim/path-core.js` 수술 = 공유 정본이라 금지)
+//     **일어나지 않게** 한다: 한 번 판 길은 재기동해도 남는다.
+//
+//   ★같은 답인가: `sim/path-core.js` 머리 주석이 스스로 보증한다 —
+//     *"왕복 대칭 … 갔던 경로를 저장할 필요 없음: 같은 두 점·같은 세계면 재계산이 같은 복도를
+//       결정론으로 재현"*. 저장이 답을 바꾸지 않는다는 근거가 정본 안에 이미 있다.
+//   ★"같은 세계"가 깨지는 두 갈래를 각각 막는다:
+//     ① 런타임(벽·울타리 설치/철거) — `invalidateTradeDistances` 가 메모리 캐시와 **이 표를 같이** 비운다.
+//     ② 재기동 사이(지형 데이터·존 설정 파일 교체) — **세계 서명**이 다르면 표를 통째로 버린다.
+//       벽은 존 DB 에서 그대로 복원되므로 종료 시점과 동일하다(그래서 서명에 안 넣는다).
+function _routeSig() {
+  const fs = require('fs'), pathm = require('path');
+  const parts = [];
+  for (const f of ['hanbando-terrain.json', 'zone-config.js']) {
+    try { const st = fs.statSync(pathm.join(__dirname, f)); parts.push(`${f}:${st.size}:${Math.round(st.mtimeMs)}`); }
+    catch (e) { parts.push(`${f}:none`); }
+  }
+  return parts.join('|');
+}
+// ★★[T42 ①ⓑ 2026-09-01] **부팅 직후 선계산** — 콜드를 게임일 경계에서 떼어 낸다.
+//
+//   영속(위)은 **재기동 비용**을 없앤다. 그런데 세계가 처음 도는 동안에는 여전히 새 쌍이 열리고,
+//   그 계산이 하필 **캐러밴이 출발하는 게임일 경계**에 몰린다(N.9 가 잡은 그 자리다).
+//   ⇒ 계산을 없앨 수는 없으니(정본 수술 금지) **언제 하느냐**를 옮긴다.
+//
+//   ⚠옮기는 곳이 아무 데나여선 안 된다. A* 한 번이 100~1,700ms 라, 사람이 붙어 있을 때 데우면
+//     경계 스파이크를 평시 스파이크로 바꾸는 것뿐이다. ⇒ **사람이 없을 때만** 한 프레임에 한 쌍.
+//     사람이 들어오면 그 자리에서 멈춘다(다음 무인 프레임에 이어서).
+//   ⚠마감 중에는 안 한다(슬라이서가 프레임을 쓰고 있다).
+const ROUTE_WARM = process.env.VILLAGE_ROUTE_WARM !== '0';   // 0 = 선계산 끔(대조군 · 되돌리는 스위치)
+const ROUTE_WARM_NEAR = (() => { const v = parseInt(process.env.VILLAGE_ROUTE_WARM_NEAR || '', 10); return Number.isFinite(v) && v > 0 ? v : 20; })();
+function _routeWarmBuild() {
+  // 데울 쌍 = **교역이 실제로 볼 만한 이웃**(마을마다 가까운 N곳). 전쌍 1,225 를 다 데울 이유가 없다.
+  const V = state.villages || [];
+  const q = [];
+  const seen = new Set();
+  for (const a of V) {
+    const near = V.filter((b) => b !== a).sort((x, y) =>
+      (Math.hypot(x.ccx - a.ccx, x.ccy - a.ccy) - Math.hypot(y.ccx - a.ccx, y.ccy - a.ccy))).slice(0, ROUTE_WARM_NEAR);
+    for (const b of near) {
+      const key = (a.dbId <= b.dbId) ? `${a.dbId}_${b.dbId}` : `${b.dbId}_${a.dbId}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      if (state.routeCache && state.routeCache.has(key)) continue;   // 영속에서 복원된 것은 건너뛴다
+      q.push([a, b]);
+    }
+  }
+  state.routeWarmQ = q;
+  state.routeWarmTotal = q.length;
+  if (q.length) console.log(`[${state.zoneId}] 🐂 교역로 선계산 대기 ${q.length}쌍 — **사람이 없을 때만** 한 프레임에 한 쌍씩 덥힌다`);
+}
+function _routeWarmStep() {
+  const q = state.routeWarmQ;
+  if (!ROUTE_WARM || !q || !q.length) return;
+  // 사람이 있으면 멈춘다 — 데우기가 평시 스파이크가 되면 안 된다.
+  const pl = state.deps && state.deps.players;
+  if (pl) { for (const p of pl.values()) if (!p.isNpc) return; }
+  const pair = q.shift();
+  try { getRoute(pair[0], pair[1]); } catch (e) {}
+  if (!q.length) console.log(`[${state.zoneId}] 🐂 교역로 선계산 완료 — ${state.routeWarmTotal}쌍(경계에서 팔 길이 그만큼 줄었다)`);
+}
+function _routePrime() {
+  if (!state.db || !state.db.getTradeRoutes) return;
+  const sig = state._routeSig || (state._routeSig = _routeSig());
+  let rows = [];
+  try { rows = state.db.getTradeRoutes(state.zoneId, sig) || []; } catch (e) { return; }
+  const total = (state.db.countTradeRoutes ? state.db.countTradeRoutes(state.zoneId) : rows.length) | 0;
+  if (total > rows.length) {   // 서명이 다른 행이 섞여 있다 = 세계가 바뀌었다 ⇒ 통째로 버린다
+    try { state.db.clearTradeRoutes(state.zoneId); } catch (e) {}
+    console.log(`[${state.zoneId}] 🐂 교역로 캐시: 세계 서명이 달라 ${total}행 폐기(지형·존 설정이 바뀌었다)`);
+    return;
+  }
+  let ok = 0;
+  state._routePrimedKeys = new Set();
+  for (const r of rows) {
+    let pts = null;
+    if (r.pts) { try { pts = JSON.parse(r.pts); } catch (e) { continue; } }
+    state.routeCache.set(r.pair, pts);
+    state._routePrimedKeys.add(r.pair);
+    ok++;
+  }
+  state._routePrimed = ok;   // ★[T42] **부팅 때 몇 쌍을 물려받았나** — 하네스의 판정 기준(시각에 안 흔들린다)
+  if (ok) console.log(`[${state.zoneId}] 🐂 교역로 캐시 복원: ${ok}쌍 (A* 를 그만큼 안 돈다)`);
+}
+// ★[T42 테스트 전용 관측·감사 — zone.js `/routedbg` 가 `E2E_GIVE` 로 게이트한다]
+//   ⓐ 캐시 크기(메모리·DB)와 세계 서명 ⓑ **감사**: 캐시에 든 경로를 실제로 다시 계산해 비교한다.
+//   "저장해도 답이 안 달라진다"는 `path-core` 의 보증이지만, 보증은 **밟아 봐야** 검사가 된다
+//   (T41 의 단조성 감사와 같은 규약 — 코드로만 확인하고 적으면 그게 N.6 을 만든 방식이다).
+function routeDebug(opts) {
+  const o = opts || {};
+  const out = { mem: state.routeCache ? state.routeCache.size : 0, sig: state._routeSig || null,
+                warmLeft: state.routeWarmQ ? state.routeWarmQ.length : -1, warmTotal: state.routeWarmTotal || 0,
+                primed: state._routePrimed | 0, coldPrimed: _probe.routeColdPrimed | 0,
+                db: (state.db && state.db.countTradeRoutes) ? state.db.countTradeRoutes(state.zoneId) : -1 };
+  if (o.audit > 0 && state.routeCache) {
+    let n = 0, bad = 0, first = '';
+    for (const [key, pts] of state.routeCache) {
+      if (n >= o.audit) break;
+      const p = key.split('_'); const a = state.byDbId.get(+p[0]), b = state.byDbId.get(+p[1]);
+      if (!a || !b) continue;
+      const re = computeRoutePts(a.ccx * SZ + SZ / 2, a.ccy * SZ + SZ / 2, b.ccx * SZ + SZ / 2, b.ccy * SZ + SZ / 2);
+      const same = JSON.stringify(re || null) === JSON.stringify(pts || null);
+      n++; if (!same) { bad++; if (!first) first = key; }
+    }
+    out.audit = { n, mismatch: bad, first };
+  }
+  if (o.invalidate) { invalidateTradeDistances(0, 0); out.invalidated = true; }   // ★진짜 훅을 부른다(사본 금지)
+  return out;
+}
 function getRoute(aVil, bVil) { // 무방향 쌍 캐시(랩 getTradePath 동형) — null도 캐시(불능쌍 반복 계산 방지)
   const fwd = aVil.dbId <= bVil.dbId;
   const key = fwd ? `${aVil.dbId}_${bVil.dbId}` : `${bVil.dbId}_${aVil.dbId}`;
@@ -1446,10 +1560,17 @@ function getRoute(aVil, bVil) { // 무방향 쌍 캐시(랩 getTradePath 동형)
   if (pts !== undefined) _probe.routeHit++;
   if (pts === undefined) {
     const t0 = Date.now(); _probe.routeCold++;
+    // ★[T42] **물려받은 쌍을 다시 파면** 영속이 헛일이다 — 그 사건만 따로 센다(하네스가 0 을 요구한다).
+    if (state._routePrimedKeys && state._routePrimedKeys.has(key)) _probe.routeColdPrimed++;
     const [s, t] = fwd ? [aVil, bVil] : [bVil, aVil];
     pts = computeRoutePts(s.ccx * SZ + SZ / 2, s.ccy * SZ + SZ / 2, t.ccx * SZ + SZ / 2, t.ccy * SZ + SZ / 2);
     state.routeCache.set(key, pts || null);
     { const d = Date.now() - t0; _probe.routeMs += d; if (d > _probe.routeMax) _probe.routeMax = d; }
+    // ★[T42] 판 길은 남긴다 — 재기동해도 다시 안 판다(위 주석의 결정론 보증).
+    if (state.db && state.db.upsertTradeRoute) {
+      try { state.db.upsertTradeRoute(state.zoneId, key, state._routeSig || (state._routeSig = _routeSig()), pts ? JSON.stringify(pts) : null); }
+      catch (e) { console.warn(`[${state.zoneId}] 🐂 교역로 캐시 저장 실패(계속):`, e.message); }
+    }
     if (pts) console.log(`[${state.zoneId}] 🐂 교역로 A*: ${s.name}↔${t.name} ${pts.length}정점 ${Date.now() - t0}ms (캐시)`);
     else if (!_routeWarned.has(key)) { _routeWarned.add(key); console.warn(`[${state.zoneId}] 🐂 교역로 A* 실패: ${s.name}↔${t.name} — 실체 생략(econ은 그대로 진행)`); }
   }
@@ -1978,6 +2099,9 @@ function invalidateTradeDistances(cx, cy) { // eslint-disable-line no-unused-var
   if (!state.ready) return;
   state.distDirty = true;
   if (state.routeCache) { _probe.routeClear++; state.routeCache.clear(); }
+  // ★[T42] 영속 캐시도 **같은 훅에서** 비운다 — 무효화가 두 자리에 있으면 언젠가 한쪽만 지운다.
+  if (state.db && state.db.clearTradeRoutes) { try { state.db.clearTradeRoutes(state.zoneId); } catch (e) {} }
+  if (state.ready) { try { _routeWarmBuild(); } catch (e) {} }   // ★[T42 ①ⓑ] 다 버렸으니 다시 데울 목록을 세운다
   lifeSiteResetAll();   // ★[T41 ①] 지형이 바뀌면 옛 거부가 뒤집힐 수 있다 — 표지 + 거부 캐시 파기(셋째).
   if (state._route) state._route.blk.fill(0);
   if (state._distBlk) state._distBlk.fill(0);   // ★[배치 12] 교역 거리행렬 코스 격자도 같은 훅에서 비운다(캐러밴 A* 격자와 동형)
@@ -2101,6 +2225,8 @@ function init(deps) {
     // Stage 4B: 캐러밴 실체 상태 — world.caravans는 비영속(재부팅 시 빈 배열)이라 복원 불필요
     state.caravanBodies = new Map();
     state.routeCache = new Map();
+    try { _routePrime(); } catch (e) { console.warn(`[${state.zoneId}] 🐂 교역로 캐시 복원 실패(빈 캐시로 계속):`, e.message); }   // ★[T42]
+    state._routeWarmPending = true;   // ★[T42 ①ⓑ] 마을·거리행렬이 다 선 뒤에 큐를 세운다(init 끝에서)
     state.pathfind = require('./pathfind'); // 로컬 재경로(벽 인지) — lazy(플래그 off면 이 줄까지 안 옴)
     state.roads = require('./roads');        // §16 답압 길(4파) — 캐러밴·행군 스탬프 + 교역 A* 할인(ENABLE_ROADS=0이면 내부 no-op)
     // §19 경도 로컬 시각(4파): 마을별 _lonOff = (ccx/셀폭)×0.045 — 인간 일과(마을 NPC 취침)만 로컬 태양시.
@@ -2242,6 +2368,7 @@ function init(deps) {
     }
 
     state.lastGameDay = gameDayOf(Date.now()); // 다음 경계부터 틱 (재기동 따라잡기 없음 — 실시간 앵커)
+    if (state._routeWarmPending) { state._routeWarmPending = false; try { _routeWarmBuild(); } catch (e) {} }   // ★[T42 ①ⓑ]
     state.ready = true;
     console.log(`[${ZONE_ID}] 🏘️ 마을 시뮬 준비: 마을 ${state.villages.length}, econ 인구 ${world.villages.reduce((s, v) => s + v.npcs.length, 0)}, 스폰 NPC ${npcTotal}, econ day ${world.day}, 게임일 ${state.dayMs / 1000}s${process.env.VILLAGE_DAY_MS ? ' (VILLAGE_DAY_MS 테스트 오버라이드)' : ''}`);
   } catch (e) {
@@ -2618,12 +2745,12 @@ const _lifeSub = { crop: 0, hunter: 0, gran: 0, pids: 0, site: 0, near: 0, headl
 //   ⓒ 광맥 셀 스캔(콜드)이 몇 번·얼마인가. 전부 세기만 한다.
 const _probe = { siteLog: [], auditN: 0, auditBad: 0, auditFirst: '', siteCall: 0, siteHit: 0, siteSkip: 0, siteMs: 0, siteMax: 0, siteVils: new Set(),
                  terrGrowDays: 0, terrGrowCells: 0, siteCand: 0, siteScan: 0, siteReason: {},
-                 routeCold: 0, routeMs: 0, routeMax: 0, routeHit: 0, routeClear: 0,
+                 routeCold: 0, routeColdPrimed: 0, routeMs: 0, routeMax: 0, routeHit: 0, routeClear: 0,
                  oreCold: 0, oreMs: 0, oreMax: 0 };
 function probeStats() { return { siteLog: _probe.siteLog.slice(-400), auditN: _probe.auditN, auditBad: _probe.auditBad, auditFirst: _probe.auditFirst, siteMemo: LIFE_SITE_MEMO, siteRescanDays: LIFE_SITE_RESCAN_DAYS, siteSkip: _probe.siteSkip, terrGrowDays: _probe.terrGrowDays, terrGrowCells: _probe.terrGrowCells,
   siteCand: _probe.siteCand, siteScan: _probe.siteScan, siteReason: _probe.siteReason, siteCall: _probe.siteCall, siteHit: _probe.siteHit, siteMiss: _probe.siteCall - _probe.siteHit,
   siteMs: _probe.siteMs, siteMax: _probe.siteMax, siteVils: _probe.siteVils.size,
-  routeCold: _probe.routeCold, routeMs: _probe.routeMs, routeMax: _probe.routeMax, routeHit: _probe.routeHit, routeClear: _probe.routeClear,
+  routeCold: _probe.routeCold, routeColdPrimed: _probe.routeColdPrimed, routeMs: _probe.routeMs, routeMax: _probe.routeMax, routeHit: _probe.routeHit, routeClear: _probe.routeClear,
   oreCold: _probe.oreCold, oreMs: _probe.oreMs, oreMax: _probe.oreMax }; }
 const _lifeSubMax = {};   // 같은 항목의 **마을 한 곳 최댓값** — 조각 예산은 합이 아니라 최댓값이 정한다
 let _lifeMax = 0, _lifeMaxName = '';   // ★[T1 §0] 마을 한 곳의 최댓값 — '마을 경계 조각'이 예산에 드는지의 직답
@@ -2662,6 +2789,8 @@ function onGameTick(now) {
   try { _granBroadcast(now); } catch (e) { console.error(`[${state.zoneId}] 🏘️ 곳간 재고 방송 실패:`, e.message); }
   // ★[10차 T4 장마당] 캐러밴 체류(phase='linger') 집합이 바뀔 때만 방송 — 평시 O(캐러밴 수) 비교 1회
   try { _mktBroadcast(); } catch (e) { console.error(`[${state.zoneId}] 🏪 장마당 플래그 방송 실패:`, e.message); }
+  // ★[T42 ①ⓑ] 교역로 선계산 한 걸음 — 마감 중이 아니고 **사람이 없을 때만**(위 주석).
+  if (!state.tickJobs) { try { _routeWarmStep(); } catch (e) {} }
   // ★자정 스파이크 분산: DB 직렬화(마을당 ~10KB JSON — 자정 틱 비용의 주범)는 이후 틱에 1마을/틱씩 배수(drain).
   //   econ 틱 자체는 일괄 유지 — 교역(tickWorldV2)이 마을 간 원자적이라 쪼개면 정합이 깨짐. 30Hz 예산(33ms) 보호.
   if (state.saveQueue && state.saveQueue.length) {
@@ -4941,6 +5070,7 @@ module.exports = {
   tickPerf,   // ★[T1 §0] 일틱 단계별 소요 — zone.js `/perf` 가 소비(계측 전용)
   villagesBusy, villageWait,   // ★[T1 §2-②] "장부 마감 중" 큐 — zone.js 가 마을 요청만 이 문으로 보낸다
   dayNow: _dayNow,   // ★[T1] 마감 중이면 **경계의 순간**을 돌려준다 — 벽시계 적분(광맥 재생)이 조각 순서에 흔들리지 않게
+  routeDebug,   // ★[T42] 교역로 캐시 관측·감사 — zone.js `/routedbg` 가 E2E_GIVE 로 게이트
   tickSliceMs: () => TICK_SLICE_MS,   // ★[T1] `/perf` 가 '지금 어떤 예산으로 도는가'를 그대로 말하게(대조군 판별)
   // Stage 4A — zone.js 소비: 농지 lazy 실물화 / welcome 영토 페이로드 / 레거시 디듀프 판정
   farmTilesInRect, clientVillages, isLegacyVillageClaimed,

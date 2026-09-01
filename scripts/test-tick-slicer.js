@@ -58,6 +58,11 @@ async function arm(label, sliceMs) {
     PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
     VILLAGE_DAY_MS: String(DAY_MS), ENABLE_BANDITS: '0', ENABLE_ROADS: '0', ENABLE_WILDLIFE: '0',
     VILLAGE_TICK_SLICE_MS: String(sliceMs),
+    // ★[T42 뒤] 교역로 **선계산을 끈다.** 이 하네스의 주제는 *일틱 조각내기*이고, 선계산은
+    //   무인 프레임에 A*(100~1,900ms)를 도는 별개 층이다. 켜 두면 루프 지연·경제 잡음이
+    //   그쪽에서 들어와 조각내기를 못 잰다(실제로 ⑥·⑧이 그걸로 흔들렸다).
+    //   선계산 자체의 값과 대가는 `test-route-persist` 가 잰다.
+    VILLAGE_ROUTE_WARM: '0',
   });
   if (!await waitHttp(`http://localhost:${ZPORT}/health`, 600)) { killAll(); return null; }
   await sleep(1500);

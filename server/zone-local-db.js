@@ -292,6 +292,34 @@ function getRoadCells(zone) { return stmtGetRoadCells.all(zone); }
 function upsertRoadCell(zone, key, v, d) { stmtUpsertRoadCell.run(zone, key | 0, v, d | 0); }
 function deleteRoadCell(zone, key) { stmtDeleteRoadCell.run(zone, key | 0); }
 
+// === [T42 2026-09-01] 교역로 캐시 영속 — 마을 쌍 A* 결과 =========================
+//   왜: 콜드 A* 한 번이 **1.3~1.7초**다(실측). 캐시는 프로세스 메모리라 **재기동마다 다시 덥힌다**,
+//   그리고 덥히는 일이 하필 **게임일 경계**에 몰린다(캐러밴이 그때 출발하므로).
+//   ⇒ 계산을 싸게 만드는 게 아니라 **일어나지 않게** 한다. 같은 세계면 같은 답이라는 보증이
+//     `sim/path-core.js` 머리 주석에 이미 적혀 있다: *"같은 두 점·같은 세계면 재계산이
+//     같은 복도를 결정론으로 재현"*(왕복 대칭·직선 편향). 그래서 저장해도 답이 안 달라진다.
+//
+//   ★`sig` = **세계 서명**. 지형 데이터나 존 설정이 바뀌면 옛 경로를 못 믿는다 ⇒ 통째로 버린다.
+//     런타임의 벽·다리 변화는 `invalidateTradeDistances` 가 이 표까지 비운다(같은 훅 · 한 자리).
+//   ★`pts` 가 NULL = **불능쌍**(경로 없음). 그것도 캐시한다 — 메모리 캐시가 `null` 을 캐시하는 규약 그대로다.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS trade_routes (
+    zone TEXT NOT NULL,
+    pair TEXT NOT NULL,
+    sig  TEXT NOT NULL,
+    pts  TEXT,
+    PRIMARY KEY (zone, pair)
+  );
+`);
+const stmtGetRoutes = db.prepare('SELECT pair, pts FROM trade_routes WHERE zone = ? AND sig = ?');
+const stmtUpsertRoute = db.prepare('INSERT INTO trade_routes (zone, pair, sig, pts) VALUES (?, ?, ?, ?) ON CONFLICT(zone, pair) DO UPDATE SET sig = excluded.sig, pts = excluded.pts');
+const stmtClearRoutes = db.prepare('DELETE FROM trade_routes WHERE zone = ?');
+const stmtCountRoutes = db.prepare('SELECT COUNT(*) AS n FROM trade_routes WHERE zone = ?');
+function getTradeRoutes(zone, sig) { return stmtGetRoutes.all(zone, String(sig)); }
+function upsertTradeRoute(zone, pair, sig, ptsJson) { stmtUpsertRoute.run(zone, String(pair), String(sig), ptsJson === null ? null : String(ptsJson)); }
+function clearTradeRoutes(zone) { return stmtClearRoutes.run(zone).changes | 0; }
+function countTradeRoutes(zone) { return (stmtCountRoutes.get(zone) || {}).n | 0; }
+
 // === [배치 20 B] 동적 토양치 + 지질 플래그(server/soil.js) ===
 // mined_cells 의 lazy 패턴을 그대로 베낀 것: **기준선에서 벗어난 셀만** 행을 갖는다.
 //   v   = 절대 토양치 0..1000 (public/soil-base.js SOIL_MAX 눈금)
@@ -431,4 +459,6 @@ module.exports = {
   getRoadCells, upsertRoadCell, deleteRoadCell,
   // [배치 20 B] 동적 토양치 · 지질 (soil.js)
   getSoilCells, upsertSoilCell, deleteSoilCell,
+  // [T42] 교역로 캐시 영속 (villages.js getRoute)
+  getTradeRoutes, upsertTradeRoute, clearTradeRoutes, countTradeRoutes,
 };
