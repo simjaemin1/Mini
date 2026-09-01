@@ -53,6 +53,7 @@ const Spoil = require('./spoil');
 // ★★[작물 층 2026-08-31] 작물 정본 — 재민의 `한국작물_카탈로그.xlsx` 34종이 여기로 들어온다.
 //   보관일·포만감·무게·성장일·파종철·수확량이 전부 그 표에서 파생된다(이 파일에 표를 안 적는다).
 const Crops = require('./crops');
+const Salt = require('./salt');            // ★[자염 배치 2026-09-01] 염도·수율·땔감·시간 정본 하나
 const harvestedSeeds = new Set(); // 채집된 시드 자원 (DB에서 load)
 
 // === 활성 청크 (12.2.b) — 사람 player + observer 위치 주변 청크만 시뮬레이션 ===
@@ -393,6 +394,20 @@ function isWaterTileLocal(localX, localY) {
   if (_TERR_CACHE) return _TERR_CACHE.water(tx, ty, () => _terrain.isWaterCellLocal(ZONE_ID, cellCx, cellCy));
   return _terrain.isWaterCellLocal(ZONE_ID, cellCx, cellCy);
 }
+// ★★[자염 배치 2026-09-01] **바다 술어** — 강·호수와 바다를 가른다.
+//   이 레포엔 물이 두 층이다: `WATER_TILES`(해안선 띠 · `chunk.generateCoastlineWaterTiles`)와
+//   `terrain.isWaterCellLocal`(지형 JSON 의 rivers/lakes). 여태 둘은 `isWaterTileLocal` 안에서
+//   OR 로 뭉쳐 있었다 — "물이냐"만 묻는 콜라이더에겐 그걸로 충분했으니까.
+//   ⇒ **바다 = 해안선 타일이면서 강·호수가 아닌 것.** 새 지형 층도 새 데이터도 없다(차집합 하나).
+//   ⚠`ZONE.isOcean` 존은 전체가 바다다(그 존엔 뭍이 없어 갯벌도 없다 — `isTidalFlat` 가 뭍을 요구한다).
+function isSeaTileLocal(localX, localY) {
+  if (ZONE.isOcean) return true;
+  if (localX < 0 || localY < 0 || localX >= ZONE.zoneWidth || localY >= ZONE.zoneHeight) return false;
+  const tx = Math.floor(localX / 32), ty = Math.floor(localY / 32);
+  if (!WATER_TILES.has(`${tx}_${ty}`)) return false;
+  // 해안선 띠 안이라도 강·호수가 겹친 칸은 민물이다(강어귀) — 거기선 짠물이 안 나온다.
+  return !_terrain.isWaterCellLocal(ZONE_ID, tx * 32 + 16, ty * 32 + 16);
+}
 // Phase 5-H: 산맥 바위 셀 — 통행 불가. 물 > 바위 우선·고개 처리는 terrain.isRockCellLocal에서.
 function isRockTileLocal(localX, localY) {
   if (ZONE.isOcean) return false;
@@ -647,17 +662,25 @@ const BUILDING_COST = {
   //   뒤에야 말릴 수 있다면, 보존은 이미 늦은 것이다. **빈손 사다리 위에 놓는다.**
   //   값이 작업대(통나무4+돌2)보다 싼 이유: 장대 둘에 풀 끈이면 서는 물건이다.
   drying_rack: { wood: 2, fiber: 4 },
+  // ★★[자염 배치 2026-09-01] **소금가마** — 돌을 쌓고 통나무로 받친 노천 가마(벌막).
+  //   값이 작업대(통나무4+돌2)·건조대(통나무2+풀4)보다 무거운 이유: 불을 오래 때는 물건이라
+  //   **돌이 몸통**이다. 망치는 요구하지 않는다(작업대·건조대 선례 — 빈손 사다리 위에 둔다).
+  //   ⚠지시서는 "돌·점토·통나무"였는데 **점토는 플레이어 품목이 아니다**(econ `clay` 는 있으나
+  //     채취 경로도 무게표도 없다 — §0 실측). 새 재료를 만들지 않는다는 규칙이 이겼다. 회부 C.
+  salt_kiln: { stone: 4, wood: 3 },
 };
 const CROP_GROW_MS = 60 * 1000;
 // 14.50: door도 닫혔을 때 blocking. fence는 cell 차지하지만 통과 가능 (사용자 의도: 시야는 통과, collider만 차단).
 const BLOCKING_BUILDINGS = new Set(['wall', 'fence', 'door']);
 // 14.49-e2: 층 높이 2배 (32 → 64). 벽·계단도 같이 2배.
-const BUILDING_HEIGHT = { drying_rack: 34, workbench: 26, wall: 64, floor: 4, fence: 32, door: 64, chest: 24, campfire: 20, farmland: 4, stair: 64, vtile: 2, guild_granary: 40, granary: 40, hut_site: 4, hut: 40, furnace_site: 4, furnace: 48, kiln_site: 4, charcoal_kiln: 36, village_site: 4, village_hall: 56 };   // ★실체화 동기: 지면 타일·곳간·움집터·노(爐)·숯가마·마을회관[배치 12]
+const BUILDING_HEIGHT = { salt_kiln: 40, drying_rack: 34, workbench: 26, wall: 64, floor: 4, fence: 32, door: 64, chest: 24, campfire: 20, farmland: 4, stair: 64, vtile: 2, guild_granary: 40, granary: 40, hut_site: 4, hut: 40, furnace_site: 4, furnace: 48, kiln_site: 4, charcoal_kiln: 36, village_site: 4, village_hall: 56 };   // ★실체화 동기: 지면 타일·곳간·움집터·노(爐)·숯가마·마을회관[배치 12]
 // Phase 14.25: chest 저장 가능 아이템 (모든 자원 + 도구 + 음식)
 const CHEST_ALLOWED_ITEMS = new Set([
   'wood', 'stone', 'ore', 'herb',
   'berry', 'fiber', 'meat_raw', 'meat_cooked', 'hide',
   'berry_jam', 'water_bottle', 'seed_berry',
+  'brine', 'salt',                  // ★[자염 배치 2026-09-01] 짠물·소금도 상자에 넣는다
+
   'fish', 'fish_cooked',            // Phase 5-econ-game-2: 어부 어획물
   'axe', 'pickaxe', 'sword',
   'plank', 'pillar', 'rafter', 'thatch',   // ★건축재(판자는 기존 누락 보수 — 조합법 체계와 함께 저장 허용)
@@ -751,6 +774,15 @@ const ITEM_RECIPES = {
   // ★[재민 확정 2026-08-02 노 건설] 숯 — 노 연료. 장작으론 900℃ 위로 못 간다(era.js FUEL_CAP).
   //   숯가마 설치물은 후속(회부_플레이어_제련_노모델)로 이월 — MVP 는 제작 경로.
   charcoal: { from: { wood: 3 }, to: { charcoal: 2 },                    label: '숯 (통나무 3 → 숯 2 — 노 연료)' },
+  // ★★[자염 배치 2026-09-01] **물병을 되살린다.** §0 실측: `water_bottle` 은 무게표(1.00 "박 물병 + 물")·
+  //   라벨·아이콘·상자 허용목록에 **다 있는데 만들 길이 없었다** — 서버 레시피가 아예 없었다
+  //   (클라에 폴백 목록이 있었지만 그건 `cookRecipes` 가 빌 때만 뜬다 = 영영 안 뜬다). **죽은 품목**이었다.
+  //   ⚠**요리(`COOK_RECIPES`)에 넣으면 안 된다** — `doCook` 은 `produces` 를 안 보고 **요리 인스턴스**를 낸다
+  //     (그래서 '물병'이라는 이름의 **먹는 요리**가 나온다). 실클라 하네스가 그 자리를 밟아 잡았다.
+  //   ★재료는 **박**이다. 재민의 작물 카탈로그가 박을 이렇게 적어 뒀다: *"조롱박·**표주박(그릇)**·박나물"* —
+  //     그릇을 발명할 필요가 없었다. 있는 작물이 이미 그릇이라고 말하고 있었다.
+  //   ★박 하나로 병 하나. 그리고 **병은 소모품이 아니다**(가마가 돌려준다) — 한 번 갖추면 자본이 된다.
+  water_bottle: { from: { gourd: 1 }, to: { water_bottle: 1 },          label: '물병 (박 1 → 표주박 물병 1 — 맨손)' },
 };
 // 14.51/14.52: 건축물 = 인벤 아이템. 제작창에서 만들면 인벤에 들어가고, 건축 모드에서 배치한다.
 // 14.52: 재료는 plank/wood만 (stone 제외). 망치/톱은 재료가 아닌 "도구" — 내구도 소비.
@@ -769,6 +801,9 @@ const BUILDING_RECIPES = {
   // ★[보존 배치 2026-08-31] 건조대 — 비용은 `BUILDING_COST.drying_rack` 과 같은 값이어야 한다
   //   (하네스 ⑥이 두 표의 일치를 검사한다 — 작업대가 이미 밟은 자리다).
   item_drying_rack: { wood: 2, fiber: 4,                 _buildType: 'drying_rack', label: '건조대 (Drying Rack)' },
+  // ★[자염 배치 2026-09-01] 소금가마 — `BUILDING_COST.salt_kiln` 과 **같은 값이어야 한다**
+  //   (하네스가 두 표의 일치를 검사한다 — 작업대·건조대가 이미 밟은 자리다).
+  item_salt_kiln:  { stone: 4, wood: 3,                  _buildType: 'salt_kiln',  label: '소금가마 (Salt Kiln)' },
 };
 // 14.52: 모든 도구의 최대 내구도 (제작 시 부여, 사용 시 1씩 감소, 0 되면 인벤서 제거)
 const TOOL_MAX_DURABILITY = {
@@ -3457,7 +3492,14 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'cook') doCook(player, msg.recipe);
   else if (msg.type === 'eat_dish') doEatDish(player, msg.id);
   // ★[보존 배치 2026-08-31] 말리기·훈제·절임 — 새 패널 0. 제작창(시설의 창)에 항목만 늘어난다.
-  else if (msg.type === 'preserve') doPreserve(player, msg.recipe, msg.amount);
+  // ★★[자염 배치 2026-09-01] 자염도 이 문으로 들어온다 — **클라를 한 줄도 안 고치려고**.
+  //   클라의 제작창은 행에 `preserve: true` 가 있으면 `{type:'preserve', recipe, amount}` 를 보낸다.
+  //   자염은 "시설 앞에서 재료를 넣고 시간을 기다려 물건을 받는" **같은 문법**이라 그 문이 맞다.
+  //   여기서 갈래를 나눈다: 레시피 이름이 `salt.RECIPES` 에 있으면 자염, 아니면 보존.
+  else if (msg.type === 'preserve') {
+    if (Salt.RECIPES[msg.recipe]) doBoilSalt(player, msg.recipe, msg.amount);
+    else doPreserve(player, msg.recipe, msg.amount);
+  }
   else if (msg.type === 'preserve_menu_ask') send(player.ws, { type: 'preserve_menu', recipes: preserveMenuPayload() });
   // ★[작물 층 2026-08-31] 파종 — 씨앗이 곧 작물이라 고르는 창이 따로 없다(새 패널 0)
   else if (msg.type === 'plant') doPlant(player, msg.crop);
@@ -3903,6 +3945,68 @@ function doPreserve(player, recipeKey, amount) {
         + ` · ${r.days}일(${Math.ceil(ms / 60000)}분)${rk.ahead ? ` (앞에 ${rk.ahead}개)` : ''}` });
   savePlayer(player);
 }
+// === ★★자염(煮鹽) — 짠물을 졸여 소금을 얻는다 [재민 확정 2026-09-01 ①] ==========
+//
+// ★`doPreserve` 와 **같은 뼈대**다(시설 판정 → 재료 확인 → 대기열 → 수령). 다른 점은 셋뿐:
+//   ① 입력이 **로트가 아니다** — 짠물도 땔감도 안 썩는다(무기한 벌크 = 인벤 3층의 셋째).
+//      그래서 신선도도 수율 배율도 없다. 같은 입력이면 **언제나 같은 소금**이다(주사위 금지).
+//   ② 산출이 **econ 재화 `salt` 그 자체**다 — 새 품목을 만들지 않았으므로 절임·거래소·사건 장부가
+//      특별 취급 코드 없이 이 소금을 다룬다(그게 새 품목을 안 만든 이유다).
+//   ③ **빈 병을 돌려준다.** 짠물 7되를 졸이면 병 7개가 비어 나온다 — 병은 소모품이 아니라 그릇이다.
+//      (안 돌려주면 채수할 때마다 풀 2단이 사라진다 = 물병이 사실상 소모품이 되고,
+//       그러면 자염의 비용이 **풀**이 된다. 자염의 비용은 땔감과 걸음이어야 한다.)
+//
+// ★한 솥이 단위다. `amount` 는 솥 수다 — 되당 땔감 0.29단 같은 소수를 화면에 안 띄우려고 그렇게 잡았다.
+function doBoilSalt(player, recipeKey, amount) {
+  const r = Salt.RECIPES[recipeKey];
+  if (!r) { send(player.ws, { type: 'notice', text: `알 수 없는 가공: ${recipeKey}` }); return; }
+  // ① 시설 — 정본에게 묻는다(반경 상수를 여기 또 적지 않는다)
+  const fc = facilityFor(player, r.kind);
+  if (!fc) { send(player.ws, { type: 'notice', text: `${r.facilityKo} 앞에서만 ${r.label}을 한다` }); return; }
+  if (!_facilityMine(player, fc.b)) { send(player.ws, { type: 'notice', text: `${fc.ko}은(는) 내 것이 아니다` }); return; }
+  // ② 대기열 자리를 **먼저** 본다 — 재료를 뺀 뒤에 "찼다"로 되돌리는 길을 아예 없앤다(보존 선례).
+  if (Facility.view(fc.b, Date.now()).length >= Facility.MAX_QUEUE) {
+    send(player.ws, { type: 'notice', text: `${fc.ko} 대기열이 찼다(${Facility.MAX_QUEUE})` }); return;
+  }
+  // ③ 재료 — **확인만** 한다(정본 게이트 하나에게 묻는다).
+  const pots = Math.max(1, Math.floor(Number(amount) > 0 ? Number(amount) : 1));
+  const gate = Salt.canBoil(recipeKey, player.inventory, pots);
+  if (!gate.ok) {
+    const ko = ITEM_LABEL_SERVER[gate.item] || gate.item;
+    send(player.ws, { type: 'notice',
+      text: `${ko} ${gate.need}${gate.item === Salt.BRINE ? '되' : '개'} 필요(보유 ${gate.have})`
+          + (gate.item === Salt.BRINE ? ` — 갯벌에서 물병으로 뜬다` : ` — 자염은 땔감을 먹는다`) });
+    return;
+  }
+  const outQty = Salt.potYield(recipeKey) * pots;
+  if (outQty < 1) { send(player.ws, { type: 'notice', text: `한 솥으로는 소금이 한 줌도 안 나온다` }); return; }
+  // ④ 재료를 깎는다.
+  for (const [k, n] of Object.entries(gate.cost)) consumeItem(player, k, n * pots);
+  // ⑤ 대기열 — 시간은 **게임일로 적고** 하루 길이로 환산한다(새 시계 금지 · 보존과 같은 규약).
+  const ms = Salt.boilMs(recipeKey, _SEASON_DAY_MS) * pots;
+  const backVessels = gate.cost[Salt.BRINE] * pots;   // 비어 나오는 병
+  const rk = Facility.enqueue(fc.b, {
+    id: genEquipId(), kind: 'boil', label: `${r.label}(${ITEM_LABEL_SERVER[r.out]} ×${outQty})`,
+    owner: player.playerId, ms,
+    // ★로트가 아니다 — `lotItems` 를 안 준다(소금도 병도 안 썩는다).
+    items: { [r.out]: outQty, [Salt.VESSEL]: backVessels },
+  }, Date.now());
+  if (!rk.ok) {
+    for (const [k, n] of Object.entries(gate.cost)) player.inventory[k] = (player.inventory[k] || 0) + n * pots;
+    sendInventory(player);
+    send(player.ws, { type: 'notice', text: rk.err }); return;
+  }
+  markBuildingDirty(fc.b);
+  sendInventory(player);
+  sendCraftQueue(player);
+  send(player.ws, { type: 'notice',
+    text: `🧂 ${fc.ko}에 걸었다 — ${r.label} ${pots}솥 · ${Salt.BRINE_KO} ${gate.cost[Salt.BRINE] * pots}되`
+        + ` + ${ITEM_LABEL_SERVER.wood} ${gate.cost.wood * pots} → ${ITEM_LABEL_SERVER[r.out]} ${outQty}`
+        + ` (빈 ${ITEM_LABEL_SERVER[Salt.VESSEL]} ${backVessels}개도 같이 나온다)`
+        + ` · ${Math.ceil(ms / 60000)}분${rk.ahead ? ` (앞에 ${rk.ahead}개)` : ''}` });
+  savePlayer(player);
+}
+
 // 클라가 그릴 목록 — 서버가 정본을 그대로 내보낸다(클라가 표를 안 든다).
 function preserveMenuPayload() {
   const out = [];
@@ -5403,6 +5507,28 @@ function _facilityRecipes(player, kind) {
       }
     }
   }
+  // ★★[자염 배치 2026-09-01] **소금가마의 창.** 새 패널 0 — 보존 행과 **같은 모양**으로 낸다.
+  //   `preserve: true` 를 다는 건 의미의 남용이 아니다: 클라에서 그 깃발의 뜻은
+  //   "재료를 넣고 시간을 기다려 물건을 받는 행"이고, 자염이 정확히 그것이다.
+  //   ★수치는 전부 `salt.js` 정본이 계산해 보낸다(클라도 여기도 표를 다시 적지 않는다).
+  if (kind === 'boil') {
+    for (const [id, r] of Object.entries(Salt.RECIPES)) {
+      const cost = Salt.potCost(id);
+      const outN = Salt.potYield(id);
+      push({ id, label: r.label, kind: 'preserve', preserve: true, boil: true,
+             cost,
+             from: r.from, out: r.out, outKo: `${ITEM_LABEL_SERVER[r.out] || r.out} ×${outN}`,
+             // ⚠클라의 보존 행은 `· 보관 ${shelfDays}일` 을 **무조건** 찍는다(그 갈래를 빌려 쓰는 값이다).
+             //   소금은 안 썩으므로 숫자를 넣으면 거짓말이 된다 ⇒ `∞` 를 넣어 "보관 ∞일" 로 읽히게 한다.
+             //   ★클라를 한 줄 고치면 이 칸을 지울 수 있다 — 회부 D-2.
+             days: r.days, shelfDays: '∞',
+             // 재료 선택이 판단이 되도록 — 지금 재료로 **몇 솥**이 나오는지 미리 보여 준다.
+             //   (도구의 "예상 품질 %"·보존의 "수율 %"와 같은 자리다.)
+             yieldPct: null,
+             pots: Math.min(Math.floor((inv[r.from] || 0) / cost[r.from]),
+                            Math.floor((inv.wood || 0) / cost.wood)) });
+    }
+  }
   // "가능"이 먼저, 그다음 **하나만 모자란 것**, 그다음 나머지(모자란 개수 오름차순)
   rows.sort((a, b) => (b.can - a.can) || (a.missing.length - b.missing.length) || String(a.id).localeCompare(String(b.id)));
   return rows;
@@ -5421,6 +5547,9 @@ function _forageCtx(player) {
     forestMult: (x, y) => (_terrain.getForestMultiplier ? _terrain.getForestMultiplier(ZONE_ID, x, y) : 1),
     isRock: (x, y) => isRockTileLocal(x, y),
     isWater: (x, y) => isWaterTileLocal(x, y),
+    // ★[자염 배치] 갯벌 판정에 필요한 둘 — 술어는 정본을 **주입**한다(사본 금지 규약 그대로).
+    isSea: (x, y) => isSeaTileLocal(x, y),
+    hasVessel: (player.inventory && (player.inventory[Salt.VESSEL] || 0) >= 1),
   };
 }
 function tryForage(player) {
@@ -5438,10 +5567,25 @@ function tryForage(player) {
     send(player.ws, { type: 'notice', text: `🤏 ${src.where} — 여긴 다 훑었다. 잠시 뒤 다시 자란다(옆 것을 찾아라)` });
     return;
   }
+  // ★★[자염 배치 2026-09-01] **짠물은 물병을 쓴다** — 병 하나가 짠물 한 되로 바뀐다.
+  //   왜 소모가 아니라 **교체**인가: 무게가 같아서(둘 다 1.00kg) 채수가 몸무게를 안 바꾼다.
+  //   그리고 **들고 갈 수 있는 짠물의 상한이 곧 가진 병의 수**가 된다 — 용기가 진짜 용기다.
+  //   가마가 다 졸이면 병을 **돌려준다**(`doBoilSalt`) — 병은 소모품이 아니라 그릇이다.
+  if (src.kind === Salt.BRINE) {
+    if ((player.inventory[Salt.VESSEL] || 0) < got) {
+      send(player.ws, { type: 'notice', text: `🏺 ${ITEM_LABEL_SERVER[Salt.VESSEL]}이 있어야 짠물을 뜬다` });
+      return;
+    }
+    consumeItem(player, Salt.VESSEL, got);
+  }
   player.inventory[src.kind] = (player.inventory[src.kind] || 0) + got;
-  // (로트 없음 — 잔가지·자갈·풀은 무기한 벌크다. 나이가 뜻이 없다.)
+  // (로트 없음 — 잔가지·자갈·풀·짠물은 무기한 벌크다. 나이가 뜻이 없다.)
   sendInventory(player);
-  send(player.ws, { type: 'notice',
+  if (src.kind === Salt.BRINE) {
+    send(player.ws, { type: 'notice',
+      text: `🌊 ${src.where}에서 ${Salt.BRINE_KO} ${got}되 — 남은 ${ITEM_LABEL_SERVER[Salt.VESSEL]} ${Math.floor(player.inventory[Salt.VESSEL] || 0)}개`
+          + ` · 소금 한 줌엔 ${Salt.brinePerPot()}되가 든다` });
+  } else send(player.ws, { type: 'notice',
     text: `🤏 ${src.where}에서 ${ITEM_LABEL_SERVER[src.kind] || src.kind} ${got} (남은 양 ${Forage.left(src.key, now).toFixed(1)})` });
   if (canPersist(player)) savePlayer(player);
 }
@@ -5456,6 +5600,12 @@ function tryGather(player) {
       // ★갈증이 **거의 찼으면** 갈대를 벤다. `>= THIRST_MAX` 로 하면 안 된다 —
       //   갈증은 매 틱 조금씩 줄어서 **정확히 100 인 순간이 거의 없고**, 그러면 이 갈래가
       //   영영 안 열린다(1차 실장이 그랬다: 실클라에서 갈대가 한 번도 안 잘렸다).
+      // ★★[자염 배치 2026-09-01] **바다 옆에서 병을 들고 있으면 채수가 먼저다.**
+      //   안 그러면 갈증 갈래(아래)가 먼저 걸려 갯벌에 서 있어도 짠물을 못 뜬다 —
+      //   갈증은 늘 조금씩 줄어서 95% 문턱이 거의 안 열리기 때문이다(그 함정은 갈대가 이미 밟았다).
+      //   ⚠**바닷물을 마시면 갈증이 회복되는 문제는 여기서 안 고친다** — 신체 영역 판단이다(회부 D).
+      if (isSeaTileLocal(player.x + dx, player.y + dy)
+          && (player.inventory[Salt.VESSEL] || 0) >= 1) { tryForage(player); return; }
       if ((player.thirst ?? THIRST_MAX) >= THIRST_MAX * 0.95) { tryForage(player); return; }
       const before = player.thirst || 0;
       player.thirst = Math.min(100, before + 30);
@@ -5977,6 +6127,9 @@ const ITEM_LABEL_SERVER = {
   crude_axe: '조잡한 돌도끼', crude_pick: '조잡한 돌괭이', crude_blade: '조잡한 돌칼',
   axe: '도끼', pickaxe: '곡괭이', sword: '검',
   salt: '소금',
+  // ★[자염 배치 2026-09-01] 짠물 이름표는 `salt.js` 정본에서 가져온다(옮겨 적지 않는다).
+  brine: Salt.BRINE_KO,
+  item_salt_kiln: '소금가마', item_drying_rack: '건조대', item_workbench: '작업대',
 };
 // ★[보존 배치 2026-08-31] 보존식 이름은 `spoil.PRESERVED_ITEMS.ko` 가 정본이다 — 옮겨 적지 않는다.
 for (const [k, v] of Object.entries(Spoil.PRESERVED_ITEMS)) ITEM_LABEL_SERVER[k] = v.ko;
@@ -6954,6 +7107,9 @@ function __testBind() {
     // ★[작물 층 2026-08-31]
     Crops, doPlant, plantMenuPayload, tryHarvest, _waterSupplyAt, _farmlandData, lootOfResource, CROP_GROW_MS,
     PRESERVED_EFFECTS, BUILDING_COST, BUILDING_RECIPES, ITEM_LABEL_SERVER,
+    // ★[자염 배치 2026-09-01] 하네스가 잡을 손잡이들 — **정본을 그대로 내준다**
+    //   (하네스가 염도·수율을 다시 계산하면 그게 사본이다).
+    Salt, doBoilSalt, isSeaTileLocal, WATER_TILES, tryGather, _SEASON_DAY_MS, ITEM_RECIPES, doCraftItem,
     // ── 원장 승격(2026-08-30) ── 드롭·줍기·바닥 지도를 **정본 그대로**. 하네스가 바닥템을 손으로 빚으면 사본이다.
     tryDropItem, tryPickupItem, groundItems, sendInventory, consumeItem, handlePlayerInput,
     // ── 빈손 시작(2026-08-28) ── 줍기·제작·도구 표를 **정본 그대로** 내준다

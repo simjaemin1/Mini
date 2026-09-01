@@ -31,6 +31,12 @@ const FACILITIES = {
   //   작업대에 얹으면 "작업대 하나면 뭐든 된다"가 되어 "제작창 = 시설의 창"이 무너진다.
   //   ⇒ 시설 표에 한 줄. 나머지(창 매핑·대기열·거리 판정)는 전부 기존 배선이 그대로 처리한다.
   drying_rack:   { kind: 'dry',   ko: '건조대',  range: _num('FACILITY_RANGE_PX', 96) },
+  // ★★[자염 배치 2026-09-01] **소금가마** — 짠물을 졸이는 자리. 이 배치의 유일한 새 시설이다.
+  //   왜 새 시설인가: 자염은 **불을 오래 때는 일**이라 화덕(요리 20초)의 창에 얹으면
+  //   "화덕 하나면 뭐든 된다"가 되어 "제작창 = 시설의 창"이 무너진다. 숯가마가 노와 갈린 것과 같은 이유다.
+  //   (`charcoal_kiln` 이 kind 'smelt' 를 노와 나눠 쓰는 것과 달리 **자기 창을 갖는다** —
+  //    노의 창에 자염이 뜨면 제련하러 온 사람 눈에 소금이 섞인다.)
+  salt_kiln:     { kind: 'boil',  ko: '소금가마', range: _num('FACILITY_RANGE_PX', 96) },
 };
 // 창 → 그 창을 여는 시설 종류들
 const KIND_TYPES = {};
@@ -47,6 +53,9 @@ const CRAFT_MS = {
   //   (`spoil.preserveMs` — 게임일로 적고 하루 길이로 환산한다). 이 값은 폴백이다.
   //   ⚠보존은 **며칠급**이라 여기 유일하게 시간이 길다. `enqueue` 가 `job.ms` 를 우선한다.
   dry:     Math.max(0, Math.round(_num('CRAFT_DRY_MS', 3 * 24 * 60 * 1000))),
+  // ★[자염 배치 2026-09-01] 소금가마 폴백. 실제로는 **레시피가 자기 ms 를 들고 온다**
+  //   (`salt.boilMs` — 게임일로 적고 하루 길이로 환산한다 · 보존과 같은 규약).
+  boil:    Math.max(0, Math.round(_num('CRAFT_BOIL_MS', 12 * 60 * 1000))),
 };
 const MAX_QUEUE = Math.max(1, Math.round(_num('CRAFT_QUEUE_MAX', 5)));
 

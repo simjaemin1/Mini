@@ -28,11 +28,12 @@ const CFG = {
   BUSH_PX: _num('FORAGE_BUSH_PX', 56),                          // 덤불로 손이 닿는 거리
   CELL_PX: 32,
 };
-const KO = { twig: '잔가지', pebble: '자갈', fiber: '풀' };
+const KO = { twig: '잔가지', pebble: '자갈', fiber: '풀', brine: '짠물' };
 
 // ── lazy 번영도 ─────────────────────────────────────────────────────────────
 const _state = new Map();   // key → { v, t }   (없으면 만땅)
 function left(key, now) {
+  if (key == null) return CFG.CAP;   // ★[자염] 고갈 없는 소스
   const rec = _state.get(key);
   if (!rec) return CFG.CAP;
   const min = (now - rec.t) / 60000;
@@ -41,6 +42,7 @@ function left(key, now) {
 }
 // 한 줌 가져간다. 남은 게 없으면 0.
 function take(key, now, n = 1) {
+  if (key == null) return n;   // ★[자염] 고갈이 없는 소스(바다) — 상태를 만들지 않는다
   const v = left(key, now);
   if (v < n) { _state.set(key, { v, t: now }); return 0; }
   const after = v - n;
@@ -54,6 +56,9 @@ function size() { return _state.size; }
 // ── 이 자리는 무엇을 주는가 ─────────────────────────────────────────────────
 //   ctx: { forestMult(x,y), isRock(x,y), isWater(x,y) }
 //   ★지형을 여기서 다시 풀지 않는다 — 정본 술어를 **주입받는다**(사본 계측기 금지와 같은 규약).
+// ★`salt.js` 는 **늦게** 부른다 — `forage` 는 아주 이른 모듈이라 맞물림을 만들지 않는다.
+let _S = null;
+function _Salt() { if (!_S) _S = require('./salt'); return _S; }
 const RING = (() => {
   const o = [];
   for (const r of [2, 6]) for (let a = 0; a < 8; a++) {
@@ -66,6 +71,17 @@ const RING = (() => {
 //   재민 확정 "덤불 E = 잔가지"는 그쪽 산출에 잔가지를 넣어 지켰다(열매·풀과 함께 나온다).
 //   여기는 **개체가 곁에 없을 때** 땅 자체가 주는 것들이다(비파괴 · 개체별 lazy 고갈).
 function sourceAt(x, y, ctx) {
+  // ★★⓪ 갯벌 — **바다에 접한 뭍**. [자염 배치 2026-09-01 재민 확정 ①]
+  //   ★새 개체도 새 지형층도 없다: 판정은 `salt.isTidalFlat` 하나이고, 그건 이미 있는 두 술어
+  //     (해안선 타일 · 강호수 셀)의 차집합일 뿐이다. **갯벌은 배치하는 게 아니라 있는 것이다.**
+  //   ★**용기가 없으면 이 갈래가 아예 안 열린다** — 그래서 물병 없이 바닷가에 서면
+  //     종전대로 ① 갈대가 나온다(기존 동작을 안 뺏는다). 손으로 물을 뜰 수는 없다는 게 전부다.
+  //   ★고갈은 다른 갈래와 **같은 문법**(개체별 lazy · 셀 키)이지만, 바다는 마르지 않는다 —
+  //     실질 병목은 `CFG.COOLDOWN_MS`(한 번 뜨는 시간)와 **들고 갈 수 있는 무게**다.
+  //     ⇒ 리필을 만땅으로 둔다(`brine` 키는 상태를 안 적는다 = 위 ①과 같은 뜻).
+  if (ctx.hasVessel && ctx.isSea && _Salt().isTidalFlat(x, y, ctx)) {
+    return { kind: 'brine', key: null, where: '갯벌' };
+  }
   // ① 갈대 군락 — 물 **바로 옆**. (목이 마르면 위에서 물 마시기로 갈라진다)
   const adj = [[CFG.CELL_PX, 0], [-CFG.CELL_PX, 0], [0, CFG.CELL_PX], [0, -CFG.CELL_PX]];
   for (const [dx, dy] of adj) if (ctx.isWater(x + dx, y + dy)) {
