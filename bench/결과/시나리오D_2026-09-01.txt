@@ -1,0 +1,39 @@
+시나리오 D — 존 26개 idle skip (로컬 컨테이너 2코어 · 8 GiB)
+세계 시뮬 OFF: ENABLE_VILLAGES=0 ENABLE_WILDLIFE=0 ENABLE_BANDITS=0
+기동: bash scripts/bench-26zone.sh start  → central + 존 26개 7초
+CPU 측정: /proc/<pid>/stat 의 utime+stime 증분 (창을 우리가 정한다)
+
+── RSS (0명 · 기동 60초 뒤) ───────────────────────────────────────────
+  kongra 188.7 · oseania 162.2 · nippon 139.9 · nanyang 136.1 · nubiano 127.1
+  europa 125.0 · bering 104.0 · canadia 103.6 · amazonia 99.3 · patagona 99.2
+  hanbando 98.4 · jungwon_s 98.2 · sahar 97.2 · mayan 96.4 · hindgang 96.3
+  nordan 94.4 · jungwon_n 79.1 · centaria 76.4 · sibara 74.9
+  pacific 72.6 · pacific_arctic 72.4 · indoyang 72.3 · nambingyang 72.3
+  east_sea_s 72.3 · japan_pacific 72.1 · atlantic 72.0      (단위 MiB)
+  ─ 합계 2,602.4 MiB / 26개 · 평균 100.1 MiB
+  ─ 봇 19명 붙인 상태 node 프로세스 30개 전체 3,723 MiB
+
+── 깨운 존 수 사다리 (각 단계 30초 안정 → 40초 창) ──────────────────
+  깨운 존   존 CPU 합계(코어1)   머신(2코어 중)   존당 tick/s
+     0         24.0 %              15.2 %           —
+     1         48.1 %              29.2 %         31.0    ← canadia(대표성 없음)
+     4         53.2 %              30.5 %         31.0
+     8         68.0 %              38.3 %         31.0
+    19        127.3 %              69.5 %         30.2
+
+  재측정(N=1 canadia 반복): 50.7 % · 55.3 %   ⇒ 이상치가 아니라 canadia 가 원래 비싸다
+  대표 한 곳(PICK=hanbando): 존 CPU 합계 25.3 % 중 hanbando 6.66 % (30.8 tick/s)
+                            자는 이웃들 0.65~0.85 %
+
+── 19곳 깨운 창의 존별 내역 (코어 1개 기준 %) ────────────────────────
+  [깨어 있음] canadia 35.40  jungwon_n 8.18  sibara 8.05  hanbando 5.67  bering 4.88
+              centaria 4.28  nubiano 4.05  europa 3.85  nippon 3.62  kongra 3.48
+              jungwon_s 3.45 hindgang 3.30 sahar 3.12  mayan 3.12  amazonia 3.00
+              oseania 2.88  nordan 2.77  nanyang 2.77  patagona 2.50
+  [자는 중]   pacific 0.62  east_sea_s 0.62  pacific_arctic 0.60  (바다 존 7곳 전부 0.6대)
+  합계 112.5 % · 머신 62.8 % (2코어 중) · 접속 19/19 · 존당 tick/s 30.2
+
+── 안 한 것 ──────────────────────────────────────────────────────────
+  · 세계 시뮬을 켠 26개 — 부팅만 몇 시간이라 못 했다
+  · 실서버(1 vCPU · 1.9 GiB)에 26개 — 램이 모자란다(26 × 309 MiB = 8.0 GiB)
+  · idle skip 을 코드로 끄고 A/B — 측정 배치라 서버 무수정
