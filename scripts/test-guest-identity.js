@@ -305,7 +305,7 @@ const closeWs = (st) => new Promise((r) => { st.ws.on('close', r); try { st.ws.c
     }
     ok(nameCmp.length === 0, `★이름(ownerName)으로 소유를 판정하는 곳 ${nameCmp.length}곳${nameCmp.length ? ' — ' + nameCmp.join(' · ') : ' (표시 전용으로만 쓰인다)'}`);
     // ★클라도 마찬가지 — 사유지 목록이 username 이 아니라 영속 신원과 대조해야 한다
-    const cl = fs.readFileSync(path.join(ROOT, 'public', 'client.js'), 'utf8');
+    const cl = require('./client-src.js').readClientSrc();
     ok(!/cl\.ownerPid !== myUsername/.test(cl), '★클라 사유지 목록이 `myUsername` 대조를 안 쓴다(게스트는 그게 빈 문자열이라 제 사유지가 남의 것으로 보였다)');
     ok(/msg\.playerId/.test(cl) && /myPlayerId/.test(cl), '클라가 welcome 의 playerId 를 받아 소유 대조에 쓴다');
     ok(!/showNotice\([^)]*[gG]uestToken|myGuestToken[^;]*innerHTML|innerHTML[^;]*myGuestToken/.test(cl), '★클라가 토큰을 화면·알림에 그리지 않는다');

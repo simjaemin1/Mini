@@ -129,7 +129,7 @@ console.log('\n[⑥ 소급 금지 — generate()는 도랑을 만들지 않는�
 console.log('\n[⑦ 콜라이더 3중 규약 — 서버 술어·클라 미러·welcome 페이로드가 전부 실재]');
 {
   const zone = fs.readFileSync(path.join(__dirname, '..', 'server', 'zone.js'), 'utf8');
-  const cli = fs.readFileSync(path.join(__dirname, '..', 'public', 'client.js'), 'utf8');
+  const cli = require('./client-src.js').readClientSrc();
   const vil = fs.readFileSync(path.join(__dirname, '..', 'server', 'villages.js'), 'utf8');
   chk(/function isDitchTileLocal/.test(zone) && /if \(isDitchTileLocal\(x, y\)\) return true;/.test(zone),
     '서버: isTerrainBlockedLocal 안에서 도랑 차단(모든 이동층 공유 단일 술어)');

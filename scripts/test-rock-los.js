@@ -134,7 +134,7 @@ console.log('\n[④ 서버/클라 바위 판정 거울 — 계곡을 한쪽만 �
   const cl = fs.readFileSync(path.join(__dirname, '..', 'public', 'terrain.js'), 'utf8');
   ok(/data\.valleys\s*=\s*hc\.valleys/.test(cl), '클라가 valleys 를 적재한다');
   ok(/for \(const v of t\.valleys \|\| \[\]\)/.test(cl), '클라 isRockCellLocal 이 valleys 를 통행 가능으로 본다');
-  const cj = fs.readFileSync(path.join(__dirname, '..', 'public', 'client.js'), 'utf8');
+  const cj = require('./client-src.js').readClientSrc();
   ok(/_rockOccCache/.test(cj), 'client.js 가 바위 실루엣을 시야 차단에 넣는다');
   const m = cj.match(/const ROCK_RANGE_CELLS = (\d+)[\s\S]*?const MAX_ROCK_SEGS = (\d+)/);
   ok(!!m && +m[1] === R && +m[2] === MAX_ROCK_SEGS, '상수 일치 — client(' + (m ? m[1] + ',' + m[2] : '못 찾음') + ') vs 하네스(' + R + ',' + MAX_ROCK_SEGS + ')');

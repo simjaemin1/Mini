@@ -188,7 +188,7 @@ function mkPlayer(name) {
   say('\n⑥ T/Y 물물교환 — 제거됐는가');
   {
     const zsrc = codeOnly(fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8'));
-    const csrc = codeOnly(fs.readFileSync(path.join(ROOT, 'public', 'client.js'), 'utf8'));
+    const csrc = codeOnly(require('./client-src.js').readClientSrc());
     const hsrc = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
     ok(!/function tryTrade/.test(zsrc), '★★⑥ 서버에 `tryTrade` 가 **없다**');
     ok(!/trade_offer/.test(zsrc), '★★⑥ 서버가 `trade_offer` 를 **안 받는다**(핸들러 없음)');

@@ -267,7 +267,7 @@ async function waitHttp(url, tries = 600) {
   await snap('cold-05-clothes');
 
   // ── ⑤ 클라가 온도 산수를 **혼자 하지 않는다**(사본 금지 — 달력과 같은 규약) ─
-  const csrc = fs.readFileSync(path.join(ROOT, 'public', 'client.js'), 'utf8')
+  const csrc = require('./client-src.js').readClientSrc()
     .split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
   ok(!/coldOfC|temperatureAt|annualAmp|diurnalAmp|COLD_SEASON_W/.test(csrc),
     '★★⑤ `client.js` 에 온도 산수가 **한 줄도 없다** — 서버가 준 문장 재료만 그린다');

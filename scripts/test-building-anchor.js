@@ -44,7 +44,7 @@ const JOBS = {
 
 // ── ① client.js A표 파싱 ──
 console.log('[① client.js 앵커 A표 = 결정적 재계산값]');
-const cj = fs.readFileSync(path.join(__dirname, '..', 'public', 'client.js'), 'utf8');
+const cj = require('./client-src.js').readClientSrc();
 const m = cj.match(/const A = \{([^}]+)\}/);
 ok(!!m, 'client.js에서 A표 발견');
 if (m) {

@@ -13,7 +13,7 @@ const path = require('path');
 let fail = 0;
 const chk = (c, m) => { console.log((c ? '  ✓ ' : '  ✗ ') + m); if (!c) fail++; };
 const R = (f) => fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
-const VIL = R('server/villages.js'), ZONE = R('server/zone.js'), CLI = R('public/client.js'), HTML = R('public/index.html');
+const VIL = R('server/villages.js'), ZONE = R('server/zone.js'), CLI = require('./client-src.js').readClientSrc(), HTML = R('public/index.html');
 
 console.log('=== 11차 T4 · 플레이어 의뢰 집 건설(서버 이식) 계약 검증 ===');
 

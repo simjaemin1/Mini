@@ -8,7 +8,7 @@ const ZID = 'hanbando';
 
 // ── client.js 의 상수를 **파일에서 읽어** 쓴다(손으로 베끼면 어긋난다) ──
 const fs = require('fs');
-const SRC = fs.readFileSync(path.join(__dirname, '..', 'public', 'client.js'), 'utf8');
+const SRC = require('./client-src.js').readClientSrc();
 const num = (re, d) => { const m = re.exec(SRC); return m ? parseFloat(m[1]) : d; };
 const HMAX = num(/let MT3_HMAX = ([\d.]+)/, 35), LAM = num(/MT3_HMAX = [\d.]+, MT3_LAM = ([\d.]+)/, 12);
 const LAMV = num(/MT3_LAMV = ([\d.]+)/, 0.6), HV = num(/MT3_HV = ([\d.]+)/, 0.62);

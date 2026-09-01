@@ -65,7 +65,7 @@ const META = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
   ok(/math\.radians\(52\).*math\.radians\(-35\)/.test(src), '★태양 52°/−35° — 자산 정본과 같은 빛');
   ok(/def _flip_png/.test(src) && /_flip_png\(tmp\)/.test(src), '★좌우 FLIP 을 실제로 건다 (손방향 규약)');
   ok(/scene\.cycles\.samples = SAMPLES/.test(src) && /SAMPLES = 64/.test(src), 'SAMPLES 64');
-  const cl = fs.readFileSync(path.join(ROOT, 'public', 'client.js'), 'utf8');
+  const cl = require('./client-src.js').readClientSrc();
   ok(/char_meta\.json/.test(cl), '★클라가 메타를 fetch 한다 (규격 하드코딩 금지)');
   ok(/uiCfg\.charSprite/.test(cl), '★플래그로 감싼다 (기본 OFF — 병행 안전)');
   ok(/!item\.npc &&/.test(cl), '★★NPC 는 시트에서 제외된다 (마을 적용은 회부된 별도 배치)');

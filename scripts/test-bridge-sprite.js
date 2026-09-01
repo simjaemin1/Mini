@@ -10,7 +10,7 @@ const fs = require('fs');
 const path = require('path');
 const { ZONES } = require(path.join(__dirname, '..', 'server', 'zone-config'));
 
-const SRC = fs.readFileSync(path.join(__dirname, '..', 'public', 'client.js'), 'utf8');
+const SRC = require('./client-src.js').readClientSrc();
 
 // ── 클라 원문에서 판정식 4줄을 잘라내 함수로 감싼다(드리프트 방지: 원문이 바뀌면 여기가 먼저 깨진다) ──
 const m = SRC.match(/const cnt = \(dx, dy\) => \{[\s\S]*?const bs = 'bridge_'[^\n]*\n/);

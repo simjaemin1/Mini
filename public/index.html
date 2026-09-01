@@ -337,6 +337,23 @@
   <script src="soil-base.js?v=5h0"></script>
   <script src="move-model.js?v=5h0"></script>
   <script src="animals.js?v=5h0"></script>
-  <script src="client.js?v=5h0"></script>
+  <!-- @area client — public/client.js 를 영역별로 나눈 것. 원문 순서 보존(재배열 금지).
+       ★새 기능은 새 파일 + 여기 등록 1줄. 최상위 실행문은 99-main.js 에만.
+       ★결합 검사: bash scripts/split-verify.sh  (조각을 이어 붙이면 분할 전 정본과 바이트 동일)
+       ★이름 충돌 검사: node scripts/test-client-globals.js -->
+  <script src="client/00-const.js?v=5h0"></script>
+  <script src="client/10-r1-terrain.js?v=5h0"></script>
+  <script src="client/11-r1-mountain.js?v=5h0"></script>
+  <script src="client/20-r2-visibility.js?v=5h0"></script>
+  <script src="client/30-n-net.js?v=5h0"></script>
+  <script src="client/31-m-move.js?v=5h0"></script>
+  <script src="client/32-m-render.js?v=5h0"></script>
+  <script src="client/40-r2-sprites.js?v=5h0"></script>
+  <script src="client/41-h-char.js?v=5h0"></script>
+  <script src="client/50-i-panel.js?v=5h0"></script>
+  <script src="client/51-s-side.js?v=5h0"></script>
+  <script src="client/60-t-market.js?v=5h0"></script>
+  <script src="client/80-bigmap.js?v=5h0"></script>
+  <script src="client/99-main.js?v=5h0"></script>
 </body>
 </html>

@@ -21,7 +21,7 @@ console.log('=== ⓪ 검사 상황 선행 assert ===');
 {
   const fs = require('fs');
   const zone = fs.readFileSync(path.join(ROOT, 'server/zone.js'), 'utf8');
-  const client = fs.readFileSync(path.join(ROOT, 'public/client.js'), 'utf8');
+  const client = require('./client-src.js').readClientSrc();   // ★분할 후: 조각을 등록 순으로 결합(사본 금지)
   ok(/require\(['"]\.\.\/public\/move-model\.js['"]\)/.test(zone),
      '★서버가 **이 파일 자체**를 require 한다 (사본 아님)');
   ok(/MoveModel\.stepMove\(/.test(zone), '★서버 이동 루프가 stepMove 를 부른다');
