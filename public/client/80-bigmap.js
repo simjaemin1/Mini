@@ -454,8 +454,27 @@
     needsRedraw = true;
   }
 
+  // ★★[T39 2026-09-01] **열어 둔 지도가 낡지 않게.**
+  //   실측(`scripts/e2e-bigmap-live.js`): 지도를 열어 둔 채 77px 걸어도 화면 평균 화소 차가 **0.00** 이었다.
+  //   이 파일의 `needsRedraw` 를 세우는 것은 사람의 손짓뿐이었기 때문이다(열기·줌·드래그·내 위치 버튼).
+  //   ⚠바깥 조각들이 32번 대입하는 `needsRedraw` 는 **다른 변수**다 — 바깥엔 선언이 없어 window 속성이고,
+  //     이 파일의 `let needsRedraw`(L32)가 그 이름을 가린다. 그걸 읽는 길도 있지만 안 골랐다:
+  //     32번 중 20여 개가 `window.__mt*` 같은 **디버그 손잡이**라, 읽으면 콘솔을 만질 때마다 지도가 다시 그려진다.
+  //   ⇒ 지도가 **자기가 그리는 것**만 본다. 열어 둔 채 바뀌는 것은 내 위치 표식이다.
+  //   ⇒ 매 프레임이 아니라 LIVE_MS 마다 본다 — 표식은 살아 있고, 다시 그리기는 4Hz 를 안 넘는다.
+  const LIVE_MS = 250;
+  let _liveKey = '', _liveAt = 0;
+  function pollLive(now) {
+    if (now - _liveAt < LIVE_MS) return;
+    _liveAt = now;
+    const me = getMyAbs();
+    const k = me && typeof me.x === 'number' ? `${Math.round(me.x)},${Math.round(me.y)}` : '';
+    if (k !== _liveKey) { _liveKey = k; needsRedraw = true; }
+  }
+
   function draw() {
     if (!visible) return;
+    pollLive(performance.now());
     if (needsRedraw) {
       const _rT0 = performance.now();
       ctx.fillStyle = '#0a0e14';
