@@ -1,0 +1,3 @@
+durango-zone-hanbando 91.15% 374.5MiB / 1.912GiB
+durango-central 0.00% 31.17MiB / 1.912GiB
+ 12:11:04 up 42 days, 20:06,  0 users,  load average: 1.21, 1.25, 1.00

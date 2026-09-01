@@ -1,0 +1,96 @@
+{
+  "scenario": "Bflag",
+  "note": "1vCPU 서버 · 생성기는 별도 머신(맥VM 4코어) · RTT 54ms",
+  "startedAt": "2026-09-01T12:17:49.007Z",
+  "endedAt": "2026-09-01T12:18:59.269Z",
+  "config": {
+    "host": "141.164.35.114",
+    "port": 3020,
+    "clients": 10,
+    "durationS": 60,
+    "warmupS": 10,
+    "rampMs": 20,
+    "inputHz": 30,
+    "tickHz": 30,
+    "idealMs": 33.333333333333336,
+    "overMs": 60
+  },
+  "env": {
+    "node": "v22.23.2",
+    "platform": "Linux 6.8.0-136-generic",
+    "cpus": 4,
+    "totalMemGB": 3.8,
+    "loadavg": [
+      0.02,
+      0.02,
+      0
+    ]
+  },
+  "connections": {
+    "requested": 10,
+    "everConnected": 10,
+    "connectedAtEnd": 10,
+    "failed": 0,
+    "closedMidRun": 0,
+    "welcomes": 10
+  },
+  "traffic": {
+    "ticksReceived": 9665,
+    "inputsSent": 17683
+  },
+  "tickInterval": {
+    "samples": 9638,
+    "mean": 57.27,
+    "p50": 62,
+    "p95": 107,
+    "p99": 201,
+    "max": 992,
+    "overMs": 60,
+    "overRatioPct": 51.1,
+    "warmupDiscardedSamples": 17
+  },
+  "generator": {
+    "cpuPctOfOneCore": 7.7,
+    "caution": "이 값이 100 에 가까우면 부하생성기가 코어 1개를 다 쓴 것이다 — 그 단계의 tick 지표는 서버 한계가 아니라 생성기 한계일 수 있다."
+  },
+  "zoneMetrics": {
+    "before": {
+      "durango_players": 1566,
+      "durango_observers": 0,
+      "durango_resources": 105,
+      "durango_buildings": 2228,
+      "durango_mobs": 449,
+      "durango_claims": 0,
+      "durango_uptime_seconds": 907.6,
+      "durango_latency_ms": 0,
+      "durango_handoffs_out_total": 0,
+      "durango_handoffs_in_total": 0,
+      "durango_handoff_acks_total": 0,
+      "durango_handoff_timeouts_total": 0,
+      "durango_chats_total": 0,
+      "durango_attacks_total": 0,
+      "durango_builds_total": 0,
+      "durango_ws_connects_total": 16,
+      "durango_ws_closes_total": 16
+    },
+    "after": {
+      "durango_players": 1576,
+      "durango_observers": 0,
+      "durango_resources": 105,
+      "durango_buildings": 2228,
+      "durango_mobs": 449,
+      "durango_claims": 0,
+      "durango_uptime_seconds": 977.8,
+      "durango_latency_ms": 0,
+      "durango_handoffs_out_total": 0,
+      "durango_handoffs_in_total": 0,
+      "durango_handoff_acks_total": 0,
+      "durango_handoff_timeouts_total": 0,
+      "durango_chats_total": 0,
+      "durango_attacks_total": 0,
+      "durango_builds_total": 0,
+      "durango_ws_connects_total": 26,
+      "durango_ws_closes_total": 16
+    }
+  }
+}
