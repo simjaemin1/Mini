@@ -734,13 +734,13 @@
             const hammerOK = !r.needHammer || hasToolAlive('hammer');
             const toolOK = !r.needTool || hasToolAlive(r.needTool);
             const canMake = costOK && hammerOK && toolOK;
-            const costStr = Object.entries(r.cost).map(([k,v]) => `${itemIconHtml(k, 16, k)} ${v}`).join(' · ') || '-';
+            const costStr = Object.entries(r.cost).map(([k,v]) => `${itemIconHtml(k, 16, itemKo(k))} ${v}`).join(' · ') || '-';
             const flags = [];
             if (r.needHammer) flags.push('🔨');
             if (r.needTool) flags.push(r.needTool);
             if (r.needCampfire) flags.push('🔥');
             if (r.produces) {
-              const prodStr = Object.entries(r.produces).map(([k,v]) => `${itemIconHtml(k, 16, k)}×${v}`).join(' ');
+              const prodStr = Object.entries(r.produces).map(([k,v]) => `${itemIconHtml(k, 16, itemKo(k))}×${v}`).join(' ');
               flags.push(`→ ${prodStr}`);
             }
             const haveBadge = (typeof r.have === 'number')

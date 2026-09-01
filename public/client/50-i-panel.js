@@ -1,3 +1,9 @@
+// ★★[T38 2026-09-01] 아이콘이 없을 때 **키를 그대로 찍지 않는다.**
+//   `itemIconHtml(k, 18, k)` 의 셋째 인자는 "아이콘이 없으면 대신 이걸 찍어라"인데
+//   거기에 키를 넣어 둔 자리가 이 파일에 12곳, `51-s-side.js` 에 2곳 있었다.
+//   ⇒ 자염처럼 아이콘이 아직 없는 새 품목이 들어온 날 화면에 `brine` 이 떴다(실측: e2e-salt).
+//   이름표 정본은 서버다(`ITEM_LABEL_SERVER`). 클라 표(`ITEM_LABEL`)는 폴백일 뿐이다.
+function itemKo(k) { return (typeof ITEM_LABEL !== 'undefined' && ITEM_LABEL[k]) || k; }
 // @@split:50-i-panel — I 인벤 — 주조·요리·패널
   // ══ 주조(鑄造): 금속 여러 개를 배합해 녹인다 [재민 확정] ══════════════════
   // "금속 3개까지 합금을 자유롭게. 그거에 따른 성질을 화학적으로 잘 반영. 값에 따라 연속적으로."
@@ -108,14 +114,14 @@
       const matBtns = rc.accepts.map(m => {
         const has = (inventory[m] || 0), on = (m === sel);
         const st = 'margin:2px 3px 0 0;padding:1px 6px;border-radius:4px;font-size:11px;cursor:pointer;border:1px solid ' + (on ? '#8bd' : '#444') + ';background:' + (on ? '#245' : '#222') + ';color:' + (has > 0 ? '#eee' : '#666');
-        return `<button data-eqtype="${type}" data-eqmat="${m}" ${has > 0 ? '' : 'disabled'} style="${st}" title="${m} 보유 ${has}">${itemIconHtml(m, 18, m)}${has ? ` ${has}` : ''}</button>`;
+        return `<button data-eqtype="${type}" data-eqmat="${m}" ${has > 0 ? '' : 'disabled'} style="${st}" title="${m} 보유 ${has}">${itemIconHtml(m, 18, itemKo(m))}${has ? ` ${has}` : ''}</button>`;
       }).join('');
       const pvStr = pv ? `<b style="color:#8fc8ff">${pv.attrLabel} ${pv.attr} · 내구 ${pv.dura}</b>` : '';
       html += `<div class="craft-recipe ${canCraft ? 'can-make' : 'cant-make'}">
         <div class="cr-icon">${EQUIP_ICONS[type] || '🎽'}</div>
         <div class="cr-info">
           <div class="cr-name">${rc.label} <span style="color:#7cd97c;font-weight:normal">${rc.skill} Lv${lvl}</span></div>
-          <div class="cr-cost">${sel ? itemIconHtml(sel, 18, sel) : '?'} ×${rc.qty} → ${pvStr}</div>
+          <div class="cr-cost">${sel ? itemIconHtml(sel, 18, itemKo(sel)) : '?'} ×${rc.qty} → ${pvStr}</div>
           <div style="margin-top:3px">${matBtns}</div>
           ${castBlockHtml(type, rc)}
         </div>
@@ -226,13 +232,13 @@
         const matBtns = rc.accepts.map(m => {
           const has = (inventory[m] || 0), on = (m === sel);
           const st = 'margin:2px 3px 0 0;padding:1px 6px;border-radius:4px;font-size:11px;cursor:pointer;border:1px solid ' + (on ? '#8bd' : '#444') + ';background:' + (on ? '#245' : '#222') + ';color:' + (has > 0 ? '#eee' : '#666');
-          return `<button data-eqtype="${type}" data-eqmat="${m}" ${has > 0 ? '' : 'disabled'} style="${st}">${itemIconHtml(m, 18, m)}${has ? ` ${has}` : ''}</button>`;
+          return `<button data-eqtype="${type}" data-eqmat="${m}" ${has > 0 ? '' : 'disabled'} style="${st}">${itemIconHtml(m, 18, itemKo(m))}${has ? ` ${has}` : ''}</button>`;
         }).join('');
         h += `<div class="craft-recipe ${canBuy ? 'can-make' : 'cant-make'}">
           <div class="cr-icon">${EQUIP_ICONS[type] || '🎽'}</div>
           <div class="cr-info">
             <div class="cr-name">${rc.label} <span style="color:#8fc8ff;font-weight:normal">${qStr}</span></div>
-            <div class="cr-cost">재료 ${sel ? itemIconHtml(sel, 18, sel) : '?'} ×${rc.qty} 지불</div>
+            <div class="cr-cost">재료 ${sel ? itemIconHtml(sel, 18, itemKo(sel)) : '?'} ×${rc.qty} 지불</div>
             <div style="margin-top:3px">${matBtns}</div>
           </div>
           <button data-buy="${type}" ${canBuy && vq != null ? '' : 'disabled'}>구매</button>
@@ -254,7 +260,7 @@
         h += `<div class="craft-recipe">
           <div class="cr-icon">${EQUIP_ICONS[inst.type] || '🎒'}</div>
           <div class="cr-info"><div class="cr-name">${rc.label || inst.type} <span style="color:#8a93a0;font-weight:normal">Lv${inst.craftedSkill || 0}</span>${_fe ? ' <span style="color:#ffd77a">철기</span>' : ''}</div>
-          <div class="cr-cost">용해 → ${inst.mat ? itemIconHtml(inst.mat, 18, inst.mat) : '재료'} ×${refund} 회수${_fe ? ' &nbsp;/&nbsp; <span style="color:#ffd77a">위세품으로 넘기면 마을이 값을 친다</span>' : ''}</div></div>
+          <div class="cr-cost">용해 → ${inst.mat ? itemIconHtml(inst.mat, 18, itemKo(inst.mat)) : '재료'} ×${refund} 회수${_fe ? ' &nbsp;/&nbsp; <span style="color:#ffd77a">위세품으로 넘기면 마을이 값을 친다</span>' : ''}</div></div>
           <div style="display:flex;flex-direction:column;gap:3px">
             <button data-sell="${inst.id}">용해</button>
             ${_fe ? `<button data-relic="${inst.id}" style="background:#4a3a1a;border-color:#8a6a2a">위세품 판매</button>` : ''}
@@ -309,8 +315,8 @@
       for (const [name, ir] of Object.entries(itemRecipes)) {
         const hasTool = !ir.requiresTool || hasToolAlive(ir.requiresTool);
         const canCraft = hasTool && Object.entries(ir.from).every(([k, v]) => (inventory[k] || 0) >= v);
-        const fromStr = Object.entries(ir.from).map(([k, v]) => `${itemIconHtml(k, 18, k)} ${v}`).join(' · ');
-        const toStr = Object.entries(ir.to).map(([k, v]) => `${itemIconHtml(k, 18, k)} ×${v}`).join(' ');
+        const fromStr = Object.entries(ir.from).map(([k, v]) => `${itemIconHtml(k, 18, itemKo(k))} ${v}`).join(' · ');
+        const toStr = Object.entries(ir.to).map(([k, v]) => `${itemIconHtml(k, 18, itemKo(k))} ×${v}`).join(' ');
         const toolStr = ir.requiresTool ? ` (${ir.requiresTool} 필요)` : '';
         const row = document.createElement('div');
         row.className = 'craft-row';
@@ -341,7 +347,7 @@
           cost[k] = v;
         }
         const canCraft = hasHammer && Object.entries(cost).every(([k, v]) => (inventory[k] || 0) >= v);
-        const costStr = Object.entries(cost).map(([k, v]) => `${itemIconHtml(k, 18, k)} ${v}`).join(' · ');
+        const costStr = Object.entries(cost).map(([k, v]) => `${itemIconHtml(k, 18, itemKo(k))} ${v}`).join(' · ');
         const hammerStr = br._needHammer ? ' 🔨' : '';
         const have = inventory[name] || 0;
         const row = document.createElement('div');
@@ -398,8 +404,8 @@
     }
     for (const [name, r] of entries) {
       const canCook = Object.entries(r.cost).every(([k, v]) => (inventory[k] || 0) >= v);
-      const costStr = Object.entries(r.cost).map(([k, v]) => `${itemIconHtml(k, 18, k)} ${v}`).join(' · ');
-      const prodStr = Object.entries(r.produces).map(([k, v]) => `${itemIconHtml(k, 18, k)} ×${v}`).join(' ');
+      const costStr = Object.entries(r.cost).map(([k, v]) => `${itemIconHtml(k, 18, itemKo(k))} ${v}`).join(' · ');
+      const prodStr = Object.entries(r.produces).map(([k, v]) => `${itemIconHtml(k, 18, itemKo(k))} ×${v}`).join(' ');
       const row = document.createElement('div');
       row.className = 'craft-row';
       row.innerHTML = `
@@ -518,7 +524,7 @@
         else { tierLabel = '악성 (evil)'; tierColor = '#e85040'; }
         const treasury = data.treasury || {};
         const trItems = Object.entries(treasury).filter(([k,v]) => v > 0)
-          .map(([k,v]) => `${itemIconHtml(k, 18, k)} ${v}`).join(' · ') || '(비어있음)';
+          .map(([k,v]) => `${itemIconHtml(k, 18, itemKo(k))} ${v}`).join(' · ') || '(비어있음)';
         const isNpc = data.tribe.is_npc;
         const tierBadge = isNpc ? `<span class="badge" style="background:#5a7aa8">NPC길드 (${data.tribe.behavior_tier})</span>` : '';
         // Phase 14.9 — 전쟁 선포 대상 목록 (내 길드 X, 이미 전쟁중 X)
@@ -1005,15 +1011,21 @@
     h += '<div class="hint" style="font-weight:bold;margin:10px 0 4px">— 만들 수 있는 것 —</div>';
     for (const r of (F.recipes || [])) {
       const pick = facilityPick[r.id] || (r.options && (r.options.find((o) => o.can) || r.options[0]) || {}).material;
+      // ★★[T38 2026-09-01] 아이콘이 없는 품목의 **폴백이 영문 키였다.**
+      //   `itemIconHtml(k, 18, itemKo(k))` 의 셋째 인자는 아이콘이 없을 때 대신 찍는 것인데 거기에 키를 넣어 뒀다
+      //   ⇒ 자염처럼 아이콘이 아직 없는 품목이 화면에 `brine` 으로 떴다(실측: e2e-salt).
+      //   이름표는 **서버가 준다**(`r.costKo` · `m.ko` — zone.js `_facilityRecipes`). 클라 표는 폴백일 뿐이다.
+      const koOf = (k) => (r.costKo && r.costKo[k]) || (typeof ITEM_LABEL !== 'undefined' && ITEM_LABEL[k]) || k;
       let costStr, q2 = null;
       if (r.options) {
         const o = r.options.find((x) => x.material === pick) || r.options[0] || {};
-        costStr = `${itemIconHtml(o.material, 18, o.material)} ${o.need} <span style="color:#8a93a0">(보유 ${o.have})</span>`;
+        costStr = `${itemIconHtml(o.material, 18, koOf(o.material))} ${o.need} <span style="color:#8a93a0">(보유 ${o.have})</span>`;
         q2 = o.q;
       } else {
-        costStr = Object.entries(r.cost).map(([k, n]) => `${itemIconHtml(k, 18, k)} ${n}`).join(' · ');
+        costStr = Object.entries(r.cost).map(([k, n]) => `${itemIconHtml(k, 18, koOf(k))} ${n}`).join(' · ');
       }
-      const lack = r.missing.length ? `<span style="color:#e88">— ${r.missing.map((m) => `${m.item} ${m.have}/${m.need}`).join(' · ')}</span>` : '';
+      // 모자란 재료 칸은 이름표를 **아예 안 찾고 있었다**(`m.item` 을 그대로 찍었다).
+      const lack = r.missing.length ? `<span style="color:#e88">— ${r.missing.map((m) => `${m.ko || m.item} ${m.have}/${m.need}`).join(' · ')}</span>` : '';
       h += `<div class="craft-recipe ${r.can ? 'can-make' : ''}">
         <div class="cr-icon">${r.preserve ? '🧺' : r.kind === 'cook' ? '🍲' : '🔧'}</div>
         <div class="cr-info">
@@ -1023,7 +1035,12 @@
             r.preserve ? ` <span style="color:#8a93a0;font-weight:normal">· ${r.outKo} · ${r.days}일`
               + (r.stageKo ? ` · 재료 ${PRESERVE_STAGE_EMO[r.stage] || ''}${r.stageKo}` : '')
               + (r.yieldPct != null ? ` → 수율 ${r.yieldPct}%` : '')
-              + ` · 보관 ${r.shelfDays}일</span>` : ''}</div>
+              // ★[T38 2026-09-01] 보존 행이 `보관 ${shelfDays}일` 을 **무조건** 찍고 있었다.
+              //   소금은 안 썩어서 서버가 '∞' 를 넣는데, 그러면 화면에 "보관 ∞일" 이 뜬다(회부 D-2).
+              //   ⇒ 값에 따라 갈래를 나눈다. 서버는 그대로 두고 **표기만** 고친다.
+              + (r.shelfDays == null ? ''
+                 : r.shelfDays === '∞' ? ' · 안 상함'
+                 : ` · 보관 ${r.shelfDays}일`) + '</span>' : ''}</div>
           <div class="cr-cost">${costStr} ${lack}</div>
           ${r.options ? `<div class="cr-cost" style="margin-top:3px">${r.options.map((o) => `<button data-fpick="${r.id}" data-fmat="${o.material}" style="margin:1px 2px 1px 0;${o.material === pick ? 'outline:1px solid #7c9' : ''}" ${o.can ? '' : 'disabled'}>${o.material} ${o.q != null ? Math.round(o.q * 100) + '%' : ''}</button>`).join('')}</div>` : ''}
         </div>

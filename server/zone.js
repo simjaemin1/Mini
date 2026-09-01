@@ -5667,9 +5667,16 @@ function _facilityRecipes(player, kind) {
   const inv = player.inventory || {};
   const rows = [];
   const push = (r) => {
+    // ★★[T38 2026-09-01] **이름표는 서버가 낸다.** 클라가 자기 표를 들면 그게 사본이고,
+    //   자염처럼 새 품목이 들어온 날 **클라 표만 뒤처져 화면에 영문 키가 뜬다.**
+    //   실측: `e2e-salt` 가 "짠물 표시 = 영문 키 brine" 을 이미 찍고 있었다(회부 D-1).
+    //   정본은 `ITEM_LABEL_SERVER` 다 — 그 표는 salt.js·spoil.js·crops.js 에서 이름을 **가져온다**(옮겨 적지 않는다).
+    //   작물 층이 이미 같은 규약이다(`welcome.crops` 가 ko 를 싣는다). 여기선 데이터만 얹는다 — 로직 무접촉.
     const missing = Object.entries(r.cost).filter(([k, n]) => (inv[k] || 0) < n)
-      .map(([k, n]) => ({ item: k, need: n, have: Math.floor(inv[k] || 0) }));
-    rows.push(Object.assign({}, r, { can: missing.length === 0, missing }));
+      .map(([k, n]) => ({ item: k, ko: ITEM_LABEL_SERVER[k] || k, need: n, have: Math.floor(inv[k] || 0) }));
+    const costKo = {};
+    for (const k of Object.keys(r.cost || {})) costKo[k] = ITEM_LABEL_SERVER[k] || k;
+    rows.push(Object.assign({}, r, { can: missing.length === 0, missing, costKo }));
   };
   if (kind === 'cook') {
     for (const [id, r] of Object.entries(COOK_RECIPES)) push({ id, label: r.label, kind, cost: r.cost });
@@ -6392,6 +6399,9 @@ const ITEM_LABEL_SERVER = {
   twig: '잔가지', pebble: '자갈',
   crude_axe: '조잡한 돌도끼', crude_pick: '조잡한 돌괭이', crude_blade: '조잡한 돌칼',
   axe: '도끼', pickaxe: '곡괭이', sword: '검',
+  // ★[T38 2026-09-01] `plank`(판자)가 **서버 표에만** 없었다 — 클라 사본에는 있어서 여태 안 보였다.
+  //   `scripts/test-itemlabel.js` 가 제작 비용 키 19개를 전수로 대조해 찾아냈다(눈으로 찾은 게 아니다).
+  plank: '판자',
   salt: '소금',
   // ★[자염 배치 2026-09-01] 짠물 이름표는 `salt.js` 정본에서 가져온다(옮겨 적지 않는다).
   brine: Salt.BRINE_KO,
