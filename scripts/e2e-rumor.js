@@ -264,19 +264,30 @@ async function waitHttp(url, tries = 900) {
   let brief2 = null;
   for (let i = 0; i < 25 && !brief2; i++) { await sleep(700); brief2 = await page.evaluate(() => window.__evLastBrief || null); }
   ok(!!brief2, '⑦c 재접속 뒤에도 접근만으로 촌장이 말을 건다');
-  ok(!!(brief2 && brief2.returned === true), '⑦ 촌장이 **부재 기간 요약**을 먼저 한다(복귀 브리핑)',
-    brief2 ? `returned=${brief2.returned} absent=${brief2.absentDays} lines=${JSON.stringify(brief2.lines)}` : 'X');
-  ok(!!(brief2 && brief2.absentDays >= 1), '⑦d 부재 일수가 1게임일 이상이다', brief2 ? `${brief2.absentDays}일` : '');
+  // ★★**`__evLastBrief` 는 덮인다.** 클라는 브리핑을 받을 때마다 그 한 칸을 갈아치우고,
+  //   부하가 높으면 워프 도중 소켓이 한 번 더 갈리면서 **평소 브리핑이 복귀 브리핑을 덮는다**
+  //   (복귀 요약은 접속당 한 번이라 두 번째부터는 평소 브리핑이다 — 제품이 옳다).
+  //   ⇒ 판정은 **덮이지 않는 기록**인 HUD 알림 목록(`window.__notices`)으로 한다.
+  //   1차 판이 마지막 한 칸만 보고 "복귀 브리핑이 안 났다"고 **없는 결함을 보고**했다(족보 ㊽·(70)).
+  const notes = await page.evaluate(() => (window.__notices || []).slice());
+  const retNote = notes.find((t) => /만이군/.test(String(t)));
+  const m = retNote ? String(retNote).match(/(\d+)일 만이군/) : null;
+  const absent = m ? +m[1] : ((brief2 && brief2.absentDays) || 0);
+  ok(!!retNote || !!(brief2 && brief2.returned === true), '⑦ 촌장이 **부재 기간 요약**을 먼저 한다(복귀 브리핑)',
+    retNote ? JSON.stringify(String(retNote).slice(0, 70)) : `(알림에 없음 · 마지막 브리핑 returned=${brief2 && brief2.returned})`);
+  ok(absent >= 1, '⑦d 부재 일수가 1게임일 이상이다', `${absent}일`);
   // ★★부재 일수가 **실제로 비운 만큼**이어야 한다. 이 줄이 없으면 "입장 직후 재접속이 기준일을
   //   오늘로 덮는" 결함(승계 누락)이 `returned:true` 뒤에 숨는다 — 실제로 한 번 숨었다.
-  ok(!!(brief2 && brief2.absentDays >= (afterDay - beforeDay) * 0.6),
+  ok(absent >= (afterDay - beforeDay) * 0.6,
     '⑦d2 부재 일수가 **실제로 비운 기간**에 맞는다(입장 직후 재접속이 기준일을 지우지 않는다)',
-    brief2 ? `보고 ${brief2.absentDays}일 vs 실제 ${afterDay - beforeDay}일` : '');
-  ok(!!(brief2 && (brief2.lines || []).some((l) => /만이군/.test(l))), '⑦e 첫 줄이 "며칠 만이군" — 사람 말투(대시보드 톤 금지)',
-    brief2 ? JSON.stringify((brief2.lines || [])[0]) : '');
-  ok(!((brief2 && brief2.lines) || []).some((l) => /\d+\.\d/.test(l)), '⑦f 복귀 브리핑에도 소수점 수치가 안 찍힌다');
-  ok(((brief2 && brief2.lines) || []).length <= 1 + 3 + 1, '⑦g 문장 수 상한이 지켜진다(머리말 + 사건 3줄 + 꼬리 한 줄)',
-    `${((brief2 && brief2.lines) || []).length}줄 — ${JSON.stringify((brief2 && brief2.lines) || [])}`);
+    `보고 ${absent}일 vs 실제 ${afterDay - beforeDay}일`);
+  ok(!!retNote && /촌장/.test(String(retNote)), '⑦e 그 말은 **촌장이 한 말**이다(HUD 한 줄로도 남는다)',
+    retNote ? JSON.stringify(String(retNote).slice(0, 50)) : '');
+  ok(!retNote || !/\d+\.\d/.test(String(retNote)), '⑦f 복귀 브리핑에도 소수점 수치가 안 찍힌다');
+  // 문장 수 상한은 **서버 계약**이라 `test-events ㉓c` 가 잰다. 여기선 페이로드가 남아 있을 때만 곁들인다.
+  const rl = (brief2 && brief2.returned) ? (brief2.lines || []) : null;
+  ok(!rl || rl.length <= 1 + 3 + 1, '⑦g (페이로드가 남았으면) 문장 수 상한 — 머리말 + 사건 3줄 + 꼬리',
+    rl ? `${rl.length}줄` : '(마지막 브리핑이 평소 브리핑이라 생략 — 상한은 test-events ㉓c)');
   await snap('ru-04-return-brief');
 
   // 두 번째 브리핑 — 같은 부재를 다시 읊지 않는다

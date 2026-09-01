@@ -232,9 +232,15 @@ async function waitHttp(url, tries = 900) {
   await snap('ch-03-after');
 
   // ── ⑦ 연도 줄 · 지난 해 조회
-  ok(!!(p2.data && Array.isArray(p2.data.years) && p2.data.years.length >= 1), '⑦ 연도 목록이 온다(연표 한 화면 = 한 해)',
-    p2.data ? JSON.stringify(p2.data.years) : 'X');
-  const yrs = p2.data.years || [0];
+  // ★★**여기서부터 날을 얼린다.** 하루가 0.5초라 "지금 몇 해인가"가 몇 초 만에 바뀐다 —
+  //   앞 절에서 읽은 연도 목록을 그대로 들고 "다음 해엔 아무것도 없다"를 물으면,
+  //   그 사이 해가 넘어가 **그 '다음 해'가 올해가 되어 107줄이 들어 있다.**
+  //   1차 판이 정확히 그렇게 빨개졌다(제품은 옳고 하네스가 시계를 놓친 것 — 족보 ㊽).
+  await freeze(true);
+  const cNow = await askChron(B.id, null);
+  ok(!!(cNow && Array.isArray(cNow.years) && cNow.years.length >= 1), '⑦ 연도 목록이 온다(연표 한 화면 = 한 해)',
+    cNow ? JSON.stringify(cNow.years) : 'X');
+  const yrs = (cNow && cNow.years) || [0];
   const oldest = yrs[yrs.length - 1], newest = yrs[0];
   const cOld = await askChron(B.id, oldest);
   ok(!!(cOld && cOld.ok && cOld.year === oldest), '⑦b 지난 해를 물으면 그 해로 답한다', cOld ? `year=${cOld.year}` : 'X');
@@ -263,7 +269,7 @@ async function waitHttp(url, tries = 900) {
   page = await ctx.newPage();
   wire(page);
   await enter();
-  await freeze(true);
+  await freeze(true);   // 재접속으로 얼음이 풀렸을 수 있다 — 다시 얼린다(멱등)
   ok(await warpTo(B, 30), '⑨a 재접속 뒤 다시 그 마을로');
   const p3 = await openChron();
   ok(p3.open && /연대기/.test(p3.title), '⑨a2 재접속 뒤에도 탭이 그대로 열린다', JSON.stringify(p3.title));
