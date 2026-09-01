@@ -161,7 +161,9 @@ function ofAges(item, ages, today) {
   for (const a of (ages || [])) {
     const q = Number(a.n) || 0;
     if (q <= 0) continue;
-    const f = freshnessOf(item, _day(today) - _day(a.d));
+    // ★[부패 2차 2026-09-01] 나이가 아니라 **노출**로 잰다. 노출 필드가 없는 옛 레코드는
+    //   `exposureOf` 가 `today − d`(종전 뜻)로 답하므로 이 자리는 **한 줄만 바뀌고 값은 연속**이다.
+    const f = freshnessOf(item, exposureOf(a, today));
     n += q; wf += f * q;
     if (f <= 0) bad += q;
   }
@@ -177,7 +179,7 @@ function peekAges(lots, n) {
   for (const l of (lots || [])) {
     if (left <= 1e-9) break;
     const take = Math.min(left, Number(l.n) || 0);
-    if (take > 0) { out.push({ d: l.d, n: +take.toFixed(6) }); left -= take; }
+    if (take > 0) { out.push({ d: l.d, n: +take.toFixed(6), e: l.e, t: l.t, m: l.m, w: l.w }); left -= take; }
   }
   return out;
 }
@@ -187,7 +189,7 @@ function peekOffer(item, lots, n, today) { return ofAges(item, peekAges(lots, n)
 // 로트 배열(`Lots.of`)의 **가장 신선한** 몫 — "이 품목을 지금 팔 수 있나"의 답.
 function bestOf(item, lots, today) {
   let best = 0;
-  for (const l of (lots || [])) best = Math.max(best, freshnessOf(item, _day(today) - _day(l.d)));
+  for (const l of (lots || [])) best = Math.max(best, freshnessOf(item, exposureOf(l, today)));
   return best;
 }
 
@@ -301,10 +303,204 @@ function orderCheck() {
   return out;
 }
 
+// ═══ ★★온도 결합 + 저장 감속 [재민 확정 2026-09-01 · 부패 2차] ═══════════════
+//
+// ★★**"나이"가 "노출"로 바뀐다.** 곡선(`freshnessOf`)은 한 글자도 안 고쳤다 —
+//   둘째 인수의 **뜻**만 바뀐다: 경과 일수 → **노출량 E**(기준온도 환산 일수).
+//   ⇒ 기준온도 환경에서 E == 일수 이므로 **채택된 보관일 표가 그대로 보존된다.**
+//
+// ★★**기준온도는 고르지 않고 유도했다.** `SPOIL_REF_C` 는 "이 세계의 1년 평균 노출이 정확히 1"
+//   이 되는 온도다(econ 기온 곡선에서 이분법으로 푼 값 ≈ **14.83℃**). 그래야 *연평균으로는*
+//   종전 보관일이 그대로고, 여름엔 빨리·겨울엔 느리게만 갈린다. 10℃ 같은 어림수를 쓰면
+//   전 품목의 보관일이 조용히 40% 짧아진다(실측 meanR(10℃)=1.397).
+//
+// ★★**사본 금지** — 기온은 `server/weather.js`(그리고 그 아래 econ 정본)에게만 묻는다.
+//   여기에 코사인도 365도 없다. 날씨 잡음(`devCOf`)·일교차 배율(`ampMultOf`)도 그쪽 것이다.
+//   ⇒ 이 파일이 아는 건 **℃ → 부패 속도** 하나뿐이다.
+//
+// ★★**틱 0** — 광맥·어장·채집·부패·작물에 이은 여섯 번째 lazy. 누적표는 **조회할 때** 채운다.
+//   나이 100일짜리를 물어도 표 두 값의 차 + 오늘 부분일 = **O(1)**.
+//
+// ★★**주사위 0** — 같은 (자리 이력, 날) = 같은 E. 비트 동일.
+const _W = (() => { let m; return () => { if (m === undefined) { try { m = require('./weather'); } catch (e) { m = null; } } return m; }; })();
+const _EC = (() => { let m; return () => { if (m === undefined) { try { m = require('../sim/economy-sim-v2.js'); } catch (e) { m = null; } } return m; }; })();
+
+const EXP = {
+  // Q10 — 10℃ 오르면 부패 속도 몇 배. 식품미생물학의 표준 근사치는 2~3이고 2가 보수적이다.
+  Q10:   _num('SPOIL_Q10', 2),
+  // 기준온도(℃) — **유도값**. 0 이하를 주면 아래에서 "연평균 노출 1" 을 풀어 채운다.
+  REF_C: _num('SPOIL_REF_C', 0),
+  // 하루를 몇 조각으로 적분하나. 24 = 한 시간 눈금(일교차가 곡선이라 조각이 필요하다).
+  STEPS: Math.max(1, Math.round(_num('SPOIL_EXP_STEPS', 24))),
+  // 속도 클램프 — 극단 잡음에서 표가 폭주하지 않게(물리적으로도 냉동/열분해 밖은 뜻이 없다).
+  R_MIN: _num('SPOIL_R_MIN', 0.05),
+  R_MAX: _num('SPOIL_R_MAX', 8),
+  // 누적표가 뒤로 얼마나 멀리까지 답하나(일). 가장 긴 보관일(곡물 180·씨앗 365)의 두 배 남짓.
+  BACK:  Math.max(30, Math.round(_num('SPOIL_EXP_BACK', 800))),
+};
+
+// ── ★자리(place) — 두 물리 인자로 쪼갠다. 불투명한 배율 하나를 두지 않는다 ──────
+//   · `seal`(밀폐) : 온도와 무관한 속도 배율. **econ 정본에서 온다** —
+//     `economy-sim-v2.POTTERY_DECAY_SAVE = 0.3`("질그릇 밀폐 — 부패 −30%") ⇒ 밀폐 용기 = 0.70.
+//     부패 배치가 머리말에 *"지어낼 게 아니라 그 상수에서 유도하면 된다"* 고 적어 둔 그 자리다.
+//   · `damp`(완충) : 그 자리의 기온이 **연평균 쪽으로 얼마나 당겨지는가**(0=바깥 그대로, 1=연중 항온).
+//     움집·고상곳간이 음식을 지키는 진짜 이유가 이것이다(밀폐가 아니라 **온도 완충**).
+//     ⇒ 여름엔 서늘해서 느리고 **겨울엔 덜 추워서 오히려 빠르다**. 그게 물리고, 그래서
+//       "여름엔 곳간에, 겨울엔 밖에"라는 **판단**이 생긴다(§2 — 진행바가 아니라 판단).
+//   ⚠`seal` 은 유도값이 하나(옹기), `damp` 는 전부 **추정**이다 — 회부에 전수를 적었다.
+const PLACES = {
+  carry:   { seal: 1.00, damp: 0.00, ko: '몸에 지님' },
+  ground:  { seal: 1.00, damp: 0.00, ko: '바닥' },
+  indoor:  { seal: 1.00, damp: _num('STORE_DAMP_INDOOR', 0.40), ko: '실내 바닥' },
+  chest:   { seal: _num('STORE_SEAL_CHEST', 0.70), damp: 0.00, ko: '상자' },
+  chest_in:{ seal: _num('STORE_SEAL_CHEST', 0.70), damp: _num('STORE_DAMP_INDOOR', 0.40), ko: '실내 상자' },
+  granary: { seal: _num('STORE_SEAL_CHEST', 0.70), damp: _num('STORE_DAMP_GRANARY', 0.55), ko: '곳간' },
+};
+function placeOf(key) { return PLACES[key] || PLACES.carry; }
+function placeKeys() { return Object.keys(PLACES); }
+
+// ── ℃ → 부패 속도 ───────────────────────────────────────────────────────────
+function rateAtC(tC) {
+  const t = Number(tC);
+  if (!Number.isFinite(t)) return 1;
+  const r = Math.pow(EXP.Q10, (t - refC()) / 10);
+  return r < EXP.R_MIN ? EXP.R_MIN : (r > EXP.R_MAX ? EXP.R_MAX : r);
+}
+// 그 고도의 **연평균 기온**(완충이 당겨 가는 목표점). econ 곡선에서 평균을 내서 얻는다(상수 복사 0).
+const _meanC = new Map();
+function meanC(elevKm) {
+  const k = +(+(elevKm || 0)).toFixed(3);
+  if (_meanC.has(k)) return _meanC.get(k);
+  const E = _EC();
+  let v = null;
+  if (E && typeof E.temperatureAt === 'function') {
+    let s = 0; for (let d = 0; d < 365; d++) s += E.temperatureAt(d, null, k);
+    v = s / 365;
+  }
+  _meanC.set(k, v);
+  return v;
+}
+// 기준온도 — 안 주면 "연평균 노출 = 1" 을 이분법으로 푼다(유도값 · 한 번만).
+let _ref = null;
+function refC() {
+  if (EXP.REF_C > 0) return EXP.REF_C;
+  if (_ref !== null) return _ref;
+  const E = _EC();
+  if (!E || typeof E.temperatureAt !== 'function') return (_ref = 10);
+  const N = EXP.STEPS;
+  const mean = (ref) => {
+    let s = 0, c = 0;
+    for (let d = 0; d < 365; d++) for (let i = 0; i < N; i++) {
+      s += Math.pow(EXP.Q10, (E.temperatureAt(d, (i + 0.5) / N, 0) - ref) / 10); c++;
+    }
+    return s / c;
+  };
+  let lo = -20, hi = 60;
+  for (let k = 0; k < 60; k++) { const m = (lo + hi) / 2; if (mean(m) > 1) lo = m; else hi = m; }
+  return (_ref = +((lo + hi) / 2).toFixed(4));
+}
+
+// ── 하루치 노출 ─────────────────────────────────────────────────────────────
+//   ★기온 곡선을 여기서 만들지 않는다: 날씨 정본이 내주는 **그날의 낮·밤 두 점** 사이를
+//     econ 자신의 일주 모양(−cos 2πh)으로 잇는다. 두 끝은 정본 값과 **정확히 일치**한다.
+//   ★날씨를 못 물으면(랩·스텁) **1.0/일** 로 떨어진다 = 종전 모델 그대로(회귀 안전).
+function dayExposure(day, elevKm, damp) {
+  const W = _W();
+  if (!W || !W.available || !W.available()) return 1;
+  const d = _day(day), e = +(elevKm || 0), w = Math.max(0, Math.min(1, +(damp || 0)));
+  const hi = W.tempAt(d, false, e), lo = W.tempAt(d, true, e);
+  if (hi === null || lo === null) return 1;
+  const mid = (hi + lo) / 2, half = (hi - lo) / 2;
+  const m = meanC(e);
+  const N = EXP.STEPS;
+  let s = 0;
+  for (let i = 0; i < N; i++) {
+    let T = mid + half * (-Math.cos(2 * Math.PI * ((i + 0.5) / N)));
+    if (w > 0 && m !== null) T = T + w * (m - T);      // ★완충 — 연평균 쪽으로 당긴다
+    s += rateAtC(T);
+  }
+  return s / N;
+}
+
+// ── 누적 노출표 (lazy · 틱 0) ───────────────────────────────────────────────
+//   key = `고도|완충`. 각 표는 `{ a: 시작일, c: [누적…] }` (c[0] = 0, c[i] = a..a+i-1 합).
+const _cum = new Map();
+function _tbl(elevKm, damp) {
+  const k = `${+(+(elevKm || 0)).toFixed(3)}|${+(+(damp || 0)).toFixed(3)}`;
+  let t = _cum.get(k);
+  if (!t) { t = { a: null, c: [0], e: +(elevKm || 0), w: +(damp || 0), mean: null }; _cum.set(k, t); }
+  return t;
+}
+// 그 자리의 **연평균 하루 노출** — 표 밖을 물었을 때 O(1) 로 답하는 데 쓴다(한 번만 계산).
+function _meanDay(t) {
+  if (t.mean !== null) return t.mean;
+  let s = 0; for (let d = 0; d < 365; d++) s += dayExposure(d, t.e, t.w);
+  return (t.mean = s / 365);
+}
+// ★★**표에는 상한이 있다.** [부패 2차 2026-09-01 · 자기 결함 수리]
+//   1차 실장이 `while (끝 < d) push()` 였는데, 하네스가 게임일 **35.8억**을 물자 배열을 35억 칸
+//   늘리려다 죽었다(`RangeError: Invalid array length`). `| 0` 족보(77)와 **같은 족**이다:
+//   *커질 수 있는 값을 열거하면 언젠가 터지고, 그날은 그 값이 처음으로 중요해지는 날이다.*
+//   ⇒ 표는 `EXP.BACK+1` 칸을 넘지 않는다. 창 밖은 **연평균 × 일수**로 잇는다 —
+//     기준온도를 "연평균 노출 1" 로 잡아 뒀으므로 그 근사는 곧 **종전 '일수' 모델**이고,
+//     보관일이 가장 긴 씨앗(365일)도 창(기본 800일) 안에 있어 실제로는 근사를 안 탄다.
+function cumExposure(day, elevKm, damp) {
+  const x = Number(day);
+  if (!Number.isFinite(x)) return 0;
+  const d = Math.floor(x), frac = x - d;
+  const t = _tbl(elevKm, damp);
+  const SPAN = EXP.BACK;
+  if (t.a === null) { t.a = d - SPAN; t.c = [0]; }        // 처음 물은 날에서 뒤로 창 하나
+  // ★너무 멀리 뛰었다 — 열거하지 않고 **창을 옮긴다**. 옮기면서 원점의 뜻(절대 누적)은 유지한다.
+  if (d < t.a - SPAN || d > t.a + t.c.length - 1 + SPAN) {
+    const md = _meanDay(t);
+    const base = t.c[0] + (d - SPAN - t.a) * md;
+    t.a = d - SPAN; t.c = [base];
+  }
+  while (t.a + t.c.length - 1 < d) {                       // 앞으로만 늘린다
+    const last = t.a + t.c.length - 1;
+    t.c.push(t.c[t.c.length - 1] + dayExposure(last, t.e, t.w));
+  }
+  const base = (d < t.a) ? (t.c[0] - (t.a - d) * _meanDay(t)) : t.c[d - t.a];
+  // 창이 길어지면 왼쪽을 자른다 — `c` 는 **절대 누적**이라 잘라도 값의 뜻이 안 바뀐다.
+  const MAXLEN = 2 * SPAN + 2;
+  if (t.c.length > MAXLEN) { const cut = t.c.length - MAXLEN; t.c = t.c.slice(cut); t.a += cut; }
+  return frac > 0 ? base + frac * dayExposure(d, t.e, t.w) : base;
+}
+// 계측용 — 하네스가 "표가 적중했는가"를 세려면 필요하다.
+function _cumStats() { let n = 0; for (const t of _cum.values()) n += t.c.length; return { tables: _cum.size, days: n }; }
+function _cumReset() { _cum.clear(); _meanC.clear(); _ref = null; }
+
+// ── ★로트 하나의 노출 ───────────────────────────────────────────────────────
+//   레코드: `{ d, n, e, t, m, w }`
+//     `d` = **취득일 — 뜻이 안 바뀌었다.** 화면의 "N일 전"도, `consumeFrom(lotDay)` 도 그대로다.
+//     `e` = `t` 시점까지 정산된 누적 노출 · `t` = 마지막 정산일 · `m` = 자리 seal · `w` = 자리 damp
+//   ★★**e 가 없으면 옛 로트다** — 그땐 나이가 `today − d` 다(종전 뜻 그대로).
+//     그래서 이 코드가 켜지는 날 **아무 로트도 갑자기 상하지 않는다**(절벽 없음).
+//     `Lots.settle` 이 처음 만질 때 `e = today − d · t = today` 로 옮겨 적는다 — 그 순간 값이 **연속**이다.
+//   ⚠`d` 를 정산일로 재활용하지 않은 이유: 그러면 모든 로트의 `d` 가 오늘로 뭉개져
+//     화면의 나이 표시와 "이 로트를 먹는다"(`consumeFrom`)가 **조용히 같은 로트를 가리키게** 된다.
+function exposureOf(lot, today, elevKm) {
+  if (!lot) return 0;
+  const now = _day(today);
+  if (lot.e == null) { const a = now - _day(lot.d); return a > 0 ? a : 0; }   // 옛 로트 = 종전 뜻
+  const m = (lot.m == null) ? 1 : +lot.m;
+  const w = (lot.w == null) ? 0 : +lot.w;
+  const t0 = _day(lot.t == null ? lot.d : lot.t);
+  const add = (cumExposure(now, elevKm, w) - cumExposure(t0, elevKm, w)) * m;
+  const e = (+lot.e || 0) + (add > 0 ? add : 0);
+  return e > 0 ? +e.toFixed(6) : 0;
+}
+// 자리 이름 → 로트에 적을 두 값.
+function placeFields(key) { const p = placeOf(key); return { m: p.seal, w: p.damp }; }
+
 module.exports = {
   Crops, D, SHELF_DAYS, PRESERVED_ITEMS, PRESERVE, PRESERVE_DAYS,
   FRESH_AT, STAGE_KO, STAGE_EMO, SPOIL_INJURY, YIELD_FLOOR,
   _day, shelfOf, isPreserved, freshnessOf, stageOf, stageOfAge, isSpoiled,
+  // ★[부패 2차 2026-09-01] 온도 결합 + 저장 감속
+  EXP, PLACES, placeOf, placeKeys, placeFields, rateAtC, refC, meanC,
+  dayExposure, cumExposure, exposureOf, _cumStats, _cumReset,
   nutritionMult, illnessFor, ofAges, bestOf, peekAges, peekOffer,
   yieldMult, canPreserve, outputQty, preserveMs,
   shelfTable, winterMath, orderCheck,

@@ -72,25 +72,124 @@ function sum(p, item) { let s = 0; for (const l of of(p, item)) s += l.n; return
 function _cap(arr) {
   while (arr.length > CFG.MAX_LOTS) {
     const a = arr[0], b = arr[1];
-    arr.splice(0, 2, { d: Math.min(a.d, b.d), n: +(a.n + b.n).toFixed(6), coalesced: true });
+    // ★[부패 2차 2026-09-01] 노출도 **안전한 쪽**으로 뭉친다 — 큰 쪽을 취한다.
+    //   기존 `min(d)`(더 오래된 날짜)와 **같은 방향**이다: 어느 쪽이든 근사지만
+    //   음식이 실제보다 싱싱해 보이는 일이 절대 없다. 평균을 쓰면 그 보장이 깨진다.
+    //   (자리 배율은 둘 다 같은 자리에 있던 로트라 그대로 물려받는다 — 그릇 안에서만 뭉쳐진다.)
+    const m = { d: Math.min(a.d, b.d), n: +(a.n + b.n).toFixed(6), coalesced: true };
+    if (a.e != null || b.e != null) {
+      m.e = Math.max(a.e == null ? 0 : +a.e, b.e == null ? 0 : +b.e);
+      m.t = Math.min(_day(a.t == null ? a.d : a.t), _day(b.t == null ? b.d : b.t));
+      const src = (a.e != null) ? a : b;
+      if (src.m != null) m.m = src.m;
+      if (src.w != null) m.w = src.w;
+    }
+    arr.splice(0, 2, m);
   }
   return arr;
 }
 // 취득 — 같은 날이면 그 로트에 더하고, 다른 날이면 **새 로트**(병합 금지).
-function note(p, item, n, day) {
+function note(p, item, n, day, place) {
   if (!isLot(item) || !(n > 0)) return null;
   const arr = of(p, item), d = _day(day);
-  const hit = arr.find((l) => l.d === d);
-  if (hit) hit.n = +(hit.n + n).toFixed(6);
-  else arr.push({ d, n: +(+n).toFixed(6) });
+  // ★[부패 2차] 새 로트는 **정산된 채로** 태어난다: 노출 0 · 정산일 = 취득일 · 자리 배율.
+  const pf = Spoil.placeFields(place || 'carry');
+  const hit = arr.find((l) => l.d === d && (l.m == null ? 1 : l.m) === pf.m && (l.w == null ? 0 : l.w) === pf.w);
+  if (hit) {
+    // 같은 날·같은 자리 = 같은 물건이다. 노출은 **개수 가중 평균**(진짜 평균이 맞는 유일한 자리).
+    const e0 = hit.e == null ? 0 : +hit.e;
+    const tot = hit.n + n;
+    hit.e = +((e0 * hit.n + 0 * n) / tot).toFixed(6);
+    hit.n = +tot.toFixed(6);
+    hit.t = d;
+  } else arr.push({ d, n: +(+n).toFixed(6), e: 0, t: d, m: pf.m, w: pf.w });
   arr.sort((x, y) => x.d - y.d);
   return _cap(arr);
+}
+
+// ── ★★[부패 2차 2026-09-01] 정산 — "위치 이력 없이 정확하게" ─────────────────
+//   자리가 안 바뀐 구간은 배율이 상수라 적분이 **곱으로** 빠진다. 그래서 이력을 저장할 필요가 없다:
+//   **읽을 때와 옮길 때만** 정산하면 값이 정확하다. 틱 0 은 그대로다.
+//   ★옛 로트(`e` 없음) 마이그레이션: `e = today − d`(종전 나이) · `t = today` ⇒ **그 순간 값이 연속**.
+function settle(p, item, today, elevKm) {
+  const arr = of(p, item), now = _day(today);
+  for (const l of arr) {
+    if (l.e == null) {                                   // 옛 로트 — 종전 나이를 그대로 옮겨 적는다
+      const age = now - _day(l.d);
+      l.e = age > 0 ? +age.toFixed(6) : 0;
+      l.t = now;
+      if (l.m == null) l.m = 1;
+      if (l.w == null) l.w = 0;
+      continue;
+    }
+    if (_day(l.t == null ? l.d : l.t) >= now) continue;   // 오늘 이미 정산됐다
+    l.e = +Spoil.exposureOf(l, now, elevKm).toFixed(6);
+    l.t = now;
+  }
+  return arr;
+}
+// 자리를 바꾼다 — **정산 먼저**(안 그러면 지난 구간에 새 배율이 소급된다).
+function setPlace(p, item, place, today, elevKm) {
+  settle(p, item, today, elevKm);
+  const pf = Spoil.placeFields(place || 'carry');
+  for (const l of of(p, item)) { l.m = pf.m; l.w = pf.w; }
+  return of(p, item);
+}
+// ★그릇 ↔ 사람: 로트를 **레코드째** 옮긴다(FIFO — 오래된 것부터).
+//   반환한 레코드는 그대로 그릇의 장부에 적히고, 돌아올 땐 그대로 다시 꽂힌다.
+//   ⇒ **상자가 부패 시계를 지우지 않는다.** (§0 실측: 여태 지우고 있었다 — f 0.20 → 1.00)
+function moveOut(p, item, amount, inventory, today, elevKm) {
+  if (!isLot(item)) return [];
+  reconcile(p, item, inventory, today);
+  settle(p, item, today, elevKm);
+  const arr = of(p, item);
+  let left = Math.max(0, Number(amount) || 0);
+  const out = [];
+  while (left > CFG.EPS && arr.length) {
+    const l = arr[0];
+    const take = Math.min(left, l.n);
+    out.push({ d: l.d, n: +take.toFixed(6), e: l.e == null ? 0 : +l.e, t: _day(l.t == null ? l.d : l.t),
+               m: l.m == null ? 1 : l.m, w: l.w == null ? 0 : l.w });
+    l.n = +(l.n - take).toFixed(6); left -= take;
+    if (l.n <= CFG.EPS) arr.shift();
+  }
+  if (!arr.length) delete all(p)[item];
+  return out;
+}
+// 그릇에서 사람에게. `place` 는 **받는 쪽**(보통 'carry').
+function moveIn(p, item, recs, today, elevKm, place) {
+  if (!isLot(item) || !Array.isArray(recs) || !recs.length) return of(p, item);
+  const arr = of(p, item), now = _day(today);
+  const pf = Spoil.placeFields(place || 'carry');
+  for (const r of recs) {
+    if (!(r && r.n > 0)) continue;
+    // 그릇에 있던 구간을 **먼저 정산**한 뒤 새 자리 배율로 바꾼다(체크포인트 규약).
+    const settled = Spoil.exposureOf(r, now, elevKm);
+    arr.push({ d: _day(r.d), n: +(+r.n).toFixed(6), e: +settled.toFixed(6), t: now, m: pf.m, w: pf.w });
+  }
+  arr.sort((x, y) => x.d - y.d);
+  return _cap(arr);
+}
+// 그릇 안에서 시간이 흐른다 — 그릇의 장부를 **그 자리 배율로** 정산한다(꺼낼 때 부르면 충분하다).
+function settleRecs(recs, today, elevKm) {
+  const now = _day(today);
+  for (const r of (recs || [])) {
+    if (!r) continue;
+    if (r.e == null) { const a = now - _day(r.d); r.e = a > 0 ? +a.toFixed(6) : 0; r.t = now; if (r.m == null) r.m = 1; if (r.w == null) r.w = 0; continue; }
+    if (_day(r.t == null ? r.d : r.t) >= now) continue;
+    r.e = +Spoil.exposureOf(r, now, elevKm).toFixed(6);
+    r.t = now;
+  }
+  return recs;
 }
 // ★인벤과 장부를 맞춘다 — 로트를 안 거친 경로가 인벤을 건드려도 스스로 낫는다.
 //   남으면 **오늘 얻은 것**으로 잡고(알고 하는 근사), 모자라면 **오래된 것부터** 뺀다.
 function reconcile(p, item, inventory, day) {
   if (!isLot(item)) return null;
   const arr = of(p, item);
+  // ★[부패 2차] **읽는 모든 경로가 여기를 지난다** — 그래서 정산을 여기 건다.
+  //   옛 로트 마이그레이션도 여기서 딱 한 번 일어난다(그 순간 신선도가 연속이다).
+  if (arr.length) settle(p, item, day);
   const have = Math.max(0, Math.floor(Number((inventory || {})[item]) || 0));
   let s = sum(p, item);
   if (Math.floor(s + CFG.EPS) < have) { note(p, item, have - Math.floor(s + CFG.EPS), day); s = sum(p, item); }
@@ -115,7 +214,9 @@ function consume(p, item, amount, inventory, day) {
   const ages = [];
   while (left > CFG.EPS && arr.length) {
     const take = Math.min(left, arr[0].n);
-    ages.push({ d: arr[0].d, n: +take.toFixed(6) });
+    // ★[부패 2차] **노출 필드를 같이 싣는다** — 부르는 쪽(`Spoil.ofAges`)이 나이가 아니라 노출로 잰다.
+    //   되돌리기(`doPreserve._undo`)도 이 레코드를 그대로 다시 꽂아 **나이·노출이 정확히 복원**된다.
+    ages.push({ d: arr[0].d, n: +take.toFixed(6), e: arr[0].e, t: arr[0].t, m: arr[0].m, w: arr[0].w });
     arr[0].n = +(arr[0].n - take).toFixed(6);
     left -= take; taken += take;
     if (arr[0].n <= CFG.EPS) arr.shift();
@@ -133,11 +234,14 @@ function consumeFrom(p, item, day, amount, inventory) {
   const i = arr.findIndex((l) => l.d === _day(day));
   if (i < 0) return { taken: 0 };
   const take = Math.min(Math.max(0, Number(amount) || 0), arr[i].n);
+  const l = arr[i];
+  // ★[부패 2차] 뺀 몫의 **레코드**도 돌려준다 — 버리기가 바닥템에 나이·노출을 실으려면 필요하다.
+  const ages = take > 0 ? [{ d: l.d, n: +take.toFixed(6), e: l.e, t: l.t, m: l.m, w: l.w }] : [];
   arr[i].n = +(arr[i].n - take).toFixed(6);
   if (arr[i].n <= CFG.EPS) arr.splice(i, 1);
   if (inventory) inventory[item] = Math.floor(sum(p, item) + CFG.EPS);
   if (!arr.length) delete all(p)[item];
-  return { taken: +take.toFixed(6) };
+  return { taken: +take.toFixed(6), ages };
 }
 // ★UI 가 그릴 것 — 로트가 있는 품목만. 원장과 같은 규약(클라가 표를 안 든다).
 function viewAll(p, inventory, day) {
@@ -158,8 +262,12 @@ function view(p, item, inventory, day) {
   //   정비 배치가 파 둔 로트 펼침이 이미 `ageDays` 를 그리고 있었다. 그 옆에 두 칸을 더 낸다.
   return { item, total: sum(p, item),
            lots: arr.map((l) => {
+             // ★나이(`ageDays`)는 **진짜 경과 일수** 그대로다 — 화면의 "N일 전"은 거짓말이 아니어야 한다.
+             //   달라진 건 신선도가 **노출(E)** 에서 나온다는 것: 같은 나이라도 여름 것과
+             //   상자 것이 다르게 보인다. 클라는 한 줄도 안 고쳤고, 그 차이가 저절로 드러난다.
              const ageDays = Math.max(0, _day(day) - l.d);
-             const fresh = Spoil.freshnessOf(item, ageDays);
+             const exp = Spoil.exposureOf(l, day);
+             const fresh = Spoil.freshnessOf(item, exp);
              return { day: l.d, n: l.n, ageDays, coalesced: !!l.coalesced,
                       fresh, stage: Spoil.stageOf(fresh) };
            }) };
@@ -173,7 +281,14 @@ function fromSave(p, saved) {
       // ★`coalesced` 는 **참일 때만** 남긴다 — 거짓 키를 붙이면 저장 전후가 구조적으로 달라져
       //   "재접속을 넘어 그대로인가" 판정이 자기 직렬화 때문에 실패한다(1차 실행에서 실제로 그랬다).
       const arr = v.filter((l) => l && Number.isFinite(l.d) && l.n > 0)
-        .map((l) => (l.coalesced ? { d: _day(l.d), n: +l.n, coalesced: true } : { d: _day(l.d), n: +l.n }));
+        .map((l) => {
+          const o = { d: _day(l.d), n: +l.n };
+          if (l.coalesced) o.coalesced = true;
+          // ★[부패 2차] 노출 넷은 **있을 때만** 싣는다 — 없는 로트는 옛 로트로 읽혀 마이그레이션된다.
+          //   (거짓 키를 붙이면 저장 전후 구조가 달라져 "재접속을 넘어 그대로인가"가 자기 직렬화로 실패한다.)
+          if (Number.isFinite(l.e)) { o.e = +l.e; o.t = _day(l.t == null ? l.d : l.t); o.m = Number.isFinite(l.m) ? +l.m : 1; o.w = Number.isFinite(l.w) ? +l.w : 0; }
+          return o;
+        });
       arr.sort((x, y) => x.d - y.d);
       if (arr.length) out[k] = _cap(arr);
     }
@@ -181,4 +296,6 @@ function fromSave(p, saved) {
   }
   return all(p);
 }
-module.exports = { CFG, LOT_CORE, _day, isLot, all, of, sum, note, reconcile, consume, consumeFrom, view, viewAll, toSave, fromSave };
+module.exports = { CFG, LOT_CORE, _day, isLot, all, of, sum, note, reconcile, consume, consumeFrom, view, viewAll, toSave, fromSave,
+  // ★[부패 2차 2026-09-01] 정산·자리·그릇 이동
+  settle, setPlace, moveOut, moveIn, settleRecs };

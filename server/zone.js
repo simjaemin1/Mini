@@ -4063,7 +4063,8 @@ function doPreserve(player, recipeKey, amount) {
   // ★되돌릴 땐 **나이 분포까지 그대로** 돌려놓는다 — `ages` 를 로트별로 다시 적는다.
   //   한 날짜로 뭉개면 장부가 거짓말을 한다(로트 병합 금지 규약).
   const _undo = () => {
-    for (const a of got.ages) Lots.note(player, r.from, a.n, a.d);
+    // ★[부패 2차] 노출까지 그대로 되돌린다 — 개수·날짜만 돌려놓으면 그릇에서 번 시간이 사라진다.
+    Lots.moveIn(player, r.from, got.ages, today, 0, 'carry');
     player.inventory[r.from] = Math.floor(Lots.sum(player, r.from) + 1e-6);
     sendInventory(player);
   };
@@ -4750,6 +4751,17 @@ function getEquippedEquipment(player, slot) {
 // 모닥불 근처(100px)면 따뜻 — 밤 추위 완화. qtBuildings 사용(비싸지 않게).
 // ★[신체 상태 §7] 실내인가 — **방 판정 정본**(`server/rooms.js`)에게 물어본다.
 //   클라도 서버도 이 하나만 본다(배치 18 규약: 방 판정은 서버가 정본, 클라 재계산 금지).
+// ★★[부패 2차 2026-09-01] **자리 판정 정본** — 이 건물/자리는 `spoil.PLACES` 의 어느 칸인가.
+//   ⚠배율을 여기 적지 마라. 이름만 고르고 수는 `spoil.js` 가 갖는다(사본 금지).
+function _placeKeyOfBuilding(b) {
+  if (!b) return 'ground';
+  if (b.type === 'guild_granary') return 'granary';
+  if (b.type === 'chest') return isIndoorAt({ x: b.x, y: b.y, floor: b.floor || 0 }) ? 'chest_in' : 'chest';
+  return 'ground';
+}
+function _placeKeyOfGround(x, y, floor) {
+  return isIndoorAt({ x, y, floor: floor || 0 }) ? 'indoor' : 'ground';
+}
 function isIndoorAt(p) {
   try {
     const cx = Math.floor(p.x / 32), cy = Math.floor(p.y / 32);
@@ -6159,13 +6171,43 @@ function sendInventory(player, where) {
 //   왜: 물고기 셋을 버리면 바닥에도 셋이어야 "그 중 하나만 다시 줍는다"가 성립한다.
 //   벌크(잔가지 10)는 종전대로 한 덩이 — 낱개를 구별할 게 없으니 나눌 이유도 없다.
 //   `gi.led` 에는 **kg 만** 싣는다(id 는 버린 사람의 주소다 — 줍는 사람은 새 주소를 받는다).
-function _spawnGroundItems(player, item, parcels) {
+// ★★[부패 2차 2026-09-01] 바닥에 내려놓을 때 로트를 **레코드째** 실어 보낸다.
+//   §0 실측: 여태 줍기가 `Lots.note(…, zoneGameDay())` 라 **버렸다 주우면 새것이 됐다**(상자와 같은 구멍).
+//   바닥 배율은 1.0 이라 시간은 손에 든 것과 똑같이 흐른다 — 달라지는 건 "지워지지 않는다"뿐이다.
+//   ⇒ 세 갈래(개체 지목·로트 지목·수량)를 각각 고치지 않고 **여기 하나**에서 꺼낸다.
+function _takeGroundLots(player, item, total) {
+  if (!Lots.isLot(item) || !(total > 0)) return null;
+  const recs = Lots.moveOut(player, item, total, player.inventory, zoneGameDay(), 0);
+  return recs.length ? recs : null;
+}
+function _spawnGroundItems(player, item, parcels, lotRecs) {
   const out = [];
+  const _gd = zoneGameDay();
+  // 로트 레코드를 꾸러미 개수 비율대로 나눠 싣는다(FIFO — 오래된 것이 먼저 나간다).
+  let _q = Array.isArray(lotRecs) ? lotRecs.slice() : null;
+  const _cut = (need) => {
+    if (!_q || !_q.length) return null;
+    let left = need; const got = [];
+    while (left > 1e-9 && _q.length) {
+      const r = _q[0], take = Math.min(left, +r.n || 0);
+      if (take <= 1e-9) { _q.shift(); continue; }
+      got.push(Object.assign({}, r, { n: +take.toFixed(6) }));
+      r.n = +(r.n - take).toFixed(6); left -= take;
+      if (r.n <= 1e-9) _q.shift();
+    }
+    return got.length ? got : null;
+  };
   for (const pc of parcels) {
     const ox = (Math.random() - 0.5) * 16, oy = 8 + Math.random() * 8;
     const gid = `g${nextGiId++}`;
     const gi = { id: gid, x: player.x + ox, y: player.y + oy, item, count: pc.n, droppedAt: Date.now(), kg: +(+pc.kg).toFixed(3) };
     if (pc.led && pc.led.length) gi.led = pc.led.map((e) => (Number.isFinite(e.d) ? { kg: e.kg, d: e.d } : { kg: e.kg }));
+    const _lr = _cut(pc.n);
+    if (_lr) {
+      // 바닥의 자리 배율을 찍는다 — 실내 바닥이면 완충이 걸린다(움집 안이 여름에 서늘한 그 이유).
+      const _pf = Spoil.placeFields(_placeKeyOfGround(player.x, player.y, player.floor));
+      gi.lots = _lr.map((r) => Object.assign({}, r, { m: _pf.m, w: _pf.w, t: _gd }));
+    }
     // ★[인벤 마무리] 도구 개체 — 내구도까지 그대로 싣는다(주우면 그 도구가 그대로 돌아온다).
     if (pc.tool) gi.tool = { type: pc.tool.type, d: pc.tool.d | 0, max: pc.tool.max | 0 };
     groundItems.set(gid, gi);
@@ -6212,8 +6254,11 @@ function tryDropItem(player, item, amount, opts) {
     const n = Math.min(t.n, have);
     // ★0 이 돼도 키를 **남긴다** — 옛 경로(`-=`)가 그랬고, 여기서 지우면 인벤을 순회하는
     //   곳들의 동작이 조용히 바뀐다(이 배치는 정비지 개편이 아니다).
+    // ★★로트는 **인벤을 깎기 전에** 꺼낸다 — `moveOut` 안의 `reconcile` 이 인벤을 보고
+    //   "장부가 남았네" 하며 지워 버린다(1차 실장이 정확히 그래서 바닥템에 로트가 안 실렸다).
+    const _lrA = _takeGroundLots(player, item, n);
     player.inventory[item] = have - n;
-    _spawnGroundItems(player, item, t.entries.slice(0, n).map((e) => ({ n: 1, kg: e.kg, led: [e] })));
+    _spawnGroundItems(player, item, t.entries.slice(0, n).map((e) => ({ n: 1, kg: e.kg, led: [e] })), _lrA);
     Lots.reconcile(player, item, player.inventory, zoneGameDay());
     sendInventory(player, 'drop:ids');
     savePlayer(player);
@@ -6227,7 +6272,8 @@ function tryDropItem(player, item, amount, opts) {
     const n = Math.floor(r.taken + 1e-9);
     if (n <= 0) { send(player.ws, { type: 'notice', text: '그 로트가 비었다' }); return; }
     const t = Carry.takeEntries(player, item, n);
-    _spawnGroundItems(player, item, [{ n, kg: t.kg, led: t.entries }]);
+    // ★로트 지목 갈래는 `consumeFrom` 이 이미 그 로트를 깎았다 — 레코드를 그 자리에서 받아 싣는다.
+    _spawnGroundItems(player, item, [{ n, kg: t.kg, led: t.entries }], (r.ages && r.ages.length) ? r.ages : null);
     sendInventory(player, 'drop:lot');
     savePlayer(player);
     return;
@@ -6236,13 +6282,14 @@ function tryDropItem(player, item, amount, opts) {
   // ── ③ 수량 — 옛 경로 그대로. 다만 **개체형이면 낱개로 떨어진다** ────────
   amount = Math.max(1, Math.min(99, parseInt(amount, 10) || 1));
   if (have < amount) { _short(); return; }
+  const _lrC = _takeGroundLots(player, item, amount);   // ★인벤을 깎기 **전에**(위 ① 과 같은 이유)
   player.inventory[item] = have - amount;   // ★0 이어도 키는 남긴다(위와 같은 이유)
   // ★[무게 배치] 버린 개체를 원장에서도 뺀다 — 2kg 물고기를 버리면 2kg 이 빠져야 한다.
   //   그 kg 을 바닥템에 실어, 다시 주우면 **그 무게 그대로** 돌아온다(개체가 안 뭉개진다).
   const t = Carry.takeEntries(player, item, amount);
   Lots.reconcile(player, item, player.inventory, zoneGameDay());
-  if (t.entries.length === amount) _spawnGroundItems(player, item, t.entries.map((e) => ({ n: 1, kg: e.kg, led: [e] })));
-  else _spawnGroundItems(player, item, [{ n: amount, kg: t.kg, led: t.entries.length ? t.entries : null }]);
+  if (t.entries.length === amount) _spawnGroundItems(player, item, t.entries.map((e) => ({ n: 1, kg: e.kg, led: [e] })), _lrC);
+  else _spawnGroundItems(player, item, [{ n: amount, kg: t.kg, led: t.entries.length ? t.entries : null }], _lrC);
   sendInventory(player, 'drop:amount');
   savePlayer(player);
 }
@@ -6320,7 +6367,11 @@ function tryPickupItem(player, gid) {
     const per = gi.kg / gi.count, std = Weights.kgOfOrDefault(gi.item);
     if (Math.abs(per - std) > 0.005) for (let i = 0; i < gi.count; i++) Carry.noteInstance(player, gi.item, per);
   }
-  Lots.note(player, gi.item, gi.count, zoneGameDay());
+  // ★★[부패 2차 2026-09-01] 바닥템이 로트를 들고 있으면 **그걸 되찾는다**(오늘 것으로 잡지 않는다).
+  //   없으면 종전대로 오늘 얻은 것으로 — 자연물 채집·NPC 낙하물이 그 경로다(진짜 새것이 맞다).
+  if (Array.isArray(gi.lots) && gi.lots.length && Lots.isLot(gi.item)) {
+    Lots.moveIn(player, gi.item, gi.lots, zoneGameDay(), 0, 'carry');   // 주우면 손에 든 것 = 'carry'
+  } else Lots.note(player, gi.item, gi.count, zoneGameDay());
   groundItems.delete(gid);
   sendInventory(player, 'pickup');
   send(player.ws, { type: 'notice', text: `🤚 ${ITEM_LABEL_SERVER[gi.item] || gi.item} ×${gi.count} 주움` });
@@ -7121,7 +7172,7 @@ function _spoiledGuardItems(player, items) {
     if (!Lots.isLot(it)) continue;
     const arr = Lots.of(player, it);
     if (!arr.length) continue;
-    if (Spoil.freshnessOf(it, Spoil._day(today) - Spoil._day(arr[0].d)) > 0) continue;
+    if (Spoil.freshnessOf(it, Spoil.exposureOf(arr[0], today)) > 0) continue;   // ★[부패 2차] 나이 → 노출
     const bad = Math.floor(arr[0].n);
     const okLeft = Math.floor(Lots.sum(player, it) - arr[0].n);
     return `${ITEM_LABEL_SERVER[it] || it} 중 ${bad > 0 ? bad : arr[0].n}개가 상했다 — 마을은 상한 것을 받지 않는다`
@@ -7341,6 +7392,8 @@ function __testBind() {
     //   (하네스가 염도·수율을 다시 계산하면 그게 사본이다).
     Salt, doBoilSalt, isSeaTileLocal, WATER_TILES, tryGather, _SEASON_DAY_MS, ITEM_RECIPES, doCraftItem,
     Wind, windExposureOf, isRockTileLocal, villageShelterOf, gameDayNow, elevKmAt,
+    // ★[부패 2차 2026-09-01] 자리(상자·바닥)를 하네스가 정본 함수로 밟게 — 손으로 빚으면 사본이다
+    tryChestPut, tryChestTake, CHEST_ALLOWED_ITEMS,
     // ── 원장 승격(2026-08-30) ── 드롭·줍기·바닥 지도를 **정본 그대로**. 하네스가 바닥템을 손으로 빚으면 사본이다.
     tryDropItem, tryPickupItem, groundItems, sendInventory, consumeItem, handlePlayerInput,
     // ── 빈손 시작(2026-08-28) ── 줍기·제작·도구 표를 **정본 그대로** 내준다
@@ -7477,8 +7530,22 @@ function tryChestPut(player, buildingId, item, amount) {
   //     · `guild-treasury.granaryItems` : `k.startsWith('_')` 스킵
   //     · 철거 반환 루프(`typeof v === 'number'`) : 배열이라 스킵
   //   그래서 곳간 회계·철거를 건드리지 않고 얹힌다(그 둘이 안 걸러 냈다면 이건 회부감이었다).
+  // ★★[부패 2차 2026-09-01] **로트를 그릇으로 옮긴다.**
+  //   §0 실측: 여태 상자는 부패 시계를 **완전히 지웠다**(넣었다 빼면 신선도 0.20 → 1.00 · 네 품목 전수).
+  //   원인은 상자가 로트를 모르고, 돌아온 물건을 `reconcile` 이 "오늘 얻은 것"으로 잡았기 때문이다.
+  //   ⇒ 나가기 **전에** 정산해 레코드째 꺼내고(`moveOut`), 그릇의 자리 배율을 찍어 둔다.
+  const _pk = _placeKeyOfBuilding(b);
+  const _pf = Spoil.placeFields(_pk);
+  const _lotRecs = Lots.isLot(item)
+    ? Lots.moveOut(player, item, amount, player.inventory, zoneGameDay(), 0).map((r) => Object.assign({}, r, { m: _pf.m, w: _pf.w, t: zoneGameDay() }))
+    : null;
   const _took = consumeItem(player, item, amount);
   b.data = b.data || {};
+  if (_lotRecs && _lotRecs.length) {
+    if (!b.data._lots || typeof b.data._lots !== 'object') b.data._lots = {};
+    if (!Array.isArray(b.data._lots[item])) b.data._lots[item] = [];
+    for (const r of _lotRecs) b.data._lots[item].push(r);
+  }
   if (_took && _took.entries && _took.entries.length) {
     if (!b.data._led || typeof b.data._led !== 'object') b.data._led = {};
     if (!Array.isArray(b.data._led[item])) b.data._led[item] = [];
@@ -7569,6 +7636,26 @@ async function tryChestTake(player, buildingId, item, amount) {
     Carry.noteEntries(player, item, got);
     if (!_cl.length) delete b.data._led[item];
     if (b.data._led && !Object.keys(b.data._led).length) delete b.data._led;
+  }
+  // ★★[부패 2차 2026-09-01] **로트를 그릇에서 되찾는다.** 그릇에 있던 구간은 그 자리 배율로
+  //   정산되고(`moveIn` 안에서 `exposureOf`), 손에 오는 순간 배율이 'carry' 로 바뀐다 —
+  //   위치 이력을 저장하지 않고도 정확한 이유가 이 체크포인트다.
+  const _cls = (b.data._lots && Array.isArray(b.data._lots[item])) ? b.data._lots[item] : null;
+  if (_cls && _cls.length && Lots.isLot(item)) {
+    const _today = zoneGameDay();
+    let left = takeAmt;
+    const moved = [];
+    while (left > 1e-9 && _cls.length) {
+      const r = _cls[0];
+      const take = Math.min(left, +r.n || 0);
+      if (take <= 1e-9) { _cls.shift(); continue; }
+      moved.push(Object.assign({}, r, { n: +take.toFixed(6) }));
+      r.n = +(r.n - take).toFixed(6); left -= take;
+      if (r.n <= 1e-9) _cls.shift();
+    }
+    if (moved.length) Lots.moveIn(player, item, moved, _today, 0, 'carry');
+    if (!_cls.length) delete b.data._lots[item];
+    if (b.data._lots && !Object.keys(b.data._lots).length) delete b.data._lots;
   }
   db.updateBuildingData(b.dbId, JSON.stringify(b.data));
   syncGuildGranary(b);   // ★인출·약탈도 같은 경로로 회계 반영(물리에서 빠진 만큼 총자산 감소)

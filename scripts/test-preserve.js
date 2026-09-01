@@ -35,6 +35,13 @@ process.env.ENABLE_BANDITS = '0'; process.env.ENABLE_ROADS = '0';
 process.env.VILLAGE_DAY_MS = process.env.VILLAGE_DAY_MS || String(3600 * 1000);
 // ★가공 소요는 **시간 손잡이만** 줄인다(test-craft 의 CRAFT_*_MS 선례와 같은 결).
 //   0.0002일 × 3600초 = 720ms. 소요일→ms 환산 자체는 ①-e 에서 **기본값 그대로** 따로 검사한다.
+// ★★[부패 2차 2026-09-01] **이 하네스가 곧 "채택값 보존"의 증명이다.**
+//   온도 결합이 들어오면서 신선도의 인수가 "나이(일)"에서 **노출 E**(기준온도 환산 일수)로 바뀌었다.
+//   `SPOIL_Q10=1` 이면 r(T) ≡ 1 이므로 **E == 경과 일수** — 곧 *기준온도 환경*이다.
+//   ⇒ 여기 68검사가 **한 줄도 안 고쳐진 채 그대로 통과**한다는 것이,
+//     "품목별 곡선과 채택된 보관일 표가 하나도 안 움직였다"는 뜻이다.
+//   (온도가 실제로 붙었을 때의 거동은 `test-spoil2.js` 가 잰다 — 거기선 Q10 을 안 건드린다.)
+process.env.SPOIL_Q10 = process.env.SPOIL_Q10 || '1';
 process.env.PRESERVE_DAYS_DRY = process.env.PRESERVE_DAYS_DRY || '0.0002';
 process.env.PRESERVE_DAYS_SMOKE = process.env.PRESERVE_DAYS_SMOKE || '0.0002';
 process.env.PRESERVE_DAYS_PICKLE = process.env.PRESERVE_DAYS_PICKLE || '0.0002';
@@ -283,12 +290,18 @@ function giveAged(p, item, n, ageDays) {
     const p = mkPlayer('undo', {}); rack4.ownerId = p.playerId; rack4.ownerName = p.playerId;
     const A1 = Math.ceil(Spoil.shelfOf('fish')) + 3, A2 = Math.ceil(Spoil.shelfOf('fish')) + 1;
     giveAged(p, 'fish', 2, A1); giveAged(p, 'fish', 2, A2);
-    const before = JSON.stringify(Lots.of(p, 'fish'));
+    // ★[부패 2차 2026-09-01] 비교를 **실질로** 바꾼다 — 되돌린 뒤 정산일(`t`)은 오늘로 갱신되는 게 맞다.
+    //   지켜야 할 것은 **날짜별 개수와 노출**이고, 그건 바이트 비교가 아니라 이 셋으로 잰다.
+    //   ⚠저장된 `e` 를 견주면 안 된다 — 되돌리며 **정산**되어 표현이 달라진다(값은 같은데 꼴이 다르다).
+    //     견줄 것은 **오늘 시점의 노출**이다(그게 신선도를 정하는 수다). 족보 58: 표현이 아니라 뜻을 재라.
+    const _sig = (arr) => arr.map((l) => `${l.d}:${l.n}:${Spoil.exposureOf(l, H.zoneGameDay()).toFixed(4)}`).join(' ');
+    const before = _sig(Lots.of(p, 'fish'));
     pre(Lots.of(p, 'fish').length === 2, '로트가 **날짜 둘로 갈려** 있다(하나면 뭉개짐을 못 잰다)', Lots.of(p, 'fish').length);
     pre(Spoil.bestOf('fish', Lots.of(p, 'fish'), H.zoneGameDay()) === 0, '그리고 전부 상함이라 거절될 것이다');
     H.doPreserve(p, 'dry_fish', 4);
-    ok(JSON.stringify(Lots.of(p, 'fish')) === before,
-      '★★③ⓖ 되돌림이 **나이 분포까지 정확히** 복원한다(로트 병합 금지 규약 유지)', Lots.of(p, 'fish').map((l) => `${l.d}:${l.n}`).join(' '));
+    ok(_sig(Lots.of(p, 'fish')) === before,
+      '★★③ⓖ 되돌림이 **나이·노출 분포까지 정확히** 복원한다(로트 병합 금지 규약 유지)',
+      `${_sig(Lots.of(p, 'fish'))}  (전 ${before})`);
   }
   // 대기열이 차 있으면 **재료를 빼기 전에** 거절한다(뺐다 되돌리는 길을 안 만든다)
   {
@@ -437,8 +450,15 @@ function giveAged(p, item, n, ageDays) {
     const p = mkPlayer('save', {}); giveAged(p, 'fish', 2, 1);
     const saved = Lots.toSave(p);
     const keys = new Set(); for (const arr of Object.values(saved)) for (const l of arr) for (const k of Object.keys(l)) keys.add(k);
-    ok([...keys].every((k) => k === 'd' || k === 'n' || k === 'coalesced'),
-      '★★⑥ⓔ 저장 레코드는 여전히 `{d, n}`(+coalesced) 뿐 — 신선도는 **저장하지 않는다**(유도값)', [...keys].join(','));
+    // ★★[부패 2차 2026-09-01] **레코드가 넷 늘었다** — 그리고 그게 이 검사의 뜻을 안 바꾼다.
+    //   늘어난 넷은 전부 **물리량**이다: `e` 누적 노출 · `t` 마지막 정산일 · `m` 자리 밀폐 · `w` 자리 완충.
+    //   지켜야 할 규약은 "**신선도를 저장하지 않는다**"이고 그건 그대로다 —
+    //   `fresh`·`stage` 는 어디에도 안 적히고 **매번 유도된다**(아래 두 검사가 그걸 못 박는다).
+    const ALLOW = new Set(['d', 'n', 'coalesced', 'e', 't', 'm', 'w']);
+    ok([...keys].every((k) => ALLOW.has(k)),
+      '★★⑥ⓔ 저장 레코드는 **물리량만** 있다(d·n·coalesced + 노출 넷 e·t·m·w)', [...keys].join(','));
+    ok(!keys.has('fresh') && !keys.has('stage'),
+      '★★⑥ⓔ-2 **신선도·단계는 저장하지 않는다** — 유도값이다(부패 배치의 제1 규약 유지)');
   }
 
   // ═══ ⑦ 하네스 결함 수리 — 날을 얼리면 **플레이어 시계도** 언다 ═══════════

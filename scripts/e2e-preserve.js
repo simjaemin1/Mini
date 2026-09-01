@@ -104,11 +104,19 @@ async function waitHttp(u, n = 900) { for (let i = 0; i < n; i++) { try { const 
   // ── ① 방치한 것이 화면에서 **시들고 상한다** ────────────────────────────
   console.log('\n① 방치 → 시듦 → 상함이 화면에 보인다');
   const SH = Spoil.shelfOf('fish_cooked');
-  const AGE_W = Math.max(1, Math.round(SH * 0.8));          // 시듦
-  const AGE_S = Math.ceil(SH) + 1;                           // 상함
-  pre(Spoil.stageOfAge('fish_cooked', 0) === 'fresh'
-    && Spoil.stageOfAge('fish_cooked', AGE_W) === 'wilt'
-    && Spoil.stageOfAge('fish_cooked', AGE_S) === 'spoiled',
+  // ★★[부패 2차 2026-09-01] **나이를 노출로 역산한다.**
+  //   온도 결합 전에는 "나이 = 노출"이라 `0.8 × 보관일` 이 곧 시듦이었다. 이제 아니다 —
+  //   한여름엔 그 나이가 벌써 상함이고 한겨울엔 아직 신선이다(1차 실행이 실제로 그래서 빨개졌다).
+  //   ⇒ 며칠을 되돌려야 그 단계가 되는지 **정본에게 물어서** 고른다. 곡선을 다시 짜지 않는다.
+  const stageAtAge = (a) => {
+    // 서버가 로트를 `today - a` 로 적는다 ⇒ 그 로트의 오늘 노출을 그대로 계산한다.
+    const t = Spoil._day(Date.now() / DAY_MS);
+    return Spoil.stageOf(Spoil.freshnessOf('fish_cooked', Spoil.exposureOf({ d: t - a, n: 1, e: 0, t: t - a, m: 1, w: 0 }, t)));
+  };
+  const findAge = (want, lo, hi) => { for (let a = lo; a <= hi; a++) if (stageAtAge(a) === want) return a; return null; };
+  const AGE_W = findAge('wilt', 1, Math.ceil(SH) * 6) || Math.max(1, Math.round(SH * 0.8));
+  const AGE_S = findAge('spoiled', AGE_W + 1, Math.ceil(SH) * 12) || (Math.ceil(SH) + 1);
+  pre(stageAtAge(0) === 'fresh' && stageAtAge(AGE_W) === 'wilt' && stageAtAge(AGE_S) === 'spoiled',
     '픽스처 세 나이가 **세 단계에 실제로 떨어진다**(안 그러면 아래가 자명 통과)', `0 / ${AGE_W} / ${AGE_S}일`);
   await give({ lots: { fish_cooked: [[0, 2], [AGE_W, 2], [AGE_S, 2]] } });
   await page.evaluate(() => window.__openInv('ground'));
