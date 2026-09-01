@@ -1440,11 +1440,13 @@ function getRoute(aVil, bVil) { // 무방향 쌍 캐시(랩 getTradePath 동형)
   const fwd = aVil.dbId <= bVil.dbId;
   const key = fwd ? `${aVil.dbId}_${bVil.dbId}` : `${bVil.dbId}_${aVil.dbId}`;
   let pts = state.routeCache.get(key);
+  if (pts !== undefined) _probe.routeHit++;
   if (pts === undefined) {
-    const t0 = Date.now();
+    const t0 = Date.now(); _probe.routeCold++;
     const [s, t] = fwd ? [aVil, bVil] : [bVil, aVil];
     pts = computeRoutePts(s.ccx * SZ + SZ / 2, s.ccy * SZ + SZ / 2, t.ccx * SZ + SZ / 2, t.ccy * SZ + SZ / 2);
     state.routeCache.set(key, pts || null);
+    { const d = Date.now() - t0; _probe.routeMs += d; if (d > _probe.routeMax) _probe.routeMax = d; }
     if (pts) console.log(`[${state.zoneId}] 🐂 교역로 A*: ${s.name}↔${t.name} ${pts.length}정점 ${Date.now() - t0}ms (캐시)`);
     else if (!_routeWarned.has(key)) { _routeWarned.add(key); console.warn(`[${state.zoneId}] 🐂 교역로 A* 실패: ${s.name}↔${t.name} — 실체 생략(econ은 그대로 진행)`); }
   }
@@ -1838,6 +1840,10 @@ const ORE_FLOOR = 0.4;               // land.ore 바닥 40% — ★이주가 없
 // 마을 생활권의 광맥 셀 목록(일 캐시). p(광석확률)까지 들고 있어 품위 높은 자리부터 판다.
 function _oreCellsOf(vil) {
   if (vil._oreCells) return vil._oreCells;
+  const _pt0 = Date.now(); _probe.oreCold++;
+  try { return _oreCellsOfInner(vil); } finally { const d = Date.now() - _pt0; _probe.oreMs += d; if (d > _probe.oreMax) _probe.oreMax = d; }
+}
+function _oreCellsOfInner(vil) {
   const ta = state.ta, out = [];
   if (!ta || !ta.isOre) return (vil._oreCells = out);
   const R = ORE_LABOR_R, R2 = R * R;
@@ -1946,6 +1952,8 @@ function _terrGrow(vil) {
   if (!picked.length) return 0;
   const added = new Set();
   for (const k of picked) { own.add(k); added.add(k); }
+  _probe.terrGrowDays++; _probe.terrGrowCells += added.size;   // ★[T41 §0] 영토가 **매일** 바뀌는가 — 표지(dirty) 접근의 성패가 여기 달렸다
+  lifeSiteDirty(vil);   // ★[T41 ①] 새 셀 = 새 집터 후보. 표지가 서는 세 자리 중 첫째.
   // ★새 셀 개간 — 나무 제거(마을 안엔 숲이 없다)
   let cut = 0;
   try { if (state.deps.clearTreesInCells) cut = state.deps.clearTreesInCells(added) || 0; } catch (e) {}
@@ -1966,7 +1974,8 @@ function _terrGrow(vil) {
 function invalidateTradeDistances(cx, cy) { // eslint-disable-line no-unused-vars
   if (!state.ready) return;
   state.distDirty = true;
-  if (state.routeCache) state.routeCache.clear();
+  if (state.routeCache) { _probe.routeClear++; state.routeCache.clear(); }
+  lifeSiteResetAll();   // ★[T41 ①] 지형이 바뀌면 옛 거부가 뒤집힐 수 있다 — 표지 + 거부 캐시 파기(셋째).
   if (state._route) state._route.blk.fill(0);
   if (state._distBlk) state._distBlk.fill(0);   // ★[배치 12] 교역 거리행렬 코스 격자도 같은 훅에서 비운다(캐러밴 A* 격자와 동형)
   state._distIncrFrom = -1;   // ★[배치 12] 지형이 바뀌면 **옛 쌍도 썩는다** — 증분 취소, 다음 재계산은 전쌍
@@ -2601,6 +2610,18 @@ function warLodResolveSweep() {
 const _tickPerf = { last: null, ring: [] };   // ring: 최근 200 게임일
 // ★[T1 §0] `life` 단계가 일틱의 9할이라 **그 안**을 한 겹 더 갈라 본다(계측 전용).
 const _lifeSub = { crop: 0, hunter: 0, gran: 0, pids: 0, site: 0, near: 0, headless: 0, hp: 0 };
+// ★[T41 §0 2026-09-01 · 계측 전용] 조각 바닥 셋의 **원인 귀속**.
+//   ⓐ 집터 탐색이 하루 몇 번 돌고 몇 번 **빈손**인가 ⓑ 교역로 A* 콜드 미스가 몇 번·얼마인가
+//   ⓒ 광맥 셀 스캔(콜드)이 몇 번·얼마인가. 전부 세기만 한다.
+const _probe = { siteLog: [], auditN: 0, auditBad: 0, auditFirst: '', siteCall: 0, siteHit: 0, siteSkip: 0, siteMs: 0, siteMax: 0, siteVils: new Set(),
+                 terrGrowDays: 0, terrGrowCells: 0, siteCand: 0, siteScan: 0, siteReason: {},
+                 routeCold: 0, routeMs: 0, routeMax: 0, routeHit: 0, routeClear: 0,
+                 oreCold: 0, oreMs: 0, oreMax: 0 };
+function probeStats() { return { siteLog: _probe.siteLog.slice(-400), auditN: _probe.auditN, auditBad: _probe.auditBad, auditFirst: _probe.auditFirst, siteMemo: LIFE_SITE_MEMO, siteRescanDays: LIFE_SITE_RESCAN_DAYS, siteSkip: _probe.siteSkip, terrGrowDays: _probe.terrGrowDays, terrGrowCells: _probe.terrGrowCells,
+  siteCand: _probe.siteCand, siteScan: _probe.siteScan, siteReason: _probe.siteReason, siteCall: _probe.siteCall, siteHit: _probe.siteHit, siteMiss: _probe.siteCall - _probe.siteHit,
+  siteMs: _probe.siteMs, siteMax: _probe.siteMax, siteVils: _probe.siteVils.size,
+  routeCold: _probe.routeCold, routeMs: _probe.routeMs, routeMax: _probe.routeMax, routeHit: _probe.routeHit, routeClear: _probe.routeClear,
+  oreCold: _probe.oreCold, oreMs: _probe.oreMs, oreMax: _probe.oreMax }; }
 const _lifeSubMax = {};   // 같은 항목의 **마을 한 곳 최댓값** — 조각 예산은 합이 아니라 최댓값이 정한다
 let _lifeMax = 0, _lifeMaxName = '';   // ★[T1 §0] 마을 한 곳의 최댓값 — '마을 경계 조각'이 예산에 드는지의 직답
 function tickPerf() {
@@ -2610,7 +2631,7 @@ function tickPerf() {
   const stages = {};
   for (const nm of names) { const a = R.map((r) => r.stages[nm] || 0); stages[nm] = { p50: q(a, 0.5), p95: q(a, 0.95), max: +Math.max(...a).toFixed(1) }; }
   const tot = R.map((r) => r.total);
-  return { days: R.length, last: _tickPerf.last,
+  return { days: R.length, last: _tickPerf.last, probe: probeStats(),
            total: R.length ? { p50: q(tot, 0.5), p95: q(tot, 0.95), max: Math.max(...tot) } : null, stages };
 }
 
@@ -3518,6 +3539,7 @@ function lifeRequestPlayerSite(vil, x, y, ownerId, ownerName) {
   const why = F.reject(x, y, false);                                          // strict=false = 미개간 잠재농지는 선점 허용(자동 배치 2패스와 동일)
   if (why) return { err: why };
   for (const [dx, dy] of VillageLayout.LOT_CELLS) vil._potSet.delete((x + dx) + ',' + (y + dy));   // 선점 부지는 잠재농지에서 제거
+  lifeSiteReset(vil);   // ★[T41 ①] `_potSet` 이 줄면 strict `farmAt` 이 뒤집힐 수 있다 — 캐시를 판다
   const bo = state.deps.liveBuildRow ? state.deps.liveBuildRow('hut_site', (x - 2.5) * SZ, (y - 3.5) * SZ,
     { stage: 1, x0: x - 5, y0: y - 5, x1: x + 0, y1: y - 2, owner: ownerId, psite: 1 }, ownerId, ownerName || '의뢰 움집터', null) : null;
   if (bo) state.deps.broadcast({ type: 'building_added', building: bo });
@@ -3662,8 +3684,55 @@ function playerVillageInventory(vil) {
   };
 }
 
+// ★★[T41 2026-09-01 재민 확정] **못 찾은 자리는 기억한다.**
+//
+//   실측(§0 · 마을 50곳 · 12일): 하루 20곳이 집터를 찾고 **성공 0 · 빈손 238/238**.
+//   그 헛수고가 일틱의 **56%**(1,170ms/일 · 마을 한 곳 최대 1,028ms)였다.
+//   거부 사유 248,191건 중 **92.3%가 `기존 집과 너무 가까움(<18)`** — 집 간격 제약 때문에
+//   그 영토 안엔 자리가 **구조적으로 없다.** 내일 다시 훑어도 같은 답이 나온다.
+//
+//   ★언제 다시 찾아도 되는가 — **후보가 늘어날 수 있을 때만**이다.
+//     `reject` 가 보는 상태는 여덟이고, 그 중 여섯은 **줄기만** 한다(= 더 거부된다):
+//       `_farmSet`↑(개간) · `_houseCells`↑(완공) · `_granList`↑(곳간) · `_ditch`↑(환호) ·
+//       `_potSet`↓(개간되며 `_farmSet` 으로 이동 — strict 는 합집합이라 불변, loose 는 증가) ·
+//       `_site`(있으면 더 거부 · 없어질 땐 `_houseCells` 로 옮겨 앉으므로 제약이 남는다)
+//     후보를 **늘릴 수 있는** 사건은 셋뿐이다:
+//       ① `_terrGrow` 가 실제로 셀을 더했을 때 — 새 셀 = 새 후보
+//       ② `_psite`(플레이어 의뢰 집터) 소멸 — 그 자리 반경 18 이 다시 열린다.
+//          마을 집 완공과 달리 의뢰 집은 `_houseCells` 에 **안 들어간다**(`_lifeCompleteHouse` isP).
+//       ③ 지형 차단 완화(벽·다리 철거) — `invalidateTradeDistances` 가 이미 그 훅이다
+//     ⇒ 표지는 그 셋에서만 선다. **결과가 비트 동일한 이유가 이 단조성 논증이다.**
+//
+//   ⚠표지를 놓치면 집이 안 지어지는 **조용한 결함**이 된다. 그래서 안전망:
+//     `LIFE_SITE_RESCAN_DAYS`(기본 7)마다 한 번은 표지를 무시하고 전수로 돈다. 비용은 1/7.
+//   ⚠안전망은 **마을마다 다른 날**에 돈다. 처음엔 전부 같은 날 빈손이 되어 `_siteMissDay` 가 같아졌고,
+//     7일마다 20곳이 **한꺼번에** 재스캔해 그날 하루가 7.8초로 튀었다(실측 p95 7,832ms).
+//     `(_day + dbId) % N` 으로 흩으면 하루 평균 마을수/N 곳만 돈다.
+const LIFE_SITE_RESCAN_DAYS = (() => { const v = parseInt(process.env.LIFE_SITE_RESCAN_DAYS || '', 10); return Number.isFinite(v) && v > 0 ? v : 7; })();
+// ★손잡이 셋 — 앞의 둘은 검사용이고 셋째가 되돌리는 스위치다(env · 기본값 = 채택값).
+const LIFE_SITE_MEMO = process.env.LIFE_SITE_MEMO !== '0';        // 0 = 종전 동작(매일 전수) — 두 하네스의 대조군
+const LIFE_SITE_AUDIT = process.env.LIFE_SITE_AUDIT === '1';      // 1 = 캐시로 건너뛴 셀을 **실제로 다시 판정**해 단조성을 런타임 증명
+const LIFE_SITE_NODIRTY = process.env.LIFE_SITE_NODIRTY === '1';  // 1 = 표지를 일부러 안 세운다(안전망이 잡는지 보는 픽스처)
+// 표지 — "다시 훑어라". 거부 캐시는 **유지**한다(영토 확장은 새 셀만 더하지 옛 거부를 뒤집지 않는다).
+function lifeSiteDirty(vil) { if (vil && !LIFE_SITE_NODIRTY) vil._siteDirty = true; }
+// 리셋 — "다시 훑고 **거부 캐시도 버려라**". 옛 거부가 뒤집힐 수 있는 사건에서만.
+function lifeSiteReset(vil) { if (vil) { vil._siteDirty = true; vil._siteRejS = null; vil._siteRejL = null; } }
+function lifeSiteResetAll() { for (const v of (state.villages || [])) lifeSiteReset(v); }
 function _lifeAddHouseSite(vil) {   // 랩 addHouseSite 동형(서버판): 2패스(잠재농지 회피→잠식 비용) + 전 하드 필터
   if (vil._site || !state.ta) return;
+  // ★빈손 기억 — 위 주석의 단조성 논증. 표지가 안 섰고 안전망 주기도 안 됐으면 답이 같다.
+  const _day = (state.world && state.world.day) | 0;
+  const _due = ((_day + (vil.dbId | 0)) % LIFE_SITE_RESCAN_DAYS) === 0;   // 안전망 — 마을마다 다른 날
+  if (LIFE_SITE_MEMO && !vil._siteDirty && !_due && vil._siteMissDay != null) { _probe.siteSkip++; return; }
+  const _pt0 = Date.now(); _probe.siteCall++; _probe.siteVils.add(vil.dbId);
+  try { return _lifeAddHouseSiteInner(vil); }
+  finally {
+    const d = Date.now() - _pt0; _probe.siteMs += d; if (d > _probe.siteMax) _probe.siteMax = d;
+    vil._siteDirty = false;
+    if (vil._site) { _probe.siteHit++; vil._siteMissDay = null; } else { vil._siteMissDay = _day; }
+  }
+}
+function _lifeAddHouseSiteInner(vil) {
   if (!vil._wf) {   // 물거리 EDT 캐시(마을당 1회 — 영토 bbox±32, 랩 s._wf 동형)
     let bx0 = 1e9, by0 = 1e9, bx1 = -1e9, by1 = -1e9;
     for (const k of vil._terrSet) { const ci = k.indexOf(','), x = +k.slice(0, ci), y = +k.slice(ci + 1); if (x < bx0) bx0 = x; if (x > bx1) bx1 = x; if (y < by0) by0 = y; if (y > by1) by1 = y; }
@@ -3672,8 +3741,23 @@ function _lifeAddHouseSite(vil) {   // 랩 addHouseSite 동형(서버판): 2패�
   const F = _lifeSiteFilters(vil);
   const W_PEN_K = F.W_PEN_K, wnd = F.wnd, farmAt = F.farmAt;
   for (const strict of [true, false]) {
+    // ★★[T41 ①] **거부 캐시** — 한 번 거부된 셀은 위 단조성 논증에 따라 계속 거부된다.
+    //   그래서 다시 `reject` 를 부르지 않는다(그게 이 함수의 비용 대부분이다 — 후보마다 집 전수 hypot).
+    //   뒤집힐 수 있는 사건에서는 `lifeSiteReset` 이 이 집합을 통째로 버린다.
+    //   ⚠strict/loose 는 `farmAt` 이 달라 **판정이 다르다** — 그래서 집합을 나눈다.
+    const rej = LIFE_SITE_MEMO ? (strict ? (vil._siteRejS || (vil._siteRejS = new Set())) : (vil._siteRejL || (vil._siteRejL = new Set()))) : new Set();
     const cand = [];
     for (const k of vil._terrSet) {
+      if (rej.has(k)) {
+        // ★[검사용] 단조성 논증을 **런타임에 증명**한다 — 건너뛴 셀이 지금도 거부되는지 실제로 판정.
+        //   (기본 부팅에선 이 분기가 아예 안 돈다. `LIFE_SITE_AUDIT=1` 은 하네스 전용.)
+        if (LIFE_SITE_AUDIT) {
+          const ci2 = k.indexOf(','), ax = +k.slice(0, ci2), ay = +k.slice(ci2 + 1);
+          _probe.auditN++;
+          if (!F.reject(ax, ay, strict)) { _probe.auditBad++; _probe.auditFirst = _probe.auditFirst || `${vil.name} ${k} strict=${strict}`; }
+        }
+        continue;
+      }
       const ci = k.indexOf(','), x = +k.slice(0, ci), y = +k.slice(ci + 1);
       if ((x & 1) || (y & 1)) continue;                                        // 짝수 격자(레이아웃 동일)
       const r = Math.hypot(x - vil.ccx, y - vil.ccy); if (r < VillageLayout.HALL_CLEAR) continue;
@@ -3682,16 +3766,18 @@ function _lifeAddHouseSite(vil) {   // 랩 addHouseSite 동형(서버판): 2패�
       if (!strict) { let nong = 0; for (const [dx, dy] of VillageLayout.LOT_CELLS) if (vil._potSet.has((x + dx) + ',' + (y + dy))) nong++; sc += nong * 6; }   // 2패스 잠식 비용
       cand.push([x, y, sc]);
     }
+    _probe.siteScan += vil._terrSet.size; _probe.siteCand += cand.length;   // ★[T41 §0]
     cand.sort((a2, b2) => a2[2] - b2[2]);
     for (const c2 of cand) {
       const x = c2[0], y = c2[1];
-      if (F.reject(x, y, strict)) continue;   // ★[11차 T4] 하드 필터는 _lifeSiteFilters 소유 — 플레이어 의뢰 터와 **같은 코드**(랩 siteFilters 규약 이식)
-      if (!strict) for (const [dx, dy] of VillageLayout.LOT_CELLS) vil._potSet.delete((x + dx) + ',' + (y + dy));   // 선점 부지는 잠재농지 제거
+      { const _r = F.reject(x, y, strict); if (_r) { _probe.siteReason[_r] = (_probe.siteReason[_r] || 0) + 1; rej.add(x + ',' + y); continue; } }   // ★[11차 T4] 하드 필터는 _lifeSiteFilters 소유 — 플레이어 의뢰 터와 **같은 코드**(랩 siteFilters 규약 이식)
+      if (!strict) { for (const [dx, dy] of VillageLayout.LOT_CELLS) vil._potSet.delete((x + dx) + ',' + (y + dy)); lifeSiteReset(vil); }   // 선점 부지는 잠재농지 제거(★[T41] 캐시도 판다 — 위와 같은 이유)
       const bo = state.deps.liveBuildRow ? state.deps.liveBuildRow('hut_site', (x - 2.5) * SZ, (y - 3.5) * SZ,
         { stage: 1, x0: x - 5, y0: y - 5, x1: x + 0, y1: y - 2, owner: 'npc', floor: 0 }, `npc_simvil_${vil.dbId}`, `${vil.name} 새 움집터`, null) : null;   // ★NPC 정본 렉트를 hut_site 규약에 실음(완공 기하 동일)
       if (bo) state.deps.broadcast({ type: 'building_added', building: bo });
       state.db.insertVillageBuilding({ village_id: vil.dbId, type: 'housesite', cx: x, cy: y, floors: 0, data: null });
       vil._site = { cx: x, cy: y, stage: 1, bo };
+      _probe.siteLog.push(`${(state.world && state.world.day) | 0}:${vil.dbId}:${x},${y}:${strict ? 's' : 'l'}`);   // ★[T41] 비트 동일 대조용(선택된 자리만)
       console.log(`[${state.zoneId}] 🏘️ [${vil.name}] 생활층 신축 터 @(${x},${y}) — 크루 시공 시작`);
       return;
     }
@@ -3744,6 +3830,7 @@ function _lifeCompleteHouse(vil, which) {   // 완공: 터 제거 + NPC 정본 6
   if (isP) {
     (vil._pHouses = vil._pHouses || []).push({ cx, cy, data: JSON.stringify({ owner: ownerId }) });   // 관측용 명부(마을 침대 명부와 별개 — /lifedbg pHouses)
     vil._psite = null; vil._psiteCrew = 0;
+    lifeSiteReset(vil);   // ★[T41 ①] 의뢰 집터가 사라지면 그 반경 18 이 **다시 열린다** — 옛 거부가 뒤집히므로 캐시도 판다
     try { state.db.db.prepare("DELETE FROM village_buildings WHERE village_id=? AND type='psitework' AND cx=? AND cy=?").run(vil.dbId, cx, cy); } catch (e) {}
     console.log(`[${state.zoneId}] 🏠 [${vil.name}] 플레이어 의뢰 움집 완공 @(${cx},${cy}) owner=${ownerId}`);
   } else {
