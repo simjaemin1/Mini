@@ -110,7 +110,13 @@ function itemKo(k) { return (typeof ITEM_LABEL !== 'undefined' && ITEM_LABEL[k])
       if (!owned.includes(sel)) sel = owned[0] || rc.accepts[0];
       craftEquipSel[type] = sel;
       const pv = equipPreview(type, sel, lvl);
-      const canCraft = (inventory[sel] || 0) >= rc.qty;
+      // ★★[T12 지게 2026-09-01] **곁재료(`extra`)** — 늘 같이 드는 재료(지게의 밀삐).
+      //   종전엔 주재료만 셌다 ⇒ 지게처럼 재료가 둘인 장비는 **버튼이 켜져 있는데 서버가 거절**한다.
+      //   표는 서버가 보낸 그대로 읽는다(클라가 "무엇이 곁재료인가"를 적으면 그게 사본이다).
+      const _extra = rc.extra || {};
+      const canCraft = (inventory[sel] || 0) >= rc.qty + (_extra[sel] || 0)
+        && Object.entries(_extra).every(([k, n]) => (inventory[k] || 0) >= n + (k === sel ? rc.qty : 0));
+      const extraStr = Object.entries(_extra).map(([k, n]) => ` · ${itemIconHtml(k, 18, itemKo(k))} ${n}<span style="color:${(inventory[k] || 0) >= n ? '#8a93a0' : '#e88'}"> (${Math.floor(inventory[k] || 0)})</span>`).join('');
       const matBtns = rc.accepts.map(m => {
         const has = (inventory[m] || 0), on = (m === sel);
         const st = 'margin:2px 3px 0 0;padding:1px 6px;border-radius:4px;font-size:11px;cursor:pointer;border:1px solid ' + (on ? '#8bd' : '#444') + ';background:' + (on ? '#245' : '#222') + ';color:' + (has > 0 ? '#eee' : '#666');
@@ -121,7 +127,7 @@ function itemKo(k) { return (typeof ITEM_LABEL !== 'undefined' && ITEM_LABEL[k])
         <div class="cr-icon">${EQUIP_ICONS[type] || '🎽'}</div>
         <div class="cr-info">
           <div class="cr-name">${rc.label} <span style="color:#7cd97c;font-weight:normal">${rc.skill} Lv${lvl}</span></div>
-          <div class="cr-cost">${sel ? itemIconHtml(sel, 18, itemKo(sel)) : '?'} ×${rc.qty} → ${pvStr}</div>
+          <div class="cr-cost">${sel ? itemIconHtml(sel, 18, itemKo(sel)) : '?'} ×${rc.qty}${extraStr} → ${pvStr}</div>
           <div style="margin-top:3px">${matBtns}</div>
           ${castBlockHtml(type, rc)}
         </div>
@@ -1019,7 +1025,11 @@ function itemKo(k) { return (typeof ITEM_LABEL !== 'undefined' && ITEM_LABEL[k])
       let costStr, q2 = null;
       if (r.options) {
         const o = r.options.find((x) => x.material === pick) || r.options[0] || {};
-        costStr = `${itemIconHtml(o.material, 18, koOf(o.material))} ${o.need} <span style="color:#8a93a0">(보유 ${o.have})</span>`;
+        costStr = `${itemIconHtml(o.material, 18, koOf(o.material))} ${o.need} <span style="color:#8a93a0">(보유 ${o.have})</span>`
+          // ★[T12 지게] 곁재료도 같이 적는다 — `r.can`·버튼은 이미 `r.cost`(곁재료 포함)로 갈리는데
+          //   글자만 주재료를 보여 주면 "왜 못 만들지"가 화면에 안 적힌다.
+          //   이름표는 T38 규약대로 **서버가 준 `costKo`** 를 통해 찾는다(클라 표는 폴백이다).
+          + Object.entries(r.extra || {}).map(([k, n]) => ` · ${itemIconHtml(k, 18, koOf(k))} ${n}`).join('');
         q2 = o.q;
       } else {
         costStr = Object.entries(r.cost).map(([k, n]) => `${itemIconHtml(k, 18, koOf(k))} ${n}`).join(' · ');

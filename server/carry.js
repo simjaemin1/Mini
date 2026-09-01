@@ -256,7 +256,36 @@ function totalKg(p) {
   // 장착품은 equipment 배열에 그대로 있으므로 equipSlots 를 또 더하지 않는다(이중 계산 금지).
   return +kg.toFixed(3);
 }
-function capKg(p) { return CFG.CAP_KG; }   // ★지게 등 확장구는 회부 — 지금은 한 값이다
+// ── ★★[T12 지게 2026-09-01] 상한은 이제 한 값이 아니다 — **기본 + 운반구** 이다. ─────────
+//   ★가산은 **곱이 아니라 더하기**다. 이유: `MOVE_CURVE` 는 kg 이 아니라 **비율 r = kg/cap** 을 받는다
+//   ⇒ 상한만 옮기면 **곡선은 한 글자도 안 변하고 통째로 옮겨진다**(과적 단계·바닥·피로 전부 그대로).
+//   그래서 이 배치는 곡선을 손대지 않는다 — 손대는 순간 과적의 모든 수가 같이 움직인다.
+//
+//   ★★**수를 여기 적지 않는다.** 가산은 착용한 인스턴스의 `attrs.load` 그 수다
+//   (`player-items.ITEM_TYPES.carrier` 가 정본 — 품질·재료가 정한 수). 여기서 표를 들면
+//   화면에 뜨는 "적재 20" 과 실제 상한이 갈리는 날이 온다(족보 (83) 의 사촌).
+//   ⇒ carry 는 **어느 슬롯을 볼지**만 안다. 그 슬롯 이름의 정본도 여기다(zone 의 레시피가 이걸 불러 쓴다).
+const CARRIER_SLOT = 'back';
+// 착용 중인 운반구 인스턴스 — 없으면 null. 파손품은 섬기지 않는다(zone 이 자동 해제하지만 이중 방어).
+function carrierOf(p) {
+  const id = p && p.equipSlots && p.equipSlots[CARRIER_SLOT];
+  if (!id) return null;
+  const inst = (p.equipment || []).find((e) => e && e.id === id);
+  if (!inst || inst.broken || inst.dura === 0) return null;
+  return inst;
+}
+function carrierBonus(p) {
+  const inst = carrierOf(p);
+  const v = inst && inst.attrs ? Number(inst.attrs.load) : 0;
+  return Number.isFinite(v) && v > 0 ? v : 0;
+}
+function capKg(p) { return CFG.CAP_KG + carrierBonus(p); }
+// ★지게가 **지금 일하고 있나** — 마모 판정의 정본. 기본 상한을 넘지 않는 짐이면 지게는 놓아둔 것과 같다
+//   ⇒ 빈 몸으로 걷는다고 닳지 않는다(옷이 **추울 때만** 닳는 것과 같은 규약).
+function carrierWorking(p) {
+  if (!carrierOf(p)) return false;
+  return totalKg(p) > CFG.CAP_KG;
+}
 
 // ── 효과 ────────────────────────────────────────────────────────────────────
 function effects(p) {
@@ -318,4 +347,5 @@ function fromSave(p, saved) {
 module.exports = { CFG, MOVE_CURVE, STAGE_AT, R1,
   lerpCurve, xWhereBelow, ledger, noteInstance, noteEntries, takeKg, takeEntries, takeByIds, peekKg, reconcile,
   hasLedger, entries, viewLedger, assertInvariant, assertCount,
-  totalKg, capKg, effects, stageOf, moodle, combinedMove, payload, toSave, fromSave };
+  totalKg, capKg, effects, stageOf, moodle, combinedMove, payload, toSave, fromSave,
+  CARRIER_SLOT, carrierOf, carrierBonus, carrierWorking };

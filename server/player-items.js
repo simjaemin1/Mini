@@ -55,12 +55,29 @@ function castGrade(materials, kind) {
 }
 
 // ── 유형별 속성 정의 (설계 §2: 유형당 2~3개, 기존 econ 채널 매핑) ──
+// ★★[T12 지게 2026-09-01] 지게 적재 스케일 — **유도값**. env 는 "만렙 나무 지게의 가산(kg)" 하나뿐이고
+//   `attrScale` 은 나무의 재료 천장(`MAT_GRADE.wood`)으로 그것을 나눈 몫이다.
+//   ⇒ 손잡이를 20 → 24 로 올리면 Lv0·Lv10 이 **같이** 올라간다(두 수를 따로 적을 길이 없다).
+const CARRIER_MAX_KG = (() => { const v = parseFloat(process.env.CARRY_CARRIER_KG); return Number.isFinite(v) && v > 0 ? v : 20; })();
+const CARRIER_SCALE = CARRIER_MAX_KG / (MAT_GRADE.wood || 0.7);
+
 const ITEM_TYPES = {
   clothes: { label: '옷',   attrs: { warmth: '방한' },      baseDura: 120, attrScale: 62,  durable: true },  // 방한 ~ 보온-eq(CLOTH_MAT_WARMTH_PER 반영)
   armor:   { label: '갑옷', attrs: { defense: '방어' },     baseDura: 200, attrScale: 100, durable: true },
   weapon:  { label: '무기', attrs: { attack: '공격' },      baseDura: 150, attrScale: 100, durable: true },
   tool:    { label: '도구', attrs: { efficiency: '효율' },  baseDura: 180, attrScale: 100, durable: true },
   food:    { label: '요리', attrs: { nutrition: '영양', buff: '버프' }, perishable: true, freshDays: 5 },
+  // ★★[T12 지게 2026-09-01] **지게(A자 지게)** — 등에 지는 나무 틀. 청동기 이래 한반도 고유 운반구다.
+  //   왜 장비인가: 만들어 **입고**, **닳고**, 수선한다 — 옷·도구와 같은 층이다(새 층 0).
+  //   ★★`attrScale` 을 **찍지 않고 유도한다**(족보 (86) — 기준값은 고르지 말고 풀어라).
+  //     정하고 싶은 것은 "**만렙 나무 지게가 상한을 얼마나 올리나**"이고 그건 `CARRIER_MAX_KG`(env 20)다.
+  //     그런데 화면에 뜨는 수는 `attrScale × q` 이고 나무의 천장은 `MAT_GRADE.wood`(0.7)다 —
+  //     `attrScale` 에 20 을 그냥 박으면 **만렙 지게가 +14 밖에 안 되어** 20 이라는 수가 거짓말이 된다.
+  //     ⇒ `attrScale = 20 / 0.7 = 28.571`. 그러면 Lv0 +8 · Lv10 **+20**(상한 25 → **45**)로 정확히 떨어진다.
+  //   ★가산의 정본은 **인스턴스의 `attrs.load` 하나**다 — `carry.capKg` 가 그 수를 그대로 읽는다.
+  //     carry 가 자기 표를 들면 그게 사본이고, 화면(`load 20`)과 실제 상한이 갈리는 날이 온다.
+  //   ★내구 base 100 — 옷(120)보다 짧다. 나무 틀보다 **밀삐(짚 끈)가 먼저 삭기** 때문이다.
+  carrier: { label: '지게', attrs: { load: '적재' }, baseDura: 100, attrScale: CARRIER_SCALE, durable: true },
 };
 
 const Q_SKILL_SPAN = 0.6;   // economy-sim.js WEAP_Q_SKILL_SPAN / CLOTH_Q_SKILL_SPAN 동일
@@ -216,7 +233,7 @@ function displayItem(inst) {
   return label + alloy + ' [' + parts.join(' · ') + ']' + (inst.craftedSkill != null ? ' — Lv' + inst.craftedSkill + ' 제작' : '');
 }
 
-module.exports = { MAT_GRADE, ITEM_TYPES, CLOTH_KO, CLOTH_WARMTH_CAP, Q_SKILL_SPAN, DURA_SPAN, qSkill, matGrade, craftItem, wearItem, repairItem, decayFreshness, materializeFromVillage, sellNudge, displayItem,
+module.exports = { MAT_GRADE, ITEM_TYPES, CARRIER_MAX_KG, CARRIER_SCALE, CLOTH_KO, CLOTH_WARMTH_CAP, Q_SKILL_SPAN, DURA_SPAN, qSkill, matGrade, craftItem, wearItem, repairItem, decayFreshness, materializeFromVillage, sellNudge, displayItem,
   castable, castKinds, castGrade, CAST_KIND, CAST_MAX_KINDS, CAST_GRADE_MAX, CAST_ERA, MAT_KO };
 
 // ── 자가검증 (node server/player-items.js) ──

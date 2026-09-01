@@ -341,6 +341,35 @@ async function waitHttp(url, tries = 900) {
   ok(inv8 && inv8.fish === 3, '★⑧ 같은 토큰 재접속 = 같은 몸(B-6 규약) — 인벤이 그대로', JSON.stringify(inv8));
   await snap('inv-08b-recovered');
 
+  // ── ⑧-b 지게 — 화면의 상한이 서버를 따라오는가 [T12 2026-09-01] ──────────
+  //   ★왜 실클라인가: 서버 하네스(`test-carrier`)는 "상한이 올랐다"까지만 잰다.
+  //     이 배치가 뒤집은 전제는 **화면 쪽**에 있었다 — welcome 이 상한의 정적 사본을 실어 보냈고
+  //     클라가 그걸 받아 들고 있었다(안 쓰고 있었을 뿐이다). 사본이 살아 있으면 언젠가 읽힌다.
+  //   ⇒ HUD 의 `carryCap` 을 **눈으로 읽어** 서버 값과 견준다(내부 변수가 아니라 DOM).
+  console.log('\n⑧-b 지게 — HUD 의 용량이 서버 상한을 따라오는가');
+  {
+    const capText = () => page.evaluate(() => (document.getElementById('carryCap') || {}).textContent || '');
+    const capState = () => page.evaluate(() => (window.__carryState && window.__carryState.cap) || null);
+    const before = await capText();
+    ok(/^\d+(\.\d+)?$/.test(String(before).trim()), '★⑧-b (상황) HUD 에 용량 숫자가 떠 있다', before);
+    ok(String(before).trim() === String(await capState()), '★★⑧-b HUD 가 **서버가 보낸 그 수**를 찍는다', `${before} vs ${await capState()}`);
+    await give({ equip: [{ type: 'carrier', lvl: 10 }] });
+    await sleep(1200);
+    const eq = await page.evaluate(() => window.__equipState && window.__equipState());
+    ok(!!(eq && eq.slots && eq.slots.back), '★★⑧-b 지게가 **등 슬롯에** 들어갔다', eq && JSON.stringify(eq.slots));
+    const load = eq && (eq.equipment.find((x) => x.type === 'carrier') || {}).attrs;
+    ok(!!(load && load.load > 0), '★⑧-b 그 지게가 적재 값을 갖고 있다', load && JSON.stringify(load));
+    // 서버가 `gauges` 를 다음에 보낼 때까지 기다린다(틱이 보낸다 — 하네스가 시간을 만들지 않는다)
+    let after = before, tries = 0;
+    while (String(after).trim() === String(before).trim() && tries++ < 40) { await sleep(400); after = await capText(); }
+    ok(Number(after) > Number(before), '★★⑧-b **HUD 의 용량이 올랐다** — 사본이면 25 에 멈춰 있었을 자리다',
+      `${before} → ${after}kg (지게 +${load && load.load})`);
+    ok(Number(after) === Number(before) + Number(load && load.load), '★★⑧-b 오른 만큼이 **화면에 적힌 적재 값 그대로**다',
+      `${before} + ${load && load.load} = ${after}`);
+    ok(String(after).trim() === String(await capState()), '★⑧-b 그리고 여전히 서버 값과 같다');
+    await snap('carrier-hud');
+  }
+
   // ── ⑨ 자산·콘솔 위생 ─────────────────────────────────────────────────────
   console.log('\n⑨ 위생');
   const realErrs = errs.filter((e) => !/favicon|WebSocket is closed|Failed to fetch|404/i.test(e));

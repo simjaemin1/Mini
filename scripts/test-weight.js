@@ -288,6 +288,28 @@ function mkPlayer(name) {
     }
   }
 
+  // ═══ ⑨ 상한은 이제 한 값이 아니다 [T12 지게 2026-09-01] ═══════════════════
+  //   여기서 재는 건 지게 자체가 아니라(그건 `test-carrier`) **무게 모델의 계약이 안 깨졌나**다:
+  //   ⓐ 상한을 **플레이어에게** 물어보는가 ⓑ 지게가 없으면 종전과 한 수도 다르지 않은가
+  //   ⓒ welcome 이 상한의 **정적 사본**을 더는 안 실어 보내는가(갈릴 자리를 지웠는가).
+  say('\n⑨ 상한이 플레이어별로 갈렸다 — 계약이 남았나');
+  {
+    const p = mkPlayer('w9');
+    ok(C.capKg(p) === C.CFG.CAP_KG, '★★⑨ 지게가 없으면 상한은 **종전 그대로**', `${C.capKg(p)}kg`);
+    ok(C.payload(p).cap === C.capKg(p), '★★⑨ 화면 페이로드의 `cap` 이 **그 플레이어의 상한**이다', `${C.payload(p).cap}kg`);
+    const inst = H.PlayerItems.craftItem('carrier', 10, { wood: 2 }); inst.id = 'w9c';
+    p.equipment = [inst]; p.equipSlots[C.CARRIER_SLOT] = inst.id;
+    ok(C.payload(p).cap > C.CFG.CAP_KG, '★★⑨ 지게를 지면 **페이로드도 같이** 오른다', `${C.CFG.CAP_KG} → ${C.payload(p).cap}kg`);
+    // ★사본 수색 — welcome 이 상한 상수를 실어 보내면 지게를 진 사람에게 25 를 보여 주는 날이 온다
+    const zsrc = codeOnly(fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8'));
+    ok(!/carryCfg:\s*\{[^}]*capKg/.test(zsrc), '★★⑨ welcome 에 상한의 **정적 사본이 없다**(족보 (84) 의 실천)');
+    // ★그리고 클라도 자기 상한표를 안 든다
+    const cdir = path.join(ROOT, 'public', 'client');
+    const bad = fs.readdirSync(cdir).filter((f) => f.endsWith('.js'))
+      .filter((f) => /carryCfg\s*\.\s*capKg|CARRY_CAP_KG/.test(codeOnly(fs.readFileSync(path.join(cdir, f), 'utf8'))));
+    ok(bad.length === 0, '★★⑨ 클라 조각 어디에도 상한표가 없다', bad.join(' ') || '0건');
+  }
+
   say(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
   for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
   process.exit(fail ? 1 : 0);

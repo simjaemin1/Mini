@@ -987,6 +987,16 @@ const EQUIPMENT_RECIPES = {
   armor:   { label: '갑옷', slot: 'armor',   skill: 'smithing',   qty: 4, cast: true, accepts: ['bronze','copper','iron','meteoric_iron','leather','hide'] },
   weapon:  { label: '무기', slot: 'weapon',  skill: 'smithing',   qty: 3, cast: true, accepts: ['bronze','copper','iron','meteoric_iron','stone','wood','bone','obsidian'] },
   tool:    { label: '도구', slot: 'tool',    skill: 'toolmaking', qty: 3, cast: true, accepts: ['bronze','copper','iron','meteoric_iron','stone','wood','bone'] },
+  // ★★[T12 지게 2026-09-01] **지게** — 이 표의 다섯째 줄이자 **다섯째 슬롯**이다.
+  //   슬롯은 여기 적지 않고 `Carry.CARRIER_SLOT` 을 부른다: 상한을 더하는 쪽(carry)과 착용을 정하는 쪽(zone)이
+  //   슬롯 이름을 **각자 적으면** 언젠가 한쪽만 고쳐져 "입었는데 안 올라간다"가 된다.
+  //   ★`extra` 는 이 표의 새 문법이다 — **재료가 둘인 첫 장비**. 왜 필요한가:
+  //     지게는 나무 틀만으로 서지 않는다. 밀삐(짚 끈)로 동여매야 사람 등에 얹힌다
+  //     (조잡한 석기가 이미 `fiber` 로 동여매는 그 층이다 — 새 개념이 아니라 그 개념의 장비판이다).
+  //   ★`accepts` 가 나무 하나뿐인 건 판단을 줄인 게 아니라 **지게가 나무 물건**이기 때문이다.
+  //     판단은 재료가 아니라 **숙련**에 있다: Lv0 지게 +8 · Lv10 지게 +20(=상한 45). 회부 A.
+  //   (`Carry` 바인딩은 이 표보다 **아래**에서 생긴다 — require 는 캐시라 여기서 한 번 더 불러도 같은 객체다.)
+  carrier: { label: '지게', slot: require('./carry').CARRIER_SLOT, skill: 'toolmaking', qty: 2, accepts: ['wood'], extra: { fiber: 2 } },
 };
 // 제작 숙련: xp → 레벨(0~10). 유효 완성품 1개당 +1 xp(설계 §3 xp 원칙). 초반 빠르고 만렙 완만 — "레벨업하면 다음 제작품 수치가 오른다" 가시화.
 const CRAFT_XP_PER_LEVEL = 6; // 레벨당 6개 → 만렙 ~60개(플레이 스케일; econ NPC 2150노동일과 별개 척도).
@@ -995,8 +1005,12 @@ function playerCraftLevel(player, skill) { return craftLevel(player.craftSkill &
 // 클라 미리보기용 메타(단일 진실 — PlayerItems 엔진 상수 그대로 노출). 클라가 "방한 62·내구 85"를 서버와 동일 공식으로 계산.
 const EQUIPMENT_META = { matGrade: PlayerItems.MAT_GRADE, qSkillSpan: PlayerItems.Q_SKILL_SPAN, duraSpan: PlayerItems.DURA_SPAN, xpPerLevel: CRAFT_XP_PER_LEVEL,
   castKinds: PlayerItems.castKinds(), castMaxKinds: PlayerItems.CAST_MAX_KINDS, castGradeMax: PlayerItems.CAST_GRADE_MAX, castKind: PlayerItems.CAST_KIND, types: {} };
-for (const _t of ['clothes','armor','weapon','tool']) {
-  const _d = PlayerItems.ITEM_TYPES[_t]; const _ak = Object.keys(_d.attrs)[0];
+// ★★[T12 지게 2026-09-01] 종전엔 여기 네 이름이 **손으로 적혀** 있었다 — 표에 다섯째 줄을 넣어도
+//   메타가 안 따라와 클라 미리보기가 `undefined 0` 을 찍는다(족보 (83): 표와 그 표를 읽는 쪽은 다른 명제다).
+//   ⇒ **레시피 표에서 발견한다.** 이제 표 한 줄이 곧 화면 한 줄이다.
+for (const _t of Object.keys(EQUIPMENT_RECIPES)) {
+  const _d = PlayerItems.ITEM_TYPES[_t]; if (!_d) continue;
+  const _ak = Object.keys(_d.attrs)[0];
   EQUIPMENT_META.types[_t] = { attr: _d.attrs[_ak], attrScale: _d.attrScale || 100, baseDura: _d.baseDura, recipe: EQUIPMENT_RECIPES[_t] };
 }
 // 플레이어 아이템 필드 안전 초기화(모든 생성 경로 방어 — 미설정 시 빈 컨테이너).
@@ -3311,7 +3325,11 @@ async function _acceptConnection(ws, req, C) {
     // ★★[작물 층 2026-08-31] 작물 34종 — **클라가 표를 안 든다**(무게·원장과 같은 규약).
     //   이름·이모지·파종철·성장일·보관일·물요구가 전부 서버 정본에서 온다.
     crops: Crops.payload(),
-    carryCfg: { capKg: Carry.CFG.CAP_KG, moveFloor: Carry.CFG.MOVE_FLOOR,
+    // ★★[T12 지게 2026-09-01] `capKg` 를 뺐다. §0 실측: 이 값을 클라가 **받아서 변수에 담고 아무 데도 안 썼다**
+    //   (표시는 전부 `gauges.carry.cap` = `Carry.payload()` = `capKg(player)` 에서 온다 — 이미 서버 값이었다).
+    //   그런데 이 배치로 상한이 **플레이어별로 갈렸다** ⇒ 남겨 두면 언젠가 누가 이 죽은 사본을 읽고
+    //   지게를 진 사람에게 25 를 보여 준다. 안 쓰는 사본은 **지금** 지운다(족보 (84) 의 실천).
+    carryCfg: { moveFloor: Carry.CFG.MOVE_FLOOR,
                 combinedFloor: Carry.CFG.COMBINED_FLOOR, stageAt: Carry.STAGE_AT },
     // ★★[원장 승격 2026-08-30] 개체 원장·식품 로트 — 인벤 스칼라와 **같은 스냅샷**으로 나간다.
     //   클라는 "원장이 있으면 펼친다"만 안다(품목 표를 클라가 들면 그게 사본이다).
@@ -3591,8 +3609,20 @@ function handlePlayerInput(player, raw) {
         Lots.note(player, k, Math.floor(n), Math.max(0, zoneGameDay() - (age | 0)));
       }
     }
+    // ★[T12 지게 2026-09-01] 장비 지급·착용 — `{ equip: [{ type:'carrier', lvl:10 }] }`.
+    //   **정본 경로 둘을 그대로** 부른다(`PlayerItems.craftItem` + `doEquipItem`) —
+    //   하네스가 슬롯을 손으로 꽂으면 "착용이 상한을 올리는가"를 못 잰다(그건 자기 증명이다).
+    for (const e of (msg.equip || [])) {
+      const t = e && e.type; const r = EQUIPMENT_RECIPES[t]; if (!r) continue;
+      ensurePlayerItems(player);
+      let inst; try { inst = PlayerItems.craftItem(t, Math.max(0, Math.min(10, e.lvl | 0)), { [(e.material || r.accepts[0])]: r.qty }); } catch (er) { continue; }
+      inst.id = genEquipId(); inst.mat = e.material || r.accepts[0];
+      player.equipment.push(inst);
+      if (e.wear !== false) doEquipItem(player, inst.id);
+    }
     savePlayer(player);
     sendInventory(player);
+    sendEquipment(player);
     send(player.ws, { type: 'tools', toolItems: player.toolItems || [], equipped: player.equipped, hotkey1: player.hotkey1 || null });
     send(player.ws, { type: 'notice', text: '[E2E] 재료 지급' });
   }
@@ -4605,17 +4635,26 @@ function doCraftEquipment(player, itemType, material, rawMix) {
     return;
   }
   if (!recipe.accepts.includes(material)) { send(player.ws, { type: 'notice', text: `${recipe.label}에 못 쓰는 재료: ${material}` }); return; }
+  // ★★[T12 지게 2026-09-01] **곁재료(`extra`)** — 이 표의 첫 다품목 장비(지게의 밀삐).
+  //   골라 쓰는 주재료와 달리 `extra` 는 **늘 같이 든다**. 없으면 여기서 거절한다.
+  //   ⚠거절만 하면 화면이 거짓말한다(버튼이 켜져 있다) ⇒ `_facilityRecipes` 의 `cost` 와
+  //     클라의 게이팅에도 같은 곁재료를 실어 보낸다. 세 자리가 **같은 `extra` 하나**를 읽는다.
+  const _eqCost = Object.assign({}, recipe.extra || {}, { [material]: (recipe.extra || {})[material] ? ((recipe.extra[material] || 0) + recipe.qty) : recipe.qty });
+  for (const [k, n] of Object.entries(_eqCost)) {
+    if ((player.inventory[k] || 0) < n) { send(player.ws, { type: 'notice', text: `재료 부족: ${ITEM_LABEL_SERVER[k] || k} ${n} 필요 (보유 ${Math.floor(player.inventory[k] || 0)})` }); return; }
+  }
   const have = player.inventory[material] || 0;
-  if (have < recipe.qty) { send(player.ws, { type: 'notice', text: `재료 부족: ${material} ${recipe.qty} 필요 (보유 ${have})` }); return; }
   const lvl = playerCraftLevel(player, recipe.skill);
   let inst;
   try { inst = PlayerItems.craftItem(itemType, lvl, { [material]: recipe.qty }); }
   catch (e) { send(player.ws, { type: 'notice', text: `제작 실패: ${e.message}` }); return; }
   inst.id = genEquipId();
   inst.mat = material;   // 대표 재료(수선·표시용)
-  player.inventory[material] = have - recipe.qty;
+  const _paid = {};
+  for (const [k, n] of Object.entries(_eqCost)) { _paid[k] = player.inventory[k] || 0; player.inventory[k] = _paid[k] - n; }
   const rq = _enqueueCraft(player, _fac, 'tool', inst, PlayerItems.displayItem(inst), recipe.skill);
-  if (!rq.ok) { player.inventory[material] = have; send(player.ws, { type: 'notice', text: rq.err }); return; }
+  if (!rq.ok) { for (const k in _paid) player.inventory[k] = _paid[k]; send(player.ws, { type: 'notice', text: rq.err }); return; }
+  void have;
   sendInventory(player);
   if (canPersist(player)) savePlayer(player);   // ★[배치 14 ②] 정본 술어 — 영속 게스트도 저장된다
   void lvl;
@@ -4743,6 +4782,12 @@ const TOOL_EQUIP_EFF_SCALE = 0.03;   // tool efficiency(24~100) → 채집 dmg +
 const COLD_WARMTH_FULL__DEAD_SEE_body_js = 50;
 const COLD_NIGHT_EXTRA__DEAD_SEE_body_js = 0.6;
 const COLD_CLOTH_WEAR_MS = 30000; // 추위 노출 시 옷 마모 간격(30초당 내구 1 — 서서히)
+// ★★[T12 지게 2026-09-01] 지게 마모 간격 — **짐을 지고 걸을 때만** 돈다(옷이 추울 때만 닳는 것과 같은 규약).
+//   ★값은 찍지 않고 **유도했다**: 지게 하나로 자염 원정(광장→바다 편도 16.1분 · 왕복 32분)을
+//     몇 번 다닐 수 있어야 물건이 뜻을 갖나. 2분당 1 ⇒ Lv0 지게(내구 117) = 234분 = **왕복 7.3회**,
+//     Lv10(142) = 284분 = **8.9회**. 한 계절에 한 번쯤 다시 엮는 물건이 된다.
+//   (30초당 1 이면 왕복 1.8회라 원정 한 번에 지게가 부서진다 — 그건 지게가 아니라 소모품이다.)
+const CARRIER_WEAR_MS = (() => { const v = parseFloat(process.env.CARRY_CARRIER_WEAR_MS); return Number.isFinite(v) && v > 0 ? v : 120000; })();
 // 슬롯에 장착된 장비 인스턴스 조회
 function getEquippedEquipment(player, slot) {
   if (!player.equipSlots || !player.equipSlots[slot]) return null;
@@ -5695,8 +5740,10 @@ function _facilityRecipes(player, kind) {
       }
       options.sort((a, b) => (b.can - a.can) || ((b.q || 0) - (a.q || 0)));
       const best = options.find((o) => o.can) || options[0];
-      push({ id: t, label: r.label, kind, skill: r.skill, lvl, options,
-             cost: best ? { [best.material]: r.qty } : {}, cast: !!r.cast });
+      // ★[T12 지게] 곁재료는 **주재료와 같은 `cost` 에** 들어간다 ⇒ `can`·`missing`·버튼 게이팅이
+      //   한 자리에서 맞는다(여기서 빼면 눌러 보고 서버에 거절당한다 = 화면이 게이트인 척한 것).
+      push({ id: t, label: r.label, kind, skill: r.skill, lvl, options, extra: r.extra || null,
+             cost: Object.assign({}, r.extra || {}, best ? { [best.material]: r.qty + ((r.extra || {})[best.material] || 0) } : {}), cast: !!r.cast });
     }
   }
   // ★★[부패·보존 배치 2026-08-31] **보존 가공을 그 시설의 창에 얹는다 — 새 패널 0.**
@@ -6406,6 +6453,7 @@ const ITEM_LABEL_SERVER = {
   // ★[자염 배치 2026-09-01] 짠물 이름표는 `salt.js` 정본에서 가져온다(옮겨 적지 않는다).
   brine: Salt.BRINE_KO,
   item_salt_kiln: '소금가마', item_drying_rack: '건조대', item_workbench: '작업대',
+  carrier: '지게',   // ★[T12] 장비 인스턴스 타입 — 재료 부족 알림이 한글로 나가게 한다
 };
 // ★[보존 배치 2026-08-31] 보존식 이름은 `spoil.PRESERVED_ITEMS.ko` 가 정본이다 — 옮겨 적지 않는다.
 for (const [k, v] of Object.entries(Spoil.PRESERVED_ITEMS)) ITEM_LABEL_SERVER[k] = v.ko;
@@ -7404,6 +7452,8 @@ function __testBind() {
     Wind, windExposureOf, isRockTileLocal, villageShelterOf, gameDayNow, elevKmAt,
     // ★[부패 2차 2026-09-01] 자리(상자·바닥)를 하네스가 정본 함수로 밟게 — 손으로 빚으면 사본이다
     tryChestPut, tryChestTake, CHEST_ALLOWED_ITEMS,
+    // ★[T12 지게 2026-09-01] 착용·마모를 **정본 함수로** 밟게 한다(하네스가 슬롯을 손으로 꽂으면 사본이다)
+    doEquipItem, doUnequipItem, wearEquipment, getEquippedEquipment, CARRIER_WEAR_MS, EQUIPMENT_META,
     // ── 원장 승격(2026-08-30) ── 드롭·줍기·바닥 지도를 **정본 그대로**. 하네스가 바닥템을 손으로 빚으면 사본이다.
     tryDropItem, tryPickupItem, groundItems, sendInventory, consumeItem, handlePlayerInput,
     // ── 빈손 시작(2026-08-28) ── 줍기·제작·도구 표를 **정본 그대로** 내준다
@@ -9053,6 +9103,12 @@ setInterval(() => {
     // 옷은 추위를 막는 동안 닳는다(종전 규약 유지 — 옷감 수요의 실체)
     if (p._cold && clothes && !_fire && !_indoor && now - (p._coldWearAt || 0) > COLD_CLOTH_WEAR_MS) {
       p._coldWearAt = now; wearEquipment(p, 'clothes', 1);
+    }
+    // ★★[T12 지게 2026-09-01] 지게는 **짐을 지고 걸을 때** 닳는다. 서 있으면·빈 몸이면 안 닳는다.
+    //   판정은 `Carry.carrierWorking` 정본 하나가 한다(여기서 무게를 다시 세지 않는다 — `_cr` 과 같은 규약).
+    //   ⚠새 틱이 아니다: 이 루프는 이미 돌고 있고 한 줄이 얹힌 것뿐이다(틱 0 캐논 유지).
+    if (moving && now - (p._carrierWearAt || 0) > CARRIER_WEAR_MS && Carry.carrierWorking(p)) {
+      p._carrierWearAt = now; wearEquipment(p, Carry.CARRIER_SLOT, 1);
     }
     // ★[3층 재배선] 스태미나가 바닥나면 자동 해제 — 판정은 `Body.canSprint` 하나가 한다.
     //   (옛 허기·갈증 하한 게이트는 여기서 사라졌다. `SPRINT_MIN_GAUGE` 도 같이 죽였다.)
