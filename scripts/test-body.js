@@ -263,8 +263,16 @@ function codeOnly(src) {
     `허기 ${snap0.hunger} → ${P13.hunger.toFixed(2)}`);
   ok(/_bodyDirty/.test(zsrc) && /Body\.dirtySince/.test(zsrc),
     '★★⑦ **주기 저장이 그 판정을 실제로 본다** — zone.js 에서 확인(안 그러면 앉아서 쉰 진행이 크래시에 날아간다)');
-  ok(/body: Body\.toSave\(player\)/.test(zsrc), '★⑦ 저장 payload 에 몸 상태가 실린다');
-  ok(/tools\.body/.test(zsrc), '★⑦ 복원 경로도 있다(저장만 하고 안 읽으면 반쪽이다)');
+  // ★[T47 2026-09-01] 이 두 줄은 **자리를 옮겼다.** 종전엔 `savePlayer` 안에 손으로 쓴 직렬화
+  //   리터럴(`body: Body.toSave(player)`)과 도착 쪽 `tools.body` 를 각각 찾았는데, T47 이
+  //   직렬화를 `serializeBody`/`parseBody` **한 쌍**으로 모았다(존을 넘으면 몸이 새던 결함의 구조적 수리).
+  //   ⇒ 검사의 뜻은 그대로다("저장되고, 복원된다"). 보는 자리만 그 한 쌍으로 옮긴다.
+  ok(/function serializeBody\(p\)[\s\S]{0,900}body: Body\.toSave\(p\)/.test(zsrc),
+    '★⑦ 저장 payload 에 몸 상태가 실린다(`serializeBody`)');
+  ok(/function parseBody\([\s\S]{0,1400}out\.body = o\.body/.test(zsrc) && /_loadBody = B\.body/.test(zsrc),
+    '★⑦ 복원 경로도 있다(저장만 하고 안 읽으면 반쪽이다 — `parseBody` → `_loadBody`)');
+  ok(/tools_json: JSON\.stringify\(serializeBody\(player\)\)/.test(zsrc),
+    '★⑦ 그리고 저장은 **그 한 함수만** 쓴다(손으로 쓴 두 번째 직렬화가 없다 — T47)');
 
   // ═══ ⑨ 스태미나 — 달리기의 유일한 관문(3층 재배선) ═══════════════════════════
   say('\n⑨ 스태미나 — 달리기가 쓰고, 짐이 무겁게 하고, 서면 찬다');

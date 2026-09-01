@@ -276,6 +276,82 @@ function canPersist(player) {
   if (player.playerId.startsWith('anon_')) return !!player.persistent;   // 영속 게스트만
   return true;                                                            // 등록 계정
 }
+// ★★[T47 2026-09-01 재민 확정] **몸의 정본은 한 곳, 직렬화는 한 함수.**
+//
+//   왜: 존을 넘으면 도구가 **영구히** 사라졌다(N.6 · 28회 왕복 전부 재현). 원인은 하나가 아니라
+//   **복원 코드가 두 벌**이었다는 것이다 — 일반 접속은 central 행을 읽어 13가지를 복원하는데,
+//   핸드오프 도착은 `pending` 페이로드만 읽었고 그 페이로드엔 그 13 중 **12가 없었다.**
+//   그리고 도착 존의 `savePlayer` 가 빈 몸으로 계정을 덮어 재접속으로도 못 돌아왔다.
+//
+//   ⇒ 그래서 필드를 채우는 대신(그 길은 새 필드가 생길 때마다 또 빠진다) **직렬화를 한 함수로 모았다.**
+//     저장·핸드오프·재접속이 전부 `serializeBody`/`parseBody` 를 쓴다. 앞으로 몸에 필드가 늘면
+//     셋이 **동시에** 따라간다 — "또 빠진다"가 구조적으로 불가능해진다.
+//
+//   ⚠새 필드를 몸에 더할 자리는 **여기 하나**다. `savePlayer` 나 도착 경로에 직접 쓰지 마라.
+function serializeBody(p) {
+  return {
+    toolItems: p.toolItems || [],
+    hotkey1: p.hotkey1 || null,
+    equipped: p.equipped || null,
+    equipment: p.equipment || [],   // 플레이어 아이템 인스턴스 영속(품질·속성·내구)
+    equipSlots: p.equipSlots || {},  // 장착 슬롯
+    craftSkill: p.craftSkill || {},  // 제작 숙련 xp
+    oreLedger: p.oreLedger || {},    // ★[11차] 캔 원석의 **숨은 정체 장부**(kg) — 선광 전까지 클라에 안 보낸다
+    oreCarry: p.oreCarry || {},      // ★선광 소수분 이월(kg) — 버리지 않는다
+    fishStats: p.fishStats || null,  // ★[낚시 v2] 어획 기록 — 이력서 패널(§8.4)의 첫 씨앗
+    body: Body.toSave(p),            // ★[신체 상태 §7] 추위·피로·부상·사기(허기·갈증은 전용 컬럼)
+    kgLedger: Carry.toSave(p),       // ★[무게] 개체 실제 kg 장부(1.7kg 물고기 ≠ 0.4kg 물고기)
+    lots: Lots.toSave(p),            // ★[무게] 식품 로트(취득일) — 부패 곡선이 앉을 자리
+    craftLog: p.craftLog || {},      // ★[시설 제작창] 제작 이력(횟수·최고 품질) — §8.4 스킬 패널이 읽을 씨앗
+    // ★생명값 — **핸드오프만** 쓴다(아래 `parseBody(.., {vitals:true})`).
+    //   존을 넘는 것은 한 접속의 연속이므로 여기서 HP 가 회복되면 그건 결함이다(같은 존 안에서는
+    //   `_takeover` 가 이미 잇고 있다). 반면 **로그아웃 후 재접속의 풀피는 정책**이고, 그건
+    //   죽음 설계(T8)의 소관이라 이 배치가 안 바꿨다 — 그래서 저장은 하되 로그인 복원이 무시한다.
+    vital: { hp: p.hp, maxHp: p.maxHp, isDown: !!p.isDown, downedAt: p.downedAt || 0 },
+  };
+}
+// 복원 — 옛 형식(`{axe: 3}`)까지 여기서 흡수한다. 반환값의 키는 `serializeBody` 와 같다.
+//   `opts.vitals` 가 참일 때만 `vital` 을 돌려준다(위 주석 — 로그인은 안 받는다).
+function parseBody(raw, opts) {
+  const o = (raw && typeof raw === 'object') ? raw : {};
+  const out = {
+    toolItems: [], hotkey1: null, equipped: null,
+    equipment: [], equipSlots: {}, craftSkill: {}, craftLog: {},
+    oreLedger: {}, oreCarry: {}, fishStats: null, body: null, kgLedger: null, lots: null, vital: null,
+  };
+  if (Array.isArray(o.equipment)) out.equipment = o.equipment;
+  if (o.equipSlots && typeof o.equipSlots === 'object') out.equipSlots = o.equipSlots;
+  if (o.craftSkill && typeof o.craftSkill === 'object') out.craftSkill = o.craftSkill;
+  if (o.craftLog && typeof o.craftLog === 'object') out.craftLog = o.craftLog;
+  if (o.oreLedger && typeof o.oreLedger === 'object') out.oreLedger = o.oreLedger;
+  if (o.oreCarry && typeof o.oreCarry === 'object') out.oreCarry = o.oreCarry;
+  if (o.fishStats && typeof o.fishStats === 'object') out.fishStats = o.fishStats;
+  if (o.body && typeof o.body === 'object') out.body = o.body;
+  if (o.kgLedger && typeof o.kgLedger === 'object') out.kgLedger = o.kgLedger;
+  if (o.lots && typeof o.lots === 'object') out.lots = o.lots;
+  if (opts && opts.vitals && o.vital && typeof o.vital === 'object') out.vital = o.vital;
+  // 14.53: 옛 tools (object 또는 number 형식) → 새 toolItems list 변환
+  if (Array.isArray(o.toolItems)) {
+    out.toolItems = o.toolItems;
+    out.hotkey1 = o.hotkey1 || null;
+    if (typeof o.equipped === 'string') out.equipped = o.equipped;
+  } else {
+    // 옛 형식 — { axe: number|{d,max} } → instance 변환
+    for (const [tn, val] of Object.entries(o)) {
+      if (['hotkey1', 'toolItems', 'equipped', 'equipment', 'equipSlots', 'craftSkill', 'craftLog',
+           'oreLedger', 'oreCarry', 'fishStats', 'body', 'kgLedger', 'lots', 'vital'].includes(tn)) continue;
+      const mx = TOOL_MAX_DURABILITY[tn] || 100;
+      let d = mx;
+      if (typeof val === 'number' && val > 0) d = mx;
+      else if (val && typeof val === 'object' && typeof val.d === 'number') d = val.d;
+      else continue;
+      if (d > 0) out.toolItems.push({ id: genToolId(), type: tn, d, max: mx });
+    }
+    out.equipped = null; // 옛 equipped 이름 → instance id로 매핑 불가, 그냥 해제
+  }
+  return out;
+}
+
 function savePlayer(player, extra = {}) {
   if (!canPersist(player)) return;
   // wood/stone은 별도 컬럼, 나머지 아이템(berry, meat_raw 등)은 inventory_json에
@@ -289,22 +365,8 @@ function savePlayer(player, extra = {}) {
     violation_points: Math.round(player.vp ?? 0),
     tribe_id: player.tribeId ?? null,
     floor: player.floor || 0,
-    // 14.53: 새 format — { toolItems, hotkey1, equipped } 전체 직렬화
-    tools_json: JSON.stringify({
-      toolItems: player.toolItems || [],
-      hotkey1: player.hotkey1 || null,
-      equipped: player.equipped || null,
-      equipment: player.equipment || [],   // 플레이어 아이템 인스턴스 영속(품질·속성·내구)
-      equipSlots: player.equipSlots || {},  // 장착 슬롯
-      craftSkill: player.craftSkill || {},  // 제작 숙련 xp
-      oreLedger: player.oreLedger || {},    // ★[11차] 캔 원석의 **숨은 정체 장부**(kg) — 선광 전까지 클라에 안 보낸다
-      oreCarry: player.oreCarry || {},      // ★선광 소수분 이월(kg) — 버리지 않는다
-      fishStats: player.fishStats || null,  // ★[낚시 v2] 어획 기록 — 이력서 패널(§8.4)의 첫 씨앗
-      body: Body.toSave(player),            // ★[신체 상태 §7] 추위·피로·부상·사기(허기·갈증은 전용 컬럼)
-      kgLedger: Carry.toSave(player),       // ★[무게] 개체 실제 kg 장부(1.7kg 물고기 ≠ 0.4kg 물고기)
-      lots: Lots.toSave(player),            // ★[무게] 식품 로트(취득일) — 부패 곡선이 앉을 자리
-      craftLog: player.craftLog || {},      // ★[시설 제작창] 제작 이력(횟수·최고 품질) — §8.4 스킬 패널이 읽을 씨앗
-    }),
+    // ★[T47] 몸의 직렬화는 `serializeBody` **하나**다(위 주석) — 저장·핸드오프가 같은 것을 쓴다.
+    tools_json: JSON.stringify(serializeBody(player)),
     equipped: player.equipped || null,
     last_zone: extra.last_zone ?? null, // 명시적으로 넘긴 zone만 변경
     last_x: extra.last_x ?? player.x,
@@ -312,7 +374,9 @@ function savePlayer(player, extra = {}) {
     color: player.color,
     ...extra,
   };
-  central.updatePlayer(player.playerId, patch).catch(e =>
+  // ★[T47] **Promise 를 돌려준다.** 평시 호출부는 그대로 fire-and-forget 이고,
+  //   핸드오프만 `await` 한다 — 도착 존이 central 행을 읽을 때 이미 최신이어야 하기 때문이다.
+  return central.updatePlayer(player.playerId, patch).catch(e =>
     console.warn(`[${process.env.ZONE_ID || 'zone'}] central save 실패 (${player.playerId}):`, e.message)
   );
 }
@@ -2374,6 +2438,20 @@ const server = http.createServer((req, res) => {
     }));
     return;
   }
+  // ★[T47 테스트 전용 · `E2E_GIVE=1` 게이트] **몸의 정본을 그대로** 내준다(읽기 전용).
+  //   왜 필요한가: welcome 은 몸의 일부만 싣는다(도구·인벤). 왕복 전후로 **13가지가 다 같은가**를
+  //   재려면 `serializeBody` 그 자체를 봐야 한다 — 다른 표를 만들면 그 표가 먼저 틀린다(사본 금지).
+  if (req.url && req.url.startsWith('/bodydbg') && req.method === 'GET' && process.env.E2E_GIVE === '1') {
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+    try {
+      const u = new URL(req.url, 'http://x');
+      const want = u.searchParams.get('name');
+      const out = {};
+      for (const p of players.values()) { if (p.isNpc) continue; if (want && p.name !== want) continue; out[p.name] = serializeBody(p); }
+      res.end(JSON.stringify({ zone: ZONE_ID, bodies: out }));
+    } catch (e) { res.end(JSON.stringify({ err: e.message })); }
+    return;
+  }
   if (req.url && req.url.startsWith('/lifedbg') && req.method === 'GET') {
     // ★[직접 서버 디버깅 — 사용자 "네가 직접 서버에서 디버깅하는 방법은 없어?"] 생활 층 내부 상태 읽기 전용 JSON.
     //   CORS *: 게임 페이지·외부 도구에서 크로스오리진 fetch 허용(민감정보 없음 — NPC 시뮬 상태만).
@@ -2642,6 +2720,10 @@ wss.on('connection', (ws, req) => {
 
 // ★[테스트 전용 손잡이 · `E2E_GIVE=1` 일 때만 산다] 지정한 단계에서 **일부러 던진다**.
 //   에러 경계가 진짜로 잡는지는 실패를 만들어 봐야만 증명된다 — 안 그러면 하네스가 자명 통과다.
+// ★[T47 테스트 전용 · `E2E_GIVE=1` 게이트] 핸드오프 페이로드에 **몸을 일부러 안 싣는다** —
+//   롤링 배포 창(옛 존에서 넘어옴)을 시늉해 도착 경로의 **central 행 폴백**을 실제로 밟게 한다.
+//   그 갈래를 밟아 보지 않으면 폴백은 "있다고 적혀만 있는 코드"다.
+const E2E_HANDOFF_NO_BODY = (process.env.E2E_GIVE === '1') && process.env.E2E_HANDOFF_NO_BODY === '1';
 const E2E_CONN_FAIL = (process.env.E2E_GIVE === '1') ? (process.env.E2E_CONN_FAIL || '') : '';
 const E2E_CONN_HANG = (process.env.E2E_GIVE === '1') ? (process.env.E2E_CONN_HANG || '') : '';
 function _connFailPoint(stage) {
@@ -2751,6 +2833,7 @@ async function _acceptConnection(ws, req, C) {
   let _loadKgLedger = null;    // ★[무게] 개체 실제 kg 장부
   let _loadLots = null;        // ★[무게] 식품 로트(취득일)
   let initHunger = HUNGER_MAX, initThirst = THIRST_MAX, initVp = 0;
+  let initVital = null;        // ★[T47] 핸드오프에서만 채워진다 — 존을 넘어도 HP·다운이 이어진다
   let initTribeId = null, initTribeName = null;
   let initFloor = 0;
   // 14.42-a: home (영구 부활 fallback). 게스트면 null로 유지.
@@ -2789,9 +2872,32 @@ async function _acceptConnection(ws, req, C) {
     ivy = pending.vy;
     inventory = pending.inventory;
     color = pending.color || color;
-    tools = pending.tools || {};
-    equipped = pending.equipped || null;
-    console.log(`[${ZONE_ID}] ✓ handoff token=${handoffToken.slice(0,8)} consumed (player=${playerId})`);
+    // ★★[T47 2026-09-01] **몸을 복원한다.** 종전엔 `pending.tools`(welcome 이 스스로 '옛 호환(사용 X)'
+    //   이라 적어 둔 죽은 필드)만 읽어, 도구·장비·숙련·kg원장·로트·신체가 통째로 사라졌다.
+    //   그리고 도착 존의 `savePlayer` 가 빈 몸으로 계정을 덮어 **재접속으로도 못 돌아왔다**(N.6).
+    //
+    //   ★출처 규칙: **페이로드에 몸이 있으면 페이로드.** 없으면 central 행에서 읽는다.
+    //     시각 비교를 안 하는 이유: 출발 존이 `serializeBody` 로 만든 **같은 스냅샷**을
+    //     행에 저장(await)하고 페이로드에도 실으므로 둘은 정의상 같다 — 중재할 경합이 없다.
+    //     행 폴백이 필요한 경우는 **몸을 안 싣는 옛 존에서 넘어올 때**(롤링 배포 창) 하나뿐이고,
+    //     그때는 출발 존이 떠나기 직전 저장한 행이 유일한 진실이다.
+    let _pendBody = pending.body || null, _bodySrc = 'payload';
+    if (!_pendBody) {
+      try {
+        const _row = await central.getPlayer(playerId);
+        if (_row && _row.tools_json) { _pendBody = JSON.parse(_row.tools_json); _bodySrc = 'central행(폴백)'; }
+      } catch (e) { console.warn(`[${ZONE_ID}] 핸드오프 몸 폴백 읽기 실패:`, e.message); }
+    }
+    {
+      const B = parseBody(_pendBody || {}, { vitals: true });
+      _loadEquipment = B.equipment; _loadEquipSlots = B.equipSlots; _loadCraftSkill = B.craftSkill;
+      _loadCraftLog = B.craftLog; _loadOreLedger = B.oreLedger; _loadOreCarry = B.oreCarry;
+      _loadFishStats = B.fishStats; _loadBody = B.body; _loadKgLedger = B.kgLedger; _loadLots = B.lots;
+      equipped = B.equipped || pending.equipped || null;
+      initVital = B.vital;
+      tools = { __toolItems: B.toolItems, __hotkey1: B.hotkey1 };
+    }
+    console.log(`[${ZONE_ID}] ✓ handoff token=${handoffToken.slice(0,8)} consumed (player=${playerId}) — 몸 출처 ${_bodySrc} · 도구 ${(tools.__toolItems || []).length}`);
     // source zone에 ACK 전송
     if (pending.source_zone && ZONES[pending.source_zone]) {
       const src = ZONES[pending.source_zone];
@@ -2907,65 +3013,29 @@ async function _acceptConnection(ws, req, C) {
       try { extInv = acct.inventory_json ? JSON.parse(acct.inventory_json) : {}; }
       catch (e) { extInv = {}; }
       inventory = { wood: acct.wood | 0, stone: acct.stone | 0, ...extInv };
-      try { tools = acct.tools_json ? JSON.parse(acct.tools_json) : {}; }
-      catch (e) { tools = {}; }
-      // 플레이어 아이템(장비 인스턴스·장착 슬롯·제작 숙련) 복원 — tools_json blob에 piggyback(스키마 무변경). tools가 아래서 재대입되므로 여기서 캡처.
-      if (tools && Array.isArray(tools.equipment)) _loadEquipment = tools.equipment;
-      if (tools && tools.equipSlots && typeof tools.equipSlots === 'object') _loadEquipSlots = tools.equipSlots;
-      if (tools && tools.craftSkill && typeof tools.craftSkill === 'object') _loadCraftSkill = tools.craftSkill;
-      if (tools && tools.craftLog && typeof tools.craftLog === 'object') _loadCraftLog = tools.craftLog;   // ★[시설 제작창] 제작 이력 복원
-      if (tools && tools.oreLedger && typeof tools.oreLedger === 'object') _loadOreLedger = tools.oreLedger;   // ★[11차] 원석 정체 장부 복원
-      if (tools && tools.oreCarry && typeof tools.oreCarry === 'object') _loadOreCarry = tools.oreCarry;
-      if (tools && tools.fishStats && typeof tools.fishStats === 'object') _loadFishStats = tools.fishStats;   // ★[낚시 v2] 어획 기록 복원
-      if (tools && tools.body && typeof tools.body === 'object') _loadBody = tools.body;   // ★[신체 상태] 로그아웃 시점 그대로 — 오프라인 감쇠 없음
-      if (tools && tools.kgLedger && typeof tools.kgLedger === 'object') _loadKgLedger = tools.kgLedger;   // ★[무게] 개체 kg 장부
-      if (tools && tools.lots && typeof tools.lots === 'object') _loadLots = tools.lots;                   // ★[무게] 식품 로트(취득일)
-      // 14.53: 옛 tools (object 또는 number 형식) → 새 toolItems list 변환
-      // tools_json 안에 옛 형식 또는 새 형식 {toolItems, equipped, hotkey1} 둘 다 처리
-      let toolItems = [];
-      let hotkey1 = null;
-      if (tools && typeof tools === 'object') {
-        if (Array.isArray(tools.toolItems)) {
-          // 새 형식 — 그대로
-          toolItems = tools.toolItems;
-          hotkey1 = tools.hotkey1 || null;
-          if (typeof tools.equipped === 'string') equipped = tools.equipped;
-        } else {
-          // 옛 형식 — { axe: number|{d,max} } → instance 변환
-          for (const [tn, val] of Object.entries(tools)) {
-            if (tn === 'hotkey1' || tn === 'toolItems' || tn === 'equipped') continue;
-            const mx = TOOL_MAX_DURABILITY[tn] || 100;
-            let d = mx;
-            if (typeof val === 'number' && val > 0) d = mx;
-            else if (val && typeof val === 'object' && typeof val.d === 'number') d = val.d;
-            if (d > 0) toolItems.push({ id: genToolId(), type: tn, d, max: mx });
-          }
-          equipped = null; // 옛 equipped 이름 → instance id로 매핑 불가, 그냥 해제
-        }
+      // ★[T47] 복원은 `parseBody` **하나**다(저장·핸드오프와 같은 함수). 옛 형식 변환도 그 안에 있다.
+      //   ⚠`vitals:false` — 로그아웃 후 재접속의 **풀피는 정책**이다(죽음 설계 T8 소관).
+      //     이 배치는 그걸 안 바꿨다. 존을 넘을 때만 생명값을 잇는다(`serializeBody` 주석).
+      let _bodyRaw = {};
+      try { _bodyRaw = acct.tools_json ? JSON.parse(acct.tools_json) : {}; }
+      catch (e) { _bodyRaw = {}; }
+      {
+        const B = parseBody(_bodyRaw, { vitals: false });
+        _loadEquipment = B.equipment; _loadEquipSlots = B.equipSlots; _loadCraftSkill = B.craftSkill;
+        _loadCraftLog = B.craftLog; _loadOreLedger = B.oreLedger; _loadOreCarry = B.oreCarry;
+        _loadFishStats = B.fishStats; _loadBody = B.body; _loadKgLedger = B.kgLedger; _loadLots = B.lots;
+        if (B.equipped) equipped = B.equipped;
+        // 저장용: 임시 wrap 객체 — 실제 player.toolItems/hotkey1 은 player 생성 시 풀린다
+        tools = { __toolItems: B.toolItems, __hotkey1: B.hotkey1 };
       }
-      tools = toolItems; // 호환용 — 아래에서 player.toolItems로 저장
       // ★★★[재민 확정 2026-08-28] **시작 지급 제거됨.** 재민 원문: *"지급 아이템은 없어야 할 거 같은데"*
       //   여기 있던 것: `toolItems.length === 0` 이면 톱·망치·도끼를 하나씩 넣어 줬다.
-      //
       //   ★왜 지웠나 — 온보딩 캐논 §9 는 "나루터에서 온 이방인"이 **빈손으로 배고픈 채** 도착한다고 못 박는다.
-      //     무료 보상 세례는 결핍을 없애고, 결핍이 첫 30분의 엔진이다. 지급받은 도끼로 시작하면
-      //     "도끼를 갖고 싶다"가 사라지고, 그 순간 채집·제작·의뢰가 전부 이유를 잃는다.
-      //
-      //   ★★그리고 실측해 보니 이건 **시작 지급이 아니라 매 접속 지급**이었다 —
-      //     조건이 "신규 플레이어"가 아니라 **"도구가 하나도 없으면"**이라, 도구를 다 부순 사람이
-      //     로그아웃했다 들어오면 **새 도구 세 자루가 다시 생겼다**. 무한 수도꼭지였다.
-      //     (아래 판자 10장도 `if (!inventory.plank)` 라 똑같이 매 접속 채워졌다.)
-      //
-      //   ⇒ 대신 **맨손에서 시작하는 사다리**를 놓았다(이 배치 §3·§3-b):
-      //     ⓐ 땅에서 잔가지·자갈·풀을 줍는다(E) → ⓑ **조잡한 석기**를 맨손으로 엮는다(효율 절반·금방 닳는다)
-      //     → ⓒ 나무·돌을 모아 제대로 된 도구를 만든다 → ⓓ 마을 장인의 정품을 **벌어서 산다**.
-      //   ⚠기존 플레이어의 소지품은 **안 건드린다** — 위 복원 경로가 저장본을 그대로 읽는다.
-      // 저장용: 임시 wrap 객체 (savePlayer가 tools_json으로 직렬화)
-      // — 실제 player.toolItems / player.hotkey1 / player.equipped는 player 생성 시 할당됨 (아래)
-      // 임시 변수에 저장
-      const _toolItems = toolItems;
-      const _hotkey1 = hotkey1;
-      tools = { __toolItems: _toolItems, __hotkey1: _hotkey1 }; // 임시 컨테이너 (player 만들 때 풀어줌)
+      //     무료 보상 세례는 결핍을 없애고, 결핍이 첫 30분의 엔진이다.
+      //   ★★그리고 실측해 보니 이건 시작 지급이 아니라 **매 접속 지급**이었다 — 조건이
+      //     "도구가 하나도 없으면"이라 도구를 다 부순 사람이 재접속하면 새 도구 세 자루가 다시 생겼다.
+      //   ⇒ 대신 맨손에서 시작하는 사다리를 놓았다(잔가지·자갈 → 조잡한 석기 → 제대로 된 도구 → 장인 정품).
+      //   ⚠기존 플레이어의 소지품은 안 건드린다 — 위 복원 경로가 저장본을 그대로 읽는다.
       equipped = acct.equipped || null;
       initHunger = (typeof acct.hunger === 'number') ? acct.hunger : HUNGER_MAX;
       initThirst = (typeof acct.thirst === 'number') ? acct.thirst : THIRST_MAX;
@@ -3056,6 +3126,14 @@ async function _acceptConnection(ws, req, C) {
     sy = Math.floor(sy / 32) * 32 + 16;
   }
 
+  // ★[T47 · N.8 수리] `ZONE_TEST_INV` 가 **central 이 살아 있으면 무력화**되던 것.
+  //   원인: 이 값은 `inventory` 의 **초기값**으로만 얹혀 있었는데, 계정 행 복원이 그 변수를 통째로
+  //   덮어썼다(게스트도 계정 행을 복원하므로 사실상 늘 덮였다). 하네스가 "재료 있음" 경로를
+  //   못 밟게 하는 원인이라 고친다 — **하네스 신뢰가 먼저**다(KNOWN_ISSUES N.8).
+  //   ⚠**없는 키만** 채운다(idempotent). 접속마다 더하면 긴 하네스에서 인벤이 부풀어 그게 또 거짓말이 된다.
+  //   ⚠env 미설정이면 이 루프는 0회다 — 운영 동작 완전 불변.
+  for (const k of Object.keys(_testInv)) if (!(k in inventory)) inventory[k] = _testInv[k];
+
   const pid = `p${nextPid++}`;
   // 14.53: tools 임시 컨테이너에서 toolItems/hotkey1 풀기
   const _toolItems = (tools && tools.__toolItems) ? tools.__toolItems : (Array.isArray(tools) ? tools : []);
@@ -3079,7 +3157,12 @@ async function _acceptConnection(ws, req, C) {
     kgLedger: _loadKgLedger,    // ★[무게] 개체 실제 kg — 재접속을 넘어 살아남는다(하네스 ⑦)
     lots: _loadLots,            // ★[무게] 식품 취득일 — 나이를 잃으면 로트가 거짓말이 된다
     body: _loadBody ? { cold: 0, fatigue: 0, injury: 0, morale: 0, herbUntil: 0, stages: {}, ..._loadBody } : null,
-    hp: PLAYER_MAX_HP, maxHp: PLAYER_MAX_HP,
+    // ★[T47] 존을 넘을 때만 생명값을 잇는다(`initVital` 은 핸드오프에서만 채워진다).
+    //   로그아웃 후 재접속의 풀피는 **정책**이라 그대로다 — 죽음 설계(T8) 소관.
+    hp: (initVital && typeof initVital.hp === 'number') ? initVital.hp : PLAYER_MAX_HP,
+    maxHp: (initVital && typeof initVital.maxHp === 'number') ? initVital.maxHp : PLAYER_MAX_HP,
+    isDown: !!(initVital && initVital.isDown),
+    downedAt: (initVital && initVital.downedAt) || 0,
     hunger: initHunger, thirst: initThirst, vp: initVp,
     // ★★[2026-08-03g 배치 14 ②] **이 신원이 영속인가.** `savePlayer` 가 이걸 본다.
     //   종전 판정은 `playerId.startsWith('anon_')` 하나였는데, 배치 13 뒤로 `anon_` 은 두 종류다:
@@ -3410,6 +3493,9 @@ function handlePlayerInput(player, raw) {
     const b = Body.ensure(player);
     if (typeof msg.hunger === 'number') player.hunger = Math.max(0, Math.min(100, msg.hunger));
     if (typeof msg.thirst === 'number') player.thirst = Math.max(0, Math.min(100, msg.thirst));
+    // ★[T47] hp 도 세운다 — 존을 넘을 때 생명값이 이어지는지 **재려면** 깎아 놓을 수 있어야 한다.
+    //   (코드로만 확인하고 "넘어간다"고 적는 것이 N.6 을 만든 방식이다.)
+    if (typeof msg.hp === 'number') { player.hp = Math.max(1, Math.min(player.maxHp || 100, msg.hp)); broadcast({ type: 'player_damaged', pid: player.pid, hp: player.hp }); }
     for (const k of ['cold', 'fatigue', 'injury', 'morale']) {
       if (typeof msg[k] === 'number') b[k] = Math.max(0, Math.min(1, msg[k]));
     }
@@ -9260,7 +9346,10 @@ async function fireHandoff(player, targetZoneId, newX, newY) {
   player.vy = 0;
   player.x = Math.max(0, Math.min(ZONE.zoneWidth, player.x));
   player.y = Math.max(0, Math.min(ZONE.zoneHeight, player.y));
-  savePlayer(player, { last_zone: targetZoneId, last_x: newX, last_y: newY });
+  // ★★[T47] **저장을 기다린다.** 종전엔 fire-and-forget 이라 도착 존이 central 을 읽을 때
+  //   아직 안 써져 있을 수 있었다. 이제 행과 페이로드가 **같은 스냅샷**이 되도록 순서를 잡는다.
+  try { await savePlayer(player, { last_zone: targetZoneId, last_x: newX, last_y: newY }); }
+  catch (e) { console.warn(`[${ZONE_ID}] 핸드오프 직전 저장 실패(페이로드로 계속):`, e.message); }
   const token = generateToken();
   try {
     await postJSON(target.host, target.port, '/handoff_prepare', {
@@ -9275,7 +9364,10 @@ async function fireHandoff(player, targetZoneId, newX, newY) {
       x: newX, y: newY,
       vx: carryVx, vy: carryVy,   // ★ 핸드오프 시점의 속도 보존
       inventory: invPayload(player.inventory),
-      tools: player.tools,
+      // ★★[T47] **몸 전체**를 싣는다 — 도구·장비·슬롯·숙련·제작이력·원석장부·어획·신체·kg원장·로트·생명값.
+      //   직렬화는 `serializeBody` 하나이므로 앞으로 몸에 필드가 늘어도 여기가 저절로 따라간다.
+      body: E2E_HANDOFF_NO_BODY ? undefined : serializeBody(player),
+      tools: player.tools,          // 옛 호환(사용 X) — 옛 도착 존이 이걸 읽던 자리라 남겨 둔다
       equipped: player.equipped,
       hunger: Math.round(player.hunger ?? HUNGER_MAX),
       thirst: Math.round(player.thirst ?? THIRST_MAX),
