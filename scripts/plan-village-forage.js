@@ -8,7 +8,19 @@
 // ★심는 것은 **이미 있는 개체 종류 셋**뿐이다(새 스프라이트·새 지형장 0):
 //     덤불 `berry_bush` → 풀 + 잔가지 + 열매      (부족: 풀)
 //     바위 `rock`       → 석재 + 자갈             (부족: 자갈)
-//     웅덩이 `water_pool` → 식수(E 로 마심 · hp 안 깎임)  (부족: 식수)
+//     웅덩이 `water_pool` → 식수(E 로 마심 · hp 안 깎임)  (부족: ★임수)
+//
+// ★★[T14 2026-09-01] 이 스크립트에 **두 가지를 고쳤다.**
+//   ① **부족 판정이 "식수"에서 "임수"로 바뀌었다.** 종전 `measure()` 의 물 판정은 반경 안의
+//      `water_pool` **개체**를 셌는데, 그 개체엔 `chunk.pickResourceType` 이 모든 biome 에
+//      굴림 상위 1~5% 로 까는 **야생 웅덩이**가 섞인다. 그래서 강에서 10.8km 떨어진 광산1 이
+//      "물 있음"으로 읽혀 **처방에서 통째로 빠졌다**(임업4·농촌10·농촌12·농촌13 도 같은 이유).
+//      ⇒ 판정은 `scripts/imsu-core.js` 정본으로 옮겼다 — 감사와 **같은 함수**를 부른다.
+//   ② ★**이 스크립트는 멱등이 아니었다.** 머리말이 "다시 돌리면 같은 결과가 나온다"고 적어 두었지만,
+//      `measure()` 가 **자기가 지난번에 심은 군락까지 세기 때문에**(청크 생성기가 groves 를 실체화한다)
+//      두 번째 실행은 "부족한 마을 0곳"을 보고하고 `--apply` 는 `groves` 를 **[] 로 덮어쓴다.**
+//      실측(2026-09-01): 손대기 전 상태에서 그냥 돌리니 **군락 0개** — 적용했으면 48개가 사라졌다.
+//      ⇒ 측정은 **자연 상태**(groves 를 비운 세계)에서 한다(`withoutGroves`). 이제 진짜로 멱등이다.
 //
 // ★배치 캐논 (전부 지킨다)
 //   · **광장 말고 어귀 바깥 링** — 안쪽 700px(21.9셀) ~ 바깥 840px(26.3셀).
@@ -41,6 +53,8 @@ const T = require(path.join(ROOT, 'server', 'terrain'));
 if (T.setZonesMeta) T.setZonesMeta(ZONES);
 const F = require(path.join(ROOT, 'server', 'forage'));
 const CH = require(path.join(ROOT, 'server', 'chunk'));
+// ★[T14] 임수 판정 정본 — 감사와 같은 함수(사본 금지). 감사가 재는 것을 처방이 다르게 재면 처방이 못 맞춘다.
+const IMSU = require(path.join(__dirname, 'imsu-core')).create({ ZID, ZONES, terrain: T, chunk: CH });
 
 const GAMEJSON = path.join(ROOT, 'server', ZID + '-terrain.json');
 const doc = JSON.parse(fs.readFileSync(GAMEJSON, 'utf8'));
@@ -75,6 +89,15 @@ const chunkList = (cx, cy) => {
   return v;
 };
 const ENT_GIVES = { tree: ['twig'], rock: ['pebble'], berry_bush: ['twig', 'fiber'] };
+// ★[T14 ②] **자연 상태에서 잰다** — 이미 심어 둔 군락을 세면 두 번째 실행이 "부족 없음"이 되고
+//   `--apply` 가 groves 를 비워 버린다(멱등 아님). 측정 동안만 groves 를 걷어 낸다.
+function withoutGroves(fn) {
+  const t = T.ZONE_TERRAIN ? T.ZONE_TERRAIN[ZID] : null;
+  const saved = t ? t.groves : null;
+  if (t) t.groves = [];
+  _cc.clear();                       // 청크 캐시도 비운다 — 군락이 든 채로 구운 청크가 남으면 소용없다
+  try { return fn(); } finally { if (t) t.groves = saved; _cc.clear(); }
+}
 function measure(v) {
   const cnt = { twig: 0, pebble: 0, fiber: 0 };
   for (let dy = -R_AUDIT; dy <= R_AUDIT; dy += CELL) for (let dx = -R_AUDIT; dx <= R_AUDIT; dx += CELL) {
@@ -98,7 +121,9 @@ function measure(v) {
     for (let r = CELL; r <= R_AUDIT && !Number.isFinite(water); r += CELL)
       for (let a = 0; a < 48; a++) { const th = a * Math.PI / 24; if (ctx.isWater(v.x + Math.cos(th) * r, v.y + Math.sin(th) * r)) { water = r; break; } }
   }
-  return { cnt, water };
+  // ★임수 — 정본 함수. 이 호출 시점엔 groves 가 비어 있으므로(withoutGroves) **지형 민물만** 본다.
+  const im = IMSU.imsuOf(v, { far: 4000 });
+  return { cnt, water, imsu: im };
 }
 
 // ── 군락 자리 고르기 ────────────────────────────────────────────────────────
@@ -118,6 +143,15 @@ function fits(kind, x, y, relaxForest) {
     // 둠벙은 물이 이미 가까우면 안 판다 — 반경 안에 물 셀이 있으면 기각
     for (let r = CELL; r <= 480; r += CELL * 2)
       for (let a = 0; a < 24; a++) { const th = a * Math.PI / 12; if (ctx.isWater(x + Math.cos(th) * r, y + Math.sin(th) * r)) return false; }
+    // ★★[T14] **샘은 바다에 못 판다.** `ctx.isWater` 는 강·호수만 보므로(해안선 띠는 안 본다)
+    //   이 가드가 없으면 바닷가 마을(농촌12 는 바다가 416px)의 링 자리가 **바다 위**로 잡힐 수 있다.
+    //   그러면 "민물 샘"이라 적어 놓고 짠물을 심는 것이다 — T3 자염의 바다 술어와 같은 식으로 막는다.
+    //   군락은 반경 GROVE_R 로 흩어지므로 중심만이 아니라 **반경 전체**를 본다.
+    if (IMSU.isSea(x, y)) return false;
+    for (let a = 0; a < 12; a++) {
+      const th = a * Math.PI / 6;
+      if (IMSU.isSea(x + Math.cos(th) * GROVE_R, y + Math.sin(th) * GROVE_R)) return false;
+    }
   }
   // 군락이 통째로 물/바위에 잠기지 않게 — 반경 안 표본 절반 이상이 설 수 있어야
   let good = 0, tot = 0;
@@ -156,10 +190,10 @@ console.log(`  회귀 장면 보호구 ${SCENE_GUARD.length}곳 반경 ${GUARD_R
 const groves = [];
 const taken = [];
 const report = [];
-for (const v of villages) {
-  const m = measure(v);
+const measured = withoutGroves(() => villages.map((v) => ({ v, m: measure(v) })));   // ★자연 상태에서 한 번에
+for (const { v, m } of measured) {
   const need = KINDS.filter((k) => m.cnt[k] < NEED_EACH);
-  const needWater = !(m.water <= R_AUDIT);
+  const needWater = !m.imsu.ok;   // ★임수 기준(야생 웅덩이는 증거가 아니다) — 종전은 식수 기준이었다
   if (!need.length && !needWater) continue;
   const made = [];
   // 잔가지·풀은 덤불 하나로 같이 채워진다 — 군락을 두 번 심지 않는다(밀도 낮게)
@@ -178,25 +212,73 @@ for (const v of villages) {
     if (!site) made.push('둠벙✗자리없음');
     else {
       taken.push(site);
-      groves.push({ name: `${v.name} 둠벙`, vil: v.name, kind: 'water_pool',
+      groves.push({ name: `${v.name} 샘`, vil: v.name, kind: 'water_pool',
                     center: [site[0], site[1]], r: 40, n: 1 });
-      made.push(`둠벙@${site[2]}px`);
+      made.push(`샘@${site[2]}px (민물 ${Number.isFinite(m.imsu.fresh) ? Math.round(m.imsu.fresh) + 'px' : '>4000px'})`);
     }
   }
   report.push({ v, need, needWater, made, m });
 }
 console.log(`  ${padr('마을', 10)}│ ${padr('부족', 22)}│ 심은 것`);
 for (const r of report) {
-  console.log(`  ${padr(r.v.name, 10)}│ ${padr(r.need.map((k) => `${KO[k]}(${r.m.cnt[k]})`).join(' ') + (r.needWater ? ' 식수' : ''), 22)}│ ${r.made.join(' · ')}`);
+  console.log(`  ${padr(r.v.name, 10)}│ ${padr(r.need.map((k) => `${KO[k]}(${r.m.cnt[k]})`).join(' ') + (r.needWater ? ' 임수' : ''), 22)}│ ${r.made.join(' · ')}`);
 }
 const byKind = {};
 for (const g of groves) byKind[g.kind] = (byKind[g.kind] || 0) + 1;
 console.log(`\n── 군락 ${groves.length}개 · ` + Object.entries(byKind).map(([k, n]) => `${ENT_KO[k]} ${n}`).join(' · ') +
             ` · 개체 총 ${groves.reduce((a, g) => a + g.n, 0)}개 (지도 전역 자연물 대비 무시 가능한 밀도)`);
+// ★★★[T14] **배열 순서를 지킨다 — 이게 옵션이 아니라 계약이다.**
+//   `chunk.js` 가 군락 개체의 `seedKey` 를 **배열 인덱스**로 만든다: `gv<gi>_<i>`.
+//   그리고 `harvested_seeds` 는 그 문자열로 "이건 이미 캤다"를 기억한다.
+//   ⇒ 군락 하나를 중간에 끼워 넣으면 **뒤의 모든 군락의 seedKey 가 밀린다** — 캤던 덤불이 되살아나고
+//     안 캔 덤불이 사라진다. 실측(2026-09-01): 그냥 다시 쓰면 옛 군락 **48개 전부** 인덱스가 밀렸고
+//     그중 28개가 채집 대상(덤불·자갈밭 = 84개 seedKey)이었다.
+//   ⇒ 그래서 **옛 배열을 앞에 그대로 두고 새것만 뒤에 붙인다.** 짝은 (마을·종류·중심)으로 맞춘다.
+//   ⚠옛 항목이 새 계획에 없으면(= 계획이 그걸 안 심는다) 그건 **줄어드는 것**이라 아래 가드가 멈춘다.
+function keepOrder(planned, existing) {
+  const key = (g) => `${g.vil}|${g.kind}|${g.center[0]}|${g.center[1]}`;
+  const byKey = new Map(planned.map((g) => [key(g), g]));
+  const out = [];
+  const used = new Set();
+  for (const old of (existing || [])) {
+    const k = key(old);
+    const hit = byKey.get(k);
+    if (!hit) return { ok: false, lost: old };          // 옛 자리가 계획에서 사라졌다 — 가드가 잡는다
+    out.push(hit); used.add(k);
+  }
+  for (const g of planned) if (!used.has(key(g))) out.push(g);
+  return { ok: true, list: out };
+}
+
 if (APPLY) {
-  d.groves = groves;
+  // ★★[T14] **안전장치** — 이 스크립트가 groves 를 통째로 덮어쓰므로, 수가 줄면 사고다.
+  //   (멱등 결함으로 48개를 0개로 덮을 뻔했다 — 그 사고를 이 몇 줄이 막는다.)
+  const existing = d.groves || [];
+  const before = existing.length;
+  if (groves.length < before && !has('--allow-shrink')) {
+    console.error(`\n  ✗ 중단: 군락이 ${before}개 → ${groves.length}개로 **줄어든다**. 측정이 틀렸을 가능성이 크다.`);
+    console.error(`    정말 줄이려면 --allow-shrink 를 붙여라(그럴 이유를 보고서에 적어라).\n`);
+    process.exit(1);
+  }
+  const ord = keepOrder(groves, existing);
+  if (!ord.ok && !has('--allow-shrink')) {
+    console.error(`\n  ✗ 중단: 옛 군락 [${ord.lost.name}]이 새 계획에 없다 — 적용하면 그 뒤의 seedKey 가 전부 밀린다.`);
+    console.error(`    (덤불·자갈밭의 "이미 캤다" 기록이 어긋난다.) 정말이면 --allow-shrink.\n`);
+    process.exit(1);
+  }
+  const finalList = ord.ok ? ord.list : groves;
+  // 접두 검사 — 옛 배열이 앞에 **그대로** 있는가(seedKey 불변의 증거)
+  for (let i = 0; i < before; i++) {
+    const a = existing[i], b = finalList[i];
+    if (!b || a.vil !== b.vil || a.kind !== b.kind || a.center[0] !== b.center[0] || a.center[1] !== b.center[1]) {
+      console.error(`\n  ✗ 중단: 인덱스 ${i} 가 밀렸다 (${a.vil}/${a.kind} → ${b ? b.vil + '/' + b.kind : '없음'}).\n`);
+      process.exit(1);
+    }
+  }
+  d.groves = finalList;
   fs.writeFileSync(GAMEJSON, JSON.stringify(doc));
-  console.log(`  → 적용: ${path.relative(ROOT, GAMEJSON)} 의 groves = ${groves.length}개`);
+  console.log(`  → 적용: ${path.relative(ROOT, GAMEJSON)} 의 groves = ${finalList.length}개` +
+              `  (옛 ${before}개는 인덱스 그대로 · 새 ${finalList.length - before}개는 뒤에 붙임 — seedKey 불변)`);
 } else {
   console.log('  (미적용 — 쓰려면 --apply)');
 }
