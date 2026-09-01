@@ -130,8 +130,10 @@ async function waitHttp(url, tries = 900) {
   const freeze = async (on) => { await page.evaluate((o) => window.__sendPrimary({ type: '__e2e_day_freeze', on: o }), on); await sleep(700); };
   // 사이드바 아이콘을 **실제로 눌러서** 연다 — 메시지만 보내면 §8.2 등록 3단계를 안 재게 된다.
   const openChron = async () => {
+    await page.evaluate(() => { window.__evLastChronicle = null; });   // ★위 주석 — 낡은 응답을 읽지 않는다
     await page.click('.sb-icon[data-side="chronicle"]');
-    await sleep(900);
+    for (let i = 0; i < 30 && !(await page.evaluate(() => !!window.__evLastChronicle)); i++) await sleep(250);
+    await sleep(300);
     return await page.evaluate(() => ({
       title: (document.getElementById('spTitle') || {}).textContent || '',
       open: !!(document.getElementById('sidePanel') || {}).classList?.contains('open'),
@@ -139,10 +141,20 @@ async function waitHttp(url, tries = 900) {
       data: window.__evLastChronicle || null,
     }));
   };
+  // ★★**응답을 기다린다 — 고정 sleep 으로 읽지 않는다.**
+  //   `__evLastChronicle` 은 "마지막으로 받은 것"이라, 600ms 안에 답이 안 오면 **직전 응답을 읽는다.**
+  //   그러면 "지난 해 목록"을 낡은 값으로 들고 "다음 해엔 비었나"를 물어 **없는 결함**을 보고한다
+  //   (이 하네스가 두 번 그렇게 빨개졌다 — 부하가 아니라 하네스가 기다리지 않은 것이다).
+  //   ⇒ 보내기 전에 칸을 비우고, 새 응답이 올 때까지 폴링한다.
   const askChron = async (vid, year) => {
+    await page.evaluate(() => { window.__evLastChronicle = null; });
     await page.evaluate(([v, y]) => window.__sendPrimary({ type: 'village_chronicle', vid: v, year: y }), [vid, year == null ? null : year]);
-    await sleep(600);
-    return await page.evaluate(() => window.__evLastChronicle || null);
+    for (let i = 0; i < 30; i++) {
+      await sleep(250);
+      const c = await page.evaluate(() => window.__evLastChronicle || null);
+      if (c) return c;
+    }
+    return null;
   };
 
   ok(await warpTo(A, 30), `① A(${A.name}) 마을 중심 도착`);
