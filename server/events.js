@@ -22,6 +22,13 @@
 //
 // ★제3 규약: **문턱은 전부 env 손잡이 · 기본값이 채택값**(A/B 재현 규약, lab-wiring-check [A2] 정신).
 //
+// ★★제4 규약 [T7 2026-09-01]: **사건은 순간 전파되지 않는다.**
+//   마을 V 에서 사건 e 가 보인다 ⇔ `today ≥ e.day + (출발 마을 → V 도달 일수)`.
+//   도달 일수의 정본은 `server/rumor.js` 하나이고, 그 시계는 **econ 캐러밴 시계**다(시계 둘 금지).
+//   촌장 브리핑·게시판·시작 화면 근황이 **전부 `visibleEvents` 하나를 통해서만** 사건을 본다 —
+//   사본을 만들면 그날 "촌장은 아는데 게시판은 모르는" 마을이 생긴다.
+//   ⚠도달 전 사건은 **없는 것과 같다**. "소문이 퍼지는 중" 같은 메타 표시를 만들지 마라(디에게틱).
+//
 // ★★채택 근거 — 실지도 51마을 3시드(1020·7·42) 800일 실측(`scripts/ev-density.js`).
 //   재민 확정 목표는 "마을당 2~3일에 1건"이다. 세 후보를 **같은 틱 스트림 위에** 동시에 얹어 쟀다
 //   (장부는 관측자라 여러 개를 한 세계에 달 수 있다 — 카오스 잡음 0 인 A/B):
@@ -91,6 +98,12 @@ const CFG = {
   //   켜면 **게시된 보상이 등가보다 낮아진다**(그게 이 손잡이의 뜻이다). 기본값은 끔.
   REQ_REW_CAP: _num('EV_REQ_REW_CAP', 0),
   BRIEF_N: _num('EV_BRIEF_N', 3),            // 촌장이 한 번에 전하는 건수
+  // ★★[T7 2026-09-01] 복귀 브리핑 — 자리 비운 동안 **이 마을에 도달한** 사건을 몇 줄까지 전하는가.
+  //   ⚠클라(`public/client/30-n-net.js`)의 말풍선은 `lines.slice(0, 3)` 이다 — 3 을 넘겨 보내면
+  //     말풍선엔 3줄만 뜬다(알림 한 줄은 lines[0]). 기본 3 은 그 상한과 맞춘 값이다.
+  RETURN_N: _num('EV_RETURN_N', 3),
+  // 부재가 이 일수 미만이면 평소 브리핑 그대로 — 잠깐 나갔다 온 사람에게 잔소리하지 않는다.
+  RETURN_MIN_DAYS: _num('EV_RETURN_MIN_DAYS', 1),
 };
 
 const TYPES = ['STOCK_SHORTAGE', 'STOCK_GLUT', 'PRICE_SPIKE', 'PRICE_DROP', 'CARAVAN_LATE', 'SEASON_CHANGE'];
@@ -214,6 +227,15 @@ function createLedger(opts) {
   //   det: Map<item, {pEma,pN,short,glut,up,down}>
   //   ring: 최근 KEEP_DAYS 사건
   //   reqs: Map<item, request>
+  // ★★[T7 2026-09-01] 소문 물리 전파 — 도달 시각표. 정본은 `server/rumor.js` 하나다.
+  //   `geo` 가 주입되지 않으면 그래프가 없고, 그러면 **자기 마을 것만 보인다**(T7 이전 동작).
+  //   랩(`econ-lab-real.js`·`ev-density.js`)엔 지형 거리행렬이 없으므로 자연히 그 쪽으로 떨어진다
+  //   — 그래서 이 배치는 econ 기준선을 구조적으로 못 움직인다.
+  const RUMOR = o.geo ? require(path.join(__dirname, 'rumor')).createGraph(o.geo) : null;
+  // 장부가 아는 "오늘". prime/scanDay 가 세운다 — 조회 함수들이 날짜를 따로 받지 않아도
+  // 같은 날을 보게 하는 유일한 자리다(시계 사본 금지).
+  let _lastDay = 0;
+
   const byVid = new Map();
   const st = (vid) => {
     let s = byVid.get(vid);
@@ -256,6 +278,7 @@ function createLedger(opts) {
   //   터지면 그건 뉴스가 아니라 재기동 잡음이다. 시작 상태는 사건이 아니라 **배경**이다.
   function prime(world) {
     const day = world.day | 0;
+    _lastDay = day;
     lastSeason = seasonOf(day);
     world.villages.forEach((v, i) => {
       const vid = vidOf(v, i);
@@ -281,6 +304,7 @@ function createLedger(opts) {
   function scanDay(world, day, extra) {
     const t0 = process.hrtime.bigint();
     const out = [];
+    _lastDay = day | 0;
     const season = seasonOf(day);
     const seasonTurned = (lastSeason != null && season !== lastSeason);
     lastSeason = season;
@@ -368,6 +392,11 @@ function createLedger(opts) {
   // 하루치 사건을 링버퍼·영속·통계에 밀어넣는다(상한이 있으면 |ln(mag)| 큰 것부터 남긴다).
   function commit(s, mine, out) {
     if (!mine.length) return;
+    // ★★[T7] **도달표는 사건이 날 때 한 번 계산한다.** 출발 마을당 한 번이고(51마을이면 최대 51번),
+    //   그 뒤로는 조회도 하루 경계도 그래프를 걷지 않는다. 여기 두는 이유는 "사건이 존재하는 순간
+    //   그 사건이 언제 어디에 닿는지도 이미 정해져 있다"가 이 층의 계약이기 때문이다 —
+    //   조회 때 계산하면 계약이 "조회할 때 정해진다"로 미끄러진다.
+    if (RUMOR) RUMOR.rowOf(s.vid);
     let keep = mine;
     if (cfg.MAX_DAY > 0 && mine.length > cfg.MAX_DAY) {
       keep = mine.slice().sort((a, b) => sev(b) - sev(a)).slice(0, cfg.MAX_DAY);
@@ -534,14 +563,81 @@ function createLedger(opts) {
     if (req) { req.filled = Math.max(0, req.filled - (Number(take) || 0)); stats.reqFilled -= (Number(take) || 0); }
   }
 
+  // ── ★★[T7 2026-09-01] 가시성 술어 — **여기가 유일한 문이다** ────────────────
+  //   재민 확정: *"마을 V 에서 사건 e 가 보인다 ⇔ today ≥ e.reach[V]."*
+  //   게시판·브리핑·시작 화면 근황(온보딩 v2)이 **전부 이 함수를 거쳐서만** 사건을 본다.
+  //   사본을 만들면 그날 "촌장은 아는데 게시판은 모르는" 마을이 생긴다.
+  //
+  // ★도달표를 사건 레코드에 **넣지 않는다**(51칸짜리 객체 × 사건 수 = 순수 낭비).
+  //   도달일은 `사건이 난 날 + 출발마을→그 마을 일수` 이고, 뒤엣것은 출발 마을당 한 번 계산해
+  //   캐시한 표(server/rumor.js)에서 O(1) 로 나온다. DB 스키마도 그대로다(파생값은 저장하지 않는다 —
+  //   신선도를 저장하지 않는 `spoil.js` 와 같은 규약).
+  //
+  // ★직접 목격 예외: 플레이어가 **그 마을에 서 있으면** 그 마을 사건의 지연은 0 이다
+  //   (`delayBetween(v, v) === 0`). 즉 자기 눈으로 본 것은 즉시다 — 규칙을 따로 두지 않았고,
+  //   술어 하나에서 저절로 나온다. "예전에 다른 마을에서 본 것"까지 기억하는 **플레이어별 목격
+  //   기록은 회부**다(이번엔 현재 위치 마을 기준만).
+  function delayTo(fromVid, toVid) {
+    if (fromVid === toVid) return 0;
+    if (!RUMOR) return Infinity;                      // 지형이 없는 랩 — 자기 마을 것만 보인다
+    return RUMOR.delayBetween(fromVid, toVid);
+  }
+  // 사건 e 가 마을 vid 에 **닿는 날**. 못 닿으면 Infinity.
+  function heardDayOf(ev, vid) {
+    const d = delayTo(ev.vid, vid);
+    return isFinite(d) ? (ev.day + d) : Infinity;
+  }
+  function visibleTo(vid, ev, today) {
+    return (today == null ? _lastDay : today) >= heardDayOf(ev, vid);
+  }
+  // 마을 vid 가 오늘까지 들은 사건 — 최신(=들은 날) · 심각 순.
+  //   opts.n        몇 건까지(기본 BRIEF_N)
+  //   opts.today    기준일(기본 = 장부가 아는 오늘)
+  //   opts.sinceDay 이 날 **뒤에** 도달한 것만(복귀 브리핑) — 없으면 전부
+  //   반환: [{ ev, heard }] — `heard` 는 **이 마을이 들은 날**이지 사건이 난 날이 아니다.
+  function visibleEvents(vid, opts) {
+    const o = opts || {};
+    const today = (o.today == null) ? _lastDay : (o.today | 0);
+    const k = Math.max(1, (o.n | 0) || cfg.BRIEF_N);
+    const since = (o.sinceDay == null) ? null : (o.sinceDay | 0);
+    // ★행 하나만 데운다 — 거리행렬이 무향이라 "V 에서 남까지"가 곧 "남에서 V 까지"다.
+    //   이게 없으면 조회 한 번에 마을 수만큼 그래프를 걷는다(test-events ㉒ 가 그걸 잰다).
+    if (RUMOR) RUMOR.rowOf(vid);
+    const out = [];
+    for (const s of byVid.values()) {
+      const dly = delayTo(s.vid, vid);
+      if (!isFinite(dly)) continue;
+      const ring = s.ring;
+      for (let i = ring.length - 1; i >= 0; i--) {
+        const ev = ring[i];
+        const heard = ev.day + dly;
+        if (heard > today) continue;                  // 아직 안 왔다 — 없는 것과 같다
+        if (since != null && heard <= since) break;   // 링은 day 오름차순 → 더 볼 것이 없다
+        out.push({ ev, heard });
+      }
+    }
+    out.sort((a, b) => (b.heard - a.heard) || (sev(b.ev) - sev(a.ev)));
+    return { total: out.length, rows: out.slice(0, k) };
+  }
   // ── 읽기 ───────────────────────────────────────────────────────────────────
+  // ★T7 이후 `recent` 는 **가시성 술어의 얇은 껍데기**다(사본 금지). 날짜를 안 받는 이유는
+  //   장부가 오늘을 알기 때문이다(`_lastDay`) — 호출부마다 시계를 들고 다니면 그게 사본이다.
   function recent(vid, n) {
-    const s = byVid.get(vid);
-    if (!s) return [];
-    const k = Math.max(1, n | 0 || cfg.BRIEF_N);
-    return s.ring.slice(-k * 4)                       // 최근 구간에서
-      .slice().sort((a, b) => (b.day - a.day) || (sev(b) - sev(a)))   // 최신·심각 순
-      .slice(0, k);
+    return visibleEvents(vid, { n }).rows.map((r) => r.ev);
+  }
+  // ★★복귀 브리핑 — "자리 비운 사이 이 마을에 **도달한**" 사건만.
+  //   부재가 RETURN_MIN_DAYS 미만이면 `returned:false` 로 답하고 호출부는 평소 브리핑을 쓴다.
+  function returnBrief(vid, sinceDay, opts) {
+    const o = opts || {};
+    const today = (o.today == null) ? _lastDay : (o.today | 0);
+    if (sinceDay == null || !isFinite(sinceDay)) return { returned: false, absent: 0 };
+    const absent = today - (sinceDay | 0);
+    if (!(absent >= cfg.RETURN_MIN_DAYS)) return { returned: false, absent };
+    const k = Math.max(1, (o.n | 0) || cfg.RETURN_N);
+    const v = visibleEvents(vid, { n: k, today, sinceDay: sinceDay | 0 });
+    return { returned: true, absent, total: v.total, rows: v.rows,
+             lines: v.rows.map((r) => briefLine(r.ev)).filter(Boolean),
+             more: Math.max(0, v.total - v.rows.length) };
   }
   function board(vid) {
     const s = byVid.get(vid);
@@ -571,6 +667,12 @@ function createLedger(opts) {
   return {
     cfg, stats, TYPES,
     prime, scanDay, recent, board, claim, unclaim, ringOf, detOf, loadRing, loadRequest,
+    // ★[T7] 소문 물리 전파 — 가시성 술어와 그 부속. 사본 금지: 사건을 보는 문은 이것뿐이다.
+    visibleEvents, visibleTo, heardDayOf, delayTo, returnBrief,
+    get today() { return _lastDay; },
+    rumorInvalidate: () => { if (RUMOR) RUMOR.invalidate(); },
+    get rumorStats() { return RUMOR ? RUMOR.stats : null; },
+    get hasRumor() { return !!RUMOR; },
     get vids() { return [...byVid.keys()]; },
     deliverable: DEL,
   };

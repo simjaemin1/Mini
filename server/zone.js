@@ -303,6 +303,10 @@ function serializeBody(p) {
     kgLedger: Carry.toSave(p),       // ★[무게] 개체 실제 kg 장부(1.7kg 물고기 ≠ 0.4kg 물고기)
     lots: Lots.toSave(p),            // ★[무게] 식품 로트(취득일) — 부패 곡선이 앉을 자리
     craftLog: p.craftLog || {},      // ★[시설 제작창] 제작 이력(횟수·최고 품질) — §8.4 스킬 패널이 읽을 씨앗
+    // ★★[T7 2026-09-01] **마지막으로 세계를 본 게임일** — 복귀 브리핑의 유일한 근거.
+    //   벽시계(ms)가 아니라 게임일이다: 촌장이 세는 건 날이지 초가 아니고, 달력·사건·작물이
+    //   전부 그 시계를 본다(`gameDayNow` — 시계 사본 금지). 값 선택 규칙은 `_lastSeenDayToSave`.
+    lastSeenDay: _lastSeenDayToSave(p),
     // ★생명값 — **핸드오프만** 쓴다(아래 `parseBody(.., {vitals:true})`).
     //   존을 넘는 것은 한 접속의 연속이므로 여기서 HP 가 회복되면 그건 결함이다(같은 존 안에서는
     //   `_takeover` 가 이미 잇고 있다). 반면 **로그아웃 후 재접속의 풀피는 정책**이고, 그건
@@ -318,6 +322,7 @@ function parseBody(raw, opts) {
     toolItems: [], hotkey1: null, equipped: null,
     equipment: [], equipSlots: {}, craftSkill: {}, craftLog: {},
     oreLedger: {}, oreCarry: {}, fishStats: null, body: null, kgLedger: null, lots: null, vital: null,
+    lastSeenDay: null,   // ★[T7] 없으면 처음 온 사람 — 복귀 브리핑은 안 나간다
   };
   if (Array.isArray(o.equipment)) out.equipment = o.equipment;
   if (o.equipSlots && typeof o.equipSlots === 'object') out.equipSlots = o.equipSlots;
@@ -329,6 +334,7 @@ function parseBody(raw, opts) {
   if (o.body && typeof o.body === 'object') out.body = o.body;
   if (o.kgLedger && typeof o.kgLedger === 'object') out.kgLedger = o.kgLedger;
   if (o.lots && typeof o.lots === 'object') out.lots = o.lots;
+  if (Number.isFinite(o.lastSeenDay)) out.lastSeenDay = o.lastSeenDay | 0;   // ★[T7]
   if (opts && opts.vitals && o.vital && typeof o.vital === 'object') out.vital = o.vital;
   // 14.53: 옛 tools (object 또는 number 형식) → 새 toolItems list 변환
   if (Array.isArray(o.toolItems)) {
@@ -339,7 +345,8 @@ function parseBody(raw, opts) {
     // 옛 형식 — { axe: number|{d,max} } → instance 변환
     for (const [tn, val] of Object.entries(o)) {
       if (['hotkey1', 'toolItems', 'equipped', 'equipment', 'equipSlots', 'craftSkill', 'craftLog',
-           'oreLedger', 'oreCarry', 'fishStats', 'body', 'kgLedger', 'lots', 'vital'].includes(tn)) continue;
+           'oreLedger', 'oreCarry', 'fishStats', 'body', 'kgLedger', 'lots', 'vital',
+           'lastSeenDay'].includes(tn)) continue;
       const mx = TOOL_MAX_DURABILITY[tn] || 100;
       let d = mx;
       if (typeof val === 'number' && val > 0) d = mx;
@@ -352,6 +359,19 @@ function parseBody(raw, opts) {
   return out;
 }
 
+// ★★[T7 2026-09-01] **아직 전하지 못한 부재는 저장본을 앞당기지 않는다.**
+//   왜: 클라는 입장 직후 소켓을 한 번 갈아 끼운다(`ensurePrimaryConnection` 의 close→connect).
+//   그 사이 첫 접속의 저장이 기준일을 **오늘로** 덮으면, 두 번째 접속은 "부재 0일" 로 태어난다.
+//   승계(`_takeover`)가 걸리면 메모리로 넘어가지만, 부하가 높은 판에서는 옛 몸이 이미 지워진 뒤라
+//   승계가 안 걸린다 — 그러면 저장본이 유일한 진실이고, 그 저장본이 이미 거짓이 되어 있다.
+//   (`e2e-rumor` 가 러너 연속 실행에서만 그 갈래를 밟았다 — 족보 ㊾ 의 "부하 의존" 이 아니라 **경합**이었다.)
+//   ⇒ 브리핑으로 **전해질 때까지** 기준일을 붙잡아 둔다. 전한 뒤에는 평소대로 오늘을 찍는다.
+//   ⇒ 접속을 끊을 때는 close 핸들러가 `player.lastSeenDay` 를 **그날로 먼저 찍으므로**,
+//     "마을에 한 번도 안 들른 채 로그아웃" 해도 다음 부재는 로그아웃 시점부터 센다.
+function _lastSeenDayToSave(player) {
+  if (!player._returnBriefDone && Number.isFinite(player.lastSeenDay)) return player.lastSeenDay;
+  return gameDayNow();
+}
 function savePlayer(player, extra = {}) {
   if (!canPersist(player)) return;
   // wood/stone은 별도 컬럼, 나머지 아이템(berry, meat_raw 등)은 inventory_json에
@@ -2832,6 +2852,7 @@ async function _acceptConnection(ws, req, C) {
   let _loadBody = null;        // ★[신체 상태 §7] 추위·피로·부상·사기
   let _loadKgLedger = null;    // ★[무게] 개체 실제 kg 장부
   let _loadLots = null;        // ★[무게] 식품 로트(취득일)
+  let _loadLastSeenDay = null; // ★[T7] 마지막으로 세계를 본 게임일 — 복귀 브리핑의 근거
   let initHunger = HUNGER_MAX, initThirst = THIRST_MAX, initVp = 0;
   let initVital = null;        // ★[T47] 핸드오프에서만 채워진다 — 존을 넘어도 HP·다운이 이어진다
   let initTribeId = null, initTribeName = null;
@@ -2893,6 +2914,7 @@ async function _acceptConnection(ws, req, C) {
       _loadEquipment = B.equipment; _loadEquipSlots = B.equipSlots; _loadCraftSkill = B.craftSkill;
       _loadCraftLog = B.craftLog; _loadOreLedger = B.oreLedger; _loadOreCarry = B.oreCarry;
       _loadFishStats = B.fishStats; _loadBody = B.body; _loadKgLedger = B.kgLedger; _loadLots = B.lots;
+      _loadLastSeenDay = B.lastSeenDay;   // ★[T7] 존을 넘어도 부재 기준일은 따라간다(핸드오프는 부재가 아니다)
       equipped = B.equipped || pending.equipped || null;
       initVital = B.vital;
       tools = { __toolItems: B.toolItems, __hotkey1: B.hotkey1 };
@@ -3024,6 +3046,7 @@ async function _acceptConnection(ws, req, C) {
         _loadEquipment = B.equipment; _loadEquipSlots = B.equipSlots; _loadCraftSkill = B.craftSkill;
         _loadCraftLog = B.craftLog; _loadOreLedger = B.oreLedger; _loadOreCarry = B.oreCarry;
         _loadFishStats = B.fishStats; _loadBody = B.body; _loadKgLedger = B.kgLedger; _loadLots = B.lots;
+        _loadLastSeenDay = B.lastSeenDay;   // ★[T7] 복귀 브리핑 기준일(게임일)
         if (B.equipped) equipped = B.equipped;
         // 저장용: 임시 wrap 객체 — 실제 player.toolItems/hotkey1 은 player 생성 시 풀린다
         tools = { __toolItems: B.toolItems, __hotkey1: B.hotkey1 };
@@ -3157,6 +3180,9 @@ async function _acceptConnection(ws, req, C) {
     kgLedger: _loadKgLedger,    // ★[무게] 개체 실제 kg — 재접속을 넘어 살아남는다(하네스 ⑦)
     lots: _loadLots,            // ★[무게] 식품 취득일 — 나이를 잃으면 로트가 거짓말이 된다
     body: _loadBody ? { cold: 0, fatigue: 0, injury: 0, morale: 0, herbUntil: 0, stages: {}, ..._loadBody } : null,
+    // ★[T7] 마지막으로 세계를 본 게임일. **null = 처음 온 사람** — 복귀 브리핑은 안 나간다
+    //   (첫 접속에 "0일 만이군" 은 거짓말이고, 첫 인사는 온보딩 몫이다).
+    lastSeenDay: _loadLastSeenDay,
     // ★[T47] 존을 넘을 때만 생명값을 잇는다(`initVital` 은 핸드오프에서만 채워진다).
     //   로그아웃 후 재접속의 풀피는 **정책**이라 그대로다 — 죽음 설계(T8) 소관.
     hp: (initVital && typeof initVital.hp === 'number') ? initVital.hp : PLAYER_MAX_HP,
@@ -3201,6 +3227,16 @@ async function _acceptConnection(ws, req, C) {
     player.oreCarry = _takeover.oreCarry !== undefined ? _takeover.oreCarry : player.oreCarry;
     player.kgLedger = _takeover.kgLedger || player.kgLedger;   // ★[무게] 들고 있던 개체 그대로
     player.lots = _takeover.lots || player.lots;               // ★[무게] 식품 나이 그대로
+    // ★★[T7 2026-09-01] **부재 기준일도 몸을 따라온다.** 안 그러면 클라가 입장 직후 한 번
+    //   재접속할 때(`ensurePrimaryConnection` 의 close→connect) 이 값이 **저장본**에서 다시 읽히는데,
+    //   그 저장본은 **방금 그 첫 접속이 오늘 날짜로 덮어쓴 것**이다 ⇒ 부재가 통째로 사라진다.
+    //   `e2e-rumor` 가 실측으로 잡았다: 26일을 비웠는데 촌장이 "5일 만이군" 이라고 했다.
+    //   (몸이 살아 있으면 그 몸이 진실 — B-6 규약을 이 축에도 그대로 적용한다.)
+    //   ⚠**덮어쓰기가 아니라 보강이다.** 살아 있던 몸이 그 값을 아직 가진 적이 없을 수도 있다
+    //     (처음 온 사람은 null 이다) — 그때는 **저장본에서 읽은 값이 진실**이다.
+    //     무조건 대입하면 그 사람의 부재가 통째로 사라진다(1차 수리가 그렇게 뒤집혔다).
+    if (Number.isFinite(_takeover.lastSeenDay)) player.lastSeenDay = _takeover.lastSeenDay;
+    if (_takeover._returnBriefDone) player._returnBriefDone = true;
     if (typeof _takeover.hp === 'number') player.hp = _takeover.hp;
     if (typeof _takeover.hunger === 'number') player.hunger = _takeover.hunger;
     if (typeof _takeover.thirst === 'number') player.thirst = _takeover.thirst;
@@ -4279,6 +4315,12 @@ function attachPlayerHandlers(ws, player) {
       players.delete(player.pid);
       return;   // player_left 는 승계 시점에 이미 방송했다
     }
+    // ★★[T7] **여기가 "자리를 비우기 시작한 날"이다.** 저장본에만 찍지 않고 **메모리에도** 찍는다 —
+    //   이 몸이 잠깐 더 서 있다가 다음 세션에 승계될 수 있고(위 `_takeover`), 그때 이 값이
+    //   따라가야 부재가 옳게 잡힌다. 밀려난 세션(`_supersededBy`)은 위에서 이미 빠져나갔다:
+    //   그건 **사람이 나간 게 아니라 소켓이 바뀐 것**이라 부재가 아니다.
+    player.lastSeenDay = gameDayNow();
+    player._returnBriefDone = false;   // 다음 세션은 다시 받을 자격이 있다(승계되면 그대로 따라간다)
     savePlayer(player, { last_zone: ZONE_ID, last_x: player.x, last_y: player.y });
     players.delete(player.pid);
     console.log(`[${ZONE_ID}] - ${player.name} (${player.pid})  total=${players.size}`);
@@ -7014,10 +7056,25 @@ function tryVillageDeposit(player, buildingId, want) {
 //   ⚠권한 게이트(`_furnaceCanUse`)는 여기 **없다** — 회관 재고 열람과 달리 촌장의 말과 게시판은
 //     그 마을 사람이 아니어도 듣고 볼 수 있어야 한다(온보딩 §9.4: 이방인이 촌장에게 첫 의뢰를 받는다).
 //     남의 곳간을 여는 게 아니라 **공개 게시판을 읽는 것**이라 다른 계약이다.
+// ★★[T7 2026-09-01] **복귀 브리핑은 평소 브리핑과 같은 진입점을 쓴다.**
+//   촌장이 말을 거는 자리는 하나여야 한다 — 두 개면 "누가 먼저 말하나"를 관리하게 되고,
+//   온보딩 v2 의 "촌장이 먼저 말을 건다" 훅이 착지하면 그때 또 세 번째가 생긴다.
+//   ⇒ 진입점은 여기 하나이고, **무엇을 말할지는 서버(장부)가 정한다**.
+//   ⚠온보딩 v2 가 아직 안 들어왔다(base `66ec6f99` 실측 — `events.js` 에 "첫 의뢰 표지" 필드 없음).
+//     들어오면 그 훅이 이 함수를 부르게 합칠 것 — 인계에 한 줄 적었다.
 function tryVillageBrief(player, vid) {
   if (!SimVillages.villageBrief) return;
-  const r = SimVillages.villageBrief(vid | 0, player.x, player.y);
+  // ★부재 요약은 **접속당 한 번**이다. 두 번째부터는 평소 브리핑으로 돌아간다 —
+  //   안 그러면 접속한 채로 사흘 돌아다니다 마을에 들르면 "사흘 만이군" 소리를 듣는다
+  //   (부재는 **사람이 자리를 비운 것**이지 마을에 안 들른 것이 아니다).
+  const since = (!player._returnBriefDone && Number.isFinite(player.lastSeenDay)) ? (player.lastSeenDay | 0) : null;
+  const r = SimVillages.villageBrief(vid | 0, player.x, player.y, { sinceDay: since });
   if (r.err) { send(player.ws, { type: 'notice', text: `🏘️ ${r.err}` }); return; }
+  if (since != null) {           // 게이트를 통과해 실제로 브리핑이 나갔다 — 이 접속의 몫은 끝났다
+    player._returnBriefDone = true;
+    player.lastSeenDay = r.day | 0;
+    if (canPersist(player)) savePlayer(player);
+  }
   send(player.ws, { type: 'village_brief', brief: r });
 }
 function tryVillageBoard(player, vid) {

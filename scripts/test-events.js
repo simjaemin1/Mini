@@ -525,6 +525,264 @@ if (REQ_CTX) {
   }
 }
 
+// ═════════════════════════════════════════════════════════════════════════════
+// ★★[T7 2026-09-01] 소문 물리 전파 + 복귀 브리핑 — ⑲ ~ ㉚
+//   설계: 사건은 순간 전파되지 않는다. 이웃 마을 소식은 캐러밴이 걸어온 뒤에 들린다.
+//   ⚠이 절의 픽스처는 **거리를 직접 만든다**(일렬 배치). 엔진이 뽑은 좌표에 기대면
+//     "먼 마을"인지 아닌지가 시드마다 달라져, 검사가 무엇을 재는지 알 수 없게 된다.
+//     대신 **픽스처가 의도한 상황이 실제로 성립하는지**를 매 절 먼저 assert 한다(족보 ⑯·㊶).
+// ═════════════════════════════════════════════════════════════════════════════
+const Rumor = R('server/rumor');
+
+// 일렬 마을 배치 — i번 마을이 x = i*600. 이웃 간 600px = 1일, 0↔3 은 1800px = 4일.
+//   ⇒ **징검다리(1+1+1=3일)가 직행(4일)보다 빠르다.** 다단 전파가 진짜로 필요한 배치다.
+const CHAIN_PX = 600;
+function chainGeo(n) {
+  const ids = []; for (let i = 0; i < n; i++) ids.push(i);
+  return { vids: () => ids, dist: (a, b) => Math.abs(a - b) * CHAIN_PX };
+}
+const mkLedgerGeo = (world, geo, cfg) => {
+  const L = Events.createLedger({ econV2, vidOf, depositMap: Villages.playerVillageDepositMap(), cfg, geo });
+  L.prime(world);
+  return L;
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ⑲ econ 캐러밴 시계와의 **동기 계약** — 소문은 행상과 같은 속도로 걷는다
+//    ⚠자기 자신을 검사하지 않는다: econ 이 **실제로 띄운 캐러밴**의 travelDays 와 대조한다.
+// ─────────────────────────────────────────────────────────────────────────────
+{
+  // 여러 시드에서 캐러밴을 모아 **거리 폭**을 넓힌다(한 판 5건으론 계약을 못 잰다).
+  // ⚠**재routing·포기한 캐러밴은 제외한다** — econ 이 재routing 때 `c.distance` 는 새 목적지로
+  //   갈아치우면서 `c.travelDays` 는 **원래 구간 값 그대로 둔다**(economy-sim-v2.js:949-955).
+  //   즉 그 레코드는 econ 안에서도 서로 안 맞는다. 이 하네스가 처음 그걸 잡았고, 회부에 적었다.
+  //   그래서 계약 대조는 **한 번도 안 꺾인 캐러밴**으로만 한다(그게 이 시계의 정의역이다).
+  const cars = [];
+  for (const seed of [1020, 7, 42]) {
+    const w = makeWorld(240, seed);
+    for (const c of (w.caravans || [])) {
+      if (!c || !isFinite(c.distance) || !isFinite(c.travelDays)) continue;
+      if (c._rerouted || c._abandoned) continue;
+      cars.push(c);
+    }
+  }
+  ok(cars.length > 0, '⑲a 전제: econ 이 실제로 캐러밴을 띄웠다(대조할 실물이 있다)', `caravans=${cars.length}`);
+  let bad = null, span = [Infinity, -Infinity], legOk = true;
+  for (const c of cars) {
+    span = [Math.min(span[0], c.distance), Math.max(span[1], c.distance)];
+    if ((c.arriveDay - c.departDay) !== c.travelDays) legOk = false;     // 레코드 자체의 정합
+    if (Rumor.travelDaysOf(c.distance) !== c.travelDays) { bad = c; break; }
+  }
+  ok(legOk, '⑲c 전제: 대조에 쓰는 레코드가 econ 안에서 정합하다(arriveDay−departDay = travelDays)');
+  ok(cars.length > 0 && !bad, '⑲ 소문 시계 = econ 캐러밴 시계(travelDaysForDistance 동기 계약)',
+    bad ? `dist=${bad.distance} econ=${bad.travelDays} rumor=${Rumor.travelDaysOf(bad.distance)}`
+        : `거리 ${span[0].toFixed(0)}~${span[1].toFixed(0)}px · ${cars.length}건 전수`);
+  const daySet = new Set(cars.map((c) => c.travelDays));
+  ok(daySet.size >= 2, '⑲b 전제: 대조 구간이 한 점이 아니다(일수가 여러 값으로 갈린다)',
+    `일수 {${[...daySet].sort((a, b) => a - b).join(',')}} · 거리 폭 ${(span[1] - span[0]).toFixed(0)}px`);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ⑳ 도달표 — 결정론 · 자기 마을 즉시 · 대칭 · 거리 단조 · 다단 전파 = 최단 경로
+// ─────────────────────────────────────────────────────────────────────────────
+{
+  const world = makeWorld(120, 7);
+  const N = world.villages.length;
+  ok(N >= 4, '⑳a 전제: 마을이 4곳 이상이라 다단 전파를 잴 수 있다', `N=${N}`);
+  const L1 = mkLedgerGeo(world, chainGeo(N));
+  const L2 = mkLedgerGeo(world, chainGeo(N));
+  const tab = (L) => { const t = []; for (let a = 0; a < N; a++) for (let b = 0; b < N; b++) t.push(L.delayTo(a, b)); return t.join(','); };
+  ok(tab(L1) === tab(L2), '⑳ 도달표는 결정론적이다(같은 배치 = 같은 표 · 주사위 0)');
+
+  let self = true; for (let a = 0; a < N; a++) if (L1.delayTo(a, a) !== 0) self = false;
+  ok(self, '⑳b 발생 마을은 **즉시** 안다(지연 0)');
+
+  let sym = true; for (let a = 0; a < N; a++) for (let b = 0; b < N; b++) if (L1.delayTo(a, b) !== L1.delayTo(b, a)) sym = false;
+  ok(sym, '⑳c 도달 지연은 대칭이다(거리행렬이 무향이라는 전제의 검사)');
+
+  let mono = true, prev = -1;
+  for (let b = 0; b < N; b++) { const d = L1.delayTo(0, b); if (d < prev) mono = false; prev = d; }
+  ok(mono, '⑳d 거리 단조 — 먼 마을이 가까운 마을보다 먼저 듣지 않는다',
+    Array.from({ length: N }, (_, b) => L1.delayTo(0, b)).join(','));
+
+  // 다단 전파 = 최단 경로 합. 일렬 배치에서 0→3 은 직행 4일, 징검다리 3일.
+  const direct = Rumor.travelDaysOf(3 * CHAIN_PX);
+  const hop = 3 * Rumor.travelDaysOf(CHAIN_PX);
+  ok(direct > hop, '⑳e 전제: 이 배치에서 **직행이 징검다리보다 느리다**(다단 전파가 실제로 필요한 상황)',
+    `직행 ${direct}일 vs 3홉 ${hop}일`);
+  ok(L1.delayTo(0, 3) === hop, '⑳f 다단 전파 = 최단 경로 합(직행보다 짧은 길을 찾는다)', `${L1.delayTo(0, 3)}일`);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ㉑ 도달 전 사건은 **어느 경로로도** 보이지 않는다 — 그리고 도달일에 정확히 보인다
+// ─────────────────────────────────────────────────────────────────────────────
+{
+  const world = makeWorld(150, 42);
+  const N = world.villages.length;
+  const L = mkLedgerGeo(world, chainGeo(N));
+  const FAR = N - 1;
+  // 마을 0 에 부족을 만들어 사건 1건을 낸다(에지 트리거 — 래치가 꺼진 자리를 고른다)
+  const t = pickFresh(world, L, { minEma: 0.05 });
+  ok(!!t && t.vid === 0 || !!t, '㉑a 전제: 래치가 꺼진 표적을 찾았다', t ? `v${t.vid} ${t.r}` : '없음');
+  let target = null;
+  for (const [r, e] of Object.entries(world.villages[0]._consEMA || {})) {
+    if (r.charCodeAt(0) === 95 || !(e > 0.05)) continue;
+    const d = L.detOf(0, r);
+    if (d && d.short) continue;
+    const thr = e * L.cfg.SHORT_DAYS;
+    if (+(world.villages[0].storage[r] || 0) > thr * L.cfg.HYST * 1.2) { target = { r, thr }; break; }
+  }
+  ok(!!target, '㉑b 전제: 마을 0 에서 부족 래치가 꺼진 품목을 골랐다', target ? target.r : '없음');
+  if (target) {
+    const D0 = world.day + 1;
+    world.villages[0].storage[target.r] = +(target.thr * 0.5).toFixed(3);
+    const evs = L.scanDay(world, D0, {});
+    const mine = evs.filter((e) => e.vid === 0 && e.item === target.r && e.type === 'STOCK_SHORTAGE');
+    ok(mine.length === 1, '㉑c 전제: 마을 0 에서 그 사건이 실제로 났다', `${mine.length}건`);
+    if (mine.length === 1) {
+      const ev = mine[0];
+      const lag = L.delayTo(0, FAR);
+      ok(lag >= 2, `㉑d 전제: 픽스처의 사건은 **먼 마을**(v${FAR}) 것이다 — 지연 ${lag}일`, `lag=${lag}`);
+      // 발생 마을에선 그날 즉시 보인다
+      ok(L.visibleTo(0, ev, D0), '㉑e 발생 마을은 그날 바로 본다');
+      // 먼 마을에선 도달일 전날까지 **어느 문으로도** 안 보인다
+      let hiddenAll = true, seenDoor = null;
+      for (let d = D0; d < D0 + lag; d++) {
+        if (L.visibleTo(FAR, ev, d)) { hiddenAll = false; seenDoor = `visibleTo@${d}`; }
+        if (L.visibleEvents(FAR, { today: d, n: 50 }).rows.some((x) => x.ev === ev)) { hiddenAll = false; seenDoor = `visibleEvents@${d}`; }
+        const rb = L.returnBrief(FAR, D0 - 1, { today: d, n: 50 });
+        if (rb.rows && rb.rows.some((x) => x.ev === ev)) { hiddenAll = false; seenDoor = `returnBrief@${d}`; }
+      }
+      ok(hiddenAll, '㉑ 도달 전 사건은 **어느 경로로도** 보이지 않는다(브리핑·근황·복귀 전부)', seenDoor || '');
+      const arrive = D0 + lag;
+      ok(L.visibleTo(FAR, ev, arrive), '㉑f 도달일에 정확히 보인다(하루도 이르지도 늦지도 않다)', `day ${arrive}`);
+      ok(L.visibleEvents(FAR, { today: arrive, n: 50 }).rows.some((x) => x.ev === ev), '㉑g 근황·게시판이 쓰는 술어도 같은 날 답이 바뀐다');
+      ok(L.heardDayOf(ev, FAR) === arrive && L.heardDayOf(ev, 0) === D0, '㉑h 도달일 = 사건일 + 지연(둘 다)',
+        `${L.heardDayOf(ev, 0)} / ${L.heardDayOf(ev, FAR)}`);
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ㉒ 가시성 술어는 **문 하나** — recent·visibleEvents·returnBrief 가 같은 답을 낸다
+//    (villages.js 의 게시판 `news` 와 근황 `villageNews` 는 이 함수 하나를 부른다 — 실서버
+//     경로는 `e2e-rumor` 가 화면까지 잰다. 여기선 장부 층의 단일 문을 검사한다.)
+// ─────────────────────────────────────────────────────────────────────────────
+{
+  const world = makeWorld(150, 1020);
+  const N = world.villages.length;
+  const L = mkLedgerGeo(world, chainGeo(N));
+  for (let k = 0; k < 40; k++) { econV2.tickWorldV2(world); L.scanDay(world, world.day, {}); }
+  let same = true, crossSeen = 0, detail = '';
+  for (let v = 0; v < N; v++) {
+    const vis = L.visibleEvents(v, { n: L.cfg.BRIEF_N }).rows.map((x) => x.ev);
+    const rec = L.recent(v, L.cfg.BRIEF_N);
+    if (vis.length !== rec.length || vis.some((e, i) => e !== rec[i])) { same = false; detail = `v${v}`; }
+    crossSeen += L.visibleEvents(v, { n: 500 }).rows.filter((x) => x.ev.vid !== v).length;
+  }
+  ok(same, '㉒ `recent` 는 가시성 술어의 껍데기다(두 문이 같은 답)', detail);
+  ok(crossSeen > 0, '㉒b 전제: 이 판에서 **남의 마을 사건이 실제로 도달했다**(검사가 자명 통과가 아니다)',
+    `교차 도달 ${crossSeen}건`);
+  // 술어가 실제로 자르고 있는가 — 아직 안 온 것이 남아 있어야 이 검사가 뜻이 있다
+  let pending = 0;
+  for (let v = 0; v < N; v++) for (const w of [...Array(N).keys()]) {
+    if (w === v) continue;
+    for (const ev of L.ringOf(w)) if (L.heardDayOf(ev, v) > L.today) pending++;
+  }
+  ok(pending > 0, '㉒c 전제: 아직 도달하지 않은 사건이 남아 있다(술어가 실제로 뭔가를 자르고 있다)', `미도달 ${pending}건`);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ㉓ 복귀 브리핑 — 부재 기간 것만 · 상한 · 1게임일 미만 무발동 · 두 번째엔 중복 없음
+// ─────────────────────────────────────────────────────────────────────────────
+{
+  const world = makeWorld(150, 7);
+  const N = world.villages.length;
+  const L = mkLedgerGeo(world, chainGeo(N));
+  for (let k = 0; k < 40; k++) { econV2.tickWorldV2(world); L.scanDay(world, world.day, {}); }
+  const V = 0, today = L.today;
+  const since = today - 10;
+
+  const rb = L.returnBrief(V, since, { n: 3 });
+  ok(rb.returned === true, '㉓a 전제: 부재 10일 → 복귀 브리핑이 발동한다', `absent=${rb.absent}`);
+  ok(rb.rows.length > 0, '㉓b 전제: 그 기간에 이 마을이 들은 사건이 실제로 있다', `${rb.total}건 중 ${rb.rows.length}줄`);
+
+  const outOfWindow = rb.rows.filter((x) => x.heard <= since || x.heard > today);
+  ok(outOfWindow.length === 0, '㉓ 부재 기간에 **도달한** 것만 전한다(사건이 난 날이 아니라 들은 날 기준)',
+    outOfWindow.length ? JSON.stringify(outOfWindow[0]) : '');
+  ok(rb.rows.length <= 3 && rb.lines.length <= 3, '㉓c 문장 수 상한(EV_RETURN_N)이 지켜진다', `${rb.lines.length}줄`);
+  ok(rb.more === Math.max(0, rb.total - rb.rows.length), '㉓d "그 밖에 n건" 이 실제 잔여와 일치한다', `more=${rb.more} total=${rb.total}`);
+
+  // 부재 0일 — 발동하지 않는다
+  ok(L.returnBrief(V, today, { n: 3 }).returned === false, '㉓e 부재 1게임일 미만이면 발동하지 않는다(잔소리 금지)');
+  ok(L.returnBrief(V, null, { n: 3 }).returned === false, '㉓f 기준일이 없으면(처음 온 사람) 발동하지 않는다');
+
+  // 두 번째 재접속 — 기준일을 첫 브리핑 시점으로 올리면 같은 사건이 다시 나오지 않는다
+  const first = new Set(rb.rows.map((x) => x.ev));
+  const second = L.returnBrief(V, today, { today, n: 3 });
+  ok(second.returned === false, '㉓g 재접속 두 번째(같은 날) — 중복 브리핑 없음');
+  // 하루가 더 흐른 뒤라면: 그 하루에 도달한 것만 나온다
+  econV2.tickWorldV2(world); L.scanDay(world, world.day, {});
+  const third = L.returnBrief(V, today, { n: 20 });
+  const dup = third.rows.filter((x) => first.has(x.ev));
+  ok(dup.length === 0, '㉓h 이미 전한 사건은 다시 전하지 않는다(창이 겹치지 않는다)', `중복 ${dup.length}건`);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ㉔ 틱 비용 — 조회는 그래프를 걷지 않는다(캐시 적중) · 하루 경계는 출발 마을당 한 번뿐
+// ─────────────────────────────────────────────────────────────────────────────
+{
+  const world = makeWorld(150, 42);
+  const N = world.villages.length;
+  const L = mkLedgerGeo(world, chainGeo(N));
+  for (let k = 0; k < 30; k++) { econV2.tickWorldV2(world); L.scanDay(world, world.day, {}); }
+  const w0 = L.rumorStats.walks;
+  ok(w0 > 0, '㉔a 전제: 도달표를 실제로 계산했다(검사가 0=0 자명 통과가 아니다)', `walks=${w0}`);
+  ok(w0 <= N, '㉔b 그래프 걷기는 **출발 마을당 한 번**을 넘지 않는다', `walks=${w0} ≤ 마을 ${N}`);
+  for (let q = 0; q < 200; q++) { L.recent(q % N, 3); L.visibleEvents(q % N, { n: 8 }); L.returnBrief(q % N, L.today - 5, { n: 3 }); }
+  ok(L.rumorStats.walks === w0, '㉔ 조회 600회에 그래프 걷기 **0회**(전부 캐시 적중)', `walks=${L.rumorStats.walks}`);
+  const before = L.rumorStats.walks;
+  for (let k = 0; k < 20; k++) { econV2.tickWorldV2(world); L.scanDay(world, world.day, {}); }
+  ok(L.rumorStats.walks === before, '㉔c 하루 경계 20일에도 추가 걷기 0회(표는 한 번 서면 그대로다)');
+  // 마을 배치가 바뀌면(무효화) 다시 데운다 — 낡은 표를 들고 있지 않는다
+  L.rumorInvalidate();
+  L.recent(0, 3);
+  ok(L.rumorStats.walks > before, '㉔d 무효화 뒤에는 다시 계산한다(마을이 늘면 표가 낡는다)', `walks=${L.rumorStats.walks}`);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ㉕ **지리가 없으면 T7 이전 그대로다** — 랩(econ 단독)이 기준선을 못 움직이는 구조적 근거
+// ─────────────────────────────────────────────────────────────────────────────
+{
+  const world = makeWorld(150, 7);
+  const N = world.villages.length;
+  const L = mkLedger(world);                       // geo 주입 없음 = 랩 경로
+  ok(L.hasRumor === false, '㉕a 전제: 지리 주입이 없으면 도달표가 아예 없다(랩 경로)');
+  for (let k = 0; k < 30; k++) { econV2.tickWorldV2(world); L.scanDay(world, world.day, {}); }
+  let cross = 0;
+  for (let v = 0; v < N; v++) cross += L.visibleEvents(v, { n: 500 }).rows.filter((x) => x.ev.vid !== v).length;
+  ok(cross === 0, '㉕ 지리가 없으면 남의 마을 사건은 **영영 안 보인다**(T7 이전 동작 = 기준선 불변)', `교차 ${cross}건`);
+  // 그리고 자기 마을 것은 종전과 같이 전부 보인다
+  let ownOk = true;
+  for (let v = 0; v < N; v++) {
+    const ring = L.ringOf(v);
+    if (!ring.length) continue;
+    if (!L.visibleTo(v, ring[ring.length - 1], L.today)) ownOk = false;
+  }
+  ok(ownOk, '㉕b 자기 마을 사건은 종전대로 전부 보인다');
+  // 손잡이 하나(RUMOR_OFF)로 지리가 있어도 같은 상태를 만든다 — A/B 재현
+  const prevOff = process.env.RUMOR_OFF;
+  process.env.RUMOR_OFF = '1';
+  delete require.cache[require.resolve(path.join(__dirname, '..', 'server', 'rumor.js'))];
+  const L2 = mkLedgerGeo(world, chainGeo(N));
+  for (let k = 0; k < 10; k++) { econV2.tickWorldV2(world); L2.scanDay(world, world.day, {}); }
+  let cross2 = 0;
+  for (let v = 0; v < N; v++) cross2 += L2.visibleEvents(v, { n: 500 }).rows.filter((x) => x.ev.vid !== v).length;
+  ok(cross2 === 0, '㉕c 손잡이 `RUMOR_OFF=1` 이면 지리가 있어도 T7 이전 동작(A/B 재현 가능)', `교차 ${cross2}건`);
+  if (prevOff == null) delete process.env.RUMOR_OFF; else process.env.RUMOR_OFF = prevOff;
+  delete require.cache[require.resolve(path.join(__dirname, '..', 'server', 'rumor.js'))];
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
 try { require('fs').unlinkSync(process.env.DB_PATH); } catch (e) {}

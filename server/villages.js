@@ -1363,6 +1363,9 @@ function computeAndInjectDistMatrix(reason, opts) {
   }
   // 주입 + 로그(유클리드 대비 증가율 — 강·산 우회가 잡히면 일부 쌍이 1.0×보다 커야 함)
   state.econ.setDistMatrix(world, mat);
+  // ★[T7] 거리가 바뀌면 소문 도달표도 거짓이 된다 — 마을이 하나 늘어도 마찬가지다(행 크기가 바뀐다).
+  //   캐시를 비우는 것뿐이라 비용 0이고, 다음 사건이 알아서 다시 데운다.
+  try { if (state.ledger && state.ledger.rumorInvalidate) state.ledger.rumorInvalidate(); } catch (e) {}
   let pairs = 0, unreach = 0, sumR = 0, maxR = 1, longer = 0, maxD = 0;
   for (let i = 0; i < M; i++) for (let j = i + 1; j < M; j++) {
     const d = mat[i][j];
@@ -4409,6 +4412,19 @@ function _initLedger() {
     // econ 마을 객체 → dbId. 랩은 인덱스를 쓰고 서버는 dbId 를 쓴다 — 장부는 어느 쪽이든 상관 안 한다.
     vidOf: (ev) => { const vil = state.byEcon.get(ev); return vil ? vil.dbId : null; },
     depositMap: playerVillageDepositMap(),
+    // ★★[T7 2026-09-01] 소문 물리 전파의 **지리 접점 — 이 세 줄이 전부다.**
+    //   장부는 지형을 모른다(알면 안 된다). 마을 목록과 "두 마을이 얼마나 떨어져 있나"만 넘긴다.
+    //   ⚠거리는 **정본 함수** `econ.villageDist` 에 묻는다 — 그 함수가 지형 BFS 거리행렬
+    //     (`world._distMatrix`)을 읽고, 없으면 유클리드로 떨어진다. 좌표를 여기서 다시 재지 않는다.
+    //   ⚠도달불능 쌍은 Infinity 로 온다 ⇒ 소문도 안 간다(강·산에 막힌 마을은 정말 못 듣는다).
+    geo: {
+      vids: () => [...state.byDbId.keys()],
+      dist: (a, b) => {
+        const va = state.byDbId.get(a), vb = state.byDbId.get(b);
+        if (!va || !vb || !va.econ || !vb.econ) return Infinity;
+        return state.econ.villageDist(va.econ, vb.econ);
+      },
+    },
     onEvent: (e) => { try { state.db.insertVillageEvent(zone, e); } catch (err) {} },
     onRequest: (r, kind) => {
       try {
@@ -4495,20 +4511,43 @@ function _villageNear(vid, px, py) {
   return { vil };
 }
 
-// ★촌장 브리핑 — **그 마을 것만**. 전 서버 브로드캐스트 금지(소식의 물리 전파 원칙).
-//   이웃 마을 소문은 행상인이 나르는 층이고, 그건 이번 배치의 범위가 아니다(회부).
-function villageBrief(vid, px, py) {
+// ★촌장 브리핑 — **이 마을이 들은 것만**. 전 서버 브로드캐스트 금지(소식의 물리 전파 원칙).
+// ★★[T7 2026-09-01] 이웃 마을 소식도 이제 들린다 — 단 **캐러밴이 걸어온 뒤에** 들린다.
+//   무엇이 보이는가는 여기서 정하지 않는다. `ledger.visibleEvents` 술어 하나가 정한다(사본 금지).
+//   ⚠"소문이 퍼지는 중" 같은 메타 표시는 없다 — **모르면 모르는 것**이다(디에게틱).
+//     도달 전 사건은 이 함수에서도, 게시판에서도, 근황에서도 **존재하지 않는다**.
+//
+//   opts.sinceDay : 이 플레이어가 마지막으로 세계를 본 게임일(복귀 브리핑). 없으면 평소 브리핑.
+function villageBrief(vid, px, py, opts) {
   if (!state.ledger) return { err: '아직 장부가 없다' };
   const g = _villageNear(vid, px, py);
   if (g.err) return g;
-  const evs = state.ledger.recent(vid | 0, state.ledger.cfg.BRIEF_N);
+  const L = state.ledger;
+  const day = state.world.day | 0;
+  const o = opts || {};
+  const board = L.board(vid | 0);
+  // ── 복귀 브리핑 — 자리 비운 사이 **이 마을에 도달한** 것만
+  const rb = (o.sinceDay != null) ? L.returnBrief(vid | 0, o.sinceDay | 0, { today: day }) : { returned: false };
+  if (rb.returned) {
+    const lines = rb.lines.slice();
+    if (!lines.length) lines.push(`${rb.absent}일 만이군. 그동안 별일 없었네.`);
+    else lines.unshift(`${rb.absent}일 만이군. 그새 이런 일이 있었네.`);
+    if (rb.more > 0) lines.push(`그 밖에 ${rb.more}건은 게시판에 적어 두었네.`);
+    return { ok: true, vid: vid | 0, name: g.vil.name, day, lines, board: board.length,
+             returned: true, absentDays: rb.absent, heard: rb.total };
+  }
+  // ── 평소 브리핑
+  const evs = L.recent(vid | 0, L.cfg.BRIEF_N);
   const lines = evs.map((e) => Events.briefLine(e)).filter(Boolean);
   if (!lines.length) lines.push('별일 없네. 자네도 몸 성히 지내게.');
-  const board = state.ledger.board(vid | 0);
-  return { ok: true, vid: vid | 0, name: g.vil.name, day: state.world.day | 0, lines, board: board.length };
+  return { ok: true, vid: vid | 0, name: g.vil.name, day, lines, board: board.length, returned: false };
 }
 
-// ★게시판 — 걸려 있는 납품 의뢰 목록(자기 마을 것만)
+// ★게시판 — 걸려 있는 납품 의뢰 목록(자기 마을 것만) + **이 마을이 들은 소식**(T7)
+//   ⚠의뢰(`rows`)는 **상태**라 전파 대상이 아니다 — 그 마을이 지금 뭘 구하는가는 그 마을의 사정이고,
+//     플레이어는 그 마을 앞에 서 있다. 전파되는 건 **사건**(`news`)이다.
+//   ⚠`news` 는 **추가 필드**다(클라 무접촉). 지금 클라는 `rows` 만 그린다 —
+//     화면에 띄우는 건 연대기 UI(T18)/온보딩 몫이라 회부에 적었다.
 function villageBoard(vid, px, py) {
   if (!state.ledger) return { err: '아직 장부가 없다' };
   const g = _villageNear(vid, px, py);
@@ -4519,7 +4558,34 @@ function villageBoard(vid, px, py) {
     give: (state.ledger.deliverable.items.get(r.item) || []),   // 어떤 플레이어 아이템으로 낼 수 있나
     take: state.ledger.deliverable.toEcon.get(r.rewItem) || null,
   }));
-  return { ok: true, vid: vid | 0, name: g.vil.name, rows };
+  return { ok: true, vid: vid | 0, name: g.vil.name, rows, news: _newsRows(vid, BOARD_NEWS_N) };
+}
+
+// ★★[T7] 사건 목록 — **가시성 술어 하나를 통과한 것만**. 게시판·근황이 같은 이 함수를 쓴다.
+const BOARD_NEWS_N = Math.max(1, parseInt(process.env.EV_BOARD_NEWS_N || '8', 10));
+function _newsRows(vid, n) {
+  const L = state.ledger;
+  if (!L) return [];
+  const day = state.world.day | 0;
+  return L.visibleEvents(vid | 0, { n, today: day }).rows.map((r) => ({
+    line: Events.briefLine(r.ev),
+    type: r.ev.type, item: r.ev.item,
+    day: r.ev.day,          // 사건이 난 날
+    heard: r.heard,         // ★이 마을이 들은 날 — 둘의 차이가 곧 소문이 걸어온 일수다
+    from: r.ev.vid === (vid | 0) ? null : ((state.byDbId.get(r.ev.vid) || {}).name || null),
+  })).filter((r) => r.line);
+}
+
+// ★★[T7] 시작 화면 근황 — 온보딩 v2 가 읽는다. **같은 술어**를 쓰라고 함수로 내준다(사본 금지).
+//   ⚠260px 게이트가 **없다**. 그래도 캐논(원격 시세 조회 금지)을 어기지 않는 이유:
+//     여기서 나가는 건 시세도 재고도 아니라 **촌장이 할 말 한 줄**이고, 그마저도
+//     소문이 물리적으로 그 마을에 닿은 뒤에만 나간다. 정보 비대칭은 도달표가 지킨다.
+function villageNews(vid, n) {
+  if (!state.ledger) return { err: '아직 장부가 없다' };
+  const vil = state.byDbId && state.byDbId.get(vid | 0);
+  if (!vil) return { err: '그런 마을이 없다' };
+  const rows = _newsRows(vid, Math.max(1, (n | 0) || BOARD_NEWS_N));
+  return { ok: true, vid: vid | 0, name: vil.name, day: state.world.day | 0, rows, lines: rows.map((r) => r.line) };
 }
 
 // ★납품 — 서버 권위. 실물 이동은 `playerVillageDeposit`(정본), 몫 확정은 장부(원자적).
@@ -4770,6 +4836,27 @@ function __e2eForceShortage(vid) {
 //     달력이 "3402년 봄 1일" 로 떴다 — 에폭이 먼 과거라 벽시계 일수가 컸던 것이다).
 function econDay() { return (state.world && Number.isFinite(state.world.day)) ? (state.world.day | 0) : null; }
 
+// ★★[T7 2026-09-01] 소문 도달 지연 계측 훅 — **읽기 전용**(계측기도 사본 금지 · 검증 원칙 ㉒).
+//   대리 지표(51마을 도달 지연 분포)를 계측 스크립트가 **정본 표 그대로** 읽게 내준다.
+//   ⚠아무 상태도 안 바꾼다. 도달표를 데우는 것뿐이고 그건 어차피 첫 사건이 할 일이다.
+function __rumorProbe() {
+  const L = state.ledger;
+  if (!L || !L.hasRumor) return { err: '장부 또는 도달표 없음' };
+  const ids = [...state.byDbId.keys()];
+  const all = [], unreach = [];
+  for (const a of ids) for (const b of ids) {
+    if (a === b) continue;
+    const d = L.delayTo(a, b);
+    if (isFinite(d)) all.push(d); else unreach.push([a, b]);
+  }
+  all.sort((x, y) => x - y);
+  const q = (f) => (all.length ? all[Math.min(all.length - 1, Math.floor(f * (all.length - 1)))] : null);
+  return { ok: true, villages: ids.length, pairs: all.length, unreachable: unreach.length,
+    min: all[0] ?? null, p50: q(0.5), p90: q(0.9), max: all[all.length - 1] ?? null,
+    mean: all.length ? +(all.reduce((x, y) => x + y, 0) / all.length).toFixed(2) : null,
+    rumor: Object.assign({}, L.rumorStats) };
+}
+
 module.exports = {
   init, onGameTick, invalidateTradeDistances, npcLifeTick, lifeDebug, econDay,
   tickPerf,   // ★[T1 §0] 일틱 단계별 소요 — zone.js `/perf` 가 소비(계측 전용)
@@ -4791,6 +4878,8 @@ module.exports = {
   foundPlayerVillage, playerVillageInventory, playerVillageAt, playerVillageDeposit, playerVillageDepositMap,
   // ★[2026-08-25 사건 레이어] 촌장 브리핑 · 게시판 · 납품 — zone.js 핸들러가 소비
   villageBrief, villageBoard, villageDeliver, villageAnchorPx, briefRadiusPx,
+  // ★[T7 2026-09-01] 소문 물리 전파 — 시작 화면 근황(온보딩 v2 가 읽는다) · 하네스 계측
+  villageNews, __rumorProbe,
   // ★[겨울 난이도 2026-08-31] 마을 미기후(추위 완충) — zone.js 가 Body.tick 으로 넘긴다
   shelterAt,
   // ★[2026-08-27 거래소] 물물교환 — zone.js 가 소비. 둘 다 260px 게이트 안에서만 답한다.
