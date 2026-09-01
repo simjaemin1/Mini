@@ -689,6 +689,268 @@ function codeOnly(src) {
       `삼베 ${buyHemp.attrs.warmth} < 모피 ${buyFur.attrs.warmth}`);
   }
 
+  // ═══ ⑯ 바람 노출 · 삼베옷 하향 · 바닷물 — [T4 2026-09-01 재민 확정 ④⑤] ══════
+  //   재민 확정 ④ *"산 추위 = 바람 노출(고도 감률 위에 노출도 항)"* · ⑤ *"장인 삼베옷 하향"*
+  //   + T3 동봉 *"바닷물을 마시면 갈증이 회복되는 결함"*.
+  say('\n⑯ 바람 노출 · 옷 하향 · 바닷물');
+  {
+    const Wind = require(path.join(ROOT, 'server', 'wind.js'));
+    const Wx2 = require(path.join(ROOT, 'server', 'weather.js'));
+    const PI2 = require(path.join(ROOT, 'server', 'player-items.js'));
+    const A2 = Wx2.anchors();
+    const WD = Math.round(A2.winterMid), SD = Math.round(A2.summerMid);
+    const S3b = B.STAGE_AT.cold[2] + B.CFG.STAGE_HYST;
+    const clock2 = (ctx) => { const P = { hunger: 100, thirst: 100 }; B.ensure(P);
+      for (let s2 = 1; s2 <= 3600; s2++) { B.tick(P, 1, ctx); if (B.ensure(P).cold >= S3b) return s2; } return null; };
+    const years2 = (ctx, doy) => { let h = 0; const ts = [];
+      for (let k = 0; k < 24; k++) { const t = clock2(Object.assign({ day: doy + 365 * k }, ctx)); if (t !== null) { h++; ts.push(t); } }
+      ts.sort((a2, b2) => a2 - b2); return { hit: h, med: ts.length ? ts[ts.length >> 1] : null }; };
+
+    // ── ㉠ 사본 금지 · 주사위 금지 (소스 계약) ───────────────────────────────
+    const wnsrc = codeOnly(fs.readFileSync(path.join(ROOT, 'server', 'wind.js'), 'utf8'));
+    const dc2 = (wnsrc.match(/\b(90|180|270|315|365|182\.5)\b/g) || []);
+    ok(dc2.length === 0, '★★⑯㉠ `wind.js` 에 계절·연 길이 상수가 **한 개도 없다**(전부 econ 에서 유도)', dc2.join(',') || '0개');
+    ok(!/Math\.random|Math\.imul|_h\(|hash/i.test(wnsrc),
+      '★★⑯㉠ **주사위 금지** — 바람은 지형과 계절의 결정론 함수다(난수·해시 0줄)');
+    ok(!/ridges|valleys|hanbando-terrain|isPointInRiver/.test(wnsrc),
+      '★★⑯㉠ **지형 사본 금지** — 산맥 좌표를 스스로 읽지 않고 정본 술어를 주입받는다');
+
+    // ── ㉡ 전제 — 지형이 실제로 물렸고, 노출이 살아 있는 자리가 있는가 ───────
+    ok(Wind.available(), '★★⑯㉡ 전제 — zone.js 가 정본 지형 술어를 주입했다(아니면 아래가 전부 0 이다)');
+    //   ★앵커는 **반올림하지 않은 극값**으로 묻는다 — 최난일은 doy 132.5 라 133 으로 반올림하면
+    //     −0.99996 이 나온다. 그건 모델이 아니라 내 질문의 어긋남이다(족보 ㊻: 하네스가 먼저 틀린다).
+    ok(Math.abs(Wind.seasonWind(A2.winterMid) - 1) < 1e-9 && Math.abs(Wind.seasonWind(A2.summerMid) + 1) < 1e-9,
+      '★★⑯㉡ 탁월풍 세기가 최한일 +1(북서) · 최난일 −1(남동)',
+      `${Wind.seasonWind(A2.winterMid)} / ${Wind.seasonWind(A2.summerMid)}`);
+
+    // ★★픽스처는 **찾는다, 고르지 않는다**(족보 73) — 산맥 폴리라인 둘레의 걸을 수 있는 셀을
+    //   훑어 노출 최대/최소 자리를 게임 자신에게 묻는다. 좌표를 손으로 적으면 그건 소원이다.
+    const hard = JSON.parse(fs.readFileSync(path.join(ROOT, 'server', 'hanbando-terrain.json'), 'utf8')).hanbando;
+    const walkable = (x, y) => !H.isRockTileLocal(x, y) && !H.isWaterTileLocal(x, y);
+    let ridgeAt = null, ridgeX = -1, valleyAt = null, valleyX = 9;
+    for (const r of hard.ridges) {
+      for (let i = 0; i < r.path.length; i += 3) {
+        const [cx, cy] = r.path[i].pos;
+        for (let a = 0; a < 16; a++) {
+          for (const d of [700, 1100, 1600]) {
+            const ang = 2 * Math.PI * a / 16;
+            const x = cx + Math.cos(ang) * d, y = cy + Math.sin(ang) * d;
+            if (x < 200 || y < 200 || !walkable(x, y)) continue;
+            const e = Wind.explain(x, y, WD, 0);
+            if (e.X > ridgeX) { ridgeX = e.X; ridgeAt = [Math.round(x), Math.round(y), e]; }
+            // ★골 후보는 **양쪽 다 산이 선 자리**여야 한다(평지를 '골'이라 부르면 자명 통과다)
+            if (e.bNW > 0.3 && e.bSE > 0.3 && e.X < valleyX) { valleyX = e.X; valleyAt = [Math.round(x), Math.round(y), e]; }
+          }
+        }
+      }
+    }
+    ok(!!ridgeAt && !!valleyAt, '★⑯㉡ 산맥 둘레에서 노출 최대·최소 자리를 **찾았다**',
+      ridgeAt && valleyAt ? `능선 ${ridgeAt[0]},${ridgeAt[1]} X${ridgeX} · 골 ${valleyAt[0]},${valleyAt[1]} X${valleyX}` : 'X');
+    // ★★검사 상황 선행 assert — 두 픽스처가 **정말 산속**이고, 다른 것은 바람 기하뿐인가
+    if (ridgeAt && valleyAt) {
+      const re = ridgeAt[2], ve = valleyAt[2];
+      ok(re.blockDn > 0.5 && re.openUp > 0.5,
+        '★★⑯㉡ (상황) 능선 픽스처는 **풍상이 트이고 풍하가 막힌** 자리다 — 그게 풍상 사면의 정의',
+        `openUp ${re.openUp} · blockDn ${re.blockDn}`);
+      ok(ve.bNW > 0.3 && ve.bSE > 0.3,
+        '★★⑯㉡ (상황) 골 픽스처는 **양쪽 다 산이 선** 자리다(평지가 아니다 — 자명 통과 금지)',
+        `bNW ${ve.bNW} · bSE ${ve.bSE}`);
+      // ★★"같은 고도" 라는 전제 자체를 잰다 — 이 세계엔 걸을 수 있는 고지가 없어 **둘 다 0** 이다.
+      //   (정직 보고: 그래서 ㉣의 차이는 고도가 아니라 **오직 바람 기하** 때문이다.)
+      const elR = H.elevKmAt({ x: ridgeAt[0], y: ridgeAt[1] }), elV = H.elevKmAt({ x: valleyAt[0], y: valleyAt[1] });
+      ok(elR === elV && elR === 0,
+        '★★⑯㉡ (상황) 두 픽스처는 **정말 같은 고도**다(둘 다 0 — 이 세계엔 걸을 수 있는 고지가 없다)',
+        `능선 ${elR}km · 골 ${elV}km`);
+    }
+
+    // ── ㉢ 결정론 · [0,1] · 계절 연속 ────────────────────────────────────────
+    if (ridgeAt) {
+      const [rx, ry] = ridgeAt;
+      const a1 = Wind.exposureAt(rx, ry, WD, 0), a2 = Wind.exposureAt(rx, ry, WD, 0);
+      Wind._reset();
+      const a3 = Wind.exposureAt(rx, ry, WD, 0);
+      ok(a1 === a2 && a2 === a3, '★★⑯㉢ **같은 셀·같은 날이면 언제나 같은 값**(캐시를 비워도 같다 — 결정론)', `${a1} / ${a3}`);
+      let mn = 9, mx = -9, worst2 = 0, worstDay = 0;
+      for (let d = 0; d < 365 * 3; d += 0.5) {
+        const v = Wind.exposureAt(rx, ry, d, 0);
+        if (v < mn) mn = v; if (v > mx) mx = v;
+        const j = Math.abs(Wind.exposureAt(rx, ry, d + 0.5, 0) - v);
+        if (j > worst2) { worst2 = j; worstDay = d; }
+      }
+      ok(mn >= 0 && mx <= 1, '★★⑯㉢ 노출도가 **[0,1] 안에** 있다(3년 전수)', `${mn} … ${mx}`);
+      ok(worst2 < 0.02, `★★⑯㉢ 계절 방향이 **연속**이다 — 인접 0.5일 최대 도약 ${worst2.toFixed(5)} < 0.02(계단 금지)`, `day ${worstDay}`);
+      ok(mx > 0.3, '★⑯㉢ 자명 통과 금지 — 그 자리의 노출이 실제로 크게 변한다', `최대 ${mx}`);
+      // ★계절이 뒤집히면 같은 자리가 **풍하**가 된다 — 북서풍/남동풍이 진짜로 갈린다
+      ok(Wind.exposureAt(rx, ry, SD, 0) < Wind.exposureAt(rx, ry, WD, 0) * 0.5,
+        '★★⑯㉢ 여름(남동풍)엔 같은 자리가 **풍하**가 되어 노출이 무너진다',
+        `겨울 ${Wind.exposureAt(rx, ry, WD, 0)} → 여름 ${Wind.exposureAt(rx, ry, SD, 0)}`);
+    }
+
+    // ── ㉣ 능선 vs 골 — 3단계 도달 시간 ≥ 1.5배 ─────────────────────────────
+    //   ★★**한 밤으로 재지 마라**(족보 ㊻ · cold-matrix 초안이 딱 이렇게 틀렸다):
+    //     날씨 편차 때문에 어떤 해의 한겨울 밤은 안 닿는다. 초안은 day 315 **한 해**만 재다가
+    //     골이 `null`(그 해엔 안 닿음)이 나와 "0.00배"라는 없는 결함을 보고했다.
+    //     ⇒ 24년 표본의 **중앙 도달 시간**과 **도달률** 두 가지로 잰다.
+    if (ridgeAt && valleyAt) {
+      const rR = years2({ night: true, warmth: 0, windExposure: ridgeX }, WD);
+      const rV = years2({ night: true, warmth: 0, windExposure: valleyX }, WD);
+      ok(rR.hit >= 12 && rV.hit >= 6, '(상황) 두 자리 다 여러 해의 한겨울 밤에 3단계에 닿는다 — 아니면 비교가 안 된다',
+        `능선 ${rR.hit}/24 · 골 ${rV.hit}/24`);
+      ok(rR.med !== null && rV.med !== null && rV.med >= rR.med * 1.5,
+        '★★⑯㉣ **같은 고도라도 능선이 골보다 훨씬 빨리 언다**(골 중앙 도달시간 ≥ 능선의 1.5배)',
+        `능선 ${(rR.med / 60).toFixed(1)}분 · 골 ${(rV.med / 60).toFixed(1)}분 = ${(rV.med / rR.med).toFixed(2)}배`);
+      ok(rR.hit > rV.hit, '★★⑯㉣ 능선은 **더 많은 밤에** 3단계까지 간다(강도가 아니라 빈도로도 갈린다)',
+        `능선 ${rR.hit}/24 > 골 ${rV.hit}/24`);
+    }
+
+    // ── ㉤ 숲·마을이 노출을 죽인다 — ★노출이 있는 자리에서 잰다(자명 통과 금지) ─
+    if (ridgeAt) {
+      const [rx, ry] = ridgeAt;
+      const bare = Wind.exposureAt(rx, ry, WD, 0);
+      ok(Wind.exposureAt(rx, ry, WD, 0.5) < bare && Wind.exposureAt(rx, ry, WD, 1) === 0,
+        '★★⑯㉤ **마을 완충이 노출을 사그라뜨린다**(한복판이면 정확히 0 = 노출 항 무효)',
+        `야생 ${bare} · 절반 ${Wind.exposureAt(rx, ry, WD, 0.5)} · 한복판 ${Wind.exposureAt(rx, ry, WD, 1)}`);
+      // 마을이 **두 번** 깎지 않는다 — 감액은 여전히 COLD_VILLAGE_SHELTER 한 곳 몫이다
+      const tv1 = B.coldTarget({ day: WD, night: true, warmth: 0, villageShelter: 1, windExposure: Wind.exposureAt(rx, ry, WD, 1) });
+      const tv0 = B.coldTarget({ day: WD, night: true, warmth: 0, villageShelter: 1, windExposure: 0 });
+      ok(tv1 === tv0, '★★⑯㉤ **마을 이중 적용 금지** — 마을 안에선 노출 항이 정확히 ×1 이다', `${tv1} = ${tv0}`);
+      // 숲 — 노출된 자리에 숲을 씌운 대조군(정본 지형을 다시 주입해 되돌린다)
+      const realCtx = { isRock: (x, y) => H.isRockTileLocal(x, y), forestMult: (x, y) => { try { return H.terrain.getForestMultiplier('hanbando', x, y); } catch (e) { return 1; } } };
+      Wind.bindTerrain({ isRock: realCtx.isRock, forestMult: () => Wind.CFG.FOREST_FULL });
+      const inForest = Wind.exposureAt(rx, ry, WD, 0);
+      Wind.bindTerrain(realCtx);
+      const openAgain = Wind.exposureAt(rx, ry, WD, 0);
+      ok(inForest < openAgain && openAgain === bare,
+        '★★⑯㉤ **숲이 바람을 막는다**(같은 자리·같은 날 · 숲만 바꾼 A/B · 되돌리면 원값)',
+        `민둥 ${openAgain} → 숲속 ${inForest}`);
+    }
+
+    // ── ㉥ 고도 감률과 **독립** — 노출을 켜도 고도 스윕이 여전히 단조 ────────
+    {
+      const XR = ridgeX > 0 ? ridgeX : 1;
+      const sweep2 = [0, 0.25, 0.5, 1, 2].map((el) => B.coldTarget({ day: WD, night: true, warmth: 0, elevKm: el, windExposure: XR }));
+      let mono2 = true;
+      for (let i = 1; i < sweep2.length; i++) if (!(sweep2[i] > sweep2[i - 1])) mono2 = false;
+      ok(mono2, '★★⑯㉥ 노출을 켜도 **고도 스윕이 여전히 단조**다(두 항은 독립)', sweep2.join(' · '));
+      // 곱셈 배율이 정확히 (1 + K·X) 인가 — 항이 하나임을 산수로 못 박는다
+      const t0w = B.coldTarget({ day: WD, night: true, warmth: 0, windExposure: 0 });
+      const t1w = B.coldTarget({ day: WD, night: true, warmth: 0, windExposure: XR });
+      ok(Math.abs(t1w - t0w * (1 + B.CFG.COLD_WIND_K * XR)) < 0.002,
+        '★★⑯㉥ 노출은 **항 하나**다 — 목표점 × (1 + K·X) 그대로(새 식 없음)',
+        `${t0w} × (1+${B.CFG.COLD_WIND_K}×${XR}) = ${(t0w * (1 + B.CFG.COLD_WIND_K * XR)).toFixed(4)} vs ${t1w}`);
+      // ★평지는 안 움직인다 — 추위 2차 기준선 보존의 근거
+      ok(B.coldTarget({ day: WD, night: true, warmth: 0, windExposure: 0 })
+        === B.coldTarget({ day: WD, night: true, warmth: 0 }),
+        '★★⑯㉥ **평지(X=0)의 목표점은 한 자리도 안 움직인다** — 기존 기준선이 여기서 보존된다');
+    }
+
+    // ── ㉦ 옷 티어 — 삼베 < 가죽 < 모피 **단조** + 계단 매트릭스 [재민 확정 ⑤] ──
+    const wOf = (m, l) => PI2.craftItem('clothes', l, { [m]: 3 }).attrs.warmth;
+    const hempMax = Math.max(...[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((l) => wOf('hemp', l)));
+    const ramieMax = Math.max(...[0, 5, 10].map((l) => wOf('ramie', l)));
+    ok(hempMax < wOf('leather', 5),
+      '★★⑯㉦ **아무리 잘 짜도 삼베옷은 가죽옷을 못 이긴다**(장인 베옷 하향 — 재민 확정 ⑤)',
+      `삼베 최대 ${hempMax} < 가죽옷 ${wOf('leather', 5)}`);
+    ok(ramieMax <= hempMax,
+      '★★⑯㉦ 모시로 갈아타도 소용없다 — **식물 섬유는 같은 천장**을 받는다(구멍 막기)',
+      `모시 최대 ${ramieMax}`);
+    ok(wOf('hemp', 0) === 15 && B.warmthInsC(wOf('hemp', 0)) > 0,
+      '★⑯㉦ 아랫칸은 그대로다 — 조잡 베옷 15 는 안 건드렸다(배율이 아니라 상한을 쓴 이유)',
+      `${wOf('hemp', 0)} → +${B.warmthInsC(wOf('hemp', 0)).toFixed(2)}℃`);
+    {
+      let mono3 = true;
+      for (const l of [0, 3, 5, 8, 10]) if (!(wOf('hemp', l) <= wOf('leather', l) && wOf('leather', l) < wOf('fur', l))) mono3 = false;
+      ok(mono3, '★★⑯㉦ 숙련 전 구간에서 **삼베 ≤ 가죽 < 모피** 단조',
+        [0, 5, 10].map((l) => `Lv${l} ${wOf('hemp', l)}/${wOf('leather', l)}/${wOf('fur', l)}`).join(' · '));
+      // 계단 매트릭스 — 추위 2차의 약속(베옷 ≥50% · 가죽 ≤10% · 모피 ≈0%)이 평지에서 그대로 선다
+      const rh = years2({ night: true, warmth: wOf('hemp', 0), windExposure: 0 }, WD);
+      const rl = years2({ night: true, warmth: wOf('leather', 5), windExposure: 0 }, WD);
+      const rf = years2({ night: true, warmth: wOf('fur', 8), windExposure: 0 }, WD);
+      const rhm = years2({ night: true, warmth: hempMax, windExposure: 0 }, WD);
+      say(`     한겨울 자정 야생 평지 24년 — 조잡베옷 ${rh.hit} · **장인베옷 ${rhm.hit}** · 가죽옷 ${rl.hit} · 갖옷 ${rf.hit}`);
+      ok(rh.hit >= 12 && rl.hit <= 2 && rf.hit === 0,
+        '★★⑯㉦ 계단이 선다 — 베옷 ≥50% · 가죽 ≤10% · 모피 ≈0%(평지 기준선 불변)',
+        `${rh.hit}/24 · ${rl.hit}/24 · ${rf.hit}/24`);
+      ok(rhm.hit > rl.hit, '★★⑯㉦ **장인 베옷도 가죽옷을 못 대신한다**(하향의 목적 그 자체)',
+        `장인베옷 ${rhm.hit}/24 > 가죽옷 ${rl.hit}/24`);
+    }
+
+    // ── ㉧ 바닷물 — 회복 0 + 갈증 가속 · 민물은 종전 [T3 동봉] ──────────────
+    {
+      const Salt2 = require(path.join(ROOT, 'server', 'salt.js'));
+      const SEA_CTX2 = { isSea: (x, y) => H.isSeaTileLocal(x, y) };
+      // ★자리는 **찾는다**(족보 73) — 갯벌 판정 정본을 그대로 쓴다
+      let flat = null;
+      for (let y = 118000; y < 130000 && !flat; y += 64) for (let x = 20000; x < 60000; x += 64) {
+        if (Salt2.isTidalFlat(x, y, SEA_CTX2) && !H.isTerrainBlockedLocal(x, y)) { flat = [x, y]; break; }
+      }
+      let bank = null;
+      for (let y = 60000; y < 85000 && !bank; y += 64) for (let x = 36000; x < 48000; x += 64) {
+        if (H.isWaterTileLocal(x, y)) continue;
+        for (const [dx, dy] of [[32, 0], [-32, 0], [0, 32], [0, -32]]) {
+          if (H.isWaterTileLocal(x + dx, y + dy) && !H.isSeaTileLocal(x + dx, y + dy)) { bank = [x, y]; break; }
+        }
+      }
+      ok(!!flat && !!bank, '★⑯㉧ (상황) 갯벌 자리와 민물 물가를 **찾았다**(둘 다 없으면 아래가 무의미)',
+        `갯벌 ${flat} · 민물 ${bank}`);
+      const drinkAt = (xy) => {
+        const P = mkPlayer('sea_' + xy[0]); P.x = xy[0]; P.y = xy[1];
+        P.thirst = 40; B.ensure(P);
+        H.tryGather(P);
+        return { p: P, thirst: P.thirst, notes: P.__notices() };
+      };
+      if (flat && bank) {
+        const sea = drinkAt(flat);
+        ok(sea.thirst === 40, '★★⑯㉧ **바닷물은 갈증을 한 점도 안 채운다**(종전엔 +30 이었다)', `갈증 ${sea.thirst}`);
+        ok(sea.notes.some((t) => /짠물/.test(t)), '★⑯㉧ 화면이 왜 안 되는지 말한다(서버 문구 · 클라 무접촉)',
+          JSON.stringify(sea.notes.slice(-1)));
+        ok(B.brineActive(sea.p, Date.now()), '★★⑯㉧ 짠물 기운이 붙었다 — **확정적**이다(확률 굴리기 없음)');
+        // 갈증이 실제로 **더 빨리** 준다 — 같은 60초를 짠물 있음/없음으로 A/B
+        const run = (brine) => { const P = { hunger: 100, thirst: 80 }; B.ensure(P);
+          if (brine) B.drinkBrine(P, 0);
+          for (let s2 = 0; s2 < 60; s2++) B.tick(P, 1, { day: WD, night: false, warmth: 0, now: s2 * 1000 });
+          return P.thirst; };
+        const plainT = run(false), brineT = run(true);
+        ok(brineT < plainT - 0.05, '★★⑯㉧ 짠물 뒤엔 **갈증이 더 빨리 준다**(같은 60초 A/B)',
+          `보통 ${plainT.toFixed(3)} → 짠물 ${brineT.toFixed(3)}`);
+        ok(Math.abs((80 - brineT) / Math.max(1e-9, 80 - plainT) - B.CFG.BRINE_MULT) < 0.02,
+          '★⑯㉧ 가속 배율이 손잡이 그대로다(숨은 상수 없음)', `×${((80 - brineT) / (80 - plainT)).toFixed(3)}`);
+        // 민물은 **종전 그대로** — 이 배치가 강·호수를 건드리지 않았다
+        const fresh = drinkAt(bank);
+        ok(fresh.thirst === 70, '★★⑯㉧ **민물은 종전대로 +30 회복**한다(강·호수는 안 건드렸다)', `40 → ${fresh.thirst}`);
+        ok(!B.brineActive(fresh.p, Date.now()), '★⑯㉧ 민물엔 짠물 기운이 안 붙는다');
+        // 사본 금지 — 바다 판정은 자염 정본 술어 하나다
+        const zsrc = codeOnly(fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8'));
+        const seaFns = (zsrc.match(/function isSeaTileLocal/g) || []).length;
+        ok(seaFns === 1, '★★⑯㉧ 바다 술어는 **하나뿐**이다(자염 정본 재사용 · 사본 금지)', `${seaFns}개`);
+      }
+      // ★HP 불감소 — 짠물도 피를 깎지 않는다(아사 폐지 캐논 동형)
+      const P2 = { hunger: 100, thirst: 100, hp: 71 };
+      B.drinkBrine(P2, 0);
+      for (let s2 = 0; s2 < 1800; s2++) B.tick(P2, 1, { day: WD, night: true, warmth: 0, windExposure: 1, now: s2 * 1000 });
+      ok(P2.hp === 71, '★★⑯㉧ 짠물 + 최대 노출 한겨울 밤 30분에도 **HP 는 한 점도 안 깎인다**',
+        `hp ${P2.hp} · cold ${B.ensure(P2).cold} · thirst ${P2.thirst.toFixed(1)}`);
+      ok(B.ensure(P2).cold <= 1 && P2.thirst >= 0, '★★⑯㉧ 상태값 **0~1 / 0~100** 규약 불변', `cold ${B.ensure(P2).cold}`);
+    }
+
+    // ── ㉨ 비용 — **틱은 0 이어야 한다**(셀 캐시가 지형 몫을 전부 먹는다) ────
+    {
+      Wind._reset();
+      const t0 = Date.now();
+      for (let i = 0; i < 300; i++) Wind.exposureAt(ridgeAt[0] + i * 32, ridgeAt[1] + i * 16, WD, 0);
+      const missMs = Date.now() - t0;
+      const st = Wind.stats();
+      const t1 = process.hrtime.bigint();
+      for (let i = 0; i < 300; i++) Wind.exposureAt(ridgeAt[0] + i * 32, ridgeAt[1] + i * 16, WD, 0);
+      const hitUs = Number(process.hrtime.bigint() - t1) / 1000 / 300;
+      say(`     노출 계산 비용: 새 셀 ${st.usecPerMiss}µs(300셀 ${missMs}ms) · **캐시 적중 ${hitUs.toFixed(2)}µs** · 적중률 ${Wind.stats().hitRate}`);
+      ok(hitUs < 20, '★★⑯㉨ 캐시가 적중하면 **틱 비용이 사실상 0** 이다(지형 몫은 셀 캐시가 먹는다)',
+        `${hitUs.toFixed(2)}µs/질의`);
+      ok(st.usecPerMiss > hitUs * 10, '★⑯㉨ 자명 통과 금지 — 새 셀은 실제로 비싸다(캐시가 일을 하고 있다)',
+        `새 셀 ${st.usecPerMiss}µs vs 적중 ${hitUs.toFixed(2)}µs`);
+    }
+  }
+
   // ═══ ⑧ 픽스처 결백 ═════════════════════════════════════════════════════════
   say('\n⑧ 픽스처 결백(족보 ㊻)');
   // ★①(오프라인 불변)이 자명 통과하지 않으려면, 그 절이 **저장을 건드리지 않아야** 한다.

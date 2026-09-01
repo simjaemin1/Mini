@@ -266,6 +266,138 @@ async function waitHttp(url, tries = 600) {
     `삼베 Δ${sHemp.d.toFixed(4)} vs 갖옷 Δ${sFur.d.toFixed(4)}`);
   await snap('cold-05-clothes');
 
+  // ── ⑦ 바람 노출 · 옷 갈아입기 · 바닷물 [T4 2026-09-01 재민 확정 ④⑤] ────────
+  //   재민 실기 3줄이 곧 이 절이다:
+  //     *"한겨울 밤 같은 산의 골짜기에서 능선으로 올라가 보기"* ·
+  //     *"삼베옷으로 야생 밤 → 가죽옷"* · *"바닷가에서 물 마셔 보기"*
+  //   ★서버 값이 **화면까지 오는가**가 이 하네스의 몫이다(모델의 옳음은 `test-body ⑯`).
+  {
+    const Wind = require(path.join(ROOT, 'server', 'wind.js'));
+    const Terr = require(path.join(ROOT, 'server', 'terrain.js'));
+    const Salt = require(path.join(ROOT, 'server', 'salt.js'));
+    const hard = JSON.parse(fs.readFileSync(path.join(ROOT, 'server', 'hanbando-terrain.json'), 'utf8')).hanbando;
+    // ★하네스 안에서도 **정본 술어**를 주입해 쓴다(사본 금지). 존 서버는 별 프로세스라
+    //   여기 바인딩은 "어디로 갈지"를 고르는 데만 쓰고, **판정은 서버가 보낸 `exp`** 로 한다.
+    Terr.setZonesMeta({ hanbando: { zoneWidth: 70016, zoneHeight: 130016, biome: 'forest', isOcean: false } });
+    Terr.setHardcoded('hanbando', hard);
+    const isRockT = (x, y) => (x < 0 || y < 0 || x >= 70016 || y >= 130016)
+      ? false : Terr.isRockCellLocal('hanbando', Math.floor(x / 32) * 32 + 16, Math.floor(y / 32) * 32 + 16);
+    Wind.bindTerrain({ isRock: isRockT, forestMult: (x, y) => Terr.getForestMultiplier('hanbando', x, y) });
+    // 자리는 **찾는다, 고르지 않는다**(족보 73)
+    let RIDGE = null, rX = -1, VALLEY = null, vX = 9;
+    for (const r of hard.ridges) {
+      for (let i = 0; i < r.path.length; i += 3) {
+        const [cx, cy] = r.path[i].pos;
+        for (let a = 0; a < 16; a++) for (const d of [700, 1100, 1600]) {
+          const ang = 2 * Math.PI * a / 16;
+          const x = cx + Math.cos(ang) * d, y = cy + Math.sin(ang) * d;
+          if (x < 200 || y < 200 || isRockT(x, y) || Terr.isWaterCellLocal('hanbando', x, y)) continue;
+          const e = Wind.explain(x, y, WINTER, 0);
+          if (e.X > rX) { rX = e.X; RIDGE = [Math.round(x), Math.round(y)]; }
+          if (e.bNW > 0.3 && e.bSE > 0.3 && e.X < vX) { vX = e.X; VALLEY = [Math.round(x), Math.round(y)]; }
+        }
+      }
+    }
+    ok(!!RIDGE && !!VALLEY, '★⑦ 산맥 둘레에서 능선(풍상 기슭)·골 자리를 찾았다',
+      RIDGE && VALLEY ? `능선 ${RIDGE} X${rX} · 골 ${VALLEY} X${vX}` : 'X');
+
+    // ── ㉠ 서버가 그 자리의 노출을 **실제로 계산해 보낸다** ────────────────
+    const wxAt = async (xy) => {
+      for (let i = 0; i < 12; i++) {
+        await page.evaluate(([a2, b2]) => window.__sendPrimary({ type: 'teleport_debug', x: a2, y: b2 }), xy);
+        await sleep(1200);
+        const w = await page.evaluate(() => (window.__wx ? window.__wx() : null));
+        const pos = await page.evaluate(() => window.__getMyAbs());
+        if (w && w.exp != null && Math.hypot(pos.x - xy[0], pos.y - xy[1]) < 200) return w;
+      }
+      return await page.evaluate(() => (window.__wx ? window.__wx() : null));
+    };
+    const wRidge = await wxAt(RIDGE);
+    ok(wRidge && wRidge.exp > 0.5, '★★⑦㉠ **능선(풍상 기슭)에서 서버가 노출을 보낸다**',
+      wRidge ? `exp ${wRidge.exp} · wind ${wRidge.wind} · shelter ${wRidge.shelter}` : 'null');
+    const wValley = await wxAt(VALLEY);
+    ok(wValley && wValley.exp < 0.2, '★★⑦㉠ **골짜기에선 노출이 사그라든다**(같은 산 · 같은 밤)',
+      wValley ? `exp ${wValley.exp}` : 'null');
+    ok(wRidge && wValley && (wRidge.shelter || 0) < 0.01 && (wValley.shelter || 0) < 0.01,
+      '★⑦㉠ 자명 통과 금지 — 둘 다 **마을 완충 0** 인 야생이다(갈린 것은 바람뿐)',
+      `능선 ${wRidge && wRidge.shelter} · 골 ${wValley && wValley.shelter}`);
+
+    // ── ㉡ 같은 몸 0.5 를 골 → 능선으로 옮기면 **몸이 갈린다** ──────────────
+    const rise = async (xy, secs) => {
+      await wxAt(xy);
+      await page.evaluate(() => window.__sendPrimary({ type: '__e2e_body', cold: 0.5, quiet: true }));
+      await sleep(900);
+      const a2 = await page.evaluate(() => (window.__bodyState || {}).cold);
+      await sleep(secs * 1000);
+      const b2 = await page.evaluate(() => (window.__bodyState || {}).cold);
+      return { a: a2, b: b2, d: b2 - a2 };
+    };
+    const rv = await rise(VALLEY, 12);
+    const rr = await rise(RIDGE, 12);
+    ok(rr.d > rv.d, '★★⑦㉡ **골짜기에서 능선으로 올라가면 같은 0.5 가 더 빨리 오른다**(재민 실기 1)',
+      `골 Δ${rv.d.toFixed(4)} (${rv.a}→${rv.b}) vs 능선 Δ${rr.d.toFixed(4)} (${rr.a}→${rr.b})`);
+    ok(rr.d > 0, '★⑦㉡ 능선에선 실제로 나빠진다(0 대 0 의 자명 비교가 아니다)', `Δ${rr.d.toFixed(4)}`);
+
+    // ── ㉢ 삼베옷 → 가죽옷 [재민 확정 ⑤ · 실기 2] ──────────────────────────
+    await warpTo(vx, vy, (w) => (w.shelter || 0) > 0.5, 8);   // 장인은 마을에 있다
+    await page.evaluate(() => window.__sendPrimary({ type: '__e2e_give', items: { hemp: 9, leather: 9 } }));
+    await sleep(900);
+    const hemp2 = await buyWear('hemp');
+    const wxH2 = await page.evaluate(() => (window.__wx ? window.__wx() : null));
+    await warpTo(vx, vy, (w) => (w.shelter || 0) > 0.5, 8);
+    const leat2 = await buyWear('leather');
+    ok(leat2.notices.some((t) => /가죽옷/.test(t)), '★⑦㉢ 가죽을 맡기면 **가죽옷**이 나온다', JSON.stringify(leat2.notices));
+    ok(leat2.insC > (wxH2 ? wxH2.insC : 0) + 0.4,
+      '★★⑦㉢ **장인 삼베옷이 가죽옷을 못 이긴다** — 배지의 ℃ 가 갈린다(하향의 실배선)',
+      `삼베 +${wxH2 && wxH2.insC}℃ → 가죽 +${leat2.insC}℃`);
+    await goFar();
+    const sLeat = await settle(45);
+    ok(sLeat.b < sHemp.b - 0.005,
+      '★★⑦㉢ 같은 밤·같은 자리·같은 0.9 에서 **가죽옷 쪽이 결정적으로 덜 춥다**',
+      `삼베옷 ${sHemp.b} → 가죽옷 ${sLeat.b}`);
+
+    // ── ㉣ 바닷가에서 물 마셔 보기 [T3 동봉 · 실기 3] ──────────────────────
+    //   ★갯벌 자리는 **정본 술어 두 개를 그대로 불러** 찾는다(사본 금지 · 족보 ㊻):
+    //     해안선 띠는 `chunk.generateCoastlineWaterTiles`(존 서버가 기동 때 부르는 바로 그 함수),
+    //     갯벌 판정은 `salt.isTidalFlat`. 여기서 좌표를 손으로 적으면 그건 지형이 아니라 소원이다.
+    const ZC = require(path.join(ROOT, 'server', 'zone-config.js'));
+    const Chunk = require(path.join(ROOT, 'server', 'chunk.js'));
+    const ZDEF = ZC.ZONES.hanbando;
+    const OCEANS = Object.values(ZC.ZONES).filter((z) => z.isOcean)
+      .map((z) => ({ x0: z.worldOffsetX, y0: z.worldOffsetY, x1: z.worldOffsetX + z.zoneWidth, y1: z.worldOffsetY + z.zoneHeight }));
+    const WATERSET = Chunk.generateCoastlineWaterTiles(Object.assign({}, ZDEF, { id: 'hanbando' }), 32, ZC.findZoneAt, OCEANS);
+    const seaAt = (x, y) => {
+      const tx = Math.floor(x / 32), ty = Math.floor(y / 32);
+      return WATERSET.has(`${tx}_${ty}`) && !Terr.isWaterCellLocal('hanbando', tx * 32 + 16, ty * 32 + 16);
+    };
+    let FLAT = null;
+    for (let y = 118000; y < 130000 && !FLAT; y += 64) for (let x = 20000; x < 60000; x += 64) {
+      if (Salt.isTidalFlat(x, y, { isSea: seaAt }) && !isRockT(x, y)) { FLAT = [x, y]; break; }
+    }
+    ok(!!FLAT, '★⑦㉣ 갯벌 자리를 **찾았다**(해안선·갯벌 정본 술어 그대로)', String(FLAT));
+    if (FLAT) {
+      for (let i = 0; i < 10; i++) {
+        await page.evaluate(([a2, b2]) => window.__sendPrimary({ type: 'teleport_debug', x: a2, y: b2 }), FLAT);
+        await sleep(1200);
+        const pos = await page.evaluate(() => window.__getMyAbs());
+        if (Math.hypot(pos.x - FLAT[0], pos.y - FLAT[1]) < 200) break;
+      }
+      await page.evaluate(() => window.__sendPrimary({ type: '__e2e_body', thirst: 40, quiet: true }));
+      await sleep(900);
+      const th0 = await page.evaluate(() => (window.__getGauges ? window.__getGauges().thirst : null));
+      ok(th0 != null && th0 <= 41, '★⑦㉣ (상황) 목이 마른 채로 갯벌에 섰다 — 아니면 아래가 자명하다', `갈증 ${th0}`);
+      await page.evaluate(() => { window.__notices = []; });
+      await page.evaluate(() => window.__sendPrimary({ type: 'gather' }));
+      await sleep(1800);
+      const ns2 = await page.evaluate(() => (window.__notices || []).slice(-3));
+      const th1 = await page.evaluate(() => (window.__getGauges ? window.__getGauges().thirst : null));
+      ok(ns2.some((t) => /짠물/.test(t)),
+        '★★⑦㉣ **바닷가에서 마시면 화면이 "짠물"이라고 말한다**(재민 실기 3)', JSON.stringify(ns2));
+      ok(!ns2.some((t) => /물 마심/.test(t)), '★★⑦㉣ "물 마심 (+30)" 이 **안 뜬다** — 종전 결함이 사라졌다');
+      ok(th1 != null && th0 != null && th1 <= th0, '★★⑦㉣ 갈증이 **한 점도 안 채워졌다**', `${th0} → ${th1}`);
+    }
+  }
+
   // ── ⑤ 클라가 온도 산수를 **혼자 하지 않는다**(사본 금지 — 달력과 같은 규약) ─
   const csrc = require('./client-src.js').readClientSrc()
     .split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');

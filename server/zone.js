@@ -4737,7 +4737,13 @@ function weatherFor(p, now) {
   const sh = villageShelterOf(p, now || Date.now());
   // ★`cut` 은 "마을이 실제로 몇 % 깎아 주는가" — 클라가 `COLD_VILLAGE_SHELTER` 사본을 갖지 않게 여기서 낸다.
   const cut = +(Math.max(0, Math.min(1, sh)) * Body.CFG.COLD_VILLAGE_SHELTER).toFixed(4);
-  return Object.assign({}, w, { shelter: sh, cut, insC: +insC.toFixed(2) });
+  // ★[바람 노출] 서버가 계산해 **숫자로** 보낸다 — 클라는 이 배치에서 아무것도 그리지 않지만
+  //   (HUD 바람 힌트는 회부 · T38), 하네스가 "그 자리가 실제로 노출됐는가"를 물을 수 있어야 한다.
+  //   ⚠클라 사본 금지 규약과 같은 자리다: 지형·계절 산수는 전부 여기서 끝난다.
+  const day = gameDayNow();
+  const wexp = windExposureOf(p, now || Date.now(), day, sh);
+  return Object.assign({}, w, { shelter: sh, cut, insC: +insC.toFixed(2),
+    wind: +Wind.seasonWind(day).toFixed(3), exp: wexp });
 }
 // ★★[천장 해제 2026-08-31] 그 자리의 고도(km) — econ 기온 감률(−6.5℃/km)의 입력.
 //   ★★실측 보고(이 배치 §0): **지금은 언제나 0 이다. 그게 거짓말이 아니라 세계의 사실이다.**
@@ -4757,6 +4763,29 @@ function villageShelterOf(p, now) {
   let v = 0;
   try { v = (SimVillages.shelterAt ? SimVillages.shelterAt(p.x, p.y) : 0) || 0; } catch (e) { v = 0; }
   p._shelter = { at: now, x: p.x, y: p.y, v };
+  return v;
+}
+// ★★[바람 노출 2026-09-01 재민 확정 ④] 지형 술어 주입 — `server/wind.js` 는 지형 파일을 직접 안 연다.
+//   **정본 술어를 그대로 넘긴다**(사본 금지 · 족보 ㊻). `isRockTileLocal` 은 이미 타일로 양자화하고
+//   `TERRAIN_TILE_CACHE` 메모까지 타므로, 노출 레이 표본이 그 메모의 덕을 그대로 본다.
+const Wind = require('./wind');
+Wind.bindTerrain({
+  isRock: (x, y) => isRockTileLocal(x, y),
+  forestMult: (x, y) => { try { return _terrain.getForestMultiplier(ZONE_ID, x, y); } catch (e) { return 1; } },
+});
+// 그 플레이어가 선 자리의 바람 노출도 0..1 — 완충과 같은 캐시 규약(초당 1회·64px 이동 이상).
+//   ★셀 몫(레이 막힘·숲)은 `wind.js` 가 셀 캐시에 담고, 여기서는 **계절 곱**만 다시 한다.
+const _WIND_TTL_MS = 1000, _WIND_MOVE_PX = 64;
+function windExposureOf(p, now, day, shelter) {
+  const c = p._windExp;
+  if (c && (now - c.at) < _WIND_TTL_MS && c.day === day
+      && Math.hypot(p.x - c.x, p.y - c.y) < _WIND_MOVE_PX) return c.v;
+  let v = 0;
+  const t0 = Date.now();
+  try { v = Wind.exposureAt(p.x, p.y, day, shelter) || 0; } catch (e) { v = 0; }
+  const dt = Date.now() - t0;
+  if (dt >= 5) perfMark('wind_exposure', dt);
+  p._windExp = { at: now, x: p.x, y: p.y, day, v };
   return v;
 }
 // ★★[무게 배치] 걸음 배율의 **정본 하나** — 서버 이동과 클라 예측이 같은 수를 써야 러버밴딩이 안 난다.
@@ -5647,8 +5676,23 @@ function tryGather(player) {
       //   안 그러면 갈증 갈래(아래)가 먼저 걸려 갯벌에 서 있어도 짠물을 못 뜬다 —
       //   갈증은 늘 조금씩 줄어서 95% 문턱이 거의 안 열리기 때문이다(그 함정은 갈대가 이미 밟았다).
       //   ⚠**바닷물을 마시면 갈증이 회복되는 문제는 여기서 안 고친다** — 신체 영역 판단이다(회부 D).
+      //   ★★[T4 2026-09-01] **그 회부가 확정으로 내려왔다 — 바로 아래에서 고친다.**
       if (isSeaTileLocal(player.x + dx, player.y + dy)
           && (player.inventory[Salt.VESSEL] || 0) >= 1) { tryForage(player); return; }
+      // ★★[바닷물 2026-09-01 재민 확정 · T3 동봉] **짠물은 목을 축이지 않는다.**
+      //   종전엔 바다도 강도 `isWaterTileLocal` 하나로 뭉뚱그려 갈증이 +30 회복됐다.
+      //   자염 배치가 이미 **바다 술어**(`isSeaTileLocal` = 해안선 띠 ∖ 강·호수)를 정본으로 세워 뒀다 —
+      //   여기서는 그것을 **다시 부를 뿐 사본을 만들지 않는다**.
+      //   ⇒ 회복 0 + 갈증 가속(확정적 · `Body.drinkBrine` · 식중독 확률 굴리기 금지).
+      //     ★새 패널·새 축·새 클라 코드 0 — 기존 `notice` 문구 문법 그대로다.
+      if (isSeaTileLocal(player.x + dx, player.y + dy)) {
+        Body.drinkBrine(player, Date.now());
+        send(player.ws, { type: 'notice',
+          text: `🌊 짠물이다 — 목이 축여지기는커녕 더 마른다 (${Math.round(Body.CFG.BRINE_SEC / 60)}분간 갈증이 빨라진다)`
+              + ' · 마실 물은 강·호수·샘에서' });
+        send(player.ws, { type: 'self_stat', thirst: Math.round(player.thirst ?? THIRST_MAX) });
+        return;
+      }
       if ((player.thirst ?? THIRST_MAX) >= THIRST_MAX * 0.95) { tryForage(player); return; }
       const before = player.thirst || 0;
       player.thirst = Math.min(100, before + 30);
@@ -7153,6 +7197,7 @@ function __testBind() {
     // ★[자염 배치 2026-09-01] 하네스가 잡을 손잡이들 — **정본을 그대로 내준다**
     //   (하네스가 염도·수율을 다시 계산하면 그게 사본이다).
     Salt, doBoilSalt, isSeaTileLocal, WATER_TILES, tryGather, _SEASON_DAY_MS, ITEM_RECIPES, doCraftItem,
+    Wind, windExposureOf, isRockTileLocal, villageShelterOf, gameDayNow, elevKmAt,
     // ── 원장 승격(2026-08-30) ── 드롭·줍기·바닥 지도를 **정본 그대로**. 하네스가 바닥템을 손으로 빚으면 사본이다.
     tryDropItem, tryPickupItem, groundItems, sendInventory, consumeItem, handlePlayerInput,
     // ── 빈손 시작(2026-08-28) ── 줍기·제작·도구 표를 **정본 그대로** 내준다
@@ -8758,8 +8803,11 @@ setInterval(() => {
     //   `seasonCold` 는 그대로 같이 넘긴다 — `day` 가 없는 호출부를 위한 **폴백 계약**이라
     //   여기선 안 쓰이지만, 계약이 살아 있다는 걸 호출부가 보여 주는 편이 낫다.
     //   ★[겨울 난이도] 마을 완충은 여기서만 계산한다(사본 금지 — `SimVillages.shelterAt` 이 정본).
-    Body.tick(p, dt, { day: gameDayNow(), elevKm: elevKmAt(p), night: _night, nearFire: _fire, indoor: _indoor, warmth,
-                       villageShelter: villageShelterOf(p, now),
+    // ★[바람 노출 2026-09-01] 완충을 한 번만 재고 노출에 **그대로 넘긴다** — 두 번 재면 두 값이 갈린다.
+    const _day = gameDayNow();
+    const _sh = villageShelterOf(p, now);
+    Body.tick(p, dt, { day: _day, elevKm: elevKmAt(p), night: _night, nearFire: _fire, indoor: _indoor, warmth,
+                       villageShelter: _sh, windExposure: windExposureOf(p, now, _day, _sh),
                        seasonCold: seasonColdNow(), moving, sprint: p.sprint, carryRatio: _cr, now });
     p._cold = Body.ensure(p).cold > 0.05;
     // 옷은 추위를 막는 동안 닳는다(종전 규약 유지 — 옷감 수요의 실체)

@@ -95,6 +95,16 @@ const CFG = {
   //     ⚠이건 "마을 안이 안전하다"는 **설계 약속**이지 미세 튜닝 손잡이가 아니다. 낮추려면 회부.
   COLD_VILLAGE_SHELTER: _num('BODY_COLD_VILLAGE_SHELTER', 0.65),
   WARMTH_FULL: _num('BODY_WARMTH_FULL', 50),        // 옷 방한 이 값이면 노출 0(기존 상수와 같은 뜻)
+  //   ★★[바람 노출 2026-09-01 재민 확정 ④] **"같은 고도라도 능선은 골짜기보다 춥다."**
+  //     노출도 X(0..1 · `server/wind.js`)에 이 계수를 곱해 목표점에 **항 하나**로 얹는다.
+  //     고도 감률과는 **독립**이다(둘 다 걸리면 높고 노출된 자리가 가장 춥다).
+  //     ★평지의 X 는 0 이다 ⇒ 추위 2차가 재 둔 평지 기준선이 **한 자리도 안 움직인다.**
+  COLD_WIND_K: _num('BODY_COLD_WIND_K', 0.6),
+  // ── ★★[바닷물 2026-09-01 · T3 동봉] 짠물은 갈증을 **가속**한다 ───────────────
+  //   재민 확정: 확률 굴리기(식중독) 금지 — **확정적**이다. 마시면 회복 0 이고,
+  //   BRINE_SEC 동안 갈증 감소가 BRINE_MULT 배가 된다(보존식 `thirst` 음수와 같은 뜻의 다른 축).
+  BRINE_SEC: _num('BODY_BRINE_SEC', 300),
+  BRINE_MULT: _num('BODY_BRINE_MULT', 2.5),
 
   // ── 피로 ───────────────────────────────────────────────────────────────────
   //   ★"24분 하루의 자연 마디"(§7). 하루 종일 일하면 저녁에 효율이 떨어지는 **정도**다.
@@ -203,13 +213,34 @@ for (const a of AXES) {
 //   새 축만 `p.body` 에 0..1 로 담는다(0 좋음 … 1 최악, 사기만 0 없음 … 1 최고).
 function ensure(p) {
   if (!p.body || typeof p.body !== 'object') {
-    p.body = { cold: 0, fatigue: 0, injury: 0, morale: 0, herbUntil: 0, stages: {}, stam: 1, stamLock: false };
+    p.body = { cold: 0, fatigue: 0, injury: 0, morale: 0, herbUntil: 0, stages: {}, stam: 1, stamLock: false, brineUntil: 0 };
   }
   if (!p.body.stages) p.body.stages = {};
   // ★[3층 재배선] 옛 저장본엔 스태미나가 없다 — 가득으로 시작한다(불이익 없이 승격).
   if (!Number.isFinite(p.body.stam)) p.body.stam = 1;
   if (typeof p.body.stamLock !== 'boolean') p.body.stamLock = false;
+  // ★[바닷물] 옛 저장본엔 없다 — 0(=효과 없음)으로 시작한다.
+  if (!Number.isFinite(p.body.brineUntil)) p.body.brineUntil = 0;
   return p.body;
+}
+
+// ── ★★[바닷물 2026-09-01 · T3 동봉] 짠물을 마셨다 ────────────────────────────
+//   재민 확정: **회복 0 + 갈증 가속**, 그리고 **확정적**이다(식중독 확률 굴리기 금지).
+//   고증·의학 둘 다 같은 말을 한다: 해수의 염분(≈3.5%)은 사람 신장이 배출할 수 있는 농도보다
+//   짙어서, 마신 물보다 **더 많은 물을 오줌으로 내보내야** 한다. 그래서 마실수록 목이 마르다.
+//   ⇒ 새 축을 만들지 않았다. 있는 갈증 축의 **감쇠 배율**을 한동안 올릴 뿐이다.
+//     (보존식이 `thirst` 음수로 같은 말을 하는 것과 같은 자리다 — 축을 늘리지 않는다.)
+//   ★HP 를 깎지 않는다(아사 폐지 캐논 동형). 시련은 갈증·스태미나·이속이지 피가 아니다.
+function drinkBrine(p, now) {
+  const b = ensure(p);
+  const t = Number.isFinite(now) ? now : Date.now();
+  b.brineUntil = Math.max(b.brineUntil || 0, t) + CFG.BRINE_SEC * 1000;
+  return b.brineUntil;
+}
+/** 지금 짠물 기운이 남아 있는가(갈증 감쇠 배율에 쓰인다). */
+function brineActive(p, now) {
+  const b = ensure(p);
+  return (b.brineUntil || 0) > (Number.isFinite(now) ? now : Date.now());
 }
 // 각 축의 **심각도** 0..1 — 곡선의 입력. 여기가 단위 환산의 유일한 자리다.
 function severity(p) {
@@ -330,6 +361,17 @@ function coldTarget(ctx) {
   // ★★[천장 해제 2026-08-31] **여기서 1 로 자르지 않는다.** 자르면 −5℃ 도 −15℃ 도 같은 밤이 된다.
   //   상태값(`b.cold`)은 여전히 0~1 이고 `tick` 이 거기서 자른다 — 넘친 몫은 **속도**로만 나타난다.
   t = Math.max(0, t);
+  // ★★[바람 노출 2026-09-01 재민 확정 ④] **항 하나** — 같은 고도라도 능선은 골짜기보다 춥다.
+  //   `windExposure` 는 그 자리의 노출도 0..1(지형·계절의 결정론 함수 · `server/wind.js`).
+  //   ⚠새 식을 만들지 않았다: 곱 하나다. 그리고 **고도 감률과 독립**이다 —
+  //     감률은 위 `outdoor` 안에서 ℃ 로 이미 걸렸고, 여기서는 그 결과를 배율로 키운다.
+  //   ★평지는 X=0 이라 이 줄이 정확히 ×1 이다(기존 기준선 보존 — `test-body ⑯㉢`).
+  //   ⚠폴백(4단 계단) 경로엔 걸지 않는다: 노출은 `day`(계절 탁월풍)를 요구하는데
+  //     폴백은 `day` 가 없는 호출부를 위한 것이라 바람의 방향을 물을 수 없다.
+  if (outdoor !== null) {
+    const wx = Math.max(0, Math.min(1, Number(c.windExposure) || 0));
+    if (wx > 0) t *= (1 + CFG.COLD_WIND_K * wx);
+  }
   // ★★마을 안전망 — 바깥 환경을 깎는다(옷보다 **먼저**: 미기후는 몸이 아니라 장소의 성질이다).
   //   `villageShelter` 는 0(야생) … 1(마을 한복판). 야생은 **완충이 없다** — 그게 위험의 정의다.
   const sh = Math.max(0, Math.min(1, Number(c.villageShelter) || 0));
@@ -403,7 +445,9 @@ function tick(p, dtSec, ctx) {
   const h0 = (p.hunger == null ? 100 : p.hunger);
   const t0 = (p.thirst == null ? 100 : p.thirst);
   p.hunger = Math.max(0, h0 - decayRate(h0, CFG.HUNGER_SEC) * dtSec * cm);
-  p.thirst = Math.max(0, t0 - decayRate(t0, CFG.THIRST_SEC) * dtSec);
+  //   ★[바닷물] 짠물 기운이 남아 있으면 갈증이 **더 빨리** 준다(확정적 · 새 축 없음).
+  const bm = brineActive(p, c.now) ? CFG.BRINE_MULT : 1;
+  p.thirst = Math.max(0, t0 - decayRate(t0, CFG.THIRST_SEC) * dtSec * bm);
 
   // ★★스태미나 — 달리면 줄고(짐이 무거우면 더), 서면 찬다(허기·갈증이 그 속도를 정한다).
   const load = Math.max(0, Number(c.carryRatio) || 0);
@@ -495,6 +539,7 @@ module.exports = {
   CFG, CURVES, AXES, KO, EMO, STAGE_AT,
   lerpCurve, xWhereBelow, ensure, severity, effects, stageOf, moodles,
   RECOVER, EFFECT_AXES, RECOVER_AXES, recoverMult, recoverParts, canSprint, stamina, coldTarget, warmthInsC, decayRate,
+  drinkBrine, brineActive,
   tick, onLabor, onDamage, onEat, onHerb,
   selfPayload, peerPayload, toSave, fromSave, dirtySince, snapshot,
 };

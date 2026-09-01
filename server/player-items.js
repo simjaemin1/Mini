@@ -103,6 +103,34 @@ if (Specialty && Specialty.alloyGrade) {
 const CLOTH_KO = {
   fur: '갖옷', leather: '가죽옷', hide: '생가죽옷', ramie: '모시옷', hemp: '삼베옷', fiber: '풀 엮은 옷',
 };
+// ── ★★[삼베옷 하향 2026-09-01 재민 확정 ⑤] **식물 섬유는 아무리 잘 짜도 바람을 못 막는다** ──
+//   회부(`회부_추위2_다음층.md` "장인 삼베옷이 너무 좋다")가 확정으로 내려왔다.
+//   실측한 문제: `warmth = 62 × qSkill(lv) × MAT_GRADE`. 장인(Lv10) 삼베옷은 62×1.0×0.6 = **37** 로
+//   **가죽옷(leather Lv5)과 정확히 같은 값**이었다. 재료가 이름을 말하는데 성능이 안 갈렸다.
+//
+//   ★고치는 자리를 셋 중 하나로 골랐다 — **데이터 한 줄**이 목표다(지시: "식은 건드리지 마라"):
+//     ⓐ `MAT_GRADE.hemp` 를 낮춘다 → **금지.** 이 표는 econ `CLOTH_Q_MAT` 과 *동일값* 계약이고
+//        (파일 머리말 "코히런스"), 낮추면 마을 스톡 품질·거래가 전부 움직인다 = econ 수정이다.
+//     ⓑ 단열 식(`warmthInsC`)을 재료별로 가른다 → **금지.** 식을 늘리는 것이고, 옷 하나의
+//        문제를 온도 모델 전체의 분기로 옮긴다.
+//     ⓒ **완성품 `warmth` 속성에 재료 상한을 둔다** ← 채택. `q`(품질)는 그대로다 —
+//        내구·가격·판매 넛지·이름은 한 자도 안 바뀌고, **방한만** 천장에 눌린다.
+//
+//   ★왜 상한(cap)이고 배율이 아닌가: 배율이면 조잡 베옷(15)이 10 아래로 떨어져 `WARMTH_MIN`
+//     문턱에 걸려 **단열 0** 이 된다 = 사다리의 첫 칸이 통째로 사라진다. 상한은 아랫칸을
+//     그대로 두고 **윗칸만** 자른다("아무리 잘 짜도 여기까지"). 고증도 이쪽이다 —
+//     삼베·모시는 통기성이 좋아 여름 옷이다. 솜씨가 좋아지면 곱고 질겨지지 **따뜻해지지 않는다.**
+//
+//   ★왜 삼(hemp)만이 아니라 **식물 섬유 전부**인가: 삼만 막으면 장인이 모시(ramie 0.9)로 옮겨
+//     62×1.0×0.9 = **56**(갖옷 Lv8 의 55 보다 높다)이 되어 **고친 게 없어진다.**
+//     같은 물성(식물 셀룰로오스 섬유)은 같은 천장을 받는다 — 그게 상한의 근거이기도 하다.
+//   ⇒ 채택값 26 = 추위 2차 표의 조잡 베옷(15)과 가죽옷(37) **한가운데**(지시서의 시작점 그대로).
+//     생가죽옷(23) 위 · 가죽옷(37) 아래에 앉는다 ⇒ 삼베 < 가죽 < 모피 **단조 유지**.
+const CLOTH_WARMTH_CAP = {
+  hemp: parseFloat(process.env.CLOTH_WARMTH_CAP_FIBER) || 26,
+  ramie: parseFloat(process.env.CLOTH_WARMTH_CAP_FIBER) || 26,
+  fiber: parseFloat(process.env.CLOTH_WARMTH_CAP_FIBER) || 26,
+};
 function _domMat(materials) {
   let best = null, bv = -1;
   for (const k in (materials || {})) { const v = Number(materials[k]) || 0; if (v > bv) { bv = v; best = k; } }
@@ -118,6 +146,10 @@ function craftItem(type, skillLevel, materials) {
     if (a === 'buff') inst.attrs.buff = +q.toFixed(2);
     else if (a === 'freshness') continue;
     else inst.attrs[a] = Math.round((def.attrScale || 100) * q);
+  }
+  // ★[삼베옷 하향 2026-09-01] 재료 천장 — `q` 는 손대지 않는다(내구·가격·이름 전부 불변).
+  if (type === 'clothes' && inst.mat && CLOTH_WARMTH_CAP[inst.mat] != null) {
+    inst.attrs.warmth = Math.min(inst.attrs.warmth, CLOTH_WARMTH_CAP[inst.mat]);
   }
   if (def.durable) { inst.durMax = Math.round(def.baseDura * (1 + DURA_SPAN * q)); inst.dura = inst.durMax; }
   if (def.perishable) { inst.attrs.freshness = 100; inst.craftedAt = null; }   // craftedAt은 호출측이 게임시각 주입
@@ -184,7 +216,7 @@ function displayItem(inst) {
   return label + alloy + ' [' + parts.join(' · ') + ']' + (inst.craftedSkill != null ? ' — Lv' + inst.craftedSkill + ' 제작' : '');
 }
 
-module.exports = { MAT_GRADE, ITEM_TYPES, CLOTH_KO, Q_SKILL_SPAN, DURA_SPAN, qSkill, matGrade, craftItem, wearItem, repairItem, decayFreshness, materializeFromVillage, sellNudge, displayItem,
+module.exports = { MAT_GRADE, ITEM_TYPES, CLOTH_KO, CLOTH_WARMTH_CAP, Q_SKILL_SPAN, DURA_SPAN, qSkill, matGrade, craftItem, wearItem, repairItem, decayFreshness, materializeFromVillage, sellNudge, displayItem,
   castable, castKinds, castGrade, CAST_KIND, CAST_MAX_KINDS, CAST_GRADE_MAX, CAST_ERA, MAT_KO };
 
 // ── 자가검증 (node server/player-items.js) ──
