@@ -1721,20 +1721,24 @@ function _escortMarch(body, dtMs, players) {
   }
 }
 // 게임일 경계(econ 틱 직후) — econ 캐러밴 집합과 실체 대조: 스폰/상태 전이/회수.
-function syncCaravanBodies(now) {
+// ★★[T1 2026-09-01] **한 대씩 / 쓸기** 로 갈랐다 — 조각내기 위해서다(본문은 한 줄도 안 옮겼다).
+//   `syncCaravanBodies(now)` 는 그대로 남아 둘을 순서대로 부른다 — 기존 호출부·하네스는 아무 변화 없다.
+//   왜 갈랐나: 실측 p95 **989ms**(최대 5,046ms). 안이 전부 `getRoute`(A*)라 대수가 몰린 날엔
+//   이 한 단계가 생활층보다 크다. 앞 루프는 캐러밴끼리 독립이고, 뒤 쓸기만 `seen` 전량을 필요로 한다.
+function _caravanSyncNew() { return { seen: new Set(), spawned: 0, arrived: 0, removed: 0 }; }
+function _caravanSyncOne(now, c, S) {
   const world = state.world, bodies = state.caravanBodies;
   const players = state.deps.players;
-  const seen = new Set();
-  let spawned = 0, arrived = 0, removed = 0;
-  for (const c of world.caravans) {
-    if (c._done) continue;
+  const seen = S.seen;
+  {
+    if (c._done) return;
     seen.add(c.id);
     const body = bodies.get(c.id);
     if (!body) {
-      if (bodies.size < CARAVAN_BODY_MAX && spawnCaravanBody(c, now)) spawned++;
-      continue;
+      if (bodies.size < CARAVAN_BODY_MAX && spawnCaravanBody(c, now)) S.spawned++;
+      return;
     }
-    if (body.phase !== 'outbound') continue;
+    if (body.phase !== 'outbound') return;
     if (c.state === 'inbound') {
       // econ 도착 확정(매도 or 빈손 손절) — 실체는 종점 스냅 + 1게임시간 머묾 후 귀환(§5.5b 연출)
       const p = players.get(body.pid);
@@ -1743,7 +1747,7 @@ function syncCaravanBodies(now) {
       body.prog = body.len;
       body.phase = 'linger';
       body.lingerUntil = now + state.dayMs * CARAVAN_LINGER_DAY_FRAC;
-      arrived++;
+      S.arrived++;
       console.log(`[${state.zoneId}] 🐂 캐러밴#${c.id} 도착: ${c.from.name}→${c.to.name} ${c.giveRes}${c._abandoned ? ' (빈손 손절)' : ' 매도'} — 1게임시간 머묾 후 귀환`);
     } else if (c.to !== body.toV) {
       // econ 도착 시점 재라우팅(가격 손절 — 기존 로직) — 실체는 현 위치(구 목적지)에서 새 목적지로 재출발
@@ -1753,7 +1757,7 @@ function syncCaravanBodies(now) {
       let pts = (oldToVil && newToVil) ? getRoute(oldToVil, newToVil) : null;
       if (pts) pts = [{ x: pos.x, y: pos.y }, ...pts];
       else if (newToVil) pts = [{ x: pos.x, y: pos.y }, { x: newToVil.ccx * SZ + SZ / 2, y: newToVil.ccy * SZ + SZ / 2 }]; // 경로 실패 폴백: 직선 보간(비활성 수준 — 행렬 유한쌍이라 실사용 희박)
-      else { despawnCaravanNpc(body); bodies.delete(c.id); removed++; continue; } // 대상 마을 미상(방어) — 실체 생략, econ은 계속
+      else { despawnCaravanNpc(body); bodies.delete(c.id); S.removed++; return; } // 대상 마을 미상(방어) — 실체 생략, econ은 계속
       setBodyPts(body, pts);
       body.toV = c.to;
       const legDays = Math.max(1, c.arriveDay - world.day);
@@ -1764,17 +1768,26 @@ function syncCaravanBodies(now) {
       console.log(`[${state.zoneId}] 🐂 캐러밴#${c.id} econ 재라우팅 → ${c.to.name} (${legDays}일) — 실체 재출발`);
     }
   }
-  // econ에서 사라진 캐러밴(완주 입금 or killTrader) — 실체 회수
+}
+// 쓸기 — `seen` 전량이 모인 뒤에만 옳다(그래서 이 절반은 원자다).
+function _caravanSyncSweep(S) {
+  const bodies = state.caravanBodies, seen = S.seen;
   for (const [id, body] of [...bodies]) {
     if (seen.has(id)) continue;
     const c = body.c;
     const killed = c && c.trader && c.from && Array.isArray(c.from.npcs) && c.from.npcs.indexOf(c.trader) < 0;
     despawnCaravanNpc(body);
     bodies.delete(id);
-    removed++;
+    S.removed++;
     console.log(`[${state.zoneId}] 🐂 캐러밴#${id} ${killed ? '행상 사망(약탈 주사위) — 실체 소멸' : '귀환 완료 — 상인 회수'}${body.delayedDays ? ` (차단 지연 누계 ${body.delayedDays}일)` : ''}`);
   }
-  return { spawned, arrived, removed };
+  return S;
+}
+// 겉함수 — 종전 그대로(일괄). 조각내기 경로는 위 둘을 직접 부른다.
+function syncCaravanBodies(now) {
+  const S = _caravanSyncNew();
+  for (const c of state.world.caravans) _caravanSyncOne(now, c, S);
+  return _caravanSyncSweep(S);
 }
 
 // =============================================================================
@@ -2580,16 +2593,47 @@ function warLodResolveSweep() {
 }
 
 // =============================================================================
+// ★★[T1 §0 실측 2026-09-01] **일틱 단계별 소요 계측** — 계측기지 손잡이가 아니다.
+//   왜: 실기 RTT 스파이크의 범인이 econ 하루 틱(실측 346~684ms)인데, 그 안에서
+//   **어느 단계가 살찐 놈인지**를 모른 채 쪼개면 엉뚱한 곳을 자르게 된다.
+//   ⇒ 게임일 1회(하루 24분에 한 번) `Date.now()` 를 열몇 번 읽는다 — 비용은 측정 불가 수준.
+//   `/perf` 가 그대로 내준다(zone.js). 아무 동작도 바꾸지 않는다.
+const _tickPerf = { last: null, ring: [] };   // ring: 최근 200 게임일
+// ★[T1 §0] `life` 단계가 일틱의 9할이라 **그 안**을 한 겹 더 갈라 본다(계측 전용).
+const _lifeSub = { crop: 0, hunter: 0, gran: 0, pids: 0, site: 0, near: 0, headless: 0, hp: 0 };
+const _lifeSubMax = {};   // 같은 항목의 **마을 한 곳 최댓값** — 조각 예산은 합이 아니라 최댓값이 정한다
+let _lifeMax = 0, _lifeMaxName = '';   // ★[T1 §0] 마을 한 곳의 최댓값 — '마을 경계 조각'이 예산에 드는지의 직답
+function tickPerf() {
+  const R = _tickPerf.ring;
+  const names = new Set(); for (const r of R) for (const k in r.stages) names.add(k);
+  const q = (a, p) => { if (!a.length) return 0; const t = [...a].sort((x, y) => x - y); return +t[Math.min(t.length - 1, Math.floor(t.length * p))].toFixed(1); };
+  const stages = {};
+  for (const nm of names) { const a = R.map((r) => r.stages[nm] || 0); stages[nm] = { p50: q(a, 0.5), p95: q(a, 0.95), max: +Math.max(...a).toFixed(1) }; }
+  const tot = R.map((r) => r.total);
+  return { days: R.length, last: _tickPerf.last,
+           total: R.length ? { p50: q(tot, 0.5), p95: q(tot, 0.95), max: Math.max(...tot) } : null, stages };
+}
+
+// =============================================================================
 // onGameTick — gameLoop(30Hz)에서 매 틱 호출되는 훅. 게임일 경계에서만 일함.
 // 평시 비용: ready/정수 비교 O(1). 경계 갭>1(서버 슬립)이어도 1틱만 — 실시간 앵커.
 // =============================================================================
 function onGameTick(now) {
   if (!state.ready) return; // 플래그 off·비대상 존·init 실패 전부 여기서 차단
-  // Stage 4B: 캐러밴 실체 30Hz 전진 — zone.js idle 존 스킵보다 앞(호출 위치)이라 무인 존에서도 econ과 동행.
-  //   도착 임박 가드가 아래 경계 econ 틱보다 먼저 돌아 'econ이 몸을 앞지르는' 순서 역전이 없다.
-  try { tickCaravanBodies(now); } catch (e) { console.error(`[${state.zoneId}] 🐂 캐러밴 실체 틱 실패:`, e.message); }
-  // P2: 실체 전투 30Hz 스텝 — 캐러밴 직후(설계 위치). 무인 존에서도 진행 중 전투 완주(idle 스킵보다 앞).
-  try { tickWarBodies(now); } catch (e) { console.error(`[${state.zoneId}] ⚔️ 실체 전투 틱 실패:`, e.message); }
+  // ★★[T1 2026-09-01] **마감 중에는 실체 30Hz 를 멈춘다.**
+  //   조각내기 전엔 하루가 한 프레임에 끝났으므로, 그 하루의 모든 단계가 **같은 순간의 실체**를 봤다.
+  //   쪼갠 뒤 실체를 계속 굴리면 뒤 단계(캐러밴 동기·사건 장부)는 **몇 초 더 간 몸**을 보게 되고,
+  //   그것만으로 세계가 갈린다 — 실측으로 잡았다(`test-tick-slicer ⑧`: 50곳 중 21곳 불일치 → 0곳).
+  //   ⇒ 하루 경계는 세계에게 **한 순간**이어야 한다. 실체는 마감이 끝난 프레임부터 다시 걷는다.
+  //   ⚠멈춤은 실측 2.4~3.0초다. 캐러밴은 econ 경계에 맞춰 '남은거리/남은시간'으로 자기 보정하므로
+  //     (Stage 4B 규약) 이 정지는 다음 프레임에 저절로 흡수된다. 하루 24분 중 0.2% 다.
+  if (!state.tickJobs) {
+    // Stage 4B: 캐러밴 실체 30Hz 전진 — zone.js idle 존 스킵보다 앞(호출 위치)이라 무인 존에서도 econ과 동행.
+    //   도착 임박 가드가 아래 경계 econ 틱보다 먼저 돌아 'econ이 몸을 앞지르는' 순서 역전이 없다.
+    try { tickCaravanBodies(now); } catch (e) { console.error(`[${state.zoneId}] 🐂 캐러밴 실체 틱 실패:`, e.message); }
+    // P2: 실체 전투 30Hz 스텝 — 캐러밴 직후(설계 위치). 무인 존에서도 진행 중 전투 완주(idle 스킵보다 앞).
+    try { tickWarBodies(now); } catch (e) { console.error(`[${state.zoneId}] ⚔️ 실체 전투 틱 실패:`, e.message); }
+  }
   // ★[곳간② 클라 표시] 물리 재고 델타 방송(1초 스로틀 — 변한 곳간만). 실패해도 틱을 죽이지 않는다.
   try { _granBroadcast(now); } catch (e) { console.error(`[${state.zoneId}] 🏘️ 곳간 재고 방송 실패:`, e.message); }
   // ★[10차 T4 장마당] 캐러밴 체류(phase='linger') 집합이 바뀔 때만 방송 — 평시 O(캐러밴 수) 비교 1회
@@ -2608,12 +2652,50 @@ function onGameTick(now) {
   //   ⚠새 env 플래그를 만들지 않았다 — ①의 교훈("플래그 두 개면 다음 세션이 하나만 끈다").
   //     기존 테스트 픽스처 게이트(`E2E_GIVE`)를 그대로 타는 **런타임 메시지**다. 운영엔 분기 자체가 없다.
   //   ⚠**시간 흐름 자체가 주제인 검사는 얼리지 마라**(의뢰 철회·사건 하루 경계·계절).
+  // ★★[T1 2026-09-01 재민 확정] **일틱 조각내기.**
+  //
+  //   문제(실기): econ 하루 경계에서 이벤트 루프가 통째로 막혀 RTT 가 튄다.
+  //   실측(이 컨테이너 · 마을 50곳 · econ day 515): 일틱 **중앙 2,018ms · p95 2,557ms**.
+  //   그동안 30Hz 루프가 멈추므로 그 순간 들어온 ping 은 그만큼 늦게 답을 받는다.
+  //
+  //   ★실측이 뒤집은 전제: **범인은 econ 이 아니다.**
+  //     econ(`tickWorldV2`) 99ms(5%) · **생활층(`_lifeDaily`) 1,620ms(80%)**.
+  //     그 중 `_lifeAddHouseSite` 하나가 1,127ms — 자리를 못 찾는 마을이 매일 영토 전수를 두 번 훑는다.
+  //     ⇒ 그래서 econ 은 **한 줄도 안 건드렸다**(지시 §2-③의 좁은 예외조차 쓸 필요가 없었다).
+  //
+  //   해법: 하루 경계에서 하던 일을 **조각(job) 목록**으로 만들어 두고, 이후 프레임마다
+  //   예산(`TICK_SLICE_MS`, 기본 16ms)만큼만 꺼내 돌린다. 조각 경계는 **단계 경계 또는 마을 경계**뿐이다 —
+  //   마을 간 결합 단계(econ 교역·캐러밴 쓸기)는 통째로 한 조각이다(쪼개면 정합이 깨진다).
+  //   ⚠순서는 종전과 **글자 그대로 같다.** 조각내기는 *언제*를 바꾸지 *무엇을*은 안 바꾼다.
+  //
+  //   마감 중에는 새 날을 열지 않는다(아래 첫 줄). 하루가 24분이고 마감이 3초 남짓이라
+  //   정상적으로는 절대 겹치지 않지만, 겹치면 그건 **밀린 것**이지 건너뛸 일이 아니다.
+  if (state.tickJobs) { _drainTickJobs(now); return; }
   if (state.dayFreeze) return;
   const day = gameDayOf(now);
   if (day <= state.lastGameDay) return;
   state.lastGameDay = day;
-  try {
-    const t0 = Date.now();
+  _openDayJobs(now);
+  _drainTickJobs(now);
+}
+
+// ── 조각 예산 ────────────────────────────────────────────────────────────────
+//   16ms = 30Hz 프레임(33ms)의 절반. 나머지 절반은 이동·전투·AOI 가 쓴다.
+//   ★`VILLAGE_TICK_SLICE_MS=0` = **양보 끈을 뽑는다**(전부 한 프레임에) — 종전 동작이자
+//     `e2e-rtt` 의 대조군이다. 대조군이 통과하면 그 하네스는 아무것도 안 재고 있는 것이다.
+const TICK_SLICE_MS = (() => { const v = parseInt(process.env.VILLAGE_TICK_SLICE_MS || '', 10); return Number.isFinite(v) && v >= 0 ? v : 16; })();
+
+// 하루 경계: 그날 할 일을 조각 목록으로 **세우기만** 한다(아무것도 실행하지 않는다).
+function _openDayJobs(now) {
+  const t0 = Date.now();
+  const C = { now, t0, stg: {}, econPop: 0, npcCount: 0, jobChanges: {}, pops: {}, terr: {}, wx: {},
+              car: _caravanSyncNew(), ore: { v: 0, c: 0 }, chunks: 0, maxChunk: 0, maxChunkAt: '', order: [],
+              vils: state.villages.slice() };   // ★목록을 얼린다 — 마감 중 마을이 늘면 그날 순서가 흔들린다
+  const J = [];
+  const add = (n, f) => J.push({ n, f });
+
+  // ① econ 1일 틱 — **마을 간 원자**(교역·캐러밴 정산). 쪼개지 않는다. 실측 99ms(p95 163ms).
+  add('econ', () => {
     // ★[2파 테스트 훅] WAR_FIXTURE — 운영 무설정. WAR_FIXTURE_DAY(기본 1)≥ 첫 경계에 1회(침묵 창 밖 — 로그 가시·당일 daily가 소비).
     if (process.env.WAR_FIXTURE && !state._warFixtured && state.war && state.world.day >= (parseInt(process.env.WAR_FIXTURE_DAY || '', 10) || 1)) {
       state._warFixtured = true;
@@ -2631,8 +2713,7 @@ function onGameTick(now) {
       // P1: 전쟁 econ 층 — tickWorldV2 직후 구동(오늘 세운 동원정지/봉쇄/원한제재가 내일 틱에 반영). phase='battle'는 skip(실체 진행 중).
       if (state.war) state.war.daily(state.world.day);
     } finally { console.log = _log; }
-    // ★[2파] 전쟁 링 버퍼 드레인(테스트 훅 — VILLAGE_WAR_LOG=1): 침묵 창(tickWorldV2 스왑) 안에서 적재된
-    //   작전층 이벤트(도착·결단·포위·항복·함락)를 게임일 1회 방출. 운영 기본 무설정=기존 요약 1줄 그대로.
+    // ★[2파] 전쟁 링 버퍼 드레인(테스트 훅 — VILLAGE_WAR_LOG=1)
     if (process.env.VILLAGE_WAR_LOG === '1' && state.war) {
       const wl = state.war.stats().log; const from = state._warLogN || 0;
       for (let li = from; li < wl.length; li++) console.log(`[${state.zoneId}] ⚔️ ${wl[li]}`);
@@ -2643,73 +2724,161 @@ function onGameTick(now) {
         console.log(`[${state.zoneId}] ⚔️ [관측] D${state.world.day} ${state._warFixtureDef.name}: 곳간 ${fd.toFixed(1)}일치 · 봉쇄=${D._siegeBlock ? 'ON' : 'off'} · 야외×${D._siegeOutMul != null ? D._siegeOutMul : 1} · 인구 ${D.npcs.length}`);
       }
     }
-    let econPop = 0, npcCount = 0;
-    const jobChanges = {}; // Stage 4A: 이번 게임일 직업 재동기 변경분(pid→job)
-    const pops = {};       // Stage 4A: 마을 econ 인구(영토 라벨 갱신용)
-    for (const vil of state.villages) {
-      econPop += vil.econ.npcs.length;
+  });
+
+  // ② 인구·직업 재동기 — 실측 1ms. 마을별로 쪼갤 값어치가 없다(조각 오버헤드가 더 크다).
+  add('pop', () => {
+    for (const vil of C.vils) {
+      C.econPop += vil.econ.npcs.length;
       syncVillagePop(vil, POP_SYNC_PER_DAY); // 완만 반영: ±POP_SYNC_PER_DAY/일
-      syncVillageJobs(vil, jobChanges);      // Stage 4A: econ counts 비례 재동기(신규 스폰 포함)
-      npcCount += vil.npcPids.length;
-      pops[vil.dbId] = vil.econ.npcs.length;
+      syncVillageJobs(vil, C.jobChanges);    // Stage 4A: econ counts 비례 재동기(신규 스폰 포함)
+      C.npcCount += vil.npcPids.length;
+      C.pops[vil.dbId] = vil.econ.npcs.length;
     }
-    // Stage 4A: 일 1회 브로드캐스트 — 직업 변경분 + 마을 인구(클라 영토 라벨·이름 옆 이모지 갱신).
-    //   clientPayload의 pop도 갱신(새 welcome 수신자 최신화). 접속자 0이어도 broadcast는 no-op 수준.
-    // ★[11차 재민 지시] **영토 확장 실동** — econ이 매일 산 땅만큼 실제 셀을 넓히고, 새 셀의 나무를 벤다.
-    //   전에는 econ land.size 만 자라고 물리 영토(_terrSet)는 생성 시 크기에 얼어 있었다:
-    //   econ은 "땅을 더 샀다"는데 지도에는 아무 일도 안 일어났다(클라 라벨 반경만 커졌다).
-    for (const vil of state.villages) { try { _terrGrow(vil); } catch (e) {} }
-    // ★[11차] NPC 채굴 — 광부가 실제 광맥 셀 재고를 깎고, 그 결과가 land.ore 로 돌아온다.
-    { let _mv = 0, _mc = 0;
-      for (const vil of state.villages) {
-        try { const r = _oreMineDaily(vil); if (r) { _oreFeedback(vil, r.oFrac); if (r.consumed > 0) { _mv++; _mc += r.consumed; } } } catch (e) { }
-      }
-      if (_mv) console.log(`[${state.zoneId}] ⛏ NPC 채굴: ${_mv}개 마을 · 재고 -${_mc.toFixed(0)}`);
-    }
-    const terr = {};   // §19/§2 영토 크립(4파): econ land.size는 매일 자람(1셀 단위 구매) — 등가 반경(px)을 클라에 동기.
-    for (const vil of state.villages) terr[vil.dbId] = Math.round(Math.sqrt(((vil.econ.land && vil.econ.land.size ? vil.econ.land.size * 25 : 2800)) / Math.PI) * SZ);
+  });
+
+  // ③ 영토 확장 — 실측 177ms(p95 395ms). **마을 경계**로 쪼갠다.
+  //   ★[11차 재민 지시] econ이 매일 산 땅만큼 실제 셀을 넓히고, 새 셀의 나무를 벤다.
+  for (const vil of C.vils) add('terr', () => { try { _terrGrow(vil); } catch (e) {} });
+
+  // ④ NPC 채굴 — 중앙 9ms 인데 **최대 4,260ms**(광맥 셀 캐시가 식은 날). 마을 경계로 쪼갠다.
+  for (const vil of C.vils) add('ore', () => {
+    try { const r = _oreMineDaily(vil); if (r) { _oreFeedback(vil, r.oFrac); if (r.consumed > 0) { C.ore.v++; C.ore.c += r.consumed; } } } catch (e) { }
+  });
+  add('ore', () => { if (C.ore.v) console.log(`[${state.zoneId}] ⛏ NPC 채굴: ${C.ore.v}개 마을 · 재고 -${C.ore.c.toFixed(0)}`); });
+
+  // ⑤ 클라 페이로드(영토 반경 · 날씨) — 실측 0ms.
+  add('wx', () => {
+    // §19/§2 영토 크립(4파): econ land.size는 매일 자람(1셀 단위 구매) — 등가 반경(px)을 클라에 동기.
+    for (const vil of C.vils) C.terr[vil.dbId] = Math.round(Math.sqrt(((vil.econ.land && vil.econ.land.size ? vil.econ.land.size * 25 : 2800)) / Math.PI) * SZ);
     // ★★[날씨 축] econ 이 마을마다 돌리는 단기 날씨(가뭄·폭풍·풍요·안개)를 클라에 동기한다.
-    //   지금까지 이 상태는 **서버 머릿속에만** 있었다(`_weather` 가 zone.js·client.js 에 0회 등장) —
-    //   가뭄이 들어 fertility ×0.65 가 걸려도 땅에는 아무 일도 안 일어났다.
-    //   ★계수를 클라가 다시 적지 않는다. econ 이 실제로 쓰는 `mult.fertility` 를 **그대로 보낸다** —
-    //     표를 두 벌 두면 언젠가 갈린다(이 프로젝트에서 여러 번 났다). 클라는 받은 수를 쓰기만 한다.
-    //   ⇒ 화면의 마름/짙어짐이 **장식이 아니라 그 마을의 생산 함수 그 자체**가 된다.
-    const wx = {};
-    for (const vil of state.villages) {
+    //   ★계수를 클라가 다시 적지 않는다. econ 이 실제로 쓰는 `mult.fertility` 를 **그대로 보낸다**.
+    for (const vil of C.vils) {
       const w = vil.econ && vil.econ._weather;
-      wx[vil.dbId] = (w && w.untilDay >= state.world.day)
+      C.wx[vil.dbId] = (w && w.untilDay >= state.world.day)
         ? [w.name, (w.mult && w.mult.fertility != null) ? w.mult.fertility : 1]
         : null;
     }
     for (const cv of (state.clientPayload || [])) {
-      if (pops[cv.id] != null) cv.pop = pops[cv.id];
-      if (terr[cv.id] != null) cv.tr = terr[cv.id];
-      cv.wx = wx[cv.id] || null;   // welcome 재수신자도 최신 날씨를 받게(브로드캐스트와 같은 원천)
+      if (C.pops[cv.id] != null) cv.pop = C.pops[cv.id];
+      if (C.terr[cv.id] != null) cv.tr = C.terr[cv.id];
+      cv.wx = C.wx[cv.id] || null;   // welcome 재수신자도 최신 날씨를 받게(브로드캐스트와 같은 원천)
     }
+  });
+
+  // ⑥ 하루 1회 방송 — 직업 변경분·인구·영토·날씨·달력.
+  add('bcast', () => {
     // ★[달력 2026-08-30] 날짜가 바뀌었으니 달력도 같이 보낸다 — 클라가 매핑을 다시 하지 않는다.
     let _cal = null; try { _cal = require('./events').calendarOf(state.world.day | 0); } catch (e) {}
-    state.deps.broadcast({ type: 'sim_village_day', day: state.world.day, jobs: jobChanges, pops, terr, wx, calendar: _cal });
-    // Stage 4B: econ 캐러밴 집합 ↔ 실체 동기(스폰·도착 전이·회수) — econ 틱 직후라 상태가 최신
-    const carSync = syncCaravanBodies(now);
-    // ★★[2026-08-25 사건 레이어 · 재민 확정] 사건 장부 하루 경계 판정.
-    //   위치의 근거: econ 틱(tickWorldV2)이 끝나 재고·소비EMA·시세가 오늘 값이고,
-    //   캐러밴 실체 동기까지 끝나 `body.delayedDays` 도 최신인 **바로 이 지점**이다.
-    //   장부는 관측자다 — 이 호출이 econ 을 바꾸면 안 된다(test-events ⑧ 가 그걸 검사한다).
-    try { _scanEventsDaily(); } catch (e) { console.error(`[${state.zoneId}] 📜 사건 장부 실패(틱은 계속):`, e.message); }
-    state.saveQueue = state.villages.slice(); // 저장은 다음 틱부터 1마을/틱 — 19마을이면 0.63초에 걸쳐 완료(게임일 600s 대비 무시)
-    for (const vil of state.villages) { try { _lifeDaily(vil); } catch (e) { console.error(`[${state.zoneId}] 생활층 일일 훅 실패(${vil.name}):`, e.message); } }   // ★[생활 층] 크루 리셋·신축 판단 — econ 틱 직후(읽기 전용 결합)
-    if (state.distDirty) { // 무효화 훅(스텁) 소비 — 게임일 경계(자정 큐 세팅 뒤) 전쌍 재계산. 건물 변화는 드물어 일 1회면 족함(정밀화는 Stage 4 — 위 훅 주석).
-      state.distDirty = false;
-      // ★[배치 12] 마을이 늘어서 더러워진 것이면 **증분**으로(지형이 바뀐 것이면 `_distIncrFrom`이 −1 이라 전쌍).
-      const _k = state._distIncrFrom; state._distIncrFrom = -1;
-      try { computeAndInjectDistMatrix('무효화 재계산', (_k > 0) ? { incrementalFrom: _k } : undefined); } catch (e) { console.error(`[${state.zoneId}] 🏘️ BFS 거리행렬 재계산 실패(기존 행렬 유지):`, e.message); }
-    }
-    console.log(`[${state.zoneId}] 🏘️ 마을 econ day ${state.world.day}: 인구 ${econPop} · 스폰 NPC ${npcCount} · 캐러밴 실체 ${state.caravanBodies ? state.caravanBodies.size : 0}/${state.world.caravans.length}(+${carSync.spawned} 도착${carSync.arrived} 회수${carSync.removed}) · 저장큐 ${state.saveQueue.length}행 분산 · ${Date.now() - t0}ms`);
-    // P1: 전쟁 활동 요약(활동 있을 때만 1줄 — 선포·전투·조공·활성전쟁) + P2 실체 전투(진행 중·오늘 승격 수)
-    if (state.war) { const ws = state.war.stats(); const live = state.warLive ? state.warLive.count : 0; const physToday = state._warPhysToday || 0; if (ws && (ws.active || live || (ws.log && ws.log.length))) { const bc = ws.byCasus || {}; console.log(`[${state.zoneId}] ⚔️ 전쟁 day ${state.world.day}: 선포 ${ws.decl}[교역${bc.trade || 0}·영토${bc.territory || 0}·위신${bc.prestige || 0}·응징${bc.feud || 0}] 전투 ${ws.battle}(공승${ws.atkWin}/방승${ws.defWin}) 사상 ${ws.cas} 노획 ${ws.weaponLoot || 0} · 활성 ${ws.active} 조공 ${ws.tributes} · 실체 진행 ${live}${physToday ? ' 오늘승격 ' + physToday : ''}`); } state._warPhysToday = 0; }
+    state.deps.broadcast({ type: 'sim_village_day', day: state.world.day, jobs: C.jobChanges, pops: C.pops, terr: C.terr, wx: C.wx, calendar: _cal });
+  });
+
+  // ⑦ 캐러밴 실체 동기 — 중앙 17ms 인데 **p95 989ms**(안이 전부 A*). 캐러밴 한 대씩 쪼갠다.
+  //   쓸기(회수)만 `seen` 전량이 필요해 원자다.
+  for (const c of state.world.caravans.slice()) add('caravan', () => { _caravanSyncOne(C.now, c, C.car); });
+  add('caravan', () => { _caravanSyncSweep(C.car); });
+
+  // ⑧ 사건 장부 — econ·캐러밴이 오늘 값이 된 **바로 이 지점**(종전 위치 그대로). 실측 6ms.
+  add('events', () => { try { _scanEventsDaily(); } catch (e) { console.error(`[${state.zoneId}] 📜 사건 장부 실패(틱은 계속):`, e.message); } });
+
+  // ⑨ 저장 큐 — 다음 틱부터 1마을/틱(종전 그대로).
+  add('save', () => { state.saveQueue = C.vils.slice(); });
+
+  // ⑩ 생활층 — **일틱의 80%**. 마을 경계로 쪼갠다. 한 조각(마을 한 곳)이 중앙 227ms 라
+  //   여전히 예산을 넘는다 — 그 사실은 `/perf` 가 그대로 말하고, 그 안의 수술은 회부다(§4).
+  add('life', () => { for (const k in _lifeSub) _lifeSub[k] = 0; for (const k in _lifeSubMax) delete _lifeSubMax[k]; _lifeMax = 0; _lifeMaxName = ''; });
+  for (const vil of C.vils) add('life', () => {
+    try { _lifeDaily(vil); } catch (e) { console.error(`[${state.zoneId}] 생활층 일일 훅 실패(${vil.name}):`, e.message); }
+  });
+
+  // ⑪ BFS 거리행렬 — 무효화됐을 때만.
+  add('dist', () => {
+    if (!state.distDirty) return;
+    state.distDirty = false;
+    const _k = state._distIncrFrom; state._distIncrFrom = -1;
+    try { computeAndInjectDistMatrix('무효화 재계산', (_k > 0) ? { incrementalFrom: _k } : undefined); } catch (e) { console.error(`[${state.zoneId}] 🏘️ BFS 거리행렬 재계산 실패(기존 행렬 유지):`, e.message); }
+  });
+
+  state.tickCtx = C;
+  state.tickJobs = J;
+}
+
+// 마감 — 요약 로그 + 계측 적재 + 대기 큐 방류.
+function _closeDay(C) {
+  console.log(`[${state.zoneId}] 🏘️ 마을 econ day ${state.world.day}: 인구 ${C.econPop} · 스폰 NPC ${C.npcCount} · 캐러밴 실체 ${state.caravanBodies ? state.caravanBodies.size : 0}/${state.world.caravans.length}(+${C.car.spawned} 도착${C.car.arrived} 회수${C.car.removed}) · 저장큐 ${state.saveQueue.length}행 분산 · 조각 ${C.chunks}개 · 일 ${C.work}ms(최대 조각 ${C.maxChunk}ms ${C.maxChunkAt}) · 마감 ${Date.now() - C.t0}ms`);
+  // P1: 전쟁 활동 요약(활동 있을 때만 1줄) + P2 실체 전투(진행 중·오늘 승격 수)
+  if (state.war) { const ws = state.war.stats(); const live = state.warLive ? state.warLive.count : 0; const physToday = state._warPhysToday || 0; if (ws && (ws.active || live || (ws.log && ws.log.length))) { const bc = ws.byCasus || {}; console.log(`[${state.zoneId}] ⚔️ 전쟁 day ${state.world.day}: 선포 ${ws.decl}[교역${bc.trade || 0}·영토${bc.territory || 0}·위신${bc.prestige || 0}·응징${bc.feud || 0}] 전투 ${ws.battle}(공승${ws.atkWin}/방승${ws.defWin}) 사상 ${ws.cas} 노획 ${ws.weaponLoot || 0} · 활성 ${ws.active} 조공 ${ws.tributes} · 실체 진행 ${live}${physToday ? ' 오늘승격 ' + physToday : ''}`); } state._warPhysToday = 0; }
+  for (const k in _lifeSub) if (_lifeSub[k]) C.stg['life:' + k] = _lifeSub[k];
+  for (const k in _lifeSubMax) if (_lifeSubMax[k]) C.stg['1마을:' + k] = _lifeSubMax[k];
+  C.stg['1마을:life전체'] = _lifeMax;
+  _tickPerf.last = { day: state.world.day, at: Date.now(), total: C.work, wall: Date.now() - C.t0,
+                     chunks: C.chunks, maxChunk: C.maxChunk, maxChunkAt: C.maxChunkAt, order: C.order,
+                     frames: C.frames, frameMax: C.frameMax || 0,
+                     villages: C.vils.length, lifeMaxAt: _lifeMaxName, queued: C.queued || 0, stages: C.stg };
+  _tickPerf.ring.push(_tickPerf.last);
+  if (_tickPerf.ring.length > 200) _tickPerf.ring.splice(0, _tickPerf.ring.length - 200);
+  // ★[T1 §2-④] 하루 총합은 여기서 찍는다 — zone.js 의 `econ_frame` 은 이제 한 프레임 몫이다.
+  if (state.deps && state.deps.perfMark) {
+    try { state.deps.perfMark('econ_day', C.work, { chunks: C.chunks, frames: C.frames, frameMax: C.frameMax || 0, maxChunk: C.maxChunk, at: C.maxChunkAt, wall: Date.now() - C.t0, queued: C.queued || 0 }); } catch (e) {}
+  }
+}
+
+// ── ★★[T1 §2-② 2026-09-01] "장부 마감 중" 큐 ────────────────────────────────
+//   조각내기의 **짝**이다. 일틱을 여러 프레임에 나눠 돌리는 동안 마을 장부는 반쯤 넘어간 상태다.
+//   그 창에서 마을 요청을 그대로 처리하면 플레이어는 "어제 게시판에 오늘 시세"처럼 찢어진 세계를 본다.
+//   ⇒ 마을 장부를 건드리는 요청만 **모았다가 마감 직후 같은 순서로 흘린다**.
+//   ⚠버리지 않는다 — 요청은 반드시 실행된다. 창은 실측 3초 남짓이고 하루는 24분이다.
+//   ⚠큐가 넘치면(방어) 대기시키지 않고 **그 자리에서 처리한다** — 막느니 조금 찢어지는 게 낫다.
+const WAITQ_MAX = 400;
+function villagesBusy() { return !!state.tickJobs; }
+// ★★[T1 2026-09-01] **하루 조각들은 '경계의 순간'을 본다.**
+//   마감이 몇 초에 걸쳐 도는 동안 `Date.now()` 를 그대로 읽으면, 앞 조각과 뒤 조각이 **다른 날**을
+//   볼 수 있다(하루가 짧은 하네스에선 실제로 갈렸다 — `test-tick-slicer ⑧`). 조각내기는
+//   *언제*를 바꾸지 *무엇을*은 안 바꾸기로 했으므로, 하루 안의 벽시계 파생은 **경계 시각으로 얼린다.**
+function _dayNow() { return (state.tickCtx && state.tickCtx.now) || Date.now(); }
+function villageWait(fn) {
+  if (!state.tickJobs) return false;                 // 마감 중이 아니다 — 부른 쪽이 그냥 처리하면 된다
+  if (!state.waitQ) state.waitQ = [];
+  if (state.waitQ.length >= WAITQ_MAX) return false; // 넘침 — 지금 처리(위 주석)
+  state.waitQ.push(fn);
+  if (state.tickCtx) state.tickCtx.queued = state.waitQ.length;
+  return true;
+}
+function _drainVillageWaitQ() {
+  const Q = state.waitQ;
+  if (!Q || !Q.length) return;
+  state.waitQ = [];
+  for (const fn of Q) { try { fn(); } catch (e) { console.error(`[${state.zoneId}] 🏘️ 대기 요청 재처리 실패:`, e.message); } }
+}
+
+// 프레임 한 번 — 예산이 찰 때까지 조각을 꺼내 돌린다. **최소 한 조각**은 반드시 돈다(굶지 않게).
+function _drainTickJobs(now) {
+  const C = state.tickCtx, J = state.tickJobs;
+  if (!C || !J) { state.tickJobs = null; state.tickCtx = null; return; }
+  const f0 = Date.now();
+  C.frames = (C.frames || 0) + 1;
+  try {
+    do {
+      const j = J.shift();
+      const a = Date.now();
+      j.f();
+      const d = Date.now() - a;
+      C.chunks++; C.work = (C.work || 0) + d;
+      if (C.order[C.order.length - 1] !== j.n) C.order.push(j.n);   // ★[T1 §3-④] 단계 순서 — 조각내기가 *언제*만 바꿨는지의 증거
+      C.stg[j.n] = (C.stg[j.n] || 0) + d;
+      if (d > C.maxChunk) { C.maxChunk = d; C.maxChunkAt = j.n; }
+    } while (J.length && (TICK_SLICE_MS === 0 || Date.now() - f0 < TICK_SLICE_MS));
   } catch (e) {
     console.error(`[${state.zoneId}] 🏘️ 마을 econ 틱 실패 (다음 경계에 재시도):`, e.message);
+    state.tickJobs = null; state.tickCtx = null; _drainVillageWaitQ();
+    return;
   }
+  // ★[T1] **한 프레임이 실제로 얼마나 막혔나** — 조각 하나가 아니라 이 값이 RTT 를 정한다.
+  { const fd = Date.now() - f0; if (fd > (C.frameMax || 0)) C.frameMax = fd; }
+  if (J.length) return;                       // 아직 마감 중 — 다음 프레임에 이어서
+  state.tickJobs = null; state.tickCtx = null;  // ★먼저 푼다 — 안 그러면 방류된 요청이 도로 큐에 걸린다
+  try { _closeDay(C); } catch (e) { console.error(`[${state.zoneId}] 🏘️ 일틱 마감 로그 실패:`, e.message); }
+  _drainVillageWaitQ();
 }
 
 // =============================================================================
@@ -3179,7 +3348,7 @@ function _lifeTasksPerFarmerDay() {   // 낮 실초 ÷ 건당 실초 = 농부 1�
 }
 function _lifeHeadlessDay(vil) {
   _lifeVL();   // lazy 로드 방어(단독 호출 경로 — 5e8d5f5 'is not defined' 클래스 재발 금지)
-  const day = state.dayMs ? gameDayOf(Date.now()) : 0;
+  const day = state.dayMs ? gameDayOf(_dayNow()) : 0;
   let farmerN = 0, popN = 0;
   for (const pid of vil.npcPids) { const p = state.deps.players.get(pid); if (!p) continue; popN++; if (p.simJob === 'farmer') farmerN++; }
   if (!popN) return;
@@ -3780,16 +3949,20 @@ function _lifeHunterEconLink(vil) {
 function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(디스폰 누수 자가치유) + 신축 판단 + 작물 하루 성장
   if (!LIFE_ON || !vil._terrSet || !vil._terrSet.size || !vil.econ) return;
   _lifeVL();
+  let _lt = Date.now(); const _lt0 = _lt;   // ★[T1 §0] 하위 스톱워치(계측 전용)
+  const _sub = (nm) => { const t = Date.now(), d = t - _lt; _lt = t; _lifeSub[nm] += d; if (d > (_lifeSubMax[nm] || 0)) _lifeSubMax[nm] = d; };
   // ★[LIFE_* 튜닝 계측] 하루 누계를 '어제치'로 확정하고 리셋 — /lifedbg가 dCl/dSt/dTk로 노출한다.
   vil._dCl = vil._mCl || 0; vil._dSt = vil._mSt || 0; vil._dTk = vil._mTk || 0;
   vil._mCl = 0; vil._mSt = 0; vil._mTk = 0;
   vil._clearCrew = 0; vil._buildCrew = 0; vil._claim = new Set(); vil._frontDay = -1;
   vil._cropClaim = new Set(); vil._jobSites = null;   // ★[생활 층 100% ③] 작물 셀 클레임·직업 현장 캐시 일일 리셋(자가치유·현장 재평가)
+  _sub('crop');
   _lifeHunterEconLink(vil);   // ★[HSK↔econ] 시각 사냥꾼 ↔ econ 사냥꾼 NPC 연결(랩 배치 루틴 verbatim — 일일 재대사)
+  _sub('hunter');
   try { _lifeGranAdd(vil); } catch (e) { console.error(`[${state.zoneId}] 생활층 곳간 증설 실패(${vil.name}):`, e.message); }   // ★[곳간 증설 런타임] 재고 비례 링 증설(랩 _granAdd)
   // 작물 하루 틱(랩 7920 동형): 김매기·물대기 놓치면 품질↓ · 병충해 발생(내일 방제 일감) — 상태·연출만(식량은 econ 소유)
   if (vil._crop && vil._crop.size) {
-    const day = state.dayMs ? gameDayOf(Date.now()) : 0;
+    const day = state.dayMs ? gameDayOf(_dayNow()) : 0;
     for (const [k, e] of vil._crop) {
       if (day - e.p >= e.c.grow) continue;   // 익음 — 수확 일감(농부 우선순위 5)
       const wd = e.wd || 0, gf = (day - e.p) / e.c.grow;
@@ -3800,8 +3973,10 @@ function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(�
       if (e.q < L_QMIN) e.q = L_QMIN;
     }
   }
+  _sub('gran');
   vil._psiteCrew = 0;
   for (const pid of vil.npcPids) { const p = state.deps.players.get(pid); if (p && p._lifeTask) { if (p._lifeTask.k === 'clear') { vil._claim.add(p._lifeTask.cx + ',' + p._lifeTask.cy); vil._clearCrew++; } else if (p._lifeTask.k === 'build') { if (p._lifeTask.ps) vil._psiteCrew++; else vil._buildCrew++; } } }
+  _sub('pids');
   if (vil._pendSite && !vil._site) {   // 재부팅 복원: 진행 중이던 터 재실체화(단계 1부터 — 관용)
     const ps = vil._pendSite; vil._pendSite = null;
     if (state.deps.liveBuildRow) {
@@ -3812,11 +3987,14 @@ function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(�
   }
   const cap = vil._houseCells.length * (VillageLayout.HOUSE_CAP || 6);
   if (!vil._site && vil.econ.npcs.length > cap * 0.92) { try { _lifeAddHouseSite(vil); } catch (e) { console.error(`[${state.zoneId}] 생활층 신축 실패(${vil.name}):`, e.message); } }
+  _sub('site');
   // ★[헤드리스 결산] 관측자 없는 마을 = 랩 빨리감기 — 하루치 물리 결과 일괄 적산(관측 마을은 실걸음 크루 소유)
   const anyNear = state.deps.anyViewerNear;
   if (!(anyNear && anyNear(vil.ccx * SZ + SZ / 2, vil.ccy * SZ + SZ / 2, (vil._maxRPx || 800) + 1600))) {
     try { _lifeHeadlessDay(vil); } catch (e) { console.error(`[${state.zoneId}] 생활층 헤드리스 결산 실패(${vil.name}):`, e.message); }
+    _sub('headless');
   }
+  _sub('near');
   // ★[NPC hp 랩 100% — 랩 7576~7590 verbatim] 부상 회복(일일) + 부상 노동력 계수. 회복 = 요양18·근무6/일 ×건강F×행복F×식량F.
   //   zone.js 초당 회복(플레이어 전용)에서 마을 NPC는 제외되며(simVillageId 게이트) 이 일일 규칙이 유일한 회복 경로 —
   //   요양 수일 = 노동 손실 실체(랩 herb 수요·_laborMul의 전제). 개체 허기·아사 없음(식량 사망 = econ 기근 인구감소가 유일).
@@ -3846,7 +4024,7 @@ function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(�
         if (a.hp > 0 && a.hp < mx) { a.hp = Math.min(mx, a.hp + (a._rest ? 18 * _herbMul : 6) * regenMul); if (a.hp >= mx) a._rest = 0; }   // 만피 회복 시 요양 해제(히스테리시스) — 요양만 약재 가속
         labSum += a._rest ? 0 : (0.6 + 0.4 * Math.max(0, a.hp || 0) / mx);   // 노동력: 요양=0, 부상=0.6~1.0(hp율)
       }
-      const _day = state.dayMs ? gameDayOf(Date.now()) : 0;
+      const _day = state.dayMs ? gameDayOf(_dayNow()) : 0;
       const _mobF = (econ._warMobUntil && _day < econ._warMobUntil) ? Math.max(0.2, 1 - (econ._warMobFrac || 0)) : 1;   // 전쟁 동원: 차출자 생산 정지
       if (_as.length) econ._laborMul = (labSum / _as.length) * _mobF;   // 엔진 v2 미소비(재인라인 시 자동 활성) — 랩 s.econ._laborMul 동형
       const _hn = _as.reduce((k2, a) => k2 + (a.simJob === 'hunter' ? 1 : 0), 0);
@@ -3854,6 +4032,9 @@ function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(�
       if (_hn > 0) econ._huntRisk = Math.min(0.6, (econ._huntRisk === undefined ? 0.08 : econ._huntRisk) * 0.95 + Math.max(0.03, Math.min(0.6, _hev / _hn * 0.5)) * 0.05);
     }
   } catch (e) { console.error(`[${state.zoneId}] 생활층 일일 회복 실패(${vil.name}):`, e.message); }
+  _sub('hp');
+  const _lms = Date.now() - _lt0;
+  if (_lms > _lifeMax) { _lifeMax = _lms; _lifeMaxName = vil.name; }
 }
 function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도주 뒤·야간 귀가 게이트 앞) — true=일과 소유(레거시 차단)
   if (!LIFE_ON) return false;
@@ -4504,6 +4685,10 @@ function econDay() { return (state.world && Number.isFinite(state.world.day)) ? 
 
 module.exports = {
   init, onGameTick, invalidateTradeDistances, npcLifeTick, lifeDebug, econDay,
+  tickPerf,   // ★[T1 §0] 일틱 단계별 소요 — zone.js `/perf` 가 소비(계측 전용)
+  villagesBusy, villageWait,   // ★[T1 §2-②] "장부 마감 중" 큐 — zone.js 가 마을 요청만 이 문으로 보낸다
+  dayNow: _dayNow,   // ★[T1] 마감 중이면 **경계의 순간**을 돌려준다 — 벽시계 적분(광맥 재생)이 조각 순서에 흔들리지 않게
+  tickSliceMs: () => TICK_SLICE_MS,   // ★[T1] `/perf` 가 '지금 어떤 예산으로 도는가'를 그대로 말하게(대조군 판별)
   // Stage 4A — zone.js 소비: 농지 lazy 실물화 / welcome 영토 페이로드 / 레거시 디듀프 판정
   farmTilesInRect, clientVillages, isLegacyVillageClaimed,
   // ★곳간② 클라 표시 — welcome 스냅샷(델타는 onGameTick에서 gran_stock 방송)

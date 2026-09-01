@@ -2223,17 +2223,22 @@ function clearTreesInCells(cellKeys) {
   if (cleared) resourcesDirty = true;
   return cleared;
 }
-SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, isWaterTileLocal, isPositionActive, isBlockedByWall, anyViewerNear,
+const _simNow = () => { try { return (SimVillages.dayNow && SimVillages.dayNow()) || Date.now(); } catch (e) { return Date.now(); } };
+SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, isWaterTileLocal, isPositionActive, isBlockedByWall, anyViewerNear, perfMark,
   clearTreesInCells,   // ★영토 개간 — 마을 안엔 숲이 없다
   // ★[11차 실측] 교역 거리행렬의 코스 그리드(4셀 서브샘플)가 **폭 2셀 다리를 절반이나 못 본다**(28개 중 15개).
   //   다리 술어를 넘겨 주면 villages.js 가 코스 셀 안을 훑어 '이 블록에 다리가 지난다'를 살려낸다.
   isBridgeLocal: isBridgeTileLocal,
   // ★[11차 채광 재설계] NPC 광부가 **플레이어와 같은 광맥 장부**(minedCells)를 판다.
   //   villages.js 는 재고를 깎고 oFrac 을 읽기만 한다 — 산출 아이템은 econ 이 land.ore 로 계산(이중 계상 금지).
-  oreStockAt: (cx, cy) => { const now = Date.now(); const r = _oreRec(cx + '_' + cy, now); return r.s; },
+  //   ★[T1 2026-09-01] 시각은 `SimVillages.dayNow()` 로 읽는다 — **일틱 마감 중이면 경계의 순간**이다.
+  //     조각내기 전엔 하루 전체가 한 순간이었다. 그대로 `Date.now()` 를 읽으면 광맥 재생 적분이
+  //     '조각이 몇 번째로 돌았나'에 따라 달라져, 쪼갠 것만으로 세계가 갈린다(실측 — `test-tick-slicer ⑧`).
+  //     마감 밖(플레이어 채광)에선 그냥 지금이다.
+  oreStockAt: (cx, cy) => { const now = _simNow(); const r = _oreRec(cx + '_' + cy, now); return r.s; },
   oreConsumeAt: (cx, cy, amount) => {
     if (!(amount > 0)) return 0;
-    const now = Date.now(), key = cx + '_' + cy, rec = _oreRec(key, now);
+    const now = _simNow(), key = cx + '_' + cy, rec = _oreRec(key, now);
     const got = Math.min(amount, Math.max(0, rec.s));
     if (got <= 0) { if (!rec.fresh) _oreSave(key, rec); return 0; }
     rec.s -= got; _oreSave(key, rec); return got;
@@ -2340,9 +2345,15 @@ const server = http.createServer((req, res) => {
   //   재민 실기: RTT 가 이따금 튄다. 후보는 econ 하루 틱(실측 346ms)과 주기 저장이다.
   //   추정으로 고치지 않는다 — 무거운 작업이 **언제 얼마나** 걸렸는지 남기고,
   //   클라가 잰 RTT 와 **시간 상관**을 본다(`scripts/rtt-metrics.js`).
-  if (req.url === '/perf' && req.method === 'GET') {
+  if (req.url && req.url.startsWith('/perf') && req.method === 'GET') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ zone: ZONE_ID, now: Date.now(), events: _perfRing.slice() }));
+    // ★[T1 §0·§2-④ 2026-09-01] 일틱 **단계별·조각별** 소요와 **이벤트 루프 지연**을 같이 낸다 —
+    //   `econ_day 480ms` 한 수만으론 어느 단계가 살찐 놈인지도, 루프가 얼마나 막혔는지도 알 수 없다.
+    //   `?reset=1` 은 루프 히스토그램만 영점 조정한다(하네스가 창을 열기 직전에 부른다).
+    let _econ = null; try { _econ = SimVillages.tickPerf ? SimVillages.tickPerf() : null; } catch (e) {}
+    const _rst = req.url.indexOf('reset=1') >= 0;
+    res.end(JSON.stringify({ zone: ZONE_ID, now: Date.now(), sliceMs: SimVillages.tickSliceMs ? SimVillages.tickSliceMs() : null,
+      events: _perfRing.slice(), econTick: _econ, loop: loopDelayStats(_rst) }));
     return;
   }
   if (req.url === '/health' && req.method === 'GET') {
@@ -3226,6 +3237,19 @@ async function _acceptConnection(ws, req, C) {
   C.stage = 'ready';
 }
 
+// ★★[T1 §2-② 2026-09-01] **"장부 마감 중"** — 일틱 조각내기(villages.js)의 짝.
+//   일틱이 여러 프레임에 걸쳐 도는 동안 마을 장부는 반쯤 넘어간 상태다. 그 창(실측 3초 남짓)에
+//   들어온 **마을 장부 요청만** 모았다가 마감 직후 같은 순서로 흘린다 — 버리지 않는다.
+//   ⇒ 플레이어가 보는 마을은 조각내기 전과 똑같이 **하루가 한 순간에 넘어간 세계**다.
+//   ⚠이동·전투·채집·제작·낚시는 **안 걸린다**. 특히 낚시 챔질은 서버 시각 판정이라 미루면 그 판정이
+//     망가지고, 어장 결손(`land.fishSustain`)은 econ 이 원자 조각 안에서만 읽으므로 미룰 이유도 없다.
+const VILLAGE_BOOK_MSG = new Set([
+  'village_inventory', 'village_deposit', 'village_brief', 'village_board', 'village_deliver',
+  'village_trade', 'village_trade_exec', 'village_trade_quote',
+  'sell_relic', 'shop_info', 'craft_buy', 'craft_sell',
+  'village_start', 'village_advance', 'request_village_house',
+]);
+
 // === 외부 player 핸들러 (observer promotion에서 재사용) ===
 function handlePlayerInput(player, raw) {
   let msg;
@@ -3236,6 +3260,13 @@ function handlePlayerInput(player, raw) {
   if (player.isDown) {
     const allowed = new Set(['respawn_choice', 'rescue_request', 'ping', 'chat', 'input']);
     if (!allowed.has(msg.type)) return;
+  }
+
+  // ★[T1 §2-②] 마을이 장부를 마감하는 중이면 마을 요청만 줄을 세운다(위 주석).
+  if (VILLAGE_BOOK_MSG.has(msg.type) && SimVillages.villagesBusy && SimVillages.villagesBusy()
+      && SimVillages.villageWait(() => { try { handlePlayerInput(player, raw); } catch (e) {} })) {
+    if (ws && ws.readyState === 1) send(ws, { type: 'notice', text: '🏘️ 마을이 하루 장부를 마감하는 중이다 — 곧 처리된다' });
+    return;
   }
 
   if (msg.type === 'input') {
@@ -4629,6 +4660,18 @@ function __e2eFreezeZoneDay(on) {
   if (on) { if (_e2eDayFrozen === null) _e2eDayFrozen = _rawGameDay(); }
   else if (_e2eDayFrozen !== null) { _e2eDayOffset += _rawGameDay() - _e2eDayFrozen; _e2eDayFrozen = null; }
   return { frozen: _e2eDayFrozen !== null, day: zoneGameDay() };
+}
+// ★★[T1 §2-④ 2026-09-01] **이벤트 루프 지연** — RTT 스파이크의 직접 원인을 서버 쪽에서 그대로 재는 자.
+//   `econ_day 2000ms` 는 "그 일이 2초 걸렸다"만 말한다. 루프가 실제로 **얼마나 막혔나**는 이게 답한다.
+//   조각내기가 통했다면 총 일 시간은 그대로여도 **p99 가 내려간다** — 그게 이 배치의 판정선이다.
+let _loopMon = null;
+try { _loopMon = require('perf_hooks').monitorEventLoopDelay({ resolution: 10 }); _loopMon.enable(); } catch (e) { _loopMon = null; }
+function loopDelayStats(reset) {
+  if (!_loopMon) return null;
+  const ms = (v) => +(v / 1e6).toFixed(2);
+  const out = { p50: ms(_loopMon.percentile(50)), p95: ms(_loopMon.percentile(95)), p99: ms(_loopMon.percentile(99)), max: ms(_loopMon.max), n: _loopMon.count };
+  if (reset) _loopMon.reset();
+  return out;
 }
 // ★[RTT 상관 계측] 무거운 작업 기록 — 최근 400건 링. `/perf` 가 그대로 내준다.
 //   ⚠계측기지 손잡이가 아니다: 아무 동작도 바꾸지 않는다(관측자 규약).
@@ -8247,7 +8290,9 @@ setInterval(() => {
   //   idle skip보다 앞: 무인 존에서도 마을 경제 진행(오프라인 경제). ENABLE_VILLAGES=0 → no-op.
   // ★[RTT 상관 계측 2026-08-30] 하루 경계 틱은 평시 O(1) 이고 **경계에서만** 무겁다.
   //   그 무거운 순간을 남긴다(동작은 안 바꾼다 — 관측자).
-  { const _t0 = Date.now(); SimVillages.onGameTick(now); const _d = Date.now() - _t0; if (_d >= 5) perfMark('econ_day', _d); }
+  // ★[T1 2026-09-01] 조각내기 뒤로 이 값은 **한 프레임 몫**이다(하루 총합이 아니다) — 그래서 이름을 갈랐다.
+  //   하루 총합은 villages.js 가 마감 시점에 `econ_day` 로 직접 찍는다(deps.perfMark).
+  { const _t0 = Date.now(); SimVillages.onGameTick(now); const _d = Date.now() - _t0; if (_d >= 5) perfMark('econ_frame', _d); }
   // §11 도적 일일 훅 — villages 옆(econ 틱이 world.day를 민 직후 같은 경계에서 데일리 1회). 평시 O(1) 정수 비교.
   Bandits.onGameTick(now);
   // §16 답압 길 — 게임일 경계 dirty 플러시·coarse 재구축·클라 변경분(평시 O(1) 비교)
