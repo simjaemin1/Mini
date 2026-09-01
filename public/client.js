@@ -53,7 +53,6 @@ const SIM_JOB_EMOJI = {
   bandit: '🏴', // §11 2파: 소굴 배회 도적 실체(연출 전용 — 경제 효과는 econ 주사위 소유)
 };
 
-(() => {
   const canvas = document.getElementById('canvas');
   // ★`let` 이다 — 줌이 켜지면 월드 패스 동안만 오프스크린 컨텍스트로 갈아 끼운다(아래 zoomBegin).
   let ctx = canvas.getContext('2d');
@@ -15242,7 +15241,6 @@ const SIM_JOB_EMOJI = {
       if (e.key === 'Escape' && !document.getElementById('villageMarketPanel')?.classList.contains('hidden')) closeVillageMarket();
     });
   });
-})();
 
 // ============================================================
 // Phase 5-2-mini: 상세 미니맵 (cell 단위 zoom/pan)
