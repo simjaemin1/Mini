@@ -48,6 +48,12 @@ rebuild() {                        # 조각 → 재결합본을 stdout 으로
     for(const f of order){
       if(/99-main/.test(f)) continue;               // 99-main 은 마커 자리로 되돌아간다
       const lines=read(f);
+      // ★★[T18 2026-09-01] **분할 이후 새로 만든 조각은 결합 대상이 아니다.**
+      //   공통 규약이 "새 기능 = 새 파일 + 등록 1줄" 인데 이 검사기는 등록된 것을 **전부** 이어
+      //   붙여 분할 전 정본과 바이트 비교한다 ⇒ **첫 새 파일이 생기는 순간 영원히 differ** 가 된다
+      //   (T18 이 그 첫 파일이었다). 검사기의 뜻은 "분할이 여전히 충실한가" 이므로,
+      //   새 조각은 머리에 이 표를 달고 빠진다. 그러면 검사기는 계속 자기 일을 한다.
+      if (lines[0] && /^\/\/ @@split-added\b/.test(lines[0])) continue;
       for(const l of lines){
         if(/^\/\/ @@split:/.test(l)) continue;      // 조각 머리 마커
         const mv=l.match(/^\/\/ @@moved:(\d+)$/);
@@ -78,5 +84,13 @@ if rebuild | cmp -s - <(git show "$BASE:public/client.js"); then
   exit 0
 fi
 echo "differ — 아래는 첫 차이"
+# ★★[T18 2026-09-01 관측] **이 검사기는 일회성 증명이지 상시 게이트가 아니다.**
+#   공통 규약(§8.2)은 새 패널을 붙일 때 `50-i-panel.js`(제목표·renderSide 분기)를 **반드시** 건드리게
+#   돼 있다. 그러면 결합본이 분할 전 정본과 달라지고 여기서 differ 가 난다 — **정상이다.**
+#   즉 이 검사기가 초록인 구간은 "분할 직후, 아무도 조각을 고치지 않은 동안"뿐이다.
+#   ⇒ differ 를 보면 먼저 `git diff public/client/` 로 **의도한 줄만 바뀌었는지**를 봐라.
+#     (분할 뒤 새로 만든 조각은 머리에 `// @@split-added` 를 달면 결합에서 빠진다.)
+echo "  ⚠분할 뒤 조각을 고쳤으면 differ 는 정상이다 — 이 검사기는 일회성 증명이다(T18 관측)."
+
 diff <(rebuild) <(git show "$BASE:public/client.js") | head -20
 exit 1

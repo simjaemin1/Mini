@@ -80,16 +80,36 @@ const CANDS = BASE_ONLY ? [] : [
   { tag: 'C ±70 · H1.6 ★채택', cfg: { PRICE_UP: 0.70, PRICE_DOWN: 0.70, HYST: 1.6 } },
 ];
 const depositMap = Villages.playerVillageDepositMap();
+// ★[T18 2026-09-01] 연표 문턱 스윕용 원자료 — **채택 문턱(C)** 의 사건만 심각도와 함께 모은다.
+//   장부를 건드리지 않는다: 이미 있는 `onEvent` 훅에 얹을 뿐이고, 훅이 없을 때와 결과가 같다.
+const CHRON_RAW = [];
 const LS = CANDS.map((c) => {
-  const L = Events.createLedger({ econV2, vidOf: (v, i) => i, depositMap, cfg: c.cfg });
+  const adopted = /★채택/.test(c.tag);
+  const L = Events.createLedger({ econV2, vidOf: (v, i) => i, depositMap, cfg: c.cfg,
+    onEvent: adopted ? ((e) => CHRON_RAW.push({ t: e.type, s: Math.abs(Math.log(Math.max(1e-6, e.mag || 1))) })) : null });
   L.prime(world); return { ...c, L };
 });
+
+// ★★[T18 2026-09-01] 연표 계측용 장부 하나를 **더** 단다 — 장부는 관측자라 여러 개를 한 세계에 얹을 수
+//   있다(이 스크립트의 존재 이유가 그거다). 채택 문턱(C)과 **같은 cfg** 에 지리만 얹어,
+//   실지도 51마을에서 연표가 몇 행 쌓이고 조회가 몇 ms 인지를 잰다.
+//   ⚠거리는 `econ.villageDist` 정본 함수다 — 여기엔 지형 BFS 행렬이 없으니 **유클리드로 떨어진다**
+//     (그래서 실서버보다 도달이 **조금 빠르다**. 행 수는 지리와 무관하고, 조회 비용만 하한이 된다).
+const CHRON = BASE_ONLY ? null : (() => {
+  const vids = world.villages.map((_, i) => i);
+  const L = Events.createLedger({ econV2, vidOf: (v, i) => i, depositMap,
+    cfg: { PRICE_UP: 0.70, PRICE_DOWN: 0.70, HYST: 1.6 },
+    geo: { vids: () => vids, dist: (a, b) => econ.villageDist(world.villages[a], world.villages[b]) } });
+  L.prime(world);
+  return L;
+})();
 
 const _log = console.log;
 console.log = () => {};
 for (let d = 0; d < DAYS; d++) {
   econV2.tickWorldV2(world);
   for (const x of LS) x.L.scanDay(world, world.day, {});
+  if (CHRON) CHRON.scanDay(world, world.day, {});
 }
 console.log = _log;
 
@@ -124,6 +144,51 @@ for (const x of LS) {
   const q = (f) => per[Math.min(per.length - 1, Math.floor(per.length * f))] || 0;
   console.log(`  ${x.tag.padEnd(24)} 최다 ${String(per[0] || 0).padStart(4)} · 상위25% ${String(q(0.25)).padStart(4)} · 중앙 ${String(q(0.5)).padStart(4)} · 하위25% ${String(q(0.75)).padStart(4)} · 최소 ${String(per[per.length - 1] || 0).padStart(4)}`);
 }
+// ── ⓔ [T18] 연표 문턱 스윕 — "연대기에 남길 만큼 큰 사건"의 선을 어디에 그을 것인가 ────────
+//   등급 필드는 없다(§0-ⓓ). 있는 건 `sev = |ln(관측÷기준)|` 하나뿐이라 거기에 선을 긋는다.
+//   읽을 만한 연표의 기준: **마을 한 해에 계절당 몇 줄**(4계절 × 몇 줄 = 한 해 한 화면).
+if (CHRON_RAW.length) {
+  const CH_TYPES = new Set(['STOCK_SHORTAGE', 'STOCK_GLUT', 'PRICE_SPIKE', 'PRICE_DROP', 'CARAVAN_LATE']);
+  const cand = CHRON_RAW.filter((r) => CH_TYPES.has(r.t));
+  const years = DAYS / 365;
+  console.log(`\nⓔ 연표 문턱 스윕 (계절 전환 제외 후보 ${cand.length}건 · ${live}마을 × ${years.toFixed(2)}해)`);
+  console.log('  ' + '문턱 |ln(mag)|'.padEnd(16) + '연표 행'.padStart(9) + '마을·해당'.padStart(11) + '마을·계절당'.padStart(12) + '  타입 분포(부족/글럿/급등/급락)');
+  for (const th of [0.7, 1.2, 1.7, 2.2, 2.7, 3.2, 4.0]) {
+    const sel = cand.filter((r) => r.s >= th);
+    const per = sel.length / Math.max(1, live * years);
+    const b = { STOCK_SHORTAGE: 0, STOCK_GLUT: 0, PRICE_SPIKE: 0, PRICE_DROP: 0, CARAVAN_LATE: 0 };
+    for (const r of sel) b[r.t]++;
+    console.log('  ' + `≥ ${th.toFixed(1)}`.padEnd(16) + String(sel.length).padStart(9)
+      + per.toFixed(1).padStart(11) + (per / 4).toFixed(1).padStart(12)
+      + `   ${b.STOCK_SHORTAGE}/${b.STOCK_GLUT}/${b.PRICE_SPIKE}/${b.PRICE_DROP}`);
+  }
+}
+
+// ── ⓕ [T18] 연표 대리 지표 — 실지도 51마을에서 몇 행 쌓이고 조회가 얼마나 드는가 ─────────
+if (CHRON) {
+  const YD = Events.yearDaysOf();
+  const yrs = Math.max(1, Math.ceil(DAYS / YD));
+  const t0 = Date.now();
+  let cells = 0, shown = 0, cut = 0, cutAbroad = 0;
+  for (const vid of CHRON.vids) for (let y = 0; y < yrs; y++) {
+    const c = CHRON.chronicle(vid, { year: y });
+    for (const b of c.seasons) { cells++; shown += b.items.length; cut += b.more; cutAbroad += b.abroadMore; }
+  }
+  const ms1 = Date.now() - t0;
+  const t1 = Date.now();
+  for (const vid of CHRON.vids) for (let y = 0; y < yrs; y++) CHRON.chronicle(vid, { year: y });
+  const ms2 = Date.now() - t1;
+  const S = CHRON.stats;
+  console.log(`\nⓕ 연표(연대기) — 문턱 |ln(mag)| ≥ ${CHRON.cfg.CHRON_SEV} · 이웃 ≥ ${CHRON.cfg.CHRON_FOREIGN_SEV}`
+    + ` · 계절 상한 우리 ${CHRON.cfg.CHRON_PER_SEASON} / 이웃 ${CHRON.cfg.CHRON_FOREIGN}`);
+  console.log(`  영구 보관 행 ${S.chronicled} (전체 사건 ${S.emitted} 의 ${(S.chronicled / Math.max(1, S.emitted) * 100).toFixed(1)}%)`
+    + ` · 마을·해당 ${(S.chronicled / Math.max(1, live * DAYS / YD)).toFixed(1)}행`);
+  console.log(`  전수 조회 ${live}마을 × ${yrs}해 = ${cells}칸 — 첫 조회 ${ms1}ms(칸당 ${(ms1 / Math.max(1, cells)).toFixed(3)}ms)`
+    + ` · 두 번째 ${ms2}ms(캐시)`);
+  console.log(`  화면에 뜨는 줄 ${shown} · 우리 마을 잘림 ${cut}("그 밖에 n건") · 이웃 후보 잘림 ${cutAbroad}(화면에 안 센다)`);
+  console.log(`  칸당 평균 — 뜨는 줄 ${(shown / Math.max(1, cells)).toFixed(1)} · "그 밖에" ${(cut / Math.max(1, cells)).toFixed(1)}건`);
+}
+
 console.log(`\nⓓ 의뢰(플레이어 없음 → 납품 0 · 게시/철회만)`);
 for (const x of LS) console.log(`  ${x.tag.padEnd(24)} 게시 ${String(x.L.stats.reqOpened).padStart(6)} · 철회 ${String(x.L.stats.reqClosed).padStart(6)}`
   + ` · 축소 ${String(x.L.stats.reqShrunk).padStart(5)} · 못갚아미게시 ${String(x.L.stats.reqNoPay).padStart(6)} · 재검증철회 ${String(x.L.stats.reqRevalidated).padStart(5)}`

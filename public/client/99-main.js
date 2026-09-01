@@ -249,7 +249,11 @@
       if (invOpen) renderInvPanel(document.getElementById('invBody')); // 재렌더 (강조 갱신)
     }
     else if (k === 'h') sendPrimary({ type: 'build', buildType: 'chest', floor: myBuildFloor });
-    else if (k === 'j') sendPrimary({ type: 'build', buildType: 'campfire', floor: myBuildFloor });
+    // ★★[T18 2026-09-01] `&& !e.shiftKey` 한 줄 — **이 체인은 Shift 를 안 가렸다.**
+    //   그래서 `Shift+J` 가 여기까지 내려와 **모닥불을 짓는다**(다른 bare-letter 도 전부 같다).
+    //   §8.2 는 사이드바 버튼마다 단축키 병기를 요구하는데, 그 규약을 지키려면 이 자리가 먼저 열려야 한다.
+    //   ⇒ `Shift+J` 를 연대기(📜)에 내줬다. 나머지 글자의 같은 결함은 회부(M/H 영역).
+    else if (k === 'j' && !e.shiftKey) sendPrimary({ type: 'build', buildType: 'campfire', floor: myBuildFloor });
     // Q 단축키 제거 — 공성캠프는 임시 사유지로 대체 예정 (Phase 14.18)
     else if (k === 'l') sendPrimary({ type: 'build', buildType: 'fence', floor: myBuildFloor });
     // I 키는 새 인벤 패널 (좀보이드식). 바닥은 건축 패널에서 클릭으로.

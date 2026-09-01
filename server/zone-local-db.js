@@ -343,6 +343,33 @@ db.exec(`
     PRIMARY KEY (zone, vid, item)
   );
 `);
+// === ★★[T18 2026-09-01] 연대기 — 잘리지 않는 큰 사건 표 (추가 전용 스키마) ===
+//   왜 별도 표인가: `village_events` 는 `EV_KEEP_DAYS`(90일)마다 잘린다. 연표는 **해를 넘겨** 읽는
+//   것이라 잘리는 표를 볼 수 없다. ⇒ 큰 사건(`events.isChronicle`)만 여기 남기고 **prune 하지 않는다.**
+//   ⚠**사건 하나당 한 행**이다(마을×사건이 아니라). 어느 마을이 언제 들었는지는 도달표가
+//     결정론적으로 되돌려 주므로 저장할 이유가 없다(파생값 미저장 — `spoil.js` 신선도와 같은 규약).
+//   ⚠`meta` 를 안 담는다 — 연표 문장은 타입·품목·mag 만 쓴다. 담으면 영구 보관 부피가 몇 배가 된다.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS village_chronicle (
+    id   INTEGER PRIMARY KEY AUTOINCREMENT,
+    zone TEXT    NOT NULL,
+    vid  INTEGER NOT NULL,
+    day  INTEGER NOT NULL,
+    type TEXT    NOT NULL,
+    item TEXT,
+    mag  REAL    NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_village_chronicle ON village_chronicle (zone, day);
+`);
+const stmtInsertVillageChronicle = db.prepare('INSERT INTO village_chronicle (zone, vid, day, type, item, mag) VALUES (?, ?, ?, ?, ?, ?)');
+const stmtGetVillageChronicle = db.prepare('SELECT vid, day, type, item, mag FROM village_chronicle WHERE zone = ? ORDER BY day');
+const stmtCountVillageChronicle = db.prepare('SELECT COUNT(*) AS n FROM village_chronicle WHERE zone = ?');
+function insertVillageChronicle(zone, e) {
+  stmtInsertVillageChronicle.run(zone, e.vid | 0, e.day | 0, String(e.type), e.item == null ? null : String(e.item), +e.mag || 0);
+}
+function getVillageChronicle(zone) { return stmtGetVillageChronicle.all(zone); }
+function countVillageChronicle(zone) { const r = stmtCountVillageChronicle.get(zone); return (r && r.n) | 0; }
+
 const stmtInsertVillageEvent = db.prepare('INSERT INTO village_events (zone, vid, day, type, item, mag, meta) VALUES (?, ?, ?, ?, ?, ?, ?)');
 const stmtGetVillageEvents = db.prepare('SELECT vid, day, type, item, mag, meta FROM village_events WHERE zone = ? AND day >= ? ORDER BY day');
 const stmtPruneVillageEvents = db.prepare('DELETE FROM village_events WHERE zone = ? AND day < ?');
@@ -396,6 +423,7 @@ module.exports = {
   getVillageFarmInCellRect,
   // [2026-08-25 사건 레이어] 사건 장부·게시판 (events.js / villages.js)
   insertVillageEvent, getVillageEventsSince, pruneVillageEvents,
+  insertVillageChronicle, getVillageChronicle, countVillageChronicle,   // ★[T18] 연대기(prune 없음)
   upsertVillageRequest, deleteVillageRequest, getVillageRequests,
   // §11 도적 (bandits.js)
   getBanditState, upsertBanditState,

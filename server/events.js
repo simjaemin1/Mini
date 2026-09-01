@@ -104,7 +104,30 @@ const CFG = {
   RETURN_N: _num('EV_RETURN_N', 3),
   // 부재가 이 일수 미만이면 평소 브리핑 그대로 — 잠깐 나갔다 온 사람에게 잔소리하지 않는다.
   RETURN_MIN_DAYS: _num('EV_RETURN_MIN_DAYS', 1),
+  // ★★[T18 2026-09-01] **연대기에 남을 만큼 큰 사건인가** — |ln(mag)| 문턱.
+  //   왜 문턱인가: 사건 등급 필드는 **없다**(§0-ⓓ 실측). 있는 건 `sev = |ln(관측÷기준)|` 하나뿐이고,
+  //   그건 이미 전 타입을 견주라고 만든 축이다(파일 머리 mag 정의). 새 등급표를 발명하는 대신
+  //   그 축에 선을 긋는다 — **차등의 근거는 세계의 실제 데이터**(재민 확정 08-26).
+  //   채택값 근거는 `scripts/ev-density.js` ⓔ 스윕(실지도 51마을 800일).
+  //   ★채택 2.2 = **평소의 9배(또는 1/9)로 벗어난 일**(e^2.2 ≈ 9.0). 실지도 51마을 800일에서
+  //     마을·계절당 14.4건 — 아래 상한 5로 추리면 "그 계절 다섯 가지 일"이 된다.
+  CHRON_SEV: _num('EV_CHRON_SEV', 2.2),
+  // ★★**이웃 마을 소식은 더 높은 문턱을 넘어야 한다.** 안 그러면 연표가 51마을의 잡음으로 덮인다
+  //   (마을 하나의 연표에 다른 50곳의 사건이 전부 후보로 들어온다 — 계절당 700건 넘는다).
+  //   3.5 = **33배 벗어난 일**(e^3.5 ≈ 33). 그쯤 돼야 남의 마을 일이 여기까지 회자된다.
+  CHRON_FOREIGN_SEV: _num('EV_CHRON_FOREIGN_SEV', 3.5),
+  // 한 계절에 실을 **이웃 마을 소식** 최대 줄 수(우리 마을 몫과 따로 센다).
+  CHRON_FOREIGN: _num('EV_CHRON_FOREIGN', 2),
+  // ★★한 계절 칸에 실을 최대 줄 수. 문턱만으로는 밀도가 세계 상태에 따라 흔들려
+  //   어떤 해는 두 줄, 어떤 해는 200줄이 된다 — 연표는 **읽히는 것**이 목적이라 상한이 필요하다.
+  //   자르는 기준은 **심각도**(그 계절에 가장 유난했던 것)이고, 잘린 수는 **반드시 보고한다**
+  //   (조용한 절단 금지 — `commit` 의 `stats.capped` 와 같은 규약).
+  CHRON_PER_SEASON: _num('EV_CHRON_PER_SEASON', 5),
 };
+// ★연표에 실을 사건 유형 — 기본은 **계절 전환을 뺀 전부**다.
+//   계절은 사건이 아니라 **연표의 축**이라(연·계절로 묶는 그 기준) 항목으로 또 적으면 겹친다.
+const CHRON_TYPES = String(process.env.EV_CHRON_TYPES || 'STOCK_SHORTAGE,STOCK_GLUT,PRICE_SPIKE,PRICE_DROP,CARAVAN_LATE')
+  .split(',').map((x) => x.trim()).filter(Boolean);
 
 const TYPES = ['STOCK_SHORTAGE', 'STOCK_GLUT', 'PRICE_SPIKE', 'PRICE_DROP', 'CARAVAN_LATE', 'SEASON_CHANGE'];
 
@@ -222,6 +245,11 @@ function createLedger(opts) {
   const DEL = buildDeliverable(o.depositMap);
   const onEvent = o.onEvent || null;          // (ev) => void — 영속화 훅(서버가 DB 에 꽂는다)
   const onRequest = o.onRequest || null;      // (req, 'open'|'close') => void
+  // ★★[T18] 연대기 영속화 훅 — **사건 링버퍼는 90일이면 잘린다**(`KEEP_DAYS`). 연표는 해를 넘겨 읽는
+  //   것이므로 잘리는 표를 볼 수 없다. ⇒ **큰 사건만** 따로, 잘리지 않는 곳에 남긴다.
+  //   ⚠남기는 건 **사건 하나당 한 행**이다(마을×사건이 아니라). 누가 언제 들었는지는
+  //   도달표가 **결정론적으로** 되돌려 주므로 저장할 이유가 없다(파생값 미저장 — spoil.js 규약).
+  const onChronicle = o.onChronicle || null;  // (ev) => void
 
   // 마을별 상태. 전부 이 Map 안에만 산다(econ 객체 무오염).
   //   det: Map<item, {pEma,pN,short,glut,up,down}>
@@ -239,7 +267,9 @@ function createLedger(opts) {
   const byVid = new Map();
   const st = (vid) => {
     let s = byVid.get(vid);
-    if (!s) { s = { vid, det: new Map(), ring: [], reqs: new Map() }; byVid.set(vid, s); }
+    // chron: **잘리지 않는** 큰 사건 목록(연대기용 · day 오름차순). ring 과 겹쳐도 상관없다 —
+    //   연표는 오직 이 배열만 읽는다(두 원천을 합치면 중복 제거가 새 규칙이 되고, 규칙은 갈라진다).
+    if (!s) { s = { vid, det: new Map(), ring: [], reqs: new Map(), chron: [] }; byVid.set(vid, s); }
     return s;
   };
   const det = (s, r) => {
@@ -249,7 +279,8 @@ function createLedger(opts) {
   };
 
   const stats = { days: 0, emitted: 0, capped: 0, byType: {}, scanMs: 0, reqOpened: 0, reqClosed: 0, reqFilled: 0,
-    reqShrunk: 0, reqNoPay: 0, reqRevalidated: 0, reqRefused: 0 };
+    reqShrunk: 0, reqNoPay: 0, reqRevalidated: 0, reqRefused: 0,
+    chronicled: 0, chronBuilt: 0, chronHit: 0, chronMs: 0 };
   for (const t of TYPES) stats.byType[t] = 0;
 
   let lastSeason = null;
@@ -408,12 +439,21 @@ function createLedger(opts) {
       stats.emitted++;
       stats.byType[ev.type] = (stats.byType[ev.type] || 0) + 1;
       if (onEvent) { try { onEvent(ev); } catch (err) { /* 영속화 실패가 틱을 죽이지 않는다 */ } }
+      // ★[T18] 큰 사건이면 연대기에도 — **링버퍼와 별개**라 90일 뒤에도 남는다.
+      if (isChronicle(ev)) {
+        s.chron.push(ev);
+        stats.chronicled++;
+        if (onChronicle) { try { onChronicle(ev); } catch (err) {} }
+      }
     }
     // 링버퍼 — 최근 KEEP_DAYS 일. 오래된 것부터 버린다.
     const cut = keep[keep.length - 1].day - cfg.KEEP_DAYS;
     while (s.ring.length && s.ring[0].day < cut) s.ring.shift();
   }
   const sev = (ev) => Math.abs(Math.log(Math.max(1e-6, ev.mag || 1)));
+  // ★[T18] 연표에 남길 만큼 큰 사건인가 — 유형 화이트리스트 ∩ 심각도 문턱.
+  //   `SEASON_CHANGE` 는 기본 목록에 없다: 계절은 사건이 아니라 **연표의 축**이다.
+  const isChronicle = (ev) => CHRON_TYPES.indexOf(ev.type) >= 0 && sev(ev) >= cfg.CHRON_SEV;
 
   // ── 게시판 의뢰 ────────────────────────────────────────────────────────────
   // ★사건은 **에지**지만 의뢰는 **상태**다 — 이 구분이 이 층의 핵심이다.
@@ -619,6 +659,127 @@ function createLedger(opts) {
     out.sort((a, b) => (b.heard - a.heard) || (sev(b.ev) - sev(a.ev)));
     return { total: out.length, rows: out.slice(0, k) };
   }
+  // ── ★★[T18 2026-09-01] 연대기 — 마을 연표 ──────────────────────────────────
+  //   설계: 사건 장부는 **지금**을 보여 주지만 세계에는 역사가 쌓인다.
+  //   연표는 **플레이어가 들은 순서**로 읽는다 — 사건이 난 날이 아니라 **이 마을에 도달한 날**로
+  //   묶는다(T7 도달표). 그래야 "우리 마을이 겪은 일"이 되고, 먼 마을 소식은 늦게 적힌다.
+  //
+  // ★★캐시가 **지난 해에는 영원히 맞는** 이유(이게 이 층의 성능 전부다):
+  //   새로 도달하는 사건의 도달일은 **언제나 오늘**이다(`heard = day + delay` 이고 오늘 도달했으니).
+  //   ⇒ 새 사건은 **올해 칸에만** 들어간다. 지난 해 칸은 한 번 지으면 다시 바뀌지 않는다.
+  //   그래서 캐시 무효는 ①올해(오늘이 바뀌면) ②도달표 세대(마을이 늘면) 둘뿐이다.
+  //   ⚠이 논증이 참이려면 **도달 지연이 음수가 아니어야** 한다 — `travelDaysOf` 가 보장한다.
+  const chronCache = new Map();   // `${vid}|${year}` → { rows, day, gen }
+  const chronGen = () => (RUMOR ? RUMOR.stats.gen : 0);
+
+  // 연표 한 해 — 계절별로 묶어 문장으로. 반환은 화면이 그대로 그릴 모양이다(클라 재계산 0).
+  function chronicle(vid, opts) {
+    const o = opts || {};
+    const today = (o.today == null) ? _lastDay : (o.today | 0);
+    const cal = calendarOf(today);
+    const year = (o.year == null) ? cal.year : (o.year | 0);
+    const key = vid + '|' + year;
+    const hit = chronCache.get(key);
+    // 지난 해는 날짜와 무관하게 유효하다(위 논증). 올해만 오늘이 바뀌면 다시 짓는다.
+    if (hit && hit.gen === chronGen() && (year < cal.year || hit.day === today)) {
+      stats.chronHit++;
+      return { vid, year, yearDays: cal.yearDays, today, seasons: hit.rows, cached: true };
+    }
+    const t0 = process.hrtime.bigint();
+    const yd = cal.yearDays;
+    const yStart = year * yd, yEnd = yStart + yd - 1;
+    // 계절 칸을 미리 만든다 — 빈 계절도 자리를 지킨다(연표에 구멍이 있으면 그것도 정보다).
+    const buckets = new Map();
+    const rows = [];
+    for (let d = yStart; d <= Math.min(yEnd, today); ) {
+      const c = calendarOf(d);
+      const b = { season: c.season, seasonKo: c.seasonKo, start: d, days: c.seasonDays, items: [] };
+      buckets.set(c.season + '@' + c.year, b); rows.push(b);
+      d += c.seasonDays - (c.dayOfSeason - 1);
+    }
+    if (rows.length) {
+      if (RUMOR) RUMOR.rowOf(vid);            // 행 하나만 데운다(조회 중 그래프 걷기 0회)
+      for (const src of byVid.values()) {
+        const dly = delayTo(src.vid, vid);
+        if (!isFinite(dly)) continue;
+        const arr = src.chron;
+        for (let i = 0; i < arr.length; i++) {
+          const ev = arr[i];
+          const heard = ev.day + dly;
+          if (heard < yStart) continue;
+          if (heard > yEnd) break;            // chron 은 day 오름차순 ⇒ 이후는 전부 범위 밖
+          if (heard > today) break;           // 아직 안 들었다 — 없는 것과 같다
+          const c = calendarOf(heard);
+          const b = buckets.get(c.season + '@' + c.year);
+          if (!b) continue;
+          const foreign = (ev.vid !== vid);
+          const sv = sev(ev);
+          if (foreign && sv < cfg.CHRON_FOREIGN_SEV) continue;   // ★이웃 소식은 더 큰 일이어야 여기까지 온다
+          b.items.push({ line: briefLine(ev), type: ev.type, item: ev.item, day: ev.day, heard,
+            from: foreign ? ev.vid : null, sev: +sv.toFixed(3) });
+        }
+      }
+      for (const b of rows) {
+        // ★★**우리 마을 일과 이웃 소식은 따로 센다.** 한 그릇에 담아 심각도로만 자르면
+        //   연표가 "이 세계에서 가장 극단적이었던 값 여섯 개"가 된다 — 그건 마을의 역사가 아니다.
+        //   마을 연표는 **여기서 일어난 일**이 본문이고, 이웃 소식은 몇 줄의 여백이다.
+        const mine = [], abroad = [];
+        for (const it of b.items) (it.from == null ? mine : abroad).push(it);
+        b.mine = mine.length; b.abroad = abroad.length;
+        b.total = b.items.length;
+        const bySev = (x, y) => (y.sev - x.sev) || (x.heard - y.heard);
+        mine.sort(bySev); abroad.sort(bySev);
+        const keepMine = cfg.CHRON_PER_SEASON > 0 ? mine.slice(0, cfg.CHRON_PER_SEASON) : mine;
+        const keepAbroad = cfg.CHRON_FOREIGN > 0 ? abroad.slice(0, cfg.CHRON_FOREIGN) : abroad;
+        b.items = keepMine.concat(keepAbroad);
+        // ★★"그 밖에 n건"은 **우리 마을 몫만** 센다. 이웃 후보는 51마을이 한꺼번에 쏟아져
+        //   계절당 수백 건이 되는데(실측 98.7% 가 잘린다), 그걸 "그 밖에 490건"이라고 적으면
+        //   연표가 거짓말을 한다 — 마을은 그 490건을 **기록한 적이 없다.** 스쳐 들었을 뿐이다.
+        //   ⇒ 화면이 쓰는 수(`more`)는 우리 마을 것, 계측용 수(`abroadMore`)는 따로 낸다.
+        b.more = mine.length - keepMine.length;
+        b.abroadMore = abroad.length - keepAbroad.length;
+        // ★남긴 것을 **다시 시간순으로** 놓는다(연표를 읽는 순서는 심각도가 아니라 시간이다).
+        b.items.sort((x, y) => (x.heard - y.heard) || (y.sev - x.sev));
+      }
+    }
+    chronCache.set(key, { rows, day: today, gen: chronGen() });
+    stats.chronBuilt++;
+    stats.chronMs += Number(process.hrtime.bigint() - t0) / 1e6;
+    return { vid, year, yearDays: yd, today, seasons: rows, cached: false };
+  }
+  // 이 마을 연표에 해가 몇 개 있는가 — 화면의 연도 목록(접힘/펼침)이 쓴다.
+  function chronicleYears(vid, opts) {
+    const o = opts || {};
+    const today = (o.today == null) ? _lastDay : (o.today | 0);
+    const cur = calendarOf(today).year;
+    let first = cur;
+    if (RUMOR) RUMOR.rowOf(vid);
+    for (const src of byVid.values()) {
+      const dly = delayTo(src.vid, vid);
+      if (!isFinite(dly) || !src.chron.length) continue;
+      const h = src.chron[0].day + dly;
+      if (h > today) continue;
+      const y = calendarOf(h).year;
+      if (y < first) first = y;
+    }
+    const out = [];
+    for (let y = cur; y >= first; y--) out.push(y);
+    return out;
+  }
+  // ★영속 복구 — 잘린 사건까지 되살린다(연표는 90일 너머를 읽는다).
+  //   ⚠`day` 오름차순으로 넣어야 위 조회의 조기 종료가 성립한다.
+  function loadChronicle(rows) {
+    let n = 0;
+    for (const r of (rows || []).slice().sort((a, b) => a.day - b.day)) {
+      const s = st(r.vid);
+      s.chron.push({ day: r.day | 0, vid: r.vid, type: r.type, item: r.item == null ? null : r.item, mag: +r.mag || 1, meta: null });
+      n++;
+    }
+    chronCache.clear();
+    return n;
+  }
+  function chronOf(vid) { const s = byVid.get(vid); return s ? s.chron.slice() : []; }
+
   // ── 읽기 ───────────────────────────────────────────────────────────────────
   // ★T7 이후 `recent` 는 **가시성 술어의 얇은 껍데기**다(사본 금지). 날짜를 안 받는 이유는
   //   장부가 오늘을 알기 때문이다(`_lastDay`) — 호출부마다 시계를 들고 다니면 그게 사본이다.
@@ -669,6 +830,9 @@ function createLedger(opts) {
     prime, scanDay, recent, board, claim, unclaim, ringOf, detOf, loadRing, loadRequest,
     // ★[T7] 소문 물리 전파 — 가시성 술어와 그 부속. 사본 금지: 사건을 보는 문은 이것뿐이다.
     visibleEvents, visibleTo, heardDayOf, delayTo, returnBrief,
+    // ★[T18] 연대기 — 같은 도달표 위에 선다(사본 0).
+    chronicle, chronicleYears, loadChronicle, chronOf, isChronicle,
+    get chronTypes() { return CHRON_TYPES.slice(); },
     get today() { return _lastDay; },
     rumorInvalidate: () => { if (RUMOR) RUMOR.invalidate(); },
     get rumorStats() { return RUMOR ? RUMOR.stats : null; },

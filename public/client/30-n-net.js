@@ -1434,6 +1434,8 @@
       fishFx = { kg: msg.kg, n: msg.n, item: msg.item, big: !!msg.big, record: !!msg.record, until: performance.now() + 2200 };
       window.__fishLast = { kg: msg.kg, n: msg.n, item: msg.item, big: !!msg.big, record: !!msg.record };
       needsRedraw = true;
+    } else if (msg.type === 'village_chronicle') {
+      chronOnMessage(msg.chron);   // ★[T18] 연대기 — 본체는 65-s-chronicle.js(여기선 넘기기만)
     } else if (msg.type === 'village_board') {
       const bd = msg.board || {};
       evBoardCache = bd;

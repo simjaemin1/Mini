@@ -3528,6 +3528,7 @@ function handlePlayerInput(player, raw) {
   // ★★[2026-08-25 사건 레이어] 촌장 브리핑 · 게시판 · 납품. 셋 다 **자기 마을 것만** 준다(소식의 물리 전파).
   else if (msg.type === 'village_brief') tryVillageBrief(player, msg.vid);
   else if (msg.type === 'village_board') tryVillageBoard(player, msg.vid);
+  else if (msg.type === 'village_chronicle') tryVillageChronicle(player, msg.vid, msg.year);   // ★[T18] 연대기
   else if (msg.type === 'village_deliver') tryVillageDeliver(player, msg.vid, msg.item, msg.want);
   else if (msg.type === 'village_trade') tryVillageTrade(player, msg.vid);                                   // ★[거래소] 시세표
   else if (msg.type === 'village_trade_exec') tryVillageTradeExec(player, msg.vid, msg.give, msg.take, msg.qty);  // ★[거래소] 교환
@@ -7191,6 +7192,14 @@ function tryVillageBoard(player, vid) {
   const r = SimVillages.villageBoard(vid | 0, player.x, player.y);
   if (r.err) { send(player.ws, { type: 'notice', text: `🏘️ ${r.err}` }); return; }
   send(player.ws, { type: 'village_board', board: r });
+}
+// ★★[T18 2026-09-01] 연대기 — 마을 연표. 게이트·권한은 게시판과 **완전히 같다**(같은 마을, 같은 술어).
+//   화면이 그릴 모양(연·계절·문장)은 서버가 다 만들어 보낸다 — 달력 표기를 클라가 다시 짜면 그게 사본이다.
+function tryVillageChronicle(player, vid, year) {
+  if (!SimVillages.villageChronicle) return;
+  const r = SimVillages.villageChronicle(vid | 0, player.x, player.y, year);
+  if (r.err) { send(player.ws, { type: 'notice', text: `📜 ${r.err}` }); return; }
+  send(player.ws, { type: 'village_chronicle', chron: r });
 }
 // ★[거래소 2026-08-27] 시세표 — **그 마을 앞에서만** 답한다(게이트는 villages.js `_villageNear`).
 // ★★[무게 배치] 개체 무게 → 재화 단위 환산 콜백. **정본은 `Carry.peekKg` 하나**이고

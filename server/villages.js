@@ -4426,6 +4426,8 @@ function _initLedger() {
       },
     },
     onEvent: (e) => { try { state.db.insertVillageEvent(zone, e); } catch (err) {} },
+    // ★★[T18 2026-09-01] 연대기 — **큰 사건만** 잘리지 않는 표에. 사건 하나당 한 행이다.
+    onChronicle: (e) => { try { state.db.insertVillageChronicle(zone, e); } catch (err) {} },
     onRequest: (r, kind) => {
       try {
         if (kind === 'open') state.db.upsertVillageRequest(zone, r);
@@ -4450,6 +4452,13 @@ function _initLedger() {
     //   래치를 DB 에 담아 되살리면 "쉬는 동안 회복됐다가 다시 떨어진" 마을을 놓친다.
     //   지금 상태가 진실이고, 시작 상태는 사건이 아니라 배경이다.
     state.ledger.prime(state.world);
+    // ★[T18] 연대기 복구 — **prune 이 없는 표**라 세계가 시작된 날부터 전부 온다.
+    //   사라진 마을의 행은 버린다(그 마을의 역사를 읽을 사람이 없다 — 사건 링버퍼와 같은 규약).
+    try {
+      const crows = state.db.getVillageChronicle(zone).filter((r) => state.byDbId.has(r.vid));
+      const cn = state.ledger.loadChronicle(crows);
+      if (cn) console.log(`[${state.zoneId}] 📜 연대기 ${cn}행 복구(잘리지 않는 표 · 총 ${state.db.countVillageChronicle(zone)}행)`);
+    } catch (e) { console.error(`[${state.zoneId}] 📜 연대기 복구 실패:`, e.message); }
     console.log(`[${state.zoneId}] 📜 사건 장부 — 과거 ${n}건 복구 · 마을 ${state.villages.length}곳 프라이밍 · 문턱 부족 ${state.ledger.cfg.SHORT_DAYS}일치·글럿 ${state.ledger.cfg.GLUT_DAYS}일치·가격 ±${(state.ledger.cfg.PRICE_UP * 100) | 0}%`);
   } catch (e) { console.error(`[${state.zoneId}] 📜 사건 장부 복구 실패(빈 장부로 시작):`, e.message); }
   // 게시판 의뢰 복구 — 저장된 진척(filled)을 되돌린다. 실물은 이미 곳간에 들어갔으므로
@@ -4574,6 +4583,29 @@ function _newsRows(vid, n) {
     heard: r.heard,         // ★이 마을이 들은 날 — 둘의 차이가 곧 소문이 걸어온 일수다
     from: r.ev.vid === (vid | 0) ? null : ((state.byDbId.get(r.ev.vid) || {}).name || null),
   })).filter((r) => r.line);
+}
+
+// ★★[T18 2026-09-01] 연대기 — 마을 연표.
+//   ★260px 게이트를 그대로 쓴다(브리핑·게시판·거래소와 같은 술어). 마을의 역사는 **그 마을에 가서**
+//     읽는 것이다 — 원격 조회를 열면 그게 §3.2 캐논이 막아 둔 바로 그 구멍이다.
+//   ★무엇이 실리는지는 여기서 정하지 않는다. `ledger.chronicle` 하나가 정한다(사본 금지) —
+//     그 함수가 T7 의 가시성 술어와 **같은 도달표** 위에 선다.
+function villageChronicle(vid, px, py, year) {
+  if (!state.ledger) return { err: '아직 장부가 없다' };
+  const g = _villageNear(vid, px, py);
+  if (g.err) return g;
+  const L = state.ledger, day = state.world.day | 0;
+  const c = L.chronicle(vid | 0, { year: (year == null ? null : (year | 0)), today: day });
+  const nameOf = (v) => (state.byDbId.get(v) || {}).name || null;
+  return {
+    ok: true, vid: vid | 0, name: g.vil.name, year: c.year, years: L.chronicleYears(vid | 0, { today: day }),
+    today: day, cal: Events.calendarOf(day),      // ★달력 정본 하나(연·계절 표기를 클라가 다시 만들지 않는다)
+    seasons: c.seasons.map((b) => ({
+      season: b.season, seasonKo: b.seasonKo, start: b.start, days: b.days,
+      more: b.more | 0, total: b.total | 0, mine: b.mine | 0, abroad: b.abroad | 0, abroadMore: b.abroadMore | 0,
+      items: b.items.map((x) => ({ line: x.line, day: x.day, heard: x.heard, from: x.from == null ? null : nameOf(x.from) })),
+    })),
+  };
 }
 
 // ★★[T7] 시작 화면 근황 — 온보딩 v2 가 읽는다. **같은 술어**를 쓰라고 함수로 내준다(사본 금지).
@@ -4880,6 +4912,8 @@ module.exports = {
   villageBrief, villageBoard, villageDeliver, villageAnchorPx, briefRadiusPx,
   // ★[T7 2026-09-01] 소문 물리 전파 — 시작 화면 근황(온보딩 v2 가 읽는다) · 하네스 계측
   villageNews, __rumorProbe,
+  // ★[T18 2026-09-01] 연대기 — 마을 연표(260px 게이트 · 도달일 기준)
+  villageChronicle,
   // ★[겨울 난이도 2026-08-31] 마을 미기후(추위 완충) — zone.js 가 Body.tick 으로 넘긴다
   shelterAt,
   // ★[2026-08-27 거래소] 물물교환 — zone.js 가 소비. 둘 다 260px 게이트 안에서만 답한다.

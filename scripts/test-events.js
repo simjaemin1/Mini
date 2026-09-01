@@ -783,6 +783,121 @@ const mkLedgerGeo = (world, geo, cfg) => {
   delete require.cache[require.resolve(path.join(__dirname, '..', 'server', 'rumor.js'))];
 }
 
+// ═════════════════════════════════════════════════════════════════════════════
+// ★★[T18 2026-09-01] 연대기 — 마을 연표 · ㉖ ~ ㉛
+//   설계: 사건 장부는 "지금"이고 연표는 "역사"다. 그런데 사건 링버퍼는 **90일이면 잘린다** —
+//   그래서 연표는 잘리지 않는 별도 표(`chron`)를 읽고, **누가 언제 들었는지는 도달표가**
+//   되돌린다(저장하지 않는다). 여기서 재는 것은 그 계약이다.
+// ═════════════════════════════════════════════════════════════════════════════
+{
+  const world = makeWorld(120, 1020);
+  const N = world.villages.length;
+  const chronRows = [];
+  const L = Events.createLedger({ econV2, vidOf, depositMap: Villages.playerVillageDepositMap(),
+    geo: chainGeo(N), onChronicle: (e) => chronRows.push({ ...e }) });
+  L.prime(world);
+  // 한 해를 넘겨 돌린다 — 연표는 해를 넘겨 읽는 것이라 두 해 이상이 있어야 검사가 성립한다.
+  const YD = Events.yearDaysOf();
+  const _l = console.log; console.log = () => {};
+  for (let k = 0; k < YD + 200; k++) { econV2.tickWorldV2(world); L.scanDay(world, world.day, {}); }
+  console.log = _l;
+  const today = L.today, cal = Events.calendarOf(today);
+
+  // ── ㉖ 전제들 — 이 절이 잴 수 있는 상황인가 (자명 통과 방지)
+  ok(cal.year >= 1, '㉖a 전제: 해를 넘겼다(연표에 지난 해가 있다)', `${cal.year}년 ${cal.seasonKo} ${cal.dayOfSeason}일 · day ${today}`);
+  ok(L.stats.chronicled > 0, '㉖b 전제: 연표에 남을 만한 큰 사건이 실제로 났다', `${L.stats.chronicled}건 / 전체 ${L.stats.emitted}건`);
+  ok(L.stats.chronicled < L.stats.emitted, '㉖c 전제: 문턱이 실제로 자르고 있다(전부 통과가 아니다)',
+    `${(L.stats.chronicled / L.stats.emitted * 100).toFixed(1)}%`);
+  // ★★잘림이 실제로 일어났는가 — 이게 이 층의 존재 이유다
+  const ringN = L.ringOf(0).length, chronN = L.chronOf(0).length;
+  const oldestRing = L.ringOf(0)[0] ? L.ringOf(0)[0].day : today;
+  const oldestChron = L.chronOf(0)[0] ? L.chronOf(0)[0].day : today;
+  ok(oldestChron < oldestRing, '㉖ ★잘린 뒤에도 연표는 남는다(링버퍼보다 오래된 사건을 갖고 있다)',
+    `링 최고참 day${oldestRing}(${ringN}건) vs 연표 최고참 day${oldestChron}(${chronN}건) · KEEP_DAYS=${L.cfg.KEEP_DAYS}`);
+  // ⚠링버퍼 정리는 **사건이 난 날에만** 돈다(`commit` 안에서 자른다) — 조용한 날이 이어지면
+  //   KEEP_DAYS 를 조금 넘겨 남아 있다. 그래서 "정확히 90일"이 아니라 **"한 해를 못 담는다"**를 잰다.
+  //   (여기서 90 을 딱 맞추라고 요구하면 제품이 옳은데 하네스가 빨개진다 — 실제로 93일이었다.)
+  ok(today - oldestRing < YD, '㉖d 전제: 링버퍼는 한 해를 담지 못한다(그래서 연표가 따로 필요하다)',
+    `링 ${today - oldestRing}일치 < 한 해 ${YD}일 · 연표 ${today - oldestChron}일치`);
+
+  // ── ㉗ 연표는 **달력 정본**으로 묶는다(사본 금지)
+  const c1 = L.chronicle(0, { year: 1 });
+  ok(c1.seasons.length === 4, '㉗ 지난 한 해는 계절 넷으로 묶인다(달력 정본 `calendarOf`)', `${c1.seasons.map((b) => b.seasonKo).join(' ')}`);
+  ok(c1.seasons.every((b) => Events.calendarOf(b.start).season === b.season && Events.calendarOf(b.start).dayOfSeason === 1),
+    '㉗b 각 계절 칸의 시작일이 정본 달력의 계절 첫날이다');
+  const yd2 = c1.seasons.reduce((a, b) => a + b.days, 0);
+  ok(yd2 === c1.yearDays, '㉗c 계절 길이의 합 = 한 해의 길이(상수를 안 적고 정본에서 유도)', `${yd2} = ${c1.yearDays}`);
+
+  // ── ㉘ 결정론 + 잘림 뒤 복구 — 같은 표를 다시 심으면 같은 연표가 나온다
+  const L2 = Events.createLedger({ econV2, vidOf, depositMap: Villages.playerVillageDepositMap(), geo: chainGeo(N) });
+  ok(L2.loadChronicle(chronRows) === chronRows.length, '㉘a 전제: 영속 표를 그대로 되심었다', `${chronRows.length}행`);
+  const flat = (c) => JSON.stringify(c.seasons.map((b) => [b.seasonKo, b.total, b.more, b.items.map((x) => `${x.heard}|${x.line}`)]));
+  const c1b = L2.chronicle(0, { year: 1, today });
+  ok(flat(c1b) === flat(c1), '㉘ 연표는 결정론적이다 — 저장본만으로 같은 연표가 재현된다(도달일은 저장하지 않는다)');
+  const c1c = L.chronicle(0, { year: 1 });
+  ok(flat(c1c) === flat(c1), '㉘b 같은 질문에 같은 답(캐시가 답을 바꾸지 않는다)');
+
+  // ── ㉙ 도달 전 사건은 연표에도 없다 — 그리고 **먼 마을 것이 실제로 섞여 있다**
+  const FAR = N - 1;
+  let cross = 0, bad = null;
+  for (let y = 0; y <= cal.year; y++) {
+    for (const b of L.chronicle(FAR, { year: y }).seasons) for (const it of b.items) {
+      if (it.from != null) cross++;
+      if (it.heard > today) bad = bad || { ...it, why: '오늘 이후' };
+      const lag = it.heard - it.day;
+      const want = L.delayTo(it.from == null ? FAR : it.from, FAR);
+      if (lag !== want) bad = bad || { ...it, why: `지연 ${lag} ≠ 도달표 ${want}` };
+    }
+  }
+  ok(cross > 0, '㉙a 전제: 먼 마을 사건이 실제로 연표에 섞여 있다(자기 마을만이면 이 검사가 무의미하다)', `교차 ${cross}건`);
+  ok(!bad, '㉙ 연표의 모든 줄이 **도달일 기준**이다(오늘 이후 없음 · 지연 = 도달표 그대로)',
+    bad ? JSON.stringify(bad) : '');
+  // 도달 전 사건은 연표에서도 안 보인다 — 어제 기준으로 물으면 오늘 도달한 것이 빠져야 한다
+  const cnt = (c) => c.seasons.reduce((a, b) => a + b.total, 0);
+  const nToday = cnt(L.chronicle(FAR, { year: cal.year, today }));
+  const nYest = cnt(L.chronicle(FAR, { year: cal.year, today: today - 1 }));
+  ok(nYest <= nToday, '㉙b 어제 기준 연표는 오늘 기준보다 길지 않다(미래를 미리 적지 않는다)', `${nYest} ≤ ${nToday}`);
+
+  // ── ㉚ 계절 상한과 "그 밖에 n건" — 조용한 절단 금지
+  //   ★우리 마을 몫과 이웃 소식 몫은 **따로** 센다(한 그릇에 담아 자르면 연표가 세계의 극단값 목록이 된다).
+  let over = 0, capHit = 0, moreBad = 0, foreignOver = 0, sawForeign = 0;
+  for (let y = 0; y <= cal.year; y++) for (const b of L.chronicle(0, { year: y }).seasons) {
+    const shownMine = b.items.filter((x) => x.from == null).length;
+    const shownAbroad = b.items.length - shownMine;
+    if (shownMine > L.cfg.CHRON_PER_SEASON) over++;
+    if (shownAbroad > L.cfg.CHRON_FOREIGN) foreignOver++;
+    sawForeign += shownAbroad;
+    if (b.mine > L.cfg.CHRON_PER_SEASON) capHit++;
+    // ★`more` 는 **우리 마을 몫만** — 이웃 후보는 51마을이 쏟아져 세는 뜻이 없다(서버 주석).
+    if (b.more !== b.mine - shownMine || b.abroadMore !== b.abroad - shownAbroad) moreBad++;
+  }
+  ok(over === 0, '㉚ 한 계절에 실리는 **우리 마을** 줄이 상한을 넘지 않는다', `상한 ${L.cfg.CHRON_PER_SEASON}`);
+  ok(foreignOver === 0, '㉚b 한 계절에 실리는 **이웃 소식** 줄이 상한을 넘지 않는다', `상한 ${L.cfg.CHRON_FOREIGN}`);
+  ok(moreBad === 0, '㉚c 잘린 수가 실제 잔여와 일치한다 — 우리 마을 `more` · 이웃 `abroadMore`(조용한 절단 금지)');
+  ok(capHit > 0, '㉚d 전제: 상한이 실제로 걸리는 계절이 있다(자명 통과가 아니다)', `${capHit}칸`);
+
+  // ── ㉛ 캐시 — 지난 해는 영원히, 올해는 날이 바뀔 때만
+  const b0 = L.stats.chronBuilt;
+  for (let i = 0; i < 30; i++) L.chronicle(0, { year: 1 });
+  ok(L.stats.chronBuilt === b0, '㉛ 지난 해 연표는 다시 짓지 않는다(30회 조회 · 재빌드 0)', `built=${L.stats.chronBuilt - b0}`);
+  for (let i = 0; i < 30; i++) L.chronicle(0, { year: cal.year });
+  ok(L.stats.chronBuilt === b0, '㉛b 올해 연표도 **같은 날이면** 다시 짓지 않는다', `built=${L.stats.chronBuilt - b0}`);
+  const rw0 = L.rumorStats ? L.rumorStats.walks : 0;
+  for (let i = 0; i < 30; i++) { L.chronicle(1, { year: 1 }); L.chronicleYears(1); }
+  ok(!L.rumorStats || L.rumorStats.walks <= rw0 + 1, '㉛c 연표 조회가 도달표 그래프를 다시 걷지 않는다',
+    `walks ${rw0} → ${L.rumorStats ? L.rumorStats.walks : '-'}`);
+  { const _l2 = console.log; console.log = () => {}; econV2.tickWorldV2(world); L.scanDay(world, world.day, {}); console.log = _l2; }
+  const b1 = L.stats.chronBuilt;
+  L.chronicle(0, { year: cal.year });
+  ok(L.stats.chronBuilt === b1 + 1, '㉛d 하루가 지나면 올해 칸은 다시 짓는다(낡은 연표를 안 준다)');
+  L.chronicle(0, { year: 1 });
+  ok(L.stats.chronBuilt === b1 + 1, '㉛e 그래도 지난 해는 여전히 캐시 적중(새 사건은 올해에만 들어온다)');
+  // 마을이 늘면(도달표 무효) 전부 다시
+  L.rumorInvalidate();
+  L.chronicle(0, { year: 1 });
+  ok(L.stats.chronBuilt === b1 + 2, '㉛f 도달표가 무효화되면 지난 해도 다시 짓는다(거리가 바뀌면 도달일이 바뀐다)');
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
 try { require('fs').unlinkSync(process.env.DB_PATH); } catch (e) {}

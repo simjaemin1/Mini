@@ -693,6 +693,7 @@ function itemKo(k) { return (typeof ITEM_LABEL !== 'undefined' && ITEM_LABEL[k])
       craft: '🔨 제작', build: '🏗️ 건축', tribe: '🛡️ 길드', market: '🏪 시세',
       skills: '📚 스킬', claims: '🏛️ 사유지', body: '🫀 상태', trade: '🏪 거래소',
       facility: (myFacility && myFacility.near) ? `🪚 ${myFacility.near.ko}` : '🪚 제작창',
+      chronicle: '📜 연대기',   // ★[T18] §8.2 3단계 중 ② — 이 표에 없으면 영문 키가 제목에 뜬다
     })[name] || name;
     // ★[§8.2 패널 프레임 규약] 이 표에 없는 이름은 **영문 키가 그대로 제목에 뜬다**(실제로 `body` 가 그랬다).
     //   다음 패널을 붙이는 사람에게: ①`#sidebar` 에 `.sb-icon[data-side]` 한 줄(단축키 병기)
@@ -703,6 +704,8 @@ function itemKo(k) { return (typeof ITEM_LABEL !== 'undefined' && ITEM_LABEL[k])
       if (vid == null) { myTrade = null; }
       else window.__sendPrimary({ type: 'village_trade', vid });
     }
+    // ★[T18] 연대기도 **열 때 서버에 묻는다** — 역사는 클라가 캐시할 것이 아니다(캐시는 정본 쪽 하나).
+    if (name === 'chronicle') chronAsk(null);
     renderSide(name);
   }
   function closeSide() {
@@ -787,6 +790,7 @@ function itemKo(k) { return (typeof ITEM_LABEL !== 'undefined' && ITEM_LABEL[k])
     else if (k === 'y') { toggleSide('claims'); e.preventDefault(); }
     else if (k === 'p') { toggleSide('skills'); e.preventDefault(); }
     else if (k === 'q') { toggleSide('market'); e.preventDefault(); }
+    else if (k === 'j' && e.shiftKey) { toggleSide('chronicle'); e.preventDefault(); }   // ★[T18] 연대기(📜)
   });
 
   // ★★[신체 상태 §8.3] 무들 — **서버가 매긴 단계만** 그린다. 3단계에서만 가장자리 한 겹.
@@ -988,6 +992,7 @@ function itemKo(k) { return (typeof ITEM_LABEL !== 'undefined' && ITEM_LABEL[k])
     else if (name === 'market') renderMarketPanel(body);
     else if (name === 'skills') renderSkillsPanel(body);
     else if (name === 'facility') renderFacilityPanel(body);
+    else if (name === 'chronicle') renderChroniclePanel(body);   // ★[T18] 연대기 — 본체는 65-s-chronicle.js
   }
 
   // ★★[시설 제작창 · 재민 확정 2026-08-29 · §8.5] **제작창 = 시설의 창.**
