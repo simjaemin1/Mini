@@ -32,8 +32,13 @@
            그 사실을 아무도 말해 주지 않아 "게스트는 날아간다"고 오해할 수 있다 — 한 줄로 적는다.
            그리고 오해의 반대편도 준다: **새로 시작**(토큰 재발급)이 없으면 몸을 바꿀 방법이 없다. -->
       <div id="guestNote" class="hidden" style="font-size:12px;color:#a9c6a0;background:rgba(40,70,40,0.28);padding:8px;border-radius:4px;margin:8px 0;display:flex;align-items:center;gap:8px;justify-content:space-between">
-        <span>💾 <b>이어하기</b> — 게스트 캐릭터는 <b>이 브라우저에 저장</b>됩니다. 다음에도 같은 몸으로 들어옵니다.</span>
-        <button id="guestReset" type="button" style="flex:0 0 auto;padding:4px 10px;border-radius:6px;cursor:pointer;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.28);color:inherit;font:600 11px/1 system-ui,sans-serif">새로 시작</button>
+        <!-- ★[2026-09-01 재민 실기 "세로로 길게 문장이 나열"] span 은 flex:1 + min-width:0 이어야 한다.
+             한글은 띄어쓰기가 없어 flex 아이템의 min-content 가 **한 글자**다. 옆 버튼이 안 줄어들면
+             이 문장이 한 글자 폭까지 눌려 세로로 쏟아진다(그게 그 화면이다). -->
+        <span style="flex:1 1 auto;min-width:0">💾 <b>이어하기</b> — 게스트 캐릭터는 <b>이 브라우저에 저장</b>됩니다. 다음에도 같은 몸으로 들어옵니다.</span>
+        <!-- ★width·margin-top 을 여기서 되돌린다 — style.css 의 `.lobby-card button { width:100%; margin-top:18px }`
+             이 이 버튼에도 걸려서, flex:0 0 auto 와 만나 **버튼이 줄 전체를 차지**했다(원인). -->
+        <button id="guestReset" type="button" style="flex:0 0 auto;width:auto;margin-top:0;padding:4px 10px;border-radius:6px;cursor:pointer;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.28);color:inherit;font:600 11px/1 system-ui,sans-serif">새로 시작</button>
       </div>
       <div id="authError" class="auth-error hidden"></div>
       <div class="hint">

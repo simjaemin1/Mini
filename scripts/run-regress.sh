@@ -108,6 +108,8 @@ else
     test-terraincache.js
     # ★[멎음 수리 2026-08-31] 선분 격자 색인 — 자식 둘(켬/끔) 비트 대조·후보 수·기본 꺼짐
     test-segindex.js
+    # ★[재배포 2026-09-01] 바뀐 파일만큼만 다시 하는가 — 가짜 git·docker 로 진짜 스크립트를 돌린다
+    test-redeploy.js
     test-move.js
     test-charsheet.js
     e2e-events.js

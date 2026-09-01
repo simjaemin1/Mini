@@ -384,6 +384,10 @@ const SIM_JOB_EMOJI = {
   const AIM_LOOK_PX = 180;      // 시야 밀기 최대 오프셋(화면 px). 손잡이는 튜닝 배치에서.
   const AIM_LOOK_TAU = 0.12;    // 이징 시정수(초) — 뚝 이동 금지
   let _aimLookX = 0, _aimLookY = 0;      // 현재(이징된) 화면 오프셋
+  // ★[안개 정렬 2026-09-01] 하네스가 "밀기가 실제로 걸렸는지" 먼저 세게 하는 훅(족보 57).
+  //   이게 없으면 밀기가 0인 채로 "안개가 안 어긋났다"는 **자명 통과**를 하게 된다.
+  window.__aimDbg = () => ({ aiming: _aiming, x: _aimLookX, y: _aimLookY,
+                             maskAx: window._shadowMaskAx || 0, maskAy: window._shadowMaskAy || 0 });
   let _lastCamIso = null;                // 직전 프레임 카메라 iso 원점 — 커서→월드 투영이 이걸 쓴다
   let _aimDirX = 1, _aimDirY = 0;        // 조준 월드 방향(정규화)
   let _aimT = 0;                         // 이징용 직전 프레임 시각
@@ -9561,9 +9565,13 @@ const SIM_JOB_EMOJI = {
       if (window._shadowMaskPx !== undefined) {
         const p0x = window._shadowMaskPx, p0y = window._shadowMaskPy;
         const p1x = _camAbs.x, p1y = _camAbs.y; // K22: 마스크 빌드/저장과 동일 기준(_camAbs)
+        // ★[안개 정렬 수리 2026-09-01] 마스크는 1프레임 늦게 온다. 그 사이 달라진 건 카메라만이 아니라
+        //   **조준 밀기**도다. 밀기 델타를 안 더하면 조준을 시작·중단하는 순간마다 마스크가 미끄러진다.
+        //   이징(TAU 0.12s)이라 프레임당 변화는 20px 안쪽 — 아래 ±_maskM(64) 여유 안이다.
+        const a0x = window._shadowMaskAx || 0, a0y = window._shadowMaskAy || 0;
         // 정수로 반올림 — subpixel drawImage는 Safari 리샘플링 강제 + 경계 떨림의 원인
-        mdx = Math.round((p0x - p0y) - (p1x - p1y));
-        mdy = Math.round(((p0x + p0y) - (p1x + p1y)) / 2);
+        mdx = Math.round((p0x - p0y) - (p1x - p1y) + (a0x - _aimLookX));
+        mdy = Math.round(((p0x + p0y) - (p1x + p1y)) / 2 + (a0y - _aimLookY));
         if (Math.abs(mdx) > _maskM || Math.abs(mdy) > _maskM) { mdx = 0; mdy = 0; }
       }
       ctx.drawImage(window._shadowMask, mdx - _maskM, mdy - _maskM);
@@ -10158,8 +10166,15 @@ const SIM_JOB_EMOJI = {
       const SHADOW_RANGE_CELLS = 16; // 벽 수집은 16 cell만 (perf)
       const MAX_RANGE = Math.max(W, H) * 2; // ray range는 화면 2배 (시야 화면 전체 커버)
       ensureWallMap();
-      function w2sx(wx, wy) { return (wx - wy) - (px - py) + W/2; }
-      function w2sy(wx, wy) { return (wx + wy) * 0.5 - (px + py) * 0.5 + H/2; }
+      // ★★[안개 정렬 수리 2026-09-01 · 재민 실기 "검은 안개랑 뒤틀려버린다"]
+      //   시야의 **원점**(px,py = 캐릭터)과 마스크가 **그려지는 자리**는 다른 것이다.
+      //   종전엔 둘을 같은 식으로 썼는데, 월드는 `camX = myIso.x + _aimLookX` 로 그린다.
+      //   ⇒ 조준(우클릭)으로 카메라가 밀린 만큼 마스크만 제자리에 남아 **땅과 어긋났다**(최대 180px).
+      //   여기서 빼는 건 화면 배치뿐이다 — 광선은 여전히 캐릭터에서 쏜다(아래 rsi·visibleWorldPath).
+      //   그래서 "지형지물에 가려지면 끌어서 봐도 안 보인다"가 그대로 지켜진다.
+      const _aoX = _aimLookX, _aoY = _aimLookY;   // 이 프레임 월드가 실제로 쓴 밀기
+      function w2sx(wx, wy) { return (wx - wy) - (px - py) - _aoX + W/2; }
+      function w2sy(wx, wy) { return (wx + wy) * 0.5 - (px + py) * 0.5 - _aoY + H/2; }
       // 1) 벽 수집
       const segs = [];
       for (const key of clWallCellMap.keys()) {
@@ -10472,7 +10487,7 @@ const SIM_JOB_EMOJI = {
 
       // (ii) visible polygon: world → screen iso transform → destination-out alpha 1.0 (밝음)
       mctx.save();
-      mctx.setTransform(1, 0.5, -1, 0.5, W/2 - (px - py) + FOG_MASK_M, H/2 - (px + py)/2 + FOG_MASK_M);
+      mctx.setTransform(1, 0.5, -1, 0.5, W/2 - (px - py) - _aoX + FOG_MASK_M, H/2 - (px + py)/2 - _aoY + FOG_MASK_M);   // ★밀기 포함 — (i)본 셀과 (ii)부채꼴이 같은 프레임에 있어야 한다
       mctx.fillStyle = 'rgba(0,0,0,1.0)';
       mctx.fill(visibleWorldPath);
       mctx.restore();
@@ -10480,6 +10495,8 @@ const SIM_JOB_EMOJI = {
       // mask 생성 시점의 플레이어 위치 기록 — 다음 frame 합성 시 카메라 델타 보정용
       window._shadowMaskPx = px;
       window._shadowMaskPy = py;
+      window._shadowMaskAx = _aoX;   // ★밀기도 같이 — 합성 보정이 카메라와 밀기 **둘 다** 따라가야 한다
+      window._shadowMaskAy = _aoY;
 
       // ★[재민 확정 2026-08-06] 합성은 **이 블록 아래**, 화살까지 다 그린 뒤에 한다.
       //   (옛 주석: "다음 frame entity render 전에 합성" — 그 배치가 미탐사 위 누출의 원인이었다.)
