@@ -1,0 +1,195 @@
+{
+  "scenario": "C_jitter",
+  "note": "히스테리시스 대조군 — 경계선을 진자처럼 넘나든다(진폭 ±100px < COMMIT 256)",
+  "startedAt": "2026-09-01T13:04:16.389Z",
+  "endedAt": "2026-09-01T13:07:28.410Z",
+  "config": {
+    "host": "127.0.0.1",
+    "port": 3020,
+    "clients": 4,
+    "durationS": 180,
+    "warmupS": 10,
+    "rampMs": 500,
+    "inputHz": 30,
+    "tickHz": 30,
+    "idealMs": 33.333333333333336,
+    "overMs": 60
+  },
+  "env": {
+    "node": "v22.22.2",
+    "platform": "Linux 6.18.44-fc-v22",
+    "cpus": 2,
+    "totalMemGB": 7.8,
+    "loadavg": [
+      0.22,
+      0.2,
+      0.13
+    ]
+  },
+  "connections": {
+    "requested": 4,
+    "everConnected": 4,
+    "connectedAtEnd": 4,
+    "failed": 0,
+    "closedMidRun": 0,
+    "welcomes": 4
+  },
+  "traffic": {
+    "ticksReceived": 22957,
+    "inputsSent": 22972
+  },
+  "mode": "jitter",
+  "handoff": {
+    "seen": 0,
+    "reconnects": 0,
+    "failed": 0,
+    "teleport": {
+      "sent": 56,
+      "ok": 9,
+      "blockedByWater": 47
+    },
+    "band": {
+      "commitPx": 256,
+      "maxOutPx": 101,
+      "inBandBots": 4,
+      "stuckRetries": 5,
+      "lineCrossings": 71,
+      "note": "maxOutPx = 관측된 최대 경계 초과량. jitter 에서 이 값이 0~256 이고 핸드오프 0 이면 히스테리시스가 작동한 것이다."
+    },
+    "inventory": {
+      "samples": 4,
+      "mismatched": 0,
+      "perBot": [
+        {
+          "bot": 0,
+          "firstZone": "hanbando",
+          "first": "inv[pillar:1,stone:21,thatch:11] tool[axe/100+pickaxe/100] equip[-] skill[-]",
+          "path": [
+            "hanbando=inv[pillar:1,stone:21,thatch:11] tool[axe/100+pickaxe/100] equip[-] skill[-]"
+          ]
+        },
+        {
+          "bot": 1,
+          "firstZone": "hanbando",
+          "first": "inv[pillar:2,stone:22,thatch:12] tool[axe/100+pickaxe/100] equip[-] skill[-]",
+          "path": [
+            "hanbando=inv[pillar:2,stone:22,thatch:12] tool[axe/100+pickaxe/100] equip[-] skill[-]"
+          ]
+        },
+        {
+          "bot": 2,
+          "firstZone": "hanbando",
+          "first": "inv[pillar:3,stone:23,thatch:13] tool[axe/100+pickaxe/100] equip[-] skill[-]",
+          "path": [
+            "hanbando=inv[pillar:3,stone:23,thatch:13] tool[axe/100+pickaxe/100] equip[-] skill[-]"
+          ]
+        },
+        {
+          "bot": 3,
+          "firstZone": "hanbando",
+          "first": "inv[pillar:4,stone:24,thatch:14] tool[axe/100+pickaxe/100] equip[-] skill[-]",
+          "path": [
+            "hanbando=inv[pillar:4,stone:24,thatch:14] tool[axe/100+pickaxe/100] equip[-] skill[-]"
+          ]
+        }
+      ]
+    }
+  },
+  "tickInterval": {
+    "samples": 21616,
+    "mean": 33.31,
+    "p50": 33,
+    "p95": 34,
+    "p99": 36,
+    "max": 89,
+    "overMs": 60,
+    "overRatioPct": 0.17,
+    "warmupDiscardedSamples": 1337
+  },
+  "generator": {
+    "cpuPctOfOneCore": 2.2,
+    "caution": "이 값이 100 에 가까우면 부하생성기가 코어 1개를 다 쓴 것이다 — 그 단계의 tick 지표는 서버 한계가 아니라 생성기 한계일 수 있다."
+  },
+  "zoneMetrics": {
+    "before": {
+      "http://127.0.0.1:3020/metrics": {
+        "durango_players": 0,
+        "durango_observers": 0,
+        "durango_resources": 98,
+        "durango_buildings": 3,
+        "durango_mobs": 299,
+        "durango_claims": 0,
+        "durango_uptime_seconds": 982.1,
+        "durango_latency_ms": 0,
+        "durango_handoffs_out_total": 22,
+        "durango_handoffs_in_total": 16,
+        "durango_handoff_acks_total": 22,
+        "durango_handoff_timeouts_total": 0,
+        "durango_chats_total": 0,
+        "durango_attacks_total": 0,
+        "durango_builds_total": 0,
+        "durango_ws_connects_total": 31,
+        "durango_ws_closes_total": 31
+      },
+      "http://127.0.0.1:3021/metrics": {
+        "durango_players": 192,
+        "durango_observers": 0,
+        "durango_resources": 797,
+        "durango_buildings": 0,
+        "durango_mobs": 300,
+        "durango_claims": 0,
+        "durango_uptime_seconds": 982.1,
+        "durango_latency_ms": 0,
+        "durango_handoffs_out_total": 16,
+        "durango_handoffs_in_total": 22,
+        "durango_handoff_acks_total": 16,
+        "durango_handoff_timeouts_total": 0,
+        "durango_chats_total": 0,
+        "durango_attacks_total": 0,
+        "durango_builds_total": 0,
+        "durango_ws_connects_total": 22,
+        "durango_ws_closes_total": 22
+      }
+    },
+    "after": {
+      "http://127.0.0.1:3020/metrics": {
+        "durango_players": 4,
+        "durango_observers": 0,
+        "durango_resources": 438,
+        "durango_buildings": 3,
+        "durango_mobs": 299,
+        "durango_claims": 0,
+        "durango_uptime_seconds": 1174.1,
+        "durango_latency_ms": 0,
+        "durango_handoffs_out_total": 22,
+        "durango_handoffs_in_total": 16,
+        "durango_handoff_acks_total": 22,
+        "durango_handoff_timeouts_total": 0,
+        "durango_chats_total": 0,
+        "durango_attacks_total": 0,
+        "durango_builds_total": 0,
+        "durango_ws_connects_total": 35,
+        "durango_ws_closes_total": 31
+      },
+      "http://127.0.0.1:3021/metrics": {
+        "durango_players": 192,
+        "durango_observers": 0,
+        "durango_resources": 797,
+        "durango_buildings": 0,
+        "durango_mobs": 300,
+        "durango_claims": 0,
+        "durango_uptime_seconds": 1174.1,
+        "durango_latency_ms": 0,
+        "durango_handoffs_out_total": 16,
+        "durango_handoffs_in_total": 22,
+        "durango_handoff_acks_total": 16,
+        "durango_handoff_timeouts_total": 0,
+        "durango_chats_total": 0,
+        "durango_attacks_total": 0,
+        "durango_builds_total": 0,
+        "durango_ws_connects_total": 22,
+        "durango_ws_closes_total": 22
+      }
+    }
+  }
+}

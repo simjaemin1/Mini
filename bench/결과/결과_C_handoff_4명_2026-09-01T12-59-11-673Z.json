@@ -1,0 +1,222 @@
+{
+  "scenario": "C_handoff",
+  "note": "로컬 2존(hanbando↔nippon) · 정합성 측정 · 마을·야생·도적 OFF",
+  "startedAt": "2026-09-01T12:59:11.673Z",
+  "endedAt": "2026-09-01T13:03:23.698Z",
+  "config": {
+    "host": "127.0.0.1",
+    "port": 3020,
+    "clients": 4,
+    "durationS": 240,
+    "warmupS": 10,
+    "rampMs": 500,
+    "inputHz": 30,
+    "tickHz": 30,
+    "idealMs": 33.333333333333336,
+    "overMs": 60
+  },
+  "env": {
+    "node": "v22.22.2",
+    "platform": "Linux 6.18.44-fc-v22",
+    "cpus": 2,
+    "totalMemGB": 7.8,
+    "loadavg": [
+      0.15,
+      0.17,
+      0.11
+    ]
+  },
+  "connections": {
+    "requested": 4,
+    "everConnected": 32,
+    "connectedAtEnd": 4,
+    "failed": 0,
+    "closedMidRun": 28,
+    "welcomes": 32
+  },
+  "traffic": {
+    "ticksReceived": 30138,
+    "inputsSent": 30147
+  },
+  "mode": "handoff",
+  "handoff": {
+    "seen": 28,
+    "reconnects": 28,
+    "failed": 0,
+    "teleport": {
+      "sent": 314,
+      "ok": 38,
+      "blockedByWater": 276
+    },
+    "band": {
+      "commitPx": 256,
+      "maxOutPx": 255,
+      "inBandBots": 0,
+      "stuckRetries": 8,
+      "note": "maxOutPx = 관측된 최대 경계 초과량. jitter 에서 이 값이 0~256 이고 핸드오프 0 이면 히스테리시스가 작동한 것이다."
+    },
+    "inventory": {
+      "samples": 32,
+      "mismatched": 28,
+      "perBot": [
+        {
+          "bot": 0,
+          "firstZone": "hanbando",
+          "first": "inv[pillar:1,stone:21,thatch:11] tool[axe/100+pickaxe/100] equip[-] skill[-]",
+          "path": [
+            "hanbando=inv[pillar:1,stone:21,thatch:11] tool[axe/100+pickaxe/100] equip[-] skill[-]",
+            "nippon=inv[pillar:1,stone:21,thatch:11] tool[-] equip[-] skill[-]"
+          ]
+        },
+        {
+          "bot": 1,
+          "firstZone": "hanbando",
+          "first": "inv[pillar:2,stone:22,thatch:12] tool[axe/100+pickaxe/100] equip[-] skill[-]",
+          "path": [
+            "hanbando=inv[pillar:2,stone:22,thatch:12] tool[axe/100+pickaxe/100] equip[-] skill[-]",
+            "nippon=inv[pillar:2,stone:22,thatch:12] tool[-] equip[-] skill[-]",
+            "hanbando=inv[pillar:2,stone:22,thatch:12] tool[-] equip[-] skill[-]",
+            "nippon=inv[pillar:2,stone:22,thatch:12] tool[-] equip[-] skill[-]",
+            "hanbando=inv[pillar:2,stone:22,thatch:12] tool[-] equip[-] skill[-]",
+            "nippon=inv[pillar:2,stone:22,thatch:12] tool[-] equip[-] skill[-]",
+            "hanbando=inv[pillar:2,stone:22,thatch:12] tool[-] equip[-] skill[-]",
+            "nippon=inv[pillar:2,stone:22,thatch:12] tool[-] equip[-] skill[-]",
+            "hanbando=inv[pillar:2,stone:22,thatch:12] tool[-] equip[-] skill[-]",
+            "nippon=inv[pillar:2,stone:22,thatch:12] tool[-] equip[-] skill[-]"
+          ]
+        },
+        {
+          "bot": 2,
+          "firstZone": "hanbando",
+          "first": "inv[pillar:3,stone:23,thatch:13] tool[axe/100+pickaxe/100] equip[-] skill[-]",
+          "path": [
+            "hanbando=inv[pillar:3,stone:23,thatch:13] tool[axe/100+pickaxe/100] equip[-] skill[-]",
+            "nippon=inv[pillar:3,stone:23,thatch:13] tool[-] equip[-] skill[-]",
+            "hanbando=inv[pillar:3,stone:23,thatch:13] tool[-] equip[-] skill[-]",
+            "nippon=inv[pillar:3,stone:23,thatch:13] tool[-] equip[-] skill[-]",
+            "hanbando=inv[pillar:3,stone:23,thatch:13] tool[-] equip[-] skill[-]",
+            "nippon=inv[pillar:3,stone:23,thatch:13] tool[-] equip[-] skill[-]",
+            "hanbando=inv[pillar:3,stone:23,thatch:13] tool[-] equip[-] skill[-]",
+            "nippon=inv[pillar:3,stone:23,thatch:13] tool[-] equip[-] skill[-]",
+            "hanbando=inv[pillar:3,stone:23,thatch:13] tool[-] equip[-] skill[-]",
+            "nippon=inv[pillar:3,stone:23,thatch:13] tool[-] equip[-] skill[-]"
+          ]
+        },
+        {
+          "bot": 3,
+          "firstZone": "hanbando",
+          "first": "inv[pillar:4,stone:24,thatch:14] tool[axe/100+pickaxe/100] equip[-] skill[-]",
+          "path": [
+            "hanbando=inv[pillar:4,stone:24,thatch:14] tool[axe/100+pickaxe/100] equip[-] skill[-]",
+            "nippon=inv[pillar:4,stone:24,thatch:14] tool[-] equip[-] skill[-]",
+            "hanbando=inv[pillar:4,stone:24,thatch:14] tool[-] equip[-] skill[-]",
+            "nippon=inv[pillar:4,stone:24,thatch:14] tool[-] equip[-] skill[-]",
+            "hanbando=inv[pillar:4,stone:24,thatch:14] tool[-] equip[-] skill[-]",
+            "nippon=inv[pillar:4,stone:24,thatch:14] tool[-] equip[-] skill[-]",
+            "hanbando=inv[pillar:4,stone:24,thatch:14] tool[-] equip[-] skill[-]",
+            "nippon=inv[pillar:4,stone:24,thatch:14] tool[-] equip[-] skill[-]",
+            "hanbando=inv[pillar:4,stone:24,thatch:14] tool[-] equip[-] skill[-]",
+            "nippon=inv[pillar:4,stone:24,thatch:14] tool[-] equip[-] skill[-]"
+          ]
+        }
+      ]
+    }
+  },
+  "tickInterval": {
+    "samples": 28775,
+    "mean": 33.29,
+    "p50": 33,
+    "p95": 34,
+    "p99": 38,
+    "max": 97,
+    "overMs": 60,
+    "overRatioPct": 0.15,
+    "warmupDiscardedSamples": 1331
+  },
+  "generator": {
+    "cpuPctOfOneCore": 2.4,
+    "caution": "이 값이 100 에 가까우면 부하생성기가 코어 1개를 다 쓴 것이다 — 그 단계의 tick 지표는 서버 한계가 아니라 생성기 한계일 수 있다."
+  },
+  "zoneMetrics": {
+    "before": {
+      "http://127.0.0.1:3020/metrics": {
+        "durango_players": 0,
+        "durango_observers": 0,
+        "durango_resources": 596,
+        "durango_buildings": 3,
+        "durango_mobs": 299,
+        "durango_claims": 0,
+        "durango_uptime_seconds": 677.4,
+        "durango_latency_ms": 0,
+        "durango_handoffs_out_total": 6,
+        "durango_handoffs_in_total": 4,
+        "durango_handoff_acks_total": 6,
+        "durango_handoff_timeouts_total": 0,
+        "durango_chats_total": 0,
+        "durango_attacks_total": 0,
+        "durango_builds_total": 0,
+        "durango_ws_connects_total": 15,
+        "durango_ws_closes_total": 15
+      },
+      "http://127.0.0.1:3021/metrics": {
+        "durango_players": 192,
+        "durango_observers": 0,
+        "durango_resources": 26,
+        "durango_buildings": 0,
+        "durango_mobs": 300,
+        "durango_claims": 0,
+        "durango_uptime_seconds": 677.4,
+        "durango_latency_ms": 0,
+        "durango_handoffs_out_total": 4,
+        "durango_handoffs_in_total": 6,
+        "durango_handoff_acks_total": 4,
+        "durango_handoff_timeouts_total": 0,
+        "durango_chats_total": 0,
+        "durango_attacks_total": 0,
+        "durango_builds_total": 0,
+        "durango_ws_connects_total": 6,
+        "durango_ws_closes_total": 6
+      }
+    },
+    "after": {
+      "http://127.0.0.1:3020/metrics": {
+        "durango_players": 0,
+        "durango_observers": 0,
+        "durango_resources": 98,
+        "durango_buildings": 3,
+        "durango_mobs": 299,
+        "durango_claims": 0,
+        "durango_uptime_seconds": 929.4,
+        "durango_latency_ms": 0,
+        "durango_handoffs_out_total": 22,
+        "durango_handoffs_in_total": 16,
+        "durango_handoff_acks_total": 22,
+        "durango_handoff_timeouts_total": 0,
+        "durango_chats_total": 0,
+        "durango_attacks_total": 0,
+        "durango_builds_total": 0,
+        "durango_ws_connects_total": 31,
+        "durango_ws_closes_total": 31
+      },
+      "http://127.0.0.1:3021/metrics": {
+        "durango_players": 196,
+        "durango_observers": 0,
+        "durango_resources": 797,
+        "durango_buildings": 0,
+        "durango_mobs": 300,
+        "durango_claims": 0,
+        "durango_uptime_seconds": 929.4,
+        "durango_latency_ms": 0,
+        "durango_handoffs_out_total": 16,
+        "durango_handoffs_in_total": 22,
+        "durango_handoff_acks_total": 16,
+        "durango_handoff_timeouts_total": 0,
+        "durango_chats_total": 0,
+        "durango_attacks_total": 0,
+        "durango_builds_total": 0,
+        "durango_ws_connects_total": 22,
+        "durango_ws_closes_total": 18
+      }
+    }
+  }
+}
