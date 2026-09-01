@@ -25,7 +25,9 @@
 #
 # ★★[2026-08-26] **러너는 이 파일 하나다.** 한때 `run-regressions.sh`(복수형)가 따로 있었고
 #   목록이 갈려서, 어느 쪽을 돌리든 **상대편 하네스 5~7종을 통째로 빼먹었다**.
-#   이제 복수형은 이 파일로 위임하는 한 줄이다. 하네스를 추가하면 **여기 목록에만** 넣어라.
+#   이제 복수형은 이 파일로 위임하는 한 줄이다.
+#   ★★[0번 분할 2026-09-01] 하네스를 추가하는 법이 바뀌었다: **이 파일을 건드리지 마라.**
+#     새 하네스 파일 머리에 `// @regress` 한 줄을 넣으면 러너가 스스로 찾는다(아래 자동 발견).
 #
 # ⚠CPU 2코어다. **순차 단독**이 규약이고 이 스크립트가 그걸 강제한다.
 set -u
@@ -87,70 +89,28 @@ fi
 if [ "$#" -gt 0 ]; then
   LIST=("$@")
 else
-  LIST=(
-    test-events.js
-    test-body.js
-    test-fishing.js
-    test-guest-rejoin.js
-    test-save-periodic.js
-    test-guest-identity.js
-    test-trade.js
-    test-weight.js
-    test-emptystart.js
-    test-craft.js
-    test-ledger.js
-    # ★[부패·보존 배치 2026-08-31] 부패 곡선(결정론·연속·순서) · 보존 3종 · 상함 = 확정 탈 · 거래 판정
-    test-preserve.js
-    # ★[작물 층 2026-08-31] 카탈로그 34종 → 게임(전사·차등·유도·파종철·월동·발아율·씨앗 조달)
-    test-crops.js
-    test-calendar.js
-    # ★[멎음 수리 2026-08-31] 타일 지형 메모 — 등가·적중·zone.js 배선(기본 꺼짐)
-    test-terraincache.js
-    # ★[멎음 수리 2026-08-31] 선분 격자 색인 — 자식 둘(켬/끔) 비트 대조·후보 수·기본 꺼짐
-    test-segindex.js
-    # ★[재배포 2026-09-01] 바뀐 파일만큼만 다시 하는가 — 가짜 git·docker 로 진짜 스크립트를 돌린다
-    test-redeploy.js
-    test-move.js
-    test-charsheet.js
-    e2e-events.js
-    e2e-trade.js
-    e2e-weight.js
-    e2e-emptystart.js
-    e2e-forage-village.js
-    e2e-craft.js
-    # ★[부패·보존 배치 2026-08-31] 실클라 — 방치→시듦→상함 표시 · 건조대 말리기 · 상한 것 먹고 탈
-    e2e-preserve.js
-    e2e-inv.js
-    e2e-conn.js
-    e2e-ui.js
-    # ★[온도 곡선 2026-08-31] 겨울 야생 밤 → 마을 안전망 → 모닥불 — 배선과 화면 도달
-    e2e-cold.js
-    e2e-fishing.js
-    e2e-guest-reconnect.js
-    e2e-mountain.js
-    e2e-mtcorridor.js
-    e2e-mtocc.js
-    e2e-terrain.js
-    e2e-nature.js
-    e2e-rooms.js
-    e2e-cutaway.js
-    e2e-metallurgy.js
-    e2e-village.js
-    # ★★[2026-08-26 러너 통합] 아래 다섯은 **병행 세션의 `run-regressions.sh` 에만** 있던 것들이다.
-    #   러너가 둘로 갈린 동안 내 쪽은 이 다섯을 **한 번도 안 돌렸다** — 정확히 그 위험이 있었다.
-    #   (`run-regressions.sh` 는 이제 이 파일로 위임한다. 목록은 여기 하나뿐이다.)
-    e2e-mtcut.js
-    e2e-mtfoot.js
-    e2e-mtfuzz.js
-    e2e-tilestate.js
-    e2e-waterperf.js
-    # ★[이동 모델 2026-08-30] 실클라 이동/조준 계측 — legacy·accel 두 판을 스스로 띄운다(각 판 뒤 배수).
-    e2e-move.js
-    # ★[캐릭 시트] 실클라 애니 — 두 클라 짝. Blender 는 안 돌린다(2코어 캐논: 렌더와 e2e 를 겹치지 마라).
-    e2e-charsprite.js
-    # ★[줌 2026-08-31] 휠 확대/축소 — 제1 계약은 "배율 1 이면 종전 경로"다(오프스크린 없음+화면 동일).
-    e2e-zoom.js
-  )
+  # ═══ ★★[0번 분할 배치 2026-09-01 재민 확정] 명시 목록 → **표 기반 자동 발견** ═══
+  #
+  #   왜: 여러 세션이 각자 하네스를 추가할 때마다 **이 파일의 같은 줄**을 건드려야 했다.
+  #   목록의 끝에 두 세션이 동시에 한 줄씩 붙이면 그건 매번 충돌이다.
+  #   ⇒ 등록을 **하네스 자신에게** 옮긴다: 파일 머리에 `// @regress` 한 줄이 있으면 돈다.
+  #     새 하네스는 자기 파일에 그 줄을 넣으면 끝 — 러너는 아무도 안 건드린다(충돌 지점 소멸).
+  #
+  #   ★집합 보존이 규약이다. 이 전환은 **종전 명시 목록 49개와 정확히 같은 집합**으로 시작했다
+  #     (디스크엔 `test-*/e2e-*.js` 가 80개 있는데 31개는 예전부터 러너 밖이었다 —
+  #      임의로 넣지 않았다. 그 31개의 편입 여부는 회부).
+  #
+  #   ★순서: `test-*` 먼저(가볍다·포트 안 씀), 그 다음 `e2e-*`(무겁다·3010/3020 공유).
+  #     러너는 **한 번에 하나씩** 돌리므로(아래 for) 같은 급 안의 순서는 결과에 영향이 없다.
+  #     급을 갈라 두는 이유는 빨리 실패를 보기 위해서지 의존 때문이 아니다.
+  #   ⚠러너는 레포 루트에서 돈다(아래 `node "scripts/$f"` 와 같은 규약).
+  _disc() { grep -l '^// @regress' scripts/$1 2>/dev/null | xargs -r -n1 basename | LC_ALL=C sort; }
+  LIST=($(_disc 'test-*.js') $(_disc 'e2e-*.js'))
+  if [ "${#LIST[@]}" -eq 0 ]; then
+    echo "  ✗ ★자동 발견이 0개다 — 표(// @regress)가 사라졌거나 경로가 틀렸다. 회귀를 믿지 마라."
+    exit 1
+  fi
+  echo "  [자동 발견] ${#LIST[@]}개 (표 // @regress 기준)"
 fi
 
 for f in "${LIST[@]}"; do run_one "$f"; done

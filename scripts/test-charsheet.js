@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
 // === scripts/test-charsheet.js — 캐릭터 시트 파이프라인 하네스 [재민 확정 2026-08-30] =========
 //
 // 대상: `scripts/char_render.py` 의 **산물**(`public/assets/char/*.png` + `char_meta.json`).

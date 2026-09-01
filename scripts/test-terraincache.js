@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
 // === scripts/test-terraincache.js — 타일 지형 메모 하네스 [2026-08-31] =========
 //
 // 대상: `server/terrain-tilecache.js` + 그것을 무는 `server/zone.js` 의 두 술어.

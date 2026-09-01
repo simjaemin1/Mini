@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
 // === scripts/test-segindex.js — 선분 격자 색인 하네스 [2026-08-31] =============
 //
 // 대상: `server/terrain-segindex.js` + 그것을 무는 `server/terrain.js` 의 `_isPointInRiver`.

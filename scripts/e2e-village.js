@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
 // === scripts/e2e-village.js — 마을 건립 → 식량 → 첫 주민 → 재고 UI **실클라** E2E ====
 //
 // ★★[2026-08-03e 배치 12] 재민 지시: *"UI 배치다 — 실클라 E2E 로 끝내라."*

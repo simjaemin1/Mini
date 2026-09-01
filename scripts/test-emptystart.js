@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
 // === scripts/test-emptystart.js — 빈손 시작 서버 E2E ============================
 //
 // ★[재민 확정 2026-08-28] 재민 원문: *"지급 아이템은 없어야 할 거 같은데"* ·

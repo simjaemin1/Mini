@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
 // === scripts/test-guest-rejoin.js — 게스트 재접속이 몸을 잃는가 (B-6) ============
 //
 // ★왜 [재민 확정 2026-08-25 · 회부 B-6]

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
 // === scripts/test-save-periodic.js — 주기 저장이 진행을 지키는가 =================
 //
 // ★왜 [재민 확정 2026-08-26]

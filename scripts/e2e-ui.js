@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
 // === scripts/e2e-ui.js — UI 골격(§8.2) + 상태 패널(§8.6) + 무들(§8.3) 실클라 E2E ==
 //
 // ★왜 [재민 확정 2026-08-26]

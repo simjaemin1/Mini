@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
 // === scripts/test-move.js — 이동 모델 공유 적분기 하네스 [재민 확정 2026-08-30] ==========
 //
 // 대상: `public/move-model.js` — **서버 zone.js 와 클라 client.js 가 같이 부르는 그 파일**.
