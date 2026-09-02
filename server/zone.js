@@ -3445,6 +3445,12 @@ async function _acceptConnection(ws, req, C) {
     buildingRecipes: BUILDING_RECIPES, // 14.51
     cookRecipes: COOK_RECIPES,
     foodEffects: FOOD_EFFECTS,
+    // ★★[T55 2026-09-02] **이름표 정본을 한 번 싣는다** — 이 카드의 유일한 zone.js 접점(1줄)이다.
+    //   이 표는 런타임에 넷이 합쳐 만든다(리터럴 + tidal.install + Spoil.PRESERVED_ITEMS + Crops.labelMap)
+    //   ⇒ 클라가 다시 만들 방법이 없다. 안 실으면 클라 사본(55키)이 정본(108키)에 영원히 뒤처지고,
+    //     그게 `oyster`·`seaweed`·`abalone`·`brine` 이 화면에 영문으로 뜬 이유였다(회부 0-갯·0-염·T38).
+    //   품목 카탈로그는 존 독립이라 **첫 primary welcome 한 번이면 족하다**(클라가 들고 다닌다).
+    itemLabels: ITEM_LABEL_SERVER,
     // ★★[무게 배치 2026-08-27] kg 카탈로그를 **서버가 실어 보낸다** — 클라가 표를 들고 있으면
     //   그게 사본이고, 표가 갈리는 날 화면과 실제가 어긋난다(거래소 배치에서 배운 그것).
     itemWeights: Weights.catalog(),

@@ -198,7 +198,7 @@
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 12px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(`${ITEM_LABEL[it] || it} (${dir}) · 휠=회전 · 좌클릭=배치`, sx, sy - 60);
+    ctx.fillText(`${itemKo(it)} (${dir}) · 휠=회전 · 좌클릭=배치`, sx, sy - 60);   // ★[T55]
     ctx.restore();
   }
   // 14.51: 3초 progress bar (DOM overlay)

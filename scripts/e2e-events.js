@@ -258,6 +258,52 @@ async function waitHttp(url, tries = 900) {
     ok(true, `(곳간 증가는 test-events ④e 가 정본 필드로 검사 — 여기서는 인벤·알림·게시판 왕복이 대상)`);
   }
 
+  // ── ★[T55 2026-09-02] ⑤-b 게시판이 **들은 소식**을 그린다 ────────────────────
+  //   ★왜: `news` 는 T7 부터 이미 실려 왔는데 **클라가 안 그렸다**(회부 0-소문 1).
+  //     촌장이 "그 밖에 n건은 게시판에" 라고 안내해도 볼 데가 없었다.
+  //   ★자명 통과 금지: 아무 문장이나 세지 않는다 — **내가 심은 그 일**이 화면에 있는지 본다.
+  //   ★그리고 **진짜 `Shift+G` 로** 연다(T55 ④ 가 그 키를 되살렸다 — 종전엔 화살이 나갔다).
+  console.log('\n⑤-b [T55] 게시판 — 들은 소식이 화면에 그려지나');
+  {
+    // ⚠날이 멈춰 있으면(위 ① 이 얼렸다) 사건이 **날 수가 없다** — 날씨는 하루 경계에서 장부에 적힌다.
+    //   그래서 여기서만 푼다(뒤따르는 ⑥ 거리 게이트는 시간과 무관하다).
+    await page.evaluate(() => window.__sendPrimary({ type: '__e2e_day_freeze', on: false }));
+    await sleep(800);
+    await page.evaluate((vid) => window.__sendPrimary({ type: '__e2e_village_deed', vid, kind: '가뭄' }), V.id);
+    await sleep(1500);
+    // 게시판 응답에 그 일이 실릴 때까지 기다린다(서버가 장부에 적고 가시성 술어를 통과해야 한다)
+    let bd = null;
+    for (let i = 0; i < 70; i++) {
+      await page.evaluate(() => { window.__evLastBoard = null; });
+      await page.evaluate((vid) => window.__sendPrimary({ type: 'village_board', vid }), V.id);
+      for (let j = 0; j < 12 && !(await page.evaluate(() => !!window.__evLastBoard)); j++) await sleep(200);
+      bd = await page.evaluate(() => window.__evLastBoard || null);
+      if (bd && (bd.news || []).some((n) => /비가 통 안 오는군/.test(n.line || ''))) break;
+      await sleep(500);
+    }
+    const news = (bd && bd.news) || [];
+    ok(news.length > 0, '★⑤-b (상황) 게시판 응답에 `news` 가 실려 있다(데이터는 T7 부터 왔다)', `${news.length}줄`);
+    const drought = news.find((n) => /비가 통 안 오는군/.test(n.line || ''));
+    ok(!!drought, '★⑤-b (상황) 내가 심은 가뭄이 그 목록에 있다', drought ? drought.line : news.map((n) => n.line).slice(0, 3).join(' | '));
+
+    // ★화면 — 진짜 키로 연다
+    await page.evaluate(() => { window.__notices && (window.__notices.length = 0); });
+    await page.keyboard.press('Shift+g');
+    await sleep(1200);
+    const toast = await page.evaluate(() => (window.__notices || []).join('\n'));
+    ok(/게시판/.test(toast), '★★⑤-b **`Shift+G` 가 게시판을 연다** — T55 ④ 전엔 이 키가 화살을 쐈다', JSON.stringify(toast.slice(0, 40)));
+    ok(/들은 소식/.test(toast), '★★⑤-b 토스트에 **「들은 소식」 절**이 있다', JSON.stringify((toast.match(/— 들은 소식 —[\s\S]{0,60}/) || [''])[0]));
+    ok(/비가 통 안 오는군/.test(toast), '★★⑤-b **내가 심은 그 문장이 화면에 보인다**(회부 0-소문 1 종결)',
+      JSON.stringify((toast.split('\n').find((l) => /비가 통 안 오는군/.test(l)) || '').slice(0, 60)));
+    // ★순서 — 소식은 **의뢰 줄 아래**다(T20 이 맨 윗줄에 겨울 머리줄을 넣는다)
+    const iNews = toast.indexOf('— 들은 소식 —');
+    const lines = toast.split('\n');
+    const iRow = lines.findIndex((l) => /^ · /.test(l));
+    ok(iNews > 0 && (iRow < 0 || toast.indexOf(lines[iRow]) < iNews),
+      '★⑤-b 소식은 **의뢰 줄 아래**에 붙는다(맨 윗줄은 서버 몫 — T20)', `의뢰 첫 줄 ${iRow} · 소식 절 ${iNews}`);
+    await snap('ev-05b-news');
+  }
+
   // ── ⑥ 거리 게이트 — 멀어지면 촌장 목소리가 안 닿는다 ──────────────────────
   await page.evaluate(([x, y]) => window.__sendPrimary({ type: 'teleport_debug', x, y }), [ax + 1500, ay + 1500]);
   await sleep(2000);

@@ -345,7 +345,7 @@
       const open = ulOpen.has(key);
       const nKids = r.kids ? r.kids.length : 0;
       const icon = itemIconHtml(r.item, 22);
-      const label = (ITEM_LABEL && ITEM_LABEL[r.item]) || r.item;
+      const label = itemKo(r.item);   // ★[T55] 인벤 행 — 정본 우선(`oyster`·`brine` 이 영문으로 뜨던 자리)
       const cat = ITEM_CAT[r.item] || '기타';
       const kgTxt = (r.kg != null && r.kg > 0) ? ` <span class="it-kg">${r.kg.toFixed(1)}kg</span>` : '';
       const caret = nKids >= 2
@@ -481,7 +481,7 @@
         tr.classList.add('dragging');
         const ghost = document.createElement('div');
         ghost.className = 'drag-ghost';
-        ghost.innerHTML = `${itemIconHtml(d.item, 18)} ${(ITEM_LABEL && ITEM_LABEL[d.item]) || d.item}${d.n > 1 ? ` ×${d.n}` : ''}`;
+        ghost.innerHTML = `${itemIconHtml(d.item, 18)} ${itemKo(d.item)}${d.n > 1 ? ` ×${d.n}` : ''}`;   // ★[T55]
         document.body.appendChild(ghost);
         e.dataTransfer.setDragImage(ghost, 18, 18);
         setTimeout(() => ghost.remove(), 0);
@@ -557,7 +557,7 @@
           if (item === 'item_fence') dir = 'NS';
           placementMode = { itemType: item, floor: myFloor, dir };
           placingDir = dir;
-          showNotice(`📍 ${ITEM_LABEL[item] || item} 배치 모드 — 좌클릭=배치, 우클릭=회전, ESC=취소`);
+          showNotice(`📍 ${itemKo(item)} 배치 모드 — 좌클릭=배치, 우클릭=회전, ESC=취소`);   // ★[T55]
         };
       });
     }

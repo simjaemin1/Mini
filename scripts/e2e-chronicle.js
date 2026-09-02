@@ -345,6 +345,34 @@ async function waitHttp(url, tries = 900) {
     }
   }
 
+  // ── ★[T55 2026-09-02] ⑫ 연표 아이콘이 **유형별로 갈린다** ────────────────────
+  //   종전엔 전부 🕰️ 였다. T50 이 `type`·`deed` 를 실어 줬으니 화면이 그걸 쓴다.
+  //   ★자명 통과 금지: "🕰️ 가 아니다" 로는 부족하다 — **두 유형이 서로 다른 그림**임을 잰다.
+  {
+    const p5 = await openChron();
+    const shown = await page.evaluate(() => [...document.querySelectorAll('#spBody .craft-recipe')]
+      .map((el) => ({
+        icon: ((el.querySelector('.cr-icon') || {}).textContent || '').trim(),
+        bold: /bold/.test(((el.querySelector('.cr-name') || {}).getAttribute('style') || '')),
+        line: ((el.querySelector('.cr-name') || {}).textContent || '').trim().slice(0, 40),
+      })));
+    ok(shown.length >= 2, '⑫ (상황) 연표에 항목이 둘 이상 그려져 있다', `${shown.length}줄`);
+    const icons = shown.map((x) => x.icon).filter(Boolean);
+    ok(icons.length === shown.length, '⑫ 모든 줄에 아이콘이 있다', `${icons.length}/${shown.length}`);
+    const uniq = [...new Set(icons)];
+    ok(uniq.length >= 2, '★★⑫ **아이콘이 유형별로 다르다** — 두 종류 이상이 한 화면에 있다(전부 🕰️ 이던 자리)',
+      uniq.join(' ') + `  (${shown.length}줄 중 ${uniq.length}종)`);
+    ok(!(uniq.length === 1 && uniq[0] === '🕰️'), '★⑫ 폴백 하나로 덮이지 않았다', uniq.join(' '));
+    // ★"일"은 굵게 — 값이 움직인 줄과 갈린다
+    const deeds = shown.filter((x) => x.bold);
+    ok(deeds.length > 0, '★⑫ "일"로 표시된 줄은 **굵게** 그려진다(구분은 한 가지만)',
+      deeds.length ? `${deeds.length}줄 · 예: ${deeds[0].icon} ${deeds[0].line}` : '(굵은 줄 0 — 위 ⑪ 의 가뭄이 이 화면에 있어야 한다)');
+    // ★자명 통과 금지의 뒷면 — 굵지 않은 줄도 있어야 "구분"이다
+    ok(deeds.length < shown.length, '★⑫ 그리고 굵지 않은 줄도 있다(전부 굵으면 구분이 아니다)',
+      `굵은 ${deeds.length} / 전체 ${shown.length}`);
+    await snap('ch-06-icons');
+  }
+
   const fatal = errs.filter((e) => !/Failed to load resource/.test(e));
   ok(fatal.length === 0, `클라 JS 에러 0 ${fatal.length ? '— ' + fatal.slice(0, 3).join(' / ') : ''}`);
 

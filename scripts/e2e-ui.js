@@ -195,6 +195,77 @@ async function waitHttp(url, tries = 600) {
     `off=${off ? off.stage : '없음'} on=${on ? on.stage : '없음'}`);
   await snap('ui-04-moodles');
 
+  // ── ⑦ ★[T55] Shift 가림 — 키 체인 머리에서 한 번 가른다 ────────────────────
+  //   ★왜 실클라인가: 이건 **분기 순서**의 결함이라 소스로는 "있다/없다"만 보이고
+  //     "그래서 무엇이 날아갔나"는 안 보인다. 그래서 **실제로 나간 메시지를 센다** —
+  //     기존 소켓의 `send` 를 감싼다(새 능력 0 · 읽기만).
+  console.log('\n⑦ ★[T55] Shift 가림 — 맨손 단축키로 안 흘러야 한다');
+  {
+    await page.evaluate(() => {
+      window.__t55sent = [];
+      const c = conns.get(primaryZoneId);
+      const orig = c.ws.send.bind(c.ws);
+      c.ws.send = (d) => { try { window.__t55sent.push(JSON.parse(d)); } catch (e) {} return orig(d); };
+      window.__t55clear = () => { window.__t55sent.length = 0; };
+    });
+    const sentAfter = async (key) => {
+      await page.evaluate(() => window.__t55clear());
+      await page.keyboard.press(key);
+      await sleep(320);
+      return page.evaluate(() => window.__t55sent.filter((m) => m && m.type && m.type !== 'input').map((m) => m.type + (m.buildType ? ':' + m.buildType : '') + (m.kind ? ':' + m.kind : '')));
+    };
+    // ★자명 통과 금지 먼저 — **맨손 키는 여전히 실제로 보낸다**(안 보내면 아래가 전부 자명하다)
+    const bareL = await sentAfter('l');
+    ok(bareL.includes('build:fence'), '★★⑦ (자명 통과 금지) 맨손 `L` 은 여전히 울타리를 짓는다', bareL.join(' ') || '(없음)');
+    const shiftL = await sentAfter('Shift+l');
+    ok(!shiftL.some((t) => t.startsWith('build')), '★★⑦ **`Shift+L` 이 울타리를 안 짓는다**(회부 0-소문 2 — 이 카드의 목표)', shiftL.join(' ') || '(아무것도 안 보냈다)');
+    const bareJ = await sentAfter('j');
+    ok(bareJ.includes('build:campfire'), '★⑦ (자명 통과 금지) 맨손 `J` 는 여전히 모닥불', bareJ.join(' ') || '(없음)');
+    const shiftJ = await sentAfter('Shift+j');
+    ok(!shiftJ.some((t) => t.startsWith('build')), '★⑦ `Shift+J`(연대기)가 모닥불을 안 짓는다 — T18 이 한 줄로 막던 것을 구조가 막는다', shiftJ.join(' ') || '(없음)');
+    const shiftH = await sentAfter('Shift+h');
+    ok(!shiftH.some((t) => t.startsWith('build')), '★⑦ `Shift+H`(상태 패널)가 상자를 안 짓는다', shiftH.join(' ') || '(없음)');
+    const shiftB = await sentAfter('Shift+b');
+    ok(!shiftB.some((t) => t.startsWith('build')), '★⑦ `Shift+B`(건축 패널)가 다른 걸 안 보낸다', shiftB.join(' ') || '(없음)');
+    const shiftP = await sentAfter('Shift+p');
+    ok(!shiftP.some((t) => t.startsWith('build')), '★⑦ `Shift+P` 가 밭을 안 간다', shiftP.join(' ') || '(없음)');
+    const shiftG = await sentAfter('Shift+g');
+    ok(!shiftG.includes('ranged_attack'), '★★⑦ **`Shift+G` 가 화살을 안 쏜다** — 종전엔 맨손 `g` 가 먼저 서서 게시판 분기에 영영 못 닿았다', shiftG.join(' ') || '(없음)');
+
+    // ★기존 Shift 단축키가 **전부 그대로**인가(전수) — 이걸 안 재면 "가리기"가 곧 "없애기"다
+    const KEEP = [
+      ['Shift+c', 'claim:guild', '길드 영토'],
+      ['Shift+f', 'fish_cast', '낚시 던지기'],
+      ['Shift+r', 'repair_building', '수리'],
+    ];
+    for (const [key, want, ko] of KEEP) {
+      const got = await sentAfter(key);
+      ok(got.includes(want), `★⑦ \`${key.replace('Shift+', 'Shift+').toUpperCase()}\`(${ko})는 그대로 간다`, got.join(' ') || '(없음)');
+    }
+    // 마을 밖이라 Shift+N·Shift+G 는 메시지 대신 "너무 멀다" 를 띄운다 — 그것도 도달의 증거다
+    await page.evaluate(() => { window.__t55clear(); window.__notices && (window.__notices.length = 0); });
+    await page.keyboard.press('Shift+n');
+    await sleep(350);
+    const nOut = await page.evaluate(() => ({
+      sent: window.__t55sent.map((m) => m.type),
+      notice: (window.__notices || []).slice(-3).join(' | '),
+    }));
+    ok(nOut.sent.includes('village_deliver') || /너무 멀다/.test(nOut.notice),
+       '★⑦ `Shift+N`(납품)이 그대로 도달한다(마을 밖이면 "너무 멀다")', nOut.sent.join(' ') + ' | ' + nOut.notice);
+
+    // ★패널 Shift 단축키 — 맨손 리스너로 안 흘리면서도 **패널은 열려야** 한다
+    await page.keyboard.press('Escape'); await sleep(200);
+    await page.keyboard.press('Shift+h'); await sleep(400);
+    ok((await page.evaluate(() => window.__panelOpen())) === 'body', '★⑦ `Shift+H` 로 상태 패널이 열린다(가리기가 단축키를 죽이지 않았다)');
+    await page.keyboard.press('Escape'); await sleep(250);
+    await page.keyboard.press('Shift+j'); await sleep(400);
+    ok((await page.evaluate(() => window.__panelOpen())) === 'chronicle', '★⑦ `Shift+J` 로 연대기가 열린다');
+    await page.keyboard.press('Escape'); await sleep(250);
+    await page.keyboard.press('i'); await sleep(400);
+    ok((await page.evaluate(() => !!invOpen)), '★⑦ 맨손 `I` 로 인벤이 열린다(맨손 체인은 멀쩡하다)');
+    await page.keyboard.press('Escape'); await sleep(250);
+  }
+
   const jsErrs = errs.filter((e) => !/Failed to load resource/.test(e));
   ok(jsErrs.length === 0, '클라 JS 예외 0', jsErrs.slice(0, 2).join(' | '));
   console.log(`\n  스크린샷: ${shots.join(' ')}`);

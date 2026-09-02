@@ -3,7 +3,14 @@
 //   거기에 키를 넣어 둔 자리가 이 파일에 12곳, `51-s-side.js` 에 2곳 있었다.
 //   ⇒ 자염처럼 아이콘이 아직 없는 새 품목이 들어온 날 화면에 `brine` 이 떴다(실측: e2e-salt).
 //   이름표 정본은 서버다(`ITEM_LABEL_SERVER`). 클라 표(`ITEM_LABEL`)는 폴백일 뿐이다.
-function itemKo(k) { return (typeof ITEM_LABEL !== 'undefined' && ITEM_LABEL[k]) || k; }
+// ★★[T55 2026-09-02] 정본 → 사본 → 키. **순서가 규약이다.**
+//   `ITEM_LABEL_SRV` 는 `welcome.itemLabels`(서버 `ITEM_LABEL_SERVER`) 이고, `ITEM_LABEL` 은 폴백이다.
+//   화면에 영문 키를 찍는 자리는 전부 이 함수 하나를 통과한다(사본 문법 금지 — 자리마다 `|| k` 를 쓰면
+//   새 품목이 올 때마다 자리 수만큼 빠뜨린다. T38·자염·갯벌이 정확히 그렇게 세 번 새었다).
+function itemKo(k) {
+  return (typeof ITEM_LABEL_SRV !== 'undefined' && ITEM_LABEL_SRV && ITEM_LABEL_SRV[k])
+      || (typeof ITEM_LABEL !== 'undefined' && ITEM_LABEL[k]) || k;
+}
 // @@split:50-i-panel — I 인벤 — 주조·요리·패널
   // ══ 주조(鑄造): 금속 여러 개를 배합해 녹인다 [재민 확정] ══════════════════
   // "금속 3개까지 합금을 자유롭게. 그거에 따른 성질을 화학적으로 잘 반영. 값에 따라 연속적으로."
@@ -781,16 +788,22 @@ function itemKo(k) { return (typeof ITEM_LABEL !== 'undefined' && ITEM_LABEL[k])
     const ci = document.getElementById('chatInput');
     if (document.activeElement === ci) return;
     const k = e.key.toLowerCase();
+    // ★★[T55 2026-09-02] 여기도 **머리에서 한 번** 가른다(99-main.js 와 같은 구조 — 규약을 둘로 두지 않는다).
+    //   종전엔 `Shift+I`·`Shift+Y`·`Shift+P`·`Shift+Q` 가 맨손 분기를 그대로 밟았다
+    //   (그리고 그 순간 99-main 의 맨손 체인도 같이 밟혀 **패널이 열리면서 밭이 갈렸다**).
+    if (e.shiftKey) {
+      if (k === 'k') { toggleSide('facility'); e.preventDefault(); }   // ★[시설 제작창] 시설의 창(자동으로도 열린다)
+      else if (k === 'h') { toggleSide('body'); e.preventDefault(); }  // ★[신체 상태] 상태 패널
+      else if (k === 't') { toggleSide('trade'); e.preventDefault(); } // ★[거래소] 마을 시세표
+      else if (k === 'b') { toggleSide('build'); e.preventDefault(); }
+      else if (k === 'j') { toggleSide('chronicle'); e.preventDefault(); }   // ★[T18] 연대기(📜)
+      return;
+    }
     if (k === 'i') { toggleInv(); e.preventDefault(); }
-    else if (k === 'k' && e.shiftKey) { toggleSide('facility'); e.preventDefault(); }  // ★[시설 제작창] 시설의 창(자동으로도 열린다)
     else if (k === 'k') { toggleSide('craft'); e.preventDefault(); }
-    else if (k === 'h' && e.shiftKey) { toggleSide('body'); e.preventDefault(); }   // ★[신체 상태] 상태 패널
-    else if (k === 't' && e.shiftKey) { toggleSide('trade'); e.preventDefault(); }  // ★[거래소] 마을 시세표
-    else if (k === 'b' && e.shiftKey) { toggleSide('build'); e.preventDefault(); }
     else if (k === 'y') { toggleSide('claims'); e.preventDefault(); }
     else if (k === 'p') { toggleSide('skills'); e.preventDefault(); }
     else if (k === 'q') { toggleSide('market'); e.preventDefault(); }
-    else if (k === 'j' && e.shiftKey) { toggleSide('chronicle'); e.preventDefault(); }   // ★[T18] 연대기(📜)
   });
 
   // ★★[신체 상태 §8.3] 무들 — **서버가 매긴 단계만** 그린다. 3단계에서만 가장자리 한 겹.
@@ -1047,7 +1060,7 @@ function itemKo(k) { return (typeof ITEM_LABEL !== 'undefined' && ITEM_LABEL[k])
       //   `itemIconHtml(k, 18, itemKo(k))` 의 셋째 인자는 아이콘이 없을 때 대신 찍는 것인데 거기에 키를 넣어 뒀다
       //   ⇒ 자염처럼 아이콘이 아직 없는 품목이 화면에 `brine` 으로 떴다(실측: e2e-salt).
       //   이름표는 **서버가 준다**(`r.costKo` · `m.ko` — zone.js `_facilityRecipes`). 클라 표는 폴백일 뿐이다.
-      const koOf = (k) => (r.costKo && r.costKo[k]) || (typeof ITEM_LABEL !== 'undefined' && ITEM_LABEL[k]) || k;
+      const koOf = (k) => (r.costKo && r.costKo[k]) || itemKo(k);   // ★[T55] 서버 `costKo` → 이름표 정본 → 사본 → 키
       let costStr, q2 = null;
       if (r.options) {
         const o = r.options.find((x) => x.material === pick) || r.options[0] || {};
@@ -1078,7 +1091,7 @@ function itemKo(k) { return (typeof ITEM_LABEL !== 'undefined' && ITEM_LABEL[k])
                  : r.shelfDays === '∞' ? ' · 안 상함'
                  : ` · 보관 ${r.shelfDays}일`) + '</span>' : ''}</div>
           <div class="cr-cost">${costStr} ${lack}</div>
-          ${r.options ? `<div class="cr-cost" style="margin-top:3px">${r.options.map((o) => `<button data-fpick="${r.id}" data-fmat="${o.material}" style="margin:1px 2px 1px 0;${o.material === pick ? 'outline:1px solid #7c9' : ''}" ${o.can ? '' : 'disabled'}>${o.material} ${o.q != null ? Math.round(o.q * 100) + '%' : ''}</button>`).join('')}</div>` : ''}
+          ${r.options ? `<div class="cr-cost" style="margin-top:3px">${r.options.map((o) => `<button data-fpick="${r.id}" data-fmat="${o.material}" style="margin:1px 2px 1px 0;${o.material === pick ? 'outline:1px solid #7c9' : ''}" ${o.can ? '' : 'disabled'}>${koOf(o.material)} ${o.q != null ? Math.round(o.q * 100) + '%' : ''}</button>`).join('')}</div>` : ''}
         </div>
         <button data-fmake="${r.id}" ${r.can ? '' : 'disabled'}>만들기</button>
       </div>`;

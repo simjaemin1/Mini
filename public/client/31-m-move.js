@@ -569,7 +569,7 @@
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 12px sans-serif';
     ctx.textAlign = 'center';
-    const label = (ITEM_LABEL['item_' + b.type] || b.type);
+    const label = itemKo('item_' + b.type);   // ★[T55] 정본 우선 — 없으면 `item_<type>` 이 남는다(종전은 `<type>`)
     const cycleHint = hoverList.length > 1 ? ` [${hoverIndex+1}/${hoverList.length}] 휠로 변경` : '';
     ctx.fillText(`🔧 ${label} 분해 (클릭, 3초)${cycleHint}`, sx, sy - 60);
     ctx.restore();

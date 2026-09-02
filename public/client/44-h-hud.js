@@ -221,13 +221,13 @@
         const sp = document.createElement('span');
         const isFood = !!foodEffects[k];
         sp.className = 'inv' + (isFood ? '' : ' disabled');
-        sp.innerHTML = `${itemIconHtml(k, 18)} ${ITEM_LABEL[k]} ${inventory[k]}`;
+        sp.innerHTML = `${itemIconHtml(k, 18)} ${itemKo(k)} ${inventory[k]}`;   // ★[T55] 정본 우선(종전엔 표에 없으면 `undefined` 를 찍었다)
         if (isFood) {
           const eff = foodEffects[k];
           sp.title = `먹기 (+허기 ${eff.hunger||0}${eff.thirst?', +갈증 '+eff.thirst:''}${eff.hpDelta?', HP '+eff.hpDelta:''})`;
           sp.onclick = () => sendPrimary({ type: 'eat', item: k });
         } else {
-          sp.title = `${ITEM_LABEL[k]} (먹을 수 없음 — 가공/거래용)`;
+          sp.title = `${itemKo(k)} (먹을 수 없음 — 가공/거래용)`;   // ★[T55]
         }
         foodRow.appendChild(sp);
       }

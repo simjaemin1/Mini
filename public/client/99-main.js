@@ -193,6 +193,34 @@
       // 다운 중엔 어떤 행동도 안 함 — 부활 패널에서만 클릭
       return;
     }
+    // ★★[T55 2026-09-02] **Shift 를 체인 머리에서 한 번 가른다.**
+    //   종전 구조: 글자를 `k === 'l'` 로만 검사하는 else-체인 하나 ⇒ **Shift+글자가 맨손 분기를 밟았다.**
+    //     · `Shift+L` 이 울타리를 짓고(회부 0-소문 2) · `Shift+H` 가 상자를, `Shift+B` 가 건축 모드를,
+    //       `Shift+K` 가 제작창을 같이 건드렸다(패널 단축키와 **이중 발화**).
+    //     · 더 나쁜 것: 맨손 `g`(원거리 공격)가 체인에서 **먼저** 서 있어 `Shift+G`(게시판) 분기가
+    //       **영영 안 닿았다** — 촌장 대사가 "Shift+G" 라고 안내하는데 실제로는 화살을 쐈다.
+    //       (하네스는 `village_board` 메시지를 직접 보내서 여태 안 걸렸다 — e2e-events 참조.)
+    //   T18 은 `j` 한 줄에만 `&& !e.shiftKey` 를 붙였다. 그 문법을 글자마다 반복하면 그게 사본이고,
+    //   새 단축키가 생길 때마다 또 빠뜨린다. ⇒ **가르는 자리를 하나로 만든다.**
+    //   ⚠새 단축키는 0이다. 아래 Shift 절은 종전에 `&& e.shiftKey` 로 적혀 있던 것 그대로 옮긴 것뿐이고,
+    //     `Shift+G`(게시판)만 **닿지 못하던 것이 닿게** 됐다(그게 이 항목의 뜻이다).
+    if (e.shiftKey) {
+      if (k === 'c') sendPrimary({ type: 'claim', kind: 'guild' });          // Shift+C 길드 영토
+      else if (k === 'f') sendPrimary({ type: 'fish_cast' });                // Shift+F 낚시 던지기/챔질(서버가 상태로 가른다)
+      else if (k === 'r') sendPrimary({ type: 'repair_building' });          // Shift+R 수리
+      else if (k === 'n') {                                                  // Shift+N 납품
+        // ★납품 — 품목을 안 보낸다. **서버가** 낼 수 있는 첫 의뢰를 고른다(권위는 서버에 있다).
+        if (evNearVid == null) showNotice('📋 마을 중심에서 너무 멀다');
+        else sendPrimary({ type: 'village_deliver', vid: evNearVid });
+      }
+      else if (k === 'g') {                                                  // Shift+G 게시판
+        if (evNearVid == null) showNotice('📋 마을 중심에서 너무 멀다');
+        else sendPrimary({ type: 'village_board', vid: evNearVid });
+      }
+      // ★Shift+I·K·H·T·B·J 는 **패널 쪽 리스너**(50-i-panel.js)가 잡는다 — 여기선 아무것도 안 한다.
+      //   그게 이 갈래의 요점이다: 맨손 체인으로 **안 흘린다**.
+      return;
+    }
     if (k === 'e') {
       // ★[11차 채광 재설계] E를 **누르고 있으면 1초마다 반복** — 채굴이 60타에 덩이 하나라
       //   한 번씩 누르게 두면 손가락이 남아난다. 서버가 1초/타를 강제하므로 과송신은 무해하고,
@@ -224,12 +252,10 @@
       sendPrimary({ type: 'toggle_hotkey' });
     }
     else if (k === 'o') sendPrimary({ type: 'sort_ore' });   // ★[11차] 선광 — 캔 원석 덩이를 광석/맥석으로 가른다
-    else if (k === 'c' && e.shiftKey) sendPrimary({ type: 'claim', kind: 'guild' });  // 길드 영토 (Shift+C)
     else if (k === 'c') sendPrimary({ type: 'claim', kind: 'personal' });  // 개인 사유지 (1 grid)
-    else if (k === 't' && !e.shiftKey) sendPrimary({ type: 'claim', kind: 'temporary' });  // 임시 사유지 (1 grid)
+    else if (k === 't') sendPrimary({ type: 'claim', kind: 'temporary' });  // 임시 사유지 (1 grid)
     // ★[재민 확정 2026-08-27] T/Y 물물교환 **제거** — 동의 없는 인벤 이동이자 경제 우회였다.
     //   플레이어 간 거래는 양방향 제안·수락으로 다시 설계한다(회부_무게_다음층.md P항).
-    else if (k === 'f' && e.shiftKey) sendPrimary({ type: 'fish_cast' });   // ★[낚시 v2] 던지기 → (입질 뒤) 챔질. 서버가 상태로 가른다
     else if (k === 'f') { sendPrimary({ type: 'attack' }); myLastAttackAt = performance.now(); }
     else if (k === 'g') {
       // Phase 5-I: 원거리 공격 — 마우스 방향으로 화살. aim은 primary zone-local 좌표.
@@ -249,26 +275,16 @@
       if (invOpen) renderInvPanel(document.getElementById('invBody')); // 재렌더 (강조 갱신)
     }
     else if (k === 'h') sendPrimary({ type: 'build', buildType: 'chest', floor: myBuildFloor });
-    // ★★[T18 2026-09-01] `&& !e.shiftKey` 한 줄 — **이 체인은 Shift 를 안 가렸다.**
-    //   그래서 `Shift+J` 가 여기까지 내려와 **모닥불을 짓는다**(다른 bare-letter 도 전부 같다).
-    //   §8.2 는 사이드바 버튼마다 단축키 병기를 요구하는데, 그 규약을 지키려면 이 자리가 먼저 열려야 한다.
-    //   ⇒ `Shift+J` 를 연대기(📜)에 내줬다. 나머지 글자의 같은 결함은 회부(M/H 영역).
-    else if (k === 'j' && !e.shiftKey) sendPrimary({ type: 'build', buildType: 'campfire', floor: myBuildFloor });
+    // ★[T18 이 여기 붙였던 `&& !e.shiftKey` 는 T55 가 체인 머리의 갈래로 흡수했다 — 사본 문법 제거]
+    else if (k === 'j') sendPrimary({ type: 'build', buildType: 'campfire', floor: myBuildFloor });
     // Q 단축키 제거 — 공성캠프는 임시 사유지로 대체 예정 (Phase 14.18)
     else if (k === 'l') sendPrimary({ type: 'build', buildType: 'fence', floor: myBuildFloor });
     // I 키는 새 인벤 패널 (좀보이드식). 바닥은 건축 패널에서 클릭으로.
     else if (k === 'p') sendPrimary({ type: 'build', buildType: 'farmland', floor: myBuildFloor });
     else if (k === 'o') sendPrimary({ type: 'harvest' });
+    // ⚠[T55 실측] 이 `k === 'g'`(먹이 주기)는 **위의 맨손 `g`(원거리 공격)에 가려 안 닿는다.**
+    //   T55 의 행동 변경은 넷뿐이라 되살리지 않았다 — 죽은 분기라고 지우지도 않았다(회부).
     else if (k === 'g') sendPrimary({ type: 'feed' });
-    else if (k === 'n' && e.shiftKey) {
-      // ★납품 — 품목을 안 보낸다. **서버가** 낼 수 있는 첫 의뢰를 고른다(권위는 서버에 있다).
-      if (evNearVid == null) showNotice('📋 마을 중심에서 너무 멀다');
-      else sendPrimary({ type: 'village_deliver', vid: evNearVid });
-    }
-    else if (k === 'g' && e.shiftKey) {
-      if (evNearVid == null) showNotice('📋 마을 중심에서 너무 멀다');
-      else sendPrimary({ type: 'village_board', vid: evNearVid });
-    }
     else if (k === 'n') toggleTribePanel();
     else if (k === 'v') sendPrimary({ type: 'pvp_set', enabled: !myPvpEnabled });
     else if (k === 'z') { myBuildFloor = Math.min(5, myBuildFloor + 1); showNotice(`건축 층: ${myBuildFloor}F`); updateHud(); }
@@ -284,7 +300,6 @@
     }
     else if (k === 'm') { if (window.bigMap) window.bigMap.toggle(); }  // Phase 5-2-mini: M = 지도 (시장은 사이드바 클릭)
     else if (k === 'k') toggleCraft();
-    else if (k === 'r' && e.shiftKey) sendPrimary({ type: 'repair_building' }); // Phase 14.34 수리
     else if (k === 'r') {
       // Phase 14.41: R = 우선 근처 다운 길드원 구조 시도, 없으면 요리 패널
       const target = findNearestDownedGuildmate();

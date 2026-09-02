@@ -923,6 +923,9 @@
         if (msg.moveCfg) { _moveParams = window.MoveModel.paramsFrom(msg.moveCfg); window.__moveCfg = _moveParams; }
         if (msg.foodEffects) foodEffects = msg.foodEffects;
         if (msg.crops) applyCropPayload(msg.crops);          // ★[작물 층] 이름·아이콘·파종철
+        // ★★[T55] 이름표 정본 — 한 번 받아 들고 다닌다(품목 카탈로그는 존 독립).
+        //   ⚠덮어쓰지 않는다: 핸드오프 promote welcome 엔 안 실린다(관측) — 있으면 갱신, 없으면 유지.
+        if (msg.itemLabels) { ITEM_LABEL_SRV = msg.itemLabels; window.__itemLabels = msg.itemLabels; }
         // 플레이어 장비
         if (msg.equipmentRecipes) equipmentRecipes = msg.equipmentRecipes;
         if (msg.equipmentMeta) equipmentMeta = msg.equipmentMeta;
@@ -1447,8 +1450,17 @@
       const bd = msg.board || {};
       evBoardCache = bd;
       window.__evLastBoard = bd;
-      if (!bd.rows || !bd.rows.length) showNotice(`📋 ${bd.name} 게시판 — 걸린 의뢰가 없다`, 3500);
-      else showNotice(`📋 ${bd.name} 게시판\n` + bd.rows.map((r) => ' · ' + r.line).join('\n') + '\n(Shift+N 으로 낼 수 있는 것부터 납품)', 9000);
+      // ★★[T55 2026-09-02] **소식(`news`)을 같이 그린다** — 회부 0-소문 1.
+      //   데이터는 T7 부터 이미 왔다(`bd.news` — 가시성 술어를 통과한 것만 · 서버가 `EV_BOARD_NEWS_N`=8 로 자른다).
+      //   클라가 `rows`(의뢰)만 그려서, 촌장이 "그 밖에 n건은 게시판에" 라고 해도 볼 데가 없었다.
+      //   ⚠순서: **의뢰 줄 아래**다 — T20 이 같은 토스트 맨 윗줄에 겨울 머리줄을 서버에서 넣는다.
+      //   ⚠줄 수는 서버가 정한다(클라가 또 자르면 그게 두 번째 손잡이다).
+      const _bdNews = Array.isArray(bd.news) ? bd.news.filter((n) => n && n.line) : [];
+      const _newsTxt = _bdNews.length
+        ? '\n— 들은 소식 —\n' + _bdNews.map((n) => ' · ' + n.line + (n.from ? ` (${n.from}에서)` : '')).join('\n')
+        : '';
+      if (!bd.rows || !bd.rows.length) showNotice(`📋 ${bd.name} 게시판 — 걸린 의뢰가 없다` + _newsTxt, _newsTxt ? 9000 : 3500);
+      else showNotice(`📋 ${bd.name} 게시판\n` + bd.rows.map((r) => ' · ' + r.line).join('\n') + _newsTxt + '\n(Shift+N 으로 낼 수 있는 것부터 납품)', 9000);
     } else if (msg.type === 'onboarding_state' || msg.type === 'onboarding_quest' || msg.type === 'onboarding_fx' || msg.type === 'onboarding_day') {
       onbOnMessage(msg);   // ★[온보딩 v2] 대본 상태·첫 의뢰·곳간 이펙트·하루 정산 — 그리기는 `70-lobby.js`
     } else if (msg.type === 'pvp_state') {

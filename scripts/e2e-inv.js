@@ -370,6 +370,42 @@ async function waitHttp(url, tries = 900) {
     await snap('carrier-hud');
   }
 
+  // ── ⑩ ★[T55] 이름표 정본 — 서버 표 ∖ 클라가 찍는 키 = ∅ ──────────────────
+  //   ★왜 여기인가: 이름표가 **실제로 화면에 도달하는가**는 표 대조로는 못 잰다.
+  //     `test-itemlabel` 이 표 둘을 소스로 견주지만, 그 표가 **클라까지 실려 갔는지**는
+  //     실클라만 안다(welcome 에 안 실으면 표만 맞고 화면은 영문이다 — 그게 T38 이후의 상태였다).
+  console.log('\n⑩ 이름표 — 서버 정본이 화면 함수까지 도달했나 (T55)');
+  {
+    const labels = await page.evaluate(() => window.__itemLabels || null);
+    ok(!!labels, '★⑩ (상황) welcome 이 이름표 정본을 실어 보냈다 — `welcome.itemLabels`',
+       labels ? `${Object.keys(labels).length}키` : '안 왔다');
+    const keys = labels ? Object.keys(labels) : [];
+    ok(keys.length >= 100, '★⑩ (상황) 그 표가 실제로 크다(빈 표면 아래가 자명 통과다)', `${keys.length}키`);
+    // ★핵심 판정 — 서버가 이름을 아는 키를 클라가 **하나도** 영문으로 안 찍는다.
+    const raw = await page.evaluate((ks) => ks.filter((k) => itemKo(k) === k), keys);
+    ok(raw.length === 0, '★★⑩ **서버 108키 ∖ 클라가 찍는 키 = ∅** — 화면에 영문 키가 남지 않았다',
+       raw.length ? raw.slice(0, 10).join(' ') : `${keys.length}키 전부 한글`);
+    // ★표본 — 회부가 지목한 그 품목들(갯벌 셋 · 자염 둘 · 시설 재료 넷)
+    const SAMPLE = ['oyster', 'seaweed', 'abalone', 'brine', 'item_salt_kiln',
+                    'wood', 'stone', 'meteoric_iron', 'plank'];
+    const ko = await page.evaluate((ks) => ks.map((k) => [k, itemKo(k)]), SAMPLE);
+    for (const [k, v] of ko) ok(v !== k && /[가-힣]/.test(v), `★⑩ \`${k}\` 가 한글로 뜬다`, v);
+    // ★자명 통과 금지 — 서버가 모르는 키는 **그대로 남아야** 한다(모든 것을 한글로 만드는 함수가 아니다)
+    const bogus = await page.evaluate(() => itemKo('__t55_no_such_item__'));
+    ok(bogus === '__t55_no_such_item__', '★⑩ 자명 통과 금지 — 모르는 키는 그대로 돌아온다(무조건 한글이 아니다)', bogus);
+    // ★그리고 **화면에** 실제로 그렇게 뜬다(함수만 고치고 자리를 안 고쳤을 수 있다 — DOM 을 읽는다)
+    await give({ items: { oyster: 3, brine: 2 } });   // ★`__e2e_give` 의 인벤 필드는 `items` 다
+    await page.evaluate(() => { if (!invOpen) toggleInv(); });
+    await sleep(600);
+    const rows = await page.evaluate(() => [...document.querySelectorAll('.inv-col tr.ul-row')]
+      .map((tr) => ({ item: tr.dataset.item, text: (tr.textContent || '').trim() })));
+    const oy = rows.find((r) => r.item === 'oyster'), br = rows.find((r) => r.item === 'brine');
+    ok(!!oy, '★⑩ (상황) 인벤에 굴 행이 있다', oy && oy.text.slice(0, 40));
+    ok(!!oy && /굴/.test(oy.text) && !/oyster/.test(oy.text), '★★⑩ **인벤 행이 `굴` 이라고 적혀 있다**(영문 키가 아니다)', oy && oy.text.slice(0, 40));
+    ok(!!br && !/brine/.test(br.text), '★★⑩ 짠물 행도 영문 키가 아니다', br && br.text.slice(0, 40));
+    await snap('t55-itemlabel');
+  }
+
   // ── ⑨ 자산·콘솔 위생 ─────────────────────────────────────────────────────
   console.log('\n⑨ 위생');
   const realErrs = errs.filter((e) => !/favicon|WebSocket is closed|Failed to fetch|404/i.test(e));
