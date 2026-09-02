@@ -131,10 +131,34 @@ async function waitHttp(url, tries = 900) {
     }
     return false;
   }
+  // ★★[T50 2026-09-02 수리] **응답을 기다린다 — 고정 sleep 으로 읽지 않는다.**
+  //   `__evLastBoard` 는 "마지막으로 받은 것"이라, 500ms 안에 답이 안 오면 **직전 응답을 읽는다.**
+  //   그러면 오늘 난 사건이 빠진 낡은 게시판을 오늘 브리핑과 견주게 되고, ⑥이
+  //   "촌장과 게시판이 다른 말을 한다"고 **없는 사본을 보고**한다(러너 아래에서 실제로 그랬다:
+  //    촌장은 `새 움집이 하나 섰네`를 말하는데 게시판엔 그 줄이 아예 없었다 — 제품은 옳았다).
+  //   ⇒ 칸을 비우고 새 응답을 폴링한다. `e2e-chronicle askChron` 과 같은 처방(족보 ㊽).
+  // ★[T50 2026-09-02 수리] 브리핑도 **응답을 기다린다** — 아래 `askBoard` 와 같은 이유·같은 처방.
+  //   종전엔 고정 900ms 뒤 `__evLastBrief` 를 읽었는데, 러너 아래에서 답이 늦으면 `null` 이라
+  //   ⑥a 가 빨개지고 ⑥은 **빈 배열이라 자명 통과**한다(⑥b 가 그 자명 통과를 잡아 준다).
+  const askBrief = async (vid) => {
+    await page.evaluate(() => { window.__evLastBrief = null; });
+    await page.evaluate((v) => window.__sendPrimary({ type: 'village_brief', vid: v }), vid);
+    for (let i = 0; i < 30; i++) {
+      await sleep(200);
+      const b = await page.evaluate(() => window.__evLastBrief || null);
+      if (b) return b;
+    }
+    return null;
+  };
   const askBoard = async (vid) => {
+    await page.evaluate(() => { window.__evLastBoard = null; });
     await page.evaluate((v) => window.__sendPrimary({ type: 'village_board', vid: v }), vid);
-    await sleep(500);
-    return await page.evaluate(() => window.__evLastBoard || null);
+    for (let i = 0; i < 30; i++) {
+      await sleep(200);
+      const b = await page.evaluate(() => window.__evLastBoard || null);
+      if (b) return b;
+    }
+    return null;
   };
   // ★게임일은 **틱을 한 번 받아야** 선다. 0 을 그대로 읽으면 "하루도 안 흘렀다"는 헛 판정이 난다
   //   (이 하네스 3차가 그렇게 틀렸다: `day 68 → 0 (-68일)`).
@@ -175,8 +199,17 @@ async function waitHttp(url, tries = 900) {
   // ── ④ 날을 얼리고 B 로 건너가 — **아직 안 보인다** ─────────────────────────
   await freeze(true);
   const frozenDay = await gameDay();
-  ok((await page.evaluate(() => (window.__notices || []).slice(-4).join(' | '))).includes('게임일 정지'),
-    '④a 게임일 정지(관측 구간) — B 로 건너가는 사이에 소문이 도착하지 않는다');
+  // ★★[T50 2026-09-02 수리] 종전 판은 **알림 마지막 넉 줄**에서 "게임일 정지"를 찾았다.
+  //   그건 얼음이 얼었는지가 아니라 **알림이 몇 줄 밀렸는지**를 재는 검사였다 —
+  //   촌장이 할 말이 늘자(사건 유형 2차) 알림이 더 빨리 밀려 그 줄이 창 밖으로 나갔고,
+  //   ④ 는 멀쩡히 통과하는데 ④a 만 빨개졌다(제품은 옳고 하네스가 틀린, 가장 헷갈리는 실패).
+  //   ⇒ **효과를 잰다**: 얼린 뒤 실시간이 흘러도 게임일이 안 움직여야 한다. 알림은 전 구간에서 찾는다.
+  await sleep(2000);                                   // 하루 500ms — 안 얼었으면 네 날은 흘렀을 시간
+  const stillDay = await gameDay();
+  ok(stillDay === frozenDay, '④a 게임일 정지(관측 구간) — 실시간이 흘러도 날이 안 간다',
+    `${frozenDay} → ${stillDay}`);
+  ok((await page.evaluate(() => (window.__notices || []).join(' | '))).includes('게임일 정지'),
+    '④a2 정지 알림도 남아 있다(디버그 메시지가 실제로 닿았다)');
   ok(await warpTo(B, 30), `④b B(${B.name}) 마을 중심 도착`, `__evNearVid=${await page.evaluate(() => window.__evNearVid)}`);
   const boardB0 = await askBoard(B.id);
   const news0 = (boardB0 && boardB0.news) || [];
@@ -214,10 +247,7 @@ async function waitHttp(url, tries = 900) {
   //   여기선 하루가 0.5초다 — 얼리지 않으면 브리핑과 게시판이 **서로 다른 날**의 답이 되어
   //   "사본이 있다"는 가짜 실패가 난다(이 하네스 1차가 그렇게 틀렸다. 제품은 멀쩡했다).
   await freeze(true);
-  await page.evaluate(() => { window.__evLastBrief = null; });
-  await page.evaluate((vid) => window.__sendPrimary({ type: 'village_brief', vid }), B.id);
-  await sleep(900);
-  let briefB = await page.evaluate(() => window.__evLastBrief || null);
+  let briefB = await askBrief(B.id);
   const bNow = await askBoard(B.id);
   const newsLines = new Set(((bNow && bNow.news) || []).map((r) => r.line));
   const briefLines = ((briefB && briefB.lines) || []).filter((l) => !/만이군|별일 없네|게시판에 적어/.test(l));
@@ -291,13 +321,47 @@ async function waitHttp(url, tries = 900) {
   await snap('ru-04-return-brief');
 
   // 두 번째 브리핑 — 같은 부재를 다시 읊지 않는다
-  await page.evaluate(() => { window.__evLastBrief = null; });
-  await page.evaluate((vid) => window.__sendPrimary({ type: 'village_brief', vid }), B.id);
-  await sleep(1500);
-  const brief3 = await page.evaluate(() => window.__evLastBrief || null);
+  const brief3 = await askBrief(B.id);
   ok(!!brief3, '⑧a 전제: 두 번째 브리핑을 받았다');
   ok(!!(brief3 && brief3.returned === false), '⑧ 같은 접속에서 두 번째부터는 부재 요약을 반복하지 않는다',
     brief3 ? `returned=${brief3.returned}` : 'X');
+
+  // ── ★[T50 2026-09-02] ⑨ 세계의 "일"도 **같은 길로** 걸어온다 ────────────────────────
+  //   유형만 더했지 소문 층은 한 줄도 안 고쳤다 — 그 주장을 새 유형 하나로 확인한다.
+  //   ⚠사건을 심지 않는다. A 마을에 **가뭄을 부르고**(econ `_weather`), 사건은 장부가 스스로 낸다.
+  {
+    await freeze(true);
+    ok(await warpTo(A, 30), '⑨a A 로 돌아간다(일을 낼 자리)');
+    await freeze(false);
+    const dayNow = await gameDay();
+    await page.evaluate((vid) => window.__sendPrimary({ type: '__e2e_village_deed', vid, kind: '가뭄' }), A.id);
+    await sleep(1500);
+    let deedA = null;
+    for (let i = 0; i < 40 && !deedA; i++) {
+      const b = await askBoard(A.id);
+      deedA = ((b && b.news) || []).find((r) => r.type === 'WEATHER' && r.from == null && r.day >= dayNow);
+      if (!deedA) await sleep(400);
+    }
+    ok(!!deedA, '⑨b A 는 가뭄을 그날 바로 안다(자기 마을 일 · 지연 0)',
+      deedA ? `day${deedA.day} · ${deedA.line}` : '(안 남)');
+    if (deedA) {
+      ok(deedA.heard === deedA.day, '⑨c 자기 마을 일의 도달일 = 사건일');
+      ok(await warpTo(B, 30), '⑨d B 로 건너간다');
+      let deedB = null, polls2 = 0;
+      for (; polls2 < 150 && !deedB; polls2++) {
+        const b = await askBoard(B.id);
+        deedB = ((b && b.news) || []).find((r) => r.type === 'WEATHER' && r.from === A.name && r.day === deedA.day);
+        if (!deedB) await sleep(400);
+      }
+      ok(!!deedB, '⑨ ★새 유형도 **소문을 타고 걸어온다**(도달표를 유형별로 나누지 않았다)',
+        deedB ? `day${deedB.day} → heard${deedB.heard} (${deedB.heard - deedB.day}일) · 출처 ${deedB.from}` : `(${polls2}회 폴링 뒤에도 미도착)`);
+      if (deedB) {
+        ok(deedB.heard - deedB.day >= minDays, '⑨e 지연이 캐러밴 시계 하한 이상이다(값 유형과 같은 표)',
+          `${deedB.heard - deedB.day}일 ≥ ${minDays}일`);
+        ok(deedB.line === deedA.line, '⑨f B 가 듣는 말이 A 에서 난 그 말과 같다(문장 사본 0)', JSON.stringify(deedB.line));
+      }
+    }
+  }
 
   const fatal = errs.filter((e) => !/Failed to load resource/.test(e));
   ok(fatal.length === 0, `클라 JS 에러 0 ${fatal.length ? '— ' + fatal.slice(0, 3).join(' / ') : ''}`);

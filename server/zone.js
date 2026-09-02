@@ -3658,6 +3658,11 @@ function handlePlayerInput(player, raw) {
     const r = SimVillages.__e2eForceShortage ? SimVillages.__e2eForceShortage(msg.vid | 0) : { err: '미지원' };
     send(player.ws, { type: 'notice', text: r.ok ? `🧪 ${r.name} ${r.item} ${r.before}→${r.after} (문턱 ${r.thr} · 갚을거 ${r.payWith} ${r.payStock})` : `🧪 ${r.err}` });
   }
+  else if (E2E_GIVE && msg.type === '__e2e_village_deed') {
+    // ★[T50] 테스트 전용 — 세계의 "일" 픽스처(econ `_weather` 를 세운다 · 사건은 장부가 스스로 낸다)
+    const r = SimVillages.__e2eForceDeed ? SimVillages.__e2eForceDeed(msg.vid | 0, msg.kind) : { err: '미지원' };
+    send(player.ws, { type: 'notice', text: r.ok ? `🧪 ${r.name} ${r.kind} (D${r.day}~${r.until})` : `🧪 ${r.err}` });
+  }
   else if (E2E_GIVE && msg.type === '__e2e_give') {
     for (const [k, q] of Object.entries(msg.items || {})) { const n = Number(q); if (isFinite(n) && n > 0) player.inventory[k] = (player.inventory[k] || 0) + Math.floor(n); }
     // 도구는 인벤 수량이 아니라 **인스턴스**다(`toolItems` = {id, type, d}) — 정본 생성 경로와 같은 모양으로 만든다

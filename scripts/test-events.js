@@ -833,7 +833,16 @@ const mkLedgerGeo = (world, geo, cfg) => {
   ok(L2.loadChronicle(chronRows) === chronRows.length, '㉘a 전제: 영속 표를 그대로 되심었다', `${chronRows.length}행`);
   const flat = (c) => JSON.stringify(c.seasons.map((b) => [b.seasonKo, b.total, b.more, b.items.map((x) => `${x.heard}|${x.line}`)]));
   const c1b = L2.chronicle(0, { year: 1, today });
-  ok(flat(c1b) === flat(c1), '㉘ 연표는 결정론적이다 — 저장본만으로 같은 연표가 재현된다(도달일은 저장하지 않는다)');
+  // ★빨개졌을 때 **어느 계절 어느 줄이** 갈라졌는지 말해 준다 — 이 검사는 원인이 늘 한 줄이라
+  //   (T50 에선 날씨 문장이 meta 에 기대 재기동 뒤 뭉개졌다) 진단이 붙어 있지 않으면 반나절을 잡아먹는다.
+  let _d28 = '';
+  if (flat(c1b) !== flat(c1)) {
+    const A = JSON.parse(flat(c1)), B = JSON.parse(flat(c1b));
+    for (let i = 0; i < Math.max(A.length, B.length) && !_d28; i++) {
+      if (JSON.stringify(A[i]) !== JSON.stringify(B[i])) _d28 = `원본 ${JSON.stringify(A[i])} ≠ 복구 ${JSON.stringify(B[i])}`;
+    }
+  }
+  ok(flat(c1b) === flat(c1), '㉘ 연표는 결정론적이다 — 저장본만으로 같은 연표가 재현된다(도달일은 저장하지 않는다)', _d28);
   const c1c = L.chronicle(0, { year: 1 });
   ok(flat(c1c) === flat(c1), '㉘b 같은 질문에 같은 답(캐시가 답을 바꾸지 않는다)');
 
@@ -896,6 +905,214 @@ const mkLedgerGeo = (world, geo, cfg) => {
   L.rumorInvalidate();
   L.chronicle(0, { year: 1 });
   ok(L.stats.chronBuilt === b1 + 2, '㉛f 도달표가 무효화되면 지난 해도 다시 짓는다(거리가 바뀌면 도달일이 바뀐다)');
+}
+
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ★★[T50 2026-09-02] 사건 유형 2차 — 세계의 "일"이 장부에 잡히게 · ㉜ ~ ㊳
+//   설계: 연대기가 "값이 크게 움직인 해"로만 읽혔다(T18 회부 A-1). 원인은 유형이 여섯 개뿐이고
+//   전부 **값의 이탈**이었다는 것. 이 절이 재는 것은 두 가지다 —
+//     ① 새 유형이 **세계에서 실제로 일어나는 일**인가(각본이 아니라 관측인가)
+//     ② 그 일이 sev 하나로 재는 자리에서 **묻히지 않는가**(무게 축이 둘인가)
+// ═════════════════════════════════════════════════════════════════════════════
+{
+  const world = makeWorld(0, 1020);
+  const L = mkLedger(world);
+  // ★지리를 얹은 장부 하나를 **같은 세계에** 더 단다(장부는 관측자라 여럿을 달 수 있다).
+  //   이웃 소식이 섞이는 연표는 이쪽에서만 볼 수 있다 — `L` 은 geo 가 없어 자기 마을 것만 본다.
+  const LG = mkLedgerGeo(world, chainGeo(world.villages.length));
+  const before = snapEcon(world);
+  const _l = console.log; console.log = () => {};
+  for (let d = 0; d < 600; d++) { econV2.tickWorldV2(world); L.scanDay(world, world.day, {}); LG.scanDay(world, world.day, {}); }
+  console.log = _l;
+  const B = L.stats.byType;
+
+  // ── ㉜ 전제 — 원천이 실재하는가. **각본 금지의 실증**: 아무것도 심지 않고 600일을 돌렸을 뿐이다.
+  ok((B.HARVEST_BOON || 0) > 0 && (B.HARVEST_BLIGHT || 0) > 0,
+    '㉜a 전제: 풍년·흉년이 **저절로** 난다(econ `_yearShock` — 장부가 만든 게 아니다)',
+    `풍년 ${B.HARVEST_BOON} · 흉년 ${B.HARVEST_BLIGHT}`);
+  ok((B.WEATHER || 0) > 0, '㉜b 전제: 날씨(가뭄·폭풍·풍요·안개)가 저절로 난다', `${B.WEATHER}건`);
+  ok((B.FIRST_GOODS || 0) > 0, '㉜c 전제: "처음 들어온 물건"이 저절로 난다(교역 기록에서)', `${B.FIRST_GOODS}건`);
+  ok((B.CARAVAN_RAIDED || 0) === 0 && (B.BUILT || 0) === 0,
+    '㉜d 전제: 랩에 없는 원천은 **0 건이다**(도적 호스트·생활층 없음 — 없는 데이터를 만들지 않는다)');
+  // ★관측자 규약 — 검출기를 일곱 개 더 달아도 econ 은 비트 동일해야 한다.
+  const L2 = mkLedger(world);
+  const s0 = snapEcon(world);
+  L2.scanDay(world, world.day, {});
+  ok(snapEcon(world) === s0, '㉜ ★새 검출기를 달아도 econ 은 비트 동일하다(장부는 관측자다)');
+  ok(before !== s0, '㉜e 전제: 세계가 실제로 움직였다(비교가 자명 통과가 아니다)');
+  // ★★A/B 단일 손잡이 — `EV_DEEDS_OFF=1` 이 **T50 이전 동작을 정확히 재현**하는가.
+  //   배치의 기여를 재려면 되돌릴 줄 하나가 있어야 한다(T7 `RUMOR_OFF` 와 같은 자리).
+  {
+    const W = makeWorld(0, 1020);
+    const OFF = mkLedger(W, { DEEDS_OFF: 1 });
+    const ON = mkLedger(W);
+    const _l3 = console.log; console.log = () => {};
+    for (let d = 0; d < 300; d++) { econV2.tickWorldV2(W); OFF.scanDay(W, W.day, {}); ON.scanDay(W, W.day, {}); }
+    console.log = _l3;
+    const OLD = ['STOCK_SHORTAGE', 'STOCK_GLUT', 'PRICE_SPIKE', 'PRICE_DROP', 'CARAVAN_LATE', 'SEASON_CHANGE'];
+    const same = OLD.every((t) => (OFF.stats.byType[t] || 0) === (ON.stats.byType[t] || 0));
+    ok(same, '㉜f ★1차 여섯 유형의 건수가 **켜나 끄나 같다**(새 검출기가 옛 사건을 못 건드린다)',
+      OLD.map((t) => `${OFF.stats.byType[t] || 0}`).join('/'));
+    const offNew = ON.deedTypes.reduce((a, t) => a + (OFF.stats.byType[t] || 0), 0);
+    const onNew = ON.deedTypes.reduce((a, t) => a + (ON.stats.byType[t] || 0), 0);
+    ok(offNew === 0 && onNew > 0, '㉜g `EV_DEEDS_OFF=1` 이면 일 유형이 하나도 안 난다(되돌릴 줄 하나)',
+      `off ${offNew} · on ${onNew}`);
+    ok(!OFF.isDeed({ type: 'WEATHER' }) && ON.isDeed({ type: 'WEATHER' }),
+      '㉜h 꺼 두면 무게 축도 하나로 돌아간다(정렬까지 T50 이전)');
+  }
+
+  // ── ㉝ 문장은 **영속 필드에만** 기댄다 — 연표 표는 `meta` 를 안 담는다(T18 스키마)
+  //    ★이 검사가 없어서 ㉘(결정론)이 대신 잡았다: 날씨 종류를 `meta.kind` 에 뒀더니 재기동 뒤
+  //      연표가 전부 "날씨가 심상찮네"로 뭉개졌다. 그 함정을 **유형 전체에** 대해 못박는다.
+  {
+    const seen = new Map();
+    for (const vid of L.vids) for (const ev of L.chronOf(vid)) if (!seen.has(ev.type)) seen.set(ev.type, ev);
+    let bad = null, n = 0;
+    for (const [t, ev] of seen) {
+      const persisted = { vid: ev.vid, day: ev.day, type: ev.type, item: ev.item, mag: ev.mag };   // village_chronicle 의 칸 전부
+      const a = Events.briefLine(ev), b = Events.briefLine(persisted);
+      n++;
+      if (!a || a !== b) bad = bad || `${t}: "${a}" ≠ "${b}"`;
+    }
+    ok(n >= 6, '㉝a 전제: 연표에 실제로 여러 유형이 들어 있다(자명 통과 방지)', `${n}종`);
+    ok(!bad, '㉝ ★모든 유형의 문장이 **영속 필드(vid·day·type·item·mag)만으로** 재현된다', bad || '');
+  }
+
+  // ── ㉞ 무게 — **일이 값보다 먼저 선다**(sev 하나로 재면 흉년이 소금값에 진다)
+  {
+    const deed = new Set(L.deedTypes);
+    let chronDeed = 0, chronVal = 0, sevDeedMax = 0, sevValMed = [];
+    for (const vid of L.vids) for (const ev of L.chronOf(vid)) {
+      if (deed.has(ev.type)) { chronDeed++; sevDeedMax = Math.max(sevDeedMax, L.sevOf(ev)); }
+      else { chronVal++; sevValMed.push(L.sevOf(ev)); }
+    }
+    sevValMed.sort((a, b) => a - b);
+    ok(chronDeed > 0 && chronVal > 0, '㉞a 전제: 연표에 일과 값이 **둘 다** 있다', `일 ${chronDeed} · 값 ${chronVal}`);
+    ok(sevDeedMax < L.cfg.CHRON_SEV, '㉞b ★일 유형의 sev 는 값 문턱(2.2)을 **한 번도 못 넘는다** — 그래서 문턱을 면제한다',
+      `일 최대 sev ${sevDeedMax.toFixed(2)} < ${L.cfg.CHRON_SEV}`);
+    // 무게 비교자: 일이 sev 가 훨씬 큰 값보다 먼저다
+    const a = { type: 'HARVEST_BLIGHT', mag: 0.7 }, b = { type: 'PRICE_SPIKE', mag: 9 };
+    ok(L.heavier(a, b) < 0, '㉞ 무게 비교자는 **일을 먼저** 놓는다(sev 0.36 인 흉년이 sev 2.2 인 급등을 앞선다)');
+    ok(L.heavier({ type: 'PRICE_SPIKE', mag: 20 }, { type: 'PRICE_SPIKE', mag: 3 }) < 0,
+      '㉞c 값끼리는 여전히 sev 로 견준다(축을 섞지 않는다)');
+    ok(L.heavier({ type: 'WEATHER', mag: 0.65 }, { type: 'POP_COLLAPSE', mag: 0.5 }) > 0,
+      '㉞d 일끼리도 sev 로 견준다(무게가 유형 순서표가 아니다)');
+    // ★이웃 연표는 **목록으로** 가른다 — 날씨(국지적·일주일)·완공(남의 집)·첫 물건(남의 곳간)은
+    //   여기까지 회자되지 않는다. 우리 마을 연표에는 그대로 실린다(같은 사건, 다른 자리).
+    const FGN = new Set(L.deedForeign);
+    ok(!FGN.has('WEATHER') && !FGN.has('BUILT') && !FGN.has('FIRST_GOODS'),
+      '㉞e 이웃 연표 목록에서 날씨·완공·첫 물건이 빠져 있다', JSON.stringify(L.deedForeign));
+    ok(FGN.has('HARVEST_BLIGHT') && FGN.has('POP_COLLAPSE'),
+      '㉞f 그 마을의 운과 사람 소식은 이웃까지 간다');
+    {
+      // 실물로 확인 — FAR 마을 연표에 우리 것 날씨는 있고, 남의 것 날씨는 없다
+      const FAR = LG.vids[LG.vids.length - 1];
+      let ownWx = 0, fgnWx = 0, fgnAny = 0;
+      const cal2 = Events.calendarOf(LG.today);
+      for (let y = 0; y <= cal2.year; y++) for (const b of LG.chronicle(FAR, { year: y }).seasons) for (const it of b.items) {
+        if (it.from != null) { fgnAny++; if (it.type === 'WEATHER') fgnWx++; }
+        else if (it.type === 'WEATHER') ownWx++;
+      }
+      ok(ownWx > 0 && fgnAny > 0, '㉞g 전제: 우리 날씨도 있고 이웃 소식도 있다(자명 통과 방지)', `우리 날씨 ${ownWx} · 이웃 ${fgnAny}`);
+      ok(fgnWx === 0, '㉞ ★이웃 마을 날씨는 연표에 한 줄도 없다(같은 유형이 자리에 따라 갈린다)');
+    }
+  }
+
+  // ── ㉟ 인구 축 — 재고가 아니라 **사람**. 문법은 가격 이탈과 같다(자기평균·에지·히스테리시스)
+  {
+    const W = makeWorld(60, 7);
+    const L3 = mkLedger(W);
+    const _l2 = console.log; console.log = () => {};
+    for (let d = 0; d < 30; d++) { econV2.tickWorldV2(W); L3.scanDay(W, W.day, {}); }
+    console.log = _l2;
+    const vi = W.villages.findIndex((v) => v.npcs.length >= 20);
+    ok(vi >= 0, '㉟a 전제: 사람이 스무 명 넘는 마을이 있다(30% 를 덜어낼 수 있다)', vi >= 0 ? `${W.villages[vi].npcs.length}명` : '');
+    const v = W.villages[vi], n0 = v.npcs.length;
+    const cut = (k) => { for (let i = 0; i < k && v.npcs.length; i++) v.npcs.pop(); };
+    cut(Math.ceil(n0 * 0.40));
+    const e1 = L3.scanDay(W, W.day + 1, {}).filter((e) => e.vid === vi && e.type === 'POP_COLLAPSE');
+    ok(e1.length === 1, '㉟ 인구가 자기평균에서 30% 넘게 빠지면 붕괴 위기 1건', e1[0] ? `mag=${e1[0].mag} (${e1[0].meta.was}→${e1[0].meta.pop}명)` : `${n0}→${v.npcs.length}명`);
+    const e2 = L3.scanDay(W, W.day + 2, {}).filter((e) => e.vid === vi && e.type === 'POP_COLLAPSE');
+    ok(e2.length === 0, '㉟b 다음 날도 여전히 적다고 또 나지 않는다(에지 트리거)');
+    for (let i = 0; i < n0; i++) v.npcs.push({ ...v.npcs[0] });   // 회복 — 래치가 풀려야 한다
+    L3.scanDay(W, W.day + 3, {});
+    while (v.npcs.length > Math.floor(n0 * 0.5)) v.npcs.pop();
+    const e3 = L3.scanDay(W, W.day + 4, {}).filter((e) => e.vid === vi && e.type === 'POP_COLLAPSE');
+    ok(e3.length === 1, '㉟c 회복했다가 다시 빠지면 다시 난다(히스테리시스 밴드가 열렸다 닫힌다)');
+    // 아주 작은 마을은 판정에서 뺀다 — 세 명 마을의 한 명은 33% 지만 뉴스가 아니라 산수다
+    const vj = W.villages.findIndex((_, i) => i !== vi && W.villages[i].npcs.length > 0);
+    if (vj >= 0) {
+      const w = W.villages[vj];
+      while (w.npcs.length > L3.cfg.POP_MIN - 1) w.npcs.pop();
+      const e4 = L3.scanDay(W, W.day + 5, {}).filter((e) => e.vid === vj && e.type === 'POP_COLLAPSE');
+      ok(e4.length === 0, '㉟d 인구 POP_MIN 미만 마을은 판정하지 않는다', `${w.npcs.length}명 < ${L3.cfg.POP_MIN}`);
+    }
+  }
+
+  // ── ㊱ 약탈·행상 사망 — econ 누계의 **증분**. 두 유형은 갈라져 있어야 한다(문장도 도달도 다르다)
+  {
+    const W = makeWorld(30, 42);
+    const L4 = mkLedger(W);
+    const v = W.villages[0];
+    v.tradeStats = v.tradeStats || {};
+    const r0 = +v.tradeStats.caravansRaided || 0;
+    const none = L4.scanDay(W, W.day + 1, {}).filter((e) => e.type === 'CARAVAN_RAIDED');
+    ok(none.length === 0, '㊱a 전제: 아무 일 없으면 약탈 사건도 없다(랩엔 도적이 없다)');
+    v.tradeStats.caravansRaided = r0 + 1;
+    const e1 = L4.scanDay(W, W.day + 2, {}).filter((e) => e.type === 'CARAVAN_RAIDED');
+    ok(e1.length === 1 && e1[0].vid === 0, '㊱ 캐러밴이 털린 날 약탈 1건', e1[0] ? `mag=${e1[0].mag}` : '');
+    const e2 = L4.scanDay(W, W.day + 3, {}).filter((e) => e.type === 'CARAVAN_RAIDED');
+    ok(e2.length === 0, '㊱b 누계가 그대로면 또 나지 않는다(증분만 본다)');
+    v.tradeStats.tradersKilled = (+v.tradeStats.tradersKilled || 0) + 1;
+    const e3 = L4.scanDay(W, W.day + 4, {});
+    ok(e3.filter((e) => e.type === 'TRADER_KILLED').length === 1 && e3.filter((e) => e.type === 'CARAVAN_RAIDED').length === 0,
+      '㊱c 행상 사망은 **별도 유형**이다(물건을 잃은 것과 사람이 죽은 것은 같은 사건이 아니다)');
+    ok(Events.briefLine({ type: 'TRADER_KILLED' }) !== Events.briefLine({ type: 'CARAVAN_RAIDED' }),
+      '㊱d 두 유형의 촌장 말이 다르다');
+  }
+
+  // ── ㊲ 완공 — 장부는 건축을 모른다. 호스트가 넘겨 준 것만 난다(`caravanDelays` 와 같은 자리)
+  {
+    const W = makeWorld(30, 42);
+    const L5 = mkLedger(W);
+    const e0 = L5.scanDay(W, W.day + 1, {}).filter((e) => e.type === 'BUILT');
+    ok(e0.length === 0, '㊲a 전제: 호스트가 안 알려 주면 완공 사건은 없다');
+    const e1 = L5.scanDay(W, W.day + 2, { builds: [{ vid: 0, kind: 'granary' }, { vid: 1, kind: 'house' }] })
+      .filter((e) => e.type === 'BUILT');
+    ok(e1.length === 2, '㊲ 호스트가 넘긴 완공이 그대로 사건이 된다', `${e1.map((e) => e.item).join('·')}`);
+    ok(Events.briefLine(e1.find((e) => e.item === 'granary')) !== Events.briefLine(e1.find((e) => e.item === 'house')),
+      '㊲b 곳간과 움집의 말이 다르다(종류는 `item` 에 담겨 연표까지 살아 남는다)');
+  }
+
+  // ── ㊳ 첫 물건 — "처음"은 마을의 **이력**이다. 곳간만 봐선 모른다(먹어 없앤 것도 처음이 아니다)
+  {
+    const W = makeWorld(30, 7);
+    const L6 = mkLedger(W);
+    L6.scanDay(W, W.day + 1, {});                       // 곳간을 "가진 적 있음"으로 적립
+    const NEW = '__t50_probe_goods';
+    const to = W.villages[1].name;
+    const push = (day, extra) => W.tradeLog.push({ day, from: W.villages[0].name, to, sent: { res: NEW, amt: 5 }, bought: null, ...(extra || {}) });
+    push(W.day + 2);
+    const e1 = L6.scanDay(W, W.day + 2, {}).filter((e) => e.type === 'FIRST_GOODS');
+    ok(e1.length === 1 && e1[0].vid === 1 && e1[0].item === NEW, '㊳ 한 번도 없던 물건이 교역으로 들어온 날 1건', e1[0] ? Events.briefLine(e1[0]) : '');
+    push(W.day + 3);
+    const e2 = L6.scanDay(W, W.day + 3, {}).filter((e) => e.type === 'FIRST_GOODS');
+    ok(e2.length === 0, '㊳b 두 번째부터는 나지 않는다(처음은 한 번뿐이다)');
+    const NEW2 = '__t50_probe_goods2';
+    W.tradeLog.push({ day: W.day + 4, from: W.villages[0].name, to, sent: { res: NEW2, amt: 5 }, bought: null, rerouted: true });
+    W.tradeLog.push({ day: W.day + 4, from: W.villages[0].name, to, sent: { res: NEW2, amt: 5 }, bought: null, abandoned: true });
+    const e3 = L6.scanDay(W, W.day + 4, {}).filter((e) => e.type === 'FIRST_GOODS');
+    ok(e3.length === 0, '㊳c 재routing·빈손 귀환은 **도착이 아니다**(화물이 그 마을에 안 들어갔다)');
+    // ★재기동을 넘겨 기억한다 — 영속을 새로 만들지 않고 **연표**가 그 이력을 되돌린다
+    const rows = [];
+    for (const vid of L6.vids) for (const ev of L6.chronOf(vid)) rows.push({ ...ev });
+    const L7 = mkLedger(W);
+    ok(L7.loadChronicle(rows) === rows.length, '㊳d 전제: 연표를 그대로 되심었다', `${rows.length}행`);
+    W.tradeLog.push({ day: W.day + 5, from: W.villages[0].name, to, sent: { res: NEW, amt: 5 }, bought: null });
+    const e4 = L7.scanDay(W, W.day + 5, {}).filter((e) => e.type === 'FIRST_GOODS');
+    ok(e4.length === 0, '㊳ ★재기동해도 "처음"을 다시 말하지 않는다(연표가 이력이다 — 새 영속 0)');
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

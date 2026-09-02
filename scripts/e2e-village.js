@@ -348,8 +348,17 @@ async function waitHttp(url, tries = 900) {
       // ★고정 900ms → 폴링 5초 [2026-08-06 검증 세션]: econ day-100 경계 틱(~1초 스파이크)과 겹치면
       //   거부 알림이 900ms 를 넘겨 도착해 위양성 실패가 났다(2회 재현·코드 무변 구간).
       //   판정(한국어 거부 계약)은 그대로 — 기다리는 방식만 견고하게.
+      // ★★[T50 2026-09-02 수리] **폴링마다 다시 묻는다.**
+      //   종전 판은 **한 번만** 보내고 5초를 기다렸다. 그런데 두 번째 플레이어는 방금 접속한 참이라
+      //   그 한 번이 연결이 앉기 전에 나가면 **조용히 사라지고**, 5초 뒤 `(없음)`으로 빨개진다.
+      //   T50(사건 유형 2차) 뒤 서버 하루 경계가 미세하게 달라지자 이 자리가 재현성 있게 났다 —
+      //   그동안 서버는 내내 정상으로 틱했고(로그에 30게임일이 흐른다) 같은 하네스의 다른 알림
+      //   검사는 전부 통과했다. 즉 **제품 문제가 아니라 요청 한 번에 건 하네스의 가정**이었다.
+      //   ⇒ 재고 열람은 **읽기**라 여러 번 물어도 무해하다(거부는 거부로 돌아온다).
       let nt3 = [];
-      for (let i = 0; i < 25; i++) { await sleep(200);
+      for (let i = 0; i < 25; i++) {
+        await page2.evaluate((id) => window.__sendPrimary({ type: 'village_inventory', buildingId: id }), hall.id);
+        await sleep(200);
         nt3 = await page2.evaluate(() => (window.__notices || []).slice());
         if (nt3.length) break; }
       const inv2 = await page2.evaluate(() => window.__villageInv);

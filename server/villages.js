@@ -4072,6 +4072,7 @@ function _lifeCompleteHouse(vil, which) {   // 완공: 터 제거 + NPC 정본 6
     console.log(`[${state.zoneId}] 🏠 [${vil.name}] 플레이어 의뢰 움집 완공 @(${cx},${cy}) owner=${ownerId}`);
   } else {
     vil._site = null; vil._buildCrew = 0;
+    noteVillageBuilt(vil, 'house');   // ★[T50] 사건 장부 접점 1줄 — 완공은 마을의 "일"이다
     console.log(`[${state.zoneId}] 🏘️ [${vil.name}] 생활층 신축 움집 완공 @(${cx},${cy})`);
   }
 }
@@ -4240,6 +4241,7 @@ function _lifeCompleteGranary(vil, cx, cy) {
   }
   state.db.insertVillageBuilding({ village_id: vil.dbId, type: 'granary', cx, cy, floors: 1, data: null });
   vil._granList.push({ cx, cy });
+  noteVillageBuilt(vil, 'granary');   // ★[T50] 사건 장부 접점 1줄
   console.log(`[${state.zoneId}] 🏘️ [${vil.name}] 곳간 증설 완공 @(${cx},${cy}) — 총 ${vil._granList.length}동`);
 }
 
@@ -4728,10 +4730,21 @@ function _caravanDelaysToday() {
   return out;
 }
 
+// ★★[T50 2026-09-02] **완공** — 장부는 건축을 모른다. 다 지은 그 순간을 생활층이 여기 한 줄 남기고,
+//   하루 경계에 장부가 가져간다(`caravanDelays` 와 **같은 자리·같은 문법** — 호스트가 아는 것만 넘긴다).
+//   ⚠플레이어가 의뢰한 집(`isP`)은 여기 안 들어온다 — 그건 마을의 일이 아니라 **플레이어의 행위**이고,
+//     플레이어 행위의 연표 편입은 T18 회부 그대로 남아 있다.
+const _evBuilds = [];
+function noteVillageBuilt(vil, kind) {
+  if (!vil || vil.dbId == null) return;
+  if (_evBuilds.length < 256) _evBuilds.push({ vid: vil.dbId | 0, kind });
+}
+function _buildsToday() { const out = _evBuilds.slice(); _evBuilds.length = 0; return out; }
+
 function _scanEventsDaily() {
   if (!state.ledger) return;
   const t0 = Date.now();
-  const evs = state.ledger.scanDay(state.world, state.world.day, { caravanDelays: _caravanDelaysToday() });
+  const evs = state.ledger.scanDay(state.world, state.world.day, { caravanDelays: _caravanDelaysToday(), builds: _buildsToday() });
   // 의뢰 진척 저장은 납품 시점에 한다(여기선 게시/철회만 — onRequest 훅이 이미 했다).
   if (state.world.day % 30 === 0) {
     try { state.db.pruneVillageEvents(state.zoneId, state.world.day - state.ledger.cfg.KEEP_DAYS); } catch (e) {}
@@ -4840,7 +4853,11 @@ function villageChronicle(vid, px, py, year) {
     seasons: c.seasons.map((b) => ({
       season: b.season, seasonKo: b.seasonKo, start: b.start, days: b.days,
       more: b.more | 0, total: b.total | 0, mine: b.mine | 0, abroad: b.abroad | 0, abroadMore: b.abroadMore | 0,
-      items: b.items.map((x) => ({ line: x.line, day: x.day, heard: x.heard, from: x.from == null ? null : nameOf(x.from) })),
+      // ★[T50] `type`·`deed`·`sev` 를 함께 싣는다 — 게시판 소식(`_newsRows`)이 이미 `type` 을 싣는
+      //   것과 같은 이유다. 이게 없으면 화면은 "값이 크게 움직인 줄"과 "세계에서 일어난 일"을
+      //   **구분할 방법이 없다**(지금 클라는 안 쓰지만, 없으면 다시 유도해야 하고 그게 사본이다).
+      items: b.items.map((x) => ({ line: x.line, day: x.day, heard: x.heard, type: x.type,
+        deed: !!x.deed, sev: x.sev, from: x.from == null ? null : nameOf(x.from) })),
     })),
   };
 }
@@ -5092,6 +5109,25 @@ function __e2eForceShortage(vid) {
     payWith: best.sur, payStock: v.storage[best.sur], lockedRew: [...lockedRew] };
 }
 
+// ★★[T50 2026-09-02] 테스트 전용 — 세계의 "일" 픽스처.
+//   ⚠**사건을 만들지 않는다.** econ 이 스스로 쓰는 필드(`_weather`)를 세울 뿐이고, 사건은
+//     장부의 검출기가 그 상태를 보고 스스로 낸다. 그래야 e2e 가 배선을 재지, 지어낸 줄을 재지 않는다.
+//   ⚠econ 무수정 규약과 어긋나지 않는다: 이건 랩이 아니라 **하네스가 세계에 날씨를 부르는 손**이고,
+//     그 필드는 econ 이 매 틱 스스로 쓰고 지우는 자기 필드다(E2E_GIVE 게이트 밖에선 도달 불가).
+function __e2eForceDeed(vid, kind) {
+  if (!state.ledger) return { err: '장부 없음' };
+  const vil = state.byDbId && state.byDbId.get(vid | 0);
+  if (!vil || !vil.econ) return { err: '그런 마을 없음' };
+  const day = state.world.day | 0;
+  const KINDS = {
+    가뭄: { name: '🌵가뭄', mult: { fertility: 0.65, water: 0.7 } },
+    폭풍: { name: '⛈️폭풍', mult: { fertility: 0.85, water: 1.2, game: 0.75, wood: 0.7 } },
+  };
+  const k = KINDS[kind || '가뭄'] || KINDS['가뭄'];
+  vil.econ._weather = { name: k.name, mult: k.mult, untilDay: day + 10 };
+  return { ok: true, vid: vid | 0, name: vil.name, kind: k.name, day, until: day + 10 };
+}
+
 
 // ★★[달력 2026-08-30] econ 게임일 — **화면의 유일한 날짜 원천**.
 //   왜 이게 필요한가: 이 레포엔 시계가 둘이다 —
@@ -5159,7 +5195,7 @@ module.exports = {
   villageTradeBoard, villageTradeQuote, villageTradeExec,
   // ★[2026-08-26 낚시 v2] 어장 결손 접점 — zone.js 낚시 경로가 소비한다(econ 무수정)
   waterVillageAt, refreshFishSustain, refreshAllFishSustain,
-  __e2eForceShortage, __e2eDayFreeze,   // ★테스트 전용 — zone.js 가 E2E_GIVE 로 게이트한다(기본 부팅에선 도달 불가)
+  __e2eForceShortage, __e2eForceDeed, __e2eDayFreeze,   // ★테스트 전용 — zone.js 가 E2E_GIVE 로 게이트한다(기본 부팅에선 도달 불가)
   get eventLedger() { return state.ledger; },
   // 플레이어 구매/판매 경계계약(읽기전용 마을 품질 EMA — econ 무접촉)
   villageQualityAt,

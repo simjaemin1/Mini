@@ -47,6 +47,23 @@
 //   CARAVAN_LATE    mag = 지연일수 ÷ LATE_DAYS             → ≥1
 //   SEASON_CHANGE   mag = 1 (이상이 아니라 달력)
 //   ⇒ 심각도 정렬은 |ln(mag)| 하나로 전 타입을 견줄 수 있다(briefing 상위 N 선정).
+//
+// ★★제5 규약 [T50 2026-09-02]: **세계의 "일"에는 sev 눈금이 없다 — 축을 둘로 둔다.**
+//   2차 유형(아래)은 값의 이탈이 아니라 **일어난 일**이다. econ 이 스스로 세운 상태를 읽을 뿐이고,
+//   장부는 그 상태가 바뀌는 **에지**만 본다(각본 금지 — 사건을 내려고 세계에 심은 장치는 하나도 없다).
+//     HARVEST_BOON    mag = econ `_yearShock` 의 비옥도 배수(풍년 1.30)
+//     HARVEST_BLIGHT  mag = 같은 배수(흉년 0.70)
+//     WEATHER         mag = econ `_weather` 배수 중 **1 에서 가장 멀리 벗어난 것**(가뭄 0.65 …)
+//     POP_COLLAPSE    mag = 오늘 인구 ÷ 인구 자기평균(가격 이탈과 **같은 문법**)
+//     CARAVAN_RAIDED  mag = 그날 털린 캐러밴 수 ÷ RAID_N (CARAVAN_LATE 와 같은 문법)
+//     TRADER_KILLED   mag = 그날 돌아오지 못한 행상 수 ÷ RAID_N
+//     BUILT           mag = 1 (이상이 아니라 완공)
+//     FIRST_GOODS     mag = 1 (이상이 아니라 처음)
+//   ⚠**sev 로만 정렬하면 이 일곱은 영원히 안 보인다.** 흉년은 sev 0.36 이고 소금값 9배는 2.2 라,
+//     한 자로 재면 촌장은 흉년 대신 소금값을 말한다. 그게 T18 회부 A-1 의 내용이고 이 배치가 온 이유다.
+//   ⇒ 정렬·연표 자격은 **`heavier()` 하나**를 통한다: 일이 먼저 서고, 그 안에서 sev 로 견준다.
+//     근거는 발명이 아니라 실측이다 — 실지도 51마을 800일 3시드에서 값 유형 18,434건 대 일 유형 623건.
+//     **드문 것은 걸러낼 필요가 없고, 흔한 것은 걸러야 한다.** 그 비대칭이 두 축의 전부다.
 'use strict';
 
 const path = require('path');
@@ -123,13 +140,40 @@ const CFG = {
   //   자르는 기준은 **심각도**(그 계절에 가장 유난했던 것)이고, 잘린 수는 **반드시 보고한다**
   //   (조용한 절단 금지 — `commit` 의 `stats.capped` 와 같은 규약).
   CHRON_PER_SEASON: _num('EV_CHRON_PER_SEASON', 5),
+  // ★★[T50 2026-09-02] **인구 축** — 재고가 아니라 **사람**이 주는 것. `STOCK_SHORTAGE` 와 다른 축이다
+  //   (저건 곳간이 비는 일이고 이건 마을이 비는 일이다). 문법은 가격 이탈과 똑같다 —
+  //   자기평균(EMA) 대비 이탈 + 에지 + 히스테리시스(`HYST` 공유). 상수는 **하나도 베끼지 않았다**:
+  //   `bandits.js` 의 해체 판정(순감 5일·식량 3일치·잔존 55%)은 **도적단 결성의 조건**이고
+  //   이건 **촌장이 하는 말**이다. 두 값이 갈라져도 서로 무해해야 하므로 각자 자기 근거를 갖는다.
+  //   ★채택 근거: `scripts/ev-sources.js` ⓖ 스윕(실지도 51마을 800일 3시드).
+  POP_WIN: _num('EV_POP_WIN', 90),        // 인구 자기평균 창(한 계절 — 계절 이주·아사가 한 창에 담긴다)
+  POP_DOWN: _num('EV_POP_DOWN', 0.30),    // 자기평균 대비 −30% → 붕괴 위기 ★채택값
+  POP_MIN: _num('EV_POP_MIN', 5),         // 이 인원 미만은 판정 제외(3명 마을의 1명은 33% 다 — 뉴스가 아니라 산수)
+  RAID_N: _num('EV_RAID_N', 1),           // 약탈 mag 기준(CARAVAN_LATE 의 LATE_DAYS 와 같은 자리)
+  FIRST_MIN: _num('EV_FIRST_MIN', 1),     // 이만큼은 실제로 들어와야 "처음 들어왔다"고 한다
+  // ★★A/B 단일 손잡이 — `EV_DEEDS_OFF=1` 이면 **T50 이전 동작이 정확히 재현된다**
+  //   (일 유형이 하나도 안 나고, 검출기도 안 돌고, 정렬도 sev 하나로 돌아간다).
+  //   T7 의 `RUMOR_OFF` 와 같은 자리다 — 배치의 기여를 재려면 되돌릴 줄 하나가 있어야 한다.
+  DEEDS_OFF: _num('EV_DEEDS_OFF', 0),
 };
 // ★연표에 실을 사건 유형 — 기본은 **계절 전환을 뺀 전부**다.
 //   계절은 사건이 아니라 **연표의 축**이라(연·계절로 묶는 그 기준) 항목으로 또 적으면 겹친다.
 const CHRON_TYPES = String(process.env.EV_CHRON_TYPES || 'STOCK_SHORTAGE,STOCK_GLUT,PRICE_SPIKE,PRICE_DROP,CARAVAN_LATE')
   .split(',').map((x) => x.trim()).filter(Boolean);
 
-const TYPES = ['STOCK_SHORTAGE', 'STOCK_GLUT', 'PRICE_SPIKE', 'PRICE_DROP', 'CARAVAN_LATE', 'SEASON_CHANGE'];
+const TYPES = ['STOCK_SHORTAGE', 'STOCK_GLUT', 'PRICE_SPIKE', 'PRICE_DROP', 'CARAVAN_LATE', 'SEASON_CHANGE',
+  // ★[T50 2026-09-02] 2차 — 세계의 "일". 원천이 §0 에서 실증된 것만 여기 있다(원천 없는 후보는 회부).
+  'HARVEST_BOON', 'HARVEST_BLIGHT', 'WEATHER', 'POP_COLLAPSE', 'CARAVAN_RAIDED', 'TRADER_KILLED', 'BUILT', 'FIRST_GOODS'];
+// ★★[T50] **"일" 유형** — 값의 이탈이 아니라 일어난 일. 정렬에서 먼저 서고, 연표 sev 문턱을 면제받는다.
+//   면제의 근거는 **드묾**이다(실측 3.3%). 이 목록에 흔한 유형을 넣으면 그 순간 연표가 그것으로 덮인다.
+const DEED_TYPES = String(process.env.EV_DEED_TYPES
+  || 'HARVEST_BOON,HARVEST_BLIGHT,WEATHER,POP_COLLAPSE,CARAVAN_RAIDED,TRADER_KILLED,BUILT,FIRST_GOODS')
+  .split(',').map((x) => x.trim()).filter(Boolean);
+// ★이웃 마을에서 **여기까지 회자되는** 일. 날씨(573건 — 국지적이고 일주일이면 끝난다)·완공(남의 집)·
+//   첫 물건(남의 곳간)은 빠진다. 남는 것은 그 마을의 운과 사람과 길의 안부다.
+const DEED_FOREIGN = String(process.env.EV_DEED_FOREIGN
+  || 'HARVEST_BOON,HARVEST_BLIGHT,POP_COLLAPSE,CARAVAN_RAIDED,TRADER_KILLED')
+  .split(',').map((x) => x.trim()).filter(Boolean);
 
 // ★게시판이 다루는 품목은 **플레이어가 실제로 낼 수 있는 것**뿐이다.
 //   정본은 `villages.playerVillageDepositMap()`(플레이어 아이템 ↔ econ 재화 대응표) 하나다 —
@@ -304,6 +348,128 @@ function createLedger(opts) {
     return s.itemList;
   }
 
+  // ── ★★[T50 2026-09-02] "일" 검출기 ─────────────────────────────────────────
+  //   ★이 절의 제1 규약: **장부는 판정하지 않는다.** 아래 넷 중 셋은 econ 이 스스로 세운 상태
+  //     (`_yearShock`·`_weather`·`tradeStats`)의 **에지**를 읽을 뿐이고, 장부가 문턱을 가진 것은
+  //     인구 축 하나뿐이다. 그 하나도 새 문법이 아니라 **가격 이탈과 같은 문법**(자기평균 대비)이다.
+  //   ★제2 규약: **econ 을 한 글자도 안 건드린다.** 전부 읽기고, 검출기 상태는 `s`(장부 안)에 산다.
+  //   ★제3 규약: 랩(econ 단독)에서 **날 수 있는 것만** 여기서 난다. 도적 호스트가 없으면 약탈은
+  //     구조적으로 0 이고(CARAVAN_LATE 와 같은 자리), 생활층이 없으면 완공도 0 이다.
+  //     ⇒ 그래서 이 배치는 econ 기준선을 못 움직인다(관측은 개입이 아니다).
+  const _wxKey = (w) => (w ? (w.name + '@' + (w.untilDay | 0)) : null);
+  function deedPrime(s, v, day) {
+    s.ysK = _wxKey(v._yearShock && v._yearShock.untilDay >= day ? v._yearShock : null);
+    s.wxK = _wxKey(v._weather && v._weather.untilDay >= day ? v._weather : null);
+    const ts = v.tradeStats || {};
+    s.raidSeen = +ts.caravansRaided || 0;
+    s.killSeen = +ts.tradersKilled || 0;
+    const n = (v.npcs || []).length;
+    s.popEma = n >= cfg.POP_MIN ? n : null;
+    s.popLow = false;
+  }
+  // 이 마을이 **가진 적 있는** 재화 — "처음 들어왔다"의 기준.
+  //   ★영속을 새로 만들지 않는다: 현재 곳간 ∪ 연표에 남은 지난 `FIRST_GOODS`.
+  //     일 유형은 전부 연표에 남으므로(`isChronicle`), 재기동해도 `loadChronicle` 이 그 이력을 되돌린다.
+  //     ⇒ 파생 상태를 저장하지 않는다는 규약(도달일 미저장과 같은 자리)을 여기서도 지킨다.
+  function goodsOf(s, v) {
+    if (!s.goods) {
+      s.goods = new Set();
+      for (const r in (v.storage || {})) if (r.charCodeAt(0) !== 95 && (v.storage[r] || 0) > 0) s.goods.add(r);
+    }
+    // ⚠호스트는 `prime()` 뒤에 `loadChronicle()` 을 부른다(villages.js 부팅 순서) — 그래서 지난
+    //   이력은 프라이밍 때 아직 없다. 첫 조회 때 **한 번** 접어 넣는다(그 뒤로는 공짜).
+    if (!s.goodsChron) {
+      s.goodsChron = true;
+      for (const ev of s.chron) if (ev.type === 'FIRST_GOODS' && ev.item) s.goods.add(ev.item);
+    }
+    return s.goods;
+  }
+  function deeds(s, v, day, mine) {
+    if (cfg.DEEDS_OFF) return;              // ★A/B — T50 이전 동작(검출기 자체를 안 돌린다)
+    // ① 풍년·흉년 — econ 이 가을 첫날 마을마다 정하는 그 해의 운. mag 은 econ 이 **실제로 곱하는** 배수다.
+    const ys = (v._yearShock && v._yearShock.untilDay >= day) ? v._yearShock : null;
+    const ysK = _wxKey(ys);
+    if (ysK && ysK !== s.ysK) {
+      const m = +((ys.mult && ys.mult.fertility) || 1);
+      mine.push({ day, vid: s.vid, type: m >= 1 ? 'HARVEST_BOON' : 'HARVEST_BLIGHT', item: ys.name,
+        mag: +m.toFixed(4), meta: { until: ys.untilDay | 0 } });
+    }
+    s.ysK = ysK;
+    // ② 날씨 — 가뭄·폭풍·풍요·안개. mag = 배수 중 **1 에서 가장 멀리 벗어난 것**(그 날씨의 실제 크기).
+    //    ⚠`_weather.name` 은 econ 정본의 이름이다(랩 WEATHER_KINDS). 여기서 종류를 다시 정의하지 않는다.
+    const wx = (v._weather && v._weather.untilDay >= day) ? v._weather : null;
+    const wxK = _wxKey(wx);
+    if (wxK && wxK !== s.wxK) {
+      let m = 1, best = 0;
+      for (const k in (wx.mult || {})) {
+        const x = +wx.mult[k];
+        if (!isFinite(x) || !(x > 0)) continue;
+        const d = Math.abs(Math.log(x));
+        if (d > best) { best = d; m = x; }
+      }
+      // ★★종류는 **`item` 에** 담는다(`meta` 가 아니라). `village_chronicle` 표는 meta 를 안 담기
+      //   때문이다(T18 규약) — meta 에 두면 재기동 뒤 연표가 "날씨가 심상찮네"로 뭉개진다.
+      //   ★이 함정을 test-events ㉘(결정론)이 실제로 잡았다. 규약: **연표 문장은 vid·day·type·item·mag
+      //     만으로 만들어져야 한다.** `test-events ㉝` 이 전 유형에 대해 그걸 검사한다.
+      mine.push({ day, vid: s.vid, type: 'WEATHER', item: wx.name, mag: +m.toFixed(4),
+        meta: { until: wx.untilDay | 0 } });
+    }
+    s.wxK = wxK;
+    // ③ 인구 붕괴 위기 — **사람이 줄고 있다.**
+    const n = (v.npcs || []).length;
+    if (n >= cfg.POP_MIN) {
+      if (s.popEma == null) s.popEma = n;
+      else {
+        const ratio = n / s.popEma;
+        const on = 1 - cfg.POP_DOWN, off = 1 - cfg.POP_DOWN / cfg.HYST;
+        if (!s.popLow && ratio < on) {
+          s.popLow = true;
+          mine.push({ day, vid: s.vid, type: 'POP_COLLAPSE', item: null, mag: +ratio.toFixed(4),
+            meta: { pop: n, was: Math.round(s.popEma) } });
+        } else if (s.popLow && ratio > off) s.popLow = false;
+        s.popEma = s.popEma * (1 - 1 / cfg.POP_WIN) + n * (1 / cfg.POP_WIN);
+      }
+    } else { s.popEma = null; s.popLow = false; }
+    // ④ 캐러밴 약탈 — econ 이 도적 갱과의 실전투 끝에 올리는 누계의 **증분**.
+    //    ★행상 사망은 **별도 유형**이다. 같은 유형 안에서 `meta.dead` 로 갈랐더니 연표가 재기동
+    //      뒤에 그 갈래를 잃었다(meta 미영속) — 그리고 물건을 잃은 것과 사람이 죽은 것은
+    //      애초에 같은 사건이 아니다. 유형이 다르면 문장도 도달도 연표도 저절로 갈린다.
+    const ts = v.tradeStats || {};
+    const raided = +ts.caravansRaided || 0, killed = +ts.tradersKilled || 0;
+    if (s.raidSeen == null) { s.raidSeen = raided; s.killSeen = killed; }
+    else {
+      if (raided > s.raidSeen) {
+        mine.push({ day, vid: s.vid, type: 'CARAVAN_RAIDED', item: null,
+          mag: +((raided - s.raidSeen) / Math.max(1e-9, cfg.RAID_N)).toFixed(4), meta: { n: raided - s.raidSeen } });
+        s.raidSeen = raided;
+      }
+      if (killed > s.killSeen) {
+        mine.push({ day, vid: s.vid, type: 'TRADER_KILLED', item: null,
+          mag: +((killed - s.killSeen) / Math.max(1e-9, cfg.RAID_N)).toFixed(4), meta: { n: killed - s.killSeen } });
+        s.killSeen = killed;
+      }
+    }
+    // ⑤ 지금 곳간에 있는 것은 전부 **가진 적 있음**이다 — 스스로 캐거나 거둔 것은 "처음 들어온 물건"이
+    //    아니다. 이 적립이 없으면 자급하던 재화가 어쩌다 실려 온 날 "처음"이라고 적힌다.
+    {
+      const g = goodsOf(s, v), sto = v.storage || {};
+      for (const r in sto) if (r.charCodeAt(0) !== 95 && (sto[r] || 0) > 0) g.add(r);
+    }
+  }
+
+  // 마을 이름 → vid. 거래 기록이 이름으로 적히기 때문에 필요하다(사본이 아니라 색인이다).
+  const _nameVid = new Map();
+  function firstGoods(hit, res, amt, day, out) {
+    if (!hit || !res || !(+amt >= cfg.FIRST_MIN)) return;
+    const vid = hit.vid;
+    const s = st(vid);
+    const g = goodsOf(s, hit.v);
+    if (g.has(res)) return;
+    g.add(res);
+    commit(s, [{ day, vid, type: 'FIRST_GOODS', item: res, mag: 1,
+      meta: { amt: +(+amt).toFixed(2) } }], out);
+  }
+
   // ── 프라이밍: 지금 상태를 래치에 **소리 없이** 심는다 ───────────────────────
   //   왜: 서버 재기동 직후 첫 하루 경계에서 "이미 몇 달째 부족하던 품목" 전부가 한꺼번에
   //   터지면 그건 뉴스가 아니라 재기동 잡음이다. 시작 상태는 사건이 아니라 **배경**이다.
@@ -325,6 +491,9 @@ function createLedger(opts) {
         const p = +prices[r] || 0;
         if (p > 0) { d.pEma = p; d.pN = 1; }
       }
+      // ★[T50] 일 검출기도 같은 이유로 심는다 — 재기동 직후 "지난 가을부터 흉년이던 마을"
+      //   전부가 한꺼번에 터지면 그건 뉴스가 아니라 재기동 잡음이다(위 프라이밍 주석과 같은 규약).
+      deedPrime(s, v, day);
     });
     return byVid.size;
   }
@@ -339,6 +508,25 @@ function createLedger(opts) {
     const season = seasonOf(day);
     const seasonTurned = (lastSeason != null && season !== lastSeason);
     lastSeason = season;
+    // ★[T50] 거래 기록은 마을을 **이름**으로 적는다(econ 정본 필드) — 이름↔마을 색인이 필요하다.
+    //   마을 구성이 바뀔 때만 다시 짓는다(`itemsOf` 와 같은 절약 문법).
+    if (_nameVid.size !== world.villages.length) {
+      _nameVid.clear();
+      world.villages.forEach((v, i) => { const id = vidOf(v, i); if (id != null && v.name != null) _nameVid.set(v.name, { vid: id, v }); });
+    }
+    // ★★**교역 도착은 마을 루프보다 먼저 본다.** 순서가 계약이다: 도착한 물건은 이미 곳간에 들어와
+    //   있으므로(econ 틱이 먼저 돌았다), 곳간을 "가진 적 있음"으로 적립하기 **전에** 물어야
+    //   "처음 들어왔다"가 성립한다. 뒤로 미루면 이 유형은 영원히 0 건이 된다.
+    const TL = cfg.DEEDS_OFF ? null : world.tradeLog;
+    if (TL && TL.length) {
+      for (let i = TL.length - 1; i >= 0; i--) {
+        const e = TL[i];
+        if ((e.day | 0) !== (day | 0)) { if ((e.day | 0) < (day | 0)) break; else continue; }
+        if (e.rerouted || e.abandoned) continue;   // 재routing·빈손 귀환은 **도착이 아니다**
+        if (e.sent) firstGoods(_nameVid.get(e.to), e.sent.res, e.sent.amt, day, out);
+        if (e.bought) firstGoods(_nameVid.get(e.from), e.bought.res, e.bought.amt, day, out);   // 되사 온 물건도 도착이다
+      }
+    }
 
     world.villages.forEach((v, i) => {
       const vid = vidOf(v, i);
@@ -398,6 +586,9 @@ function createLedger(opts) {
       // ⑤ 계절 전환 — 전환일에 마을당 1건(촌장 인사의 근거)
       if (seasonTurned) mine.push({ day, vid, type: 'SEASON_CHANGE', item: null, mag: 1, meta: { season } });
 
+      // ⑥ ★[T50] 세계의 "일" — 풍흉·날씨·인구·약탈. econ 상태의 에지만 읽는다(위 절 참조).
+      deeds(s, v, day, mine);
+
       commit(s, mine, out);
     });
 
@@ -410,6 +601,13 @@ function createLedger(opts) {
       const s = st(cd.vid);
       commit(s, [{ day, vid: cd.vid, type: 'CARAVAN_LATE', item: null, mag: +(days / cfg.LATE_DAYS).toFixed(4),
         meta: { days, from: cd.from || null, to: cd.to || null } }], out);
+    }
+
+    // ⑨ ★[T50] **완공** — 실체 층(server/villages.js 생활층)이 넘겨 준 것만. 랩엔 집도 곳간도 없다.
+    //    장부는 건축을 모른다 — 다 지은 그 순간을 호스트가 알려 줄 뿐이다(caravanDelays 와 같은 자리).
+    for (const b of ((!cfg.DEEDS_OFF && extra && extra.builds) || [])) {
+      if (b == null || b.vid == null) continue;
+      commit(st(b.vid), [{ day, vid: b.vid | 0, type: 'BUILT', item: b.kind || 'house', mag: 1, meta: null }], out);
     }
 
     // ⑦ 의뢰 — 부족 **래치**가 서 있으면 걸려 있고, 회복하면 거둔다(사건 에지가 아니라 상태)
@@ -451,9 +649,19 @@ function createLedger(opts) {
     while (s.ring.length && s.ring[0].day < cut) s.ring.shift();
   }
   const sev = (ev) => Math.abs(Math.log(Math.max(1e-6, ev.mag || 1)));
-  // ★[T18] 연표에 남길 만큼 큰 사건인가 — 유형 화이트리스트 ∩ 심각도 문턱.
+  // ★★[T50 2026-09-02] **사건의 무게 — 축이 둘이다.**
+  //   `sev` 는 "값이 평소에서 얼마나 벗어났나"를 잰다. 값 유형끼리는 그걸로 견줄 수 있다.
+  //   그런데 **일 유형에는 그 눈금이 없다** — 흉년은 비옥도 0.7배(sev 0.36)고 소금값 급등은 9배(2.2)라,
+  //   한 자로 재면 촌장은 흉년 대신 소금값을 말한다. 그게 T18 회부 A-1 이 적은 결함이다.
+  //   ⇒ 축을 섞지 않는다: **일이 먼저 서고, 그 안에서 sev 로 견준다.** 브리핑·게시판·연표가
+  //     전부 이 비교자 하나를 쓴다(정렬 사본을 만들면 그날 촌장과 연표가 다른 말을 한다).
+  const isDeed = (ev) => !cfg.DEEDS_OFF && DEED_TYPES.indexOf(ev.type) >= 0;
+  const heavier = (a, b) => ((isDeed(b) ? 1 : 0) - (isDeed(a) ? 1 : 0)) || (sev(b) - sev(a));
+  // ★[T18/T50] 연표에 남길 만큼 큰 사건인가 — **일이면 문턱 없이**, 값이면 화이트리스트 ∩ 심각도 문턱.
   //   `SEASON_CHANGE` 는 기본 목록에 없다: 계절은 사건이 아니라 **연표의 축**이다.
-  const isChronicle = (ev) => CHRON_TYPES.indexOf(ev.type) >= 0 && sev(ev) >= cfg.CHRON_SEV;
+  //   일 유형에 문턱을 안 두는 근거는 **실측된 드묾**이다(값 18,434건 대 일 623건 · 800일 51마을 3시드).
+  //   ⚠이 목록(`EV_DEED_TYPES`)에 흔한 유형을 넣으면 그 순간 연표가 그것으로 덮인다.
+  const isChronicle = (ev) => isDeed(ev) || (CHRON_TYPES.indexOf(ev.type) >= 0 && sev(ev) >= cfg.CHRON_SEV);
 
   // ── 게시판 의뢰 ────────────────────────────────────────────────────────────
   // ★사건은 **에지**지만 의뢰는 **상태**다 — 이 구분이 이 층의 핵심이다.
@@ -656,7 +864,7 @@ function createLedger(opts) {
         out.push({ ev, heard });
       }
     }
-    out.sort((a, b) => (b.heard - a.heard) || (sev(b.ev) - sev(a.ev)));
+    out.sort((a, b) => (b.heard - a.heard) || heavier(a.ev, b.ev));
     return { total: out.length, rows: out.slice(0, k) };
   }
   // ── ★★[T18 2026-09-01] 연대기 — 마을 연표 ──────────────────────────────────
@@ -714,9 +922,11 @@ function createLedger(opts) {
           if (!b) continue;
           const foreign = (ev.vid !== vid);
           const sv = sev(ev);
-          if (foreign && sv < cfg.CHRON_FOREIGN_SEV) continue;   // ★이웃 소식은 더 큰 일이어야 여기까지 온다
+          // ★이웃 소식은 더 큰 일이어야 여기까지 온다. **일 유형은 sev 가 아니라 목록으로 가른다** —
+          //   날씨(573건 · 국지적 · 일주일)와 완공·첫 물건은 남의 마을 것까지 회자되지 않는다.
+          if (foreign && (isDeed(ev) ? DEED_FOREIGN.indexOf(ev.type) < 0 : sv < cfg.CHRON_FOREIGN_SEV)) continue;
           b.items.push({ line: briefLine(ev), type: ev.type, item: ev.item, day: ev.day, heard,
-            from: foreign ? ev.vid : null, sev: +sv.toFixed(3) });
+            from: foreign ? ev.vid : null, sev: +sv.toFixed(3), deed: isDeed(ev) });
         }
       }
       for (const b of rows) {
@@ -727,8 +937,10 @@ function createLedger(opts) {
         for (const it of b.items) (it.from == null ? mine : abroad).push(it);
         b.mine = mine.length; b.abroad = abroad.length;
         b.total = b.items.length;
-        const bySev = (x, y) => (y.sev - x.sev) || (x.heard - y.heard);
-        mine.sort(bySev); abroad.sort(bySev);
+        // ★[T50] 자르는 기준이 sev 하나였다 — 그래서 연표가 "값이 크게 움직인 해"로만 읽혔다.
+        //   이제 **일이 먼저 자리를 잡고**, 남은 칸을 값이 심각도 순으로 채운다(같은 비교자 `heavier`).
+        const byWeight = (x, y) => ((y.deed ? 1 : 0) - (x.deed ? 1 : 0)) || (y.sev - x.sev) || (x.heard - y.heard);
+        mine.sort(byWeight); abroad.sort(byWeight);
         const keepMine = cfg.CHRON_PER_SEASON > 0 ? mine.slice(0, cfg.CHRON_PER_SEASON) : mine;
         const keepAbroad = cfg.CHRON_FOREIGN > 0 ? abroad.slice(0, cfg.CHRON_FOREIGN) : abroad;
         b.items = keepMine.concat(keepAbroad);
@@ -832,7 +1044,11 @@ function createLedger(opts) {
     visibleEvents, visibleTo, heardDayOf, delayTo, returnBrief,
     // ★[T18] 연대기 — 같은 도달표 위에 선다(사본 0).
     chronicle, chronicleYears, loadChronicle, chronOf, isChronicle,
+    // ★[T50] 사건의 무게 — 하네스·계측기가 **같은 판정**을 쓰라고 내준다(사본 금지).
+    isDeed, heavier, sevOf: sev,
     get chronTypes() { return CHRON_TYPES.slice(); },
+    get deedTypes() { return DEED_TYPES.slice(); },
+    get deedForeign() { return DEED_FOREIGN.slice(); },
     get today() { return _lastDay; },
     rumorInvalidate: () => { if (RUMOR) RUMOR.invalidate(); },
     get rumorStats() { return RUMOR ? RUMOR.stats : null; },
@@ -866,6 +1082,25 @@ const LINES = {
         : s === 'autumn' ? '가을일세. 거둘 것이 많아.'
           : '겨울이 왔네. 땔감은 넉넉한가.';
   },
+  // ── ★[T50 2026-09-02] 세계의 "일" ──────────────────────────────────────────
+  //   ⚠수치를 읊지 않는다(§3.2 대시보드 톤 금지). "비옥도 0.7배"가 아니라 "소출이 시원찮다"다.
+  HARVEST_BOON: () => '올해는 땅이 넉넉하이. 거둘 것이 많아.',
+  HARVEST_BLIGHT: () => '올해는 소출이 영 시원찮아. 겨울이 걱정일세.',
+  // 종류는 **econ 이 붙인 이름**(`_weather.name`)에서 온다 — 여기서 날씨를 다시 정의하지 않는다.
+  //   ⚠econ 이 새 날씨를 더하면 아래 폴백이 받는다(빈 문장이 나가지 않는다). 계약 검사는 test-events ㉜.
+  WEATHER: (ev) => {
+    const k = String(ev.item || '');
+    if (k.indexOf('가뭄') >= 0) return '비가 통 안 오는군. 밭이 마르네.';
+    if (k.indexOf('폭풍') >= 0) return '바람이 사납네. 지붕을 단단히 매게.';
+    if (k.indexOf('풍요') >= 0) return '요즘은 들에 나가면 손이 바쁘이.';
+    if (k.indexOf('안개') >= 0) return '안개가 짙어. 사냥 나가긴 어렵겠군.';
+    return '날씨가 심상찮네.';
+  },
+  POP_COLLAPSE: () => '사람이 자꾸 줄어. 이러다 마을이 비겠어.',
+  CARAVAN_RAIDED: () => '행상이 길에서 털렸다는군. 한동안 길이 사납겠어.',
+  TRADER_KILLED: () => '고갯길에서 행상이 변을 당했네. 끝내 돌아오지 못했어.',
+  BUILT: (ev) => ((ev.item === 'granary') ? '곳간을 한 채 더 올렸네.' : '새 움집이 하나 섰네.'),
+  FIRST_GOODS: (ev) => { const n = koRes(ev.item); return `${n}${josa(n, '이', '가')} 이 마을에 처음 들어왔어.`; },
 };
 function briefLine(ev) {
   const f = LINES[ev.type];
@@ -939,6 +1174,6 @@ function deliverToVillage(a) {
     rew: rewPaid, rewRes, rewItem: rewPlayerItem, done: c.done, req: c.req };
 }
 
-module.exports = { createLedger, CFG, TYPES, briefLine, boardLine, koRes, josa, seasonOf, KO_SEASON,
+module.exports = { createLedger, CFG, TYPES, DEED_TYPES, DEED_FOREIGN, briefLine, boardLine, koRes, josa, seasonOf, KO_SEASON,
   yearDaysOf, seasonStartOf, calendarOf,
   buildDeliverable, deliverToVillage, pricesOf, pricesFresh, payableQty };

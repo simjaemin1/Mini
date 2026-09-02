@@ -94,7 +94,13 @@ async function waitHttp(url, tries = 900) {
     const btn = await page.$('button:has-text("월드 입장")');
     if (btn) await btn.click();
     for (let i = 0; i < 60 && !(await page.evaluate(() => !!(window.__getMyAbs && window.__getMyAbs()))); i++) await sleep(500);
-    await sleep(2000);
+    // ★★[T50 2026-09-02 수리] 좌표를 받았다고 **마을을 아는 것은 아니다.**
+    //   `warpTo` 는 `__evDbg`(근접 틱이 세운다)를 보는데, 그건 청크·마을 데이터가 앉은 뒤에 생긴다.
+    //   단독 실행에선 2초면 앉지만 **러너 아래(앞 하네스 뒤 · 부하)에선 모자랐다** —
+    //   ① 워프가 30초를 다 쓰고 실패했고, 그 뒤 ③ 넷이 줄줄이 빨개졌다(제품은 옳고 하네스가 성급했다).
+    //   ⇒ 고정 sleep 대신 **근접 틱이 실제로 돌기 시작할 때까지 기다린다**(e2e-chronicle ⑦d 와 같은 교훈).
+    for (let i = 0; i < 60 && !(await page.evaluate(() => !!window.__evDbg)); i++) await sleep(500);
+    await sleep(1500);
   }
   await enter();
   ok(await page.evaluate(() => !!(window.__getMyAbs && window.__getMyAbs())), '존 입장 — 내 좌표 수신');
@@ -190,7 +196,15 @@ async function waitHttp(url, tries = 900) {
   const mineItems = [].concat(...((cA && cA.seasons) || []).map((b) => b.items)).filter((x) => x.from == null);
   ok(mineItems.length > 0, '④b 전제: 우리 마을 항목이 실제로 있다(자명 통과 방지)', `${mineItems.length}줄`);
   ok(mineItems.every((x) => x.heard === x.day), '④c 우리 마을 일은 도달 지연이 0이다(직접 목격)');
-  const evA = mineItems.slice().sort((a, b) => b.day - a.day)[0];
+  // ★★[T50 2026-09-02] **넘어올 수 있는 줄을 고른다.**
+  //   T50 부터 이웃 연표에는 아무거나 실리지 않는다 — 날씨·완공·첫 물건은 `EV_DEED_FOREIGN` 밖이라
+  //   **설계상 절대 안 온다**(국지적이고 짧은 일은 남의 마을 연표에 적을 것이 못 된다).
+  //   그걸 골라 놓고 "며칠 뒤 나타난다"를 기다리면 **제품이 옳은데 하네스가 150회 폴링 끝에 빨개진다**
+  //   (실제로 그렇게 났다). ⇒ 여기서는 **값 유형**(넘어오는 줄)을 고른다.
+  //   일 유형이 이웃 연표에서 걸러진다는 사실 자체는 `test-events ㉞e` 가 따로 검사한다.
+  const crossable = mineItems.filter((x) => !x.deed);
+  ok(crossable.length > 0, '④d 전제: 이웃까지 넘어갈 수 있는 줄(값 유형)이 있다', `${crossable.length}/${mineItems.length}줄`);
+  const evA = crossable.slice().sort((a, b) => b.day - a.day)[0];
   console.log(`    A 최신 항목: day${evA.day} · ${evA.line}`);
 
   // ── ⑤ 날을 얼리고 B 로 — **아직 B 연표엔 없다**
@@ -299,6 +313,37 @@ async function waitHttp(url, tries = 900) {
   ok((chronRows.n | 0) > 0, '⑩ 연대기 표(`village_chronicle`)에 행이 실제로 쌓인다(prune 없음)',
     `연표 ${chronRows.n}행 · 사건 ${evRows.n}행`);
   ok((chronRows.n | 0) <= (evRows.n | 0) + 1000, '⑩b 연표 행은 사건보다 많지 않다(사건 하나당 한 행)');
+
+  // ── ★[T50 2026-09-02] ⑪ 세계의 "일"이 **자동으로** 연표까지 흐른다 ────────────────────
+  //   이 배치가 한 일은 유형을 더한 것뿐이다 — 연표도 소문도 브리핑도 **한 줄도 안 고쳤다**.
+  //   그 주장이 참인지는 새 유형 하나를 세계에 세워 보면 안다(사건을 심는 게 아니라 **날씨**를 부른다).
+  {
+    await freeze(false);
+    ok(await warpTo(B, 30), '⑪a B 마을로(일을 낼 자리)');
+    const dayNow = await gameDay();
+    await page.evaluate((vid) => window.__sendPrimary({ type: '__e2e_village_deed', vid, kind: '가뭄' }), B.id);
+    await sleep(1500);
+    let deedRow = null, tries = 0;
+    for (; tries < 60 && !deedRow; tries++) {
+      const c = await askChron(B.id, null);
+      const all = [].concat(...((c && c.seasons) || []).map((b) => b.items));
+      deedRow = all.find((x) => x.type === 'WEATHER' && x.from == null && x.day >= dayNow);
+      if (!deedRow) await sleep(500);
+    }
+    ok(!!deedRow, '⑪ 세계에 가뭄이 들면 **연표에 저절로 적힌다**(유형만 늘렸지 연표는 안 고쳤다)',
+      deedRow ? `day${deedRow.day} · ${deedRow.line}` : `(${tries}회 폴링 뒤에도 없음)`);
+    if (deedRow) {
+      ok(/비가 통 안 오는군/.test(deedRow.line), '⑪b 촌장 말투로 적힌다(수치를 읊지 않는다)', JSON.stringify(deedRow.line));
+      ok(deedRow.deed === true, '⑪c 서버가 그 줄을 **"일"로 표시해** 보낸다(무게 축이 화면까지 온다)');
+      ok(deedRow.heard === deedRow.day, '⑪d 우리 마을 일이라 도달 지연이 0이다');
+      // ★이 줄은 **기본 문턱이었으면 안 실렸다** — 그래서 일 유형은 sev 문턱을 면제받는다.
+      ok(deedRow.sev < 2.2, '⑪e ★이 줄의 sev 는 값 문턱(2.2)에 한참 못 미친다 — 문턱 면제가 없으면 연표에 못 온다',
+        `sev=${deedRow.sev}`);
+      const p4 = await openChron();
+      ok(/비가 통 안 오는군/.test(p4.body), '⑪f 실화면에 그 문장이 실제로 그려진다', JSON.stringify(p4.body.slice(0, 60)));
+      await snap('ch-05-deed');
+    }
+  }
 
   const fatal = errs.filter((e) => !/Failed to load resource/.test(e));
   ok(fatal.length === 0, `클라 JS 에러 0 ${fatal.length ? '— ' + fatal.slice(0, 3).join(' / ') : ''}`);

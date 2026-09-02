@@ -126,15 +126,19 @@ console.log(`\nⓐ 기준선 — 인구 ${pop} · 소멸 ${dead}/${ever} · 무�
 if (!LS.length) process.exit(0);
 const live = world.villages.filter((v) => (v.npcs || []).length > 0).length;
 console.log(`\nⓑ 사건 밀도 (인구있는 마을 ${live}곳 × ${DAYS}일)`);
-console.log('  ' + '문턱'.padEnd(26) + '건수'.padStart(8) + '마을당 몇 일에 1건'.padStart(20) + '  타입 분포(부족/글럿/급등/급락/계절)' + '   ms/일');
+console.log('  ' + '문턱'.padEnd(26) + '건수'.padStart(8) + '마을당 몇 일에 1건'.padStart(20) + '  값 유형(부족/글럿/급등/급락/계절)' + '   일 유형   ms/일');
+// ★[T50] 유형 이름을 여기 다시 적지 않는다 — 정본 목록(`Events.DEED_TYPES`)으로 가른다.
+const DEED = new Set(Events.DEED_TYPES);
 for (const x of LS) {
   const S = x.L.stats;
   const perVD = S.emitted / Math.max(1, live * S.days);
   const daysPer = 1 / Math.max(1e-9, perVD);
   const B = S.byType;
+  let dN = 0; for (const t of Events.TYPES) if (DEED.has(t)) dN += B[t] || 0;
   const hit = (daysPer >= 2 && daysPer <= 3) ? ' ★목표' : '';
   console.log('  ' + x.tag.padEnd(24) + String(S.emitted).padStart(8) + (daysPer.toFixed(2) + '일').padStart(18)
     + `   ${B.STOCK_SHORTAGE}/${B.STOCK_GLUT}/${B.PRICE_SPIKE}/${B.PRICE_DROP}/${B.SEASON_CHANGE}`
+    + `   ${String(dN).padStart(5)}(${(dN / Math.max(1, S.emitted) * 100).toFixed(1)}%)`
     + `   ${(S.scanMs / Math.max(1, S.days)).toFixed(3)}` + hit);
 }
 // 편중 — 평균 뒤에 숨은 분포(한 마을이 다 내고 나머지는 조용한 게 최악)
@@ -148,8 +152,9 @@ for (const x of LS) {
 //   등급 필드는 없다(§0-ⓓ). 있는 건 `sev = |ln(관측÷기준)|` 하나뿐이라 거기에 선을 긋는다.
 //   읽을 만한 연표의 기준: **마을 한 해에 계절당 몇 줄**(4계절 × 몇 줄 = 한 해 한 화면).
 if (CHRON_RAW.length) {
-  const CH_TYPES = new Set(['STOCK_SHORTAGE', 'STOCK_GLUT', 'PRICE_SPIKE', 'PRICE_DROP', 'CARAVAN_LATE']);
-  const cand = CHRON_RAW.filter((r) => CH_TYPES.has(r.t));
+  // ★[T50] 이 스윕은 **값 유형**에만 뜻이 있다 — 일 유형은 sev 문턱을 면제받는다(드묾이 곧 등급).
+  const CH_TYPES = new Set(CHRON ? CHRON.chronTypes : []);
+  const cand = CHRON_RAW.filter((r) => CH_TYPES.has(r.t) && !DEED.has(r.t));
   const years = DAYS / 365;
   console.log(`\nⓔ 연표 문턱 스윕 (계절 전환 제외 후보 ${cand.length}건 · ${live}마을 × ${years.toFixed(2)}해)`);
   console.log('  ' + '문턱 |ln(mag)|'.padEnd(16) + '연표 행'.padStart(9) + '마을·해당'.padStart(11) + '마을·계절당'.padStart(12) + '  타입 분포(부족/글럿/급등/급락)');
@@ -187,6 +192,17 @@ if (CHRON) {
     + ` · 두 번째 ${ms2}ms(캐시)`);
   console.log(`  화면에 뜨는 줄 ${shown} · 우리 마을 잘림 ${cut}("그 밖에 n건") · 이웃 후보 잘림 ${cutAbroad}(화면에 안 센다)`);
   console.log(`  칸당 평균 — 뜨는 줄 ${(shown / Math.max(1, cells)).toFixed(1)} · "그 밖에" ${(cut / Math.max(1, cells)).toFixed(1)}건`);
+  // ── ★[T50] **"일" 대 "값"** — 이 배치가 고치러 온 바로 그 비율 ────────────────────────
+  //   T18 회부 A-1: *"연대기가 값이 크게 움직인 해로만 읽힌다."* 그 문장이 참인지 거짓인지는
+  //   화면에 실제로 뜨는 줄에서만 알 수 있다(보관 행이 아니라). 그래서 **뜨는 줄**을 센다.
+  let dRow = 0, vRow = 0, dKept = 0, dCand = 0;
+  for (const vid of CHRON.vids) for (let y = 0; y < yrs; y++) {
+    for (const b of CHRON.chronicle(vid, { year: y }).seasons) for (const it of b.items) (it.deed ? dRow++ : vRow++);
+  }
+  for (const vid of CHRON.vids) for (const ev of CHRON.chronOf(vid)) if (CHRON.isDeed(ev)) dCand++;
+  dKept = dRow;
+  console.log(`  ★일 대 값 — 화면에 뜨는 줄 ${dRow + vRow}줄 중 **일 ${dRow}줄(${(dRow / Math.max(1, dRow + vRow) * 100).toFixed(1)}%)** · 값 ${vRow}줄`);
+  console.log(`     (보관된 일 사건 ${dCand}건 중 ${dKept}줄이 화면까지 왔다 — 일은 드물어서 상한에 거의 안 걸린다)`);
 }
 
 console.log(`\nⓓ 의뢰(플레이어 없음 → 납품 0 · 게시/철회만)`);
