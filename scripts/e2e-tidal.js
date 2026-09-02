@@ -8,6 +8,9 @@
 //     · 물이 차 있으면 **안 나오는가**(같은 자리 · 대조군)
 //     · 그 굴이 **모닥불의 조개탕**으로 이어지는가(요리 인스턴스가 손에 오는가)
 //     · 자산 404 가 안 나는가(새 인벤 품목의 아이콘 계약)
+//   ★★[T54 2026-09-02] 둘이 더 붙었다:
+//     · **강가에서 병에 물을 담고 들판에서 마시면 빈 병이 돌아오는가**(병 개수 보존 — 실화면)
+//     · **굴을 건조대에 걸어 건굴을 받고 그걸 먹을 수 있는가**(주입한 효과가 화면까지 닿는가)
 //   ⇒ 하나라도 안 되면 그건 "서버는 맞는데 화면에서 도달 못 하는 층"이고, 보고에 그렇게 적는다.
 //
 // ★★시간 모드: **물때를 못 박는다**(`TIDE_FREEZE_MS`). 안 그러면 "돌린 순간이 썰물일 때만
@@ -55,6 +58,9 @@ async function waitHttp(u, n = 900) { for (let i = 0; i < n; i++) { try { const 
   const WOX = Z.worldOffsetX || 0, WOY = Z.worldOffsetY || 0;
   const OPEN_MS = 0;                                   // 간조(갯벌이 드러난 순간)
   const FLOOD_MS = Math.round(Tidal.CFG.PERIOD_MS / 2); // 만조
+  // ★[T54] 말리기는 **사흘**(실시간 72분)이라 실클라로 못 기다린다 — 이미 있는 env 손잡이를 줄인다.
+  //   ⚠값만 줄인다: 경로도 문법도 운영과 **똑같은 것**을 탄다(사본 하네스 금지).
+  const DRY_DAYS = '0.004';                            // 0.004 게임일 ≈ 5.8초
 
   const OCEAN = Object.values(ZONES).filter((z) => z.isOcean)
     .map((z) => ({ x0: z.worldOffsetX, y0: z.worldOffsetY, x1: z.worldOffsetX + z.zoneWidth, y1: z.worldOffsetY + z.zoneHeight }));
@@ -86,7 +92,7 @@ async function waitHttp(u, n = 900) { for (let i = 0; i < n; i++) { try { const 
   boot('central', 'central.js', { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
   boot('zone', 'zone.js', { PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
     VILLAGE_MAX: '2', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', ENABLE_WILDLIFE: '0', E2E_GIVE: '1',
-    TIDE_FREEZE_MS: String(OPEN_MS), FORAGE_COOLDOWN_MS: '0' });
+    TIDE_FREEZE_MS: String(OPEN_MS), FORAGE_COOLDOWN_MS: '0', PRESERVE_DAYS_DRY: DRY_DAYS });
   ok(await waitHttp(`http://localhost:${CPORT}/zones`), 'central 기동');
   ok(await waitHttp(`http://localhost:${ZPORT}/health`), 'zone 기동');
 
@@ -151,7 +157,7 @@ async function waitHttp(u, n = 900) { for (let i = 0; i < n; i++) { try { const 
   await sleep(1500);
   boot('zone', 'zone.js', { PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
     VILLAGE_MAX: '2', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', ENABLE_WILDLIFE: '0', E2E_GIVE: '1',
-    TIDE_FREEZE_MS: String(FLOOD_MS), FORAGE_COOLDOWN_MS: '0' });
+    TIDE_FREEZE_MS: String(FLOOD_MS), FORAGE_COOLDOWN_MS: '0', PRESERVE_DAYS_DRY: DRY_DAYS });
   ok(await waitHttp(`http://localhost:${ZPORT}/health`), '만조로 zone 재기동');
   await page.reload({ waitUntil: 'domcontentloaded' });
   await sleep(2500);
@@ -214,6 +220,107 @@ async function waitHttp(u, n = 900) { for (let i = 0; i < n; i++) { try { const 
   ok(/내 요리/.test(ctxt) && /조개탕/.test(ctxt), '★★③ 화면의 **"내 요리"** 에 조개탕이 섰다(신선도·품질 인스턴스)',
      (ctxt.match(/내 요리[^\n]{0,60}/) || ctxt.match(/[^\n]{0,20}조개탕[^\n]{0,26}/) || [''])[0].trim());
   await snap('td-03-stew');
+
+  // ══ ⑤ 민물 — 강가에서 병에 담고, 들판에서 마시고, 빈 병이 남는다 [T54] ══════
+  console.log('\n⑤ 민물 — 병에 담아 들고 다닌다');
+  {
+    // 자리는 **찾는다, 고르지 않는다** — 강·호수(바다 아님) 옆의 설 수 있는 뭍 한 칸.
+    let river = null;
+    for (let y = 20000; y < 120000 && !river; y += 64) {
+      for (let x = 8000; x < 62000; x += 64) {
+        if (blocked(x, y)) continue;                     // 내가 설 자리는 뭍이어야 한다
+        let near = false;
+        for (const [dx, dy] of [[32, 0], [-32, 0], [0, 32], [0, -32]]) {
+          const wx = x + dx, wy = y + dy;
+          if (T.isWaterCellLocal('hanbando', wx, wy) && !isSea(wx, wy)) { near = true; break; }
+        }
+        if (!near) continue;
+        let room = true;
+        for (let dx = -64; dx <= 64 && room; dx += 32) if (blocked(x + dx, y)) room = false;
+        if (room) { river = { x, y }; break; }
+      }
+    }
+    pre(!!river, '★실서버 술어로 **찾은** 민물가(강·호수 옆의 뭍)', JSON.stringify(river));
+    if (river) {
+      await warp(river.x, river.y);
+      pre(!!(await me()), '물가에 섰다');
+      // ★★★**입력 경로 도달을 먼저 센다**(족보 (94)) — 갈증이 차 있어야 채수 갈래로 내려간다.
+      //   T52 가 물린 자리가 정확히 이것이다: 표에 갈래를 넣어도 입력이 못 닿으면 없는 기능이다.
+      await give({ items: { water_bottle: 3 } });
+      const w0 = await inv();
+      pre((w0.water_bottle || 0) >= 3, '★자명 통과 금지 — 빈 병 셋을 들었고 물은 아직 없다',
+        `병 ${w0.water_bottle || 0} · 물 ${w0.fresh_water || 0}`);
+      for (let i = 0; i < 8; i++) { await send({ type: 'gather' }); await sleep(350); }
+      await sleep(1200);
+      const w1 = await inv();
+      ok((w1.fresh_water || 0) > 0, '★★★⑤ **강가에서 병에 물을 담았다** — 물을 들고 다닐 수 있게 됐다',
+        `병 ${w1.water_bottle || 0} · 물 ${w1.fresh_water || 0}`);
+      ok((w1.water_bottle || 0) + (w1.fresh_water || 0) === (w0.water_bottle || 0),
+        '★★★⑤ **개수가 보존된다** — 병이 사라진 게 아니라 물이 됐다',
+        `${w0.water_bottle || 0} → 병 ${w1.water_bottle || 0} + 물 ${w1.fresh_water || 0}`);
+      // ★★들판으로 걸어가 **거기서** 마신다 — 이 배치가 연 것이 바로 그 동사다.
+      await warp(river.x + 3000, river.y + 3000);
+      await send({ type: '__e2e_give', items: {} }); await sleep(300);
+      const g0 = await page.evaluate(() => (window.__getGauges ? window.__getGauges() : null));
+      await send({ type: 'eat', item: 'fresh_water', amount: 1 });
+      await sleep(1200);
+      const w2 = await inv();
+      ok((w2.water_bottle || 0) === (w1.water_bottle || 0) + 1 && (w2.fresh_water || 0) === (w1.fresh_water || 0) - 1,
+        '★★★⑤ **마시니 빈 병이 돌아왔다** — 병은 그릇이지 소모품이 아니다(T3 캐논)',
+        `병 ${w1.water_bottle || 0}→${w2.water_bottle || 0} · 물 ${w1.fresh_water || 0}→${w2.fresh_water || 0}`);
+      const notice = await page.evaluate(() => ((window.__notices || []).slice(-1)[0] || ''));
+      pre(true, '마신 뒤 안내', String(notice || '').slice(0, 60));
+      void g0;
+      await snap('td-05-water');
+    }
+  }
+
+  // ══ ⑥ 말리기 — 건조대의 건굴 [T54] ═══════════════════════════════════════
+  console.log('\n⑥ 말리기 — 갯벌이 겨울까지 간다');
+  {
+    await give({ items: { wood: 10, fiber: 10 }, lots: { oyster: [[0, 8]] } });
+    await send({ type: 'craft_building', recipe: 'item_drying_rack' });
+    await sleep(1200);
+    await send({ type: 'build', buildType: 'drying_rack', floor: 0 });
+    await sleep(1800);
+    await send({ type: 'facility_ask' });
+    await sleep(1200);
+    const fac = await ptxt();
+    ok(/굴 말리기/.test(fac), '★★★⑥ **건조대 창에 "굴 말리기"가 저절로 떴다** — 등록 코드 0 · 클라 무수정',
+      (fac.match(/[^\n]{0,20}굴 말리기[^\n]{0,28}/) || [''])[0].trim());
+    const oy0 = (await inv()).oyster || 0;
+    pre(oy0 >= 3, '★자명 통과 금지 — 말릴 굴이 손에 있다', `굴 ${oy0}`);
+    await send({ type: 'preserve', recipe: 'dry_oyster', amount: 3 });
+    await sleep(1500);
+    const oy1 = (await inv()).oyster || 0;
+    ok(oy1 < oy0, '★⑥ 굴이 건조대에 들어갔다', `굴 ${oy0} → ${oy1}`);
+    await send({ type: 'facility_ask' }); await sleep(800);
+    const dq = (await page.evaluate(() => ((window.__getFacility() || {}).queue) || [])) || [];
+    ok(dq.length > 0, '★★⑥ 건조대 **대기열에 걸렸다**(즉석이 아니다 — 말리기는 시간이 든다)',
+      `${dq.length}건 · ${(dq[0] || {}).label || ''}`);
+    let dried = 0;
+    for (let i = 0; i < 25 && !dried; i++) {
+      await sleep(1500);
+      await send({ type: 'facility_ask' }); await sleep(400);
+      const F = await page.evaluate(() => window.__getFacility());
+      await send({ type: 'craft_collect', buildingId: F && F.near && F.near.bid });
+      await sleep(600);
+      dried = ((await inv()).dried_oyster) || 0;
+    }
+    ok(dried > 0, '★★★⑥ **건굴을 받았다** — 갯벌 산출이 보존식이 됐다', `건굴 ${dried}`);
+    // ★★그리고 **먹힌다**(표에 있는 것과 먹히는 것은 다른 명제 — 족보 (83))
+    if (dried > 0) {
+      const before = (await inv()).dried_oyster || 0;
+      await send({ type: 'eat', item: 'dried_oyster', amount: 1 });
+      await sleep(1200);
+      const after = (await inv()).dried_oyster || 0;
+      ok(after === before - 1, '★★★⑥ **건굴을 먹었다** — `PRESERVED_EFFECTS` 주입이 화면까지 닿았다',
+        `건굴 ${before} → ${after}`);
+      const nt = await page.evaluate(() => ((window.__notices || []).slice(-1)[0] || ''));
+      ok(!/먹을 수 없는/.test(String(nt || '')), '★⑥ "먹을 수 없는 아이템"이 아니다', String(nt || '').slice(0, 60));
+    }
+    await snap('td-06-dried');
+  }
 
   // ══ ④ 위생 ══════════════════════════════════════════════════════════════
   console.log('\n④ 위생');

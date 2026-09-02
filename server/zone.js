@@ -1099,6 +1099,10 @@ const PRESERVED_EFFECTS = {
   smoked_meat: { hunger: 38, thirst: -5 },
   pickled_veg: { hunger: 14, thirst: -4 },
 };
+// ★★[T54 갯벌 3차 2026-09-02] 갯벌 말린 것 둘의 효과는 **원물에서 유도**한다 — 여기 수를 안 적는다.
+//   앵커는 위 표 안에 이미 있었다: **말린 과실 16 ÷ 딸기 6** 이 말리기의 허기 배수이고,
+//   갈증은 부호만 뒤집는다(마른 것은 원물이 주던 물기를 도로 가져간다). 유도는 `tidal.js` 가 한다.
+for (const [k, v] of Object.entries(require('./tidal').driedEffects())) PRESERVED_EFFECTS[k] = v;
 for (const k of Object.keys(Spoil.PRESERVED_ITEMS)) {
   if (PRESERVED_EFFECTS[k]) FOOD_EFFECTS[k] = PRESERVED_EFFECTS[k];
 }
@@ -4135,6 +4139,11 @@ function doEat(player, item, amount) {
   // ★보존식은 짜고 말라 갈증을 준다(thirst 음수) — 0 아래로는 안 내려간다.
   //   갈증 항은 신선도로 안 깎는다: 마른 건어물은 상해도 여전히 짜다.
   if (eff.thirst)   player.thirst = Math.max(0, Math.min(THIRST_MAX, (player.thirst ?? THIRST_MAX) + eff.thirst * ate));
+  // ★★[T54 2026-09-02 재민/PM 판정] **병은 그릇이지 소모품이 아니다** — 표의 `returns` 칸을 여기서 읽는다.
+  //   가마가 빈 병을 돌려주는 자리(`doBoilSalt` 의 시설 산출)와 **같은 계약**이고, 그래서 담기·마시기가
+  //   왕복해도 **병 개수가 보존된다**. ⚠(83)·(94)의 함정 자리다 — 칸을 넣는 것과 읽는 것은 다른 명제라
+  //   `test-tidal` 의 돌연변이 검사가 **이 줄을 지우면 빨개진다**(실클라도 빈 병 +1 을 센다).
+  if (eff.returns)  { player.inventory[eff.returns] = (player.inventory[eff.returns] || 0) + ate; send(player.ws, { type: 'notice', text: `🏺 빈 ${ITEM_LABEL_SERVER[eff.returns] || eff.returns} ${ate}개가 남았다` }); }
   // ★★[T43 2026-09-02] **HP 0 의 뜻을 하나로.** 종전엔 이 갈래가 `damagePlayer` 밖에서 hp 를 깎아
   //   hp 가 0 이 돼도 **쓰러지지 않는 몸**이 만들어졌다(죽음 설계 §0-ⓐ-4 가 잡은 구멍:
   //   그 몸은 더 안 맞고 영원히 안 아물어 로그아웃 말고는 빠져나올 길이 없었다).
@@ -6002,7 +6011,9 @@ function tryForage(player) {
   //   왜 소모가 아니라 **교체**인가: 무게가 같아서(둘 다 1.00kg) 채수가 몸무게를 안 바꾼다.
   //   그리고 **들고 갈 수 있는 짠물의 상한이 곧 가진 병의 수**가 된다 — 용기가 진짜 용기다.
   //   가마가 다 졸이면 병을 **돌려준다**(`doBoilSalt`) — 병은 소모품이 아니라 그릇이다.
-  if (src.kind === Salt.BRINE) {
+  //   ★★[T54 2026-09-02] 게이트를 **술어로** 바꾼다 — 민물도 병을 쓴다(그릇이 하나 더 생기는 날
+  //     이 줄만 뒤처지지 않게). 조건을 여기 다시 적지 않고 정본에게 묻는다: `Tidal.usesVessel`.
+  if (require('./tidal').usesVessel(src.kind)) {   // ★require 는 캐시된다 — 새 상단 선언을 만들지 않는다(zone 예산)
     if ((player.inventory[Salt.VESSEL] || 0) < got) {
       send(player.ws, { type: 'notice', text: `🏺 ${ITEM_LABEL_SERVER[Salt.VESSEL]}이 있어야 짠물을 뜬다` });
       return;

@@ -92,6 +92,13 @@ const PRESERVED_ITEMS = {
   dried_fruit:  { ko: '말린 과실',  shelf: D.PRESERVED },
   smoked_meat:  { ko: '훈제육',     shelf: _num('SPOIL_D_SMOKED', 40) },
   pickled_veg:  { ko: '절임',       shelf: _num('SPOIL_D_PICKLED', 50) },
+  // ★★[T54 갯벌 3차 2026-09-02] 갯벌이 **겨울까지 간다**. 보관일은 새 상수를 안 짓고
+  //   **이 표의 같은 자리**에서 왔다(카드 ⓔ):
+  //   · 건굴 = 보존식 그대로(45) — 말린 조개는 건어물과 같은 족이다.
+  //   · 마른 미역 = **곡물급(180)** — 유도값이다. 근거: 해조는 지질이 거의 없어 산패할 게 없고
+  //     완전 건조하면 실제로 해를 넘긴다(미역·다시마를 해묵혀 쓰는 그 물건이다). ⇒ 회부 F.
+  dried_oyster:  { ko: '건굴',      shelf: D.PRESERVED },
+  dried_seaweed: { ko: '마른 미역', shelf: D.GRAIN },
 };
 for (const [k, v] of Object.entries(PRESERVED_ITEMS)) SHELF_DAYS[k] = v.shelf;
 
@@ -248,6 +255,14 @@ const PRESERVE = {
                  from: 'vegetable', out: 'pickled_veg', days: PRESERVE_DAYS.pickle, needs: { salt: 1 } },
   pickle_fish: { label: '생선 절임',     kind: 'tool',   facilityKo: '작업대',
                  from: 'fish',      out: 'pickled_veg', days: PRESERVE_DAYS.pickle, needs: { salt: 1 } },
+  // ★★[T54 2026-09-02] 갯벌 말리기 둘 — **새 문법 0.** `kind: 'dry'` 라 건조대 창에 저절로 뜬다
+  //   (`zone._facilityRecipes` 가 이 표를 순회한다 — 등록 코드가 따로 없다).
+  //   ★입력은 T52 가 연 갯벌 산출 그대로다(굴·해조). 새 품목은 **산출 둘**뿐이고 그건 보존식이라
+  //     이 파일이 정본이다. 무게·허기·갈증은 **원물이 정본**이라 `tidal.js` 가 유도한다(두 벌 금지).
+  dry_oyster:  { label: '굴 말리기',   kind: 'dry',    facilityKo: '건조대',
+                 from: 'oyster',    out: 'dried_oyster',  days: PRESERVE_DAYS.dry, needs: {} },
+  dry_seaweed: { label: '해조 말리기', kind: 'dry',    facilityKo: '건조대',
+                 from: 'seaweed',   out: 'dried_seaweed', days: PRESERVE_DAYS.dry, needs: {} },
 };
 
 // 이 레시피를 지금 걸 수 있나 — **상한 재료는 못 넣는다**(상한 걸 말려도 상한 것이다).

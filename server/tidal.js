@@ -114,10 +114,75 @@ function pickAt(x, y, nowMs) {
 function isCatch(item) { return Object.prototype.hasOwnProperty.call(CATCH, item); }
 function koOf(item) { return (CATCH[item] || {}).ko || item; }
 
+// ── ③ 그릇 — **병은 소모품이 아니라 그릇이다** [T54 재민 확정 2026-09-02] ────────
+//   T3 이 세운 규약("가마가 빈 병을 돌려준다")을 **민물까지 넓힌다.** 지금까지 물병은
+//   갯벌에서만 쓸모가 있었다 — 짠물을 뜨는 그릇. 그래서 내륙에서는 죽은 물건이었고,
+//   물은 **물가에서만** 마실 수 있었다(들판 횡단이 갈증으로 잘렸다).
+//   ⇒ 민물도 담긴다. 담으면 병이 물이 되고, 마시면 물이 병이 된다 — **개수가 보존된다.**
+//   ★★`salt.js` 를 여기서 부르는 게 사본을 막는 유일한 길이다: 용기 id 도 짠물 id 도 T3 것이다.
+//     (`salt` 는 아무것도 require 하지 않는 잎이라 맞물림이 안 생긴다 — `forage` 가 이미 둘 다 늦게 부른다.)
+const Salt = require('./salt');
+const FRESH = 'fresh_water';
+// ★마신 한 되가 채우는 갈증. **새 수를 짓지 않았다** — `zone.tryGather` 의 물가 회복량(+30) 그대로다.
+//   ⚠그 값은 zone 안의 **리터럴**이라 여기서 참조할 수가 없다(상수로 올리려면 zone 한 줄이 더 든다 —
+//     이 카드의 zone 예산 3줄을 넘는다). ⇒ **하네스가 소스를 읽어 두 수가 갈라지면 빨개진다**
+//     (`test-tidal` 의 계약 검사). 사본을 못 만들게 막는 값싼 방법이고, 승격은 회부 G 에 적었다.
+const DRINK_THIRST = _num('TIDE_DRINK_THIRST', 30);
+// 용기가 드는 채집 갈래 — 짠물(T3)과 민물(T54). `zone.tryForage` 의 게이트가 이 술어를 묻는다.
+//   ★zone 이 `src.kind === Salt.BRINE` 을 다시 적으면 그게 사본이고, 다음에 그릇이 하나 더
+//     늘어나는 날(항아리·바가지) 그 줄만 뒤처진다. 표의 주인이 술어를 갖는다.
+function usesVessel(kind) { return kind === Salt.BRINE || kind === FRESH; }
+// 그릇으로 담는 것들 — 무게는 **T3 이 세운 한 되 1.00kg 그대로**(물병↔짠물↔민물이 서로 바뀌므로
+//   무게가 다르면 채수만으로 몸무게가 변한다 — `salt.CFG.BRINE_KG` 가 그 근거다).
+const VESSELS = {
+  [FRESH]: { ko: '민물 한 되', kg: Salt.CFG.BRINE_KG,
+             food: { hunger: 0, thirst: DRINK_THIRST, returns: Salt.VESSEL } },
+};
+
+// ── ④ 말리기 — 갯벌이 겨울까지 간다 [T54] ──────────────────────────────────
+//   ★★**계수를 짓지 않았다.** 말리기는 이 레포에 이미 두 줄 있고(생선·과실), 그중 **양쪽 값이
+//     다 있는 완전한 앵커는 과실 하나**다: 딸기 0.50kg·허기 6 → 말린 과실 0.13kg·허기 16.
+//     ⇒ 잔량비 **0.26** 과 허기 배수 **16/6** 이 그 한 줄에서 그대로 나온다. 둘 다 여기 적는 게 아니라
+//       **역산한 값**이다(작물 층의 `HUNGER_PER_SUBS` 1.4 와 같은 수법 — 앵커는 이미 코드 안에 있었다).
+//   ★갈증은 **부호만 뒤집는다**: 원물이 주던 물기를 마른 것은 도로 가져간다(새 계수 0).
+//     보존식이 갈증을 주는 규약(`PRESERVED_EFFECTS`)의 유도판이다.
+//   ⚠보관일·이름·레시피는 여기 없다 — **`spoil.PRESERVED_ITEMS`/`PRESERVE` 가 보존식의 정본**이다.
+//     여기는 원물이 정본인 것(무게·허기·갈증)만 유도한다.
+const DRY_RESIDUE = Math.max(0.01, _num('TIDE_DRY_RESIDUE', 0.26));   // 말린 과실 0.13 ÷ 생과 0.50
+const DRY_HUNGER  = Math.max(1, _num('TIDE_DRY_HUNGER', 16 / 6));     // 말린 과실 16 ÷ 딸기 6
+const DRY = {
+  dried_oyster:  { from: 'oyster'  },
+  dried_seaweed: { from: 'seaweed' },
+};
+function driedOf(item) { return DRY[item] || null; }
+// 마른 것의 **식품 효과** — 원물에서 유도한다(zone 의 `PRESERVED_EFFECTS` 가 읽어 간다).
+function driedEffects() {
+  const o = {};
+  for (const [k, d] of Object.entries(DRY)) {
+    const src = CATCH[d.from]; if (!src) continue;
+    o[k] = { hunger: Math.round(src.food.hunger * DRY_HUNGER), thirst: -Math.abs(src.food.thirst) };
+  }
+  return o;
+}
+// ★무게 표 — `weights.js` 가 읽어 간다(플레이어 층 유도값이라 econ 표에 없다).
+//   원물 kg 은 **econ 정본**(`specialty.RESOURCES`)에서 온다 — 여기서 발명하지 않는다.
+function weightMap() {
+  const o = {};
+  for (const [k, v] of Object.entries(VESSELS)) o[k] = v.kg;
+  let SP = null; try { SP = require('./specialty'); } catch (e) {}
+  for (const [k, d] of Object.entries(DRY)) {
+    const raw = SP && SP.RESOURCES && SP.RESOURCES[d.from] ? SP.RESOURCES[d.from].weight : null;
+    if (raw > 0) o[k] = +(raw * DRY_RESIDUE).toFixed(3);
+  }
+  return o;
+}
+
 // ── ③ 다른 정본에게 넘기는 표들 (두 벌로 적지 않는다) ───────────────────────
 function shelfMap() { const o = {}; for (const [k, v] of Object.entries(CATCH)) o[k] = v.shelf; return o; }
-function foodMap()  { const o = {}; for (const [k, v] of Object.entries(CATCH)) o[k] = Object.assign({}, v.food); return o; }
-function labelMap() { const o = {}; for (const [k, v] of Object.entries(CATCH)) o[k] = v.ko; return o; }
+function foodMap()  { const o = {}; for (const [k, v] of Object.entries(CATCH)) o[k] = Object.assign({}, v.food);
+                     for (const [k, v] of Object.entries(VESSELS)) o[k] = Object.assign({}, v.food); return o; }
+function labelMap() { const o = {}; for (const [k, v] of Object.entries(CATCH)) o[k] = v.ko;
+                     for (const [k, v] of Object.entries(VESSELS)) o[k] = v.ko; return o; }
 // 조리 — **기존 요리 문법에 그대로 얹힌다.** `doCook` 은 시설 대기열에 걸고 **요리 인스턴스**를 낸다.
 //   ⚠`produces` 를 **안 적는다**: `doCook` 이 그 필드를 읽지 않는다(T3 이 물병으로 밟은 자리 · 족보 (83)).
 //     적으면 "이걸 산출한다"는 거짓말이 코드에 남는다.
@@ -140,4 +205,6 @@ function install(tables) {
 }
 
 module.exports = { CFG, CATCH, phaseAt, levelAt, isOpen, untilOpenMs, tideKo, __setNow, __nowOverride,
-  pickAt, isCatch, koOf, shelfMap, foodMap, labelMap, cookMap, install };
+  pickAt, isCatch, koOf, shelfMap, foodMap, labelMap, cookMap, install,
+  // ★[T54] 그릇·말리기
+  FRESH, VESSELS, DRINK_THIRST, usesVessel, DRY, DRY_RESIDUE, DRY_HUNGER, driedOf, driedEffects, weightMap };

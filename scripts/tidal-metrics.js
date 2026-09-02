@@ -7,6 +7,9 @@
 //     ③ 그 수확이 적재 상한과 만나면 어떻게 되나(T12 지게와의 접점)
 //     ④ 먹을 것으로서의 값 — 허기 한 칸에 몇 개인가
 //     ⑤ 겨울나기 셈에 얹으면
+//   ★★[T54] 둘이 더 붙었다:
+//     ⑥ **물 한 병** — 갈증 몇 %인가, 들판을 몇 분 건너나
+//     ⑦ **말리기** — 한 물때 수확이 건굴 몇 단위 = 겨울 며칠인가(⑤의 "아니다"가 뒤집히는지)
 'use strict';
 const path = require('path');
 const ROOT = path.join(__dirname, '..');
@@ -65,6 +68,7 @@ console.log('   ⇒ ★갯벌은 **시간이 아니라 등짐이 병목**이다.
 console.log('\n④ 먹을 것으로서의 값');
 const food = T.foodMap();
 for (const [k, e] of Object.entries(food)) {
+  if (!T.isCatch(k)) continue;   // ★[T54] 그릇(민물)은 먹을 것이 아니라 마실 것이다 — ⑥에서 따로 낸다
   const per = 100 / e.hunger;
   console.log(`   ${T.koOf(k).padEnd(3)} 허기 ${String(e.hunger).padStart(2)} · 갈증 ${String(e.thirst).padStart(2)} · ${kg(k)}kg`
             + ` ⇒ 배를 다 채우려면 **${Math.ceil(per)}개(${(Math.ceil(per) * kg(k)).toFixed(1)}kg)** · 보관 ${Sp.shelfOf(k)}일`);
@@ -76,5 +80,60 @@ console.log('      조개탕으로 가면 요리 인스턴스(품질·신선도)
 console.log('\n⑤ 겨울나기 넷째 수치');
 console.log('   부패: 겨울 한 주 = 건어물 11.7단위 · 작물: 밭 6칸 · 자염: 절임 한 통 = 바닷가 왕복');
 console.log(`   갯벌: 한 물때 ${(Math.min(bare, byTime * avgKg)).toFixed(1)}kg(맨몸) — 그런데 **굴은 ${Sp.shelfOf('oyster')}일이면 상한다**.`);
-console.log('   ⇒ ★갯벌은 겨울 비축이 **아니다**. 그 자리에서 먹거나, 말리거나(회부), 파는 것이다.');
+console.log('   ⇒ ★T52 의 답: 갯벌은 겨울 비축이 **아니었다**. 그 자리에서 먹거나 파는 것이었다.');
+
+// ── ⑥ 물 한 병 [T54] ───────────────────────────────────────────────────────
+console.log('\n⑥ 물 한 병 — ★T54 가 연 것');
+const B = require(path.join(ROOT, 'server', 'body.js'));
+const fw = food[T.FRESH];
+console.log(`   한 되 = 갈증 **+${fw.thirst}**(게이지 100 중 ${fw.thirst}%) · ${kg(T.FRESH)}kg · 마시면 빈 병이 돌아온다`);
+const thirstSec = (B.CFG && (B.CFG.THIRST_SEC || B.CFG.BODY_THIRST_SEC)) || null;
+if (thirstSec) {
+  const secPerPct = thirstSec / 100;
+  console.log(`   갈증 0→100 이 ${Math.round(thirstSec / 60)}분(실시간) ⇒ 한 되가 **${(fw.thirst * secPerPct / 60).toFixed(1)}분**을 벌어 준다`);
+  const capBottles = Math.floor(bare / kg(T.FRESH));
+  console.log(`   맨몸(${bare}kg)으로 최대 ${capBottles}되 ⇒ **${(capBottles * fw.thirst * secPerPct / 60).toFixed(0)}분**치 물을 진다(짐을 물로만 채웠을 때)`);
+  const PI2 = require(path.join(ROOT, 'server', 'player-items.js'));
+  const i10 = PI2.craftItem('carrier', 10, { wood: 2 });
+  const cap10 = bare + i10.attrs.load - W.kgOf('carrier');
+  console.log(`   지게 Lv10(${cap10}kg)이면 **${(Math.floor(cap10 / kg(T.FRESH)) * fw.thirst * secPerPct / 60).toFixed(0)}분**치 — 물이 짐과 맞바꿔진다`);
+} else {
+  console.log('   (갈증 소모 속도 손잡이를 못 읽었다 — body.CFG 를 확인해라)');
+}
+console.log('   ⇒ ★물은 이제 **짐이다**. 내륙 횡단은 "물가를 따라가느냐, 물을 지고 질러가느냐"의 판단이 된다.');
+
+// ── ⑦ 말리기 [T54] ─────────────────────────────────────────────────────────
+console.log('\n⑦ 말리기 — ★"갯벌은 겨울 비축이 아니다"가 뒤집히나');
+const hungerPerDay = (() => {
+  const hs = (B.CFG && (B.CFG.HUNGER_SEC || B.CFG.BODY_HUNGER_SEC)) || null;
+  if (!hs) return null;
+  const dayMs = 24 * 60 * 1000;
+  return 100 * (dayMs / 1000) / hs;   // 하루에 채워야 하는 허기 총량
+})();
+const dryRows = Object.entries(Sp.PRESERVE).filter(([k, r]) => r.kind === 'dry' && T.isCatch(r.from));
+for (const [key, r] of dryRows) {
+  const eff = T.driedEffects()[r.out];
+  const raw = T.CATCH[r.from].food;
+  console.log(`   ${r.label.padEnd(7)} ${T.koOf(r.from)} → ${Sp.PRESERVED_ITEMS[r.out].ko}`
+    + ` · 허기 ${raw.hunger}→**${eff.hunger}** · 갈증 ${raw.thirst}→**${eff.thirst}**`
+    + ` · ${kg(r.from)}kg→**${kg(r.out)}kg** · 보관 ${Sp.shelfOf(r.from)}일→**${Sp.shelfOf(r.out)}일**`);
+  if (hungerPerDay) {
+    const perDay = hungerPerDay / eff.hunger;
+    console.log(`            ⇒ 하루치 ${perDay.toFixed(1)}단위(${(perDay * kg(r.out)).toFixed(2)}kg) · 겨울 한 주 **${(perDay * 7).toFixed(1)}단위(${(perDay * 7 * kg(r.out)).toFixed(2)}kg)**`);
+  }
+}
+if (hungerPerDay) {
+  // 한 물때 수확을 전부 말리면 며칠인가 — 맨몸 상한으로 잘라서
+  const perPick = 1;   // 한 번에 한 단위
+  const picks = byTime;
+  const oyShare = n.oyster / tot, wdShare = n.seaweed / tot, abShare = n.abalone / tot;
+  const dOy = Math.floor(picks * oyShare * perPick), dWd = Math.floor(picks * wdShare * perPick);
+  const hun = dOy * T.driedEffects().dried_oyster.hunger + dWd * T.driedEffects().dried_seaweed.hunger;
+  const kgs = dOy * kg('dried_oyster') + dWd * kg('dried_seaweed');
+  console.log(`   ★한 물때 **이론 상한**(${picks}회 · 쉬지 않고 칸을 옮겨 다닐 때 · 굴 ${(oyShare * 100).toFixed(0)}% 해조 ${(wdShare * 100).toFixed(0)}% 전복 ${(abShare * 100).toFixed(0)}%)을 전부 말리면`);
+  console.log(`     건굴 ${dOy} + 마른 미역 ${dWd} = 허기 **${hun}** · 무게 **${kgs.toFixed(2)}kg** ⇒ **${(hun / hungerPerDay).toFixed(1)}일치**`);
+  console.log(`     ⇒ ★★말린 것은 ${kgs.toFixed(2)}kg 밖에 안 나가므로 맨몸 ${bare}kg 으로 **${Math.floor(bare / (kgs / Math.max(1, dOy + dWd)))}단위**까지 진다 —`);
+  console.log(`        생물로는 등짐이 병목이었는데 **말리면 그 병목이 사라진다**(수분을 두고 오는 것이다).`);
+  console.log('   ⇒ ★★★T54 의 답: 갯벌은 **이제 겨울 비축이 된다**. 다만 보관은 갯벌이 아니라 **건조대**가 만든다.');
+}
 console.log('\n(수는 전부 정본에서 온다 — 이 스크립트는 계산만 한다.)');

@@ -101,6 +101,27 @@ function sourceAt(x, y, ctx) {
   }
   // ① 갈대 군락 — 물 **바로 옆**. (목이 마르면 위에서 물 마시기로 갈라진다)
   const adj = [[CFG.CELL_PX, 0], [-CFG.CELL_PX, 0], [0, CFG.CELL_PX], [0, -CFG.CELL_PX]];
+  // ★★⓪-c **민물 채수** — 병이 있으면 강·호수·샘의 물을 담는다. [T54 재민 확정 2026-09-02]
+  //   ★갯벌(⓪) **뒤, 갈대(①) 앞**이다(카드가 정한 우선순위). 왜 갈대보다 앞인가:
+  //     물가에서 병을 들고 있다는 것 자체가 **판단**이다 — 물을 뜨러 온 사람이 갈대를 베고 있으면
+  //     그게 결함이다(⓪-a 가 짠물에서 이미 세운 계약의 민물판).
+  //   ★★**갈대를 뺏지 않는다.** 이 갈래는 `hasVessel` 이라야 열리고, 병을 다 채우면 병이 없어지므로
+  //     **스스로 닫힌다** — 그 다음 E 는 종전대로 갈대다. 병이 없는 사람은 애초에 아무것도 안 바뀐다.
+  //   ★★**목마른 사람의 동작도 안 뺏는다.** `zone.tryGather` 는 갈증이 95% 아래면 **그 자리에서 마신다** —
+  //     여기로 내려오지도 않는다. ⇒ 담기는 "목이 안 마를 때 물가에서 하는 일"이 된다(갈대와 같은 자리).
+  //   ★고갈 없음(`key: null`) — 강은 마르지 않는다. 짠물과 **같은 이유·같은 문법**이고,
+  //     실질 병목은 `COOLDOWN_MS`(한 되 뜨는 시간)와 들고 갈 수 있는 무게다.
+  //   ⚠**바다는 여기서 걸러야 한다** — `ctx.isWater` 는 해안선 띠를 **포함한다**(자염 §0 실측).
+  //     안 거르면 갯벌에서 짠물 대신 민물이 나온다(세계가 거짓말을 한다).
+  if (ctx.hasVessel) {
+    for (const [dx, dy] of adj) {
+      const wx = x + dx, wy = y + dy;
+      if (!ctx.isWater(wx, wy)) continue;
+      if (ctx.isSea && ctx.isSea(wx, wy)) continue;
+      return { kind: _Tidal().FRESH, key: null, where: '물가' };
+    }
+  }
+
   for (const [dx, dy] of adj) if (ctx.isWater(x + dx, y + dy)) {
     return { kind: 'fiber', key: `c:${Math.floor(x / CFG.CELL_PX)}_${Math.floor(y / CFG.CELL_PX)}`, where: '갈대 군락' };
   }
