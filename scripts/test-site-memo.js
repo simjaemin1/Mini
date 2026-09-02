@@ -34,7 +34,13 @@ const DAYS = parseInt(process.env.SITE_DAYS || '', 10) || 9;
 // ★[T49 2026-09-02] 씨앗 경로·시딩 절차는 `scripts/slicer-seed.js` 가 정본이다.
 //   종전엔 씨앗이 없으면 "`test-tick-slicer` 를 먼저 돌려라"며 죽었는데, 러너는 **이름순**이라
 //   이 파일이 `tick-slicer` 보다 **먼저** 돈다 ⇒ 신선한 러너에서는 영원히 못 통과했다.
-const { SEED_C, SEED_Z, ensureSeed } = require('./slicer-seed.js');
+const { seedPaths, ensureSeed } = require('./slicer-seed.js');
+// ★[T49 2026-09-02] **자기 크기의 씨앗**을 쓴다. 기본 씨앗(20초 성장)은 이 하네스에 너무 어리다 —
+//   "집터를 못 찾는 헛수고"를 재려면 마을이 제 땅을 거의 다 쓴 세계여야 하는데, 어린 세계에선
+//   전수 훑기도 늘 성공해서 **빈손 0** 이 되고 ① 의 상황 선행 assert 가 옳게 거절한다.
+const SITE_SEED_TAG = process.env.SITE_SEED_TAG || 'sitememo';
+const SITE_SEED_GROW_MS = parseInt(process.env.SITE_SEED_GROW_MS || '', 10) || 150000;
+const { c: SEED_C, z: SEED_Z } = seedPaths(SITE_SEED_TAG);
 
 let pass = 0, fail = 0;
 const ok = (c, m, extra) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (extra !== undefined && extra !== '' ? `  ${extra}` : '')); };
@@ -77,7 +83,7 @@ const st = (E, k) => (E && E.stages && E.stages[k]) ? E.stages[k] : { p50: 0, p9
 (async () => {
   console.log('\n=== 집터 "못 찾음 기억" — 짝 비교 + 단조성 감사 ===');
   // 씨앗이 없으면 **스스로 만든다**(앞 하네스가 남긴 것에 기대지 않는다 — 족보 ㊾ 의 러너판).
-  { const r = await ensureSeed();
+  { const r = await ensureSeed({ tag: SITE_SEED_TAG, growMs: SITE_SEED_GROW_MS });
     if (!r.ok) { console.log(`  ✗ 씨앗 준비 실패 — ${r.why}`); process.exit(1); }
     if (r.built) console.log('  (이 판이 씨앗을 만들었다 — 다음 실행부터는 곧바로 시작한다)'); }
 

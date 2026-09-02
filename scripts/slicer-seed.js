@@ -27,6 +27,13 @@ const ROOT = path.join(__dirname, '..');
 // ★경로도 **여기가 정본**이다 — 하네스는 이 상수를 import 해서 쓴다(옮겨 적지 않는다).
 const SEED_C = '/tmp/slicer-seed-central.db';
 const SEED_Z = '/tmp/slicer-seed-zone.db';
+// ★[T49 2026-09-02] 하네스마다 **자기 크기의 씨앗**이 필요할 수 있다.
+//   `test-site-memo` 가 그 예다 — "집터를 못 찾는 헛수고"를 재려면 마을이 제 땅을 다 쓸 만큼
+//   자란 세계여야 하는데, 기본 씨앗(20초 성장)은 너무 어려서 **빈손이 0** 이다.
+//   ⇒ tag 를 주면 그 tag 의 씨앗을 따로 캐시한다(기본 씨앗은 안 건드린다).
+const seedPaths = (tag) => (tag
+  ? { c: `/tmp/slicer-seed-${tag}-central.db`, z: `/tmp/slicer-seed-${tag}-zone.db` }
+  : { c: SEED_C, z: SEED_Z });
 const CPORT = parseInt(process.env.SLICER_SEED_CPORT || '3010', 10);
 const ZPORT = parseInt(process.env.SLICER_SEED_ZPORT || '3020', 10);
 // 마을이 좀 자라야 단계별 비용이 드러난다(원래 tick-slicer 가 쓰던 값 그대로).
@@ -42,10 +49,13 @@ const cp = (src, dst) => {
 
 async function ensureSeed(opts) {
   const log = (opts && opts.log) || ((s) => console.log(s));
-  if (fs.existsSync(SEED_Z)) return { ok: true, built: false, why: '이미 있다' };
+  const tag = (opts && opts.tag) || '';
+  const growMs = (opts && opts.growMs) || GROW_MS;
+  const P = seedPaths(tag);
+  if (fs.existsSync(P.z)) return { ok: true, built: false, why: '이미 있다', c: P.c, z: P.z };
 
-  log('  씨앗 DB 없음 — 한 번 시딩한다(첫 실행만 수 분).');
-  const CDB = '/tmp/slicer-seed0-c.db', ZDB = '/tmp/slicer-seed0-z.db';
+  log(`  씨앗 DB 없음${tag ? `(${tag})` : ''} — 한 번 시딩한다(성장 ${(growMs / 1000).toFixed(0)}초 · 첫 실행만 수 분).`);
+  const CDB = `/tmp/slicer-seed0${tag ? '-' + tag : ''}-c.db`, ZDB = `/tmp/slicer-seed0${tag ? '-' + tag : ''}-z.db`;
   for (const f of [CDB, ZDB]) for (const sfx of ['', '-wal', '-shm']) { try { fs.unlinkSync(f + sfx); } catch (e) {} }
 
   const procs = [];
@@ -83,17 +93,17 @@ async function ensureSeed(opts) {
       VILLAGE_DAY_MS: '3000', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', ENABLE_WILDLIFE: '0',
     });
     if (!await waitUp(zpp, `http://localhost:${ZPORT}/health`, 900)) { killAll(); return { ok: false, built: false, why: 'zone 기동 실패' }; }
-    await sleep(GROW_MS);
+    await sleep(growMs);
     killAll();
     await sleep(4000);            // 포트 반납 + DB 플러시
-    cp(CDB, SEED_C); cp(ZDB, SEED_Z);
-    if (!fs.existsSync(SEED_Z)) return { ok: false, built: false, why: '씨앗 복사 실패' };
+    cp(CDB, P.c); cp(ZDB, P.z);
+    if (!fs.existsSync(P.z)) return { ok: false, built: false, why: '씨앗 복사 실패' };
     log('  씨앗 DB 저장 — 다음 실행부터는 곧바로 시작한다');
-    return { ok: true, built: true, why: '새로 만들었다' };
+    return { ok: true, built: true, why: '새로 만들었다', c: P.c, z: P.z };
   } catch (e) {
     killAll();
     return { ok: false, built: false, why: `예외: ${e && e.message}` };
   }
 }
 
-module.exports = { SEED_C, SEED_Z, ensureSeed };
+module.exports = { SEED_C, SEED_Z, seedPaths, ensureSeed };
