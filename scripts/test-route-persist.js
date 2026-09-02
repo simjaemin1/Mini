@@ -160,9 +160,11 @@ async function runDays(n) {
   ok(Math.round(fs.statSync(TF).mtimeMs) === Math.round(st0.mtimeMs), '⑤ [정리] 지형 파일 mtime 을 되돌렸다');
 
   // ── ⑥⑦ 선계산 — 사람이 없을 때 스스로 데우되, **루프를 놓아 가며** 데운다 ──
-  // ★예산을 줄여서 잰다(간격 60ms · 유예 15초). 기본값(250 / 10,000)은 ⑦a 가 따로 확인한다 —
-  //   기본값 그대로 재면 579쌍 × 250ms = 2분 반이라 하네스가 그만큼 길어진다.
-  const WGAP = 60, WIDLE = 15000;
+  // ★간격은 줄여서(60ms) 완주를 재고, **유예는 오히려 넉넉히**(90초) 잡는다.
+  //   왜 넉넉히: 유예는 **큐가 선 순간**부터 흐르는데 기동이 30초 걸리는 판이 있어서,
+  //   짧게 잡으면 하네스가 들여다보기도 전에 창이 닫힌다(실측 — 관측 0회로 떨어졌다).
+  //   기본값(250 / 30,000)은 ① 이 따로 확인한다.
+  const WGAP = 60, WIDLE = 90000;
   if (!await up(true, { VILLAGE_ROUTE_WARM_GAP_MS: String(WGAP), VILLAGE_ROUTE_WARM_IDLE_MS: String(WIDLE) })) {
     console.log('  ✗ 5판 기동 실패'); process.exit(1);
   }
@@ -178,14 +180,22 @@ async function runDays(n) {
   // ── ⑦b **유예** — 사람이 나간(=부팅한) 직후에는 한 쌍도 안 데운다.
   //   왜 이 줄이 있나: 나간 사람의 저장이 아직 소켓 밖으로 못 나갔다. 그때 A* 를 돌리면 그 쓰기가
   //   루프 순번을 못 받는다 — 그게 `e2e-rumor ⑦`("부재 0일")을 깨뜨린 그 자리다.
-  //   ★자명 통과 금지: 유예가 없었다면 이 창(유예 창 ÷ 간격 = 수백 쌍) 안에 수백 쌍이 데워진다 — 아래 [상황] 이 그걸 센다.
-  const idleWin = Math.max(0, WIDLE - 4000);
-  await sleep(Math.max(0, (tQ + idleWin) - Date.now()));
-  const WIdle = await jget(`http://localhost:${ZPORT}/routedbg`);
-  ok(idleWin / WGAP > 50, '⑦ [상황] 유예 창이 충분히 넓다(유예가 없었다면 수십 쌍은 데워졌을 창)',
-    `${idleWin}ms ÷ ${WGAP}ms = 약 ${Math.round(idleWin / WGAP)}쌍`);
-  ok(WIdle.warmLeft === WIdle.warmTotal, '⑦ ★★유예가 지켜진다 — 부팅/퇴장 직후에는 **한 쌍도 안 데운다**',
-    `큐를 세운 지 ${Math.round(Date.now() - tQ)}ms(유예 ${WIDLE}ms) · 남은 ${WIdle.warmLeft}/${WIdle.warmTotal}`);
+  //   ★★밖에서 시계로 재면 안 된다 — 유예는 **큐가 선 순간**부터 흐르는데 그 순간을 밖에서 모른다
+  //     (`up()` 가 /health 를 기다린 뒤 마을 init 이 더 걸린다). 한 판이 그것 때문에 1쌍 차이로 떨어졌다.
+  //     ⇒ 서버가 **남은 유예**(`warmIdleLeftMs`)를 그대로 말하고, 그게 남아 있는 동안만 판정한다.
+  let idleN = 0, idleBad = 0, idleWorst = '';
+  for (let i = 0; i < 80; i++) {
+    const W = await jget(`http://localhost:${ZPORT}/routedbg`);
+    if (!(W.warmIdleLeftMs > 1000)) break;      // 유예가 곧 끝난다 — 여기서 멈춘다
+    idleN++;
+    if (W.warmLeft !== W.warmTotal) { idleBad++; if (!idleWorst) idleWorst = `남은 ${W.warmLeft}/${W.warmTotal} (유예 ${W.warmIdleLeftMs}ms 남았는데)`; }
+    await sleep(400);
+  }
+  ok(idleN >= 8, '⑦ [상황] 유예 창을 실제로 여러 번 들여다봤다(자명 통과 금지)', `${idleN}회 · 간격 400ms`);
+  ok(idleN * 400 / WGAP > 30, '⑦ [상황] 그 창이 충분히 넓다(유예가 없었다면 수십 쌍은 데워졌을 창)',
+    `${idleN * 400}ms ÷ ${WGAP}ms = 약 ${Math.round(idleN * 400 / WGAP)}쌍`);
+  ok(idleBad === 0, '⑦ ★★유예가 지켜진다 — 그 창 안에서는 **한 쌍도 안 데운다**',
+    idleBad ? `${idleBad}/${idleN}회 위반 · 첫 사례 ${idleWorst}` : `${idleN}회 전부 0쌍`);
 
   // ── ⑦c 데우는 동안 **서버가 계속 대답하는가**. /health 를 100ms 로 두드려 응답 간격 최대를 잰다.
   //   ⚠한 걸음(A*) 동안은 어차피 막힌다 — 못 줄인다(정본 수술 금지 · 재개 가능 A* 는 회부).

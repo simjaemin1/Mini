@@ -1579,6 +1579,11 @@ function routeDebug(opts) {
                 warmLeft: state.routeWarmQ ? state.routeWarmQ.length : -1, warmTotal: state.routeWarmTotal || 0,
                 // ★[T42-b] **지금 도는 예산 그 자체**를 말한다(하네스가 사본을 만들지 않게 — T1 `/perf` 의 sliceMs 와 같은 규약).
                 warmGapMs: ROUTE_WARM_GAP_MS, warmIdleMs: ROUTE_WARM_IDLE_MS, warmOn: ROUTE_WARM,
+                // ★[T42-b] **유예가 얼마나 남았나** — 하네스가 "지금 데워도 되는 때인가"를 시계 없이 알 수 있게.
+                //   (밖에서 부팅 시각으로 역산하면 큐가 언제 섰는지에 판정이 흔들린다 — 실제로 흔들렸다.)
+                warmIdleLeftMs: Math.max(0, ROUTE_WARM_IDLE_MS - Math.min(
+                  Date.now() - (state._routeHumanAt || 0),
+                  (state.deps && state.deps.ioQuietMs) ? state.deps.ioQuietMs() : Number.MAX_SAFE_INTEGER)),
                 // ★[T42-b] 배선 확인용 — 이 둘이 undefined 면 유예가 **시계 하나**로 되돌아간 것이다(하네스가 센다).
                 ioBusy: (state.deps && state.deps.ioBusy) ? !!state.deps.ioBusy() : null,
                 ioQuietMs: (state.deps && state.deps.ioQuietMs) ? state.deps.ioQuietMs() : null,

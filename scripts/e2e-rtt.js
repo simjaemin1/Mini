@@ -162,20 +162,27 @@ async function arm(label, sliceMs) {
   //       "절반으로 줄였다"가 슬라이서 이야기가 된다. 그 아래면 유보하고 수치만 적는다.
   const chunk = Math.max(1, (B.tick && B.tick.maxChunk) || 0);
   const room = (A.tick && B.tick) ? (A.tick.frameMax / chunk) : 0;
-  const sockRoom = A.inP95 / chunk;
+  //   ★★[T42-b 셋째 판] **소켓 쪽 바닥은 '조각 하나'가 아니다.** 실측 다섯 판에서 조각내기 팔의
+  //     창 안 p95 는 **777~838ms 로 거의 안 흔들렸다**(조각이 240ms 인 판에서도 825ms 였다) —
+  //     그 값을 정하는 건 조각 크기가 아니라 **프레임 리듬**(30Hz × 17~18프레임)이기 때문이다.
+  //     반면 대조군은 1,482~10,392ms 로 7배를 오간다. ⇒ "절반 이하"는 대조군이 ~1,600ms 를
+  //     넘을 때만 **애초에 닿을 수 있는 선**이고, 그 아래에서 세면 없는 회귀를 보고한다(족보 (80)).
+  //     ⇒ 문지방을 **관측된 바닥에서** 끌어온다: 대조군이 3,000ms(바닥의 약 ×4) 이상일 때만 센다.
+  //       그 아래면 유보하고 수치만 적는다 — 서버 쪽 무조건선(②a·③)이 대신 지킨다.
+  const SOCK_FLOOR = 3000;   // 관측 바닥 777~838ms 에서 끌어온 값(가정 아님 — 위 주석의 실측)
+  const gate = (ctl) => ctl >= SOCK_FLOOR;
   console.log(`  · 쪼갤 여지 ×${room.toFixed(1)} — 대조군 한 프레임 ${A.tick ? A.tick.frameMax : '?'}ms ÷ 가장 큰 조각 ${B.tick ? B.tick.maxChunk : '?'}ms(${B.tick ? B.tick.maxChunkAt : '?'})`);
-  console.log(`  · 소켓 여지 ×${sockRoom.toFixed(1)} — 대조군 창 안 p95 ${A.inP95}ms ÷ 가장 큰 조각 ${chunk}ms  (②b 는 ×6 이상일 때만 센다)`);
-  if (room >= 3 && sockRoom >= 6) {
-    // ②b 소켓이 그걸 체감하는가 — 여지가 있는 판에서만 뜻이 있다.
+  console.log(`  · 소켓 여지 — 대조군 p95 ${A.inP95}ms · 최악 ${A.inMax}ms  (②b 는 각각 ${SOCK_FLOOR}ms 이상일 때만 센다 — 조각내기 팔의 관측 바닥이 ~800ms)`);
+  const _defer = (nm, ctl, cur) => {
+    console.log(`  · [${nm} 판정 유보] 대조군 ${ctl}ms < ${SOCK_FLOOR}ms — 현재 ${cur}ms(×${(ctl / Math.max(1, cur)).toFixed(2)}).`);
+    console.log(`    조각내기 팔의 바닥이 ~800ms(프레임 리듬)라, 대조군이 그 두 배를 못 넘으면 '절반 이하'는 닿을 수 없는 선이다.`);
+  };
+  if (room >= 3 && gate(A.inP95)) {
     ok(B.inP95 <= A.inP95 / 2, '②b 창 안 p95 가 대조군의 절반 이하', `${B.inP95}ms ≤ ${(A.inP95 / 2).toFixed(0)}ms`);
+  } else _defer('②b p95', A.inP95, B.inP95);
+  if (room >= 3 && gate(A.inMax)) {
     ok(B.inMax <= A.inMax / 2, '②b 창 안 **최악 왕복**도 절반 이하', `${B.inMax}ms ≤ ${(A.inMax / 2).toFixed(0)}ms`);
-  } else {
-    console.log(`  · [②b 판정 유보] 여지가 없다 — 서버 ×${room.toFixed(1)}(≥3 필요) · 소켓 ×${sockRoom.toFixed(1)}(≥6 필요).`);
-    console.log(`    조각 하나가 대조군 막힘의 상당 부분이면 슬라이서가 그 아래로 못 내려간다 — 절반 판정은 뜻이 없다.`);
-    console.log(`    창 안 p95 ${A.inP95}ms → ${B.inP95}ms · 최악 왕복 ${A.inMax}ms → ${B.inMax}ms.`);
-    console.log(`    ★T41 이 집터 헛수고(하루의 56%)를 없애면서 **대조군의 하루도 같이 가벼워졌다** —`);
-    console.log(`      남은 하루는 캐러밴 콜드 A*(${B.tick ? B.tick.maxChunk : '?'}ms) 한 조각이 대부분이다. 그건 **T42 의 몫**이다.`);
-  }
+  } else _defer('②b 최악', A.inMax, B.inMax);
 
   // ③ 서버 쪽 증거 — 이벤트 루프가 실제로 덜 막혔다.
   //   ★**p99 가 아니라 최댓값**이다. 두 팔의 막힘은 **횟수가 다르다**: 대조군은 하루에 한 번 크게,
