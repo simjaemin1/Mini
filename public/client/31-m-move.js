@@ -127,15 +127,17 @@
     if (_predAccum < 0) _predAccum = 0;
   }
 
-  // Phase 14.41: 근처 다운된 같은 길드원 찾기 (RESCUE_RANGE_PX = 80)
+  // Phase 14.41: 근처 다운된 사람 찾기 (RESCUE_RANGE_PX = 80)
+  // ★★[T43 2026-09-02 재민 확정 · §12] **길드 제한을 없앴다.** §12 는 *"다른 플레이어"* 라고만 한다 —
+  //   낯선 이가 업어 옮기는 것이 이 세계의 구조다. 그리고 이건 **열쇠 통일**이기도 하다:
+  //   종전엔 서버가 `tribeId`(숫자)로, 여기가 `tribeName`(문자열)로 판정해 이름이 같고 id 가 다른
+  //   두 길드에서 갈렸다(죽음 설계 §0-ⓒ 가 지적한 자리). 이제 **양쪽 다 소속을 안 본다** — 열쇠가 없다.
   function findNearestDownedGuildmate() {
-    if (!myTribeId) return null;
     let best = null, bestD = 80;
     for (const c of conns.values()) {
       if (!c.others) continue;
       for (const o of c.others.values()) {
         if (!downStates.get(o.pid)) continue;
-        if (!o.tribeName || o.tribeName !== myTribeName) continue;
         const ax = (c.meta?.worldOffsetX || 0) + o.x;
         const ay = (c.meta?.worldOffsetY || 0) + o.y;
         const d = Math.hypot(myAbsPredicted.x - ax, myAbsPredicted.y - ay);

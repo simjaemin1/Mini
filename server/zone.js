@@ -615,10 +615,24 @@ const SPRINT_DRAIN_MULT__DEAD_SEE_body_js = 1.5;
 //   지우지 않고 이름으로 죽여 둔다: 다음 사람이 "여기가 관문"이라 믿고 여기를 고치면
 //   아무 일도 안 일어난다(같은 함정을 `SPRINT_DRAIN_MULT__DEAD_SEE_body_js` 가 이미 겪었다).
 const SPRINT_MIN_GAUGE__DEAD_SEE_body_canSprint = 5;
-// Phase 14.41 — 사망/구조: downed 상태 유지 시간, 구조 가능 윈도우.
-// 0~10초: 구조 가능 + 즉시 부활 가능.  10초 후: 부활만 가능.
-const RESCUE_WINDOW_MS = 10000;
-const RESCUE_RANGE_PX = 80;
+// ★★[쓰러짐·구조 2026-09-02 재민 확정 · T43 · §12] 손잡이로 뺐다 — 그리고 **근거를 적는다.**
+//   종전 `RESCUE_WINDOW_MS = 10000` 은 아무 데도 근거가 없었고(죽음 설계 §5-4 가 지적한 자리),
+//   §12 가 **"구조 창 3분(실시간, 야생)"** 으로 값을 정했다. 3분인 이유도 §12 안에 있다:
+//   구조는 "옆에 이미 서 있던 길드원"이 아니라 **소리를 듣고 달려오는 사람**의 일이다.
+//   10초는 앞엣것만 되고 3분은 뒤엣것이 된다(야생에서 800px 을 달려오는 데 ~40초).
+const RESCUE_WINDOW_MS = parseInt(process.env.DOWN_RESCUE_WINDOW_MS || '', 10) || 180000;   // 3분
+const RESCUE_RANGE_PX = parseInt(process.env.DOWN_RESCUE_RANGE_PX || '', 10) || 80;
+//   §12: *"구조 자체는 '옆에서 N초 붙들기' 하나."* — 업고 걷는 동안에도 그 시간은 흐른다
+//   (업기와 붙들기를 두 동사로 가르지 않았다 — 하나가 다른 하나를 포함한다).
+const RESCUE_HOLD_MS = parseInt(process.env.DOWN_RESCUE_HOLD_MS || '', 10) || 5000;
+//   §12: *"일어나면 HP 소폭."* — 종전 0.5(절반)는 "소폭"이 아니다. 일어나서 걸어갈 만큼만 준다.
+const RESCUE_HP_FRAC = parseFloat(process.env.DOWN_RESCUE_HP_FRAC || '') || 0.2;
+//   ★업는 무게 — 고증표의 성인 몸무게. `carry` 의 소프트 과적 곡선을 **그대로** 탄다(T12 규약:
+//   상한도 곡선도 안 건드리고 짐 쪽에 더한다) ⇒ 적재 25kg 인 사람이 60kg 을 업으면 3.4배 과적이다.
+const CARRY_PERSON_KG = parseFloat(process.env.DOWN_CARRY_PERSON_KG || '') || 60;
+//   §12: *"게임 시간이 흐른 뒤 깨어난다(옮겨진 것 — 텔레포트 아님)."*
+//   ★단위는 **게임분**이다(1 게임분 = 1 실초 — 시간 구조 불변 캐논 · T44 가 유도해 뒀다).
+const DOWN_WAKE_GAMEMIN = parseFloat(process.env.DOWN_WAKE_GAMEMIN || '') || 120;   // 게임 2시간 = 실시간 2분
 // per-zone player cap — 환경변수로 조정. 차면 새 접속 거부.
 // 부하 테스트로 측정한 단일 코어 한계 ~300. 안전 마진으로 150 기본.
 const PLAYER_CAP = parseInt(process.env.PLAYER_CAP || '150', 10);
@@ -3111,13 +3125,18 @@ async function _acceptConnection(ws, req, C) {
       catch (e) { extInv = {}; }
       inventory = { wood: acct.wood | 0, stone: acct.stone | 0, ...extInv };
       // ★[T47] 복원은 `parseBody` **하나**다(저장·핸드오프와 같은 함수). 옛 형식 변환도 그 안에 있다.
-      //   ⚠`vitals:false` — 로그아웃 후 재접속의 **풀피는 정책**이다(죽음 설계 T8 소관).
-      //     이 배치는 그걸 안 바꿨다. 존을 넘을 때만 생명값을 잇는다(`serializeBody` 주석).
+      //   ★★[T43 2026-09-02] **`vitals:true` 로 바뀌었다 — 로그아웃이 더는 부활이 아니다.**
+      //     종전 주석은 *"재접속의 풀피는 정책이다(T8 소관)"* 였다. 그 소관이 이 카드다(§12).
+      //     쓰러진 채 창을 닫고 30초 뒤 들어오면 **여전히 쓰러져 있다** — 죽음의 대가가 0 이 아니게 된다.
+      //     ⚠**부수 효과를 숨기지 않는다**: 이 한 줄은 downed 뿐 아니라 **모든 재접속의 공짜 풀피**를
+      //       없앤다(HP 30 으로 나가면 HP 30 으로 들어온다). 그게 §12 의 방향이고, 되돌리려면
+      //       여기 `vitals` 한 글자다. 죽음 설계 §5-2 가 "이걸 회부하라"고 한 그 부수 효과다.
       let _bodyRaw = {};
       try { _bodyRaw = acct.tools_json ? JSON.parse(acct.tools_json) : {}; }
       catch (e) { _bodyRaw = {}; }
       {
-        const B = parseBody(_bodyRaw, { vitals: false });
+        const B = parseBody(_bodyRaw, { vitals: true });
+        if (B.vital) initVital = B.vital;
         _loadEquipment = B.equipment; _loadEquipSlots = B.equipSlots; _loadCraftSkill = B.craftSkill;
         _loadCraftLog = B.craftLog; _loadOreLedger = B.oreLedger; _loadOreCarry = B.oreCarry;
         _loadFishStats = B.fishStats; _loadBody = B.body; _loadKgLedger = B.kgLedger; _loadLots = B.lots;
@@ -3434,6 +3453,17 @@ async function _acceptConnection(ws, req, C) {
     },
   });
   sendCorpsesInit(ws);
+  // ★★[T43 2026-09-02 · §12] **쓰러진 채 들어오면 쓰러진 화면이 뜬다.**
+  //   `vitals:true` 로 몸은 이어졌는데(`isDown` · HP 0) `player_downed` 는 **피해 순간에만** 나가서,
+  //   다시 들어온 사람은 "못 움직이는데 화면은 멀쩡한" 상태가 됐다 — 배치 5 가 배운 그 층
+  //   ("계약도 역학도 맞는데 화면에 도달하지 못한다")이 여기서 또 났다.
+  //   ⇒ 새 메시지를 만들지 않고 **같은 메시지를 welcome 뒤에 한 번 더** 보낸다(옵션은 지금 자리 기준).
+  //   ★창(`downedAt`)은 손대지 않는다 — 로그아웃으로 시간을 되돌릴 수 없다는 것이 §12 의 요점이다.
+  if (player.isDown) {
+    send(ws, { type: 'player_downed', pid: player.pid, rescueWindowMs: RESCUE_WINDOW_MS,
+      options: listRespawnOptions(player), source: 'relogin' });
+    broadcast({ type: 'player_down_state', pid: player.pid, isDown: true });
+  }
 
   // ws에 player input/close 핸들러 attach
   C.stage = 'handlers';
@@ -4060,7 +4090,12 @@ function doEat(player, item, amount) {
   // ★보존식은 짜고 말라 갈증을 준다(thirst 음수) — 0 아래로는 안 내려간다.
   //   갈증 항은 신선도로 안 깎는다: 마른 건어물은 상해도 여전히 짜다.
   if (eff.thirst)   player.thirst = Math.max(0, Math.min(THIRST_MAX, (player.thirst ?? THIRST_MAX) + eff.thirst * ate));
-  if (eff.hpDelta)  { player.hp = Math.max(0, Math.min(player.maxHp, player.hp + eff.hpDelta * ate));
+  // ★★[T43 2026-09-02] **HP 0 의 뜻을 하나로.** 종전엔 이 갈래가 `damagePlayer` 밖에서 hp 를 깎아
+  //   hp 가 0 이 돼도 **쓰러지지 않는 몸**이 만들어졌다(죽음 설계 §0-ⓐ-4 가 잡은 구멍:
+  //   그 몸은 더 안 맞고 영원히 안 아물어 로그아웃 말고는 빠져나올 길이 없었다).
+  //   ⇒ 음(−)의 몫은 **정본 피해 경로**로 보낸다. 회복(+)은 종전 그대로 여기서 더한다.
+  if (eff.hpDelta < 0) { damagePlayer(player, -eff.hpDelta * ate, `food:${item}`); }
+  else if (eff.hpDelta) { player.hp = Math.max(0, Math.min(player.maxHp, player.hp + eff.hpDelta * ate));
                       broadcast({ type: 'player_damaged', pid: player.pid, hp: player.hp }); }
   // ★★상한 걸 먹으면 **확정적으로** 탈이 난다 — 주사위 없음(재민 확정: 식중독 확률 모델 금지).
   //   새 축을 안 만든다: 신체 §7 의 **부상** 축 하나를 재사용한다(HP 는 안 건드린다).
@@ -6562,6 +6597,9 @@ for (const [k, ko] of Object.entries(Crops.labelMap())) ITEM_LABEL_SERVER[k] = k
 setInterval(() => {
   const now = Date.now();
   for (const [gid, gi] of groundItems) {
+    // ★★[T43 · §12] 죽은 자리의 **짐꾸러미는 안 사라진다** — *"짐은 그 자리에 낙하(디스폰 금지)"*.
+    //   찾으러 가는 원정이 이 카드의 대가라서, 10분 청소가 그걸 지우면 대가가 0 이 된다.
+    if (gi.keep) continue;
     if (now - gi.droppedAt > GROUND_ITEM_LIFETIME_MS) {
       groundItems.delete(gid);
       broadcast({ type: 'ground_item_removed', id: gid });
@@ -7605,6 +7643,10 @@ function __testBind() {
     //   (하네스가 염도·수율을 다시 계산하면 그게 사본이다).
     Salt, doBoilSalt, isSeaTileLocal, WATER_TILES, tryGather, _SEASON_DAY_MS, ITEM_RECIPES, doCraftItem,
     Wind, windExposureOf, isRockTileLocal, villageShelterOf, gameDayNow, elevKmAt,
+    // ── 쓰러짐·구조·사망(T43) ──
+    tryRescue, tryRespawnChoice, listRespawnOptions, resolveDowned, tickDowned, nearestVillageWake,
+    RESCUE_WINDOW_MS, RESCUE_RANGE_PX, RESCUE_HOLD_MS, RESCUE_HP_FRAC, CARRY_PERSON_KG, DOWN_WAKE_GAMEMIN,
+    Carry, Lots, Weights, SimVillages, serializeBody, parseBody,
     // ★[부패 2차 2026-09-01] 자리(상자·바닥)를 하네스가 정본 함수로 밟게 — 손으로 빚으면 사본이다
     tryChestPut, tryChestTake, CHEST_ALLOWED_ITEMS,
     // ★[T12 지게 2026-09-01] 착용·마모를 **정본 함수로** 밟게 한다(하네스가 슬롯을 손으로 꽂으면 사본이다)
@@ -8293,64 +8335,266 @@ function listRespawnOptions(p) {
       x: p._homeX, y: p._homeY,
     });
   }
+  // ★★[T43 2026-09-02] **4번 — 마지막 보루.** 위 주석이 2026-07 부터 약속해 온 갈래인데
+  //   **코드에 없었다**(죽음 설계 §0-ⓐ-1 이 잡은 막다른 골목): 사유지·길드·귀향점이 전부 없는
+  //   게스트로 쓰러지면 옵션이 **빈 배열**이 되고 클라가 *"부활 가능한 지점이 없습니다"* 를 띄웠다.
+  //   ⇒ 가장 가까운 마을의 **도착 지점**(온보딩 v2 가 이미 만든 나루터·길목 — 걸어갈 수 있고
+  //     물·바위가 아닌 자리다. 좌표를 새로 지어내지 않는다)으로 깨어난다.
+  //   ★이 함수는 이제 **절대 빈 배열을 안 낸다**(`test-downed ②` 가 매번 못 박는다).
+  if (!opts.length) {
+    const w = nearestVillageWake(p.x, p.y);
+    if (w) opts.push({ claimId: '__shelter__', kind: 'shelter', x: w.x, y: w.y, vid: w.vid, vname: w.name });
+  }
   return opts;
 }
 
+// ★가장 가까운 마을의 "깨어날 자리" — 도착 지점이 있으면 그것, 없으면 마을 중심.
+//   ★사본 금지: 마을 목록도 도착 지점도 **정본을 그대로 부른다**(좌표 표를 여기 안 적는다).
+function nearestVillageWake(x, y) {
+  let best = null, bd = Infinity;
+  try {
+    //   `clientVillages()` 가 마을 목록의 정본이다(온보딩도 이걸 본다). `cx/cy` 는 **셀**이다.
+    for (const v of (SimVillages.clientVillages() || [])) {
+      const vx = v.cx * 32 + 16, vy = v.cy * 32 + 16;
+      if (!Number.isFinite(vx) || !Number.isFinite(vy)) continue;
+      const d = Math.hypot(vx - x, vy - y);
+      if (d < bd) { bd = d; best = { vid: v.id, name: v.name, x: vx, y: vy }; }
+    }
+  } catch (e) { best = null; }
+  if (!best) return null;
+  try {
+    const a = Onboarding.arrivalOf ? Onboarding.arrivalOf(best.vid) : null;
+    if (a && Number.isFinite(a.x) && Number.isFinite(a.y)) { best.x = a.x; best.y = a.y; }
+  } catch (e) {}
+  // ★★**깨어날 자리는 설 수 있는 자리여야 한다.** 도착 지점은 걸어갈 수 있는 자리로 산출되지만
+  //   그 표가 아직 안 데워졌으면(부팅 직후) 마을 **중심**으로 떨어지고, 중심은 집·물일 수 있다.
+  //   ⇒ 물·막힘이면 나선으로 가장 가까운 설 수 있는 칸을 찾는다. **못 찾으면 그대로 둔다**
+  //     (없는 자리를 지어내느니 원래 자리가 낫다 — 그때는 하네스가 잡는다).
+  if (isWaterTileLocal(best.x, best.y) || isTerrainBlockedLocal(best.x, best.y)) {
+    outer:
+    for (let r = 1; r <= 24; r++) {
+      for (let a2 = 0; a2 < 8 * r; a2++) {
+        const th = (2 * Math.PI * a2) / (8 * r);
+        const x = best.x + Math.cos(th) * r * 32, y = best.y + Math.sin(th) * r * 32;
+        if (x < 64 || y < 64 || x >= ZONE.zoneWidth - 64 || y >= ZONE.zoneHeight - 64) continue;
+        if (!isWaterTileLocal(x, y) && !isTerrainBlockedLocal(x, y)) { best.x = x; best.y = y; break outer; }
+      }
+    }
+  }
+  return best;
+}
+
+// ★★[T43 2026-09-02 재민 확정 · §12] **"고르는 부활"은 없어졌다 — 이건 이제 "포기"다.**
+//   §12 의 사슬은 `쓰러짐 → 구조 창 → (마을 이송 | 사망) → 깨어남` 하나뿐이고, 그 어디에도
+//   "버튼을 눌러 풀피로 순간이동" 이 없다. 그게 남아 있으면 창도 사망도 **누르면 사라지는 것**이 된다.
+//   ⇒ 화면(부활 패널)은 그대로 두되 **뜻을 바꾼다**: 고르는 것은 부활 지점이 아니라
+//     **"구조를 기다리지 않고 여기서 깨어나겠다"** 는 포기 선언이다. 대가는 창이 소진된 것과 **같다**:
+//     마을 반경 안이면 이송(짐 보존), 야생이면 사망(짐 낙하 · 후유증). 값을 치르는 자리가 하나다.
 function tryRespawnChoice(player, claimId) {
   if (!player.isDown) { send(player.ws, { type: 'notice', text: '다운 상태가 아닙니다' }); return; }
   const opts = listRespawnOptions(player);
-  const target = opts.find(o => o.claimId === claimId);
+  const target = opts.find(o => o.claimId === claimId) || opts[0];
   if (!target) {
-    send(player.ws, { type: 'notice', text: '해당 사유지가 없습니다. 옵션을 다시 확인하세요.' });
-    // 옵션 갱신 송신
-    send(player.ws, { type: 'player_downed', pid: player.pid, rescueWindowMs: RESCUE_WINDOW_MS, options: opts });
+    // ★여기 오면 `listRespawnOptions` 의 마지막 보루가 깨진 것이다(마을이 하나도 없는 존).
+    send(player.ws, { type: 'notice', text: '깨어날 자리를 못 찾았다 — 구조를 기다린다' });
     return;
   }
-  // 부활 실행
-  player.isDown = false;
-  player.downedAt = 0;
-  player.hp = player.maxHp;
-  player.x = target.x;
-  player.y = target.y;
-  player.vx = 0; player.vy = 0;
-  broadcast({ type: 'player_respawn', pid: player.pid, hp: player.hp, x: player.x, y: player.y });
-  broadcast({ type: 'player_down_state', pid: player.pid, isDown: false });
-  send(player.ws, { type: 'notice', text: `${target.kind === 'personal' ? '개인' : '임시'} 사유지에서 부활했습니다.` });
+  send(player.ws, { type: 'notice', text: '⏳ 구조를 기다리지 않기로 했다…' });
+  resolveDowned(player, target);
 }
 
+// ★★[T43 2026-09-02 재민 확정 · §12] 구조 = **옆에서 N초 붙들기 하나.**
+//   §12: *"창 안에 다른 플레이어가 상태를 내리는 행동을 하면 구조 — 먹여주기·물 먹이기·
+//   불가로 옮기기·붙들기(부상)."* 그리고 *"구조 자체는 '옆에서 N초 붙들기' 하나."*
+//   ⇒ 동사를 넷 만들지 않았다. **업기와 붙들기를 한 동작으로 합쳤다**:
+//     R 을 누르면 들쳐업고(=붙들기 시작), 그대로 서 있으면 N초 뒤 깨어나고,
+//     걸어서 불가·마을로 옮기면 **옮기는 동안에도 그 시간이 흐른다**. 한 동작이 둘을 다 한다.
+//   ★"먹여주기·물 먹이기"는 이 카드가 **안 만들었다**(새 클라 동사가 필요하다 — 회부).
+//     대신 §12 의 요점은 그대로 산다: 극단 축이 남은 채 일어나면 **T44 식이 다시 눕힌다**(새 규칙 0).
+//   ★자격 — **같은 길드만**이라는 종전 제한을 없앴다. §12 는 *"다른 플레이어"* 라고만 한다.
+//     낯선 이가 업어 옮기는 것이 이 세계의 구조다(클라도 같은 판정으로 고쳤다 — 열쇠가 하나다).
 function tryRescue(rescuer, downedPid) {
   if (rescuer.isDown) return;
+  // ★이미 업고 있으면 R 은 **내려놓기**다(같은 키 · 상태 토글 — 새 동사 0).
+  if (rescuer._carrying) {
+    const cur = players.get(rescuer._carrying);
+    _dropCarried(rescuer, cur, '내려놓았다');
+    return;
+  }
   const target = players.get(downedPid);
   if (!target || !target.isDown) {
     send(rescuer.ws, { type: 'notice', text: '구조 대상이 없습니다' });
     return;
   }
-  // 구조 윈도우 내인가?
+  if (target._carriedBy) { send(rescuer.ws, { type: 'notice', text: '다른 사람이 이미 업고 있다' }); return; }
   const elapsed = Date.now() - (target.downedAt || 0);
   if (elapsed > RESCUE_WINDOW_MS) {
     send(rescuer.ws, { type: 'notice', text: '구조 가능 시간이 지났습니다' });
     return;
   }
-  // 같은 길드여야
-  if (!rescuer.tribeId || rescuer.tribeId !== target.tribeId) {
-    send(rescuer.ws, { type: 'notice', text: '같은 길드원만 구조 가능' });
-    return;
-  }
-  // 거리 체크
   const d = Math.hypot(rescuer.x - target.x, rescuer.y - target.y);
   if (d > RESCUE_RANGE_PX) {
     send(rescuer.ws, { type: 'notice', text: `${Math.round(d)}px 떨어짐 — ${RESCUE_RANGE_PX}px 안에서 R` });
     return;
   }
-  // 구조 — HP 50%, 자리에서 일어남
-  target.isDown = false;
-  target.downedAt = 0;
-  target.hp = Math.round(target.maxHp * 0.5);
-  broadcast({ type: 'player_respawn', pid: target.pid, hp: target.hp, x: target.x, y: target.y });
-  broadcast({ type: 'player_down_state', pid: target.pid, isDown: false });
-  send(target.ws, { type: 'notice', text: `🤝 ${rescuer.name}님이 당신을 구조했습니다 (HP ${target.hp})` });
-  send(rescuer.ws, { type: 'notice', text: `🤝 ${target.name}님을 구조했습니다` });
-  console.log(`[${ZONE_ID}] 🤝 ${rescuer.name} → ${target.name} 구조 성공`);
+  // ── 업는다 ────────────────────────────────────────────────────────────
+  rescuer._carrying = target.pid;
+  rescuer._carryingKg = CARRY_PERSON_KG;      // ★`carry.totalKg` 가 이 한 값을 더한다(곡선 무변)
+  target._carriedBy = rescuer.pid;
+  target._rescueHoldMs = 0;
+  broadcast({ type: 'player_down_state', pid: target.pid, isDown: true, carriedBy: rescuer.pid });
+  const eff = Carry.effects(rescuer);
+  send(rescuer.ws, { type: 'notice',
+    text: `🫂 ${target.name}을(를) 업었다 — ${Math.round(RESCUE_HOLD_MS / 1000)}초 붙들면 깨어난다`
+        + ` · 짐 ${eff.kg.toFixed(0)}/${eff.cap.toFixed(0)}kg (이속 ×${eff.moveMult})` });
+  send(target.ws, { type: 'notice', text: `🫂 ${rescuer.name}님이 당신을 업었다` });
+  // ★★구조자가 **왜 쓰러졌는지**를 볼 수 있어야 한다(§12: 원인 표지는 없고 몸이 원인이다).
+  //   새 패널을 만들지 않았다 — 기존 알림 문구 문법으로 그 몸의 무들을 그대로 읽어 준다.
+  try {
+    const md = Body.moodles(target).map((m) => `${m.emo} ${m.ko} ${Math.round(m.sev * 100)}%`);
+    send(rescuer.ws, { type: 'notice',
+      text: `🩺 ${target.name}의 상태 — ${md.length ? md.join(' · ') : '겉으로는 멀쩡하다'}`
+          + ` (배고픔 ${Math.round(target.hunger)} · 목마름 ${Math.round(target.thirst)})` });
+  } catch (e) {}
+}
+
+// 업기 해제 — 죽거나 끊기거나 내려놓거나.
+function _dropCarried(carrier, target, why) {
+  if (carrier) { carrier._carrying = null; carrier._carryingKg = 0; }
+  if (target) {
+    target._carriedBy = null;
+    broadcast({ type: 'player_down_state', pid: target.pid, isDown: !!target.isDown });
+  }
+  if (carrier && carrier.ws && why) send(carrier.ws, { type: 'notice', text: `🫳 ${target ? target.name : '그 사람'}을(를) ${why}` });
+}
+
+// ★깨어나기 — 구조·이송·사망이 **같은 문 하나**로 일어난다(세 곳에 흩어 두면 규약이 갈린다).
+function _wakeUp(p, x, y, hpFrac, msg) {
+  p.isDown = false;
+  p.downedAt = 0;
+  p._rescueHoldMs = 0;
+  p._deadUntil = 0;
+  Body.ensure(p).hpDebt = 0;            // ★누워 있는 동안 쌓인 극단 빚을 지우고 일어난다(T44 와의 접점)
+  p.hp = Math.max(1, Math.round(p.maxHp * hpFrac));
+  if (Number.isFinite(x) && Number.isFinite(y)) { p.x = x; p.y = y; }
+  p.vx = 0; p.vy = 0;
+  p.lastDamagedAt = Date.now();
+  broadcast({ type: 'player_respawn', pid: p.pid, hp: p.hp, x: p.x, y: p.y });
+  broadcast({ type: 'player_down_state', pid: p.pid, isDown: false });
+  if (msg) send(p.ws, { type: 'notice', text: msg });
+  savePlayer(p);
+}
+
+// ★★창이 끝났을 때(또는 스스로 포기했을 때) 무슨 일이 나는가 — **마을이면 이송, 야생이면 사망.**
+//   §12: *"마을 반경 안이면 창이 끝나도 마을 사람이 옮긴다. 죽음은 야생에서만."*
+//   ★마을 반경 술어는 추위가 쓰는 **완충 정본** 하나다(`SimVillages.shelterAt` — 사본 금지).
+function resolveDowned(p, wakeSpotOverride) {
+  const inVillage = (() => { try { return (SimVillages.shelterAt(p.x, p.y) || 0) > 0; } catch (e) { return false; } })();
+  if (p._carriedBy) { const c = players.get(p._carriedBy); _dropCarried(c, p, '내려놓았다'); }
+  const spot = wakeSpotOverride || (inVillage ? nearestVillageWake(p.x, p.y) : _wakeSpotOf(p));
+  const delayMs = Math.max(0, DOWN_WAKE_GAMEMIN * 1000);   // 1 게임분 = 1 실초(시간 구조 불변 캐논)
+  if (inVillage) {
+    // ── 마을 안 불사 — 죽지 않는다. 짐도 그대로다. 마을 사람이 쉼터로 옮긴다.
+    p._deadUntil = Date.now() + delayMs;
+    p._wakeSpot = spot ? { x: spot.x, y: spot.y } : null;
+    p._wakeMsg = `🏘️ 마을 사람들이 당신을 쉼터로 옮겼다 — ${spot && spot.name ? spot.name + '에서 ' : ''}깨어났다`;
+    p._diedInWild = false;
+    send(p.ws, { type: 'notice', text: '🏘️ 마을 안이다 — 누군가 당신을 발견했다…' });
+    console.log(`[${ZONE_ID}] 🏘️ ${p.name} 마을 안 구제 — 쉼터 이송 대기`);
+    return;
+  }
+  // ── 야생 사망 ───────────────────────────────────────────────────────────
+  _deathDrop(p);
+  Body.startAftermath(p, gameDayNow());
+  p._deadUntil = Date.now() + delayMs;
+  p._wakeSpot = spot ? { x: spot.x, y: spot.y } : null;
+  p._wakeMsg = `⚰️ 얼마나 지났는지 모르겠다 — ${spot && spot.name ? spot.name + '에서 ' : ''}깨어났다.`
+             + ` 짐은 쓰러진 자리에 두고 왔다 (며칠은 숨이 덜 붙는다)`;
+  p._diedInWild = true;
+  send(p.ws, { type: 'notice', text: '⚰️ 정신을 잃었다…' });
+  console.log(`[${ZONE_ID}] ⚰️ ${p.name} 사망 @ (${p.x.toFixed(0)},${p.y.toFixed(0)}) — 짐 낙하 · 후유증`);
+}
+
+// ★깨어날 자리 사다리 — 사유지 → 길드 → 귀향점 → **가장 가까운 마을 도착 지점**.
+//   `listRespawnOptions` 가 그 사다리의 정본이고, 이제 **절대 빈 배열을 안 낸다**.
+function _wakeSpotOf(p) {
+  const opts = listRespawnOptions(p);
+  return opts.length ? opts[0] : null;
+}
+
+// ★★짐꾸러미 — 그 자리에 떨어뜨린다. **정본 낙하 경로**(`_spawnGroundItems`)를 그대로 쓴다
+//   ⇒ 개체 kg 원장도 로트 나이도 그대로 실린다(로트는 바닥에서 **계속 부패**한다 — §12).
+//   ★디스폰 금지(§12) — `keep` 표를 달면 10분 청소가 건너뛴다.
+//   ⚠**입은 것(equipment)은 안 떨어뜨린다.** 몸에 걸친 것은 "짐"이 아니고, 바닥템에 장비 인스턴스를
+//     실을 자리가 없어서(속성·내구가 뭉개진다) 주우면 다른 물건이 된다. 회부로 남긴다.
+function _deathDrop(p) {
+  let n = 0;
+  try { Carry.reconcile(p, p.inventory); } catch (e) {}
+  // ⓐ 수량 품목 — 정본 드롭과 같은 순서(로트를 인벤보다 **먼저** 꺼낸다)
+  for (const [item, cnt0] of Object.entries(p.inventory || {})) {
+    const cnt = Math.floor(Number(cnt0) || 0);
+    if (cnt <= 0) continue;
+    let lr = null;
+    try { lr = _takeGroundLots(p, item, cnt); } catch (e) { lr = null; }
+    p.inventory[item] = 0;
+    let t = { kg: 0, entries: [] };
+    try { t = Carry.takeEntries(p, item, cnt); } catch (e) {}
+    const gis = _spawnGroundItems(p, item, [{ n: cnt, kg: t.kg, led: t.entries }], lr);
+    for (const g of gis) g.keep = 1;
+    try { Lots.reconcile(p, item, p.inventory, zoneGameDay()); } catch (e) {}
+    n += cnt;
+  }
+  // ⓑ 도구 개체 — 내구도까지 그대로
+  for (const inst of (p.toolItems || []).slice()) {
+    const kg = Weights.kgOfOrDefault(inst.type);
+    const gis = _spawnGroundItems(p, inst.type, [{ n: 1, kg, tool: { type: inst.type, d: inst.d, max: inst.max } }]);
+    for (const g of gis) g.keep = 1;
+    n++;
+  }
+  p.toolItems = [];
+  p.equipped = null; p.hotkey1 = null;
+  try { sendInventory(p, 'death'); } catch (e) {}
+  send(p.ws, { type: 'tools', toolItems: [], equipped: null, hotkey1: null });
+  return n;
+}
+
+// ★★쓰러짐 틱 — 업고 걷기 · 붙들기 진행 · 창 소진 · 깨어남. **1초에 한 번**이면 충분하다.
+let _downedTickAt = 0;
+function tickDowned(now) {
+  if (now - _downedTickAt < 1000) return;
+  const dt = _downedTickAt ? (now - _downedTickAt) : 1000;
+  _downedTickAt = now;
+  for (const p of players.values()) {
+    if (p.isNpc) continue;
+    // ⓞ 업고 있던 사람이 **사라졌다**(접속 종료·존 이동). 업은 이의 60kg 이 영원히 남으면
+    //   그 사람은 평생 비틀거린다 — 짐은 사람이 있을 때만 짐이다.
+    if (p._carrying && !players.has(p._carrying)) { p._carrying = null; p._carryingKg = 0; }
+    // ⓐ 업힌 사람 — 업은 이를 따라간다(게이지는 이미 멎어 있다: 생존 루프가 `isDown` 을 건너뛴다)
+    if (p._carriedBy) {
+      const c = players.get(p._carriedBy);
+      if (!c || c.isDown || c.handingOff || !c.ws || c.ws.readyState !== 1) { _dropCarried(c, p, '놓쳤다'); continue; }
+      p.x = c.x; p.y = c.y; p.floor = c.floor || 0;
+      p._rescueHoldMs = (p._rescueHoldMs || 0) + dt;
+      if (p._rescueHoldMs >= RESCUE_HOLD_MS) {
+        _dropCarried(c, p, null);
+        _wakeUp(p, p.x, p.y, RESCUE_HP_FRAC, `🤝 ${c.name}님이 당신을 일으켰다 (HP ${Math.round(p.maxHp * RESCUE_HP_FRAC)})`);
+        send(c.ws, { type: 'notice', text: `🤝 ${p.name}님을 구했다` });
+        console.log(`[${ZONE_ID}] 🤝 ${c.name} → ${p.name} 구조 성공(${Math.round(RESCUE_HOLD_MS / 1000)}초 붙들기)`);
+      }
+      continue;
+    }
+    // ⓑ 깨어날 시각이 됐다(사망·이송 뒤 게임 시간 경과)
+    if (p._deadUntil && now >= p._deadUntil) {
+      const sp = p._wakeSpot;
+      _wakeUp(p, sp ? sp.x : p.x, sp ? sp.y : p.y, RESCUE_HP_FRAC, p._wakeMsg || '눈을 떴다');
+      p._wakeSpot = null; p._wakeMsg = null; p._diedInWild = false;
+      continue;
+    }
+    // ⓒ 구조 창 소진 — 마을이면 이송, 야생이면 사망
+    if (p.isDown && !p._deadUntil && p.downedAt && (now - p.downedAt) > RESCUE_WINDOW_MS) {
+      resolveDowned(p);
+    }
+  }
 }
 
 // === Phase 14.45: 극지방 빙하 콜라이더 ===
@@ -9628,6 +9872,8 @@ setInterval(() => {
   _fishPoll(now);
   { const _t0 = Date.now(); _periodicSave(now); const _d = Date.now() - _t0; if (_d >= 5) perfMark('save', _d); }
   // ★[RTT 상관 계측] 틱 전체가 예산(33ms)을 넘긴 순간도 남긴다 — 원인이 위 둘이 아닐 수도 있다.
+  // ★★[T43] 쓰러짐 사슬 — 업고 걷기 · 붙들기 진행 · 창 소진 · 깨어남(내부에서 1초에 한 번만 돈다).
+  tickDowned(now);
   { const _tot = Date.now() - now; if (_tot >= 33) perfMark('tick', _tot); }
   { const _td = Date.now() - now; global._tt = (global._tt||0)+_td; global._tn = (global._tn||0)+1; if (_td > (global._tmx||0)) global._tmx = _td; }
 }, TICK_MS);

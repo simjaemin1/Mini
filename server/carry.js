@@ -250,6 +250,11 @@ function totalKg(p) {
     const frac = Lots.sum(p, item);
     if (frac > 1e-9) kg += frac * W.kgOfOrDefault(item);
   }
+  // ★★[T43 2026-09-02 · §12] **업은 사람도 짐이다.** zone 이 업기 시작·해제에서 이 한 값을 세운다.
+  //   ⇒ 소프트 과적 곡선·과적 단계·피로 가속이 **한 글자도 안 바뀐 채** 그대로 걸린다
+  //     (T12 가 상한만 옮겨 곡선을 지킨 것과 같은 규약 — 여기선 짐 쪽에 더한다).
+  //   실측: 기본 상한 25kg 인 사람이 60kg 을 업으면 적재율 2.4 — 비틀거리며 걷는다.
+  if (p && p._carryingKg > 0) kg += +p._carryingKg;
   for (const t of (p.toolItems || [])) kg += W.kgOfOrDefault(t.type);
   for (const e of (p.equipment || [])) kg += W.kgOfOrDefault(e.type);
   for (const d of (p.dishes || [])) kg += W.kgOfOrDefault('cooked_food');

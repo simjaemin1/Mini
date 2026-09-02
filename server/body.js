@@ -140,6 +140,17 @@ const CFG = {
   EXTREME_HP_THIRST: _num('BODY_EXTREME_HP_THIRST', 100 / (1.5 * 1440)),
   EXTREME_HP_COLD: _num('BODY_EXTREME_HP_COLD', 100 / (6 * 60)),
 
+  // ── ★★[쓰러짐·죽음 2026-09-02 재민 확정 · T43] **후유증** — 죽고 나면 며칠 몸이 성치 않다 ──
+  //   §12: *"후유증(며칠 게임일 동안 스태미나 상한 감소, 시간이 지나면 회복)."*
+  //   ★새 축을 만들지 않았다 — 있는 스태미나의 **상한**을 한동안 눌러 둘 뿐이다.
+  //     그래서 달리기·과적·피로의 모든 수가 한 자도 안 움직인다(T12 가 상한만 옮긴 것과 같은 규약).
+  //   ★★회복은 **연속**이다(계단 금지 — §8.3). 죽은 날 상한이 가장 낮고, 게임 며칠에 걸쳐
+  //     선형으로 1 로 돌아온다. "며칠째냐"를 화면이 세지 않아도 몸이 알아서 나아진다.
+  //   ⚠단위는 **게임일**이다(벽시계가 아니라) — 접속을 안 하면 안 낫는 게 아니라,
+  //     세계의 날이 흐르면 낫는다. 그게 "며칠 지나면"의 뜻이다.
+  AFTERMATH_DAYS: _num('BODY_AFTERMATH_DAYS', 3),
+  AFTERMATH_STAM_CAP: _num('BODY_AFTERMATH_STAM_CAP', 0.55),
+
   // ── 피로 ───────────────────────────────────────────────────────────────────
   //   ★"24분 하루의 자연 마디"(§7). 하루 종일 일하면 저녁에 효율이 떨어지는 **정도**다.
   //   채광 1타/초로 24분 = 1,440타 ⇒ 타당 0.0008 이면 하루 끝에 대략 1.0 에 닿는다.
@@ -248,7 +259,7 @@ for (const a of AXES) {
 //   새 축만 `p.body` 에 0..1 로 담는다(0 좋음 … 1 최악, 사기만 0 없음 … 1 최고).
 function ensure(p) {
   if (!p.body || typeof p.body !== 'object') {
-    p.body = { cold: 0, fatigue: 0, injury: 0, morale: 0, herbUntil: 0, stages: {}, stam: 1, stamLock: false, brineUntil: 0, hpDebt: 0 };
+    p.body = { cold: 0, fatigue: 0, injury: 0, morale: 0, herbUntil: 0, stages: {}, stam: 1, stamLock: false, brineUntil: 0, hpDebt: 0, deadDay: null };
   }
   if (!p.body.stages) p.body.stages = {};
   // ★[3층 재배선] 옛 저장본엔 스태미나가 없다 — 가득으로 시작한다(불이익 없이 승격).
@@ -258,7 +269,32 @@ function ensure(p) {
   if (!Number.isFinite(p.body.brineUntil)) p.body.brineUntil = 0;
   // ★[T44 극단 HP] 미적용 감소분(HP 단위 · 1 이 쌓이면 정본 피해 경로로 나간다).
   if (!Number.isFinite(p.body.hpDebt)) p.body.hpDebt = 0;
+  // ★[T43 후유증] 마지막으로 죽은 **게임일**. null 이면 후유증 없음(옛 저장본 포함).
+  if (!Number.isFinite(p.body.deadDay)) p.body.deadDay = null;
   return p.body;
+}
+
+// ── ★★[쓰러짐 2026-09-02 · T43] 후유증 — 스태미나 **상한**만 누른다 ──────────
+//   `startAftermath(p, day)` 죽은 그 게임일을 적는다 · `staminaCap(p, day)` 지금의 상한(0..1).
+//   ★상한은 **연속**으로 1 로 돌아온다: 죽은 날 AFTERMATH_STAM_CAP → AFTERMATH_DAYS 뒤 1.
+//     (계단이면 "3일째 아침에 갑자기 멀쩡"이 된다 — §8.3 "속은 연속"의 자리다.)
+function startAftermath(p, day) {
+  const b = ensure(p);
+  b.deadDay = Number.isFinite(day) ? day : null;
+  return b.deadDay;
+}
+function aftermathLeft(p, day) {
+  const b = ensure(p);
+  if (!Number.isFinite(b.deadDay) || !Number.isFinite(day)) return 0;
+  const left = CFG.AFTERMATH_DAYS - (day - b.deadDay);
+  return Math.max(0, Math.min(CFG.AFTERMATH_DAYS, left));
+}
+function staminaCap(p, day) {
+  const D = Math.max(1e-9, CFG.AFTERMATH_DAYS);
+  const left = aftermathLeft(p, day);
+  if (left <= 0) return 1;
+  const c0 = Math.max(0, Math.min(1, CFG.AFTERMATH_STAM_CAP));
+  return +(1 - (1 - c0) * (left / D)).toFixed(4);       // 남은 날이 많을수록 낮다 · 연속
 }
 
 // ── ★★[바닷물 2026-09-01 · T3 동봉] 짠물을 마셨다 ────────────────────────────
@@ -580,6 +616,11 @@ function tick(p, dtSec, ctx) {
     b.stam = Math.min(1, b.stam + rec * dtSec);
     if (b.stamLock && b.stam >= CFG.STAM_RESUME) b.stamLock = false;
   }
+  // ★[T43 후유증] 상한을 넘겨 차지 않는다 — 죽고 며칠은 숨이 덜 붙는다(연속으로 풀린다).
+  {
+    const cap = staminaCap(p, c.day);
+    if (b.stam > cap) b.stam = +cap.toFixed(4);
+  }
   // 피로 — 일하면 오르고(그건 onLabor 가 한다) 쉬면 내린다.
   let restMult = c.indoor ? CFG.FATIGUE_INDOOR_MULT : 1;
   if (c.moving) restMult *= CFG.FATIGUE_MOVE_MULT;
@@ -634,13 +675,15 @@ function selfPayload(p) {
 function peerPayload(p) { return { moodles: moodles(p).map((m) => ({ axis: m.axis, stage: m.stage })) }; }
 
 // 저장/복원 — 주기 저장(`SAVE_INTERVAL_MS`) 경로에 실린다.
-function toSave(p) { const b = ensure(p); return { cold: +b.cold.toFixed(4), fatigue: +b.fatigue.toFixed(4), injury: +b.injury.toFixed(4), morale: +b.morale.toFixed(4), stam: +b.stam.toFixed(4) }; }
+function toSave(p) { const b = ensure(p); return { cold: +b.cold.toFixed(4), fatigue: +b.fatigue.toFixed(4), injury: +b.injury.toFixed(4), morale: +b.morale.toFixed(4), stam: +b.stam.toFixed(4), deadDay: Number.isFinite(b.deadDay) ? b.deadDay : null }; }
 function fromSave(p, saved) {
   const b = ensure(p);
   if (!saved || typeof saved !== 'object') return b;
   for (const k of ['cold', 'fatigue', 'injury', 'morale', 'stam']) {   // ★[3층 재배선] 스태미나도 산다
     if (typeof saved[k] === 'number' && Number.isFinite(saved[k])) b[k] = Math.max(0, Math.min(1, saved[k]));
   }
+  // ★[T43 후유증] 죽은 날은 **게임일**이라 0~1 클램프 대상이 아니다(위 루프에 넣으면 1 로 뭉개진다).
+  if (Number.isFinite(saved.deadDay)) b.deadDay = saved.deadDay;
   return b;
 }
 // dirty — §8.3 "Δ>0.01 이면 갱신". 주기 저장의 판정에도 쓴다.
@@ -661,6 +704,7 @@ module.exports = {
   RECOVER, EFFECT_AXES, RECOVER_AXES, recoverMult, recoverParts, canSprint, stamina, coldTarget, warmthInsC, decayRate,
   drinkBrine, brineActive,
   extremeHpRate, extremeAt, extremeness, takeHpDamage, DRAIN_AXES,
+  startAftermath, aftermathLeft, staminaCap,
   tick, onLabor, onDamage, onEat, onHerb,
   selfPayload, peerPayload, toSave, fromSave, dirtySince, snapshot,
 };

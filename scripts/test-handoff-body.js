@@ -192,8 +192,14 @@ async function roundTrip(tag) {
   const hpX = ((R.beforeCross || {}).vital || {}).hp, hpA = ((R.after || {}).vital || {}).hp;
   ok(hpX < 90, '★[상황] 넘는 순간 HP 가 깎여 있다(100 이면 회복인지 보존인지 못 가른다)', `${hpX}`);
   ok(Math.abs(hpA - hpX) <= 12, '② ★★HP 가 존을 넘어 **이어진다**(풀피로 안 튄다)', `${hpX} → ${hpA}`);
-  // ⚠재접속의 풀피는 **정책**이다(죽음 설계 T8 소관) — 이 배치가 안 바꿨다. 그 사실을 못 박는다.
-  ok(((R.again || {}).vital || {}).hp === 100, '④ 재접속은 여전히 풀피다 — **정책 무변**(T8 소관)', `${((R.again || {}).vital || {}).hp}`);
+  // ★★[T43 2026-09-02 재민 확정 · §12] **뒤집었다.** 이 줄은 종전 *"재접속은 여전히 풀피다 —
+  //   정책 무변(T8 소관)"* 이었고, 그 T8 소관이 T43 이다. §12: *"로그아웃 ≠ 부활."*
+  //   ⇒ 재접속도 이제 **HP 를 잇는다**(`_acceptConnection` 의 `parseBody(.., {vitals:true})`).
+  //     쓰러진 채 나갔으면 쓰러진 채 들어온다 — 죽음의 대가가 창을 닫는 것으로 사라지지 않는다.
+  //   ★자명 통과 금지: 넘는 순간 HP 가 이미 깎여 있다(위 `hpX < 90`)는 것을 앞에서 확인했으므로
+  //     "100 이 아니다"는 진짜로 **보존**을 뜻한다.
+  const hpAgain = ((R.again || {}).vital || {}).hp;
+  ok(hpAgain !== undefined && hpAgain < 100, '④ ★★재접속도 **풀피가 아니다** — 로그아웃이 부활이 아니다(T43 · §12)', `${hpAgain}`);
 
   // ④ 재접속 후에도 같다 — 도착 존이 빈 몸으로 계정을 덮지 않는다
   const aEq = durableKey(R.again) === durableKey(R.before);
