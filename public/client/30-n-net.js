@@ -1471,8 +1471,11 @@
       const _newsTxt = _bdNews.length
         ? '\n— 들은 소식 —\n' + _bdNews.map((n) => ' · ' + n.line + (n.from ? ` (${n.from}에서)` : '')).join('\n')
         : '';
-      if (!bd.rows || !bd.rows.length) showNotice(`📋 ${bd.name} 게시판 — 걸린 의뢰가 없다` + _newsTxt, _newsTxt ? 9000 : 3500);
-      else showNotice(`📋 ${bd.name} 게시판\n` + bd.rows.map((r) => ' · ' + r.line).join('\n') + _newsTxt + '\n(Shift+N 으로 낼 수 있는 것부터 납품)', 9000);
+      // ★[T20] 겨울나기 머리줄 — **서버가 만든 문장 하나**를 맨 앞에 놓는다(진행 막대도 문자다 · 새 패널 0).
+      //   ⚠의뢰가 0건이어도 머리줄은 떠야 한다 — 곡식 의뢰는 애초에 안 걸리므로(§0-ⓕ) 그 갈래가 정상 경로다.
+      const _wHead = bd.head ? bd.head + '\n' : '';
+      if (!bd.rows || !bd.rows.length) showNotice(`📋 ${bd.name} 게시판\n${_wHead}— 걸린 의뢰가 없다` + _newsTxt, (_newsTxt || _wHead) ? 9000 : 3500);
+      else showNotice(`📋 ${bd.name} 게시판\n` + _wHead + bd.rows.map((r) => ' · ' + r.line).join('\n') + _newsTxt + '\n(Shift+N 으로 낼 수 있는 것부터 납품)', 9000);
     } else if (msg.type === 'onboarding_state' || msg.type === 'onboarding_quest' || msg.type === 'onboarding_fx' || msg.type === 'onboarding_day') {
       onbOnMessage(msg);   // ★[온보딩 v2] 대본 상태·첫 의뢰·곳간 이펙트·하루 정산 — 그리기는 `70-lobby.js`
     } else if (msg.type === 'pvp_state') {

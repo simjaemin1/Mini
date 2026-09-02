@@ -25,6 +25,7 @@
 const path = require('path');
 const Events = require(path.join(__dirname, 'events'));
 const Onb = require(path.join(__dirname, 'onboarding'));
+const Winter = require(path.join(__dirname, 'winter'));   // ★[T20] 겨울나기 달성 보상(그 해 한정 가산)
 
 const _num = (k, d) => { const v = parseFloat(process.env[k]); return Number.isFinite(v) ? v : d; };
 const CFG = {
@@ -76,16 +77,20 @@ function _villageName(vid) {
 // ── 인출 한도 — f(기여) 단조 · 곳간의 작은 비율로 덮인다 ─────────────────────
 //   ★`Events.payableQty` 를 부른다(사본 금지 — 게시판 보상이 쓰는 그 함수다).
 //   ★인자는 **마을 사람의 기여**다(비소속은 여기까지 오지 않는다 — `withdraw` 가 먼저 막는다).
-function limitOf(contrib, stock) {
+//   ★★[T20 2026-09-02] 세 번째 인자 `vid` — **그 마을이 지난 겨울을 넉넉히 났으면** 한 몫 더 얹는다.
+//     값도 만료도 이 파일이 갖지 않는다(`server/winter.js` 하나) — 여기 있는 건 **더한다**는 사실뿐이다.
+//     ⚠`min(·, byStock)` 은 그대로다: 마을은 없는 걸 못 준다(물리 상한은 보상보다 위다).
+//     ⚠`vid` 를 안 주면 종전과 **비트 동일**이다(가산 0) — 옛 호출자를 깨지 않는다.
+function limitOf(contrib, stock, vid) {
   const k = Math.max(0, contrib | 0);
-  const byContrib = Math.max(CFG.WD_MIN, Math.floor(k * CFG.WD_PER));
+  const byContrib = Math.max(CFG.WD_MIN, Math.floor(k * CFG.WD_PER)) + (vid == null ? 0 : Winter.bonusOf(vid));
   const byStock = Events.payableQty(stock, CFG.WD_FRAC);
   return Math.max(0, Math.min(byContrib, byStock));
 }
 function remainOf(player, stock) {
   const m = memberOf(player);
   if (!m) return 0;
-  const lim = limitOf(contribOf(player.playerId), stock);
+  const lim = limitOf(contribOf(player.playerId), stock, m.vid);   // ★[T20] 겨울 보상은 **그 마을** 것이다
   const d = _day();
   const used = ((m.wdDay | 0) === d) ? Math.max(0, m.wdUsed | 0) : 0;
   return Math.max(0, lim - used);
@@ -151,8 +156,13 @@ function withdraw(player, vid, res, qty) {
   if (g.err) return { ok: false, err: g.err };
   const r0 = String(res || 'food');
   const stock = V.playerVillageWithdrawStock(g.vil, r0);
-  const remain = remainOf(player, stock);
-  if (remain <= 0) return { ok: false, err: `오늘 몫은 다 꺼냈다 (한도 ${limitOf(contribOf(player.playerId), stock)})` };
+  // ★[T20-ⓑ 재민 확정 2026-09-03] **한도의 밑변**은 곡식 한 칸이 아니라 econ 의 식량 등가다
+  //   (겨울 곳간은 보존식으로 갈무리돼 있다 — `playerVillageWithdrawStockFoodEq` 머리 주석).
+  //   ⚠꺼내지는 양은 그대로 `playerVillageWithdraw` 가 정한다 — 한도가 재고를 만들지 않는다.
+  const basis = (V.playerVillageWithdrawStockFoodEq && V._countsAsFoodEq && V._countsAsFoodEq(g.vil, r0))
+    ? Math.max(stock, V.playerVillageWithdrawStockFoodEq(g.vil)) : stock;
+  const remain = remainOf(player, basis);
+  if (remain <= 0) return { ok: false, err: `오늘 몫은 다 꺼냈다 (한도 ${limitOf(contribOf(player.playerId), basis, vid)})` };
   const want = Math.max(1, Math.floor(Number(qty) || 0) || remain);
   const take = Math.min(want, remain);
   const r = V.playerVillageWithdraw(g.vil, player.inventory, r0, take);
@@ -162,7 +172,7 @@ function withdraw(player, vid, res, qty) {
   if ((m.wdDay | 0) !== d) { m.wdDay = d; m.wdUsed = 0; }
   m.wdUsed = (m.wdUsed | 0) + r.qty;
   return Object.assign({ ok: true, name: g.vil.name, remain: Math.max(0, remain - r.qty),
-    limit: limitOf(contribOf(player.playerId), stock) }, r);
+    limit: limitOf(contribOf(player.playerId), basis, vid) }, r);
 }
 
 // ── 복귀 브리핑 — 소속 마을 사건이 앞줄 ───────────────────────────────────────
@@ -236,7 +246,7 @@ function publicState(player, stock) {
   return {
     vid: m ? (m.vid | 0) : null, name: m ? (m.name || '') : '',
     since: m ? (m.since | 0) : null, contrib: k, need: CFG.N_MEMBER,
-    limit: m ? limitOf(k, stock) : 0, remain: m ? remainOf(player, stock) : 0,
+    limit: m ? limitOf(k, stock, m.vid) : 0, remain: m ? remainOf(player, stock) : 0,
     offer: (!m && player._memberOfferVid != null) ? (player._memberOfferVid | 0) : null,
   };
 }

@@ -59,6 +59,8 @@
 //     TRADER_KILLED   mag = 그날 돌아오지 못한 행상 수 ÷ RAID_N
 //     BUILT           mag = 1 (이상이 아니라 완공)
 //     FIRST_GOODS     mag = 1 (이상이 아니라 처음)
+//     WINTER_KEPT     mag = 그해 겨울 목표 달성률 (≥1)          [T20]
+//     WINTER_SHORT    mag = 같은 달성률 (<1)
 //   ⚠**sev 로만 정렬하면 이 일곱은 영원히 안 보인다.** 흉년은 sev 0.36 이고 소금값 9배는 2.2 라,
 //     한 자로 재면 촌장은 흉년 대신 소금값을 말한다. 그게 T18 회부 A-1 의 내용이고 이 배치가 온 이유다.
 //   ⇒ 정렬·연표 자격은 **`heavier()` 하나**를 통한다: 일이 먼저 서고, 그 안에서 sev 로 견준다.
@@ -163,14 +165,17 @@ const CHRON_TYPES = String(process.env.EV_CHRON_TYPES || 'STOCK_SHORTAGE,STOCK_G
 
 const TYPES = ['STOCK_SHORTAGE', 'STOCK_GLUT', 'PRICE_SPIKE', 'PRICE_DROP', 'CARAVAN_LATE', 'SEASON_CHANGE',
   // ★[T50 2026-09-02] 2차 — 세계의 "일". 원천이 §0 에서 실증된 것만 여기 있다(원천 없는 후보는 회부).
-  'HARVEST_BOON', 'HARVEST_BLIGHT', 'WEATHER', 'POP_COLLAPSE', 'CARAVAN_RAIDED', 'TRADER_KILLED', 'BUILT', 'FIRST_GOODS'];
+  'HARVEST_BOON', 'HARVEST_BLIGHT', 'WEATHER', 'POP_COLLAPSE', 'CARAVAN_RAIDED', 'TRADER_KILLED', 'BUILT', 'FIRST_GOODS',
+  // ★[T20 2026-09-02] 겨울나기 공동 프로젝트의 **판정**. 공표는 사건이 아니라 `SEASON_CHANGE` 의 meta 다.
+  'WINTER_KEPT', 'WINTER_SHORT'];
 // ★★[T50] **"일" 유형** — 값의 이탈이 아니라 일어난 일. 정렬에서 먼저 서고, 연표 sev 문턱을 면제받는다.
 //   면제의 근거는 **드묾**이다(실측 3.3%). 이 목록에 흔한 유형을 넣으면 그 순간 연표가 그것으로 덮인다.
 const DEED_TYPES = String(process.env.EV_DEED_TYPES
-  || 'HARVEST_BOON,HARVEST_BLIGHT,WEATHER,POP_COLLAPSE,CARAVAN_RAIDED,TRADER_KILLED,BUILT,FIRST_GOODS')
+  || 'HARVEST_BOON,HARVEST_BLIGHT,WEATHER,POP_COLLAPSE,CARAVAN_RAIDED,TRADER_KILLED,BUILT,FIRST_GOODS,WINTER_KEPT,WINTER_SHORT')
   .split(',').map((x) => x.trim()).filter(Boolean);
 // ★이웃 마을에서 **여기까지 회자되는** 일. 날씨(573건 — 국지적이고 일주일이면 끝난다)·완공(남의 집)·
 //   첫 물건(남의 곳간)은 빠진다. 남는 것은 그 마을의 운과 사람과 길의 안부다.
+//   ⚠[T20] 겨울나기 판정도 **빠진다** — 남의 마을이 올겨울 넉넉한지는 이 마을 연표에 적을 일이 아니다.
 const DEED_FOREIGN = String(process.env.EV_DEED_FOREIGN
   || 'HARVEST_BOON,HARVEST_BLIGHT,POP_COLLAPSE,CARAVAN_RAIDED,TRADER_KILLED')
   .split(',').map((x) => x.trim()).filter(Boolean);
@@ -508,6 +513,8 @@ function createLedger(opts) {
     const season = seasonOf(day);
     const seasonTurned = (lastSeason != null && season !== lastSeason);
     lastSeason = season;
+    // ★[T20] 겨울나기 — 호스트(`server/winter.js`)가 오늘치를 넘긴다. 장부는 실어 나르기만 한다.
+    const wGoal = (extra && extra.winter && extra.winter.goal) || null;
     // ★[T50] 거래 기록은 마을을 **이름**으로 적는다(econ 정본 필드) — 이름↔마을 색인이 필요하다.
     //   마을 구성이 바뀔 때만 다시 짓는다(`itemsOf` 와 같은 절약 문법).
     if (_nameVid.size !== world.villages.length) {
@@ -584,7 +591,10 @@ function createLedger(opts) {
       }
 
       // ⑤ 계절 전환 — 전환일에 마을당 1건(촌장 인사의 근거)
-      if (seasonTurned) mine.push({ day, vid, type: 'SEASON_CHANGE', item: null, mag: 1, meta: { season } });
+      //    ★[T20] 가을 첫날이면 호스트가 넘긴 **겨울 목표**를 같이 싣는다(새 사건 종류 0).
+      //      ⚠연표는 이 meta 를 못 본다(㉝) — 그래서 **공표는 브리핑·게시판의 일**이고 연표에 남는 건 판정이다.
+      if (seasonTurned) mine.push({ day, vid, type: 'SEASON_CHANGE', item: null, mag: 1,
+        meta: (wGoal && wGoal[vid]) ? { season, winter: wGoal[vid] } : { season } });
 
       // ⑥ ★[T50] 세계의 "일" — 풍흉·날씨·인구·약탈. econ 상태의 에지만 읽는다(위 절 참조).
       deeds(s, v, day, mine);
@@ -608,6 +618,14 @@ function createLedger(opts) {
     for (const b of ((!cfg.DEEDS_OFF && extra && extra.builds) || [])) {
       if (b == null || b.vid == null) continue;
       commit(st(b.vid), [{ day, vid: b.vid | 0, type: 'BUILT', item: b.kind || 'house', mag: 1, meta: null }], out);
+    }
+
+    // ⑩ ★[T20] **겨울나기 판정** — 호스트가 넘긴 것만. 장부가 겨울을 판정하지 않는다(완공과 같은 자리).
+    //    ⚠참여 0 인 마을은 호스트가 아예 안 넘긴다 ⇒ 플레이어 없는 랩에서 구조적으로 0 건이다.
+    for (const e of ((extra && extra.winter && extra.winter.emit) || [])) {
+      if (e == null || e.vid == null) continue;
+      commit(st(e.vid), [{ day, vid: e.vid | 0, type: String(e.type), item: e.item || null,
+        mag: +e.mag || 1, meta: e.meta || null }], out);
     }
 
     // ⑦ 의뢰 — 부족 **래치**가 서 있으면 걸려 있고, 회복하면 거둔다(사건 에지가 아니라 상태)
@@ -1077,6 +1095,14 @@ const LINES = {
   CARAVAN_LATE: (ev) => `행상이 여태 안 오는군. 고갯길에 무슨 일이 있나.`,
   SEASON_CHANGE: (ev) => {
     const s = ev.meta && ev.meta.season;
+    // ★[T20] 가을이면 **올겨울 목표를 함께 말한다**(새 사건 종류 0 — 설계안 §2.3).
+    //   ⚠`SEASON_CHANGE` 는 연표에 안 실린다(`CHRON_TYPES` 밖) ⇒ meta 에 기대도 ㉝ 계약을 안 깬다.
+    //     그래서 **공표는 브리핑·게시판의 일**이고, 연표에 남는 것은 판정(`WINTER_KEPT`)이다.
+    const w = ev.meta && ev.meta.winter;
+    if (s === 'autumn' && w && w.target > 0) {
+      const n = koRes(w.res);
+      return `가을일세. 올겨울 ${n}${josa(n, '을', '를')} ${w.target}만큼 모아 두려 하네 — 손을 보태 주게.`;
+    }
     return s === 'spring' ? '봄일세. 밭에 나갈 때야.'
       : s === 'summer' ? '여름이군. 물가를 조심하게.'
         : s === 'autumn' ? '가을일세. 거둘 것이 많아.'
@@ -1101,6 +1127,10 @@ const LINES = {
   TRADER_KILLED: () => '고갯길에서 행상이 변을 당했네. 끝내 돌아오지 못했어.',
   BUILT: (ev) => ((ev.item === 'granary') ? '곳간을 한 채 더 올렸네.' : '새 움집이 하나 섰네.'),
   FIRST_GOODS: (ev) => { const n = koRes(ev.item); return `${n}${josa(n, '이', '가')} 이 마을에 처음 들어왔어.`; },
+  // ── ★[T20 2026-09-02] 겨울나기 판정 ─────────────────────────────────────────
+  //   ⚠`vid·day·type·item·mag` 만으로 만든다(㉝ 계약) — 기여자 이름·수량은 `meta` 라 여기 못 쓴다.
+  WINTER_KEPT: (ev) => { const n = koRes(ev.item); return `올겨울은 넉넉하이. ${n} 곳간이 든든하네 — 자네들 덕일세.`; },
+  WINTER_SHORT: (ev) => { const n = koRes(ev.item); return `올겨울 ${n}${josa(n, '은', '는')} 좀 궁하겠어. 그래도 손을 보탠 이가 있었네.`; },
 };
 function briefLine(ev) {
   const f = LINES[ev.type];
