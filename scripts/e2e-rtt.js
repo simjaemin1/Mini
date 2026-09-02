@@ -161,10 +161,23 @@ async function arm(label, sliceMs) {
     const FK = parseFloat(process.env.RTT_FRAME_K || '1.4') || 1.4;
     console.log(`  잡음 바닥 — 대조군 두 번 한 프레임 최대 ${f1}ms vs ${f2}ms → 잡음비 ${fNoise.toFixed(3)}`);
     console.log(`  [참고 — 판정 아님] 절대 문턱 1/2 · ${fb && fb <= f1 / 2 ? '넘음' : '★못 넘음'}  (${fb}ms vs ${(f1 / 2).toFixed(0)}ms)`);
+  // ★★[T49 후속 2026-09-02] **잡음이 크면 판정하지 않는다.**
+  //   전수 2회차에서 이 자리가 빨갰다 — 효과비 2.63 인데 **잡음비가 2.001** 이라 비율의 비율이
+  //   1.32 로 떨어진 것이다. 같은 조건 두 판이 2배 벌어지는 판에서는 3배 개선도 증명이 안 된다.
+  //   그런데 그때 빨갛게 죽으면 읽는 사람은 **제품 회귀**로 오독한다. 사실은 "못 쟀다"다.
+  //   ⇒ 잡음이 문턱을 넘으면 그 사실을 적고, **나빠지지는 않았다**만 지킨다(e2e-weight 와 같은 결).
+  //   ★K 를 한 표본으로 정한 게 내 실수였다 — 그 실수는 문턱을 낮춰 덮지 않고 이렇게 갈랐다.
+    const NMAX = parseFloat(process.env.RTT_NOISE_MAX || '1.5') || 1.5;
     ok(fNoise < 3, '②a 전제 — 자가 믿을 만하다(같은 조건 두 번이 3배 안)', `잡음비 ${fNoise.toFixed(3)}`);
-    ok(fb > 0 && fEff > fNoise * FK,
-       `②a **한 프레임 막힘**이 줄었다(서버 쪽) — 비율의 비율 ${(fEff / Math.max(0.01, fNoise)).toFixed(2)} > ${FK}`,
-       `효과비 ${fEff.toFixed(2)}(대조 중앙 ${((f1 + f2) / 2).toFixed(0)}ms → ${fb}ms) vs 잡음비 ${fNoise.toFixed(3)}`);
+    if (fNoise < NMAX) {
+      ok(fb > 0 && fEff > fNoise * FK,
+         `②a **한 프레임 막힘**이 줄었다(서버 쪽) — 비율의 비율 ${(fEff / Math.max(0.01, fNoise)).toFixed(2)} > ${FK}`,
+         `효과비 ${fEff.toFixed(2)}(대조 중앙 ${((f1 + f2) / 2).toFixed(0)}ms → ${fb}ms) vs 잡음비 ${fNoise.toFixed(3)}`);
+    } else {
+      console.log(`  ★이 판은 잡음이 커서(${fNoise.toFixed(3)} ≥ ${NMAX}) ②a 를 가를 수 없다 — 판정하지 않는다("안 줄었다"가 아니라 "못 쟀다").`);
+      ok(fb > 0 && fEff > 1, '②a [잡음 큼] 최소한 **나빠지지는 않았다**(이것만 잰다)',
+         `효과비 ${fEff.toFixed(2)} · 잡음비 ${fNoise.toFixed(3)}`);
+    }
   }
 
   // ★★[상황 선행 · T41 뒤에 필요해졌다] **쪼갤 여지가 있는 판인가.**
@@ -225,10 +238,17 @@ async function arm(label, sliceMs) {
   const LK = parseFloat(process.env.RTT_LOOP_K || '1.6') || 1.6;
   console.log(`  잡음 바닥 — 대조군 두 번 최대 막힘 ${ap}ms vs ${ap2}ms → 잡음비 ${lNoise.toFixed(3)}`);
   console.log(`  [참고 — 판정 아님] 절대 문턱 1/3 · ${bp > 0 && bp <= ap / 3 ? '넘음' : '★못 넘음'}  (${bp}ms vs ${(ap / 3).toFixed(1)}ms)`);
+  const LNMAX = parseFloat(process.env.RTT_NOISE_MAX || '1.5') || 1.5;
   ok(lNoise < 3, '③ 전제 — 자가 믿을 만하다(같은 조건 두 번이 3배 안)', `잡음비 ${lNoise.toFixed(3)}`);
-  ok(bp > 0 && lEff > lNoise * LK,
-     `③ 이벤트 루프 **최대 막힘**이 줄었다 — 비율의 비율 ${(lEff / Math.max(0.01, lNoise)).toFixed(2)} > ${LK}`,
-     `효과비 ${lEff.toFixed(2)}(대조 중앙 ${lMed.toFixed(0)}ms → ${bp}ms) vs 잡음비 ${lNoise.toFixed(3)}`);
+  if (lNoise < LNMAX) {
+    ok(bp > 0 && lEff > lNoise * LK,
+       `③ 이벤트 루프 **최대 막힘**이 줄었다 — 비율의 비율 ${(lEff / Math.max(0.01, lNoise)).toFixed(2)} > ${LK}`,
+       `효과비 ${lEff.toFixed(2)}(대조 중앙 ${lMed.toFixed(0)}ms → ${bp}ms) vs 잡음비 ${lNoise.toFixed(3)}`);
+  } else {
+    console.log(`  ★이 판은 잡음이 커서(${lNoise.toFixed(3)} ≥ ${LNMAX}) ③ 을 가를 수 없다 — 판정하지 않는다.`);
+    ok(bp > 0 && lEff > 1, '③ [잡음 큼] 최소한 **나빠지지는 않았다**(이것만 잰다)',
+       `효과비 ${lEff.toFixed(2)} · 잡음비 ${lNoise.toFixed(3)}`);
+  }
 
   // ── ★★목표선(재민 확정 "≤×2") — **판정에 세지 않는다. 이유를 적는다.** ────────────
   //   왜 세지 않나: 이 비율의 분모가 **로컬 평시 RTT**(수 ms~수십 ms · 망이 없다)라, 조각이

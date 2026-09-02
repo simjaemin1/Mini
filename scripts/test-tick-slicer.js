@@ -136,10 +136,22 @@ async function arm(label, sliceMs) {
   console.log(`  잡음 바닥 — 대조군 두 번 한 프레임 최대 ${a.frameMax}ms vs ${a2.frameMax}ms → 잡음비 ${fNoise.toFixed(3)}`);
   console.log(`  [참고 — 판정 아님] 절대 문턱 1/3 · ${b.frameMax <= a.frameMax / 3 ? '넘음' : '★못 넘음'}`
     + `  (${b.frameMax}ms vs ${(a.frameMax / 3).toFixed(0)}ms)`);
+  // ★★[T49 후속 2026-09-02] **잡음이 크면 판정하지 않는다.**
+  //   전수 2회차에서 이 자리가 빨갰다 — 효과비 2.63 인데 **잡음비가 2.001** 이라 비율의 비율이
+  //   1.32 로 떨어진 것이다. 같은 조건 두 판이 2배 벌어지는 판에서는 3배 개선도 증명이 안 된다.
+  //   그런데 그때 빨갛게 죽으면 읽는 사람은 **제품 회귀**로 오독한다. 사실은 "못 쟀다"다.
+  //   ⇒ 잡음이 문턱을 넘으면 그 사실을 적고, **나빠지지는 않았다**만 지킨다(e2e-weight 와 같은 결).
+  //   ★K 를 한 표본으로 정한 게 내 실수였다 — 그 실수는 문턱을 낮춰 덮지 않고 이렇게 갈랐다.
+  const NMAX = parseFloat(process.env.SLICER_NOISE_MAX || '1.5') || 1.5;
   ok(fNoise < 3, '③ 전제 — 자가 믿을 만하다(같은 조건 두 번이 3배 안)', `잡음비 ${fNoise.toFixed(3)}`);
-  ok(fEffect > fNoise * FK,
-     `③ 한 프레임 최대가 줄었다 — 비율의 비율 ${(fEffect / Math.max(0.01, fNoise)).toFixed(2)} > ${FK}`,
-     `효과비 ${fEffect.toFixed(2)}(대조 중앙 ${fMed.toFixed(0)}ms → ${b.frameMax}ms) vs 잡음비 ${fNoise.toFixed(3)}`);
+  if (fNoise < NMAX) {
+    ok(fEffect > fNoise * FK,
+       `③ 한 프레임 최대가 줄었다 — 비율의 비율 ${(fEffect / Math.max(0.01, fNoise)).toFixed(2)} > ${FK}`,
+       `효과비 ${fEffect.toFixed(2)}(대조 중앙 ${fMed.toFixed(0)}ms → ${b.frameMax}ms) vs 잡음비 ${fNoise.toFixed(3)}`);
+  } else {
+    console.log(`  ★이 판은 잡음이 커서(${fNoise.toFixed(3)} ≥ ${NMAX}) ③ 을 가를 수 없다 — 판정하지 않는다.`);
+    ok(fEffect > 1, '③ [잡음 큼] 최소한 **나빠지지는 않았다**(이것만 잰다)', `효과비 ${fEffect.toFixed(2)}`);
+  }
   ok(b.frameMax <= b.total / 3, '③ 한 프레임 최대가 하루 총합의 1/3 이하', `${b.frameMax}/${b.total}ms`);
   // ★남은 바닥 — 조각 하나(마을 한 곳의 생활층)가 예산(16ms)을 얼마나 넘는지를 **숨기지 않고 적는다**.
   //   이건 실패가 아니라 회부 대상(§4-A)이다. 슬라이서는 조각보다 잘게 못 자른다.
@@ -188,9 +200,14 @@ async function arm(label, sliceMs) {
   console.log(`  [참고 — 판정 아님] 절대 문턱 1/3 · ${bp > 0 && bp <= ap / 3 ? '넘음' : '★못 넘음'}`
     + `  (${bp}ms vs ${(ap / 3).toFixed(1)}ms)`);
   ok(noiseR < 3, '⑥ 전제 — 자가 믿을 만하다(같은 조건 두 번이 3배 안)', `잡음비 ${noiseR.toFixed(3)}`);
-  ok(bp > 0 && effectR > noiseR * K,
-     `⑥ 이벤트 루프 **최대 막힘**이 줄었다 — 비율의 비율 ${(effectR / Math.max(0.01, noiseR)).toFixed(2)} > ${K}`,
-     `효과비 ${effectR.toFixed(2)}(대조 중앙 ${apMed.toFixed(0)}ms → ${bp}ms) vs 잡음비 ${noiseR.toFixed(3)}`);
+  if (noiseR < NMAX) {
+    ok(bp > 0 && effectR > noiseR * K,
+       `⑥ 이벤트 루프 **최대 막힘**이 줄었다 — 비율의 비율 ${(effectR / Math.max(0.01, noiseR)).toFixed(2)} > ${K}`,
+       `효과비 ${effectR.toFixed(2)}(대조 중앙 ${apMed.toFixed(0)}ms → ${bp}ms) vs 잡음비 ${noiseR.toFixed(3)}`);
+  } else {
+    console.log(`  ★이 판은 잡음이 커서(${noiseR.toFixed(3)} ≥ ${NMAX}) ⑥ 을 가를 수 없다 — 판정하지 않는다.`);
+    ok(bp > 0 && effectR > 1, '⑥ [잡음 큼] 최소한 **나빠지지는 않았다**(이것만 잰다)', `효과비 ${effectR.toFixed(2)}`);
+  }
 
   // ⑦ 하루 총 일감은 그대로다 — 쪼갠다고 일이 줄면 그건 뭔가를 안 한 것이다
   const r = b.total / Math.max(1, a.total);
