@@ -51,6 +51,11 @@ function mkPlayer(name) {
   return p;
 }
 const CALM = { night: false, nearFire: false, indoor: false, warmth: 0, seasonCold: 0, moving: false, sprint: false };
+// ★★[T44] **긴 틱 픽스처는 스스로 굶는다.** 갈증은 게임 1일(=실시간 24분)에 바닥나므로
+//   30분을 도는 추위 픽스처는 도중에 **갈증이 극단**이 되어 추위와 무관한 HP 감소를 만든다.
+//   (초안이 실제로 그렇게 틀렸다 — 마을 대조군이 "추위로 깎였다"고 보고했는데 원인은 갈증이었다.)
+//   ⇒ 다른 축을 재는 픽스처는 허기·갈증을 **매 틱 되돌려** 그 축만 남긴다.
+const holdFed = (P) => { P.hunger = 100; P.thirst = 100; };
 
 // ★★[2026-08-26 계측기 수리] 소스를 grep 할 땐 **주석을 먼저 걷어낸다.**
 //   1차 실행에서 두 판정이 자기 발에 걸렸다: `body.js` 의 주석이 "`lastSeen` 으로 따라잡기를 넣지 마라"라고
@@ -354,19 +359,40 @@ function codeOnly(src) {
       `${B.decayRate(100, 2880).toFixed(5)} vs ${B.decayRate(10, 2880).toFixed(5)}`);
   }
 
-  // ═══ ⑫ ★아사 폐지 캐논 — 극단에서 HP 는 **절대** 안 깎인다 ═══════════════════
-  say('\n⑫ 아사 폐지 — 굶어도 죽지 않는다(재민 재확정: 죽음 설계 배치 전까지 보류)');
+  // ═══ ⑫ ★★캐논 변경 — 극단에서 HP 가 **천천히 깎인다** [T44 2026-09-01] ═════════
+  //   ⚠이 절은 **뒤집힌 절**이다. 종전 제목은 *"아사 폐지 — 굶어도 죽지 않는다"* 였고
+  //     "HP 가 한 점도 안 깎인다"를 못 박고 있었다. 재민 §12 가 그 캐논을 **폐기**했다:
+  //     *"극단에 닿기 전엔 디버프만, 극단에 닿으면 HP 가 아주 천천히 깎인다.
+  //       고증 최우선 — 물 안 마셔도 사는 세계는 없다."*
+  say('\n⑫ 캐논 변경 — 극단 이전엔 디버프만 · 극단에선 천천히 깎인다(T44)');
   {
+    // ── 극단 **이전**은 무변경이다(이 카드는 극단 이후만 더한다) ─────────────
+    //   ★갈증은 매 틱 되돌린다 — 안 그러면 픽스처가 스스로 굶어 검사 대상이 바뀐다(위 `holdFed` 주석).
+    const mid = { hunger: 30, thirst: 100, hp: 55, maxHp: 100 };   // 허기 심각도 0.70 — 3단계 문턱(0.89) 아래
+    B.ensure(mid);
+    for (let i = 0; i < 600; i++) { mid.thirst = 100; B.tick(mid, 1, { moving: false }); }
+    ok(B.extremeHpRate(mid).rate === 0 && B.ensure(mid).hpDebt === 0,
+      '★★⑫ **극단 이전엔 한 점도 안 깎인다** — 디버프 표는 그대로다(카드가 더한 건 극단 이후뿐)',
+      `심각도 허기 ${(1 - mid.hunger / 100).toFixed(2)} · 문턱 ${B.extremeAt('hunger').toFixed(3)}`);
+    ok(B.recoverMult(mid) > 0 && B.recoverMult(mid) < 1, '★⑫ (상황) 그 자리는 이미 회복이 느려진 자리다 — 자명 통과 금지',
+      `회복 ×${B.recoverMult(mid)}`);
+
+    // ── 극단이면 실제로 깎인다 ────────────────────────────────────────────
     const P = { hunger: 0, thirst: 0, hp: 55, maxHp: 100, inventory: {} };
     const hp0 = P.hp;
-    for (let i = 0; i < 600; i++) B.tick(P, 1, { moving: false });
-    ok(P.hp === hp0, '★★⑫ 공복·탈수로 10분을 버텨도 **HP 가 한 점도 안 깎인다**', `${hp0} → ${P.hp}`);
-    ok(B.recoverMult(P) === 0, '★⑫ 대신 회복이 멈춘다(벌은 여기까지다)', B.recoverMult(P));
-    // ★코드에도 아사 경로가 없다 — 주석 걷어내고 확인(다음 사람이 슬쩍 넣는 걸 막는다)
+    let applied = 0;
+    for (let i = 0; i < 600; i++) { B.tick(P, 1, { moving: false }); applied += B.takeHpDamage(P); }
+    P.hp -= applied;
+    ok(applied > 0 && P.hp < hp0, '★★⑫ 공복·탈수로 10분을 버티면 **HP 가 실제로 준다**(캐논 변경)',
+      `${hp0} → ${P.hp} (10분에 ${applied}HP)`);
+    ok(B.recoverMult(P) === 0, '★⑫ 회복도 여전히 멈춘다 — 감소와 회복 정지는 **다른 두 가지**다', B.recoverMult(P));
+    // ★배선 계약은 그대로다 — `body.js` 는 여전히 `p.hp` 를 직접 안 만진다.
+    //   (감소는 **비율만** 내고, 적용은 zone.js 의 정본 피해 경로가 한다 ⇒ 쓰러짐 사슬이 공짜로 붙는다.)
     const bsrc = codeOnly(fs.readFileSync(path.join(ROOT, 'server', 'body.js'), 'utf8'));
-    ok(!/\bp\.hp\s*(-=|=[^=])/.test(bsrc), '★★⑫ `body.js` 안에 HP 를 깎는 줄이 **아예 없다**');
-    ok(/recoverMult/.test(zsrc) && !/hunger[^\n]*hp\s*-=/.test(zsrc),
-      '★⑫ zone.js 의 HP 회복이 **배율**을 쓴다(하드 게이트·감소가 아니라)');
+    ok(!/\bp\.hp\s*(-=|=[^=])/.test(bsrc),
+      '★★⑫ `body.js` 는 여전히 `p.hp` 를 **직접 안 만진다** — 비율만 내고 적용은 정본 경로가 한다');
+    ok(/Body\.takeHpDamage/.test(zsrc) && /damagePlayer\(p, _hpDmg/.test(zsrc),
+      '★★⑫ zone.js 가 그 비율을 **`damagePlayer` 정본 경로**로 낸다(HP 0 → 쓰러짐이 따라온다)');
   }
 
   // ═══ ⑬ 추위 — 평형 수렴(밤에 오르고 낮에 내린다) ═════════════════════════════
@@ -543,13 +569,28 @@ function codeOnly(src) {
     ok(/shelterAt/.test(codeOnly(fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8'))),
       '★⑭㉦ 존이 마을 완충을 `SimVillages.shelterAt` 정본에서 받는다(사본 계산 없음)');
 
-    // ── ㉧ HP 불감소 유지 · 시간 구조 불변 캐논 ──────────────────────────────
+    // ── ㉧ ★★[뒤집힘 · T44] 한겨울 야생은 이제 **얼려 죽인다** · 시간 구조 불변 캐논 ──
     {
-      const P = { hunger: 100, thirst: 100, hp: 77 };
-      for (let s = 0; s < 1800; s++) B.tick(P, 1, { day: wd, night: true, warmth: 0, villageShelter: 0 });
-      ok(P.hp === 77 && B.ensure(P).cold > 0.9,
-        '★★⑭㉧ 한겨울 야생에서 30분을 얼어도 **HP 는 한 점도 안 깎인다**(죽음 설계 배치 전까지 캐논)',
-        `hp ${P.hp} · cold ${B.ensure(P).cold.toFixed(3)}`);
+      //   ★허기·갈증을 매 틱 되돌린다 — 30분은 갈증 시계(24분)보다 길어서 안 그러면 **갈증이 범인**이 된다.
+      //   ★★그리고 **한 밤으로 재지 마라**(족보 ㊻ · T4 에서 같은 자리에 두 번 걸렸다):
+      //     추위 극단 문턱은 0.93 인데 **평범한 한겨울 밤의 평형은 0.9278** 이다 — 아슬아슬하게 못 넘는다.
+      //     날씨 편차가 얹히는 **추운 해**에만 넘는다. 그러니 판정은 24년 표본의 **분포**여야 한다.
+      const freeze = (shelter, doy) => { const P = { hunger: 100, thirst: 100, hp: 77 }; let a = 0;
+        for (let s = 0; s < 1800; s++) { holdFed(P); B.tick(P, 1, { day: doy, night: true, warmth: 0, villageShelter: shelter }); a += B.takeHpDamage(P); }
+        return { a, cold: B.ensure(P).cold }; };
+      let wildYears = 0, wildHp = 0, vilYears = 0;
+      for (let k = 0; k < 24; k++) {
+        const w = freeze(0, wd + 365 * k); if (w.a > 0) { wildYears++; wildHp += w.a; }
+        if (freeze(1, wd + 365 * k).a > 0) vilYears++;
+      }
+      ok(wildYears > 0,
+        '★★⑭㉧ **한겨울 야생 밤에 얼면 HP 가 깎인다**(종전 "한 점도 안 깎인다"의 뒤집힘 · T44)',
+        `24년 중 ${wildYears}년 · 그 해들 합계 ${wildHp}HP/30분`);
+      ok(wildYears < 24,
+        '★★⑭㉧ 그런데 **모든 해가 그런 건 아니다** — 평범한 밤의 평형(0.9278)은 극단 문턱(0.93)을 못 넘는다',
+        `${wildYears}/24년만 넘는다 = 가장 추운 밤이 진짜 위험하다`);
+      ok(vilYears === 0, '★★⑭㉧ **마을 안에선 한 해도 안 깎인다** — 새 예외가 아니라 기존 완충이 그 일을 한다',
+        `마을 ${vilYears}/24년`);
     }
     const cfgSrc = fs.readFileSync(path.join(ROOT, 'server', 'zone-config.js'), 'utf8');
     ok(/dayLengthMs:\s*24\s*\*\s*60\s*\*\s*1000/.test(cfgSrc),
@@ -675,11 +716,16 @@ function codeOnly(src) {
     const fbExpect = +(1.0 * Math.max(0, 1 - 25 / B.CFG.WARMTH_FULL)).toFixed(4);
     ok(fb === fbExpect, '★⑮㉥ `day` 없는 폴백은 종전 **곱셈 노출** 계약 그대로다', `${fb} = ${fbExpect}`);
 
-    // ── ㉦ HP 불감소 · econ 무수정 ───────────────────────────────────────────
+    // ── ㉦ ★★[뒤집힘 · T44] 목표점이 높을수록 **더 빨리** 깎인다 · econ 무수정 ────
     {
-      const P = { hunger: 100, thirst: 100, hp: 63 };
-      for (let s2 = 0; s2 < 1800; s2++) B.tick(P, 1, { day: wd, night: true, warmth: 0, elevKm: 2 });
-      ok(P.hp === 63, '★★⑮㉦ 목표점 1.3 짜리 밤에 30분을 얼어도 **HP 는 한 점도 안 깎인다**', `hp ${P.hp} · cold ${B.ensure(P).cold}`);
+      const drain = (el) => { const P = { hunger: 100, thirst: 100, hp: 63 }; let a = 0;
+        for (let s2 = 0; s2 < 1800; s2++) { holdFed(P); B.tick(P, 1, { day: wd, night: true, warmth: 0, elevKm: el }); a += B.takeHpDamage(P); }
+        return { a, cold: B.ensure(P).cold }; };
+      const hi = drain(2), lo = drain(0);
+      ok(hi.a > 0, '★★⑮㉦ 목표점 1.3 짜리 밤에 30분을 얼면 **HP 가 깎인다**(종전 "안 깎인다"의 뒤집힘 · T44)',
+        `${hi.a}HP · cold ${hi.cold}`);
+      ok(hi.a >= lo.a, '★⑮㉦ 더 추운 자리가 **더 많이** 깎는다(연속 — 계단이 아니다)',
+        `2km ${hi.a}HP ≥ 평지 ${lo.a}HP`);
     }
     const esrc2 = fs.readFileSync(path.join(ROOT, 'sim', 'economy-sim-v2.js'), 'utf8');
     ok(/CLIMATE = \{ zoneLatBase: 12, annualAmp: 12, diurnalAmp: 5/.test(esrc2) && /const d = day % 365;/.test(esrc2),
@@ -932,12 +978,14 @@ function codeOnly(src) {
         const seaFns = (zsrc.match(/function isSeaTileLocal/g) || []).length;
         ok(seaFns === 1, '★★⑯㉧ 바다 술어는 **하나뿐**이다(자염 정본 재사용 · 사본 금지)', `${seaFns}개`);
       }
-      // ★HP 불감소 — 짠물도 피를 깎지 않는다(아사 폐지 캐논 동형)
+      // ★★[뒤집힘 · T44] 짠물 자체는 피를 안 깎지만 **갈증을 극단으로 몰아** 결국 깎는다
       const P2 = { hunger: 100, thirst: 100, hp: 71 };
       B.drinkBrine(P2, 0);
-      for (let s2 = 0; s2 < 1800; s2++) B.tick(P2, 1, { day: WD, night: true, warmth: 0, windExposure: 1, now: s2 * 1000 });
-      ok(P2.hp === 71, '★★⑯㉧ 짠물 + 최대 노출 한겨울 밤 30분에도 **HP 는 한 점도 안 깎인다**',
-        `hp ${P2.hp} · cold ${B.ensure(P2).cold} · thirst ${P2.thirst.toFixed(1)}`);
+      let a2 = 0;
+      for (let s2 = 0; s2 < 1800; s2++) { B.tick(P2, 1, { day: WD, night: true, warmth: 0, windExposure: 1, now: s2 * 1000 }); a2 += B.takeHpDamage(P2); }
+      ok(a2 > 0 && P2.thirst === 0,
+        '★★⑯㉧ 짠물 + 최대 노출 한겨울 밤 30분이면 **갈증이 바닥나고 HP 가 깎인다**(T44 캐논)',
+        `${a2}HP · cold ${B.ensure(P2).cold} · thirst ${P2.thirst.toFixed(1)}`);
       ok(B.ensure(P2).cold <= 1 && P2.thirst >= 0, '★★⑯㉧ 상태값 **0~1 / 0~100** 규약 불변', `cold ${B.ensure(P2).cold}`);
     }
 
@@ -956,6 +1004,164 @@ function codeOnly(src) {
         `${hitUs.toFixed(2)}µs/질의`);
       ok(st.usecPerMiss > hitUs * 10, '★⑯㉨ 자명 통과 금지 — 새 셀은 실제로 비싸다(캐시가 일을 하고 있다)',
         `새 셀 ${st.usecPerMiss}µs vs 적중 ${hitUs.toFixed(2)}µs`);
+    }
+  }
+
+  // ═══ ⑰ 극단 HP 감소 — 캐논 변경 [T44 · 재민 확정 2026-09-01 §12] ═════════════
+  //   *"허기·갈증·극한 추위·더위는 극단에 닿기 전엔 디버프만, 극단에 닿으면 HP 가 아주 천천히
+  //     깎인다. 고증 최우선 — 물 안 마셔도 사는 세계는 없다. 여러 축이 동시에 극단이면
+  //     감소율은 **기여의 합**(연속·가산)."*
+  say('\n⑰ 극단 HP 감소 — 가산 · 연속 · 정본 경로');
+  {
+    const GMIN_PER_SEC = 1;   // 시간 구조 불변 캐논에서 나온다 — 바로 아래 ㉠ 이 그걸 확인한다
+
+    // ── ㉠ 단위의 근거 — "현실 1초 = 게임 1분"이 **설정에서** 나오는가 ────────
+    const cfgSrc2 = fs.readFileSync(path.join(ROOT, 'server', 'zone-config.js'), 'utf8');
+    const mDay = cfgSrc2.match(/dayLengthMs:\s*(\d+)\s*\*\s*(\d+)\s*\*\s*(\d+)/);
+    const dayMs = mDay ? (+mDay[1] * +mDay[2] * +mDay[3]) : 0;
+    ok(dayMs > 0 && (1440 / (dayMs / 1000)) === GMIN_PER_SEC,
+      '★★⑰㉠ **현실 1초 = 게임 1분** — r 의 단위(HP/게임분)가 설정에서 유도된다(HP/실초와 같은 수)',
+      `하루 ${dayMs / 60000}분 ⇒ ${1440 / (dayMs / 1000)} 게임분/실초`);
+    // ★극단 문턱을 **리터럴로 적지 않았다** — 단계 표에서 유도한다(사본 금지)
+    const bsrc3 = codeOnly(fs.readFileSync(path.join(ROOT, 'server', 'body.js'), 'utf8'));
+    const exFn = bsrc3.split('function extremeAt')[1].split('\nfunction ')[0];
+    ok(/STAGE_AT\[axis\]/.test(exFn) && !/0\.8\d|0\.9\d/.test(exFn),
+      '★★⑰㉠ 극단 문턱은 **단계 표에서 유도**한다(숫자를 새로 안 적었다)', exFn.trim().slice(0, 80));
+    for (const a of B.DRAIN_AXES) {
+      ok(Math.abs(B.extremeAt(a) - B.STAGE_AT[a][2]) < 1e-12, `★⑰㉠ ${a} 극단 = 3단계 문턱`, B.extremeAt(a).toFixed(4));
+    }
+
+    // ── ㉡ 역산 표가 실제 소요와 맞는가 — 표와 코드가 어긋나면 표가 거짓말이다 ─
+    const drainSecs = (setup) => {
+      const P = { hunger: 100, thirst: 100, hp: 100, maxHp: 100 };
+      B.ensure(P); Object.assign(P, setup.g || {}); Object.assign(B.ensure(P), setup.b || {});
+      for (let t = 1; t <= 20000; t++) {
+        const r = B.extremeHpRate(P).rate;
+        if (r <= 0) return null;
+        B.ensure(P).hpDebt += r * 1;      // 1 실초 = 1 게임분
+        P.hp -= B.takeHpDamage(P);
+        if (P.hp <= 0) return t;
+      }
+      return null;
+    };
+    const tHunger = drainSecs({ g: { hunger: 0 } });
+    const tThirst = drainSecs({ g: { thirst: 0 } });
+    const tCold = drainSecs({ b: { cold: 1 } });
+    const near = (got, want) => got !== null && Math.abs(got - want) <= Math.max(2, want * 0.01);
+    ok(near(tHunger, 3 * 1440), '★★⑰㉡ 허기 극단 최심 → HP 0 = **게임 3일**(표 그대로)',
+      `${tHunger}초 = 게임 ${(tHunger / 1440).toFixed(2)}일 = 실시간 ${(tHunger / 60).toFixed(1)}분`);
+    ok(near(tThirst, 1.5 * 1440), '★★⑰㉡ 갈증 극단 최심 → HP 0 = **게임 1.5일**',
+      `${tThirst}초 = 게임 ${(tThirst / 1440).toFixed(2)}일 = 실시간 ${(tThirst / 60).toFixed(1)}분`);
+    ok(near(tCold, 6 * 60), '★★⑰㉡ 추위 극단 최심 → HP 0 = **게임 6시간**',
+      `${tCold}초 = 게임 ${(tCold / 60).toFixed(2)}시간 = 실시간 ${(tCold / 60).toFixed(1)}분`);
+    ok(tThirst < tHunger, '★⑰㉡ 고증 순서 — **갈증이 허기보다 먼저 죽인다**', `${tThirst}초 < ${tHunger}초`);
+
+    // ── ㉢ 가산 — 두 축이 동시에 극단이면 **합**이다(더 나쁜 쪽 하나가 아니라) ─
+    const mk = (setup) => { const P = { hunger: 100, thirst: 100, hp: 100 }; B.ensure(P);
+      Object.assign(P, setup.g || {}); Object.assign(B.ensure(P), setup.b || {}); return P; };
+    const rH = B.extremeHpRate(mk({ g: { hunger: 0 } })).rate;
+    const rT = B.extremeHpRate(mk({ g: { thirst: 0 } })).rate;
+    const rC = B.extremeHpRate(mk({ b: { cold: 1 } })).rate;
+    const rHT = B.extremeHpRate(mk({ g: { hunger: 0, thirst: 0 } })).rate;
+    const rAll = B.extremeHpRate(mk({ g: { hunger: 0, thirst: 0 }, b: { cold: 1 } })).rate;
+    ok(Math.abs(rHT - (rH + rT)) < 1e-6, '★★⑰㉢ 허기 + 갈증 = **정확히 합**(최댓값이 아니다)',
+      `${rH.toFixed(6)} + ${rT.toFixed(6)} = ${rHT.toFixed(6)}`);
+    ok(Math.abs(rAll - (rH + rT + rC)) < 1e-6, '★★⑰㉢ 세 축 동시 극단도 **합**이다', `${rAll.toFixed(6)}`);
+    ok(rH > 0 && rT > 0 && rC > 0 && rH !== rT && rT !== rC,
+      '★⑰㉢ 자명 통과 금지 — 세 항이 **서로 다른 값**으로 실제로 살아 있다',
+      `허기 ${rH.toFixed(6)} · 갈증 ${rT.toFixed(6)} · 추위 ${rC.toFixed(6)}`);
+    const tBoth = drainSecs({ g: { hunger: 0, thirst: 0 } });
+    ok(tBoth !== null && tBoth < Math.min(tHunger, tThirst),
+      '★★⑰㉢ 두 축 동시 극단이면 **더 빨리** 죽는다', `${tBoth}초 = 실시간 ${(tBoth / 60).toFixed(1)}분`);
+
+    // ── ㉣ 연속 — 문턱에서 0 에서 시작하고 어디에도 계단이 없다 ───────────────
+    {
+      let worst = 0, worstAt = 0, prev = null;
+      for (let g = 100; g >= 0; g -= 0.05) {
+        const r = B.extremeHpRate(mk({ g: { hunger: g } })).rate;
+        if (prev !== null) { const j = Math.abs(r - prev); if (j > worst) { worst = j; worstAt = g; } }
+        prev = r;
+      }
+      const rAtGate = B.extremeHpRate(mk({ g: { hunger: (1 - B.extremeAt('hunger')) * 100 } })).rate;
+      ok(rAtGate === 0, '★★⑰㉣ **문턱에서 정확히 0** 이다 — 계단 없이 0 에서 시작한다', `${rAtGate}`);
+      ok(worst < rH * 0.02, `★★⑰㉣ 게이지 0.05 스윕 최대 도약 ${worst.toFixed(8)} < ${(rH * 0.02).toFixed(8)} = **계단 없음**`, `게이지 ${worstAt.toFixed(2)}`);
+      // ★자명 통과 금지 — 그 구간에서 값이 실제로 크게 변하긴 하는가
+      ok(rH > 0 && worst > 0, '★⑰㉣ 자명 통과 금지 — 스윕 안에서 감소율이 실제로 자란다');
+    }
+
+    // ── ㉤ 벗어나면 **즉시 0** — 빚이 따라다니지 않는다 ──────────────────────
+    {
+      const P = mk({ g: { hunger: 0 } });
+      for (let i = 0; i < 30; i++) B.tick(P, 1, { moving: false });
+      const debt = B.ensure(P).hpDebt;
+      ok(debt > 0 && debt < 1, '(상황) 아직 1HP 이 안 찬 **이월분**이 실제로 남아 있다 — 자명 통과 금지', debt.toFixed(4));
+      P.hunger = 100;                                   // 먹었다
+      B.tick(P, 1, { moving: false });
+      ok(B.extremeHpRate(P).rate === 0 && B.ensure(P).hpDebt === 0,
+        '★★⑰㉤ 극단에서 벗어나면 **즉시 0** — 이월분도 버린다(빚이 따라다니지 않는다)');
+    }
+
+    // ── ㉥ 총량 보존 — 적용은 정수지만 **깎인 총합은 정확**하다 ───────────────
+    {
+      //   ★허기를 매 틱 되돌린다 — 3,000초는 허기 시계(2,880초)보다 길어서 안 그러면 항이 둘이 된다.
+      const P = mk({ g: { thirst: 0 } });
+      let applied = 0;
+      const N = 3000;
+      for (let i = 0; i < N; i++) { P.hunger = 100; P.thirst = 0; B.tick(P, 1, { moving: false }); applied += B.takeHpDamage(P); }
+      const want = B.CFG.EXTREME_HP_THIRST * N;
+      ok(Math.abs(applied + B.ensure(P).hpDebt - want) < 1e-6,
+        '★★⑰㉥ 적용분 + 이월분 = **비율 × 시간**(양자화가 총량을 안 훔친다)',
+        `${applied} + ${B.ensure(P).hpDebt.toFixed(4)} = ${want.toFixed(4)}`);
+      ok(applied > 0, '(상황) 실제로 적용된 정수 피해가 있다', `${applied}HP`);
+    }
+
+    // ── ㉦ 마을 안에서도 깎인다(§0-ⓓ) — 불사는 **쓰러진 뒤**의 이야기다 ──────
+    {
+      const V = { hunger: 0, thirst: 0, hp: 100 }; B.ensure(V);
+      let a = 0;
+      for (let i = 0; i < 600; i++) { B.tick(V, 1, { villageShelter: 1, moving: false }); a += B.takeHpDamage(V); }
+      ok(a > 0, '★★⑰㉦ **마을 안에서도 허기·갈증 극단이면 깎인다**(§12: 마을의 불사는 쓰러진 뒤 옮겨 준다는 뜻)',
+        `마을 한복판 10분에 ${a}HP`);
+      ok(!/villageShelter[^\n]*hpDebt|hpDebt[^\n]*villageShelter/.test(bsrc3),
+        '★⑰㉦ 마을 예외를 **코드에 안 넣었다** — 추위발 감소가 마을에서 0 인 건 기존 완충의 결과다');
+    }
+
+    // ── ㉧ 부상이 안 생긴다 · 상태값 규약 불변 ───────────────────────────────
+    {
+      const P = mk({ g: { hunger: 0, thirst: 0 }, b: { cold: 1 } });
+      let biggest = 0;
+      for (let i = 0; i < 1200; i++) { B.tick(P, 1, { moving: false }); const d = B.takeHpDamage(P); if (d > biggest) biggest = d; }
+      ok(biggest > 0 && biggest < B.CFG.INJURY_DMG,
+        '★★⑰㉧ 한 번에 나가는 피해가 **부상 문턱보다 작다** — 굶주림이 "부상"을 만들지 않는다',
+        `최대 ${biggest}HP < 문턱 ${B.CFG.INJURY_DMG}`);
+      ok(B.ensure(P).cold <= 1 && B.ensure(P).cold >= 0 && P.hunger >= 0 && P.thirst >= 0,
+        '★⑰㉧ 상태값 0~1 / 0~100 규약 불변');
+    }
+
+    // ── ㉨ 되돌리기 손잡이 — 셋 다 0 이면 캐논 변경 전과 **비트 동일** ────────
+    {
+      const code = [
+        `const B=require(${JSON.stringify(path.join(ROOT, 'server', 'body.js'))});`,
+        'const P={hunger:0,thirst:0,hp:100};B.ensure(P).cold=1;',
+        'let a=0;for(let i=0;i<600;i++){B.tick(P,1,{moving:false});a+=B.takeHpDamage(P);}',
+        "process.stdout.write('OFF'+JSON.stringify({rate:B.extremeHpRate(P).rate,a}));",
+      ].join('');
+      const r = require('child_process').spawnSync(process.execPath, ['-e', code], {
+        env: Object.assign({}, process.env, { BODY_EXTREME_HP_HUNGER: '0', BODY_EXTREME_HP_THIRST: '0', BODY_EXTREME_HP_COLD: '0' }),
+        encoding: 'utf8',
+      });
+      let got = null;
+      try { got = JSON.parse((r.stdout || '').split('OFF')[1]); } catch (e) {}
+      ok(got && got.rate === 0 && got.a === 0,
+        '★★⑰㉨ 손잡이 셋을 0 으로 두면 **한 점도 안 깎인다**(캐논 변경 전 재현 · env 로만)',
+        JSON.stringify(got));
+    }
+
+    // ── ㉩ 대리 지표 표 ──────────────────────────────────────────────────────
+    say('     극단 최심 → HP 0 소요:');
+    for (const [n, t] of [['허기', tHunger], ['갈증', tThirst], ['추위', tCold], ['허기+갈증', tBoth],
+      ['셋 다', drainSecs({ g: { hunger: 0, thirst: 0 }, b: { cold: 1 } })]]) {
+      say(`       ${n.padEnd(10)} ${t === null ? '-' : `게임 ${(t / 1440).toFixed(2)}일 (${(t / 60).toFixed(1)}분 · ${t}초)`}`);
     }
   }
 

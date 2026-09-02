@@ -398,6 +398,107 @@ async function waitHttp(url, tries = 600) {
     }
   }
 
+  // ── ⑧ 캐논 변경 — 얼면 **죽는다** [T44 · 재민 확정 2026-09-01 §12] ─────────
+  //   *"극단에 닿기 전엔 디버프만, 극단에 닿으면 HP 가 아주 천천히 깎인다."*
+  //   시나리오: 한겨울 야생 밤 맨몸 → 극단 → HP 감소 시작 → **불** → 정지.
+  //   ★HP 는 클라 훅을 새로 안 만들고 **화면이 말하는 값**(`#hpText`)으로 읽는다(클라 무접촉).
+  {
+    const hpNow = async () => page.evaluate(() => {
+      const el = document.getElementById('hpText');
+      if (!el) return null;
+      const m = String(el.textContent).match(/(\d+)\s*\/\s*(\d+)/);
+      return m ? +m[1] : null;
+    });
+    // 옷을 벗는다 — ⑤·⑦ 에서 입은 게 남아 있으면 "맨몸"이 아니다
+    //   ★해제는 **슬롯**으로 한다(`doUnequipItem(player, msg.slot)`) — id 를 보내면 조용히 아무 일도 안 난다.
+    await page.evaluate(() => window.__sendPrimary({ type: 'unequip_item', slot: 'clothes' }));
+    await sleep(1200);
+    //   ★★**④ 에서 피운 모닥불이 그 자리에 아직 탄다** — `wildAt` 으로 돌아가면 불 옆 목표점(0.05)이라
+    //     추위가 극단에 못 간다(초안이 그래서 "극단인데 안 깎인다"는 없는 결함을 냈다).
+    //     ⑤ 가 옷을 잴 때 `FAR` 로 물러난 것과 **정확히 같은 함정**이다 — 같은 답을 쓴다.
+    const wxBare = await warpTo(FAR[0], FAR[1], (w) => (w.shelter || 0) < 0.01, 8);
+    ok(wxBare && (wxBare.shelter || 0) < 0.01 && (wxBare.insC || 0) === 0,
+      '★⑧ (상황) 한겨울 야생 밤 · 완충 0 · **맨몸**이다', `shelter ${wxBare && wxBare.shelter} · 단열 +${wxBare && wxBare.insC}℃`);
+
+    // ★★[이 하네스가 먼저 틀린 자리 · 족보 ㊻] **화면의 HP 는 깎일 때만 갱신된다.**
+    //   서버는 `player_damaged` 로만 hp 를 보내고 **자연 회복은 브로드캐스트가 없다**
+    //   (`self.hp` 는 welcome 때 한 번뿐 — 소스로 확인). 그래서 회복 뒤에 읽은 값은 **낡았다**.
+    //   초안이 낡은 96 을 기준선으로 삼아 "9초에 −3HP(**늘었다**)"는 없는 결함을 냈다.
+    //   ⇒ 기준선 차이 대신 **연속 관측의 단조 감소**로 판정하고, "안 깎인다"는 판정은
+    //     **방금 깎인 뒤**(=값이 신선할 때)에만 건다.
+    const watchHp = async (secs, stepMs) => {
+      const out = []; const step = stepMs || 3000;
+      for (let t = 0; t < secs * 1000; t += step) { out.push(await hpNow()); await sleep(step); }
+      out.push(await hpNow()); return out;
+    };
+    //   ★★첫 표본은 **낡았을 수 있다**(직전 회복이 화면에 안 실렸으니까). 그래서 기준선을
+    //     "처음으로 신선해진 지점" = **최댓값**으로 잡고, 거기서부터의 단조 감소로 읽는다.
+    //     (초안이 낡은 첫 표본 하나 때문에 `[98,99,98,98,97,96]` 을 "안 깎였다"로 읽었다.)
+    const drained = (seq) => { const v = seq.filter((x) => x !== null);
+      if (v.length < 2) return false;
+      let i0 = 0; for (let i = 1; i < v.length; i++) if (v[i] > v[i0]) i0 = i;
+      if (i0 >= v.length - 1) return false;
+      for (let i = i0 + 1; i < v.length; i++) if (v[i] > v[i - 1]) return false;
+      return v[v.length - 1] < v[i0]; };
+    const dropOf = (seq) => { const v = seq.filter((x) => x !== null);
+      return v.length ? Math.max(...v) - v[v.length - 1] : 0; };
+
+    // ⓑ 극단이면 깎인다
+    //   ★★시계를 **가장 추운 해**로 옮긴다. 추위는 평형 수렴이라 `cold:1` 을 찍어 둬도
+    //     그 밤의 목표점이 극단 문턱(0.93) 아래면 **곧장 내려가** 감소가 멎는다.
+    //     실측: 평범한 한겨울 밤의 평형은 **0.9278** 로 문턱을 아슬아슬하게 못 넘는다
+    //     (그래서 `test-body ⑭㉧` 도 24년 중 19년에서만 깎인다). 픽스처가 그 사실을 알아야 한다.
+    const Bcfg2 = require(path.join(ROOT, 'server', 'body.js'));
+    const gate = Bcfg2.extremeAt('cold');
+    let coldestDay = WINTER, bestT = -1;
+    for (let k = 0; k < 24; k++) {
+      const d = WINTER + 365 * k;
+      const t = Bcfg2.coldTarget({ day: d, night: true, warmth: 0, villageShelter: 0 });
+      if (t > bestT) { bestT = t; coldestDay = d; }
+    }
+    ok(bestT > 1, '★⑧ⓑ (상황) 24년 중 **목표점이 1 을 넘는 밤**을 골랐다 — 추위가 극단에 머문다',
+      `day ${coldestDay} · 목표점 ${bestT}`);
+    await page.evaluate((d) => window.__sendPrimary({ type: '__e2e_clock', day: d, night: true }), coldestDay);
+    await sleep(1500);
+    await page.evaluate(() => window.__sendPrimary({ type: '__e2e_body', cold: 1, hunger: 100, thirst: 100, quiet: true }));
+    await sleep(1200);
+    const seqB = await watchHp(15);
+    ok(drained(seqB), '★★⑧ⓑ **극단에 닿으면 HP 가 실제로 깎인다**(캐논 변경 — 화면이 그렇게 말한다)',
+      JSON.stringify(seqB));
+    const dropB = dropOf(seqB);
+    ok(dropB >= 1 && dropB <= 8, '★⑧ⓑ 그리고 **아주 천천히** 깎인다(15초에 몇 점 — 즉사가 아니다)', `${dropB}HP/15초`);
+
+    // ⓒ 불을 피우면 멎는다 — 추위가 문턱 아래로 내려가므로 (기준선은 방금 깎여서 **신선하다**)
+    await page.evaluate(() => window.__sendPrimary({ type: '__e2e_give', items: { item_campfire: 2 } }));
+    await sleep(900);
+    await page.evaluate(() => window.__sendPrimary({ type: 'place_building', itemType: 'item_campfire', floor: 0, dir: 'N' }));
+    await sleep(2500);
+    await sleep(12000);   // 불 옆 목표점(0.05)으로 문턱 아래까지 수렴할 시간
+    const seqC = await watchHp(12);
+    ok(seqC.every((x) => x === seqC[0]),
+      '★★⑧ⓒ **불을 피우면 감소가 멎는다** — 벗어나면 즉시 0(빚이 따라다니지 않는다)', JSON.stringify(seqC));
+    const bodyCold = await page.evaluate(() => (window.__bodyState || {}).cold);
+    ok(bodyCold < gate, '★⑧ⓒ (상황) 그때 추위가 실제로 극단 문턱 아래다 — 자명 통과 금지',
+      `추위 ${bodyCold} < 문턱 ${gate.toFixed(3)}`);
+
+    // ⓐ **평범한 한겨울 밤**은 문턱을 못 넘는다 ⇒ 한 점도 안 깎인다
+    //   ★ⓒ 덕에 기준선이 신선한 지금 잰다. 그리고 시계를 평범한 밤으로 되돌린다 —
+    //     가장 추운 해(목표점 1.048)에 두면 몸이 문턱 위로 **다시 올라가** 검사 대상이 바뀐다.
+    await page.evaluate((d) => window.__sendPrimary({ type: '__e2e_clock', day: d, night: true }), WINTER);
+    await sleep(1500);
+    const tgtOrd = Bcfg2.coldTarget({ day: WINTER, night: true, warmth: 0, villageShelter: 0 });
+    ok(tgtOrd < gate, '★★⑧ⓐ (상황·정직 보고) **평범한 한겨울 밤의 평형은 극단 문턱을 못 넘는다**',
+      `평형 ${tgtOrd} < 문턱 ${gate.toFixed(3)} — 얼어 죽는 건 가장 추운 밤이다`);
+    await page.evaluate((c) => window.__sendPrimary({ type: '__e2e_body', cold: c, hunger: 100, thirst: 100, quiet: true }), gate - 0.02);
+    await sleep(1200);
+    const seqA = await watchHp(12);
+    const coldA = await page.evaluate(() => (window.__bodyState || {}).cold);
+    ok(seqA.every((x) => x === seqA[0]) && coldA < gate,
+      '★★⑧ⓐ **극단 문턱 아래에선 한 점도 안 깎인다** — 디버프 표는 그대로다(이 카드는 극단 이후만 더한다)',
+      `${JSON.stringify(seqA)} · 추위 ${coldA} < 문턱 ${gate.toFixed(3)}`);
+    await snap('cold-08-extreme');
+  }
+
   // ── ⑤ 클라가 온도 산수를 **혼자 하지 않는다**(사본 금지 — 달력과 같은 규약) ─
   const csrc = require('./client-src.js').readClientSrc()
     .split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');

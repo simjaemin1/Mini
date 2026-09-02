@@ -3,8 +3,11 @@
 // ★[재민 확정 2026-08-26] 헌법 두 줄:
 //   ① **상태는 생존 압박이 아니라 경제·리듬의 접속면**이다.
 //      채택 기준 = "오늘 내 판단을 바꾸는가 vs 주기적으로 채우는 유지비인가"(§7).
-//      그래서 여기엔 **아사가 없다**(재민 확정으로 이미 폐지됐고 되살리지 않는다) —
-//      결핍은 **기울기**로만 말한다. 벽이 아니라 저녁의 효율 저하다.
+//      결핍은 **기울기**로 말한다. 벽이 아니라 저녁의 효율 저하다.
+//      ★★[캐논 변경 2026-09-01 재민 확정 · T44] 종전 이 줄은 *"그래서 여기엔 아사가 없다"* 였다.
+//        **그 캐논은 폐기됐다**(§12): 극단에 닿기 **전**은 종전대로 디버프뿐이고, 극단에 닿으면
+//        HP 가 아주 천천히 깎인다. 기울기라는 헌법은 그대로다 — 벽이 생긴 게 아니라
+//        기울기가 **끝까지** 이어질 뿐이다(`extremeHpRate` 합산기 하나).
 //   ② **속은 연속, 겉은 계단**(§8.3). 역학은 piecewise linear 연속함수,
 //      표시는 3~4단계 양자화 + **전환에만** 히스테리시스.
 //
@@ -106,6 +109,37 @@ const CFG = {
   BRINE_SEC: _num('BODY_BRINE_SEC', 300),
   BRINE_MULT: _num('BODY_BRINE_MULT', 2.5),
 
+  // ── ★★★[캐논 변경 2026-09-01 재민 확정 · T44] **"아사 폐지" 폐기** ─────────────
+  //   §12 원문: *"허기·갈증·극한 추위·더위는 **극단에 닿기 전엔 디버프만**,
+  //   **극단에 닿으면 HP 가 아주 천천히 깎인다.** 고증 최우선 — 물 안 마셔도 사는 세계는 없다.
+  //   여러 축이 동시에 극단이면 감소율은 **기여의 합**(연속·가산)."*
+  //
+  //   ★단위는 **HP / 게임분**이다. 시간 구조 불변 캐논이 이 환산을 고정해 준다:
+  //     `zone-config.js:437` *"하루=현실 24분(**현실 1초=게임 1분**)"* ⇒ 1 게임분 = 1 실초.
+  //     그래서 아래 값은 HP/실초 이기도 하다(`test-body ⑰㉠` 이 하루 길이에서 이 환산을 확인한다).
+  //     ⚠`VILLAGE_DAY_MS` 로 하루를 줄이는 하네스가 있어도 **몸의 시계는 안 바뀐다** —
+  //       허기·갈증 감쇠(`HUNGER_SEC`)가 이미 실초를 쓰는 것과 같은 규약이다.
+  //
+  //   ★★역산 표 — "극단 최심에서 이만큼이면 HP 100 이 빈다"(지시서 시작점 그대로)
+  //   ┌────────┬──────────────┬──────────┬──────────────┬───────────────────────────────┐
+  //   │ 축     │ 게임 시간     │ 게임분   │ HP/게임분    │ 실시간(하루 24분 기준)         │
+  //   ├────────┼──────────────┼──────────┼──────────────┼───────────────────────────────┤
+  //   │ 허기   │ 3 게임일      │ 4,320    │ 0.023148     │ 72분                          │
+  //   │ 갈증   │ 1.5 게임일    │ 2,160    │ 0.046296     │ 36분                          │
+  //   │ 추위   │ 6 게임시간    │   360    │ 0.277778     │ 6분                           │
+  //   │ 더위   │ (8 게임시간)  │  (480)   │ (0.208333)   │ ★이 세계엔 **더위 축이 없다** │
+  //   └────────┴──────────────┴──────────┴──────────────┴───────────────────────────────┘
+  //   ★고증 근거와 **게임적 압축**을 정직하게 갈라 적는다:
+  //     · 현실 "3-3-3": 물 없이 ~3일 · 음식 없이 ~3주 ⇒ 갈증:허기 = **1 : 7**.
+  //       게임은 1 : 2 다(1.5일 : 3일). 1:7 을 그대로 쓰면 허기가 10.5 게임일 = 실시간 4.2시간이라
+  //       **한 세션에서 한 번도 안 보인다.** ⇒ "둘 다 한 세션 안에서 보이되 **갈증이 먼저**"로 압축했다.
+  //     · 추위만은 압축이 없다 — 저체온증 사망은 극한 노출에서 3~6시간이고, 여기서도 **게임 6시간**이다.
+  //       (실시간으로는 6분이라 짧아 보이지만 그건 하루가 24분이기 때문이지 값이 사나운 게 아니다.)
+  //   ★값은 실기 후 조정한다(전부 env). 되돌리기: 셋 다 0 이면 캐논 변경 전과 **비트 동일**.
+  EXTREME_HP_HUNGER: _num('BODY_EXTREME_HP_HUNGER', 100 / (3 * 1440)),
+  EXTREME_HP_THIRST: _num('BODY_EXTREME_HP_THIRST', 100 / (1.5 * 1440)),
+  EXTREME_HP_COLD: _num('BODY_EXTREME_HP_COLD', 100 / (6 * 60)),
+
   // ── 피로 ───────────────────────────────────────────────────────────────────
   //   ★"24분 하루의 자연 마디"(§7). 하루 종일 일하면 저녁에 효율이 떨어지는 **정도**다.
   //   채광 1타/초로 24분 = 1,440타 ⇒ 타당 0.0008 이면 하루 끝에 대략 1.0 에 닿는다.
@@ -159,9 +193,10 @@ const CURVES = {
             work: [[0, 1], [0.2, 0.96], [0.6, 0.86], [1, 0.75]] },
 };
 // ★★회복 배율 곡선 — x = 심각도(0 배부름 … 1 공복), y = **스태미나·HP 회복 속도 배율**.
-//   ★극단(x=1)에서 **0** 이다: 회복이 **멈춘다**. 그래도 HP 가 **깎이지는 않는다** —
-//     ★아사 폐지 캐논(재민 재확정 2026-08-30: 죽음 설계 배치 전까지 보류)을 그대로 지킨다.
-//     `test-body ④` 가 "극단에서 HP 불감소"를 못 박는다.
+//   ★극단(x=1)에서 **0** 이다: 회복이 **멈춘다**.
+//   ⚠★★[캐논 변경 2026-09-01 · T44] 종전 이 자리엔 *"그래도 HP 가 깎이지는 않는다 — 아사 폐지 캐논"*
+//     이 적혀 있었다. **그 캐논은 폐기됐다.** 이제 극단에서는 `extremeHpRate` 가 HP 를 천천히 깎는다.
+//     회복 정지(여기)와 HP 감소(아래 합산기)는 **다른 두 가지**이고, 둘 다 극단에서 동시에 일어난다.
 const RECOVER = {
   hunger: [[0, 1], [0.40, 1], [0.65, 0.75], [0.90, 0.25], [1, 0]],
   thirst: [[0, 1], [0.35, 1], [0.60, 0.70], [0.90, 0.20], [1, 0]],
@@ -213,7 +248,7 @@ for (const a of AXES) {
 //   새 축만 `p.body` 에 0..1 로 담는다(0 좋음 … 1 최악, 사기만 0 없음 … 1 최고).
 function ensure(p) {
   if (!p.body || typeof p.body !== 'object') {
-    p.body = { cold: 0, fatigue: 0, injury: 0, morale: 0, herbUntil: 0, stages: {}, stam: 1, stamLock: false, brineUntil: 0 };
+    p.body = { cold: 0, fatigue: 0, injury: 0, morale: 0, herbUntil: 0, stages: {}, stam: 1, stamLock: false, brineUntil: 0, hpDebt: 0 };
   }
   if (!p.body.stages) p.body.stages = {};
   // ★[3층 재배선] 옛 저장본엔 스태미나가 없다 — 가득으로 시작한다(불이익 없이 승격).
@@ -221,6 +256,8 @@ function ensure(p) {
   if (typeof p.body.stamLock !== 'boolean') p.body.stamLock = false;
   // ★[바닷물] 옛 저장본엔 없다 — 0(=효과 없음)으로 시작한다.
   if (!Number.isFinite(p.body.brineUntil)) p.body.brineUntil = 0;
+  // ★[T44 극단 HP] 미적용 감소분(HP 단위 · 1 이 쌓이면 정본 피해 경로로 나간다).
+  if (!Number.isFinite(p.body.hpDebt)) p.body.hpDebt = 0;
   return p.body;
 }
 
@@ -230,7 +267,8 @@ function ensure(p) {
 //   짙어서, 마신 물보다 **더 많은 물을 오줌으로 내보내야** 한다. 그래서 마실수록 목이 마르다.
 //   ⇒ 새 축을 만들지 않았다. 있는 갈증 축의 **감쇠 배율**을 한동안 올릴 뿐이다.
 //     (보존식이 `thirst` 음수로 같은 말을 하는 것과 같은 자리다 — 축을 늘리지 않는다.)
-//   ★HP 를 깎지 않는다(아사 폐지 캐논 동형). 시련은 갈증·스태미나·이속이지 피가 아니다.
+//   ★짠물 자체는 HP 를 깎지 않는다 — **갈증을 극단으로 몰아** 간접적으로 깎는다(T44 캐논).
+//     시련의 축은 그대로 갈증이고, 피는 그 갈증이 끝까지 갔을 때의 결과다.
 function drinkBrine(p, now) {
   const b = ensure(p);
   const t = Number.isFinite(now) ? now : Date.now();
@@ -282,7 +320,7 @@ function effects(p) {
 
 // ── ★★회복 배율 — 허기·갈증이 하는 **유일한** 일 ────────────────────────────
 //   스태미나 회복과 HP 자연 회복이 이 값을 곱한다. 둘 다 여기 하나를 본다(사본 금지).
-//   반환 0..1. 0 = 회복 정지(HP 감소는 **아니다** — 아사 폐지 캐논).
+//   반환 0..1. 0 = 회복 정지. ★HP **감소**는 이 함수가 아니라 `extremeHpRate` 가 낸다(T44 캐논 변경).
 function recoverMult(p) {
   const sev = severity(p);
   let m = 1;
@@ -294,6 +332,78 @@ function recoverParts(p) {
   const sev = severity(p);
   return RECOVER_AXES.map((a) => ({ axis: a, ko: KO[a], emo: EMO[a], sev: +sev[a].toFixed(3),
     recover: +lerpCurve(RECOVER[a], sev[a]).toFixed(4) })).filter((x) => x.recover < 0.999);
+}
+
+// ── ★★★[캐논 변경 2026-09-01 · T44] 극단 HP 감소 — **합산기 하나** ──────────────
+//   재민 §12: *"극단에 닿기 전엔 디버프만, 극단에 닿으면 HP 가 아주 천천히 깎인다.
+//   여러 축이 동시에 극단이면 감소율은 **기여의 합**(연속·가산)."*
+//
+// ★★"극단"을 어디로 잡을 것인가 — 지시서가 물은 것(§0-ⓐ)이고, 실측이 답을 정했다.
+//   ⓐ **상태 1.0** 으로 잡으면 추위 축이 사실상 발동하지 않는다:
+//      추위는 **평형 수렴**이라 상태가 목표점 위로 못 간다. 한겨울 야생 밤 맨몸의 목표점이
+//      실측 **0.9278** 이라(`wind-matrix`) 1.0 에 닿는 밤이 드물다 ⇒ 캐논이 죽은 채로 실린다.
+//   ⓑ **3단계 문턱**(`STAGE_AT[축][2]`)으로 잡으면 —
+//      · 문턱에서 초과 정도 e=0 이므로 감소율이 **0 에서 연속으로** 시작한다(계단 금지 요구 충족).
+//      · 축마다 상수를 새로 안 적는다. 3단계는 이미 "심각하다"고 화면이 말하는 자리다.
+//      · 허기·갈증은 게이지가 0 까지 가므로 e=1(최심)에 실제로 닿는다.
+//   ⇒ **ⓑ 채택.** `EXTREME_AT` 은 새 상수가 아니라 **단계 표에서 유도**한다(사본 금지).
+//     `test-body ⑰㉠` 이 "코드에 극단 문턱 리터럴이 없다"를 소스로 못 박는다.
+//
+//   초과 정도 e(축) = clamp01( (심각도 − 3단계 문턱) / (1 − 3단계 문턱) )   ∈ [0, 1] · 연속
+//   총 감소율      = Σ  r(축) · e(축)                                      HP/게임분 · 가산
+//   ⇒ 극단에서 벗어나면 e=0 이므로 **즉시 0**(잔여 누적은 아래 `takeHpDamage` 가 정리한다).
+//
+// ★어느 축이 깎나 — §12 가 이름을 댄 것만: **허기·갈증·극한 추위**.
+//   · **더위 축은 이 세계에 없다**(`weather.js`: *"더위 축은 이 세계에 없다 — 있으면 그건 다른 배치다"*).
+//     표에는 남겨 두되 배선하지 않았다. 없는 축을 만드는 건 이 카드가 아니다 ⇒ 회부.
+//   · **피로·부상은 안 깎는다** — §12 목록에 없다. 부상은 전투 소관(T43·후유증)이다.
+const DRAIN_AXES = ['hunger', 'thirst', 'cold'];
+const DRAIN_R = { hunger: 'EXTREME_HP_HUNGER', thirst: 'EXTREME_HP_THIRST', cold: 'EXTREME_HP_COLD' };
+/** 그 축의 **극단 문턱** — 3단계 경계. 표에서 유도한다(리터럴 금지). */
+function extremeAt(axis) { const a = STAGE_AT[axis]; return a ? a[2] : 1; }
+/** 극단 **초과 정도** 0..1 — 문턱에서 0, 최심(심각도 1)에서 1. 연속. */
+function extremeness(axis, sev) {
+  const at = extremeAt(axis);
+  if (!(sev > at)) return 0;
+  return Math.max(0, Math.min(1, (sev - at) / Math.max(1e-9, 1 - at)));
+}
+/**
+ * ★★합산기 하나 — 지금 이 몸이 초당 몇 HP 씩 무너지는가.
+ *   반환 { rate(HP/게임분 = HP/실초), parts:[{axis, sev, e, r, rate}] }.
+ *   ★추위 축도 **여기서** 계산한다. `weather.js` 는 목표점(℃→0..1)만 만들고 HP 는 모른다 —
+ *     추위발 감소를 저쪽에 따로 두면 그게 곧 두 번째 합산기다(사본 금지).
+ */
+function extremeHpRate(p) {
+  const sev = severity(p);
+  let rate = 0; const parts = [];
+  for (const a of DRAIN_AXES) {
+    const e = extremeness(a, sev[a]);
+    if (e <= 0) continue;
+    const r = CFG[DRAIN_R[a]] || 0;
+    if (!(r > 0)) continue;
+    const v = r * e;
+    rate += v;
+    parts.push({ axis: a, ko: KO[a], emo: EMO[a], sev: +sev[a].toFixed(4), e: +e.toFixed(4), r, rate: +v.toFixed(6) });
+  }
+  parts.sort((x, y) => y.rate - x.rate);
+  // ★합계는 **반올림하지 않는다** — 이 값이 적분기의 입력이라, 여기서 6자리로 자르면
+  //   긴 구간에서 총량이 조금씩 어긋난다(하네스 ⑰㉥ 이 그 차이를 실제로 잡아냈다).
+  //   보여 주기용 반올림은 `parts[].rate` 에만 있다.
+  return { rate, parts };
+}
+/**
+ * 쌓인 감소분에서 **정수 HP** 를 꺼낸다(남은 소수는 다음으로 이월 — 총량 보존).
+ * ★왜 정수로 모아 내보내나: 실제 피해는 `zone.js damagePlayer` 라는 **정본 경로**로 나가야
+ *   HP 0 → 쓰러짐(downed) 사슬이 공짜로 따라온다. 그 경로를 매 틱 0.02HP 로 두드리면
+ *   브로드캐스트만 늘고 얻는 게 없다. **비율은 연속, 적용만 양자화**이고 총량은 정확하다.
+ * ★극단에서 벗어나면 이월분도 **버린다** — "벗어나면 즉시 0"(지시서)이 그 뜻이다.
+ */
+function takeHpDamage(p, stillExtreme) {
+  const b = ensure(p);
+  if (stillExtreme === false) { b.hpDebt = 0; return 0; }
+  const n = Math.floor(b.hpDebt);
+  if (n > 0) b.hpDebt -= n;
+  return n;
 }
 
 // ── ★★스태미나 — 달리기의 유일한 관문 ───────────────────────────────────────
@@ -449,6 +559,16 @@ function tick(p, dtSec, ctx) {
   const bm = brineActive(p, c.now) ? CFG.BRINE_MULT : 1;
   p.thirst = Math.max(0, t0 - decayRate(t0, CFG.THIRST_SEC) * dtSec * bm);
 
+  // ★★★[캐논 변경 2026-09-01 · T44] 극단이면 **HP 가 아주 천천히 깎인다.**
+  //   여기서는 **쌓기만** 한다 — 실제 피해는 `zone.js` 가 정본 경로(`damagePlayer`)로 낸다.
+  //   그래야 HP 0 → 쓰러짐 사슬이 공짜로 따라오고, `body.js` 는 `p.hp` 를 직접 안 만진다.
+  //   ★벗어나면 즉시 0: 아래 `rate === 0` 이면 이월분까지 버린다(빚이 따라다니지 않는다).
+  {
+    const er = extremeHpRate(p);
+    if (er.rate > 0) b.hpDebt += er.rate * dtSec;
+    else b.hpDebt = 0;
+  }
+
   // ★★스태미나 — 달리면 줄고(짐이 무거우면 더), 서면 찬다(허기·갈증이 그 속도를 정한다).
   const load = Math.max(0, Number(c.carryRatio) || 0);
   if (c.sprint && c.moving) {
@@ -540,6 +660,7 @@ module.exports = {
   lerpCurve, xWhereBelow, ensure, severity, effects, stageOf, moodles,
   RECOVER, EFFECT_AXES, RECOVER_AXES, recoverMult, recoverParts, canSprint, stamina, coldTarget, warmthInsC, decayRate,
   drinkBrine, brineActive,
+  extremeHpRate, extremeAt, extremeness, takeHpDamage, DRAIN_AXES,
   tick, onLabor, onDamage, onEat, onHerb,
   selfPayload, peerPayload, toSave, fromSave, dirtySince, snapshot,
 };

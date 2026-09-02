@@ -1082,7 +1082,10 @@ const THIRST_MAX = 100;
 //   종전 값(10분/7분)은 1시간에 6끼라 잔소리였다. 재민 지시 "1시간 세션에 2~3회"로 늦췄다.
 const HUNGER_DRAIN_PER_SEC__DEAD_SEE_body_js = 100 / 600;
 const THIRST_DRAIN_PER_SEC__DEAD_SEE_body_js = 100 / 420;
-// (제거) STARVATION_HP_PER_SEC — 아사 폐지(사용자 확정): 식량 사망 = econ 기근 인구감소 단일 경로. 기갈은 디버프만.
+// (제거) STARVATION_HP_PER_SEC — ★★[캐논 변경 2026-09-01 · T44] "아사 폐지"는 **폐기됐다.**
+//   되살아난 것은 이 상수가 아니다: 극단 감소는 `body.js extremeHpRate` **합산기 하나**가 내고
+//   (허기·갈증·추위 가산 · 연속), 적용은 위 생존 루프가 `damagePlayer` 정본 경로로 한다.
+//   여기에 초당 상수를 다시 적지 마라 — 그게 두 번째 정본이다.
 // 장착 시 효과 — 채집/공격 데미지 배수
 // 채집은 자원 hp 깎는 1회 데미지를 배수 적용. 기본 1.
 const TOOL_EFFECTS = {
@@ -3993,7 +3996,8 @@ function doEat(player, item, amount) {
   if (eff.hpDelta)  { player.hp = Math.max(0, Math.min(player.maxHp, player.hp + eff.hpDelta * ate));
                       broadcast({ type: 'player_damaged', pid: player.pid, hp: player.hp }); }
   // ★★상한 걸 먹으면 **확정적으로** 탈이 난다 — 주사위 없음(재민 확정: 식중독 확률 모델 금지).
-  //   새 축을 안 만든다: 신체 §7 의 **부상** 축 하나를 재사용한다(HP 는 안 건드린다 — 아사 폐지 캐논).
+  //   새 축을 안 만든다: 신체 §7 의 **부상** 축 하나를 재사용한다(HP 는 안 건드린다).
+  //   ⚠[T44] "아사 폐지" 폐기와 무관하다 — 극단 HP 감소는 허기·갈증·추위 셋이고 상한 음식은 그 목록 밖이다.
   //   부상 축이 이미 이속·작업 배율 곡선과 바닥(0.72)을 갖고 있어 죽음의 나선이 안 난다.
   let _ill = 0;
   if (spoiledQty > 0) {
@@ -9129,6 +9133,20 @@ setInterval(() => {
     Body.tick(p, dt, { day: _day, elevKm: elevKmAt(p), night: _night, nearFire: _fire, indoor: _indoor, warmth,
                        villageShelter: _sh, windExposure: windExposureOf(p, now, _day, _sh),
                        seasonCold: seasonColdNow(), moving, sprint: p.sprint, carryRatio: _cr, now });
+    // ★★★[캐논 변경 2026-09-01 · T44] 극단이면 HP 가 천천히 깎인다("아사 폐지" 폐기).
+    //   `Body` 가 **비율**을 내고 쌓아 두면, 여기서 1 HP 이상 쌓였을 때 **정본 피해 경로**로 낸다.
+    //   ⇒ HP 0 → 쓰러짐(downed) 사슬이 공짜로 따라오고, 사망 로그에 원인이 남는다.
+    //   ⚠부상은 안 생긴다 — `BODY_INJURY_DMG`(12) 문턱보다 한참 작은 1~2 HP 라서.
+    //   ⚠마을 안이라고 면제하지 않는다(§12: 마을의 불사는 **쓰러진 뒤** 옮겨 준다는 뜻이다).
+    //     다만 추위는 마을 완충(0.65)이 평형을 3단계 아래로 내려 **자연히 0** 이 된다 —
+    //     새 예외를 만들 필요가 없다. 이미 있는 안전망이 그 일을 한다.
+    {
+      const _hpDmg = Body.takeHpDamage(p);
+      if (_hpDmg > 0) {
+        const _why = Body.extremeHpRate(p).parts.map((x) => x.axis).join('+') || 'extreme';
+        damagePlayer(p, _hpDmg, `extreme:${_why}`);
+      }
+    }
     p._cold = Body.ensure(p).cold > 0.05;
     // 옷은 추위를 막는 동안 닳는다(종전 규약 유지 — 옷감 수요의 실체)
     if (p._cold && clothes && !_fire && !_indoor && now - (p._coldWearAt || 0) > COLD_CLOTH_WEAR_MS) {
@@ -9159,9 +9177,14 @@ setInterval(() => {
       // ★★[신체 3층 재배선] 하드 게이트(허기>10 && 갈증>10)를 **회복 배율**로 바꾼다.
       //   종전엔 10 을 경계로 회복이 **뚝 끊겼다**(§8.3 "속은 연속" 위반 · 절벽).
       //   이제 결핍이 깊어질수록 **천천히** 아물고, 극단(0)에서 정확히 멈춘다.
-      //   ★HP 를 **깎지는 않는다** — 아사 폐지 캐논(`test-body ④`가 못 박는다).
+      //   ★★[캐논 변경 2026-09-01 · T44] **무너지는 중엔 아물지 않는다.**
+      //     종전 주석은 "HP 를 깎지는 않는다(아사 폐지 캐논)"였다 — 그 캐논은 폐기됐다.
+      //     그리고 추위 극단은 **허기가 멀쩡해도** 온다: 그때 `recoverMult` 는 1 에 가까워
+      //     자연 회복(초당 ~10HP)이 극단 감소(초당 0.28HP)를 **가볍게 덮어써** 얼어 죽지 않는다.
+      //     ⇒ 극단 감소가 걸린 동안은 자연 회복을 멈춘다. 회복 식은 그대로 두고 **게이트만** 얹는다.
       const _rm = p.isNpc ? 1 : Body.recoverMult(p);
-      if (_rm > 0) p.hp = Math.min(p.maxHp, p.hp + 2 * dt * 5 * _rm); // 만복 기준 초당 ~10hp
+      const _extreme = p.isNpc ? 0 : Body.extremeHpRate(p).rate;
+      if (_rm > 0 && _extreme <= 0) p.hp = Math.min(p.maxHp, p.hp + 2 * dt * 5 * _rm); // 만복 기준 초당 ~10hp
     }
   }
 
