@@ -93,7 +93,12 @@ console.log('\n③ 최상위 실행문이 99-main.js 밖에 **새로** 생기지
 //   조각을 의도적으로 재구성하면 이 표를 같이 갱신하라(그 자체가 리뷰 지점이다).
 const BASELINE = {
   'client/00-const.js': 15, 'client/11-r1-mountain.js': 41, 'client/20-r2-visibility.js': 5,
-  'client/30-n-net.js': 13, 'client/40-r2-sprites.js': 2, 'client/41-h-char.js': 18,
+  'client/30-n-net.js': 13, 'client/40-r2-sprites.js': 2,
+  // ★★[T53 2026-09-02] `41-h-char.js`(18) 를 2차 분할했다. **실행문이 늘지 않았다 — 나뉘었다.**
+  //   17 은 조각 ①(진단 훅), 1 은 조각 ④(`setInterval(updateHud,100)`). 합은 그대로 18.
+  //   그래서 표를 옮겨 적었다(위 주석이 요구하는 "같이 갱신하라"). 진짜 불변식은 **총계**이고,
+  //   바로 아래 두 번째 assert 가 그걸 본다 — 표를 늘려도 총계가 늘면 거기서 잡힌다.
+  'client/41-h-bubble.js': 17, 'client/44-h-hud.js': 1,
   'client/50-i-panel.js': 12, 'client/51-s-side.js': 4, 'client/60-t-market.js': 4,
   'client/80-bigmap.js': 1,
 };
