@@ -829,3 +829,27 @@ for i in $(seq 1 120); do s=$(date +%s%N); curl -sf -m10 -o /dev/null http://loc
 ⚠**부재 배치는 존 틱에 안 얹혀 있다**(30분마다 · `CLAIM_SCAN_MS`). central 에 **부재 중인 소유주 수만큼**
 `GET /player/:id` 를 묻는다 — 접속 중인 사람은 묻지 않고, central 이 안 뜨면 **그 판을 통째로 건너뛴다**
 (모르면 안 건드린다 — 안전한 쪽).
+
+## Z-이방인. ★[T19 2026-09-02] `zone.js` 접점 — 유저 마을 시작지 등록
+
+규약은 `인계/S-사회스킬.md` **S-이방인** 절에 있다(복제하지 않는다).
+
+| 자리 | 하는 일 |
+|---|---|
+| `require('./newcomers')` | 모듈 하나 |
+| `Newcomers.init({...})` · `start()` | `Claims.init` 뒤. ⚠`holdDays: Claims.CFG.HOLD_DAYS` — **새 수를 만들지 않는다** |
+| `SimVillages.init` 의 `onVillageAdded` | 마을이 하나 늘면 `Onboarding.noteVillage(dbId)` — 그 곳만 굽는다 |
+| `Onboarding.init` 의 `newcomers(vid)` | 시작 화면이 유저 마을을 올릴지 — **판정은 `newcomers.js` 하나**가 하고 온보딩은 부르는 법만 안다 |
+| `tryVillageInventory` | `inv.welcome = _welcomeLine(vid)` · `inv.hallId` — 기존 payload 두 줄(새 창구 0) |
+| `tryVillageWelcome` | 스위치. 권한·거리는 재고 열람과 **같은 술어** · 자격은 **켤 때 안 막는다** |
+| chat 분기 | `Newcomers.handleChat` — `/이방인` |
+| `VILLAGE_BOOK_MSG` | `'village_welcome'` 추가 |
+| `GET /welcomedbg` | 읽기 전용 관측창(`?scan=1` = 지금 한 번 스캔) |
+| `__testBind()` | `Newcomers`·`tryVillageWelcome`·`tryVillageInventory`·`_welcomeLine` |
+
+★★**§0 이 찾은 근본**: `foundPlayerVillage` 가 `state.clientPayload` 에 **자기를 안 넣었다**.
+그 표는 시딩·복원 때 **한 번** 만들어지고 하루 틱은 기존 항목만 갱신한다 ⇒ 방금 선 마을은
+`clientVillages()` 가 몰랐고, **재시작해야 세계에 나타났다.** 그래서 시작 화면·도착 지점·마을 이름·
+쉼터 폴백(T43)·**클라의 촌장 근접 브리핑**이 전부 그 마을을 못 봤다.
+⇒ **마을을 추가하는 자리는 `foundPlayerVillage` 하나다.** 새 필드를 마을 페이로드에 더할 땐
+**시딩(Stage 4A)과 그 자리 둘 다** 고쳐라 — 한쪽만 고치면 "재시작해야 보이는 필드"가 또 생긴다.

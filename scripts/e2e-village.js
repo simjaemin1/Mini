@@ -399,6 +399,77 @@ async function waitHttp(url, tries = 900) {
   }
   await snap('08-first-resident');
 
+
+  // ── ★[T19 2026-09-02] 이방인 받기 — **§9.3 의 나머지 절반** ─────────────────
+  //   재는 것: ⓐ 방금 선 마을이 **그 자리에서** 세계에 올랐나(재시작 없이) ·
+  //           ⓑ 스위치는 **기본 꺼짐**이고 그동안 시작 지도에 없다 ·
+  //           ⓒ 켜면 촌장 화면이 그 사실을 말한다 · ⓓ 자격을 갖추면 **시작 지도에 오른다**.
+  //   ★"자격"은 서버 정본(`newcomers.js`)이 판정한다 — 여기서 다시 풀지 않고 `/welcomedbg` 로 읽는다.
+  if (hall) {
+    const wdbg = async (scan) => {
+      try { return await (await fetch(`http://localhost:${ZPORT}/welcomedbg${scan ? '?scan=1' : ''}`)).json(); }
+      catch (e) { return null; }
+    };
+    const sinfo = async () => {
+      try { return await (await fetch(`http://localhost:${ZPORT}/startinfo`)).json(); } catch (e) { return null; }
+    };
+    const w0 = await wdbg(true);
+    const row0 = w0 && (w0.villages || []).find((r) => r.name && r.pop != null);
+    ok(!!row0, `★[T19] ⓐ 방금 선 마을이 **재시작 없이** 세계에 올랐다 — ${w0 ? `${(w0.villages || []).length}곳` : '응답 없음'}`);
+    // ⓐ′ 클라도 안다 — `simVillages` 에 그 마을이 붙었는가(여태 welcome 1회뿐이라 몰랐다)
+    //   ⚠재접속을 한 번 했으므로 이 창의 통지 수는 0일 수 있다(재접속하면 welcome 목록에 이미 들어 있다).
+    //     그래서 **길이가 시딩 수보다 늘었는가**로 본다 — 어느 경로로든 클라가 알고 있으면 참이다.
+    const seen = await page.evaluate(() => {
+      const d = window.__wxDbg ? window.__wxDbg() : null;
+      return { total: d ? d.villages : -1, adds: window.__simVillageAdds | 0 };
+    });
+    ok(seen.total > 0, `★[T19] ⓐ′ 클라의 마을 목록에 그 마을이 들어 있다 — 목록 ${seen.total}곳(이 창의 통지 ${seen.adds}건)`
+      + ' · 안 붙으면 자기가 세운 마을의 촌장과도 말을 못 한다');
+    // ⓑ 기본 꺼짐 — 시작 지도에 없다
+    const s0 = await sinfo();
+    ok(!!s0 && (s0.playerN | 0) === 0, `★[T19] ⓑ 기본은 **꺼짐** — 시작 지도의 유저 마을 ${s0 ? s0.playerN : '?'}곳`);
+    ok(!!row0 && !row0.on && !row0.listed, '★[T19] ⓑ′ 서버도 꺼짐으로 안다');
+    // ⓒ 촌장 화면에서 켠다 — **정본 경로**(회관 패널의 그 메시지)로
+    await page.evaluate(() => { window.__notices = []; });
+    await send({ type: 'village_welcome', buildingId: hall.id, on: true });
+    await sleep(1200);
+    const ntw = await page.evaluate(() => (window.__notices || []).slice());
+    ok(ntw.some((t) => /이방인을 받/.test(t)), `★[T19] ⓒ 촌장 화면이 답한다 — ${JSON.stringify(ntw.filter((t) => /이방인/.test(t)).slice(-1)[0] || '(없음)')}`);
+    const w1 = await wdbg(true);
+    const row1 = w1 && (w1.villages || [])[0];
+    ok(!!row1 && !!row1.on, '★[T19] ⓒ′ 스위치가 실제로 켜졌다');
+    // ⓓ-0 ★**긍정 쪽을 실제로 만든다.** 부정만 재면 "안 뜬다"는 판정만 참이고 카드의 요점
+    //   ("유저 마을이 시작 지도에 뜬다")은 한 번도 안 밟힌다. 곳간을 정본 경로로 채워 자격을 갖춘다.
+    for (let i = 0; i < 12; i++) {
+      const w = await wdbg(true);
+      const r = w && (w.villages || [])[0];
+      if (r && r.ok) break;
+      await send({ type: '__e2e_give', items: { berry: 300 } });
+      await sleep(400);
+      await send({ type: 'village_deposit', buildingId: hall.id, want: { berry: 300 } });
+      await sleep(900);
+    }
+    const wFull = await wdbg(true);
+    const rFull = wFull && (wFull.villages || [])[0];
+    ok(!!rFull && rFull.ok, `★[T19] ⓓ-0 곳간을 채워 **자격을 갖췄다** — 인구 ${rFull ? rFull.pop : '?'} · 자립 ${rFull ? rFull.foodDays : '?'}일`
+      + (rFull && !rFull.ok ? ` (${JSON.stringify(rFull.why)})` : ''));
+    // ⓓ 자격 — 갖췄으면 지도에 오르고, 아니면 **이유가 있다**(둘 다 참인 판정이다)
+    const s1 = await sinfo();
+    const listed = !!(s1 && (s1.playerN | 0) > 0);
+    const rNow = (await wdbg()) ; const rowNow = rNow && (rNow.villages || [])[0];
+    ok(listed === !!(rowNow && rowNow.listed),
+      `★[T19] ⓓ 시작 지도와 서버 판정이 **같은 답**을 한다 — 지도 ${s1 ? s1.playerN : '?'}곳 / listed=${rowNow && rowNow.listed}`);
+    ok(listed, `★[T19] ⓓ′ ★**시작 지도에 유저 마을이 떴다** — 지도 ${s1 ? s1.playerN : '?'}곳`
+      + (listed ? '' : ` (아직: ${row1 ? JSON.stringify(row1.why) : '?'})`));
+    const pv = (s1 && (s1.villages || []).find((v) => v.player)) || null;
+    ok(!!pv && !!pv.arrive, `★[T19] ⓓ″ 그 줄에 **이방인이 내릴 자리**가 실려 있다 — ${pv ? JSON.stringify(pv.arrive) : '?'}`);
+    // ⓔ 다시 끄면 사라진다
+    await send({ type: 'village_welcome', buildingId: hall.id, on: false });
+    await sleep(1200);
+    const s2 = await sinfo();
+    ok(!!s2 && (s2.playerN | 0) === 0, '★[T19] ⓔ 끄면 시작 지도에서 내려간다');
+    await snap('09-welcome');
+  }
   // ── NPC 마을은 이 UI 의 대상이 아니다(플레이어 마을만) ───────────────────────
   {
     const c = await (await fetch(`http://localhost:${ZPORT}/health`)).json().catch(() => null);

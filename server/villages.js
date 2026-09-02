@@ -1261,6 +1261,26 @@ function foundPlayerVillage(opts) {
   state.byDbId.set(dbId, vil);
   state.byEcon.set(ev, vil);
   if (state.claimedNames) state.claimedNames.add(name);
+  // ★★[T19 2026-09-02 재민 확정] **새 마을을 그 자리에서 세계에 등록한다.**
+  //   §0 실측: 여태 `state.clientPayload` 는 **시딩·복원 때 한 번**만 만들어졌고(위 Stage 4A),
+  //   하루 틱은 **기존 항목만 갱신**했다. 그래서 방금 선 마을은 `clientVillages()` 가 몰랐고 ⇒
+  //     · 시작 화면(`onboarding.startInfo`)에 안 떴다 — **T19 의 전제가 통째로 없었다**
+  //     · 도착 지점이 안 생겼다(`onboarding._villages()` 가 못 찾는다)
+  //     · `membership` 이 마을 이름을 못 찾았다(빈 문자열)
+  //     · T43 `nearestVillageWake` 가 거기서 못 깨웠다
+  //     · 클라 `c.simVillages` 는 welcome 1회라 **자기가 세운 마을의 촌장과 말을 못 했다**
+  //   전부 **재시작하면 나았다** — 그게 이 결함이 여태 안 보인 이유다.
+  //   ⇒ 시딩이 만드는 것과 **같은 모양**으로 한 항목을 만들어 붙이고, 클라에도 그 한 항목만 보낸다.
+  //     (전체를 다시 만들지 않는다 — 51곳 페이로드를 마을 하나 설 때마다 재조립할 이유가 없다.)
+  const _payload = { id: dbId, name, cx: ccx, cy: ccy, pop: 0, r: vil._maxRPx,
+    b: territoryBoundary(territory, ccx, ccy), lon: vil._lonOff,
+    tr: Math.round(Math.sqrt(((ev.land && ev.land.size ? ev.land.size * 25 : 2800)) / Math.PI) * SZ),
+    player: 1 };
+  vil._bnd = _payload.b;
+  if (!state.clientPayload) state.clientPayload = [];
+  state.clientPayload.push(_payload);
+  try { if (state.deps && state.deps.broadcast) state.deps.broadcast({ type: 'sim_village_add', village: _payload }); } catch (e) {}
+  try { if (state.deps && state.deps.onVillageAdded) state.deps.onVillageAdded(dbId); } catch (e) {}
   // 영토 개간 — 마을 안엔 숲이 없다(시딩과 같은 규칙, 멱등)
   try { if (state.deps.clearTreesInCells) state.deps.clearTreesInCells(terrSet); } catch (e) {}
   // ── 교역 거리행렬 — **미루고 증분으로**(배치 11 ①-2 + 배치 12 실측) ─────────────
@@ -3924,6 +3944,11 @@ function villageWithdrawGate(vid, px, py) {
   return _villageNear(vid, px, py);
 }
 
+// ★[T19 2026-09-02] 사람이 세운 마을 목록 · dbId 로 한 곳 — **`econ.founder` 가 유일한 표지**다
+//   (`foundPlayerVillage` 가 심고 `PV_MAX` 상한이 이미 그걸로 센다 — 새 표지를 만들지 않는다).
+function playerVillages() { return state.villages.filter((v) => v.econ && v.econ.founder); }
+function villageByDbId(dbId) { return (state.byDbId && state.byDbId.get(dbId | 0)) || null; }
+
 // 회관 셀(정확히 중심) → 그 마을. 플레이어가 세운 마을만 돌려준다(NPC 마을 회관은 이 UI 대상이 아니다).
 function playerVillageAt(ccx, ccy) {
   for (const vil of state.villages) {
@@ -5246,6 +5271,7 @@ module.exports = {
   // ★★[2026-08-03e 배치 12] 플레이어 마을 건립 — zone.js `village_site` 완공 훅이 소비.
   //   `playerVillageAt` 은 재고 UI 의 권한/조회 진입점(회관 셀 → 그 마을).
   foundPlayerVillage, playerVillageInventory, playerVillageAt, playerVillageDeposit, playerVillageDepositMap,
+  playerVillages, villageByDbId,   // ★[T19] 사람이 세운 마을 — 이방인 받기 자격 판정이 읽는다
   playerVillageWithdraw, playerVillageWithdrawStock, villageWithdrawGate,   // ★[T11] 곳간 인출 — 납품의 역연산(같은 표·같은 환산율)
   // ★[2026-08-25 사건 레이어] 촌장 브리핑 · 게시판 · 납품 — zone.js 핸들러가 소비
   villageBrief, villageBoard, villageDeliver, villageAnchorPx, briefRadiusPx,

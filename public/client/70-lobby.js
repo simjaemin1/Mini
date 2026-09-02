@@ -101,6 +101,10 @@ function onbDrawMap() {
     sv.appendChild(onbSvgEl('circle', { cx: p.x, cy: p.y, r,
       fill: v.ch === 'fishing' ? '#6fb7e8' : v.ch === 'mining' ? '#c9a26b' : '#8fc98a',
       stroke: v.busy > 0 ? 'rgba(255,255,255,.6)' : 'none', 'stroke-width': v.busy > 0 ? 1 : 0 }));
+    // ★[T19] 사람이 세운 마을 — **점선 테**로 가른다(§9.3 "시작 지도가 곧 길드 모집 채널").
+    //   지도에 올라 있다는 것 자체가 이미 서버 판정을 통과했다는 뜻이다(클라가 다시 안 푼다).
+    if (v.player) sv.appendChild(onbSvgEl('circle', { cx: p.x, cy: p.y, r: r + 2, fill: 'none',
+      stroke: '#d8b0e8', 'stroke-width': 1.1, 'stroke-dasharray': '2 2' }));
   }
 }
 function onbPickAt(px, py) {
@@ -124,6 +128,7 @@ function onbRenderCard() {
     return;
   }
   el.innerHTML = `<b>${v.chEmo} ${v.name}</b> <span style="color:#8a93a0">· ${v.popKo} · ${v.busyKo}</span>`
+    + (v.player ? `<br/><span style="color:#d8b0e8">사람이 세운 마을 — 이방인을 받는다${v.founderName ? ` (${v.founderName})` : ''}</span>` : '')
     + `<br/><span style="color:#a9c6a0">“${v.news}”</span>`
     + (v.board ? `<br/><span style="color:#8a93a0">게시판에 걸린 일 ${v.board}건</span>` : '')
     + (v.welcome && !v.welcome.ok ? `<br/><span style="color:#c98a8a">이방인을 받기엔 아직 이르다 — ${v.welcome.why.join(' · ')}</span>` : '');
@@ -154,7 +159,8 @@ function onbRefresh() {
     const hint = document.getElementById('onbHint');
     if (hint) hint.textContent = j.warming
       ? `${j.villages.length}곳 · 길을 그리는 중 (${j.ready}/${j.total})`
-      : `${j.villages.length}곳 · 이방인 환영 ${j.recommendN}곳`;
+      : `${j.villages.length}곳 · 이방인 환영 ${j.recommendN}곳`
+        + ((j.playerN | 0) ? ` · 사람이 세운 마을 ${j.playerN}곳` : '');
     // ★서버가 도착 지점을 **배경에서 한 마을씩** 굽는다(부팅 직후 몇 초). 다 구워질 때까지만 다시 묻는다.
     if (j.warming && onbWarmTries < 20) { onbWarmTries++; setTimeout(onbRefresh, 3000); }
     return j;

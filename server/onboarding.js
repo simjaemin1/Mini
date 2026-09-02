@@ -426,6 +426,24 @@ function arrivalOf(vid) {
   return a || null;
 }
 function invalidate() { _arrCache = new Map(); _arrDone = false; }
+// ★★[T19 2026-09-02] **마을이 하나 늘었다.** 그 한 곳만 굽는다.
+//   왜 따로 필요한가: `arrivalOf` 는 부팅 굽기가 끝나면(`_arrDone`) **없는 vid 에 null 을 돌려준다** —
+//   그 조기반환은 "51곳을 다 구웠으니 없는 건 없는 것"이라는 뜻이었고, **마을이 늘 수 있다는 걸
+//   셈에 안 넣은 것**이다(§0-ⓒ). 여기서는 목록에 실제로 있는지 먼저 보고, 있으면 굽는다.
+//   ⚠전체 무효화(`invalidate`)가 아니다 — 51곳을 다시 구우면 그게 37초 정지다(회부 B-7 의 교훈).
+function noteVillage(vid) {
+  if (!ready() || vid == null) return null;
+  const k = vid | 0;
+  if (_arrCache.has(k)) return _arrCache.get(k);
+  const list = _villages(), ta = _terrainAdapter();
+  if (!list || !ta) return null;
+  const v = list.find((x) => x.id === k);
+  if (!v) return null;                      // 아직 페이로드에 안 올라왔다 — 다음에 부르면 된다
+  let a = null;
+  try { a = _arrivalFor(v, list, ta); } catch (e) { a = null; }
+  if (a) _arrCache.set(k, a);
+  return a;
+}
 
 // ═══ ② 시작 화면이 읽을 마을 목록 ════════════════════════════════════════════
 //
@@ -549,6 +567,12 @@ function startInfo() {
     }
     if (!news) news = '별일 없네. 자네도 몸 성히 지내게.';
     const busy = near.get(v.id) || 0;
+    // ★★[T19 2026-09-02] **유저 마을은 "이방인 받기"를 켠 곳만 지도에 오른다.**
+    //   §9.3: *"유저 마을도 시작지 등록 가능 — 시작 지도가 곧 길드 모집 채널."*
+    //   판정은 `server/newcomers.js` 정본 하나가 한다. 여기서 자격을 다시 풀면 그게 사본이다.
+    //   ⚠**끄면 지도에서 사라진다**(스위치의 뜻이 그거다). 자격 미달은 촌장 화면이 이유를 본다.
+    const nc = (v.player && H.newcomers) ? H.newcomers(v.id) : null;
+    if (v.player && !(nc && nc.listed)) continue;
     rows.push({
       vid: v.id, name: v.name, cx: v.cx, cy: v.cy,
       pop: v.pop | 0, popBand: popBand(v.pop).key, popKo: popBand(v.pop).ko,
@@ -557,13 +581,19 @@ function startInfo() {
       busy, busyKo: busyBand(busy).ko,
       arrive: a ? { x: a.x, y: a.y, kind: a.kind } : null,
       welcome: _welcomes(v, a),
+      // ★사람이 세운 마을이라는 표지 — 로비가 배지 하나로 쓴다(클라 재계산 0)
+      player: v.player ? 1 : 0,
+      founderName: (v.player && nc) ? (nc.founderName || '') : '',
     });
   }
   // 추천 = "이방인 환영" — 도착 지점이 성립하고(배산임수 감사 합격) · 쉼터가 되고(사람이 산다) ·
   //        혼잡도가 낮은 곳. 인위적 제한이 아니라 **자연 분산**의 손잡이다(§9.1).
+  //   ★유저 마을은 **스위치를 켠 곳만** 이미 걸러져 들어와 있다 — 추천 후보로도 같이 선다
+  //     (§9.3 "시작 지도가 곧 길드 모집 채널" — 모집 중인 곳이 추천에서 빠지면 채널이 아니다).
   const rec = rows.filter((r) => r.welcome.ok).sort((x, y) => (x.busy - y.busy) || (y.pop - x.pop));
   return { ok: true, zone: H.ZONE_ID, villages: rows, recommend: rec.length ? rec[0].vid : (rows[0] ? rows[0].vid : null),
-    recommendN: rec.length, lotAfter: CFG.LOT_AFTER, warming: !_arrDone, ready: _arrCache.size, total: list.length };
+    recommendN: rec.length, lotAfter: CFG.LOT_AFTER, warming: !_arrDone, ready: _arrCache.size, total: list.length,
+    playerN: rows.filter((r) => r.player).length };   // ★[T19] 지도에 오른 유저 마을 수
 }
 function _welcomes(v, a) {
   const why = [];
@@ -784,6 +814,7 @@ module.exports = {
   arrivals, arrivalOf, arriveFor, startGauges,
   startInfo, httpStartInfo, characterOf, worldSectors, SECTORS, CHARS, popBand, busyBand,
   pickFirstQuest, greetLines, onDeliver, handleMsg, daySummary,
+  noteVillage,   // ★[T19] 마을이 하나 늘었을 때 그 곳만 굽는다
   vacantZoneOf, vacantLotAllows, publicState, stateOf,
   // ★하네스용 — **정본을 그대로 내준다**(하네스가 산출을 다시 짜면 사본이다)
   __probe: { computeArrivals: _computeArrivals, terrainAdapter: _terrainAdapter, boundaryCells: _boundaryCells,

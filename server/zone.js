@@ -57,6 +57,7 @@ const Salt = require('./salt');            // ★[자염 배치 2026-09-01] 염�
 const Onboarding = require('./onboarding');   // ★[온보딩 v2 2026-09-01] 도착 지점·30분 대본·빈터 권리 정본(§9). init 전엔 완전 no-op
 const Membership = require('./membership');   // ★[T11 2026-09-02] 마을 소속·곳간 인출. 기여 계량기는 온보딩 정본 **하나**를 읽는다
 const Claims = require('./claims');           // ★[T45 2026-09-02] 사유지 v2 — 종류 영속·인접·연결성·부재 상태기(정본 하나)
+const Newcomers = require('./newcomers');     // ★[T19 2026-09-02] 유저 마을 시작지 등록 — "이방인 받기"(§9.3 나머지 절반)
 const harvestedSeeds = new Set(); // 채집된 시드 자원 (DB에서 load)
 
 // === 활성 청크 (12.2.b) — 사람 player + observer 위치 주변 청크만 시뮬레이션 ===
@@ -2379,6 +2380,10 @@ const _simNow = () => { try { return (SimVillages.dayNow && SimVillages.dayNow()
 SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, isWaterTileLocal, isPositionActive, isBlockedByWall, anyViewerNear, perfMark,
   ioBusy, ioQuietMs,   // ★[T42-b] 배경 작업이 '한가한가'를 판단할 때 **날아가는 쓰기**도 본다
   clearTreesInCells,   // ★영토 개간 — 마을 안엔 숲이 없다
+  // ★[T19 2026-09-02] 마을이 **하나 늘었다**는 통지. 온보딩이 그 마을의 도착 지점을 그때 굽는다
+  //   (부팅 굽기가 이미 끝난 뒤라 스스로는 안 굽는다 — `onboarding.arrivalOf` 의 `_arrDone` 조기반환).
+  //   ⚠전체 재계산이 아니다. 한 마을분(실측 0.7초 남짓)이고, 마을은 사람이 세울 때만 는다.
+  onVillageAdded: (dbId) => { try { Onboarding.noteVillage(dbId); } catch (e) {} },
   // ★[11차 실측] 교역 거리행렬의 코스 그리드(4셀 서브샘플)가 **폭 2셀 다리를 절반이나 못 본다**(28개 중 15개).
   //   다리 술어를 넘겨 주면 villages.js 가 코스 셀 안을 훑어 '이 블록에 다리가 지난다'를 살려낸다.
   isBridgeLocal: isBridgeTileLocal,
@@ -2493,7 +2498,17 @@ if (ZONE_ID === 'hanbando') {
 // ★[온보딩 v2] 도착 지점·대본 상태 — 정본은 `server/onboarding.js`. 여기서는 **이미 있는 것만 넘긴다**(사본 금지).
 Onboarding.init({ SimVillages, terrain: _terrain, ZONE, ZONE_ID, db: db.db, send, players, Events: require('./events'),
   isTerrainBlockedLocal, isWaterTileLocal, isBridgeLocal: isBridgeTileLocal, isSeaTileLocal,
-  foodItems: new Set(Object.keys(FOOD_EFFECTS)), gameDay: zoneGameDay });
+  foodItems: new Set(Object.keys(FOOD_EFFECTS)), gameDay: zoneGameDay,
+  // ★[T19] 유저 마을을 시작 지도에 올릴지 — 판정 정본은 `newcomers.js` 하나다.
+  //   여기서 넘기는 건 **부르는 법**뿐이다(온보딩은 자격을 모른다 — 알면 그게 두 번째 판정이다).
+  newcomers: (vid) => {
+    try {
+      const e = Newcomers.listable(vid);
+      const vil = SimVillages.villageByDbId ? SimVillages.villageByDbId(vid) : null;
+      e.founderName = (vil && vil.econ && vil.econ.founderName) || '';
+      return e;
+    } catch (err) { return null; }
+  } });
 
 // ★[T11 2026-09-02] 마을 소속·곳간 인출 — **이미 있는 것만 넘긴다**(사본 금지).
 //   기여 계량기는 안 넘긴다: `membership.js` 가 온보딩 정본을 직접 읽는다(계량기는 하나다).
@@ -2504,6 +2519,31 @@ Membership.init({ SimVillages, ZONE_ID, send, players, gameDay: zoneGameDay,
 //   ⚠`gameDay` 를 일부러 안 넘긴다 — 부재 시계는 **실시간**이고 세계의 시간이 아니다(claims.js 제3 규약).
 Claims.init({ claims, buildings, players, db, central, broadcast, ZONE_ID, BUILDING_SIZE });
 Claims.start();
+
+// ★[T19 2026-09-02] 이방인 받기 — **이미 있는 것만 넘긴다**(사본 금지).
+//   ⚠`holdDays` 는 T45 가 정한 "자리를 비웠다"의 선이다. 여기서 새 수를 만들지 않는다(축이 하나다).
+Newcomers.init({
+  buildings, players, central, ZONE_ID,
+  econ: require('../sim/economy-sim'),
+  villageOf: (vid) => (SimVillages.villageByDbId ? SimVillages.villageByDbId(vid) : null),
+  playerVillages: () => (SimVillages.playerVillages ? SimVillages.playerVillages() : []),
+  arrivalOf: (vid) => Onboarding.arrivalOf(vid),
+  updateBuildingData: (dbId, json) => db.updateBuildingData(dbId, json),
+  holdDays: Claims.CFG.HOLD_DAYS,
+  send,
+  // ★채팅 경로도 **재고 열람과 같은 술어**를 밟는다 — 권한·거리를 여기서 다시 적지 않는다.
+  nearHall: (player) => {
+    let best = null, bd = 200;
+    for (const b of buildings.values()) {
+      if (!b || b.type !== 'village_hall') continue;
+      const d = Math.hypot(b.x - player.x, b.y - player.y);
+      if (d <= bd && _furnaceCanUse(player, b)) { bd = d; best = b; }
+    }
+    return best;
+  },
+  setSwitch: (player, hall, on) => tryVillageWelcome(player, hall.id, on),
+});
+Newcomers.start();
 
 // Phase 12.2.e: 자원 respawn 제거 — 청크 활성화 시 시드로 자동 생성됨
 
@@ -2586,6 +2626,16 @@ const server = http.createServer((req, res) => {
     };
     if (req.url.indexOf('scan=1') >= 0) { Claims.scanAbsence().then((r) => _done({ scan: r })).catch((e) => _done({ scanErr: e.message })); return; }
     _done();
+    return;
+  }
+  // ★[T19] 이방인 받기 상태 읽기 전용 JSON — 하네스 관측창(`/claimdbg` 와 같은 규약).
+  //   내주는 것은 **정본 그 자체**(`Newcomers.debug()`). `?scan=1` 이면 central 질의를 지금 한 번 돈다.
+  if (req.url && req.url.startsWith('/welcomedbg') && req.method === 'GET') {
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+    const _out = (extra) => { try { res.end(JSON.stringify(Object.assign({ zone: ZONE_ID }, Newcomers.debug(), extra || {}))); }
+                              catch (e) { res.end(JSON.stringify({ err: e.message })); } };
+    if (req.url.indexOf('scan=1') >= 0) { Newcomers.scan().then((r) => _out({ scan: r })).catch((e) => _out({ scanErr: e.message })); return; }
+    _out();
     return;
   }
   // ★[온보딩 v2] 시작 화면이 읽는 마을 목록 — CORS 개방(`/lifedbg` 와 같은 규약: 민감 정보 없음)
@@ -3531,6 +3581,7 @@ async function _acceptConnection(ws, req, C) {
 const VILLAGE_BOOK_MSG = new Set([
   'village_inventory', 'village_deposit', 'village_brief', 'village_board', 'village_deliver',
   'village_trade', 'village_trade_exec', 'village_trade_quote', 'village_withdraw',   // ★[T11] 인출도 마을 장부다
+  'village_welcome',   // ★[T19] 이방인 받기 스위치도 마을 장부다
   'sell_relic', 'shop_info', 'craft_buy', 'craft_sell',
   'village_start', 'village_advance', 'request_village_house',
 ]);
@@ -3633,6 +3684,7 @@ function handlePlayerInput(player, raw) {
     // ★[T11] 마을 소속 명령 — `/소속` `/탈퇴` `/추방 <이름>` `/인출 [수량] [재화]`.
     //   **새 클라 조건 0**: 채팅은 이미 있다. 명령은 말이 아니므로 방송하지 않는다.
     if (Membership.handleChat(player, text)) return;
+    if (Newcomers.handleChat(player, text)) return;   // ★[T19] `/이방인` — 새 클라 조건 0
     if (text.startsWith('/t ')) {
       if (!player.tribeId) { send(player.ws, { type: 'notice', text: '길드 소속이 아닙니다' }); return; }
       const tribeText = text.slice(3).trim();
@@ -3675,6 +3727,7 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'village_start') tryVillageStart(player, +msg.atX, +msg.atY);      // ★[배치 12] 마을 회관 착공 — 완공이 곧 마을 등록
   else if (msg.type === 'village_advance') tryVillageAdvance(player, msg.buildingId);      // ★[배치 12] 회관 ②③·완공
   else if (msg.type === 'village_inventory') tryVillageInventory(player, msg.buildingId);  // ★[배치 12 ③] 회관 클릭 = 마을 재고 열람(권한 게이트)
+  else if (msg.type === 'village_welcome') tryVillageWelcome(player, msg.buildingId, !!msg.on);   // ★[T19] 이방인 받기 스위치
   else if (msg.type === 'village_deposit') tryVillageDeposit(player, msg.buildingId, msg.want);   // ★[배치 12 ②] 곳간에 넣기 — 식량이 사람을 부른다
   // ★★[2026-08-25 사건 레이어] 촌장 브리핑 · 게시판 · 납품. 셋 다 **자기 마을 것만** 준다(소식의 물리 전파).
   else if (msg.type === 'village_brief') tryVillageBrief(player, msg.vid);
@@ -7390,7 +7443,33 @@ function tryVillageInventory(player, buildingId) {
   if (!vil) { send(player.ws, { type: 'notice', text: '이 회관에 딸린 마을을 찾지 못했다' }); return; }
   const inv = SimVillages.playerVillageInventory(vil);
   if (!inv) { send(player.ws, { type: 'notice', text: '재고를 읽지 못했다' }); return; }
+  inv.welcome = _welcomeLine(vil.dbId);   // ★[T19] 이방인 받기 — **기존 payload 한 줄**(새 창구 0)
+  inv.hallId = buildingId;
   send(player.ws, { type: 'village_inventory', inv });
+}
+// ★[T19] 촌장 화면이 그릴 "이방인 받기" 한 줄. 판정은 `newcomers.js` 정본 하나가 낸 것을 그대로 준다.
+function _welcomeLine(vid) {
+  try { return Newcomers.listable(vid); } catch (e) { return null; }
+}
+// ★★[T19 2026-09-02] **스위치를 켜고 끈다.** 자격은 여기서 안 막는다 —
+//   켜 두고 조건을 갖추면 그때부터 지도에 뜬다(막으면 "왜 안 켜지지"가 되고, 안 막으면
+//   "왜 아직 안 뜨지 — 아, 곳간이 얇구나"가 된다. 뒤쪽이 배울 것이 있는 실패다).
+//   권한·거리는 재고 열람과 **완전히 같은 술어**다(`_furnaceCanUse` · 200px) — 새 개념 0.
+function tryVillageWelcome(player, buildingId, on) {
+  const b = buildings.get(buildingId);
+  if (!b || b.type !== 'village_hall') return;
+  if (Math.hypot(b.x - player.x, b.y - player.y) > 200) { send(player.ws, { type: 'notice', text: '회관에서 너무 멀리 있습니다' }); return; }
+  if (!_furnaceCanUse(player, b)) { send(player.ws, { type: 'notice', text: '이 마을의 관리자가 아닙니다' }); return; }
+  const vid = (b.data && b.data.villageDbId != null) ? (b.data.villageDbId | 0) : null;
+  if (vid == null) { send(player.ws, { type: 'notice', text: '이 회관에 딸린 마을을 찾지 못했다' }); return; }
+  const r = Newcomers.setOn(vid, !!on);
+  if (!r.ok) { send(player.ws, { type: 'notice', text: `🏘️ ${r.err}` }); return; }
+  const e = Newcomers.listable(vid);
+  send(player.ws, { type: 'notice', text: r.on
+    ? (e.listed ? '🏘️ 이방인을 받는다 — 시작 지도에 우리 마을이 오른다'
+                : `🏘️ 이방인을 받기로 했다 — 다만 아직 지도엔 안 오른다: ${e.why.join(' · ')}`)
+    : '🏘️ 이방인을 받지 않는다 — 시작 지도에서 내렸다' });
+  tryVillageInventory(player, buildingId);   // 화면을 그 자리에서 갱신(거래소·곳간과 같은 규약)
 }
 // ★[배치 12 ②] 곳간에 넣기 — 권한·거리 규약은 열람과 **완전히 같다**(같은 회관, 같은 술어).
 function tryVillageDeposit(player, buildingId, want) {
@@ -7773,6 +7852,9 @@ function __testBind() {
     HUNGER_MAX, THIRST_MAX, MOVE_SPEED,
     // ★[T45 사유지 v2 2026-09-02] 클레임 경로를 **정본 함수 그대로** 내준다 —
     //   하네스가 인접·연결성·상태기를 다시 짜면 그게 사본이고, 두 산수가 갈리는 날이 온다.
+    // ★[T19 유저 마을 시작지 2026-09-02] 이방인 받기 경로를 **정본 그대로** 내준다
+    //   (하네스가 자격 판정을 다시 짜면 그게 사본이다).
+    Newcomers, tryVillageWelcome, tryVillageInventory, _welcomeLine,
     Claims, db, tryClaim, tryUnclaim, countMyClaims, listRespawnOptions,
     findGuildClaimContaining, _claimFootprint, Onboarding, CLAIM_COST,
     CLAIM_SLOT_PERSONAL_START, CLAIM_SLOT_TEMPORARY_START, CLAIM_SLOT_GUILD_START,

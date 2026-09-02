@@ -1164,6 +1164,18 @@
     } else if (msg.type === 'claim_updated') {
       // Phase 4d-16-a: 영토 cell sub-type 변경 (예: NPC personal 분배)
       c.claims.set(msg.claim.id, msg.claim);
+    } else if (msg.type === 'sim_village_add') {
+      // ★[T19 2026-09-02] **마을이 하나 늘었다.** `simVillages` 는 여태 welcome 1회뿐이라
+      //   방금 선 마을은 재접속 전엔 세계에 없었다 — 그래서 **자기가 세운 마을의 촌장과도 말을 못 했다**
+      //   (근접 브리핑이 이 목록을 훑는다). 한 항목만 붙인다(전체를 다시 받지 않는다).
+      if (msg.village && msg.village.id != null) {
+        if (!c.simVillages) c.simVillages = [];
+        if (!c.simVillages.some((v) => v.id === msg.village.id)) c.simVillages.push(msg.village);
+        // ★하네스 훅(읽기 전용) — "이 세션에서 실제로 통지를 받았다"를 셈한다.
+        //   welcome 의 목록과 섞이지 않게 **받은 횟수**로 센다(길이는 시딩 수에 묻힌다).
+        window.__simVillageAdds = (window.__simVillageAdds | 0) + 1;
+        needsRedraw = true;
+      }
     } else if (msg.type === 'claim_state') {
       // ★[T45] 부재 상태 전이 — **한 칸만 갈아 끼운다**(레코드를 다시 보내지 않는다).
       //   판정은 서버가 다 했다. 클라는 색만 바꾼다(`34-m-renderloop.js`).

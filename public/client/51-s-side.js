@@ -907,10 +907,28 @@
       }
       h += `</div>`;
     }
+    // ★★[T19 2026-09-02] **이방인 받기 한 줄** — 새 패널 0. 값은 전부 서버가 준 `inv.welcome` 그대로다
+    //   (자격 판정을 클라가 다시 풀면 그게 사본이다 · 판정 정본은 `server/newcomers.js`).
+    if (inv.welcome) {
+      const w = inv.welcome;
+      h += `<div style="padding:6px 10px;border-top:1px solid #2a3340;color:#8a93a0">이방인 받기</div>`
+        + `<div style="padding:0 10px 10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">`
+        + `<button id="pviWel" style="padding:5px 9px;background:${w.on ? '#2f4a2f' : '#2b3a4a'};color:#e8eaed;border:1px solid ${w.on ? '#4a7a4a' : '#3c4e60'};border-radius:4px;cursor:pointer;font-size:12px">`
+        + `${w.on ? '🚪 받는 중 — 끄기' : '🚪 이방인 받기'}</button>`
+        + (w.listed ? `<span style="color:#a9c6a0;font-size:11px">시작 지도에 올라 있다</span>`
+                    : `<span style="color:#8a93a0;font-size:11px">${w.on ? '아직 지도엔 안 오른다' : '지도에 없다'}</span>`)
+        + `</div>`;
+      if (w.why && w.why.length) {
+        h += `<div style="padding:0 10px 8px;color:#c98a8a;font-size:11px">${esc(w.why.join(' · '))}</div>`;
+      }
+    }
     h += `<div style="padding:8px 10px;color:#6f7a88;font-size:11px;border-top:1px solid #2a3340">회관을 다시 클릭하면 갱신된다</div>`;
     el.innerHTML = h;
     const cl = document.getElementById('pviClose');
     if (cl) cl.onclick = () => { el.style.display = 'none'; };
+    // ★[T19] 스위치 — 판정은 서버가 한다. 클라는 "켜 달라"만 말한다.
+    { const wb = document.getElementById('pviWel');
+      if (wb && _pviHallId) wb.onclick = () => sendPrimary({ type: 'village_welcome', buildingId: _pviHallId, on: !(inv.welcome && inv.welcome.on) }); }
     for (const btn of el.querySelectorAll('[data-pvi-put]')) {
       btn.onclick = () => {
         const it = btn.getAttribute('data-pvi-put');
