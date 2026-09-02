@@ -11,6 +11,9 @@ logs/
 *.bak
 DEPLOY.md
 KNOWN_ISSUES.md
-DEVELOPMENT_LOG.md
-PHASE_NOTES.md
+문서/
+보고/
+회부/
+설계/
+인계/
 ecosystem.config.js

@@ -21,6 +21,13 @@
             cd ~/Mini/durango-mini && bash scripts/redeploy-hanbando.sh --central
 ```
 
+## 레포의 문서 배치 (2026-09-02 정리 — PM)
+
+루트에 흩어져 있던 md 94장을 **파일명 그대로** 폴더로 옮겼다: `보고_*` → `보고/` · `회부_*` → `회부/` ·
+`설계_*`(+이식 계획 셋·아이템 속성·통합 설계) → `설계/` · 운영 절차·조사·감사·런북 → `문서/` ·
+옛 CHECKLIST·CRITICAL_BUGS·DEVELOPMENT_LOG·PHASE_NOTES → `문서/아카이브/`. 전체 색인은 **`문서/README.md`**.
+옛 글이 `회부_X.md` 라고 부르면 `회부/회부_X.md` 다. 코드 주석의 옛 파일명은 일부러 안 고쳤다(코드 무접촉).
+
 ## 어디를 볼 것인가
 
 | 파일 | 영역 |
