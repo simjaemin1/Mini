@@ -1470,11 +1470,35 @@ function _routeSig() {
 //   ⇒ 계산을 없앨 수는 없으니(정본 수술 금지) **언제 하느냐**를 옮긴다.
 //
 //   ⚠옮기는 곳이 아무 데나여선 안 된다. A* 한 번이 100~1,700ms 라, 사람이 붙어 있을 때 데우면
-//     경계 스파이크를 평시 스파이크로 바꾸는 것뿐이다. ⇒ **사람이 없을 때만** 한 프레임에 한 쌍.
+//     경계 스파이크를 평시 스파이크로 바꾸는 것뿐이다. ⇒ **사람이 없을 때만** 한 걸음씩.
 //     사람이 들어오면 그 자리에서 멈춘다(다음 무인 프레임에 이어서).
 //   ⚠마감 중에는 안 한다(슬라이서가 프레임을 쓰고 있다).
+//
+// ★★★[T42-b 2026-09-01 · 위 설계의 **결함을 고친다**] 위의 세 줄은 모자란다 — 둘 다 빠졌다.
+//   실측(프로브 579쌍): 마지막엔 50ms/쌍이지만 **한 걸음 최대가 2,393ms** 이고,
+//   그 걸음을 **30Hz 마다 쉬지 않고** 돌았다 ⇒ 이벤트 루프가 70초 동안 사실상 100% 막혔다
+//   (루프 최대 막힘 2,412ms). 그러면 무슨 일이 나는가 — `e2e-rumor ⑦` 이 잡았다:
+//   사람이 나간 직후 `savePlayer` 가 central 로 보낸 쓰기가 **소켓으로 나가지도 못한 채**
+//   루프 순번을 기다리다가, 그 사람이 다시 들어올 때까지 안 날았다. ⇒ 복귀 브리핑이 "부재 0일".
+//
+//   ★배운 것 한 줄: **사람이 없다 ≠ 할 일이 없다.** 무인 프레임은 한가한 프레임이 아니다 —
+//     방금 나간 사람의 저장이 아직 날고 있고, 다음 사람의 접속이 들어오는 중이다.
+//   ⇒ 한가함의 정의를 고친다: 사람이 없고 + **날아가는 central 쓰기가 없고**(그게 착지한 지도
+//     `IDLE_MS` 지났고) + **마지막 사람이 나간 지 `IDLE_MS`** 지났고
+//     + **직전 걸음에서 `GAP_MS` 만큼 쉬었을** 때만 한 걸음.
+//   ★"나간 지 10초"만으로는 모자랐다 — 러너에서 부재 창이 13초여서 그 꼬리에 데우기가 다시 끼어들었다.
+//     시계가 아니라 **일 자체**를 봐야 한다: `savePlayer` 가 돌려주는 Promise 를 세면 그게 답이다.
+//   ⚠그래도 **한 걸음의 길이(최대 2.4초)는 못 줄인다** — 그건 재개 가능 A*(회부)의 몫이다.
+//     여기서 고치는 건 **빈도**이지 길이가 아니다. 그것도 정직하게 적는다.
 const ROUTE_WARM = process.env.VILLAGE_ROUTE_WARM !== '0';   // 0 = 선계산 끔(대조군 · 되돌리는 스위치)
 const ROUTE_WARM_NEAR = (() => { const v = parseInt(process.env.VILLAGE_ROUTE_WARM_NEAR || '', 10); return Number.isFinite(v) && v > 0 ? v : 20; })();
+// ★[T42-b] 한 걸음 사이의 **쉬는 시간**. 0 이면 예전 동작(매 프레임) = 되돌리는 스위치 겸 대조군.
+const ROUTE_WARM_GAP_MS = (() => { const v = parseInt(process.env.VILLAGE_ROUTE_WARM_GAP_MS || '', 10); return Number.isFinite(v) && v >= 0 ? v : 250; })();
+// ★[T42-b] 마지막 사람이 나간 뒤(그리고 마지막 쓰기가 착지한 뒤) **손을 떼고 기다리는 시간**.
+//   30초인 이유: 막 나간 사람은 자주 **곧바로 돌아온다**(새로고침 · 끊긴 소켓 · 존 이동 실패).
+//   그 재접속이 하필 2.4초짜리 걸음에 물리면 사람은 그걸 '접속이 먹통'으로 겪는다.
+//   데우기는 급하지 않다 — 조용해진 뒤 3분이면 끝난다(579쌍 × 250ms + 계산).
+const ROUTE_WARM_IDLE_MS = (() => { const v = parseInt(process.env.VILLAGE_ROUTE_WARM_IDLE_MS || '', 10); return Number.isFinite(v) && v >= 0 ? v : 30000; })();
 function _routeWarmBuild() {
   // 데울 쌍 = **교역이 실제로 볼 만한 이웃**(마을마다 가까운 N곳). 전쌍 1,225 를 다 데울 이유가 없다.
   const V = state.villages || [];
@@ -1493,16 +1517,33 @@ function _routeWarmBuild() {
   }
   state.routeWarmQ = q;
   state.routeWarmTotal = q.length;
-  if (q.length) console.log(`[${state.zoneId}] 🐂 교역로 선계산 대기 ${q.length}쌍 — **사람이 없을 때만** 한 프레임에 한 쌍씩 덥힌다`);
+  // ★[T42-b] 유예 시계를 여기서 시작한다 — **부팅 직후도 한가한 순간이 아니다**(재기동 = 접속이 몰리는 때).
+  state._routeHumanAt = Date.now();
+  if (q.length) console.log(`[${state.zoneId}] 🐂 교역로 선계산 대기 ${q.length}쌍 — 사람이 없고 ${ROUTE_WARM_IDLE_MS}ms 지난 뒤부터 ${ROUTE_WARM_GAP_MS}ms 간격으로 한 쌍씩`);
 }
 function _routeWarmStep() {
   const q = state.routeWarmQ;
   if (!ROUTE_WARM || !q || !q.length) return;
+  const now = Date.now();
   // 사람이 있으면 멈춘다 — 데우기가 평시 스파이크가 되면 안 된다.
   const pl = state.deps && state.deps.players;
-  if (pl) { for (const p of pl.values()) if (!p.isNpc) return; }
+  if (pl) { for (const p of pl.values()) if (!p.isNpc) { state._routeHumanAt = now; return; } }
+  // ★★[T42-b] 사람이 없다 ≠ 할 일이 없다(위 주석) — 나간 사람의 저장이 먼저 다 날아가야 한다.
+  //   ⓐ **날아가는 쓰기·처리 중인 접속이 있으면 손을 뗀다**(zone.js `ioBusy`).
+  //     fire-and-forget 은 "안 기다린다"는 뜻이지 "끝났다"는 뜻이 아니고,
+  //     입장 중인 손님은 등록 전까지 `players` 에 **안 보인다** — 둘 다 "사람이 없다"로 보인다.
+  //     ⚠유예 시계도 같이 민다: 지금 막 착지했어도 뒤이어 도착 처리가 남아 있다.
+  const d = state.deps || {};
+  if (d.ioBusy && d.ioBusy()) { state._routeHumanAt = now; return; }
+  //   ⓑ 마지막 쓰기가 착지한 지도 유예만큼 지나야 한다(위 시계와 같은 자로 잰다).
+  if (d.ioQuietMs && d.ioQuietMs() < ROUTE_WARM_IDLE_MS) return;
+  //   ⓒ 마지막 사람이 나간 지 유예만큼 지났는가.
+  if (now - (state._routeHumanAt || 0) < ROUTE_WARM_IDLE_MS) return;
+  // ★★[T42-b] 걸음 사이에 루프를 놓아 준다 — 그래야 쓰기·접속이 끼어든다.
+  if (now - (state._routeWarmAt || 0) < ROUTE_WARM_GAP_MS) return;
   const pair = q.shift();
   try { getRoute(pair[0], pair[1]); } catch (e) {}
+  state._routeWarmAt = Date.now();   // ★걸음이 **끝난 뒤**부터 재다 — 2.4초짜리 뒤에도 진짜로 쉬게
   if (!q.length) console.log(`[${state.zoneId}] 🐂 교역로 선계산 완료 — ${state.routeWarmTotal}쌍(경계에서 팔 길이 그만큼 줄었다)`);
 }
 function _routePrime() {
@@ -1536,6 +1577,11 @@ function routeDebug(opts) {
   const o = opts || {};
   const out = { mem: state.routeCache ? state.routeCache.size : 0, sig: state._routeSig || null,
                 warmLeft: state.routeWarmQ ? state.routeWarmQ.length : -1, warmTotal: state.routeWarmTotal || 0,
+                // ★[T42-b] **지금 도는 예산 그 자체**를 말한다(하네스가 사본을 만들지 않게 — T1 `/perf` 의 sliceMs 와 같은 규약).
+                warmGapMs: ROUTE_WARM_GAP_MS, warmIdleMs: ROUTE_WARM_IDLE_MS, warmOn: ROUTE_WARM,
+                // ★[T42-b] 배선 확인용 — 이 둘이 undefined 면 유예가 **시계 하나**로 되돌아간 것이다(하네스가 센다).
+                ioBusy: (state.deps && state.deps.ioBusy) ? !!state.deps.ioBusy() : null,
+                ioQuietMs: (state.deps && state.deps.ioQuietMs) ? state.deps.ioQuietMs() : null,
                 primed: state._routePrimed | 0, coldPrimed: _probe.routeColdPrimed | 0,
                 db: (state.db && state.db.countTradeRoutes) ? state.db.countTradeRoutes(state.zoneId) : -1 };
   if (o.audit > 0 && state.routeCache) {
@@ -2761,7 +2807,17 @@ function tickPerf() {
   const stages = {};
   for (const nm of names) { const a = R.map((r) => r.stages[nm] || 0); stages[nm] = { p50: q(a, 0.5), p95: q(a, 0.95), max: +Math.max(...a).toFixed(1) }; }
   const tot = R.map((r) => r.total);
+  // ★★[T42-b 2026-09-01] **창 전체의 가장 큰 조각**(계측 전용 · 행동 무변).
+  //   `last` 는 **마지막 하루**의 최댓값이다. 루프 지연 히스토그램은 창 전체를 담으므로,
+  //   둘을 나란히 놓고 판정하면 자를 두 개 쓰는 셈이다 — 실제로 `test-tick-slicer ⑥a` 가
+  //   "루프 1,337ms ≤ 조각 419ms×2" 로 틀리게 떨어졌다(그 419ms 는 마지막 하루의 값이었다).
+  let mc = 0, mcAt = '', fm = 0;
+  for (const r of R) {
+    if ((r.maxChunk | 0) > mc) { mc = r.maxChunk | 0; mcAt = r.maxChunkAt || ''; }
+    if ((r.frameMax | 0) > fm) fm = r.frameMax | 0;
+  }
   return { days: R.length, last: _tickPerf.last, probe: probeStats(),
+           maxChunk: mc, maxChunkAt: mcAt, frameMax: fm,   // ★[T42-b] 창 전체(위 주석)
            total: R.length ? { p50: q(tot, 0.5), p95: q(tot, 0.95), max: Math.max(...tot) } : null, stages };
 }
 

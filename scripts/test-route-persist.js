@@ -18,6 +18,15 @@
 //   ③ ★★감사 — 캐시 경로가 재계산과 **비트 동일**
 //   ④ 무효화가 **메모리와 DB 를 둘 다** 비운다(한쪽만 지우면 다음 부팅에 썩은 길이 살아난다)
 //   ⑤ 세계 서명이 바뀌면 통째로 버린다(지형·존 설정 교체 — 파일 mtime 을 건드려 시늉한다)
+//   ⑥ 선계산이 사람 없을 때 완주하고, 그 뒤 경계에서 거의 안 판다
+//   ⑦ ★★[T42-b] 선계산이 **루프를 놓아 준다** — 유예(사람이 나간 뒤)와 간격(걸음 사이)이 실제로 지켜진다
+//
+// ★★⑦ 이 왜 생겼나 [T42-b 2026-09-01]
+//   T42 1차의 선계산은 "사람이 없으면" 매 프레임 한 쌍씩 쉬지 않고 돌았다. 실측하니 걸음 하나가
+//   최대 2,393ms 이고 그게 30Hz 로 이어져 **루프가 70초 동안 사실상 100% 막혔다**.
+//   그 사이 `savePlayer` 의 central 쓰기가 소켓으로 나가지도 못했고, `e2e-rumor ⑦`(복귀 브리핑)이
+//   "부재 0일"로 깨졌다 — 이 하네스는 그걸 **못 잡았다**(사람이 없는 판만 재고 있었으니까).
+//   ⇒ 배운 것: **사람이 없다 ≠ 할 일이 없다.** ⑦ 이 그 문장을 검사로 만든다.
 //
 // 실행: node scripts/test-route-persist.js
 'use strict';
@@ -53,14 +62,14 @@ const cp = (src, dst) => { for (const sfx of ['', '-wal', '-shm']) { try { fs.co
 // ★DB 를 **지우지 않고** 다시 띄운다 — 그게 이 하네스의 주제(재기동해도 남는가)다.
 // ★①~⑤ 는 **선계산을 끄고**(`VILLAGE_ROUTE_WARM=0`) 잰다. 안 끄면 무효화 직후 선계산이 곧바로
 //   다시 채워서 "비웠는가"를 못 잰다(첫 판이 그랬다: 81 → 1). 선계산 자체는 ⑥에서 켜고 잰다.
-async function up(warm) {
+async function up(warm, extra) {
   boot('central.js', { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
   if (!await waitHttp(`http://localhost:${CPORT}/zones`, 120)) return false;
-  boot('zone.js', {
+  boot('zone.js', Object.assign({
     PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
     VILLAGE_DAY_MS: String(DAY_MS), ENABLE_BANDITS: '0', ENABLE_ROADS: '0', ENABLE_WILDLIFE: '0', E2E_GIVE: '1',
     VILLAGE_ROUTE_WARM: warm ? '1' : '0',
-  });
+  }, extra || {}));
   return waitHttp(`http://localhost:${ZPORT}/health`, 300);
 }
 async function down() { killAll(); await sleep(4000); }
@@ -90,6 +99,18 @@ async function runDays(n) {
   ok(A1.audit && A1.audit.n >= 5, '① [상황] 감사가 실제로 돌았다(재계산 표본)', `${A1.audit ? A1.audit.n : 0}쌍`);
   ok(A1.audit && A1.audit.mismatch === 0, '③ ★★캐시 경로가 재계산과 **비트 동일**',
     A1.audit ? `불일치 ${A1.audit.mismatch}/${A1.audit.n}${A1.audit.first ? ' · 첫 사례 ' + A1.audit.first : ''}` : '감사 실패');
+  // ★★[T42-b] **기본값이 안전한가**를 여기서 한 번 못 박는다(이 판은 오버라이드가 없다).
+  //   ⑦ 은 재기 좋게 예산을 줄여 잰다 — 그러면 "실제로 배포되는 값"은 아무도 안 본 채 지나간다.
+  //   0 이면 T42 1차의 그 동작(매 프레임 쉼 없이)으로 돌아간다. 그 회귀를 이 한 줄이 막는다.
+  console.log(`  기본 예산  간격 ${R1.warmGapMs}ms · 유예 ${R1.warmIdleMs}ms · 선계산 ${R1.warmOn ? '켬' : '끔'}`);
+  ok(R1.warmGapMs >= 100 && R1.warmIdleMs >= 20000, '① ★★기본 예산이 안전하다(간격 ≥100ms · 유예 ≥20초)',
+    `간격 ${R1.warmGapMs}ms · 유예 ${R1.warmIdleMs}ms`);
+  // ★★유예는 **시계 하나로는 모자랐다**(러너에서 부재 창이 13초라 꼬리에 데우기가 끼어들었다).
+  //   그래서 시계 말고 **일 자체**를 본다: `savePlayer` 가 돌려주는 Promise 를 세는 술어.
+  //   그 배선이 빠지면 유예가 조용히 시계 하나로 되돌아간다 — 이 줄이 그걸 막는다.
+  ok(typeof R1.ioBusy === 'boolean' && typeof R1.ioQuietMs === 'number',
+    '① ★★날아가는 central 쓰기 술어가 실제로 배선돼 있다(빠지면 유예가 시계 하나로 되돌아간다)',
+    `ioBusy=${R1.ioBusy} · 마지막 착지 뒤 ${R1.ioQuietMs}ms`);
   const dbAfter1 = R1.db;
   await down();
 
@@ -138,18 +159,65 @@ async function runDays(n) {
   }
   ok(Math.round(fs.statSync(TF).mtimeMs) === Math.round(st0.mtimeMs), '⑤ [정리] 지형 파일 mtime 을 되돌렸다');
 
-  // ── ⑥ 선계산 — 사람이 없을 때 스스로 데운다(경계에서 팔 길을 미리 판다) ────
-  if (!await up(true)) { console.log('  ✗ 5판 기동 실패'); process.exit(1); }
-  const W0 = await jget(`http://localhost:${ZPORT}/routedbg`);
+  // ── ⑥⑦ 선계산 — 사람이 없을 때 스스로 데우되, **루프를 놓아 가며** 데운다 ──
+  // ★예산을 줄여서 잰다(간격 60ms · 유예 15초). 기본값(250 / 10,000)은 ⑦a 가 따로 확인한다 —
+  //   기본값 그대로 재면 579쌍 × 250ms = 2분 반이라 하네스가 그만큼 길어진다.
+  const WGAP = 60, WIDLE = 15000;
+  if (!await up(true, { VILLAGE_ROUTE_WARM_GAP_MS: String(WGAP), VILLAGE_ROUTE_WARM_IDLE_MS: String(WIDLE) })) {
+    console.log('  ✗ 5판 기동 실패'); process.exit(1);
+  }
+  // ★유예 시계는 **큐가 선 순간**부터 흐른다(`_routeWarmBuild`). /health 가 뜬 시각이 아니다 —
+  //   마을 시뮬 init 이 더 늦게 끝나므로, 부팅 시각으로 재면 판정이 기동 속도에 흔들린다.
+  let W0 = await jget(`http://localhost:${ZPORT}/routedbg`);
+  for (let i = 0; i < 60 && !(W0.warmTotal > 0); i++) { await sleep(500); W0 = await jget(`http://localhost:${ZPORT}/routedbg`); }
+  const tQ = Date.now();
   ok(W0.warmTotal > 20, '⑥ [상황] 데울 쌍이 실제로 잡혔다(마을마다 가까운 N곳)', `${W0.warmTotal}쌍 · 남은 ${W0.warmLeft}`);
+  ok(W0.warmGapMs === WGAP && W0.warmIdleMs === WIDLE, '⑦ [상황] 이 판의 예산이 실제로 먹혔다(사본이 아니라 서버가 말한다)',
+    `간격 ${W0.warmGapMs}ms · 유예 ${W0.warmIdleMs}ms`);
+
+  // ── ⑦b **유예** — 사람이 나간(=부팅한) 직후에는 한 쌍도 안 데운다.
+  //   왜 이 줄이 있나: 나간 사람의 저장이 아직 소켓 밖으로 못 나갔다. 그때 A* 를 돌리면 그 쓰기가
+  //   루프 순번을 못 받는다 — 그게 `e2e-rumor ⑦`("부재 0일")을 깨뜨린 그 자리다.
+  //   ★자명 통과 금지: 유예가 없었다면 이 창(유예 창 ÷ 간격 = 수백 쌍) 안에 수백 쌍이 데워진다 — 아래 [상황] 이 그걸 센다.
+  const idleWin = Math.max(0, WIDLE - 4000);
+  await sleep(Math.max(0, (tQ + idleWin) - Date.now()));
+  const WIdle = await jget(`http://localhost:${ZPORT}/routedbg`);
+  ok(idleWin / WGAP > 50, '⑦ [상황] 유예 창이 충분히 넓다(유예가 없었다면 수십 쌍은 데워졌을 창)',
+    `${idleWin}ms ÷ ${WGAP}ms = 약 ${Math.round(idleWin / WGAP)}쌍`);
+  ok(WIdle.warmLeft === WIdle.warmTotal, '⑦ ★★유예가 지켜진다 — 부팅/퇴장 직후에는 **한 쌍도 안 데운다**',
+    `큐를 세운 지 ${Math.round(Date.now() - tQ)}ms(유예 ${WIDLE}ms) · 남은 ${WIdle.warmLeft}/${WIdle.warmTotal}`);
+
+  // ── ⑦c 데우는 동안 **서버가 계속 대답하는가**. /health 를 100ms 로 두드려 응답 간격 최대를 잰다.
+  //   ⚠한 걸음(A*) 동안은 어차피 막힌다 — 못 줄인다(정본 수술 금지 · 재개 가능 A* 는 회부).
+  //   그래서 판정은 "**걸음보다 오래** 막히지 않는다" 다: 걸음이 끝나면 곧바로 대답해야 한다.
+  let hMax = 0, hLast = Date.now(), hN = 0;
+  let hStop = false;
+  const hPing = (async () => {
+    while (!hStop) {
+      try { await fetch(`http://localhost:${ZPORT}/health`); const t = Date.now(); hN++; if (t - hLast > hMax) hMax = t - hLast; hLast = t; }
+      catch (e) { /* 막혀서 실패한 것도 간격에 그대로 잡힌다 */ }
+      await sleep(100);
+    }
+  })();
+  const tWarm = Date.now();
   let W1 = W0;
-  for (let i = 0; i < 60 && W1.warmLeft > 0; i++) { await sleep(2000); W1 = await jget(`http://localhost:${ZPORT}/routedbg`); }
-  // ★선계산의 **대가**도 같이 적는다 — A* 한 번이 100~1,900ms 라 데우는 동안 루프가 그만큼 막힌다.
-  //   그래서 사람이 없을 때만 돈다(코드가 그렇게 게이트한다). 숨기지 않고 수치로 남긴다.
+  for (let i = 0; i < 150 && W1.warmLeft > 0; i++) { await sleep(2000); W1 = await jget(`http://localhost:${ZPORT}/routedbg`); }
+  const warmMs = Date.now() - tWarm;
+  hStop = true; await hPing;
+  // ★선계산의 **대가**도 같이 적는다 — A* 한 번이 100~2,400ms 라 그 걸음 동안은 루프가 막힌다.
+  //   그래서 사람이 없고 + 유예가 지나고 + 걸음 사이를 쉰 뒤에만 돈다. 숨기지 않고 수치로 남긴다.
   const WP = await jget(`http://localhost:${ZPORT}/perf`);
-  console.log(`  5판(선계산)  ${W0.warmTotal}쌍 중 남은 ${W1.warmLeft} · 캐시 메모리 ${W1.mem} · DB ${W1.db}`);
-  console.log(`    ↳ 데우는 동안 이벤트 루프 최대 막힘 ${WP.loop ? WP.loop.max : '?'}ms (p99 ${WP.loop ? WP.loop.p99 : '?'}) — **사람이 없을 때만** 도는 대가다`);
+  const wRouteMax = (WP.econTick && WP.econTick.probe) ? (WP.econTick.probe.routeMax | 0) : 0;
+  console.log(`  5판(선계산)  ${W0.warmTotal}쌍 중 남은 ${W1.warmLeft} · 캐시 메모리 ${W1.mem} · DB ${W1.db} · 완주 ${(warmMs / 1000).toFixed(0)}초`);
+  console.log(`    ↳ 데우는 동안 이벤트 루프 최대 막힘 ${WP.loop ? WP.loop.max : '?'}ms (p99 ${WP.loop ? WP.loop.p99 : '?'}) · 한 걸음 최대 ${wRouteMax}ms`);
+  console.log(`    ↳ /health 응답 간격 최대 ${hMax}ms (${hN}회 두드림) — **걸음보다 오래 막히면 안 된다**`);
   ok(W1.warmLeft === 0, '⑥ ★★사람이 없는 동안 **선계산이 완주한다**', `남은 ${W1.warmLeft}/${W0.warmTotal}`);
+  ok(warmMs >= W0.warmTotal * WGAP * 0.7, '⑦ ★간격이 실제로 지켜진다(걸음 사이를 쉬었다)',
+    `완주 ${warmMs}ms ≥ ${W0.warmTotal}쌍 × ${WGAP}ms × 0.7 = ${Math.round(W0.warmTotal * WGAP * 0.7)}ms`);
+  ok(hN > 100, '⑦ [상황] /health 를 실제로 여러 번 두드렸다(자명 통과 금지)', `${hN}회`);
+  ok(wRouteMax > 0, '⑦ [상황] 데우는 동안 A* 가 실제로 돌았다(자명 통과 금지)', `한 걸음 최대 ${wRouteMax}ms`);
+  ok(hMax <= wRouteMax + 1500, '⑦ ★★데우는 동안에도 서버가 대답한다 — **한 걸음보다 오래 막히지 않는다**',
+    `응답 간격 최대 ${hMax}ms ≤ 걸음 ${wRouteMax}ms + 1500ms`);
   ok(W1.mem >= W0.warmTotal, '⑥ 데운 만큼 캐시에 들어갔다', `메모리 ${W1.mem} ≥ ${W0.warmTotal}`);
   const A6 = await jget(`http://localhost:${ZPORT}/routedbg?audit=8`);
   ok(A6.audit && A6.audit.mismatch === 0, '⑥ ★선계산한 경로도 재계산과 **비트 동일**', A6.audit ? `불일치 ${A6.audit.mismatch}/${A6.audit.n}` : '감사 실패');

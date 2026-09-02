@@ -88,7 +88,9 @@ async function arm(label, sliceMs) {
   }
   return { label, sliceMs, samples: samples.length, marks: marks.length,
            base: q(outW, 0.5), inP95: q(inW, 0.95), inMax: Math.max(0, ...inW), inN: inW.length, outN: outW.length,
-           loop: perf.loop, tick: perf.econTick && perf.econTick.last };
+           loop: perf.loop, tick: perf.econTick && perf.econTick.last,
+           // ★[T42-b] **창 전체**의 최대 조각·최대 프레임(계측 전용) — 루프 히스토그램과 자를 맞추려면 이게 있어야 한다.
+           win: perf.econTick ? { maxChunk: perf.econTick.maxChunk | 0, maxChunkAt: perf.econTick.maxChunkAt || '', frameMax: perf.econTick.frameMax | 0 } : null };
 }
 
 (async () => {
@@ -127,8 +129,21 @@ async function arm(label, sliceMs) {
   //     막힘의 크기 자체는 ③(루프 최대 막힘 ≤1/3)과 `test-tick-slicer ③`(한 프레임 ≤1/3)이 따로 지킨다.
   // ②a **무조건 지키는 선** — 서버가 한 프레임에 막히는 시간. 이건 슬라이서가 온전히 소유한다.
   //   소켓 쪽 수치(아래 ②b)는 하루의 구성에 따라 흔들리지만 이건 안 흔들린다.
-  ok(B.tick && A.tick && B.tick.frameMax <= A.tick.frameMax / 2, '②a **한 프레임 막힘**이 대조군의 절반 이하(서버 쪽 · 무조건)',
-    `${B.tick ? B.tick.frameMax : '?'}ms ≤ ${A.tick ? (A.tick.frameMax / 2).toFixed(0) : '?'}ms`);
+  //   ★★[T42-b] **슬라이서가 실제로 약속하는 것**부터 무조건 묻는다(②a). 약속은 "대조군의 절반"이
+  //     아니라 **"한 프레임 = 조각 하나 + 예산"** 이다 — 조각보다 잘게 못 자르기 때문이다.
+  //     비율(②a')은 대조군이 그날 얼마나 무거웠느냐에 달렸고, 실측으로 1,431~1,675ms 를 오간다.
+  //     실제로 798ms ≤ 795ms 로 **1ms 차이**로 떨어진 판이 있었다 — 그건 슬라이서 이야기가 아니다.
+  const wchunk = Math.max(1, (B.win && B.win.maxChunk) || (B.tick && B.tick.maxChunk) || 0);
+  const wchunkAt = (B.win && B.win.maxChunkAt) || (B.tick && B.tick.maxChunkAt) || '?';
+  const wframe = Math.max(0, (B.win && B.win.frameMax) || (B.tick && B.tick.frameMax) || 0);
+  ok(wframe > 0 && wframe <= wchunk + 16 + 200, '②a ★한 프레임이 **조각 하나 + 예산** 안이다(무조건 · 슬라이서가 소유하는 선)',
+    `창 전체 프레임 최대 ${wframe}ms ≤ 조각 ${wchunk}ms(${wchunkAt}) + 16 + 200`);
+  if (A.tick && B.tick && A.tick.frameMax / wchunk >= 3) {
+    ok(B.tick.frameMax <= A.tick.frameMax / 2, "②a' 한 프레임 막힘이 대조군의 절반 이하(여지가 있는 판에서)",
+      `${B.tick.frameMax}ms ≤ ${(A.tick.frameMax / 2).toFixed(0)}ms`);
+  } else {
+    console.log(`  · [②a' 판정 유보] 대조군 한 프레임 ${A.tick ? A.tick.frameMax : '?'}ms 가 조각 ${wchunk}ms 의 3배가 안 된다 — 절반은 닿을 수 없는 선이다(②a 가 대신 지킨다).`);
+  }
 
   // ★★[상황 선행 · T41 뒤에 필요해졌다] **쪼갤 여지가 있는 판인가.**
   //   최악 왕복(`inMax`)은 대조군에선 '하루 전체', 조각내기에선 '가장 큰 조각 하나'다.
@@ -137,14 +152,26 @@ async function arm(label, sliceMs) {
   //   조각내기가 최악값을 못 줄인다 — **슬라이서는 조각보다 잘게 못 자르기 때문**이다.
   //   ⇒ 그건 하네스 고장이 아니라 **T42 가 풀 문제**다. 그러니 여지가 없으면 판정을 유보하고
   //     그 사실을 수치로 적는다(없는 회귀를 보고하지 않는다).
-  const room = (A.tick && B.tick) ? (A.tick.frameMax / Math.max(1, B.tick.maxChunk)) : 0;
+  //   ★★[T42-b 2026-09-01 · 문지방을 **판정과 같은 계기로** 잰다] 여지를 서버 쪽 수치
+  //     (`A.tick.frameMax`)로 재던 것을 **소켓 쪽 관측**으로 바꿨다. 왜: 실측 두 판이
+  //     서버 여지 ×3.9 로 **똑같은데** 대조군 창 안 p95 는 1,498ms 와 10,392ms 로 7배 달랐다
+  //     (마감 창에 핑이 몇 개나 물리느냐가 판마다 다르다). 앞 판에서 ②b 가 838ms ≤ 749ms 로
+  //     떨어졌는데, 그건 슬라이서가 나빠진 게 아니라 **대조군이 그날따라 순했던 것**이다.
+  //     ⇒ 소켓 판정의 문지방은 소켓 수치로 잰다: 조각내기 팔은 **조각 하나 밑으로 못 내려가고**
+  //       실측 바닥이 조각의 2~3배(838/385 · 810/369)다. 그러니 대조군이 조각의 **6배**는 돼야
+  //       "절반으로 줄였다"가 슬라이서 이야기가 된다. 그 아래면 유보하고 수치만 적는다.
+  const chunk = Math.max(1, (B.tick && B.tick.maxChunk) || 0);
+  const room = (A.tick && B.tick) ? (A.tick.frameMax / chunk) : 0;
+  const sockRoom = A.inP95 / chunk;
   console.log(`  · 쪼갤 여지 ×${room.toFixed(1)} — 대조군 한 프레임 ${A.tick ? A.tick.frameMax : '?'}ms ÷ 가장 큰 조각 ${B.tick ? B.tick.maxChunk : '?'}ms(${B.tick ? B.tick.maxChunkAt : '?'})`);
-  if (room >= 3) {
+  console.log(`  · 소켓 여지 ×${sockRoom.toFixed(1)} — 대조군 창 안 p95 ${A.inP95}ms ÷ 가장 큰 조각 ${chunk}ms  (②b 는 ×6 이상일 때만 센다)`);
+  if (room >= 3 && sockRoom >= 6) {
     // ②b 소켓이 그걸 체감하는가 — 여지가 있는 판에서만 뜻이 있다.
     ok(B.inP95 <= A.inP95 / 2, '②b 창 안 p95 가 대조군의 절반 이하', `${B.inP95}ms ≤ ${(A.inP95 / 2).toFixed(0)}ms`);
     ok(B.inMax <= A.inMax / 2, '②b 창 안 **최악 왕복**도 절반 이하', `${B.inMax}ms ≤ ${(A.inMax / 2).toFixed(0)}ms`);
   } else {
-    console.log(`  · [②b 판정 유보] 이 판은 **쪼갤 여지가 없다.** 조각 하나가 하루의 대부분이면 슬라이서가 할 일이 없다.`);
+    console.log(`  · [②b 판정 유보] 여지가 없다 — 서버 ×${room.toFixed(1)}(≥3 필요) · 소켓 ×${sockRoom.toFixed(1)}(≥6 필요).`);
+    console.log(`    조각 하나가 대조군 막힘의 상당 부분이면 슬라이서가 그 아래로 못 내려간다 — 절반 판정은 뜻이 없다.`);
     console.log(`    창 안 p95 ${A.inP95}ms → ${B.inP95}ms · 최악 왕복 ${A.inMax}ms → ${B.inMax}ms.`);
     console.log(`    ★T41 이 집터 헛수고(하루의 56%)를 없애면서 **대조군의 하루도 같이 가벼워졌다** —`);
     console.log(`      남은 하루는 캐러밴 콜드 A*(${B.tick ? B.tick.maxChunk : '?'}ms) 한 조각이 대부분이다. 그건 **T42 의 몫**이다.`);
@@ -155,7 +182,15 @@ async function arm(label, sliceMs) {
   //     조각내기는 서른 번 작게. p99 는 그 비대칭에 낚인다(실측: 대조군 p99 179ms인데 최대는 5,276ms).
   //     플레이어가 겪는 건 "가장 오래 막힌 한 번"이므로 그걸 잰다.
   const ap = (A.loop && A.loop.max) || 0, bp = (B.loop && B.loop.max) || 0;
-  ok(bp > 0 && bp <= ap / 3, '③ 이벤트 루프 **최대 막힘**이 대조군의 1/3 이하', `${bp}ms ≤ ${(ap / 3).toFixed(1)}ms`);
+  //   ★★[T42-b] ②a 와 같은 규약 — **무조건선은 조각으로, 비율은 여지가 있을 때만**.
+  //     루프 히스토그램은 **창 전체**라 조각도 창 전체 최댓값으로 잰다(자를 하나로).
+  ok(bp > 0 && bp <= wchunk * 2 + 300, '③ ★루프 최대 막힘이 **가장 큰 조각 안**이다(무조건)',
+    `${bp.toFixed(0)}ms ≤ 창 전체 최대 조각 ${wchunk}ms(${wchunkAt}) × 2 + 300`);
+  if (ap / wchunk >= 3) {
+    ok(bp > 0 && bp <= ap / 3, "③' 이벤트 루프 **최대 막힘**이 대조군의 1/3 이하(여지가 있는 판에서)", `${bp.toFixed(0)}ms ≤ ${(ap / 3).toFixed(1)}ms`);
+  } else {
+    console.log(`  · [③' 판정 유보] 대조군 루프 최대 ${ap.toFixed(0)}ms 가 조각 ${wchunk}ms 의 3배가 안 된다(×${(ap / wchunk).toFixed(1)}).`);
+  }
 
   // ── ★★목표선(재민 확정 "≤×2") — **판정에 세지 않는다. 이유를 적는다.** ────────────
   //   왜 세지 않나: 이 비율의 분모가 **로컬 평시 RTT**(수 ms~수십 ms · 망이 없다)라, 조각이

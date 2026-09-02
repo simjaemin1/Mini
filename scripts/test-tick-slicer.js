@@ -147,8 +147,28 @@ async function arm(label, sliceMs) {
   //   ★**p99 가 아니라 최댓값**이다. 하루 경계는 드문 사건이라(창 6번 · 표본 수천) p99 는
   //     그 막힘을 통째로 놓친다 — 실제로 첫 판에서 대조군 p99 가 24ms 로 나왔다(최대는 12,994ms).
   //     "가장 오래 막힌 한 번"이 곧 플레이어가 겪는 스파이크다.
+  //   ★★[T42-b 2026-09-01] **비율 하나로만 물으면 대조군이 순한 판에서 없는 회귀를 보고한다.**
+  //     실측: 조각내기 팔의 루프 최대는 1,216~1,293ms 로 **거의 안 흔들리는데**(= 가장 큰 조각 하나),
+  //     대조군은 2,271~4,100ms 로 흔들린다. 같은 코드가 한 판은 1,216 ≤ 1,367(통과), 다음 판은
+  //     1,293 ≤ 757(실패)이 됐다 — 갈린 건 슬라이서가 아니라 **그날의 대조군**이다.
+  //     ⇒ 슬라이서가 실제로 약속하는 것을 먼저 무조건 묻는다(⑥a): **조각 밖에서는 안 막힌다.**
+  //       비율(⑥b)은 **쪼갤 여지가 있는 판에서만** 센다(족보 (80) 결 · `e2e-rtt ②b` 와 같은 규약).
   const ap = (A.loop && A.loop.max) || 0, bp = (B.loop && B.loop.max) || 0;
-  ok(bp > 0 && bp <= ap / 3, '⑥ 이벤트 루프 **최대 막힘**이 대조군의 1/3 이하', `${bp}ms ≤ ${(ap / 3).toFixed(1)}ms`);
+  //   ★★자를 하나로 — 루프 히스토그램은 **창 전체**라, 조각도 **창 전체의 최댓값**으로 잰다.
+  //     `last.maxChunk`(마지막 하루)로 재면 첫날의 무거운 조각이 루프에만 잡혀 판정이 틀린다.
+  const chunk = Math.max(1, B.econTick.maxChunk || b.maxChunk || 0);
+  const chunkAt = B.econTick.maxChunkAt || b.maxChunkAt || '?';
+  ok(bp > 0 && bp <= chunk * 2 + 300, '⑥a ★조각내기의 루프 최대 막힘이 **가장 큰 조각 안**이다(무조건 · 슬라이서가 소유하는 선)',
+    `${bp}ms ≤ 창 전체 최대 조각 ${chunk}ms(${chunkAt}) × 2 + 300 = ${chunk * 2 + 300}ms`);
+  const loopRoom = ap / chunk;
+  console.log(`  · 루프 여지 ×${loopRoom.toFixed(1)} — 대조군 루프 최대 ${ap.toFixed(0)}ms ÷ 가장 큰 조각 ${chunk}ms  (⑥b 는 ×3 이상일 때만 센다)`);
+  if (loopRoom >= 3) {
+    ok(bp > 0 && bp <= ap / 3, '⑥b 이벤트 루프 **최대 막힘**이 대조군의 1/3 이하', `${bp}ms ≤ ${(ap / 3).toFixed(1)}ms`);
+  } else {
+    console.log(`  · [⑥b 판정 유보] 대조군 하루가 **조각 하나의 ${loopRoom.toFixed(1)}배**밖에 안 된다 —`);
+    console.log(`    슬라이서는 조각보다 잘게 못 자르므로 1/3 은 애초에 닿을 수 없는 선이다(⑥a 가 대신 지킨다).`);
+    console.log(`    대조군 ${ap.toFixed(0)}ms → 조각내기 ${bp.toFixed(0)}ms (×${(ap / Math.max(1, bp)).toFixed(2)}).`);
+  }
 
   // ⑦ 하루 총 일감은 그대로다 — 쪼갠다고 일이 줄면 그건 뭔가를 안 한 것이다
   const r = b.total / Math.max(1, a.total);

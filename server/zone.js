@@ -404,9 +404,23 @@ function savePlayer(player, extra = {}) {
   };
   // ★[T47] **Promise 를 돌려준다.** 평시 호출부는 그대로 fire-and-forget 이고,
   //   핸드오프만 `await` 한다 — 도착 존이 central 행을 읽을 때 이미 최신이어야 하기 때문이다.
+  // ★★[T42-b 2026-09-01] **날아가는 쓰기를 센다.** fire-and-forget 은 "안 기다린다"는 뜻이지
+  //   "끝났다"는 뜻이 아니다. 이 수가 0 이 아니면 서버는 **한가하지 않다** — 배경 작업
+  //   (교역로 선계산)이 그동안 루프를 잡으면 이 쓰기가 소켓 밖으로 못 나간다.
+  //   실제로 그렇게 깨졌다: `e2e-rumor ⑦` 복귀 브리핑이 "부재 0일"(`인계/Z-존서버.md ## T42.`).
+  _savesInFlight++;
   return central.updatePlayer(player.playerId, patch).catch(e =>
     console.warn(`[${process.env.ZONE_ID || 'zone'}] central save 실패 (${player.playerId}):`, e.message)
-  );
+  ).finally(() => { _savesInFlight--; _savesDoneAt = Date.now(); });
+}
+// ★[T42-b] 날아가는 central 쓰기 수와 **마지막으로 착지한 시각**. `SimVillages.init` 에 술어로 넘긴다.
+let _savesInFlight = 0, _savesDoneAt = Date.now();   // ★부팅도 '방금 일이 있었다'로 본다(재기동 = 접속이 몰리는 때)
+// ★[T42-b] 처리 중인 접속 수와 마지막으로 끝난 시각(등록 전에는 `players` 에 안 보인다).
+let _connsInFlight = 0, _connsDoneAt = Date.now();
+function ioBusy() { return _savesInFlight > 0 || _connsInFlight > 0; }
+function ioQuietMs() {
+  if (ioBusy()) return 0;
+  return Date.now() - Math.max(_savesDoneAt, _connsDoneAt);
 }
 
 const ZONE_ID = process.env.ZONE_ID || 'hanbando';
@@ -2334,6 +2348,7 @@ function clearTreesInCells(cellKeys) {
 }
 const _simNow = () => { try { return (SimVillages.dayNow && SimVillages.dayNow()) || Date.now(); } catch (e) { return Date.now(); } };
 SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, isWaterTileLocal, isPositionActive, isBlockedByWall, anyViewerNear, perfMark,
+  ioBusy, ioQuietMs,   // ★[T42-b] 배경 작업이 '한가한가'를 판단할 때 **날아가는 쓰기**도 본다
   clearTreesInCells,   // ★영토 개간 — 마을 안엔 숲이 없다
   // ★[11차 실측] 교역 거리행렬의 코스 그리드(4셀 서브샘플)가 **폭 2셀 다리를 절반이나 못 본다**(28개 중 15개).
   //   다리 술어를 넘겨 주면 villages.js 가 코스 셀 안을 훑어 '이 블록에 다리가 지난다'를 살려낸다.
@@ -2754,6 +2769,13 @@ function _connCleanupHalf(C) {
 wss.on('connection', (ws, req) => {
   const C = { ref: `c${++_connSeq}`, stage: 'accepted', at: Date.now() };
   ws.__conn = C;
+  // ★★[T42-b 2026-09-01] **처리 중인 접속을 센다.** 손님은 `players` 에 **등록된 뒤에야** 보인다 —
+  //   인증·로드·스폰 동안은 아무도 없는 서버처럼 보이고, 그때 배경 작업(교역로 선계산)이
+  //   2.4초짜리 A* 를 물면 그 사람의 입장이 그만큼 멈춘다. "사람이 없다 ≠ 할 일이 없다"의 둘째 얼굴.
+  _connsInFlight++;
+  const _connDone = () => { if (C.__counted) return; C.__counted = true; _connsInFlight--; _connsDoneAt = Date.now(); };
+  C.done = _connDone;
+  ws.on('close', _connDone);
   // ① 받았다 — 인증·로드보다 **먼저**. 이 한 줄이 "서버가 살아는 있다"의 증거다.
   try { ws.send(JSON.stringify({ type: 'conn_hello', zone: ZONE_ID, ref: C.ref, serverNow: C.at })); } catch (e) {}
   // ② 조기 ping 응답 — `attachPlayerHandlers` 가 붙기 **전에도** 살아 있음을 답한다.
@@ -2885,6 +2907,7 @@ async function _acceptConnection(ws, req, C) {
     C.stage = 'observer';
     attachObserverHandlers(ws);
     ws.__ready = true;   // ★조기 ping 응답 종료(관찰자 핸들러가 맡는다 — 이중 pong 금지)
+    if (C.done) C.done();   // ★[T42-b] 관전자도 여기서 처리가 끝난다 — 안 놓으면 배경 작업이 영영 안 돈다
     return;
   }
 
@@ -3417,6 +3440,7 @@ async function _acceptConnection(ws, req, C) {
   attachPlayerHandlers(ws, player);
   ws.__ready = true;          // ★조기 ping 응답은 여기서 손을 뗀다(진짜 핸들러가 맡는다)
   C.stage = 'ready';
+  if (C.done) C.done();       // ★[T42-b] 여기서부터는 `players` 가 이 사람을 안다 — 세는 일을 놓는다
 }
 
 // ★★[T1 §2-② 2026-09-01] **"장부 마감 중"** — 일틱 조각내기(villages.js)의 짝.
