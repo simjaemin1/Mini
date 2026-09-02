@@ -6513,6 +6513,21 @@ function tryBuild(player, type, floor = 0, side = null, atX, atY, dir = null) {
   }
   _tryBuildAt(player, type, floor, side, dir);
 }
+// ★★[T48 2026-09-02] 건축 비용의 **지불과 환불을 같은 표로** 걷는다.
+//   종전엔 차감이 다섯 줄(plank·wood·stone·seed·fiber)인데 계단 롤백은 **세 줄**이었다 —
+//   `seed`·`fiber` 를 되돌리지 않는다. 오늘은 계단 비용이 판자뿐이라 안 터지지만, 그건
+//   **비용표가 안 바뀌는 동안만** 참인 안전이다(T48 이 `VillageLayout` 에서 만난 그 모양 그대로:
+//   지금 무해한 이유가 다른 곳의 우연에 기대고 있으면 그건 아직 안 터진 것이다).
+//   ⇒ 한 함수가 부호만 바꿔 두 번 걷는다. 이제 비용표가 늘어도 지불과 환불이 갈릴 수 없다.
+function _buildCostPay(player, cost, sign) {
+  if (!cost) return;
+  const inv = player.inventory;
+  if (cost.plank) inv.plank = (inv.plank || 0) + sign * cost.plank;
+  if (cost.wood)  inv.wood  = (inv.wood  || 0) + sign * cost.wood;
+  if (cost.stone) inv.stone = (inv.stone || 0) + sign * cost.stone;
+  if (cost.seed)  inv[cost.seed] = (inv[cost.seed] || 0) + sign;
+  if (cost.fiber) inv.fiber = (inv.fiber || 0) + sign * cost.fiber;
+}
 function _tryBuildAt(player, type, floor = 0, side = null, dir = null, opts = null) {
   // 14.51: opts.skipCost = 인벤 차감 없이 빌드만 (place_building에서 사용). atX/atY = 위치 override.
   const skipCost = !!(opts && opts.skipCost);
@@ -6573,9 +6588,7 @@ function _tryBuildAt(player, type, floor = 0, side = null, dir = null, opts = nu
       if (cost.stone && (player.inventory.stone || 0) < cost.stone) {
         send(player.ws, { type: 'notice', text: `돌 ${cost.stone}개 필요` }); return false;
       }
-      if (cost.plank) player.inventory.plank -= cost.plank;
-      if (cost.wood) player.inventory.wood -= cost.wood;
-      if (cost.stone) player.inventory.stone -= cost.stone;
+      _buildCostPay(player, cost, -1);   // ★[T48] 지불 — 환불과 같은 표를 걷는다
     }
     const wx = useCx * BUILDING_SIZE;
     const wy = useCy * BUILDING_SIZE;
@@ -6658,11 +6671,7 @@ function _tryBuildAt(player, type, floor = 0, side = null, dir = null, opts = nu
   }
 
   if (!skipCost) {
-    if (cost.plank) player.inventory.plank -= cost.plank;
-    if (cost.wood) player.inventory.wood -= cost.wood;
-    if (cost.stone) player.inventory.stone -= cost.stone;
-    if (cost.seed) player.inventory[cost.seed] -= 1;
-    if (cost.fiber) player.inventory.fiber -= cost.fiber;
+    _buildCostPay(player, cost, -1);   // ★[T48] 지불
   }
   let initialData = null;
   if (type === 'chest') initialData = { wood: 0, stone: 0 };
@@ -6694,9 +6703,7 @@ function _tryBuildAt(player, type, floor = 0, side = null, dir = null, opts = nu
       db.deleteBuilding(dbId);
       send(player.ws, { type: 'notice', text: '계단은 남→북(N) 또는 동→서(W) 방향만 가능' });
       if (!skipCost) {
-        if (cost.plank) player.inventory.plank += cost.plank;
-        if (cost.wood) player.inventory.wood += cost.wood;
-        if (cost.stone) player.inventory.stone += cost.stone;
+        _buildCostPay(player, cost, +1);   // ★[T48] 환불 — 지불과 **같은 표**(종전엔 seed·fiber 를 빠뜨렸다)
         sendInventory(player);
       }
       stairCellDirty = true;
@@ -6723,9 +6730,7 @@ function _tryBuildAt(player, type, floor = 0, side = null, dir = null, opts = nu
       send(player.ws, { type: 'notice', text: '위층 입구에 이미 건축물 있음 — 계단 못 지음' });
       // 자원 환원
       if (!skipCost) {
-        if (cost.plank) player.inventory.plank += cost.plank;
-        if (cost.wood) player.inventory.wood += cost.wood;
-        if (cost.stone) player.inventory.stone += cost.stone;
+        _buildCostPay(player, cost, +1);   // ★[T48] 환불 — 지불과 **같은 표**(종전엔 seed·fiber 를 빠뜨렸다)
         sendInventory(player);
       }
       stairCellDirty = true;

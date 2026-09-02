@@ -2988,9 +2988,16 @@ function banditHost() {
 //   village_buildings 갱신 API 부재 관용). 좌표·야간 귀가·늑대 도주는 기존 계약 유지.
 // =============================================================================
 const LIFE_ON = process.env.VILLAGE_LIFE !== '0';
-let VillageLayout = null;   // ★lazy require(설계 계약: 시뮬 off면 sim 모듈 무로드) — 생활층 진입점에서 1회 로드.
+let _vlMod = null;   // ★lazy require(설계 계약: 시뮬 off면 sim 모듈 무로드) — **읽을 땐 반드시 `_lifeVL()` 로.**
 //   시딩(seedVillages)은 자기 지역 require를 씀 — 모듈 레벨 참조가 없어 "is not defined"로 일일 훅이 죽던 버그 수정.
-const _lifeVL = () => VillageLayout || (VillageLayout = require('./village-layout'));
+// ★★[T48 2026-09-02] **백킹 변수의 이름을 지웠다.** 종전엔 `VillageLayout` 이라는 맨 이름이 있어서
+//   생활층 어디서나 `VillageLayout.X` 로 바로 읽을 수 있었고, **진입점에서 `_lifeVL()` 를 부르는 걸 잊으면
+//   그게 곧 `null.X`** 였다. 실제로 그렇게 죽었다 — `lifeRequestPlayerSite`(플레이어 의뢰 경로)만
+//   가드가 없어서, 생활틱이 한 번도 안 돈 마을에서 집을 의뢰하면 `HALL_CLEAR` 를 null 에서 읽고
+//   **uncaughtException → process.exit(1) → 존 서버 전체가 내려갔다**(T48 §0 실측: 3분 넘게 창이 열려 있다).
+//   ⇒ 가드를 한 줄 더 다는 대신 **잊을 수 있는 이름 자체를 없앴다.** 읽는 길은 이제 이 함수뿐이다.
+//   (`5e8d5f5` 의 'is not defined' 도, 이 배치의 'null' 도 같은 족 — 이제 구조적으로 못 난다.)
+const _lifeVL = () => _vlMod || (_vlMod = require('./village-layout'));
 const L_LANDNEED = 8;        // 랩 동형: 인당 기준 경작칸(landNeedPer가 비옥도 보정)
 // ★랩 JOBACT 대상 직업 = 현장(논밭·물·숲·산) 직업. 이 집합 밖은 랩 'villager' 버킷(회관 내부 앵커 + 역할 라벨).
 const LIFE_FIELD_JOBS = new Set(['farmer', 'fisher', 'hunter', 'lumberjack', 'miner', 'forager']);
@@ -3443,17 +3450,17 @@ function _lifeJobSites(vil, day) {   // 마을 생활권의 직업별 현장 후
 }
 
 function _lifeFarmTooClose(vil, x, y) {   // 랩 farmTooClose 동형: 부지 원+2·마당 원+2·곳간 5×3+1버퍼
-  for (const h of vil._houseCells) if (VillageLayout.houseFarmBlock(h.cx, h.cy, x, y)) return true;
-  if (VillageLayout.hallFarmBlock(vil.ccx, vil.ccy, x, y)) return true;
+  for (const h of vil._houseCells) if (_lifeVL().houseFarmBlock(h.cx, h.cy, x, y)) return true;
+  if (_lifeVL().hallFarmBlock(vil.ccx, vil.ccy, x, y)) return true;
   for (const g2 of vil._granList) if (Math.abs(g2.cx - x) <= 4 && Math.abs(g2.cy - y) <= 3) return true;
   if (vil._site && Math.abs(vil._site.cx - x) <= 8 && Math.abs(vil._site.cy - y) <= 8) return true;   // 진행 중 신축 부지 보호
   return false;
 }
 function _lifeBatEligible(vil, x, y) {   // 랩 _batEligible 동형(길 답압 항은 서버 road 조회 연결 시 — 주석 계약)
   if (!vil._terrSet.has(x + ',' + y)) return false;
-  if (VillageLayout.hallFarmBlock(vil.ccx, vil.ccy, x, y)) return false;
+  if (_lifeVL().hallFarmBlock(vil.ccx, vil.ccy, x, y)) return false;
   if (!state.ta || state.ta.isBlocked(x, y)) return false;
-  let n = 0; const A2 = VillageLayout.ALLEY_R * VillageLayout.ALLEY_R;
+  let n = 0; const A2 = _lifeVL().ALLEY_R * _lifeVL().ALLEY_R;
   for (const h of vil._houseCells) { const dx = h.cx - x, dy = h.cy - y; if (dx * dx + dy * dy < A2) { n++; if (n >= 2) return false; } }   // 골목 배제(집 2채 r12.5)
   return true;
 }
@@ -3474,7 +3481,7 @@ function _lifeNeedClear(vil) {   // 랩 needLand 동형: 보즈럽 수요 게이
   const e = vil.econ; if (!e || !vil._potSet) return false;
   if (((e.storage && e.storage.food) || 0) > e.npcs.length * 120) return false;
   const fert = (e.land && e.land.fertility != null) ? e.land.fertility : 0.55;
-  return vil._farmSet.size < Math.ceil(e.npcs.length * VillageLayout.landNeedPer(fert, L_LANDNEED));
+  return vil._farmSet.size < Math.ceil(e.npcs.length * _lifeVL().landNeedPer(fert, L_LANDNEED));
 }
 function _lifeLiveFarmTile(vil, cx, cy, type) {   // 개간 완료 실체화: 영속 행 + 라이브 시각 타일(farmTilesInRect 규약 동형)
   vil._mCl = (vil._mCl || 0) + 1;   // ★[LIFE_* 튜닝 계측] 오늘 개간된 셀 수(실걸음·LOD 배치 공통 싱크)
@@ -3491,23 +3498,23 @@ function _lifeSiteFilters(vil) {
   if (!vil._wf) {   // 물거리 EDT 캐시(마을당 1회 — 영토 bbox±32, 랩 s._wf 동형)
     let bx0 = 1e9, by0 = 1e9, bx1 = -1e9, by1 = -1e9;
     for (const k of vil._terrSet) { const ci = k.indexOf(','), x = +k.slice(0, ci), y = +k.slice(ci + 1); if (x < bx0) bx0 = x; if (x > bx1) bx1 = x; if (y < by0) by0 = y; if (y > by1) by1 = y; }
-    vil._wf = VillageLayout.waterEDT(state.ta, bx0 - 32, by0 - 32, bx1 + 32, by1 + 32);
+    vil._wf = _lifeVL().waterEDT(state.ta, bx0 - 32, by0 - 32, bx1 + 32, by1 + 32);
   }
   const W_PEN_K = 2000, HG = 18;
-  const wnd = (x, y) => { const v = vil._wf.at(x, y); return v >= 999 ? 99 : Math.max(1, v - VillageLayout.LOT_R); };
+  const wnd = (x, y) => { const v = vil._wf.at(x, y); return v >= 999 ? 99 : Math.max(1, v - _lifeVL().LOT_R); };
   const farmAt = (x, y, strict) => (strict && vil._potSet.has(x + ',' + y)) || vil._farmSet.has(x + ',' + y);
   // reject(x,y,strict) → 사유 문자열(불가) 또는 null(가능). 자동 배치는 사유를 버리고 continue만 한다.
   const reject = (x, y, strict) => {
     for (const h of vil._houseCells) if (Math.hypot(h.cx - x, h.cy - y) < HG) return `기존 집과 너무 가까움(<${HG})`;
     if (vil._site && Math.hypot(vil._site.cx - x, vil._site.cy - y) < HG) return '공사 중인 마을 집터와 너무 가까움';
     if (vil._psite && Math.hypot(vil._psite.cx - x, vil._psite.cy - y) < HG) return '다른 의뢰 집터와 너무 가까움';
-    for (const [dx, dy] of VillageLayout.LOT_CELLS) {
+    for (const [dx, dy] of _lifeVL().LOT_CELLS) {
       const xx = x + dx, yy = y + dy;
       if (!vil._terrSet.has(xx + ',' + yy)) return '마을 영토 밖';
       if (state.ta.isBlocked(xx, yy)) return '부지 불가(물·바위)';
       if (farmAt(xx, yy, strict)) return '개간 농지 위';
     }
-    for (const [dx, dy] of VillageLayout.LOT_GUARD) if (state.ta.isWater && state.ta.isWater(x + dx, y + dy)) return '물가 완충 침범(침수)';
+    for (const [dx, dy] of _lifeVL().LOT_GUARD) if (state.ta.isWater && state.ta.isWater(x + dx, y + dy)) return '물가 완충 침범(침수)';
     for (const g2 of vil._granList) {
       if (g2.cx + 2 >= x - 6 && g2.cx - 2 <= x + 1 && g2.cy + 1 >= y - 6 && g2.cy - 1 <= y - 1) return '곳간과 겹침';
       if (g2.cx + 2 >= x + 1 && g2.cx - 2 <= x + 4 && g2.cy + 1 >= y + 1 && g2.cy - 1 <= y + 4) return '곳간과 겹침';
@@ -3516,7 +3523,7 @@ function _lifeSiteFilters(vil) {
     //   state.ta.isBlocked가 모른다 — 여기서 명시하지 않으면 부지가 해자를 깔고 앉는다(두 층을 같은 밤에 넣은 대가).
     if (vil._ditch && vil._ditch.length) {
       const D = vil._ditchSet || (vil._ditchSet = new Set(vil._ditch.map(c => c.cx + ',' + c.cy)));
-      for (const [dx, dy] of VillageLayout.LOT_CELLS) if (D.has((x + dx) + ',' + (y + dy))) return '환호 도랑 위';
+      for (const [dx, dy] of _lifeVL().LOT_CELLS) if (D.has((x + dx) + ',' + (y + dy))) return '환호 도랑 위';
     }
     return null;
   };
@@ -3537,11 +3544,11 @@ function lifeRequestPlayerSite(vil, x, y, ownerId, ownerName) {
   if (!vil._terrSet || !vil._terrSet.size) return { err: '마을이 아직 깨어나지 않음(영토 0셀)' };
   if (vil._psite) return { err: '이 마을엔 이미 의뢰한 집터가 있다(완공 후 다시)' };
   x = Math.round(x / 2) * 2; y = Math.round(y / 2) * 2;                       // 짝수 격자 스냅(가장 가까운 짝수 — 랩 교정분)
-  if (Math.hypot(x - vil.ccx, y - vil.ccy) < VillageLayout.HALL_CLEAR) return { err: `큰집 마당 침범(r<${VillageLayout.HALL_CLEAR})` };
+  if (Math.hypot(x - vil.ccx, y - vil.ccy) < _lifeVL().HALL_CLEAR) return { err: `큰집 마당 침범(r<${_lifeVL().HALL_CLEAR})` };
   const F = _lifeSiteFilters(vil);
   const why = F.reject(x, y, false);                                          // strict=false = 미개간 잠재농지는 선점 허용(자동 배치 2패스와 동일)
   if (why) return { err: why };
-  for (const [dx, dy] of VillageLayout.LOT_CELLS) vil._potSet.delete((x + dx) + ',' + (y + dy));   // 선점 부지는 잠재농지에서 제거
+  for (const [dx, dy] of _lifeVL().LOT_CELLS) vil._potSet.delete((x + dx) + ',' + (y + dy));   // 선점 부지는 잠재농지에서 제거
   lifeSiteReset(vil);   // ★[T41 ①] `_potSet` 이 줄면 strict `farmAt` 이 뒤집힐 수 있다 — 캐시를 판다
   const bo = state.deps.liveBuildRow ? state.deps.liveBuildRow('hut_site', (x - 2.5) * SZ, (y - 3.5) * SZ,
     { stage: 1, x0: x - 5, y0: y - 5, x1: x + 0, y1: y - 2, owner: ownerId, psite: 1 }, ownerId, ownerName || '의뢰 움집터', null) : null;
@@ -3739,7 +3746,7 @@ function _lifeAddHouseSiteInner(vil) {
   if (!vil._wf) {   // 물거리 EDT 캐시(마을당 1회 — 영토 bbox±32, 랩 s._wf 동형)
     let bx0 = 1e9, by0 = 1e9, bx1 = -1e9, by1 = -1e9;
     for (const k of vil._terrSet) { const ci = k.indexOf(','), x = +k.slice(0, ci), y = +k.slice(ci + 1); if (x < bx0) bx0 = x; if (x > bx1) bx1 = x; if (y < by0) by0 = y; if (y > by1) by1 = y; }
-    vil._wf = VillageLayout.waterEDT(state.ta, bx0 - 32, by0 - 32, bx1 + 32, by1 + 32);
+    vil._wf = _lifeVL().waterEDT(state.ta, bx0 - 32, by0 - 32, bx1 + 32, by1 + 32);
   }
   const F = _lifeSiteFilters(vil);
   const W_PEN_K = F.W_PEN_K, wnd = F.wnd, farmAt = F.farmAt;
@@ -3763,10 +3770,10 @@ function _lifeAddHouseSiteInner(vil) {
       }
       const ci = k.indexOf(','), x = +k.slice(0, ci), y = +k.slice(ci + 1);
       if ((x & 1) || (y & 1)) continue;                                        // 짝수 격자(레이아웃 동일)
-      const r = Math.hypot(x - vil.ccx, y - vil.ccy); if (r < VillageLayout.HALL_CLEAR) continue;
+      const r = Math.hypot(x - vil.ccx, y - vil.ccy); if (r < _lifeVL().HALL_CLEAR) continue;
       if (farmAt(x, y, strict)) continue;
       const wd = wnd(x, y); let sc = r + (wd < 99 ? W_PEN_K / (wd * wd) : 0);  // 물가 연속 페널티 K/d²
-      if (!strict) { let nong = 0; for (const [dx, dy] of VillageLayout.LOT_CELLS) if (vil._potSet.has((x + dx) + ',' + (y + dy))) nong++; sc += nong * 6; }   // 2패스 잠식 비용
+      if (!strict) { let nong = 0; for (const [dx, dy] of _lifeVL().LOT_CELLS) if (vil._potSet.has((x + dx) + ',' + (y + dy))) nong++; sc += nong * 6; }   // 2패스 잠식 비용
       cand.push([x, y, sc]);
     }
     _probe.siteScan += vil._terrSet.size; _probe.siteCand += cand.length;   // ★[T41 §0]
@@ -3774,7 +3781,7 @@ function _lifeAddHouseSiteInner(vil) {
     for (const c2 of cand) {
       const x = c2[0], y = c2[1];
       { const _r = F.reject(x, y, strict); if (_r) { _probe.siteReason[_r] = (_probe.siteReason[_r] || 0) + 1; rej.add(x + ',' + y); continue; } }   // ★[11차 T4] 하드 필터는 _lifeSiteFilters 소유 — 플레이어 의뢰 터와 **같은 코드**(랩 siteFilters 규약 이식)
-      if (!strict) { for (const [dx, dy] of VillageLayout.LOT_CELLS) vil._potSet.delete((x + dx) + ',' + (y + dy)); lifeSiteReset(vil); }   // 선점 부지는 잠재농지 제거(★[T41] 캐시도 판다 — 위와 같은 이유)
+      if (!strict) { for (const [dx, dy] of _lifeVL().LOT_CELLS) vil._potSet.delete((x + dx) + ',' + (y + dy)); lifeSiteReset(vil); }   // 선점 부지는 잠재농지 제거(★[T41] 캐시도 판다 — 위와 같은 이유)
       const bo = state.deps.liveBuildRow ? state.deps.liveBuildRow('hut_site', (x - 2.5) * SZ, (y - 3.5) * SZ,
         { stage: 1, x0: x - 5, y0: y - 5, x1: x + 0, y1: y - 2, owner: 'npc', floor: 0 }, `npc_simvil_${vil.dbId}`, `${vil.name} 새 움집터`, null) : null;   // ★NPC 정본 렉트를 hut_site 규약에 실음(완공 기하 동일)
       if (bo) state.deps.broadcast({ type: 'building_added', building: bo });
@@ -3819,7 +3826,7 @@ function _lifeCompleteHouse(vil, which) {   // 완공: 터 제거 + NPC 정본 6
   state.db.insertVillageBuilding({ village_id: vil.dbId, type: isP ? 'phouse' : 'house', cx, cy, floors: 1, data: isP ? JSON.stringify({ owner: ownerId }) : null });
   if (!isP) { vil._houseCells.push({ cx, cy }); vil.housesPx.push({ x: cx * SZ + SZ / 2, y: cy * SZ + SZ / 2 }); }
   const tiles = [];
-  for (const [dx, dy] of VillageLayout.LOT_CELLS) {   // 마당·텃밭(시딩 블록 동형)
+  for (const [dx, dy] of _lifeVL().LOT_CELLS) {   // 마당·텃밭(시딩 블록 동형)
     const x = cx + dx, y = cy + dy;
     if (!vil._terrSet.has(x + ',' + y)) continue;
     if (dx >= -5 && dx <= 0 && dy >= -5 && dy <= -2) continue;
@@ -4075,7 +4082,7 @@ function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(�
       vil._site = { cx: ps.cx, cy: ps.cy, stage: 1, bo };
     }
   }
-  const cap = vil._houseCells.length * (VillageLayout.HOUSE_CAP || 6);
+  const cap = vil._houseCells.length * (_lifeVL().HOUSE_CAP || 6);
   if (!vil._site && vil.econ.npcs.length > cap * 0.92) { try { _lifeAddHouseSite(vil); } catch (e) { console.error(`[${state.zoneId}] 생활층 신축 실패(${vil.name}):`, e.message); } }
   _sub('site');
   // ★[헤드리스 결산] 관측자 없는 마을 = 랩 빨리감기 — 하루치 물리 결과 일괄 적산(관측 마을은 실걸음 크루 소유)

@@ -1,5 +1,16 @@
 #!/usr/bin/env node
+// @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
 // === 11차 T4 — 플레이어 의뢰 집 건설(서버 이식판) 계약 검증 하네스 ===
+//
+// ★★[T48 2026-09-02] 이 하네스는 **1년 가까이 소스 문자열만** 봤고, 그래서 두 번 틀렸다:
+//   ① 08-30 원장 승격이 `player.inventory[it] -= amt` 를 `consumeItem(...)` 으로 바꾸자
+//      `indexOf` 가 −1 을 냈고 `-1 > iPlace` 가 거짓이라 **"차감이 자리 확정 전에 일어난다"**고
+//      보고했다 — **있지도 않은 제품 결함을**. (족보 (84): "없다"는 두 가지다 — 순서가 틀린 것과
+//      **찾지 못한 것**. `indexOf` 를 `>` 로 비교하면 그 둘이 같은 빨강으로 뭉개진다.)
+//   ② 그리고 정작 **진짜 결함은 못 봤다** — 소스 순서는 옳았지만 그 함수는 실행하면 **존 서버를 죽였다**
+//      (`lifeRequestPlayerSite` 가 lazy 모듈을 가드 없이 읽어 `null.HALL_CLEAR`).
+//   ⇒ ⑤는 "못 찾음"과 "순서 틀림"을 **다른 문구로** 가르고, **⑨를 신설해 실서버로 실행**한다.
+//     소스 검사는 규약이 **있는지**를 보고, 실행 검사는 그 규약이 **도는지**를 본다. 둘 다 필요하다.
 //
 // 랩 10차 정본(scripts/test-lab-psite.js가 실측으로 확립한 것)의 **서버 이식 계약**을 검사한다.
 // 실행 동작(지정→선납→4단계→완공)은 로컬 풀스택(scripts/_t4b-live.js)이 재현하고, 여기서는
@@ -70,9 +81,13 @@ console.log('\n[⑤ 대가 = 재료 선납 — 부족하면 지정 자체를 거
 {
   chk(/const PSITE_COST = \{ pillar: 6, rafter: 8, thatch: 8 \}/.test(ZONE), '선납 재료 = 움집 중간재 3종(기둥6·서까래8·이엉8)');
   const fn = ZONE.slice(ZONE.indexOf('function tryRequestVillageHouse'), ZONE.indexOf('function tryHutAdvance'));
-  const iLack = fn.indexOf('lack.push'), iPlace = fn.indexOf('lifeRequestPlayerSite'), iPay = fn.indexOf('player.inventory[it] -= amt');
+  const iLack = fn.indexOf('lack.push'), iPlace = fn.indexOf('lifeRequestPlayerSite');
   chk(iLack > 0 && iPlace > iLack, '재료 검사가 배치보다 **먼저**(부족하면 상태를 안 건드림)');
-  chk(iPay > iPlace, '★차감은 자리 확정 **뒤** — 배치 실패 시 재료가 사라지지 않는다');
+  // ★[T48] 차감 호출을 **이름에 매이지 않게** 찾는다(정본이 `consumeItem` 으로 바뀐 전례).
+  //   그리고 **못 찾은 것**과 **순서가 틀린 것**을 반드시 다른 문구로 가른다 — 뭉개면 오진이 된다.
+  const mPay = /consumeItem\(player,\s*it,\s*amt\)|player\.inventory\[it\]\s*-=\s*amt/.exec(fn);
+  chk(!!mPay, `차감 호출을 **찾았다**(정본 이름이 바뀌면 여기부터 빨개진다) — ${mPay ? mPay[0] : '못 찾음'}`);
+  chk(!!mPay && mPay.index > iPlace, '★차감은 자리 확정 **뒤**(소스 순서) — 실행 증명은 ⑨');
   chk(/type: 'notice'/.test(fn) && /재료 선납 부족/.test(fn), '부족 사유를 notice로 돌려준다');
   chk(/거리|너무 멀어서/.test(fn), '거리 게이트 실재(원격 의뢰 금지)');
   // HUT_STAGES 실제 소요와 대조 — 선납이 공정 소요와 어긋나면 '이 집은 뭘로 짓나'가 깨진다
@@ -104,5 +119,100 @@ console.log('\n[⑧ 관측 — /lifedbg가 의뢰 상태를 노출]');
   chk(/pHouses:/.test(VIL), '완공된 의뢰 집 수 노출');
 }
 
-console.log('\n' + (fail === 0 ? '결과: PASS' : `결과: FAIL (${fail}건)`));
-process.exit(fail === 0 ? 0 : 1);
+// ═══════════════════════════════════════════════════════════════════════════
+// ⑨ ★실행 검증 — 실서버에서 **정말 그렇게 도는가** [T48 2026-09-02 신설]
+// ═══════════════════════════════════════════════════════════════════════════
+//   위 ①~⑧은 전부 **소스 문자열**이다. 그래서 규약이 코드에 적혀 있는지는 알지만,
+//   그 코드를 **밟으면 무슨 일이 나는지**는 모른다 — 이 하네스가 존이 죽는 걸 못 본 이유다.
+//   ⇒ 진짜 존을 띄우고, 진짜 마을에, 진짜 메시지 경로(`handlePlayerInput`)로 의뢰한다.
+//   ★★생활틱을 **일부러 안 돌린 채로** 첫 요청을 보낸다 — 그게 T48 이 잡은 창이다.
+(async () => {
+  const fsx = require('fs');
+  const TMP = `/tmp/test-psite-${process.pid}.db`;
+  for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fsx.unlinkSync(f); } catch (e) {} }
+  process.env.ZONE_ID = 'hanbando';
+  process.env.PORT = String(37600 + (process.pid % 180));
+  process.env.DB_PATH = TMP;
+  process.env.ENABLE_VILLAGES = '1'; process.env.VILLAGE_MAX = process.env.VILLAGE_MAX || '2';
+  process.env.ENABLE_WILDLIFE = '0'; process.env.ENABLE_BANDITS = '0'; process.env.ENABLE_ROADS = '0';
+  const _l = console.log, _w = console.warn, _e = console.error;
+  console.log = () => {}; console.warn = () => {}; console.error = () => {};
+  const Zone = require(path.join(__dirname, '..', 'server', 'zone.js'));
+  // 서버 로그는 계속 죽여 둔다 — 하네스 자기 줄만 보이게(러너가 `✗` 를 세는 화면을 어지럽히지 않는다).
+  console.log = (...a) => { if (typeof a[0] === 'string' && /^\[hanbando/.test(a[0])) return; _l(...a); };
+  console.warn = _w; console.error = _e;
+  const H = Zone.__testBind(), V = H.SimVillages, SZ = H.BUILDING_SIZE;
+  const COST = { pillar: 6, rafter: 8, thatch: 8 };
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const mk = (nm, x, y) => {
+    const msgs = [];
+    const ws = { readyState: 1, send: (t) => { try { msgs.push(JSON.parse(t)); } catch (e) {} } };
+    const p = { pid: 'p_' + nm, playerId: 't48_' + nm, name: nm, persistent: false, x, y, floor: 0,
+      hp: 100, maxHp: 100, hunger: 100, thirst: 100, inventory: {}, toolItems: [], equipment: [],
+      equipSlots: {}, craftSkill: {}, oreLedger: {}, oreCarry: {}, dishes: [], ws,
+      isNpc: false, isDown: false, vx: 0, vy: 0 };
+    p.__last = () => { const n = msgs.filter((m) => m.type === 'notice'); return n.length ? n[n.length - 1].text : ''; };
+    return p;
+  };
+  const snap = (p) => JSON.stringify({ pillar: p.inventory.pillar || 0, rafter: p.inventory.rafter || 0, thatch: p.inventory.thatch || 0 });
+  // ★메시지는 **문자열**로 보낸다 — `handlePlayerInput` 이 `JSON.parse(raw.toString())` 한다.
+  //   객체를 넘기면 파싱이 조용히 실패해 **아무 일도 안 일어난다**(족보 (57) — 개발 중 실제로 밟았다).
+  const ask = (p, x, y) => { let threw = null;
+    try { H.handlePlayerInput(p, JSON.stringify({ type: 'request_village_house', atX: x, atY: y })); }
+    catch (e) { threw = e; }
+    return threw; };
+
+  console.log('\n[⑨ ★실행 — 실서버에서 자리 확정이 실패하면 무엇이 사라지나]');
+  let vil = null;
+  for (let i = 0; i < 120 && !vil; i++) {
+    const d = V.lifeDebug && V.lifeDebug();
+    vil = ((d && d.villages) || []).find((z) => z.terr > 0) || null;
+    if (!vil) await sleep(500);
+  }
+  chk(!!vil, `(상황) 살아 있는 마을을 잡았다 — ${vil ? `${vil.name} @(${vil.ccx},${vil.ccy}) terr=${vil.terr}` : '없음'}`);
+  if (vil) {
+    const cpx = vil.ccx * SZ + SZ / 2, cpy = vil.ccy * SZ + SZ / 2;
+    // ⓐ ★생활틱 전 · 큰집 마당 침범 = 확정 실패. **던지면 존이 죽는다**(uncaughtException → exit 1).
+    const a = mk('a', cpx, cpy); a.inventory = { pillar: 20, rafter: 20, thatch: 20 };
+    const b0 = snap(a);
+    const threw = ask(a, cpx, cpy);
+    chk(!threw, `★★확정이 실패해도 **던지지 않는다** — 던지면 존 서버가 내려간다 ${threw ? '· ' + threw.message : ''}`);
+    chk(/의뢰 불가|마당|영토|너무 멀어/.test(a.__last()), `★거절 **사유를 돌려준다**(조용히 사라지지 않는다) — "${a.__last()}"`);
+    chk(snap(a) === b0, `★★그리고 재료가 **그대로다** — ${b0} → ${snap(a)}`);
+    // ⓑ 성사 — 차감이 정확히 선납분만
+    let ok = null;
+    for (let r = 8; r <= 40 && !ok; r += 2) {
+      for (let k = 0; k < 8 && !ok; k++) {
+        const cx = vil.ccx + Math.round(r * Math.cos(k * Math.PI / 4));
+        const cy = vil.ccy + Math.round(r * Math.sin(k * Math.PI / 4));
+        const q = mk('b' + r + '_' + k, cx * SZ + SZ / 2, cy * SZ + SZ / 2);
+        q.inventory = { pillar: 20, rafter: 20, thatch: 20 };
+        if (ask(q, cx * SZ + SZ / 2, cy * SZ + SZ / 2)) continue;
+        const d2 = ((V.lifeDebug() || {}).villages || []).find((z) => z.name === vil.name);
+        if (d2 && d2.psite) ok = { q, cx, cy };
+      }
+    }
+    chk(!!ok, `(전제) 유효한 자리가 실제로 성사됐다 — 안 되면 아래 판정이 자명 통과다 ${ok ? `@(${ok.cx},${ok.cy})` : ''}`);
+    if (ok) {
+      const want = JSON.stringify({ pillar: 20 - COST.pillar, rafter: 20 - COST.rafter, thatch: 20 - COST.thatch });
+      chk(snap(ok.q) === want, `★성사되면 **선납분만 정확히** 빠진다 — ${want} vs ${snap(ok.q)}`);
+      // ⓒ 이미 의뢰가 있는데 또 요청 → 거절 · 재료 불변(같은 함수의 다른 실패 갈래)
+      const c = mk('c', (vil.ccx + 12) * SZ + SZ / 2, (vil.ccy + 12) * SZ + SZ / 2);
+      c.inventory = { pillar: 20, rafter: 20, thatch: 20 };
+      const c0 = snap(c);
+      const t2 = ask(c, (vil.ccx + 12) * SZ + SZ / 2, (vil.ccy + 12) * SZ + SZ / 2);
+      chk(!t2 && /이미 의뢰한/.test(c.__last()), `★중복 의뢰는 거절된다 — "${c.__last()}"`);
+      chk(snap(c) === c0, `★★그때도 재료가 **그대로다** — ${c0} → ${snap(c)}`);
+    }
+  }
+  // ★구조 — 이 클래스가 다시는 못 나게: 생활층에 lazy 모듈의 **맨 이름이 없다**
+  const VILSRC = R('server/villages.js');
+  const iAcc = VILSRC.indexOf("const _lifeVL = () =>");
+  const after = VILSRC.slice(iAcc).replace(/\/\*[\s\S]*?\*\//g, ' ').split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n');
+  chk(iAcc > 0 && !/\bVillageLayout\s*\./.test(after),
+    '★★생활층에 lazy 모듈의 **맨 이름이 남아 있지 않다**(읽는 길이 접근자 하나뿐 — 가드를 잊을 자리가 없다)');
+
+  console.log('\n' + (fail === 0 ? '결과: PASS' : `결과: FAIL (${fail}건)`));
+  for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fsx.unlinkSync(f); } catch (e) {} }
+  process.exit(fail === 0 ? 0 : 1);
+})().catch((e) => { console.error('하네스 크래시:', e); process.exit(1); });
