@@ -56,6 +56,11 @@ function pickFresh(world, L, want) {
         for (const [r2, q] of Object.entries(v.storage || {})) if (r2 !== r && o.deliverable.has(r2) && q > (o.surplusMin || 5)) sur = true;
         if (!sur) continue;
       }
+      // ★[T17 2026-09-02] **후보를 건너뛸 수 있게 한다.** 왜: 어떤 절은 "첫 자리"가 아니라
+      //   *조건을 만족하는* 자리가 필요하다(⑦은 잔여 2 이상인 의뢰라야 경쟁을 검사한다).
+      //   T17 이 납품 표에 다섯 품목을 더하자 첫 자리가 저유통 품목으로 바뀌어 잔여 1 이 나왔다 —
+      //   그건 제품 결함이 아니라 **픽스처가 첫 자리를 정답으로 가정**하고 있었던 것이다.
+      if (o.skip && o.skip.has(world.villages.indexOf(v) + ':' + r)) continue;
       return { v, r, e, thr, stock, vid: world.villages.indexOf(v) };
     }
   }
@@ -276,15 +281,23 @@ let REQ_CTX = null;
   // REQ_DAYS 를 키워 **잔여가 여럿인 의뢰**를 세운다 — 경쟁은 잔여 1 로는 검사되지 않는다(부분 수용 ⑦d).
   const L = mkLedger(world, { REQ_DAYS: 8 });
   const DEP = new Set(Object.values(Villages.playerVillageDepositMap()));
-  const tgt = pickFresh(world, L, { deliverable: DEP, needSurplus: true, surplusMin: 20, minEma: 0.3 });
-  if (!tgt) { ok(false, '⑦a 전제: 경쟁 검사용 의뢰를 세울 마을이 없다'); }
+  // ★[T17] **잔여 2 이상인 자리를 찾을 때까지** 후보를 넘긴다(위 `skip` 주석 — 첫 자리가 정답이 아니다).
+  let tgt = null, req = null, _skip = new Set(), _tried = 0;
+  for (let i = 0; i < 40; i++) {
+    const t = pickFresh(world, L, { deliverable: DEP, needSurplus: true, surplusMin: 20, minEma: 0.3, skip: _skip });
+    if (!t) break;
+    _tried++;
+    makePayable(t.v, t.r, DEP);
+    t.v.storage[t.r] = (+t.v._consEMA[t.r]) * L.cfg.SHORT_DAYS * 0.1;
+    L.scanDay(world, world.day + 1, {});
+    const q = L.board(t.vid).find((x) => x.item === t.r);
+    if (q && q.qty >= 2) { tgt = t; req = q; break; }
+    _skip.add(t.vid + ':' + t.r);
+  }
+  if (!tgt) { ok(false, '⑦a 전제: 경쟁 검사용 의뢰를 세울 마을이 없다', `후보 ${_tried}자리 전부 잔여 1`); }
   else {
     const { v, r, vid } = tgt;
-    makePayable(v, r, DEP);
-    v.storage[r] = (+v._consEMA[r]) * L.cfg.SHORT_DAYS * 0.1;
-    L.scanDay(world, world.day + 1, {});
-    const req = L.board(vid).find((q) => q.item === r);
-    ok(!!req && req.qty >= 2, '⑦a 전제: 잔여가 2 이상인 의뢰가 섰다', req ? `qty=${req.qty}` : '없음');
+    ok(!!req && req.qty >= 2, '⑦a 전제: 잔여가 2 이상인 의뢰가 섰다', req ? `qty=${req.qty} · 후보 ${_tried}자리째` : '없음');
     if (req && req.qty >= 2) {
       const it = (L.deliverable.items.get(r) || [])[0];
       const A = { [it]: 1000 }, B = { [it]: 1000 };
@@ -553,16 +566,19 @@ const mkLedgerGeo = (world, geo, cfg) => {
 // ─────────────────────────────────────────────────────────────────────────────
 {
   // 여러 시드에서 캐러밴을 모아 **거리 폭**을 넓힌다(한 판 5건으론 계약을 못 잰다).
-  // ⚠**재routing·포기한 캐러밴은 제외한다** — econ 이 재routing 때 `c.distance` 는 새 목적지로
-  //   갈아치우면서 `c.travelDays` 는 **원래 구간 값 그대로 둔다**(economy-sim-v2.js:949-955).
-  //   즉 그 레코드는 econ 안에서도 서로 안 맞는다. 이 하네스가 처음 그걸 잡았고, 회부에 적었다.
-  //   그래서 계약 대조는 **한 번도 안 꺾인 캐러밴**으로만 한다(그게 이 시계의 정의역이다).
-  const cars = [];
+  // ★★[T17 ④ 2026-09-02] **정의역을 되돌렸다 — 이제 전수다.**
+  //   종전에는 *"재routing·포기한 캐러밴은 제외한다"* 였다. econ 이 재routing 때 `c.distance` 만
+  //   새 목적지로 갈아치우고 `c.travelDays` 를 두어 **레코드가 econ 안에서 자기모순**이었기 때문이다.
+  //   그 필터가 곧 결함의 지문이었다(회부에 그렇게 적혀 있었다). T17 ④ 가 두 자리(재routing·빈손
+  //   귀환)에서 `departDay`·`travelDays` 를 같이 갱신해 셋을 맞췄다 ⇒ **필터를 없앤다.**
+  //   ⚠필터를 지우는 것 자체가 판정이다: 꺾인 캐러밴이 표본에 다시 들어오므로, 수리가 덜 됐으면
+  //     ⑲c 가 즉시 빨개진다. (아래 ⑲d 가 "꺾인 놈이 실제로 표본에 있다"를 자명 통과 금지로 센다.)
+  const cars = []; let bentN = 0;
   for (const seed of [1020, 7, 42]) {
     const w = makeWorld(240, seed);
     for (const c of (w.caravans || [])) {
       if (!c || !isFinite(c.distance) || !isFinite(c.travelDays)) continue;
-      if (c._rerouted || c._abandoned) continue;
+      if (c._rerouted || c._abandoned) bentN++;
       cars.push(c);
     }
   }
@@ -577,6 +593,16 @@ const mkLedgerGeo = (world, geo, cfg) => {
   ok(cars.length > 0 && !bad, '⑲ 소문 시계 = econ 캐러밴 시계(travelDaysForDistance 동기 계약)',
     bad ? `dist=${bad.distance} econ=${bad.travelDays} rumor=${Rumor.travelDaysOf(bad.distance)}`
         : `거리 ${span[0].toFixed(0)}~${span[1].toFixed(0)}px · ${cars.length}건 전수`);
+  // ★⑲d — **꺾이는 사건은 드물다**(5마을 240일 표본에서 실측 0건). 그래서 표본으로는 못 센다.
+  //   대신 **수리가 소스에 남아 있는가**를 본다: 시계를 미는 두 자리가 `travelDays` 를 같이 갱신하는가.
+  //   (`test-body ⑦` 과 같은 규약 — 표본이 안 밟는 갈래는 소스로 계약을 건다.)
+  {
+    const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'sim', 'economy-sim-v2.js'), 'utf8');
+    const reroute = /c\.distance = bestAlt\.dist;[\s\S]{0,1400}?c\.travelDays = extraDays;/.test(src);
+    const giveup = /c\.distance = v1\.villageDist\(c\.to, c\.from\);[\s\S]{0,600}?c\.travelDays = travelDaysForDistance\(c\.distance\);/.test(src);
+    ok(reroute && giveup, '⑲d 시계를 미는 두 자리가 **`travelDays` 를 같이 갱신한다**(소스 계약 · T17 ④)',
+      `재routing ${reroute ? 'O' : 'X'} · 빈손귀환 ${giveup ? 'O' : 'X'} · 표본 안 꺾임 ${bentN}/${cars.length}건`);
+  }
   const daySet = new Set(cars.map((c) => c.travelDays));
   ok(daySet.size >= 2, '⑲b 전제: 대조 구간이 한 점이 아니다(일수가 여러 값으로 갈린다)',
     `일수 {${[...daySet].sort((a, b) => a - b).join(',')}} · 거리 폭 ${(span[1] - span[0]).toFixed(0)}px`);

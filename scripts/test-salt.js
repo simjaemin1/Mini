@@ -315,12 +315,17 @@ function findRiverBank() {
     ok(/소금/.test(last(PK2)), '★소금이 없으면 절임이 막힌다 — 게이트가 진짜다', last(PK2));
   }
 
-  // ══ ⑥ 거래소 — 가격 사본이 없다 · 지금은 소금을 못 판다(그 사실을 못 박는다) ══
-  console.log('\n⑥ 거래소 — 사본 0 · 그리고 지금 소금이 왜 안 팔리는가');
+  // ══ ⑥ 거래소 — 가격 사본이 없다 · 그리고 **이제 소금이 팔린다** ══
+  console.log('\n⑥ 거래소 — 사본 0 · 그리고 소금이 표에 들었다');
   {
     const map = Villages.playerVillageDepositMap();
-    ok(!Object.keys(map).includes('salt'),
-       '★[실측] 소금은 `PV_DEPOSIT_MAP` 에 **없다** — 그래서 거래소·게시판이 아직 소금을 못 다룬다(회부 B)',
+    // ★★[T17 ③ 2026-09-02 · 재민 확정] **이 줄은 뒤집혔다.**
+    //   T3(자염) 때 이 자리는 *"소금은 표에 **없다** — 그래서 거래소·게시판이 소금을 못 다룬다"* 였다.
+    //   결함을 못 박아 둔 줄이었고, 회부 B 가 그걸 T17 ECON 웨이브로 넘겼다. 그 웨이브가 이 카드다.
+    //   ⇒ 이제 반대를 못 박는다: 표에 **있다**. 한 줄이 게시판·곳간·거래소를 한꺼번에 연다
+    //     (`events.buildDeliverable` 이 이 표에서 파생되고 `trade.tradableIn/Out` 이 그 파생을 읽는다).
+    ok(Object.keys(map).includes('salt'),
+       '★[T17 ③] 소금이 `PV_DEPOSIT_MAP` 에 **있다** — 거래소·게시판·곳간이 소금을 다룬다(T3 회부 B 닫음)',
        `표 ${Object.keys(map).length}종`);
     // 이 배치가 econ 을 안 건드렸다는 구조 검사
     // ★**주석을 걷어내고 코드만 본다** — 머리말은 실측 근거로 econ 값을 인용한다(그건 사본이 아니다).

@@ -184,7 +184,12 @@ const JOBS = {
     field: 'fishing', output: 'fish', base: 1.2,
     landBoost: (v) => v.land.water, toolDependent: true, inputs: {},
     // Phase 5-5-econ-b: 어종 다양화 부산물 (salmon·shrimp·crab·oyster·seaweed)
-    byproduct: { salmon: 0.15, shrimp: 0.10, crab: 0.08, oyster: 0.06, seaweed: 0.12 },
+    // ★★[T17 ③ 2026-09-02 · 재민 확정 · 자염 갈래 ①(해안선 확장 없음)] **자염을 어부 부산물로.**
+    //   비율 0.05 는 **새 수가 아니다** — 이 파일이 이미 쓰는 소금 부산물 비율 그대로다
+    //   (광부: `addProduce('salt', oAmt * 0.05)`). 캐는 소금이든 굽는 소금이든 같은 부산물 비율로 둔다.
+    //   ⚠**해안 마을만** 낸다(아래 byproduct 루프의 `land.coastal` 게이트). 바다는 남쪽 하나뿐이고
+    //     닿는 마을은 실측 3곳이다(`회부_자염_다음층.md` §C) — 그래서 소금길이 선다.
+    byproduct: { salmon: 0.15, shrimp: 0.10, crab: 0.08, oyster: 0.06, seaweed: 0.12, salt: 0.05 },
   },
   hunter: {                 // 사냥꾼 — meat + hide + 새 자원 부산물
     field: 'hunting', output: 'meat', base: 0.7,
@@ -412,6 +417,35 @@ const DAILY_FOOD_CONSUMPTION = 1.0;
 const DAILY_TOOL_WEAR_PER_FARMER = 0.02;  // 농부가 도구 마모(석기)
 const DAILY_TOOL_WEAR_PER_OTHER = 0.01;
 
+// ★★[T17 2026-09-02 · 재민 확정] **ECON 수술의 세 축 손잡이.**
+//   지시 §3 이 "①~③ 각각 끈 시드 1개씩"을 대조군으로 요구한다 — 파급을 축별로 귀속할 수 있어야
+//   "게시 건수가 왜 움직였나"에 답할 수 있다(옛/새/귀속 표). 셋 다 끄면 **T17 이전과 비트 동일**이다.
+//   ⚠손잡이는 되돌리는 스위치이지 튜닝 노브가 아니다 — 값은 켬/끔 둘뿐이다(주사위 금지).
+// ★[T17 ②] 보존식 4종과 그 원물 — **`server/spoil.js` 의 레시피 표가 정본**이다(사본 금지).
+//   `dry_fish: fish→dried_fish · dry_fruit: berry→dried_fruit · smoke_meat: meat_raw→smoked_meat
+//    · pickle_veg/pickle_fish: vegetable|fish→pickled_veg`.
+//   여기 적는 건 **econ 재화 이름**(플레이어 `berry`=econ `fruit` · `meat_raw`=`meat`)이고,
+//   그 대응도 새로 정하지 않는다 — `PV_DEPOSIT_MAP`(server/villages.js)이 이미 정한 대응 그대로다.
+const PRESERVE_FROM = { fish: 'dried_fish', fruit: 'dried_fruit', meat: 'smoked_meat', vegetable: 'pickled_veg' };
+const PRESERVED_FOODS = ['dried_fish', 'dried_fruit', 'smoked_meat', 'pickled_veg'];
+// ★수율 — **새 수가 아니다.** `server/spoil.js` 의 산출 수율은 `0.4 + 0.6×신선도` 이고,
+//   여기서 보존하는 것은 **목표 재고를 넘긴 잉여**(= 오래 묵어 신선도가 바닥인 몫)라 그 식의 **하한 0.4** 다.
+//   (플레이어가 싱싱한 걸 말리면 1.0 까지 받는다 — 그건 플레이어 층의 손맛이고 여기서 흉내내지 않는다.)
+const PRESERVE_YIELD = 0.4;
+// ★★[T17 ② 수리 2026-09-02] **말린다고 열량이 사라지면 안 된다.**
+//   첫 판 실측에서 시드 7 인구가 −12.5% 났다. 원인이 정확히 이것이었다:
+//   생선 1 → 건어물 0.4 로 만들어 놓고 건어물을 **1:1 로 먹였더니** 열량의 60% 가 증발했고,
+//   `totalFoodEquivalent`(K 계산)가 보존식을 아예 안 세어 마을 수용력까지 같이 내려갔다.
+//   ⇒ 건조는 **물을 뺄 뿐 열량을 빼지 않는다**(무게 정본도 그렇게 적혀 있다: 생선 0.90kg →
+//     건어물 0.35kg, 어육 수분 75~80%). 그러니 보존식 1단위는 **신선 1/수율 = 2.5단위**의 열량이다.
+//   이 한 수가 셋을 동시에 정한다: 식단 환산 · K 환산 · 그리고 `baseValue`(원물값 ÷ 수율).
+const PRESERVE_FOOD_FACTOR = 1 / PRESERVE_YIELD;   // 2.5 — 새 수가 아니라 위 수율의 역수다
+// ★[T17 ③] 소금 일상 소비(인구 비례) — 위 소비처 주석의 두 근거가 만나는 값.
+const SALT_DAILY_PC = 0.01;
+const T17_TOOL     = process.env.T17_TOOL     !== '0';   // ① 도구 마모를 흐름으로 기록
+const T17_PRESERVE = process.env.T17_PRESERVE !== '0';   // ② 보존식 편입
+const T17_SALT     = process.env.T17_SALT     !== '0';   // ③ 자염 편입
+
 // ★flow-EMA 소비 계측(2026-07-12, CHECKLIST 154 부채 해소): 실소비를 v._consDay에 기록 → tickVillage 일 경계에서
 //   v._consEMA(30일 관성)로 폴드 → v2 가격 target의 flowT(=EMA×30)가 됨. 유령 보유 하한(N×0.5) 제거의 보상 —
 //   소비재 수요는 실측 흐름이 만든다(신규 재화는 소비처에 _cons 한 줄 = CAP_TARGET·시드·글럿가드·감산 4종 수동 통합 불요).
@@ -453,6 +487,21 @@ function consumeFood(v, need) {
       remaining -= consumed * f; eaten[r] = consumed;
     }
   }
+  // 5) ★★[T17 ② 2026-09-02 · 재민 확정] **보존식 — 사다리 맨 뒤.**
+  //   *"겨울에 신선식 부족 시 보존식 소비"*(지시 §2-②)가 이 자리 하나로 표현된다:
+  //   위 넷이 다 떨어져야 여기 온다 ⇒ **겨울에만 열린다**(신선식이 있는 계절엔 이 줄이 안 돈다).
+  //   ⚠환산은 1:1 이다 — 보존이 열량을 늘리지 않는다(등재 주석과 같은 이유).
+  //   ⚠사다리 맨 앞이 아니라 맨 뒤인 이유: 앞에 두면 **말려 두는 게 이득**이 되어 신선식 시장이 죽는다.
+  if (T17_PRESERVE) {
+    for (const r of PRESERVED_FOODS) {
+      if (remaining > 0 && v.storage[r] > 0) {
+        // ★환산 2.5 — 채집물 사다리와 **같은 꼴**이되 방향이 반대다(채집물은 0.3~0.4, 보존식은 2.5).
+        const need = remaining / PRESERVE_FOOD_FACTOR;
+        const consumed = Math.min(need, v.storage[r]);
+        v.storage[r] -= consumed; remaining -= consumed * PRESERVE_FOOD_FACTOR; eaten[r] = consumed;
+      }
+    }
+  }
   // ★flow-EMA 제외(설계 판단·A/B 실측): 식단은 *가용성 기반 대체 소비*(cooked>어육>곡>채집 사다리 — 있는 걸 먹음)라
   //   flowT에 폴드하면 우연히 먹은 믹스가 30일 보유 수요로 고착 → 빈곤 마을이 제 채집물·생선 잉여를 못 팔게 됨(수출 억압).
   //   실측: 식단 폴드 포함 시 s101 245→27 붕괴(2026-07-12). 식량 수요는 기존 기구(subs×30·VARIETY·surplusEMA)가 전담.
@@ -465,6 +514,9 @@ function totalFoodEquivalent(v) {
   for (const r of Object.keys(FORAGE_FOOD_FACTOR)) {
     total += (v.storage[r] || 0) * FORAGE_FOOD_FACTOR[r];
   }
+  // ★[T17 ②] 곳간에 든 보존식도 **식량이다**. 안 세면 갈무리하는 순간 마을 수용력(K)이 내려간다
+  //   — 첫 판에서 실제로 그랬다(위 `PRESERVE_FOOD_FACTOR` 주석). 끄면 이 줄은 0 을 더한다.
+  if (T17_PRESERVE) for (const r of PRESERVED_FOODS) total += (v.storage[r] || 0) * PRESERVE_FOOD_FACTOR;
   return total;
 }
 function totalFoodProductionEquivalent(prod) {
@@ -472,6 +524,10 @@ function totalFoodProductionEquivalent(prod) {
   for (const r of Object.keys(FORAGE_FOOD_FACTOR)) {
     total += (prod[r] || 0) * FORAGE_FOOD_FACTOR[r];
   }
+  // ★[T17 ②] 생산 쪽도 같은 자로 — 갈무리는 **재고를 옮기는 일**이지 생산을 줄이는 일이 아니다.
+  //   ⚠원물을 `_cons` 로 빼고 보존식을 `addProduce` 로 넣으므로, 같은 열량이 두 번 세지지 않는다
+  //     (하루 생산 버퍼는 순증분만 담는다).
+  if (T17_PRESERVE) for (const r of PRESERVED_FOODS) total += (prod[r] || 0) * PRESERVE_FOOD_FACTOR;
   return total;
 }
 
@@ -1499,6 +1555,24 @@ function createVillage(opts) {
       tin: opts.tin != null ? opts.tin
          : (opts.oreMix ? +(((opts.oreMix.tin) || 0) * (opts.ore ?? 0.5)).toFixed(3)
                         : _tinDepositFor(opts)),
+      // ★★[T17 ③ 2026-09-02] **바다에 닿는가** — 자염의 산지 판정. `server/villages.js` 가 지형에서 잰다.
+      //   ⚠**이 한 줄이 화이트리스트다.** `land` 는 리터럴이라 여기 없는 키는 호출부가 넘겨도
+      //     **조용히 버려진다** — `fishSustain`·`woodSustain`·`forageSustain`·`marginalQ` 가 그렇게
+      //     통째로 사장돼 있다(`회부_MSY상한_사장.md`). 같은 함정을 두 번 밟지 않으려고 여기 적는다.
+      coastal: !!opts.coastal,
+      // ★★[T17 ⑤ 2026-09-02 · 재민 확정 "판정은 재민 — 켜지 않는다"] **어장 MSY 상한 배선 — 기본 꺼짐.**
+      //   §0-ⓔ 실측: MSY 는 반쯤 구현돼 있다. 수식(`server/sustain.js` — 로지스틱 r·K/4)도,
+      //   엔진의 소비 지점(`_fishScale = min(1, fishSustain/_fishRaw)` · `_fishCap`)도 **이미 완성**이다.
+      //   끊긴 건 이 한 줄뿐이었다 — `land` 리터럴이 화이트리스트라 `extractSustain` 이 준
+      //   `fishSustain` 이 **조용히 버려졌다**(`woodSustain`·`forageSustain`·`marginalQ` 도 같이).
+      //   ⇒ 그래서 헤드리스 econ 에서 어획은 **스톡 제약 없이 무한정** 나온다.
+      //   ⚠`T17_MSY=1` 이어야 잇는다. 끄면 키 자체가 `undefined` 라 종전과 **비트 동일**이다
+      //     (엔진 판정이 `!= null` 이므로 undefined = '상한 미적용' = 종전 경로 그대로).
+      //   ⚠플레이어가 그 물을 긁은 마을은 지금도 `refreshFishSustain` 이 사후에 켠다 —
+      //     이 스위치는 **NPC 만 있는 세계**에서도 상한이 서게 하는 것이다.
+      //   ⚠끄면 **키 자체를 안 만든다**(값 `undefined` 로 두면 `Object.keys(land)` 가 달라진다 —
+      //     직렬화·진단이 그 목록을 본다). 스프레드로 통째로 없앤다.
+      ...(process.env.T17_MSY === '1' && opts.fishSustain != null ? { fishSustain: opts.fishSustain } : {}),
       size: baseSize,
       baseSize,                                                   // 확장 비용 계산 기준
     },
@@ -1847,6 +1921,35 @@ function tickVillage(v, day) {
         addProduce('cooked_food', cooked);
         workNPC(npc);
       }
+      // ★★[T17 ② 2026-09-02 · 재민 확정] **요리사가 잉여를 갈무리한다** — 보존식 생산.
+      //   왜 요리사인가: 말리고 훈제하고 절이는 일은 이 econ 에서 **부엌 노동**이다. 새 직업을 만들면
+      //   직업 정원·유틸리티 표가 통째로 흔들린다(그건 이 카드의 범위가 아니다).
+      //   ★★**신규 계수 0개.** 세 수가 전부 기존 정본에서 온다:
+      //     ⓐ 언제 — 총 식량 환산이 **30일치**를 넘을 때만(`RESERVE_PC.food` × `DAILY_FOOD_CONSUMPTION`).
+      //     ⓑ 무엇을 — 오늘 먹을 몫(N×`DAILY_FOOD_CONSUMPTION`)을 남긴 나머지.
+      //     ⓒ 하루 얼마나 — 요리사 처리량 `jdef.base`(1.5) 그대로. 요리를 못 한 날에도(식량<1)
+      //       손은 비어 있으니 갈무리는 돈다 — 그래서 이 블록은 위 `if` **밖**이다.
+      //     ⓓ 수율 — `PRESERVE_YIELD`(0.4) = `server/spoil.js` 수율식의 하한(위 상수 주석).
+      //   ⇒ *"잉여는 어차피 썩는다"*(DECAY)를 *"썩기 전에 말린다"*로 바꾸는 것뿐이다.
+      if (T17_PRESERVE) {
+        const _N = v.npcs.length || 1;
+        // ⓐ **언제 말리나** — 식량이 넉넉할 때만. 그 '넉넉함'의 선도 정본 둘의 곱이다:
+        //    `RESERVE_PC.food`(30 = 1인당 목표 재고 = 30일치) × `DAILY_FOOD_CONSUMPTION`(1.0/인·일).
+        //    ⇒ *"서른 날치가 넘게 쌓였을 때만 갈무리한다."* 굶주린 마을은 말리지 않는다.
+        if (totalFoodEquivalent(v) > _N * DAILY_FOOD_CONSUMPTION * (RESERVE_PC.food || 30)) {
+          let _pBudget = jdef.base * skillMul;
+          for (const _fr in PRESERVE_FROM) {
+            if (_pBudget <= 0) break;
+            // ⓑ **무엇을 말리나** — 오늘 먹을 몫(N×1.0)을 남긴 나머지. 입에 든 걸 빼앗지 않는다.
+            const _sur = (v.storage[_fr] || 0) - _N * DAILY_FOOD_CONSUMPTION;
+            if (!(_sur > 0)) continue;
+            const _take = Math.min(_sur, _pBudget);
+            v.storage[_fr] -= _take; _cons(v, _fr, _take);   // ★flow-EMA — 보존도 수요다
+            addProduce(PRESERVE_FROM[_fr], _take * PRESERVE_YIELD);
+            _pBudget -= _take;
+          }
+        }
+      }
     } else if (jdef.produceSpecial === 'mason') {
       // ★S2 석공(masonry) — 석기(간돌 도구) 전담 + 마제석검(돌 무기, 전사용). 도구는 자본재라 *우선* 제작,
       //   도구 충분하면 무기 수요(전사) 있을 때 마제석검 제작. ★활은 석공 소관 아님 — 사냥꾼 자가제작(archery)로 이관(활=목재·뼈·힘줄·깃 재료라 석기 장인 부적합, 아래 사냥꾼 자가 안전망 참조).
@@ -2086,6 +2189,8 @@ function tickVillage(v, day) {
           //   '짜는 만큼만 짠다' — 잉여 0 → satMul taper 없음 → 유휴노동(_idleFrac) 인플레 0 → 캐러밴 폭증·식량드레인 없음.
           //   고정 byproduct(잉여→taper→교역폭발)가 신선 짝비교서 505 knife-edge 605→19 붕괴시킨 진범(rate 0.01·util 0.05로도)이라 공급 자체를 수요에 묶음.
           //   ★addProduce를 *스킵*해야 _potA(잠재생산) 미오염 — satMul taper만으론 잠재가 idle로 잡혀 부족. 삼베(hemp)·곡물은 기존 경로 불변(의류 사슬 재튜닝 금지 준수).
+          // ★[T17 ③] 자염은 **바다에 닿는 마을만** 굽는다(위 fisher.byproduct 주석).
+          if (r === 'salt') { if (!T17_SALT || !(v.land && v.land.coastal)) continue; }
           if (r === 'ramie') {
             if (v.npcs.length < RAMIE_MIN_POP) continue;   // 미성숙 마을(개척기) 모시 안 짬 — 콜로니 취약 궤적 무교란
             if ((v.storage.ramie || 0) >= Math.max(v.npcs.length * RAMIE_BOOT_PC, ((v._consEMA || {}).ramie || 0) * 30)) continue;   // 수요 충족 → 스킵(잉여 0)
@@ -2172,10 +2277,34 @@ function tickVillage(v, day) {
       ? DAILY_TOOL_WEAR_PER_FARMER : DAILY_TOOL_WEAR_PER_OTHER);
   }, 0);
   v.storage.tool = Math.max(0, v.storage.tool - toolWear);
+  // ★★[T17 ① 2026-09-02 · 재민 확정] **마모를 흐름으로 기록한다** — `_cons` 한 줄.
+  //   왜 이 한 줄인가: 도구는 이미 이 econ 에서 **생산되고(mason) 소비되고(위 마모) 거래된다**.
+  //   그런데 마모가 `_consDay` 에 안 실려서 `_consEMA.tool` 이 **0** 이었다. 그 결과:
+  //     ⓐ 사건 장부의 부족·글럿은 `ema > 0` 인 품목만 연다(`server/events.js`) ⇒ **도구는 부족 사건에
+  //       한 번도 못 나왔다**(실측: 51마을 800일 부족 0건 · 글럿 0건 — `scripts/t17-metrics.js`).
+  //     ⓑ v2 가격의 `flowT`(=소비EMA×30)가 0 이라 **도구 가격에 수요 축이 없었다** ⇒ 거래소·P2P 가
+  //       참조할 앵커가 없다(지시 ①의 목표가 정확히 이것이다).
+  //   ⇒ 새 계수는 **하나도 없다.** 이미 있는 마모량(`DAILY_TOOL_WEAR_PER_*`)을 **기록만** 한다.
+  //   근거: 위 `_cons` 계약 주석 — *"신규 재화는 소비처에 `_cons` 한 줄
+  //   (CAP_TARGET·시드·글럿가드·감산 4종 수동 통합 불요)"*. 도구는 그 한 줄이 빠져 있던 재화다.
+  if (T17_TOOL) _cons(v, 'tool', toolWear);
   // ★약재 일상 복용 소모(§9 2차) — 인구 비례 흐름(재고 내에서만·부족해도 페널티 없음, 건강 보너스만 사라짐). _herbUsed = 유통 진단 누적.
   if (v.storage.herb > 0) {
     const _hTake = Math.min(v.storage.herb, N * HERB_DAILY_PC);
     v.storage.herb -= _hTake; v._herbUsed = (v._herbUsed || 0) + _hTake; _cons(v, 'herb', _hTake);   // ★flow-EMA
+  }
+  // ★★[T17 ③ 2026-09-02 · 재민 확정] **소금을 실제로 쓴다** — 약재와 **같은 꼴**의 소량 상시 소비.
+  //   왜 이 줄이 필요한가(§0 실측): 소금은 재화로 실재하고 생산 코드에도 닿는데 **아무도 안 먹었다.**
+  //   `contributes.subsistence 0.3` 은 `_computeVillageStats` 가 **재고**로 읽는 stat 이지 소비가 아니다.
+  //   그래서 800일 누계 1,113.9 를 생산하고도 끝 재고 0.000 · 부족 사건 0건이었다(`회부_자염_다음층.md` §B-0).
+  //   ★계수 `SALT_DAILY_PC` 의 근거 **둘이 같은 값에서 만난다**(족보 (85)):
+  //     ⓐ 이 파일의 선례 — `HERB_DAILY_PC = 0.01`("소량 상시 소비" 유형의 유일한 기존 값)
+  //     ⓑ 고증·단위 — 성인 1일 소금 ~10g · `specialty.salt.weight = 1.0`(kg/단위) ⇒ 0.01 단위/인/일
+  //   ⚠약재와 같이 **재고 내에서만** 쓴다. 없으면 안 쓰고 페널티도 없다 — 소금이 굶겨 죽이면
+  //     그건 아사 폐지 캐논을 어기는 것이다. 있으면 `contributes` 로 생활수준에 얹힐 뿐이다.
+  if (T17_SALT && v.storage.salt > 0) {
+    const _sTake = Math.min(v.storage.salt, N * SALT_DAILY_PC);
+    v.storage.salt -= _sTake; v._saltUsed = (v._saltUsed || 0) + _sTake; _cons(v, 'salt', _sTake);   // ★flow-EMA
   }
   // ★제례·부장 봉헌 v2(2026-07-12 — 위세재 반복 실수요): 위세재는 의례로 '소비 파괴'된다(매납 청동검·부장 옥 고증).
   //   v1 실패의 교훈(A/B: flat 요율이 빈곤 마을 자신의 수출 자본까지 태워 s8 16/3): ①식량 여유(_secF) 비례 —

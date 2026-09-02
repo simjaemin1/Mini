@@ -329,6 +329,53 @@ function findOpenCenter(ta, ccx, ccy) {
 //   ② 반경 R=140셀 전수 스캔 대신 4셀 스텝 서브샘플(비율 통계라 결과 동급 —
 //      랩 4780행의 스텝 8 프로파일과 같은 논리). 강 path 스캔 비용 절감.
 // =============================================================================
+// ★★[T17 ③ 2026-09-02 · 재민 확정] **바다까지의 거리** — 자염 산지 판정의 유일한 근거.
+//   갈래 ①(해안선 확장 없음)이 확정이라, 소금을 굽는 마을은 **지금 바다에 닿는 마을 그대로**다.
+//   실측(`회부_자염_다음층.md` §C): 바다는 남쪽 **하나**뿐이고 960px(도보 15초) 안에 3/51,
+//   9,600px 안에 4/51. 시작 광장(농촌22)은 61,746px = 도보 16.1분 — 소금은 원정이다.
+//   ⚠**문턱은 새 수가 아니다**: 960px 은 회부 §C 표의 첫 칸(도보 15초)이고, 그 칸이 곧 "동네 일"의 정의다.
+//   ⚠바다 사각형 유도는 `server/zone.js:470`(해안선 생성기)과 **같은 한 줄**이다. 지금 합칠 수 없다 —
+//     이 카드는 플레이어 층(server/zone.js) 무접촉이라서다. 합치는 건 회부에 한 줄 올렸다.
+const SALT_COAST_PX = (() => { const v = parseFloat(process.env.T17_COAST_PX || ''); return (isFinite(v) && v > 0) ? v : 960; })();
+function _oceanRects() {
+  const { ZONES: _Z } = require('./zone-config');
+  return Object.values(_Z).filter((z) => z.isOcean)
+    .map((z) => ({ x0: z.worldOffsetX, y0: z.worldOffsetY, x1: z.worldOffsetX + z.zoneWidth, y1: z.worldOffsetY + z.zoneHeight }));
+}
+let _oceanRectsCache = null;
+// ★★바다는 **이웃 바다 존**이 아니라 **해안선 물타일**이다.
+//   처음엔 이웃 존 사각형까지의 거리로 쟀다가 51곳 전부 '내륙'이 나왔다 — 당연하다:
+//   해안선 띠(`COASTLINE_BASE 6000 ± NOISE 5000`)가 **육지 존 안쪽으로** 1,000~11,000px 들어와 있어서
+//   바닷가 마을도 이웃 존 경계까지는 수 km 다. 회부 §C 의 "바다까지 20px" 은 **그 띠까지**의 거리다.
+//   ⇒ 생성기(`chunk.generateCoastlineWaterTiles`)를 **그대로 불러** 그 타일 집합에 대고 잰다(사본 금지).
+//     읽기만 한다 — `server/chunk.js` 는 안 고친다(플레이어 층 무접촉).
+let _coastTilesCache = null, _coastTilesZone = null;
+function _coastTiles(zoneId) {
+  if (_coastTilesZone === zoneId && _coastTilesCache) return _coastTilesCache;
+  const { ZONES: _Z } = require('./zone-config');
+  const Zn = _Z[zoneId];
+  if (!Zn) { _coastTilesZone = zoneId; return (_coastTilesCache = []); }
+  if (!_oceanRectsCache) _oceanRectsCache = _oceanRects();
+  let set = new Set();
+  try { set = require('./chunk').generateCoastlineWaterTiles({ ...Zn, id: zoneId }, SZ, () => null, _oceanRectsCache) || new Set(); }
+  catch (e) { set = new Set(); }
+  const arr = [];
+  for (const k of set) { const i = k.indexOf('_'); arr.push([+k.slice(0, i), +k.slice(i + 1)]); }
+  _coastTilesZone = zoneId; _coastTilesCache = arr;
+  return arr;
+}
+// 셀 좌표(ccx,ccy) → 가장 가까운 **해안선 물타일**까지 px. 바다가 없으면 Infinity.
+function seaDistPx(zoneId, ccx, ccy) {
+  const tiles = _coastTiles(zoneId);
+  if (!tiles.length) return Infinity;
+  let best2 = Infinity;
+  for (let i = 0; i < tiles.length; i++) {
+    const dx = (tiles[i][0] - ccx), dy = (tiles[i][1] - ccy);
+    const d2 = dx * dx + dy * dy;
+    if (d2 < best2) best2 = d2;
+  }
+  return Math.sqrt(best2) * SZ;
+}
 function extractLandParamsApprox(ta, ccx, ccy, layout) {
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
   const R = 140, STEP = 4;
@@ -377,6 +424,11 @@ function extractLandParamsApprox(ta, ccx, ccy, layout) {
     size: Math.max(30, Math.round(tn / 25)),
     baseSize: Math.max(30, Math.round(tn / 25)),   // ★엔진 marginalLandQ·effectiveLandSize 의 기준 면적
     ...extractSustain(ta, ccx, ccy, layout, rockD, oreD, forD, huntD),
+    // ★[T17 ③] 바다에 닿는 마을인가(위 `seaDistPx` 주석 — 문턱은 회부 §C 표의 첫 칸).
+    //   ⚠`createVillage` 의 `land` 리터럴에 `coastal:` 한 줄을 같이 넣었다. 안 넣으면 **조용히 버려진다**
+    //     (`fishSustain` 이 그렇게 사장됐다 — `회부_MSY상한_사장.md`).
+    coastal: seaDistPx(state.zoneId || 'hanbando', ccx, ccy) <= SALT_COAST_PX,
+    _seaDistPx: Math.round(seaDistPx(state.zoneId || 'hanbando', ccx, ccy)),   // 계측용(엔진은 안 읽는다)
   };
 }
 
@@ -3791,6 +3843,18 @@ const PV_DEPOSIT_MAP = {
   //   (`events.buildDeliverable` 이 이 표에서 파생되기 때문이다 — 사본을 만들지 않는 설계의 값).
   //   여태 곡식은 "표시 기준(numeraire)인데 정작 표에 없는" 재화였다(거래소 배치 회부 B-2).
   food: 'food', food_cooked: 'cooked_food',
+  // ★★[T17 ②③ 2026-09-02 · 재민 확정] **보존식 4종 + 소금**이 표에 든다.
+  //   이 다섯 줄이 곧 게시판 의뢰·곳간 납품·거래소 매매를 **한꺼번에** 연다 —
+  //   `events.buildDeliverable` 이 이 표에서 파생되고 `trade.tradableIn/Out` 이 그 파생을 읽는다(§0-ⓒ 확인).
+  //   ★플레이어 층 id 와 econ 재화 id 가 **같다**: 보존식은 `server/spoil.js` `PRESERVED_ITEMS` 그대로,
+  //     소금은 `server/salt.js` 가 *"salt 는 새 품목이 아니다 — econ 정본 그 id 그대로다"* 라고 못 박아 뒀다.
+  //     그래서 이 표는 대응을 **새로 만들지 않고** 이름이 같다는 사실을 적을 뿐이다.
+  //   ⚠도구(`tool`)는 **안 넣었다.** 플레이어의 도구는 셀 수 있는 인벤 품목이 아니라 **인스턴스**
+  //     (`player.toolItems = [{id,type,d,max}]` — 내구도가 개체마다 다르다)라, 표에 넣으면
+  //     `deliverToVillage` 가 `player.inventory.tool` 을 찾다가 **유령 품목**을 만든다.
+  //     ⇒ 판단거리로 보고에 A/B 표로 올렸다(지시 §1 "판단거리는 A/B 표로").
+  dried_fish: 'dried_fish', dried_fruit: 'dried_fruit', smoked_meat: 'smoked_meat', pickled_veg: 'pickled_veg',
+  salt: 'salt',
 };
 const PV_DEPOSIT_RATE = (() => { const x = parseFloat(process.env.VILLAGE_DEPOSIT_RATE || '1'); return (isFinite(x) && x > 0) ? x : 1; })();
 function playerVillageDepositMap() { return PV_DEPOSIT_MAP; }

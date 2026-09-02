@@ -953,6 +953,18 @@ function tickCaravansV2(world, day) {
           c.to = bestAlt.v;
           c.arriveDay = day + extraDays;
           c.distance = bestAlt.dist;
+          // ★★[T17 ④ 2026-09-02 · 재민 확정] **시계를 같이 갱신한다.**
+          //   여기서 `c.distance` 만 새 목적지로 갈아치우고 `c.travelDays` 를 두면 한 레코드의 세 값이
+          //   **각각 다른 것**을 가리킨다: `travelDays`=원구간 일수 · `distance`=신구간 거리 ·
+          //   `arriveDay−departDay`=누적 총경과일. `test-events ⑲` 가 그걸 잡고 **재routing 을 정의역에서
+          //   빼는 것으로** 피해 왔다(`_rerouted` 필터). 그 필터의 존재가 이 결함의 증거였다.
+          //   ⇒ `departDay` 를 **새 구간의 출발일**로 옮기고 셋을 다시 맞춘다. 그러면
+          //     `arriveDay − departDay === travelDays === travelDaysForDistance(distance)` 가 회복된다.
+          //   ⚠`departDay` 를 옮기는 쪽을 골랐다(`travelDays` 만 고치는 대신): `server/central.js:530`
+          //     이 `arriveDay − departDay` 로 캐러밴 위치를 보간하는데, 누적 경과일을 분모로 쓰면
+          //     재routing 한 캐러밴이 화면에서 뒤처져 보인다. 셋을 맞추면 그 보간도 같이 옳아진다.
+          c.departDay = day;
+          c.travelDays = extraDays;
           // 귀환 거리도 새로 계산
           c.returnArriveDay = c.arriveDay + travelDaysForDistance(v1.villageDist(bestAlt.v, c.from));
           c._rerouted = rerouted + 1;
@@ -975,6 +987,10 @@ function tickCaravansV2(world, day) {
         c.state = 'inbound';
         c.distance = v1.villageDist(c.to, c.from); // 귀환 거리
         c.returnArriveDay = day + travelDaysForDistance(c.distance);
+        // ★[T17 ④] 빈손 귀환도 같은 규약 — `distance` 를 귀환 거리로 덮었으면 시계도 그 구간의 것이다.
+        //   (안 맞추면 `tradeLog` 한 행에 **귀환 거리**와 **왕로 일수**가 나란히 찍힌다 — 실제로 그랬다.)
+        c.departDay = day;
+        c.travelDays = travelDaysForDistance(c.distance);
         world.tradeLog.push({
           day, from: c.from.name, to: c.to.name,
           sent: { res: c.giveRes, amt: +deliveredGive.toFixed(2), pAtFrom: +c.pFrom_at_depart.toFixed(2), pAtTo: +pTo.toFixed(2) },

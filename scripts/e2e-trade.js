@@ -366,8 +366,12 @@ async function waitHttp(url, tries = 900) {
     `낼 것 ${P0.gives.length} · 받을 것 ${P0.takes.length}  [${P0.takes.slice().sort((a, b) => b.num - a.num).slice(0, 5).map((r) => `${r.ko}(${r.num}·${r.sell}개)`).join(' ')}]`);
 
   // ⑤-a **내가 판 물건 값이 떨어진다** — 낼 것 후보를 순회한다(비싼 쪽부터: 바닥에 붙어 있을 확률이 낮다).
+  //   ★★[T17 2026-09-02] **상위 7종 자름을 뺐다.** T17 이 납품 표에 다섯 품목(보존식 4 + 소금)을
+  //     더하자 상위 7종이 통째로 바뀌어 *"성사된 거래가 없다"* 로 떨어졌다 — 제품 결함이 아니라
+  //     **픽스처가 "상위 7종 안에 답이 있다"를 가정**하고 있었던 것이다(`test-events ⑦a` 와 같은 결).
+  //     성사되면 곧바로 break 하므로 평시 비용은 그대로다. 판정의 뜻도 그대로다.
   let sellHit = null; const sellTried = [];
-  for (const g of P0.gives.slice().sort((a, b) => b.num - a.num).slice(0, 7)) {
+  for (const g of P0.gives.slice().sort((a, b) => b.num - a.num)) {
     const P = await pool();
     const t = P.takes.filter((x) => feasible(g, x)).sort((a, b) => payPower(b) - payPower(a))[0];
     if (!t) { console.log(`    [판다] ${g.ko}(${g.num}) — 이 마을이 값을 치를 수 있는 품목이 없다 · 건너뜀`); continue; }
@@ -399,7 +403,7 @@ async function waitHttp(url, tries = 900) {
   //   ★낼 것은 **가장 싼 것**을 쓴다 — 한 개 값이 쌀수록 마을이 값을 치르기 쉬워 거래가 성립하고,
   //     많이 낼수록 상한(재고의 25%)까지 긁어 **재고를 실제로 뺄** 수 있다.
   let buyHit = null; const buyTried = [];
-  for (const t of (await pool()).takes.slice().sort((a, b) => b.num - a.num).slice(0, 7)) {
+  for (const t of (await pool()).takes.slice().sort((a, b) => b.num - a.num)) {   // ★[T17] 위 ⑤-a 와 같은 이유로 자름 제거
     const P = await pool();
     const g = P.gives.filter((x) => feasible(x, t)).sort((a, b) => a.num - b.num)[0];
     if (!g) { console.log(`    [산다] ${t.ko}(${t.num}·${t.sell}개) — 낼 수 있는 짝이 없다 · 건너뜀`); continue; }

@@ -252,6 +252,33 @@ const RESOURCES = {
   beer:        { ko: '맥주',         emoji: '🍺', category: 'goods', weight: 1.03, baseValue: 3,   utility: 0.5, contributes: { happiness: 0.7 }, harvest: 'crafting' },
   soy_sauce:   { ko: '간장',         emoji: '🟫', category: 'goods', weight: 1.05, baseValue: 5,   utility: 0.4, contributes: { happiness: 0.5 }, harvest: 'crafting' },
   kimchi:      { ko: '김치',         emoji: '🥬', category: 'goods', weight: 1.02, baseValue: 3,   utility: 0.5, contributes: { subsistence: 0.4, happiness: 0.6 }, harvest: 'crafting' },
+  // ★★[T17 ② 2026-09-02 · 재민 확정] **보존식 4종 편입** — 플레이어 층에만 있던 물건을 재화로 연다.
+  //   정본은 하나다: 품목 id·무게는 **플레이어 층 정본을 그대로** 쓴다(사본 금지).
+  //     id   — `server/spoil.js` `PRESERVED_ITEMS`(로트·상자·식품효과·이름표가 전부 거기서 파생된다)
+  //     무게 — 종전 `server/weights.js` 의 유도값을 **여기로 옮겼다**(값 무변). 고증 근거를 같이 옮긴다:
+  //       건어물 0.35 = 생선 0.90 × 건조 잔량 ~0.39(어육 수분 75~80% · 북어 기준)
+  //       말린 과실 0.13 = 생과 0.50 × ~0.26(과육 수분 85% · 곶감·건대추가 원물의 1/4)
+  //       훈제육 0.62 = 고기 1.00 × ~0.62(훈제는 말리기보다 수분을 덜 뺀다 — 훈연·염장 중심)
+  //       절임 0.66 = 남새 0.60 × 1.1(절임은 **무거워진다** — 소금·물을 머금는다. 독에 담는 물건)
+  //     ⚠weights.js 에 남겨 두면 `kgOf` 가 specialty 를 먼저 보므로 **읽히지 않는 사본**이 된다
+  //       (`test-weight ①` 이 그걸 잡는다). 그래서 한 곳만 남겼다.
+  //   ★신규 계수는 **baseValue 넷뿐**이고, 그 넷은 계산 결과이지 고른 값이 아니다:
+  //     `BASE_VALUE` 는 **노동가치 앵커**다(*"생산 1단위에 드는 표준 일의 역수 근사"*).
+  //     보존식 1단위에는 **신선 1/수율 = 2.5단위**가 들어 있다(건조는 물을 뺄 뿐 열량을 안 뺀다 —
+  //     `sim/economy-sim.js` `PRESERVE_FOOD_FACTOR` 주석). ⇒ **원물값 ÷ 0.4**:
+  //       생선 1.25 → **3.1** · 과실 1.5 → **3.8** · 고기 2.14 → **5.4** · 남새 1.5 → **3.8**
+  //     ⚠보존 **노동 웃돈은 일부러 안 얹었다.** 얹으면 "말리면 무조건 이득"이 되어 신선식 시장이 죽는다.
+  //       노동은 요리사의 하루 처리량을 쓰는 것으로 이미 치른다.
+  //     (`test-valuechain.js` 가 이 표의 사슬 단조 증가를 매번 검사한다.)
+  //   ★`category: 'preserved'` 는 **새 갈래**다 — v2 의 자동 부여가 그대로 옳은 값을 준다:
+  //     elasticity 1.0(else) · **DECAY 0.0002**(else — 신선식 0.001 의 1/5). *보존식이 덜 썩는다*가
+  //     이 한 낱말로 표현된다. 새 상수를 만들지 않았다.
+  //   ★contributes 는 **원물과 같다.** 보존은 열량을 늘리지 않는다 — 그 이상을 주면 "말리면 이득"이
+  //     되어 신선식 시장이 죽는다(LEGACY_CONTRIBUTES: fish/meat 0.8 · vegetable 0.5 · fruit 0.4).
+  dried_fish:  { ko: '건어물',       emoji: '🐟', category: 'preserved', weight: 0.35, baseValue: 3.1, utility: 0.7, contributes: { subsistence: 0.8 }, harvest: 'crafting' },
+  dried_fruit: { ko: '말린 과실',    emoji: '🍇', category: 'preserved', weight: 0.13, baseValue: 3.8, utility: 0.7, contributes: { subsistence: 0.4 }, harvest: 'crafting' },
+  smoked_meat: { ko: '훈제육',       emoji: '🥓', category: 'preserved', weight: 0.62, baseValue: 5.4, utility: 0.7, contributes: { subsistence: 0.8 }, harvest: 'crafting' },
+  pickled_veg: { ko: '절임',         emoji: '🥬', category: 'preserved', weight: 0.66, baseValue: 3.8, utility: 0.7, contributes: { subsistence: 0.5 }, harvest: 'crafting' },
   bread:       { ko: '빵',           emoji: '🍞', category: 'goods', weight: 0.5, baseValue: 2,   utility: 0.7, contributes: { subsistence: 0.8 }, harvest: 'crafting' },
 
   // ═══════════════════════════════════════════════════════════════════
