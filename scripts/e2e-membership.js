@@ -265,11 +265,15 @@ async function waitHttp(url, tries = 900) {
   // ── ④ 한도 — 오늘 몫을 다 쓰면 거절 ─────────────────────────────────────────
   //   ★**날을 얼린다.** 이 존은 검사용으로 하루가 0.6초다 — 안 얼리면 인출할 때마다 날이 바뀌어
   //     한도가 매번 새로 열리고, 이 절은 "한도가 없다"를 보게 된다(재는 것이 한도가 아니라 시계다).
+  await clearNotices();
   await page.evaluate(() => window.__sendPrimary({ type: '__e2e_day_freeze', on: true }));
   await sleep(900);
   {
-    const froze = (await page.evaluate(() => (window.__notices || []).slice(-4).join(' | ')));
-    ok(/게임일 정지/.test(froze), `④-0 게임일 정지(상호작용 구간) — 여기부터 시계가 검사를 앞지르지 않는다`, JSON.stringify(froze.slice(0, 60)));
+    // ★링 **전체**를 본다 — 하루 0.6초 존에서는 브리핑·게시판 알림이 계속 밀려들어
+    //   `slice(-4)` 로 보면 방금 받은 답이 뒤에서 밀려난다(러너 부하에서 실제로 그렇게 빨개졌다).
+    const n = await notices();
+    const froze = n.find((t) => /게임일 정지/.test(t)) || '';
+    ok(!!froze, `④-0 게임일 정지(상호작용 구간) — 여기부터 시계가 검사를 앞지르지 않는다`, JSON.stringify(froze.slice(0, 60)));
   }
   {
     let refused = '';

@@ -1177,6 +1177,12 @@
           else { fill = 'rgba(90,154,224,0.18)'; stroke = 'rgba(120,175,235,0.95)'; label = `🏛️ ${cl.guildTribeName || cl.ownerName}`; }
         } else if (cl.kind === 'temporary') { fill = 'rgba(220,130,60,0.16)'; stroke = 'rgba(220,130,60,0.7)'; label = `⛺ ${cl.ownerName}`; }
         else { fill = 'rgba(240,198,116,0.18)'; stroke = 'rgba(240,198,116,0.8)'; label = `🏠 ${cl.ownerName}`; }
+        // ★[T45 2026-09-02] **부재 상태를 색으로만 말한다** — 새 패널 0. 서버가 준 `state` 그대로다.
+        //   보관(held)은 흐리게(주인이 아직 있다) · 우선권(pref)은 초록빛(누가 이어받을 수 있다) ·
+        //   개방(free)은 회색(세계의 것이다). 판정을 클라가 다시 하지 않는다 — 그러면 그게 사본이다.
+        if (cl.state === 'held') { fill = 'rgba(150,150,150,0.10)'; stroke = 'rgba(190,190,190,0.45)'; label = `💤 ${cl.ownerName}`; }
+        else if (cl.state === 'pref') { fill = 'rgba(120,200,140,0.16)'; stroke = 'rgba(140,220,160,0.75)'; label = `🕯️ ${cl.ownerName}`; }
+        else if (cl.state === 'free') { fill = 'rgba(120,120,120,0.12)'; stroke = 'rgba(160,160,160,0.55)'; label = `🕳️ 빈 자리`; }
 
         if (cl.cells && cl.cells.length) {
           // 영토 = 셀 집합 (격자 단위) — 각 셀 채움 + 경계(이웃 안 owned) 외곽선. bbox 화면 밖이면 스킵.

@@ -804,3 +804,28 @@ for i in $(seq 1 120); do s=$(date +%s%N); curl -sf -m10 -o /dev/null http://loc
 
 ⚠`_afterWithdraw` 는 `_memberNearVid` 가 있을 때만 거래소 창을 다시 보낸다 — 창이 안 열려 있으면
 보낼 데가 없다. 화면이 낡은 남은 몫을 들고 있으면 그게 거짓말이라, 거래소 실행과 **같은 규약**이다.
+
+## Z-사유지. ★[T45 2026-09-02] `zone.js` 접점 — 사유지 v2
+
+정본은 `server/claims.js` 이고 규약은 `인계/S-사회스킬.md` **S-사유지** 절에 있다(복제하지 않는다).
+
+| 자리 | 하는 일 |
+|---|---|
+| `require('./claims')` | 모듈 하나 |
+| `Claims.init({ claims, buildings, players, db, central, broadcast, ZONE_ID, BUILDING_SIZE })` · `Claims.start()` | `Membership.init` 바로 뒤. ⚠**`gameDay` 를 일부러 안 넘긴다**(부재 시계는 실시간) |
+| **부팅 로드부**(`db.getClaims()` 순회) | ★**여기가 §0 의 결함이었다** — `kind`·`guildTribeId`·`state`·`heldBy`·`stateAt` 을 채운다 |
+| `tryClaim` | ① 승계(`pref`/`free` 이면 이어받는다) ② 인접(4방) — 둘 다 겹침 검사 **앞**에 · `insertClaim` 에 `kind`·`guild_tribe_id` 를 실제로 넘긴다 |
+| `tryUnclaim` | 연결성 — `Claims.unclaimSplits` 하나. `db.deleteClaim` 로 바꿨다(raw SQL 제거) |
+| `listRespawnOptions` | ★`c.ownerId` → `c.ownerPid` · `free` 는 제외 |
+| 접속(`players.set` 직후) | `Claims.onPlayerActive(player)` — 맡겨 둔 땅 반환 |
+| `tryChestTake` | `Claims.chestLocked` 한 줄 — **보관 중 무주** 사유지의 상자만 잠근다 |
+| `GET /claimdbg` | 읽기 전용 관측창. `?scan=1` 이면 부재 배치를 지금 한 번 돈다 |
+| `__testBind()` | `Claims`·`db`·`tryClaim`·`tryUnclaim`·`countMyClaims`·`listRespawnOptions`·`CLAIM_*` 를 정본 그대로 |
+
+⚠**`insertClaim` 이 종류를 안 쓰던 것이 이 카드가 고친 근본**이다. 새 필드를 클레임에 더할 자리는
+**`zone-local-db.js` 의 `insertClaim`/`updateClaim*` 과 부팅 로드부 둘**이다 — 한쪽만 고치면
+"메모리에는 있는데 재시작하면 사라지는" 필드가 또 생긴다.
+
+⚠**부재 배치는 존 틱에 안 얹혀 있다**(30분마다 · `CLAIM_SCAN_MS`). central 에 **부재 중인 소유주 수만큼**
+`GET /player/:id` 를 묻는다 — 접속 중인 사람은 묻지 않고, central 이 안 뜨면 **그 판을 통째로 건너뛴다**
+(모르면 안 건드린다 — 안전한 쪽).

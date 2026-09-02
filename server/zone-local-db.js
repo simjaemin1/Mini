@@ -165,15 +165,61 @@ function updateMobState(id, x, y, hp, tameOwner, tameOwnerName) {
 function deleteMob(id) { stmtDeleteMob.run(id); }
 
 // === claims ===
+// ★★[T45 2026-09-02 재민 확정] **잃어버린 필드의 복구 + 상태기 세 열.**
+//   §0 실측: 스키마가 `(id, owner_id, owner_name, x, y, w, h, created_at)` 뿐이라
+//   **재시작하면 사람 클레임의 종류가 전부 `undefined` 가 됐다**(NPC 마을 영토는 부팅마다
+//   메모리에 다시 만들어져 무사했다 — **사람 것만 잃었다**). 파생 셋:
+//     ⓐ `countMyClaims` 의 `else p++` 로 임시·길드가 개인 슬롯을 먹는다
+//     ⓑ `findGuildClaimContaining` 이 늘 null ⇒ 개인 사유지를 새로 못 짓는다
+//     ⓒ `listRespawnOptions` 가 종류로 거르므로 **자기 사유지가 부활 지점에서 사라진다**
+//   ⇒ 다섯 열을 더한다. 옛 행은 `'personal'` 로 이행한다 — **현행 부팅이 사실상 그렇게 취급해 왔다**
+//     (`countMyClaims` 의 `else p++`). 값을 지어내는 게 아니라 **이미 하던 해석을 적어 두는 것**이다.
+//   ⚠`ALTER TABLE ADD COLUMN` 은 IF NOT EXISTS 가 없다 — `mined_cells` 선례대로 PRAGMA 로 본다.
+{
+  const _cc = db.prepare('PRAGMA table_info(claims)').all().map((c) => c.name);
+  if (!_cc.includes('kind')) {
+    db.exec("ALTER TABLE claims ADD COLUMN kind TEXT");
+    db.exec("UPDATE claims SET kind = 'personal' WHERE kind IS NULL");   // ★옛 행 이행(위 주석)
+  }
+  if (!_cc.includes('guild_tribe_id')) db.exec('ALTER TABLE claims ADD COLUMN guild_tribe_id INTEGER');
+  if (!_cc.includes('state'))    db.exec("ALTER TABLE claims ADD COLUMN state TEXT NOT NULL DEFAULT 'active'");
+  if (!_cc.includes('held_by'))  db.exec('ALTER TABLE claims ADD COLUMN held_by TEXT');
+  if (!_cc.includes('state_at')) db.exec('ALTER TABLE claims ADD COLUMN state_at INTEGER NOT NULL DEFAULT 0');
+}
 const stmtGetClaims = db.prepare('SELECT * FROM claims');
 const stmtInsertClaim = db.prepare(
-  'INSERT INTO claims (owner_id, owner_name, x, y, w, h, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+  'INSERT INTO claims (owner_id, owner_name, x, y, w, h, created_at, kind, guild_tribe_id, state, held_by, state_at)'
+  + ' VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
 );
+const stmtUpdateClaimState = db.prepare('UPDATE claims SET state = ?, held_by = ?, state_at = ? WHERE id = ?');
+const stmtUpdateClaimOwner = db.prepare(
+  'UPDATE claims SET owner_id = ?, owner_name = ?, kind = ?, state = ?, held_by = ?, state_at = ? WHERE id = ?'
+);
+const stmtDeleteClaim = db.prepare('DELETE FROM claims WHERE id = ?');
 function getClaims() { return stmtGetClaims.all(); }
 function insertClaim(c) {
-  const result = stmtInsertClaim.run(c.owner_id, c.owner_name, c.x, c.y, c.w, c.h, Date.now());
+  const now = Date.now();
+  const result = stmtInsertClaim.run(c.owner_id, c.owner_name, c.x, c.y, c.w, c.h, now,
+    c.kind || 'personal', c.guild_tribe_id == null ? null : c.guild_tribe_id,
+    c.state || 'active', c.held_by == null ? null : c.held_by, c.state_at == null ? now : c.state_at);
   return result.lastInsertRowid;
 }
+// ★[T45] 상태 전이 · 셀 승계 — 메모리 클레임을 고친 **바로 그 자리**에서 같이 부른다.
+//   (부재 상태기는 재기동을 넘어 살아야 한다 — 안 그러면 재시작이 곧 사면이다.)
+function updateClaimState(dbId, state, heldBy, stateAt) {
+  if (!dbId) return false;
+  try { stmtUpdateClaimState.run(String(state || 'active'), heldBy == null ? null : String(heldBy), (stateAt | 0) || Date.now(), dbId); return true; }
+  catch (e) { return false; }
+}
+function updateClaimOwner(dbId, ownerId, ownerName, kind, state, heldBy, stateAt) {
+  if (!dbId) return false;
+  try {
+    stmtUpdateClaimOwner.run(String(ownerId), String(ownerName || ''), String(kind || 'personal'),
+      String(state || 'active'), heldBy == null ? null : String(heldBy), (stateAt | 0) || Date.now(), dbId);
+    return true;
+  } catch (e) { return false; }
+}
+function deleteClaim(dbId) { if (!dbId) return false; try { stmtDeleteClaim.run(dbId); return true; } catch (e) { return false; } }
 
 // === harvested_seeds (procedural 자원 채집 기록) ===
 const stmtInsertHarvested = db.prepare('INSERT OR IGNORE INTO harvested_seeds (seed_key, harvested_at) VALUES (?, ?)');
@@ -442,7 +488,7 @@ module.exports = {
   getResources, insertResource, updateResourceHp, deleteResource,
   getBuildings, getBuildingsInRect, insertBuilding, updateBuildingData, deleteBuilding,
   getMobs, insertMob, updateMobState, deleteMob,
-  getClaims, insertClaim,
+  getClaims, insertClaim, updateClaimState, updateClaimOwner, deleteClaim,   // ★[T45] 사유지 v2 — 종류·상태기 영속
   insertHarvestedSeed, getAllHarvestedSeeds,
   upsertMinedCell, getAllMinedCells, deleteMinedCell,
   upsertFishCell, getAllFishCells, deleteFishCell,

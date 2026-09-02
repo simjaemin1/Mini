@@ -56,6 +56,7 @@ const Crops = require('./crops');
 const Salt = require('./salt');            // ★[자염 배치 2026-09-01] 염도·수율·땔감·시간 정본 하나
 const Onboarding = require('./onboarding');   // ★[온보딩 v2 2026-09-01] 도착 지점·30분 대본·빈터 권리 정본(§9). init 전엔 완전 no-op
 const Membership = require('./membership');   // ★[T11 2026-09-02] 마을 소속·곳간 인출. 기여 계량기는 온보딩 정본 **하나**를 읽는다
+const Claims = require('./claims');           // ★[T45 2026-09-02] 사유지 v2 — 종류 영속·인접·연결성·부재 상태기(정본 하나)
 const harvestedSeeds = new Set(); // 채집된 시드 자원 (DB에서 load)
 
 // === 활성 청크 (12.2.b) — 사람 player + observer 위치 주변 청크만 시뮬레이션 ===
@@ -1266,6 +1267,16 @@ function spawnOneResource() {
       ownerPid: row.owner_id,  // DB의 player_id (안정적인 식별자)
       ownerName: row.owner_name,
       x: row.x, y: row.y, w: row.w, h: row.h,
+      // ★★[T45 2026-09-02] **여기가 §0 의 결함이었다.** 종류를 안 채워서 재시작하면 전부 `undefined` 가 됐고,
+      //   그 한 줄 때문에 ⓐ 임시·길드가 개인 슬롯을 먹고 ⓑ 개인 사유지를 새로 못 짓고
+      //   ⓒ **자기 사유지가 부활 지점에서 사라졌다**(T8 이 본 "막다른 골목"의 진짜 원인).
+      //   옛 행은 DB 이행이 `'personal'` 로 채웠다 — 현행 부팅이 사실상 그렇게 취급해 왔다.
+      kind: row.kind || 'personal',
+      guildTribeId: row.guild_tribe_id != null ? row.guild_tribe_id : null,
+      state: row.state || 'active',
+      heldBy: row.held_by || null,
+      stateAt: row.state_at | 0,
+      createdAt: row.created_at | 0,
     });
   }
   console.log(`[${ZONE_ID}] DB에서 claim ${rows.length}개 로드`);
@@ -2485,6 +2496,11 @@ Onboarding.init({ SimVillages, terrain: _terrain, ZONE, ZONE_ID, db: db.db, send
 Membership.init({ SimVillages, ZONE_ID, send, players, gameDay: zoneGameDay,
   afterWithdraw: (player, r) => _afterWithdraw(player, r) });
 
+// ★[T45 2026-09-02] 사유지 v2 — **이미 있는 것만 넘긴다**(사본 금지).
+//   ⚠`gameDay` 를 일부러 안 넘긴다 — 부재 시계는 **실시간**이고 세계의 시간이 아니다(claims.js 제3 규약).
+Claims.init({ claims, buildings, players, db, central, broadcast, ZONE_ID, BUILDING_SIZE });
+Claims.start();
+
 // Phase 12.2.e: 자원 respawn 제거 — 청크 활성화 시 시드로 자동 생성됨
 
 // === HTTP + WebSocket ===
@@ -2547,6 +2563,25 @@ const server = http.createServer((req, res) => {
       for (const p of players.values()) { if (p.isNpc) continue; if (want && p.name !== want) continue; out[p.name] = serializeBody(p); }
       res.end(JSON.stringify({ zone: ZONE_ID, bodies: out }));
     } catch (e) { res.end(JSON.stringify({ err: e.message })); }
+    return;
+  }
+  // ★[T45] 사유지 상태 읽기 전용 JSON — 하네스 관측창(`/lifedbg` 와 같은 규약).
+  //   ★내주는 것은 **정본 그 자체**(`Claims.debug()`)다 — 하네스가 산출을 다시 짜면 그게 사본이다.
+  //   `?scan=1` 은 부재 배치를 **지금 한 번** 돌린다(30분을 기다리지 않고 상태기를 밟게 한다).
+  if (req.url && req.url.startsWith('/claimdbg') && req.method === 'GET') {
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+    const _done = (extra) => {
+      try {
+        const list = [];
+        for (const [id, c] of claims) list.push({ id, dbId: c.dbId || null, owner: c.ownerPid, name: c.ownerName,
+          kind: c.kind || null, state: c.state || 'active', heldBy: c.heldBy || null,
+          cx: Math.floor(c.x / BUILDING_SIZE), cy: Math.floor(c.y / BUILDING_SIZE),
+          cells: Array.isArray(c.cells) ? c.cells.length : 1 });
+        res.end(JSON.stringify(Object.assign({ zone: ZONE_ID, claims: list }, Claims.debug(), extra || {})));
+      } catch (e) { res.end(JSON.stringify({ err: e.message })); }
+    };
+    if (req.url.indexOf('scan=1') >= 0) { Claims.scanAbsence().then((r) => _done({ scan: r })).catch((e) => _done({ scanErr: e.message })); return; }
+    _done();
     return;
   }
   // ★[온보딩 v2] 시작 화면이 읽는 마을 목록 — CORS 개방(`/lifedbg` 와 같은 규약: 민감 정보 없음)
@@ -3349,6 +3384,10 @@ async function _acceptConnection(ws, req, C) {
   C.stage = 'spawn'; _connFailPoint('spawn');
   players.set(pid, player);
   C.pid = pid;   // ★뒤에서 던지면 이 반쪽 등록을 치워야 한다(안 치우면 유령 몸이 남는다)
+  // ★★[T45 2026-09-02] **돌아오면 맡겨 둔 땅이 돌아온다.** `held` 는 전량, `pref` 는 아직 아무도
+  //   안 가져간 것만 — 가져간 셀은 이미 주인이 바뀌어 이 순회에 안 잡히므로 **구조적으로 저절로** 그렇다.
+  //   여기 두는 이유: 부재 배치는 30분에 한 번 도는데, 사람은 접속한 그 순간 자기 땅을 본다.
+  try { const _rc = Claims.onPlayerActive(player); if (_rc) console.log(`[${ZONE_ID}] 🏠 ${name} 복귀 — 맡겨 둔 사유지 ${_rc}칸 반환`); } catch (e) {}
 
   // 활성 청크 즉시 갱신 — 이 player 주변 청크의 시드 자원 spawn → welcome.resources에 포함됨
   updateActiveChunks();
@@ -6222,6 +6261,48 @@ function tryClaim(player, kind = 'personal') {
   const cx = Math.floor(player.x / SZ) * SZ;
   const cy = Math.floor(player.y / SZ) * SZ;
 
+
+  // ★★[T45 2026-09-02] **승계 — 이 칸이 이미 남의 것인데 `pref`/`free` 면 새로 세우지 않고 이어받는다.**
+  //   주인이 오래 자리를 비운 땅은 사라지지 않는다. 맡아 두는 쪽(길드·마을)에게 **우선권 창**이 열리고,
+  //   그 창이 지나면 누구에게나 열린다. 슬롯·재료는 위에서 이미 똑같이 냈다(공짜가 아니다).
+  //   ⚠인접은 안 본다 — 이어받는 자리는 **거기 이미 있는 땅**이지 내가 고른 자리가 아니다.
+  if (kind === 'personal') {
+    let victim = null, vid = null;
+    for (const [cid, c] of claims) {
+      if (c.ownerPid === player.playerId || c.kind === 'guild') continue;
+      const st = c.state || 'active';
+      if (st !== 'pref' && st !== 'free') continue;
+      if (!(cx + SZ / 2 >= c.x && cx + SZ / 2 < c.x + c.w && cy + SZ / 2 >= c.y && cy + SZ / 2 < c.y + c.h)) continue;
+      victim = c; vid = cid; break;
+    }
+    if (victim) {
+      const t = Claims.takeableBy(player, victim);
+      if (!t.ok) { send(player.ws, { type: 'notice', text: `🏠 ${t.why}` }); return; }
+      player.inventory.wood -= cost.wood;
+      player.inventory.stone -= cost.stone;
+      const prevOwner = victim.ownerName;
+      const nf = Claims.transfer(vid, victim, player);
+      savePlayer(player);
+      sendInventory(player);
+      send(player.ws, { type: 'notice', text: `🏠 ${prevOwner}이(가) 쓰던 자리를 이어받았다 (${t.why}${nf ? ` · 시설 ${nf}채 승계` : ''})` });
+      return;
+    }
+  }
+
+  // ★★[T45] **인접(4방) — 새 셀은 내 셀과 변을 공유해야 한다.**
+  //   대각은 안 된다: 대각으로만 붙은 땅은 걸어서 이어지지 않는다(일관성 원칙의 땅 판).
+  //   예외는 셋이고 전부 "첫 셀"의 얼굴이다 — ⓐ 내 셀이 0개 ⓑ 임시(T) ⓒ 온보딩 빈터 권리 구역.
+  //   ⚠L-5 소급 안 함: 옛날에 흩뿌려 둔 셀도 "내 셀"로 세므로 그 옆은 계속 이어 붙일 수 있다.
+  if (kind === 'personal' && !Onboarding.vacantLotAllows(player, cx + SZ / 2, cy + SZ / 2)) {
+    const adj = Claims.adjacencyOf(player.playerId, Math.floor(cx / SZ), Math.floor(cy / SZ));
+    if (!adj.ok) {
+      send(player.ws, { type: 'notice', text: adj.diag
+        ? '🏠 모서리로만 닿는다 — 사유지는 변을 맞대야 이어진다'
+        : `🏠 내 사유지에 붙여서만 넓힐 수 있다 (지금 ${adj.mine}칸)` });
+      return;
+    }
+  }
+
   // 기존 claim과 겹침 체크 — 단, personal/temporary는 guild claim과 겹쳐도 OK (nested)
   for (const c of claims.values()) {
     const sameKind = c.kind === kind;
@@ -6270,6 +6351,9 @@ function tryClaim(player, kind = 'personal') {
     owner_id: player.playerId,
     owner_name: player.name,
     x: cx, y: cy, w: SZ, h: SZ,
+    // ★[T45] 종류·길드 id 를 **실제로 넣는다** — 이 두 줄이 없어서 재시작마다 종류가 사라졌다.
+    kind, guild_tribe_id: kind === 'guild' ? player.tribeId : null,
+    state: 'active', held_by: null,
   });
   claim.dbId = dbId;
   savePlayer(player);
@@ -6286,7 +6370,16 @@ function tryUnclaim(player, claimId) {
   if (c.ownerPid !== player.playerId) {
     send(player.ws, { type: 'notice', text: '내 사유지가 아닙니다' }); return;
   }
-  if (c.dbId) { try { db.db.prepare('DELETE FROM claims WHERE id = ?').run(c.dbId); } catch (e) {} }
+  // ★★[T45 2026-09-02] **포기하면 내 땅이 갈라지는가.** ㄷ 자의 **목**을 빼면 거절, **끝**은 허용.
+  //   ⚠판정은 "한 덩이여야 한다"가 **아니라** "지금보다 더 갈라지는가"다 — 지금 살아 있는 사람들의
+  //     땅은 인접 규칙 없이 흩뿌려져 있어서(§0-ⓐ), 절대 기준으로 짜면 **그 사람들은 아무것도 못 버린다.**
+  //     그건 규칙을 소급하는 것과 같다(L-5 위반). 산수는 `claims.js` 정본 하나.
+  const sp = Claims.unclaimSplits(player.playerId, claimId);
+  if (sp.splits) {
+    send(player.ws, { type: 'notice', text: `🏠 여기를 포기하면 내 땅이 ${sp.before}덩이에서 ${sp.after}덩이로 갈라진다 — 끝에서부터 걷어라` });
+    return;
+  }
+  if (c.dbId) db.deleteClaim(c.dbId);
   claims.delete(claimId);
   send(player.ws, { type: 'notice', text: `사유지 해제 (자원은 환불 X)` });
   broadcast({ type: 'claim_removed', id: claimId });
@@ -7661,6 +7754,11 @@ function __testBind() {
     Trade: require('./trade'), Events: require('./events'), SimVillages,
     tryVillageTrade, tryVillageTradeExec,
     HUNGER_MAX, THIRST_MAX, MOVE_SPEED,
+    // ★[T45 사유지 v2 2026-09-02] 클레임 경로를 **정본 함수 그대로** 내준다 —
+    //   하네스가 인접·연결성·상태기를 다시 짜면 그게 사본이고, 두 산수가 갈리는 날이 온다.
+    Claims, db, tryClaim, tryUnclaim, countMyClaims, listRespawnOptions,
+    findGuildClaimContaining, _claimFootprint, Onboarding, CLAIM_COST,
+    CLAIM_SLOT_PERSONAL_START, CLAIM_SLOT_TEMPORARY_START, CLAIM_SLOT_GUILD_START,
   };
 }
 module.exports = { __testBind, __furnaceBind: __testBind };
@@ -7826,6 +7924,9 @@ async function tryChestTake(player, buildingId, item, amount) {
   if (!CHEST_ALLOWED_ITEMS.has(item)) {
     send(player.ws, { type: 'notice', text: `${item}은 인출 불가` }); return;
   }
+  // ★[T45] **보관 중인 무주 사유지의 상자는 잠긴다.** 그래야 보관이 보관이다(§3.2).
+  //   길드·마을이 맡은 땅은 그쪽이 쓰라고 맡은 것이라 안 잠근다 — 판정은 `claims.js` 하나.
+  { const _lk = Claims.chestLocked(player, b); if (_lk) { send(player.ws, { type: 'notice', text: `🔒 ${_lk}` }); return; } }
   amount = Math.max(1, Math.min(99, amount | 0));
 
   // Phase 14.20: public chest는 자유 인출
@@ -8307,8 +8408,13 @@ function damagePlayer(p, dmg, source) {
 function listRespawnOptions(p) {
   const opts = [];
   for (const c of claims.values()) {
-    if (c.ownerId !== p.playerId) continue;
+    // ★★[T45 2026-09-02] **`c.ownerId` 는 클레임에 없는 필드다** — 사유지는 `ownerPid` 로만 주인을 적는다
+    //   (`tryClaim`·부팅 로드·`countMyClaims`·`tryUnclaim` 이 전부 `ownerPid`). `undefined !== '<id>'` 라
+    //   이 절은 **언제나 continue** 였다 ⇒ 개인·임시 사유지가 **재시작과 무관하게 한 번도 부활 지점이 된 적이 없다.**
+    //   문서 §0-ⓐ-1-ⓒ 는 "재시작 뒤에"라고 적었지만 실측은 더 나빴다 — 처음부터였다.
+    if (c.ownerPid !== p.playerId) continue;
     if (c.kind !== 'personal' && c.kind !== 'temporary') continue;
+    if ((c.state || 'active') === 'free') continue;   // 개방된 땅은 더는 내 집이 아니다
     opts.push({
       claimId: c.id, kind: c.kind,
       x: c.x + (c.w || BUILDING_SIZE) / 2,
