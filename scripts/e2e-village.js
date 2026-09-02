@@ -355,16 +355,21 @@ async function waitHttp(url, tries = 900) {
       //   그동안 서버는 내내 정상으로 틱했고(로그에 30게임일이 흐른다) 같은 하네스의 다른 알림
       //   검사는 전부 통과했다. 즉 **제품 문제가 아니라 요청 한 번에 건 하네스의 가정**이었다.
       //   ⇒ 재고 열람은 **읽기**라 여러 번 물어도 무해하다(거부는 거부로 돌아온다).
+      //   ★★[T20 2026-09-03 재차 수리] `if (nt3.length) break` 는 **아무 알림이나 오면** 멈췄다 —
+      //     그런데 이 자리엔 촌장 브리핑(근접만으로 나간다)이 먼저 도착할 수 있고, 그러면 거절이
+      //     오기 **전에** 판정해서 빨개진다(실제로 그랬다: 마지막 알림이 "10일 만이군…" 이었다).
+      //     제품은 정상이다 — 거절은 그 뒤에 온다. ⇒ **찾는 것이 올 때까지** 기다린다(읽기는 무해).
+      const _denied = (t) => /관리자가 아닙니다|길드의 마을이 아닙니다|너무 멀리/.test(t);
       let nt3 = [];
       for (let i = 0; i < 25; i++) {
         await page2.evaluate((id) => window.__sendPrimary({ type: 'village_inventory', buildingId: id }), hall.id);
         await sleep(200);
         nt3 = await page2.evaluate(() => (window.__notices || []).slice());
-        if (nt3.length) break; }
+        if (nt3.some(_denied)) break; }
       const inv2 = await page2.evaluate(() => window.__villageInv);
       ok(inv2 == null, '★남의 마을 재고는 **안 온다**(응답 자체가 없다)');
-      ok(nt3.some((t) => /관리자가 아닙니다|길드의 마을이 아닙니다|너무 멀리/.test(t)),
-        `거부 사유가 한국어 계약 메시지다 — ${(nt3.slice(-1)[0] || '(없음)')}`);
+      ok(nt3.some(_denied),
+        `거부 사유가 한국어 계약 메시지다 — ${(nt3.filter(_denied)[0] || nt3.slice(-1)[0] || '(없음)')}`);
       await page2.screenshot({ path: `${SHOTS}/09-denied.png` }).catch(() => {});
       shots.push(`${SHOTS}/09-denied.png`);
     }

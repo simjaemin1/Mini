@@ -435,6 +435,37 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_village_chronicle ON village_chronicle (zone, day);
 `);
+// === [T20 2026-09-02 겨울나기] village_winter — 그 해 겨울 프로젝트의 **양** ==========
+//   ★★기여 **카운터**(횟수)는 여기 없다. 그건 `onboarding.contrib` 하나뿐이고(T11 제1 규약)
+//     이 표는 **양**만 센다 — 두 축이 서로를 오염시키면 "부자가 소속을 사는" 문이 열린다(설계안 W-7).
+//   ★행이 두 종류다(키가 갈라 준다):
+//     · `player_id = ''` → **마을 머리 행**. `qty` = 그 해 공표한 목표 N · `res` = 목표 품목.
+//       ⚠공표한 목표는 얼어야 한다 — 촌장이 가을에 한 약속을 겨울에 바꾸면 그게 거짓말이다.
+//         (`_consEMA` 같은 살아 있는 수에서 매번 다시 유도하면 목표가 계절 내내 흔들린다.)
+//     · 그 밖      → **사람 행**. `qty` = 그 해 그 사람이 낸 양(부분 납품도 센다).
+//   ★해가 바뀌면 새 (vid, year) 행이 선다 — 지난 해 행은 그대로 두고 **읽지 않는다**(그 해의 일이다).
+//   ★**달성 여부는 여기 없다** — 그건 사건(`WINTER_KEPT`)이고, 연표가 이미 영구히 들고 있다
+//     (T50 `FIRST_GOODS` 가 "처음"을 연표로 되돌린 것과 같은 자리 — 파생 상태를 두 번 적지 않는다).
+db.exec(`
+  CREATE TABLE IF NOT EXISTS village_winter (
+    zone      TEXT    NOT NULL,
+    vid       INTEGER NOT NULL,
+    year      INTEGER NOT NULL,
+    player_id TEXT    NOT NULL,
+    qty       REAL    NOT NULL DEFAULT 0,
+    res       TEXT,
+    PRIMARY KEY (zone, vid, year, player_id)
+  );
+`);
+const stmtUpsertVillageWinter = db.prepare(`INSERT INTO village_winter (zone, vid, year, player_id, qty, res)
+  VALUES (?, ?, ?, ?, ?, ?)
+  ON CONFLICT(zone, vid, year, player_id) DO UPDATE SET qty = excluded.qty, res = excluded.res`);
+const stmtGetVillageWinter = db.prepare('SELECT vid, year, player_id, qty, res FROM village_winter WHERE zone = ? AND year >= ?');
+function upsertVillageWinter(zone, vid, year, playerId, qty, res) {
+  stmtUpsertVillageWinter.run(zone, vid | 0, year | 0, String(playerId == null ? '' : playerId), +qty || 0, res == null ? null : String(res));
+}
+function getVillageWinterSince(zone, year) { return stmtGetVillageWinter.all(zone, year | 0); }
+
 const stmtInsertVillageChronicle = db.prepare('INSERT INTO village_chronicle (zone, vid, day, type, item, mag) VALUES (?, ?, ?, ?, ?, ?)');
 const stmtGetVillageChronicle = db.prepare('SELECT vid, day, type, item, mag FROM village_chronicle WHERE zone = ? ORDER BY day');
 const stmtCountVillageChronicle = db.prepare('SELECT COUNT(*) AS n FROM village_chronicle WHERE zone = ?');
@@ -498,6 +529,7 @@ module.exports = {
   // [2026-08-25 사건 레이어] 사건 장부·게시판 (events.js / villages.js)
   insertVillageEvent, getVillageEventsSince, pruneVillageEvents,
   insertVillageChronicle, getVillageChronicle, countVillageChronicle,   // ★[T18] 연대기(prune 없음)
+  upsertVillageWinter, getVillageWinterSince,                          // ★[T20] 겨울나기 — 그 해의 **양**
   upsertVillageRequest, deleteVillageRequest, getVillageRequests,
   // §11 도적 (bandits.js)
   getBanditState, upsertBanditState,

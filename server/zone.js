@@ -34,6 +34,7 @@ const HOSTILES_ON = process.env.ENABLE_WILDLIFE !== '0';
 //     아니면 낡은 좌표 덮어쓰기가 뒷문으로 부활한다(그 갈래를 `test-guest-rejoin` 이 밟는다).
 const SAVE_INTERVAL_MS = Math.max(1000, parseInt(process.env.SAVE_INTERVAL_MS || '', 10) || 30000);
 const SAVE_MOVE_EPS = 2;   // 이만큼도 안 움직였으면 쓸 게 없다(px)
+const Winter = require('./winter');   // ★[T20] 겨울나기 — 초기화는 villages.js(장부 옆), 여기선 납품 훅 한 줄
 const Bandits = require('./bandits'); // §11 도적 캐논 1파(경제·수명주기 — 소굴·해체 전환·econ 약탈 훅). ENABLE_BANDITS=0 → 완전 no-op, ENABLE_VILLAGES=0이면 자동 휴면
 const Roads = require('./roads'); // §16 답압 길 4파(희소맵·게으른 감쇠·DB 영속·A* 할인). ENABLE_ROADS=0 → 완전 no-op
 const Soil = require('./soil');   // [배치 20 B] 동적 토양치·지질(희소맵·게으른 리젠·DB 영속·렌더 전용). ENABLE_SOIL=0 → 기준선만
@@ -7545,7 +7546,12 @@ function _afterWithdraw(player, r) {
 function _memberLine(player, vid) {
   try {
     const g = SimVillages.villageWithdrawGate(vid | 0, player.x, player.y);
-    const stock = g.err ? 0 : SimVillages.playerVillageWithdrawStock(g.vil, 'food');
+    // ★[T20-ⓑ 재민 확정 2026-09-03] 패널이 보여 주는 "곳간 몫"도 **식량 등가**다(보존식 포함) —
+    //   겨울에 곡식 칸만 보면 곳간이 빈 것처럼 보이고, 그러면 화면이 거짓말을 한다.
+    //   값은 여전히 **서버 정본 함수**가 낸다(클라 재계산 0 · 새 규칙 0).
+    const stock = g.err ? 0
+      : Math.max(SimVillages.playerVillageWithdrawStock(g.vil, 'food'),
+                 (SimVillages.playerVillageWithdrawStockFoodEq ? SimVillages.playerVillageWithdrawStockFoodEq(g.vil) : 0));
     const st = Membership.publicState(player, stock);
     st.stock = stock;
     return st;
@@ -7663,9 +7669,11 @@ function tryVillageDeliver(player, vid, item, want) {
   sendInventory(player);
   const gave = Object.entries(r.taken || {}).map(([k, q]) => `${ITEM_LABEL_SERVER[k] || k} ${q}`).join(' · ');
   const got = r.rew > 0 ? ` → ${ITEM_LABEL_SERVER[r.rewItem] || r.rewItem} ${r.rew}` : '';
-  send(player.ws, { type: 'notice', text: `📋 ${r.name}에 납품 — ${gave}${got}${r.refused > 0 ? ` (${r.refused}개는 남은 몫을 넘어 돌려받음)` : ''}` });
+  send(player.ws, { type: 'notice', text: (r.winter ? `🧊 ${r.name} 올겨울 몫 — ${gave}` :   // ★[T20] 겨울 몫은 보상이 없다(그 대가는 겨울 보상)
+    `📋 ${r.name}에 납품 — ${gave}${got}${r.refused > 0 ? ` (${r.refused}개는 남은 몫을 넘어 돌려받음)` : ''}`) });
   Onboarding.onDeliver(player, r, vid | 0);   // ★[온보딩 v2] 누적 기여(=T11 이 재사용할 하나의 카운터)·곳간 이펙트·훅 대사·빈터 권리
   Membership.onDeliver(player, r, vid | 0);   // ★[T11] **그 다음**이다 — 기여가 오른 뒤라야 소속 문턱을 정확히 본다
+  Winter.onDeliver(player, r, vid | 0);      // ★[T20] 겨울나기 — **양**을 센다(횟수는 위 온보딩 정본 하나다)
   // 낸 즉시 게시판이 갱신된다(다 찼으면 목록에서 빠진다)
   const b = SimVillages.villageBoard(vid | 0, player.x, player.y);
   if (b && b.ok) send(player.ws, { type: 'village_board', board: b });

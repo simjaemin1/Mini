@@ -3933,6 +3933,34 @@ function playerVillageWithdraw(vil, inventory, res, qty) {
   return { ok: true, res: r, item, qty: q, stockAfter: +(+v.storage[r]).toFixed(3) };
 }
 // 곳간 재고를 **꺼낼 수 있는 개수**로 본다(넣기와 같은 환산율의 역수). 표시·한도가 같은 값을 본다.
+// ★★[T20-ⓑ · 재민 확정 2026-09-03] **한도의 밑변은 "곡식 재고"가 아니라 econ 의 식량 등가다.**
+//   왜: 겨울이면 곳간의 곡식은 이미 **보존식으로 갈무리돼 있다**(T17 ②/T54 말리기).
+//   `storage.food` 만 보면 곳간이 빈 것처럼 보이고, 그러면 소속의 인출 한도도 겨울나기 달성 보상도
+//   `min(·, byStock)` 에서 **물리 상한에 가려 0** 이 된다 — 실은 마을이 겨울을 나려고 쟁여 둔 것이었다.
+//   ⇒ 밑변은 econ **정본 함수** `totalFoodEquivalent` 그대로 쓴다(사본 금지 · 새 규칙 0).
+//   ⚠여기서 정하는 건 **한도**뿐이다. 실제로 꺼내지는 양은 여전히 그 품목의 실재고가 정한다
+//     (`playerVillageWithdraw` — 없는 건 못 꺼낸다). 한도가 재고를 만들어 내지 않는다.
+function playerVillageWithdrawStockFoodEq(vil) {
+  const v = vil && vil.econ;
+  if (!v) return 0;
+  let fe = 0;
+  try { fe = +require('../sim/economy-sim').totalFoodEquivalent(v) || 0; }
+  catch (e) { fe = +((v.storage || {}).food || 0) || 0; }   // econ 을 못 부르면 종전과 같다
+  return Math.floor(fe / PV_DEPOSIT_RATE);
+}
+// 이 재화가 **식량 등가에 실제로 산입되는가** — 목록을 옮겨 적지 않고 econ 에게 물어본다.
+//   (곳간에 그게 0 이면 물어봐도 모른다 → false. 그때는 어차피 꺼낼 것도 없어서 한도가 무의미하다.)
+function _countsAsFoodEq(vil, res) {
+  const v = vil && vil.econ;
+  const r = String(res || '');
+  if (!v || !r) return false;
+  try {
+    const E = require('../sim/economy-sim');
+    const base = +E.totalFoodEquivalent(v) || 0;
+    const st = Object.assign({}, v.storage || {}); st[r] = 0;
+    return (+E.totalFoodEquivalent({ storage: st }) || 0) < base - 1e-9;
+  } catch (e) { return false; }
+}
 function playerVillageWithdrawStock(vil, res) {
   const v = vil && vil.econ;
   if (!v) return 0;
@@ -4729,6 +4757,8 @@ function _lifeOtherIndex(vil, npc) {
 //   판정 산수는 전부 events.js 에 있다 — 두 군데 적으면 그게 사본이다.
 const EV_BRIEF_PX = Math.max(32, parseInt(process.env.EV_BRIEF_PX || '260', 10));   // 촌장 목소리가 닿는 거리(px)
 let Events = null;
+// ★[T20 2026-09-02] 겨울나기 공동 프로젝트 — 정본은 `server/winter.js` 하나. 이 파일은 **부르기만** 한다.
+const Winter = require('./winter');
 function _initLedger() {
   try { Events = require('./events'); } catch (e) { console.error(`[${state.zoneId}] 📜 events.js 로드 실패:`, e.message); return; }
   const zone = state.zoneId;
@@ -4784,6 +4814,9 @@ function _initLedger() {
       const cn = state.ledger.loadChronicle(crows);
       if (cn) console.log(`[${state.zoneId}] 📜 연대기 ${cn}행 복구(잘리지 않는 표 · 총 ${state.db.countVillageChronicle(zone)}행)`);
     } catch (e) { console.error(`[${state.zoneId}] 📜 연대기 복구 실패:`, e.message); }
+    // ★[T20 2026-09-02] 겨울나기 — 장부가 선 뒤에 붙인다(달성 여부를 **연표에** 물어보므로).
+    //   ⚠시계는 **econ 게임일**(`econDay`)이다 — 벽시계 파생을 주면 서버가 꺼져 있던 만큼 영구히 벌어진다.
+    Winter.init({ db: state.db, zoneId: state.zoneId, ledger: () => state.ledger, gameDay: econDay });
     console.log(`[${state.zoneId}] 📜 사건 장부 — 과거 ${n}건 복구 · 마을 ${state.villages.length}곳 프라이밍 · 문턱 부족 ${state.ledger.cfg.SHORT_DAYS}일치·글럿 ${state.ledger.cfg.GLUT_DAYS}일치·가격 ±${(state.ledger.cfg.PRICE_UP * 100) | 0}%`);
   } catch (e) { console.error(`[${state.zoneId}] 📜 사건 장부 복구 실패(빈 장부로 시작):`, e.message); }
   // 게시판 의뢰 복구 — 저장된 진척(filled)을 되돌린다. 실물은 이미 곳간에 들어갔으므로
@@ -4833,7 +4866,8 @@ function _buildsToday() { const out = _evBuilds.slice(); _evBuilds.length = 0; r
 function _scanEventsDaily() {
   if (!state.ledger) return;
   const t0 = Date.now();
-  const evs = state.ledger.scanDay(state.world, state.world.day, { caravanDelays: _caravanDelaysToday(), builds: _buildsToday() });
+  const evs = state.ledger.scanDay(state.world, state.world.day, { caravanDelays: _caravanDelaysToday(), builds: _buildsToday(),
+    winter: Winter.dailyExtra(state.world.day, state.villages) });   // ★[T20] 겨울나기 — 공표(가을 첫날)·판정(겨울 첫날)
   // 의뢰 진척 저장은 납품 시점에 한다(여기선 게시/철회만 — onRequest 훅이 이미 했다).
   if (state.world.day % 30 === 0) {
     try { state.db.pruneVillageEvents(state.zoneId, state.world.day - state.ledger.cfg.KEEP_DAYS); } catch (e) {}
@@ -4906,7 +4940,9 @@ function villageBoard(vid, px, py) {
     give: (state.ledger.deliverable.items.get(r.item) || []),   // 어떤 플레이어 아이템으로 낼 수 있나
     take: state.ledger.deliverable.toEcon.get(r.rewItem) || null,
   }));
-  return { ok: true, vid: vid | 0, name: g.vil.name, rows, news: _newsRows(vid, BOARD_NEWS_N) };
+  //   ★[T20] `head` = 겨울나기 진행 한 줄(서버가 만든 문장 · 공표~판정 사이에만 · 그 밖엔 null).
+  return { ok: true, vid: vid | 0, name: g.vil.name, rows, news: _newsRows(vid, BOARD_NEWS_N),
+    head: Winter.headLine(vid | 0, state.world.day) };
 }
 
 // ★★[T7] 사건 목록 — **가시성 술어 하나를 통과한 것만**. 게시판·근황이 같은 이 함수를 쓴다.
@@ -4974,8 +5010,20 @@ function villageDeliver(vid, px, py, inventory, item, want, unitsOf) {
     const rows = state.ledger.board(vid | 0)
       .filter((r) => (state.ledger.deliverable.items.get(r.item) || []).some((it) => (Number(inventory[it]) || 0) >= 1))
       .sort((a, b) => (b.remain / Math.max(1, b.qty)) - (a.remain / Math.max(1, a.qty)));
-    if (!rows.length) return { err: '지금 낼 수 있는 의뢰가 없다' };
-    item = rows[0].item;
+    // ★[T20] 걸린 의뢰가 없으면 **올겨울 몫**을 고른다(공표된 품목 · 아래 겨울 갈래가 받는다).
+    item = rows.length ? rows[0].item : Winter.goalRes(vid | 0);
+    if (!item) return { err: '지금 낼 수 있는 의뢰가 없다' };
+  }
+  // ★★[T20] **겨울 몫은 의뢰가 아니다** — 공표된 품목은 게시판에 의뢰가 없어도 받는다.
+  //   근거는 `server/winter.js` ①b 절: econ 이 식량 소비를 flow-EMA 에 안 담아 **게시판이 식량 의뢰를
+  //   한 건도 안 낸다** ⇒ 이 갈래가 없으면 겨울 목표(곡식)를 낼 길이 아예 없다(§0 실측).
+  //   실물 이동은 **납품과 같은 정본 함수**(`playerVillageDeposit`)다 — 곳간이 둘이 되지 않는다.
+  const wd = Winter.deliverable(vid | 0, item, state.ledger, inventory);
+  if (wd) {
+    const dep = playerVillageDeposit(g.vil, inventory, wd.give, unitsOf);
+    if (!dep || !dep.ok) return { err: (dep && dep.err) || '곳간이 받지 않았다' };
+    return { ok: true, vid: vid | 0, name: g.vil.name, winter: true, item: wd.res,
+      taken: dep.taken, moved: dep.moved, rew: 0, rewItem: null, refused: 0, done: false };
   }
   const r = Events.deliverToVillage({
     ledger: state.ledger, vil: g.vil, vid: vid | 0, inventory,
@@ -5273,6 +5321,7 @@ module.exports = {
   foundPlayerVillage, playerVillageInventory, playerVillageAt, playerVillageDeposit, playerVillageDepositMap,
   playerVillages, villageByDbId,   // ★[T19] 사람이 세운 마을 — 이방인 받기 자격 판정이 읽는다
   playerVillageWithdraw, playerVillageWithdrawStock, villageWithdrawGate,   // ★[T11] 곳간 인출 — 납품의 역연산(같은 표·같은 환산율)
+  playerVillageWithdrawStockFoodEq, _countsAsFoodEq,   // ★[T20-ⓑ] 한도의 밑변 = econ 식량 등가(보존식 포함)
   // ★[2026-08-25 사건 레이어] 촌장 브리핑 · 게시판 · 납품 — zone.js 핸들러가 소비
   villageBrief, villageBoard, villageDeliver, villageAnchorPx, briefRadiusPx,
   // ★[T7 2026-09-01] 소문 물리 전파 — 시작 화면 근황(온보딩 v2 가 읽는다) · 하네스 계측
