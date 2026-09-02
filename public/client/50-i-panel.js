@@ -914,6 +914,24 @@ function itemKo(k) { return (typeof ITEM_LABEL !== 'undefined' && ITEM_LABEL[k])
     const kg = (r) => r.ko || r.res;
     let h = `<div class="tr-head"><span>🏪 <b>${t.name}</b> 거래소</span>`
       + `<span>시세는 <b>${t.numeraireKo}</b> 환산 · 마을 몫 ${Math.round(t.spread * 100)}%</span></div>`;
+    // ★★[T11 2026-09-02] **소속 한 줄** — 새 패널이 아니라 이 창의 머리 한 줄이다.
+    //   값은 전부 서버가 준 `t.member` 그대로다(클라 재계산 0 — 한도 곡선을 여기서 다시 풀면 그게 사본이다).
+    const mb = t.member || null;
+    if (mb) {
+      if (mb.vid != null) {
+        h += `<div class="tr-head" style="border-top:1px solid #2a3340"><span>🏘️ <b>${mb.name || '마을'}</b> 사람`
+          + ` <span style="opacity:.7">· 기여 ${mb.contrib}</span></span>`
+          + `<span>곳간 몫 <b>${mb.remain}</b>/${mb.limit}`
+          + (mb.remain > 0 ? ` <button class="tr-btn" id="mbWd" style="padding:2px 8px">🌾 꺼낸다</button>` : '')
+          + `</span></div>`;
+      } else if (mb.offer != null) {
+        h += `<div class="tr-head" style="border-top:1px solid #2a3340"><span>🧓 촌장이 마을 사람으로 받아 주겠다 한다</span>`
+          + `<span>채팅에 <b>/소속</b></span></div>`;
+      } else {
+        h += `<div class="tr-head" style="border-top:1px solid #2a3340"><span>🏘️ 아직 이 마을 사람이 아니다</span>`
+          + `<span>누적 기여 <b>${mb.contrib}</b>/${mb.need}</span></div>`;
+      }
+    }
     h += '<div class="tr-hdr"><span></span><span>품목</span><span class="tr-num">시세</span>'
       + '<span class="tr-num">마을</span><span class="tr-num">내것</span></div>';
     for (const r of t.rows) {
@@ -979,6 +997,9 @@ function itemKo(k) { return (typeof ITEM_LABEL !== 'undefined' && ITEM_LABEL[k])
       window.__sendPrimary({ type: 'village_trade_exec', vid, give: trGive, take: trTake, qty: trQty });
       trQuote = null;
     };
+    // ★[T11] 곳간에서 꺼내기 — 수량은 **서버가 오늘 남은 몫만큼** 준다(클라는 요청만 한다).
+    const wd = document.getElementById('mbWd');
+    if (wd) wd.onclick = () => { window.__sendPrimary({ type: 'village_withdraw', vid, res: 'food' }); };
   }
 
   function renderSide(name) {

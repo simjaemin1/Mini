@@ -55,6 +55,7 @@ const Spoil = require('./spoil');
 const Crops = require('./crops');
 const Salt = require('./salt');            // ★[자염 배치 2026-09-01] 염도·수율·땔감·시간 정본 하나
 const Onboarding = require('./onboarding');   // ★[온보딩 v2 2026-09-01] 도착 지점·30분 대본·빈터 권리 정본(§9). init 전엔 완전 no-op
+const Membership = require('./membership');   // ★[T11 2026-09-02] 마을 소속·곳간 인출. 기여 계량기는 온보딩 정본 **하나**를 읽는다
 const harvestedSeeds = new Set(); // 채집된 시드 자원 (DB에서 load)
 
 // === 활성 청크 (12.2.b) — 사람 player + observer 위치 주변 청크만 시뮬레이션 ===
@@ -308,6 +309,10 @@ function serializeBody(p) {
     //   벽시계(ms)가 아니라 게임일이다: 촌장이 세는 건 날이지 초가 아니고, 달력·사건·작물이
     //   전부 그 시계를 본다(`gameDayNow` — 시계 사본 금지). 값 선택 규칙은 `_lastSeenDayToSave`.
     lastSeenDay: _lastSeenDayToSave(p),
+    // ★★[T11 2026-09-02] **마을 소속** — { zone, vid, name, since, wdDay, wdUsed }.
+    //   여기 두는 이유가 곧 T47 의 교훈이다: 저장·핸드오프·재접속이 이 함수 하나를 쓰므로
+    //   소속은 **셋을 동시에** 넘는다(존 로컬 표를 새로 파면 존을 넘는 순간 없던 일이 된다).
+    member: p.member || null,
     // ★생명값 — **핸드오프만** 쓴다(아래 `parseBody(.., {vitals:true})`).
     //   존을 넘는 것은 한 접속의 연속이므로 여기서 HP 가 회복되면 그건 결함이다(같은 존 안에서는
     //   `_takeover` 가 이미 잇고 있다). 반면 **로그아웃 후 재접속의 풀피는 정책**이고, 그건
@@ -324,6 +329,7 @@ function parseBody(raw, opts) {
     equipment: [], equipSlots: {}, craftSkill: {}, craftLog: {},
     oreLedger: {}, oreCarry: {}, fishStats: null, body: null, kgLedger: null, lots: null, vital: null,
     lastSeenDay: null,   // ★[T7] 없으면 처음 온 사람 — 복귀 브리핑은 안 나간다
+    member: null,        // ★[T11] 마을 소속 — 없으면 무소속(처음 온 사람은 늘 무소속이다)
   };
   if (Array.isArray(o.equipment)) out.equipment = o.equipment;
   if (o.equipSlots && typeof o.equipSlots === 'object') out.equipSlots = o.equipSlots;
@@ -336,6 +342,7 @@ function parseBody(raw, opts) {
   if (o.kgLedger && typeof o.kgLedger === 'object') out.kgLedger = o.kgLedger;
   if (o.lots && typeof o.lots === 'object') out.lots = o.lots;
   if (Number.isFinite(o.lastSeenDay)) out.lastSeenDay = o.lastSeenDay | 0;   // ★[T7]
+  if (o.member && typeof o.member === 'object' && o.member.vid != null) out.member = o.member;   // ★[T11] 소속
   if (opts && opts.vitals && o.vital && typeof o.vital === 'object') out.vital = o.vital;
   // 14.53: 옛 tools (object 또는 number 형식) → 새 toolItems list 변환
   if (Array.isArray(o.toolItems)) {
@@ -347,7 +354,7 @@ function parseBody(raw, opts) {
     for (const [tn, val] of Object.entries(o)) {
       if (['hotkey1', 'toolItems', 'equipped', 'equipment', 'equipSlots', 'craftSkill', 'craftLog',
            'oreLedger', 'oreCarry', 'fishStats', 'body', 'kgLedger', 'lots', 'vital',
-           'lastSeenDay'].includes(tn)) continue;
+           'lastSeenDay', 'member'].includes(tn)) continue;   // ★[T11] 'member' 추가 — 옛 도구 형식으로 오독되면 안 된다
       const mx = TOOL_MAX_DURABILITY[tn] || 100;
       let d = mx;
       if (typeof val === 'number' && val > 0) d = mx;
@@ -2444,6 +2451,11 @@ Onboarding.init({ SimVillages, terrain: _terrain, ZONE, ZONE_ID, db: db.db, send
   isTerrainBlockedLocal, isWaterTileLocal, isBridgeLocal: isBridgeTileLocal, isSeaTileLocal,
   foodItems: new Set(Object.keys(FOOD_EFFECTS)), gameDay: zoneGameDay });
 
+// ★[T11 2026-09-02] 마을 소속·곳간 인출 — **이미 있는 것만 넘긴다**(사본 금지).
+//   기여 계량기는 안 넘긴다: `membership.js` 가 온보딩 정본을 직접 읽는다(계량기는 하나다).
+Membership.init({ SimVillages, ZONE_ID, send, players, gameDay: zoneGameDay,
+  afterWithdraw: (player, r) => _afterWithdraw(player, r) });
+
 // Phase 12.2.e: 자원 respawn 제거 — 청크 활성화 시 시드로 자동 생성됨
 
 // === HTTP + WebSocket ===
@@ -2878,6 +2890,7 @@ async function _acceptConnection(ws, req, C) {
   let _loadKgLedger = null;    // ★[무게] 개체 실제 kg 장부
   let _loadLots = null;        // ★[무게] 식품 로트(취득일)
   let _loadLastSeenDay = null; // ★[T7] 마지막으로 세계를 본 게임일 — 복귀 브리핑의 근거
+  let _loadMember = null;      // ★[T11] 마을 소속 — 몸을 따라 존을 넘고 재접속을 넘는다
   let initHunger = HUNGER_MAX, initThirst = THIRST_MAX, initVp = 0;
   let initVital = null;        // ★[T47] 핸드오프에서만 채워진다 — 존을 넘어도 HP·다운이 이어진다
   let initTribeId = null, initTribeName = null;
@@ -2940,6 +2953,7 @@ async function _acceptConnection(ws, req, C) {
       _loadCraftLog = B.craftLog; _loadOreLedger = B.oreLedger; _loadOreCarry = B.oreCarry;
       _loadFishStats = B.fishStats; _loadBody = B.body; _loadKgLedger = B.kgLedger; _loadLots = B.lots;
       _loadLastSeenDay = B.lastSeenDay;   // ★[T7] 존을 넘어도 부재 기준일은 따라간다(핸드오프는 부재가 아니다)
+      _loadMember = B.member;             // ★[T11] 소속도 같은 몸에 실려 온다
       equipped = B.equipped || pending.equipped || null;
       initVital = B.vital;
       tools = { __toolItems: B.toolItems, __hotkey1: B.hotkey1 };
@@ -3072,6 +3086,7 @@ async function _acceptConnection(ws, req, C) {
         _loadCraftLog = B.craftLog; _loadOreLedger = B.oreLedger; _loadOreCarry = B.oreCarry;
         _loadFishStats = B.fishStats; _loadBody = B.body; _loadKgLedger = B.kgLedger; _loadLots = B.lots;
         _loadLastSeenDay = B.lastSeenDay;   // ★[T7] 복귀 브리핑 기준일(게임일)
+        _loadMember = B.member;             // ★[T11] 소속
         if (B.equipped) equipped = B.equipped;
         // 저장용: 임시 wrap 객체 — 실제 player.toolItems/hotkey1 은 player 생성 시 풀린다
         tools = { __toolItems: B.toolItems, __hotkey1: B.hotkey1 };
@@ -3212,6 +3227,7 @@ async function _acceptConnection(ws, req, C) {
     // ★[T7] 마지막으로 세계를 본 게임일. **null = 처음 온 사람** — 복귀 브리핑은 안 나간다
     //   (첫 접속에 "0일 만이군" 은 거짓말이고, 첫 인사는 온보딩 몫이다).
     lastSeenDay: _loadLastSeenDay,
+    member: _loadMember,        // ★[T11] 마을 소속 — 기여는 온보딩 계량기가, 소속은 여기가 갖는다
     // ★[T47] 존을 넘을 때만 생명값을 잇는다(`initVital` 은 핸드오프에서만 채워진다).
     //   로그아웃 후 재접속의 풀피는 **정책**이라 그대로다 — 죽음 설계(T8) 소관.
     hp: (initVital && typeof initVital.hp === 'number') ? initVital.hp : PLAYER_MAX_HP,
@@ -3265,6 +3281,7 @@ async function _acceptConnection(ws, req, C) {
     //     (처음 온 사람은 null 이다) — 그때는 **저장본에서 읽은 값이 진실**이다.
     //     무조건 대입하면 그 사람의 부재가 통째로 사라진다(1차 수리가 그렇게 뒤집혔다).
     if (Number.isFinite(_takeover.lastSeenDay)) player.lastSeenDay = _takeover.lastSeenDay;
+    if (_takeover.member) player.member = _takeover.member;   // ★[T11] 살아 있던 몸의 소속이 진실이다(보강 — 덮어쓰기 아님)
     if (_takeover._returnBriefDone) player._returnBriefDone = true;
     if (typeof _takeover.hp === 'number') player.hp = _takeover.hp;
     if (typeof _takeover.hunger === 'number') player.hunger = _takeover.hunger;
@@ -3397,7 +3414,7 @@ async function _acceptConnection(ws, req, C) {
 //     망가지고, 어장 결손(`land.fishSustain`)은 econ 이 원자 조각 안에서만 읽으므로 미룰 이유도 없다.
 const VILLAGE_BOOK_MSG = new Set([
   'village_inventory', 'village_deposit', 'village_brief', 'village_board', 'village_deliver',
-  'village_trade', 'village_trade_exec', 'village_trade_quote',
+  'village_trade', 'village_trade_exec', 'village_trade_quote', 'village_withdraw',   // ★[T11] 인출도 마을 장부다
   'sell_relic', 'shop_info', 'craft_buy', 'craft_sell',
   'village_start', 'village_advance', 'request_village_house',
 ]);
@@ -3497,6 +3514,9 @@ function handlePlayerInput(player, raw) {
     const text = (msg.text || '').slice(0, 200);
     if (!text.trim()) return;
     metrics.chats++;
+    // ★[T11] 마을 소속 명령 — `/소속` `/탈퇴` `/추방 <이름>` `/인출 [수량] [재화]`.
+    //   **새 클라 조건 0**: 채팅은 이미 있다. 명령은 말이 아니므로 방송하지 않는다.
+    if (Membership.handleChat(player, text)) return;
     if (text.startsWith('/t ')) {
       if (!player.tribeId) { send(player.ws, { type: 'notice', text: '길드 소속이 아닙니다' }); return; }
       const tribeText = text.slice(3).trim();
@@ -3545,6 +3565,7 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'village_board') tryVillageBoard(player, msg.vid);
   else if (msg.type === 'village_chronicle') tryVillageChronicle(player, msg.vid, msg.year);   // ★[T18] 연대기
   else if (msg.type === 'village_deliver') tryVillageDeliver(player, msg.vid, msg.item, msg.want);
+  else if (msg.type === 'village_withdraw') tryVillageWithdraw(player, msg.vid, msg.res, msg.qty);   // ★[T11] 곳간 인출(소속만)
   else if (msg.type === 'onboarding_state' || msg.type === 'onboarding_greet' || msg.type === 'onboarding_day') Onboarding.handleMsg(player, msg);   // ★[온보딩 v2] 대본 상태·촌장 첫 마디·하루 정산
   else if (msg.type === 'village_trade') tryVillageTrade(player, msg.vid);                                   // ★[거래소] 시세표
   else if (msg.type === 'village_trade_exec') tryVillageTradeExec(player, msg.vid, msg.give, msg.take, msg.qty);  // ★[거래소] 교환
@@ -3572,6 +3593,10 @@ function handlePlayerInput(player, raw) {
     }
     send(player.ws, { type: 'gauges', hunger: Math.round(player.hunger), thirst: Math.round(player.thirst),
       vp: Math.round(player.vp || 0), cold: !!player._cold, body: Body.selfPayload(player) });
+    // ★[T11] 소속도 세울 수 있게 한다 — `test-handoff-body` 가 **존을 넘어 소속이 사는지**를 재려면
+    //   앉혀 놓을 수 있어야 한다(그 하네스는 `ENABLE_VILLAGES=0` 이라 정상 경로로는 못 얻는다).
+    //   ⚠검사 전용이다: 판정(문턱·직교·한도)은 여기서 안 밟는다 — 그건 `test-membership` 이 잰다.
+    if (msg.member !== undefined) player.member = msg.member || null;
     if (msg.quiet !== true) send(player.ws, { type: 'notice', text: `🧪 몸 상태 세움 — ${JSON.stringify(Body.toSave(player))}` });
   }
   else if (E2E_GIVE && msg.type === '__e2e_clock') {
@@ -7201,15 +7226,55 @@ function tryVillageBrief(player, vid) {
   // ★부재 요약은 **접속당 한 번**이다. 두 번째부터는 평소 브리핑으로 돌아간다 —
   //   안 그러면 접속한 채로 사흘 돌아다니다 마을에 들르면 "사흘 만이군" 소리를 듣는다
   //   (부재는 **사람이 자리를 비운 것**이지 마을에 안 들른 것이 아니다).
+  player._memberNearVid = vid | 0;   // ★[T11] 채팅 `/인출` 이 어느 마을인지 — 근접 브리핑이 곧 "여기 있다"는 신호다
   const since = (!player._returnBriefDone && Number.isFinite(player.lastSeenDay)) ? (player.lastSeenDay | 0) : null;
   const r = SimVillages.villageBrief(vid | 0, player.x, player.y, { sinceDay: since });
   if (r.err) { send(player.ws, { type: 'notice', text: `🏘️ ${r.err}` }); return; }
+  Membership.orderBrief(player, r);   // ★[T11] 소속 마을 사건을 앞줄로 — **가시성은 안 바꾼다**(순서만)
   if (since != null) {           // 게이트를 통과해 실제로 브리핑이 나갔다 — 이 접속의 몫은 끝났다
     player._returnBriefDone = true;
     player.lastSeenDay = r.day | 0;
     if (canPersist(player)) savePlayer(player);
   }
   send(player.ws, { type: 'village_brief', brief: r });
+}
+// ★★[T11 2026-09-02 재민 확정] **곳간에서 꺼내기 — 마을 사람의 몫.**
+//   판정(누가·얼마나)은 `server/membership.js`, 실물 이동은 `villages.playerVillageWithdraw`
+//   (= `playerVillageDeposit` 의 역연산). 여기서 하는 일은 **장부 뒷정리와 화면**뿐이다.
+//   ⚠취득일: 인벤이 늘었으니 `Lots.reconcile(…, 오늘)` 이 남는 몫을 **오늘 얻은 것**으로 잡는다
+//     — 즉 **출고일 = 취득일**이 종전 규약으로 저절로 선다(새 규약을 만들지 않았다).
+function _afterWithdraw(player, r) {
+  const today = zoneGameDay();
+  if (Lots.isLot(r.item)) Lots.reconcile(player, r.item, player.inventory, today);
+  Carry.reconcile(player, player.inventory);
+  savePlayer(player);
+  sendInventory(player);
+  send(player.ws, { type: 'notice', text: `🏘️ ${r.name} 곳간에서 ${ITEM_LABEL_SERVER[r.item] || r.item} ${r.qty} 꺼냈다`
+    + ` — 오늘 남은 몫 ${r.remain}/${r.limit}` });
+  // ★거래소 창이 열려 있으면 **그 창을 다시 보내 준다** — 방금 곳간이 줄었고 남은 몫도 줄었다
+  //   (거래소 실행이 시세를 다시 보내 주는 것과 같은 규약: 화면이 낡은 값을 들고 있으면 그게 거짓말이다).
+  try {
+    const _v = player._memberNearVid;
+    if (_v != null && SimVillages.villageTradeBoard) {
+      const b = SimVillages.villageTradeBoard(_v | 0, player.x, player.y, player.inventory);
+      if (!b.err) { b.member = _memberLine(player, _v | 0); send(player.ws, { type: 'village_trade', trade: b }); }
+    }
+  } catch (e) {}
+}
+// ★[T11] 거래소 패널이 그릴 소속 한 줄. 곳간 재고는 **정본 함수**에게 묻는다(클라 재계산 0).
+function _memberLine(player, vid) {
+  try {
+    const g = SimVillages.villageWithdrawGate(vid | 0, player.x, player.y);
+    const stock = g.err ? 0 : SimVillages.playerVillageWithdrawStock(g.vil, 'food');
+    const st = Membership.publicState(player, stock);
+    st.stock = stock;
+    return st;
+  } catch (e) { return null; }
+}
+function tryVillageWithdraw(player, vid, res, qty) {
+  const r = Membership.withdraw(player, vid | 0, res, qty);
+  if (!r.ok) { send(player.ws, { type: 'notice', text: `🏘️ ${r.err}` }); return; }
+  _afterWithdraw(player, r);
 }
 function tryVillageBoard(player, vid) {
   if (!SimVillages.villageBoard) return;
@@ -7281,6 +7346,8 @@ function tryVillageTrade(player, vid) {
   if (!SimVillages.villageTradeBoard) return;
   const r = SimVillages.villageTradeBoard(vid | 0, player.x, player.y, player.inventory);
   if (r.err) { send(player.ws, { type: 'notice', text: `🏪 ${r.err}` }); return; }
+  player._memberNearVid = vid | 0;                      // ★[T11] 채팅 `/인출` 이 어느 마을인지
+  r.member = _memberLine(player, vid | 0);              // ★[T11] 소속·오늘 남은 몫 — **기존 payload 한 줄**(새 창구 0)
   send(player.ws, { type: 'village_trade', trade: r });
 }
 // ★교환 — 서버 권위. 비율도 상한도 서버가 정하고, 클라는 "이거 내고 저거 받겠다"만 말한다.
@@ -7318,6 +7385,7 @@ function tryVillageDeliver(player, vid, item, want) {
   const got = r.rew > 0 ? ` → ${ITEM_LABEL_SERVER[r.rewItem] || r.rewItem} ${r.rew}` : '';
   send(player.ws, { type: 'notice', text: `📋 ${r.name}에 납품 — ${gave}${got}${r.refused > 0 ? ` (${r.refused}개는 남은 몫을 넘어 돌려받음)` : ''}` });
   Onboarding.onDeliver(player, r, vid | 0);   // ★[온보딩 v2] 누적 기여(=T11 이 재사용할 하나의 카운터)·곳간 이펙트·훅 대사·빈터 권리
+  Membership.onDeliver(player, r, vid | 0);   // ★[T11] **그 다음**이다 — 기여가 오른 뒤라야 소속 문턱을 정확히 본다
   // 낸 즉시 게시판이 갱신된다(다 찼으면 목록에서 빠진다)
   const b = SimVillages.villageBoard(vid | 0, player.x, player.y);
   if (b && b.ok) send(player.ws, { type: 'village_board', board: b });

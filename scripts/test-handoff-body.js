@@ -79,7 +79,10 @@ const durableKey = (b) => b ? JSON.stringify({
   equipSlots: b.equipSlots || {}, craftSkill: b.craftSkill || {}, craftLog: b.craftLog || {},
   oreLedger: b.oreLedger || {}, oreCarry: b.oreCarry || {}, fishStats: b.fishStats || null,
   kgLedger: b.kgLedger || null, lots: b.lots || null,
+  member: b.member || null,   // ★[T11] 마을 소속 — 시간이 안 바꾼다 ⇒ 내구 쪽이다
 }) : '(없음)';
+// ★[T11] 존을 넘겨 볼 소속 픽스처. `serializeBody` 가 그대로 싣고 `parseBody` 가 그대로 돌려줘야 한다.
+const MEMBER_FIX = { zone: 'hanbando', vid: 7, name: '검사마을', since: 33, wdDay: 33, wdUsed: 2 };
 const softOf = (b) => (b && b.body) ? { cold: +(b.body.cold || 0), fatigue: +(b.body.fatigue || 0), injury: +(b.body.injury || 0) } : null;
 const softNear = (x, y, tol) => !!x && !!y && Math.abs(x.cold - y.cold) <= tol && Math.abs(x.fatigue - y.fatigue) <= tol && Math.abs(x.injury - y.injury) <= tol;
 
@@ -107,6 +110,9 @@ async function roundTrip(tag) {
   const guestToken = a.welcome.guestToken;
   a.ws.send(JSON.stringify({ type: '__e2e_give', items: { pillar: 3, thatch: 7 }, tools: ['axe', 'pickaxe'],
                              kgs: { fish: [2.0, 0.4, 1.1] }, quiet: true }));
+  // ★[T11] 마을 소속을 앉힌다 — 존을 넘어 **소속이 사는가**를 이 왕복이 같이 잰다.
+  //   (이 하네스는 `ENABLE_VILLAGES=0` 이라 정상 경로로는 못 얻는다. 판정은 `test-membership` 이 잰다.)
+  a.ws.send(JSON.stringify({ type: '__e2e_body', member: MEMBER_FIX, quiet: true }));
   await sleep(900);
   const before = pick(await jget(`http://localhost:${HPORT}/bodydbg`));
 
@@ -163,6 +169,9 @@ async function roundTrip(tag) {
   ok(!!R.before && ((R.before || {}).toolItems || []).length === 2, '★[상황] 출발 몸에 잴 것이 실제로 있다(도구 2 · kg원장 3)',
     `도구 ${(R.before.toolItems || []).length} · kg ${JSON.stringify((R.before.kgLedger || {}).fish || (R.before.kgLedger || {})).slice(0, 40)}`);
   ok(durableKey(R.before) !== '(없음)' && JSON.stringify(R.before.kgLedger || {}) !== '{}', '★[상황] kg 원장이 비어 있지 않다');
+  // ★[T11] 상황 assert — 소속이 실제로 출발 몸에 앉았나(0 이면 아래 왕복 검사가 자명 통과다)
+  ok(!!(R.before && R.before.member && R.before.member.vid === MEMBER_FIX.vid),
+    '★[상황·T11] 출발 몸에 마을 소속이 앉아 있다', JSON.stringify((R.before || {}).member));
 
   // ② 왕복 후 — 내구는 비트 동일, 연속 상태는 이어진다
   const dEq = durableKey(R.after) === durableKey(R.before);
@@ -174,6 +183,10 @@ async function roundTrip(tag) {
   ok(softNear(softOf(R.after), softOf(R.beforeCross), 0.15), '② 신체 상태(추위·피로·부상)가 **이어진다**(0 으로 안 튄다)',
     `${JSON.stringify(softOf(R.beforeCross))} → ${JSON.stringify(softOf(R.after))}`);
   ok((R.welcomeTools || []).length === 2, '② welcome 도 도구를 싣고 온다(화면이 아는가)', `${(R.welcomeTools || []).length}개`);
+  // ★[T11] 위 ②의 `durableKey` 가 이미 소속을 포함하지만, **깨졌을 때 이름이 나오게** 한 줄 따로 둔다
+  //   (합산 비교만 있으면 "무엇이 샜는지"를 안 말해 준다 — N.6 이 그렇게 오래 안 잡혔다).
+  ok(JSON.stringify((R.after || {}).member) === JSON.stringify(MEMBER_FIX),
+    '② ★[T11] 마을 소속이 존을 넘어 그대로 온다', JSON.stringify((R.after || {}).member));
   // ★생명값 — 존을 넘는 것은 **한 접속의 연속**이다. 여기서 풀피가 되면 그건 결함이다.
   //   (같은 존 안에서는 `_takeover` 가 이미 HP 를 잇고 있었다 — 존을 넘을 때만 회복되던 게 이상했다.)
   const hpX = ((R.beforeCross || {}).vital || {}).hp, hpA = ((R.after || {}).vital || {}).hp;
@@ -186,6 +199,8 @@ async function roundTrip(tag) {
   const aEq = durableKey(R.again) === durableKey(R.before);
   ok(aEq, '④ ★★재접속한 몸의 내구 부분도 **비트 동일**(영구 소실이 없다)',
     aEq ? '' : `\n      출발   ${durableKey(R.before)}\n      재접속 ${durableKey(R.again)}`);
+  ok(JSON.stringify((R.again || {}).member) === JSON.stringify(MEMBER_FIX),
+    '④ ★[T11] 재접속해도 마을 소속이 그대로다', JSON.stringify((R.again || {}).member));
 
   killAll(); await sleep(4000);
 

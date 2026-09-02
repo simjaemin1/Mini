@@ -607,3 +607,27 @@ for i in $(seq 1 120); do s=$(date +%s%N); curl -sf -m10 -o /dev/null http://loc
 
 ---
 
+
+## Z-소속. ★[T11 2026-09-02] `zone.js` 접점 — 마을 소속·곳간 인출
+
+정본은 `server/membership.js` 이고, 규약은 `인계/S-사회스킬.md` **S-소속** 절에 있다(여기 복제하지 않는다).
+`zone.js` 가 하는 일은 **접점 등록**뿐이다 — 판정은 한 줄도 여기 없다.
+
+| 자리 | 하는 일 |
+|---|---|
+| `require('./membership')` | 모듈 하나 |
+| `Membership.init({ SimVillages, ZONE_ID, send, players, gameDay, afterWithdraw })` | `Onboarding.init` 바로 뒤. **이미 있는 것만 넘긴다** — 기여 계량기는 안 넘긴다(membership 이 온보딩 정본을 직접 읽는다) |
+| `serializeBody` / `parseBody` | `member` 필드 한 줄씩 (+ 옛 도구 형식 오독 방지 제외 목록에 `'member'`) |
+| 접속 복원 3자리 | `_loadMember` 버퍼 · 핸드오프 · 로그인 · `_takeover.member`(살아 있던 몸이 진실 — **보강**이지 덮어쓰기 아님) |
+| `tryVillageDeliver` | `Onboarding.onDeliver` **다음** 한 줄 `Membership.onDeliver` — 기여가 오른 뒤라야 문턱을 정확히 본다 |
+| `tryVillageBrief` | `player._memberNearVid = vid` (근접 브리핑이 곧 "여기 있다"는 신호 — 채팅 `/인출` 이 이걸 본다) + `Membership.orderBrief(player, r)` (소속 마을 사건 앞줄 · **가시성은 안 바꾼다**) |
+| `tryVillageTrade` | `r.member = _memberLine(...)` — 거래소 payload 에 한 줄 얹는다(새 창구 0) |
+| `chat` 분기 첫 줄 | `if (Membership.handleChat(player, text)) return;` — 명령은 말이 아니므로 **방송하지 않는다** |
+| `tryVillageWithdraw` / `_afterWithdraw` | 인출 뒤 `Lots.reconcile` → `Carry.reconcile` → `savePlayer` → `sendInventory` → 알림 → 거래소 창 갱신 |
+| `VILLAGE_BOOK_MSG` | `'village_withdraw'` 추가 — 인출도 마을 장부라 일틱 조각 창에서 **미뤄졌다 흘러야** 한다 |
+
+⚠**새 존 로컬 테이블을 안 만들었다.** 소속은 몸에 실린다 — 존 로컬 표에 두면 존을 넘는 순간
+없던 일이 된다(T47 이 도구로 겪은 그 결함의 소속판). `zone-local-db.js` 는 **무접촉**이다.
+
+⚠`_afterWithdraw` 는 `_memberNearVid` 가 있을 때만 거래소 창을 다시 보낸다 — 창이 안 열려 있으면
+보낼 데가 없다. 화면이 낡은 남은 몫을 들고 있으면 그게 거짓말이라, 거래소 실행과 **같은 규약**이다.

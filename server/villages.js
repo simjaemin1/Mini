@@ -3633,6 +3633,43 @@ function playerVillageDeposit(vil, inventory, want, unitsOf) {
   return { ok: true, moved, taken };
 }
 
+
+// ★★[T11 2026-09-02 재민 확정] **곳간에서 꺼내기 — 위 `playerVillageDeposit` 의 역연산.**
+//   누가·얼마나는 `server/membership.js`(소속·한도)가 정한다. 여기는 **실물 이동만** 한다.
+//   ⚠사본을 만들지 않으려고 세 가지를 그대로 쓴다:
+//     ① 재화↔아이템 대응 — `ledger.deliverable.toEcon`(=`PV_DEPOSIT_MAP` 에서 파생된 정본.
+//        게시판 보상 지급이 쓰는 바로 그 표다: `events.deliverToVillage` 의 `D.toEcon.get(rewRes)`).
+//     ② 환산율 — 넣을 때와 **같은** `PV_DEPOSIT_RATE`. 다르면 곳간이 환전소가 된다(보이지 않는 손).
+//     ③ 재고 mutation — 넣기와 **같은 줄의 부호만 반대**다(`v.storage[res] ∓ q`).
+//   ⚠취득일은 여기서 안 쓴다 — `zone.js` 가 인벤을 늘린 뒤 `Lots.reconcile(…, 오늘)` 이 돌면
+//     남는 몫이 **오늘 얻은 것**으로 잡힌다(무게 배치의 규약 그대로 · T5 노출 E 규약).
+function playerVillageWithdraw(vil, inventory, res, qty) {
+  const v = vil && vil.econ;
+  if (!v) return { ok: false, err: '마을을 찾지 못했다' };
+  if (!state.ledger) return { ok: false, err: '아직 장부가 없다' };
+  const r = String(res || '');
+  const item = state.ledger.deliverable.toEcon.get(r);
+  if (!item) return { ok: false, err: '곳간에서 꺼낼 수 있는 물건이 아니다' };
+  const q = Math.floor(Number(qty) || 0);
+  if (!(q > 0)) return { ok: false, err: '꺼낼 양이 없다' };
+  const have = playerVillageWithdrawStock(vil, r);
+  if (have < q) return { ok: false, err: `곳간에 그만큼 없다 (지금 ${have})` };
+  v.storage[r] = +(((v.storage[r] || 0) - q * PV_DEPOSIT_RATE)).toFixed(3);
+  inventory[item] = (inventory[item] || 0) + q;
+  return { ok: true, res: r, item, qty: q, stockAfter: +(+v.storage[r]).toFixed(3) };
+}
+// 곳간 재고를 **꺼낼 수 있는 개수**로 본다(넣기와 같은 환산율의 역수). 표시·한도가 같은 값을 본다.
+function playerVillageWithdrawStock(vil, res) {
+  const v = vil && vil.econ;
+  if (!v) return 0;
+  return Math.floor(+((v.storage || {})[String(res || '')] || 0) / PV_DEPOSIT_RATE);
+}
+// 근접 게이트 — 브리핑·게시판·거래소와 **같은 술어 하나**(`_villageNear`, 260px). 우회로 없음.
+function villageWithdrawGate(vid, px, py) {
+  if (!state.ledger) return { err: '아직 장부가 없다' };
+  return _villageNear(vid, px, py);
+}
+
 // 회관 셀(정확히 중심) → 그 마을. 플레이어가 세운 마을만 돌려준다(NPC 마을 회관은 이 UI 대상이 아니다).
 function playerVillageAt(ccx, ccy) {
   for (const vil of state.villages) {
@@ -4550,7 +4587,10 @@ function villageBrief(vid, px, py, opts) {
     else lines.unshift(`${rb.absent}일 만이군. 그새 이런 일이 있었네.`);
     if (rb.more > 0) lines.push(`그 밖에 ${rb.more}건은 게시판에 적어 두었네.`);
     return { ok: true, vid: vid | 0, name: g.vil.name, day, lines, board: board.length,
-             returned: true, absentDays: rb.absent, heard: rb.total };
+             returned: true, absentDays: rb.absent, heard: rb.total,
+             // ★[T11] 사건 원본 줄 — 소속 마을 것을 앞줄로 세우는 데만 쓴다(`membership.orderBrief`).
+             //   **가시성은 여기서 안 바꾼다**: 무엇이 보이는가는 여전히 `visibleEvents` 술어 하나가 정한다.
+             rows: rb.rows };
   }
   // ── 평소 브리핑
   const evs = L.recent(vid | 0, L.cfg.BRIEF_N);
@@ -4915,6 +4955,7 @@ module.exports = {
   // ★★[2026-08-03e 배치 12] 플레이어 마을 건립 — zone.js `village_site` 완공 훅이 소비.
   //   `playerVillageAt` 은 재고 UI 의 권한/조회 진입점(회관 셀 → 그 마을).
   foundPlayerVillage, playerVillageInventory, playerVillageAt, playerVillageDeposit, playerVillageDepositMap,
+  playerVillageWithdraw, playerVillageWithdrawStock, villageWithdrawGate,   // ★[T11] 곳간 인출 — 납품의 역연산(같은 표·같은 환산율)
   // ★[2026-08-25 사건 레이어] 촌장 브리핑 · 게시판 · 납품 — zone.js 핸들러가 소비
   villageBrief, villageBoard, villageDeliver, villageAnchorPx, briefRadiusPx,
   // ★[T7 2026-09-01] 소문 물리 전파 — 시작 화면 근황(온보딩 v2 가 읽는다) · 하네스 계측
@@ -4955,6 +4996,20 @@ module.exports = {
     // ★[2026-08-03d 배치 11 ①-2] 거리행렬 증분화 하네스용 —
     //   `scripts/test-distmatrix.js` 가 **정본 함수 그대로** 전쌍/증분을 비교한다(사본 금지).
     //   state 를 하네스가 직접 세팅해야 하므로 최소 주입구만 연다.
+    // ★[T11 2026-09-02] 곳간 인출 하네스용 — `_distProbe` 와 같은 규약(최소 주입구 하나).
+    //   하네스가 마을·장부를 **정본이 보는 자리에** 꽂는다. 판정 함수는 그대로 라이브의 것을 부른다
+    //   (하네스가 근접 게이트나 재화 대응을 다시 짜면 그게 사본이다).
+    _memberProbe: {
+      setup: (ledger, vils) => {
+        state.ledger = ledger;
+        state.villages = vils;
+        state.byDbId = new Map(vils.map((v, i) => [v.dbId != null ? v.dbId : i, v]));
+        return state.byDbId.size;
+      },
+      anchorPx: villageAnchorPx,
+      get BRIEF_PX() { return EV_BRIEF_PX; },
+      get RATE() { return PV_DEPOSIT_RATE; },
+    },
     _distProbe: {
       compute: (reason, opts) => computeAndInjectDistMatrix(reason, opts),
       setup: (ta, ZONE, world, econ) => { state._distCtx = { ta, ZONE }; state.world = world; state.econ = econ; },
