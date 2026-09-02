@@ -68,7 +68,15 @@ const META = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
   const cl = require('./client-src.js').readClientSrc();
   ok(/char_meta\.json/.test(cl), '★클라가 메타를 fetch 한다 (규격 하드코딩 금지)');
   ok(/uiCfg\.charSprite/.test(cl), '★플래그로 감싼다 (기본 OFF — 병행 안전)');
-  ok(/!item\.npc &&/.test(cl), '★★NPC 는 시트에서 제외된다 (마을 적용은 회부된 별도 배치)');
+  // ★★[T13 2026-09-02] 이 줄은 **뒤집혔다.** 종전 판정은 `!item.npc &&` 를 요구했고, 그 판정의
+  //   이름이 곧 해제 조건이었다 — *"마을 적용은 회부된 별도 배치"*. **그 배치가 T13 이다.**
+  //   ⇒ 지우지 않고 **새 계약으로 갈아 끼운다**: NPC 도 시트로 가되, 직업 표를 쓰고, 폴백은 산다.
+  ok(!/!item\.npc &&/.test(cl), '★★NPC 제외가 풀렸다 (T13 — 마을 주민도 소체 시트)');
+  ok(/npcCharLayers\(/.test(cl), '★NPC 는 직업 표(`npcCharLayers`)로 레이어를 고른다');
+  ok(/const NPC_JOB_TOOL = \{/.test(cl), '★직업 표가 클라 소스에 하나뿐이다(사본 금지)');
+  ok(/job: item\.npc \?/.test(cl), '★`job` 은 NPC 일 때만 실린다 — 사람 경로는 종전 그대로');
+  ok(/Math\.min\(_rawSpeed, _npcRun - 1\)/.test(cl),
+     '★NPC 속도를 달리기 문턱 아래로 묶는다 — "걷기·서기 둘만" 계약');
 }
 
 console.log('\n=== ① 시트 ↔ 메타 정합 ===');

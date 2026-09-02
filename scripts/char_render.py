@@ -94,6 +94,17 @@ ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 ONLY_META = "--only-meta" in ARGS
 RAWDUMP = "--rawdump" in ARGS      # 실루엣 강화 전 시트를 OUTDIR 에 남긴다(세기 비교용)
 CLIP_FILTER = set(a for a in ARGS if not a.startswith("--")) or None
+# ★[T13 2026-09-02] **레이어 필터** — `--layer=tool_hoe,tool_hammer`.
+#   왜 필요한가: 이 컨테이너의 bpy 는 자산을 구웠던 Blender 와 판이 다르다. 같은 기하·같은 카메라라
+#   메타(프레임 상자·앵커)는 **한 글자도 안 바뀌지만**, 몬테카를로 표본이 달라 **바이트가 달라진다**
+#   (실측: 알파 최대차 0~3 · 실루엣 안 평균 채널차 0.32~1.17/255 = 잡음 수준, 그러나 md5 는 다르다).
+#   ⇒ 새 레이어만 굽고 **기존 20장은 건드리지 않는다.** 필터가 없으면 그게 불가능하다.
+#   ⚠실루엣 강화(EDGE_K)의 합집합 마스크는 body/clothes 만 쓰므로 도구만 굽는 판에서도 무해하다
+#     (도구는 `SILHOUETTE_GROUP` 밖이라 mask=None 경로 — 전체 판과 같은 결과).
+LAYER_FILTER = None
+for _a in ARGS:
+    if _a.startswith("--layer="):
+        LAYER_FILTER = set(x.strip() for x in _a[len("--layer="):].split(",") if x.strip())
 
 DIRS = 8   # 8방향. 16방향은 회부(연속 페이싱 재론과 함께)
 
@@ -475,7 +486,53 @@ def build_rod():
     return L
 
 
-TOOL_BUILDERS = [("axe", build_axe), ("rod", build_rod)]
+# -- [T13 2026-09-02] NPC 직업 표식용 소품 둘 --------------------------------
+#   ★왜 **옷 색이 아니라 소품**인가: 3-n 이 못 박은 고증이 *"서민 복장 = 물들이지 않은 삼베
+#   (화려함 금지 — 청동 위세재와 대비되는 수수함이 정체성)"* 다. 직업을 옷 색으로 가르면
+#   그 캐논을 정면으로 어긴다. 손에 든 것으로 가르면 고증도 지키고 실루엣으로도 읽힌다
+#   (54px 에서 얼굴은 안 보여도 **연장 실루엣은 보인다** — 3-q ④ 가 배운 것).
+#   ★그리고 이 둘은 **기존 도끼·낚싯대와 같은 문법**이다: 오른손(모델 -y)·몸만 홀드아웃·
+#   `TOOL_BUILDERS` 한 줄. 시트가 곱으로 늘지 않는다(레이어는 가산이다 — 3-q ③).
+def build_hoe():
+    # 괭이 — 농부. 자루는 도끼보다 길고 날은 아래로 꺾인 판(따비·괭이 계열).
+    L = []
+    prism("hoe_haft", 0.02, -ARM_Y, Z_SHLD - 0.52, 0.038, 0.038, 0.92, M['wood'], L, seg=8)
+    box("hoe_blade", 0.02, -ARM_Y - 0.055, Z_SHLD - 0.95, 0.085, 0.135, 0.055, M['stone'], L)
+    prism("hoe_bind", 0.02, -ARM_Y, Z_SHLD - 0.90, 0.048, 0.052, 0.05, M['cord'], L, seg=8)
+    return L
+
+
+def build_hammer():
+    # 망치 — 대장장이·석공. 자루는 짧고 머리가 굵다(도끼의 납작한 날과 실루엣이 갈린다).
+    L = []
+    prism("ham_haft", 0.02, -ARM_Y, Z_SHLD - 0.52, 0.042, 0.042, 0.46, M['wood'], L, seg=8)
+    box("ham_head", 0.02, -ARM_Y, Z_SHLD - 0.30, 0.105, 0.10, 0.115, M['stone'], L)
+    prism("ham_bind", 0.02, -ARM_Y, Z_SHLD - 0.375, 0.05, 0.05, 0.045, M['cord'], L, seg=8)
+    return L
+
+
+def build_spear():
+    # 창 — 사냥꾼·전사. 가장 긴 자루 + 좁고 뾰족한 돌촉. 54px 에서 **가장 잘 읽히는** 실루엣이다.
+    #   ★활이 아니라 창인 이유: 굽은 활은 링을 쌓는 이 조형 문법(loft)으로 세로 아치를 못 만든다.
+    #   지어낼 바에는 만들 수 있는 것 중 고증에 맞는 것을 고른다(청동기 한반도 수렵구 = 창·활 둘 다).
+    L = []
+    prism("spr_haft", 0.02, -ARM_Y, Z_SHLD - 0.40, 0.030, 0.030, 1.35, M['wood'], L, seg=8)
+    box("spr_tip", 0.02, -ARM_Y, Z_SHLD + 0.30, 0.045, 0.075, 0.20, M['stone'], L, taper=0.15)
+    prism("spr_bind", 0.02, -ARM_Y, Z_SHLD + 0.19, 0.040, 0.040, 0.06, M['cord'], L, seg=8)
+    return L
+
+
+def build_basket():
+    # 바구니 — 채집꾼. 손에 든 얕은 채반(등짐이 아니다 — 등짐은 몸 홀드아웃과 어긋난다).
+    #   위가 넓은 역테이퍼 통 + 테두리 띠. 도구 중 유일하게 **가로로 넓어** 다른 넷과 안 헷갈린다.
+    L = []
+    prism("bsk_body", 0.02, -ARM_Y - 0.02, Z_SHLD - 0.72, 0.26, 0.22, 0.17, M['cord'], L, taper=1.55, seg=10)
+    prism("bsk_rim", 0.02, -ARM_Y - 0.02, Z_SHLD - 0.645, 0.30, 0.26, 0.035, M['wood'], L, seg=10)
+    return L
+
+
+TOOL_BUILDERS = [("axe", build_axe), ("rod", build_rod), ("hoe", build_hoe), ("hammer", build_hammer),
+                 ("spear", build_spear), ("basket", build_basket)]
 for _tn, _tb in TOOL_BUILDERS:
     TOOLS[_tn] = _tb()
 
@@ -926,11 +983,13 @@ if not ONLY_META:
             continue
         built = []
         for lname, getter, hoget in LAYERS:
+            if LAYER_FILTER and lname not in LAYER_FILTER:
+                continue
             sheet, SW, SH = render_layer(lname, getter(), clip, n, hoget())
             built.append([lname, sheet, SW, SH])
             if RAWDUMP:   # 실루엣 강화 **전** 원본 — 세기 비교판을 재렌더 없이 만들려고 남긴다
                 save_sheet(sheet, SW, SH, os.path.join(OUTDIR, f"raw_{lname}_{clip}.png"))
-        if EDGE_K < 0.999:
+        if EDGE_K < 0.999 and built:
             SW, SH = built[0][2], built[0][3]
             uni = [0.0] * (SW * SH)
             for lname, sheet, _w, _h in built:

@@ -237,7 +237,8 @@
     if (!uiCfg.charSprite) return false;
     const m = charMeta();
     if (!m) return false;
-    const layers = charLayersFor(isMe);
+    // ★[T13] NPC 는 직업 표식 표를 쓴다(`40-r2-sprites.js` — 이 파일에 함수를 새로 만들지 않는다).
+    const layers = opts.job ? npcCharLayers(opts.job) : charLayersFor(isMe);
     // ★한 장이라도 안 떠 있으면 **아무것도 안 그린다** — 반쪽 합성(몸만·옷만)이 화면에 나가면
     //   "픽셀 정렬 0px" 계약이 지켜지는지 눈으로 볼 수 없다. 다 뜰 때까지 도형으로 버틴다.
     const st0 = _charAnim.get(opts.pid);
@@ -272,6 +273,8 @@
     if (!window.__charDbg) window.__charDbg = {};
     window.__charDbg[opts.pid] = { on: true, clip: stt.clip, frame: stt.frame, row,
                          layers: layers.slice(),
+                         job: opts.job || null,      // ★[T13] NPC 직업 — 하네스가 표식을 판정하는 재료
+
                          speed: +(opts.speed || 0).toFixed(2),
                          aiming: !!opts.aiming, isMe: !!isMe, fw, fh,
                          facing: [+(opts.fvx || 0).toFixed(4), +(opts.fvy || 0).toFixed(4)],

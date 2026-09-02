@@ -1270,7 +1270,7 @@
         const oFloor = o.floor || 0;
         const oZ = oFloor * FLOOR_HEIGHT + (o.z || 0); // 14.49-d: 계단 위 z 포함
         const isoF = w2i(ax, ay, oZ);
-        renderables.push({ z: (ax + ay) * 0.5 + oFloor * 0.5 + 500, kind: 'player', wx: ax, wy: ay, pid: o.pid, name: displayName, color: o.color || '#5a9ae0', hp: o.hp, maxHp: o.maxHp, iso: isoF, ax, ay, floor: oFloor, lastAttackAt: o.lastAttackAt, vx: o.vx, vy: o.vy, _fvx: o._fvx, _fvy: o._fvy, npc: o.npc, _war: o._war, bt: o.bt, bs: o.bs, bc: o.bc, br: o.br, cap: o.cap, act: o.act });
+        renderables.push({ z: (ax + ay) * 0.5 + oFloor * 0.5 + 500, kind: 'player', wx: ax, wy: ay, pid: o.pid, name: displayName, color: o.color || '#5a9ae0', hp: o.hp, maxHp: o.maxHp, iso: isoF, ax, ay, floor: oFloor, lastAttackAt: o.lastAttackAt, vx: o.vx, vy: o.vy, _fvx: o._fvx, _fvy: o._fvy, npc: o.npc, simJob: o.simJob, _war: o._war, bt: o.bt, bs: o.bs, bc: o.bc, br: o.br, cap: o.cap, act: o.act });
       }
     }
     {
@@ -1806,16 +1806,23 @@
         // Phase 14.41: 다운 상태 — 본인은 myIsDown, 다른 사람은 downStates Map
         const downFlag = item.isMe ? myIsDown : !!downStates.get(item.pid);
         // ★[캐릭터 스프라이트] 플래그가 켜져 있고 시트가 다 떠 있으면 시트로, 아니면 종전 도형으로.
-        //   ⚠**NPC 주민은 제외**한다 — 사람 시트를 마을에 입히는 건 별도 배치다(회부).
-        //     서버가 첫 가시 메타에 `npc` 1비트를 실어 준다(makeEntry — 애니용 필드가 아니라 신원).
+        //   ★★[T13 2026-09-02] **NPC 주민도 시트로 간다** — 별도 배치(이것)가 왔다.
+        //     서버는 첫 가시 메타에 `npc` 1비트와 `simJob` 을 이미 실어 준다(makeEntry). 서버 무접촉.
+        //     직업 표식은 `simJob` → 소품 레이어(`npcCharLayers` · `40-r2-sprites.js`).
+        //   ⚠NPC 는 **걷기·서기 둘만** 쓴다(T13 지시). 그래서 속도를 달리기 문턱 아래로 **묶어서**
+        //     넘긴다 — 안 묶으면 빠른 NPC 가 `run` 시트를 찾고, 그건 있지만 "걷기·서기" 계약 밖이다.
+        //     (시트가 없으면 `drawCharSprite` 가 false 를 내고 도형으로 떨어진다 — 폴백은 그대로 산다.)
         //   다운/전쟁 병사/포로는 종전 도형 경로 유지(누운 모습·병종색·밧줄은 시트에 없다).
-        const _spriteOk = !downFlag && !item._war && !item.cap && !item.npc &&
+        const _npcRun = (uiCfg.charRunMin || 102);
+        const _rawSpeed = item.isMe ? Math.hypot(myVel.vx, myVel.vy)
+                                    : Math.hypot(item.vx || 0, item.vy || 0);
+        const _spriteOk = !downFlag && !item._war && !item.cap &&
           drawCharSprite(s.x, s.y, !!item.isMe, {
             pid: item.pid, fvx, fvy,
-            speed: item.isMe ? Math.hypot(myVel.vx, myVel.vy)
-                             : Math.hypot(item.vx || 0, item.vy || 0),
+            speed: item.npc ? Math.min(_rawSpeed, _npcRun - 1) : _rawSpeed,
             aiming: item.isMe ? !!_aiming : false,
             attackAt: item.isMe ? myLastAttackAt : (item.lastAttackAt || 0),
+            job: item.npc ? (item.simJob || '주민') : null,
           });
         if (!_spriteOk) drawPlayerIso(s.x, s.y, item.name, item.color, item.isMe, { moving, attackPhase, fvx, fvy, isDown: downFlag, war: item._war, bt: item.bt, bs: item.bs, bc: item.bc, br: item.br, cap: item.cap, act: item.act });
         // HP bar for others (전쟁 병사는 만피여도 항상 표시 + 진영색 테두리)

@@ -38,7 +38,11 @@
   "body",
   "clothes_hemp",
   "tool_axe",
-  "tool_rod"
+  "tool_rod",
+  "tool_hoe",
+  "tool_hammer",
+  "tool_spear",
+  "tool_basket"
  ],
  "ppu": 45.2548,
  "pxPerMeterH": 32.0,
@@ -177,6 +181,126 @@
    "rows": 8,
    "w": 872
   },
+  "tool_basket_aim": {
+   "clip": "aim",
+   "cols": 2,
+   "h": 720,
+   "layer": "tool_basket",
+   "rows": 8,
+   "w": 218
+  },
+  "tool_basket_idle": {
+   "clip": "idle",
+   "cols": 4,
+   "h": 720,
+   "layer": "tool_basket",
+   "rows": 8,
+   "w": 436
+  },
+  "tool_basket_run": {
+   "clip": "run",
+   "cols": 8,
+   "h": 720,
+   "layer": "tool_basket",
+   "rows": 8,
+   "w": 872
+  },
+  "tool_basket_swing": {
+   "clip": "swing",
+   "cols": 6,
+   "h": 720,
+   "layer": "tool_basket",
+   "rows": 8,
+   "w": 654
+  },
+  "tool_basket_walk": {
+   "clip": "walk",
+   "cols": 8,
+   "h": 720,
+   "layer": "tool_basket",
+   "rows": 8,
+   "w": 872
+  },
+  "tool_hammer_aim": {
+   "clip": "aim",
+   "cols": 2,
+   "h": 720,
+   "layer": "tool_hammer",
+   "rows": 8,
+   "w": 218
+  },
+  "tool_hammer_idle": {
+   "clip": "idle",
+   "cols": 4,
+   "h": 720,
+   "layer": "tool_hammer",
+   "rows": 8,
+   "w": 436
+  },
+  "tool_hammer_run": {
+   "clip": "run",
+   "cols": 8,
+   "h": 720,
+   "layer": "tool_hammer",
+   "rows": 8,
+   "w": 872
+  },
+  "tool_hammer_swing": {
+   "clip": "swing",
+   "cols": 6,
+   "h": 720,
+   "layer": "tool_hammer",
+   "rows": 8,
+   "w": 654
+  },
+  "tool_hammer_walk": {
+   "clip": "walk",
+   "cols": 8,
+   "h": 720,
+   "layer": "tool_hammer",
+   "rows": 8,
+   "w": 872
+  },
+  "tool_hoe_aim": {
+   "clip": "aim",
+   "cols": 2,
+   "h": 720,
+   "layer": "tool_hoe",
+   "rows": 8,
+   "w": 218
+  },
+  "tool_hoe_idle": {
+   "clip": "idle",
+   "cols": 4,
+   "h": 720,
+   "layer": "tool_hoe",
+   "rows": 8,
+   "w": 436
+  },
+  "tool_hoe_run": {
+   "clip": "run",
+   "cols": 8,
+   "h": 720,
+   "layer": "tool_hoe",
+   "rows": 8,
+   "w": 872
+  },
+  "tool_hoe_swing": {
+   "clip": "swing",
+   "cols": 6,
+   "h": 720,
+   "layer": "tool_hoe",
+   "rows": 8,
+   "w": 654
+  },
+  "tool_hoe_walk": {
+   "clip": "walk",
+   "cols": 8,
+   "h": 720,
+   "layer": "tool_hoe",
+   "rows": 8,
+   "w": 872
+  },
   "tool_rod_aim": {
    "clip": "aim",
    "cols": 2,
@@ -214,6 +338,46 @@
    "cols": 8,
    "h": 720,
    "layer": "tool_rod",
+   "rows": 8,
+   "w": 872
+  },
+  "tool_spear_aim": {
+   "clip": "aim",
+   "cols": 2,
+   "h": 720,
+   "layer": "tool_spear",
+   "rows": 8,
+   "w": 218
+  },
+  "tool_spear_idle": {
+   "clip": "idle",
+   "cols": 4,
+   "h": 720,
+   "layer": "tool_spear",
+   "rows": 8,
+   "w": 436
+  },
+  "tool_spear_run": {
+   "clip": "run",
+   "cols": 8,
+   "h": 720,
+   "layer": "tool_spear",
+   "rows": 8,
+   "w": 872
+  },
+  "tool_spear_swing": {
+   "clip": "swing",
+   "cols": 6,
+   "h": 720,
+   "layer": "tool_spear",
+   "rows": 8,
+   "w": 654
+  },
+  "tool_spear_walk": {
+   "clip": "walk",
+   "cols": 8,
+   "h": 720,
+   "layer": "tool_spear",
    "rows": 8,
    "w": 872
   }
