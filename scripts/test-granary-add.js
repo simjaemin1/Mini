@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
 // === T4 검증 하네스: 곳간 증설 런타임(_granAdd 링) ===
 // server/villages.js 의 pickGranarySpot / _lifeGranAdd / _lifeCompleteGranary 를 **원문 그대로 잘라내
 // (재구현 아님)** 스텁 state 위에서 실행한다. 랩 상수(G_CAP 2500·G_MAX 8·G_BUILDD 6)와

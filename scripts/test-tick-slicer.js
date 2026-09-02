@@ -30,7 +30,10 @@ const DAY_MS = parseInt(process.env.SLICER_DAY_MS || '', 10) || 5000;
 const DAYS = parseInt(process.env.SLICER_DAYS || '', 10) || 6;
 // ★DB 를 **재사용**한다 — 50마을 시딩이 첫 부팅에 수 분 걸린다(그건 재는 대상이 아니다).
 //   두 팔이 같은 세계에서 출발하도록 스냅샷을 팔마다 복사한다.
-const SEED_C = '/tmp/slicer-seed-central.db', SEED_Z = '/tmp/slicer-seed-zone.db';
+// ★[T49 2026-09-02] 씨앗 경로·시딩 절차는 `scripts/slicer-seed.js` 가 정본이다.
+//   `test-site-memo` 가 같은 씨앗을 쓰는데 러너 이름순으로 **그쪽이 먼저** 돈다 —
+//   양쪽이 각자 시딩 코드를 들면 사본이고, 한쪽만 들면 다른 쪽이 영영 못 돈다.
+const { SEED_C, SEED_Z, ensureSeed } = require('./slicer-seed.js');
 
 let pass = 0, fail = 0;
 const ok = (c, m, extra) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (extra !== undefined && extra !== '' ? `  ${extra}` : '')); };
@@ -85,27 +88,24 @@ async function arm(label, sliceMs) {
 
 (async () => {
   console.log('\n=== 일틱 조각내기 구조 검사 (짝 비교 · 같은 DB 스냅샷) ===');
-  // 씨앗 DB — 없으면 한 번 만들어 둔다(그 뒤로는 재사용).
-  if (!fs.existsSync(SEED_Z)) {
-    console.log('  씨앗 DB 없음 — 한 번 시딩한다(첫 실행만 수 분).');
-    const CDB = '/tmp/slicer-seed0-c.db', ZDB = '/tmp/slicer-seed0-z.db';
-    for (const f of [CDB, ZDB]) for (const sfx of ['', '-wal', '-shm']) { try { fs.unlinkSync(f + sfx); } catch (e) {} }
-    boot('central.js', { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
-    await waitHttp(`http://localhost:${CPORT}/zones`, 120);
-    boot('zone.js', { PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
-      VILLAGE_DAY_MS: '3000', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', ENABLE_WILDLIFE: '0' });
-    const up = await waitHttp(`http://localhost:${ZPORT}/health`, 900);
-    if (!up) { console.log('  ✗ 씨앗 부팅 실패'); process.exit(1); }
-    await sleep(20000);   // 마을이 좀 자라야 단계별 비용이 드러난다
-    killAll(); await sleep(4000);
-    cp(CDB, SEED_C); cp(ZDB, SEED_Z);
-    console.log('  씨앗 DB 저장 — 다음 실행부터는 곧바로 시작한다');
-  }
+  // 씨앗 DB — 없으면 한 번 만들어 둔다(그 뒤로는 재사용). 절차는 공용 정본이 갖고 있다.
+  { const r = await ensureSeed();
+    if (!r.ok) { console.log(`  ✗ 씨앗 준비 실패 — ${r.why}`); process.exit(1); } }
 
   const A = await arm('base', 0);    // 대조군 — 양보 끈을 뽑았다(종전 동작)
-  const B = await arm('head', 16);   // 조각내기
-
-  if (!A || !B || !A.econTick || !B.econTick || !A.econTick.last || !B.econTick.last) {
+  // ★★[T49 2026-09-02] 자기 실패 검사기 — `SLICER_SABOTAGE=1` 이면 **조각내기 팔에도 끈을 뽑는다.**
+  //   판정을 비율의 비율로 옮겼으니, 그 판정이 "무엇을 넣어도 통과"하지 않는다는 걸
+  //   밖에서 한 번 돌려 빨간 걸 보일 수 있어야 한다. 기본 부팅엔 이 분기가 없다.
+  const SLICE_MS = process.env.SLICER_SABOTAGE === '1' ? 0 : 16;
+  if (SLICE_MS === 0) console.log('  ★사보타주 — 조각내기 팔도 끈을 뽑는다(효과비가 1 로 떨어져야 한다)');
+  const B = await arm('head', SLICE_MS);   // 조각내기
+  // ★★[T49 2026-09-02] **대조군을 한 번 더 돈다 — 잡음 바닥을 재기 위해서다**(족보 80).
+  //   ⑥ 은 "최대 막힘이 대조군의 1/3 이하"였는데, `max` 는 꼬리가 두꺼운 통계다.
+  //   2026-09-01 전수에서 2183.14 ≤ 2118.1 로 **3%** 차이로 떨어졌다 — 그건 회귀가 아니라
+  //   문턱(1/3)이 잡음 폭 안에 앉아 있던 것이다.
+  //   ⇒ 같은 조건(A) 을 두 번 돌려 **그 자의 흔들림**을 재고, 판정을 비율의 비율로 옮긴다.
+  const A2 = await arm('base2', 0);
+  if (!A || !B || !A2 || !A.econTick || !B.econTick || !A.econTick.last || !B.econTick.last) {
     console.log('  ✗ 부팅/수확 실패 — 판정 불가'); process.exit(1);
   }
   const a = A.econTick.last, b = B.econTick.last;
@@ -126,7 +126,20 @@ async function arm(label, sliceMs) {
   ok(b.frames >= 10, '② 여러 프레임에 걸쳐 돈다', `${b.frames} 프레임`);
 
   // ③ 한 프레임의 막힘이 내려갔는가 — 이 배치가 산 것
-  ok(b.frameMax <= a.frameMax / 3, '③ 한 프레임 최대가 대조군의 1/3 이하', `${b.frameMax}ms ≤ ${(a.frameMax / 3).toFixed(0)}ms`);
+  // ★★[T49] ③ 도 같은 병이었다 — 이 판에서 1505 ≤ 1481 로 **1.6%** 차이로 떨어졌다.
+  //   ⑥ 과 같은 처방: 대조군을 두 번 돌아 잡음 바닥을 재고 비율의 비율로 판정한다.
+  const a2 = A2.econTick.last;
+  const fNoise = Math.max(a.frameMax, a2.frameMax) / Math.max(1, Math.min(a.frameMax, a2.frameMax));
+  const fMed = (a.frameMax + a2.frameMax) / 2;
+  const fEffect = fMed / Math.max(1, b.frameMax);
+  const FK = parseFloat(process.env.SLICER_FRAME_K || '1.8') || 1.8;
+  console.log(`  잡음 바닥 — 대조군 두 번 한 프레임 최대 ${a.frameMax}ms vs ${a2.frameMax}ms → 잡음비 ${fNoise.toFixed(3)}`);
+  console.log(`  [참고 — 판정 아님] 절대 문턱 1/3 · ${b.frameMax <= a.frameMax / 3 ? '넘음' : '★못 넘음'}`
+    + `  (${b.frameMax}ms vs ${(a.frameMax / 3).toFixed(0)}ms)`);
+  ok(fNoise < 3, '③ 전제 — 자가 믿을 만하다(같은 조건 두 번이 3배 안)', `잡음비 ${fNoise.toFixed(3)}`);
+  ok(fEffect > fNoise * FK,
+     `③ 한 프레임 최대가 줄었다 — 비율의 비율 ${(fEffect / Math.max(0.01, fNoise)).toFixed(2)} > ${FK}`,
+     `효과비 ${fEffect.toFixed(2)}(대조 중앙 ${fMed.toFixed(0)}ms → ${b.frameMax}ms) vs 잡음비 ${fNoise.toFixed(3)}`);
   ok(b.frameMax <= b.total / 3, '③ 한 프레임 최대가 하루 총합의 1/3 이하', `${b.frameMax}/${b.total}ms`);
   // ★남은 바닥 — 조각 하나(마을 한 곳의 생활층)가 예산(16ms)을 얼마나 넘는지를 **숨기지 않고 적는다**.
   //   이건 실패가 아니라 회부 대상(§4-A)이다. 슬라이서는 조각보다 잘게 못 자른다.
@@ -160,15 +173,24 @@ async function arm(label, sliceMs) {
   const chunkAt = B.econTick.maxChunkAt || b.maxChunkAt || '?';
   ok(bp > 0 && bp <= chunk * 2 + 300, '⑥a ★조각내기의 루프 최대 막힘이 **가장 큰 조각 안**이다(무조건 · 슬라이서가 소유하는 선)',
     `${bp}ms ≤ 창 전체 최대 조각 ${chunk}ms(${chunkAt}) × 2 + 300 = ${chunk * 2 + 300}ms`);
-  const loopRoom = ap / chunk;
-  console.log(`  · 루프 여지 ×${loopRoom.toFixed(1)} — 대조군 루프 최대 ${ap.toFixed(0)}ms ÷ 가장 큰 조각 ${chunk}ms  (⑥b 는 ×3 이상일 때만 센다)`);
-  if (loopRoom >= 3) {
-    ok(bp > 0 && bp <= ap / 3, '⑥b 이벤트 루프 **최대 막힘**이 대조군의 1/3 이하', `${bp}ms ≤ ${(ap / 3).toFixed(1)}ms`);
-  } else {
-    console.log(`  · [⑥b 판정 유보] 대조군 하루가 **조각 하나의 ${loopRoom.toFixed(1)}배**밖에 안 된다 —`);
-    console.log(`    슬라이서는 조각보다 잘게 못 자르므로 1/3 은 애초에 닿을 수 없는 선이다(⑥a 가 대신 지킨다).`);
-    console.log(`    대조군 ${ap.toFixed(0)}ms → 조각내기 ${bp.toFixed(0)}ms (×${(ap / Math.max(1, bp)).toFixed(2)}).`);
-  }
+  //   ★★[T49 2026-09-02 · 리베이스 병합] **위 ⑥a 는 남긴다** — 눈대중 절대값이 아니라
+  //     그 판의 조각 크기에서 **유도한** 선이다(족보 74). 잡음에 안 흔들린다.
+  //     아래는 T42-b 의 ⑥b(대조군의 1/3)를 **비율의 비율**로 바꾼 것이다(족보 80) —
+  //     같은 것을 두 자로 두 번 재지 않으므로 ⑥b 는 **참고 출력으로 내린다**.
+  console.log(`  [참고 — 판정 아님] T42-b ⑥b 여지: 대조군 루프 최대 ${ap.toFixed(0)}ms / 조각 ${chunk}ms = ×${(ap / chunk).toFixed(1)}`);
+  const ap2 = (A2.loop && A2.loop.max) || 0;
+  // 잡음비 — **같은 조건 두 번**이 얼마나 벌어지나(참값 1). 효과비 — 대조군(중앙) 대 조각내기.
+  const noiseR = Math.max(ap, ap2) / Math.max(1, Math.min(ap, ap2));
+  const apMed = (ap + ap2) / 2;
+  const effectR = apMed / Math.max(1, bp);
+  const K = parseFloat(process.env.SLICER_RR_K || '1.8') || 1.8;
+  console.log(`  잡음 바닥 — 대조군 두 번 최대 막힘 ${ap}ms vs ${ap2}ms → 잡음비 ${noiseR.toFixed(3)}`);
+  console.log(`  [참고 — 판정 아님] 절대 문턱 1/3 · ${bp > 0 && bp <= ap / 3 ? '넘음' : '★못 넘음'}`
+    + `  (${bp}ms vs ${(ap / 3).toFixed(1)}ms)`);
+  ok(noiseR < 3, '⑥ 전제 — 자가 믿을 만하다(같은 조건 두 번이 3배 안)', `잡음비 ${noiseR.toFixed(3)}`);
+  ok(bp > 0 && effectR > noiseR * K,
+     `⑥ 이벤트 루프 **최대 막힘**이 줄었다 — 비율의 비율 ${(effectR / Math.max(0.01, noiseR)).toFixed(2)} > ${K}`,
+     `효과비 ${effectR.toFixed(2)}(대조 중앙 ${apMed.toFixed(0)}ms → ${bp}ms) vs 잡음비 ${noiseR.toFixed(3)}`);
 
   // ⑦ 하루 총 일감은 그대로다 — 쪼갠다고 일이 줄면 그건 뭔가를 안 한 것이다
   const r = b.total / Math.max(1, a.total);

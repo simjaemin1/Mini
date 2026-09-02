@@ -58,7 +58,15 @@ run_one() {
   echo "$out" | grep -E "통과|PASS|EADDRINUSE|Error:|MODULE_NOT_FOUND" | tail -4
   # ★"결과 줄이 없으면 크래시다" — 종료코드만 믿지 않는다(하네스가 0 으로 죽을 수도 있다).
   local summary
-  summary="$(echo "$out" | grep -cE "통과|PASS [0-9]|=== .*(통과|PASS)")"
+  # ★★[T49 2026-09-02] **탐지기를 넓혔다.** 종전 문법(`통과` / `PASS <숫자>`)은 이 러너가
+  #   길러 온 하네스들의 말투만 알았다. T49 가 러너 밖 27개를 등재하자 그중 **15개가 rc=0 인데
+  #   "결과줄 0개 = 실패"로 잡혔다** — 그것들은 `결과: PASS` 로 끝난다. 잘 도는 하네스였다.
+  #   ⇒ 러너 밖에서 자란 하네스는 러너의 말투를 따를 이유가 없다. **검사 표시의 존재**를
+  #     1차 근거로 삼고, 요약 문구는 넓게 본다. "조용한 크래시 금지"라는 원래 목적은 그대로다
+  #     (표시도 없고 요약어도 없으면 그건 여전히 크래시다).
+  marks="$(echo "$out" | grep -cE '^[[:space:]]*(✓|✔|✗|✘)')"
+  words="$(echo "$out" | grep -cE '통과|PASS|FAIL|실패|결과')"
+  summary=$(( marks + words ))
   if [ "$rc" -ne 0 ] || [ "$summary" -eq 0 ]; then
     echo "  ✗ RC=$rc · 결과줄 ${summary}개 → **실패로 센다**"
     FAILED+=("$f(rc=$rc)")
@@ -67,6 +75,34 @@ run_one() {
     PASSED+=("$f")
   fi
 }
+
+# ═══ ★[T49 2026-09-02] 선행 점검 — 의존성이 없으면 **여기서** 죽는다 ═══════════
+#   왜: `test-client-globals` 가 `acorn` 을 require 하는데, 새 클론에서 `npm install` 을 안 하면
+#   `MODULE_NOT_FOUND` 로 **조용히** 죽는다. 그러면 러너는 "결과줄 0개 = 실패"라고만 말하고,
+#   읽는 사람은 **제품 회귀**로 오독한다(이 레포가 `pngjs` 로 이미 한 번 당했다).
+#   ⇒ 하네스를 한 개도 돌리기 전에, `package.json` 의 dependencies 가 **실제로 풀리는지** 본다.
+#     스킵하지 않는다 — 스킵은 "안 쟀는데 초록"이라 더 나쁘다. 사유를 말하고 죽는다.
+preflight() {
+  local ROOTDIR; ROOTDIR="$(cd "$(dirname "$0")/.." && pwd)"
+  local missing
+  missing="$(cd "$ROOTDIR" && node -e '
+    const p = require("./package.json");
+    const need = Object.keys(p.dependencies || {});
+    const bad = [];
+    for (const m of need) { try { require.resolve(m); } catch (e) { bad.push(m); } }
+    process.stdout.write(bad.join(" "));
+  ' 2>/dev/null)"
+  if [ -n "$missing" ]; then
+    echo "  ✗ ★의존성이 없다: $missing"
+    # ★큰따옴표 안의 역따옴표는 **명령 치환**이다 — 첫 판이 'package.json: command not found' 를 찍었다.
+    echo '     package.json 에는 있는데 설치돼 있지 않다. 하네스는 MODULE_NOT_FOUND 로 조용히 죽고,'
+    echo "     러너는 그걸 '결과줄 0개'로만 말해 제품 회귀처럼 보인다. 회귀를 재기 전에 먼저:"
+    echo "        npm install"
+    return 1
+  fi
+  return 0
+}
+preflight || exit 2
 
 if [ "${1:-}" = "--selftest" ]; then
   # ★러너 자신을 검사한다 — 일부러 크래시하는 하네스를 만들어 **실패로 잡히는지** 본다.

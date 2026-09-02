@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
 // === picker 가치표 드리프트 하네스 ===
 // 계약: 두 picker(pickDeficitJob / pickDeficitJob_rational)가 return할 수 있는 모든 직업은
 //       전환 보류(hold) 게이트의 가치표 OUT1·OUTRES에 등록돼 있어야 한다.

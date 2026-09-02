@@ -100,8 +100,17 @@ async function arm(label, sliceMs) {
     process.exit(1);
   }
   const A = await arm('base', 0);
-  const B = await arm('head', 16);
-  if (!A || !B) { console.log('  ✗ 부팅 실패 — 판정 불가'); process.exit(1); }
+  // ★★[T49 2026-09-02] 자기 실패 검사기 — `RTT_SABOTAGE=1` 이면 **조각내기 팔에도 끈을 뽑는다.**
+  const SLICE_MS = process.env.RTT_SABOTAGE === '1' ? 0 : 16;
+  if (SLICE_MS === 0) console.log('  ★사보타주 — 조각내기 팔도 끈을 뽑는다(효과비가 1 로 떨어져야 한다)');
+  const B = await arm('head', SLICE_MS);
+  // ★★[T49 2026-09-02] **대조군을 한 번 더 돈다 — 잡음 바닥을 재기 위해서다**(족보 80).
+  //   ③ 은 "최대 막힘이 대조군의 1/3 이하"였는데 `max` 는 꼬리가 두꺼운 통계다.
+  //   2026-09-01 전수에서 2258.63 ≤ 2214.6 으로 **2%** 차이로 떨어졌다 — 회귀가 아니라
+  //   문턱이 잡음 폭 안에 앉아 있던 것이다. 이 파일 스스로 "비율이 ×2.6~×14 사이를 오간다"고
+  //   적어 두고도 판정은 고정 비율이었다. ⇒ 그 흔들림을 **재서** 판정의 분모로 쓴다.
+  const A2 = await arm('base2', 0);
+  if (!A || !B || !A2) { console.log('  ✗ 부팅 실패 — 판정 불가'); process.exit(1); }
 
   const rep = (x) => `표본 ${x.samples} · 마감 ${x.marks}회 · 평시 중앙 ${x.base}ms · **창 안 p95 ${x.inP95}ms**(최대 ${x.inMax}) → ×${(x.inP95 / Math.max(1, x.base)).toFixed(1)}`
     + ` · 루프 **최대 막힘 ${x.loop ? x.loop.max : '?'}ms**(p99 ${x.loop ? x.loop.p99 : '?'})`;
@@ -138,11 +147,24 @@ async function arm(label, sliceMs) {
   const wframe = Math.max(0, (B.win && B.win.frameMax) || (B.tick && B.tick.frameMax) || 0);
   ok(wframe > 0 && wframe <= wchunk + 16 + 200, '②a ★한 프레임이 **조각 하나 + 예산** 안이다(무조건 · 슬라이서가 소유하는 선)',
     `창 전체 프레임 최대 ${wframe}ms ≤ 조각 ${wchunk}ms(${wchunkAt}) + 16 + 200`);
-  if (A.tick && B.tick && A.tick.frameMax / wchunk >= 3) {
-    ok(B.tick.frameMax <= A.tick.frameMax / 2, "②a' 한 프레임 막힘이 대조군의 절반 이하(여지가 있는 판에서)",
-      `${B.tick.frameMax}ms ≤ ${(A.tick.frameMax / 2).toFixed(0)}ms`);
-  } else {
-    console.log(`  · [②a' 판정 유보] 대조군 한 프레임 ${A.tick ? A.tick.frameMax : '?'}ms 가 조각 ${wchunk}ms 의 3배가 안 된다 — 절반은 닿을 수 없는 선이다(②a 가 대신 지킨다).`);
+  //   ★★[T49 2026-09-02 · 리베이스 병합] **위 ②a 는 남긴다** — 그건 눈대중 절대값이 아니라
+  //     그 판의 조각 크기에서 **유도한** 선이다(족보 74). 잡음에 안 흔들린다.
+  //     아래는 T42-b 의 ②a'(대조군의 절반)를 **비율의 비율**로 바꾼 것이다 — 그 자리가
+  //     "대조군이 그날 얼마나 무거웠느냐"에 달려 있던 자리다(족보 80).
+  //     T42-b 의 ②a' 자체는 **참고 출력으로 내린다** — 같은 것을 두 자로 두 번 재지 않는다.
+  {
+    console.log(`  [참고 — 판정 아님] T42-b ②a' 여지: 대조군 한 프레임 ${A.tick ? A.tick.frameMax : '?'}ms / 조각 ${wchunk}ms`
+      + ` = ×${A.tick ? (A.tick.frameMax / wchunk).toFixed(1) : '?'} (3배 미만이면 '절반'은 닿을 수 없는 선이었다)`);
+    const f1 = (A.tick && A.tick.frameMax) || 0, f2 = (A2.tick && A2.tick.frameMax) || 0, fb = (B.tick && B.tick.frameMax) || 0;
+    const fNoise = Math.max(f1, f2) / Math.max(1, Math.min(f1, f2));
+    const fEff = ((f1 + f2) / 2) / Math.max(1, fb);
+    const FK = parseFloat(process.env.RTT_FRAME_K || '1.4') || 1.4;
+    console.log(`  잡음 바닥 — 대조군 두 번 한 프레임 최대 ${f1}ms vs ${f2}ms → 잡음비 ${fNoise.toFixed(3)}`);
+    console.log(`  [참고 — 판정 아님] 절대 문턱 1/2 · ${fb && fb <= f1 / 2 ? '넘음' : '★못 넘음'}  (${fb}ms vs ${(f1 / 2).toFixed(0)}ms)`);
+    ok(fNoise < 3, '②a 전제 — 자가 믿을 만하다(같은 조건 두 번이 3배 안)', `잡음비 ${fNoise.toFixed(3)}`);
+    ok(fb > 0 && fEff > fNoise * FK,
+       `②a **한 프레임 막힘**이 줄었다(서버 쪽) — 비율의 비율 ${(fEff / Math.max(0.01, fNoise)).toFixed(2)} > ${FK}`,
+       `효과비 ${fEff.toFixed(2)}(대조 중앙 ${((f1 + f2) / 2).toFixed(0)}ms → ${fb}ms) vs 잡음비 ${fNoise.toFixed(3)}`);
   }
 
   // ★★[상황 선행 · T41 뒤에 필요해졌다] **쪼갤 여지가 있는 판인가.**
@@ -193,11 +215,20 @@ async function arm(label, sliceMs) {
   //     루프 히스토그램은 **창 전체**라 조각도 창 전체 최댓값으로 잰다(자를 하나로).
   ok(bp > 0 && bp <= wchunk * 2 + 300, '③ ★루프 최대 막힘이 **가장 큰 조각 안**이다(무조건)',
     `${bp.toFixed(0)}ms ≤ 창 전체 최대 조각 ${wchunk}ms(${wchunkAt}) × 2 + 300`);
-  if (ap / wchunk >= 3) {
-    ok(bp > 0 && bp <= ap / 3, "③' 이벤트 루프 **최대 막힘**이 대조군의 1/3 이하(여지가 있는 판에서)", `${bp.toFixed(0)}ms ≤ ${(ap / 3).toFixed(1)}ms`);
-  } else {
-    console.log(`  · [③' 판정 유보] 대조군 루프 최대 ${ap.toFixed(0)}ms 가 조각 ${wchunk}ms 의 3배가 안 된다(×${(ap / wchunk).toFixed(1)}).`);
-  }
+  //   ★★[T49 2026-09-02 · 리베이스 병합] 위 무조건선(조각에서 유도)은 남기고,
+  //     T42-b 의 ③'(대조군의 1/3)만 **비율의 비율**로 바꾼다 — 같은 것을 두 자로 두 번 재지 않는다.
+  console.log(`  [참고 — 판정 아님] T42-b ③' 여지: 대조군 루프 최대 ${ap.toFixed(0)}ms / 조각 ${wchunk}ms = ×${(ap / wchunk).toFixed(1)}`);
+  const ap2 = (A2.loop && A2.loop.max) || 0;
+  const lNoise = Math.max(ap, ap2) / Math.max(1, Math.min(ap, ap2));
+  const lMed = (ap + ap2) / 2;
+  const lEff = lMed / Math.max(1, bp);
+  const LK = parseFloat(process.env.RTT_LOOP_K || '1.6') || 1.6;
+  console.log(`  잡음 바닥 — 대조군 두 번 최대 막힘 ${ap}ms vs ${ap2}ms → 잡음비 ${lNoise.toFixed(3)}`);
+  console.log(`  [참고 — 판정 아님] 절대 문턱 1/3 · ${bp > 0 && bp <= ap / 3 ? '넘음' : '★못 넘음'}  (${bp}ms vs ${(ap / 3).toFixed(1)}ms)`);
+  ok(lNoise < 3, '③ 전제 — 자가 믿을 만하다(같은 조건 두 번이 3배 안)', `잡음비 ${lNoise.toFixed(3)}`);
+  ok(bp > 0 && lEff > lNoise * LK,
+     `③ 이벤트 루프 **최대 막힘**이 줄었다 — 비율의 비율 ${(lEff / Math.max(0.01, lNoise)).toFixed(2)} > ${LK}`,
+     `효과비 ${lEff.toFixed(2)}(대조 중앙 ${lMed.toFixed(0)}ms → ${bp}ms) vs 잡음비 ${lNoise.toFixed(3)}`);
 
   // ── ★★목표선(재민 확정 "≤×2") — **판정에 세지 않는다. 이유를 적는다.** ────────────
   //   왜 세지 않나: 이 비율의 분모가 **로컬 평시 RTT**(수 ms~수십 ms · 망이 없다)라, 조각이

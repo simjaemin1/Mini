@@ -125,8 +125,19 @@ async function waitHttp(url, tries = 900) {
   //   ★거리 문턱은 **작게** 잡는다. 판정은 "얼마나 빠른가"가 아니라 **"짐 때문에 느려졌는가"**이고,
   //     절대 거리는 입력 큐 소비율(틱당 8개)·지형에 좌우된다(실측 1.5초에 ~38px).
   //     여기서 큰 수를 요구하면 계측기가 제 환경을 결함으로 읽는다.
+  //   ★★[T49 2026-09-02] **잡음 바닥을 먼저 잰다**(족보 80). 같은 조건으로 두 번 걷는다.
+  //     왜: ④ 는 "무거우면 덜 간다"를 5% 여유로 판정했는데, 입력 큐 소비율(틱당 8개)·지형 때문에
+  //     **같은 조건 두 번도** 몇 % 씩 흔들린다. 2026-09-01 전수에서 38→37px(−2.6%)로 떨어졌다 —
+  //     그건 "안 느려졌다"가 아니라 **"이 자로는 못 갈랐다"** 였다.
+  //     ⇒ 절대 문턱(0.95)은 참고로 내리고, 판정은 **비율의 비율**로 한다:
+  //       효과비(가벼움/무거움) 가 잡음비(가벼움/가벼움) 를 K 배 넘겨야 한다.
   const dLight = await walk(2200);
-  ok(dLight > 25, '★전제 — 가벼울 때 실제로 걷는다(대조군)', `${Math.round(dLight)}px`);
+  const dLight2 = await walk(2200);
+  const noiseR = Math.max(dLight, dLight2) / Math.max(1, Math.min(dLight, dLight2));
+  const dLightMed = (dLight + dLight2) / 2;
+  console.log(`    잡음 바닥 — 같은 조건 두 번: ${Math.round(dLight)}px vs ${Math.round(dLight2)}px → 잡음비 ${noiseR.toFixed(3)}`);
+  ok(dLight > 25 && dLight2 > 25, '★전제 — 가벼울 때 실제로 걷는다(대조군 두 번)', `${Math.round(dLight)} · ${Math.round(dLight2)}px`);
+  ok(noiseR < 1.5, '★전제 — 자가 믿을 만하다(같은 조건 두 번이 1.5배 안)', `잡음비 ${noiseR.toFixed(3)}`);
 
   // ── ④ 과적 — 무들이 뜨고 **실제로 느려진다** ──────────────────────────────
   //   ★[족보 (56)] 바닥(×0.4)에 처박지 않는다 — 거기선 더 실어도 안 변해서 "변화"를 못 잰다.
@@ -144,14 +155,47 @@ async function waitHttp(url, tries = 900) {
   ok(/over/.test(hudOver), '★④ HUD 가 초과를 표시한다(붉어짐)', hudOver);
   await snap('wt-02-overloaded');
 
+  // ★★[T49 2026-09-02] 자기 실패 검사기 — `WEIGHT_SABOTAGE=1` 이면 **무거운 다리를 몰래 가볍게** 한다.
+  //   판정을 서버 배율에서 유도하도록 바꿨으니, 그 판정이 "무엇을 넣어도 통과"하지 않는다는 걸
+  //   밖에서 한 번 돌려 빨간 걸 보일 수 있어야 한다. 기본 부팅엔 이 분기가 없다.
+  if (process.env.WEIGHT_SABOTAGE === '1') {
+    // ★가진 만큼 정확히 버린다 — 9999 를 주면 서버가 안 받는다(첫 판이 그래서 안 먹혔다).
+    const held = await page.evaluate(() => (window.__getInv() || {}).stone || 0);
+    console.log(`    ★사보타주 — 걷기 직전에 돌 ${held}개를 버린다(효과비가 1 로 떨어져야 한다)`);
+    await page.evaluate((n) => window.__sendPrimary({ type: 'drop_item', item: 'stone', amount: n }), held);
+    await sleep(2000);
+    const after = await carry();
+    console.log(`    ★사보타주 뒤 적재: ${after ? `${after.kg}kg / ${after.cap}kg ×${after.moveMult}` : '미상'}`);
+  }
   const dHeavy = await walk(2200);
-  const drop = 1 - dHeavy / Math.max(1, dLight);
-  console.log(`    걸음 실측: 가벼움 ${Math.round(dLight)}px vs 과적 ${Math.round(dHeavy)}px  (서버 배율 ×${c2.moveMult})`);
-  ok(dHeavy < dLight * 0.95, '★★④ **실제로 느려졌다** — 같은 시간에 덜 갔다',
-    `${Math.round(dLight)} → ${Math.round(dHeavy)}px (−${Math.round(drop * 100)}%)`);
+  const drop = 1 - dHeavy / Math.max(1, dLightMed);
+  const effectR = dLightMed / Math.max(1, dHeavy);
+  // ★★문턱을 **눈대중으로 적지 않는다 — 서버가 약속한 수에서 유도한다**(족보 74).
+  //   서버 배율 ×m 이면 같은 시간에 가는 거리의 비는 1/m 이어야 한다. 그게 기대 효과비다.
+  //   판정: 실측 효과비가 **잡음 바닥 위로, 기대치의 절반 이상** 올라왔는가.
+  //   ⇒ 문턱이 그날의 CPU 가 아니라 **그 판의 서버 값**에서 나온다.
+  const expected = 1 / Math.max(0.01, c2.moveMult);
+  const need = noiseR + (expected - 1) * 0.5;
+  // ★잴 수 있는 판인가 — 기대 효과가 잡음에 묻히면 **"안 느려졌다"가 아니라 "못 쟀다"** 다.
+  //   2026-09-01 전수에서 38→37px(−2.6%)로 떨어진 게 그 자리였다(서버는 −17% 를 약속했었다).
+  const resolvable = (expected - 1) > (noiseR - 1) * 2 + 0.05;
+  console.log(`    걸음 실측: 가벼움(중앙) ${Math.round(dLightMed)}px vs 과적 ${Math.round(dHeavy)}px  (서버 배율 ×${c2.moveMult})`);
+  console.log(`    [참고 — 판정 아님] 절대 문턱 0.95 · ${dHeavy < dLightMed * 0.95 ? '넘음' : '★못 넘음'}`
+    + ` · 감소 −${Math.round(drop * 100)}% · 기대 효과비 ${expected.toFixed(3)} · 필요 ${need.toFixed(3)}`);
+  ok(resolvable, '★전제 — 이 판에서 그 효과를 **가를 수 있다**(기대 효과가 잡음보다 충분히 크다)',
+     `기대 ${(expected - 1).toFixed(3)} vs 잡음 ${(noiseR - 1).toFixed(3)}`);
+  if (resolvable) {
+    ok(effectR > need,
+      '★★④ **실제로 느려졌다** — 잡음 위로, 서버가 약속한 효과의 절반 이상',
+      `효과비 ${effectR.toFixed(3)} > 필요 ${need.toFixed(3)} (잡음 ${noiseR.toFixed(3)} + 기대 ${(expected - 1).toFixed(3)}/2)`);
+  } else {
+    console.log('    ★이 판은 효과를 가를 수 없다 — 판정하지 않는다("안 느려졌다"가 아니라 "못 쟀다").');
+  }
   // ★예측과 권위가 같은 배율을 쓰는가 — 어긋나면 러버밴딩이다(거리로 확인)
-  ok(Math.abs(drop - (1 - c2.moveMult)) < 0.18, '★★④ 줄어든 비율이 **서버 배율과 맞는다**(클라 예측이 같은 수를 쓴다)',
-    `실측 −${Math.round(drop * 100)}% vs 배율 −${Math.round((1 - c2.moveMult) * 100)}%`);
+  //   ★허용 오차도 잡음을 얹는다: 같은 조건 두 번이 흔들리는 만큼은 이 비교에도 실린다.
+  const tol = 0.18 + (noiseR - 1);
+  ok(Math.abs(drop - (1 - c2.moveMult)) < tol, '★★④ 줄어든 비율이 **서버 배율과 맞는다**(클라 예측이 같은 수를 쓴다)',
+    `실측 −${Math.round(drop * 100)}% vs 배율 −${Math.round((1 - c2.moveMult) * 100)}% (허용 ${(tol * 100).toFixed(0)}%p = 0.18 + 잡음 ${((noiseR - 1) * 100).toFixed(1)}%p)`);
 
   // ── ⑤ 상태 패널이 **"짐 때문이다"**라고 말한다(§8.6) ──────────────────────
   await page.evaluate(() => document.querySelector('#sidebar .sb-icon[data-side="body"]').click());

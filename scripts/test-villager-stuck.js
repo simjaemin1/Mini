@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
 // === 기타직 '출근' 정체 가드 검증 ===
 // villages.js 의 villager 분기(정체 가드 포함)를 **원문 그대로 잘라내** 스텁 위에서 돌린다.
 // 실서버 실측(2026-07-28, 어촌1): mason·smith×2·cook 4명이 회관에서 445~856px 떨어진 채

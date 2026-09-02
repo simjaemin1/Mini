@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
 // === T1 검증 하네스: 구DB 마을 영토 런타임 백필 ===
 // server/villages.js 의 _terrBackfillOne / _terrBackfillAll 을 **원문 그대로 잘라내** 스텁 위에서 실행한다
 // (재구현 아님 — scripts/test-granary-add.js 와 같은 방식).

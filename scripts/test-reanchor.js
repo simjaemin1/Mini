@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
 // === T1 검증 하네스: 재연결 시 클라 예측 위치 재앵커(유령 클라) ===
 //
 // public/client.js 의 연결/메시지/예측 제어 흐름을 그대로 전사(발췌 모의)한다.

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
 // === 건물 스프라이트 앵커 대조 하네스 ===
 // client.js의 하드코딩 앵커 A표가 building_render.py의 결정적 카메라 수학(및 실제 PNG 치수)과
 // 일치하는지 검증한다. ★앵커는 렌더 픽셀이 아니라 (W,D,top)에서 결정적으로 유도되므로

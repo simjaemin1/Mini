@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
 // === scripts/test-distmatrix.js — 교역 거리행렬 **증분 = 전쌍** 하네스 ==========
 //
 // ★왜 이 하네스인가 [2026-08-03d 배치 11 ①-2]

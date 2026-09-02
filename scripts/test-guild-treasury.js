@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
 // === 길드 곳간(물리) ↔ central 금고(회계) 정합 검증 하네스 ===
 // 장부 계약(server/guild-treasury.js 상단):
 //   곳간 data = 물리 실체 / treasury_json = 길드 총자산(물리는 그 부분집합) / 같은 물건을 두 번 세지 않는다.

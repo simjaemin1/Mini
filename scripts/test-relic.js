@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
 // === scripts/test-relic.js — 철제 위세품(iron_relic) 하네스 ==================
 //
 // ★[재민 확정 2026-08-02b] "세계 최초의 철검"의 값. **유령 수요 재발 금지**가 이 기능의 제약이다.

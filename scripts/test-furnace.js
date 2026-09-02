@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
 // === scripts/test-furnace.js — 노(爐)·숯가마 E2E 하네스 =======================
 //
 // ★왜 실행 검증인가 [2026-08-02]

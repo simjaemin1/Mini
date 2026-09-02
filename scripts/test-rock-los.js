@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
 // === scripts/test-rock-los.js — 바위 시야 차단(실루엣 선분) 정합·비용 실측 ===
 //
 // ★[11차 재민 확정] "산은 완벽한 콜라이더라 건너편이 절대 안 보여."

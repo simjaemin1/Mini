@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
 // === scripts/test-mining.js — 11차 채광 재설계 본게임 이식 검증 ===
 //
 // 검증 항목(전부 실측 — 주장하려면 여기서 돌아야 한다):

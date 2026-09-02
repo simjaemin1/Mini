@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
 // === scripts/test-tame.js — 길들이기 시대 게이트 E2E =========================
 //
 // ★왜 [2026-08-02d 배치 5 ③]

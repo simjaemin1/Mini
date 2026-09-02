@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
 // === scripts/test-valuechain.js — 가치 사슬 항등식 하네스 ===
 //
 // ★[재민] "돌덩이를 팔지, 광물을 팔지, 금속을 팔지, 무기/도구를 팔지도 정말 잘 계산할 수

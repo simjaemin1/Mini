@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
 // === scripts/test-alloy.js — 합금·주조·광종배분 하네스 ===
 //
 // 이 세션에서 들어간 것들의 계약을 못박는다:

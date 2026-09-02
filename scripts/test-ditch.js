@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
 // === 11차 T3 — 환호(도랑) 검증 하네스 ===
 // 계약(server/village-layout.js ditchRing 상단 주석 = 유일한 정의):
 //   · 검단리 규약: 폭 2셀 타원 링(장/단 = 118/70), 출입구 = **도랑을 파지 않은 셀** 남·북 각 1곳(폭 3칸).

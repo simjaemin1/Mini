@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
 // === 곳간② 서버 이식 검증 하네스 ===
 // server/villages.js 의 곳간 물리 함수를 **원문 그대로 잘라내** 스텁 위에서 실행한다.
 // 랩 검증(gran_harness 11항)과 같은 항목 + 서버 고유의 상태 진행(_granTask 2단계)까지 본다.

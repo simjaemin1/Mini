@@ -31,7 +31,10 @@ const ROOT = path.join(__dirname, '..');
 const CPORT = 3010, ZPORT = 3020;
 const DAY_MS = parseInt(process.env.SITE_DAY_MS || '', 10) || 3500;
 const DAYS = parseInt(process.env.SITE_DAYS || '', 10) || 9;
-const SEED_C = '/tmp/slicer-seed-central.db', SEED_Z = '/tmp/slicer-seed-zone.db';
+// ★[T49 2026-09-02] 씨앗 경로·시딩 절차는 `scripts/slicer-seed.js` 가 정본이다.
+//   종전엔 씨앗이 없으면 "`test-tick-slicer` 를 먼저 돌려라"며 죽었는데, 러너는 **이름순**이라
+//   이 파일이 `tick-slicer` 보다 **먼저** 돈다 ⇒ 신선한 러너에서는 영원히 못 통과했다.
+const { SEED_C, SEED_Z, ensureSeed } = require('./slicer-seed.js');
 
 let pass = 0, fail = 0;
 const ok = (c, m, extra) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (extra !== undefined && extra !== '' ? `  ${extra}` : '')); };
@@ -73,7 +76,10 @@ const st = (E, k) => (E && E.stages && E.stages[k]) ? E.stages[k] : { p50: 0, p9
 
 (async () => {
   console.log('\n=== 집터 "못 찾음 기억" — 짝 비교 + 단조성 감사 ===');
-  if (!fs.existsSync(SEED_Z)) { console.log('  ✗ 씨앗 DB 없음 — `node scripts/test-tick-slicer.js` 를 먼저 한 번 돌려라'); process.exit(1); }
+  // 씨앗이 없으면 **스스로 만든다**(앞 하네스가 남긴 것에 기대지 않는다 — 족보 ㊾ 의 러너판).
+  { const r = await ensureSeed();
+    if (!r.ok) { console.log(`  ✗ 씨앗 준비 실패 — ${r.why}`); process.exit(1); }
+    if (r.built) console.log('  (이 판이 씨앗을 만들었다 — 다음 실행부터는 곧바로 시작한다)'); }
 
   // ★팔이 넷인 이유: **감사 팔은 느리다**(건너뛴 셀마다 `reject` 를 다시 부른다 — 그게 감사다).
   //   첫 판에서 그 팔로 비용을 재고 "1/5 로 못 줄었다"는 **가짜 실패**를 냈다.

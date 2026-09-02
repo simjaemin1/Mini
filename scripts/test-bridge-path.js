@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
 // === T4 검증 하네스: 다리 층 — 어촌1 강 단절 해소 ===
 // 실제 hanbando 지형 + zone-config의 bridges를 그대로 써서, 다리 **전/후** 도보 도달성을 대조한다.
 //   · 통행 판정은 zone.js isTerrainBlockedLocal 과 **같은 식**을 재현: 바위=항상 차단,
