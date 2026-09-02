@@ -29,6 +29,7 @@ const CFG = {
   CELL_PX: 32,
 };
 const KO = { twig: '잔가지', pebble: '자갈', fiber: '풀', brine: '짠물' };
+// ⚠갯벌 산출(굴·해조·전복)의 이름표는 여기 안 적는다 — `tidal.js` 가 정본이고 zone 의 표에 **주입**한다.
 
 // ── lazy 번영도 ─────────────────────────────────────────────────────────────
 const _state = new Map();   // key → { v, t }   (없으면 만땅)
@@ -59,6 +60,9 @@ function size() { return _state.size; }
 // ★`salt.js` 는 **늦게** 부른다 — `forage` 는 아주 이른 모듈이라 맞물림을 만들지 않는다.
 let _S = null;
 function _Salt() { if (!_S) _S = require('./salt'); return _S; }
+// ★[T52] 갯벌 정본도 같은 규약으로 **늦게** 부른다(맞물림 금지 — `salt` 와 같은 자리).
+let _T = null;
+function _Tidal() { if (!_T) _T = require('./tidal'); return _T; }
 const RING = (() => {
   const o = [];
   for (const r of [2, 6]) for (let a = 0; a < 8; a++) {
@@ -79,8 +83,21 @@ function sourceAt(x, y, ctx) {
   //   ★고갈은 다른 갈래와 **같은 문법**(개체별 lazy · 셀 키)이지만, 바다는 마르지 않는다 —
   //     실질 병목은 `CFG.COOLDOWN_MS`(한 번 뜨는 시간)와 **들고 갈 수 있는 무게**다.
   //     ⇒ 리필을 만땅으로 둔다(`brine` 키는 상태를 안 적는다 = 위 ①과 같은 뜻).
-  if (ctx.hasVessel && ctx.isSea && _Salt().isTidalFlat(x, y, ctx)) {
-    return { kind: 'brine', key: null, where: '갯벌' };
+  if (ctx.isSea && _Salt().isTidalFlat(x, y, ctx)) {
+    // ⓪-a **짠물** — 병이 있으면 물을 뜬다(T3 · 기존 동작 그대로 · 고갈 없음).
+    if (ctx.hasVessel) return { kind: 'brine', key: null, where: '갯벌' };
+    // ⓪-b ★★[T52] **갯벌 채집** — 병이 없으면 손으로 캔다.
+    //   ★두 갈래의 순서가 곧 계약이다: 병을 들고 갯벌에 서면 **여전히 짠물이 먼저**다
+    //     (자염의 동선을 안 뺏는다 — 물을 뜨러 온 사람이 굴을 캐고 있으면 그게 결함이다).
+    //     굴을 캐려면 병을 두고 오면 된다. **무엇을 들고 가느냐가 판단이 된다.**
+    //   ★물이 차 있으면 `pickAt` 이 null 을 낸다 ⇒ 아래 ① 갈대로 떨어진다(기존 동작 유지).
+    //   ★고갈은 **여기엔 있다**(짠물과 다르다): 바다는 안 마르지만 **조개밭은 마른다**.
+    //     키를 셀로 잡아 개체별 lazy 번영도 그대로 — 한 자리에 눌러앉으면 그 자리만 죽는다.
+    const got = _Tidal().pickAt(x, y);
+    if (got) {
+      return { kind: got, key: `t:${Math.floor(x / CFG.CELL_PX)}_${Math.floor(y / CFG.CELL_PX)}`,
+               where: `갯벌(${_Tidal().tideKo()})` };
+    }
   }
   // ① 갈대 군락 — 물 **바로 옆**. (목이 마르면 위에서 물 마시기로 갈라진다)
   const adj = [[CFG.CELL_PX, 0], [-CFG.CELL_PX, 0], [0, CFG.CELL_PX], [0, -CFG.CELL_PX]];
@@ -100,4 +117,17 @@ function sourceAt(x, y, ctx) {
   }
   return null;   // ★들판 한복판엔 주울 게 없다 — "어디서 주울까"가 판단이 되게 한다
 }
-module.exports = { CFG, KO, left, take, reset, size, sourceAt, RING };
+// ★★[T52] **바다 갈래만** 보는 술어 — zone 의 입력 경로(`tryGather`)가 묻는다.
+//   왜 필요한가: `tryGather` 는 물가에서 갈래를 가르는데 바다 쪽 게이트가 **"병이 있나"** 였다.
+//   그래서 병 없는 사람은 갯벌에 서도 "짠물이다"만 듣고 **`tryForage` 에 도달하지 못했다** —
+//   `sourceAt` 에 갈래를 넣는 것과 **그 갈래에 도달하는 것은 다른 명제**다(족보 (83)의 입력판).
+//   ★서버 하네스는 `tryForage` 를 직접 불러 이 함정을 못 봤고 **실클라 하네스가 잡았다**(T3 물병과 같은 족).
+//   ⇒ 게이트를 "여기서 **바다 것**이 열리나"로 바꾼다. ①갈대·②숲·③자갈은 여기서 안 센다 —
+//     그걸 세면 바닷가에서 갈대가 열려 `drinkBrine` 안내를 덮는다(종전 동작을 뺏는 것이다).
+function seaSourceAt(x, y, ctx) {
+  const s = sourceAt(x, y, ctx);
+  if (!s) return null;
+  if (s.kind === 'brine') return s;
+  return _Tidal().isCatch(s.kind) ? s : null;
+}
+module.exports = { CFG, KO, left, take, reset, size, sourceAt, seaSourceAt, RING };

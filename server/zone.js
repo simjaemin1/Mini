@@ -5956,8 +5956,12 @@ function tryGather(player) {
       //   갈증은 늘 조금씩 줄어서 95% 문턱이 거의 안 열리기 때문이다(그 함정은 갈대가 이미 밟았다).
       //   ⚠**바닷물을 마시면 갈증이 회복되는 문제는 여기서 안 고친다** — 신체 영역 판단이다(회부 D).
       //   ★★[T4 2026-09-01] **그 회부가 확정으로 내려왔다 — 바로 아래에서 고친다.**
+      //   ★★[T52 갯벌 2026-09-02] 게이트가 **"병이 있나"** 였다 — 그래서 병 없는 사람은
+      //     갯벌에 서도 짠물 안내만 듣고 `tryForage` 에 **도달하지 못했다**(조개를 캘 길이 없었다).
+      //     ⇒ **"여기서 바다 것이 열리나"** 로 바꾼다. 조건을 여기 다시 적지 않고 정본에게 묻는다.
+      //     짠물(병 있음)·갯벌 채집(병 없음+썰물) 둘 다 이 술어가 가른다. 그 밖이면 종전대로 아래로.
       if (isSeaTileLocal(player.x + dx, player.y + dy)
-          && (player.inventory[Salt.VESSEL] || 0) >= 1) { tryForage(player); return; }
+          && Forage.seaSourceAt(player.x, player.y, _forageCtx(player))) { tryForage(player); return; }
       // ★★[바닷물 2026-09-01 재민 확정 · T3 동봉] **짠물은 목을 축이지 않는다.**
       //   종전엔 바다도 강도 `isWaterTileLocal` 하나로 뭉뚱그려 갈증이 +30 회복됐다.
       //   자염 배치가 이미 **바다 술어**(`isSeaTileLocal` = 해안선 띠 ∖ 강·호수)를 정본으로 세워 뒀다 —
@@ -6542,6 +6546,13 @@ const ITEM_LABEL_SERVER = {
   item_salt_kiln: '소금가마', item_drying_rack: '건조대', item_workbench: '작업대',
   carrier: '지게',   // ★[T12] 장비 인스턴스 타입 — 재료 부족 알림이 한글로 나가게 한다
 };
+// ★★[T52 갯벌 2026-09-02] 이 배치의 zone.js 접점은 **둘**이다(병행 세션 셋이 이 파일에 있어 최소로 줄였다):
+//   ⓐ 이 주입 한 줄(추가) · ⓑ `tryGather` 의 바다 게이트 한 줄(치환 · 순증 0).
+//   ⓑ 는 안 하면 **병 없는 사람이 채집에 도달조차 못 한다**(실클라 하네스가 잡았다 — 보고 §4).
+//   갯벌 산출(굴·해조·전복)의 **포만감·이름표·조리 두 종**을 정본이 직접 채운다 —
+//   위 두 루프(`PRESERVED_EFFECTS` · `Crops.foodMap`)와 같은 주입 문법이고, 다만 **표의 주인이 채운다**.
+//   (zone 이 품목을 다시 나열하면 그게 사본이다 — 자염이 `brine: Salt.BRINE_KO` 로 이미 그 규약을 썼다.)
+require('./tidal').install({ FOOD_EFFECTS, ITEM_LABEL_SERVER, COOK_RECIPES });
 // ★[보존 배치 2026-08-31] 보존식 이름은 `spoil.PRESERVED_ITEMS.ko` 가 정본이다 — 옮겨 적지 않는다.
 for (const [k, v] of Object.entries(Spoil.PRESERVED_ITEMS)) ITEM_LABEL_SERVER[k] = v.ko;
 // ★[작물 층] 작물·씨앗 이름표도 crops 정본에서(옮겨 적지 않는다)

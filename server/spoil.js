@@ -106,6 +106,11 @@ for (const [k, v] of Object.entries(PRESERVED_ITEMS)) SHELF_DAYS[k] = v.shelf;
 let Crops = null;
 try { Crops = require('./crops'); } catch (e) { Crops = null; }
 if (Crops) { for (const [k, d] of Object.entries(Crops.shelfMap())) SHELF_DAYS[k] = d; }
+// ★★[T52 갯벌 2026-09-02] 갯벌 산출의 보관일도 **정본에서 읽어 온다**(작물과 같은 주입 문법 · 두 벌 금지).
+//   굴 2.0 ≤ 생선 2.5 — 생굴은 실제로 생선보다 빨리 상한다. 전복 2.5 · 해조 6(채소급).
+//   ⚠`tidal` 은 여기서 **늦게** 부른다(모듈 맞물림 금지 — `crops` 와 같은 자리).
+{ let _Tidal = null; try { _Tidal = require('./tidal'); } catch (e) {}
+  if (_Tidal) for (const [k, d] of Object.entries(_Tidal.shelfMap())) SHELF_DAYS[k] = d; }
 
 function shelfOf(item) {
   const s = SHELF_DAYS[item];
