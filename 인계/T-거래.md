@@ -7,6 +7,35 @@
 ## 다른 영역에 있는 관련 절
 
 * → 참조: `인계/L-로트부패.md` — 3-부. ★★2026-08-31 부패·보존 배치 — **부패 곡선 + 말리기·훈제·절임** (병행 트랙 4)
+## T60. ★★2026-09-03 — **캐러밴 시계는 다섯 자리가 한 규약이다** (ECON 수술 1.5 · PM 승인)
+
+> 전문 `보고/T60_2026-09-03.md`. 하네스 `scripts/test-msy.js` ⑤(다섯 자리 전부 소스 계약).
+
+**무엇이 틀려 있었나** — 캐러밴이 늦어지면 `arriveDay`·`returnArriveDay` 는 밀었는데
+**`travelDays` 는 안 밀었다**. `travelDays` 는 `tradeLog` 가 적는 "이 짐이 며칠 걸렸나" 라서,
+그 값만 늦어짐을 모른 채 남았다. T17 이 econ 쪽 두 자리를 고쳤고, T60 이 **존 서버 세 자리**를 마저 고쳤다.
+
+```
+  존 서버(server/villages.js)  — 헬퍼 하나로 모았다
+    function _clockPush(c, days, phase) {
+      if (phase === 'outbound') { c.arriveDay += days; c.returnArriveDay += days;
+                                  if (Number.isFinite(c.travelDays)) c.travelDays += days; }
+      else                      { c.returnArriveDay += days; }   // 귀로 지연은 가는 구간을 안 건드린다
+    }
+    ⓐ 로컬 우회 재경로   _clockPush(c, pushed, body.phase)
+    ⓑ 도착 임박 가드     _clockPush(c, push,   body.phase)
+    ⓒ 고립 화물보존 귀환  c.departDay = world.day; c.travelDays = days;   ← 거리를 덮었으니 시계도 그 구간의 것
+  econ(sim/economy-sim-v2.js · T17 ④)
+    ⓓ 재routing          c.departDay = day; c.travelDays = extraDays;
+    ⓔ 빈손 귀환          c.departDay = day; c.travelDays = travelDaysForDistance(c.distance);
+```
+
+⚠**`travelDaysForDistance` 는 아직 export 가 아니다** — 3사본 규약(specialty + economy-sim* → 번들 → 랩 2종)이
+export 한 줄에도 걸린다. `server/rumor.js` 는 "한 줄 거울 + 교차 계약 검사"로 버틴다(회부 유지).
+
+★**기준선 무영향**: `travelDays` 를 읽는 곳은 `tradeLog` 와 하네스뿐이라 궤적을 안 바꾼다 —
+3시드 800일 기계 비교 **다른 값 0**(`인계/공통.md` 기준선 절).
+
 ## T17. ★★★2026-09-03 — **납품 표 한 줄이 세 문을 연다** (ECON 수술 1 · PM 승인)
 
 > 전문은 `보고/T17_2026-09-02.md`. 기준선 정본은 `인계/공통.md` 기준선 절(PM 승인 2026-09-03).
