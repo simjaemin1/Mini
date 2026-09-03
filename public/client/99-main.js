@@ -191,6 +191,8 @@
     }
   }
   paintIcons(document);
+  // ★[T68] 대상 위 동사 메뉴 — 우클릭 배선(`46-h-verbs.js`). 최상위 실행문은 이 파일 몫이다(T0-b).
+  if (typeof bindVerbMenu === 'function') bindVerbMenu();
   // ★[T66] 개발용 좌표·속도 줄 — 기본 숨김. 값은 계속 갱신된다(`updateHud` 무변) · 새 단축키 0.
   window.__devRow = (on) => {
     const r = document.getElementById('devRow');

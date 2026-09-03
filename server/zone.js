@@ -3739,6 +3739,8 @@ function handlePlayerInput(player, raw) {
   } else if (msg.type === 'rescue_request') {
     // Phase 14.41: 같은 길드원이 다운된 동료를 R 키로 구조
     tryRescue(player, msg.pid);
+  } else if (msg.type === 'verb') {
+    Rescue.verb(player, msg);   // ★[T68] 대상 위 메뉴의 동사 하나 — 표는 `rescue.js` 가 갖는다(접점 1줄)
   } else if (msg.type === 'butcher') butcherCorpse(player, msg.cid);  // Phase 5-7
   else if (msg.type === 'gather') tryGather(player);
   else if (msg.type === 'sort_ore') trySortOre(player);   // ★선광 — 캔 원석 덩이를 광석/맥석으로 가른다

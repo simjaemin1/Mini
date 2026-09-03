@@ -383,3 +383,15 @@ central 부하)이 남아 있고, **서버 로그 없이는 단정할 수 없다
 ```
 클라의 `JOB_KR`·`SEASON_KO` 사본 둘을 지우고 `jobKo()`·`seasonKo()` 가 이 표를 읽는다
 (`43-i-icon.js`). 폴백 없음 — 안 오면 영문 키가 뜬다. 서버 변경은 이 **한 줄**뿐이다.
+
+## 1-표4. ★[T68 2026-09-03] `verb` 하나 · `player_down_state.carriedBy` 를 이제 읽는다
+
+```
+  클라 → 서버   verb { name:'feed'|'water', pid, item }   ★새 타입 하나 · 표는 `server/rescue.js verb()`
+                (업기·줍기는 종전 메시지 그대로 — `rescue_request{pid}` · `pickup_item{giId}`)
+  서버 → 클라   player_down_state.carriedBy               ★서버 무변. 종전엔 클라가 **버리고 있었다**.
+                이제 `46-h-verbs` 가 읽어 "업기 / 내려놓기 / 안 띄움" 을 가른다.
+```
+`rescue.feed(rescuer, word, now, pid)`·`water(rescuer, now, pid)` — `pid` 는 **선택**이고 기본값은
+종전 `_downedNear` 다. 채팅 `/먹이기`·`/물` 은 한 글자도 안 달라졌다. 지목은 **누구를**만 정하고
+거리·창(窓) 게이트는 종전 판정이 그대로 본다.

@@ -229,7 +229,18 @@
       };
     })();
 
-    onbLobbyInit();   // ★[온보딩 v2] 시작 화면 — 마을 선택 지도(§9.1). 판정·목록은 전부 서버(`server/onboarding.js`).
+    // ★[온보딩 v2] 시작 화면 — 마을 선택 지도(§9.1). 판정·목록은 전부 서버(`server/onboarding.js`).
+    // ★★[T68 실측 · 회부 "적재 순서 경쟁" 의 두 번째 얼굴] 이 함수는 **`70-lobby.js`**(조각 23)에 있는데
+    //   `boot()` 을 부르는 것은 **`50-i-panel.js`**(조각 20)의 최상위 문이다. 지금까지 굴러간 이유는
+    //   위 `await fetch('/zones')` 가 **네트워크만큼 늦어** 그 사이 나머지 조각이 다 실렸기 때문이다.
+    //   ⇒ 새로고침처럼 그 응답이 **캐시에서 즉시** 오면 조각 23 보다 먼저 여기 닿아
+    //     `onbLobbyInit is not defined` 로 **시작 화면이 통째로 안 뜬다**(T68 하네스가 실제로 잡았다 —
+    //     재입장 재시도가 page.goto 로 새로고침을 하면서 드러났다).
+    //   수리는 한 줄: 아직 안 실렸으면 **다음 틱에** 부른다(그때는 조각이 전부 실려 있다).
+    //   ⚠근본 수리는 `boot()` 호출을 `99-main.js` 로 옮기는 것이다(T0-b: 최상위 문은 거기 하나) —
+    //     그건 `50-i-panel.js`(T69 소유)와 `test-client-globals` 기준선을 건드리므로 **회부**한다.
+    if (typeof onbLobbyInit === 'function') onbLobbyInit();
+    else setTimeout(() => { if (typeof onbLobbyInit === 'function') onbLobbyInit(); }, 0);
     document.getElementById('enter').onclick = () => {
       const inputName = document.getElementById('name').value.trim();
       const inputPw = document.getElementById('password').value;
@@ -563,80 +574,41 @@
           return;
         }
       }
-      // 1) ground item hit-test 우선 (작은 거 위에 클릭)
-      let hitGi = null;
-      for (const c of conns.values()) {
-        if (!c.meta || !c.groundItems) continue;
-        const ox = c.meta.worldOffsetX || 0, oy = c.meta.worldOffsetY || 0;
-        for (const gi of c.groundItems.values()) {
-          const absX = ox + gi.x, absY = oy + gi.y;
-          if (Math.abs(absX - clickWx) <= 14 && Math.abs(absY - clickWy) <= 14) {
-            hitGi = gi; break;
-          }
-        }
-        if (hitGi) break;
-      }
-      if (hitGi) {
-        const c = conns.get(primaryZoneId);
-        const ox = c?.meta?.worldOffsetX || 0, oy = c?.meta?.worldOffsetY || 0;
-        const distToMe = Math.hypot((ox + hitGi.x) - myAbsPredicted.x, (oy + hitGi.y) - myAbsPredicted.y);
+      // ★★[T68] 커서 밑을 고르는 일은 **`pickAt` 하나**가 한다(`46-h-verbs.js`).
+      //   종전엔 여기 세 사슬(바닥 물건 ±14 → 터·시설 → 상자 ±20)이 늘어서 있었고,
+      //   우클릭 메뉴도 같은 판정이 필요해지자 **두 벌이 될 참**이었다(사본 금지).
+      //   ⚠순서·반경·존 순회·첫 히트에서 멈춤 — 전부 그대로 옮겼다. **행동 변경 0**.
+      //   ⚠거리 게이트("너무 멀다")는 **여기 남는다**: 종전에도 대상을 고른 **뒤** 검사해
+      //     다음 갈래로 안 넘어가고 알림만 냈다. `pickAt` 으로 옮기면 멀리 있는 상자가
+      //     "안 골라진 것"이 되어 사슬이 뒤로 흐른다 — 그게 행동 변경이다.
+      const hit = pickAt(clickWx, clickWy);
+      if (hit && hit.kind === 'item') {
+        const distToMe = Math.hypot(hit.absX - myAbsPredicted.x, hit.absY - myAbsPredicted.y);
         if (distToMe > 100) { showNotice('너무 멀리 있어 손이 안 닿습니다'); return; }
-        sendPrimary({ type: 'pickup_item', giId: hitGi.id });
+        sendPrimary({ type: 'pickup_item', giId: hit.id });
         return;
       }
-      // 1.5) 움집터 클릭 → 다음 단계 시공 시도
-      {
-        let hitSite = null;
-        for (const c of conns.values()) {
-          if (!c.meta) continue;
-          const ox = c.meta.worldOffsetX || 0, oy = c.meta.worldOffsetY || 0;
-          for (const b of c.buildings.values()) {
-            if (b.type !== 'hut_site' && b.type !== 'furnace_site' && b.type !== 'furnace'
-                && b.type !== 'kiln_site' && b.type !== 'charcoal_kiln'
-                && b.type !== 'village_site' && b.type !== 'village_hall'
-                && b.type !== 'shelter_site') continue;   // ★[배치 12] 회관: 터=시공 · 완공=재고 · ★[T62] 쉼터 터=시공
-            const absX = ox + b.x, absY = oy + b.y;
-            const rx = b.type === 'hut_site' ? 48 : 34, ry = b.type === 'hut_site' ? 40 : 34;   // 노·숯가마는 2×2
-            if (Math.abs(absX - clickWx) <= rx && Math.abs(absY - clickWy) <= ry) { hitSite = b; break; }
-          }
-          if (hitSite) break;
-        }
-        if (hitSite) {
-          if (hitSite.type === 'furnace') sendPrimary({ type: 'furnace_smelt', buildingId: hitSite.id });   // ★완공 노 클릭 = 조업
-          else if (hitSite.type === 'furnace_site') sendPrimary({ type: 'furnace_advance', buildingId: hitSite.id });
-          else if (hitSite.type === 'charcoal_kiln') sendPrimary({ type: 'kiln_burn', buildingId: hitSite.id });   // ★숯가마 클릭 = 조업
-          else if (hitSite.type === 'kiln_site') sendPrimary({ type: 'kiln_advance', buildingId: hitSite.id });
-          else if (hitSite.type === 'village_site') sendPrimary({ type: 'village_advance', buildingId: hitSite.id });   // ★[배치 12] 회관 시공
-          else if (hitSite.type === 'shelter_site') sendPrimary({ type: 'shelter_advance', buildingId: hitSite.id });   // ★[T62] 쉼터 시공
-          else if (hitSite.type === 'village_hall') { _pviHallId = hitSite.id; sendPrimary({ type: 'village_inventory', buildingId: hitSite.id }); } // ★[배치 12 ③] 완공 회관 클릭 = 마을 재고(권한은 서버가 본다)
-          else sendPrimary({ type: 'hut_advance', buildingId: hitSite.id });
-          return;
-        }
+      if (hit && hit.kind === 'site') {
+        const b = hit.obj;
+        if (b.type === 'furnace') sendPrimary({ type: 'furnace_smelt', buildingId: b.id });   // ★완공 노 클릭 = 조업
+        else if (b.type === 'furnace_site') sendPrimary({ type: 'furnace_advance', buildingId: b.id });
+        else if (b.type === 'charcoal_kiln') sendPrimary({ type: 'kiln_burn', buildingId: b.id });   // ★숯가마 클릭 = 조업
+        else if (b.type === 'kiln_site') sendPrimary({ type: 'kiln_advance', buildingId: b.id });
+        else if (b.type === 'village_site') sendPrimary({ type: 'village_advance', buildingId: b.id });   // ★[배치 12] 회관 시공
+        else if (b.type === 'shelter_site') sendPrimary({ type: 'shelter_advance', buildingId: b.id });   // ★[T62] 쉼터 시공
+        else if (b.type === 'village_hall') { _pviHallId = b.id; sendPrimary({ type: 'village_inventory', buildingId: b.id }); } // ★[배치 12 ③] 완공 회관 클릭 = 마을 재고(권한은 서버가 본다)
+        else sendPrimary({ type: 'hut_advance', buildingId: b.id });
+        return;
       }
-      // 2) chest bbox hit-test (chest는 32×32 cell, b.x/b.y가 cell 중심)
-      let hitChest = null;
-      for (const c of conns.values()) {
-        if (!c.meta) continue;
-        const ox = c.meta.worldOffsetX || 0, oy = c.meta.worldOffsetY || 0;
-        for (const b of c.buildings.values()) {
-          if (b.type !== 'chest' && b.type !== 'guild_granary') continue;   // ★길드 곳간 클릭=컨테이너 열기
-          const absX = ox + b.x, absY = oy + b.y;
-          if (Math.abs(absX - clickWx) <= 20 && Math.abs(absY - clickWy) <= 20) {
-            hitChest = b; break;
-          }
-        }
-        if (hitChest) break;
-      }
-      if (hitChest) {
-        const c = conns.get(primaryZoneId);
-        const ox = c?.meta?.worldOffsetX || 0, oy = c?.meta?.worldOffsetY || 0;
-        const distToMe = Math.hypot((ox + hitChest.x) - myAbsPredicted.x, (oy + hitChest.y) - myAbsPredicted.y);
+      if (hit && hit.kind === 'chest') {
+        const b = hit.obj;
+        const distToMe = Math.hypot(hit.absX - myAbsPredicted.x, hit.absY - myAbsPredicted.y);
         if (distToMe > 160) { showNotice('너무 멀리 있어 손이 안 닿습니다'); return; }
         // Phase 4d-1: 거래소 chest는 마을 거래소 modal로
-        if (hitChest.data?.isExchange && hitChest.data?.village && typeof window.openVillageMarket === 'function') {
-          window.openVillageMarket(hitChest.data.village);
+        if (b.data?.isExchange && b.data?.village && typeof window.openVillageMarket === 'function') {
+          window.openVillageMarket(b.data.village);
         } else if (typeof openInvWithContainer === 'function') {
-          openInvWithContainer(hitChest.id);
+          openInvWithContainer(b.id);
         }
       }
     });
@@ -1364,6 +1336,9 @@
       } else {
         if (msg.isDown) downStates.set(msg.pid, true);
         else downStates.delete(msg.pid);
+        // ★[T68] 누가 업고 있나 — 이 메시지가 **이미 싣고 있던** 칸이다(서버 무변). 종전엔 버렸다.
+        //   메뉴가 "업기"와 "내려놓기"를 가르는 데 쓴다(`46-h-verbs`). 없으면 거짓말하는 메뉴가 된다.
+        if (typeof onCarryState === 'function') onCarryState(msg.pid, msg.isDown ? (msg.carriedBy || null) : null);
       }
     } else if (msg.type === 'chest_state') {
       // 상자 UI에 반영

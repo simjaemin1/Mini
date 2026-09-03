@@ -175,9 +175,22 @@ function seaOnlyNear(x, y) {
   return sea;
 }
 
-function feed(rescuer, word, now) {
+/** 대상 하나를 고른다 — **지목이 있으면 그 사람**, 없으면 종전대로 제일 가까운 사람.
+ *  ★★[T68 2026-09-03] 메뉴는 **그 사람 위에서** 열린다. 그러면 "제일 가까운 사람"으로는 틀린다:
+ *    쓰러진 사람이 둘 겹쳐 있으면 내가 누른 사람이 아니라 옆 사람이 먹는다.
+ *    ⇒ `pid` 를 받는다. 기본값(`undefined`)은 **종전 그대로** — 채팅 `/먹이기`·`/물` 은 한 글자도 안 달라진다.
+ *    ⚠거리·창(窓) 게이트는 여기서 안 없앤다. 지목은 **누구를**만 정하고, 될지 말지는 종전 판정이 본다. */
+function _pickTarget(rescuer, pid) {
+  if (pid === undefined || pid === null) return _downedNear(rescuer);
+  const q = (H.players && H.players.get) ? H.players.get(pid) : null;
+  if (!q || q === rescuer || q.isNpc || !q.isDown) return null;
+  const d = Math.hypot(q.x - rescuer.x, q.y - rescuer.y);
+  return (d <= (H.RESCUE_RANGE_PX || 80)) ? q : null;
+}
+
+function feed(rescuer, word, now, pid) {
   const t = Number.isFinite(now) ? now : Date.now();
-  const target = _downedNear(rescuer);
+  const target = _pickTarget(rescuer, pid);
   if (!target) { _send(rescuer, `🥣 옆에 쓰러진 사람이 없다 — ${H.RESCUE_RANGE_PX || 80}px 안에서`); return false; }
   if (!_windowOpen(target, t)) { _send(rescuer, '🥣 너무 늦었다 — 구조 가능 시간이 지났다'); return false; }
   const item = _resolveItem(word);
@@ -200,9 +213,9 @@ function feed(rescuer, word, now) {
 
 let _F = undefined;
 function _fresh() { if (_F === undefined) { try { _F = require('./tidal').FRESH || null; } catch (e) { _F = null; } } return _F; }
-function water(rescuer, now) {
+function water(rescuer, now, pid) {
   const t = Number.isFinite(now) ? now : Date.now();
-  const target = _downedNear(rescuer);
+  const target = _pickTarget(rescuer, pid);
   if (!target) { _send(rescuer, `💧 옆에 쓰러진 사람이 없다 — ${H.RESCUE_RANGE_PX || 80}px 안에서`); return false; }
   if (!_windowOpen(target, t)) { _send(rescuer, '💧 너무 늦었다 — 구조 가능 시간이 지났다'); return false; }
   const MAX = H.THIRST_MAX || 100;
@@ -249,8 +262,19 @@ function handleChat(player, text) {
   return false;
 }
 
+/** 대상 위 메뉴에서 온 동사 하나 — zone 접점은 `case` 한 줄이다(T11 `membership.handleChat` 선례).
+ *  ★새 게임 동사 0: 이름표만 붙었을 뿐 부르는 것은 위의 `feed`·`water` 정본 그대로다.
+ *  ★업기·줍기는 여기 없다 — 그 둘은 **종전 메시지**(`rescue_request`·`pickup_item`)가 이미 `pid`·`giId` 를 받는다. */
+function verb(player, msg) {
+  if (!ready() || !player || !msg) return false;
+  const pid = (msg.pid === undefined || msg.pid === null) ? undefined : msg.pid;
+  if (msg.name === 'feed') { feed(player, String(msg.item || ''), Date.now(), pid); return true; }
+  if (msg.name === 'water') { water(player, Date.now(), pid); return true; }
+  return false;
+}
+
 module.exports = {
-  CFG, init, ready, onDown, shoutOnce, steps, handleChat, feed, water,
+  CFG, init, ready, onDown, shoutOnce, steps, handleChat, feed, water, verb,
   freshWaterNear, seaOnlyNear,
   // ★하네스용 — 시계를 밖에서 밀 수 있게(정본을 그대로 내준다 · 하네스가 사슬을 다시 짜지 않는다)
   __probe: { tick: _tick, shoutMap: _shout, downedNear: _downedNear, resolveItem: _resolveItem },
