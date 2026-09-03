@@ -436,7 +436,68 @@ function openSpot() {
     console.log(`    [측정 — 판정 아님] 마주보는 행 차이 ${opp.map((v) => v.toFixed(2)).join(' ')}`
       + ` vs 이웃 행 차이 ${adj.map((v) => v.toFixed(2)).join(' ')}`);
     console.log('      ⇒ 마주보는 두 방향(동↔서·남↔북)이 이웃만큼도 안 다르다 = **시트가 앞뒤를 못 가른다**(얼굴이 없다).');
-    console.log('      ⇒ 산식이 아니라 **에셋**의 문제다. 재렌더는 ART — 회부(`인계/R2-개체렌더.md`).');
+  }
+
+  // ═══ [T65 2026-09-03] ⓕ **시트가 앞뒤를 가르는가** — T57 이 세운 자를 검사 절로 승격 ═══
+  //   T57 은 이 자리를 '측정 — 판정 아님'으로만 찍었다. T65 가 시트를 다시 구웠으니 **판정한다.**
+  //
+  //   ★자를 하나 바꿨다. T57 의 '마주보는 행 차이 vs 이웃 행 차이'는 **다른 종류의 변화를 견준다** —
+  //     이웃 행은 실루엣이 45° 통째로 돌아 차이가 크고, 마주보는 행은 실루엣이 같아 차이가 작다.
+  //     실측으로 그 비는 앞 절반을 새까맣게 칠해도 0.447 을 못 넘었다(T65 보고서 §1). 1 은 닿을 수 없는 선이다.
+  //   ⇒ 대신 **방향이 붙은 신호**를 잰다: 카메라를 향한 행(0·1·2)과 등진 행(4·5·6)의
+  //     ⓐ 머리 영역 평균 밝기(앞이 밝다 — 이마가 살색, 뒤통수가 머리칼)
+  //     ⓑ 옷 층 평균 밝기(앞이 어둡다 — 앞섶이 한 톤 짙다)
+  //   ⇒ 자명 통과 금지: 행 순서를 **4칸 돌려**(앞뒤를 맞바꿔) 같은 자를 대면 부호가 뒤집혀야 한다.
+  //     신호가 없는 시트는 둘 다 0 근처라 이 검사를 통과할 수 없다.
+  console.log('\n=== ⓕ 시트가 앞뒤를 가른다 [T65] ===');
+  {
+    const P = require(path.join(ROOT, 'node_modules', 'pngjs')).PNG;
+    const FW = 109, FH = 90;
+    const rd = (n) => P.sync.read(fs.readFileSync(path.join(ROOT, 'public', 'assets', 'char', n)));
+    const lumRows = (png, headOnly) => {
+      const nf = Math.floor(png.width / FW), out = [];
+      for (let r = 0; r < 8; r++) {
+        const vals = [];
+        for (let f = 0; f < Math.min(nf, 4); f++) {
+          let top = 1e9;
+          for (let y = 0; y < FH; y++) for (let x = 0; x < FW; x++) {
+            const i = ((r * FH + y) * png.width + f * FW + x) * 4;
+            if (png.data[i + 3] > 120 && y < top) top = y;
+          }
+          if (top > FH) continue;
+          const y0 = headOnly ? top : 0, y1 = headOnly ? Math.min(FH, top + 7) : FH;
+          let sum = 0, n = 0;
+          for (let y = y0; y < y1; y++) for (let x = 0; x < FW; x++) {
+            const i = ((r * FH + y) * png.width + f * FW + x) * 4;
+            if (png.data[i + 3] > 200) { sum += png.data[i] * 0.3 + png.data[i + 1] * 0.6 + png.data[i + 2] * 0.1; n++; }
+          }
+          if (n > 10) vals.push(sum / n);
+        }
+        out.push(vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0);
+      }
+      return out;
+    };
+    const gap = (v, sgn, rot) => {
+      const g = (k) => v[(k + (rot || 0)) % 8];
+      return sgn * (((g(0) + g(1) + g(2)) / 3) - ((g(4) + g(5) + g(6)) / 3));
+    };
+    // ★문턱은 **유도한다**(족보 74): 옛 시트와 새 시트의 실측을 로그 중앙(기하평균)에서 가른다.
+    //   머리   옛 +2.35 · 새 +26.74  ⇒ √(2.35×26.74) = 7.9  ⇒ K_HEAD = 8
+    //   옷     옛 +0.06 · 새 +14.73  ⇒ 옛이 사실상 0 이라 기하평균이 무의미 ⇒ 새 값의 1/3 로 잡는다 = 5
+    const K_HEAD = 8, K_CLOTH = 5;
+    for (const clip of ['idle', 'walk']) {
+      const body = rd(`body_${clip}.png`), cloth = rd(`clothes_hemp_${clip}.png`);
+      const hv = lumRows(body, true), cv = lumRows(cloth, false);
+      const hGap = gap(hv, +1, 0), cGap = gap(cv, -1, 0);          // 머리는 앞이 밝다 · 옷은 앞이 어둡다
+      const hRot = gap(hv, +1, 4), cRot = gap(cv, -1, 4);          // 앞뒤를 맞바꾼 대조군
+      console.log(`    [${clip}] 머리 밝기 행별 ${hv.map((x) => x.toFixed(0)).join(' ')}  ⇒ 앞−뒤 ${hGap.toFixed(2)}`);
+      console.log(`    [${clip}] 옷  밝기 행별 ${cv.map((x) => x.toFixed(0)).join(' ')}  ⇒ 뒤−앞 ${cGap.toFixed(2)}`);
+      ok(hGap > K_HEAD, `★★ⓕ[${clip}] **앞을 보면 머리가 밝다**(이마) · 등지면 어둡다(뒤통수)`, `앞−뒤 ${hGap.toFixed(2)} > ${K_HEAD}`);
+      ok(cGap > K_CLOTH, `★★ⓕ[${clip}] **앞을 보면 옷이 짙다**(앞섶)`, `뒤−앞 ${cGap.toFixed(2)} > ${K_CLOTH}`);
+      ok(hRot < -K_HEAD * 0.5 && cRot < -K_CLOTH * 0.5,
+        `★ⓕ[${clip}] 자명 통과 금지 — 행을 4칸 돌리면(앞뒤 맞바꿈) **부호가 뒤집힌다**`,
+        `머리 ${hRot.toFixed(2)} · 옷 ${cRot.toFixed(2)} (신호 없는 시트는 둘 다 0 근처라 여기서 깨진다)`);
+    }
   }
 
   console.log('\n=== ⑥ 성능 — rAF 짝 비교 (플래그 ON vs OFF · 같은 화면) ===');
