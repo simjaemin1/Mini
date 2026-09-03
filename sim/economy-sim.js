@@ -446,6 +446,29 @@ const SALT_DAILY_PC = 0.01;
 const MSY_MODE_EMA = process.env.T60_MSY_MODE === 'ema';
 const MSY_EMA_LOCK_DAYS = 90;                        // econ 계절 경계(seasonOf d<90) — 새 수 아님
 const MSY_HEADROOM = (() => { const v = parseFloat(process.env.T60_MSY_HEADROOM || ''); return (isFinite(v) && v > 0) ? v : 2; })();
+// ★★[T73 ECON 수술 2-a 2026-09-03 · 재민 확정] **곳간의 생곡은 식량이다.**
+//   나온 자리: T60 §0-ⓔ' — 소멸한 광산1 은 **밀 21 · 쌀 12 를 두고 굶어 죽었다**.
+//   `totalFoodEquivalent` 도 `consumeFood` 사다리도 생곡을 안 세는데, **세계의 다른 곳은 이미 식량으로 친다**:
+//     · `server/specialty.js`  wheat/rice/barley 가 `contributes: {subsistence: 1 · 1 · 0.9}`
+//     · 이 파일 `FOOD_GLUT_SAT`  { food, cooked_food, **wheat, rice, barley** } — 곡물 과잉을 식량 과잉으로 센다
+//   ⇒ 안 세는 자리가 둘뿐이었다. 그 둘을 맞춘다. **생곡→`food` 변환은 econ 어디에도 없다**(전수 확인).
+//
+// ★계수 — 새 수는 **하나**다. 그리고 발명이 아니라 **두 정본의 나눗셈**이다.
+//   ⓐ 무게 정본(`server/weights.js`)  food 0.70kg · wheat 0.70 · rice 0.75 · barley 0.65
+//   ⓑ 열량 정본(`server/kcal.js` · T59) KCAL_PER_KG.food = 3500 — **곡물이 그 앵커다**(T59 회부: "곡물만 정확히 1.00")
+//   ⇒ 교차 검산: `food` 1단위 = 0.70kg × 3500 = **2,450kcal = DAY_KCAL** = 하루치.
+//      사다리가 "사람 하루"를 단위로 서 있다는 뜻이고, `DAILY_FOOD_CONSUMPTION = 1.0` 이 그 증거다.
+//   ⇒ 생곡 1단위 = (도정 수율)만큼의 `food` 다. 도정 수율은 고증 앵커: **쌀 72% · 밀 75%**.
+//      셋을 한 수로 묶으라는 지시라, 주어진 둘 중 **보수값(쌀 0.72)** 을 쓴다.
+//      (품목별로 kg 비까지 반영하면 밀 0.750 · 쌀 0.771 이 되어 **더 커진다** — 0.72 는 그 아래다.)
+const RAW_GRAINS = ['wheat', 'rice', 'barley'];          // 부산물 표에 있는 셋이 전부(기장은 산출 0 — 실측)
+//   ⚠`T73_GRAIN_F` 는 **후보 스크린용 손잡이**다(지시 §1: 후보는 시드 1020 하나로 거른다).
+//     기본값은 위 근거 표에서 유도한 0.72 이고, 계측기 말고는 아무도 이 값을 안 바꾼다.
+const RAW_GRAIN_FOOD_FACTOR = (() => {
+  const v = parseFloat(process.env.T73_GRAIN_F || '');
+  return (isFinite(v) && v > 0 && v <= 1) ? v : 0.72;    // ★새 수 하나 — 쌀 도정 수율. 위 근거 표에서 유도
+})();
+const T73_RAWGRAIN = process.env.T73_RAWGRAIN !== '0';   // 되돌림: T73_RAWGRAIN=0 → T60 기준선 비트 재현
 const T17_TOOL     = process.env.T17_TOOL     !== '0';   // ① 도구 마모를 흐름으로 기록
 const T17_PRESERVE = process.env.T17_PRESERVE !== '0';   // ② 보존식 편입
 const T17_SALT     = process.env.T17_SALT     !== '0';   // ③ 자염 편입
@@ -479,6 +502,22 @@ function consumeFood(v, need) {
   if (remaining > 0 && v.storage.food > 0) {
     const eff = Math.min(remaining, v.storage.food);
     v.storage.food -= eff; remaining -= eff; eaten.food = eff;
+  }
+  // 3.5) ★★[T73] 생곡 — **`food` 바로 뒤, 채집물 앞.**
+  //   왜 이 자리인가(한 줄): 생곡은 **같은 곡물**이라 도정 한 번이면 `food` 다 — 채집물(0.25~0.5)보다
+  //   훨씬 가깝다. 그런데 `food` 보다는 뒤여야 한다. 앞에 두면 **찧는 수고를 먼저 하는 게 이득**이 되어
+  //   이미 찧어 둔 `food` 가 곳간에서 늙는다(T17 보존식을 맨 뒤에 둔 것과 같은 이유의 거울).
+  //   ⚠환산은 위 `RAW_GRAIN_FOOD_FACTOR` 하나 — 채집물 사다리와 **같은 꼴**이다.
+  //   ⚠`_cons` 는 **안 부른다**: 이 함수 끝 주석의 flow-EMA 제외 규약이 사다리 전체에 걸린다
+  //     (식단은 가용성 기반 대체 소비라 flowT 에 폴드하면 수출 억압이 생긴다 — 실측 s101 245→27).
+  if (T73_RAWGRAIN) {
+    for (const r of RAW_GRAINS) {
+      if (remaining > 0 && v.storage[r] > 0) {
+        const need = remaining / RAW_GRAIN_FOOD_FACTOR;
+        const consumed = Math.min(need, v.storage[r]);
+        v.storage[r] -= consumed; remaining -= consumed * RAW_GRAIN_FOOD_FACTOR; eaten[r] = consumed;
+      }
+    }
   }
   // 4) 채집물 (가장 비효율) — fruit/veg 0.4, mushroom 0.3
   for (const r of Object.keys(FORAGE_FOOD_FACTOR)) {
@@ -521,6 +560,8 @@ function totalFoodEquivalent(v) {
   // ★[T17 ②] 곳간에 든 보존식도 **식량이다**. 안 세면 갈무리하는 순간 마을 수용력(K)이 내려간다
   //   — 첫 판에서 실제로 그랬다(위 `PRESERVE_FOOD_FACTOR` 주석). 끄면 이 줄은 0 을 더한다.
   if (T17_PRESERVE) for (const r of PRESERVED_FOODS) total += (v.storage[r] || 0) * PRESERVE_FOOD_FACTOR;
+  // ★[T73] 곳간의 생곡도 식량이다 — 도정 수율만큼(위 근거 표). 끄면 이 줄은 0 을 더한다.
+  if (T73_RAWGRAIN) for (const r of RAW_GRAINS) total += (v.storage[r] || 0) * RAW_GRAIN_FOOD_FACTOR;
   return total;
 }
 function totalFoodProductionEquivalent(prod) {
@@ -532,6 +573,8 @@ function totalFoodProductionEquivalent(prod) {
   //   ⚠원물을 `_cons` 로 빼고 보존식을 `addProduce` 로 넣으므로, 같은 열량이 두 번 세지지 않는다
   //     (하루 생산 버퍼는 순증분만 담는다).
   if (T17_PRESERVE) for (const r of PRESERVED_FOODS) total += (prod[r] || 0) * PRESERVE_FOOD_FACTOR;
+  // ★[T73] 생산 쪽도 같은 자로 — 오늘 거둔 생곡도 식량 생산이다.
+  if (T73_RAWGRAIN) for (const r of RAW_GRAINS) total += (prod[r] || 0) * RAW_GRAIN_FOOD_FACTOR;
   return total;
 }
 
@@ -4109,6 +4152,8 @@ function computeVillagePrices(v) {
 module.exports = {
   _LEGACY_CONTRIBUTES: LEGACY_CONTRIBUTES,
   totalFoodEquivalent,   // 진단 하네스가 병기고 식량안보 게이트를 정확히 재려면 필요
+  consumeFood,           // ★[T73] 식단 사다리의 **순서**를 하네스가 직접 증명하려면 필요(같은 이유)
+  RAW_GRAINS, RAW_GRAIN_FOOD_FACTOR,   // ★[T73] 계수를 하네스·계측기가 옮겨 적지 않게(사본 금지)
   // 가치사슬 하네스(scripts/test-valuechain.js)가 상수를 **복제하지 않고** 읽도록 노출.
   _SMELT_PER_LABOR: SMELT_PER_LABOR, _SMELT_YIELD: SMELT_YIELD, _MELT_TOTAL,
   // ★시대 게이트 조회 — v2 원석 상한이 같은 판정을 쓰도록(사본 금지). 금속이 아니면 항상 true.
