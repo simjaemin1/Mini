@@ -296,11 +296,16 @@ async function waitHttp(url, tries = 900) {
     ok(/비가 통 안 오는군/.test(toast), '★★⑤-b **내가 심은 그 문장이 화면에 보인다**(회부 0-소문 1 종결)',
       JSON.stringify((toast.split('\n').find((l) => /비가 통 안 오는군/.test(l)) || '').slice(0, 60)));
     // ★순서 — 소식은 **의뢰 줄 아래**다(T20 이 맨 윗줄에 겨울 머리줄을 넣는다)
+    //   ★★[T63 2026-09-03 수리] **소식 줄도 ` · ` 로 시작한다.** 그래서 의뢰가 0건인 판에서는
+    //     `findIndex(/^ · /)` 가 **소식 줄**을 "첫 의뢰 줄"로 집고, 그때 이 검사는 뜻이 뒤집힌다
+    //     (의뢰 0건은 흔하다 — 이 하네스가 그때그때 게시판 상태를 타서 빨개졌다. 제품은 정상이었다).
+    //   ⇒ 소식 절 **앞쪽만** 보고, 의뢰가 0건이면 견줄 것이 없으므로 **소식 절의 존재만** 확인한다.
     const iNews = toast.indexOf('— 들은 소식 —');
-    const lines = toast.split('\n');
-    const iRow = lines.findIndex((l) => /^ · /.test(l));
-    ok(iNews > 0 && (iRow < 0 || toast.indexOf(lines[iRow]) < iNews),
-      '★⑤-b 소식은 **의뢰 줄 아래**에 붙는다(맨 윗줄은 서버 몫 — T20)', `의뢰 첫 줄 ${iRow} · 소식 절 ${iNews}`);
+    const head = iNews > 0 ? toast.slice(0, iNews) : toast;
+    const iRow = head.split('\n').findIndex((l) => /^ · /.test(l));
+    ok(iNews > 0 && (iRow >= 0 || /걸린 의뢰가 없다/.test(head)),
+      '★⑤-b 소식은 **의뢰 줄 아래**에 붙는다(맨 윗줄은 서버 몫 — T20)',
+      `소식 절 앞의 의뢰 줄 ${iRow} · 소식 절 ${iNews}${iRow < 0 ? ' (의뢰 0건 — 앞머리가 "걸린 의뢰가 없다")' : ''}`);
     await snap('ev-05b-news');
   }
 

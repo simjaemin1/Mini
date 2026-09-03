@@ -361,6 +361,49 @@ const YD = Events.yearDaysOf();
   ok(JSON.stringify(before) === JSON.stringify(st), '⑧f 이 절은 곳간을 **안 건드렸다**(관측만 했다)');
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ⑨ ★[T63 · T20 회부 ⓪] **기여자 이름이 재기동을 넘어간다** — 저장·로드 왕복
+//    왜: 양은 `village_winter` 에 남는데 이름은 서버 메모리에만 있었다. 그래서 재기동하면
+//    브리핑이 "누가 냈는지"를 조용히 잃었다(양은 맞는데 이름만 빠지는 반쪽 영속 — 제일 나쁜 종류다).
+//    ★재기동은 `bindWinter`(= `__reset()` + `init`)로 흉내 낸다 — 메모리를 비우고 **표에서만** 되살린다.
+// ─────────────────────────────────────────────────────────────────────────────
+{
+  const world = makeWorld(0, 4242);
+  const L = mkLedger(world); bindWinter(L);
+  const vils = wrap(world, 900);
+  let aDay = 0;
+  for (let d = 1; d <= YD; d++) { NOW = d; if (Winter.isAnnounceDay(d)) { aDay = d; break; } }
+  const goal = Winter.dailyExtra(aDay, vils).goal;
+  const vid = 900, res = goal[vid] && goal[vid].res;
+  ok(!!res, '⑨ 전제: 공표가 섰다(아래가 자명 통과가 아니다)', String(res));
+
+  NOW = aDay + 1;
+  Winter.onDeliver({ playerId: 'p-ko', name: '들풀' }, { ok: true, done: true, moved: { [res]: 9 } }, vid);
+  const before = Winter.probe(vid).by.find((x) => x.pid === 'p-ko');
+  ok(!!before && before.name === '들풀', '⑨a 낸 직후엔 이름이 있다', JSON.stringify(before));
+
+  // ★재기동 — 메모리를 통째로 비운다
+  bindWinter(L);
+  const after = Winter.probe(vid).by.find((x) => x.pid === 'p-ko');
+  ok(!!after, '⑨b 전제: 재기동 뒤에도 **양**은 남는다(종전부터 그랬다)', JSON.stringify(after));
+  ok(!!after && after.qty === before.qty, '⑨c 양이 그대로다', `${before && before.qty} → ${after && after.qty}`);
+  ok(!!after && after.name === '들풀', '⑨ ★재기동 뒤에도 **이름**이 남는다(이 절이 고친 것)', JSON.stringify(after && after.name));
+
+  // ★이름 없는 갱신이 이름을 지우지 않는다(COALESCE) — 낸 사람이 또 내면 이름이 사라지면 안 된다
+  NOW = aDay + 2;
+  Winter.onDeliver({ playerId: 'p-ko' }, { ok: true, done: true, moved: { [res]: 3 } }, vid);
+  bindWinter(L);
+  const again = Winter.probe(vid).by.find((x) => x.pid === 'p-ko');
+  ok(!!again && again.qty === +(before.qty + 3).toFixed(3), '⑨d 다시 내면 양이 는다', `${again && again.qty}`);
+  ok(!!again && again.name === '들풀', '⑨e ★이름 없는 갱신이 이름을 **안 지운다**(COALESCE)');
+
+  // ★자명 통과 금지 — 이름을 안 준 사람은 그대로 null 이다(모든 행에 이름을 심는 게 아니다)
+  Winter.onDeliver({ playerId: 'p-anon' }, { ok: true, done: true, moved: { [res]: 2 } }, vid);
+  bindWinter(L);
+  const anon = Winter.probe(vid).by.find((x) => x.pid === 'p-anon');
+  ok(!!anon && anon.name === null, '⑨f ★자명 통과 금지 — 이름을 안 준 사람은 여전히 이름이 없다');
+}
+
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
 try { fs.unlinkSync(process.env.DB_PATH); } catch (e) {}
 process.exit(fail ? 1 : 0);

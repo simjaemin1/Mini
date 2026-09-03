@@ -457,12 +457,25 @@ db.exec(`
     PRIMARY KEY (zone, vid, year, player_id)
   );
 `);
-const stmtUpsertVillageWinter = db.prepare(`INSERT INTO village_winter (zone, vid, year, player_id, qty, res)
-  VALUES (?, ?, ?, ?, ?, ?)
-  ON CONFLICT(zone, vid, year, player_id) DO UPDATE SET qty = excluded.qty, res = excluded.res`);
-const stmtGetVillageWinter = db.prepare('SELECT vid, year, player_id, qty, res FROM village_winter WHERE zone = ? AND year >= ?');
-function upsertVillageWinter(zone, vid, year, playerId, qty, res) {
-  stmtUpsertVillageWinter.run(zone, vid | 0, year | 0, String(playerId == null ? '' : playerId), +qty || 0, res == null ? null : String(res));
+// ★[T63 2026-09-03 · T20 회부 ⓪] 열 하나 — **기여자 이름**.
+//   양은 이미 여기 남는데 이름은 서버 메모리(`winter.js _names`)에만 있었다 ⇒ 재기동하면
+//   브리핑에서 **누가 냈는지가 사라진다**(양은 남고 이름만 빠지는, 조용한 반쪽 영속).
+//   ⚠`ALTER TABLE ADD COLUMN` 엔 IF NOT EXISTS 가 없다 — `claims.kind` 선례대로 PRAGMA 로 본다.
+//   ⚠이름은 **표시용**이다: 판정도 보상도 이 열을 안 읽는다(읽으면 이름이 규칙이 된다).
+{
+  const _wc = db.prepare('PRAGMA table_info(village_winter)').all().map((c) => c.name);
+  if (!_wc.includes('name')) db.exec('ALTER TABLE village_winter ADD COLUMN name TEXT');
+}
+const stmtUpsertVillageWinter = db.prepare(`INSERT INTO village_winter (zone, vid, year, player_id, qty, res, name)
+  VALUES (?, ?, ?, ?, ?, ?, ?)
+  ON CONFLICT(zone, vid, year, player_id) DO UPDATE SET qty = excluded.qty, res = excluded.res,
+    name = COALESCE(excluded.name, village_winter.name)`);
+const stmtGetVillageWinter = db.prepare('SELECT vid, year, player_id, qty, res, name FROM village_winter WHERE zone = ? AND year >= ?');
+// ★`name` 을 안 주면(null) **지우지 않는다**(`COALESCE`) — 이름 없는 갱신이 이름을 날리면
+//   "낸 사람이 다시 냈더니 이름이 사라졌다"가 된다.
+function upsertVillageWinter(zone, vid, year, playerId, qty, res, name) {
+  stmtUpsertVillageWinter.run(zone, vid | 0, year | 0, String(playerId == null ? '' : playerId), +qty || 0,
+    res == null ? null : String(res), name == null ? null : String(name));
 }
 function getVillageWinterSince(zone, year) { return stmtGetVillageWinter.all(zone, year | 0); }
 

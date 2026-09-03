@@ -1141,6 +1141,129 @@ const mkLedgerGeo = (world, geo, cfg) => {
   }
 }
 
+// ═════════════════════════════════════════════════════════════════════════════
+// ㊴ [T63 2026-09-03] **밀도 계측 자체를 회귀로 건다** — 문턱을 흔들기 전에 계측을 믿을 수 있어야 한다
+//
+//   ★왜: 이 배치의 결론("문턱은 범인이 아니다")은 **계측기가 옳다**는 데 전부 걸려 있다.
+//     그래서 계측이 쓰는 세 성질을 여기서 못 박는다 —
+//       ㊴ 같은 틱 스트림 위 두 장부는 **비트 동일**(A/B 가 카오스 잡음 0 이라는 근거)
+//       ㊵ 채택 전 값이 **env 로 정확히 재현**된다(되돌림)
+//       ㊶ 값/일 두 읽기가 **같은 수에서 갈라져** 나온다(㉮·㉯ 산수 자체)
+//       ㊷ 문턱을 0 으로 두면 밀도 검사가 **빨개진다**(잡을 수 있는 검사다 — 돌연변이)
+//   ⚠여기서 800일 랩을 돌리지 않는다(그건 `ev-density` 의 일이다). 여기서 재는 건 **성질**이다.
+// ═════════════════════════════════════════════════════════════════════════════
+{
+  const DAYS = 240;
+  const ROOTDIR = path.join(__dirname, '..');
+  const ADOPT = { PRICE_UP: 0.70, PRICE_DOWN: 0.70, HYST: 1.6 };
+  const PREV  = { PRICE_UP: 0.40, PRICE_DOWN: 0.40, HYST: 1.35 };
+  const run = (cfg, world) => {
+    const L = mkLedger(world, cfg);
+    const _l = console.log; console.log = () => {};
+    try { for (let d = 0; d < DAYS; d++) { econV2.tickWorldV2(world); L.scanDay(world, world.day, {}); } }
+    finally { console.log = _l; }
+    return L;
+  };
+
+  // ㊴ 같은 세계·같은 문턱 두 장부 — 비트 동일(장부는 관측자라 동시에 여러 개를 달 수 있다)
+  {
+    const W = makeWorld(0, 63);
+    const A = mkLedger(W, ADOPT), B = mkLedger(W, ADOPT);
+    const _l = console.log; console.log = () => {};
+    try { for (let d = 0; d < DAYS; d++) { econV2.tickWorldV2(W); A.scanDay(W, W.day, {}); B.scanDay(W, W.day, {}); } }
+    finally { console.log = _l; }
+    ok(A.stats.emitted > 50, '㊴ 전제: 잴 만큼 사건이 났다(빈 판이라 같은 게 아니다)', `${A.stats.emitted}건`);
+    ok(JSON.stringify(A.stats.byType) === JSON.stringify(B.stats.byType),
+      '㊴ ★같은 틱 스트림 위 두 장부는 **비트 동일**(A/B 스윕에 카오스 잡음이 0 인 근거)');
+  }
+
+  // ㊵ 되돌림 — 문서가 약속한 그 **env 한 줄**이 채택 전 판을 정확히 재현한다
+  //   ⚠★`CFG` 는 **모듈 적재 시점**에 env 를 읽는다(`events.js:92~`). 그래서 이 검사는
+  //     같은 프로세스 안에서 `process.env` 를 바꿔서는 **아무것도 못 잰다**(1차 판이 그렇게 빨갰다 —
+  //     env 를 바꿔도 이미 읽힌 CFG 는 안 바뀌므로 채택값이 그대로 나왔다).
+  //     ⇒ **자식 프로세스**로 잰다. 그게 재민이 실제로 치는 명령의 모양이기도 하다.
+  {
+    const { execFileSync } = require('child_process');
+    const child = (env) => {
+      const code = `
+        const path=require('path');const R=(p)=>require(path.join(${JSON.stringify(ROOTDIR)},p));
+        const econV2=R('sim/economy-sim-v2'),Events=R('server/events'),Villages=R('server/villages');
+        const w=econV2.createWorldV2({seed:64,villageCount:5,picker:'rational',infoRange:5000,raidPer100:0.005});
+        const L=Events.createLedger({econV2,vidOf:(v,i)=>i,depositMap:Villages.playerVillageDepositMap()});
+        L.prime(w);const _l=console.log;console.log=()=>{};
+        for(let d=0;d<${DAYS};d++){econV2.tickWorldV2(w);L.scanDay(w,w.day,{});}
+        console.log=_l;process.stdout.write('@@'+JSON.stringify(L.stats.byType));`;
+      const out = execFileSync(process.execPath, ['-e', code],
+        { env: Object.assign({}, process.env, { ENABLE_VILLAGES: '0' }, env), encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+      return out.slice(out.lastIndexOf('@@') + 2).trim();
+    };
+    const W1 = makeWorld(0, 64);
+    const byCfg = JSON.stringify(run(PREV, W1).stats.byType);
+    const byEnv = child({ EV_PRICE_UP: '0.40', EV_PRICE_DOWN: '0.40', EV_HYST: '1.35' });
+    const byDef = child({});
+    ok(byCfg === byEnv,
+      '㊵ ★되돌림 — `EV_PRICE_UP=0.40 EV_PRICE_DOWN=0.40 EV_HYST=1.35` 가 채택 전 판을 **비트 동일**하게 재현한다',
+      byCfg === byEnv ? `${byCfg.slice(0, 56)}…` : `cfg ${byCfg.slice(0, 40)} vs env ${byEnv.slice(0, 40)}`);
+    ok(byDef !== byEnv,
+      '㊵b ★자명 통과 금지 — 채택값(기본)과 채택 전 값이 실제로 **다른 수**를 낸다',
+      `급등 ${JSON.parse(byDef).PRICE_SPIKE} vs ${JSON.parse(byEnv).PRICE_SPIKE}`);
+    const W2 = makeWorld(0, 64);
+    ok(JSON.stringify(run(ADOPT, W2).stats.byType) === byDef,
+      '㊵c 기본값 = 채택값(C) — 문서와 코드가 같은 말을 한다');
+  }
+
+  // ㊶ 두 읽기 — ㉮(전체)와 ㉯(값 유형)는 **같은 수에서** 갈라진다
+  {
+    const W = makeWorld(0, 65);
+    const L = run(ADOPT, W);
+    const DEED = new Set(Events.DEED_TYPES);
+    let vN = 0, dN = 0;
+    for (const t of Events.TYPES) { const n = L.stats.byType[t] || 0; if (DEED.has(t)) dN += n; else vN += n; }
+    ok(vN + dN === L.stats.emitted, '㊶ 값 + 일 = 전체(계측 산수가 맞는다)', `${vN} + ${dN} = ${L.stats.emitted}`);
+    ok(dN > 0 && vN > 0, '㊶b 전제: 두 축이 **둘 다 비어 있지 않다**(한쪽이 0 이면 두 읽기가 같아진다)', `값 ${vN} · 일 ${dN}`);
+    const live = W.villages.filter((v) => (v.npcs || []).length > 0).length;
+    const dAll = live * DAYS / L.stats.emitted, dVal = live * DAYS / vN;
+    ok(dVal > dAll, '㊶c ★값 유형 밀도는 전체 밀도보다 **느슨하다**(일 유형을 빼면 간격이 넓어진다)',
+      `㉮ ${dAll.toFixed(2)}일 < ㉯ ${dVal.toFixed(2)}일`);
+  }
+
+  // ㊷ 손잡이가 **무엇을 깎는가** — 이 배치의 결론(ⓒ)이 통째로 이 성질 위에 서 있다
+  //   ★"문턱을 올리면 밀도가 내려간다"만으로는 부족하다. 물어야 할 것은 **어느 유형이** 깎이느냐다.
+  //     가격 문턱은 가격 유형만 건드리고 재고·일 유형은 못 건드린다 —
+  //     그래서 늘어난 것이 재고 유형이면 **이 손잡이로는 못 맞춘다**(맞추면 엉뚱한 유형을 깎는다).
+  //   ⚠작은 랩(마을 5)에서는 밀도 절대값이 캐논 구간과 무관하다 — 그래서 **절대 밀도로 판정하지 않는다**
+  //     (1차 판이 그렇게 짰다가 ㊷b 가 **자명 통과**했다: 기본 판이 이미 1.02일이라 "하한 밑"이 늘 참이었다).
+  {
+    //   ⚠★`HYST` 는 **가격 전용 손잡이가 아니다** — 재고 래치 해제에도 같은 값이 쓰인다
+    //     (`events.js`: `d.short && stock > thr * cfg.HYST`). 그래서 사다리에서 **HYST 를 고정**한다.
+    //     안 그러면 "가격 문턱을 올렸더니 재고도 줄었다"가 나오고, 그건 가격 문턱의 성질이 아니다
+    //     (1차 판이 문턱 0 에서만 H1.0 을 줬다가 재고 538 vs 489 로 빨갰다 — 손잡이 둘을 한 번에 움직인 것).
+    const LADDER = [0, 0.40, 0.70, 0.85];
+    const out = LADDER.map((p) => {
+      const W = makeWorld(0, 66);
+      const L = run({ PRICE_UP: p, PRICE_DOWN: p, HYST: 1.6 }, W);
+      const B = L.stats.byType;
+      const DEED = new Set(Events.DEED_TYPES);
+      let dN = 0; for (const t of Events.TYPES) if (DEED.has(t)) dN += B[t] || 0;
+      return { p, all: L.stats.emitted, price: (B.PRICE_SPIKE || 0) + (B.PRICE_DROP || 0),
+        stock: (B.STOCK_SHORTAGE || 0) + (B.STOCK_GLUT || 0), deed: dN };
+    });
+    const mono = out.every((x, i) => i === 0 || x.price < out[i - 1].price);
+    ok(mono, '㊷ ★문턱을 올리면 **가격 유형이 단조로 준다**(스윕이 뜻을 갖는 근거)',
+      out.map((x) => `${x.p}:${x.price}`).join(' → '));
+    ok(out[0].price > out[out.length - 1].price * 1.2,
+      '㊷b 자명 통과 금지 — 사다리 양 끝이 실제로 **다른 수**다',
+      `${out[0].price} vs ${out[out.length - 1].price}`);
+    const stockSame = out.every((x) => x.stock === out[0].stock);
+    const deedSame = out.every((x) => x.deed === out[0].deed);
+    ok(stockSame && deedSame,
+      '㊷ ★★그런데 **재고 유형과 일 유형은 한 건도 안 움직인다**(HYST 고정) — 가격 문턱으로는 그것들을 못 맞춘다(T63 ⓒ)',
+      `재고 ${out.map((x) => x.stock).join('/')} · 일 ${out.map((x) => x.deed).join('/')}`);
+    ok(out[0].stock > 0 && out[0].deed > 0,
+      '㊷c 전제: 재고·일 유형이 **0 이 아니다**(0 이면 위가 자명 통과다)', `재고 ${out[0].stock} · 일 ${out[0].deed}`);
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
 try { require('fs').unlinkSync(process.env.DB_PATH); } catch (e) {}

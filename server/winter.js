@@ -48,7 +48,10 @@ const CFG = {
 
 let H = null;          // { db, zoneId, gameDay(), econV2, ledger(), send, players }
 let _rows = null;      // `${vid}|${year}` → { res, target, by: Map(pid → qty), got }
-const _names = new Map();   // pid → 표시 이름(브리핑 전용 · 영속 안 한다)
+// ★[T63 2026-09-03] pid → 표시 이름. **이제 영속한다**(`village_winter.name`) —
+//   양은 남는데 이름만 메모리에 있어서 재기동하면 브리핑에서 "누가 냈는지"가 조용히 빠졌다(T20 회부 ⓪).
+//   ⚠표시용 캐시일 뿐이다: 판정도 보상도 이 표를 안 읽는다(읽으면 이름이 규칙이 된다).
+const _names = new Map();
 
 function init(host) {
   H = host || {};
@@ -123,7 +126,10 @@ function _load() {
       let e = _rows.get(k);
       if (!e) { e = { res: null, target: 0, by: new Map(), got: 0 }; _rows.set(k, e); }
       if (!r.player_id) { e.target = +r.qty || 0; e.res = r.res || null; }
-      else { e.by.set(r.player_id, +r.qty || 0); e.got += +r.qty || 0; }
+      else {
+        e.by.set(r.player_id, +r.qty || 0); e.got += +r.qty || 0;
+        if (r.name) _names.set(r.player_id, String(r.name));   // ★[T63] 이름도 되살린다
+      }
     }
   } catch (e) { /* 복구 실패가 겨울을 죽이지 않는다 */ }
   return _rows;
@@ -135,8 +141,8 @@ function _entry(vid, year, make) {
   if (!e && make) { e = { res: null, target: 0, by: new Map(), got: 0 }; m.set(k, e); }
   return e || null;
 }
-function _persist(vid, year, pid, qty, res) {
-  try { H.db.upsertVillageWinter(H.zoneId, vid | 0, year | 0, pid || '', qty, res || null); } catch (e) {}
+function _persist(vid, year, pid, qty, res, name) {
+  try { H.db.upsertVillageWinter(H.zoneId, vid | 0, year | 0, pid || '', qty, res || null, name || null); } catch (e) {}
 }
 
 // ── ① 공표 — 가을 첫날. 마을마다 한 번 ───────────────────────────────────────
@@ -203,8 +209,9 @@ function onDeliver(player, r, vid) {
   const now = +(was + q).toFixed(3);
   e.by.set(pid, now);
   e.got = +(e.got + q).toFixed(3);
-  if (player.name) _names.set(pid, String(player.name));
-  _persist(vid, year, pid, now, null);
+  const nm = player.name ? String(player.name) : null;
+  if (nm) _names.set(pid, nm);
+  _persist(vid, year, pid, now, null, nm);   // ★[T63] 양과 **같은 줄에** 이름을 남긴다(따로 쓰면 갈린다)
   return q;
 }
 
@@ -291,7 +298,8 @@ function probe(vid, year) {
   const e = _entry(vid, year == null ? yearOf(_day()) : (year | 0), false);
   if (!e) return null;
   return { res: e.res, target: e.target, got: +e.got.toFixed(3), n: e.by.size,
-    by: [...e.by.entries()].map(([pid, q]) => ({ pid, qty: +q.toFixed(3) })) };
+    // ★[T63] 이름도 내준다 — 저장·로드 왕복을 하네스가 **밖에서** 볼 수 있어야 한다(읽기 전용).
+    by: [...e.by.entries()].map(([pid, q]) => ({ pid, qty: +q.toFixed(3), name: _names.get(pid) || null })) };
 }
 
 module.exports = {

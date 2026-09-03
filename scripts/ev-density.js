@@ -79,14 +79,35 @@ const CANDS = BASE_ONLY ? [] : [
   { tag: 'B ±55 · H1.6', cfg: { PRICE_UP: 0.55, PRICE_DOWN: 0.55, HYST: 1.6 } },
   { tag: 'C ±70 · H1.6 ★채택', cfg: { PRICE_UP: 0.70, PRICE_DOWN: 0.70, HYST: 1.6 } },
 ];
+// ★[T63 2026-09-03] 처방 A(가격 문턱 재스윕)의 **수**를 재려고 후보를 더 얹는다.
+//   `EV_SWEEP_EXTRA="0.85:1.6,1.00:1.8"` 형식(문턱:HYST). 안 주면 위 셋 그대로 — **기본 동작 무변경**.
+//   ⚠장부는 관측자라 후보를 몇 개 얹어도 세계가 안 바뀐다(그게 이 스크립트의 존재 이유다).
+for (const spec of String(process.env.EV_SWEEP_EXTRA || '').split(',').map((x) => x.trim()).filter(Boolean)) {
+  const [pRaw, hRaw] = spec.split(':');
+  const pv = parseFloat(pRaw), hv = parseFloat(hRaw);
+  if (!isFinite(pv)) continue;
+  CANDS.push({ tag: `D ±${(pv * 100).toFixed(0)} · H${isFinite(hv) ? hv : 1.6}`,
+    cfg: { PRICE_UP: pv, PRICE_DOWN: pv, HYST: isFinite(hv) ? hv : 1.6 } });
+}
 const depositMap = Villages.playerVillageDepositMap();
 // ★[T18 2026-09-01] 연표 문턱 스윕용 원자료 — **채택 문턱(C)** 의 사건만 심각도와 함께 모은다.
 //   장부를 건드리지 않는다: 이미 있는 `onEvent` 훅에 얹을 뿐이고, 훅이 없을 때와 결과가 같다.
 const CHRON_RAW = [];
+// ★[T63] 표본 수집 — `ringOf` 는 최근 KEEP_DAYS(90일)만 갖고 있어서 800일 표본이 안 된다.
+//   그래서 **나는 순간에** 받아 둔다(`onEvent` — 이미 있는 훅 · 새 창구 0).
+const SAMPLE_WANT = new Set(String(process.env.EV_SAMPLE_TYPES || '').split(',').map((x) => x.trim()).filter(Boolean));
+const SAMPLES = [];
+const BYITEM = new Map();   // `type|item` → 건수 (채택 문턱 하나에 대해서만)
 const LS = CANDS.map((c) => {
   const adopted = /★채택/.test(c.tag);
   const L = Events.createLedger({ econV2, vidOf: (v, i) => i, depositMap, cfg: c.cfg,
-    onEvent: adopted ? ((e) => CHRON_RAW.push({ t: e.type, s: Math.abs(Math.log(Math.max(1e-6, e.mag || 1))) })) : null });
+    onEvent: adopted ? ((e) => {
+      CHRON_RAW.push({ t: e.type, s: Math.abs(Math.log(Math.max(1e-6, e.mag || 1))) });
+      if (SAMPLE_WANT.has(e.type)) SAMPLES.push({ vid: e.vid, day: e.day, type: e.type, item: e.item, mag: e.mag });
+      // ★[T63 ⓖ] 유형만으로는 "무엇이 늘었나"를 못 묻는다 — **품목까지** 센다(읽기만).
+      const bk = `${e.type}|${e.item == null ? '' : e.item}`;
+      BYITEM.set(bk, (BYITEM.get(bk) || 0) + 1);
+    }) : null });
   L.prime(world); return { ...c, L };
 });
 
@@ -210,4 +231,121 @@ for (const x of LS) console.log(`  ${x.tag.padEnd(24)} 게시 ${String(x.L.stats
   + ` · 축소 ${String(x.L.stats.reqShrunk).padStart(5)} · 못갚아미게시 ${String(x.L.stats.reqNoPay).padStart(6)} · 재검증철회 ${String(x.L.stats.reqRevalidated).padStart(5)}`
   + ` · 마을·일당 ${(x.L.stats.reqOpened / Math.max(1, live * DAYS)).toFixed(4)}`);
 console.log(`\n※ CARAVAN_LATE 는 랩(econ 단독)에 실체 캐러밴이 없어 **구조적으로 0**이다 — 실서버에서만 난다.`);
+
+// ═══ [T63 2026-09-03] 계측 절 둘 — **문턱을 흔들기 전에 누가 늘었는지 본다** ═══════
+//
+// ★왜 여기인가: 밀도가 2.21 → 2.10 → 1.92 로 내려앉았다(캐논 하한 밑). 그런데 이 스크립트는
+//   지금껏 **값 다섯 유형만** 이름으로 찍고 나머지를 "일 N건"으로 뭉쳐 왔다. 뭉친 수로는
+//   "어느 유형이 늘었나"를 못 묻는다 — 그래서 세 판을 나란히 놓을 표가 필요하다.
+// ⚠이 절은 **재기만 한다**. 문턱도 세계도 안 건드린다(장부는 관측자).
+
+// ── ⓔ 유형 전수 — 채택 문턱(C) 하나에 대해 `Events.TYPES` 순서 그대로 ──────────────
+//   ★유형 이름을 여기 적지 않는다: 정본 목록(`Events.TYPES`)을 그대로 돈다.
+//     판마다 유형 수가 다르므로(T50 이후 13 · T20 이후 15) 표는 **그 판이 아는 유형**을 낸다.
+if (LS.length) {
+  const ADOPT = LS.find((x) => /★채택/.test(x.tag)) || LS[LS.length - 1];
+  const S = ADOPT.L.stats, B = S.byType || {};
+  const DEED = new Set(Events.DEED_TYPES || []);
+  let vN = 0, dN = 0;
+  console.log(`\nⓔ 유형 전수 (${ADOPT.tag} · ${live}마을 × ${DAYS}일)`);
+  console.log('  ' + '유형'.padEnd(18) + '축'.padStart(4) + '건수'.padStart(9) + '마을당 일/건'.padStart(14) + '   비중');
+  for (const t of Events.TYPES) {
+    const n = B[t] || 0;
+    const isD = DEED.has(t);
+    if (isD) dN += n; else vN += n;
+    const per = n > 0 ? (live * DAYS / n) : Infinity;
+    console.log('  ' + t.padEnd(18) + (isD ? '일' : '값').padStart(4) + String(n).padStart(9)
+      + (n > 0 ? per.toFixed(1) + '일' : '—').padStart(14)
+      + '   ' + (n / Math.max(1, S.emitted) * 100).toFixed(2) + '%');
+  }
+  const dens = (n) => (n > 0 ? (live * DAYS / n) : Infinity);
+  console.log(`  ${'─'.repeat(56)}`);
+  console.log(`  합계 ${S.emitted}건 — 값 ${vN} · 일 ${dN}`);
+  // ★★캐논 "마을당 2~3일에 1건"의 **두 해석** — 뜻을 되묻지 말고 수를 둘 다 낸다(T63 ⓒ).
+  console.log(`  ㉮ 전체 밀도(지금까지 써 온 읽기)  : ${dens(S.emitted).toFixed(2)}일/건`);
+  console.log(`  ㉯ **값 유형** 밀도(T50 이 축을 가른 뒤의 읽기) : ${dens(vN).toFixed(2)}일/건`);
+  console.log(`     (일 유형만 : ${dens(dN).toFixed(1)}일/건 — 드물어서 값의 밀도를 흔들 수 없다면 ㉯가 캐논의 뜻이다)`);
+  // ★★[T63] 경보 한 줄 — **여유가 얇다.** 채택 판정(㉯)에서 지금 값은 2.01~2.06 이고 하한까지 0.01~0.06일뿐이다.
+  //   econ 이 품목을 더 늘리면(T60·ECON 2) 곧 넘는다. 다음 사람이 이 보고서를 안 읽어도 계측기가 말하게 둔다.
+  //   ⚠판정하지 않는다 — **찍기만** 한다(밀도 캐논의 뜻은 재민이 정한다).
+  const CANON_LO = 2, CANON_HI = 3;
+  const warn = [];
+  if (dens(vN) < CANON_LO) warn.push(`㉯ 값 유형 밀도 ${dens(vN).toFixed(2)}일 < 하한 ${CANON_LO}`);
+  if (dens(S.emitted) < CANON_LO) warn.push(`㉮ 전체 밀도 ${dens(S.emitted).toFixed(2)}일 < 하한 ${CANON_LO}`);
+  if (dens(vN) > CANON_HI) warn.push(`㉯ 값 유형 밀도 ${dens(vN).toFixed(2)}일 > 상한 ${CANON_HI}`);
+  if (warn.length) {
+    console.log(`  ★★경고 — 캐논 구간(${CANON_LO}~${CANON_HI}일/건) 밖: ${warn.join(' · ')}`);
+    console.log(`     처방 A/B/C 와 그 비용은 \`보고/T63_2026-09-03.md\` ⓒ 에 있다(문턱을 흔들기 전에 읽어라).`);
+  } else {
+    console.log(`  ✓ 두 읽기 모두 캐논 구간 안(${CANON_LO}~${CANON_HI}일/건)`);
+  }
+}
+
+// ── ⓖ 품목별 — 늘어난 것이 **무엇인지**는 유형이 아니라 품목이 말한다(T63 ⓐ) ─────────
+//   ★기본은 값 네 유형(재고 둘 · 가격 둘). `EV_ITEM_TYPES` 로 바꿀 수 있다.
+{
+  const want = String(process.env.EV_ITEM_TYPES || 'STOCK_SHORTAGE,STOCK_GLUT,PRICE_SPIKE,PRICE_DROP')
+    .split(',').map((x) => x.trim()).filter(Boolean);
+  const N = Math.max(1, parseInt(process.env.EV_ITEM_N || '12', 10));
+  console.log(`\nⓖ 품목별 (채택 문턱 · 상위 ${N})`);
+  for (const t of want) {
+    const rows = [...BYITEM.entries()].filter(([k]) => k.startsWith(t + '|'))
+      .map(([k, n]) => [k.slice(t.length + 1) || '(없음)', n]).sort((a, b) => b[1] - a[1]);
+    const tot = rows.reduce((a, b) => a + b[1], 0);
+    console.log(`  ${t} — 합 ${tot} · 품목 ${rows.length}종`);
+    console.log('    ' + rows.slice(0, N).map(([it, n]) => `${it} ${n}`).join(' · '));
+  }
+}
+
+// ── ⓕ 표본 문장 — "진실인가 잡음인가"는 **문장으로 읽어야** 안다(T63 ⓑ) ────────────
+//   EV_SAMPLE_TYPES=STOCK_SHORTAGE,PRICE_SPIKE  형식. 없으면 이 절은 통째로 건너뛴다.
+//   ★문장은 **연표 정본**(`Events.briefLine`/`chronLine` 이 쓰는 그 함수)으로 만든다 — 사본 금지.
+if (LS.length && process.env.EV_SAMPLE_TYPES) {
+  const want = new Set(String(process.env.EV_SAMPLE_TYPES).split(',').map((x) => x.trim()).filter(Boolean));
+  const N = Math.max(1, parseInt(process.env.EV_SAMPLE_N || '20', 10));
+  const all = SAMPLES.map((e) => ({ vid: e.vid, ev: e }));
+  all.sort((a, b) => (a.ev.day - b.ev.day) || (a.vid - b.vid));
+  // ★★앞에서 N 건을 자르면 **개시 순간(day 2)의 래치 폭포**만 보게 된다 — 그건 800일의 대표가 아니다.
+  //   그래서 전 구간에 **같은 보폭으로** 집는다(시간에 고르게 · 결정론적).
+  const stride = Math.max(1, Math.floor(all.length / N));
+  const rows = [];
+  for (let i = 0; i < all.length && rows.length < N; i += stride) rows.push(all[i]);
+  console.log(`\nⓕ 표본 문장 — ${[...want].join(',')} (보유 ${rows.length}건 중 앞 ${Math.min(N, rows.length)}건)`);
+  console.log(`  ★같은 마을·같은 품목이 **이틀 걸러** 뜨면 히스테리시스 밖의 떨림이고,`);
+  console.log(`    흩어진 마을에서 드물게 뜨면 세계가 실제로 겪는 일이다(판정 기준 — T63 ⓑ).`);
+  const lastOf = new Map();
+  for (const r of rows) {
+    const k = `${r.vid}|${r.ev.type}|${r.ev.item || ''}`;
+    const gap = lastOf.has(k) ? (r.ev.day - lastOf.get(k)) : null;
+    lastOf.set(k, r.ev.day);
+    const line = (() => { try { return Events.briefLine(r.ev) || ''; } catch (e) { return ''; } })();
+    console.log(`  v${String(r.vid).padStart(2)} d${String(r.ev.day).padStart(3)} ${(r.ev.type + '/' + (r.ev.item || '')).padEnd(28)}`
+      + (gap == null ? '  (첫 건)' : `  ↳직전 ${gap}일`) + `  ${line}`);
+  }
+  // 같은 (마을,유형,품목) 재발 간격 분포 — 20건을 넘어 **전수**로 본다(눈으로 고른 20건이 대표가 아닐 수 있다)
+  const rows0 = all;                       // ★간격 통계는 **전수**로 본다(표본 20건이 아니라)
+  const gaps = [];
+  const seen = new Map();
+  for (const r of rows0) {
+    const k = `${r.vid}|${r.ev.type}|${r.ev.item || ''}`;
+    if (seen.has(k)) gaps.push(r.ev.day - seen.get(k));
+    seen.set(k, r.ev.day);
+  }
+  gaps.sort((a, b) => a - b);
+  const q = (f) => gaps.length ? gaps[Math.min(gaps.length - 1, Math.floor(gaps.length * f))] : 0;
+  console.log(`  ★재발 간격(같은 마을·유형·품목 · 전수 ${gaps.length}쌍): 최소 ${gaps[0] || 0}일 · 하위25% ${q(0.25)} · 중앙 ${q(0.5)} · 상위25% ${q(0.75)} · 최대 ${gaps[gaps.length - 1] || 0}`);
+  console.log(`     2일 이하 재발 ${gaps.filter((g) => g <= 2).length}쌍(${(gaps.filter((g) => g <= 2).length / Math.max(1, gaps.length) * 100).toFixed(1)}%)`);
+  // ★개시 1년은 **래치가 처음 서는 구간**이라 간격이 짧다 — 정착 구간만 따로 본다(자명 통과 방지의 반대 짝).
+  const seen2 = new Map(); const g2 = [];
+  const yd0 = (() => { try { return Events.calendarOf(0).yearDays; } catch (e) { return 365; } })();
+  for (const r of rows0) {
+    if (r.ev.day < yd0) continue;
+    const k = `${r.vid}|${r.ev.type}|${r.ev.item || ''}`;
+    if (seen2.has(k)) g2.push(r.ev.day - seen2.get(k));
+    seen2.set(k, r.ev.day);
+  }
+  g2.sort((a, b) => a - b);
+  const q2 = (f) => g2.length ? g2[Math.min(g2.length - 1, Math.floor(g2.length * f))] : 0;
+  console.log(`  ★정착 구간만(${yd0}일 이후 · ${g2.length}쌍): 최소 ${g2[0] || 0}일 · 중앙 ${q2(0.5)} · 2일 이하 ${g2.filter((g) => g <= 2).length}쌍(${(g2.filter((g) => g <= 2).length / Math.max(1, g2.length) * 100).toFixed(1)}%)`);
+}
 try { require('fs').unlinkSync(process.env.DB_PATH); } catch (e) {}
