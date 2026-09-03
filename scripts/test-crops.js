@@ -326,6 +326,82 @@ function dayOfSeason(season) {
     ok(need > 0 && yieldOne > 0, '★대리 지표 — 겨울나기가 밭 칸수로 계산된다(공동 프로젝트의 두 번째 수치)');
   }
 
+  // ── ★★⑦ [T58a] 표가 하나다 · 달력 앵커는 역산이다 · 병충해는 결정론이다 ─────
+  {
+    const fs2 = require('fs');
+    const codeOnly = (src) => src.replace(/\/\*[\s\S]*?\*\//g, ' ').split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n');
+    console.log('\n⑦ [T58a] 작물 표가 하나다 — `villages.js` 에서 지웠다');
+    const vsrc = codeOnly(fs2.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8'));
+    ok(!/const CROPS\s*=\s*\[/.test(vsrc), '★★★⑦ⓐ `villages.js` 에 작물 표가 **없다**(정본은 `crops.js` 하나)',
+      (vsrc.match(/const CROPS\s*=\s*\[/g) || ['없음']).join(' '));
+    ok(!/plantMo/.test(vsrc), '★⑦ⓐ 랩 `plantMo` 리터럴도 없다(0-based/1-based 혼선의 원천)');
+    ok(!/L_START|L_MOSTART|_lMonth/.test(vsrc), '★★⑦ⓐ 랩 달력(`L_START`·`_lMonth`)도 없다 — 시계가 하나다');
+    const koLit = (vsrc.match(/id: '[가-힣]+'/g) || []);
+    ok(koLit.length === 0, '★⑦ⓐ 한글 작물 id 리터럴 0개', koLit.slice(0, 4).join(' ') || '0개');
+
+    console.log('\n⑦ⓑ 달력 앵커 — 카탈로그에서 **다시 역산**해 제품과 대조한다');
+    //   ★T59 의 교훈: 역산 앵커는 좋은 문법이지만 **앵커가 옳다는 것은 따로 증명해야 한다.**
+    //   그래서 이 검사는 제품의 상수를 읽지 않고 카탈로그에서 스스로 푼다.
+    const SEAS = ['spring', 'summer', 'autumn', 'winter'];
+    const violAt = (off) => {
+      let bad = 0;
+      for (const id of Crops.IDS) {
+        const sow = Crops.sowSeasons(id);
+        for (const M of Crops.sowMonthsOf(id)) {
+          const gm = (((M - 1 - off) % 12) + 12) % 12;
+          if (!sow.includes(SEAS[Math.floor(gm / 3)])) bad++;
+        }
+      }
+      return bad;
+    };
+    const sweep = [...Array(12)].map((_, o) => violAt(o));
+    const bestOff = sweep.indexOf(Math.min(...sweep));
+    pre(sweep.filter((v) => v === 0).length === 1, '역산 앵커가 **유일**하다(위반 0 인 오프셋이 하나뿐)', sweep.join('/'));
+    ok(sweep[bestOff] === 0, '★★★⑦ⓑ 카탈로그의 `sowMonths` 와 `sow` 가 **한 오프셋에서 완전히 맞는다**',
+      `offset ${bestOff} · 위반 ${sweep[bestOff]} (다음 최소 ${Math.min(...sweep.filter((v, i) => i !== bestOff))})`);
+    ok(Crops.ANCHOR_MONTH === bestOff + 1,
+      '★★★⑦ⓑ 제품의 앵커가 **그 역산값 그대로**다 — 손으로 고치면 여기가 빨개진다',
+      `제품 ${Crops.ANCHOR_MONTH}월 vs 역산 ${bestOff + 1}월`);
+    // 계절 정본과 달이 어긋나지 않는다(365/12 와 365/4 로 따로 나누면 하루씩 어긋난다)
+    const MO_OK = { spring: [3, 4, 5], summer: [6, 7, 8], autumn: [9, 10, 11], winter: [12, 1, 2] };
+    let mism = 0, sample = '';
+    for (let d = 0; d < 365; d++) {
+      const mo = Crops.monthOf(d), se = Crops.seasonOfDay(d);
+      if (!MO_OK[se].includes(mo)) { mism++; if (!sample) sample = `d=${d} ${se} 월${mo}`; }
+    }
+    ok(mism === 0, '★★⑦ⓑ 한 해 전수에서 **계절과 달이 한 번도 안 어긋난다**', mism ? sample : '365일 0건');
+
+    console.log('\n⑦ⓒ 논/밭 축 — 카탈로그의 복합 표기를 이분법으로 자르지 않았다');
+    const compound = Crops.list().filter((c) => /·|\(/.test(String(c.field || '')));
+    pre(compound.length > 0, '카탈로그에 **복합 `field`** 가 실제로 있다(자명 통과 금지)',
+      compound.slice(0, 4).map((c) => `${c.ko}:${c.field}`).join(' '));
+    ok(compound.every((c) => Crops.fitsField(c.id, '밭') || Crops.fitsField(c.id, '논')),
+      '★⑦ⓒ 복합 표기도 논·밭 어느 한쪽에는 든다');
+    const paddy = Crops.list().filter((c) => Crops.fitsField(c.id, '논')).map((c) => c.ko);
+    ok(paddy.length >= 2, '★⑦ⓒ 논 작물이 하나가 아니다(벼만 논이면 특산 분담이 죽는다)', paddy.join(' '));
+    const win = [12, 1, 2].map((m) => Crops.sowableMonth('밭', m).length + Crops.sowableMonth('논', m).length);
+    ok(win.every((n) => n === 0), '★★⑦ⓒ **한겨울(12·1·2월)엔 심을 것이 없다**', win.join('/'));
+
+    console.log('\n⑦ⓓ 병충해 — 주사위가 아니라 자리·날·작물의 함수다');
+    const L_PESTP = 0.008;
+    const pest = (cx, cy, id, day) => Crops.h32(cx, cy, (day | 0) * 131 + ((Crops.IDS.indexOf(id) + 1) | 0) * 7919) / 4294967296 < L_PESTP;
+    ok(pest(5, 7, 'rice', 123) === pest(5, 7, 'rice', 123) && pest(9, 2, 'soybean', 40) === pest(9, 2, 'soybean', 40),
+      '★★⑦ⓓ 같은 자리·같은 날·같은 작물이면 **몇 번을 물어도 같은 답**이다');
+    let hit = 0, tot = 0;
+    for (let cx = 0; cx < 20; cx++) for (let cy = 0; cy < 10; cy++) for (let d = 0; d < 800; d++) { tot++; if (pest(cx, cy, 'rice', d)) hit++; }
+    const freq = hit / tot;
+    ok(Math.abs(freq - L_PESTP) < L_PESTP * 0.15,
+      '★★⑦ⓓ 기대 빈도가 **옛 주사위와 같다**(0.8%/일 ±15%)', `${(freq * 100).toFixed(4)}% · n=${tot}`);
+    let diffCell = 0;
+    for (let d = 0; d < 800; d++) if (pest(3, 3, 'rice', d) !== pest(4, 3, 'rice', d)) diffCell++;
+    ok(diffCell > 0, '★⑦ⓓ 자명 통과 금지 — 이웃한 두 밭이 **서로 다른 날** 병든다', `${diffCell}일 갈림`);
+    const vsrc2 = codeOnly(fs2.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8'));
+    const cropSec = vsrc2.slice(vsrc2.indexOf('function _pestAt'), vsrc2.indexOf('function _lifeNextFarmCell'));
+    ok(cropSec.length > 100 && !/Math\.random/.test(cropSec),
+      '★★★⑦ⓓ 작물 상태기 구간에 `Math.random` 이 **한 번도 없다**(소스 검사 = 돌연변이)',
+      (cropSec.match(/Math\.random/g) || ['없음']).join(' '));
+  }
+
   console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===`);
   try { require('fs').unlinkSync(process.env.DB_PATH); } catch (e) {}
   process.exit(fail ? 1 : 0);

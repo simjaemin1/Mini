@@ -3298,24 +3298,33 @@ const SCH_HALF_R = 0.501;    // 반일 퇴근 낮 진행률(랩 L_HALF=13시 = (
 const SCH_FARMW_R = 0.137;   // 농부 아침 출근 창 낮 진행률(랩 L_DAWN+0.08 = 0.08/0.583)
 const SCH_DOFF = 0.03;       // 개인 기상 시차 상한(하루 비율 — 랩 동형 43분)
 const SCH_REST_IN = 0.6;     // 요양 진입 hp 비율(랩 hp<60/100)
-// 작물 정본(랩 CROPS 6071 — 청동기 후기(송국리 문화기) 재배 작물군 그대로): field 논/밭, plantMo 파종월, grow 생육일
-const CROPS = [
-  { id: '벼', field: '논', plantMo: [4, 5], grow: 78 }, { id: '보리', field: '논', plantMo: [9, 10], grow: 210 }, { id: '미나리', field: '논', plantMo: [2, 3], grow: 55 },
-  { id: '밀', field: '밭', plantMo: [9, 10], grow: 210 }, { id: '조', field: '밭', plantMo: [3, 4, 5], grow: 58 }, { id: '기장', field: '밭', plantMo: [3, 4, 5], grow: 48 }, { id: '수수', field: '밭', plantMo: [3, 4, 5], grow: 62 }, { id: '메밀', field: '밭', plantMo: [3, 4, 6, 7], grow: 40 }, { id: '율무', field: '밭', plantMo: [3, 4], grow: 66 }, { id: '피', field: '밭', plantMo: [4, 5], grow: 60 },
-  { id: '콩', field: '밭', plantMo: [4, 5, 6], grow: 62 }, { id: '팥', field: '밭', plantMo: [5, 6], grow: 58 }, { id: '녹두', field: '밭', plantMo: [4, 5, 6], grow: 44 },
-  { id: '참깨', field: '밭', plantMo: [4, 5], grow: 60 }, { id: '들깨', field: '밭', plantMo: [4, 5, 6], grow: 64 },
-  { id: '토란', field: '밭', plantMo: [3, 4], grow: 78 }, { id: '마', field: '밭', plantMo: [2, 3], grow: 80 },
-  { id: '배추', field: '밭', plantMo: [3, 4, 6, 7, 8], grow: 48 }, { id: '무', field: '밭', plantMo: [3, 4, 6, 7, 8], grow: 36 }, { id: '오이', field: '밭', plantMo: [3, 4, 5], grow: 32 }, { id: '가지', field: '밭', plantMo: [3, 4], grow: 44 }, { id: '상추', field: '밭', plantMo: [2, 3, 4, 7, 8], grow: 24 }, { id: '아욱', field: '밭', plantMo: [2, 3, 4, 5, 7], grow: 40 }, { id: '순무', field: '밭', plantMo: [3, 4, 6, 7, 8], grow: 50 }, { id: '부추', field: '밭', plantMo: [2, 3], grow: 55 },
-  { id: '대파', field: '밭', plantMo: [2, 3, 8], grow: 52 }, { id: '마늘', field: '밭', plantMo: [8, 9], grow: 210 }, { id: '생강', field: '밭', plantMo: [3, 4], grow: 82 },
-  { id: '참외', field: '밭', plantMo: [3, 4], grow: 56 }, { id: '박', field: '밭', plantMo: [3, 4], grow: 70 }];
-const L_YEAR = 365, L_MOSTART = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334], L_START = 120;   // 랩 동형 달력(서버 게임일 0=랩 5월 파종철 앵커)
+// ★★★[T58a 2026-09-03] **작물 표를 여기서 지웠다 — 정본은 `server/crops.js` 하나다.**
+//   여태 세계에 작물 표가 **둘**이었다: 여기 랩 사본 30종(NPC) + `crops.json` 34종(재민 xlsx · 플레이어).
+//   §0 실측이 그 둘을 나란히 놓고 잰 결과:
+//     · **30 ∖ 34 = ∅** — 랩 30종은 카탈로그에 **전부** 있다(랩 '벼' = 카탈로그 `rice` "쌀(벼)").
+//     · **34 ∖ 30 = 4종** — 삼·쪽·뽕(잎)·차 — **전부 `group:'특용'`(비식량)**이라 NPC 농사에 없던 게 맞다.
+//     · 생육일 차 셋(보리·밀·마늘 210 vs 88~90)은 **단위 차이지 값 차이가 아니다** —
+//       랩 주석 7929 가 *"grow=달력일(월동 …은 ~210)"* 이라 적고, 카탈로그는 **활동일**이다
+//       (`winterCrop:true` + `Crops.grownDays` 가 겨울을 안 센다). 카탈로그 쪽이 정본이다.
+//   ⚠그리고 **옮겨 적는 동안 두 군데가 틀어졌다**(이 배치가 고치는 것):
+//     ⓐ 랩 `plantMo` 는 **0-based** 인데(랩 주석 7929: *"plantMo=0=1월"*) 서버 `_lMonth` 는 1-based 를
+//        돌려줬다 ⇒ **모든 작물을 한 달 일찍** 심었다.
+//     ⓑ 랩 앵커 `L_START=120`(게임일 0 = 5월)은 econ 계절 정본(게임일 0 = 봄 첫날)과 **두 달** 어긋난다.
+//        카탈로그에서 역산한 앵커는 **3월**이다(`crops.monthOf` 주석 — 위반 0 인 유일 오프셋).
+//     ⇒ 둘을 합치면 NPC 는 **봄 작물을 겨울에** 심고 있었다(조 파종창이 게임일 304~30 = 겨울~초봄).
+//   ⇒ 달력도 `crops.monthOf` 하나다. 여기엔 **상태기 상수만** 남는다.
 const L_WATERGAP = 7, L_WEEDS = [0.10, 0.24, 0.38, 0.52, 0.66, 0.80], L_PESTP = 0.008, L_QW = 0.05, L_QP = 0.05, L_QMIN = 0.25, L_QREC = 0.5;   // 물대기 주기·김매기 차례(생장 10~80% 6벌)·병충해·품질
-const _lMonth = (d) => { const y = (((d + L_START) % L_YEAR) + L_YEAR) % L_YEAR; for (let m = 11; m >= 0; m--) if (y >= L_MOSTART[m]) return m + 1; return 1; };   // 게임일→월(1~12)
+// ★[T58a] 작물 정본은 늦게 부른다(맞물림 금지 — `forage`·`spoil`·`kcal` 과 같은 규약).
+let _Cr = null;
+function _Crops() { if (_Cr === null) { try { _Cr = require('./crops'); } catch (e) { _Cr = false; } } return _Cr || null; }
 const _vcfCache = {};
 function _villageCropFor(vil, field, mo, par) {   // 랩 villageCropFor 동형: 시드·달·구획으로 마을 특산물(논 1종·밭 2종 분담)
+  // ★[T58a] 후보 목록만 정본(`crops.js`)에서 받는다 — **고르는 산수는 한 글자도 안 바꿨다**(결정론 유지).
+  //   ⚠후보 집합이 바뀌므로 **마을별 작물은 바뀐다** — 그건 연출이고, 기준선 다섯 수는 불변이어야 한다
+  //     (그 불변이 곧 "연출만"의 증거다 · 이 카드의 안전 근거).
   const seed = vil.dbId | 0, ck = field + '_' + mo + '_' + par + '_' + seed;
   if (ck in _vcfCache) return _vcfCache[ck];
-  const cand = CROPS.filter((c) => c.field === field && c.plantMo.includes(mo));
+  const cand = _Crops().sowableMonth(field, mo);
   if (!cand.length) return (_vcfCache[ck] = null);
   const pick = (salt) => { const h = (Math.imul(seed ^ salt, 2654435761) ^ Math.imul(mo + 1, 40503)) >>> 0; return cand[h % cand.length]; };
   let res; if (field !== '밭') res = pick(101);
@@ -3615,14 +3624,36 @@ function _lifeDropTask(vil, npc) {   // 진행 중 작업 즉시 반납(요양 �
   npc._lifeTask = null; return null;
 }
 // ── 작물 상태머신(랩 cellTask/doTask 동형 — 단 식량 산출은 econ 소유: 여기는 상태·연출만, 이중 계상 금지) ──
+// ★[T58a] 익음·생장 비율은 **정본이 센다** — `Crops.grownDays` 는 겨울 휴면을 안 세는 **활동일**이라
+//   월동 작물(보리·밀·마늘)이 랩의 "달력일 210" 과 같은 뜻이 된다(단위만 다르다 · §0ⓐ).
+// ★★★[T58a] **병충해는 주사위가 아니다.** 재민 캐논(주사위 금지)이 여기 한 줄에서 깨져 있었다
+//   (`Math.random() < 0.008` — 랩 8842 의 그 줄을 그대로 옮겨 온 자리).
+//   ⇒ **자리 × 날 × 작물**의 결정론 함수로 바꾼다. 해시는 `crops.wildSeedAt` 이 쓰는 그것을
+//     **그대로 부른다**(`Crops.h32` — 사본 금지 · 광맥/갯벌과 같은 문법).
+//   ★기대 빈도는 **한 글자도 안 바꿨다**: 같은 문턱 `L_PESTP` 를 같은 [0,1) 값에 그대로 쓴다
+//     ⇒ 셀·날의 표본에서 0.8%/일이 그대로 나온다(`test-crops` 가 800일로 잰다).
+//   ★그리고 이제 **어느 밭이 언제 병드는지가 정해져 있다** — 물때(T52)와 같은 결이다.
+//     아는 사람은 안다: 같은 셀·같은 날이면 몇 번을 다시 돌려도 같은 답이다.
+function _pestAt(k, cropId, day) {
+  const C = _Crops(); if (!C) return false;
+  const ci = k.indexOf(','), cx = +k.slice(0, ci) | 0, cy = +k.slice(ci + 1) | 0;
+  const cix = (C.IDS.indexOf(cropId) + 1) | 0;
+  return C.h32(cx, cy, (day | 0) * 131 + cix * 7919) / 4294967296 < L_PESTP;
+}
+function _cropRipe(e, day) { const C = _Crops(); return C ? C.isReady(e.c, e.p, day) : false; }
+function _cropGrowFrac(e, day) {
+  const C = _Crops(); if (!C) return 0;
+  const need = Math.max(1, C.growDaysOf(e.c));
+  return C.grownDays(e.c, e.p, day) / need;
+}
 function _cellTask(vil, k, day) {   // 우선순위: 5수확 4방제 3물대기(논만) 2파종 1김매기 0없음
   const e = vil._crop.get(k);
   const nong = !vil._drySet.has(k);
-  if (!e) { const ci = k.indexOf(','), par = (+k.slice(0, ci) + +k.slice(ci + 1)) & 1; return _villageCropFor(vil, nong ? '논' : '밭', _lMonth(day), par) ? 2 : 0; }
-  if (day - e.p >= e.c.grow) return 5;
+  if (!e) { const ci = k.indexOf(','), par = (+k.slice(0, ci) + +k.slice(ci + 1)) & 1; return _villageCropFor(vil, nong ? '논' : '밭', _Crops().monthOf(day), par) ? 2 : 0; }
+  if (_cropRipe(e, day)) return 5;
   if (e.ps) return 4;
   if (nong && day - (e.w || e.p) >= L_WATERGAP) return 3;
-  const wd = e.wd || 0; if (wd < L_WEEDS.length && (day - e.p) / e.c.grow >= L_WEEDS[wd]) return 1;
+  const wd = e.wd || 0; if (wd < L_WEEDS.length && _cropGrowFrac(e, day) >= L_WEEDS[wd]) return 1;
   return 0;
 }
 function _lifeDoTask(vil, npc, k, day) {   // 도착한 셀 처리(랩 doTask 동형 — econ storage 불변·스킬은 서버 생략). npc=null=헤드리스(라벨 생략)
@@ -3634,12 +3665,18 @@ function _lifeDoTask(vil, npc, k, day) {   // 도착한 셀 처리(랩 doTask �
 function _lifeDoTask0(vil, npc, k, day) {
   const e = vil._crop.get(k), nong = !vil._drySet.has(k);
   const ci = k.indexOf(','), par = (+k.slice(0, ci) + +k.slice(ci + 1)) & 1;
-  if (!e) { const cr = _villageCropFor(vil, nong ? '논' : '밭', _lMonth(day), par); if (!cr) return false; vil._crop.set(k, { c: cr, p: day, td: day, w: day, wd: 0, ps: 0, q: 1 }); if (npc) _lifeAct(npc, nong ? '모내기' : '파종'); return true; }
-  if (day - e.p >= e.c.grow) { vil._crop.delete(k); if (npc) { npc._carry = (npc._carry || 0) + 1; _lifeAct(npc, '수확'); } return true; }   // 수확 — 식량은 econ이 이미 계상(연출만). ★곳간② 물리 짐 1칸분 적재(회계 아님)
+  if (!e) { const cr = _villageCropFor(vil, nong ? '논' : '밭', _Crops().monthOf(day), par); if (!cr) return false; vil._crop.set(k, { c: cr, p: day, td: day, w: day, wd: 0, ps: 0, q: 1 }); if (npc) _lifeAct(npc, nong ? '모내기' : '파종'); return true; }
+  if (_cropRipe(e, day)) { vil._crop.delete(k); if (npc) { npc._carry = (npc._carry || 0) + 1; _lifeAct(npc, '수확'); } return true; }   // 수확 — 식량은 econ이 이미 계상(연출만). ★곳간② 물리 짐 1칸분 적재(회계 아님)
   if (e.ps) { e.ps = 0; e.td = day; e.q = Math.min(1, e.q + L_QREC); if (npc) _lifeAct(npc, '방제'); return true; }
   if (nong && day - (e.w || e.p) >= L_WATERGAP) { e.w = day; e.q = Math.min(1, e.q + L_QREC); if (npc) _lifeAct(npc, '물대기'); return true; }
-  const wd = e.wd || 0; if (wd < L_WEEDS.length && (day - e.p) / e.c.grow >= L_WEEDS[wd]) { e.wd = wd + 1; e.td = day; e.q = Math.min(1, e.q + L_QREC); if (npc) _lifeAct(npc, nong ? '논매기' : '김매기'); return true; }
+  const wd = e.wd || 0; if (wd < L_WEEDS.length && _cropGrowFrac(e, day) >= L_WEEDS[wd]) { e.wd = wd + 1; e.td = day; e.q = Math.min(1, e.q + L_QREC); if (npc) _lifeAct(npc, nong ? '논매기' : '김매기'); return true; }
   return false;
+}
+// ★[T58a 테스트 전용 · 순수 export] 작물 상태기를 하네스가 **정본 그대로** 돌릴 수 있게 내준다.
+//   운영 경로는 이 함수를 부르지 않는다(`__p3Bind` 와 같은 관례) — 하네스가 상태기를 다시 짜면 그게 사본이다.
+function __farmBind() {
+  return { _cellTask, _lifeDoTask, _lifeDoTask0, _villageCropFor, _pestAt, _cropRipe, _cropGrowFrac,
+    L_WATERGAP, L_WEEDS, L_PESTP, L_QW, L_QP, L_QMIN, L_QREC };
 }
 // ★[헤드리스 일일 결산 — 사용자 "아무도 안 보는 마을도 일과가 작동해야 하는 거 아냐?"] 동면 마을(관측자 없음)의
 //   물리 결과를 게임일 경계에 같은 규칙·같은 인일 속도로 일괄 적산 — 랩 빨리감기(lifeLoop fast: 걷기 생략+일괄) 동형.
@@ -4559,12 +4596,12 @@ function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(�
   if (vil._crop && vil._crop.size) {
     const day = state.dayMs ? gameDayOf(_dayNow()) : 0;
     for (const [k, e] of vil._crop) {
-      if (day - e.p >= e.c.grow) continue;   // 익음 — 수확 일감(농부 우선순위 5)
-      const wd = e.wd || 0, gf = (day - e.p) / e.c.grow;
+      if (_cropRipe(e, day)) continue;   // 익음 — 수확 일감(농부 우선순위 5)
+      const wd = e.wd || 0, gf = _cropGrowFrac(e, day);
       if (e.ps) e.q -= L_QP;
       else if (wd < L_WEEDS.length && gf >= L_WEEDS[wd] + 0.06) e.q -= L_QW;
       if (!vil._drySet.has(k) && day - (e.w || e.p) >= L_WATERGAP + 8) e.q -= L_QW;
-      if (!e.ps && Math.random() < L_PESTP) e.ps = 1;
+      if (!e.ps && _pestAt(k, e.c, day)) e.ps = 1;   // ★[T58a] 주사위 → 자리×날×작물 해시(아래)
       if (e.q < L_QMIN) e.q = L_QMIN;
     }
   }
@@ -5583,7 +5620,7 @@ module.exports = {
   // P3 — zone.js Wildlife.init 소비: 실체 전쟁 병사 pid 위치(px)를 야생 agrid 위협원으로 주입
   warThreats,
   // P3 — 헤드리스 검증 훅(테스트 전용)
-  __p3Bind,
+  __p3Bind, __farmBind,
   // ★★[2026-08-01 재민 지적 "기존에 존재하던 전쟁실험실을 수정하면 되는데?"] 계측 훅.
   //   랩이 마을 부존 추출을 **손으로 다시 짜지 못하게** 본 게임 함수를 그대로 내준다.
   //   전에 복제했다가 두 번 당했다:

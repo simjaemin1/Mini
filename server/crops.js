@@ -221,6 +221,68 @@ function wildSeedAt(cx, cy, day, chance) {
   return pool[_h32(cx, cy, six * 104729 + 13) % pool.length];
 }
 
+// ── ★★§6 달력 · 논밭 · 특산 [T58a 2026-09-03] ────────────────────────────────
+//
+// ★★**새 시계를 만들지 않는다**(재민 확정 2026-08-30: *"원천은 econ 계절 정본 하나 —
+//   새 시계·새 매핑 상수 금지(사본 금지)"*). 여기 월은 **계절 정본의 더 촘촘한 읽기**일 뿐이다:
+//   한 해의 길이는 `events.yearDaysOf()`(계절 정본에서 스스로 읽어 낸 값)이고, 열두 등분한다.
+//
+// ★★★**앵커는 고르지 않고 카탈로그에서 역산했다**(족보 (86) · T59 의 "세 자 일치"와 같은 결):
+//   카탈로그에는 `sowMonths`(실제 달)와 `sow`(계절)가 **둘 다** 있다 ⇒ 둘이 어긋나지 않는
+//   오프셋은 하나뿐이다. 열둘을 전수로 재면
+//     offset 0:31 · 1:10 · **2:0** · 3:10 · 4:37 · 5:62 · 6:71 · 7:73 · 8:75 · 9:80 · 10:72 · 11:55  (위반 수)
+//   ⇒ **게임일 0 = 실제 3월 1일**(봄의 첫날). 유일 최소이고 그 자리에서 위반이 **0** 이다.
+//   ⚠이 수를 손으로 고치지 마라 — `test-crops` 가 카탈로그에서 **다시 역산해** 대조한다
+//     (T59 의 교훈: 역산 앵커는 좋지만, 앵커가 옳다는 것은 따로 증명해야 한다).
+//
+// ⚠**랩의 `L_START=120`(게임일 0 = 5월)은 이 앵커와 두 달 어긋나 있었고**, 게다가 서버는
+//   랩의 **0-based `plantMo`**(랩 주석 7929: *"plantMo=0=1월"*)를 1-based 로 읽고 있었다
+//   ⇒ NPC 가 카탈로그보다 **한 달 일찍**, 그리고 봄 작물을 **겨울에** 심고 있었다. 그 표를 지운다.
+const MONTHS_PER_YEAR = 12;
+const ANCHOR_MONTH = _num('CROP_ANCHOR_MONTH', 3);      // 게임일 0 의 실제 달(유도값 · 위 주석)
+const _MO_SEASON_IX = { spring: 0, summer: 1, autumn: 2, winter: 3 };
+// ★★달을 **계절 정본에서** 센다(해 길이 365 도, 경계 90/180/270 도 여기 안 적는다).
+//   `events.calendarOf` 가 주는 (계절 · 계절 안 며칠 · 그 계절 길이)를 셋으로 나눈 것이 달이다.
+//   ⇒ **계절 경계와 달 경계가 어긋날 수 없다**(365/12 와 365/4 로 따로 나누면 하루씩 어긋난다 — 실측).
+function monthOf(day) {
+  let cal = null;
+  try { cal = _events().calendarOf(_day(day)); } catch (e) {}
+  if (!cal) return ANCHOR_MONTH;
+  const six = _MO_SEASON_IX[cal.season] || 0;
+  const len = Math.max(1, cal.seasonDays | 0);
+  const third = Math.min(2, Math.floor((Math.max(1, cal.dayOfSeason) - 1) / len * 3));
+  return ((six * 3 + third + ANCHOR_MONTH - 1) % MONTHS_PER_YEAR) + 1;
+}
+// 카탈로그의 사람 글("4~5·7~9월")을 기계 축으로 푼다 — 표를 옮겨 적지 않는다.
+const _moCache = {};
+function sowMonthsOf(id) {
+  if (id in _moCache) return _moCache[id];
+  const c = get(id);
+  const out = new Set();
+  if (c && c.sowMonths) {
+    for (const part of String(c.sowMonths).replace(/월/g, '').split('·')) {
+      const t = part.trim();
+      const r = /^(\d+)~(\d+)$/.exec(t);
+      if (r) { let a = +r[1], b = +r[2]; if (b < a) b += MONTHS_PER_YEAR; for (let i = a; i <= b; i++) out.add(((i - 1) % MONTHS_PER_YEAR) + 1); }
+      else if (/^\d+$/.test(t)) out.add(+t);
+    }
+  }
+  return (_moCache[id] = [...out].sort((a, b) => a - b));
+}
+// 논이냐 밭이냐 — 카탈로그의 `field` 는 **복합 표기**다("밭·논" · "물가·논" · "밭(뽕밭)" · "밭(경사)").
+//   ⇒ 이분법으로 자르지 말고 **포함 여부**로 묻는다(표를 두 벌로 만들지 않으려고).
+function fitsField(id, field) { const c = get(id); return !!c && String(c.field || '').includes(String(field || '')); }
+// 그 달에 그 자리(논/밭)에 심을 수 있는 작물 id — **정렬해서** 돌려준다(결정론).
+const _smCache = {};
+function sowableMonth(field, month) {
+  const k = field + '_' + month;
+  if (k in _smCache) return _smCache[k];
+  const out = IDS.filter((id) => fitsField(id, field) && sowMonthsOf(id).includes(month | 0));
+  return (_smCache[k] = out);
+}
+// ★결정론 해시 — `wildSeedAt` 이 쓰는 그 함수를 **그대로 내준다**(부르는 쪽이 사본을 만들지 않게).
+function h32(a, b, c) { return _h32(a, b, c); }
+
 // ── 다른 정본에게 넘겨 줄 표들(전부 파생 — 저쪽이 옮겨 적지 않게 한다) ──────
 function shelfMap() {                       // → spoil.SHELF_DAYS
   const out = {};
@@ -263,6 +325,7 @@ module.exports = {
   get, list, isCrop, isSeed, seedOf, cropOfSeed, isFood, kcalOf,
   keepDaysOf, seedKeepDaysOf, hungerOf, tastyOf, growDaysOf, kgOf, koOf, emojiOf,
   seasonOfDay, sowSeasons, canSowOn, sowableIn, sowableOn, wildSeedAt, WILD_SEED_CHANCE,
+  monthOf, sowMonthsOf, fitsField, sowableMonth, h32, MONTHS_PER_YEAR, ANCHOR_MONTH,
   grownDays, isReady, readyDay, waterMult, harvestUnits,
   shelfMap, weightMap, foodMap, labelMap, emojiMap, payload,
 };
