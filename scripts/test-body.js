@@ -1165,6 +1165,161 @@ function codeOnly(src) {
     }
   }
 
+  // ═══ ⑱ 여름 — 더위는 온도가 아니라 갈증이다 (T64) ══════════════════════════
+  //   PM 판정(2026-09-03 · T44 회부 B-1 닫음): 더위 축은 안 만든다. 여름철 갈증 배율 하나다.
+  say('\n⑱ 여름 — 더위는 온도가 아니라 갈증이다(축 0 · 곱 하나)');
+  {
+    const W = B.CFG.HEAT_THIRST_W;
+    ok(W > 0, '★⑱ 손잡이가 하나 있고 켜져 있다(`BODY_HEAT_THIRST_W`)', `W ${W}`);
+
+    // ── ㉠ 거울 정합 — 계절 표를 두 벌 두지 않았다 ────────────────────────────
+    //   ★자명 통과 금지: 추위 쪽 수를 **소스에서 유도**해 네 계절 전수로 맞댄다.
+    //     누가 추위 표를 바꾸면(예: 겨울 0.9) 거울이 깨지고 여기서 빨개진다.
+    {
+      const zsrc = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
+      const m = /const v = se === 'winter' \? ([\d.]+) : \(se === 'summer' \? ([\d.]+) : ([\d.]+)\);/.exec(zsrc);
+      ok(!!m, '★⑱㉠ [상황] 추위 계절 가중을 **소스에서** 읽었다(하네스가 수를 지어내지 않는다)',
+        m ? `겨울 ${m[1]} · 여름 ${m[2]} · 봄가을 ${m[3]}` : '못 읽음');
+      const cold = { winter: +m[1], summer: +m[2], spring: +m[3], autumn: +m[3] };
+      const want = { winter: 0, summer: 1, spring: +m[3], autumn: +m[3] };
+      let bad = [];
+      for (const se of ['winter', 'spring', 'summer', 'autumn']) {
+        if (B.seasonHeatOf(cold[se]) !== want[se]) bad.push(`${se}: ${B.seasonHeatOf(cold[se])} ≠ ${want[se]}`);
+      }
+      ok(bad.length === 0,
+        '★★⑱㉠ 여름 가중은 **추위 가중의 거울**이다 — 네 계절 전수(계절 표 두 벌 0)',
+        `겨울 ${B.seasonHeatOf(cold.winter)} · 봄가을 ${B.seasonHeatOf(cold.spring)} · 여름 ${B.seasonHeatOf(cold.summer)}` + (bad.length ? ` · ${bad.join(' / ')}` : ''));
+      // ★그리고 계절의 정본이 하나임을 못 박는다 — `events.seasonOf` 밖에 계절 표가 없다
+      ok(/require\('\.\/events'\)\.seasonOf/.test(zsrc),
+        '★⑱㉠ 계절의 정본은 `events.seasonOf` 하나다(zone 이 그걸 부른다)');
+    }
+
+    // ── ㉡ 배율표 전수 — 낮/밤 × 계절 × 실내/야외 ────────────────────────────
+    {
+      const rows = [];
+      let bad = [];
+      for (const [ko, sc] of [['겨울', 1], ['봄가을', 0.35], ['여름', 0]]) {
+        for (const night of [false, true]) {
+          for (const indoor of [false, true]) {
+            const m = B.heatThirstMult({ seasonCold: sc, night, indoor });
+            const want = (night || indoor) ? 1 : 1 + W * B.seasonHeatOf(sc);
+            if (Math.abs(m - want) > 1e-9) bad.push(`${ko}/${night ? '밤' : '낮'}/${indoor ? '실내' : '야외'} ${m} ≠ ${want}`);
+            rows.push(`${ko}${night ? '밤' : '낮'}${indoor ? '실내' : '야외'} ×${m}`);
+          }
+        }
+      }
+      ok(bad.length === 0, '★★⑱㉡ 배율 전수 — 밤 1 · 실내 1 · 겨울 1 · 여름낮만 ×(1+W)',
+        bad.length ? bad.join(' / ') : rows.filter((r) => /야외/.test(r) && /낮/.test(r)).join(' · '));
+      ok(B.heatThirstMult({ seasonCold: 0, night: false, indoor: false }) === 1 + W
+        && B.heatThirstMult({ seasonCold: 1, night: false, indoor: false }) === 1,
+        '★★⑱㉡ **여름 낮 = 겨울 × (1+W)** 정확히', `${B.heatThirstMult({ seasonCold: 0, night: false, indoor: false })} vs 1`);
+      // ★★**0(여름)과 무(無)는 다른 값이다.** 계절을 안 넘긴 호출이 조용히 한여름이 되면
+      //   계절을 모르는 모든 자리가 여름으로 물든다(초안이 실제로 그랬다 — ⑪·⑯㉧ 이 뒤집혔다).
+      ok(B.heatThirstMult({ night: false, indoor: false }) === 1
+        && B.heatThirstMult({}) === 1 && B.heatThirstMult() === 1,
+        '★★⑱㉡ **계절을 안 주면 여름이 없다** — `undefined` 를 0(여름)으로 읽지 않는다',
+        `무 ${B.heatThirstMult({})} vs 여름 ${B.heatThirstMult({ seasonCold: 0 })}`);
+    }
+
+    // ── ㉢ 실제 감쇠가 그만큼 빨라지는가 — **정본 tick 으로** 잰다 ────────────
+    {
+      const run = (ctx, secs) => {
+        const P = { hunger: 100, thirst: 100 }; B.ensure(P);
+        for (let i = 0; i < secs; i++) B.tick(P, 1, Object.assign({ day: 1, now: Date.now() }, ctx));
+        return 100 - P.thirst;
+      };
+      const win = run({ seasonCold: 1, night: false, indoor: false }, 300);
+      const sum = run({ seasonCold: 0, night: false, indoor: false }, 300);
+      const sumN = run({ seasonCold: 0, night: true, indoor: false }, 300);
+      const sumIn = run({ seasonCold: 0, night: false, indoor: true }, 300);
+      ok(win > 1, '★⑱㉢ [상황] 겨울 낮에도 갈증이 실제로 준다(0 이면 아래가 자명 통과)', `${win.toFixed(3)}`);
+      ok(Math.abs(sumN - win) < 1e-6 && Math.abs(sumIn - win) < 1e-6,
+        '★★⑱㉢ **여름밤·여름실내는 겨울과 한 치도 안 다르다**', `밤 ${sumN.toFixed(4)} · 실내 ${sumIn.toFixed(4)} · 겨울 ${win.toFixed(4)}`);
+      ok(sum > win * 1.3,
+        '★★⑱㉢ 여름 낮 야외는 **눈에 띄게 빨리 마른다**(상태 의존 감쇠라 배수는 정확히 W 가 아니다)',
+        `여름낮 ${sum.toFixed(3)} vs 겨울 ${win.toFixed(3)} = ×${(sum / win).toFixed(3)}`);
+      // ★★한 스텝의 **비율은 정확히 배율**이다 — 상태가 같은 순간끼리 맞대야 그게 보인다
+      {
+        const step = (ctx) => {
+          const P = { hunger: 100, thirst: 100 }; B.ensure(P);
+          B.tick(P, 1, Object.assign({ day: 1, now: Date.now() }, ctx));
+          return 100 - P.thirst;
+        };
+        const a = step({ seasonCold: 1, night: false, indoor: false });
+        const b = step({ seasonCold: 0, night: false, indoor: false });
+        ok(Math.abs(b / a - (1 + W)) < 1e-9,
+          '★★⑱㉢ **같은 상태에서 한 스텝의 비는 정확히 (1+W)** 다(곱이 하나라는 증거)',
+          `${b.toFixed(6)} / ${a.toFixed(6)} = ${(b / a).toFixed(6)}`);
+      }
+    }
+
+    // ── ㉣ 되돌림 — W=0 이면 T56 과 비트 동일 ────────────────────────────────
+    {
+      const keep = B.CFG.HEAT_THIRST_W;
+      B.CFG.HEAT_THIRST_W = 0;
+      let bad = 0;
+      for (const sc of [0, 0.35, 1]) for (const night of [false, true]) for (const indoor of [false, true]) {
+        if (B.heatThirstMult({ seasonCold: sc, night, indoor }) !== 1) bad++;
+      }
+      const run0 = (ctx) => { const P = { hunger: 100, thirst: 100 }; B.ensure(P);
+        for (let i = 0; i < 300; i++) B.tick(P, 1, Object.assign({ day: 1, now: Date.now() }, ctx)); return P.thirst; };
+      const sum0 = run0({ seasonCold: 0, night: false, indoor: false });
+      const win0 = run0({ seasonCold: 1, night: false, indoor: false });
+      B.CFG.HEAT_THIRST_W = keep;
+      ok(bad === 0 && sum0 === win0,
+        '★★⑱㉣ **`BODY_HEAT_THIRST_W=0` 이면 여름이 사라진다** — 곱이 전수 1 이고 감쇠가 비트 동일(되돌림 스위치)',
+        `전수 위반 ${bad} · 여름낮 ${sum0} === 겨울낮 ${win0}`);
+    }
+
+    // ── ㉤ 물은 그대로다 — 회복 식을 한 자도 안 건드렸다 ─────────────────────
+    {
+      const Tidal = require(path.join(ROOT, 'server', 'tidal.js'));
+      const zsrc = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
+      const wd = /const WATER_DRINK_AMOUNT = (\d+)/.exec(zsrc);
+      ok(wd && +wd[1] === 35 && Tidal.DRINK_THIRST === 30,
+        '★★⑱㉤ **회복량은 무변**이다 — 물가 +35 · 물 한 되 +30(정본을 읽어 확인)',
+        `물가 +${wd && wd[1]} · 되 +${Tidal.DRINK_THIRST}`);
+      // 배율이 **감쇠에만** 걸린다 — 회복 경로에 곱이 새지 않았다(소스로 못 박는다)
+      const bsrc = codeOnly(fs.readFileSync(path.join(ROOT, 'server', 'body.js'), 'utf8'));
+      const uses = (bsrc.match(/heatThirstMult\(/g) || []).length;
+      ok(uses === 2, '★★⑱㉤ `heatThirstMult` 를 부르는 자리는 **정의 1 + 갈증 감쇠 1** 뿐이다(회복에 안 샌다)',
+        `${uses}곳`);
+    }
+
+    // ── ㉥ 돌연변이 — 곱을 지우면 빨개지는가 ─────────────────────────────────
+    {
+      const keep = B.CFG.HEAT_THIRST_W;
+      B.CFG.HEAT_THIRST_W = 0;                      // = 곱이 없는 세계(T56 판)
+      const P = { hunger: 100, thirst: 100 }; B.ensure(P);
+      for (let i = 0; i < 300; i++) B.tick(P, 1, { day: 1, now: Date.now(), seasonCold: 0, night: false, indoor: false });
+      const noHeat = 100 - P.thirst;
+      B.CFG.HEAT_THIRST_W = keep;
+      const Q = { hunger: 100, thirst: 100 }; B.ensure(Q);
+      for (let i = 0; i < 300; i++) B.tick(Q, 1, { day: 1, now: Date.now(), seasonCold: 0, night: false, indoor: false });
+      const withHeat = 100 - Q.thirst;
+      ok(withHeat > noHeat * 1.3,
+        '★★⑱㉥ 돌연변이 — **곱을 없애면 여름이 겨울이 된다**(이 절이 ✗ 를 낼 수 있다)',
+        `곱 없음 ${noHeat.toFixed(3)} → 있음 ${withHeat.toFixed(3)}`);
+    }
+
+    // ── ㉦ 대리 지표 — 계절×낮밤 "물 없이 버티는 시간" ───────────────────────
+    {
+      const dry = (ctx) => {
+        const P = { hunger: 100, thirst: 100 }; B.ensure(P);
+        let s = 0; const thr = 100 * (1 - B.extremeAt('thirst'));
+        while (P.thirst > thr && s < 100000) { B.tick(P, 1, Object.assign({ day: 1, now: Date.now() }, ctx)); s++; }
+        return s;
+      };
+      say('     물 없이 **갈증 극단**까지(정본 tick 적분):');
+      for (const [ko, sc] of [['한겨울', 1], ['봄·가을', 0.35], ['한여름', 0]]) {
+        const d = dry({ seasonCold: sc, night: false, indoor: false });
+        const n = dry({ seasonCold: sc, night: true, indoor: false });
+        const i = dry({ seasonCold: sc, night: false, indoor: true });
+        say(`       ${ko.padEnd(7)} 낮 야외 ${(d / 60).toFixed(1)}분 · 밤 ${(n / 60).toFixed(1)}분 · 낮 실내 ${(i / 60).toFixed(1)}분`);
+      }
+    }
+  }
+
   // ═══ ⑧ 픽스처 결백 ═════════════════════════════════════════════════════════
   say('\n⑧ 픽스처 결백(족보 ㊻)');
   // ★①(오프라인 불변)이 자명 통과하지 않으려면, 그 절이 **저장을 건드리지 않아야** 한다.

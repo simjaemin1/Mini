@@ -110,4 +110,55 @@ for (const a of B.AXES) {
     + ` → 이속 ×${e.moveMult.toFixed(3)} · 작업 ×${e.workMult.toFixed(3)}`);
   console.log(`     ⇒ 저녁엔 손이 ${Math.round((1 - e.workMult) * 100)}% 느리다. **벽이 아니라 기울기**(§7).`);
 }
+
+// ── ⑤ ★[여름 2026-09-03 · T64] 더위 = 갈증 배율 — 계절 × 낮밤 × 그늘 ──────────
+//   더위 축은 **없다**(T56 §4: 24년 최고 33.69℃ · `coldOfC` 표가 29℃ 에서 끝난다).
+//   여름은 물을 더 마시게 하는 것으로만 온다. 여기서 그 세기를 눈으로 본다.
+{
+  const Tidal = require(path.join(__dirname, '..', 'server', 'tidal.js'));
+  const W = C.HEAT_THIRST_W;
+  console.log(`\n⑤ 여름 — 더위는 갈증이다 (W=${W} · 배율 = 1 + W·여름가중·낮·(1−그늘))`);
+  console.log(`   여름가중은 **추위 가중의 거울**이다: 겨울 0 · 봄가을 0.35 · 여름 1 (계절 표 두 벌 0)`);
+
+  // 물 없이 갈증 극단까지 — 정본 tick 으로 적분한다(하네스가 감쇠식을 다시 짜지 않는다)
+  const dry = (ctx) => {
+    const p = mk(); B.ensure(p);
+    let s = 0; const thr = 100 * (1 - B.extremeAt('thirst'));
+    while (p.thirst > thr && s < 100000) { B.tick(p, 1, { day: 1, now: Date.now(), ...ctx }); s++; }
+    return s / 60;
+  };
+  console.log('\n   물 없이 **갈증 극단**까지(분)');
+  console.log('   ┌─────────┬──────────┬────────┬───────────┐');
+  console.log('   │   계절   │ 낮 · 야외 │   밤    │ 낮 · 그늘 │');
+  for (const [ko, sc] of [['한겨울', 1], ['봄·가을', 0.35], ['한여름', 0]]) {
+    const d = dry({ seasonCold: sc, night: false, indoor: false });
+    const n = dry({ seasonCold: sc, night: true, indoor: false });
+    const i = dry({ seasonCold: sc, night: false, indoor: true });
+    console.log(`   │ ${ko.padEnd(7)} │ ${(d.toFixed(1) + '분').padStart(8)} │ ${(n.toFixed(1) + '분').padStart(6)} │ ${(i.toFixed(1) + '분').padStart(9)} │`);
+  }
+  console.log('   └─────────┴──────────┴────────┴───────────┘');
+  console.log('   ★그늘은 **실내**뿐이다(ctx.indoor). 숲 그늘은 회부 — `wind.js` 의 `fsh` 가 정본인데');
+  console.log('     꺼내려면 그 파일에 접근자 한 줄이 필요하고 그건 T64 의 접촉 밖이다.');
+
+  // ★고증 대조 — 게이지·되·kg 이 이미 리터와 같은 자리에 있다
+  const perDay = (mDay) => {           // 하루(1,440 게임분) 동안 **채워 가며** 쓰는 되
+    const p = mk(); B.ensure(p); let used = 0;
+    for (let s = 0; s < 1440; s++) {
+      const t0 = p.thirst;
+      B.tick(p, 1, { day: 1, now: Date.now(), seasonCold: mDay.sc, night: s >= 720, indoor: false });
+      used += (t0 - p.thirst);
+      if (p.thirst < 60) p.thirst = Math.min(100, p.thirst + Tidal.DRINK_THIRST);
+    }
+    return used / Tidal.DRINK_THIRST;
+  };
+  console.log('\n   하루 물 필요 — 되(= 1kg ≈ 1L · 게이지 100 = 3.33되)');
+  const win = perDay({ sc: 1 });
+  for (const [ko, sc] of [['한겨울', 1], ['봄·가을', 0.35], ['한여름', 0]]) {
+    const v = perDay({ sc });
+    console.log(`     ${ko.padEnd(7)} ${v.toFixed(2)}되  ⇒ 겨울 대비 ×${(v / win).toFixed(3)}`);
+  }
+  console.log(`   ★고증 앵커: 사람의 하루 물 2.5~3.5L(더위엔 1.4~1.6배). 이 세계의 겨울이 ${win.toFixed(2)}L 이고`);
+  console.log(`     여름이 그 ×${(perDay({ sc: 0 }) / win).toFixed(2)} 다 — **W 는 고른 게 아니라 그 밴드에서 유도했다**(보고 T64 §ⓓ).`);
+  console.log(`   ★되돌림: BODY_HEAT_THIRST_W=0 이면 세 줄이 전부 겨울 값이 된다(T56 비트 동일).`);
+}
 console.log('');

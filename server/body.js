@@ -140,6 +140,23 @@ const CFG = {
   EXTREME_HP_THIRST: _num('BODY_EXTREME_HP_THIRST', 100 / (1.5 * 1440)),
   EXTREME_HP_COLD: _num('BODY_EXTREME_HP_COLD', 100 / (6 * 60)),
 
+  // ── ★★[여름 2026-09-03 재민 확정 · T64] **더위는 온도가 아니라 갈증이다** ──────
+  //   T56 §4 가 24년 17,520 표본으로 증명한 것: 이 세계의 기온은 `coldOfC` 가 끝나는 29℃ 위로
+  //   **4.7℃ 밖에 더 안 올라간다**(최고 33.69℃ · 35℃ 초과 0회). 그 폭에 0→1 을 욱여넣으면
+  //   여름 낮이 매년 극단이 되고, 넓게 잡으면 24년에 한 번도 안 닿는다. ⇒ **온도 축은 안 만든다.**
+  //   PM 판정(2026-09-03): *"여름철 갈증 배율 하나. 새 축 0 · 디버프 표 무변 ·
+  //   답은 이미 있는 동사(물 · 그늘)."*
+  //
+  //   ★★값의 유도 — **고르지 않고 유도했다**(보고 T64 §ⓓ):
+  //     이 세계는 이미 고증 위에 서 있다. 게이지 100 = 물 3.33 되 = **3.33 L**(되 1kg · +30/되)이고,
+  //     그게 게임 하루치다. 넉넉히 마시며 사는 사람은 하루 **5.00 되**를 쓴다 — 사람의 하루 물
+  //     2.5~3.5 L(활동 시 더)와 같은 자리다. 여기에 붙일 것은 **여름의 배수**뿐이다:
+  //       더위만(노동 항은 이 세계에 **없다** — `onLabor` 는 피로만 올린다 · 회부) 있는 여름의
+  //       하루 물은 온대 기준의 **1.4~1.6배**다.  W=1 ⇒ 낮 ×2 · **하루 총량 ×1.50** ← 그 밴드의 바닥.
+  //       바닥을 고른 이유: 우리 여름은 "같은 활동, 더 더움"이지 "더위 속 중노동"이 아니다.
+  //     ⇒ 배율 = 1 + W · 여름가중 · 낮 · (1 − 그늘).  **W=0 이면 곱이 정확히 1**(되돌림 스위치).
+  HEAT_THIRST_W: _num('BODY_HEAT_THIRST_W', 1.0),
+
   // ── ★★[쓰러짐·죽음 2026-09-02 재민 확정 · T43] **후유증** — 죽고 나면 며칠 몸이 성치 않다 ──
   //   §12: *"후유증(며칠 게임일 동안 스태미나 상한 감소, 시간이 지나면 회복)."*
   //   ★새 축을 만들지 않았다 — 있는 스태미나의 **상한**을 한동안 눌러 둘 뿐이다.
@@ -533,6 +550,39 @@ function coldTarget(ctx) {
 //   g: 0..100 현재 게이지 · totalSec: 100→0 총 소요. 반환 = 지금의 초당 감소량.
 //   위 절반(g > SPLIT)이 전체 시간의 TOP_FRAC 을 쓰고, 아래가 나머지를 쓴다.
 //   ⇒ 총합은 정확히 `totalSec` 로 보존된다(하네스 ③이 실측으로 확인한다).
+// ── ★★[여름 2026-09-03 · T64] 여름 가중 — **추위 가중의 거울** ────────────────
+//   `zone.seasonColdNow()` 는 겨울 1 · 봄가을 0.35 · 여름 0 을 답한다(ctx.seasonCold).
+//   더위는 그 반대인데, **계절 표를 두 벌 두지 않는다** — 어깨 계절(봄·가을)은 추위와
+//   **같은 무게**이고 양 끝만 뒤집으면 그게 곧 거울이다:
+//       겨울 1 → 0   ·   봄가을 0.35 → 0.35   ·   여름 0 → 1
+//   ⇒ 새 계절 표도, 새 상수도 없다. 계절의 정본은 여전히 `events.seasonOf` 하나다.
+//   ⚠거울이 성립하려면 추위 표의 양 끝이 1/0 이어야 한다 — `test-body` 가 네 계절 전수로
+//     그 정합을 못 박는다(추위 쪽 수를 누가 바꾸면 거기서 빨개진다).
+function seasonHeatOf(seasonCold) {
+  const sc = Math.max(0, Math.min(1, Number(seasonCold) || 0));
+  return sc <= 0.01 ? 1 : (sc >= 0.99 ? 0 : sc);
+}
+// ── ★★[T64] 더위 갈증 배율 — 갈증 감쇠에 **곱 하나**로 걸린다 ────────────────
+//   · 낮에만. 밤은 정확히 1 이다(한반도 여름밤도 덥지만, 그건 온도 축의 이야기고
+//     이 카드는 "해 아래 있는가"만 본다 — 새 입력을 안 만든다).
+//   · **그늘이면 없다.** 그늘 술어는 `ctx.indoor` 하나다(이미 넘어온다 · 새 술어 0).
+//     ⚠숲 그늘은 **안 넣었다** — `wind.js` 의 `fsh`(숲 차폐 0..1)가 정본인데 그걸 꺼내려면
+//       그 파일을 여는 접근자 한 줄이 필요하고, 그건 이 카드의 접촉 밖이다(회부).
+//   · **W=0 이면 정확히 1** 을 돌려준다 — 되돌림 스위치이자 T56 비트 동일의 근거다.
+function heatThirstMult(ctx) {
+  const W = CFG.HEAT_THIRST_W;
+  if (!(W > 0)) return 1;
+  const c = ctx || {};
+  // ★★**계절을 안 준 곳엔 여름이 없다.** `seasonCold` 는 안 주면 `undefined` 이고 그걸 0 으로
+  //   읽으면 곧 "여름"이 된다 — 그 둘을 안 가르면 **계절을 안 넘기는 모든 호출이 조용히 한여름**이
+  //   된다. 이건 상상이 아니다: 이 한 줄이 없을 때 `test-body ⑪`(갈증 만복→공복 24분)이 12분으로,
+  //   `⑯㉧`(짠물 가속 = BRINE_MULT 정확히)가 ×2.458 로 뒤집혔다. 0(여름)과 무(無)는 다른 값이다.
+  if (!Number.isFinite(c.seasonCold)) return 1;
+  if (c.night) return 1;
+  const shade = c.indoor ? 1 : 0;
+  return 1 + W * seasonHeatOf(c.seasonCold) * (1 - shade);
+}
+
 function decayRate(g, totalSec) {
   const sp = Math.max(0.05, Math.min(0.95, CFG.DECAY_SPLIT));
   const tf = Math.max(0.05, Math.min(0.95, CFG.DECAY_TOP_FRAC));
@@ -592,7 +642,9 @@ function tick(p, dtSec, ctx) {
   const t0 = (p.thirst == null ? 100 : p.thirst);
   p.hunger = Math.max(0, h0 - decayRate(h0, CFG.HUNGER_SEC) * dtSec * cm);
   //   ★[바닷물] 짠물 기운이 남아 있으면 갈증이 **더 빨리** 준다(확정적 · 새 축 없음).
-  const bm = brineActive(p, c.now) ? CFG.BRINE_MULT : 1;
+  //   ★★[여름 2026-09-03 · T64] 그리고 **여름 낮에도 더 빨리 준다** — 곱 하나가 더 붙는다.
+  //     두 배율은 곱해진다: 여름 낮에 짠물을 마시면 둘 다 걸린다(각각이 독립된 사실이다).
+  const bm = (brineActive(p, c.now) ? CFG.BRINE_MULT : 1) * heatThirstMult(c);
   p.thirst = Math.max(0, t0 - decayRate(t0, CFG.THIRST_SEC) * dtSec * bm);
 
   // ★★★[캐논 변경 2026-09-01 · T44] 극단이면 **HP 가 아주 천천히 깎인다.**
@@ -712,6 +764,7 @@ module.exports = {
   lerpCurve, xWhereBelow, ensure, severity, effects, stageOf, moodles,
   RECOVER, EFFECT_AXES, RECOVER_AXES, recoverMult, recoverParts, canSprint, stamina, coldTarget, warmthInsC, decayRate,
   drinkBrine, brineActive,
+  seasonHeatOf, heatThirstMult,   // ★[T64] 여름 갈증 배율 — 하네스·계측기가 **정본을 그대로** 부른다
   extremeHpRate, extremeAt, extremeness, takeHpDamage, DRAIN_AXES,
   startAftermath, aftermathLeft, staminaCap,
   tick, onLabor, onDamage, onEat, onHerb,

@@ -78,6 +78,24 @@ const until = async (pred, maxSecs) => {
   return pred();
 };
 
+// ★★[T64 동봉 · T56 회부] **야생은 두 증인이 있어야 야생이다.**
+//   T56 에서 `e2e-downed` 가 마을 한복판을 "완충 0 인 야생"으로 집어 들어 판정 넷이 헛돌았다
+//   (화면의 완충값은 텔레포트 직후 낡아 있을 수 있다). 여기 서버 정본은 안 낡지만,
+//   **두 술어가 독립으로 같은 답을 해야** 한쪽이 조용히 틀려도 잡힌다:
+//     증인 ①  `SimVillages.shelterAt(x,y) === 0`   (추위·쓰러짐이 쓰는 완충 정본)
+//     증인 ②  시딩된 모든 마을 중심에서 **반경 정본 최댓값 + 여유** 밖   (마을 목록에서 유도)
+//   ⚠반경은 여기 적지 않는다 — `clientVillages()` 가 `r`(=`_maxRPx`)를 실어 주므로 **거기서 잰다**.
+const _VILS = () => { try { return SimVillages.clientVillages() || []; } catch (e) { return []; } };
+const VIL_SAFE_PX = (() => {
+  const rs = _VILS().map((v) => v.r || 0);
+  return Math.round((rs.length ? Math.max(...rs) : 2152) * 1.2);   // 최댓값 +20% 여유
+})();
+const farFromVillages = (x, y) =>
+  _VILS().every((v) => Math.hypot(v.cx * 32 + 16 - x, v.cy * 32 + 16 - y) > VIL_SAFE_PX);
+const isWildSpot = (x, y) =>
+  (SimVillages.shelterAt(x, y) || 0) === 0 && farFromVillages(x, y)
+  && !H.isWaterTileLocal(x, y) && !H.isTerrainBlockedLocal(x, y);
+
 (async () => {
   say('\n=== 쓰러짐·구조·업기·사망 (T43 · §12) ===');
 
@@ -241,7 +259,7 @@ const until = async (pred, maxSecs) => {
       for (const [dx, dy] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) {
         const x = 30848 + dx * r, y = 59872 + dy * r;
         if (x < 500 || y < 500) continue;
-        if ((SimVillages.shelterAt(x, y) || 0) === 0 && !H.isWaterTileLocal(x, y) && !H.isRockTileLocal(x, y)) { wild = { x, y }; break; }
+        if (isWildSpot(x, y)) { wild = { x, y }; break; }   // ★두 증인(T64 동봉)
       }
     }
     pre(!!wild, '야생 자리를 찾았다(마을 완충 0)', wild ? `(${wild.x},${wild.y})` : '못 찾음');
@@ -406,12 +424,12 @@ const until = async (pred, maxSecs) => {
     let wild = null;
     for (let x = 4000; x < 60000 && !wild; x += 3000) {
       for (let y = 4000; y < 120000; y += 3000) {
-        if (H.isWaterTileLocal(x, y) || H.isTerrainBlockedLocal(x, y)) continue;
-        if ((SimVillages.shelterAt(x, y) || 0) > 0) continue;
+        if (!isWildSpot(x, y)) continue;                   // ★두 증인(T64 동봉)
         wild = { x, y }; break;
       }
     }
-    pre(!!wild, '야생 자리를 찾았다(마을 완충 0)', wild ? `(${wild.x},${wild.y})` : '못 찾음');
+    pre(!!wild, '야생 자리를 찾았다(완충 0 **그리고** 마을 중심에서 먼 곳 — 두 증인)',
+      wild ? `(${wild.x},${wild.y}) · 안전거리 ${VIL_SAFE_PX}px` : '못 찾음');
     const R = H.Rescue.CFG.SHOUT_RANGE_PX;
     clearPlayers();
     const a = mkPlayer('shout_a', wild.x, wild.y);
@@ -463,8 +481,7 @@ const until = async (pred, maxSecs) => {
     a.isDown = false; a.downedAt = 0; a.hp = 100;
     let wild2 = null;
     for (let x = 4000; x < 60000 && !wild2; x += 3000) for (let y = 4000; y < 120000; y += 3000) {
-      if (H.isWaterTileLocal(x, y) || H.isTerrainBlockedLocal(x, y)) continue;
-      if ((SimVillages.shelterAt(x, y) || 0) > 0) continue;
+      if (!isWildSpot(x, y)) continue;                     // ★두 증인(T64 동봉)
       wild2 = { x, y }; break;
     }
     a.x = wild2.x; a.y = wild2.y; b.x = wild2.x + 200; b.y = wild2.y;
