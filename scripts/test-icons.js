@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
-// === 인벤 아이콘 대조 하네스 [T72 2026-09-03] =====================================
+// === 인벤 아이콘 대조 하네스 [T72 · T76 2026-09-03] ================================
 //
 // 계약:
 //   ① 굽는 표 ↔ 파일 전수 — `props_render.py` 의 `ITEMS` 가 선언한 키마다 PNG 가 있고 **96×96** 이다.
@@ -10,6 +10,10 @@
 //   ④ 404 가 날 수 없다 — 클라가 실제로 **요청하는** 키(`ITEM_ICONS` − `ICON_NO_RENDER`)는
 //      전부 파일이 있어야 한다. `e2e-nature` 의 "자산 요청 404 없음"을 소스 층에서 미리 잡는다.
 //   ⑤ 배선 상태 — 새로 구운 키가 클라 표에 올랐는지 **세어서 보고**한다.
+//   ⑥ [T76] 원물 → 보존식 **계보** — 두 겹으로 본다:
+//      ⓐ 서버가 그 짝을 인정하는가(`spoil.PRESERVE` 의 from→out 을 소스에서 읽어 대조)
+//      ⓑ **같은 모델 함수**에서 나오는가(`props_render.py` 에서 두 `m_*` 가 같은 `_빌더` 를 부른다)
+//      ★픽셀 상관은 **판정에 안 쓴다** — 측정해 보니 못 쓴다(아래 ⑥-★). 숫자는 기록만 한다.
 //      ⚠T72 착지 시점에 `43-i-icon.js` 는 T66(세션4) 이 만지는 중이라 **접점을 회부했다**(카드 §1).
 //        그래서 여기서 배선은 **실패가 아니라 표기**다 — 배선이 오면 이 절의 '회부 중'이 0 이 된다.
 //
@@ -45,7 +49,8 @@ const py = fs.readFileSync(RENDER_PY, 'utf8');
 const itemsBlock = py.match(/^ITEMS = \[([\s\S]*?)^\]/m);
 ok(!!itemsBlock, 'props_render.py 에서 ITEMS 표를 찾았다');
 const KEYS = itemsBlock ? [...itemsBlock[1].matchAll(/\('([a-z_0-9]+)',\s*m_/g)].map(m => m[1]) : [];
-ok(KEYS.length === 13, `아이콘 1차 13종 (실측 ${KEYS.length}): ${KEYS.join(' ')}`);
+ok(KEYS.length === 31, `아이콘 1·2차 31종 (실측 ${KEYS.length})`);
+console.log('     ' + KEYS.join(' '));
 
 const meta = {};
 for (const k of KEYS) {
@@ -98,6 +103,63 @@ console.log('\n[④ 클라가 요청하는 키는 전부 파일이 있다 — 40
     if (stale.length) console.log(`       · ICON_NO_RENDER 에서 제거: ${stale.join(', ')}`);
   }
   ok(true, `배선 ${wired.length} / 회부 중 ${stale.length + absent.length} (표기 전용 — 실패로 세지 않는다)`);
+}
+
+console.log('\n[⑥ 원물 → 보존식 계보 — 서버가 인정하고, 같은 모델에서 나오는가]');
+{
+  const lin = py.match(/^ITEM_LINEAGE = \[([\s\S]*?)\]/m);
+  ok(!!lin, 'props_render.py 에서 ITEM_LINEAGE 를 읽었다');
+  const PAIRS = lin ? [...lin[1].matchAll(/\('([a-z_]+)',\s*'([a-z_]+)'\)/g)].map(m => [m[1], m[2]]) : [];
+  ok(PAIRS.length >= 3, `계보 짝 ${PAIRS.length}`);
+
+  // ⓑ 서버가 그 짝을 인정하는가 — `spoil.js` PRESERVE 를 **소스에서** 읽는다(require 하면 서버가 뜬다)
+  const spoil = fs.readFileSync(path.join(ROOT, 'server', 'spoil.js'), 'utf8');
+  const block = spoil.slice(spoil.indexOf('const PRESERVE = {'));
+  const srvPairs = new Set();
+  for (const m of block.matchAll(/from:\s*(?:'([a-z_]+)'|_fishItems\(\))[\s\S]{0,80}?out:\s*'([a-z_]+)'/g)) {
+    srvPairs.add(`${m[1] || '<어종>'}→${m[2]}`);
+  }
+  ok(srvPairs.size >= 6, `서버 PRESERVE 짝 ${srvPairs.size}: ${[...srvPairs].join(' ')}`);
+  for (const [raw, dry] of PAIRS) {
+    const okPair = srvPairs.has(`${raw}→${dry}`) || (raw === 'fish' && srvPairs.has(`<어종>→${dry}`));
+    ok(okPair, `${raw} → ${dry}: 서버 PRESERVE 에 있다`);
+  }
+
+  // ⓒ 같은 모델 함수에서 나오는가 — 우연히 맞을 수 없는 계약이다
+  const builderOf = (key) => {
+    const i2 = py.indexOf(`def m_${key}(`);
+    if (i2 < 0) return null;
+    let seg = py.slice(i2);
+    const nx = seg.indexOf('\ndef ', 1);
+    seg = seg.slice(seg.indexOf('):') + 2, nx > 0 ? nx : 400);   // ★def 줄의 이름을 안 세게 `):` 뒤부터 본다
+    const c = seg.match(/(?<![A-Za-z0-9_])_([a-z_0-9]+)\(/);
+    return c ? c[1] : null;
+  };
+  for (const [raw, dry] of PAIRS) {
+    const a = builderOf(raw), b = builderOf(dry);
+    ok(!!a && a === b, `${raw} / ${dry}: 같은 모델 함수 _${a || '?'} / _${b || '?'}`);
+  }
+
+  // ⓓ 픽셀 IoU — **기록만 한다**(판정 근거 아님 · 아래 ★)
+  const { PNG } = require('pngjs');
+  const cache = {};
+  const mk = (k) => cache[k] || (cache[k] = (() => {
+    const p2 = PNG.sync.read(fs.readFileSync(path.join(ICON_DIR, k + '.png')));
+    const out = new Uint8Array(96 * 96);
+    for (let i = 0; i < 96 * 96; i++) out[i] = p2.data[i * 4 + 3] > 60 ? 1 : 0;
+    return out;
+  })());
+  const iou = (a, b) => { const A = mk(a), B = mk(b); let n = 0, u = 0;
+    for (let i = 0; i < A.length; i++) { if (A[i] && B[i]) n++; if (A[i] || B[i]) u++; } return u ? n / u : 0; };
+  const all = [];
+  for (let i = 0; i < KEYS.length; i++) for (let j = i + 1; j < KEYS.length; j++) all.push([iou(KEYS[i], KEYS[j]), KEYS[i], KEYS[j]]);
+  all.sort((x, y) => y[0] - x[0]);
+  console.log('     계보 짝 IoU: ' + PAIRS.map(([a, b]) => `${a}→${b} ${iou(a, b).toFixed(3)}`).join(' · '));
+  console.log('     남남 최고 3: ' + all.slice(0, 3).map(([v, a, b]) => `${a}/${b} ${v.toFixed(3)}`).join(' · '));
+  console.log('     ★픽셀 IoU 로는 계보를 못 가른다 — `icons-postprocess.js` 가 모든 아이콘을 96px 에 꽉 채우므로');
+  console.log('       실루엣이 **담긴 그릇**에 지배된다(접시에 담은 셋이 서로 0.97~0.98 로 계보 짝보다 높다).');
+  console.log('       그래서 판정은 ⓑ서버 짝 + ⓒ같은 모델 함수로 한다.');
+  ok(true, '계보 IoU 기록 완료(판정 근거 아님 — 위 ★)');
 }
 
 if (SELFTEST) {

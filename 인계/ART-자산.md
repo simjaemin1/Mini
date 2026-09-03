@@ -131,11 +131,27 @@ node scripts/test-props.js
 | 자원·야금 36종 | `pillar rafter thatch berry fiber meat_raw meat_cooked hide berry_jam water_bottle seed_berry herb ore wood plank stone ore_chunk iron_ore charcoal iron meteoric_iron copper tin lead silver gold nickel jade_raw` + `item_floor item_stair item_farmland` | `icon_render.py` |
 | **가구 8종**(T67) | `item_wall item_door item_fence item_chest item_campfire item_workbench item_drying_rack item_salt_kiln` | `props_render.py` `PROPS` — **세계 스프라이트와 같은 모델** |
 | **손도구·손에 드는 것 13종**(T72) | `crude_axe crude_pick crude_blade axe pickaxe sword carrier fish fish_cooked salt brine twig pebble` | `props_render.py` `ITEMS` — 지금은 아이콘만(세계·손 렌더는 `world=[…]` 붙이면 같은 모델에서) |
+| **먹을 것 18종**(T76) | 어종 8 `salmon cod herring trout pollock carp shrimp crab` · 갯벌 4 `oyster seaweed abalone fresh_water` · 보존식 6 `dried_fish dried_oyster dried_seaweed smoked_meat dried_fruit pickled_veg` | 〃 · 어종 여덟은 **한 몸틀** `_finfish()` 에서, 보존식 셋은 **원물과 같은 함수**에서 |
 
 **남은 것**(다음 ART 카드 순서, 회부에 등재):
-보존식 6(`dried_fish dried_fruit smoked_meat pickled_veg …`) · 갯벌 3 + 민물 · 어종 8(T73) →
-작물 34 + 씨앗 34(`crop_render.py` 와 **같은 모델**에서 수확물을 뽑는다 · T74) → 나머지.
+작물 34 + 씨앗 34(`crop_render.py` 와 **같은 모델**에서 수확물을 뽑는다 · T77) → 옷 · 나머지.
 그리고 **재료별 도구 아이콘**(§0-ⓐ — 지금은 품목당 하나) · 지게 등짐 스프라이트 · 계단·바닥·농지 세계 스프라이트.
+
+## 9-A. 모델 재사용의 세 층 [T76]
+
+| 층 | 뜻 | 예 |
+|---|---|---|
+| **같은 함수 · 다른 인자** | 한 모델이 상태로 갈린다. 바이트까지 검증 가능 | `_fish(cooked/dried)` · `_oyster(dried)` · `_seaweed(dried)` · `_gourd_bottle(salty)` · `m_chest(exchange)` |
+| **같은 몸틀 · 다른 비례** | 여러 품목이 한 빌더에서 나온다 | `_finfish(L,D,H,barbels,dorsals,spots…)` → 어종 여섯 |
+| **못 하는 것** | 원물 모델이 **다른 파일**에 있다 | `dried_fruit`←`berry` · `smoked_meat`←`meat_raw` (둘 다 `icon_render.py`) |
+
+★셋째 층이 지금 이 레포의 한계다. `icon_render.py` 와 `props_render.py` 가 **씬·재질·헬퍼를 각자 갖고** 있어서
+모델을 옮기면 사본이 된다. 푸는 길은 공용 모듈(`render_scene.py` + 모델 모듈) 하나뿐이고 별도 카드다(회부).
+
+★★**같은 함수 재사용은 말이 아니라 바이트로 증명한다.** T76 이 `m_brine` 을 `_gourd_bottle(salty=True)` 로
+갈아 끼우고 다시 구웠더니 **최대 화소차 0**(T72 산출물과 바이트 동일)이었다. `fish`·`fish_cooked` 도
+`_fish` 에 `dried` 인자를 더한 뒤 **바이트 동일**을 확인했다(그래서 지느러미 재질은 안 고치고 `fin2` 를 새로 뒀다).
+⇒ 리팩터가 그림을 안 건드렸다는 것을 **주장하지 말고 재라.**
 
 ## 9. 아이콘 크기 문법 — **상대 크기는 보존되지 않는다**
 
@@ -155,3 +171,10 @@ node scripts/test-props.js
 보고서 `보고/T72_2026-09-03.md`. `props_render.py` 에 `ITEMS` 표를 더했다(같은 씬·같은 재질 — 파일을 새로 파면 씬이 두 벌이 된다).
 하네스 `test-icons`(신규 `@regress`). **게임 코드 diff 0** — 클라 배선(`43-i-icon.js` 두 줄)은 T66 뒤로 **회부**했다.
 `ico()` 에 `smooth` 인자를 열었다(기본값이 종전과 같아 T67 가구 14장은 한 픽셀도 안 바뀐다).
+
+## 11. T76 배치 (2026-09-03) — 아이콘 2차 18장
+
+보고서 `보고/T76_2026-09-03.md`. 어종 8 + 갯벌 4 + 보존식 6. **게임 코드 diff 0**(배선은 여전히 T66).
+`_finfish()` 몸틀 하나에서 어종 여섯이 나오고, 보존식 셋은 원물과 **같은 함수**에서 나온다(§9-A).
+`test-icons` 를 31키로 넓히고 **계보 검사**(서버 `spoil.PRESERVE` 짝 + 같은 모델 함수)를 더했다.
+★계보를 **픽셀 상관으로는 못 가른다**는 것을 측정으로 확인했다 — 자세한 수치는 보고서 §3.
