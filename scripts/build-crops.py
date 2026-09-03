@@ -48,8 +48,12 @@ COL = {
     '병충해취약(1-5)': 'pest', '저장성(1-5)': 'keep',
     '생존': 'subsistence', '건강': 'health', '기호': 'taste', '위세': 'prestige',
     '총효용': 'utility', '비고': 'note',
+    # ★★[T59 2026-09-03 재민 확정] **식량의 단위는 열량이다.** 이 열 하나가 포만감 표를 대체한다 —
+    #   `crops.js` 가 `kcalOf(id)` 로 내주고 `server/kcal.js` 가 kg × kcal/kg 로 포만감을 유도한다.
+    #   ⇒ 작물의 포만감을 손으로 적는 자리는 이제 **없다**(옛 "생존 × 1.4" 는 베리 시절 앵커였다).
+    '열량(kcal/kg)': 'kcal',
 }
-NUM = {'growDays', 'yield', 'care', 'water', 'pest', 'keep', 'subsistence', 'health', 'taste', 'prestige', 'utility'}
+NUM = {'growDays', 'yield', 'care', 'water', 'pest', 'keep', 'subsistence', 'health', 'taste', 'prestige', 'utility', 'kcal'}
 
 # 파종철 한글 → econ `seasonOf` 가 쓰는 키. **새 계절 이름을 만들지 않는다.**
 SEASON = {'봄': 'spring', '여름': 'summer', '가을': 'autumn', '겨울': 'winter'}

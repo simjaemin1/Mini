@@ -1076,20 +1076,29 @@ function sendDishes(player) {
 let _nextEquipId = 1;
 function genEquipId() { return `e${Date.now().toString(36)}${(_nextEquipId++).toString(36)}`; }
 // 음식 효과: hunger/thirst 회복량. 'eat' 메시지로 소비.
+// ★[T59] 하루 길이 상수를 **여기로 올렸다**(정의는 여전히 하나다 — 아래 쓰던 자리에서 옮겨 왔을 뿐).
+//   포만감 유도가 이 수를 쓰는데, 표는 파일 앞쪽에서 만들어진다. 두 벌로 적지 않으려고 선언을 올렸다.
+const _SEASON_DAY_MS = (parseInt(process.env.VILLAGE_DAY_MS || '', 10) || (WORLD && WORLD.dayLengthMs) || 24 * 60 * 1000);
+const Kcal = require('./kcal');   // ★[T59] 열량 정본 — 포만감·환산의 유일한 출처
+// ★★★[T59 2026-09-03 재민 확정] **포만감은 여기 안 적는다 — 열량에서 유도한다.**
+//   *"식량의 단위는 열량이다 — 포만감은 적는 게 아니라 kg × kcal/kg 에서 유도한다."*
+//   왜: 같은 곡식 한 개로 **NPC 는 하루를 살고 플레이어는 일곱 개가 필요했다**(7배 어긋남).
+//   ⇒ 이 표에는 이제 **갈증·HP·특수 효과만** 있고, `hunger` 는 아래 한 줄이 `kcal.js` 에서 채운다.
+//   ⚠숫자를 되살리지 마라 — `test-kcal` 의 소스 검사가 빨개진다(그게 이 배치의 돌연변이 검사다).
 const FOOD_EFFECTS = {
-  berry:        { hunger: 6,  thirst: 4 },
+  berry:        { thirst: 4 },
   // ★[신체 상태 §7] 약초 — 배를 채우진 못해도 **부상 회복을 재촉한다**(doEat 이 Body.onHerb 를 부른다).
   //   §7 "부상 = 회복 기간 + 약초(medicinal_herb) 수요"의 실배선. 채집물 `herb` 가 그 품목이다.
-  herb:         { hunger: 1,  thirst: 1 },
-  meat_raw:     { hunger: 8,  thirst: 0, hpDelta: -3 }, // 날고기는 약간 해로움
-  meat_cooked:  { hunger: 40, thirst: 0 },
-  berry_jam:    { hunger: 18, thirst: 6 },
+  herb:         { thirst: 1 },
+  meat_raw:     { thirst: 0, hpDelta: -3 }, // 날고기는 약간 해로움
+  meat_cooked:  { thirst: 0 },
+  berry_jam:    { thirst: 6 },
   // ★★[무게·곡물 배치 2026-08-27] **곡물이 플레이어 품목이 됐다.**
   //   생곡은 비효율이다 — 청동기 곡물은 갈고 익혀야 먹을 수 있는 것이라 날로 씹으면 배가 덜 찬다.
   //   조리 경로(`COOK_RECIPES.food_cooked`)를 거치면 제값(=조리식 계열)이 된다.
-  food:         { hunger: 7,  thirst: 0 },
-  food_cooked:  { hunger: 34, thirst: 2 },
-  fish_cooked:  { hunger: 32, thirst: 0 },   // ★구운 생선이 표에 없었다(먹을 수 없는 조리식이었다)
+  food:         { thirst: 0 },
+  food_cooked:  { thirst: 2 },
+  fish_cooked:  { thirst: 0 },   // ★구운 생선이 표에 없었다(먹을 수 없는 조리식이었다)
 };
 // ★★[부패·보존 배치 2026-08-31] **보존식 4종** — 목록은 `spoil.PRESERVED_ITEMS` 가 정본이고
 //   여기서는 **효과만** 붙인다(품목 이름을 두 벌로 적지 않는다).
@@ -1097,11 +1106,14 @@ const FOOD_EFFECTS = {
 //     `weights.js` 에서 원물보다 **가볍게** 잡혀(건어물 0.35 vs 생선 0.90) 짐 예산으로는 이득이 아니다.
 //     짜고 마른 것을 먹으면 목이 마르다 — 그래서 보존식은 **갈증을 준다**(thirst 음수).
 //     이 한 줄이 겨울나기를 "식량만 쌓으면 되는 문제"에서 "물도 있어야 하는 문제"로 만든다.
+//   ⚠[T59] 여기도 `hunger` 를 뺐다 — **보존은 열량을 늘리지 않는다**(수분만 빠진다).
+//     건어물 0.35kg 은 생선 0.90kg **의 열량**을 갖는다 ⇒ kcal/kg 이 오르고 kg 이 줄어 총량은 그대로.
+//     그래서 유도가 `weights.js` 의 건조 잔량 주석과 저절로 정합한다(두 표가 같은 물리를 말한다).
 const PRESERVED_EFFECTS = {
-  dried_fish:  { hunger: 30, thirst: -6 },
-  dried_fruit: { hunger: 16, thirst: -2 },
-  smoked_meat: { hunger: 38, thirst: -5 },
-  pickled_veg: { hunger: 14, thirst: -4 },
+  dried_fish:  { thirst: -6 },
+  dried_fruit: { thirst: -2 },
+  smoked_meat: { thirst: -5 },
+  pickled_veg: { thirst: -4 },
 };
 // ★★[T54 갯벌 3차 2026-09-02] 갯벌 말린 것 둘의 효과는 **원물에서 유도**한다 — 여기 수를 안 적는다.
 //   앵커는 위 표 안에 이미 있었다: **말린 과실 16 ÷ 딸기 6** 이 말리기의 허기 배수이고,
@@ -4322,7 +4334,8 @@ function doCook(player, recipeName) {
 //     완성일로 잡으면 "말렸으면 가져가라"가 성립한다 — 그게 보존식이지 마법 상자가 아니다.
 //   ⇒ 이 차이는 알고 낸 것이고 `회부_부패_다음층.md` D 에 적었다.
 function doPreserve(player, recipeKey, amount) {
-  const r = Spoil.PRESERVE[recipeKey];
+  // ★[T59] `from` 이 어종 집합이면 **손에 있는 것 하나로 풀어** 받는다(정본이 고른다 · 주사위 0).
+  const r = Spoil.resolveFrom(Spoil.PRESERVE[recipeKey], player.inventory);
   if (!r) { send(player.ws, { type: 'notice', text: `알 수 없는 가공: ${recipeKey}` }); return; }
   // ① 시설 — 정본에게 묻는다(반경 상수를 여기 또 적지 않는다)
   const fc = facilityFor(player, r.kind);
@@ -4456,7 +4469,8 @@ function doBoilSalt(player, recipeKey, amount) {
 // 클라가 그릴 목록 — 서버가 정본을 그대로 내보낸다(클라가 표를 안 든다).
 function preserveMenuPayload() {
   const out = [];
-  for (const [key, r] of Object.entries(Spoil.PRESERVE)) {
+  for (const [key, r0] of Object.entries(Spoil.PRESERVE)) {
+    const r = Spoil.resolveFrom(r0, null);   // ★[T59] 어종 집합은 대표 하나로(클라가 배열을 못 그린다)
     out.push({ key, label: r.label, kind: r.kind, facilityKo: r.facilityKo,
                from: r.from, out: r.out, outKo: Spoil.PRESERVED_ITEMS[r.out].ko,
                days: r.days, needs: r.needs, shelfDays: Spoil.shelfOf(r.out) });
@@ -5078,7 +5092,6 @@ function isIndoorAt(p) {
 // ★계절 추위 0..1 — 계절 정본은 `server/events.js seasonOf`(econ 과 동기 계약이 적힌 그 한 줄)를 **그대로 부른다**.
 //   여기서 계절 산수를 또 쓰면 그게 세 번째 사본이다.
 let _seasonCache = { day: -1, v: 0 };
-const _SEASON_DAY_MS = (parseInt(process.env.VILLAGE_DAY_MS || '', 10) || (WORLD && WORLD.dayLengthMs) || 24 * 60 * 1000);
 // ★게임일은 **존 자체 시계**로 센다 — `ENABLE_VILLAGES=0` 이어도 계절·로트 나이는 있어야 하기 때문이다
 //   (마을 시뮬에 의존시키면 하네스마다 계절이 사라진다). 이 한 줄이 존의 게임일 정본이다.
 // ★★[하네스 결함 수리 2026-08-31 · 부패 배치가 드러냈다] **`__e2e_day_freeze` 가 반쪽이었다.**
@@ -5568,15 +5581,9 @@ setInterval(() => {
 }, FISH_TICK_MS);
 
 // 바이옴별 어종 — ★v1 의 목록을 **그대로 쓴다**(어종 확장은 이번 범위 밖 = 회부).
-function _fishSpeciesFor(biome) {
-  if (biome === 'taiga' || biome === 'tundra') return ['salmon', 'cod', 'herring', 'trout', 'pollock'];
-  if (biome === 'forest' || biome === 'plains') return ['trout', 'carp', 'pollock'];
-  if (biome === 'jungle' || biome === 'savanna') return ['carp', 'shrimp', 'crab'];
-  if (biome === 'desert') return ['carp'];
-  if (biome === 'archipelago' || biome === 'ocean') return ['cod', 'herring', 'sardine', 'anchovy', 'shrimp', 'crab', 'oyster', 'octopus', 'squid', 'seaweed'];
-  if (biome === 'mountain') return ['trout'];
-  return ['carp', 'trout'];
-}
+// ★★[T59 2026-09-03] 표를 **`fishing.js` 로 옮겼다** — 여기 있어서 아무도 못 물어봤고,
+//   그래서 건어물 레시피가 `'fish'` 라는 안 나오는 품목을 요구하고 있었다(T17 회부 · 이 카드가 닫았다).
+function _fishSpeciesFor(biome) { return Fishing.speciesFor(biome); }
 // 던질 자리 — 플레이어 주변에서 **가장 좋은 물 칸**을 서버가 고른다(클라가 자리를 못 속인다).
 function _castTargetFor(player) {
   const R = Fishing.CFG.REACH_PX;
@@ -6014,8 +6021,9 @@ function _facilityRecipes(player, kind) {
   //     (도구의 "예상 품질 %"와 같은 자리 · 공식은 정본을 그대로 부른다 — 사본 없음).
   {
     const today = zoneGameDay();
-    for (const [id, r] of Object.entries(Spoil.PRESERVE)) {
-      if (r.kind !== kind) continue;
+    for (const [id, r0] of Object.entries(Spoil.PRESERVE)) {
+      if (r0.kind !== kind) continue;
+      const r = Spoil.resolveFrom(r0, inv);   // ★[T59] 어종 집합 → 손에 있는 것 하나(화면도 그걸 보여 준다)
       const have = Math.floor(Lots.sum(player, r.from));
       const off = Spoil.peekOffer(r.from, Lots.of(player, r.from), Math.max(1, have), today);
       push({ id, label: r.label, kind: 'preserve', preserve: true,
@@ -6786,6 +6794,13 @@ const ITEM_LABEL_SERVER = {
 //   위 두 루프(`PRESERVED_EFFECTS` · `Crops.foodMap`)와 같은 주입 문법이고, 다만 **표의 주인이 채운다**.
 //   (zone 이 품목을 다시 나열하면 그게 사본이다 — 자염이 `brine: Salt.BRINE_KO` 로 이미 그 규약을 썼다.)
 require('./tidal').install({ FOOD_EFFECTS, ITEM_LABEL_SERVER, COOK_RECIPES });
+// ★★★[T59 2026-09-03] **포만감을 여기서 채운다 — 표가 다 모인 마지막 자리다.**
+//   위로 올리면 늦게 주입되는 표(작물·보존식·갯벌)가 옛 손글씨 값을 그대로 들고 남는다 —
+//   실제로 한 번 그렇게 물렸다(굴 3 · 해조 4 가 T52 의 손글씨였다). ⇒ **주입이 다 끝난 뒤 한 번.**
+//   `installCookRecipes` 는 조리식 유도(재료 열량 합 × econ 의 1.12)가 `COOK_RECIPES` 정본을 보게 한다 —
+//   `kcal.js` 가 레시피를 옮겨 적으면 그게 사본이다.
+Kcal.installCookRecipes(COOK_RECIPES);
+for (const k of Object.keys(FOOD_EFFECTS)) FOOD_EFFECTS[k].hunger = Kcal.hungerOf(k, _SEASON_DAY_MS);
 // ★[보존 배치 2026-08-31] 보존식 이름은 `spoil.PRESERVED_ITEMS.ko` 가 정본이다 — 옮겨 적지 않는다.
 for (const [k, v] of Object.entries(Spoil.PRESERVED_ITEMS)) ITEM_LABEL_SERVER[k] = v.ko;
 // ★[작물 층] 작물·씨앗 이름표도 crops 정본에서(옮겨 적지 않는다)
@@ -7622,11 +7637,18 @@ function tryVillageChronicle(player, vid, year) {
 //   ★★그리고 이 자리가 정확히 맞는 이유: `_unitsOfFor` 는 **거래소와 게시판이 같이 쓰는**
 //     환산 하나다. 여기 얹으면 "같은 물고기가 거래소에선 2.2단위, 게시판에선 1단위"가 될 길이 없다
 //     (무게 배치가 못 박은 그 규약을 신선도가 그대로 물려받는다).
+//   ★★★[T59 2026-09-03] **식량은 무게가 아니라 열량으로 잰다.**
+//     종전 `kg ÷ 표준kg` 은 "곡식 1개 = 1단위"를 우연히 맞혔지만(0.70/0.70) 나머지는 전부 틀렸다 —
+//     econ 의 1단위는 **NPC 하루치**(2,450 kcal)인데 무게비는 열량을 모른다.
+//     ⇒ 열량 표에 있는 품목은 `Kcal.econUnitsOf` 가, 없는 것(나무·돌·광물)은 **종전 무게비**가 잰다.
+//     신선도 배율은 그대로 곱한다(부패 배치의 규약 — 시든 것은 더 적은 단위어치다).
 function _unitsOfFor(player) {
   const today = zoneGameDay();
   return (item, n) => {
     const std = Weights.kgOfOrDefault(item);
-    const base = (std > 0) ? +(Carry.peekKg(player, item, n) / std).toFixed(4) : n;
+    const kg = Carry.peekKg(player, item, n);
+    const byKcal = Kcal.econUnitsOf(item, n, kg);
+    const base = byKcal > 0 ? byKcal : ((std > 0) ? +(kg / std).toFixed(4) : n);
     if (!Lots.isLot(item)) return base;
     const off = Spoil.peekOffer(item, Lots.of(player, item), n, today);
     return +(base * Spoil.nutritionMult(off.fresh)).toFixed(4);
@@ -7863,6 +7885,7 @@ function __testBind() {
     players, savePlayer,
     // ── 신체 상태 §7 E2E(2026-08-26) ── **정본 모듈을 그대로 내준다**(하네스가 곡선을 다시 짜면 사본이다).
     Body, damagePlayer, doEat, isIndoorAt, seasonColdNow, FOOD_EFFECTS,
+    Kcal, _SEASON_DAY_MS,   // ★[T59] 열량 정본 + 이 존이 쓰는 하루 길이(하네스가 유도값을 재현할 때 쓴다)
     // ── 무게 모델(2026-08-27) ── 정본 모듈을 그대로 내준다(하네스가 곡선을 다시 짜면 사본이다)
     Weights, Carry, Lots, moveMultOf, zoneGameDay, COOK_RECIPES, doCook, _unitsOfFor,
     // ★[부패·보존 배치 2026-08-31] 하네스가 잡을 손잡이들

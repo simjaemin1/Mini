@@ -92,7 +92,9 @@ function remainOf(player, stock) {
   if (!m) return 0;
   const lim = limitOf(contribOf(player.playerId), stock, m.vid);   // ★[T20] 겨울 보상은 **그 마을** 것이다
   const d = _day();
-  const used = ((m.wdDay | 0) === d) ? Math.max(0, m.wdUsed | 0) : 0;
+  // ★[T59] 하루 몫은 **econ 단위**로 센다(낱개가 아니다) — 열량 환산 뒤 둘은 더 이상 1:1 이 아니다.
+  //   `| 0` 을 쓰면 0.93단위 인출이 0 으로 세어져 한도가 사실상 무한이 된다.
+  const used = ((m.wdDay | 0) === d) ? Math.max(0, Number(m.wdUsed) || 0) : 0;
   return Math.max(0, lim - used);
 }
 
@@ -170,8 +172,13 @@ function withdraw(player, vid, res, qty) {
   const m = memberOf(player);
   const d = _day();
   if ((m.wdDay | 0) !== d) { m.wdDay = d; m.wdUsed = 0; }
-  m.wdUsed = (m.wdUsed | 0) + r.qty;
-  return Object.assign({ ok: true, name: g.vil.name, remain: Math.max(0, remain - r.qty),
+  // ★★[T59 2026-09-03] **한도는 단위로, 안내는 낱개로.** 정본이 돌려주는 `units`(실제로 곳간에서 빠진 단위)를
+  //   센다 — `qty`(받은 낱개)로 세면 쌀처럼 1단위 < 1개인 품목에서 한도가 헐거워진다.
+  //   `units` 가 없는 옛 반환(비식량 재화)은 종전대로 `qty` 가 곧 단위다.
+  //   ⚠한도 계산 인자는 **T20 의 것을 그대로 쓴다**(`basis`·`vid` — 겨울 공동 프로젝트가 바꾼 자리다).
+  const _spent = (Number(r.units) > 0) ? Number(r.units) : (Number(r.qty) || 0);
+  m.wdUsed = (Number(m.wdUsed) || 0) + _spent;
+  return Object.assign({ ok: true, name: g.vil.name, remain: +Math.max(0, remain - _spent).toFixed(2),
     limit: limitOf(contribOf(player.playerId), basis, vid) }, r);
 }
 

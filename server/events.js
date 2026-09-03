@@ -1148,6 +1148,9 @@ function boardLine(req) {
 //   실물 이동은 스스로 하지 않고 **정본 함수를 주입받아** 부른다:
 //     deposit = villages.playerVillageDeposit(vil, inventory, want)  ← 플레이어 아이템→econ 재화 대응·곳간 가산의 정본
 //   순서가 계약이다: ①몫 확정(원자적) → ②실물 이동 → ③실패면 몫 되돌림 → ④보상 지급.
+// ★[T59] 열량 정본 — 늦게 부른다(맞물림 금지).
+let _Kc = null;
+function _kcal() { if (_Kc === null) { try { _Kc = require('./kcal'); } catch (e) { _Kc = false; } } return _Kc || null; }
 function deliverToVillage(a) {
   const { ledger, vil, vid, inventory, item, deposit } = a;
   const v = vil && vil.econ;
@@ -1196,9 +1199,18 @@ function deliverToVillage(a) {
   const rewRes = _rewRes, rewPlayerItem = _rewItem0;
   let rewPaid = 0;
   if (rewPlayerItem && c.rew > 0) {
-    rewPaid = c.rew;
-    v.storage[rewRes] = +(((v.storage[rewRes] || 0) - rewPaid)).toFixed(3);
-    inventory[rewPlayerItem] = (inventory[rewPlayerItem] || 0) + rewPaid;
+    // ★★★[T59 2026-09-03] **보상도 납품과 같은 짝으로 푼다.**
+    //   종전엔 납품만 `unitsOf`(무게)로 환산하고 보상은 **1단위 = 1개**였다 — 다리가 한쪽만 있었다.
+    //   식량 1단위는 **NPC 하루치**(2,450 kcal)다 ⇒ 낱개 수는 `Kcal.itemsOf` 가 정한다.
+    //   ⚠남는 몫은 **곳간에 둔다**(버리지 않는다 — 인출과 같은 규약).
+    const _K = _kcal();
+    const conv = (_K && _K.kcalOf(rewPlayerItem) > 0) ? _K.itemsOf(rewPlayerItem, c.rew) : { items: c.rew, leftUnits: 0 };
+    const give = Math.floor(conv.items);
+    rewPaid = +(c.rew - (conv.leftUnits || 0)).toFixed(4);
+    if (give > 0) {
+      v.storage[rewRes] = +(((v.storage[rewRes] || 0) - rewPaid)).toFixed(3);
+      inventory[rewPlayerItem] = (inventory[rewPlayerItem] || 0) + give;
+    } else { rewPaid = 0; }
   }
   return { ok: true, take: c.take, refused: c.refused, taken: dep.taken, moved: dep.moved,
     rew: rewPaid, rewRes, rewItem: rewPlayerItem, done: c.done, req: c.req };

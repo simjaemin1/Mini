@@ -90,10 +90,13 @@ function _hash(a, b, c) {
   return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
 }
 // 산출 3종 — **전부 econ 재화 id 그대로**(새 품목 0).
+// ⚠★[T59 2026-09-03] **포만감(hunger)을 여기서 뺐다.** 식량의 단위가 열량이 되면서
+//   `server/kcal.js` 가 kg × kcal/kg 로 유도한다 — 손글씨 3·4·8 은 그 순간 **안 읽히는 사본**이 됐다
+//   (족보 (89): 안 읽히는 사본은 "무해"가 아니라 "아직 안 터진 것"이다). 갈증만 남는다.
 const CATCH = {
-  seaweed:  { ko: '해조',   emo: '🌿', shelf: _num('TIDE_SHELF_SEAWEED', 6),   food: { hunger: 4, thirst: 2 } },
-  oyster:   { ko: '굴',     emo: '🦪', shelf: _num('TIDE_SHELF_OYSTER', 2),    food: { hunger: 3, thirst: 3 } },
-  abalone:  { ko: '전복',   emo: '🐚', shelf: _num('TIDE_SHELF_ABALONE', 2.5), food: { hunger: 8, thirst: 2 } },
+  seaweed:  { ko: '해조',   emo: '🌿', shelf: _num('TIDE_SHELF_SEAWEED', 6),   food: { thirst: 2 } },
+  oyster:   { ko: '굴',     emo: '🦪', shelf: _num('TIDE_SHELF_OYSTER', 2),    food: { thirst: 3 } },
+  abalone:  { ko: '전복',   emo: '🐚', shelf: _num('TIDE_SHELF_ABALONE', 2.5), food: { thirst: 2 } },
 };
 // ★보관일 근거: **조개 ≤ 생선**(카드 요구 · 생선 2.5). 생굴은 실제로 생선보다 빨리 상한다 ⇒ **2.0**.
 //   전복은 껍데기째라 조금 낫다 ⇒ 2.5(생선과 같다). 해조는 채소급 ⇒ 6(미역은 며칠 간다).
@@ -136,7 +139,7 @@ function usesVessel(kind) { return kind === Salt.BRINE || kind === FRESH; }
 //   무게가 다르면 채수만으로 몸무게가 변한다 — `salt.CFG.BRINE_KG` 가 그 근거다).
 const VESSELS = {
   [FRESH]: { ko: '민물 한 되', kg: Salt.CFG.BRINE_KG,
-             food: { hunger: 0, thirst: DRINK_THIRST, returns: Salt.VESSEL } },
+             food: { thirst: DRINK_THIRST, returns: Salt.VESSEL } },   // ★[T59] `hunger: 0` 은 지웠다 — 열량이 0 이라 유도가 저절로 0 을 낸다
 };
 
 // ── ④ 말리기 — 갯벌이 겨울까지 간다 [T54] ──────────────────────────────────
@@ -149,18 +152,21 @@ const VESSELS = {
 //   ⚠보관일·이름·레시피는 여기 없다 — **`spoil.PRESERVED_ITEMS`/`PRESERVE` 가 보존식의 정본**이다.
 //     여기는 원물이 정본인 것(무게·허기·갈증)만 유도한다.
 const DRY_RESIDUE = Math.max(0.01, _num('TIDE_DRY_RESIDUE', 0.26));   // 말린 과실 0.13 ÷ 생과 0.50
-const DRY_HUNGER  = Math.max(1, _num('TIDE_DRY_HUNGER', 16 / 6));     // 말린 과실 16 ÷ 딸기 6
+// ⚠★[T59] `DRY_HUNGER`(말린 과실 16 ÷ 딸기 6) 는 **지웠다** — 열량이 정본이 되면서 안 읽히게 됐다.
+//   역산 앵커라는 수법 자체는 옳았지만 **앵커(생곡 7)가 썩어 있었다**. 지금은 kcal 이 그 자리다.
 const DRY = {
   dried_oyster:  { from: 'oyster'  },
   dried_seaweed: { from: 'seaweed' },
 };
 function driedOf(item) { return DRY[item] || null; }
 // 마른 것의 **식품 효과** — 원물에서 유도한다(zone 의 `PRESERVED_EFFECTS` 가 읽어 간다).
+//   ⚠★[T59] 허기는 뺐다 — **보존은 열량을 늘리지 않는다**(수분만 빠진다)는 것이 이제 정본이고,
+//     `kcal.js` 가 원물 열량 그대로 유도한다. `DRY_HUNGER`(역산 앵커)는 그래서 **더 안 읽힌다**.
 function driedEffects() {
   const o = {};
   for (const [k, d] of Object.entries(DRY)) {
     const src = CATCH[d.from]; if (!src) continue;
-    o[k] = { hunger: Math.round(src.food.hunger * DRY_HUNGER), thirst: -Math.abs(src.food.thirst) };
+    o[k] = { thirst: -Math.abs(src.food.thirst) };
   }
   return o;
 }
@@ -207,4 +213,4 @@ function install(tables) {
 module.exports = { CFG, CATCH, phaseAt, levelAt, isOpen, untilOpenMs, tideKo, __setNow, __nowOverride,
   pickAt, isCatch, koOf, shelfMap, foodMap, labelMap, cookMap, install,
   // ★[T54] 그릇·말리기
-  FRESH, VESSELS, DRINK_THIRST, usesVessel, DRY, DRY_RESIDUE, DRY_HUNGER, driedOf, driedEffects, weightMap };
+  FRESH, VESSELS, DRINK_THIRST, usesVessel, DRY, DRY_RESIDUE, driedOf, driedEffects, weightMap };

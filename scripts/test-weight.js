@@ -162,9 +162,20 @@ function mkPlayer(name) {
   {
     ok(W.kgOf('food') > 0, '★⑤ 곡물에 무게가 있다', `${W.kgOf('food')}kg`);
     ok(!!H.FOOD_EFFECTS.food, '★⑤ 먹을 수 있다', JSON.stringify(H.FOOD_EFFECTS.food));
-    ok(H.FOOD_EFFECTS.food_cooked.hunger > H.FOOD_EFFECTS.food.hunger * 3,
-      '★★⑤ **생곡은 비효율, 조리는 제값** — 화덕 수요의 실체',
-      `생 ${H.FOOD_EFFECTS.food.hunger} vs 익힌 ${H.FOOD_EFFECTS.food_cooked.hunger}`);
+    // ⚠[T59 2026-09-03] **기대값을 유도값으로 고쳤다 — 검사의 뜻은 그대로다.**
+    //   종전 주장: "생곡 7 vs 익힌 34 ⇒ 3배 넘게 차이 난다"(화덕 수요의 실체).
+    //   그런데 그 3배는 **손으로 적은 두 수의 비**였고, 열량이 단위가 되자 근거가 사라졌다:
+    //   익히면 열량이 3배가 되지 않는다. econ 이 이미 쓰는 조리 이득은 **1.12**(`consumeFood`) 하나다.
+    //   ⇒ 뜻("조리가 이득이다")은 지키고 크기는 **정본에게 묻는다**. 두 수의 비는 정확히 그 계수여야 한다.
+    //   ⚠**화덕 수요의 크기가 줄었다**는 것은 이 카드가 드러낸 사실이고, 재민 판정 대상으로 회부했다.
+    const _K = require(path.join(ROOT, 'server', 'kcal.js'));
+    const _ratio = H.FOOD_EFFECTS.food_cooked.hunger / H.FOOD_EFFECTS.food.hunger;
+    ok(Math.abs(_ratio - _K.COOKED_FACTOR) < 0.02,
+      '★★⑤ **조리 이득은 econ 이 쓰는 그 계수 하나**다(사본 0 · 지어낸 배수 0)',
+      `생 ${H.FOOD_EFFECTS.food.hunger} → 익힌 ${H.FOOD_EFFECTS.food_cooked.hunger} = ×${_ratio.toFixed(3)} (econ ${_K.COOKED_FACTOR})`);
+    ok(H.FOOD_EFFECTS.food.hunger > 0 && Math.abs(H.FOOD_EFFECTS.food.hunger - _K.dayHunger()) < 0.01,
+      '★★★⑤ **곡식 한 개 = 하루치**(econ `DAILY_FOOD_CONSUMPTION` 1.0 과 같은 말)',
+      `허기 ${H.FOOD_EFFECTS.food.hunger} = 하루 ${_K.dayHunger()}`);
     ok(!!H.COOK_RECIPES.food_cooked, '★⑤ 조리 레시피가 있다', JSON.stringify(H.COOK_RECIPES.food_cooked.cost));
     // 곳간이 받는가(= 게시판 보상·거래소 품목으로 자연 편입되는가)
     const dmap = V.playerVillageDepositMap ? V.playerVillageDepositMap() : {};

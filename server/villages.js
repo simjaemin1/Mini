@@ -3877,6 +3877,9 @@ const PV_DEPOSIT_MAP = {
   salt: 'salt',
 };
 const PV_DEPOSIT_RATE = (() => { const x = parseFloat(process.env.VILLAGE_DEPOSIT_RATE || '1'); return (isFinite(x) && x > 0) ? x : 1; })();
+// ★[T59] 열량 정본 — 늦게 부른다(맞물림 금지 · `forage`·`spoil` 과 같은 규약).
+let _Kc = null;
+function _kcal() { if (_Kc === null) { try { _Kc = require('./kcal'); } catch (e) { _Kc = false; } } return _Kc || null; }
 function playerVillageDepositMap() { return PV_DEPOSIT_MAP; }
 // 반환: { ok, moved: {econRes: qty}, err }
 // ★★[무게 배치 2026-08-27] `unitsOf(item, n)` — **개체 무게를 재화 단위로 환산**하는 선택 콜백.
@@ -3928,9 +3931,19 @@ function playerVillageWithdraw(vil, inventory, res, qty) {
   if (!(q > 0)) return { ok: false, err: '꺼낼 양이 없다' };
   const have = playerVillageWithdrawStock(vil, r);
   if (have < q) return { ok: false, err: `곳간에 그만큼 없다 (지금 ${have})` };
-  v.storage[r] = +(((v.storage[r] || 0) - q * PV_DEPOSIT_RATE)).toFixed(3);
-  inventory[item] = (inventory[item] || 0) + q;
-  return { ok: true, res: r, item, qty: q, stockAfter: +(+v.storage[r]).toFixed(3) };
+  // ★★★[T59 2026-09-03] **넣을 때와 꺼낼 때가 같은 짝을 쓴다.**
+  //   종전엔 넣기만 `unitsOf`(무게)로 환산하고 **꺼내기는 1단위 = 1개**였다 — 다리가 한쪽만 있었다.
+  //   이제 식량은 열량이 단위다: econ 1단위 = 하루치(`Kcal.DAY_KCAL`) ⇒ 낱개 수를 정본이 푼다.
+  //   ⚠**남는 몫은 버리지 않는다**(로트 병합 금지와 같은 결) — 정수로 떨어지는 만큼만 옮기고
+  //     나머지 단위는 **곳간에 그대로 둔다**. 조용히 사라지는 몫을 만들지 않는다.
+  const _K = _kcal();
+  const conv = (_K && _K.kcalOf(item) > 0) ? _K.itemsOf(item, q) : { items: q, leftUnits: 0 };
+  const give = Math.floor(conv.items);
+  if (give < 1) return { ok: false, err: `그 양으로는 ${item} 한 개도 안 나온다 — 더 청해라` };
+  const spend = +(q - (conv.leftUnits || 0)).toFixed(4);
+  v.storage[r] = +(((v.storage[r] || 0) - spend * PV_DEPOSIT_RATE)).toFixed(3);
+  inventory[item] = (inventory[item] || 0) + give;
+  return { ok: true, res: r, item, qty: give, units: spend, stockAfter: +(+v.storage[r]).toFixed(3) };
 }
 // 곳간 재고를 **꺼낼 수 있는 개수**로 본다(넣기와 같은 환산율의 역수). 표시·한도가 같은 값을 본다.
 // ★★[T20-ⓑ · 재민 확정 2026-09-03] **한도의 밑변은 "곡식 재고"가 아니라 econ 의 식량 등가다.**

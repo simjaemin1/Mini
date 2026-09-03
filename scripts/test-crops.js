@@ -135,16 +135,30 @@ function dayOfSeason(season) {
     ok(Spoil.shelfOf('cabbage') === Spoil.D.PRODUCE, '★★③ⓐ 저장성 2 = 기존 **채소 앵커 6일** 그대로', String(Spoil.shelfOf('cabbage')));
   }
   {
-    // 생존 → 포만감. ★앵커: 기존 `food`(생곡) 허기 7 = 쌀 생존 5 × 1.4
-    ok(Math.abs(Crops.hungerOf('rice') - H.FOOD_EFFECTS.food.hunger) < 1e-6,
-      '★★③ⓑ 쌀 포만감이 **기존 곡식(7)과 정확히 같다** — 계수를 지어내지 않고 역산했다',
-      `${Crops.hungerOf('rice')} = ${H.FOOD_EFFECTS.food.hunger}`);
-    let mono2 = true;
+    // ⚠★★[T59 2026-09-03] **앵커가 바뀌었다 — 옛 앵커가 썩어 있었기 때문이다.**
+    //   종전: "쌀 포만감 = 기존 `food`(생곡) 허기 7 = 생존 5 × 1.4"(역산).
+    //   그런데 그 **7 자체가 틀렸다**: econ 은 같은 곡식 1단위를 NPC **하루치**로 먹고 있었다
+    //   (`DAILY_FOOD_CONSUMPTION` 1.0) — 7배 어긋남. 역산은 옳은 수법이었지만 앵커가 썩으면
+    //   표 전체가 같은 배율로 썩는다. ⇒ 이제 포만감은 **열량**에서 온다(`server/kcal.js`).
+    //   검사의 뜻은 그대로다: **작물 표와 기본 곡물이 같은 자를 쓴다**.
+    //   다만 재는 자가 "생존 × 1.4"에서 "kg × kcal/kg ÷ 하루치"로 바뀌었다.
+    const _K = require(path.join(ROOT, 'server', 'kcal.js'));
+    ok(Math.abs(Crops.hungerOf('rice') - _K.hungerOf('rice')) < 1e-6,
+      '★★③ⓑ 쌀 포만감이 **열량 정본이 내는 그 수**다(작물 표가 제 계수를 안 갖는다)',
+      `${Crops.hungerOf('rice')} = kg ${Crops.kgOf('rice')} × ${Crops.kcalOf('rice')}kcal/kg ÷ 하루 ${_K.DAY_KCAL}`);
+    //   ⚠하루 길이는 존마다 다르다(`VILLAGE_DAY_MS`) — 그 존이 쓰는 값으로 재야 뜻이 산다.
+    ok(Math.abs(H.FOOD_EFFECTS.food.hunger - _K.dayHunger(H._SEASON_DAY_MS)) < 0.01,
+      '★★★③ⓑ 그리고 **곡식 한 개 = 하루치**다 — econ 과 플레이어가 같은 하루를 쓴다',
+      `${H.FOOD_EFFECTS.food.hunger} = 하루 ${_K.dayHunger(H._SEASON_DAY_MS)} (하루 ${Math.round(H._SEASON_DAY_MS / 60000)}분)`);
+    // ⚠단조성 검사는 **축을 바꿔야 했다**: 열량과 "생존"은 다른 축이다(참깨는 생존 2 인데 5,700kcal/kg).
+    //   뜻("표가 한 축을 일관되게 따른다")은 지키되, 그 축이 이제 **열량**이다.
+    let mono2 = true, ex2 = '';
     for (const a of IDS) for (const b of IDS) {
       if (!Crops.isFood(a) || !Crops.isFood(b)) continue;
-      if (RAW[a].subsistence < RAW[b].subsistence && !(Crops.hungerOf(a) < Crops.hungerOf(b))) mono2 = false;
+      const ka = Crops.kgOf(a) * Crops.kcalOf(a), kb = Crops.kgOf(b) * Crops.kcalOf(b);
+      if (ka < kb - 1e-9 && !(Crops.hungerOf(a) < Crops.hungerOf(b))) { mono2 = false; ex2 = `${a}(${ka}) vs ${b}(${kb})`; }
     }
-    ok(mono2, '★③ⓑ 생존이 높을수록 배가 더 찬다 — 예외 0');
+    ok(mono2, '★③ⓑ **열량이 높을수록 배가 더 찬다** — 예외 0(포만감은 열량의 단조 함수다)', ex2 || '역전 0건');
   }
   {
     // 무게: specialty 가 있으면 그 값이어야 한다(사본 금지)

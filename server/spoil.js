@@ -237,10 +237,34 @@ const PRESERVE_DAYS = {
   pickle: _num('PRESERVE_DAYS_PICKLE', 2),   // 절임 — 이틀. 독에 넣고 기다린다
 };
 
-// ★레시피 정본. `from` = 입력 로트 품목 · `out` = 산출 · `needs` = 추가 소모(로트 아님)
+// ★[T59] 낚시 어종 목록 — **정본은 `fishing.js`**(늦게 부른다 · 맞물림 금지).
+function _fishItems() {
+  try { return require('./fishing').FISH_ITEMS; } catch (e) { return ['fish']; }
+}
+// ★★[T59] `from` 이 **배열이면 손에 있는 것 하나로 풀어 준다.**
+//   왜 이 모양인가: 읽는 쪽(`zone.doPreserve`·`_facilityRecipes`)이 `r.from` 을 **여덟 자리**에서
+//   단일 id 로 쓴다. 거기를 다 고치면 같은 판단이 여덟 벌 생긴다 — 대신 **레시피를 풀어서** 건넨다.
+//   고르는 규칙: 가진 것 중 **가장 많은 것**(없으면 목록 첫 항목) — 결정론이고 주사위가 없다.
+function resolveFrom(rec, inventory) {
+  if (!rec || !Array.isArray(rec.from)) return rec || null;
+  const inv = inventory || {};
+  let best = rec.from[0], bestN = -1;
+  for (const it of rec.from) {
+    const n = Math.floor(Number(inv[it]) || 0);
+    if (n > bestN) { bestN = n; best = it; }
+  }
+  return Object.assign({}, rec, { from: best, fromAny: rec.from });
+}
+
+// ★레시피 정본. `from` = 입력 로트 품목(배열이면 `resolveFrom` 이 푼다) · `out` = 산출 · `needs` = 추가 소모
 const PRESERVE = {
+  // ★★[T59 2026-09-03 · T17 회부 해소] **입력이 `'fish'` 한 품목이라 아무도 못 만들었다.**
+  //   낚시 v2 는 **어종 id**(`salmon`·`cod`…)를 주는데 이 줄은 econ 재화 `fish` 를 요구했다 —
+  //   `fish` 는 곳간·보상으로만 손에 오는 물건이라, **낚아서 말리는 정상 경로가 없었다.**
+  //   (`e2e-preserve` 는 디버그 지급으로 `fish` 를 쥐어 줘서 이 구멍을 1년 못 봤다 — 족보 (99)의 사례.)
+  //   ⇒ 입력을 **어종 집합**으로 받는다. 목록의 정본은 `fishing.js` 다(여기 옮겨 적지 않는다).
   dry_fish:    { label: '생선 말리기',   kind: 'dry',    facilityKo: '건조대',
-                 from: 'fish',      out: 'dried_fish',  days: PRESERVE_DAYS.dry,    needs: {} },
+                 from: _fishItems(),out: 'dried_fish',  days: PRESERVE_DAYS.dry,    needs: {} },
   dry_fruit:   { label: '과실 말리기',   kind: 'dry',    facilityKo: '건조대',
                  from: 'berry',     out: 'dried_fruit', days: PRESERVE_DAYS.dry,    needs: {} },
   // ★훈제는 **땔감을 먹는다** — 연기가 나야 훈제다. 통나무 1단/단위.
@@ -254,7 +278,7 @@ const PRESERVE = {
   pickle_veg:  { label: '남새 절임',     kind: 'tool',   facilityKo: '작업대',
                  from: 'vegetable', out: 'pickled_veg', days: PRESERVE_DAYS.pickle, needs: { salt: 1 } },
   pickle_fish: { label: '생선 절임',     kind: 'tool',   facilityKo: '작업대',
-                 from: 'fish',      out: 'pickled_veg', days: PRESERVE_DAYS.pickle, needs: { salt: 1 } },
+                 from: _fishItems(),out: 'pickled_veg', days: PRESERVE_DAYS.pickle, needs: { salt: 1 } },
   // ★★[T54 2026-09-02] 갯벌 말리기 둘 — **새 문법 0.** `kind: 'dry'` 라 건조대 창에 저절로 뜬다
   //   (`zone._facilityRecipes` 가 이 표를 순회한다 — 등록 코드가 따로 없다).
   //   ★입력은 T52 가 연 갯벌 산출 그대로다(굴·해조). 새 품목은 **산출 둘**뿐이고 그건 보존식이라
@@ -301,11 +325,17 @@ function shelfTable(dayMs) {
 }
 // 겨울 한 주 산수 — 보존식 1단위의 허기 회복량과 하루 허기 소모에서 유도한다.
 //   ★상수를 여기 안 적는다: `bodyHungerSec`(허기 0→100 초)와 `effect`(품목 회복량)를 주입받는다.
+//   ★★[T59 2026-09-03] **셋째 인자로 품목 이름을 줄 수 있다.**
+//     종전엔 부르는 쪽이 "건어물 30" 같은 **숫자를 들고** 있었고, 그 숫자는 이제 유도값이다
+//     (`kcal.hungerOf`). 상수를 두 곳에 두면 T20 겨울나기가 낡은 목표를 세운다.
+//     ⇒ 문자열이면 정본에게 묻는다. 숫자를 주면 종전 그대로(하네스가 임의 값을 넣어 볼 수 있다).
 function winterMath(bodyHungerSec, dayMs, effectPerUnit) {
   const dm = Number(dayMs) > 0 ? Number(dayMs) : 24 * 60 * 1000;
   const hs = Number(bodyHungerSec) > 0 ? Number(bodyHungerSec) : 1800;
   const drainPerDay = 100 * (dm / 1000) / hs;              // 하루에 비는 허기(게이지)
-  const eff = Number(effectPerUnit) > 0 ? Number(effectPerUnit) : 1;
+  let _e = effectPerUnit;
+  if (typeof _e === 'string') { try { _e = require('./kcal').hungerOf(_e, dm); } catch (err) { _e = 0; } }
+  const eff = Number(_e) > 0 ? Number(_e) : 1;
   const perDay = drainPerDay / eff;                         // 하루치 단위 수
   return { drainPerDay: +drainPerDay.toFixed(3), unitsPerDay: +perDay.toFixed(3),
            unitsPerWeek: +(perDay * 7).toFixed(2) };
@@ -525,5 +555,5 @@ module.exports = {
   dayExposure, cumExposure, exposureOf, _cumStats, _cumReset,
   nutritionMult, illnessFor, ofAges, bestOf, peekAges, peekOffer,
   yieldMult, canPreserve, outputQty, preserveMs,
-  shelfTable, winterMath, orderCheck,
+  shelfTable, winterMath, orderCheck, resolveFrom,
 };

@@ -423,25 +423,36 @@ function mkPlayer(name, x, y) {
     ok(Spoil.shelfOf('dried_oyster') === Spoil.shelfOf('dried_fish'), '★★건굴은 **건어물과 같은 자리**다(새 상수 0)',
       `${Spoil.shelfOf('dried_oyster')}일`);
     // ⓒ ★★효과는 **원물에서 유도**됐다 — 새 계수를 안 지었다
+    //   ⚠[T59 2026-09-03] 허기 판정이 바뀌었다 — **뜻은 그대로, 근거만 더 깊어졌다.**
+    //     T54 는 "원물 허기 × 말리기 배수(역산 앵커)"였는데, T59 가 **열량을 단위로** 세우면서
+    //     그 배수 자체가 사라졌다: 말리기는 **수분만 뺀다 ⇒ 열량이 보존된다.**
+    //     ⇒ 이제 검사는 "배수가 맞나"가 아니라 **"말린 것의 열량이 원물과 같나"** 다(더 강한 주장이다).
     const de = Tidal.driedEffects();
+    const Kc = require(path.join(ROOT, 'server', 'kcal.js'));
     for (const [k, d] of Object.entries(Tidal.DRY)) {
       const raw = Tidal.CATCH[d.from].food;
-      ok(de[k].hunger === Math.round(raw.hunger * Tidal.DRY_HUNGER),
-        `★${k} 의 허기가 **원물 × 말리기 배수**다`, `${raw.hunger} × ${Tidal.DRY_HUNGER.toFixed(3)} = ${de[k].hunger}`);
+      ok(Math.abs(Kc.kcalOf(k) - Kc.kcalOf(d.from)) < 1e-6,
+        `★★${k} 의 **열량이 원물과 같다**(말리기는 수분만 뺀다)`,
+        `${Math.round(Kc.kcalOf(d.from))} kcal → ${Math.round(Kc.kcalOf(k))} kcal`);
       ok(de[k].thirst === -raw.thirst, '★갈증은 **부호만 뒤집었다**(마른 것은 물기를 도로 가져간다)',
         `+${raw.thirst} → ${de[k].thirst}`);
-      ok(H.FOOD_EFFECTS[k] && H.FOOD_EFFECTS[k].hunger === de[k].hunger, `★★zone 의 표에 **주입됐다** — 먹을 수 있다`, JSON.stringify(H.FOOD_EFFECTS[k]));
+      ok(H.FOOD_EFFECTS[k] && H.FOOD_EFFECTS[k].hunger === Kc.hungerOf(k, 24 * 60 * 1000),
+        `★★zone 의 표에 **유도되어 들어갔다** — 먹을 수 있다`, JSON.stringify(H.FOOD_EFFECTS[k]));
       // 무게도 유도값 — 원물 kg × 잔량비
       const rawKg = Specialty.RESOURCES[d.from].weight;
       ok(Math.abs(W.kgOf(k) - +(rawKg * Tidal.DRY_RESIDUE).toFixed(3)) < 1e-9,
         '★무게도 **원물 × 잔량비**다', `${rawKg} × ${Tidal.DRY_RESIDUE} = ${W.kgOf(k)}kg`);
       ok(!/^[a-z_]+$/.test(H.ITEM_LABEL_SERVER[k] || k), '★한글 이름표가 붙었다', H.ITEM_LABEL_SERVER[k]);
     }
-    // ⓓ ★배수는 **이 레포의 유일한 완전 앵커**(말린 과실 ÷ 딸기)에서 왔다 — 지어낸 수가 아니다
-    const anchorMult = (H.FOOD_EFFECTS.dried_fruit || {}).hunger / (H.FOOD_EFFECTS.berry || {}).hunger;
-    ok(Math.abs(Tidal.DRY_HUNGER - anchorMult) < 1e-9,
-      '★★★말리기 허기 배수가 **말린 과실 ÷ 딸기** 그 값이다(역산 앵커 · 새 계수 0)',
-      `${Tidal.DRY_HUNGER.toFixed(4)} = ${(H.FOOD_EFFECTS.dried_fruit || {}).hunger}/${(H.FOOD_EFFECTS.berry || {}).hunger}`);
+    // ⓓ ⚠[T59] **역산 앵커(말린 과실 ÷ 딸기)는 폐기됐다** — 그 앵커의 뿌리(생곡 7)가 썩어 있었다.
+    //   대신 같은 물리를 **말리기 전체**에 대해 검사한다: 어떤 말리기든 열량이 보존돼야 한다.
+    for (const r of Object.values(Spoil.PRESERVE)) {
+      if (r.kind !== 'dry') continue;
+      const from = Array.isArray(r.from) ? r.from[0] : r.from;
+      ok(Math.abs(Kc.kcalOf(r.out) - Kc.kcalOf(from)) < 1e-6,
+        `★★★${r.label} — 말려도 **열량은 그대로**다(새 계수 0)`,
+        `${Math.round(Kc.kcalOf(from))} → ${Math.round(Kc.kcalOf(r.out))} kcal`);
+    }
     const rk = W.kgOf('dried_fruit') / W.kgOf('berry');
     ok(Math.abs(Tidal.DRY_RESIDUE - rk) < 0.01, '★★잔량비도 **말린 과실 ÷ 생과**다', `${Tidal.DRY_RESIDUE} ≈ ${rk.toFixed(3)}`);
     // ⓔ 실행 — 건조대에 걸면 진짜로 마르나(정본 경로 그대로)

@@ -6,6 +6,97 @@
 
 ---
 
+## 3-열. ★★★2026-09-03 T59 — **식량 단위 통일: 열량이 정본이다** (영역 L 주 · B·T 접점)
+
+> 정본 신규 `server/kcal.js` · 하네스 신규 `scripts/test-kcal.js`(`@regress`).
+> **econ diff 0 · 클라 diff 0 · `weights.js` diff 0**(kg 누락분이 없었다).
+> 보고 `보고/T59_2026-09-03.md`(옛/새 전수 표 · econ 어긋남 표).
+
+### 무엇을 했나 — 한 줄
+
+**포만감이 표에 적는 수에서 유도되는 값이 됐다.** `FOOD_EFFECTS.hunger` 의 손글씨 숫자를 **전부 지웠고**,
+`kg × kcal/kg ÷ 하루치` 가 그 자리를 대신한다. thirst·hpDelta·returns 는 그대로 손글씨다(열량이 아니다).
+
+### ★★왜 — 세계에 식량을 세는 자가 둘이었다
+
+```
+  econ    : food 1단위 = NPC 하루치(DAILY_FOOD_CONSUMPTION 1.0)
+  플레이어 : 곡식(food) 1개 = 허기 7 (하루 50 의 14%)
+  다리     : PV_DEPOSIT_RATE = 1 — 아무 환산도 하지 않는다
+  ⇒ 같은 곡식 한 개로 NPC 는 하루를 살고 플레이어는 일곱 개가 필요했다. 7배 어긋남.
+```
+
+무게 정본은 econ 편이었다(`weights.food` 0.70kg = "일일 배급 0.6~0.8kg") ⇒ **1단위 = 하루가 맞다.**
+플레이어의 7 은 베리 시절 값이고, 작물 34종의 "생존 × 1.4" 는 **그 7 을 앵커로** 유도됐다.
+
+### ★★★하루치 = 2,450 kcal — 고르지 않고 유도했다(세 자 일치)
+
+| 자 | 어디 | 값 |
+|---|---|---|
+| 허기 게이지 | `body.CFG.HUNGER_SEC` 2880초 · 게임일 1440초 | 하루에 비는 허기 **50** |
+| econ | `DAILY_FOOD_CONSUMPTION` | food **1단위** = NPC 하루 |
+| 물리 | `weights.food` 0.70kg × 쌀 3,500 kcal/kg | **2,450 kcal** |
+
+⇒ **하루 = 허기 50 = econ 1단위 = 2,450 kcal.** 고증 확인: 청동기 성인 2,000~2,600 kcal/일 구간 안.
+손잡이는 **`BODY_DAY_KCAL` 하나**다 — 품목별 값을 손대지 마라.
+
+### 배선 규약 (다음 세션이 지킬 것)
+
+* ★**포만감을 어디에도 적지 마라.** 새 먹을 것을 들이면 적을 것은 **kcal/kg 하나**다
+  (비작물 → `kcal.KCAL_PER_KG` · 작물 → xlsx `열량(kcal/kg)` 열 → `crops.json`).
+  `FOOD_EFFECTS` 에 `hunger:` 숫자를 되살리면 `test-kcal ③` 이 **소스를 읽어 빨개진다**(규칙 9).
+* ★**유도 루프는 모든 주입이 끝난 뒤**에 돈다 — `zone.js` 의 `Tidal.install(...)` **바로 뒤**다.
+  앞에 두면 뒤에 주입되는 손글씨(굴 3·해조 4·전복 8)가 살아남아 **표가 조용히 반쪽**이 된다(실제로 한 번 그랬다).
+* ★**환산은 짝이다** — `Kcal.econUnitsOf(item, n, kg)` ↔ `Kcal.itemsOf(item, units)`.
+  납품·거래소(정방향)는 `zone._unitsOfFor` 콜백 하나, 인출·보상(역방향)은 `villages.playerVillageWithdraw`
+  와 `events.deliverToVillage` 둘 — **넷 다 이 짝만 쓴다.** 넣을 때와 꺼낼 때가 다르면 곳간이 환전소가 된다.
+* ★**남는 몫은 버리지 않는다** — `itemsOf` 는 정수로 떨어지는 만큼만 옮기고 `leftUnits` 를 곳간에 남긴다
+  (로트 병합 금지와 같은 결). 자릿수는 **여섯**이다 — 넷으로 자르면 왕복에서 한 개가 사라진다(실측).
+* ⚠**보존식·조리식은 `KCAL_PER_KG` 표에 없다**(열량이 유도값이다). 표만 보면 건어물이 **0단위**가 된다.
+  `econUnitsOf` 의 폴백 갈래(`kcalPerKg || kcalOf/kgStd`)를 지우지 마라.
+* ★**조리 이득은 econ 이 쓰는 1.12 하나**다. `Kcal.COOKED_FACTOR` 는 **거울**이고
+  `test-kcal ⑤` 가 `sim/economy-sim.js` 소스와 교차 계약한다(사본이면 갈라진다).
+* ★**보존은 열량을 보존한다** — 말려도 kcal 합이 같다(수분만 빠진다). 건어물 0.35kg 은 생선 0.90kg **의 열량**이다.
+  ⇒ 말리기의 이득은 "더 배부름"이 아니라 **짐 예산**이다.
+* ⚠**요리 인스턴스(`doEatDish`)는 이 규약 밖이다** — `dish.attrs.nutrition × 신선도` 로 간다.
+  제작 층의 수라 여기서 손대면 조리 이득이 두 군데서 계산된다(회부 K).
+
+### 어종 표의 정본이 옮겨졌다 (T17 회부 해소 · 작업 ⓪)
+
+여태 어종 표는 **`zone._fishSpeciesFor` 안**에 있었고 `fishing.js` 는 그걸 몰랐다.
+그래서 `Spoil.PRESERVE.dry_fish.from = 'fish'` 가 어종 id 를 못 받아 **플레이어가 정상 경로로 건어물을 못 만들었다**
+(`e2e-preserve` 는 디버그 지급이라 못 잡았다 — "픽스처가 정본 경로를 건너뛰면 결함도 건너뛴다").
+
+* 정본은 이제 `fishing.js` — `SPECIES_BY_BIOME` · `speciesFor(biome)` · `FISH_ITEMS` · `isFish(item)`.
+* `spoil.PRESERVE.{dry_fish,pickle_fish}.from` 은 **배열**을 받는다.
+* `Spoil.resolveFrom(rec, inventory)` — 배열이면 **손에 가장 많은 것**으로 푼다(결정론 · 주사위 0).
+  시설 창·실행·메뉴 셋이 전부 이 하나를 부른다.
+* ⚠**남새 절임과 생선 절임이 같은 `out`(`pickled_veg`)을 낸다** — 열량 유도가 **첫 갈래**를 정본으로 삼는다.
+  겹침 자체는 관측으로 남기고 회부(아래).
+
+### `HUNGER_PER_SUBS` 는 폐기됐다
+
+"생존 × 1.4" 는 **곡식 7 을 앵커로 한 유도값**이었고 그 앵커가 무효가 됐다.
+상수를 지우고 **왜 지웠는지 주석으로 남겼다** — 같은 유도를 다시 짓지 않게.
+`crops.hungerOf(id)` 는 `Kcal.hungerOf` 위임이고, `crops.kcalOf(id)` 가 새로 생겼다.
+
+### ⚠역산 앵커의 뿌리가 썩어 있었다 — 문법에 붙는 단서
+
+T54 는 "말린 과실 16 ÷ 딸기 6" 에서 말리기 배수를 되뽑았고, 작물 34종은 "생존 × 1.4" 를 곡식 7 에서 되뽑았다.
+**역산 앵커는 좋은 문법이지만, 앵커가 옳다는 것은 따로 증명해야 한다.** T59 가 그 증명이다
+(세 자 일치). 다음에 코드 안의 값을 앵커로 삼을 때는 **그 값이 어디서 왔는지 한 번 더 캐라.**
+
+### 회부 (구현 금지)
+
+| # | 무엇 | 어디로 |
+|---|---|---|
+| K | 요리 인스턴스 `nutrition` 을 열량으로 세울 것인가(지금은 제작 층의 수) | 제작 층 |
+| L | `pickled_veg` 를 남새 절임과 생선 절임이 함께 쓴다 — 산출을 갈라야 하나 | 부패·보존 |
+| M | econ `FORAGE_FOOD_FACTOR` 를 kcal 로 다시 세우기(버섯 19.6× · 새우 15.9× 과대) | **ECON 수술 2** |
+| N | `acorn`·`chestnut`·`walnut`·`grape`·`cooked_food` 는 kcal 을 모른다(econ 전용 재화) | **ECON 수술 2** |
+| O | 포만감 화면 표시(클라 사본 금지 · welcome 에 실어 보내는 건 T55 뒤) | 클라 |
+| P | 첫 30분 결핍 리듬 — 베리 대비 곡식이 7배 올랐다 | **재민 실기 판정** |
+
 ## 3-지. ★★2026-09-01 지게 — **운반 도구** (T12 · 영역 L + I)
 
 > 정본 `server/carry.js` 에 **상한 가산 절** 신설 · 품목 정본은 `server/player-items.js` 의 `ITEM_TYPES.carrier`.

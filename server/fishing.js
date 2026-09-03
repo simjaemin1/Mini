@@ -344,8 +344,42 @@ function plan(sp, stock01, now, rng) {
   return { biteAt: now + waitMs, waitMs, kg, windowMs: windowMsFor(kg) };
 }
 
+// ── ★★[T59 2026-09-03] **어종 표는 여기가 정본이다.** ─────────────────────────
+//   왜 옮겼나: 표가 `zone.js` 안에 있어서 **다른 모듈이 물어볼 수가 없었다.**
+//   그 결과 `spoil.PRESERVE` 의 건어물 입력이 `'fish'` 라는 **아무도 안 주는 품목**이었고,
+//   플레이어는 정상 경로로 건어물을 만들 길이 없었다(T17 이 회부로 남긴 결함).
+//   ⇒ 낚시가 무엇을 내주는지는 낚시가 안다. zone 은 이제 이 표를 **부른다**(사본 0).
+//   ⚠품목 id 는 전부 **econ 재화 그대로**다(새 품목 0 — 자염·갯벌과 같은 규약).
+const SPECIES_BY_BIOME = {
+  taiga:       ['salmon', 'cod', 'herring', 'trout', 'pollock'],
+  tundra:      ['salmon', 'cod', 'herring', 'trout', 'pollock'],
+  forest:      ['trout', 'carp', 'pollock'],
+  plains:      ['trout', 'carp', 'pollock'],
+  jungle:      ['carp', 'shrimp', 'crab'],
+  savanna:     ['carp', 'shrimp', 'crab'],
+  desert:      ['carp'],
+  archipelago: ['cod', 'herring', 'sardine', 'anchovy', 'shrimp', 'crab', 'oyster', 'octopus', 'squid', 'seaweed'],
+  ocean:       ['cod', 'herring', 'sardine', 'anchovy', 'shrimp', 'crab', 'oyster', 'octopus', 'squid', 'seaweed'],
+  mountain:    ['trout'],
+};
+const SPECIES_DEFAULT = ['carp', 'trout'];
+function speciesFor(biome) { return SPECIES_BY_BIOME[biome] || SPECIES_DEFAULT; }
+// 낚시로 손에 들어올 수 있는 것 전부(중복 없음 · 결정론 순서).
+const ALL_SPECIES = (() => {
+  const set = new Set(SPECIES_DEFAULT);
+  for (const arr of Object.values(SPECIES_BY_BIOME)) for (const k of arr) set.add(k);
+  return [...set].sort();
+})();
+// ★**말리기·절임의 입력**은 이것이다 — 옛 `'fish'`(econ 재화 · 아무도 안 주는 품목)도 남긴다.
+//   왜 남기나: 곳간에서 꺼내거나 게시판 보상으로 받으면 진짜로 `fish` 가 손에 온다.
+//   ⚠갯벌 산출(굴·해조)은 뺀다 — 그건 T54 의 제 레시피가 따로 있다(같은 것을 두 줄로 만들지 않는다).
+const _NOT_FISH = new Set(['oyster', 'seaweed']);
+const FISH_ITEMS = ['fish', ...ALL_SPECIES.filter((k) => !_NOT_FISH.has(k))];
+function isFish(item) { return FISH_ITEMS.indexOf(item) >= 0; }
+
 module.exports = {
   CFG, fishCells, setDayMs,
+  SPECIES_BY_BIOME, ALL_SPECIES, FISH_ITEMS, speciesFor, isFish,
   spotAt, spotScore, _riverU, _lakeR,
   regen, rec, stockRatioAt, drawStock, deficitStock, deficitBy, stockToEcon, diffuse,
   plan, windowMsFor, _lognormal,

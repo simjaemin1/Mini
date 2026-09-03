@@ -138,7 +138,14 @@ async function waitHttp(u, n = 900) { for (let i = 0; i < n; i++) { try { const 
 
   // ── ② 건조대를 짓고 → 말리고 → 받는다 ──────────────────────────────────
   console.log('\n② 건조대 — 짓고 · 말리고 · 받는다');
-  await give({ items: { wood: 20, fiber: 20, meat_raw: 4 }, lots: { fish: [[0, 6]] } });
+  // ★★★[T59 2026-09-03] **픽스처를 `fish` 에서 어종으로 바꿨다 — 그게 이 하네스의 구멍이었다.**
+  //   `fish` 는 econ 재화라 곳간·보상으로만 손에 온다. 낚시 v2 는 **어종 id**(`trout`·`salmon`…)를 준다.
+  //   이 하네스가 `fish` 를 디버그로 쥐어 주는 바람에, **낚아서 말리는 정상 경로가 없다**는 사실을
+  //   1년 동안 아무도 못 봤다(T17 이 회부로 잡아냈다 · 족보 (99)의 사례).
+  //   ⇒ 이제 **실제로 손에 오는 것**을 준다. 어종 목록의 정본은 `fishing.js` 다(하네스가 표를 안 든다).
+  const FISH_SP = require(path.join(ROOT, 'server', 'fishing.js')).speciesFor('forest')[0];
+  await give({ items: { wood: 20, fiber: 20, meat_raw: 4 }, lots: { [FISH_SP]: [[0, 6]] } });
+  ok(FISH_SP !== 'fish', '★★② 픽스처가 **낚시가 실제로 주는 어종**이다(디버그 전용 품목이 아니다)', FISH_SP);
   await page.evaluate(() => window.__sendPrimary({ type: 'build', buildType: 'drying_rack', floor: 0 }));
   await sleep(1600);
   const built = await page.evaluate(() => (window.__getAllBuildings ? window.__getAllBuildings() : []).filter((b) => b.type === 'drying_rack'));
@@ -158,7 +165,8 @@ async function waitHttp(u, n = 900) { for (let i = 0; i < n; i++) { try { const 
   await page.evaluate(() => { const b = document.querySelector('[data-fmake="dry_fish"]'); if (b) b.click(); });
   await sleep(1500);
   const inv1 = await inv();
-  ok((inv1.fish || 0) === (inv0.fish || 0) - 1, '★② 입력이 나갔다', `생선 ${inv0.fish} → ${inv1.fish}`);
+  ok((inv1[FISH_SP] || 0) === (inv0[FISH_SP] || 0) - 1, '★★② 입력이 나갔다 — **어종 그대로 말려졌다**',
+    `${FISH_SP} ${inv0[FISH_SP]} → ${inv1[FISH_SP]}`);
   ok(!inv1.dried_fish, '★★② 그리고 **즉석이 아니다** — 아직 손에 없다', String(inv1.dried_fish));
   const qtxt = await page.evaluate(() => window.__panelText());
   ok(/초 남음|걸어 둔 것/.test(qtxt), '★★② 대기열에 걸렸다(오프라인에도 마른다)', (qtxt.match(/[^\n]{0,20}초 남음/) || [''])[0].trim());

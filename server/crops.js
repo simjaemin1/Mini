@@ -42,10 +42,14 @@ const KEEP_DAYS = {
   4: _num('CROP_KEEP_D4', 45),    // 기장·수수·팥·녹두·들깨·마·생강
   5: _num('CROP_KEEP_D5', 180),   // 쌀·보리·밀·조·콩·참깨·마늘 — 곳간에 쟁이는 것들
 };
-// ── ②생존(1~5) → 생식 포만감 ────────────────────────────────────────────────
-//   ★앵커가 **이미 코드 안에 있었다**: `FOOD_EFFECTS.food`(생곡)의 허기 7 = 쌀 생존 5 × 1.4.
-//     지어낸 수가 아니라 기존 값에서 역산한 계수다.
-const HUNGER_PER_SUBS = _num('CROP_HUNGER_PER_SUBS', 1.4);
+// ── ②생존(1~5) → 생식 포만감 ── ⚠**폐기됐다 [T59 2026-09-03 재민 확정]** ────────
+//   ~~앵커가 이미 코드 안에 있었다: `FOOD_EFFECTS.food`(생곡)의 허기 7 = 쌀 생존 5 × 1.4.~~
+//   ★★그 **앵커 자체가 틀렸다.** 생곡 7 은 베리 시절 값이고, econ 은 같은 곡식 1단위를
+//     **NPC 하루치**로 먹고 있었다(`DAILY_FOOD_CONSUMPTION` 1.0) — 7배 어긋남.
+//     역산은 옳은 방법이었지만 **앵커가 썩어 있으면 표 전체가 같은 배율로 썩는다**(족보).
+//   ⇒ 포만감은 이제 **열량에서 나온다**: `server/kcal.js` 가 kg × `kcal` 축으로 유도한다.
+//     이 파일은 **`kcal` 축을 내주기만** 한다(카탈로그의 `열량(kcal/kg)` 열 — 전사물).
+//   ⚠`CROP_HUNGER_PER_SUBS` 는 **더 이상 읽히지 않는다**(안 읽히는 사본을 남기지 않으려고 지웠다).
 // ── ③기호(0~5) → 사기 ──────────────────────────────────────────────────────
 //   맛있는 걸 먹으면 사기가 오른다(§7 "사기 = 당근"). 조리식과 같은 축을 쓴다 — 새 축 없음.
 const TASTE_MORALE_AT = _num('CROP_TASTE_MORALE_AT', 3);
@@ -100,7 +104,16 @@ function seedKeepDaysOf(id) {
   const c = get(id); if (!c) return 0;
   return +(SEED_KEEP_DAYS * (SEED_KEEP_FLOOR + (1 - SEED_KEEP_FLOOR) * (c.keep / 5))).toFixed(1);
 }
-function hungerOf(id) { const c = get(id); return (c && isFood(id)) ? +(c.subsistence * HUNGER_PER_SUBS).toFixed(2) : 0; }
+// ★[T59] 열량 축 — 카탈로그 `열량(kcal/kg)` 열 그대로(전사물 · 손으로 고치지 마라).
+//   특용 4종(삼·뽕·차·쪽)은 0 이고 그래서 `isFood` 가 이미 걸러 낸다 — 두 곳이 같은 말을 한다.
+function kcalOf(id) { const c = get(id); const k = c && Number(c.kcal); return Number.isFinite(k) && k > 0 ? k : 0; }
+// 포만감은 **여기서 안 정한다** — `server/kcal.js` 가 kg × kcal/kg 에서 유도한다(정본 하나).
+//   ⚠늦게 부른다(맞물림 금지): `kcal.js` 가 이 파일을 문다.
+function hungerOf(id) {
+  if (!isFood(id)) return 0;
+  let K = null; try { K = require('./kcal'); } catch (e) { return 0; }
+  return K.hungerOf(id);
+}
 function tastyOf(id) { const c = get(id); return !!c && c.taste >= TASTE_MORALE_AT; }
 function growDaysOf(id) { const c = get(id); return c ? Math.max(1, Math.round(c.growDays * GROW_SCALE)) : 0; }
 function kgOf(id) {
@@ -247,7 +260,7 @@ function payload() {
 
 module.exports = {
   DATA, CROPS, IDS, SEED_PREFIX, _day, SEED_KG, KEEP_DAYS, GROUP_KG, GROUP_EMOJI, NON_FOOD_GROUPS,
-  get, list, isCrop, isSeed, seedOf, cropOfSeed, isFood,
+  get, list, isCrop, isSeed, seedOf, cropOfSeed, isFood, kcalOf,
   keepDaysOf, seedKeepDaysOf, hungerOf, tastyOf, growDaysOf, kgOf, koOf, emojiOf,
   seasonOfDay, sowSeasons, canSowOn, sowableIn, sowableOn, wildSeedAt, WILD_SEED_CHANCE,
   grownDays, isReady, readyDay, waterMult, harvestUnits,

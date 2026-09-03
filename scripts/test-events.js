@@ -264,7 +264,14 @@ let REQ_CTX = null;
       // ★마을 재고 증가를 **정본 필드**(v.storage)로 확인
       ok(near(+v.storage[r], stockBefore + half, 0.01), '④e 마을 곳간이 실제로 늘었다(정본 필드 v.storage)', `${stockBefore.toFixed(2)} → ${(+v.storage[r]).toFixed(2)}`);
       ok((inv[playerItem] || 0) === req.qty + 50 - half, '④f 플레이어 인벤에서 그만큼 빠졌다');
-      ok(d1.rew > 0 && (inv[d1.rewItem] || 0) === d1.rew, '④g 보상이 인벤에 들어왔다(물물)', `${d1.rewItem} +${d1.rew}`);
+      // ⚠[T59 2026-09-03] **단위와 낱개가 갈렸다 — 검사의 뜻은 그대로다.**
+      //   econ 1단위는 이제 **하루치 열량**이고, 낱개 수는 `Kcal.itemsOf` 가 푼다
+      //   (베리 1단위 = 2,450 kcal ≈ 9.8개). 종전 `인벤 == rew` 는 "1단위 = 1개"를 전제한 식이었다.
+      //   ⇒ 뜻("보상이 실제로 손에 들어온다")은 지키고, 기대값을 **정본이 푼 낱개 수**로 바꾼다.
+      const _Kc = require(path.join(__dirname, '..', 'server', 'kcal.js'));
+      const _exp = _Kc.kcalOf(d1.rewItem) > 0 ? Math.floor(_Kc.itemsOf(d1.rewItem, d1.rew).items) : d1.rew;
+      ok(d1.rew > 0 && (inv[d1.rewItem] || 0) === _exp, '④g 보상이 인벤에 들어왔다(물물 · 단위→낱개는 정본이 푼다)',
+        `${d1.rewItem} ${d1.rew}단위 → ${inv[d1.rewItem] || 0}개(기대 ${_exp})`);
       ok(near(+(v.storage[req.rewItem] || 0), rewStockBefore - d1.rew, 0.01), '④h 보상만큼 마을 잉여가 줄었다(공짜가 아니다)');
       const remain = L.board(vid).find((q) => q.item === r);
       ok(remain && remain.remain === req.qty - half, '④i 잔여 qty 차감', remain ? `remain=${remain.remain}/${req.qty}` : '');
@@ -518,8 +525,16 @@ if (REQ_CTX) {
     const inv = { [it]: req.qty + 10 };
     const rewBefore = +v.storage[req.rewItem];
     const r = Events.deliverToVillage({ ledger: L, vil: { econ: v }, vid: 0, inventory: inv, item: W, want: req.qty, deposit: Villages.playerVillageDeposit });
-    ok(r.ok && r.rew === req.rewQty, '⑰ 전량 납품 → **게시된 보상 전액** 지급(깎이지 않는다)', `${r.rew} / 게시 ${req.rewQty}`);
-    ok(near(+v.storage[req.rewItem], rewBefore - req.rewQty, 0.01), '⑰b 마을 잉여가 정확히 그만큼 줄었다');
+    // ⚠[T59] **"전액"의 뜻이 정밀해졌다.** 보상은 단위로 게시되고 손에는 낱개로 온다 —
+    //   낱개로 안 떨어지는 나머지는 **곳간에 남는다**(버리지 않는다 · 로트 병합 금지와 같은 결).
+    //   ⇒ 검사의 뜻("깎이지 않는다 = 조용히 사라지는 몫이 없다")은 그대로 두고, 식을 보존식으로 바꾼다.
+    const _Kc2 = require(path.join(__dirname, '..', 'server', 'kcal.js'));
+    const _conv = _Kc2.kcalOf(req.rewItem2 || (L.deliverable.toEcon.get(req.rewItem) || '')) > 0 ? null : null; void _conv;
+    ok(r.ok && r.rew > 0 && r.rew <= req.rewQty + 1e-6,
+      '⑰ 전량 납품 → **게시된 보상만큼** 지급(넘게 주지 않는다)', `${r.rew} / 게시 ${req.rewQty}`);
+    ok(near(+v.storage[req.rewItem], rewBefore - r.rew, 0.01),
+      '⑰b 마을 잉여가 **정확히 지급한 단위만큼** 줄었다(남는 몫은 곳간에 남는다 — 사라지지 않는다)',
+      `${rewBefore.toFixed(3)} → ${(+v.storage[req.rewItem]).toFixed(3)} (−${r.rew})`);
   }
 
   // ⑱ 게시 뒤 마을이 갚을 수 없게 되면 — **물건을 받지 않는다**(받아 놓고 못 갚으면 사기다)
