@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// === scripts/t17-metrics.js — T17 ECON 수술의 계측기 ============================
+// === scripts/t17-metrics.js — ECON 수술의 계측기 (T17 → T60 확장) ==============
 //
 // ★★**계측기다. 하네스가 아니다 — 러너에 넣지 마라.**
 //   러너는 파일 **첫 열의 등재 표**로 스스로 찾는다(`run-regress.sh` `_disc`) — 이 파일엔 그 표가 없다.
@@ -16,9 +16,14 @@
 //   ⓓ 도구 — 재고 Σ · 도구Q(품질보정 총량) · 부족 건수 · 게시 의뢰 건수
 //   ⓔ 보존식 — 재고 Σ · 캐러밴 유통량(건수·수량)
 //   ⓕ 소금 — 재고 Σ · **해안/내륙 가격 지역차**(자염 편입의 목적 그 자체)
+//   ⓖ MSY — 상한이 선 마을 · 어촌 인구·어부·생선 재고·가격
+//   ⓗ [T60] **어장 눈금** — 어촌별 잠재 어획(`_fishRawLast`) 대 상한(`land.fishSustain`)의 비
+//   ⓘ [T60] **밀도 분해** — 사건 밀도가 어떤 유형·품목에서 왔나
+//   ⓙ [T60] **사장 셋** — `woodSustain`·`forageSustain`·`marginalQ` 가 켜지면 무엇이 움직이나(표만)
 //
 // 축 손잡이(대조군 — 지시 §3 "①~③ 각각 끈 시드 1개씩"):
 //   T17_TOOL=0 / T17_PRESERVE=0 / T17_SALT=0  → 그 축만 끈다(엔진 쪽 손잡이와 같은 이름)
+//   [T60] T60_FISH2WAY=0  낚시 양방향 끔 · T60_MSY_MODE=legacy|lab|ema|fishv2 · T17_MSY=1 상한 켬
 //
 // 실행: node scripts/t17-metrics.js [일수=800] [시드=1020]
 //   T17_JSON=/tmp/x.json  … 표를 JSON 으로도 남긴다(옛/새 비교 표를 손으로 옮겨 적지 않게)
@@ -181,6 +186,53 @@ console.log(`           캐러밴 유통 ${saltTrades}건 · ${saltAmt.toFixed(1
   console.log(`           어촌 ${fv}곳 · 인구 ${fpop} · 어부 ${fishers} · 생선 재고 ${fstock.toFixed(1)} · 생선 가격 평균 ${fpN ? (fp / fpN).toFixed(3) : '—'}`);
 }
 
+// ── ⓗ [T60] 어장 눈금 — 잠재 어획 대 상한 ────────────────────────────────────
+const SUS = R('server/sustain');
+{
+  const rows = [];
+  for (const v of world.villages) {
+    if (!(v.npcs || []).length) continue;
+    const raw = +(v._fishRawLast || 0), cap = (v.land && v.land.fishSustain != null) ? +v.land.fishSustain : null;
+    if (!(raw > 0)) continue;
+    rows.push({ n: v.name, f: (v.counts && v.counts.fisher) || 0, raw: +raw.toFixed(2), cap,
+                ratio: cap != null ? +(cap / raw).toFixed(2) : null, ema: +(v._fishRawEMA || 0).toFixed(2) });
+  }
+  rows.sort((a, b) => b.raw - a.raw);
+  const rs = rows.filter((r) => r.ratio != null).map((r) => r.ratio).sort((a, b) => a - b);
+  console.log(`\nⓗ 어장 눈금  모드 **${SUS.MSY_MODE}** · 헤드룸 ${SUS.MSY_HEADROOM} · 상한 스위치 T17_MSY=${process.env.T17_MSY === '1' ? '켬' : '끔'}`);
+  console.log(`           어부가 있는 마을 ${rows.length} · 잠재 어획 최대 ${rows[0] ? rows[0].raw : 0} · 중앙 ${rows.length ? rows[Math.floor(rows.length / 2)].raw : 0}`);
+  if (rs.length) {
+    console.log(`           **상한÷잠재** 최소 ${rs[0]} · 중앙 ${rs[Math.floor(rs.length / 2)]} · 최대 ${rs[rs.length - 1]}   (랩 설계 의도 = 1.5~2)`);
+    console.log(`           상한이 **무는**(비<1) 마을 ${rs.filter((x) => x < 1).length}/${rs.length}`);
+  } else console.log('           상한 미적용(land.fishSustain 없음) — 비를 못 잰다');
+  console.log('           ' + rows.slice(0, 6).map((r) => `${r.n}(어부${r.f} 잠재${r.raw}${r.cap != null ? ' 상한' + r.cap : ''})`).join(' · '));
+}
+
+// ── ⓘ [T60] 밀도 분해 ────────────────────────────────────────────────────────
+{
+  const byType = L.stats.byType || {};
+  console.log(`\nⓘ 밀도 분해  사건 ${S.emitted} · 마을당 ${daysPer.toFixed(2)}일/건 (캐논 2~3일)`);
+  console.log(`           유형 — ` + Object.entries(byType).map(([k, v]) => `${k} ${v}`).join(' · '));
+  const topS = topOf(shortByItem, 5).map(([r, c]) => `${ko(r)} ${c}`).join(' · ');
+  console.log(`           부족 상위 — ${topS}   (도구 ${shortByItem.get('tool') || 0} · 소금 ${shortByItem.get('salt') || 0})`);
+}
+
+// ── ⓙ [T60] 사장 셋 — 켜면 무엇이 움직이나(표만) ─────────────────────────────
+{
+  let wN = 0, fN = 0, mN = 0, wS = 0, fS = 0;
+  for (const s2 of seeds) {
+    const lp = s2.lp || {};
+    if (lp.woodSustain != null) { wN++; wS += lp.woodSustain; }
+    if (lp.forageSustain != null) { fN++; fS += lp.forageSustain; }
+    if (lp.marginalQ != null) mN++;
+  }
+  let lumber = 0, forager = 0;
+  for (const v of world.villages) { lumber += (v.counts && v.counts.lumberjack) || 0; forager += (v.counts && v.counts.forager) || 0; }
+  console.log(`\nⓙ 사장 셋   woodSustain 잰 마을 ${wN}(합 ${wS.toFixed(1)}) · forageSustain ${fN}(합 ${fS.toFixed(1)}) · marginalQ ${mN}`);
+  console.log(`           지금 land 에 실린 것: wood ${world.villages.filter((v) => v.land && v.land.woodSustain != null).length} · forage ${world.villages.filter((v) => v.land && v.land.forageSustain != null).length} · marginalQ ${world.villages.filter((v) => v.land && v.land.marginalQ != null).length}  ← **전부 0 이면 사장**`);
+  console.log(`           켜지면 물릴 대상 — 벌목꾼 ${lumber}명 · 채집꾼 ${forager}명 (어부 ${world.villages.reduce((a, v) => a + ((v.counts && v.counts.fisher) || 0), 0)}명과 같은 자리)`);
+}
+
 if (process.env.T17_JSON) {
   const out = {
     seed: SEED, days: DAYS, villages: seeds.length, live,
@@ -203,6 +255,18 @@ if (process.env.T17_JSON) {
         try { const p = (econV2.computeShadowPrices(v) || {}).fish; if (p != null) { fp += p; fpN++; } } catch (e) {}
       }
       return { on, capped, fishVillages: fv, fishPop: fpop, fishers, fishStock: +fstock.toFixed(1), fishPrice: fpN ? +(fp / fpN).toFixed(4) : null };
+    })(),
+    fish: (() => {
+      const rows = [];
+      for (const v of world.villages) {
+        if (!(v.npcs || []).length) continue;
+        const raw = +(v._fishRawLast || 0), cap = (v.land && v.land.fishSustain != null) ? +v.land.fishSustain : null;
+        if (raw > 0) rows.push({ name: v.name, fishers: (v.counts && v.counts.fisher) || 0, raw: +raw.toFixed(2), cap, ratio: cap != null ? +(cap / raw).toFixed(3) : null });
+      }
+      const rs = rows.filter((r) => r.ratio != null).map((r) => r.ratio).sort((a, b) => a - b);
+      return { mode: SUS.MSY_MODE, headroom: SUS.MSY_HEADROOM, capOn: process.env.T17_MSY === '1',
+               n: rows.length, ratioMin: rs[0] ?? null, ratioMed: rs.length ? rs[Math.floor(rs.length / 2)] : null,
+               ratioMax: rs.length ? rs[rs.length - 1] : null, binding: rs.filter((x) => x < 1).length, rows: rows.slice(0, 20) };
     })(),
     salt: { coastStock: +cS.toFixed(1), inlandStock: +iS.toFixed(1), coastN: cN, inlandN: iN,
             coastPrice: +cAvg.toFixed(4), inlandPrice: +iAvg.toFixed(4),

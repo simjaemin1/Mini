@@ -47,6 +47,20 @@ function boot(file, env) {
 function killAll() { for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {} } procs.length = 0; }
 process.on('exit', killAll);
 async function waitHttp(u, n = 600) { for (let i = 0; i < n; i++) { try { const r = await fetch(u); if (r.ok) return true; } catch (e) {} await sleep(1000); } return false; }
+// ★★러너 안에서 `HeadersTimeoutError` 로 죽었다(같은 판에서 `test-route-persist`·`test-site-memo` 도 같은 이유).
+//   왜: 존 서버의 일틱이 초 단위로 루프를 막으면 node http 의 keep-alive 시계(기본 5초)가 늦게 울려
+//   **클라이언트가 막 쓴 소켓을 서버가 닫는다**. 그 요청은 답을 못 받고 undici 기본 300초를 기다리다 터진다.
+//   서버가 죽은 게 아니다 — 아래 `/perf` 는 재접속하면 곧바로 온다. ⇒ 소켓 재사용을 끄고 재시도한다.
+//   ★근본 수리(서버 `keepAliveTimeout`)는 플레이어 층이라 이 카드가 못 건드린다 — 보고 §7 회부.
+let _netRetry = 0;
+async function hfetch(u, tries = 4) {
+  let last;
+  for (let i = 0; i < tries; i++) {
+    try { return await fetch(u, { headers: { connection: 'close' }, signal: AbortSignal.timeout(30000) }); }
+    catch (e) { last = e; _netRetry++; await sleep(500); }
+  }
+  throw last;
+}
 const cp = (src, dst) => { for (const sfx of ['', '-wal', '-shm']) { try { fs.copyFileSync(src + sfx, dst + sfx); } catch (e) { try { fs.unlinkSync(dst + sfx); } catch (e2) {} } } };
 const q = (a, p) => { if (!a.length) return 0; const s = [...a].sort((x, y) => x - y); return s[Math.min(s.length - 1, Math.floor(s.length * p))]; };
 
@@ -62,7 +76,7 @@ async function arm(label, sliceMs) {
   });
   if (!await waitHttp(`http://localhost:${ZPORT}/health`, 600)) { killAll(); return null; }
   await sleep(2000);
-  await fetch(`http://localhost:${ZPORT}/perf?reset=1`);
+  await hfetch(`http://localhost:${ZPORT}/perf?reset=1`);
 
   const samples = [];
   const ws = new WebSocket(`ws://localhost:${ZPORT}/?username=&password=`);
@@ -75,7 +89,7 @@ async function arm(label, sliceMs) {
   const iv = setInterval(() => { try { ws.send(JSON.stringify({ type: 'ping', t: Date.now() })); } catch (e) {} }, 100);   // ★100ms — 표본이 적으면 p95 가 흔들린다
   for (let s = 0; s < SECS; s++) await sleep(1000);
   clearInterval(iv);
-  const perf = await (await fetch(`http://localhost:${ZPORT}/perf`)).json();
+  const perf = await (await hfetch(`http://localhost:${ZPORT}/perf`)).json();
   try { ws.close(); } catch (e) {}
   killAll();
   await sleep(4000);   // 포트 반납
@@ -95,6 +109,7 @@ async function arm(label, sliceMs) {
 
 (async () => {
   console.log('\n=== 일틱 조각내기 RTT 짝 비교 (같은 DB 스냅샷 · 진짜 WS) ===');
+  console.log(`  폴링 재시도 ${_netRetry}회 (끊긴 소켓 재접속 — 0이 정상, 러너 부하에서만 는다)`);
   if (!fs.existsSync(SEED_Z)) {
     console.log('  ✗ 씨앗 DB 가 없다 — `node scripts/test-tick-slicer.js` 를 먼저 한 번 돌려라(씨앗을 만든다).');
     process.exit(1);

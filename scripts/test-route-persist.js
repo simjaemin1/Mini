@@ -56,7 +56,22 @@ function boot(file, env) {
 function killAll() { for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {} } procs.length = 0; }
 process.on('exit', killAll);
 async function waitHttp(u, n = 300) { for (let i = 0; i < n; i++) { try { const r = await fetch(u); if (r.ok) return true; } catch (e) {} await sleep(1000); } return false; }
-const jget = async (u) => (await (await fetch(u)).json());
+// ★★keep-alive 경합 때문에 러너 안에서 두 번 죽었다(`HeadersTimeoutError`).
+//   왜: 서버 루프가 A* 한 걸음(최대 2.6초) 동안 막히면 node 의 keep-alive 시계(기본 5초)가 늦게 울려
+//   **클라이언트가 막 쓴 소켓을 서버가 닫는다**. 그러면 그 요청은 답을 못 받고 undici 기본 300초를 기다린다.
+//   ⇒ 폴링은 소켓을 **재사용하지 않는다**(`connection: close`) + 20초 상한 + 재시도.
+//   ⚠판정을 무르게 만들지 않는다: 재시도해도 서버가 진짜 죽었으면 아래 ⑥ "선계산이 완주한다"가
+//     그대로 떨어진다(루프가 150회를 다 돌고 warmLeft>0 으로 끝난다). 가리는 게 아니라 **끊긴 소켓만** 뺀다.
+let _netRetry = 0;
+async function jfetch(u, tries = 4) {
+  let last;
+  for (let i = 0; i < tries; i++) {
+    try { return await fetch(u, { headers: { connection: 'close' }, signal: AbortSignal.timeout(20000) }); }
+    catch (e) { last = e; _netRetry++; await sleep(300); }
+  }
+  throw last;
+}
+const jget = async (u) => (await jfetch(u)).json();
 const cp = (src, dst) => { for (const sfx of ['', '-wal', '-shm']) { try { fs.copyFileSync(src + sfx, dst + sfx); } catch (e) { try { fs.unlinkSync(dst + sfx); } catch (e2) {} } } };
 
 // ★DB 를 **지우지 않고** 다시 띄운다 — 그게 이 하네스의 주제(재기동해도 남는가)다.
@@ -204,7 +219,7 @@ async function runDays(n) {
   let hStop = false;
   const hPing = (async () => {
     while (!hStop) {
-      try { await fetch(`http://localhost:${ZPORT}/health`); const t = Date.now(); hN++; if (t - hLast > hMax) hMax = t - hLast; hLast = t; }
+      try { await fetch(`http://localhost:${ZPORT}/health`, { headers: { connection: 'close' }, signal: AbortSignal.timeout(30000) }); const t = Date.now(); hN++; if (t - hLast > hMax) hMax = t - hLast; hLast = t; }
       catch (e) { /* 막혀서 실패한 것도 간격에 그대로 잡힌다 */ }
       await sleep(100);
     }
@@ -221,6 +236,7 @@ async function runDays(n) {
   console.log(`  5판(선계산)  ${W0.warmTotal}쌍 중 남은 ${W1.warmLeft} · 캐시 메모리 ${W1.mem} · DB ${W1.db} · 완주 ${(warmMs / 1000).toFixed(0)}초`);
   console.log(`    ↳ 데우는 동안 이벤트 루프 최대 막힘 ${WP.loop ? WP.loop.max : '?'}ms (p99 ${WP.loop ? WP.loop.p99 : '?'}) · 한 걸음 최대 ${wRouteMax}ms`);
   console.log(`    ↳ /health 응답 간격 최대 ${hMax}ms (${hN}회 두드림) — **걸음보다 오래 막히면 안 된다**`);
+  console.log(`    ↳ 폴링 재시도 ${_netRetry}회 (끊긴 소켓 재접속 — 0이 정상, 러너 부하에서만 는다)`);
   ok(W1.warmLeft === 0, '⑥ ★★사람이 없는 동안 **선계산이 완주한다**', `남은 ${W1.warmLeft}/${W0.warmTotal}`);
   ok(warmMs >= W0.warmTotal * WGAP * 0.7, '⑦ ★간격이 실제로 지켜진다(걸음 사이를 쉬었다)',
     `완주 ${warmMs}ms ≥ ${W0.warmTotal}쌍 × ${WGAP}ms × 0.7 = ${Math.round(W0.warmTotal * WGAP * 0.7)}ms`);

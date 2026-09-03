@@ -56,6 +56,21 @@ function boot(file, env) {
 function killAll() { for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {} } procs.length = 0; }
 process.on('exit', killAll);
 async function waitHttp(u, n = 600) { for (let i = 0; i < n; i++) { try { const r = await fetch(u); if (r.ok) return true; } catch (e) {} await sleep(1000); } return false; }
+// ★★러너 안에서 `HeadersTimeoutError` 로 죽었다(같은 판에서 `test-route-persist` 도 같은 이유로 죽었다).
+//   왜: 이 팔의 존 서버는 일틱이 초 단위로 루프를 막는다(대조군 OFF 는 매일 전수 탐색이다). 그러면
+//   node http 의 keep-alive 시계(기본 5초)가 늦게 울려 **클라이언트가 막 쓴 소켓을 서버가 닫는다** —
+//   그 요청은 답을 못 받고 undici 기본 300초를 기다리다 터진다. 서버가 죽은 게 아니다.
+//   ⇒ 폴링은 소켓을 재사용하지 않는다(`connection: close`) + 상한 + 재시도. 판정은 그대로다
+//     (진짜 안 오면 아래 `j.econTick.days >= DAYS` 가 못 차서 `부팅/수확 실패`로 떨어진다).
+let _netRetry = 0;
+async function jperf(u, tries = 4) {
+  let last;
+  for (let i = 0; i < tries; i++) {
+    try { return await (await fetch(u, { headers: { connection: 'close' }, signal: AbortSignal.timeout(30000) })).json(); }
+    catch (e) { last = e; _netRetry++; await sleep(500); }
+  }
+  throw last;
+}
 const cp = (src, dst) => { for (const sfx of ['', '-wal', '-shm']) { try { fs.copyFileSync(src + sfx, dst + sfx); } catch (e) { try { fs.unlinkSync(dst + sfx); } catch (e2) {} } } };
 
 async function arm(label, extraEnv) {
@@ -71,7 +86,7 @@ async function arm(label, extraEnv) {
   let j = null;
   for (let i = 0; i < 300; i++) {
     await sleep(2000);
-    j = await (await fetch(`http://localhost:${ZPORT}/perf`)).json();
+    j = await jperf(`http://localhost:${ZPORT}/perf`);
     if (j.econTick && j.econTick.days >= DAYS) break;
   }
   killAll();
@@ -104,6 +119,7 @@ const st = (E, k) => (E && E.stages && E.stages[k]) ? E.stages[k] : { p50: 0, p9
   console.log('  ' + rep('채택(기억 ON)', B, pb));
   console.log('  ' + rep('감사(AUDIT=1)', D, pd));
   console.log('  ' + rep('픽스처(표지 OFF·N=3)', C, pc) + '\n');
+  console.log(`  폴링 재시도 ${_netRetry}회 (끊긴 소켓 재접속 — 0이 정상, 러너 부하에서만 는다)\n`);
 
   // ① ★상황 선행 — 종전 판이 정말 매일 헛되이 훑는가(아니면 이 하네스는 아무것도 안 잰다)
   ok(pa.siteCall >= A.days * 5, '① [상황] 종전 판이 하루 5회 이상 집터를 훑는다', `${pa.siteCall}회 / ${A.days}일`);

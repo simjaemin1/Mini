@@ -1828,6 +1828,11 @@ function isolateCaravanReturn(body, p, now) {
   c.distance = body.len / PX_PER_ECON; // 귀환 약탈 확률(거리 비례)에 실경로 반영
   const days = Math.max(1, Math.ceil(body.len / Math.max(1, body.pxPerDay)));
   c.returnArriveDay = world.day + days;
+  // ★[T60 ③] `c.distance` 를 **귀환 거리로 덮었으니** 시계도 그 구간의 것이다 —
+  //   econ 의 빈손 귀환(`economy-sim-v2.js` T17 ④)과 **같은 규약**. 안 맞추면 한 레코드에
+  //   귀환 거리와 왕로 일수가 나란히 남는다(T17 이 econ 쪽에서 고친 바로 그 모양).
+  c.departDay = world.day;
+  c.travelDays = days;
   body.phase = 'inbound';
   body.departAt = now;
   body.arriveAt = Math.max(now + 1, econDayToMs(c.returnArriveDay));
@@ -1870,8 +1875,7 @@ function caravanBlockedResponse(body, p, now) {
     let pushed = 0;
     if (extraPx > body.pxPerDay * 0.05) { // 유의미한 연장만 일 단위 지연(사소한 우회는 페이싱이 흡수)
       pushed = Math.max(1, Math.ceil(extraPx / Math.max(1, body.pxPerDay)));
-      if (body.phase === 'outbound') { c.arriveDay += pushed; c.returnArriveDay += pushed; }
-      else c.returnArriveDay += pushed;
+      _clockPush(c, pushed, body.phase);   // ★[T60 ③] 세 값 동기(위 `_clockPush` 주석)
       body.arriveAt += pushed * state.dayMs;
       body.delayedDays += pushed;
     }
@@ -1928,8 +1932,7 @@ function tickCaravanBodies(now) {
     if (now >= body.arriveAt - state.dayMs * 0.02
         && remainPx > Math.max(64, body.nomPxMs * 4 * (Math.max(0, body.arriveAt - now) + 66))) {
       const push = Math.max(1, Math.ceil(remainPx / Math.max(1, body.pxPerDay)));
-      if (body.phase === 'outbound') { c.arriveDay += push; c.returnArriveDay += push; }
-      else c.returnArriveDay += push;
+      _clockPush(c, push, body.phase);     // ★[T60 ③] 세 값 동기
       body.arriveAt += push * state.dayMs;
       body.delayedDays += push;
       console.log(`[${state.zoneId}] 🐂 캐러밴#${c.id} econ 도착 +${push}일 지연(잔여 ${Math.round(remainPx)}px — 차단/정체 흡수)`);
@@ -2869,12 +2872,14 @@ const _lifeSub = { crop: 0, hunter: 0, gran: 0, pids: 0, site: 0, near: 0, headl
 const _probe = { siteLog: [], auditN: 0, auditBad: 0, auditFirst: '', siteCall: 0, siteHit: 0, siteSkip: 0, siteMs: 0, siteMax: 0, siteVils: new Set(),
                  terrGrowDays: 0, terrGrowCells: 0, siteCand: 0, siteScan: 0, siteReason: {},
                  routeCold: 0, routeColdPrimed: 0, routeMs: 0, routeMax: 0, routeHit: 0, routeClear: 0,
-                 oreCold: 0, oreMs: 0, oreMax: 0 };
+                 oreCold: 0, oreMs: 0, oreMax: 0,
+                 fishDrawn: 0, fishDrawDays: 0 };   // ★[T60 ②] NPC 어획이 실제로 깎은 stock 누계(계측)
 function probeStats() { return { siteLog: _probe.siteLog.slice(-400), auditN: _probe.auditN, auditBad: _probe.auditBad, auditFirst: _probe.auditFirst, siteMemo: LIFE_SITE_MEMO, siteRescanDays: LIFE_SITE_RESCAN_DAYS, siteSkip: _probe.siteSkip, terrGrowDays: _probe.terrGrowDays, terrGrowCells: _probe.terrGrowCells,
   siteCand: _probe.siteCand, siteScan: _probe.siteScan, siteReason: _probe.siteReason, siteCall: _probe.siteCall, siteHit: _probe.siteHit, siteMiss: _probe.siteCall - _probe.siteHit,
   siteMs: _probe.siteMs, siteMax: _probe.siteMax, siteVils: _probe.siteVils.size,
   routeCold: _probe.routeCold, routeColdPrimed: _probe.routeColdPrimed, routeMs: _probe.routeMs, routeMax: _probe.routeMax, routeHit: _probe.routeHit, routeClear: _probe.routeClear,
-  oreCold: _probe.oreCold, oreMs: _probe.oreMs, oreMax: _probe.oreMax }; }
+  oreCold: _probe.oreCold, oreMs: _probe.oreMs, oreMax: _probe.oreMax,
+  fishDrawn: +_probe.fishDrawn.toFixed(3), fishDrawDays: _probe.fishDrawDays, fish2way: FISH2WAY }; }
 const _lifeSubMax = {};   // 같은 항목의 **마을 한 곳 최댓값** — 조각 예산은 합이 아니라 최댓값이 정한다
 let _lifeMax = 0, _lifeMaxName = '';   // ★[T1 §0] 마을 한 곳의 최댓값 — '마을 경계 조각'이 예산에 드는지의 직답
 function tickPerf() {
@@ -2999,6 +3004,14 @@ function _openDayJobs(now) {
       // P1: 전쟁 econ 층 — tickWorldV2 직후 구동(오늘 세운 동원정지/봉쇄/원한제재가 내일 틱에 반영). phase='battle'는 skip(실체 진행 중).
       if (state.war) state.war.daily(state.world.day);
     } finally { console.log = _log; }
+    // ★★[T60 ② 2026-09-03] **NPC 어획이 같은 물을 줄인다** — econ 틱 **직후**, 같은 하루 안에서.
+    //   여기가 옳은 자리인 이유: `_fishOutLast` 는 방금 끝난 하루의 실적이고, 아래 `refreshFishSustain`
+    //   (주기 갱신)이 그 결손을 상한으로 옮긴다. 조각 순서 캐논(`econ` 단계)은 안 건드린다.
+    //   ⚠★기본은 **꺼짐**이다(T60 ② 수리 — 아래 `FISH2WAY` 선언의 실측 주석). `T60_FISH2WAY=1` 로만 켠다.
+    if (FISH2WAY) {
+      const _now = _dayNow();
+      for (const vil of (state.villages || [])) { try { npcFishDraw(vil, _now); } catch (e) {} }
+    }
     // ★[2파] 전쟁 링 버퍼 드레인(테스트 훅 — VILLAGE_WAR_LOG=1)
     if (process.env.VILLAGE_WAR_LOG === '1' && state.war) {
       const wl = state.war.stats().log; const from = state._warLogN || 0;
@@ -5203,6 +5216,91 @@ function refreshFishSustain(vil, now) {
   return { base: L._fishBase, deficitStock: +def.toFixed(4), cut: +cut.toFixed(4), fishSustain: next };
 }
 
+// ═══ ★★[T60 ② 2026-09-03 · 재민 확정] **낚시가 양방향이 된다** ═══════════════
+//   §0-ⓒ 실측: 지금은 **한쪽으로만 흐른다** — 플레이어가 긁으면 `land.fishSustain` 이 내려가는데
+//   NPC 어부는 같은 물을 **한 톨도 안 줄인다**(`drawStock` 호출자가 `server/zone.js` 하나뿐 · 전수 확인).
+//   그래서 "같은 물을 쓴다"는 절반만 참이었고, **명당 고갈이 NPC 에게는 없었다**(반독점 캐논의 구멍).
+//   ⇒ 정본 하나(`Fishing.drawStock`)를 NPC 어획에도 태운다. 새 수식은 없다.
+//
+//   ★어디서 긁나 — **랩의 어장 단위 그대로**: 물 셀을 `24×24` 버킷으로 묶고(랩 `L_FISHBK=24`)
+//     버킷마다 앵커 한 곳. 하루치를 앵커들에 고르게 나눠 `drawStock` 을 부른다.
+//     (한 점에서 다 긁으면 `DRAW_R=3` 짜리 7×7 만 비고 나머지 어장은 멀쩡하다 — 어부는 흩어져 잡는다.)
+//   ★얼마나 긁나 — econ 이 오늘 실제로 잡은 몫(`_fishOutLast`)을 **`stockToEcon` 의 역**으로 환산.
+//     환산 상수는 여기서 다시 안 적는다 — `Fishing.stockToEcon(1)` 을 나눗셈의 분모로 부른다(사본 0).
+//
+// ★★★[T60 ② 수리 2026-09-03] **기본은 꺼짐이다 — 켜면 서버가 멈춘다. 실측으로 잡았다.**
+//   러너에서 `test-route-persist`·`test-site-memo`·`e2e-rtt` 셋이 같은 모양으로 죽었다
+//   (폴링이 30초×4 를 못 받음 = 루프가 수십 초 막힘 — T42-b 선계산과 같은 species).
+//   `/tmp/t60/fishperf.js` 진단(마을 51곳 · LABOR_R 150 · DRAW_R 3 · CELL_K 1):
+//     ⓐ `_fishAnchors` 첫 walk 이 **한 덩어리로 12,469ms** — 51곳 × 반경 150셀(2칸) = 116만 `isWater`.
+//     ⓒ `fishCells` 가 **30일에 40만 칸**까지 분다(어획량을 1/10 로 줄여도 39.7만 — `diffuse` 가
+//        결손을 이웃으로 번지게 하는 게 증식의 주인이라 어획량으로 안 줄어든다).
+//        그 결과 `deficitBy×51마을` 246ms → **3,395ms/일**, `diffuse` 125ms → **1,315ms/일**.
+//   ⇒ 낚시 v2 의 `fishCells` 는 **플레이어 몇 사람의 자리**를 담는 그릇이다. 거기에 NPC 51마을의
+//     하루치를 부으면 그릇이 지도 전체가 된다. 이건 계수 문제가 아니라 **자료구조의 규모 문제**다.
+//   ⇒ 이 카드는 **끄고 낸다**(기본 OFF · `T60_FISH2WAY=1` 로만 켠다). 감당하는 법(앵커 순회 · 버킷
+//     단위 집계 · scanLabor walk 재사용)은 **판단거리**라 보고 §6-B 의 A/B/C 표로 올린다.
+//   ⚠기본이 꺼짐이므로 T17 기준선과 **비트 동일**이 코드로도 보장된다(아래 두 자리가 안 돈다).
+const FISH2WAY = process.env.T60_FISH2WAY === '1';
+const FISH_BK = 24;   // 랩 `L_FISHBK` — 어장 한 곳의 단위. 새 수가 아니다.
+// ═══ ★★[T60 ③ 2026-09-03 · 재민 확정] **캐러밴 시계는 세 값이 함께 움직인다** ══════
+//   T17 ④ 가 econ 쪽 두 자리(재routing·빈손귀환)에서 세운 규약이다:
+//     `arriveDay − departDay === travelDays === travelDaysForDistance(distance)`
+//   §0-ⓓ 실측: 존 서버에도 시계를 미는 자리가 **셋 더** 있고(로컬 우회 재경로 · 도착 임박 가드 ·
+//   고립 화물보존 귀환) **셋 다 `travelDays` 를 안 건드렸다**. econ 밖이라 T17 이 못 닿은 자리다.
+//
+//   ★왜 `travelDaysForDistance` 를 못 부르나 — econ 이 **export 하지 않는다**(회부에 올라 있다).
+//     그래서 `server/rumor.js` 가 쓴 그 수법을 그대로 쓴다: **한 줄 거울 + 교차 계약 검사**.
+//     거울은 여기 하나이고, `scripts/test-events` 가 econ 정본과 매 판 대조한다(3사본 규약).
+//   ⚠거울이 아니라 **그 자리의 사실**을 쓴다: 지연은 이미 일 단위로 계산돼 있으므로
+//     `travelDays` 를 그 지연만큼 **같이 민다**. 거리 재계산이 아니라 **경과일의 동기**다.
+function _clockPush(c, days, phase) {
+  if (!c || !(days > 0)) return;
+  if (phase === 'outbound') {
+    c.arriveDay += days; c.returnArriveDay += days;
+    // 가는 구간이 늘었다 = 그 구간 일수가 늘었다. 셋이 다시 맞는다.
+    if (Number.isFinite(c.travelDays)) c.travelDays += days;
+  } else {
+    c.returnArriveDay += days;
+    // 돌아오는 구간의 지연은 `arriveDay − departDay`(가는 구간)를 안 건드린다 — 그래서 travelDays 도 그대로.
+  }
+}
+
+function _fishAnchors(vil) {
+  if (vil._fishAnchors) return vil._fishAnchors;
+  const S = require('./sustain'), R = S.LABOR_R;
+  const seen = new Set(), out = [];
+  const ta = state.ta;
+  if (!ta) return (vil._fishAnchors = []);
+  for (let dy = -R; dy <= R; dy += 2) {
+    for (let dx = -R; dx <= R; dx += 2) {
+      if (dx * dx + dy * dy > R * R) continue;
+      const x = vil.ccx + dx, y = vil.ccy + dy;
+      if (!ta.isWater(x, y)) continue;
+      const bk = Math.floor(x / FISH_BK) + ',' + Math.floor(y / FISH_BK);
+      if (seen.has(bk)) continue;
+      seen.add(bk); out.push([x, y]);
+    }
+  }
+  return (vil._fishAnchors = out);
+}
+// 오늘 NPC 가 잡은 만큼 어장을 깎는다. 반환: 실제로 깎인 stock.
+function npcFishDraw(vil, now) {
+  if (!FISH2WAY) return 0;
+  const F = _fishingMod(); if (!F || !vil || !vil.econ) return 0;
+  const out = +(vil.econ._fishOutLast || 0);
+  if (!(out > 0)) return 0;
+  const perStock = F.stockToEcon(1);            // ★환산 정본(사본 금지) — econ 단위/스톡
+  if (!(perStock > 0)) return 0;
+  const anchors = _fishAnchors(vil);
+  if (!anchors.length) return 0;
+  const per = (out / perStock) / anchors.length;
+  let took = 0;
+  for (const a of anchors) { try { took += F.drawStock(a[0], a[1], per, now, null); } catch (e) {} }
+  _probe.fishDrawn += took; _probe.fishDrawDays++;
+  return took;
+}
+
 // 모든 마을 갱신 — 회복(로지스틱 재생)이 어획 없이도 보이게 하려면 주기적으로 한 번씩 돌아야 한다.
 function refreshAllFishSustain(now) {
   let n = 0;
@@ -5347,6 +5445,7 @@ module.exports = {
   villageTradeBoard, villageTradeQuote, villageTradeExec,
   // ★[2026-08-26 낚시 v2] 어장 결손 접점 — zone.js 낚시 경로가 소비한다(econ 무수정)
   waterVillageAt, refreshFishSustain, refreshAllFishSustain,
+  npcFishDraw,   // ★[T60 ②] NPC 어획 → 낚시 v2 재고 차감(양방향)
   __e2eForceShortage, __e2eForceDeed, __e2eDayFreeze,   // ★테스트 전용 — zone.js 가 E2E_GIVE 로 게이트한다(기본 부팅에선 도달 불가)
   get eventLedger() { return state.ledger; },
   // 플레이어 구매/판매 경계계약(읽기전용 마을 품질 EMA — econ 무접촉)

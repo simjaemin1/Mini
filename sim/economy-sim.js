@@ -442,6 +442,10 @@ const PRESERVE_YIELD = 0.4;
 const PRESERVE_FOOD_FACTOR = 1 / PRESERVE_YIELD;   // 2.5 — 새 수가 아니라 위 수율의 역수다
 // ★[T17 ③] 소금 일상 소비(인구 비례) — 위 소비처 주석의 두 근거가 만나는 값.
 const SALT_DAILY_PC = 0.01;
+// ★[T60 ① 후보ⓑ] 흐름 눈금 손잡이 — 지리 눈금(ⓐⓒ)은 `server/sustain.js` 가 갖는다(사본 금지).
+const MSY_MODE_EMA = process.env.T60_MSY_MODE === 'ema';
+const MSY_EMA_LOCK_DAYS = 90;                        // econ 계절 경계(seasonOf d<90) — 새 수 아님
+const MSY_HEADROOM = (() => { const v = parseFloat(process.env.T60_MSY_HEADROOM || ''); return (isFinite(v) && v > 0) ? v : 2; })();
 const T17_TOOL     = process.env.T17_TOOL     !== '0';   // ① 도구 마모를 흐름으로 기록
 const T17_PRESERVE = process.env.T17_PRESERVE !== '0';   // ② 보존식 편입
 const T17_SALT     = process.env.T17_SALT     !== '0';   // ③ 자염 편입
@@ -1855,7 +1859,25 @@ function tickVillage(v, day) {
   const _paddyMul = (v._paddyShare == null) ? 1 : (1 + PADDY_PREMIUM * (v._paddyShare - PADDY_BASE));
   // ★어장·임연부 MSY 상한(랩 실측 land.fishSustain/forageSustain) → 어부·채집 총생산 min(raw, sustain). woodSustain(fuelK)과 동형 파이프 — 랩이 물리 어장/임연부 지속수확을 재어 econ 소득 천장을 물림(초과 시 비례 감산). sustain==null(어장/임연부 없음)이면 미적용=현행 보존(제로캡 전멸 방지).
   const _fishRaw = (v.counts.fisher || 0) * JOBS.fisher.base * (v.land.water || 0) * toolBoostShared;
+  // ★[T60 §0-ⓐ 2026-09-03 · 계측 전용 · 행동 무관] **상한이 몇 배 모자란가**를 밖에서 잴 수 있게
+  //   잠재 어획(`_fishRaw`)과 그 EMA 를 남긴다. 판정(`_fishScale`)은 아래 한 줄이 그대로 한다.
+  //   ⚠EMA 는 **감산 전 잠재**를 따라간다 — 감산된 실적을 따라가면 상한이 자기를 끌어내리는 나선이 된다.
+  v._fishRawLast = _fishRaw;
+  v._fishRawEMA = (v._fishRawEMA == null) ? _fishRaw : (v._fishRawEMA * (1 - 1 / 30) + _fishRaw / 30);
+  // ★★[T60 ① 후보ⓑ `ema` — 흐름 눈금] 지리가 아니라 **그 마을의 제 기준선**으로 상한을 세운다.
+  //   *"첫 계절 동안 낼 수 있던 잠재 산출"* 을 잠그고 헤드룸을 곱한다.
+  //   ⓐ 잠그는 이유: 상한이 실적을 따라가면 **자기를 끌어내리는 나선**이 된다(상한↓ → 산출↓ → 상한↓).
+  //   ⓑ 90일인 이유: econ 정본의 **계절 경계**(`seasonOf` — d<90/180/270)다. 새 수가 아니다.
+  //   ⓒ 헤드룸 2 인 이유: 랩이 `FISH_ECON_PER_STOCK` 옆에 적어 둔 설계 의도 *"×~1.5-2 헤드룸"* 의 중앙.
+  if (MSY_MODE_EMA && v.land && v.land.fishSustain != null) {
+    const _d = (v._world && v._world.day) | 0;
+    if (_d <= MSY_EMA_LOCK_DAYS || v._fishBaseEMA == null) v._fishBaseEMA = v._fishRawEMA;
+    if (v._fishBaseEMA > 0) v.land.fishSustain = +(v._fishBaseEMA * MSY_HEADROOM).toFixed(4);
+  }
   const _fishScale = (v.land.fishSustain != null && _fishRaw > 0) ? Math.min(1, v.land.fishSustain / _fishRaw) : 1;
+  // ★[T60 ② 배선] 오늘 실제로 잡힌 몫(감산 뒤) — `server/villages.js` 가 이 값만큼 **낚시 v2 재고를 깎는다**.
+  //   econ 은 여전히 아무 것도 안 판단한다: 여기서는 숫자를 **남기기만** 한다(행동 무변).
+  v._fishOutLast = _fishRaw * _fishScale;
   const _forageRaw = (v.counts.forager || 0) * JOBS.forager.base * JOBS.forager.landBoost(v);
   const _forageScale = (v.land.forageSustain != null && _forageRaw > 0) ? Math.min(1, v.land.forageSustain / _forageRaw) : 1;
   v._forageScale = _forageScale;   // ★저장(§9): 채집 한계가치(픽커·기회비용)가 임연부 MSY 포화를 보게 — 포화 임연부에 herb 가격이 채집꾼을 무한 유인(공유지 비극)하는 것 차단

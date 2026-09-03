@@ -43,11 +43,26 @@ function forageK(c) { return F_MAX * 4 * c * (1 - c); }
 function scanLabor(pred, ccx, ccy) {
   let forest = 0, water = 0, rockEdge = 0, forageSum = 0;
   const R = LABOR_R;
+  // ★★[T60 §0-ⓐ 2026-09-03] **물은 전수로 센다** — 랩 원본이 그렇다(복원).
+  //   이 함수의 머리 주석은 *"2칸 간격은 랩과 같다 … 셀 수를 4배로 되돌려 쓰지 않는다"* 라고 적어 뒀는데,
+  //   랩을 열어 보니 **물만은 전수**였다: 어장 초기화가 `for(dy…dy++)for(dx…dx++) … if(!TR.water)continue; e.K++`
+  //   (스텝 1). 2칸 샘플은 `forestRich`·`gameRich` 전용이다 — 랩 주석이 그렇게 못 박아 뒀다
+  //   (*"forestRich·gameRich는 2칸 간격 샘플이라 ±1은 이웃 없음"*).
+  //   ⇒ 그래서 서버의 `fishSustain` 은 랩의 **정확히 1/4** 이었다(실측 45마을 전수 비 중앙 4.00 · 평균 4.00).
+  //   ⇒ 이건 발명이 아니라 **복원**이다. 숲·바위·임연부는 랩과 같이 2칸 그대로 둔다.
+  if (MSY_MODE !== 'legacy') {
+    for (let dy = -R; dy <= R; dy++) {
+      for (let dx = -R; dx <= R; dx++) {
+        if (dx * dx + dy * dy > R * R) continue;
+        if (pred.isWater(ccx + dx, ccy + dy)) water++;
+      }
+    }
+  }
   for (let dy = -R; dy <= R; dy += 2) {
     for (let dx = -R; dx <= R; dx += 2) {
       if (dx * dx + dy * dy > R * R) continue;
       const x = ccx + dx, y = ccy + dy;
-      if (pred.isWater(x, y)) { water++; continue; }
+      if (pred.isWater(x, y)) { if (MSY_MODE === 'legacy') water++; continue; }
       if (pred.isRock(x, y)) {
         if (!pred.isRock(x - 1, y) || !pred.isRock(x + 1, y) || !pred.isRock(x, y - 1) || !pred.isRock(x, y + 1)) rockEdge++;
         continue;
@@ -64,14 +79,33 @@ function scanLabor(pred, ccx, ccy) {
   return { forest, water, rockEdge, forageSum };
 }
 
+// ★★[T60 ① 2026-09-03 · 재민 확정] **MSY 눈금 후보 셋 — 발명 금지. 셋 다 기존 정본에서 유도한다.**
+//   T17 §5 실측: 지금 눈금으로 켜면 인구 −48~−61% · 소멸 0 → 14·16곳. "너무 낮다"의 정체가 §0-ⓐ 다.
+//   ★랩이 스스로 적어 둔 **설계 의도**가 눈금의 기준이다(마을실험실 `FISH_ECON_PER_STOCK` 주석):
+//     *"fishSustain ≈ 현행 어부산출 × ~1.5-2 헤드룸 역산 — 건강어장 scale=1 보존, MSY 초과 투입시만 결속"*
+//   ⇒ **상한은 산출보다 커야 정상이고, 어부가 몰릴 때만 물려야 한다.**
+//
+//   ⓐ `lab`    — 랩 원본 식 그대로. 물 셀을 **전수**로 세면 그게 곧 ΣK 다(랩 버킷 합 = 물셀 총수).
+//   ⓑ `ema`    — 흐름 문법. 그 마을이 **처음에 낼 수 있던 잠재 산출**(첫 계절 EMA)을 잠그고 ×`MSY_HEADROOM`.
+//                지리를 안 보고 "제 기준선 대비 이탈"로 물린다(econ 가격의 `flowT` 문법과 같은 결).
+//   ⓒ `fishv2` — **낚시 v2 정본을 그대로 부른다**: `Fishing.stockToEcon(물셀수 × CFG.CELL_K)`.
+//                수식은 ⓐ와 같은 자리에서 만나지만(같은 로지스틱 r·K/4 · 같은 환산 2.5),
+//                상수의 **소유자가 다르다** — 여기서 다시 적지 않고 `server/fishing.js` 가 갖는다(사본 0).
+//   ⚠기본은 `legacy`(= T17 까지의 그 값)다. **이 카드는 켜지 않는다** — `T17_MSY` 스위치도 그대로 꺼짐.
+const MSY_MODE = process.env.T60_MSY_MODE || 'legacy';   // legacy | lab | ema | fishv2
+const MSY_HEADROOM = (() => { const v = parseFloat(process.env.T60_MSY_HEADROOM || ''); return (isFinite(v) && v > 0) ? v : 2; })();
 // econ land.* 에 얹을 지속가능 상한. wood 는 land.wood(부존)와 곱해져 econ 단위가 된다.
 function sustainOf(scan, landWood) {
   const wood = scan.forest * (L_WOODREGLOG * L_WOODMAX / 4) * (0.9 * (landWood || 1) / L_CHOP);
-  const fish = scan.water * (L_FISHR / 4) * FISH_ECON_PER_STOCK;
+  let fish = scan.water * (L_FISHR / 4) * FISH_ECON_PER_STOCK;
+  if (MSY_MODE === 'fishv2') {
+    // ★상수를 여기서 다시 적지 않는다 — 낚시 v2 가 그 표의 주인이다.
+    try { fish = require('./fishing').stockToEcon(scan.water * require('./fishing').CFG.CELL_K); } catch (e) {}
+  }
   const forage = scan.forageSum * (L_FORAGER / 4) * FORAGE_ECON_PER_STOCK;
   return {
     woodSustain: scan.forest ? +wood.toFixed(2) : null,     // 숲 없으면 null = 상한 미적용(제로캡 전멸 방지 — 랩과 같은 규약)
-    fishSustain: scan.water ? +fish.toFixed(2) : null,
+    fishSustain: scan.water ? +fish.toFixed(2) : null,   // ⓑ `ema` 는 지리가 아니라 흐름이라 econ 쪽에서 세운다
     forageSustain: scan.forageSum > 0 ? +forage.toFixed(2) : null,
   };
 }
@@ -102,6 +136,7 @@ function specialOf(minerals, oreVal) {
 
 module.exports = {
   scanLabor, sustainOf, marginalQOf, specialOf, forageK,
+  MSY_MODE, MSY_HEADROOM,   // ★[T60] 계측기·하네스가 '지금 어떤 눈금인가'를 서버에게 묻는다(사본 금지)
   LABOR_R, L_WOODREGLOG, L_WOODMAX, L_CHOP, L_FISHR, L_FORAGER, F_MAX, L_FORAGEK_MIN,
   FISH_ECON_PER_STOCK, FORAGE_ECON_PER_STOCK, MINERAL_KEY,
 };
