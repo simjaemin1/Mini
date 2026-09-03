@@ -392,8 +392,13 @@ async function waitHttp(url, tries = 600) {
     const amBox = () => page.evaluate(() => [...document.querySelectorAll('#moodles .moodle')]
       .map((el) => ({ axis: el.dataset.axis, stage: +el.dataset.stage, text: (el.textContent || '').trim() })));
     const before = await amBox();
-    ok(!before.some((m) => m.axis === 'aftermath'), '★⑩ⓐ 계약이 아직 없으므로 **안 그린다**(0칸)',
+    ok(!before.some((m) => m.axis === 'aftermath'), '★⑩ⓐ 성한 몸엔 **안 그린다**(0칸)',
       JSON.stringify(before.map((m) => m.axis)));
+    // ★[T61 리베이스 뒤] T56 이 계약을 실었다 — **선이 실제로 이어졌는지** 페이로드로 확인한다.
+    //   (안 쓰러진 사람은 `null` 이 맞다. 칸이 있는 것과 값이 있는 것은 다르다.)
+    const wire = await page.evaluate(() => (myBody && ('aftermath' in myBody)) ? { has: true, v: myBody.aftermath } : { has: false });
+    ok(wire.has === true, '★★⑩ⓐ 서버 페이로드에 `aftermath` 칸이 **실제로 온다**(T56 계약 착지)', JSON.stringify(wire));
+    ok(wire.v === null, '★⑩ⓐ 그리고 성한 몸에선 `null` 이다 — 그래서 안 그린다', JSON.stringify(wire.v));
     // ⓑ 계약 모양을 몸 페이로드에 얹고 다시 그린다
     await page.evaluate(() => { if (myBody) { myBody.aftermath = { days: 2, cap: 0.7 }; renderMoodles(); } });
     await sleep(300);
