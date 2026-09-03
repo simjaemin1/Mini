@@ -795,6 +795,26 @@
     ArrowUp: 'arrowup', ArrowDown: 'arrowdown', ArrowLeft: 'arrowleft', ArrowRight: 'arrowright',
     Space: ' ', Enter: 'enter', Tab: 'tab',
   };
+  // ★★[T61 ⓪ 2026-09-03 · 재민 실기] **글자를 치는 중이면 게임 키를 먹지 않는다.**
+  //   실기 결함: 로그인 칸(`#name`·`#password`)에 타이핑하면 `m` 이 지도를, `i` 가 인벤을 열고,
+  //   스페이스·탭은 `preventDefault` 에 먹혀 **아예 안 들어가고**, Enter 는 `openChat()` 이 빼앗았다.
+  //   원인은 전역 keydown 들이 **`chatActive`(채팅칸) 하나만** 가린 것이다 — 다른 입력칸은 아무도 안 봤다.
+  //   ⇒ **술어 하나**를 여기 두고 전역 키 핸들러 **전부**가 머리에서 부른다(규약 둘 금지 · T55 문법).
+  //     `chatActive` 검사도 이 안으로 흡수한다 — 부르는 쪽이 두 가지를 기억할 일이 없게.
+  //   ⚠`e.target` 을 먼저 본다(이벤트의 진실). 없으면 `activeElement` 로 떨어진다.
+  //   ⚠누르는 버튼류(button·checkbox…)는 **타이핑 칸이 아니다** — 게임 키를 그대로 살린다.
+  const NOT_TYPING_INPUT = new Set(['button', 'submit', 'reset', 'checkbox', 'radio', 'range', 'file', 'color', 'image']);
+  function isTypingTarget(e) {
+    if (chatActive) return true;
+    const el = (e && e.target) || document.activeElement;
+    if (!el || el.nodeType !== 1) return false;
+    if (el.isContentEditable) return true;
+    const tag = (el.tagName || '').toLowerCase();
+    if (tag === 'textarea' || tag === 'select') return true;
+    if (tag === 'input') return !NOT_TYPING_INPUT.has((el.type || 'text').toLowerCase());
+    return false;
+  }
+
   function normalizeKey(e) {
     // e.code 우선 (한글 IME 등에서도 동일). fallback: e.key
     return CODE_TO_KEY[e.code] || (e.key || '').toLowerCase();

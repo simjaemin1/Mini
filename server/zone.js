@@ -55,6 +55,7 @@ const Spoil = require('./spoil');
 //   보관일·포만감·무게·성장일·파종철·수확량이 전부 그 표에서 파생된다(이 파일에 표를 안 적는다).
 const Crops = require('./crops');
 const Salt = require('./salt');            // ★[자염 배치 2026-09-01] 염도·수율·땔감·시간 정본 하나
+const ItemLabel = require('./itemlabel');  // ★[T61] 이름표 정본이 사는 곳(품목 합치기 · econ 자원 종류 이름)
 const Onboarding = require('./onboarding');   // ★[온보딩 v2 2026-09-01] 도착 지점·30분 대본·빈터 권리 정본(§9). init 전엔 완전 no-op
 const Membership = require('./membership');   // ★[T11 2026-09-02] 마을 소속·곳간 인출. 기여 계량기는 온보딩 정본 **하나**를 읽는다
 const Claims = require('./claims');           // ★[T45 2026-09-02] 사유지 v2 — 종류 영속·인접·연결성·부재 상태기(정본 하나)
@@ -3519,7 +3520,11 @@ async function _acceptConnection(ws, req, C) {
     //   ⇒ 클라가 다시 만들 방법이 없다. 안 실으면 클라 사본(55키)이 정본(108키)에 영원히 뒤처지고,
     //     그게 `oyster`·`seaweed`·`abalone`·`brine` 이 화면에 영문으로 뜬 이유였다(회부 0-갯·0-염·T38).
     //   품목 카탈로그는 존 독립이라 **첫 primary welcome 한 번이면 족하다**(클라가 들고 다닌다).
-    itemLabels: ITEM_LABEL_SERVER,
+    itemLabels: ItemLabel.itemLabels(ITEM_LABEL_SERVER, BUILDING_RECIPES),
+    // ★★[T61 2026-09-03] econ 자원 종류 이름(장마당 시세표의 **열 이름**) — 정본은 `itemlabel.js`.
+    //   종전엔 클라(`60-t-market.js ITEM_KR` 9키)가 표를 들고 있었다. 그게 사본이고, T55 가 품목에서
+    //   닫은 것과 **같은 결함**이다(서버가 종류를 늘리면 화면만 영문으로 남는다).
+    categoryLabels: ItemLabel.CATEGORY_KO,
     // ★★[무게 배치 2026-08-27] kg 카탈로그를 **서버가 실어 보낸다** — 클라가 표를 들고 있으면
     //   그게 사본이고, 표가 갈리는 날 화면과 실제가 어긋난다(거래소 배치에서 배운 그것).
     itemWeights: Weights.catalog(),
@@ -9817,6 +9822,13 @@ setInterval(() => {
       } catch (e) {}
       send(p.ws, {
         type: 'gauges',
+        // ★★[T61 2026-09-03] **HP 를 여기 싣는다 — 실측이 시킨 한 줄이다.**
+        //   §0-ⓐ 가 물은 것: "아묾을 서버 칸 없이 클라가 알 수 있나?" 답은 **아니다**, 그리고 이유가 나쁘다:
+        //   클라의 `myHp` 는 `welcome` · `player_damaged` · `player_respawn` 에서만 갱신된다.
+        //   **자연 회복은 아무 메시지도 안 낸다** ⇒ 40에서 100까지 아물어도 화면은 계속 `40/100` 이다.
+        //   "회복이 화면에 안 실린다"는 표식이 없다는 뜻이 아니라 **숫자 자체가 낡았다**는 뜻이었다.
+        //   ⇒ 이미 초당 하나 나가는 이 메시지에 두 수를 얹는다(새 창구 0 · 방송 아님 · self 전용).
+        hp: Math.round(p.hp), maxHp: p.maxHp,
         hunger: Math.round(p.hunger ?? HUNGER_MAX),
         thirst: Math.round(p.thirst ?? THIRST_MAX),
         vp: Math.round(p.vp ?? 0),

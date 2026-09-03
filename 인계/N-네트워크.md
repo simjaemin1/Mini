@@ -364,3 +364,13 @@ central 부하)이 남아 있고, **서버 로그 없이는 단정할 수 없다
 
 ---
 
+## 1-표2. ★[T61 2026-09-03] `welcome` 에 이름표 둘 · `gauges` 에 HP
+
+```
+  welcome.itemLabels     품목 이름표 300키 — `ItemLabel.itemLabels(ITEM_LABEL_SERVER, BUILDING_RECIPES)`
+  welcome.categoryLabels  econ 자원 종류 9키 — `ItemLabel.CATEGORY_KO`  ★정본 `server/itemlabel.js`
+  gauges.hp · gauges.maxHp  ★자연 회복은 **다른 메시지를 안 낸다** — 이 두 수가 없으면 화면 HP 가 낡는다
+```
+셋 다 **클라 사본을 지우려고** 실은 것이다(정본 하나). 클라엔 폴백이 없다 — 안 오면 영문 키/낡은 수가
+보이고, 그게 조용히 틀린 것보다 낫다. 자세한 것은 `인계/H-HUD신체.md` 1-사본0 · 1-아묾.
+

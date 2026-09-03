@@ -171,10 +171,10 @@
     const M = { farmer:'농부', fisher:'어부', hunter:'사냥꾼', lumberjack:'벌목꾼', miner:'광부', prospector:'탐사꾼', smith:'대장장이', forager:'채집꾼', cook:'요리사', warrior:'전사', merchant:'상인' };
     return M[j] || j;
   }
-  function ITEM_KR(i) {
-    const M = { food:'🍞 식량', wood:'🪵 나무', stone:'🪨 돌', ore:'⛏️ 광석', metal:'⚙️ 금속', forage:'🌿 채집물', cooked:'🍲 요리', fish:'🐟 생선', meat:'🥩 고기' };
-    return M[i] || i;
-  }
+  // ★★[T61 2026-09-03] **클라 사본을 지웠다.** 종전엔 여기 9키 표가 있었다 —
+  //   서버가 자원 종류를 늘리면 표에 없는 열만 영문으로 남는, T55 가 품목에서 닫은 그 결함이다.
+  //   정본은 `server/itemlabel.js CATEGORY_KO` 고 `welcome.categoryLabels` 로 온다. 폴백은 없다.
+  function ITEM_KR(i) { return (CATEGORY_KO_SRV && CATEGORY_KO_SRV[i]) || i; }
   // Phase 4d-13: v2 가격 폭 (0.01 ~ 1000)에 적응형 포맷
   function fmtPrice(p) {
     if (p == null) return '-';
@@ -204,6 +204,7 @@
     document.getElementById('vmpCloseBtn')?.addEventListener('click', closeVillageMarket);
     // ESC로 닫기
     document.addEventListener('keydown', e => {
+      if (isTypingTarget(e)) return;   // ★[T61 ⓪] 규약 하나 — 수량칸에 숫자를 치는 중이면 안 닫는다
       if (e.key === 'Escape' && !document.getElementById('villageMarketPanel')?.classList.contains('hidden')) closeVillageMarket();
     });
   });

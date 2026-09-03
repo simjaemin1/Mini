@@ -926,6 +926,8 @@
         // ★★[T55] 이름표 정본 — 한 번 받아 들고 다닌다(품목 카탈로그는 존 독립).
         //   ⚠덮어쓰지 않는다: 핸드오프 promote welcome 엔 안 실린다(관측) — 있으면 갱신, 없으면 유지.
         if (msg.itemLabels) { ITEM_LABEL_SRV = msg.itemLabels; window.__itemLabels = msg.itemLabels; }
+        // ★[T61] econ 자원 종류 이름 — 같은 경로·같은 규약(있으면 갱신 · 없으면 유지). 클라 사본은 지웠다.
+        if (msg.categoryLabels) { CATEGORY_KO_SRV = msg.categoryLabels; window.__categoryLabels = msg.categoryLabels; }
         // 플레이어 장비
         if (msg.equipmentRecipes) equipmentRecipes = msg.equipmentRecipes;
         if (msg.equipmentMeta) equipmentMeta = msg.equipmentMeta;
@@ -1396,6 +1398,8 @@
       }
       c.others.delete(msg.pid);
     } else if (msg.type === 'gauges') {
+      // ★[T61] HP — 자연 회복은 다른 메시지를 안 낸다(§0-ⓐ). 이 한 줄이 없으면 화면 숫자가 낡는다.
+      if (typeof msg.hp === 'number') { myHp = msg.hp; if (typeof msg.maxHp === 'number') myMaxHp = msg.maxHp; }
       if (typeof msg.hunger === 'number') myHunger = msg.hunger;
       if (typeof msg.thirst === 'number') myThirst = msg.thirst;
       if (typeof msg.vp === 'number') myVp = msg.vp;

@@ -53,33 +53,20 @@
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(icon, sx, sy);
   }
-  const ITEM_LABEL = {
-    pillar: '기둥', rafter: '서까래', thatch: '이엉',   // ★건축 중간재
-    berry: '베리', fiber: '풀', meat_raw: '날고기', meat_cooked: '구운고기',
-    hide: '가죽', berry_jam: '베리잼', water_bottle: '물병',
-    seed_berry: '베리씨앗', herb: '약초', ore: '광물',
-    food: '곡식', food_cooked: '익힌 곡식', fish: '생선', fish_cooked: '구운생선',   // ★[곡물 품목화 2026-08-27]
-    twig: '잔가지', pebble: '자갈',   // ★[빈손 시작 2026-08-28] 땅에서 줍는 것
-    crude_axe: '조잡한 돌도끼', crude_pick: '조잡한 돌괭이', crude_blade: '조잡한 돌칼',
-    ore_chunk: '원석(kg·미확인)',   // ★[11차] 캔 것은 정체를 모른다 — 마을에서 선광(O키)해야 광석/맥석이 갈린다. 덩이 크기가 숙련마다 달라 **kg 단위**로 센다
-    // ★[2026-08-02 야금 사슬] 라벨이 없으면 인벤 창에 **영문 키가 그대로** 뜬다(ITEM_LABEL[k] || k).
-    iron_ore: '철 정광', charcoal: '숯', meteoric_iron: '운철(隕鐵)', lead: '납', nickel: '니켈',
-    iron: '철', copper: '구리', tin: '주석', coal: '석탄', jade_raw: '옥 원석',   // ★[2026-08-02d] iron=제련 금속(정광은 iron_ore='철 정광')
-    marble: '대리석', tungsten: '텅스텐', gold: '금', silver: '은',
-    wood: '통나무', plank: '판자', stone: '돌',
-    item_wall: '벽', item_floor: '바닥', item_door: '문', item_fence: '울타리',
-    item_stair: '계단', item_chest: '상자', item_campfire: '모닥불', item_farmland: '농지', item_workbench: '작업대',
-    // ★[부패·보존 배치 2026-08-31]
-    item_drying_rack: '건조대',
-    dried_fish: '건어물', dried_fruit: '말린 과실', smoked_meat: '훈제육', pickled_veg: '절임', salt: '소금',
-  };
+  // ★★[T61 2026-09-03] **클라 이름표 사본을 지웠다.** 종전엔 55키 표가 여기 있었다.
+  //   T55 가 정본을 `welcome.itemLabels` 로 실어 보내면서 이 표는 폴백이 됐고, T61 이 그 폴백마저 없앴다.
+  //   ⇒ **정본 하나.** 사본이 살아 있으면 언젠가 읽히고, 그날 화면과 서버가 갈린다(T38·자염·갯벌이 그 셋이다).
+  //   사본에만 있던 20키(광물 12 · 건축물 8)는 **서버 표에 흡수**했다 — `server/itemlabel.js` 가
+  //   `specialty.RESOURCES[k].ko` 와 `BUILDING_RECIPES[k].label` 에서 **끌어온다**(옮겨 적지 않는다).
+  //   실측: 옛 사본 55키 전부가 새 표에 있고 **글자가 하나도 안 달라진다**(보고 §0-ⓒ 표).
 
-  // ★★[T55 2026-09-02] **이름표 정본은 서버다.** `welcome.itemLabels`(108키)가 여기 담긴다.
-  //   위 `ITEM_LABEL` 은 이제 **폴백**이다 — 서버가 표를 안 실어 보내는 옛 서버·오프라인 화면에서만 쓴다.
-  //   ⇒ 새 품목이 서버에 생기면 클라를 안 고쳐도 한글로 뜬다(그게 `oyster`·`brine` 이 영문이던 이유였다).
-  //   ⚠사본을 **지우지는** 않았다 — 결합 diff 검사(`split-verify`) 재-스코프가 아직 회부 상태라
-  //     조각 본문을 크게 줄이면 그 회부와 얽힌다. 삭제는 회부(T55 §4).
+
+  // ★★[T55 2026-09-02 · T61 2026-09-03] **이름표 정본은 서버다** — 그리고 이제 **그것뿐이다**.
+  //   `welcome.itemLabels`(실측 300키) 가 여기 담긴다. 폴백은 없다: 표가 안 오면 영문 키가 그대로 뜨고,
+  //   그게 옳다 — 조용히 낡은 사본을 읽는 것보다 **틀린 게 보이는 편**이 낫다.
   let ITEM_LABEL_SRV = null;
+  // ★econ 자원 종류 이름(장마당 시세표 열) — `welcome.categoryLabels`. 정본 `server/itemlabel.js`.
+  let CATEGORY_KO_SRV = null;
 
   // ★★[작물 층 2026-08-31] 작물 표는 **서버가 준다**(`welcome.crops`) — 클라가 표를 들지 않는다.
   //   이름표·아이콘·심기 메뉴가 전부 이 페이로드에서 파생된다(무게·원장과 같은 규약).
@@ -94,7 +81,8 @@
     for (const c of list) {
       CROP_BY_ID[c.id] = c; CROP_OF_SEED['seed_' + c.id] = c;
       ITEM_ICONS[c.id] = c.emoji; ITEM_ICONS['seed_' + c.id] = '🌰';
-      ITEM_LABEL[c.id] = c.ko;    ITEM_LABEL['seed_' + c.id] = c.ko + ' 씨앗';
+      // ★[T61] 작물 이름표도 **정본 표에** 얹는다(사본이 없어졌으니 갈 데가 하나다).
+      if (ITEM_LABEL_SRV) { ITEM_LABEL_SRV[c.id] = c.ko; ITEM_LABEL_SRV['seed_' + c.id] = c.ko + ' 씨앗'; }
       // ★렌더 PNG 가 없다 → 이모지 폴백으로 보낸다(안 넣으면 404 · `e2e-nature` 가 잡는다)
       ICON_NO_RENDER.add(c.id);   ICON_NO_RENDER.add('seed_' + c.id);
     }

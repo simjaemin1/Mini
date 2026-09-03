@@ -715,6 +715,7 @@
 
   // Esc 닫기 (M 키 토글은 기존 input handler에서 — line 846)
   window.addEventListener('keydown', (e) => {
+    if (isTypingTarget(e)) return;   // ★[T61 ⓪] 규약 하나 — **캡처 단계**라 이게 없으면 제일 먼저 가로챈다
     if (visible && e.key === 'Escape') { e.preventDefault(); hide(); }
   }, true);
 })();

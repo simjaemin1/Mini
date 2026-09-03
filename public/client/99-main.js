@@ -173,10 +173,19 @@
   })();
 // @@moved-end:5153
 // @@moved-begin:5811
+  // ★★[T61 ⓪] **입력칸에 들어가고 나올 때 눌린 키를 비운다.**
+  //   글자를 치기 직전에 누르고 있던 키가 `keys` 에 남으면, 타이핑하는 동안 캐릭터가 계속 걷는다
+  //   (keyup 이 술어에 막혀 안 지워지기 때문이다 — 잔류 0 규약이 요구하는 짝).
+  window.addEventListener('focusin', (e) => { if (isTypingTarget(e)) { keys.clear(); if (mySprint) { mySprint = false; updateHud(); } } });
+  window.addEventListener('focusout', (e) => { if (isTypingTarget(e)) keys.clear(); });
   window.addEventListener('keydown', (e) => {
-    // Phase 14.40: Shift는 modal/채팅 상관 없이 sprint 상태로만 트랙
+    // ★★[T61 ⓪] **머리에서 한 번 가른다** — 입력칸에 글자를 치는 중이면 게임 키는 없다.
+    //   종전엔 `chatActive` 만 봤고, 그마저 **Shift 추적과 preventDefault 아래**에 있었다:
+    //   그래서 로그인 칸에서 스페이스·탭이 먹히고(아래 preventDefault) Enter 를 채팅이 빼앗았다.
+    //   ⇒ 이 줄이 **첫 줄**이어야 한다. `chatActive` 는 술어 안에 흡수됐다(20-r2-visibility).
+    if (isTypingTarget(e)) return;
+    // Phase 14.40: Shift는 modal 상관 없이 sprint 상태로만 트랙
     if (e.key === 'Shift' && !mySprint) { mySprint = true; updateHud(); }
-    if (chatActive) return;
     const k = normalizeKey(e);
     if (k === 'enter') {
       e.preventDefault();
@@ -281,10 +290,10 @@
     else if (k === 'l') sendPrimary({ type: 'build', buildType: 'fence', floor: myBuildFloor });
     // I 키는 새 인벤 패널 (좀보이드식). 바닥은 건축 패널에서 클릭으로.
     else if (k === 'p') sendPrimary({ type: 'build', buildType: 'farmland', floor: myBuildFloor });
-    else if (k === 'o') sendPrimary({ type: 'harvest' });
-    // ⚠[T55 실측] 이 `k === 'g'`(먹이 주기)는 **위의 맨손 `g`(원거리 공격)에 가려 안 닿는다.**
-    //   T55 의 행동 변경은 넷뿐이라 되살리지 않았다 — 죽은 분기라고 지우지도 않았다(회부).
-    else if (k === 'g') sendPrimary({ type: 'feed' });
+    // ★★[T61 2026-09-03 · PM 판정] **죽은 분기 둘을 지웠다**(여기 있던 `'o' harvest` · `'g' feed`).
+    //   둘 다 같은 글자의 **앞 분기**(선광 `o` · 원거리 공격 `g`)에 가려 한 번도 닿은 적이 없다.
+    //   지워도 동사는 산다: 수확·먹이기는 좌측 행동 버튼(`data-action="harvest"` · `"feed"`)이 그대로 보낸다.
+    //   ⇒ 단축키 표를 다시 짜지 않는다(버튼 라벨의 "(O)"·"(G)"만 걷었다 — 없는 단축키를 광고하지 않는다).
     else if (k === 'n') toggleTribePanel();
     else if (k === 'v') sendPrimary({ type: 'pvp_set', enabled: !myPvpEnabled });
     else if (k === 'z') { myBuildFloor = Math.min(5, myBuildFloor + 1); showNotice(`건축 층: ${myBuildFloor}F`); updateHud(); }
@@ -306,7 +315,8 @@
       if (target) sendPrimary({ type: 'rescue_request', pid: target.pid });
       else toggleCookPanel();
     }
-    else if (k === '1') sendPrimary({ type: 'equip', tool: 'axe' });
+    // ★[T61] 여기 있던 `'1' equip axe` 도 지웠다 — 체인 머리의 `k === '1'`(핫키 슬롯 토글)에 가린다.
+    //   도끼 장착은 인벤·도구 목록 클릭이 정본 경로다(`50-i-panel` · `51-s-side`). 2·3·0 은 안 가리므로 그대로 둔다.
     else if (k === '2') sendPrimary({ type: 'equip', tool: 'pickaxe' });
     else if (k === '3') sendPrimary({ type: 'equip', tool: 'sword' });
     else if (k === '0') sendPrimary({ type: 'equip', tool: null });
@@ -314,7 +324,10 @@
 // @@moved-end:5811
 // @@moved-begin:5930
   window.addEventListener('keyup', (e) => {
+    // ★[T61 ⓪] keyup 도 같은 술어. ⚠단 **Shift 해제는 먼저** 한다 — 누른 채 입력칸으로 들어가
+    //   거기서 떼면 달리기가 켜진 채 남는다(잔류 0 규약).
     if (e.key === 'Shift' && mySprint) { mySprint = false; updateHud(); }
+    if (isTypingTarget(e)) { keys.clear(); return; }
     const k = normalizeKey(e);
     keys.delete(k);
     if (k === 'e' && window.__eRepeat) { clearInterval(window.__eRepeat); window.__eRepeat = null; }   // ★채굴 반복 정지

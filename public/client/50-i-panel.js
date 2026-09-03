@@ -2,14 +2,12 @@
 //   `itemIconHtml(k, 18, k)` 의 셋째 인자는 "아이콘이 없으면 대신 이걸 찍어라"인데
 //   거기에 키를 넣어 둔 자리가 이 파일에 12곳, `51-s-side.js` 에 2곳 있었다.
 //   ⇒ 자염처럼 아이콘이 아직 없는 새 품목이 들어온 날 화면에 `brine` 이 떴다(실측: e2e-salt).
-//   이름표 정본은 서버다(`ITEM_LABEL_SERVER`). 클라 표(`ITEM_LABEL`)는 폴백일 뿐이다.
-// ★★[T55 2026-09-02] 정본 → 사본 → 키. **순서가 규약이다.**
-//   `ITEM_LABEL_SRV` 는 `welcome.itemLabels`(서버 `ITEM_LABEL_SERVER`) 이고, `ITEM_LABEL` 은 폴백이다.
-//   화면에 영문 키를 찍는 자리는 전부 이 함수 하나를 통과한다(사본 문법 금지 — 자리마다 `|| k` 를 쓰면
-//   새 품목이 올 때마다 자리 수만큼 빠뜨린다. T38·자염·갯벌이 정확히 그렇게 세 번 새었다).
+//   이름표 정본은 서버다(`ITEM_LABEL_SERVER` + `itemlabel.js`). 클라에는 표가 없다(T61).
+// ★★[T55 2026-09-02 · T61 2026-09-03] **정본 하나 → 키.** 사본은 없다(T61 이 지웠다).
+//   `ITEM_LABEL_SRV` 는 `welcome.itemLabels` 다. 화면에 이름을 찍는 자리는 전부 이 함수를 통과한다
+//   (자리마다 `|| k` 를 쓰면 새 품목이 올 때마다 자리 수만큼 빠뜨린다 — T38·자염·갯벌이 그 셋이다).
 function itemKo(k) {
-  return (typeof ITEM_LABEL_SRV !== 'undefined' && ITEM_LABEL_SRV && ITEM_LABEL_SRV[k])
-      || (typeof ITEM_LABEL !== 'undefined' && ITEM_LABEL[k]) || k;
+  return (typeof ITEM_LABEL_SRV !== 'undefined' && ITEM_LABEL_SRV && ITEM_LABEL_SRV[k]) || k;
 }
 // @@split:50-i-panel — I 인벤 — 주조·요리·패널
   // ══ 주조(鑄造): 금속 여러 개를 배합해 녹인다 [재민 확정] ══════════════════
@@ -777,6 +775,7 @@ function itemKo(k) {
 
   // Esc 처리
   document.addEventListener('keydown', (e) => {
+    if (isTypingTarget(e)) return;   // ★[T61 ⓪] 규약 하나 — 글자를 치는 중이면 게임 키는 없다
     if (e.key === 'Escape') {
       if (placementMode) { placementMode = null; showNotice('배치 모드 취소'); e.stopPropagation(); return; }
       if (invOpen) { closeInv(); e.stopPropagation(); }
@@ -785,8 +784,9 @@ function itemKo(k) {
   });
   // 단축키 (I=인벤 / K=제작 / Shift+B=건축) — 채팅 input focused 아닐 때만
   document.addEventListener('keydown', (e) => {
-    const ci = document.getElementById('chatInput');
-    if (document.activeElement === ci) return;
+    // ★[T61 ⓪] 종전엔 **채팅칸 하나만** 봤다(`activeElement === chatInput`) — 로그인 칸에서
+    //   `i`·`k` 가 패널을 열던 자리다. 술어 하나로 바꾼다(채팅칸도 그 안에 있다).
+    if (isTypingTarget(e)) return;
     const k = e.key.toLowerCase();
     // ★★[T55 2026-09-02] 여기도 **머리에서 한 번** 가른다(99-main.js 와 같은 구조 — 규약을 둘로 두지 않는다).
     //   종전엔 `Shift+I`·`Shift+Y`·`Shift+P`·`Shift+Q` 가 맨손 분기를 그대로 밟았다
@@ -814,6 +814,18 @@ function itemKo(k) {
     //   단계는 서버가 매겨 보낸다(클라가 다시 양자화하면 히스테리시스가 두 벌이 되어 깜빡인다).
     const ms = ((myBody && myBody.moodles) || []).slice();
     if (myCarry && myCarry.stage > 0) ms.push({ axis: 'carry', ko: '무거움', emo: '🎒', stage: myCarry.stage });
+    // ★★[T61 2026-09-03] **후유증 한 칸** — 쓰러졌다 깨어난 뒤 스태미나 **상한**이 눌린 동안(T43).
+    //   계약은 T56 이 정한다: `aftermath { days, cap }`(남은 게임일 · 지금의 상한 0..1).
+    //   ⚠**계약이 안 왔으면 안 그린다.** 서버가 그 칸을 아직 안 실어 보내는 동안 화면은 종전 그대로다
+    //     — 없는 값을 클라가 유도하면 그게 사본이고, T56 이 착지하는 날 두 수가 갈린다.
+    //   ⚠**단계를 클라가 매기지 않는다**(§8.3 — 단계는 서버 몫). 그래서 늘 1단계로 두고,
+    //     정도는 **글자**로 말한다(남은 날 · 상한 %). 3단계가 아니므로 비네트도 안 켜진다 — 후유증은
+    //     위급이 아니라 회복 중이라는 표시다.
+    const _am = (myBody && myBody.aftermath) || null;
+    if (_am && (_am.days | 0) > 0) {
+      const _capTx = (typeof _am.cap === 'number' && _am.cap < 0.999) ? ` · 힘 ${Math.round(_am.cap * 100)}%` : '';
+      ms.push({ axis: 'aftermath', ko: `후유증 ${_am.days | 0}일${_capTx}`, emo: '🩹', stage: 1 });
+    }
     box.innerHTML = ms.map((m) =>
       `<div class="moodle s${m.stage}" data-axis="${m.axis}" data-stage="${m.stage}">`
       + `<span class="mo-emo">${m.emo}</span><span>${m.ko}</span></div>`).join('');

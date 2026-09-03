@@ -94,5 +94,73 @@ ok(leak.length === 0, '★★③ 서버 이름표가 모든 제작 재료를 안
      bad.length ? `남은 파일: ${bad.join(', ')}` : '50-i-panel · 51-s-side 둘 다 없음');
 }
 
+
+// ── ★★[T61 2026-09-03] 클라에 이름표 **사본이 남아 있지 않은가** ────────────────
+//   T55 는 정본을 실어 보내고 사본을 **폴백으로** 남겼다. T61 이 그 폴백을 지웠다 —
+//   사본이 살아 있으면 언젠가 읽히고, 그날 화면과 서버가 갈린다(T38 · 자염 · 갯벌이 그 셋이다).
+//   ⇒ 이 검사는 **한글 이름 리터럴이 클라 소스에 있는가**를 본다. 주석은 뺀다(설명이 검사에 걸린다).
+console.log('\n=== [T61] 클라에 이름표 사본이 남았나 ===');
+{
+  const codeOnly = (t) => t.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+  const FILES = ['43-i-icon.js', '60-t-market.js'];
+  const KO = /[가-힣]/;
+  const ILmod = require(path.join(ROOT, 'server', 'itemlabel.js'));
+  // ★무엇을 "사본"이라 부를지 **먼저 정한다**: 서버가 이름을 아는 **품목 키** 또는 **자원 종류 키**에
+  //   클라가 한글을 적어 둔 자리. 계절(`봄`)·직업(`농부`) 같은 다른 표는 여기 대상이 아니다 —
+  //   그건 그것대로 사본이지만 **이 카드의 것이 아니다**(발견은 보고에 적고 회부한다).
+  const OWNED = new Set([...SERVER_KEYS, ...Object.keys(ILmod.CATEGORY_KO || {})]);
+  const scan = (src) => [...src.matchAll(/(?:^|[,{\s])([A-Za-z_][\w]*)\s*:\s*'([^']*)'/g)]
+    .filter((m) => KO.test(m[2]) && OWNED.has(m[1]));
+  const hits = [];
+  for (const f of FILES) {
+    const src = codeOnly(fs.readFileSync(path.join(ROOT, 'public', 'client', f), 'utf8'));
+    for (const m of scan(src)) hits.push(`${f} ${m[1]}: '${m[2]}'`);
+  }
+  ok(hits.length === 0, "★★⑦ `43-i-icon`·`60-t-market` 에 **품목·자원 종류 이름 표가 0개**다(정본 하나)",
+     hits.length ? hits.slice(0, 6).join(' · ') : '둘 다 없음');
+  // ★자명 통과 금지 — 사본을 되살리면 이 검사가 빨개지는가(같은 함수로 잰다)
+  {
+    const back = scan("  const ITEM_LABEL = { wood: '통나무', stone: '돌' };");
+    ok(back.length === 2, '★⑧ 자명 통과 금지 — 사본을 되살린 소스에서는 이 검사가 잡는다', `${back.length}건`);
+    // ★그리고 대상이 아닌 표는 **안 잡는다**(늘 빨간 검사가 아니다)
+    const off = scan("  const SEASON_KO = { spring: '봄' };");
+    ok(off.length === 0, '★⑧ 대조 — 이 카드의 대상이 아닌 표(계절)는 안 잡는다', `${off.length}건`);
+  }
+}
+
+// ── ★★[T61] econ 자원 종류 이름 — 정본이 하나이고, 클라가 쓰는 키를 덮는가 ────────
+console.log('\n=== [T61] econ 자원 종류 이름(장마당 열) ===');
+{
+  const IL = require(path.join(ROOT, 'server', 'itemlabel.js'));
+  const CK = Object.keys(IL.CATEGORY_KO || {});
+  ok(CK.length >= 9, '★⑨ 전제: 정본 `itemlabel.js CATEGORY_KO` 를 읽었다(빈 표면 아래가 자명 통과다)', `${CK.length}키`);
+  const mk = fs.readFileSync(path.join(ROOT, 'public', 'client', '60-t-market.js'), 'utf8');
+  // ★함수 **본문만** 뗀다 — 뒤따르는 주석까지 딸려 오면 남의 한글이 이 검사에 걸린다
+  //   (`test-hist` 의 `/splice/` 함정과 같은 자리다: 검사 범위를 넓게 잡으면 검사가 거짓말한다).
+  const itemKrBody = (mk.match(/function ITEM_KR\([^)]*\)\s*\{[^}]*\}/) || [''])[0];
+  ok(/CATEGORY_KO_SRV/.test(itemKrBody) && !/[가-힣]/.test(itemKrBody),
+     '★★⑨ `ITEM_KR` 이 **서버 표만** 본다(자기 안에 한글 표가 없다)', JSON.stringify(itemKrBody.slice(0, 90)));
+  ok(/welcome/.test(fs.readFileSync(path.join(ROOT, 'public', 'client', '30-n-net.js'), 'utf8')) &&
+     /categoryLabels/.test(fs.readFileSync(path.join(ROOT, 'public', 'client', '30-n-net.js'), 'utf8')),
+     '★⑨ 그 표는 `welcome.categoryLabels` 로 온다');
+  // ★품목 표 합치기 — 옛 클라 사본 55키를 서버가 **전부** 덮는지(글자까지)
+  const zsrc = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
+  const obj = (src, name) => { const i = src.indexOf('const ' + name + ' = {'); let j = src.indexOf('{', i), d = 0, k = j;
+    for (; k < src.length; k++) { if (src[k] === '{') d++; else if (src[k] === '}') { d--; if (!d) break; } }
+    return src.slice(j, k + 1); };
+  let BR = null; try { BR = eval('(' + obj(zsrc, 'BUILDING_RECIPES') + ')'); } catch (e) {}
+  ok(!!BR, '★⑩ 전제: `BUILDING_RECIPES` 를 읽었다(건축물 이름의 정본)');
+  const base = {}; for (const k of SERVER_KEYS) base[k] = 'x';
+  const merged = IL.itemLabels(base, BR || {});
+  ok(Object.keys(merged).length > SERVER_KEYS.size,
+     '★⑩ 합친 표가 zone 표보다 크다 — 광물·건축물 이름이 실제로 붙었다',
+     `${SERVER_KEYS.size} → ${Object.keys(merged).length}키`);
+  for (const k of ['item_wall', 'item_fence', 'ore_chunk', 'iron', 'tungsten', 'jade_raw']) {
+    ok(!!merged[k] && merged[k] !== 'x', `★⑩ \`${k}\` 이름을 안다(옛 클라 사본에만 있던 키)`, merged[k]);
+  }
+  ok(!/\(Wall\)|\(Fence\)/.test(String(merged.item_wall) + String(merged.item_fence)),
+     '★⑩ 건축물 이름에서 영문 꼬리를 뗐다(정본 라벨은 "벽 (Wall)" 꼴이다)', `${merged.item_wall} · ${merged.item_fence}`);
+}
+
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
 process.exit(fail ? 1 : 0);

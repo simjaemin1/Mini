@@ -1,4 +1,9 @@
 // @@split:44-h-hud — H — 컨텍스트 메뉴·핫키바·updateHud·미니맵·채팅로그 (T53 ④)
+
+  // ★[T61] 아묾 표시용 — 마지막으로 본 HP 와 "오르는 중" 등불의 유효 시각.
+  //   ⚠새 서버 칸 0. 관측값 둘뿐이고, 둘 다 화면 전용이다(예측·판정에 안 쓴다).
+  let _hpSeen = 0, _healingUntil = 0;
+  const HEAL_HOLD_MS = 1500;
   // 14.53: 우클릭 컨텍스트 메뉴 — 임의 옵션 list 받아서 마우스 위치에 띄움.
   let _ctxMenuEl = null;
   function hideContextMenu() {
@@ -120,7 +125,14 @@
     }
   }
   function updateHud() {
-    onbHudLine();   // ★[온보딩 v2] 하루 정산·기여 한 줄(§9.4) — 새 패널 0, HUD 한 줄
+    // ★★[T61 2026-09-03 실측] **로드 100ms 창의 경주** — 종전엔 그냥 `onbHudLine()` 이었다.
+    //   `setInterval(updateHud, 100)`(이 파일 아래)은 44 가 실행된 100ms 뒤부터 돈다. 그런데
+    //   `onbHudLine` 은 **70-lobby.js**(등록 순 뒤)에 있다 ⇒ 2코어에서 스크립트 사이가 100ms 를
+    //   넘으면 그 틱이 `onbHudLine is not defined` 로 죽는다. 그리고 이건 **첫 줄**이라
+    //   `updateHud` 가 통째로 중단된다 — 그 창 동안 HUD 가 한 번도 안 그려진다.
+    //   실측: `e2e-salt` 콘솔 오류 2건(부하가 높던 판에서만 · 다른 판에선 0건).
+    //   ⚠온보딩 v2 가 남긴 경주지 이 카드가 만든 것이 아니다. 한 줄이라 여기서 닫는다.
+    if (typeof onbHudLine === 'function') onbHudLine();   // ★[온보딩 v2] 하루 정산·기여 한 줄(§9.4)
     document.getElementById('invWood').textContent = inventory.wood || 0;
     const plankEl = document.getElementById('invPlank');
     if (plankEl) plankEl.textContent = inventory.plank || 0;
@@ -145,10 +157,27 @@
         eqEl.textContent = '맨손';
       }
     }
+    // ★★[T61 2026-09-03] **아묾이 화면에 실린다** — 회부 "[N/클라] HP 자연 회복이 화면에 안 실린다".
+    //   ★서버에 칸을 하나도 더하지 않았다. 서버의 회복 게이트는 넷이고
+    //     (`hp<max` · 피격 뒤 1초 · `recoverMult>0` · 극단 감소 없음) 그중 둘은 클라가 못 본다.
+    //     ⇒ 술어를 **흉내내지 않는다**. 대신 **HP 가 실제로 올랐는가**를 본다 — 그게 네 게이트의 결과다.
+    //   ★"왜 안 아무는가"는 **여기서 말하지 않는다**: 갈증·추위·부상 무들이 이미 그 말을 하고 있고
+    //     (`recoverParts` 가 축별 배율을 싣는다) 같은 말을 두 번 하면 그게 중복이다(§8.3).
+    //   ★깜빡임 방지: 한 번 오르면 `HEAL_HOLD_MS` 동안 켜 둔다(서버 회복은 초당 ~10hp 이고
+    //     tick 은 그보다 잦아 프레임마다 0 인 순간이 섞인다 — 그 사이에 꺼지면 등불이 떤다).
     const hpEl = document.getElementById('hpFill');
     if (hpEl) {
+      const _now = performance.now();
+      if (myHp > _hpSeen + 0.01 && myHp < myMaxHp) _healingUntil = _now + HEAL_HOLD_MS;
+      _hpSeen = myHp;
+      const _healing = myHp < myMaxHp && _now < _healingUntil;
       hpEl.style.width = `${Math.max(0, (myHp / myMaxHp) * 100)}%`;
-      document.getElementById('hpText').textContent = `${Math.round(myHp)}/${myMaxHp}`;
+      hpEl.style.filter = _healing ? 'brightness(1.45)' : '';
+      const _hpTx = document.getElementById('hpText');
+      _hpTx.textContent = `${Math.round(myHp)}/${myMaxHp}${_healing ? ' ▲' : ''}`;
+      _hpTx.title = _healing
+        ? `아물고 있다${myRecover < 0.999 ? ` (회복 ×${myRecover.toFixed(2)})` : ''}`
+        : (myHp < myMaxHp ? '아물지 않는다 — 무들이 이유를 말한다' : '');
     }
     // hunger / thirst bar
     const hungerEl = document.getElementById('hungerFill');
