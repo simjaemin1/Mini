@@ -51,7 +51,20 @@ const state = {
   },
 };
 
-const ctx = vm.createContext({ state, SZ, console, Math, Set, Map, Array, Object, JSON, Number });
+// ★★[T49 2026-09-03] **잘라내 실행하는 자의 값과 삯.**
+//   이 하네스는 `villages.js` 의 함수를 **원문 그대로 잘라내** vm 위에서 돌린다(재구현 금지 —
+//   그게 이 하네스의 값이다). 삯은 이것이다: 제품이 그 함수 안에서 **헬퍼를 하나 더 부르는 순간**
+//   샌드박스에 그 이름이 없어 `ReferenceError` 로 죽는다.
+//   실제로 그랬다 — T50 이 `_lifeCompleteGranary` 안에 `noteVillageBuilt(vil,'granary')` 한 줄을
+//   넣었고, 이 하네스는 **러너에 들어온 첫날 그 줄에 죽었다**(`noteVillageBuilt is not defined`).
+//   ⇒ 제품은 멀쩡하다. 잘라낸 조각이 부르는 **바깥 이름을 여기서 받아 준다.**
+//     장부 기록은 이 하네스가 재는 대상이 아니므로 **아무 일도 안 하는 스텁**이 맞다.
+//     (더 잘라 넣지 않는 이유: `noteVillageBuilt` 는 모듈 상태 `_evBuilds` 를 만지는데
+//      그걸 같이 끌고 오면 이 하네스가 재지도 않는 층을 떠안는다.)
+const _stubs = {
+  noteVillageBuilt() {},           // T50 사건 장부 접점 — 여기선 무시한다
+};
+const ctx = vm.createContext(Object.assign({ state, SZ, console, Math, Set, Map, Array, Object, JSON, Number }, _stubs));
 vm.runInContext(constLine + '\n' + cut('pickGranarySpot') + '\n' + cut('_lifeCompleteGranary') + '\n' + cut('_lifeGranAdd')
   + '\nglobalThis.__api = { pickGranarySpot, _lifeGranAdd, _lifeCompleteGranary, G_CAP, G_MAX, G_BUILDD };', ctx);
 const API = ctx.__api;
