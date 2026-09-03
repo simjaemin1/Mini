@@ -13,6 +13,50 @@
   }
 
   const WALL_HEIGHT = 64; // 14.49-e2: FLOOR_HEIGHT(64)와 같음
+
+  // ★★[T67 2026-09-03] **가구·시설 스프라이트** — `scripts/props_render.py` 산출물.
+  //   재민 확정: *"모든 아이템·가구는 그림이 하나다."* 가구는 해체하면 인벤에 들어가므로
+  //   (`doDismantleBuilding` → 가구 그 자체 환원) **세계에 선 모습과 인벤 아이콘이 같은 모델**이어야 한다.
+  //   ⇒ 물건 하나 = 모델 정의 하나 = 렌더 둘. 여기선 그 둘 중 세계용을 그린다.
+  //   ★앵커 표를 **여기 적지 않는다**. `/assets/props/props_anchors.json` 을 그대로 읽는다
+  //     (자연물 `nature_anchors.json` 과 같은 규약). 옮겨 적으면 다시 굽는 날 두 벌이 갈린다(족보 79).
+  //   ★앵커 원점은 **그리기 자리**에 맞춰 구웠다: 덩어리형은 셀 중심, 벽·문은 밑변 한가운데.
+  //     그래서 여기서 델타 계산이 한 줄도 없다 — `drawImage(sp, x-_ox, y-_oy)` 뿐이다.
+  //   ★적재는 **첫 건물 그릴 때** 한 번 시작한다(최상위 실행문 금지 규약 — `test-client-globals ③`).
+  const _propSpr = {};
+  let _propAnchors = null, _propLoaded = 0, _propInit = false;
+  function _propsEnsure() {
+    if (_propInit) return;
+    _propInit = true;
+    (async () => {
+      try {
+        const r = await fetch('/assets/props/props_anchors.json');
+        if (!r.ok) return;
+        _propAnchors = await r.json();
+        for (const k in _propAnchors) {
+          const a = _propAnchors[k], im = new Image();
+          im.onload = () => { im._ox = a.ox; im._oy = a.oy; _propSpr[k] = im; _propLoaded++; };
+          im.src = '/assets/props/' + k + '.png';   // ★키는 JSON 이 준다 — 손으로 적은 목록이 없으니 404 가 날 수 없다
+        }
+        console.log('[props] 가구 스프라이트', Object.keys(_propAnchors).length, '종 로드 시작');
+      } catch (e) { console.warn('[props] 앵커 로드 실패:', e.message); }
+    })();
+  }
+  // 몸체 = 스프라이트 한 줄. 상태(불꽃·거래소 표식·파손 투명도)는 부르는 쪽이 얹는다.
+  function drawPropBody(key, x, y) {
+    const sp = _propSpr[key];
+    if (!sp) return false;
+    ctx.drawImage(sp, x - sp._ox, y - sp._oy);
+    return true;
+  }
+  // 아직 안 온 렌더 = **점선 빈 칸**(설계 §1-5 "아이콘 없는 품목은 이모지가 아니라 점선 빈 칸").
+  //   8종이 각자 도형을 들고 있던 자리를 이 하나로 대신한다 — 폴백 도형을 두면 정본이 둘이 된다.
+  function drawPropPending(x, y) {
+    ctx.setLineDash([3, 3]); ctx.strokeStyle = 'rgba(180,170,140,0.55)'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x, y - 16); ctx.lineTo(x + 32, y); ctx.lineTo(x, y + 16); ctx.lineTo(x - 32, y);
+    ctx.closePath(); ctx.stroke(); ctx.setLineDash([]);
+  }
   // 14.49-e7ah: stair cell N의 8 sub-step만 그림. anchor (x, y) = cell N center.
   function drawStairCellPart(x, y, cellN, building) {
     const H = FLOOR_HEIGHT;
@@ -65,6 +109,7 @@
   }
 
   function drawBuildingIso(x, y, type, building) {
+    _propsEnsure();   // ★[T67] 가구 스프라이트 최초 1회 적재 시작(비동기 — 오는 동안은 점선 빈 칸)
     if (type === 'vtile') {
       // ★[실체화 동기 — 랩 정본] 마을 지면 타일: yard=부지 원판(다짐 흙), plaza=큰집 마당 광장, garden=텃밭(이랑)
       const kind = (building?.data?.kind) || 'yard';
@@ -329,53 +374,14 @@
       return;
     }
     if (type === 'wall') {
-      const H = WALL_HEIGHT;
-      const side = building?.data?.side || 'N';
-      const damaged = !!building?.data?.damaged; // Phase 14.33
-      ctx.strokeStyle = damaged ? '#5a2a2a' : '#3a3a3a';
-      ctx.lineWidth = 0.5;
-      if (damaged) ctx.globalAlpha = 0.45; // 부서진 wall은 반투명
-      if (side === 'N') {
-        // cell N edge: 좌상 (x-16, y-8) → 우하 (x+16, y+8). 바닥선.
-        // 윗면(z=H): 좌상 (x-16, y-8-H) → 우하 (x+16, y+8-H).
-        // 측면(앞쪽 보이는 면) = bottom 사선과 top 사선 잇는 직사각형.
-        ctx.beginPath();
-        ctx.moveTo(x - 16, y - 8);       // 바닥 TL = cell TL
-        ctx.lineTo(x + 16, y + 8);       // 바닥 TR = cell TR
-        ctx.lineTo(x + 16, y + 8 - H);   // 윗면 TR
-        ctx.lineTo(x - 16, y - 8 - H);   // 윗면 TL
-        ctx.closePath();
-        if (_wallNC && !damaged) {   // ★통나무 텍스처(생성 에셋) — 전 벽 유닛 공용 스킨(전단 변환으로 평행사변형에 정합)
-          ctx.save(); ctx.clip(); ctx.translate(x - 16, y - 8); ctx.transform(1, 0.5, 0, 1, 0, 0); ctx.drawImage(_wallNC, 0, -H); ctx.restore(); ctx.stroke();
-        } else { ctx.fillStyle = '#8a7a5c'; ctx.fill(); ctx.stroke(); } // 나무색(폴백/파손)
-        // 윗면 (cell edge 위 H px) — 얇은 평행사변형으로 입체감
-        ctx.beginPath();
-        ctx.moveTo(x - 16, y - 8 - H);
-        ctx.lineTo(x + 16, y + 8 - H);
-        ctx.lineTo(x + 14, y + 6 - H);
-        ctx.lineTo(x - 18, y - 10 - H);
-        ctx.closePath();
-        ctx.fillStyle = '#b8a075'; ctx.fill(); ctx.stroke();
-      } else { // E
-        // cell E edge: 우상 (x+16, y-8) → 우하 (x-16, y+8). 바닥선.
-        ctx.beginPath();
-        ctx.moveTo(x + 16, y - 8);       // 바닥 TR = cell TR
-        ctx.lineTo(x - 16, y + 8);       // 바닥 BR = cell BR
-        ctx.lineTo(x - 16, y + 8 - H);   // 윗면 BR
-        ctx.lineTo(x + 16, y - 8 - H);   // 윗면 TR
-        ctx.closePath();
-        if (_wallEC && !damaged) {   // ★통나무 텍스처 — 그늘면
-          ctx.save(); ctx.clip(); ctx.translate(x - 16, y + 8); ctx.transform(1, -0.5, 0, 1, 0, 0); ctx.drawImage(_wallEC, 0, -H); ctx.restore(); ctx.stroke();
-        } else { ctx.fillStyle = '#8a7a5c'; ctx.fill(); ctx.stroke(); }
-        ctx.beginPath();
-        ctx.moveTo(x + 16, y - 8 - H);
-        ctx.lineTo(x - 16, y + 8 - H);
-        ctx.lineTo(x - 18, y + 6 - H);
-        ctx.lineTo(x + 14, y - 10 - H);
-        ctx.closePath();
-        ctx.fillStyle = '#b8a075'; ctx.fill(); ctx.stroke();
-      }
-      ctx.globalAlpha = 1; // Phase 14.33: damaged wall 반투명 복원
+      // ★[T67] 몸체 = 스프라이트(굴립주 통나무 벽 2m). 방향 변형 둘뿐이다 —
+      //   서버가 이웃을 안 보고 `data.side ∈ {N,E}` 만 준다(§0-ⓑ 실측). '끝/중간' 변형은 없다.
+      //   이음새는 변형이 아니라 **모델이 셀 경계에서 끝나게** 해서 맞춘다.
+      const damaged = !!building?.data?.damaged;   // Phase 14.33 — 부서진 벽은 반투명(상태는 코드)
+      const _pa = ctx.globalAlpha;
+      if (damaged) ctx.globalAlpha = _pa * 0.45;
+      if (!drawPropBody((building?.data?.side || 'N') === 'N' ? 'wall_n' : 'wall_e', x, y)) drawPropPending(x, y);
+      ctx.globalAlpha = _pa;
     } else if (type === 'floor') {
       // ★움집 실내(컷어웨이로만 도달 — 밖에선 지붕 스킨이 억제): 다짐흙 바닥 + 정본 가구.
       //   침대 6 = BEDO 앵커 상대 [[-4,-4],[-3,-4],[-2,-4],[-1,-4],[-4,-3],[-1,-3]](랩 정본 — 1인 1침대 고증, HOME_SLOTS와 같은 사상)
@@ -421,78 +427,18 @@
       ctx.fillStyle = fillCol; ctx.fill();
       ctx.strokeStyle = '#5a3a1c'; ctx.lineWidth = 0.5; ctx.stroke();
     } else if (type === 'door') {
-      // 14.50: 문 — wall과 비슷한 sprite, 색 다름. open이면 반투명 + 짧게.
-      const H = WALL_HEIGHT;
-      const side = building?.data?.side || 'N';
-      const open = !!building?.data?.open;
-      const drawH = open ? H * 0.25 : H; // 열림: 1/4 높이
-      const col = open ? 'rgba(140, 100, 60, 0.4)' : '#6a4a2a'; // 닫힘: 진한 갈색, 열림: 반투명
-      ctx.strokeStyle = open ? 'rgba(60,40,20,0.5)' : '#3a2010';
-      ctx.lineWidth = 0.6;
-      ctx.fillStyle = col;
-      if (side === 'N') {
-        ctx.beginPath();
-        ctx.moveTo(x - 16, y - 8);
-        ctx.lineTo(x + 16, y + 8);
-        ctx.lineTo(x + 16, y + 8 - drawH);
-        ctx.lineTo(x - 16, y - 8 - drawH);
-        ctx.closePath(); ctx.fill(); ctx.stroke();
-      } else {
-        ctx.beginPath();
-        ctx.moveTo(x + 16, y - 8);
-        ctx.lineTo(x - 16, y + 8);
-        ctx.lineTo(x - 16, y + 8 - drawH);
-        ctx.lineTo(x + 16, y - 8 - drawH);
-        ctx.closePath(); ctx.fill(); ctx.stroke();
-      }
-      // 닫힘 시 손잡이 점
-      if (!open) {
-        ctx.fillStyle = '#f0c674';
-        ctx.beginPath();
-        if (side === 'N') ctx.arc(x + 8, y - H/2, 1.5, 0, Math.PI * 2);
-        else              ctx.arc(x - 8, y - H/2, 1.5, 0, Math.PI * 2);
-        ctx.fill();
-      }
+      // ★[T67] 몸체 = 스프라이트. **열림도 몸체다** — 종전의 '1/4 높이 반투명'은 폐지했다.
+      //   열린 문은 문짝을 들어낸 **빈 문틀**로 굽는다(청동기 문엔 경첩이 없다 — 새끼를 풀어 들어낸다).
+      //   ⇒ 방향 2 × 열림/닫힘 2 = 4장. 코드가 얹는 상태는 없다.
+      const _dsN = (building?.data?.side || 'N') === 'N';
+      const _dop = !!building?.data?.open;
+      if (!drawPropBody(_dsN ? (_dop ? 'door_n_open' : 'door_n') : (_dop ? 'door_e_open' : 'door_e'), x, y)) drawPropPending(x, y);
     } else if (type === 'chest') {
-      // Phase 4d-2: 거래소 chest 식별 (canadia zone)
-      const isExchange = building?.data?.isExchange === true;
+      // ★[T67] 몸체 = 스프라이트. 거래소 상자는 **같은 모델의 변형**이다(붉은 안료 띠 + 청동 못머리) —
+      //   색을 코드로 칠하면 인벤 아이콘과 갈리므로, 몸은 굽고 **떠 있는 이름표만** 코드가 얹는다.
+      const isExchange = building?.data?.isExchange === true;   // Phase 4d-2: 거래소 chest 식별
       const village = building?.data?.village || null;
-      // 색상 — 거래소면 금색/주황, 일반은 나무색
-      const topCol = isExchange ? '#e8b85e' : '#a87246';
-      const rightCol = isExchange ? '#b88838' : '#7c5232';
-      const leftCol = isExchange ? '#d09a48' : '#946040';
-      const edgeCol = isExchange ? '#6b4a18' : '#5a3a1c';
-      // 그림자
-      ctx.fillStyle = 'rgba(0,0,0,0.4)';
-      ctx.beginPath(); ctx.ellipse(x, y + 6, 14, 5, 0, 0, Math.PI * 2); ctx.fill();
-      // 윗면
-      ctx.beginPath();
-      ctx.moveTo(x, y - 12); ctx.lineTo(x + 14, y - 4);
-      ctx.lineTo(x, y + 4); ctx.lineTo(x - 14, y - 4); ctx.closePath();
-      ctx.fillStyle = topCol; ctx.fill();
-      ctx.strokeStyle = edgeCol; ctx.lineWidth = 1; ctx.stroke();
-      // 우측면
-      ctx.beginPath();
-      ctx.moveTo(x + 14, y - 4); ctx.lineTo(x + 14, y + 4);
-      ctx.lineTo(x, y + 12); ctx.lineTo(x, y + 4); ctx.closePath();
-      ctx.fillStyle = rightCol; ctx.fill(); ctx.stroke();
-      // 좌측면
-      ctx.beginPath();
-      ctx.moveTo(x - 14, y - 4); ctx.lineTo(x - 14, y + 4);
-      ctx.lineTo(x, y + 12); ctx.lineTo(x, y + 4); ctx.closePath();
-      ctx.fillStyle = leftCol; ctx.fill(); ctx.stroke();
-      // 자물쇠 / 거래소 별표
-      if (isExchange) {
-        ctx.fillStyle = '#fff8d0';
-        ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center';
-        ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineWidth = 2;
-        ctx.strokeText('★', x, y + 1);
-        ctx.fillText('★', x, y + 1);
-        ctx.textAlign = 'start';
-      } else {
-        ctx.fillStyle = '#f0c674';
-        ctx.fillRect(x - 2, y - 2, 4, 4);
-      }
+      if (!drawPropBody(isExchange ? 'chest_exchange' : 'chest', x, y)) drawPropPending(x, y);
       // 거래소 라벨 — 마을 이름 floating
       if (isExchange && village) {
         ctx.font = 'bold 11px sans-serif';
@@ -510,51 +456,11 @@
         ctx.textAlign = 'start';
       }
     } else if (type === 'fence') {
-      // 14.50: 울타리 — cell 전체 차지, 절반 높이, orientation (EW/NS)로 막대 방향만 다름
-      const fH = WALL_HEIGHT * 0.5;
-      const half = CL_BUILDING_SIZE / 2; // 16
-      const ori = building?.data?.orientation || 'NS';
-      // 4 모서리 (top 평면)
-      const tl = { x: x + (-half - (-half)), y: y + ((-half) + (-half)) * 0.5 - fH };
-      const tr = { x: x + (half - (-half)), y: y + (half + (-half)) * 0.5 - fH };
-      const br = { x: x + (half - half), y: y + (half + half) * 0.5 - fH };
-      const bl = { x: x + (-half - half), y: y + (-half + half) * 0.5 - fH };
-      // 4 모서리 (bottom 평면) — z=0
-      const tlB = { x: tl.x, y: tl.y + fH };
-      const trB = { x: tr.x, y: tr.y + fH };
-      const brB = { x: br.x, y: br.y + fH };
-      const blB = { x: bl.x, y: bl.y + fH };
-      // 그림자
-      ctx.fillStyle = 'rgba(0,0,0,0.3)';
-      ctx.beginPath();
-      ctx.moveTo(tlB.x, tlB.y); ctx.lineTo(trB.x, trB.y);
-      ctx.lineTo(brB.x, brB.y); ctx.lineTo(blB.x, blB.y); ctx.closePath();
-      ctx.fill();
-      // 측면 (오른쪽 두 면) — fill
-      ctx.fillStyle = '#6a4828';
-      ctx.beginPath(); ctx.moveTo(tr.x, tr.y); ctx.lineTo(br.x, br.y); ctx.lineTo(brB.x, brB.y); ctx.lineTo(trB.x, trB.y); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = '#5a3e22';
-      ctx.beginPath(); ctx.moveTo(br.x, br.y); ctx.lineTo(bl.x, bl.y); ctx.lineTo(blB.x, blB.y); ctx.lineTo(brB.x, brB.y); ctx.closePath(); ctx.fill();
-      // 상단 평면
-      ctx.fillStyle = '#7c5a32';
-      ctx.beginPath(); ctx.moveTo(tl.x, tl.y); ctx.lineTo(tr.x, tr.y); ctx.lineTo(br.x, br.y); ctx.lineTo(bl.x, bl.y); ctx.closePath(); ctx.fill();
-      // orientation 표시 — 막대 라인 (EW: 동서로 가로지름, NS: 남북으로)
-      ctx.strokeStyle = '#3a2a18'; ctx.lineWidth = 1.5;
-      if (ori === 'EW') {
-        // 동(우)서(좌) — iso상 가로축 = 화면상 (dx=±1, dy=0) → 화면 x ±32
-        ctx.beginPath();
-        const ax = x - 16, bx = x + 16;
-        ctx.moveTo(ax, y - fH); ctx.lineTo(bx, y - fH); ctx.stroke();
-      } else {
-        // 남북 — iso (dx=0, dy=±1) → 화면 (0, ±16)
-        ctx.beginPath();
-        const ay = y - fH - 16, by = y - fH + 16;
-        ctx.moveTo(x, ay); ctx.lineTo(x, by); ctx.stroke();
-      }
-      // 윤곽
-      ctx.strokeStyle = '#3a2a18'; ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(tl.x, tl.y); ctx.lineTo(tr.x, tr.y); ctx.lineTo(br.x, br.y); ctx.lineTo(bl.x, bl.y); ctx.closePath(); ctx.stroke();
+      // ★[T67] 몸체 = 스프라이트. `data.orientation ∈ {NS,EW}` 둘뿐(§0-ⓑ 실측).
+      //   말뚝을 **셀 경계**(축 ±0.5셀)에 세워 구웠으므로 이웃 칸 말뚝과 같은 자리에 서서 이음새가 맞는다.
+      //   ⚠종전 벡터의 방향 표시선은 화면 가로/세로로 그어 **아이소 축과 어긋나 있었다**
+      //     (월드 (1,0) 은 화면 (32,16) 인데 (32,0) 으로 그었다). 스프라이트가 그것도 바로잡는다.
+      if (!drawPropBody((building?.data?.orientation || 'NS') === 'EW' ? 'fence_ew' : 'fence_ns', x, y)) drawPropPending(x, y);
     } else if (type === 'stair') {
       // === PZ식 3-cell 24-subStep 계단 (14.49-e2) ===
       // anchor (this draw 좌표 x, y) = cell 0 (낮은 발판) 중심. dir 방향으로 cell 1, 2 추가.
@@ -702,68 +608,36 @@
       ctx.closePath(); ctx.stroke(); ctx.fill();
       // 14.49-e7b: 라벨 제거 (자동 계단이라 키 안내 불필요)
     } else if (type === 'workbench') {
-      // ★★[시설 제작창 2026-08-29] **작업대** — 널판 상판 + 다리 넷 + 얹힌 돌.
-      //   ⚠**발판 도형이다**(회부: 시설 신규 스프라이트). 자연물·건물 정본 에셋으로 교체 예정.
-      //   지금 벡터로 그리는 이유: 스프라이트를 새로 그리는 건 이 배치의 일이 아니고,
-      //   그렇다고 안 그리면 **"데이터는 있는데 세계엔 없는"** 시설이 된다(족보 67 과 같은 함정).
-      ctx.fillStyle = 'rgba(0,0,0,0.35)';
-      ctx.beginPath(); ctx.ellipse(x, y + 5, 17, 6, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#4a3520';
-      ctx.fillRect(x - 13, y - 2, 3, 8); ctx.fillRect(x + 10, y - 2, 3, 8);      // 다리
-      ctx.fillStyle = '#7a5a33';                                                  // 상판(널판)
-      ctx.beginPath(); ctx.moveTo(x, y - 12); ctx.lineTo(x + 18, y - 3); ctx.lineTo(x, y + 6); ctx.lineTo(x - 18, y - 3); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = '#5a4123'; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(x - 9, y - 7.5); ctx.lineTo(x + 9, y + 1.5); ctx.stroke();
-      ctx.fillStyle = '#8d8d8d';                                                  // 얹힌 숫돌
-      ctx.beginPath(); ctx.ellipse(x + 3, y - 6, 5, 2.6, 0, 0, Math.PI * 2); ctx.fill();
+      // ★[T67] 몸체 = 스프라이트. 종전 발판 도형(통나무 다리 + 널 상판 fillRect)을 걷었다 —
+      //   그때 주석이 예고한 "자연물·건물 정본 에셋으로 교체"가 이 카드다.
+      if (!drawPropBody('workbench', x, y)) drawPropPending(x, y);
     } else if (type === 'drying_rack') {
-      // ★★[부패·보존 배치 2026-08-31] **건조대** — 장대 둘 + 가로대 + 걸린 것들.
-      //   ⚠작업대와 같은 규약의 **발판 도형**이다(회부: 시설 신규 스프라이트).
-      //   안 그리면 "데이터는 있는데 세계엔 없는" 시설이 된다(족보 67) — 그 함정을 다시 밟지 않는다.
-      ctx.fillStyle = 'rgba(0,0,0,0.32)';
-      ctx.beginPath(); ctx.ellipse(x, y + 5, 16, 5.5, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#6b4f2a';                                                   // 장대 둘
-      ctx.fillRect(x - 14, y - 20, 3, 26);
-      ctx.fillRect(x + 11, y - 20, 3, 26);
-      ctx.fillStyle = '#8a6a3c';                                                   // 가로대
-      ctx.fillRect(x - 15, y - 21, 30, 3);
-      ctx.strokeStyle = '#9d8a5f'; ctx.lineWidth = 1;                              // 풀 끈
-      ctx.beginPath(); ctx.moveTo(x - 14, y - 17); ctx.lineTo(x - 10, y - 21); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(x + 14, y - 17); ctx.lineTo(x + 10, y - 21); ctx.stroke();
-      // 걸린 것 셋 — 마르는 중인 물건(바람에 아주 조금 흔들린다)
-      const _sw = Math.sin(performance.now() * 0.0016) * 0.9;
-      for (let i = -1; i <= 1; i++) {
-        const hx = x + i * 9 + _sw * (i === 0 ? 0.6 : 1);
-        ctx.strokeStyle = '#7d6b48'; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(x + i * 9, y - 18); ctx.lineTo(hx, y - 13); ctx.stroke();
-        ctx.fillStyle = i === 0 ? '#c9a97a' : '#b9976a';
-        ctx.beginPath(); ctx.ellipse(hx, y - 8, 3.2, 5.4, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = 'rgba(90,70,40,0.7)';
-        ctx.beginPath(); ctx.moveTo(hx, y - 12.5); ctx.lineTo(hx, y - 3.5); ctx.stroke();
-      }
+      // ★[T67] 몸체 = 스프라이트. 널린 것도 **몸체에 굽는다** — 서버에 건조대 내용물이 없다
+      //   (`facility.js` 는 거리 판정뿐 · §0-ⓒ 실측). 상태가 아니면 코드가 들 이유가 없다.
+      //   ⚠종전의 바람 흔들림(±0.9px)은 함께 사라진다 — 기록해 둔 맞바꿈이다(보고 ⓒ).
+      if (!drawPropBody('drying_rack', x, y)) drawPropPending(x, y);
+    } else if (type === 'salt_kiln') {
+      // ★★[T67] **신규 분기.** 자염 배치가 서버에 소금가마를 세웠는데 클라 `drawBuildingIso` 에
+      //   분기가 없었다 — 폴백도 없어서 **지어도 화면에 아무것도 없었다**(족보 67 함정 재발 · §0 실측).
+      if (!drawPropBody('salt_kiln', x, y)) drawPropPending(x, y);
     } else if (type === 'campfire') {
-      // 모닥불 — 통나무 + 흔들리는 불꽃
-      ctx.fillStyle = 'rgba(0,0,0,0.4)';
-      ctx.beginPath(); ctx.ellipse(x, y + 5, 14, 5, 0, 0, Math.PI * 2); ctx.fill();
-      // 통나무 받침
-      ctx.fillStyle = '#5a3a1c';
-      ctx.fillRect(x - 10, y - 1, 20, 4);
-      ctx.fillStyle = '#3a2818';
-      ctx.fillRect(x - 8, y + 3, 16, 2);
-      // 불꽃 (시간 기반 흔들림)
+      // ★[T67] 몸체(화덕돌·재·탄 장작) = 스프라이트 · **불꽃은 코드가 얹는다**(흔들려야 한다).
+      //   몸체 10px + 불꽃 10px = 서버 `BUILDING_HEIGHT.campfire`(20px). 불꽃 밑동을 몸체 꼭대기에 맞춘다.
+      if (!drawPropBody('campfire', x, y)) drawPropPending(x, y);
+      const FB = y - 10;                       // 불꽃 밑동 = 몸체 꼭대기
       const tt = performance.now() * 0.008;
       const flicker = Math.sin(tt) * 1.5;
       ctx.fillStyle = '#ff6a2a';
       ctx.beginPath();
-      ctx.moveTo(x - 5, y - 1);
-      ctx.quadraticCurveTo(x - 3 + flicker, y - 12, x, y - 16);
-      ctx.quadraticCurveTo(x + 4 + flicker, y - 11, x + 5, y - 1);
+      ctx.moveTo(x - 4, FB);
+      ctx.quadraticCurveTo(x - 2.5 + flicker, FB - 7, x, FB - 10);
+      ctx.quadraticCurveTo(x + 3.5 + flicker, FB - 6.5, x + 4, FB);
       ctx.closePath(); ctx.fill();
       ctx.fillStyle = '#ffce4a';
       ctx.beginPath();
-      ctx.moveTo(x - 2, y - 2);
-      ctx.quadraticCurveTo(x + flicker, y - 9, x + 1, y - 13);
-      ctx.quadraticCurveTo(x + 3 + flicker, y - 8, x + 3, y - 2);
+      ctx.moveTo(x - 1.6, FB - 0.6);
+      ctx.quadraticCurveTo(x + flicker, FB - 5, x + 0.8, FB - 7.6);
+      ctx.quadraticCurveTo(x + 2.4 + flicker, FB - 4.6, x + 2.4, FB - 0.6);
       ctx.closePath(); ctx.fill();
     } else if (type === 'siege_camp') {
       // Phase 14.5 — 공성 캠프: 텐트(삼각 천막)
