@@ -3851,11 +3851,11 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'village_deliver') tryVillageDeliver(player, msg.vid, msg.item, msg.want);
   else if (msg.type === 'village_withdraw') tryVillageWithdraw(player, msg.vid, msg.res, msg.qty);   // ★[T11] 곳간 인출(소속만)
   else if (msg.type === 'onboarding_state' || msg.type === 'onboarding_greet' || msg.type === 'onboarding_day') Onboarding.handleMsg(player, msg);   // ★[온보딩 v2] 대본 상태·촌장 첫 마디·하루 정산
-  else if (msg.type === 'village_trade') tryVillageTrade(player, msg.vid);                                   // ★[거래소] 시세표
-  else if (msg.type === 'village_trade_exec') tryVillageTradeExec(player, msg.vid, msg.give, msg.take, msg.qty);  // ★[거래소] 교환
+  else if (msg.type === 'village_trade') tryVillageTrade(player, msg.vid, msg.numeraire);                     // ★[거래소] 시세표(T69 기준 품목)
+  else if (msg.type === 'village_trade_exec') tryVillageTradeExec(player, msg.vid, msg.give, msg.take, msg.qty, msg.want, msg.numeraire);  // ★[거래소] 교환(T69 받을 양)
   else if (msg.type === 'village_trade_quote') {                                                            // ★[거래소] 견적(확정 전 표시)
     if (SimVillages.villageTradeQuote) {
-      const q = SimVillages.villageTradeQuote(msg.vid | 0, player.x, player.y, msg.give, msg.take, msg.qty, _unitsOfFor(player));
+      const q = SimVillages.villageTradeQuote(msg.vid | 0, player.x, player.y, msg.give, msg.take, msg.qty, _unitsOfFor(player), { want: msg.want });
       send(player.ws, { type: 'village_trade_quote', quote: q, vid: msg.vid | 0 });
     }
   }
@@ -7839,20 +7839,20 @@ function _spoiledGuardRes(player, res) {
   const items = Object.keys(map).filter((it) => map[it] === res);
   return _spoiledGuardItems(player, items);
 }
-function tryVillageTrade(player, vid) {
+function tryVillageTrade(player, vid, numeraire) {
   if (!SimVillages.villageTradeBoard) return;
-  const r = SimVillages.villageTradeBoard(vid | 0, player.x, player.y, player.inventory);
+  const r = SimVillages.villageTradeBoard(vid | 0, player.x, player.y, player.inventory, numeraire);
   if (r.err) { send(player.ws, { type: 'notice', text: `🏪 ${r.err}` }); return; }
   player._memberNearVid = vid | 0;                      // ★[T11] 채팅 `/인출` 이 어느 마을인지
   r.member = _memberLine(player, vid | 0);              // ★[T11] 소속·오늘 남은 몫 — **기존 payload 한 줄**(새 창구 0)
   send(player.ws, { type: 'village_trade', trade: r });
 }
 // ★교환 — 서버 권위. 비율도 상한도 서버가 정하고, 클라는 "이거 내고 저거 받겠다"만 말한다.
-function tryVillageTradeExec(player, vid, giveRes, takeRes, qty) {
+function tryVillageTradeExec(player, vid, giveRes, takeRes, qty, want, numeraire) {
   if (!SimVillages.villageTradeExec) return;
   const _sp = _spoiledGuardRes(player, giveRes);   // ★[부패] 상한 것은 거래소가 안 받는다
   if (_sp) { send(player.ws, { type: 'notice', text: `🏪 ${_sp}` }); return; }
-  const r = SimVillages.villageTradeExec(vid | 0, player.x, player.y, player.inventory, giveRes, takeRes, qty, _unitsOfFor(player));
+  const r = SimVillages.villageTradeExec(vid | 0, player.x, player.y, player.inventory, giveRes, takeRes, qty, _unitsOfFor(player), want);
   if (r.err) { send(player.ws, { type: 'notice', text: `🏪 ${r.err}` }); return; }
   // ★내준 개체를 장부에서 **실제로 뺀다** — 위 환산은 `peekKg`(보기)였다. 안 빼면 무게가 안 준다.
   for (const [it, n] of Object.entries(r.gaveItems || {})) Carry.takeKg(player, it, n);
@@ -7864,7 +7864,7 @@ function tryVillageTradeExec(player, vid, giveRes, takeRes, qty) {
     + (r.capped ? ` (마을 재고가 모자라 ${r.wanted}→${r.give}개만 받았다)` : '') });
   // ★시세표를 **다시 보내 준다** — 방금 내 거래가 시세를 움직였을 수 있고, 그걸 보는 게 이 배치의 요점이다.
   try {
-    const b = SimVillages.villageTradeBoard(vid | 0, player.x, player.y, player.inventory);
+    const b = SimVillages.villageTradeBoard(vid | 0, player.x, player.y, player.inventory, numeraire);   // ★[T69] 되보내는 표도 **같은 기준**이라야 한다
     if (!b.err) send(player.ws, { type: 'village_trade', trade: b, after: { giveRes: r.giveRes, takeRes: r.takeRes } });
   } catch (e) {}
 }

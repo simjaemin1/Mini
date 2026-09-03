@@ -52,6 +52,9 @@ const CFG = {
   // ★넘침 프로브 — 재고를 이만큼 늘려 보고도 값이 안 내려가면 "바닥"이다(아래 `gluttedAt`).
   GLUT_PROBE_FRAC: _num('TRADE_GLUT_PROBE_FRAC', 0.5),
   GLUT_PROBE_MIN: _num('TRADE_GLUT_PROBE_MIN', 5),
+  // ★[T69] 올림의 걸음 상한 — 이분 탐색이 낸 자리에서 한두 칸이면 끝난다(개체 무게가 섞여도).
+  //   무한 루프를 막는 안전핀이지 손잡이가 아니다.
+  CLIMB_MAX: 8,
 };
 const KO_NUM = { food: '곡식', fish: '생선', wood: '나무', stone: '돌' };
 
@@ -106,12 +109,19 @@ function gluttedAt(econV2, v, res, stock) {
 
 // ── 시세표 — 그 마을 앞에서만 부른다(원격 조회 API 를 만들지 않는다 · §3.2 정보 비대칭) ──
 //   ★표시 세 칸이면 충분하다: 시세(기준 품목 환산) · 마을이 **사줄 여력** · 마을이 **팔 재고**.
-function board(ledger, econV2, vil, vid, inventory) {
+function board(ledger, econV2, vil, vid, inventory, numeraire) {
   const v = vil.econ;
   const prices = Events.pricesFresh(econV2, v);   // ★지금 재고의 함수 — 하루 캐시가 아니다(머리 주석)
   const D = ledger.deliverable;
   const canIn = tradableIn(ledger), canOut = tradableOut(ledger, vid);
-  const pn = +prices[CFG.NUMERAIRE] || 0;
+  // ★★[T69 · 캐논 §3① · 재민 확정 2026-09-03] 기준 품목은 **요청마다 온다.**
+  //   거래소에선 내 짐에서 낼 물건을 먼저 고르고, 시세는 **그 물건 기준**으로 보인다
+  //   (나무를 팔면 모든 시세가 "나무 몇 개"). 이건 **표시 기준**일 뿐이다 —
+  //   값을 새로 계산하는 줄은 한 줄도 없고(머리 제1 규약), 나누는 **분모 하나**가
+  //   달라질 뿐 분자는 종전과 같은 정본 표다.
+  //   ★아직 안 골랐거나 그 마을에 시세가 없는 품목이면 종전 기준(곡식)으로 돌아간다.
+  const nres = (numeraire && +prices[numeraire] > 0) ? String(numeraire) : CFG.NUMERAIRE;
+  const pn = +prices[nres] || 0;
   const rows = [];
   const seen = new Set([...canIn, ...canOut]);
   for (const res of seen) {
@@ -123,7 +133,7 @@ function board(ledger, econV2, vil, vid, inventory) {
       item: D.toEcon.get(res) || null,
       give: (D.items.get(res) || []),
       canGive: canIn.has(res), canTake: canOut.has(res),
-      // 기준 품목 환산 — 곡식 몇 알 값인가. **표시일 뿐**이다.
+      // 기준 품목 환산 — **낼 물건 몇 개** 값인가(기준 행 자신은 정확히 1). **표시일 뿐**이다.
       num: pn > 0 ? sig(p / pn) : null,
       stock: +stock.toFixed(2),
       sell: Events.payableQty(stock, CFG.STOCK_FRAC),   // 마을이 지금 내줄 수 있는 양(물리 상한)
@@ -132,7 +142,10 @@ function board(ledger, econV2, vil, vid, inventory) {
     });
   }
   rows.sort((a, b) => (b.num || 0) - (a.num || 0));
-  return { vid, name: vil.name, numeraire: CFG.NUMERAIRE, numeraireKo: KO_NUM[CFG.NUMERAIRE] || CFG.NUMERAIRE,
+  // ★한글 이름은 **정본 한 자리**(`Events.koRes`)가 낸다 — 위 행들과 같은 함수다.
+  //   `KO_NUM` 은 그 정본이 없는 경우의 폴백일 뿐이다(네 줄짜리 표가 기준을 정하면 그게 사본이다).
+  return { vid, name: vil.name, numeraire: nres,
+           numeraireKo: (Events.koRes ? Events.koRes(nres) : null) || KO_NUM[nres] || nres,
            spread: CFG.SPREAD, rows };
 }
 
@@ -188,7 +201,49 @@ function planSliced(econV2, v, giveRes, takeRes, giveQty, cap) {
 //   마을이 A 를 살 때는 price(A)×(1−s), B 를 팔 때는 price(B)×(1+s).
 //   ⇒ 조각별로 그 비율을 적용하고 합친다(위 planSliced). 표시되는 `ratio` 는 **첫 조각**(=한계가격),
 //     실제로 받는 양은 `take`(평균가 반영)다 — 많이 낼수록 단가가 나빠지는 게 화면에도 보인다.
-function quote(ledger, econV2, vil, vid, giveRes, takeRes, giveQty) {
+// ★★[T69 · 캐논 §3② · 재민 확정 2026-09-03] **받을 양으로 묻기** — "돌 3개를 받으려면 나무 몇 개?"
+//   종전 견적은 **내는 양 기준뿐**이었다(give → take = floor). 그래서 캐논 ②의 "내는 쪽 올림"이
+//   **설 자리가 없었다** — 올릴 대상 자체가 화면에 없었다.
+//
+// ★★이건 **새 가격 계산이 아니다.** 아래 `quote` 가 상한을 다 쓰는 `maxGive` 를 내는 그
+//   **같은 이분 탐색**을, 목표만 `cap` 에서 `want` 로 바꿔 한 번 더 도는 것이다
+//   (곡선이라 나눗셈으로 못 낸다 — `planSliced` 재호출뿐이고 값을 짓는 줄은 여전히 0이다).
+//   그 최소 give 를 **개수로 올린 것**이 곧 캐논 ②의 올림이다.
+//
+// ⚠상계(`hi0`)는 **`cap` 에 닿는 give**를 그대로 받는다. `want ≤ cap` 이면 그 give 에서
+//   `took ≥ cap ≥ want` 가 반드시 서므로 탐색이 헛돌지 않는다. `want/ratio×4` 같은 어림을
+//   상계로 쓰면 곡선이 나쁜 마을에서 상계가 목표에 **못 닿아** 조용히 틀린 수를 낸다.
+// ★★★**올림은 이 함수 하나다.** `quote`(견적)와 `exchange`(실행)가 **같은 걸음**을 부른다.
+//   왜 하나여야 하나: 견적은 "개당 단위"를 **한 개짜리 어림**으로 잡고, 실행은 **고른 그 개체들의
+//   실제 무게**로 잰다 — 자가 다르니 실행이 한 칸 더 올라가야 할 때가 있다. 그 걸음을 양쪽에
+//   따로 적으면 그게 **사본**이고, 한쪽만 고쳐지는 날 견적과 실행이 다른 수를 말한다
+//   (실제로 그렇게 짰다가 `test-trade ⑨ⓓ` 돌연변이가 잡았다 — 견적을 내림으로 망가뜨렸는데
+//    실행 쪽 사본이 조용히 고쳐 줘서 검사가 초록이었다).
+//
+// ★★걸음의 정의: **한 칸 아래에서 출발해, 받을 양에 닿는 첫 정수까지 올라간다.** 그 첫 정수가
+//   정의상 최소이고, 그것이 캐논 ②의 올림이다. ⚠이 걸음을 빼면 그대로 **내림**이 된다.
+//   판정은 새 수식이 아니라 `planSliced` 재호출뿐이다(머리 제1 규약 — 가격 사본 0).
+function _climbToWant(n0, want, unitsAt, takeAt, maxN) {
+  let n = Math.max(CFG.MIN_GIVE, n0);
+  for (let k = 0; k < CFG.CLIMB_MAX && n < maxN && takeAt(unitsAt(n)) < want; k++) n++;
+  return n;
+}
+
+function _giveForTake(econV2, v, giveRes, takeRes, want, cap, hi0) {
+  let lo = 0, hi = Math.max(1e-9, hi0);
+  for (let k = 0; k < 8; k++) {                 // 상계가 목표에 못 닿으면 넓힌다(그럴 일은 없어야 한다)
+    if (planSliced(econV2, v, giveRes, takeRes, hi, cap).took >= want - 1e-9) break;
+    lo = hi; hi *= 2;
+  }
+  for (let i = 0; i < 24; i++) {
+    const mid = (lo + hi) / 2;
+    const pl = planSliced(econV2, v, giveRes, takeRes, mid, cap);
+    if (pl.took >= want - 1e-9) hi = mid; else lo = mid;
+  }
+  return hi;
+}
+
+function quote(ledger, econV2, vil, vid, giveRes, takeRes, giveQty, opts) {
   const v = vil.econ;
   if (giveRes === takeRes) return { err: '같은 물건끼리는 바꿀 게 없다' };
   const canIn = tradableIn(ledger), canOut = tradableOut(ledger, vid);
@@ -219,8 +274,9 @@ function quote(ledger, econV2, vil, vid, giveRes, takeRes, giveQty) {
     const pl = planSliced(econV2, v, giveRes, takeRes, mid, cap);
     if (pl.took >= cap - 1e-9) hi = mid; else lo = mid;
   }
+  const hiCap = hi;                            // ★올림 탐색의 상계 — 위 주석의 그 이유로 이 값을 쓴다
   const maxGive = Math.max(0, Math.floor(hi));
-  return {
+  const out = {
     ok: true, giveRes, takeRes, ratio: +ratio.toFixed(6), spread: s,
     avgRatio: q > 0 ? +(plan.took / Math.max(1e-9, plan.gave)).toFixed(6) : null,
     priceGive: +pA.toFixed(6), priceTake: +pB.toFixed(6),
@@ -231,6 +287,34 @@ function quote(ledger, econV2, vil, vid, giveRes, takeRes, giveQty) {
     numGive: (+prices[CFG.NUMERAIRE] || 0) > 0 ? sig(pA / prices[CFG.NUMERAIRE]) : null,
     numTake: (+prices[CFG.NUMERAIRE] || 0) > 0 ? sig(pB / prices[CFG.NUMERAIRE]) : null,
   };
+
+  // ── ★받을 양으로 물었다면: 내야 할 양(올림) ───────────────────────────────
+  const o = opts || {};
+  const want = Math.max(0, Math.floor(Number(o.want) || 0));
+  if (want > 0) {
+    // 개수↔단위: 낼 물건 한 개가 몇 '단위'인가(큰 물고기 한 마리 = 2.22단위).
+    //   ★캐논 ②의 올림은 **낱개로만 존재하는 물건**의 규약이라 **개수 자리**에서 건다.
+    //     단위 자리(`giveNeededUnits`)는 소수 그대로 같이 실어 보낸다 — kg 물건(로트)이
+    //     들어올 자리이고, 그때는 이 수를 그대로 쓰면 된다.
+    const perItem = (Number(o.perItem) > 0) ? Number(o.perItem) : 1;
+    out.want = want;
+    if (!(want <= cap + 1e-9)) {
+      // 마을이 그만큼을 못 내준다 — 값이 아니라 **물리 상한**의 문제다(`cap` 은 B-1 과 같은 함수).
+      out.giveNeeded = null; out.giveNeededUnits = null; out.takeAtNeeded = null; out.wantCapped = true;
+    } else {
+      const gu = _giveForTake(econV2, v, giveRes, takeRes, want, cap, hiCap);
+      // ★연속해(`gu`)를 그냥 `ceil` 하면 안 된다: 이분 탐색의 상계는 참값보다 (hi−lo)만큼 크게
+      //   끝나므로, 참값이 마침 정수면 `ceil` 이 **한 칸 더** 올라가 올림이 최소가 아니게 된다
+      //   (엡실론 눈대중은 답이 아니다). ⇒ **한 칸 아래에서 출발해 위 `_climbToWant` 로 올라간다.**
+      const _takeAt = (u) => Math.floor(planSliced(econV2, v, giveRes, takeRes, Math.max(0, u), cap).took);
+      const n = _climbToWant(Math.floor(gu / perItem), want, (c) => c * perItem, _takeAt, Infinity);
+      out.giveNeeded = n;
+      out.giveNeededUnits = +gu.toFixed(6);
+      out.takeAtNeeded = _takeAt(n * perItem);
+      out.wantCapped = false;
+    }
+  }
+  return out;
 }
 
 // ── 실행 — 원자적 ────────────────────────────────────────────────────────────
@@ -240,15 +324,12 @@ function quote(ledger, econV2, vil, vid, giveRes, takeRes, giveQty) {
 function exchange(a) {
   const { ledger, econV2, vil, vid, inventory, giveRes, takeRes, deposit } = a;
   const v = vil.econ;
-  const q0 = Math.max(0, Math.floor(Number(a.giveQty) || 0));   // ★플레이어가 내는 건 **개수**다
-  if (q0 < CFG.MIN_GIVE) return { ok: false, err: `${CFG.MIN_GIVE}개 이상은 내야 한다` };
   const D = ledger.deliverable;
 
   // 내가 실제로 들고 있는가 — 한 재화에 여러 아이템이 매핑된다(익힌 음식 등)
   const playerItems = D.items.get(giveRes) || [];
   let have = 0;
   for (const it of playerItems) have += Math.floor(Number(inventory[it]) || 0);
-  if (have < q0) return { ok: false, err: '그만큼 갖고 있지 않다' };
 
   // ★★[무게 배치 2026-08-27] **개수 → 재화 단위** 환산. 큰 물고기는 여러 단위어치다.
   //   `unitsOf(item, n)` 이 없으면 1개=1단위(종전 그대로) — 이 배치 이전 경로는 안 달라진다.
@@ -260,6 +341,39 @@ function exchange(a) {
     return w;
   };
   const _units = (w) => { let u = 0; for (const [it, n] of Object.entries(w)) u += unitsOf ? Number(unitsOf(it, n)) || n : n; return u; };
+
+  // ★★[T69 · 캐논 §3②] **받을 양으로 들어온 주문** — 내는 양은 위 `quote` 의 올림이다.
+  //   여기서 값을 새로 짓지 않는다: `quote({want})` 가 같은 `planSliced` 로 낸 `giveNeeded` 를 받는다.
+  //   ⚠견적의 `perItem` 은 **한 개짜리 어림**이다(개체 무게가 섞이면 평균이 달라진다).
+  //     그래서 실행은 **고른 그 개체들의 실제 무게**로 다시 재서, 모자라면 한 개씩 올린다 —
+  //     올림은 "받기로 한 양에 닿는 최소 개수"라는 뜻이고, 그 판정은 어림이 아니라 실측이어야 한다.
+  //   ★받는 쪽은 종전 그대로 `Math.floor` 다 — 넘치는 소수는 거래소 몫(캐논 ③).
+  const wantTake = Math.max(0, Math.floor(Number(a.want) || 0));
+  let q0;
+  if (wantTake > 0) {
+    const per1 = _units(_pick(1)) || 1;
+    const qw = quote(ledger, econV2, vil, vid, giveRes, takeRes, per1, { want: wantTake, perItem: per1 });
+    if (qw.err) return { ok: false, err: qw.err };
+    if (!(qw.giveNeeded > 0)) {
+      return { ok: false, err: `마을이 ${Events.koRes(takeRes)} ${wantTake}개를 못 내준다`
+        + ` — 지금 내줄 수 있는 건 ${qw.cap}까지다` };
+    }
+    // ★견적의 `giveNeeded` 에서 출발해, **고른 그 개체들의 실제 무게**로 다시 재며 올라간다.
+    //   걸음은 견적과 **같은 함수**다(`_climbToWant`) — 자만 어림에서 실측으로 바뀐다.
+    q0 = _climbToWant(qw.giveNeeded, wantTake,
+      (c) => _units(_pick(c)),
+      (u) => Math.floor(planSliced(econV2, v, giveRes, takeRes, u, qw.cap).took),
+      have);
+  } else {
+    q0 = Math.max(0, Math.floor(Number(a.giveQty) || 0));       // ★플레이어가 내는 건 **개수**다
+  }
+  if (q0 < CFG.MIN_GIVE) return { ok: false, err: `${CFG.MIN_GIVE}개 이상은 내야 한다` };
+  if (have < q0) {
+    return { ok: false, err: wantTake > 0
+      ? `${Events.koRes(takeRes)} ${wantTake}개를 받으려면 ${Events.koRes(giveRes)} ${q0}개가 필요한데 그만큼 없다`
+      : '그만큼 갖고 있지 않다' };
+  }
+
   const u0 = _units(_pick(q0));
   const perItem = q0 > 0 ? u0 / q0 : 1;           // 이 제안의 **평균 단위/개** — 견적을 세우는 데만 쓴다
 
@@ -307,7 +421,7 @@ function exchange(a) {
   return { ok: true, vid, name: vil.name, giveRes, takeRes, give, take,
            gaveItems: dep.taken, tookItem: takeItem, ratio: qt.ratio,
            giveUnits: +giveUnits.toFixed(3), perItem: +perItem.toFixed(3),
-           capped: q0 !== give, wanted: q0,
+           capped: q0 !== give, wanted: q0, wantTake: wantTake > 0 ? wantTake : null,
            stockAfter: +v.storage[takeRes].toFixed(3) };
 }
 

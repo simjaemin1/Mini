@@ -7,6 +7,78 @@
 ## 다른 영역에 있는 관련 절
 
 * → 참조: `인계/L-로트부패.md` — 3-부. ★★2026-08-31 부패·보존 배치 — **부패 곡선 + 말리기·훈제·절임** (병행 트랙 4)
+## T69. ★★2026-09-03 — **시세는 내가 낼 물건 기준 · 받을 양으로 묻고 내는 양은 올림** (거래소 v2)
+
+> 전문 `보고/T69_2026-09-03.md`. 하네스 `scripts/test-trade.js` ⑧⑨ · `scripts/e2e-trade.js` ⑦.
+> 캐논 `설계/설계_품목·동사·거래소_캐논.md` §3(재민 확정 09-03).
+
+**없던 것은 둘이었다.** 서버는 이미 임의 give/take 를 받고(`quote`·`exchange`), 받는 쪽 내림도
+스프레드·조각 적분도 종전부터 서 있었다. 빠진 건 ⓐ 시세 표시 기준이 `CFG.NUMERAIRE='food'` 로
+**고정**이었던 것 ⓑ 견적이 **내는 양 기준뿐**이라 "돌 3개 받으려면 나무 몇 개?"를 **물을 수 없었고**,
+그래서 캐논 ②의 "내는 쪽 올림"이 **설 자리가 없었다**는 것.
+
+### ⓐ 기준 품목 — 요청마다 온다
+
+```
+  board(ledger, econV2, vil, vid, inventory, numeraire)
+    const nres = (numeraire && +prices[numeraire] > 0) ? String(numeraire) : CFG.NUMERAIRE;
+    const pn   = +prices[nres] || 0;                       // ← 달라지는 건 **분모 하나**뿐
+    numeraireKo: Events.koRes(nres)                        // ← 한글 이름은 정본 하나(KO_NUM 은 폴백)
+```
+* 낼 물건을 고르면 클라가 `village_trade` 에 `numeraire: trGive` 를 실어 **표를 다시 받는다**.
+  안 골랐거나 그 마을에 시세가 없는 품목이면 **종전 곡식**으로 돌아간다(폴백은 살아 있다).
+* **클라 재계산 0** — 패널은 서버가 준 `num`·`numeraireKo` 를 찍기만 한다(`test-trade ⑧` 소스 검사).
+* 기준 행 자신은 정확히 **1**이다 — "나무를 팔면 시세가 나무 몇 개"의 정의.
+* 교환 뒤 되보내는 표도 **같은 기준**이라야 한다(`zone.js tryVillageTradeExec`).
+
+### ⓑ 받을 양으로 묻기 — 올림은 **한 자리**다
+
+```
+  quote(…, giveQty, { want, perItem })  →  giveNeeded(개수 · 올림) · giveNeededUnits(단위 · 소수) · takeAtNeeded
+  exchange({ …, want })                 →  그 giveNeeded 로 실행(받는 쪽은 종전 내림 · 넘침은 거래소 몫 · 캐논 ③)
+```
+* **새 가격 줄 0.** `quote` 가 상한을 다 쓰는 `maxGive` 를 내던 **그 이분 탐색**을, 목표만
+  `cap` → `want` 로 바꿔 한 번 더 돈다(`_giveForTake` · `planSliced` 재호출뿐).
+  상계는 어림(`want/ratio×4`)이 아니라 **`cap` 에 닿는 give(`hiCap`)** 를 쓴다 —
+  `want ≤ cap` 이면 거기서 반드시 닿으므로 탐색이 헛돌지 않는다.
+* **★★올림은 `_climbToWant` 하나다.** 연속해를 `ceil` 하면 안 된다 — 이분 탐색의 상계는 참값보다
+  (hi−lo)만큼 크게 끝나므로 참값이 마침 정수면 한 칸 더 올라가고, 그러면 올림이 **최소가 아니게** 된다.
+  ⇒ **한 칸 아래에서 출발해 받을 양에 닿는 첫 정수까지 올라간다.** 그 첫 정수가 정의상 최소다.
+* ⚠**그 걸음을 견적과 실행에 따로 적으면 그게 사본이다.** 1차 실장이 그랬고 `test-trade ⑨ⓓ` 가 잡았다 —
+  견적을 내림으로 망가뜨렸는데 **실행 쪽 사본이 조용히 고쳐 줘서** 돌연변이가 초록이었다.
+  지금은 둘이 같은 함수를 부른다: 견적은 **개당 단위 어림**(`perItem`)으로, 실행은 **고른 그 개체들의
+  실제 무게**로 — 같은 걸음, 다른 자.
+
+| 낼 물건 | 개당 단위 | 필요한 단위 | 내야 할 개수 |
+|---|---|---|---|
+| 개수 물건(1개 = 1단위) | 1 | 8.888589 | **9** (= ceil) |
+| 개체 무게 섞임(1개 = 2.22단위) | 2.22 | 8.888589 | **5** (= ceil(8.888589/2.22)) |
+
+필요한 **단위**는 환산과 무관하게 같다 — 달라지는 건 그걸 몇 개로 세느냐뿐이다.
+캐논 ②의 올림은 "낱개로만 존재하는 물건"의 규약이라 **개수 자리**에 걸리고, 단위 자리
+(`giveNeededUnits`)는 소수 그대로 실어 보낸다 — kg 물건(로트)이 들어올 자리다.
+
+### 화면 (`public/client/50-i-panel.js`)
+
+낼 것 고르기(시세가 그 기준으로 바뀐다) → 받을 것 고르기 → **받을 개수** → "내야 할 양 N".
+종전 "낼 개수"도 남는다(kg 물건은 그게 맞다). **둘 중 마지막에 만진 것이 견적의 축**(`trAxis`) —
+두 입력이 동시에 축이면 화면이 어느 쪽 수를 말하는지 사람이 알 수 없다.
+
+### 접점 (인자 전달만 · 두 줄 밖 무접촉)
+
+```
+  server/trade.js       board(+numeraire) · quote(+opts.want) · exchange(+want) · _climbToWant/_giveForTake 신설
+  server/villages.js    villageTradeBoard(+numeraire) · villageTradeQuote(+opts) · villageTradeExec(+want)
+  server/zone.js        village_trade / _quote / _exec 세 핸들러 + 두 try 함수 서명 — 전달만
+  public/client/*.js    20-r2(trWant·trAxis 선언) · 50-i-panel(거래 패널 절)
+```
+★`CFG.SPREAD`·`SLICES`·`STOCK_FRAC` 무변 · `exchange` 원자 순서(②재고 먼저) 무변 · econ 무접촉.
+
+### 회부 (구현 금지)
+
+`food` 라는 뭉뚱그린 재화 자체(→ ECON 2-c) · 원격 시세 조회(캐논 §3.2 — 안 만든다) ·
+시세 이력 그래프 · 흥정.
+
 ## T60. ★★2026-09-03 — **캐러밴 시계는 다섯 자리가 한 규약이다** (ECON 수술 1.5 · PM 승인)
 
 > 전문 `보고/T60_2026-09-03.md`. 하네스 `scripts/test-msy.js` ⑤(다섯 자리 전부 소스 계약).

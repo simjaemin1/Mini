@@ -5239,15 +5239,15 @@ function villageDeliver(vid, px, py, inventory, item, want, unitsOf) {
 // ★[2026-08-27] 게임일을 안 넘긴다 — 거래소 시세는 **지금 재고의 함수**다(하루 캐시 금지 · trade.js 머리 주석).
 const Trade = require('./trade');
 
-function villageTradeBoard(vid, px, py, inventory) {
+function villageTradeBoard(vid, px, py, inventory, numeraire) {   // ★[T69] 기준 품목 = 내가 낼 물건(전달만)
   if (!state.ledger) return { err: '아직 장부가 없다' };
   const g = _villageNear(vid, px, py);
   if (g.err) return g;
-  return Object.assign({ ok: true }, Trade.board(state.ledger, state.econV2, g.vil, vid | 0, inventory));
+  return Object.assign({ ok: true }, Trade.board(state.ledger, state.econV2, g.vil, vid | 0, inventory, numeraire));
 }
 
 // 견적(마른 실행) — 패널이 "확정" 전에 비율·최대량을 보여 주려면 필요하다. 실행과 **같은 게이트**를 통과한다.
-function villageTradeQuote(vid, px, py, giveRes, takeRes, qty, unitsOf) {
+function villageTradeQuote(vid, px, py, giveRes, takeRes, qty, unitsOf, opts) {   // ★[T69] opts.want(전달만)
   if (!state.ledger) return { err: '아직 장부가 없다' };
   const g = _villageNear(vid, px, py);
   if (g.err) return g;
@@ -5258,18 +5258,22 @@ function villageTradeQuote(vid, px, py, giveRes, takeRes, qty, unitsOf) {
     const items = D.items.get(String(giveRes || '')) || [];
     if (items.length) { const per = Number(unitsOf(items[0], 1)); if (Number.isFinite(per) && per > 0) u = u * per; }
   }
-  const q = Trade.quote(state.ledger, state.econV2, g.vil, vid | 0, String(giveRes || ''), String(takeRes || ''), u);
+  // ★[T69] 위에서 이미 잰 **개당 단위**(`u/qty`)가 곧 견적의 `perItem` 이다 — 새로 재지 않는다.
+  const _n = Math.max(0, Number(qty) || 0);
+  const per = (_n > 0 && u > 0) ? (u / _n) : 1;
+  const q = Trade.quote(state.ledger, state.econV2, g.vil, vid | 0, String(giveRes || ''), String(takeRes || ''), u,
+    { want: (opts && opts.want) || 0, perItem: per });
   if (q && !q.err) { q.giveItems = Math.max(0, Math.floor(Number(qty) || 0)); q.giveUnits = +u.toFixed(3); }
   return q;
 }
 
-function villageTradeExec(vid, px, py, inventory, giveRes, takeRes, qty, unitsOf) {
+function villageTradeExec(vid, px, py, inventory, giveRes, takeRes, qty, unitsOf, want) {   // ★[T69] want(전달만)
   if (!state.ledger) return { err: '아직 장부가 없다' };
   const g = _villageNear(vid, px, py);
   if (g.err) return g;
   const r = Trade.exchange({
     ledger: state.ledger, econV2: state.econV2, vil: g.vil, vid: vid | 0, inventory,
-    giveRes: String(giveRes || ''), takeRes: String(takeRes || ''), giveQty: qty,
+    giveRes: String(giveRes || ''), takeRes: String(takeRes || ''), giveQty: qty, want,
     unitsOf,                          // ★[무게] 개체 무게 → 재화 단위(게시판 납품과 같은 환산)
     deposit: playerVillageDeposit,   // ★실물 이동은 정본 하나(게시판 납품과 같은 함수)
   });

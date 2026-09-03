@@ -43,9 +43,11 @@ const H = Zone.__testBind();
 const V = H.SimVillages, T = H.Trade;
 
 let CV = null, PX = 0, PY = 0;
-const B = (inv) => V.villageTradeBoard(CV.id, PX, PY, inv || {});
-const Q = (a, b, q) => V.villageTradeQuote(CV.id, PX, PY, a, b, q);
-const X = (inv, a, b, q) => V.villageTradeExec(CV.id, PX, PY, inv, a, b, q);
+// ★[T69] 꼬리 인자 둘이 늘었다: 시세표의 **기준 품목**, 견적·실행의 **받을 양**.
+//   종전 호출은 그대로 종전 뜻이다(안 주면 기준=곡식 · 축=내는 양).
+const B = (inv, num) => V.villageTradeBoard(CV.id, PX, PY, inv || {}, num);
+const Q = (a, b, q, want) => V.villageTradeQuote(CV.id, PX, PY, a, b, q, null, want ? { want } : undefined);
+const X = (inv, a, b, q, want) => V.villageTradeExec(CV.id, PX, PY, inv, a, b, q, null, want);
 const rowOf = (res, inv) => B(inv).rows.find((r) => r.res === res) || null;
 const itemOf = (res) => { const r = rowOf(res); return r ? (r.give[0] || r.item) : null; };
 
@@ -243,6 +245,150 @@ const itemOf = (res) => { const r = rowOf(res); return r ? (r.give[0] || r.item)
     const vsrc = codeOnly(fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8'));
     const gate = (vsrc.match(/function villageTrade\w+\([^)]*\)\s*\{[^]*?_villageNear/g) || []).length;
     ok(gate >= 3, '★★⑦ 세 함수가 **전부** 게이트를 먼저 통과한다(우회로 없음)', `${gate}/3`);
+  }
+
+  // ═══ ⑧ 기준 품목 = 내가 낼 물건 (T69 · 캐논 §3①) ═══════════════════════════
+  say('\n⑧ 시세는 **내가 낼 물건 기준**이다 (T69)');
+  {
+    const bF = B();
+    ok(bF.numeraire === T.CFG.NUMERAIRE,
+      '★전제 — 안 고르면 종전 기준(곡식)이다(폴백이 살아 있다)', `${bF.numeraire} · ${bF.numeraireKo}`);
+    const bA = B({}, A);
+    ok(bA.numeraire === A, `★★⑧ⓐ 기준을 ${rows[0].ko}(으)로 요청하면 표가 그 기준으로 온다`, `${bA.numeraire} · ${bA.numeraireKo}`);
+    const selfRow = bA.rows.find((r) => r.res === A);
+    ok(selfRow && Math.abs(selfRow.num - 1) < 1e-9,
+      '★★⑧ⓐ **기준 행 자신은 정확히 1** — "나무를 팔면 시세가 나무 몇 개"의 정의', selfRow && selfRow.num);
+    // ★다른 행은 p/p_A 여야 한다. 가격은 **견적이 실어 보낸 그 값**으로 맞댄다(하네스가 가격을 따로 풀지 않는다).
+    const other = bA.rows.find((r) => r.res === Bb);
+    const qq = Q(A, Bb, 1);
+    // ★표시는 **유효숫자 4자리**로 잘린다(trade.js `sig`). 허용오차를 눈대중 상수로 박으면
+    //   숫자 크기에 따라 어떤 짝에선 헐겁고 어떤 짝에선 자기 발에 걸린다 — 자르는 규칙 그대로 맞댄다.
+    const expectNum = +(qq.priceTake / qq.priceGive).toPrecision(4);
+    const tolN = Math.max(1e-9, expectNum * 1e-6);
+    ok(other && Math.abs(other.num - expectNum) < tolN,
+      `★★⑧ⓐ 다른 행은 p/p_${A} 다 — 표와 견적이 **같은 표**에서 나온다`,
+      `${other && other.num} vs ${expectNum.toFixed(6)}`);
+    ok(Math.abs(expectNum - 1) > 1e-6,
+      '★★자명 통과 금지 — 두 품목의 값이 실제로 다르다(1이면 위 검사가 공짜다)', expectNum.toFixed(6));
+    // ★★클라 재계산 0(소스 검사) — 패널은 서버가 준 `num`·`numeraireKo` 를 **찍기만** 한다.
+    const psrc = codeOnly(fs.readFileSync(path.join(ROOT, 'public', 'client', '50-i-panel.js'), 'utf8'));
+    const trPanel = (psrc.match(/function renderTradePanel[^]*?\n  \}\n/) || [''])[0];
+    ok(trPanel.length > 500, '★전제 — 거래 패널 절을 실제로 떠냈다(못 떠내면 아래가 공짜다)', `${trPanel.length}자`);
+    ok(/r\.num/.test(trPanel) && !/\bnum\s*[:=][^=]*\/\s*/.test(trPanel),
+      '★★⑧ⓐ 패널은 `r.num` 을 **찍기만** 한다 — 비율을 나눠 다시 만드는 줄이 없다(사본 0)');
+    ok(/numeraireKo/.test(trPanel) && !/'곡식'|"곡식"/.test(trPanel),
+      '★★⑧ⓐ 기준 품목 한글 이름도 **서버가 준 것**이다(클라가 이름표를 따로 갖지 않는다)');
+    const tsrc8 = codeOnly(fs.readFileSync(path.join(ROOT, 'server', 'trade.js'), 'utf8'));
+    ok(/Events\.koRes\(nres\)/.test(tsrc8), '★⑧ⓐ 그 이름은 정본 `Events.koRes` 가 낸다(네 줄짜리 표가 아니라)');
+  }
+
+  // ═══ ⑨ 받을 양으로 묻고, 내는 양은 올림 (T69 · 캐논 §3②) ═══════════════════
+  say('\n⑨ **받을 양**으로 묻는다 — 내는 양은 올림 (T69)');
+  {
+    const WANT = 3;
+    const itA = itemOf(A);
+    // ★★교환은 재고를 **정말로** 움직인다 ⇒ 시세도 움직인다. 그러니 아래 주장 하나하나는
+    //   **자기 시점의 견적**에 맞대야 한다. 앞에서 받은 수를 뒤에서 재사용하면, 그 사이 값이
+    //   달라져 검사가 조용히 다른 상황을 재게 된다(1차 실장에서 실제로 그랬다 — 7 을 기대하고 11 이 나왔다).
+    const qw = Q(A, Bb, 1, WANT);
+    ok(!qw.err && qw.want === WANT, '★전제 — want 견적이 선다', qw.err || `want=${qw.want}`);
+    ok(qw.wantCapped !== true, '★전제 — 마을이 그만큼은 내줄 수 있다(상한에 안 걸린 상황이다)', `cap=${qw.cap}`);
+    ok(qw.giveNeeded > 0, '★★⑨ⓑ "그걸 받으려면 몇 개?"에 답이 나온다', `${qw.giveNeeded}개(${qw.giveNeededUnits}단위)`);
+    const frac = Math.abs(qw.giveNeededUnits - Math.round(qw.giveNeededUnits));
+    ok(frac > 1e-4,
+      '★★자명 통과 금지 — 연속해가 **정수가 아니다**(정수면 올림/내림이 같은 수라 ⓓ가 공짜다)',
+      qw.giveNeededUnits);
+    // 하네스는 `unitsOf` 를 안 넘긴다 ⇒ 1개 = 1단위(perItem = 1). 개체 무게가 섞인 경우는 ⓔ가 잰다.
+    ok(qw.giveNeeded === Math.ceil(qw.giveNeededUnits),
+      '★★⑨ⓑ 개수는 연속해의 **올림**이다(낱개로만 존재하는 물건 — 캐논 ②)',
+      `ceil(${qw.giveNeededUnits}) = ${qw.giveNeeded}`);
+
+    // ⓑ-1 **한 개 덜 내면 못 닿는다** — 이 견적(qw)의 시장에서 먼저 잰다.
+    const less = Math.max(1, qw.giveNeeded - 1);
+    const rMiss = X({ [itA]: less }, A, Bb, less);
+    ok(!rMiss.err && rMiss.take < WANT,
+      `★★⑨ⓑ 한 개 덜 내면(${less}개) ${WANT}개에 **못 닿는다** — 이것이 올림의 정의`,
+      rMiss.err || `take ${rMiss.take}`);
+    // ⓑ-2 **giveNeeded 로 내면 닿는다** — 방금 거래로 값이 움직였으니 견적을 다시 받는다.
+    const qw2 = Q(A, Bb, 1, WANT);
+    const rHit = X({ [itA]: 100000 }, A, Bb, 0, WANT);
+    ok(!rHit.err && rHit.take >= WANT,
+      `★★⑨ⓑ ${qw2.giveNeeded}개를 내면 ${WANT}개 **이상** 받는다`, rHit.err || `give ${rHit.give} → take ${rHit.take}`);
+    ok(!rHit.err && rHit.give === qw2.giveNeeded && rHit.wantTake === WANT,
+      '★★⑨ⓑ 실행이 **견적과 같은 수**를 냈다(견적과 실행이 다른 수를 쓰면 그게 보이지 않는 손이다)',
+      rHit.err || `${rHit.give} = ${qw2.giveNeeded}`);
+    // ★캐논 ③ — 넘치는 소수는 거래소 몫이다(플레이어가 더 받아 가지 않는다).
+    ok(!rHit.err && Number.isInteger(rHit.take), '★★⑨ 받는 쪽은 종전대로 **내림**이다(초과분은 거래소 몫 · 캐논 ③)', rHit.take);
+
+    // ⓔ 개수 물건 vs kg 물건 — 개체 하나가 여러 '단위'면 올림은 **개수 자리**에 걸린다.
+    const PER = 2.22;                                   // 큰 물고기 한 마리 = 2.22단위(무게 배치의 그 수)
+    const qU = V.villageTradeQuote(CV.id, PX, PY, A, Bb, 1, (it, n) => n * PER, { want: WANT });
+    ok(!qU.err && qU.giveNeeded > 0, '★전제 — 개체 무게가 섞인 견적도 선다', qU.err || `${qU.giveNeeded}개`);
+    ok(qU.giveNeeded === Math.ceil(qU.giveNeededUnits / PER),
+      `★★⑨ⓔ 한 개가 ${PER}단위면 올림은 **개수 자리**에 걸린다(단위 자리는 소수 그대로)`,
+      `ceil(${qU.giveNeededUnits} / ${PER}) = ${qU.giveNeeded}`);
+    // ★맞댈 상대는 **같은 순간의** 환산 없는 견적이다 — 위 교환들이 값을 움직였으므로
+    //   앞에서 받은 수와 맞대면 시장 변동을 환산 탓으로 읽게 된다(1차에 실제로 그랬다).
+    const qN = Q(A, Bb, 1, WANT);
+    ok(qU.giveNeededUnits > 0 && Math.abs(qU.giveNeededUnits - qN.giveNeededUnits) < 1e-6,
+      '★★⑨ⓔ 필요한 **단위**는 환산과 무관하게 같다 — 달라지는 건 그걸 몇 개로 세느냐뿐',
+      `${qU.giveNeededUnits} = ${qN.giveNeededUnits}`);
+    ok(qU.giveNeeded !== qN.giveNeeded,
+      '★★자명 통과 금지 — 그런데 **개수는 실제로 다르다**(같으면 환산이 안 걸린 것이다)',
+      `${qU.giveNeeded}개(무게 섞임) vs ${qN.giveNeeded}개(1개=1단위)`);
+
+    // ⓒ 왕복 — want 경로로 가도 손해다(②의 대조군과 같은 꼴).
+    const startB = Math.max(2, Math.min(8, WANT));
+    const iv = { [itA]: 10000 };
+    const before = iv[itA];
+    const r1 = X(iv, A, Bb, 0, startB);
+    const itB = itemOf(Bb);
+    const gotB = r1.err ? 0 : r1.take;
+    const spentA = r1.err ? 0 : (before - iv[itA]);
+    const r2 = gotB > 0 ? X(iv, Bb, A, gotB) : { err: '첫 교환 실패' };
+    const backA = r2.err ? 0 : r2.take;
+    ok(!r1.err && !r2.err, '★전제 — want 경로 왕복이 둘 다 성립했다', r1.err || r2.err || '');
+    ok(!r1.err && !r2.err && backA < spentA,
+      `★★⑨ⓒ **want 경로로 왕복해도 준다** (${spentA} → ${backA}) — 새 길이 차익 구멍이 아니다`);
+
+    // ═══ ⓓ 돌연변이 — 올림을 내림으로 바꾸면 ⓑ가 빨강이어야 한다 ═════════════
+    //   ★올림은 **한 자리**에 있다(quote 의 "닿을 때까지 올라가는" 걸음). 그 걸음을 없애면 곧 내림이다.
+    //   ★★사본을 통째로 갈아 끼운다 — `villages.js` 는 `Trade.quote`/`Trade.exchange` 를
+    //     **호출 시점에 찾으므로**, 그 두 자리만 바꾸면 정본 경로 전체가 돌연변이를 탄다.
+    const SRC = path.join(ROOT, 'server', 'trade.js');
+    const raw = fs.readFileSync(SRC, 'utf8');
+    const SITE = 'takeAt(unitsAt(n)) < want';
+    ok(raw.split(SITE).length - 1 === 1, '★전제 — 올림이 소스에 **한 자리**뿐이다(여러 자리면 돌연변이가 반쪽이다)');
+    const mutPath = `/tmp/trade-mut-${process.pid}.js`;
+    const mutSrc = raw.replace(/require\('\.\/([\w-]+)'\)/g, `require('${path.join(ROOT, 'server')}/$1')`)
+                      .replace(SITE, 'takeAt(unitsAt(n)) < 0');   // ← 올라가지 않는다 = 내림
+    fs.writeFileSync(mutPath, mutSrc);
+    // ★맞댈 정본 값은 **지금 이 시장**에서 다시 받는다(위 거래들이 값을 움직였다).
+    const qBase = Q(A, Bb, 1, WANT);
+    ok(Math.abs(qBase.giveNeededUnits - Math.round(qBase.giveNeededUnits)) > 1e-4,
+      '★★자명 통과 금지 — 지금 시장의 연속해도 정수가 아니다(정수면 올림·내림이 같은 수다)', qBase.giveNeededUnits);
+    const q0 = T.quote, x0 = T.exchange;
+    let mutGive = null, mutTake = null;
+    try {
+      const M = require(mutPath);
+      T.quote = M.quote; T.exchange = M.exchange;
+      const qm = Q(A, Bb, 1, WANT);
+      mutGive = qm && qm.giveNeeded;
+      const rm = mutGive > 0 ? X({ [itA]: 100000 }, A, Bb, 0, WANT) : { err: '견적 없음' };
+      mutTake = rm.err ? null : rm.take;
+    } finally {
+      T.quote = q0; T.exchange = x0;
+      try { delete require.cache[mutPath]; fs.unlinkSync(mutPath); } catch (e) {}
+    }
+    ok(mutGive === qBase.giveNeeded - 1,
+      '★전제 — 돌연변이가 실제로 **한 칸 아래**를 냈다(안 달라지면 이 검사가 자명 통과다)',
+      `${mutGive} vs 정본 ${qBase.giveNeeded}`);
+    ok(mutTake !== null && mutTake < WANT,
+      `★★⑨ⓓ **올림을 내림으로 바꾸면 ⓑ가 빨강이다** — ${WANT}개를 달랬는데 ${mutTake}개만 온다`, mutTake);
+    // 돌연변이를 되돌린 뒤 정본이 다시 산다(되돌림이 실제로 됐는지 — 뒤 검사가 돌연변이 위에서 돌면 안 된다)
+    const qBack = Q(A, Bb, 1, WANT);
+    ok(qBack.ok === true && qBack.giveNeeded > 0 && T.quote === q0,
+      '★전제 — 돌연변이를 되돌렸다(정본 함수가 제자리에 있고 견적이 다시 선다)', `${qBack.giveNeeded}개`);
   }
 
   say(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);

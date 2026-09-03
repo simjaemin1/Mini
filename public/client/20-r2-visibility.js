@@ -682,6 +682,9 @@
   let myBody = null;
   // ★[거래소 2026-08-27] 그 마을 시세표 + 지금 고른 짝. **서버가 정본**이고 클라는 고르기만 한다.
   let myTrade = null, trGive = null, trTake = null, trQty = 1, trQuote = null;
+  // ★[T69 · 캐논 §3②] **받을 개수**로도 물을 수 있다. 둘 중 **마지막에 만진 것**이 견적의 축이다
+  //   (`trAxis`) — 두 입력이 동시에 축이면 화면이 어느 쪽 수를 말하는지 사람이 알 수 없다.
+  let trWant = 0, trAxis = 'give';
   let myCarry = null;              // ★[무게] { kg, cap, ratio, over, moveMult, combined, stage, … }
   let itemWeights = null;          // ★[무게] kg 카탈로그 — **서버가 준다**(클라가 표를 갖지 않는다)
   let carryCfg = null;

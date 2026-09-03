@@ -712,7 +712,7 @@ function itemKo(k) {
     if (name === 'trade') {
       const vid = window.__evNearVid;
       if (vid == null) { myTrade = null; }
-      else window.__sendPrimary({ type: 'village_trade', vid });
+      else window.__sendPrimary({ type: 'village_trade', vid, numeraire: trGive || undefined });   // ★[T69] 고른 낼 물건이 곧 기준
     }
     // ★[T18] 연대기도 **열 때 서버에 묻는다** — 역사는 클라가 캐시할 것이 아니다(캐시는 정본 쪽 하나).
     if (name === 'chronicle') chronAsk(null);
@@ -972,7 +972,9 @@ function itemKo(k) {
           + `<span>누적 기여 <b>${mb.contrib}</b>/${mb.need}</span></div>`;
       }
     }
-    h += '<div class="tr-hdr"><span></span><span>품목</span><span class="tr-num">시세</span>'
+    // ★[T69] 시세 열 머리는 **지금 기준 품목**을 말한다 — 나무를 낼 물건으로 고르면 "나무 기준".
+    //   문자열도 서버가 준 `numeraireKo` 그대로다(클라가 한글 이름표를 따로 갖지 않는다).
+    h += `<div class="tr-hdr"><span></span><span>품목</span><span class="tr-num">${t.numeraireKo} 기준</span>`
       + '<span class="tr-num">마을</span><span class="tr-num">내것</span></div>';
     for (const r of t.rows) {
       const cls = (trGive === r.res) ? ' give' : (trTake === r.res ? ' take' : '');
@@ -992,49 +994,84 @@ function itemKo(k) {
     else if (trQuote && trQuote.err) h += `<div class="tr-line">${trQuote.err}</div>`;
     else if (trQuote && trQuote.ok) {
       const gk = kg(t.rows.find((r) => r.res === trGive) || {}), tk = kg(t.rows.find((r) => r.res === trTake) || {});
-      h += `<div class="tr-line">${gk} <b>${trQuote.give}</b> ${tk} <b>${trQuote.take}</b></div>`;
+      // ★★[T69] **한 화면에 거래는 하나다.** 축이 '받을 양'인데 낼 양 기준 줄까지 같이 띄우면
+      //   화면이 서로 다른 두 거래(생선 2.18→고기 1 · 생선 24→고기 2)를 동시에 말한다 —
+      //   그게 곧 "화면과 실제가 갈리는" 자리다. 그래서 **축이 말하는 거래만** 그린다.
+      const wantAxis = (trAxis === 'want' && trQuote.want > 0);
+      if (wantAxis) {
+        // 이 수는 전부 **서버가 낸 것**이다(여기서 비율로 다시 나누면 그게 사본이다).
+        if (trQuote.wantCapped) h += `<div class="tr-warn">마을이 지금 내줄 수 있는 ${tk}은(는) ${trQuote.cap}까지다</div>`;
+        else if (trQuote.giveNeeded > 0) {
+          h += `<div class="tr-line">${tk} <b>${trQuote.want}</b> 받으려면 — 내야 할 ${gk} <b>${trQuote.giveNeeded}</b>`
+            + `<span class="bd-dim"> (낱개라 올림 · 그러면 ${tk} ${trQuote.takeAtNeeded})</span></div>`;
+        }
+      } else {
+        h += `<div class="tr-line">${gk} <b>${trQuote.give}</b> ${tk} <b>${trQuote.take}</b></div>`;
+      }
       h += `<div class="tr-line">한 개당 ${trQuote.ratio}${trQuote.avgRatio && Math.abs(trQuote.avgRatio - trQuote.ratio) > 1e-4
         ? ` · 이 물량 평균 <b>${trQuote.avgRatio}</b>(많이 낼수록 값이 나빠진다)` : ''}</div>`;
-      if (trQuote.capped) h += `<div class="tr-warn">마을이 내줄 수 있는 건 ${trQuote.cap}까지 — ${trQuote.maxGive}개만 받는다</div>`;
+      // ★상한 경고는 **낼 양 축의 말**이다 — 받을 양 축에선 위 `wantCapped` 가 그 자리를 맡는다.
+      if (!wantAxis && trQuote.capped) h += `<div class="tr-warn">마을이 내줄 수 있는 건 ${trQuote.cap}까지 — ${trQuote.maxGive}개만 받는다</div>`;
       // ★★[무게 배치] **용량 초과 경고** — 막지는 않는다(과적은 플레이어 선택이다).
       //   넘치게 사서 뒤뚱거리며 나르는 것도 플레이라, 화면은 사실만 말하고 결정은 사람이 한다.
+      //   ★[T69] 재는 수량도 **축이 말하는 그 거래**의 것이라야 한다.
       if (myCarry && itemWeights) {
-        const wIn = (itemWeights[trQuote.takeRes] || 0) * (trQuote.take || 0);
-        const wOut = (itemWeights[trGive] || 0) * (trQuote.give || 0);
+        const _in = wantAxis ? (trQuote.takeAtNeeded || trQuote.want || 0) : (trQuote.take || 0);
+        const _out = wantAxis ? (trQuote.giveNeeded || 0) : (trQuote.give || 0);
+        const wIn = (itemWeights[trQuote.takeRes] || 0) * _in;
+        const wOut = (itemWeights[trGive] || 0) * _out;
         const after = Math.max(0, (myCarry.kg || 0) + wIn - wOut);
         if (after > (myCarry.cap || 0)) {
           h += `<div class="tr-warn">받으면 <b>${after.toFixed(1)}kg</b> — 용량 ${myCarry.cap}kg 를 넘는다(느려지고 피로가 빨리 찬다). 그래도 살 수 있다.</div>`;
         }
       }
     } else h += '<div class="tr-line">…</div>';
-    h += `<div class="tr-qty"><input id="trQty" type="number" min="1" value="${trQty}">`
-      + `<button class="tr-btn" id="trGo"${(trGive && trTake && trQuote && trQuote.ok && trQuote.take > 0) ? '' : ' disabled'}>바꾼다</button></div>`;
+    // ★[T69 · 캐논 §3 순서] 낼 것 → 받을 것 → **받을 개수** → 내야 할 양. 그래서 받을 개수가 앞이다.
+    //   종전 "낼 개수"도 남긴다 — kg 물건(로트)은 낼 양으로 묻는 게 맞다.
+    const _canGo = trGive && trTake && trQuote && trQuote.ok
+      && (trAxis === 'want' ? (trQuote.giveNeeded > 0) : (trQuote.take > 0));
+    h += `<div class="tr-qty"><span class="bd-dim">받을 개수</span>`
+      + `<input id="trWant" type="number" min="0" value="${trWant}"></div>`;
+    h += `<div class="tr-qty"><span class="bd-dim">낼 개수</span>`
+      + `<input id="trQty" type="number" min="1" value="${trQty}">`
+      + `<button class="tr-btn" id="trGo"${_canGo ? '' : ' disabled'}>바꾼다</button></div>`;
     h += '<div class="tr-hint">시세 = 이 마을이 지금 매기는 값이다. 내가 팔면 흔해져 떨어지고, 사면 귀해져 오른다.<br>'
       + '마을이 원하는 물건은 게시판(Shift+G)에 걸린다 — 그쪽이 늘 값이 낫다.</div>';
     h += '</div>';
     body.innerHTML = h;
     const vid = window.__evNearVid;
     const ask = () => {
-      if (trGive && trTake) window.__sendPrimary({ type: 'village_trade_quote', vid, give: trGive, take: trTake, qty: trQty });
+      if (trGive && trTake) window.__sendPrimary({ type: 'village_trade_quote', vid, give: trGive, take: trTake,
+        qty: trQty, want: (trAxis === 'want' ? trWant : 0) });
     };
+    // ★[T69] 낼 물건이 바뀌면 **시세표를 그 기준으로 다시 받는다** — 클라가 비율을 다시 풀지 않는다.
+    const askBoard = () => window.__sendPrimary({ type: 'village_trade', vid, numeraire: trGive || undefined });
     body.querySelectorAll('.tr-row').forEach((el) => {
       el.onclick = () => {
         const res = el.dataset.res;
         const row = t.rows.find((r) => r.res === res);
         if (!row) return;
+        const gv0 = trGive;
         if (trGive === res) { trGive = null; }
         else if (trTake === res) { trTake = null; }
         else if (!trGive && row.canGive) trGive = res;
         else if (!trTake && row.canTake && res !== trGive) trTake = res;
         else if (row.canGive) { trGive = res; if (trTake === res) trTake = null; }
-        trQuote = null; renderSide('trade'); ask();
+        trQuote = null; renderSide('trade');
+        if (trGive !== gv0) askBoard();          // 기준 품목이 바뀌었다 — 표를 새 기준으로
+        ask();
       };
     });
     const qi = document.getElementById('trQty');
-    if (qi) qi.onchange = () => { trQty = Math.max(1, parseInt(qi.value, 10) || 1); ask(); };
+    if (qi) qi.onchange = () => { trQty = Math.max(1, parseInt(qi.value, 10) || 1); trAxis = 'give'; ask(); };
+    const wi = document.getElementById('trWant');
+    if (wi) wi.onchange = () => { trWant = Math.max(0, parseInt(wi.value, 10) || 0); trAxis = trWant > 0 ? 'want' : 'give'; ask(); };
     const go = document.getElementById('trGo');
     if (go) go.onclick = () => {
-      window.__sendPrimary({ type: 'village_trade_exec', vid, give: trGive, take: trTake, qty: trQty });
+      // ★[T69] 축이 곧 주문의 문법이다 — 받을 개수로 물었으면 **받을 개수로** 실행한다(내는 양은 서버가 올린다).
+      window.__sendPrimary(trAxis === 'want' && trWant > 0
+        ? { type: 'village_trade_exec', vid, give: trGive, take: trTake, want: trWant, numeraire: trGive }
+        : { type: 'village_trade_exec', vid, give: trGive, take: trTake, qty: trQty, numeraire: trGive });
       trQuote = null;
     };
     // ★[T11] 곳간에서 꺼내기 — 수량은 **서버가 오늘 남은 몫만큼** 준다(클라는 요청만 한다).

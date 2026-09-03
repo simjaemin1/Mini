@@ -91,6 +91,11 @@ async function waitHttp(url, tries = 900) {
   page.on('console', (m) => { if (m.type() === 'error') errs.push('console: ' + m.text().slice(0, 160)); });
   const snap = async (n) => { const f = path.join(SHOTS, n + '.png'); await page.screenshot({ path: f }); shots.push(f); return f; };
   const notices = () => page.evaluate(() => (window.__notices || []).slice());
+  // ★[T78 2026-09-03] 알림 경계(`server/notice.js`)가 접두 이모지를 걷고 `kind` 필드로 옮겼다 —
+  //   `🏪` 로 찾던 자리가 전부 빈손이 된다. 화면 문자열만 보는 자리라 **말로** 찾는다(검사의 뜻 그대로).
+  //   ⚠거래소 알림의 갈래는 셋이다: 성사("… 거래소 — A → B") · 게이트 거절("마을 중심에서 너무 멀다") ·
+  //     장부 거절(곳간·재고·상한). 하나만 잡으면 ①과 ④가 서로 다른 이유로 조용히 빠진다.
+  const _isTrade = (s) => /거래소|마을 중심에서 너무 멀다|곳간|마을 재고|내줄 수 있는|갖고 있지 않다|못 치른다|못 바꾼다/.test(String(s));
   const openTrade = async () => {
     await page.evaluate(() => document.querySelector('#sidebar .sb-icon[data-side="trade"]').click());
     await sleep(700);
@@ -131,14 +136,14 @@ async function waitHttp(url, tries = 900) {
     const n0 = (await notices()).length;
     await page.evaluate((vid) => window.__sendPrimary({ type: 'village_trade', vid }), V.id);
     await sleep(900);
-    const gated = (await notices()).slice(n0).filter((s) => /🏪/.test(s));
+    const gated = (await notices()).slice(n0).filter(_isTrade);
     ok(gated.length > 0 && !(await page.evaluate(() => !!window.__tradeBoard)),
       '★★① **서버가 게이트다** — vid 를 알고 직접 물어도 멀면 시세표를 안 준다(원격 조회 API 없음)',
       (gated[0] || '거절 없음!').slice(0, 60));
     // 교환 시도도 같은 게이트를 통과해야 한다(읽기만 막고 쓰기를 열어 두는 실수 방지)
     await page.evaluate((vid) => window.__sendPrimary({ type: 'village_trade_exec', vid, give: 'fish', take: 'wood', qty: 1 }), V.id);
     await sleep(900);
-    const gated2 = (await notices()).filter((s) => /🏪/.test(s));
+    const gated2 = (await notices()).filter(_isTrade);
     ok(gated2.length >= 2, '★★① 멀리서 **교환도** 거절된다(읽기만 막지 않는다)', (gated2[gated2.length - 1] || '').slice(0, 60));
     await closePanel();
   }
@@ -166,7 +171,10 @@ async function waitHttp(url, tries = 900) {
   // ★날을 얼린다 — 이제부터 재고를 움직이는 건 **내 거래뿐**이다(⑤의 대조 조건).
   await page.evaluate(() => window.__sendPrimary({ type: '__e2e_day_freeze', on: true }));
   await sleep(800);
-  ok((await notices()).some((s) => /🧊/.test(s)), '★전제 — 게임일을 얼렸다(상호작용 창에서 NPC 가 재고를 안 흔든다)');
+  // ★[T78] `🧊` 도 같은 이유로 걷혔다 — 얼렸다는 **말**로 찾는다.
+  ok((await notices()).some((s) => /게임일 정지/.test(String(s))),   // 경계 뒤의 실제 문구(zone.js `__e2e_day_freeze`)
+    '★전제 — 게임일을 얼렸다(상호작용 창에서 NPC 가 재고를 안 흔든다)',
+    ((await notices()).slice(-3).join(' | ') || '').slice(0, 70));
 
   // ── ② 패널이 열리고 **시세가 보인다** ──────────────────────────────────────
   await openTrade();
@@ -265,7 +273,7 @@ async function waitHttp(url, tries = 900) {
   const dTake = (invAfter[takeItem] || 0) - (invBefore[takeItem] || 0);
   ok(dGive < 0, '★★④ 낸 물건이 인벤에서 **빠졌다**', `${invBefore.fish || 0} → ${invAfter.fish || 0} (${dGive})`);
   ok(dTake > 0, '★★④ 받은 물건이 인벤에 **들어왔다**', `${takeItem} ${invBefore[takeItem] || 0} → ${invAfter[takeItem] || 0} (+${dTake})`);
-  const nn = (await notices()).slice(n1).filter((s) => /🏪/.test(s));
+  const nn = (await notices()).slice(n1).filter(_isTrade);
   ok(nn.length > 0 && /거래소/.test(nn[0]), '★④ 알림이 무엇을 주고 무엇을 받았는지 말한다', (nn[0] || '없음').slice(0, 80));
   // 견적이 약속한 수와 실제로 받은 수가 같아야 한다(화면과 실제가 갈리면 그게 보이지 않는 손이다)
   ok(dTake === quote.take || quote.capped,
@@ -325,7 +333,7 @@ async function waitHttp(url, tries = 900) {
       cur = nx;
       if (!(cur > 0.5)) break;
     }
-    const said = (await notices()).slice(n0).filter((x) => /🏪/.test(x));
+    const said = (await notices()).slice(n0).filter(_isTrade);
     const err = (said.find((x) => !/거래소 —/.test(x)) || '').replace(/^🏪\s*/, '');
     const aft = await askBoard();
     const moved = others0.filter(([res, n0v]) => Math.abs((numOf(aft, res) || 0) - n0v) > 1e-12);
@@ -429,6 +437,78 @@ async function waitHttp(url, tries = 900) {
     (hint.match(/[^\n]*게시판[^\n]*/) || [''])[0].trim().slice(0, 70));
   ok(/마을 몫\s*\d+%/.test(hint) || new RegExp(`${Math.round(board.spread * 100)}\\s*%`).test(hint),
     '★⑥ 마을이 떼는 몫(스프레드)을 숨기지 않는다', `${Math.round(board.spread * 100)}%`);
+
+  // ── ⑦ [T69] 시세는 **내가 낼 물건 기준** · 받을 개수로 물으면 내야 할 양이 뜬다 ──
+  //   ★이 절이 있는 이유: 서버 하네스(`test-trade ⑧⑨`)가 초록이어도 **화면에서 도달 못 하는 층**이
+  //     따로 있다(공통 §2 — 노 배치의 그 족보). 그래서 진짜 DOM 입력·진짜 버튼으로 끝까지 민다.
+  await closePanel(); await openTrade();
+  for (let i = 0; i < 20; i++) { board = await page.evaluate(() => window.__tradeBoard || null); if (board) break; await sleep(400); }
+  {
+    const P = await pool();
+    // 낼 것은 **내가 실제로 들고 있는** 물고기, 받을 것은 마을이 넉넉히 내주는 것 중 값이 싼 쪽.
+    const gRow = board.rows.find((r) => r.res === GIVE);
+    const WANT = 2;
+    const cands = board.rows.filter((r) => r.canTake && r.res !== GIVE && r.num > 0 && r.sell >= WANT + 1);
+    const tRow = cands.sort((a, b) => a.num - b.num)[0];
+    ok(!!tRow, '★전제 — 받을 후보가 있다(마을이 그 양을 내줄 수 있다)', tRow ? `${tRow.ko} 팔 수 있는 양 ${tRow.sell}` : '없음');
+    if (tRow) {
+      await page.evaluate((n) => window.__sendPrimary({ type: '__e2e_give', items: { fish: n } }), 400);
+      await sleep(900);
+      await closePanel(); await openTrade(); await sleep(600);
+      // ★★앞 절들이 고른 짝이 **패널에 그대로 남아 있다**(⑤는 훅으로 메시지만 보냈고 화면 상태는 안 건드렸다).
+      //   그 상태에서 낼 물건을 클릭하면 같은 행이라 **해제**로 먹힌다 — 1차에 실제로 그래서
+      //   ⑦ 여섯 줄이 통째로 빨개졌다(원인은 하나인데 실패는 여섯이었다).
+      //   ⇒ 고른 것을 먼저 **비우고** 시작한다.
+      for (let i = 0; i < 4; i++) {
+        const s0 = await page.evaluate(() => window.__tradeSel());
+        if (!s0.give && !s0.take) break;
+        const res0 = s0.take || s0.give;
+        await page.evaluate((r) => document.querySelector(`.tr-row[data-res="${r}"]`).click(), res0);
+        await sleep(350);
+      }
+      const s1 = await page.evaluate(() => window.__tradeSel());
+      ok(!s1.give && !s1.take, '★전제 — 고른 것을 비우고 시작한다(클릭이 해제로 먹히면 아래가 전부 거짓이 된다)', JSON.stringify(s1));
+      // 클릭 1 — 낼 물건. 이 순간 **시세 열 머리가 그 물건 기준으로 바뀌어야** 한다.
+      await page.evaluate((res) => document.querySelector(`.tr-row[data-res="${res}"]`).click(), GIVE);
+      let nb = null;
+      for (let i = 0; i < 25; i++) { await sleep(400); nb = await page.evaluate(() => window.__tradeBoard || null); if (nb && nb.numeraire === GIVE) break; }
+      ok(!!nb && nb.numeraire === GIVE, `★★⑦ 낼 물건을 고르면 시세표가 **${gRow.ko} 기준**으로 다시 온다`,
+        nb ? `numeraire=${nb.numeraire}` : '안 옴');
+      const htxt = await page.evaluate(() => window.__panelText());
+      ok(new RegExp(`${gRow.ko}\\s*기준`).test(htxt), `★★⑦ 시세 열 머리가 화면에 "${gRow.ko} 기준"이라고 쓴다`,
+        (htxt.match(/[^\n]*기준[^\n]*/) || [''])[0].trim().slice(0, 60));
+      const selfRow = nb && nb.rows.find((r) => r.res === GIVE);
+      ok(selfRow && Math.abs(selfRow.num - 1) < 1e-9, '★★⑦ 기준 행 자신은 1이다(화면에 온 값 그대로)', selfRow && selfRow.num);
+      // 클릭 2 — 받을 물건 · 그다음 **받을 개수** 입력
+      await page.evaluate((res) => document.querySelector(`.tr-row[data-res="${res}"]`).click(), tRow.res);
+      await sleep(800);
+      const hasWant = await page.evaluate(() => !!document.getElementById('trWant'));
+      ok(hasWant, '★★⑦ 패널에 **받을 개수** 입력칸이 있다(캐논 순서 — 낼 것 → 받을 것 → 받을 개수)');
+      await page.evaluate((n) => { const el = document.getElementById('trWant'); el.value = String(n); el.dispatchEvent(new Event('change')); }, WANT);
+      let wq = null;
+      for (let i = 0; i < 25 && !(wq && wq.want === WANT); i++) { await sleep(400); wq = await page.evaluate(() => window.__tradeQuote || null); }
+      ok(!!wq && wq.want === WANT && wq.giveNeeded > 0, '★★⑦ "그걸 받으려면 몇 개?"의 답이 온다',
+        wq ? `${tRow.ko} ${WANT} ← ${gRow.ko} ${wq.giveNeeded}` : '안 옴');
+      const wtxt = await page.evaluate(() => window.__panelText());
+      ok(!!wq && /내야 할/.test(wtxt) && new RegExp(`\\b${wq.giveNeeded}\\b`).test(wtxt),
+        '★★⑦ **내야 할 양이 화면에** 뜬다(서버가 준 그 수 그대로)',
+        (wtxt.match(/[^\n]*내야 할[^\n]*/) || [''])[0].trim().slice(0, 80));
+      await snap('tr-07-want');            // ★"내야 할 양"이 떠 있는 그 화면(실행 전)
+      // 실행 — 받은 개수가 **정확히** 요청한 수여야 한다(받는 쪽 내림 · 넘침은 거래소 몫).
+      const iv0 = await page.evaluate(() => window.__getInv());
+      const on = await page.evaluate(() => { const b = document.getElementById('trGo'); return !!b && !b.disabled; });
+      ok(on, '★⑦ 받을 개수로 물어도 "바꾼다"가 살아 있다');
+      await page.evaluate(() => document.getElementById('trGo').click());
+      await sleep(1800);
+      const iv1 = await page.evaluate(() => window.__getInv());
+      const dT = (iv1[tRow.item] || 0) - (iv0[tRow.item] || 0);
+      const dG = (iv1.fish || 0) - (iv0.fish || 0);
+      ok(dT === WANT, `★★⑦ 인벤에 ${tRow.ko}이(가) **정확히 ${WANT}개** 들어왔다`, `+${dT}`);
+      ok(dG < 0 && Math.abs(dG) === wq.giveNeeded, '★★⑦ 나간 개수가 화면이 말한 "내야 할 양"과 같다',
+        `${wq.giveNeeded} vs ${Math.abs(dG)}`);
+      await snap('tr-07-after');
+    }
+  }
 
   await page.evaluate(() => window.__sendPrimary({ type: '__e2e_day_freeze', on: false }));
   const jsErrs = errs.filter((e) => !/Failed to load resource/.test(e));
