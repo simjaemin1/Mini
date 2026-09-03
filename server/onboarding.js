@@ -668,6 +668,9 @@ function pickFirstQuest(vid) {
 }
 
 // 촌장의 첫 마디 — 인사 + 첫 의뢰 제안 + **방향은 대사로**(화살표 금지 · §9.5).
+// ★[T56 2026-09-02] 아래 표를 **내보낸다**(`dirWord`) — 쓰러짐의 외침이 방위를 말해야 하는데,
+//   같은 8방 표를 두 벌 두면 그게 사본이고 "촌장은 해 지는 쪽이라는데 외침은 서쪽"이 된다.
+//   §9.5(화살표 금지 · 방향은 대사로)의 어휘가 이 세계에서 하나여야 한다.
 const _DIRWORD = (dx, dy) => {
   const a = Math.atan2(dy, dx) * 180 / Math.PI;
   if (a >= -22.5 && a < 22.5) return '해 뜨는 쪽';
@@ -815,6 +818,8 @@ module.exports = {
   startInfo, httpStartInfo, characterOf, worldSectors, SECTORS, CHARS, popBand, busyBand,
   pickFirstQuest, greetLines, onDeliver, handleMsg, daySummary,
   noteVillage,   // ★[T19] 마을이 하나 늘었을 때 그 곳만 굽는다
+  dirWord: _DIRWORD,   // ★[T56] 방위말 정본 — 쓰러짐의 외침이 촌장과 **같은 어휘**를 쓴다
+
   vacantZoneOf, vacantLotAllows, publicState, stateOf,
   // ★하네스용 — **정본을 그대로 내준다**(하네스가 산출을 다시 짜면 사본이다)
   __probe: { computeArrivals: _computeArrivals, terrainAdapter: _terrainAdapter, boundaryCells: _boundaryCells,

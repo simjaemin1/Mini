@@ -398,6 +398,237 @@ const until = async (pred, maxSecs) => {
     }
   }
 
+  // ═══ ⑫ 외침 — 소리가 없으면 창 3분은 근거가 없다 (T56) ═════════════════════
+  //   §12 의 구조는 "소리를 듣고 달려오는 사람"의 일이다. T43 까지 그 소리가 없었다.
+  say('\n⑫ 외침 — 야생에서만 · 반경 · 주기 · 결정론');
+  {
+    // 야생 자리를 **찾는다**(족보 73 — 좌표를 지어내지 않는다)
+    let wild = null;
+    for (let x = 4000; x < 60000 && !wild; x += 3000) {
+      for (let y = 4000; y < 120000; y += 3000) {
+        if (H.isWaterTileLocal(x, y) || H.isTerrainBlockedLocal(x, y)) continue;
+        if ((SimVillages.shelterAt(x, y) || 0) > 0) continue;
+        wild = { x, y }; break;
+      }
+    }
+    pre(!!wild, '야생 자리를 찾았다(마을 완충 0)', wild ? `(${wild.x},${wild.y})` : '못 찾음');
+    const R = H.Rescue.CFG.SHOUT_RANGE_PX;
+    clearPlayers();
+    const a = mkPlayer('shout_a', wild.x, wild.y);
+    const near = mkPlayer('near_b', wild.x + Math.round(R * 0.5), wild.y);
+    const far = mkPlayer('far_c', wild.x + R + 4000, wild.y);
+    // ★★정본 경로로 쓰러뜨린다 — `Rescue.shoutOnce` 를 손으로 부르면 "훅이 걸려 있는가"를 안 재게 된다.
+    H.damagePlayer(a, 200, 'fall');
+    pre(a.isDown, '쓰러졌다');
+    const nn = near.__notices().filter((t) => /쓰러졌다/.test(t));
+    const fn = far.__notices().filter((t) => /쓰러졌다/.test(t));
+    ok(nn.length === 1, '★★⑫ 쓰러진 **그 순간** 반경 안 사람이 듣는다 — `damagePlayer` 가 부른다(훅 검사)', JSON.stringify(nn));
+    ok(fn.length === 0, '★★⑫ 반경 밖은 **못 듣는다** — 소리에는 끝이 있다', `${R}px 밖 · ${fn.length}건`);
+    ok(/걸음/.test(nn[0] || '') && !/px/.test(nn[0] || ''),
+      '★★⑫ 거리는 **걸음으로** 말한다(§60 · 화면에 px 를 흘리지 않는다)', nn[0]);
+    ok(/해 지는|해 뜨는|북쪽|남쪽/.test(nn[0] || ''),
+      '★★⑫ 방위는 **촌장과 같은 어휘**다(온보딩 `dirWord` 정본 · 사본 0)', nn[0]);
+    // 결정론 — 같은 상황이면 같은 소리
+    const s1 = H.Rescue.shoutOnce(a, Date.now()), t1 = near.__notices().slice(-1)[0];
+    const s2 = H.Rescue.shoutOnce(a, Date.now() + 12345), t2 = near.__notices().slice(-1)[0];
+    ok(s1 === s2 && t1 === t2, '★★⑫ **주사위 0** — 같은 자리·같은 사람이면 글자까지 같다', `${s1}명 · "${t1}"`);
+    // 걸음 환산이 캐논(32px=1m=1셀)에서 온다
+    ok(H.Rescue.steps(32 * 7) === 7 && H.Rescue.steps(0) === 0,
+      '★⑫ 1걸음 = 1셀 = 32px — 새 환산을 안 만들었다', `${H.Rescue.steps(224)}걸음`);
+    // ★돌연변이 — 반경을 0 으로 만들면 위 판정이 **빨강이 된다**(항상 통과하는 검사가 아니다)
+    {
+      const keep = H.Rescue.CFG.SHOUT_RANGE_PX;
+      H.Rescue.CFG.SHOUT_RANGE_PX = 0;
+      const heard = H.Rescue.shoutOnce(a, Date.now());
+      H.Rescue.CFG.SHOUT_RANGE_PX = keep;
+      ok(heard === 0, '★★⑫ 돌연변이 — 반경 0 이면 **아무도 못 듣는다**(판정이 ✗ 를 낼 수 있다)', `${heard}명`);
+    }
+  }
+  // ★마을 안에서는 외치지 않는다 — 부를 사람이 이미 와 있고, 거기선 죽지도 않는다(§12)
+  {
+    let vspot = null;
+    for (const v of (SimVillages.clientVillages() || [])) {
+      const x = v.cx * 32 + 16, y = v.cy * 32 + 16;
+      if ((SimVillages.shelterAt(x, y) || 0) > 0.5) { vspot = { x, y, name: v.name }; break; }
+    }
+    pre(!!vspot, '마을 한복판을 찾았다', vspot ? vspot.name : '못 찾음');
+    clearPlayers();
+    const a = mkPlayer('v_down', vspot.x, vspot.y);
+    const b = mkPlayer('v_near', vspot.x + 200, vspot.y);
+    H.damagePlayer(a, 200, 'fall');
+    pre(a.isDown, '마을 안에서 쓰러졌다');
+    ok(b.__notices().filter((t) => /쓰러졌다/.test(t)).length === 0,
+      '★★⑫ **마을 안에서는 안 외친다** — 마을 사람이 옮기는 자리다(§12)');
+    // ★자명 통과 금지 — 같은 두 사람을 야생에 세우면 들린다(마을이라서 조용한 게 맞다)
+    a.isDown = false; a.downedAt = 0; a.hp = 100;
+    let wild2 = null;
+    for (let x = 4000; x < 60000 && !wild2; x += 3000) for (let y = 4000; y < 120000; y += 3000) {
+      if (H.isWaterTileLocal(x, y) || H.isTerrainBlockedLocal(x, y)) continue;
+      if ((SimVillages.shelterAt(x, y) || 0) > 0) continue;
+      wild2 = { x, y }; break;
+    }
+    a.x = wild2.x; a.y = wild2.y; b.x = wild2.x + 200; b.y = wild2.y;
+    H.damagePlayer(a, 200, 'fall');
+    ok(b.__notices().filter((t) => /쓰러졌다/.test(t)).length === 1,
+      '★★⑫ 자명 통과 금지 — **같은 두 사람이 야생에 서면 들린다**');
+  }
+
+  // ═══ ⑬ 구조 동사 둘 — 먹이기·물 (T56) ══════════════════════════════════════
+  say('\n⑬ 구조 동사 둘 — /먹이기 · /물');
+  {
+    clearPlayers();
+    const a = mkPlayer('eat_a', 30848, 59872);          // 쓰러질 사람
+    const b = mkPlayer('give_b', 30848 + 40, 59872);    // 먹여 줄 사람
+    a.hunger = 0; a.thirst = 50;
+    b.inventory.berry = 3;
+    const bHunger0 = b.hunger;
+    H.damagePlayer(a, 200, 'extreme:hunger');
+    pre(a.isDown, '쓰러졌다');
+    pre(H.FOOD_EFFECTS.berry && H.FOOD_EFFECTS.berry.hunger > 0, '산딸기가 정말 허기를 채우는 표다',
+      `+${H.FOOD_EFFECTS.berry && H.FOOD_EFFECTS.berry.hunger}`);
+    const ok1 = H.Rescue.handleChat(b, '/먹이기 berry');
+    ok(ok1 === true, '★⑬ `/먹이기` 는 채팅 명령이다 — 클라 코드 0(T11 선례)');
+    ok(a.hunger > 0, '★★⑬ **받는 사람의 허기가 찬다**', `0 → ${Math.round(a.hunger)}`);
+    ok(b.hunger === bHunger0, '★★⑬ **주는 사람은 안 먹는다** — 대상 인자가 실제로 갈린다', `${b.hunger}`);
+    ok((b.inventory.berry || 0) === 2, '★★⑬ **주는 사람 인벤에서 빠진다**(원장 정합)', `berry ${b.inventory.berry}`);
+    ok((a.inventory.berry || 0) === 0, '★⑬ 받는 사람 인벤은 안 늘어난다(먹인 것이지 준 것이 아니다)');
+    ok(a.__notices().some((t) => /섭취/.test(t)), '★⑬ "섭취했다"는 **받는 사람**의 말이다',
+      JSON.stringify(a.__notices().filter((t) => /섭취/.test(t))));
+    ok(b.__notices().some((t) => /먹였다/.test(t)), '★⑬ 먹여 준 쪽은 제 문장을 듣는다',
+      JSON.stringify(b.__notices().filter((t) => /먹였다/.test(t))));
+    // ★★돌연변이 — 대상 인자를 안 주면 **주는 사람이 먹는다**(위 두 판정이 ✗ 를 낼 수 있다)
+    {
+      b.hunger = 50;                          // ★배부른 몸으로는 못 잰다 — 100 은 더 안 오른다(자명 통과)
+      const h0 = a.hunger, bh0 = b.hunger;
+      H.doEat(b, 'berry', 1);                 // ← 대상 없음(종전 호출과 동형)
+      ok(b.hunger > bh0 && a.hunger === h0,
+        '★★⑬ 돌연변이 — 대상 인자를 빼면 **먹는 사람이 바뀐다**(판정이 자명 통과가 아니다)',
+        `주는이 ${Math.round(bh0)}→${Math.round(b.hunger)} · 받는이 ${Math.round(h0)} 그대로`);
+    }
+    // 거리 게이트 — T43 의 그 거리 하나다(소속은 안 본다)
+    b.x = 30848 + 4000;
+    const far = H.Rescue.handleChat(b, '/먹이기 berry');
+    ok(far === true && b.__notices().slice(-1)[0].includes('쓰러진 사람이 없다'),
+      '★⑬ 멀면 못 먹인다 — 거절 사유를 말한다', b.__notices().slice(-1)[0]);
+  }
+  // ── /물 — 물은 들고 다닐 수 없다. 물가로 업고 가야 한다. ──────────────────
+  {
+    // 민물 옆·바다 옆 자리를 **찾는다**
+    let fresh = null, sea = null;
+    for (let x = 2000; x < 68000 && (!fresh || !sea); x += 500) {
+      for (let y = 2000; y < 128000; y += 500) {
+        if (H.isWaterTileLocal(x, y) || H.isTerrainBlockedLocal(x, y)) continue;
+        const w = H.Rescue.freshWaterNear(x, y), s = H.Rescue.seaOnlyNear(x, y);
+        if (w && !fresh) fresh = { x, y };
+        if (s && !sea) sea = { x, y };
+        if (fresh && sea) break;
+      }
+    }
+    pre(!!fresh, '민물 옆자리를 찾았다', fresh ? `(${fresh.x},${fresh.y})` : '못 찾음');
+    pre(!!sea, '바다만 옆에 있는 자리를 찾았다', sea ? `(${sea.x},${sea.y})` : '못 찾음');
+    if (fresh) {
+      clearPlayers();
+      // ★물을 뜨는 것은 **구조자의 손**이다 ⇒ 물가에 서는 쪽은 b 다(쓰러진 이는 업혀 온 것).
+      const b = mkPlayer('pour_b', fresh.x, fresh.y);
+      const a = mkPlayer('thirst_a', fresh.x + 40, fresh.y);
+      a.thirst = 5;
+      H.damagePlayer(a, 200, 'extreme:thirst');
+      pre(a.isDown, '쓰러졌다');
+      H.Rescue.handleChat(b, '/물');
+      ok(a.thirst > 5, '★★⑬ 그릇이 없으면 물가에서 **손으로 떠 먹인다**', `5 → ${Math.round(a.thirst)}`);
+      ok(Math.round(a.thirst - 5) === Math.round(H.WATER_DRINK_AMOUNT),
+        '★⑬ 손으로 뜬 회복량은 **정본 한 모금**이다(새 수를 안 만들었다)', `+${H.WATER_DRINK_AMOUNT}`);
+    }
+    // ★★[T54 접점] **들고 온 물이 먼저다** — 그릇이 열렸으니 물가가 아니어도 먹일 수 있다.
+    {
+      const Tidal = require(path.join(ROOT, 'server', 'tidal.js'));
+      clearPlayers();
+      const a = mkPlayer('carry_a', 30848, 59872);
+      const b = mkPlayer('carry_b', 30848 + 40, 59872);
+      a.thirst = 5;
+      b.inventory[Tidal.FRESH] = 2;
+      pre(!H.Rescue.freshWaterNear(b.x, b.y), '물가가 **아닌** 자리다(그릇 갈래만 남는다)');
+      H.damagePlayer(a, 200, 'extreme:thirst');
+      pre(a.isDown, '쓰러졌다');
+      H.Rescue.handleChat(b, '/물');
+      ok(a.thirst > 5, '★★⑬ **들고 온 민물로 먹인다** — 물가가 아니어도 된다(T54 그릇 일반화)',
+        `5 → ${Math.round(a.thirst)}`);
+      ok((b.inventory[Tidal.FRESH] || 0) === 1, '★★⑬ 물은 **준 사람 인벤에서** 빠진다', `민물 ${b.inventory[Tidal.FRESH]}`);
+      ok((b.inventory[H.Salt.VESSEL] || 0) === 1 && (a.inventory[H.Salt.VESSEL] || 0) === 0,
+        '★★⑬ 그리고 **빈 병은 준 사람 손에 남는다** — 먹인 것이지 준 게 아니다(T54 `returns` 계약)',
+        `준이 ${b.inventory[H.Salt.VESSEL] || 0} · 받은이 ${a.inventory[H.Salt.VESSEL] || 0}`);
+    }
+    if (sea) {
+      clearPlayers();
+      const b = mkPlayer('salt_b', sea.x, sea.y);
+      const a = mkPlayer('salt_a', sea.x + 40, sea.y);
+      a.thirst = 5;
+      H.damagePlayer(a, 200, 'extreme:thirst');
+      pre(a.isDown, '바닷가에서 쓰러졌다');
+      H.Rescue.handleChat(b, '/물');
+      ok(a.thirst === 5, '★★⑬ **짠물은 못 먹인다** — T4 의 그 판정을 다시 부른다', `목마름 ${a.thirst} 그대로`);
+      ok(b.__notices().slice(-1)[0].includes('짠물'),
+        '★⑬ 그리고 **왜 안 되는지** 말한다("물이 없다"가 아니라 "짠물이다")', b.__notices().slice(-1)[0]);
+    }
+    // ★정합 — `/물` 과 채집 정본이 **같은 자리에서 같은 답**을 한다(두 술어가 갈리지 않는다)
+    if (fresh && sea) {
+      ok(H.Rescue.freshWaterNear(fresh.x, fresh.y) && !H.Rescue.freshWaterNear(sea.x, sea.y),
+        '★★⑬ 물이냐 짠물이냐는 **정본 술어 둘**이 가른다(표를 새로 안 들었다)');
+    }
+  }
+  // ── 먹이고 일으키면 안 눕는다 vs 안 먹이면 다시 눕는다 — **두 갈래 다** ────
+  say('\n⑬-나 먹이고 일으키면 유지 · 안 먹이면 재도 (T43 ④의 짝)');
+  {
+    for (const fed of [true, false]) {
+      clearPlayers();
+      const a = mkPlayer(fed ? 'fed_a' : 'unfed_a', 30848, 59872);
+      const b = mkPlayer(fed ? 'fed_b' : 'unfed_b', 30848 + 40, 59872);
+      a.hunger = 0; a.thirst = 0;
+      b.inventory.berry = 40;
+      H.damagePlayer(a, 200, 'extreme:hunger+thirst');
+      pre(a.isDown, `${fed ? '먹인' : '안 먹인'} 갈래 — 쓰러졌다`);
+      if (fed) {
+        // ★배부를 때까지 먹인다 — 한 알로 극단을 벗어난다고 우기지 않는다(정본 함수를 반복해 부른다)
+        for (let i = 0; i < 30 && B.extremeHpRate(a).rate > 0; i++) H.Rescue.handleChat(b, '/먹이기 berry');
+        pre(B.extremeHpRate(a).rate === 0, '먹여서 극단을 벗어났다',
+          `허기 ${Math.round(a.hunger)} · 목마름 ${Math.round(a.thirst)}`);
+      }
+      H.tryRescue(b, a.pid);
+      await until(() => !a.isDown, 12);
+      pre(!a.isDown, '일으켰다', `hp ${a.hp}`);
+      const rate = B.extremeHpRate(a).rate;
+      const hp0 = a.hp;
+      // ★★기다리는 시간은 **유도한다**(감으로 고르지 않는다). T44 는 이월분이 1HP 를 넘을 때
+      //   비로소 정본 피해로 나간다 ⇒ 첫 1HP 까지 1/rate 초. 그 두 배를 기다리면 충분하다.
+      //   (`_wakeUp` 이 빚을 0 으로 지우므로 시계는 **일어난 순간**부터다.)
+      const need = rate > 0 ? Math.ceil(2 / rate) : 20;
+      let dropped = false;
+      for (let i = 0; i < need && !dropped; i++) { await sleep(1000); if (a.hp < hp0 - 0.5) dropped = true; }
+      const dHp = a.hp - hp0;
+      if (fed) {
+        ok(rate === 0 && dHp >= 0,
+          '★★⑬ **먹이고 일으키면 안 눕는다** — 감소율 0 이고 HP 는 오히려 찬다',
+          `rate ${rate} · HP ${Math.round(hp0)} → ${Math.round(a.hp)}`);
+      } else {
+        ok(rate > 0 && dropped,
+          '★★⑬ **안 먹이고 일으키면 도로 깎인다** — 대조군(새 규칙 0 · T44 식이 한다)',
+          `rate ${rate.toFixed(5)} HP/게임분 · HP ${Math.round(hp0)} → ${a.hp.toFixed(2)}`
+          + ` (${Math.round(1 / rate)}초에 1HP · 남은 시간 ${Math.round(a.hp / rate / 60)}분)`);
+      }
+    }
+  }
+  // ── 후유증이 화면 재료에 실린다 ───────────────────────────────────────────
+  {
+    clearPlayers();
+    const p = mkPlayer('after_p', 30848, 59872);
+    ok(B.selfPayload(p).aftermath === null, '★⑬ 후유증이 없으면 **null 이다**(0 을 보내면 없는 말을 하게 된다)');
+    B.startAftermath(p, H.gameDayNow());
+    B.tick(p, 1, { day: H.gameDayNow(), night: false, indoor: false, moving: false, shelter: 0 });
+    const am = B.selfPayload(p).aftermath;
+    ok(am && am.cap === B.staminaCap(p, H.gameDayNow()) && am.days > 0,
+      '★★⑬ 죽고 나면 **화면 재료에 실린다** — 값은 몸의 정본과 같은 수다(사본 0)', JSON.stringify(am));
+  }
+
   // ═══ ⑪ 대리 지표 ═══════════════════════════════════════════════════════════
   say('\n⑪ 대리 지표 — 시나리오별 시간');
   {

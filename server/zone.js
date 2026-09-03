@@ -59,6 +59,7 @@ const Onboarding = require('./onboarding');   // ★[온보딩 v2 2026-09-01] �
 const Membership = require('./membership');   // ★[T11 2026-09-02] 마을 소속·곳간 인출. 기여 계량기는 온보딩 정본 **하나**를 읽는다
 const Claims = require('./claims');           // ★[T45 2026-09-02] 사유지 v2 — 종류 영속·인접·연결성·부재 상태기(정본 하나)
 const Newcomers = require('./newcomers');     // ★[T19 2026-09-02] 유저 마을 시작지 등록 — "이방인 받기"(§9.3 나머지 절반)
+const Rescue = require('./rescue');           // ★[T56 2026-09-02] 외침·구조 동사 둘. 판정은 전부 정본을 부른다(사본 0)
 const harvestedSeeds = new Set(); // 채집된 시드 자원 (DB에서 load)
 
 // === 활성 청크 (12.2.b) — 사람 player + observer 위치 주변 청크만 시뮬레이션 ===
@@ -2545,6 +2546,19 @@ Newcomers.init({
   setSwitch: (player, hall, on) => tryVillageWelcome(player, hall.id, on),
 });
 Newcomers.start();
+// ★[T56 2026-09-02] 외침·구조 동사 — **이미 있는 것만 넘긴다**(사본 금지 · T11 과 같은 규약).
+//   마을 반경·물·바다·먹기·방위말이 전부 남의 정본이다. `rescue.js` 는 소리와 문법만 갖는다.
+Rescue.init({ players, send, ZONE_ID,
+  shelterAt: (x, y) => SimVillages.shelterAt(x, y),
+  isWaterTile: isWaterTileLocal, isSeaTile: isSeaTileLocal,
+  doEat: (giver, item, n, target) => doEat(giver, item, n, target),
+  dirWord: Onboarding.dirWord,
+  foodItems: new Set(Object.keys(FOOD_EFFECTS)),
+  //   ★이름표는 **함수로** 넘긴다 — 표가 이 줄보다 **뒤에서** 채워지기 때문이다
+  //     (`ITEM_LABEL_SERVER` 는 작물·특산까지 흡수한 뒤 완성된다). 값으로 넘기면 빈 표를 붙든다.
+  itemLabel: () => ITEM_LABEL_SERVER,
+  RESCUE_RANGE_PX, RESCUE_WINDOW_MS, WATER_DRINK_AMOUNT, THIRST_MAX,
+  afterVerb: (p) => { try { send(p.ws, { type: 'gauges', hunger: Math.round(p.hunger), thirst: Math.round(p.thirst), body: Body.selfPayload(p) }); savePlayer(p); } catch (e) {} } });
 
 // Phase 12.2.e: 자원 respawn 제거 — 청크 활성화 시 시드로 자동 생성됨
 
@@ -3686,6 +3700,8 @@ function handlePlayerInput(player, raw) {
     //   **새 클라 조건 0**: 채팅은 이미 있다. 명령은 말이 아니므로 방송하지 않는다.
     if (Membership.handleChat(player, text)) return;
     if (Newcomers.handleChat(player, text)) return;   // ★[T19] `/이방인` — 새 클라 조건 0
+    // ★[T56] 구조 동사 둘 — `/먹이기 <음식>` `/물`. 채팅은 이미 있다(클라 무접촉 · T11 선례).
+    if (Rescue.handleChat(player, text)) return;
     if (text.startsWith('/t ')) {
       if (!player.tribeId) { send(player.ws, { type: 'notice', text: '길드 소속이 아닙니다' }); return; }
       const tribeText = text.slice(3).trim();
@@ -4156,7 +4172,14 @@ function tryHarvest(player) {
 // ★★[무게 배치 2026-08-27] **부분 소비**를 받는다(재민: "한 입 0.25단위 식 부분 소비 —
 //   무게·포만감 정확히 비례 차감"). 로트 품목이면 **오래된 로트부터** 깎고, 회복량도 그만큼만 준다.
 //   기본값 1 이라 기존 호출부는 한 줄도 안 달라진다.
-function doEat(player, item, amount) {
+// ★★[T56 2026-09-02 · §12] **먹이기는 먹기와 같은 함수다.** 대상 인자 하나를 더했다
+//   (`who` — 기본값은 자기 자신이라 종전 호출은 한 글자도 안 바뀐다).
+//     · 인벤·로트·kg 원장·신선도·탈  →  **`player`**(주는 사람)에게서 종전 그대로 빠진다
+//     · 허기·갈증·HP·사기·약초       →  **`who`**(받는 사람)의 몸에 붙는다
+//   ⇒ 남에게 먹이는 두 번째 경로를 만들지 않았다. 두 벌이 되면 로트 FIFO 와 부패 판정이
+//     갈리고, 그날 "먹여 줬는데 왜 상한 게 안 셌지" 가 난다(거래소 배치의 그 함정).
+function doEat(player, item, amount, who) {
+  const target = who || player;
   const eff = FOOD_EFFECTS[item];
   if (!eff) {
     send(player.ws, { type: 'notice', text: `먹을 수 없는 아이템: ${item}` }); return;
@@ -4189,22 +4212,24 @@ function doEat(player, item, amount) {
   // ★회복은 **먹은 양에 정확히 비례**한다 — 0.25단위를 먹으면 0.25배 찬다.
   // ★그리고 **신선도에 비례**한다(연속). 상함(f=0)이면 곱해서 0 이 된다 — 별도 분기가 없다.
   const _nut = Spoil.nutritionMult(fresh);
-  if (eff.hunger)   player.hunger = Math.min(HUNGER_MAX, (player.hunger ?? HUNGER_MAX) + eff.hunger * ate * _nut);
+  if (eff.hunger)   target.hunger = Math.min(HUNGER_MAX, (target.hunger ?? HUNGER_MAX) + eff.hunger * ate * _nut);
   // ★보존식은 짜고 말라 갈증을 준다(thirst 음수) — 0 아래로는 안 내려간다.
   //   갈증 항은 신선도로 안 깎는다: 마른 건어물은 상해도 여전히 짜다.
-  if (eff.thirst)   player.thirst = Math.max(0, Math.min(THIRST_MAX, (player.thirst ?? THIRST_MAX) + eff.thirst * ate));
+  if (eff.thirst)   target.thirst = Math.max(0, Math.min(THIRST_MAX, (target.thirst ?? THIRST_MAX) + eff.thirst * ate));
   // ★★[T54 2026-09-02 재민/PM 판정] **병은 그릇이지 소모품이 아니다** — 표의 `returns` 칸을 여기서 읽는다.
   //   가마가 빈 병을 돌려주는 자리(`doBoilSalt` 의 시설 산출)와 **같은 계약**이고, 그래서 담기·마시기가
   //   왕복해도 **병 개수가 보존된다**. ⚠(83)·(94)의 함정 자리다 — 칸을 넣는 것과 읽는 것은 다른 명제라
   //   `test-tidal` 의 돌연변이 검사가 **이 줄을 지우면 빨개진다**(실클라도 빈 병 +1 을 센다).
+  //   ★★[T56 2026-09-02] 남에게 먹여도 **빈 병은 준 사람 손에 남는다**(`player`) — 물을 먹여 주고
+  //     병까지 넘어가면 그건 주기(give)지 먹이기가 아니다. 물건은 주는 쪽, 몸은 받는 쪽이 이 함수의 규약이다.
   if (eff.returns)  { player.inventory[eff.returns] = (player.inventory[eff.returns] || 0) + ate; send(player.ws, { type: 'notice', text: `🏺 빈 ${ITEM_LABEL_SERVER[eff.returns] || eff.returns} ${ate}개가 남았다` }); }
   // ★★[T43 2026-09-02] **HP 0 의 뜻을 하나로.** 종전엔 이 갈래가 `damagePlayer` 밖에서 hp 를 깎아
   //   hp 가 0 이 돼도 **쓰러지지 않는 몸**이 만들어졌다(죽음 설계 §0-ⓐ-4 가 잡은 구멍:
   //   그 몸은 더 안 맞고 영원히 안 아물어 로그아웃 말고는 빠져나올 길이 없었다).
   //   ⇒ 음(−)의 몫은 **정본 피해 경로**로 보낸다. 회복(+)은 종전 그대로 여기서 더한다.
-  if (eff.hpDelta < 0) { damagePlayer(player, -eff.hpDelta * ate, `food:${item}`); }
-  else if (eff.hpDelta) { player.hp = Math.max(0, Math.min(player.maxHp, player.hp + eff.hpDelta * ate));
-                      broadcast({ type: 'player_damaged', pid: player.pid, hp: player.hp }); }
+  if (eff.hpDelta < 0) { damagePlayer(target, -eff.hpDelta * ate, `food:${item}`); }
+  else if (eff.hpDelta) { target.hp = Math.max(0, Math.min(target.maxHp, target.hp + eff.hpDelta * ate));
+                      broadcast({ type: 'player_damaged', pid: target.pid, hp: target.hp }); }
   // ★★상한 걸 먹으면 **확정적으로** 탈이 난다 — 주사위 없음(재민 확정: 식중독 확률 모델 금지).
   //   새 축을 안 만든다: 신체 §7 의 **부상** 축 하나를 재사용한다(HP 는 안 건드린다).
   //   ⚠[T44] "아사 폐지" 폐기와 무관하다 — 극단 HP 감소는 허기·갈증·추위 셋이고 상한 음식은 그 목록 밖이다.
@@ -4213,27 +4238,31 @@ function doEat(player, item, amount) {
   if (spoiledQty > 0) {
     _ill = Spoil.illnessFor(spoiledQty);
     if (_ill > 0) {
-      const _b = Body.ensure(player);
+      const _b = Body.ensure(target);
       _b.injury = Math.min(1, _b.injury + _ill);
     }
   }
   // ★[신체 상태 §7] 사기 = **당근**. 심심함·스트레스는 기각됐고, 대신 좋은 음식이 버프를 준다.
   //   조리식(meat_cooked·berry_jam)이 생식보다 크다 — 요리와 화덕 수요의 실체.
   const _cooked = /cooked|jam|dish|stew|soup/.test(item);
-  Body.onEat(player, { cooked: _cooked });
+  Body.onEat(target, { cooked: _cooked });
   // 약초는 부상 회복을 재촉한다(§7 "부상 = 회복 기간 + 약초 수요")
-  if (item === 'medicinal_herb' || item === 'herb') Body.onHerb(player, Date.now());
+  if (item === 'medicinal_herb' || item === 'herb') Body.onHerb(target, Date.now());
   sendInventory(player);
+  // ★몸의 값은 **받는 사람** 화면으로 간다(자기 자신을 먹였으면 종전과 같은 한 통이다).
   send(player.ws, { type: 'gauges', hunger: Math.round(player.hunger), thirst: Math.round(player.thirst), body: Body.selfPayload(player), carry: Object.assign(Carry.payload(player), { combined: moveMultOf(player) }) });
+  if (target !== player) send(target.ws, { type: 'gauges', hunger: Math.round(target.hunger), thirst: Math.round(target.thirst), body: Body.selfPayload(target) });
   // ★[부패] 화면이 **왜 덜 찼는지**를 말한다 — 안 말하면 "회복량이 이상하다"로만 보인다
   //   (거래소 배치의 교훈: 계측기가 속은 자리에서 플레이어도 똑같이 속는다).
   const _stg = Spoil.stageOf(fresh);
   const _gain = Math.round((eff.hunger || 0) * ate * _nut);
-  send(player.ws, { type: 'notice', text: `${ITEM_LABEL_SERVER[item] || item} 섭취 (+허기 ${_gain})`
+  // ★"섭취했다"는 **받는 사람**의 말이다 — 먹여 준 쪽에는 `rescue.js` 가 제 문장을 보낸다.
+  send(target.ws, { type: 'notice', text: `${ITEM_LABEL_SERVER[item] || item} 섭취 (+허기 ${_gain})`
     + (_stg !== 'fresh' && isLot ? ` · ${Spoil.STAGE_EMO[_stg]} ${Spoil.STAGE_KO[_stg]}` : '')
     + (_ill > 0 ? ' · 🤢 탈이 났다(부상↑)' : '')
     + (_cooked ? ' · ✨ 잘 먹었다(사기↑)' : '') });
   savePlayer(player);
+  if (target !== player) savePlayer(target);
 }
 
 // === 요리 (campfire 근처에서만) ===
@@ -7842,6 +7871,8 @@ function __testBind() {
     Wind, windExposureOf, isRockTileLocal, villageShelterOf, gameDayNow, elevKmAt,
     // ── 쓰러짐·구조·사망(T43) ──
     tryRescue, tryRespawnChoice, listRespawnOptions, resolveDowned, tickDowned, nearestVillageWake,
+    // ── 외침·구조 동사(T56) — 정본 모듈을 그대로 내준다(하네스가 소리를 다시 짜지 않는다) ──
+    Rescue, doEat, Onboarding, WATER_DRINK_AMOUNT, THIRST_MAX, HUNGER_MAX, FOOD_EFFECTS, isWaterTileLocal,
     RESCUE_WINDOW_MS, RESCUE_RANGE_PX, RESCUE_HOLD_MS, RESCUE_HP_FRAC, CARRY_PERSON_KG, DOWN_WAKE_GAMEMIN,
     Carry, Lots, Weights, SimVillages, serializeBody, parseBody,
     // ★[부패 2차 2026-09-01] 자리(상자·바닥)를 하네스가 정본 함수로 밟게 — 손으로 빚으면 사본이다
@@ -8503,6 +8534,9 @@ function damagePlayer(p, dmg, source) {
     });
     // 모두에게 down 상태 broadcast (시각/동작용)
     broadcast({ type: 'player_down_state', pid: p.pid, isDown: true });
+    // ★★[T56 2026-09-02 · §12] **소리.** 창 3분의 근거가 "소리를 듣고 달려오는 사람"인데
+    //   T43 까지 쓰러짐은 그 사람 화면에만 떴다. 야생에서만 외친다(마을은 이미 사람이 있다).
+    Rescue.onDown(p, Date.now());
     console.log(`[${ZONE_ID}] ☠️ ${p.name} 다운 (by ${source}) — 부활 선택 대기`);
   }
 }

@@ -620,6 +620,11 @@ function tick(p, dtSec, ctx) {
   {
     const cap = staminaCap(p, c.day);
     if (b.stam > cap) b.stam = +cap.toFixed(4);
+    // ★★[T56 2026-09-02] **화면이 후유증을 모른다** — T43 은 스태미나가 덜 차는 것만 보이게 두고
+    //   "왜 숨이 덜 붙는지"는 아무 데도 안 실었다. 여기서 이미 구한 값을 **메모로** 남겨
+    //   `selfPayload` 가 실어 보낸다(새 축·새 계산 0 — 이 두 수는 방금 이 자리에서 나왔다).
+    //   ⚠**정본이 아니라 메모다.** 후유증의 정본은 `deadDay` 하나이고 `toSave` 는 그것만 쓴다.
+    b._amCap = cap; b._amLeft = aftermathLeft(p, c.day);
   }
   // 피로 — 일하면 오르고(그건 onLabor 가 한다) 쉬면 내린다.
   let restMult = c.indoor ? CFG.FATIGUE_INDOOR_MULT : 1;
@@ -668,6 +673,10 @@ function selfPayload(p) {
     parts: e.parts.map((x) => ({ axis: x.axis, ko: x.ko, emo: x.emo, sev: x.sev,
       move: +x.move.toFixed(4), work: +x.work.toFixed(4) })),
     moodles: moodles(p),
+    // ★[T56] 후유증 — 화면이 "며칠 더 숨이 덜 붙는다"를 말할 재료(무들 한 칸은 T55 뒤 · 회부).
+    //   ★깨어 있는 몸의 마지막 틱이 남긴 값이다(위 `tick` 의 메모). 후유증이 없으면 `null` —
+    //     0 을 보내면 화면이 "0일 남았다"는 없는 말을 하게 된다.
+    aftermath: ((b._amLeft || 0) > 0) ? { days: +(b._amLeft).toFixed(2), cap: +(b._amCap).toFixed(4) } : null,
   };
 }
 // 남에게 보낼 것 — **단계뿐**. 외형 반영은 이번 범위 밖이라 소비자가 없지만,

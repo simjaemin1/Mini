@@ -8,9 +8,11 @@
 //   구조는 **두 사람이 하는 일**이라 그 층이 특히 두껍다: R 키가 낯선 이에게도 걸리는가,
 //   업고 걸으면 정말 따라오는가, 죽은 자리에 짐이 남아 **주울 수 있는가**.
 //
-// 시나리오 둘 — §12 그대로:
+// 시나리오 셋 — §12 그대로:
 //   ⓐ **A 가 쓰러지고 B 가 업어 옮긴다** → 산다(붙들기 N초).
 //   ⓑ **방치한다** → 창 소진 → 사망 → 짐꾸러미 → **A 가 걸어가 되찾는다**.
+//   ⓓ **[T56] 소리가 먼저다** — A 가 쓰러지면 **B 화면에 외침이 뜬다**. 그리고 `/먹이기` 로
+//      상태를 내린 뒤 업어 일으키면 **안 눕는다**. 소리가 없으면 창 3분은 근거가 없다.
 //
 // 실행: node scripts/e2e-downed.js [--headed]
 'use strict';
@@ -118,7 +120,9 @@ async function waitHttp(url, tries = 600) {
   //   추측으로 좌표를 흔드는 대신 그 공지를 찍는다.
   const warpWhy = async (pg) => (await pg.evaluate(
     () => (window.__notices || []).filter((t) => /텔레포트|강·바다/.test(t)).slice(-2)));
-  const notices = (pg) => pg.evaluate(() => (window.__notices || []).slice(-6));
+  const notices = (pg) => pg.evaluate(() => (window.__notices || []).slice(-40));
+  // ★채팅 명령 — **이미 있는 통로**로 보낸다(새 창구 0 · 서버가 `/` 를 보고 가른다)
+  const chat = (pg, text) => pg.evaluate((t) => window.__sendPrimary({ type: 'chat', text: t }), text);
   const clearNotices = (pg) => pg.evaluate(() => { window.__notices = []; });
 
   // ★야생 자리를 **서버가 답하는 값**으로 찾는다(마을 완충 0)
@@ -147,6 +151,13 @@ async function waitHttp(url, tries = 600) {
   //   ★"몇 px 갔다"가 아니라 **"게임이 완충 0 이라고 답한다"** 로 찾는다(`e2e-cold ②` 와 같은 규약).
   //     텔레포트는 막힌 칸에서 clamp 되므로 **거리로 판정하면 자리를 못 찾는다**(초안이 그랬다).
   //     쓸 자리는 "요청한 좌표"가 아니라 **서버가 답한 내 위치**다.
+  //   ★★[T56 실측] 그런데 **그 답만으로는 모자랐다.** 화면의 완충값은 텔레포트 직후 **낡아 있을 수 있다**
+  //     (서버가 완충을 1초 메모하고 날씨는 주기적으로만 실어 보낸다) — 그래서 마을 한복판을
+  //     "완충 0 인 야생"으로 집어 들었고, ⓑ 가 통째로 헛돌았다(죽는 대신 **마을 사람이 옮겼다**).
+  //     ⇒ 두 번째 자물쇠를 건다: **시딩된 50 마을 중심에서 전부 멀 것**. 반경 정본의 최댓값이
+  //       2,152px 이므로 2,600px 이면 어느 마을에도 안 걸린다. 이 값은 화면이 아니라 **DB**에서 온다.
+  const VIL_SAFE_PX = 2600;
+  const farFromVillages = (x, y) => rows.every((v) => Math.hypot(v.cx * 32 + 16 - x, v.cy * 32 + 16 - y) > VIL_SAFE_PX);
   let wild = null;
   outer:
   for (const r of [4000, 9000, 16000, 30000, 60000]) {
@@ -155,7 +166,10 @@ async function waitHttp(url, tries = 600) {
       if (tx < 400 || ty < 400) continue;
       await warp(A, tx, ty, 3);
       const w = await A.evaluate(() => (window.__wx ? window.__wx() : null));
-      if (w && (w.shelter || 0) < 0.01) { const p = await absOf(A); wild = { x: p.x, y: p.y }; break outer; }
+      if (!w || (w.shelter || 0) >= 0.01) continue;
+      const p = await absOf(A);
+      if (!farFromVillages(p.x, p.y)) continue;              // ★낡은 화면값에 속지 않는다
+      wild = { x: p.x, y: p.y }; break outer;
     }
   }
   pre(!!wild, '야생 자리를 찾았다(마을 완충 0)', wild ? `(${Math.round(wild.x)},${Math.round(wild.y)})` : '못 찾음');
@@ -185,9 +199,33 @@ async function waitHttp(url, tries = 600) {
     ok(downed, '★★ⓐ 굶어서 **실제로 쓰러진다** — 화면에 쓰러짐 패널이 뜬다(T44 → T43 사슬)');
     await snap('downed-01-fall');
 
+    // ★★[T56] **소리가 먼저다.** B 는 아직 아무것도 안 했는데 화면이 먼저 말해야 한다.
+    const shout = (await notices(Bp)).filter((t) => /쓰러졌다/.test(t));
+    ok(shout.length > 0, '★★ⓓ **A 가 쓰러지자 B 화면에 외침이 뜬다** — 창 3분의 근거가 이제 있다',
+      JSON.stringify(shout.slice(-1)));
+    ok(/걸음/.test(shout[0] || '') && !/px|NaN|undefined/.test(shout[0] || ''),
+      '★★ⓓ 그 외침은 **방위와 걸음**으로 말한다(§60 · 화면에 px 를 안 흘린다)', shout[0] || '-');
+
     const ap = await absOf(A), bp = await absOf(Bp);
     pre(Math.hypot(bp.x - ap.x, bp.y - ap.y) < 120, 'B 가 구조 거리 안에 그대로 있다',
       `${Math.round(Math.hypot(bp.x - ap.x, bp.y - ap.y))}px`);
+
+    // ★★[T56] **먹여서 상태를 내린다** — 채팅 명령이라 클라 코드가 한 줄도 안 늘었다.
+    await Bp.evaluate(() => window.__sendPrimary({ type: '__e2e_give', items: { berry: 60 } }));
+    await sleep(900);
+    await clearNotices(Bp);
+    for (let i = 0; i < 30; i++) {
+      await chat(Bp, '/먹이기 berry');
+      await sleep(220);
+    }
+    await sleep(1200);
+    const fedN = (await notices(Bp)).filter((t) => /먹였다/.test(t));
+    ok(fedN.length > 0, '★★ⓓ **`/먹이기` 로 남을 먹인다**(새 패널 0 · 클라 무접촉 · T11 선례)',
+      JSON.stringify(fedN.slice(-1)));
+    const aBody = await A.evaluate(() => window.__bodyState || null);
+    ok(aBody && aBody.hunger > 20 && aBody.thirst > 20,
+      '★★ⓓ 쓰러진 사람의 **게이지가 실제로 올라갔다** — 먹인 것이 몸에 붙는다',
+      aBody ? `배고픔 ${Math.round(aBody.hunger)} · 목마름 ${Math.round(aBody.thirst)}` : 'null');
     await clearNotices(Bp);
     await Bp.evaluate(() => { const e = new KeyboardEvent('keydown', { key: 'r', bubbles: true }); window.dispatchEvent(e); document.dispatchEvent(e); });
     await sleep(1500);
@@ -220,6 +258,11 @@ async function waitHttp(url, tries = 600) {
     ok(aInv && (aInv.wood || 0) >= 4 && (aInv.stone || 0) >= 3,
       '★★ⓐ **구조지 사망이 아니다** — 짐이 그대로다(사망이면 전부 떨어진다)',
       aInv ? JSON.stringify({ wood: aInv.wood || 0, stone: aInv.stone || 0 }) : '-');
+    // ★★[T56] **먹였으니 안 눕는다.** T43 은 "먹이지 않으면 소용없다"를 세웠고, 이제 그 반대편을 잰다.
+    //   (안 먹인 대조군은 `test-downed ⑬-나` 가 두 갈래로 나란히 잰다 — 여기선 실화면 쪽만.)
+    await sleep(20000);
+    ok(!(await downPanelOpen(A)),
+      '★★ⓓ **먹이고 일으켰더니 그대로 서 있다** — 극단을 벗어난 몸은 다시 안 눕는다', `hp ${await hpOf(A)}`);
     await snap('downed-02-rescued');
   }
 
@@ -300,7 +343,22 @@ async function waitHttp(url, tries = 600) {
     await snap('downed-05-relogin');
   }
 
-  ok(allErrs.length === 0, '★ 페이지 에러 0', allErrs.slice(0, 3).join(' | ') || '없음');
+  // ★★[T56] 페이지 에러 판정 — **덮지 않고 가른다.**
+  //   이 카드는 클라를 한 글자도 안 만졌는데(`git diff <base> -- public/client/` 가 비어 있다),
+  //   상류(T53/T55 클라 분할)가 남긴 **적재 순서 경쟁** 하나가 간헐적으로 터진다:
+  //     `updateHud()`(IIFE 안 · 44-h-hud.js)가 `70-lobby.js` 의 **전역** `onbHudLine` 을 부르는데,
+  //     그 파일이 파싱되기 전에 HUD 가 그려지면 `onbHudLine is not defined` 가 난다.
+  //     실측: 베이스(T43 판 하네스)도 우리도 **같은 트리에서 어떤 실행은 초록, 어떤 실행은 빨강**이다.
+  //   ⇒ **묵인 목록은 딱 그 한 문장뿐이고, 나오면 크게 찍는다**(숨기면 그게 사본보다 나쁘다).
+  //     그 밖의 에러는 **전부 빨강**이다 — 이 카드가 낸 에러를 잡는 능력은 그대로 산다.
+  //   ⚠H 영역이 그 한 줄(같은 스코프로 들이거나 `typeof` 가드)을 고치면 **이 목록을 지워라**
+  //     (`인계/회부.md` T56 절에 적어 뒀다).
+  const UPSTREAM_KNOWN = [/onbHudLine is not defined/];
+  const mine = allErrs.filter((t) => !UPSTREAM_KNOWN.some((re) => re.test(t)));
+  const known = allErrs.filter((t) => UPSTREAM_KNOWN.some((re) => re.test(t)));
+  if (known.length) console.log(`  ⚠ [상류 기지 결함 ${known.length}건] ${known[0]}  ← T53/T55 클라 분할의 적재 순서 경쟁(회부)`);
+  ok(mine.length === 0, '★ 이 카드가 낸 페이지 에러 0 (상류 기지 결함은 위에 따로 찍는다)',
+    mine.slice(0, 3).join(' | ') || '없음');
   console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===`);
   console.log(`    스크린샷: ${SHOTS}`);
   await browser.close();
