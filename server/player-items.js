@@ -93,7 +93,14 @@ function matGrade(materials, kind) {
   const cg = castGrade(materials, kind);
   if (cg != null) return cg;
   let num = 0, den = 0;
-  for (const m in materials) { const g = MAT_GRADE[m]; if (g == null) continue; num += materials[m] * g; den += materials[m]; }
+  //   ★★[T74] `MAT_GRADE` 에 없는 재료는 종전에 **이름 없는 폴백(0.6)** 으로 떨어졌다.
+  //     옷의 `fiber` 가 그랬다 — 값은 삼베와 같은데 그건 우연이었고, 아무도 그렇게 적은 적이 없다.
+  //     ⇒ 품목 표가 갖는 등급이 있으면 그것을 쓴다(값은 그 폴백과 같아 **비트 동일**).
+  for (const m in materials) {
+    const g = MAT_GRADE[m] != null ? MAT_GRADE[m] : Clothes.gradeOf(m);
+    if (g == null) continue;
+    num += materials[m] * g; den += materials[m];
+  }
   return den > 0 ? num / den : 0.6;
 }
 // ★표와 모델을 한 값으로 못박는다 — 순동을 손으로 0.7 이라 적어놨었는데 모델은 0.466 이라 한다.
@@ -117,9 +124,10 @@ if (Specialty && Specialty.alloyGrade) {
 //   고증(송국리기): 마직(삼)·저마(모시)가 일상복, 겨울은 수피·모피다.
 //   `갖옷(裘)` 은 모피 옷을 가리키는 우리말 정본이다.
 //   ⚠재료 이름표(events.RES_KO 등)를 옮겨 적는 게 아니다 — 이건 **완성품의 이름**이라 여기가 유일한 자리다.
-const CLOTH_KO = {
-  fur: '갖옷', leather: '가죽옷', hide: '생가죽옷', ramie: '모시옷', hemp: '삼베옷', fiber: '풀 엮은 옷',
-};
+// ★★[T74 2026-09-03] **옷 품목 표가 `server/clothes.js` 로 이사했다.**
+//   종전엔 이름(`CLOTH_KO`)·천장(`CLOTH_WARMTH_CAP`)·소속(`zone.accepts`)·등급(`MAT_GRADE`)이
+//   네 파일에 흩어져 품목 하나를 더하려면 넷을 고쳐야 했다. 여기서는 **부르기만** 한다.
+const Clothes = require('./clothes');
 // ── ★★[삼베옷 하향 2026-09-01 재민 확정 ⑤] **식물 섬유는 아무리 잘 짜도 바람을 못 막는다** ──
 //   회부(`회부_추위2_다음층.md` "장인 삼베옷이 너무 좋다")가 확정으로 내려왔다.
 //   실측한 문제: `warmth = 62 × qSkill(lv) × MAT_GRADE`. 장인(Lv10) 삼베옷은 62×1.0×0.6 = **37** 로
@@ -143,11 +151,14 @@ const CLOTH_KO = {
 //     같은 물성(식물 셀룰로오스 섬유)은 같은 천장을 받는다 — 그게 상한의 근거이기도 하다.
 //   ⇒ 채택값 26 = 추위 2차 표의 조잡 베옷(15)과 가죽옷(37) **한가운데**(지시서의 시작점 그대로).
 //     생가죽옷(23) 위 · 가죽옷(37) 아래에 앉는다 ⇒ 삼베 < 가죽 < 모피 **단조 유지**.
-const CLOTH_WARMTH_CAP = {
-  hemp: parseFloat(process.env.CLOTH_WARMTH_CAP_FIBER) || 26,
-  ramie: parseFloat(process.env.CLOTH_WARMTH_CAP_FIBER) || 26,
-  fiber: parseFloat(process.env.CLOTH_WARMTH_CAP_FIBER) || 26,
-};
+//   ★[T74] 천장 값은 이제 `clothes.js` 가 갖는다(품목의 것이라서). env 손잡이는 그대로:
+//     `CLOTH_WARMTH_CAP_FIBER` 하나가 식물 섬유 셋을 함께 누른다.
+const _CAP_ENV = parseFloat(process.env.CLOTH_WARMTH_CAP_FIBER);
+function _clothCap(mat) {
+  const c = Clothes.capOf(mat);
+  if (c == null) return null;
+  return Number.isFinite(_CAP_ENV) ? _CAP_ENV : c;
+}
 function _domMat(materials) {
   let best = null, bv = -1;
   for (const k in (materials || {})) { const v = Number(materials[k]) || 0; if (v > bv) { bv = v; best = k; } }
@@ -158,15 +169,16 @@ function craftItem(type, skillLevel, materials) {
   if (!def) throw new Error('unknown item type: ' + type);
   const q = qSkill(skillLevel) * matGrade(materials, CAST_KIND[type]);   // 0.24(초보·삼베) ~ 1.0(만렙·모피/청동)
   const inst = { type, q: +q.toFixed(3), craftedSkill: skillLevel, attrs: {} };
-  if (type === 'clothes') { const m = _domMat(materials); if (m && CLOTH_KO[m]) inst.mat = m; }
+  if (type === 'clothes') { const m = _domMat(materials); if (m && Clothes.has(m)) inst.mat = m; }
   for (const a in def.attrs) {
     if (a === 'buff') inst.attrs.buff = +q.toFixed(2);
     else if (a === 'freshness') continue;
     else inst.attrs[a] = Math.round((def.attrScale || 100) * q);
   }
   // ★[삼베옷 하향 2026-09-01] 재료 천장 — `q` 는 손대지 않는다(내구·가격·이름 전부 불변).
-  if (type === 'clothes' && inst.mat && CLOTH_WARMTH_CAP[inst.mat] != null) {
-    inst.attrs.warmth = Math.min(inst.attrs.warmth, CLOTH_WARMTH_CAP[inst.mat]);
+  if (type === 'clothes' && inst.mat) {
+    const cap = _clothCap(inst.mat);
+    if (cap != null) inst.attrs.warmth = Math.min(inst.attrs.warmth, cap);
   }
   if (def.durable) { inst.durMax = Math.round(def.baseDura * (1 + DURA_SPAN * q)); inst.dura = inst.durMax; }
   if (def.perishable) { inst.attrs.freshness = 100; inst.craftedAt = null; }   // craftedAt은 호출측이 게임시각 주입
@@ -220,7 +232,7 @@ function sellNudge(villageQ, inst, weight) {
 function displayItem(inst) {
   const def = ITEM_TYPES[inst.type] || { label: inst.type, attrs: {} };
   // ★[옷 티어] 옷은 재료 이름으로 부른다 — "옷 [방한 55]" 보다 "갖옷 [방한 55]" 가 정보다.
-  const label = (inst.type === 'clothes' && inst.mat && CLOTH_KO[inst.mat]) ? CLOTH_KO[inst.mat] : def.label;
+  const label = (inst.type === 'clothes' && inst.mat && Clothes.koOf(inst.mat)) ? Clothes.koOf(inst.mat) : def.label;
   const parts = [];
   for (const a in inst.attrs) {
     const lbl = def.attrs[a] || (a === 'freshness' ? '신선도' : a);
@@ -233,7 +245,10 @@ function displayItem(inst) {
   return label + alloy + ' [' + parts.join(' · ') + ']' + (inst.craftedSkill != null ? ' — Lv' + inst.craftedSkill + ' 제작' : '');
 }
 
-module.exports = { MAT_GRADE, ITEM_TYPES, CARRIER_MAX_KG, CARRIER_SCALE, CLOTH_KO, CLOTH_WARMTH_CAP, Q_SKILL_SPAN, DURA_SPAN, qSkill, matGrade, craftItem, wearItem, repairItem, decayFreshness, materializeFromVillage, sellNudge, displayItem,
+// ★[T74] `CLOTH_KO`·`CLOTH_WARMTH_CAP` 을 **안 내보낸다** — 옷 품목의 정본은 `clothes.js` 다.
+//   죽은 사본을 남기면 다음 사람이 그걸 읽고 표를 두 벌로 만든다(족보 (84)).
+//   ★대신 `Clothes` 를 그대로 넘긴다: 이 모듈을 이미 무는 쪽이 표를 **한 번 더 require 하지 않게**.
+module.exports = { MAT_GRADE, ITEM_TYPES, CARRIER_MAX_KG, CARRIER_SCALE, Clothes, Q_SKILL_SPAN, DURA_SPAN, qSkill, matGrade, craftItem, wearItem, repairItem, decayFreshness, materializeFromVillage, sellNudge, displayItem,
   castable, castKinds, castGrade, CAST_KIND, CAST_MAX_KINDS, CAST_GRADE_MAX, CAST_ERA, MAT_KO };
 
 // ── 자가검증 (node server/player-items.js) ──

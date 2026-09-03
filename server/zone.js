@@ -1022,7 +1022,11 @@ const COOK_RECIPES = {
 //   배합에 넣을 수 있는 금속은 accepts 가 아니라 PlayerItems.castKinds()(시대 제련 가능 금속)가 정한다.
 //   accepts 는 여전히 "한 가지 재료로 만들기"(깎기·두드리기) 경로의 목록이다.
 const EQUIPMENT_RECIPES = {
-  clothes: { label: '옷',   slot: 'clothes', skill: 'tailoring',  qty: 3, accepts: ['fur','ramie','leather','hide','fiber','hemp'] },
+  // ★★[T74 2026-09-03] **소속을 여기 적지 않는다** — 옷 품목의 정본은 `server/clothes.js` 다.
+  //   종전엔 여기 여섯 이름이 손으로 적혀 있어, 품목 하나를 더하려면 이 줄과 이름 표와 천장 표를
+  //   **따로** 고쳐야 했다(하나라도 빠지면 조용히 돌아간다). 이제 표 한 줄이 곧 이 목록이다.
+  //   ⚠**순서가 계약이다**: 재료를 안 주는 옛 호출부가 `accepts[0]` 을 기본값으로 쓴다.
+  clothes: { label: '옷',   slot: 'clothes', skill: 'tailoring',  qty: 3, accepts: require('./clothes').accepts() },
   // ★meteoric_iron(운철)은 **주조가 아니라 단조** 재료다 — 녹이지 않고 두들긴다(cast 목록엔 안 들어간다).
   //   accepts 에만 있으므로 단일 재료 경로(MAT_GRADE)를 탄다. 노도 시대도 필요 없다.
   armor:   { label: '갑옷', slot: 'armor',   skill: 'smithing',   qty: 4, cast: true, accepts: ['bronze','copper','iron','meteoric_iron','leather','hide'] },
@@ -1044,7 +1048,10 @@ const CRAFT_XP_PER_LEVEL = 6; // 레벨당 6개 → 만렙 ~60개(플레이 스�
 function craftLevel(xp) { return Math.max(0, Math.min(10, Math.floor((xp || 0) / CRAFT_XP_PER_LEVEL))); }
 function playerCraftLevel(player, skill) { return craftLevel(player.craftSkill && player.craftSkill[skill]); }
 // 클라 미리보기용 메타(단일 진실 — PlayerItems 엔진 상수 그대로 노출). 클라가 "방한 62·내구 85"를 서버와 동일 공식으로 계산.
-const EQUIPMENT_META = { matGrade: PlayerItems.MAT_GRADE, qSkillSpan: PlayerItems.Q_SKILL_SPAN, duraSpan: PlayerItems.DURA_SPAN, xpPerLevel: CRAFT_XP_PER_LEVEL,
+// ★[T74] 옷 품목 표를 **화면에 그대로 실어 보낸다**(`welcome` 이 `equipmentMeta` 를 싣는다).
+//   아이콘·외형(ART · 캐릭터 시트 옷 층)이 이름·천장을 **다시 적지 않게** 하는 자리다.
+const EQUIPMENT_META = { matGrade: PlayerItems.MAT_GRADE, clothes: require('./clothes').payload(),
+  qSkillSpan: PlayerItems.Q_SKILL_SPAN, duraSpan: PlayerItems.DURA_SPAN, xpPerLevel: CRAFT_XP_PER_LEVEL,
   castKinds: PlayerItems.castKinds(), castMaxKinds: PlayerItems.CAST_MAX_KINDS, castGradeMax: PlayerItems.CAST_GRADE_MAX, castKind: PlayerItems.CAST_KIND, types: {} };
 // ★★[T12 지게 2026-09-01] 종전엔 여기 네 이름이 **손으로 적혀** 있었다 — 표에 다섯째 줄을 넣어도
 //   메타가 안 따라와 클라 미리보기가 `undefined 0` 을 찍는다(족보 (83): 표와 그 표를 읽는 쪽은 다른 명제다).
