@@ -1279,6 +1279,64 @@ const mkLedgerGeo = (world, geo, cfg) => {
   }
 }
 
+// ═════════════════════════════════════════════════════════════════════════════
+// ㊸ [T71 2026-09-03] **서버 문장에 이모지가 없다** — 소스 검사(AST)
+//
+//   ★왜 [재민 확정 2026-09-03 · `설계/설계_화면규칙_B_먹선.md` §1-2 "UI 이모지 0"]
+//     클라가 자기 이모지를 지워도 **서버가 보낸 문장에 박힌 글자**는 못 지운다.
+//     문장의 주인이 지워야 하고, 지운 뒤엔 **다시 기어들지 않게** 여기서 회귀로 건다.
+//   ★★정규식으로 파일 전체를 훑지 않는다 — 그러면 **주석의 ⚠·★까지** 세어 없는 결함을 보고한다
+//     (`events.js` 주석엔 ⚠ 가 22개 있다). ⇒ **AST 로 문자열 리터럴만** 본다(주석은 AST 에 없다).
+//   ⚠판정 문자 집합도 손으로 적지 않는다 — 유니코드 속성 `\p{Extended_Pictographic}` 하나로 묻는다.
+// ═════════════════════════════════════════════════════════════════════════════
+{
+  const fs = require('fs');
+  const acorn = require(path.join(__dirname, '..', 'node_modules', 'acorn'));
+  const EMO = /\p{Extended_Pictographic}/u;
+  // 문자열 리터럴(따옴표·템플릿 조각)만 모은다 — 주석·식별자·정규식은 안 본다
+  function stringsOf(src) {
+    const out = [];
+    const ast = acorn.parse(src, { ecmaVersion: 2023, sourceType: 'script', locations: true });
+    const walk = (n) => {
+      if (!n || typeof n !== 'object') return;
+      if (Array.isArray(n)) { for (const x of n) walk(x); return; }
+      if (n.type === 'Literal' && typeof n.value === 'string') out.push({ line: n.loc.start.line, v: n.value });
+      if (n.type === 'TemplateLiteral') for (const q of n.quasis) out.push({ line: q.loc.start.line, v: q.value.cooked || '' });
+      for (const k of Object.keys(n)) if (k !== 'loc' && k !== 'range') walk(n[k]);
+    };
+    walk(ast);
+    return out;
+  }
+  const emojiSites = (src) => stringsOf(src).filter((x) => EMO.test(x.v));
+
+  const FILES = ['server/events.js', 'server/winter.js'];
+  const srcs = {};
+  for (const rel of FILES) srcs[rel] = fs.readFileSync(path.join(__dirname, '..', rel), 'utf8');
+
+  // 전제 — 검사가 **빈 파일을 보고 통과하는 게 아니다**
+  const nStr = FILES.reduce((a, rel) => a + stringsOf(srcs[rel]).length, 0);
+  ok(nStr > 100, '㊸ 전제: 문자열 리터럴을 실제로 읽었다(빈 집합이면 아래가 자명 통과다)', `${nStr}개`);
+
+  for (const rel of FILES) {
+    const hits = emojiSites(srcs[rel]);
+    ok(hits.length === 0, `㊸ ★\`${rel}\` 문장에 이모지 0 (문자열 리터럴 · AST)`,
+      hits.length ? hits.slice(0, 3).map((h) => `L${h.line} ${JSON.stringify(h.v.slice(0, 24))}`).join(' · ') : '');
+  }
+
+  // ★주석은 안 본다는 것 자체를 검사한다 — 안 그러면 다음 사람이 정규식으로 바꿔 놓고도 모른다
+  const rawEmo = (srcs['server/events.js'].match(/\p{Extended_Pictographic}/gu) || []).length;
+  ok(rawEmo > 0, '㊸b ★그런데 파일 전체(주석 포함)에는 이모지가 **있다** — 이 검사가 주석을 안 본다는 증거',
+    `주석 등 ${rawEmo}자`);
+
+  // 돌연변이 — 문장 하나에 이모지를 되살리면 잡는가
+  {
+    const poisoned = srcs['server/winter.js'].replace('return `올겨울 — ', 'return `🧊 올겨울 — ');
+    ok(poisoned !== srcs['server/winter.js'], '㊸c 전제: 돌연변이를 실제로 심었다(치환이 먹었다)');
+    ok(emojiSites(poisoned).length === 1, '㊸ ★문장 하나에 이모지를 되살리면 **잡는다**(잡을 수 있는 검사다)',
+      `${emojiSites(poisoned).length}자리`);
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
 try { require('fs').unlinkSync(process.env.DB_PATH); } catch (e) {}

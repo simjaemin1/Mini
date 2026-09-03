@@ -269,7 +269,11 @@ function headLine(vid, day) {
   const fill = Math.round(rate * CFG.BAR);
   const bar = '▓'.repeat(fill) + '░'.repeat(Math.max(0, CFG.BAR - fill));
   const dur = _KO_DAYS[CFG.D] || `${CFG.D}일`;
-  return `🧊 올겨울 — ${Events.koRes(e.res)} ${Math.round(e.got)} / ${e.target}`
+  // ★[T71 2026-09-03 · 재민 확정] **문장에 이모지를 넣지 않는다**(설계_화면규칙_B_먹선 §1-2 UI 이모지 0).
+  //   종전 머리는 `🧊 올겨울 — …` 이었다. 뜻은 이모지가 아니라 **"올겨울"이라는 말과 막대**가 나른다 —
+  //   빼도 정보가 한 톨도 안 준다(하네스도 `올겨울`·`▓░` 로 찾지 이모지로 찾지 않았다).
+  //   ⚠아이콘이 필요하면 그건 **클라의 일**이다(유형은 이미 화면 쪽이 안다 — 머리줄은 하나뿐이다).
+  return `올겨울 — ${Events.koRes(e.res)} ${Math.round(e.got)} / ${e.target}`
     + ` (마을 ${dur}치 · 남은 ${left}일) ${bar} ${Math.round(rate * 100)}%`;
 }
 
