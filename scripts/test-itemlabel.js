@@ -214,7 +214,10 @@ console.log('\n=== [T66] 화면 규칙 B — 이모지 0 · 색은 토큰 하나
   //     줄 단위 어림짐작(`fillStyle` 이 같은 줄에 있나)으로는 `tileColor = …` 같은 줄을 못 가른다.
   //   ⇒ ⓐ 는 여기서 **파일 표**로 재고(사람이 읽을 수 있는 목록), ⓑ 는 `e2e-ui ⑬` 이
   //     진짜 캔버스에 들어간 값을 **실행 중에** 가로채 잰다. 어느 쪽도 어림짐작이 아니다.
+  //   ★[T80 2026-09-03] `47-s-board.js`(게시판 판)를 표에 더한다 — 판을 짓는 조각이 표 밖에 있으면
+  //     그 판만 색 검사를 **조용히 빠져나간다**(빠뜨린 자리는 언젠가 리터럴이 들어온다).
   const DOM_ONLY = ['client/05-u-icon.js', 'client/44-h-hud.js', 'client/45-t-market.js',
+    'client/47-s-board.js',
     'client/50-i-panel.js', 'client/51-s-side.js', 'client/60-t-market.js',
     'client/65-s-chronicle.js', 'client/70-lobby.js', 'client/99-main.js', 'index.html'];
   const seen = files.map(([f]) => f);

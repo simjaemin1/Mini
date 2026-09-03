@@ -807,3 +807,31 @@ html, body { margin: 0; padding: 0; height: 100%; font-family: var(--font); back
   color: var(--dim); font-size: 11px; cursor: pointer; }
 .onb-hud-line { font-size: 12px; color: var(--dim); }
 .onb-fx { color: var(--accent); }
+
+/* ── ★[T80 2026-09-03] 게시판 판 — 토스트가 아니라 벽에 붙은 판 ──────────────
+   ★새 색 0 · 모서리 0 · 이모지 0. 값은 전부 위 `:root` 토큰이다.
+   ★열은 거래소 표(`tr-row`)와 같은 문법이다 — 그림 · 이름 · 수 · 수 · 갚을 것 · 버튼. */
+/* ★자리 — **오른쪽 선반**이다. 회관 판(`villageInvPanel`)과 같은 선반을 일부러 쓴다:
+   둘 다 "마을 앞에 서서 보는 판"이라 한 번에 하나만 읽는다.
+   ⚠가운데에 두면 `#sidePanel.open`(x 60~520)을 덮어 **그 판의 버튼이 안 눌린다**
+     — `e2e-membership` 이 실측으로 그걸 잡았다(§8.2 논모달의 두 번째 얼굴). */
+#boardPane{position:fixed;right:16px;top:64px;z-index:900;
+  width:520px;max-width:44vw;max-height:74vh;overflow:auto;
+  background:var(--pane);border:1px solid var(--line);color:var(--fg)}
+.bp-body{padding:10px 12px;font-size:12px;color:var(--fg)}
+.bp-head{margin:2px 0 8px;padding:6px 8px;background:var(--inset);
+  color:var(--fg);font:500 12px/1.5 var(--font)}
+.bp-hdr,.bp-row{display:grid;grid-template-columns:24px 1fr 44px 56px 1fr 56px;gap:6px;align-items:center}
+.bp-hdr{padding:0 6px 4px;font:600 10px/1.2 var(--font);color:var(--dim-2);
+  border-bottom:1px solid var(--line)}
+.bp-row{padding:5px 6px;font:500 12px/1.3 var(--font);color:var(--fg);
+  border-bottom:1px solid var(--line)}
+.bp-row:hover{background:var(--inset)}
+.bp-num,.bp-prog{text-align:right;font:500 11px/1.2 var(--mono);color:var(--dim)}
+.bp-rew{color:var(--dim)}
+.bp-give{padding:3px 10px;border-radius: 0;border:1px solid var(--line-2);
+  background:var(--inset);color:var(--fg);font:600 11px var(--font);cursor:pointer}
+.bp-give[disabled]{opacity:.4;cursor:default}
+.bp-hint{margin-top:8px;color:var(--dim-2);font:500 11px/1.45 var(--font)}
+.bp-news{padding:3px 6px;font:500 12px/1.45 var(--font);color:var(--fg)}
+.bp-from{color:var(--dim-2);font-size:11px}

@@ -22,7 +22,9 @@
 //     대신 `VILLAGE_MAX=2` 로 마을 2곳만 시딩해 부팅을 짧게 한다 —
 //     검사 대상은 마을 **수**가 아니라 브리핑·게시판·정산의 **경로**다.
 'use strict';
-const BOARD_RE = /^[^\n]{1,24}게시판\n/;   // ★[T66] 게시판 알림의 첫 줄 — 이모지 없이
+// ★★[T80 2026-09-03] 게시판은 **판**이다(`#boardPane` · `public/client/47-s-board.js`).
+//   종전의 `BOARD_RE`(토스트 첫 줄 정규식)는 지웠다 — 잴 자리가 `#notice` 가 아니라 판이기 때문이다.
+//   뜻은 그대로다: "게시판이 화면에 실제로 그려졌다". 자리만 옮겼다(족보 (116)).
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
@@ -212,27 +214,93 @@ async function waitHttp(url, tries = 900) {
   ok(!!sh, '부족 픽스처 성립(소비EMA 가 자란 품목의 재고를 문턱 아래로 · 갚을 잉여도 갖춤)', sh || '(성립 실패 — 소비EMA 미성숙)');
   ok(!!(board && board.rows && board.rows.length), '게시판에 납품 의뢰가 걸렸다', board ? JSON.stringify(board.rows.map((r) => r.line)) : 'X');
   await snap('ev-04-board');
-  // ★자명 통과 금지 — `/게시판/` 만 보면 **촌장 대사**("…(게시판 1건 · Shift+G)")에도 걸린다.
-  //   게시판 알림에만 있는 것(📋 머리 + `Shift+N` 꼬리 + 줄바꿈)을 전부 요구한다.
-  //   ⚠근접 브리핑이 0.7초마다 돌면서 **같은 `#notice` 를 덮는다** — 게시판을 띄우고 700ms 를
-  //     기다리면 촌장 대사가 이미 덮은 뒤일 수 있다(그렇게 두 번 실패했다). 짧게 여러 번 본다.
-  //     그리고 의뢰 자체가 그 사이 철회될 수도 있어("걸린 의뢰가 없다"), 비었으면 다시 세운다.
-  // ★[T78] 이 자리의 `^📋` 판별은 **상류 T66 이 이미 `BOARD_RE` 로** 이모지 없이 고쳤다 —
-  //   내 판(`isBoardToast`)을 버리고 상류 것을 쓴다(같은 일을 하는 술어 둘은 그 자체가 사본이다).
-  let boardShown = '';
+  // ── ★★[T80 2026-09-03 재민 확정] **게시판은 판이다** ─────────────────────────
+  //   종전엔 `#notice` 토스트를 정규식으로 읽었다(`^<마을> 게시판\n` + `Shift+N` 꼬리).
+  //   그 토스트 경로는 삭제됐다 — 이제 `#boardPane`(`public/client/47-s-board.js`)이 정본이다.
+  //   ★뜻은 그대로 옮긴다: "게시판이 화면에 **실제로 그려졌다**". 다만 판이라 더 세게 잴 수 있다:
+  //     행 수 = `rows.length` · 각 행에 물건 그림 · 진척 · 납품 버튼.
+  //   ⚠자명 통과 금지: `#boardPane` 이 그냥 있는 것으로는 안 된다(숨은 판도 DOM 에는 있다).
+  //     보이는지(`hidden` 없음) + 행이 실제로 그려졌는지를 함께 본다.
+  //   ⚠모양은 **늘 같게** 낸다 — 판이 아직 없을 때 `{exists:false}` 만 돌려주면,
+  //     뒤따르는 검사들이 `undefined === undefined` 로 **자명 통과**하거나 예외로 죽는다
+  //     (첫 판이 정확히 그렇게 죽었다 — 워프가 흔들린 회차에서 `progs.length` 가 터졌다).
+  const paneOf = () => page.evaluate(() => {
+    const p = document.getElementById('boardPane');
+    const body = document.getElementById('boardPaneBody');
+    const rows = [...(body ? body.querySelectorAll('.bp-row') : [])];
+    return {
+      exists: !!p,
+      open: !!(p && !p.classList.contains('hidden')),
+      title: (document.getElementById('boardPaneTitle') || {}).textContent || '',
+      rows: rows.length,
+      pics: rows.filter((r) => r.querySelector('.item-pic, .item-pic-none')).length,
+      progs: rows.map((r) => (r.querySelector('.bp-prog') || {}).textContent || ''),
+      gives: rows.filter((r) => r.querySelector('[data-bp-give]')).length,
+      news: (body ? body.querySelectorAll('.bp-news') : []).length,
+      head: ((body && body.querySelector('.bp-head')) || {}).textContent || '',
+      text: body ? body.textContent : '',
+    };
+  });
+  let pane = { rows: 0 };
   for (let i = 0; i < 10; i++) {
     if (i > 0) await ensureBoard(4);
     for (let k = 0; k < 6; k++) {
       await page.evaluate((vid) => window.__sendPrimary({ type: 'village_board', vid }), V.id);
-      await sleep(200);
-      boardShown = await page.evaluate(() => (document.getElementById('notice') || {}).textContent || '');
-      if (BOARD_RE.test(boardShown) && /Shift\+N/.test(boardShown)) break;
+      await sleep(250);
+      pane = await paneOf();
+      if (pane.open && pane.rows > 0) break;
     }
-    if (BOARD_RE.test(boardShown) && /Shift\+N/.test(boardShown)) break;
+    if (pane.open && pane.rows > 0) break;
   }
-  ok(BOARD_RE.test(boardShown) && /Shift\+N/.test(boardShown) && boardShown.includes('\n'),
-    '게시판 목록이 화면(HUD)에 여러 줄로 실제로 그려졌다', JSON.stringify(boardShown.slice(0, 110)));
-  ok(!/촌장/.test(boardShown), '(자명 통과 방지) 그 알림은 촌장 대사가 아니라 게시판이다');
+  const boardNow = await page.evaluate(() => window.__evLastBoard || null);
+  ok(pane.exists && pane.open, '★★게시판이 **판으로 열린다**(`#boardPane` 이 보인다 · 9초 토스트 아님)',
+    JSON.stringify({ exists: pane.exists, open: pane.open }));
+  ok(pane.rows > 0 && pane.rows === ((boardNow && boardNow.rows) || []).length,
+    '★★판의 **행 수 = `rows.length`**(서버가 준 만큼 그린다 · 클라가 자르지 않는다)',
+    `판 ${pane.rows} · 응답 ${((boardNow && boardNow.rows) || []).length}`);
+  ok(pane.rows > 0 && pane.pics === pane.rows && pane.gives === pane.rows,
+    '★★행마다 **물건 그림(`itemPic`)과 납품 버튼**이 하나씩 있다',
+    `그림 ${pane.pics} · 버튼 ${pane.gives} / 행 ${pane.rows}`);
+  ok(pane.progs.length > 0 && pane.progs.every((t) => /^\d+(\.\d+)?\/\d+(\.\d+)?$/.test(t.trim())),
+    '★★행마다 **진척(`filled`/`qty`)이 서버 필드로 그려진다**(클라가 빼기로 만들지 않는다)',
+    JSON.stringify(pane.progs.slice(0, 3)));
+  ok(/게시판/.test(pane.title), '판 머리가 `<마을> 게시판` 이다', JSON.stringify(pane.title));
+  // ★★[T80] **모달이 아니다** — §8.2 논모달(e2e-ui ③ "패널을 연 채 이동할 수 있다")과 같은 규약.
+  //   ⚠1차 판은 `class="modal"`(=`inset:0` 전면 덮개)로 만들었다가 여기서 걸렸어야 했는데
+  //     이 검사가 없어서 **`e2e-membership` 이 먼저 잡았다**(사이드바 클릭이 판에 먹혔다).
+  //     ⇒ 화면 네 귀퉁이가 판에 안 먹히는지 **직접** 본다(클래스 이름이 아니라 히트 테스트로).
+  const blocked = await page.evaluate(() => {
+    const p = document.getElementById('boardPane');
+    if (!p) return ['판 없음'];
+    const W = innerWidth, H = innerHeight;
+    const pts = [[8, 8], [W - 8, 8], [8, H - 8], [W - 8, H - 8]];
+    return pts.filter(([x, y]) => { const e = document.elementFromPoint(x, y); return e && p.contains(e); })
+      .map(([x, y]) => `${x},${y}`);
+  });
+  ok(blocked.length === 0, '★★판은 **모달이 아니다** — 열려 있어도 화면 네 귀퉁이가 판에 안 먹힌다(§8.2 논모달)',
+    blocked.length ? `막힌 지점 ${JSON.stringify(blocked)}` : '네 귀퉁이 전부 통과');
+  // ★★[T80] 그리고 **다른 판을 덮지 않는다**. 1차 판은 가운데였고 `#sidePanel.open`(x 60~520)을
+  //   덮어 그 판의 버튼이 안 눌렸다(`e2e-membership` 의 `#mbWd` 클릭이 그렇게 죽었다).
+  //   ⇒ 사이드 패널을 **열린 자리로 재어** 두 상자가 겹치지 않는지 본다(클래스 이름이 아니라 좌표로).
+  const overlap = await page.evaluate(() => {
+    const bp = document.getElementById('boardPane'), sp = document.getElementById('sidePanel');
+    if (!bp || !sp) return null;
+    const had = sp.classList.contains('open');
+    sp.classList.add('open');
+    const a = bp.getBoundingClientRect(), b = sp.getBoundingClientRect();
+    if (!had) sp.classList.remove('open');
+    const hit = !(a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top);
+    return { hit, bp: [a.left | 0, a.right | 0], sp: [b.left | 0, b.right | 0] };
+  });
+  ok(overlap && overlap.hit === false, '★★판이 **사이드 패널을 덮지 않는다**(열린 자리로 재었다)',
+    overlap ? `판 ${JSON.stringify(overlap.bp)} · 사이드 ${JSON.stringify(overlap.sp)}` : '(요소 없음)');
+  // ★토스트 경로가 **실제로 없어졌다** — 게시판 문자열이 `#notice` 에 더는 안 남는다.
+  //   ⚠`/게시판/` 만 보면 **촌장 대사**("…(게시판 1건 · Shift+G)")에도 걸린다 —
+  //     옛 토스트에만 있던 것(여러 줄 + `Shift+N` 꼬리)이 없는지를 본다.
+  const noticeNow = await page.evaluate(() => (window.__notices || []).join('\u0000'));
+  ok(!/게시판\n/.test(noticeNow) && !/Shift\+N 으로/.test(noticeNow),
+    '★★게시판 문자열이 `#notice` 로는 **더는 안 간다**(토스트 경로 삭제)',
+    JSON.stringify(noticeNow.slice(-90)));
 
   if (board && board.rows && board.rows.length) {
     // ★납품 **직전에** 게시판을 다시 세우고, **그때의 행**으로 재료를 받는다.
@@ -277,6 +345,74 @@ async function waitHttp(url, tries = 900) {
     ok(true, `(곳간 증가는 test-events ④e 가 정본 필드로 검사 — 여기서는 인벤·알림·게시판 왕복이 대상)`);
   }
 
+  // ── ★★[T80 2026-09-03 재민 확정] ④-c **행의 납품 버튼은 그 행에 낸다** ──────
+  //   ★왜 이게 이 카드의 심장인가: 종전엔 낼 길이 `Shift+N` 하나였고, 그건
+  //     "서버가 고른 첫 의뢰"에만 낸다(권위는 서버에 있다 — 그 규약은 그대로 둔다).
+  //     판이 생기면서 처음으로 **어느 의뢰에 낼지 플레이어가 고를 수 있다**.
+  //   ★★자명 통과 금지 — 여기가 이 절의 전부다:
+  //     행이 하나뿐이면 "그 행에 냈다"와 "서버가 골랐다"가 **구별되지 않는다**.
+  //     ⇒ 낼 수 있는 행을 **둘 이상** 세우고, `Shift+N` 이 고를 행(잔여비율 최대)이 **아닌**
+  //       행의 버튼을 누른다. 그리고 **그 행의 잔여만** 줄었는지 본다(서버가 판정한 결과).
+  console.log('\n④-c [T80] 행 납품 — 버튼이 그 줄의 품목을 싣는가');
+  {
+    // ★★두 가지를 같이 풀어야 둘째 행이 선다(둘 다 실측으로 알아냈다):
+    //   ⓐ 픽스처는 늘 소비EMA **최댓값** 하나를 고른다 ⇒ 그냥 다시 부르면 **같은 의뢰**만 다시 선다
+    //      (실측: 24회를 불러도 `wood 0/2` 한 줄뿐이었다) ⇒ 이미 걸린 품목을 `skip` 으로 뺀다.
+    //   ⓑ 의뢰는 **하루 경계에서** 걸린다. 이 구간은 날이 얼어 있어(위 ①) 재고를 깎아도 게시가 안 된다
+    //      (실측: 얼린 채로는 0건, ⑤-b 가 날을 푼 순간 "게시판 2건"이 로그에 떴다).
+    //      ⇒ **세우는 동안만 푼다.** 다 세우면 다시 얼리고 상호작용을 잰다(시간 모드 규약 그대로).
+    await page.evaluate(() => window.__sendPrimary({ type: '__e2e_day_freeze', on: false }));
+    await sleep(600);
+    let bd = await ensureBoard(20);
+    const canGive = (b) => ((b && b.rows) || []).filter((r) => (r.give || []).length > 0 && r.remain > 0);
+    for (let i = 0; i < 20 && canGive(bd).length < 2; i++) {
+      const skip = ((bd && bd.rows) || []).map((r) => r.item);
+      await page.evaluate(([vid, sk]) => window.__sendPrimary({ type: '__e2e_village_short', vid, skip: sk }), [V.id, skip]);
+      await sleep(700);
+      bd = await ensureBoard(4);
+    }
+    await page.evaluate(() => window.__sendPrimary({ type: '__e2e_day_freeze', on: true }));
+    await sleep(700);
+    bd = await ensureBoard(6);
+    const rows = canGive(bd);
+    ok(rows.length >= 2, '★④-c (상황) 낼 수 있는 의뢰가 **둘 이상** 걸렸다 — 하나면 이 절은 자명 통과다',
+      JSON.stringify(((bd && bd.rows) || []).map((r) => `${r.item} ${r.remain}/${r.qty}`)));
+    if (rows.length >= 2) {
+      // `Shift+N`(품목 미지정)이 고를 행 = 잔여비율 최대. 그 **반대쪽**을 누른다.
+      const byUrg = rows.slice().sort((a, b) => (b.remain / Math.max(1, b.qty)) - (a.remain / Math.max(1, a.qty)));
+      const serverPick = byUrg[0], target = byUrg[byUrg.length - 1];
+      ok(target.item !== serverPick.item, '★④-c (상황) 고른 행이 서버가 고를 행과 **다르다**',
+        `서버 ${serverPick.item} · 내가 고른 ${target.item}`);
+      // 두 행 다 낼 수 있게 손에 쥔다 — 한쪽만 쥐면 "고른 것"이 아니라 "그것밖에 없던 것"이다.
+      for (const r of [serverPick, target]) {
+        await page.evaluate(([it, n]) => window.__sendPrimary({ type: '__e2e_give', items: { [it]: n } }),
+          [(r.give || [])[0], Math.max(2, Math.ceil(r.remain) + 5)]);
+        await sleep(500);
+      }
+      const before = new Map(((bd.rows) || []).map((r) => [r.item, r.remain]));
+      // ★진짜 버튼을 누른다(메시지를 손으로 보내지 않는다 — 그러면 판을 안 재는 것이다).
+      const clicked = await page.evaluate((it) => {
+        const body = document.getElementById('boardPaneBody');
+        if (!body) return null;
+        const row = body.querySelector(`.bp-row[data-bp-item="${it}"]`);
+        if (!row) return null;
+        const btn = row.querySelector('[data-bp-give]');
+        if (!btn) return null;
+        btn.click();
+        return it;
+      }, target.item);
+      ok(clicked === target.item, '★④-c 판에서 **그 행의 납품 버튼**을 실제로 눌렀다', String(clicked));
+      await sleep(1800);
+      const bd2 = await page.evaluate(() => window.__evLastBoard || null);
+      const after = new Map((((bd2 && bd2.rows) || [])).map((r) => [r.item, r.remain]));
+      const moved = [...before.keys()].filter((k) => !after.has(k) || after.get(k) < before.get(k));
+      ok(moved.length === 1 && moved[0] === target.item,
+        '★★④-c **내가 고른 그 행의 잔여만** 줄었다 — 버튼이 그 행의 품목을 실었다(서버 판정)',
+        `움직인 행 ${JSON.stringify(moved)} · 고른 행 ${target.item} · 서버 기본 ${serverPick.item}`);
+      await snap('ev-05c-rowdeliver');
+    }
+  }
+
   // ── ★[T55 2026-09-02] ⑤-b 게시판이 **들은 소식**을 그린다 ────────────────────
   //   ★왜: `news` 는 T7 부터 이미 실려 왔는데 **클라가 안 그렸다**(회부 0-소문 1).
   //     촌장이 "그 밖에 n건은 게시판에" 라고 안내해도 볼 데가 없었다.
@@ -306,26 +442,64 @@ async function waitHttp(url, tries = 900) {
     ok(!!drought, '★⑤-b (상황) 내가 심은 가뭄이 그 목록에 있다', drought ? drought.line : news.map((n) => n.line).slice(0, 3).join(' | '));
 
     // ★화면 — 진짜 키로 연다
+    //   ★★[T80 2026-09-03] 잴 자리가 토스트에서 **판**으로 옮겼다(`#boardPane`). 뜻은 그대로다:
+    //     "`Shift+G` 가 게시판을 열고, **내가 심은 그 문장**이 화면에 보인다".
     await page.evaluate(() => { window.__notices && (window.__notices.length = 0); });
+    await page.evaluate(() => { const p = document.getElementById('boardPane'); if (p) p.classList.add('hidden'); });
     await page.keyboard.press('Shift+g');
-    await sleep(1200);
-    const toast = await page.evaluate(() => (window.__notices || []).join('\n'));
-    ok(/게시판/.test(toast), '★★⑤-b **`Shift+G` 가 게시판을 연다** — T55 ④ 전엔 이 키가 화살을 쐈다', JSON.stringify(toast.slice(0, 40)));
-    ok(/들은 소식/.test(toast), '★★⑤-b 토스트에 **「들은 소식」 절**이 있다', JSON.stringify((toast.match(/— 들은 소식 —[\s\S]{0,60}/) || [''])[0]));
-    ok(/비가 통 안 오는군/.test(toast), '★★⑤-b **내가 심은 그 문장이 화면에 보인다**(회부 0-소문 1 종결)',
-      JSON.stringify((toast.split('\n').find((l) => /비가 통 안 오는군/.test(l)) || '').slice(0, 60)));
-    // ★순서 — 소식은 **의뢰 줄 아래**다(T20 이 맨 윗줄에 겨울 머리줄을 넣는다)
-    //   ★★[T63 2026-09-03 수리] **소식 줄도 ` · ` 로 시작한다.** 그래서 의뢰가 0건인 판에서는
-    //     `findIndex(/^ · /)` 가 **소식 줄**을 "첫 의뢰 줄"로 집고, 그때 이 검사는 뜻이 뒤집힌다
-    //     (의뢰 0건은 흔하다 — 이 하네스가 그때그때 게시판 상태를 타서 빨개졌다. 제품은 정상이었다).
-    //   ⇒ 소식 절 **앞쪽만** 보고, 의뢰가 0건이면 견줄 것이 없으므로 **소식 절의 존재만** 확인한다.
-    const iNews = toast.indexOf('— 들은 소식 —');
-    const head = iNews > 0 ? toast.slice(0, iNews) : toast;
-    const iRow = head.split('\n').findIndex((l) => /^ · /.test(l));
-    ok(iNews > 0 && (iRow >= 0 || /걸린 의뢰가 없다/.test(head)),
-      '★⑤-b 소식은 **의뢰 줄 아래**에 붙는다(맨 윗줄은 서버 몫 — T20)',
-      `소식 절 앞의 의뢰 줄 ${iRow} · 소식 절 ${iNews}${iRow < 0 ? ' (의뢰 0건 — 앞머리가 "걸린 의뢰가 없다")' : ''}`);
+    await sleep(1500);
+    const pn = await page.evaluate(() => {
+      const p = document.getElementById('boardPane');
+      const body = document.getElementById('boardPaneBody');
+      const secs = [...(body ? body.querySelectorAll('.bd-sec') : [])].map((e) => e.textContent);
+      const newsEls = [...(body ? body.querySelectorAll('.bp-news') : [])];
+      return {
+        open: !!(p && !p.classList.contains('hidden')),
+        title: (document.getElementById('boardPaneTitle') || {}).textContent || '',
+        secs, news: newsEls.map((e) => e.textContent),
+        html: body ? body.innerHTML : '',
+      };
+    });
+    ok(pn.open && /게시판/.test(pn.title), '★★⑤-b **`Shift+G` 가 게시판 판을 연다** — T55 ④ 전엔 이 키가 화살을 쐈다',
+      JSON.stringify(pn.title));
+    ok(pn.secs.includes('들은 소식'), '★★⑤-b 판에 **「들은 소식」 절**이 있다', JSON.stringify(pn.secs));
+    ok(pn.news.some((l) => /비가 통 안 오는군/.test(l)), '★★⑤-b **내가 심은 그 문장이 화면에 보인다**(회부 0-소문 1 종결)',
+      JSON.stringify((pn.news.find((l) => /비가 통 안 오는군/.test(l)) || '').slice(0, 60)));
+    ok(pn.news.length === news.length, '★⑤-b 판이 그린 소식 줄 수 = 서버가 보낸 `news` 수(클라가 또 자르지 않는다)',
+      `판 ${pn.news.length} · 응답 ${news.length}`);
+    // ★순서 — 소식 절은 **의뢰 절 아래**다(맨 위는 서버가 만든 겨울 머리줄 자리 — T20).
+    //   ⚠판에서는 절이 `.bd-sec` 로 이름을 갖는다 ⇒ 옛 토스트처럼 ` · ` 접두사로 줄을 세지 않아도 된다
+    //     (족보: T63 이 그 접두사 때문에 뜻이 뒤집혔던 자리다 — 구조로 자르니 그 함정이 사라졌다 · (115)).
+    ok(pn.secs.indexOf('걸린 의뢰') >= 0 && pn.secs.indexOf('걸린 의뢰') < pn.secs.indexOf('들은 소식'),
+      '★⑤-b 소식 절은 **의뢰 절 아래**에 붙는다(맨 위는 서버 몫 — T20)', JSON.stringify(pn.secs));
     await snap('ev-05b-news');
+
+    // ── ★★[T80] ⑤-c 판 소스 — **이모지 0 · 인라인 색 0**(T66 화면 규칙 B) ──────
+    //   ★소스로 잰다: 화면 픽셀로는 "이모지가 하나 섞였다"를 절대 못 잡는다.
+    //   ★⓪의 빚 두 줄(`51-s-side.js` 쉼터 버튼)도 여기서 같이 잡힌다 — 같은 규칙, 같은 자리.
+    {
+      const fsx = require('fs');
+      const strip = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').split('\n').map((l) => {
+        let q = null, out = '';
+        for (let i = 0; i < l.length; i++) {
+          const c = l[i], n = l[i + 1];
+          if (q) { out += c; if (c === '\\') { out += n || ''; i++; continue; } if (c === q) q = null; continue; }
+          if (c === '"' || c === "'" || c === '`') { q = c; out += c; continue; }
+          if (c === '/' && n === '/') break;
+          out += c;
+        }
+        return out;
+      }).join('\n');
+      const EMO = /\p{Extended_Pictographic}/u;
+      const COL = /#[0-9a-fA-F]{3,8}\b|rgba?\(\s*\d/;
+      for (const f of ['public/client/47-s-board.js', 'public/client/51-s-side.js']) {
+        const src = strip(fsx.readFileSync(path.join(ROOT, f), 'utf8'));
+        ok(!EMO.test(src), `★★⑤-c ${f.split('/').pop()} — 이모지 0(T66)`);
+        ok(!COL.test(src), `★★⑤-c ${f.split('/').pop()} — 인라인 색 0(값은 style.css 토큰 하나)`);
+      }
+      ok(EMO.test("h += '\u{1F6D6} 쉼터';"), '★⑤-c 자명 통과 금지 — 이모지 한 줄을 되살린 소스는 잡힌다');
+      ok(COL.test("background:#2b3a4a"), '★⑤-c 자명 통과 금지 — 인라인 hex 한 줄을 되살리면 잡힌다');
+    }
   }
 
   // ── ⑥ 거리 게이트 — 멀어지면 촌장 목소리가 안 닿는다 ──────────────────────

@@ -5124,7 +5124,11 @@ function villageBoard(vid, px, py) {
   const g = _villageNear(vid, px, py);
   if (g.err) return g;
   const rows = state.ledger.board(vid | 0).map((r) => ({
-    item: r.item, remain: r.remain, qty: r.qty, rewItem: r.rewItem, rewQty: r.rewQty,
+    // ★★[T80 2026-09-03] `filled`(=지금까지 들어온 몫) 을 **같이 싣는다** — 판이 진척을 그린다.
+    //   ⚠클라가 `qty - remain` 으로 다시 만들면 그게 사본이다. 값은 이미 장부에 있고
+    //     `Events.board` 가 그대로 내주고 있었다(`{...r, remain}`) — 여기 map 이 떨어뜨리고 있었을 뿐이다.
+    //     ⇒ `events.js` 는 한 글자도 안 고쳤다. 문장(`line`)도 그대로다(두 표현 · 사본 0).
+    item: r.item, remain: r.remain, qty: r.qty, filled: r.filled, rewItem: r.rewItem, rewQty: r.rewQty,
     line: Events.boardLine(r),
     give: (state.ledger.deliverable.items.get(r.item) || []),   // 어떤 플레이어 아이템으로 낼 수 있나
     take: state.ledger.deliverable.toEcon.get(r.rewItem) || null,
@@ -5475,7 +5479,13 @@ function refreshAllFishSustain(now) {
   return n;
 }
 
-function __e2eForceShortage(vid) {
+// ★★[T80 2026-09-03] `skip` 하나가 늘었다 — **이미 게시판에 걸린 품목을 후보에서 빼 달라**는 뜻이다.
+//   왜: 이 픽스처는 늘 소비EMA **최댓값** 하나를 고른다 ⇒ 몇 번을 불러도 **같은 의뢰 한 건**만 선다.
+//   그런데 T80 의 "행마다 납품 버튼"은 행이 **둘 이상**이어야 잴 수 있다(하나면 "그 행에 냈다"와
+//   "서버가 골랐다"가 구별되지 않는다 — 자명 통과). ⇒ 부르는 쪽이 뺄 것을 말할 수 있게 한다.
+//   ⚠기본 동작은 **한 글자도 안 바뀐다**(`skip` 없으면 종전 그대로) — 다른 하네스 무접촉.
+function __e2eForceShortage(vid, skip) {
+  const _skip = new Set(Array.isArray(skip) ? skip : []);
   if (!state.ledger) return { err: '장부 없음' };
   const vil = state.byDbId && state.byDbId.get(vid | 0);
   if (!vil) return { err: '그런 마을 없음' };
@@ -5494,6 +5504,7 @@ function __e2eForceShortage(vid) {
   for (const [r, e] of Object.entries(v._consEMA || {})) {
     if (!D.fromEcon.has(r) || !(e > 0)) continue;
     if (lockedRew.has(r)) continue;   // ★게시판이 약속한 보상은 깎지 않는다
+    if (_skip.has(r)) continue;       // ★[T80] 부르는 쪽이 뺀 품목(이미 걸린 의뢰 등)
     // 갚을 잉여 후보가 하나라도 있어야 한다(수량은 아래에서 보장한다)
     let sur = null, surQ = 0;
     for (const [r2, q] of Object.entries(v.storage || {})) if (r2 !== r && D.toEcon.has(r2) && q > surQ) { surQ = q; sur = r2; }

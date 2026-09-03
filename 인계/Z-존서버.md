@@ -971,3 +971,18 @@ T62 가 시설을 만들었으므로 이제 참이다.
 ⇒ 둘 다 `gameDayNow` 로 바꿨다(**2줄**). `__e2e_day_freeze` 는 두 시계를 다 얼리므로 하네스도 그대로다.
 ⚠전환 순간 저장된 `s.day`·`wdDay` 가 새 시계와 어긋나 **하루 정산·인출 몫이 한 번 초기화**될 수 있다.
 초기화는 안전한 쪽이라 그대로 둔다(값을 지어내지 않는다).
+
+## Z-소켓. ★[T80 ⓪-2 · 재민 확정 2026-09-03] 일틱이 루프를 잡는 동안 **소켓을 닫지 않는다**
+
+`server/zone.js` http 서버(`const wss` 바로 위) **두 줄**:
+`server.keepAliveTimeout = 30000`(`ZONE_KEEPALIVE_MS` 로 되돌림) · `server.headersTimeout = +10000`.
+
+node 기본 `keepAliveTimeout` 은 **5초**다. 일틱이 그보다 오래 루프를 잡으면 node 가 **클라이언트가
+막 쓴** keep-alive 소켓을 닫고, 그 요청은 답을 못 받아 undici 기본 300초를 기다리다
+`HeadersTimeoutError` 로 터진다(T60 에서 하네스 셋이 이걸로 죽었다 — **플레이어 폴링도 같은 창**).
+
+**값은 실측에서 끌었다**(`scripts/test-tick-slicer.js` ⓑ · 12게임일 창):
+조각내기 켠 상태 **최대 조각 1,790ms**(caravan) · 끈 상태(대조군)는 하루 전부가 한 프레임 **4,675ms**.
+⇒ 30초 = 각각 **×16 · ×6**. 여러 조각이 연달아 겹치는 최악과 `VILLAGE_TICK_SLICE_MS=0` 까지 덮는다.
+⚠**안전망일 뿐이다.** 진짜 수리는 T1 의 조각내기고, 남은 바닥(caravan 조각)은 회부 §4-A 다.
+⚠`headersTimeout` 은 `keepAliveTimeout` 보다 **커야** 뜻이 있다(node 규약) — 손으로 둘을 따로 만지지 마라.

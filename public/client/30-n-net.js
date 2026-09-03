@@ -1437,20 +1437,13 @@
       const bd = msg.board || {};
       evBoardCache = bd;
       window.__evLastBoard = bd;
-      // ★★[T55 2026-09-02] **소식(`news`)을 같이 그린다** — 회부 0-소문 1.
-      //   데이터는 T7 부터 이미 왔다(`bd.news` — 가시성 술어를 통과한 것만 · 서버가 `EV_BOARD_NEWS_N`=8 로 자른다).
-      //   클라가 `rows`(의뢰)만 그려서, 촌장이 "그 밖에 n건은 게시판에" 라고 해도 볼 데가 없었다.
-      //   ⚠순서: **의뢰 줄 아래**다 — T20 이 같은 토스트 맨 윗줄에 겨울 머리줄을 서버에서 넣는다.
-      //   ⚠줄 수는 서버가 정한다(클라가 또 자르면 그게 두 번째 손잡이다).
-      const _bdNews = Array.isArray(bd.news) ? bd.news.filter((n) => n && n.line) : [];
-      const _newsTxt = _bdNews.length
-        ? '\n— 들은 소식 —\n' + _bdNews.map((n) => ' · ' + n.line + (n.from ? ` (${n.from}에서)` : '')).join('\n')
-        : '';
-      // ★[T20] 겨울나기 머리줄 — **서버가 만든 문장 하나**를 맨 앞에 놓는다(진행 막대도 문자다 · 새 패널 0).
-      //   ⚠의뢰가 0건이어도 머리줄은 떠야 한다 — 곡식 의뢰는 애초에 안 걸리므로(§0-ⓕ) 그 갈래가 정상 경로다.
-      const _wHead = bd.head ? bd.head + '\n' : '';
-      if (!bd.rows || !bd.rows.length) showNotice(`${bd.name} 게시판\n${_wHead}— 걸린 의뢰가 없다` + _newsTxt, (_newsTxt || _wHead) ? 9000 : 3500);
-      else showNotice(`${bd.name} 게시판\n` + _wHead + bd.rows.map((r) => ' · ' + r.line).join('\n') + _newsTxt + '\n(Shift+N 으로 낼 수 있는 것부터 납품)', 9000);
+      // ★★[T80 2026-09-03 재민 확정] **토스트가 아니라 판이다.**
+      //   종전엔 여기서 `showNotice(…, 9000)` 로 한 문자열을 만들었다 —
+      //   겨울 머리줄(T20) · 의뢰 줄 · 들은 소식(T55) · "Shift+N 으로 납품"이 전부 `\n` 으로 이어져
+      //   9초 뒤에 사라졌고, **어느 의뢰에 낼지 고를 길이 없었다**.
+      //   ⇒ 그 문자열 조립은 통째로 지웠다(토스트 경로 0 — 판이 정본이다).
+      //     그리기는 `47-s-board.js` 하나다. 여기서는 넘기기만 한다(연대기와 같은 접점 문법).
+      boardOnMessage(bd);
     } else if (msg.type === 'onboarding_state' || msg.type === 'onboarding_quest' || msg.type === 'onboarding_fx' || msg.type === 'onboarding_day') {
       onbOnMessage(msg);   // ★[온보딩 v2] 대본 상태·첫 의뢰·곳간 이펙트·하루 정산 — 그리기는 `70-lobby.js`
     } else if (msg.type === 'pvp_state') {

@@ -924,7 +924,7 @@
         h += `<div style="padding:0 10px 8px;color:var(--hp);font-size:11px">${esc(w.why.join(' · '))}</div>`;
       }
       // ★[T62] 쉼터가 없으면 **여기서 바로 짓는다** — 새 패널 0, HUD 버튼 0(§8.2 를 안 건드린다)
-      if (!w.shelter) h += `<div style="padding:0 10px 10px"><button id="pviShel" style="padding:5px 9px;background:#2b3a4a;color:#e8eaed;border:1px solid #3c4e60;border-radius:4px;cursor:pointer;font-size:12px">🛖 공용 쉼터 터 잡기</button></div>`;
+      if (!w.shelter) h += `<div style="padding:0 10px 10px"><button id="pviShel" style="padding:5px 9px;background:var(--line);color:var(--fg);border:1px solid var(--line);border-radius: 0;cursor:pointer;font-size:12px">공용 쉼터 터 잡기</button></div>`;
     }
     h += `<div style="padding:8px 10px;color:var(--dim-2);font-size:11px;border-top:1px solid var(--inset)">회관을 다시 클릭하면 갱신된다</div>`;
     el.innerHTML = h;
@@ -936,7 +936,7 @@
     // ★[T62] 쉼터 착공 — 기존 배치 모드 그대로다(노·숯가마·회관과 같은 문법 · 새 동사 0)
     { const sb = document.getElementById('pviShel');
       if (sb) sb.onclick = () => { el.style.display = 'none'; buildMode = true; placementMode = { special: 'shelter_site' };
-        showNotice('🛖 공용 쉼터 터 배치 — 마을 영토 안 2×2 (기둥 6 → 서까래 8·풀 6 → 이엉 8 · B=취소)'); }; }
+        showNotice('공용 쉼터 터 배치 — 마을 영토 안 2×2 (기둥 6 → 서까래 8·풀 6 → 이엉 8 · B=취소)'); }; }
     for (const btn of el.querySelectorAll('[data-pvi-put]')) {
       btn.onclick = () => {
         const it = btn.getAttribute('data-pvi-put');

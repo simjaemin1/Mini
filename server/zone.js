@@ -2939,6 +2939,19 @@ const server = http.createServer((req, res) => {
   res.end();
 });
 
+// ★★[T80 ⓪ 2026-09-03 재민 확정 · T60 §7 회부 3 종결] **일틱이 루프를 잡는 동안 소켓을 닫지 않는다.**
+//   node 기본 `keepAliveTimeout` 은 5초다. 일틱이 그보다 오래 루프를 잡으면, 그 사이에 클라이언트가
+//   **막 쓴** keep-alive 소켓을 node 가 닫는다 — 그 요청은 답을 못 받고 undici 기본 300초를 기다리다
+//   `HeadersTimeoutError` 로 터진다(T60 에서 하네스 셋이 이걸로 죽었고, **플레이어 폴링도 같은 창**을 맞는다).
+//   ★값의 근거(추정 아님 · `scripts/test-tick-slicer.js` ⓑ 실측):
+//     조각내기 켠 상태의 **최대 조각 1,790ms(caravan)**, 끈 상태(대조군)는 하루 전부가 한 프레임 **4,675ms**.
+//     ⇒ 30초 = 대조군 최악 프레임의 약 6배 · 최대 조각의 약 16배. 조각 하나가 아니라 **여러 조각이
+//       연달아 겹치는 최악**과 `VILLAGE_TICK_SLICE_MS=0`(끈 상태)까지 덮는 자리다.
+//   ⚠이건 **안전망일 뿐**이다 — 진짜 수리는 T1 의 조각내기고, 남은 바닥(caravan 조각)은 회부 §4-A 다.
+//   ⚠`headersTimeout` 은 `keepAliveTimeout` 보다 커야 뜻이 있다(node 규약).
+server.keepAliveTimeout = Math.max(5000, parseInt(process.env.ZONE_KEEPALIVE_MS || '30000', 10) || 30000);
+server.headersTimeout = server.keepAliveTimeout + 10000;
+
 const wss = new WebSocket.Server({ server });
 
 // ★★[접속 진단 배치 2026-08-30] **조용히 실패하지 않는다.**
@@ -3904,7 +3917,7 @@ function handlePlayerInput(player, raw) {
   }
   else if (E2E_GIVE && msg.type === '__e2e_village_short') {
     // ★테스트 전용(E2E_GIVE=1 일 때만 분기 존재) — 게시판 납품 흐름을 실화면으로 재기 위한 부족 픽스처.
-    const r = SimVillages.__e2eForceShortage ? SimVillages.__e2eForceShortage(msg.vid | 0) : { err: '미지원' };
+    const r = SimVillages.__e2eForceShortage ? SimVillages.__e2eForceShortage(msg.vid | 0, msg.skip) : { err: '미지원' };
     send(player.ws, { type: 'notice', text: r.ok ? `🧪 ${r.name} ${r.item} ${r.before}→${r.after} (문턱 ${r.thr} · 갚을거 ${r.payWith} ${r.payStock})` : `🧪 ${r.err}` });
   }
   else if (E2E_GIVE && msg.type === '__e2e_village_deed') {

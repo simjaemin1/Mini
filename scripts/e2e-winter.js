@@ -214,13 +214,28 @@ async function waitHttp(url, tries = 900) {
   ok(!!annLine, '③d 공표가 **촌장의 말**로 만들어졌다(사건 meta → briefLine)', JSON.stringify(annLine || (bd.news || []).map((r) => r.line).slice(0, 2)));
   await snap('wt-01-announce');
 
-  // ── ④ 게시판 토스트 — 실화면에 그 줄이 실제로 그려진다 ─────────────────────
+  // ── ④ 게시판 **판** — 실화면에 그 줄이 실제로 그려진다 ─────────────────────
+  //   ★★[T80 2026-09-03] 종전엔 9초 토스트(`#notice`)를 읽었다. 지금은 판이다(`#boardPane`) —
+  //     **뜻은 그대로다**: "겨울 머리줄이 게시판 맨 위에 실제로 그려진다".
+  //     자리만 옮겼다(족보 (116) 화면이 그리는 자리와 알림에 남는 자리는 다르다).
   await clearNotices();
   await page.evaluate((vid) => window.__sendPrimary({ type: 'village_board', vid }), V.id);
   await sleep(1200);
-  const nt = await notices();
-  ok(nt.some((t) => /올겨울/.test(t) && /▓|░/.test(t)), '④ 실화면 게시판 토스트 **맨 윗줄**에 그 문장이 뜬다',
-    JSON.stringify((nt.find((t) => /올겨울/.test(t)) || '').slice(0, 70)));
+  const paneOpen = await page.evaluate(() => {
+    const p = document.getElementById('boardPane');
+    return !!(p && !p.classList.contains('hidden'));
+  });
+  ok(paneOpen, '④ 게시판이 **판으로 열린다**(토스트 아님)');
+  const headTxt = await page.evaluate(() => {
+    const h = document.querySelector('#boardPaneBody .bp-head');
+    return h ? h.textContent : '';
+  });
+  ok(/올겨울/.test(headTxt) && /▓|░/.test(headTxt), '④ 판 **머리 자리**에 그 문장이 그려진다',
+    JSON.stringify(headTxt.slice(0, 70)));
+  const ntNo = await notices();
+  ok(!ntNo.some((t) => /게시판/.test(t) && /\n/.test(t)),
+    '④b 게시판 문자열이 `#notice` 로는 **더는 안 간다**(토스트 경로 삭제)',
+    JSON.stringify(ntNo.slice(-2)));
   await snap('wt-02-board');
 
   // ── ⑤ 곡식을 내면 머리줄이 **움직인다** — 의뢰가 없어도 받는다 ─────────────
