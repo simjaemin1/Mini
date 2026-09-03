@@ -13,7 +13,7 @@
 | 스크립트 | 굽는 것 | 결과 | 앵커 |
 |---|---|---|---|
 | `scripts/building_render.py` | 움집 4단계·지붕 · 회관 지붕 · 곳간 · 노 3단계+완공 · 숯가마 2단계 | `public/assets/buildings/*.png` | `building_anchors.json` (클라 `20-r2-visibility.js` 의 A표에 **손으로 옮겨 적혀 있다** — `test-building-anchor.js` 가 대조) |
-| **`scripts/props_render.py`** ★T67 신규 | **가구·시설 8종**(작업대·건조대·상자·모닥불·소금가마·벽·문·울타리) | `public/assets/props/*.png` + `public/assets/icons/item_*.png` | `public/assets/props/props_anchors.json` — 클라가 **읽는다**(사본 없음) |
+| **`scripts/props_render.py`** ★T67 신규 · T72 확장 | **가구·시설 8종**(작업대·건조대·상자·모닥불·소금가마·벽·문·울타리) + **손도구·손에 드는 것 13종**(§9) | `public/assets/props/*.png` + `public/assets/icons/*.png` | `public/assets/props/props_anchors.json` — 클라가 **읽는다**(사본 없음) · 아이콘은 앵커 없음 |
 | `scripts/nature_render.py` | 나무·덤불·풀·갈대·부들·꽃·이끼바위 | `public/assets/nature/*.png` | `nature_anchors.json`(클라가 fetch) |
 | `scripts/icon_render.py` | 인벤 아이콘(자원·야금 사슬 등) | `icon_renders/*.png` → `icons-postprocess.js` → `public/assets/icons/` | 없음(bbox 중심) |
 | `scripts/crop_render.py` | 작물 4단계 | `public/assets/crops/` | — |
@@ -124,7 +124,34 @@ node scripts/test-props.js
 벽은 **지상 통나무 벽(굴립주 벽주)**, 지붕은 맞배 이엉. 곡면 문법 — 직육면체만 쓰지 마라(`char_render.py` 2차 규약):
 통나무·기둥은 n각 프리즘, 돌·흙덩이는 타원체, 판재·문짝은 상자(각진 물건이라 그게 맞다).
 
+## 8-A. 지금까지 구운 아이콘 — 그리고 남은 것
+
+| 묶음 | 키 | 어디서 굽나 |
+|---|---|---|
+| 자원·야금 36종 | `pillar rafter thatch berry fiber meat_raw meat_cooked hide berry_jam water_bottle seed_berry herb ore wood plank stone ore_chunk iron_ore charcoal iron meteoric_iron copper tin lead silver gold nickel jade_raw` + `item_floor item_stair item_farmland` | `icon_render.py` |
+| **가구 8종**(T67) | `item_wall item_door item_fence item_chest item_campfire item_workbench item_drying_rack item_salt_kiln` | `props_render.py` `PROPS` — **세계 스프라이트와 같은 모델** |
+| **손도구·손에 드는 것 13종**(T72) | `crude_axe crude_pick crude_blade axe pickaxe sword carrier fish fish_cooked salt brine twig pebble` | `props_render.py` `ITEMS` — 지금은 아이콘만(세계·손 렌더는 `world=[…]` 붙이면 같은 모델에서) |
+
+**남은 것**(다음 ART 카드 순서, 회부에 등재):
+보존식 6(`dried_fish dried_fruit smoked_meat pickled_veg …`) · 갯벌 3 + 민물 · 어종 8(T73) →
+작물 34 + 씨앗 34(`crop_render.py` 와 **같은 모델**에서 수확물을 뽑는다 · T74) → 나머지.
+그리고 **재료별 도구 아이콘**(§0-ⓐ — 지금은 품목당 하나) · 지게 등짐 스프라이트 · 계단·바닥·농지 세계 스프라이트.
+
+## 9. 아이콘 크기 문법 — **상대 크기는 보존되지 않는다**
+
+`scripts/icons-postprocess.js` 는 알파 bbox 로 자른 뒤 `scale = 96 / max(bb.w, bb.h)` 로 **96px 를 꽉 채운다.**
+그래서 자갈 한 줌과 지게가 화면에서 **같은 크기**로 뜬다 — 상대 크기 규약은 **없다**(T72 §0-ⓒ 실측).
+⇒ 작은 물건은 크기가 아니라 **개수와 담긴 그릇**으로 말한다: 소금은 토기 접시 위 결정 무더기,
+자갈·잔가지는 한 줌·한 단. 기존 36종(`stone`·`ore_chunk`·`gold`)이 이미 그 문법이다.
+바꾸려면 키마다 상대 배율 표가 필요하고 **기존 36종을 전부 다시 구워야** 한다 — 별도 카드.
+
 ## 8. T67 배치 (2026-09-03) — 가구·시설 렌더
 
 보고서 `보고/T67_2026-09-03.md`. 산출: 세계 14장 + 아이콘 8장 · 하네스 `test-props`(신규 `@regress`) ·
 클라 접점은 `36-r2-building.js` 8절 교체 하나. 서버 무접촉 · econ 랩 적재 목록과 **교집합 ∅**.
+
+## 10. T72 배치 (2026-09-03) — 아이콘 1차 13장
+
+보고서 `보고/T72_2026-09-03.md`. `props_render.py` 에 `ITEMS` 표를 더했다(같은 씬·같은 재질 — 파일을 새로 파면 씬이 두 벌이 된다).
+하네스 `test-icons`(신규 `@regress`). **게임 코드 diff 0** — 클라 배선(`43-i-icon.js` 두 줄)은 T66 뒤로 **회부**했다.
+`ico()` 에 `smooth` 인자를 열었다(기본값이 종전과 같아 T67 가구 14장은 한 픽셀도 안 바뀐다).
