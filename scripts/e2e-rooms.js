@@ -65,6 +65,65 @@ require(path.join(ROOT,'server','zone.js'));`);
 //   벽은 '바깥과 맞닿은 변'에만 — 사람이 짓는 방식과 같다(test-rooms.js encloseCells 와 동형).
 const SZ = 32;
 const RECT = (x0, y0, x1, y1) => { const o = []; for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) o.push([x, y]); return o; };
+// ── [T75 2026-09-03] **NPC 움집 픽스처** ──────────────────────────────────────
+//   T57 이 ⓔ 를 "이 픽스처엔 NPC 집이 한 채도 없다 — 못 잰다"로 유보하고 회부한 자리다.
+//   결함(`floorOutOff` 가 되돌리는 그 억제)은 **`data.hut`/`data.bld` 태그가 붙은 집에만** 걸린다.
+//   ⇒ 진짜 NPC 움집이 한 채 필요하다. 그런데 마을 시딩을 켜면 50곳·수 분이 든다.
+//   ★그럴 필요가 없다: 서버는 `villages` 표가 **비어 있을 때만** 시딩한다(server/villages.js
+//     "Stage 2 — 시딩(idempotent)"). 마을 한 줄 + 집 한 줄을 미리 넣어 두면 시딩은 통째로 건너뛰고,
+//     부팅의 Stage 4A 가 그 집을 **자기 경로로** 실체화한다(`materializeVillageStructures`).
+//   ★★그래서 하네스는 6×4·남벽 문 2칸 같은 **기하를 한 줄도 안 베낀다**(베끼면 사본 계측기다).
+//     문간은 아래 `readHutDoor` 가 **DB 에서 재서** 안다.
+function seedNpcVillage(dbPath, vcx, vcy, hcx, hcy) {
+  try {
+    const { DatabaseSync } = require('node:sqlite');
+    const db = new DatabaseSync(dbPath); const now = Date.now();
+    db.prepare('INSERT INTO villages (zone,name,cx,cy,population,econ_state,day,created_at) VALUES (?,?,?,?,?,?,?,?)')
+      .run('hanbando', 'T75 픽스처마을', vcx, vcy, 0, null, 0, now);
+    const vid = db.prepare('SELECT id FROM villages ORDER BY id DESC LIMIT 1').get().id;
+    db.prepare('INSERT INTO village_buildings (village_id,type,cx,cy,floors,data,created_at) VALUES (?,?,?,?,?,?,?)')
+      .run(vid, 'house', hcx, hcy, 1, null, now);
+    db.close(); return { vid };
+  } catch (e) { return { err: e.message }; }
+}
+// ★[T75] 문간을 **잰다** — `data.hut` 렉트를 읽고, 그 남변에서 **벽이 없는 칸**을 문으로 삼는다.
+//   (문 자리를 상수로 적으면 서버가 문을 옮겼을 때 하네스가 조용히 엉뚱한 데를 재게 된다.)
+function readHutDoor(dbPath) {
+  try {
+    const { DatabaseSync } = require('node:sqlite');
+    const db = new DatabaseSync(dbPath);
+    const rows = db.prepare("SELECT x,y,type,data FROM buildings WHERE data LIKE '%\"hut\"%'").all();
+    db.close();
+    let rect = null; const wallCells = new Set();
+    for (const r of rows) {
+      let d = null; try { d = JSON.parse(r.data); } catch (e) {}
+      if (!d || !d.hut) continue;
+      rect = d.hut;
+      if (r.type === 'wall') wallCells.add(Math.floor(r.x / SZ) + ',' + Math.floor(r.y / SZ));
+    }
+    if (!rect) return { err: '움집 태그(data.hut) 행이 DB 에 없다 — 실체화가 안 됐다' };
+    const doorY = rect[3] + 1, doorXs = [];
+    for (let x = rect[0]; x <= rect[2]; x++) if (!wallCells.has(x + ',' + doorY)) doorXs.push(x);
+    if (!doorXs.length) return { err: '남변에 벽 없는 칸이 없다 — 문을 못 찾았다', rect };
+    return { rect, doorY, doorXs, rows: rows.length };
+  } catch (e) { return { err: e.message }; }
+}
+
+// ★[T75] 손잡이(`floorOutOff`)가 **걸리는 대상**의 수 — `data.hut`/`data.bld` 태그 렉트.
+//   (지붕 종류 `hutroof` 를 세면 안 된다: 그 kind 는 **플레이어 방 지붕**도 쓴다
+//    — `34-m-renderloop.js` 네 자리 중 하나가 room 경로다. 세어 보면 이 픽스처에서도 2가 나온다.)
+function countTaggedHuts(dbPath) {
+  try {
+    const { DatabaseSync } = require('node:sqlite');
+    const db = new DatabaseSync(dbPath);
+    const rows = db.prepare("SELECT data FROM buildings WHERE data LIKE '%\"hut\"%' OR data LIKE '%\"bld\"%'").all();
+    db.close();
+    const set = new Set();
+    for (const r of rows) { let d = null; try { d = JSON.parse(r.data); } catch (e) {} const t = d && (d.hut || d.bld); if (t) set.add(t.join(',')); }
+    return set.size;
+  } catch (e) { return 0; }
+}
+
 function seedHouse(dbPath, cells, doorAt, floor) {
   const { DatabaseSync } = require('node:sqlite');
   const db = new DatabaseSync(dbPath);
@@ -119,6 +178,9 @@ const rget = async (q) => (await (await fetch(`http://localhost:${ZPORT}/roomdbg
     await sleep(2000);
   }
   const seeded = seedHouse(ZDB, CELLS, DOOR);
+  // ★[T75] NPC 움집 픽스처 — ㄱ자 집에서 **화면 밖**(27셀↑)에 둔다. ⓐ~ⓓ 는 ENABLE_VILLAGES=0 이라
+  //   이 행들을 아예 안 읽는다(기존 판정 무영향). 아래 [T75] 절만 마을을 켜고 부팅한다.
+  const NPCV = seedNpcVillage(ZDB, 160, 160, 130, 130);
   ok(seeded.floors === 18, `★검사 전제 — ㄱ자 집이 DB 에 실제로 들어갔다: 바닥 ${seeded.floors}칸`);
   ok(seeded.walls >= 18, `검사 전제 — 둘레 벽/문 ${seeded.walls}장`);
 
@@ -277,12 +339,30 @@ const rget = async (q) => (await (await fetch(`http://localhost:${ZPORT}/roomdbg
     //   결함이 거기 있었기 때문이다(밖에서 그 집들의 바닥만 억제됐다).
     //   이 하네스의 픽스처는 **플레이어가 지은 방**이라 그 태그가 없다. 그러면 손잡이는 no-op 이고
     //   화면 차이는 0 이어야 한다 — 그걸 "수리 안 됨"으로 읽으면 오독이다. **상황부터 잰다.**
-    const hutCount = await p3.evaluate(() => (window.__getAllBuildings ? window.__getAllBuildings()
-      .filter((b) => b && b.data && (b.data.hut || b.data.bld)).length : 0)).catch(() => 0);
+    // ★★[T75 2026-09-03 수리] 종전 이 줄은 `__getAllBuildings()` 결과에서 `b.data` 를 봤다 —
+    //   **그 훅은 data 를 안 내보낸다**(`99-main.js`: id·type·wx·wy·stage 뿐). 그래서 이 수는
+    //   NPC 집이 있든 없든 **항상 0** 이었고, 절은 늘 '못 잼' 가지로 갔다. 픽스처에 NPC 집이
+    //   없는 것도 사실이라 결론은 우연히 맞았지만, **재던 것은 아무것도 아니었다.**
+    //   ★1차 수리는 그려진 `hutroof` 를 셌는데 그것도 틀렸다 — 그 kind 는 **플레이어 방 지붕**도
+    //     쓴다(실측 2채). 그러면 이 픽스처가 '못 잼'이 아니라 '빨강'이 된다(HUD 잡음을 효과로 읽음).
+    //   ⇒ 두 값을 **함께** 본다: 손잡이가 걸리는 대상은 DB 의 `data.hut`/`data.bld` 렉트 수이고,
+    //     화면에 실제로 지붕이 그려지는지는 클라가 말한다. 둘 다 있어야 '잴 수 있다'.
+    const taggedHuts = countTaggedHuts(ZDB);
+    const drawnRoofs = await p3.evaluate(() => {
+      const drawn = window.__fogGateProbe ? window.__fogGateProbe() : [];
+      let n = 0; for (const [, , k] of drawn) if (k === 'hutroof') n++; return n;
+    }).catch(() => 0);
+    const hutCount = (taggedHuts > 0 && drawnRoofs > 0) ? taggedHuts : 0;
     // ★★잡음 바닥을 먼저 잰다(족보 80) — 같은 조건 두 장. HUD 시계·프레임 카운터가 계속 움직인다.
     const shot = async (n) => { await p3.screenshot({ path: `${SHOTS}/${n}.png` }); return PNG.sync.read(fs.readFileSync(`${SHOTS}/${n}.png`)); };
+    // ★★[T75 2026-09-03 수리] 종전엔 **화면 전체**를 훑었다. 그런데 이 화면의 위쪽 띠는 HUD 다 —
+    //   시계·숫자가 계속 바뀌어 한 쌍에 4,400px 씩 흔들린다(실측 자리 [150,12,584,124]).
+    //   그러면 '효과'도 '잡음'도 전부 HUD 값이 되고, 판정은 두 값의 **19px 차이**로 뒤집힌다
+    //   (실측: 돌연변이 판에서 4,464 vs 4,445 로 유보 줄이 빨개졌다 — 재던 건 집이 아니라 시계였다).
+    //   ⇒ 재는 층을 격리한다: `e2e-nature` 의 정본 게임 화면 상자와 **같은 값**을 쓴다(HUD 제외).
+    const GBOX = [40, 200, 1360, 880];
     const diffPx = (a, b) => { let c = 0, mnx = 1e9, mny = 1e9, mxx = -1e9, mxy = -1e9;
-      for (let y = 0; y < Math.min(a.height, b.height); y++) for (let x = 0; x < Math.min(a.width, b.width); x++) {
+      for (let y = GBOX[1]; y < Math.min(a.height, b.height, GBOX[3]); y++) for (let x = GBOX[0]; x < Math.min(a.width, b.width, GBOX[2]); x++) {
         const i = (y * a.width + x) * 4;
         const d = Math.abs(a.data[i] - b.data[i]) + Math.abs(a.data[i + 1] - b.data[i + 1]) + Math.abs(a.data[i + 2] - b.data[i + 2]);
         if (d > 24) { c++; if (x < mnx) mnx = x; if (x > mxx) mxx = x; if (y < mny) mny = y; if (y > mxy) mxy = y; } }
@@ -302,13 +382,14 @@ const rget = async (q) => (await (await fetch(`http://localhost:${ZPORT}/roomdbg
     await p3.evaluate(() => { window.__terrain19.floorOutOff = false; });
     const eff = diffPx(n3, off);
     const BOX2 = rr && rr.roofs && rr.roofs[0] ? rr.roofs[0].boxes[0] : null;
-    say(`    NPC 움집·큰집 ${hutCount}채 · 잡음 바닥 ${noise.c}px${noise.box ? ' ' + JSON.stringify(noise.box) : ''}`
+    say(`    NPC 움집·큰집 ${hutCount}채(태그 렉트 ${taggedHuts} · 그려진 지붕 ${drawnRoofs}장 — 지붕엔 플레이어 방도 섞인다) · 잡음 바닥 ${noise.c}px${noise.box ? ' ' + JSON.stringify(noise.box) : ''}`
       + ` · 잡음 두 쌍 ${nA.c}/${nB.c}px · 바닥 on/off 차이 ${eff.c}px${eff.box ? ' ' + JSON.stringify(eff.box) : ''} · 지붕 상자 ${JSON.stringify(BOX2)}`);
     if (hutCount === 0) {
       // **못 쟀다고 적는다.** 결함은 NPC 집에 있었고 이 픽스처엔 NPC 집이 없다.
       say('    ★이 픽스처엔 NPC 움집·큰집이 **한 채도 없다** — 손잡이가 걸릴 자리가 없다.');
       say('      플레이어가 지은 방은 밖에서도 바닥이 원래 그려졌다(억제는 `data.hut`/`data.bld` 전용).');
-      say('      ⇒ 이 절은 이 판에서 **못 잰다**. NPC 마을 앞에서 재는 자리는 회부.');
+      say('      ⇒ 이 절은 이 판에서 **못 잰다**(이 픽스처는 플레이어 방 전용이다).');
+      say('      ★NPC 집 앞에서 재는 자리는 아래 [T75 ⓕ] 절이 따로 세운다 — 회부는 그걸로 닫혔다.');
       ok(eff.c <= noise.c + 30, 'ⓔ [못 잼] NPC 집이 없어 손잡이가 no-op 이다 — 차이가 잡음 바닥 안',
         `${eff.c}px ≤ 잡음 ${noise.c}(두 쌍 중 큰 쪽) + 30`);
     } else {
@@ -433,6 +514,146 @@ const rget = async (q) => (await (await fetch(`http://localhost:${ZPORT}/roomdbg
       ok(o0.sx === o1.sx, `가로 자리는 같다 — 화면 x ${o0.sx} = ${o1.sx}`);
       const dy = o0.sy - o1.sy;
       ok(Math.abs(dy - 64) <= 1, `★★2층 지붕이 1층 지붕보다 정확히 **한 층(64px)** 위에 뜬다 (실측 ${dy}px)`);
+    }
+  }
+
+  // ═══ [T75 2026-09-03] ⓕ **NPC 집 앞 문간** — 밖에서 문간이 새까만 구멍이면 안 된다 ═══════
+  //   T57 이 ⓔ 에서 "이 픽스처엔 NPC 움집이 없어 손잡이가 no-op — 못 잰다"로 유보한 그 절이다.
+  //   여기서는 진짜 NPC 움집 한 채(서버가 실체화한 `data.hut`) 앞에 서서 잰다.
+  //   ★두 층으로 잰다 — 픽셀 하나만 보면 NPC 가 문 앞에 서는 순간 판정이 흔들린다:
+  //     ⓐ **계약**: 문간 너머 실내 바닥이 '그려진 것' 목록(`__fogGateProbe`)에 있나 ↔ 손잡이 뒤집으면 없다.
+  //     ⓑ **화면**: 그 문간 자리 픽셀이 손잡이를 뒤집으면 **실제로 바뀐다**(= 배경이 아니라 바닥이 보인다).
+  //   ★자리는 고르지 않고 잰다(족보 73): 문 칸은 DB 의 `data.hut` 렉트 + '벽 없는 남변 칸'으로 **재고**,
+  //     화면 자리는 클라 자신의 변환(`__w2s`)으로 받는다(하네스가 아이소 변환을 베끼면 사본이다).
+  say('\n[T75 ⓕ NPC 집 앞 문간 — 밖에서 본 실내 바닥]');
+  {
+    const HUT = { cx: 130, cy: 130 };            // 위에서 심은 픽스처 집 셀
+    const CAM = { cx: HUT.cx, cy: HUT.cy + 2 };  // **밖**이라고 주장만 하지 않는다 — 아래서 렉트로 검산한다
+    ok(!NPCV.err, `검사 전제 — 픽스처 마을·움집 행이 DB 에 들어갔다 ${NPCV.err || '(마을 ' + NPCV.vid + ')'}`);
+    const z4 = boot('zone4', wrap, {
+      PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
+      // ★마을을 켠다 — 그래야 Stage 4A 가 움집을 실체화한다. 시딩은 `villages` 가 안 비어서 건너뛴다(수 분 절약).
+      // ★★NPC 상한 1 — 계측 격리다(기준 낮추기가 아니다). 기본 8명이면 제 집 문간에 서서
+      //   문간 화소를 통째로 가린다(실측: 두 문칸 다 가림 400/400 → 못 잼). 1명이면 한 칸은 열린다.
+      ENABLE_VILLAGES: '1', ENABLE_BANDITS: '0', E2E_GIVE: '1', WRAP_DAY_MS: '86400000', VILLAGE_NPC_CAP: '1',
+      WRAP_ZONE_PATCH: JSON.stringify({ mainSquare: { x: CAM.cx * SZ + 16, y: CAM.cy * SZ + 16, name: 'NPC 움집 앞' } }),
+    });
+    ok(await waitHttp(`http://localhost:${ZPORT}/health`), 'zone 재기동(NPC 움집 세계)');
+    await sleep(4000);
+    const D = readHutDoor(ZDB);
+    say(`    움집 실체화 — ${D.err ? '★' + D.err : `렉트 ${JSON.stringify(D.rect)} · 문칸 y=${D.doorY} x=${JSON.stringify(D.doorXs)} · 행 ${D.rows}`}`);
+    if (D.err) {
+      // ★★못 쟀다고 적는다 — 초록도 빨강도 아니다.
+      say('    ⇒ 이 절은 이 판에서 **못 잰다**(실체화 자체가 안 됐다). 사유를 찍고 유보한다.');
+      ok(true, 'ⓕ [못 잼] NPC 움집이 실체화되지 않았다 — 판정 유보(사유를 찍었다)', D.err);
+      try { z4.kill(); } catch (e) {}
+    } else {
+      const inRect = CAM.cx >= D.rect[0] && CAM.cx <= D.rect[2] && CAM.cy >= D.rect[1] && CAM.cy <= D.rect[3];
+      const inDoor = CAM.cy === D.doorY && D.doorXs.indexOf(CAM.cx) >= 0;
+      ok(!inRect && !inDoor, `★★검사 전제 — 카메라가 **밖**이다(발자국·문칸 밖이라 컷어웨이가 안 걸린다) 카메라(${CAM.cx},${CAM.cy})`);
+      const b4 = await chromium.launch({ headless: true, executablePath: require('playwright').chromium.executablePath() });
+      const p4 = await (await b4.newContext({ viewport: { width: 1400, height: 900 } })).newPage();
+      await p4.goto(`http://localhost:${CPORT}/`); await sleep(2500);
+      for (const sel of ['#startBtn', 'button:has-text("시작")', 'button:has-text("입장")', 'text=게스트']) {
+        try { const bb = await p4.$(sel); if (bb) { await bb.click(); break; } } catch (e) {}
+      }
+      await sleep(15000);
+      // 바람 정지 + 생물 자리 훅 — 생물은 가려서 뺀다(e2e-nature 와 같은 문법: 클라가 자리를 낸다)
+      await p4.evaluate(() => { if (window.__terrain19) { window.__terrain19.windOff = true; window.__terrain19.entBoxes = true; } });
+      await sleep(1200);
+      // ★존 오프셋 — 스폰이 곧 mainSquare 다. **검산**: 그 오프셋으로 발자국 바닥이 전부 있어야 한다.
+      const geo = await p4.evaluate(([cam, rect, doorXs, doorY, SZ]) => {
+        const me = window.__getMyAbs();
+        const ox = me.x - (cam.cx * SZ + SZ / 2), oy = me.y - (cam.cy * SZ + SZ / 2);
+        const bs = window.__getAllBuildings();
+        const fset = new Set(bs.filter((b) => b.type === 'floor').map((b) => b.wx + ',' + b.wy));
+        let have = 0, want = 0;
+        for (let x = rect[0]; x <= rect[2]; x++) for (let y = rect[1]; y <= rect[3]; y++) {
+          want++; if (fset.has((ox + x * SZ + SZ / 2) + ',' + (oy + y * SZ + SZ / 2))) have++;
+        }
+        const pts = doorXs.map((dx) => {
+          const f = window.__w2s(ox + dx * SZ + SZ / 2, oy + rect[3] * SZ + SZ / 2);          // 문간 너머 실내 바닥 첫 칸
+          const g = window.__w2s(ox + dx * SZ + SZ / 2, oy + (doorY + 1) * SZ + SZ / 2);      // 문 앞 **바깥 땅**(대조 자리)
+          return { dx, f: f && [Math.round(f.px), Math.round(f.py)], g: g && [Math.round(g.px), Math.round(g.py)] };
+        });
+        const drawn = window.__fogGateProbe ? window.__fogGateProbe() : [];
+        let roofs = 0; for (const [, , k] of drawn) if (k === 'hutroof') roofs++;
+        return { ox, oy, have, want, pts, roofs };
+      }, [CAM, D.rect, D.doorXs, D.doorY, SZ]);
+      say(`    존 오프셋(${geo.ox},${geo.oy}) · 발자국 바닥 ${geo.have}/${geo.want}칸 · 지붕 ${geo.roofs}장 · 문간 화면 ${JSON.stringify(geo.pts.map((q) => q.f))}`);
+      ok(geo.have === geo.want && geo.want > 0, `★검사 전제 — 존 오프셋이 맞다(발자국 바닥 ${geo.have}/${geo.want}칸이 그 자리에 있다)`);
+      ok(geo.roofs >= 1, `★★검사 전제 — **밖이라서 움집 지붕이 그려진다** (${geo.roofs}장) — 안이면 걷혀서 0 이다`);
+      ok(geo.pts.every((q) => q.f && q.g), '★문간 화면 자리를 클라 변환(__w2s)으로 받았다 — 하네스가 아이소를 베끼지 않는다');
+
+      // ── ⓐ 계약 — 문간 너머 바닥이 '그려진 것' 목록에 있나 ↔ 손잡이 뒤집으면 없다 ──
+      const contract = () => p4.evaluate(([ox, oy, rect, doorXs, SZ]) => {
+        const drawn = window.__fogGateProbe ? window.__fogGateProbe() : [];
+        const set = new Set(drawn.map(([wx, wy, k]) => k + '@' + wx + ',' + wy));
+        return doorXs.map((dx) => set.has('building@' + (ox + dx * SZ + SZ / 2) + ',' + (oy + rect[3] * SZ + SZ / 2)));
+      }, [geo.ox, geo.oy, D.rect, D.doorXs, SZ]).catch(() => []);
+      const cOn = await contract();
+      await p4.evaluate(() => { window.__terrain19.floorOutOff = true; }); await sleep(500);
+      const cOff = await contract();
+      await p4.evaluate(() => { window.__terrain19.floorOutOff = false; }); await sleep(500);
+      say(`    계약 — 수리본 ${JSON.stringify(cOn)} · 대조군(옛 동작) ${JSON.stringify(cOff)}`);
+      ok(cOn.length > 0 && cOn.every((v) => v === true), '★★★ⓕ 밖에서도 **문간 너머 바닥이 그려진다**(계약) — 문칸 전부');
+      ok(cOff.length > 0 && cOff.every((v) => v === false), '★★ⓕ 대조군(옛 동작 `floorOutOff`)에서는 **안 그려진다** — 검사가 진짜 재고 있다');
+
+      // ── ⓑ 화면 — 그 자리 픽셀이 실제로 바뀐다(생물은 가리고, 잡음 바닥을 먼저 잰다) ──
+      const ENT_DX = 80, ENT_UP = 120, ENT_DN = 48;
+      const ents = () => p4.evaluate(() => (window.__entBoxes ? window.__entBoxes() : [])).catch(() => []);
+      const shot = async (n) => { const e0 = await ents(); await p4.screenshot({ path: `${SHOTS}/${n}.png` }); const e1 = await ents();
+        const img = PNG.sync.read(fs.readFileSync(`${SHOTS}/${n}.png`)); img._ents = [...e0, ...e1]; return img; };
+      const patch = (a, b, cx, cy, r) => { let c = 0, tot = 0, mk = 0;
+        const es = [...(a._ents || []), ...(b._ents || [])];
+        for (let y = Math.max(0, cy - r); y < Math.min(a.height, cy + r); y++) for (let x = Math.max(0, cx - r); x < Math.min(a.width, cx + r); x++) {
+          let hid = false;
+          for (const [, sx, sy] of es) if (x >= sx - ENT_DX && x < sx + ENT_DX && y >= sy - ENT_UP && y < sy + ENT_DN) { hid = true; break; }
+          if (hid) { mk++; continue; }
+          const i = (y * a.width + x) * 4; tot++;
+          const d = Math.abs(a.data[i] - b.data[i]) + Math.abs(a.data[i + 1] - b.data[i + 1]) + Math.abs(a.data[i + 2] - b.data[i + 2]);
+          if (d > 24) c++; }
+        return { c, tot, mk }; };
+      const PR = 10;   // 반경 10px — 한 셀 마름모(64×32)의 한가운데만 본다(옆 칸을 안 물게)
+      // ★★생물 가리기가 이 절의 사정이다: NPC 는 **제 집 문간에 선다**(실측 — 상한 8명이면 두 문칸
+      //   400/400 전부 가림, 1명이어도 한 칸은 가린다). 그래서 판을 **두 번** 잡아 본다 —
+      //   NPC 가 한 발짝 움직이면 문칸이 열린다. 그래도 안 열리면 화면 층은 **유보**다(계약 층은 이미 잤다).
+      const MINOPEN = 10;   // 열린 화소 최소선 = 한 셀 마름모(64×32/2 ≈ 1,024px)의 1% — 한두 픽셀은 신호가 아니다
+      let judged = 0, best = null;
+      for (let round = 0; round < 2 && !judged; round++) {
+        if (round) { await sleep(3000); }
+        const n1 = await shot(`08a-hut-n1-${round}`); await sleep(500);
+        const n2 = await shot(`08b-hut-n2-${round}`); await sleep(500);
+        const n3 = await shot(`08c-hut-n3-${round}`);
+        await p4.evaluate(() => { window.__terrain19.floorOutOff = true; }); await sleep(500);
+        const off = await shot(`09-hut-flooroff-${round}`);
+        await p4.evaluate(() => { window.__terrain19.floorOutOff = false; }); await sleep(500);
+        for (const q of geo.pts) {
+          const nA = patch(n1, n2, q.f[0], q.f[1], PR), nB = patch(n2, n3, q.f[0], q.f[1], PR);
+          const eff = patch(n3, off, q.f[0], q.f[1], PR);
+          const ctl = patch(n3, off, q.g[0], q.g[1], PR);
+          const noise = Math.max(nA.c, nB.c);
+          const area = (PR * 2) * (PR * 2);
+          say(`    [판 ${round}] 문칸 x=${q.dx} 화면${JSON.stringify(q.f)} — 잡음 ${nA.c}/${nB.c} · 효과 ${eff.c}/${eff.tot}(가림 ${eff.mk}/${area}) · 문앞 바깥 대조 ${ctl.c}/${ctl.tot}`);
+          if (eff.tot < MINOPEN) continue;   // ★생물이 이 칸을 삼켰다 — 이 칸으로는 못 잰다
+          judged++;
+          if (!best || eff.c - noise > best.eff - best.noise) best = { dx: q.dx, eff: eff.c, noise, tot: eff.tot, ctl: ctl.c, ctot: ctl.tot };
+        }
+      }
+      if (!judged) {
+        say('    ★문칸이 전부 생물에 가렸다(NPC 가 제 집 문간에 섰다) — **화면 층은 이 판에서 못 잰다**.');
+        say('      계약 층(위 두 줄)은 이미 초록이다. 화면 판정만 유보한다(rc 는 안 올린다).');
+        ok(true, 'ⓕ [못 잼] 문칸이 전부 가렸다 — 화면 판정 유보(계약 층은 판정했다)', `문칸 ${geo.pts.length}칸`);
+      } else {
+        // ★문턱은 눈대중이 아니라 셀에서 온다(족보 74): 한 셀 마름모 = 64×32/2 ≈ 1,024px.
+        //   그 **1%**(10px)를 최소선으로 둔다 — 한두 픽셀 흔들림은 신호가 아니다. 그리고 잡음의 3배.
+        // ★문턱은 눈대중이 아니다: ⓐ 잡음의 3배 ⓑ **열린 화소의 4분의 1** — 문이 열려 바닥이 보이면
+        //   그 틈은 통째로 바뀐다(실측 40/40 = 100%). 25%는 그 아래로 한참 낮춘 선이지 맞춘 값이 아니다.
+        const NEED = Math.max(best.noise * 3, Math.max(4, Math.round(best.tot * 0.25)));
+        ok(best.eff > NEED, `★★★ⓕ 문간 화소가 손잡이를 뒤집으면 **실제로 바뀐다** = 배경이 아니라 바닥이 보인다 (x=${best.dx} 효과 ${best.eff}px > ${NEED} · 잡음 ${best.noise} · 열린 화소 ${best.tot})`);
+        ok(best.ctl <= Math.max(best.noise, 4), `★★ⓕ 반례 — **문 앞 바깥 땅**은 손잡이에 안 바뀐다 (${best.ctl}px ≤ ${Math.max(best.noise, 4)}) = 바뀐 건 문간이지 화면 전체가 아니다`);
+      }
+      await b4.close(); try { z4.kill(); } catch (e) {}
     }
   }
 

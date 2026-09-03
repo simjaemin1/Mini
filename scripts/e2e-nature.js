@@ -35,6 +35,51 @@ const SITES = {
   field: { cx: 965, cy: 1919, why: '농촌22 광장 — 물 0(반례) · 마을 영토·길이 시야 안(회피 판정)' },
 };
 
+// ★★[T75 2026-09-03] **논밭이 화면에 실재하는 세 번째 자리 — 고르지 않고 잰다(족보 73).**
+//   T57 이 [7c] 를 "이 자리엔 대상이 0곳 — 못 잰다"로 유보해 두고 회부한 그 자리다.
+//   위 두 자리는 `probe-terrain-sites.js` 가 **지형**으로 골랐다. 논밭은 지형이 아니라 **마을**이
+//   깔므로 같은 자리에 없다(실측 cand 0). ⇒ 시딩된 마을에서 **기계가** 하나 고른다.
+//   ★자리 하드코딩 금지: 좌표는 존 DB(`village_buildings`)에서 나오고, 카메라 오프셋도
+//     **클라 상수에서 유도**한다(하네스가 숫자를 베끼면 그게 사본 계측기다):
+//       · `CLOSE_RADIUS`(근접 원 — 무조건 '본 셀')  → 셀 단위 근접 반경
+//       · `_GATE_R.building`(옛 동작의 구조물 후광) → 대조군이 위반을 낼 수 있는 여유
+//     ⇒ 노리는 띠 = 체비셰프 거리 (근접, 근접+후광] — 그 안의 논밭은 **안 본 셀인데
+//       옛 동작이라면 후광으로 그려진다**. 그 띠에 논밭이 가장 많은 영토 셀을 고른다.
+function pickFarmSite(zdb) {
+  const src = fs.readFileSync(path.join(ROOT, 'public', 'client', '34-m-renderloop.js'), 'utf8');
+  const mC = src.match(/const CLOSE_RADIUS = (\d+)/);
+  const mG = src.match(/const _GATE_R = \{[^}]*?building:\s*(\d+)/);
+  if (!mC || !mG) return { err: '클라 상수(CLOSE_RADIUS · _GATE_R.building)를 못 읽었다 — 이름이 바뀌었나' };
+  const CLOSE = Math.round(parseInt(mC[1], 10) / 32), HALO = parseInt(mG[1], 10);
+  let db; try { db = new (require('node:sqlite').DatabaseSync)(zdb); } catch (e) { return { err: 'DB 못 엶: ' + e.message }; }
+  let farms = [], terr = [];
+  try {
+    // 클라가 `type:'farmland'` 로 받는 것 = 논(farmland) + 밭(dryfield) (server/villages.js farmTilesInRect)
+    farms = db.prepare("SELECT cx,cy FROM village_buildings WHERE type IN ('farmland','dryfield')").all();
+    terr = db.prepare("SELECT village_id,cx,cy FROM village_buildings WHERE type IN ('terr','yard','plaza')").all();
+  } catch (e) { try { db.close(); } catch (x) {} return { err: '마을 표가 없다: ' + e.message }; }
+  try { db.close(); } catch (e) {}
+  if (!farms.length) return { err: `논밭 셀이 DB 에 0곳(마을 시딩 전인가)`, close: CLOSE, halo: HALO, farms: 0 };
+  const fset = new Set(farms.map((f) => f.cx + ',' + f.cy));
+  const grid = new Map();
+  for (const f of farms) { const k = (f.cx >> 4) + '_' + (f.cy >> 4); if (!grid.has(k)) grid.set(k, []); grid.get(k).push(f); }
+  let best = null;
+  for (const t of terr) {
+    if (fset.has(t.cx + ',' + t.cy)) continue;   // 밭 한가운데 서면 그 칸은 '본 셀'이 된다 — 밭 밖에 선다
+    let band = 0;
+    for (let gx = (t.cx - 20) >> 4; gx <= (t.cx + 20) >> 4; gx++) for (let gy = (t.cy - 20) >> 4; gy <= (t.cy + 20) >> 4; gy++) {
+      for (const f of (grid.get(gx + '_' + gy) || [])) {
+        const d = Math.max(Math.abs(f.cx - t.cx), Math.abs(f.cy - t.cy));
+        if (d > CLOSE && d <= CLOSE + HALO) band++;
+      }
+    }
+    if (!best || band > best.band) best = { cx: t.cx, cy: t.cy, band };
+  }
+  if (!best || best.band === 0) return { err: '근접 원 밖 후광 띠에 논밭이 있는 영토 셀이 없다', close: CLOSE, halo: HALO, farms: farms.length };
+  return { cx: best.cx, cy: best.cy, band: best.band, close: CLOSE, halo: HALO, farms: farms.length,
+           why: `기계 선정 — 논밭 ${farms.length}칸 중 체비셰프 ${CLOSE + 1}~${CLOSE + HALO}셀 띠에 ${best.band}칸(근접원 ${CLOSE}셀=CLOSE_RADIUS/32 · 후광 ${HALO}셀=_GATE_R.building)` };
+}
+
 let pass = 0, fail = 0;
 const say = (s) => console.log(s);
 const ok = (c, m) => { if (c) { pass++; say(`  ✓ ${m}`); } else { fail++; say(`  ✗ ${m}`); } };
@@ -347,6 +392,46 @@ function diffCountNoEnts(a, b, ents) {
   }
   const R = S.river, F = S.field;
 
+  // ═══ [T75 2026-09-03] **세 번째 자리 — 논밭이 화면에 실재하는 곳** ═════════════════
+  //   왜 한 판 더 띄우나: 위 두 자리는 지형 프로브라 논밭이 **한 칸도 없다**(T57 실측 cand 0).
+  //   자리는 위 `pickFarmSite` 가 **존 DB + 클라 상수**로 고른다 — 좌표 하드코딩 0(족보 73).
+  //   ★마을 시딩은 위 두 판이 이미 같은 ZDB 에 해 뒀다 — 여기선 다시 안 심는다(부팅 몇 초).
+  //   ★★못 고르면 **유보**다(자명 통과 금지): 아래 [7c] 가 "못 쟀다"를 찍고 rc 는 안 올린다.
+  let FARM = null;
+  const farmSite = pickFarmSite(ZDB);
+  if (farmSite.err) {
+    say(`\n── 논밭 자리 — **못 골랐다**: ${farmSite.err}`);
+  } else {
+    say(`\n── 논밭 셀(${farmSite.cx},${farmSite.cy}) — ${farmSite.why}`);
+    const z = boot('zone', '/tmp/zone-wrap.js', {
+      PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
+      ENABLE_VILLAGES: '1', ENABLE_BANDITS: '0',
+      WRAP_ZONE_PATCH: JSON.stringify({ mainSquare: { x: farmSite.cx * 32 + 16, y: farmSite.cy * 32 + 16, name: '논밭 프로브' } }),
+    });
+    ok(await waitHttp(`http://localhost:${ZPORT}/health`), 'zone 기동 (논밭)');
+    await sleep(4000);
+    const browser = await chromium.launch({ headless: true, executablePath: require('playwright').chromium.executablePath() });
+    const page = await (await browser.newContext({ viewport: { width: 1400, height: 900 } })).newPage();
+    await page.goto(`http://localhost:${CPORT}/`); await sleep(2500);
+    for (const sel of ['#startBtn', 'button:has-text("시작")', 'button:has-text("입장")', 'text=게스트']) {
+      try { const b = await page.$(sel); if (b) { await b.click(); break; } } catch (e) {}
+    }
+    await sleep(20000);
+    const knob = async (o) => { await page.evaluate((k) => { Object.assign(window.__terrain19, k); }, o); await sleep(1500); };
+    await knob({ legacy: false, freezeT: 100, natOff: false, fringeOff: false, propOff: false, propNoAvoid: false });
+    const clProbe = () => page.evaluate(() => (window.__claimCells ? JSON.parse(JSON.stringify(window.__claimCells)) : null)).catch(() => null);
+    const claimOn = await clProbe();
+    await knob({ claimCellGateOff: true });
+    const claimOff = await clProbe();
+    await knob({ claimCellGateOff: false });
+    const farmN = await page.evaluate(() => (window.__getAllBuildings ? window.__getAllBuildings().filter((b) => b.type === 'farmland').length : -1)).catch(() => -1);
+    say(`    화면 안 논밭 개체 ${farmN}칸`);
+    await page.screenshot({ path: `${SHOTS}/farm-site.png` }).catch(() => {});
+    FARM = { claimOn, claimOff, site: farmSite, farmN };
+    await browser.close(); try { z.kill(); } catch (e) {}
+    await sleep(2500);
+  }
+
   say('\n[1] 계약 — __natDbg');
   //  ★재민 확정(2026-08-07): "물가 근처에 추가적으로 배치하는 풀은 없애줘" ⇒ 기본값 OFF.
   //    절단선은 이제 **지면 베이크 안의 물가 여백**이 직접 푼다 — 가리개가 필요 없어졌다.
@@ -537,10 +622,13 @@ function diffCountNoEnts(a, b, ents) {
   //     같은 화면의 원자료가 `사유지 0 · 경작지 42` 였다 — **사유지는 한 칸도 없었다.**
   //     진짜 층은 `farmland` **건물**이고, 그건 `kind:'building'` 이라 구조물 후광(R=4)을 받는다.
   //     후광이 있는 이유는 "벽이 시야를 막아 내부 셀이 영영 안 보인다"인데 밭엔 그 사정이 없다.
-  say('\n[7c] ⓖ2 안개 위 논밭 — **땅에 깔린 것**(논밭·사유지)은 셀마다 안개를 본다 [T57 재민 실기 재현]');
+  say('\n[7c] ⓖ2 안개 위 논밭 — **땅에 깔린 것**(논밭·사유지)은 셀마다 안개를 본다 [T57 재민 실기 재현 · T75 실재 자리]');
   {
+    // ★★[T75] 자리가 셋이 됐다. 강가·초원은 **지형** 프로브라 논밭이 0칸이고(T57 이 유보한 이유),
+    //   '논밭'은 `pickFarmSite` 가 시딩된 마을에서 **기계로** 고른 자리다. 판정은 셋의 합으로 한다.
     let anyCand = 0, anyUnseen = 0, viol = 0, ctrl = 0, sample = null;
-    for (const [tag, s2] of [['강가', R], ['초원', F]]) {
+    for (const [tag, s2] of [['강가', R], ['초원', F], ['논밭', FARM]]) {
+      if (!s2) { say(`    ${tag}: 판이 없다`); continue; }
       const on = s2.claimOn, off = s2.claimOff;
       if (!on || !off) { say(`    ${tag}: 계측 없음`); continue; }
       say(`    ${tag}: 수리본 후보 ${on.cand}셀 · 안 본 셀 ${on.unseen} · 안 본 셀에 그림 ${on.drawnUnseen}`
@@ -550,21 +638,38 @@ function diffCountNoEnts(a, b, ents) {
     }
     if (anyCand === 0) {
       // ★★**못 쟀다고 적는다 — "통과"라고 적지 않는다.**
-      //   이 하네스의 정본 프로브 자리(강가·초원)는 `probe-terrain-sites.js` 가 **지형**으로 고른
-      //   자리다. 그 자리엔 화면 안(AOI 650px)에 논밭·사유지가 **한 칸도 없다**(실측 cand 0).
-      //   ⇒ 여기서 초록을 찍으면 그건 "안 그렸다"가 아니라 **"그릴 게 없었다"**다. 그건 자명 통과다.
-      //   수리 자체는 기전으로 선다(땅에 깔린 것은 구조물 후광을 안 받는다 —
-      //   `34-m-renderloop.js` `_flatCellGate`), 그리고 대조군 손잡이도 붙어 있다.
-      //   ⇒ **회부**: 논밭이 화면에 실재하는 프로브 자리(마을 사유지 고리)를 하나 추가해야
-      //     이 절이 진짜로 잰다. 지형 프로브와 다른 기준이라 자리 선정이 따로 필요하다.
-      say('    ★이 자리엔 논밭·사유지가 화면에 **한 칸도 없다**(AOI 650px 안) — 이 절은 이 판에서 **못 잰다**.');
-      say('      "안 그렸다"가 아니라 "그릴 게 없었다"이므로 초록을 찍지 않는다. 프로브 자리 추가는 회부.');
-      ok(true, 'ⓖ2 [못 잼] 이 자리엔 대상이 없다 — 판정 유보(사유를 찍었다)', `후보 ${anyCand}셀`);
+      //   여기 오는 경우는 하나뿐이다: 세 판 어디에도 화면 안에 논밭·사유지가 없다
+      //   (마을 시딩 전 DB, 또는 자리 선정 실패 — 위 '논밭 자리 못 골랐다' 줄이 사유를 찍는다).
+      //   초록을 찍으면 그건 "안 그렸다"가 아니라 **"그릴 게 없었다"**다. 그건 자명 통과다.
+      say('    ★세 판 어디에도 논밭·사유지가 화면에 **한 칸도 없다** — 이 절은 이 판에서 **못 잰다**.');
+      say('      "안 그렸다"가 아니라 "그릴 게 없었다"이므로 초록을 찍지 않는다(rc 는 안 올린다).');
+      ok(true, 'ⓖ2 [못 잼] 세 판 다 대상이 없다 — 판정 유보(사유를 찍었다)', `후보 ${anyCand}셀`);
     } else {
       ok(anyUnseen > 0, '★★(상황) 그중 **안 가본 셀이 실제로 있다** — 없으면 이 검사는 아무것도 안 잰다',
         `${anyUnseen}셀 · 예 ${JSON.stringify(sample)}`);
       ok(viol === 0, '★★★ⓖ2 안 가본 셀에는 논밭·사유지가 **한 셀도 안 그려진다**', `${viol}셀`);
       ok(ctrl > 0, '★★ⓖ2 대조군(**옛 동작** — 구조물 후광 R=4)에서는 위반이 **나온다** — 검사가 진짜 재고 있다', `${ctrl}셀`);
+    }
+    // ★★[T75] **자명 통과 금지 — 이 절이 실제로 잰 판이 있었나.** 위 합계는 세 판을 더한 값이라
+    //   논밭 판이 통째로 빠져도 강가·초원의 0 이 조용히 섞여 들어간다. 그러니 "논밭이 실재하는
+    //   판을 실제로 하나 세웠는지"를 **따로** 말한다. 못 세웠으면 유보다(빨강 아님 — 못 쟀을 뿐).
+    if (FARM && FARM.claimOn && FARM.claimOn.cand > 0) {
+      ok(FARM.claimOn.cand > 0, '★★ⓖ2 **논밭이 실재하는 자리에서 쟀다**(T57 이 못 쟀던 그 절)',
+        `자리(${FARM.site.cx},${FARM.site.cy}) 후보 ${FARM.claimOn.cand}셀 · 안 본 셀 ${FARM.claimOn.unseen} · 대조군 위반 ${FARM.claimOff ? FARM.claimOff.drawnUnseen : 'n/a'}`);
+      ok(FARM.claimOff && FARM.claimOff.drawnUnseen > 0,
+        '★★ⓖ2 **그 자리에서** 대조군(옛 동작)이 실제로 위반을 낸다 — 자리가 결함을 재현하는 자리다',
+        `${FARM.claimOff ? FARM.claimOff.drawnUnseen : 'n/a'}셀`);
+    } else if (FARM && FARM.farmN > 0) {
+      // ★★**유보로 도망가면 안 되는 자리다.** 화면엔 논밭이 `farmN` 칸 있는데 셀 게이트 훅이
+      //   한 번도 안 불렸다(cand 0) = 게이트가 **사라졌다**는 뜻이다(돌연변이가 정확히 이 모양이다:
+      //   `34-m-renderloop.js` 의 `item._flat ? _flatCellGate(...) : ...` 를 지우면 여기가 0 이 된다).
+      //   '못 쟀다'로 넘기면 돌연변이가 조용히 초록으로 통과한다. ⇒ 빨강이다.
+      ok(false, '★★★ⓖ2 화면에 논밭이 있는데 **셀 게이트가 한 번도 안 불렸다** — 게이트가 사라졌다',
+        `논밭 ${FARM.farmN}칸 · 훅 후보 ${FARM.claimOn ? FARM.claimOn.cand : 'null'}셀`);
+    } else {
+      say('    ★논밭 실재 판을 못 세웠다 — 위 판정은 지형 두 자리만 본 것이다(유보).');
+      ok(true, 'ⓖ2 [못 잼] 논밭 실재 자리를 못 세웠다 — 판정 유보(사유는 위 줄)',
+        FARM ? `화면 논밭 ${FARM.farmN}칸 · 후보 ${FARM.claimOn ? FARM.claimOn.cand : 'n/a'}셀` : `자리 선정 실패`);
     }
   }
 
