@@ -938,3 +938,36 @@ for i in $(seq 1 120); do s=$(date +%s%N); curl -sf -m10 -o /dev/null http://loc
 쉼터 폴백(T43)·**클라의 촌장 근접 브리핑**이 전부 그 마을을 못 봤다.
 ⇒ **마을을 추가하는 자리는 `foundPlayerVillage` 하나다.** 새 필드를 마을 페이로드에 더할 땐
 **시딩(Stage 4A)과 그 자리 둘 다** 고쳐라 — 한쪽만 고치면 "재시작해야 보이는 필드"가 또 생긴다.
+
+## Z-쉼터. ★[T62 2026-09-03] 마을 안 이송 좌표가 **진짜 쉼터**가 됐다
+
+`resolveDowned` 의 문장 *"마을 사람들이 당신을 쉼터로 옮겼다"* 는 T43 이래 **거짓이었다** —
+옮겨 준 자리는 `nearestVillageWake` 가 낸 **도착 지점**이었다(쉼터가 세계에 없었으니 그럴 수밖에 없었다).
+T62 가 시설을 만들었으므로 이제 참이다.
+
+**사다리는 `nearestVillageWake` 한 곳에 있다: 쉼터 → 도착 지점 → 마을 중심.**
+좌표를 지어내지 않고 **있는 것 중에서** 고르고, 물·막힘이면 종전 나선 탐색이 그대로 돈다.
+반환값에 `kind`(`shelter`/`arrive`/`center`)를 실어 **어느 칸이 답했는지** 하네스가 셀 수 있게 했다.
+
+| 접점 | 무엇 |
+|---|---|
+| `nearestVillageWake` | 앵커를 `SimVillages.shelterOf` 로. `listRespawnOptions` 4번 폴백도 같이 바뀐다(같은 함수를 쓴다) |
+| `SHELTER_SPEC` + `tryShelterStart/Advance` | 노·숯가마·회관이 쓰는 `_siteStart/_siteAdvance` 계약 그대로 — **새 동사 0** |
+| `_siteStart` 의 `spec.claim` | ★허가를 묻는 문을 spec 이 갈아 끼울 수 있게 한 줄. 기본은 종전 그대로 `_claimFootprint` |
+| `Onboarding.init` / `Newcomers.init` | `shelterOf` / `hasShelter` 주입 — **판정은 정본 하나** |
+| `_shelterBackfill` | 부팅 뒤 주기 백필(NPC만 · 멱등). `SHELTER_BACKFILL=0` 이면 안 돈다 |
+| `GET /shelterdbg` | 전수 실측(자리·영토 안 여부·이송 좌표). `?scan=1` = 백필 1회 |
+| `BUILDING_HEIGHT` | `shelter_site: 4` · `shelter: 40`(움집과 같은 높이) |
+
+⚠**`spec.claim` 은 쉼터만 쓴다.** 다른 spec 은 한 글자도 안 바뀌었다(기본 분기가 종전 동작).
+⚠쉼터 완공 훅은 **터 표지를 지운다** — 실체(6×4)는 `addShelter` 가 정본 경로로 이미 세운다.
+터를 남기면 같은 자리에 표지와 집채가 겹친다.
+
+## Z-시계. ★★[T20 회부 · 재민 지시 2026-09-03] **시계 둘 금지** — `gameDayNow` 하나로
+
+`Membership.init`·`Onboarding.init` 이 `zoneGameDay`(**벽시계 파생**)를 받고 있었다.
+그런데 화면의 날짜·달력·온도는 전부 `gameDayNow`(**econ 게임일**)를 쓴다 — 두 시계는
+따라잡기가 없어 **영구히 어긋난다**(`gameDayNow` 주석이 이미 그 이유를 적어 뒀다).
+⇒ 둘 다 `gameDayNow` 로 바꿨다(**2줄**). `__e2e_day_freeze` 는 두 시계를 다 얼리므로 하네스도 그대로다.
+⚠전환 순간 저장된 `s.day`·`wdDay` 가 새 시계와 어긋나 **하루 정산·인출 몫이 한 번 초기화**될 수 있다.
+초기화는 안전한 쪽이라 그대로 둔다(값을 지어내지 않는다).

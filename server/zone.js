@@ -798,7 +798,7 @@ const CROP_GROW_MS = 60 * 1000;
 // 14.50: door도 닫혔을 때 blocking. fence는 cell 차지하지만 통과 가능 (사용자 의도: 시야는 통과, collider만 차단).
 const BLOCKING_BUILDINGS = new Set(['wall', 'fence', 'door']);
 // 14.49-e2: 층 높이 2배 (32 → 64). 벽·계단도 같이 2배.
-const BUILDING_HEIGHT = { salt_kiln: 40, drying_rack: 34, workbench: 26, wall: 64, floor: 4, fence: 32, door: 64, chest: 24, campfire: 20, farmland: 4, stair: 64, vtile: 2, guild_granary: 40, granary: 40, hut_site: 4, hut: 40, furnace_site: 4, furnace: 48, kiln_site: 4, charcoal_kiln: 36, village_site: 4, village_hall: 56 };   // ★실체화 동기: 지면 타일·곳간·움집터·노(爐)·숯가마·마을회관[배치 12]
+const BUILDING_HEIGHT = { salt_kiln: 40, drying_rack: 34, workbench: 26, wall: 64, floor: 4, fence: 32, door: 64, chest: 24, campfire: 20, farmland: 4, stair: 64, vtile: 2, guild_granary: 40, granary: 40, hut_site: 4, hut: 40, furnace_site: 4, furnace: 48, kiln_site: 4, charcoal_kiln: 36, village_site: 4, village_hall: 56, shelter_site: 4, shelter: 40 };   // ★실체화 동기: 지면 타일·곳간·움집터·노(爐)·숯가마·마을회관[배치 12]
 // Phase 14.25: chest 저장 가능 아이템 (모든 자원 + 도구 + 음식)
 const CHEST_ALLOWED_ITEMS = new Set([
   'wood', 'stone', 'ore', 'herb',
@@ -2520,7 +2520,11 @@ if (ZONE_ID === 'hanbando') {
 // ★[온보딩 v2] 도착 지점·대본 상태 — 정본은 `server/onboarding.js`. 여기서는 **이미 있는 것만 넘긴다**(사본 금지).
 Onboarding.init({ SimVillages, terrain: _terrain, ZONE, ZONE_ID, db: db.db, send, players, Events: require('./events'),
   isTerrainBlockedLocal, isWaterTileLocal, isBridgeLocal: isBridgeTileLocal, isSeaTileLocal,
-  foodItems: new Set(Object.keys(FOOD_EFFECTS)), gameDay: zoneGameDay,
+  // ★★[T20 회부 · 재민 지시 2026-09-03] **시계 둘 금지.** 여기까지 `zoneGameDay`(벽시계 파생)를
+  //   넘기고 있었는데, 화면의 날짜·달력·온도는 전부 `gameDayNow`(econ 게임일)를 쓴다 —
+  //   두 시계는 따라잡기가 없어 **영구히 어긋난다**(`gameDayNow` 주석이 이미 그걸 적어 뒀다).
+  //   ⇒ 온보딩의 하루 정산도 **같은 날**을 센다. 손잡이(`__e2e_day_freeze`)는 둘 다 얼린다.
+  foodItems: new Set(Object.keys(FOOD_EFFECTS)), gameDay: gameDayNow,
   // ★[T19] 유저 마을을 시작 지도에 올릴지 — 판정 정본은 `newcomers.js` 하나다.
   //   여기서 넘기는 건 **부르는 법**뿐이다(온보딩은 자격을 모른다 — 알면 그게 두 번째 판정이다).
   newcomers: (vid) => {
@@ -2530,11 +2534,14 @@ Onboarding.init({ SimVillages, terrain: _terrain, ZONE, ZONE_ID, db: db.db, send
       e.founderName = (vil && vil.econ && vil.econ.founderName) || '';
       return e;
     } catch (err) { return null; }
-  } });
+  },
+  // ★[T62] 공용 쉼터 좌표 — **정본 하나를 부른다**(온보딩이 자리를 다시 고르지 않는다).
+  shelterOf: (vid) => { try { return SimVillages.shelterOf ? SimVillages.shelterOf(vid) : null; } catch (e) { return null; } } });
 
 // ★[T11 2026-09-02] 마을 소속·곳간 인출 — **이미 있는 것만 넘긴다**(사본 금지).
 //   기여 계량기는 안 넘긴다: `membership.js` 가 온보딩 정본을 직접 읽는다(계량기는 하나다).
-Membership.init({ SimVillages, ZONE_ID, send, players, gameDay: zoneGameDay,
+// ★[T20 회부 · 2026-09-03] 인출 하루 몫도 **같은 시계**를 센다(위와 같은 이유 — 시계 둘 금지).
+Membership.init({ SimVillages, ZONE_ID, send, players, gameDay: gameDayNow,
   afterWithdraw: (player, r) => _afterWithdraw(player, r) });
 
 // ★[T45 2026-09-02] 사유지 v2 — **이미 있는 것만 넘긴다**(사본 금지).
@@ -2564,6 +2571,8 @@ Newcomers.init({
     return best;
   },
   setSwitch: (player, hall, on) => tryVillageWelcome(player, hall.id, on),
+  // ★★[T62] "쉼터 보유" — T19 의 **대체 술어를 갈아 끼운다**. econ 술어는 버리지 않는다(둘 다 필요).
+  hasShelter: (vid) => { try { return !!(SimVillages.hasShelter && SimVillages.hasShelter(vid)); } catch (e) { return false; } },
 });
 Newcomers.start();
 // ★[T56 2026-09-02] 외침·구조 동사 — **이미 있는 것만 넘긴다**(사본 금지 · T11 과 같은 규약).
@@ -2579,6 +2588,37 @@ Rescue.init({ players, send, ZONE_ID,
   itemLabel: () => ITEM_LABEL_SERVER,
   RESCUE_RANGE_PX, RESCUE_WINDOW_MS, WATER_DRINK_AMOUNT, THIRST_MAX,
   afterVerb: (p) => { try { send(p.ws, { type: 'gauges', hunger: Math.round(p.hunger), thirst: Math.round(p.thirst), body: Body.selfPayload(p) }); savePlayer(p); } catch (e) {} } });
+
+// ═══ ★★[T62 2026-09-03] NPC 마을 쉼터 백필 — **멱등 · 유저 마을은 건너뛴다** ══════
+//   왜 백필인가: NPC 마을 51곳은 수백 년 산 취락이라 이방인이 자는 자리가 이미 있다.
+//   그걸 세계에 **기록**하는 일이지 새로 짓는 일이 아니다(T45 의 `kind='personal'` 이행과 같은 성격).
+//   ⚠도착 지점이 아직 안 구워졌으면 그 마을은 **건너뛴다**(좌표를 지어내지 않는다) — 다음 판이 잡는다.
+//   ⚠유저 마을은 안 한다: 창설자가 지어야 "이방인 받기"가 실질을 갖는다(T19 자격이 자명 통과가 되지 않게).
+const SHELTER_BACKFILL_MS = Math.max(10 * 1000, (parseFloat(process.env.SHELTER_BACKFILL_MS) || 60 * 1000));
+let _shBackfillTries = 0;
+function _shelterBackfill() {
+  if (process.env.SHELTER_BACKFILL === '0') return { made: 0, left: 0, off: 1 };
+  let made = 0, left = 0;
+  try {
+    for (const v of (SimVillages.clientVillages() || [])) {
+      const vil = SimVillages.villageByDbId ? SimVillages.villageByDbId(v.id) : null;
+      if (!vil || (vil.econ && vil.econ.founder)) continue;             // 유저 마을은 창설자 몫
+      if (SimVillages.hasShelter(v.id)) continue;
+      const a = Onboarding.arrivalOf ? Onboarding.arrivalOf(v.id) : null;
+      if (!a) { left++; continue; }                                     // 아직 안 구워졌다 — 다음 판에
+      const r = SimVillages.ensureShelter(v.id, a);
+      if (r && r.ok && !r.already) made++; else if (!r || !r.ok) left++;
+    }
+  } catch (e) { console.warn(`[${ZONE_ID}] 🛖 쉼터 백필 실패:`, e.message); }
+  if (made) console.log(`[${ZONE_ID}] 🛖 공용 쉼터 백필 — ${made}곳에 세웠다 (남은 후보 ${left})`);
+  return { made, left };
+}
+setTimeout(function _shTick() {
+  const r = _shelterBackfill();
+  _shBackfillTries++;
+  // 도착 지점 굽기가 끝날 때까지만 다시 본다(부팅 직후 몇 판). 다 채워졌으면 멈춘다.
+  if ((r.left | 0) > 0 && _shBackfillTries < 20) setTimeout(_shTick, SHELTER_BACKFILL_MS);
+}, Math.max(3000, Math.round(SHELTER_BACKFILL_MS / 4)));
 
 // Phase 12.2.e: 자원 respawn 제거 — 청크 활성화 시 시드로 자동 생성됨
 
@@ -2665,6 +2705,31 @@ const server = http.createServer((req, res) => {
   }
   // ★[T19] 이방인 받기 상태 읽기 전용 JSON — 하네스 관측창(`/claimdbg` 와 같은 규약).
   //   내주는 것은 **정본 그 자체**(`Newcomers.debug()`). `?scan=1` 이면 central 질의를 지금 한 번 돈다.
+  // ★[T62] 쉼터 실측 창구 — 51마을 전수(자리·이송 좌표). 읽기 전용.
+  if (req.url && req.url.startsWith('/shelterdbg') && req.method === 'GET') {
+    const rows = [];
+    try {
+      for (const v of (SimVillages.clientVillages() || [])) {
+        const vil = SimVillages.villageByDbId ? SimVillages.villageByDbId(v.id) : null;
+        const sh = SimVillages.shelterOf(v.id);
+        const a = Onboarding.arrivalOf ? Onboarding.arrivalOf(v.id) : null;
+        rows.push({ vid: v.id, name: v.name, player: !!(vil && vil.econ && vil.econ.founder),
+          shelter: sh ? { cx: sh.cx, cy: sh.cy, x: sh.x, y: sh.y } : null,
+          // ★집채 발자국 [cx-5..cx+0]×[cy-5..cy-2] 이 **전부** 영토 안인가.
+          //   ⚠부지 중심(cx,cy)은 집채 **밖**이다(움집 규약) — 그 한 칸만 보면 헛것을 잰다.
+          inTerr: (() => { if (!sh || !vil || !vil._terrSet) return false;
+            for (let x = sh.cx - 5; x <= sh.cx + 0; x++) for (let y = sh.cy - 5; y <= sh.cy - 2; y++)
+              if (!vil._terrSet.has(x + ',' + y)) return false;
+            return true; })(),
+          arrive: a ? { x: a.x, y: a.y } : null,
+          wake: (() => { try { const w = nearestVillageWake(v.cx * 32 + 16, v.cy * 32 + 16); return w ? { x: w.x, y: w.y, kind: w.kind } : null; } catch (e) { return null; } })() });
+      }
+    } catch (e) {}
+    if (req.url.indexOf('scan=1') >= 0) { try { _shelterBackfill(); } catch (e) {} }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true, n: rows.length, withShelter: rows.filter((r) => r.shelter).length, rows }));
+    return;
+  }
   if (req.url && req.url.startsWith('/welcomedbg') && req.method === 'GET') {
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
     const _out = (extra) => { try { res.end(JSON.stringify(Object.assign({ zone: ZONE_ID }, Newcomers.debug(), extra || {}))); }
@@ -3628,6 +3693,7 @@ const VILLAGE_BOOK_MSG = new Set([
   'village_welcome',   // ★[T19] 이방인 받기 스위치도 마을 장부다
   'sell_relic', 'shop_info', 'craft_buy', 'craft_sell',
   'village_start', 'village_advance', 'request_village_house',
+  'shelter_start', 'shelter_advance',   // ★[T62] 공용 쉼터도 마을 장부다(마을 영토·마을 소유)
 ]);
 
 // === 외부 player 핸들러 (observer promotion에서 재사용) ===
@@ -3772,6 +3838,8 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'kiln_advance') tryKilnAdvance(player, msg.buildingId);            // ★숯가마 건설 ②·완공
   else if (msg.type === 'village_start') tryVillageStart(player, +msg.atX, +msg.atY);      // ★[배치 12] 마을 회관 착공 — 완공이 곧 마을 등록
   else if (msg.type === 'village_advance') tryVillageAdvance(player, msg.buildingId);      // ★[배치 12] 회관 ②③·완공
+  else if (msg.type === 'shelter_start') tryShelterStart(player, +msg.atX, +msg.atY);      // ★[T62] 공용 쉼터 착공
+  else if (msg.type === 'shelter_advance') tryShelterAdvance(player, msg.buildingId);      // ★[T62] 쉼터 ②③·완공
   else if (msg.type === 'village_inventory') tryVillageInventory(player, msg.buildingId);  // ★[배치 12 ③] 회관 클릭 = 마을 재고 열람(권한 게이트)
   else if (msg.type === 'village_welcome') tryVillageWelcome(player, msg.buildingId, !!msg.on);   // ★[T19] 이방인 받기 스위치
   else if (msg.type === 'village_deposit') tryVillageDeposit(player, msg.buildingId, msg.want);   // ★[배치 12 ②] 곳간에 넣기 — 식량이 사람을 부른다
@@ -7348,7 +7416,9 @@ function _siteStart(player, atX, atY, spec) {
   const SZg = BUILDING_SIZE;
   const cx = Math.floor(atX / SZg), cy = Math.floor(atY / SZg);
   const x0 = cx, y0 = cy, x1 = cx + 1, y1 = cy + 1;   // 2×2
-  const cl = _claimFootprint(player, x0, y0, x1, y1);
+  // ★[T62] 허가를 묻는 문을 spec 이 갈아 끼울 수 있다 — 기본은 종전 그대로 **사유지 발자국**이다.
+  //   (쉼터만 다르다: 마을 땅에 마을 것을 짓는 일이라 사유지 슬롯을 쓰지 않는다 — 아래 SHELTER_SPEC.)
+  const cl = spec.claim ? spec.claim(player, x0, y0, x1, y1) : _claimFootprint(player, x0, y0, x1, y1);
   if (cl.err) { send(player.ws, { type: 'notice', text: `${spec.ko} — ${cl.err}` }); return; }
   const st = spec.stages[0];
   if (st.tool && !hasTool(player, st.tool)) { send(player.ws, { type: 'notice', text: `${st.label} — ${ITEM_LABEL_SERVER[st.tool] || st.tool} 필요` }); return; }
@@ -7476,6 +7546,78 @@ const VILLAGE_SPEC = {
     send(player.ws, { type: 'notice', text: `🏘️ **[${r.name}]** 이(가) 섰다 — 인구 0. 곳간에 식량을 채우면 사람이 깃든다 (회관 클릭 = 재고)` });
   },
 };
+// ═══ ★★[T62 2026-09-03 재민 확정] 공용 쉼터 — **파지 않은 움집** ═══════════════
+//
+// ★★재료·크기를 **발명하지 않았다**. 쉼터는 움집(`HUT_STAGES`)에서 **①수혈 굴착만 뺀 것**이다:
+//     · 남이 잘 자리는 반지하로 파지 않는다 — 내 집이 아닌 집에 땅 파는 노동을 들이지 않는다.
+//     · 그래서 **곡괭이가 필요 없다**(작업대·건조대·소금가마 선례 — 빈손 사다리 위에 둔다).
+//   ⇒ 남은 셋은 움집 ②③④ **그대로**: 굴립주 6 · 서까래 8+풀 6 · 이엉 8.
+//     (같은 수가 이미 한 번 더 쓰이고 있다 — `PSITE_COST`(NPC 크루에게 집을 의뢰하는 값)가
+//      pillar 6·rafter 8·thatch 8 이다. 새 눈금이 아니라 **세 번째 재사용**이다.)
+// ★실체도 움집과 같다(6×4 · 남벽 2칸 문 · `hut` 태그) ⇒ **새 스프라이트 0 · 클라 렌더 접점 0**.
+//   다른 것은 뜻뿐이다: 이 집은 아무의 집도 아니고, 그래서 **이방인이 첫날 밤을 여기서 난다**(§9.5 사다리 1칸).
+const SHELTER_STAGES = [
+  { need: { pillar: 6 },              label: '① 굴립주 기둥 세우기(기둥 6)' },
+  { need: { rafter: 8, fiber: 6 },    label: '② 도리·서까래 골조(서까래 8·풀 6)' },
+  { need: { thatch: 8 },              label: '③ 이엉 지붕 잇기(이엉 8)' },
+];
+const SHELTER_SPEC = {
+  siteType: 'shelter_site', doneType: 'shelter', ko: '공용 쉼터', icon: '🛖',
+  stages: SHELTER_STAGES, kind: 'shelter',
+  doneHint: '이방인이 첫날 밤을 날 자리다',
+  // ★★허가 — **마을 땅이 곧 허가다.** 공용 쉼터는 마을의 것이지 내 것이 아니므로
+  //   사유지 슬롯(개인 3·임시 9)을 태우게 하지 않는다. 자격은 회관과 **같은 술어**를 쓴다:
+  //   개인 땅 마을이면 창설자, 길드 땅 마을이면 길드원(`_furnaceCanUse` 가 회관에 대해 답하는 그것).
+  //   ⚠마을 밖이면 종전 규칙 그대로 사유지를 본다 — 새 예외를 세계 전체에 열지 않는다.
+  claim: (player, x0, y0, x1, y1) => {
+    const vil = SimVillages.villageOfCell ? SimVillages.villageOfCell(x0, y0) : null;
+    if (!vil) return _claimFootprint(player, x0, y0, x1, y1);
+    const f = vil.econ && vil.econ.founder;
+    const tid = vil._tribeId || null;
+    if (!f) return { err: '오래된 마을엔 이미 쉼터가 있다 — 여긴 지을 자리가 아니다' };   // NPC 마을은 백필 소관
+    const mine = (f === player.playerId) || (tid && player.tribeId && tid === player.tribeId);
+    if (!mine) return { err: '이 마을의 관리자가 아닙니다 — 남의 마을에 쉼터를 못 짓는다' };
+    return { tribeId: tid };
+  },
+  onDone: (player, done, ctx) => {
+    // ★어느 마을의 쉼터인가 — **영토 집합이 정본**이다(반경으로 다시 재지 않는다).
+    const vil = SimVillages.villageOfCell ? SimVillages.villageOfCell(ctx.x0, ctx.y0) : null;
+    if (!vil) { send(player.ws, { type: 'notice', text: '🛖 쉼터는 섰지만 **어느 마을 것도 아니다** — 마을 영토 안에 지어야 그 마을의 쉼터가 된다' }); return; }
+    // 6×4 집채의 부지 중심 — 터(2×2)의 좌상 셀이 집채 안에 들어오게 맞춘다(움집과 같은 오프셋 규약).
+    const cx = (ctx.x0 | 0) + 3, cy = (ctx.y0 | 0) + 2;
+    const r = SimVillages.addShelter ? SimVillages.addShelter(vil.dbId, cx, cy) : { ok: false, err: '마을 시뮬이 이 서버에 없다' };
+    if (!r.ok) { send(player.ws, { type: 'notice', text: `🛖 쉼터를 마을에 못 올렸다 — ${r.err}` }); return; }
+    if (r.already) { send(player.ws, { type: 'notice', text: `🛖 [${vil.name}] 에는 이미 쉼터가 있다` }); return; }
+    // ★터 표지는 지운다 — 실체(6×4)는 `addShelter` 가 정본 경로로 이미 세웠다.
+    try { db.deleteBuilding(done.dbId); } catch (e) {}
+    buildings.delete(done.id);
+    try { if (chunkManager && chunkManager.removeBuilding) chunkManager.removeBuilding(done); } catch (e) {}
+    broadcast({ type: 'building_removed', id: done.id });
+    send(player.ws, { type: 'notice', text: `🛖 **[${vil.name}] 공용 쉼터**가 섰다 — 이방인이 첫날 밤을 날 자리다 (이제 '이방인 받기'를 켤 수 있다)` });
+    console.log(`[${ZONE_ID}] 🛖 ${player.name} 쉼터 완공 @(${cx},${cy}) → ${vil.name}`);
+  },
+};
+function tryShelterStart(player, atX, atY) {
+  // ★착공 전에 **자리부터** 본다(마을 회관 선례) — 3단계를 다 짓고 "여긴 아니다"라고 하면 재료를 삼키는 것이다.
+  const SZg = BUILDING_SIZE;
+  const x0 = Math.floor(atX / SZg), y0 = Math.floor(atY / SZg);
+  const vil = SimVillages.villageOfCell ? SimVillages.villageOfCell(x0, y0) : null;
+  if (!vil) { send(player.ws, { type: 'notice', text: '🛖 마을 영토 안에만 쉼터를 세운다 — 여긴 어느 마을 땅도 아니다' }); return; }
+  if (SimVillages.hasShelter && SimVillages.hasShelter(vil.dbId)) { send(player.ws, { type: 'notice', text: `🛖 [${vil.name}] 에는 이미 쉼터가 있다 — 마을에 하나면 된다` }); return; }
+  // 완공 실체는 6×4 다 — **그 발자국 전체**를 지금 본다(2×2 만 보면 지붕이 물 위에 앉는다).
+  const cx = x0 + 3, cy = y0 + 2;
+  for (let x = cx - 5; x <= cx + 0; x++) for (let y = cy - 5; y <= cy - 2; y++) {
+    const px = x * SZg + SZg / 2, py = y * SZg + SZg / 2;
+    if (isTerrainBlockedLocal(px, py)) { send(player.ws, { type: 'notice', text: '🛖 지붕이 앉을 자리가 물·바위다 — 조금 물러서 지어라' }); return; }
+    if (!vil._terrSet || !vil._terrSet.has(x + ',' + y)) { send(player.ws, { type: 'notice', text: '🛖 집채가 마을 영토 밖으로 나간다' }); return; }
+  }
+  return _siteStart(player, atX, atY, SHELTER_SPEC);
+}
+function tryShelterAdvance(player, buildingId) {
+  const b = buildings.get(buildingId);
+  if (!b || b.type !== 'shelter_site') return;
+  return _siteAdvance(player, b, SHELTER_SPEC);
+}
 function tryVillageStart(player, atX, atY) {
   // ★착공 전에 **자리부터** 본다 — 3단계를 다 짓고 나서 "여긴 안 된다"고 하면 재료를 삼키는 것이다.
   //   판정은 villages.js 정본과 같은 함수를 쓴다(사본 금지): dryRun 으로 물어본다.
@@ -7934,6 +8076,10 @@ function __testBind() {
     // ★[T19 유저 마을 시작지 2026-09-02] 이방인 받기 경로를 **정본 그대로** 내준다
     //   (하네스가 자격 판정을 다시 짜면 그게 사본이다).
     Newcomers, tryVillageWelcome, tryVillageInventory, _welcomeLine,
+    // ★[T62 공용 쉼터 2026-09-03] 쉼터 경로를 **정본 그대로** 내준다 —
+    //   하네스가 자리·재료·이송 좌표를 다시 짜면 그게 사본이다.
+    tryShelterStart, tryShelterAdvance, SHELTER_SPEC, SHELTER_STAGES, _shelterBackfill,
+    nearestVillageWake, resolveDowned, buildings, _liveBuildRow, isTerrainBlockedLocal,
     Claims, db, tryClaim, tryUnclaim, countMyClaims, listRespawnOptions,
     findGuildClaimContaining, _claimFootprint, Onboarding, CLAIM_COST,
     CLAIM_SLOT_PERSONAL_START, CLAIM_SLOT_TEMPORARY_START, CLAIM_SLOT_GUILD_START,
@@ -8649,9 +8795,18 @@ function nearestVillageWake(x, y) {
     }
   } catch (e) { best = null; }
   if (!best) return null;
+  // ★★[T62 2026-09-03] **깨어나는 자리는 이제 진짜 쉼터다.**
+  //   T43 이 쓴 문장은 *"마을 사람들이 당신을 쉼터로 옮겼다"* 인데, 옮겨 준 자리는 **도착 지점**이었다
+  //   (쉼터가 세계에 없었으니 그럴 수밖에 없었다 — 보고 T62 §0-ⓑ). 이제 있으므로 문장이 참이 된다.
+  //   ⚠사다리: 쉼터 → 도착 지점 → 마을 중심. **좌표를 지어내지 않고 있는 것 중에서 고른다.**
+  best.kind = 'center';
   try {
-    const a = Onboarding.arrivalOf ? Onboarding.arrivalOf(best.vid) : null;
-    if (a && Number.isFinite(a.x) && Number.isFinite(a.y)) { best.x = a.x; best.y = a.y; }
+    const sh = SimVillages.shelterOf ? SimVillages.shelterOf(best.vid) : null;
+    if (sh && Number.isFinite(sh.x) && Number.isFinite(sh.y)) { best.x = sh.x; best.y = sh.y; best.kind = 'shelter'; }
+    else {
+      const a = Onboarding.arrivalOf ? Onboarding.arrivalOf(best.vid) : null;
+      if (a && Number.isFinite(a.x) && Number.isFinite(a.y)) { best.x = a.x; best.y = a.y; best.kind = 'arrive'; }
+    }
   } catch (e) {}
   // ★★**깨어날 자리는 설 수 있는 자리여야 한다.** 도착 지점은 걸어갈 수 있는 자리로 산출되지만
   //   그 표가 아직 안 데워졌으면(부팅 직후) 마을 **중심**으로 떨어지고, 중심은 집·물일 수 있다.

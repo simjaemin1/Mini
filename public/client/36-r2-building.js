@@ -266,7 +266,8 @@
       return;
     }
     // ★★[2026-08-03e 배치 12 ①] 마을 회관 — 터(단계)와 완공. 노·숯가마 렌더와 같은 결(2×2 앵커+라벨).
-    if (type === 'village_site' || type === 'village_hall') {
+    if (type === 'village_site' || type === 'village_hall' || type === 'shelter_site') {
+      const _shel = type === 'shelter_site';   // ★[T62] 쉼터 터 — 회관 터와 같은 결(굴립주 앵커+라벨). 완공 실체는 움집 스킨이라 여기 안 온다.
       const done = type === 'village_hall';
       const st = (building?.data?.stage) | 0;
       // 굴립주(기둥 박아 세운 큰집) — 기둥 넷 + 이엉 지붕. 터는 지경석만.
@@ -278,7 +279,7 @@
         ctx.strokeStyle = '#5c4a2c'; ctx.lineWidth = 1; ctx.stroke();
       }
       ctx.font = 'bold 10px sans-serif'; ctx.fillStyle = done ? '#ffe9b0' : '#e6d6b6'; ctx.textAlign = 'center';
-      ctx.fillText(done ? '마을 회관 — 클릭=재고' : `마을 회관 터 ${st}/3단계 (클릭=시공)`, x, y - (done ? 48 : 14));
+      ctx.fillText(done ? '마을 회관 — 클릭=재고' : `${_shel ? '공용 쉼터' : '마을 회관'} 터 ${st}/3단계 (클릭=시공)`, x, y - (done ? 48 : 14));
       ctx.textAlign = 'left';
       return;
     }

@@ -702,7 +702,9 @@ function greetLines(vid, playerId) {
       lines.push(`${where}.`);
     }
   } else {
-    lines.push('지금은 급한 일이 없네. 모닥불 곁에서 쉬게.');
+    // ★[T62] 쉼터가 서 있으면 그것을 가리킨다 — 모닥불은 쉼터가 없던 시절의 말이다.
+    let _sh0 = null; try { _sh0 = H.shelterOf ? H.shelterOf(vid) : null; } catch (e) { _sh0 = null; }
+    lines.push(_sh0 ? '지금은 급한 일이 없네. 마을 쉼터에서 쉬게.' : '지금은 급한 일이 없네. 모닥불 곁에서 쉬게.');
   }
   return { lines, quest: q, arrive: a ? { kind: a.kind } : null };
 }
@@ -730,8 +732,17 @@ function onDeliver(player, r, vid) {
   //   0.7초마다 도는 그쪽이 이 말을 덮어쓴다(실측으로 그랬다). 그리는 건 클라의 같은 말풍선이다.
   if (done && s.contrib === 1 && !s.hooked) {
     s.hooked = 1;
+    // ★★[T62 2026-09-03] §9.4 15~20분: *"납품 → **밥 + 공용 쉼터**"*.
+    //   여태 이 자리엔 **밥만 있고 쉼터가 없었다** — 쉼터가 세계에 없었기 때문이다(보고 T62 §0-ⓒ).
+    //   ⚠대사 정본은 여기다. 좌표는 **정본 하나**(`SimVillages.shelterOf`)를 부른다 — 자리를 다시 고르지 않는다.
+    //   ⚠화살표 UI 는 없다(§9.5) — 방향은 촌장의 **말**로 준다(`_DIRWORD` 재사용).
+    const _l = ['잘했네. 오늘은 밥이라도 들게.'];
+    let _sh = null; try { _sh = H.shelterOf ? H.shelterOf(vid) : null; } catch (e) { _sh = null; }
+    if (_sh && a) _l.push(`잠자리는 마을 쉼터를 쓰게 — ${_DIRWORD(_sh.x - a.x, _sh.y - a.y)}에 지붕 하나 있네.`);
+    else if (_sh) _l.push('잠자리는 마을 쉼터를 쓰게 — 지붕 하나 내어 두었네.');
+    _l.push('며칠 일손을 보태면 마을 끝 빈터 하나 내어줌세.');
     out.push({ type: 'onboarding_quest', vid: vid | 0, kind: 'hook', name: (a && a.name) || '', day, quest: null,
-      lines: ['잘했네. 오늘은 밥이라도 들게.', '며칠 일손을 보태면 마을 끝 빈터 하나 내어줌세.'], state: publicState(pid) });
+      lines: _l, state: publicState(pid) });
   }
   if (!s.lot_ok && (s.contrib | 0) >= CFG.LOT_AFTER) {
     s.lot_ok = 1;

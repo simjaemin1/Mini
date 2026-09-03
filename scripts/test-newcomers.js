@@ -83,10 +83,14 @@ function initLab() {
     updateBuildingData: (dbId, json) => { _saved.set(dbId, json); },
     holdDays: 14,
     send: () => {},
+    // ★★[T62] 쉼터 술어 — **기본은 "있다"**(그래야 아래 다른 절들이 쉼터 때문에 막히지 않는다).
+    //   쉼터 절만 `_shelterNo` 로 한 마을을 골라 뺀다 ⇒ **한 인자만 뒤집는다**(③의 규약).
+    hasShelter: (vid) => !_shelterNo.has(vid | 0),
   });
 }
 initLab();
 const _arrOk = new Set();
+const _shelterNo = new Set();   // ★[T62] 이 마을에는 쉼터가 없다(자격 한 축만 끄는 손잡이)
 const _saved = new Map();
 const remote = (vid, rec) => Newcomers.__probe.remote.set(vid | 0, Object.assign({ vp: null, idleDays: null, at: Date.now() }, rec || {}));
 
@@ -150,7 +154,7 @@ console.log('\n② 스위치 — 기본 꺼짐 · 켜면 회관에 남는다');
 console.log('\n③ 자격 셋 — 한 인자만 바꿔 답이 뒤집히는가');
 {
   const base = () => { remote(1, { vp: 0, idleDays: 1 }); _vils.get(1).econ.npcs = [{}, {}, {}];
-    _vils.get(1).econ.storage = { food: 300, fish: 0, meat: 0, cooked_food: 0 }; _arrOk.add(1); };
+    _vils.get(1).econ.storage = { food: 300, fish: 0, meat: 0, cooked_food: 0 }; _arrOk.add(1); _shelterNo.delete(1); };
   base();
   const e0 = Newcomers.listable(1);
   ok(e0.ok && e0.listed, '③ 기준 상태 — 자격을 다 갖췄다(아래가 자명 통과가 아니다)',
@@ -172,6 +176,22 @@ console.log('\n③ 자격 셋 — 한 인자만 바꿔 답이 뒤집히는가');
   const a3 = Newcomers.listable(1);
   ok(!a3.ok && a3.why.join().includes('곳간을 읽지 못했다') && a3.foodDays === null,
     '③ⓐ″ ★곳간을 못 읽으면 막힌다 — `NaN < 3` 은 false 라 그냥 두면 자명 통과한다', JSON.stringify(a3.why));
+  base();
+  // ⓐ‴ ★★[T62] **쉼터가 없으면 막힌다** — §9.3 자격 첫 항이 이제 시설이다.
+  //   T19 은 이 자리에 인구·자립일이라는 **대체 술어**만 뒀다(보고 T19 §0-ⓔ). 이제 둘 다다.
+  _shelterNo.add(1);
+  const a4 = Newcomers.listable(1);
+  ok(!a4.ok && a4.shelter === false && a4.why.join().includes('잘 자리가 없다'),
+    '③ⓐ‴ ★쉼터가 없으면 막힌다 — 지붕이 없는 마을은 이방인을 부를 수 없다', JSON.stringify(a4.why));
+  _shelterNo.delete(1);
+  const a5 = Newcomers.listable(1);
+  ok(a5.ok && a5.shelter === true,
+    '③ⓐ‴-b ★대조 — **그 한 축만 되돌리면 다시 통과한다**(쉼터가 상수가 아니다)');
+  // ★★그리고 **대체 술어를 버리지 않았다**: 지붕이 있어도 먹일 것이 없으면 막힌다.
+  _vils.get(1).econ.storage.food = 1;
+  const a6 = Newcomers.listable(1);
+  ok(!a6.ok && a6.shelter === true && a6.why.join().includes('곳간이 얇다'),
+    '③ⓐ‴-c ★★쉼터가 있어도 **곳간이 얇으면 막힌다** — 지붕만으론 이방인을 못 먹인다(§9.4 "밥 + 쉼터")');
   base();
   // ⓑ 길드 벌점
   remote(1, { vp: Newcomers.CFG.MAX_GUILD_VP, idleDays: 1 });

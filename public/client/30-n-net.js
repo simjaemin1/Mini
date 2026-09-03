@@ -520,7 +520,8 @@
           const _sp = placementMode.special;
           const _mt = _sp === 'hut_site' ? 'hut_start' : (_sp === 'furnace_site' ? 'furnace_start'
                     : (_sp === 'kiln_site' ? 'kiln_start' : (_sp === 'village_site' ? 'village_start'   // ★[배치 12] 마을 회관 착공
-                    : (_sp === 'psite' ? 'request_village_house' : 'build_guild_granary'))));
+                    : (_sp === 'shelter_site' ? 'shelter_start'                                        // ★[T62] 공용 쉼터 착공
+                    : (_sp === 'psite' ? 'request_village_house' : 'build_guild_granary')))));
           sendPrimaryAt({ type: _mt, atX: clickWx, atY: clickWy, kind: placementMode.kind || undefined });
           if (!e.shiftKey) { placementMode = null; showNotice('배치 요청'); }
           return;
@@ -592,7 +593,8 @@
           for (const b of c.buildings.values()) {
             if (b.type !== 'hut_site' && b.type !== 'furnace_site' && b.type !== 'furnace'
                 && b.type !== 'kiln_site' && b.type !== 'charcoal_kiln'
-                && b.type !== 'village_site' && b.type !== 'village_hall') continue;   // ★[배치 12] 회관: 터=시공 · 완공=재고
+                && b.type !== 'village_site' && b.type !== 'village_hall'
+                && b.type !== 'shelter_site') continue;   // ★[배치 12] 회관: 터=시공 · 완공=재고 · ★[T62] 쉼터 터=시공
             const absX = ox + b.x, absY = oy + b.y;
             const rx = b.type === 'hut_site' ? 48 : 34, ry = b.type === 'hut_site' ? 40 : 34;   // 노·숯가마는 2×2
             if (Math.abs(absX - clickWx) <= rx && Math.abs(absY - clickWy) <= ry) { hitSite = b; break; }
@@ -605,6 +607,7 @@
           else if (hitSite.type === 'charcoal_kiln') sendPrimary({ type: 'kiln_burn', buildingId: hitSite.id });   // ★숯가마 클릭 = 조업
           else if (hitSite.type === 'kiln_site') sendPrimary({ type: 'kiln_advance', buildingId: hitSite.id });
           else if (hitSite.type === 'village_site') sendPrimary({ type: 'village_advance', buildingId: hitSite.id });   // ★[배치 12] 회관 시공
+          else if (hitSite.type === 'shelter_site') sendPrimary({ type: 'shelter_advance', buildingId: hitSite.id });   // ★[T62] 쉼터 시공
           else if (hitSite.type === 'village_hall') { _pviHallId = hitSite.id; sendPrimary({ type: 'village_inventory', buildingId: hitSite.id }); } // ★[배치 12 ③] 완공 회관 클릭 = 마을 재고(권한은 서버가 본다)
           else sendPrimary({ type: 'hut_advance', buildingId: hitSite.id });
           return;

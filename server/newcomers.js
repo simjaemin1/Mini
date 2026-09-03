@@ -70,12 +70,19 @@ function isOn(vid) { const b = hallOf(vid); return !!(b && b.data && b.data.welc
 const _remote = new Map();   // vid → { vp, idleDays, at }
 function eligibility(vid) {
   const why = [];
-  const out = { ok: false, why, pop: 0, foodDays: 0, vp: null, idleDays: null, on: isOn(vid) };
+  const out = { ok: false, why, shelter: false, pop: 0, foodDays: 0, vp: null, idleDays: null, on: isOn(vid) };
   if (!ready()) { why.push('아직 준비되지 않았다'); return out; }
   const vil = H.villageOf ? H.villageOf(vid) : null;
   if (!vil || !vil.econ) { why.push('그런 마을이 없다'); return out; }
   if (!vil.econ.founder) { why.push('사람이 세운 마을이 아니다'); return out; }
-  // ① 쉼터 — econ 정본이 판정한 사실만 읽는다(여기서 식량을 다시 세지 않는다)
+  // ① 쉼터 — **시설**과 **먹일 것**, 둘 다다.
+  //   ★★[T62 2026-09-03] §9.3 자격 첫 항 *"쉼터 보유"* 가 이제 시설로 존재한다
+  //     (`server/villages.js` `shelterOf` 가 좌표 정본 · T43 이송과 온보딩 안내가 같은 문을 쓴다).
+  //     T19 은 그게 세계에 없어서 **대체 술어**(인구·자립일)로 갔다 — 보고 T19 §0-ⓔ 가 그 사실을 적어 뒀다.
+  //   ⚠**대체 술어를 버리지 않는다.** 자격 = 쉼터 ∧ (인구 ≥1 ∧ 자립 ≥3일):
+  //     지붕이 있어도 먹일 것이 없으면 이방인을 굶긴다(§9.4 "납품 → **밥 + 공용 쉼터**" 가 요구하는 상태 그대로).
+  out.shelter = !!(H.hasShelter && H.hasShelter(vid));
+  if (!out.shelter) why.push('이방인이 잘 자리가 없다 — 쉼터를 지어야 한다');
   const pop = (vil.econ.npcs && vil.econ.npcs.length) | 0;
   out.pop = pop;
   let foodEq = NaN;

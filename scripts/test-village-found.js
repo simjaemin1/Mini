@@ -223,8 +223,22 @@ say('\n[④ 건립 계약 — **배선 검사**(실동작은 실클라 E2E `e2e-
 {
   const src = require('fs').readFileSync(path.join(__dirname, '..', 'server', 'villages.js'), 'utf8');
   ok(/initialPop: 0/.test(src) && /founder/.test(src), '건립은 `initialPop: 0` + `founder` 로 econ 을 만든다(선물 없음)');
-  ok(/state\.distDirty = true;/.test(src.slice(src.indexOf('function foundPlayerVillage'), src.indexOf('function foundPlayerVillage') + 6000)),
+  // ★★[T62 2026-09-03 하네스 수리] **창을 글자 수로 자르면 주석이 판정을 밀어낸다.**
+  //   종전 판은 `+6000자`로 잘랐는데, T19(`12c66c1f`)이 이 함수 안에 20줄을 더하자
+  //   `state.distDirty = true;`(실제 위치 7,083자)가 **창 밖으로 밀려나** 빨개졌다 —
+  //   제품은 멀쩡한데 하네스가 거짓 회귀를 보고한 것이다. ⇒ **함수의 실제 끝까지** 본다.
+  //   (족보 후보: "소스를 재는 하네스는 구조로 잘라라 — 글자 수로 자르지 마라.")
+  const _fpvBody = (() => {
+    const i = src.indexOf('function foundPlayerVillage');
+    if (i < 0) return '';
+    const j = src.indexOf('\nfunction ', i + 10);
+    return src.slice(i, j > 0 ? j : src.length);
+  })();
+  ok(_fpvBody.length > 3000, '★[상황] `foundPlayerVillage` 본문을 통째로 잡았다(창이 짧으면 아래가 헛것이다)', `${_fpvBody.length}자`);
+  ok(/state\.distDirty = true;/.test(_fpvBody),
     '★건립은 거리행렬을 **그 자리에서 돌리지 않는다** — 기존 지연 경로(distDirty·게임일 경계)에 얹는다(실측: 즉시 계산 시 서버 10.5초 정지)');
+  ok(!/computeAndInjectDistMatrix\(/.test(_fpvBody),
+    '★대조 — 그 함수 안에서 거리행렬을 **직접 부르지 않는다**(불렀다면 위 한 줄이 있어도 정지한다)');
   ok(/incrementalFrom: _k/.test(src), '지연 재계산은 **증분**으로 돈다(마을이 늘어난 경우) — 지형이 바뀐 경우엔 `_distIncrFrom` 이 −1 이라 전쌍');
   ok(/state\._distIncrFrom = -1;/.test(src.slice(src.indexOf('function invalidateTradeDistances'), src.indexOf('function invalidateTradeDistances') + 800)),
     '★지형이 바뀌면 증분을 취소한다 — 옛 쌍도 썩으므로 전쌍으로 돌린다(썩은 값 재사용 금지)');

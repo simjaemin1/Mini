@@ -445,15 +445,92 @@ async function waitHttp(url, tries = 900) {
     ok(!!row1 && !!row1.on, '★[T19] ⓒ′ 스위치가 실제로 켜졌다');
     // ⓓ-0 ★**긍정 쪽을 실제로 만든다.** 부정만 재면 "안 뜬다"는 판정만 참이고 카드의 요점
     //   ("유저 마을이 시작 지도에 뜬다")은 한 번도 안 밟힌다. 곳간을 정본 경로로 채워 자격을 갖춘다.
-    for (let i = 0; i < 12; i++) {
-      const w = await wdbg(true);
-      const r = w && (w.villages || [])[0];
-      if (r && r.ok) break;
-      await send({ type: '__e2e_give', items: { berry: 300 } });
-      await sleep(400);
-      await send({ type: 'village_deposit', buildingId: hall.id, want: { berry: 300 } });
-      await sleep(900);
+    //   ★함수로 뽑는다 — 쉼터를 **먼저** 짓고(아래 T62 절) 그 다음에 채운다. 짓는 동안 마을이 먹기 때문이다.
+    //   ⚠양은 **넉넉해야 한다**: 하루 0.5초라 검사 도중에도 마을이 계속 먹는다.
+    //     첫 주민은 곳간이 econ 문턱(`recoveryFoodThreshold`)을 **넘은 채로 회복 창을 만나야** 깃든다.
+    const fillGranary = async (rounds) => {
+      for (let i = 0; i < (rounds || 20); i++) {
+        const w = await wdbg(true);
+        const r = w && (w.villages || [])[0];
+        if (r && (r.foodDays || 0) >= 4 && (r.pop || 0) >= 1) break;
+        await send({ type: '__e2e_give', items: { berry: 300 } });
+        await sleep(400);
+        await send({ type: 'village_deposit', buildingId: hall.id, want: { berry: 300 } });
+        await sleep(900);
+      }
+    };
+    // ── ★★[T62 2026-09-03] **쉼터를 짓는다** — §9.3 자격 첫 항이 이제 시설이다 ────────
+    //   T19 은 인구·자립일이라는 **대체 술어**만 봤다(보고 T19 §0-ⓔ). 이제 지붕도 있어야 한다.
+    //   ⚠재민 실기 3번이 이 절이다: *"내 마을에 쉼터를 지어야 `이방인 받기` 가 선다."*
+    //   ★자리는 **겨냥하지 않는다**(족보 73) — 회관 둘레를 돌며 서버가 "된다"고 답하는 첫 자리에 세운다.
+    {
+      const wPre = await wdbg(true);
+      const rPre = wPre && (wPre.villages || [])[0];
+      ok(!!rPre && rPre.shelter === false && (rPre.why || []).join().includes('잘 자리가 없다'),
+        `★[T62] ⓕ **쉼터가 없으면 자격이 안 선다** — ${rPre ? JSON.stringify(rPre.why) : '?'}`);
+      // ★순서가 뜻을 갖는다: 쉼터를 **먼저** 짓는다. 짓는 동안 마을이 곳간을 먹으므로,
+      //   곳간은 그 뒤에 채운다(둘 다여야 서는 자격을 한 번에 세우려면 이 순서뿐이다).
+      // 재료 — 움집 ②③④ 그대로(굴립주 6 · 서까래 8 · 풀 6 · 이엉 8). 넉넉히 준다.
+      for (let i = 0; i < 4; i++) {
+        await send({ type: '__e2e_give', items: { pillar: 12, rafter: 16, fiber: 12, thatch: 16 } });
+        await sleep(600);
+        const iv = await page.evaluate(() => window.__getInv && window.__getInv());
+        if (iv && (iv.pillar || 0) >= 6 && (iv.thatch || 0) >= 8) break;
+      }
+      const invS = await page.evaluate(() => window.__getInv && window.__getInv());
+      ok((invS && invS.pillar || 0) >= 6 && (invS && invS.thatch || 0) >= 8,
+        `★[T62] ⓕ′ 쉼터 재료를 쥐었다 — 굴립주 ${invS && invS.pillar} · 서까래 ${invS && invS.rafter} · 풀 ${invS && invS.fiber} · 이엉 ${invS && invS.thatch}`);
+      // ★좌표계 — `__getAllBuildings` 는 **절대 월드**, `teleport_debug` 는 **존 로컬**이다(족보 54·64).
+      let OX = 0, OY = 0;
+      try { const zj = await (await fetch(`http://localhost:${CPORT}/zones`)).json();
+            const zm = (zj.zones || {}).hanbando || {}; OX = zm.worldOffsetX || 0; OY = zm.worldOffsetY || 0; } catch (e) {}
+      const hallCx = Math.floor(hall.wx / 32), hallCy = Math.floor(hall.wy / 32);   // 절대 셀
+      await page.evaluate(() => { window.__notices = []; });   // ★링버퍼 40칸 — 비우고 시작한다
+      let siteId = null, tried = 0;
+      outer:
+      for (let r = 8; r <= 16 && !siteId; r += 2) {
+        for (let k = 0; k < 12 && !siteId; k++) {
+          const th = (Math.PI * 2 * k) / 12;
+          const cx = hallCx + Math.round(Math.cos(th) * r), cy = hallCy + Math.round(Math.sin(th) * r);
+          tried++;
+          // 걸어갈 수 없어도 된다 — 검사 손잡이로 옮겨 가서 짓는다(자리 판정은 서버가 한다)
+          await send({ type: 'teleport_debug', x: cx * 32 + 16 - OX, y: cy * 32 + 16 - OY });
+          await sleep(500);
+          await sendAt({ type: 'shelter_start', atX: cx * 32 + 16, atY: cy * 32 + 16 });
+          await sleep(700);
+          siteId = await page.evaluate(() => {
+            const bs = (window.__getAllBuildings && window.__getAllBuildings()) || [];
+            const b = bs.find((x) => x.type === 'shelter_site');
+            return b ? b.id : null;
+          });
+          if (siteId) break outer;
+        }
+      }
+      ok(!!siteId, `★[T62] ⓖ 쉼터 터가 섰다 — 회관 둘레에서 자리를 찾았다(${tried}자리 시도)`);
+      // ②③단계 — 터를 클릭해 올린다(움집·회관과 같은 문법)
+      for (let i = 0; i < 4 && siteId; i++) {
+        await send({ type: 'shelter_advance', buildingId: siteId });
+        await sleep(900);
+        const done = await page.evaluate(() => {
+          const bs = (window.__getAllBuildings && window.__getAllBuildings()) || [];
+          return !bs.some((x) => x.type === 'shelter_site');
+        });
+        if (done) break;
+      }
+      const shdb = await (await fetch(`http://localhost:${ZPORT}/shelterdbg`)).json().catch(() => null);
+      const shRow = shdb && shdb.rows ? shdb.rows.find((x) => x.player) : null;
+      ok(!!(shRow && shRow.shelter), `★[T62] ⓗ ★**내 마을에 공용 쉼터가 섰다**`,
+        shRow && shRow.shelter ? `(${shRow.shelter.cx},${shRow.shelter.cy})` : '없음');
+      ok(!!(shRow && shRow.inTerr), '★[T62] ⓗ′ 그 자리는 내 마을 영토 안이다');
+      const ntS = await page.evaluate(() => (window.__notices || []).slice());
+      // ★★쉼터를 지으러 마을을 돌아다녔다 — **회관 곁으로 돌아온다.**
+      //   납품·입고는 회관 260px 게이트를 통과해야 한다(`_villageNear`). 안 돌아오면 그 뒤 곳간이
+      //   영영 안 채워지고, 그걸 "econ 이 안 받는다"로 오독하게 된다(1차 판이 실제로 그랬다).
+      await send({ type: 'teleport_debug', x: hall.wx - OX, y: hall.wy - OY });
+      await sleep(1200);
+      ok(ntS.some((t) => /공용 쉼터/.test(t)), `★[T62] ⓗ″ 화면이 완공을 말한다 — ${JSON.stringify(ntS.filter((t) => /쉼터/.test(t)).slice(-1)[0] || '(없음)')}`);
     }
+    await fillGranary(20);
     const wFull = await wdbg(true);
     const rFull = wFull && (wFull.villages || [])[0];
     ok(!!rFull && rFull.ok, `★[T19] ⓓ-0 곳간을 채워 **자격을 갖췄다** — 인구 ${rFull ? rFull.pop : '?'} · 자립 ${rFull ? rFull.foodDays : '?'}일`

@@ -64,6 +64,7 @@ async function waitHttp(url, tries = 900) {
     ENABLE_BANDITS: '0', ENABLE_ROADS: '0',
     ENABLE_WILDLIFE: '0',   // 적대 개체 OFF — 검사 중 사망 모달이 화면을 덮는 사고를 막는다(2026-08-26 규약)
     E2E_GIVE: '1',
+    SHELTER_BACKFILL_MS: '8000',   // ★[T62] 쉼터 백필 주기 — 4마을이라 금방 굽는다(값의 뜻은 안 바꿨다, 주기만)
   });
   ok(await waitHttp(`http://localhost:${CPORT}/zones`), 'central 기동');
   ok(await waitHttp(`http://localhost:${ZPORT}/health`), 'zone 기동');
@@ -242,7 +243,19 @@ async function waitHttp(url, tries = 900) {
     let board = await ensureBoard(30);
     ok(!!(board && board.rows && board.rows.length), `[${label}] 게시판에 의뢰가 걸렸다`, board ? JSON.stringify((board.rows || []).map((r) => r.line)) : 'X');
 
-    let contrib = 0, fxSeen = false, hookSeen = false, mealSeen = false;
+    // ★★[T62] **쉼터가 선 뒤에** 납품을 시작한다 — 촌장의 훅 대사는 **첫 납품 한 번**뿐이라,
+    //   그때 쉼터가 아직 없으면 그 줄은 영영 안 나온다(제품이 옳다: 없는 자리를 가리킬 수는 없다).
+    //   ⇒ 하네스가 순서를 맞춘다. 기다린 사실 자체도 판정으로 남긴다(조용히 기다리지 않는다).
+    let shRow = null;
+    for (let i = 0; i < 40; i++) {
+      try { const j = await (await fetch(`http://localhost:${ZPORT}/shelterdbg`)).json();
+            const r = j && j.rows ? j.rows.find((x) => x.vid === vid) : null;
+            if (r && r.shelter) { shRow = r; break; } } catch (e) {}
+      await sleep(2000);
+    }
+    ok(!!shRow, `[${label}] ★[T62] 납품을 시작하기 전에 **쉼터가 섰다**`, shRow ? `(${shRow.shelter.cx},${shRow.shelter.cy})` : '안 섰다');
+
+    let contrib = 0, fxSeen = false, hookSeen = false, mealSeen = false, shelterSaid = '';
     const need = await page.evaluate(() => (window.__onbState || {}).need || 3);
     for (let round = 0; round < 8 && contrib < need; round++) {
       // 상호작용 구간은 얼린다 — 경제가 검사를 앞지르지 않게
@@ -259,10 +272,16 @@ async function waitHttp(url, tries = 900) {
       const invB = await page.evaluate(() => (window.__getInv && window.__getInv()) || {});
       await page.evaluate((v) => window.__sendPrimary({ type: 'village_deliver', vid: v }), vid);
       await sleep(1600);
-      const st = await page.evaluate(() => ({ s: window.__onbState || null, notes: (window.__notices || []).slice(-12), fx: window.__onbFxN | 0 }));
+      const st = await page.evaluate(() => ({ s: window.__onbState || null, notes: (window.__notices || []).slice(-12), fx: window.__onbFxN | 0,
+        greet: (window.__onbGreet && window.__onbGreet.lines) ? window.__onbGreet.lines.slice() : [] }));
       const invA = await page.evaluate(() => (window.__getInv && window.__getInv()) || {});
       if (st.fx > 0 || st.notes.some((t) => /곳간에 쌓였다/.test(t))) fxSeen = true;   // ★알림 링버퍼가 아니라 **상태**로 센다
       if (st.notes.some((t) => /빈터 하나 내어줌세|밥이라도/.test(t))) hookSeen = true;
+      // ★★[T62] 쉼터 한 줄은 **말풍선에서** 잡는다 — `showNotice` 는 촌장 대사의 **첫 줄만** 띄운다
+      //   (`70-lobby.js` `onbOnMessage`: `msg.lines[0]`). 쉼터는 둘째 줄이라 `__notices` 엔 영영 안 온다.
+      //   ⇒ 클라가 이미 노출한 정본 훅 `window.__onbGreet.lines` 를 읽는다(클라 접점 0).
+      //   ⚠루프 **안에서** 잡는다 — 다음 촌장 대사가 `__onbGreet` 를 덮어쓴다.
+      if (!shelterSaid) { const m = (st.greet || []).concat(st.notes).find((t) => /쉼터/.test(t)); if (m) shelterSaid = m; }
       if (row.take && (invA[row.take] || 0) > (invB[row.take] || 0)) mealSeen = mealSeen || /cooked|food|fish|meat|berry|dried|smoked|pickled/.test(String(row.take));
       contrib = (st.s && st.s.contrib) || contrib;
       if (round === 0) {
@@ -275,6 +294,36 @@ async function waitHttp(url, tries = 900) {
     }
     ok(contrib >= need, `[${label}] 누적 기여 ${contrib}/${need} — 하나의 카운터로 쌓인다(T11 재사용 축)`);
     ok(hookSeen, `[${label}] ★훅 대사가 왔다 — "며칠 일손을 보태면 빈터 하나"(목표 ③)`);
+
+    // ── ★★[T62 2026-09-03] 공용 쉼터 — 사다리 1칸이 **말이 아니라 자리**가 됐는가 ────────
+    //   §9.4: *"납품 → **밥 + 공용 쉼터**"*. 여태 이 자리엔 밥만 있었다(보고 T62 §0-ⓒ).
+    //   ⚠문장만 보면 자명 통과다 — **좌표로 걸어가서 건물이 있는지**까지 본다(§3 의 요구).
+    {
+      let row = shRow;
+      try { const j = await (await fetch(`http://localhost:${ZPORT}/shelterdbg`)).json();
+            row = (j && j.rows ? j.rows.find((r) => r.vid === vid) : null) || shRow; } catch (e) {}
+      ok(!!(row && row.shelter), `[${label}] ★[T62] 이 마을에 **공용 쉼터가 서 있다**`,
+        row && row.shelter ? `(${row.shelter.cx},${row.shelter.cy})` : '없음');
+      ok(!!(row && row.inTerr), `[${label}] ★[T62] 그 자리는 마을 영토 안이다`);
+      ok(!!(row && row.wake && row.wake.kind === 'shelter'),
+        `[${label}] ★[T62] 마을 안에서 쓰러지면 **쉼터**에서 깨어난다(도착 지점 폴백이 아니다)`, row && row.wake ? row.wake.kind : '');
+      // ★촌장의 말이 그 자리를 가리키는가 — 대사 정본은 온보딩이다
+      ok(!!shelterSaid, `[${label}] ★[T62] 촌장이 **쉼터를 말한다** — 화살표 없이 말로(§9.5)`,
+        String(shelterSaid).slice(0, 70));
+      // ★★걸어가면 **그 자리에 건물이 있다** — 문장이 아니라 실체를 본다
+      if (row && row.shelter) {
+        const a = toAbs(row.shelter.x, row.shelter.y);
+        await page.evaluate(([x, y]) => window.__sendPrimary({ type: 'teleport_debug', x: x, y: y }), [row.shelter.x, row.shelter.y]);
+        await sleep(2500);
+        const n = await page.evaluate(([cx, cy]) => {
+          const bs = (window.__getAllBuildings && window.__getAllBuildings()) || [];
+          let k = 0;
+          for (const b of bs) { if (Math.hypot((b.wx != null ? b.wx : b.x) - cx, (b.wy != null ? b.wy : b.y) - cy) <= 160) k++; }
+          return k;
+        }, [a.x, a.y]);
+        ok(n > 0, `[${label}] ★★[T62] **걸어가 보면 그 자리에 건물이 있다** — 사다리 1칸이 실체다`, `반경 160px 안 ${n}조각`);
+      } else ok(false, `[${label}] ★★[T62] 쉼터 좌표가 없어 실체를 못 봤다`);
+    }
     console.log(`    보상에 먹을 것이 섞였나: ${mealSeen ? '예(납품 → 밥 성립)' : '아니오(이 마을 잉여에 먹을 것이 없었다)'}`);
     await snap('onb-04-delivered');
 

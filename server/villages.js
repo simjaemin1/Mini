@@ -864,6 +864,11 @@ function materializeVillageStructures(db, vil, bRows) {
       // ★[11차 T4] 플레이어 의뢰 집 — **실체는 마을 움집과 완전히 동일**(같은 6×4·같은 문). 다른 건 소유자와 명부뿐.
       let ow = ownerId; try { const d = JSON.parse(b.data || '{}'); if (d.owner) ow = d.owner; } catch (e) {}
       rows += buildStructureRect(db, vil.dbId, b.cx - 5, b.cy - 5, b.cx + 0, b.cy - 2, ow, '의뢰 움집', [b.cx - 3, b.cx - 2], { hut: [b.cx - 5, b.cy - 5, b.cx + 0, b.cy - 2] });
+    } else if (b.type === 'shelter') {
+      // ★★[T62 2026-09-03] **공용 쉼터 — 파지 않은 움집.** 실체는 마을 움집과 **완전히 같다**
+      //   (같은 6×4 · 같은 남벽 2칸 문 · 같은 `hut` 태그) ⇒ **새 스프라이트 0 · 클라 렌더 접점 0.**
+      //   다른 것은 이름과 뜻뿐이다: 이 집은 **아무의 집도 아니고, 그래서 누구나 잔다**.
+      rows += buildStructureRect(db, vil.dbId, b.cx - 5, b.cy - 5, b.cx + 0, b.cy - 2, ownerId, `${vil.name} 쉼터`, [b.cx - 3, b.cx - 2], { hut: [b.cx - 5, b.cy - 5, b.cx + 0, b.cy - 2] });
     } else if (b.type === 'granary') {
       // ★고상곳간 5×3([cx-2..cx+2]×[cy-1..cy+1]) — 문 없는 밀폐(사다리 출입 고증, 상호작용은 인접 셀). 송국리 소형 굴립주 5.3×3.2 실측.
       //   data.gran 태그[에셋 2차]: 클라가 벽·바닥 시각 억제 + 고상 통짜 스프라이트(기둥+판벽+이엉) 합성 — 콜라이더·밀폐 불변.
@@ -2308,7 +2313,7 @@ function init(deps) {
       const housesPx = [];
       // ★[생활 층] 부팅 시 상태 집합 재구성 — terr/nongzone(시딩 영속) + 개간 실상태(farm/dry) + 집·곳간 셀
       const terrSet = new Set(), potSet = new Set(), farmSet = new Set(), drySet = new Set(), granList = [], houseCells = [], siteRows = [], ditchCells = [], pHouseRows = [], pSiteRows = [];
-      let farmN = 0, dryN = 0, hallData = null, maxCellR = 4;
+      let farmN = 0, dryN = 0, hallData = null, maxCellR = 4, shelterCell = null;
       for (const b of bRows) {
         const r = Math.hypot(b.cx - row.cx, b.cy - row.cy);
         if (r > maxCellR) maxCellR = r;
@@ -2322,6 +2327,9 @@ function init(deps) {
         else if (b.type === 'phouse') pHouseRows.push({ cx: b.cx, cy: b.cy, data: b.data });   // ★[11차 T4] 플레이어 의뢰 집 — 집채는 되살리되 **마을 침대 명부엔 안 넣는다**
         else if (b.type === 'psitework') pSiteRows.push({ cx: b.cx, cy: b.cy, data: b.data });   // 공사 중이던 의뢰 집터
         else if (b.type === 'ditch') ditchCells.push({ cx: b.cx, cy: b.cy });   // ★[11차 T3 환호] 도랑 셀(영속) — 콜라이더·렌더의 원천
+        // ★★[T62 2026-09-03] **공용 쉼터** — 마을당 최대 하나. 종류를 잃지 않게 행에서 그대로 복구한다
+        //   (T45 가 사유지 `kind` 를 잃던 결함을 여기서 반복하지 않는다 — 처음부터 열이 아니라 **행**이다).
+        else if (b.type === 'shelter') shelterCell = { cx: b.cx, cy: b.cy };
         else if (b.type === 'hall' && b.data) { try { hallData = JSON.parse(b.data); } catch {} }
       }
       for (const k of farmSet) potSet.delete(k);   // 이미 개간된 존닝 셀 제외(미개간 잔여만 potSet)
@@ -2337,7 +2345,8 @@ function init(deps) {
       state.villages.push({ dbId: row.id, name: row.name, ccx: row.cx, ccy: row.cy, housesPx, econ: ev, npcPids: [], _bRows: bRows, _bnd: bnd, _maxRPx: Math.round(maxRPx), _farmN: farmN, _dryN: dryN,
         _terrSet: terrSet, _potSet: potSet, _farmSet: farmSet, _drySet: drySet, _granList: granList, _houseCells: houseCells, _pendSite, _site: null, _clearCrew: 0, _buildCrew: 0, _claim: new Set(),
         _crop: new Map(), _cropClaim: new Set(), _ditch: ditchCells,
-        _pHouses: pHouseRows, _pSiteRows: pSiteRows, _psite: null, _psiteCrew: 0 });
+        _pHouses: pHouseRows, _pSiteRows: pSiteRows, _psite: null, _psiteCrew: 0,
+        _shelter: shelterCell });   // ★[T62] 공용 쉼터 셀(없으면 null — 좌표를 지어내지 않는다)
       // ★[11차 재민 확정] 마을 안엔 숲이 없다 — 영토 셀의 나무를 벤다(개간).
       //   부팅 때마다 부르지만 이미 벤 나무는 harvestedSeeds 에 있어 다시 생성되지 않는다(멱등).
       try { if (state.deps.clearTreesInCells) { const n2 = state.deps.clearTreesInCells(terrSet); if (n2) console.log(`[${state.zoneId}] 🏘️ ${row.name} 영토 개간 — 나무 ${n2}그루`); } } catch (e) {}   // ★[생활 층] 런타임 상태(구DB=terr 0셀 → 생활층 휴면). _crop=작물 상태머신(랩 life.crop 동형 — 인메모리 관용: 재부팅=재파종)
@@ -3781,6 +3790,9 @@ function _lifeSiteFilters(vil) {
   // reject(x,y,strict) → 사유 문자열(불가) 또는 null(가능). 자동 배치는 사유를 버리고 continue만 한다.
   const reject = (x, y, strict) => {
     for (const h of vil._houseCells) if (Math.hypot(h.cx - x, h.cy - y) < HG) return `기존 집과 너무 가까움(<${HG})`;
+    // ★[T62] 공용 쉼터도 6×4 집채다 — 그 위에 집을 올리면 두 채가 같은 셀을 밟는다.
+    //   ⚠`_houseCells` 에는 **안 넣는다**: 그건 NPC 침대 명부라 넣으면 econ 이 움직인다(기준선).
+    if (vil._shelter && Math.hypot(vil._shelter.cx - x, vil._shelter.cy - y) < HG) return `쉼터와 너무 가까움(<${HG})`;
     if (vil._site && Math.hypot(vil._site.cx - x, vil._site.cy - y) < HG) return '공사 중인 마을 집터와 너무 가까움';
     if (vil._psite && Math.hypot(vil._psite.cx - x, vil._psite.cy - y) < HG) return '다른 의뢰 집터와 너무 가까움';
     for (const [dx, dy] of _lifeVL().LOT_CELLS) {
@@ -3998,9 +4010,113 @@ function villageWithdrawGate(vid, px, py) {
   return _villageNear(vid, px, py);
 }
 
+// ═══ ★★[T62 2026-09-03 재민 확정] 공용 쉼터 — 좌표 정본 하나 ═══════════════════
+//
+// ★★**"쉼터"라는 말이 이 저장소에서 여섯 자리를 가리키고 있었다**(§0 실측):
+//     ① `shelterAt(px,py)` — 마을 **미기후 완충**(0..1 · 겨울 난이도). 건물이 아니다.
+//     ② `listRespawnOptions` 의 `kind:'shelter'` / `__shelter__` — 실제로는 **도착 지점**이다.
+//     ③ `resolveDowned` 의 *"마을 사람들이 당신을 쉼터로 옮겼다"* — 옮겨 준 자리는 ②였다(문장이 거짓).
+//     ④ T19 자격의 "쉼터 보유" — 인구·자립일수라는 **대체 술어**(보고 T19 §0-ⓔ).
+//     ⑤ 온보딩 촌장 대사 *"모닥불 곁에서 쉬게"*.
+//     ⑥ 캐논 사다리 1칸 *"공용 쉼터 → 빈터 → 내 움집"* — 2·3칸은 실체가 있고 **1칸만 없었다**.
+//   ⇒ **같은 것을 여섯이 흉내 내고 있으면 그것은 세계에 있어야 할 시설이다.** 이 절이 그 시설이고,
+//     `shelterOf` 가 **유일한 좌표 정본**이다(T19 자격 · T43 이송 · 온보딩 안내가 전부 이걸 부른다).
+//
+// ★★ⓐ 판단 — **회관이 아니라 별개 건물이다.** 근거 셋(전부 실측):
+//     1. 플레이어 마을도 **회관을 자동으로 얻는다**(`foundPlayerVillage` 가 `type:'hall'` 을 바로 넣는다).
+//        ⇒ "회관 보유"를 자격으로 삼으면 **자명 통과**라 자격이 아니게 된다.
+//     2. 사다리 2·3칸(빈터 `vacantZoneOf` · 움집 `HUT_STAGES`)은 실체가 있는데 1칸만 말뿐이었다.
+//     3. `e2e-onboarding` 이 요구하는 것은 문장이 아니라 **걸어가면 거기 있는 건물**이다.
+// ★비대칭은 내가 만든 게 아니라 캐논에 이미 있다: **자격 심사(§9.3)는 유저 마을에만 붙는다.**
+//   NPC 마을 51곳은 수백 년 산 취락이라 쉼터가 이미 있다(부팅 백필 = 그 사실의 기록) ·
+//   유저 마을은 어제 섰으므로 **창설자가 짓는다** — 그래야 "이방인 받기"가 실질을 갖는다.
+
+// 그 마을의 공용 쉼터 — 셀·픽셀. **없으면 null 이다(좌표를 지어내지 않는다).**
+function shelterOf(vid) {
+  const vil = (state.byDbId && state.byDbId.get(vid | 0)) || null;
+  if (!vil || !vil._shelter) return null;
+  const c = vil._shelter;
+  // ★실체는 [cx-5..cx+0]×[cy-5..cy-2] 의 6×4 이고 문은 남벽(`cx-3`·`cx-2`) 이다.
+  //   ⇒ **설 자리는 문 앞 한 칸**(집 밖)이다. 집 안 좌표를 주면 깨어난 사람이 벽 안에 선다 —
+  //     T43 이 `nearestVillageWake` 에서 이미 밟은 자리라, 같은 실수를 여기서 반복하지 않는다.
+  return { vid: vid | 0, cx: c.cx, cy: c.cy,
+    x: (c.cx - 2.5) * SZ, y: (c.cy - 0.5) * SZ,                       // 문 앞(설 자리)
+    bx: (c.cx - 2.5) * SZ, by: (c.cy - 3.5) * SZ };                   // 집채 중심(렌더·거리 판정용)
+}
+function hasShelter(vid) { return !!shelterOf(vid); }
+
+// 쉼터 한 채를 그 마을에 등록한다 — DB 행 + 런타임 + 실체(청크가 다음에 켜질 때 선다).
+//   ★멱등: 이미 있으면 있는 것을 돌려준다(두 채가 서지 않는다).
+function addShelter(vid, cx, cy) {
+  const vil = (state.byDbId && state.byDbId.get(vid | 0)) || null;
+  if (!vil) return { ok: false, err: '그런 마을이 없다' };
+  if (vil._shelter) return { ok: true, already: true, cell: vil._shelter };
+  if (!Number.isFinite(cx) || !Number.isFinite(cy)) return { ok: false, err: '자리가 없다' };
+  const c = { cx: cx | 0, cy: cy | 0 };
+  try { state.db.insertVillageBuilding({ village_id: vil.dbId, type: 'shelter', cx: c.cx, cy: c.cy, floors: 1, data: null }); }
+  catch (e) { return { ok: false, err: `쉼터를 기록하지 못했다: ${e.message}` }; }
+  vil._shelter = c;
+  if (vil._bRows) vil._bRows.push({ village_id: vil.dbId, type: 'shelter', cx: c.cx, cy: c.cy, floors: 1, data: null });
+  // ★★실체 — **정본 하나를 부른다**(사본 금지). 마을 움집이 완공될 때 서는 그 코드 그대로다
+  //   (`_liveHut6x4` = `_lifeCompleteHouse` 에서 뽑아낸 것). ⇒ 벽·바닥·문·`hut` 태그·브로드캐스트가 같다.
+  //   그리고 **지금 선다** — 다음 부팅을 기다리지 않는다(T19 가 배운 것).
+  try { _liveHut6x4(vil, c.cx, c.cy, `npc_simvil_${vil.dbId}`, `${vil.name} 쉼터`); } catch (e) {}
+  lifeSiteReset(vil);   // 쉼터가 한 채 늘었으니 집터 후보를 다시 훑는다(겹쳐 짓지 않게)
+  return { ok: true, cell: c };
+}
+
+// ★자리를 **고르지 않고 잰다**(족보 73). 판정은 마을이 집터를 고를 때 쓰는 **그 필터 정본**
+//   (`_lifeSiteFilters(vil).reject`)을 그대로 부른다 — 사본 금지. 후보 순서만 다르다:
+//   집은 "중심에서 가깝고 물에서 먼" 순인데, **쉼터는 어귀다** — 도착 지점에서 가까운 순.
+//   ⇒ 이방인이 처음 닿는 자리 곁에 선다(§9.4 "0~3분: 도착 지점에서 마을로 걸어 들어감").
+function pickShelterSpot(vid, arrive) {
+  const vil = (state.byDbId && state.byDbId.get(vid | 0)) || null;
+  if (!vil || !state.ta || !vil._terrSet || !vil._terrSet.size) return null;
+  const ax = Number(arrive && arrive.cx), ay = Number(arrive && arrive.cy);
+  const gx = Number.isFinite(ax) ? ax : vil.ccx, gy = Number.isFinite(ay) ? ay : vil.ccy;
+  let F = null;
+  try { F = _lifeSiteFilters(vil); } catch (e) { return null; }
+  if (!F) return null;
+  const cand = [];
+  for (const k of vil._terrSet) {
+    const ci = k.indexOf(','), x = +k.slice(0, ci), y = +k.slice(ci + 1);
+    if ((x & 1) || (y & 1)) continue;                                   // 짝수 격자 — 집터와 같은 규약
+    if (Math.hypot(x - vil.ccx, y - vil.ccy) < _lifeVL().HALL_CLEAR) continue;   // 큰집 마당 침범 금지(같은 상수)
+    cand.push([x, y, Math.hypot(x - gx, y - gy)]);
+  }
+  cand.sort((a, b) => a[2] - b[2]);
+  for (const c of cand) {
+    // strict → loose. 집터 자동 배치와 **같은 2패스**다.
+    if (!F.reject(c[0], c[1], true)) return { cx: c[0], cy: c[1], why: null };
+  }
+  for (const c of cand) {
+    if (!F.reject(c[0], c[1], false)) return { cx: c[0], cy: c[1], why: null };
+  }
+  return null;
+}
+
+// NPC 마을에 쉼터가 없으면 한 채 세운다 — **멱등 · 유저 마을은 건너뛴다**(창설자가 지어야 한다).
+//   ★도착 지점이 아직 안 구워졌으면 **아무것도 안 한다**(다음에 부르면 된다 — 좌표를 지어내지 않는다).
+function ensureShelter(vid, arrive) {
+  const vil = (state.byDbId && state.byDbId.get(vid | 0)) || null;
+  if (!vil) return { ok: false, err: '그런 마을이 없다' };
+  if (vil._shelter) return { ok: true, already: true, cell: vil._shelter };
+  if (vil.econ && vil.econ.founder) return { ok: false, err: '사람이 세운 마을은 창설자가 짓는다' };
+  const spot = pickShelterSpot(vid, arrive);
+  if (!spot) return { ok: false, err: '자리를 찾지 못했다' };
+  return addShelter(vid, spot.cx, spot.cy);
+}
+
 // ★[T19 2026-09-02] 사람이 세운 마을 목록 · dbId 로 한 곳 — **`econ.founder` 가 유일한 표지**다
 //   (`foundPlayerVillage` 가 심고 `PV_MAX` 상한이 이미 그걸로 센다 — 새 표지를 만들지 않는다).
 function playerVillages() { return state.villages.filter((v) => v.econ && v.econ.founder); }
+// ★[T62] 이 셀이 어느 마을 영토인가 — 쉼터를 지을 때 "어느 마을의 쉼터인가"를 정하는 유일한 문.
+//   ★영토 집합(`_terrSet`)이 정본이다. 반경으로 다시 재지 않는다(마을 영토는 원이 아니다).
+function villageOfCell(cx, cy) {
+  const k = (cx | 0) + ',' + (cy | 0);
+  for (const vil of (state.villages || [])) if (vil._terrSet && vil._terrSet.has(k)) return vil;
+  return null;
+}
 function villageByDbId(dbId) { return (state.byDbId && state.byDbId.get(dbId | 0)) || null; }
 
 // 회관 셀(정확히 중심) → 그 마을. 플레이어가 세운 마을만 돌려준다(NPC 마을 회관은 이 UI 대상이 아니다).
@@ -4173,6 +4289,25 @@ function _lifeAdvanceSite(vil, which) {   // 크루 1단계 완수 → 단계 �
   }
   _lifeCompleteHouse(vil, which);
 }
+// ★★[T62 2026-09-03] **6×4 움집 실체 — 런타임 정본 하나.**
+//   여태 이 열 줄은 `_lifeCompleteHouse` 안에만 있었다. T62 의 쉼터가 **같은 실체**를 세우므로
+//   뽑아낸다 — 두 번째 사본을 만들면 그게 곧 "벽 규약이 갈리는" 자리다(족보 ㉒·(83)).
+//   ⚠기하는 한 글자도 안 바뀌었다: [cx-5..cx+0]×[cy-5..cy-2] · 남벽 문 `cx-3`·`cx-2` · `hut` 태그.
+function _liveHut6x4(vil, cx, cy, ownerId, ownerName, made) {
+  const dp = state.deps;
+  const lb = dp && dp.liveBuildRow;
+  if (!lb) return null;
+  const out = made || [];
+  const tag = [cx - 5, cy - 5, cx + 0, cy - 2], doorXs = new Set([cx - 3, cx - 2]);
+  for (let x = cx - 5; x <= cx + 0; x++) {
+    lb('wall', x * SZ, (cy - 5) * SZ, { side: 'N', floor: 0, hut: tag }, ownerId, ownerName, out);
+    if (!doorXs.has(x)) lb('wall', x * SZ, (cy - 1) * SZ, { side: 'N', floor: 0, hut: tag }, ownerId, ownerName, out);
+  }
+  for (let y = cy - 5; y <= cy - 2; y++) { lb('wall', (cx + 0) * SZ, y * SZ, { side: 'E', floor: 0, hut: tag }, ownerId, ownerName, out); lb('wall', (cx - 6) * SZ, y * SZ, { side: 'E', floor: 0, hut: tag }, ownerId, ownerName, out); }
+  for (let x = cx - 5; x <= cx + 0; x++) for (let y = cy - 5; y <= cy - 2; y++) lb('floor', x * SZ + SZ / 2, y * SZ + SZ / 2, { floor: 0, hut: tag }, ownerId, ownerName, out);
+  if (!made) { try { dp.broadcast({ type: 'buildings_spawn', buildings: out }); } catch (e) {} }
+  return out;
+}
 function _lifeCompleteHouse(vil, which) {   // 완공: 터 제거 + NPC 정본 6×4 실체화(hut 태그) + house/yard/garden 영속 + 라이브
   const isP = (which === 'p');                       // ★[11차 T4] 플레이어 의뢰 집 — 실체는 같고, **마을 명부에만 안 들어간다**
   const s2 = isP ? vil._psite : vil._site; if (!s2) return;
@@ -4181,17 +4316,8 @@ function _lifeCompleteHouse(vil, which) {   // 완공: 터 제거 + NPC 정본 6
   const cx = s2.cx, cy = s2.cy;
   const ownerId = isP ? s2.owner : `npc_simvil_${vil.dbId}`;                       // 소유 = 의뢰한 플레이어(약탈·철거 권한이 기존 owner 규약을 그대로 탄다)
   const onm = isP ? (s2.ownerName || '의뢰 움집') : `${vil.name} 움집`, made = [];
-  const tag = [cx - 5, cy - 5, cx + 0, cy - 2], doorXs = new Set([cx - 3, cx - 2]);
-  const lb = dp.liveBuildRow;
-  if (lb) {
-    for (let x = cx - 5; x <= cx + 0; x++) {
-      lb('wall', x * SZ, (cy - 5) * SZ, { side: 'N', floor: 0, hut: tag }, ownerId, onm, made);
-      if (!doorXs.has(x)) lb('wall', x * SZ, (cy - 1) * SZ, { side: 'N', floor: 0, hut: tag }, ownerId, onm, made);
-    }
-    for (let y = cy - 5; y <= cy - 2; y++) { lb('wall', (cx + 0) * SZ, y * SZ, { side: 'E', floor: 0, hut: tag }, ownerId, onm, made); lb('wall', (cx - 6) * SZ, y * SZ, { side: 'E', floor: 0, hut: tag }, ownerId, onm, made); }
-    for (let x = cx - 5; x <= cx + 0; x++) for (let y = cy - 5; y <= cy - 2; y++) lb('floor', x * SZ + SZ / 2, y * SZ + SZ / 2, { floor: 0, hut: tag }, ownerId, onm, made);
-    dp.broadcast({ type: 'buildings_spawn', buildings: made });
-  }
+  _liveHut6x4(vil, cx, cy, ownerId, onm, made);
+  if (made.length) { try { dp.broadcast({ type: 'buildings_spawn', buildings: made }); } catch (e) {} }
   // ★[11차 T4] 의뢰 집은 'phouse' — 다음 부팅에 **집채는 되살아나되 마을 침대 명부엔 안 들어간다**(랩 ⑤ 규약 이식).
   state.db.insertVillageBuilding({ village_id: vil.dbId, type: isP ? 'phouse' : 'house', cx, cy, floors: 1, data: isP ? JSON.stringify({ owner: ownerId }) : null });
   if (!isP) { vil._houseCells.push({ cx, cy }); vil.housesPx.push({ x: cx * SZ + SZ / 2, y: cy * SZ + SZ / 2 }); }
@@ -5431,6 +5557,7 @@ module.exports = {
   //   `playerVillageAt` 은 재고 UI 의 권한/조회 진입점(회관 셀 → 그 마을).
   foundPlayerVillage, playerVillageInventory, playerVillageAt, playerVillageDeposit, playerVillageDepositMap,
   playerVillages, villageByDbId,   // ★[T19] 사람이 세운 마을 — 이방인 받기 자격 판정이 읽는다
+  shelterOf, hasShelter, addShelter, ensureShelter, pickShelterSpot, villageOfCell,   // ★[T62] 공용 쉼터 — 좌표 정본 하나
   playerVillageWithdraw, playerVillageWithdrawStock, villageWithdrawGate,   // ★[T11] 곳간 인출 — 납품의 역연산(같은 표·같은 환산율)
   playerVillageWithdrawStockFoodEq, _countsAsFoodEq,   // ★[T20-ⓑ] 한도의 밑변 = econ 식량 등가(보존식 포함)
   // ★[2026-08-25 사건 레이어] 촌장 브리핑 · 게시판 · 납품 — zone.js 핸들러가 소비
@@ -5465,6 +5592,8 @@ module.exports = {
   //        통째로 빠뜨리고 있었다(extractSustain 미이식). 즉 랩엔 land.tin 이 아예 없었다.
   //   시딩 선별(pickSeedVillages·VILLAGE_MAX)까지 함께 내준다 — 랩이 51곳을 돌리는 동안
   //   본 게임은 20곳이었다.
+  // ★[T62] 하네스가 **집터 필터 정본을 그대로 쥔다**(규칙을 다시 적으면 그게 사본이다).
+  __probe: { lifeSiteFilters: (vil) => _lifeSiteFilters(vil), liveHut6x4: (v, x, y, o, n, m) => _liveHut6x4(v, x, y, o, n, m) },
   __labProbe: {
     makeTerrainAdapter, extractLandParamsApprox, findOpenCenter, pickSeedVillages,
     setZoneId: (z) => { state.zoneId = z; },

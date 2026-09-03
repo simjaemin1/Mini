@@ -233,6 +233,14 @@ const isWildSpot = (x, y) =>
       if ((SimVillages.shelterAt(x, y) || 0) > 0.5) { vspot = { x, y, name: v.name }; break; }
     }
     pre(!!vspot, '마을 한복판을 찾았다', vspot ? `${vspot.name} (${vspot.x},${vspot.y})` : '못 찾음');
+    // ★[T62] 그 마을의 쉼터를 **지금 세운다** — 백필 타이머를 기다리지 않는다(정본 함수를 그대로 부른다).
+    if (vspot && SimVillages.ensureShelter) {
+      for (const v of (SimVillages.clientVillages() || [])) {
+        if (Math.abs(v.cx * 32 + 16 - vspot.x) < 1 && Math.abs(v.cy * 32 + 16 - vspot.y) < 1) {
+          try { SimVillages.ensureShelter(v.id, H.Onboarding ? H.Onboarding.arrivalOf(v.id) : null); } catch (e) {}
+        }
+      }
+    }
     if (vspot) {
       const p = mkPlayer('villager', vspot.x, vspot.y);
       p.inventory.wood = 5;
@@ -245,6 +253,23 @@ const isWildSpot = (x, y) =>
         JSON.stringify(p.__notices().slice(-1)));
       let bundles = 0; for (const g of H.groundItems.values()) if (g.keep) bundles++;
       ok(bundles === 0, '★★⑤ 짐꾸러미가 **안 생긴다**(자명 통과 금지 — 아래 ⑥과 대조군이다)', `${bundles}개`);
+      // ★★[T62 2026-09-03] **그 문장이 이제 참인가** — 옮겨 준 자리가 진짜 쉼터인가.
+      //   T43 은 "쉼터로 옮겼다"고 쓰면서 **도착 지점**에 내려놓았다(쉼터가 세계에 없었으니까).
+      //   T62 가 시설을 만들었으므로, 여기서 **좌표로** 확인한다(문장만 보면 여전히 자명 통과다).
+      if (SimVillages.shelterOf) {
+        let vid = null;
+        for (const v of (SimVillages.clientVillages() || [])) if (Math.abs(v.cx * 32 + 16 - vspot.x) < 1 && Math.abs(v.cy * 32 + 16 - vspot.y) < 1) vid = v.id;
+        const sh = vid != null ? SimVillages.shelterOf(vid) : null;
+        pre(!!sh, '[T62] 그 마을에 쉼터가 실제로 서 있다(없으면 아래는 아무것도 안 잰다)',
+          sh ? `(${sh.cx},${sh.cy})` : '없음');
+        if (sh) {
+          ok(Math.hypot(p.x - sh.x, p.y - sh.y) < 40,
+            '★★⑤-b [T62] **깨어난 자리가 그 마을 쉼터 앞이다** — 문장이 좌표와 맞는다',
+            `깨어난 (${p.x.toFixed(0)},${p.y.toFixed(0)}) vs 쉼터 (${sh.x.toFixed(0)},${sh.y.toFixed(0)})`);
+          const w = H.nearestVillageWake(vspot.x, vspot.y);
+          ok(!!(w && w.kind === 'shelter'), '★⑤-b 사다리가 스스로 "쉼터"라고 말한다(도착 지점 폴백이 아니다)', w ? w.kind : '');
+        }
+      }
     }
   }
 
