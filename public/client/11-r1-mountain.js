@@ -1840,8 +1840,22 @@
   window.__entBoxes = () => { const o = []; for (let i = 0; i < _entBoxes.length; i += 3) o.push([_entBoxes[i], _entBoxes[i + 1], _entBoxes[i + 2]]); return o; };
   // ★[안개 위 논밭 2026-08-30] 영토 경계선이 **안 본 셀 위에** 그려졌는지 — 프레임마다 센다.
   //   판정 정본은 `_seenChunks` 다(하네스가 직접 대조할 수 있게 자리를 그대로 낸다).
-  window.__simvilCells = { cand: 0, unseen: 0, drawnUnseen: 0, samples: [] };
-  window.__simvilProbe = () => JSON.parse(JSON.stringify(window.__simvilCells));
+  // ★★[T70 2026-09-03] 셀 계측 훅 **넷을 한 자리에서** 선언한다.
+  //   T57 이 `__claimCells` 를 `34-m-renderloop.js` 안에서 게으르게 만들었다(그 카드의 접촉
+  //   파일이 거기뿐이라서다). 그러면 같은 모양의 훅이 **두 파일**에 흩어지고, 다음 사람은
+  //   어느 쪽을 고쳐야 하는지 모른다 — 한쪽만 고치면 조용히 어긋난다.
+  //   ⇒ 선언은 이 한 자리. 렌더 루프는 프레임마다 **비우기만** 한다.
+  //   ⚠`Object.assign` 두 줄인 이유: 분할 규약이 "새 최상위 실행문은 `99-main.js` 에만"이고
+  //     `test-client-globals ③` 이 **총계 일치**를 본다. 종전 두 줄을 두 줄로 바꿔 **총계를 그대로** 둔다
+  //     (훅을 늘리려고 실행문 예산을 늘리지 않는다 — 그 예산은 다른 규약이 지키는 것이다).
+  Object.assign(window, {
+    __simvilCells: { cand: 0, unseen: 0, drawnUnseen: 0, samples: [] },
+    __claimCells: { cand: 0, unseen: 0, drawnUnseen: 0, samples: [] },
+  });
+  Object.assign(window, {
+    __simvilProbe: () => JSON.parse(JSON.stringify(window.__simvilCells)),
+    __claimProbe: () => JSON.parse(JSON.stringify(window.__claimCells)),
+  });
   window.__fogGateProbe = () => {
     const out = [];
     for (let i = 0; i < _gateDrawn.length; i += 3) out.push([_gateDrawn[i], _gateDrawn[i + 1], _gateDrawn[i + 2]]);

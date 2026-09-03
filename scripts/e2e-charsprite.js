@@ -377,20 +377,18 @@ function openSpot() {
       // ★화면 벡터는 **정본 아이소 변환**으로 옮긴다(각도 사본 금지 · 노출 훅 `__w2s`).
       //   ⚠"실제로 걸은 거리"로 재지 않는다 — 지형이 막으면 0이 되고, 그러면 **막힌 것**이
       //     "방향이 틀렸다"로 둔갑한다. 재는 것은 **바라보는 방향의 화면 투영**이다.
-      // ★변환은 **클라에서 캐 온다** — 하네스가 아이소 식을 옮겨 적으면 그게 사본이다.
-      //   `__s2w`(화면→월드)를 세 점에서 재 선형사상을 얻고, 그걸 **뒤집어** 월드→화면을 만든다.
-      //   (`__w2s` 는 이 자리에서 NaN 을 냈다 — 카메라 상태를 타는 듯하다. 회부 한 줄.)
+      // ★★[T70 2026-09-03] **`__w2s` 는 멀쩡했다 — 우회를 걷는다.**
+      //   T57 이 여기서 NaN 을 보고 "카메라 상태를 타는 듯"이라 적고 `__s2w` 를 세 점에서 재
+      //   **뒤집어 쓰는** 우회를 넣었다. 재현 조건은 카메라가 아니라 **키 이름**이었다:
+      //       `__s2w(px,py) → {wx, wy}`      `__w2s(wx,wy) → {px, py}`
+      //   T57 코드가 `.x`/`.y` 를 읽었고 둘 다 없는 키라 `undefined − undefined = NaN` 이 됐다.
+      //   (`e2e-zoom`·`e2e-onboarding` 은 처음부터 `.px`/`.py` 를 읽어 멀쩡히 돌고 있었다.)
+      //   ⇒ 이름이 자기를 말하는 계약이다(w=월드 · p=픽셀). 우회 대신 **정본을 그대로 부른다.**
       const sv = d && d.facing ? await A.evaluate(([fx, fy]) => {
-        const o = window.__s2w(0, 0), ex = window.__s2w(100, 0), ey = window.__s2w(0, 100);
-        if (!o || !ex || !ey) return null;
-        // 화면(1,0) → 월드 a, 화면(0,1) → 월드 b
-        const ax = (ex.wx - o.wx) / 100, ay = (ex.wy - o.wy) / 100;
-        const bx = (ey.wx - o.wx) / 100, by = (ey.wy - o.wy) / 100;
-        const det = ax * by - ay * bx;
-        if (!isFinite(det) || Math.abs(det) < 1e-9) return null;
-        // 월드 v = s·a + t·b  ⇒  (s,t) = A⁻¹ v  — (s,t) 가 곧 화면 벡터다
-        const sx = (by * fx - bx * fy) / det, sy = (-ay * fx + ax * fy) / det;
-        return [sx, sy];
+        const m = window.__getMyAbs();
+        const s0 = window.__w2s(m.x, m.y), s1 = window.__w2s(m.x + fx * 64, m.y + fy * 64);
+        if (!s0 || !s1) return null;
+        return [s1.px - s0.px, s1.py - s0.py];
       }, d.facing).catch(() => null) : null;
       rows.push({ arrow, combo, facing: d && d.facing, row: d && d.row, screen: sv || [NaN, NaN],
                   faced: !!(d && d.facing && (d.facing[0] || d.facing[1])), w: d && sheetW[d.row] });
@@ -500,9 +498,54 @@ function openSpot() {
     }
   }
 
+  // ═══ [T70 2026-09-03] ⓖ 투영 훅 왕복 · 셀 훅 선언 자리 ═══════════════════════
+  //   ⓐ `__w2s` 는 NaN 을 내지 않는다 — T57 의 NaN 은 **키 이름**을 잘못 읽은 것이었다.
+  //     그 사실을 검사로 못 박는다: 세 점을 왕복시켜 **모두 유한**이고 제자리로 돌아오는가.
+  //   ⓑ 셀 계측 훅은 **한 자리에서만** 선언돼야 한다(소스 검사). 훅이 두 파일에 흩어지면
+  //     다음 사람이 어느 쪽을 고쳐야 하는지 모르고, 한쪽만 고쳐 조용히 어긋난다.
+  console.log('\n=== ⓖ 투영 훅 왕복 · 셀 훅 선언 자리 [T70] ===');
+  {
+    const rt = await A.evaluate(() => {
+      const pts = [[0, 0], [200, 120], [-350, 480]];
+      const out = [];
+      for (const [dx, dy] of pts) {
+        const m = window.__getMyAbs();
+        const w = { x: m.x + dx, y: m.y + dy };
+        const sc = window.__w2s(w.x, w.y);
+        if (!sc) { out.push(null); continue; }
+        const b = window.__s2w(sc.px, sc.py);
+        out.push({ px: sc.px, py: sc.py, back: [b.wx, b.wy], want: [w.x, w.y] });
+      }
+      return out;
+    }).catch(() => null);
+    const finite = !!rt && rt.every((r) => r && isFinite(r.px) && isFinite(r.py));
+    const worst = finite ? Math.max(...rt.map((r) => Math.hypot(r.back[0] - r.want[0], r.back[1] - r.want[1]))) : Infinity;
+    console.log(`    왕복 세 점 — ${rt ? rt.map((r) => (r ? `(${r.px.toFixed(0)},${r.py.toFixed(0)})` : 'null')).join(' ') : '없음'}`
+      + ` · 최대 왕복 오차 ${isFinite(worst) ? worst.toFixed(3) : '∞'}px`);
+    ok(finite, '★★ⓖ `__w2s` 가 세 점 모두 **유한값**을 낸다 (NaN 0) — T57 의 NaN 은 키 이름 오독이었다',
+      finite ? '3/3 유한' : '비유한 있음');
+    ok(worst < 1.0, '★ⓖ 월드→화면→월드 왕복이 제자리로 돌아온다', `최대 ${isFinite(worst) ? worst.toFixed(3) : '∞'}px < 1.0`);
+
+    const CDIR = path.join(ROOT, 'public', 'client');
+    const decl = [];
+    for (const f of fs.readdirSync(CDIR).filter((x) => x.endsWith('.js'))) {
+      const src = fs.readFileSync(path.join(CDIR, f), 'utf8');
+      // 선언 형태 둘을 다 본다: `window.__X = {` · `Object.assign(window, { __X: {`
+      for (const m of src.matchAll(/(?:window\.__|__)(simvilCells|claimCells)\s*[:=]\s*\{\s*cand/g)) decl.push(`${f}:${m[1]}`);
+    }
+    console.log(`    셀 훅 선언 자리: ${decl.join(' · ') || '없음'}`);
+    const files = new Set(decl.map((d) => d.split(':')[0]));
+    ok(decl.length === 2 && files.size === 1,
+      '★★ⓖ 셀 계측 훅 둘이 **같은 파일 한 자리**에서 선언된다',
+      `${decl.length}개 선언 · 파일 ${[...files].join(',') || '없음'}`);
+  }
+
   console.log('\n=== ⑥ 성능 — rAF 짝 비교 (플래그 ON vs OFF · 같은 화면) ===');
-  const measure = async (page, on) => page.evaluate(async (flag) => {
-    const cfg = window.__uiCfg ? null : null;
+  // ★[T70] 자기 실패 검사기 — `CHARSPRITE_SABOTAGE=1` 이면 **ON 팔에만** 일부러 일을 얹는다.
+  //   판정을 비율로 옮겼으니 "무엇을 넣어도 통과"하지 않는다는 걸 밖에서 보일 수 있어야 한다.
+  const PERF_SAB = process.env.CHARSPRITE_SABOTAGE === '1';
+  if (PERF_SAB) console.log('    ★사보타주 — ON 팔에만 프레임마다 헛일을 얹는다(비율이 올라가 빨개져야 한다)');
+  const measure = async (page, on) => page.evaluate(async ([flag, sab]) => {
     // 플래그는 uiCfg 로 온다 — 계측 동안만 뒤집는다(서버 env 는 그대로).
     window.__forceCharSprite = flag;
     const prev = window.__setCharSprite && window.__setCharSprite(flag);
@@ -510,6 +553,12 @@ function openSpot() {
     await new Promise((res) => {
       let n = 0, last = performance.now();
       const step = () => {
+        // ★사보타주의 크기는 **잡을 대상**에서 정한다 — 이 검사가 막으려는 회귀는
+        //   "시트 경로가 도형 경로의 **두 배**로 비싸진다"이다. 프레임 간격이 ~36ms 이므로
+        //   두 배가 되려면 ~36ms 를 더 얹어야 한다. 12ms 로 두면 효과비 1.29 밖에 안 돼
+        //   **문턱(K=1.6) 밑을 지나간다** — 그건 사보타주가 약한 것이지 문턱이 헐거운 게 아니다.
+        //   (문턱을 사보타주에 맞춰 내리면 그건 대조군에 판정을 맞추는 것이다 — 거꾸로다.)
+        if (sab && flag) { const e = performance.now() + 40; while (performance.now() < e) { /* 헛일 */ } }
         const now = performance.now();
         t.push(now - last); last = now;
         if (++n >= 90) return res();
@@ -519,13 +568,39 @@ function openSpot() {
     });
     t.sort((a, b) => a - b);
     return { med: +t[Math.floor(t.length / 2)].toFixed(2), p90: +t[Math.floor(t.length * 0.9)].toFixed(2) };
-  }, on);
+  }, [on, PERF_SAB]);
+  // ★★[T70 2026-09-03] **절대 문턱(60ms)을 비율의 비율로 바꾼다**(T49 처방 · 족보 ⑻⓪).
+  //   왜: `ON < 60ms` 는 **그날 기계가 얼마나 바빴는지**를 잰다. 실측으로 같은 하네스가
+  //   34.0 · 38.2 · 72.4ms 를 오갔고(72.4 인 판은 다른 계측을 같이 돌리던 판이었다),
+  //   그때 빨간 건 제품이 아니라 **기계**였다. 러너의 빨강이 제품 회귀를 안 뜻하게 되면
+  //   사람은 빨강을 무시하는 법을 배운다.
+  //   ⇒ 재는 것은 "시트 경로가 도형 경로보다 **얼마나** 비싼가"다. 같은 실행 안에서
+  //     ON 을 **두 번** 재 잡음 바닥을 얻고, 효과비(ON중앙/OFF)를 그 잡음비로 나눈다.
+  //   ⇒ 잡음이 크면 **판정하지 않는다**("안 비쌌다"가 아니라 "못 쟀다"). 절대값은 참고 출력.
   const perfOn = await measure(A, true);
   const perfOff = await measure(A, false);
-  await measure(A, true);
-  console.log(`    프레임 간격 중앙값 — ON ${perfOn.med}ms · OFF ${perfOff.med}ms  (p90 ${perfOn.p90} / ${perfOff.p90})`);
-  ok(true, `합성 비용(레이어 ${(await dbgOf(A) || { layers: [] }).layers.length}장 × 2명) = ON−OFF ${(perfOn.med - perfOff.med).toFixed(2)}ms/프레임`);
-  ok(perfOn.med < 60, `ON 에서도 프레임 간격 ${perfOn.med}ms < 60ms — 헤드리스 SwiftShader 기준 상한`);
+  const perfOn2 = await measure(A, true);            // ★같은 조건 두 번 = 잡음 바닥
+  const _o1 = perfOn.med, _o2 = perfOn2.med, _off = Math.max(0.01, perfOff.med);
+  const noiseR = Math.max(_o1, _o2) / Math.max(0.01, Math.min(_o1, _o2));
+  const onMed = (_o1 + _o2) / 2;
+  const effectR = onMed / _off;
+  const PK = parseFloat(process.env.CHAR_PERF_K || '1.6') || 1.6;
+  const PNMAX = parseFloat(process.env.CHAR_PERF_NOISE_MAX || '1.5') || 1.5;
+  console.log(`    프레임 간격 중앙값 — ON ${_o1}ms / ${_o2}ms · OFF ${perfOff.med}ms  (p90 ${perfOn.p90} / ${perfOff.p90})`);
+  console.log(`    잡음 바닥 — 같은 조건(ON) 두 번 ${_o1}ms vs ${_o2}ms → 잡음비 ${noiseR.toFixed(3)}`);
+  console.log(`    [참고 — 판정 아님] 절대 문턱 60ms · ${onMed < 60 ? '넘음' : '★못 넘음'} (ON 중앙 ${onMed.toFixed(1)}ms)`);
+  ok(true, `합성 비용(레이어 ${(await dbgOf(A) || { layers: [] }).layers.length}장 × 2명) = ON−OFF ${(onMed - perfOff.med).toFixed(2)}ms/프레임`);
+  ok(noiseR < 3, '⑥ 전제 — 자가 믿을 만하다(같은 조건 두 번이 3배 안)', `잡음비 ${noiseR.toFixed(3)}`);
+  if (noiseR < PNMAX) {
+    ok(effectR < noiseR * PK,
+      `★★⑥ 시트 경로가 도형 경로보다 **눈에 띄게 비싸지 않다** — 비율의 비율 ${(effectR / Math.max(0.01, noiseR)).toFixed(2)} < ${PK}`,
+      `효과비 ${effectR.toFixed(3)}(ON 중앙 ${onMed.toFixed(1)}ms / OFF ${perfOff.med}ms) vs 잡음비 ${noiseR.toFixed(3)}`);
+  } else {
+    console.log(`    ★이 판은 잡음이 커서(${noiseR.toFixed(3)} ≥ ${PNMAX}) ⑥ 을 가를 수 없다 — 판정하지 않는다("안 비쌌다"가 아니라 "못 쟀다").`);
+    ok(effectR < noiseR * 3,
+      '⑥ [잡음 큼] 최소한 **잡음 몇 배로 비싸지지는 않았다**(이것만 잰다)',
+      `효과비 ${effectR.toFixed(3)} < 잡음비 ${noiseR.toFixed(3)}×3`);
+  }
 
   console.log('\n=== ⑦ 콘솔 오류 ===');
   const real = (a) => a.filter((x) => !/favicon|404 \(Not Found\)/.test(x));

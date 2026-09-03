@@ -1131,12 +1131,10 @@
     _gateDrawn.length = 0;
     _entBoxes.length = 0;
     if (window.__simvilCells) { const _p = window.__simvilCells; _p.cand = 0; _p.unseen = 0; _p.drawnUnseen = 0; _p.samples.length = 0; }
-    // ★[T57 2026-09-03] 사유지 셀 계측 훅. `__simvilCells`(영토 띠)와 **같은 모양**이다 —
-    //   하네스가 두 층을 같은 문법으로 읽는다. 여기서 만드는 이유: 이 배치의 접촉 파일이
-    //   `34-m-renderloop.js` 라서다(`__simvilCells` 는 `11-r1-mountain.js` 가 만든다).
-    //   ⇒ 회부 한 줄: 두 훅의 선언 자리를 한곳으로 모으는 정리는 R1 소유 세션의 몫이다.
-    if (!window.__claimCells) window.__claimCells = { cand: 0, unseen: 0, drawnUnseen: 0, samples: [] };
-    { const _p = window.__claimCells; _p.cand = 0; _p.unseen = 0; _p.drawnUnseen = 0; _p.samples.length = 0; }
+    // ★[T57 2026-09-03 · 선언 자리는 T70 이 R1 훅 파일로 옮겼다] 사유지·논밭 셀 계측 훅.
+    //   `__simvilCells`(영토 띠)와 **같은 모양**이라 하네스가 두 층을 같은 문법으로 읽는다.
+    //   여기서는 프레임마다 **비우기만** 한다 — 선언은 `11-r1-mountain.js` 훅 절 한 자리다.
+    if (window.__claimCells) { const _p = window.__claimCells; _p.cand = 0; _p.unseen = 0; _p.drawnUnseen = 0; _p.samples.length = 0; }
     const _seenCell1 = (cx, cy) => {
       const sc = window._seenChunks; if (!sc) return true;   // 첫 프레임(기록 전)은 통과
       const chSet = sc.get((cx >> 4) + '_' + (cy >> 4));
