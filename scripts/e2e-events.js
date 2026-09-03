@@ -22,6 +22,7 @@
 //     대신 `VILLAGE_MAX=2` 로 마을 2곳만 시딩해 부팅을 짧게 한다 —
 //     검사 대상은 마을 **수**가 아니라 브리핑·게시판·정산의 **경로**다.
 'use strict';
+const BOARD_RE = /^[^\n]{1,24}게시판\n/;   // ★[T66] 게시판 알림의 첫 줄 — 이모지 없이
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
@@ -170,7 +171,9 @@ async function waitHttp(url, tries = 900) {
       //   단, `sh` 가 아직 없으면(=픽스처가 한 번도 성립 안 함) 반드시 부른다 —
       //   아래 `부족 픽스처 성립` assert 가 **자명 통과**하면 안 되기 때문이다.
       if (sh) {
-        await page.evaluate((vid) => window.__sendPrimary({ type: 'village_board', vid }), V.id);
+        // ★[T66] 머리의 📋 는 화면 규칙 B 로 삭제됐다 — **첫 줄이 `<마을> 게시판`** 인지로 잰다.
+      //   (이모지가 아니라 '이게 게시판이다'가 화면에 뜨는지가 이 줄의 뜻이다.)
+      await page.evaluate((vid) => window.__sendPrimary({ type: 'village_board', vid }), V.id);
         await sleep(400);
         const b0 = await page.evaluate(() => window.__evLastBoard || null);
         if (b0 && b0.rows && b0.rows.length) return b0;
@@ -207,11 +210,11 @@ async function waitHttp(url, tries = 900) {
       await page.evaluate((vid) => window.__sendPrimary({ type: 'village_board', vid }), V.id);
       await sleep(200);
       boardShown = await page.evaluate(() => (document.getElementById('notice') || {}).textContent || '');
-      if (/^📋/.test(boardShown) && /Shift\+N/.test(boardShown)) break;
+      if (BOARD_RE.test(boardShown) && /Shift\+N/.test(boardShown)) break;
     }
-    if (/^📋/.test(boardShown) && /Shift\+N/.test(boardShown)) break;
+    if (BOARD_RE.test(boardShown) && /Shift\+N/.test(boardShown)) break;
   }
-  ok(/^📋/.test(boardShown) && /Shift\+N/.test(boardShown) && boardShown.includes('\n'),
+  ok(BOARD_RE.test(boardShown) && /Shift\+N/.test(boardShown) && boardShown.includes('\n'),
     '게시판 목록이 화면(HUD)에 여러 줄로 실제로 그려졌다', JSON.stringify(boardShown.slice(0, 110)));
   ok(!/촌장/.test(boardShown), '(자명 통과 방지) 그 알림은 촌장 대사가 아니라 게시판이다');
 

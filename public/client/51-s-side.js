@@ -3,24 +3,24 @@
   // 14.49-e7an: 스킬 패널 프로토타입 (UI only, hardcoded values)
   const PROTO_SKILLS = {
     production: [
-      { id: 'farming',   name: '농사', icon: '🌾', level: 1, exp: 0 },
-      { id: 'foraging',  name: '채집', icon: '🌿', level: 1, exp: 0 },
-      { id: 'fishing',   name: '낚시', icon: '🎣', level: 1, exp: 0 },
-      { id: 'mining',    name: '채광', icon: '⛏️', level: 1, exp: 0 },
-      { id: 'carpentry', name: '목공', icon: '🪚', level: 1, exp: 0 },
-      { id: 'medicine',  name: '의료', icon: '💊', level: 1, exp: 0 },
+      { id: 'farming',   name: '농사', icon: 'food', level: 1, exp: 0 },
+      { id: 'foraging',  name: '채집', icon: 'leaf', level: 1, exp: 0 },
+      { id: 'fishing',   name: '낚시', icon: 'fish', level: 1, exp: 0 },
+      { id: 'mining',    name: '채광', icon: 'hammer', level: 1, exp: 0 },
+      { id: 'carpentry', name: '목공', icon: 'saw', level: 1, exp: 0 },
+      { id: 'medicine',  name: '의료', icon: 'heart', level: 1, exp: 0 },
     ],
     combat: [
-      { id: 'sword',  name: '검술', icon: '⚔️', level: 1, exp: 0 },
-      { id: 'spear',  name: '창술', icon: '🔱', level: 1, exp: 0 },
-      { id: 'bow',    name: '궁술', icon: '🏹', level: 1, exp: 0 },
-      { id: 'axe',    name: '도끼', icon: '🪓', level: 1, exp: 0 },
-      { id: 'shield', name: '방패', icon: '🛡️', level: 1, exp: 0 },
+      { id: 'sword',  name: '검술', icon: 'guild', level: 1, exp: 0 },
+      { id: 'spear',  name: '창술', icon: 'flag', level: 1, exp: 0 },
+      { id: 'bow',    name: '궁술', icon: 'price', level: 1, exp: 0 },
+      { id: 'axe',    name: '도끼', icon: 'axe', level: 1, exp: 0 },
+      { id: 'shield', name: '방패', icon: 'guild', level: 1, exp: 0 },
     ],
   };
   const PROTO_TALENT = { used: 0, max: 30 };
 
-  function expForLevel(lv) { return 50 + lv * lv * 25; } // 1→100, 2→200, 3→375...
+  function expForLevel(lv) { return 50 + lv * lv * 25; } // 1100, 2200, 3375...
 
   function renderSkillsPanel(body) {
     const totalLevel = [...PROTO_SKILLS.production, ...PROTO_SKILLS.combat].reduce((s, k) => s + k.level, 0);
@@ -28,38 +28,38 @@
       const need = expForLevel(s.level);
       const pct = Math.min(100, Math.floor(s.exp / need * 100));
       return `<div class="skill-row">
-        <span class="skill-icon">${s.icon}</span>
+        <span class="skill-icon">${uiIcon(s.icon, 16)}</span>
         <span class="skill-name">${s.name}</span>
         <span class="skill-lv">Lv ${s.level}</span>
         <div class="skill-bar"><div class="skill-bar-fill" style="width:${pct}%"></div><span class="skill-bar-text">${s.exp}/${need}</span></div>
-        <button class="skill-talent-btn" data-skill="${s.id}" title="특성 (분야 ${s.level}개까지 가능)">⭐ 0/${s.level}</button>
+        <button class="skill-talent-btn" data-skill="${s.id}" title="특성 (분야 ${s.level}개까지 가능)">0/${s.level}</button>
       </div>`;
     }
     body.innerHTML = `
       <style>
-        .skill-section-head { color:#f0c674; font-size:13px; font-weight:bold; padding:8px 4px 4px; }
-        .skill-row { display:flex; align-items:center; gap:6px; padding:5px 4px; border-bottom:1px solid #2a3038; }
+        .skill-section-head { color:var(--accent); font-size:13px; font-weight:bold; padding:8px 4px 4px; }
+        .skill-row { display:flex; align-items:center; gap:6px; padding:5px 4px; border-bottom:1px solid var(--inset); }
         .skill-icon { font-size:18px; width:24px; text-align:center; }
-        .skill-name { width:46px; color:#cfd6dd; font-size:12px; }
-        .skill-lv { width:42px; color:#8a93a0; font-size:11px; }
-        .skill-bar { flex:1; height:14px; background:#1a1f25; border:1px solid #2a3038; position:relative; overflow:hidden; border-radius:2px; }
-        .skill-bar-fill { height:100%; background:linear-gradient(90deg,#3a7a3a,#5aa55a); transition:width 0.3s; }
-        .skill-bar-text { position:absolute; top:0; left:0; right:0; bottom:0; text-align:center; color:#cfd6dd; font-size:10px; line-height:14px; text-shadow:0 0 2px #000; }
-        .skill-talent-btn { background:#2a3038; color:#cfd6dd; border:1px solid #3a4048; padding:2px 6px; font-size:10px; cursor:pointer; border-radius:2px; }
-        .skill-talent-btn:hover { background:#3a4048; }
-        .skill-pool { background:#1a1f25; padding:8px; border:1px solid #2a3038; border-radius:3px; margin:8px 4px; text-align:center; }
-        .skill-pool-bar { height:10px; background:#0a0e12; border:1px solid #2a3038; margin-top:4px; border-radius:2px; overflow:hidden; }
-        .skill-pool-fill { height:100%; background:linear-gradient(90deg,#5a7ad8,#9aafe0); }
-        .skill-hint { color:#6c7686; font-size:10px; padding:4px; text-align:center; }
+        .skill-name { width:46px; color:var(--fg); font-size:12px; }
+        .skill-lv { width:42px; color:var(--dim-2); font-size:11px; }
+        .skill-bar { flex:1; height:14px; background:var(--head); border:1px solid var(--inset); position:relative; overflow:hidden; border-radius: 0; }
+        .skill-bar-fill { height:100%; background:var(--stam); transition:width 0.3s; }
+        .skill-bar-text { position:absolute; top:0; left:0; right:0; bottom:0; text-align:center; color:var(--fg); font-size:10px; line-height:14px; text-shadow:0 0 2px var(--bg); }
+        .skill-talent-btn { background:var(--inset); color:var(--fg); border:1px solid var(--line); padding:2px 6px; font-size:10px; cursor:pointer; border-radius: 0; }
+        .skill-talent-btn:hover { background:var(--line); }
+        .skill-pool { background:var(--head); padding:8px; border:1px solid var(--inset); border-radius: 0; margin:8px 4px; text-align:center; }
+        .skill-pool-bar { height:10px; background:var(--bg); border:1px solid var(--inset); margin-top:4px; border-radius: 0; overflow:hidden; }
+        .skill-pool-fill { height:100%; background:var(--thirst); }
+        .skill-hint { color:var(--dim-2); font-size:10px; padding:4px; text-align:center; }
       </style>
       <div class="skill-pool">
-        <div style="color:#cfd6dd;font-weight:bold">⭐ 특성 포인트 ${PROTO_TALENT.used}/${PROTO_TALENT.max}</div>
+        <div style="color:var(--fg);font-weight:bold">특성 포인트 ${PROTO_TALENT.used}/${PROTO_TALENT.max}</div>
         <div class="skill-pool-bar"><div class="skill-pool-fill" style="width:${PROTO_TALENT.used/PROTO_TALENT.max*100}%"></div></div>
-        <div style="color:#8a93a0;font-size:10px;margin-top:3px">총 레벨 ${totalLevel}</div>
+        <div style="color:var(--dim-2);font-size:10px;margin-top:3px">총 레벨 ${totalLevel}</div>
       </div>
-      <div class="skill-section-head">🛠️ 생산</div>
+      <div class="skill-section-head">생산</div>
       ${PROTO_SKILLS.production.map(skillRow).join('')}
-      <div class="skill-section-head" style="margin-top:8px">⚔️ 전투</div>
+      <div class="skill-section-head" style="margin-top:8px">전투</div>
       ${PROTO_SKILLS.combat.map(skillRow).join('')}
       <div class="skill-hint">프로토타입 — 활동 시 자동으로 exp 쌓이는 시스템은 다음 단계</div>
     `;
@@ -72,12 +72,13 @@
 
   // Phase 14.26: 사유지 패널 — 내 claim 목록 + 해제 + 위치 텔레포트 안내
   function renderClaimsPanel(body) {
-    const KIND_ICON = { personal: '🏠', temporary: '⛺', guild: '🏛️' };
+    // ★[T66 2차] 자리의 갈래 — **선 아이콘 이름**(이모지 0). 빈 문자열로 두면 칸이 통째로 빈다.
+    const KIND_ICON = { personal: 'home', temporary: 'flag', guild: 'guild' };
     const KIND_NAME = { personal: '개인', temporary: '임시', guild: '길드영토' };
     const my = [];
     for (const c of conns.values()) {
       for (const cl of c.claims.values()) {
-        if (cl.ownerPid !== (myPlayerId || myUsername)) continue;   // ★[배치 13] 영속 신원으로 대조 — 게스트도 제 사유지를 제 것으로 본다
+        if (cl.ownerPid !== (myPlayerId || myUsername)) continue;   // [배치 13] 영속 신원으로 대조 — 게스트도 제 사유지를 제 것으로 본다
         my.push(cl);
       }
     }
@@ -85,12 +86,12 @@
     const counts = { personal: 0, temporary: 0, guild: 0 };
     for (const cl of my) counts[cl.kind || 'personal']++;
     const list = my.length === 0
-      ? '<div style="color:#6c7686;padding:14px;text-align:center">설치한 사유지가 없습니다</div>'
+      ? '<div style="color:var(--dim-2);padding:14px;text-align:center">설치한 사유지가 없습니다</div>'
       : my.map(cl => {
           const k = cl.kind || 'personal';
           return `<div class="sp-list-row">
-            <span>${KIND_ICON[k]} ${KIND_NAME[k]} @ (${cl.x},${cl.y})</span>
-            <button class="craft-btn" data-unclaim="${cl.id}" style="background:#b03030;padding:3px 8px">해제</button>
+            <span>${uiIcon(KIND_ICON[k] || 'claim', 14)} ${KIND_NAME[k]} @ (${cl.x},${cl.y})</span>
+            <button class="craft-btn" data-unclaim="${cl.id}" style="background:var(--hp);padding:3px 8px">해제</button>
           </div>`;
         }).join('');
     body.innerHTML = `
@@ -118,8 +119,8 @@
   const ITEM_CAT = {
     wood: '자재', stone: '자재', ore: '자재', pillar: '자재', rafter: '자재', thatch: '자재',
     berry: '음식', meat_raw: '음식', meat_cooked: '음식', berry_jam: '음식', herb: '약초',
-    food: '음식', food_cooked: '음식', fish: '음식', fish_cooked: '음식',   // ★[곡물 품목화]
-    twig: '자재', pebble: '자재',   // ★[빈손 시작] 줍는 재료
+    food: '음식', food_cooked: '음식', fish: '음식', fish_cooked: '음식',   // [곡물 품목화]
+    twig: '자재', pebble: '자재',   // [빈손 시작] 줍는 재료
     water_bottle: '음료',
     fiber: '잡화', seed_berry: '씨앗', hide: '잡화',
     axe: '도구', pickaxe: '도구', sword: '도구',
@@ -137,7 +138,7 @@
     if (!pc || !pc.meta) return list;
     const ox = pc.meta.worldOffsetX || 0, oy = pc.meta.worldOffsetY || 0;
     for (const b of pc.buildings.values()) {
-      if (b.type !== 'chest' && b.type !== 'guild_granary') continue;   // ★길드 곳간=대형 공유 컨테이너(chest 경로 공용)
+      if (b.type !== 'chest' && b.type !== 'guild_granary') continue;   // 길드 곳간=대형 공유 컨테이너(chest 경로 공용)
       const absX = ox + b.x, absY = oy + b.y;
       const d = Math.hypot(absX - myAbsPredicted.x, absY - myAbsPredicted.y);
       if (d <= 120) list.push({ b, d, absX, absY });
@@ -159,7 +160,7 @@
     let p = 0, t = 0, g = 0;
     for (const c of conns.values()) {
       for (const cl of c.claims.values()) {
-        if (cl.ownerPid !== (myPlayerId || myUsername)) continue;   // ★[배치 13] 영속 신원으로 대조 — 게스트도 제 사유지를 제 것으로 본다
+        if (cl.ownerPid !== (myPlayerId || myUsername)) continue;   // [배치 13] 영속 신원으로 대조 — 게스트도 제 사유지를 제 것으로 본다
         if (cl.kind === 'temporary') t++;
         else if (cl.kind === 'guild') g++;
         else p++;
@@ -241,12 +242,12 @@
       const w = (itemWeights && itemWeights[type]) || 0;
       const kids = list.length >= 2 ? list.map((t) => ({
         k: 't' + t.id,
-        label: `내구 ${t.d}/${t.max}` + (equipped === t.id ? ' <span class="ul-age">✓장착</span>' : '')
-             + (hotkey1 === t.id ? ' <span class="ul-age">⌨1</span>' : ''),
+        label: `내구 ${t.d}/${t.max}` + (equipped === t.id ? ' <span class="ul-age">장착</span>' : '')
+             + (hotkey1 === t.id ? ' <span class="ul-age">1</span>' : ''),
         drag: { kind: 'mine', item: type, toolId: t.id, n: 1 },
       })) : null;
       out.push({ item: type, count: list.length, kg: w ? w * list.length : null, kids, tool: true,
-        badge: list.some((t) => equipped === t.id) ? '✓' : '',
+        badge: list.some((t) => equipped === t.id) ? '' : '',
         drag: { kind: 'mine', item: type, toolId: list[0].id, n: 1, toolIds: list.map((t) => t.id) } });
     }
     return out;
@@ -278,7 +279,7 @@
         kids = lot.map((l) => ({
           k: 'l' + l.day,
           label: `${_ulN(l.n)}개 <span class="ul-age">${l.ageDays}일 전</span>`
-            + (l.stage ? ` <span class="ul-age" style="color:${PRESERVE_STAGE_COLOR[l.stage] || '#8a93a0'}">${PRESERVE_STAGE_EMO[l.stage] || ''}${PRESERVE_STAGE_KO[l.stage] || ''}${l.stage === 'spoiled' ? '' : ` ${Math.round((l.fresh || 0) * 100)}%`}</span>` : '')
+            + (l.stage ? ` <span class="ul-age" style="color:${PRESERVE_STAGE_COLOR[l.stage] || 'var(--dim-2)'}">${PRESERVE_STAGE_KO[l.stage] || ''}${l.stage === 'spoiled' ? '' : ` ${Math.round((l.fresh || 0) * 100)}%`}</span>` : '')
             + (l.coalesced ? ' <span class="ul-age">(묶임)</span>' : ''),
           drag: { kind: 'mine', item, lotDay: l.day, n: Math.max(1, Math.floor(l.n)) },
         }));
@@ -335,7 +336,7 @@
   //   세 컬럼이 이 함수를 쓴다. e2e 가 DOM 구조 동일성(.ul-row/.ul-sub/.ul-caret)을 지킨다.
   function ulRenderRows(rows, col, opts) {
     opts = opts || {};
-    if (!rows.length) return `<tr class="ul-empty"><td colspan="4" style="color:#6c7686;text-align:center;padding:20px">${opts.empty || '(비어있음)'}</td></tr>`;
+    if (!rows.length) return `<tr class="ul-empty"><td colspan="4" style="color:var(--dim-2);text-align:center;padding:20px">${opts.empty || '(비어있음)'}</td></tr>`;
     rows.sort((a, b) => {
       const ca = ITEM_CAT[a.item] || 'zzz', cb = ITEM_CAT[b.item] || 'zzz';
       return ca.localeCompare(cb) || a.item.localeCompare(b.item);
@@ -345,11 +346,11 @@
       const open = ulOpen.has(key);
       const nKids = r.kids ? r.kids.length : 0;
       const icon = itemIconHtml(r.item, 22);
-      const label = itemKo(r.item);   // ★[T55] 인벤 행 — 정본 우선(`oyster`·`brine` 이 영문으로 뜨던 자리)
+      const label = itemKo(r.item);   // [T55] 인벤 행 — 정본 우선(`oyster`·`brine` 이 영문으로 뜨던 자리)
       const cat = ITEM_CAT[r.item] || '기타';
       const kgTxt = (r.kg != null && r.kg > 0) ? ` <span class="it-kg">${r.kg.toFixed(1)}kg</span>` : '';
       const caret = nKids >= 2
-        ? `<span class="ul-caret${open ? ' open' : ''}" data-ul-toggle="${key}" title="${open ? '접기' : '펼치기'}">${open ? '▼' : '▶'}</span>`
+        ? `<span class="ul-caret${open ? ' open' : ''}" data-ul-toggle="${key}" title="${open ? '접기' : '펼치기'}">${open ? '' : ''}</span>`
         : `<span class="ul-caret ul-none"></span>`;
       const btn = opts.act ? `<button class="ul-act" data-ul-act="1" title="${opts.actTitle || ''}">${opts.act}</button>` : '';
       const dragAttr = _ulEsc(JSON.stringify(r.drag));
@@ -365,7 +366,7 @@
           const cd = c.drag ? ` draggable="true" data-drag='${_ulEsc(JSON.stringify(c.drag))}'` : '';
           h += `<tr class="ul-sub" data-col="${col}" data-item="${r.item}" data-ulparent="${key}"${cd}${open ? '' : ' hidden'}>`
             + `<td class="it-icon"></td>`
-            + `<td class="it-name ul-subname">└ ${c.label}</td>`
+            + `<td class="it-name ul-subname">${c.label}</td>`
             + `<td class="it-cat"></td><td class="it-action">${c.drag ? btn : ''}</td></tr>`;
         }
       }
@@ -392,7 +393,7 @@
     // 14.53: toolItems row (각 instance 별 행)
     // ★도구·장비는 **이미 개체**라 원장이 필요 없다(무게 3층의 1층에 원래부터 있었다).
     //   equip/단축키 같은 제 affordance 가 있어 통일 목록에 억지로 밀어 넣지 않는다(회부: 도구 줄 통합).
-    const TOOL_ICON_MAP = { axe: '🪓', pickaxe: '⛏️', sword: '⚔️', saw: '🪚', hammer: '🔨' };
+    // ★[T66 2차] 옛 도구 이모지 표 `TOOL_ICON_MAP` 은 **삭제**했다 — 부르는 자리가 없었다(죽은 표).
     // ★[인벤 마무리 2026-08-30] 옛 `toolRowsHtml`(도구 전용 표)은 **삭제**됐다.
     //   도구는 이제 `ulRowsTools()` 로 통일 목록에 선다. 착용·단축키는 아래 결선에서
     //   **줄 우클릭**이 맡는다(버튼 칸을 도구만 다르게 쓰면 그게 다시 두 벌이다).
@@ -400,11 +401,11 @@
     // 좌: 내 인벤 (toolItems 먼저, 그다음 통일 목록)
     const mineTgt = activeC ? activeC.id : (isGround ? 'ground' : null);
     const myTable = `<div class="inv-col" data-drop-target="mine" data-ul-col="mine">
-      <div class="inv-col-head">🎒 내 인벤토리<span class="col-count">(${myCount}종)</span></div>
-      <div style="flex:1;overflow:auto;background:#0e1217;border-radius:4px">
+      <div class="inv-col-head">내 인벤토리<span class="col-count">(${myCount}종)</span></div>
+      <div style="flex:1;overflow:auto;background:var(--bg);border-radius: 0">
         <table class="inv-table">
           <thead><tr><th></th><th>아이템</th><th>분류</th><th></th></tr></thead>
-          <tbody>${ulRenderRows(ulRowsTools().concat(ulRowsMine(inventory)), 'mine', { act: mineTgt ? '↓' : '', actTitle: '1개 옮기기' })}</tbody>
+          <tbody>${ulRenderRows(ulRowsTools().concat(ulRowsMine(inventory)), 'mine', { act: mineTgt ? '' : '', actTitle: '1개 옮기기' })}</tbody>
         </table>
       </div></div>`;
 
@@ -412,21 +413,21 @@
     let chestTable;
     if (isGround) {
       chestTable = `<div class="inv-col" data-drop-target="ground" data-ul-col="ground">
-        <div class="inv-col-head">🌍 바닥 (근처 ${gItems.length}덩이)</div>
-        <div style="flex:1;overflow:auto;background:#0e1217;border-radius:4px">
+        <div class="inv-col-head">바닥 (근처 ${gItems.length}덩이)</div>
+        <div style="flex:1;overflow:auto;background:var(--bg);border-radius: 0">
           <table class="inv-table">
             <thead><tr><th></th><th>아이템</th><th>분류</th><th></th></tr></thead>
-            <tbody>${ulRenderRows(ulRowsGround(gItems), 'ground', { act: '↑', actTitle: '줍기', empty: '(바닥에 아이템 없음 — 드롭하면 여기에 표시됩니다)' })}</tbody>
+            <tbody>${ulRenderRows(ulRowsGround(gItems), 'ground', { act: '', actTitle: '줍기', empty: '(바닥에 아이템 없음 — 드롭하면 여기에 표시됩니다)' })}</tbody>
           </table>
         </div></div>`;
     } else if (activeC) {
       const chestRows = ulRowsChest(activeC.data || {}, activeC.id);
       chestTable = `<div class="inv-col" data-drop-target="${activeC.id}" data-ul-col="chest">
-        <div class="inv-col-head">📦 ${activeC.ownerName || '?'}<span class="col-count">(${chestRows.length}종)</span></div>
-        <div style="flex:1;overflow:auto;background:#0e1217;border-radius:4px">
+        <div class="inv-col-head">${activeC.ownerName || '?'}<span class="col-count">(${chestRows.length}종)</span></div>
+        <div style="flex:1;overflow:auto;background:var(--bg);border-radius: 0">
           <table class="inv-table">
             <thead><tr><th></th><th>아이템</th><th>분류</th><th></th></tr></thead>
-            <tbody>${ulRenderRows(chestRows, 'chest', { act: '↑', actTitle: '1개 꺼내기' })}</tbody>
+            <tbody>${ulRenderRows(chestRows, 'chest', { act: '', actTitle: '1개 꺼내기' })}</tbody>
           </table>
         </div></div>`;
     } else {
@@ -438,12 +439,12 @@
       const total = Object.values(b.data || {}).reduce((s, v) => s + v, 0);
       const isActive = b.id === activeContainerId ? 'active' : '';
       return `<div class="cont-tab ${isActive}" data-cid="${b.id}" title="${b.ownerName || '?'} · ${d.toFixed(0)}px">
-        <div class="ct-icon">📦</div>
+        <div class="ct-icon"></div>
         <div class="ct-count">${total}</div>
       </div>`;
     }).join('');
     const groundTab = `<div class="cont-tab ${isGround ? 'active' : ''}" data-cid="ground" title="근처 바닥 아이템">
-      <div class="ct-icon">🌍</div>
+      <div class="ct-icon"></div>
       <div class="ct-count">${gItems.length}</div>
     </div>`;
     const tabsCol = `<div class="cont-tabs">${chestTabs}${groundTab}</div>`;
@@ -481,7 +482,7 @@
         tr.classList.add('dragging');
         const ghost = document.createElement('div');
         ghost.className = 'drag-ghost';
-        ghost.innerHTML = `${itemIconHtml(d.item, 18)} ${itemKo(d.item)}${d.n > 1 ? ` ×${d.n}` : ''}`;   // ★[T55]
+        ghost.innerHTML = `${itemIconHtml(d.item, 18)} ${itemKo(d.item)}${d.n > 1 ? ` ×${d.n}` : ''}`;   // [T55]
         document.body.appendChild(ghost);
         e.dataTransfer.setDragImage(ghost, 18, 18);
         setTimeout(() => ghost.remove(), 0);
@@ -499,7 +500,7 @@
         const d = _drag(tr); if (!d) return;
         const item = d.item, sub = tr.classList.contains('ul-sub');
         const opts = [];
-        if (foodEffects && foodEffects[item] && !sub) opts.push({ label: '🍴 먹기', onClick: () => sendPrimary({ type: 'eat', item }) });
+        if (foodEffects && foodEffects[item] && !sub) opts.push({ label: '먹기', onClick: () => sendPrimary({ type: 'eat', item }) });
         // ★★[작물 층 2026-08-31] **씨앗 우클릭 = 심기.** 작물 고르는 창을 따로 만들지 않는다 —
         //   씨앗이 곧 작물이고, 인벤이 이미 내가 가진 씨앗을 보여 주고 있다(새 패널 0).
         //   ★심을 수 있는 철인지는 **서버가 판정**한다. 여기선 언제 심는지 이름표로만 알려 준다.
@@ -507,13 +508,13 @@
           const _c = CROP_OF_SEED[item];
           const _ok = _c.sow && _c.sow.indexOf(cropSeasonNow()) >= 0;
           opts.push({
-            label: '🌱 ' + _c.ko + ' 심기' + (_ok ? '' : ' (' + (_c.sow || []).map((x) => SEASON_KO[x] || x).join('·') + '에 심는다)'),
+            label: '' + _c.ko + ' 심기' + (_ok ? '' : ' (' + (_c.sow || []).map((x) => seasonKo(x)).join('·') + '에 심는다)'),
             onClick: () => sendPrimary({ type: 'plant', crop: _c.id }),
           });
         }
-        opts.push({ label: sub ? '🗑 이 줄 버리기' : '🗑 1개 버리기 (바닥)', onClick: () => ulSend(d, 'ground', sub ? d.n : 1) });
-        if (!sub && (inventory[item] || 0) >= 10) opts.push({ label: '🗑 10개 버리기', onClick: () => ulSend(d, 'ground', 10) });
-        if (!sub && (inventory[item] || 0) > 1) opts.push({ label: `🗑 전부 버리기 (${inventory[item]}개)`, onClick: () => ulSend(d, 'ground', d.n) });
+        opts.push({ label: sub ? '이 줄 버리기' : '1개 버리기 (바닥)', onClick: () => ulSend(d, 'ground', sub ? d.n : 1) });
+        if (!sub && (inventory[item] || 0) >= 10) opts.push({ label: '10개 버리기', onClick: () => ulSend(d, 'ground', 10) });
+        if (!sub && (inventory[item] || 0) > 1) opts.push({ label: `전부 버리기 (${inventory[item]}개)`, onClick: () => ulSend(d, 'ground', d.n) });
         if (opts.length) showContextMenu(e.clientX, e.clientY, opts);
       });
     });
@@ -528,7 +529,7 @@
         showContextMenu(e.clientX, e.clientY, [
           { label: isEq ? '해제' : '착용', onClick: () => sendPrimary({ type: 'equip', toolItemId: isEq ? null : id }) },
           { label: isHot ? '1번 슬롯에서 빼기' : '1번 슬롯에 등록', onClick: () => sendPrimary({ type: 'set_hotkey', toolItemId: isHot ? null : id }) },
-          { label: '🗑 이 도구 버리기 (바닥)', onClick: () => sendPrimary({ type: 'drop_item', item: d.item, toolId: id }) },
+          { label: '이 도구 버리기 (바닥)', onClick: () => sendPrimary({ type: 'drop_item', item: d.item, toolId: id }) },
         ]);
       });
       // 좌클릭 = 착용/해제(가장 잦은 조작 — 우클릭까지 안 가게)
@@ -548,16 +549,16 @@
         const item = tr.dataset.item;
         if (!item || !item.startsWith('item_')) return;
         tr.style.cursor = 'pointer';
-        tr.style.outline = '2px solid #f0c674';
-        tr.style.background = 'rgba(240,198,116,0.1)';
-        tr.title = '클릭 → 건축 모드에서 배치';
+        tr.style.outline = '2px solid var(--accent)';
+        tr.style.background = 'rgba(var(--accent-rgb), 0.1)';
+        tr.title = '클릭 건축 모드에서 배치';
         tr.onclick = (e) => {
           if (e.target.tagName === 'BUTTON' || e.target.classList.contains('ul-caret')) return;
           let dir = 'N';
           if (item === 'item_fence') dir = 'NS';
           placementMode = { itemType: item, floor: myFloor, dir };
           placingDir = dir;
-          showNotice(`📍 ${itemKo(item)} 배치 모드 — 좌클릭=배치, 우클릭=회전, ESC=취소`);   // ★[T55]
+          showNotice(`${itemKo(item)} 배치 모드 — 좌클릭=배치, 우클릭=회전, ESC=취소`);   // [T55]
         };
       });
     }
@@ -657,16 +658,17 @@
   let craftCat = 'tool';
   function renderCraftPanel2(body) {
     // 14.50/14.51: 서버에서 받은 동적 recipes 사용 (axe/saw/hammer + 건축물 + 가공)
-    const TOOL_ICON = { axe: '🪓', pickaxe: '⛏️', sword: '⚔️', saw: '🪚', hammer: '🔨',
-      // ★[빈손 시작 2026-08-28] 조잡한 석기 — 정품과 **한눈에 구별**돼야 한다(같은 아이콘이면 속는다)
-      crude_axe: '🪨', crude_pick: '🪨', crude_blade: '🔪' };
+    // ★★[T66 2차] 도구 그림도 **아이템 그림 하나**로 간다(`itemIconHtml`) — 굽힌 렌더가 있으면 그것,
+    //   없으면 점선 칸. 옛 이모지 표를 빈 문자열로 비워 두면 제작창 아이콘 칸이 **통째로 빈다**.
+    //   ⚠"조잡한 석기와 정품이 한눈에 구별돼야 한다"(2026-08-28)는 아직 **렌더가 없어 미해결**이다 —
+    //     지금은 둘 다 점선 칸이라 이름으로만 갈린다. ART 회부(굽기 목록)에 올렸다.
     let items = [];
     if (craftCat === 'tool') {
       // recipes = { axe: {wood,stone,label}, ... } (server에서 받음)
       // ★[2026-08-28] **일반 cost** — 조잡한 석기는 잔가지·자갈·풀로 만든다(나무/돌 두 칸으론 표현이 안 된다).
       //   서버가 `cost` 를 실어 보내고 클라는 그걸 그대로 그린다(재료 표를 클라가 다시 적지 않는다).
       items = Object.entries(recipes || {}).map(([id, r]) => ({
-        id, msgType: 'craft', icon: TOOL_ICON[id] || '🔧',
+        id, msgType: 'craft', icon: itemIconHtml(id, 34, ''),
         name: r.label || id, crude: !!r.crude,
         cost: r.cost || { wood: r.wood || 0, stone: r.stone || 0 },
         have: hasToolAlive(id) ? 1 : 0,
@@ -683,7 +685,7 @@
           cost[k] = v;
         }
         return {
-          id, msgType: 'craft_building', icon: itemIconHtml(id, 34, '🏗️'),
+          id, msgType: 'craft_building', icon: itemIconHtml(id, 34, ''),
           name: r.label || id,
           cost, needHammer: !!r._needHammer,
           have: inventory[id] || 0,
@@ -692,7 +694,7 @@
     } else if (craftCat === 'item') {
       // 14.50 itemRecipes — 통나무→판자 등
       items = Object.entries(itemRecipes || {}).map(([id, r]) => ({
-        id, msgType: 'craft_item', icon: itemIconHtml(id, 34, '🪚'),
+        id, msgType: 'craft_item', icon: itemIconHtml(id, 34, ''),
         name: r.label || id,
         cost: r.from || {},
         produces: r.to || {},
@@ -703,24 +705,24 @@
       const cr = cookRecipes || {};
       if (Object.keys(cr).length === 0) {
         items = [
-          { id: 'meat_cooked', msgType: 'cook', icon: itemIconHtml('meat_cooked', 34, '🍗'), name: '고기 굽기', cost: { meat_raw: 1 }, needCampfire: true },
-          { id: 'berry_jam', msgType: 'cook', icon: itemIconHtml('berry_jam', 34, '🍯'), name: '베리잼', cost: { berry: 3 }, needCampfire: true },
-          { id: 'water_bottle', msgType: 'cook', icon: itemIconHtml('water_bottle', 34, '🥤'), name: '물병', cost: { fiber: 2 }, needCampfire: true },
+          { id: 'meat_cooked', msgType: 'cook', icon: itemIconHtml('meat_cooked', 34, ''), name: '고기 굽기', cost: { meat_raw: 1 }, needCampfire: true },
+          { id: 'berry_jam', msgType: 'cook', icon: itemIconHtml('berry_jam', 34, ''), name: '베리잼', cost: { berry: 3 }, needCampfire: true },
+          { id: 'water_bottle', msgType: 'cook', icon: itemIconHtml('water_bottle', 34, ''), name: '물병', cost: { fiber: 2 }, needCampfire: true },
         ];
       } else {
         items = Object.entries(cr).map(([id, r]) => ({
-          id, msgType: 'cook', icon: itemIconHtml(id, 34, '🍳'),
+          id, msgType: 'cook', icon: itemIconHtml(id, 34, ''),
           name: r.label || id, cost: r.cost || {}, needCampfire: true,
         }));
       }
     }
     const cats = [
-      { id: 'tool',     label: '🔧 도구' },
-      { id: 'equip',    label: '🧥 장비' },
-      { id: 'trade',    label: '🏪 거래' },
-      { id: 'building', label: '🏗️ 건축물' },
-      { id: 'item',     label: '🪚 가공' },
-      { id: 'food',     label: '🍖 음식/요리' },
+      { id: 'tool',     label: '도구' },
+      { id: 'equip',    label: '장비' },
+      { id: 'trade',    label: '거래' },
+      { id: 'building', label: '건축물' },
+      { id: 'item',     label: '가공' },
+      { id: 'food',     label: '음식/요리' },
     ];
     body.innerHTML = `
       <div class="craft-layout">
@@ -728,7 +730,7 @@
           ${cats.map(c => `<div class="craft-cat ${c.id===craftCat?'active':''}" data-cat="${c.id}">${c.label}</div>`).join('')}
         </div>
         <div class="craft-items">
-          ${craftCat === 'equip' ? equipmentSectionHtml() : craftCat === 'trade' ? tradeSectionHtml() : (items.length === 0 ? '<div style="color:#8a93a0;padding:20px;text-align:center">레시피 없음</div>' : items.map(r => {
+          ${craftCat === 'equip' ? equipmentSectionHtml() : craftCat === 'trade' ? tradeSectionHtml() : (items.length === 0 ? '<div style="color:var(--dim-2);padding:20px;text-align:center">레시피 없음</div>' : items.map(r => {
             // need 체크
             const costOK = Object.entries(r.cost).every(([k,v]) => (inventory[k]||0) >= v);
             const hammerOK = !r.needHammer || hasToolAlive('hammer');
@@ -736,17 +738,17 @@
             const canMake = costOK && hammerOK && toolOK;
             const costStr = Object.entries(r.cost).map(([k,v]) => `${itemIconHtml(k, 16, itemKo(k))} ${v}`).join(' · ') || '-';
             const flags = [];
-            if (r.needHammer) flags.push('🔨');
+            if (r.needHammer) flags.push('');
             if (r.needTool) flags.push(r.needTool);
-            if (r.needCampfire) flags.push('🔥');
+            if (r.needCampfire) flags.push('');
             if (r.produces) {
               const prodStr = Object.entries(r.produces).map(([k,v]) => `${itemIconHtml(k, 16, itemKo(k))}×${v}`).join(' ');
-              flags.push(`→ ${prodStr}`);
+              flags.push(`${prodStr}`);
             }
             const haveBadge = (typeof r.have === 'number')
               ? (r.durStr
-                  ? ` <span style="color:#7cd97c;font-weight:normal">[${r.durStr}]</span>`
-                  : ` <span style="color:#8fc8ff;font-weight:normal">×${r.have}</span>`)
+                  ? ` <span style="color:var(--stam);font-weight:normal">[${r.durStr}]</span>`
+                  : ` <span style="color:var(--thirst);font-weight:normal">×${r.have}</span>`)
               : '';
             return `<div class="craft-recipe ${canMake?'can-make':'cant-make'}">
               <div class="cr-icon">${r.icon}</div>
@@ -770,30 +772,30 @@
 
   // === 건축 모드 패널 (14.51 신 시스템 안내 + ON/OFF 토글) ===
   function renderBuildPanel(body) {
-    const status = buildMode ? '<span style="color:#7cd97c">ON</span>' : '<span style="color:#ff7c7c">OFF</span>';
+    const status = buildMode ? '<span style="color:var(--stam)">ON</span>' : '<span style="color:var(--hp)">OFF</span>';
     body.innerHTML = `
-      <div style="padding:12px;color:#cfd6e0;line-height:1.6;font-size:13px">
-        <h3 style="margin:0 0 12px 0;color:#f0c674">🏗️ 건축 모드 ${status}</h3>
-        <button id="buildToggleBtn" style="width:100%;padding:10px;background:${buildMode?'#7cd97c':'#3a4a5a'};color:#fff;border:none;border-radius:4px;font-size:14px;font-weight:bold;cursor:pointer;margin-bottom:12px">
-          ${buildMode ? '⏹ 건축 모드 끄기' : '▶ 건축 모드 켜기'} (B키)
+      <div style="padding:12px;color:var(--fg);line-height:1.6;font-size:13px">
+        <h3 style="margin:0 0 12px 0;color:var(--accent)">건축 모드 ${status}</h3>
+        <button id="buildToggleBtn" style="width:100%;padding:10px;background:${buildMode?'var(--stam)':'var(--line)'};color:var(--fg-strong);border:none;border-radius: 0;font-size:14px;font-weight:bold;cursor:pointer;margin-bottom:12px">
+          ${buildMode ? '건축 모드 끄기' : '건축 모드 켜기'} (B키)
         </button>
-        <div style="background:#1a1f25;padding:10px;border-radius:4px;font-size:12px;color:#8a93a0">
-          <p style="margin:0 0 8px 0;color:#f0c674;font-weight:bold">📋 사용법</p>
-          <p style="margin:0 0 6px 0">① 🔨 <b>제작</b> 패널에서 "건축물" 탭 → 벽/바닥 제작 (자원+망치 소비) → 인벤에 들어감</p>
-          <p style="margin:0 0 6px 0">② <b>B키</b>로 건축 모드 ON</p>
-          <p style="margin:0 0 6px 0">③ <b>I</b>로 인벤 → 건축물 아이템 클릭 → placement 모드</p>
-          <p style="margin:0 0 6px 0">④ 맵 좌클릭 → <b>3초 progress</b> → 배치 (이동 시 취소)</p>
-          <p style="margin:0 0 6px 0">⑤ 우클릭 = 회전 · ESC = placement 종료</p>
-          <p style="margin:0 0 0 0">⑥ 건축물에 마우스 hover → 좌클릭 → <b>3초 progress</b> → 분해 (인벤 +1)</p>
+        <div style="background:var(--head);padding:10px;border-radius: 0;font-size:12px;color:var(--dim-2)">
+          <p style="margin:0 0 8px 0;color:var(--accent);font-weight:bold">사용법</p>
+          <p style="margin:0 0 6px 0"><b>제작</b> 패널에서 "건축물" 탭 벽/바닥 제작 (자원+망치 소비) 인벤에 들어감</p>
+          <p style="margin:0 0 6px 0"><b>B키</b>로 건축 모드 ON</p>
+          <p style="margin:0 0 6px 0"><b>I</b>로 인벤 건축물 아이템 클릭 placement 모드</p>
+          <p style="margin:0 0 6px 0">맵 좌클릭 <b>3초 progress</b> 배치 (이동 시 취소)</p>
+          <p style="margin:0 0 6px 0">우클릭 = 회전 · ESC = placement 종료</p>
+          <p style="margin:0 0 0 0">건축물에 마우스 hover 좌클릭 <b>3초 progress</b> 분해 (인벤 +1)</p>
         </div>
-        <div style="background:#2a1f15;padding:10px;border-radius:4px;font-size:12px;color:#c89070;margin-top:8px">
-          ⚠️ 옛 즉시 빌드 시스템은 제거됨. 모든 건축물 = 제작→인벤→배치.
+        <div style="background:var(--head);padding:10px;border-radius: 0;font-size:12px;color:var(--accent);margin-top:8px">
+          옛 즉시 빌드 시스템은 제거됨. 모든 건축물 = 제작인벤배치.
         </div>
         <!-- 터 잡기(다단계 건축) — 아래 JS 주석 참조. 노·숯가마·움집은 아이템이 아니라 '터'다. -->
-        <div id="siteBuildBox" style="background:#1a1f25;padding:10px;border-radius:4px;font-size:12px;margin-top:8px">
-          <p style="margin:0 0 8px 0;color:#f0c674;font-weight:bold">⛏️ 터 잡기 (다단계 건축 — 자리부터 잡는다)</p>
+        <div id="siteBuildBox" style="background:var(--head);padding:10px;border-radius: 0;font-size:12px;margin-top:8px">
+          <p style="margin:0 0 8px 0;color:var(--accent);font-weight:bold">터 잡기 (다단계 건축 — 자리부터 잡는다)</p>
           <div id="siteBuildList" style="display:flex;flex-direction:column;gap:6px"></div>
-          <p style="margin:8px 0 0 0;color:#8a93a0">자리를 잡은 뒤 자재를 들고 터를 클릭하면 다음 단계가 올라간다.</p>
+          <p style="margin:8px 0 0 0;color:var(--dim-2)">자리를 잡은 뒤 자재를 들고 터를 클릭하면 다음 단계가 올라간다.</p>
         </div>
       </div>`;
     // ★★[2026-08-02d 배치 5 ⑥ — 실클라 E2E 가 잡은 결함] 터 잡기(다단계 건축) 구획.
@@ -813,16 +815,16 @@
         if (srcBtn.style && srcBtn.style.display === 'none') continue;   // 시대 미해금(괴련로 등)은 정본 그대로 숨긴다
         const b = document.createElement('button');
         b.textContent = (srcBtn.textContent || '').trim();
-        b.style.cssText = 'width:100%;padding:8px;background:#3a4a5a;color:#e8eaed;border:1px solid #4a5a6a;border-radius:4px;cursor:pointer;font-size:13px;text-align:left';
-        b.onclick = () => { srcBtn.click(); closeSide(); };   // ★정본 핸들러 호출 — 배치 모드 진입 후 패널을 비켜 준다
+        b.style.cssText = 'width:100%;padding:8px;background:var(--line);color:var(--fg);border:1px solid var(--line-2);border-radius: 0;cursor:pointer;font-size:13px;text-align:left';
+        b.onclick = () => { srcBtn.click(); closeSide(); };   // 정본 핸들러 호출 — 배치 모드 진입 후 패널을 비켜 준다
         list.appendChild(b);
       }
-      if (!list.children.length) list.innerHTML = '<span style="color:#8a93a0">(지금 잡을 수 있는 터가 없다)</span>';
+      if (!list.children.length) list.innerHTML = '<span style="color:var(--dim-2)">(지금 잡을 수 있는 터가 없다)</span>';
     }
     document.getElementById('buildToggleBtn').onclick = () => {
       buildMode = !buildMode;
       if (!buildMode) placementMode = null;
-      showNotice(buildMode ? '🏗️ 건축 모드 ON' : '건축 모드 OFF');
+      showNotice(buildMode ? '건축 모드 ON' : '건축 모드 OFF');
       renderBuildPanel(body);
       if (invOpen) renderInvPanel(document.getElementById('invBody'));
     };
@@ -845,65 +847,65 @@
   const _pviKo = (r) => _PVI_LABEL[r] || r;
   function showVillageInventory(inv) {
     if (!inv) return;
-    window.__villageInv = inv;   // ★진단 훅(읽기 전용) — E2E 가 '화면 표시값 = 서버 실값'을 assert 한다
+    window.__villageInv = inv;   // 진단 훅(읽기 전용) — E2E 가 '화면 표시값 = 서버 실값'을 assert 한다
     let el = document.getElementById('villageInvPanel');
     if (!el) {
       el = document.createElement('div');
       el.id = 'villageInvPanel';
       el.style.cssText = 'position:fixed;right:16px;top:64px;width:330px;max-height:72vh;overflow:auto;'
-        + 'background:#141a22;color:#e8eaed;border:1px solid #2a3340;border-radius:8px;z-index:900;'
-        + 'font-size:13px;box-shadow:0 6px 22px rgba(0,0,0,.5)';
+        + 'background:var(--pane-solid);color:var(--fg);border:1px solid var(--inset);border-radius: 0;z-index:900;'
+        + 'font-size:13px;box-shadow:0 6px 22px rgba(var(--bg-rgb), .5)';
       document.body.appendChild(el);
     }
     el.style.display = 'block';
     const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
     const empty = inv.pop === 0;
-    let h = `<div style="padding:10px;border-bottom:1px solid #2a3340;display:flex;justify-content:space-between;align-items:center">`
-      + `<b>🏘️ ${esc(inv.name)}</b><span id="pviClose" style="cursor:pointer;color:#8a93a0;padding:0 4px">✕</span></div>`;
-    h += `<div style="padding:8px 10px;color:#8fc8ff">👥 인구 <b>${inv.pop}</b>`
-      + (inv.housing != null ? ` <span style="color:#8a93a0">/ 주거 ${inv.housing}</span>` : '')
-      + ` · 📅 Day ${inv.day}<span style="color:#8a93a0"> (창설 ${inv.foundedDay})</span>`
+    let h = `<div style="padding:10px;border-bottom:1px solid var(--inset);display:flex;justify-content:space-between;align-items:center">`
+      + `<b>${esc(inv.name)}</b><span id="pviClose" style="cursor:pointer;color:var(--dim-2);padding:0 4px"></span></div>`;
+    h += `<div style="padding:8px 10px;color:var(--thirst)">인구 <b>${inv.pop}</b>`
+      + (inv.housing != null ? ` <span style="color:var(--dim-2)">/ 주거 ${inv.housing}</span>` : '')
+      + ` · Day ${inv.day}<span style="color:var(--dim-2)"> (창설 ${inv.foundedDay})</span>`
       // ★★[시세 창 day 판정 2026-08-30] 여기 Day 는 **econ 게임일**이다(벽시계가 아니다).
       //   재민 목격 "몇 초마다 day 5씩"의 정체: 이 서버의 하루 길이(`VILLAGE_DAY_MS`)가 짧으면
       //   econ 일이 그만큼 빨리 흐른다 — 표기 버그가 아니라 **그 서버의 시계**다.
       //   그래서 날짜 옆에 **달력을 같이** 적는다. HUD 배지와 같은 값이면 시계가 하나라는 증거다.
-      + (myCalendar ? `<span style="color:#8a93a0"> · ${myCalendar.year}년 ${myCalendar.seasonKo} ${myCalendar.dayOfSeason}일</span>` : '')
+      + (myCalendar ? `<span style="color:var(--dim-2)"> · ${myCalendar.year}년 ${myCalendar.seasonKo} ${myCalendar.dayOfSeason}일</span>` : '')
       + `</div>`;
-    h += `<div style="padding:0 10px 8px">🌾 식량 환산 <b>${inv.foodEquiv}</b>`
-      + (inv.pop > 0 ? ` <span style="color:#8a93a0">(1인 ${inv.foodDays}일치)</span>` : '') + `</div>`;
+    h += `<div style="padding:0 10px 8px">식량 환산 <b>${inv.foodEquiv}</b>`
+      + (inv.pop > 0 ? ` <span style="color:var(--dim-2)">(1인 ${inv.foodDays}일치)</span>` : '') + `</div>`;
     if (empty) {
       // ★인구 0 = "빈 터"다. 소멸이 아니라 **아직 시작 안 함**이라는 걸 화면이 말해야 한다.
       const need = inv.nextResidentAt;
       const have = (inv.nextResidentHave != null) ? inv.nextResidentHave : inv.foodEquiv;   // 서버가 준 정본 값(클라 재계산 0)
-      h += `<div style="margin:0 10px 10px;padding:8px;background:#1c2a1c;border:1px solid #2f4a2f;border-radius:6px;color:#cfe8cf">`
+      h += `<div style="margin:0 10px 10px;padding:8px;background:var(--head);border:1px solid var(--line);border-radius: 0;color:var(--fg)">`
         + `아직 아무도 살지 않는다. 곳간 <b>식량 ${need}</b>어치가 쌓이면 첫 주민이 깃든다`
-        + (need ? ` <span style="color:#8a93a0">(지금 <b data-pvi-have>${(+have).toFixed(1)}</b>)</span>` : '') + `.</div>`;
+        + (need ? ` <span style="color:var(--dim-2)">(지금 <b data-pvi-have>${(+have).toFixed(1)}</b>)</span>` : '') + `.</div>`;
     }
     for (const g of (inv.groups || [])) {
-      h += `<div style="padding:6px 10px;border-top:1px solid #2a3340;color:#8a93a0">${esc(g.ko)}</div><table style="width:100%;font-size:12px;border-collapse:collapse">`;
+      h += `<div style="padding:6px 10px;border-top:1px solid var(--inset);color:var(--dim-2)">${esc(g.ko)}</div><table style="width:100%;font-size:12px;border-collapse:collapse">`;
       for (const it of g.items) {
         h += `<tr><td style="padding:2px 10px">${esc(_pviKo(it.r))}</td>`
-          + `<td align="right" style="padding:2px 10px;color:#fff" data-pvi="${esc(it.r)}">${it.q}</td></tr>`;
+          + `<td align="right" style="padding:2px 10px;color:var(--fg-strong)" data-pvi="${esc(it.r)}">${it.q}</td></tr>`;
       }
       h += `</table>`;
     }
     if ((inv.treasury || []).length) {
-      h += `<div style="padding:6px 10px;border-top:1px solid #2a3340;color:#8a93a0">국고(걷힌 실물)</div><table style="width:100%;font-size:12px;border-collapse:collapse">`;
-      for (const it of inv.treasury) h += `<tr><td style="padding:2px 10px">${esc(_pviKo(it.r))}</td><td align="right" style="padding:2px 10px;color:#d8c898">${it.q}</td></tr>`;
+      h += `<div style="padding:6px 10px;border-top:1px solid var(--inset);color:var(--dim-2)">국고(걷힌 실물)</div><table style="width:100%;font-size:12px;border-collapse:collapse">`;
+      for (const it of inv.treasury) h += `<tr><td style="padding:2px 10px">${esc(_pviKo(it.r))}</td><td align="right" style="padding:2px 10px;color:var(--accent-hi)">${it.q}</td></tr>`;
       h += `</table>`;
     }
     // ── 곳간에 넣기 — 내가 지금 들고 있는 것 중 **이 곳간이 받는 것**만 버튼으로 ──────
     //   목록은 서버가 준 `accepts` 그대로다(클라가 제 목록을 따로 갖지 않는다 — 사본 금지).
     const acc = inv.accepts || {};
     const mine = Object.keys(acc).filter((k) => (inventory[k] || 0) > 0);
-    h += `<div style="padding:6px 10px;border-top:1px solid #2a3340;color:#8a93a0">곳간에 넣기 (내 짐)</div>`;
+    h += `<div style="padding:6px 10px;border-top:1px solid var(--inset);color:var(--dim-2)">곳간에 넣기 (내 짐)</div>`;
     if (!mine.length) {
-      h += `<div style="padding:0 10px 8px;color:#6f7a88;font-size:11px">넣을 만한 걸 안 들고 있다.</div>`;
+      h += `<div style="padding:0 10px 8px;color:var(--dim-2);font-size:11px">넣을 만한 걸 안 들고 있다.</div>`;
     } else {
       h += `<div style="padding:0 10px 10px;display:flex;flex-wrap:wrap;gap:6px">`;
       for (const k of mine) {
-        h += `<button data-pvi-put="${esc(k)}" style="padding:5px 8px;background:#2b3a4a;color:#e8eaed;border:1px solid #3c4e60;border-radius:4px;cursor:pointer;font-size:12px">`
-          + `${esc(_pviKo(acc[k]))} ${inventory[k]} ▸ 넣기</button>`;
+        h += `<button data-pvi-put="${esc(k)}" style="padding:5px 8px;background:var(--line);color:var(--fg);border:1px solid var(--line);border-radius: 0;cursor:pointer;font-size:12px">`
+          + `${esc(_pviKo(acc[k]))} ${inventory[k]} 넣기</button>`;
       }
       h += `</div>`;
     }
@@ -911,18 +913,18 @@
     //   (자격 판정을 클라가 다시 풀면 그게 사본이다 · 판정 정본은 `server/newcomers.js`).
     if (inv.welcome) {
       const w = inv.welcome;
-      h += `<div style="padding:6px 10px;border-top:1px solid #2a3340;color:#8a93a0">이방인 받기</div>`
+      h += `<div style="padding:6px 10px;border-top:1px solid var(--inset);color:var(--dim-2)">이방인 받기</div>`
         + `<div style="padding:0 10px 10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">`
-        + `<button id="pviWel" style="padding:5px 9px;background:${w.on ? '#2f4a2f' : '#2b3a4a'};color:#e8eaed;border:1px solid ${w.on ? '#4a7a4a' : '#3c4e60'};border-radius:4px;cursor:pointer;font-size:12px">`
-        + `${w.on ? '🚪 받는 중 — 끄기' : '🚪 이방인 받기'}</button>`
-        + (w.listed ? `<span style="color:#a9c6a0;font-size:11px">시작 지도에 올라 있다</span>`
-                    : `<span style="color:#8a93a0;font-size:11px">${w.on ? '아직 지도엔 안 오른다' : '지도에 없다'}</span>`)
+        + `<button id="pviWel" style="padding:5px 9px;background:${w.on ? 'var(--line)' : 'var(--line)'};color:var(--fg);border:1px solid ${w.on ? 'var(--stam)' : 'var(--line)'};border-radius: 0;cursor:pointer;font-size:12px">`
+        + `${w.on ? '받는 중 — 끄기' : '이방인 받기'}</button>`
+        + (w.listed ? `<span style="color:var(--dim);font-size:11px">시작 지도에 올라 있다</span>`
+                    : `<span style="color:var(--dim-2);font-size:11px">${w.on ? '아직 지도엔 안 오른다' : '지도에 없다'}</span>`)
         + `</div>`;
       if (w.why && w.why.length) {
-        h += `<div style="padding:0 10px 8px;color:#c98a8a;font-size:11px">${esc(w.why.join(' · '))}</div>`;
+        h += `<div style="padding:0 10px 8px;color:var(--hp);font-size:11px">${esc(w.why.join(' · '))}</div>`;
       }
     }
-    h += `<div style="padding:8px 10px;color:#6f7a88;font-size:11px;border-top:1px solid #2a3340">회관을 다시 클릭하면 갱신된다</div>`;
+    h += `<div style="padding:8px 10px;color:var(--dim-2);font-size:11px;border-top:1px solid var(--inset)">회관을 다시 클릭하면 갱신된다</div>`;
     el.innerHTML = h;
     const cl = document.getElementById('pviClose');
     if (cl) cl.onclick = () => { el.style.display = 'none'; };
@@ -941,11 +943,8 @@
   let _pviHallId = null;   // 마지막으로 연 회관 — "넣기"가 어느 곳간인지
 
   // === 시세 패널 — 중앙 economy 모듈에서 마을별 가격 fetch + 비교 ===
-  const RES_ICON = {
-    food: '🌾', fish: '🐟', meat: '🥩', cooked_food: '🍲',
-    wood: '🪵', stone: '🪨', ore: '⛏️', tool: '⚒️',
-    fruit: '🍎', vegetable: '🥬', mushroom: '🍄', twig: '🌿', pebble: '🪨', hide: '🦴',
-  };
+  // ★[T66 2차] 시세 표의 자원 그림은 **아이템 그림 하나**(`itemPic`)로 간다 — 옛 이모지 표는 삭제.
+  //   `food`·`cooked_food` 처럼 econ 자원 갈래 이름은 굽힌 렌더가 없어 점선 칸이 뜬다(ART 회부).
   let _marketSel = null;
   function renderMarketPanel(body) {
     // Phase 4d-4: 캐나디아 zone이면 캐나디아 시세 (7마을), 그 외엔 글로벌 (20마을)
@@ -953,13 +952,13 @@
     return renderMarketPanelFromUrl(body, url);
   }
   function renderMarketPanelFromUrl(body, url) {
-    body.innerHTML = `<div style="padding:10px;color:#8a93a0">시세 데이터 로딩 중…</div>`;
+    body.innerHTML = `<div style="padding:10px;color:var(--dim-2)">시세 데이터 로딩 중…</div>`;
     fetch(url).then(r => r.json()).then(d => {
       const villages = d.villages || [];
       villages.sort((a, b) => b.pop - a.pop);
       if (!_marketSel) _marketSel = villages[0]?.name;
       const sel = villages.find(v => v.name === _marketSel) || villages[0];
-      let html = `<div style="padding:8px;color:#8fc8ff">📅 Day ${d.day} · ${villages.length}개 마을</div>`;
+      let html = `<div style="padding:8px;color:var(--thirst)">Day ${d.day} · ${villages.length}개 마을</div>`;
       html += `<select id="mkSel" style="margin:6px;padding:4px;font-size:13px">`;
       villages.forEach(v => {
         const tax = (v.guild.taxRate * 100).toFixed(1);
@@ -967,38 +966,37 @@
       });
       html += `</select>`;
       if (sel) {
-        html += `<div style="padding:8px;border-top:1px solid #2a3340"><b>🏪 ${sel.name} 시세</b> <span style="color:#8a93a0">(인구 ${sel.pop}, 세율 ${(sel.guild.taxRate*100).toFixed(1)}%)</span></div>`;
+        html += `<div style="padding:8px;border-top:1px solid var(--inset)"><b>${sel.name} 시세</b> <span style="color:var(--dim-2)">(인구 ${sel.pop}, 세율 ${(sel.guild.taxRate*100).toFixed(1)}%)</span></div>`;
         html += `<table style="width:100%;font-size:12px;border-collapse:collapse">`;
-        html += `<tr style="color:#8a93a0;border-bottom:1px solid #2a3340"><th align="left" style="padding:4px">자원</th><th align="right">여기</th>`;
+        html += `<tr style="color:var(--dim-2);border-bottom:1px solid var(--inset)"><th align="left" style="padding:4px">자원</th><th align="right">여기</th>`;
         // 비교 마을 — 상위 4개 (선택 마을 제외)
         const compareTowns = villages.filter(v => v.name !== sel.name).slice(0, 4);
-        compareTowns.forEach(v => { html += `<th align="right" style="color:#5a9ae0">${v.name.slice(0,3)}</th>`; });
-        html += `<th align="right" style="color:#8a93a0">최저</th><th align="right" style="color:#8a93a0">최고</th></tr>`;
+        compareTowns.forEach(v => { html += `<th align="right" style="color:var(--thirst)">${v.name.slice(0,3)}</th>`; });
+        html += `<th align="right" style="color:var(--dim-2)">최저</th><th align="right" style="color:var(--dim-2)">최고</th></tr>`;
         Object.keys(sel.prices).forEach(r => {
           const myPrice = sel.prices[r];
           const allPrices = villages.map(v => v.prices[r]);
           const minP = Math.min(...allPrices);
           const maxP = Math.max(...allPrices);
-          const icon = RES_ICON[r] || '·';
-          html += `<tr style="border-bottom:1px solid #1a1f28">`;
-          html += `<td style="padding:3px">${icon} ${r}</td>`;
-          html += `<td align="right" style="color:#fff">${myPrice.toFixed(2)}</td>`;
+          html += `<tr style="border-bottom:1px solid var(--head)">`;
+          html += `<td style="padding:3px">${itemPic(r, 16)} ${itemKo(r)}</td>`;
+          html += `<td align="right" style="color:var(--fg-strong)">${myPrice.toFixed(2)}</td>`;
           compareTowns.forEach(v => {
             const p = v.prices[r];
-            const color = p < myPrice * 0.7 ? '#f08080' : p > myPrice * 1.5 ? '#80f080' : '#8a93a0';
+            const color = p < myPrice * 0.7 ? 'var(--hp)' : p > myPrice * 1.5 ? 'var(--stam)' : 'var(--dim-2)';
             html += `<td align="right" style="color:${color}">${p.toFixed(2)}</td>`;
           });
-          html += `<td align="right" style="color:#80f080">${minP.toFixed(2)}</td>`;
-          html += `<td align="right" style="color:#f08080">${maxP.toFixed(2)}</td>`;
+          html += `<td align="right" style="color:var(--stam)">${minP.toFixed(2)}</td>`;
+          html += `<td align="right" style="color:var(--hp)">${maxP.toFixed(2)}</td>`;
           html += `</tr>`;
         });
         html += `</table>`;
-        html += `<div style="padding:6px;color:#8a93a0;font-size:11px">🟢 여기보다 쌈 · 🔴 여기보다 비쌈 · 최저/최고 = 전 마을 가격 범위</div>`;
+        html += `<div style="padding:6px;color:var(--dim-2);font-size:11px">여기보다 쌈 · 여기보다 비쌈 · 최저/최고 = 전 마을 가격 범위</div>`;
       }
       body.innerHTML = html;
       const selEl = document.getElementById('mkSel');
       if (selEl) selEl.onchange = (e) => { _marketSel = e.target.value; renderMarketPanel(body); };
     }).catch(err => {
-      body.innerHTML = `<div style="padding:10px;color:#f08080">시세 로드 실패: ${err.message}</div>`;
+      body.innerHTML = `<div style="padding:10px;color:var(--hp)">시세 로드 실패: ${err.message}</div>`;
     });
   }

@@ -352,7 +352,11 @@ async function waitHttp(url, tries = 900) {
     const p5 = await openChron();
     const shown = await page.evaluate(() => [...document.querySelectorAll('#spBody .craft-recipe')]
       .map((el) => ({
-        icon: ((el.querySelector('.cr-icon') || {}).textContent || '').trim(),
+        // ★[T66] 아이콘이 이모지 글자에서 **선 아이콘 SVG** 로 바뀌었다 ⇒ 신원은 path 의 `d` 다
+        //   (`textContent` 로는 전부 빈 문자열이라, 안 고치면 "모든 줄에 아이콘이 있다"가 거짓으로 빨개진다).
+        icon: ((el.querySelector('.cr-icon svg path') || {}).getAttribute
+          ? el.querySelector('.cr-icon svg path').getAttribute('d')
+          : ((el.querySelector('.cr-icon') || {}).textContent || '').trim()),
         bold: /bold/.test(((el.querySelector('.cr-name') || {}).getAttribute('style') || '')),
         line: ((el.querySelector('.cr-name') || {}).textContent || '').trim().slice(0, 40),
       })));
@@ -360,9 +364,12 @@ async function waitHttp(url, tries = 900) {
     const icons = shown.map((x) => x.icon).filter(Boolean);
     ok(icons.length === shown.length, '⑫ 모든 줄에 아이콘이 있다', `${icons.length}/${shown.length}`);
     const uniq = [...new Set(icons)];
-    ok(uniq.length >= 2, '★★⑫ **아이콘이 유형별로 다르다** — 두 종류 이상이 한 화면에 있다(전부 🕰️ 이던 자리)',
-      uniq.join(' ') + `  (${shown.length}줄 중 ${uniq.length}종)`);
-    ok(!(uniq.length === 1 && uniq[0] === '🕰️'), '★⑫ 폴백 하나로 덮이지 않았다', uniq.join(' '));
+    ok(uniq.length >= 2, '★★⑫ **아이콘이 유형별로 다르다** — 두 종류 이상이 한 화면에 있다(전부 한 얼굴이던 자리)',
+      `${shown.length}줄 중 ${uniq.length}종`);
+    // ★[T66] 폴백은 🕰️ 가 아니라 선 아이콘 `scroll` 이다 — 그 하나로 덮이지 않았는지 본다.
+    const fbD = await page.evaluate(() => (typeof UI_ICON_D !== 'undefined' ? UI_ICON_D.scroll : null));
+    ok(!!fbD, '⑫ (상황) 폴백 아이콘(`scroll`)의 정본을 읽었다');
+    ok(!(uniq.length === 1 && uniq[0] === fbD), '★⑫ 폴백 하나로 덮이지 않았다', `${uniq.length}종`);
     // ★"일"은 굵게 — 값이 움직인 줄과 갈린다
     const deeds = shown.filter((x) => x.bold);
     ok(deeds.length > 0, '★⑫ "일"로 표시된 줄은 **굵게** 그려진다(구분은 한 가지만)',

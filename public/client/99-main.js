@@ -176,6 +176,30 @@
   // ★★[T61 ⓪] **입력칸에 들어가고 나올 때 눌린 키를 비운다.**
   //   글자를 치기 직전에 누르고 있던 키가 `keys` 에 남으면, 타이핑하는 동안 캐릭터가 계속 걷는다
   //   (keyup 이 술어에 막혀 안 지워지기 때문이다 — 잔류 0 규약이 요구하는 짝).
+  // ★★[T66] `data-ico` 가 붙은 요소 앞에 **선 아이콘 한 장**을 넣는다.
+  //   ⚠마크업에 SVG 를 직접 적지 않는 이유: 아이콘이 바뀌면 index.html 을 여러 줄 고쳐야 하고
+  //     그게 곧 사본이다. 이름만 적고 **그림은 세트 하나**(05-u-icon.js)가 낸다.
+  //   ⚠한 번만 넣는다(`_ico` 표) — `updateHud` 가 초당 열 번 도는데 매번 다시 그리면 낭비다.
+  function paintIcons(root) {
+    for (const el of (root || document).querySelectorAll('[data-ico]')) {
+      if (el.dataset._ico === el.dataset.ico) continue;
+      const px = +(el.dataset.icoPx || 0) || (el.classList.contains('sb-icon') ? 22 : 15);
+      // 이름이 바뀌면 **앞 아이콘을 갈아 끼운다**(계속 앞에 덧붙이면 아이콘이 쌓인다 — 시각이 그렇다).
+      if (el.dataset._ico && el.firstElementChild && el.firstElementChild.classList.contains('uic')) el.firstElementChild.remove();
+      el.dataset._ico = el.dataset.ico;
+      el.insertAdjacentHTML('afterbegin', uiIcon(el.dataset.ico, px));
+    }
+  }
+  paintIcons(document);
+  // ★[T66] 개발용 좌표·속도 줄 — 기본 숨김. 값은 계속 갱신된다(`updateHud` 무변) · 새 단축키 0.
+  window.__devRow = (on) => {
+    const r = document.getElementById('devRow');
+    if (!r) return false;
+    r.classList.toggle('on', on === undefined ? !r.classList.contains('on') : !!on);
+    return r.classList.contains('on');
+  };
+  window.__paintIcons = paintIcons;
+
   window.addEventListener('focusin', (e) => { if (isTypingTarget(e)) { keys.clear(); if (mySprint) { mySprint = false; updateHud(); } } });
   window.addEventListener('focusout', (e) => { if (isTypingTarget(e)) keys.clear(); });
   window.addEventListener('keydown', (e) => {
@@ -219,11 +243,11 @@
       else if (k === 'r') sendPrimary({ type: 'repair_building' });          // Shift+R 수리
       else if (k === 'n') {                                                  // Shift+N 납품
         // ★납품 — 품목을 안 보낸다. **서버가** 낼 수 있는 첫 의뢰를 고른다(권위는 서버에 있다).
-        if (evNearVid == null) showNotice('📋 마을 중심에서 너무 멀다');
+        if (evNearVid == null) showNotice('마을 중심에서 너무 멀다');
         else sendPrimary({ type: 'village_deliver', vid: evNearVid });
       }
       else if (k === 'g') {                                                  // Shift+G 게시판
-        if (evNearVid == null) showNotice('📋 마을 중심에서 너무 멀다');
+        if (evNearVid == null) showNotice('마을 중심에서 너무 멀다');
         else sendPrimary({ type: 'village_board', vid: evNearVid });
       }
       // ★Shift+I·K·H·T·B·J 는 **패널 쪽 리스너**(50-i-panel.js)가 잡는다 — 여기선 아무것도 안 한다.
@@ -280,7 +304,7 @@
       // 14.51: B 키 = 건축 모드 토글 (옛 즉시 wall build 폐기)
       buildMode = !buildMode;
       if (!buildMode) { placementMode = null; }
-      showNotice(buildMode ? '🏗️ 건축 모드 ON (인벤에서 건축물 클릭)' : '건축 모드 OFF');
+      showNotice(buildMode ? '건축 모드 켜짐 (인벤에서 건축물 클릭)' : '건축 모드 꺼짐');
       if (invOpen) renderInvPanel(document.getElementById('invBody')); // 재렌더 (강조 갱신)
     }
     else if (k === 'h') sendPrimary({ type: 'build', buildType: 'chest', floor: myBuildFloor });
@@ -350,18 +374,18 @@
       else if (a === 'build_farmland') sendPrimary({ type: 'build', buildType: 'farmland', floor: myBuildFloor });
       else if (a === 'build_stair') sendPrimary({ type: 'build', buildType: 'stair', floor: myBuildFloor });
       else if (a === 'build_floor') sendPrimary({ type: 'build', buildType: 'floor', floor: myBuildFloor });
-      else if (a === 'hut_start') { buildMode = true; placementMode = { special: 'hut_site' }; showNotice('⛏️ 움집터 배치 모드 — 클릭 위치에 6×4 수혈 굴착 (곡괭이 필요 · B=취소)'); }   // ★움집 고증 건축(좀보이드 커서 배치)
+      else if (a === 'hut_start') { buildMode = true; placementMode = { special: 'hut_site' }; showNotice('움집터 배치 모드 — 클릭 위치에 6×4 수혈 굴착 (곡괭이 필요 · B=취소)'); }   // ★움집 고증 건축(좀보이드 커서 배치)
       else if (a === 'furnace_start') {   // ★노 건설(재민 확정 — 움집 동형). kind=도가니로/괴련로(시대가 정한다)
         const kind = btn.dataset.kind || 'crucible';
         buildMode = true; placementMode = { special: 'furnace_site', kind };
-        showNotice(`🔥 ${kind === 'bloomery' ? '괴련로' : '노(爐)'} 터 배치 — 내 사유지/길드 사유지 안 2×2 (B=취소)`);
+        showNotice(`${kind === 'bloomery' ? '괴련로' : '노(爐)'} 터 배치 — 내 사유지/길드 사유지 안 2×2 (B=취소)`);
       }
-      else if (a === 'kiln_start') { buildMode = true; placementMode = { special: 'kiln_site' }; showNotice('🪵 숯가마 터 배치 — 내 사유지/길드 사유지 안 2×2 (돌 4·곡괭이 · B=취소)'); }   // ★숯가마(노와 같은 계약)
+      else if (a === 'kiln_start') { buildMode = true; placementMode = { special: 'kiln_site' }; showNotice('숯가마 터 배치 — 내 사유지/길드 사유지 안 2×2 (돌 4·곡괭이 · B=취소)'); }   // ★숯가마(노와 같은 계약)
       // ★★[2026-08-03e 배치 12 ①] 마을 회관 — 노·숯가마와 **완전히 같은 배치 계약**(2×2·사유지·단계).
       //   다른 건 완공이 곧 마을 등록이라는 것뿐이다. 자리 가능 여부는 서버가 착공 전에 판정한다.
-      else if (a === 'village_start') { buildMode = true; placementMode = { special: 'village_site' }; showNotice('🏘️ 마을 회관 터 배치 — 내 사유지/길드 사유지 안 2×2 (터 다지기 → 환호 → 굴립주 · B=취소)'); }
+      else if (a === 'village_start') { buildMode = true; placementMode = { special: 'village_site' }; showNotice('마을 회관 터 배치 — 내 사유지/길드 사유지 안 2×2 (터 다지기 → 환호 → 굴립주 · B=취소)'); }
       // ★[11차 T4] 마을 크루에게 집 의뢰 — placementMode.special 재사용(발명 0). 검증·재료·배치는 서버 권위.
-      else if (a === 'psite_request') { buildMode = true; placementMode = { special: 'psite' }; showNotice('🏠 집 의뢰 모드 — 마을 영토 안을 클릭 (기둥6·서까래8·이엉8 선납 · B=취소)'); }
+      else if (a === 'psite_request') { buildMode = true; placementMode = { special: 'psite' }; showNotice('집 의뢰 모드 — 마을 영토 안을 클릭 (기둥6·서까래8·이엉8 선납 · B=취소)'); }
       else if (a === 'harvest') sendPrimary({ type: 'harvest' });
       else if (a === 'feed') sendPrimary({ type: 'feed' });
       else if (a === 'tribe') toggleTribePanel();
@@ -381,9 +405,13 @@
   window.__ground = () => nearbyGroundItems().map(({ gi }) => ({ id: gi.id, item: gi.item, count: gi.count, kg: gi.kg, led: gi.led || null, tool: gi.tool || null }));
 // @@moved-end:12091
 // @@moved-begin:12454
-  (function preloadItemIcons() {
+  window.__preloadItemIcons = function preloadItemIcons() {
     if (typeof Image !== 'function') return;
-    const keys = Object.keys(ITEM_ICONS).filter((k) => !ICON_NO_RENDER.has(k));
+    // ★[T66] 이모지 표가 없어졌다 ⇒ **구울 키 목록의 정본은 서버 이름표**다(품목이 곧 그림 대상이다).
+    //   ⚠구울 키는 `ICON_RENDERED`(구운 것의 목록) 다 — 없는 것을 세면 300키에서 404 폭탄이 난다
+    //     (`e2e-nature` 가 "자산 요청 404 없음"으로 그걸 지킨다).
+    //   ⚠welcome 이 오기 전이면 표가 비어 있다 — 그래서 welcome 뒤에 한 번 더 부른다(아래 훅).
+    const keys = [...ICON_RENDERED];   // ★[T66] 구운 것만 요청한다 — 404 0(위 주석)
     let settled = 0;
     const done = () => {
       if (++settled === keys.length) { try { updateHud(); } catch (e) {} }
@@ -394,7 +422,7 @@
       im.onerror = () => { done(); };
       im.src = '/assets/icons/' + k + '.png';
     }
-  })();
+  };
 // @@moved-end:12454
 // @@moved-begin:13719
   window.__openInv = (cid) => { if (cid) activeContainerId = cid; openInv(); return true; };

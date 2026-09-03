@@ -207,8 +207,8 @@
     if (!el) {
       el = document.createElement('div');
       el.id = 'buildProgress';
-      el.style.cssText = 'position:fixed;left:50%;top:60%;transform:translate(-50%,-50%);background:rgba(20,25,30,0.92);color:#fff;padding:10px 20px;border-radius:8px;border:2px solid #f0c674;z-index:9999;display:none;font-size:14px;pointer-events:none;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.4)';
-      el.innerHTML = '<div class="bp-text" style="margin-bottom:6px;font-weight:bold">작업 중...</div><div style="width:240px;height:10px;background:#333;border-radius:5px;overflow:hidden"><div class="bp-fill" style="height:100%;background:linear-gradient(90deg,#f0c674,#ffd88a);width:0%"></div></div>';
+      el.style.cssText = 'position:fixed;left:50%;top:60%;transform:translate(-50%,-50%);background:rgba(var(--pane-rgb), 0.92);color:var(--fg-strong);padding:10px 20px;border-radius: 0;border:2px solid var(--accent);z-index:9999;display:none;font-size:14px;pointer-events:none;text-align:center;box-shadow:0 4px 12px rgba(var(--bg-rgb), 0.4)';
+      el.innerHTML = '<div class="bp-text" style="margin-bottom:6px;font-weight:bold">작업 중...</div><div style="width:240px;height:10px;background:var(--inset);border-radius: 0;overflow:hidden"><div class="bp-fill" style="height:100%;background:var(--accent-hi);width:0%"></div></div>';
       document.body.appendChild(el);
     }
     return el;
@@ -220,6 +220,6 @@
     const elapsed = performance.now() - buildAction.startedAt;
     const pct = Math.min(100, (elapsed / buildAction.durationMs) * 100);
     el.querySelector('.bp-fill').style.width = pct.toFixed(1) + '%';
-    el.querySelector('.bp-text').textContent = buildAction.kind === 'place' ? '🏗️ 배치 중... (이동 시 취소)' : '🔧 분해 중... (이동 시 취소)';
+    el.querySelector('.bp-text').textContent = buildAction.kind === 'place' ? '배치 중… (이동 시 취소)' : '분해 중… (이동 시 취소)';
   }
 

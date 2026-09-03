@@ -3544,6 +3544,11 @@ async function _acceptConnection(ws, req, C) {
     //   종전엔 클라(`60-t-market.js ITEM_KR` 9키)가 표를 들고 있었다. 그게 사본이고, T55 가 품목에서
     //   닫은 것과 **같은 결함**이다(서버가 종류를 늘리면 화면만 영문으로 남는다).
     categoryLabels: ItemLabel.CATEGORY_KO,
+    // ★★[T66 ⓪ 2026-09-03] **이 카드의 유일한 서버 줄.** 클라에 남아 있던 사본 둘을 닫는다:
+    //   `60-t-market.js JOB_KR`(zone 의 `JOB_KR_NPC` 와 글자까지 같았다) · `43-i-icon.js SEASON_KO`
+    //   (`events.KO_SEASON` 이 정본 — 달력이 이미 **현재** 계절만 보내서, 작물 파종철 표기가 사본을 탔다).
+    //   ⇒ 표 둘을 한 칸에 실어 보낸다. 클라엔 이제 이름 표가 하나도 없다(T61 이 품목·종류를 닫은 그 규약).
+    uiLabels: { jobs: JOB_KR_NPC, seasons: require('./events').KO_SEASON },
     // ★★[무게 배치 2026-08-27] kg 카탈로그를 **서버가 실어 보낸다** — 클라가 표를 들고 있으면
     //   그게 사본이고, 표가 갈리는 날 화면과 실제가 어긋난다(거래소 배치에서 배운 그것).
     itemWeights: Weights.catalog(),

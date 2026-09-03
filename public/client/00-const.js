@@ -8,23 +8,15 @@ console.log('%c[durango-mini] client build = Phase 5-K26 (길드 영토 셀 집�
 // ★★[부패·보존 배치 2026-08-31] 신선도 3단계의 **표시**(값은 서버가 준다 — 여기 문턱을 적지 않는다).
 //   `server/spoil.js` 의 STAGE_KO/STAGE_EMO 와 짝이다. 클라는 곡선을 계산하지 않는다.
 const PRESERVE_STAGE_KO = { fresh: '신선', wilt: '시듦', spoiled: '상함' };
-const PRESERVE_STAGE_EMO = { fresh: '🟢', wilt: '🟡', spoiled: '🔴' };
-const PRESERVE_STAGE_COLOR = { fresh: '#7ec98a', wilt: '#d9b45a', spoiled: '#e07575' };
+// ★[T66] 이모지 0 — 신선도는 **글자와 색**으로 말한다(`PRESERVE_STAGE_KO` + `PRESERVE_STAGE_COLOR`).
+// ★[T66 2차] 보존 단계 이모지 표(🥬·🥀·🤢) 삭제 — 단계는 **글자**(`PRESERVE_STAGE_KO`)와 색이 말한다.
+const PRESERVE_STAGE_COLOR = { fresh: 'var(--stam)', wilt: 'var(--accent)', spoiled: 'var(--hp)' };
 
 // Phase 4d-16-c: facility 종류별 emoji
-const FACILITY_EMOJI = {
-  drying_rack: '🧺',   // ★[보존 배치] 건조대
-  house: '🏠',
-  farmland: '🌾',  // default — farmStage 있으면 override
-  forge: '🔥',
-  hide_rack: '🟫',
-  workshop: '⚒️',
-  kitchen: '🍲',
-  training: '⚔️',
-  cart: '🛒',
-};
+// ★★[T66 · 재민 확정 5] **가구·시설도 그림이 하나다.** 이모지 표를 지웠다 —
+//   스프라이트가 있으면 그것, 없으면 **점선 빈 칸**(캔버스에선 점선 네모)이다.
+//   ⇒ 무엇을 구워야 하는지 화면이 스스로 말한다. 굽는 것은 ART 카드(§6).
 // Phase 4d-16-d: farmland stage별 emoji (0=씨, 1=어린싹, 2=자람, 3=익음)
-const FARM_STAGE_EMOJI = ['🟫', '🌱', '🌿', '🌾'];   // 스프라이트 미로드 시 폴백
 // === 에셋 5차: 작물 밭 4단계 스프라이트(Blender crop_render.py — 자연물·아이콘과 동일 씬) ===
 //   곡물(grain)·채소(veg) 2계열 × 4단계(갈은 흙/어린싹/자람/익음). 계열은 셀 좌표 해시로 고정(프레임마다 안 바뀜).
 //   30종 개별 구분은 하지 않음 — 32px에서 판독 불가라 의도적으로 2계열까지만.
@@ -46,13 +38,9 @@ function cropSprite(stage, wx, wy) {
   return (im && im.complete && im.naturalWidth > 0) ? im : null;
 }
 // §4-4 Stage 4A: 마을 시뮬 NPC 직업(p.simJob — economy-sim JOBS 12종) → 이름 옆 이모지
-const SIM_JOB_EMOJI = {
-  farmer: '🌾', fisher: '🎣', hunter: '🏹', lumberjack: '🪓', miner: '⛏️',
-  smith: '🔨', weaponsmith: '⚔️', armorsmith: '🛡️', forager: '🧺',
-  cook: '🍲', warrior: '💂', merchant: '💰',
-  caravan: '🐂', // §4-4 Stage 4B: 캐러밴 실체 상인 — 이름에 화물('상단·<자원>') 포함, 마을 사이 실제 도보 이동
-  bandit: '🏴', // §11 2파: 소굴 배회 도적 실체(연출 전용 — 경제 효과는 econ 주사위 소유)
-};
+// ★[T66] 이모지 0 — NPC 이름 옆 직업 꼬리표를 뗐다. 직업 **이름**이 필요하면
+//   서버 정본(`welcome.uiLabels.jobs` · `jobKo()`)을 부른다(클라 표 0 · T66 ⓪).
+// ★[T66 2차] NPC 직업 이모지 접두 표 삭제 — 이름 앞에 붙던 그림은 없어지고 **직업 이름**은 상태창이 말한다.
 
   const canvas = document.getElementById('canvas');
   // ★`let` 이다 — 줌이 켜지면 월드 패스 동안만 오프스크린 컨텍스트로 갈아 끼운다(아래 zoomBegin).
@@ -226,17 +214,17 @@ const SIM_JOB_EMOJI = {
   let _canadiaVillages = [];
   // 직업별 작업장 offset — server JOB_WORK_OFFSET과 동기화
   const CANADIA_JOB = {
-    farmer:     { angle: 0,                  dist: 280, emoji: '🌾', color: '#7a5a30', label: '농지' },
-    fisher:     { angle: Math.PI * 0.5,      dist: 280, emoji: '🐟', color: '#3a6a90', label: '낚시터' },
-    hunter:     { angle: Math.PI,            dist: 280, emoji: '🏹', color: '#4a6030', label: '사냥터' },
-    forager:    { angle: Math.PI * 1.5,      dist: 280, emoji: '🌿', color: '#5a8038', label: '채집장' },
-    lumberjack: { angle: Math.PI * 0.25,     dist: 280, emoji: '🪵', color: '#5a3a1c', label: '벌목장' },
-    miner:      { angle: Math.PI * 0.75,     dist: 280, emoji: '⛏️', color: '#5a5a5a', label: '광산' },
-    prospector: { angle: Math.PI * 1.25,     dist: 280, emoji: '🔍', color: '#7a7a78', label: '광맥' },
-    smith:      { angle: Math.PI * 1.75,     dist: 100, emoji: '⚒️', color: '#a04020', label: '대장간' },
-    cook:       { angle: Math.PI * 0.125,    dist: 100, emoji: '🍳', color: '#c04040', label: '주방' },
+    farmer:     { angle: 0,                  dist: 280, color: '#7a5a30', label: '농지' },
+    fisher:     { angle: Math.PI * 0.5,      dist: 280, color: '#3a6a90', label: '낚시터' },
+    hunter:     { angle: Math.PI,            dist: 280, color: '#4a6030', label: '사냥터' },
+    forager:    { angle: Math.PI * 1.5,      dist: 280, color: '#5a8038', label: '채집장' },
+    lumberjack: { angle: Math.PI * 0.25,     dist: 280, color: '#5a3a1c', label: '벌목장' },
+    miner:      { angle: Math.PI * 0.75,     dist: 280, color: '#5a5a5a', label: '광산' },
+    prospector: { angle: Math.PI * 1.25,     dist: 280, color: '#7a7a78', label: '광맥' },
+    smith:      { angle: Math.PI * 1.75,     dist: 100, color: '#a04020', label: '대장간' },
+    cook:       { angle: Math.PI * 0.125,    dist: 100, color: '#c04040', label: '주방' },
     // merchant는 거래소 자체에 머무름 — 별도 patch 안 그림 (skip)
-    warrior:    { angle: Math.PI * 1.625,    dist: 100, emoji: '⚔️', color: '#703040', label: '훈련장' },
+    warrior:    { angle: Math.PI * 1.625,    dist: 100, color: '#703040', label: '훈련장' },
   };
   let inventory = { wood: 0, stone: 0 };
   let tools = {};     // 14.52 옛 호환 (사용 X)

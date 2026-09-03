@@ -2,6 +2,7 @@
 
   // ★[T61] 아묾 표시용 — 마지막으로 본 HP 와 "오르는 중" 등불의 유효 시각.
   //   ⚠새 서버 칸 0. 관측값 둘뿐이고, 둘 다 화면 전용이다(예측·판정에 안 쓴다).
+  // ★[T66 2차] 옛 도구 아이콘 표(`TOOL_ICO`)는 삭제 — 도구는 **아이템 그림 하나**(`itemPic`)로 간다.
   let _hpSeen = 0, _healingUntil = 0;
   const HEAL_HOLD_MS = 1500;
   // 14.53: 우클릭 컨텍스트 메뉴 — 임의 옵션 list 받아서 마우스 위치에 띄움.
@@ -15,12 +16,12 @@
     hideContextMenu();
     const m = document.createElement('div');
     m.id = 'ctxMenu';
-    m.style.cssText = `position:fixed;left:${x}px;top:${y}px;background:rgba(20,25,32,0.97);border:1px solid #5a7ab0;border-radius:6px;z-index:99999;min-width:180px;padding:4px;box-shadow:0 4px 16px rgba(0,0,0,0.5);font-size:13px;color:#fff;font-family:sans-serif`;
+    m.style.cssText = `position:fixed;left:${x}px;top:${y}px;background:rgba(var(--pane-rgb), 0.97);border:1px solid var(--thirst);border-radius: 0;z-index:99999;min-width:180px;padding:4px;box-shadow:0 4px 16px rgba(var(--bg-rgb), 0.5);font-size:13px;color:var(--fg-strong);font-family:sans-serif`;
     for (const opt of options) {
       const it = document.createElement('div');
       it.textContent = opt.label;
-      it.style.cssText = 'padding:8px 14px;cursor:pointer;border-radius:4px;user-select:none';
-      it.onmouseenter = () => it.style.background = 'rgba(90,122,176,0.3)';
+      it.style.cssText = 'padding:8px 14px;cursor:pointer;border-radius: 0;user-select:none';
+      it.onmouseenter = () => it.style.background = 'rgba(var(--thirst-rgb), 0.3)';
       it.onmouseleave = () => it.style.background = 'transparent';
       it.onclick = (e) => {
         e.stopPropagation();
@@ -49,10 +50,10 @@
     bar.id = 'hotkeyBar';
     bar.style.cssText = 'position:fixed;left:50%;bottom:10px;transform:translateX(-50%);z-index:500;display:flex;gap:8px;pointer-events:none';
     bar.innerHTML = `
-      <div id="hkSlot1" data-slot="1" style="pointer-events:auto;width:64px;height:64px;background:rgba(15,18,22,0.92);border:2px solid #444;border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;position:relative;user-select:none">
-        <div style="position:absolute;top:2px;left:4px;font-size:10px;color:#8a93a0;font-weight:bold">1</div>
+      <div id="hkSlot1" data-slot="1" style="pointer-events:auto;width:64px;height:64px;background:rgba(var(--bg-rgb), 0.92);border:2px solid var(--line);border-radius: 0;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;position:relative;user-select:none">
+        <div style="position:absolute;top:2px;left:4px;font-size:10px;color:var(--dim-2);font-weight:bold">1</div>
         <div class="hk-icon" style="font-size:24px;line-height:1">·</div>
-        <div class="hk-label" style="font-size:9px;color:#6c7686;margin-top:1px">비어있음</div>
+        <div class="hk-label" style="font-size:9px;color:var(--dim-2);margin-top:1px">비어있음</div>
       </div>
     `;
     document.body.appendChild(bar);
@@ -63,11 +64,11 @@
       if (types && (Array.from(types).includes('text/x-tool-instance'))) {
         e.preventDefault();
         e.dataTransfer.dropEffect = 'copy';
-        slot.style.borderColor = '#f0c674';
+        slot.style.borderColor = 'var(--accent)';
       }
     });
     slot.addEventListener('dragleave', () => {
-      slot.style.borderColor = (equipped && equipped === hotkey1) ? '#7cd97c' : '#444';
+      slot.style.borderColor = (equipped && equipped === hotkey1) ? 'var(--stam)' : 'var(--line)';
     });
     slot.addEventListener('drop', (e) => {
       e.preventDefault();
@@ -93,34 +94,33 @@
     const bar = ensureHotkeyBar();
     const slot = bar.querySelector('#hkSlot1');
     if (!slot) return;
-    const TOOL_ICON_MAP = { axe: '🪓', pickaxe: '⛏️', sword: '⚔️', saw: '🪚', hammer: '🔨' };
     const iconEl = slot.querySelector('.hk-icon');
     const labelEl = slot.querySelector('.hk-label');
     if (hotkey1) {
       const inst = toolItems.find(t => t.id === hotkey1);
       if (inst) {
-        iconEl.textContent = TOOL_ICON_MAP[inst.type] || '🔧';
+        iconEl.innerHTML = itemPic(inst.type, 18);   // ★[T66 2차] 아이템 그림 하나
         const dur = `${inst.d}/${inst.max}`;
         const isEq = (equipped === inst.id);
         labelEl.textContent = isEq ? '✓착용 중' : '대기';
-        labelEl.style.color = isEq ? '#7cd97c' : '#8fc8ff';
-        slot.style.borderColor = isEq ? '#7cd97c' : '#5a7ab0';
-        slot.style.background = isEq ? 'rgba(40,80,40,0.92)' : 'rgba(15,18,22,0.92)';
+        labelEl.style.color = isEq ? 'var(--stam)' : 'var(--thirst)';
+        slot.style.borderColor = isEq ? 'var(--stam)' : 'var(--thirst)';
+        slot.style.background = isEq ? 'rgba(var(--stam-rgb), 0.92)' : 'rgba(var(--bg-rgb), 0.92)';
         slot.title = `${inst.type} (${dur}) — 1키 또는 클릭 = 토글, 우클릭 = 슬롯 비우기`;
       } else {
         // hotkey instance 사라짐 (서버에서 cleanup될 거임)
         iconEl.textContent = '·';
         labelEl.textContent = '깨짐';
-        labelEl.style.color = '#e07060';
-        slot.style.borderColor = '#444';
-        slot.style.background = 'rgba(15,18,22,0.92)';
+        labelEl.style.color = 'var(--hp)';
+        slot.style.borderColor = 'var(--line)';
+        slot.style.background = 'rgba(var(--bg-rgb), 0.92)';
       }
     } else {
       iconEl.textContent = '·';
       labelEl.textContent = '비어있음';
-      labelEl.style.color = '#6c7686';
-      slot.style.borderColor = '#444';
-      slot.style.background = 'rgba(15,18,22,0.92)';
+      labelEl.style.color = 'var(--dim-2)';
+      slot.style.borderColor = 'var(--line)';
+      slot.style.background = 'rgba(var(--bg-rgb), 0.92)';
       slot.title = '인벤에서 도구를 드래그해서 등록 (1키로 토글)';
     }
   }
@@ -147,12 +147,11 @@
     }
     const eqEl = document.getElementById('equippedBadge');
     if (eqEl) {
-      const icons = { axe: '🪓', pickaxe: '⛏️', sword: '⚔️' };
       // 14.53: equipped = toolItemId → instance 찾아 type 표시
       const inst = equipped ? findToolInstance(equipped) : null;
       if (inst) {
-        const TOOL_ICON_MAP2 = { axe: '🪓', pickaxe: '⛏️', sword: '⚔️', saw: '🪚', hammer: '🔨' };
-        eqEl.textContent = `${TOOL_ICON_MAP2[inst.type] || ''} ${inst.type} ${inst.d}/${inst.max}`;
+        // ★[T66 2차] 도구 = 아이템 ⇒ 같은 그림 하나(`itemPic`). 선 아이콘은 **행동**의 몫이다.
+        eqEl.innerHTML = itemPic(inst.type, 14) + ` ${itemKo(inst.type)} ${inst.d}/${inst.max}`;
       } else {
         eqEl.textContent = '맨손';
       }
@@ -183,12 +182,12 @@
     const hungerEl = document.getElementById('hungerFill');
     if (hungerEl) {
       hungerEl.style.width = `${Math.max(0, myHunger)}%`;
-      document.getElementById('hungerText').textContent = `🍖 ${Math.round(myHunger)}${myCold ? ' 🥶추움' : ''}`;
+      document.getElementById('hungerText').textContent = `${Math.round(myHunger)}${myCold ? ' · 추움' : ''}`;
     }
     const thirstEl = document.getElementById('thirstFill');
     if (thirstEl) {
       thirstEl.style.width = `${Math.max(0, myThirst)}%`;
-      document.getElementById('thirstText').textContent = `💧 ${Math.round(myThirst)}`;
+      document.getElementById('thirstText').textContent = `${Math.round(myThirst)}`;
     }
     // ★[신체 3층 재배선] 스태미나 — 잠기면(바닥나 숨 고르는 중) 색이 바뀐다.
     //   회복 배율이 1 이 아니면 그 사실도 적는다("왜 안 차는가"를 화면이 말한다).
@@ -197,14 +196,14 @@
       stamEl.style.width = `${Math.max(0, Math.min(100, myStam * 100))}%`;
       stamEl.classList.toggle('locked', !!myStamLock);
       const rTxt = (myRecover < 0.999) ? ` <span style="opacity:.75">회복 ×${myRecover.toFixed(2)}</span>` : '';
-      document.getElementById('stamText').innerHTML = `⚡ ${Math.round(myStam * 100)}${rTxt}`;
+      document.getElementById('stamText').innerHTML = `${Math.round(myStam * 100)}${rTxt}`;
     }
     const vpEl = document.getElementById('vpFill');
     if (vpEl) {
       vpEl.style.width = `${Math.max(0, Math.min(100, myVp))}%`;
       const txt = myVp >= VP_THRESHOLD
-        ? `⚠️ 적대감 ${Math.round(myVp)} — 내 영지 보호 해제됨!`
-        : `⚖️ 적대감 ${Math.round(myVp)}/${VP_THRESHOLD}`;
+        ? `적대감 ${Math.round(myVp)} — 내 영지 보호 해제됨`
+        : `적대감 ${Math.round(myVp)}/${VP_THRESHOLD}`;
       document.getElementById('vpText').textContent = txt;
       document.querySelector('.vp-bar')?.classList.toggle('danger', myVp >= VP_THRESHOLD);
     }
@@ -220,14 +219,14 @@
         pvpBadgeForSprint.parentNode.insertBefore(sprintBadge, pvpBadgeForSprint);
       }
       const canSp = mySprint && myCanSprint;
-      sprintBadge.textContent = canSp ? '🏃 달리기' : (myStamLock ? '😩 숨참' : (mySprint ? '😩 지침' : '🚶 걷기'));
-      sprintBadge.style.background = canSp ? 'rgba(80,180,80,0.35)' : '';
+      sprintBadge.textContent = canSp ? '달리기' : (myStamLock ? '숨참' : (mySprint ? '지침' : '걷기'));
+      sprintBadge.style.background = canSp ? 'rgba(var(--stam-rgb), 0.35)' : '';
     }
     // PvP 뱃지
     const pvpBadge = document.getElementById('pvpBadge');
     if (pvpBadge) {
-      pvpBadge.textContent = myPvpEnabled ? '⚔️ PvP ON' : '🕊️ PvP OFF';
-      pvpBadge.style.background = myPvpEnabled ? 'rgba(176,48,48,0.4)' : '';
+      pvpBadge.textContent = myPvpEnabled ? 'PvP 켜짐' : 'PvP 꺼짐';
+      pvpBadge.style.background = myPvpEnabled ? 'rgba(var(--hp-rgb), 0.4)' : '';
       pvpBadge.onclick = () => sendPrimary({ type: 'pvp_set', enabled: !myPvpEnabled });
       pvpBadge.style.cursor = 'pointer';
     }
@@ -240,11 +239,11 @@
       floorBadge.title = '건축 층 (Z=위, X=아래)';
       pvpBadge.parentNode.insertBefore(floorBadge, pvpBadge.nextSibling);
     }
-    if (floorBadge) floorBadge.textContent = `🏗️ 짓:${myBuildFloor}F · 🚶 ${myFloor}F`;
+    if (floorBadge) floorBadge.textContent = `짓:${myBuildFloor}F · 서:${myFloor}F`;
     // 음식/extra 인벤토리
     const foodRow = document.getElementById('invFoodRow');
     if (foodRow) {
-      const items = Object.keys(ITEM_ICONS).filter(k => (inventory[k] || 0) > 0);
+      const items = Object.keys(inventory || {}).filter(k => (inventory[k] || 0) > 0 && !!foodEffects[k]);
       foodRow.innerHTML = '';
       for (const k of items) {
         const sp = document.createElement('span');
@@ -266,10 +265,10 @@
     document.getElementById('playerCount').textContent = `${total}명`;
     const simLat = primaryZoneId ? (zonesMeta[primaryZoneId]?.simulatedLatencyMs || 0) * 2 : 0;
     const rttStr = lastRttMs > 0 ? `${Math.round(lastRttMs)}ms` : '측정중';
-    document.getElementById('pingBadge').textContent = `📡 RTT ${rttStr} (sim ${simLat}ms)`;
+    document.getElementById('pingBadge').textContent = `${rttStr}`;
     if (primaryZoneId) {
       document.getElementById('zoneBadge').textContent =
-        `📍 ${zonesMeta[primaryZoneId].displayName}`;
+        `${zonesMeta[primaryZoneId].displayName}`;
       const zm = zonesMeta[primaryZoneId];
       const lx = myAbsPredicted.x - zm.worldOffsetX;
       const ly = myAbsPredicted.y - (zm.worldOffsetY || 0);
@@ -288,20 +287,27 @@
     if (tb) {
       const p = worldPhase();
       const dr = worldClock ? worldClock.dayPhaseRatio : 0.7;
-      let icon = '☀️';
-      if (p < 0.05) icon = '🌅';
-      else if (p < dr - 0.05) icon = '☀️';
-      else if (p < dr) icon = '🌇';
-      else if (p < 0.95) icon = '🌙';
-      else icon = '🌄';
-      tb.textContent = `${icon} ${gameTimeString()}${isNight() ? ' (밤)' : ''}`;
+      // ★[T66] 하루의 때 — 이모지 대신 **선 아이콘 이름**. 배지는 `data-ico` 로 그림을 받는다.
+      //   갈래는 종전과 같다(☀️/🌅/🌇/🌙/🌄 자리에 이름이 들어갔을 뿐 — 판단은 무변).
+      let icon = 'sun';
+      if (p < 0.05) icon = 'horizon';
+      else if (p < dr - 0.05) icon = 'sun';
+      else if (p < dr) icon = 'horizon';
+      else if (p < 0.95) icon = 'moon';
+      else icon = 'horizon';
+      // ★[T66] 아이콘은 배지의 `data-ico` 로 바뀐다(글자에 섞지 않는다 — 이름이 그대로 찍혔다).
+      tb.dataset.ico = icon;
+      if (window.__paintIcons) window.__paintIcons(tb.parentNode || document);
+      tb.lastChild && tb.lastChild.nodeType === 3
+        ? (tb.lastChild.nodeValue = ` ${gameTimeString()}${isNight() ? ' (밤)' : ''}`)
+        : tb.appendChild(document.createTextNode(` ${gameTimeString()}${isNight() ? ' (밤)' : ''}`));
     }
     // ★★[달력 2026-08-30 재민 확정] 시각 옆에 **연·계절·일**. 표시값은 서버가 econ 정본에서
     //   유도해 준 것 그대로다 — 클라는 문장만 만든다(매핑 사본 금지).
     const cb = document.getElementById('calBadge');
     if (cb) {
       if (myCalendar) {
-        cb.textContent = `📅 ${myCalendar.year}년 ${myCalendar.seasonKo} ${myCalendar.dayOfSeason}일`;
+        cb.textContent = `${myCalendar.year}년 ${myCalendar.seasonKo} ${myCalendar.dayOfSeason}일`;
         cb.title = `econ 게임일 ${myCalendar.day} · 연중 ${myCalendar.dayOfYear + 1}/${myCalendar.yearDays}일`
           + ` · 이 계절 ${myCalendar.seasonDays}일`;
         cb.hidden = false;
@@ -314,7 +320,13 @@
     if (wb) {
       if (myWeather) {
         const sh = Math.max(0, Math.min(1, myWeather.shelter || 0));
-        const txt = `${myWeather.emo} ${myWeather.ko}${sh > 0.15 ? ' · 마을' : ''}`;
+        const txt = ` ${myWeather.ko}${sh > 0.15 ? ' · 마을' : ''}`;
+        // ★[T66] 서버가 같이 보내는 `emo` 는 **안 쓴다**(화면 규칙 B — UI 이모지 0).
+        //   그림은 추위 축에서 고른다. 서버 이름표(7칸)를 베끼지 않으려고 **굵은 세 칸**만 쓴다 —
+        //   이건 이름이 아니라 그림이고, 문장은 여전히 서버가 준 `ko` 하나다.
+        const wIco = myWeather.cold < 0.35 ? 'sun' : (myWeather.cold < 0.75 ? 'cloud' : 'snow');
+        if (wb.dataset.ico !== wIco) { wb.dataset.ico = wIco; if (window.__paintIcons) window.__paintIcons(wb.parentNode || document); }
+        else if (window.__paintIcons) window.__paintIcons(wb.parentNode || document);
         const tip = `바깥 ${myWeather.tempC != null ? myWeather.tempC + '℃ · ' : ''}추위 ${Math.round(myWeather.cold * 100)}%${myWeather.night ? ' (밤)' : ' (낮)'}`
           // ★[옷 티어] 옷이 **몇 ℃ 를 벌어 주는지**를 말한다 — 그래야 "가죽옷을 살까"가 판단이 된다.
           + (myWeather.insC > 0 ? ` · 입은 옷이 체감 +${myWeather.insC}℃` : ' · 맨몸 — 옷이 없다')
@@ -323,7 +335,9 @@
         // ★값이 그대로면 **DOM 을 안 건드린다** — `updateHud` 는 100ms 마다 도는데 날씨는 초당 1회
         //   바뀔까 말까다. 매번 쓰면 그때마다 HUD 줄의 스타일·레이아웃이 다시 계산된다
         //   (헤드리스 SwiftShader 에서 실제로 프레임에 얹힌다 — `e2e-waterperf` 배율이 그걸 잡았다).
-        if (wb.textContent !== txt) wb.textContent = txt;
+        // ★[T66] `textContent` 로 쓰면 앞에 넣은 선 아이콘까지 지워진다 ⇒ **끝의 글자 마디만** 고친다.
+        const wtn = (wb.lastChild && wb.lastChild.nodeType === 3) ? wb.lastChild : wb.appendChild(document.createTextNode(''));
+        if (wtn.nodeValue !== txt) wtn.nodeValue = txt;
         if (wb.title !== tip) wb.title = tip;
         if (wb.hidden) wb.hidden = false;
       } else if (!wb.hidden) wb.hidden = true;

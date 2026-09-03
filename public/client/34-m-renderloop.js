@@ -937,9 +937,9 @@
           for (const _h of _hutRs) { if (_ncx >= _h.r[0] && _ncx <= _h.r[2] && _ncy >= _h.r[1] && _ncy <= _h.r[3]) { _hide = _h.roofOn; break; } }
           if (_hide) continue;
         }
-        // §4-4 Stage 4A: 마을 NPC 직업 이모지 접두 (simJob — econ 분포와 매 게임일 동기)
-        const _sjEmoji = (o.simJob && SIM_JOB_EMOJI[o.simJob]) || '';
-        const displayName = (_sjEmoji ? _sjEmoji + ' ' : '') + (o.tribeName ? `[${o.tribeName}] ${o.name}` : o.name);
+        // §4-4 Stage 4A: 마을 NPC 직업 접두 — ★[T66 2차] 이모지 접두 **삭제**(화면 규칙 B).
+        //   직업은 이름 옆 그림이 아니라 상태창·툴팁의 **글자**가 말한다(`simJob` 은 그대로 실려 간다).
+        const displayName = (o.tribeName ? `[${o.tribeName}] ${o.name}` : o.name);
         const oFloor = o.floor || 0;
         const oZ = oFloor * FLOOR_HEIGHT + (o.z || 0); // 14.49-d: 계단 위 z 포함
         const isoF = w2i(ax, ay, oZ);
@@ -1219,16 +1219,16 @@
         // kind별 색상
         let fill, stroke, label;
         if (cl.kind === 'guild') {
-          if (cl.personalAssigned) { fill = 'rgba(180,160,100,0.22)'; stroke = 'rgba(220,200,140,0.7)'; label = `🏠 ${cl.ownerName}`; }
-          else { fill = 'rgba(90,154,224,0.18)'; stroke = 'rgba(120,175,235,0.95)'; label = `🏛️ ${cl.guildTribeName || cl.ownerName}`; }
-        } else if (cl.kind === 'temporary') { fill = 'rgba(220,130,60,0.16)'; stroke = 'rgba(220,130,60,0.7)'; label = `⛺ ${cl.ownerName}`; }
-        else { fill = 'rgba(240,198,116,0.18)'; stroke = 'rgba(240,198,116,0.8)'; label = `🏠 ${cl.ownerName}`; }
+          if (cl.personalAssigned) { fill = 'rgba(180,160,100,0.22)'; stroke = 'rgba(220,200,140,0.7)'; label = `${cl.ownerName}`; }
+          else { fill = 'rgba(90,154,224,0.18)'; stroke = 'rgba(120,175,235,0.95)'; label = `${cl.guildTribeName || cl.ownerName}`; }
+        } else if (cl.kind === 'temporary') { fill = 'rgba(220,130,60,0.16)'; stroke = 'rgba(220,130,60,0.7)'; label = `${cl.ownerName}`; }
+        else { fill = 'rgba(240,198,116,0.18)'; stroke = 'rgba(240,198,116,0.8)'; label = `${cl.ownerName}`; }
         // ★[T45 2026-09-02] **부재 상태를 색으로만 말한다** — 새 패널 0. 서버가 준 `state` 그대로다.
         //   보관(held)은 흐리게(주인이 아직 있다) · 우선권(pref)은 초록빛(누가 이어받을 수 있다) ·
         //   개방(free)은 회색(세계의 것이다). 판정을 클라가 다시 하지 않는다 — 그러면 그게 사본이다.
-        if (cl.state === 'held') { fill = 'rgba(150,150,150,0.10)'; stroke = 'rgba(190,190,190,0.45)'; label = `💤 ${cl.ownerName}`; }
-        else if (cl.state === 'pref') { fill = 'rgba(120,200,140,0.16)'; stroke = 'rgba(140,220,160,0.75)'; label = `🕯️ ${cl.ownerName}`; }
-        else if (cl.state === 'free') { fill = 'rgba(120,120,120,0.12)'; stroke = 'rgba(160,160,160,0.55)'; label = `🕳️ 빈 자리`; }
+        if (cl.state === 'held') { fill = 'rgba(150,150,150,0.10)'; stroke = 'rgba(190,190,190,0.45)'; label = `${cl.ownerName}`; }
+        else if (cl.state === 'pref') { fill = 'rgba(120,200,140,0.16)'; stroke = 'rgba(140,220,160,0.75)'; label = `${cl.ownerName}`; }
+        else if (cl.state === 'free') { fill = 'rgba(120,120,120,0.12)'; stroke = 'rgba(160,160,160,0.55)'; label = `빈 자리`; }
 
         // ★★[T57 2026-09-03 · 안개 게이트 **세 번째 층**] 사유지도 **셀마다** 안개를 본다.
         //   결함 기전은 배치 21(자연물)·08-30(마을 영토 띠)과 **같은 족**이다:
@@ -1309,7 +1309,7 @@
         if (cl.facilityType && _claimCellSeen(Math.floor((off + cl.x + cl.w / 2) / _S0), Math.floor((offY + cl.y + cl.h / 2) / _S0))) {
           const cs = toScreen(w2i(off + cl.x + cl.w/2, offY + cl.y + cl.h/2).x, w2i(off + cl.x + cl.w/2, offY + cl.y + cl.h/2).y);
           // farmland는 stage별 emoji 사용
-          let emoji = FACILITY_EMOJI[cl.facilityType] || '';
+          let noRender = true;   // ★[T66] 스프라이트가 없으면 점선 빈 칸(이모지 폴백 삭제)
           if (cl.facilityType === 'farmland' && cl.farmStage != null) {
             // 에셋 5차: 4단계 3D 스프라이트 우선(미로드 시 이모지 폴백)
             const _cs = cropSprite(cl.farmStage, off + cl.x, offY + cl.y);
@@ -1323,17 +1323,13 @@
             //     (셀보다 큰 세로는 **작물이 셀 위로 자란 것**이다 — 발밑은 다이아에 맞는다.)
             //   ⚠흙 다이아를 따로 깔지 않는다 — **원본 스프라이트가 이미 흙을 갖고 있다**(실측).
             //     따로 깔면 그게 사본이고, 두 겹이 어긋나면 그 자리가 결함이 된다.
-            if (_cs) { ctx.drawImage(_cs, cs.x - 32, cs.y - 32, 64, 64); emoji = ''; }
-            else emoji = FARM_STAGE_EMOJI[cl.farmStage] || '🌾';
+            if (_cs) { ctx.drawImage(_cs, cs.x - 32, cs.y - 32, 64, 64); noRender = false; }
           }
-          if (emoji) {
-            ctx.font = '14px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillStyle = 'rgba(255, 230, 180, 0.9)';
-            ctx.fillText(emoji, cs.x, cs.y);
-            ctx.textAlign = 'start';
-            ctx.textBaseline = 'alphabetic';
+          if (noRender) {
+            // ★[T66] "렌더 없음" — 점선 빈 칸. 이모지로 메우면 빈 자리가 영원히 안 보인다.
+            ctx.save(); ctx.setLineDash([3, 3]); ctx.lineWidth = 1; ctx.strokeStyle = stroke;
+            ctx.strokeRect(Math.round(cs.x - 9) + 0.5, Math.round(cs.y - 9) + 0.5, 18, 18);
+            ctx.restore();
             // Phase 4d-16-d: forge 가끔 연기 파티클 (시각 동작 — client only, deterministic by time)
             if (cl.facilityType === 'forge' && Math.sin((Date.now() + (cl.x + cl.y) * 13) * 0.001) > 0.8) {
               ctx.fillStyle = 'rgba(160, 80, 40, 0.5)';
@@ -1470,7 +1466,7 @@
         if (_cellSeen(v.cx, v.cy)) { // 라벨 — 회관 위. ★안 가본 마을의 이름·인구는 안 알려 준다(정찰이 공짜가 되면 안 된다)
           const ctr = sc(v.cx * S + 16, v.cy * S + 16);
           ctx.fillStyle = stroke; ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center';
-          ctx.fillText(`🏘️ ${v.name}${v.pop != null ? ' · ' + v.pop + '명' : ''}`, ctr.x, ctr.y - 46);
+          ctx.fillText(`${v.name}${v.pop != null ? ' · ' + v.pop + '명' : ''}`, ctr.x, ctr.y - 46);
           ctx.textAlign = 'start';
         }
       } else if (item.kind === 'banditcamp') {
@@ -1483,7 +1479,7 @@
         ctx.beginPath(); ctx.moveTo(sp.x - 14, sp.y + 8); ctx.lineTo(sp.x, sp.y - 10); ctx.lineTo(sp.x + 14, sp.y + 8); ctx.closePath(); ctx.fill();
         ctx.strokeStyle = 'rgba(200,80,60,0.85)'; ctx.lineWidth = 1.5; ctx.stroke();
         ctx.font = '13px sans-serif'; ctx.textAlign = 'center';
-        ctx.fillText('🏴', sp.x, sp.y - 12);
+        ctx.fillText('도적', sp.x, sp.y - 12);
         if (bc.n > 0) { ctx.fillStyle = '#e8b0a0'; ctx.font = 'bold 11px sans-serif'; ctx.fillText('도적 ' + bc.n + '명', sp.x, sp.y + 22); }
         ctx.textAlign = 'start'; ctx.globalAlpha = 1;
       } else if (item.kind === 'resource') {
@@ -1705,7 +1701,7 @@
         ctx.font = '24px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('💀', s.x, s.y);
+        ctx.fillText('×', s.x, s.y);
         ctx.globalAlpha = 1;
       }
     }
@@ -1770,7 +1766,7 @@
         ctx.globalAlpha = Math.max(0, 1 - k * k);
         ctx.font = `${size}px system-ui, sans-serif`;
         ctx.textAlign = 'center';
-        ctx.fillText('🐟', cx, cy);
+        ctx.fillText('~', cx, cy);
         ctx.font = `bold ${Math.round(13 + Math.min(9, fishFx.kg * 2))}px system-ui, sans-serif`;
         ctx.fillStyle = fishFx.big ? '#ffd27a' : '#dfe8f0';
         ctx.fillText(`${fishFx.kg.toFixed(1)}kg${fishFx.record ? ' ★' : ''}`, cx, cy + size * 0.7);
@@ -2220,8 +2216,6 @@
           ctx.fillStyle = '#fff';
           ctx.strokeStyle = 'rgba(0,0,0,0.85)';
           ctx.lineWidth = 3;
-          ctx.strokeText(def.emoji, s.x, s.y + 4);
-          ctx.fillText(def.emoji, s.x, s.y + 4);
           // 라벨 — "농지 ×3"
           ctx.font = 'bold 11px sans-serif';
           ctx.fillStyle = '#ffe8a0';
@@ -2274,7 +2268,7 @@
         if (c.escort > 0) {
           ctx.fillStyle = '#ff6060';
           ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
-          ctx.fillText('⚔️' + c.escort, s.x, s.y - 14);
+          ctx.fillText('호위 ' + c.escort, s.x, s.y - 14);
         }
         // 라벨 — from → to
         ctx.font = '10px sans-serif';
@@ -2289,7 +2283,7 @@
         if (c.npcName) {
           ctx.font = '9px sans-serif';
           ctx.fillStyle = '#cce';
-          const npcTxt = `🚶 ${c.npcName}`;
+          const npcTxt = `${c.npcName}`;
           ctx.strokeText(npcTxt, s.x, s.y - 33);
           ctx.fillText(npcTxt, s.x, s.y - 33);
         }

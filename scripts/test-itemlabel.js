@@ -162,5 +162,108 @@ console.log('\n=== [T61] econ 자원 종류 이름(장마당 열) ===');
      '★⑩ 건축물 이름에서 영문 꼬리를 뗐다(정본 라벨은 "벽 (Wall)" 꼴이다)', `${merged.item_wall} · ${merged.item_fence}`);
 }
 
+
+// ── ★★[T66] 구운 렌더 목록이 **디렉터리와 같은가** ────────────────────────────
+//   `43-i-icon.js ICON_RENDERED` 는 `/assets/icons/*.png` 의 **사본**이다. 사본은 언젠가 갈린다 —
+//   그래서 검사로 못 박는다. ART 카드가 렌더를 구우면 이 검사가 "빠졌다"고 먼저 말한다.
+console.log('\n=== [T66] 구운 아이템 렌더 목록 ===');
+{
+  const dir = fs.readdirSync(path.join(ROOT, 'public', 'assets', 'icons'))
+    .filter((f) => f.endsWith('.png')).map((f) => f.slice(0, -4)).sort();
+  const src = fs.readFileSync(path.join(ROOT, 'public', 'client', '43-i-icon.js'), 'utf8');
+  const m = src.match(/const ICON_RENDERED = new Set\(\[([\s\S]*?)\]\);/);
+  ok(!!m, '★⑪ 전제: `ICON_RENDERED` 를 읽었다');
+  const list = m ? [...m[1].matchAll(/'([^']+)'/g)].map((x) => x[1]).sort() : [];
+  ok(list.length === dir.length && list.every((k, i) => k === dir[i]),
+     '★★⑪ 목록이 `public/assets/icons/` 와 **정확히 같다**(사본이 갈리면 여기서 잡는다)',
+     list.length === dir.length ? `${dir.length}장` :
+       `목록 ${list.length} vs 파일 ${dir.length} · 차이 ${dir.filter((k) => !list.includes(k)).concat(list.filter((k) => !dir.includes(k))).join(' ')}`);
+  // ★자명 통과 금지 — 한 장을 빼면 잡는가
+  ok(!(list.slice(1).length === dir.length), '★⑪ 자명 통과 금지 — 목록에서 하나를 빼면 길이가 어긋난다');
+}
+
+// ── ★★[T66] 이모지 0 · 색 리터럴 0 (클라 소스) ──────────────────────────────
+console.log('\n=== [T66] 화면 규칙 B — 이모지 0 · 색은 토큰 하나 ===');
+{
+  // 주석을 걷어낸다 — 설명 글이 검사에 걸리면 검사가 거짓말한다(족보: test-hist `/splice/`).
+  const stripJs = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').split('\n').map((l) => {
+    let q = null, out = '';
+    for (let i = 0; i < l.length; i++) {
+      const c = l[i], n = l[i + 1];
+      if (q) { out += c; if (c === '\\') { out += n || ''; i++; continue; } if (c === q) q = null; continue; }
+      if (c === '"' || c === "'" || c === '`') { q = c; out += c; continue; }
+      if (c === '/' && n === '/') break;
+      out += c;
+    }
+    return out;
+  }).join('\n');
+  const CLI = path.join(ROOT, 'public', 'client');
+  const files = fs.readdirSync(CLI).map((f) => ['client/' + f, stripJs(fs.readFileSync(path.join(CLI, f), 'utf8'))]);
+  files.push(['index.html', fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8').replace(/<!--[\s\S]*?-->/g, '')]);
+  const EMO = /\p{Extended_Pictographic}/gu;
+  const emoHits = files.filter(([, t]) => EMO.test(t)).map(([f]) => f);
+  ok(emoHits.length === 0, '★★⑫ 클라 소스에 **이모지 0**(UI 틀 · 예외 목록 0)',
+     emoHits.length ? emoHits.join(' · ') : `${files.length}개 파일 전부`);
+  // ★자명 통과 금지 — 폴백 이모지 한 줄을 되살리면 잡는가
+  ok(EMO.test("const ITEM_ICONS = { wood: '\u{1FAB5}' };"), '★⑫ 자명 통과 금지 — 이모지 한 줄을 되살린 소스는 잡힌다');
+
+  // ★★[T66 2차 · 재민 보고 §2] 색의 자리는 **두 갈래**이고, 규칙이 서로 반대다.
+  //   ⓐ 판을 짓는 조각(아래 표) — 값은 `style.css` 토큰 하나. 리터럴 0.
+  //   ⓑ 세계를 그리는 조각(캔버스) — 값은 **리터럴이어야 한다**. `ctx.fillStyle = 'var(--x)'` 는
+  //     예외도 콘솔 오류도 없이 **그냥 안 칠해진다**(앞 값이 남는다). 1차 판이 정확히 그 함정에 빠졌고,
+  //     줄 단위 어림짐작(`fillStyle` 이 같은 줄에 있나)으로는 `tileColor = …` 같은 줄을 못 가른다.
+  //   ⇒ ⓐ 는 여기서 **파일 표**로 재고(사람이 읽을 수 있는 목록), ⓑ 는 `e2e-ui ⑬` 이
+  //     진짜 캔버스에 들어간 값을 **실행 중에** 가로채 잰다. 어느 쪽도 어림짐작이 아니다.
+  const DOM_ONLY = ['client/05-u-icon.js', 'client/44-h-hud.js', 'client/45-t-market.js',
+    'client/50-i-panel.js', 'client/51-s-side.js', 'client/60-t-market.js',
+    'client/65-s-chronicle.js', 'client/70-lobby.js', 'client/99-main.js', 'index.html'];
+  const seen = files.map(([f]) => f);
+  ok(DOM_ONLY.every((f) => seen.includes(f)), '★⑫ 전제: 표의 조각이 전부 실재한다',
+     DOM_ONLY.filter((f) => !seen.includes(f)).join(' · ') || `${DOM_ONLY.length}개`);
+  const colHits = [];
+  for (const [f, t] of files) {
+    if (!DOM_ONLY.includes(f)) continue;
+    t.split('\n').forEach((l, i) => {
+      const m2 = l.match(/#[0-9a-fA-F]{3,8}\b|rgba?\(\s*\d/g);
+      if (m2) colHits.push(`${f}:${i + 1}`);
+    });
+  }
+  ok(colHits.length === 0, '★★⑫ 판을 짓는 조각에 **색 리터럴 0** — 값은 `style.css` 토큰 하나다',
+     colHits.length ? colHits.slice(0, 6).join(' · ') : `${DOM_ONLY.length}개 조각 전부`);
+  ok(/#[0-9a-fA-F]{3,8}\b/.test("  slot.style.borderColor = '#f0c674';"),
+     '★⑫ 자명 통과 금지 — 판 조각에 색 한 줄을 되살리면 잡힌다');
+  // ── ★★[T66 2차] ⑬ 선 아이콘 — **이름 하나 = 그림 하나** ────────────────────
+  //   ★왜: 두 이름이 같은 `d` 를 쓰면 서로 다른 뜻이 화면에서 **한 얼굴**이 된다.
+  //     실기에서 레일의 `build` 가 `home` 과, `상태(body)` 가 `부상(heart)` 과 같은 그림이었다.
+  //     이름 수만 세는 검사는 그걸 절대 못 잡는다(연표 아이콘 ④ 가 배운 것과 같은 함정).
+  const icoSrc = fs.readFileSync(path.join(CLI, '05-u-icon.js'), 'utf8');
+  const icoTbl = icoSrc.match(/const UI_ICON_D = \{([\s\S]*?)\n  \};/);
+  ok(!!icoTbl, '★⑬ 전제: `UI_ICON_D` 를 읽었다');
+  const icoMap = {};
+  if (icoTbl) for (const m3 of icoTbl[1].matchAll(/^\s*([a-zA-Z]+):\s*'([^']+)'/gm)) icoMap[m3[1]] = m3[2];
+  ok(Object.keys(icoMap).length >= 40, '★⑬ (상황) 세트가 실제로 크다 — 빈 표면 아래가 자명 통과다',
+     `${Object.keys(icoMap).length}개`);
+  const byD = {};
+  for (const k in icoMap) (byD[icoMap[k]] = byD[icoMap[k]] || []).push(k);
+  const dupIco = Object.values(byD).filter((v) => v.length > 1);
+  ok(dupIco.length === 0, '★★⑬ 두 이름이 **같은 그림**을 쓰지 않는다',
+     dupIco.length ? dupIco.map((v) => v.join('=')).join(' · ') : `${Object.keys(byD).length}종 전부 다르다`);
+  // ★자명 통과 금지 — 일부러 겹치면 잡는가
+  {
+    const probe = { a: 'M0 0', b: 'M0 0', c: 'M1 1' }, pb = {};
+    for (const k in probe) (pb[probe[k]] = pb[probe[k]] || []).push(k);
+    ok(Object.values(pb).some((v) => v.length > 1), '★⑬ 자명 통과 금지 — 겹친 표를 넣으면 잡힌다');
+  }
+
+  const css = fs.readFileSync(path.join(ROOT, 'public', 'style.css'), 'utf8');
+  const body = css.slice(css.indexOf('\n}\n') + 3);
+  ok(!/#[0-9a-fA-F]{3,8}\b|rgba?\(\s*\d/.test(body),
+     '★★⑫ `style.css` 도 **`:root` 블록 밖엔 색이 없다**');
+  // ⚠`\s*[^0]` 로 쓰면 안 된다 — `\s*` 가 되짚어 **공백 하나**를 `[^0]` 로 먹어 `: 0` 도 걸린다
+  //   (1차 판이 정확히 그렇게 없는 결함을 보고했다). 공백은 명시로 먹고 그 다음 글자를 본다.
+  ok(!/shadow/.test(body) && !/border-radius:[ \t]*[^0\s]/.test(body),
+     '★⑫ 그림자 0 · 모서리 0');
+}
+
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
 process.exit(fail ? 1 : 0);

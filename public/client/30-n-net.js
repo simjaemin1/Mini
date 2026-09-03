@@ -68,20 +68,9 @@
     //   화면에 표시하지 않는다(입력칸도 없다). 브라우저를 청소하면 새 사람이 되는 것이 정상이다.
     try { myGuestToken = localStorage.getItem(GUEST_TOKEN_KEY) || ''; } catch (e) { myGuestToken = ''; }
 
-    // 색상 팔레트 UI
-    const picker = document.getElementById('colorPicker');
-    for (const c of COLORS) {
-      const sw = document.createElement('div');
-      sw.className = 'color-swatch' + (c === myColor ? ' selected' : '');
-      sw.style.background = c;
-      sw.dataset.color = c;
-      sw.onclick = () => {
-        myColor = c;
-        for (const el of picker.children) el.classList.toggle('selected', el.dataset.color === c);
-      };
-      picker.appendChild(sw);
-    }
-
+    // ★★[T66 · 재민 확정 3] **색 선택은 없앴다.** 팔레트 UI(`#colorPicker`)와 그 코드가 여기 있었다.
+    //   ⚠서버 접점 0: `?color=` 는 `#rrggbb` 일 때만 서버가 쓰고 아니면 자기 기본값을 쓴다(zone.js 실측).
+    //     클라는 종전 기본값 `COLORS[0]` 을 그대로 보낸다 — 위 `myColor` 초기화가 이미 그 값이다.
     const sel = document.getElementById('startZone');
     // ★[로비 죽은 존 UX] central의 /zones는 각 존 /health 폴링 결과를 population/cap으로 실어 준다 —
     //   응답 못 받은 존은 population=null·cap=null. 이게 곧 생존 신호다(브라우저에서 존 /health를 직접
@@ -100,7 +89,7 @@
         const alive = zoneAlive(z);
         const popPart = alive ? ` · ${z.population}/${z.cap}명${z.full ? ' (가득참)' : ''}` : '';
         opt.textContent = `${z.displayName} (RTT ≈ ${(z.simulatedLatencyMs || 0) * 2}ms)${popPart}${alive ? '' : ' — 점검 중'}`;
-        if (!alive) { opt.disabled = true; opt.style.color = '#6c7686'; }   // 죽은 존 = 흐리게 + 선택 불가
+        if (!alive) { opt.disabled = true; opt.style.color = 'var(--dim-2)'; }   // 죽은 존 = 흐리게 + 선택 불가
         else { liveN++; if (!firstLive) firstLive = id; }
         if (z.full) opt.disabled = true;
         sel.appendChild(opt);
@@ -115,8 +104,8 @@
         if (!warn) {
           warn = document.createElement('div');
           warn.id = 'zoneDeadWarn';
-          warn.style.cssText = 'margin-top:8px;padding:8px 10px;border-radius:6px;background:#3a2418;border:1px solid #8a5a2a;color:#f0c674;font-size:13px;line-height:1.5';
-          warn.textContent = '⚠️ 현재 접속 가능한 지역이 없습니다. 서버 점검 중일 수 있어요 — 잠시 후 자동으로 다시 확인합니다.';
+          warn.style.cssText = 'margin-top:8px;padding:8px 10px;border-radius: 0;background:var(--inset);border:1px solid var(--accent);color:var(--accent);font-size:13px;line-height:1.5';
+          warn.textContent = '현재 접속 가능한 지역이 없습니다. 서버 점검 중일 수 있어요 — 잠시 후 자동으로 다시 확인합니다.';
           (document.getElementById('zoneRow') || sel.parentNode).appendChild(warn);
         }
         warn.style.display = 'block';
@@ -181,7 +170,7 @@
               const dest = (pd.player?.last_zone) || (pd.player?.home_zone);
               if (dest && zonesMeta[dest]) {
                 window.__autoZone = dest;
-                existingHint.innerHTML = `🔑 기존 계정 — <b>${zonesMeta[dest].displayName}</b>의 마지막 위치에서 시작합니다`;
+                existingHint.innerHTML = `기존 계정 — <b>${zonesMeta[dest].displayName}</b>의 마지막 위치에서 시작합니다`;
               }
             }
           } catch (e) {}
@@ -235,7 +224,7 @@
         // 새 몸 = **토큰 폐기**. 옛 몸은 서버에 그대로 남는다(지우지 않는다 — 되돌릴 수 없는 일은 안 한다).
         try { localStorage.removeItem(GUEST_TOKEN_KEY); } catch (e) {}
         myGuestToken = null;
-        box.innerHTML = '🌱 <b>새 몸으로 시작합니다.</b> 옛 게스트 캐릭터는 서버에 남아 있지만'
+        box.innerHTML = '<b>새 몸으로 시작합니다.</b> 옛 게스트 캐릭터는 서버에 남아 있지만'
           + ' 이 브라우저에서는 다시 열 수 없습니다(열쇠를 버렸습니다).';
       };
     })();
@@ -672,7 +661,7 @@
       const h = await r.json();
       healthFailCount = 0;
       const lines = Object.entries(h).map(([id, s]) =>
-        `${id}: ${s.up ? '🟢 ' + (s.players ?? 0) + '명' : '🔴 down'}`);
+        `${id}: ${s.up ? (s.players ?? 0) + '명' : '꺼짐'}`);
       document.getElementById('health').innerText = lines.join('  ');
     } catch (e) {
       healthFailCount++;
@@ -791,7 +780,7 @@
       // 끊김 측정: promote 보낸 뒤 welcome 도착까지 걸린 시간 + welcome 처리 시간
       const _wStart = performance.now();
       if (c._promoteSentAt) {
-        console.log('[handoff] ⏱ promote→welcome gap =', (_wStart - c._promoteSentAt).toFixed(0), 'ms',
+        console.log('[handoff] promote→welcome gap =', (_wStart - c._promoteSentAt).toFixed(0), 'ms',
           '| entities res=' + (msg.resources?.length||0), 'bld=' + (msg.buildings?.length||0), 'mob=' + (msg.mobs?.length||0));
         c._promoteSentAt = 0;
       }
@@ -926,8 +915,12 @@
         // ★★[T55] 이름표 정본 — 한 번 받아 들고 다닌다(품목 카탈로그는 존 독립).
         //   ⚠덮어쓰지 않는다: 핸드오프 promote welcome 엔 안 실린다(관측) — 있으면 갱신, 없으면 유지.
         if (msg.itemLabels) { ITEM_LABEL_SRV = msg.itemLabels; window.__itemLabels = msg.itemLabels; }
+        // ★[T66] 이름표가 오면 그때 **아이템 렌더를 굽는다**(구울 키 목록의 정본이 그 표다).
+        if (msg.itemLabels && window.__preloadItemIcons) { try { window.__preloadItemIcons(); } catch (e) {} }
         // ★[T61] econ 자원 종류 이름 — 같은 경로·같은 규약(있으면 갱신 · 없으면 유지). 클라 사본은 지웠다.
         if (msg.categoryLabels) { CATEGORY_KO_SRV = msg.categoryLabels; window.__categoryLabels = msg.categoryLabels; }
+        // ★[T66 ⓪] 직업·계절 이름 — 같은 규약(있으면 갱신 · 없으면 유지). 클라 사본 둘을 지웠다.
+        if (msg.uiLabels) { UI_LABELS_SRV = msg.uiLabels; window.__uiLabels = msg.uiLabels; }
         // 플레이어 장비
         if (msg.equipmentRecipes) equipmentRecipes = msg.equipmentRecipes;
         if (msg.equipmentMeta) equipmentMeta = msg.equipmentMeta;
@@ -977,7 +970,7 @@
         connMark('ready', { reason: '', stage: '', ref: '' }); }
       if (typeof _wStart === 'number') {
         const _proc = performance.now() - _wStart;
-        if (_proc > 5) console.log('[handoff] ⏱ welcome 처리 =', _proc.toFixed(0), 'ms');
+        if (_proc > 5) console.log('[handoff] welcome 처리 =', _proc.toFixed(0), 'ms');
       }
     } else if (msg.type === 'tick') {
       const now = performance.now();
@@ -1431,7 +1424,7 @@
       window.__evLastBrief = b;
       if (b.lines && b.lines.length) {
         villageBubbles.set(b.vid, { lines: b.lines.slice(0, 3), until: performance.now() + 9000 });
-        showNotice(`🧓 ${b.name} 촌장 — ${b.lines[0]}` + (b.board ? `  (게시판 ${b.board}건 · Shift+G)` : ''), 5000);
+        showNotice(`${b.name} 촌장 — ${b.lines[0]}` + (b.board ? `  (게시판 ${b.board}건 · Shift+G)` : ''), 5000);
         needsRedraw = true;
       }
     } else if (msg.type === 'village_trade') {
@@ -1478,8 +1471,8 @@
       // ★[T20] 겨울나기 머리줄 — **서버가 만든 문장 하나**를 맨 앞에 놓는다(진행 막대도 문자다 · 새 패널 0).
       //   ⚠의뢰가 0건이어도 머리줄은 떠야 한다 — 곡식 의뢰는 애초에 안 걸리므로(§0-ⓕ) 그 갈래가 정상 경로다.
       const _wHead = bd.head ? bd.head + '\n' : '';
-      if (!bd.rows || !bd.rows.length) showNotice(`📋 ${bd.name} 게시판\n${_wHead}— 걸린 의뢰가 없다` + _newsTxt, (_newsTxt || _wHead) ? 9000 : 3500);
-      else showNotice(`📋 ${bd.name} 게시판\n` + _wHead + bd.rows.map((r) => ' · ' + r.line).join('\n') + _newsTxt + '\n(Shift+N 으로 낼 수 있는 것부터 납품)', 9000);
+      if (!bd.rows || !bd.rows.length) showNotice(`${bd.name} 게시판\n${_wHead}— 걸린 의뢰가 없다` + _newsTxt, (_newsTxt || _wHead) ? 9000 : 3500);
+      else showNotice(`${bd.name} 게시판\n` + _wHead + bd.rows.map((r) => ' · ' + r.line).join('\n') + _newsTxt + '\n(Shift+N 으로 낼 수 있는 것부터 납품)', 9000);
     } else if (msg.type === 'onboarding_state' || msg.type === 'onboarding_quest' || msg.type === 'onboarding_fx' || msg.type === 'onboarding_day') {
       onbOnMessage(msg);   // ★[온보딩 v2] 대본 상태·첫 의뢰·곳간 이펙트·하루 정산 — 그리기는 `70-lobby.js`
     } else if (msg.type === 'pvp_state') {
@@ -1501,7 +1494,7 @@
       // ★ observer로 미리 연결된 ws가 있으면 promote만 — 새 ws 안 만듦 → 끊김 ~0
       const existingTarget = conns.get(target);
       if (existingTarget && existingTarget.role === 'observer' && existingTarget.ws.readyState === 1) {
-        console.log('[handoff] ✨ promote existing observer ws');
+        console.log('[handoff] promote existing observer ws');
         existingTarget._promoteSentAt = performance.now(); // 끊김 측정용
         existingTarget.ws.send(JSON.stringify({ type: 'promote_to_primary', token }));
         existingTarget.role = 'primary';
@@ -1593,9 +1586,9 @@
     } else if (msg.type === 'chat') {
       // 같은 zone(또는 observer zone)에서 온 채팅. 길드 채팅이면 prefix 표시.
       const prefix = msg.tribe ? `[길드:${msg.tribe}] ` : '';
-      chatLog.push({ name: prefix + msg.name, color: msg.color || '#5a9ae0', text: msg.text, t: msg.t, isTribe: !!msg.tribe });
+      chatLog.push({ name: prefix + msg.name, color: msg.color || 'var(--thirst)', text: msg.text, t: msg.t, isTribe: !!msg.tribe });
       if (chatLog.length > 20) chatLog.shift();
-      speechBubbles.set(msg.pid, { text: (msg.tribe ? '🛡️ ' : '') + msg.text, until: performance.now() + 4000 });
+      speechBubbles.set(msg.pid, { text: (msg.tribe ? '[길드] ' : '') + msg.text, until: performance.now() + 4000 });
       renderChatLog();
     } else if (msg.type === 'notice') {
       showNotice(msg.text);

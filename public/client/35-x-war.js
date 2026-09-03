@@ -30,14 +30,14 @@
         const lxp = W / 2 + Math.cos(ang) * (r - 26), lyp = H / 2 + Math.sin(ang) * (r - 26);
         ctx.font = '11px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = col;
         ctx.strokeStyle = 'rgba(0,0,0,0.85)'; ctx.lineWidth = 3;
-        const txt = `⚔️ ${b.aliveA}:${b.aliveB}`;
+        const txt = `${b.aliveA}:${b.aliveB}`;
         ctx.strokeText(txt, lxp, lyp); ctx.fillText(txt, lxp, lyp); ctx.textAlign = 'start';
       } else {
         ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = col;
         ctx.strokeStyle = 'rgba(0,0,0,0.85)'; ctx.lineWidth = 3;
         const txt = (b.phase === 'resolved')
           ? `⚑ ${b.atk || ''} vs ${b.def || ''} 종료`
-          : `⚔️ ${b.atk || ''} ${b.aliveA} : ${b.aliveB} ${b.def || ''}`;
+          : `${b.atk || ''} ${b.aliveA} : ${b.aliveB} ${b.def || ''}`;
         ctx.strokeText(txt, s.x, s.y - 44); ctx.fillText(txt, s.x, s.y - 44); ctx.textAlign = 'start';
       }
     }
@@ -65,8 +65,8 @@
   function toggleCommand(id) { setCommand(_warCmdId === id ? null : id); }
   // 스펙테이터 HUD DOM — 진행 전투 목록·A/B 카운트·casus·phase + 관전/지휘 버튼.
   function _warBtnCss(bg) {
-    return 'flex:1;padding:3px 6px;font:11px sans-serif;color:#e6ebf2;background:' + bg
-      + ';border:1px solid rgba(255,255,255,0.2);border-radius:4px;cursor:pointer;';
+    return 'flex:1;padding:3px 6px;font:11px sans-serif;color:var(--fg);background:' + bg
+      + ';border:1px solid rgba(var(--fg-rgb), 0.2);border-radius: 0;cursor:pointer;';
   }
   function ensureWarHud() {
     if (_warHudEl) return _warHudEl;
@@ -74,8 +74,8 @@
     const el = document.createElement('div');
     el.id = 'warHud';
     el.style.cssText = 'position:absolute;top:64px;right:12px;z-index:40;width:236px;max-height:60vh;overflow:auto;'
-      + 'background:rgba(16,20,26,0.88);border:1px solid rgba(255,138,90,0.5);border-radius:8px;'
-      + 'padding:8px 10px;font:12px/1.5 sans-serif;color:#e6ebf2;box-shadow:0 4px 16px rgba(0,0,0,0.5);display:none;';
+      + 'background:rgba(var(--pane-rgb), 0.88);border:1px solid rgba(var(--hp-rgb), 0.5);border-radius: 0;'
+      + 'padding:8px 10px;font:12px/1.5 sans-serif;color:var(--fg);box-shadow:0 4px 16px rgba(var(--bg-rgb), 0.5);display:none;';
     host.appendChild(el); _warHudEl = el; return el;
   }
   function updateWarHud() {
@@ -83,17 +83,17 @@
     if (!list.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
     el.style.display = 'block'; el.innerHTML = '';
     const head = document.createElement('div');
-    head.style.cssText = 'font-weight:bold;color:#ff9a6a;margin-bottom:6px;';
-    head.textContent = `⚔️ 진행 전투 ${list.length}`; el.appendChild(head);
+    head.style.cssText = 'font-weight:bold;color:var(--hp);margin-bottom:6px;';
+    head.textContent = `진행 전투 ${list.length}`; el.appendChild(head);
     for (const b of list) {
       const row = document.createElement('div');
-      row.style.cssText = 'border-top:1px solid rgba(255,255,255,0.08);padding:5px 0;';
+      row.style.cssText = 'border-top:1px solid rgba(var(--fg-rgb), 0.08);padding:5px 0;';
       const title = document.createElement('div');
       title.innerHTML = `<span style="color:${WAR_SIDE_COL[0]}">${b.atk || '?'}</span> vs `
         + `<span style="color:${WAR_SIDE_COL[1]}">${b.def || '?'}</span>`;
       row.appendChild(title);
       const stat = document.createElement('div');
-      stat.style.cssText = 'color:#9fb0c4;font-size:11px;';
+      stat.style.cssText = 'color:var(--dim);font-size:11px;';
       stat.textContent = `A ${b.aliveA} · B ${b.aliveB} · ${b.casus || ''} · ${b.phase === 'resolved' ? '종료' : '교전'}`;
       row.appendChild(stat);
       if (b.phase !== 'resolved') {
@@ -101,11 +101,11 @@
         btns.style.cssText = 'margin-top:4px;display:flex;gap:6px;';
         const bSpec = document.createElement('button');
         bSpec.textContent = (_warSpec.id === b.id) ? '관전중' : '관전';
-        bSpec.style.cssText = _warBtnCss((_warSpec.id === b.id) ? '#356b3a' : '#2a3340');
+        bSpec.style.cssText = _warBtnCss((_warSpec.id === b.id) ? 'var(--stam)' : 'var(--inset)');
         bSpec.addEventListener('click', () => spectateBattle(b.id)); btns.appendChild(bSpec);
         const bCmd = document.createElement('button');
         bCmd.textContent = (_warCmdId === b.id) ? '지휘 해제' : '지휘';
-        bCmd.style.cssText = _warBtnCss((_warCmdId === b.id) ? '#8a4a2a' : '#2a3340');
+        bCmd.style.cssText = _warBtnCss((_warCmdId === b.id) ? 'var(--accent)' : 'var(--inset)');
         bCmd.addEventListener('click', () => toggleCommand(b.id)); btns.appendChild(bCmd);
         row.appendChild(btns);
       }
@@ -113,11 +113,11 @@
     }
     if (_warSpec.active || _warSpec.returning || _warCmdId) {
       const foot = document.createElement('div');
-      foot.style.cssText = 'margin-top:6px;border-top:1px solid rgba(255,255,255,0.12);padding-top:5px;';
-      if (_warCmdMsg) { const mm = document.createElement('div'); mm.style.cssText = 'color:#ffd27a;font-size:11px;margin-bottom:4px;'; mm.textContent = _warCmdMsg; foot.appendChild(mm); }
+      foot.style.cssText = 'margin-top:6px;border-top:1px solid rgba(var(--fg-rgb), 0.12);padding-top:5px;';
+      if (_warCmdMsg) { const mm = document.createElement('div'); mm.style.cssText = 'color:var(--accent-hi);font-size:11px;margin-bottom:4px;'; mm.textContent = _warCmdMsg; foot.appendChild(mm); }
       const bStop = document.createElement('button');
       bStop.textContent = '관전/지휘 종료 → 내 캐릭터';
-      bStop.style.cssText = _warBtnCss('#4a4432');
+      bStop.style.cssText = _warBtnCss('var(--line)');
       bStop.addEventListener('click', () => { if (_warCmdId) setCommand(null); stopSpectate(); }); foot.appendChild(bStop);
       el.appendChild(foot);
     }

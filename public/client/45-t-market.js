@@ -79,10 +79,14 @@
     panel.classList.toggle('hidden', !craftOpen);
     if (craftOpen) renderCraftPanel();
   }
-  const TOOL_ICONS = { axe: '🪓', pickaxe: '⛏️', sword: '⚔️' };
+  // ★[T66 2차] `TOOL_ICONS` 삭제 — 도구는 아이템 그림 하나(`itemPic`). 아래 `EQUIP_ICONS` 는 **갈래**(옷·갑옷·무기·도구)라 선 아이콘이 맞다.
   const TOOL_LABELS = { axe: '도끼', pickaxe: '곡괭이', sword: '검' };
   // 플레이어 장비 아이콘·미리보기(서버 EQUIPMENT_META와 동일 공식 = 단일진실)
-  const EQUIP_ICONS = { clothes: '🧥', armor: '🛡️', weapon: '⚔️', tool: '🔧' };
+  // ★★[T66 2차 · 재민 확정 2026-09-03] 장비 칸의 그림도 **아이템 그림 하나**다 —
+  //   값은 **파일명 규약**(`public/assets/icons/<key>.png`)의 그 키이고, `itemPic` 이 그대로 쓴다.
+  //   `carrier`(지게)는 T72 가 구웠다 ⇒ 여기 오르는 순간 제작창·장비 목록이 그 그림을 쓴다.
+  //   나머지 넷은 아직 안 구웠다 — 그래서 점선 칸으로 뜬다. 그게 ART 에 보이는 신호다(메우지 않는다).
+  const EQUIP_ICONS = { clothes: 'clothes', armor: 'armor', weapon: 'weapon', tool: 'tool', carrier: 'carrier' };
   function equipSkillLevel(skill) {
     const xp = (craftSkill && craftSkill[skill]) || 0;
     const per = (equipmentMeta && equipmentMeta.xpPerLevel) || 6;

@@ -40,24 +40,30 @@ function chronOnMessage(c) {
   if (activeSide === 'chronicle') renderSide('chronicle');
 }
 
-const CHRON_SEASON_EMO = { spring: '🌱', summer: '🌿', autumn: '🍂', winter: '❄️' };
+// ★[T66] 계절·유형도 선 아이콘 이름으로(그림은 세트 하나 · 이모지 0).
+const CHRON_SEASON_EMO = { spring: 'leaf', summer: 'sun', autumn: 'ground', winter: 'snow' };
 
 // ★★[T55 2026-09-02] 연표 아이콘 — 종전엔 **전부 🕰️** 였다(값이 움직인 줄과 일어난 일이 같은 얼굴).
 //   T50 이 `type`·`deed`·`sev` 를 페이로드에 실어 줬다(보고/T50 §e2e) — 그걸 쓴다. 유도하지 않는다.
 //   ★표는 서버 `events.js TYPES` **전부**를 덮는다(지금 열넷 — 지시서가 "열셋"이라 한 것은
-//     `SEASON_CHANGE` 를 뺀 수다. 그건 연표의 **축**이라 항목으로 안 나오지만, 표에는 둔다:
+//     `SEASON_CHANGE` 를 뺀 수다. ★[T66 2차] 겨울나기 둘이 더해져 지금 **열여섯**이다. 그건 연표의 **축**이라 항목으로 안 나오지만, 표에는 둔다:
 //     빠뜨린 유형이 생기면 조용히 🕰️ 로 되돌아가고 아무도 모른다).
 //   ★`scripts/test-chron-icons.js` 가 "서버 TYPES ⊆ 이 표의 키"를 소스로 잰다 — 한 유형을 빼면 빨개진다.
-//   ★모르는 유형은 🕰️ 폴백 — 서버가 유형을 늘려도 화면이 깨지지 않는다.
+//   ★★[T66] 그림이 이모지에서 **선 아이콘 이름**으로 바뀌었다(화면 규칙 B · 이모지 0).
+//     폴백도 🕰️ 가 아니라 `scroll` 이다 — 뜻은 같다("유형을 모르겠다").
 const CHRON_TYPE_EMO = {
   // 값의 이탈(장부 1차) — 저울과 값
-  STOCK_SHORTAGE: '📉', STOCK_GLUT: '📦', PRICE_SPIKE: '💰', PRICE_DROP: '🪙', CARAVAN_LATE: '🐌',
-  SEASON_CHANGE: '🗓️',
+  STOCK_SHORTAGE: 'price', STOCK_GLUT: 'chest', PRICE_SPIKE: 'star', PRICE_DROP: 'minus', CARAVAN_LATE: 'trade',
+  SEASON_CHANGE: 'cal',
   // 일어난 일(T50 2차) — 운과 사람과 길
-  HARVEST_BOON: '🌾', HARVEST_BLIGHT: '🥀', WEATHER: '🌧️', POP_COLLAPSE: '🕯️',
-  CARAVAN_RAIDED: '⚔️', TRADER_KILLED: '🩸', BUILT: '🏠', FIRST_GOODS: '✨',
+  HARVEST_BOON: 'food', HARVEST_BLIGHT: 'leaf', WEATHER: 'cloud', POP_COLLAPSE: 'people',
+  CARAVAN_RAIDED: 'guild', TRADER_KILLED: 'heart', BUILT: 'home', FIRST_GOODS: 'check',   // ★[T66 2차] `star` 는 PRICE_SPIKE 가 쓴다 — 겹치면 두 사건이 같은 얼굴이 된다
+  // ★★[T66 2차 · 재민 확정 2026-09-03] 겨울나기 두 유형 — T20(`3ad06f2d`)이 서버 `TYPES` 에 더했는데
+  //   T55 의 클라 표가 안 따라가서 `test-chron-icons ③` 이 베이스에서도 빨갰다. 여기서 닫는다.
+  //   불(모닥불을 지켜 냈다) / 눈(모자랐다) — 서로 다른 얼굴이어야 ④ 가 초록이다.
+  WINTER_KEPT: 'fire', WINTER_SHORT: 'snow',
 };
-function chronIcon(it) { return (it && CHRON_TYPE_EMO[it.type]) || '🕰️'; }
+function chronIcon(it) { return uiIcon((it && CHRON_TYPE_EMO[it.type]) || 'scroll', 16); }
 
 function renderChroniclePanel(el) {
   if (window.__evNearVid == null) {
@@ -69,10 +75,10 @@ function renderChroniclePanel(el) {
 
   // ── 연도 줄 — 접힘/펼침이 아니라 **해를 고르는 줄**이다(연표 한 화면 = 한 해).
   const years = c.years || [c.year];
-  let h = `<div class="hint" style="margin-bottom:6px">📜 <b>${c.name}</b> 연표 — `
+  let h = `<div class="hint" style="margin-bottom:6px"><b>${c.name}</b> 연표 — `
         + `지금은 ${c.cal ? `${c.cal.year}년 ${c.cal.seasonKo} ${c.cal.dayOfSeason}일` : `${c.today}일`}</div>`;
   h += '<div class="cr-cost" style="margin-bottom:8px">'
-     + years.map((y) => `<button data-chyear="${y}" style="margin:1px 3px 1px 0;${y === c.year ? 'outline:1px solid #7c9' : ''}">${y}년</button>`).join('')
+     + years.map((y) => `<button data-chyear="${y}" style="margin:1px 3px 1px 0;${y === c.year ? 'outline:1px solid var(--stam)' : ''}">${y}년</button>`).join('')
      + '</div>';
 
   // ── 계절 칸 — 빈 계절도 자리를 지킨다. **구멍도 정보다**("그 해 봄엔 아무 소식도 없었다").
@@ -81,12 +87,12 @@ function renderChroniclePanel(el) {
     h += '<div class="hint">이 해에는 아직 아무 일도 적히지 않았다.</div>';
   } else {
     for (const b of secs) {
-      h += `<div class="hint" style="font-weight:bold;margin:10px 0 4px">— ${CHRON_SEASON_EMO[b.season] || ''} ${b.seasonKo} —</div>`;
+      h += `<div class="hint" style="font-weight:bold;margin:10px 0 4px">— ${uiIcon(CHRON_SEASON_EMO[b.season] || 'cal', 14)} ${b.seasonKo} —</div>`;
       if (!b.items.length) { h += '<div class="hint" style="opacity:.6">조용한 계절이었다.</div>'; continue; }
       for (const it of b.items) {
-        const where = it.from ? `<span style="color:#8a93a0">${it.from}에서</span> ` : '';
+        const where = it.from ? `<span style="color:var(--dim-2)">${it.from}에서</span> ` : '';
         const lag = (it.heard - it.day);
-        const when = lag > 0 ? `<span style="color:#8a93a0"> · ${lag}일 걸려 닿았다</span>` : '';
+        const when = lag > 0 ? `<span style="color:var(--dim-2)"> · ${lag}일 걸려 닿았다</span>` : '';
         // ★[T55] `deed`(일어난 일)는 **굵게** — 값이 움직인 줄과 한눈에 갈린다(구분은 한 가지만).
         h += `<div class="craft-recipe"><div class="cr-icon">${chronIcon(it)}</div>`
            + `<div class="cr-info"><div class="cr-name"${it.deed ? ' style="font-weight:bold"' : ''}>${where}${it.line}</div>`

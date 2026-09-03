@@ -176,8 +176,8 @@
       ctx.textAlign = 'center';
       ctx.fillStyle = '#ff8888';
       ctx.strokeStyle = 'rgba(0,0,0,0.85)'; ctx.lineWidth = 3;
-      ctx.strokeText('💀 ' + name, x, y - 12);
-      ctx.fillText('💀 ' + name, x, y - 12);
+      ctx.strokeText('× ' + name, x, y - 12);
+      ctx.fillText('× ' + name, x, y - 12);
       ctx.textAlign = 'start';
       return;
     }

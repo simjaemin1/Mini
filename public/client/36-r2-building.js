@@ -444,7 +444,7 @@
         ctx.font = 'bold 11px sans-serif';
         ctx.textAlign = 'center';
         // 배경 박스
-        const txt = `🏪 ${village}`;
+        const txt = `${village}`;
         const w = ctx.measureText(txt).width + 8;
         ctx.fillStyle = 'rgba(40,30,15,0.85)';
         ctx.fillRect(x - w/2, y - 32, w, 16);

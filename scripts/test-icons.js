@@ -7,7 +7,7 @@
 //   ② 알파가 살아 있다 — 투명 화소와 불투명 화소가 **둘 다** 있다(꽉 찬 사각형·빈 장이면 잡는다).
 //   ③ 키가 **서버 품목**이다 — `server/weights.js kgOf(key)` 가 null 이 아니어야 한다.
 //      (아이콘 키를 지어내면 인벤에 영영 안 뜬다. 화면이 아니라 **정본**에 물어본다.)
-//   ④ 404 가 날 수 없다 — 클라가 실제로 **요청하는** 키(`ITEM_ICONS` − `ICON_NO_RENDER`)는
+//   ④ 404 가 날 수 없다 — 클라가 실제로 **요청하는** 키(★T66 뒤로 `ICON_RENDERED` 하나)는
 //      전부 파일이 있어야 한다. `e2e-nature` 의 "자산 요청 404 없음"을 소스 층에서 미리 잡는다.
 //   ⑤ 배선 상태 — 새로 구운 키가 클라 표에 올랐는지 **세어서 보고**한다.
 //   ⑥ [T76] 원물 → 보존식 **계보** — 두 겹으로 본다:
@@ -15,7 +15,7 @@
 //      ⓑ **같은 모델 함수**에서 나오는가(`props_render.py` 에서 두 `m_*` 가 같은 `_빌더` 를 부른다)
 //      ★픽셀 상관은 **판정에 안 쓴다** — 측정해 보니 못 쓴다(아래 ⑥-★). 숫자는 기록만 한다.
 //      ⚠T72 착지 시점에 `43-i-icon.js` 는 T66(세션4) 이 만지는 중이라 **접점을 회부했다**(카드 §1).
-//        그래서 여기서 배선은 **실패가 아니라 표기**다 — 배선이 오면 이 절의 '회부 중'이 0 이 된다.
+//        ★T66 이 리베이스에서 그 배선을 했다 — 지금 '회부 중'은 0 이다. 표기는 그대로 둔다(다음 굽기 때 또 쓴다).
 //
 // ★검사기는 정본을 스스로 찾는다(족보 79): 키 목록은 `props_render.py` 에서, 무게는 `weights.js` 에서,
 //   배선은 클라 소스에서 **직접 읽는다**. 어느 표도 여기 옮겨 적지 않았다.
@@ -80,11 +80,13 @@ console.log('\n[③ 아이콘 키 = 서버 품목 키 (weights.kgOf 가 정본)]
 console.log('\n[④ 클라가 요청하는 키는 전부 파일이 있다 — 404 가 날 수 없다]');
 {
   const src = fs.readFileSync(CLIENT_ICON, 'utf8');
-  const tbl = src.match(/const ITEM_ICONS = \{([\s\S]*?)\n  \};/);
-  ok(!!tbl, '43-i-icon.js 에서 ITEM_ICONS 표를 읽었다');
-  const wanted = tbl ? [...tbl[1].matchAll(/(\w+)\s*:\s*'/g)].map(m => m[1]) : [];
-  const noRender = src.match(/const ICON_NO_RENDER = new Set\(\[([\s\S]*?)\]\)/);
-  const denied = new Set(noRender ? [...noRender[1].matchAll(/'([\w]+)'/g)].map(m => m[1]) : []);
+  // ★★[T66 착지] 정본이 바뀌었다. 옛 `ITEM_ICONS`(키 → 이모지 폴백)은 **삭제**됐고,
+  //   지금 클라가 그림을 요청하는 키는 `ICON_RENDERED` **하나**다(있으면 <img>, 없으면 점선 빈 칸).
+  //   거부 목록(`ICON_NO_RENDER`)도 그 집합의 여집합으로 바뀌어 따로 읽을 것이 없다.
+  const tbl = src.match(/const ICON_RENDERED = new Set\(\[([\s\S]*?)\]\);/);
+  ok(!!tbl, '43-i-icon.js 에서 `ICON_RENDERED` 표를 읽었다');
+  const wanted = tbl ? [...tbl[1].matchAll(/'([\w]+)'/g)].map(m => m[1]) : [];
+  const denied = new Set();
   const requested = wanted.filter(k => !denied.has(k));
   const missing = requested.filter(k => !fs.existsSync(path.join(ICON_DIR, k + '.png')));
   ok(missing.length === 0,
@@ -99,7 +101,7 @@ console.log('\n[④ 클라가 요청하는 키는 전부 파일이 있다 — 40
               `${[...stale.map(k => k + '(거부목록)'), ...absent.map(k => k + '(표에 없음)')].join(' ') || '—'}`);
   if (stale.length + absent.length) {
     console.log('     ⚠ 배선은 `43-i-icon.js` 두 줄이다 — T66(세션4) 뒤로 회부(인계/회부.md 0-아이콘):');
-    if (absent.length) console.log(`       · ITEM_ICONS 에 키 추가: ${absent.join(', ')}`);
+    if (absent.length) console.log(`       · ICON_RENDERED 에 키 추가: ${absent.join(', ')}`);
     if (stale.length) console.log(`       · ICON_NO_RENDER 에서 제거: ${stale.join(', ')}`);
   }
   ok(true, `배선 ${wired.length} / 회부 중 ${stale.length + absent.length} (표기 전용 — 실패로 세지 않는다)`);

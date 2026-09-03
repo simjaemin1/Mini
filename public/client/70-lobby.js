@@ -43,6 +43,12 @@ function onbFetchInfo(zoneId) {
 // ── 시작 화면 ────────────────────────────────────────────────────────────────
 //   지도 = 마을 목록(§9.1). 성격 아이콘 + 규모 + **근황 한 줄** + 혼잡도.
 //   근황이 곧 선택 근거이자, 세계가 살아있다는 첫 증명이다.
+// ★[T66] CSS 토큰 하나를 읽어 온다 — SVG 는 currentColor 를 못 쓰는 자리가 있어 값이 필요하다.
+//   ⚠값을 여기 적지 않는다: 적는 순간 `style.css` 와 갈리고, 그게 사본이다.
+function onbTok(name) {
+  try { return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || 'currentColor'; }
+  catch (e) { return 'currentColor'; }
+}
 function onbEnsureDom() {
   if (document.getElementById('onbStart')) return document.getElementById('onbStart');
   const card = document.querySelector('#lobby .lobby-card');
@@ -51,20 +57,23 @@ function onbEnsureDom() {
   //   길어지면 「월드 입장」이 화면 밖으로 나가 **누를 수가 없다** — 통합 러너에서 900×700 창을 쓰는
   //   하네스가 정확히 그걸로 클릭 타임아웃을 냈다. style.css 는 이 배치의 접점이 아니므로 여기서 푼다.
   const lob = document.getElementById('lobby');
-  if (lob) { lob.style.overflowY = 'auto'; lob.style.alignItems = 'flex-start'; lob.style.padding = '18px 0'; }
+  if (lob) { lob.style.overflowY = 'auto'; lob.style.alignItems = 'flex-start'; lob.style.padding = '24px 0'; }
   const box = document.createElement('div');
   box.id = 'onbStart';
-  box.style.cssText = 'margin-top:10px';
-  // ★★지도는 **SVG** 다 — `<canvas>` 를 쓰면 안 된다. 하네스 여럿이 게임 화면을 `page.$('canvas')`
-  //   로 잡는데, 로비 캔버스가 DOM 앞에 있어 **그쪽이 잡히고** 숨겨진 요소라 boundingBox 가 null 이 된다
-  //   (실제로 `e2e-metallurgy` 가 그렇게 죽었다). 이 화면엔 캔버스를 두지 않는다.
+  // ★★[T66 · 화면 규칙 B §5] 시작 화면이 **로그인 판의 오른쪽 열**로 옮겨졌다.
+  //   ⚠id·훅은 하나도 안 바꿨다(행동 변경 0): `#onbStart`·`#onbMap`·`#onbCard`·`#onbAny`·`#onbHint`
+  //     그대로다 — `e2e-onboarding` 이 그것들로 잡는다.
+  //   ⚠색·모서리를 여기서 적지 않는다(토큰 규약) — class 만 얹고 값은 `style.css` 가 정한다.
   box.innerHTML = ''
-    + '<label>어느 마을로 갈 텐가 <span class="sublabel" id="onbHint">지도를 눌러 고르게 — 급하면 아무 곳이나</span></label>'
-    + '<svg id="onbMap" viewBox="0 0 360 130" preserveAspectRatio="none" style="width:100%;height:130px;background:#161b22;'
-    + 'border:1px solid #2b3440;border-radius:6px;cursor:pointer;display:block"></svg>'
-    + '<div id="onbCard" style="margin-top:6px;font-size:11.5px;line-height:1.55;color:#c8d2de;background:rgba(255,255,255,.05);border-radius:6px;padding:7px;min-height:44px"></div>'
-    + '<button id="onbAny" type="button" style="margin-top:10px;padding:9px">🧭 아무 곳이나 (추천)</button>';
-  const anchor = document.getElementById('zoneRow') || document.getElementById('colorPicker');
+    + '<div id="onbCards" class="onb-cards"></div>'
+    + '<svg id="onbMap" class="onb-map" viewBox="0 0 360 130" preserveAspectRatio="none"></svg>'
+    + '<div id="onbCard" class="onb-detail"></div>'
+    + '<button id="onbAny" type="button" class="onb-any">아무 곳이나 (추천)</button>'
+    + '<div class="sublabel" id="onbHint">지도를 눌러 고르게 — 급하면 아무 곳이나</div>';
+  // ★자리: 오른쪽 열의 `#lobbyVillages`. 없으면(옛 마크업) 종전 자리로 떨어진다.
+  const host = document.getElementById('lobbyVillages');
+  if (host) { host.appendChild(box); return box; }
+  const anchor = document.getElementById('zoneRow');
   if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(box, anchor.nextSibling);
   else card.appendChild(box);
   return box;
@@ -96,15 +105,16 @@ function onbDrawMap() {
   for (const v of onbInfo.villages) {
     const p = onbMapXY(v, bb);
     const r = v.popBand === 'big' ? 4.5 : v.popBand === 'mid' ? 3.4 : 2.6;
-    if (onbInfo.recommend === v.vid) sv.appendChild(onbSvgEl('circle', { cx: p.x, cy: p.y, r: r + 3, fill: 'none', stroke: '#f0c674', 'stroke-width': 1.2 }));
-    if (onbSelVid === v.vid) sv.appendChild(onbSvgEl('circle', { cx: p.x, cy: p.y, r: r + 5.2, fill: 'none', stroke: '#ffffff', 'stroke-width': 1.4 }));
+    // ★[T66] 색을 여기서 적지 않는다 — `style.css` 토큰을 읽어 쓴다(값이 두 군데 있으면 그게 사본이다).
+    if (onbInfo.recommend === v.vid) sv.appendChild(onbSvgEl('circle', { cx: p.x, cy: p.y, r: r + 3, fill: 'none', stroke: onbTok('--accent'), 'stroke-width': 1.2 }));
+    if (onbSelVid === v.vid) sv.appendChild(onbSvgEl('circle', { cx: p.x, cy: p.y, r: r + 5.2, fill: 'none', stroke: onbTok('--fg-strong'), 'stroke-width': 1.4 }));
     sv.appendChild(onbSvgEl('circle', { cx: p.x, cy: p.y, r,
-      fill: v.ch === 'fishing' ? '#6fb7e8' : v.ch === 'mining' ? '#c9a26b' : '#8fc98a',
-      stroke: v.busy > 0 ? 'rgba(255,255,255,.6)' : 'none', 'stroke-width': v.busy > 0 ? 1 : 0 }));
+      fill: v.ch === 'fishing' ? onbTok('--thirst') : v.ch === 'mining' ? onbTok('--accent') : onbTok('--stam'),
+      stroke: v.busy > 0 ? onbTok('--fg') : 'none', 'stroke-width': v.busy > 0 ? 1 : 0 }));
     // ★[T19] 사람이 세운 마을 — **점선 테**로 가른다(§9.3 "시작 지도가 곧 길드 모집 채널").
     //   지도에 올라 있다는 것 자체가 이미 서버 판정을 통과했다는 뜻이다(클라가 다시 안 푼다).
     if (v.player) sv.appendChild(onbSvgEl('circle', { cx: p.x, cy: p.y, r: r + 2, fill: 'none',
-      stroke: '#d8b0e8', 'stroke-width': 1.1, 'stroke-dasharray': '2 2' }));
+      stroke: onbTok('--accent-hi'), 'stroke-width': 1.1, 'stroke-dasharray': '2 2' }));
   }
 }
 function onbPickAt(px, py) {
@@ -123,21 +133,43 @@ function onbRenderCard() {
   if (!el || !onbInfo) return;
   const v = onbInfo.villages.find((x) => x.vid === onbSelVid) || null;
   if (!v) {
-    el.innerHTML = `<span style="color:#8a93a0">고른 마을이 없네. <b>아무 곳이나</b>를 누르면 이방인을 반기는 곳으로 데려다 주지.</span>`
-      + `<br/><span style="color:#8a93a0">🎣 어촌 · ⛏️ 산촌 · 🌾 농촌 · 노란 테 = 추천</span>`;
+    // ★[T66] 이모지 0 — 성격은 서버가 준 **한글 이름**(`chKo`)으로 말한다(`chEmo` 는 안 쓴다).
+    el.innerHTML = '<span class="dim">고른 마을이 없네. <b>아무 곳이나</b>를 누르면 이방인을 반기는 곳으로 데려다 주지.</span>'
+      + '<br/><span class="dim">점 색이 성격 · 노란 테가 추천이다.</span>';
     return;
   }
-  el.innerHTML = `<b>${v.chEmo} ${v.name}</b> <span style="color:#8a93a0">· ${v.popKo} · ${v.busyKo}</span>`
-    + (v.player ? `<br/><span style="color:#d8b0e8">사람이 세운 마을 — 이방인을 받는다${v.founderName ? ` (${v.founderName})` : ''}</span>` : '')
-    + `<br/><span style="color:#a9c6a0">“${v.news}”</span>`
-    + (v.board ? `<br/><span style="color:#8a93a0">게시판에 걸린 일 ${v.board}건</span>` : '')
-    + (v.welcome && !v.welcome.ok ? `<br/><span style="color:#c98a8a">이방인을 받기엔 아직 이르다 — ${v.welcome.why.join(' · ')}</span>` : '');
+  el.innerHTML = `<b>${v.name}</b> <span class="dim">${v.chKo || ''} · ${v.popKo} · ${v.busyKo}</span>`
+    + (v.player ? `<br/><span class="accent">사람이 세운 마을 — 이방인을 받는다${v.founderName ? ` (${v.founderName})` : ''}</span>` : '')
+    + `<br/><span class="quote">“${v.news}”</span>`
+    + (v.board ? `<br/><span class="dim">게시판에 걸린 일 ${v.board}건</span>` : '')
+    + (v.welcome && !v.welcome.ok ? `<br/><span class="warn">이방인을 받기엔 아직 이르다 — ${v.welcome.why.join(' · ')}</span>` : '');
+}
+// ★[T66 §5] 마을 카드 셋 — "어디서 시작하나". 추천 순으로 셋만(고르면 지도·상세와 같이 움직인다).
+function onbRenderCards() {
+  const el = document.getElementById('onbCards');
+  if (!el || !onbInfo) return;
+  const vs = (onbInfo.villages || []).slice();
+  const rec = onbInfo.recommend;
+  vs.sort((a, b) => (b.vid === rec ? 1 : 0) - (a.vid === rec ? 1 : 0)
+    || (b.welcome && b.welcome.ok ? 1 : 0) - (a.welcome && a.welcome.ok ? 1 : 0)
+    || (a.busy || 0) - (b.busy || 0));
+  el.innerHTML = vs.slice(0, 3).map((v) => ''
+    + `<div class="vil-card${v.vid === onbSelVid ? ' sel' : ''}" data-onbvid="${v.vid}">`
+    + `<span class="vc-name">${v.name}</span> <span class="vc-kind">${v.chKo || ''} · ${v.zoneKo || ''}</span>`
+    + `<span class="vc-busy">${v.busyKo} · ${v.popKo}</span>`
+    + `<div class="vc-news">${v.news || ''}</div>`
+    + (v.player ? '<span class="vc-badge">사람이 세운 마을 — 이방인을 받는다</span>' : '')
+    + '</div>').join('');
+  el.querySelectorAll('[data-onbvid]').forEach((c) => {
+    c.onclick = () => onbSelect(+c.dataset.onbvid);
+  });
 }
 function onbSelect(vid) {
   onbSelVid = vid;
   onbStartVid = vid;
   onbDrawMap();
   onbRenderCard();
+  onbRenderCards();
 }
 function onbEnterNow() {
   const btn = document.getElementById('enter');
@@ -155,7 +187,7 @@ function onbRefresh() {
     if (!j) { if (box) box.style.display = 'none'; return null; }
     if (box) box.style.display = '';
     if (onbSelVid == null && j.recommend != null) { onbSelVid = null; }
-    onbDrawMap(); onbRenderCard();
+    onbDrawMap(); onbRenderCard(); onbRenderCards();
     const hint = document.getElementById('onbHint');
     if (hint) hint.textContent = j.warming
       ? `${j.villages.length}곳 · 길을 그리는 중 (${j.ready}/${j.total})`
@@ -201,7 +233,7 @@ function onbEnsureHud() {
   row.style.paddingLeft = '62px';
   const el = document.createElement('span');
   el.id = 'onbHud';
-  el.style.cssText = 'font-size:12px;color:#c8d2de;opacity:.9';
+  el.className = 'onb-hud-line';
   el.style.display = 'none';
   row.appendChild(el);
   hud.appendChild(row);
@@ -243,9 +275,10 @@ function onbGranaryFx(wx, wy) {
   const to = window.__w2s(wx, wy);
   const from = me ? window.__w2s(me.x, me.y) : { px: to.px, py: to.py + 80 };
   const el = document.createElement('div');
+  // ★[T66] 곳간 연출도 이모지 0 — 선 아이콘 한 장이 날아간다(같은 세트 · currentColor).
   el.className = 'onb-fx';
-  el.textContent = '🌾';
-  el.style.cssText = 'position:absolute;left:0;top:0;pointer-events:none;font-size:22px;z-index:40;'
+  el.innerHTML = uiIcon('food', 20);
+  el.style.cssText = 'position:absolute;left:0;top:0;pointer-events:none;z-index:40;'
     + `transform:translate(${Math.round(from.px)}px,${Math.round(from.py)}px);transition:transform .9s ease-out,opacity .9s ease-out;opacity:1`;
   host.appendChild(el);
   setTimeout(() => { el.style.transform = `translate(${Math.round(to.px)}px,${Math.round(to.py - 20)}px)`; el.style.opacity = '0.1'; }, 20);
@@ -267,7 +300,7 @@ function onbOnMessage(msg) {
       // ★촌장의 말 — **기존 말풍선 그대로** 그린다(세계 안 · 새 패널 0). 통로만 온보딩 전용이다.
       if (msg.lines && msg.lines.length) {
         villageBubbles.set(msg.vid, { lines: msg.lines.slice(0, 3), until: performance.now() + 11000 });
-        showNotice(`🧓 ${msg.name || ''} 촌장 — ${msg.lines[0]}`, 6000);
+        showNotice(`${msg.name || ''} 촌장 — ${msg.lines[0]}`, 6000);
         window.__onbGreet = { vid: msg.vid, kind: msg.kind || '', lines: msg.lines.slice(0, 3) };
         needsRedraw = true;
       }
@@ -276,14 +309,14 @@ function onbOnMessage(msg) {
       // ★★서버가 보내는 좌표는 **존 로컬**이다. 렌더는 **절대 월드**를 쓴다(`fish_state` 가 한 번 겪은 함정).
       const _c = conns.get(primaryZoneId);
       const _ox = (_c && _c.meta && _c.meta.worldOffsetX) || 0, _oy = (_c && _c.meta && _c.meta.worldOffsetY) || 0;
-      showNotice('🌾 곳간에 쌓였다.', 2500);
+      showNotice('곳간에 쌓였다.', 2500);
       window.__onbFxN = (window.__onbFxN | 0) + 1;   // ★하네스 훅 — 알림은 40칸 링버퍼라 놓칠 수 있다(거래소 배치 교훈). **상태로 센다**
       onbGranaryFx(msg.x + _ox, msg.y + _oy);
     } else if (msg.type === 'onboarding_day') {
       const s = msg.summary || {};
       onbDayText = s.text || '';
       window.__onbDay = s;
-      if (onbDayText) showNotice('📜 ' + onbDayText, 5000);
+      if (onbDayText) showNotice(onbDayText, 5000);
       updateHud();
     }
   } catch (e) { window.__onbMsgErr = String(e && e.message || e); }
@@ -296,7 +329,7 @@ function onbHudLine() {
   const bits = [];
   if (onbDayText) bits.push(onbDayText);
   if (onbState && !onbState.lotOk && onbState.need) bits.push(`의뢰 ${onbState.contrib}/${onbState.need}`);
-  else if (onbState && onbState.lotOk) bits.push('빈터 권리 ✔');
+  else if (onbState && onbState.lotOk) bits.push('빈터 권리 얻음');
   el.textContent = bits.join('  ·  ');
   el.style.display = bits.length ? '' : 'none';
   return el.textContent;

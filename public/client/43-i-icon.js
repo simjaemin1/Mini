@@ -1,23 +1,13 @@
 // @@split:43-i-icon — I — 아이템 아이콘·이름표 표·작물 페이로드 적용 (T53 ③)
   // === HUD ===
   // 음식 아이콘 매핑 (인벤토리 표시 + 클릭 시 'eat' 송신)
-  const ITEM_ICONS = {
-    pillar: '🪵', rafter: '🥢', thatch: '🌾',   // ★건축 중간재(움집 고증 공정)
-    berry: '🫐', fiber: '🌾', meat_raw: '🥩', meat_cooked: '🍗',
-    hide: '🦌', berry_jam: '🍯', water_bottle: '🥤',
-    seed_berry: '🌱', herb: '🌿', ore: '⛏️',
-    // 14.50: 목공 자원
-    wood: '🪵', plank: '🪚', stone: '🪨',
-    // ★[2026-08-02] 야금 — 아이콘이 없으면 인벤 창에 기본 📦 가 뜬다(itemIconHtml 폴백)
-    ore_chunk: '🪨', iron_ore: '⚙️', charcoal: '🌑', meteoric_iron: '☄️',
-    iron: '⚙️', copper: '🟠', tin: '⚪', lead: '⬜', silver: '🥈', gold: '🥇', nickel: '⚪', jade_raw: '🟢',
-    // 14.51: 건축물 아이템 (인벤에 들어가는 형태)
-    item_wall: '🧱', item_floor: '⬜', item_door: '🚪', item_fence: '🪵',
-    item_stair: '🪜', item_chest: '📦', item_campfire: '🔥', item_farmland: '🌱', item_workbench: '🪚',
-    // ★[부패·보존 배치 2026-08-31] 건조대 + 보존식 4종 + 소금
-    item_drying_rack: '🧺',
-    dried_fish: '🐟', dried_fruit: '🍇', smoked_meat: '🥓', pickled_veg: '🫙', salt: '🧂',
-  };
+  // ★★[T66 2026-09-03 · 재민 확정 4·5] **아이템 이모지 표를 지웠다.**
+  //   "모든 아이템은 그림이 하나다" — 인벤·조합법·바닥·거래소·창고 어디서나 **같은 렌더 PNG** 다.
+  //   렌더가 없으면 **이모지가 아니라 점선 빈 칸**("렌더 없음")을 그린다. 그래야 무엇을 구워야 하는지
+  //   화면이 스스로 말한다 — 이모지로 메우면 빈 자리가 영원히 안 보인다(그게 지금까지였다).
+  //   ⚠`ITEM_ICONS` 를 쓰던 자리는 전부 `itemPic()` 하나로 모았다(아래).
+  //   ⚠**아이콘 키 목록**은 이제 서버 이름표(`ITEM_LABEL_SRV`)와 렌더 파일이 정한다 — 클라 표 0.
+
   // === 에셋 5차: 인벤 아이콘 3D 렌더(Blender icon_render.py) ===
   // /assets/icons/<key>.png (96×96 알파, 자연물과 동일 씬·조명). 로드 성공한 키만 이미지로 교체 —
   // 실패/미배포 시 위 이모지가 그대로 폴백이라 어느 쪽이든 UI가 비지 않는다.
@@ -29,29 +19,61 @@
   //   ⚠교체 예정: 작업대 아이콘은 Blender `icon_render.py` 로 뽑아 이 목록에서 빼면 된다(회부: 시설 스프라이트).
   //   ★[보존 배치 2026-08-31] 건조대·보존식 4종·소금도 아직 렌더가 없다 — **여기 안 적으면 404 다**
   //     (`e2e-nature` 가 "자산 요청 404 없음"으로 잡는다. 앞 배치가 실제로 그 자리를 밟았다.)
-  const ICON_NO_RENDER = new Set(['item_workbench', 'item_drying_rack',
-    'dried_fish', 'dried_fruit', 'smoked_meat', 'pickled_veg', 'salt']);
+  // ★★[T66] **구운 렌더의 목록**(`/assets/icons/*.png`). 종전엔 반대로 "렌더 없는 키" 목록이었는데,
+  //   T66 이 구울 키의 정본을 서버 이름표(300키)로 바꾸면서 그 방식이 **404 폭탄**이 됐다
+  //   (없는 것을 세는 목록으론 300키를 감당 못 한다 — 실측: 콘솔 404 191건).
+  //   ⇒ **있는 것을 센다.** 여기 없는 키는 아예 요청하지 않고 곧장 점선 빈 칸이다.
+  //   ⚠이 목록은 디렉터리의 **사본**이다. 그래서 검사로 못 박는다:
+  //     `test-itemlabel` 이 `ls public/assets/icons` 와 이 집합이 **같은지** 잰다 — 어긋나면 빨강.
+  //     (ART 카드가 렌더를 구우면 이 줄과 그 검사가 같이 갱신된다.)
+  const ICON_RENDERED = new Set([
+    'berry', 'berry_jam', 'charcoal', 'copper', 'fiber', 'gold',
+    'herb', 'hide', 'iron', 'iron_ore', 'item_campfire', 'item_chest',
+    'item_door', 'item_drying_rack', 'item_farmland', 'item_fence', 'item_floor',
+    'item_salt_kiln', 'item_stair', 'item_wall', 'item_workbench',   // ★[T67 리베이스] 새로 구운 셋
+    'jade_raw', 'lead', 'meat_cooked', 'meat_raw', 'meteoric_iron', 'nickel',
+    'ore', 'ore_chunk', 'pillar', 'plank', 'rafter', 'seed_berry',
+    'silver', 'stone', 'thatch', 'tin', 'water_bottle', 'wood',
+    // ★★[T72 리베이스 · 아이콘 1차] 도구 일곱 · 손에 드는 것 여섯. T72 가 굽고 **배선을 T66 으로 회부**했다
+    //   (`test-icons ⑤`). 여기 오르는 순간 `itemPic` 이 어디서나 그 그림을 쓴다 — 점선 칸이 그림으로 바뀐다.
+    'axe', 'brine', 'carrier', 'crude_axe', 'crude_blade', 'crude_pick',
+    'fish', 'fish_cooked', 'pebble', 'pickaxe', 'salt', 'sword', 'twig',
+    // ★[T76 리베이스 · 아이콘 2차] 보존식 여섯 · 갯벌 넷 · 어종 여덟.
+    'abalone', 'carp', 'cod', 'crab', 'dried_fish', 'dried_fruit',
+    'dried_oyster', 'dried_seaweed', 'fresh_water', 'herring', 'oyster',
+    'pickled_veg', 'pollock', 'salmon', 'seaweed', 'shrimp', 'smoked_meat', 'trout',
+  ]);
+  // ★★[T66 2차 · 재민 확정 2026-09-03] 옛 **거부 목록** `ICON_NO_RENDER` 은 **없앴다** — 뒤집혔다.
+  //   종전: "여기 있으면 렌더가 없다"(빠뜨리면 404). 지금: `ICON_RENDERED` 에 **있으면 그림, 없으면 점선 칸**.
+  //   ⇒ 새로 구운 키를 "거부 목록에서 빼는" 일이 사라졌다. 오직 **위 목록에 더하는 것 하나**이고,
+  //     그 목록이 `public/assets/icons/` 와 같은지는 `test-itemlabel ⑪` 이 잠근다(파일명 규약 `<key>.png`).
+  //   아래 껍데기는 옛 이름을 부르는 자리 하나(작물 등록)를 위해 남긴다 — 더하는 일은 **무의미**하다.
+  const ICON_NO_RENDER = { has: (k) => !ICON_RENDERED.has(k), add: () => {} };
 // @@moved:12454
   function itemIconImg(k) {
     const im = ITEM_ICON_IMG[k];
     return (im && im.complete && im.naturalWidth > 0) ? im : null;
   }
-  // DOM(innerHTML)용 — 이미지 있으면 <img>, 없으면 이모지(그것도 없으면 fb)
-  function itemIconHtml(k, px, fb) {
+  // ★★[T66] **물건 그림은 함수 하나다.** 인벤 · 조합법 · 바닥 · 거래소 · 창고가 전부 이걸 부른다.
+  //   있으면 `/assets/icons/<key>.png` 렌더, 없으면 **점선 빈 칸**. 이모지는 없다(재민 확정 4·5).
+  function itemPic(k, px) {
     const s = px || 20;
     const im = itemIconImg(k);
-    if (im) return `<img class="item-icon" src="${im.src}" width="${s}" height="${s}" alt="" style="vertical-align:middle;display:inline-block">`;
-    return (ITEM_ICONS && ITEM_ICONS[k]) || fb || '📦';
+    if (im) return `<img class="item-pic" src="${im.src}" width="${s}" height="${s}" alt="" title="${k}">`;
+    return `<span class="item-pic-none" style="width:${s}px;height:${s}px" title="${k} — 렌더 없음"></span>`;
   }
-  // 캔버스용 — 이미지 있으면 drawImage, 없으면 이모지 fillText (중심 정렬 동일)
+  // DOM(innerHTML)용 — 옛 이름. 셋째 인자(이모지 폴백)는 이제 **무시한다**(부르는 자리를 다 고치지 않으려고 남긴다).
+  function itemIconHtml(k, px, _fbIgnored) { return itemPic(k, px); }
+  // 캔버스용(바닥 낙하물) — 같은 PNG. 없으면 **점선 네모** 하나(같은 뜻을 캔버스 문법으로).
   function drawItemIcon(ctx, k, sx, sy, px) {
     const s = px || 18;
     const im = itemIconImg(k);
     if (im) { ctx.drawImage(im, sx - s / 2, sy - s / 2, s, s); return; }
-    const icon = (ITEM_ICONS && ITEM_ICONS[k]) || '📦';
-    ctx.font = Math.round(s * 0.9) + 'px sans-serif';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(icon, sx, sy);
+    ctx.save();
+    ctx.setLineDash([3, 3]); ctx.lineWidth = 1;
+    ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--line-2').trim() || '#4a4a4a';
+    ctx.strokeRect(Math.round(sx - s / 2) + 0.5, Math.round(sy - s / 2) + 0.5, s - 1, s - 1);
+    ctx.restore();
   }
   // ★★[T61 2026-09-03] **클라 이름표 사본을 지웠다.** 종전엔 55키 표가 여기 있었다.
   //   T55 가 정본을 `welcome.itemLabels` 로 실어 보내면서 이 표는 폴백이 됐고, T61 이 그 폴백마저 없앴다.
@@ -67,6 +89,10 @@
   let ITEM_LABEL_SRV = null;
   // ★econ 자원 종류 이름(장마당 시세표 열) — `welcome.categoryLabels`. 정본 `server/itemlabel.js`.
   let CATEGORY_KO_SRV = null;
+  // ★[T66 ⓪] 직업·계절 이름 정본(`welcome.uiLabels`). 클라 사본 둘(JOB_KR·SEASON_KO)은 지웠다.
+  let UI_LABELS_SRV = null;
+  function seasonKo(k) { return (UI_LABELS_SRV && UI_LABELS_SRV.seasons && UI_LABELS_SRV.seasons[k]) || k; }
+  function jobKo(k) { return (UI_LABELS_SRV && UI_LABELS_SRV.jobs && UI_LABELS_SRV.jobs[k]) || k; }
 
   // ★★[작물 층 2026-08-31] 작물 표는 **서버가 준다**(`welcome.crops`) — 클라가 표를 들지 않는다.
   //   이름표·아이콘·심기 메뉴가 전부 이 페이로드에서 파생된다(무게·원장과 같은 규약).
@@ -75,16 +101,17 @@
   // ★계절은 **이미 오는 달력에서 읽는다**(`msg.calendar.season` — econ 정본 파생).
   //   계절을 따로 받으면 그게 사본이고, 달력과 어긋나는 날이 온다.
   function cropSeasonNow() { return (myCalendar && myCalendar.season) || 'spring'; }
-  const SEASON_KO = { spring: '봄', summer: '여름', autumn: '가을', winter: '겨울' };
+  // ★[T66 ⓪] `SEASON_KO` 사본 삭제 — 정본은 `events.KO_SEASON`(welcome.uiLabels.seasons · 위 `seasonKo`).
   function applyCropPayload(list) {
     if (!Array.isArray(list)) return;
     for (const c of list) {
       CROP_BY_ID[c.id] = c; CROP_OF_SEED['seed_' + c.id] = c;
-      ITEM_ICONS[c.id] = c.emoji; ITEM_ICONS['seed_' + c.id] = '🌰';
       // ★[T61] 작물 이름표도 **정본 표에** 얹는다(사본이 없어졌으니 갈 데가 하나다).
       if (ITEM_LABEL_SRV) { ITEM_LABEL_SRV[c.id] = c.ko; ITEM_LABEL_SRV['seed_' + c.id] = c.ko + ' 씨앗'; }
-      // ★렌더 PNG 가 없다 → 이모지 폴백으로 보낸다(안 넣으면 404 · `e2e-nature` 가 잡는다)
-      ICON_NO_RENDER.add(c.id);   ICON_NO_RENDER.add('seed_' + c.id);
+      // ★[T66 2차] 작물은 아직 안 구웠다 ⇒ **아무것도 안 해도** 점선 칸이 된다(목록에 없으니까).
+      //   종전엔 여기서 거부 목록에 넣어야 404 를 면했다. 이제 404 는 구조적으로 못 난다 —
+      //   요청은 `ICON_RENDERED` 에 있는 키에만 나가고, 그 목록은 디렉터리와 같다.
+      //   ⇒ 이 두 줄은 **무동작**이다. 굽는 날 위 목록에 키를 더하면 그날 바로 그림이 뜬다.
     }
   }
 

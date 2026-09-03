@@ -289,7 +289,7 @@
     buildAction = { kind, startedAt: performance.now(), durationMs, payload,
                     startPx: lastMouseSx, startPy: lastMouseSy,
                     startWx: myAbsPredicted.x, startWy: myAbsPredicted.y };
-    showNotice(kind === 'place' ? '🏗️ 배치 중... (3초)' : '🔧 분해 중... (3초)');
+    showNotice(kind === 'place' ? '배치 중… (3초)' : '분해 중… (3초)');
   }
   function cancelBuildAction(reason) {
     if (!buildAction) return;

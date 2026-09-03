@@ -8,7 +8,7 @@
     if (!panel) return;
     panel.classList.remove('hidden');
     const title = document.getElementById('vmpTitle');
-    if (title) title.textContent = `🏪 ${villageName} 거래소`;
+    if (title) title.textContent = `${villageName} 거래소`;
     _vmpVillage = villageName;
     renderVillageMarket(villageName);
     // Phase 4d-3: 자동 갱신 1초 (시뮬 1초/day와 동기화)
@@ -33,7 +33,7 @@
     if (!sumEl || !priceEl) return;
     const needRebuild = _vmpStructFor !== villageName;
     if (needRebuild) {
-      sumEl.innerHTML = '<div style="color:#888">시뮬 데이터 로드 중…</div>';
+      sumEl.innerHTML = '<div style="color:var(--dim-2)">시뮬 데이터 로드 중…</div>';
       priceEl.innerHTML = '';
       _vmpAllResources = null;
     }
@@ -44,7 +44,7 @@
     ]).then(([world, pd]) => {
       const me = world.villages.find(v => v.name === villageName);
       const myEntry = pd.villages.find(v => v.name === villageName);
-      if (!me || !myEntry) { sumEl.innerHTML = `<div style="color:#f88">${villageName} 마을을 찾을 수 없습니다.</div>`; return; }
+      if (!me || !myEntry) { sumEl.innerHTML = `<div style="color:var(--hp)">${villageName} 마을을 찾을 수 없습니다.</div>`; return; }
       const myPrices = myEntry.prices || {};
       const storage = myEntry.storage || {};
       const treasury = myEntry.treasury || {};
@@ -61,36 +61,36 @@
         _vmpStructFor = villageName;
       }
       updateVmpData(sumEl, priceEl, villageName, world, me, myPrices, storage, treasury, pd, _vmpAllResources);
-    }).catch(e => { sumEl.innerHTML = `<div style="color:#f88">로드 실패: ${e.message}</div>`; });
+    }).catch(e => { sumEl.innerHTML = `<div style="color:var(--hp)">로드 실패: ${e.message}</div>`; });
     // 거래 로그 — 다른 마을 변경 시만 통째, 그 외엔 textContent만 update
     const logEl = document.getElementById('vmpTradeLog');
     if (logEl) {
       fetch('/economy/canadia/tradelog').then(r => r.json()).then(d => {
         const trades = (d.trades || []).filter(t => t.a === villageName || t.b === villageName).slice(0, 12);
         renderVmpTradeLog(logEl, villageName, trades, needRebuild);
-      }).catch(e => { logEl.innerHTML = `<div style="color:#f88">로그 로드 실패: ${e.message}</div>`; });
+      }).catch(e => { logEl.innerHTML = `<div style="color:var(--hp)">로그 로드 실패: ${e.message}</div>`; });
     }
   }
   // 첫 호출 시 표 구조 build (data attribute로 cell 매핑)
   function buildVmpStructure(sumEl, priceEl, villageName, world, pd, items) {
     sumEl.innerHTML = `
       <div data-vmp="header"><b data-vmp-name></b> · Day <span data-vmp-day></span></div>
-      <div>👥 인구 <b data-vmp-pop></b> · 💰 거래소세 <b data-vmp-tax></b></div>
-      <div>💼 직업: <span data-vmp-jobs></span></div>
-      <div data-vmp-storage style="margin-top:10px;padding:10px;background:#1a2a3a;border-radius:4px"></div>
+      <div>인구 <b data-vmp-pop></b> · 거래소세 <b data-vmp-tax></b></div>
+      <div>직업 <span data-vmp-jobs></span></div>
+      <div data-vmp-storage style="margin-top:10px;padding:10px;background:var(--inset);border-radius: 0"></div>
     `;
     // 가격표 구조
     let html = '<table style="width:100%;border-collapse:collapse">';
-    html += '<tr style="background:#222"><th style="text-align:left;padding:6px">자원</th>';
-    html += `<th style="padding:6px;background:#2a3a4a">${villageName} (여기)</th>`;
+    html += '<tr style="background:var(--head)"><th style="text-align:left;padding:6px">자원</th>';
+    html += `<th style="padding:6px;background:var(--line)">${villageName} (여기)</th>`;
     for (const v of pd.villages) {
       if (v.name === villageName) continue;
       html += `<th style="padding:6px;font-size:11px">${v.name}</th>`;
     }
     html += '</tr>';
     for (const item of items) {
-      html += `<tr style="border-top:1px solid #333" data-vmp-row="${item}"><td style="padding:6px"><b>${ITEM_KR(item)}</b></td>`;
-      html += `<td style="padding:6px;background:#2a3a4a;text-align:center"><b data-vmp-cell="my:${item}">-</b></td>`;
+      html += `<tr style="border-top:1px solid var(--inset)" data-vmp-row="${item}"><td style="padding:6px"><b>${ITEM_KR(item)}</b></td>`;
+      html += `<td style="padding:6px;background:var(--line);text-align:center"><b data-vmp-cell="my:${item}">-</b></td>`;
       for (const v of pd.villages) {
         if (v.name === villageName) continue;
         html += `<td style="padding:6px;text-align:center" data-vmp-cell="p:${v.name}:${item}">-</td>`;
@@ -114,15 +114,15 @@
     const treasuryRes = Object.entries(treasury).filter(([k, v]) => k !== '_cash' && v > 0.1)
       .sort((a, b) => b[1] - a[1]).map(([k, v]) => `${ITEM_KR(k)} ${Math.floor(v)}`).join(' · ');
     const cash = treasury._cash || 0;
-    let stoHtml = '<div style="color:#fc8;font-weight:bold;margin-bottom:6px">📦 거래소 보유 자원</div>';
-    if (!stoEntries.length) stoHtml += '<div style="color:#888">(비어있음)</div>';
+    let stoHtml = '<div class="tr-head">거래소 보유 자원</div>';
+    if (!stoEntries.length) stoHtml += '<div style="color:var(--dim-2)">(비어있음)</div>';
     else {
       stoHtml += '<div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));gap:4px">';
-      for (const [k, v] of stoEntries) stoHtml += `<div style="padding:4px 6px;background:#0e1822;border-radius:3px">${ITEM_KR(k)} <b>${Math.floor(v)}</b></div>`;
+      for (const [k, v] of stoEntries) stoHtml += `<div style="padding:4px 6px;background:var(--pane-solid);border-radius: 0">${ITEM_KR(k)} <b>${Math.floor(v)}</b></div>`;
       stoHtml += '</div>';
     }
-    stoHtml += `<div style="margin-top:6px;color:#aaa;font-size:11px">💰 길드 금고 자원: ${treasuryRes || '(비어있음)'}</div>`;
-    if (cash > 0) stoHtml += `<div style="color:#aaa;font-size:11px">📒 거래 회계 (cash): <b style="color:#fc8">${Math.floor(cash)}</b></div>`;
+    stoHtml += `<div class="dim" style="margin-top:6px;font-size:11px">길드 금고 자원: ${treasuryRes || '(비어있음)'}</div>`;
+    if (cash > 0) stoHtml += `<div class="dim" style="font-size:11px">거래 회계 (cash): <b style="color:var(--accent-hi)">${Math.floor(cash)}</b></div>`;
     const sto = sumEl.querySelector('[data-vmp-storage]');
     if (sto && sto.innerHTML !== stoHtml) sto.innerHTML = stoHtml;
     // 가격표 — 각 cell textContent만 update (깜빡 X)
@@ -135,9 +135,9 @@
         const cell = priceEl.querySelector(`[data-vmp-cell="p:${v.name}:${item}"]`);
         if (!cell) continue;
         const p = (v.prices || {})[item];
-        if (!p || p <= 0 || !myP) { cell.textContent = '-'; cell.style.color = '#666'; continue; }
+        if (!p || p <= 0 || !myP) { cell.textContent = '-'; cell.style.color = 'var(--line-2)'; continue; }
         const diff = p - myP, pct = ((diff / myP) * 100).toFixed(0);
-        const color = diff > 0 ? '#7c7' : (diff < 0 ? '#f77' : '#aaa');
+        const color = diff > 0 ? 'var(--stam)' : (diff < 0 ? 'var(--hp)' : 'var(--dim)');
         const sign = diff > 0 ? '+' : '';
         cell.textContent = `${fmtPrice(p)} (${sign}${pct}%)`;
         cell.style.color = color;
@@ -151,26 +151,25 @@
     if (!force && key === _vmpTradeLastKey) return;
     _vmpTradeLastKey = key;
     if (!trades.length) {
-      logEl.innerHTML = '<div style="color:#888;padding:6px">📜 아직 이 마을 관련 거래 없음</div>';
+      logEl.innerHTML = '<div class="dim" style="padding:6px">아직 이 마을 관련 거래 없음</div>';
       return;
     }
-    let html = '<div style="color:#fc8;font-weight:bold;margin-bottom:6px">📜 최근 거래</div>';
+    let html = '<div class="tr-head">최근 거래</div>';
     html += '<div style="max-height:160px;overflow-y:auto">';
     for (const t of trades) {
       const dir = t.a === villageName ? '→' : '←';
       const other = t.a === villageName ? t.b : t.a;
       const gave = t.a === villageName ? t.aGave : t.bGave;
       const got = t.a === villageName ? t.bGave : t.aGave;
-      const raid = t.raided ? ' <span style="color:#f66">⚠️약탈</span>' : '';
-      html += `<div style="padding:3px 4px;border-bottom:1px solid #222">Day ${t.day} · ${dir} <b>${other}</b>: 보냄 ${ITEM_KR(gave.res)} ${gave.amt}, 받음 ${ITEM_KR(got.res)} ${got.amt} <span style="color:#888">(거리 ${t.distance}, 호위 ${t.escort})</span>${raid}</div>`;
+      const raid = t.raided ? ' <span class="warn">약탈</span>' : '';
+      html += `<div style="padding:3px 4px;border-bottom:1px solid var(--head)">Day ${t.day} · ${dir} <b>${other}</b>: 보냄 ${ITEM_KR(gave.res)} ${gave.amt}, 받음 ${ITEM_KR(got.res)} ${got.amt} <span style="color:var(--dim-2)">(거리 ${t.distance}, 호위 ${t.escort})</span>${raid}</div>`;
     }
     html += '</div>';
     logEl.innerHTML = html;
   }
-  function JOB_KR(j) {
-    const M = { farmer:'농부', fisher:'어부', hunter:'사냥꾼', lumberjack:'벌목꾼', miner:'광부', prospector:'탐사꾼', smith:'대장장이', forager:'채집꾼', cook:'요리사', warrior:'전사', merchant:'상인' };
-    return M[j] || j;
-  }
+  // ★★[T66 ⓪] **클라 사본을 지웠다.** 이 표는 `zone.js JOB_KR_NPC` 와 **글자까지 같았다**(T61 실측).
+  //   정본이 `welcome.uiLabels.jobs` 로 온다 — `ITEM_KR`·`itemKo` 와 같은 규약이고 폴백은 없다.
+  function JOB_KR(j) { return jobKo(j); }
   // ★★[T61 2026-09-03] **클라 사본을 지웠다.** 종전엔 여기 9키 표가 있었다 —
   //   서버가 자원 종류를 늘리면 표에 없는 열만 영문으로 남는, T55 가 품목에서 닫은 그 결함이다.
   //   정본은 `server/itemlabel.js CATEGORY_KO` 고 `welcome.categoryLabels` 로 온다. 폴백은 없다.

@@ -11,11 +11,18 @@
         const sz = animal.size === 'tiny' ? 0.5 : animal.size === 'small' ? 0.7 : animal.size === 'medium' ? 1.0 : animal.size === 'large' ? 1.3 : 1.6;
         ctx.ellipse(x, y + 6 * sz, 10 * sz, 4 * sz, 0, 0, Math.PI * 2);
         ctx.fill();
-        // emoji
-        ctx.font = `${Math.round(24 * sz)}px sans-serif`;
+        // ★★[T66] 렌더 없음 = **점선 빈 칸**(재민 확정 4 — 이모지로 메우지 않는다).
+        //   ⚠이모지만 지우면 짐승이 **화면에서 사라진다**(그림자만 남는다) — 자리는 남겨야
+        //     "여기 뭔가 있는데 그림이 아직 없다"가 보이고, 굽는 날 그 자리가 채워진다.
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(animal.emoji, x, y);
+        {
+          const half = Math.round(11 * sz);
+          ctx.save();
+          ctx.setLineDash([3, 3]); ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(220,220,220,0.55)';
+          ctx.strokeRect(Math.round(x - half) + 0.5, Math.round(y - half) + 0.5, half * 2, half * 2);
+          ctx.restore();
+        }
         // hp bar
         if (mob.hp != null && mob.hp < mob.maxHp) {
           const pct = mob.hp / mob.maxHp;
@@ -26,7 +33,7 @@
         if (mob.tameOwner) {
           ctx.font = '10px sans-serif';
           ctx.fillStyle = '#ffdd44';
-          ctx.fillText('🏠', x, y + 14 * sz);
+          ctx.fillText('집', x, y + 14 * sz);
         }
         return;
       }
@@ -74,7 +81,7 @@
     ctx.fillStyle = mob.tameOwner ? '#ffb0c0' : '#cdd6e3';
     ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.lineWidth = 2;
     const baseLabel = isWolf ? '늑대' : '사슴';
-    const label = mob.tameOwner ? `❤️ ${baseLabel} (${mob.tameOwnerName || ''})` : baseLabel;
+    const label = mob.tameOwner ? `${baseLabel} (${mob.tameOwnerName || ''})` : baseLabel;
     ctx.strokeText(label, x, y - 20); ctx.fillText(label, x, y - 20);
     ctx.textAlign = 'start';
   }

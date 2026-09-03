@@ -65,6 +65,24 @@ async function waitHttp(url, tries = 600) {
   page.on('console', (m) => { if (m.type() === 'error') errs.push('console: ' + m.text().slice(0, 160)); });
   const snap = async (n) => { const f = path.join(SHOTS, n + '.png'); await page.screenshot({ path: f }); shots.push(f); return f; };
 
+  // ★★[T66 2차 ⑬] **캔버스에 토큰 문자열이 닿으면 잡는다.**
+  //   `ctx.fillStyle = 'var(--accent)'` 는 예외도 콘솔 오류도 없이 **조용히 무시**되고 앞 색이 남는다
+  //   — 1차 판이 세계 렌더 색을 통째로 토큰으로 갈아 끼우고도 하네스가 전부 초록이었던 이유가 이것이다.
+  //   ⇒ 문서가 열리기 **전에** 세터를 가로채, 실제로 들어간 값을 모은다(소스 어림짐작이 아니라 실측).
+  await page.addInitScript(() => {
+    window.__badCanvasColor = [];
+    const P = CanvasRenderingContext2D.prototype;
+    for (const prop of ['fillStyle', 'strokeStyle', 'shadowColor']) {
+      const d = Object.getOwnPropertyDescriptor(P, prop);
+      if (!d || !d.set) continue;
+      Object.defineProperty(P, prop, {
+        configurable: true, enumerable: d.enumerable, get: d.get,
+        set(v) { if (typeof v === 'string' && v.indexOf('var(') >= 0 && window.__badCanvasColor.length < 20) window.__badCanvasColor.push(prop + '=' + v); d.set.call(this, v); },
+      });
+    }
+    const gp = CanvasGradient.prototype, ac = gp.addColorStop;
+    gp.addColorStop = function (o, c) { if (typeof c === 'string' && c.indexOf('var(') >= 0 && window.__badCanvasColor.length < 20) window.__badCanvasColor.push('addColorStop=' + c); return ac.call(this, o, c); };
+  });
   await page.goto(`http://localhost:${CPORT}/`, { waitUntil: 'domcontentloaded' });
   await sleep(2500);
   const enterBtn = await page.$('button:has-text("월드 입장")');
@@ -400,21 +418,141 @@ async function waitHttp(url, tries = 600) {
     ok(wire.has === true, '★★⑩ⓐ 서버 페이로드에 `aftermath` 칸이 **실제로 온다**(T56 계약 착지)', JSON.stringify(wire));
     ok(wire.v === null, '★⑩ⓐ 그리고 성한 몸에선 `null` 이다 — 그래서 안 그린다', JSON.stringify(wire.v));
     // ⓑ 계약 모양을 몸 페이로드에 얹고 다시 그린다
-    await page.evaluate(() => { if (myBody) { myBody.aftermath = { days: 2, cap: 0.7 }; renderMoodles(); } });
-    await sleep(300);
-    const after = await amBox();
+    //   ★★[T66 수리] **얹기·그리기·읽기를 한 `evaluate` 안에서** 한다.
+    //     종전엔 얹은 뒤 300ms 잤는데, 그 사이 서버 `vitals` 한 판이 오면 `myBody` **객체 자체가**
+    //     새것으로 갈리고(30-n-net `myBody = msg.body`) 곧바로 `renderMoodles()` 가 다시 돌아
+    //     얹어 둔 칸이 지워진다. 이건 화면 결함이 아니라 **재는 자리의 경주**다 — T61 에선 운으로 통과했다.
+    //     한 판 안에서 재면 경주가 없고, 그리는 길이 끊기면 여전히 빨개진다(자명 통과 아님).
+    const amShot = await page.evaluate(() => {
+      myBody.aftermath = { days: 2, cap: 0.7 };
+      renderMoodles();
+      return {
+        list: [...document.querySelectorAll('#moodles .moodle')]
+          .map((el) => ({ axis: el.dataset.axis, stage: +el.dataset.stage, text: (el.textContent || '').trim() })),
+        vg: window.__vignetteOn ? window.__vignetteOn() : null,
+      };
+    });
+    const after = amShot.list;
     const am = after.find((m) => m.axis === 'aftermath');
     ok(!!am, '★★⑩ⓑ 계약이 오면 **후유증 칸이 뜬다**', JSON.stringify(after.map((m) => m.axis)));
     ok(!!am && /후유증 2일/.test(am.text), '★⑩ⓑ 남은 날을 글자로 말한다', am && am.text);
     ok(!!am && /힘 70%/.test(am.text), '★⑩ⓑ 눌린 상한도 글자로 말한다(단계를 클라가 매기지 않는다)', am && am.text);
     ok(!!am && am.stage === 1, '★⑩ⓑ 1단계다 — 위급이 아니라 회복 중이라는 표시다', am && String(am.stage));
-    const vgOn = await page.evaluate(() => window.__vignetteOn ? window.__vignetteOn() : null);
-    ok(vgOn === false, '★⑩ⓑ 그래서 비네트가 안 켜진다(3단계가 아니다)', String(vgOn));
-    // ⓒ 계약이 끝나면 사라진다
-    await page.evaluate(() => { if (myBody) { myBody.aftermath = { days: 0, cap: 1 }; renderMoodles(); } });
-    await sleep(300);
-    ok(!(await amBox()).some((m) => m.axis === 'aftermath'), '★⑩ⓒ 날이 다 가면 칸이 사라진다');
+    ok(amShot.vg === false, '★⑩ⓑ 그래서 비네트가 안 켜진다(3단계가 아니다)', String(amShot.vg));
+    // ⓒ 계약이 끝나면 사라진다 — ★같은 이유로 한 판 안에서 잰다.
+    const amGone = await page.evaluate(() => {
+      myBody.aftermath = { days: 0, cap: 1 };
+      renderMoodles();
+      return [...document.querySelectorAll('#moodles .moodle')].map((el) => el.dataset.axis);
+    });
+    ok(!amGone.includes('aftermath'), '★⑩ⓒ 날이 다 가면 칸이 사라진다', JSON.stringify(amGone));
     await snap('ui-06-aftermath');
+  }
+
+  // ── ⑪ ★[T66] 화면 규칙 B — 실화면에서 재는 것들 ─────────────────────────────
+  //   ★소스 검사(이모지 0 · 색 리터럴 0 · 렌더 목록)는 `test-itemlabel ⑪·⑫` 가 한다.
+  //     여기서는 **화면에 실제로 그렇게 그려졌는가**만 잰다(계약과 실행은 다른 층이다).
+  console.log('\n⑪ ★[T66] 먹선 — 판 머리 한 문법 · 선 아이콘 · 아이템 그림 하나');
+  {
+    // ⓐ 열린 패널의 머리가 **같은 class 문법**인가
+    const heads = [];
+    for (const side of ['body', 'craft', 'chronicle']) {
+      await page.evaluate((s2) => document.querySelector(`#sidebar .sb-icon[data-side="${s2}"]`).click(), side);
+      await sleep(400);
+      heads.push(await page.evaluate(() => {
+        const h = document.querySelector('#sidePanel .sp-head');
+        return h ? [...h.classList].sort().join(' ') : null;
+      }));
+      await page.keyboard.press('Escape'); await sleep(200);
+    }
+    ok(heads.every((h) => h && /pane-head/.test(h)), '★★⑪ⓐ 모든 패널 머리가 **한 문법**(`pane-head`)이다', JSON.stringify(heads));
+    await page.evaluate(() => { if (!invOpen) toggleInv(); }); await sleep(400);
+    const invHead = await page.evaluate(() => {
+      const h = document.querySelector('#invDropdown .id-head');
+      return h ? [...h.classList].sort().join(' ') : null;
+    });
+    ok(/pane-head/.test(invHead || ''), '★⑪ⓐ 짐 판 머리도 같은 문법이다', invHead);
+
+    // ⓑ 아이템 그림 — 렌더가 있으면 <img>, 없으면 **점선 칸**(이모지 문자 0)
+    //   ★★[T66 2차] "렌더 없는 품목"을 **이름으로 박아 두지 않는다.** 처음엔 `oyster` 를 썼는데
+    //     T76 이 그날 굴을 구워서, 옳은 화면인데도 이 줄이 빨개질 참이었다(아이콘은 배치마다 는다).
+    //   ⇒ 화면의 정본(`ICON_RENDERED`)에서 **아직 안 구운 키를 그때그때 고른다.** 안 썩는다.
+    const probe = await page.evaluate(() => {
+      const src = (typeof ITEM_LABEL_SRV === 'object' && ITEM_LABEL_SRV) ? Object.keys(ITEM_LABEL_SRV) : [];
+      return src.find((k) => !ICON_RENDERED.has(k) && !/^item_/.test(k) && /^[a-z_]+$/.test(k)) || null;
+    });
+    ok(!!probe, '★⑪ⓑ (상황) 아직 안 구운 품목을 하나 골랐다 — 없으면 아래 점선 칸 판정이 뜻이 없다', String(probe));
+    await page.evaluate((pk) => window.__sendPrimary({ type: '__e2e_give', items: { wood: 3, [pk]: 2 } }), probe);
+    await sleep(1400);
+    await page.evaluate(() => renderInvPanel(document.getElementById('invBody')));
+    await sleep(400);
+    const pics = await page.evaluate(() => [...document.querySelectorAll('.inv-col tr.ul-row')].map((tr) => ({
+      item: tr.dataset.item,
+      img: !!tr.querySelector('img.item-pic'),
+      none: !!tr.querySelector('.item-pic-none'),
+      text: (tr.textContent || '').trim(),
+    })));
+    const wood = pics.find((p) => p.item === 'wood'), oy = pics.find((p) => p.item === probe);
+    ok(!!wood && wood.img, '★★⑪ⓑ 렌더가 있는 품목(`wood`)은 **그림**으로 뜬다', JSON.stringify(wood));
+    ok(!!oy && oy.none && !oy.img, `★★⑪ⓑ 렌더가 없는 품목(\`${probe}\`)은 **점선 빈 칸**이다(이모지 아님)`, JSON.stringify(oy));
+    const EMO = /\p{Extended_Pictographic}/u;
+    ok(!pics.some((p) => EMO.test(p.text)), '★★⑪ⓑ 짐 목록 글자에 **이모지 0**',
+       (pics.find((p) => EMO.test(p.text)) || {}).text || '없음');
+    await page.keyboard.press('Escape'); await sleep(250);
+
+    // ⓒ 화면에 실제로 그려진 글자에 이모지가 없다(HUD·레일·무들·**상태창**)
+    //   ★★[T66 2차] 상태창(`#spBody`)을 더했다 — 1차 판이 여기를 놓쳤고 **실기 화면이 먼저 알려 줬다**:
+    //     "지금 걸린 효과" 줄이 서버가 준 `parts[].emo`(😩🥶🩹)를 그대로 찍고 있었다.
+    //     검사가 보는 자리가 화면보다 좁으면 초록은 거짓말이 된다. ⇒ 열어 놓고 잰다.
+    await page.evaluate(() => { if (window.__panelOpen && window.__panelOpen() !== 'body') openSide('body'); });
+    await sleep(500);
+    const uiText = await page.evaluate(() => ['#hud', '#sidebar', '#moodles', '#spBody'].map((s2) => (document.querySelector(s2) || {}).textContent || '').join(' '));
+    ok(/걸린 효과/.test(uiText), '★⑪ⓒ (상황) 상태창이 실제로 열려 있다 — 안 열렸으면 아래가 자명 통과다');
+    ok(!EMO.test(uiText), '★★⑪ⓒ HUD·레일·무들·상태창의 **글자에 이모지 0**', (uiText.match(/\p{Extended_Pictographic}/gu) || []).join(''));
+    await page.keyboard.press('Escape'); await sleep(250);
+    // ⓓ 선 아이콘이 실제로 그려졌다(레일 10개)
+    const nIco = await page.evaluate(() => document.querySelectorAll('#sidebar .sb-icon svg.uic').length);
+    ok(nIco >= 10, '★⑪ⓓ 레일에 **선 아이콘**이 그려져 있다', `${nIco}개`);
+    const stroked = await page.evaluate(() => {
+      const s2 = document.querySelector('#sidebar .sb-icon svg.uic');
+      return s2 ? s2.getAttribute('stroke') : null;
+    });
+    ok(stroked === 'currentColor', '★⑪ⓓ 그 아이콘은 색을 자기가 안 정한다(`currentColor`)', String(stroked));
+    // ⓔ 개발용 줄은 기본 숨김 · 값은 계속 갱신된다
+    const dev = await page.evaluate(() => {
+      const r = document.getElementById('devRow');
+      return { hidden: r ? getComputedStyle(r).display === 'none' : null, txt: (document.getElementById('coordBadge') || {}).textContent || '' };
+    });
+    ok(dev.hidden === true, '★⑪ⓔ 개발용 좌표·속도 줄은 **기본 숨김**이다');
+    ok(/월드/.test(dev.txt) && !/\(0,0\)\s*·\s*로컬 \(0,0\)$/.test(dev.txt.trim()),
+       '★⑪ⓔ 그런데 **값은 계속 갱신된다**(숨긴 것이지 끈 것이 아니다)', dev.txt);
+    ok((await page.evaluate(() => window.__devRow(true))) === true, '★⑪ⓔ 토글로 켤 수 있다');
+    await page.evaluate(() => window.__devRow(false));
+    await snap('ui-07-designB');
+    // ⓕ ★★[T66 2차] 세계 렌더에 **토큰 문자열이 한 번도 안 닿았다**
+    //   (여기까지 오는 동안 지형·건물·사람·전투·큰지도가 전부 여러 판 그려졌다.)
+    const badCol = await page.evaluate(() => (window.__badCanvasColor || []).slice(0, 6));
+    ok(badCol.length === 0, '★★⑪ⓕ 캔버스에 들어간 색에 **`var(…)` 0** — 세계 렌더는 리터럴이다',
+       badCol.length ? badCol.join(' · ') : '0건');
+    const probed = await page.evaluate(() => {
+      const before = (window.__badCanvasColor || []).length;
+      const c = document.createElement('canvas').getContext('2d');
+      c.fillStyle = 'var(--accent)';
+      const after = (window.__badCanvasColor || []).length;
+      window.__badCanvasColor.length = before;   // 조사용 한 건은 도로 뺀다
+      return after === before + 1;
+    });
+    ok(probed, '★⑪ⓕ 자명 통과 금지 — 일부러 토큰을 넣으면 **바로 잡힌다**');
+  }
+
+  // ── ⑫ ★[T66] 로그인 — 색 선택이 없고, 서버가 받은 색은 유효하다 ─────────────
+  //   ★로비는 입장 전에만 있다 ⇒ 여기서는 **이미 들어온 뒤**라 DOM 이 아니라 접속 기록으로 잰다.
+  console.log('\n⑫ ★[T66] 로그인 — 색 선택 없음');
+  {
+    ok((await page.evaluate(() => !document.getElementById('colorPicker'))) === true,
+       '★★⑫ 로비에 `#colorPicker` 가 **없다**(재민 확정 3)');
+    const col = await page.evaluate(() => (typeof myColor === 'string' ? myColor : null));
+    ok(!!col && /^#[0-9a-fA-F]{6}$/.test(col), '★★⑫ 그래도 서버로 간 색은 **유효한 값**이다(서버 접점 0)', String(col));
   }
 
   const jsErrs = errs.filter((e) => !/Failed to load resource/.test(e));

@@ -137,7 +137,9 @@ async function waitHttp(url, tries = 900) {
       const picked = await page.evaluate((v) => window.__onbPick(v), targetVid);
       ok(picked === targetVid, `[${label}] 지도에서 마을을 골랐다`, `vid=${picked}`);
       const cardText2 = await page.evaluate(() => (document.getElementById('onbCard') || {}).textContent || '');
-      ok(/[🎣⛏️🌾]/.test(cardText2), `[${label}] 고른 마을의 성격·규모·근황이 카드에 뜬다`, JSON.stringify(cardText2.slice(0, 70)));
+      // ★[T66] 화면 규칙 B — 성격을 이모지(🎣⛏️🌾)로 말하지 않는다. 서버가 준 **한글 이름**(`chKo`)이
+      //   그 자리에 그대로 선다(`server/onboarding.js CHARS.ko` = 어촌·산촌·농촌). 뜻은 그대로다.
+      ok(/어촌|산촌|농촌/.test(cardText2), `[${label}] 고른 마을의 성격·규모·근황이 카드에 뜬다`, JSON.stringify(cardText2.slice(0, 70)));
       await page.click('#enter');
     }
     // ★`__getMyAbs()` 는 `{0,0}` 로 시작해 **언제나 truthy** 다(00-const.js 경고). 자명 통과 금지 —

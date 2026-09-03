@@ -52,10 +52,10 @@ function itemKo(k) {
     }
     const box = document.getElementById('castRead-' + type);
     if (!box) return;
-    if (!pv) { box.innerHTML = '<span style="color:#888">계산 중…</span>'; return; }
-    if (pv.err) { box.innerHTML = '<span style="color:#e77">' + pv.err + '</span>'; return; }
+    if (!pv) { box.innerHTML = '<span style="color:var(--dim-2)">계산 중…</span>'; return; }
+    if (pv.err) { box.innerHTML = '<span style="color:var(--hp)">' + pv.err + '</span>'; return; }
     const p = pv.props || {};
-    const gCol = pv.grade >= 1 ? '#7cd97c' : (pv.grade >= 0.7 ? '#dd5' : '#e88');
+    const gCol = pv.grade >= 1 ? 'var(--stam)' : (pv.grade >= 0.7 ? 'var(--accent)' : 'var(--hp)');
     const warn = [];
     if (p.brittle > 0.02) warn.push('취성 — 잘 부러진다');
     if (p.split > 0.02) warn.push('층이 갈린다');
@@ -63,45 +63,45 @@ function itemKo(k) {
     const useTxt = Object.entries(pv.use || {}).map(([k, v]) => (CAST_KO[k] || k) + ' ' + v).join(' · ');
     box.innerHTML =
       '<b style="color:' + gCol + '">등급 ' + (pv.grade == null ? '?' : pv.grade.toFixed(2)) + '</b>'
-      + ' · <b style="color:#8fc8ff">' + (pv.attr != null ? pv.attr : '?') + '</b>'
+      + ' · <b style="color:var(--thirst)">' + (pv.attr != null ? pv.attr : '?') + '</b>'
       + (pv.dura != null ? ' · 내구 ' + pv.dura : '')
-      + '<div style="color:#9aa;font-size:10px;margin-top:2px">경도 ' + (p.hardness != null ? p.hardness : '?')
+      + '<div style="color:var(--dim);font-size:10px;margin-top:2px">경도 ' + (p.hardness != null ? p.hardness : '?')
       + ' · 인성 ' + (p.tough != null ? p.tough.toFixed(2) : '?')
       + ' · 융점 ' + (p.mp != null ? p.mp + '℃' : '?')
       + ' · 주조성 ' + (p.cast != null ? p.cast.toFixed(2) : '?') + '</div>'
-      + '<div style="color:#7a8;font-size:10px">소모 ' + useTxt + '</div>'
-      + (warn.length ? '<div style="color:#e88;font-size:10px">⚠ ' + warn.join(' · ') + '</div>' : '')
-      + (pv.lack ? '<div style="color:#e77;font-size:10px">재료 부족: ' + (CAST_KO[pv.lack] || pv.lack) + '</div>' : '');
+      + '<div style="color:var(--stam);font-size:10px">소모 ' + useTxt + '</div>'
+      + (warn.length ? '<div style="color:var(--hp);font-size:10px">' + warn.join(' · ') + '</div>' : '')
+      + (pv.lack ? '<div style="color:var(--hp);font-size:10px">재료 부족: ' + (CAST_KO[pv.lack] || pv.lack) + '</div>' : '');
   }
   function castBlockHtml(type, rc) {
     if (!rc.cast || !castKindsList().length) return '';
     const on = !!castOn[type];
-    const btn = '<button data-castoggle="' + type + '" style="margin-top:4px;padding:1px 6px;font-size:11px;border-radius:4px;cursor:pointer;border:1px solid '
-      + (on ? '#c93' : '#444') + ';background:' + (on ? '#432' : '#222') + ';color:#eee">⚗ 주조 배합' + (on ? ' ▾' : ' ▸') + '</button>';
+    const btn = '<button data-castoggle="' + type + '" style="margin-top:4px;padding:1px 6px;font-size:11px;border-radius: 0;cursor:pointer;border:1px solid '
+      + (on ? 'var(--accent)' : 'var(--line)') + ';background:' + (on ? 'var(--inset)' : 'var(--head)') + ';color:var(--fg-strong)">주조 배합' + (on ? ' ' : ' ') + '</button>';
     if (!on) return btn;
     const m = ensureCastMix(type), pct = castPct(type);
     const nSel = Object.keys(m).length;
     const chips = castKindsList().map(k => {
       const have = inventory[k] || 0, sel = m[k] > 0;
       const dis = (!sel && (have <= 0 || nSel >= castMaxKinds()));
-      const st = 'margin:2px 3px 0 0;padding:1px 6px;border-radius:4px;font-size:11px;cursor:pointer;border:1px solid '
-        + (sel ? '#c93' : '#444') + ';background:' + (sel ? '#432' : '#222') + ';color:' + (have > 0 ? '#eee' : '#666');
+      const st = 'margin:2px 3px 0 0;padding:1px 6px;border-radius: 0;font-size:11px;cursor:pointer;border:1px solid '
+        + (sel ? 'var(--accent)' : 'var(--line)') + ';background:' + (sel ? 'var(--inset)' : 'var(--head)') + ';color:' + (have > 0 ? 'var(--fg-strong)' : 'var(--line-2)');
       return '<button data-castmetal="' + k + '" data-casttype="' + type + '" ' + (dis ? 'disabled' : '')
         + ' style="' + st + '" title="' + (CAST_KO[k] || k) + ' 보유 ' + (+have).toFixed(2) + '">'
         + (CAST_KO[k] || k) + (have > 0 ? ' ' + (+have).toFixed(1) : '') + '</button>';
     }).join('');
     const sliders = Object.keys(m).map(k =>
       '<div style="display:flex;align-items:center;gap:5px;margin-top:3px">'
-      + '<span style="width:28px;font-size:11px;color:#ccc">' + (CAST_KO[k] || k) + '</span>'
+      + '<span style="width:28px;font-size:11px;color:var(--dim)">' + (CAST_KO[k] || k) + '</span>'
       + '<input type="range" min="0" max="100" value="' + m[k] + '" data-castslider="' + k + '" data-casttype="' + type + '" style="flex:1;height:14px">'
-      + '<span id="castPct-' + type + '-' + k + '" style="width:34px;text-align:right;font-size:11px;color:#8fc8ff">' + Math.round(pct[k] * 100) + '%</span>'
+      + '<span id="castPct-' + type + '-' + k + '" style="width:34px;text-align:right;font-size:11px;color:var(--thirst)">' + Math.round(pct[k] * 100) + '%</span>'
       + '</div>').join('');
     return btn
-      + '<div style="margin-top:4px;padding:5px 6px;border:1px solid #543;border-radius:5px;background:#1b1713">'
-      + '<div style="font-size:10px;color:#a98;margin-bottom:2px">도가니 — 최대 ' + castMaxKinds() + '종. 이 시대의 노가 녹일 수 있는 금속만.</div>'
+      + '<div style="margin-top:4px;padding:5px 6px;border:1px solid var(--line);border-radius: 0;background:var(--pane-solid)">'
+      + '<div style="font-size:10px;color:var(--dim-2);margin-bottom:2px">도가니 — 최대 ' + castMaxKinds() + '종. 이 시대의 노가 녹일 수 있는 금속만.</div>'
       + chips + sliders
       + '<div id="castRead-' + type + '" style="margin-top:5px;font-size:11px">계산 중…</div>'
-      + '<button data-castcraft="' + type + '" style="margin-top:5px;width:100%">⚗ 주조</button>'
+      + '<button data-castcraft="' + type + '" style="margin-top:5px;width:100%">주조</button>'
       + '</div>';
   }
   // 장비 제작+보유목록 HTML(양쪽 크래프트 패널 공유). 미리보기 = 서버 공식과 동일.
@@ -121,18 +121,18 @@ function itemKo(k) {
       const _extra = rc.extra || {};
       const canCraft = (inventory[sel] || 0) >= rc.qty + (_extra[sel] || 0)
         && Object.entries(_extra).every(([k, n]) => (inventory[k] || 0) >= n + (k === sel ? rc.qty : 0));
-      const extraStr = Object.entries(_extra).map(([k, n]) => ` · ${itemIconHtml(k, 18, itemKo(k))} ${n}<span style="color:${(inventory[k] || 0) >= n ? '#8a93a0' : '#e88'}"> (${Math.floor(inventory[k] || 0)})</span>`).join('');
+      const extraStr = Object.entries(_extra).map(([k, n]) => ` · ${itemIconHtml(k, 18, itemKo(k))} ${n}<span style="color:${(inventory[k] || 0) >= n ? 'var(--dim-2)' : 'var(--hp)'}"> (${Math.floor(inventory[k] || 0)})</span>`).join('');
       const matBtns = rc.accepts.map(m => {
         const has = (inventory[m] || 0), on = (m === sel);
-        const st = 'margin:2px 3px 0 0;padding:1px 6px;border-radius:4px;font-size:11px;cursor:pointer;border:1px solid ' + (on ? '#8bd' : '#444') + ';background:' + (on ? '#245' : '#222') + ';color:' + (has > 0 ? '#eee' : '#666');
+        const st = 'margin:2px 3px 0 0;padding:1px 6px;border-radius: 0;font-size:11px;cursor:pointer;border:1px solid ' + (on ? 'var(--thirst)' : 'var(--line)') + ';background:' + (on ? 'var(--thirst)' : 'var(--head)') + ';color:' + (has > 0 ? 'var(--fg-strong)' : 'var(--line-2)');
         return `<button data-eqtype="${type}" data-eqmat="${m}" ${has > 0 ? '' : 'disabled'} style="${st}" title="${m} 보유 ${has}">${itemIconHtml(m, 18, itemKo(m))}${has ? ` ${has}` : ''}</button>`;
       }).join('');
-      const pvStr = pv ? `<b style="color:#8fc8ff">${pv.attrLabel} ${pv.attr} · 내구 ${pv.dura}</b>` : '';
+      const pvStr = pv ? `<b style="color:var(--thirst)">${pv.attrLabel} ${pv.attr} · 내구 ${pv.dura}</b>` : '';
       html += `<div class="craft-recipe ${canCraft ? 'can-make' : 'cant-make'}">
-        <div class="cr-icon">${EQUIP_ICONS[type] || '🎽'}</div>
+        <div class="cr-icon">${itemPic(EQUIP_ICONS[type] || type, 22)}</div>
         <div class="cr-info">
-          <div class="cr-name">${rc.label} <span style="color:#7cd97c;font-weight:normal">${rc.skill} Lv${lvl}</span></div>
-          <div class="cr-cost">${sel ? itemIconHtml(sel, 18, itemKo(sel)) : '?'} ×${rc.qty}${extraStr} → ${pvStr}</div>
+          <div class="cr-name">${rc.label} <span style="color:var(--stam);font-weight:normal">${rc.skill} Lv${lvl}</span></div>
+          <div class="cr-cost">${sel ? itemIconHtml(sel, 18, itemKo(sel)) : '?'} ×${rc.qty}${extraStr} ${pvStr}</div>
           <div style="margin-top:3px">${matBtns}</div>
           ${castBlockHtml(type, rc)}
         </div>
@@ -147,15 +147,15 @@ function itemKo(k) {
         const isEq = equipSlots[slot] === inst.id;
         const broken = inst.broken || inst.dura === 0;
         const durPct = (inst.durMax ? Math.round(100 * inst.dura / inst.durMax) : 100);
-        const durCol = durPct > 50 ? '#5c5' : (durPct > 20 ? '#dd5' : '#e55');
+        const durCol = durPct > 50 ? 'var(--stam)' : (durPct > 20 ? 'var(--accent)' : 'var(--hp)');
         const attrParts = [];
         for (const a in (inst.attrs || {})) attrParts.push(`${(equipmentMeta.types[inst.type] && equipmentMeta.types[inst.type].attr) || a} ${inst.attrs[a]}`);
-        const durBar = inst.durMax ? `<div style="height:4px;background:#333;border-radius:2px;margin-top:3px;overflow:hidden"><div style="height:100%;width:${durPct}%;background:${durCol}"></div></div>` : '';
+        const durBar = inst.durMax ? `<div style="height:4px;background:var(--inset);border-radius: 0;margin-top:3px;overflow:hidden"><div style="height:100%;width:${durPct}%;background:${durCol}"></div></div>` : '';
         const repairBtn = (inst.durMax && inst.dura < inst.durMax) ? `<button data-eqrepair="${inst.id}" style="margin-left:4px">수선</button>` : '';
         html += `<div class="craft-recipe ${isEq ? 'can-make' : ''}">
-          <div class="cr-icon">${EQUIP_ICONS[inst.type] || '🎒'}</div>
+          <div class="cr-icon">${itemPic(EQUIP_ICONS[inst.type] || inst.type, 22)}</div>
           <div class="cr-info">
-            <div class="cr-name">${rc.label || inst.type} ${broken ? '<span style="color:#e66">✖파손</span>' : ''}<span style="color:#8a93a0;font-weight:normal"> · Lv${inst.craftedSkill || 0} 제작</span></div>
+            <div class="cr-name">${rc.label || inst.type} ${broken ? '<span style="color:var(--hp)">파손</span>' : ''}<span style="color:var(--dim-2);font-weight:normal"> · Lv${inst.craftedSkill || 0} 제작</span></div>
             <div class="cr-cost">${attrParts.join(' · ')}${inst.dura != null ? ` · 내구 ${inst.dura}/${inst.durMax}` : ''}</div>
             ${durBar}
           </div>
@@ -182,7 +182,7 @@ function itemKo(k) {
       requestCastPreview(t); if (rerender) rerender();
     });
     root.querySelectorAll('[data-castslider]').forEach(s => {
-      s.oninput = () => {   // ★패널을 다시 그리지 않는다 — 드래그 중이라 DOM 을 갈면 손이 놓친다
+      s.oninput = () => {   // 패널을 다시 그리지 않는다 — 드래그 중이라 DOM 을 갈면 손이 놓친다
         const t = s.dataset.casttype, k = s.dataset.castslider, m = ensureCastMix(t);
         m[k] = Number(s.value);
         let tot = 0; for (const kk in m) tot += m[kk];
@@ -210,11 +210,11 @@ function itemKo(k) {
     let h = '<div class="hint" style="margin-top:10px;font-weight:bold">— 내 요리 (신선할 때 먹자) —</div>';
     for (const d of dishes) {
       const fresh = d.freshness;
-      const fcol = fresh > 60 ? '#5c5' : (fresh > 30 ? '#dd5' : '#e55');
+      const fcol = fresh > 60 ? 'var(--stam)' : (fresh > 30 ? 'var(--accent)' : 'var(--hp)');
       h += `<div class="craft-recipe can-make">
-        <div class="cr-icon">🍲</div>
+        <div class="cr-icon"></div>
         <div class="cr-info">
-          <div class="cr-name">${d.label} <span style="color:#8a93a0;font-weight:normal">품질 ${Math.round((d.q || 0) * 100)}%</span></div>
+          <div class="cr-name">${d.label} <span style="color:var(--dim-2);font-weight:normal">품질 ${Math.round((d.q || 0) * 100)}%</span></div>
           <div class="cr-cost">영양 ${d.nutrition} · 버프 ${Math.round((d.buff || 0) * 100)}% · <span style="color:${fcol}">신선도 ${fresh}</span></div>
         </div>
         <button data-eatdish="${d.id}">먹기</button>
@@ -230,7 +230,7 @@ function itemKo(k) {
   function tradeSectionHtml() {
     const v = shopVillage;
     if (!v) return '<div class="hint" style="padding:12px">마을광장 근처에서 열면 마을 장인의 품질이 표시됩니다.<br>(거래 반경 밖이면 비어 있음 — 마을로 가까이)</div>';
-    let h = `<div class="hint" style="margin:6px 0;font-weight:bold">🏪 ${v.name} <span style="color:#8a93a0;font-weight:normal">· ${v.dist}px${v.pop != null ? ` · 인구 ${v.pop}` : ''}</span></div>`;
+    let h = `<div class="hint" style="margin:6px 0;font-weight:bold">${v.name} <span style="color:var(--dim-2);font-weight:normal">· ${v.dist}px${v.pop != null ? ` · 인구 ${v.pop}` : ''}</span></div>`;
     if (equipmentRecipes && equipmentMeta) {
       for (const [type, rc] of Object.entries(equipmentRecipes)) {
         const vq = v[TRADE_QKEY[type]];
@@ -242,13 +242,13 @@ function itemKo(k) {
         const qStr = (vq != null) ? `마을품질 ${Math.round(vq * 100)}%` : '이 마을은 아직 안 만듦';
         const matBtns = rc.accepts.map(m => {
           const has = (inventory[m] || 0), on = (m === sel);
-          const st = 'margin:2px 3px 0 0;padding:1px 6px;border-radius:4px;font-size:11px;cursor:pointer;border:1px solid ' + (on ? '#8bd' : '#444') + ';background:' + (on ? '#245' : '#222') + ';color:' + (has > 0 ? '#eee' : '#666');
+          const st = 'margin:2px 3px 0 0;padding:1px 6px;border-radius: 0;font-size:11px;cursor:pointer;border:1px solid ' + (on ? 'var(--thirst)' : 'var(--line)') + ';background:' + (on ? 'var(--thirst)' : 'var(--head)') + ';color:' + (has > 0 ? 'var(--fg-strong)' : 'var(--line-2)');
           return `<button data-eqtype="${type}" data-eqmat="${m}" ${has > 0 ? '' : 'disabled'} style="${st}">${itemIconHtml(m, 18, itemKo(m))}${has ? ` ${has}` : ''}</button>`;
         }).join('');
         h += `<div class="craft-recipe ${canBuy ? 'can-make' : 'cant-make'}">
-          <div class="cr-icon">${EQUIP_ICONS[type] || '🎽'}</div>
+          <div class="cr-icon">${itemPic(EQUIP_ICONS[type] || type, 22)}</div>
           <div class="cr-info">
-            <div class="cr-name">${rc.label} <span style="color:#8fc8ff;font-weight:normal">${qStr}</span></div>
+            <div class="cr-name">${rc.label} <span style="color:var(--thirst);font-weight:normal">${qStr}</span></div>
             <div class="cr-cost">재료 ${sel ? itemIconHtml(sel, 18, itemKo(sel)) : '?'} ×${rc.qty} 지불</div>
             <div style="margin-top:3px">${matBtns}</div>
           </div>
@@ -269,12 +269,12 @@ function itemKo(k) {
           return false;
         })();
         h += `<div class="craft-recipe">
-          <div class="cr-icon">${EQUIP_ICONS[inst.type] || '🎒'}</div>
-          <div class="cr-info"><div class="cr-name">${rc.label || inst.type} <span style="color:#8a93a0;font-weight:normal">Lv${inst.craftedSkill || 0}</span>${_fe ? ' <span style="color:#ffd77a">철기</span>' : ''}</div>
-          <div class="cr-cost">용해 → ${inst.mat ? itemIconHtml(inst.mat, 18, itemKo(inst.mat)) : '재료'} ×${refund} 회수${_fe ? ' &nbsp;/&nbsp; <span style="color:#ffd77a">위세품으로 넘기면 마을이 값을 친다</span>' : ''}</div></div>
+          <div class="cr-icon">${itemPic(EQUIP_ICONS[inst.type] || inst.type, 22)}</div>
+          <div class="cr-info"><div class="cr-name">${rc.label || inst.type} <span style="color:var(--dim-2);font-weight:normal">Lv${inst.craftedSkill || 0}</span>${_fe ? ' <span style="color:var(--accent-hi)">철기</span>' : ''}</div>
+          <div class="cr-cost">용해 ${inst.mat ? itemIconHtml(inst.mat, 18, itemKo(inst.mat)) : '재료'} ×${refund} 회수${_fe ? ' &nbsp;/&nbsp; <span style="color:var(--accent-hi)">위세품으로 넘기면 마을이 값을 친다</span>' : ''}</div></div>
           <div style="display:flex;flex-direction:column;gap:3px">
             <button data-sell="${inst.id}">용해</button>
-            ${_fe ? `<button data-relic="${inst.id}" style="background:#4a3a1a;border-color:#8a6a2a">위세품 판매</button>` : ''}
+            ${_fe ? `<button data-relic="${inst.id}" style="background:var(--accent);border-color:var(--accent)">위세품 판매</button>` : ''}
           </div>
         </div>`;
       }
@@ -285,15 +285,20 @@ function itemKo(k) {
     root.querySelectorAll('[data-eqmat]').forEach(b => b.onclick = () => { craftEquipSel[b.dataset.eqtype] = b.dataset.eqmat; if (rerender) rerender(); });
     root.querySelectorAll('[data-buy]').forEach(b => b.onclick = () => sendPrimary({ type: 'craft_buy', itemType: b.dataset.buy, material: craftEquipSel[b.dataset.buy] }));
     root.querySelectorAll('[data-sell]').forEach(b => b.onclick = () => sendPrimary({ type: 'craft_sell', id: b.dataset.sell }));
-    root.querySelectorAll('[data-relic]').forEach(b => b.onclick = () => sendPrimary({ type: 'sell_relic', id: b.dataset.relic }));   // ★철제 위세품
+    root.querySelectorAll('[data-relic]').forEach(b => b.onclick = () => sendPrimary({ type: 'sell_relic', id: b.dataset.relic }));   // 철제 위세품
   }
   function renderCraftPanel() {
     const list = document.getElementById('craftList');
     if (!list) return;
     list.innerHTML = '';
-    const eqLabel = equipped ? `${TOOL_ICONS[equipped]||''} ${TOOL_LABELS[equipped]||equipped}` : '없음';
+    // ★★[T66 2차] 도구도 **아이템**이다 ⇒ 어디서나 같은 그림(`itemPic`)이고, 없으면 점선 칸이다
+    //   (재민 확정 4·5). 1차 판은 여기에 아이콘 **이름**을 글자로 찍고 있었다 — `axe 도끼`.
     const eqEl = document.getElementById('equippedNow');
-    if (eqEl) eqEl.textContent = eqLabel;
+    if (eqEl) {
+      eqEl.innerHTML = equipped
+        ? itemPic(equipped, 14) + ' ' + (TOOL_LABELS[equipped] || equipped)
+        : '없음';
+    }
     for (const [name, r] of Object.entries(recipes)) {
       const have = hasToolAlive(name) ? 1 : 0;
       const canCraft = !hasToolAlive(name) && (inventory.wood || 0) >= r.wood && (inventory.stone || 0) >= r.stone;
@@ -301,10 +306,10 @@ function itemKo(k) {
       const row = document.createElement('div');
       row.className = 'craft-row' + (isEq ? ' eq' : '');
       row.innerHTML = `
-        <div class="craft-icon">${TOOL_ICONS[name] || '🔧'}</div>
+        <div class="craft-icon">${itemPic(name, 26)}</div>
         <div class="craft-info">
           <div class="craft-name">${r.label} <span class="craft-have">×${have}</span></div>
-          <div class="craft-cost">🪵 ${r.wood} · 🪨 ${r.stone}</div>
+          <div class="craft-cost">${r.wood} · ${r.stone}</div>
         </div>
         <button class="craft-btn" data-craft="${name}" ${canCraft ? '' : 'disabled'}>제작</button>
         <button class="equip-btn" data-equip="${name}" ${have > 0 ? '' : 'disabled'}>${isEq ? '해제' : '장착'}</button>
@@ -320,7 +325,7 @@ function itemKo(k) {
     if (itemRecipes && Object.keys(itemRecipes).length) {
       const hdr = document.createElement('div');
       hdr.className = 'hint';
-      hdr.style.cssText = 'margin-top:12px;padding-top:8px;border-top:1px solid #333;font-weight:bold';
+      hdr.style.cssText = 'margin-top:12px;padding-top:8px;border-top:1px solid var(--inset);font-weight:bold';
       hdr.textContent = '— 아이템 가공 (목공) —';
       list.appendChild(hdr);
       for (const [name, ir] of Object.entries(itemRecipes)) {
@@ -332,10 +337,10 @@ function itemKo(k) {
         const row = document.createElement('div');
         row.className = 'craft-row';
         row.innerHTML = `
-          <div class="craft-icon">🪚</div>
+          <div class="craft-icon"></div>
           <div class="craft-info">
             <div class="craft-name">${ir.label}${toolStr}</div>
-            <div class="craft-cost">${fromStr} → ${toStr}</div>
+            <div class="craft-cost">${fromStr} ${toStr}</div>
           </div>
           <button class="craft-btn" data-craftitem="${name}" ${canCraft ? '' : 'disabled'}>가공</button>
         `;
@@ -347,8 +352,8 @@ function itemKo(k) {
     if (buildingRecipes && Object.keys(buildingRecipes).length) {
       const hdr = document.createElement('div');
       hdr.className = 'hint';
-      hdr.style.cssText = 'margin-top:12px;padding-top:8px;border-top:1px solid #333;font-weight:bold';
-      hdr.textContent = '— 건축물 제작 (만들면 인벤 → 건축 모드에서 배치) —';
+      hdr.style.cssText = 'margin-top:12px;padding-top:8px;border-top:1px solid var(--inset);font-weight:bold';
+      hdr.textContent = '— 건축물 제작 (만들면 인벤 건축 모드에서 배치) —';
       list.appendChild(hdr);
       for (const [name, br] of Object.entries(buildingRecipes)) {
         const hasHammer = !br._needHammer && !br._useHammer || hasToolAlive('hammer');
@@ -359,12 +364,12 @@ function itemKo(k) {
         }
         const canCraft = hasHammer && Object.entries(cost).every(([k, v]) => (inventory[k] || 0) >= v);
         const costStr = Object.entries(cost).map(([k, v]) => `${itemIconHtml(k, 18, itemKo(k))} ${v}`).join(' · ');
-        const hammerStr = br._needHammer ? ' 🔨' : '';
+        const hammerStr = br._needHammer ? ' ' : '';
         const have = inventory[name] || 0;
         const row = document.createElement('div');
         row.className = 'craft-row';
         row.innerHTML = `
-          <div class="craft-icon">${itemIconHtml(name, 34, '🏗️')}</div>
+          <div class="craft-icon">${itemIconHtml(name, 34, '')}</div>
           <div class="craft-info">
             <div class="craft-name">${br.label} <span class="craft-have">×${have}</span>${hammerStr}</div>
             <div class="craft-cost">${costStr || '-'}</div>
@@ -379,8 +384,8 @@ function itemKo(k) {
     if (equipmentRecipes && Object.keys(equipmentRecipes).length && equipmentMeta) {
       const hdr = document.createElement('div');
       hdr.className = 'hint';
-      hdr.style.cssText = 'margin-top:12px;padding-top:8px;border-top:1px solid #333;font-weight:bold';
-      hdr.textContent = '— 장비 제작 (숙련·재료로 품질↑) —';
+      hdr.style.cssText = 'margin-top:12px;padding-top:8px;border-top:1px solid var(--inset);font-weight:bold';
+      hdr.textContent = '— 장비 제작 (숙련·재료로 품질) —';
       list.appendChild(hdr);
       const wrap = document.createElement('div');
       wrap.innerHTML = equipmentSectionHtml();
@@ -420,9 +425,9 @@ function itemKo(k) {
       const row = document.createElement('div');
       row.className = 'craft-row';
       row.innerHTML = `
-        <div class="craft-icon">${itemIconHtml(name, 34, '🍳')}</div>
+        <div class="craft-icon">${itemIconHtml(name, 34, '')}</div>
         <div class="craft-info">
-          <div class="craft-name">${r.label} → ${prodStr}</div>
+          <div class="craft-name">${r.label} ${prodStr}</div>
           <div class="craft-cost">${costStr}</div>
         </div>
         <button class="craft-btn" data-cook="${name}" ${canCook ? '' : 'disabled'}>요리</button>
@@ -461,12 +466,12 @@ function itemKo(k) {
     optBox.innerHTML = '';
     // 우선순위 정렬: personal > temporary > guild > home
     const KIND_ORDER = { personal: 0, temporary: 1, guild: 2, home: 3 };
-    const KIND_LABEL = { personal: '개인', temporary: '임시', guild: '🛡️ 길드', home: '🏛️ 마을광장' };
+    const KIND_LABEL = { personal: '개인', temporary: '임시', guild: '길드', home: '마을광장' };
     const sorted = [...myRespawnOptions].sort((a, b) => (KIND_ORDER[a.kind] ?? 9) - (KIND_ORDER[b.kind] ?? 9));
     if (sorted.length === 0) {
       const none = document.createElement('div');
       none.className = 'down-opt-none';
-      none.innerHTML = '⚠️ 부활 가능한 지점이 없습니다.<br/>사유지를 만들거나 길드에 가입하세요.<br/><span style="font-size:10px;opacity:0.7">길드원이 R 키로 구조해줄 수 있음</span>';
+      none.innerHTML = '부활 가능한 지점이 없습니다.<br/>사유지를 만들거나 길드에 가입하세요.<br/><span style="font-size:10px;opacity:0.7">길드원이 R 키로 구조해줄 수 있음</span>';
       optBox.appendChild(none);
     } else {
       for (const o of sorted) {
@@ -496,7 +501,7 @@ function itemKo(k) {
     } else {
       if (hint) {
         hint.classList.add('expired');
-        hint.innerHTML = '⌛ 구조 가능 시간 지남. 사유지를 선택해 부활하세요.';
+        hint.innerHTML = '구조 가능 시간 지남. 사유지를 선택해 부활하세요.';
       }
     }
   }, 500);
@@ -525,19 +530,19 @@ function itemKo(k) {
         const r = await fetch(`/tribe/${myTribeId}`);
         const data = await r.json();
         const members = (data.members || []).map(m =>
-          `<div class="craft-row"><span style="background:${m.color};display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px"></span>${m.name}${m.player_id === data.tribe.leader_id ? ' 👑' : ''}</div>`
+          `<div class="craft-row"><span style="background:${m.color};display:inline-block;width:10px;height:10px;border-radius: 0;margin-right:6px"></span>${m.name}${m.player_id === data.tribe.leader_id ? ' ' : ''}</div>`
         ).join('');
         // Phase 14.2 — 길드 vp + treasury + behavior_tier
         const vp = data.tribe.vp || 0;
         let tierLabel, tierColor;
-        if (vp < 30) { tierLabel = '청정 (clean)'; tierColor = '#9adb6e'; }
-        else if (vp < 80) { tierLabel = '보통 (normal)'; tierColor = '#e8c878'; }
-        else { tierLabel = '악성 (evil)'; tierColor = '#e85040'; }
+        if (vp < 30) { tierLabel = '청정 (clean)'; tierColor = 'var(--stam)'; }
+        else if (vp < 80) { tierLabel = '보통 (normal)'; tierColor = 'var(--accent)'; }
+        else { tierLabel = '악성 (evil)'; tierColor = 'var(--hp)'; }
         const treasury = data.treasury || {};
         const trItems = Object.entries(treasury).filter(([k,v]) => v > 0)
           .map(([k,v]) => `${itemIconHtml(k, 18, itemKo(k))} ${v}`).join(' · ') || '(비어있음)';
         const isNpc = data.tribe.is_npc;
-        const tierBadge = isNpc ? `<span class="badge" style="background:#5a7aa8">NPC길드 (${data.tribe.behavior_tier})</span>` : '';
+        const tierBadge = isNpc ? `<span class="badge" style="background:var(--thirst)">NPC길드 (${data.tribe.behavior_tier})</span>` : '';
         // Phase 14.9 — 전쟁 선포 대상 목록 (내 길드 X, 이미 전쟁중 X)
         let warsHtml = '';
         let declareHtml = '';
@@ -546,8 +551,8 @@ function itemKo(k) {
           const wd = await wr.json();
           const myWars = (wd.wars || []).filter(w => w.attacker_guild_id === myTribeId || w.defender_guild_id === myTribeId);
           if (myWars.length > 0) {
-            warsHtml = '<div class="hint" style="margin-top:8px">⚔️ 진행 중 전쟁:</div>' + myWars.map(w => {
-              const other = w.attacker_guild_id === myTribeId ? `→ [${w.defender_name}] (공격)` : `← [${w.attacker_name}] (방어)`;
+            warsHtml = '<div class="hint" style="margin-top:8px">진행 중 전쟁:</div>' + myWars.map(w => {
+              const other = w.attacker_guild_id === myTribeId ? `[${w.defender_name}] (공격)` : `[${w.attacker_name}] (방어)`;
               return `<div class="craft-row"><div class="craft-info"><div class="craft-name">${other}</div><div class="craft-cost">tier=${w.tier} · loot=${(w.loot_rate*100).toFixed(0)}% · damage=${(w.damage_rate*100).toFixed(0)}%</div></div><button class="craft-btn" data-end-war="${w.id}">종전</button></div>`;
             }).join('');
           }
@@ -558,27 +563,27 @@ function itemKo(k) {
             !(wd.wars || []).some(w => (w.attacker_guild_id === myTribeId && w.defender_guild_id === t.id) || (w.defender_guild_id === myTribeId && w.attacker_guild_id === t.id))
           );
           if (candidates.length > 0) {
-            declareHtml = '<div class="hint" style="margin-top:8px">🗡️ 선전포고 대상:</div>' + candidates.slice(0, 10).map(t => {
+            declareHtml = '<div class="hint" style="margin-top:8px">선전포고 대상:</div>' + candidates.slice(0, 10).map(t => {
               const v = t.vp || 0;
-              const tag = v < 30 ? '청정 (침략시 적대감↑)' : v < 80 ? '보통' : '악성 (토벌!)';
-              return `<div class="craft-row"><div class="craft-info"><div class="craft-name">[${t.name}]${t.is_npc?' 🤖':''}</div><div class="craft-cost">${tag} vp=${v.toFixed(0)}</div></div><button class="craft-btn" data-declare="${t.id}">선포</button></div>`;
+              const tag = v < 30 ? '청정 (침략시 적대감)' : v < 80 ? '보통' : '악성 (토벌!)';
+              return `<div class="craft-row"><div class="craft-info"><div class="craft-name">[${t.name}]${t.is_npc?' ':''}</div><div class="craft-cost">${tag} vp=${v.toFixed(0)}</div></div><button class="craft-btn" data-declare="${t.id}">선포</button></div>`;
             }).join('');
           }
         } catch (e) {}
         body.innerHTML = `
           <div class="hint">소속 길드: <b>[${myTribeName}]</b> (멤버 ${data.members.length}명) ${tierBadge}</div>
-          <div class="hint" style="margin-top:6px">⚖️ 길드 명성: <b style="color:${tierColor}">${vp.toFixed(0)}/200 · ${tierLabel}</b></div>
+          <div class="hint" style="margin-top:6px">길드 명성: <b style="color:${tierColor}">${vp.toFixed(0)}/200 · ${tierLabel}</b></div>
           <div class="hint" style="font-size:11px;opacity:0.7">청정=침략 시 약함·침략자 +대량적대감 / 악성=토벌 대상</div>
-          <div class="hint" style="margin-top:6px">🏦 길드 금고: <b>${trItems}</b></div>
-          <div class="hint" style="margin-top:6px">🏛️ 사유지 슬롯 (Phase 14.18): <b>${countMyClaimsClient()}</b><br/><span style="font-size:10px;opacity:0.7">C=개인 (길드영토 안만) · T=임시 (어디든) · Shift+C=길드영토 (멤버만)</span></div>
-          <button class="craft-btn" id="tribeGranaryBtn" style="margin-top:8px;background:#7a5a2a">🏚️ 길드 곳간 건설 (판자12·돌8 — 길드영토 안, 리더)</button>
+          <div class="hint" style="margin-top:6px">길드 금고: <b>${trItems}</b></div>
+          <div class="hint" style="margin-top:6px">사유지 슬롯 (Phase 14.18): <b>${countMyClaimsClient()}</b><br/><span style="font-size:10px;opacity:0.7">C=개인 (길드영토 안만) · T=임시 (어디든) · Shift+C=길드영토 (멤버만)</span></div>
+          <button class="craft-btn" id="tribeGranaryBtn" style="margin-top:8px;background:var(--accent)">길드 곳간 건설 (판자12·돌8 — 길드영토 안, 리더)</button>
           <div class="hint" style="font-size:10px;opacity:0.7">내 위치 북쪽 3칸에 5×3 밀폐 곳간 — 멤버 공유 창고, 전쟁 시 약탈 목표</div>
           ${warsHtml}
           ${declareHtml}
           <div class="hint" style="margin-top:8px">멤버 목록:</div>
           ${members}
-          <div class="hint" style="margin-top:8px">길드 채팅: <b>Enter → /t 메시지</b></div>
-          <button class="craft-btn" id="tribeLeaveBtn" style="margin-top:12px;background:#b03030">길드 탈퇴</button>
+          <div class="hint" style="margin-top:8px">길드 채팅: <b>Enter /t 메시지</b></div>
+          <button class="craft-btn" id="tribeLeaveBtn" style="margin-top:12px;background:var(--hp)">길드 탈퇴</button>
         `;
         // 선포 버튼 핸들러
         body.querySelectorAll('[data-declare]').forEach(b => b.onclick = async () => {
@@ -587,18 +592,18 @@ function itemKo(k) {
           const r = await fetch('/war/declare', { method: 'POST', headers: {'Content-Type':'application/json'},
             body: JSON.stringify({ attacker_guild_id: myTribeId, defender_guild_id: did, declared_by: myUsername }) });
           const d = await r.json();
-          if (d.ok) { showNotice(`⚔️ 전쟁 선포! tier=${d.tier} loot=${(d.loot_rate*100).toFixed(0)}%`); renderTribePanel(); }
+          if (d.ok) { showNotice(`전쟁 선포! tier=${d.tier} loot=${(d.loot_rate*100).toFixed(0)}%`); renderTribePanel(); }
           else alert(d.error || '선포 실패');
         });
         body.querySelectorAll('[data-end-war]').forEach(b => b.onclick = async () => {
           const wid = parseInt(b.dataset.endWar, 10);
           const r = await fetch('/war/end', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ war_id: wid }) });
           const d = await r.json();
-          if (d.ok) { showNotice('🕊️ 전쟁 종료'); renderTribePanel(); }
+          if (d.ok) { showNotice('전쟁 종료'); renderTribePanel(); }
           else alert(d.error || '종전 실패');
         });
         const grBtn = document.getElementById('tribeGranaryBtn');
-        if (grBtn) grBtn.onclick = () => { buildMode = true; placementMode = { special: 'guild_granary' }; toggleTribePanel(); showNotice('🏚️ 길드 곳간 배치 모드 — 길드영토 안 클릭 (5×3 밀폐 · 밖에서 지으세요 · B=취소)'); };
+        if (grBtn) grBtn.onclick = () => { buildMode = true; placementMode = { special: 'guild_granary' }; toggleTribePanel(); showNotice('길드 곳간 배치 모드 — 길드영토 안 클릭 (5×3 밀폐 · 밖에서 지으세요 · B=취소)'); };
         document.getElementById('tribeLeaveBtn').onclick = async () => {
           if (!confirm('정말 탈퇴하시겠습니까?')) return;
           const r = await fetch('/tribe/leave', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ player_id: myUsername }) });
@@ -617,10 +622,10 @@ function itemKo(k) {
         const list = (data.tribes || []).map(t => {
           const vp = t.vp || 0;
           let tag, col;
-          if (vp < 30) { tag = '청정'; col = '#9adb6e'; }
-          else if (vp < 80) { tag = '보통'; col = '#e8c878'; }
-          else { tag = '악성'; col = '#e85040'; }
-          const npcBadge = t.is_npc ? ' 🤖' : '';
+          if (vp < 30) { tag = '청정'; col = 'var(--stam)'; }
+          else if (vp < 80) { tag = '보통'; col = 'var(--accent)'; }
+          else { tag = '악성'; col = 'var(--hp)'; }
+          const npcBadge = t.is_npc ? ' ' : '';
           return `<div class="craft-row"><div class="craft-info"><div class="craft-name">[${t.name}]${npcBadge}</div><div class="craft-cost">멤버 ${t.member_count} · <span style="color:${col}">${tag} ${vp.toFixed(0)}</span></div></div><button class="craft-btn" data-join="${t.id}">가입</button></div>`;
         }).join('');
         // Phase 14.9 — 전쟁 활성 목록 표시
@@ -629,8 +634,8 @@ function itemKo(k) {
           const wr = await fetch('/wars/active');
           const wd = await wr.json();
           if ((wd.wars || []).length > 0) {
-            warsHtml = '<div class="hint" style="margin-top:12px">⚔️ 활성 전쟁:</div>' +
-              wd.wars.map(w => `<div class="craft-row" style="font-size:12px"><div class="craft-info">[${w.attacker_name}] → [${w.defender_name}] (${w.tier})</div></div>`).join('');
+            warsHtml = '<div class="hint" style="margin-top:12px">활성 전쟁:</div>' +
+              wd.wars.map(w => `<div class="craft-row" style="font-size:12px"><div class="craft-info">[${w.attacker_name}] [${w.defender_name}] (${w.tier})</div></div>`).join('');
           }
         } catch (e) {}
         body.innerHTML = `
@@ -658,7 +663,7 @@ function itemKo(k) {
           if (d.ok) {
             myTribeId = d.tribe_id; myTribeName = d.name;
             sendPrimary({ type: 'tribe_set', tribeId: d.tribe_id, tribeName: d.name });
-            if (d.promoted) showNotice(`👑 [${d.name}] 길드 운영권 인수! 당신이 새 리더입니다`);
+            if (d.promoted) showNotice(`[${d.name}] 길드 운영권 인수! 당신이 새 리더입니다`);
             renderTribePanel();
           }
           else alert(d.error || '가입 실패');
@@ -695,10 +700,10 @@ function itemKo(k) {
     document.getElementById('sidePanel').classList.add('open');
     document.querySelectorAll('.sb-icon').forEach(t => t.classList.toggle('active', t.dataset.side === name));
     document.getElementById('spTitle').textContent = ({
-      craft: '🔨 제작', build: '🏗️ 건축', tribe: '🛡️ 길드', market: '🏪 시세',
-      skills: '📚 스킬', claims: '🏛️ 사유지', body: '🫀 상태', trade: '🏪 거래소',
-      facility: (myFacility && myFacility.near) ? `🪚 ${myFacility.near.ko}` : '🪚 제작창',
-      chronicle: '📜 연대기',   // ★[T18] §8.2 3단계 중 ② — 이 표에 없으면 영문 키가 제목에 뜬다
+      craft: '제작', build: '건축', tribe: '길드', market: '시세',
+      skills: '스킬', claims: '사유지', body: '상태', trade: '거래소',
+      facility: (myFacility && myFacility.near) ? `${myFacility.near.ko}` : '제작창',
+      chronicle: '연대기',   // [T18] §8.2 3단계 중 — 이 표에 없으면 영문 키가 제목에 뜬다
     })[name] || name;
     // ★[§8.2 패널 프레임 규약] 이 표에 없는 이름은 **영문 키가 그대로 제목에 뜬다**(실제로 `body` 가 그랬다).
     //   다음 패널을 붙이는 사람에게: ①`#sidebar` 에 `.sb-icon[data-side]` 한 줄(단축키 병기)
@@ -775,7 +780,7 @@ function itemKo(k) {
 
   // Esc 처리
   document.addEventListener('keydown', (e) => {
-    if (isTypingTarget(e)) return;   // ★[T61 ⓪] 규약 하나 — 글자를 치는 중이면 게임 키는 없다
+    if (isTypingTarget(e)) return;   // [T61 ] 규약 하나 — 글자를 치는 중이면 게임 키는 없다
     if (e.key === 'Escape') {
       if (placementMode) { placementMode = null; showNotice('배치 모드 취소'); e.stopPropagation(); return; }
       if (invOpen) { closeInv(); e.stopPropagation(); }
@@ -792,11 +797,11 @@ function itemKo(k) {
     //   종전엔 `Shift+I`·`Shift+Y`·`Shift+P`·`Shift+Q` 가 맨손 분기를 그대로 밟았다
     //   (그리고 그 순간 99-main 의 맨손 체인도 같이 밟혀 **패널이 열리면서 밭이 갈렸다**).
     if (e.shiftKey) {
-      if (k === 'k') { toggleSide('facility'); e.preventDefault(); }   // ★[시설 제작창] 시설의 창(자동으로도 열린다)
-      else if (k === 'h') { toggleSide('body'); e.preventDefault(); }  // ★[신체 상태] 상태 패널
-      else if (k === 't') { toggleSide('trade'); e.preventDefault(); } // ★[거래소] 마을 시세표
+      if (k === 'k') { toggleSide('facility'); e.preventDefault(); }   // [시설 제작창] 시설의 창(자동으로도 열린다)
+      else if (k === 'h') { toggleSide('body'); e.preventDefault(); }  // [신체 상태] 상태 패널
+      else if (k === 't') { toggleSide('trade'); e.preventDefault(); } // [거래소] 마을 시세표
       else if (k === 'b') { toggleSide('build'); e.preventDefault(); }
-      else if (k === 'j') { toggleSide('chronicle'); e.preventDefault(); }   // ★[T18] 연대기(📜)
+      else if (k === 'j') { toggleSide('chronicle'); e.preventDefault(); }   // [T18] 연대기()
       return;
     }
     if (k === 'i') { toggleInv(); e.preventDefault(); }
@@ -807,13 +812,17 @@ function itemKo(k) {
   });
 
   // ★★[신체 상태 §8.3] 무들 — **서버가 매긴 단계만** 그린다. 3단계에서만 가장자리 한 겹.
+  // ★★[T66] 무들 아이콘 — **축 이름**으로 고른다. 서버가 실어 보내는 `emo` 는 이모지라 안 쓴다
+  //   (지우려면 서버 접점이 필요하고 이 카드의 예산은 한 줄이다 — 그 한 줄은 ⓪ 이 썼다. 회부).
+  const MOODLE_ICO = { hunger: 'food', thirst: 'drop', cold: 'snow', fatigue: 'bolt',
+    injury: 'heart', morale: 'star', carry: 'weight', aftermath: 'heart' };
   function renderMoodles() {
     const box = document.getElementById('moodles');
     if (!box) return;
     // ★[무게 배치] **무거움**은 신체 무들과 같은 프레임에 얹는다(§8.3 — 겉은 계단).
     //   단계는 서버가 매겨 보낸다(클라가 다시 양자화하면 히스테리시스가 두 벌이 되어 깜빡인다).
     const ms = ((myBody && myBody.moodles) || []).slice();
-    if (myCarry && myCarry.stage > 0) ms.push({ axis: 'carry', ko: '무거움', emo: '🎒', stage: myCarry.stage });
+    if (myCarry && myCarry.stage > 0) ms.push({ axis: 'carry', ko: '무거움', stage: myCarry.stage });
     // ★★[T61 2026-09-03] **후유증 한 칸** — 쓰러졌다 깨어난 뒤 스태미나 **상한**이 눌린 동안(T43).
     //   계약은 T56 이 정한다: `aftermath { days, cap }`(남은 게임일 · 지금의 상한 0..1).
     //   ⚠**계약이 안 왔으면 안 그린다.** 서버가 그 칸을 아직 안 실어 보내는 동안 화면은 종전 그대로다
@@ -824,11 +833,12 @@ function itemKo(k) {
     const _am = (myBody && myBody.aftermath) || null;
     if (_am && (_am.days | 0) > 0) {
       const _capTx = (typeof _am.cap === 'number' && _am.cap < 0.999) ? ` · 힘 ${Math.round(_am.cap * 100)}%` : '';
-      ms.push({ axis: 'aftermath', ko: `후유증 ${_am.days | 0}일${_capTx}`, emo: '🩹', stage: 1 });
+      ms.push({ axis: 'aftermath', ko: `후유증 ${_am.days | 0}일${_capTx}`, stage: 1 });
     }
     box.innerHTML = ms.map((m) =>
       `<div class="moodle s${m.stage}" data-axis="${m.axis}" data-stage="${m.stage}">`
-      + `<span class="mo-emo">${m.emo}</span><span>${m.ko}</span></div>`).join('');
+      + `<span class="mo-emo">${uiIcon(MOODLE_ICO[m.axis] || 'star', 13)}</span><span>${m.ko}</span>`
+      + `<span class="mo-dots">${[1,2,3].map((i) => `<span class="mo-dot${i <= (m.stage|0) ? ' on' : ''}"></span>`).join('')}</span></div>`).join('');
     // ★★[정비 배치 2026-08-30 재민 확정 §3] **비네트가 원인 축을 말한다.**
     //   실기 실측: 화면이 붉은데 재민이 원인을 **무게로 오독**했다. 방금 판자를 버린 사람이
     //   붉은 화면을 보면 당연히 무게를 의심한다 — 그런데 무게는 1단계였고 3단계는 다른 축이었다.
@@ -849,7 +859,7 @@ function itemKo(k) {
     if (bigBox) {
       bigBox.innerHTML = sev3.map((m) =>
         `<div class="vg-axis" data-axis="${m.axis}" data-stage="${m.stage}" style="--vg-rgb:${VIGNETTE_RGB[m.axis] || VIGNETTE_RGB._}">`
-        + `<span class="vg-emo">${m.emo || '⚠'}</span><span class="vg-ko">${m.ko || m.axis}</span></div>`).join('');
+        + `<span class="vg-emo">${uiIcon(MOODLE_ICO[m.axis] || 'warn', 34)}</span><span class="vg-ko">${m.ko || m.axis}</span></div>`).join('');
       bigBox.classList.toggle('on', sev3.length > 0);
     }
   }
@@ -862,24 +872,24 @@ function itemKo(k) {
     const pct = (v) => Math.max(0, Math.min(100, v));
     const need = (emo, name, v) => {
       const cls = v < 25 ? 'bad' : (v < 50 ? 'warn' : '');
-      return `<div class="bd-row"><span class="bd-emo">${emo}</span><span class="bd-name">${name}</span>`
+      return `<div class="bd-row"><span class="bd-emo">${uiIcon(emo, 14)}</span><span class="bd-name">${name}</span>`
         + `<span class="bd-bar"><span class="bd-fill ${cls}" style="width:${pct(v)}%"></span></span>`
         + `<span class="bd-num">${Math.round(v)}%</span></div>`;
     };
     const sev = (emo, name, v) => {
       const p2 = pct(v * 100), cls = v > 0.7 ? 'bad' : (v > 0.4 ? 'warn' : '');
-      return `<div class="bd-row"><span class="bd-emo">${emo}</span><span class="bd-name">${name}</span>`
+      return `<div class="bd-row"><span class="bd-emo">${uiIcon(emo, 14)}</span><span class="bd-name">${name}</span>`
         + `<span class="bd-bar"><span class="bd-fill ${cls}" style="width:${p2}%"></span></span>`
         + `<span class="bd-num">${Math.round(p2)}%</span></div>`;
     };
     let h = '<div class="bd-sec">욕구</div>';
-    h += need('🍖', '배고픔', b.hunger) + need('💧', '목마름', b.thirst);
+    h += need('food', '배고픔', b.hunger) + need('drop', '목마름', b.thirst);
     // ★★[신체 3층 재배선 2026-08-30] 스태미나는 **욕구가 아니라 힘**이다 — 따로 세운다.
     //   그리고 "왜 안 차는가"를 여기서 답한다: 허기·갈증이 하는 일은 **이것 하나**다.
     h += '<div class="bd-sec">힘</div>';
     if (typeof b.stam === 'number') {
       const sp = pct(b.stam * 100), scls = b.stamLock ? 'bad' : (b.stam < 0.35 ? 'warn' : '');
-      h += `<div class="bd-row"><span class="bd-emo">⚡</span><span class="bd-name">스태미나</span>`
+      h += `<div class="bd-row"><span class="bd-emo">${uiIcon('bolt', 14)}</span><span class="bd-name">스태미나</span>`
         + `<span class="bd-bar"><span class="bd-fill ${scls}" style="width:${sp}%"></span></span>`
         + `<span class="bd-num">${Math.round(sp)}%</span></div>`;
       h += `<div class="bd-why">달리기는 이걸 쓴다 — <b>짐이 무거우면 더 빨리</b> 준다. `
@@ -887,14 +897,15 @@ function itemKo(k) {
                       : (b.canSprint === false ? '지금은 달릴 수 없다.' : '지금은 달릴 수 있다.')) + '</div>';
       const rp = (b.recoverParts || []).filter((x) => x.recover < 0.999);
       if (typeof b.recover === 'number' && b.recover < 0.999) {
-        const why = rp.map((x) => `${x.emo}${x.ko} ×${x.recover.toFixed(2)}`).join(' · ');
+        // ★[T66 2차] 서버 `emo` 안 쓴다 — 축 표에서 그림을 고른다(위 "지금 걸린 효과"와 같은 규약).
+        const why = rp.map((x) => `${uiIcon(MOODLE_ICO[x.axis] || 'warn', 12)}${x.ko} ×${x.recover.toFixed(2)}`).join(' · ');
         h += `<div class="bd-why">회복 속도 <b>×${b.recover.toFixed(2)}</b>${why ? ` — ${why}` : ''}`
           + `<br>배고픔·목마름은 <b>걸음을 늦추지 않는다</b>. 대신 <b>숨 고르기와 아묾</b>이 느려진다.`
           + (b.recover <= 0 ? ' <b>지금은 아예 멈춰 있다</b>(그래도 체력이 깎이지는 않는다).' : '') + '</div>';
       }
     }
     h += '<div class="bd-sec">몸</div>';
-    h += sev('🥶', '추위', b.cold) + sev('😮‍💨', '피로', b.fatigue) + sev('🩹', '부상', b.injury);
+    h += sev('snow', '추위', b.cold) + sev('bolt', '피로', b.fatigue) + sev('heart', '부상', b.injury);
     if (b.injury > 0.01) {
       h += `<div class="bd-why">부상은 시간이 낫게 한다${b.herb ? ' · <b>약초가 듣는 중</b>(회복 빨라짐)' : ' — <b>약초(herb)</b>를 먹으면 빨라진다'}</div>`;
     }
@@ -907,7 +918,11 @@ function itemKo(k) {
         if (x.move < 0.999) bits.push(`이속 ${Math.round((x.move - 1) * 100)}%`);
         if (x.work < 0.999) bits.push(`작업 ${Math.round((x.work - 1) * 100)}%`);
         if (x.work > 1.001) bits.push(`작업 +${Math.round((x.work - 1) * 100)}%`);
-        h += `<div class="bd-why">${x.emo} ${bits.join(' · ')} <b>(${x.ko} ${x.sev.toFixed(2)})</b></div>`;
+        // ★★[T66 2차] 서버가 같이 보내는 `emo`(😩🥶🩹 …)는 **안 쓴다** — 화면 규칙 B(UI 이모지 0).
+        //   그림은 무들과 **같은 축 표**(`MOODLE_ICO`)에서 고른다. 문장은 서버가 준 `ko` 하나 그대로다.
+        //   ⚠1차 판이 여기를 놓쳤다: `e2e-ui ⑪ⓒ` 가 `#hud`·레일·무들만 봤고 **상태창은 안 봤다**.
+        //     그래서 ⓒ 에 상태창을 더했다 — 실기 화면이 검사보다 먼저 알려 준 자리다.
+        h += `<div class="bd-why">${uiIcon(MOODLE_ICO[x.axis] || 'warn', 13)} ${bits.join(' · ')} <b>(${x.ko} ${x.sev.toFixed(2)})</b></div>`;
       }
     }
     // ★★[무게 배치 2026-08-27 · §8.6 확정 항목] **총 무게 → 이동 배율**.
@@ -915,15 +930,15 @@ function itemKo(k) {
     if (myCarry) {
       const c = myCarry;
       h += '<div class="bd-sec">짐</div>';
-      h += `<div class="bd-why">🎒 <b>${(c.kg || 0).toFixed(1)}kg</b> / 용량 ${c.cap}kg`
+      h += `<div class="bd-why"><b>${(c.kg || 0).toFixed(1)}kg</b> / 용량 ${c.cap}kg`
         + `${c.over ? ` — <b>${Math.round((c.ratio - 1) * 100)}% 초과</b>` : ''}</div>`;
-      if (c.moveMult < 0.999) h += `<div class="bd-why">🎒 이속 ${Math.round((c.moveMult - 1) * 100)}% · 피로 ×${(c.fatigueMult || 1).toFixed(2)} <b>(짐 ${(c.ratio).toFixed(2)}배)</b></div>`;
-      if (c.floored) h += '<div class="bd-floor">★과적 바닥 — 더 실어도 이보다 느려지진 않는다(대신 피로는 계속 는다).</div>';
+      if (c.moveMult < 0.999) h += `<div class="bd-why">이속 ${Math.round((c.moveMult - 1) * 100)}% · 피로 ×${(c.fatigueMult || 1).toFixed(2)} <b>(짐 ${(c.ratio).toFixed(2)}배)</b></div>`;
+      if (c.floored) h += '<div class="bd-floor">과적 바닥 — 더 실어도 이보다 느려지진 않는다(대신 피로는 계속 는다).</div>';
     }
     h += `<div class="bd-sec">합계</div><div class="bd-why">이속 <b>×${(myCarry && typeof myCarry.combined === 'number' ? myCarry.combined : b.moveMult).toFixed(2)}</b>`
       + `${myCarry && myCarry.moveMult < 0.999 ? ` <span class="bd-dim">(몸 ×${b.moveMult.toFixed(2)} × 짐 ×${myCarry.moveMult.toFixed(2)})</span>` : ''}`
       + ` · 작업속도 <b>×${b.workMult.toFixed(2)}</b></div>`;
-    if (b.floored) h += '<div class="bd-floor">★바닥이 걸렸다 — 아무리 나빠져도 이보다 느려지지 않는다(죽음의 나선 방지).</div>';
+    if (b.floored) h += '<div class="bd-floor">바닥이 걸렸다 — 아무리 나빠져도 이보다 느려지지 않는다(죽음의 나선 방지).</div>';
     body.innerHTML = h;
   }
 
@@ -937,23 +952,23 @@ function itemKo(k) {
     }
     const t = myTrade;
     const kg = (r) => r.ko || r.res;
-    let h = `<div class="tr-head"><span>🏪 <b>${t.name}</b> 거래소</span>`
+    let h = `<div class="tr-head"><span><b>${t.name}</b> 거래소</span>`
       + `<span>시세는 <b>${t.numeraireKo}</b> 환산 · 마을 몫 ${Math.round(t.spread * 100)}%</span></div>`;
     // ★★[T11 2026-09-02] **소속 한 줄** — 새 패널이 아니라 이 창의 머리 한 줄이다.
     //   값은 전부 서버가 준 `t.member` 그대로다(클라 재계산 0 — 한도 곡선을 여기서 다시 풀면 그게 사본이다).
     const mb = t.member || null;
     if (mb) {
       if (mb.vid != null) {
-        h += `<div class="tr-head" style="border-top:1px solid #2a3340"><span>🏘️ <b>${mb.name || '마을'}</b> 사람`
+        h += `<div class="tr-head" style="border-top:1px solid var(--inset)"><span><b>${mb.name || '마을'}</b> 사람`
           + ` <span style="opacity:.7">· 기여 ${mb.contrib}</span></span>`
           + `<span>곳간 몫 <b>${mb.remain}</b>/${mb.limit}`
-          + (mb.remain > 0 ? ` <button class="tr-btn" id="mbWd" style="padding:2px 8px">🌾 꺼낸다</button>` : '')
+          + (mb.remain > 0 ? ` <button class="tr-btn" id="mbWd" style="padding:2px 8px">꺼낸다</button>` : '')
           + `</span></div>`;
       } else if (mb.offer != null) {
-        h += `<div class="tr-head" style="border-top:1px solid #2a3340"><span>🧓 촌장이 마을 사람으로 받아 주겠다 한다</span>`
+        h += `<div class="tr-head" style="border-top:1px solid var(--inset)"><span>촌장이 마을 사람으로 받아 주겠다 한다</span>`
           + `<span>채팅에 <b>/소속</b></span></div>`;
       } else {
-        h += `<div class="tr-head" style="border-top:1px solid #2a3340"><span>🏘️ 아직 이 마을 사람이 아니다</span>`
+        h += `<div class="tr-head" style="border-top:1px solid var(--inset)"><span>아직 이 마을 사람이 아니다</span>`
           + `<span>누적 기여 <b>${mb.contrib}</b>/${mb.need}</span></div>`;
       }
     }
@@ -965,19 +980,19 @@ function itemKo(k) {
       // ★★[재민 확정 2026-08-27] **넘침 딱지** — 가격 바닥에 붙어 "아무리 팔아도 값이 안 내려가는" 품목.
       //   판정은 서버가 정본 가격 함수에 직접 물어본 결과다(클라가 다시 풀지 않는다).
       h += `<div class="tr-row${cls}${off}${r.glut ? ' glut' : ''}" data-res="${r.res}">`
-        + `<span>${trGive === r.res ? '📤' : (trTake === r.res ? '📥' : '')}</span>`
+        + `<span>${trGive === r.res ? '' : (trTake === r.res ? '' : '')}</span>`
         + `<span>${kg(r)}${r.glut ? ' <i class="tr-glut" title="이 마을엔 이미 남아돈다 — 더 갖다 줘도 값이 더 내려가지 않는다">넘침</i>' : ''}</span>`
         + `<span class="tr-num">${r.num == null ? '—' : r.num}</span>`
         + `<span class="tr-num">${r.sell}</span>`
         + `<span class="tr-num">${r.mine}</span></div>`;
     }
     h += '<div class="tr-deal">';
-    if (!trGive) h += '<div class="tr-line">낼 물건을 고르라 (📤)</div>';
-    else if (!trTake) h += `<div class="tr-line">📤 <b>${kg(t.rows.find((r) => r.res === trGive) || {})}</b> — 이제 <b>받을</b> 물건을 고르라 (📥)</div>`;
-    else if (trQuote && trQuote.err) h += `<div class="tr-line">⚠ ${trQuote.err}</div>`;
+    if (!trGive) h += '<div class="tr-line">낼 물건을 고르라 ()</div>';
+    else if (!trTake) h += `<div class="tr-line"><b>${kg(t.rows.find((r) => r.res === trGive) || {})}</b> — 이제 <b>받을</b> 물건을 고르라 ()</div>`;
+    else if (trQuote && trQuote.err) h += `<div class="tr-line">${trQuote.err}</div>`;
     else if (trQuote && trQuote.ok) {
       const gk = kg(t.rows.find((r) => r.res === trGive) || {}), tk = kg(t.rows.find((r) => r.res === trTake) || {});
-      h += `<div class="tr-line">📤 ${gk} <b>${trQuote.give}</b> → 📥 ${tk} <b>${trQuote.take}</b></div>`;
+      h += `<div class="tr-line">${gk} <b>${trQuote.give}</b> ${tk} <b>${trQuote.take}</b></div>`;
       h += `<div class="tr-line">한 개당 ${trQuote.ratio}${trQuote.avgRatio && Math.abs(trQuote.avgRatio - trQuote.ratio) > 1e-4
         ? ` · 이 물량 평균 <b>${trQuote.avgRatio}</b>(많이 낼수록 값이 나빠진다)` : ''}</div>`;
       if (trQuote.capped) h += `<div class="tr-warn">마을이 내줄 수 있는 건 ${trQuote.cap}까지 — ${trQuote.maxGive}개만 받는다</div>`;
@@ -1038,7 +1053,7 @@ function itemKo(k) {
     else if (name === 'market') renderMarketPanel(body);
     else if (name === 'skills') renderSkillsPanel(body);
     else if (name === 'facility') renderFacilityPanel(body);
-    else if (name === 'chronicle') renderChroniclePanel(body);   // ★[T18] 연대기 — 본체는 65-s-chronicle.js
+    else if (name === 'chronicle') renderChroniclePanel(body);   // [T18] 연대기 — 본체는 65-s-chronicle.js
   }
 
   // ★★[시설 제작창 · 재민 확정 2026-08-29 · §8.5] **제작창 = 시설의 창.**
@@ -1047,10 +1062,10 @@ function itemKo(k) {
   //   "하나 모자람"이 오늘의 할 일이고, 그게 시장에 갈 이유다.
   function renderFacilityPanel(el) {
     const F = myFacility;
-    if (!F || !F.near) { el.innerHTML = '<div class="hint">시설 앞에 서면 그 시설의 제작창이 열린다 — 🔥모닥불(요리·훈제) · 🪚작업대(도구·절임) · 🏭노(제련) · 🥬건조대(말리기)</div>'; return; }
+    if (!F || !F.near) { el.innerHTML = '<div class="hint">시설 앞에 서면 그 시설의 제작창이 열린다 — 모닥불(요리·훈제) · 작업대(도구·절임) · 노(제련) · 건조대(말리기)</div>'; return; }
     if (!F.near.mine) { el.innerHTML = `<div class="hint">${F.near.ko}은(는) 내 것이 아니다 — 남의 시설 사용권은 아직 없다.</div>`; return; }
     const secs = Math.round((F.near.craftMs || 0) / 1000);
-    let h = `<div class="hint" style="margin-bottom:8px">🪵 <b>${F.near.ko}</b> — 여기서 만들 수 있는 것만 보인다 · 한 개 ${secs}초</div>`;
+    let h = `<div class="hint" style="margin-bottom:8px"><b>${F.near.ko}</b> — 여기서 만들 수 있는 것만 보인다 · 한 개 ${secs}초</div>`;
     // ── 대기열 ──
     const q = (F.queue || []).find((x) => x.bid === F.near.bid);
     if (q && q.jobs.length) {
@@ -1058,7 +1073,7 @@ function itemKo(k) {
       for (const j of q.jobs) {
         const left = Math.ceil(j.leftMs / 1000);
         h += `<div class="craft-recipe ${j.done ? 'can-make' : ''}">
-          <div class="cr-icon">${j.done ? '✅' : '⏳'}</div>
+          <div class="cr-icon">${j.done ? '' : ''}</div>
           <div class="cr-info"><div class="cr-name">${j.label}</div>
           <div class="cr-cost">${j.done ? '다 됐다 — 받아 가라' : `${left}초 남음`}</div></div>
           ${j.done ? '<button data-fcollect="1">받기</button>' : ''}</div>`;
@@ -1072,11 +1087,11 @@ function itemKo(k) {
       //   `itemIconHtml(k, 18, itemKo(k))` 의 셋째 인자는 아이콘이 없을 때 대신 찍는 것인데 거기에 키를 넣어 뒀다
       //   ⇒ 자염처럼 아이콘이 아직 없는 품목이 화면에 `brine` 으로 떴다(실측: e2e-salt).
       //   이름표는 **서버가 준다**(`r.costKo` · `m.ko` — zone.js `_facilityRecipes`). 클라 표는 폴백일 뿐이다.
-      const koOf = (k) => (r.costKo && r.costKo[k]) || itemKo(k);   // ★[T55] 서버 `costKo` → 이름표 정본 → 사본 → 키
+      const koOf = (k) => (r.costKo && r.costKo[k]) || itemKo(k);   // [T55] 서버 `costKo` 이름표 정본 사본 키
       let costStr, q2 = null;
       if (r.options) {
         const o = r.options.find((x) => x.material === pick) || r.options[0] || {};
-        costStr = `${itemIconHtml(o.material, 18, koOf(o.material))} ${o.need} <span style="color:#8a93a0">(보유 ${o.have})</span>`
+        costStr = `${itemIconHtml(o.material, 18, koOf(o.material))} ${o.need} <span style="color:var(--dim-2)">(보유 ${o.have})</span>`
           // ★[T12 지게] 곁재료도 같이 적는다 — `r.can`·버튼은 이미 `r.cost`(곁재료 포함)로 갈리는데
           //   글자만 주재료를 보여 주면 "왜 못 만들지"가 화면에 안 적힌다.
           //   이름표는 T38 규약대로 **서버가 준 `costKo`** 를 통해 찾는다(클라 표는 폴백이다).
@@ -1086,16 +1101,16 @@ function itemKo(k) {
         costStr = Object.entries(r.cost).map(([k, n]) => `${itemIconHtml(k, 18, koOf(k))} ${n}`).join(' · ');
       }
       // 모자란 재료 칸은 이름표를 **아예 안 찾고 있었다**(`m.item` 을 그대로 찍었다).
-      const lack = r.missing.length ? `<span style="color:#e88">— ${r.missing.map((m) => `${m.ko || m.item} ${m.have}/${m.need}`).join(' · ')}</span>` : '';
+      const lack = r.missing.length ? `<span style="color:var(--hp)">— ${r.missing.map((m) => `${m.ko || m.item} ${m.have}/${m.need}`).join(' · ')}</span>` : '';
       h += `<div class="craft-recipe ${r.can ? 'can-make' : ''}">
-        <div class="cr-icon">${r.preserve ? '🧺' : r.kind === 'cook' ? '🍲' : '🔧'}</div>
+        <div class="cr-icon">${r.preserve ? '' : r.kind === 'cook' ? '' : ''}</div>
         <div class="cr-info">
-          <div class="cr-name">${r.label}${q2 != null ? ` <span style="color:#8a93a0;font-weight:normal">· 예상 품질 ${Math.round(q2 * 100)}%${r.lvl != null ? ` (${r.skill} Lv${r.lvl})` : ''}</span>` : ''}${
+          <div class="cr-name">${r.label}${q2 != null ? ` <span style="color:var(--dim-2);font-weight:normal">· 예상 품질 ${Math.round(q2 * 100)}%${r.lvl != null ? ` (${r.skill} Lv${r.lvl})` : ''}</span>` : ''}${
             /* ★[보존 배치 2026-08-31] 재료 선택이 판단이 되게 — 지금 재료의 신선도와 수율·보관일을 미리 보여 준다.
                도구의 "예상 품질 %"와 같은 자리다(새 컴포넌트 없음). 수치는 전부 서버 정본이 계산해 보낸 것. */
-            r.preserve ? ` <span style="color:#8a93a0;font-weight:normal">· ${r.outKo} · ${r.days}일`
-              + (r.stageKo ? ` · 재료 ${PRESERVE_STAGE_EMO[r.stage] || ''}${r.stageKo}` : '')
-              + (r.yieldPct != null ? ` → 수율 ${r.yieldPct}%` : '')
+            r.preserve ? ` <span style="color:var(--dim-2);font-weight:normal">· ${r.outKo} · ${r.days}일`
+              + (r.stageKo ? ` · 재료 ${r.stageKo}` : '')
+              + (r.yieldPct != null ? ` 수율 ${r.yieldPct}%` : '')
               // ★[T38 2026-09-01] 보존 행이 `보관 ${shelfDays}일` 을 **무조건** 찍고 있었다.
               //   소금은 안 썩어서 서버가 '∞' 를 넣는데, 그러면 화면에 "보관 ∞일" 이 뜬다(회부 D-2).
               //   ⇒ 값에 따라 갈래를 나눈다. 서버는 그대로 두고 **표기만** 고친다.
@@ -1103,7 +1118,7 @@ function itemKo(k) {
                  : r.shelfDays === '∞' ? ' · 안 상함'
                  : ` · 보관 ${r.shelfDays}일`) + '</span>' : ''}</div>
           <div class="cr-cost">${costStr} ${lack}</div>
-          ${r.options ? `<div class="cr-cost" style="margin-top:3px">${r.options.map((o) => `<button data-fpick="${r.id}" data-fmat="${o.material}" style="margin:1px 2px 1px 0;${o.material === pick ? 'outline:1px solid #7c9' : ''}" ${o.can ? '' : 'disabled'}>${koOf(o.material)} ${o.q != null ? Math.round(o.q * 100) + '%' : ''}</button>`).join('')}</div>` : ''}
+          ${r.options ? `<div class="cr-cost" style="margin-top:3px">${r.options.map((o) => `<button data-fpick="${r.id}" data-fmat="${o.material}" style="margin:1px 2px 1px 0;${o.material === pick ? 'outline:1px solid var(--stam)' : ''}" ${o.can ? '' : 'disabled'}>${koOf(o.material)} ${o.q != null ? Math.round(o.q * 100) + '%' : ''}</button>`).join('')}</div>` : ''}
         </div>
         <button data-fmake="${r.id}" ${r.can ? '' : 'disabled'}>만들기</button>
       </div>`;

@@ -374,3 +374,12 @@ central 부하)이 남아 있고, **서버 로그 없이는 단정할 수 없다
 셋 다 **클라 사본을 지우려고** 실은 것이다(정본 하나). 클라엔 폴백이 없다 — 안 오면 영문 키/낡은 수가
 보이고, 그게 조용히 틀린 것보다 낫다. 자세한 것은 `인계/H-HUD신체.md` 1-사본0 · 1-아묾.
 
+
+## 1-표3. ★[T66 2026-09-03] `welcome.uiLabels` — 회부 사본 둘이 닫혔다
+
+```
+  welcome.uiLabels.jobs     NPC 직업 한글 — `JOB_KR_NPC`(zone.js 정본)
+  welcome.uiLabels.seasons  계절 한글 — `require('./events').KO_SEASON`
+```
+클라의 `JOB_KR`·`SEASON_KO` 사본 둘을 지우고 `jobKo()`·`seasonKo()` 가 이 표를 읽는다
+(`43-i-icon.js`). 폴백 없음 — 안 오면 영문 키가 뜬다. 서버 변경은 이 **한 줄**뿐이다.

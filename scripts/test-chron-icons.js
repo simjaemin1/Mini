@@ -64,10 +64,11 @@ const vals = ST.map((t) => emo[t]).filter(Boolean);
 ok(new Set(vals).size >= Math.min(8, ST.length),
    '④ ★아이콘이 실제로 갈린다(표만 채우고 같은 그림을 붙이면 화면은 그대로다)',
    `서로 다른 그림 ${new Set(vals).size}종 / ${vals.length}유형`);
-ok(!vals.includes('🕰️'), '⑤ 표 안에 폴백(🕰️)을 그대로 넣어 두지 않았다', vals.filter((v) => v === '🕰️').length + '건');
+// ★[T66] 그림이 이모지 → **선 아이콘 이름**으로 바뀌었다. 폴백도 🕰️ 가 아니라 `scroll` 이다.
+ok(!vals.includes('scroll'), "⑤ 표 안에 폴백(`scroll`)을 그대로 넣어 두지 않았다", vals.filter((v) => v === 'scroll').length + '건');
 
 // ── 폴백이 살아 있나 ─────────────────────────────────────────────────────────
-ok(/\|\|\s*'🕰️'/.test(src), '⑥ 모르는 유형은 🕰️ 폴백 — 서버가 유형을 늘려도 화면이 안 깨진다');
+ok(/\|\|\s*'scroll'/.test(src), "⑥ 모르는 유형은 `scroll` 폴백 — 서버가 유형을 늘려도 화면이 안 깨진다");
 
 // ── ★자명 통과 금지 — 표에서 한 유형을 빼면 ③ 이 잡는가 ──────────────────────
 console.log('\n★이 검사기가 실패할 줄 아는가 — 표에서 한 유형을 빼 본다');

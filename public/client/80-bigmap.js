@@ -557,10 +557,10 @@
           }
         }
 
-        // Phase 5-C-client: 마을 emoji + 이름
-        const VILLAGE_ICON = {
-          riverside: '🌊', mining: '⛏️', mountain: '⛰️', forest: '🌲', plain: '🏘️',
-        };
+        // Phase 5-C-client: 마을 자리 + 이름
+        // ★★[T66] 마을 이모지(🌊·⛏️·⛰️·🌲·🏘️) 삭제 — 화면 규칙 B. 그런데 **자리는 남긴다**:
+        //   글자를 그냥 빈 문자열로 두면 축소한 큰지도에서 마을이 **통째로 안 보인다**
+        //   (이름은 zoom > 0.015 에서만 뜬다). ⇒ 렌더가 없으면 점선 빈 칸 — 짐 목록과 같은 문법이다.
         if (zoom > 0.003) {
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
@@ -571,9 +571,11 @@
               const dx = (ox + v.x) * zoom + panX;
               const dy = (oy + v.y) * zoom + panY;
               if (dx < -20 || dx > canvas.width + 20 || dy < -20 || dy > canvas.height + 20) continue;
-              const icon = VILLAGE_ICON[v.type] || '🏘️';
-              ctx.font = (zoom > 0.015 ? '14px' : '10px') + ' sans-serif';
-              ctx.fillText(icon, dx, dy);
+              const half = zoom > 0.015 ? 5 : 3;
+              ctx.save();
+              ctx.setLineDash([2, 2]); ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255,255,200,0.85)';
+              ctx.strokeRect(Math.round(dx - half) + 0.5, Math.round(dy - half) + 0.5, half * 2, half * 2);
+              ctx.restore();
               if (zoom > 0.015) {
                 ctx.fillStyle = 'rgba(255,255,200,0.85)';
                 ctx.font = '10px sans-serif';
@@ -679,7 +681,7 @@
       const zw = z.zoneWidth || 0, zh = z.zoneHeight || 0;
       if (wx >= zox && wx < zox + zw && wy >= zoy && wy < zoy + zh) {
         if (z.isOcean) {
-          alert('🌊 바다는 텔레포트 불가');
+          alert('바다는 텔레포트 불가');
           return;
         }
         targetZone = zid;
