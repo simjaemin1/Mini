@@ -142,7 +142,7 @@ async function waitHttp(url, tries = 600) {
     await clearNotices(A);
     await A.evaluate(([a, b]) => window.__sendPrimary({ type: 'teleport_debug', x: a, y: b }), [vx, vy]);
     await sleep(1500);
-    const nz = (await A.evaluate(() => (window.__notices || []).slice(-8))).filter((t) => /🌀 텔레포트/.test(t));
+    const nz = (await A.evaluate(() => (window.__notices || []).slice(-8))).filter((t) => /텔레포트/.test(t));   // ★[T78] 접두 이모지는 경계가 걷는다 — 말로 찾는다
     const m = nz.length ? String(nz[nz.length - 1]).match(/\((-?\d+),\s*(-?\d+)\)/) : null;
     const a0 = await rawAbs(A);
     if (m && a0) OFF = { x: a0.x - (+m[1]), y: a0.y - (+m[2]) };

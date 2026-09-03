@@ -118,7 +118,11 @@ async function roundTrip(tag) {
 
   const waitNotice = () => new Promise((r) => {
     const h = (raw) => { let m; try { m = JSON.parse(raw); } catch (e) { return; }
-      if (m.type === 'notice' && (String(m.text).startsWith('🌀') || String(m.text).startsWith('🌊'))) { a.ws.off('message', h); r(String(m.text).startsWith('🌀')); } };
+      // ★[T78 2026-09-03] 접두 이모지가 아니라 **`kind`** 로 가린다 — 알림 경계(`server/notice.js`)가
+      //   이모지를 걷고 종류를 필드로 옮겼다(T71 ⓑ 판정). 이 검사의 뜻(텔레포트 성공 vs 물 위 거절)은 그대로다.
+      //   ⚠종전 코드는 `startsWith('🌀')` 이라 **영영 안 맞고 멈췄다**(이 promise 엔 시한이 없다).
+      if (m.type === 'notice' && (m.kind === 'info' || m.kind === 'fishing')
+          && /텔레포트|물/.test(String(m.text))) { a.ws.off('message', h); r(/텔레포트/.test(String(m.text))); } };
     a.ws.on('message', h);
   });
   // ★★생명값·신체를 **걷는 내내 다시 세운다.** 왜: HP 는 초당 회복하고 추위는 계속 움직인다 —

@@ -57,6 +57,7 @@ const Crops = require('./crops');
 const Salt = require('./salt');            // ★[자염 배치 2026-09-01] 염도·수율·땔감·시간 정본 하나
 const ItemLabel = require('./itemlabel');  // ★[T61] 이름표 정본이 사는 곳(품목 합치기 · econ 자원 종류 이름)
 const Onboarding = require('./onboarding');   // ★[온보딩 v2 2026-09-01] 도착 지점·30분 대본·빈터 권리 정본(§9). init 전엔 완전 no-op
+const Notice = require('./notice');           // ★[T78 2026-09-03] 알림 경계 — 접두 이모지 → `kind` · 글자 제거
 const Membership = require('./membership');   // ★[T11 2026-09-02] 마을 소속·곳간 인출. 기여 계량기는 온보딩 정본 **하나**를 읽는다
 const Claims = require('./claims');           // ★[T45 2026-09-02] 사유지 v2 — 종류 영속·인접·연결성·부재 상태기(정본 하나)
 const Newcomers = require('./newcomers');     // ★[T19 2026-09-02] 유저 마을 시작지 등록 — "이방인 받기"(§9.3 나머지 절반)
@@ -10519,7 +10520,11 @@ function rawSend(ws, str) {
   try { if (ws.readyState === WebSocket.OPEN) ws.send(str); } catch (e) {}
 }
 function send(ws, obj) {
-  const str = JSON.stringify(obj);
+  // ★[T78 2026-09-03 · 재민 확정] 알림의 **경계**. 이모지를 여기서 걷고 종류를 `kind` 로 옮긴다
+  //   (`server/notice.js` — 표와 이유가 거기 있다). 호출부 322곳은 **한 글자도 안 고쳤다**:
+  //   접두 이모지가 알림 종류를 나르던 유일한 표시였으므로(T71 ⓑ), 지우기 전에 그 뜻을 필드로 옮긴다.
+  //   ⇒ 되돌리는 것도 이 한 줄이다.
+  const str = JSON.stringify(obj && obj.type === 'notice' ? Notice.normalize(obj) : obj);
   if (LATENCY_MS > 0) setTimeout(() => rawSend(ws, str), LATENCY_MS);
   else rawSend(ws, str);
 }

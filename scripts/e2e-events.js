@@ -86,6 +86,18 @@ async function waitHttp(url, tries = 900) {
   const errs = [];
   page.on('pageerror', (e) => errs.push(String(e.message).slice(0, 160)));
   page.on('console', (m) => { if (m.type() === 'error') errs.push('console: ' + m.text().slice(0, 160)); });
+  // ★★[T78] **서버가 보낸 알림 프레임을 통째로 받아 둔다** — 클라를 한 글자도 안 건드리고
+  //   경계(`zone.js send()` → `notice.normalize`)가 실제로 무엇을 내보내는지 보는 유일한 창이다.
+  //   ⚠`window.__notices` 로는 못 잰다: 거기엔 **클라가 스스로 만든 토스트**(게시판 `📋 …`)도 섞이고,
+  //     그건 T66 몫이라 이 카드가 지울 것이 아니다. 프레임을 보면 **서버 것만** 갈린다.
+  const wsNotices = [];
+  page.on('websocket', (ws) => {
+    ws.on('framereceived', (f) => {
+      const d = typeof f.payload === 'string' ? f.payload : String(f.payload || '');
+      if (d.indexOf('"notice"') < 0) return;
+      try { const m = JSON.parse(d); if (m && m.type === 'notice') wsNotices.push(m); } catch (e) {}
+    });
+  });
   const snap = async (n) => { const f = path.join(SHOTS, n + '.png'); await page.screenshot({ path: f }); shots.push(f); return f; };
 
   await page.goto(`http://localhost:${CPORT}/`, { waitUntil: 'domcontentloaded' });
@@ -181,7 +193,9 @@ async function waitHttp(url, tries = 900) {
       await page.evaluate((vid) => window.__sendPrimary({ type: '__e2e_village_short', vid }), V.id);
       await sleep(900);
       const last = await page.evaluate(() => (window.__notices || []).slice(-3).join(' | '));
-      if (/🧪/.test(last) && !/없다|미지원|없음/.test(last)) sh = sh || last;
+      // ★[T78] 이모지(`🧪`)로 찾지 않는다 — 알림 경계가 접두 이모지를 `kind` 로 옮기고 글자를 뺐다.
+      //   픽스처 알림은 본문이 `… 품목 before→after (문턱 … · 갚을거 …)` 라 **그 모양**으로 찾는다(뜻 그대로).
+      if (/문턱 .*갚을거/.test(last) && !/없다|미지원|없음/.test(last)) sh = sh || last;
       await page.evaluate((vid) => window.__sendPrimary({ type: 'village_board', vid }), V.id);
       await sleep(500);
       const b = await page.evaluate(() => window.__evLastBoard || null);
@@ -203,6 +217,8 @@ async function waitHttp(url, tries = 900) {
   //   ⚠근접 브리핑이 0.7초마다 돌면서 **같은 `#notice` 를 덮는다** — 게시판을 띄우고 700ms 를
   //     기다리면 촌장 대사가 이미 덮은 뒤일 수 있다(그렇게 두 번 실패했다). 짧게 여러 번 본다.
   //     그리고 의뢰 자체가 그 사이 철회될 수도 있어("걸린 의뢰가 없다"), 비었으면 다시 세운다.
+  // ★[T78] 이 자리의 `^📋` 판별은 **상류 T66 이 이미 `BOARD_RE` 로** 이모지 없이 고쳤다 —
+  //   내 판(`isBoardToast`)을 버리고 상류 것을 쓴다(같은 일을 하는 술어 둘은 그 자체가 사본이다).
   let boardShown = '';
   for (let i = 0; i < 10; i++) {
     if (i > 0) await ensureBoard(4);
@@ -324,6 +340,27 @@ async function waitHttp(url, tries = 900) {
   await snap('ev-06-far');
 
   const fatal = errs.filter((e) => !/Failed to load resource/.test(e));
+  // ── [T78] 알림 경계 — **서버가 보낸 것**에 이모지 0 · `kind` 가 실려 온다 ─────────
+  {
+    const EMO = /\p{Extended_Pictographic}/u;
+    // ⚠문턱을 20 으로 잡았다가 한 판이 18건으로 빨갰다 — **워프가 헤맨 판**에서 371건이 잡힌 것을 보고
+    //   정한 수였다(그건 정상 판이 아니다). 정상 흐름의 실측은 18건이라 문턱은 10 으로 둔다:
+    //   이 전제가 재려는 것은 "많다"가 아니라 **"비어 있지 않다"** 이므로.
+    ok(wsNotices.length >= 10, '★[T78] 전제: 서버 알림 프레임을 실제로 여럿 받았다(적으면 아래가 자명 통과다)',
+      `${wsNotices.length}건`);
+    const dirty = wsNotices.filter((m) => EMO.test(String(m.text || '')));
+    ok(dirty.length === 0, '★★[T78] 서버가 보낸 알림 **전부** 이모지 0(경계가 실화면 경로에서 듣는다)',
+      dirty.length ? `${dirty.length}건 — ${JSON.stringify(dirty[0].text).slice(0, 60)}` : `${wsNotices.length}건 검사`);
+    const noKind = wsNotices.filter((m) => !m.kind);
+    ok(noKind.length === 0, '★[T78] 전부 `kind` 를 달고 온다(종류는 이제 필드가 나른다)',
+      noKind.length ? `${noKind.length}건 무필드` : '');
+    const kinds = [...new Set(wsNotices.map((m) => m.kind))];
+    ok(kinds.length >= 2, '[T78] 자명 통과 금지 — `kind` 가 한 종류로 뭉개지지 않았다', kinds.join(' '));
+    // 그리고 **원문엔 이모지가 있었다**는 것 — 아니면 위 검사는 아무것도 안 잰 것이다
+    const zsrc = require('fs').readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
+    ok(/\p{Extended_Pictographic}/u.test(zsrc), '[T78] 대조: `zone.js` 원문엔 이모지가 그대로 있다(경계가 지운 것이지 원문이 빈 게 아니다)');
+  }
+
   ok(fatal.length === 0, `클라 JS 에러 0 ${fatal.length ? '— ' + fatal.slice(0, 3).join(' / ') : ''}`);
 
   await browser.close();
