@@ -255,6 +255,13 @@ function diffCountNoEnts(a, b, ents) {
     await knob({ simvilCellGateOff: true });
     const simvilOff = await svProbe();
     await knob({ simvilCellGateOff: false });
+    // ★★[T57 2026-09-03] 사유지 셀도 같은 문법으로 잰다 — 안개 게이트의 **세 번째 층**.
+    //   훅은 클라가 프레임마다 채운다(`window.__claimCells`). 하네스는 스냅샷만 뜬다.
+    const clProbe = () => page.evaluate(() => (window.__claimCells ? JSON.parse(JSON.stringify(window.__claimCells)) : null)).catch(() => null);
+    const claimOn = await clProbe();
+    await knob({ claimCellGateOff: true });
+    const claimOff = await clProbe();
+    await knob({ claimCellGateOff: false });
     await knob({ natOff: true });
     const fogOff = await fogLit();
     await knob({ natOff: false, fringeOff: true });
@@ -332,7 +339,7 @@ function diffCountNoEnts(a, b, ents) {
     const fMarginOff = await grab('margin-off');
     await knob({ shMargin: 1 });
 
-    S[tag] = { dDefault, d0, fOn, fOn2, entPx, fNoFr, fNoPr, fNoNat, probe, probeNA, cerr, bad: [...new Set(bad)], fogOn, fogOff, gate, gateOff, simvilOn, simvilOff,
+    S[tag] = { dDefault, d0, fOn, fOn2, entPx, fNoFr, fNoPr, fNoNat, probe, probeNA, cerr, bad: [...new Set(bad)], fogOn, fogOff, gate, gateOff, simvilOn, simvilOff, claimOn, claimOff,
                wOn100, wOn101, wCalm100, wCalm101, wBase100, wBase101, windFn, shWidths, shWidths0, fMarginOn, fMarginOff,
                cpCalm, cpLegacy, cpW0, cpW1, cpC0, cpC1, cpDbgOn, cpDbgOff };
     await browser.close(); try { z.kill(); } catch (e) {}
@@ -519,6 +526,46 @@ function diffCountNoEnts(a, b, ents) {
       `${anyUnseen}셀 · 예 ${JSON.stringify(sample)}`);
     ok(viol === 0, '★★★ⓖ 안 가본 셀에는 영토·논밭이 **한 셀도 안 그려진다**', `${viol}셀`);
     ok(ctrl > 0, '★★ⓖ 대조군(셀 게이트 끔)에서는 위반이 **나온다** — 검사가 진짜 재고 있다', `${ctrl}셀`);
+  }
+
+  // ═══ [7c] ★★안개 위 논밭 — **사유지 셀** [T57 2026-09-03 재민 실기 재현] ═══════
+  //   같은 결함의 **세 번째 층**이다: 배치 21 자연물 → 08-30 마을 영토 띠 → 이번 NPC 사유지.
+  //   기전: 사유지(`claim`)도 `renderables` 에 **중심 한 점**으로 실리고, 개체 게이트는
+  //   그 점을 `_GATE_R.claim = 4`(4셀 후광)로 본다 ⇒ 안 가본 땅 위에 논밭 격자가 떴다.
+  //   ⇒ 수리: 사유지는 건물이 아니라 **땅에 깔린 것**이므로 땅의 규칙(정확히 그 셀)을 쓴다.
+  //   ★★귀속을 **실측으로 갈랐다**(추정 금지): 이 배치의 첫 판은 사유지(`claim`)를 범인으로 봤는데
+  //     같은 화면의 원자료가 `사유지 0 · 경작지 42` 였다 — **사유지는 한 칸도 없었다.**
+  //     진짜 층은 `farmland` **건물**이고, 그건 `kind:'building'` 이라 구조물 후광(R=4)을 받는다.
+  //     후광이 있는 이유는 "벽이 시야를 막아 내부 셀이 영영 안 보인다"인데 밭엔 그 사정이 없다.
+  say('\n[7c] ⓖ2 안개 위 논밭 — **땅에 깔린 것**(논밭·사유지)은 셀마다 안개를 본다 [T57 재민 실기 재현]');
+  {
+    let anyCand = 0, anyUnseen = 0, viol = 0, ctrl = 0, sample = null;
+    for (const [tag, s2] of [['강가', R], ['초원', F]]) {
+      const on = s2.claimOn, off = s2.claimOff;
+      if (!on || !off) { say(`    ${tag}: 계측 없음`); continue; }
+      say(`    ${tag}: 수리본 후보 ${on.cand}셀 · 안 본 셀 ${on.unseen} · 안 본 셀에 그림 ${on.drawnUnseen}`
+        + `  |  대조군 후보 ${off.cand} · 안 본 셀 ${off.unseen} · 안 본 셀에 그림 ${off.drawnUnseen}`);
+      anyCand += on.cand; anyUnseen += off.unseen; viol += on.drawnUnseen; ctrl += off.drawnUnseen;
+      if (!sample && off.samples && off.samples.length) sample = off.samples.slice(0, 2);
+    }
+    if (anyCand === 0) {
+      // ★★**못 쟀다고 적는다 — "통과"라고 적지 않는다.**
+      //   이 하네스의 정본 프로브 자리(강가·초원)는 `probe-terrain-sites.js` 가 **지형**으로 고른
+      //   자리다. 그 자리엔 화면 안(AOI 650px)에 논밭·사유지가 **한 칸도 없다**(실측 cand 0).
+      //   ⇒ 여기서 초록을 찍으면 그건 "안 그렸다"가 아니라 **"그릴 게 없었다"**다. 그건 자명 통과다.
+      //   수리 자체는 기전으로 선다(땅에 깔린 것은 구조물 후광을 안 받는다 —
+      //   `34-m-renderloop.js` `_flatCellGate`), 그리고 대조군 손잡이도 붙어 있다.
+      //   ⇒ **회부**: 논밭이 화면에 실재하는 프로브 자리(마을 사유지 고리)를 하나 추가해야
+      //     이 절이 진짜로 잰다. 지형 프로브와 다른 기준이라 자리 선정이 따로 필요하다.
+      say('    ★이 자리엔 논밭·사유지가 화면에 **한 칸도 없다**(AOI 650px 안) — 이 절은 이 판에서 **못 잰다**.');
+      say('      "안 그렸다"가 아니라 "그릴 게 없었다"이므로 초록을 찍지 않는다. 프로브 자리 추가는 회부.');
+      ok(true, 'ⓖ2 [못 잼] 이 자리엔 대상이 없다 — 판정 유보(사유를 찍었다)', `후보 ${anyCand}셀`);
+    } else {
+      ok(anyUnseen > 0, '★★(상황) 그중 **안 가본 셀이 실제로 있다** — 없으면 이 검사는 아무것도 안 잰다',
+        `${anyUnseen}셀 · 예 ${JSON.stringify(sample)}`);
+      ok(viol === 0, '★★★ⓖ2 안 가본 셀에는 논밭·사유지가 **한 셀도 안 그려진다**', `${viol}셀`);
+      ok(ctrl > 0, '★★ⓖ2 대조군(**옛 동작** — 구조물 후광 R=4)에서는 위반이 **나온다** — 검사가 진짜 재고 있다', `${ctrl}셀`);
+    }
   }
 
   say('\n[7] ⓕ 안개 — ★한 번도 안 가본 곳엔 **그 어떤 것도** 보이면 안 된다 [재민 확정]');

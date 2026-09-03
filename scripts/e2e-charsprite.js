@@ -284,6 +284,161 @@ function openSpot() {
   await A.screenshot({ path: path.join(SHOTS, 'cs-03-two.png') });
 
   // ── ⑥ 성능 — 합성 그리기 비용(라이브 rAF 짝 비교) ────────────────────────
+  // ═══ [T57 2026-09-03] ⓔ **이름표가 시트 경로에서도 뜬다** ═════════════════════
+  //   결함 기전: 이름표·행동 라벨이 옛 도형 경로(`drawPlayerIso`) **안**에 있었고,
+  //   호출자는 `if (!_spriteOk) drawPlayerIso(...)` 라 **시트가 성공하면 안 불렀다**.
+  //   ⇒ 시트 배치(T13) 이후 사람 머리 위 이름이 통째로 사라졌다(재민 실기 2026-09-03).
+  //   판정: 이름 글자가 있어야 할 **머리 위 띠**에 배경과 다른 픽셀이 실제로 있는가.
+  //   자명 통과 금지: 같은 자리를 **시트를 끈 대조군**(도형 경로)에서도 재서 둘 다 글자가 있어야 한다.
+  console.log('\n=== ⓔ 이름표 — 시트 경로에도 뜬다 [T57] ===');
+  {
+    // ★자리 잡기: 카메라는 **나를 따라간다**(`_camAbs` = 내 자리) ⇒ 나는 늘 화면 한가운데다.
+    //   그래서 `__w2s` 에 기대지 않는다(줌·조준 밀기가 끼면 그 훅의 값이 흔들린다).
+    //   ⇒ 캔버스 중앙 위 띠를 자르고, **같은 크기의 빈 땅 띠**를 대조군으로 둔다.
+    //     대조군보다 글자 픽셀이 확연히 많아야 "이름이 떴다"고 말할 수 있다(자명 통과 금지).
+    // ★판정을 "밝은 픽셀 수"로 하지 않는다 — 그건 그 자리에 뭐가 깔렸느냐에 흔들린다
+    //   (실측: 대조군 빈 땅이 어떤 판에선 어두운 픽셀 1767 이 나왔다 — 땅이 어두웠을 뿐이다).
+    //   ⇒ **글자의 서명**을 센다: 이름표는 흰 글자 + 검은 외곽선이라 **밝은 픽셀 바로 옆에
+    //     어두운 픽셀**이 있다. 지면·하늘·지붕엔 그런 자리가 거의 없다. 구조를 재는 자다.
+    const bands = await A.evaluate(() => {
+      const cv = document.getElementById('canvas');
+      const g = cv.getContext('2d');
+      const W = cv.width, H = cv.height;
+      const sig = (x0, y0, w, h) => {
+        if (x0 < 0 || y0 < 0 || x0 + w > W || y0 + h > H) return null;
+        const im = g.getImageData(x0, y0, w, h).data;
+        const L = (x, y) => { const i = (y * w + x) * 4; return im[i] * 0.3 + im[i + 1] * 0.6 + im[i + 2] * 0.1; };
+        let edge = 0, bright = 0, dark = 0;
+        for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+          const l = L(x, y);
+          if (l > 200) { bright++;
+            // 바로 이웃에 아주 어두운 픽셀이 있나 = 글자 외곽선의 서명
+            let near = false;
+            for (let dy = -2; dy <= 2 && !near; dy++) for (let dx = -2; dx <= 2 && !near; dx++) {
+              const yy = y + dy, xx = x + dx;
+              if (yy > 0 && yy < h && xx > 0 && xx < w && L(xx, yy) < 45) near = true;
+            }
+            if (near) edge++;
+          } else if (l < 45) dark++;
+        }
+        return { edge, bright, dark, box: [x0, y0, w, h] };
+      };
+      const cx = Math.round(W / 2), cy = Math.round(H / 2);
+      return { size: [W, H],
+        head: sig(cx - 80, cy - 62, 160, 52),     // 머리 위 — 이름표·행동 라벨이 드는 띠(넉넉히)
+        ctrl: sig(cx - 80, cy + 40, 160, 52) };   // 대조군 — 내 발밑 아래 지면(글자가 없는 자리)
+    }).catch(() => null);
+    const nb = bands && bands.head, cb = bands && bands.ctrl;
+    console.log(`    캔버스 ${bands && bands.size} · 머리 위 ${nb ? JSON.stringify(nb.box) : '없음'}`
+      + ` 글자서명 ${nb && nb.edge}(밝은 ${nb && nb.bright}) | 대조군(지면) 글자서명 ${cb && cb.edge}(밝은 ${cb && cb.bright})`);
+    ok(!!nb && !!cb, '★전제 — 머리 위 띠와 대조군 띠를 화면에서 잘라냈다');
+    const dNow = await dbgOf(A, await myPid());
+    ok(dNow && dNow.on === true, '★전제 — 지금 **시트 경로**로 그려지고 있다(도형 폴백이 아니다)', dNow ? `clip=${dNow.clip}` : 'null');
+    ok(nb && nb.edge > 15, '★★ⓔ 시트 경로에서 **이름 글자가 실제로 그려진다**(종전엔 하나도 없었다)',
+      nb ? `글자서명 ${nb.edge} > 15` : 'x');
+    ok(nb && cb && nb.edge > cb.edge * 3 + 10,
+      '★ⓔ 자명 통과 금지 — 같은 크기의 **지면 띠**엔 그 서명이 없다(밝기 우연이 아니다)',
+      nb && cb ? `머리 ${nb.edge} > 지면 ${cb.edge}×3+10` : 'x');
+  }
+
+  // ═══ [T57] ⓓ **8방향 표** — 걷는 화면 방향과 시트 행의 향 ═══════════════════
+  //   카드의 물음: 호출자가 넣는 (fx,fy)가 월드인가 화면인가 · 시트 행이 어느 좌표계인가 · y 부호.
+  //   ⇒ **재서** 답한다(눈대중 금지 — 족보 74). 아이소 변환은 정본 `__w2s` 하나를 쓴다(사본 금지).
+  //   시트 행의 '향'은 **그 행 실루엣의 폭**으로 읽는다 — 사람은 옆에서 보면 좁고(몸 두께)
+  //   앞뒤로 보면 넓다(어깨). 화면 가로로 걸으면 옆모습(좁음), 세로로 걸으면 앞뒤(넓음)여야 한다.
+  //   이건 메타의 주장이 아니라 **시트 그림 자체**를 재는 것이다.
+  console.log('\n=== ⓓ 8방향 — 걷는 화면 방향 ↔ 시트 행 [T57] ===');
+  {
+    const sheetW = (() => {
+      // 시트에서 행별 실루엣 폭을 잰다(프레임 2 — 걸음 중간).
+      const P = require(path.join(ROOT, 'node_modules', 'pngjs')).PNG;
+      const png = P.sync.read(fs.readFileSync(path.join(ROOT, 'public', 'assets', 'char', 'body_walk.png')));
+      const FW = 109, FH = 90, out = [];
+      for (let r = 0; r < 8; r++) {
+        const cols = new Set();
+        for (let y = r * FH; y < (r + 1) * FH; y++) for (let x = 2 * FW; x < 3 * FW; x++) {
+          if (png.data[(y * png.width + x) * 4 + 3] > 40) cols.add(x);
+        }
+        out.push(cols.size);
+      }
+      return out;
+    })();
+    console.log('    시트 행별 실루엣 폭: ' + sheetW.map((w, i) => `${i}:${w}`).join(' '));
+    const KEYS = [['KeyW', '↑'], ['KeyW+KeyD', '↗'], ['KeyD', '→'], ['KeyS+KeyD', '↘'],
+                  ['KeyS', '↓'], ['KeyS+KeyA', '↙'], ['KeyA', '←'], ['KeyW+KeyA', '↖']];
+    const rows = [];
+    for (const [combo, arrow] of KEYS) {
+      const ks = combo.split('+');
+      for (const k of ks) await A.keyboard.down(k);
+      await sleep(700);
+      const d = await dbgOf(A, await myPid());
+      for (const k of ks) await A.keyboard.up(k);
+      await sleep(400);
+      // ★화면 벡터는 **정본 아이소 변환**으로 옮긴다(각도 사본 금지 · 노출 훅 `__w2s`).
+      //   ⚠"실제로 걸은 거리"로 재지 않는다 — 지형이 막으면 0이 되고, 그러면 **막힌 것**이
+      //     "방향이 틀렸다"로 둔갑한다. 재는 것은 **바라보는 방향의 화면 투영**이다.
+      // ★변환은 **클라에서 캐 온다** — 하네스가 아이소 식을 옮겨 적으면 그게 사본이다.
+      //   `__s2w`(화면→월드)를 세 점에서 재 선형사상을 얻고, 그걸 **뒤집어** 월드→화면을 만든다.
+      //   (`__w2s` 는 이 자리에서 NaN 을 냈다 — 카메라 상태를 타는 듯하다. 회부 한 줄.)
+      const sv = d && d.facing ? await A.evaluate(([fx, fy]) => {
+        const o = window.__s2w(0, 0), ex = window.__s2w(100, 0), ey = window.__s2w(0, 100);
+        if (!o || !ex || !ey) return null;
+        // 화면(1,0) → 월드 a, 화면(0,1) → 월드 b
+        const ax = (ex.wx - o.wx) / 100, ay = (ex.wy - o.wy) / 100;
+        const bx = (ey.wx - o.wx) / 100, by = (ey.wy - o.wy) / 100;
+        const det = ax * by - ay * bx;
+        if (!isFinite(det) || Math.abs(det) < 1e-9) return null;
+        // 월드 v = s·a + t·b  ⇒  (s,t) = A⁻¹ v  — (s,t) 가 곧 화면 벡터다
+        const sx = (by * fx - bx * fy) / det, sy = (-ay * fx + ax * fy) / det;
+        return [sx, sy];
+      }, d.facing).catch(() => null) : null;
+      rows.push({ arrow, combo, facing: d && d.facing, row: d && d.row, screen: sv || [NaN, NaN],
+                  faced: !!(d && d.facing && (d.facing[0] || d.facing[1])), w: d && sheetW[d.row] });
+    }
+    console.log('    키   월드(fvx,fvy)        화면(dx,dy)         행  실루엣폭  화면축');
+    for (const r of rows) {
+      // ★문턱을 눈대중으로 잡지 않는다 — **아이소 기하에서 유도한다**(족보 74).
+      //   이 투영은 화면 y 가 절반이라(`w2i`: y=(wx+wy)/2) 월드 축방향은 화면에서 정확히 **2:1**이다.
+      //   ⇒ 대각(2:1)과 순수 가로/세로를 가르려면 문턱이 2 **위**여야 한다. 1.8 로 두면
+      //     대각 넷이 전부 '가로'로 잡혀 **멀쩡한 판정이 빨개진다**(첫 판이 그랬다: 4/8).
+      const _rx = Math.abs(r.screen[0]), _ry = Math.abs(r.screen[1]);
+      const ax = _rx > _ry * 4 ? '가로' : _ry > _rx * 4 ? '세로' : '대각';
+      r.axis = ax;
+      console.log(`    ${r.arrow}  ${JSON.stringify(r.facing)}  ${r.screen.map((v) => v.toFixed(1))}  ${r.row}  ${r.w}  ${ax}`);
+    }
+    const faced = rows.filter((r) => r.faced && isFinite(r.screen[0]) && isFinite(r.screen[1]));
+    ok(faced.length === 8, '★전제 — 여덟 방향 모두 **바라보는 방향이 잡혔고 화면으로 옮겨졌다**', `${faced.length}/8`);
+    ok(new Set(rows.map((r) => r.row)).size === 8, '★전제 — 여덟 방향이 **서로 다른 행 여덟 개**를 골랐다(한 행에 몰리지 않는다)',
+      `${new Set(rows.map((r) => r.row)).size}/8`);
+    // 판정: 화면 가로로 걸으면 시트 행이 **가장 좁은 축**, 세로면 **가장 넓은 축**이어야 한다.
+    const wMin = Math.min(...sheetW), wMax = Math.max(...sheetW);
+    let good = 0, bad = [];
+    for (const r of rows) {
+      if (r.w == null) { bad.push(`${r.arrow}:행없음`); continue; }
+      const okRow = r.axis === '가로' ? (r.w <= wMin + (wMax - wMin) * 0.34)
+                  : r.axis === '세로' ? (r.w >= wMax - (wMax - wMin) * 0.34)
+                  : (r.w > wMin + (wMax - wMin) * 0.15 && r.w < wMax - (wMax - wMin) * 0.15);
+      if (okRow) good++; else bad.push(`${r.arrow}(축 ${r.axis} · 폭 ${r.w})`);
+    }
+    ok(good === 8, '★★ⓓ 여덟 방향 **전부** 시트 행의 향이 걷는 화면 방향과 맞는다 (8/8)',
+      good === 8 ? `8/8 (폭 ${wMin}~${wMax})` : `${good}/8 — 어긋남: ${bad.join(' ')}`);
+    // ★측정 기록 — 시트는 **마주보는 두 방향을 못 가른다**(얼굴이 없다). 회부 근거.
+    const P2 = require(path.join(ROOT, 'node_modules', 'pngjs')).PNG;
+    const png2 = P2.sync.read(fs.readFileSync(path.join(ROOT, 'public', 'assets', 'char', 'body_walk.png')));
+    const FW = 109, FH = 90;
+    const dAbs = (r1, r2) => { let s2 = 0, n = 0;
+      for (let y = 0; y < FH; y++) for (let x = 0; x < FW; x++) {
+        const i1 = ((r1 * FH + y) * png2.width + 2 * FW + x) * 4, i2 = ((r2 * FH + y) * png2.width + 2 * FW + x) * 4;
+        for (let c = 0; c < 4; c++) s2 += Math.abs(png2.data[i1 + c] - png2.data[i2 + c]);
+        n += 4; }
+      return s2 / n; };
+    const opp = [0, 1, 2, 3].map((r) => dAbs(r, r + 4)), adj = [0, 1, 2, 3].map((r) => dAbs(r, (r + 1) % 8));
+    console.log(`    [측정 — 판정 아님] 마주보는 행 차이 ${opp.map((v) => v.toFixed(2)).join(' ')}`
+      + ` vs 이웃 행 차이 ${adj.map((v) => v.toFixed(2)).join(' ')}`);
+    console.log('      ⇒ 마주보는 두 방향(동↔서·남↔북)이 이웃만큼도 안 다르다 = **시트가 앞뒤를 못 가른다**(얼굴이 없다).');
+    console.log('      ⇒ 산식이 아니라 **에셋**의 문제다. 재렌더는 ART — 회부(`인계/R2-개체렌더.md`).');
+  }
+
   console.log('\n=== ⑥ 성능 — rAF 짝 비교 (플래그 ON vs OFF · 같은 화면) ===');
   const measure = async (page, on) => page.evaluate(async (flag) => {
     const cfg = window.__uiCfg ? null : null;

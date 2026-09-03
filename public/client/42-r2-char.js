@@ -267,7 +267,22 @@
     }
     if (isWar) ctx.globalAlpha = _aSave;   // 알파 복원 — 이름표는 정상 가시(궤주여도 라벨 판독)
 
-    // 이름표
+    // 이름표 — ★[T57 2026-09-03] **함수 하나로 뺐다.** 아래 `drawNameTag` 참조.
+    drawNameTag(x, y, name, isMe, opts.act);
+  }
+
+  // ★★[T57 2026-09-03] **이름표·행동 라벨은 그리기 경로가 둘이어도 함수 하나다.**
+  //   결함 기전: 이 블록은 옛 도형 경로(`drawPlayerIso`) **안에** 있었다. 시트 배치(T13)가
+  //   들어와 `drawCharSprite` 가 성공하면 호출자가 `if (!_spriteOk) drawPlayerIso(...)` 로
+  //   도형 경로를 **안 부르므로**, 사람 머리 위 이름이 통째로 사라졌다
+  //   (`34-m-renderloop.js` — HP 바·말풍선은 호출자에 있어 살아남았고 이름표만 빠졌다).
+  //   ⇒ 블록을 **옮긴다**(복사가 아니다 — 이 레포의 제1 금기). 두 경로가 같은 함수를 부른다.
+  //   ⚠NPC 도 이 함수를 탄다. 도형 경로가 종전에 NPC 에 무엇을 찍었는지 실측했다:
+  //     호출자가 넘기는 `name` 은 `displayName`(= 직업 이모지 + [부족] + 이름)이고
+  //     `simJob` 은 그 이모지로 이미 들어가 있다(`34-m-renderloop.js` `_sjEmoji`).
+  //     ⇒ **종전 그대로** 둔다. 새 표시를 발명하지 않는다(다르게 하려면 회부).
+  function drawNameTag(x, y, name, isMe, act) {
+    if (!name) return;
     ctx.font = '11px sans-serif';
     ctx.textAlign = 'center';
     ctx.fillStyle = isMe ? '#fff' : '#cdd6e3';
@@ -276,12 +291,12 @@
     ctx.strokeText(name, x, y - 22);
     ctx.fillText(name, x, y - 22);
     // ★[액션 라벨 — 생활 층 100% 가시화] 이름 위 작은 행동 라벨(모내기·잠행·추적·개간·건축·취침…) — 서버 makeEntry e.act
-    if (opts.act && !isMe) {
+    if (act && !isMe) {
       ctx.font = '9px sans-serif';
       ctx.fillStyle = '#ffd77a';
       ctx.lineWidth = 2.5;
-      ctx.strokeText(opts.act, x, y - 33);
-      ctx.fillText(opts.act, x, y - 33);
+      ctx.strokeText(act, x, y - 33);
+      ctx.fillText(act, x, y - 33);
     }
     ctx.textAlign = 'start';
   }

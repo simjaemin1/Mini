@@ -777,6 +777,8 @@
         // ★움집 지붕: 서버 태그 data.hut=[x0,y0,x1,y1] — 지붕은 벽 유닛(64px) '위에' 얹힌 스프라이트[사용자 확정: 유닛 문법].
         //   벽은 항상 그대로 렌더(통나무 스킨·문=벽 개구·콜라이더 불변). 바닥만 밖에서 억제(지붕에 가림) + 캐리어 1셀이 지붕 합성.
         //   플레이어가 발자국 안/문 앞 1셀(0층)이면 지붕만 걷힘(컷어웨이) → 실내 바닥·가구 노출.
+        // ★[T57 2026-09-03] 이 건물 조각을 **지붕 밑 띠**로 내릴지. 밖에서 본 실내 바닥이 그 자리다.
+        let _floorBelowRoof = false;
         // ★[에셋 2차] 고상곳간(data.gran) — 실물 벽·바닥은 시각만 억제(콜라이더·밀폐 불변), 캐리어 1셀이 통짜
         //   스프라이트(기둥+판벽+이엉) 합성. 컷어웨이 없음(문 없는 밀폐 — 반출입은 사다리 연출).
         const _granI = _bldSpr.granary || _granC;   // ★10차: 3D 스프라이트 우선, 없으면 베이크 폴백
@@ -812,7 +814,15 @@
                 renderables.push({ z: (rax + ray) * 0.5 + 80, kind: 'hutroof', img: _hallI, iso: _riso, wx: rax, wy: ray });   // ★벽 4면 상회: 8×8은 남벽 동단·동벽 남단=캐리어+72 — +80으로 전부 상회(움집 +64 논리 동형)
               }
             }
-            continue;   // 밖=실내 바닥 억제(지붕에 가림)
+            // ★★[T57 2026-09-03] **밖에서도 바닥을 그린다.** 종전엔 여기서 `continue` 로 억제해
+            //   문간·벽 틈으로 **바닥 대신 배경(새까만 구멍)** 이 보였다(재민 실기 2026-09-03).
+            //   재민 요구: "문간·벽 사이로 보이는 곳엔 바닥이 있어야 한다" =
+            //   **바닥은 언제나 그리고 지붕이 위에서 덮는다**(가리는 건 지붕의 몫이지 바닥을 빼는 게 아니다).
+            //   ⇒ 아래 push 에서 z 를 **지붕 밑 띠**로 낮춘다(`_floorBelowRoof`).
+            //   ★대조군 손잡이 `floorOutOff` — 켜면 옛 동작(밖에서 바닥 억제)으로 돌아간다.
+            //     짝 비교(같은 실행 안 A/B)를 하려면 옛 화면이 같은 순간에 필요하다.
+            if (_t19.floorOutOff) continue;
+            _floorBelowRoof = true;
           }
         }
         const _hutI = _bldSpr.hut_roof || _hutRoofC;   // ★10차: 3D 스프라이트 우선
@@ -845,7 +855,8 @@
                 renderables.push({ z: (rax + ray) * 0.5 + 64, kind: 'hutroof', img: _hutI, iso: _riso, wx: rax, wy: ray });   // ★지붕은 자기 집 벽 4면보다 무조건 앞[사용자 지적]: 벽 z 최대=남벽 동단·동벽 남단 (캐리어+56) — +24는 SE 구간 벽이 처마를 덮었음. +64로 전부 상회. 남측 개체는 지붕이 64px 떠 있어 픽셀 비겹침(플레이어는 +500 별도)이라 안전
               }
             }
-            continue;
+            if (_t19.floorOutOff) continue;   // ★대조군 — 옛 동작(밖에서 바닥 억제)
+            _floorBelowRoof = true;   // ★[T57] 움집도 같은 문법 — 위 큰집 주석 참조
           }
         }
         // wall은 cell edge 좌표 (b.x, b.y = cell 좌상단). 다른 건축은 cell 중심.
@@ -882,7 +893,14 @@
         const iso = w2i(ax, ay, bZ);
         let _bz = (ax + ay) * 0.5 + (b.floor || 0) * 0.5;
         if (b.type === 'vtile') _bz -= 960;   // ★지면 타일은 실셀 텍스처(64×32)로 승격 — 길(-950)·개체 아래 배경층으로
-        renderables.push({ z: _bz, kind: 'building', b, iso, ax, ay, off: ox, offY: oy, wx: ax, wy: ay });   // ★배치 17: off — 남·동벽 페이드가 존 로컬 셀을 재려면 원점이 필요하다
+        // ★★[T57 2026-09-03] 밖에서 본 **실내 바닥**은 지붕 밑 띠로 내린다.
+        //   왜 z 를 손대나: 그냥 그리면 발자국 **앞쪽** 바닥 셀이 지붕(캐리어 z + 64)보다 커져
+        //   지붕 위로 떠오른다(움집 발자국이 6×4셀 = 최대 192px 이라 실제로 넘는다).
+        //   ⇒ -900 은 지면 타일(-960)·길(-950) **위**, 벽·지붕·사람 **아래**다.
+        //     문간·벽 틈으로만 보이고 그 밖에는 아무것도 안 가린다 — 짝 비교로 실증한다.
+        if (_floorBelowRoof) _bz = (ax + ay) * 0.0005 - 900;   // 같은 띠 안에서 앞뒤 순서는 유지
+        // ★★[T57 2026-09-03] `_flat` = **땅에 깔린 것**(논밭). 구조물이 아니므로 안개 후광을 안 준다 — 아래 게이트 참조.
+        renderables.push({ z: _bz, kind: 'building', b, iso, ax, ay, off: ox, offY: oy, wx: ax, wy: ay, _flat: (b.type === 'farmland') });   // ★배치 17: off — 남·동벽 페이드가 존 로컬 셀을 재려면 원점이 필요하다
       }
       // ★[2026-08-04c 배치 17 ①] 실내 컷어웨이 진단 훅 — 하네스가 "지붕이 실제로 걷혔나"를 계약 수준에서
       //   확인할 수 있게 이번 프레임의 발자국 렉트·지붕 표시 여부·내 로컬 셀을 노출한다.
@@ -1113,6 +1131,12 @@
     _gateDrawn.length = 0;
     _entBoxes.length = 0;
     if (window.__simvilCells) { const _p = window.__simvilCells; _p.cand = 0; _p.unseen = 0; _p.drawnUnseen = 0; _p.samples.length = 0; }
+    // ★[T57 2026-09-03] 사유지 셀 계측 훅. `__simvilCells`(영토 띠)와 **같은 모양**이다 —
+    //   하네스가 두 층을 같은 문법으로 읽는다. 여기서 만드는 이유: 이 배치의 접촉 파일이
+    //   `34-m-renderloop.js` 라서다(`__simvilCells` 는 `11-r1-mountain.js` 가 만든다).
+    //   ⇒ 회부 한 줄: 두 훅의 선언 자리를 한곳으로 모으는 정리는 R1 소유 세션의 몫이다.
+    if (!window.__claimCells) window.__claimCells = { cand: 0, unseen: 0, drawnUnseen: 0, samples: [] };
+    { const _p = window.__claimCells; _p.cand = 0; _p.unseen = 0; _p.drawnUnseen = 0; _p.samples.length = 0; }
     const _seenCell1 = (cx, cy) => {
       const sc = window._seenChunks; if (!sc) return true;   // 첫 프레임(기록 전)은 통과
       const chSet = sc.get((cx >> 4) + '_' + (cy >> 4));
@@ -1152,12 +1176,36 @@
       return false;
     };
 
+    // ★★[T57 2026-09-03 · 안개 게이트 **세 번째 층**] **땅에 깔린 것은 후광을 안 받는다.**
+    //   실측으로 층을 갈랐다(추정 금지 — 카드 §0-ⓐ): 재민 실기의 새까만 땅 위 논밭 격자는
+    //   사유지(`claim`)가 아니라 **`farmland` 건물**이었다. `e2e-nature` 원자료가 그걸 말한다:
+    //     `길 0셀 · **사유지 0** · 마을 50 · **경작지 42**`  ← 사유지는 0인데 논밭은 42다.
+    //   기전: 논밭은 `kind:'building'` 으로 실려 `_GATE_R.building = 4`(4셀 후광)를 받는다.
+    //   그 후광이 있는 이유는 구조물 사정이다 — "벽이 시야를 막아 **내부 셀이 영영 '본 셀'이
+    //   안 된다**"(그래서 내가 지은 내 집 지붕이 사라졌다). **논밭엔 그 사정이 없다.**
+    //   밭 한 칸을 지나가면 그 칸은 '본 셀'이 된다. ⇒ 땅의 규칙(정확히 그 셀)을 쓴다.
+    //   ★판정 정본은 `_seenCell1`(= `_seenChunks`) 하나다 — 사본 금지.
+    const _flatCellGate = (wx, wy) => {
+      const ccx = Math.floor(wx / CL_BUILDING_SIZE), ccy = Math.floor(wy / CL_BUILDING_SIZE);
+      const _seen = _seenCell1(ccx, ccy);
+      // ★대조군은 "무조건 그린다"가 아니라 **옛 동작 그대로**여야 한다 — 옛 동작은
+      //   구조물 후광(R=4)을 통과시키는 것이었다. 무조건 그린다로 두면 위반 수가 부풀어
+      //   "수리가 얼마나 걷어냈나"를 과장한다(계측기가 제 편을 드는 자리).
+      const _draw = _t19.claimCellGateOff ? _seenFor('building', wx, wy) : _seen;
+      const _pr = window.__claimCells;
+      if (_pr) {
+        _pr.cand++;
+        if (!_seen) { _pr.unseen++; if (_draw) { _pr.drawnUnseen++; if (_pr.samples.length < 8) _pr.samples.push([ccx, ccy]); } }
+      }
+      return _draw;
+    };
+
     // === 3) 엔티티 그리기 ===
     _mtStage(ctx, 'C_루프전');
     for (const item of renderables) {
       if (item.wx === undefined) { _gateMissing++; _gateMissKind[item.kind] = (_gateMissKind[item.kind] || 0) + 1; }
       else if (_GATE_FREE[item.kind]) { _gateFree++; }
-      else if (!item.isMe && !_t19.fogGateOff && !_seenFor(item.kind, item.wx, item.wy)) { _gateSkipped++; continue; }
+      else if (!item.isMe && !_t19.fogGateOff && !(item._flat ? _flatCellGate(item.wx, item.wy) : _seenFor(item.kind, item.wx, item.wy))) { _gateSkipped++; continue; }
       else if (item.wx !== undefined) {
         _gateDrawn.push(item.wx, item.wy, item.kind);
         //  ★생물만, 손잡이가 켜졌을 때만 — 라이브에선 이 줄이 한 번도 안 돈다.
@@ -1184,6 +1232,48 @@
         else if (cl.state === 'pref') { fill = 'rgba(120,200,140,0.16)'; stroke = 'rgba(140,220,160,0.75)'; label = `🕯️ ${cl.ownerName}`; }
         else if (cl.state === 'free') { fill = 'rgba(120,120,120,0.12)'; stroke = 'rgba(160,160,160,0.55)'; label = `🕳️ 빈 자리`; }
 
+        // ★★[T57 2026-09-03 · 안개 게이트 **세 번째 층**] 사유지도 **셀마다** 안개를 본다.
+        //   결함 기전은 배치 21(자연물)·08-30(마을 영토 띠)과 **같은 족**이다:
+        //   이 항목은 `renderables` 에 **사유지 중심 한 점**으로 실리고(위 push: wx=cl.x+cl.w/2),
+        //   개체 게이트는 그 한 점을 `_GATE_R.claim = 4`(=4셀 후광)로 본다. 그래서
+        //   **한 번도 안 가본 새까만 땅 위에 논밭 격자가 그대로 떴다**(재민 실기 2026-09-03 새벌).
+        //   ⇒ 사유지는 건물이 아니라 **땅에 깔린 것**이다. 땅의 규칙(정확히 그 셀)을 따른다.
+        //     판정 정본은 `_seenCell1`(= `_seenChunks`) 하나다 — 사본 금지.
+        //   ⚠후광(R=4)이 건물에 필요한 이유는 "벽이 시야를 막아 내부 셀이 영영 안 보인다"였다.
+        //     사유지엔 그 사정이 없다 — 그 셀을 지나가면 그 셀이 '본 셀'이 된다.
+        //   대조군(`claimCellGateOff`)은 **옛 동작 그대로** — 개체 후광(`_GATE_R.claim = 4`)을 통과시킨다.
+        const _claimCellSeen = (ccx, ccy) => (_t19.claimCellGateOff
+          ? _seenFor('claim', ccx * CL_BUILDING_SIZE + 1, ccy * CL_BUILDING_SIZE + 1)
+          : _seenCell1(ccx, ccy));
+        //   계측 — 후보 셀 · 그중 안 본 셀 · **안 본 셀인데 그린 것**(= 위반).
+        //   `unseen>0` 이어야 이 검사가 자명 통과가 아니고, `drawnUnseen===0` 이어야 수리된 것이다.
+        const _claimCellGate = (ccx, ccy) => {
+          const _seen = _seenCell1(ccx, ccy);
+          const _draw = _claimCellSeen(ccx, ccy);
+          const _pr = window.__claimCells;
+          if (_pr) {
+            _pr.cand++;
+            if (!_seen) { _pr.unseen++; if (_draw) { _pr.drawnUnseen++; if (_pr.samples.length < 8) _pr.samples.push([ccx, ccy]); } }
+          }
+          return _draw;
+        };
+        //   이 사유지가 실제로 덮는 셀들(월드 셀). 논밭은 정확히 1셀이다(`zone.js addClaim` — w=h=SZ).
+        //   ⚠셀 집합(`cl.cells`)이 있으면 **그 집합**을 쓴다 — bbox 로 세면 소유하지도 않은 칸까지
+        //     계측에 섞여 판정이 무뎌진다(족보: 계측기가 세는 대상에 아무 데나 있는 것이 섞이면 못 가른다).
+        const _S0 = CL_BUILDING_SIZE;
+        const _claimCellList = () => {
+          if (cl.cells && cl.cells.length) return cl.cells.map(([a, b]) => [Math.floor(off / _S0) + a, Math.floor(offY / _S0) + b]);
+          const out = [];
+          const x0 = Math.floor((off + cl.x) / _S0), y0 = Math.floor((offY + cl.y) / _S0);
+          const x1 = Math.ceil((off + cl.x + cl.w) / _S0) - 1, y1 = Math.ceil((offY + cl.y + cl.h) / _S0) - 1;
+          for (let qy = y0; qy <= y1; qy++) for (let qx = x0; qx <= x1; qx++) out.push([qx, qy]);
+          return out;
+        };
+        //   한 칸이라도 보이는가 — 전부 안 보이면 이 사유지는 통째로 건너뛴다(라벨·스프라이트 포함).
+        let _anySeen = false;
+        for (const [_qx, _qy] of _claimCellList()) { if (_claimCellGate(_qx, _qy)) _anySeen = true; }
+        if (!_anySeen) continue;
+
         if (cl.cells && cl.cells.length) {
           // 영토 = 셀 집합 (격자 단위) — 각 셀 채움 + 경계(이웃 안 owned) 외곽선. bbox 화면 밖이면 스킵.
           const mnx = Math.min(s1.x,s2.x,s3.x,s4.x), mxx = Math.max(s1.x,s2.x,s3.x,s4.x);
@@ -1193,12 +1283,14 @@
             const own = cl._cset || (cl._cset = new Set(cl.cells.map(c => c[0] + ',' + c[1])));
             ctx.fillStyle = fill; ctx.beginPath();
             for (const [cx, cy] of cl.cells) {
+              if (!_claimCellSeen(off / S + cx, offY / S + cy)) continue;   // ★안 가본 셀엔 안 그린다
               const a = sc(cx*S, cy*S), b = sc((cx+1)*S, cy*S), c = sc((cx+1)*S, (cy+1)*S), d = sc(cx*S, (cy+1)*S);
               ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.lineTo(c.x,c.y); ctx.lineTo(d.x,d.y); ctx.closePath();
             }
             ctx.fill();
             ctx.strokeStyle = stroke; ctx.lineWidth = 2.5; ctx.beginPath();
             for (const [cx, cy] of cl.cells) {
+              if (!_claimCellSeen(off / S + cx, offY / S + cy)) continue;   // ★외곽선도 같은 게이트
               const a = sc(cx*S, cy*S), b = sc((cx+1)*S, cy*S), c = sc((cx+1)*S, (cy+1)*S), d = sc(cx*S, (cy+1)*S);
               if (!own.has(cx + ',' + (cy-1))) { ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); }
               if (!own.has((cx+1) + ',' + cy)) { ctx.moveTo(b.x,b.y); ctx.lineTo(c.x,c.y); }
@@ -1216,14 +1308,24 @@
         }
         { ctx.fillStyle = stroke; ctx.font = (cl.kind === 'guild') ? 'bold 13px sans-serif' : '11px sans-serif'; ctx.fillText(label, s1.x + 6, s1.y + 14); }
         // Phase 4d-16-c: NPC 사유지 cell에 facility sprite (emoji)
-        if (cl.facilityType) {
+        if (cl.facilityType && _claimCellSeen(Math.floor((off + cl.x + cl.w / 2) / _S0), Math.floor((offY + cl.y + cl.h / 2) / _S0))) {
           const cs = toScreen(w2i(off + cl.x + cl.w/2, offY + cl.y + cl.h/2).x, w2i(off + cl.x + cl.w/2, offY + cl.y + cl.h/2).y);
           // farmland는 stage별 emoji 사용
           let emoji = FACILITY_EMOJI[cl.facilityType] || '';
           if (cl.facilityType === 'farmland' && cl.farmStage != null) {
             // 에셋 5차: 4단계 3D 스프라이트 우선(미로드 시 이모지 폴백)
             const _cs = cropSprite(cl.farmStage, off + cl.x, offY + cl.y);
-            if (_cs) { ctx.drawImage(_cs, cs.x - 20, cs.y - 25, 40, 40); emoji = ''; }
+            // ★★[T57 2026-09-03] **셀을 꽉 채운다.** 종전 `40×40`은 셀 다이아(64×32)보다 작아
+            //   다이아 한가운데 40px 짜리가 떠 있었다(재민 실기: "논밭이 셀보다 작다").
+            //   ⇒ 크기를 눈대중으로 키우지 않고 **에셋 원본에서 유도**했다(족보 74):
+            //     `public/assets/crops/*.png` 는 **64×64 원본**이고, 흙 다이아는
+            //     x[2..61]·가장 넓은 행 y=31~34 다(stage 0 실측 — 다 자란 판은 이삭이 흙을 가린다).
+            //     즉 원본은 **폭 64 셀에 맞춰 구워졌고**, 다이아 중심이 스프라이트 중심(32,32)이다.
+            //   ⇒ 원본 크기 그대로, 중심을 셀 중심에 얹는다. 늘리지도 줄이지도 않는다.
+            //     (셀보다 큰 세로는 **작물이 셀 위로 자란 것**이다 — 발밑은 다이아에 맞는다.)
+            //   ⚠흙 다이아를 따로 깔지 않는다 — **원본 스프라이트가 이미 흙을 갖고 있다**(실측).
+            //     따로 깔면 그게 사본이고, 두 겹이 어긋나면 그 자리가 결함이 된다.
+            if (_cs) { ctx.drawImage(_cs, cs.x - 32, cs.y - 32, 64, 64); emoji = ''; }
             else emoji = FARM_STAGE_EMOJI[cl.farmStage] || '🌾';
           }
           if (emoji) {
@@ -1486,6 +1588,10 @@
             job: item.npc ? (item.simJob || '주민') : null,
           });
         if (!_spriteOk) drawPlayerIso(s.x, s.y, item.name, item.color, item.isMe, { moving, attackPhase, fvx, fvy, isDown: downFlag, war: item._war, bt: item.bt, bs: item.bs, bc: item.bc, br: item.br, cap: item.cap, act: item.act });
+        // ★★[T57 2026-09-03] **시트 경로에도 이름표를 붙인다.** 도형 경로는 `drawPlayerIso` 안에서
+        //   같은 함수를 부르므로 어느 쪽이든 **정확히 한 번** 그려진다(둘 다 그리는 판이 없다).
+        //   결함이었던 자리: 시트가 성공하면 위 줄이 안 돌아 이름표가 통째로 빠졌다(T13 시트 배치의 회귀).
+        else drawNameTag(s.x, s.y, item.name, !!item.isMe, item.act);
         // HP bar for others (전쟁 병사는 만피여도 항상 표시 + 진영색 테두리)
         if (!item.isMe) {
           const o = item.hp !== undefined ? item : null;

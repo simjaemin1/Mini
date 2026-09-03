@@ -261,6 +261,67 @@ const rget = async (q) => (await (await fetch(`http://localhost:${ZPORT}/roomdbg
   ok(rr2 && rr2.myRoom === null, '밖에서: 내 방이 없다(실외)');
   ok(rr2 && rr2.roofs.length === 1 && rr2.roofs[0].roofOn === true, '★밖에서는 그 방 지붕이 그려진다');
   ok(rr2 && rr2.roofs[0].boxes.length === 2, `★ㄱ자는 맞배 **2채**로 분해된다(날개마다 한 채) — 실측 ${rr2 && rr2.roofs[0].boxes.length}`);
+  // ═══ [T57 2026-09-03] ⓔ **밖에서 본 실내 바닥** — 문간이 새까만 구멍이면 안 된다 ═══
+  //   재민 실기(2026-09-03 새벌): 움집 문간이 **새까만 구멍**이었다. 실내 바닥이 밖에서는
+  //   아예 안 그려져(`34-m-renderloop.js` — `continue; // 밖=실내 바닥 억제`) 지붕·벽 사이로
+  //   바닥 대신 배경이 보였다. 재민 요구: **바닥은 언제나 그리고 지붕이 위에서 덮는다**
+  //   (가리는 건 지붕의 몫이지 바닥을 빼는 게 아니다).
+  //   판정은 **짝 비교**다 — 같은 순간·같은 카메라에서 손잡이만 뒤집는다(`floorOutOff`).
+  //   ⓐ 차이가 실제로 있다(바닥이 실제로 그려졌다) ⓑ 차이가 **집 상자 안에만** 있다
+  //     (바닥을 늘 그려도 바깥 화면은 그대로다 — 지붕이 덮으니까).
+  say('\n[T57 ⓔ 밖에서 본 실내 바닥 — 문간에 바닥이 있다]');
+  {
+    // ★이 자리 그대로 쓴다 — 위에서 이미 **밖**이고 바람도 껐다(같은 순간 A/B 의 전제).
+    const p3 = p2, rr = rr2;
+    // ★★[상황 선행] 이 손잡이는 **NPC 움집·큰집**(`data.hut`/`data.bld`)에만 걸린다 —
+    //   결함이 거기 있었기 때문이다(밖에서 그 집들의 바닥만 억제됐다).
+    //   이 하네스의 픽스처는 **플레이어가 지은 방**이라 그 태그가 없다. 그러면 손잡이는 no-op 이고
+    //   화면 차이는 0 이어야 한다 — 그걸 "수리 안 됨"으로 읽으면 오독이다. **상황부터 잰다.**
+    const hutCount = await p3.evaluate(() => (window.__getAllBuildings ? window.__getAllBuildings()
+      .filter((b) => b && b.data && (b.data.hut || b.data.bld)).length : 0)).catch(() => 0);
+    // ★★잡음 바닥을 먼저 잰다(족보 80) — 같은 조건 두 장. HUD 시계·프레임 카운터가 계속 움직인다.
+    const shot = async (n) => { await p3.screenshot({ path: `${SHOTS}/${n}.png` }); return PNG.sync.read(fs.readFileSync(`${SHOTS}/${n}.png`)); };
+    const diffPx = (a, b) => { let c = 0, mnx = 1e9, mny = 1e9, mxx = -1e9, mxy = -1e9;
+      for (let y = 0; y < Math.min(a.height, b.height); y++) for (let x = 0; x < Math.min(a.width, b.width); x++) {
+        const i = (y * a.width + x) * 4;
+        const d = Math.abs(a.data[i] - b.data[i]) + Math.abs(a.data[i + 1] - b.data[i + 1]) + Math.abs(a.data[i + 2] - b.data[i + 2]);
+        if (d > 24) { c++; if (x < mnx) mnx = x; if (x > mxx) mxx = x; if (y < mny) mny = y; if (y > mxy) mxy = y; } }
+      return { c, box: c ? [mnx, mny, mxx, mxy] : null }; };
+    // ★잡음 바닥은 **한 쌍으로 재지 않는다** — HUD 시계·숫자가 몇 초에 한 번만 바뀐다.
+    //   한 쌍만 재면 마침 안 바뀐 순간을 잡아 잡음을 0으로 보고, 그 다음 쌍의 숫자 변화가
+    //   "수리 효과"로 둔갑한다(실측: 잡음 0 · 효과 53px 인데 자리는 좌상단 HUD 였다).
+    //   ⇒ 같은 간격으로 **두 쌍**을 재서 큰 쪽을 바닥으로 쓴다.
+    const n1 = await shot('06a-noise1'); await sleep(500);
+    const n2 = await shot('06b-noise2'); await sleep(500);
+    const n3 = await shot('06c-noise3');
+    const nA = diffPx(n1, n2), nB = diffPx(n2, n3);
+    const noise = nA.c >= nB.c ? nA : nB;
+    await p3.evaluate(() => { window.__terrain19.floorOutOff = true; });
+    await sleep(500);
+    const off = await shot('07-floor-off');
+    await p3.evaluate(() => { window.__terrain19.floorOutOff = false; });
+    const eff = diffPx(n3, off);
+    const BOX2 = rr && rr.roofs && rr.roofs[0] ? rr.roofs[0].boxes[0] : null;
+    say(`    NPC 움집·큰집 ${hutCount}채 · 잡음 바닥 ${noise.c}px${noise.box ? ' ' + JSON.stringify(noise.box) : ''}`
+      + ` · 잡음 두 쌍 ${nA.c}/${nB.c}px · 바닥 on/off 차이 ${eff.c}px${eff.box ? ' ' + JSON.stringify(eff.box) : ''} · 지붕 상자 ${JSON.stringify(BOX2)}`);
+    if (hutCount === 0) {
+      // **못 쟀다고 적는다.** 결함은 NPC 집에 있었고 이 픽스처엔 NPC 집이 없다.
+      say('    ★이 픽스처엔 NPC 움집·큰집이 **한 채도 없다** — 손잡이가 걸릴 자리가 없다.');
+      say('      플레이어가 지은 방은 밖에서도 바닥이 원래 그려졌다(억제는 `data.hut`/`data.bld` 전용).');
+      say('      ⇒ 이 절은 이 판에서 **못 잰다**. NPC 마을 앞에서 재는 자리는 회부.');
+      ok(eff.c <= noise.c + 30, 'ⓔ [못 잼] NPC 집이 없어 손잡이가 no-op 이다 — 차이가 잡음 바닥 안',
+        `${eff.c}px ≤ 잡음 ${noise.c}(두 쌍 중 큰 쪽) + 30`);
+    } else {
+      ok(eff.c > noise.c * 3 + 30, `★★ⓔ 밖에서 **바닥이 실제로 그려진다** — 손잡이를 뒤집으면 화면이 바뀐다 (${eff.c}px > 잡음 ${noise.c}×3+30)`);
+      if (BOX2 && eff.box) {
+        const [mnx, mny, mxx, mxy] = eff.box;
+        const inBox = mnx >= BOX2[0] - 96 && mny >= BOX2[1] - 96 && mxx <= BOX2[2] + 96 && mxy <= BOX2[3] + 96;
+        ok(inBox, '★★ⓔ 바뀐 자리가 **집 언저리 안**이다 — 바닥을 늘 그려도 바깥 화면은 그대로다',
+          `${JSON.stringify(eff.box)} ⊂ ${JSON.stringify(BOX2)} ±96`);
+      }
+    }
+  }
+
 
   // 카메라 고정 — 방을 해체한다(팔 남벽 한 장). 지붕이 사라져야 한다.
   const armWallId = findBuildingId(ZDB, OUT.cx * SZ, (OUT.cy - 1) * SZ, 'wall');
@@ -303,6 +364,7 @@ const rget = async (q) => (await (await fetch(`http://localhost:${ZPORT}/roomdbg
   //   아래 대조군(정지 화면 0.0)에 있다. 여기서 문턱을 올리면 신호가 아니라 여백 비율을 재게 된다.
   ok(dRoof > 10, `★지붕 영역이 실제로 바뀐다 (절대차 ${dRoof.toFixed(1)} > 10 · 상자에 오버행 여백 포함)`);
   ok(dCtrl < 2, `★변화가 지붕 영역에만 있다 — 대조군(빈 땅)은 정지 (${dCtrl.toFixed(1)} < 2)`);
+
 
   // ── ⓓ 다층 (배치 18 ③) ────────────────────────────────────────────────────
   say('\n[ⓓ 다층 — 밖에서는 2층집이 2층집으로 보인다(전체 복원)]');
