@@ -192,7 +192,12 @@
   }
   paintIcons(document);
   // ★[T68] 대상 위 동사 메뉴 — 우클릭 배선(`46-h-verbs.js`). 최상위 실행문은 이 파일 몫이다(T0-b).
-  if (typeof bindVerbMenu === 'function') bindVerbMenu();
+  bindVerbMenu();
+  // ★★[T82 ⓪ · 재민 승인] `boot()` 은 여기서 부른다. 종전엔 `50-i-panel.js`(조각 20) 최상위 문이 불렀고,
+  //   그 안에서 조각 24(`70-lobby.js`)의 `onbLobbyInit()` 을 부르는 바람에 **적재 순서 경쟁**이 있었다
+  //   (T68 이 새로고침에서 `onbLobbyInit is not defined` 로 잡았다). 여기는 마지막 조각이라 경주가 없다.
+  //   ⚠새 동작 0 — 부르는 자리만 옮겼다.
+  boot();
   // ★[T66] 개발용 좌표·속도 줄 — 기본 숨김. 값은 계속 갱신된다(`updateHud` 무변) · 새 단축키 0.
   window.__devRow = (on) => {
     const r = document.getElementById('devRow');
@@ -260,10 +265,9 @@
       // ★[11차 채광 재설계] E를 **누르고 있으면 1초마다 반복** — 채굴이 60타에 덩이 하나라
       //   한 번씩 누르게 두면 손가락이 남아난다. 서버가 1초/타를 강제하므로 과송신은 무해하고,
       //   문 토글·도살은 첫 1회만(반복 타이머는 gather 전용 — 문이 깜빡이지 않는다).
-      if (!window.__eRepeat) window.__eRepeat = setInterval(() => {
-        if (!keys.has('e') || chatActive || myIsDown) { clearInterval(window.__eRepeat); window.__eRepeat = null; return; }
-        sendPrimary({ type: 'gather' });
-      }, 1000);
+      // ★[T82] 도는 자리를 `46-h-verbs.js` 하나로 모았다 — 우클릭 메뉴도 같은 타이머를 쓴다.
+      //   두 벌이면 E 와 메뉴가 겹칠 때 서버로 두 배가 간다. **멈추는 조건만** 여기서 준다(키를 떼면).
+      startGatherLoop(() => !keys.has('e'));
       // 14.50: E 키 — 주변 door 토글, 없으면 사체 도살, 없으면 gather
       const nearDoor = findNearestDoor(myAbsPredicted.x, myAbsPredicted.y, myFloor);
       if (nearDoor) sendPrimary({ type: 'door_toggle', buildingId: nearDoor.id });

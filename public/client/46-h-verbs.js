@@ -26,9 +26,14 @@
   function onCarryState(pid, by) { if (by) _carriedBy.set(pid, by); else _carriedBy.delete(pid); }
 
   const PICK_PLAYER_HALF = 18;   // 사람 판정 네모의 반변(px). 바닥 물건 14 와 상자 20 사이 — 발밑 그림자~어깨.
+  // 자연물 네모는 **그 자연물의 크기를 따라간다**(`r.r` = 나무 4~20 · 렌더가 쓰는 그 값).
+  //   작은 덤불이 안 눌리고 큰 나무가 좁게 눌리는 걸 막는다. 바닥 16 · 천장 28(상자 20 언저리).
+  const natureHalf = (r) => Math.max(16, Math.min(28, (r && r.r ? r.r : 12) + 8));
   function pickAt(wx, wy, opts) {
-    // ⓪ 사람 (우클릭 전용)
-    if (opts && opts.players) {
+    // ⓪ **우클릭 층** — 사람 · 나 · 자연물. 좌클릭 사슬엔 셋 다 **없다**(종전 무변).
+    //   ★[T82] T68 의 `{players:true}` 를 `{live:true}` 로 넓혔다 — 같은 뜻(우클릭이 보는 층까지)이고,
+    //     이름이 "사람"이면 자연물이 들어온 지금 거짓말이 된다.
+    if (opts && opts.live) {
       for (const c of conns.values()) {
         if (!c.meta || !c.others) continue;
         const ox = c.meta.worldOffsetX || 0, oy = c.meta.worldOffsetY || 0;
@@ -37,6 +42,22 @@
           if (Math.abs(absX - wx) <= PICK_PLAYER_HALF && Math.abs(absY - wy) <= PICK_PLAYER_HALF) {
             return { kind: 'player', id: o.pid, obj: o, absX, absY,
                      down: !!downStates.get(o.pid), npc: !!o.npc };
+          }
+        }
+      }
+      // 나 자신 — `others` 에 내가 없다(서버가 남만 보낸다). 화면의 나는 예측 위치에 서 있다.
+      if (Math.abs(myAbsPredicted.x - wx) <= PICK_PLAYER_HALF
+          && Math.abs(myAbsPredicted.y - wy) <= PICK_PLAYER_HALF) {
+        return { kind: 'me', id: myPid, obj: null, absX: myAbsPredicted.x, absY: myAbsPredicted.y };
+      }
+      // 자연물 — 나무·바위·광맥·약초·덤불·물웅덩이. 좌클릭은 이 층을 안 본다(E 키가 종전 통로).
+      for (const c of conns.values()) {
+        if (!c.meta || !c.resources) continue;
+        const ox = c.meta.worldOffsetX || 0, oy = c.meta.worldOffsetY || 0;
+        for (const r of c.resources.values()) {
+          const absX = ox + r.x, absY = oy + r.y, h = natureHalf(r);
+          if (Math.abs(absX - wx) <= h && Math.abs(absY - wy) <= h) {
+            return { kind: 'nature', id: r.id, obj: r, absX, absY };
           }
         }
       }
@@ -121,6 +142,60 @@
       else if (by === myPid) out.push({ label: '내려놓기', send: () => sendPrimary({ type: 'rescue_request', pid: t.id }) });
       return out;
     }
+    if (t.kind === 'nature') {
+      // ★★[§0-ⓐ 실측] **서버엔 자연물 종류 → 동사 이름표가 없다.** `tryGather` 는 종류를 보고
+      //   갈래를 타지만 그 갈래에 **이름을 안 붙인다**(문장은 전리품 이름으로 말한다).
+      //   ⇒ 아래 한 단어 표는 **클라가 가진 사본 후보**다 — `인계/회부.md` 에 그대로 적었다.
+      //     고침은 서버 한 줄(`welcome.resourceVerbs`)이고, 그날 이 표는 지운다.
+      //   ⚠전리품 이름(나무·돌·약초 …)은 지어내지 않는다 — 그건 이미 정본(`itemKo`)이 있다.
+      const V = { tree: '벌목', rock: '채굴', ore: '채굴', herb: '채집',
+                  berry_bush: '채집', water_pool: '물 마시기', meteorite: '채굴' };
+      const word = V[t.obj.type] || '채집';
+      // ★★그리고 **서버는 지목을 못 받는다.** `gather` 는 인자가 없고 `tryGather` 가
+      //   **제일 가까운 자원**을 고른다(GATHER_RANGE). 그래서 누른 것과 서버가 고를 것이 다르면
+      //   메뉴가 거짓말이 된다 ⇒ **누른 것이 제일 가까울 때만** 동사를 낸다.
+      //   ⚠거리 상수(48)는 여기 안 적는다 — "제일 가까운가"만 보면 되고, 너무 멀면 서버가
+      //     E 키와 **똑같은 문장으로** 답한다(메뉴는 별칭이지 새 판정이 아니다).
+      let nearest = null, nd = Infinity;
+      for (const c of conns.values()) {
+        if (!c.meta || !c.resources) continue;
+        const ox = c.meta.worldOffsetX || 0, oy = c.meta.worldOffsetY || 0;
+        for (const r of c.resources.values()) {
+          const d = Math.hypot(ox + r.x - myAbsPredicted.x, oy + r.y - myAbsPredicted.y);
+          if (d < nd) { nd = d; nearest = r.id; }
+        }
+      }
+      if (nearest !== t.id) return [];   // 더 가까운 게 있다 — 그걸 누르라는 뜻이다(거짓 메뉴 0)
+      // ★[§0-ⓑ 판정] **한 번 = 반복 시작**이다. 채굴은 60타에 덩이 하나라 한 타는 뜻이 없고,
+      //   E 는 이미 "누르고 있으면 1초마다"다. 메뉴는 그 **같은 타이머**를 켜고 끈다 —
+      //   타이머를 새로 만들면 E 와 메뉴가 두 벌로 돌아 서버에 두 배로 간다.
+      const on = !!window.__eRepeat;
+      out.push({ label: on ? `${word} 멈추기` : word, send: () => toggleGatherLoop(t.id) });
+      return out;
+    }
+    if (t.kind === 'me') {
+      // ★★[§0-ⓒ 실측] 새 서버 메시지 **0**. 먹기·마시기는 종전 `eat{item}` 하나이고,
+      //   무엇이 먹을 것이고 무엇이 마실 것인가는 **서버 표**(`foodEffects` = `FOOD_EFFECTS`)가 가른다
+      //   — 허기를 올리면 먹을 것, 갈증을 올리면 마실 것. 클라가 목록을 다시 적지 않는다.
+      const inv = Object.keys(inventory || {}).filter((k) => (inventory[k] || 0) > 0 && !!(foodEffects && foodEffects[k]));
+      const eats = inv.filter((k) => (foodEffects[k].hunger || 0) > 0);
+      const drinks = inv.filter((k) => (foodEffects[k].thirst || 0) > 0);
+      const sub = (list) => list.map((k) => ({
+        label: `${itemKo(k)} ×${inventory[k]}`,
+        onClick: () => sendPrimary({ type: 'eat', item: k }),
+      }));
+      out.push({
+        label: eats.length ? '먹기…' : '먹기 — 먹을 것이 없다',
+        send: () => { if (!eats.length) { showNotice('먹을 것이 없다'); return; } showContextMenu(_lastMenuX, _lastMenuY, sub(eats)); },
+      });
+      out.push({
+        label: drinks.length ? '마시기…' : '마시기 — 마실 것이 없다',
+        send: () => { if (!drinks.length) { showNotice('마실 것이 없다 — 물가에서 E'); return; } showContextMenu(_lastMenuX, _lastMenuY, sub(drinks)); },
+      });
+      // 짐·장비 — 인벤 패널이 정본 경로다(새 창구 0 · `I` 키의 별칭).
+      out.push({ label: '짐과 장비', send: () => { if (typeof toggleInv === 'function') toggleInv(); } });
+      return out;
+    }
     if (t.kind === 'item') {
       out.push({ label: `줍기 — ${itemKo(t.obj.item || t.obj.type || '')}`,
                  send: () => sendPrimary({ type: 'pickup_item', giId: t.id }) });
@@ -160,6 +235,39 @@
     return out;
   }
 
+  // ── 채집 반복 — **타이머는 하나다** ───────────────────────────────────────
+  //   ★E 키(`99-main`)와 메뉴가 각자 `setInterval` 을 만들면 서버로 **두 배**가 간다.
+  //     그래서 도는 자리를 여기 하나로 두고, 멈추는 조건만 부르는 쪽이 준다:
+  //       E    — 키를 떼면 멈춘다(종전 그대로)
+  //       메뉴 — 그 자연물이 없어지면 멈춘다(다 캤다) · 다시 우클릭하면 멈춘다
+  //   ⚠보내는 메시지는 종전과 같은 `gather` 하나다(서버 무접촉 · 새 동작 0).
+  function startGatherLoop(stopWhen) {
+    if (window.__eRepeat) return;
+    window.__eRepeat = setInterval(() => {
+      if ((stopWhen && stopWhen()) || chatActive || myIsDown) { stopGatherLoop(); return; }
+      sendPrimary({ type: 'gather' });
+    }, 1000);
+  }
+  function stopGatherLoop() {
+    if (window.__eRepeat) { clearInterval(window.__eRepeat); window.__eRepeat = null; }
+  }
+  //   ⚠"없어졌나"는 **두 번 연속으로** 물어야 한다. 존을 옮기거나 시야 묶음이 갱신되는 찰나에
+  //     자원 맵이 잠깐 비는 판이 있어서, 한 번만 보면 **다 캐지도 않았는데 멎는다**
+  //     (하네스가 실제로 그걸 잡았다: 도는 중인데 메뉴가 "멈추기"가 아니라 "벌목"이었다).
+  let _goneStreak = 0;
+  function _resourceGone(id) {
+    let here = false;
+    for (const c of conns.values()) { if (c.resources && c.resources.has(id)) { here = true; break; } }
+    _goneStreak = here ? 0 : _goneStreak + 1;
+    return _goneStreak >= 2;
+  }
+  function toggleGatherLoop(resId) {
+    if (window.__eRepeat) { stopGatherLoop(); showNotice('멈췄다'); return; }
+    sendPrimary({ type: 'gather' });                       // 첫 타는 즉시(E 와 같다)
+    _goneStreak = 0;
+    startGatherLoop(() => _resourceGone(resId));           // 다 캐면 저절로 멎는다
+  }
+
   // ── 우클릭 배선 ───────────────────────────────────────────────────────────
   //   ★★[§0-ⓑ 실측] 우클릭 하나를 **셋이 나눠 쓴다**. 순서를 정하려고 진짜 Chromium 에 물었다:
   //     `mousedown(2)` → `contextmenu` → (뗄 때) `mouseup(2)` → `auxclick(2)`
@@ -192,14 +300,15 @@
       if (placementMode) return;                       // 배치 회전은 `contextmenu` 몫(종전)
       const held = performance.now() - _rmbAt;
       const moved = Math.hypot(e.clientX - _rmbX, e.clientY - _rmbY);
-      // ★진단 훅 — "메뉴가 왜 안 떴나"를 화면 밖에서 물어볼 수 있어야 한다(`__aimDbg` 와 같은 규약).
-      window.__rmbDbg = { held: Math.round(held), moved: Math.round(moved), tap: !(held > RMB_TAP_MS || moved > RMB_TAP_PX) };
+      // ★[T82 ⓪ · 재민 판정] T68 이 여기 둔 진단 훅 `window.__rmbDbg` 는 **지웠다** —
+      //   `__` 접두라도 진단 훅은 제품 코드에 안 남긴다(T57 규약). 그 훅이 제 값을 한 자리는
+      //   `e2e-verbs` 의 "왜 안 떴나" 한 줄이었고, 그 답(고정 대기 → 기다림)은 이미 하네스에 박혔다.
       if (held > RMB_TAP_MS || moved > RMB_TAP_PX) return;   // 홀드였다 = 조준(종전)
       const rect = cv.getBoundingClientRect();
       const px = (e.clientX - rect.left) * (cv.width / rect.width);
       const py = (e.clientY - rect.top) * (cv.height / rect.height);
       const w = screenToWorldAbs(px, py);
-      const t = pickAt(w.wx, w.wy, { players: true });
+      const t = pickAt(w.wx, w.wy, { live: true });
       const verbs = verbsFor(t, null);
       if (!verbs.length) return;                       // 빈 땅·동사 없는 대상 = 메뉴 0(종전)
       _lastMenuX = e.clientX; _lastMenuY = e.clientY;

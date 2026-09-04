@@ -118,8 +118,12 @@ async function waitHttp(url, tries = 600) {
   const C = await newClient('C');   // ★미끼 — R 에게 **더 가깝다**
   // ★입장은 **기다렸다가** 묻는다 — 초안이 물어본 순간이 너무 일러 한 명이 거짓 실패로 찍혔다
   //   (바로 다음 절에서는 셋 다 월드 안에 있었다). 검사가 조급하면 없는 결함을 보고한다.
+  //   ⚠**한 번 들어왔다고 계속 들어와 있는 것이 아니다.** 2코어 상자에 실클라 셋이면 소켓이
+  //     한 번씩 끊기고 클라가 스스로 다시 붙는다(`33-m-conn`). 초안은 30초만 보고 "입장 실패"라고
+  //     적었는데, 그때 R 은 **들어왔다가 재접속 중**이었다(입장 실패 진단줄이 안 찍힌 게 증거다).
+  //     ⇒ 넉넉히 기다린다. 재접속이 끝나면 참이 된다 — 없는 결함을 보고하지 않는다.
   const inWorld = async (pg, secs) => {
-    for (let i = 0; i < (secs || 30) * 2; i++) {
+    for (let i = 0; i < (secs || 90) * 2; i++) {
       if (await pg.evaluate(() => !!(window.__inWorld && window.__inWorld()))) return true;
       await sleep(500);
     }
@@ -210,7 +214,7 @@ async function waitHttp(url, tries = 600) {
   console.log('\n① 자리 — 쓰러진 사람 둘, 미끼가 더 가깝다');
   // ★워프는 **들어온 사람에게만** 먹힌다 — 초안이 안 들어온 클라를 워프하고 "옮겨졌다"고 믿었다.
   for (const [tag, pg] of [['R', R], ['A', A], ['C', C]]) {
-    const inw = await pg.evaluate(() => !!(window.__inWorld && window.__inWorld()));
+    const inw = await inWorld(pg, 60);
     pre(inw, `[${tag}] 가 월드 안에 있다 — 아니면 아래 워프가 전부 헛것이다`);
   }
   const rSpot = await warp(R, wild.x, wild.y, 10, 40);
@@ -236,17 +240,30 @@ async function waitHttp(url, tries = 600) {
   //   ⚠⚠**다시 세울 때 `hp` 를 같이 보내면 안 된다.** 초안이 그렇게 했다가 20초마다 HP 를 3 으로
   //     되돌려 **영영 안 쓰러지게** 만들었다(허기·갈증은 극단인데 HP 만 계속 회복된 꼴).
   //     하나를 고치려고 넣은 재적용이 다른 하나를 부순 자리다 — 굶주림만 다시 세운다.
-  const starve = async (pg, withHp) => pg.evaluate((h) => window.__sendPrimary(
-    h ? { type: '__e2e_body', hunger: 0, thirst: 0, hp: 3, quiet: true }
-      : { type: '__e2e_body', hunger: 0, thirst: 0, quiet: true }), !!withHp);
+  //   ★★첫 판에만 `hp` 를 보내면 **그 한 통이 재접속에 씻길 때** 영영 안 쓰러진다
+  //     (실제로 그렇게 240초를 굶고도 멀쩡했다 — 진단이 `parts: []` 로 그걸 보여 줬다).
+  //     그렇다고 매번 보내면 HP 가 되돌아가 역시 안 쓰러진다(그 함정은 이미 한 번 밟았다).
+  //     ⇒ **화면의 HP 를 보고 정한다**: 아직 높으면 다시 낮추고, 이미 낮으면 굶주림만 다시 세운다.
+  const hpOf = (pg) => pg.evaluate(() => {
+    const el = document.getElementById('hpText');
+    const m = el ? String(el.textContent).match(/(\d+)\s*\/\s*(\d+)/) : null;
+    return m ? +m[1] : null;
+  });
+  const starve = async (pg) => {
+    const hp = await hpOf(pg);
+    const low = (hp != null && hp <= 20);
+    return pg.evaluate((l) => window.__sendPrimary(
+      l ? { type: '__e2e_body', hunger: 0, thirst: 0, quiet: true }
+        : { type: '__e2e_body', hunger: 0, thirst: 0, hp: 3, quiet: true }), low);
+  };
   let bothDown = false;
   for (let i = 0; i < 240; i++) {
-    if (i % 20 === 0) { for (const pg of [A, C]) await starve(pg, i === 0); }
+    if (i % 20 === 0) { for (const pg of [A, C]) await starve(pg); }
     await sleep(1000);
     if (await downPanelOpen(A) && await downPanelOpen(C)) { bothDown = true; break; }
   }
   ok(bothDown, '★① 둘 다 **실제로 쓰러졌다**(정본 경로 — 픽스처는 몸만 세운다)',
-     bothDown ? '' : `A ${JSON.stringify(await bodyOf(A))} · C ${JSON.stringify(await bodyOf(C))}`);
+     bothDown ? '' : `A hp${await hpOf(A)} ${JSON.stringify(await bodyOf(A))} · C hp${await hpOf(C)} ${JSON.stringify(await bodyOf(C))}`);
   await R.evaluate(() => window.__sendPrimary({ type: '__e2e_give', items: { meat_cooked: 3 } }));
   await sleep(1200);
   const aPid = await pidOf(A), cPid = await pidOf(C);
@@ -289,23 +306,41 @@ async function waitHttp(url, tries = 600) {
 
   // ★한 번 누르고 포기하지 않는다 — 실클라 셋이 붙은 2코어 상자에서 이벤트가 밀리면
   //   옳은 탭도 한 번은 홀드로 읽힐 수 있다. 몇 번 눌러 보고, 그래도 안 뜨면 **왜 안 떴는지**를 찍는다.
+  // ★★[실측] 2코어 상자에서 실클라 셋이면 소켓이 한 번씩 끊기고 **클라가 새 pid 로 다시 붙는다**.
+  //   그러면 R 의 `downStates` 는 **옛 pid** 로만 차 있고, 새 pid 는 "안 쓰러진 사람"으로 보인다
+  //   (진단이 그걸 찍었다: `pick.down=false` 인데 `downs=3` · 시도마다 pid 가 p410 → p415).
+  //   ⇒ **R 이 그 사람을 쓰러진 것으로 볼 때까지** 기다린 뒤에 누른다. 이건 검사의 전제지
+  //     제품의 회피가 아니다 — 안 기다리면 없는 결함을 보고한다.
   const aPt = await clientPtOf(A);
+  const seenDown = await (async () => {
+    for (let i = 0; i < 60; i++) {
+      const ok2 = await R.evaluate(([wx, wy]) => {
+        const t = pickAt(wx, wy, { live: true });
+        return !!(t && t.kind === 'player' && t.down);
+      }, [(await absOf(A)).x + OFF.x, (await absOf(A)).y + OFF.y]);
+      if (ok2) return true;
+      await sleep(1000);
+    }
+    return false;
+  })();
+  pre(seenDown, 'R 의 화면이 그 사람을 **쓰러진 것으로 본다** — 아니면 아래가 전부 헛것이다');
   let labels = null;
   for (let i = 0; i < 3 && !labels; i++) {
     await rightTap(aPt);
     labels = await menuWithin(3000);
     if (!labels) {
       // ★"안 떴다"로 끝내지 않는다 — **누른 그 자리에서 무엇이 잡혔는지**를 같이 묻는다.
-      //   탭 판정(`__rmbDbg.tap`)과 대상 판정(`pickAt`)과 동사 판정(`verbsFor`)이 셋 다 다른 층이다.
+      //   대상 판정(`pickAt`)과 동사 판정(`verbsFor`)은 서로 다른 층이다 — 어느 층이 끊겼는지 말한다.
+      //   ★[T82] 탭 판정 훅(`__rmbDbg`)은 제품에서 지웠다(T57 규약) ⇒ 여기서도 안 묻는다.
       const why = await R.evaluate(([cx, cy]) => {
         const cv = document.getElementById('canvas');
         const r = cv.getBoundingClientRect();
         const w = screenToWorldAbs((cx - r.left) * (cv.width / r.width), (cy - r.top) * (cv.height / r.height));
-        const t = pickAt(w.wx, w.wy, { players: true });
+        const t = pickAt(w.wx, w.wy, { live: true });
         let others = 0, downs = 0;
         for (const c of conns.values()) { if (c.others) others += c.others.size; }
         downs = downStates.size;
-        return { rmb: window.__rmbDbg || null, world: [Math.round(w.wx), Math.round(w.wy)],
+        return { world: [Math.round(w.wx), Math.round(w.wy)],
                  pick: t ? { kind: t.kind, id: t.id, down: t.down, npc: t.npc, at: [Math.round(t.absX), Math.round(t.absY)] } : null,
                  verbs: (verbsFor(t, null) || []).length, others, downs };
       }, [aPt.x, aPt.y]);
@@ -435,10 +470,194 @@ async function waitHttp(url, tries = 600) {
       }
       if (!t) return null;
       return { withoutFlag: (pickAt(t.x, t.y) || {}).kind || null,
-               withFlag: (pickAt(t.x, t.y, { players: true }) || {}).kind || null };
+               withFlag: (pickAt(t.x, t.y, { live: true }) || {}).kind || null };
     }, aPid);
     ok(!!off && off.withoutFlag !== 'player' && off.withFlag === 'player',
-       '★★⑦ 사람 갈래는 **우클릭만 켠다** — 좌클릭 사슬엔 종전처럼 사람이 없다', JSON.stringify(off));
+       '★★⑦ 사람·나·자연물 갈래는 **우클릭만 켠다** — 좌클릭 사슬은 종전 그대로다', JSON.stringify(off));
+  }
+
+  // ── ⑧ ★[T82] 자연물 — 나무 위 우클릭에 벌목, 그리고 그게 `gather` 다 ──────────
+  console.log('\n⑧ ★[T82] 자연물 — 동사가 나무 위에 뜬다');
+  {
+    // 내 화면이 실제로 보고 있는 자원 하나를 고른다(지어내지 않는다).
+    // ★**hp 가 제일 큰 것**을 고른다. 초안은 아무거나 집었다가 hp 3 짜리 나무를 골랐고,
+    //   그 나무는 **3초 만에 다 베여** 반복이 저절로 멎었다 — 그런데 하네스는 그걸
+    //   "토글이 안 된다"로 읽었다(제품은 맞게 굴러갔다). 오래 버티는 것을 골라 토글을 잰다.
+    const pickRes = async (want) => R.evaluate((w) => {
+      let best = null;
+      for (const c of conns.values()) {
+        if (!c.meta || !c.resources) continue;
+        const ox = c.meta.worldOffsetX || 0, oy = c.meta.worldOffsetY || 0;
+        for (const r of c.resources.values()) {
+          if (w && r.type !== w) continue;
+          if (!best || (r.hp || 0) > best.hp) best = { id: r.id, type: r.type, x: ox + r.x, y: oy + r.y, hp: r.hp || 0 };
+        }
+      }
+      return best;
+    }, want || null);
+    let res = await pickRes('tree');
+    if (!res) res = await pickRes(null);
+    pre(!!res, '화면에 자연물이 하나라도 있다', res ? `${res.type} hp${res.hp} @(${Math.round(res.x)},${Math.round(res.y)})` : '없음');
+    if (res) {
+      // 그 자연물 **바로 옆**에 선다 — 그래야 "누른 것 = 서버가 고를 것" 이 성립한다(§0-ⓐ).
+      await warp(R, res.x - OFF.x + 20, res.y - OFF.y, 8, 30);
+      await sleep(800);
+      const rPt = await R.evaluate(([wx, wy]) => {
+        const sc = window.__w2s(wx, wy);
+        const cv = document.getElementById('canvas');
+        const rc = cv.getBoundingClientRect();
+        return { x: rc.left + sc.px * (rc.width / cv.width), y: rc.top + sc.py * (rc.height / cv.height) };
+      }, [res.x, res.y]);
+      let nLab = null;
+      for (let i = 0; i < 3 && !nLab; i++) { await rightTap(rPt); nLab = await menuWithin(3000); }
+      ok(!!nLab && nLab.length > 0, '★★⑧ 자연물 위 우클릭에 **메뉴가 뜬다**', JSON.stringify(nLab));
+      const WORD = { tree: '벌목', rock: '채굴', ore: '채굴', herb: '채집', berry_bush: '채집',
+                     water_pool: '물 마시기', meteorite: '채굴' };
+      const want = WORD[res.type] || '채집';
+      ok(!!nLab && nLab.some((t2) => t2.includes(want)),
+         `★★⑧ 그 동사가 **종류에 맞는 말**이다(${res.type} → ${want})`, JSON.stringify(nLab));
+      ok(!!nLab && !/\p{Extended_Pictographic}/u.test(nLab.join('')), '★⑧ 메뉴 글자에 이모지 0');
+      // 눌러 본다 — **`gather` 가 간다**(새 메시지 0). 서버가 답하거나 자원 hp 가 준다.
+      const hp0 = await R.evaluate((id) => {
+        for (const c of conns.values()) { const r = c.resources && c.resources.get(id); if (r) return r.hp; }
+        return null;
+      }, res.id);
+      await clearNotices(R);
+      await R.evaluate(() => { document.getElementById('ctxMenu').children[0].click(); });
+      await sleep(2500);
+      const after = await R.evaluate((id) => {
+        for (const c of conns.values()) { const r = c.resources && c.resources.get(id); if (r) return r.hp; }
+        return 'gone';
+      }, res.id);
+      // ★증거는 **그 자원이 실제로 깎였는가** 하나다. 인벤이 안 비었다는 식의 곁가지 조건을
+      //   `||` 로 붙이면 그건 자명 통과다(초안이 그렇게 `hp 3 → 3` 인데도 초록이었다).
+      const moved = (after === 'gone') || (hp0 != null && after !== 'gone' && after != null && after < hp0);
+      ok(moved, '★★⑧ 눌렀더니 **`gather` 가 실제로 갔다**(그 자원의 hp 가 줄거나 사라진다)',
+         `hp ${hp0} → ${after}`);
+      // 반복이 켜졌다 — §0-ⓑ 판정("한 번 = 반복 시작"). 그리고 **타이머는 하나**다.
+      const looping = await R.evaluate(() => !!window.__eRepeat);
+      ok(looping || after === 'gone', '★★⑧ 한 번 누르면 **반복이 시작된다**(채굴 60타 규약)', String(looping));
+      // 다시 우클릭 → "멈추기". ★**바로** 잰다 — 늑장 부리면 그 사이 다 캐여서 저절로 멎는다
+      //   (그건 옳은 동작인데 하네스가 "토글이 안 된다"로 읽는다 — 초안이 그렇게 두 판 빨갰다).
+      if (looping) {
+        await rightTap(rPt);
+        const l2 = await menuWithin(2000);
+        const stillOn = await R.evaluate(() => !!window.__eRepeat);
+        if (stillOn) {
+          ok(!!l2 && l2.some((t2) => /멈추기/.test(t2)), '★⑧ 도는 중엔 메뉴가 **멈추기**라고 말한다', JSON.stringify(l2));
+          if (l2) { await R.evaluate(() => { document.getElementById('ctxMenu').children[0].click(); }); await sleep(400); }
+          ok((await R.evaluate(() => !!window.__eRepeat)) === false, '★⑧ 눌렀더니 멈췄다');
+        } else {
+          // 다 캐서 저절로 멎었다 — 그것도 계약이다(§0-ⓑ: "다 캐면 저절로 멎는다").
+          ok(true, '★⑧ 다 캐서 **저절로 멎었다**(토글 대신 이 갈래가 성립)', JSON.stringify(l2));
+          ok(!(l2 || []).some((t2) => /멈추기/.test(t2)), '★⑧ 멎은 뒤엔 메뉴가 "멈추기"라고 안 한다', JSON.stringify(l2));
+        }
+      }
+    }
+  }
+
+  // ── ⑧-b ★★[T82] **누른 것이 제일 가깝지 않으면 동사를 안 낸다** ────────────
+  //   이게 이 카드에서 제일 정직해야 하는 줄이다. `gather` 는 지목을 못 받고 서버가 최근접을
+  //   고르므로, 먼 것을 눌렀는데 메뉴가 뜨면 **다른 나무가 베인다** — 메뉴가 거짓말을 한다.
+  //   ⇒ 자원 **둘**을 찾아, 먼 쪽을 눌렀을 때 **빈 메뉴**인지 잰다(자명 통과 방지: 가까운 쪽은 뜬다).
+  console.log('\n⑧-b ★[T82] 더 가까운 게 있으면 먼 것엔 동사가 안 뜬다');
+  {
+    const two = await R.evaluate(() => {
+      const all = [];
+      for (const c of conns.values()) {
+        if (!c.meta || !c.resources) continue;
+        const ox = c.meta.worldOffsetX || 0, oy = c.meta.worldOffsetY || 0;
+        for (const r of c.resources.values()) {
+          const x = ox + r.x, y = oy + r.y;
+          all.push({ id: r.id, type: r.type, x, y, d: Math.hypot(x - myAbsPredicted.x, y - myAbsPredicted.y) });
+        }
+      }
+      all.sort((a, b) => a.d - b.d);
+      return all.length >= 2 ? { near: all[0], far: all[1] } : null;
+    });
+    pre(!!two, '자원이 둘 이상 보인다 — 아니면 이 절이 뜻이 없다',
+        two ? `가까운 ${two.near.type} ${Math.round(two.near.d)}px · 먼 ${two.far.type} ${Math.round(two.far.d)}px` : '하나뿐');
+    if (two) {
+      const ptOf = (w) => R.evaluate(([wx, wy]) => {
+        const sc = window.__w2s(wx, wy);
+        const cv = document.getElementById('canvas');
+        const rc = cv.getBoundingClientRect();
+        return { x: rc.left + sc.px * (rc.width / cv.width), y: rc.top + sc.py * (rc.height / cv.height) };
+      }, [w.x, w.y]);
+      // 먼 것 — 빈 메뉴여야 한다
+      await rightTap(await ptOf(two.far));
+      await sleep(1200);
+      const farMenu = await menuLabels();
+      ok(farMenu === null, '★★⑧-b 더 가까운 자원이 있으면 먼 것엔 **메뉴가 안 뜬다**(거짓 메뉴 0)', JSON.stringify(farMenu));
+      // ★자명 통과 금지 — 가까운 것은 **뜬다**(늘 안 뜨는 규칙이 아니다)
+      //   ⚠**"뜨기만 하면 통과"로 쓰면 안 된다.** 초안이 그랬다가 자원이 내 몸 상자(±18) 안에 들어
+      //     `me` 갈래가 먼저 잡혔고, 메뉴는 떴지만 그건 **자기 자신 메뉴**였다
+      //     (`["먹기…","마시기 — …","짐과 장비"]`) — 자연물 규칙을 하나도 안 잰 초록이다.
+      //   ⇒ 내 몸에서 **비켜선 뒤** 누르고, 뜬 것이 **자연물 동사**인지까지 본다.
+      const NW = ['벌목', '채굴', '채집', '물 마시기'];
+      await warp(R, two.near.x - OFF.x - 44, two.near.y - OFF.y, 6, 30);
+      await sleep(900);
+      let nearMenu = null;
+      for (let i = 0; i < 3 && !nearMenu; i++) { await rightTap(await ptOf(two.near)); nearMenu = await menuWithin(2500); }
+      ok(!!nearMenu && nearMenu.some((t2) => NW.some((w) => t2.includes(w))),
+         '★★⑧-b 자명 통과 금지 — **제일 가까운 것엔 자연물 동사가 뜬다**', JSON.stringify(nearMenu));
+      await R.keyboard.press('Escape');
+      await R.evaluate(() => { const m = document.getElementById('ctxMenu'); if (m) m.remove(); });
+      await R.evaluate(() => { if (window.__eRepeat) { clearInterval(window.__eRepeat); window.__eRepeat = null; } });
+    }
+  }
+
+  // ── ⑨ ★[T82] 나 자신 — 먹기·마시기·짐 ────────────────────────────────────
+  console.log('\n⑨ ★[T82] 자기 자신 — 먹기 목록은 내 짐과 같다');
+  {
+    await R.evaluate(() => window.__sendPrimary({ type: '__e2e_give', items: { meat_cooked: 2, berry: 3 } }));
+    await sleep(1400);
+    const mePt = await R.evaluate(() => {
+      const cv = document.getElementById('canvas');
+      const rc = cv.getBoundingClientRect();
+      const sc = window.__w2s(myAbsPredicted.x, myAbsPredicted.y);
+      return { x: rc.left + sc.px * (rc.width / cv.width), y: rc.top + sc.py * (rc.height / cv.height) };
+    });
+    let meLab = null;
+    for (let i = 0; i < 3 && !meLab; i++) { await rightTap(mePt); meLab = await menuWithin(3000); }
+    ok(!!meLab && meLab.length === 3, '★★⑨ 내 캐릭터 위 우클릭에 **셋**이 뜬다', JSON.stringify(meLab));
+    ok(!!meLab && meLab.some((t2) => /먹기/.test(t2)) && meLab.some((t2) => /마시기/.test(t2))
+       && meLab.some((t2) => /짐과 장비/.test(t2)), '★★⑨ 먹기·마시기·짐과 장비', JSON.stringify(meLab));
+    // 먹기 하위 목록 = **내 짐의 먹을 것**(서버 표가 가른다)
+    const idx = (meLab || []).findIndex((t2) => /먹기/.test(t2));
+    await R.evaluate((i) => { document.getElementById('ctxMenu').children[i].click(); }, idx);
+    const eatSub = await menuWithin(3000);
+    const expect = await R.evaluate(() => Object.keys(inventory || {})
+      .filter((k) => (inventory[k] || 0) > 0 && !!(foodEffects && foodEffects[k]) && (foodEffects[k].hunger || 0) > 0)
+      .map((k) => `${itemKo(k)} ×${inventory[k]}`).sort());
+    ok(!!eatSub && JSON.stringify(eatSub.slice().sort()) === JSON.stringify(expect),
+       '★★⑨ 먹기 하위 목록이 **내 짐의 먹을 것과 똑같다**(서버 `foodEffects` 가 가른다)',
+       `${JSON.stringify(eatSub)} vs ${JSON.stringify(expect)}`);
+    ok(!!expect && expect.length > 0, '★⑨ (상황) 먹을 것이 실제로 있다 — 빈 목록이면 위가 자명 통과다');
+    // 눌러 본다 — `eat` 하나(새 메시지 0)
+    const h0 = (await bodyOf(R) || {}).hunger;
+    await R.evaluate(() => { document.getElementById('ctxMenu').children[0].click(); });
+    await sleep(1600);
+    const h1 = (await bodyOf(R) || {}).hunger;
+    ok(h1 != null && h0 != null && h1 >= h0, '★★⑨ 눌렀더니 **`eat` 가 갔다**(허기가 안 줄었다)', `${Math.round(h0)} → ${Math.round(h1)}`);
+    await snap('verbs-03-self');
+  }
+
+  // ── ⑩ ★[T82 ⓪] 빚 셋 — 소스로 잰다 ───────────────────────────────────────
+  console.log('\n⑩ ★[T82 ⓪] boot() 한 자리 · 진단 훅 0 · 메뉴 테두리 --line');
+  {
+    const rd = (f) => fs.readFileSync(path.join(ROOT, 'public', 'client', f), 'utf8');
+    const strip = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').split('\n')
+      .map((l) => { const i = l.indexOf('//'); return i >= 0 ? l.slice(0, i) : l; }).join('\n');
+    const main = strip(rd('99-main.js')), panel = strip(rd('50-i-panel.js')), net = strip(rd('30-n-net.js'));
+    ok(/^\s*boot\(\);/m.test(main), '★★⑩ `boot()` 은 **`99-main.js`** 에서 불린다(T0-b)');
+    ok(!/^\s*boot\(\);/m.test(panel), '★★⑩ `50-i-panel.js` 최상위의 `boot();` 는 **없다**');
+    ok(!/setTimeout\([^)]*onbLobbyInit/.test(net), '★⑩ T68 이 두었던 **임시 지연 두 줄이 사라졌다**');
+    const verbs = strip(rd('46-h-verbs.js'));
+    ok(!/__rmbDbg/.test(verbs), '★★⑩ 진단 훅 `__rmbDbg` 가 제품 코드에 **없다**(T57 규약)');
+    ok(/border:1px solid var\(--line\)/.test(strip(rd('44-h-hud.js'))), '★⑩ 메뉴 테두리가 `--line` 이다(먹선)');
+    // ★자명 통과 금지 — 이 검사기가 되살린 코드를 잡는가
+    ok(/__rmbDbg/.test("window.__rmbDbg = { tap: true };"), '★⑩ 자명 통과 금지 — 훅을 되살린 소스는 잡힌다');
   }
 
   ok(allErrs.length === 0, '클라 JS 예외 0', allErrs.slice(0, 3).join(' | '));

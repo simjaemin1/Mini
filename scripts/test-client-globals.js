@@ -99,7 +99,11 @@ const BASELINE = {
   //   그래서 표를 옮겨 적었다(위 주석이 요구하는 "같이 갱신하라"). 진짜 불변식은 **총계**이고,
   //   바로 아래 두 번째 assert 가 그걸 본다 — 표를 늘려도 총계가 늘면 거기서 잡힌다.
   'client/41-h-bubble.js': 17, 'client/44-h-hud.js': 1,
-  'client/50-i-panel.js': 12, 'client/51-s-side.js': 4, 'client/60-t-market.js': 4,
+  // ★★[T82 ⓪ 2026-09-03] `50-i-panel` 12 → **11**. `boot()` 호출 한 줄을 **`99-main.js` 로 옮겼다**
+  //   (T0-b: 최상위 실행문은 그 파일 하나). 그러니 "밖의 실행문"은 **줄어야 맞다** — 총계도 115 → 114.
+  //   ⚠줄었을 때 이 표를 안 고치면 아래 총계 assert 가 빨개진다. 그게 이 검사의 값이다:
+  //     실행문이 **어디로** 갔는지 사람이 한 번 말하게 만든다(옮긴 것과 사라진 것은 다르다).
+  'client/50-i-panel.js': 11, 'client/51-s-side.js': 4, 'client/60-t-market.js': 4,
   'client/80-bigmap.js': 1,
 };
 const cur = {};

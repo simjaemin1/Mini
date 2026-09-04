@@ -16,7 +16,7 @@
     hideContextMenu();
     const m = document.createElement('div');
     m.id = 'ctxMenu';
-    m.style.cssText = `position:fixed;left:${x}px;top:${y}px;background:rgba(var(--pane-rgb), 0.97);border:1px solid var(--thirst);border-radius: 0;z-index:99999;min-width:180px;padding:4px;box-shadow:0 4px 16px rgba(var(--bg-rgb), 0.5);font-size:13px;color:var(--fg-strong);font-family:sans-serif`;
+    m.style.cssText = `position:fixed;left:${x}px;top:${y}px;background:rgba(var(--pane-rgb), 0.97);border:1px solid var(--line);border-radius: 0;z-index:99999;min-width:180px;padding:4px;box-shadow:0 4px 16px rgba(var(--bg-rgb), 0.5);font-size:13px;color:var(--fg-strong);font-family:sans-serif`;
     for (const opt of options) {
       const it = document.createElement('div');
       it.textContent = opt.label;

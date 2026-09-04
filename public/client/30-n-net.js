@@ -230,17 +230,10 @@
     })();
 
     // ★[온보딩 v2] 시작 화면 — 마을 선택 지도(§9.1). 판정·목록은 전부 서버(`server/onboarding.js`).
-    // ★★[T68 실측 · 회부 "적재 순서 경쟁" 의 두 번째 얼굴] 이 함수는 **`70-lobby.js`**(조각 23)에 있는데
-    //   `boot()` 을 부르는 것은 **`50-i-panel.js`**(조각 20)의 최상위 문이다. 지금까지 굴러간 이유는
-    //   위 `await fetch('/zones')` 가 **네트워크만큼 늦어** 그 사이 나머지 조각이 다 실렸기 때문이다.
-    //   ⇒ 새로고침처럼 그 응답이 **캐시에서 즉시** 오면 조각 23 보다 먼저 여기 닿아
-    //     `onbLobbyInit is not defined` 로 **시작 화면이 통째로 안 뜬다**(T68 하네스가 실제로 잡았다 —
-    //     재입장 재시도가 page.goto 로 새로고침을 하면서 드러났다).
-    //   수리는 한 줄: 아직 안 실렸으면 **다음 틱에** 부른다(그때는 조각이 전부 실려 있다).
-    //   ⚠근본 수리는 `boot()` 호출을 `99-main.js` 로 옮기는 것이다(T0-b: 최상위 문은 거기 하나) —
-    //     그건 `50-i-panel.js`(T69 소유)와 `test-client-globals` 기준선을 건드리므로 **회부**한다.
-    if (typeof onbLobbyInit === 'function') onbLobbyInit();
-    else setTimeout(() => { if (typeof onbLobbyInit === 'function') onbLobbyInit(); }, 0);
+    // ★★[T82 ⓪ · 재민 승인] T68 이 여기 둔 **임시 지연 두 줄을 지웠다.** 근본 수리가 왔기 때문이다:
+    //   `boot()` 을 부르는 자리가 `50-i-panel.js`(조각 20) 최상위 문 → **`99-main.js`**(조각 25) 로 옮겼다.
+    //   ⇒ 이 함수가 사는 `70-lobby.js`(조각 24)가 **반드시 먼저 실려 있다**. 경주 자체가 없어졌다.
+    onbLobbyInit();
     document.getElementById('enter').onclick = () => {
       const inputName = document.getElementById('name').value.trim();
       const inputPw = document.getElementById('password').value;
