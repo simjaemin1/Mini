@@ -42,6 +42,7 @@
   "clothes_hide",
   "clothes_fiber",
   "clothes_hemp",
+  "back_carrier",
   "tool_axe",
   "tool_rod",
   "tool_hoe",
@@ -66,6 +67,46 @@
   "shldK": 1.0
  },
  "sheets": {
+  "back_carrier_aim": {
+   "clip": "aim",
+   "cols": 2,
+   "h": 720,
+   "layer": "back_carrier",
+   "rows": 8,
+   "w": 218
+  },
+  "back_carrier_idle": {
+   "clip": "idle",
+   "cols": 4,
+   "h": 720,
+   "layer": "back_carrier",
+   "rows": 8,
+   "w": 436
+  },
+  "back_carrier_run": {
+   "clip": "run",
+   "cols": 8,
+   "h": 720,
+   "layer": "back_carrier",
+   "rows": 8,
+   "w": 872
+  },
+  "back_carrier_swing": {
+   "clip": "swing",
+   "cols": 6,
+   "h": 720,
+   "layer": "back_carrier",
+   "rows": 8,
+   "w": 654
+  },
+  "back_carrier_walk": {
+   "clip": "walk",
+   "cols": 8,
+   "h": 720,
+   "layer": "back_carrier",
+   "rows": 8,
+   "w": 872
+  },
   "body_aim": {
    "clip": "aim",
    "cols": 2,

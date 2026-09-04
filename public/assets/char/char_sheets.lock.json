@@ -1,4 +1,9 @@
 {
+ "back_carrier_aim": "d6a3d670b538f4b3",
+ "back_carrier_idle": "b5add0ee822f31b7",
+ "back_carrier_run": "43d98ebb9e39985e",
+ "back_carrier_swing": "80411fd1e149a782",
+ "back_carrier_walk": "de65d070e26ed390",
  "body_aim": "c89a4ad37b7ce9a1",
  "body_idle": "a7e33ee2ff996cac",
  "body_run": "0fd7da55220f1495",

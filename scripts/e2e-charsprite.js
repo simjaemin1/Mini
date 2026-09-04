@@ -234,14 +234,25 @@ function openSpot() {
   console.log('\n=== ⑤ 두 클라 짝 — 타 플레이어도 같은 애니 ===');
   const B = await newClient('B');
   ok(!!(await B.evaluate(() => window.__getMyAbs())), '[B] 존 입장');
+  // ★★[T87 2026-09-03] **짝은 `SPOT` 이 아니라 A **옆**에 세운다.**
+  //   종전엔 `SPOT.x + 60` 으로 보냈는데(그 자리는 ⓪ 에서 A 가 서 있던 자리다), ①~③ 이
+  //   A 를 걷게·달리게 해 놔서 그때쯤 A 는 SPOT 에서 140~190px 밀려나 있다. 그러면 짝이
+  //   A 로부터 110~150px — **80px 밖**이고, 거기서부터는 `coneMultEntity` 가 **시야 뿔**을 건다:
+  //     `dist < 80` 이면 무조건 보이고, 그 밖은 페이싱과의 내적이 −0.2 이하면 **안 보인다**.
+  //   A 는 마지막에 오른쪽(+x)을 보고 서 있었고 짝은 그 **뒤**에 떨어졌다 ⇒ A 화면에서 0명.
+  //   ★제품 결함이 아니다 — 뒤에 선 사람이 안 보이는 건 이 게임의 규약이다(`20-r2-visibility.js`
+  //     "살아 움직이는 것에만 건다"). **하네스가 짝을 A 뒤에 세운 것**이 결함이었다.
+  //     (이 절을 처음 쓴 사람도 그럴 뜻이었다 — `sp` 를 받아 놓고 안 썼다.)
+  //   ⇒ A 의 **지금 자리** 옆 60px 에 세운다. 60 < 80 이라 페이싱과 무관하게 보인다(그 수가 근거다).
   const sp = await meAbs(A);
+  const BX = Math.round(sp.x - SPOT.WOX) + 60, BY = Math.round(sp.y - SPOT.WOY);
   let bDist = Infinity;
   for (let i = 0; i < 20; i++) {
-    await B.evaluate(([a, b]) => window.__sendPrimary({ type: 'teleport_debug', x: a, y: b }), [SPOT.x + 60, SPOT.y]);
+    await B.evaluate(([a, b]) => window.__sendPrimary({ type: 'teleport_debug', x: a, y: b }), [BX, BY]);
     await sleep(700);
       // ★[핫픽스 2026-08-31 · 족보 ㊹] 도착은 **서버 권위**로 — 예측은 재접속 뒤 낡을 수 있다.
     const c = (await B.evaluate(() => (window.__getSrvAbs ? window.__getSrvAbs() : null))) || (await meAbs(B));
-    if (c) bDist = Math.hypot(c.x - (SPOT.x + SPOT.WOX + 60), c.y - (SPOT.y + SPOT.WOY));
+    if (c) bDist = Math.hypot(c.x - (BX + SPOT.WOX), c.y - (BY + SPOT.WOY));
     if (bDist <= 140) break;
   }
   // ★★[2026-08-31 밤 · 족보 57] **하네스는 자기 행동이 실제로 일어났는지 먼저 세라.**
@@ -250,6 +261,14 @@ function openSpot() {
   //   실제로 회귀 러너 끝에서 그렇게 한 번 나왔고, 단독 실행에선 34/0 이었다.
   //   ⇒ 남을 보기 **전에** 남이 그 자리에 왔는지부터 센다. 여기서 깨지면 원인이 바로 읽힌다.
   ok(bDist <= 140, `[B] 짝이 A 옆에 도착했다(서버 권위)`, `거리 ${Number.isFinite(bDist) ? bDist.toFixed(0) : '측정 실패'}px ≤ 140`);
+  // ★상황부터 잰다 — 짝이 **A 의 무조건 보이는 반경(80px) 안**에 있는가. 밖이면 시야 뿔이 걸려
+  //   아래 판정이 "애니가 안 온다"가 아니라 "뒤에 서 있다"를 재게 된다(그게 T81 까지의 상시 빨강이었다).
+  {
+    const aNow = await meAbs(A), bNow = await meAbs(B);
+    const gap = Math.hypot(aNow.x - bNow.x, aNow.y - bNow.y);
+    ok(gap < 80, '★★검사 전제 — 짝이 A 의 **무조건 보이는 반경**(80px · coneMultEntity) 안에 있다',
+      `A↔B ${gap.toFixed(0)}px < 80`);
+  }
   // ★[2026-08-31 · 족보 ㊾] **시계로 기다리지 마라 — 조건으로 기다려라.**
   //   여기가 `await sleep(1200)` 한 줄이었다. 단독 실행에선 늘 통과했는데 러너 끝(하네스 40종을
   //   지난 뒤)에서만 "[A] 화면에 남이 0명" 으로 두 판정이 빨개졌다. 회귀가 아니라 **시간**이다 —
@@ -752,6 +771,133 @@ function openSpot() {
     const src = fs.readFileSync(path.join(ROOT, 'public', 'client', '42-r2-char.js'), 'utf8');
     ok(/equipmentMeta && equipmentMeta\.clothes/.test(src) && /return 'clothes_hemp'/.test(src),
       '★표는 서버가 보낸 `equipmentMeta.clothes` 하나다(클라 사본 0) · 모르는 값은 삼베로 떨어진다');
+  }
+
+  // ═══ [T87 2026-09-03] ⓙ **남이 손에 든 것** · ⓚ **남이 등에 진 것** ═══════════════
+  //   T81 이 옷 하나를 태우고 "도구는 여전히 안 간다"고 회부한 자리다. 이제 셋 다 간다.
+  //   ★판정은 두 층 — 계약(층 이름)과 화면(그 자리 화소). 계약만 보면 "그리기는 하는데
+  //     안 보인다"를 못 잡고, 화면만 보면 무엇이 바뀐 건지 못 가른다.
+  console.log('\n=== ⓙⓚ 남의 손·등 — 도구와 지게가 남의 눈에 간다 ===');
+  {
+    const aPid2 = await myPid();
+    const layersOf = (page) => page.evaluate((p2) => ((window.__charDbg || {})[p2] || {}).layers || null, aPid2);
+    const waitL = async (page, want, ms) => {
+      const t0 = Date.now(); let last = null;
+      for (;;) {
+        last = await layersOf(page);
+        if (last && last.indexOf(want) >= 0) return last;
+        if (Date.now() - t0 > (ms || 12000)) return last;
+        await sleep(250);
+      }
+    };
+    // ★A 가 B 화면 어디에 있나 — 클라 자신의 변환으로 받는다(하네스가 아이소를 베끼지 않는다).
+    const aAbs = await meAbs(A);
+    const spot = await B.evaluate(([x, y]) => { const s2 = window.__w2s(x, y); return s2 ? [Math.round(s2.px), Math.round(s2.py)] : null; }, [aAbs.x, aAbs.y]);
+    ok(!!spot, '★A 가 B 화면 어디인지 클라 변환(__w2s)으로 받았다', JSON.stringify(spot));
+    const P = require(path.join(ROOT, 'node_modules', 'pngjs')).PNG;
+    // ★★사람은 **가만히 서 있어도 애니가 돈다**(idle 4프레임 · 0.9fps). 그래서 아무것도 안 바꾸고
+    //   두 장을 찍으면 그 자리 화소가 115개쯤 바뀐다 — 실측으로 그렇게 나왔다. 그건 잡음이 아니라
+    //   **다른 프레임**이다. ⇒ 찍을 때 **같은 애니 프레임**을 기다린다(찍고 나서도 그 프레임인지 되본다).
+    //   이러면 "장착 안 하면 diff 0"이 참말이 되고, 효과도 프레임이 아니라 착장으로만 갈린다.
+    const frameOfA = () => B.evaluate((p2) => { const d = (window.__charDbg || {})[p2]; return d && d.on ? d.frame : -1; }, aPid2);
+    const shotB = async (n, want) => {
+      const f = path.join(SHOTS, `t87-${n}.png`);
+      for (let k = 0; k < 60; k++) {
+        if ((await frameOfA()) !== want) { await sleep(120); continue; }
+        await B.screenshot({ path: f });
+        if ((await frameOfA()) === want) return P.sync.read(fs.readFileSync(f));   // 찍는 사이에 안 넘어갔다
+      }
+      await B.screenshot({ path: f });
+      return P.sync.read(fs.readFileSync(f));
+    };
+    const SHOT_FRAME = 0;   // idle 0번 프레임에서만 찍는다
+    // ★★바람을 끈다 — 지면 풀 카펫이 프레임마다 흔들린다(`e2e-nature` 실측 52만 화소). 상자 안엔
+    //   A 말고 **땅**도 들어 있어서, 안 끄면 그게 대조군을 47화소로 들어 올린다(실측). 재는 층을 격리한다.
+    await B.evaluate(() => { if (window.__terrain19) window.__terrain19.windOff = true; });
+    await sleep(600);
+    // ★★상자는 **A 만** 덮어야 한다. 짝은 A 에서 월드 +60px 에 서 있고, 아이소는 그걸 화면
+    //   (+60, +30) 으로 옮긴다(`w2i` = {x: wx−wy, y: (wx+wy)/2}) — 반경 26이면 짝의 몸(폭 ±13)이
+    //   안 들어온다. 안 그러면 **짝의 애니**가 잡음으로 들어와 자가 못 쓰게 된다(실측 438px).
+    // ★그리고 `__w2s` 가 주는 자리는 **발밑 앵커**다. 손에 든 도끼는 가슴 높이라 상자를 키 절반만큼
+    //   올려야 한다(키 54.4px — 메타의 수다. 눈대중 아님).
+    const PR = 26;
+    const CX0 = spot[0], CY0 = spot[1] - 27;
+    const patch = (u, v) => { let c = 0, tot = 0;
+      for (let y = Math.max(0, CY0 - PR); y < Math.min(u.height, CY0 + PR); y++)
+        for (let x = Math.max(0, CX0 - PR); x < Math.min(u.width, CX0 + PR); x++) {
+          const i = (y * u.width + x) * 4; tot++;
+          if (Math.abs(u.data[i] - v.data[i]) + Math.abs(u.data[i + 1] - v.data[i + 1]) + Math.abs(u.data[i + 2] - v.data[i + 2]) > 24) c++;
+        }
+      return { c, tot }; };
+
+    // ── ⓙ 도구 ─────────────────────────────────────────────────────────────
+    const before = await layersOf(B);
+    ok(!!before && !before.some((l) => l.indexOf('tool_') === 0),
+      '★★자명 통과 금지 — 맨손일 땐 남에게 **도구 층이 없다**', JSON.stringify(before));
+    // ★잡음 바닥 먼저(족보 80): 아무것도 안 바꾸고 두 장. 장착 안 하면 diff 0 이어야 한다.
+    const n1 = await shotB('n1', SHOT_FRAME); await sleep(1400);
+    const n2 = await shotB('n2', SHOT_FRAME);
+    const noise = patch(n1, n2).c;
+    ok(noise <= 8, '★★대조군 — **장착 안 하면 그 자리 화소가 안 바뀐다**(같은 애니 프레임 · 무풍)', `${noise}px ≤ 8`);
+    // 도끼 지급 → 장착(제품 경로: 도구 인스턴스 + equip)
+    await A.evaluate(() => window.__sendPrimary({ type: '__e2e_give', tools: ['axe'] }));
+    let axeId = null;
+    for (let k = 0; k < 30 && !axeId; k++) {
+      const ts = await A.evaluate(() => window.__getTools());
+      const t = (ts || []).find((q) => q.type === 'axe' && q.d > 0);
+      if (t) axeId = t.id; else await sleep(200);
+    }
+    ok(!!axeId, '검사 전제 — A 가 도끼 인스턴스를 받았다', axeId || '실패');
+    await A.evaluate((id) => window.__sendPrimary({ type: 'equip', toolItemId: id }), axeId);
+    const mineTool = await waitL(A, 'tool_axe');
+    ok(!!mineTool && mineTool.indexOf('tool_axe') >= 0, '★A 자기 화면에서 도끼 층을 쓴다', JSON.stringify(mineTool));
+    const hisTool = await waitL(B, 'tool_axe');
+    ok(!!hisTool && hisTool.indexOf('tool_axe') >= 0,
+      '★★★ⓙ **둘째 클라가 첫째의 도끼를 본다** — 손에 든 것이 네트워크를 탄다', JSON.stringify(hisTool));
+    const afterTool = await shotB('tool', SHOT_FRAME);
+    const effTool = patch(n2, afterTool).c;
+    ok(effTool > Math.max(noise * 3, 10),
+      `★★★ⓙ 그 자리 **화면이 실제로 바뀐다** — 도끼를 쥐기 전/후 (${effTool}px > ${Math.max(noise * 3, 10)} · 잡음 ${noise})`);
+
+    // ── ⓚ 등짐 ─────────────────────────────────────────────────────────────
+    const beforeBack = await layersOf(B);
+    ok(!!beforeBack && beforeBack.indexOf('back_carrier') < 0,
+      '★★자명 통과 금지 — 지게를 안 졌을 땐 남에게 **등짐 층이 없다**', JSON.stringify(beforeBack));
+    await A.evaluate(() => window.__sendPrimary({ type: '__e2e_give', equip: [{ type: 'carrier', lvl: 5 }] }));
+    const mineBack = await waitL(A, 'back_carrier');
+    ok(!!mineBack && mineBack.indexOf('back_carrier') >= 0, '★A 자기 화면에서 등짐 층을 쓴다', JSON.stringify(mineBack));
+    const hisBack = await waitL(B, 'back_carrier');
+    ok(!!hisBack && hisBack.indexOf('back_carrier') >= 0,
+      '★★★ⓚ **둘째 클라가 첫째의 지게를 본다** — 등에 진 것이 네트워크를 탄다', JSON.stringify(hisBack));
+    const afterBack = await shotB('back', SHOT_FRAME);
+    const effBack = patch(afterTool, afterBack).c;
+    ok(effBack > Math.max(noise * 3, 10),
+      `★★ⓚ 그 자리 **화면이 실제로 바뀐다** — 지게를 지기 전/후 (${effBack}px > ${Math.max(noise * 3, 10)})`);
+    ok(hisBack.join(',') === ['body', hisBack[1], 'back_carrier', 'tool_axe'].join(','),
+      '★그리는 순서 = 몸 → 옷 → 등짐 → 손 (자기 판정과 같은 함수가 낸다)', JSON.stringify(hisBack));
+
+    // ── ⓚ2 방향 표 — 등이 보이는 쪽에서 지게가 크다(시트 층) ───────────────
+    //   ★화면이 아니라 **시트**로 잰다: 8방향을 한 판에 다 보려면 사람을 여덟 번 돌려야 하는데
+    //     그건 이 절이 재려는 것(층이 방향을 타는가)이 아니라 조작을 재는 것이다.
+    {
+      const DIR = path.join(ROOT, 'public', 'assets', 'char');
+      const META = JSON.parse(fs.readFileSync(path.join(DIR, 'char_meta.json'), 'utf8'));
+      const png = P.sync.read(fs.readFileSync(path.join(DIR, 'back_carrier_idle.png')));
+      const fw = META.frameW, fh = META.frameH;
+      const rowN = (row) => { let n = 0;
+        for (let y = 0; y < fh; y++) for (let x = 0; x < fw; x++) {
+          const i = ((row * fh + y) * png.width + x) * 4;
+          if (png.data[i + 3] > 150) n++;
+        } return n; };
+      const N = [0, 1, 2, 3, 4, 5, 6, 7].map(rowN);
+      // 행 = 방향 d(= round(atan2(fy,fx)/(π/4)) mod 8 · d0 = +x). 카메라를 등지는 쪽이 d4~d6.
+      const backRows = [4, 5, 6], frontRows = [0, 1, 2];
+      const bk = Math.min(...backRows.map((r) => N[r])), fr = Math.max(...frontRows.map((r) => N[r]));
+      console.log(`    등짐 화소(방향별): ${JSON.stringify(N)}  · 등 보이는 쪽 최소 ${bk} · 앞 보는 쪽 최대 ${fr}`);
+      ok(bk > fr * 2, '★★ⓚ2 **등을 보이는 방향에서 지게가 크다**(등 최소 > 앞 최대 × 2) — 층이 방향을 탄다',
+        `${bk} > ${fr}×2`);
+      ok(fr > 0, '★앞을 보는 방향에서도 **어깨끈이 남는다**(0이 아니다) — 몸이 다 가리지 않는다', `${fr}px`);
+    }
   }
 
   console.log('\n=== ⑦ 콘솔 오류 ===');

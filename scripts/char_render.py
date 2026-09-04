@@ -261,6 +261,14 @@ M = {
 #     허리끈 hemp2/hemp = 0.857/0.847/0.835  ⇒ TRIM_K 0.85
 #     앞섶   L(cord)/L(hemp) = 0.3656/0.657  ⇒ PLACKET_K 0.56   (Rec.709 휘도비)
 #   ⚠삼베만은 **얼린 세 재질을 그대로 쓴다** — `char_sheets.lock.json` 의 바이트가 그 값이다.
+# ★[T87] 지게 재질 둘 — `scripts/props_render.py` 의 `carrier` 아이콘이 쓰는 값 그대로 베낀다
+#   (아이콘으로 본 지게와 등에 진 지게가 **같은 물건**으로 읽혀야 한다 — T77 문법):
+#     M['haft']  = striped_mat("p_haft", (0.58,0.44,0.26), (0.46,0.34,0.19), …)  다듬은 자루
+#     M['fiber'] = simple_mat("p_fiber", (0.62,0.55,0.30), 0.9)                  풀 끈(밀삐)
+#   ⚠이 파일엔 줄무늬 재질 문법이 없다(재질 띠가 텍스처를 대신하는 캐논) — **밝은 쪽 색**을 쓴다.
+M['carrw'] = mat("carrw", (0.58, 0.44, 0.26), 0.80, 0.06)    # 지게 나무
+M['carrf'] = mat("carrf", (0.62, 0.55, 0.30), 0.90, 0.04)    # 밀삐(풀 끈)
+
 CLOTH_MATS = {                     # id → (기본색, rough, spec) · 순서 = server/clothes.js 표 순서(계약)
     'fur':     ((0.300, 0.210, 0.145), 0.97, 0.03),
     'ramie':   ((0.885, 0.875, 0.835), 0.88, 0.08),
@@ -564,6 +572,38 @@ build_cloth(CLOTH)                      # ★기본 한 벌 — 삼베를 포함
 CLOTH_FUR = []
 build_cloth(CLOTH_FUR, pad=FUR_PAD, suffix="_fur")   # 갖옷만 제 기하(털 두께)
 
+# ═══════════════ 등짐(지게) [T87 2026-09-03] ═══════════════
+#   ★형태 정본은 `props_render.py` 의 `m_carrier()` 다 — 가지 둘을 세우고 세장 셋을 지르고
+#     밀삐로 동여맨 것. 그 파일이 *"등에 진 모습은 **캐릭터 시트 규약**이라 여긴 안 만든다(회부)"*
+#     라고 적어 둔 자리를 이 카드가 닫는다. **형태를 베끼고 출처를 적는다**(T77 문법).
+#   ★이 시트에서 지게를 읽게 하는 것은 **새고자**(어깨 위로 뻗은 가지 둘)다 — 24px 짜리 물건에서
+#     테두리 밖으로 나오는 유일한 부분이라 실루엣이 그것으로 갈린다.
+#   ★밀삐는 **앞가슴**에도 둔다: 앞을 보는 방향에선 지게가 몸에 가려 어깨끈만 보인다(굽기가 판정한다 —
+#     홀드아웃이 몸이라, 몸이 앞인 화소는 저절로 파인다. 도구 층과 같은 규약).
+#   ★리그는 강체 `spine` — 등에 묶인 물건이라 몸통을 그대로 따라간다(도구가 손을 따라가듯).
+BACK = []
+#   ★치수는 **몸의 뼈 자리에서** 잡는다(눈대중 금지 — 족보 74): 지게는 허리(Z_WAIST 1.04)
+#     조금 아래에서 어깨(Z_SHLD 1.39)까지 등에 붙고, 새고자만 그 위로 한 뼘 더 뻗는다.
+#     1차는 새고자를 z 1.70(정수리)까지 올렸다가 **머리 옆 창 두 자루**처럼 보여 되물렸다.
+CARR_X = -0.158                      # 등 뒤(정면 +x) — 튜닉 뒤 표면(rx≈0.148) 바로 바깥
+CARR_Y = 0.125                       # 지겟다리 반간격 — 어깨 반폭(0.19)보다 좁게
+CARR_Z0, CARR_Z1 = 0.92, Z_SHLD      # 틀은 엉덩이~어깨
+prism("carr_legL", CARR_X, +CARR_Y, (CARR_Z0 + CARR_Z1) / 2, 0.050, 0.050, CARR_Z1 - CARR_Z0, M['carrw'], BACK, seg=8)
+prism("carr_legR", CARR_X, -CARR_Y, (CARR_Z0 + CARR_Z1) / 2, 0.050, 0.050, CARR_Z1 - CARR_Z0, M['carrw'], BACK, seg=8)
+for _i in range(3):                                 # 세장 셋 — 틀을 3등분한 자리
+    _z = CARR_Z0 + (CARR_Z1 - CARR_Z0) * (0.18 + 0.32 * _i)
+    box("carr_bar%d" % _i, CARR_X, 0.0, _z, 0.036, CARR_Y * 2 + 0.050, 0.034, M['carrw'], BACK)
+for _sg, _sf in ((+1, 'L'), (-1, 'R')):
+    # 새고자 — 어깨 위로 한 뼘(0.20m). 머리(정수리 1.70) 옆으로 삐죽 서지 않게 **어깨선 근처**에서 끝낸다.
+    prism("carr_prong" + _sf, CARR_X - 0.012, _sg * (CARR_Y + 0.008), CARR_Z1 + 0.062, 0.036, 0.036, 0.165,
+          M['carrw'], BACK, taper=0.55, seg=8)
+    prism("carr_lash" + _sf, CARR_X, _sg * CARR_Y, CARR_Z1 - 0.045, 0.068, 0.068, 0.042, M['carrf'], BACK, seg=8)
+    # 밀삐 — 앞가슴으로 넘어온 어깨끈. 앞을 보는 방향에서 **이것만** 보인다.
+    #   ⚠1차엔 x=0.112 에 뒀다가 **몸 안**이라 홀드아웃이 통째로 파냈다(앞 방향에서 아무것도 안 보였다).
+    #     가슴 표면(튜닉 rx≈0.148) **바깥**으로 내야 보인다.
+    prism("carr_strap" + _sf, 0.166, _sg * 0.092, 1.215, 0.032, 0.032, 0.30, M['carrf'], BACK, seg=6)
+
+
 # ★[T81] 옷 층은 **재질 슬롯만** 갈아 끼워 굽는다 — 기하는 한 벌뿐이다(같은 실루엣 × 재질).
 #   왜 오브젝트를 여섯 벌 만들지 않나: 씬에 안 보이는 기하가 늘면 Cycles 의 BVH·표본이 흔들려
 #   **이미 얼린 시트의 바이트를 위협**한다. 슬롯 교체는 씬 구성을 그대로 둔다.
@@ -695,6 +735,9 @@ WEIGHT = {
     'axe_haft': 'handR', 'axe_head': 'handR', 'axe_bind': 'handR',
     'rod_pole': 'handR', 'rod_grip': 'handR',
 }
+# ★[T87] 등짐은 몸통에 묶인 강체 — 전부 `spine`(도구가 `handR` 인 것과 같은 규약).
+for _bo in BACK:
+    WEIGHT[_bo.name] = 'spine'
 for ob in ALLOBJ:
     if ob.name in LOFT_W:
         # ★이어진 표면 — 링마다 뼈 비중이 다르다(해석적 블렌드).
@@ -947,6 +990,7 @@ LAYERS = [("body", lambda: BODY, lambda: [], None)]
 for _ck in CLOTH_MATS:
     LAYERS.append(("clothes_" + _ck, (lambda k: (lambda: cloth_objs(k)))(_ck), lambda: BODY,
                    (lambda k: (lambda: set_cloth_material(k)))(_ck)))
+LAYERS.append(("back_carrier", lambda: BACK, lambda: BODY, None))   # ★[T87] 등짐 — 홀드아웃은 몸(도구와 같다)
 for _tn, _ in TOOL_BUILDERS:
     LAYERS.append(("tool_" + _tn, (lambda n: (lambda: TOOLS[n]))(_tn), lambda: BODY, None))
 

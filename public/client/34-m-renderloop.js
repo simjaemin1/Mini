@@ -943,7 +943,7 @@
         const oFloor = o.floor || 0;
         const oZ = oFloor * FLOOR_HEIGHT + (o.z || 0); // 14.49-d: 계단 위 z 포함
         const isoF = w2i(ax, ay, oZ);
-        renderables.push({ z: (ax + ay) * 0.5 + oFloor * 0.5 + 500, kind: 'player', wx: ax, wy: ay, pid: o.pid, name: displayName, color: o.color || '#5a9ae0', hp: o.hp, maxHp: o.maxHp, iso: isoF, ax, ay, floor: oFloor, lastAttackAt: o.lastAttackAt, vx: o.vx, vy: o.vy, _fvx: o._fvx, _fvy: o._fvy, npc: o.npc, simJob: o.simJob, _war: o._war, bt: o.bt, bs: o.bs, bc: o.bc, br: o.br, cap: o.cap, act: o.act, clothes: o.clothes });
+        renderables.push({ z: (ax + ay) * 0.5 + oFloor * 0.5 + 500, kind: 'player', wx: ax, wy: ay, pid: o.pid, name: displayName, color: o.color || '#5a9ae0', hp: o.hp, maxHp: o.maxHp, iso: isoF, ax, ay, floor: oFloor, lastAttackAt: o.lastAttackAt, vx: o.vx, vy: o.vy, _fvx: o._fvx, _fvy: o._fvy, npc: o.npc, simJob: o.simJob, _war: o._war, bt: o.bt, bs: o.bs, bc: o.bc, br: o.br, cap: o.cap, act: o.act, clothes: o.clothes, tool: o.tool, carrier: o.carrier });
       }
     }
     {
@@ -1581,6 +1581,7 @@
             attackAt: item.isMe ? myLastAttackAt : (item.lastAttackAt || 0),
             job: item.npc ? (item.simJob || '주민') : null,
             clothes: item.clothes || null,   // ★[T81] 남의 옷 재질(내 것은 charLayersFor 가 내 장비에서 읽는다)
+            tool: item.tool || null, carrier: !!item.carrier,   // ★[T87] 남이 든 것·진 것(같은 규약)
           });
         if (!_spriteOk) drawPlayerIso(s.x, s.y, item.name, item.color, item.isMe, { moving, attackPhase, fvx, fvy, isDown: downFlag, war: item._war, bt: item.bt, bs: item.bs, bc: item.bc, br: item.br, cap: item.cap, act: item.act });
         // ★★[T57 2026-09-03] **시트 경로에도 이름표를 붙인다.** 도형 경로는 `drawPlayerIso` 안에서

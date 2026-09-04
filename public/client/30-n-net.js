@@ -996,6 +996,8 @@
             npc: pp.npc !== undefined ? pp.npc : prev?.npc,             // ★[캐릭 시트] NPC 신원 1비트(첫 가시 메타)
             act: pp.act !== undefined ? pp.act : prev?.act, // ★[액션 라벨] 생활 층 행동(모내기·잠행·개간…) — 변경 시에만 수신, 미수신=유지
             clothes: pp.clothes !== undefined ? pp.clothes : prev?.clothes, // ★[T81] 남의 옷 재질 — act 와 같은 델타 문법(미수신=유지)
+            tool: pp.tool !== undefined ? pp.tool : prev?.tool,             // ★[T87] 남이 손에 든 것(도구 type)
+            carrier: pp.carrier !== undefined ? pp.carrier : prev?.carrier, // ★[T87] 남이 등에 진 것(지게 1비트)
             cap: pp.cap | 0, // §18 3파: 포로 표식(동적 1비트 — 회색 테두리 렌더)
             buf,
             lastX: prev?.x ?? pp.x, lastY: prev?.y ?? pp.y,

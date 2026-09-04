@@ -5030,7 +5030,7 @@ function doDoorToggle(player, buildingId) {
 // ══ 플레이어 장비: 제작·장착·수선 (econ 무접촉·본체 서버층. 엔진 = server/player-items.js) ══
 function findEquip(player, id) { return (player.equipment || []).find(e => e.id === id) || null; }
 function sendEquipment(player) {
-  player._clothesAt = Date.now();   // ★[T81] 착장이 바뀌었을 수 있다 — tick 이 남에게 옷을 다시 알린다(makeEntry 주석)
+  player._wornAt = Date.now();   // ★[T81·T87] 착장이 바뀌었을 수 있다 — tick 이 남에게 다시 알린다(makeEntry 주석)
   send(player.ws, { type: 'equipment', equipment: player.equipment || [], equipSlots: player.equipSlots || {}, craftSkill: player.craftSkill || {} });
 }
 // 장비 제작: 유형+재료 → 품질(숙련×재료등급) 인스턴스. 재료 스택 차감, 숙련 xp+.
@@ -5635,6 +5635,7 @@ function doEquip(player, toolItemId) {
     }
     player.equipped = inst.id; // 옛 거 자동 해제 (한 번에 1개)
   }
+  player._wornAt = Date.now();   // ★[T87] 손에 든 것이 바뀌었다 — 옷과 같은 창으로 남에게 알린다
   send(player.ws, { type: 'tools', toolItems: player.toolItems, equipped: player.equipped, hotkey1: player.hotkey1 || null });
   if (canPersist(player)) savePlayer(player);   // ★[배치 14 ②] 정본 술어 — 영속 게스트도 저장된다
 }
@@ -10383,7 +10384,12 @@ setInterval(() => {
       //   그래서 클라는 남을 전부 기본 베옷으로 그렸다(`42-r2-char.js charLayersFor` 주석의 그 회부).
       //   전송 문법은 `act` 와 같다(무상태 델타): 최초 가시 + 바뀐 뒤 1.2초 창. 매틱 문자열은 안 보낸다.
       //   ⚠도구는 아직 안 간다 — 이 카드가 닫는 축은 **옷 하나**다(도구·갑옷은 같은 자리에 한 줄씩 더).
-      if (isNew || now - (o._clothesAt || 0) < 1200) e.clothes = (getEquippedEquipment(o, 'clothes') || {}).mat || null;
+      if (isNew || now - (o._wornAt || 0) < 1200) e.clothes = (getEquippedEquipment(o, 'clothes') || {}).mat || null;
+      // ★★[T87 2026-09-03] **손에 든 것**과 **등에 진 것** — 옷과 같은 창을 탄다(정본은 서버 술어 둘).
+      //   `tool` 은 도구 인스턴스의 `type`(클라가 실루엣 둘로 접는다 — 판정 함수는 자기 것과 **같은 하나**),
+      //   `carrier` 는 1비트(지게를 졌나). 옷이 열어 둔 그 자리에 두 줄이면 축이 셋이 된다.
+      if (isNew || now - (o._wornAt || 0) < 1200) e.tool = (getEquippedTool(o) || {}).type || null;
+      if (isNew || now - (o._wornAt || 0) < 1200) e.carrier = Carry.carrierOf(o) ? 1 : 0;
       return e;
     }
     // Phase 14.38: mob facing — vx/vy 포함. 14.49-d: floor + z

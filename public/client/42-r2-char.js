@@ -70,23 +70,35 @@
     const ci = (equipment || []).find((q) => q.id === equipSlots.clothes);
     return ci && ci.mat ? String(ci.mat) : null;
   }
-  // 착장 → 레이어 키. 없는 착장은 레이어 생략.
-  function charLayersFor(isMe, otherMat) {
-    const L = ['body', clothLayerOf(isMe ? myClothMat() : otherMat)];
-    if (!isMe) return L;                       // 남은 옷까지 — 손에 든 것은 아직 네트워크에 없다(회부)
-    // ★손에 든 것 = **도구 인스턴스 정본**(`getEquippedInstance`) 우선, 없으면 장비 무기 슬롯.
-    //   시트는 실루엣 두 종뿐이다: 자루+날(axe) / 긴 장대(rod). 종류 확장은 목록 한 줄 + 재렌더.
-    let t = '';
+  // 내가 손에 든 것 = **도구 인스턴스 정본**(`getEquippedInstance`) 우선, 없으면 장비 무기 슬롯.
+  function myToolType() {
     const ti = getEquippedInstance();
-    if (ti && ti.type) t = String(ti.type);
-    if (!t && equipSlots && equipSlots.weapon) {
+    if (ti && ti.type) return String(ti.type);
+    if (equipSlots && equipSlots.weapon) {
       const wi = (equipment || []).find((q) => q.id === equipSlots.weapon);
-      if (wi && wi.type) t = String(wi.type);
+      if (wi && wi.type) return String(wi.type);
     }
-    if (!t) return L;                          // 맨손 — 도구 레이어 생략
-    if (/rod|fish|낚/i.test(t)) L.push('tool_rod');
-    else L.push('tool_axe');
+    return '';
+  }
+  // ★★[T87 2026-09-03] **착장 세 축을 한 함수가 고른다** — 자기든 남이든 **같은 판정**이다.
+  //   종전엔 `if (!isMe) return L` 로 남은 옷에서 끊겼다(도구·지게가 네트워크에 없어서였다).
+  //   이제 셋 다 온다(`makeEntry` — 옷 재질 · 도구 type · 지게 1비트) ⇒ 갈래를 없앤다.
+  //   ★값을 어디서 읽느냐만 갈린다: 나는 내 장비에서, 남은 tick 이 실어 온 값에서. **규칙은 하나다.**
+  //   ★그리는 순서 = 몸 → 옷 → 등짐 → 손. 깊이는 시트를 구울 때 홀드아웃(몸)이 이미 잡았다 —
+  //     등을 보이는 방향에선 지게가 온전히, 앞을 보는 방향에선 어깨끈만 남는다(굽기가 판정한다).
+  //   시트 실루엣은 둘뿐이다: 자루+날(axe) / 긴 장대(rod). 종류 확장은 목록 한 줄 + 재렌더.
+  function charLayersFor(isMe, o) {
+    const L = ['body', clothLayerOf(isMe ? myClothMat() : (o && o.clothes))];
+    const back = isMe ? !!(equipSlots && equipSlots.back) : !!(o && o.carrier);
+    if (back && hasCharLayer('back_carrier')) L.push('back_carrier');
+    const t = isMe ? myToolType() : String((o && o.tool) || '');
+    if (t) L.push(/rod|fish|낚/i.test(t) ? 'tool_rod' : 'tool_axe');
     return L;
+  }
+  // 시트가 실제로 구워져 있나 — 없는 층을 넣으면 `drawCharSprite` 가 통째로 도형으로 떨어진다.
+  function hasCharLayer(key) {
+    const m = charMeta();
+    return !!(m && Array.isArray(m.layers) && m.layers.indexOf(key) >= 0);
   }
 
   function charState(pid, speed, aiming, attackAt, dtSec) {
@@ -120,7 +132,7 @@
     const m = charMeta();
     if (!m) return false;
     // ★[T13] NPC 는 직업 표식 표를 쓴다(`40-r2-sprites.js` — 이 파일에 함수를 새로 만들지 않는다).
-    const layers = opts.job ? npcCharLayers(opts.job) : charLayersFor(isMe, opts.clothes);
+    const layers = opts.job ? npcCharLayers(opts.job) : charLayersFor(isMe, opts);
     // ★한 장이라도 안 떠 있으면 **아무것도 안 그린다** — 반쪽 합성(몸만·옷만)이 화면에 나가면
     //   "픽셀 정렬 0px" 계약이 지켜지는지 눈으로 볼 수 없다. 다 뜰 때까지 도형으로 버틴다.
     const st0 = _charAnim.get(opts.pid);
