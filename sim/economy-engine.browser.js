@@ -1673,22 +1673,71 @@ function consumeFood(v, need) {
   // ★소비량 군별 기록(_foodEaten) — 이게 진짜 식단(자체생산+수입, 신선히 먹은 것 포함). 다양성 판정에 씀.
   const eaten = v._foodEaten || (v._foodEaten = {});
   for (const k in eaten) eaten[k] = 0;
+  // ★★[T86] **예산 단계 — 사다리보다 먼저.** 열량 예산 `need` 를 군별 몫 w_g 로 나누고, 군 안에서는
+  //   **열량 1단위당 유효가격**(그림자가격 × (1−감가) ÷ 열량환산)이 싼 품목부터 먹는다.
+  //   ⚠가격은 **v2 가 마을에 덮어 둔 캐시**(`_priceCache`)를 읽는다 — `server/trade.js` 머리 주석의
+  //     "같은 날 안에선 같은 값" 규약을 식단도 그대로 따른다(NPC 교역 틱과 같은 표를 본다 · 사본 0).
+  //   ⚠캐시가 없으면(v1 CLI · 픽스처 · 하네스) **조용히 아래 사다리로 내려간다** = 종전과 비트 동일.
+  //     그게 하위 호환의 자리다 — 곳간에 한 품목뿐인 마을도 종전과 같다(예산이 한 군에 다 간다).
+  if (T86_DIET && remaining > 1e-9) {
+    const P = v._priceCache;
+    if (P) {
+      const cand = {};
+      for (const r in T86_GROUP) {
+        if (PRESERVED_FOODS.indexOf(r) >= 0) continue;      // 보존식은 예산 밖 — 맨 뒤 규약(T17 ②)
+        const q = v.storage[r] || 0; if (!(q > 0)) continue;
+        const fe = _t86Factor(r); if (!(fe > 0)) continue;
+        const pr = P[r]; if (!(pr > 0)) continue;
+        const g = T86_GROUP[r];
+        (cand[g] || (cand[g] = [])).push({ r, fe, per: pr * (T86_DECAY ? (1 - (DECAY_RATES[r] || 0)) : 1) / fe });
+      }
+      const groups = Object.keys(cand);
+      if (groups.length) {
+        for (const g of groups) cand[g].sort((a, b) => a.per - b.per);
+        let wsum = 0; for (const g of groups) wsum += T86_W[g] || 0;
+        let budget = {};
+        for (const g of groups) budget[g] = need * ((T86_W[g] || 0) / (wsum || 1));
+        // 한 바퀴 배정 + 한 바퀴 재분배(지시 §1 "재분배 한 바퀴")
+        for (let pass = 0; pass < 2 && remaining > 1e-9; pass++) {
+          let leftover = 0;
+          for (const g of groups) {
+            let b = Math.min(budget[g] || 0, remaining);
+            for (const it of cand[g]) {
+              if (b <= 1e-9 || remaining <= 1e-9) break;
+              const q = v.storage[it.r] || 0; if (!(q > 0)) continue;
+              const take = Math.min(b / it.fe, q);
+              const got = take * it.fe;
+              v.storage[it.r] = q - take;
+              b -= got; remaining -= got; eaten[it.r] = (eaten[it.r] || 0) + take;
+            }
+            leftover += b;
+          }
+          if (leftover <= 1e-9) break;
+          const alive = groups.filter((g) => cand[g].some((it) => (v.storage[it.r] || 0) > 1e-9));
+          if (!alive.length) break;
+          let w2 = 0; for (const g of alive) w2 += T86_W[g] || 0;
+          budget = {};
+          for (const g of alive) budget[g] = leftover * ((T86_W[g] || 0) / (w2 || 1));
+        }
+      }
+    }
+  }
   // 1) cooked_food (영양 풍부)
   if (v.storage.cooked_food > 0) {
     const eff = Math.min(remaining / 1.12, v.storage.cooked_food);
-    v.storage.cooked_food -= eff; remaining -= eff * 1.12; eaten.cooked_food = eff;
+    v.storage.cooked_food -= eff; remaining -= eff * 1.12; eaten.cooked_food = (eaten.cooked_food || 0) + eff;
   }
   // 2) fish/meat
   for (const r of ['fish', 'meat']) {
     if (remaining > 0 && v.storage[r] > 0) {
       const eff = Math.min(remaining, v.storage[r]);
-      v.storage[r] -= eff; remaining -= eff; eaten[r] = eff;
+      v.storage[r] -= eff; remaining -= eff; eaten[r] = (eaten[r] || 0) + eff;
     }
   }
   // 3) 농작물 food
   if (remaining > 0 && v.storage.food > 0) {
     const eff = Math.min(remaining, v.storage.food);
-    v.storage.food -= eff; remaining -= eff; eaten.food = eff;
+    v.storage.food -= eff; remaining -= eff; eaten.food = (eaten.food || 0) + eff;
   }
   // 3.5) ★★[T73] 생곡 — **`food` 바로 뒤, 채집물 앞.**
   //   왜 이 자리인가(한 줄): 생곡은 **같은 곡물**이라 도정 한 번이면 `food` 다 — 채집물(0.25~0.5)보다
@@ -1702,7 +1751,7 @@ function consumeFood(v, need) {
       if (remaining > 0 && v.storage[r] > 0) {
         const need = remaining / RAW_GRAIN_FOOD_FACTOR;
         const consumed = Math.min(need, v.storage[r]);
-        v.storage[r] -= consumed; remaining -= consumed * RAW_GRAIN_FOOD_FACTOR; eaten[r] = consumed;
+        v.storage[r] -= consumed; remaining -= consumed * RAW_GRAIN_FOOD_FACTOR; eaten[r] = (eaten[r] || 0) + consumed;
       }
     }
   }
@@ -1714,7 +1763,7 @@ function consumeFood(v, need) {
       const unitsNeeded = remaining / f;
       const consumed = Math.min(unitsNeeded, v.storage[r]);
       v.storage[r] -= consumed;
-      remaining -= consumed * f; eaten[r] = consumed;
+      remaining -= consumed * f; eaten[r] = (eaten[r] || 0) + consumed;
     }
   }
   // 5) ★★[T17 ② 2026-09-02 · 재민 확정] **보존식 — 사다리 맨 뒤.**
@@ -1728,7 +1777,7 @@ function consumeFood(v, need) {
         // ★환산 2.5 — 채집물 사다리와 **같은 꼴**이되 방향이 반대다(채집물은 0.3~0.4, 보존식은 2.5).
         const need = remaining / PRESERVE_FOOD_FACTOR;
         const consumed = Math.min(need, v.storage[r]);
-        v.storage[r] -= consumed; remaining -= consumed * PRESERVE_FOOD_FACTOR; eaten[r] = consumed;
+        v.storage[r] -= consumed; remaining -= consumed * PRESERVE_FOOD_FACTOR; eaten[r] = (eaten[r] || 0) + consumed;
       }
     }
   }
@@ -1904,6 +1953,53 @@ const FOOD_GROUP = { food: 'grain', fish: 'fish', meat: 'meat', fruit: 'fruit', 
 // ★곡물 과잉버퍼 직접 감산 대상 — 곡류·조리식. 식량가는 효용↑라 글럿에도 가격이 안 떨어져 raw-taper가 안 걸림 →
 //   버퍼 일수 기준으로 직접 캡(잉여 farming을 여가·교역로). K는 잠재생산 기준이라 불변 → 인구 안정, 낭비만↓. (어·육·채는 다양성이라 제외)
 const FOOD_GLUT_SAT = { food: 1, cooked_food: 1, wheat: 1, rice: 1, barley: 1 };
+
+// ═══ ★★★[T86 ECON 수술 2-d 2026-09-03 · 재민 확정] **식단은 사다리가 아니라 예산이다** ═══════
+//   재민 물음: *"식량이 여러 종류 있으면 골고루 소모해? 저렴한 것부터? 골고루만이면 비효율,
+//   저렴한 것부터면 행복이 바닥 — 경제학적 균형을 맞춰야."*
+//   종전 `consumeFood` 는 **고정 사다리**였다: 위 칸이 넉넉하면 그것만 먹고 **가격을 안 봤다.**
+//   그래서 어촌은 곳간에 곡식이 있어도 생선만 먹어 다양성 1군이고, 가난한 마을이 긁어먹다 우연히 4군이었다.
+//   ⇒ 다양성이 **설계가 아니라 재고 부족의 부산물**이었다. 그걸 예산 배분으로 바꾼다.
+//
+// ★군 배정 — **새 군을 만들지 않는다.** `FOOD_GROUP` 6군 그대로이고, 표에 없던 품목만 제 군에 넣는다:
+//   · 생곡(밀·쌀·보리) → `grain`   T73 이 식량으로 만들었는데 다양성 표는 아직 못 보고 있었다
+//   · 조리식 `cooked_food` → `grain`   근거는 이 파일의 `FOOD_GLUT_SAT` — 거기서 이미 곡물과 한 묶음이다
+//   · 특산 어패(연어·새우·게·굴·미역) → `fish` · 산포도 → `fruit` · 견과·도토리 → `forage`
+//     (전부 `FORAGE_FOOD_FACTOR` 가 이미 열량을 매겨 둔 품목이다 — 새 수 0)
+const T86_GROUP = Object.assign({}, FOOD_GROUP, {
+  wheat: 'grain', rice: 'grain', barley: 'grain', millet: 'grain', cooked_food: 'grain',
+  salmon: 'fish', shrimp: 'fish', crab: 'fish', oyster: 'fish', seaweed: 'fish',
+  grape: 'fruit', chestnut: 'forage', walnut: 'forage', acorn: 'forage',
+});
+// ★군별 몫 w_g — **새 수를 짓지 않는다.** `server/specialty.js` 의 `contributes.subsistence` 를
+//   군별로 평균 내어 정규화한 값이다(§0-ⓑ 표). 후보 셋을 시드 1020 으로 걸러 이것이 채택됐다.
+//     grain  밀1·쌀1·보리0.9·기장0.9 → 0.950      meat   훈제육0.8            → 0.800
+//     fish   연어0.9·새우0.4·게0.5·굴0.3·미역0.4·건어물0.8 → 0.550
+//     veg    절임0.5 → 0.500   fruit  말린과실0.4 → 0.400   forage 버섯0.3 → 0.300
+//   ⚠표본 수가 군마다 1~6개로 고르지 않다(meat 는 훈제육 하나다) — 그 한계는 보고 §1 에 적었다.
+//   ⚠`T86_WMODE` 는 **후보 스크린용 손잡이**다(지시 §2-① — 후보 셋을 시드 1020 으로 거른다).
+//     기본은 유도값(i). ii=균등 1/6 · iii=캐논 유도(`DIVERSITY_FULL`=4 ⇒ 상위 4군에 1/4씩).
+const T86_WMODE = process.env.T86_WMODE || 'i';
+const T86_W = (() => {
+  if (T86_WMODE === 'ii') { const e = 1 / 6; return { grain: e, meat: e, fish: e, veg: e, fruit: e, forage: e }; }
+  if (T86_WMODE === 'iii') { const q = 1 / DIVERSITY_FULL; return { grain: q, meat: q, fish: q, veg: q, fruit: 0, forage: 0 }; }
+  return { grain: 0.2714, meat: 0.2286, fish: 0.1571, veg: 0.1429, fruit: 0.1143, forage: 0.0857 };
+})();
+// ★부패 항 손잡이(스크린용) — 기본 켬. 유효가격 = 그림자가격 × (1 − DECAY_RATES[r]).
+const T86_DECAY = process.env.T86_DECAY !== '0';
+// ★보존식은 **예산에 안 들어간다** — 사다리 맨 뒤 규약(T17 ②) 그대로다.
+//   §0-ⓒ 실측이 그 예외를 요구했다: 재고를 채우고 재면 보존식 **열량 단위당 가격이 신선식보다 싸다**
+//   (말린과실 0.283 · 절임 0.353 · 건어물 0.461  대  과일 0.499 · 조리식 0.710 · 연어 1.794).
+//   ⇒ 예산에 넣으면 **말려 두는 게 이득**이 되어 신선식 시장이 죽는다. 그래서 뺐다.
+const T86_DIET = process.env.T86_DIET !== '0';   // 되돌림: T86_DIET=0 → T73 사다리 비트 재현
+
+// 이 품목 1단위가 내는 열량(= food 단위). 전부 이 파일의 기존 표에서 읽는다 — 사본 0.
+function _t86Factor(r) {
+  if (r === 'cooked_food') return 1.12;
+  if (r === 'food' || r === 'fish' || r === 'meat') return 1;
+  if (RAW_GRAINS.indexOf(r) >= 0) return RAW_GRAIN_FOOD_FACTOR;
+  return FORAGE_FOOD_FACTOR[r] || 0;
+}
 // ★무용재 — 실수요(use-value)가 ~0이라 수출해도 식량 못 삼. 식량안보와 무관하게 *항상* 생산 포만(성장기 누적까지 차단).
 //   광석(ore): 갑옷에 미량뿐. 장식재(금·은·보석): 화폐화 전엔 수요 0. 돌·금속(구리·주석)은 수요 있어 제외(가치재 수출).
 const SAT_ALWAYS = { ore: 1, gold: 1, silver: 1, gem: 1, pearl: 1, amber: 1, jade: 1, ivory: 1 };
