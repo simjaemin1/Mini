@@ -92,7 +92,33 @@ function _computeVillageStats(v, N) {
     if ((_eaten[id] || 0) / pop > 0.03) _fg.add(FOOD_GROUP[id]);
   }
   if ((_eaten.cooked_food || 0) / pop > 0.03) _fg.add('grain');   // 조리식 = 곡물군
-  const _divN = Math.min(1, _fg.size / DIVERSITY_FULL);
+  // ★★[T86] **행복은 "몇 군 먹었나"가 아니라 "예산대로 먹었나"** 다.
+  //   종전 `_fg.size / DIVERSITY_FULL` 은 **문턱 계단**이라 3% 를 한 톨 넘기면 만점이 붙었다.
+  //   ⇒ 달성 효용 비: U = Σ w_g · log(1 + x_g / x̄_g) 를 이상 식단(x_g = x̄_g) 대비 0..1 로.
+  //     x_g   = 그 군에서 실제로 먹은 **열량**(1인당) · x̄_g = 하루치 × w_g (예산이 곧 이상 식단)
+  //     이상일 때 U* = Σ w_g · log 2 = log 2 (Σw_g = 1) ⇒ 비 = U / log 2.
+  //   ★새 수 0 — w_g 는 위 표, 하루치는 `DAILY_FOOD_CONSUMPTION`, 나머지는 로그뿐이다.
+  //   ⚠`stats.foodGroups` 는 **계측용으로 남긴다**(옛 판정과 나란히 볼 수 있게).
+  let _divN;
+  if (T86_DIET) {
+    const _need = DAILY_FOOD_CONSUMPTION;                    // 1인 하루치
+    let U = 0;
+    const _gcal = {};
+    for (const r in T86_GROUP) {
+      const q = (_eaten[r] || 0); if (!(q > 0)) continue;
+      const fe = _t86Factor(r); if (!(fe > 0)) continue;
+      _gcal[T86_GROUP[r]] = (_gcal[T86_GROUP[r]] || 0) + q * fe / pop;
+    }
+    for (const g in T86_W) {
+      const xbar = _need * T86_W[g];
+      if (!(xbar > 0)) continue;
+      U += T86_W[g] * Math.log(1 + Math.min(1, (_gcal[g] || 0) / xbar));
+    }
+    _divN = Math.min(1, U / Math.log(2));
+    v._dietU = +_divN.toFixed(4);                            // 계측 — 보고 §행복 분포
+  } else {
+    _divN = Math.min(1, _fg.size / DIVERSITY_FULL);
+  }
   stats.happiness += _divN * DIVERSITY_HAPPY_W;
   stats.health += _divN * DIVERSITY_HEALTH_W;
   stats.foodGroups = _fg.size;
@@ -487,7 +513,7 @@ function consumeFood(v, need) {
   const eaten = v._foodEaten || (v._foodEaten = {});
   for (const k in eaten) eaten[k] = 0;
   // ★★[T86] **예산 단계 — 사다리보다 먼저.** 열량 예산 `need` 를 군별 몫 w_g 로 나누고, 군 안에서는
-  //   **열량 1단위당 유효가격**(그림자가격 × (1−감가) ÷ 열량환산)이 싼 품목부터 먹는다.
+  //   **열량 1단위당 유효가격**(그림자가격 ÷ 열량환산)이 싼 품목부터 먹는다.
   //   ⚠가격은 **v2 가 마을에 덮어 둔 캐시**(`_priceCache`)를 읽는다 — `server/trade.js` 머리 주석의
   //     "같은 날 안에선 같은 값" 규약을 식단도 그대로 따른다(NPC 교역 틱과 같은 표를 본다 · 사본 0).
   //   ⚠캐시가 없으면(v1 CLI · 픽스처 · 하네스) **조용히 아래 사다리로 내려간다** = 종전과 비트 동일.
@@ -502,7 +528,7 @@ function consumeFood(v, need) {
         const fe = _t86Factor(r); if (!(fe > 0)) continue;
         const pr = P[r]; if (!(pr > 0)) continue;
         const g = T86_GROUP[r];
-        (cand[g] || (cand[g] = [])).push({ r, fe, per: pr * (T86_DECAY ? (1 - (DECAY_RATES[r] || 0)) : 1) / fe });
+        (cand[g] || (cand[g] = [])).push({ r, fe, per: pr / fe });   // 유효가격 = 그림자가격 ÷ 열량환산
       }
       const groups = Object.keys(cand);
       if (groups.length) {
@@ -798,8 +824,12 @@ const T86_W = (() => {
   if (T86_WMODE === 'iii') { const q = 1 / DIVERSITY_FULL; return { grain: q, meat: q, fish: q, veg: q, fruit: 0, forage: 0 }; }
   return { grain: 0.2714, meat: 0.2286, fish: 0.1571, veg: 0.1429, fruit: 0.1143, forage: 0.0857 };
 })();
-// ★부패 항 손잡이(스크린용) — 기본 켬. 유효가격 = 그림자가격 × (1 − DECAY_RATES[r]).
-const T86_DECAY = process.env.T86_DECAY !== '0';
+// ★★[T86 · 재민 판정 2026-09-04] **부패 항은 안 넣는다 — 방향은 맞는데 크기가 없다.**
+//   지시 초안은 유효가격 = 그림자가격 × (1 − `DECAY_RATES`) 였다. 방향은 옳다(썩는 게 싸져 먼저 먹힌다).
+//   그런데 실측하니 `DECAY_RATES` 는 여섯 품목뿐이고(생곡·보존식·특산은 **0**) 값이 0.003~0.008 이라
+//   그 곱은 가격을 **최대 0.8%** 움직인다 — 군 안 정렬 순서를 **한 번도 안 바꾼다**(§0-ⓒ 표).
+//   ⇒ 재민 판정: **새 항 0 이 낫다.** 안 쓰는 항을 식에 남기면 다음 사람이 그게 작동한다고 읽는다.
+//   ⇒ 유효가격 = **그림자가격 ÷ 열량환산** 하나뿐이다. `DECAY_RATES` 는 원래 자리(부패 틱)에 그대로 있다.
 // ★보존식은 **예산에 안 들어간다** — 사다리 맨 뒤 규약(T17 ②) 그대로다.
 //   §0-ⓒ 실측이 그 예외를 요구했다: 재고를 채우고 재면 보존식 **열량 단위당 가격이 신선식보다 싸다**
 //   (말린과실 0.283 · 절임 0.353 · 건어물 0.461  대  과일 0.499 · 조리식 0.710 · 연어 1.794).
