@@ -2679,7 +2679,10 @@ const server = http.createServer((req, res) => {
     try {
       const u = new URL(req.url, 'http://x');
       res.end(JSON.stringify(SimVillages.routeDebug
-        ? SimVillages.routeDebug({ audit: parseInt(u.searchParams.get('audit') || '0', 10) || 0, invalidate: u.searchParams.get('invalidate') === '1' })
+        ? SimVillages.routeDebug({ audit: parseInt(u.searchParams.get('audit') || '0', 10) || 0, invalidate: u.searchParams.get('invalidate') === '1',
+            // ★[T85] `?resume=N&budget=K` — 캐시 N 쌍을 **재개형으로 다시 파서** 비트 동일인지 본다.
+            resume: parseInt(u.searchParams.get('resume') || '0', 10) || 0,
+            budget: parseInt(u.searchParams.get('budget') || '0', 10) || 0 })
         : { err: 'routeDebug 미탑재' }));
     } catch (e) { res.end(JSON.stringify({ err: e.message })); }
     return;

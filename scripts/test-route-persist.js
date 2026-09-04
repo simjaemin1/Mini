@@ -63,15 +63,17 @@ async function waitHttp(u, n = 300) { for (let i = 0; i < n; i++) { try { const 
 //   ⚠판정을 무르게 만들지 않는다: 재시도해도 서버가 진짜 죽었으면 아래 ⑥ "선계산이 완주한다"가
 //     그대로 떨어진다(루프가 150회를 다 돌고 warmLeft>0 으로 끝난다). 가리는 게 아니라 **끊긴 소켓만** 뺀다.
 let _netRetry = 0;
-async function jfetch(u, tries = 4) {
+// ★[T85] `ms` — 상한을 부르는 쪽이 정한다. 재개형 감사(⑧)는 579쌍을 **다시 파므로** 20초로는 모자란다
+//   (그 한 번을 위해 폴링 상한을 통째로 늘리면 ⑥⑦ 의 '끊김 감지'가 무뎌진다 — 그래서 인자다).
+async function jfetch(u, tries = 4, ms = 20000) {
   let last;
   for (let i = 0; i < tries; i++) {
-    try { return await fetch(u, { headers: { connection: 'close' }, signal: AbortSignal.timeout(20000) }); }
+    try { return await fetch(u, { headers: { connection: 'close' }, signal: AbortSignal.timeout(ms) }); }
     catch (e) { last = e; _netRetry++; await sleep(300); }
   }
   throw last;
 }
-const jget = async (u) => (await jfetch(u)).json();
+const jget = async (u, ms) => (await jfetch(u, 4, ms)).json();
 const cp = (src, dst) => { for (const sfx of ['', '-wal', '-shm']) { try { fs.copyFileSync(src + sfx, dst + sfx); } catch (e) { try { fs.unlinkSync(dst + sfx); } catch (e2) {} } } };
 
 // ★DB 를 **지우지 않고** 다시 띄운다 — 그게 이 하네스의 주제(재기동해도 남는가)다.
@@ -261,6 +263,51 @@ async function runDays(n) {
   ok(dCold <= 5, '⑥ ★★선계산 뒤 경계에서 **거의 안 판다**', `3일 동안 새로 판 길 ${dCold}쌍`);
   ok(P6 && P6.econTick.last && P6.econTick.last.maxChunkAt !== 'caravan', '⑥ ★★가장 큰 조각이 더는 **캐러밴이 아니다**',
     P6 && P6.econTick.last ? `${P6.econTick.last.maxChunk}ms(${P6.econTick.last.maxChunkAt})` : '?');
+
+  // ── ★★[T85 2026-09-03] ⑧ 재개 가능 A* — **정본 시드 세계 전 쌍이 비트 동일** ──────────────
+  //   ★왜 여기인가: 579쌍은 **이 세계가 실제로 쓰는 쌍**이다(선계산 큐가 세운 그것).
+  //     합성 격자로 재면 그건 다른 세계를 잰 것이다(족보: 계측기도 사본 금지).
+  //     `sim/_path-core-test.js`(→ `scripts/test-path-core.js`)가 커널의 **형태**를 재고,
+  //     여기서는 **이 세계의 전 쌍**을 잰다. 둘이 짝이다.
+  //   ★`budget=1` = 한 노드마다 놓았다 이어 간다 = 순서 보존의 가장 센 증거.
+  {
+    const RS = await jget(`http://localhost:${ZPORT}/routedbg?resume=${W0.warmTotal + 50}&budget=1`, 900000);
+    const R = RS.resume || {};
+    ok((R.n | 0) >= W0.warmTotal, '⑧ [상황] 전 쌍을 실제로 다시 팠다(표본이 아니다)', `${R.n}쌍 / 선계산 ${W0.warmTotal}쌍`);
+    ok((R.maxSlices | 0) > 100, '⑧ [상황] 예산 1노드가 실제로 잘게 쪼갰다 — 한 번에 끝났으면 자명 통과다',
+      `한 쌍 최대 ${R.maxSlices}조각 · 합 ${R.slices}조각`);
+    ok(R.mismatch === 0, '★★⑧ **전 쌍이 비트 동일** — 재개형이 동기 문과 같은 길을 낸다',
+      `불일치 ${R.mismatch}/${R.n}${R.first ? ' · 첫 사례 ' + R.first : ''}`);
+  }
+
+  // ── ⑨ 한 조각이 **예산 안**에 든다 — 이 카드의 수(數) ────────────────────────
+  {
+    const P9 = await jget(`http://localhost:${ZPORT}/perf`);
+    const pr = (P9.econTick && P9.econTick.probe) || {};
+    const slice = P9.sliceMs | 0;
+    ok((pr.pathJobs | 0) > 0, '⑨ [상황] 재개형으로 판 길이 실제로 있다(자명 통과 금지)', `${pr.pathJobs}쌍`);
+    ok(pr.pathStepNodes > 0, '⑨ [상황] 노드 알갱이가 배선돼 있다', `${pr.pathStepNodes}노드마다 시계`);
+    // ★한 조각(=재개형 한 번의 체류)의 상한 = 예산 + **알갱이 하나**. 알갱이 하나는 따로 잰다(아래).
+    //   ⚠`0` 이면 재개형이 한 번도 양보 안 한 것 = 이 검사가 뜻이 없다 ⇒ 위 상황 assert 가 그걸 막는다.
+    ok((pr.pathChunkMax | 0) <= 60, '⑨ 알갱이 하나(32노드)의 최악이 작다 — 이게 초과분의 전부다',
+      `알갱이 최대 ${pr.pathChunkMax}ms`);
+    ok((pr.pathSliceMax | 0) <= slice + (pr.pathChunkMax | 0) + 20, '★★⑨ 재개형 A* 의 **한 조각이 예산 안**이다(종전 1,265~1,695ms)',
+      `한 조각 최대 ${pr.pathSliceMax}ms ≤ 예산 ${slice}ms + 알갱이 ${pr.pathChunkMax}ms + 20ms`);
+    ok((pr.pathDrop | 0) >= 0, '⑨ (계측) 슬롯을 뺏겨 버린 중간 상태', `${pr.pathDrop}회`);
+  }
+
+  // ── ⑩ **동시 둘 금지**가 소스에 서 있다 ────────────────────────────────────
+  //   격자 scratch 는 하나(gen-스탬프 하나 · `came` 는 스탬프도 없음)라 두 탐색이 번갈아 쓰면 깨진다
+  //   (`sim/_path-core-test.js ④b` 가 그 깨짐을 실측으로 보인다). ⇒ 슬롯이 하나여야 한다.
+  {
+    const src = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8');
+    const slots = (src.match(/let _pathJob\b/g) || []).length;
+    ok(slots === 1, '⑩ ★재개형 슬롯이 **하나**다(`_pathJob`)', `선언 ${slots}개`);
+    ok(/_routeBegin\(x0, y0, x1, y1\) \{[\s\S]{0,900}?if \(_pathJob\) \{ _probe\.pathDrop\+\+; _pathJob = null; \}/.test(src),
+      '★★⑩ **새 탐색이 시작되면 세워 둔 것을 버린다** — 동기 문(전쟁·귀환·감사)이 30Hz 로 끼어들어도 안 섞인다');
+    ok(!/PathCore\.routePathBegin/.test(src.replace(/function _routeBegin[\s\S]*?\n\}/, '')),
+      '⑩ 재개형 문을 여는 자리가 `_routeBegin` **하나**다(사본 0)');
+  }
   await down();
 
   console.log(`\n=== ${pass} 통과 / ${fail} 실패 ===\n`);

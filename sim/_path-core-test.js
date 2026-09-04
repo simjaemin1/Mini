@@ -162,5 +162,130 @@ const shape = p => { let s = ''; for (let i = 1; i < p.length; i++) { const dx =
   const eqr = f1.length === b1.length && f1.every((n, i) => n.x === b1[b1.length - 1 - i].x && n.y === b1[b1.length - 1 - i].y);
   ok(eqr, 'smooth 왕복 대칭');
 }
+
+// ── ★★[T85 2026-09-03] 재개 가능 A* — **답은 비트 동일, 예산은 언제 쉬는가만 정한다** ────────
+//   ★왜 이 검사가 이 카드의 전부인가: 재개형이 답을 조금이라도 바꾸면 교역로가 바뀌고,
+//     그러면 econ 기준선이 통째로 흔들린다. "빨라졌다"는 그 다음 문제다.
+//   ★자명 통과 금지: 열린 지형만 재면 경로가 하나뿐이라 무엇을 해도 같다 ⇒ **장애물 난수 세계**에서
+//     재고, 경로가 실제로 꺾이는지(직선 아님)와 탐색이 실제로 컸는지(pops>0)를 함께 assert 한다.
+{
+  console.log('\n[T85] 재개 가능 A* — 비트 동일');
+  const W = 90, H = 70;
+  let sd = 987654321;
+  const rnd = () => { sd = (sd * 1103515245 + 12345) & 0x7fffffff; return sd / 0x7fffffff; };
+  const grid = new Uint8Array(W * H);
+  for (let i = 0; i < W * H; i++) grid[i] = rnd() < 0.24 ? 1 : 0;
+  const B = (x, y) => (x < 0 || y < 0 || x >= W || y >= H || grid[y * W + x] === 1);
+  const mkSc = () => ({ w: W, h: H, g: new Int32Array(W * H), came: new Int32Array(W * H), stamp: new Int32Array(W * H), gen: 0 });
+  // 실제로 풀리는 케이스만 모은다(도달 불능은 아래 ⑤ 가 따로 잰다)
+  const cases = [];
+  for (let k = 0; cases.length < 30 && k < 4000; k++) {
+    const a = [(rnd() * W) | 0, (rnd() * H) | 0], b = [(rnd() * W) | 0, (rnd() * H) | 0];
+    if (B(a[0], a[1]) || B(b[0], b[1])) continue;
+    if (Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) < 40) continue;
+    if (PC.routePath(a[0], a[1], b[0], b[1], { blocked: B })) cases.push([a, b]);
+  }
+  ok(cases.length === 30, `[상황] 풀리는 케이스 30개를 세웠다(${cases.length})`);
+  let bent = 0, maxPops = 0;
+  let eqFull = 0, eq1 = 0, eqMix = 0;
+  for (const [a, b] of cases) {
+    const sync = PC.routePath(a[0], a[1], b[0], b[1], { blocked: B, scratch: mkSc() });
+    // ⓐ 완주 스텝(예산 무제한)
+    let S = PC.routePathBegin(a[0], a[1], b[0], b[1], { blocked: B, scratch: mkSc() });
+    const full = PC.pathStep(S, 0);
+    if (JSON.stringify(full.path) === JSON.stringify(sync)) eqFull++;
+    if (S.pops > maxPops) maxPops = S.pops;
+    // ⓑ **예산 1노드** — 한 노드마다 놓았다 이어 간다(순서 보존의 가장 센 증거)
+    S = PC.routePathBegin(a[0], a[1], b[0], b[1], { blocked: B, scratch: mkSc() });
+    let r; do { r = PC.pathStep(S, 1); } while (!r.done);
+    if (JSON.stringify(r.path) === JSON.stringify(sync)) eq1++;
+    // ⓒ 들쭉날쭉한 예산(1·7·113·2 …) — 경계에 특별한 값이 없다는 증거
+    S = PC.routePathBegin(a[0], a[1], b[0], b[1], { blocked: B, scratch: mkSc() });
+    const budgets = [1, 7, 113, 2, 999, 3];
+    let i2 = 0; do { r = PC.pathStep(S, budgets[i2++ % budgets.length]); } while (!r.done);
+    if (JSON.stringify(r.path) === JSON.stringify(sync)) eqMix++;
+    // 상황 — 이 경로가 직선이 아니다(꺾인다)
+    if (sync && sync.length > 2) {
+      const dx0 = sync[1].x - sync[0].x, dy0 = sync[1].y - sync[0].y;
+      for (let i = 2; i < sync.length; i++) { if (sync[i].x - sync[i - 1].x !== dx0 || sync[i].y - sync[i - 1].y !== dy0) { bent++; break; } }
+    }
+  }
+  ok(bent >= 25, `[상황] 경로가 실제로 꺾인다 — 직선만 재면 자명 통과다(${bent}/30)`);
+  ok(maxPops > 500, `[상황] 탐색이 실제로 컸다(최대 pops ${maxPops})`);
+  ok(eqFull === 30, `★★① 완주 스텝 = 동기 문 (비트 동일 ${eqFull}/30)`);
+  ok(eq1 === 30, `★★② **예산 1노드**로 쪼개도 같다 — 꺼내는 순서가 보존된다 (${eq1}/30)`);
+  ok(eqMix === 30, `★★③ 들쭉날쭉한 예산으로 쪼개도 같다 (${eqMix}/30)`);
+
+  // ④ **두 탐색을 번갈아** — Map 백엔드(scratch 없음)는 상태가 S 안에만 있어 안전해야 한다.
+  //   ⚠scratch 를 **공유**하면 깨진다(gen-스탬프가 하나) — 그건 호출측 계약(`villages.js` 슬롯 하나)이고,
+  //     여기서는 "그 계약이 필요한 이유"를 실측으로 남긴다: 같은 scratch 로 번갈아 돌리면 **틀린다**.
+  {
+    const [a1, b1] = cases[0], [a2, b2] = cases[1];
+    const s1 = PC.routePath(a1[0], a1[1], b1[0], b1[1], { blocked: B });
+    const s2 = PC.routePath(a2[0], a2[1], b2[0], b2[1], { blocked: B });
+    let A = PC.routePathBegin(a1[0], a1[1], b1[0], b1[1], { blocked: B });
+    let C = PC.routePathBegin(a2[0], a2[1], b2[0], b2[1], { blocked: B });
+    let ra = null, rc = null;
+    while (!ra || !rc) {
+      if (!ra) { const t = PC.pathStep(A, 5); if (t.done) ra = t; }
+      if (!rc) { const t = PC.pathStep(C, 5); if (t.done) rc = t; }
+    }
+    ok(JSON.stringify(ra.path) === JSON.stringify(s1) && JSON.stringify(rc.path) === JSON.stringify(s2),
+      '★★④ Map 백엔드는 **번갈아 돌려도** 둘 다 같다(상태가 S 안에만 있다)');
+    // ★같은 scratch 를 공유하면 **틀린다** — 그래서 호출측이 슬롯 하나를 쓴다(자명 통과 방지의 반대편)
+    const shared = mkSc();
+    let A2 = PC.routePathBegin(a1[0], a1[1], b1[0], b1[1], { blocked: B, scratch: shared });
+    let C2 = PC.routePathBegin(a2[0], a2[1], b2[0], b2[1], { blocked: B, scratch: shared });
+    let ra2 = null, rc2 = null, guard = 0;
+    while ((!ra2 || !rc2) && ++guard < 200000) {
+      if (!ra2) { const t = PC.pathStep(A2, 5); if (t.done) ra2 = t; }
+      if (!rc2) { const t = PC.pathStep(C2, 5); if (t.done) rc2 = t; }
+    }
+    const broke = !ra2 || !rc2 || JSON.stringify(ra2.path) !== JSON.stringify(s1) || JSON.stringify(rc2.path) !== JSON.stringify(s2);
+    ok(broke, '★★④b scratch 를 **공유**해 번갈아 돌리면 실제로 깨진다 — 슬롯 하나 계약의 근거');
+  }
+
+  // ⑤ 도달 불능 · 끝점 차단 — 두 문이 **같이** null
+  {
+    const G2 = (x, y) => (x < 0 || y < 0 || x >= 20 || y >= 20 || x === 10);   // 세로 벽으로 완전 분리
+    ok(PC.routePath(2, 2, 15, 15, { blocked: G2 }) === null, '⑤ 동기 문: 도달 불능 = null');
+    const S5 = PC.routePathBegin(2, 2, 15, 15, { blocked: G2 });
+    let r5; do { r5 = PC.pathStep(S5, 3); } while (!r5.done);
+    ok(r5.path === null, '⑤ 재개형 문: 도달 불능 = null(같은 판정)');
+    ok(PC.routePathBegin(10, 2, 15, 15, { blocked: G2 }) === null, '⑤ 끝점이 막혔으면 재개형도 시작조차 안 한다');
+  }
+
+  // ⑥ 왕복 대칭이 재개형에서도 산다(정규화가 재귀에서 플래그로 바뀐 자리)
+  {
+    const [a, b] = cases[2];
+    const S6 = PC.routePathBegin(b[0], b[1], a[0], a[1], { blocked: B });
+    let r6; do { r6 = PC.pathStep(S6, 11); } while (!r6.done);
+    const fwd = PC.routePath(a[0], a[1], b[0], b[1], { blocked: B });
+    const rev = r6.path.slice().reverse();
+    ok(JSON.stringify(rev) === JSON.stringify(fwd), '★⑥ 재개형도 왕복 대칭 — reverse(b→a) == a→b');
+  }
+
+  // ⑦ ★자명 통과 금지 — **일부러 깨면 잡는가.** 양보가 반복 하나를 **먹는** 재개형(=버그난 스텝 커널)을
+  //   흉내 낸다: 재개 사이에 힙에서 하나를 빼면 그 노드는 영영 안 꺼내진다.
+  //   ⚠한 케이스만 보면 안 된다 — A* 는 한 노드쯤 잃어도 다른 부모로 같은 답에 닿는 수가 있다
+  //     (실측: 30개 중 1개가 그랬다. 그 하나를 골랐다가 이 검사가 헛되이 빨개졌다).
+  //   ⇒ 30개 전부에 심고 **대부분이 달라지는지**를 본다.
+  {
+    let diff = 0, poked = 0;
+    for (const [a, b] of cases) {
+      const sync = PC.routePath(a[0], a[1], b[0], b[1], { blocked: B });
+      const S7 = PC.routePathBegin(a[0], a[1], b[0], b[1], { blocked: B });
+      let r7;
+      do {
+        r7 = PC.pathStep(S7, 9);
+        if (!r7.done && S7.open.size > 2) { S7.open.pop(); poked++; }
+      } while (!r7.done);
+      if (JSON.stringify(r7.path) !== JSON.stringify(sync)) diff++;
+    }
+    ok(poked > 0, `⑦ [상황] 돌연변이를 실제로 심었다(양보마다 힙에서 하나 뺐다 · ${poked}회)`);
+    ok(diff >= 25, `★⑦ 자명 통과 금지 — 양보가 반복을 먹으면 **답이 달라진다**(${diff}/30) ⇒ ①②③ 의 초록은 진짜다`);
+  }
+}
+
 console.log(fail === 0 ? `PASS ${pass}/${pass + fail}` : `FAIL ${fail}/${pass + fail}`);
 process.exit(fail === 0 ? 0 : 1);

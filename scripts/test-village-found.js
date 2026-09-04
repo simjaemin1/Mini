@@ -240,8 +240,23 @@ say('\n[④ 건립 계약 — **배선 검사**(실동작은 실클라 E2E `e2e-
   ok(!/computeAndInjectDistMatrix\(/.test(_fpvBody),
     '★대조 — 그 함수 안에서 거리행렬을 **직접 부르지 않는다**(불렀다면 위 한 줄이 있어도 정지한다)');
   ok(/incrementalFrom: _k/.test(src), '지연 재계산은 **증분**으로 돈다(마을이 늘어난 경우) — 지형이 바뀐 경우엔 `_distIncrFrom` 이 −1 이라 전쌍');
-  ok(/state\._distIncrFrom = -1;/.test(src.slice(src.indexOf('function invalidateTradeDistances'), src.indexOf('function invalidateTradeDistances') + 800)),
+  // ★★[T85 2026-09-03] 창을 **글자 수로 자르지 않는다 — 구조로 자른다**(족보 (115)).
+  //   종전엔 `+800자` 였다. T85 가 그 함수에 주석 여섯 줄을 더하자(`_pathJob` 을 같이 버린다는 근거)
+  //   찾는 줄이 창 밖으로 밀려 **제품은 멀쩡한데 하네스만** 빨개졌다 — T62 가 이 파일의
+  //   `foundPlayerVillage +6000자` 에서 겪은 것과 **같은 함정**이다. 두 번째라 이번엔 구조로 자른다.
+  const _invBody = (() => {
+    const i = src.indexOf('function invalidateTradeDistances');
+    if (i < 0) return '';
+    const j = src.indexOf('\nfunction ', i + 10);
+    return src.slice(i, j > 0 ? j : src.length);
+  })();
+  ok(_invBody.length > 400, '★[상황] `invalidateTradeDistances` 본문을 통째로 잡았다(창이 짧으면 아래가 헛것이다)', `${_invBody.length}자`);
+  ok(/state\._distIncrFrom = -1;/.test(_invBody),
     '★지형이 바뀌면 증분을 취소한다 — 옛 쌍도 썩으므로 전쌍으로 돌린다(썩은 값 재사용 금지)');
+  // ★[T85] 같은 훅이 **파던 길도 버린다** — 재개형은 여러 프레임에 걸쳐 파므로, 안 버리면
+  //   바뀌기 전 세계로 판 길이 무효화 **뒤에** 캐시에 들어앉는다(`test-route-persist ④` 가 그걸 잡았다).
+  ok(/_pathJob = null;/.test(_invBody),
+    '★[T85] 무효화가 **재개 중인 A\* 도** 버린다(반쯤 판 길이 무효화를 타고 넘지 않는다)');
   ok(/state\._distBlk/.test(src), '★코스 격자 메모를 호출 간에 캐시한다(캐러밴 A* 격자와 동형·같은 무효화 훅) — 하네스 실측 41,088ms → 1,584ms');
   ok(!/materializeVillageStructures\(db, \{ dbId/.test(src), '큰집(8×8)을 새로 짓지 않는다 — 플레이어가 세운 회관이 그 마을의 회관이다');
   const zsrc = require('fs').readFileSync(path.join(__dirname, '..', 'server', 'zone.js'), 'utf8');

@@ -1475,7 +1475,33 @@ function ensureRouteGrid() {
   };
   return state._route;
 }
-function computeRoutePts(x0, y0, x1, y1) {
+// ★★[T85 2026-09-03 재민 확정] **재개 가능 A\*** — 문이 둘, 계산은 하나.
+//   `_routeBegin` 이 상태를 만들고, 동기 문(`computeRoutePts` · 서명 무변)은 그 자리에서 완주하고,
+//   재개형 문(`_routeResume`)은 **예산만큼만** 밀고 나온다. 답은 비트 동일이다 —
+//   근거는 `sim/path-core.js` 머리 주석(양보는 반복 사이에서만 · 힙과 g 는 그대로).
+//   ⚠**한 번에 하나**다. 교역로 격자의 scratch(`R.sc`)는 gen-스탬프가 하나뿐이고 `came` 는 스탬프도
+//     없어서, 두 탐색이 번갈아 쓰면 서로의 g 를 지운다(§0-ⓐ 실측). ⇒ 슬롯이 하나(`_pathJob`)이고,
+//     다른 일이 오면 **중간 상태를 버린다**(버려도 안전하다 — 아무것도 저장되기 전이다).
+//   ⚠예산은 **새 손잡이가 아니다** — 슬라이서의 `VILLAGE_TICK_SLICE_MS`(기본 16ms) 그대로다.
+//     노드 수는 거기서 유도한다: 실측 ~1,000반복/ms 라 시계를 1,024반복마다 본다(≈1ms 알갱이).
+//   ★★알갱이(시계를 보는 단위)는 **작게 못 박는다 — 키우지 않는다.** 두 번 틀리고 얻은 값이다:
+//     ① 1,024 로 두니 한 조각이 **193ms**(예산 16ms). 노드 하나의 값이 판마다 100배 다르다 —
+//        격자 차단 메모(`R.blk`)가 차가우면 노드 하나가 `coarseOpen` 여덟 번이고, 그 하나는 물·바위
+//        칸에서 `DIST_STEP²` 짜리 다리 검사를 돈다.
+//     ② 그래서 "잰 속도로 알갱이를 키우는" 자기 보정을 넣었더니 **519ms**. 이유가 분명하다:
+//        속도를 **따뜻한 구간에서** 재고 그 값으로 키운 알갱이가 **차가운 구간**에 들어간다.
+//        `Date.now()` 가 1ms 해상도라 빠른 조각이 0 으로 잡히는 것도 거들었다.
+//     ⇒ 키우지 않는다. 32 노드 고정이면 최악 한 조각이 작고, 시계 값은 무시할 수 있다:
+//        따뜻할 때 32노드 ≈ 0.03ms ⇒ 16ms 예산에 시계 500번 ≈ 15µs(예산의 0.1%). 실측이 그렇게 말한다.
+const PATH_STEP_NODES = 32;
+let _pathJob = null;   // { key, S, x0, y0, x1, y1, gw, half, workMs, sliceMax }
+function _routeBegin(x0, y0, x1, y1) {
+  // ★★[T85 · §0-ⓐ 실측의 직접 귀결] **격자 scratch 는 하나다.** 새 탐색이 시작되면 `sc.gen` 이 오르고,
+  //   그 순간 세워 둔 탐색의 g 는 전부 "낡은 세대"가 되어 `Infinity` 로 읽힌다(`came` 는 스탬프도 없다).
+  //   ⇒ **어떤 문으로든** 새 탐색이 시작되면 세워 둔 것을 버린다. 동기 문(전쟁·귀환 폴백·감사)이
+  //     30Hz 로 끼어들 수 있으므로, 이 한 줄이 없으면 재개형이 **조용히 틀린 길**을 낸다.
+  //   ⚠버려도 안전하다 — 완주 전에는 캐시에도 DB 에도 아무것도 안 들어간다.
+  if (_pathJob) { _probe.pathDrop++; _pathJob = null; }
   const R = ensureRouteGrid();
   if (!R) return null;
   const { gw, gh, half, ta } = R;
@@ -1503,17 +1529,56 @@ function computeRoutePts(x0, y0, x1, y1) {
   if (!PathCore) PathCore = require('../sim/path-core.js');
   if (!R.sc) R.sc = { w: gw, h: gh, g: R.g, came: R.came, stamp: R.stamp, gen: R.gen | 0 };
   const RD = state.roads;   // §16 답압 길 A* 스텝 할인(코스 그리드 coarse 등급 — 길 없으면 전부 ×1 = 기존 경로 그대로)
-  const nodesP = PathCore.routePath(si % gw, (si / gw) | 0, ti % gw, (ti / gw) | 0, {
+  const S = PathCore.routePathBegin(si % gw, (si / gw) | 0, ti % gw, (ti / gw) | 0, {
     blocked: isBlk,
     costMul: RD ? ((x, y) => RD.courseCostMul(x, y)) : null,
     maxPops: 250000,
     scratch: R.sc,
   });
+  if (!S) return null;
+  return { S, x0, y0, x1, y1, gw, half, workMs: 0, sliceMax: 0, slices: 0 };
+}
+// 노드열 → px 폴리라인. 문 둘이 **같은 이걸** 쓴다(변환을 두 번 적으면 그게 사본이다).
+function _routeFinish(J, nodesP) {
   if (!nodesP) return null;
-  const pts = [{ x: x0, y: y0 }];
-  for (const n of nodesP) pts.push({ x: n.x * DIST_STEP * SZ + half * SZ + SZ / 2, y: n.y * DIST_STEP * SZ + half * SZ + SZ / 2 });
-  pts.push({ x: x1, y: y1 });
+  const pts = [{ x: J.x0, y: J.y0 }];
+  for (const n of nodesP) pts.push({ x: n.x * DIST_STEP * SZ + J.half * SZ + SZ / 2, y: n.y * DIST_STEP * SZ + J.half * SZ + SZ / 2 });
+  pts.push({ x: J.x1, y: J.y1 });
   return pts;
+}
+// ── 동기 문 — **서명 무변**. 랩·하네스·전쟁·귀환 폴백·감사가 전부 이 문만 안다.
+function computeRoutePts(x0, y0, x1, y1) {
+  const J = _routeBegin(x0, y0, x1, y1);
+  if (!J) return null;
+  return _routeFinish(J, PathCore.pathStep(J.S, 0).path);
+}
+// ── 재개형 문 — 예산(ms)만큼 밀고 나온다. `{ done, pts }`. `done:false` 면 다음 조각에 이어 간다.
+//   ⚠`budgetMs <= 0` = 슬라이서를 끈 대조군(`VILLAGE_TICK_SLICE_MS=0`) ⇒ **한 번에 완주**한다
+//     (종전 동작 그대로 — 되돌리는 스위치가 경로에도 그대로 걸린다).
+function _routeResume(key, x0, y0, x1, y1, budgetMs) {
+  if (_pathJob && _pathJob.key !== key) { _probe.pathDrop++; _pathJob = null; }   // ★한 번에 하나
+  if (!_pathJob) {
+    const J = _routeBegin(x0, y0, x1, y1);
+    if (!J) return { done: true, pts: null, workMs: 0, sliceMax: 0, slices: 0 };
+    J.key = key; _pathJob = J; _probe.pathJobs++;
+  }
+  const J = _pathJob;
+  const t0 = Date.now();
+  const close = (done, path) => {
+    const d = Date.now() - t0;
+    J.workMs += d; J.slices++; if (d > J.sliceMax) J.sliceMax = d;
+    if (J.sliceMax > _probe.pathSliceMax) _probe.pathSliceMax = J.sliceMax;
+    if (!done) return { done: false };
+    _pathJob = null;
+    return { done: true, pts: _routeFinish(J, path), workMs: J.workMs, sliceMax: J.sliceMax, slices: J.slices };
+  };
+  for (;;) {
+    const c0 = Date.now();
+    const r = PathCore.pathStep(J.S, budgetMs > 0 ? PATH_STEP_NODES : 0);
+    { const el = Date.now() - c0; if (el > _probe.pathChunkMax) _probe.pathChunkMax = el; }   // 알갱이 하나의 최악(계측)
+    if (r.done) return close(true, r.path);
+    if (Date.now() - t0 >= budgetMs) return close(false, null);
+  }
 }
 const _routeWarned = new Set();
 // ★★[T42 2026-09-01] **교역로 캐시를 존 DB 에 영속한다.**
@@ -1618,8 +1683,15 @@ function _routeWarmStep() {
   if (now - (state._routeHumanAt || 0) < ROUTE_WARM_IDLE_MS) return;
   // ★★[T42-b] 걸음 사이에 루프를 놓아 준다 — 그래야 쓰기·접속이 끼어든다.
   if (now - (state._routeWarmAt || 0) < ROUTE_WARM_GAP_MS) return;
-  const pair = q.shift();
-  try { getRoute(pair[0], pair[1]); } catch (e) {}
+  // ★★[T85] 한 걸음을 **조각으로** 판다 — 종전엔 한 쌍이 통째로 최대 2,393ms 였고(T42-b 실측)
+  //   그게 루프를 그만큼 잡았다. 이제 한 프레임에 예산(=슬라이서 손잡이)만큼만 판다.
+  //   ⚠`GAP_MS`(걸음 사이 쉼)의 뜻은 **그대로**다: 한 걸음 = 한 쌍이다. 쌍이 끝났을 때만 시계를 다시 잰다
+  //     ⇒ 쌍 하나를 파는 동안은 프레임마다 한 조각씩(16ms), 쌍과 쌍 사이에는 종전대로 250ms 쉰다.
+  const pair = q[0];
+  let fin = true;
+  try { fin = getRouteResumable(pair[0], pair[1], TICK_SLICE_MS).done; } catch (e) { fin = true; }
+  if (!fin) return;                  // 아직 이 쌍을 파는 중 — 다음 프레임에 이어 간다(큐에서 안 뺀다)
+  q.shift();
   state._routeWarmAt = Date.now();   // ★걸음이 **끝난 뒤**부터 재다 — 2.4초짜리 뒤에도 진짜로 쉬게
   if (!q.length) console.log(`[${state.zoneId}] 🐂 교역로 선계산 완료 — ${state.routeWarmTotal}쌍(경계에서 팔 길이 그만큼 줄었다)`);
 }
@@ -1666,6 +1738,28 @@ function routeDebug(opts) {
                 ioQuietMs: (state.deps && state.deps.ioQuietMs) ? state.deps.ioQuietMs() : null,
                 primed: state._routePrimed | 0, coldPrimed: _probe.routeColdPrimed | 0,
                 db: (state.db && state.db.countTradeRoutes) ? state.db.countTradeRoutes(state.zoneId) : -1 };
+  // ★★[T85] **재개형 감사** — 캐시에 든 길(동기 문이 판 것)과 **재개형으로 다시 판 길**이 비트 동일인가.
+  //   ★왜 이 자리인가: 579쌍은 **정본 시드 세계의 실제 쌍**이다(선계산 큐가 세운 그것) —
+  //     합성 격자로 재면 그건 다른 세계를 잰 것이다(족보: 계측기도 사본 금지 · 정본 함수를 불러라).
+  //   ★`budget` 은 **노드 예산**이다: 1 이면 한 노드마다 놓았다 이어 간다 = 순서 보존의 가장 센 증거.
+  //   ⚠재개형은 `_routeBegin` 이 세우고 `pathStep` 이 미는 **그 문 그대로**를 쓴다(사본 0).
+  if (o.resume > 0 && state.routeCache) {
+    const bud = Math.max(1, o.budget | 0);
+    let n = 0, bad = 0, first = '', slices = 0, maxSlices = 0;
+    for (const [key, pts] of state.routeCache) {
+      if (n >= o.resume) break;
+      const p = key.split('_'); const a = state.byDbId.get(+p[0]), b = state.byDbId.get(+p[1]);
+      if (!a || !b) continue;
+      const J = _routeBegin(a.ccx * SZ + SZ / 2, a.ccy * SZ + SZ / 2, b.ccx * SZ + SZ / 2, b.ccy * SZ + SZ / 2);
+      let re = null, k = 0;
+      if (J) { let r; do { r = PathCore.pathStep(J.S, bud); k++; } while (!r.done); re = _routeFinish(J, r.path); }
+      _pathJob = null;
+      const same = JSON.stringify(re || null) === JSON.stringify(pts || null);
+      n++; slices += k; if (k > maxSlices) maxSlices = k;
+      if (!same) { bad++; if (!first) first = key; }
+    }
+    out.resume = { n, mismatch: bad, first, budget: bud, slices, maxSlices };
+  }
   if (o.audit > 0 && state.routeCache) {
     let n = 0, bad = 0, first = '';
     for (const [key, pts] of state.routeCache) {
@@ -1681,29 +1775,58 @@ function routeDebug(opts) {
   if (o.invalidate) { invalidateTradeDistances(0, 0); out.invalidated = true; }   // ★진짜 훅을 부른다(사본 금지)
   return out;
 }
-function getRoute(aVil, bVil) { // 무방향 쌍 캐시(랩 getTradePath 동형) — null도 캐시(불능쌍 반복 계산 방지)
+// ★[T85] 쌍 키 · 콜드 시작 · 완주 뒤처리를 **한 곳**에 둔다 — 동기 문과 재개형 문이 같은 이걸 쓴다.
+//   (종전엔 `getRoute` 안에 다 붙어 있었다. 재개형이 이걸 옮겨 적으면 그게 사본이고,
+//    그날부터 재개형으로 판 길은 DB 에 안 남거나 두 번 세어진다.)
+function _routeKey(aVil, bVil) {
   const fwd = aVil.dbId <= bVil.dbId;
-  const key = fwd ? `${aVil.dbId}_${bVil.dbId}` : `${bVil.dbId}_${aVil.dbId}`;
+  return { fwd, key: fwd ? `${aVil.dbId}_${bVil.dbId}` : `${bVil.dbId}_${aVil.dbId}` };
+}
+function _routeStore(key, pts, s, t, workMs) {
+  // ★[T85] 콜드 셈은 **판 길이 실제로 나온 그 자리**에서 한다(종전엔 미스 진입에서 셌다).
+  //   재개형은 중간에 슬롯을 뺏기면 그 쌍을 처음부터 다시 파는데, 진입에서 세면 그때 **두 번** 세어진다.
+  //   "몇 쌍을 팠나"는 완주 수가 답이다 — 동기 문에서는 값이 종전과 똑같다(미스 = 완주 1회).
+  _probe.routeCold++;
+  // ★[T42] **물려받은 쌍을 다시 파면** 영속이 헛일이다 — 그 사건만 따로 센다(하네스가 0 을 요구한다).
+  if (state._routePrimedKeys && state._routePrimedKeys.has(key)) _probe.routeColdPrimed++;
+  state.routeCache.set(key, pts || null);
+  { const d = workMs | 0; _probe.routeMs += d; if (d > _probe.routeMax) _probe.routeMax = d; }
+  // ★[T42] 판 길은 남긴다 — 재기동해도 다시 안 판다(위 주석의 결정론 보증).
+  if (state.db && state.db.upsertTradeRoute) {
+    try { state.db.upsertTradeRoute(state.zoneId, key, state._routeSig || (state._routeSig = _routeSig()), pts ? JSON.stringify(pts) : null); }
+    catch (e) { console.warn(`[${state.zoneId}] 🐂 교역로 캐시 저장 실패(계속):`, e.message); }
+  }
+  if (pts) console.log(`[${state.zoneId}] 🐂 교역로 A*: ${s.name}↔${t.name} ${pts.length}정점 ${workMs | 0}ms (캐시)`);
+  else if (!_routeWarned.has(key)) { _routeWarned.add(key); console.warn(`[${state.zoneId}] 🐂 교역로 A* 실패: ${s.name}↔${t.name} — 실체 생략(econ은 그대로 진행)`); }
+}
+function getRoute(aVil, bVil) { // 무방향 쌍 캐시(랩 getTradePath 동형) — null도 캐시(불능쌍 반복 계산 방지)
+  const { fwd, key } = _routeKey(aVil, bVil);
   let pts = state.routeCache.get(key);
   if (pts !== undefined) _probe.routeHit++;
   if (pts === undefined) {
-    const t0 = Date.now(); _probe.routeCold++;
-    // ★[T42] **물려받은 쌍을 다시 파면** 영속이 헛일이다 — 그 사건만 따로 센다(하네스가 0 을 요구한다).
-    if (state._routePrimedKeys && state._routePrimedKeys.has(key)) _probe.routeColdPrimed++;
+    const t0 = Date.now();
     const [s, t] = fwd ? [aVil, bVil] : [bVil, aVil];
     pts = computeRoutePts(s.ccx * SZ + SZ / 2, s.ccy * SZ + SZ / 2, t.ccx * SZ + SZ / 2, t.ccy * SZ + SZ / 2);
-    state.routeCache.set(key, pts || null);
-    { const d = Date.now() - t0; _probe.routeMs += d; if (d > _probe.routeMax) _probe.routeMax = d; }
-    // ★[T42] 판 길은 남긴다 — 재기동해도 다시 안 판다(위 주석의 결정론 보증).
-    if (state.db && state.db.upsertTradeRoute) {
-      try { state.db.upsertTradeRoute(state.zoneId, key, state._routeSig || (state._routeSig = _routeSig()), pts ? JSON.stringify(pts) : null); }
-      catch (e) { console.warn(`[${state.zoneId}] 🐂 교역로 캐시 저장 실패(계속):`, e.message); }
-    }
-    if (pts) console.log(`[${state.zoneId}] 🐂 교역로 A*: ${s.name}↔${t.name} ${pts.length}정점 ${Date.now() - t0}ms (캐시)`);
-    else if (!_routeWarned.has(key)) { _routeWarned.add(key); console.warn(`[${state.zoneId}] 🐂 교역로 A* 실패: ${s.name}↔${t.name} — 실체 생략(econ은 그대로 진행)`); }
+    _routeStore(key, pts, s, t, Date.now() - t0);
   }
   if (!pts) return null;
   return fwd ? pts.slice() : pts.slice().reverse();
+}
+// ★★[T85] **재개형 문** — 캐시에 있으면 그 자리에서 주고, 없으면 예산만큼만 판다.
+//   `{ done:false }` 면 아직이다: 부른 쪽은 **같은 하루 안의 다음 조각**에 다시 물어야 한다
+//   (경계를 넘기면 출발일이 밀리고, 그러면 `travelDays` 규약(T60 ③)이 흔들린다 — 그래서 다음 날이 아니다).
+function getRouteResumable(aVil, bVil, budgetMs) {
+  const { fwd, key } = _routeKey(aVil, bVil);
+  const cached = state.routeCache.get(key);
+  if (cached !== undefined) {
+    _probe.routeHit++;
+    return { done: true, pts: cached ? (fwd ? cached.slice() : cached.slice().reverse()) : null };
+  }
+  const [s, t] = fwd ? [aVil, bVil] : [bVil, aVil];
+  const r = _routeResume(key, s.ccx * SZ + SZ / 2, s.ccy * SZ + SZ / 2, t.ccx * SZ + SZ / 2, t.ccy * SZ + SZ / 2, budgetMs);
+  if (!r.done) return { done: false };
+  _routeStore(key, r.pts, s, t, r.workMs);
+  return { done: true, pts: r.pts ? (fwd ? r.pts.slice() : r.pts.slice().reverse()) : null };
 }
 
 // =============================================================================
@@ -1748,12 +1871,17 @@ function despawnCaravanNpc(body) { // canadia 검증 패턴(players/npcs delete 
     }
   }
 }
-function spawnCaravanBody(c, now) {
+function spawnCaravanBody(c, now, budgetMs) {
   const fromVil = state.byEcon.get(c.from), toVil = state.byEcon.get(c.to);
   if (!fromVil || !toVil) return false;
   const outbound = c.state === 'outbound'; // (통상 outbound — inbound 스폰은 상한 이월분 방어)
   const legA = outbound ? fromVil : toVil, legB = outbound ? toVil : fromVil;
-  const pts = getRoute(legA, legB);
+  // ★★[T85] 길을 **예산만큼만** 판다. 다 안 파였으면 이 조각에서는 안 떠나고 `'wait'` 를 돌려준다 —
+  //   부른 쪽(`_caravanSyncOne` → `_drainTickJobs`)이 **같은 하루 안의 다음 조각**에 다시 부른다.
+  //   ⚠여기서 아직 아무것도 안 만졌다(스폰 전) — 그래서 재진입이 안전하다. 이 줄이 그 계약이다.
+  const rr = getRouteResumable(legA, legB, (budgetMs === undefined) ? TICK_SLICE_MS : budgetMs);
+  if (!rr.done) { _probe.pathWait++; return 'wait'; }
+  const pts = rr.pts;
   if (!pts) return false;
   const p = state.deps.spawnNpc({
     x: legA.ccx * SZ + SZ / 2, y: legA.ccy * SZ + SZ / 2,
@@ -1983,7 +2111,10 @@ function _escortMarch(body, dtMs, players) {
 //   왜 갈랐나: 실측 p95 **989ms**(최대 5,046ms). 안이 전부 `getRoute`(A*)라 대수가 몰린 날엔
 //   이 한 단계가 생활층보다 크다. 앞 루프는 캐러밴끼리 독립이고, 뒤 쓸기만 `seen` 전량을 필요로 한다.
 function _caravanSyncNew() { return { seen: new Set(), spawned: 0, arrived: 0, removed: 0 }; }
-function _caravanSyncOne(now, c, S) {
+// ★[T85] `budgetMs` — 길을 파는 데 이 조각에서 쓸 수 있는 시간. 기본은 **슬라이서 손잡이 그대로**(새 손잡이 0).
+//   `0` 이면 무제한 = 종전 동작(일괄 문·조각내기를 끈 대조군).
+function _caravanSyncOne(now, c, S, budgetMs) {
+  const _pb = (budgetMs === undefined) ? TICK_SLICE_MS : budgetMs;
   const world = state.world, bodies = state.caravanBodies;
   const players = state.deps.players;
   const seen = S.seen;
@@ -1992,7 +2123,11 @@ function _caravanSyncOne(now, c, S) {
     seen.add(c.id);
     const body = bodies.get(c.id);
     if (!body) {
-      if (bodies.size < CARAVAN_BODY_MAX && spawnCaravanBody(c, now)) S.spawned++;
+      if (bodies.size < CARAVAN_BODY_MAX) {
+        const r = spawnCaravanBody(c, now, _pb);
+        if (r === 'wait') return 'retry';   // ★[T85] 길이 아직 — 이 조각은 여기까지. 다음 조각에 이어 간다.
+        if (r) S.spawned++;
+      }
       return;
     }
     if (body.phase !== 'outbound') return;
@@ -2011,7 +2146,15 @@ function _caravanSyncOne(now, c, S) {
       const p = players.get(body.pid);
       const pos = p ? { x: p.x, y: p.y } : caravanPointAt(body, body.prog);
       const oldToVil = state.byEcon.get(body.toV), newToVil = state.byEcon.get(c.to);
-      let pts = (oldToVil && newToVil) ? getRoute(oldToVil, newToVil) : null;
+      // ★[T85] 재라우팅도 같은 문을 쓴다 — 여기도 콜드 A* 가 한 조각을 통째로 먹던 자리다.
+      //   ⚠아직 몸을 안 만졌다(위 `pos` 는 읽기뿐) — 재진입 안전. 실사용에선 거의 캐시 적중이다
+      //     (두 마을 다 데운 쌍이라). 그래도 **최악**을 예산 안에 두려면 이 문이어야 한다.
+      let pts = null;
+      if (oldToVil && newToVil) {
+        const rr2 = getRouteResumable(oldToVil, newToVil, _pb);
+        if (!rr2.done) { _probe.pathWait++; return 'retry'; }
+        pts = rr2.pts;
+      }
       if (pts) pts = [{ x: pos.x, y: pos.y }, ...pts];
       else if (newToVil) pts = [{ x: pos.x, y: pos.y }, { x: newToVil.ccx * SZ + SZ / 2, y: newToVil.ccy * SZ + SZ / 2 }]; // 경로 실패 폴백: 직선 보간(비활성 수준 — 행렬 유한쌍이라 실사용 희박)
       else { despawnCaravanNpc(body); bodies.delete(c.id); S.removed++; return; } // 대상 마을 미상(방어) — 실체 생략, econ은 계속
@@ -2041,9 +2184,11 @@ function _caravanSyncSweep(S) {
   return S;
 }
 // 겉함수 — 종전 그대로(일괄). 조각내기 경로는 위 둘을 직접 부른다.
+//   ★[T85] 여기는 **일괄**이라 양보할 자리가 없다 ⇒ `'retry'` 가 나오면 그 자리에서 완주시킨다
+//     (예산 0 = 무제한 = 종전 동작). 조각내기를 끈 판·직접 호출자(하네스)가 이 문으로 온다.
 function syncCaravanBodies(now) {
   const S = _caravanSyncNew();
-  for (const c of state.world.caravans) _caravanSyncOne(now, c, S);
+  for (const c of state.world.caravans) _caravanSyncOne(now, c, S, 0);   // 예산 0 = 무제한 ⇒ `'retry'` 가 안 난다
   return _caravanSyncSweep(S);
 }
 
@@ -2230,6 +2375,11 @@ function invalidateTradeDistances(cx, cy) { // eslint-disable-line no-unused-var
   if (!state.ready) return;
   state.distDirty = true;
   if (state.routeCache) { _probe.routeClear++; state.routeCache.clear(); }
+  // ★★[T85] **파던 길도 버린다.** 재개형은 여러 프레임에 걸쳐 파므로, 무효화 순간에 반쯤 판 길이
+  //   떠 있을 수 있다 — 그걸 그냥 두면 **바뀌기 전 세계**로 판 길이 무효화 **뒤에** 캐시에 들어앉는다
+  //   (실측: `test-route-persist ④` 가 "비웠는데 3쌍이 살아 있다"로 그걸 잡았다).
+  //   무효화의 뜻은 "지금 아는 길을 전부 버린다"이고, 파는 중인 것도 그 '아는 길'이다.
+  _pathJob = null;
   // ★[T42] 영속 캐시도 **같은 훅에서** 비운다 — 무효화가 두 자리에 있으면 언젠가 한쪽만 지운다.
   if (state.db && state.db.clearTradeRoutes) { try { state.db.clearTradeRoutes(state.zoneId); } catch (e) {} }
   if (state.ready) { try { _routeWarmBuild(); } catch (e) {} }   // ★[T42 ①ⓑ] 다 버렸으니 다시 데울 목록을 세운다
@@ -2881,12 +3031,16 @@ const _lifeSub = { crop: 0, hunter: 0, gran: 0, pids: 0, site: 0, near: 0, headl
 const _probe = { siteLog: [], auditN: 0, auditBad: 0, auditFirst: '', siteCall: 0, siteHit: 0, siteSkip: 0, siteMs: 0, siteMax: 0, siteVils: new Set(),
                  terrGrowDays: 0, terrGrowCells: 0, siteCand: 0, siteScan: 0, siteReason: {},
                  routeCold: 0, routeColdPrimed: 0, routeMs: 0, routeMax: 0, routeHit: 0, routeClear: 0,
+                 // ★[T85] 재개형 A* — 판 횟수 · **한 조각 최댓값**(이게 예산 안에 드는지가 이 카드의 수다) ·
+                 //   슬롯을 빼앗겨 버린 중간 상태 수 · 캐러밴이 길을 기다린 조각 수.
+                 pathJobs: 0, pathSliceMax: 0, pathChunkMax: 0, pathDrop: 0, pathWait: 0,
                  oreCold: 0, oreMs: 0, oreMax: 0,
                  fishDrawn: 0, fishDrawDays: 0 };   // ★[T60 ②] NPC 어획이 실제로 깎은 stock 누계(계측)
 function probeStats() { return { siteLog: _probe.siteLog.slice(-400), auditN: _probe.auditN, auditBad: _probe.auditBad, auditFirst: _probe.auditFirst, siteMemo: LIFE_SITE_MEMO, siteRescanDays: LIFE_SITE_RESCAN_DAYS, siteSkip: _probe.siteSkip, terrGrowDays: _probe.terrGrowDays, terrGrowCells: _probe.terrGrowCells,
   siteCand: _probe.siteCand, siteScan: _probe.siteScan, siteReason: _probe.siteReason, siteCall: _probe.siteCall, siteHit: _probe.siteHit, siteMiss: _probe.siteCall - _probe.siteHit,
   siteMs: _probe.siteMs, siteMax: _probe.siteMax, siteVils: _probe.siteVils.size,
   routeCold: _probe.routeCold, routeColdPrimed: _probe.routeColdPrimed, routeMs: _probe.routeMs, routeMax: _probe.routeMax, routeHit: _probe.routeHit, routeClear: _probe.routeClear,
+  pathJobs: _probe.pathJobs, pathSliceMax: _probe.pathSliceMax, pathChunkMax: _probe.pathChunkMax, pathDrop: _probe.pathDrop, pathWait: _probe.pathWait, pathStepNodes: PATH_STEP_NODES,
   oreCold: _probe.oreCold, oreMs: _probe.oreMs, oreMax: _probe.oreMax,
   fishDrawn: +_probe.fishDrawn.toFixed(3), fishDrawDays: _probe.fishDrawDays, fish2way: FISH2WAY }; }
 const _lifeSubMax = {};   // 같은 항목의 **마을 한 곳 최댓값** — 조각 예산은 합이 아니라 최댓값이 정한다
@@ -3083,7 +3237,7 @@ function _openDayJobs(now) {
 
   // ⑦ 캐러밴 실체 동기 — 중앙 17ms 인데 **p95 989ms**(안이 전부 A*). 캐러밴 한 대씩 쪼갠다.
   //   쓸기(회수)만 `seen` 전량이 필요해 원자다.
-  for (const c of state.world.caravans.slice()) add('caravan', () => { _caravanSyncOne(C.now, c, C.car); });
+  for (const c of state.world.caravans.slice()) add('caravan', () => _caravanSyncOne(C.now, c, C.car));   // ★[T85] 반환('retry')을 드레인이 본다
   add('caravan', () => { _caravanSyncSweep(C.car); });
 
   // ⑧ 사건 장부 — econ·캐러밴이 오늘 값이 된 **바로 이 지점**(종전 위치 그대로). 실측 6ms.
@@ -3169,12 +3323,18 @@ function _drainTickJobs(now) {
     do {
       const j = J.shift();
       const a = Date.now();
-      j.f();
+      const rv = j.f();
       const d = Date.now() - a;
       C.chunks++; C.work = (C.work || 0) + d;
       if (C.order[C.order.length - 1] !== j.n) C.order.push(j.n);   // ★[T1 §3-④] 단계 순서 — 조각내기가 *언제*만 바꿨는지의 증거
       C.stg[j.n] = (C.stg[j.n] || 0) + d;
       if (d > C.maxChunk) { C.maxChunk = d; C.maxChunkAt = j.n; }
+      // ★★[T85] **아직 안 끝난 조각은 제자리로.** 재개 가능 A* 를 쓰는 조각(캐러밴 출발·재라우팅)은
+      //   예산만큼만 길을 파고 `'retry'` 를 낸다 ⇒ 같은 자리(맨 앞)에 도로 넣어 **같은 하루 안의
+      //   다음 조각**에 이어 간다. 다음 게임일로 미루면 출발일이 밀리고 `travelDays` 규약(T60 ③)이 흔들린다.
+      //   ⚠맨 앞이라 뒤 단계(쓸기·사건 장부)를 앞지르지 않는다 — 단계 순서가 그대로다(`C.order` 가 증거).
+      //   ⚠헛돌지 않는다: 되돌아온 조각은 이미 이 프레임의 예산을 썼으므로 아래 `while` 이 프레임을 닫는다.
+      if (rv === 'retry') J.unshift(j);
     } while (J.length && (TICK_SLICE_MS === 0 || Date.now() - f0 < TICK_SLICE_MS));
   } catch (e) {
     console.error(`[${state.zoneId}] 🏘️ 마을 econ 틱 실패 (다음 경계에 재시도):`, e.message);

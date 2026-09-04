@@ -59,9 +59,28 @@ function _perp(x, y, sx, sy, gx, gy, invLen) {   // 시작→목표 직선까지
 // ── _search: 단일 탐색 커널 — localPath/routePath는 이걸 규칙 프리셋으로 호출한다 ──
 //   o = { dirs, octile(bool — h 모드), biasW, stepBlocked(fx,fy,tx,ty), nodeBlocked(x,y)|null(코너컷용),
 //         costMul(x,y)|null, prefer(x,y)|null, maxPops, radius, scratch|null }
-function _search(sx, sy, gx, gy, o) {
+//
+// ★★[T85 2026-09-03 재민 확정] **재개 가능**하게 갈랐다 — `_searchBegin`(상태를 만든다) +
+//   `_searchStep(S, budget)`(예산만큼 돌고 **힙과 g 를 그대로 둔 채 나간다**).
+//   `_search` 는 이제 그 둘의 **동기 래퍼**다(begin → step(무제한)) — 서명도 답도 무변.
+//
+//   ★왜: 캐러밴 한 걸음의 콜드 A* 가 실측 1,265~1,695ms 이고, T1 슬라이서는 "캐러밴 한 대"
+//     단위라 그 **안**을 못 자른다(T42 회부 3). 2코어 상자에서 그게 17초 루프 막힘으로 증폭됐다.
+//   ★★답은 **비트 동일**이다 — 그게 이 갈래의 유일한 계약이다. 근거는 구조다:
+//     ⓐ 양보는 **반복 사이**에서만 일어난다(`open.pop()` 앞). 반복 하나는 통째로 돌거나 안 돈다.
+//     ⓑ 양보가 만지는 것은 **없다** — 힙·g·came·pops 는 전부 `S` 에 그대로 남는다.
+//     ⓒ 그래서 예산이 1이든 무한이든 **같은 순서로 같은 노드를 꺼낸다**.
+//     ⇒ 예산은 답이 아니라 **언제 쉬는가**만 정한다. 하네스가 예산 1 로 그걸 잰다.
+//   ⚠**scratch 를 공유하는 두 탐색을 번갈아 돌리면 깨진다**(gen-스탬프가 하나뿐이고 `came` 는
+//     스탬프도 없다). ⇒ 재개형을 쓰는 쪽은 **한 번에 하나**여야 한다(호출측 계약 · `villages.js` 큐).
+//     Map 백엔드(scratch 없음)는 상태가 `S` 안에만 있으므로 번갈아 돌려도 안전하다.
+
+function _searchBegin(sx, sy, gx, gy, o) {
   // ★왕복 대칭: 질의 정규화(사전순 작은 끝점에서 계산) — 커널 한 곳에서만 처리.
-  if (gx < sx || (gx === sx && gy < sy)) { const p = _search(gx, gy, sx, sy, o); return p ? p.reverse() : null; }
+  //   ⚠종전엔 **재귀 호출 + reverse** 였다. 재개형은 상태가 하나여야 하므로 여기서 끝점을 한 번
+  //     바꿔 두고 `rev` 로 기억한다 — 같은 계산, 같은 결과(뒤집기는 백트레이스 끝에서 한 번).
+  let rev = false;
+  if (gx < sx || (gx === sx && gy < sy)) { rev = true; const tx = sx; sx = gx; gx = tx; const ty = sy; sy = gy; gy = ty; }
   const radius = o.radius || 0;
   const minX = radius ? Math.min(sx, gx) - radius : -Infinity, maxX = radius ? Math.max(sx, gx) + radius : Infinity;
   const minY = radius ? Math.min(sy, gy) - radius : -Infinity, maxY = radius ? Math.max(sy, gy) + radius : Infinity;
@@ -89,13 +108,34 @@ function _search(sx, sy, gx, gy, o) {
   const open = _mkHeap();
   gSet(sx, sy, 0); cameSet(sx, sy, -1);
   open.push({ f: H(sx, sy), g: 0, x: sx, y: sy });
-  const maxPops = o.maxPops, dirs = o.dirs, nodeBlocked = o.nodeBlocked, costMul = o.costMul, prefer = o.prefer, stepBlocked = o.stepBlocked;
-  let pops = 0, found = false;
+  // ★상태는 **전부 여기 한 덩어리**다 — 그래야 놓았다 이어 갈 수 있다(지역 변수로 남으면 못 잇는다).
+  return {
+    sx, sy, gx, gy, rev, minX, maxX, minY, maxY, H,
+    gGet, gSet, cameGet, cameSet, enc, sc, W2, open,
+    maxPops: o.maxPops, dirs: o.dirs, nodeBlocked: o.nodeBlocked,
+    costMul: o.costMul, prefer: o.prefer, stepBlocked: o.stepBlocked,
+    pops: 0, found: false, done: false, path: null,
+  };
+}
+
+// ── _searchStep: 예산(꺼낸 노드 수)만큼 돌고 나온다. `budget<=0` = 무제한(완주) ──
+//   반환 { done, path } — `done` 이 false 면 아무것도 안 끝났다는 뜻이고, `S` 를 다시 넣으면 이어 간다.
+//   ★★양보는 `open.pop()` **앞**에서만 한다: 반복 하나는 통째로 돌거나 아예 안 돈다.
+//     그래서 예산이 무엇이든 꺼내는 순서가 같고, 답이 비트 동일이다(위 머리 주석 ⓐⓑⓒ).
+function _searchStep(S, budget) {
+  if (S.done) return { done: true, path: S.path };
+  const open = S.open, gGet = S.gGet, gSet = S.gSet, cameSet = S.cameSet, enc = S.enc, H = S.H;
+  const gx = S.gx, gy = S.gy, minX = S.minX, maxX = S.maxX, minY = S.minY, maxY = S.maxY;
+  const dirs = S.dirs, nodeBlocked = S.nodeBlocked, costMul = S.costMul, prefer = S.prefer;
+  const stepBlocked = S.stepBlocked, maxPops = S.maxPops;
+  let n = 0;
   while (open.size > 0) {
+    if (budget > 0 && n >= budget) return { done: false, path: null };   // ★양보 — 힙·g·came·pops 그대로 두고 나간다
+    n++;
     const cur = open.pop();
     if (cur.g !== gGet(cur.x, cur.y)) continue;   // stale(lazy 삭제 — 서버 동형)
-    if (cur.x === gx && cur.y === gy) { found = true; break; }
-    if (++pops > maxPops) break;   // 예산 가드
+    if (cur.x === gx && cur.y === gy) { S.found = true; break; }
+    if (++S.pops > maxPops) break;   // 예산 가드
     for (let d = 0; d < dirs.length; d++) {
       const dx = dirs[d][0], dy = dirs[d][1], w0 = dirs[d][2];
       const nx = cur.x + dx, ny = cur.y + dy;
@@ -111,8 +151,14 @@ function _search(sx, sy, gx, gy, o) {
       }
     }
   }
-  if (!found) return null;
-  const path = [];
+  S.done = true;
+  S.path = S.found ? _searchTrace(S) : null;
+  return { done: true, path: S.path };
+}
+
+// ── 백트레이스 — 정규화 프레임에서 만든 뒤, 뒤집을 것이면 여기서 한 번 뒤집는다 ──
+function _searchTrace(S) {
+  const path = [], sc = S.sc, W2 = S.W2, gx = S.gx, gy = S.gy, cameGet = S.cameGet;
   if (sc) {
     let i = gy * W2 + gx;
     while (i >= 0) { path.unshift({ x: i % W2, y: (i / W2) | 0 }); i = cameGet(i % W2, (i / W2) | 0); }
@@ -120,7 +166,12 @@ function _search(sx, sy, gx, gy, o) {
     let k = gx + ',' + gy;
     while (k !== -1) { const c = k.indexOf(','); const x = +k.slice(0, c), y = +k.slice(c + 1); path.unshift({ x, y }); k = cameGet(x, y); }
   }
-  return path;
+  return S.rev ? path.reverse() : path;
+}
+
+// ── _search: **동기 래퍼**(begin → 완주). 종전 호출자는 이 문 하나만 안다 — 서명 무변 ──
+function _search(sx, sy, gx, gy, o) {
+  return _searchStep(_searchBegin(sx, sy, gx, gy, o), 0).path;
 }
 
 // ── localPath: 걸음 프리셋(4방·간선 차단·길 스냅) — 랩 bfsPath·서버 findPath가 위임 ──
@@ -136,18 +187,34 @@ function localPath(sx, sy, gx, gy, opts) {
 }
 
 // ── routePath: 도로 프리셋(8방·코너컷 금지·costMul·scratch) — 랩 tradePath·서버 computeRoutePts가 위임 ──
+//   ★★[T85] 프리셋은 **한 곳**(`_routeOpts`)이고 문이 둘이다 — 동기(`routePath`)와 재개형(`routePathBegin`).
+//     프리셋을 두 번 적으면 그게 사본이고, 그 사본이 갈리는 날 두 문이 **다른 길**을 낸다.
+function _routeOpts(opts) {
+  return {
+    dirs: DIRS8, octile: true, biasW: BIAS_ROUTE,
+    stepBlocked: null,   // 노드 차단만 → 커널이 nodeBlocked 직행(성능)
+    nodeBlocked: opts.blocked || (() => false),
+    costMul: opts.costMul || null, prefer: null,
+    maxPops: opts.maxPops || 250000, radius: 0, scratch: opts.scratch || null,
+  };
+}
 function routePath(sx, sy, gx, gy, opts) {
   opts = opts || {};
   const blocked = opts.blocked || (() => false);
   if (blocked(sx, sy) || blocked(gx, gy)) return null;
-  return _search(sx, sy, gx, gy, {
-    dirs: DIRS8, octile: true, biasW: BIAS_ROUTE,
-    stepBlocked: null,   // 노드 차단만 → 커널이 nodeBlocked 직행(성능)
-    nodeBlocked: blocked,
-    costMul: opts.costMul || null, prefer: null,
-    maxPops: opts.maxPops || 250000, radius: 0, scratch: opts.scratch || null,
-  });
+  return _search(sx, sy, gx, gy, _routeOpts(opts));
 }
+// ── routePathBegin: **재개형 문** — 같은 프리셋, 같은 커널. 상태를 돌려주고 호출측이 `pathStep` 으로 민다.
+//   ⚠`scratch` 를 주면 그 scratch 를 쓰는 탐색은 **한 번에 하나**여야 한다(머리 주석 ⚠ · 호출측 계약).
+//   끝점이 막혔으면 `null`(동기 문과 같은 판정 — 사본 0).
+function routePathBegin(sx, sy, gx, gy, opts) {
+  opts = opts || {};
+  const blocked = opts.blocked || (() => false);
+  if (blocked(sx, sy) || blocked(gx, gy)) return null;
+  return _searchBegin(sx, sy, gx, gy, _routeOpts(opts));
+}
+// ── pathStep: 예산(꺼낼 노드 수)만큼 민다. `budget<=0` = 완주. 반환 { done, path } ──
+function pathStep(S, budgetNodes) { return _searchStep(S, budgetNodes | 0); }
 
 // ── smoothPath: 이동 직선화(스트링 풀링) — 격자 경로 → 몸이 걷는 웨이포인트만 직선 병합 ──
 //   ★[사용자 지적 "계단식으로 움직이는 거 아냐?"] 탐색·다리개통·답압쌍 같은 소비자는 밀집 경로를 그대로 쓰고,
@@ -175,6 +242,6 @@ function smoothPath(path, canPass, opts) {
   return rev ? out.reverse() : out;
 }
 
-const PathCore = { localPath, routePath, smoothPath, ORTHO, DIAG };
+const PathCore = { localPath, routePath, smoothPath, routePathBegin, pathStep, ORTHO, DIAG };
 if (typeof module !== 'undefined' && module.exports) module.exports = PathCore;
 if (typeof window !== 'undefined') window.PathCore = PathCore;
