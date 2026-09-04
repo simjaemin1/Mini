@@ -165,17 +165,39 @@ console.log('\n[⑥ 원물 → 보존식 계보 — 서버가 인정하고, 같�
 }
 
 // ── ⑦ [T79] 작물 수확물 14 + 씨앗 14 ───────────────────────────
-console.log('\n[⑦ 작물 아이콘 a — 수확물 14 · 씨앗 14 (models_crops.py 가 굽는 표)]');
+console.log('\n[⑦ 작물 아이콘 — 수확물 34 · 씨앗 34 (models_crops.py 가 굽는 표)]');
 {
   const CROP_PY = path.join(ROOT, 'scripts', 'models_crops.py');
   const cpy = fs.existsSync(CROP_PY) ? fs.readFileSync(CROP_PY, 'utf8') : null;
   ok(!!cpy, 'scripts/models_crops.py 가 있다');
   if (cpy) {
-    const lb = cpy.match(/^CROPS_A = \[([\s\S]*?)\]/m);
-    ok(!!lb, 'models_crops.py 에서 CROPS_A 를 읽었다');
-    const CA = lb ? [...lb[1].matchAll(/'([a-z_0-9]+)'/g)].map(m => m[1]) : [];
-    ok(CA.length === 14, `수확물 14종 (실측 ${CA.length})`);
-    const ALL = [...CA, ...CA.map(c => 'seed_' + c)];
+    const grab = (name) => {
+      const m = cpy.match(new RegExp('^' + name + ' = \\[([\\s\\S]*?)\\]', 'm'));
+      return m ? [...m[1].matchAll(/'([a-z_0-9]+)'/g)].map(x => x[1]) : [];
+    };
+    const CA = grab('CROPS_A'), CB = grab('CROPS_B'), NOTSEED = grab('NOT_SEEDS');
+    ok(CA.length === 14, `[a] 곡물·콩·유료 14종 (실측 ${CA.length})`);
+    ok(CB.length === 20, `[b] 채소·양념·박과·특용·구황 20종 (실측 ${CB.length})`);
+    const CROPS = [...CA, ...CB];
+    ok(CROPS.length === 34, `작물 34종 전수 (실측 ${CROPS.length})`);
+    const ALL = [...CROPS, ...CROPS.map(c => 'seed_' + c)];
+    // ★[T79b] 씨앗으로 **안 심는** 넷 — 마늘(쪽)·생강(뿌리줄기)·토란·마(덩이).
+    //   키는 서버 정본대로 `seed_<id>` 지만 그림은 접시 문법을 깬다. 소스로 못박는다.
+    ok(NOTSEED.length === 4 && ['garlic', 'ginger', 'taro', 'yam'].every(k => NOTSEED.includes(k)),
+       `씨앗이 아닌 넷을 소스가 선언한다 — NOT_SEEDS = [${NOTSEED.join(', ')}]`);
+    // 접시를 쓰는지는 **빌더 본문**으로 판정한다 — [a] 는 `_ear(seed=True)` 안에서 `_dish()` 를
+    //   부르고 [b] 는 `seed_kw` 로 `_seed_dish` 를 부른다. 두 길 다 "접시를 쓴다"는 같은 말이다.
+    //   씨앗이 아닌 넷만 그 어느 길도 안 탄다 — 심는 것이 그 물건 자체라서.
+    const bodyOf = (fn) => {
+      const i2 = cpy.indexOf(`def ${fn}(`);
+      if (i2 < 0) return '';
+      const seg = cpy.slice(i2); const nx = seg.indexOf('\ndef ', 1);
+      return seg.slice(0, nx > 0 ? nx : seg.length);
+    };
+    const usesDish = (crop) => {
+      const b = builderOf('seed_' + crop);
+      return !!b && /_dish\(|_seed_dish\(/.test(bodyOf('_' + b));
+    };
 
     // ⓐ 파일 · 96×96 · 알파가 살아 있다
     let bad = 0;
@@ -186,16 +208,22 @@ console.log('\n[⑦ 작물 아이콘 a — 수확물 14 · 씨앗 14 (models_cro
       if (!(m.w === 96 && m.h === 96)) { ok(false, `${k}.png ${m.w}×${m.h} (96 아님)`); bad++; }
       else if (!(m.clear > 0 && m.solid > 0)) { ok(false, `${k}.png 알파가 죽었다 (투명 ${m.clear} · 불투명 ${m.solid})`); bad++; }
     }
-    ok(bad === 0, `28장 전수 — 96×96 · 알파 살아 있음 (어긋남 ${bad})`);
+    ok(bad === 0, `${ALL.length}장 전수 — 96×96 · 알파 살아 있음 (어긋남 ${bad})`);
 
     // ⓑ 키가 **서버 품목**이다 — 씨앗은 `crops.js` 의 씨앗 규약을 따른다(§0-ⓐ)
     let C = null; try { C = require(path.join(ROOT, 'server', 'crops.js')); } catch (e) {}
     ok(!!C, 'server/crops.js 를 읽었다(씨앗 id 정본)');
     if (C) {
-      const notCrop = CA.filter(k => !C.isCrop(k));
-      ok(notCrop.length === 0, `수확물 키 14개가 전부 서버 작물이다 ${notCrop.length ? '— 아닌 것: ' + notCrop.join(', ') : ''}`);
-      const badSeed = CA.filter(k => !C.isSeed('seed_' + k) || C.cropOfSeed('seed_' + k) !== k);
-      ok(badSeed.length === 0, `씨앗 키 14개가 서버 규약(seedOf/cropOfSeed)과 맞물린다 ${badSeed.length ? '— 아닌 것: ' + badSeed.join(', ') : ''}`);
+      const notCrop = CROPS.filter(k => !C.isCrop(k));
+      ok(notCrop.length === 0, `수확물 키 ${CROPS.length}개가 전부 서버 작물이다 ${notCrop.length ? '— 아닌 것: ' + notCrop.join(', ') : ''}`);
+      const badSeed = CROPS.filter(k => !C.isSeed('seed_' + k) || C.cropOfSeed('seed_' + k) !== k);
+      ok(badSeed.length === 0, `씨앗 키 ${CROPS.length}개가 서버 규약(seedOf/cropOfSeed)과 맞물린다 ${badSeed.length ? '— 아닌 것: ' + badSeed.join(', ') : ''}`);
+      // ★[T79b §0-ⓐ] 특용 4종은 `isFood` 가 아니다 — 그런데 씨앗은 **실재한다**(굽지 않을 이유가 없다).
+      const nonFood = CROPS.filter(k => !C.isFood(k));
+      ok(nonFood.every(k => C.isSeed('seed_' + k)),
+         `비식품 ${nonFood.length}종(${nonFood.join(' ')})의 씨앗도 서버 품목이다 — 그래서 굽는다`);
+      ok(C.list().length === CROPS.length,
+         `서버 작물 ${C.list().length}종 = 구운 종 ${CROPS.length}종 (남은 것 없음)`);
       // 무게가 갈린다 — 씨앗은 한 줌이다(그림을 크기로 못 가르는 이유이자, 그릇으로 가른 근거)
       const w0 = C.kgOf(CA[0]), w1 = 0.02;
       console.log(`     무게 — 작물 ${C.kgOf('rice')}kg vs 씨앗 ${w1}kg (${Math.round(C.kgOf('rice') / w1)}배). ` +
@@ -213,21 +241,29 @@ console.log('\n[⑦ 작물 아이콘 a — 수확물 14 · 씨앗 14 (models_cro
       return c ? c[1] : null;
     };
     const split = [];
-    for (const c of CA) {
+    for (const c of CROPS) {
       const a = builderOf(c), b = builderOf('seed_' + c);
       if (!a || !b || a !== b) split.push(`${c}(${a}) vs seed_${c}(${b})`);
     }
     ok(split.length === 0,
-       `계보 14짝 — 수확물과 씨앗이 같은 빌더를 부른다 ${split.length ? '— 갈린 것: ' + split.join(' · ') : ''}`);
-    const builders = [...new Set(CA.map(builderOf))].filter(Boolean);
+       `계보 ${CROPS.length}짝 — 수확물과 씨앗이 같은 빌더를 부른다 ${split.length ? '— 갈린 것: ' + split.join(' · ') : ''}`);
+    const builders = [...new Set(CROPS.map(builderOf))].filter(Boolean);
     console.log('     빌더: ' + builders.join(' · ') + `  (모델 재사용 첫째 층 — 같은 함수 다른 인자)`);
+    {
+      const dish = CROPS.filter(usesDish);
+      const wrong = NOTSEED.filter(k => dish.includes(k));
+      ok(wrong.length === 0,
+         `씨앗이 아닌 넷은 접시를 쓰지 않는다 ${wrong.length ? '— 쓰는 것: ' + wrong.join(', ') : ''}`);
+      const want = CROPS.length - NOTSEED.length;
+      ok(dish.length === want, `나머지 ${want}종은 접시 문법을 쓴다 (실측 ${dish.length})`);
+    }
 
     // ⓓ 배선 — 28키가 전부 클라 표에 있다
     const src = fs.readFileSync(CLIENT_ICON, 'utf8');
     const tb = src.match(/const ICON_RENDERED = new Set\(\[([\s\S]*?)\]\);/);
     const wired = tb ? new Set([...tb[1].matchAll(/'([\w]+)'/g)].map(m => m[1])) : new Set();
     const nw = ALL.filter(k => !wired.has(k));
-    ok(nw.length === 0, `28키 전부 ICON_RENDERED 에 올랐다 ${nw.length ? '— 안 오른 것: ' + nw.join(', ') : ''}`);
+    ok(nw.length === 0, `${ALL.length}키 전부 ICON_RENDERED 에 올랐다 ${nw.length ? '— 안 오른 것: ' + nw.join(', ') : ''}`);
   }
 }
 

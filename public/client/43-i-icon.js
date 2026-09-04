@@ -50,6 +50,18 @@
     'seed_adlay', 'seed_azuki', 'seed_barley', 'seed_barnyard_millet', 'seed_buckwheat',
     'seed_foxtail_millet', 'seed_millet', 'seed_mungbean', 'seed_perilla', 'seed_rice',
     'seed_sesame', 'seed_sorghum', 'seed_soybean', 'seed_wheat',
+    // ★[T79b · 작물 아이콘 b] 채소 9 · 양념 3 · 박과 2 · 특용 4 · 구황 2 + 씨앗 20.
+    //   ⓘ 마늘·생강·토란·마는 씨앗으로 안 심는다 — 쪽·뿌리줄기·덩이다. 키는 서버 정본대로 두고
+    //     그림만 실물을 따랐다(접시 문법을 그 넷만 깬다 · 보고 §0-ⓒ).
+    //   ⓘ 특용 4종(삼·쪽·뽕·차)은 비식품이지만 씨앗은 서버에 실재한다 — 야생 채종이 34종을 다 낸다.
+    'cabbage', 'chive', 'cucumber', 'curled_mallow', 'eggplant',
+    'garlic', 'ginger', 'gourd', 'hemp_plant', 'indigo_plant',
+    'korean_melon', 'lettuce', 'mulberry_leaf', 'radish', 'scallion',
+    'taro', 'tea', 'turnip', 'water_dropwort', 'yam',
+    'seed_cabbage', 'seed_chive', 'seed_cucumber', 'seed_curled_mallow', 'seed_eggplant',
+    'seed_garlic', 'seed_ginger', 'seed_gourd', 'seed_hemp_plant', 'seed_indigo_plant',
+    'seed_korean_melon', 'seed_lettuce', 'seed_mulberry_leaf', 'seed_radish', 'seed_scallion',
+    'seed_taro', 'seed_tea', 'seed_turnip', 'seed_water_dropwort', 'seed_yam',
   ]);
   // ★★[T66 2차 · 재민 확정 2026-09-03] 옛 **거부 목록** `ICON_NO_RENDER` 은 **없앴다** — 뒤집혔다.
   //   종전: "여기 있으면 렌더가 없다"(빠뜨리면 404). 지금: `ICON_RENDERED` 에 **있으면 그림, 없으면 점선 칸**.
