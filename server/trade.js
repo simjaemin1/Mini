@@ -282,7 +282,12 @@ function quote(ledger, econV2, vil, vid, giveRes, takeRes, giveQty, opts) {
     priceGive: +pA.toFixed(6), priceTake: +pB.toFixed(6),
     stock: +stock.toFixed(2), cap, maxGive,
     give: q, take,
-    capped: Math.floor(plan.gave) < q,
+    // ★★[T83 ⓪ · T69 §7 이 적어 둔 표시 결함] 종전은 `Math.floor(plan.gave) < q` 였다.
+    //   `q` 는 **재화 단위**라 소수다(생선 1개 = 0.18단위) ⇒ 상한에 안 걸렸는데도 `floor(2.18)=2 < 2.18`
+    //   이라 늘 참이 되어, 화면이 "마을이 내줄 수 있는 건 …까지"를 **거짓으로** 띄웠다.
+    //   ⇒ 같은 자(단위)로 잰다: **낸다고 한 만큼을 계획이 다 못 썼나**. 값은 안 바뀐다(절삭은
+    //     `exchange` 의 `Math.min(q0, …)` 이 하고 있었다) — 거짓말하던 표시 하나가 참이 될 뿐이다.
+    capped: plan.gave < q - 1e-9,
     // 표시용 — 기준 품목 환산
     numGive: (+prices[CFG.NUMERAIRE] || 0) > 0 ? sig(pA / prices[CFG.NUMERAIRE]) : null,
     numTake: (+prices[CFG.NUMERAIRE] || 0) > 0 ? sig(pB / prices[CFG.NUMERAIRE]) : null,

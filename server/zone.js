@@ -639,6 +639,16 @@ const CARRY_PERSON_KG = parseFloat(process.env.DOWN_CARRY_PERSON_KG || '') || 60
 //   §12: *"게임 시간이 흐른 뒤 깨어난다(옮겨진 것 — 텔레포트 아님)."*
 //   ★단위는 **게임분**이다(1 게임분 = 1 실초 — 시간 구조 불변 캐논 · T44 가 유도해 뒀다).
 const DOWN_WAKE_GAMEMIN = parseFloat(process.env.DOWN_WAKE_GAMEMIN || '') || 120;   // 게임 2시간 = 실시간 2분
+// ★★[T83 2026-09-03 재민 확정 · 죽음 캐논 ⓑ] **"아이템 일부"의 정의 = 짐 kg 의 절반.**
+//   왜 개수가 아니라 kg 인가: `Carry` 원장이 **개체마다 kg 을 안다**(2kg 물고기와 0.2kg 베리가
+//   같은 "한 개"가 아니다). 무거운 것부터 떨어지면 ⓐ 지고 가던 큰 짐이 먼저 남고 ⓑ 죽은 자리로
+//   **돌아올 이유**가 남는다(§12 "죽음은 손실이지 리셋이 아니다").
+//   ★로트(kg 물건)도 **개체 단위**로 자른다 — 반 개는 없다.
+//   되돌리기: 1 이면 종전(전부 낙하 · 바이트 동일) · 0 이면 아무것도 안 떨어진다.
+const DEATH_DROP_KG_FRAC = (() => {
+  const v = parseFloat(process.env.DEATH_DROP_KG_FRAC || '');
+  return Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 0.5;
+})();
 // per-zone player cap — 환경변수로 조정. 차면 새 접속 거부.
 // 부하 테스트로 측정한 단일 코어 한계 ~300. 안전 마진으로 150 기본.
 const PLAYER_CAP = parseInt(process.env.PLAYER_CAP || '150', 10);
@@ -8184,6 +8194,8 @@ function __testBind() {
     Wind, windExposureOf, isRockTileLocal, villageShelterOf, gameDayNow, elevKmAt,
     // ── 쓰러짐·구조·사망(T43) ──
     tryRescue, tryRespawnChoice, listRespawnOptions, resolveDowned, tickDowned, nearestVillageWake,
+    // ★[T83] 죽음 캐논 ⓑ — 하네스가 표를 다시 짜지 않게 **정본 그대로** 내준다
+    _deathDrop, _deathDropPick, wakeCellOf, _hutDoorNear, _standCellNear, _startVidOf, DEATH_DROP_KG_FRAC,
     // ── 외침·구조 동사(T56) — 정본 모듈을 그대로 내준다(하네스가 소리를 다시 짜지 않는다) ──
     Rescue, doEat, Onboarding, WATER_DRINK_AMOUNT, THIRST_MAX, HUNGER_MAX, FOOD_EFFECTS, isWaterTileLocal,
     RESCUE_WINDOW_MS, RESCUE_RANGE_PX, RESCUE_HOLD_MS, RESCUE_HP_FRAC, CARRY_PERSON_KG, DOWN_WAKE_GAMEMIN,
@@ -8863,8 +8875,33 @@ function damagePlayer(p, dmg, source) {
 //   2) 본인 길드의 단일 메인 사유지 (현 zone — 길드사유지는 길드당 1개)
 //   3) home zone 마을광장 (현 zone이 home일 때만. 다른 zone home은 14.42-b)
 //   4) (옵션 0개일 때 마지막 보루로) 현 zone 마을광장
+//
+// ★★[T83 2026-09-03 재민 확정 · 죽음 캐논 ⓑ] **순서가 바뀌었다: 길드 → 개인 → 처음 고른 마을.**
+//   원문: *"리스폰 장소는 길드 사유지 또는 개인 사유지, 둘 다 없으면 처음 골랐던 마을."*
+//   종전은 개인 → 길드 → 귀향점 → 가장 가까운 마을이었다. 두 자리가 캐논과 갈렸다:
+//     ⓐ 길드가 개인보다 **앞**이다(같이 짓는 땅이 먼저다 — 죽음이 길드에 사람을 돌려보낸다).
+//     ⓑ 마지막은 **"처음 고른 마을"**이지 "가장 가까운 마을"이 아니다. 이건 사람이 고른 자리라
+//        세계가 아무리 넓어져도 **돌아갈 데가 한 곳**으로 남는다(§9 "선택은 문이지 벽이 아니다").
+//   ★"처음 고른 마을"의 정본은 `Onboarding.stateOf(playerId).start_vid` 다(영속 · 시작 화면이 적는다).
+//     귀향점(`_homeX/_homeY` · central `home_x/y`)과는 **다른 값**이다 — 그래서 귀향점 갈래는
+//     지우지 않고 **한 칸 뒤**로 물렸다(존을 넘나드는 사람의 자리를 이 카드가 뺏지 않는다).
 function listRespawnOptions(p) {
   const opts = [];
+  // ① 길드 메인 사유지 — 길드당 1개(단일 강제)
+  if (p.tribeId) {
+    for (const c of claims.values()) {
+      if (c.kind !== 'guild') continue;
+      if (c.guildTribeId !== p.tribeId) continue;
+      opts.push({
+        claimId: c.id, kind: 'guild',
+        x: c.x + (c.w || BUILDING_SIZE) / 2,
+        y: c.y + (c.h || BUILDING_SIZE) / 2,
+        cw: c.w || BUILDING_SIZE, ch: c.h || BUILDING_SIZE, cxp: c.x, cyp: c.y,
+      });
+      break;
+    }
+  }
+  // ② 개인·임시 사유지
   for (const c of claims.values()) {
     // ★★[T45 2026-09-02] **`c.ownerId` 는 클레임에 없는 필드다** — 사유지는 `ownerPid` 로만 주인을 적는다
     //   (`tryClaim`·부팅 로드·`countMyClaims`·`tryUnclaim` 이 전부 `ownerPid`). `undefined !== '<id>'` 라
@@ -8877,22 +8914,25 @@ function listRespawnOptions(p) {
       claimId: c.id, kind: c.kind,
       x: c.x + (c.w || BUILDING_SIZE) / 2,
       y: c.y + (c.h || BUILDING_SIZE) / 2,
+      cw: c.w || BUILDING_SIZE, ch: c.h || BUILDING_SIZE, cxp: c.x, cyp: c.y,
     });
   }
-  // 길드 메인 사유지 — 본인 길드 소속만, 길드당 1개 (단일 강제)
-  if (p.tribeId) {
-    for (const c of claims.values()) {
-      if (c.kind !== 'guild') continue;
-      if (c.guildTribeId !== p.tribeId) continue;
-      opts.push({
-        claimId: c.id, kind: 'guild',
-        x: c.x + (c.w || BUILDING_SIZE) / 2,
-        y: c.y + (c.h || BUILDING_SIZE) / 2,
-      });
-      break; // 단일 강제 — 첫 거 하나만
+  // ③ ★처음 고른 마을 — 사유지가 하나도 없을 때의 자리. **가장 가까운 마을이 아니다.**
+  //   자리는 그 마을 **공용 쉼터의 문간**이다(`shelterOf` 가 이미 문 앞을 낸다 — 좌표를 짓지 않는다).
+  if (!opts.length) {
+    const sv = _startVidOf(p);
+    if (sv != null) {
+      let w = null;
+      try { w = SimVillages.shelterOf ? SimVillages.shelterOf(sv) : null; } catch (e) { w = null; }
+      if (!w) { try { w = Onboarding.arrivalOf ? Onboarding.arrivalOf(sv) : null; } catch (e) { w = null; } }
+      if (w && Number.isFinite(w.x) && Number.isFinite(w.y)) {
+        let nm = null;
+        try { nm = (SimVillages.clientVillages() || []).find((v) => v.id === sv); } catch (e) {}
+        opts.push({ claimId: '__start__', kind: 'start', x: w.x, y: w.y, vid: sv, vname: nm ? nm.name : null });
+      }
     }
   }
-  // home 마을광장 — 본인 home_zone이 현 zone일 때만 (cross-zone은 14.42-b)
+  // ④ home 마을광장 — 본인 home_zone이 현 zone일 때만 (cross-zone은 14.42-b)
   if (p._homeZone === ZONE_ID && typeof p._homeX === 'number' && typeof p._homeY === 'number') {
     opts.push({
       claimId: '__home__', kind: 'home',
@@ -8910,6 +8950,15 @@ function listRespawnOptions(p) {
     if (w) opts.push({ claimId: '__shelter__', kind: 'shelter', x: w.x, y: w.y, vid: w.vid, vname: w.name });
   }
   return opts;
+}
+
+// ★[T83] "처음 고른 마을" — 정본은 온보딩 상태 하나다(사본 금지 · 시작 화면이 쓰고 영속된다).
+function _startVidOf(p) {
+  try {
+    const st = (Onboarding.stateOf && p.playerId) ? Onboarding.stateOf(p.playerId) : null;
+    const v = st && st.start_vid;
+    return (v == null || v === '') ? null : (v | 0);
+  } catch (e) { return null; }
 }
 
 // ★가장 가까운 마을의 "깨어날 자리" — 도착 지점이 있으면 그것, 없으면 마을 중심.
@@ -8943,18 +8992,86 @@ function nearestVillageWake(x, y) {
   //   그 표가 아직 안 데워졌으면(부팅 직후) 마을 **중심**으로 떨어지고, 중심은 집·물일 수 있다.
   //   ⇒ 물·막힘이면 나선으로 가장 가까운 설 수 있는 칸을 찾는다. **못 찾으면 그대로 둔다**
   //     (없는 자리를 지어내느니 원래 자리가 낫다 — 그때는 하네스가 잡는다).
-  if (isWaterTileLocal(best.x, best.y) || isTerrainBlockedLocal(best.x, best.y)) {
-    outer:
-    for (let r = 1; r <= 24; r++) {
-      for (let a2 = 0; a2 < 8 * r; a2++) {
-        const th = (2 * Math.PI * a2) / (8 * r);
-        const x = best.x + Math.cos(th) * r * 32, y = best.y + Math.sin(th) * r * 32;
-        if (x < 64 || y < 64 || x >= ZONE.zoneWidth - 64 || y >= ZONE.zoneHeight - 64) continue;
-        if (!isWaterTileLocal(x, y) && !isTerrainBlockedLocal(x, y)) { best.x = x; best.y = y; break outer; }
-      }
+  const c = _standCellNear(best.x, best.y, _BLOCKED_WAKE);
+  if (c) { best.x = c.x; best.y = c.y; }
+  return best;
+}
+
+// ★★[T83] **나선은 한 자리다.** T43 이 `nearestVillageWake` 안에 짜 둔 그 탐색을 꺼냈다 —
+//   T83 의 깨어남 셀도 같은 일을 하므로, 두 벌을 두면 그게 사본이고 한쪽만 고쳐지는 날이 온다.
+//   ★막힘 판정은 **정본 함수만 부른다**(`isWalkable` 이라는 정본은 이 레포에 없다 — 이동 판정은
+//     `isTerrainBlockedLocal`(물·바위·환호) + `isBlockedByTree`(나무·바위 콜라이더) +
+//     `isBlockedByWall`(변 통과)의 **합성**이다. 여기서 새 술어를 짓지 않고 필요한 것을 골라 넘긴다).
+//   ⚠못 찾으면 **null** 을 낸다 — 호출자가 원래 자리를 지킨다(없는 자리를 지어내느니 원래가 낫다).
+const _BLOCKED_WAKE = (x, y) => isWaterTileLocal(x, y) || isTerrainBlockedLocal(x, y);
+const _BLOCKED_STAND = (x, y) => isTerrainBlockedLocal(x, y) || isBlockedByTree(x, y);
+function _standCellNear(x0, y0, blocked) {
+  const B = blocked || _BLOCKED_STAND;
+  if (!B(x0, y0)) return null;                       // 원래 자리가 이미 설 수 있다 — 안 옮긴다
+  for (let r = 1; r <= 24; r++) {
+    for (let a2 = 0; a2 < 8 * r; a2++) {
+      const th = (2 * Math.PI * a2) / (8 * r);
+      const x = x0 + Math.cos(th) * r * 32, y = y0 + Math.sin(th) * r * 32;
+      if (x < 64 || y < 64 || x >= ZONE.zoneWidth - 64 || y >= ZONE.zoneHeight - 64) continue;
+      if (!B(x, y)) return { x, y, r };
     }
   }
-  return best;
+  return null;
+}
+
+// ★★[T83 ③] **움집이 있으면 문간이다.** 문 자리를 상수로 적지 않는다 —
+//   움집을 세우는 정본 둘(`villages.js _liveHut6x4` · zone.js 움집 완공)이 **같은 문법**을 쓴다:
+//   전 행에 발자국 렉트 `data.hut = [x0,y0,x1,y1]` 를 찍고, **남벽(`y1+1` 행 · side 'N')** 에서
+//   문 2칸만 벽을 안 세운다. ⇒ 렉트를 찾고 그 행에서 **벽이 없는 칸**을 물어보면 그게 문이다
+//   (물음은 콜라이더 정본 `findEdgeWall` 한 함수로 한다 · `e2e-rooms readHutDoor` 와 같은 문법).
+//   실측 대조: 쉼터에 대고 돌리면 `villages.shelterOf` 가 내는 문 앞과 **같은 칸**이 나온다.
+//   ⚠★★**콜라이더 정본(`findEdgeWall`)을 여기서 부르면 안 된다** — 하네스가 잡았다.
+//     그 함수는 `qtBuildings` 를 보는데, 그 쿼드트리는 **활성 청크의 건물만** 인덱싱한다
+//     (`rebuildSpatialIndex` 의 그 줄 — 성능 규약). 그런데 **깨어나는 자리는 정의상 내가 없는 곳**이라
+//     그 청크는 대개 꺼져 있다 ⇒ "벽이 하나도 없다"고 답하고, 그러면 렉트의 **맨 왼쪽 칸**이
+//     문으로 뽑혀 사람이 벽 안에서 눈을 뜬다. 조용히 틀리는 종류의 결함이다.
+//   ⇒ 그 움집의 **자기 행들**에서 벽 칸을 모은다(`e2e-rooms readHutDoor` 와 같은 문법 ·
+//     청크 활성 여부와 무관). 한 번 훑는 값은 죽음이 드문 일이라 싸다.
+function _hutDoorNear(px, py, rpx) {
+  const R = Math.max(BUILDING_SIZE * 6, (rpx || 0) + BUILDING_SIZE * 4);
+  let best = null, bd = Infinity;
+  const walls = new Map();                       // 렉트키 → Set("cx,cy")
+  for (const b of buildings.values()) {
+    const t = b && b.data && b.data.hut;
+    if (!Array.isArray(t) || t.length < 4) continue;
+    const key = t.join(',');
+    if (!walls.has(key)) walls.set(key, new Set());
+    if (b.type === 'wall' && !(b.data && b.data.damaged)) {
+      walls.get(key).add(Math.floor(b.x / BUILDING_SIZE) + ',' + Math.floor(b.y / BUILDING_SIZE));
+    }
+    const mx = ((t[0] + t[2] + 1) / 2) * BUILDING_SIZE, my = ((t[1] + t[3] + 1) / 2) * BUILDING_SIZE;
+    const d = Math.hypot(mx - px, my - py);
+    if (d <= R && d < bd) { bd = d; best = t; }
+  }
+  if (!best) return null;
+  const W = walls.get(best.join(',')) || new Set();
+  const doorY = (best[3] | 0) + 1;
+  for (let x = best[0] | 0; x <= (best[2] | 0); x++) {
+    if (W.has(x + ',' + doorY)) continue;                             // 벽이 있다 — 문이 아니다
+    return { x: (x + 0.5) * BUILDING_SIZE, y: (doorY + 0.5) * BUILDING_SIZE, cell: [x, doorY], rect: best, dist: bd };
+  }
+  return null;
+}
+
+// ★★[T83 ③ 재민 확정] **깨어나는 칸** — 사다리 셋: ①움집 문간 ②중심 근처 설 수 있는 칸 ③(사유지가
+//   아니면) 온 자리 그대로. 종전은 사유지 **중심 좌표**라 벽 안이나 물 위에서 눈을 뜰 수 있었다.
+//   ⚠마을 안 이송(`nearestVillageWake` — 쉼터 → 도착 지점 → 중심)은 **무변**이다:
+//     그 갈래의 `kind` 는 shelter/arrive/center 라 아래 분기에 안 걸리고 그대로 지나간다.
+function wakeCellOf(spot) {
+  if (!spot || !Number.isFinite(spot.x) || !Number.isFinite(spot.y)) return spot;
+  const k = spot.kind;
+  if (k !== 'guild' && k !== 'personal' && k !== 'temporary') return spot;   // 사유지가 아니면 종전 그대로
+  const rpx = Math.max(Number(spot.cw) || 0, Number(spot.ch) || 0) / 2;
+  const d = _hutDoorNear(spot.x, spot.y, rpx);
+  if (d) return Object.assign({}, spot, { x: d.x, y: d.y, cellKind: 'door' });
+  const c = _standCellNear(spot.x, spot.y, _BLOCKED_STAND);
+  if (c) return Object.assign({}, spot, { x: c.x, y: c.y, cellKind: 'near' });
+  return Object.assign({}, spot, { cellKind: 'center' });
 }
 
 // ★★[T43 2026-09-02 재민 확정 · §12] **"고르는 부활"은 없어졌다 — 이건 이제 "포기"다.**
@@ -9064,7 +9181,8 @@ function _wakeUp(p, x, y, hpFrac, msg) {
 function resolveDowned(p, wakeSpotOverride) {
   const inVillage = (() => { try { return (SimVillages.shelterAt(p.x, p.y) || 0) > 0; } catch (e) { return false; } })();
   if (p._carriedBy) { const c = players.get(p._carriedBy); _dropCarried(c, p, '내려놓았다'); }
-  const spot = wakeSpotOverride || (inVillage ? nearestVillageWake(p.x, p.y) : _wakeSpotOf(p));
+  // ★[T83 ③] 자리를 고른 다음 **설 수 있는 칸**으로 내린다(사유지일 때만 — 마을 이송은 무변).
+  const spot = wakeCellOf(wakeSpotOverride || (inVillage ? nearestVillageWake(p.x, p.y) : _wakeSpotOf(p)));
   const delayMs = Math.max(0, DOWN_WAKE_GAMEMIN * 1000);   // 1 게임분 = 1 실초(시간 구조 불변 캐논)
   if (inVillage) {
     // ── 마을 안 불사 — 죽지 않는다. 짐도 그대로다. 마을 사람이 쉼터로 옮긴다.
@@ -9100,34 +9218,83 @@ function _wakeSpotOf(p) {
 //   ★디스폰 금지(§12) — `keep` 표를 달면 10분 청소가 건너뛴다.
 //   ⚠**입은 것(equipment)은 안 떨어뜨린다.** 몸에 걸친 것은 "짐"이 아니고, 바닥템에 장비 인스턴스를
 //     실을 자리가 없어서(속성·내구가 뭉개진다) 주우면 다른 물건이 된다. 회부로 남긴다.
-function _deathDrop(p) {
-  let n = 0;
-  try { Carry.reconcile(p, p.inventory); } catch (e) {}
-  // ⓐ 수량 품목 — 정본 드롭과 같은 순서(로트를 인벤보다 **먼저** 꺼낸다)
+//
+// ★★[T83 2026-09-03 재민 확정] **"일부"는 짐 kg 의 절반이고, 무거운 것부터 떨어진다.**
+//   후보 집합은 **종전 그대로**다(수량 품목 개체 + 도구 개체 · 입은 것은 몸에 남는다) —
+//   바뀌는 건 "전부"가 "절반"이 된 것 하나뿐이다.
+//   ★고르는 자·꺼내는 문법은 전부 정본이다: 개체 kg 은 `Carry.entries`, 지목 인출은
+//     `Carry.takeByIds`, 로트는 **인벤을 깎기 전에** `_takeGroundLots` — `tryDropItem` ①의
+//     그 순서 그대로다(순서를 바꾸면 `moveOut` 안의 reconcile 이 로트를 지운다 · 그쪽 주석 참조).
+//   ⚠`DEATH_DROP_KG_FRAC = 1` 이면 **종전과 바이트 동일**이어야 한다: 품목마다 한 덩이로 묶어
+//     내보내는 것도, 품목→도구 순서도, 로트를 먼저 꺼내는 것도 종전 그대로 두었다.
+// ★★[T83] **고르는 일은 이 함수 하나다** — 실행(`_deathDrop`)에서 떼어 냈다.
+//   왜: 하네스가 "절반이 몇 개·몇 kg 인가"를 재려면 **떨어뜨려 보지 않고** 물어볼 수 있어야 하고,
+//   손잡이 0·1 대조도 같은 함수에 다른 수를 넣는 것으로 끝나야 한다(픽스처를 세 번 죽이지 않는다).
+//   ⇒ `frac = 1` 은 **"선별을 전부로 바꾼 것"** 그 자체다 — ⓐ 돌연변이가 그 수를 쓴다.
+function _deathDropPick(p, frac) {
+  const f = Math.max(0, Math.min(1, Number.isFinite(frac) ? frac : DEATH_DROP_KG_FRAC));
+  try { Carry.reconcile(p, p.inventory); } catch (e) {}   // ★지목하려면 낱개마다 주소가 있어야 한다(멱등)
+  const cand = [];
   for (const [item, cnt0] of Object.entries(p.inventory || {})) {
     const cnt = Math.floor(Number(cnt0) || 0);
     if (cnt <= 0) continue;
+    let es = []; try { es = Carry.entries(p, item) || []; } catch (e) { es = []; }
+    const std = Weights.kgOfOrDefault(item);
+    for (let i = 0; i < cnt; i++) {
+      const e = es[i];
+      cand.push({ item, id: (e && Number.isFinite(e.id)) ? e.id : null,
+                  kg: (e && Number.isFinite(e.kg)) ? e.kg : std });
+    }
+  }
+  for (const inst of (p.toolItems || [])) cand.push({ tool: inst, item: inst.type, kg: Weights.kgOfOrDefault(inst.type) });
+  // ⓑ 무거운 것부터 — 절반(kg)에 **닿을 때까지**. 같은 무게면 원래 순서(안정 정렬).
+  const total = cand.reduce((s, c) => s + c.kg, 0);
+  const target = total * f;
+  const picked = new Set();
+  let acc = 0;
+  const order = cand.map((c, ix) => ({ c, ix })).sort((a, b) => (b.c.kg - a.c.kg) || (a.ix - b.ix));
+  for (const o of order) { if (acc >= target - 1e-9) break; picked.add(o.ix); acc += o.c.kg; }
+  return { cand, picked, total: +total.toFixed(3), kg: +acc.toFixed(3), frac: f };
+}
+
+function _deathDrop(p) {
+  let n = 0;
+  try { Carry.reconcile(p, p.inventory); } catch (e) {}   // ★지목하려면 낱개마다 주소가 있어야 한다
+  const { cand, picked } = _deathDropPick(p, DEATH_DROP_KG_FRAC);
+  // ⓒ 수량 품목 — 품목마다 **고른 개체만** 한 덩이로(종전과 같은 모양).
+  const byItem = new Map();
+  cand.forEach((c, ix) => {
+    if (c.tool || !picked.has(ix)) return;
+    if (!byItem.has(c.item)) byItem.set(c.item, []);
+    byItem.get(c.item).push(c.id);
+  });
+  for (const [item, ids] of byItem) {
+    const k = ids.length;
+    if (k <= 0) continue;
     let lr = null;
-    try { lr = _takeGroundLots(p, item, cnt); } catch (e) { lr = null; }
-    p.inventory[item] = 0;
+    try { lr = _takeGroundLots(p, item, k); } catch (e) { lr = null; }   // ★인벤보다 먼저
     let t = { kg: 0, entries: [] };
-    try { t = Carry.takeEntries(p, item, cnt); } catch (e) {}
-    const gis = _spawnGroundItems(p, item, [{ n: cnt, kg: t.kg, led: t.entries }], lr);
+    try { t = Carry.takeByIds(p, item, ids.filter((v) => v != null)); } catch (e) {}
+    p.inventory[item] = Math.max(0, (Math.floor(Number(p.inventory[item]) || 0)) - k);
+    const gis = _spawnGroundItems(p, item, [{ n: k, kg: t.kg, led: t.entries }], lr);
     for (const g of gis) g.keep = 1;
     try { Lots.reconcile(p, item, p.inventory, zoneGameDay()); } catch (e) {}
-    n += cnt;
+    n += k;
   }
-  // ⓑ 도구 개체 — 내구도까지 그대로
-  for (const inst of (p.toolItems || []).slice()) {
+  // ⓓ 도구 개체 — 내구도까지 그대로. 손에 들고 있던 것이 떨어졌으면 그 손만 비운다.
+  const dropTools = cand.filter((c, ix) => c.tool && picked.has(ix)).map((c) => c.tool);
+  for (const inst of dropTools) {
+    const ix = (p.toolItems || []).findIndex((t) => t && t.id === inst.id);
+    if (ix >= 0) p.toolItems.splice(ix, 1);
+    if (p.equipped === inst.id) p.equipped = null;
+    if (p.hotkey1 === inst.id) p.hotkey1 = null;
     const kg = Weights.kgOfOrDefault(inst.type);
     const gis = _spawnGroundItems(p, inst.type, [{ n: 1, kg, tool: { type: inst.type, d: inst.d, max: inst.max } }]);
     for (const g of gis) g.keep = 1;
     n++;
   }
-  p.toolItems = [];
-  p.equipped = null; p.hotkey1 = null;
   try { sendInventory(p, 'death'); } catch (e) {}
-  send(p.ws, { type: 'tools', toolItems: [], equipped: null, hotkey1: null });
+  send(p.ws, { type: 'tools', toolItems: p.toolItems || [], equipped: p.equipped || null, hotkey1: p.hotkey1 || null });
   return n;
 }
 

@@ -294,7 +294,12 @@ async function waitHttp(url, tries = 600) {
       '★★ⓑ 깨어난 자리는 **죽은 자리가 아니다**(옮겨졌다 — 텔레포트가 아니라 "옮겨진 것")',
       `${Math.round(Math.hypot(wakeAt.x - deathAt.x, wakeAt.y - deathAt.y))}px`);
     const invAfter = await A.evaluate(() => (window.__getInv ? window.__getInv() : null));
-    ok((invAfter && (invAfter.wood || 0)) === 0, '★★ⓑ **짐은 두고 왔다**', invAfter ? `wood ${invAfter.wood || 0}` : '-');
+    // ★[T83 2026-09-03 죽음 캐논 ⓑ] **"전부"가 "절반"이 됐다** — 종전 이 줄은 `=== 0` 이었다.
+    //   재는 뜻은 그대로 "짐을 두고 왔는가"이므로 **줄었고, 그리고 남았다**를 같이 본다
+    //   (0 을 요구하면 새 규칙에서 늘 빨갛고, `> 0` 만 보면 아무것도 안 지킨다).
+    const w0 = 10, wNow = (invAfter && (invAfter.wood || 0)) || 0;
+    ok(wNow < w0 && wNow > 0, '★★ⓑ **짐 일부를 두고 왔다**(kg 절반 · 무거운 것부터 — T83)',
+      invAfter ? `wood ${w0} → ${wNow}` : '-');
     const an = await notices(A);
     ok(an.some((t) => /짐은 쓰러진 자리|깨어났다/.test(t)), '★ⓑ 화면이 무슨 일이 났는지 말한다', JSON.stringify(an.slice(-2)));
     await snap('downed-03-dead');

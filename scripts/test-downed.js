@@ -301,19 +301,28 @@ const isWildSpot = (x, y) =>
       ok(!p.isDown, '★⑥ 창 소진 → 사망 → **게임 시간이 흐른 뒤 깨어난다**', `hp ${p.hp}`);
       ok(Math.hypot(p.x - dx0, p.y - dy0) > 100, '★★⑥ 깨어난 자리는 **죽은 자리가 아니다**(옮겨졌다)',
         `${Math.round(Math.hypot(p.x - dx0, p.y - dy0))}px 이동`);
-      // 짐꾸러미
+      // 짐꾸러미 — ★[T83] **"전부"가 아니라 "절반"이다**(죽음 캐논 ⓑ · 재민 확정 09-03).
+      //   종전 이 자리는 `수량 2종 + 도구 1` 이 **다** 떨어졌는지를 봤다. 이제 규칙이 바뀌었으므로
+      //   판정도 바뀐다 — 다만 **뜻은 더 세진다**: 떨어진 것도, **남은 것도** 같이 잰다.
       const bundles = Array.from(H.groundItems.values()).filter((g) => g.keep);
-      ok(bundles.length >= 3, '★★⑥ **짐이 그 자리에 떨어졌다**(수량 2종 + 도구 1)', `${bundles.length}개`);
+      ok(bundles.length >= 1, '★★⑥ **짐이 그 자리에 떨어졌다**', `${bundles.length}덩이`);
       ok(bundles.every((g) => Math.hypot(g.x - dx0, g.y - dy0) < 64),
         '★★⑥ 그리고 **죽은 그 자리**다 — 찾으러 가야 한다', bundles.map((g) => g.item).join(','));
-      ok((p.inventory.wood || 0) === 0 && (p.toolItems || []).length === 0,
-        '★⑥ 몸에서는 사라졌다', `wood ${p.inventory.wood} · 도구 ${(p.toolItems || []).length}개`);
-      const axe = bundles.find((g) => g.item === 'axe');
-      ok(axe && axe.tool && axe.tool.d === 37, '★★⑥ 도구는 **내구도까지** 실려 떨어진다(정본 낙하 경로 재사용)',
-        axe ? `내구 ${axe.tool.d}/${axe.tool.max}` : '없음');
-      const wd = bundles.find((g) => g.item === 'wood');
-      ok(wd && wd.led && wd.led.length, '★★⑥ 개체 kg 원장도 실린다 — 1.2kg 통나무가 그대로 있다',
-        wd ? JSON.stringify(wd.led) : '없음');
+      const leftN = (p.inventory.wood || 0) + (p.inventory.stone || 0) + (p.toolItems || []).length;
+      ok(leftN > 0, '★★⑥ [T83] 그런데 **몸에도 남았다** — "일부"가 캐논이다(전부가 아니다)',
+        `wood ${p.inventory.wood || 0} · stone ${p.inventory.stone || 0} · 도구 ${(p.toolItems || []).length}개`);
+      // 무거운 것부터 떨어졌나 — 떨어진 것의 개당 kg 이 남은 것보다 가볍지 않아야 한다.
+      const _kg = (it) => H.Weights.kgOfOrDefault(it);
+      const dropMin = Math.min(...bundles.map((g) => _kg(g.item)));
+      const leftItems = [];
+      for (const [it, c] of Object.entries(p.inventory || {})) if ((c | 0) > 0) leftItems.push(it);
+      for (const t of (p.toolItems || [])) leftItems.push(t.type);
+      const leftMax = leftItems.length ? Math.max(...leftItems.map(_kg)) : 0;
+      ok(dropMin >= leftMax - 1e-9, '★★⑥ [T83] **무거운 것부터** 떨어졌다(남은 것 중 가장 무거운 것 ≤ 떨어진 것 중 가장 가벼운 것)',
+        `떨어진 최소 ${dropMin}kg · 남은 최대 ${leftMax}kg`);
+      // ★[T83] 도구 내구도·개체 kg 원장 검사는 ⑭ 로 옮겼다 — **이 픽스처에선 안 밟힌다.**
+      //   도끼는 1.2kg 이라 (돌 4kg · 통나무 3kg 이 있는 몸에서) 무거운 절반에 절대 안 든다.
+      //   못 밟는 갈래를 여기서 요구하면 그건 규칙이 아니라 픽스처를 검사하는 것이다.
       // ★디스폰 금지 — 10분 청소를 건너뛴다
       ok(bundles.every((g) => g.keep === 1), '★★⑥ 짐꾸러미는 **안 사라진다**(§12 디스폰 금지 — `keep` 표)');
       // 이력서 무손실
@@ -428,14 +437,15 @@ const isWildSpot = (x, y) =>
     }
     if (wild) {
       const p = mkPlayer('quitter', wild.x, wild.y);
-      p.inventory.wood = 2;
+      p.inventory.wood = 2; p.inventory.stone = 2;   // ★[T83] 절반이라 두 종을 준다 — 한 종이면 "절반"이 0 일 수 있다
       H.damagePlayer(p, 200, 'fall');
       const opts = H.listRespawnOptions(p);
       H.tryRespawnChoice(p, opts[0].claimId);
       ok(p._deadUntil > 0, '★★⑩ 포기해도 **즉시 부활이 아니다** — 값을 치르고 시간이 흐른다');
       const bundles = Array.from(H.groundItems.values()).filter((g) => g.keep);
-      ok(bundles.length >= 1 && (p.inventory.wood || 0) === 0,
-        '★★⑩ 야생에서 포기하면 **짐도 떨어진다**(창 소진과 같은 값)', `${bundles.length}개`);
+      const stillHas = (p.inventory.wood || 0) + (p.inventory.stone || 0);
+      ok(bundles.length >= 1, '★★⑩ 야생에서 포기하면 **짐도 떨어진다**(창 소진과 같은 값)',
+        `${bundles.length}덩이 · 몸에 ${stillHas}개 남음`);
       await until(() => !p.isDown, 15);
       ok(!p.isDown && p.hp > 0, '★⑩ 그리고 깨어난다', `hp ${Math.round(p.hp)}`);
     }
@@ -686,6 +696,256 @@ const isWildSpot = (x, y) =>
         + `  ⇒ 쓰러짐부터 깨어남까지 ${((W + K) / 60).toFixed(0)}분`);
     }
     say(`     후유증 회복 — 죽은 날 상한 ${B.CFG.AFTERMATH_STAM_CAP} → ${B.CFG.AFTERMATH_DAYS} 게임일에 걸쳐 1 로(연속)`);
+  }
+
+  // ═══ ⑭ [T83 ⓐ] 짐 "일부" = kg 절반 · 무거운 것부터 ══════════════════════════
+  say('\n⑭ [T83] 짐은 **절반**만 떨어진다 — kg 기준 · 무거운 것부터');
+  {
+    clearPlayers();
+    const _kg = (it) => H.Weights.kgOfOrDefault(it);
+    // ★고르는 일만 떼어 낸 정본(`_deathDropPick`)에 물어본다 — 픽스처를 세 번 죽이지 않는다.
+    const mkFix = (name, inv, tools) => {
+      const p = mkPlayer(name, 30848, 59872);
+      Object.assign(p.inventory, inv || {});
+      p.toolItems = (tools || []).slice();
+      return p;
+    };
+    const fixtures = [
+      ['빈손', {}, []],
+      ['중간', { wood: 6, stone: 4, berry: 10 }, [{ id: 'x1', type: 'axe', d: 50, max: 60 }]],
+      ['과적', { wheat: 30, wood: 20, stone: 12, fish: 5, berry: 20 },
+        [{ id: 'x2', type: 'axe', d: 50, max: 60 }, { id: 'x3', type: 'pickaxe', d: 40, max: 60 }]],
+    ];
+    say('     | 표본 | 개체 | 총 kg | frac 0 | frac 0.5 | frac 1 | 첫 낙하 |');
+    say('     |---|---|---|---|---|---|---|');
+    let allOK = true, halfOK = true, heavyOK = true;
+    for (const [nm, inv, tools] of fixtures) {
+      const p = mkFix(nm, inv, tools);
+      const z = H._deathDropPick(p, 0), h = H._deathDropPick(p, 0.5), f = H._deathDropPick(p, 1);
+      const heaviest = h.cand.length ? Math.max(...h.cand.map((c) => c.kg)) : 0;
+      const first = h.cand.find((c, ix) => h.picked.has(ix));
+      say(`     | ${nm} | ${h.cand.length} | ${h.total} | ${z.picked.size}개 | **${h.picked.size}개 · ${h.kg}kg** | ${f.picked.size}개 | ${first ? `${first.item}(${first.kg}kg)` : '—'} |`);
+      if (z.picked.size !== 0) allOK = false;
+      if (f.picked.size !== h.cand.length) allOK = false;
+      // 절반 — 목표에 **닿되 한 개 이상 넘지 않는다**(개체 단위라 정확히 반이 될 수는 없다)
+      const tgt = h.total * 0.5;
+      if (!(h.kg >= tgt - 1e-9 && h.kg < tgt + heaviest + 1e-9)) halfOK = false;
+      // 무거운 것부터 — 고른 것의 최소 kg ≥ 안 고른 것의 최대 kg
+      const inKg = h.cand.filter((c, ix) => h.picked.has(ix)).map((c) => c.kg);
+      const outKg = h.cand.filter((c, ix) => !h.picked.has(ix)).map((c) => c.kg);
+      if (inKg.length && outKg.length && Math.min(...inKg) < Math.max(...outKg) - 1e-9) heavyOK = false;
+    }
+    ok(halfOK, '★★⑭ⓐ 떨어진 kg 이 **절반에 닿되 한 개 이상 넘지 않는다**(개체 단위 — 반 개는 없다)');
+    ok(heavyOK, '★★⑭ⓐ **무거운 것부터** — 고른 것의 최소 kg ≥ 안 고른 것의 최대 kg');
+    ok(allOK, '★★⑭ⓐ 손잡이가 **양 끝에서 정확하다** — 0 이면 0개 · 1 이면 전부(= 종전 · 대조군)');
+    const mid = mkFix('중간2', { wood: 6, stone: 4, berry: 10 }, [{ id: 'x9', type: 'axe', d: 50, max: 60 }]);
+    const h2 = H._deathDropPick(mid, 0.5);
+    ok(h2.cand.length > 0 && h2.picked.size > 0 && h2.picked.size < h2.cand.length,
+      '★★자명 통과 금지 — 절반이 **0도 전부도 아니다**(양 끝이면 위 검사들이 공짜다)',
+      `${h2.picked.size}/${h2.cand.length}개`);
+
+    // ── ★돌연변이: 선별을 "전부"로 바꾸면 ⓐ 가 빨강이어야 한다 ─────────────────
+    //   `frac = 1` 이 곧 "선별을 전부로 바꾼 것"이다(고르는 자리가 한 함수라 수 하나로 바꿔 끼운다).
+    const mut = H._deathDropPick(mid, 1);
+    const mutTgt = mut.total * 0.5;
+    const mutHeaviest = Math.max(...mut.cand.map((c) => c.kg));
+    ok(!(mut.kg >= mutTgt - 1e-9 && mut.kg < mutTgt + mutHeaviest + 1e-9),
+      '★★⑭ⓓ **선별을 "전부"로 바꾸면 ⓐ 가 빨강이다** — 절반 판정이 실제로 무언가를 지키고 있다',
+      `전부 ${mut.kg}kg vs 절반 상한 ${(mutTgt + mutHeaviest).toFixed(1)}kg`);
+
+    // ── 낙하 경로가 그대로인가 — 도구 내구도 · 개체 kg 원장(⑥에서 옮겨 온 두 자리) ──
+    {
+      const p = mkFix('도구만', {}, [{ id: 'x4', type: 'axe', d: 37, max: 60 }]);
+      for (const k of Array.from(H.groundItems.keys())) H.groundItems.delete(k);
+      H._deathDrop(p);
+      const g = Array.from(H.groundItems.values()).filter((x) => x.keep);
+      const axe = g.find((x) => x.item === 'axe');
+      ok(axe && axe.tool && axe.tool.d === 37,
+        '★★⑭ 도구는 **내구도까지** 실려 떨어진다(정본 낙하 경로 무변)', axe ? `내구 ${axe.tool.d}/${axe.tool.max}` : '없음');
+      ok((p.toolItems || []).length === 0, '★⑭ 그리고 몸에서 빠졌다(도구 하나뿐이면 그 하나가 절반이다)');
+    }
+    {
+      const p = mkFix('통나무만', { wood: 2 }, []);
+      Carry.noteInstance(p, 'wood', 5.5, H.gameDayNow());   // ★무거운 개체 하나 — 이게 먼저 떨어져야 한다
+      for (const k of Array.from(H.groundItems.keys())) H.groundItems.delete(k);
+      H._deathDrop(p);
+      const g = Array.from(H.groundItems.values()).filter((x) => x.keep);
+      const wd = g.find((x) => x.item === 'wood');
+      ok(wd && wd.led && wd.led.length, '★★⑭ 개체 kg 원장이 실린다(줍고 나면 같은 무게로 돌아온다)',
+        wd ? JSON.stringify(wd.led) : '없음');
+      ok(wd && Math.abs(wd.led[0].kg - 5.5) < 1e-6,
+        '★★⑭ 그리고 떨어진 것이 **무거운 그 개체**다(5.5kg — 3kg 표준이 아니다)', wd ? wd.led[0].kg : '—');
+      ok((p.inventory.wood || 0) === 1, '★⑭ 가벼운 한 개는 몸에 남았다', `wood ${p.inventory.wood}`);
+    }
+    // ── 지게는? — **입은 것은 안 떨어진다**(종전 규약 · T43 회부 유지) ────────────
+    {
+      const p = mkFix('지게꾼', { stone: 4 }, []);
+      let made = null;
+      try { made = H.PlayerItems.materializeFromVillage('carrier', 0.9, () => 0.5, { plank: 4 }); } catch (e) {}
+      if (made) { made.id = 'eq_c1'; p.equipment.push(made); p.equipSlots.back = 'eq_c1'; }
+      const pk = H._deathDropPick(p, 1);
+      ok(!!made && !pk.cand.some((c) => c.item === 'carrier'),
+        '★★⑭ **지게는 후보에 아예 없다** — `equipSlots.back` 의 입은 장비다(바닥템이 장비 인스턴스를 못 싣는다 · T43 회부)',
+        made ? `후보 ${pk.cand.length}개 · 전부 ${pk.cand.map((c) => c.item).filter((v, i, a) => a.indexOf(v) === i).join(',')}` : '지게 생성 실패');
+      ok(!!made && Carry.carrierOf(p), '★전제 — 지게를 실제로 지고 있다(안 지고 있으면 위가 자명하다)',
+        made ? `상한 ${Carry.capKg(p)}kg` : '—');
+    }
+  }
+
+  // ═══ ⑮ [T83 ⓑ] 깨어날 자리 순서 — 길드 → 개인 → 처음 고른 마을 ═══════════════
+  say('\n⑮ [T83] 순서 — 길드 > 개인 > 처음 고른 마을');
+  {
+    clearPlayers();
+    const SZc = H.BUILDING_SIZE;
+    const wipeClaims = () => { for (const [id, c] of [...H.claims]) { if (c.dbId) { try { H.db.deleteClaim(c.dbId); } catch (e) {} } H.claims.delete(id); } };
+    // ★사유지는 **정본 경로**(`tryClaim`)로 세운다 — 손으로 `claims.set` 하면 그게 사본이다.
+    //   개인 사유지는 내 길드 영토 안에만 서므로, 마을 영토와 같은 모양의 땅을 먼저 깐다.
+    let _gl = 0;
+    const guildLand = (cx, cy, half, tribeId) => {
+      const id = `t83gl${_gl++}`, cells = [];
+      for (let dy = -half; dy <= half; dy++) for (let dx = -half; dx <= half; dx++) cells.push([cx + dx, cy + dy]);
+      H.claims.set(id, { id, dbId: null, ownerPid: `village_t83_${_gl}`, ownerName: 'T83 영토',
+        x: (cx - half) * SZc, y: (cy - half) * SZc, w: (half * 2 + 1) * SZc, h: (half * 2 + 1) * SZc,
+        kind: 'guild', cells, guildTribeId: tribeId, guildTribeName: 'T83길드', state: 'active' });
+      return id;
+    };
+    const claimAt = (p, cx, cy, kind) => {
+      p.x = cx * SZc + SZc / 2; p.y = cy * SZc + SZc / 2;
+      p.inventory.wood = (p.inventory.wood || 0) + 20; p.inventory.stone = (p.inventory.stone || 0) + 20;
+      H.tryClaim(p, kind || 'personal');
+    };
+    const CX = 964, CY = 1871;   // 마을에서 떨어진 빈 자리(아래에서 자리 자체는 안 쓴다)
+    // ⓐ 길드 + 개인 둘 다
+    {
+      wipeClaims(); clearPlayers();
+      const p = mkPlayer('both', CX * SZc, CY * SZc);
+      p.tribeId = 'tribe_t83'; p.tribeName = 'T83길드';
+      guildLand(CX, CY, 6, 'tribe_t83');
+      claimAt(p, CX + 1, CY + 1, 'personal');
+      const opts = H.listRespawnOptions(p);
+      const kinds = opts.map((o) => o.kind);
+      pre(kinds.includes('personal') && kinds.includes('guild'),
+        '길드와 개인이 **둘 다 목록에 있다**(하나만 있으면 순서 검사가 자명하다)', kinds.join(','));
+      ok(opts[0] && opts[0].kind === 'guild',
+        '★★⑮ⓑ 둘 다 있으면 **길드가 먼저**다(캐논: 길드 사유지 또는 개인 사유지)', kinds.join(','));
+      // ★대조 — 옛 순서(개인 먼저)를 그대로 적용하면 첫 자리가 personal 이 되어 이 검사가 빨강이다.
+      const oldFirst = opts.slice().sort((a, b) => {
+        const r = (k) => (k === 'personal' || k === 'temporary') ? 0 : (k === 'guild' ? 1 : 2);
+        return r(a.kind) - r(b.kind);
+      })[0];
+      ok(oldFirst && oldFirst.kind !== 'guild',
+        '★★⑮ⓓ **옛 순서(개인 먼저)로 정렬하면 첫 자리가 달라진다** — 이 검사가 순서를 실제로 지킨다',
+        `옛 첫 자리 ${oldFirst ? oldFirst.kind : '—'} vs 지금 ${opts[0].kind}`);
+    }
+    // ⓑ 개인만
+    {
+      wipeClaims(); clearPlayers();
+      const p = mkPlayer('solo', CX * SZc, CY * SZc);
+      p.tribeId = 'tribe_t83'; p.tribeName = 'T83길드';
+      guildLand(CX, CY, 6, 'tribe_t83');
+      claimAt(p, CX + 1, CY + 1, 'personal');
+      // ★개인 사유지는 **길드 영토 안에만** 선다(T45 종전 규칙) — 그래서 땅을 깔 때만 소속이 필요했다.
+      //   재는 것은 "**길드 사유지가 없는 몸**"이므로 여기서 소속을 뗀다(길드를 나간 사람 · 실제로 있는 상태).
+      p.tribeId = null; p.tribeName = null;
+      const opts = H.listRespawnOptions(p);
+      pre(!opts.some((o) => o.kind === 'guild'), '길드 사유지가 목록에 없다', opts.map((o) => o.kind).join(','));
+      ok(opts[0] && (opts[0].kind === 'personal' || opts[0].kind === 'temporary'),
+        '★★⑮ⓑ 개인만 있으면 **개인**이다', opts.map((o) => o.kind).join(','));
+    }
+    // ⓒ 둘 다 없다 → **처음 고른 마을**(가장 가까운 마을이 아니다)
+    {
+      wipeClaims(); clearPlayers();
+      const list = SimVillages.clientVillages() || [];
+      // 쉼터가 서 있어야 문간이 나온다(T62 백필은 부팅 몇 판 뒤에 돈다 — 여기선 정본을 직접 민다)
+      for (let k = 0; k < 12; k++) { const r = H._shelterBackfill(); if (!(r.left > 0)) break; await sleep(800); }
+      const withSh = list.filter((v) => { try { return !!SimVillages.shelterOf(v.id); } catch (e) { return false; } });
+      pre(withSh.length >= 2, '쉼터가 선 마을이 둘 이상이다', `${withSh.length}/${list.length}곳`);
+      // ★"처음 고른 마을"과 "지금 가장 가까운 마을"이 **다른** 자리에서 죽인다 — 아니면 자명 통과다.
+      const near = withSh[0];
+      let far = null, bd = 0;
+      for (const v of withSh) { const d = Math.hypot(v.cx - near.cx, v.cy - near.cy); if (d > bd) { bd = d; far = v; } }
+      pre(far && far.id !== near.id, '먼 마을을 골랐다', far ? `${near.name} ↔ ${far.name} (${Math.round(bd)}셀)` : '—');
+      const p = mkPlayer('rookie', near.cx * SZc + SZc / 2, near.cy * SZc + SZc / 2);
+      // 처음 고른 마을 = **먼** 마을. 정본(온보딩 상태)에 적는다.
+      const st = H.Onboarding.stateOf(p.playerId); st.start_vid = far.id; st.arrived = 1;
+      pre(H._startVidOf(p) === far.id, '온보딩 정본이 "처음 고른 마을"을 안다', `start_vid=${H._startVidOf(p)}`);
+      const opts = H.listRespawnOptions(p);
+      ok(opts[0] && opts[0].kind === 'start' && opts[0].vid === far.id,
+        '★★⑮ⓑ 사유지가 없으면 **처음 고른 마을**이다', `${opts[0] && opts[0].kind} vid=${opts[0] && opts[0].vid} (${opts[0] && opts[0].vname})`);
+      const nw = H.nearestVillageWake(p.x, p.y);
+      ok(nw && nw.vid !== far.id,
+        '★★자명 통과 금지 — **가장 가까운 마을은 다른 곳이다**(같으면 위 검사가 공짜다)',
+        `가장 가까운 ${nw && nw.vid} vs 처음 고른 ${far.id}`);
+      const sh = SimVillages.shelterOf(far.id);
+      ok(sh && Math.abs(opts[0].x - sh.x) < 1e-6 && Math.abs(opts[0].y - sh.y) < 1e-6,
+        '★★⑮ⓒ 그 자리는 **그 마을 쉼터의 문간**이다(좌표를 짓지 않고 `shelterOf` 를 부른다)',
+        sh ? `(${sh.x | 0},${sh.y | 0})` : '쉼터 없음');
+    }
+    // 뒷정리 — 뒤 절이 내 클레임을 물려받지 않게
+    for (const [id, c] of [...H.claims]) { if (c.dbId) { try { H.db.deleteClaim(c.dbId); } catch (e) {} } H.claims.delete(id); }
+  }
+
+  // ═══ ⑯ [T83 ⓒ] 깨어나는 칸 — 문간 → 근처 칸 → 쉼터 문간 ═════════════════════
+  say('\n⑯ [T83] 칸 — 벽 안이나 물 위에서 눈뜨지 않는다');
+  {
+    clearPlayers();
+    // ⓐ 문간 문법이 **정본과 같은 칸**을 내는가 — 쉼터에 대고 돌려 `villages.shelterOf` 와 맞댄다.
+    //   (쉼터도 움집도 같은 정본(`_liveHut6x4`)이 세우므로, 여기서 맞으면 사유지 움집에서도 맞는다.)
+    const list = SimVillages.clientVillages() || [];
+    // ★★[족보 ㊻] **행이 메모리에 있는 쉼터를 골라야 한다.** `shelterOf` 는 DB 행만 봐도 좌표를 내지만,
+    //   문간은 그 움집의 **벽 행**을 읽어야 안다 — 청크가 꺼져 있으면 `buildings` 에 행이 없다.
+    //   아무 쉼터나 잡으면 이 절이 "문법이 틀렸다"가 아니라 "행이 없다"로 간헐 빨강이 된다(실제로 그랬다).
+    //   ⇒ 행이 실재하는 표본을 고르고, **그 사실 자체를 상황으로 적는다**.
+    const _rects = new Set();
+    for (const b of H.buildings.values()) { const t = b && b.data && b.data.hut; if (Array.isArray(t)) _rects.add(t.join(',')); }
+    let sample = null;
+    for (const v of list) {
+      const sh = SimVillages.shelterOf ? SimVillages.shelterOf(v.id) : null;
+      if (!sh) continue;
+      // 쉼터의 발자국 렉트는 [cx-5, cy-5, cx+0, cy-2] — 그 키가 메모리에 있나
+      if (!_rects.has([sh.cx - 5, sh.cy - 5, sh.cx + 0, sh.cy - 2].join(','))) continue;
+      sample = { v, sh }; break;
+    }
+    pre(!!sample, '움집 **행이 메모리에 있는** 쉼터가 있다(청크가 꺼져 있으면 문간 대신 근처 칸으로 내려간다 — 안전한 축소)',
+      sample ? `${sample.v.name} · 메모리 렉트 ${_rects.size}개` : `없음(메모리 렉트 ${_rects.size}개)`);
+    if (sample) {
+      const d = H._hutDoorNear(sample.sh.bx, sample.sh.by, H.BUILDING_SIZE * 3);
+      ok(d && Math.abs(d.x - sample.sh.x) < 1e-6 && Math.abs(d.y - sample.sh.y) < 1e-6,
+        '★★⑯ⓒ 문간 문법이 **`villages.shelterOf` 와 같은 칸**을 낸다(문 자리를 상수로 안 적었다)',
+        d ? `(${d.x | 0},${d.y | 0}) vs 정본 (${sample.sh.x | 0},${sample.sh.y | 0})` : '못 찾음');
+      ok(d && !H.isTerrainBlockedLocal(d.x, d.y), '★⑯ⓒ 그리고 그 칸은 **설 수 있다**');
+      // 사유지 kind 로 감싸서 `wakeCellOf` 가 실제로 문간을 고르는지
+      const w = H.wakeCellOf({ kind: 'personal', x: sample.sh.bx, y: sample.sh.by, cw: 96, ch: 96 });
+      ok(w && w.cellKind === 'door' && Math.abs(w.x - sample.sh.x) < 1e-6,
+        '★★⑯ⓒ 움집이 있으면 `wakeCellOf` 가 **문간**을 고른다', w ? `${w.cellKind} (${w.x | 0},${w.y | 0})` : '—');
+    }
+    // ⓑ 움집이 없고 중심이 막혔으면 — **가장 가까운 설 수 있는 칸**
+    {
+      let blocked = null;
+      for (let r = 2000; r <= 90000 && !blocked; r += 1500) {
+        for (const [dx, dy] of [[1, 0], [0, 1], [-1, 0], [0, -1], [1, 1], [-1, -1]]) {
+          const x = 30848 + dx * r, y = 59872 + dy * r;
+          if (x < 2000 || y < 2000 || x > 400000 || y > 400000) continue;
+          if (H.isWaterTileLocal(x, y) || H.isRockTileLocal(x, y)) { blocked = { x, y }; break; }
+        }
+      }
+      pre(!!blocked, '중심이 **실제로 막힌** 자리를 찾았다(물이나 바위)', blocked ? `(${blocked.x},${blocked.y})` : '못 찾음');
+      if (blocked) {
+        ok(H.isTerrainBlockedLocal(blocked.x, blocked.y), '★전제 — 게임이 그 자리를 "막혔다"고 답한다');
+        const w = H.wakeCellOf({ kind: 'personal', x: blocked.x, y: blocked.y, cw: 32, ch: 32 });
+        ok(w && w.cellKind === 'near' && !H.isTerrainBlockedLocal(w.x, w.y),
+          '★★⑯ⓒ 움집이 없고 중심이 막혔으면 **가장 가까운 설 수 있는 칸**으로 내린다',
+          w ? `${w.cellKind} (${w.x | 0},${w.y | 0}) — ${Math.round(Math.hypot(w.x - blocked.x, w.y - blocked.y))}px` : '—');
+        ok(w && (w.x !== blocked.x || w.y !== blocked.y), '★⑯ⓒ 실제로 **움직였다**(막힌 자리를 그대로 주지 않는다)');
+      }
+    }
+    // ⓒ 마을 이송은 **무변** — kind 가 사유지가 아니면 좌표를 안 건드린다
+    {
+      const before = { kind: 'shelter', x: 12345, y: 67890, vid: 1 };
+      const after = H.wakeCellOf(before);
+      ok(after && after.x === 12345 && after.y === 67890 && after.cellKind === undefined,
+        '★★⑯ 마을 안 이송(shelter·arrive·center)은 **한 글자도 안 바뀐다**(T83 규칙 셋 밖)');
+    }
   }
 
   say(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
