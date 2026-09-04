@@ -602,6 +602,158 @@ function openSpot() {
       `효과비 ${effectR.toFixed(3)} < 잡음비 ${noiseR.toFixed(3)}×3`);
   }
 
+  // ═══ [T81 2026-09-03] ⓗ **옷 층 — 여섯이 갈린다** (시트 층) ═══════════════════
+  //   재민 확정(09-03): "색 선택을 빼고 옷이 외형 축." 그러면 **옷 여섯이 서로 갈려야** 축이 된다.
+  //   ★대조군은 **0 이다** — 같은 옷 두 번은 같은 시트다. 그래서 "0보다 크다"는 판정이 아니라 자명이다.
+  //   ⇒ 잣대는 이 시트가 이미 "이 크기에서 읽힌다"고 인정한 유일한 수에서 온다(족보 74):
+  //     T65 가 앞뒤를 가르려고 **채택한 앞섶 신호 = 평균 휘도차 14.73**.
+  //     두 옷은 |Δ휘도| ≥ 14.7 **이거나** 화소의 절반 이상이 눈에 띄게 다른 색이어야 한다
+  //     (휘도가 같아도 색이 다르면 갈린다 — 풀옷↔삼베가 그 경우다).
+  console.log('\n=== ⓗ 옷 층 — 여섯이 갈린다(시트) ===');
+  {
+    const P = require(path.join(ROOT, 'node_modules', 'pngjs')).PNG;
+    const DIR = path.join(ROOT, 'public', 'assets', 'char');
+    const META = JSON.parse(fs.readFileSync(path.join(DIR, 'char_meta.json'), 'utf8'));
+    const MATS = (META.layers || []).filter((l) => l.startsWith('clothes_')).map((l) => l.slice('clothes_'.length));
+    ok(MATS.length === 6, `옷 층이 여섯이다 — 품목 표(server/clothes.js)와 같은 수`, MATS.join(','));
+    const frameOf = (mat) => {
+      const png = P.sync.read(fs.readFileSync(path.join(DIR, `clothes_${mat}_idle.png`)));
+      const fw = META.frameW, fh = META.frameH, row = 2, col = 0;   // 한 방향·한 프레임이면 충분하다(같은 자리끼리 견준다)
+      const out = [];
+      for (let y = 0; y < fh; y++) for (let x = 0; x < fw; x++) {
+        const i = ((row * fh + y) * png.width + (col * fw + x)) * 4;
+        out.push([png.data[i], png.data[i + 1], png.data[i + 2], png.data[i + 3]]);
+      }
+      return out;
+    };
+    const F = {}; let missing = 0;
+    for (const m of MATS) { try { F[m] = frameOf(m); } catch (e) { missing++; } }
+    ok(missing === 0, '여섯 층의 idle 시트가 전부 있다', missing ? `없음 ${missing}장` : '');
+    const L = (p2) => 0.2126 * p2[0] + 0.7152 * p2[1] + 0.0722 * p2[2];
+    const cmp = (a2, b2) => {
+      let n = 0, tot = 0, s2 = 0;
+      for (let i = 0; i < a2.length; i++) {
+        const pa = a2[i], pb = b2[i];
+        if (pa[3] <= 150 && pb[3] <= 150) continue;
+        tot++;
+        if (Math.max(Math.abs(pa[0] - pb[0]), Math.abs(pa[1] - pb[1]), Math.abs(pa[2] - pb[2])) > 16) n++;
+        s2 += Math.abs(L(pa) - L(pb));
+      }
+      return { r: tot ? n / tot : 0, dl: tot ? s2 / tot : 0 };
+    };
+    // ★대조군 먼저 — 같은 옷 두 번은 **0** 이어야 한다. 여기서 0이 아니면 자가 틀린 것이다.
+    const ctl = cmp(F[MATS[0]], F[MATS[0]]);
+    ok(ctl.r === 0 && ctl.dl === 0, '★대조군 — 같은 옷끼리는 다른 화소 0 · |Δ휘도| 0 (자가 0을 낸다)',
+      `${(ctl.r * 100).toFixed(1)}% · ${ctl.dl.toFixed(2)}`);
+    const BAR = 14.7;   // T65 채택 앞섶 신호(눈대중 금지 — 족보 74)
+    const weak = [];
+    for (let i = 0; i < MATS.length; i++) for (let j = i + 1; j < MATS.length; j++) {
+      const a3 = MATS[i], b3 = MATS[j];
+      if (!F[a3] || !F[b3]) continue;
+      const c = cmp(F[a3], F[b3]);
+      if (!(c.dl >= BAR || c.r >= 0.5)) weak.push(`${a3}↔${b3}(|Δ|${c.dl.toFixed(1)}·${(c.r * 100).toFixed(0)}%)`);
+    }
+    ok(weak.length === 0, `★★★ⓗ 여섯 옷이 **쌍마다 갈린다** (${MATS.length * (MATS.length - 1) / 2}쌍 · |Δ휘도| ≥ ${BAR} 또는 다른 화소 ≥ 50%)`,
+      weak.length ? `못 갈린 쌍: ${weak.join(' ')}` : '');
+    // ★실루엣 — 갖옷만 제 기하(털 두께). 색이 아니라 **모양**으로도 갈리는 옷이 하나 있어야
+    //   빛·색맹·압축에 안 무너지는 신호가 생긴다(§0-ⓐ 가 가죽옷과 색으로 못 가른 자리다).
+    const box = (mat) => {
+      const f = F[mat]; const fw = META.frameW;
+      let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9, n = 0;
+      for (let i = 0; i < f.length; i++) if (f[i][3] > 150) {
+        const x = i % fw, y = (i / fw) | 0; n++;
+        if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+      }
+      return { w: x1 - x0 + 1, h: y1 - y0 + 1, n };
+    };
+    if (F.fur && F.hemp) {
+      const bf = box('fur'), bh = box('hemp');
+      console.log(`    실루엣 — 갖옷 ${bf.w}x${bf.h}(${bf.n}px) · 삼베 ${bh.w}x${bh.h}(${bh.n}px)`);
+      ok(bf.w > bh.w && bf.n > bh.n * 1.1,
+        '★★ⓗ 갖옷은 **실루엣도 다르다**(털 두께) — 색 말고도 갈리는 축이 하나 있다',
+        `폭 ${bh.w}→${bf.w} · 화소 ${bh.n}→${bf.n}`);
+    }
+  }
+
+  // ═══ [T81] ⓘ **남의 착장** — 둘째 클라가 첫째의 옷을 본다 ═══════════════════
+  //   `charLayersFor` 주석이 "남의 착장은 네트워크에 없다(회부)"라고 적어 둔 자리다.
+  //   ★자명 통과 금지: "본다"만 재면 기본 베옷이 우연히 맞아도 초록이다.
+  //     ⇒ **옷을 바꾸면 둘째 화면의 층 이름이 따라 바뀌는지**를 잰다.
+  console.log('\n=== ⓘ 남의 착장 — 둘째 클라가 첫째의 옷을 본다 ===');
+  {
+    // ★A 의 pid — 이 하네스가 이미 쓰는 술어를 그대로 쓴다(`window.__myPid` 는 없는 훅이다).
+    const aPid = await myPid();
+    ok(!!aPid, '검사 전제 — A 의 pid 를 안다', aPid || '못 찾음');
+    // ★★**상황부터 만든다.** ⑤ 뒤에 ⓓ 가 A 를 8방향으로 걸려 놨다 — 둘이 서로 시야 밖일 수 있다.
+    //   그리고 `__charDbg` 는 **지우지 않는다**: 시야에서 사라져도 옛 항목이 그대로 남는다.
+    //   그래서 "B 의 훅에 A 가 있다"는 **지금 보고 있다는 뜻이 아니다**(실측으로 여기서 틀렸다 —
+    //   12초를 기다려도 옛 삼베 값이 나왔다. 값이 안 온 게 아니라 **B 가 A 를 안 그리고 있었다**).
+    //   ⇒ B 를 A 옆으로 데려오고, **훅의 시각이 실제로 나아가는지**로 '지금 그린다'를 증명한다.
+    {
+      const aAbs = await meAbs(A);
+      for (let i = 0; i < 12; i++) {
+        await B.evaluate(([x, y]) => window.__sendPrimary({ type: 'teleport_debug', x, y }),
+          [Math.round(aAbs.x - SPOT.WOX) + 60, Math.round(aAbs.y - SPOT.WOY)]);
+        await sleep(600);
+        const c = (await B.evaluate(() => (window.__getSrvAbs ? window.__getSrvAbs() : null)));
+        if (c && Math.hypot(c.x - (aAbs.x + 60), c.y - aAbs.y) <= 140) break;
+      }
+      const tOf = () => B.evaluate((p2) => ((window.__charDbg || {})[p2] || {}).t || 0, aPid);
+      let moved = false;
+      for (let k = 0; k < 12 && !moved; k++) { const t1 = await tOf(); await sleep(500); moved = (await tOf()) > t1; }
+      ok(moved, '★★검사 전제 — 둘째 클라가 **지금** 첫째를 그리고 있다(훅 시각이 나아간다)');
+    }
+    // ★입히는 길은 **이미 있는 정본 경로**다(족보 88 — 없는 줄 알고 만들 뻔했다):
+    //   `__e2e_give` 의 `equip:` 가지(T12 신설)가 `PlayerItems.craftItem` + `doEquipItem` 를 그대로 부른다.
+    //   ⚠제품의 제작 경로(`craft_equipment`)는 **작업대 앞에서만** 돌고(§8.5 시설 게이트) 큐에 들어간다 —
+    //     이 하네스는 시설·대기열이 아니라 **옷 층**을 재는 자리라 지급 경로를 쓴다(서버 변경 0).
+    const wear = async (mat) => {
+      await A.evaluate((m) => window.__sendPrimary({ type: '__e2e_give', equip: [{ type: 'clothes', material: m, lvl: 5 }] }), mat);
+      for (let k = 0; k < 30; k++) {
+        const st = await A.evaluate(() => window.__equipState());
+        const id = st && st.slots && st.slots.clothes;
+        const inst = id ? (st.equipment || []).find((e) => e.id === id) : null;
+        if (inst && inst.mat === mat) return inst.id;
+        await sleep(200);
+      }
+      return null;
+    };
+    // ★★기다림은 **바라는 값**으로 한다 — "층 목록이 있다"로 빠져나오면 **낡은 값**을 집는다.
+    //   실측으로 그렇게 틀렸다: 둘째 클라의 `__charDbg` 는 rAF 가 쓰는데 백그라운드 탭은 rAF 가
+    //   느려서, 옷 정보는 이미 `others` 에 와 있는데 훅만 옛 값이었다(선을 직접 떠서 확인 —
+    //   B 가 받은 tick 원문에 `clothes:"fur"` 가 실려 있었다). ⇒ 값이 올 때까지 기다린다.
+    const waitLayer = async (page, pid, want, ms) => {
+      const t0 = Date.now(); let last = null;
+      for (;;) {
+        last = await page.evaluate((p2) => ((window.__charDbg || {})[p2] || {}).layers || null, pid);
+        if (last && last.indexOf(want) >= 0) return last;
+        if (Date.now() - t0 > (ms || 12000)) return last;
+        await sleep(250);
+      }
+    };
+    const id1 = await wear('fur');
+    ok(!!id1, '★검사 전제 — A 가 갖옷을 실제로 지어 입었다(제품 경로: 재료→제작→장착)', id1 || '실패');
+    const mine1 = await waitLayer(A, aPid, 'clothes_fur');
+    ok(!!mine1 && mine1.indexOf('clothes_fur') >= 0, '★A 자기 화면에서 갖옷 층을 쓴다', JSON.stringify(mine1));
+    const his1 = await waitLayer(B, aPid, 'clothes_fur');
+    ok(!!his1 && his1.indexOf('clothes_fur') >= 0,
+      '★★★ⓘ **둘째 클라가 첫째의 갖옷을 본다** — 남의 착장이 네트워크를 탄다', JSON.stringify(his1));
+    // ★★자명 통과 금지 — 옷을 바꾸면 **둘째 화면도 바뀐다**
+    const id2 = await wear('ramie');
+    ok(!!id2, '검사 전제 — A 가 모시옷으로 갈아입었다', id2 || '실패');
+    const his2 = await waitLayer(B, aPid, 'clothes_ramie');
+    ok(!!his2 && his2.indexOf('clothes_ramie') >= 0 && his2.indexOf('clothes_fur') < 0,
+      '★★★ⓘ 옷을 바꾸면 **둘째 화면도 바뀐다**(갖옷 → 모시옷) — 최초 가시분만 오는 게 아니다',
+      JSON.stringify(his2));
+    // ★구조 — 그려진 층은 **언제나** 시트 메타 안에 있다(표 밖 값이 화면에 새면 404·반쪽 합성이다)
+    const META2 = JSON.parse(fs.readFileSync(path.join(ROOT, 'public', 'assets', 'char', 'char_meta.json'), 'utf8'));
+    const outside = (his2 || []).filter((l) => (META2.layers || []).indexOf(l) < 0);
+    ok(outside.length === 0, '★그려진 층이 전부 시트 메타 안에 있다(표 밖 값 → 삼베 폴백이 사는 근거)', outside.join(','));
+    const src = fs.readFileSync(path.join(ROOT, 'public', 'client', '42-r2-char.js'), 'utf8');
+    ok(/equipmentMeta && equipmentMeta\.clothes/.test(src) && /return 'clothes_hemp'/.test(src),
+      '★표는 서버가 보낸 `equipmentMeta.clothes` 하나다(클라 사본 0) · 모르는 값은 삼베로 떨어진다');
+  }
+
   console.log('\n=== ⑦ 콘솔 오류 ===');
   const real = (a) => a.filter((x) => !/favicon|404 \(Not Found\)/.test(x));
   ok(real(A._errs).length === 0, '[A] 페이지 오류 0 (favicon 404 제외)', real(A._errs).slice(0, 2).join(' | '));

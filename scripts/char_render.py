@@ -105,6 +105,14 @@ LAYER_FILTER = None
 for _a in ARGS:
     if _a.startswith("--layer="):
         LAYER_FILTER = set(x.strip() for x in _a[len("--layer="):].split(",") if x.strip())
+# ★[T81 2026-09-03] **출력 자리 덮어쓰기** — `--sheetdir=/tmp/...`.
+#   §0 에서 후보(옷 재질 여섯)를 굽어 표로 고를 때 정본 자산을 건드리지 않기 위해서다.
+#   메타·.blend 도 그 자리로 간다(정본 40장은 손도 안 탄다).
+for _a in ARGS:
+    if _a.startswith("--sheetdir="):
+        SHEETDIR = os.path.abspath(_a[len("--sheetdir="):])
+        BLENDOUT = os.path.join(SHEETDIR, "char_body.blend")
+        os.makedirs(SHEETDIR, exist_ok=True)
 
 DIRS = 8   # 8방향. 16방향은 회부(연속 페이싱 재론과 함께)
 
@@ -228,6 +236,50 @@ M = {
     'straw': mat("straw", (0.545, 0.475, 0.335), 0.93, 0.05),  # 짚신
     'eye':   mat("eye",   (0.17, 0.12, 0.10), 0.88, 0.05),     # 눈 띠(_torso_mat 주석 참조)
 }
+
+# ═══════════════ 옷 재질 여섯 [T81 2026-09-03] ═══════════════
+# ★★재민 확정(09-03 · 설계_화면규칙_B_먹선): **색 선택을 빼고 옷이 외형 축이다.**
+#   그래서 옷은 **같은 CLOTH 기하 × 재질 여섯**이다 — 층 이름이 곧 재질(`clothes_<mat>`)이고,
+#   클라는 입은 옷의 `inst.mat` 로 층을 고른다. 품목 정본은 `server/clothes.js`(순서도 그 표다).
+# ★색은 **아이콘 정본에서 베낀다** — 아이콘으로 본 가죽과 몸에 걸친 가죽이 같은 물건으로 읽혀야 한다.
+#     hide    ← scripts/icon_render.py  M['hide']     (0.60, 0.44, 0.28)
+#     leather ← scripts/icon_render.py  M['leather']  (0.40, 0.27, 0.16)
+#     fiber   ← scripts/icon_render.py  M['drygrass'] (0.62, 0.58, 0.28)  ※ 풀 줄기 = 풀 엮은 옷
+#   ⚠`fur`·`ramie` 는 아이콘에 원본이 **없다**(품목이 없다). 아래 근거로 정한다:
+#     fur   갖옷은 무두질 전 짐승 털가죽 — hide 보다 어둡고 붉다.
+#     ramie 모시는 삼베보다 곱고 **희다**(표백에 가까운 생모시) · 광택이 조금 있다(spec ↑).
+#   ★★§0-ⓐ 실측이 값 둘을 **밀어냈다**(눈대중이 아니라 표가 시켰다 — `보고/T81` §0 표):
+#     ramie 1차 (0.795,0.775,0.700) → 삼베와 평균 |Δ휘도| 9.2 · 다른 화소 37.5% ⇒ 더 희게.
+#     fiber 1차 = 아이콘 `drygrass` 밝은 쪽 그대로 (0.62,0.58,0.28) → 생가죽옷과 |Δ휘도| 9.1 ·
+#           다른 화소 **4.4%**(사실상 같은 옷) ⇒ 마른 풀 쪽으로 한 단 더 밝게.
+#           아이콘과 같은 물건으로는 읽히되(줄무늬 아이콘은 평균이 더 어둡다) 몸에 걸친 것끼리 갈린다.
+#   ★기준 14.7 은 어디서 왔나 — T65 가 앞뒤를 가르려고 **채택한 앞섶 신호**가 평균 휘도차 +14.73 이다.
+#     이 시트가 "이 크기에서 읽힌다"고 이미 인정한 유일한 수라 그걸 잣대로 쓴다(족보 74 — 눈대중 금지).
+#   ⚠T77(세션8)이 아이콘·소품 공용 재질 모듈을 만드는 중이다 — 이 파일은 **무접촉**이라 값만 베꼈다.
+#     공용 모듈이 내려오면 이 표가 그걸 부르게 바꾸는 것이 다음 자리다(회부).
+# ★띠 두 개(허리끈·앞섶)는 **비율로 유도한다** — 눈대중 금지(족보 74):
+#     허리끈 hemp2/hemp = 0.857/0.847/0.835  ⇒ TRIM_K 0.85
+#     앞섶   L(cord)/L(hemp) = 0.3656/0.657  ⇒ PLACKET_K 0.56   (Rec.709 휘도비)
+#   ⚠삼베만은 **얼린 세 재질을 그대로 쓴다** — `char_sheets.lock.json` 의 바이트가 그 값이다.
+CLOTH_MATS = {                     # id → (기본색, rough, spec) · 순서 = server/clothes.js 표 순서(계약)
+    'fur':     ((0.300, 0.210, 0.145), 0.97, 0.03),
+    'ramie':   ((0.885, 0.875, 0.835), 0.88, 0.08),
+    'leather': ((0.400, 0.270, 0.160), 0.75, 0.18),
+    'hide':    ((0.600, 0.440, 0.280), 0.85, 0.10),
+    'fiber':   ((0.720, 0.665, 0.315), 0.95, 0.04),
+    'hemp':    ((0.700, 0.655, 0.545), 0.90, 0.06),
+}
+TRIM_K, PLACKET_K = 0.85, 0.56
+CLOTH_MATSET = {}                  # id → (본천, 허리끈, 앞섶)
+for _k, (_c, _r, _sp) in CLOTH_MATS.items():
+    if _k == 'hemp':
+        CLOTH_MATSET[_k] = (M['hemp'], M['hemp2'], M['cord'])   # ★얼린 바이트의 근거 — 종전 셋 그대로
+    else:
+        CLOTH_MATSET[_k] = (
+            mat("cl_" + _k, _c, _r, _sp),
+            mat("cl_" + _k + "_trim", tuple(v * TRIM_K for v in _c), _r, _sp),
+            mat("cl_" + _k + "_plk", tuple(v * PLACKET_K for v in _c), _r, _sp),
+        )
 
 # ═══════════════ 기하 헬퍼 ═══════════════
 BODY, CLOTH = [], []
@@ -466,6 +518,10 @@ for _sg, _sf in ((+1, 'L'), (-1, 'R')):
         0.17 * HAND_K, 0.105 * HAND_K, Z_ANKLE, M['straw'], BODY)
 
 # ── 옷(베옷 한 벌) — 옷도 이어진 표면이라야 어깨가 흐른다 ────────────────────
+# ★[T81] 갖옷 털 두께 — 반지름에 더하는 값(m). 청동기 갖옷은 무두질 전 털가죽을 그대로 두른 것이라
+#   짜서 몸에 붙는 삼베·모시와 부피가 다르다. 3cm 는 **화면에서 읽히는 최소선**으로 골랐다:
+#   PPU0 45.255px/m → 반지름 +0.03m = 한쪽 1.36px · 폭으로 2.7px = 옷 폭 21px 의 13%(§0-ⓐ 실측으로 확인).
+FUR_PAD = 0.03
 TUNIC_R = [(0.880, 0, 0, 0.134, 0.148), (1.040, 0, 0, 0.126, 0.140),
            (1.160, 0, 0, 0.136, 0.158), (1.300, 0, 0, 0.148, 0.172 * SHLD_K),
            (1.392, 0, 0, 0.144, 0.170 * SHLD_K), (1.424, 0, 0, 0.098, 0.108)]
@@ -485,14 +541,50 @@ def _tunic_mat(i, k):
     return 1 if fr > 0.35 else 0
 
 
-loft("tunic", TUNIC_R, blendw(TUNIC_R, [(0.80, 1.060, 'root'), (1.020, 1.50, 'spine')]), M['hemp'], CLOTH,
-     matfn=_tunic_mat, extra_mats=(M['cord'],))
-loft("skirt", SKIRT_R, blendw(SKIRT_R, [(0.60, 1.00, 'root')]), M['hemp'], CLOTH)
-loft("belt", BELT_R, blendw(BELT_R, [(0.95, 1.10, 'root')]), M['hemp2'], CLOTH)
-for _sg, _sf in ((+1, 'L'), (-1, 'R')):
-    _sr = [(z, 0, _sg * ARM_Y, rx * LIMB_K, ry * LIMB_K) for (z, rx, ry) in SLV_R]
-    loft("slv" + _sf, _sr, blendw(_sr, [(1.398, 1.46, 'spine'), (1.075, 1.412, 'uarm' + _sf)]),
-         M['hemp'], CLOTH)
+# ★[T81] 한 벌을 통째로 짓는 함수 — `pad` 는 **반지름에 더하는 두께(m)**.
+#   갖옷(모피)만 pad>0 이다: 털가죽은 부피가 있다. 색만으로는 가죽옷과 안 갈렸다(§0-ⓐ 실측:
+#   평균 |Δ휘도| 10.2 · 다른 화소 6.3% — 앞섶 신호 14.7 에 못 미친다). 실루엣은 색과 달리
+#   빛·색맹·압축에 안 무너지는 신호라 여기서 값을 치른다.
+def build_cloth(bucket, pad=0.0, suffix=""):
+    def _p(rings):   # (z, cx, cy, rx, ry) — 반지름 둘에만 더한다(자리·높이 무변)
+        return [(z, cx, cy, rx + pad, ry + pad) for (z, cx, cy, rx, ry) in rings]
+    tr, sk, bl = _p(TUNIC_R), _p(SKIRT_R), _p(BELT_R)
+    loft("tunic" + suffix, tr, blendw(TUNIC_R, [(0.80, 1.060, 'root'), (1.020, 1.50, 'spine')]),
+         M['hemp'], bucket, matfn=_tunic_mat, extra_mats=(M['cord'],))
+    loft("skirt" + suffix, sk, blendw(SKIRT_R, [(0.60, 1.00, 'root')]), M['hemp'], bucket)
+    loft("belt" + suffix, bl, blendw(BELT_R, [(0.95, 1.10, 'root')]), M['hemp2'], bucket)
+    for _sg, _sf in ((+1, 'L'), (-1, 'R')):
+        _sr0 = [(z, 0, _sg * ARM_Y, rx * LIMB_K, ry * LIMB_K) for (z, rx, ry) in SLV_R]
+        _sr = [(z, cx, cy, rx + pad, ry + pad) for (z, cx, cy, rx, ry) in _sr0]
+        loft("slv" + _sf + suffix, _sr, blendw(_sr0, [(1.398, 1.46, 'spine'), (1.075, 1.412, 'uarm' + _sf)]),
+             M['hemp'], bucket)
+
+
+build_cloth(CLOTH)                      # ★기본 한 벌 — 삼베를 포함한 다섯 재질이 이 기하를 공유한다
+CLOTH_FUR = []
+build_cloth(CLOTH_FUR, pad=FUR_PAD, suffix="_fur")   # 갖옷만 제 기하(털 두께)
+
+# ★[T81] 옷 층은 **재질 슬롯만** 갈아 끼워 굽는다 — 기하는 한 벌뿐이다(같은 실루엣 × 재질).
+#   왜 오브젝트를 여섯 벌 만들지 않나: 씬에 안 보이는 기하가 늘면 Cycles 의 BVH·표본이 흔들려
+#   **이미 얼린 시트의 바이트를 위협**한다. 슬롯 교체는 씬 구성을 그대로 둔다.
+#   역할은 조립 당시 재질로 되읽는다(하드코딩 금지): 본천 hemp · 허리끈 hemp2 · 앞섶 cord.
+_ROLE_OF = {M['hemp'].name: 0, M['hemp2'].name: 1, M['cord'].name: 2}
+CLOTH_SLOTS = {}
+for _bk, _objs in (("base", CLOTH), ("fur", CLOTH_FUR)):
+    CLOTH_SLOTS[_bk] = [(_o, [_ROLE_OF.get(_m.name if _m else '', 0) for _m in _o.data.materials]) for _o in _objs]
+# ★어느 재질이 어느 기하를 쓰는가 — 갖옷만 제 기하(털 두께), 나머지 다섯은 한 벌을 공유한다.
+CLOTH_GEOM = {k: ("fur" if k == "fur" else "base") for k in CLOTH_MATS}
+
+
+def cloth_objs(key):
+    return CLOTH_FUR if CLOTH_GEOM[key] == "fur" else CLOTH
+
+
+def set_cloth_material(key):
+    ms = CLOTH_MATSET[key]
+    for _o, _roles in CLOTH_SLOTS[CLOTH_GEOM[key]]:
+        for _i, _r in enumerate(_roles):
+            _o.data.materials[_i] = ms[_r]
 
 
 # ── 도구(손에 드는 것) — 오른손(모델 −y) 기준 ───────────────────────────────
@@ -849,17 +941,21 @@ def set_visible(objs_on, holdouts=()):
         o.is_holdout = (id(o) in ho) and (id(o) not in on)
 
 
-# (이름, 그릴 것, 홀드아웃) — 홀드아웃은 **항상 같이 그려지는 아래 레이어**만 넣는다.
-LAYERS = [("body", lambda: BODY, lambda: []),
-          ("clothes_hemp", lambda: CLOTH, lambda: BODY)]
+# (이름, 그릴 것, 홀드아웃, 굽기 전 훅) — 홀드아웃은 **항상 같이 그려지는 아래 레이어**만 넣는다.
+#   ★[T81] 옷은 재질마다 한 층이다. `pre` 가 그 재질로 슬롯을 갈아 끼운다(기하는 공용).
+LAYERS = [("body", lambda: BODY, lambda: [], None)]
+for _ck in CLOTH_MATS:
+    LAYERS.append(("clothes_" + _ck, (lambda k: (lambda: cloth_objs(k)))(_ck), lambda: BODY,
+                   (lambda k: (lambda: set_cloth_material(k)))(_ck)))
 for _tn, _ in TOOL_BUILDERS:
-    LAYERS.append(("tool_" + _tn, (lambda n: (lambda: TOOLS[n]))(_tn), lambda: BODY))
+    LAYERS.append(("tool_" + _tn, (lambda n: (lambda: TOOLS[n]))(_tn), lambda: BODY, None))
 
 # ★검사용 대조 레이어(`--probe`): 몸+옷+도끼를 **한 번에** 굽는다.
 #   런타임 합성(레이어를 화가 순서로 겹치기)과 이 대조를 견주면 **가림(occlusion) 오차**가 수치로 나온다.
 #   합성은 깊이를 모르므로 도구가 몸 뒤로 가야 할 방향에서 앞에 뜬다 — 그 크기를 재려는 것이다.
 if "--probe" in ARGS:
-    LAYERS.append(("probeall", lambda: BODY + CLOTH + TOOLS['axe'], lambda: []))
+    LAYERS.append(("probeall", lambda: BODY + CLOTH + TOOLS['axe'], lambda: [],
+                   lambda: set_cloth_material('hemp')))
 
 
 def downsample(px, w, h, k):
@@ -1008,26 +1104,52 @@ if not ONLY_META:
         if CLIP_FILTER and clip not in CLIP_FILTER:
             continue
         built = []
-        for lname, getter, hoget in LAYERS:
-            if LAYER_FILTER and lname not in LAYER_FILTER:
-                continue
+        want = [l for l in LAYERS if not (LAYER_FILTER and l[0] not in LAYER_FILTER)]
+        for lname, getter, hoget, pre in want:
+            if pre:
+                pre()
             sheet, SW, SH = render_layer(lname, getter(), clip, n, hoget())
             built.append([lname, sheet, SW, SH])
             if RAWDUMP:   # 실루엣 강화 **전** 원본 — 세기 비교판을 재렌더 없이 만들려고 남긴다
                 save_sheet(sheet, SW, SH, os.path.join(OUTDIR, f"raw_{lname}_{clip}.png"))
         if EDGE_K < 0.999 and built:
             SW, SH = built[0][2], built[0][3]
-            uni = [0.0] * (SW * SH)
+            # ★★[T81] 실루엣 합집합은 **한 벌 기준**이다 — 몸 + '지금 그 옷' 하나.
+            #   ⓐ 옷이 하나(삼베)뿐일 땐 전체 합집합과 같은 값이라 **얼린 40장의 근거가 그대로 산다.**
+            #   ⓑ 여섯이 되면 전체 합집합은 틀린다: 갖옷 소매의 알파가 삼베 시트의 테두리 판정에
+            #      섞여 들어 삼베가 제 실루엣 밖에서 안 어두워진다(= 다른 옷의 실루엣이 새는 것).
+            #   ⓒ 옷 하나만 굽는 판(`--layer=clothes_fur`)에서도 **몸을 같이 굽는다** — 저장은 안 한다.
+            #      안 그러면 합집합에 몸이 빠져 목·소매·단에 **없는 선**이 생긴다(edge_darken 주석).
+            PARTNER = {"body": "clothes_hemp"}   # 몸의 짝은 기본 한 벌(삼베) — 얼린 바이트의 기준
+            alpha = {}
+            for lname, sheet, _w, _h in built:
+                if lname in SILHOUETTE_GROUP:
+                    alpha[lname] = [sheet[i * 4 + 3] for i in range(SW * SH)]
+
+            def _partner_alpha(lname):
+                pn = PARTNER.get(lname, "body")
+                if pn in alpha:
+                    return alpha[pn]
+                ent = next((l for l in LAYERS if l[0] == pn), None)
+                if not ent:
+                    return None
+                if ent[3]:
+                    ent[3]()
+                psheet, pw, ph = render_layer(pn, ent[1](), clip, n, ent[2]())   # 마스크용 — 저장 안 한다
+                alpha[pn] = [psheet[i * 4 + 3] for i in range(pw * ph)]
+                return alpha[pn]
+
             for lname, sheet, _w, _h in built:
                 if lname not in SILHOUETTE_GROUP:
+                    edge_darken(sheet, SW, SH, EDGE_K, mask=None)
                     continue
-                for i in range(SW * SH):
-                    av = sheet[i * 4 + 3]
-                    if av > uni[i]:
-                        uni[i] = av
-            for lname, sheet, _w, _h in built:
-                edge_darken(sheet, SW, SH, EDGE_K,
-                            mask=(uni if lname in SILHOUETTE_GROUP else None))
+                uni = list(alpha[lname])
+                other = _partner_alpha(lname)
+                if other:
+                    for i in range(SW * SH):
+                        if other[i] > uni[i]:
+                            uni[i] = other[i]
+                edge_darken(sheet, SW, SH, EDGE_K, mask=uni)
         for lname, sheet, SW, SH in built:
             key = f"{lname}_{clip}"
             save_sheet(sheet, SW, SH, os.path.join(SHEETDIR, key + ".png"))

@@ -52,11 +52,28 @@
     return ((d % 8) + 8) % 8;
   }
 
+  // ★★[T81 2026-09-03] **옷 층** — 입은 옷의 재질이 곧 층 이름이다(`clothes_<mat>`).
+  //   표는 서버가 보낸 `equipmentMeta.clothes`(정본 `server/clothes.js`) 하나다 — 클라에 사본을 안 둔다.
+  //   시트 유무는 `char_meta.json` 의 `layers` 로 확인한다(그것도 서버가 구운 정본이지 사본이 아니다).
+  //   ⚠**표 밖 값·시트 없음 → 삼베.** 알몸 금지 규약(고증: 서민 삼베 한 벌)이 여기서도 산다.
+  function clothLayerOf(mat) {
+    if (!mat) return 'clothes_hemp';
+    const tbl = (equipmentMeta && equipmentMeta.clothes) || null;
+    if (!tbl || !tbl.some((c) => c && c.id === mat)) return 'clothes_hemp';
+    const m = charMeta();
+    const key = 'clothes_' + mat;
+    return (m && Array.isArray(m.layers) && m.layers.indexOf(key) >= 0) ? key : 'clothes_hemp';
+  }
+  // 내 옷은 내 장비에서 읽는다(남의 것은 tick 이 실어 온다 — `30-n-net.js`).
+  function myClothMat() {
+    if (!equipSlots || !equipSlots.clothes) return null;
+    const ci = (equipment || []).find((q) => q.id === equipSlots.clothes);
+    return ci && ci.mat ? String(ci.mat) : null;
+  }
   // 착장 → 레이어 키. 없는 착장은 레이어 생략.
-  //   ⚠남의 착장은 네트워크에 없다 — 기본 베옷만 입힌다(알몸으로 보이지 않게). 회부.
-  function charLayersFor(isMe) {
-    const L = ['body', 'clothes_hemp'];        // 베옷은 기본 — 알몸 금지(고증: 서민 삼베 한 벌)
-    if (!isMe) return L;                       // ⚠남의 착장은 네트워크에 없다(회부)
+  function charLayersFor(isMe, otherMat) {
+    const L = ['body', clothLayerOf(isMe ? myClothMat() : otherMat)];
+    if (!isMe) return L;                       // 남은 옷까지 — 손에 든 것은 아직 네트워크에 없다(회부)
     // ★손에 든 것 = **도구 인스턴스 정본**(`getEquippedInstance`) 우선, 없으면 장비 무기 슬롯.
     //   시트는 실루엣 두 종뿐이다: 자루+날(axe) / 긴 장대(rod). 종류 확장은 목록 한 줄 + 재렌더.
     let t = '';
@@ -103,7 +120,7 @@
     const m = charMeta();
     if (!m) return false;
     // ★[T13] NPC 는 직업 표식 표를 쓴다(`40-r2-sprites.js` — 이 파일에 함수를 새로 만들지 않는다).
-    const layers = opts.job ? npcCharLayers(opts.job) : charLayersFor(isMe);
+    const layers = opts.job ? npcCharLayers(opts.job) : charLayersFor(isMe, opts.clothes);
     // ★한 장이라도 안 떠 있으면 **아무것도 안 그린다** — 반쪽 합성(몸만·옷만)이 화면에 나가면
     //   "픽셀 정렬 0px" 계약이 지켜지는지 눈으로 볼 수 없다. 다 뜰 때까지 도형으로 버틴다.
     const st0 = _charAnim.get(opts.pid);

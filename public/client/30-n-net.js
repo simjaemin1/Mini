@@ -995,6 +995,7 @@
             simJob: pp.simJob !== undefined ? pp.simJob : prev?.simJob, // §4-4 Stage 4A: 마을 NPC 직업(첫 visible 메타 + sim_village_day 갱신)
             npc: pp.npc !== undefined ? pp.npc : prev?.npc,             // ★[캐릭 시트] NPC 신원 1비트(첫 가시 메타)
             act: pp.act !== undefined ? pp.act : prev?.act, // ★[액션 라벨] 생활 층 행동(모내기·잠행·개간…) — 변경 시에만 수신, 미수신=유지
+            clothes: pp.clothes !== undefined ? pp.clothes : prev?.clothes, // ★[T81] 남의 옷 재질 — act 와 같은 델타 문법(미수신=유지)
             cap: pp.cap | 0, // §18 3파: 포로 표식(동적 1비트 — 회색 테두리 렌더)
             buf,
             lastX: prev?.x ?? pp.x, lastY: prev?.y ?? pp.y,

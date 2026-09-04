@@ -4918,6 +4918,7 @@ function doDoorToggle(player, buildingId) {
 // ══ 플레이어 장비: 제작·장착·수선 (econ 무접촉·본체 서버층. 엔진 = server/player-items.js) ══
 function findEquip(player, id) { return (player.equipment || []).find(e => e.id === id) || null; }
 function sendEquipment(player) {
+  player._clothesAt = Date.now();   // ★[T81] 착장이 바뀌었을 수 있다 — tick 이 남에게 옷을 다시 알린다(makeEntry 주석)
   send(player.ws, { type: 'equipment', equipment: player.equipment || [], equipSlots: player.equipSlots || {}, craftSkill: player.craftSkill || {} });
 }
 // 장비 제작: 유형+재료 → 품질(숙련×재료등급) 인스턴스. 재료 스택 차감, 숙련 xp+.
@@ -10265,6 +10266,11 @@ setInterval(() => {
       // ★[액션 라벨 가시화 — 생활 층 100%] 행동 라벨(모내기·잠행·개간·건축·취침…): 변경 후 1.2s 윈도우 + 최초가시에만
       //   문자열 전송(무상태 델타 — 뷰어별 추적 없이 25틱 중복이 상한). 클라는 수신 시 갱신·미수신 시 유지. ''=라벨 제거.
       if (o._lifeAct !== undefined && (isNew || now - (o._lifeActAt || 0) < 1200)) e.act = o._lifeAct;
+      // ★★[T81 2026-09-03] **남의 착장** — 옷 재질 하나(`inst.mat`). 지금까지 네트워크에 없었고,
+      //   그래서 클라는 남을 전부 기본 베옷으로 그렸다(`42-r2-char.js charLayersFor` 주석의 그 회부).
+      //   전송 문법은 `act` 와 같다(무상태 델타): 최초 가시 + 바뀐 뒤 1.2초 창. 매틱 문자열은 안 보낸다.
+      //   ⚠도구는 아직 안 간다 — 이 카드가 닫는 축은 **옷 하나**다(도구·갑옷은 같은 자리에 한 줄씩 더).
+      if (isNew || now - (o._clothesAt || 0) < 1200) e.clothes = (getEquippedEquipment(o, 'clothes') || {}).mat || null;
       return e;
     }
     // Phase 14.38: mob facing — vx/vy 포함. 14.49-d: floor + z
