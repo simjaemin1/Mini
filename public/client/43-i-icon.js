@@ -42,6 +42,14 @@
     'abalone', 'carp', 'cod', 'crab', 'dried_fish', 'dried_fruit',
     'dried_oyster', 'dried_seaweed', 'fresh_water', 'herring', 'oyster',
     'pickled_veg', 'pollock', 'salmon', 'seaweed', 'shrimp', 'smoked_meat', 'trout',
+    // ★[T79 · 작물 아이콘 a] 수확물 14 + 씨앗 14. 씨앗은 서버가 **다른 품목 id** 로 갖는다
+    //   (`crops.js` 의 SEED_PREFIX) — 그래서 키가 따로다. 그림도 따로다:
+    //   수확물은 이삭·꼬투리(줄기가 붙어 있다) · 씨앗은 **토기 접시에 담긴 알곡 한 줌**.
+    'adlay', 'azuki', 'barley', 'barnyard_millet', 'buckwheat', 'foxtail_millet',
+    'millet', 'mungbean', 'perilla', 'rice', 'sesame', 'sorghum', 'soybean', 'wheat',
+    'seed_adlay', 'seed_azuki', 'seed_barley', 'seed_barnyard_millet', 'seed_buckwheat',
+    'seed_foxtail_millet', 'seed_millet', 'seed_mungbean', 'seed_perilla', 'seed_rice',
+    'seed_sesame', 'seed_sorghum', 'seed_soybean', 'seed_wheat',
   ]);
   // ★★[T66 2차 · 재민 확정 2026-09-03] 옛 **거부 목록** `ICON_NO_RENDER` 은 **없앴다** — 뒤집혔다.
   //   종전: "여기 있으면 렌더가 없다"(빠뜨리면 404). 지금: `ICON_RENDERED` 에 **있으면 그림, 없으면 점선 칸**.

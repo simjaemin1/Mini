@@ -12,12 +12,13 @@
 
 | 스크립트 | 굽는 것 | 결과 | 앵커 |
 |---|---|---|---|
+| **`scripts/models_crops.py`** | 작물 수확물 14 + 씨앗 14 아이콘 [T79] | `crop_icon_renders/*.png` → `icons-postprocess.js` → `public/assets/icons/` | 없음(bbox 중심) |
 | **`scripts/render_common.py`** | ★렌더 **공용 정본** — 재질 문법·기하 헬퍼·씬·프리셋 둘·후처리. 그림은 안 만든다 | — | — |
 | `scripts/building_render.py` | 움집 4단계·지붕 · 회관 지붕 · 곳간 · 노 3단계+완공 · 숯가마 2단계 | `public/assets/buildings/*.png` | `building_anchors.json` (클라 `20-r2-visibility.js` 의 A표에 **손으로 옮겨 적혀 있다** — `test-building-anchor.js` 가 대조) |
 | **`scripts/props_render.py`** ★T67 신규 · T72 확장 | **가구·시설 8종**(작업대·건조대·상자·모닥불·소금가마·벽·문·울타리) + **손도구·손에 드는 것 13종**(§9) | `public/assets/props/*.png` + `public/assets/icons/*.png` | `public/assets/props/props_anchors.json` — 클라가 **읽는다**(사본 없음) · 아이콘은 앵커 없음 |
 | `scripts/nature_render.py` | 나무·덤불·풀·갈대·부들·꽃·이끼바위 | `public/assets/nature/*.png` | `nature_anchors.json`(클라가 fetch) |
 | `scripts/icon_render.py` | 인벤 아이콘(자원·야금 사슬 등) · **공용 모듈 씀** | `icon_renders/*.png` → `icons-postprocess.js` → `public/assets/icons/` | 없음(bbox 중심) |
-| `scripts/crop_render.py` | 작물 4단계 | `public/assets/crops/` | — |
+| `scripts/crop_render.py` | 작물 밭 4단계(세계) · **공용 모듈 씀**[T79] | `crop_renders/*.png` → 64px → `public/assets/crops/` | — |
 | `scripts/char_render.py` | 캐릭터 스프라이트시트 | `public/assets/char/` | 프레임 상자 메타 JSON |
 | `scripts/bridge_render.py` | 다리 | `public/assets/bridge/` | — |
 | `scripts/bake-mountain.py` · `pack-mountain.py` | 산 | `public/assets/mountains/` | `mountain_anchors.json` |
@@ -238,3 +239,75 @@ props 가 멀쩡한 이유도 같다 — 거기선 렌더 직전 `bake_transform
 | `props_render.py` | 세계 14 + 아이콘 39 | 2분 39초 |
 | `icon_render.py` | 아이콘 31 | 2분 55초 |
 | `icons-postprocess.js` (70장) | — | 1초 미만 |
+
+## 13. T79 배치 (2026-09-03) — 작물 아이콘 a · 굽는 기계 통일
+
+### ★★굽는 기계 정본 = **컨테이너 pip `bpy` 5.0.1** [재민 판정 2026-09-03]
+
+T77 이 밝힌 것: 저장소 아이콘 31장이 **Blender 4.0.2 시대 굽기**라 5.0.1 로는 옛 코드로 구워도
+평균 8–26/255 달랐다. 기계가 둘이면 "다시 구웠더니 달라졌다"가 코드 탓인지 기계 탓인지 못 가린다.
+⇒ **기계를 하나로 못박았다.** 이 카드가 아이콘 70 + 가구 14 를 5.0.1 로 다시 구웠다.
+남은 4.0.2 산출(자연물·건물·캐릭터·작물 세계 스프라이트)은 **각 카드가 그 파일을 열 때** 옮긴다.
+
+전/후 실측: 70장 전부 바뀌었고, **평균차 1.5 이하(표본잡음 급) 37장 · 5 초과(눈에 보임) 21장**.
+눈으로 본 결론 — 4.0.2 는 범프·노이즈 면에 **오돌토돌한 얼룩**이 낀다(`ore`·`stone`·`ore_chunk`·
+`jade_raw`·`iron_ore`). 5.0.1 이 매끈하고 형태가 산다. 대조표 `산그림/디자인B/아이콘_재굽기_전후.png`.
+
+### `public/assets/icons.lock.json` — 다음 재굽기의 대조 자
+
+| 항목 | 값 |
+|---|---|
+| `_기계` | `pip bpy 5.0.1` |
+| `icons` / `props` | 키 → **IDAT sha1 앞 16자** (98 / 14) |
+| 지키는 검사 | `scripts/test-icons.js ⑧` — 표 ↔ 파일 전수 · 화소 해시 대조 |
+
+★★**값이 왜 파일 전체 해시가 아니라 IDAT 인가** [T79 실측 · 중요]
+블렌더가 쓴 원본 PNG 에는 `Date`(벽시계) 와 `RenderTime`·`cycles.*_time` tEXt 청크가 박힌다.
+⇒ **같은 코드로 두 번 구워도 파일 바이트는 늘 다르다.** 그러니 원본 PNG 에 `cmp` 를 걸면 안 된다.
+비교는 **IDAT(화소 페이로드)** 로 한다. 배포 자산(`icons-postprocess.js`·`_post_png` 가 다시 쓴 것)은
+메타가 씻겨 파일 `cmp` 가 되지만, **굽는 자리에서는 IDAT 가 유일하게 옳은 자**다.
+
+### ★★씨앗 문법 [T79 §0-ⓐ — 서버가 정본]
+
+`server/crops.js` 가 씨앗을 **다른 품목 id** 로 갖는다(`SEED_PREFIX` ⇒ `seed_rice`).
+무게도 갈린다 — 작물 0.45~0.75kg vs `SEED_KG` **0.02kg**(약 38배). 그런데 `emojiOf` 는 씨앗 전부
+`🌰` 였다 — **모양 규약이 없었다.** T79 가 짓는다:
+
+* **크기로는 못 짓는다** — `icons-postprocess.js` 가 전부 96px 를 꽉 채운다(T72 §0-ⓒ).
+* ⇒ **그릇으로 짓는다.** 수확물 = 이삭·꼬투리에 **줄기가 붙어 있다** · 씨앗 = **낮고 넓은 토기 접시에
+  담긴 알곡 한 줌**. 26px 에서 "선 것 vs 눕은 원반"으로 갈린다.
+* 접시는 **열려 있어야 한다** — 주머니로 덮으면 씨앗 14장이 서로 똑같아진다(더 큰 실패).
+  단지(`berry_jam`·`pickled_veg`)는 높고 좁아 실루엣이 겹치지 않는다.
+* 모델은 **같은 함수 다른 인자**(T76 §9-A 첫째 층): `_ear(..., seed=True)` · `_pod(..., seed=True)` …
+  `test-icons ⑦ⓒ` 가 "두 `m_*` 가 같은 빌더를 부르는가"로 잠근다.
+
+### 낟알 고증 — 종을 가르는 유일한 단서
+
+세계 스프라이트는 `grain`/`veg` **두 벌뿐**이고 그나마 **좌표 해시**로 고른다
+(`00-const.js cropSprite` — 벼밭이 `veg` 로 그려질 수 있다 · §0-ⓑ 실측 · 회부). 그래서 종은 아이콘이 진다.
+
+| 종 | 표식 | 빌더 |
+|---|---|---|
+| 벼 | 고개 숙인 이삭 + 짧은 까끄라기 | `_ear` |
+| 보리 | 곧게 서고 **긴 까끄라기**가 부챗살 | `_ear` |
+| 밀 | 까끄라기가 짧고 낟알이 굵다 | `_ear` |
+| 조 | 강아지풀 꼴 **원통 이삭**, 잔 낟알 빽빽 | `_ear` |
+| 기장 | 조와 달리 **벌어진 원추화서** | `_ear` |
+| 수수 | 위로 곧게 뭉친 덩이, 굵고 **붉은** 알 | `_ear` |
+| 피 | 잡초성 — 성기고 탁한 녹갈색 가지 | `_ear` |
+| 율무 | **구슬 낟알**(꿰어 염주를 만들던 것) | `_bead` |
+| 메밀 | **삼각뿔 씨**(곡물이 아니라 마디풀과) | `_tri` |
+| 콩·팥·녹두 | 납작한 꼬투리 + 하나는 **터뜨려** 알을 드러낸다 · 팥은 **흰 배꼽** | `_pod` |
+| 들깨 | 성긴 총상화서 · 회갈색 둥근 씨 | `_oil` |
+| 참깨 | 줄기에 붙은 **세로 삭과** · **납작한** 흰 씨 | `_oil` |
+
+### 눈으로 잡은 것(4패스)
+
+1. **잎이 거대한 카드로 떴다** — `plane(sx,sy,…)` 가 이미 `o.scale` 을 넣는데 그 뒤에 **덮어썼다**.
+   곱하는 게 아니라 덮어쓰기라 0.5×1.0 유닛짜리 판이 됐다. ⇒ 헬퍼에 맞는 인자를 주고 덮어쓰기를 없앴다.
+2. **콩 셋이 전부 애벌레**로 읽혔다 — 알을 축에 꿰니 알이 몸통이 되고 꼬투리가 사라졌다.
+   ⇒ 꼬투리를 납작한 몸통으로 세우고 알은 겉으로 비치는 마디로. 앞의 하나만 터뜨려 알을 드러낸다.
+3. **율무가 콜리플라워** → 포도송이 → 구슬. 알을 작게·여럿·대를 따라 퍼뜨려야 '꿰는 구슬'이 된다.
+4. **참깨가 선인장** — 삭과가 뭉쳤다. 가늘고 길게, 사이를 띄웠다.
+5. **접시가 프레임을 먹었다** — `icons-postprocess.js` 는 **가장 넓은 것**을 96px 에 맞춘다.
+   접시를 좁히고 무더기를 높이니 낟알이 커졌다(그릇 규약을 살리면서 알을 보이게 하는 값).

@@ -164,6 +164,109 @@ console.log('\n[⑥ 원물 → 보존식 계보 — 서버가 인정하고, 같�
   ok(true, '계보 IoU 기록 완료(판정 근거 아님 — 위 ★)');
 }
 
+// ── ⑦ [T79] 작물 수확물 14 + 씨앗 14 ───────────────────────────
+console.log('\n[⑦ 작물 아이콘 a — 수확물 14 · 씨앗 14 (models_crops.py 가 굽는 표)]');
+{
+  const CROP_PY = path.join(ROOT, 'scripts', 'models_crops.py');
+  const cpy = fs.existsSync(CROP_PY) ? fs.readFileSync(CROP_PY, 'utf8') : null;
+  ok(!!cpy, 'scripts/models_crops.py 가 있다');
+  if (cpy) {
+    const lb = cpy.match(/^CROPS_A = \[([\s\S]*?)\]/m);
+    ok(!!lb, 'models_crops.py 에서 CROPS_A 를 읽었다');
+    const CA = lb ? [...lb[1].matchAll(/'([a-z_0-9]+)'/g)].map(m => m[1]) : [];
+    ok(CA.length === 14, `수확물 14종 (실측 ${CA.length})`);
+    const ALL = [...CA, ...CA.map(c => 'seed_' + c)];
+
+    // ⓐ 파일 · 96×96 · 알파가 살아 있다
+    let bad = 0;
+    for (const k of ALL) {
+      const p = path.join(ICON_DIR, k + '.png');
+      if (!fs.existsSync(p)) { ok(false, `${k}.png 없음`); bad++; continue; }
+      const m = pngMeta(p);
+      if (!(m.w === 96 && m.h === 96)) { ok(false, `${k}.png ${m.w}×${m.h} (96 아님)`); bad++; }
+      else if (!(m.clear > 0 && m.solid > 0)) { ok(false, `${k}.png 알파가 죽었다 (투명 ${m.clear} · 불투명 ${m.solid})`); bad++; }
+    }
+    ok(bad === 0, `28장 전수 — 96×96 · 알파 살아 있음 (어긋남 ${bad})`);
+
+    // ⓑ 키가 **서버 품목**이다 — 씨앗은 `crops.js` 의 씨앗 규약을 따른다(§0-ⓐ)
+    let C = null; try { C = require(path.join(ROOT, 'server', 'crops.js')); } catch (e) {}
+    ok(!!C, 'server/crops.js 를 읽었다(씨앗 id 정본)');
+    if (C) {
+      const notCrop = CA.filter(k => !C.isCrop(k));
+      ok(notCrop.length === 0, `수확물 키 14개가 전부 서버 작물이다 ${notCrop.length ? '— 아닌 것: ' + notCrop.join(', ') : ''}`);
+      const badSeed = CA.filter(k => !C.isSeed('seed_' + k) || C.cropOfSeed('seed_' + k) !== k);
+      ok(badSeed.length === 0, `씨앗 키 14개가 서버 규약(seedOf/cropOfSeed)과 맞물린다 ${badSeed.length ? '— 아닌 것: ' + badSeed.join(', ') : ''}`);
+      // 무게가 갈린다 — 씨앗은 한 줌이다(그림을 크기로 못 가르는 이유이자, 그릇으로 가른 근거)
+      const w0 = C.kgOf(CA[0]), w1 = 0.02;
+      console.log(`     무게 — 작물 ${C.kgOf('rice')}kg vs 씨앗 ${w1}kg (${Math.round(C.kgOf('rice') / w1)}배). ` +
+                  '크기로는 못 가른다(96px 꽉 채움) ⇒ **그릇**으로 갈랐다: 이삭·꼬투리 vs 토기 접시.');
+    }
+
+    // ⓒ 계보 — 수확물과 씨앗이 **같은 빌더**에서 나온다(T76 ⑥ 수법 재사용)
+    const builderOf = (key) => {
+      const i2 = cpy.indexOf(`def m_${key}(`);
+      if (i2 < 0) return null;
+      let seg = cpy.slice(i2);
+      const nx = seg.indexOf('\ndef ', 1);
+      seg = seg.slice(seg.indexOf('):') + 2, nx > 0 ? nx : 400);
+      const c = seg.match(/(?<![A-Za-z0-9_])_([a-z_0-9]+)\(/);
+      return c ? c[1] : null;
+    };
+    const split = [];
+    for (const c of CA) {
+      const a = builderOf(c), b = builderOf('seed_' + c);
+      if (!a || !b || a !== b) split.push(`${c}(${a}) vs seed_${c}(${b})`);
+    }
+    ok(split.length === 0,
+       `계보 14짝 — 수확물과 씨앗이 같은 빌더를 부른다 ${split.length ? '— 갈린 것: ' + split.join(' · ') : ''}`);
+    const builders = [...new Set(CA.map(builderOf))].filter(Boolean);
+    console.log('     빌더: ' + builders.join(' · ') + `  (모델 재사용 첫째 층 — 같은 함수 다른 인자)`);
+
+    // ⓓ 배선 — 28키가 전부 클라 표에 있다
+    const src = fs.readFileSync(CLIENT_ICON, 'utf8');
+    const tb = src.match(/const ICON_RENDERED = new Set\(\[([\s\S]*?)\]\);/);
+    const wired = tb ? new Set([...tb[1].matchAll(/'([\w]+)'/g)].map(m => m[1])) : new Set();
+    const nw = ALL.filter(k => !wired.has(k));
+    ok(nw.length === 0, `28키 전부 ICON_RENDERED 에 올랐다 ${nw.length ? '— 안 오른 것: ' + nw.join(', ') : ''}`);
+  }
+}
+
+// ── ⑧ [T79] 굽는 기계 잠금 — icons.lock.json ─────────────────────
+console.log('\n[⑧ 굽는 기계 정본 — icons.lock.json 이 지금 자산과 맞는가]');
+{
+  const LOCK = path.join(ROOT, 'public', 'assets', 'icons.lock.json');
+  ok(fs.existsSync(LOCK), 'public/assets/icons.lock.json 이 있다');
+  if (fs.existsSync(LOCK)) {
+    const lock = JSON.parse(fs.readFileSync(LOCK, 'utf8'));
+    ok(/^pip bpy /.test(lock._기계 || ''), `굽는 기계가 적혀 있다: ${lock._기계}`);
+    // ★값은 **IDAT(화소 페이로드)** 해시다 — 파일 전체가 아니다.
+    //   블렌더 원본 PNG 는 `Date`·`RenderTime` tEXt 를 박아 두 번 구우면 바이트가 늘 다르다(T79 실측).
+    const idatSha = (p) => {
+      const b = fs.readFileSync(p); let i = 8; const parts = [];
+      while (i < b.length) {
+        const ln = b.readUInt32BE(i), t = b.toString('ascii', i + 4, i + 8);
+        if (t === 'IDAT') parts.push(b.subarray(i + 8, i + 8 + ln));
+        i += 12 + ln;
+      }
+      return require('crypto').createHash('sha1').update(Buffer.concat(parts)).digest('hex').slice(0, 16);
+    };
+    for (const [grp, dir] of [['icons', ICON_DIR], ['props', path.join(ROOT, 'public', 'assets', 'props')]]) {
+      const tbl = lock[grp] || {};
+      const files = fs.readdirSync(dir).filter(f => f.endsWith('.png')).map(f => f.slice(0, -4)).sort();
+      const missing = files.filter(k => !(k in tbl));
+      const orphan = Object.keys(tbl).filter(k => !files.includes(k));
+      ok(missing.length === 0 && orphan.length === 0,
+         `${grp}: 잠금표 ${Object.keys(tbl).length} ↔ 파일 ${files.length} 전수 일치` +
+         (missing.length ? ` — 표에 없음: ${missing.slice(0, 4).join(', ')}` : '') +
+         (orphan.length ? ` — 파일 없음: ${orphan.slice(0, 4).join(', ')}` : ''));
+      const drift = files.filter(k => tbl[k] && tbl[k] !== idatSha(path.join(dir, k + '.png')));
+      ok(drift.length === 0,
+         `${grp}: 화소 해시가 잠금표와 같다 (어긋남 ${drift.length}${drift.length ? ' — ' + drift.slice(0, 4).join(', ') : ''})`);
+    }
+    console.log('     ⇒ 다음 재굽기가 이 표와 대조한다. 기계를 바꾸면 여기가 먼저 빨개진다.');
+  }
+}
+
 if (SELFTEST) {
   console.log('\n[--selftest] ②가 오염(투명 화소 0)을 잡았어야 한다.');
   console.log('결과: ' + (fail ? 'PASS(검사기가 오염을 잡았다)' : 'FAIL(자명 통과 — 검사기가 눈멀었다)'));

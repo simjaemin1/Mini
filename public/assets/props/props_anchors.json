@@ -1,28 +1,4 @@
 {
- "chest": {
-  "w": 51,
-  "h": 49,
-  "ox": 25.5,
-  "oy": 36.94,
-  "ppu": 45.255,
-  "icon": "item_chest",
-  "btype": "chest",
-  "body_px": 24,
-  "flame_px": 0,
-  "zmax_px": 23.46
- },
- "chest_exchange": {
-  "w": 51,
-  "h": 49,
-  "ox": 25.5,
-  "oy": 36.94,
-  "ppu": 45.255,
-  "icon": "item_chest",
-  "btype": "chest",
-  "body_px": 24,
-  "flame_px": 0,
-  "zmax_px": 23.62
- },
  "workbench": {
   "w": 51,
   "h": 49,
@@ -46,6 +22,30 @@
   "body_px": 34,
   "flame_px": 0,
   "zmax_px": 33.87
+ },
+ "chest": {
+  "w": 51,
+  "h": 49,
+  "ox": 25.5,
+  "oy": 36.94,
+  "ppu": 45.255,
+  "icon": "item_chest",
+  "btype": "chest",
+  "body_px": 24,
+  "flame_px": 0,
+  "zmax_px": 23.46
+ },
+ "chest_exchange": {
+  "w": 51,
+  "h": 49,
+  "ox": 25.5,
+  "oy": 36.94,
+  "ppu": 45.255,
+  "icon": "item_chest",
+  "btype": "chest",
+  "body_px": 24,
+  "flame_px": 0,
+  "zmax_px": 23.62
  },
  "campfire": {
   "w": 49,

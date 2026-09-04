@@ -226,29 +226,25 @@ def cone(r1, r2, d, loc, rot=(0, 0, 0), mat=None, verts=20):
 
 
 def ico(r, loc, subdiv=1, mat=None, scale=(1, 1, 1), jitter=0.0, seed=None, smooth=False):
-    """이코스피어. 둥근 몸(생선·열매)은 `smooth=True`, 돌·흙덩이는 플랫이라야 각이 산다.
+    """이코스피어. 둥근 몸(생선·열매·낟알)은 `smooth=True`, 돌·흙덩이는 플랫이라야 각이 산다.
 
-    ★★본문 순서는 **icon_render.py 옛 판 그대로**다 — 지터 → 스무스 → `o.scale`.
-      바꾸면 안 되는 이유가 있다(T77 §③ 실측). `o.bound_box` 와 `o.matrix_world` 는 **캐시**라
-      정점을 직접 만진 뒤 뎁스그래프가 한 번 돌아야 갱신되는데, 여기 `bpy.ops.object.shade_smooth()`
-      가 그 한 바퀴를 **부작용으로** 돌려 주고 있었다. 그래서 아이콘 프리셋이 bbox 로 프레임을
-      잡을 때 지터가 반영된 경계를 봤다.
-        · 폴리곤 루프(`pg.use_smooth = True`)로 바꾸면 그 한 바퀴가 사라진다.
-        · `o.scale` 을 앞으로 옮기면 **마지막 오브젝트**의 `matrix_world` 가 갱신 전 값으로 남는다.
-      둘 중 하나만 건드려도 `hide`·`meat_cooked` 두 장의 프레임 중심이 밀린다(z 0.0189→0.0300).
-      props 는 렌더 전에 `bake_transforms()`(오퍼레이터)가 캐시를 씻어 줘서 영향이 없다.
-      ⚠이 "우연한 갱신"은 **버그다** — 명시적 갱신으로 바꾸면 아이콘 2장이 바뀐다.
-        T77 은 리팩터 카드라 그림을 안 바꾼다. 고치는 것은 회부했다(인계/회부.md 0-렌더공용 §1)."""
+    ★★[T79 · PM 판정] 스무스를 **폴리곤 루프**로 한다 — 오퍼레이터가 아니다.
+      T77 이 잰 것: 옛 `icon_render.py` 는 `bpy.ops.object.shade_smooth()` 가 **오퍼레이터라는
+      이유만으로** 뎁스그래프를 한 바퀴 돌려 `o.bound_box`·`o.matrix_world` 캐시를 씻어 주고
+      있었다. 아이콘 프리셋이 그 bbox 로 프레임을 잡으므로, 우연한 부작용이 그림을 맞히고
+      있었던 셈이다(지터를 쓴 `hide`·`meat_cooked` 두 장이 그것에 매달려 있었다).
+      T77 은 리팩터라 그 우연을 보존했고, T79 는 재굽기 카드라 **바로잡는다** —
+      스무스는 부작용 없는 루프로, 캐시 갱신은 `render_icon_pass` 가 **명시로** 한다."""
     if seed is not None:
         random.seed(seed)
     bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=subdiv, radius=r, location=loc)
-    o = bpy.context.active_object
+    o = bpy.context.active_object; o.scale = scale
     if jitter:
         for v in o.data.vertices:
             v.co *= (1.0 + random.uniform(-jitter, jitter))
     if smooth:
-        bpy.ops.object.shade_smooth()
-    o.scale = scale
+        for pg in o.data.polygons:
+            pg.use_smooth = True
     return add(o, mat)
 
 
