@@ -12,10 +12,11 @@
 
 | 스크립트 | 굽는 것 | 결과 | 앵커 |
 |---|---|---|---|
+| **`scripts/render_common.py`** | ★렌더 **공용 정본** — 재질 문법·기하 헬퍼·씬·프리셋 둘·후처리. 그림은 안 만든다 | — | — |
 | `scripts/building_render.py` | 움집 4단계·지붕 · 회관 지붕 · 곳간 · 노 3단계+완공 · 숯가마 2단계 | `public/assets/buildings/*.png` | `building_anchors.json` (클라 `20-r2-visibility.js` 의 A표에 **손으로 옮겨 적혀 있다** — `test-building-anchor.js` 가 대조) |
 | **`scripts/props_render.py`** ★T67 신규 · T72 확장 | **가구·시설 8종**(작업대·건조대·상자·모닥불·소금가마·벽·문·울타리) + **손도구·손에 드는 것 13종**(§9) | `public/assets/props/*.png` + `public/assets/icons/*.png` | `public/assets/props/props_anchors.json` — 클라가 **읽는다**(사본 없음) · 아이콘은 앵커 없음 |
 | `scripts/nature_render.py` | 나무·덤불·풀·갈대·부들·꽃·이끼바위 | `public/assets/nature/*.png` | `nature_anchors.json`(클라가 fetch) |
-| `scripts/icon_render.py` | 인벤 아이콘(자원·야금 사슬 등) | `icon_renders/*.png` → `icons-postprocess.js` → `public/assets/icons/` | 없음(bbox 중심) |
+| `scripts/icon_render.py` | 인벤 아이콘(자원·야금 사슬 등) · **공용 모듈 씀** | `icon_renders/*.png` → `icons-postprocess.js` → `public/assets/icons/` | 없음(bbox 중심) |
 | `scripts/crop_render.py` | 작물 4단계 | `public/assets/crops/` | — |
 | `scripts/char_render.py` | 캐릭터 스프라이트시트 | `public/assets/char/` | 프레임 상자 메타 JSON |
 | `scripts/bridge_render.py` | 다리 | `public/assets/bridge/` | — |
@@ -178,3 +179,62 @@ node scripts/test-props.js
 `_finfish()` 몸틀 하나에서 어종 여섯이 나오고, 보존식 셋은 원물과 **같은 함수**에서 나온다(§9-A).
 `test-icons` 를 31키로 넓히고 **계보 검사**(서버 `spoil.PRESERVE` 짝 + 같은 모델 함수)를 더했다.
 ★계보를 **픽셀 상관으로는 못 가른다**는 것을 측정으로 확인했다 — 자세한 수치는 보고서 §3.
+
+## 12. T77 배치 (2026-09-03) — 렌더 공용 모듈
+
+`icon_render.py` 와 `props_render.py` 가 같은 헬퍼를 **두 벌** 적고 있던 것을 한 벌로 합쳤다.
+84장 `cmp` 0 (같은 컨테이너·같은 bpy·옛 코드 대조군). 보고: `보고/T77_2026-09-03.md`.
+
+### ★★새 모델을 지을 때의 문법 — T79 부터 이대로
+
+1. **헬퍼는 다시 적지 않는다.** `def box`/`def ico`/`def simple_mat` … 을 렌더 스크립트에 쓰면
+   그 순간 두 벌이 된다. `from render_common import (…)` 로 가져다 쓴다.
+   새 모델군은 `models_<군>.py` 에 두고, 그 파일도 헬퍼는 공용에서 가져온다.
+2. **재질은 표(팔레트)로, 파일마다.** 공용 모듈은 재질 **문법**(`simple_mat`·`striped_mat`·
+   `bumped_mat`)만 갖는다. 색은 파일이 자기 `M` 에 갖는다 — icon 의 `stone` 과 props 의 `stone` 은
+   **다른 돌**이라 합치면 그림이 바뀐다(T77 §0-ⓒ 실측: 키 교집합 셋).
+   Blender datablock 이름엔 **접두**를 붙인다: icon `i_` · props `p_`/`f_`/`t_` · 새 군은 새 접두.
+3. **렌더는 프리셋 이름으로.** 카메라·조명·해상도를 손으로 세우지 않는다.
+   `rc.render_icon_pass(objs, path)` (아이콘) · `rc.render_world_pass(objs, path)` (세계).
+   씬은 `rc.build_scene("<태그>")` 한 줄로 선다.
+4. **기본값을 생략하지 마라 — 명시로 쓴다.** 합치면서 두 판의 기본값이 갈렸던 인자
+   (`ico.subdiv` · `ico.smooth` · `cyl.verts` · `cyl.smooth` · `striped_mat.rough`/`bump`)는
+   지금 전 호출부가 **명시**한다. `scripts/test-render-common.js ④` 가 그것을 지킨다.
+
+### 갈렸던 기본값 (합친 값 ≠ icon 옛값인 것 — 새 코드가 조심할 자리)
+
+| 인자 | icon 옛 기본값 | 합친 기본값 | 생략하면 |
+|---|---|---|---|
+| `ico.subdiv` | 2 | **1** | 면이 성겨진다 |
+| `ico.smooth` | True | **False** | 각이 산다(둥근 몸엔 틀리다) |
+| `cyl.verts` | 24 | **12** | 원통이 각져 보인다 |
+| `cyl.smooth` | (없음=끔) | **True** | 옆면이 매끄러워진다 |
+| `striped_mat.rough` | 0.75 | **0.8** | 살짝 덜 반짝인다 |
+| `striped_mat.bump` | 0.3(하드) | **0.35** | 결이 살짝 깊어진다 |
+
+### ★함정 — `o.bound_box` 는 **캐시**다 [T77 실측 · 비쌌다]
+
+정점(`v.co`)을 직접 만진 뒤에는 뎁스그래프가 한 번 돌아야 `o.bound_box`·`o.matrix_world` 가
+갱신된다. 아이콘 프리셋은 그 bbox 로 프레임을 잡으므로, 갱신을 놓치면 **지터 전 경계**로 찍는다.
+`ico()` 안의 `bpy.ops.object.shade_smooth()` 가 오퍼레이터라 그 한 바퀴를 **부작용으로** 돌려
+주고 있었다 — 그래서 지금까지 맞았다. 폴리곤 루프로 바꾸거나 `o.scale` 을 앞으로 옮기면
+그 갱신이 사라지고 `hide`·`meat_cooked` 두 장의 중심이 밀린다(z 0.0189 → 0.0300 실측).
+props 가 멀쩡한 이유도 같다 — 거기선 렌더 직전 `bake_transforms()` 가 늘 캐시를 씻는다.
+⇒ **정점을 만지는 새 헬퍼를 쓸 때는 오퍼레이터의 부작용에 기대지 마라.** 바로잡는 것은 회부했다.
+
+### ★자를 조심해라 — 저장소 PNG 는 **대조군이 아니다** [T77]
+
+`icon_render.py` 산출 31장은 **원래 Blender 4.0.2 로 구운 것**이다(그 뒤로 다시 안 구웠다).
+지금 컨테이너의 pip `bpy` 5.0.1 로는 **옛 코드로 구워도** 평균 8–26/255 다르다.
+그래서 "저장소 PNG 와 `cmp` 0" 은 리팩터의 합격선이 못 된다.
+**옳은 자**: 같은 컨테이너·같은 bpy 로 **옛 코드를 다시 구워** 대조군을 만들고, 새 코드와 `cmp`.
+겸사겸사 확인할 것 둘 — ⓐ 같은 코드 두 번 굽기가 `cmp` 0 인가(굽기가 결정적인가),
+ⓑ 부분 굽기(`ICON_ONLY=`)와 전체 굽기가 같은가(부분 대조가 유효한가). T77 은 둘 다 확인했다.
+
+### 굽는 시간 (컨테이너 pip `bpy` 5.0.1 · SAMPLES 64 · CPU)
+
+| 스크립트 | 장수 | 시간 |
+|---|---|---|
+| `props_render.py` | 세계 14 + 아이콘 39 | 2분 39초 |
+| `icon_render.py` | 아이콘 31 | 2분 55초 |
+| `icons-postprocess.js` (70장) | — | 1초 미만 |

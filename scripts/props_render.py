@@ -32,6 +32,10 @@
 #
 # ★고증: 청동기 후기(송국리). 금속은 구리/청동 톤만 — **철기 금지**. 못·경첩 없음(새끼·나무못).
 #
+# ★★[T77] 헬퍼·씬 값·프리셋은 `scripts/render_common.py` 한 벌이다.
+#   이 파일은 **모델(무엇을 만드는가)과 팔레트(어떤 색인가)**만 갖는다. 새 모델을 지을 때
+#   `def box`/`def ico` 를 여기 다시 적지 마라 — `scripts/test-render-common.js` 가 잡는다.
+#
 # 실행:  python3 scripts/props_render.py            (컨테이너 · pip `bpy`)
 #        blender -b -P scripts/props_render.py      (blender 바이너리)
 #        PROPS_ONLY=chest,wall  … 가구 일부만 · ITEMS_ONLY=axe,fish,salmon … 손도구·먹을 것 일부만
@@ -42,220 +46,28 @@
 #        node scripts/icons-postprocess.js scripts/props_icon_renders public/assets/icons
 # =============================================================================
 
-import bpy, os, math, random, json, mathutils
+import bpy, os, math, random, json, sys
 
-V = mathutils.Vector
+# ★★[T77] 헬퍼·씬 값·프리셋은 `scripts/render_common.py` **한 벌**이다 — 여기 두 번 적지 않는다.
+#   이 파일이 갖는 것은 **모델과 팔레트**뿐이다(재질표 `M` 은 이 파일의 것 — icon 판과 색이 다르다).
+#   ⓘ `blender -b -P` 로 부르면 스크립트 폴더가 `sys.path` 에 없다 — 직접 넣는다.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from render_common import (V, SAMPLES, SS, RES_ICON, PPU, ZSQ, ISO_DIR,
+                           NHAT, RHAT, UHAT, SUN_ICON, SUN_WORLD, OBJS,
+                           principled, simple_mat, striped_mat, bumped_mat,
+                           add, box, cyl, cone, ico, plane, cord)
+import render_common as rc
 
-SAMPLES = 64
-SS = 3                                   # 세계 패스 초과표본(자연물 규약) — 굽고 나서 1:1 로 되돌린다
-RES_ICON = 512
-PPU = 64.0 / math.sqrt(2.0)              # 45.255 px/유닛(=1셀=1m) — 셀 다이아 가로폭 64px
-ZSQ = 32.0 / (PPU * math.cos(math.radians(30.0)))   # 0.8165 — 1m 높이 = 32px
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT_W = os.path.join(HERE, "props_renders")
 OUT_I = os.path.join(HERE, "props_icon_renders")
 os.makedirs(OUT_W, exist_ok=True)
 os.makedirs(OUT_I, exist_ok=True)
 
+# ═══════════════ 씬 — 정본은 render_common.build_scene ═══════════════
+scene, cam, cam_d, sun, tgt = rc.build_scene("props")
 
-# ═══════════════ 재질 (building_render.py / icon_render.py 와 같은 문법) ═══════════════
-def principled(mat):
-    for n in mat.node_tree.nodes:
-        if n.type == 'BSDF_PRINCIPLED':
-            return n
-    return mat.node_tree.nodes.get("Principled BSDF")
-
-
-def simple_mat(name, color, rough=0.8, metal=0.0):
-    m = bpy.data.materials.new(name); m.use_nodes = True
-    b = principled(m)
-    b.inputs["Base Color"].default_value = (color[0], color[1], color[2], 1.0)
-    b.inputs["Roughness"].default_value = rough
-    try: b.inputs["Metallic"].default_value = metal
-    except Exception: pass
-    return m
-
-
-def striped_mat(name, base, stripe, scale=22.0, rough=0.8, bump=0.35, dist=3.0):
-    """결(나무·이엉) — 웨이브 텍스처 계단 + 범프."""
-    m = bpy.data.materials.new(name); m.use_nodes = True
-    nt = m.node_tree; b = principled(m)
-    b.inputs["Roughness"].default_value = rough
-    w = nt.nodes.new("ShaderNodeTexWave"); w.inputs["Scale"].default_value = scale
-    try: w.inputs["Distortion"].default_value = dist
-    except Exception: pass
-    rmp = nt.nodes.new("ShaderNodeValToRGB")
-    rmp.color_ramp.elements[0].position = 0.45; rmp.color_ramp.elements[1].position = 0.58
-    nt.links.new(w.outputs["Fac"], rmp.inputs["Fac"])
-    c1 = nt.nodes.new("ShaderNodeRGB"); c1.outputs[0].default_value = (base[0], base[1], base[2], 1)
-    c2 = nt.nodes.new("ShaderNodeRGB"); c2.outputs[0].default_value = (stripe[0], stripe[1], stripe[2], 1)
-    mx = nt.nodes.new("ShaderNodeMixRGB")
-    nt.links.new(rmp.outputs["Color"], mx.inputs["Fac"])
-    nt.links.new(c1.outputs[0], mx.inputs["Color1"])
-    nt.links.new(c2.outputs[0], mx.inputs["Color2"])
-    nt.links.new(mx.outputs["Color"], b.inputs["Base Color"])
-    bmp = nt.nodes.new("ShaderNodeBump"); bmp.inputs["Strength"].default_value = bump
-    nt.links.new(w.outputs["Fac"], bmp.inputs["Height"])
-    nt.links.new(bmp.outputs["Normal"], b.inputs["Normal"])
-    return m
-
-
-def bumped_mat(name, c1, c2, noise_scale=9.0, bump=0.5, rough=0.85, ramp=(0.42, 0.62)):
-    """투톤 노이즈 + 범프 — 막돌·흙 (rock 문법 축약)."""
-    m = bpy.data.materials.new(name); m.use_nodes = True
-    nt = m.node_tree; b = principled(m)
-    b.inputs["Roughness"].default_value = rough
-    n = nt.nodes.new("ShaderNodeTexNoise"); n.inputs["Scale"].default_value = noise_scale
-    bp = nt.nodes.new("ShaderNodeBump"); bp.inputs["Strength"].default_value = bump
-    nt.links.new(n.outputs["Fac"], bp.inputs["Height"])
-    nt.links.new(bp.outputs["Normal"], b.inputs["Normal"])
-    r1 = nt.nodes.new("ShaderNodeRGB"); r1.outputs[0].default_value = (c1[0], c1[1], c1[2], 1)
-    r2 = nt.nodes.new("ShaderNodeRGB"); r2.outputs[0].default_value = (c2[0], c2[1], c2[2], 1)
-    n2 = nt.nodes.new("ShaderNodeTexNoise"); n2.inputs["Scale"].default_value = noise_scale * 0.5
-    rmp = nt.nodes.new("ShaderNodeValToRGB")
-    rmp.color_ramp.elements[0].position = ramp[0]; rmp.color_ramp.elements[1].position = ramp[1]
-    nt.links.new(n2.outputs["Fac"], rmp.inputs["Fac"])
-    mx = nt.nodes.new("ShaderNodeMixRGB")
-    nt.links.new(rmp.outputs["Color"], mx.inputs["Fac"])
-    nt.links.new(r2.outputs[0], mx.inputs["Color1"])
-    nt.links.new(r1.outputs[0], mx.inputs["Color2"])
-    nt.links.new(mx.outputs["Color"], b.inputs["Base Color"])
-    return m
-
-
-# ═══════════════ 씬 ═══════════════
-bpy.ops.object.select_all(action='SELECT'); bpy.ops.object.delete()
-scene = bpy.context.scene
-scene.render.engine = 'CYCLES'; scene.cycles.samples = SAMPLES
-scene.cycles.use_denoising = bool(getattr(bpy.app.build_options, 'openimagedenoise', False))
-try: scene.view_settings.view_transform = 'Standard'
-except Exception: pass
-scene.render.film_transparent = True
-scene.render.image_settings.file_format = 'PNG'
-scene.render.image_settings.color_mode = 'RGBA'
-if scene.world is None: scene.world = bpy.data.worlds.new("W")
-scene.world.use_nodes = True
-_bg = scene.world.node_tree.nodes.get("Background")
-if _bg:
-    _bg.inputs[0].default_value = (0.52, 0.56, 0.6, 1.0); _bg.inputs[1].default_value = 0.55
-sun_d = bpy.data.lights.new("Sun", 'SUN'); sun_d.energy = 3.6; sun_d.angle = 0.2
-sun = bpy.data.objects.new("Sun", sun_d); scene.collection.objects.link(sun)
-tgt = bpy.data.objects.new("Tgt", None); scene.collection.objects.link(tgt)
-cam_d = bpy.data.cameras.new("Cam"); cam_d.type = 'ORTHO'; cam_d.clip_start = 0.1; cam_d.clip_end = 2000
-# ★★`ortho_scale` 은 sensor_fit 이 AUTO 면 **긴 변**을 잡는다. 건물·자연물 스프라이트는 늘
-#   가로가 길어 이 함정이 안 드러났는데, 가구는 **세로가 긴 것이 절반**이다(벽 43×88 · 문 45×90 …).
-#   그대로 두면 세로 긴 그림이 h/w 배(문 = 2배) 확대돼 **가운데만 찍힌다** — 1패스에서 실제로
-#   문설주 둘이 화면 밖으로 나가고 문짝만 꽉 찬 그림이 나왔다(알파 덤프로 잡았다).
-#   ⇒ 가로로 못박는다. 그래야 `ortho_scale = Wpx/PPU` 가 언제나 PPU 를 뜻한다.
-cam_d.sensor_fit = 'HORIZONTAL'
-cam = bpy.data.objects.new("Cam", cam_d); scene.collection.objects.link(cam)
-cam.constraints.new('TRACK_TO').target = tgt; scene.camera = cam
-print("[props] bpy", bpy.app.version_string, "denoise =", scene.cycles.use_denoising,
-      "ppu =", round(PPU, 3), "zsq =", round(ZSQ, 4))
-
-# 세계 패스 축(building_render.py 와 같은 수학)
-THETA = math.radians(30.0)
-NHAT = V((math.cos(THETA) / math.sqrt(2), math.cos(THETA) / math.sqrt(2), math.sin(THETA)))
-RHAT = V((1.0, -1.0, 0.0)).normalized()
-UHAT = V((-math.sin(THETA) / math.sqrt(2), -math.sin(THETA) / math.sqrt(2), math.cos(THETA)))
-# 아이콘 패스 축(icon_render.py 와 같은 값)
-ISO_DIR = V((1.0, -1.0, 1.2)).normalized()
-
-SUN_WORLD = (math.radians(52), 0, math.radians(-35))   # FLIP 보정 뒤 기존 베이크와 같은 방향
-SUN_ICON = (math.radians(52), 0, math.radians(35))
-
-
-# ═══════════════ PNG 후처리 — 좌우 FLIP + 초과표본 되돌리기 ═══════════════
-def _post_png(path, ss=1, flip=True):
-    """Blender 가 쓴 PNG 를 읽어 ⓐ ss 배 박스 축소(프리멀티플라이) ⓑ 좌우 반전 후 덮어쓴다.
-    ★순수 파이썬이다 — Blender 번들 파이썬엔 numpy·PIL 이 없을 수 있다(building_render 규약)."""
-    img = bpy.data.images.load(path)
-    W, H = img.size
-    px = list(img.pixels[:])
-    if ss > 1:
-        w2, h2 = W // ss, H // ss
-        out = [0.0] * (w2 * h2 * 4)
-        inv = 1.0 / (ss * ss)
-        for y in range(h2):
-            for x in range(w2):
-                r = g = b = a = 0.0
-                for sy in range(ss):
-                    row = ((y * ss + sy) * W + x * ss) * 4
-                    for sx in range(ss):
-                        i = row + sx * 4
-                        al = px[i + 3]
-                        r += px[i] * al; g += px[i + 1] * al; b += px[i + 2] * al; a += al
-                d = (y * w2 + x) * 4
-                if a > 1e-6:
-                    k = 1.0 / a                     # 언프리멀티플라이
-                    out[d] = r * k; out[d + 1] = g * k; out[d + 2] = b * k
-                out[d + 3] = a * inv
-        px = out; W, H = w2, h2
-    if flip:
-        fl = [0.0] * len(px)
-        for y in range(H):
-            row = y * W * 4
-            for x in range(W):
-                s = row + x * 4; d = row + (W - 1 - x) * 4
-                fl[d] = px[s]; fl[d + 1] = px[s + 1]; fl[d + 2] = px[s + 2]; fl[d + 3] = px[s + 3]
-        px = fl
-    bpy.data.images.remove(img)
-    out_img = bpy.data.images.new("post", W, H, alpha=True)
-    out_img.pixels = px
-    out_img.filepath_raw = path
-    out_img.file_format = 'PNG'
-    out_img.save()
-    bpy.data.images.remove(out_img)
-
-
-# ═══════════════ 기하 헬퍼 ═══════════════
-OBJS = []
-
-
-def add(o, mat):
-    if mat is not None:
-        o.data.materials.append(mat)
-    OBJS.append(o)
-    return o
-
-
-def box(sx, sy, sz, loc, rot=(0, 0, 0), mat=None):
-    bpy.ops.mesh.primitive_cube_add(size=1, location=loc, rotation=rot)
-    o = bpy.context.active_object; o.scale = (sx, sy, sz)
-    return add(o, mat)
-
-
-def cyl(r, d, loc, rot=(0, 0, 0), mat=None, verts=12, smooth=True):
-    bpy.ops.mesh.primitive_cylinder_add(vertices=verts, radius=r, depth=d, location=loc, rotation=rot)
-    o = bpy.context.active_object
-    if smooth:
-        for p in o.data.polygons:
-            p.use_smooth = len(p.vertices) == 4        # 옆면만 스무스 · 뚜껑은 플랫(소체 2차 규약)
-    return add(o, mat)
-
-
-def ico(r, loc, subdiv=1, mat=None, scale=(1, 1, 1), jitter=0.0, seed=None, smooth=False):
-    # ★[T72] `smooth` 를 열었다 — 기본값은 종전 그대로(플랫)라 T67 가구 14장은 한 픽셀도 안 바뀐다.
-    #   생선처럼 **둥근 몸**은 스무스라야 하고, 돌·흙덩이는 플랫이라야 각이 산다(소체 2차 규약).
-    if seed is not None:
-        random.seed(seed)
-    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=subdiv, radius=r, location=loc)
-    o = bpy.context.active_object; o.scale = scale
-    if jitter:
-        for v in o.data.vertices:
-            v.co *= (1.0 + random.uniform(-jitter, jitter))
-    if smooth:
-        for pg in o.data.polygons:
-            pg.use_smooth = True
-    return add(o, mat)
-
-
-def cord(r, length, loc, rot, mat, verts=8):
-    """새끼줄 한 바퀴 — 가는 원통(감은 티만 난다)."""
-    return cyl(r, length, loc, rot=rot, mat=mat, verts=verts)
-
-
-# ═══════════════ 재질표 ═══════════════
+# ═══════════════ 재질표 — 이 파일의 팔레트 ═══════════════
 M = {}
 M['log'] = striped_mat("p_log", (0.44, 0.31, 0.17), (0.33, 0.22, 0.12), 18, 0.85, 0.45)      # 통나무
 M['log2'] = striped_mat("p_log2", (0.38, 0.26, 0.14), (0.28, 0.19, 0.10), 20, 0.88, 0.45)    # 통나무(그늘)
@@ -1069,96 +881,27 @@ ITEMS = [
 ITEM_LINEAGE = [('fish', 'dried_fish'), ('oyster', 'dried_oyster'), ('seaweed', 'dried_seaweed')]
 
 
-# ═══════════════ 렌더 ═══════════════
-def _bake_transforms():
-    if not OBJS:
-        return
-    bpy.ops.object.select_all(action='DESELECT')
-    for o in OBJS:
-        o.select_set(True)
-    bpy.context.view_layer.objects.active = OBJS[0]
-    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
-    bpy.ops.object.select_all(action='DESELECT')
-
-
-def _zmax():
-    z = -1e18
-    for o in OBJS:
-        for v in o.data.vertices:
-            z = max(z, v.co.z)
-    return z
-
-
-def _squash_z():
-    for o in OBJS:
-        for v in o.data.vertices:
-            v.co.z *= ZSQ
+# ═══════════════ 렌더 — 프리셋 정본은 render_common ═══════════════
+# 여기 남는 것은 **파일 이름과 로그**뿐이다. 카메라·조명·PPU·FLIP 은 공용 모듈이 갖는다.
+_bake_transforms = rc.bake_transforms
+_zmax = rc.zmax
+_squash_z = rc.squash_z
+cleanup = rc.cleanup
 
 
 def render_icon(key):
-    """아이콘 패스 — icon_render.py 와 같은 씬(ISO_DIR · bbox 맞춤 512² · 압축·FLIP 없음)."""
-    sun.rotation_euler = SUN_ICON
-    mn = [1e18] * 3; mx = [-1e18] * 3
-    for o in OBJS:
-        for c in o.bound_box:
-            w = o.matrix_world @ V(c)
-            for k in range(3):
-                mn[k] = min(mn[k], w[k]); mx[k] = max(mx[k], w[k])
-    ctr = V(((mn[0] + mx[0]) / 2, (mn[1] + mx[1]) / 2, (mn[2] + mx[2]) / 2))
-    size = max(mx[0] - mn[0], mx[1] - mn[1], mx[2] - mn[2])
-    scene.render.resolution_x = RES_ICON; scene.render.resolution_y = RES_ICON
-    tgt.location = ctr
-    cam.location = ctr + ISO_DIR * (size * 4 + 20)
-    cam_d.ortho_scale = size * 1.25 + 0.5
-    p = os.path.join(OUT_I, key + ".png")
-    scene.render.filepath = p
-    bpy.ops.render.render(write_still=True)
+    """아이콘 패스 — icon_render.py 와 **같은 프리셋**(ISO_DIR · bbox 맞춤 512² · 압축·FLIP 없음)."""
+    size = rc.render_icon_pass(OBJS, os.path.join(OUT_I, key + ".png"))
     print(f"[props] icon {key}: {RES_ICON}²  (size={size:.2f}m)")
 
 
 def render_world(key, margin=3):
-    """세계 패스 — building_render.py 와 같은 씬(45°/30° · PPU 45.255 · ZSQ · FLIP).
+    """세계 패스 — building_render.py 와 **같은 프리셋**(45°/30° · PPU 45.255 · ZSQ · FLIP).
     프레임은 화면 bbox 에 맞추고, **로컬 원점(0,0,0)의 픽셀 좌표**를 앵커로 낸다."""
-    sun.rotation_euler = SUN_WORLD
-    umin = wmin = 1e18; umax = wmax = -1e18
-    for o in OBJS:
-        for v in o.data.vertices:
-            u = v.co.dot(RHAT) * PPU
-            w = -v.co.dot(UHAT) * PPU
-            umin = min(umin, u); umax = max(umax, u)
-            wmin = min(wmin, w); wmax = max(wmax, w)
-    Wpx = int(math.ceil(umax - umin)) + margin * 2
-    Hpx = int(math.ceil(wmax - wmin)) + margin * 2
-    a = (umin + umax) * 0.5 / PPU
-    b = -(wmin + wmax) * 0.5 / PPU
-    ctr = RHAT * a + UHAT * b
-    scene.render.resolution_x = Wpx * SS; scene.render.resolution_y = Hpx * SS
-    cam_d.ortho_scale = Wpx / PPU                 # ★해상도만 SS 배 — 픽셀 밀도가 SS 배가 된다
-    tgt.location = ctr
-    cam.location = ctr + NHAT * 300.0
-    p = os.path.join(OUT_W, key + ".png")
-    scene.render.filepath = p
-    bpy.ops.render.render(write_still=True)
-    _post_png(p, ss=SS, flip=True)                # 초과표본 되돌리기 + 게임 손방향 보정
-    ox = Wpx / 2.0 - (umin + umax) * 0.5
-    oy = Hpx / 2.0 - (wmin + wmax) * 0.5
-    print(f"[props] world {key}: {Wpx}×{Hpx} anchor=({ox:.2f},{oy:.2f}) ppu={PPU:.3f}")
-    return {"w": Wpx, "h": Hpx, "ox": round(ox, 2), "oy": round(oy, 2), "ppu": round(PPU, 3)}
-
-
-def cleanup():
-    bpy.ops.object.select_all(action='DESELECT')
-    for o in OBJS:
-        try: o.select_set(True)
-        except Exception: pass
-    if OBJS:
-        bpy.context.view_layer.objects.active = OBJS[0]
-        bpy.ops.object.delete()
-    OBJS.clear()
-    for blk in (bpy.data.meshes,):
-        for d in list(blk):
-            if d.users == 0:
-                blk.remove(d)
+    rec = rc.render_world_pass(OBJS, os.path.join(OUT_W, key + ".png"), margin=margin)
+    print(f"[props] world {key}: {rec['w']}×{rec['h']} "
+          f"anchor=({rec['ox']:.2f},{rec['oy']:.2f}) ppu={rec['ppu']:.3f}")
+    return rec
 
 
 ONLY = [k for k in os.environ.get('PROPS_ONLY', '').split(',') if k]
