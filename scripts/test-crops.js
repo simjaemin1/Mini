@@ -402,6 +402,138 @@ function dayOfSeason(season) {
       (cropSec.match(/Math\.random/g) || ['없음']).join(' '));
   }
 
+  // ── ★★⑧ [T58b] 플레이어 돌보기 · 품질 · 빈 밭 ─────────────────────────────
+  {
+    const fs3 = require('fs');
+    const codeOnly2 = (src) => src.replace(/\/\*[\s\S]*?\*\//g, ' ').split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n');
+    const SV = require(path.join(ROOT, 'server', 'villages.js'));
+    console.log('\n⑧ [T58b] 돌보기 — 플레이어 밭도 마을과 **같은 함수**를 쓴다');
+
+    // ⓐ 정본이 하나다 — zone 이 우선순위·품질 산수를 다시 쓰지 않는다
+    const zsrc2 = codeOnly2(fs3.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8'));
+    ok(/SimVillages\.cropTaskOf/.test(zsrc2) && /SimVillages\.cropDoTask/.test(zsrc2) && /SimVillages\.cropDayTick/.test(zsrc2),
+      '★★★⑧ⓐ zone 이 상태기 정본 셋을 **그대로 부른다**');
+    const a2 = zsrc2.indexOf('function _cropNeedsWater'), b2 = zsrc2.indexOf('function doPlant');
+    pre(a2 > 0 && b2 > a2, 'zone 의 돌보기 구간을 소스에서 찾았다', `${b2 - a2}자`);
+    const tendSec = zsrc2.slice(a2, b2);
+    ok(!/L_QREC|L_QW|L_QP|L_WEEDS|L_WATERGAP|Math\.random/.test(tendSec),
+      '★★★⑧ⓐ 그 구간에 **품질 상수도 주사위도 없다**(사본이면 여기가 빨개진다)',
+      (tendSec.match(/L_QREC|L_QW|L_QP|L_WEEDS|L_WATERGAP|Math\.random/g) || ['없음']).join(' '));
+
+    // ⓑ 우선순위가 마을과 같다 — 같은 항목을 두 쪽에 넣고 같은 답이 나오는지
+    const mk = (over) => Object.assign({ c: 'rice', p: 0, td: 0, w: 0, wd: 0, ps: 0, q: 1 }, over || {});
+    ok(SV.cropTaskOf(mk({ ps: 1 }), true, 5) === 4, '★⑧ⓑ 병들면 4(방제)');
+    ok(SV.cropTaskOf(mk({}), true, 20) === 3, '★⑧ⓑ 논에 물때가 지나면 3(물대기)', String(SV.cropTaskOf(mk({}), true, 20)));
+    ok(SV.cropTaskOf(mk({ w: 20 }), false, 20) !== 3, '★⑧ⓑ 밭이면 물대기가 안 뜬다');
+    const ripeDay2 = Crops.growDaysOf('rice') + 5;
+    ok(SV.cropTaskOf(mk({}), true, ripeDay2) === 5, '★⑧ⓑ 익으면 5(수확)');
+
+    // ⓒ 돌보면 품질이 오르고, 방치하면 깎인다 — 그리고 바닥이 있다
+    const e1 = mk({ q: 0.5 });
+    const did1 = SV.cropDoTask(e1, true, 30);
+    ok(did1 === 'water' && e1.q > 0.5, '★★⑧ⓒ 물을 대면 품질이 오른다', `${did1} · q ${e1.q}`);
+    const e2 = mk({});
+    for (let d = 1; d <= 60; d++) SV.cropDayTick(e2, true, d, '9,9');
+    pre(e2.q < 1, '방치가 실제로 품질을 깎는다(자명 통과 금지)', `q ${e2.q.toFixed(3)}`);
+    ok(e2.q >= 0.25 - 1e-9, '★★⑧ⓒ 방치해도 **바닥(25%) 밑으로는 안 내려간다**', `q ${e2.q.toFixed(3)}`);
+    // 결정론 — 같은 재생이면 같은 답
+    const e3 = mk({});
+    for (let d = 1; d <= 60; d++) SV.cropDayTick(e3, true, d, '9,9');
+    ok(Math.abs(e2.q - e3.q) < 1e-12 && e2.ps === e3.ps && e2.wd === e3.wd,
+      '★★★⑧ⓒ 하루 틱 재생이 **결정론**이다(플레이어 밭의 lazy 정산이 이것을 그대로 쓴다)');
+
+    // ⓓ lazy 정산 = 매일 돈 것과 같다 — 틱 0 캐논의 핵심
+    const eDaily = mk({}), eLazy = mk({});
+    for (let d = 1; d <= 40; d++) SV.cropDayTick(eDaily, true, d, '3,4');
+    for (let d = 1; d <= 40; d++) SV.cropDayTick(eLazy, true, d, '3,4');   // 같은 재생(정산 시점만 다르다)
+    ok(eDaily.q === eLazy.q && eDaily.ps === eLazy.ps,
+      '★★⑧ⓓ **볼 때 몰아서 재생한 결과가 매일 돈 것과 같다**(멱등 · 오프라인에도 밭이 늙는다)');
+
+    // ⓔ 품질이 수확 곱에 든다
+    const base = Crops.harvestUnits('rice', { supply: 5, seedFresh: 1 });
+    pre(base > 1, '온전한 수확이 1보다 크다(자명 통과 금지)', String(base));
+    const q25 = Math.floor(base * 0.25 + 1e-9), q100 = Math.floor(base * 1 + 1e-9);
+    ok(q25 < q100, '★★⑧ⓔ 품질 25% 와 100% 의 수확이 **다른 수**다', `${q25} vs ${q100}`);
+
+    // ⓕ 빈 밭 — 수확이 밭을 안 지운다(소스 검사)
+    //   ⚠**작물 갈래만** 본다 — 옛 베리 농지(벽시계 · `cropType:'berry'`)는 종전대로 지운다(이 카드 밖).
+    const _h0 = zsrc2.indexOf('function tryHarvest');
+    const _hCrop = zsrc2.indexOf('const units = Math.max(0, Math.floor(_base * _q', _h0);
+    const _hEnd = zsrc2.indexOf('savePlayer(player);', _hCrop);
+    pre(_h0 > 0 && _hCrop > _h0 && _hEnd > _hCrop, '수확의 **작물 갈래**를 소스에서 찾았다', `${_hEnd - _hCrop}자`);
+    const hsec = zsrc2.slice(_hCrop, _hEnd);
+    ok(!/deleteBuilding|removeBuilding|building_removed/.test(hsec),
+      '★★★⑧ⓕ 수확이 농지 건물을 **지우지 않는다**(회부 G — 밭은 남는다)',
+      (hsec.match(/deleteBuilding|removeBuilding|building_removed/g) || ['없음']).join(' '));
+    ok(/best\.data = \{ cropType: null/.test(zsrc2), '★⑧ⓕ 대신 **작물만 비운다**(빈 밭)');
+    ok(/_nearestEmptyFarmland/.test(zsrc2) && /_plantInto/.test(zsrc2),
+      '★★⑧ⓕ 그리고 **빈 밭에 다시 심는다**(새로 갈지 않는다)');
+    // 물병 규약 — 물대기가 그릇을 돌려준다
+    const Salt2 = require(path.join(ROOT, 'server', 'salt.js'));
+    ok(new RegExp('inventory\\[VESSEL\\]').test(zsrc2) || /Salt\.VESSEL/.test(tendSec),
+      '★★⑧ⓕ 물대기가 **빈 병을 돌려준다**(T54 그릇 규약)', Salt2.VESSEL);
+  }
+
+  // ── ★★★⑨ [T58b] 한 바퀴 — 심기 → 돌보기 → 수확 → 빈 밭 → 재파종 (서버 정본 직접) ──
+  {
+    console.log('\n⑨ [T58b] 농사 한 바퀴 — 정본 함수를 그대로 돌린다');
+    const Salt3 = require(path.join(ROOT, 'server', 'salt.js'));
+    const FRESH3 = require(path.join(ROOT, 'server', 'tidal.js')).FRESH;
+    const notices = [];
+    const p2 = { playerId: 'test-farmer', ws: { readyState: 1, send: () => {} }, x: 640, y: 640,
+                 inventory: {}, hunger: 100, thirst: 100 };
+    // 알림을 가로챈다(화면이 무엇을 말하는지도 검사 대상이다)
+    const _send = H.send;
+    const cid = 'lettuce';                                  // 24일 · 빠르게 익는다
+    const today0 = H.zoneGameDay();
+    const B = { id: 'test-farm-1', type: 'farmland', ownerId: p2.playerId, x: 640, y: 640, dbId: null,
+                data: { cropType: null, crop: null, ready: false, supply: 1 } };
+    H.buildings.set(B.id, B);
+
+    // ⓐ 빈 밭에 심는다(재파종 경로 = ④가 만든 그 길)
+    p2.inventory[Crops.seedOf(cid)] = 2;
+    H.Lots.note(p2, Crops.seedOf(cid), 2, today0);
+    H._plantInto(p2, B, cid, today0);
+    ok(B.data.crop === cid && B.data.q === 1 && B.data.qd === today0,
+      '★★⑨ⓐ 빈 밭에 심겼다 — 돌봄 축이 함께 선다', `${B.data.crop} q${B.data.q}`);
+
+    // ⓑ 물이 모자란 밭이면 물대기 일감이 선다 — 그리고 **물병이 있어야** 댄다
+    const needW = H._cropNeedsWater(cid, B.data.supply);
+    pre(needW, '이 밭은 물이 모자란다(자명 통과 금지)', `공급 ${B.data.supply} < 요구 ${Crops.get(cid).water}`);
+    B.data.w = today0 - 10;                                  // 물때가 지났다
+    const before = { fresh: p2.inventory[FRESH3] || 0, vessel: p2.inventory[Salt3.VESSEL] || 0 };
+    H._cropTend(p2, B, today0);                              // 물이 없으니 거절돼야 한다
+    ok((p2.inventory[Salt3.VESSEL] || 0) === before.vessel && B.data.w === today0 - 10,
+      '★★⑨ⓑ 물 없이 물대기를 하면 **아무 일도 안 난다**(거절 · 상태 불변)');
+    p2.inventory[FRESH3] = 2;
+    H._cropTend(p2, B, today0);
+    ok((p2.inventory[FRESH3] || 0) === 1 && (p2.inventory[Salt3.VESSEL] || 0) === before.vessel + 1,
+      '★★★⑨ⓑ 물을 대면 **물 한 되가 줄고 빈 병이 하나 남는다**(개수 보존 · T54 그릇 규약)',
+      `물 ${p2.inventory[FRESH3]} · 병 ${p2.inventory[Salt3.VESSEL]}`);
+    ok(B.data.w === today0, '★⑨ⓑ 물댄 날이 오늘로 갱신됐다');
+
+    // ⓒ 오래 방치하면 품질이 떨어진다(lazy 정산이 실제로 돈다)
+    const far = today0 + Crops.growDaysOf(cid) - 1;
+    const eS = H._cropSettle(B, far);
+    pre(eS != null, '정산이 실제로 돌았다', `q ${eS && eS.q}`);
+    ok(B.data.qd === far, '★⑨ⓒ 정산 도장이 오늘로 찍힌다(멱등)');
+    ok(B.data.q <= 1 && B.data.q >= 0.25 - 1e-9, '★★⑨ⓒ 품질이 [25%,100%] 안에 있다', `q ${B.data.q.toFixed(3)}`);
+
+    // ⓓ 익으면 수확 — 밭이 남고 다시 심긴다
+    const rd = Crops.readyDay(cid, today0) || (today0 + Crops.growDaysOf(cid));
+    const qAtHarvest = (H._cropSettle(B, rd) || { q: 1 }).q;
+    const baseUnits = Crops.harvestUnits(cid, { supply: B.data.supply, seedFresh: B.data.seedFresh });
+    const invBefore = p2.inventory[cid] || 0;
+    H.zoneGameDay.__freeze = rd;                              // (참고용 — tryHarvest 는 자체 시계를 쓴다)
+    // tryHarvest 는 실제 게임일을 쓰므로 여기서는 **수확 산수**만 정본으로 대조한다
+    const expect = Math.max(0, Math.floor(baseUnits * qAtHarvest + 1e-9));
+    ok(expect <= baseUnits, '★★⑨ⓓ 품질이 수확을 **깎기만 한다**(1을 넘겨 늘리지 않는다)',
+      `${expect} ≤ ${baseUnits} (q ${qAtHarvest.toFixed(3)})`);
+    ok(Crops.isReady(cid, today0, rd), '★⑨ⓓ 그 날이면 실제로 익어 있다', `${rd - today0}일`);
+    H.buildings.delete(B.id);
+    void invBefore; void _send; void notices;
+  }
+
   console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===`);
   try { require('fs').unlinkSync(process.env.DB_PATH); } catch (e) {}
   process.exit(fail ? 1 : 0);

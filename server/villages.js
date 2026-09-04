@@ -3646,15 +3646,44 @@ function _cropGrowFrac(e, day) {
   const need = Math.max(1, C.growDaysOf(e.c));
   return C.grownDays(e.c, e.p, day) / need;
 }
-function _cellTask(vil, k, day) {   // 우선순위: 5수확 4방제 3물대기(논만) 2파종 1김매기 0없음
-  const e = vil._crop.get(k);
-  const nong = !vil._drySet.has(k);
-  if (!e) { const ci = k.indexOf(','), par = (+k.slice(0, ci) + +k.slice(ci + 1)) & 1; return _villageCropFor(vil, nong ? '논' : '밭', _Crops().monthOf(day), par) ? 2 : 0; }
+// ★★★[T58b 2026-09-03] **상태기의 알맹이를 (심긴 것 · 논이냐 · 날) 셋으로 뽑았다.**
+//   왜: 플레이어 농지도 **같은 일**을 해야 하는데, zone 이 이 산수를 다시 쓰면 그게 사본이다.
+//   ⇒ 아래 셋이 정본이고 `_cellTask`·`_lifeDoTask0`·하루 틱·**zone 의 돌보기**가 전부 이것만 부른다.
+//   ⚠마을 특유의 것(빈 칸에 무엇을 심을지 = 특산 선택)은 여기 없다 — 그건 마을의 일이다.
+function cropTaskOf(e, nong, day) {          // 5수확 4방제 3물대기 1김매기 0없음 (빈 칸의 2파종은 부르는 쪽이 낸다)
+  if (!e) return 0;
   if (_cropRipe(e, day)) return 5;
   if (e.ps) return 4;
   if (nong && day - (e.w || e.p) >= L_WATERGAP) return 3;
   const wd = e.wd || 0; if (wd < L_WEEDS.length && _cropGrowFrac(e, day) >= L_WEEDS[wd]) return 1;
   return 0;
+}
+// 그 칸의 일을 **한 가지** 한다. 무엇을 했는지 돌려준다(`'harvest'|'pest'|'water'|'weed'|null`).
+function cropDoTask(e, nong, day) {
+  if (!e) return null;
+  if (_cropRipe(e, day)) return 'harvest';
+  if (e.ps) { e.ps = 0; e.td = day; e.q = Math.min(1, e.q + L_QREC); return 'pest'; }
+  if (nong && day - (e.w || e.p) >= L_WATERGAP) { e.w = day; e.q = Math.min(1, e.q + L_QREC); return 'water'; }
+  const wd = e.wd || 0;
+  if (wd < L_WEEDS.length && _cropGrowFrac(e, day) >= L_WEEDS[wd]) { e.wd = wd + 1; e.td = day; e.q = Math.min(1, e.q + L_QREC); return 'weed'; }
+  return null;
+}
+// 하루가 지난다 — 놓친 김매기·물대기로 품질이 깎이고, 병충해가 붙는다. **결정론**(주사위 0).
+//   ★익은 뒤에는 아무 일도 안 한다(수확 일감으로 남는다 — 랩과 같다).
+function cropDayTick(e, nong, day, cellKey) {
+  if (!e || _cropRipe(e, day)) return;
+  const wd = e.wd || 0, gf = _cropGrowFrac(e, day);
+  if (e.ps) e.q -= L_QP;
+  else if (wd < L_WEEDS.length && gf >= L_WEEDS[wd] + 0.06) e.q -= L_QW;
+  if (nong && day - (e.w || e.p) >= L_WATERGAP + 8) e.q -= L_QW;
+  if (!e.ps && _pestAt(cellKey, e.c, day)) e.ps = 1;
+  if (e.q < L_QMIN) e.q = L_QMIN;
+}
+function _cellTask(vil, k, day) {   // 우선순위: 5수확 4방제 3물대기(논만) 2파종 1김매기 0없음
+  const e = vil._crop.get(k);
+  const nong = !vil._drySet.has(k);
+  if (!e) { const ci = k.indexOf(','), par = (+k.slice(0, ci) + +k.slice(ci + 1)) & 1; return _villageCropFor(vil, nong ? '논' : '밭', _Crops().monthOf(day), par) ? 2 : 0; }
+  return cropTaskOf(e, nong, day);
 }
 function _lifeDoTask(vil, npc, k, day) {   // 도착한 셀 처리(랩 doTask 동형 — econ storage 불변·스킬은 서버 생략). npc=null=헤드리스(라벨 생략)
   // ★[LIFE_* 튜닝 계측] 오늘 처리된 작물 태스크 수(파종·수확·방제·물대기·김매기 — 실제 처리된 것만)
@@ -3666,16 +3695,18 @@ function _lifeDoTask0(vil, npc, k, day) {
   const e = vil._crop.get(k), nong = !vil._drySet.has(k);
   const ci = k.indexOf(','), par = (+k.slice(0, ci) + +k.slice(ci + 1)) & 1;
   if (!e) { const cr = _villageCropFor(vil, nong ? '논' : '밭', _Crops().monthOf(day), par); if (!cr) return false; vil._crop.set(k, { c: cr, p: day, td: day, w: day, wd: 0, ps: 0, q: 1 }); if (npc) _lifeAct(npc, nong ? '모내기' : '파종'); return true; }
-  if (_cropRipe(e, day)) { vil._crop.delete(k); if (npc) { npc._carry = (npc._carry || 0) + 1; _lifeAct(npc, '수확'); } return true; }   // 수확 — 식량은 econ이 이미 계상(연출만). ★곳간② 물리 짐 1칸분 적재(회계 아님)
-  if (e.ps) { e.ps = 0; e.td = day; e.q = Math.min(1, e.q + L_QREC); if (npc) _lifeAct(npc, '방제'); return true; }
-  if (nong && day - (e.w || e.p) >= L_WATERGAP) { e.w = day; e.q = Math.min(1, e.q + L_QREC); if (npc) _lifeAct(npc, '물대기'); return true; }
-  const wd = e.wd || 0; if (wd < L_WEEDS.length && _cropGrowFrac(e, day) >= L_WEEDS[wd]) { e.wd = wd + 1; e.td = day; e.q = Math.min(1, e.q + L_QREC); if (npc) _lifeAct(npc, nong ? '논매기' : '김매기'); return true; }
-  return false;
+  // ★[T58b] 아래 한 줄이 정본이다 — 우선순위·품질 산수는 `cropDoTask` 안에 하나뿐이다(플레이어도 이걸 부른다).
+  const did = cropDoTask(e, nong, day);
+  if (!did) return false;
+  if (did === 'harvest') { vil._crop.delete(k); if (npc) { npc._carry = (npc._carry || 0) + 1; _lifeAct(npc, '수확'); } return true; }   // 수확 — 식량은 econ이 이미 계상(연출만). ★곳간② 물리 짐 1칸분 적재(회계 아님)
+  if (npc) _lifeAct(npc, did === 'pest' ? '방제' : did === 'water' ? '물대기' : (nong ? '논매기' : '김매기'));
+  return true;
 }
 // ★[T58a 테스트 전용 · 순수 export] 작물 상태기를 하네스가 **정본 그대로** 돌릴 수 있게 내준다.
 //   운영 경로는 이 함수를 부르지 않는다(`__p3Bind` 와 같은 관례) — 하네스가 상태기를 다시 짜면 그게 사본이다.
 function __farmBind() {
   return { _cellTask, _lifeDoTask, _lifeDoTask0, _villageCropFor, _pestAt, _cropRipe, _cropGrowFrac,
+    cropTaskOf, cropDoTask, cropDayTick,
     L_WATERGAP, L_WEEDS, L_PESTP, L_QW, L_QP, L_QMIN, L_QREC };
 }
 // ★[헤드리스 일일 결산 — 사용자 "아무도 안 보는 마을도 일과가 작동해야 하는 거 아냐?"] 동면 마을(관측자 없음)의
@@ -4595,15 +4626,7 @@ function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(�
   // 작물 하루 틱(랩 7920 동형): 김매기·물대기 놓치면 품질↓ · 병충해 발생(내일 방제 일감) — 상태·연출만(식량은 econ 소유)
   if (vil._crop && vil._crop.size) {
     const day = state.dayMs ? gameDayOf(_dayNow()) : 0;
-    for (const [k, e] of vil._crop) {
-      if (_cropRipe(e, day)) continue;   // 익음 — 수확 일감(농부 우선순위 5)
-      const wd = e.wd || 0, gf = _cropGrowFrac(e, day);
-      if (e.ps) e.q -= L_QP;
-      else if (wd < L_WEEDS.length && gf >= L_WEEDS[wd] + 0.06) e.q -= L_QW;
-      if (!vil._drySet.has(k) && day - (e.w || e.p) >= L_WATERGAP + 8) e.q -= L_QW;
-      if (!e.ps && _pestAt(k, e.c, day)) e.ps = 1;   // ★[T58a] 주사위 → 자리×날×작물 해시(아래)
-      if (e.q < L_QMIN) e.q = L_QMIN;
-    }
+    for (const [k, e] of vil._crop) cropDayTick(e, !vil._drySet.has(k), day, k);   // ★[T58b] 정본 하나(플레이어 농지도 이걸 재생한다)
   }
   _sub('gran');
   vil._psiteCrew = 0;
@@ -5635,6 +5658,7 @@ module.exports = {
   // P3 — zone.js Wildlife.init 소비: 실체 전쟁 병사 pid 위치(px)를 야생 agrid 위협원으로 주입
   warThreats,
   // P3 — 헤드리스 검증 훅(테스트 전용)
+  cropTaskOf, cropDoTask, cropDayTick, CROP_WEED_STAGES: L_WEEDS.length,   // ★[T58b] 작물 상태기 정본 — zone 의 플레이어 돌보기가 그대로 부른다
   __p3Bind, __farmBind,
   // ★★[2026-08-01 재민 지적 "기존에 존재하던 전쟁실험실을 수정하면 되는데?"] 계측 훅.
   //   랩이 마을 부존 추출을 **손으로 다시 짜지 못하게** 본 게임 함수를 그대로 내준다.

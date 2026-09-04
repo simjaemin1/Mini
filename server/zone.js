@@ -4135,11 +4135,85 @@ function _waterSupplyAt(x, y) {
 function _farmlandData(player) {
   const cid = player && player._plantCrop;
   if (cid && Crops.get(cid)) {
+    // ★[T58b] 돌봄 축 넷은 **NPC 작물 칸과 같은 이름·같은 뜻**이다(`w` 마지막 물댄 날 · `wd` 김맨 차례 ·
+    //   `ps` 병충해 · `q` 품질). `qd` 는 **정산 도장**이다 — 틱이 없으니 볼 때 그날까지 재생한다(lazy·틱 0).
     return { crop: cid, cropType: cid, plantedDay: zoneGameDay(),
              seedFresh: Number.isFinite(player._plantSeedFresh) ? player._plantSeedFresh : 1,
-             supply: _waterSupplyAt(player.x, player.y), ready: false };
+             supply: _waterSupplyAt(player.x, player.y), ready: false,
+             w: zoneGameDay(), wd: 0, ps: 0, q: 1, qd: zoneGameDay() };
   }
   return { cropType: 'berry', plantedAt: Date.now(), readyAt: Date.now() + CROP_GROW_MS, ready: false };
+}
+
+// === ★★★돌보기 [T58b 2026-09-03] — 플레이어 농지도 **마을과 같은 일**을 한다 ==========
+//
+// ★★**산수를 여기서 다시 쓰지 않는다.** 우선순위·품질·병충해는 `villages.cropTaskOf/cropDoTask/cropDayTick`
+//   **정본 셋**이 정한다(랩에서 온 그 상태기 그대로). zone 은 **자리 접합**만 한다:
+//     · NPC 는 마을 칸(`vil._crop`), 플레이어는 **농지 건물의 `data`** — 필드 이름을 맞춰 넘기고 되받는다.
+// ★★**틱이 없다**(lazy·틱 0 · 부패·광맥·물때와 같은 문법). NPC 는 하루 경계에 `cropDayTick` 을 맞지만
+//   플레이어 농지는 **볼 때** 마지막 정산일부터 오늘까지 **같은 틱을 재생**한다 ⇒ 결과가 정확히 같다.
+//   ★재생은 정산일부터라 멱등이고, 오프라인에도 밭은 늙는다(관측 여부로 세계가 갈리지 않는다).
+// ★★**"논이냐"의 뜻이 플레이어에겐 다르다** — 마을은 논/밭이 지형이지만 플레이어 농지는 한 종류다.
+//   ⇒ **그 자리 물이 이 작물에 모자랄 때** 물대기 일감이 선다(`supply < 작물.water`).
+//     새 상수가 아니다 — `Crops.waterMult` 가 이미 쓰는 그 두 수를 비교할 뿐이다. (설계 판단 · 보고에 적었다)
+function _cropNeedsWater(cid, supply) { const c = Crops.get(cid); return !!c && (Number(supply) || 0) < (c.water || 1); }
+function _cropCellKeyOf(b) { return Math.round(b.x / 32) + ',' + Math.round(b.y / 32); }
+// 농지 `data` → 상태기 항목(이름만 맞춘다). 되돌릴 때는 `_cropWriteBack`.
+function _cropEntryOf(d) {
+  return { c: d.crop, p: d.plantedDay, td: d.td == null ? d.plantedDay : d.td,
+           w: d.w == null ? d.plantedDay : d.w, wd: d.wd | 0, ps: d.ps | 0, q: d.q == null ? 1 : d.q };
+}
+function _cropWriteBack(d, e, day) { d.td = e.td; d.w = e.w; d.wd = e.wd; d.ps = e.ps; d.q = e.q; if (day != null) d.qd = day; }
+// ★볼 때 정산한다 — 마지막 도장 다음 날부터 오늘까지 **정본 하루 틱**을 그대로 재생.
+function _cropSettle(b, today) {
+  const d = b && b.data; if (!d || !d.crop || !Crops.get(d.crop)) return null;
+  const e = _cropEntryOf(d);
+  const nong = _cropNeedsWater(d.crop, d.supply);
+  let from = (d.qd == null ? d.plantedDay : d.qd) | 0;
+  const key = _cropCellKeyOf(b);
+  const cap = today - from;
+  if (cap > 0 && cap < 4000) { for (let day = from + 1; day <= today; day++) SimVillages.cropDayTick(e, nong, day, key); }
+  _cropWriteBack(d, e, today);
+  return e;
+}
+// 돌봄 한 번 — 그 밭이 오늘 원하는 일을 **하나** 한다. 물대기는 **물병 한 되**를 쓴다(T54 그릇 규약).
+function _cropTend(player, b, today) {
+  const d = b.data, cid = d.crop, c = Crops.get(cid);
+  const e = _cropSettle(b, today);
+  const nong = _cropNeedsWater(cid, d.supply);
+  const want = SimVillages.cropTaskOf(e, nong, today);
+  if (want === 0) {
+    const grown = Crops.grownDays(cid, d.plantedDay, today), need = Crops.growDaysOf(cid);
+    const rd = Crops.readyDay(cid, d.plantedDay);
+    const dormant = c.winterCrop && Crops.seasonOfDay(today) === 'winter';
+    send(player.ws, { type: 'notice',
+      text: `${c.ko} 자라는 중 — ${grown}/${need}일 · 품질 ${Math.round(e.q * 100)}%`
+          + (dormant ? ' · 겨울엔 안 자란다(월동)' : '')
+          + (rd != null ? ` · ${Math.max(0, rd - today)}일 남음` : '')
+          + ' · 지금은 손볼 것이 없다' });
+    return false;
+  }
+  if (want === 3) {                                   // 물대기 — 물병 한 되가 든다
+    const FRESH = require('./tidal').FRESH, VESSEL = Salt.VESSEL;
+    if (Math.floor(player.inventory[FRESH] || 0) < 1) {
+      send(player.ws, { type: 'notice', text: `${c.ko}이(가) 목마르다 — 물 한 되가 있어야 댄다(물가에서 병에 담아 와라)` });
+      return false;
+    }
+    player.inventory[FRESH] = Math.floor(player.inventory[FRESH] || 0) - 1;
+    if (player.inventory[FRESH] <= 0) delete player.inventory[FRESH];
+    player.inventory[VESSEL] = (player.inventory[VESSEL] || 0) + 1;   // ★병은 그릇이다(T54) — 빈 병이 남는다
+  }
+  const did = SimVillages.cropDoTask(e, nong, today);
+  _cropWriteBack(d, e, today);
+  if (b.dbId) { try { db.updateBuildingData(b.dbId, JSON.stringify(d)); } catch (er) {} }
+  const KO = { pest: '병든 잎을 골라냈다', water: '물을 댔다', weed: '김을 맸다' };
+  send(player.ws, { type: 'notice',
+    text: `${KO[did] || '손봤다'} — ${c.ko} 품질 ${Math.round(e.q * 100)}%`
+        + (did === 'water' ? ` · 빈 ${ITEM_LABEL_SERVER[Salt.VESSEL] || Salt.VESSEL} 하나가 남았다` : '')
+        + (did === 'weed' ? ` (${e.wd}/${SimVillages.CROP_WEED_STAGES}벌)` : '') });
+  if (did === 'water') sendInventory(player);
+  savePlayer(player);
+  return true;
 }
 
 // === ★★파종 [작물 층 2026-08-31] ==========================================
@@ -4150,6 +4224,41 @@ function _farmlandData(player) {
 //   (카탈로그 34종 중 겨울 파종 0종 — 그게 겨울이 겨울인 이유다).
 // ★씨앗은 **오래된 것부터** 나간다(FIFO). 묵은 씨앗을 쓰면 **발아율이 낮아 덜 난다** —
 //   그게 이 배치의 ② 이고, 새 축이 아니라 부패 배치의 신선도 축을 그대로 쓴다.
+// 내 빈 농지 중 가장 가까운 것(작물이 비어 있는 것만) — 없으면 null.
+function _nearestEmptyFarmland(player) {
+  const near = qtBuildings ? qtBuildings.queryCircle(player.x, player.y, 96) : Array.from(buildings.values());
+  let best = null, bd = 96;
+  for (const b of near) {
+    if (b.type !== 'farmland' || b.ownerId !== player.playerId) continue;
+    if (b.data && b.data.crop) continue;                       // 이미 심긴 밭
+    if (b.data && b.data.cropType === 'berry' && b.data.readyAt) continue;   // 옛 베리 농지는 건드리지 않는다
+    const d = Math.hypot(b.x - player.x, b.y - player.y);
+    if (d < bd) { bd = d; best = b; }
+  }
+  return best;
+}
+// 그 빈 밭에 심는다 — 씨앗 차감·안내는 `doPlant` 와 **같은 산수**를 쓴다(아래에서 부른다).
+function _plantInto(player, b, cropId, today) {
+  const c = Crops.get(cropId), seed = Crops.seedOf(cropId);
+  const off = Spoil.peekOffer(seed, Lots.of(player, seed), 1, today);
+  Lots.consume(player, seed, 1, player.inventory, today);
+  const supply = (b.data && b.data.supply != null) ? b.data.supply : _waterSupplyAt(b.x, b.y);
+  b.data = { crop: cropId, cropType: cropId, plantedDay: today, seedFresh: off.fresh,
+             supply, ready: false, w: today, wd: 0, ps: 0, q: 1, qd: today };
+  if (b.dbId) { try { db.updateBuildingData(b.dbId, JSON.stringify(b.data)); } catch (e) {} }
+  broadcast({ type: 'building_updated', building: { id: b.id, data: b.data } });
+  const wm = Crops.waterMult(cropId, supply);
+  const units = Crops.harvestUnits(cropId, { supply, seedFresh: off.fresh });
+  const rd = Crops.readyDay(cropId, today);
+  sendInventory(player);
+  send(player.ws, { type: 'notice',
+    text: `${c.ko} 다시 심었다(빈 밭) — ${Crops.growDaysOf(cropId)}일 자란다`
+        + (c.winterCrop ? '(월동 — 겨울엔 안 자란다)' : '')
+        + ` · 물 ${supply}/${c.water}${wm < 1 ? ` (${Math.round(wm * 100)}%)` : ''}`
+        + ` · 씨앗 ${Math.round(off.fresh * 100)}% ⇒ 예상 ${units}단위`
+        + (rd != null ? ` · ${Math.max(0, rd - today)}일 뒤` : '') });
+  savePlayer(player);
+}
 function doPlant(player, cropId) {
   const c = Crops.get(cropId);
   if (!c) { send(player.ws, { type: 'notice', text: `알 수 없는 작물: ${cropId}` }); return; }
@@ -4166,6 +4275,10 @@ function doPlant(player, cropId) {
   if (Lots.sum(player, seed) < 1) {
     send(player.ws, { type: 'notice', text: `${c.ko} 씨앗이 없다` }); return;
   }
+  // ★★[T58b] **빈 밭이 곁에 있으면 거기 심는다** — 수확이 밭을 남기므로(회부 G 해소) 새로 갈 이유가 없다.
+  //   개간은 한 번이고 농사는 여러 해다. 자리·비용 판정은 종전 건립 경로가 그대로 맡는다(여기선 재사용만).
+  const _empty = _nearestEmptyFarmland(player);
+  if (_empty) { _plantInto(player, _empty, cropId, today); return; }
   // ★발아율 = 씨앗 신선도. **차감 전에** 재고 실행과 견적이 같은 수를 쓰게 한다.
   const off = Spoil.peekOffer(seed, Lots.of(player, seed), 1, today);
   const got = Lots.consume(player, seed, 1, player.inventory, today);
@@ -4232,18 +4345,15 @@ function tryHarvest(player) {
   const _crop = _cid ? Crops.get(_cid) : null;
   if (_crop) {
     const today = zoneGameDay();
-    if (!Crops.isReady(_cid, best.data.plantedDay, today)) {
-      const grown = Crops.grownDays(_cid, best.data.plantedDay, today);
-      const rd = Crops.readyDay(_cid, best.data.plantedDay);
-      const dormant = _crop.winterCrop && Crops.seasonOfDay(today) === 'winter';
-      send(player.ws, { type: 'notice',
-        text: `${_crop.ko} 아직 자라는 중 — ${grown}/${Crops.growDaysOf(_cid)}일`
-            + (dormant ? ' · ❄겨울엔 안 자란다(월동)' : '')
-            + (rd != null ? ` · ${Math.max(0, rd - today)}일 남음` : '') });
-      return;
-    }
+    // ★★[T58b] 익기 전 E 는 **돌보기**다 — 새 동사를 만들지 않았다(E 하나 · 클라 무접촉).
+    //   서버가 그 밭의 일을 고른다(`cropTaskOf` 정본) — 화면이 무엇을 할지 정하지 않는다.
+    if (!Crops.isReady(_cid, best.data.plantedDay, today)) { _cropTend(player, best, today); return; }
+    _cropSettle(best, today);                        // 수확 직전 정산 — 품질이 오늘 값이어야 한다
     // ★수확량 = 수확량축 × 물충족(관리난이도 가중) × 발아율. 전부 심을 때 박아 둔 값 — 결정론.
-    const units = Crops.harvestUnits(_cid, { supply: best.data.supply, seedFresh: best.data.seedFresh });
+    // ★[T58b] **품질이 수확에 든다** — NPC 와 같은 `q`(돌보기가 올리고 방치가 깎는다 · 바닥 25%).
+    const _q = best.data.q == null ? 1 : Math.max(0, Math.min(1, best.data.q));
+    const _base = Crops.harvestUnits(_cid, { supply: best.data.supply, seedFresh: best.data.seedFresh });
+    const units = Math.max(0, Math.floor(_base * _q + 1e-9));
     const seed = Crops.seedOf(_cid);
     if (units > 0) {
       player.inventory[_cid] = (player.inventory[_cid] || 0) + units;
@@ -4252,15 +4362,17 @@ function tryHarvest(player) {
     // 씨앗은 **갓 여문 것**으로 돌아온다(발아율 100%) — 그래서 농사가 이어진다.
     player.inventory[seed] = (player.inventory[seed] || 0) + 1;
     Lots.note(player, seed, 1, today);
-    if (best.dbId) { try { db.deleteBuilding(best.dbId); } catch (e) {} }
-    chunkManager.removeBuilding(best);
-    buildings.delete(best.id);
-    broadcast({ type: 'building_removed', id: best.id });
+    // ★★★[T58b] **밭은 남는다.** 여태 수확이 농지 건물을 지웠다(회부 G) — 랩은 셀을 비우고 구획을 남긴다.
+    //   ⇒ 작물만 비우고 **빈 밭으로 되돌린다**. 다시 심으면 그 자리에 그대로 선다(`doPlant` 가 재사용).
+    best.data = { cropType: null, crop: null, ready: false, supply: best.data.supply, emptiedDay: today };
+    if (best.dbId) { try { db.updateBuildingData(best.dbId, JSON.stringify(best.data)); } catch (e) {} }
+    broadcast({ type: 'building_updated', building: { id: best.id, data: best.data } });   // ★클라가 이미 아는 메시지(새 타입 0)
     sendInventory(player);
     send(player.ws, { type: 'notice',
-      text: units > 0
-        ? `🌾 ${_crop.ko} ${units}단위 수확 + 씨앗 1 (보관 ${Crops.keepDaysOf(_cid)}일)`
-        : `${_crop.ko} 흉작 — 한 단위도 못 걷었다(물 ${best.data.supply}/${_crop.water} · 씨앗 ${Math.round((best.data.seedFresh || 0) * 100)}%). 씨앗만 건졌다` });
+      text: (units > 0
+        ? `${_crop.ko} ${units}단위 수확 + 씨앗 1 (품질 ${Math.round(_q * 100)}%${_q < 1 ? ` · 온전했다면 ${_base}단위` : ''} · 보관 ${Crops.keepDaysOf(_cid)}일)`
+        : `${_crop.ko} 흉작 — 한 단위도 못 걷었다(물 ${best.data.supply}/${_crop.water} · 씨앗 ${Math.round((best.data.seedFresh || 0) * 100)}% · 품질 ${Math.round(_q * 100)}%). 씨앗만 건졌다`)
+        + ' · 밭은 그대로 남았다 — 다시 심을 수 있다' });
     savePlayer(player);
     return;
   }
@@ -8063,6 +8175,7 @@ function __testBind() {
     Spoil, doPreserve, preserveMenuPayload, _spoiledGuardItems, _spoiledGuardRes, _gameDayAt, __e2eFreezeZoneDay,
     // ★[작물 층 2026-08-31]
     Crops, doPlant, plantMenuPayload, tryHarvest, _waterSupplyAt, _farmlandData, lootOfResource, CROP_GROW_MS,
+    _cropTend, _cropSettle, _cropNeedsWater, _cropEntryOf, _nearestEmptyFarmland, _plantInto,   // ★[T58b] 플레이어 돌보기
     PRESERVED_EFFECTS, BUILDING_COST, BUILDING_RECIPES, ITEM_LABEL_SERVER,
     // ★[자염 배치 2026-09-01] 하네스가 잡을 손잡이들 — **정본을 그대로 내준다**
     //   (하네스가 염도·수율을 다시 계산하면 그게 사본이다).
