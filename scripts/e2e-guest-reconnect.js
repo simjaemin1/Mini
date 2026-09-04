@@ -86,7 +86,8 @@ async function waitHttp(url, tries = 900) {
   const enterAsGuest = async (pg) => {
     await pg.goto(`http://localhost:${CPORT}/`, { waitUntil: 'domcontentloaded' });
     await sleep(2500);
-    const btn = await pg.$('button:has-text("월드 입장")');
+    // ★[T84] 로비 버튼은 글자가 아니라 **id**(`#enter`) 로 집는다 — 라벨이 바뀌어도 안 죽는다.
+    const btn = await pg.$('#enter');
     if (!btn) return false;
     await btn.click();
     for (let i = 0; i < 60 && !(await pg.evaluate(() => !!(window.__getMyAbs && window.__getMyAbs()))); i++) await sleep(500);
@@ -108,7 +109,7 @@ async function waitHttp(url, tries = 900) {
   const enterWithAccount = async (pg, who, pw) => {
     await pg.goto(`http://localhost:${CPORT}/`, { waitUntil: 'domcontentloaded' });
     await sleep(2500);
-    const btn = await pg.$('button:has-text("월드 입장")');
+    const btn = await pg.$('#enter');
     if (!btn) return false;
     await pg.fill('#name', who);
     await pg.fill('#password', pw);

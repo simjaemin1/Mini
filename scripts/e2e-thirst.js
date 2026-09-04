@@ -71,7 +71,8 @@ async function waitHttp(url, tries = 600) {
 
   await page.goto(`http://localhost:${CPORT}/`, { waitUntil: 'domcontentloaded' });
   await sleep(2500);
-  const enterBtn = await page.$('button:has-text("월드 입장")');
+  // ★[T84] 로비 버튼은 글자가 아니라 **id**(`#enter`) 로 집는다 — 라벨이 바뀌어도 안 죽는다.
+  const enterBtn = await page.$('#enter');
   if (enterBtn) await enterBtn.click();
   for (let i = 0; i < 60 && !(await page.evaluate(() => !!(window.__inWorld && window.__inWorld()))); i++) await sleep(500);
   await sleep(1800);

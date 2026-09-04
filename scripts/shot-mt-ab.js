@@ -26,7 +26,7 @@ require(path.join(ROOT,'server','zone.js'));`);
   pg.on('console',(m)=>{const t=m.text(); if(/mt3d|WebGL|webgl|shader|SHADER/.test(t)) logs.push(t.slice(0,300));});
   pg.on('pageerror',(e)=>logs.push('[err] '+String(e.message).slice(0,300)));
   await pg.goto(`http://localhost:${CPORT}/`);await sleep(2000);
-  for(const sel of ['#startBtn','button:has-text("시작")','button:has-text("입장")','text=게스트']){try{const b=await pg.$(sel);if(b){await b.click();break;}}catch(e){}}
+  for(const sel of ['#enter'] /* ★[T84] 로비 버튼은 **id**로 집는다 — 옛 사다리 네 칸 중 셋은 화면에 없고(#startBtn·"시작"·게스트) "입장"만 물었다 — 그 라벨이 바뀌자 네 칸 전부 죽는다 */){try{const b=await pg.$(sel);if(b){await b.click();break;}}catch(e){}}
   await sleep(20000);
   // 시계·바람·자연물 고정. 산 표면만 남긴다.
   await pg.evaluate(()=>{window.__terrain19.freezeT=0.30;window.__terrain19.windForce=0;

@@ -108,7 +108,8 @@ async function waitHttp(url, tries = 900) {
   const login = async (pg, who, pw) => {
     await pg.goto(`http://localhost:${CPORT}/`, { waitUntil: 'domcontentloaded' });
     await sleep(2500);
-    const btn = await pg.$('button:has-text("월드 입장")');
+    // ★[T84] 로비 버튼은 글자가 아니라 **id**(`#enter`) 로 집는다 — 라벨이 바뀌어도 안 죽는다.
+    const btn = await pg.$('#enter');
     if (!btn) return false;
     await pg.fill('#name', who);
     await pg.fill('#password', pw);
@@ -120,8 +121,8 @@ async function waitHttp(url, tries = 900) {
   await page.goto(`http://localhost:${CPORT}/`, { waitUntil: 'domcontentloaded' });
   await sleep(2500);
   await snap('01-lobby');
-  const enterBtn = await page.$('button:has-text("월드 입장")');
-  ok(!!enterBtn, '로비에 "월드 입장" 버튼이 있다');
+  const enterBtn = await page.$('#enter');
+  ok(!!enterBtn, '로비에 입장 버튼(`#enter` · 「나루터로 간다」 — T84 개명)이 있다');
   // ★★이름을 넣고 들어간다 — **게스트로는 이 검사를 할 수 없다**(실측으로 알아낸 것):
   //   게스트는 재접속할 때마다 `anon_*` **새 playerId** 를 받는다. 그래서 잠깐 끊겼다 붙으면
   //   방금 제가 지은 회관·노·사유지의 주인이 아니게 된다(소유 판정이 playerId 대조라서).
@@ -334,7 +335,7 @@ async function waitHttp(url, tries = 900) {
     const page2 = await (await browser.newContext({ viewport: { width: 900, height: 700 } })).newPage();
     await page2.goto(`http://localhost:${CPORT}/`, { waitUntil: 'domcontentloaded' });
     await sleep(2500);
-    const eb2 = await page2.$('button:has-text("월드 입장")');
+    const eb2 = await page2.$('#enter');
     await page2.fill('#name', 'e2enagne');   // 다른 사람 — 남의 마을 재고는 못 본다
     await page2.fill('#password', 'e2epass5678');
     if (eb2) await eb2.click();

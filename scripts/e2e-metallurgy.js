@@ -98,8 +98,9 @@ async function waitHttp(url, tries = 900) {
   ok(true, '로비 로드 — 스크린샷 01-lobby.png');
 
   // ── 게스트 입장 — 진짜 버튼을 누른다 ─────────────────────────────────────
-  const enterBtn = await page.$('button:has-text("월드 입장")');
-  ok(!!enterBtn, '로비에 "월드 입장" 버튼이 있다');
+  // ★[T84] 로비 버튼은 글자가 아니라 **id**(`#enter`) 로 집는다 — 라벨이 바뀌어도 안 죽는다.
+  const enterBtn = await page.$('#enter');
+  ok(!!enterBtn, '로비에 입장 버튼(`#enter` · 「나루터로 간다」 — T84 개명)이 있다');
   if (enterBtn) await enterBtn.click();
   for (let i = 0; i < 40 && !(await page.evaluate(() => !!(window.__getMyAbs && window.__getMyAbs()))); i++) await sleep(500);
   await sleep(1500);

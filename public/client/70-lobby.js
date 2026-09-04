@@ -54,7 +54,7 @@ function onbEnsureDom() {
   const card = document.querySelector('#lobby .lobby-card');
   if (!card) return null;
   // ★★로비는 `position:fixed` + 세로 가운데 정렬이라 **스크롤이 없다**(style.css). 카드가 뷰포트보다
-  //   길어지면 「월드 입장」이 화면 밖으로 나가 **누를 수가 없다** — 통합 러너에서 900×700 창을 쓰는
+  //   길어지면 「나루터로 간다」(T84 개명 · 예전 「월드 입장」)가 화면 밖으로 나가 **누를 수가 없다** — 통합 러너에서 900×700 창을 쓰는
   //   하네스가 정확히 그걸로 클릭 타임아웃을 냈다. style.css 는 이 배치의 접점이 아니므로 여기서 푼다.
   const lob = document.getElementById('lobby');
   if (lob) { lob.style.overflowY = 'auto'; lob.style.alignItems = 'flex-start'; lob.style.padding = '24px 0'; }
@@ -217,7 +217,7 @@ function onbLobbyInit() {
     onbHooks();
     onbRefresh();
     if (!onbTimer) onbTimer = setInterval(onbTick, 800);
-  } catch (e) { /* 로비가 깨지면 안 된다 — 시작 화면이 없어도 "월드 입장"은 그대로 산다 */ }
+  } catch (e) { /* 로비가 깨지면 안 된다 — 시작 화면이 없어도 「나루터로 간다」 버튼은 그대로 산다 */ }
   return true;
 }
 

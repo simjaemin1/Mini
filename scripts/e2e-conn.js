@@ -72,7 +72,8 @@ const ZENV = (extra) => Object.assign({
   const enter = async (page) => {
     await page.goto(`http://localhost:${CPORT}/`, { waitUntil: 'domcontentloaded' });
     await sleep(2200);
-    const b = await page.$('button:has-text("월드 입장")');
+    // ★[T84] 로비 버튼은 글자가 아니라 **id**(`#enter`) 로 집는다 — 라벨이 바뀌어도 안 죽는다.
+    const b = await page.$('#enter');
     if (b) await b.click();
   };
   // ★`__getMyAbs()` 를 입장 게이트로 쓰면 안 된다 — `{x:0,y:0}` 로 시작해 **언제나 truthy** 다

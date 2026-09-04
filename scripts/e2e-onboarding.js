@@ -41,7 +41,8 @@ function boot(name, file, env) {
   const p = spawn(process.execPath, [path.join(ROOT, 'server', file)], {
     cwd: ROOT, env: Object.assign({}, process.env, env), stdio: ['ignore', 'pipe', 'pipe'],
   });
-  p.stdout.on('data', (b) => { const s = String(b); if (/up on|시딩|마을 시뮬 준비|📜|🛶/.test(s)) process.stdout.write(`  [${name}] ${s.trim().slice(0, 120)}\n`); });
+  // ★[T84] 서버 콘솔 줄은 **말**로 거른다(로그의 이모지가 빠지면 필터가 조용히 죽는다).
+  p.stdout.on('data', (b) => { const s = String(b); if (/up on|시딩|마을 시뮬 준비|사건 장부|도착 지점/.test(s)) process.stdout.write(`  [${name}] ${s.trim().slice(0, 120)}\n`); });
   p.stderr.on('data', () => {});
   procs.push(p);
   return p;

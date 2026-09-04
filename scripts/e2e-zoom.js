@@ -78,7 +78,8 @@ function pxdiff(a, b) {
   page.on('console', (m) => { if (m.type() === 'error') errs.push('console: ' + m.text().slice(0, 160)); });
   await page.goto(`http://localhost:${CPORT}/`, { waitUntil: 'domcontentloaded' });
   await sleep(2500);
-  const enter = await page.$('button:has-text("월드 입장")');
+  // ★[T84] 로비 버튼은 글자가 아니라 **id**(`#enter`) 로 집는다 — 라벨이 바뀌어도 안 죽는다.
+  const enter = await page.$('#enter');
   if (enter) await enter.click();
   for (let i = 0; i < 60 && !(await page.evaluate(() => !!(window.__getMyAbs && window.__getMyAbs()))); i++) await sleep(500);
   await sleep(2500);
@@ -222,7 +223,7 @@ function pxdiff(a, b) {
     await page.evaluate(() => localStorage.setItem('durango_zoom', '0.5'));
     await page.reload({ waitUntil: 'domcontentloaded' });
     await sleep(2500);
-    const e2 = await page.$('button:has-text("월드 입장")');
+    const e2 = await page.$('#enter');
     if (e2) await e2.click();
     for (let i = 0; i < 60 && !(await page.evaluate(() => !!(window.__getMyAbs && window.__getMyAbs()))); i++) await sleep(500);
     await sleep(1500);
@@ -233,7 +234,7 @@ function pxdiff(a, b) {
     await page.evaluate(() => localStorage.setItem('durango_zoom', '2'));
     await page.reload({ waitUntil: 'domcontentloaded' });
     await sleep(2500);
-    const e3 = await page.$('button:has-text("월드 입장")');
+    const e3 = await page.$('#enter');
     if (e3) await e3.click();
     for (let i = 0; i < 60 && !(await page.evaluate(() => !!(window.__getMyAbs && window.__getMyAbs()))); i++) await sleep(500);
     await sleep(1500);

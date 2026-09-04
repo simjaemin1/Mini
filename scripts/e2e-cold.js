@@ -70,7 +70,8 @@ async function waitHttp(url, tries = 600) {
 
   await page.goto(`http://localhost:${CPORT}/`, { waitUntil: 'domcontentloaded' });
   await sleep(2500);
-  const enterBtn = await page.$('button:has-text("월드 입장")');
+  // ★[T84] 로비 버튼은 글자가 아니라 **id**(`#enter`) 로 집는다 — 라벨이 바뀌어도 안 죽는다.
+  const enterBtn = await page.$('#enter');
   if (enterBtn) await enterBtn.click();
   // ★입장 판정은 `__inWorld()` — `__getMyAbs` 는 초기값이 있어 **언제나 truthy** 라 자명 통과였다(족보).
   for (let i = 0; i < 60 && !(await page.evaluate(() => !!(window.__inWorld && window.__inWorld()))); i++) await sleep(500);

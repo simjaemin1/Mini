@@ -72,8 +72,9 @@ async function waitHttp(url, tries = 900) {
 
   await page.goto(`http://localhost:${CPORT}/`, { waitUntil: 'domcontentloaded' });
   await sleep(2500);
-  const enterBtn = await page.$('button:has-text("월드 입장")');
-  ok(!!enterBtn, '로비에 "월드 입장" 버튼');
+  // ★[T84] 로비 버튼은 글자가 아니라 **id**(`#enter`) 로 집는다 — 라벨이 바뀌어도 안 죽는다.
+  const enterBtn = await page.$('#enter');
+  ok(!!enterBtn, '로비에 입장 버튼(`#enter` · 「나루터로 간다」 — T84 개명)');
   if (enterBtn) await enterBtn.click();
   for (let i = 0; i < 60 && !(await page.evaluate(() => !!(window.__getMyAbs && window.__getMyAbs()))); i++) await sleep(500);
   await sleep(2200);
@@ -223,7 +224,8 @@ async function waitHttp(url, tries = 900) {
   await sleep(700);
   const txt = await page.evaluate(() => window.__panelText());
   ok(/짐/.test(txt) && /kg/.test(txt), '★★⑤ 상태 패널에 **총 무게 → 이동 배율**이 있다(§8.6 확정 항목)',
-    (txt.match(/[^\n]*🎒[^\n]{0,60}/) || [''])[0].trim() || txt.slice(0, 60));
+    // ★[T84] 증거 줄은 **말**로 집는다(판의 이모지는 T66 이 지웠다).
+    (txt.match(/[^\n]*짐[^\n]{0,60}/) || [''])[0].trim() || txt.slice(0, 60));
   ok(/초과/.test(txt), '★⑤ 초과율을 말해 준다');
   await snap('wt-03-panel');
   await page.keyboard.press('Escape'); await sleep(300);

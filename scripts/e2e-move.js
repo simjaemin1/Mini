@@ -100,7 +100,8 @@ async function runPhase(model, SPOT, deep) {
 
   await page.goto(`http://localhost:${CPORT}/`, { waitUntil: 'domcontentloaded' });
   await sleep(2500);
-  const enter = await page.$('button:has-text("월드 입장")');
+  // ★[T84] 로비 버튼은 글자가 아니라 **id**(`#enter`) 로 집는다 — 라벨이 바뀌어도 안 죽는다.
+  const enter = await page.$('#enter');
   if (enter) await enter.click();
   for (let i = 0; i < 60 && !(await page.evaluate(() => !!(window.__getMyAbs && window.__getMyAbs()))); i++) await sleep(500);
   await sleep(2000);

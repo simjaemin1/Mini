@@ -124,10 +124,23 @@ function boxDiff(a, b, x0, y0, x1, y1) {
     const browser = await chromium.launch({ headless: true, executablePath: require('playwright').chromium.executablePath() });
     const page = await (await browser.newContext({ viewport: { width: 1400, height: 900 } })).newPage();
     await page.goto(`http://localhost:${CPORT}/`); await sleep(2500);
-    for (const sel of ['#startBtn', 'button:has-text("시작")', 'button:has-text("입장")', 'text=게스트']) {
-      try { const b = await page.$(sel); if (b) { await b.click(); break; } } catch (e) {}
-    }
-    await sleep(14000);
+    // ★[T84] 로비 버튼은 글자가 아니라 **id**(`#enter`) 로 집는다 — 라벨이 바뀌어도 안 죽는다.
+    //   ⚠옛 사다리(`#startBtn`·"시작"·"입장"·게스트) 네 칸 중 실제로 문 것은 **"입장" 한 칸**이었다.
+    //   앞 칸 "시작"은 숨은 「새로 시작」에 걸려 click 이 **시간초과**로 죽었고, 그 30초가 **우연히**
+    //   로비의 `/zones` 응답을 기다려 주고 있었다(존 목록 전엔 이 버튼이 `disabled` 다 — T61·T68 의 그 흔들림).
+    //   ⇒ 우연을 지우는 대신 기다림을 **말로** 적는다: 버튼이 살아난 뒤에 누른다.
+    //   ★기다림은 **두 가지**다: 버튼이 살아나는 것(`disabled`)과 **손잡이가 걸리는 것**
+    //     (`onclick` 은 `30-n-net.js` 의 `boot()` 이 건다 — 그 전에 누르면 아무 일도 안 난다).
+    await page.waitForFunction(() => { const b = document.getElementById('enter'); return !!(b && b.onclick && !b.disabled); }, { timeout: 45000 }).catch(() => {});
+    try { const b = await page.$('#enter'); if (b) await b.click(); } catch (e) {}
+    //   ★★그 30초는 **청크·지붕 텍스처 적재**도 같이 기다려 주고 있었다. 옛 흐름은 「시간초과 30초
+    //     + 고정 14초」였으니 화면은 `goto` 로부터 **44초쯤** 뒤에 찍혔다 — 이 파일의 고정 대기 14초는
+    //     형제들(15~24초) 중 가장 짧고, 그 30초 없이는 **지붕이 아직 안 그려진 화면**을 찍는다
+    //     (실측: 밖 화면의 이엉 0.0%). 우연을 지웠으니 그 만큼을 **말로** 적는다:
+    //     진단값이 설 때까지 본 뒤, 옛 흐름과 같은 만큼 화면이 여물기를 기다린다.
+    const shotT0 = Date.now();
+    for (let i = 0; i < 45 && !(await page.evaluate(() => !!window.__cutawayDbg).catch(() => false)); i++) await sleep(1000);
+    while (Date.now() - shotT0 < 44000) await sleep(1000);
     const dbg = await page.evaluate(() => window.__cutawayDbg || null).catch(() => null);
     const shotP = `${SHOTS}/${tag}.png`;
     await page.screenshot({ path: shotP });

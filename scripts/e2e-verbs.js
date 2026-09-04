@@ -101,7 +101,8 @@ async function waitHttp(url, tries = 600) {
         if (n > 0) break;
         await sleep(500);
       }
-      const enter = await page.$('button:has-text("월드 입장")');
+      // ★[T84] 로비 버튼은 글자가 아니라 **id**(`#enter`) 로 집는다 — 라벨이 바뀌어도 안 죽는다.
+      const enter = await page.$('#enter');
       if (enter) await enter.click();
       for (let i = 0; i < 90; i++) {
         if (await page.evaluate(() => !!(window.__inWorld && window.__inWorld()))) { await sleep(1800); return page; }

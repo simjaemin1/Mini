@@ -76,7 +76,8 @@ async function waitHttp(url, tries = 600) {
     page.on('pageerror', (e) => allErrs.push(`[${tag}] ` + String(e.message).slice(0, 160)));
     await page.goto(`http://localhost:${CPORT}/`, { waitUntil: 'domcontentloaded' });
     await sleep(2500);
-    const enter = await page.$('button:has-text("월드 입장")');
+    // ★[T84] 로비 버튼은 글자가 아니라 **id**(`#enter`) 로 집는다 — 라벨이 바뀌어도 안 죽는다.
+    const enter = await page.$('#enter');
     if (enter) await enter.click();
     for (let i = 0; i < 60 && !(await page.evaluate(() => !!(window.__inWorld && window.__inWorld()))); i++) await sleep(500);
     await sleep(1800);
@@ -338,7 +339,7 @@ async function waitHttp(url, tries = 600) {
     pre(d3, '쓰러진 채다');
     await A.reload({ waitUntil: 'domcontentloaded' });
     await sleep(3000);
-    const enter = await A.$('button:has-text("월드 입장")');
+    const enter = await A.$('#enter');
     if (enter) await enter.click();
     for (let i = 0; i < 60 && !(await A.evaluate(() => !!(window.__inWorld && window.__inWorld()))); i++) await sleep(500);
     await sleep(2500);

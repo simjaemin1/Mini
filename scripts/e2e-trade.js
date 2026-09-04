@@ -104,8 +104,9 @@ async function waitHttp(url, tries = 900) {
 
   await page.goto(`http://localhost:${CPORT}/`, { waitUntil: 'domcontentloaded' });
   await sleep(2500);
-  const enterBtn = await page.$('button:has-text("월드 입장")');
-  ok(!!enterBtn, '로비에 "월드 입장" 버튼');
+  // ★[T84] 로비 버튼은 글자가 아니라 **id**(`#enter`) 로 집는다 — 라벨이 바뀌어도 안 죽는다.
+  const enterBtn = await page.$('#enter');
+  ok(!!enterBtn, '로비에 입장 버튼(`#enter` · 「나루터로 간다」 — T84 개명)');
   if (enterBtn) await enterBtn.click();
   for (let i = 0; i < 60 && !(await page.evaluate(() => !!(window.__getMyAbs && window.__getMyAbs()))); i++) await sleep(500);
   await sleep(2000);
@@ -255,7 +256,8 @@ async function waitHttp(url, tries = 900) {
   if (!quote || !quote.ok) { console.log(`\n견적 실패 — 중단  ${JSON.stringify(quote)}`); await snap('tr-03-quote-fail'); await browser.close(); shutdown(); process.exit(1); }
   const qtxt = await page.evaluate(() => window.__panelText());
   ok(/한 개당/.test(qtxt) && new RegExp(String(quote.take)).test(qtxt), '★★③ 견적이 **화면에** 뜬다(비율·수량)',
-    (qtxt.match(/📤[^\n]{0,60}/) || [''])[0].trim());
+    // ★[T84] 증거 줄은 **말**로 집는다(이모지는 T66 이 판에서 지웠다 — 그러면 증거가 조용히 빈다).
+    (qtxt.match(/[^\n]*한 개당[^\n]{0,60}/) || [''])[0].trim());
   await snap('tr-03-quote');
 
   const invBefore = await page.evaluate(() => window.__getInv());
@@ -334,7 +336,9 @@ async function waitHttp(url, tries = 900) {
       if (!(cur > 0.5)) break;
     }
     const said = (await notices()).slice(n0).filter(_isTrade);
-    const err = (said.find((x) => !/거래소 —/.test(x)) || '').replace(/^🏪\s*/, '');
+    // ★[T84] 접두 이모지 벗기기는 **더 이상 할 일이 없다** — T78 이 알림 경계에서 걷는다(`kind` 로 옮겼다).
+    //   줄을 지우지 않고 **뜻이 서게** 남긴다: 앞머리 공백만 턴다.
+    const err = (said.find((x) => !/거래소 —/.test(x)) || '').replace(/^\s+/, '');
     const aft = await askBoard();
     const moved = others0.filter(([res, n0v]) => Math.abs((numOf(aft, res) || 0) - n0v) > 1e-12);
     return { dealt, err, gN0: numOf(bfr, gRow.res), gN1: numOf(aft, gRow.res),

@@ -205,9 +205,15 @@ const rget = async (q) => (await (await fetch(`http://localhost:${ZPORT}/roomdbg
   const page = await (await browser.newContext({ viewport: { width: 1400, height: 900 } })).newPage();
   page.on('pageerror', (e) => say('  [pageerror] ' + String(e.message).slice(0, 160)));
   await page.goto(`http://localhost:${CPORT}/`); await sleep(2500);
-  for (const sel of ['#startBtn', 'button:has-text("시작")', 'button:has-text("입장")', 'text=게스트']) {
-    try { const b = await page.$(sel); if (b) { await b.click(); break; } } catch (e) {}
-  }
+  // ★[T84] 로비 버튼은 글자가 아니라 **id**(`#enter`) 로 집는다 — 라벨이 바뀌어도 안 죽는다.
+  //   ⚠옛 사다리(`#startBtn`·"시작"·"입장"·게스트) 네 칸 중 실제로 문 것은 **"입장" 한 칸**이었다.
+  //   앞 칸 "시작"은 숨은 「새로 시작」에 걸려 click 이 **시간초과**로 죽었고, 그 30초가 **우연히**
+  //   로비의 `/zones` 응답을 기다려 주고 있었다(존 목록 전엔 이 버튼이 `disabled` 다 — T61·T68 의 그 흔들림).
+  //   ⇒ 우연을 지우는 대신 기다림을 **말로** 적는다: 버튼이 살아난 뒤에 누른다.
+  //   ★기다림은 **두 가지**다: 버튼이 살아나는 것(`disabled`)과 **손잡이가 걸리는 것**
+  //     (`onclick` 은 `30-n-net.js` 의 `boot()` 이 건다 — 그 전에 누르면 아무 일도 안 난다).
+  await page.waitForFunction(() => { const b = document.getElementById('enter'); return !!(b && b.onclick && !b.disabled); }, { timeout: 45000 }).catch(() => {});
+  try { const b = await page.$('#enter'); if (b) await b.click(); } catch (e) {}
   await sleep(15000);
   //   ★[계측 격리 2026-08-07] 배치 21 이 **지면 풀 카펫**을 흔들리게 했다 — 이 하네스의
   //     '빈 땅 대조군은 정지' 판정은 이제 저절로 깨진다(실측 |Δ| 3.8 > 2). 배치 19 인계가
@@ -309,9 +315,15 @@ const rget = async (q) => (await (await fetch(`http://localhost:${ZPORT}/roomdbg
   const b2 = await chromium.launch({ headless: true, executablePath: require('playwright').chromium.executablePath() });
   const p2 = await (await b2.newContext({ viewport: { width: 1400, height: 900 } })).newPage();
   await p2.goto(`http://localhost:${CPORT}/`); await sleep(2500);
-  for (const sel of ['#startBtn', 'button:has-text("시작")', 'button:has-text("입장")', 'text=게스트']) {
-    try { const bb = await p2.$(sel); if (bb) { await bb.click(); break; } } catch (e) {}
-  }
+  // ★[T84] 로비 버튼은 글자가 아니라 **id**(`#enter`) 로 집는다 — 라벨이 바뀌어도 안 죽는다.
+  //   ⚠옛 사다리(`#startBtn`·"시작"·"입장"·게스트) 네 칸 중 실제로 문 것은 **"입장" 한 칸**이었다.
+  //   앞 칸 "시작"은 숨은 「새로 시작」에 걸려 click 이 **시간초과**로 죽었고, 그 30초가 **우연히**
+  //   로비의 `/zones` 응답을 기다려 주고 있었다(존 목록 전엔 이 버튼이 `disabled` 다 — T61·T68 의 그 흔들림).
+  //   ⇒ 우연을 지우는 대신 기다림을 **말로** 적는다: 버튼이 살아난 뒤에 누른다.
+  //   ★기다림은 **두 가지**다: 버튼이 살아나는 것(`disabled`)과 **손잡이가 걸리는 것**
+  //     (`onclick` 은 `30-n-net.js` 의 `boot()` 이 건다 — 그 전에 누르면 아무 일도 안 난다).
+  await p2.waitForFunction(() => { const b = document.getElementById('enter'); return !!(b && b.onclick && !b.disabled); }, { timeout: 45000 }).catch(() => {});
+  try { const bb = await p2.$('#enter'); if (bb) await bb.click(); } catch (e) {}
   await sleep(15000);
   //   ★[계측 격리 2026-08-07] 배치 21 이 **지면 풀 카펫**을 흔들리게 했다 — 이 하네스의
   //     '빈 땅 대조군은 정지' 판정은 이제 저절로 깨진다(실측 |Δ| 3.8 > 2). 배치 19 인계가
@@ -465,9 +477,15 @@ const rget = async (q) => (await (await fetch(`http://localhost:${ZPORT}/roomdbg
   const b3 = await chromium.launch({ headless: true, executablePath: require('playwright').chromium.executablePath() });
   const p3 = await (await b3.newContext({ viewport: { width: 1400, height: 900 } })).newPage();
   await p3.goto(`http://localhost:${CPORT}/`); await sleep(2500);
-  for (const sel of ['#startBtn', 'button:has-text("시작")', 'button:has-text("입장")', 'text=게스트']) {
-    try { const bb = await p3.$(sel); if (bb) { await bb.click(); break; } } catch (e) {}
-  }
+  // ★[T84] 로비 버튼은 글자가 아니라 **id**(`#enter`) 로 집는다 — 라벨이 바뀌어도 안 죽는다.
+  //   ⚠옛 사다리(`#startBtn`·"시작"·"입장"·게스트) 네 칸 중 실제로 문 것은 **"입장" 한 칸**이었다.
+  //   앞 칸 "시작"은 숨은 「새로 시작」에 걸려 click 이 **시간초과**로 죽었고, 그 30초가 **우연히**
+  //   로비의 `/zones` 응답을 기다려 주고 있었다(존 목록 전엔 이 버튼이 `disabled` 다 — T61·T68 의 그 흔들림).
+  //   ⇒ 우연을 지우는 대신 기다림을 **말로** 적는다: 버튼이 살아난 뒤에 누른다.
+  //   ★기다림은 **두 가지**다: 버튼이 살아나는 것(`disabled`)과 **손잡이가 걸리는 것**
+  //     (`onclick` 은 `30-n-net.js` 의 `boot()` 이 건다 — 그 전에 누르면 아무 일도 안 난다).
+  await p3.waitForFunction(() => { const b = document.getElementById('enter'); return !!(b && b.onclick && !b.disabled); }, { timeout: 45000 }).catch(() => {});
+  try { const bb = await p3.$('#enter'); if (bb) await bb.click(); } catch (e) {}
   await sleep(15000);
   //   ★[계측 격리 2026-08-07] 배치 21 이 **지면 풀 카펫**을 흔들리게 했다 — 이 하네스의
   //     '빈 땅 대조군은 정지' 판정은 이제 저절로 깨진다(실측 |Δ| 3.8 > 2). 배치 19 인계가
@@ -554,9 +572,15 @@ const rget = async (q) => (await (await fetch(`http://localhost:${ZPORT}/roomdbg
       const b4 = await chromium.launch({ headless: true, executablePath: require('playwright').chromium.executablePath() });
       const p4 = await (await b4.newContext({ viewport: { width: 1400, height: 900 } })).newPage();
       await p4.goto(`http://localhost:${CPORT}/`); await sleep(2500);
-      for (const sel of ['#startBtn', 'button:has-text("시작")', 'button:has-text("입장")', 'text=게스트']) {
-        try { const bb = await p4.$(sel); if (bb) { await bb.click(); break; } } catch (e) {}
-      }
+      // ★[T84] 로비 버튼은 글자가 아니라 **id**(`#enter`) 로 집는다 — 라벨이 바뀌어도 안 죽는다.
+      //   ⚠옛 사다리(`#startBtn`·"시작"·"입장"·게스트) 네 칸 중 실제로 문 것은 **"입장" 한 칸**이었다.
+      //   앞 칸 "시작"은 숨은 「새로 시작」에 걸려 click 이 **시간초과**로 죽었고, 그 30초가 **우연히**
+      //   로비의 `/zones` 응답을 기다려 주고 있었다(존 목록 전엔 이 버튼이 `disabled` 다 — T61·T68 의 그 흔들림).
+      //   ⇒ 우연을 지우는 대신 기다림을 **말로** 적는다: 버튼이 살아난 뒤에 누른다.
+      //   ★기다림은 **두 가지**다: 버튼이 살아나는 것(`disabled`)과 **손잡이가 걸리는 것**
+      //     (`onclick` 은 `30-n-net.js` 의 `boot()` 이 건다 — 그 전에 누르면 아무 일도 안 난다).
+      await p4.waitForFunction(() => { const b = document.getElementById('enter'); return !!(b && b.onclick && !b.disabled); }, { timeout: 45000 }).catch(() => {});
+      try { const bb = await p4.$('#enter'); if (bb) await bb.click(); } catch (e) {}
       await sleep(15000);
       // 바람 정지 + 생물 자리 훅 — 생물은 가려서 뺀다(e2e-nature 와 같은 문법: 클라가 자리를 낸다)
       await p4.evaluate(() => { if (window.__terrain19) { window.__terrain19.windOff = true; window.__terrain19.entBoxes = true; } });

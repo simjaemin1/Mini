@@ -103,7 +103,8 @@ async function waitHttp(url, tries = 900) {
   async function enter() {
     await page.goto(`http://localhost:${CPORT}/`, { waitUntil: 'domcontentloaded' });
     await sleep(2500);
-    const btn = await page.$('button:has-text("월드 입장")');
+    // ★[T84] 로비 버튼은 글자가 아니라 **id**(`#enter`) 로 집는다 — 라벨이 바뀌어도 안 죽는다.
+    const btn = await page.$('#enter');
     if (btn) await btn.click();
     for (let i = 0; i < 60 && !(await page.evaluate(() => !!(window.__getMyAbs && window.__getMyAbs()))); i++) await sleep(500);
     await sleep(2000);
@@ -244,7 +245,8 @@ async function waitHttp(url, tries = 900) {
   const t1 = await openTrade();
   ok(t1.open, `③ 거래소 창이 열린다`);
   ok(/사람/.test(t1.body) && /곳간 몫/.test(t1.body), `③b 소속 한 줄이 **화면에 그려진다**(새 패널 0)`,
-     JSON.stringify((t1.body.match(/🏘️[^\n]{0,40}/) || [''])[0]));
+     // ★[T84] 증거 줄을 이모지로 자르지 않는다 — 클라 판의 이모지는 T66 이 지웠고, 그러면 이 증거가 빈다.
+     JSON.stringify((t1.body.match(/[^\n]*사람[^\n]{0,40}/) || [''])[0]));
   ok(!!t1.member && t1.member.vid === V.id, `③c 그 줄의 값은 서버가 준 것이다(클라 재계산 0)`,
      t1.member ? `한도 ${t1.member.limit} · 남은 몫 ${t1.member.remain} · 곳간 ${t1.member.stock}` : 'X');
   ok(t1.member && t1.member.limit > 0, `③d 상황 assert — 오늘 한도가 0이 아니다(아래가 자명 통과가 아니다)`);

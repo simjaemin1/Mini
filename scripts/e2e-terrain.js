@@ -44,7 +44,8 @@ try { execSync(`pkill -f "serve[r]/zone.js" ; pkill -f "centra[l].js" ; pkill -f
 const procs = [];
 function boot(name, file, env) {
   const p = spawn('node', [file], { env: { ...process.env, ...env }, stdio: ['ignore', 'pipe', 'pipe'], cwd: ROOT });
-  p.stdout.on('data', (d) => { const s = d.toString(); if (/server up|Error|☠️/i.test(s)) process.stdout.write(`  [${name}] ` + s.slice(0, 200)); });
+  // ★[T84] 서버 콘솔 줄은 **말**로 거른다(로그의 이모지가 빠지면 필터가 조용히 죽는다).
+  p.stdout.on('data', (d) => { const s = d.toString(); if (/server up|Error|사망|다운/i.test(s)) process.stdout.write(`  [${name}] ` + s.slice(0, 200)); });
   p.stderr.on('data', (d) => { const s = d.toString(); if (!/Warning/.test(s)) process.stdout.write(`  [${name}!] ` + s.slice(0, 120)); });
   procs.push(p); return p;
 }
@@ -150,9 +151,15 @@ function bestShift(a, b, pred, box, R) {
     const browser = await chromium.launch({ headless: true, executablePath: require('playwright').chromium.executablePath() });
     const page = await (await browser.newContext({ viewport: { width: 1400, height: 900 } })).newPage();
     await page.goto(`http://localhost:${CPORT}/`); await sleep(2500);
-    for (const sel of ['#startBtn', 'button:has-text("시작")', 'button:has-text("입장")', 'text=게스트']) {
-      try { const b = await page.$(sel); if (b) { await b.click(); break; } } catch (e) {}
-    }
+    // ★[T84] 로비 버튼은 글자가 아니라 **id**(`#enter`) 로 집는다 — 라벨이 바뀌어도 안 죽는다.
+    //   ⚠옛 사다리(`#startBtn`·"시작"·"입장"·게스트) 네 칸 중 실제로 문 것은 **"입장" 한 칸**이었다.
+    //   앞 칸 "시작"은 숨은 「새로 시작」에 걸려 click 이 **시간초과**로 죽었고, 그 30초가 **우연히**
+    //   로비의 `/zones` 응답을 기다려 주고 있었다(존 목록 전엔 이 버튼이 `disabled` 다 — T61·T68 의 그 흔들림).
+    //   ⇒ 우연을 지우는 대신 기다림을 **말로** 적는다: 버튼이 살아난 뒤에 누른다.
+    //   ★기다림은 **두 가지**다: 버튼이 살아나는 것(`disabled`)과 **손잡이가 걸리는 것**
+    //     (`onclick` 은 `30-n-net.js` 의 `boot()` 이 건다 — 그 전에 누르면 아무 일도 안 난다).
+    await page.waitForFunction(() => { const b = document.getElementById('enter'); return !!(b && b.onclick && !b.disabled); }, { timeout: 45000 }).catch(() => {});
+    try { const b = await page.$('#enter'); if (b) await b.click(); } catch (e) {}
     await sleep(20000);
     const knob = async (o) => { await page.evaluate((k) => { Object.assign(window.__terrain19, k); }, o); await sleep(1600); };
     const grab = async (n) => { const p2 = `${SHOTS}/${tag}-${n}.png`; await page.screenshot({ path: p2 }); return PNG.sync.read(fs.readFileSync(p2)); };

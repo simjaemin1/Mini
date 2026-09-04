@@ -23,7 +23,7 @@ function changedPct(a,b,box){const[x0,y0,x1,y1]=box;let n=0,t=0;
   const pg=await(await br.newContext({viewport:{width:1400,height:900}})).newPage();
   pg.on('pageerror',(e)=>console.log('[err]',String(e.message).slice(0,200)));
   await pg.goto(`http://localhost:${CPORT}/`);await sleep(2500);
-  for(const sel of ['#startBtn','button:has-text("시작")','button:has-text("입장")','text=게스트']){try{const b=await pg.$(sel);if(b){await b.click();break;}}catch(e){}}
+  for(const sel of ['#enter'] /* ★[T84] 로비 버튼은 **id**로 집는다 — 옛 사다리 네 칸 중 셋은 화면에 없고(#startBtn·"시작"·게스트) "입장"만 물었다 — 그 라벨이 바뀌자 네 칸 전부 죽는다 */){try{const b=await pg.$(sel);if(b){await b.click();break;}}catch(e){}}
   await sleep(24000);
   const shot=async(n)=>{const p2=`/tmp/tol-${n}.png`;await pg.screenshot({path:p2});return PNG.sync.read(fs.readFileSync(p2));};
   await pg.evaluate(async()=>{window.__anForProbe=await (await fetch('/assets/mountains/mountain_anchors.json')).json();});

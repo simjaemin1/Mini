@@ -39,7 +39,8 @@ function boot(name, file, env) {
   const p = spawn(process.execPath, [path.join(ROOT, 'server', file)], {
     cwd: ROOT, env: Object.assign({}, process.env, env), stdio: ['ignore', 'pipe', 'pipe'],
   });
-  p.stdout.on('data', (b) => { const s = String(b); if (/up on|시딩|마을 시뮬 준비|📜/.test(s)) process.stdout.write(`  [${name}] ${s.trim().slice(0, 130)}\n`); });
+  // ★[T84] 서버 콘솔 줄은 **말**로 거른다(로그의 이모지가 빠지면 필터가 조용히 죽는다).
+  p.stdout.on('data', (b) => { const s = String(b); if (/up on|시딩|마을 시뮬 준비|사건 장부|연대기/.test(s)) process.stdout.write(`  [${name}] ${s.trim().slice(0, 130)}\n`); });
   p.stderr.on('data', () => {});
   procs.push(p);
   return p;
@@ -91,7 +92,8 @@ async function waitHttp(url, tries = 900) {
   async function enter() {
     await page.goto(`http://localhost:${CPORT}/`, { waitUntil: 'domcontentloaded' });
     await sleep(2500);
-    const btn = await page.$('button:has-text("월드 입장")');
+    // ★[T84] 로비 버튼은 글자가 아니라 **id**(`#enter`) 로 집는다 — 라벨이 바뀌어도 안 죽는다.
+    const btn = await page.$('#enter');
     if (btn) await btn.click();
     for (let i = 0; i < 60 && !(await page.evaluate(() => !!(window.__getMyAbs && window.__getMyAbs()))); i++) await sleep(500);
     // ★★[T50 2026-09-02 수리] 좌표를 받았다고 **마을을 아는 것은 아니다.**
