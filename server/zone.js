@@ -3632,7 +3632,7 @@ async function _acceptConnection(ws, req, C) {
     if (Number.isFinite(_takeover.lastSeenDay)) player.lastSeenDay = _takeover.lastSeenDay;
     if (_takeover.member) player.member = _takeover.member;   // ★[T11] 살아 있던 몸의 소속이 진실이다(보강 — 덮어쓰기 아님)
     if (_takeover._returnBriefDone) player._returnBriefDone = true;
-    if (typeof _takeover.hp === 'number') player.hp = _takeover.hp;
+    if (typeof _takeover.hp === 'number') setHp(player, _takeover.hp, 'takeover');   // ★[T109] welcome 이 곧 self.hp 를 싣는다 — 조용하다
     if (typeof _takeover.hunger === 'number') player.hunger = _takeover.hunger;
     if (typeof _takeover.thirst === 'number') player.thirst = _takeover.thirst;
     if (typeof _takeover.vp === 'number') player.vp = _takeover.vp;
@@ -3978,7 +3978,7 @@ function handlePlayerInput(player, raw) {
     if (typeof msg.thirst === 'number') player.thirst = Math.max(0, Math.min(100, msg.thirst));
     // ★[T47] hp 도 세운다 — 존을 넘을 때 생명값이 이어지는지 **재려면** 깎아 놓을 수 있어야 한다.
     //   (코드로만 확인하고 "넘어간다"고 적는 것이 N.6 을 만든 방식이다.)
-    if (typeof msg.hp === 'number') { player.hp = Math.max(1, Math.min(player.maxHp || 100, msg.hp)); broadcast({ type: 'player_damaged', pid: player.pid, hp: player.hp }); }
+    if (typeof msg.hp === 'number') setHp(player, Math.max(1, msg.hp), 'debug');   // ★[T109] 하한 1 은 이 자리의 뜻이라 남긴다(0 이면 쓰러짐이 딸려 온다)
     for (const k of ['cold', 'fatigue', 'injury', 'morale']) {
       if (typeof msg[k] === 'number') b[k] = Math.max(0, Math.min(1, msg[k]));
     }
@@ -4557,8 +4557,7 @@ function doEat(player, item, amount, who) {
   //   그 몸은 더 안 맞고 영원히 안 아물어 로그아웃 말고는 빠져나올 길이 없었다).
   //   ⇒ 음(−)의 몫은 **정본 피해 경로**로 보낸다. 회복(+)은 종전 그대로 여기서 더한다.
   if (eff.hpDelta < 0) { damagePlayer(target, -eff.hpDelta * ate, `food:${item}`); }
-  else if (eff.hpDelta) { target.hp = Math.max(0, Math.min(target.maxHp, target.hp + eff.hpDelta * ate));
-                      broadcast({ type: 'player_damaged', pid: target.pid, hp: target.hp }); }
+  else if (eff.hpDelta) setHp(target, target.hp + eff.hpDelta * ate, 'food');
   // ★★상한 걸 먹으면 **확정적으로** 탈이 난다 — 주사위 없음(재민 확정: 식중독 확률 모델 금지).
   //   새 축을 안 만든다: 신체 §7 의 **부상** 축 하나를 재사용한다(HP 는 안 건드린다).
   //   ⚠[T44] "아사 폐지" 폐기와 무관하다 — 극단 HP 감소는 허기·갈증·추위 셋이고 상한 음식은 그 목록 밖이다.
@@ -4800,8 +4799,7 @@ function doEatDish(player, id) {
   const hpBuff = Math.round((dish.attrs.buff || 0) * 15 * fresh / 100);    // 버프 = 신선·고품질일수록 큰 HP 회복
   player.hunger = Math.min(HUNGER_MAX, (player.hunger ?? HUNGER_MAX) + nutrition);
   if (hpBuff > 0) {
-    player.hp = Math.max(0, Math.min(player.maxHp, player.hp + hpBuff));
-    broadcast({ type: 'player_damaged', pid: player.pid, hp: player.hp });
+    setHp(player, player.hp + hpBuff, 'dish');
   }
   player.dishes.splice(idx, 1);
   sendDishes(player);
@@ -8937,11 +8935,40 @@ async function isAtWar(guildA, guildB) {
   );
 }
 
+// ★★[T109 2026-09-05 재민 확정] **HP 를 바꾸는 문 하나.**
+//   §0-ⓐ 실측: `zone.js` 에서 사람의 hp 를 쓰는 자리가 **열 군데**였고, 규칙이 자리마다 달랐다 —
+//     하한이 0 인 곳(먹기·요리)과 1 인 곳(핸드오프 픽스처)이 섞였고, 상한은 안 거는 곳도 있었으며
+//     (`damagePlayer` 의 `p.hp -= dmg`), 그 자리는 **음수 hp 를 그대로 방송**하고 나서 0 으로 눌렀다.
+//     알리는 규칙도 넷은 방송하고 여섯은 조용했다. 사본이 열 벌이면 다음 자리는 또 다르게 틀린다.
+//   ⇒ 값·하한·상한·알림을 **여기 하나**로 모은다. 부르는 쪽은 "얼마로" 와 "왜" 만 말한다.
+//   ⚠**남에게 가는 규약은 한 비트도 안 바뀐다.** 종전에 방송하던 넷은 그대로 방송하고,
+//     조용하던 자리는 조용하거나 **자기에게만** 간다(`send` — 새 메시지 타입 0).
+//   ⚠**값이 안 바뀌면 안 보낸다.** 그리고 화면이 읽는 것은 정수(`Math.round`)라, 정수로 안 변한
+//     소수 변화도 안 보낸다 — 대역폭이 늘 이유가 없다.
+//   ⚠자연 회복(`regen`)은 **조용하다.** T61 이 초당 하나 나가는 `gauges` 에 hp 를 이미 실어 뒀고
+//     (`§0-ⓑ` · 클라 `30-n-net.js` 가 그 칸을 읽는다), 그게 곧 **1hp 양자화이자 틱 정본**이다.
+//     여기서 또 보내면 초당 열 건이 되는데, 화면이 얻는 것은 0 이다(새 수 0 · 초당 메시지 표는 보고 §2).
+const HP_PEER = new Set(['damage', 'food', 'dish', 'debug']);   // 종전에 방송하던 넷 — 규약 무변
+const HP_QUIET = new Set(['regen', 'respawn', 'takeover']);     // 이미 다른 문이 나른다(gauges · player_respawn · welcome)
+function setHp(p, v, why) {
+  const max = p.maxHp || PLAYER_MAX_HP;
+  const prev = p.hp;
+  const next = Math.max(0, Math.min(max, v));
+  if (next === prev) return prev;
+  p.hp = next;
+  if (Math.round(next) === Math.round(prev)) return next;
+  if (HP_QUIET.has(why)) return next;
+  if (HP_PEER.has(why)) broadcast({ type: 'player_damaged', pid: p.pid, hp: p.hp });
+  else if (p.ws) send(p.ws, { type: 'player_damaged', pid: p.pid, hp: p.hp });
+  return next;
+}
+
 function damagePlayer(p, dmg, source) {
   if (p.hp <= 0 || p.isDown) return;
-  p.hp -= dmg;
+  // ★[T109] 종전엔 **음수 hp 를 그대로 방송**하고 그 뒤에 0 으로 눌렀다(화면이 잠깐 음수를 봤다).
+  //   이제 문 하나가 0 으로 눌러 두고 방송한다 — 게임 판정(`p.hp <= 0`)은 그대로다.
+  setHp(p, p.hp - dmg, 'damage');
   p.lastDamagedAt = Date.now();
-  broadcast({ type: 'player_damaged', pid: p.pid, hp: p.hp });
   // ★[신체 상태 §7] 부상 — **주사위가 아니라 피해량 문턱**이다(일관성 원칙: 같은 상황이면 같은 결과).
   //   잔타는 안 다치고 늑대 한 대는 다친다. 회복은 시간 + 약초(medicinal_herb 가 재촉한다).
   if (!p.isNpc) {
@@ -8952,7 +8979,7 @@ function damagePlayer(p, dmg, source) {
     }
   }
   if (p.hp <= 0) {
-    p.hp = 0;
+    // ★[T109] `p.hp = 0` 은 지웠다 — `setHp` 가 이미 하한 0 으로 눌렀다(사본 0).
     if (p.isNpc) {
       // NPC: 30초 후 자기 사유지 중심에 부활 (기존 로직 유지)
       console.log(`[${ZONE_ID}] 🤖 NPC ${p.name} 사망 (by ${source}) — ${NPC_RESPAWN_MS/1000}초 후 부활`);
@@ -8961,7 +8988,7 @@ function damagePlayer(p, dmg, source) {
       if (village) { respawnX = village.x; respawnY = village.y; }
       setTimeout(() => {
         if (!players.has(p.pid)) return;
-        p.hp = p.maxHp;
+        setHp(p, p.maxHp, 'respawn');   // ★[T109] 바로 아래 `player_respawn` 이 이미 알린다 — 조용하다
         p.x = respawnX; p.y = respawnY;
         p.vx = 0; p.vy = 0;
         p.hunger = HUNGER_MAX; p.thirst = THIRST_MAX;
@@ -9295,7 +9322,7 @@ function _wakeUp(p, x, y, hpFrac, msg) {
   p._rescueHoldMs = 0;
   p._deadUntil = 0;
   Body.ensure(p).hpDebt = 0;            // ★누워 있는 동안 쌓인 극단 빚을 지우고 일어난다(T44 와의 접점)
-  p.hp = Math.max(1, Math.round(p.maxHp * hpFrac));
+  setHp(p, Math.max(1, Math.round(p.maxHp * hpFrac)), 'rescue');   // ★[T109] 일어난 순간이 화면에 바로 온다(자기에게만)
   if (Number.isFinite(x) && Number.isFinite(y)) { p.x = x; p.y = y; }
   p.vx = 0; p.vy = 0;
   p.lastDamagedAt = Date.now();
@@ -10418,7 +10445,7 @@ setInterval(() => {
         if (entity.ws) {
           damagePlayer(entity, dmg, 'fall');
         } else {
-          entity.hp = Math.max(0, entity.hp - dmg);
+          setHp(entity, entity.hp - dmg, 'fall');   // NPC — ws 가 없어 아무 데도 안 간다(종전 그대로)
         }
       }
       entity.fallStartFloor = 0;
@@ -10515,7 +10542,7 @@ setInterval(() => {
       //     ⇒ 극단 감소가 걸린 동안은 자연 회복을 멈춘다. 회복 식은 그대로 두고 **게이트만** 얹는다.
       const _rm = p.isNpc ? 1 : Body.recoverMult(p);
       const _extreme = p.isNpc ? 0 : Body.extremeHpRate(p).rate;
-      if (_rm > 0 && _extreme <= 0) p.hp = Math.min(p.maxHp, p.hp + 2 * dt * 5 * _rm); // 만복 기준 초당 ~10hp
+      if (_rm > 0 && _extreme <= 0) setHp(p, p.hp + 2 * dt * 5 * _rm, 'regen'); // 만복 기준 초당 ~10hp · `gauges` 가 초당 하나로 나른다
     }
   }
 
