@@ -354,7 +354,13 @@ def bake_grass_angled(name, seed, density, cols, hs, soil, flowers, samples=96):
 def bake_flat_angled(name, c0, c1, scale, pebbles=0, samples=64):
     """평평한 지면 질감(맨땅·진흙) — 세로 구조가 없어 각도 무관하지만 같은 조명·같은 주기로 굽는다."""
     clear_meshes()
-    random.seed(hash(name) & 0xffff)
+    # ★★[T106 실측] 종전은 `random.seed(hash(name) & 0xffff)` 였다 — 파이썬 3 의 **문자열 `hash()` 는
+    #   프로세스마다 다르다**(PYTHONHASHSEED). 같은 코드로 두 번 구워도 조약돌 자리가 달라져
+    #   `mud_angled.png` 은 **재현이 불가능했다**(T101 이 `rock_render.py` 에서 잡은 그 함정과 같은 것).
+    #   ⇒ 이름별 고정 시드라는 뜻은 지키되 값을 **정수로 못 박는다**(PYTHONHASHSEED=0 실측값).
+    #   ⚠이 때문에 `mud_angled` 의 조약돌 배치는 배포본과 달라진다 — 옛 배치는 되살릴 수 없다.
+    _SEEDS = {'mud_angled': 37335}
+    random.seed(_SEEDS.get(name, sum(ord(c) * (i + 1) for i, c in enumerate(name)) & 0xffff))
     _ground_plane(c0, c1, scale)
     pm = principled(name + '_peb', (0.34, 0.31, 0.27), 0.9, 0.15)
     for i in range(pebbles):

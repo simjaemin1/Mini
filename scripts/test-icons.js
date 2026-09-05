@@ -354,7 +354,10 @@ console.log('\n[⑧ 굽는 기계 정본 — icons.lock.json 이 지금 자산�
                               ['nature', path.join(ROOT, 'public', 'assets', 'nature')],
                               ['trees', path.join(ROOT, 'public', 'assets', 'trees')],
                               // ★[T103] 건물 12 도 든다 — 마지막 4.0.2 자산이 5.0.1 로 왔다.
-                              ['buildings', path.join(ROOT, 'public', 'assets', 'buildings')]]) {
+                              ['buildings', path.join(ROOT, 'public', 'assets', 'buildings')],
+                              // ★[T106] 다리 21 · 지면 질감 4 — 이걸로 **4.0.2 산출물 0**.
+                              ['bridge', path.join(ROOT, 'public', 'assets', 'bridge')],
+                              ['terrain', path.join(ROOT, 'public', 'assets', 'terrain')]]) {
       const tbl = lock[grp] || {};
       const files = fs.readdirSync(dir).filter(f => f.endsWith('.png')).map(f => f.slice(0, -4)).sort();
       const missing = files.filter(k => !(k in tbl));
@@ -378,6 +381,26 @@ console.log('\n[⑧ 굽는 기계 정본 — icons.lock.json 이 지금 자산�
                          : `_기계_예외 ${ex.length}장이 전부 잠금표 nature 안에 있다` +
                            (notLocked.length ? ` — 밖: ${notLocked.slice(0, 4).join(', ')}` : ''));
     }
+    // ★[T106] 산 45 는 **webp** 다 — IDAT 이 없으니 파일 전체 sha1 로 잠근다(위 무리 순회는 PNG 전용).
+    {
+      const MTD = path.join(ROOT, 'public', 'assets', 'mountains');
+      const tbl = lock.mountains || {};
+      const files = fs.readdirSync(MTD).filter(f => f.endsWith('.webp')).map(f => f.slice(0, -5)).sort();
+      const miss = files.filter(k => !(k in tbl));
+      const orph = Object.keys(tbl).filter(k => !files.includes(k));
+      ok(miss.length === 0 && orph.length === 0,
+         `mountains: 잠금표 ${Object.keys(tbl).length} ↔ 파일 ${files.length} 전수 일치` +
+         (miss.length ? ` — 표에 없음: ${miss.slice(0, 4).join(', ')}` : '') +
+         (orph.length ? ` — 파일 없음: ${orph.slice(0, 4).join(', ')}` : ''));
+      const sha = (p) => require('crypto').createHash('sha1').update(fs.readFileSync(p)).digest('hex').slice(0, 16);
+      const drift = files.filter(k => tbl[k] && tbl[k] !== sha(path.join(MTD, k + '.webp')));
+      ok(drift.length === 0,
+         `mountains: 파일 해시가 잠금표와 같다 (어긋남 ${drift.length}${drift.length ? ' — ' + drift.slice(0, 4).join(', ') : ''})`);
+      ok(/webp/.test(lock._규약 || ''), '잠금표 `_규약` 이 webp 는 파일 전체 해시라고 적어 뒀다');
+    }
+    // ★[T106] 4.0.2 산출물 0 — 굽는 기계 줄이 그걸 말해야 한다.
+    ok(/4\.0\.2 산출물 0/.test(lock._기계 || ''),
+       `잠금표 \`_기계\` 가 "4.0.2 산출물 0" 이라고 적혀 있다: ${lock._기계}`);
     // ★[T103] 범프 복원이 끝났다는 것을 잠금표가 말해야 한다 — 말과 그림이 갈리면 그게 먼저 거짓말한다.
     ok(typeof lock._범프 === 'string' && /복원 완료/.test(lock._범프) && /Distance/.test(lock._범프),
        '잠금표 `_범프` 가 "복원 완료" 라고 적혀 있다');
