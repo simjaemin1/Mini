@@ -166,12 +166,71 @@ function lifecycleOf(id) { const c = get(id); return c ? String(c.lifecycle || '
 function isPerennial(id) { return lifecycleOf(id) === LC_PERENNIAL; }
 // 월동 — **축에서 유도한** 답. 운영 경로는 아직 구워진 `winterCrop` 을 쓴다(무변경 · T91 은 표만).
 function isWinterCrop(id) { return lifecycleOf(id) === LC_WINTER; }
-function _dormant(id, day) { const c = get(id); return !!(c && c.winterCrop) && seasonOfDay(day) === 'winter'; }
+// ── ★★★[T99 2026-09-05] 휴면 · 춘화 — **T91 §3 표 셋에 대한 PM 판정** ─────────────
+//
+//   T91 이 월동 셋을 "축의 뜻 문제"로 회부했고, PM 이 판정을 내렸다(재민 거부권 · 채팅 고지):
+//     ①(ⓐ 27일 · ⓑ 마늘 12월) **월동 작물은 겨울을 지나야 익기 시작한다 — 춘화(春化).**
+//        가을은 **뿌리내림**이고 익음의 활동일은 **겨울이 끝난 날부터** 센다.
+//        ⇒ 보리 88 · 밀 90 · 마늘 90 이 전부 봄 첫날 + 활동일 = **5월 말~6월 초** = 카탈로그의
+//          *"초여름 수확"* 에 닿는다. **115 같은 새 수 없이 `growDays` 그대로.**
+//        ⇒ 마늘을 9월 초에 심어도 12월에 안 익는다(겨울을 못 지났으니).
+//     ②(ⓒ 겨울 물대기) **휴면은 성장·돌봄·품질 셋 다 멈춘다.** 겨울 논에 물을 안 댄다.
+//     ③(T91 회부 2) **휴면 축 = 월동 + 다년생.** 부추 그루터기가 한겨울에 여물지 않는다.
+//
+//   ★★**되돌림 셋**(env · 1 이 기본 · 0 이면 T91 그대로). 판정이 뒤집히면 코드가 아니라 값이 움직인다.
+//   ⚠새 수 0 · 새 열 0 · `crops.json` 무변 — 아래 어디에도 365·90·95·115 같은 수가 없다.
+//     달력은 **`events.calendarOf` 에게 물어보고**(계절 길이·계절 안 며칠), 계절 수는 표에서 센다.
+const VERNAL = _num('T99_VERNAL', 1) !== 0;                       // ① 춘화
+const CARE_PAUSE = _num('T99_CARE_PAUSE', 1) !== 0;               // ② 휴면 중 돌봄·품질 정지
+const PER_DORMANT = _num('T99_PERENNIAL_DORMANT', 1) !== 0;       // ③ 휴면 축에 다년생 포함
+
+// ★★**휴면 술어는 하나다.** 성장(`grownDays`)·돌봄(`villages.cropTaskOf`/`cropDoTask`)·
+//   품질(`villages.cropDayTick`) 셋이 전부 이 답을 쓴다 — 두 벌이 되면 "겨울에 안 자라는데
+//   물은 대라는" 밭이 생긴다(그게 정확히 T91 §3ⓒ 가 잰 그림이다).
+//   ⚠`isWinterCrop` 은 **축에서 유도한** 답이다(T91 이 구운 `winterCrop` 과 34종 전수 대조 — 불일치 0).
+//     여기서부터 운영 경로도 축을 쓴다. 하네스의 그 대조는 그대로 남는다(사본 감시).
+function _dormantKind(id) { return isWinterCrop(id) || (PER_DORMANT && isPerennial(id)); }
+function _dormant(id, day) { return _dormantKind(id) && seasonOfDay(day) === 'winter'; }
+// 돌봄·품질이 부르는 문 — **성장 휴면과 같은 답**이고 되돌림만 따로 열려 있다.
+function dormantAt(id, day) { return CARE_PAUSE && _dormant(id, day); }
+
+// ── 춘화 — "겨울이 끝난 날" 을 달력 정본에게서 얻는다 ───────────────────────
+//   ★계절 수는 **표에서 센다**(4 를 안 적는다). 한 해 안에 겨울은 반드시 한 번 온다.
+//   ⚠`_SEASON_IX`(야생 채종 절)는 **아래에** 선언돼 있다 — 여기서 상수로 굳히면 TDZ 로 죽는다
+//     (첫 판이 실제로 그랬다). 부를 때 센다 — 어차피 표 하나짜리 `Object.keys` 다.
+function _seasonsPerYear() { return Object.keys(_SEASON_IX).length; }
+//   ★그 계절의 **다음 날**로 건너뛴다 — 하루씩 훑지 않으니 호출이 계절 수로 유계다.
+function _nextSeasonDay(day) {
+  const d = _day(day);
+  let cal = null; try { cal = _events().calendarOf(d); } catch (e) { cal = null; }
+  if (!cal) return d + 1;
+  return d + Math.max(1, (cal.seasonDays | 0) - (cal.dayOfSeason | 0) + 1);
+}
+const _vernCache = new Map();
+function _vernalCompute(id, p) {
+  let d = p;
+  for (let hop = 0, cap = _seasonsPerYear(); hop <= cap && seasonOfDay(d) !== 'winter'; hop++) d = _nextSeasonDay(d);
+  if (seasonOfDay(d) !== 'winter') return p;      // 달력에 겨울이 없다 ⇒ 종전대로(안전 폴백)
+  return _nextSeasonDay(d);                       // 그 겨울이 끝난 다음 날 = **익음 시계의 0일**
+}
+// 익음 시계가 0 이 되는 날. 월동이 아니거나 되돌리면 **심은 날 그대로**(1년생 무접촉).
+//   ★겨울에 심었으면 그 겨울의 남은 몫이 춘화가 된다(파종창엔 겨울이 0종이라 실제로는 안 온다).
+function vernalDay(id, plantedDay) {
+  const p = _day(plantedDay);
+  if (!VERNAL || !isWinterCrop(id)) return p;
+  const k = id + ',' + p;
+  let v = _vernCache.get(k);
+  if (v === undefined) { if (_vernCache.size > 4096) _vernCache.clear(); v = _vernalCompute(id, p); _vernCache.set(k, v); }
+  return v;
+}
+
 // 심은 날부터 오늘까지 **활동일**이 얼마나 쌓였나(lazy · 틱 0).
+//   ★[T99] 월동은 **춘화일부터** 센다 — 가을 활동일은 뿌리내림이라 익음에 0 이다
+//     (돌봄·품질에는 그대로 셈한다 — 그건 `cropDayTick` 이 하고 여기와 무관하다).
 function grownDays(id, plantedDay, today) {
   const need = growDaysOf(id);
   let n = 0;
-  const a = _day(plantedDay), b = _day(today);
+  const a = vernalDay(id, plantedDay), b = _day(today);
   if (b <= a) return 0;
   for (let d = a; d < b; d++) {
     if (!_dormant(id, d)) n++;
@@ -185,7 +244,7 @@ function readyDay(id, plantedDay, maxScanDays) {
   const need = growDaysOf(id);
   const cap = Math.max(need + 1, Math.round(maxScanDays || need * 4 + 400));
   let n = 0;
-  const p0 = _day(plantedDay);
+  const p0 = vernalDay(id, plantedDay);            // ★[T99] 춘화일부터 — 겨울을 지나야 시계가 돈다
   for (let d = p0; d < p0 + cap; d++) {
     if (!_dormant(id, d)) n++;
     if (n >= need) return d + 1;
@@ -348,6 +407,7 @@ module.exports = {
   seasonOfDay, sowSeasons, canSowOn, sowableIn, sowableOn, wildSeedAt, WILD_SEED_CHANCE,
   monthOf, sowMonthsOf, fitsField, sowableMonth, h32, MONTHS_PER_YEAR, ANCHOR_MONTH,
   lifecycleOf, isPerennial, isWinterCrop, LC_WINTER, LC_PERENNIAL,
+  dormantAt, vernalDay, VERNAL, CARE_PAUSE, PER_DORMANT,   // ★[T99] 휴면 술어 하나 · 춘화일 — 마을·플레이어가 같이 부른다
   grownDays, isReady, readyDay, waterMult, harvestUnits,
   shelfMap, weightMap, foodMap, labelMap, emojiMap, payload,
 };

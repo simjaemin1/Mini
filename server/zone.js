@@ -4207,10 +4207,17 @@ function _cropTend(player, b, today) {
   if (want === 0) {
     const grown = Crops.grownDays(cid, d.plantedDay, today), need = Crops.growDaysOf(cid);
     const rd = Crops.readyDay(cid, d.plantedDay);
-    const dormant = c.winterCrop && Crops.seasonOfDay(today) === 'winter';
+    // ★★[T99 2026-09-05] 휴면이면 **왜** 손볼 것이 없는지 말한다 — 판정은 `Crops.dormantAt` 정본이 낸다
+    //   (여기서 `winterCrop`·계절을 다시 안 본다 · 사본 0). 월동은 **춘화**까지 함께 말한다:
+    //   "봄이 와야 자란다" 가 규칙이라 화면이 그걸 안 말하면 밭이 고장 난 것처럼 보인다.
+    const dormant = Crops.dormantAt(cid, today);
+    const vd = Crops.vernalDay(cid, d.plantedDay);
     send(player.ws, { type: 'notice',
       text: `${c.ko} 자라는 중 — ${grown}/${need}일 · 품질 ${Math.round(e.q * 100)}%`
-          + (dormant ? ' · 겨울엔 안 자란다(월동)' : '')
+          + (dormant
+              ? ` · 겨울엔 쉰다(${Crops.lifecycleOf(cid)} — 자라지도, 손볼 것도 없다)`
+              : '')
+          + (Crops.isWinterCrop(cid) && today < vd ? ' · 겨울을 지나야 자라기 시작한다(춘화)' : '')
           + (rd != null ? ` · ${Math.max(0, rd - today)}일 남음` : '')
           + ' · 지금은 손볼 것이 없다' });
     return false;
