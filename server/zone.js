@@ -6813,6 +6813,62 @@ function _takeGroundLots(player, item, total) {
   const recs = Lots.moveOut(player, item, total, player.inventory, zoneGameDay(), 0);
   return recs.length ? recs : null;
 }
+// ★★★[T102 2026-09-05 재민 확정] **바닥템이 개체를 통째로 싣는다 — 문 하나.**
+//
+//   T83 §5 가 남기고 회부가 두 번 적은 자리: 바닥템이 실을 수 있는 건 `{item,n,kg,led,lots,tool}` 뿐이라
+//   장비 개체는 **떨어뜨리면 다른 물건이 됐다**. `gi.tool` 이 `type·d·max` **셋만** 베끼기 때문이다.
+//   §0 실측이 잃어버리는 것을 셌다: 개체는 `{type, q, craftedSkill, attrs{…}, dura, durMax}`(+`id`·`mat`·`mix`)
+//   ⇒ **품질 q · 제작 숙련 · 속성표 · 재료**가 통째로 사라진다. 좋은 도끼를 떨어뜨리면 평범한 도끼가 됐다.
+//
+// ★해법은 필드를 더 베끼는 게 아니라 **베끼기를 그만두는 것**이다: `gi.inst = inst` — 정본 객체 그대로.
+//   ⓐ 새 직렬화가 없다 — `serializeBody` 가 `equipment` 를 **있는 그대로** 싣고(§0: JSON 왕복 무손실),
+//      바닥템은 DB 영속이 아예 없다(메모리 Map). 그래서 실을 형식을 새로 정할 일이 없다.
+//   ⓑ 어느 서랍에서 왔는지만 적는다(`instKind`) — 그건 필드 베끼기가 아니라 **주소**다.
+//      도구 개체(`toolItems` · `{id,type,d,max}`)와 장비 개체(`equipment` · 위 모양)는 사는 서랍이 다르다.
+//   ⓒ 옛 `gi.tool` 은 **유도해서** 남긴다(아래 `_giTool`) — 클라 접점 0(§0: 읽는 자리는 하네스 훅 하나뿐).
+// ★★★[T102 ② 2026-09-05 재민 확정 · 규약] **몸에 걸친 것은 짐이 아니다.**
+//   캐논은 "짐 **일부** 낙하"(T83)인데, 무엇이 "짐"인지가 여태 임시 규약이었다. 여기서 못 박는다:
+//     · **입은 장비는 죽어도 몸에 남는다** — 옷·갑옷·지게·손에 든 것. 시신에서 벗겨 가는 층은 없다.
+//     · **가방 안 것은 짐이다** — 벌크·도구 개체·**안 입은 장비 개체**(T102 가 이걸 후보에 넣었다).
+//     · 지게는 입은 것이라 안 떨어지지만 **지게 안의 짐은 짐이다** — §0 실측: 지게는 적재 상한을
+//       올릴 뿐 별도 칸이 아니라, 그 안의 짐은 그냥 인벤이고 **이미 후보였다**(고칠 줄 0).
+//   ★"입었나"의 정본은 `equipSlots` 하나다(무엇을 걸쳤는지 적는 유일한 자리 · 사본 금지).
+function _isWorn(player, id) {
+  if (!id || !player || !player.equipSlots) return false;
+  for (const k in player.equipSlots) if (player.equipSlots[k] === id) return true;
+  return false;
+}
+
+// gid 문자열 → 32비트 정수. **주사위가 아니라 함수다**(같은 gid = 같은 수 · FNV-1a).
+function _gidHash(gid) {
+  let h = 0x811c9dc5;
+  const s = String(gid);
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+  return h >>> 0;
+}
+function _instParcel(kind, inst, kg) {
+  return { n: 1, kg: +(+(kg != null ? kg : Weights.kgOfOrDefault(inst.type))).toFixed(3), instKind: kind, inst };
+}
+// 옛 읽기 호환 — `gi.tool` 을 개체에서 **유도한다**(따로 저장하지 않는다: 두 벌이면 그게 사본이다).
+function _giTool(gi) {
+  const inst = gi && gi.inst;
+  if (!inst) return gi && gi.tool ? gi.tool : null;
+  const d = (inst.d != null) ? inst.d : inst.dura;
+  const m = (inst.max != null) ? inst.max : inst.durMax;
+  return { type: inst.type, d: d | 0, max: m | 0 };
+}
+// 꺼내기 — **왔던 서랍으로** 되돌린다. `id` 만 새로 매긴다(남의 주소를 물려받지 않는다 — 개체 원장과 같은 규약).
+//   ★얕은 복사는 **id 를 새로 붙이기 위한 것**이고 필드를 골라 베끼지 않는다(`Object.assign` — 이름 0개).
+function _instTake(player, gi) {
+  const inst = gi && gi.inst;
+  if (!inst) return null;
+  const kind = gi.instKind || ((inst.durMax != null || inst.attrs) ? 'equip' : 'tool');
+  const copy = Object.assign({}, inst);
+  if (kind === 'equip') { copy.id = genEquipId(); (player.equipment = player.equipment || []).push(copy); }
+  else { copy.id = genToolId(); (player.toolItems = player.toolItems || []).push(copy); }
+  return { kind, inst: copy };
+}
+
 function _spawnGroundItems(player, item, parcels, lotRecs) {
   const out = [];
   const _gd = zoneGameDay();
@@ -6831,8 +6887,12 @@ function _spawnGroundItems(player, item, parcels, lotRecs) {
     return got.length ? got : null;
   };
   for (const pc of parcels) {
-    const ox = (Math.random() - 0.5) * 16, oy = 8 + Math.random() * 8;
     const gid = `g${nextGiId++}`;
+    // ★★[T102 ③] **주사위를 뺀다.** 캐논은 "낙하물 스캐터 금지 · 주사위 금지"인데 여기 `Math.random()`
+    //   둘이 있었다. 흩뿌림 **폭과 개수는 그대로** 두고(보기가 달라지면 그건 다른 카드다) 자리만
+    //   `gid` 해시로 정한다 ⇒ 같은 입력이면 같은 자리다(재현 가능 · 하네스가 두 판을 맞댈 수 있다).
+    const _h = _gidHash(gid);
+    const ox = ((_h & 0xffff) / 0x10000 - 0.5) * 16, oy = 8 + ((_h >>> 16) & 0xffff) / 0x10000 * 8;
     const gi = { id: gid, x: player.x + ox, y: player.y + oy, item, count: pc.n, droppedAt: Date.now(), kg: +(+pc.kg).toFixed(3) };
     if (pc.led && pc.led.length) gi.led = pc.led.map((e) => (Number.isFinite(e.d) ? { kg: e.kg, d: e.d } : { kg: e.kg }));
     const _lr = _cut(pc.n);
@@ -6841,8 +6901,9 @@ function _spawnGroundItems(player, item, parcels, lotRecs) {
       const _pf = Spoil.placeFields(_placeKeyOfGround(player.x, player.y, player.floor));
       gi.lots = _lr.map((r) => Object.assign({}, r, { m: _pf.m, w: _pf.w, t: _gd }));
     }
-    // ★[인벤 마무리] 도구 개체 — 내구도까지 그대로 싣는다(주우면 그 도구가 그대로 돌아온다).
-    if (pc.tool) gi.tool = { type: pc.tool.type, d: pc.tool.d | 0, max: pc.tool.max | 0 };
+    // ★★[T102 ①] 개체는 **참조 그대로** 싣는다 — 필드를 베끼지 않는다.
+    if (pc.inst) { gi.inst = pc.inst; gi.instKind = pc.instKind || 'tool'; gi.tool = _giTool(gi); }
+    else if (pc.tool) { gi.tool = { type: pc.tool.type, d: pc.tool.d | 0, max: pc.tool.max | 0 }; }   // 옛 호출부 호환
     groundItems.set(gid, gi);
     broadcast({ type: 'ground_item_added', gi });
     out.push(gi);
@@ -6869,10 +6930,27 @@ function tryDropItem(player, item, amount, opts) {
     if (player.equipped === inst.id) { player.equipped = null; }      // 들고 있던 것이면 손에서 놓는다
     if (player.hotkey1 === inst.id) { player.hotkey1 = null; }
     const kg = Weights.kgOfOrDefault(inst.type);
-    _spawnGroundItems(player, inst.type, [{ n: 1, kg, tool: { type: inst.type, d: inst.d, max: inst.max } }]);
+    _spawnGroundItems(player, inst.type, [_instParcel('tool', inst, kg)]);   // ★[T102] 개체 그대로
     sendInventory(player, 'drop:tool');
     send(player.ws, { type: 'tools', toolItems: player.toolItems || [], equipped: player.equipped, hotkey1: player.hotkey1 || null });
     send(player.ws, { type: 'notice', text: `🪓 ${ITEM_LABEL_SERVER[inst.type] || inst.type} 버림 (내구 ${inst.d}/${inst.max})` });
+    savePlayer(player);
+    return;
+  }
+
+  // ── ⓪-b ★[T102] 장비 개체 지목 — 가방 안 장비(안 입은 것)를 버린다.
+  //   입은 것은 못 버린다: 그건 짐이 아니라 몸에 걸친 것이다(아래 죽음 낙하와 **같은 규약**).
+  //   ⚠클라에 새 동사를 안 만들었다(§0: 클라 접점 0 목표) — 서버 문만 열어 둔다.
+  if (opts.equipId) {
+    const arr = player.equipment || [];
+    const ix = arr.findIndex((e) => e && e.id === opts.equipId);
+    if (ix < 0) { send(player.ws, { type: 'notice', text: '그 장비가 없다' }); return; }
+    if (_isWorn(player, opts.equipId)) { send(player.ws, { type: 'notice', text: '입고 있는 것은 벗어야 버린다' }); return; }
+    const inst = arr.splice(ix, 1)[0];
+    _spawnGroundItems(player, inst.type, [_instParcel('equip', inst)]);
+    sendInventory(player, 'drop:equip');
+    try { sendEquipment(player); } catch (e) {}
+    send(player.ws, { type: 'notice', text: `${PlayerItems.displayItem(inst)} 버림` });
     savePlayer(player);
     return;
   }
@@ -6977,6 +7055,19 @@ function tryPickupItem(player, gid) {
   }
   // ★[인벤 마무리 2026-08-30] 도구 개체는 **인벤 수량이 아니라 인스턴스**로 돌아온다.
   //   id 는 새로 매긴다(남의 주소를 물려받지 않는다 — 개체 원장과 같은 규약). 내구도는 그대로.
+  // ★★[T102] 개체가 실려 있으면 **왔던 서랍으로** 그대로 돌아간다(품질·속성·숙련까지 · 문 하나).
+  if (gi.inst) {
+    const r = _instTake(player, gi);
+    groundItems.delete(gid);
+    sendInventory(player, r.kind === 'equip' ? 'pickup:equip' : 'pickup:tool');
+    if (r.kind === 'equip') { try { sendEquipment(player); } catch (e) {} }
+    else send(player.ws, { type: 'tools', toolItems: player.toolItems, equipped: player.equipped, hotkey1: player.hotkey1 || null });
+    send(player.ws, { type: 'notice', text: `🤚 ${PlayerItems.displayItem(r.inst)} 주움` });
+    savePlayer(player);
+    broadcast({ type: 'ground_item_removed', id: gid });
+    return;
+  }
+  // 옛 바닥템(개체 없이 `tool` 셋만 실린 것) — 종전 그대로 받는다.
   if (gi.tool && gi.tool.type) {
     if (!player.toolItems) player.toolItems = [];
     const mx = gi.tool.max || TOOL_MAX_DURABILITY[gi.tool.type] || 100;
@@ -8225,6 +8316,8 @@ function __testBind() {
     _deathDrop, _deathDropPick, wakeCellOf, _hutDoorNear, _standCellNear, _startVidOf, DEATH_DROP_KG_FRAC,
     // ★[T88] 거리 비례 지연 · 곳간 한 끼 — 하네스가 식과 표를 다시 짜지 않게 정본 그대로
     _wakeDelayMs, _villageMeal, _t88WakeDist, _t88Meal,
+    // ★[T102] 바닥템 개체 — 하네스가 개체를 손으로 빚지 않게 **문 그대로** 내준다
+    _instParcel, _instTake, _giTool, _isWorn, _gidHash, _spawnGroundItems, genEquipId, genToolId,
     // ── 외침·구조 동사(T56) — 정본 모듈을 그대로 내준다(하네스가 소리를 다시 짜지 않는다) ──
     Rescue, doEat, Onboarding, WATER_DRINK_AMOUNT, THIRST_MAX, HUNGER_MAX, FOOD_EFFECTS, isWaterTileLocal,
     RESCUE_WINDOW_MS, RESCUE_RANGE_PX, RESCUE_HOLD_MS, RESCUE_HP_FRAC, CARRY_PERSON_KG, DOWN_WAKE_GAMEMIN,
@@ -9356,6 +9449,13 @@ function _deathDropPick(p, frac) {
     }
   }
   for (const inst of (p.toolItems || [])) cand.push({ tool: inst, item: inst.type, kg: Weights.kgOfOrDefault(inst.type) });
+  // ★★[T102 ②] **안 입은 장비 개체도 짐이다.** 종전엔 `equipment[]` 가 통째로 후보 밖이라
+  //   가방에 넣어 둔 좋은 도끼가 죽어도 안 떨어졌다(입은 것과 구별이 없었다).
+  //   ⇒ 입은 것만 뺀다(`_isWorn` — `equipSlots` 정본). 그리고 떨어져도 **그 물건 그대로**다(①).
+  for (const inst of (p.equipment || [])) {
+    if (!inst || _isWorn(p, inst.id)) continue;
+    cand.push({ equip: inst, item: inst.type, kg: Weights.kgOfOrDefault(inst.type) });
+  }
   // ⓑ 무거운 것부터 — 절반(kg)에 **닿을 때까지**. 같은 무게면 원래 순서(안정 정렬).
   const total = cand.reduce((s, c) => s + c.kg, 0);
   const target = total * f;
@@ -9390,18 +9490,28 @@ function _deathDrop(p) {
     try { Lots.reconcile(p, item, p.inventory, zoneGameDay()); } catch (e) {}
     n += k;
   }
-  // ⓓ 도구 개체 — 내구도까지 그대로. 손에 들고 있던 것이 떨어졌으면 그 손만 비운다.
+  // ⓓ 도구 개체 — **개체 그대로**(T102 문 하나). 손에 들고 있던 것이 떨어졌으면 그 손만 비운다.
   const dropTools = cand.filter((c, ix) => c.tool && picked.has(ix)).map((c) => c.tool);
   for (const inst of dropTools) {
     const ix = (p.toolItems || []).findIndex((t) => t && t.id === inst.id);
     if (ix >= 0) p.toolItems.splice(ix, 1);
     if (p.equipped === inst.id) p.equipped = null;
     if (p.hotkey1 === inst.id) p.hotkey1 = null;
-    const kg = Weights.kgOfOrDefault(inst.type);
-    const gis = _spawnGroundItems(p, inst.type, [{ n: 1, kg, tool: { type: inst.type, d: inst.d, max: inst.max } }]);
+    const gis = _spawnGroundItems(p, inst.type, [_instParcel('tool', inst)]);
     for (const g of gis) g.keep = 1;
     n++;
   }
+  // ⓔ ★[T102 ②] **가방 안 장비 개체** — 품질·속성·숙련까지 실려 떨어진다. 입은 것은 여기 안 온다
+  //   (`_deathDropPick` 이 `_isWorn` 으로 이미 걸렀다 — 규약은 한 자리에서만 판정한다).
+  const dropEquip = cand.filter((c, ix) => c.equip && picked.has(ix)).map((c) => c.equip);
+  for (const inst of dropEquip) {
+    const ix = (p.equipment || []).findIndex((e) => e && e.id === inst.id);
+    if (ix >= 0) p.equipment.splice(ix, 1);
+    const gis = _spawnGroundItems(p, inst.type, [_instParcel('equip', inst)]);
+    for (const g of gis) g.keep = 1;
+    n++;
+  }
+  if (dropEquip.length) { try { sendEquipment(p); } catch (e) {} }
   try { sendInventory(p, 'death'); } catch (e) {}
   send(p.ws, { type: 'tools', toolItems: p.toolItems || [], equipped: p.equipped || null, hotkey1: p.hotkey1 || null });
   return n;
