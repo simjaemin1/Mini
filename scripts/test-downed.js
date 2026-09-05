@@ -490,7 +490,47 @@ const isWildSpot = (x, y) =>
     }
     pre(!!wild, '야생 자리를 찾았다(완충 0 **그리고** 마을 중심에서 먼 곳 — 두 증인)',
       wild ? `(${wild.x},${wild.y}) · 안전거리 ${VIL_SAFE_PX}px` : '못 찾음');
-    const R = H.Rescue.CFG.SHOUT_RANGE_PX;
+    // ═══ ★[T110 2026-09-05] 반경의 **출처**와 알림이 나르는 것 ═══════════════════
+    {
+      // ⓐ 유도식 — 정본 둘에서 나온다. 손으로 적은 수가 아니다.
+      //   ★이 하네스는 창을 3초로 줄여 쓴다(⓪). 그러면 반경도 같이 줄어든다 —
+      //     **그게 이 카드가 만든 결합이다**(소리는 "걸어서 창 안에 닿는 거리"니까).
+      //     그래서 기대값을 180초로 적지 않고 **하네스가 실제로 준 창**에서 계산한다.
+      ok(H.Rescue.shoutRange() === Math.round(H.MOVE_SPEED * (H.RESCUE_WINDOW_MS / 1000) * H.Rescue.CFG.HEAR_FRAC),
+        '★★⑫-T110 반경 = `MOVE_SPEED × RESCUE_WINDOW × HEAR_FRAC` (새 수는 HEAR_FRAC 하나)',
+        `${H.Rescue.shoutRange()}px = ${H.MOVE_SPEED} × ${H.RESCUE_WINDOW_MS / 1000} × ${H.Rescue.CFG.HEAR_FRAC}`);
+      ok(H.RESCUE_WINDOW_MS === 3000 && H.Rescue.shoutRange() === 48,
+        '★★⑫-T110 ★창을 3초로 줄인 이 하네스에선 반경도 48px 이다 — **창을 줄이면 소리도 준다**',
+        `창 ${H.RESCUE_WINDOW_MS}ms → ${H.Rescue.shoutRange()}px`);
+      // ⓑ 손잡이가 실제로 반경을 움직인다 — 식이 살아 있다는 뜻(상수를 돌려주는 함수가 아니다)
+      //   ⚠`init` 을 다시 부르지 않는다: 그건 호스트(플레이어·send·마을 반경)를 통째로 갈아 끼우는 문이고,
+      //     여기서 부르면 뒷 절이 빈 세계를 보게 된다. 손잡이 하나만 잠깐 민다.
+      const keepF = H.Rescue.CFG.HEAR_FRAC;
+      const before = H.Rescue.shoutRange();
+      H.Rescue.CFG.HEAR_FRAC = keepF / 2;
+      const half = H.Rescue.shoutRange();
+      H.Rescue.CFG.HEAR_FRAC = keepF;
+      ok(half === Math.round(before / 2) && H.Rescue.shoutRange() === before,
+        '★★⑫-T110 ★`HEAR_FRAC` 를 반으로 하면 반경이 반이다 — 반경이 **식에서 나온다**(T56 은 손으로 적은 수였다)',
+        `${before} → ${half} → ${H.Rescue.shoutRange()}`);
+      // ⓒ 되돌림 — T56 판을 env 한 줄로 정확히 되살릴 수 있다
+      const keepR = H.Rescue.CFG.SHOUT_RANGE_PX;
+      H.Rescue.CFG.SHOUT_RANGE_PX = 9600;
+      const t56 = H.Rescue.shoutRange();
+      H.Rescue.CFG.SHOUT_RANGE_PX = keepR;
+      ok(t56 === 9600 && H.Rescue.shoutRange() === before,
+        '★⑫-T110 되돌림 — `DOWN_SHOUT_RANGE_PX=9600` 이면 T56 판(300걸음)이 그대로 선다',
+        `${t56} → ${H.Rescue.shoutRange()}`);
+    }
+    // ★[T110] 반경은 이제 **유도된다**(`MOVE_SPEED × RESCUE_WINDOW × HEAR_FRAC`) — 상수를 읽지 말고
+    //   정본 함수에 묻는다. 종전처럼 `CFG.SHOUT_RANGE_PX` 를 읽으면 0(=유도 표시)을 반경으로 오해한다.
+    //   ⚠★그런데 이 하네스는 창을 3초로 줄여 쓴다(⓪) — 그러면 유도 반경이 48px 이라 **기하를 못 잰다**
+    //     (두 사람을 24px 과 4,048px 에 세우는 검사가 된다). ⇒ 아래 두 절만 **정본 반경**(제품 창 180초에서
+    //     나오는 2,880px)을 `DOWN_SHOUT_RANGE_PX` 정본 손잡이로 못 박고 돈다. 끝에서 되돌린다.
+    //     결합 자체는 위 ⑫-T110 이 재고, 여기서 재는 것은 **누가 듣고 누가 못 듣나**다.
+    const _keepPin = H.Rescue.CFG.SHOUT_RANGE_PX;
+    H.Rescue.CFG.SHOUT_RANGE_PX = Math.round(64 * 180 * H.Rescue.CFG.HEAR_FRAC);
+    const R = H.Rescue.shoutRange();
     clearPlayers();
     const a = mkPlayer('shout_a', wild.x, wild.y);
     const near = mkPlayer('near_b', wild.x + Math.round(R * 0.5), wild.y);
@@ -513,12 +553,15 @@ const isWildSpot = (x, y) =>
     // 걸음 환산이 캐논(32px=1m=1셀)에서 온다
     ok(H.Rescue.steps(32 * 7) === 7 && H.Rescue.steps(0) === 0,
       '★⑫ 1걸음 = 1셀 = 32px — 새 환산을 안 만들었다', `${H.Rescue.steps(224)}걸음`);
+    H.Rescue.CFG.SHOUT_RANGE_PX = _keepPin;   // ★[T110] 기하 절이 끝났다 — 못 박았던 정본 반경을 푼다
     // ★돌연변이 — 반경을 0 으로 만들면 위 판정이 **빨강이 된다**(항상 통과하는 검사가 아니다)
     {
-      const keep = H.Rescue.CFG.SHOUT_RANGE_PX;
-      H.Rescue.CFG.SHOUT_RANGE_PX = 0;
+      // ⚠[T110] `SHOUT_RANGE_PX = 0` 은 이제 **"유도해라"** 라는 뜻이라 돌연변이가 안 된다.
+      //   반경을 정말 0 으로 만드는 손잡이는 `HEAR_FRAC` 다(그게 이 카드가 새로 만든 그 수다).
+      const keep = H.Rescue.CFG.HEAR_FRAC;
+      H.Rescue.CFG.HEAR_FRAC = 0;
       const heard = H.Rescue.shoutOnce(a, Date.now());
-      H.Rescue.CFG.SHOUT_RANGE_PX = keep;
+      H.Rescue.CFG.HEAR_FRAC = keep;
       ok(heard === 0, '★★⑫ 돌연변이 — 반경 0 이면 **아무도 못 듣는다**(판정이 ✗ 를 낼 수 있다)', `${heard}명`);
     }
   }
@@ -545,9 +588,13 @@ const isWildSpot = (x, y) =>
       wild2 = { x, y }; break;
     }
     a.x = wild2.x; a.y = wild2.y; b.x = wild2.x + 200; b.y = wild2.y;
+    // ★[T110] 이 대조도 정본 반경으로 잰다(하네스의 3초 창이 만드는 48px 로는 200px 이 안 들린다)
+    const _pinV = H.Rescue.CFG.SHOUT_RANGE_PX;
+    H.Rescue.CFG.SHOUT_RANGE_PX = Math.round(64 * 180 * H.Rescue.CFG.HEAR_FRAC);
     H.damagePlayer(a, 200, 'fall');
     ok(b.__notices().filter((t) => /쓰러졌다/.test(t)).length === 1,
       '★★⑫ 자명 통과 금지 — **같은 두 사람이 야생에 서면 들린다**');
+    H.Rescue.CFG.SHOUT_RANGE_PX = _pinV;   // ★[T110] 못 박았던 정본 반경을 되돌린다(유도로 복귀)
   }
 
   // ═══ ⑬ 구조 동사 둘 — 먹이기·물 (T56) ══════════════════════════════════════

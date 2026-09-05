@@ -850,13 +850,19 @@ async function waitHttp(url, tries = 600) {
     ok(/tree\s*:\s*'벌목'/.test("const W = { tree: '벌목' };"), '★⑪ 자명 통과 금지 — 표를 되살린 소스는 잡힌다');
   }
 
-  // ── ⑫ ★★[T90] 알림 종류 아홉 — **화면에서 각각 다른 그림**이 된다 ──────────
+  // ── ⑫ ★★[T90] 알림 종류 — **화면에서 각각 다른 그림**이 된다 ──────────
   //   `test-itemlabel ⑮` 는 표를 본다. 여기서는 **실제로 그려진 것**을 본다 —
   //   T66 이 배운 함정(이름을 글자로 찍고도 검사는 초록)을 이 자리에서 다시 밟지 않는다.
-  console.log('\n⑫ ★[T90] kind 아홉이 각각 다른 선 그림으로 그려진다');
+  //   ★[T110 2026-09-05] 아홉 → **열**. `downed`(남이 쓰러졌다는 외침)를 `rescue` 아홉에서 갈라냈다 —
+  //     받는 쪽이 그 한 종류에만 방향 화살을 세우기 때문이다. 수를 손으로 적지 않고 **표에서 읽는다**:
+  //     `KINDS.length` 를 그대로 쓰면 종류가 늘 때마다 이 줄을 고칠 일이 없고, 대신 **표가 안 비었는지**와
+  //     **표에 없는 종류가 화면에 없는지**를 잰다(그게 이 절이 원래 재던 것이다).
+  console.log('\n⑫ ★[T90·T110] kind 가 각각 다른 선 그림으로 그려진다');
   {
     const KINDS = require(path.join(ROOT, 'server', 'notice.js')).KINDS;
-    ok(KINDS.length === 9, '★⑫ 전제: 서버가 아는 종류가 아홉이다', `${KINDS.length}종: ${KINDS.join(' ')}`);
+    ok(KINDS.length >= 9 && KINDS.includes('downed'),
+      '★⑫ 전제: 서버가 아는 종류를 표에서 읽었다(비어 있지 않고 T110 의 `downed` 가 있다)',
+      `${KINDS.length}종: ${KINDS.join(' ')}`);
     const drawn = await R.evaluate((ks) => {
       const out = {};
       for (const k of ks) {
@@ -873,14 +879,14 @@ async function waitHttp(url, tries = 600) {
       return out;
     }, KINDS);
     const ds = KINDS.map((k) => drawn[k] && drawn[k].d);
-    ok(ds.every((d) => !!d), '★★⑫ 아홉이 **전부 그림을 그린다**(빈 자리 0)',
-       KINDS.filter((k, i) => !ds[i]).join(' ') || '아홉 전부');
-    ok(new Set(ds).size === ds.length, '★★⑫ 그리고 아홉이 **서로 다른 그림**이다(뜻이 안 뭉개진다)',
+    ok(ds.every((d) => !!d), `★★⑫ ${KINDS.length}종이 **전부 그림을 그린다**(빈 자리 0)`,
+       KINDS.filter((k, i) => !ds[i]).join(' ') || `${KINDS.length}종 전부`);
+    ok(new Set(ds).size === ds.length, `★★⑫ 그리고 ${KINDS.length}종이 **서로 다른 그림**이다(뜻이 안 뭉개진다)`,
        `${new Set(ds).size}종`);
     const texts = KINDS.map((k) => (drawn[k] ? drawn[k].text : ''));
     ok(!/\p{Extended_Pictographic}/u.test(texts.join('')), '★⑫ 그 자리에 이모지 0', JSON.stringify(texts.slice(0, 2)));
     // ★글자로 새지 않았다 — 아이콘 **이름**이 토스트에 찍히면 T66 의 결함이 돌아온 것이다.
-    ok(!texts.some((t2) => /\b(home|axe|fish|hammer|scroll|heart|guild|warn|eye)\b/.test(t2)),
+    ok(!texts.some((t2) => /\b(home|axe|fish|hammer|scroll|heart|guild|warn|eye|shout)\b/.test(t2)),
        '★★⑫ 아이콘 **이름이 글자로 찍히지 않았다**(T66 이 밟은 함정)', JSON.stringify(texts.slice(0, 2)));
     // ★자명 통과 금지 — 알림 문구 자체는 살아 있다(그림만 그리고 말을 잃으면 안 된다)
     ok(texts.every((t2) => /알림/.test(t2)), '★⑫ 자명 통과 금지 — 말은 그대로 남는다', JSON.stringify(texts[0]));

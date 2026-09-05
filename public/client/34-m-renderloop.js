@@ -2305,20 +2305,20 @@
     drawNeighborArrow(pConn.meta.west, '서');
     drawNeighborArrow(pConn.meta.north, '북');
     drawNeighborArrow(pConn.meta.south, '남');
+    // === 5a) ★[T110] 쓰러진 사람 방향 화살 — 안개 위 UI 층(인접 존 화살과 같은 자리·같은 문법) ===
+    window.__downedArrowN = drawDownedArrows();
     // === 5b) §4-4 P4: 진행 전투 지시자(화면 안=교전 마커, 화면 밖=방향 화살) ===
     drawBattleIndicators(toScreen);
   }
 
-  function drawNeighborArrow(neighborId, label) {
-    if (!neighborId) return;
-    const nm = zonesMeta[neighborId];
-    if (!nm) return;
-    const tx = nm.worldOffsetX + 512;
-    const ty = (nm.worldOffsetY || 0) + 512;
+  // ★★[T110 2026-09-05] 화살 몸통을 **함수 하나로** 뽑았다 — 인접 존 화살과 쓰러짐 화살이
+  //   같은 그림·같은 자리 계산을 쓴다(사본 0). 바뀐 것은 **부르는 쪽이 둘이 됐다**는 것뿐이고,
+  //   인접 존 화살의 색·모양·라벨 자리는 한 값도 안 건드렸다(아래 기본 인자가 종전 값 그대로다).
+  function drawWorldArrow(tx, ty, text, color) {
     const dx = tx - myAbsPredicted.x;
     const dy = ty - myAbsPredicted.y;
-    // 같은 존이거나 거리 0이면 표시 안 함
-    if (Math.hypot(dx, dy) < 100) return;
+    // 같은 자리면 방향이 없다 — 안 그린다
+    if (Math.hypot(dx, dy) < 100) return false;
     // 월드 방향을 iso 화면 방향으로
     const iso = { x: dx - dy, y: (dx + dy) * 0.5 };
     const ilen = Math.hypot(iso.x, iso.y) || 1;
@@ -2327,11 +2327,12 @@
     const r = Math.min(W, H) * 0.42;
     const ax = W/2 + dirX * r;
     const ay = H/2 + dirY * r;
+    const fill = color || '#f0c674';
     // 화살표 (다이아 모양 포인터)
     ctx.save();
     ctx.translate(ax, ay);
     ctx.rotate(Math.atan2(dirY, dirX));
-    ctx.fillStyle = 'rgba(240, 198, 116, 0.85)';
+    ctx.fillStyle = fill === '#f0c674' ? 'rgba(240, 198, 116, 0.85)' : fill;
     ctx.strokeStyle = 'rgba(0,0,0,0.6)';
     ctx.beginPath();
     ctx.moveTo(14, 0);
@@ -2344,14 +2345,38 @@
     // 라벨 (화살표 안쪽)
     ctx.font = '11px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillStyle = '#f0c674';
+    ctx.fillStyle = fill;
     ctx.strokeStyle = 'rgba(0,0,0,0.85)';
     ctx.lineWidth = 3;
     const labelX = W/2 + dirX * (r - 26);
     const labelY = H/2 + dirY * (r - 26);
-    const text = `${nm.displayName.split(' ')[0]} ${label}`;
     ctx.strokeText(text, labelX, labelY);
     ctx.fillText(text, labelX, labelY);
     ctx.textAlign = 'start';
+    // ★[T110] 진단 훅 — **어디에 그렸나**. 하네스가 화소를 그 자리에서 센다(화면 전체를 훑지 않게).
+    //   ⚠읽기 전용이고 게임은 이 값을 안 본다(`__` 접두 · T93 재대입 규약대로 임자는 이 파일 하나다).
+    window.__lastArrowAt = { x: ax, y: ay, w: W, h: H, color: fill };
+    return true;
+  }
+  function drawNeighborArrow(neighborId, label) {
+    if (!neighborId) return;
+    const nm = zonesMeta[neighborId];
+    if (!nm) return;
+    drawWorldArrow(nm.worldOffsetX + 512, (nm.worldOffsetY || 0) + 512,
+      `${nm.displayName.split(' ')[0]} ${label}`, '#f0c674');
+  }
+  // ★[T110] 쓰러진 사람 쪽 화살 — **창이 열려 있는 동안만**. 새 타이머 0(수명이 곧 구조창이다).
+  //   자리는 `30-n-net.js` 가 `notice{kind:'downed'}` 에서 받아 둔 `window.__downedCries` 하나다.
+  function drawDownedArrows() {
+    const M = window.__downedCries;
+    if (!M || !M.size) return 0;
+    const now = Date.now();
+    let n = 0;
+    for (const [pid, c] of [...M]) {
+      // 창이 닫혔으면 스스로 사라진다 — 지우는 자리가 여기와 `player_down_state` 둘뿐이다
+      if (!c || !Number.isFinite(c.at) || now > c.at + (c.windowMs || 180000)) { M.delete(pid); continue; }
+      if (drawWorldArrow(c.x, c.y, `${c.name || '누군가'} 쓰러짐`, '#e06c75')) n++;
+    }
+    return n;
   }
 

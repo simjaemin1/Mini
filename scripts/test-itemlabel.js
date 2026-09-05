@@ -283,7 +283,7 @@ console.log('\n=== [T66] 화면 규칙 B — 이모지 0 · 색은 토큰 하나
     ok(!/tree:\s*'벌목'/.test(verbsSrc), '★★⑭ 클라에 한 단어 표의 **사본이 없다**(사본 −1)');
   }
 
-  // ── ★★[T90] ⑮ 알림 종류 아홉 — **각각 다른 그림** ──────────────────────────
+  // ── ★★[T90] ⑮ 알림 종류 — **각각 다른 그림** (★[T110] 아홉 → 열: `downed` 신설) ─────────
   {
     const noticeKinds = require(path.join(ROOT, 'server', 'notice.js')).KINDS;
     const panelSrc = fs.readFileSync(path.join(CLI, '50-i-panel.js'), 'utf8');
@@ -292,10 +292,10 @@ console.log('\n=== [T66] 화면 규칙 B — 이모지 0 · 색은 토큰 하나
     const map = {};
     if (m5) for (const x of m5[1].matchAll(/(\w+):\s*'([\w]+)'/g)) map[x[1]] = x[2];
     const miss = (noticeKinds || []).filter((k) => !map[k]);
-    ok(miss.length === 0, '★★⑮ 아홉 종류가 **전부 그림을 갖는다**(T78 이 실은 칸을 화면이 읽는다)',
+    ok(miss.length === 0, '★★⑮ 모든 종류가 **전부 그림을 갖는다**(T78 이 실은 칸을 화면이 읽는다 · 수는 표에서 읽는다)',
        miss.length ? miss.join(' ') : `${(noticeKinds || []).length}종 전부`);
     const names = (noticeKinds || []).map((k) => map[k]).filter(Boolean);
-    ok(new Set(names).size === names.length, '★★⑮ 그리고 **아홉이 서로 다른 그림**이다(종류가 안 뭉개진다)',
+    ok(new Set(names).size === names.length, '★★⑮ 그리고 **서로 다른 그림**이다(종류가 안 뭉개진다)',
        names.join(' '));
     const bad = names.filter((n) => !icoMap[n]);
     ok(bad.length === 0, '★★⑮ 그 이름이 전부 **세트에 실재한다**(없으면 점선 네모가 뜬다)', bad.join(' ') || '0건');

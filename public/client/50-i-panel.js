@@ -685,6 +685,8 @@ function itemKo(k) {
   const NOTICE_ICO = {
     village: 'home', gather: 'axe', fishing: 'fish', craft: 'hammer', board: 'scroll',
     rescue: 'heart', combat: 'guild', dev: 'warn', info: 'eye',
+    // ★[T110] 남이 쓰러졌다는 외침 — 이미 있던 `shout`(확성기) 그림을 쓴다(새 그림 0 · 이름 하나 = 그림 하나)
+    downed: 'shout',
   };
   // ★★[T113 2026-09-05 재민 확정] **알림이 겹치면 줄이 선다.**
   //   종전엔 `#notice` 가 **한 칸**이라 새 알림이 앞 것을 지웠다. T78 이 종류를 아홉으로 늘리고

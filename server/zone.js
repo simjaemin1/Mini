@@ -2676,6 +2676,7 @@ Rescue.init({ players, send, ZONE_ID,
   //     (`ITEM_LABEL_SERVER` 는 작물·특산까지 흡수한 뒤 완성된다). 값으로 넘기면 빈 표를 붙든다.
   itemLabel: () => ITEM_LABEL_SERVER,
   RESCUE_RANGE_PX, RESCUE_WINDOW_MS, WATER_DRINK_AMOUNT, THIRST_MAX,
+  MOVE_SPEED,   // ★[T110] 들리는 반경을 여기서 유도한다 — `MOVE_SPEED × RESCUE_WINDOW × HEAR_FRAC`(사본 0)
   afterVerb: (p) => { try { send(p.ws, { type: 'gauges', hunger: Math.round(p.hunger), thirst: Math.round(p.thirst), body: Body.selfPayload(p) }); savePlayer(p); } catch (e) {} } });
 
 // ═══ ★★[T62 2026-09-03] NPC 마을 쉼터 백필 — **멱등 · 유저 마을은 건너뛴다** ══════

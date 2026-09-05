@@ -46,13 +46,18 @@ const KIND_OF = {
   '🏪': 'board', '📋': 'board', '📜': 'board', '🧊': 'board', '💰': 'board', '📦': 'board',
   // rescue — 쓰러짐·구조·몸(9건)
   '🤚': 'rescue', '🫂': 'rescue', '🩹': 'rescue', '🩺': 'rescue', '🫳': 'rescue', '⚰': 'rescue',
-  '🤝': 'rescue', '🥣': 'rescue', '🗣': 'rescue', '💀': 'rescue',
+  '🤝': 'rescue', '🥣': 'rescue', '💀': 'rescue',
+  // ★[T110 2026-09-05] downed — **남이 쓰러졌다는 외침** 하나. `rescue` 에서 갈라냈다.
+  //   왜 가르나: 받는 쪽이 이 한 종류에만 **방향 화살**을 세운다(`34-m-renderloop`). `rescue` 아홉과
+  //   한 칸에 있으면 업기·먹이기 알림에도 화살이 서거나, 화살을 세우려고 글자를 다시 읽어야 한다.
+  //   ⚠외침은 이제 이모지를 안 붙인다(`rescue.js` 가 `kind` 로 보낸다) — 이 줄은 **옛 문장**을 위한 것이다.
+  '🗣': 'downed',
   // combat — 싸움과 약탈(4건)
   '⚔': 'combat', '🗡': 'combat', '🏴': 'combat', '💥': 'combat', '🐺': 'combat', '☠': 'combat',
   // dev — 테스트 픽스처(4건 · E2E_GIVE 갈래에서만 난다)
   '🧪': 'dev', '🤖': 'dev',
 };
-const KINDS = ['village', 'gather', 'fishing', 'craft', 'board', 'rescue', 'combat', 'dev', 'info'];
+const KINDS = ['village', 'gather', 'fishing', 'craft', 'board', 'rescue', 'downed', 'combat', 'dev', 'info'];
 
 const _base = (s) => String(s).split(VS16).join('').split(ZWJ)[0];
 
