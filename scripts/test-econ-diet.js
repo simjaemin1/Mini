@@ -95,6 +95,20 @@ if (ON) {
   econ.consumeFood(v2f, 10);
   const F = ate(v2f);
   ok((F.wheat || 0) > 0 && (F.food || 0) >= 0, '③ [상황] 같은 군 안 두 품목을 놓고 골랐다', JSON.stringify(F));
+  // ★[재민 판정 ⓓ] 배정은 **등분이 아니라 가격 가중 지출 몫**이다 — 그 식을 못 박는다.
+  //   싼 군이 더 많은 열량을 받는다: x_g ∝ w_g / p_g. 등분이면 이 줄이 빨개진다.
+  {
+    const a = vil({ fish: 1000, wheat: 1000 }, { fish: 10, wheat: 0.1 });   // 곡물이 100배 싸다
+    econ.consumeFood(a, 10);
+    const A = ate(a);
+    const calF = (A.fish || 0), calW = (A.wheat || 0) * econ.RAW_GRAIN_FOOD_FACTOR;
+    ok(calW > calF * 3,
+      '③ ★★싼 군이 **훨씬 많은 열량**을 받는다(등분이면 반반이라 빨개진다 — 재민 판정 ⓓ)',
+      `곡물 ${calW.toFixed(2)}kcal vs 생선 ${calF.toFixed(2)}kcal`);
+    ok(calF > 0, '③ ★그래도 비싼 군이 **0 은 아니다**(한계효용 — "저렴한 것부터"가 아니다)', `생선 ${calF.toFixed(3)}`);
+    ok(/x_g = need × \(w_g\/p_g\) \/ Σ_h \(w_h\/p_h\)/.test(SRC),
+      '③ 소스에 그 식이 **적혀 있다**(Cobb-Douglas 지출 몫 · 소스 계약)');
+  }
   ok((F.wheat || 0) * econ.RAW_GRAIN_FOOD_FACTOR > (F.food || 0),
     '③ ★군 안에서는 **싼 쪽(밀 0.1)이 비싼 쪽(food 3.0)보다 많다**',
     `밀 ${(F.wheat || 0).toFixed(2)}×${econ.RAW_GRAIN_FOOD_FACTOR} > food ${(F.food || 0).toFixed(2)}`);

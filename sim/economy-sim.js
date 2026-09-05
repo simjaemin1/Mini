@@ -99,26 +99,11 @@ function _computeVillageStats(v, N) {
   //     이상일 때 U* = Σ w_g · log 2 = log 2 (Σw_g = 1) ⇒ 비 = U / log 2.
   //   ★새 수 0 — w_g 는 위 표, 하루치는 `DAILY_FOOD_CONSUMPTION`, 나머지는 로그뿐이다.
   //   ⚠`stats.foodGroups` 는 **계측용으로 남긴다**(옛 판정과 나란히 볼 수 있게).
-  let _divN;
-  if (T86_DIET) {
-    const _need = DAILY_FOOD_CONSUMPTION;                    // 1인 하루치
-    let U = 0;
-    const _gcal = {};
-    for (const r in T86_GROUP) {
-      const q = (_eaten[r] || 0); if (!(q > 0)) continue;
-      const fe = _t86Factor(r); if (!(fe > 0)) continue;
-      _gcal[T86_GROUP[r]] = (_gcal[T86_GROUP[r]] || 0) + q * fe / pop;
-    }
-    for (const g in T86_W) {
-      const xbar = _need * T86_W[g];
-      if (!(xbar > 0)) continue;
-      U += T86_W[g] * Math.log(1 + Math.min(1, (_gcal[g] || 0) / xbar));
-    }
-    _divN = Math.min(1, U / Math.log(2));
-    v._dietU = +_divN.toFixed(4);                            // 계측 — 보고 §행복 분포
-  } else {
-    _divN = Math.min(1, _fg.size / DIVERSITY_FULL);
-  }
+  // ★★[T86 · 재민 판정 ⓑ 2026-09-04] **행복은 종전 계단을 유지한다.**
+  //   달성 효용 비(U = Σ w_g·log(1+min(1,x_g/x̄_g)) ÷ log2)를 같은 판에서 켰더니 인구가 5,933 → 5,524 로
+  //   더 내려갔고, **식단 변경과 행복 변경 중 어느 쪽이 깎았는지 못 가르게** 됐다. 표는 보고 §2-b 에 남겼다.
+  //   ⇒ 행복 판정을 계단에서 연속으로 바꾸는 것은 **그 자체로 카드 하나**다(하위 25% 1.252 → 0.316).
+  const _divN = Math.min(1, _fg.size / DIVERSITY_FULL);
   stats.happiness += _divN * DIVERSITY_HAPPY_W;
   stats.health += _divN * DIVERSITY_HEALTH_W;
   stats.foodGroups = _fg.size;
@@ -514,6 +499,7 @@ function consumeFood(v, need) {
   for (const k in eaten) eaten[k] = 0;
   // ★★[T86] **예산 단계 — 사다리보다 먼저.** 열량 예산 `need` 를 군별 몫 w_g 로 나누고, 군 안에서는
   //   **열량 1단위당 유효가격**(그림자가격 ÷ 열량환산)이 싼 품목부터 먹는다.
+  //   ★군별 배정은 **가격 가중 지출 몫**이다(재민 판정 ⓓ): x_g = need × (w_g/p_g) / Σ(w_h/p_h).
   //   ⚠가격은 **v2 가 마을에 덮어 둔 캐시**(`_priceCache`)를 읽는다 — `server/trade.js` 머리 주석의
   //     "같은 날 안에선 같은 값" 규약을 식단도 그대로 따른다(NPC 교역 틱과 같은 표를 본다 · 사본 0).
   //   ⚠캐시가 없으면(v1 CLI · 픽스처 · 하네스) **조용히 아래 사다리로 내려간다** = 종전과 비트 동일.
@@ -533,9 +519,24 @@ function consumeFood(v, need) {
       const groups = Object.keys(cand);
       if (groups.length) {
         for (const g of groups) cand[g].sort((a, b) => a.per - b.per);
-        let wsum = 0; for (const g of groups) wsum += T86_W[g] || 0;
+        // ★★[T86 · 재민 판정 ⓓ 2026-09-05] **배정은 등분이 아니라 가격 가중 지출 몫이다.**
+        //   첫 판(PM 지시서 초안)은 `need × w_g` — **가격을 무시한 등분**이었다. 그건 재민이 처음부터
+        //   경계한 *"무조건 골고루"* 그 자체이고, 실측이 그대로 보여 줬다: 어촌3 이 곡물을 사느라 207 → 34.
+        //   ⇒ Cobb-Douglas 지출 몫: 효용 Π x_g^{w_g} 를 예산제약 아래 풀면 **x_g ∝ w_g / p_g** 다.
+        //     열량 예산 `need` 로 정규화 ⇒  x_g = need × (w_g/p_g) / Σ_h (w_h/p_h)
+        //     p_g = 그 군에서 **가장 싼** 열량 1단위 값(§0-ⓐ 유효가격 = 그림자가격 ÷ 열량환산)
+        //           — 예산이 실제로 사는 그 값이다(군 안 정렬의 첫 칸).
+        //     재고 없는 군은 애초에 `cand` 에 안 들어오므로 **분모에서 빠지고 자연히 재정규화**된다.
+        //   ⇒ 싼 군이 더 많은 열량을 받는다. 어촌은 생선이 싸니 생선을 더 먹되, 곡물이 싸지면 곡물도 산다.
+        let wsum = 0;
+        const wp = {};
+        for (const g of groups) {
+          const pg = cand[g][0].per;                       // 정렬돼 있다 — 첫 칸이 그 군의 최저가
+          wp[g] = (pg > 0) ? (T86_W[g] || 0) / pg : 0;
+          wsum += wp[g];
+        }
         let budget = {};
-        for (const g of groups) budget[g] = need * ((T86_W[g] || 0) / (wsum || 1));
+        for (const g of groups) budget[g] = need * ((wp[g] || 0) / (wsum || 1));
         // 한 바퀴 배정 + 한 바퀴 재분배(지시 §1 "재분배 한 바퀴")
         for (let pass = 0; pass < 2 && remaining > 1e-9; pass++) {
           let leftover = 0;
@@ -554,9 +555,9 @@ function consumeFood(v, need) {
           if (leftover <= 1e-9) break;
           const alive = groups.filter((g) => cand[g].some((it) => (v.storage[it.r] || 0) > 1e-9));
           if (!alive.length) break;
-          let w2 = 0; for (const g of alive) w2 += T86_W[g] || 0;
+          let w2 = 0; for (const g of alive) w2 += wp[g] || 0;   // 재분배도 같은 가격 가중으로
           budget = {};
-          for (const g of alive) budget[g] = leftover * ((T86_W[g] || 0) / (w2 || 1));
+          for (const g of alive) budget[g] = leftover * ((wp[g] || 0) / (w2 || 1));
         }
       }
     }
@@ -818,7 +819,9 @@ const T86_GROUP = Object.assign({}, FOOD_GROUP, {
 //   ⚠표본 수가 군마다 1~6개로 고르지 않다(meat 는 훈제육 하나다) — 그 한계는 보고 §1 에 적었다.
 //   ⚠`T86_WMODE` 는 **후보 스크린용 손잡이**다(지시 §2-① — 후보 셋을 시드 1020 으로 거른다).
 //     기본은 유도값(i). ii=균등 1/6 · iii=캐논 유도(`DIVERSITY_FULL`=4 ⇒ 상위 4군에 1/4씩).
-const T86_WMODE = process.env.T86_WMODE || 'i';
+//   ★채택 = **ii(균등 1/6)**. 시드 1020 만 보면 유도값(i)이 1등이었는데(+0.7%) **시드 42 에서 소멸 2/51**
+//     을 냈다. 셋 중 **세 시드 모두 소멸 0/51 을 지키는 유일한 후보**가 ii 다(보고 §2-d).
+const T86_WMODE = process.env.T86_WMODE || 'ii';
 const T86_W = (() => {
   if (T86_WMODE === 'ii') { const e = 1 / 6; return { grain: e, meat: e, fish: e, veg: e, fruit: e, forage: e }; }
   if (T86_WMODE === 'iii') { const q = 1 / DIVERSITY_FULL; return { grain: q, meat: q, fish: q, veg: q, fruit: 0, forage: 0 }; }
