@@ -61,6 +61,7 @@ const Notice = require('./notice');           // ★[T78 2026-09-03] 알림 경�
 const Membership = require('./membership');   // ★[T11 2026-09-02] 마을 소속·곳간 인출. 기여 계량기는 온보딩 정본 **하나**를 읽는다
 const Claims = require('./claims');           // ★[T45 2026-09-02] 사유지 v2 — 종류 영속·인접·연결성·부재 상태기(정본 하나)
 const Newcomers = require('./newcomers');     // ★[T19 2026-09-02] 유저 마을 시작지 등록 — "이방인 받기"(§9.3 나머지 절반)
+const Friends = require('./friends');         // ★[T115 2026-09-05] 친구 — 서로 수락한 쌍(T23 소셜 첫 칸)
 const Rescue = require('./rescue');           // ★[T56 2026-09-02] 외침·구조 동사 둘. 판정은 전부 정본을 부른다(사본 0)
 const harvestedSeeds = new Set(); // 채집된 시드 자원 (DB에서 load)
 
@@ -2625,7 +2626,10 @@ Onboarding.init({ SimVillages, terrain: _terrain, ZONE, ZONE_ID, db: db.db, send
     } catch (err) { return null; }
   },
   // ★[T62] 공용 쉼터 좌표 — **정본 하나를 부른다**(온보딩이 자리를 다시 고르지 않는다).
-  shelterOf: (vid) => { try { return SimVillages.shelterOf ? SimVillages.shelterOf(vid) : null; } catch (e) { return null; } } });
+  shelterOf: (vid) => { try { return SimVillages.shelterOf ? SimVillages.shelterOf(vid) : null; } catch (e) { return null; } },
+  // ★[T115] 함께 도착 — 이름으로 물어 **vid → 벗 수**를 낸다. 세는 정본은 `friends.js` 하나다.
+  //   ⚠못 물어보면 `null` 이고 시작 화면은 친구 칸 0 으로 그대로 뜬다(막지 않는다).
+  friendVidsByName: (name) => Friends.nameVids(name) });
 
 // ★[T11 2026-09-02] 마을 소속·곳간 인출 — **이미 있는 것만 넘긴다**(사본 금지).
 //   기여 계량기는 안 넘긴다: `membership.js` 가 온보딩 정본을 직접 읽는다(계량기는 하나다).
@@ -2666,6 +2670,30 @@ Newcomers.init({
 Newcomers.start();
 // ★[T56 2026-09-02] 외침·구조 동사 — **이미 있는 것만 넘긴다**(사본 금지 · T11 과 같은 규약).
 //   마을 반경·물·바다·먹기·방위말이 전부 남의 정본이다. `rescue.js` 는 소리와 문법만 갖는다.
+// ★[T115 2026-09-05] 친구 — **이미 있는 것만 넘긴다**(사본 금지). 정본 표는 central 에 있다.
+Friends.init({
+  central, send,
+  //   그 사람이 **처음 고른 마을** — 온보딩 정본을 부른다(여기서 다시 정하지 않는다).
+  startVidOf: (pid) => { try { return Onboarding.stateOf(String(pid)).start_vid; } catch (e) { return null; } },
+  //   접속 중인 사람에게 한마디 — 알림함은 이 카드가 아니다(회부). 없으면 조용히 흘린다.
+  tellPlayer: (pid, text) => {
+    for (const p of players.values()) if (!p.isNpc && p.playerId === String(pid)) { try { send(p.ws, { type: 'notice', text }); } catch (e) {} }
+  },
+  //   ★이름표는 **최초 가시분에만** 실린다(`makeEntry` 의 `name` 과 같은 창). 벗이 된 순간
+  //     이미 보고 있던 사람의 표지는 안 바뀐다 ⇒ 그 둘을 **다시 처음 본 것으로** 만든다.
+  //     새 전송 축을 만들지 않고 이미 있는 `seenPlayers` 규약을 쓰는 자리다.
+  refreshTags: (pidA, pidB) => {
+    const want = new Set([String(pidA), String(pidB)]);
+    const pids = new Set();
+    for (const p of players.values()) if (!p.isNpc && want.has(String(p.playerId))) pids.add(p.pid);
+    for (const p of players.values()) {
+      if (p.isNpc || !p.viewerState) continue;
+      if (pids.has(p.pid)) p.viewerState.seenPlayers = new Set();
+      else for (const q of pids) p.viewerState.seenPlayers.delete(q);
+    }
+  },
+});
+
 Rescue.init({ players, send, ZONE_ID,
   shelterAt: (x, y) => SimVillages.shelterAt(x, y),
   isWaterTile: isWaterTileLocal, isSeaTile: isSeaTileLocal,
@@ -2794,6 +2822,23 @@ const server = http.createServer((req, res) => {
     };
     if (req.url.indexOf('scan=1') >= 0) { Claims.scanAbsence().then((r) => _done({ scan: r })).catch((e) => _done({ scanErr: e.message })); return; }
     _done();
+    return;
+  }
+  // ★[T115] 친구 관측창 — 읽기 전용(`/claimdbg` 와 같은 규약). `?pid=<playerId>` 면 그 사람의 캐시도 낸다.
+  //   ⚠**이름은 안 낸다**(캐시 요약뿐) — 관측창이 사교 관계를 흘리는 문이 되면 안 된다.
+  if (req.url && req.url.startsWith('/friendsdbg') && req.method === 'GET') {
+    const q = (req.url.split('?')[1] || '');
+    const m = /(?:^|&)pid=([^&]*)/.exec(q);
+    const pid = m ? decodeURIComponent(m[1]) : '';
+    const d = Friends.debug(pid);
+    const out = { ready: Friends.ready(), cached: d.cached, cfg: d.cfg,
+      me: d.me ? { ok: d.me.ok, n: d.me.ids.length, ids: d.me.ids,
+        //   ★벗들이 **처음 고른 마을** — 함께 도착이 무엇을 보고 세는지 그대로 내준다.
+        //     (0 이 나오는 날 "친구가 없는 건가 vid 를 모르는 건가"를 가르는 자리다.)
+        vids: d.me.ids.map((fid) => { try { return Onboarding.stateOf(String(fid)).start_vid; } catch (e) { return null; } }) } : null,
+      myVid: pid ? (() => { try { return Onboarding.stateOf(String(pid)).start_vid; } catch (e) { return null; } })() : null };
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify(out));
     return;
   }
   // ★[T19] 이방인 받기 상태 읽기 전용 JSON — 하네스 관측창(`/claimdbg` 와 같은 규약).
@@ -3657,6 +3702,16 @@ async function _acceptConnection(ws, req, C) {
 
   console.log(`[${ZONE_ID}] + ${name} (${pid}) @ (${sx.toFixed(0)}, ${sy.toFixed(0)})  total=${players.size}`);
 
+  // ★[T115] 벗 목록을 **미리** 물어 둔다 — 이름표 1비트는 틱 경로라 기다릴 수 없다(동기 조회).
+  //   ⚠await 하지 않는다: central 이 느린 날 로그인이 그만큼 늦어지면 안 된다("막지 않는다").
+  //     첫 몇 틱은 표지가 없을 수 있고, 그건 거짓말이 아니라 **아직 모르는 것**이다.
+  try {
+    Friends.load(player.playerId, true).catch(() => {});
+    //   ★이름 갈래도 같이 데운다 — 시작 화면은 **로그인 전**에 묻는다(그때 기다릴 수 없다).
+    //     다음에 로비를 열면 이미 답이 있다.
+    if (player.name) Friends.nameVids(player.name);
+  } catch (e) {}
+
   // 환영 메시지 — 존 정보와 현재 상태 모두 전달
   C.stage = 'welcome'; _connFailPoint('welcome');
   { const _h = _connHangPoint('welcome'); if (_h) await _h; }
@@ -3904,6 +3959,7 @@ function handlePlayerInput(player, raw) {
     //   **새 클라 조건 0**: 채팅은 이미 있다. 명령은 말이 아니므로 방송하지 않는다.
     if (Membership.handleChat(player, text)) return;
     if (Newcomers.handleChat(player, text)) return;   // ★[T19] `/이방인` — 새 클라 조건 0
+    if (Friends.handleChat(player, text)) return;     // ★[T115] `/친구` — 새 패널 0 · 새 클라 조건 0
     // ★[T56] 구조 동사 둘 — `/먹이기 <음식>` `/물`. 채팅은 이미 있다(클라 무접촉 · T11 선례).
     if (Rescue.handleChat(player, text)) return;
     if (text.startsWith('/t ')) {
@@ -10906,7 +10962,7 @@ setInterval(() => {
   const allMobs = Array.from(mobs.values());
   // viewer별 "이전 tick에 본 entity pid/mid" 추적 — 새로 보이는 것만 메타 포함
   // 이미 본 것은 위치/HP만. payload ~70% 감소.
-  function makeEntry(o, isNew, kind) {
+  function makeEntry(o, isNew, kind, viewer) {
     if (kind === 'player') {
       // Phase 14.35: 걷기 모션 동기화 — vx/vy 포함 (이동 중인지 클라가 판단)
       // Phase 14.41: isDown — 다운된 플레이어는 클라에서 누워있게 렌더
@@ -10924,7 +10980,14 @@ setInterval(() => {
         // ★[캐릭 시트 2026-08-30] **신원 1비트**(애니 상태가 아니다 — 애니는 기존 값에서 유도한다).
         //   이게 없으면 클라가 NPC 와 사람 플레이어를 못 가른다(`simJob` 은 마을 시뮬 NPC 에만 있다).
         //   ⇒ 사람 시트가 마을 주민에게까지 입혀진다 = **회부된 별도 배치를 몰래 하는 것**이다. 그래서 실어 보낸다.
-        if (o.isNpc) e.npc = 1; }
+        if (o.isNpc) e.npc = 1;
+        // ★★[T115 2026-09-05] **벗 1비트** — 보는 사람 기준이다(친구는 쌍이고, 남의 쌍은 남의 것이다).
+        //   판정은 `friends.js` 정본 하나(`isFriend`)가 하고 여기선 **부를 뿐**이다.
+        //   ⚠`name` 과 **같은 창**(최초 가시분)에 실린다. 도중에 벗이 되면 `Friends.init` 의
+        //     `refreshTags` 가 그 둘을 다시 처음 본 것으로 만들어 이 줄이 다시 나간다.
+        //   ⚠1 일 때만 싣지 **않는다**: 벗을 끊으면 `refreshTags` 가 이 줄을 다시 내보내는데,
+        //     그때 키가 없으면 클라의 승계 규약(`미수신 = 유지`)이 옛 1 을 붙들어 **표지가 안 지워진다.**
+        if (viewer && !o.isNpc && o.playerId) e.fr = Friends.isFriend(viewer, o.playerId) ? 1 : 0; }
       // ★[액션 라벨 가시화 — 생활 층 100%] 행동 라벨(모내기·잠행·개간·건축·취침…): 변경 후 1.2s 윈도우 + 최초가시에만
       //   문자열 전송(무상태 델타 — 뷰어별 추적 없이 25틱 중복이 상한). 클라는 수신 시 갱신·미수신 시 유지. ''=라벨 제거.
       if (o._lifeAct !== undefined && (isNew || now - (o._lifeActAt || 0) < 1200)) e.act = o._lifeAct;
@@ -10951,14 +11014,16 @@ setInterval(() => {
     const prevSeen = viewerState.seenPlayers;
     const newSeen = new Set();
     const result = [];
+    // ★[T115] 보는 사람의 **신원**(playerId · pid 가 아니다 — 친구는 존을 넘는 신원의 쌍이다)
+    const viewerAcct = (() => { const v = selfPid ? players.get(selfPid) : null; return (v && v.playerId) || null; })();
     for (const o of nearby) {
       if (o.handingOff) continue; // 14.47: 핸드오프 중인 player는 다른 viewer에게도 안 보냄
       newSeen.add(o.pid);
-      result.push(makeEntry(o, !prevSeen.has(o.pid), 'player'));
+      result.push(makeEntry(o, !prevSeen.has(o.pid), 'player', viewerAcct));
     }
     if (selfPid && !newSeen.has(selfPid)) {
       const self = players.get(selfPid);
-      if (self && !self.handingOff) { newSeen.add(selfPid); result.push(makeEntry(self, !prevSeen.has(selfPid), 'player')); }
+      if (self && !self.handingOff) { newSeen.add(selfPid); result.push(makeEntry(self, !prevSeen.has(selfPid), 'player', viewerAcct)); }
     }
     viewerState.seenPlayers = newSeen;
     return result;

@@ -205,6 +205,20 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_wars_active ON wars(ended_at);
   CREATE INDEX IF NOT EXISTS idx_wars_attacker ON wars(attacker_guild_id);
   CREATE INDEX IF NOT EXISTS idx_wars_defender ON wars(defender_guild_id);
+  -- ★★[T115 2026-09-05 재민 확정] 친구 — **표 하나 · 새 컬럼 0**.
+  --   ⓐ **친구 = 서로 수락한 쌍**이다. 한쪽이 부른 것은 아직 친구가 아니다.
+  --   ⓑ **요청과 친구가 같은 표에 산다** — 가르는 것은 since 하나다:
+  --        since IS NULL  ⇒ (a 가 b 에게) **보낸 요청**. 방향이 있다.
+  --        since 있음     ⇒ **친구**. 이때 (a,b) 는 **정렬**해 둔다(쌍은 하나뿐이다).
+  --      새 표를 둘 두면 "요청이 남았는데 친구가 아니다" 같은 어긋난 상태가 생긴다.
+  --   ⓒ 한 쌍에 행은 **하나뿐**이다(PK). 반대 방향으로 또 부르면 그건 새 행이 아니라 **수락**이다.
+  CREATE TABLE IF NOT EXISTS friends (
+    a     TEXT NOT NULL,
+    b     TEXT NOT NULL,
+    since INTEGER,
+    PRIMARY KEY (a, b)
+  );
+  CREATE INDEX IF NOT EXISTS idx_friends_b ON friends(b);
 `);
 
 // 마이그레이션 — 기존 DB에 새 컬럼 없으면 추가
@@ -339,6 +353,57 @@ const stmtTouchGuest = db.prepare('UPDATE players SET last_seen = ? WHERE player
 const stmtGetAccountByName = db.prepare(
   'SELECT * FROM players WHERE password_hash IS NOT NULL AND (player_id = ? OR name = ?) LIMIT 1');
 function findAccount(username) { return username ? stmtGetAccountByName.get(username, username) : null; }
+
+// ── ★★[T115] 친구 — 정본 술어 넷. 여기 말고 어디서도 이 표를 해석하지 않는다 ──────
+//   ★쌍의 정렬은 **한 자리에서만** 한다(`_pair`). 호출부마다 정렬하면 그게 사본이고,
+//     한 곳이라도 안 정렬하면 같은 쌍이 두 행이 된다.
+const _pair = (x, y) => (String(x) < String(y) ? [String(x), String(y)] : [String(y), String(x)]);
+const stmtFriendRow = db.prepare('SELECT a, b, since FROM friends WHERE (a = ? AND b = ?) OR (a = ? AND b = ?)');
+const stmtFriendDel = db.prepare('DELETE FROM friends WHERE (a = ? AND b = ?) OR (a = ? AND b = ?)');
+const stmtFriendIns = db.prepare('INSERT INTO friends (a, b, since) VALUES (?, ?, NULL)');
+const stmtFriendAccept = db.prepare('INSERT INTO friends (a, b, since) VALUES (?, ?, ?)');
+const stmtFriendsOf = db.prepare(`
+  SELECT p.player_id AS id, p.name AS name FROM friends f
+  JOIN players p ON p.player_id = (CASE WHEN f.a = ? THEN f.b ELSE f.a END)
+  WHERE (f.a = ? OR f.b = ?) AND f.since IS NOT NULL
+`);
+/** 그 사람의 친구들 — **수락된 쌍만**. 반환은 `[{id, name}]`. */
+function friendsOf(playerId) {
+  const id = String(playerId || '');
+  if (!id) return [];
+  try { return stmtFriendsOf.all(id, id, id) || []; } catch (e) { return []; }
+}
+/**
+ * `/친구 <이름>` 한 번의 뜻은 **상대가 이미 나를 불렀나**에 달렸다:
+ *   · 아무것도 없다        ⇒ 요청을 남긴다(`requested`)
+ *   · 내가 이미 불렀다      ⇒ 아무 일도 안 한다(`already_requested`)
+ *   · **상대가 나를 불렀다** ⇒ 그 행이 곧 수락이다(`accepted`)
+ *   · 이미 친구다          ⇒ `already_friends`
+ * ⚠명령이 하나인 것은 화면을 아끼려는 게 아니라 **뜻이 하나**여서다: "나는 너와 친구가 되겠다."
+ */
+function friendRequest(fromId, toId) {
+  const A = String(fromId || ''), B = String(toId || '');
+  if (!A || !B || A === B) return { ok: false, reason: 'self' };
+  const row = stmtFriendRow.get(A, B, B, A);
+  if (row && row.since != null) return { ok: true, state: 'already_friends' };
+  if (row && row.a === A) return { ok: true, state: 'already_requested' };
+  if (row) {                                   // 상대가 먼저 불렀다 ⇒ 수락
+    const [x, y] = _pair(A, B);
+    stmtFriendDel.run(A, B, B, A);
+    stmtFriendAccept.run(x, y, Date.now());
+    return { ok: true, state: 'accepted' };
+  }
+  stmtFriendIns.run(A, B);
+  return { ok: true, state: 'requested' };
+}
+/** 끊기 — 친구든 아직 요청뿐이든 **그 쌍을 지운다**(방향 무관). */
+function friendRemove(aId, bId) {
+  const A = String(aId || ''), B = String(bId || '');
+  if (!A || !B) return { ok: false };
+  const row = stmtFriendRow.get(A, B, B, A);
+  stmtFriendDel.run(A, B, B, A);
+  return { ok: true, had: !!row, wasFriend: !!(row && row.since != null) };
+}
 // 승계 — **행을 바꾸지 않는다.** 이름·비밀번호를 얹고 게스트 토큰을 죽인다.
 //   토큰 무효화가 핵심이다: 배치 13 의 "비밀번호 생긴 행은 게스트 토큰으로 못 연다" 게이트와
 //   **벨트와 멜빵**이다 — 한쪽이 뚫려도 다른 쪽이 막는다.
@@ -729,6 +794,42 @@ const server = http.createServer(async (req, res) => {
       // ★[2026-08-03g 배치 14 ①] 승계된 계정은 이름이 `name` 에만 있다 — PK 조회만 하면
       //   그 이름을 **비어 있는 것으로 오판**해 중복 등록을 허용하게 된다. 정본 술어로 본다.
       return jsonResp(res, 200, { taken: !!findAccount(u) });
+    }
+    // === ★[T115] 친구 — 요청·끊기·목록 ===
+    //   ⚠이름으로 사람을 찾는 정본은 `findAccount` 하나다(승계된 계정까지 그 함수가 안다).
+    //     여기서 `players.name` 을 직접 조회하면 그게 사본이고, 승계 계정에서 조용히 어긋난다.
+    if (req.url === '/friend/req' && req.method === 'POST') {
+      const { player_id: pid, name } = await readBody(req);
+      const me = stmtGetPlayer.get(String(pid || ''));
+      if (!me) return jsonResp(res, 404, { ok: false, reason: 'no_self' });
+      const other = findAccount(String(name || '').trim());
+      if (!other) return jsonResp(res, 200, { ok: false, reason: 'no_such_name' });
+      if (other.player_id === me.player_id) return jsonResp(res, 200, { ok: false, reason: 'self' });
+      const r = friendRequest(me.player_id, other.player_id);
+      return jsonResp(res, 200, { ...r, name: other.name, player_id: other.player_id });
+    }
+    if (req.url === '/friend/del' && req.method === 'POST') {
+      const { player_id: pid, name } = await readBody(req);
+      const other = findAccount(String(name || '').trim());
+      if (!other) return jsonResp(res, 200, { ok: false, reason: 'no_such_name' });
+      const r = friendRemove(String(pid || ''), other.player_id);
+      return jsonResp(res, 200, { ...r, name: other.name, player_id: other.player_id });
+    }
+    if (req.url.startsWith('/friends/') && req.method === 'GET') {
+      const [path, qs] = req.url.split('?');
+      const key = decodeURIComponent(path.slice('/friends/'.length));
+      // ★★`?by=name` — **시작 화면**이 쓰는 갈래다. 로비는 아직 로그인 전이라 `player_id` 를 모르고,
+      //   게스트 토큰은 **열쇠**라 CORS 열린 곳으로 절대 보내지 않는다(배치 13 규약).
+      //   ⇒ 이름으로 묻되 **id 만** 돌려준다. 이름을 같이 주면 "누구와 친구인가"가 새어 나간다 —
+      //     시작 화면이 필요한 건 "그 마을에 몇 명"이라 id 면 족하다.
+      //   ⚠그래도 이 갈래는 "그 이름의 사람에게 친구가 있는가"까지는 드러낸다. 제대로 닫으려면
+      //     시작 화면이 인증된 뒤에 물어야 하고 그건 로비의 순서를 바꾸는 일이라 **회부**다.
+      if (qs && /(^|&)by=name(&|$)/.test(qs)) {
+        const other = findAccount(key);
+        if (!other) return jsonResp(res, 200, { ok: true, friends: [] });
+        return jsonResp(res, 200, { ok: true, friends: friendsOf(other.player_id).map((f) => ({ id: f.id })) });
+      }
+      return jsonResp(res, 200, { ok: true, friends: friendsOf(key) });
     }
     // === 프로필 조회 ===
     if (req.url.startsWith('/player/') && req.method === 'GET') {

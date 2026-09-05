@@ -31,10 +31,22 @@ function onbHttpBase(zoneId) {
   if (!meta || !meta.wsUrl) return null;
   return String(meta.wsUrl).replace(/^wss:/, 'https:').replace(/^ws:/, 'http:');
 }
+// ★★[T115 2026-09-05] 시작 화면이 **자기가 누구로 들어갈지**를 같이 묻는다(`?as=<이름>`).
+//   ⚠게스트 토큰은 **절대** 안 싣는다 — 그건 열쇠다(배치 13 규약). 이름은 세계에서 머리 위에 떠 있는
+//     공개 정보이고, 서버는 그 이름으로 **수(數)만** 답한다(누구인지는 안 준다).
+//   ⚠못 물어봐도 시작 화면은 그대로다 — 친구 칸이 0 일 뿐이다.
+function onbAsName() {
+  try {
+    const el = document.getElementById('name');
+    const typed = el && el.value ? el.value.trim() : '';
+    return typed || (localStorage.getItem('durango_username') || '').trim();
+  } catch (e) { return ''; }
+}
 function onbFetchInfo(zoneId) {
   const base = onbHttpBase(zoneId);
   if (!base) return Promise.resolve(null);
-  return fetch(base + '/startinfo', { cache: 'no-store' })
+  const as = onbAsName();
+  return fetch(base + '/startinfo' + (as ? `?as=${encodeURIComponent(as)}` : ''), { cache: 'no-store' })
     .then((r) => (r.ok ? r.json() : null))
     .then((j) => (j && j.ok ? j : null))
     .catch(() => null);
@@ -140,6 +152,8 @@ function onbRenderCard() {
   }
   el.innerHTML = `<b>${v.name}</b> <span class="dim">${v.chKo || ''} · ${v.popKo} · ${v.busyKo}</span>`
     + (v.player ? `<br/><span class="accent">사람이 세운 마을 — 이방인을 받는다${v.founderName ? ` (${v.founderName})` : ''}</span>` : '')
+    // ★[T115] 함께 도착 — **서버가 센 수를 그대로** 쓴다(로비가 다시 세지 않는다).
+    + ((v.friendsHere | 0) ? `<br/><span class="accent">벗 ${v.friendsHere}명이 여기서 시작했다</span>` : '')
     + `<br/><span class="quote">“${v.news}”</span>`
     + (v.board ? `<br/><span class="dim">게시판에 걸린 일 ${v.board}건</span>` : '')
     + (v.welcome && !v.welcome.ok ? `<br/><span class="warn">이방인을 받기엔 아직 이르다 — ${v.welcome.why.join(' · ')}</span>` : '');
@@ -159,6 +173,7 @@ function onbRenderCards() {
     + `<span class="vc-busy">${v.busyKo} · ${v.popKo}</span>`
     + `<div class="vc-news">${v.news || ''}</div>`
     + (v.player ? '<span class="vc-badge">사람이 세운 마을 — 이방인을 받는다</span>' : '')
+    + ((v.friendsHere | 0) ? `<span class="vc-badge">벗 ${v.friendsHere}명</span>` : '')
     + '</div>').join('');
   el.querySelectorAll('[data-onbvid]').forEach((c) => {
     c.onclick = () => onbSelect(+c.dataset.onbvid);
@@ -195,6 +210,11 @@ function onbRefresh() {
         + ((j.playerN | 0) ? ` · 사람이 세운 마을 ${j.playerN}곳` : '');
     // ★서버가 도착 지점을 **배경에서 한 마을씩** 굽는다(부팅 직후 몇 초). 다 구워질 때까지만 다시 묻는다.
     if (j.warming && onbWarmTries < 20) { onbWarmTries++; setTimeout(onbRefresh, 3000); }
+    // ★[T115] 벗 표지는 **한 박자 늦을 수 있다** — 서버가 요청 경로에서 central 을 기다리지 않기 때문이다
+    //   (기다리면 로비가 멎는다 · T19 가 같은 자리에 적어 둔 규약). 여기서 다시 묻지는 **않는다**:
+    //   1차 실장이 1.5초 뒤 `onbRefresh` 를 한 번 더 걸었더니 그 재그리기가 **하네스가 카드를 누르는
+    //   순간**과 겹쳐 `e2e-onboarding` 이 흔들렸다. 로비의 DOM 을 뒤에서 갈아 끼우지 마라.
+    //   ⇒ 대신 서버가 **로그인·`/친구` 때 미리 데워 둔다**(`friends.js nameVids` · `zone.js` welcome).
     return j;
   });
 }
