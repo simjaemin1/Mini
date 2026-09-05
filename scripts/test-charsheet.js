@@ -461,5 +461,104 @@ console.log('\n=== ⑦ 모캡 포즈표 [T96] ===');
   }
 }
 
+console.log('\n=== ⑧ 도끼질·조준의 축 · EXR 되굽기 [T107] ===');
+{
+  // ★★[T107] 재는 것은 도끼의 **자리**가 아니라 **움직인 방향**이다.
+  //   자리로 재면 손이 늘 몸 오른쪽(−y)에 붙어 있는 붙박이 치우침이 신호를 덮는다
+  //   (1차 계측: 옛 0.73 vs 새 1.25 — 갈리긴 하는데 `idle` 대조군이 0.98 이라 못 쓴다).
+  //   두 프레임의 무게중심 **차**를 쓰면 그 붙박이가 빠지고 동작만 남는다.
+  const FW = META.frameW, FH = META.frameH, AX = META.anchorX, AY = META.anchorY;
+  const cent = (im, frame, d) => {
+    let sx = 0, sy = 0, n = 0;
+    for (let y = d * FH; y < (d + 1) * FH; y++) {
+      for (let x = frame * FW; x < (frame + 1) * FW; x++) {
+        if (im.px[(y * im.w + x) * 4 + 3] >= 200) { sx += x - frame * FW; sy += y - d * FH; n++; }
+      }
+    }
+    return n ? [sx / n, sy / n, n] : null;
+  };
+  // 아이소 투영 — 정본 `w2i(wx,wy) = (wx−wy, (wx+wy)/2)` 와 같은 식(화면 y 는 아래로).
+  const split = (dx, dy, d, rot) => {
+    const a = ((d + (rot || 0)) % 8) * Math.PI / 4;
+    const fw = [Math.cos(a), Math.sin(a)], sd = [-Math.sin(a), Math.cos(a)];
+    const pf = [fw[0] - fw[1], (fw[0] + fw[1]) / 2], ps = [sd[0] - sd[1], (sd[0] + sd[1]) / 2];
+    const nf = Math.hypot(pf[0], pf[1]) || 1, ns = Math.hypot(ps[0], ps[1]) || 1;
+    return [(dx * pf[0] + dy * pf[1]) / nf, (dx * ps[0] + dy * ps[1]) / ns];
+  };
+  const move = (imA, fa, imB, fb, rot) => {
+    const front = [], side = [];
+    for (let d = 0; d < 8; d++) {
+      const a = cent(imA, fa, d), b = cent(imB, fb, d);
+      if (!a || !b) continue;                       // 도끼가 몸에 완전히 가린 행 — 홀드아웃이 판 것
+      const [f, sq] = split(b[0] - a[0], b[1] - a[1], d, rot);
+      front.push(f); side.push(sq);
+    }
+    const m = (v) => v.reduce((x, y) => x + Math.abs(y), 0) / Math.max(1, v.length);
+    return { front, side, F: m(front), S: m(side), n: front.length };
+  };
+  const axe = {};
+  for (const c of ['idle', 'swing', 'aim']) axe[c] = readPng(path.join(DIR, `tool_axe_${c}.png`));
+
+  // ⓐ 내려침 — 도끼가 **앞으로** 간다
+  {
+    const r = move(axe.swing, 2, axe.swing, 3, 0);
+    ok(r.n >= 6, `★전제 — 여덟 행 중 ${r.n}행에서 도끼가 보인다(나머지는 몸에 가렸다)`);
+    ok(r.front.every((v) => v > 0),
+       `★★내려침(f2→f3)에서 도끼가 **여덟 행 모두 앞으로** 간다 (${r.front.map((v) => v.toFixed(0)).join(' ')})`);
+    ok(r.F > r.S * 1.5, `★★앞 성분이 옆의 1.5배 넘는다 — 앞 ${r.F.toFixed(1)}px vs 옆 ${r.S.toFixed(1)}px (${(r.F / r.S).toFixed(2)}배)`,
+       '옛 시트 실측 0.46배 = 몸 옆에서 쓸고 갔다');
+    // ★★자명 통과 금지 — 행을 4칸 돌리면(앞뒤 맞바꿈) 앞 성분 부호가 통째로 뒤집힌다
+    const rot = move(axe.swing, 2, axe.swing, 3, 4);
+    ok(rot.front.every((v) => v < 0), '★★돌연변이 — 앞뒤를 맞바꾸면 부호가 **전부** 뒤집힌다(신호 없는 시트는 여기서 깨진다)');
+  }
+  // ⓑ 들어올림 — 뒤로 간다(도끼를 등 뒤로 젖힌다)
+  {
+    const r = move(axe.swing, 0, axe.swing, 2, 0);
+    const back = r.front.filter((v) => v < 0).length;
+    ok(back >= Math.ceil(r.n * 0.7), `★들어올림(f0→f2)은 **뒤로** 젖힌다 — ${back}/${r.n} 행이 음수`,
+       r.front.map((v) => v.toFixed(0)).join(' '));
+  }
+  // ⓒ 조준 — 쉼(idle)에서 aim 으로 갈 때 도끼가 앞으로 나온다
+  {
+    const r = move(axe.idle, 0, axe.aim, 0, 0);
+    ok(r.front.every((v) => v > 0),
+       `★★조준은 손을 **앞으로** 내민다 (${r.front.map((v) => v.toFixed(0)).join(' ')})`,
+       '옛 시트 실측 앞/옆 0.36배 = 오른쪽으로 내밀고 있었다');
+    ok(r.F > r.S, `★조준 앞 ${r.F.toFixed(1)}px > 옆 ${r.S.toFixed(1)}px`);
+  }
+
+  // ⓓ EXR 되굽기 — **바이트 동일** 증명 기록
+  {
+    const pp = path.join(ROOT, 'assets-src', 'char_repost_proof.json');
+    ok(fs.existsSync(pp), '★되굽기 증명 기록이 있다 (`assets-src/char_repost_proof.json`)');
+    if (fs.existsSync(pp)) {
+      const P = JSON.parse(fs.readFileSync(pp, 'utf8'));
+      const bad = [];
+      for (const [k, h] of Object.entries(P.sheets || {})) {
+        const q = path.join(DIR, k + '.png');
+        if (!fs.existsSync(q)) { bad.push(k + '(없음)'); continue; }
+        const cur = crypto.createHash('sha256').update(fs.readFileSync(q)).digest('hex').slice(0, 16);
+        if (cur !== h) bad.push(k);
+      }
+      ok(Object.keys(P.sheets || {}).length >= 14 && bad.length === 0,
+         `★★**굽지 않고** EXR 에서 되굽은 ${Object.keys(P.sheets || {}).length}장이 배포 PNG 와 바이트가 같다`,
+         bad.length ? `어긋남: ${bad.slice(0, 4).join(',')}` : `먹선 ${P.ink} · 셀 ${P.cel}`);
+      const rp = fs.readFileSync(path.join(ROOT, 'scripts', 'char_render.py'), 'utf8');
+      ok(P.ink === +(rp.match(/T96_INK",\s*"(\d+)"/) || [0, 1])[1] && P.cel === +(rp.match(/T96_CEL",\s*"(\d+)"/) || [0, 4])[1],
+         '★증명이 **지금 손잡이**로 낸 것이다(굽기 기본값과 같다)', `ink ${P.ink} cel ${P.cel}`);
+    }
+  }
+  // ⓔ 구조 — 굽기와 되굽기가 **같은 함수**를 탄다(본문이 둘이면 '바이트 동일'은 우연이다)
+  {
+    const rp = fs.readFileSync(path.join(ROOT, 'scripts', 'char_render.py'), 'utf8');
+    const ip = fs.readFileSync(path.join(ROOT, 'scripts', 'ink_repost.py'), 'utf8');
+    ok(/ink_post\.post_all\(/.test(rp), '★굽기가 `ink_post.post_all` 을 부른다');
+    ok(/ink_post\.post_all\(/.test(ip), '★되굽기도 **같은** `ink_post.post_all` 을 부른다');
+    ok(!/def\s+(cel_quantize|ink_outline|edge_darken)/.test(ip), '★되굽기가 제 후처리를 따로 만들지 않는다(사본 0)');
+    ok(/T107_BOXPIN/.test(rp) && /얼린 값/.test(rp),
+       '★공유 프레임 상자 **못박기**가 살아 있다 — 포즈를 고쳐도 앵커가 안 흔들린다');
+  }
+}
+
 console.log(`\n=== test-charsheet 결과: 통과 ${pass} · 실패 ${fail} ===`);
 process.exit(fail ? 1 : 0);

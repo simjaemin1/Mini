@@ -130,3 +130,105 @@ def ink_outline(sheet, w, h, athr=INK_A, mask=None, rgb=INK_RGB):
         o = i * 4
         sheet[o], sheet[o + 1], sheet[o + 2] = rgb
     return sheet
+
+# ═══════════════ [T107] 굽기와 후처리를 가른다 ═══════════════
+#
+# ★왜 [카드 T107 ②] T96 이 남긴 회부: 8bit raw 에 후처리를 다시 걸면 양자화 칸 경계가 반올림에
+#   옮겨 가 배포 PNG 와 **바이트가 다르다**(실측 화소 14,255곳 · 최대 채널차 160). 그래서 먹선·셀
+#   세기를 한 칸 바꾸려면 1시간 27분을 다시 구워야 했다.
+#   ⇒ 굽기가 **후처리 전 float 시트**를 EXR 로 한 번 남기고, 여기서 그걸 읽어 같은 함수를 태우면
+#     굽기 없이 배포 PNG 와 **바이트가 같은** 결과가 나온다. 그게 아래 `post_all` 이 한 자리에 있는 이유다:
+#     굽기와 되굽기가 **같은 코드**를 부르지 않으면 '같은 바이트'는 우연이 된다.
+
+def edge_darken(sheet, w, h, k, athr, mask=None):
+    """실루엣 안쪽 한 겹의 RGB 를 k 배로 낮춘다 — 옛 자체 아웃라인(`T96_INK=0` 되돌림 경로).
+       ★[T107] `char_render.py` 에서 **여기로 옮겼다** — 되굽기(`ink_repost.py`)도 같은 함수를
+         타야 '바이트 동일'이 우연이 아니게 된다. `char_render` 는 이 이름을 그대로 부른다."""
+    if k >= 0.999:
+        return sheet
+    a = mask if mask is not None else [sheet[i * 4 + 3] for i in range(w * h)]
+    for y in range(h):
+        for x in range(w):
+            i = y * w + x
+            if a[i] < athr or sheet[i * 4 + 3] < athr:
+                continue
+            edge = (x == 0 or a[i - 1] < athr or x == w - 1 or a[i + 1] < athr
+                    or y == 0 or a[i - w] < athr or y == h - 1 or a[i + w] < athr)
+            if edge:
+                o = i * 4
+                sheet[o] *= k; sheet[o + 1] *= k; sheet[o + 2] *= k
+    return sheet
+
+
+def post_all(built, w, h, *, silhouette, partner_of, alpha_of, ink_px, cel_bands, edge_a, edge_k):
+    """한 클립의 층 전부에 후처리를 건다 — **굽기와 되굽기가 같이 부르는 자리**.
+
+       built      : [(층이름, sheet), ...]  (제자리 수정)
+       silhouette : 합집합 실루엣을 쓰는 층 이름 집합(몸·옷)
+       partner_of : 층이름 → 짝 층이름 (몸의 짝은 기본 한 벌 · 옷의 짝은 몸)
+       alpha_of   : 층이름 → 알파 리스트를 내는 함수(없으면 None — 짝이 이 판에 없다는 뜻)
+       ★순서가 규약이다: **셀 먼저, 먹선 나중.** 반대로 하면 방금 그은 먹선이 양자화에 끌려
+         올라가 선이 흐려지고, 먹색이 휘도 분포에 섞여 칸 경계까지 움직인다."""
+    if not (ink_px or cel_bands >= 2 or edge_k < 0.999):
+        return
+    for lname, sheet in built:
+        if cel_bands >= 2:
+            cel_quantize(sheet, w, h, cel_bands, edge_a, mask=None)
+        if lname in silhouette:
+            uni = list(alpha_of(lname))
+            other = alpha_of(partner_of.get(lname))
+            if other:
+                for i in range(w * h):
+                    if other[i] > uni[i]:
+                        uni[i] = other[i]
+            mask = uni
+        else:
+            # 도구·등짐은 **제 실루엣**이다 — 손에 든 것이 손과 갈려 보여야 한다.
+            mask = None
+        if ink_px:
+            ink_outline(sheet, w, h, INK_A, mask=mask)
+        elif edge_k < 0.999:
+            edge_darken(sheet, w, h, edge_k, edge_a, mask=mask)
+
+
+# ── float 시트 입출력 (bpy 는 **부를 때** 들여온다 — 이 모듈은 Blender 없이도 import 된다) ──
+def load_exr(path):
+    """EXR(float32 · 무손실 ZIP) → (sheet, w, h). 굽기가 남긴 **후처리 전** 값 그대로."""
+    import bpy
+    img = bpy.data.images.load(path)
+    w, h = img.size
+    sheet = list(img.pixels[:])
+    bpy.data.images.remove(img)
+    return sheet, w, h
+
+
+def save_png(sheet, w, h, path):
+    """`char_render.save_sheet` 와 **같은 경로**로 PNG 를 쓴다 — 인코더가 같아야 바이트가 같다."""
+    import bpy
+    img = bpy.data.images.new("sheet", width=w, height=h, alpha=True)
+    img.pixels = sheet
+    img.filepath_raw = path
+    img.file_format = 'PNG'
+    img.save()
+    bpy.data.images.remove(img)
+
+
+def save_exr(sheet, w, h, path):
+    """후처리 **전** float 시트를 EXR 로 남긴다(float32 · ZIP = 무손실).
+       ★half(16bit)로 줄이면 용량이 절반이지만 **바이트 동일을 보장 못 한다**:
+         8bit 한 칸이 1/255 = 0.0039 인데 half 의 1.0 근처 간격이 0.001 이라 네 배밖에 안 곱다 —
+         반올림 경계에 걸린 값 하나면 갈린다. 증명이 목적이므로 float32 를 쓴다."""
+    import bpy
+    img = bpy.data.images.new("raw", width=w, height=h, alpha=True, float_buffer=True)
+    img.pixels = sheet
+    st = bpy.context.scene.render.image_settings
+    keep = (st.file_format, st.color_mode, getattr(st, "color_depth", None), getattr(st, "exr_codec", None))
+    st.file_format = 'OPEN_EXR'; st.color_mode = 'RGBA'
+    st.color_depth = '32'; st.exr_codec = 'ZIP'
+    img.save_render(path)
+    st.file_format, st.color_mode = keep[0], keep[1]
+    if keep[2] is not None:
+        st.color_depth = keep[2]
+    if keep[3] is not None:
+        st.exr_codec = keep[3]
+    bpy.data.images.remove(img)

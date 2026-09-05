@@ -47,3 +47,6 @@ scripts/props_icon_renders/
 scripts/__pycache__/
 scripts/char_renders/
 assets-src/*.blend1
+
+# [T107] 굽기 중간 산물 — 후처리 전 float 시트(EXR). 재생성: python3 scripts/char_render.py -- --exronly
+assets-src/char_raw/
