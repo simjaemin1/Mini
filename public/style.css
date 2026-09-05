@@ -291,6 +291,10 @@ html, body { margin: 0; padding: 0; height: 100%; font-family: var(--font); back
   color: var(--dim);
   /* ★[2026-08-25 사건 레이어] 게시판 목록은 여러 줄이다 — 새 패널을 만들지 않고 이 한 줄로 늘린다. */
   white-space: pre-line;
+  /* ★[T113] 줄 피치는 **캔버스 값**이다 — `산그림/디자인B/디자인B_HUD.jpg` 의 알림 자리를 화소로
+     재면 글줄 사이가 17px 이다(높이 50 = 패딩 11 + 두 줄). 스택이 그 결로 쌓이게 그 수를 그대로 쓴다.
+     새 패널도 새 노드도 아니고, 여기 한 줄이 그 자리의 리듬을 정한다. */
+  line-height: 17px;
 }
 /* ★[T90] 알림 앞의 종류 아이콘 — 글자 줄에 얹히지 않게 살짝 내려 앉힌다(색은 글자를 따라간다). */
 #notice .nt-ico { vertical-align: -2px; margin-right: 5px; }

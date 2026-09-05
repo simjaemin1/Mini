@@ -860,6 +860,10 @@ async function waitHttp(url, tries = 600) {
     const drawn = await R.evaluate((ks) => {
       const out = {};
       for (const k of ks) {
+        // ★[T113] 알림이 **스택**이 됐다 — 그냥 아홉 번 부르면 줄이 쌓여 `querySelector` 가
+        //   제일 오래된 줄의 그림을 준다(그러면 아홉이 다 같은 그림으로 보인다).
+        //   ⇒ 한 종류씩 **비우고** 재서 이 절의 뜻("이름 하나 = 그림 하나")을 그대로 지킨다.
+        showNotice('', 1, null);
         showNotice('알림 ' + k, 60000, k);
         const el = document.getElementById('notice');
         const p = el.querySelector('svg path');

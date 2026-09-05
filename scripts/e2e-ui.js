@@ -64,6 +64,11 @@ async function waitHttp(url, tries = 600) {
   page.on('pageerror', (e) => errs.push(String(e.message).slice(0, 160)));
   page.on('console', (m) => { if (m.type() === 'error') errs.push('console: ' + m.text().slice(0, 160)); });
   const snap = async (n) => { const f = path.join(SHOTS, n + '.png'); await page.screenshot({ path: f }); shots.push(f); return f; };
+  // ★[T113 §0-ⓒ] 알림이 실제로 얼마나 몰리는지 **재려고** 하네스가 폴링한다(제품 훅 0 · T57).
+  const ntSamples = [];
+  const ntPoll = setInterval(async () => {
+    try { const n = await page.evaluate(() => (window.__notices || []).length); ntSamples.push({ t: Date.now(), len: n }); } catch (e) {}
+  }, 250);
 
   // ★★[T66 2차 ⑬] **캔버스에 토큰 문자열이 닿으면 잡는다.**
   //   `ctx.fillStyle = 'var(--accent)'` 는 예외도 콘솔 오류도 없이 **조용히 무시**되고 앞 색이 남는다
@@ -556,6 +561,122 @@ async function waitHttp(url, tries = 600) {
     ok(!!col && /^#[0-9a-fA-F]{6}$/.test(col), '★★⑫ 그래도 서버로 간 색은 **유효한 값**이다(서버 접점 0)', String(col));
   }
 
+
+  // ── ⑬ ★★[T113] 알림이 겹치면 **줄이 선다** ────────────────────────────────
+  //   ★왜: `#notice` 는 한 칸이었다 — 의뢰 성공과 쓰러진 사람의 외침이 같은 초에 오면 하나가
+  //     **사라졌다**(T78 이 종류를 아홉으로, T90 이 그림을 붙인 뒤로 잃는 것이 더 커졌다).
+  //   ★N = 3 은 캔버스에서 유도했다(보고 §0-ⓑ). 이 절은 그 셋이 **동시에 보이는지**를 잰다.
+  console.log('\n⑬ ★[T113] 알림 스택 — 셋이 같이 보인다 · 같은 말은 ×n');
+  {
+    const say = (t, ms, kind) => page.evaluate(([a, b, c]) => showNotice(a, b, c), [t, ms, kind]);
+    const readNotice = () => page.evaluate(() => {
+      const el = document.getElementById('notice');
+      return {
+        text: el.textContent,
+        lines: el.textContent ? el.textContent.split('\n') : [],
+        icons: [...el.querySelectorAll('svg path')].map((p) => p.getAttribute('d')),
+        h: Math.round(el.getBoundingClientRect().height),
+        emoji: /\p{Extended_Pictographic}/u.test(el.textContent),
+      };
+    });
+    const nts = () => page.evaluate(() => (window.__notices || []).slice(-6));
+
+    // ── 셋을 200ms 안에 — 옛 코드는 여기서 **하나만** 남았다
+    await page.evaluate(() => { showNotice('', 1, null); window.__notices.length = 0; });
+    await say('첫째 알림', 8000, 'village');
+    await sleep(60); await say('둘째 알림', 8000, 'gather');
+    await sleep(60); await say('셋째 알림', 8000, 'craft');
+    await sleep(200);
+    let v = await readNotice();
+    ok(v.lines.length === 3, '★★⑬ 200ms 안에 온 알림 **셋이 다 보인다**(옛 코드는 하나였다)',
+       JSON.stringify(v.lines));
+    ok(v.lines[0].includes('첫째') && v.lines[2].includes('셋째'),
+       '★★⑬ 그리고 **온 차례대로** 쌓인다(최근이 아래)', JSON.stringify(v.lines));
+    ok(v.icons.length === 3 && new Set(v.icons).size === 3,
+       '★★⑬ 줄마다 **제 종류의 그림**을 단다(셋이 서로 다르다 · T90 규약 유지)', `${v.icons.length}개 · ${new Set(v.icons).size}종`);
+    ok(!v.emoji, '★⑬ 이모지 0(화면 규칙 B)');
+    ok((await nts()).length === 3, '★★⑬ `__notices` 는 **3건**이다(글자만 · 규약 무변)', JSON.stringify(await nts()));
+
+    // ── N 을 넘기면 **오래된 줄이 밀려 사라진다**
+    await say('넷째 알림', 8000, 'board');
+    await sleep(120);
+    v = await readNotice();
+    ok(v.lines.length === 3 && !v.text.includes('첫째') && v.text.includes('넷째'),
+       '★★⑬ 넷째가 오면 **첫째가 밀려 사라진다**(N=3 · 캔버스 유도)', JSON.stringify(v.lines));
+
+    // ── 같은 말이 연달아 오면 겹치지 말고 ×n
+    await page.evaluate(() => { showNotice('', 1, null); window.__notices.length = 0; });
+    await say('재료가 모자란다', 8000, 'craft');
+    await sleep(40); await say('재료가 모자란다', 8000, 'craft');
+    await sleep(40); await say('재료가 모자란다', 8000, 'craft');
+    await sleep(150);
+    v = await readNotice();
+    ok(v.lines.length === 1 && /재료가 모자란다 ×3/.test(v.text),
+       '★★⑬ 같은 말 셋은 **한 줄 ×3** 이다(스팸 억제)', JSON.stringify(v.lines));
+    ok((await nts()).length === 3, '★★⑬ 그래도 `__notices` 엔 **3건 그대로** 들어간다(하네스 규약 무변)',
+       JSON.stringify(await nts()));
+    // ★자명 통과 금지 — 사이에 다른 말이 끼면 **안 뭉친다**(차례가 거짓말이 되면 안 된다)
+    await page.evaluate(() => { showNotice('', 1, null); });
+    await say('가', 8000, 'info'); await sleep(40);
+    await say('나', 8000, 'info'); await sleep(40);
+    await say('가', 8000, 'info'); await sleep(150);
+    v = await readNotice();
+    ok(v.lines.length === 3 && !/×/.test(v.text), '★⑬ 자명 통과 금지 — `가 나 가` 는 **안 뭉친다**',
+       JSON.stringify(v.lines));
+
+    // ── 줄마다 **제 ms** 로 사라진다
+    await page.evaluate(() => { showNotice('', 1, null); });
+    await say('짧은 것', 900, 'info');
+    await sleep(60); await say('긴 것', 6000, 'info');
+    await sleep(200);
+    const both = await readNotice();
+    ok(both.lines.length === 2, '★⑬ (상황) 둘이 함께 떠 있다', JSON.stringify(both.lines));
+    await sleep(1400);
+    v = await readNotice();
+    ok(v.lines.length === 1 && v.text.includes('긴 것'),
+       '★★⑬ 짧은 줄만 **제 ms 뒤에** 사라진다(줄마다 제 시계)', JSON.stringify(v.lines));
+
+    // ── ⓐ 계약: 한 줄만 떠 있으면 `textContent` 는 **종전과 같다**
+    await page.evaluate(() => { showNotice('', 1, null); });
+    await say('한 줄뿐', 6000, null);
+    await sleep(120);
+    v = await readNotice();
+    ok(v.text === '한 줄뿐', '★★⑬ 한 줄일 때 `textContent` 는 **그 글자 그대로**다(§0-ⓐ 계약)',
+       JSON.stringify(v.text));
+
+    // ── §0-ⓒ 실측: 이 판에서 실제로 알림이 얼마나 몰렸나 · 같은 말이 연달아 온 비율
+    //   ⚠제품에 진단 훅을 새로 달지 않는다(T57). 이미 있는 `__notices` 를 **하네스가 폴링**해서 잰다.
+    {
+      const seq = ntSamples;                                     // [{t, len}] — 입장 직후부터 250ms 간격
+      let maxPerSec = 0;
+      for (let i = 0; i < seq.length; i++) {
+        let j = i; while (j + 1 < seq.length && seq[j + 1].t - seq[i].t <= 1000) j++;
+        const d = seq[j].len - seq[i].len; if (d > maxPerSec) maxPerSec = d;
+      }
+      const all = await page.evaluate(() => (window.__notices || []).slice());
+      let dup = 0; for (let i = 1; i < all.length; i++) if (all[i] === all[i - 1]) dup++;
+      console.log(`  · [상황] §0-ⓒ 이 판의 알림 — 표본 ${seq.length}회 · 초당 최대 ${maxPerSec}건 · 연속 같은 말 ${dup}/${Math.max(1, all.length - 1)}`);
+    }
+
+    // 화면 B 결 — 대조 스크린샷
+    await page.evaluate(() => { showNotice('', 1, null); });
+    await say('마을에 들어섰다', 20000, 'village');
+    await sleep(40); await say('나무를 벴다 ×4', 20000, 'gather');
+    await sleep(40); await say('여행자가 쓰러졌다 — 해 지는 쪽 60걸음', 20000, 'rescue');
+    await sleep(250);
+    await snap('ui-08-notice-stack');
+    const box = await page.evaluate(() => {
+      const r = document.getElementById('notice').getBoundingClientRect();
+      const cs = getComputedStyle(document.getElementById('notice'));
+      return { h: Math.round(r.height), lh: cs.lineHeight, radius: cs.borderRadius, shadow: cs.boxShadow };
+    });
+    ok(box.lh === '17px', '★★⑬ 줄 피치가 **캔버스 값 17px** 이다(N 의 출처와 같은 자)', JSON.stringify(box));
+    ok(box.radius === '0px' && (box.shadow === 'none' || /none/.test(box.shadow)),
+       '★⑬ 모서리 0 · 그림자 0(화면 규칙 B)', JSON.stringify(box));
+    await page.evaluate(() => { showNotice('', 1, null); });
+  }
+
+  clearInterval(ntPoll);
   const jsErrs = errs.filter((e) => !/Failed to load resource/.test(e));
   ok(jsErrs.length === 0, '클라 JS 예외 0', jsErrs.slice(0, 2).join(' | '));
   console.log(`\n  스크린샷: ${shots.join(' ')}`);
