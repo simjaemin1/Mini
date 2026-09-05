@@ -3839,6 +3839,29 @@ function cropDayTick(e, nong, day, cellKey) {
   if (!e.ps && _pestAt(cellKey, e.c, day)) e.ps = 1;
   if (e.q < L_QMIN) e.q = L_QMIN;
 }
+// ★★★[T91 2026-09-04] **다년생은 수확해도 밭이 비지 않는다 — 그루터기가 남아 다시 자란다.**
+//   §0ⓐ 실측: 카탈로그 `재배유형` 축의 네 값 중 상태기가 읽는 것은 **0개**였다(월동은 빌드가
+//   구운 불리언을 통해 살아 있었고, 다년생 넷 — 부추·뽕·차·미나리 — 몫은 아예 없었다).
+//   ⇒ 넷이 전부 한해살이로 돌았다: 수확 = 칸 삭제(마을) · 빈 밭(플레이어 · T58b ④).
+//     카탈로그는 부추를 *"한 번 심으면 베어도 다시 남"* 이라 적어 놓고 있었다.
+//
+// ★★**수확 뒤 처리도 정본 하나다.** 참이면 그 자리에 그대로 남고(그루터기), 거짓이면 부르는 쪽이
+//   자리를 비운다. 마을 칸(`vil._crop`)과 플레이어 밭(zone 건물 `data`)이 **같은 이 함수**를 부른다 —
+//   두 벌이 되면 "플레이어 부추만 안 다시 나는" 날이 온다(T58b 가 상태기를 한 벌로 만든 그 이유).
+//
+// ★재생일은 **카탈로그에 없다** ⇒ **같은 `growDays`** 로 다시 센다(새 수 0 · 첫 해보다 짧게 두려면
+//   표에 재생일 열이 먼저 생겨야 한다 — 회부).
+// ★★**뿌리에 남는 것은 남긴다**: 품질 `q` 와 병충해 `ps` 는 **이어진다.** 수확이 병을 낫게 하지도,
+//   방치했던 밭을 세탁해 주지도 않는다 — 되돌리면 *"묵혔다 거두면 새 밭"* 이라는 유인이 생긴다
+//   (q 바닥 0.25 인 밭을 한 번 거두면 1.00 으로 돌아오는 길). 다시 나는 것은 **줄기**다.
+// ⇒ 오늘로 되돌리는 것은 **성장 시계 `p` 와 김맨 차례 `wd`** 둘뿐이다(`wd` 는 성장 비율에
+//   물린 차례라 새 성장 곡선을 따라야 한다). `w`(마지막 물댄 날)도 그대로 — 거두는 일이 물대기는 아니다.
+function cropAfterHarvest(e, day) {
+  const C = _Crops();
+  if (!e || !C || !C.isPerennial(e.c)) return false;    // 한해살이 — 부르는 쪽이 자리를 비운다
+  e.p = day; e.td = day; e.wd = 0;                      // 그루터기에서 다시 (q·ps·w 는 그대로)
+  return true;
+}
 function _cellTask(vil, k, day) {   // 우선순위: 5수확 4방제 3물대기(논만) 2파종 1김매기 0없음
   const e = vil._crop.get(k);
   const nong = !vil._drySet.has(k);
@@ -3858,7 +3881,7 @@ function _lifeDoTask0(vil, npc, k, day) {
   // ★[T58b] 아래 한 줄이 정본이다 — 우선순위·품질 산수는 `cropDoTask` 안에 하나뿐이다(플레이어도 이걸 부른다).
   const did = cropDoTask(e, nong, day);
   if (!did) return false;
-  if (did === 'harvest') { vil._crop.delete(k); if (npc) { npc._carry = (npc._carry || 0) + 1; _lifeAct(npc, '수확'); } return true; }   // 수확 — 식량은 econ이 이미 계상(연출만). ★곳간② 물리 짐 1칸분 적재(회계 아님)
+  if (did === 'harvest') { if (!cropAfterHarvest(e, day)) vil._crop.delete(k); if (npc) { npc._carry = (npc._carry || 0) + 1; _lifeAct(npc, '수확'); } return true; }   // 수확 — 식량은 econ이 이미 계상(연출만). ★곳간② 물리 짐 1칸분 적재(회계 아님) · ★[T91] 다년생은 그루터기로 남는다
   if (npc) _lifeAct(npc, did === 'pest' ? '방제' : did === 'water' ? '물대기' : (nong ? '논매기' : '김매기'));
   return true;
 }
@@ -3866,7 +3889,7 @@ function _lifeDoTask0(vil, npc, k, day) {
 //   운영 경로는 이 함수를 부르지 않는다(`__p3Bind` 와 같은 관례) — 하네스가 상태기를 다시 짜면 그게 사본이다.
 function __farmBind() {
   return { _cellTask, _lifeDoTask, _lifeDoTask0, _villageCropFor, _pestAt, _cropRipe, _cropGrowFrac,
-    cropTaskOf, cropDoTask, cropDayTick,
+    cropTaskOf, cropDoTask, cropDayTick, cropAfterHarvest,
     L_WATERGAP, L_WEEDS, L_PESTP, L_QW, L_QP, L_QMIN, L_QREC };
 }
 // ★[헤드리스 일일 결산 — 사용자 "아무도 안 보는 마을도 일과가 작동해야 하는 거 아냐?"] 동면 마을(관측자 없음)의
@@ -4344,6 +4367,16 @@ function villageOfCell(cx, cy) {
   const k = (cx | 0) + ',' + (cy | 0);
   for (const vil of (state.villages || [])) if (vil._terrSet && vil._terrSet.has(k)) return vil;
   return null;
+}
+// ★★[T91 2026-09-04 · T79c 회부 1] **그 칸에 무엇이 심겼나 — 표의 주인이 답한다.**
+//   `vil._crop`(T58b 정본)에는 무엇이 심겼는지 **있는데** claim 페이로드에 `crop` 이 없어서
+//   클라가 마을 밭을 전부 **곡물로** 그리고 있었다(T79c §0-ⓒ · 플레이어 밭만 제 군으로 떴다).
+//   ⇒ zone 이 `vil._crop` 을 직접 뒤지면 그게 사본이다. 여기서 내준다(한 줄 접점).
+//   ★모르면 `null` 이다 — 클라의 기본값이 곡물이고, 그건 규약이지 주사위가 아니다(T79c).
+function cropAtCell(cx, cy) {
+  const vil = villageOwningCell(cx | 0, cy | 0);
+  const e = vil && vil._crop && vil._crop.get((cx | 0) + ',' + (cy | 0));
+  return e ? e.c : null;
 }
 function villageByDbId(dbId) { return (state.byDbId && state.byDbId.get(dbId | 0)) || null; }
 
@@ -5793,6 +5826,7 @@ module.exports = {
   foundPlayerVillage, playerVillageInventory, playerVillageAt, playerVillageDeposit, playerVillageDepositMap,
   playerVillages, villageByDbId,   // ★[T19] 사람이 세운 마을 — 이방인 받기 자격 판정이 읽는다
   shelterOf, hasShelter, addShelter, ensureShelter, pickShelterSpot, villageOfCell,   // ★[T62] 공용 쉼터 — 좌표 정본 하나
+  cropAtCell,   // ★[T91 · T79c 회부 1] 그 칸의 작물 — claim 페이로드가 이걸 싣는다(사본 0)
   playerVillageWithdraw, playerVillageWithdrawStock, villageWithdrawGate,   // ★[T11] 곳간 인출 — 납품의 역연산(같은 표·같은 환산율)
   playerVillageWithdrawStockFoodEq, _countsAsFoodEq,   // ★[T20-ⓑ] 한도의 밑변 = econ 식량 등가(보존식 포함)
   // ★[2026-08-25 사건 레이어] 촌장 브리핑 · 게시판 · 납품 — zone.js 핸들러가 소비
@@ -5818,7 +5852,7 @@ module.exports = {
   // P3 — zone.js Wildlife.init 소비: 실체 전쟁 병사 pid 위치(px)를 야생 agrid 위협원으로 주입
   warThreats,
   // P3 — 헤드리스 검증 훅(테스트 전용)
-  cropTaskOf, cropDoTask, cropDayTick, CROP_WEED_STAGES: L_WEEDS.length,   // ★[T58b] 작물 상태기 정본 — zone 의 플레이어 돌보기가 그대로 부른다
+  cropTaskOf, cropDoTask, cropDayTick, cropAfterHarvest, CROP_WEED_STAGES: L_WEEDS.length,   // ★[T58b] 작물 상태기 정본 — zone 의 플레이어 돌보기가 그대로 부른다 · ★[T91] 수확 뒤 처리도 여기
   __p3Bind, __farmBind,
   // ★★[2026-08-01 재민 지적 "기존에 존재하던 전쟁실험실을 수정하면 되는데?"] 계측 훅.
   //   랩이 마을 부존 추출을 **손으로 다시 짜지 못하게** 본 게임 함수를 그대로 내준다.

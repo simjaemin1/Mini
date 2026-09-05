@@ -4266,7 +4266,7 @@ function _plantInto(player, b, cropId, today) {
   sendInventory(player);
   send(player.ws, { type: 'notice',
     text: `${c.ko} 다시 심었다(빈 밭) — ${Crops.growDaysOf(cropId)}일 자란다`
-        + (c.winterCrop ? '(월동 — 겨울엔 안 자란다)' : '')
+        + (c.winterCrop ? '(월동 — 겨울엔 안 자란다)' : '') + (Crops.isPerennial(cropId) ? '(다년생 — 베어도 다시 난다)' : '')
         + ` · 물 ${supply}/${c.water}${wm < 1 ? ` (${Math.round(wm * 100)}%)` : ''}`
         + ` · 씨앗 ${Math.round(off.fresh * 100)}% ⇒ 예상 ${units}단위`
         + (rd != null ? ` · ${Math.max(0, rd - today)}일 뒤` : '') });
@@ -4313,7 +4313,7 @@ function doPlant(player, cropId) {
   sendInventory(player);
   send(player.ws, { type: 'notice',
     text: `🌱 ${c.ko} 심었다 — ${Crops.growDaysOf(cropId)}일 자란다`
-        + (c.winterCrop ? '(월동 — 겨울엔 안 자란다)' : '')
+        + (c.winterCrop ? '(월동 — 겨울엔 안 자란다)' : '') + (Crops.isPerennial(cropId) ? '(다년생 — 베어도 다시 난다)' : '')
         + ` · 물 ${supply}/${c.water}${wm < 1 ? ` (${Math.round(wm * 100)}%)` : ''}`
         + ` · 씨앗 ${Math.round(off.fresh * 100)}% ⇒ 예상 ${units}단위`
         + (rd != null ? ` · ${Math.max(0, rd - today)}일 뒤` : '') });
@@ -4372,20 +4372,35 @@ function tryHarvest(player) {
       player.inventory[_cid] = (player.inventory[_cid] || 0) + units;
       Lots.note(player, _cid, units, today);                    // ★갓 거둔 것 — 오늘이 취득일
     }
+    // ★★★[T91 2026-09-04] **다년생이냐 한해살이냐를 여기서 다시 묻지 않는다** —
+    //   `villages.cropAfterHarvest` 정본이 답한다(NPC 칸이 부르는 바로 그 함수 · 사본 0).
+    //   참이면 **그루터기**로 남아 같은 자리에서 다시 자라고, 거짓이면 종전대로 빈 밭이 된다.
+    const _e = _cropEntryOf(best.data);
+    const _stump = SimVillages.cropAfterHarvest(_e, today);
     // 씨앗은 **갓 여문 것**으로 돌아온다(발아율 100%) — 그래서 농사가 이어진다.
-    player.inventory[seed] = (player.inventory[seed] || 0) + 1;
-    Lots.note(player, seed, 1, today);
+    // ★[T91] **다년생은 씨앗을 안 돌려준다** — 뿌리가 밭에 남았기 때문이다(한해살이는 죽으면서
+    //   씨를 남기고, 다년생은 살아서 남는다). 둘 다 주면 부추 한 포기가 씨앗 무한 발생기가 된다
+    //   (그루터기는 그대로 다시 여무는데 씨까지 나오는 길). 물리가 그대로 규칙이 된다.
+    if (!_stump) { player.inventory[seed] = (player.inventory[seed] || 0) + 1; Lots.note(player, seed, 1, today); }
     // ★★★[T58b] **밭은 남는다.** 여태 수확이 농지 건물을 지웠다(회부 G) — 랩은 셀을 비우고 구획을 남긴다.
     //   ⇒ 작물만 비우고 **빈 밭으로 되돌린다**. 다시 심으면 그 자리에 그대로 선다(`doPlant` 가 재사용).
-    best.data = { cropType: null, crop: null, ready: false, supply: best.data.supply, emptiedDay: today };
+    const _supply = best.data.supply, _fresh = best.data.seedFresh;
+    if (_stump) {
+      // 그루터기 — 같은 작물·같은 자리·같은 물·같은 발아율(씨앗을 새로 안 넣었으니 그대로다).
+      best.data = { crop: _e.c, cropType: _e.c, plantedDay: _e.p, seedFresh: _fresh,
+                    supply: _supply, ready: false, stumpDay: today };
+      _cropWriteBack(best.data, _e, today);
+    } else best.data = { cropType: null, crop: null, ready: false, supply: _supply, emptiedDay: today };
     if (best.dbId) { try { db.updateBuildingData(best.dbId, JSON.stringify(best.data)); } catch (e) {} }
     broadcast({ type: 'building_updated', building: { id: best.id, data: best.data } });   // ★클라가 이미 아는 메시지(새 타입 0)
     sendInventory(player);
     send(player.ws, { type: 'notice',
       text: (units > 0
-        ? `${_crop.ko} ${units}단위 수확 + 씨앗 1 (품질 ${Math.round(_q * 100)}%${_q < 1 ? ` · 온전했다면 ${_base}단위` : ''} · 보관 ${Crops.keepDaysOf(_cid)}일)`
-        : `${_crop.ko} 흉작 — 한 단위도 못 걷었다(물 ${best.data.supply}/${_crop.water} · 씨앗 ${Math.round((best.data.seedFresh || 0) * 100)}% · 품질 ${Math.round(_q * 100)}%). 씨앗만 건졌다`)
-        + ' · 밭은 그대로 남았다 — 다시 심을 수 있다' });
+        ? `${_crop.ko} ${units}단위 수확${_stump ? '' : ' + 씨앗 1'} (품질 ${Math.round(_q * 100)}%${_q < 1 ? ` · 온전했다면 ${_base}단위` : ''} · 보관 ${Crops.keepDaysOf(_cid)}일)`
+        : `${_crop.ko} 흉작 — 한 단위도 못 걷었다(물 ${_supply}/${_crop.water} · 씨앗 ${Math.round((_fresh || 0) * 100)}% · 품질 ${Math.round(_q * 100)}%).${_stump ? '' : ' 씨앗만 건졌다'}`)
+        + (_stump
+            ? ` · ★다년생이다 — 그루터기가 남아 다시 난다(${Crops.growDaysOf(_cid)}일 · 씨앗은 안 나온다)`
+            : ' · 밭은 그대로 남았다 — 다시 심을 수 있다') });
     savePlayer(player);
     return;
   }
@@ -11012,14 +11027,22 @@ function pickFarmCellForVillage(village, pid) {
   let h = 0; for (let i = 0; i < (pid || '').length; i++) h = (h * 31 + pid.charCodeAt(i)) | 0;  // pid 해시로 농부 분산 배정
   return cells[Math.abs(h) % cells.length];
 }
+// ★★[T91 2026-09-04 · T79c 회부 1] **밭이 무엇이 심겼는지 싣는다.** 클라는 이미 받을 준비가 돼 있다
+//   (`cropSprite(cl.farmStage, cl.crop)` — T79c 가 좌표 해시를 지우고 `group` 으로 고르게 바꿨다).
+//   ★정본은 `villages.cropAtCell` 하나다 — zone 이 `vil._crop` 을 직접 안 뒤진다(사본 0).
+//   ★모르는 칸은 `null` 이고 클라가 곡물로 떨어뜨린다 — 종전과 같은 그림이라 회귀 0.
+//   ⚠새 메시지 타입 0: `claim_updated` 는 클라가 이미 아는 것이고, 필드 하나가 늘 뿐이다.
 function tickFarmlandStages() {
   const now = Date.now();
   for (const c of claims.values()) {
     if (c.facilityType !== 'farmland') continue;
-    if (!c.sownAt) { if (c.farmStage) { c.farmStage = 0; broadcast({ type: 'claim_updated', claim: c }); } continue; } // 안 심음 = fallow
+    const _cr = SimVillages.cropAtCell(Math.round(c.x / BUILDING_SIZE), Math.round(c.y / BUILDING_SIZE));
+    const _crChanged = (_cr || null) !== (c.crop || null);
+    if (_crChanged) c.crop = _cr || null;                // 심긴 것이 바뀌면(파종·수확·그루터기) 그때만 실어 보낸다
+    if (!c.sownAt) { if (c.farmStage || _crChanged) { c.farmStage = 0; broadcast({ type: 'claim_updated', claim: c }); } continue; } // 안 심음 = fallow
     const elapsed = now - c.sownAt;
     const stage = elapsed >= FARM_GROW_MS ? 3 : (elapsed >= FARM_GROW_MS * 0.5 ? 2 : 1);
-    if (stage !== c.farmStage) { c.farmStage = stage; broadcast({ type: 'claim_updated', claim: c }); }
+    if (stage !== c.farmStage || _crChanged) { c.farmStage = stage; broadcast({ type: 'claim_updated', claim: c }); }
   }
 }
 
@@ -11060,7 +11083,7 @@ function syncCanadiaTerritories() {
         createdAt: Date.now(),
       };
       if (facilityType) claim.facilityType = facilityType;
-      if (facilityType === 'farmland') claim.farmStage = 0; // fallow — 농부가 심어야 자람(econ-game-2)
+      if (facilityType === 'farmland') { claim.farmStage = 0; claim.crop = SimVillages.cropAtCell(gx, gy); } // fallow — 농부가 심어야 자람(econ-game-2) · ★[T91] 심긴 작물도 함께(첫 페이로드부터 제 군으로 뜬다)
       claims.set(claim.id, claim);
       usedKeys.add(key);
       broadcast({ type: 'claim_added', claim });

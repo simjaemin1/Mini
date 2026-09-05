@@ -145,6 +145,27 @@ function sowableOn(day) { return sowableIn(seasonOfDay(day)); }
 //   ★새 시계를 만들지 않는다 — 하루하루 `seasonOf` 에게 물어본다(호출은 성장일+겨울 길이로 유계).
 //   ★1년생은 이 갈래를 안 탄다(겨울에 심을 수 없으니 애초에 겨울을 만날 일이 드물고,
 //     만나면 그냥 자란다 — 서리에 죽는 모델은 회부다).
+// ── ★★★재배유형(`lifecycle`) — **축을 코드가 읽는다** [T91 2026-09-04] ─────────
+//   카탈로그 `재배유형` 열은 네 값이다(34종 실측): `1년생` 26 · `1년생(모종)` 1 · `월동` 3 · `다년생` 4.
+//   ★★§0ⓐ 가 밝힌 것: **그 축을 읽는 코드가 상태기에 0곳이었다.** `crops.js:payload` 가 클라에
+//     흘려보내는 한 곳뿐이고, 상태기(`villages.cropTaskOf/cropDoTask/cropDayTick`)는 안 봤다.
+//   ★그런데 **월동만은 이미 살아 있었다** — 다만 축을 읽은 게 아니라 **빌드가 구워 넣은 불리언**을
+//     읽었다(`scripts/build-crops.py:117` — `rec['winterCrop'] = (rec['lifecycle'] == '월동')`).
+//     즉 축→게임 환산이 빌드 쪽에 하나, 여기 하나로 갈릴 수 있는 자리였다.
+//   ⇒ 여기서 **축을 그대로 읽는다.** 새 불리언을 하나 더 굽지 않는다(사본 금지).
+//     그리고 구워 넣은 `winterCrop` 과 축에서 유도한 답이 **같은지 하네스가 34종 전수로 잰다**
+//     (T59 의 교훈: 역산 앵커는 좋지만 **앵커가 옳다는 건 따로 증명해야 한다**).
+//   ⚠아래 두 글자는 **새 상수가 아니라 카탈로그의 값 그 자체**다(env 손잡이로 열지 않는다 —
+//     열면 표의 글자와 코드의 글자가 갈릴 수 있고, 그게 정확히 사본이다).
+const LC_WINTER = '월동';
+const LC_PERENNIAL = '다년생';
+function lifecycleOf(id) { const c = get(id); return c ? String(c.lifecycle || '') : ''; }
+// **다년생 — 베어도 다시 난다.** 카탈로그 원문: 부추 *"한 번 심으면 베어도 다시 남"* ·
+//   뽕 *"다년생, 심으면 매년"* · 차 *"다년생"* · 미나리 *"물가 다년생"*.
+//   수확 뒤 처리는 `villages.cropAfterHarvest` 가 이 답 하나로 갈린다(정본 하나 · 마을·플레이어 공용).
+function isPerennial(id) { return lifecycleOf(id) === LC_PERENNIAL; }
+// 월동 — **축에서 유도한** 답. 운영 경로는 아직 구워진 `winterCrop` 을 쓴다(무변경 · T91 은 표만).
+function isWinterCrop(id) { return lifecycleOf(id) === LC_WINTER; }
 function _dormant(id, day) { const c = get(id); return !!(c && c.winterCrop) && seasonOfDay(day) === 'winter'; }
 // 심은 날부터 오늘까지 **활동일**이 얼마나 쌓였나(lazy · 틱 0).
 function grownDays(id, plantedDay, today) {
@@ -326,6 +347,7 @@ module.exports = {
   keepDaysOf, seedKeepDaysOf, hungerOf, tastyOf, growDaysOf, kgOf, koOf, emojiOf,
   seasonOfDay, sowSeasons, canSowOn, sowableIn, sowableOn, wildSeedAt, WILD_SEED_CHANCE,
   monthOf, sowMonthsOf, fitsField, sowableMonth, h32, MONTHS_PER_YEAR, ANCHOR_MONTH,
+  lifecycleOf, isPerennial, isWinterCrop, LC_WINTER, LC_PERENNIAL,
   grownDays, isReady, readyDay, waterMult, harvestUnits,
   shelfMap, weightMap, foodMap, labelMap, emojiMap, payload,
 };

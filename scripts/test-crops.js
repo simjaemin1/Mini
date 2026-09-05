@@ -534,6 +534,145 @@ function dayOfSeason(season) {
     void invBefore; void _send; void notices;
   }
 
+  // ── ★★★⑩ [T91] 다년생 — 베어도 다시 난다 ────────────────────────────────
+  {
+    console.log('\n⑩ [T91] 다년생 — 카탈로그 `재배유형` 축을 코드가 읽는가');
+    const SimV = require(path.join(ROOT, 'server', 'villages.js'));
+    const F = SimV.__farmBind();
+
+    // ⓐ 축 전수 — 표에서 읽는다(손으로 안 적는다)
+    const byLC = {};
+    for (const [id, c] of Object.entries(RAW)) { const k = String(c.lifecycle || '(없음)'); (byLC[k] = byLC[k] || []).push(id); }
+    const PER = (byLC['다년생'] || []).slice().sort();
+    const WIN = (byLC['월동'] || []).slice().sort();
+    pre(Object.keys(byLC).length >= 3, '재배유형 축이 실제로 갈린다(자명 통과 금지)',
+      Object.entries(byLC).map(([k, v]) => `${k} ${v.length}`).join(' · '));
+    pre(PER.length > 0 && WIN.length > 0, '다년생·월동이 표에 실제로 있다', `다년생 ${PER.join(',')} · 월동 ${WIN.join(',')}`);
+    ok(JSON.stringify(Crops.IDS.filter(Crops.isPerennial).sort()) === JSON.stringify(PER),
+      '★★⑩ⓐ `isPerennial` 이 카탈로그 축 그대로다(34종 전수)', PER.map(Crops.koOf).join('·'));
+
+    // ⓐ' 교차 계약 — 빌드가 **구워 넣은** `winterCrop` 과 축에서 **유도한** 답이 같아야 한다.
+    //     (T59 의 교훈: 역산 앵커는 좋지만 앵커가 옳다는 건 따로 증명한다.)
+    let lcBad = 0;
+    for (const id of Crops.IDS) if (Crops.isWinterCrop(id) !== !!Crops.get(id).winterCrop) lcBad++;
+    ok(lcBad === 0, '★★★⑩ⓐ 구운 `winterCrop` == 유도 `lifecycle===월동` (34종 전수 · 사본 대조)', `불일치 ${lcBad}`);
+
+    // ⓑ 상태기가 그 축으로 갈린다 — 정본 함수를 그대로 돌린다
+    const PID = PER[0], AID = 'lettuce';                       // 다년생 하나 · 한해살이 대조
+    pre(!Crops.isPerennial(AID), '대조군은 한해살이다', `${Crops.koOf(AID)} ${RAW[AID].lifecycle}`);
+    const mk = (cid, d) => ({ c: cid, p: d, td: d, w: d, wd: 2, ps: 1, q: 0.55 });
+    const eP = mk(PID, 100), eA = mk(AID, 100);
+    const keepP = F.cropAfterHarvest(eP, 200), keepA = F.cropAfterHarvest(eA, 200);
+    ok(keepP === true && keepA === false,
+      '★★★⑩ⓑ 다년생만 그 자리에 남는다(한해살이는 부르는 쪽이 비운다)', `${Crops.koOf(PID)} ${keepP} · ${Crops.koOf(AID)} ${keepA}`);
+    ok(eP.p === 200 && eP.wd === 0, '★⑩ⓑ 그루터기는 **성장 시계와 김맨 차례만** 오늘로 되돌린다', `p ${eP.p} wd ${eP.wd}`);
+    ok(eP.q === 0.55 && eP.ps === 1 && eP.w === 100,
+      '★★⑩ⓑ 뿌리에 남는 것은 남는다 — 품질·병충해·물때는 **안 세탁된다**', `q ${eP.q} ps ${eP.ps} w ${eP.w}`);
+    ok(eA.p === 100 && eA.wd === 2 && eA.q === 0.55, '★⑩ⓑ 한해살이 항목은 한 글자도 안 건드린다');
+
+    // ⓒ 마을 칸 한 바퀴 — 수확해도 칸이 남고 **다시 익는다**
+    const kP = '7,11', kA = '7,12';
+    const vil = { dbId: 4242, _crop: new Map(), _drySet: new Set([kP, kA]), _claim: new Map() };
+    const d0 = 60;                                             // 그냥 어느 날
+    vil._crop.set(kP, { c: PID, p: d0, td: d0, w: d0, wd: 0, ps: 0, q: 1 });
+    vil._crop.set(kA, { c: AID, p: d0, td: d0, w: d0, wd: 0, ps: 0, q: 1 });
+    const gP = Crops.growDaysOf(PID), gA = Crops.growDaysOf(AID);
+    const r1 = d0 + gP;
+    pre(F.cropTaskOf(vil._crop.get(kP), false, r1) === 5, '그 날 다년생 칸이 실제로 익어 있다(자명 통과 금지)', `${gP}일`);
+    const eBefore = Object.assign({}, vil._crop.get(kP));
+    ok(F._lifeDoTask0(vil, null, kP, r1) === true, '★⑩ⓒ 마을이 그 칸을 수확했다');
+    ok(vil._crop.has(kP), '★★★⑩ⓒ **칸이 안 지워졌다** — 그루터기가 남는다', `${Crops.koOf(PID)}`);
+    const eAfter = vil._crop.get(kP);
+    ok(eAfter && eAfter.c === PID && eAfter.p === r1,
+      '★⑩ⓒ 같은 작물이 오늘부터 다시 자란다', `p ${eBefore.p} → ${eAfter && eAfter.p}`);
+    ok(!Crops.isReady(PID, eAfter.p, r1), '★⑩ⓒ 벤 직후엔 익어 있지 않다(무한 수확 금지)');
+    ok(Crops.isReady(PID, eAfter.p, r1 + gP), '★★★⑩ⓒ 그리고 **같은 `growDays` 뒤 다시 익는다**', `${gP}일 뒤`);
+    // 두 번째 수확도 같은 답 — 한 번만 되는 요행이 아니다
+    F._lifeDoTask0(vil, null, kP, r1 + gP);
+    ok(vil._crop.has(kP) && vil._crop.get(kP).p === r1 + gP, '★★⑩ⓒ 두 번째 수확도 그루터기를 남긴다');
+
+    // ⓓ 대조 — 한해살이는 종전대로 칸이 비고, 그래서 파종 일감이 다시 선다
+    const rA = d0 + gA;
+    pre(F.cropTaskOf(vil._crop.get(kA), false, rA) === 5, '대조 칸도 그 날 익어 있다', `${gA}일`);
+    F._lifeDoTask0(vil, null, kA, rA);
+    ok(!vil._crop.has(kA), '★★⑩ⓓ 한해살이는 **종전 그대로** 칸이 비었다(회귀 없음)', Crops.koOf(AID));
+
+    // ⓔ 플레이어 밭이 **같은 답**을 낸다 — 사본이 아니라 같은 함수라서
+    const bP = { id: 't91-farm', type: 'farmland', ownerId: 'x', x: 320, y: 320, dbId: null,
+                 data: { crop: PID, cropType: PID, plantedDay: d0, seedFresh: 1, supply: 3, ready: false,
+                         w: d0, wd: 3, ps: 1, q: 0.4, qd: d0 } };
+    const ez = H._cropEntryOf(bP.data);
+    const keepZ = SimV.cropAfterHarvest(ez, r1);
+    ok(keepZ === keepP && ez.p === r1 && ez.wd === 0 && ez.q === 0.4 && ez.ps === 1,
+      '★★★⑩ⓔ 플레이어 밭과 마을 칸이 **같은 함수·같은 답**이다', `남는가 ${keepZ} · p ${ez.p} · q ${ez.q}`);
+
+    // ⓕ 배선 — 수확 갈래가 정말 정본을 부르나(산수를 다시 쓰면 여기서 잡힌다)
+    const vsrc = require('fs').readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8');
+    const zsrc = require('fs').readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
+    ok(/did === 'harvest'[\s\S]{0,120}cropAfterHarvest\(/.test(vsrc),
+      '★★⑩ⓕ 마을 수확 갈래가 `cropAfterHarvest` 정본을 부른다');
+    const hSec = zsrc.slice(zsrc.indexOf('function tryHarvest'), zsrc.indexOf('function tryHarvest') + 4000);
+    ok(/SimVillages\.cropAfterHarvest\(/.test(hSec), '★★⑩ⓕ 플레이어 수확도 같은 정본을 부른다(zone 이 다시 안 쓴다)');
+    // 씨앗 — 다년생은 안 돌려준다(뿌리가 밭에 남았다)
+    ok(/if \(!_stump\) \{ player\.inventory\[seed\]/.test(hSec),
+      '★★⑩ⓕ 다년생은 **씨앗을 안 돌려준다**(그루터기 + 씨앗 = 무한 발생기)');
+
+    // ⓖ ★돌연변이 — 축을 안 읽게 만들면 빨강이어야 한다(검사가 실제로 그 갈래를 밟는 증거)
+    const _real = Crops.isPerennial;
+    Crops.isPerennial = () => false;                            // 재생 단계를 없앤 것과 같다
+    const vil2 = { dbId: 4242, _crop: new Map(), _drySet: new Set(['9,9']) };
+    vil2._crop.set('9,9', { c: PID, p: d0, td: d0, w: d0, wd: 0, ps: 0, q: 1 });
+    F._lifeDoTask0(vil2, null, '9,9', d0 + gP);
+    const mutantDeleted = !vil2._crop.has('9,9');
+    Crops.isPerennial = _real;
+    ok(mutantDeleted, '★★★⑩ⓖ 돌연변이(축을 안 읽음) ⇒ 부추 칸이 지워진다 = 검사에 이빨이 있다');
+    // 원복 확인
+    const vil3 = { dbId: 4242, _crop: new Map(), _drySet: new Set(['9,9']) };
+    vil3._crop.set('9,9', { c: PID, p: d0, td: d0, w: d0, wd: 0, ps: 0, q: 1 });
+    F._lifeDoTask0(vil3, null, '9,9', d0 + gP);
+    ok(vil3._crop.has('9,9'), '★⑩ⓖ 원복하면 다시 초록(돌연변이가 검사 자체를 안 망가뜨렸다)');
+  }
+
+  // ── ★★★⑪ [T91 · T79c 회부 1] 밭이 무엇이 심겼는지 클라에 싣는가 ───────────────
+  {
+    console.log('\n⑪ [T91 · T79c 회부 1] claim 이 작물을 싣는가 — 정본 하나(`cropAtCell`)');
+    const SimV2 = require(path.join(ROOT, 'server', 'villages.js'));
+    const SZc = SimV2.__labProbe.SZ;
+    // 마을을 **정본이 보는 자리에** 꽂는다(하네스가 조회 산수를 다시 짜면 그게 사본 · T11 규약).
+    const cellX = 130, cellY = 77, k = cellX + ',' + cellY;
+    const vilF = { dbId: 9101, name: '검사마을', ccx: 120, ccy: 70,
+                   _terrSet: new Set([k]), _crop: new Map(), _drySet: new Set(), _farmSet: new Set([k]) };
+    const n = SimV2.__labProbe._memberProbe.setup({}, [vilF]);
+    pre(n === 1, '마을을 정본 자리에 꽂았다(자명 통과 금지)', `${n}곳`);
+    ok(SimV2.cropAtCell(cellX, cellY) === null, '★⑪ⓐ 안 심은 칸은 `null` — 클라가 곡물로 떨어뜨린다(T79c 규약)');
+    vilF._crop.set(k, { c: 'rice', p: 0, td: 0, w: 0, wd: 0, ps: 0, q: 1 });
+    ok(SimV2.cropAtCell(cellX, cellY) === 'rice', '★★★⑪ⓐ 심긴 칸은 **그 작물**을 낸다(`vil._crop` 정본 그대로)');
+    ok(SimV2.cropAtCell(cellX + 1, cellY) === null, '★⑪ⓐ 이웃 칸은 안 샌다(키가 정확히 그 칸이다)');
+    // 다년생 그루터기도 같은 답 — 수확 뒤에도 밭이 제 군으로 그려진다
+    const perId = Crops.IDS.filter(Crops.isPerennial)[0];
+    vilF._crop.set(k, { c: perId, p: 0, td: 0, w: 0, wd: 0, ps: 0, q: 1 });
+    const eK = vilF._crop.get(k);
+    SimV2.cropAfterHarvest(eK, 300);
+    ok(SimV2.cropAtCell(cellX, cellY) === perId,
+      '★★⑪ⓐ 다년생은 **수확 뒤에도** 제 작물을 낸다(그루터기가 남았으니 빈 밭이 아니다)', Crops.koOf(perId));
+
+    // ⓑ 배선 — zone 이 정본을 부르고, `vil._crop` 을 직접 안 뒤진다
+    const zsrc2 = require('fs').readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
+    ok(/SimVillages\.cropAtCell\(/.test(zsrc2), '★★⑪ⓑ zone 이 `cropAtCell` 정본을 부른다');
+    // ⚠주석은 빼고 본다 — 위 두 줄이 주석에서 `vil._crop` 을 **설명**한다(첫 판이 여기서 오탐했다).
+    const zcode = zsrc2.replace(/\/\*[\s\S]*?\*\//g, ' ').split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n');
+    ok(!/vil\._crop|\._crop\.get\(/.test(zcode), '★★⑪ⓑ 그리고 `vil._crop` 을 **직접 안 뒤진다**(사본 0 · 주석 제외)');
+    const tick = zsrc2.slice(zsrc2.indexOf('function tickFarmlandStages'), zsrc2.indexOf('function tickFarmlandStages') + 1200);
+    ok(/BUILDING_SIZE/.test(tick), '★⑪ⓑ 칸 좌표를 **같은 격자**(BUILDING_SIZE)로 환산한다', `SZ ${SZc}`);
+    ok(SZc === 32, '★⑪ⓑ 그리고 그 격자가 마을 정본의 격자와 같은 수다(사본 대조)', `villages SZ ${SZc}`);
+    ok(/_crChanged/.test(tick) && /claim_updated/.test(tick),
+      '★★⑪ⓑ 바뀔 때만 실어 보낸다 — **새 메시지 타입 0**(claim_updated 에 필드 하나)');
+    // 클라는 이미 준비돼 있다(T79c) — 서명이 맞는지 본다
+    const csrc = require('fs').readFileSync(path.join(ROOT, 'public', 'client', '34-m-renderloop.js'), 'utf8');
+    ok(/cropSprite\(cl\.farmStage, cl\.crop\)/.test(csrc),
+      '★★⑪ⓑ 클라가 `cropSprite(cl.farmStage, cl.crop)` 로 받는다(T79c 가 깔아 둔 그 줄)');
+  }
+
   console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===`);
   try { require('fs').unlinkSync(process.env.DB_PATH); } catch (e) {}
   process.exit(fail ? 1 : 0);
