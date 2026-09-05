@@ -6025,7 +6025,13 @@ module.exports = {
           _farmN: (L.farmland || []).length, _dryN: (L.dryfield || []).length, _frontier: null, _frontDay: -1 };
       },
       // 하루치 — 라이브 `_lifeHeadlessDay` 의 ① 절과 **같은 함수**를 같은 순서로 부른다.
+      // ★[T117 착지 2026-09-05] 세션3 `farm-metrics.js` 는 `setup` 을 안 부르고 `tickDay` 만 쓴다.
+      //   개간 실체화는 `state.db.insertVillageBuilding` 으로 **행 id** 를 받으므로 그게 없으면 터진다.
+      //   ⇒ 랩에서 db 가 없으면 **셈만 하는 그루터기**를 여기서 꽂는다(라이브는 db 가 늘 있어 이 갈래를 안 탄다).
+      //   ⚠`state.ta` 는 손대지 않는다 — 없으면 `_lifeBatEligible` 이 false 를 돌려 **밭 창발만 꺼진다**
+      //     (논 존닝 개간은 그대로 돈다). 두 팔이 같은 조건이라 A/B 는 성립한다.
       tickDay: (vils) => {
+        if (!state.db) { let _n = 0; state.db = { insertVillageBuilding: () => ++_n }; }
         let n = 0;
         for (const vil of vils) {
           const ev = vil.econ; if (!ev || !ev.npcs || !ev.npcs.length) continue;
