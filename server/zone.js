@@ -11099,7 +11099,11 @@ setInterval(() => {
       //   그래서 클라는 남을 전부 기본 베옷으로 그렸다(`42-r2-char.js charLayersFor` 주석의 그 회부).
       //   전송 문법은 `act` 와 같다(무상태 델타): 최초 가시 + 바뀐 뒤 1.2초 창. 매틱 문자열은 안 보낸다.
       //   ⚠도구는 아직 안 간다 — 이 카드가 닫는 축은 **옷 하나**다(도구·갑옷은 같은 자리에 한 줄씩 더).
-      if (isNew || now - (o._wornAt || 0) < 1200) e.clothes = (getEquippedEquipment(o, 'clothes') || {}).mat || null;
+      //   ★★[T125 2026-09-05] **주민도 이 한 필드를 탄다.** 값의 출처만 갈린다 —
+      //     사람은 제 장비에서, 주민은 **마을 곳간**에서(`villages.syncVillageClothes` 가 하루 한 번
+      //     `_simCloth` 를 놓고 `_wornAt` 을 찍는다 ⇒ 아래 창이 그대로 실어 나른다. 새 필드 0).
+      if (isNew || now - (o._wornAt || 0) < 1200)
+        e.clothes = o.isNpc ? (o._simCloth || null) : ((getEquippedEquipment(o, 'clothes') || {}).mat || null);
       // ★★[T87 2026-09-03] **손에 든 것**과 **등에 진 것** — 옷과 같은 창을 탄다(정본은 서버 술어 둘).
       //   `tool` 은 도구 인스턴스의 `type`(클라가 실루엣 둘로 접는다 — 판정 함수는 자기 것과 **같은 하나**),
       //   `carrier` 는 1비트(지게를 졌나). 옷이 열어 둔 그 자리에 두 줄이면 축이 셋이 된다.

@@ -4283,6 +4283,9 @@ module.exports = {
   totalFoodEquivalent,   // 진단 하네스가 병기고 식량안보 게이트를 정확히 재려면 필요
   consumeFood,           // ★[T73] 식단 사다리의 **순서**를 하네스가 직접 증명하려면 필요(같은 이유)
   RAW_GRAINS, RAW_GRAIN_FOOD_FACTOR,   // ★[T73] 계수를 하네스·계측기가 옮겨 적지 않게(사본 금지)
+  // ★[T125] 옷감 보온 가중 — `server/villages.js` 가 주민 착장 재질을 고를 때 **읽는다**.
+  //   같은 이유(사본 금지)로 이름만 낸다. 값·틱 로직 무접촉 — 이 줄은 시뮬을 한 톨도 안 바꾼다.
+  CLOTH_MATS,
   // 가치사슬 하네스(scripts/test-valuechain.js)가 상수를 **복제하지 않고** 읽도록 노출.
   _SMELT_PER_LABOR: SMELT_PER_LABOR, _SMELT_YIELD: SMELT_YIELD, _MELT_TOTAL,
   // ★시대 게이트 조회 — v2 원석 상한이 같은 판정을 쓰도록(사본 금지). 금속이 아니면 항상 true.

@@ -807,6 +807,61 @@ function syncVillageJobs(vil, changedOut) {
   }
 }
 
+// ★★[T125 2026-09-05] **마을 옷 재고 → 주민 착장.** 재민 캐논: 실체는 회계를 보여 준다.
+//   econ 은 이미 옷을 센다(`storage.clothes` — 재봉 산출 · `CLOTH_TARGET_PC` 1인 1.2벌 목표 ·
+//   `_clothCov` 로 한랭 행복에 들어간다). 그런데 화면의 주민은 **전부 삼베**였다.
+//   ⇒ 곳간에 있는 벌수만큼 입힌다. 이 함수는 econ 을 **읽기만** 한다(재고를 안 깎는다 —
+//     마모는 econ 이 `CLOTH_WEAR_PC` 로 이미 한다. 여기서 또 깎으면 이중 차감이다).
+//
+//   ★결정론 셋:
+//     ⓐ **누가 입나** — `npcPids` 를 **신원 해시**(`_pidHash`)로 줄 세워 앞에서부터 벌수만큼.
+//       ⚠**자리(좌표)로 세우지 않는다.** 주민은 걸어 다니므로 자리를 쓰면 옷이 매틱 깜빡인다
+//         (그리고 `makeEntry` 의 1.2초 창이 그 깜빡임을 그대로 네트워크에 싣는다).
+//         해시는 pid 가 안 바뀌는 한 고정이라 같은 사람이 계속 같은 옷을 입는다.
+//     ⓑ **무슨 재질인가** — 재봉이 오늘 쓸 재료 믹스 그대로다: `storage[m] × 보온가중`.
+//       가중표는 econ 정본(`econ.CLOTH_MATS`)을 **읽는다** — 여기 숫자를 베끼면 둘이 조용히 어긋난다.
+//       ⇒ 모피가 쌓인 마을은 갖옷이 섞이고, 삼밭뿐인 마을은 전부 삼베다. **곳간이 그대로 보인다.**
+//     ⓒ **없으면 맨몸** — 재고 0 이면 `null`. 클라의 `clothLayerOf(null)` 이 삼베로 떨어지므로
+//       맨몸을 그리려면 층 자체를 빼야 한다(그건 클라 몫 — `charLayersFor`).
+//
+//   ★전송은 **옷과 같은 창**을 탄다(사본 0): 값이 바뀐 순간 `_wornAt` 을 찍으면
+//     `zone.js makeEntry` 의 무상태 델타(최초 가시 + 바뀐 뒤 1.2초)가 그대로 실어 나른다.
+//   ★인자를 셋 다 받는다(모듈 상태를 안 읽는다) — 그래야 `scripts/test-npc-clothes.js` 가
+//     **이 함수 그대로**를 가짜 마을에 걸어 배정표를 잴 수 있다(하네스가 산수를 베끼지 않는다).
+function syncVillageClothes(vil, players, econMod) {
+  const pids = vil.npcPids || [];
+  if (!pids.length || !vil.econ || !players) return;
+  const st = vil.econ.storage || {};
+  // 재료 믹스 — 보온 가중 재고 비율(재봉이 소비하는 그 비율).
+  //   ⚠`econ` 은 이 파일의 **모듈 전역이 아니다**(함수마다 지역 이름이다) — 정본은 `state.econ`.
+  //     처음에 `econ.CLOTH_MATS` 로 적었다가 `econ is not defined` 로 일틱이 통째로 죽었고,
+  //     `e2e-village` 가 7건 빨강으로 그걸 잡았다. 여기 적어 둔다.
+  const W = (econMod && econMod.CLOTH_MATS) || null;
+  const mats = [];
+  let haveW = 0;
+  if (W) for (const m in W) { const w = (st[m] || 0) * W[m]; if (w > 0) { mats.push([m, w]); haveW += w; } }
+  mats.sort((a, b) => (b[1] - a[1]) || (a[0] < b[0] ? -1 : 1));   // 값이 같으면 이름순 — 부동소수 순서에 안 흔들린다
+  // 있는 주민만 줄 세운다(스폰 지연·사망으로 pid 가 비면 그 자리를 건너뛴다 = 배정이 밀리지 않는다).
+  const live = [];
+  for (const pid of pids) { const p = players.get(pid); if (p) live.push(p); }
+  if (!live.length) return;
+  live.sort((a, b) => (_pidHash(a.pid) - _pidHash(b.pid)) || (a.pid < b.pid ? -1 : 1));
+  const wearN = Math.max(0, Math.min(live.length, Math.floor(st.clothes || 0)));
+  for (let i = 0; i < live.length; i++) {
+    let mat = null;
+    if (i < wearN) {
+      mat = 'hemp';                                  // 곳간에 옷감이 하나도 안 잡히면 삼베(가장 흔한 것)
+      if (haveW > 0) {
+        const q = (i + 0.5) / wearN * haveW;          // 벌수를 믹스 비율로 자른다(칸 한가운데를 찍는다)
+        let acc = 0;
+        for (const [m, w] of mats) { acc += w; if (q <= acc) { mat = m; break; } }
+      }
+    }
+    const p = live[i];
+    if (p._simCloth !== mat) { p._simCloth = mat; p._wornAt = Date.now(); }   // 옷과 같은 전송 창
+  }
+}
+
 // =============================================================================
 // Stage 4A — 건물 실물화 ①: 회관·집 → 기존 buildings 테이블(wall/floor 행).
 //   · owner 'npc_simvil_<dbId>' — zone.js 부팅 wipe("owner_id LIKE 'npc_%'", ~1001행)가 매 부팅
@@ -3209,6 +3264,7 @@ function _openDayJobs(now) {
       C.econPop += vil.econ.npcs.length;
       syncVillagePop(vil, POP_SYNC_PER_DAY); // 완만 반영: ±POP_SYNC_PER_DAY/일
       syncVillageJobs(vil, C.jobChanges);    // Stage 4A: econ counts 비례 재동기(신규 스폰 포함)
+      syncVillageClothes(vil, state.deps.players, state.econ);   // ★[T125] 곳간 옷 재고 → 주민 착장(econ 읽기만)
       C.npcCount += vil.npcPids.length;
       C.pops[vil.dbId] = vil.econ.npcs.length;
     }
@@ -5889,6 +5945,9 @@ module.exports = {
   farmTilesInRect, clientVillages, isLegacyVillageClaimed,
   // ★[T119] 구조 사건 접점 — `zone.js` 가 살아난 그 순간에 한 줄 남긴다(완공 `noteVillageBuilt` 와 같은 자리)
   noteRescue,
+  // ★[T125] 주민 착장 배정 — `scripts/test-npc-clothes.js` 가 **이 함수 그대로**를 검사한다(사본 0)
+  syncVillageClothes,
+  _pidHash,
   // ★곳간② 클라 표시 — welcome 스냅샷(델타는 onGameTick에서 gran_stock 방송)
   granStocks,
   // ★[10차 T4] 장마당 — welcome 스냅샷(변경분은 onGameTick의 markets 방송)

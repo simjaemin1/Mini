@@ -431,13 +431,10 @@
     weaponsmith: 'tool_hammer',    // ⚔️
     armorsmith: 'tool_hammer',     // 🛡️
   };
-  // 직업 → 그릴 레이어 목록. 몸·삼베는 언제나 있고 소품만 갈린다.
-  //   ★`charLayersFor` 와 **같은 순서 계약**(몸 → 옷 → 도구)을 지킨다 — 깊이는 시트를 구울 때
-  //     홀드아웃이 이미 잡았고, 런타임은 겹치기만 한다.
-  function npcCharLayers(job) {
-    const t = NPC_JOB_TOOL[job];
-    return t ? ['body', 'clothes_hemp', t] : ['body', 'clothes_hemp'];
-  }
+  // ★★[T125 2026-09-05] 여기 있던 `npcCharLayers` 는 **지웠다**(사본 −1). 그 함수가 옷을
+  //   `clothes_hemp` 로 **못 박고** 있었고, 그래서 마을 곳간에 갖옷이 쌓여도 화면은 전부 삼베였다.
+  //   이제 층 목록은 사람·주민 한 함수(`42-r2-char.js charLayersFor`)가 만들고, 이 표는
+  //   그 함수가 **직업 소품**을 고를 때 읽는다(표는 여기 남는다 — 소품은 R2 의 것이다).
   //   ⚠표를 `window` 에 올리지 않는다 — 그건 **최상위 실행문**이고 조각 규약상 `99-main.js` 에만
   //     허용된다(`test-client-globals ③` 이 잡는다 · 실제로 잡혔다). 하네스는 이 표를 베끼지 말고
   //     ⓐ 소스에서 정규식으로 읽거나 ⓑ `window.__charDbg[pid].layers`(이미 있는 진단 훅)를 봐라.

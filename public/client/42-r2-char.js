@@ -87,10 +87,23 @@
   //   ★그리는 순서 = 몸 → 옷 → 등짐 → 손. 깊이는 시트를 구울 때 홀드아웃(몸)이 이미 잡았다 —
   //     등을 보이는 방향에선 지게가 온전히, 앞을 보는 방향에선 어깨끈만 남는다(굽기가 판정한다).
   //   시트 실루엣은 둘뿐이다: 자루+날(axe) / 긴 장대(rod). 종류 확장은 목록 한 줄 + 재렌더.
+  //   ★★[T125 2026-09-05] **주민도 이 함수를 탄다** — `npcCharLayers` 는 지웠다(사본 −1).
+  //     종전엔 주민만 별도 함수였고 그래서 **옷이 언제나 삼베로 못 박혀** 있었다. 이제 옷은
+  //     `o.clothes`(= 마을 곳간이 정한 재질) 하나에서 오고, 사람도 주민도 **같은 줄**을 지난다.
+  //     ⓐ **맨몸이 그려진다** — 곳간이 빈 마을의 주민은 `o.clothes === null` 이고 `o.job` 이 있다.
+  //        그때만 옷 층을 **뺀다**(`clothLayerOf(null)` 은 삼베라 그 함수로는 맨몸을 못 그린다).
+  //        사람은 벗어도 삼베다(종전 계약 — 장비 없는 몸은 기본 베옷).
+  //     ⓑ **도구는 두 출처가 한 자리에서 만난다**: 사람은 `o.tool`(실루엣 둘), 주민은 직업표
+  //        (`NPC_JOB_TOOL` — 다섯 실루엣). 직업표를 `tool` 문자열로 접지 **않는다**: 그러면
+  //        괭이·채반·창·망치가 도끼/장대 둘로 뭉개진다(§0-ⓑ 표 — 통일이 정보를 줄이는 자리다).
   function charLayersFor(isMe, o) {
-    const L = ['body', clothLayerOf(isMe ? myClothMat() : (o && o.clothes))];
+    const job = (!isMe && o) ? o.job : null;
+    const L = ['body'];
+    if (!(job && o && !o.clothes)) L.push(clothLayerOf(isMe ? myClothMat() : (o && o.clothes)));
     const back = isMe ? !!(equipSlots && equipSlots.back) : !!(o && o.carrier);
     if (back && hasCharLayer('back_carrier')) L.push('back_carrier');
+    const jt = job ? NPC_JOB_TOOL[job] : null;
+    if (jt) { if (hasCharLayer(jt)) L.push(jt); return L; }
     const t = isMe ? myToolType() : String((o && o.tool) || '');
     if (t) L.push(/rod|fish|낚/i.test(t) ? 'tool_rod' : 'tool_axe');
     return L;
@@ -131,8 +144,8 @@
     if (!uiCfg.charSprite) return false;
     const m = charMeta();
     if (!m) return false;
-    // ★[T13] NPC 는 직업 표식 표를 쓴다(`40-r2-sprites.js` — 이 파일에 함수를 새로 만들지 않는다).
-    const layers = opts.job ? npcCharLayers(opts.job) : charLayersFor(isMe, opts);
+    // ★[T125] 사람이든 주민이든 **한 함수**다(옛 `npcCharLayers` 갈래는 없앴다 — 사본 0).
+    const layers = charLayersFor(isMe, opts);
     // ★한 장이라도 안 떠 있으면 **아무것도 안 그린다** — 반쪽 합성(몸만·옷만)이 화면에 나가면
     //   "픽셀 정렬 0px" 계약이 지켜지는지 눈으로 볼 수 없다. 다 뜰 때까지 도형으로 버틴다.
     const st0 = _charAnim.get(opts.pid);
@@ -168,6 +181,7 @@
     window.__charDbg[opts.pid] = { on: true, clip: stt.clip, frame: stt.frame, row,
                          layers: layers.slice(),
                          job: opts.job || null,      // ★[T13] NPC 직업 — 하네스가 표식을 판정하는 재료
+                         clothes: opts.clothes || null,   // ★[T125] 서버가 실어 온 옷 재질(주민은 마을 곳간)
 
                          speed: +(opts.speed || 0).toFixed(2),
                          aiming: !!opts.aiming, isMe: !!isMe, fw, fh,

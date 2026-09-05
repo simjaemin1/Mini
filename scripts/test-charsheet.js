@@ -72,7 +72,15 @@ const META = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
   //   이름이 곧 해제 조건이었다 — *"마을 적용은 회부된 별도 배치"*. **그 배치가 T13 이다.**
   //   ⇒ 지우지 않고 **새 계약으로 갈아 끼운다**: NPC 도 시트로 가되, 직업 표를 쓰고, 폴백은 산다.
   ok(!/!item\.npc &&/.test(cl), '★★NPC 제외가 풀렸다 (T13 — 마을 주민도 소체 시트)');
-  ok(/npcCharLayers\(/.test(cl), '★NPC 는 직업 표(`npcCharLayers`)로 레이어를 고른다');
+  // ★★[T125 2026-09-05] 이 줄도 **갈아 끼운다.** T13 은 주민에게 *별도 함수*(`npcCharLayers`)를
+  //   줬고, 그 함수가 옷을 `clothes_hemp` 로 **못 박고** 있었다 — 마을 곳간에 갖옷이 쌓여도
+  //   화면은 전부 삼베였다. T125 가 그 갈래를 없애고 **사람과 같은 함수**로 보냈다.
+  //   ⇒ 새 계약: 층 함수는 **하나**이고, 주민 옷은 `o.clothes`(마을 곳간)에서 온다.
+  ok(!/function npcCharLayers/.test(cl), '★★주민 전용 층 함수가 없다 (T125 — 사본 −1)');
+  ok(/const layers = charLayersFor\(isMe, opts\);/.test(cl),
+     '★사람도 주민도 **같은 한 줄**로 층을 고른다');
+  ok(/const jt = job \? NPC_JOB_TOOL\[job\] : null;/.test(cl),
+     '★직업 소품은 그 한 함수 안에서 표를 읽는다 (다섯 실루엣이 안 뭉개진다)');
   ok(/const NPC_JOB_TOOL = \{/.test(cl), '★직업 표가 클라 소스에 하나뿐이다(사본 금지)');
   ok(/job: item\.npc \?/.test(cl), '★`job` 은 NPC 일 때만 실린다 — 사람 경로는 종전 그대로');
   ok(/Math\.min\(_rawSpeed, _npcRun - 1\)/.test(cl),
