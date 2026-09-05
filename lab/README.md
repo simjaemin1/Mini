@@ -7,3 +7,6 @@
 * 이제 **정본은 여기**다. 맥 `~/Mini/*.html` 은 재민이 열어 보는 사본 — 세션이 랩을 고치면 여기서 고치고, PM 이 맥에 되돌려 놓는다.
 * 랩 안에는 저장소 모듈의 **인라인 사본**(econ 엔진 · path-core)이 있다 — 3사본 규약(`scripts/lab-wiring-check.js` · `sim/inline-econ.js`·`sim/inline-path.js --check`). 랩 파일을 만지는 카드는 그 검사를 돌린다.
 * 랩 검증 카드 규약(새 기전을 서버에 넣기 전): 전쟁실험실에 기전을 넣고 800일 표 → 답이 서면 서버로 이식(랩 동형 하네스) → 승인 게이트. 랩이 먼저, 이식이 뒤.
+* 랩 검사 다섯의 기본 경로가 레포 **밖**(`~/Mini/…`)이라 컨테이너·CI 에선 늘 건너뛰거나 못 찾았다 — 2026-09-05 T123 이 전부 `lab/` 로 고쳤다(`inline-engine`·`inline-path`·`lab-wiring-check`·`test-lab-{market,mining,psite}`). **건너뜀은 검사가 아니다.**
+* 나무 종·열매·벌목 부등식·채집은 T123 이 랩에 세웠다(`보고/T123_2026-09-05.md`). 표는 `node scripts/build-trees.js` 로 `lab/trees.json` 에 굽는다(손편집 금지 · `--check` 가 어긋남을 잡는다 · `--table` 이 성목 햇수를 실시간으로 환산). 800일 표는 `node scripts/lab-trees.js [일수] [시드] [--nofruit]`.
+* ⚠**랩은 그냥 두면 두 번이 다르다**(`Math.random`). 랩 표를 인용하는 도구는 `test-lab-mining` 처럼 페이지 뜨기 전에 PRNG 를 시드로 갈아 끼워라 — `scripts/lab-trees.js` 가 그 예다.

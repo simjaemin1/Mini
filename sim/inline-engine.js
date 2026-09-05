@@ -21,7 +21,9 @@
 const fs = require('fs');
 const path = require('path');
 const bundlePath = path.join(__dirname, 'economy-engine.browser.js');
-const labRoot = path.join(__dirname, '..', '..');
+// ★[T123 2026-09-05] 랩이 **레포 안으로 들어왔다**(PM c7778a49 · `lab/`). 종전 기본값은 저장소 **밖**
+//   (`../../마을실험실.html`)이라 컨테이너에선 언제나 '없음 — 건너뜀'이었다. 건너뜀은 검사가 아니다.
+const labRoot = path.join(__dirname, '..', 'lab');
 // ★기본 대상 = 인라인 엔진을 쓰는 랩 전부. 새 랩을 포크했으면 여기 추가한다.
 const DEFAULT_LABS = ['마을실험실.html', '전쟁실험실.html'];
 

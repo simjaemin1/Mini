@@ -17,7 +17,9 @@ const path = require('path');
 const os = require('os');
 
 const CHROME = process.env.CHROME_PATH || undefined;
-const LAB = 'file://' + (process.env.LAB_FILE || path.join(os.homedir(), 'Mini', '전쟁실험실.html'));
+// ★랩 파일 경로: LAB_FILE 환경변수(기본 `lab/전쟁실험실.html`).
+//   ⚠[T123 2026-09-05] 종전 기본값은 레포 밖 `~/Mini/…` 였다 — 랩이 레포 안으로 들어온 뒤에도 남아 조용히 어긋났다.
+const LAB = 'file://' + (process.env.LAB_FILE || path.resolve(__dirname, '..', 'lab', '전쟁실험실.html'));
 const SPEED = parseInt(process.env.SPEED || '119', 10);
 const NVIL = 3, POP = parseInt(process.env.POP || '40', 10), SEED = 7;
 const RUN_DAYS = parseInt(process.env.RUN_DAYS || '60', 10);

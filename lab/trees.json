@@ -1,0 +1,87 @@
+{
+ "_source": "lab/전쟁실험실.html `const TREES` (T123) — 손편집 금지 · `node scripts/build-trees.js` 로 굽는다",
+ "_note": "서버는 아직 이 파일을 읽지 않는다(이식은 승인 게이트 카드). 종에 우열 없음 — 값은 그림자가격이 정한다.",
+ "_axes": {
+  "ko": "이름",
+  "wood": "목재 수율(소나무=1.00 상대 재적)",
+  "mature": "성목 햇수(벤 자리가 다시 성목이 되기까지)",
+  "char": "숯 수율(참나무=1.00 상대)",
+  "fruit": "열매 품목 아이디(없으면 null — 목재 전용 종)",
+  "fy": "연간 열매 수율(나무 하나·성목 기준)",
+  "fs": "결실철(0봄 1여름 2가을 3겨울)"
+ },
+ "trees": {
+  "pine": {
+   "ko": "소나무",
+   "wood": 1,
+   "mature": 25,
+   "char": 0.55,
+   "fruit": null,
+   "fy": 0,
+   "fs": 2
+  },
+  "jat": {
+   "ko": "잣나무",
+   "wood": 0.9,
+   "mature": 30,
+   "char": 0.5,
+   "fruit": null,
+   "fy": 0,
+   "fs": 2
+  },
+  "oak": {
+   "ko": "참나무",
+   "wood": 0.95,
+   "mature": 40,
+   "char": 1,
+   "fruit": "acorn",
+   "fy": 0.6,
+   "fs": 2
+  },
+  "chestnut": {
+   "ko": "밤",
+   "wood": 0.75,
+   "mature": 12,
+   "char": 0.7,
+   "fruit": "chestnut",
+   "fy": 1,
+   "fs": 2
+  },
+  "hazel": {
+   "ko": "개암",
+   "wood": 0.35,
+   "mature": 6,
+   "char": 0.45,
+   "fruit": null,
+   "fy": 0,
+   "fs": 2
+  },
+  "mulberry": {
+   "ko": "산뽕",
+   "wood": 0.45,
+   "mature": 8,
+   "char": 0.4,
+   "fruit": "mulberry",
+   "fy": 0.8,
+   "fs": 1
+  },
+  "grape": {
+   "ko": "머루",
+   "wood": 0.1,
+   "mature": 4,
+   "char": 0.1,
+   "fruit": "grape",
+   "fy": 0.9,
+   "fs": 2
+  },
+  "willow": {
+   "ko": "버들",
+   "wood": 0.5,
+   "mature": 7,
+   "char": 0.3,
+   "fruit": null,
+   "fy": 0,
+   "fs": 2
+  }
+ }
+}

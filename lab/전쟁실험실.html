@@ -1350,6 +1350,17 @@ function _computeVillageStats(v, N) {
     if ((_eaten[id] || 0) / pop > 0.03) _fg.add(FOOD_GROUP[id]);
   }
   if ((_eaten.cooked_food || 0) / pop > 0.03) _fg.add('grain');   // 조리식 = 곡물군
+  // ★★[T86] **행복은 "몇 군 먹었나"가 아니라 "예산대로 먹었나"** 다.
+  //   종전 `_fg.size / DIVERSITY_FULL` 은 **문턱 계단**이라 3% 를 한 톨 넘기면 만점이 붙었다.
+  //   ⇒ 달성 효용 비: U = Σ w_g · log(1 + x_g / x̄_g) 를 이상 식단(x_g = x̄_g) 대비 0..1 로.
+  //     x_g   = 그 군에서 실제로 먹은 **열량**(1인당) · x̄_g = 하루치 × w_g (예산이 곧 이상 식단)
+  //     이상일 때 U* = Σ w_g · log 2 = log 2 (Σw_g = 1) ⇒ 비 = U / log 2.
+  //   ★새 수 0 — w_g 는 위 표, 하루치는 `DAILY_FOOD_CONSUMPTION`, 나머지는 로그뿐이다.
+  //   ⚠`stats.foodGroups` 는 **계측용으로 남긴다**(옛 판정과 나란히 볼 수 있게).
+  // ★★[T86 · 재민 판정 ⓑ 2026-09-04] **행복은 종전 계단을 유지한다.**
+  //   달성 효용 비(U = Σ w_g·log(1+min(1,x_g/x̄_g)) ÷ log2)를 같은 판에서 켰더니 인구가 5,933 → 5,524 로
+  //   더 내려갔고, **식단 변경과 행복 변경 중 어느 쪽이 깎았는지 못 가르게** 됐다. 표는 보고 §2-b 에 남겼다.
+  //   ⇒ 행복 판정을 계단에서 연속으로 바꾸는 것은 **그 자체로 카드 하나**다(하위 25% 1.252 → 0.316).
   const _divN = Math.min(1, _fg.size / DIVERSITY_FULL);
   stats.happiness += _divN * DIVERSITY_HAPPY_W;
   stats.health += _divN * DIVERSITY_HEALTH_W;
@@ -1744,22 +1755,87 @@ function consumeFood(v, need) {
   // ★소비량 군별 기록(_foodEaten) — 이게 진짜 식단(자체생산+수입, 신선히 먹은 것 포함). 다양성 판정에 씀.
   const eaten = v._foodEaten || (v._foodEaten = {});
   for (const k in eaten) eaten[k] = 0;
+  // ★★[T86] **예산 단계 — 사다리보다 먼저.** 열량 예산 `need` 를 군별 몫 w_g 로 나누고, 군 안에서는
+  //   **열량 1단위당 유효가격**(그림자가격 ÷ 열량환산)이 싼 품목부터 먹는다.
+  //   ★군별 배정은 **가격 가중 지출 몫**이다(재민 판정 ⓓ): x_g = need × (w_g/p_g) / Σ(w_h/p_h).
+  //   ⚠가격은 **v2 가 마을에 덮어 둔 캐시**(`_priceCache`)를 읽는다 — `server/trade.js` 머리 주석의
+  //     "같은 날 안에선 같은 값" 규약을 식단도 그대로 따른다(NPC 교역 틱과 같은 표를 본다 · 사본 0).
+  //   ⚠캐시가 없으면(v1 CLI · 픽스처 · 하네스) **조용히 아래 사다리로 내려간다** = 종전과 비트 동일.
+  //     그게 하위 호환의 자리다 — 곳간에 한 품목뿐인 마을도 종전과 같다(예산이 한 군에 다 간다).
+  if (T86_DIET && remaining > 1e-9) {
+    const P = v._priceCache;
+    if (P) {
+      const cand = {};
+      for (const r in T86_GROUP) {
+        if (PRESERVED_FOODS.indexOf(r) >= 0) continue;      // 보존식은 예산 밖 — 맨 뒤 규약(T17 ②)
+        const q = v.storage[r] || 0; if (!(q > 0)) continue;
+        const fe = _t86Factor(r); if (!(fe > 0)) continue;
+        const pr = P[r]; if (!(pr > 0)) continue;
+        const g = T86_GROUP[r];
+        (cand[g] || (cand[g] = [])).push({ r, fe, per: pr / fe });   // 유효가격 = 그림자가격 ÷ 열량환산
+      }
+      const groups = Object.keys(cand);
+      if (groups.length) {
+        for (const g of groups) cand[g].sort((a, b) => a.per - b.per);
+        // ★★[T86 · 재민 판정 ⓓ 2026-09-05] **배정은 등분이 아니라 가격 가중 지출 몫이다.**
+        //   첫 판(PM 지시서 초안)은 `need × w_g` — **가격을 무시한 등분**이었다. 그건 재민이 처음부터
+        //   경계한 *"무조건 골고루"* 그 자체이고, 실측이 그대로 보여 줬다: 어촌3 이 곡물을 사느라 207 → 34.
+        //   ⇒ Cobb-Douglas 지출 몫: 효용 Π x_g^{w_g} 를 예산제약 아래 풀면 **x_g ∝ w_g / p_g** 다.
+        //     열량 예산 `need` 로 정규화 ⇒  x_g = need × (w_g/p_g) / Σ_h (w_h/p_h)
+        //     p_g = 그 군에서 **가장 싼** 열량 1단위 값(§0-ⓐ 유효가격 = 그림자가격 ÷ 열량환산)
+        //           — 예산이 실제로 사는 그 값이다(군 안 정렬의 첫 칸).
+        //     재고 없는 군은 애초에 `cand` 에 안 들어오므로 **분모에서 빠지고 자연히 재정규화**된다.
+        //   ⇒ 싼 군이 더 많은 열량을 받는다. 어촌은 생선이 싸니 생선을 더 먹되, 곡물이 싸지면 곡물도 산다.
+        let wsum = 0;
+        const wp = {};
+        for (const g of groups) {
+          const pg = cand[g][0].per;                       // 정렬돼 있다 — 첫 칸이 그 군의 최저가
+          wp[g] = (pg > 0) ? (T86_W[g] || 0) / pg : 0;
+          wsum += wp[g];
+        }
+        let budget = {};
+        for (const g of groups) budget[g] = need * ((wp[g] || 0) / (wsum || 1));
+        // 한 바퀴 배정 + 한 바퀴 재분배(지시 §1 "재분배 한 바퀴")
+        for (let pass = 0; pass < 2 && remaining > 1e-9; pass++) {
+          let leftover = 0;
+          for (const g of groups) {
+            let b = Math.min(budget[g] || 0, remaining);
+            for (const it of cand[g]) {
+              if (b <= 1e-9 || remaining <= 1e-9) break;
+              const q = v.storage[it.r] || 0; if (!(q > 0)) continue;
+              const take = Math.min(b / it.fe, q);
+              const got = take * it.fe;
+              v.storage[it.r] = q - take;
+              b -= got; remaining -= got; eaten[it.r] = (eaten[it.r] || 0) + take;
+            }
+            leftover += b;
+          }
+          if (leftover <= 1e-9) break;
+          const alive = groups.filter((g) => cand[g].some((it) => (v.storage[it.r] || 0) > 1e-9));
+          if (!alive.length) break;
+          let w2 = 0; for (const g of alive) w2 += wp[g] || 0;   // 재분배도 같은 가격 가중으로
+          budget = {};
+          for (const g of alive) budget[g] = leftover * ((wp[g] || 0) / (w2 || 1));
+        }
+      }
+    }
+  }
   // 1) cooked_food (영양 풍부)
   if (v.storage.cooked_food > 0) {
     const eff = Math.min(remaining / 1.12, v.storage.cooked_food);
-    v.storage.cooked_food -= eff; remaining -= eff * 1.12; eaten.cooked_food = eff;
+    v.storage.cooked_food -= eff; remaining -= eff * 1.12; eaten.cooked_food = (eaten.cooked_food || 0) + eff;
   }
   // 2) fish/meat
   for (const r of ['fish', 'meat']) {
     if (remaining > 0 && v.storage[r] > 0) {
       const eff = Math.min(remaining, v.storage[r]);
-      v.storage[r] -= eff; remaining -= eff; eaten[r] = eff;
+      v.storage[r] -= eff; remaining -= eff; eaten[r] = (eaten[r] || 0) + eff;
     }
   }
   // 3) 농작물 food
   if (remaining > 0 && v.storage.food > 0) {
     const eff = Math.min(remaining, v.storage.food);
-    v.storage.food -= eff; remaining -= eff; eaten.food = eff;
+    v.storage.food -= eff; remaining -= eff; eaten.food = (eaten.food || 0) + eff;
   }
   // 3.5) ★★[T73] 생곡 — **`food` 바로 뒤, 채집물 앞.**
   //   왜 이 자리인가(한 줄): 생곡은 **같은 곡물**이라 도정 한 번이면 `food` 다 — 채집물(0.25~0.5)보다
@@ -1773,7 +1849,7 @@ function consumeFood(v, need) {
       if (remaining > 0 && v.storage[r] > 0) {
         const need = remaining / RAW_GRAIN_FOOD_FACTOR;
         const consumed = Math.min(need, v.storage[r]);
-        v.storage[r] -= consumed; remaining -= consumed * RAW_GRAIN_FOOD_FACTOR; eaten[r] = consumed;
+        v.storage[r] -= consumed; remaining -= consumed * RAW_GRAIN_FOOD_FACTOR; eaten[r] = (eaten[r] || 0) + consumed;
       }
     }
   }
@@ -1785,7 +1861,7 @@ function consumeFood(v, need) {
       const unitsNeeded = remaining / f;
       const consumed = Math.min(unitsNeeded, v.storage[r]);
       v.storage[r] -= consumed;
-      remaining -= consumed * f; eaten[r] = consumed;
+      remaining -= consumed * f; eaten[r] = (eaten[r] || 0) + consumed;
     }
   }
   // 5) ★★[T17 ② 2026-09-02 · 재민 확정] **보존식 — 사다리 맨 뒤.**
@@ -1799,7 +1875,7 @@ function consumeFood(v, need) {
         // ★환산 2.5 — 채집물 사다리와 **같은 꼴**이되 방향이 반대다(채집물은 0.3~0.4, 보존식은 2.5).
         const need = remaining / PRESERVE_FOOD_FACTOR;
         const consumed = Math.min(need, v.storage[r]);
-        v.storage[r] -= consumed; remaining -= consumed * PRESERVE_FOOD_FACTOR; eaten[r] = consumed;
+        v.storage[r] -= consumed; remaining -= consumed * PRESERVE_FOOD_FACTOR; eaten[r] = (eaten[r] || 0) + consumed;
       }
     }
   }
@@ -1975,6 +2051,59 @@ const FOOD_GROUP = { food: 'grain', fish: 'fish', meat: 'meat', fruit: 'fruit', 
 // ★곡물 과잉버퍼 직접 감산 대상 — 곡류·조리식. 식량가는 효용↑라 글럿에도 가격이 안 떨어져 raw-taper가 안 걸림 →
 //   버퍼 일수 기준으로 직접 캡(잉여 farming을 여가·교역로). K는 잠재생산 기준이라 불변 → 인구 안정, 낭비만↓. (어·육·채는 다양성이라 제외)
 const FOOD_GLUT_SAT = { food: 1, cooked_food: 1, wheat: 1, rice: 1, barley: 1 };
+
+// ═══ ★★★[T86 ECON 수술 2-d 2026-09-03 · 재민 확정] **식단은 사다리가 아니라 예산이다** ═══════
+//   재민 물음: *"식량이 여러 종류 있으면 골고루 소모해? 저렴한 것부터? 골고루만이면 비효율,
+//   저렴한 것부터면 행복이 바닥 — 경제학적 균형을 맞춰야."*
+//   종전 `consumeFood` 는 **고정 사다리**였다: 위 칸이 넉넉하면 그것만 먹고 **가격을 안 봤다.**
+//   그래서 어촌은 곳간에 곡식이 있어도 생선만 먹어 다양성 1군이고, 가난한 마을이 긁어먹다 우연히 4군이었다.
+//   ⇒ 다양성이 **설계가 아니라 재고 부족의 부산물**이었다. 그걸 예산 배분으로 바꾼다.
+//
+// ★군 배정 — **새 군을 만들지 않는다.** `FOOD_GROUP` 6군 그대로이고, 표에 없던 품목만 제 군에 넣는다:
+//   · 생곡(밀·쌀·보리) → `grain`   T73 이 식량으로 만들었는데 다양성 표는 아직 못 보고 있었다
+//   · 조리식 `cooked_food` → `grain`   근거는 이 파일의 `FOOD_GLUT_SAT` — 거기서 이미 곡물과 한 묶음이다
+//   · 특산 어패(연어·새우·게·굴·미역) → `fish` · 산포도 → `fruit` · 견과·도토리 → `forage`
+//     (전부 `FORAGE_FOOD_FACTOR` 가 이미 열량을 매겨 둔 품목이다 — 새 수 0)
+const T86_GROUP = Object.assign({}, FOOD_GROUP, {
+  wheat: 'grain', rice: 'grain', barley: 'grain', millet: 'grain', cooked_food: 'grain',
+  salmon: 'fish', shrimp: 'fish', crab: 'fish', oyster: 'fish', seaweed: 'fish',
+  grape: 'fruit', chestnut: 'forage', walnut: 'forage', acorn: 'forage',
+});
+// ★군별 몫 w_g — **새 수를 짓지 않는다.** `server/specialty.js` 의 `contributes.subsistence` 를
+//   군별로 평균 내어 정규화한 값이다(§0-ⓑ 표). 후보 셋을 시드 1020 으로 걸러 이것이 채택됐다.
+//     grain  밀1·쌀1·보리0.9·기장0.9 → 0.950      meat   훈제육0.8            → 0.800
+//     fish   연어0.9·새우0.4·게0.5·굴0.3·미역0.4·건어물0.8 → 0.550
+//     veg    절임0.5 → 0.500   fruit  말린과실0.4 → 0.400   forage 버섯0.3 → 0.300
+//   ⚠표본 수가 군마다 1~6개로 고르지 않다(meat 는 훈제육 하나다) — 그 한계는 보고 §1 에 적었다.
+//   ⚠`T86_WMODE` 는 **후보 스크린용 손잡이**다(지시 §2-① — 후보 셋을 시드 1020 으로 거른다).
+//     기본은 유도값(i). ii=균등 1/6 · iii=캐논 유도(`DIVERSITY_FULL`=4 ⇒ 상위 4군에 1/4씩).
+//   ★채택 = **ii(균등 1/6)**. 시드 1020 만 보면 유도값(i)이 1등이었는데(+0.7%) **시드 42 에서 소멸 2/51**
+//     을 냈다. 셋 중 **세 시드 모두 소멸 0/51 을 지키는 유일한 후보**가 ii 다(보고 §2-d).
+const T86_WMODE = process.env.T86_WMODE || 'ii';
+const T86_W = (() => {
+  if (T86_WMODE === 'ii') { const e = 1 / 6; return { grain: e, meat: e, fish: e, veg: e, fruit: e, forage: e }; }
+  if (T86_WMODE === 'iii') { const q = 1 / DIVERSITY_FULL; return { grain: q, meat: q, fish: q, veg: q, fruit: 0, forage: 0 }; }
+  return { grain: 0.2714, meat: 0.2286, fish: 0.1571, veg: 0.1429, fruit: 0.1143, forage: 0.0857 };
+})();
+// ★★[T86 · 재민 판정 2026-09-04] **부패 항은 안 넣는다 — 방향은 맞는데 크기가 없다.**
+//   지시 초안은 유효가격 = 그림자가격 × (1 − `DECAY_RATES`) 였다. 방향은 옳다(썩는 게 싸져 먼저 먹힌다).
+//   그런데 실측하니 `DECAY_RATES` 는 여섯 품목뿐이고(생곡·보존식·특산은 **0**) 값이 0.003~0.008 이라
+//   그 곱은 가격을 **최대 0.8%** 움직인다 — 군 안 정렬 순서를 **한 번도 안 바꾼다**(§0-ⓒ 표).
+//   ⇒ 재민 판정: **새 항 0 이 낫다.** 안 쓰는 항을 식에 남기면 다음 사람이 그게 작동한다고 읽는다.
+//   ⇒ 유효가격 = **그림자가격 ÷ 열량환산** 하나뿐이다. `DECAY_RATES` 는 원래 자리(부패 틱)에 그대로 있다.
+// ★보존식은 **예산에 안 들어간다** — 사다리 맨 뒤 규약(T17 ②) 그대로다.
+//   §0-ⓒ 실측이 그 예외를 요구했다: 재고를 채우고 재면 보존식 **열량 단위당 가격이 신선식보다 싸다**
+//   (말린과실 0.283 · 절임 0.353 · 건어물 0.461  대  과일 0.499 · 조리식 0.710 · 연어 1.794).
+//   ⇒ 예산에 넣으면 **말려 두는 게 이득**이 되어 신선식 시장이 죽는다. 그래서 뺐다.
+const T86_DIET = process.env.T86_DIET !== '0';   // 되돌림: T86_DIET=0 → T73 사다리 비트 재현
+
+// 이 품목 1단위가 내는 열량(= food 단위). 전부 이 파일의 기존 표에서 읽는다 — 사본 0.
+function _t86Factor(r) {
+  if (r === 'cooked_food') return 1.12;
+  if (r === 'food' || r === 'fish' || r === 'meat') return 1;
+  if (RAW_GRAINS.indexOf(r) >= 0) return RAW_GRAIN_FOOD_FACTOR;
+  return FORAGE_FOOD_FACTOR[r] || 0;
+}
 // ★무용재 — 실수요(use-value)가 ~0이라 수출해도 식량 못 삼. 식량안보와 무관하게 *항상* 생산 포만(성장기 누적까지 차단).
 //   광석(ore): 갑옷에 미량뿐. 장식재(금·은·보석): 화폐화 전엔 수요 0. 돌·금속(구리·주석)은 수요 있어 제외(가치재 수출).
 const SAT_ALWAYS = { ore: 1, gold: 1, silver: 1, gem: 1, pearl: 1, amber: 1, jade: 1, ivory: 1 };
@@ -5412,6 +5541,9 @@ module.exports = {
   totalFoodEquivalent,   // 진단 하네스가 병기고 식량안보 게이트를 정확히 재려면 필요
   consumeFood,           // ★[T73] 식단 사다리의 **순서**를 하네스가 직접 증명하려면 필요(같은 이유)
   RAW_GRAINS, RAW_GRAIN_FOOD_FACTOR,   // ★[T73] 계수를 하네스·계측기가 옮겨 적지 않게(사본 금지)
+  // ★[T125] 옷감 보온 가중 — `server/villages.js` 가 주민 착장 재질을 고를 때 **읽는다**.
+  //   같은 이유(사본 금지)로 이름만 낸다. 값·틱 로직 무접촉 — 이 줄은 시뮬을 한 톨도 안 바꾼다.
+  CLOTH_MATS,
   // 가치사슬 하네스(scripts/test-valuechain.js)가 상수를 **복제하지 않고** 읽도록 노출.
   _SMELT_PER_LABOR: SMELT_PER_LABOR, _SMELT_YIELD: SMELT_YIELD, _MELT_TOTAL,
   // ★시대 게이트 조회 — v2 원석 상한이 같은 판정을 쓰도록(사본 금지). 금속이 아니면 항상 true.
@@ -8872,6 +9004,68 @@ function relayoutVillage(s,np){
 }
 // ★자원 셀(숲·광맥): richness가 채취로 줄고 재생됨. 고갈되면 economy land.wood/stone capacity도 비례 감소(진짜 자원 한계).
 const L_WOODMAX=100, L_WOODREGROW=0.10, L_CHOP=8;   // 숲: 최대 richness · (구 선형 일일재생, 이제 로지스틱으로 승격 — 아래 L_WOODREGLOG) · 벌목꾼 1명 일일 벌목량. ★땔감과 결합해 숲 지속가능성=인구 상한 지렛대(높을수록 부양인구·생존↑). 게임 난이도 노브. (진동은 forest 무관 확인 — 리젠 0.13도 못 잡음)
+// ═══ ★★★[T123 2026-09-05 · 재민 확정 다섯] 나무 종 축 · 열매 · 벌목 부등식 · 채집 ═══
+//   ★캐논: **작물 카탈로그 문법**(T58a) — 표가 정본이고 코드는 축을 읽는다. 여기 표가 `trees.json` 의 뼈대다.
+//   ★★**종에 우열이 없다.** 축은 넷(목재 수율 · 성목 햇수 · 숯 수율 · 열매)뿐이고,
+//     무엇이 값진지는 **그림자가격이 정한다**(w) — 표에 "좋은 나무"를 적지 않는다.
+//   ⓘ 출처: 한국 자생 수종의 상대 재적·결실 습성. 값은 **랩 판정용 초안**이고 재민 판정거리다(보고 표).
+//   ★★★**아이디는 두 정본과 맞춘다 — 어휘가 둘이면 그게 사본이다.**
+//     ① 그림: `public/assets/trees/tree_species.json`(T129 · `6b5d17e8`) — 종 여덟(잣 포함).
+//        그 파일이 스스로 적어 뒀다: *"수치(성장·수확·벌목)는 서버/랩이 정본이고 여기 없다."* ⇒ 수는 여기, 이름은 거기.
+//     ② 품목: `sim/economy-sim.js` 의 `FORAGE_FOOD_FACTOR`/`T86_GROUP` — **econ 이 이미 아는 열매만** 쓴다.
+//        ⚠초안이 `hazelnut`·`mulberry_leaf` 를 지어냈다. econ 품목표에 없는 이름이라 곳간에 유령이 쌓이고
+//          `w()` 가 전부 1.0(모름) 이 되어 **부등식이 값을 못 읽는 채로 돌았다**. 없는 품목은 `null` 이 맞다.
+//        ⇒ 개암·잣의 열매 품목은 **아직 없다**(회부 — `hazelnut`·`pine_nut` 을 넣을지는 이식 카드 판정).
+const TREES={
+  //           목재  성목  숯    열매품목       연간열매  결실철(0봄1여2가3겨)
+  pine:      { ko:'소나무', wood:1.00, mature: 25, char:0.55, fruit:null,       fy:0,    fs:2 },
+  jat:       { ko:'잣나무', wood:0.90, mature: 30, char:0.50, fruit:null,       fy:0,    fs:2 },   // 잣 품목 없음 — 회부
+  oak:       { ko:'참나무', wood:0.95, mature: 40, char:1.00, fruit:'acorn',    fy:0.60, fs:2 },   // 도토리 — 구황(FORAGE 0.25)
+  chestnut:  { ko:'밤',    wood:0.75, mature: 12, char:0.70, fruit:'chestnut', fy:1.00, fs:2 },   // 밤 — FORAGE 0.5
+  hazel:     { ko:'개암',  wood:0.35, mature:  6, char:0.45, fruit:null,       fy:0,    fs:2 },   // 개암 품목 없음 — 회부
+  mulberry:  { ko:'산뽕',  wood:0.45, mature:  8, char:0.40, fruit:'mulberry', fy:0.80, fs:1 },   // 뽕나무 잎(양잠) — specialty 정본 id
+  grape:     { ko:'머루',  wood:0.10, mature:  4, char:0.10, fruit:'grape',    fy:0.90, fs:2 },   // 산포도 — FORAGE 0.3
+  willow:    { ko:'버들',  wood:0.50, mature:  7, char:0.30, fruit:null,       fy:0,    fs:2 },
+};
+const TREE_IDS=Object.keys(TREES);
+const T_FRUIT_IDS=TREE_IDS.filter(k=>TREES[k].fruit);
+// ★종 배정 — **주사위가 아니라 자리**다(작물 야생 채종·병충해와 같은 문법 · 결정론).
+//   같은 셀은 몇 번을 물어도 같은 종이고, 시드가 바뀌면 숲의 얼굴이 바뀐다.
+function _th32(a,b,c){let h=(Math.imul(a|0,374761393)+Math.imul(b|0,668265263)+Math.imul(c|0,1274126177))|0;h=Math.imul(h^(h>>>13),1274126177);return (h^(h>>>16))>>>0;}
+function treeAt(x,y){return TREE_IDS[_th32(x,y,(typeof SEED!=='undefined'?SEED:0)|0)%TREE_IDS.length];}
+function treeOf(x,y){return TREES[treeAt(x,y)];}
+// ★열매 — **베지 않고 딴다.** 나무 하나에 재고 n = 종 연간수율 × 크기(richness/K).
+//   연 1회 결실(그 철 첫날 채움) · 볼 때 정산(lazy · 틱 0) · 겨울 들면 소멸 · 베면 **같이 떨어진다**(증발 0).
+const T_SEASON_FIRST=(day)=>{const m=lMonth(day);return (m===2||m===5||m===8||m===11);};   // 각 철 첫 달의 1일 판정용(아래서 씀)
+function _fruitKey(x,y){return x+','+y;}
+function fruitSettle(s,x,y,day){                       // 그 칸의 열매 재고를 오늘로 맞춘다
+  if(!s.fruitRich)s.fruitRich=new Map();
+  const T=treeOf(x,y); if(!T||!T.fruit)return 0;
+  const k=_fruitKey(x,y); let e=s.fruitRich.get(k);
+  const yr=Math.floor(day/L_YEAR), se=lSeason(day);
+  if(!e){e={n:0,yr:-1};s.fruitRich.set(k,e);}
+  if(se===3){ if(e.yr!==yr||e.n>0){e.n=0;e.yr=yr;} return 0; }   // ★겨울 = 소멸(남은 것은 사라진다)
+  if(se===T.fs&&e.yr!==yr){                                       // ★그 철 들어서면 한 번 채운다
+    const rich=(s.forestRich&&s.forestRich.get(k))||0;
+    e.n=+(T.fy*(rich/L_WOODMAX)).toFixed(4); e.yr=yr;
+  }
+  return e.n;
+}
+// ★★벌목 부등식 — **새 수 0.** 그림자가격 w 와 표의 축만 쓴다.
+//     w(목재)×목재수율  ≥  성목햇수 × w(열매)×연간열매수율   ⇒ 벤다
+//   왼쪽은 "지금 베어 얻는 것", 오른쪽은 "다시 자랄 때까지 잃는 것"이다. 값은 시장이 정한다.
+function fellOK(sp,w){
+  const T=TREES[sp]; if(!T)return true;
+  if(!T.fruit)return true;                                        // 목재 전용 종 — 언제나 벤다
+  const gain=w('wood')*T.wood;
+  const loss=T.mature*w(T.fruit)*T.fy;
+  return gain>=loss;
+}
+// ★되돌림 하나 — `T123_FRUIT=0` 이면 열매 실체화를 끄고 **종전 추상 `fruit`** 만 남는다(ⓑ A/B 의 통제군).
+//   종 축·부등식은 그대로 돈다(벌목 판단은 값이 있어야 뜻이 있으니 별개 스위치가 필요 없다).
+const T123_FRUIT=()=>!(typeof window!=='undefined'&&window.T123_FRUIT===0);
+// ★랩 계측 — 종별 벌목/열매 수확 누계(표만 · 세계 규칙 0)
+function _tStat(s){return s._tstat||(s._tstat={felled:{},felledFruit:0,felledWood:0,fruitHarv:0,fruitDrop:0,ineq:{}});}
 const L_WOODREGLOG=0.004, L_WOODDIFF=0.015;         // ★숲 리젠 승격: 선형 r+0.10 → 로지스틱 dG=r_log·G·(1−G/K)+D·(이웃4셀 평균−G). r_log=0.004로 중간재고(G=K/2) 흐름 r_log·K/4=0.10 = 구 선형과 동일(연속성). D=이웃 확산(전벌지는 자체재생 0, 확산으로만 씨 유입 → 가장자리부터 회복·고립 개벌지 극느림). ※MSY=Σ r_log·K/4(관리수확 하 잠재재생, 만땅숲 0 아님)라 값 불변 → fuelK 보존
 // ★★[11차 재민 확정 — 채광 전면 재설계] 광맥 = 셀별 재고(깊이). 단위가 전부 실측에서 유도된다.
 //   · 1타 = 1초 = **1 게임분**(L_MINDAY 1440분 = 실시간 24분 → 1 게임분 = 1 실시간초)
@@ -10566,8 +10760,32 @@ function resourceTick(s,day){   // ★숲·광맥 자원: 재생 + 벌목/채광
   if(s.gameRich&&day%7===0)for(const[k,g]of s.gameRich){if(g>0&&g<L_GAMEMAX){const ng=g+7*L_GAMER*g*(1-g/L_GAMEMAX);s.gameRich.set(k,ng>L_GAMEMAX-0.5?L_GAMEMAX:ng);}}   // ★사냥감 로지스틱 dG=r·G·(1−G/K), 주 단위 배치(r 느려 1차 근사 동일 — 성능). K−0.5 넘으면 K 스냅(포화 셀 스킵). 절멸 셀(0)은 14일 확산이 재정착
   for(const a of s.agents){
     if(a.job==='lumberjack'){const m=s.forestRich,k=a.work&&(a.work.cx+','+a.work.cy);
-      if(k&&m.has(k))m.set(k,Math.max(0,m.get(k)-L_CHOP));   // 현재 셀 벌목
-      if(!k||!m.has(k)||(m.get(k)||0)<L_WOODMAX*0.15){let b=null,br=L_WOODMAX*0.2;for(const c of a.area){const rr=m.get(c.cx+','+c.cy)||0;if(rr>br){br=rr;b=c;}}if(b){a.work={cx:b.cx,cy:b.cy};a.cpath=null;}}}   // 고갈→가장 우거진 숲으로
+      // ★★★[T123] 벤 나무의 **종**을 세고, 열매종이면 남은 열매가 **같이 떨어진다**(증발 0).
+      if(k&&m.has(k)){const _cx=a.work.cx,_cy=a.work.cy,_sp=treeAt(_cx,_cy),_T=TREES[_sp];
+        const _r0=m.get(k), _r1=Math.max(0,_r0-L_CHOP); m.set(k,_r1);
+        const _st=_tStat(s); _st.felled[_sp]=(_st.felled[_sp]||0)+(_r0-_r1)/L_WOODMAX;
+        if(_T&&_T.fruit){_st.felledFruit+=(_r0-_r1)/L_WOODMAX;
+          const _fn=T123_FRUIT()?fruitSettle(s,_cx,_cy,s.day||0):0;   // 볼 때 정산 — 벨 때가 그 "볼 때"다(통제군은 열매가 없다)
+          if(_fn>0){const _drop=_fn*((_r0-_r1)/Math.max(1,_r0));      // 벤 만큼의 열매가 떨어진다
+            if(s.econ&&s.econ.storage){s.econ.storage[_T.fruit]=(s.econ.storage[_T.fruit]||0)+_drop;}
+            const _e=s.fruitRich.get(k); if(_e)_e.n=Math.max(0,_e.n-_drop);
+            _st.fruitDrop+=_drop;}}
+        else _st.felledWood+=(_r0-_r1)/L_WOODMAX;}
+      // ★★고를 때 **부등식**이 선다 — 사전식: 목재 전용 종이 생활권에 있으면 그것부터.
+      //   `w` 는 이 마을의 그림자가격(없으면 1.0 — 값을 모르면 종을 안 가린다).
+      if(!k||!m.has(k)||(m.get(k)||0)<L_WOODMAX*0.15){
+        const _pt=(s.econ&&ECON_WORLD&&typeof ECON_WORLD.priceFn==='function')?ECON_WORLD.priceFn(s.econ):null;
+        const _w=_pt?(r=>Math.max(0.05,Math.min(200,(_pt[r]||1)/1.0))):(_=>1.0);
+        const _st2=_tStat(s);
+        let b=null,br=L_WOODMAX*0.2, bf=null,bfr=L_WOODMAX*0.2;
+        for(const c of a.area){const rr=m.get(c.cx+','+c.cy)||0; if(rr<=br&&rr<=bfr)continue;
+          const _sp2=treeAt(c.cx,c.cy);
+          if(!TREES[_sp2].fruit){ if(rr>br){br=rr;b=c;} }             // ①목재 전용 우선
+          else { const _ok=fellOK(_sp2,_w);                            // ②열매종은 부등식이 서야
+            const _iq=_st2.ineq[_sp2]||(_st2.ineq[_sp2]={y:0,n:0}); if(_ok)_iq.y++; else _iq.n++;   // ★판정 계수(표만 · 세계 규칙 0) — "부등식이 몇 번 물었고 어떻게 답했나"
+            if(_ok&&rr>bfr){bfr=rr;bf=c;} }
+        }
+        const pick=b||bf; if(pick){a.work={cx:pick.cx,cy:pick.cy};a.cpath=null;}}}   // 고갈→가장 우거진 숲으로
     else if(a.job==='miner'){const m=s.oreRich,k=a.work&&(a.work.cx+','+a.work.cy);
       if(k&&m.has(k))m.set(k,Math.max(0,m.get(k)-L_MINE));   // ★조원이 각자 깎는다 ⇒ 2인 1조가 같은 셀에 있으면 그 셀은 2×L_MINE(별도 배수 불필요)
       if(!k||!m.has(k)||(m.get(k)||0)<L_OREMAX*0.08){
@@ -10597,7 +10815,44 @@ function resourceTick(s,day){   // ★숲·광맥 자원: 재생 + 벌목/채광
         for(const bn of s.V.bank){const bk2=Math.floor(bn.cx/L_FISHBK)+','+Math.floor(bn.cy/L_FISHBK),e2=s.fishRich.get(bk2);if(e2&&e2.K>0){const r=e2.B/e2.K;if(r>bR+0.05){bR=r;best=bn;}}}
         if(best){a.work={cx:best.cx,cy:best.cy};a.cpath=null;}}}
     else if(a.job==='forager'&&s.forageRich){const k=a.work&&(a.work.cx+','+a.work.cy),e=k&&s.forageRich.get(k);   // ★채집 CPUE: 현 임연부 F/K 비례 차감
+      // ★★★[T123] **열매는 나무에서 온다.** 종전 `fruit` 는 `fert×0.8+0.25` 추상값이었다(economy-sim:1646) —
+      //   그 자리에 **실체**를 얹는다: 그 칸이 열매종이고 재고가 있으면 딴 만큼 곳간에 들어간다(베지 않는다).
+      if(k&&s.econ&&s.econ.storage){const _cx=+k.slice(0,k.indexOf(',')),_cy=+k.slice(k.indexOf(',')+1);
+        const _T=treeOf(_cx,_cy);
+        if(_T&&_T.fruit&&T123_FRUIT()){const _n=fruitSettle(s,_cx,_cy,s.day||0);   // ★통제군(T123_FRUIT=0)은 **따지도 않는다** — 종전 세계 그대로
+          // ★단위 — **새 수 0.** 하루치 채집량은 `L_FORAGEC`(채집 1인 하루 채취 · 이 파일 정본)이고,
+          //   나무가 가진 것보다 더 딸 수는 없다. ⚠초안은 `L_FORAGEC/L_WOODMAX` 였다 —
+          //   F 눈금의 비율을 숲 richness 눈금으로 나눈 **단위 오류**(하루 0.003 = 나무 한 그루 300일).
+          //   그래서 실체가 추상의 0.16% 였다. 눈금을 맞추는 것과 값을 튜닝하는 것은 다른 일이다.
+          if(_n>0){const _take=Math.min(_n,L_FORAGEC);
+            s.econ.storage[_T.fruit]=(s.econ.storage[_T.fruit]||0)+_take;
+            const _e2=s.fruitRich.get(k); if(_e2)_e2.n=Math.max(0,_e2.n-_take);
+            _tStat(s).fruitHarv+=_take;}}}
       if(e&&e.K>0)e.F=Math.max(0,e.F-L_FORAGEC*(e.F/e.K));
+      // ★★★[T123 ④] **열매 맺은 나무가 현장 후보가 된다.**
+      //   ⚠초안은 이 판단을 아래 F/K 재배치 안에 넣었다 — 그래서 거의 안 돌았다.
+      //     채집꾼은 *임연부 재고가 마를 때만* 자리를 옮기는데, **열매를 따도 F 는 안 준다.**
+      //     즉 열매는 스스로 이동 조건을 못 만든다(실측: 임연부 열매 상한의 1.5%만 걷혔다).
+      //   그래서 결실철엔 **매일** 본다: 내 생활권 임연부에 재고가 남은 열매나무가 있으면 그리로 간다.
+      //   사전식(열매 먼저)이고 새 수 0(순위는 정산된 재고 n 하나). 마을당 하루 한 번만 스캔한다(캐시).
+      if(T123_FRUIT()){
+        const _d=s.day||0;
+        // 마을당 하루 한 번만 스캔한다(캐시) — 재고 많은 순 목록.
+        if(s._fbDay!==_d){ s._fbDay=_d; const L=[];
+          for(const k2 of s.forageRich.keys()){const ci2=k2.indexOf(','),x2=+k2.slice(0,ci2),y2=+k2.slice(ci2+1);
+            const T2=treeOf(x2,y2); if(!T2||!T2.fruit||lSeason(_d)!==T2.fs)continue;
+            const n2=fruitSettle(s,x2,y2,_d); if(n2>0)L.push([k2,n2]);}
+          L.sort((p2,q2)=>q2[1]-p2[1]); s._fbList=L.slice(0,64).map(z=>z[0]); }
+        // ★분산 — 사냥꾼·광부와 같은 문법(랩이 "우르르 떼사냥"을 이미 버렸다).
+        //   *다른 채집꾼이 안 붙은* 가장 실한 나무부터. 다 차 있으면 공유(첫 칸).
+        if(s._fbList&&s._fbList.length){
+          let pickK=null;
+          for(const cand of s._fbList){let taken=false;
+            for(const o of s.agents){if(o!==a&&o.job==='forager'&&o.work&&(o.work.cx+','+o.work.cy)===cand){taken=true;break;}}
+            if(!taken){pickK=cand;break;}}
+          if(!pickK)pickK=s._fbList[0];
+          if(pickK!==k){const ci=pickK.indexOf(','),x=+pickK.slice(0,ci),y=+pickK.slice(ci+1);a.work={cx:x,cy:y};a.cpath=null;}}
+      }
       if(!e||e.K<=0||(e.K>0&&(e.F/e.K)<0.3)){let best=null,bR=(e&&e.K>0)?e.F/e.K:0.3;   // 임연부 셀 아니거나 고갈→F/K 높은 임연부로
         for(const[k2,e2]of s.forageRich){if(e2.K<=0)continue;const r=e2.F/e2.K;if(r>bR){bR=r;best=k2;}}
         if(best){const ci=best.indexOf(','),x=+best.slice(0,ci),y=+best.slice(ci+1);a.work={cx:x,cy:y};a.cpath=null;}}}}

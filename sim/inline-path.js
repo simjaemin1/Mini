@@ -21,7 +21,10 @@ const argv = process.argv.slice(2);
 const CHECK = argv.includes('--check');
 const named = argv.filter((a) => !a.startsWith('--'));
 const files = named.length ? named
-  : [path.join(__dirname, '..', '..', '마을실험실.html'), path.join(__dirname, '..', '..', '전쟁실험실.html')];
+  // ★[T123 2026-09-05] 랩이 레포 안(`lab/`)으로 들어왔다(PM c7778a49) — 기본 대상을 거기로.
+  //   종전 기본값은 저장소 **밖**이라 컨테이너에선 언제나 "없음 — 건너뜀"이었고, 이 파일이
+  //   스스로 적어 둔 대로 **건너뜀은 검사가 아니다**.
+  : [path.join(__dirname, '..', 'lab', '마을실험실.html'), path.join(__dirname, '..', 'lab', '전쟁실험실.html')];
 
 let stale = 0, missing = 0, fresh = 0;
 for (const fp of files) {
