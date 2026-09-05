@@ -78,7 +78,7 @@ CP.setup(ta, world, { insertVillageBuilding: () => ++_rowid });
 // ── 궤적 기록 ────────────────────────────────────────────────────────────────
 const SNAP = [0, 25, 50, 100, 200, 400, 600, 800].filter(d => d <= DAYS);
 const traj = {};                                     // name → { cells:[], pop:[], farmers:[] }
-for (const v of vils) traj[v.name] = { cells: [], pop: [], farmers: [], need: 0, cleared: 0 };
+for (const v of vils) traj[v.name] = { cells0: v._farmSet.size, cells: [], pop: [], farmers: [], need: 0, cleared: 0 };   // ★cells0 = 시딩 칸(개간 전) — `_farmN`/`_dryN` 은 개간으로 자란다
 const popCurve = [];                                 // [day, 총인구, 소멸수]
 const _log = console.log; console.log = () => {};
 for (let d = 0; d < DAYS; d++) {
@@ -111,46 +111,89 @@ console.log(`\n══ T100 계측기 — 시드 ${SEED} · ${DAYS}일 · FIELD_Y
 console.log(`  앵커: 밭 1칸 1회 = yield × GROUP_KG × kcal ÷ DAY_KCAL(${DAYK})  ·  food 1단위 = ${W.kgOf('food')}kg × ${KC.KCAL_PER_KG.food} = ${W.kgOf('food') * KC.KCAL_PER_KG.food}`);
 console.log(`  ★곡물 ${grains.length}종 평균 = **${gAvg.toFixed(4)} food 단위/칸·일**  (econ 상수 ${econ.CELL_FOOD_PER_DAY} · 텃밭 하한 ${econ.T100_GARDEN_PER_FARMER}칸/농부 = 생활층 개간속도 ${CP.LIFE_CLEAR_PDAY})`);
 
-// ── ⓐ 두 밑변 · ⓑ 농부당 밭 칸 ─────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════════════
+// ★★[재민 확정 2026-09-05 · T112/T117 열 이름] **세션1·세션3 이 같은 열을 쓴다.**
+//   vid · name · fert · N · fN · cells · cells0 · cleared · perFarmer · need
+//   harvestN(연간 수확 개수) · foodEq(연간 식량등가 · econ 단위) · qMean · tasksWater · tasksWeed
+//   econFood(OUT1.farmer 연간 산출 · 같은 단위) · ratio(foodEq / econFood)
+//
+// ⚠**이 계측기가 못 채우는 열이 있다.** 랩은 개간(`_lifeClearDay`)은 돌지만
+//   **작물 상태기(`_cellTask`·`_lifeDoTask`·`cropDayTick`)는 안 돈다**(재민 T112 실측).
+//   ⇒ `harvestN`·`qMean`·`tasksWater`·`tasksWeed` = **null**. 세션3 T117 `farm-metrics.js` 가 채운다.
+//   ⇒ `foodEq` 는 **실수확이 아니라 모델값**이다(밭 밑변 × 365). 행마다 `src` 로 표시하고
+//     머리에도 적는다 — T117 의 실측 `foodEq` 와 **말없이 섞이면 안 된다**.
+// ⚠**`ratio` 방향이 바뀌었다** — 정본은 `foodEq / econFood`(밭 ÷ econ)다.
+//   1판 보고의 "어긋남 ×11.66" 은 그 **역수**(econ ÷ 밭)였다 ⇒ 같은 세계가 새 열로는 **0.086** 이다.
+const CANON_COLS = ['vid', 'name', 'fert', 'N', 'fN', 'cells', 'cells0', 'cleared', 'perFarmer', 'need',
+  'harvestN', 'foodEq', 'qMean', 'tasksWater', 'tasksWeed', 'econFood', 'ratio'];
+const YEAR_DAYS = 365;   // 캐논: 1년 = 365 게임일(불변)
 const rows = [];
-for (const vil of vils) {
+vils.forEach((vil, i) => {
   const v = vil.econ;
   const N = (v.npcs || []).length, fN = (v.counts || {}).farmer || 0;
-  const cells = vil._farmSet.size, cells0 = (vil._farmN + vil._dryN);
-  const econOut = fN * 1.5 * (v.land.fertility || 0);      // 옛 밑변(T86 세계) — 자는 안 바뀐다
-  const fieldOut = cells * gAvg * (v.land.fertility || 0); // 밭 밑변(T100 식 그대로 · 지력 곱)
-  rows.push({ name: v.name, N, fN, cells, cells0, perFarmer: fN ? cells / fN : null,
-    econOut: +econOut.toFixed(2), fieldOut: +fieldOut.toFixed(2),
-    ratio: fieldOut > 0 ? +(econOut / fieldOut).toFixed(2) : null, fert: +(v.land.fertility || 0).toFixed(2),
-    need: traj[v.name].need, cleared: traj[v.name].cleared, cellTraj: traj[v.name].cells, popTraj: traj[v.name].pop,
-    // ★귀속용(T60 §0-ⓔ' 문법) — 판정 안 한다, 정본이 남긴 것을 그대로 옮긴다
-    dp: v._dpDebug || null, housing: v.housing != null ? +v.housing.toFixed(1) : null,
-    stock: ['food', 'fish', 'meat', 'wheat', 'rice', 'barley', 'wood', 'cooked_food'].reduce((o, r) => (o[r] = +((v.storage[r] || 0)).toFixed(1), o), {}),
-    prodK: v._prodKema != null ? +v._prodKema.toFixed(1) : null, foodEq: +econ.totalFoodEquivalent(v).toFixed(1) });
-}
+  const fert = +(v.land.fertility || 0);
+  const cells = vil._farmSet.size, cells0 = traj[v.name].cells0;   // 지금 칸 vs **시딩 칸**
+  // 연간 — 둘 다 **같은 단위**(econ food 단위 · 사람 하루치)
+  const foodEq = cells * gAvg * fert * YEAR_DAYS;              // ★모델값(작물 상태기 미가동 — src 참조)
+  const econFood = fN * econ.FARMER_BASE * fert * YEAR_DAYS;   // 옛 밑변 `OUT1.farmer × 농부` 연간
+  rows.push({
+    vid: i, name: v.name, fert: +fert.toFixed(2), N, fN,
+    cells, cells0, cleared: traj[v.name].cleared,
+    perFarmer: fN ? +(cells / fN).toFixed(1) : null,
+    need: traj[v.name].need,
+    harvestN: null, foodEq: +foodEq.toFixed(1), qMean: null, tasksWater: null, tasksWeed: null,
+    econFood: +econFood.toFixed(1),
+    ratio: econFood > 0 ? +(foodEq / econFood).toFixed(3) : null,
+    // 열마다 어디서 온 값인지 — T117 실측본과 섞이지 않게
+    src: { harvestN: 'null(작물 상태기 미가동)', foodEq: 'model(cells × CELL_FOOD_PER_DAY × fert × 365)',
+           qMean: 'null', tasksWater: 'null', tasksWeed: 'null', cells: 'measured(_lifeClearDay 정본)' },
+    // 정본 열 밖 — 귀속용(T60 §0-ⓔ' 문법). 판정 안 한다, 정본이 남긴 것을 그대로 옮긴다.
+    _diag: {
+      cellTraj: traj[v.name].cells, popTraj: traj[v.name].pop,
+      dp: v._dpDebug || null, housing: v.housing != null ? +v.housing.toFixed(1) : null,
+      prodK: v._prodKema != null ? +v._prodKema.toFixed(1) : null,
+      stockFoodEq: +econ.totalFoodEquivalent(v).toFixed(1),
+      stock: ['food', 'fish', 'meat', 'wheat', 'rice', 'barley', 'wood', 'cooked_food']
+        .reduce((o, r) => (o[r] = +((v.storage[r] || 0)).toFixed(1), o), {}),
+    },
+  });
+});
 const dead = rows.filter(r => r.N === 0);
 const live = rows.filter(r => r.fN > 0 && r.cells > 0);
 const rs = live.map(r => r.ratio).sort((a, b) => a - b);
 const pf = live.map(r => r.perFarmer).sort((a, b) => a - b);
 const q = (a, p) => a[Math.min(a.length - 1, Math.floor(a.length * p))];
+console.log(`\n══ 열 규약(재민 확정 · 세션1·3 공통) ══`);
+console.log('  ' + CANON_COLS.join(' · '));
+console.log('  ★이 계측기가 **못 채우는 열**: harvestN · qMean · tasksWater · tasksWeed = null (작물 상태기 미가동)');
+console.log('  ★`foodEq` 는 **모델값**이다: cells × ' + econ.CELL_FOOD_PER_DAY + ' × fert × ' + YEAR_DAYS + '  (T117 은 harvestN 에서 실측)');
+console.log('  ★`ratio` = foodEq / econFood (**밭 ÷ econ**) — 1판 보고의 "어긋남"은 그 역수였다');
 console.log(`\n══ 소멸 ${dead.length}/${rows.length}  ·  총인구 ${rows.reduce((a, r) => a + r.N, 0)} ══`);
 if (dead.length) console.log('   소멸: ' + dead.map(r => r.name).join(' '));
-console.log('\n══ ⓐ 어긋남 표 (옛 밑변 ÷ 밭 밑변) ══');
-console.log(`  잰 마을 ${live.length}/${rows.length} (농부>0 · 밭>0)`);
-console.log(`  비 — 최소 ${q(rs,0)} · 25% ${q(rs,0.25)} · **중앙 ${q(rs,0.5)}** · 75% ${q(rs,0.75)} · 최대 ${q(rs,0.99)}`);
-console.log(`  합계 — 옛 ${live.reduce((a,r)=>a+r.econOut,0).toFixed(0)} vs 밭 ${live.reduce((a,r)=>a+r.fieldOut,0).toFixed(0)} 단위/일  ⇒ **×${(live.reduce((a,r)=>a+r.econOut,0)/live.reduce((a,r)=>a+r.fieldOut,0)).toFixed(2)}**`);
-console.log('\n══ ⓑ 농부당 밭 칸 ══');
-console.log(`  최소 ${q(pf,0).toFixed(1)} · 25% ${q(pf,0.25).toFixed(1)} · **중앙 ${q(pf,0.5).toFixed(1)}** · 75% ${q(pf,0.75).toFixed(1)} · 최대 ${q(pf,0.99).toFixed(1)} 칸/농부`);
-console.log(`  밭 0칸 마을 ${rows.filter(r=>r.cells===0).length}곳 · 농부 0 마을 ${rows.filter(r=>r.fN===0).length}곳`);
-console.log('\n══ ⓒ 밭 칸 추이 (개간 정본 · needLand 켜진 일수 / 총 개간 칸) ══');
+console.log('\n══ ratio (foodEq ÷ econFood) ══');
+console.log(`  잰 마을 ${live.length}/${rows.length} (fN>0 · cells>0)`);
+if (live.length) {
+  console.log(`  최소 ${q(rs,0)} · 25% ${q(rs,0.25)} · **중앙 ${q(rs,0.5)}** · 75% ${q(rs,0.75)} · 최대 ${q(rs,0.99)}`);
+  const sf = live.reduce((a,r)=>a+r.foodEq,0), se = live.reduce((a,r)=>a+r.econFood,0);
+  console.log(`  합계 — foodEq ${sf.toFixed(0)} vs econFood ${se.toFixed(0)} (연간·econ 단위)  ⇒ **${(sf/se).toFixed(3)}**`);
+}
+console.log('\n══ perFarmer (칸/농부) ══');
+if (pf.length) console.log(`  최소 ${q(pf,0)} · 25% ${q(pf,0.25)} · **중앙 ${q(pf,0.5)}** · 75% ${q(pf,0.75)} · 최대 ${q(pf,0.99)}`);
+console.log(`  cells 0 마을 ${rows.filter(r=>r.cells===0).length}곳 · fN 0 마을 ${rows.filter(r=>r.fN===0).length}곳`);
+console.log('\n══ cells 추이 (개간 정본 · need = needLand 켜진 일수 / cleared = 총 개간 칸) ══');
 console.log(`  스냅 일차: ${[1].concat(SNAP.filter(d=>d>0)).join(' · ')}`);
-const byCleared = rows.slice().sort((a, b) => b.cleared - a.cleared);
-for (const r of byCleared.slice(0, 8))
-  console.log(`   ${r.name.padEnd(6)} fert ${String(r.fert).padStart(4)} 인구 ${String(r.N).padStart(3)} 농부 ${String(r.fN).padStart(3)} · 밭 ${r.cells0}→${r.cells} · needLand ${r.need}일 · 개간 ${r.cleared}칸\n      칸 ${r.cellTraj.join(' → ')}\n      인구 ${r.popTraj.join(' → ')}`);
+for (const r of rows.slice().sort((a, b) => b.cleared - a.cleared).slice(0, 8))
+  console.log(`   #${String(r.vid).padStart(2)} ${r.name.padEnd(6)} fert ${String(r.fert).padStart(4)} N ${String(r.N).padStart(3)} fN ${String(r.fN).padStart(3)} · cells ${r.cells0}→${r.cells} · need ${r.need}일 · cleared ${r.cleared}\n      cells ${r._diag.cellTraj.join(' → ')}\n      N     ${r._diag.popTraj.join(' → ')}`);
 const zero = rows.filter(r => r.cleared === 0);
-console.log(`  개간 0칸 마을 ${zero.length}/${rows.length}` + (zero.length ? ' : ' + zero.slice(0, 12).map(r => r.name).join(' ') : ''));
+console.log(`  cleared 0 마을 ${zero.length}/${rows.length}` + (zero.length ? ' : ' + zero.slice(0, 12).map(r => r.name).join(' ') : ''));
 console.log('\n══ 인구 곡선(20일) ══');
 console.log('  ' + popCurve.filter((_, i) => i % 5 === 0).map(c => `${c[0]}d:${c[1]}${c[2] ? '/사망' + c[2] : ''}`).join('  '));
 try { fs.mkdirSync(path.dirname(OUT), { recursive: true }); } catch (e) {}
-fs.writeFileSync(OUT, JSON.stringify({ seed: SEED, days: DAYS, fieldYield: FY, clear: CLEAR_ON, gAvg, dead: dead.map(r => r.name), rows, popCurve }, null, 1));
-console.log(`\n  → ${OUT}`);
+fs.writeFileSync(OUT, JSON.stringify({
+  seed: SEED, days: DAYS, fieldYield: FY, clear: CLEAR_ON, gAvg, cols: CANON_COLS, yearDays: YEAR_DAYS,
+  provenance: { cells: 'measured(_lifeClearDay)', harvestN: null, foodEq: 'model', qMean: null, tasksWater: null, tasksWeed: null,
+                note: '작물 상태기(cropDayTick) 미가동 — 세션3 T117 farm-metrics.js 가 실측으로 채운다' },
+  dead: dead.map(r => r.name), rows, popCurve }, null, 1));
+const CSV = OUT.replace(/\.json$/, '') + '.csv';
+fs.writeFileSync(CSV, [CANON_COLS.join(',')].concat(rows.map(r => CANON_COLS.map(c => (r[c] == null ? '' : r[c])).join(','))).join('\n') + '\n');
+console.log(`\n  → ${OUT}\n  → ${CSV}  (정본 열 순서)`);

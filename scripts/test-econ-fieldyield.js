@@ -86,7 +86,7 @@ console.log('\n② 텃밭 하한 — 밭 0칸이어도 굶기지 않는다');
     ok(Math.abs(econ.farmFlowPerDay(vLow, 10) - flow0) < 1e-9,
       '② 밭이 하한보다 좁으면 **하한이 밑변**이다', `5칸 → ${econ.farmFlowPerDay(vLow, 10).toFixed(4)}`);
   } else {
-    ok(Math.abs(flow0 - 10 * 1.5 * 1.0) < 1e-9, '② [끔] 하한이 안 낀다 — 옛 식 그대로', flow0.toFixed(3));
+    ok(Math.abs(flow0 - 10 * econ.FARMER_BASE * 1.0) < 1e-9, '② [끔] 하한이 안 낀다 — 옛 식 그대로', flow0.toFixed(3));
   }
 }
 
@@ -102,7 +102,7 @@ console.log('\n③ 밑변 — 밭 칸이 늘면 산출이 는다');
       '③ 산출 = 칸 × 칸·일당 × 지력 (자리=면적 · 산출=지력 이중산입 분리 규약)', fa.toFixed(3));
     const c = vil(400, 10, 0.5);
     ok(Math.abs(econ.farmFlowPerDay(c, 10) - fa / 2) < 1e-9, '③ 지력이 반이면 산출도 반(지력은 여전히 산다)');
-    ok(Math.abs(econ.farmLandBoost(a) * 1.5 * 10 - fa) < 1e-9,
+    ok(Math.abs(econ.farmLandBoost(a) * econ.FARMER_BASE * 10 - fa) < 1e-9,
       '③ `landBoost` 는 그 마을 산출의 **1인분**이다(종전 자리에 그대로 꽂힌다)', econ.farmLandBoost(a).toFixed(4));
   } else {
     ok(Math.abs(fa - fb) < 1e-9, '③ [끔] 밭 칸을 **안 본다** — 2배로 해도 같다', `${fa.toFixed(2)} = ${fb.toFixed(2)}`);
@@ -114,6 +114,7 @@ console.log('\n③ 밑변 — 밭 칸이 늘면 산출이 는다');
 // ── ④ 어부·사냥꾼·채집 무접촉 ──────────────────────────────────────────────
 console.log('\n④ 무접촉 — 어부·사냥꾼·채집 산출은 안 건드렸다');
 {
+  ok(econ.FARMER_BASE === 1.5, '④ `FARMER_BASE` 가 노출돼 있다(계측기가 1.5 를 옮겨 적지 않는다)', String(econ.FARMER_BASE));
   ok(/landBoost: \(v\) => v\.land\.water/.test(SRC), '④ 어부 `landBoost` 가 `v.land.water` 그대로다(소스)');
   ok(/landBoost: \(v\) => v\.land\.game/.test(SRC), '④ 사냥꾼 `landBoost` 가 `v.land.game` 그대로다(소스)');
   const CODE = SRC.replace(/\/\*[\s\S]*?\*\//g, ' ').split('\n').map(l => l.replace(/\/\/.*$/, '')).join('\n');
