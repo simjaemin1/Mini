@@ -540,7 +540,10 @@ function _playersNear() {
   return out;
 }
 
-function startInfo() {
+function startInfo(opts) {
+  // ★[T115] `opts.friendVids` — vid → 친구 수(Map). **여기서 세지 않는다**: 세는 정본은
+  //   `server/friends.js` 이고 이 함수는 그 결과를 줄에 얹기만 한다(클라 재계산 0 규약의 서버 쪽 짝).
+  const fv = (opts && opts.friendVids instanceof Map) ? opts.friendVids : null;
   const list = _villages();
   if (!list) return { ok: false, err: 'not_ready' };
   const counts = _econCounts();
@@ -584,6 +587,9 @@ function startInfo() {
       // ★사람이 세운 마을이라는 표지 — 로비가 배지 하나로 쓴다(클라 재계산 0)
       player: v.player ? 1 : 0,
       founderName: (v.player && nc) ? (nc.founderName || '') : '',
+      // ★[T115] 함께 도착 — **그 마을을 처음 고른 벗이 몇인가**(지금 어디 있느냐가 아니다).
+      //   `player: 1`·`founderName` 과 **같은 문법**이다: 서버가 세고 로비는 그리기만 한다.
+      friendsHere: fv ? (fv.get(v.id) || 0) : 0,
     });
   }
   // 추천 = "이방인 환영" — 도착 지점이 성립하고(배산임수 감사 합격) · 쉼터가 되고(사람이 산다) ·
@@ -623,7 +629,23 @@ function arriveFor(startVid, acct, zoneId, playerId) {
   if (!ready()) return null;
   const returning = !!(acct && ((acct.last_zone === zoneId && typeof acct.last_x === 'number')
                               || (acct.home_zone === zoneId && typeof acct.home_x === 'number')));
-  if (returning) return null;
+  // ★★[T115 2026-09-05 · 실측으로 드러난 상류 결함] **고른 것을 적는 일과 데려다 놓는 일은 다르다.**
+  //   종전엔 둘이 붙어 있어서 `returning` 이면 **기록까지** 건너뛰었다. 그런데 등록 계정은
+  //   `/auth` 가 **첫 가입 그 순간** `home_zone`·`last_zone` 을 박는다(central `/auth` — "신규 가입자에게
+  //   home + last_zone 동시 세팅"). ⇒ **생애 첫 접속이 이미 '이어하기'로 분류된다.**
+  //   실측: 새 계정 alice/bob 이 시작 화면에서 마을을 골라 들어와도 `start_vid` 가 **null** 이었다
+  //   (`e2e-friends ④`가 잡았다 — 그 표지가 영영 0 이라 "함께 도착"이 죽은 채로 났을 뻔했다).
+  //   ⇒ **기록은 `returning` 갈래 안에서만** 한다. 위쪽(진짜 첫 도착) 경로는 **한 글자도 안 건드린다** —
+  //     1차 실장은 이 줄을 함수 머리에 뒀다가 `e2e-onboarding` 을 61/0 → 56/4 로 깼다(그 판은 게스트라
+  //     `returning` 이 아니었는데도 값이 먼저 들어가 뒤 흐름이 달라졌다). **지나가는 길에 손대지 마라.**
+  //   ⚠자리는 그대로다(이어하기는 있던 자리). 그리고 **한 번만** 적는다 — "처음"이라는 낱말이 그 뜻이다.
+  if (returning) {
+    if (playerId && startVid != null && startVid !== '') {
+      const st0 = stateOf(playerId);
+      if (st0.start_vid == null) { st0.start_vid = parseInt(startVid, 10) | 0; _save(playerId, st0); }
+    }
+    return null;
+  }
   let vid = (startVid == null || startVid === '') ? null : (parseInt(startVid, 10) | 0);
   const s = playerId ? stateOf(playerId) : null;
   //   ★저장된 선택은 살린다 — 첫 저장 전에 재접속한 사람은 **자기가 고른 마을**로 돌아간다.
@@ -819,7 +841,19 @@ function handleMsg(player, msg) {
 //   (`/lifedbg`·`/roomdbg` 와 같은 규약 — 민감 정보 없음: 마을 이름·인구대·근황 한 줄뿐).
 function httpStartInfo(req, res) {
   res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
-  try { res.end(JSON.stringify(startInfo())); }
+  // ★★[T115] `?as=<이름>` — 로비는 **아직 로그인 전**이라 자기 `player_id` 를 모른다.
+  //   게스트 토큰으로 물으면 안 된다(그건 열쇠다 · 배치 13). 그래서 **이름**으로 묻고 세는 건 서버가 한다.
+  //   ⚠못 물어봐도 **막지 않는다** — 친구 칸이 0 일 뿐 시작 화면은 그대로 뜬다.
+  let friendVids = null;
+  try {
+    const q = String(req.url || '').split('?')[1] || '';
+    const m = /(?:^|&)as=([^&]*)/.exec(q);
+    const asName = m ? decodeURIComponent(m[1]).trim() : '';
+    //   ⚠**여기서 기다리지 않는다.** 캐시로만 답하고 갱신은 뒤에서 돈다(`friends.js nameVids` 주석 —
+    //     1차 실장이 여기서 기다렸다가 온보딩 대본의 시계를 밀어 하네스를 깼다).
+    if (asName && H && H.friendVidsByName) friendVids = H.friendVidsByName(asName);
+  } catch (e) { friendVids = null; }
+  try { res.end(JSON.stringify(startInfo({ friendVids }))); }
   catch (e) { res.end(JSON.stringify({ ok: false, err: e.message })); }
 }
 

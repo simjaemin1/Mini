@@ -238,10 +238,72 @@ console.log('\n[⑦ `Bump.Distance` 를 기본값에 안 맡긴다 — 판올림
   }
 }
 
+// ── ⑧ 시트 후처리 · 상자 못박기 = 공용 한 벌 [T116] ─────────────────
+console.log('\n[⑧ 먹선·셀·상자 못박기 — 공용 한 벌 · 캐릭터 쪽 사본 0 (T116)]');
+{
+  const fs3 = require('fs');
+  const dir = path.join(ROOT, 'scripts');
+  const POST = ['cel_range', 'cel_quantize', 'ink_outline', 'edge_darken', 'post_all',
+                'load_exr', 'save_png', 'save_exr', 'read_pinned_box', 'fit_pinned_box'];
+  const CONST = ['INK_RGB', 'INK_A', 'CEL_P_LO', 'CEL_P_HI'];
+
+  // ⓐ 공용이 전부 갖는다
+  const missF = POST.filter(f => !new RegExp(`^def ${f}\\(`, 'm').test(common || ''));
+  ok(missF.length === 0, `공용이 후처리·못박기 함수 ${POST.length - missF.length}/${POST.length} 를 갖는다` +
+     (missF.length ? ` — 빠짐: ${missF.join(', ')}` : ''));
+  const missC = CONST.filter(c => !new RegExp(`^${c}\\s*=`, 'm').test(common || ''));
+  ok(missC.length === 0, `공용이 먹·셀 상수 ${CONST.length - missC.length}/${CONST.length} 를 갖는다` +
+     (missC.length ? ` — 빠짐: ${missC.join(', ')}` : ''));
+
+  // ⓑ 옛 사본 자리가 없어졌다 — 이 카드가 말한 "사본 −1"
+  ok(!fs3.existsSync(path.join(dir, 'ink_post.py')),
+     '★`scripts/ink_post.py` 가 없다 — 후처리 사본 −1 (본문은 공용으로 이동)');
+
+  // ⓒ **캐릭터 쪽 사본 0** — 부르기만 하고 다시 정의하지 않는다
+  const USERS = ['char_render.py', 'ink_repost.py', 'char_mpfb_screen.py'];
+  const dupF = [];
+  const dupC = [];
+  for (const f of USERS) {
+    const q = path.join(dir, f);
+    if (!fs3.existsSync(q)) { ok(false, `${f} 을 못 읽었다`); continue; }
+    let src = fs3.readFileSync(q, 'utf8');
+    // --selftest: 사본을 하나 심는다 — ⑧ 이 눈멀지 않았는지 본다.
+    if (SELFTEST && f === 'char_render.py') src += '\ndef ink_outline(sheet, w, h):\n    return sheet\n';
+    for (const fn of POST) if (new RegExp(`^def ${fn}\\(`, 'm').test(src)) dupF.push(`${f}:${fn}`);
+    for (const c of CONST) if (new RegExp(`^${c}\\s*=`, 'm').test(src)) dupC.push(`${f}:${c}`);
+  }
+  ok(dupF.length === 0, `캐릭터 쪽 함수 사본 0 ${dupF.length ? '→ ' + dupF.join(', ') : ''}`);
+  ok(dupC.length === 0, `캐릭터 쪽 상수 사본 0 ${dupC.length ? '→ ' + dupC.join(', ') : ''}`);
+
+  // ⓓ 이름 붙인 import 만 — 별표는 씬 값을 갈아 끼운다(공용 PPU 45.255 · 캐릭터 135.765)
+  const stars = USERS.filter(f => fs3.existsSync(path.join(dir, f)) &&
+    /^\s*from\s+render_common\s+import/m.test(fs3.readFileSync(path.join(dir, f), 'utf8')));
+  ok(stars.length === 0,
+     `★별표 들여오기 0 — \`PPU\` 가 같은 이름에 다른 값이다 ${stars.length ? '→ ' + stars.join(', ') : ''}`);
+
+  // ⓔ **아직 캐릭터에만 건다** — 자연물·소품·건물 적용은 별도 카드(세션8)
+  //   ⚠세션8 이 실제로 걸면 이 줄이 빨개진다. 그때 지우지 말고 **여기 목록을 같이 늘려라**
+  //     (어느 자산군에 후처리가 걸려 있는지가 이 한 줄로 읽혀야 한다).
+  const WIRED = ['char_render.py', 'ink_repost.py', 'char_mpfb_screen.py'];
+  const callers = fs3.readdirSync(dir).filter(f => f.endsWith('.py') && f !== 'render_common.py')
+    .filter(f => /rc\.(post_all|ink_outline|cel_quantize|edge_darken)\(/.test(
+      fs3.readFileSync(path.join(dir, f), 'utf8')));
+  const extra = callers.filter(f => !WIRED.includes(f));
+  ok(extra.length === 0,
+     `후처리를 실제로 거는 스크립트 = 캐릭터 ${callers.length}개뿐 ` +
+     (extra.length ? `→ 새로 생김: ${extra.join(', ')} (세션8이면 WIRED 목록을 늘려라)` : '(자연물·소품·건물 0 — 세션8 카드)'));
+
+  // ⓕ 못박기 서식 둘을 다 읽는다 — 캐릭터(frameW/frameH) · 자산별(w/h/ox/oy)
+  ok(/frameW/.test(common || '') && /"w" in m and "ox" in m/.test(common || ''),
+     '★못박기 읽개가 서식 **둘**을 읽는다 — 캐릭터 최상위 · 자산별 {w,h,ox,oy}');
+  ok(/raise SystemExit/.test((common || '').split('def fit_pinned_box')[1] || ''),
+     '★안 들어맞으면 **크게 실패한다** (조용히 잘리지 않는다)');
+}
+
 if (SELFTEST) {
-  console.log('\n[--selftest] 오염본을 넣었다 → 위에 ✗ 가 여섯 이상 있어야 통과다(①②③④⑥⑦).');
-  console.log('결과: ' + (fail >= 6 ? `PASS(검사기가 오염 ${fail}건을 잡았다)` : `FAIL(${fail}건만 잡았다 — 검사기가 눈멀었다)`));
-  process.exit(fail >= 6 ? 0 : 1);
+  console.log('\n[--selftest] 오염본을 넣었다 → 위에 ✗ 가 일곱 이상 있어야 통과다(①②③④⑥⑦⑧).');
+  console.log('결과: ' + (fail >= 7 ? `PASS(검사기가 오염 ${fail}건을 잡았다)` : `FAIL(${fail}건만 잡았다 — 검사기가 눈멀었다)`));
+  process.exit(fail >= 7 ? 0 : 1);
 }
 console.log('\n결과: ' + (fail ? `FAIL(${fail})` : 'PASS'));
 process.exit(fail ? 1 : 0);

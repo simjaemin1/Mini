@@ -48,7 +48,7 @@ sys.argv = ["char_render", "--", "--only-meta", "--sheetdir=" + SCRATCH]
 import bpy                                            # noqa: E402
 import mathutils                                      # noqa: E402
 import char_render as CR                              # noqa: E402  ★정본 씬을 통째로 들여온다
-import ink_post                                       # noqa: E402
+import render_common as rc                            # noqa: E402  — 후처리 정본 [T116]
 
 MPFB_H = 1.6594          # §0-ⓐ 실측 — MPFB 중립 몸의 키(m)
 BODY_SCALE = CR.H_TOT / MPFB_H        # 정본 키(1.70m)에 맞춘다 — 54.4px 축척 규약을 지킨다
@@ -170,8 +170,8 @@ def main():
         for kind in ("prism", "mpfb"):
             objs = [mbody] if kind == "mpfb" else list(CR.BODY)
             sheet, SW, SH = render_sheet(kind, clip, n, objs, [], mrig, mbody)
-            ink_post.cel_quantize(sheet, SW, SH, CR.CEL_BANDS, CR.EDGE_A, mask=None)
-            ink_post.ink_outline(sheet, SW, SH, ink_post.INK_A, mask=None)
+            rc.cel_quantize(sheet, SW, SH, CR.CEL_BANDS, CR.EDGE_A, mask=None)
+            rc.ink_outline(sheet, SW, SH, rc.INK_A, mask=None)
             key = f"{kind}_body_{clip}"
             CR.save_sheet(sheet, SW, SH, os.path.join(OUT, key + ".png"))
             made[key] = (SW, SH)
@@ -181,8 +181,8 @@ def main():
                 CR.set_cloth_material(ck)
                 hold = [mbody] if kind == "mpfb" else list(CR.BODY)
                 sheet, SW, SH = render_sheet(kind, clip, n, CR.cloth_objs(ck), hold, mrig, mbody)
-                ink_post.cel_quantize(sheet, SW, SH, CR.CEL_BANDS, CR.EDGE_A, mask=None)
-                ink_post.ink_outline(sheet, SW, SH, ink_post.INK_A, mask=None)
+                rc.cel_quantize(sheet, SW, SH, CR.CEL_BANDS, CR.EDGE_A, mask=None)
+                rc.ink_outline(sheet, SW, SH, rc.INK_A, mask=None)
                 key = f"{kind}_clothes_{ck}_{clip}"
                 CR.save_sheet(sheet, SW, SH, os.path.join(OUT, key + ".png"))
                 made[key] = (SW, SH)

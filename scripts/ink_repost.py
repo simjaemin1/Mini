@@ -8,7 +8,7 @@
   8bit raw 에 후처리를 다시 걸면 양자화 칸 경계가 반올림에 옮겨 가 배포 PNG 와 **바이트가 다르다**
   (T96 실측: 화소 14,255곳 · 최대 채널차 160). 그래서 세기를 한 칸 바꾸는 데 **1시간 27분**이 들었다.
   ⇒ 굽기가 후처리 **전** float 시트를 EXR(float32·ZIP·무손실)로 남기고, 여기서 그걸 읽어
-    **같은 함수**(`ink_post.post_all`)를 태운다. 같은 손잡이면 배포 PNG 와 **바이트가 같아야** 한다
+    **같은 함수**(`render_common.post_all`)를 태운다. 같은 손잡이면 배포 PNG 와 **바이트가 같아야** 한다
     — 그게 이 도구의 합격 조건이고 `test-charsheet ⑧` 이 상시 검사한다.
 
 ★같은 코드를 탄다는 게 요점이다. 굽기(`char_render.py`)도 이 모듈의 `post_all` 을 부른다.
@@ -25,7 +25,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
-import ink_post   # noqa: E402
+import render_common as rc   # noqa: E402  — 후처리 정본(T116 에 `ink_post.py` 에서 올라왔다)
 
 EXRDIR = os.path.join(ROOT, "assets-src", "char_raw")
 SHEETDIR = os.path.join(ROOT, "public", "assets", "char")
@@ -70,7 +70,7 @@ def main():
             print(f"  [{clip}] EXR 없음 — 건너뛴다"); continue
         built, alpha, W, H = [], {}, None, None
         for k in keys:
-            sheet, w, h = ink_post.load_exr(os.path.join(exrdir, k + ".exr"))
+            sheet, w, h = rc.load_exr(os.path.join(exrdir, k + ".exr"))
             W, H = w, h
             lname = k[: -(len(clip) + 1)]
             built.append((lname, sheet))
@@ -79,11 +79,11 @@ def main():
         partner = {"body": D["partner"]}
         for l in sil:
             partner.setdefault(l, "body")
-        ink_post.post_all(built, W, H, silhouette=sil, partner_of=partner,
+        rc.post_all(built, W, H, silhouette=sil, partner_of=partner,
                           alpha_of=lambda n: alpha.get(n), ink_px=ink, cel_bands=cel,
                           edge_a=D["edge_a"], edge_k=D["edge_k"])
         for lname, sheet in built:
-            ink_post.save_png(sheet, W, H, os.path.join(out, f"{lname}_{clip}.png"))
+            rc.save_png(sheet, W, H, os.path.join(out, f"{lname}_{clip}.png"))
         print(f"  [{clip}] {len(built)}장")
         if PROVE:
             import hashlib

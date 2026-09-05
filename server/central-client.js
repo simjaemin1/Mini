@@ -68,6 +68,31 @@ async function checkUsernameTaken(username) {
   return r.data?.taken;
 }
 
+// ★★[T115 2026-09-05] 친구 — 존이 central 에 묻는 문 셋.
+//   ⚠**못 물어보면 막지 않는다**(T19 규약 그대로): central 이 잠깐 안 뜬 것을 사람의 죄로 삼지 않는다.
+//     그래서 실패는 예외가 아니라 **빈 답**으로 접는다 — 호출부가 매번 try 를 쓰지 않게.
+async function friendRequest(playerId, name) {
+  try { const r = await request('POST', '/friend/req', { player_id: playerId, name }); return r.data || { ok: false, reason: 'down' }; }
+  catch (e) { return { ok: false, reason: 'down' }; }
+}
+async function friendRemove(playerId, name) {
+  try { const r = await request('POST', '/friend/del', { player_id: playerId, name }); return r.data || { ok: false, reason: 'down' }; }
+  catch (e) { return { ok: false, reason: 'down' }; }
+}
+async function friendsOf(playerId) {
+  try {
+    const r = await request('GET', `/friends/${encodeURIComponent(playerId)}`);
+    return (r.status === 200 && r.data && Array.isArray(r.data.friends)) ? r.data.friends : null;
+  } catch (e) { return null; }        // ★null = "못 물어봤다"(빈 목록과 다르다 — 호출부가 가른다)
+}
+/** 이름으로 — **시작 화면 전용**. 돌려받는 건 id 뿐이다(central 주석 참조). */
+async function friendsOfName(name) {
+  try {
+    const r = await request('GET', `/friends/${encodeURIComponent(name)}?by=name`);
+    return (r.status === 200 && r.data && Array.isArray(r.data.friends)) ? r.data.friends : null;
+  } catch (e) { return null; }
+}
+
 async function getPlayer(playerId) {
   const r = await request('GET', `/player/${encodeURIComponent(playerId)}`);
   return r.status === 200 ? r.data.player : null;
@@ -98,4 +123,5 @@ async function getTribe(id) {
 
 module.exports = { authenticate, checkUsernameTaken, getPlayer, updatePlayer, request,
   guestIdentity, promoteGuest,   // ★[배치 13] 게스트 영속 신원 · ★[배치 14] 승계
+  friendRequest, friendRemove, friendsOf, friendsOfName,   // ★[T115] 친구 — 문 셋(실패는 빈 답)
   tribeAddVp, tribeTreasury, tribeNpcUpsert, getTribe };

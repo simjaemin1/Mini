@@ -939,7 +939,10 @@
         }
         // §4-4 Stage 4A: 마을 NPC 직업 접두 — ★[T66 2차] 이모지 접두 **삭제**(화면 규칙 B).
         //   직업은 이름 옆 그림이 아니라 상태창·툴팁의 **글자**가 말한다(`simJob` 은 그대로 실려 간다).
-        const displayName = (o.tribeName ? `[${o.tribeName}] ${o.name}` : o.name);
+        // ★★[T115 2026-09-05] **벗 표지 한 글자.** 판정은 서버가 보낸 1비트(`fr`)뿐이다 —
+        //   클라는 누가 누구와 친구인지 **모른다**(알면 그게 사본이자 남의 쌍을 아는 것이다).
+        //   ⚠이모지 0(화면 규칙 B: 세계는 리터럴). 아이콘 판이 아니라 캔버스 글자라 낱말 하나를 쓴다.
+        const displayName = (o.fr ? '벗 ' : '') + (o.tribeName ? `[${o.tribeName}] ${o.name}` : o.name);
         const oFloor = o.floor || 0;
         const oZ = oFloor * FLOOR_HEIGHT + (o.z || 0); // 14.49-d: 계단 위 z 포함
         const isoF = w2i(ax, ay, oZ);
