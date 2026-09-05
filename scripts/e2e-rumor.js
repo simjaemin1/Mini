@@ -361,6 +361,34 @@ async function waitHttp(url, tries = 900) {
         ok(deedB.heard - deedB.day >= minDays, '⑨e 지연이 캐러밴 시계 하한 이상이다(값 유형과 같은 표)',
           `${deedB.heard - deedB.day}일 ≥ ${minDays}일`);
         ok(deedB.line === deedA.line, '⑨f B 가 듣는 말이 A 에서 난 그 말과 같다(문장 사본 0)', JSON.stringify(deedB.line));
+
+        // ── ★★[T127 2026-09-05] ⑩ 소문 왜곡 — **사실은 남고 크기만 흐려진다** ──────────
+        //   여기가 이 배치의 전부다. 같은 가뭄을 A 는 제 눈으로 보고(0홉 · 정확) B 는 건너 듣는다.
+        //   ⚠픽스처를 새로 만들지 않는다 — ⑨ 가 이미 세운 그 가뭄을 그대로 쓴다.
+        //     `__e2eForceDeed('가뭄')` 은 `fertility 0.65` 를 부르므로 **mag 은 0.65 로 결정**돼 있고
+        //     (1 에서 가장 멀리 벗어난 배수 — `events.js` 파일 머리 정의), 눈금 0.1 위에서 0.7 이 된다.
+        //     즉 이 절은 시드에 안 흔들린다(합성 수 0 · 각본 0).
+        const Ev = require(path.join(ROOT, 'server', 'events'));
+        ok(deedA.mag != null && deedB.mag != null,
+          '⑩a 전제: 게시판 소식이 **들은 크기**를 싣는다(T127 추가 필드 · 없으면 아래가 자명 통과다)',
+          `A ${deedA.mag} · B ${deedB.mag}`);
+        ok(deedA.type === deedB.type && deedA.item === deedB.item && deedA.day === deedB.day && deedA.line === deedB.line,
+          '⑩b ★★**유형·품목·난 날·문장이 한 칸도 안 바뀐다** — 사실은 그대로 걸어온다',
+          `${deedB.type}/${deedB.item} day${deedB.day}`);
+        ok(deedA.mag === 0.65,
+          '⑩c ★A 는 **제 눈으로 본다**(0홉) — 장부의 값 그대로다', `mag ${deedA.mag}`);
+        ok(deedB.mag !== deedA.mag,
+          '⑩ ★★**B 는 얼마나 심한지 모른다** — 건너 들은 값은 눈금 위에 선다(소문 왜곡)',
+          `A ${deedA.mag} → B ${deedB.mag}`);
+        ok([1, 2, 3, 4].some((h) => Ev.blurMag(deedA.mag, h) === deedB.mag),
+          '⑩d ★그 값이 **뭉갬 정본이 내는 값**이다(서버가 딴 수를 지어내지 않았다 · 사본 0)',
+          `blur(${deedA.mag}, h) = ${[1, 2, 3].map((h) => Ev.blurMag(deedA.mag, h)).join('/')}`);
+        ok(deedB.mag > 0 && deedB.mag !== 1 && (deedB.mag < 1) === (deedA.mag < 1),
+          '⑩e ★★뭉개도 **사실은 안 지워진다** — 0 도 1 도 되지 않고 1 을 건너지 않는다(가뭄이 평년으로 안 들린다)',
+          `${deedB.mag}`);
+        ok(!/\d/.test(String(deedB.line)),
+          '⑩f 그래도 **화면엔 수가 안 나온다**(대시보드 톤 금지 §3.2) — 뭉갬은 장부의 일이지 문장의 일이 아니다',
+          JSON.stringify(deedB.line));
       }
     }
   }
