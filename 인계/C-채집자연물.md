@@ -1840,7 +1840,7 @@ function _cropSky(e, day) { const C = _Crops(); if (e && C && !C.dormantAt(e.c, 
 ## 3-나무. ★★★2026-09-05 T123 — **나무에 종이 생겼다** (랩 · 서버 무접촉)
 
 > 랩 전용이다. `lab/전쟁실험실.html` 에만 있고 **서버는 아직 아무것도 안 읽는다**(이식은 승인 게이트 카드).
-> 보고 `보고/T123_2026-09-05.md` · 표 `lab/trees.json`(굽는다) · 하네스 `scripts/test-lab-trees.js`.
+> 보고 `보고/T123_2026-09-05.md`(푸시 `b82502b6`) · 표 `lab/trees.json`(굽는다) · 하네스 `scripts/test-lab-trees.js`.
 
 ### 축 넷 · 종 일곱 — **우열이 없다**
 
@@ -1878,3 +1878,19 @@ function _cropSky(e, day) { const C = _Crops(); if (e && C && !C.dormantAt(e.c, 
 컨테이너·CI 에선 늘 "건너뜀" 이거나 `ERR_FILE_NOT_FOUND`. 전부 `lab/` 로 정정했다.
 그 결과 `test-lab-market ④`(참여 비율 34.1% > 18%)가 드러났다 — **`HEAD` 판 랩에서도 같은 빨강**이라
 T123 의 책임이 아니다(진단은 보고 §6).
+
+### 종 어휘는 두 정본이 나눠 쥔다 — 지어내지 마라
+
+* **이름**은 그림이 쥔다: `public/assets/trees/tree_species.json`(T129 `6b5d17e8` · 종 여덟).
+  그 파일이 스스로 적어 뒀다 — *"수치(성장·수확·벌목)는 서버/랩이 정본이고 여기 없다."*
+* **수**는 랩이 쥔다: `lab/trees.json`(= `lab/전쟁실험실.html` 의 `TREES` 를 구운 것).
+* **열매 품목**은 econ 이 쥔다: `FORAGE_FOOD_FACTOR` ∪ `server/specialty.js` 의 `RESOURCES`.
+  없는 이름을 쓰면 `priceFn` 표에 안 잡혀 **`w()` 가 1.0(모름)** 을 돌려주고, 부등식이 값을 못 읽는 채로 돈다.
+* 하네스 `test-lab-trees ④'` 가 두 접합을 다 잠근다. 종을 더하거나 열매를 붙일 땐 **그 검사부터 본다**.
+
+### 푸시는 컨테이너에서 못 한다
+
+`git proxy: … is not in this session's authorized repository set`(403). 종전 절차 그대로 —
+컨테이너에서 번들(`git bundle create … <base>..<branch>`) → `SendUserFile` → `device_commit_files` 로 `~/Mini/` →
+디바이스에서 `푸시_번들_ff.command` 방식(PAT askpass · `FETCH_HEAD` 만 · 임시 브랜치 0)으로 민다.
+확인은 `git fetch` 가 아니라 **`git ls-remote`** 로 한다(브리지가 unlink 를 막아 `origin/main.lock` 이 남는다).
