@@ -1,5 +1,9 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @pixel    ← ★[T104] **프레임을 화소로 잰다**(`page.screenshot` → `PNG.sync.read`).
+//              렌더 층(`3x-r*`·`34-m-renderloop`·`37-r1-*`)을 만지는 카드는 이 표를 전수로 돌려라 —
+//              `bash scripts/run-regress.sh --list pixel`. 이름으로는 못 찾는다(T98: `e2e-nature` 는
+//              하늘 때문에 셋이 빨갰는데 그 파일엔 `weather` 라는 낱말이 없어 `grep -l` 에 안 걸렸다).
 // =============================================================================
 // e2e-mountain — 산 '장벽 세그먼트' 실클라 픽셀 E2E [배치 20 §C 미완분]
 //   재민 확정(시안 왕복 12회): *"산으로 되어 있는 셀들만 산으로 보여야 —

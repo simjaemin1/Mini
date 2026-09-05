@@ -1,5 +1,9 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @pixel    ← ★[T104] **프레임을 화소로 잰다**(`page.screenshot` → `PNG.sync.read`).
+//              렌더 층(`3x-r*`·`34-m-renderloop`·`37-r1-*`)을 만지는 카드는 이 표를 전수로 돌려라 —
+//              `bash scripts/run-regress.sh --list pixel`. 이름으로는 못 찾는다(T98: `e2e-nature` 는
+//              하늘 때문에 셋이 빨갰는데 그 파일엔 `weather` 라는 낱말이 없어 `grep -l` 에 안 걸렸다).
 // === scripts/e2e-charsprite.js — 캐릭터 스프라이트 애니 **실클라** 계측 [재민 확정 2026-08-30] ===
 //
 // ★★[B-3 귀속 · 족보 70] 이동은 **키보드로**, 조준은 **마우스로**. 입력을 손으로 쏘면

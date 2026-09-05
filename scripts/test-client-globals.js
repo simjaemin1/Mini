@@ -136,5 +136,110 @@ function fixture(files) {
   ok(r.dupes.length === 0 && r.execOutsideMain.length === 0, '★대조 — 깨끗한 픽스처는 통과한다(항상 실패하는 감사기가 아니다)'); }
 fs.rmSync(TMP, { recursive: true, force: true });
 
+// ═════════════════════════════════════════════════════════════════════════════
+// ⑤ ★[T104 2026-09-05 · T93 회부] **`window.__x = …` 재대입** — 아무도 안 보던 세 번째 갈래
+//
+//   ★왜: 위 ①②는 **선언**만 본다(`let`·`const`·`function`). 그런데 조각들이 실제로 부딪히는 자리는
+//     `window.__hook = …` 쪽이다 — 선언이 아니라서 ①②의 눈에 안 보이고, 충돌하면 **조용히 덮인다**.
+//     T93 이 정확히 그걸 했다: `37-r1-weather.js` 가 `__wxDbg` 를 지었는데 그 이름은 이미
+//     `34-m-renderloop.js:110` 의 임자였고, 첫 프레임에 훅이 덮였다. **잡은 건 감사기가 아니라
+//     터진 하네스였다.** ⇒ 여기서 잡는다.
+//
+//   ★가르는 규칙(코드로):
+//     · **DEF 충돌** = 두 파일 이상이 같은 이름에 **함수/클래스/객체 리터럴**을 대입 → 빨강. 예외 없다.
+//       그게 T93 의 모양이다("훅을 짓는" 대입 둘 = 뒤엣것이 앞엣것을 먹는다).
+//     · **값 충돌** = 두 파일 이상이 같은 이름에 값을 대입 → 화이트리스트에 **이유 한 줄**이 있어야 통과.
+//       실측 11종은 전부 `누산기/리셋` 한 쌍이다(한 파일이 더하고, 렌더 루프가 프레임마다 0으로 되돌린다).
+//     · 화이트리스트가 **썩으면** 빨강(목록에 있는데 이제 안 겹치는 이름 = 지워야 할 줄).
+// ═════════════════════════════════════════════════════════════════════════════
+console.log('\n⑤ ★`window.__x = …` 재대입 충돌 (T93 회부)');
+function assigns(code) {
+  // 이름 → { def: Set(파일), val: Set(파일) } 를 파일 단위로 낸다
+  const out = [];
+  const ast = acorn.parse(code, { ecmaVersion: 2022, sourceType: 'script' });
+  const walk = (n) => {
+    if (!n || typeof n !== 'object') return;
+    if (Array.isArray(n)) { n.forEach(walk); return; }
+    if (n.type === 'AssignmentExpression' && n.operator === '=') {
+      const L = n.left;
+      if (L && L.type === 'MemberExpression' && !L.computed && L.object && L.object.type === 'Identifier'
+          && (L.object.name === 'window' || L.object.name === 'globalThis') && L.property && L.property.name) {
+        const isDef = !!(n.right && /Function|Class|ObjectExpression/.test(n.right.type));
+        out.push({ name: L.property.name, def: isDef });
+      }
+    }
+    for (const k of Object.keys(n)) if (k !== 'loc' && k !== 'range') walk(n[k]);
+  };
+  walk(ast);
+  return out;
+}
+function assignAudit(pubDir, files) {
+  const map = new Map();   // 이름 → { def:Set, val:Set, all:Set }
+  for (const f of files) {
+    for (const a of assigns(fs.readFileSync(path.join(pubDir, f), 'utf8'))) {
+      if (!map.has(a.name)) map.set(a.name, { def: new Set(), val: new Set(), all: new Set() });
+      const e = map.get(a.name); e.all.add(f); (a.def ? e.def : e.val).add(f);
+    }
+  }
+  return map;
+}
+// ★화이트리스트 — **이유 한 줄씩**. 이유를 못 적겠으면 그건 화이트리스트에 들어갈 자격이 없다.
+const REASSIGN_OK = {
+  __wfBuildMs: '누산기/리셋 — 10-r1-terrain 이 더하고 34-m-renderloop 이 프레임마다 0 으로 되돌린다',
+  __wfBuildMax: '〃 (물길 빌드 최대치)',
+  __wfBuildN: '〃 (물길 빌드 횟수)',
+  __wfBuildSum: '〃 (물길 빌드 합)',
+  __wfFirstMs: '〃 (첫 빌드 시각)',
+  __wfFlowMs: '〃 (흐름 계산 시간)',
+  __wfFlowN: '〃 (흐름 계산 횟수)',
+  __wfSteadyN: '〃 (정상 구간 횟수)',
+  __wfSteadySum: '〃 (정상 구간 합)',
+  _tileAccDbg: '누산기/리셋 — 34-m-renderloop 이 타일 시간을 더하고 31-m-move 가 찍은 뒤 0 으로 되돌린다',
+  __eRepeat: '핸들 하나 — 46-h-verbs 가 setInterval 핸들을 넣고 99-main 이 키를 떼면 clearInterval 후 null',
+};
+{
+  const AM = assignAudit(PUB, R.files);
+  const total = [...AM.values()].reduce((a, e) => a + e.all.size, 0);
+  ok(AM.size > 100, '⑤a 전제: `window.X =` 대입 이름을 실제로 여럿 읽었다(0 이면 아래가 자명 통과다)',
+    `${AM.size}종 · ${total}자리`);
+  const defDup = [...AM.entries()].filter(([, e]) => e.def.size > 1);
+  ok(defDup.length === 0,
+    '⑤b ★★두 파일이 같은 이름에 **함수/객체를 대입**하지 않는다 (T93 이 `__wxDbg` 로 당한 그 모양 · 화이트리스트 없음)',
+    defDup.map(([n, e]) => `${n}(${[...e.def].join(',')})`).join(' · ') || `DEF 대입 ${[...AM.values()].filter((e) => e.def.size).length}종 검사`);
+  const dup = [...AM.entries()].filter(([, e]) => e.all.size > 1);
+  const unlisted = dup.filter(([n]) => !REASSIGN_OK[n]);
+  ok(unlisted.length === 0,
+    '⑤c ★두 파일 이상이 대입하는 이름은 **전부 화이트리스트에 이유가 있다**',
+    unlisted.map(([n, e]) => `${n}(${[...e.all].join(',')})`).join(' · ') || `겹치는 이름 ${dup.length}종 전부 등재`);
+  const stale = Object.keys(REASSIGN_OK).filter((n) => !AM.has(n) || AM.get(n).all.size <= 1);
+  ok(stale.length === 0,
+    '⑤d ★화이트리스트가 썩지 않았다 — 이제 안 겹치는 이름이 목록에 남아 있으면 지워라',
+    stale.join(' ') || `${Object.keys(REASSIGN_OK).length}줄 전부 아직 겹친다`);
+}
+
+// ⑥ ★돌연변이 — ⑤가 잡을 줄 아는가 · 그리고 **멀쩡한 것은 안 잡는가**(대조)
+console.log('\n⑥ ★재대입 감사의 돌연변이와 대조');
+{
+  const T2 = fs.mkdtempSync(path.join(require('os').tmpdir(), 'cg2-'));
+  const fx = (files) => {
+    fs.rmSync(T2, { recursive: true, force: true }); fs.mkdirSync(path.join(T2, 'client'), { recursive: true });
+    for (const [f, code] of Object.entries(files)) fs.writeFileSync(path.join(T2, f), code);
+    return assignAudit(T2, Object.keys(files));
+  };
+  const A1 = fx({ 'client/a.js': 'window.__hook = () => 1;\n', 'client/b.js': 'window.__hook = function(){};\n' });
+  ok([...A1.entries()].filter(([, e]) => e.def.size > 1).length === 1,
+    '⑥a ★두 파일이 같은 훅을 지으면 ⑤b 가 잡는다 (T93 재현)');
+  const A2 = fx({ 'client/a.js': 'window._n = (window._n||0) + 1;\n', 'client/b.js': 'window._n = 0;\n' });
+  ok([...A2.entries()].filter(([, e]) => e.def.size > 1).length === 0
+     && [...A2.entries()].filter(([, e]) => e.all.size > 1).length === 1,
+    '⑥b ★누산기/리셋은 DEF 충돌이 **아니다** — ⑤c 의 화이트리스트가 판정한다(둘을 안 뭉갠다)');
+  const A3 = fx({ 'client/a.js': 'window.__only = () => 1;\nwindow.__only2 = {};\n', 'client/b.js': 'window.__other = () => 2;\n' });
+  ok([...A3.entries()].filter(([, e]) => e.all.size > 1).length === 0,
+    '⑥c ★대조 — 파일마다 다른 이름이면 **안 잡는다**(항상 실패하는 감사기가 아니다)');
+  const A4 = fx({ 'client/a.js': 'const q = 1;\n', 'client/b.js': 'let w = 2;\n' });
+  ok(A4.size === 0, '⑥d ★대조 — `window.` 대입이 없으면 이름이 0종이다(선언은 ①② 몫이다)');
+  fs.rmSync(T2, { recursive: true, force: true });
+}
+
 console.log(`\n=== PASS ${pass} / FAIL ${fail} ===`);
 process.exit(fail ? 1 : 0);

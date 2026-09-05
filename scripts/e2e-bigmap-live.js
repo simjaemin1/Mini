@@ -1,5 +1,9 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @pixel    ← ★[T104] **프레임을 화소로 잰다**(`page.screenshot` → `PNG.sync.read`).
+//              렌더 층(`3x-r*`·`34-m-renderloop`·`37-r1-*`)을 만지는 카드는 이 표를 전수로 돌려라 —
+//              `bash scripts/run-regress.sh --list pixel`. 이름으로는 못 찾는다(T98: `e2e-nature` 는
+//              하늘 때문에 셋이 빨갰는데 그 파일엔 `weather` 라는 낱말이 없어 `grep -l` 에 안 걸렸다).
 // === scripts/e2e-bigmap-live.js — 큰 지도가 **열려 있는 동안** 살아 있는가 (T39) ====
 //
 // ★왜 [T39 2026-09-01]
@@ -137,6 +141,11 @@ function pxdiff(a, b) {
   });
   ok(opened, '② 큰 지도가 열렸다 (M)');
 
+  // ★[T104 · T98 §4-c 문법] 화소를 재기 전에 **하늘과 바람을 끈다** — 재는 대상을 바꾸는 게 아니라
+  //   잡음을 걷는 것이다(비/눈은 프레임마다 화소를 흔들고, 풀 흔들림도 같은 일을 한다).
+  //   T98 이 11개에 넣은 그 두 줄인데 이 파일은 빠져 있었다 — `@pixel` 표를 세우며 드러났다.
+  await page.evaluate(() => { if (typeof window.__rainForce === 'function') window.__rainForce({ precip: 0 }); 
+    if (window.__terrain19) window.__terrain19.windOff = true; }).catch(() => {});
   const shotMap = async (n) => {
     const el = await page.$('#bigMapPanel canvas');
     const p2 = path.join(SHOTS, n + '.png');

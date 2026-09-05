@@ -122,6 +122,30 @@ JS
   exit 1
 fi
 
+# ═══ ★[T104 2026-09-05 · PM 승인] 표를 읽는 문법 하나 — `@regress` 도 `@pixel` 도 여기서 읽는다 ═══
+#
+#   ★왜 태그를 인자로 받나(사본 0): 종전엔 이 함수가 `'^// @regress'` 를 **글자로** 박고 있었다.
+#     T98 회부 8("프레임을 픽셀로 재는 하네스 목록")을 세우려고 목록 파일을 따로 만들면 그게 사본이고,
+#     사본은 갈린다(러너 둘이 갈렸던 2026-08-26 이 그 선례다). ⇒ **같은 자동 발견 절**에 태그만 얹는다.
+#   ⚠앵커를 뒤에도 붙였다 — `@regress` 가 `@regression` 같은 이름을 물면 안 된다.
+#     기존 표는 `// @regress   ← 설명…` 꼴이 있어 **공백 또는 줄끝**을 허용한다(집합 보존).
+_disc() { grep -lE "^// @${2:-regress}([[:space:]]|\$)" scripts/$1 2>/dev/null | xargs -r -n1 basename | LC_ALL=C sort; }
+
+# ★목록 모드 — 러너 **본문 무접촉**. 기계가 목록을 뽑는 창구다(사람이 손으로 세지 않게).
+#   쓰는 법: bash scripts/run-regress.sh --list          # @regress 전수
+#            bash scripts/run-regress.sh --list pixel    # @pixel — 프레임을 화소로 재는 하네스
+#   ⚠비면 **종료코드 1**이다. 조용한 빈 목록은 이 저장소에서 제일 위험한 답이다(자동 발견 0개와 같은 자리).
+if [ "${1:-}" = "--list" ]; then
+  TAG="${2:-regress}"
+  LIST=($(_disc 'test-*.js' "$TAG") $(_disc 'e2e-*.js' "$TAG"))
+  if [ "${#LIST[@]}" -eq 0 ]; then
+    echo "  ✗ ★'@${TAG}' 표를 단 하네스가 0개다 — 표가 사라졌거나 태그가 틀렸다." >&2
+    exit 1
+  fi
+  printf '%s\n' "${LIST[@]}"
+  exit 0
+fi
+
 if [ "$#" -gt 0 ]; then
   LIST=("$@")
 else
@@ -140,7 +164,6 @@ else
   #     러너는 **한 번에 하나씩** 돌리므로(아래 for) 같은 급 안의 순서는 결과에 영향이 없다.
   #     급을 갈라 두는 이유는 빨리 실패를 보기 위해서지 의존 때문이 아니다.
   #   ⚠러너는 레포 루트에서 돈다(아래 `node "scripts/$f"` 와 같은 규약).
-  _disc() { grep -l '^// @regress' scripts/$1 2>/dev/null | xargs -r -n1 basename | LC_ALL=C sort; }
   LIST=($(_disc 'test-*.js') $(_disc 'e2e-*.js'))
   if [ "${#LIST[@]}" -eq 0 ]; then
     echo "  ✗ ★자동 발견이 0개다 — 표(// @regress)가 사라졌거나 경로가 틀렸다. 회귀를 믿지 마라."

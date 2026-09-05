@@ -119,5 +119,104 @@ ok(bad.length === 0, '② ★판정 자리에 이모지 0 (정규식 · 술어 �
   ok(S && S.length === 1, '④d 셀렉터 안의 이모지도 잡는다');
 }
 
+// ═══ ⑤ [T104 2026-09-05 · T98 회부 8] **프레임을 화소로 재는 하네스는 표를 단다** ═══════
+//
+//   ★왜: 렌더 층이 하나 늘 때마다 픽셀 하네스 **전부**가 흔들린다. 그런데 접점 목록은
+//     `grep -l "<파일명>"` 으로 뽑는다 — `e2e-nature` 는 하늘 때문에 셋이 빨갰는데 그 파일엔
+//     `weather` 라는 낱말이 없어 목록에 **안 걸렸다**. 이름으로는 못 찾는 관계다.
+//   ⇒ 규약은 이미 있다: `// @regress` 자동 발견 문법 그대로 `// @pixel` 한 줄.
+//     기계가 뽑는다 — `bash scripts/run-regress.sh --list pixel`.
+//   ⚠표 검사는 **AST 로** 한다: 표 주석 자체가 `PNG.sync.read` 라는 글자를 품고 있어서
+//     정규식으로 파일을 훑으면 **표를 단 파일이 곧 픽셀 파일**이 되는 자명 통과가 된다.
+{
+  // 화소를 실제로 **읽는가** — 호출자리로만 본다(주석·문자열은 AST 에 안 걸린다)
+  //   ⚠★[실측] "화소를 읽는다"만으로는 부족했다. `test-icons`·`test-crops-world` 는 **디스크의 아이콘 PNG**를
+  //     읽지 브라우저 **프레임**을 안 읽는다 — 하늘도 바람도 없는 자리다. 이 카드가 세우는 목록은
+  //     "렌더 층이 흔들면 같이 흔들리는 하네스"이므로 가르는 조건은 **화소 읽기 ∧ 스크린샷**이다.
+  function shoots(src) {
+    let ast; try { ast = acorn.parse(src, { ecmaVersion: 2023, sourceType: 'script', locations: true, allowReturnOutsideFunction: true }); }
+    catch (e) { return null; }
+    let hit = false;
+    const walk = (n) => {
+      if (!n || typeof n !== 'object' || hit) return;
+      if (Array.isArray(n)) { n.forEach(walk); return; }
+      if (n.type === 'CallExpression' && n.callee && n.callee.type === 'MemberExpression' && !n.callee.computed
+          && n.callee.property && n.callee.property.name === 'screenshot') hit = true;
+      for (const k of Object.keys(n)) if (k !== 'loc' && k !== 'range') walk(n[k]);
+    };
+    walk(ast);
+    return hit;
+  }
+  function pixelUse(src) {
+    let ast; try { ast = acorn.parse(src, { ecmaVersion: 2023, sourceType: 'script', locations: true, allowReturnOutsideFunction: true }); }
+    catch (e) { return null; }
+    let hit = false;
+    const walk = (n) => {
+      if (!n || typeof n !== 'object' || hit) return;
+      if (Array.isArray(n)) { n.forEach(walk); return; }
+      if (n.type === 'CallExpression' && n.callee && n.callee.type === 'MemberExpression' && !n.callee.computed) {
+        const pn = n.callee.property && n.callee.property.name;
+        if (pn === 'getImageData' || pn === 'toDataURL') hit = true;
+        // PNG.sync.read(...) — 스크린샷 파일을 화소로 읽는 이 저장소의 정본 문법
+        if (pn === 'read' && n.callee.object && n.callee.object.type === 'MemberExpression'
+            && n.callee.object.property && n.callee.object.property.name === 'sync') hit = true;
+      }
+      for (const k of Object.keys(n)) if (k !== 'loc' && k !== 'range') walk(n[k]);
+    };
+    walk(ast);
+    return hit;
+  }
+  // 하늘·바람을 끄는가 — 식별자/속성 이름으로 본다(역시 주석은 안 센다)
+  function calmsWeather(src) {
+    let ast; try { ast = acorn.parse(src, { ecmaVersion: 2023, sourceType: 'script', locations: true, allowReturnOutsideFunction: true }); }
+    catch (e) { return null; }
+    let rain = false, wind = false;
+    const walk = (n) => {
+      if (!n || typeof n !== 'object') return;
+      if (Array.isArray(n)) { n.forEach(walk); return; }
+      const nm = (n.type === 'Identifier') ? n.name : ((n.type === 'MemberExpression' && !n.computed && n.property) ? n.property.name : null);
+      if (nm === '__rainForce') rain = true;
+      if (nm === 'windOff' || nm === 'windGrassOff') wind = true;
+      for (const k of Object.keys(n)) if (k !== 'loc' && k !== 'range') walk(n[k]);
+    };
+    walk(ast);
+    return rain && wind;
+  }
+  const TAG = /^\/\/ @pixel([\s]|$)/m;
+  // ⚠하늘을 끄면 **재는 대상이 사라지는** 하네스 — 날씨 그 자체를 재는 파일이다(이유를 코드에 적는다)
+  const CALM_EXEMPT = { 'e2e-weather.js': '날씨를 재는 하네스다 — 하늘을 끄면 검사가 사라진다' };
+
+  const tagged = [], pixel = [], noTag = [], noPixel = [], noCalm = [];
+  for (const f of files) {
+    const src = fs.readFileSync(path.join(SCRIPTS, f), 'utf8');
+    const t = TAG.test(src), u = pixelUse(src) && shoots(src);
+    if (t) tagged.push(f);
+    if (u) pixel.push(f);
+    if (u && !t) noTag.push(f);
+    if (t && !u) noPixel.push(f);
+    if (t && !CALM_EXEMPT[f] && calmsWeather(src) === false) noCalm.push(f);
+  }
+  ok(tagged.length >= 10, '⑤ 전제: `@pixel` 표를 단 하네스가 실제로 여럿이다(0 이면 아래가 자명 통과다)', `${tagged.length}개`);
+  ok(noTag.length === 0, '⑤b ★화소를 읽는데 `@pixel` 표가 없는 하네스 0 (렌더 카드가 이 파일을 못 찾는다)', noTag.join(' '));
+  ok(noPixel.length === 0, '⑤c ★역도 — 표는 있는데 화소를 안 읽는 하네스 0 (표가 부풀면 목록이 거짓말이 된다)', noPixel.join(' '));
+  ok(noCalm.length === 0,
+    '⑤d ★★`@pixel` 하네스는 **하늘과 바람을 끈다**(T98 §4-c) — 안 끄면 렌더 층이 늘 때마다 흔들린다',
+    noCalm.join(' ') || `${tagged.length - Object.keys(CALM_EXEMPT).length}개 확인 · 예외 ${Object.keys(CALM_EXEMPT).join(',')}`);
+  // ★돌연변이와 대조 — 이 검사가 잡을 줄 아는가
+  ok(pixelUse("const p = PNG.sync.read(fs.readFileSync(x));") === true,
+    '⑤e 돌연변이 — `PNG.sync.read` 를 쓰는 소스는 **픽셀로 잡힌다**');
+  // ★가르는 조건이 실제로 가르는지 — 자산 PNG 만 읽는 하네스는 표를 안 단다(그리고 안 달아도 빨갛지 않다)
+  const ASSET = ['test-icons.js', 'test-crops-world.js'].filter((f) => files.includes(f));
+  ok(ASSET.length > 0, '⑤e2 전제: 자산 PNG 만 읽는 하네스가 실제로 있다(없으면 아래가 자명 통과다)', ASSET.join(' '));
+  ok(ASSET.every((f) => { const src = fs.readFileSync(path.join(SCRIPTS, f), 'utf8'); return pixelUse(src) === true && shoots(src) === false; }),
+    '⑤e3 ★★그것들은 **화소는 읽지만 스크린샷을 안 찍는다** — 프레임이 아니라 자산이라 이 목록 밖이다',
+    ASSET.join(' '));
+  ok(pixelUse("// PNG.sync.read 는 주석일 뿐이다\nconst a = 1;") === false,
+    '⑤f ★★대조 — **주석 안의 같은 글자는 안 잡는다**(표 주석이 스스로를 픽셀로 만들지 않는다)');
+  ok(calmsWeather("page.evaluate(() => { window.__rainForce({ precip: 0 }); window.__terrain19.windOff = true; });") === true
+     && calmsWeather("page.screenshot({ path: p });") === false,
+    '⑤g 돌연변이 — 하늘·바람을 끄는 소스와 안 끄는 소스를 **가른다**');
+}
+
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
 process.exit(fail ? 1 : 0);
