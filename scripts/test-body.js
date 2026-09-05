@@ -1516,6 +1516,187 @@ function codeOnly(src) {
     }
   }
 
+  // ═══ ⑳ 나무 아래 가림 (T114 · 2026-09-05 재민 확정) ════════════════════════
+  //   ★한 줄: **비가 올 때 숲으로 들어가면 덜 젖는다.** 광장에선 그대로 젖는다.
+  //   ★차폐의 정본은 `Wind.coverAt`(= `cellTerms().fsh`) 하나 · 계수는 `Body.CFG.COVER_MAX` 하나.
+  //   ⚠추위 축은 **한 줄도 안 건드린다** — 그건 T64(여름 그늘) 회부다.
+  say('\n⑳ 나무 아래 가림 (T114)');
+  {
+    const Wind4 = require(path.join(ROOT, 'server', 'wind.js'));
+    const Wx4 = require(path.join(ROOT, 'server', 'weather.js'));
+    const hard4 = JSON.parse(fs.readFileSync(path.join(ROOT, 'server', 'hanbando-terrain.json'), 'utf8')).hanbando;
+    const walk4 = (x, y) => !H.isRockTileLocal(x, y) && !H.isWaterTileLocal(x, y);
+
+    // ── ⓐ 전제 — 접근자가 있고, 지형이 물렸고, **자리를 찾았다**(족보 73: 좌표를 적지 않는다) ──
+    ok(typeof Wind4.coverAt === 'function', '★⑳ⓐ `Wind.coverAt` 접근자가 있다');
+    ok(Wind4.available(), '★★⑳ⓐ 전제 — 지형이 물렸다(아니면 아래 차폐가 전부 0 이라 자명 통과다)');
+    let deep = null, open = null;
+    for (const v of hard4.villages) {
+      const pos = v.pos || [v.x, v.y];
+      if (!Number.isFinite(pos[0])) continue;
+      for (let a = 0; a < 16 && (!deep || !open); a++) {
+        for (const d of [0, 300, 900, 1800, 2800]) {
+          const ang = 2 * Math.PI * a / 16;
+          const x = pos[0] + Math.cos(ang) * d, y = pos[1] + Math.sin(ang) * d;
+          if (x < 200 || y < 200 || !walk4(x, y)) continue;
+          const c = Wind4.coverAt(x, y);
+          if (c >= 0.999 && !deep) deep = [Math.round(x), Math.round(y), c];
+          if (c === 0 && !open) open = [Math.round(x), Math.round(y), c];
+        }
+      }
+      if (deep && open) break;
+    }
+    ok(!!deep && !!open, '★★⑳ⓐ (상황) 빽빽한 숲 셀과 트인 셀을 **찾았다** — 둘 다 없으면 아래가 무의미하다',
+      `숲 ${deep && deep.slice(0, 2)}(fsh ${deep && deep[2]}) · 트임 ${open && open.slice(0, 2)}(fsh ${open && open[2]})`);
+    ok(deep && open && deep[2] > open[2], '★⑳ⓐ2 두 자리의 차폐가 실제로 다르다', `${open && open[2]} → ${deep && deep[2]}`);
+    //   ★`fsh` 사본 0 — 접근자가 정본 셀 항을 **그대로** 낸다(계수를 안 곱해서 낸다).
+    if (deep) {
+      const raw = Wind4._internals.cellTerms(Math.floor(deep[0] / 32), Math.floor(deep[1] / 32)).fsh;
+      ok(Wind4.coverAt(deep[0], deep[1]) === raw,
+        '★★⑳ⓐ3 `coverAt` 은 `cellTerms().fsh` 를 **그대로** 낸다(사본 0 · 계수는 쓰는 축이 곱한다)', `${raw}`);
+    }
+
+    // ── ⓑ 같은 비 · 숲 < 광장 ──────────────────────────────────────────────
+    //   ★비 오는 날을 **찾는다** — 강수 정본(`weather.precipAt`)에 물어서 고른다(날짜를 적지 않는다).
+    let rainDay = null, prMax = 0;
+    for (let d = 0; d < 365 * 3 && rainDay === null; d++) {
+      const pr = Wx4.precipAt(d) || 0;
+      if (pr > prMax) { prMax = pr; }
+      if (pr >= 0.30) rainDay = d;           // 흠뻑 젖을 만한 비 — 바닥이 눈에 띄게 오른다
+    }
+    ok(rainDay !== null, '★★⑳ⓑ (상황) 충분히 센 비가 오는 날을 **찾았다**(정본 `precipAt` 에 물어서)',
+      `doy ${rainDay} · 세기 ${rainDay !== null ? Wx4.precipAt(rainDay).toFixed(3) : '—'} · 3년 최대 ${prMax.toFixed(3)}`);
+    const wetAfter = (cover, extra) => {
+      const q = mkPlayer('cov' + Math.random().toString(36).slice(2, 7));
+      B.ensure(q).wet = 0;
+      B.wetStep(q, 1, Object.assign({ day: rainDay, cover }, extra || {}));
+      return B.wetOf(q);
+    };
+    if (rainDay !== null) {
+      const pr = Wx4.precipAt(rainDay);
+      const wOpen = wetAfter(0), wDeep = wetAfter(1);
+      ok(wDeep < wOpen, '★★⑳ⓑ **같은 비 · 숲(차폐 1)에서 젖음이 광장(차폐 0)보다 작다**',
+        `광장 ${wOpen.toFixed(4)} → 숲 ${wDeep.toFixed(4)}`);
+      ok(Math.abs(wOpen - pr) < 1e-9, '★⑳ⓑ2 광장은 **종전 그대로** — 비의 세기가 곧 바닥이다(T105 무변)', `${wOpen} = ${pr}`);
+      const ratio = wDeep / Math.max(1e-9, wOpen);
+      ok(Math.abs(ratio - (1 - B.CFG.COVER_MAX)) < 1e-6,
+        '★★⑳ⓑ3 비율이 **표 그대로**다 — 1 − COVER_MAX(출처: Sheng & Cai 2019 · 혼효림 22%)',
+        `${ratio.toFixed(4)} vs ${(1 - B.CFG.COVER_MAX).toFixed(4)}`);
+      //   ★중간 차폐는 **선형**이다 — 새 곡선이 아니라 곱 하나다.
+      const wHalf = wetAfter(0.5);
+      ok(Math.abs(wHalf - pr * (1 - 0.5 * B.CFG.COVER_MAX)) < 1e-9,
+        '★⑳ⓑ4 중간 차폐는 곱 하나로 선형이다(새 곡선 0)', `${wHalf.toFixed(4)}`);
+      //   ★클램프 — 차폐가 범위를 벗어나도 상태값은 0~1 규약을 안 깬다.
+      ok(B.coverMult(-5) === 1 && B.coverMult(9) === 1 - B.CFG.COVER_MAX,
+        '★⑳ⓑ5 차폐는 0~1 로 잘린다(상태값 규약 불변)', `${B.coverMult(-5)} / ${B.coverMult(9)}`);
+      ok(B.coverMult(undefined) === 1,
+        '★★⑳ⓑ6 `cover` 를 **안 주면 종전 값**이다 — 옛 호출부·구 하네스 계약이 산다');
+
+      // ── ⓒ 실내는 0 유지 · 마름은 무접촉 ─────────────────────────────────
+      ok(wetAfter(0, { indoor: true }) === 0 && wetAfter(1, { indoor: true }) === 0,
+        '★★⑳ⓒ 실내는 차폐와 **무관하게** 0 이다(지붕이 이미 다 막는다 — 이중 적용 0)');
+      const dryTest = (cover) => {
+        const q = mkPlayer('dry' + Math.random().toString(36).slice(2, 7));
+        B.ensure(q).wet = 1;
+        let dd = 0; for (let d2 = 0; d2 < 365 && dd === 0; d2++) if ((Wx4.precipAt(d2) || 0) === 0) dd = d2 || 1;
+        B.wetStep(q, 100, { day: dd, cover });
+        return B.wetOf(q);
+      };
+      ok(Math.abs(dryTest(0) - dryTest(1)) < 1e-12,
+        '★★⑳ⓒ2 **마름은 차폐를 모른다** — 이 카드는 젖는 쪽 한 줄만 만졌다', `${dryTest(0).toFixed(4)}`);
+
+      // ── ⓓ 더위 축 무접촉 · 바람 노출 식 무변 ────────────────────────────
+      const tHot = (cover) => B.coldTarget({ day: rainDay, night: false, warmth: 0, cover });
+      ok(tHot(0) === tHot(1), '★★⑳ⓓ **더위·추위 축이 차폐를 모른다** — 여름 그늘(T64)은 이 카드가 안 연다',
+        `${tHot(0)}`);
+      if (deep) {
+        const A4 = Wx4.anchors(), WD4 = Math.round(A4.winterMid);
+        const xNow = Wind4.exposureAt(deep[0], deep[1], WD4, 0);
+        const wsrc4 = codeOnly(fs.readFileSync(path.join(ROOT, 'server', 'wind.js'), 'utf8'));
+        ok(/\(1 - CFG\.FOREST_W \* t\.fsh\)/.test(wsrc4),
+          '★★⑳ⓓ2 **바람 노출 식이 한 글자도 안 변했다**(`1 − FOREST_W·fsh` 그대로)', `X=${xNow}`);
+        ok(!/COVER_MAX|0\.22/.test(wsrc4),
+          '★★⑳ⓓ3 `wind.js` 는 강수 계수를 **모른다** — 접근자는 양만 내고 계수는 쓰는 축이 갖는다');
+      }
+
+      // ── ⓔ 비용 — `exposureAt` 과 **같은 셀 캐시**를 탄다(새 캐시 0) ──────
+      if (deep) {
+        Wind4._reset();
+        //   ⚠**겨울날로** 데운다 — 봄가을(탁월풍 0)엔 `exposureAt` 이 `cellTerms` 앞에서 돌아서서
+        //     캐시가 안 데워진다. 그러면 아래가 "노출이 데웠다"가 아니라 "내가 데웠다"가 된다.
+        Wind4.exposureAt(deep[0], deep[1], Math.round(Wx4.anchors().winterMid), 0);
+        const st0 = Wind4.stats();
+        const t0c = process.hrtime.bigint();
+        for (let i = 0; i < 2000; i++) Wind4.coverAt(deep[0], deep[1]);
+        const us = Number(process.hrtime.bigint() - t0c) / 1000 / 2000;
+        const st1 = Wind4.stats();
+        ok(st1.miss === st0.miss, '★★⑳ⓔ `coverAt` 은 **새 셀을 하나도 안 만든다** — 노출이 데운 캐시를 그대로 탄다',
+          `miss ${st0.miss} → ${st1.miss}`);
+        ok(us < 5, '★⑳ⓔ2 캐시 적중 비용 — 틱에 얹어도 사실상 0', `${us.toFixed(3)}µs`);
+      }
+
+      // ── ⓕ 되돌림 + 돌연변이 — **자식 프로세스 + env**(공통 §2⑨) ─────────
+      //   ★같은 계산을 자식에서 다시 돌린다. 부모의 `require` 캐시엔 env 가 안 먹는다.
+      const { execFileSync } = require('child_process');
+      const probe = `/tmp/t114-probe-${process.pid}.js`;
+      const probeOut = `/tmp/t114-probe-${process.pid}.json`;
+      //   ⚠답을 **파일로** 받는다 — `weather.js` 가 econ 을 물면서 stdout 에 부팅 소음을 쏟는다
+      //     (초안이 그걸 JSON 으로 파싱하려다 터졌다 · 족보 ㊻: 하네스가 먼저 틀린다).
+      fs.writeFileSync(probe, [
+        "const fs=require('fs');",
+        "const p=require(" + JSON.stringify(path.join(ROOT, 'server', 'body.js')) + ");",
+        "const W=require(" + JSON.stringify(path.join(ROOT, 'server', 'weather.js')) + ");",
+        "const d=" + rainDay + ";",
+        "const f=(c)=>{const q={hunger:100,thirst:100};p.ensure(q);p.wetStep(q,1,{day:d,cover:c});return p.wetOf(q);};",
+        "fs.writeFileSync(process.argv[2],JSON.stringify({open:f(0),deep:f(1),pr:W.precipAt(d),max:p.CFG.COVER_MAX,on:p.CFG.COVER_ON}));",
+      ].join('\n'));
+      const run = (env) => {
+        try { fs.unlinkSync(probeOut); } catch (e) {}
+        execFileSync(process.execPath, [probe, probeOut],
+          { env: Object.assign({}, process.env, env), encoding: 'utf8', stdio: 'ignore' });
+        return JSON.parse(fs.readFileSync(probeOut, 'utf8'));
+      };
+      const base4 = run({});
+      ok(base4.deep < base4.open, '★⑳ⓕ (전제) 자식이 부모와 같은 답을 낸다', `${base4.open} → ${base4.deep}`);
+      //   되돌림 — `T114_COVER=0` 이면 **T105 세계 비트 그대로**(광장 값과 한 자리도 안 다르다)
+      const rev4 = run({ T114_COVER: '0' });
+      ok(rev4.deep === rev4.open && rev4.deep === base4.open,
+        '★★⑳ⓕ2 **되돌림 `T114_COVER=0` 이 T105 를 정확히 재현한다**(숲 = 광장 = 종전)',
+        `${rev4.deep} = ${base4.open}`);
+      //   ★★돌연변이 — 계수를 0 으로 하면 차이가 사라진다 ⇒ ⓑ 는 **✗ 를 낼 수 있다**(자명 통과 아님)
+      const mut4 = run({ BODY_COVER_MAX: '0' });
+      ok(rev4.on === 0 && mut4.max === 0 && base4.on === 1 && base4.max === B.CFG.COVER_MAX,
+        '★★⑳ⓕ2b (전제) 자식이 env 를 **실제로 물었다** — 안 물면 되돌림·돌연변이가 자명 통과다',
+        `되돌림 on=${rev4.on} · 돌연변이 max=${mut4.max} · 기본 ${base4.max}`);
+      ok(mut4.deep === mut4.open,
+        '★★⑳ⓕ3 돌연변이 — 계수를 0 으로 하면 숲과 광장이 **같아진다**(이 절이 ✗ 를 낼 수 있다)',
+        `${mut4.open} = ${mut4.deep}`);
+      //   ★접근자가 0 을 돌려주는 돌연변이도 같은 관측이다 — `cover`(=coverAt 의 값)를 0 으로 준 것이 ⓑ 의 광장이다.
+      ok(base4.open === wOpen && base4.open === base4.pr,
+        '★⑳ⓕ4 (같은 관측) 접근자가 0 을 내면 그 답이 곧 광장 값이다 — 차이 0');
+      for (const f4 of [probe, probeOut]) { try { fs.unlinkSync(f4); } catch (e) {} }
+
+      // ── ⓖ 접점 — 서버가 싣고 클라는 낱말 하나만 얹는다(T105 문법) ────────
+      {
+        const zsrc4 = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
+        const at4 = zsrc4.indexOf('\nfunction weatherFor(');
+        const end4 = zsrc4.indexOf('\n}\n', at4);
+        const fn4 = at4 >= 0 && end4 > at4 ? zsrc4.slice(at4, end4 + 3) : '';
+        ok(fn4.length > 0 && /exp: wexp/.test(fn4), '⑳ⓖ 전제 — `weatherFor` 본문을 통째로 집었다', `${fn4.split('\n').length}줄`);
+        ok(/coverOf\(p\)/.test(fn4) && /\bcover\b/.test(fn4.slice(fn4.indexOf('return Object.assign'))),
+          '★⑳ⓖ2 응답에 `cover` 가 실린다 — 정본 접근자를 부른다(사본 0)');
+        //   ⚠**코드만** 본다(주석 제외) — 주석은 "여기서 안 곱한다"고 말할 자유가 있어야 한다(⑯㉠ 규약).
+        ok(!/COVER_MAX|0\.22/.test(codeOnly(zsrc4)), '★★⑳ⓖ3 `zone.js` 는 계수를 **모른다** — 전달만 한다');
+        ok(/cover:\s*coverOf\(p\)/.test(zsrc4), '★⑳ⓖ4 `Body.tick` 맥락에 `cover` 를 싣는다(`windExposure` 와 같은 자리)');
+        const hud4 = fs.readFileSync(path.join(ROOT, 'public', 'client', '44-h-hud.js'), 'utf8');
+        ok(/'\s*·\s*나무 아래'/.test(hud4), '★★⑳ⓖ5 HUD 는 **낱말 하나**다(새 패널 0 · T105 문법)');
+        ok(!/0\.22|COVER_MAX/.test(codeOnly(hud4)), '★★⑳ⓖ6 클라에 계수 **사본이 없다** — 서버 `cover` 를 그대로 읽는다');
+        const wxc4 = fs.readFileSync(path.join(ROOT, 'public', 'client', '37-r1-weather.js'), 'utf8');
+        ok(!/\bcover\b/.test(wxc4), '⑳ⓖ7 (T93·T98 무접촉) 비·눈 층은 `cover` 를 모른다');
+      }
+    }
+  }
+
   // ═══ ⑧ 픽스처 결백 ═════════════════════════════════════════════════════════
   say('\n⑧ 픽스처 결백(족보 ㊻)');
   // ★①(오프라인 불변)이 자명 통과하지 않으려면, 그 절이 **저장을 건드리지 않아야** 한다.

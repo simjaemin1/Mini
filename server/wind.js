@@ -202,6 +202,25 @@ function exposureAt(x, y, day, shelter) {
   return +Math.max(0, Math.min(1, x0)).toFixed(4);
 }
 
+/**
+ * ★★[T114 2026-09-05 재민 확정] 그 자리의 **수관 차폐** 0..1 — 접근자 하나다(새 수 0).
+ *   `cellTerms().fsh` 를 **그대로** 돌려준다. 여기서 다시 재지 않고, 여기서 계수를 곱하지도 않는다:
+ *   "숲이 얼마나 빽빽한가"(이 값)와 "그 빽빽함이 비를 얼마나 막는가"(계수)는 다른 물음이고,
+ *   후자는 그것을 쓰는 축이 소유한다(`body.js CFG.COVER_MAX` · 출처는 거기 적혀 있다).
+ *   ⇒ 바람은 종전대로 `1 − FOREST_W·fsh` 를 쓰고, 젖음은 `1 − COVER_MAX·fsh` 를 쓴다.
+ *     같은 `fsh` 정본 하나에 축마다 제 계수를 곱하는 것 — 그게 사본 0 의 모양이다.
+ *
+ *   ⚠지형을 못 물었으면 **0**(= 가려 주는 것이 없다)이다. `exposureAt` 과 같은 규약이다 —
+ *     없는 숲을 지어내지 않는다.
+ *   ⚠`exposureAt` 과 **같은 셀 캐시**를 탄다. `zone.js` 가 매 틱 노출을 이미 재고 있어
+ *     이 호출은 사실상 캐시 적중(0.2µs)이다(§0 실측 · `test-body ⑳ⓕ`).
+ */
+function coverAt(x, y) {
+  if (!_T) return 0;
+  const t = cellTerms(Math.floor(x / 32), Math.floor(y / 32));
+  return t.fsh;
+}
+
 /** 진단용 분해 — 하네스·`/perf` 가 "왜 이 값인지"를 물을 수 있어야 한다. */
 function explain(x, y, day, shelter) {
   const w = windVec(day);
@@ -223,4 +242,4 @@ function stats() {
 }
 function _reset() { _cache.clear(); _hit = 0; _miss = 0; _usec = 0; _sw = { k: null, v: 0 }; }
 
-module.exports = { CFG, bindTerrain, available, seasonWind, windVec, exposureAt, explain, stats, _reset, _internals: { _blockage, cellTerms } };
+module.exports = { CFG, bindTerrain, available, seasonWind, windVec, exposureAt, coverAt, explain, stats, _reset, _internals: { _blockage, cellTerms } };

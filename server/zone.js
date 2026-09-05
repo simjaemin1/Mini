@@ -5522,8 +5522,12 @@ function weatherFor(p, now) {
   //   여기는 **전달만** 한다. 클라 `37-r1-weather`(T93)가 `wx.precip` 을 이미 읽고 있어 무접촉으로 켜진다.
   //   ⚠비냐 눈이냐는 서버가 정하지 않는다 — 클라가 `wx.tempC` 하나로 가른다(T93 이 옳다).
   let precip = 0; try { precip = require('./weather').precipAt(day); } catch (e) {}
+  // ★[T114 2026-09-05] 수관 차폐 — `Wind.coverAt` 정본을 **전달만** 한다(클라 사본 금지 · `exp` 와 같은 자리).
+  //   ⚠"얼마나 덜 젖는가"의 계수(`COVER_MAX`)는 여기서 안 곱한다 — 그건 몸의 축이 소유한다.
+  //     화면은 "가려 주는 자리인가"만 말하면 되고, 젖음의 결과는 `wet` 이 이미 참말로 말한다.
+  const cover = +coverOf(p).toFixed(4);
   return Object.assign({}, w, { shelter: sh, cut, insC: +insC.toFixed(2),
-    wind: +Wind.seasonWind(day).toFixed(3), exp: wexp, precip, wet: +wet.toFixed(4) });
+    wind: +Wind.seasonWind(day).toFixed(3), exp: wexp, precip, wet: +wet.toFixed(4), cover });
 }
 // ★★[천장 해제 2026-08-31] 그 자리의 고도(km) — econ 기온 감률(−6.5℃/km)의 입력.
 //   ★★실측 보고(이 배치 §0): **지금은 언제나 0 이다. 그게 거짓말이 아니라 세계의 사실이다.**
@@ -5567,6 +5571,13 @@ function windExposureOf(p, now, day, shelter) {
   if (dt >= 5) perfMark('wind_exposure', dt);
   p._windExp = { at: now, x: p.x, y: p.y, day, v };
   return v;
+}
+// ★★[T114 2026-09-05] 그 자리의 수관 차폐 0..1 — **정본은 `Wind.coverAt` 하나**다(여기서 안 잰다).
+//   ⚠캐시를 새로 두지 않았다. `coverAt` 은 `exposureAt` 과 **같은 셀 캐시**(`cellTerms`)를 타고,
+//     바로 위에서 노출을 이미 재고 있어 이 호출은 사실상 적중 하나다(§0 실측 0.2µs).
+//     플레이어별 TTL 캐시를 또 두면 그게 사본이고, 지형은 안 변하니 새로 잴 일도 없다.
+function coverOf(p) {
+  try { return Wind.coverAt(p.x, p.y) || 0; } catch (e) { return 0; }
 }
 // ★★[무게 배치] 걸음 배율의 **정본 하나** — 서버 이동과 클라 예측이 같은 수를 써야 러버밴딩이 안 난다.
 //   신체(§7) × 과적, 곱 폭주는 바닥에서 자른다. 이 함수를 안 거치는 배율 계산을 새로 만들지 마라.
@@ -8413,7 +8424,7 @@ function __testBind() {
     // ★[자염 배치 2026-09-01] 하네스가 잡을 손잡이들 — **정본을 그대로 내준다**
     //   (하네스가 염도·수율을 다시 계산하면 그게 사본이다).
     Salt, doBoilSalt, isSeaTileLocal, WATER_TILES, tryGather, _SEASON_DAY_MS, ITEM_RECIPES, doCraftItem,
-    Wind, windExposureOf, isRockTileLocal, villageShelterOf, gameDayNow, elevKmAt,
+    Wind, windExposureOf, coverOf, isRockTileLocal, villageShelterOf, gameDayNow, elevKmAt,
     // ── 쓰러짐·구조·사망(T43) ──
     tryRescue, tryRespawnChoice, listRespawnOptions, resolveDowned, tickDowned, nearestVillageWake,
     // ★[T83] 죽음 캐논 ⓑ — 하네스가 표를 다시 짜지 않게 **정본 그대로** 내준다
@@ -10605,6 +10616,8 @@ setInterval(() => {
     const _sh = villageShelterOf(p, now);
     Body.tick(p, dt, { day: _day, elevKm: elevKmAt(p), night: _night, nearFire: _fire, indoor: _indoor, warmth,
                        villageShelter: _sh, windExposure: windExposureOf(p, now, _day, _sh),
+                       // ★[T114] 수관 차폐 — 젖음이 이 곱 하나를 쓴다(`Body.coverMult` · 추위 축 무접촉)
+                       cover: coverOf(p),
                        seasonCold: seasonColdNow(), moving, sprint: p.sprint, carryRatio: _cr, now });
     // ★★★[캐논 변경 2026-09-01 · T44] 극단이면 HP 가 천천히 깎인다("아사 폐지" 폐기).
     //   `Body` 가 **비율**을 내고 쌓아 두면, 여기서 1 HP 이상 쌓였을 때 **정본 피해 경로**로 낸다.

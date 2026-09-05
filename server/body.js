@@ -143,6 +143,30 @@ const CFG = {
   WET_LOSS: _num('BODY_WET_LOSS', 0.5),        // 젖음 1 이면 단열이 (1−이 값) 배
   WET_DRY_SEC: _num('BODY_WET_DRY_SEC', 1600), // 실외에서 젖음 1 → 0 까지(초 · 실내는 ×0.30)
   WET_ON: _num('T105_WET', 1),                 // ★되돌림 — 0 이면 젖음이 늘 0(= T98 세계 비트 동일)
+
+  // ── ★★[나무 아래 2026-09-05 재민 확정 · T114] 수관이 비를 얼마나 막는가 ──────
+  //   ★차폐의 **양**은 이미 정본이 있다: `wind.js cellTerms().fsh`(0..1 · `Wind.coverAt` 접근자).
+  //     여기서 만드는 것은 그 양을 **강수 축의 몫으로 바꾸는 계수 하나**뿐이다.
+  //
+  //   ★★왜 `fsh` 를 그대로 안 쓰나 — **바람 차폐와 강수 차폐는 같은 물리가 아니다.**
+  //     바람은 수관이 운동량을 통째로 먹는다(`WIND_FOREST_W` 0.75). 비는 수직으로 내리고
+  //     수관은 **잡아서 증발시킨 몫만** 없앤다(나머지는 관통·수관 적하로 그대로 떨어진다).
+  //     `fsh` 를 그대로 쓰면 빽빽한 숲(fsh 1)에서 젖음이 **0** 이 된다 = "숲에선 비를 한 방울도
+  //     안 맞는다" — 아래 어느 출처와도 안 맞는다. ⇒ 계수를 **하나** 둔다.
+  //
+  //   ★출처(앵커 하나) — Sheng, H.; Cai, T. *"Influence of Rainfall on Canopy Interception in
+  //     Mixed Broad-Leaved—Korean Pine Forest in Xiaoxing'an Mountains, Northeastern China."*
+  //     Forests 2019, 10(3), 248. doi:10.3390/f10030248 — **활엽·잣나무 혼효림 2년 누적 수관
+  //     차단 22.0%(2010) · 21.9%(2011).** 송국리기 한반도의 소나무–참나무 혼효림에 가장 가까운
+  //     임분이고, 두 해가 0.1%p 안에서 겹쳐 앵커로 쓸 만큼 안정하다. ⇒ **0.22**.
+  //   ★상한 확인(채택 아님) — Fischer, Vieira & Jayakaran, Forests 2023, 14(1), 144.
+  //     doi:10.3390/f14010144 — 수관 **한복판 점 측정**은 잎 있는 철 침엽 36.5~95.9%,
+  //     활엽 42.1~67.7% 로 훨씬 크다. 걸어 다니는 사람은 한복판에 머물지 않으므로 임분 평균을
+  //     쓰고, 0.22 가 그 범위 아래(보수적)라는 것만 확인해 둔다.
+  //   ⚠이 값을 올리려면 **임분 평균 차단율의 실측**이 먼저다 — "숲이 더 막아 줄 것 같다"는
+  //     근거가 아니다. 손잡이는 `BODY_COVER_MAX` 하나다.
+  COVER_MAX: _num('BODY_COVER_MAX', 0.22),     // 차폐 1 인 셀에서 비의 이 몫이 안 닿는다
+  COVER_ON: _num('T114_COVER', 1),             // ★되돌림 — 0 이면 차폐가 늘 0(= T105 세계 비트 동일)
   // ── ★★[바닷물 2026-09-01 · T3 동봉] 짠물은 갈증을 **가속**한다 ───────────────
   //   재민 확정: 확률 굴리기(식중독) 금지 — **확정적**이다. 마시면 회복 0 이고,
   //   BRINE_SEC 동안 갈증 감소가 BRINE_MULT 배가 된다(보존식 `thirst` 음수와 같은 뜻의 다른 축).
@@ -546,6 +570,18 @@ function wetMult(wet) {
   const x = Math.max(0, Math.min(1, Number(wet) || 0));
   return Math.max(0, 1 - x * CFG.WET_LOSS);
 }
+/**
+ * ★[T114] 수관 차폐가 **남기는** 비의 몫(0..1). 차폐 0 ⇒ 1 · 차폐 1 ⇒ 1−COVER_MAX.
+ *   `wetMult` 와 **같은 모양**이다(곱 하나 · 되돌림 하나 · 클램프 하나) — 새 문법을 만들지 않았다.
+ *   ⚠차폐의 정본은 `Wind.coverAt` 하나다. 여기서 `fsh` 를 다시 재지 않는다(사본 0) —
+ *     `zone.js` 가 그것을 불러 `ctx.cover` 로 실어 준다(`ctx.windExposure` 와 같은 자리·같은 규약).
+ *   ⚠`cover` 를 안 주면 정확히 종전 값(1)이다 — 옛 호출부·구 하네스 계약이 그대로 산다.
+ */
+function coverMult(cover) {
+  if (CFG.COVER_ON === 0) return 1;   // ★되돌림은 **총체적**이다 — 명시로 차폐를 준 호출부에도 안 걸린다
+  const x = Math.max(0, Math.min(1, Number(cover) || 0));
+  return Math.max(0, 1 - x * CFG.COVER_MAX);
+}
 /** 지금 몸의 젖음(0..1). 정본은 `p.body.wet` 하나다. */
 function wetOf(p) { return ensure(p).wet; }
 /**
@@ -573,6 +609,7 @@ function wetStep(p, dtSec, ctx) {
     const W = Number.isFinite(c.day) ? _weather() : null;
     let pr = 0;
     if (W && typeof W.precipAt === 'function') { try { pr = +W.precipAt(c.day) || 0; } catch (e) { pr = 0; } }
+    pr *= coverMult(c.cover);   // ★[T114] 나무 아래면 그만큼 덜 닿는다 — 곱 하나(새 축 0)
     if (pr > b.wet) b.wet = Math.min(1, pr);
   }
   // ⚠상태값은 **반올림하지 않는다** — 짧은 틱의 마름(1초면 0.000625)이 4자리에서 통째로 사라져
@@ -864,6 +901,7 @@ module.exports = {
   lerpCurve, xWhereBelow, ensure, severity, effects, stageOf, moodles,
   RECOVER, EFFECT_AXES, RECOVER_AXES, recoverMult, recoverParts, canSprint, stamina, coldTarget, warmthInsC, decayRate,
   wetStep, wetOf, wetMult,   // ★[T105] 젖음 정본 — 하네스·`zone.js` 가 **이것을** 부른다(사본 0)
+  coverMult,                 // ★[T114] 수관 차폐가 남기는 비의 몫 — 하네스가 **이것을** 부른다(사본 0)
   drinkBrine, brineActive,
   seasonHeatOf, heatThirstMult,   // ★[T64] 여름 갈증 배율 — 하네스·계측기가 **정본을 그대로** 부른다
   extremeHpRate, extremeAt, extremeness, takeHpDamage, DRAIN_AXES,
