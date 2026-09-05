@@ -87,6 +87,23 @@ console.log('\n[② 다단 전파(징검다리) vs 직행]');
 console.log(`  직행보다 짧은 쌍 ${hopWins}/${all.length} (${(hopWins / Math.max(1, all.length) * 100).toFixed(1)}%) · 아낀 일수 합 ${hopSaved}`);
 if (!hopWins) console.log('  ⚠이 배치에선 징검다리가 한 번도 이기지 않는다 — Dijkstra 는 사실상 직행 조회다(사실대로 적는다).');
 
+// ── ④ 홉 수 분포 ★[T127 2026-09-05] ──────────────────────────────────────────
+//   소문 왜곡(T34 ⓑ)이 **홉 수의 함수**라 먼저 재야 하는 것: 이 지도에서 홉이 실제로 몇까지 가나.
+//   홉이 대부분 1이면 뭉갬 눈금을 아무리 잘 골라도 세계엔 아무 일도 안 일어난다.
+{
+  const hh = new Map(); let hmax = 0, hsum = 0, hn = 0;
+  for (const a of ids) for (const b of ids) {
+    if (a === b) continue;
+    const h = G.hopsBetween(a, b);
+    if (!isFinite(h)) continue;
+    hh.set(h, (hh.get(h) || 0) + 1); hsum += h; hn++; if (h > hmax) hmax = h;
+  }
+  console.log('\n[④ 홉 수 — 소문이 몇 마을을 거쳐 오나 ★T127]');
+  console.log('  분포: ' + [...hh.entries()].sort((a, b) => a[0] - b[0])
+    .map(([h, n]) => `${h}홉 ${n}(${(n / Math.max(1, hn) * 100).toFixed(1)}%)`).join(' · '));
+  console.log(`  평균 ${(hsum / Math.max(1, hn)).toFixed(2)}홉 · 최대 ${hmax}홉`);
+}
+
 // ── ③ 도달표 계산 비용 ────────────────────────────────────────────────────────
 const S = G.stats;
 console.log('\n[③ 도달표 계산 비용]');

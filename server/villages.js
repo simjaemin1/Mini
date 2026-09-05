@@ -5495,6 +5495,11 @@ function _newsRows(vid, n) {
     type: r.ev.type, item: r.ev.item,
     day: r.ev.day,          // 사건이 난 날
     heard: r.heard,         // ★이 마을이 들은 날 — 둘의 차이가 곧 소문이 걸어온 일수다
+    // ★★[T127 2026-09-05] **이 마을이 들은 크기**(뭉갠 값). T50 이 연표에 `sev` 를 실은 것과
+    //   같은 이유다: 소문 왜곡 뒤로 "얼마나 심한지"는 **마을마다 다른 사실**이 됐고, 화면은
+    //   그걸 유도할 방법이 없다(장부 원본을 볼 수 없으니). 유도하게 두면 그게 사본이다.
+    //   ⚠장부 원본이 아니라 `visibleEvents` 가 내준 **들은 사건**의 값이다(0홉이면 정확).
+    mag: r.ev.mag,
     from: r.ev.vid === (vid | 0) ? null : ((state.byDbId.get(r.ev.vid) || {}).name || null),
   })).filter((r) => r.line);
 }

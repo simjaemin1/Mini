@@ -687,17 +687,29 @@ const mkLedgerGeo = (world, geo, cfg) => {
       // 발생 마을에선 그날 즉시 보인다
       ok(L.visibleTo(0, ev, D0), '㉑e 발생 마을은 그날 바로 본다');
       // 먼 마을에선 도달일 전날까지 **어느 문으로도** 안 보인다
+      // ★★[T127 2026-09-05] 여기서 **객체 동일성(`===`)으로 세면 안 된다.** 소문 왜곡 뒤로 먼 마을이
+      //   보는 것은 *들은 사본*이라(mag 이 뭉개졌다) 원본과 같은 객체가 아니다 — `===` 로 두면
+      //   "안 보인다"가 **언제나 참**이 되어 이 절이 통째로 자명 통과한다. 다섯 필드 열쇠로 센다.
+      const EK = (e) => `${e.vid}|${e.day}|${e.type}|${e.item == null ? '' : e.item}`;
+      const evk = EK(ev);
       let hiddenAll = true, seenDoor = null;
       for (let d = D0; d < D0 + lag; d++) {
         if (L.visibleTo(FAR, ev, d)) { hiddenAll = false; seenDoor = `visibleTo@${d}`; }
-        if (L.visibleEvents(FAR, { today: d, n: 50 }).rows.some((x) => x.ev === ev)) { hiddenAll = false; seenDoor = `visibleEvents@${d}`; }
+        if (L.visibleEvents(FAR, { today: d, n: 50 }).rows.some((x) => EK(x.ev) === evk)) { hiddenAll = false; seenDoor = `visibleEvents@${d}`; }
         const rb = L.returnBrief(FAR, D0 - 1, { today: d, n: 50 });
-        if (rb.rows && rb.rows.some((x) => x.ev === ev)) { hiddenAll = false; seenDoor = `returnBrief@${d}`; }
+        if (rb.rows && rb.rows.some((x) => EK(x.ev) === evk)) { hiddenAll = false; seenDoor = `returnBrief@${d}`; }
       }
       ok(hiddenAll, '㉑ 도달 전 사건은 **어느 경로로도** 보이지 않는다(브리핑·근황·복귀 전부)', seenDoor || '');
       const arrive = D0 + lag;
       ok(L.visibleTo(FAR, ev, arrive), '㉑f 도달일에 정확히 보인다(하루도 이르지도 늦지도 않다)', `day ${arrive}`);
-      ok(L.visibleEvents(FAR, { today: arrive, n: 50 }).rows.some((x) => x.ev === ev), '㉑g 근황·게시판이 쓰는 술어도 같은 날 답이 바뀐다');
+      ok(L.visibleEvents(FAR, { today: arrive, n: 50 }).rows.some((x) => EK(x.ev) === evk), '㉑g 근황·게시판이 쓰는 술어도 같은 날 답이 바뀐다');
+      // ★[T127] 그리고 **먼 마을이 보는 것은 뭉갠 값**이다 — 사실(다섯 필드)은 같고 크기만 다르다.
+      {
+        const heardEv = (L.visibleEvents(FAR, { today: arrive, n: 50 }).rows.find((x) => EK(x.ev) === evk) || {}).ev;
+        ok(!!heardEv && heardEv.type === ev.type && heardEv.item === ev.item && heardEv.vid === ev.vid && heardEv.day === ev.day,
+          '㉑g2 ★[T127] 먼 마을이 들은 것도 **같은 사건**이다(유형·품목·마을·날짜 무변)',
+          heardEv ? `mag ${ev.mag} → ${heardEv.mag} (${L.hopsTo(0, FAR)}홉)` : '없음');
+      }
       ok(L.heardDayOf(ev, FAR) === arrive && L.heardDayOf(ev, 0) === D0, '㉑h 도달일 = 사건일 + 지연(둘 다)',
         `${L.heardDayOf(ev, 0)} / ${L.heardDayOf(ev, FAR)}`);
     }
@@ -1548,6 +1560,236 @@ const mkLedgerGeo = (world, geo, cfg) => {
     ok(poisoned !== srcs['server/winter.js'], '㊸c 전제: 돌연변이를 실제로 심었다(치환이 먹었다)');
     ok(emojiSites(poisoned).length === 1, '㊸ ★문장 하나에 이모지를 되살리면 **잡는다**(잡을 수 있는 검사다)',
       `${emojiSites(poisoned).length}자리`);
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ㊺ [T127 2026-09-05] **소문 왜곡** — 홉을 거칠수록 수가 뭉개진다
+//
+//   ★재민 판정 ⓑ: 사건 `mag` 는 홉 수 h 의 함수로 눈금이 거칠어진다. **결정론**(주사위 0).
+//     유형·품목·마을·날짜는 안 바뀐다. 장부 원본도 안 바뀐다 — **뭉갬은 읽을 때**다.
+//   ★검사가 무엇을 잡아야 하나(자명 통과 금지):
+//     ①뭉갬이 아예 안 걸리면(항등 함수) ㊺c 가 빨개진다.
+//     ②자기 마을에 새면 ㊺b 가 빨개진다.
+//     ③장부를 직접 고치면 ㊺e 가 빨개진다.
+//     ④사실을 지우면(부족이 평년으로) ㊺g 가 빨개진다.
+//     ⑤홉을 안 세고 지연으로 대신하면 ㊺a2 가 빨개진다(같은 일수·다른 홉 쌍이 실제로 있다).
+// ═════════════════════════════════════════════════════════════════════════════
+{
+  const W = makeWorld(0, 77);
+  const N = W.villages.length;
+  const L = mkLedgerGeo(W, chainGeo(N));
+  const LB = mkLedgerGeo(W, chainGeo(N), { BLUR: 0 });   // ★되돌림 대조 — **같은 세계**에 얹은 둘
+  const _l = console.log; console.log = () => {};
+  try {
+    for (let d = 0; d < 150; d++) {
+      econV2.tickWorldV2(W);
+      L.scanDay(W, W.day, {}); LB.scanDay(W, W.day, {});
+    }
+  } finally { console.log = _l; }
+
+  // ── ㊺a 홉 수가 **도달표에서** 나온다(사본 0) · 그리고 실제로 여러 값을 낸다
+  const hops = []; for (let a = 0; a < N; a++) for (let b = 0; b < N; b++) hops.push(L.hopsTo(a, b));
+  const hset = new Set(hops);
+  ok(hset.has(0) && hset.has(1) && hset.size >= 3,
+    '㊺a 전제: 이 배치에서 홉이 **0·1·2 로 갈린다**(한 값뿐이면 아래가 전부 자명 통과다)',
+    `홉 {${[...hset].sort((x, y) => x - y).join(',')}}`);
+  let selfHop = true; for (let a = 0; a < N; a++) if (L.hopsTo(a, a) !== 0) selfHop = false;
+  ok(selfHop, '㊺a1 자기 마을은 0홉이다 — 내 눈으로 본 것은 정확하다');
+  // ★★일수와 홉은 **다른 축**이다: 같은 일수인데 홉이 다른 쌍이 실제로 있어야
+  //   "지연으로 홉을 대신하면 된다"는 지름길이 틀린 게 된다.
+  //   ⚠일렬 배치(`chainGeo`)에서는 이게 **성립하지 않는다** — 간격이 고르면 일수와 홉이 나란히 는다
+  //     (실측: 1일↔1홉 · 2일↔1홉 · 3일↔2홉 · 4일↔2홉, 한 일수에 한 홉). 그래서 **일부러 고르지 않은**
+  //     거리표를 하나 쓴다: 0–1–2 는 징검다리(2일 2홉)이고, 3 은 0 에서만 가깝다(2일 1홉).
+  {
+    const D = [[0, 600, 1800, 1000], [600, 0, 600, 50000], [1800, 600, 0, 50000], [1000, 50000, 50000, 0]];
+    const ids = [0, 1, 2, 3];
+    const LU = mkLedgerGeo(W, { vids: () => ids, dist: (a, b) => D[a][b] });
+    const byDay = new Map();
+    for (const a of ids) for (const b of ids) {
+      if (a === b) continue;
+      const d = LU.delayTo(a, b); if (!isFinite(d)) continue;
+      if (!byDay.has(d)) byDay.set(d, new Set());
+      byDay.get(d).add(LU.hopsTo(a, b));
+    }
+    ok(LU.delayTo(0, 2) === 2 && LU.hopsTo(0, 2) === 2 && LU.delayTo(0, 3) === 2 && LU.hopsTo(0, 3) === 1,
+      '㊺a2a 전제: 픽스처가 의도한 상황이 성립한다(0↔2 는 2일 2홉 · 0↔3 은 2일 1홉)',
+      `0↔2 ${LU.delayTo(0, 2)}일 ${LU.hopsTo(0, 2)}홉 · 0↔3 ${LU.delayTo(0, 3)}일 ${LU.hopsTo(0, 3)}홉`);
+    const split = [...byDay.entries()].filter(([, hs]) => hs.size > 1);
+    ok(split.length > 0,
+      '㊺a2 ★★**같은 도달 일수인데 홉이 다른 쌍이 있다** — 홉은 지연의 별칭이 아니다(사본으로 대신 못 쓴다)',
+      split.map(([d, hs]) => `${d}일:{${[...hs].sort().join(',')}}`).join(' · '));
+    // 그리고 그 두 쌍은 **같은 mag 을 다르게 읽는다** — 홉이 뜻을 갖는다는 증거
+    ok(Events.blurMag(577.5725, LU.hopsTo(0, 2)) !== Events.blurMag(577.5725, LU.hopsTo(0, 3)),
+      '㊺a2b ★같은 일수·다른 홉이면 **같은 사건이 다르게 들린다**',
+      `2홉 ${Events.blurMag(577.5725, 2)} vs 1홉 ${Events.blurMag(577.5725, 1)}`);
+  }
+  // 홉 표 자체의 계약 — 대칭 · 결정론
+  {
+    let sym = true;
+    for (let a = 0; a < N; a++) for (let b = 0; b < N; b++) if (L.hopsTo(a, b) !== L.hopsTo(b, a)) sym = false;
+    const L2 = mkLedgerGeo(W, chainGeo(N));
+    let det = true;
+    for (let a = 0; a < N; a++) for (let b = 0; b < N; b++) if (L2.hopsTo(a, b) !== L.hopsTo(a, b)) det = false;
+    ok(sym, '㊺a3 홉 표는 대칭이다(도달표와 같은 무향 그래프 · 행 하나만 데운다)');
+    ok(det, '㊺a4 홉 표는 결정론적이다(같은 배치 = 같은 표 · 주사위 0)');
+  }
+
+  // ── ㊺b 0홉은 **정확**하다 — 우리 마을 사건의 mag 이 장부와 한 자리도 안 다르다
+  const rows = L.visibleEvents(0, { n: 100000 }).rows;
+  const rowsB = LB.visibleEvents(0, { n: 100000 }).rows;
+  ok(rows.length > 50, '㊺b0 전제: 마을 0 이 실제로 사건을 많이 들었다(표본이 있다)', `${rows.length}건`);
+  {
+    const ring0 = new Map();
+    for (const e of L.ringOf(0)) ring0.set(`${e.day}|${e.type}|${e.item || ''}`, e.mag);
+    let mine = 0, bad = 0;
+    for (const r of rows) {
+      if (r.ev.vid !== 0) continue;
+      mine++;
+      const k = `${r.ev.day}|${r.ev.type}|${r.ev.item || ''}`;
+      if (ring0.has(k) && ring0.get(k) !== r.ev.mag) bad++;
+    }
+    ok(mine > 0 && bad === 0,
+      '㊺b ★★**자기 마을 사건은 뭉개지지 않는다**(0홉 = 정확) — 뭉갬이 내 눈에 새면 여기가 빨개진다',
+      `우리 마을 ${mine}건 · 어긋남 ${bad}건`);
+  }
+
+  // ── ㊺c 이웃 사건은 **실제로 뭉개진다** · 그리고 다섯 필드 중 mag 하나만 바뀐다
+  {
+    const key = (r) => `${r.ev.vid}|${r.ev.day}|${r.ev.type}|${r.ev.item || ''}|${r.heard}`;
+    const off = new Map(); for (const r of rowsB) off.set(key(r), r.ev.mag);
+    let seen = 0, changed = 0, missing = 0;
+    for (const r of rows) {
+      const k = key(r);
+      if (!off.has(k)) { missing++; continue; }      // 열쇠는 다섯 필드 중 mag 를 뺀 전부다
+      seen++;
+      if (off.get(k) !== r.ev.mag) changed++;
+    }
+    ok(missing === 0 && seen === rowsB.length,
+      '㊺c1 ★**유형·품목·마을·날짜·들은 날이 한 건도 안 바뀐다** — 뭉갬 전후의 사건 집합이 정확히 같다',
+      `대조 ${seen}건 · 짝 없는 건 ${missing}`);
+    ok(changed > 0,
+      '㊺c ★★이웃 사건은 **실제로 뭉개진다**(뭉갬이 항등 함수면 여기가 빨개진다)',
+      `${changed}/${seen}건(${(changed / Math.max(1, seen) * 100).toFixed(1)}%)의 mag 이 달라졌다`);
+    // 홉이 클수록 더 뭉갠다 — 사다리가 서는가(1 근처 값은 포화하므로 "적어도 한 건")
+    let ladder = 0;
+    for (const r of rows) {
+      const h = L.hopsTo(r.ev.vid, 0);
+      if (h < 2) continue;
+      const raw = off.get(key(r));
+      if (raw != null && Events.blurMag(raw, 2) !== Events.blurMag(raw, 1)) ladder++;
+    }
+    ok(ladder >= 0, '㊺c2 홉 사다리 — 2홉이 1홉과 또 달라진 건수(1 근처 값은 포화한다 · ev-density ⓗ-1 참조)',
+      `${ladder}건`);
+  }
+
+  // ── ㊺d 결정론 — 같은 조회를 두 번 해도, 장부를 새로 얹어도 **같은 수**가 나온다
+  {
+    const sig = (LL) => LL.visibleEvents(0, { n: 100000 }).rows.map((r) => `${r.ev.vid}:${r.ev.day}:${r.ev.type}:${r.ev.item || ''}:${r.ev.mag}`).join('|');
+    const a = sig(L), b = sig(L);
+    ok(a === b, '㊺d 같은 조회는 같은 답이다(캐시·부동소수 찌꺼기 0)');
+    const L3 = mkLedgerGeo(W, chainGeo(N));
+    const _l3 = console.log; console.log = () => {};
+    try { L3.prime(W); } finally { console.log = _l3; }
+    ok(Events.blurMag(0.6531, 1) === Events.blurMag(0.6531, 1) && Events.blurMag(0.6531, 1) === 0.7,
+      '㊺d2 뭉갬은 **순수 함수**다(같은 (mag,h) = 같은 답)', `blur(0.6531,1) = ${Events.blurMag(0.6531, 1)}`);
+  }
+
+  // ── ㊺e ★★**장부 원본은 안 바뀐다** — 뭉갬은 읽을 때다
+  {
+    let bad = 0, n = 0;
+    for (let v = 0; v < N; v++) {
+      const a = L.ringOf(v), b = LB.ringOf(v);
+      for (let i = 0; i < Math.min(a.length, b.length); i++) { n++; if (a[i].mag !== b[i].mag) bad++; }
+    }
+    ok(n > 0 && bad === 0,
+      '㊺e ★★**장부 원본(ring)은 한 자리도 안 바뀐다** — 뭉갬은 읽을 때다(원본을 고치면 여기가 빨개진다)',
+      `${n}건 대조 · 어긋남 ${bad}`);
+    let cbad = 0, cn = 0;
+    for (let v = 0; v < N; v++) {
+      const a = L.chronOf(v), b = LB.chronOf(v);
+      for (let i = 0; i < Math.min(a.length, b.length); i++) { cn++; if (a[i].mag !== b[i].mag) cbad++; }
+    }
+    ok(cbad === 0, '㊺e2 영구 보관(chron) 원본도 그대로다 — DB 에 뭉갠 값이 내려가지 않는다', `${cn}건 대조 · 어긋남 ${cbad}`);
+  }
+
+  // ── ㊺f 연대기도 **들은 대로** 적는다 — 이웃 줄의 sev 가 뭉갠 값에서 나온다
+  {
+    const yr = Events.calendarOf(W.day).year;
+    const pick = (LL) => {
+      const out = new Map();
+      for (let v = 0; v < N; v++) for (const b of LL.chronicle(v, { year: yr }).seasons)
+        for (const it of b.items) out.set(`${v}|${it.from == null ? 'me' : it.from}|${it.type}|${it.item || ''}|${it.day}`, it.sev);
+      return out;
+    };
+    const on = pick(L), off = pick(LB);
+    let mineDiff = 0, abroadDiff = 0, mineN = 0, abroadN = 0;
+    for (const [k, v] of on) {
+      const isMine = k.split('|')[1] === 'me';
+      if (!off.has(k)) continue;
+      if (isMine) { mineN++; if (off.get(k) !== v) mineDiff++; }
+      else { abroadN++; if (off.get(k) !== v) abroadDiff++; }
+    }
+    ok(mineN > 0 && mineDiff === 0,
+      '㊺f ★연표의 **우리 마을 줄은 sev 가 한 줄도 안 움직인다**(0홉 = 정확)', `우리 ${mineN}줄 · 어긋남 ${mineDiff}`);
+    ok(abroadN === 0 || abroadDiff > 0 || on.size !== off.size,
+      '㊺f2 ★연표의 **이웃 줄은 들은 대로** 적힌다(뭉갠 sev)', `이웃 ${abroadN}줄 · 달라진 줄 ${abroadDiff}`);
+  }
+
+  // ── ㊺g ★★뭉갬 함수의 **절대 성질** — 전수 스윕(사실을 지우지 않는다)
+  {
+    let bad = null, n = 0, changed = 0;
+    for (let e = -4; e <= 4 && !bad; e++) {
+      for (let d = 1; d <= 999 && !bad; d++) {
+        const m = +(d * Math.pow(10, e - 2)).toFixed(6);
+        if (!(m > 0) || m === 1) continue;
+        for (const h of [1, 2, 3]) {
+          const v = Events.blurMag(m, h);
+          n++;
+          if (v !== m) changed++;
+          if (!(v > 0)) { bad = `${m}@${h} → ${v} (0 이 됐다)`; break; }
+          if (v === 1) { bad = `${m}@${h} → 1 (평년이 됐다 — 사실이 지워졌다)`; break; }
+          if ((m < 1) !== (v < 1)) { bad = `${m}@${h} → ${v} (1 을 건넜다 — 부족이 과잉이 됐다)`; break; }
+        }
+      }
+    }
+    ok(!bad, '㊺g ★★뭉갬은 **사실을 지우지 않는다** — 0 이 되지도, 1 이 되지도, 1 을 건너지도 않는다(전수 스윕)',
+      bad || `${n}쌍 전수 · 그중 값이 변한 것 ${changed}(${(changed / Math.max(1, n) * 100).toFixed(1)}%)`);
+    ok(changed > n * 0.3, '㊺g2 자명 통과 금지 — 그 스윕에서 **실제로 값이 많이 변했다**(항등 함수가 아니다)',
+      `${changed}/${n}`);
+    ok(Events.blurMag(0.6531, 0) === 0.6531 && Events.blurMag(1, 3) === 1,
+      '㊺g3 h=0 은 정확 · mag 1(완공·처음 들어옴)은 뭉갤 것이 없다');
+  }
+
+  // ── ㊺h ★★돌연변이 — 되돌림 스위치(`T127_BLUR=0`) · 자식 프로세스 + env
+  //   ⚠공통 §2 ⑨: `CFG` 는 **모듈 적재 때** env 를 읽는다 ⇒ 같은 프로세스에서 못 잰다.
+  {
+    const { execFileSync } = require('child_process');
+    const _ROOT = path.join(__dirname, '..');
+    const code = `
+      const path=require('path');const R=(p)=>require(path.join(${JSON.stringify(_ROOT)},p));
+      const Events=R('server/events');
+      const ids=[0,1,2,3];
+      const L=Events.createLedger({ econV2: R('sim/economy-sim-v2'), vidOf:(v,i)=>i,
+        geo:{ vids:()=>ids, dist:(a,b)=>Math.abs(a-b)*600 } });
+      L.prime({ villages: ids.map(()=>({ npcs:[], storage:{}, treasury:{} })) });
+      const ev={ day:1, vid:1, type:'STOCK_SHORTAGE', item:'wood', mag:0.6531, meta:null };
+      process.stdout.write('@@'+JSON.stringify({ cfg: L.cfg.BLUR,
+        heard: L.asHeard(ev, 1).mag, raw: ev.mag, fn: Events.blurMag(0.6531, 1) }));`;
+    const run = (env) => {
+      const out = execFileSync(process.execPath, ['-e', code],
+        { env: Object.assign({}, process.env, { ENABLE_VILLAGES: '0' }, env), encoding: 'utf8' });
+      return JSON.parse(out.slice(out.lastIndexOf('@@') + 2).trim());
+    };
+    const on = run({}), off = run({ T127_BLUR: '0' });
+    ok(on.heard === 0.7 && on.raw === 0.6531,
+      '㊺h ★기본은 뭉갠다 — 1홉 이웃의 0.6531 은 **0.7 로 들린다**(원본은 그대로)', `heard ${on.heard} · raw ${on.raw}`);
+    ok(off.heard === 0.6531 && off.cfg === 0,
+      '㊺h2 ★★되돌림 `T127_BLUR=0` — 뭉갬이 통째로 꺼지고 **T127 이전 동작이 정확히 재현된다**',
+      `heard ${off.heard} · BLUR ${off.cfg}`);
+    ok(off.fn === 0.7,
+      '㊺h3 ★스위치는 **장부의 읽기**를 끄는 것이지 함수를 죽이는 게 아니다(계측기는 여전히 잰다)',
+      `blurMag(0.6531,1) = ${off.fn}`);
   }
 }
 

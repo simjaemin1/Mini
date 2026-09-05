@@ -182,6 +182,10 @@ const CFG = {
   //   (일 유형이 하나도 안 나고, 검출기도 안 돌고, 정렬도 sev 하나로 돌아간다).
   //   T7 의 `RUMOR_OFF` 와 같은 자리다 — 배치의 기여를 재려면 되돌릴 줄 하나가 있어야 한다.
   DEEDS_OFF: _num('EV_DEEDS_OFF', 0),
+  // ★★[T127 2026-09-05] 소문 왜곡 되돌림 — `T127_BLUR=0` 이면 뭉갬이 통째로 꺼진다(T127 이전 동작).
+  //   T7 의 `RUMOR_OFF`·T50 의 `EV_DEEDS_OFF` 와 **같은 자리**다 — 배치의 기여를 재려면 되돌릴 줄이 있어야 한다.
+  //   ⚠새 손잡이가 아니라 **스위치**다(눈금은 손잡이가 아니라 mag 자신의 자릿수에서 나온다 — 새 수 0).
+  BLUR: _num('T127_BLUR', 1),
 };
 // ★연표에 실을 사건 유형 — 기본은 **계절 전환을 뺀 전부**다.
 //   계절은 사건이 아니라 **연표의 축**이라(연·계절로 묶는 그 기준) 항목으로 또 적으면 겹친다.
@@ -317,6 +321,43 @@ function pricesOf(econV2, v, day) {
 function pricesFresh(econV2, v) { return econV2.computeShadowPrices(v); }
 
 // ── 장부 ──────────────────────────────────────────────────────────────────────
+// ── ★★[T127 2026-09-05] 소문 왜곡 — 홉을 거칠수록 **수가 뭉개진다** ──────────────
+//   재민 판정 ⓑ(`회부/회부_소문전파_다음층.md` A-1). 규칙 한 줄:
+//     *"사실은 남고 크기만 흐려진다"* — 유형·품목·마을·날짜는 그대로, `mag` 만 거친 눈금에 선다.
+//
+// ★눈금은 어디서 오나 — **`mag` 자신의 자릿수**다(새 수 0 · 손잡이 0).
+//   e = ⌊log10|mag|⌋ 이면 `step = 10^(e + h − 1)`. h=1 이면 **유효숫자 한 자리**, 한 홉 더 가면
+//   눈금이 열 배 거칠어진다(카드의 "십 단위 · 백 단위"를 mag 의 자릿수로 옮긴 것).
+//
+// ★★**사실을 지우는 눈금은 쓰지 않는다** — 이게 이 함수의 절반이다:
+//   `mag` 는 전 타입 공통으로 **관측 ÷ 기준**이라 `1` 이 "아무 일 없음"이다.
+//   0.65 를 눈금 1 에 세우면 **흉년이 평년으로 들린다** — 그건 흐림이 아니라 거짓말이다.
+//   ⇒ 뭉갠 값이 `1` 에 서거나 `1` 을 건너뛰거나 `0` 이 되면 **한 칸 고운 눈금으로 물러선다.**
+//     물러설 곳이 없으면 그냥 정확하다("1 근처 값은 흐릴 것이 없다" — 이미 평년이다).
+//   ⇒ 결과: **1 에서 멀리 벗어난 사건일수록 뭉개질 여지가 크다.** 이건 성질이지 결함이 아니다 —
+//     이미 평년에 가까운 값은 흐려 봐야 "평년"밖에 안 되고, 그건 사실을 지우는 것이다.
+//   ★실측(`scripts/ev-density.js` ⓗ-1 · 실지도 51마을 800일 23,974건): 1홉에서 값이 변하는 사건 **82.2%**
+//     (Δsev 평균 0.077) · 2홉이 1홉과 또 달라지는 사건 **17.8%**(글럿 17.7 · 급락 34.0 · 급등 15.4%).
+//     장부의 mag 은 1 근처에만 있지 않다(글럿 p50 5.76 · e 는 0~13 · 급락 p50 0.008) — 사다리가 실제로 선다.
+//     반대로 부족·흉년(1 아래 한 자릿수)은 1홉에서 포화한다 — 위 규칙이 그렇게 만든 것이고, 옳다.
+//
+// ★결정론 — 주사위 0. 순수 함수다(같은 (mag, h) 면 언제나 같은 답).
+//   ⚠부동소수 찌꺼기(0.7000000000000001)를 남기면 **같은 세계가 다른 문장을 낸다** ⇒ 6자리에서 끊는다
+//     (장부가 저장하는 정밀도는 4자리다 — 그보다 곱게 끊을 일은 없다).
+function blurMag(mag, hops) {
+  const m = +mag;
+  const h = hops | 0;
+  if (!(h > 0) || !isFinite(m) || m <= 0 || m === 1) return m;
+  const e = Math.floor(Math.log10(Math.abs(m)));
+  // 거친 눈금부터 시도하고, 사실을 지우면 한 칸씩 물러선다. 바닥은 장부 정밀도(1e-4).
+  for (let ex = e + h - 1; ex >= -4; ex--) {
+    const step = Math.pow(10, ex);
+    const v = +((Math.round(m / step) * step).toFixed(6));
+    if (v > 0 && v !== 1 && ((m < 1) === (v < 1))) return v;
+  }
+  return m;
+}
+
 function createLedger(opts) {
   const o = opts || {};
   const cfg = Object.assign({}, CFG, o.cfg || {});
@@ -888,6 +929,34 @@ function createLedger(opts) {
     if (!RUMOR) return Infinity;                      // 지형이 없는 랩 — 자기 마을 것만 보인다
     return RUMOR.delayBetween(fromVid, toVid);
   }
+  // ★★[T127 2026-09-05] **홉 수** — 도달 일수와 같은 표에서 나온다(사본 0 · 새 순회 0).
+  //   자기 마을은 0(내 눈으로 봤다) · 지형 없는 랩은 0(자기 것만 보이므로 뭉갤 것이 없다).
+  function hopsTo(fromVid, toVid) {
+    if (fromVid === toVid) return 0;
+    if (!RUMOR || !RUMOR.hopsBetween) return 0;
+    const h = RUMOR.hopsBetween(fromVid, toVid);
+    return isFinite(h) ? h : 0;
+  }
+  // ★★**들은 대로의 사건** — 장부 원본은 건드리지 않는다(뭉갬은 **읽을 때**다).
+  //   ⚠값이 그대로면 **사본을 만들지 않는다**(원본 그대로 돌려준다) — 뭉갬이 포화하는 값이 대부분이라
+  //     여기서 무조건 복사하면 조회 한 번에 수천 개의 쓰레기 객체가 생긴다(㉒ 비용 검사가 그걸 잰다).
+  //   ⚠다섯 필드 중 바뀌는 것은 `mag` 하나다 — 유형·품목·마을·날짜는 그대로다(㉝ 계약 유지).
+  //   ⚠**한 마을이 들은 그 사건은 하나의 객체다** — 홉별로 사본을 기억해 둔다(WeakMap 이라 원본이
+  //     링에서 밀려나면 같이 사라진다). 안 그러면 조회할 때마다 새 객체가 나와 `recent` 와
+  //     `visibleEvents` 가 **같은 사건을 다른 것으로** 취급한다(㉒ 가 그걸 잰다).
+  const _heardBy = new Map();               // hops → WeakMap<원본 ev, 들은 ev>
+  function asHeard(ev, hops) {
+    if (!cfg.BLUR || !(hops > 0)) return ev;
+    const m = blurMag(ev.mag, hops);
+    if (m === ev.mag) return ev;            // 뭉개도 같은 값이면 **사본을 만들지 않는다**
+    let w = _heardBy.get(hops);
+    if (!w) { w = new WeakMap(); _heardBy.set(hops, w); }
+    const hit = w.get(ev);
+    if (hit) return hit;
+    const copy = { day: ev.day, vid: ev.vid, type: ev.type, item: ev.item, mag: m, meta: ev.meta };
+    w.set(ev, copy);
+    return copy;
+  }
   // 사건 e 가 마을 vid 에 **닿는 날**. 못 닿으면 Infinity.
   function heardDayOf(ev, vid) {
     const d = delayTo(ev.vid, vid);
@@ -913,13 +982,15 @@ function createLedger(opts) {
     for (const s of byVid.values()) {
       const dly = delayTo(s.vid, vid);
       if (!isFinite(dly)) continue;
+      const hop = hopsTo(s.vid, vid);                 // ★[T127] 마을당 한 번 — 사건마다 묻지 않는다
       const ring = s.ring;
       for (let i = ring.length - 1; i >= 0; i--) {
         const ev = ring[i];
         const heard = ev.day + dly;
         if (heard > today) continue;                  // 아직 안 왔다 — 없는 것과 같다
         if (since != null && heard <= since) break;   // 링은 day 오름차순 → 더 볼 것이 없다
-        out.push({ ev, heard });
+        // ★[T127] **들은 대로** 넘긴다 — 아래 정렬(`heavier` → sev)도, 촌장의 말도 이 값을 읽는다.
+        out.push({ ev: asHeard(ev, hop), heard });
       }
     }
     out.sort((a, b) => (b.heard - a.heard) || heavier(a.ev, b.ev));
@@ -968,9 +1039,10 @@ function createLedger(opts) {
       for (const src of byVid.values()) {
         const dly = delayTo(src.vid, vid);
         if (!isFinite(dly)) continue;
+        const hop = hopsTo(src.vid, vid);     // ★[T127] 마을당 한 번
         const arr = src.chron;
         for (let i = 0; i < arr.length; i++) {
-          const ev = arr[i];
+          const ev = asHeard(arr[i], hop);    // ★[T127] 연표는 **들은 대로** 적는다
           const heard = ev.day + dly;
           if (heard < yStart) continue;
           if (heard > yEnd) break;            // chron 은 day 오름차순 ⇒ 이후는 전부 범위 밖
@@ -1100,6 +1172,8 @@ function createLedger(opts) {
     prime, scanDay, recent, board, claim, unclaim, ringOf, detOf, loadRing, loadRequest,
     // ★[T7] 소문 물리 전파 — 가시성 술어와 그 부속. 사본 금지: 사건을 보는 문은 이것뿐이다.
     visibleEvents, visibleTo, heardDayOf, delayTo, returnBrief,
+    // ★[T127] 소문 왜곡 — 홉 수와 뭉갬. 하네스가 **장부가 실제로 쓰는 것**을 그대로 부른다(사본 금지).
+    hopsTo, asHeard,
     // ★[T18] 연대기 — 같은 도달표 위에 선다(사본 0).
     chronicle, chronicleYears, loadChronicle, chronOf, isChronicle,
     // ★[T50] 사건의 무게 — 하네스·계측기가 **같은 판정**을 쓰라고 내준다(사본 금지).
@@ -1266,5 +1340,6 @@ function deliverToVillage(a) {
 }
 
 module.exports = { createLedger, CFG, TYPES, DEED_TYPES, DEED_FOREIGN, briefLine, boardLine, koRes, josa, seasonOf, KO_SEASON,
+  blurMag,   // ★[T127] 뭉갬 정본 — 하네스·계측기가 **이 함수**를 부른다(사본 금지)
   yearDaysOf, seasonStartOf, calendarOf,
   buildDeliverable, deliverToVillage, pricesOf, pricesFresh, payableQty };
