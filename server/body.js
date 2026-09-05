@@ -103,6 +103,46 @@ const CFG = {
   //     고도 감률과는 **독립**이다(둘 다 걸리면 높고 노출된 자리가 가장 춥다).
   //     ★평지의 X 는 0 이다 ⇒ 추위 2차가 재 둔 평지 기준선이 **한 자리도 안 움직인다.**
   COLD_WIND_K: _num('BODY_COLD_WIND_K', 0.6),
+  // ── ★★[젖음 2026-09-05 재민 확정 · T105] **젖은 옷은 단열을 잃는다.** ────────
+  //   T98 이 하늘에 비를 세웠다(`weather.precipAt`). 몸이 그걸 아는 자리가 여기다.
+  //   ★물리 하나뿐이다: 젖으면 단열이 준다. 허기·갈증·HP 는 **한 줄도 안 건드린다**(추위 한 축).
+  //
+  //   ★★앵커 둘 — 둘 다 **한 문서**에서 나왔다(출처가 하나면 두 수가 서로 어긋나지 않는다):
+  //     TB MED 508 "Prevention and Management of Cold-Weather Injuries",
+  //     Headquarters, Department of the Army, 2005-04.
+  //     https://usariem.health.mil/assets/docs/partnering/tbmed508.pdf
+  //
+  //   ① `WET_LOSS` — §3-2d: *"a battle dress uniform (BDU) has an insulation value of about 1.15.
+  //      **When the BDU becomes wet, its insulation value is reduced by 50 percent or more.**"*
+  //      ⇒ 흠뻑 젖으면(젖음 1) 단열의 **절반**을 잃는다. 문서가 "or more" 라고 했으니 0.5 는
+  //        **바닥**이지 가운데가 아니다 — 늘리려면 늘릴 근거(더 젖은 상태의 실측)가 먼저다.
+  //      ⚠**재질 무차별이다.** 같은 문서에 재질별 표가 없다(BDU 한 벌뿐). 그래서 `clothes.js`
+  //        재질 표에 열을 안 만들었다 — "갖옷은 덜 잃는다"는 건 맞는 말일 수 있지만 **출처가 없다**.
+  //        지어내면 그건 고증이 아니라 소원이다 ⇒ 재질 열은 회부.
+  //      ★참고(같은 방향의 독립 실측): Havenith et al. 2008, Eur J Appl Physiol 103(1):23–31 —
+  //        여러 겹 중 **중간 한 겹만** 적셨을 때 전체 단열 −16%(걷는 중). 한 겹짜리 청동기 옷이
+  //        통째로 젖는 이 세계에선 그보다 커야 맞고, 0.5 는 그 사이에 있다.
+  //
+  //   ② `WET_DRY_SEC` — §3-2n(4): *"Feet need to be **dried out overnight**"* (난로 있는 천막 안 ·
+  //      §3-2p *"Wet clothing can be hung to dry inside a tent with a stove."*)
+  //      ⇒ **실내에서 하룻밤(8시간)이면 마른다.** 게임 시간 환산: 하루 24분 ⇒ 1시간 = 1분 = 60초.
+  //        8게임시간 = 480초. 이 값은 그 앵커를 **실외 기준으로 되돌린 것**이다(아래 배율):
+  //        480 ÷ 0.30 = 1,600초.  ⚠"overnight" 을 8시간으로 읽었다 — 그건 문서의 낱말이 아니라
+  //        내 읽기다(문서엔 시간 수가 없다). 더 정확한 앵커가 나오면 이 한 수만 갈면 된다.
+  //
+  //   ★★마르는 속도의 **배율은 새 수가 아니다.** 이 세계는 이미 "여기가 얼마나 덜 추운가"를
+  //     적어 뒀고, 옷을 말리는 것은 그 자리가 몸에 해 주는 일과 **같은 일**이다:
+  //         실외 ×1  ·  실내 ×COLD_INDOOR_MULT(0.30)  ·  불 곁 ×COLD_FIRE_TARGET(0.05)
+  //     ⇒ 실외 26.7게임시간 · 실내 8게임시간(=앵커) · 불 곁 1.3게임시간. **불 > 실내 > 실외.**
+  //
+  //   ★★젖는 쪽은 **시간이 안 든다** — 그리고 그게 새 수를 하나 아낀 게 아니라 물리다.
+  //     비를 맞으면 겉은 곧바로 젖는다(초 단위). 오래 걸리는 건 **마르는 쪽**이다.
+  //     ⇒ 비는 젖음의 **바닥**을 그날의 세기(`precipAt`)까지 곧바로 올리고, 이력은 마름이 만든다.
+  //     ★덤: 이슬비(0.03)는 거의 안 적시고 장마 소나기(0.47)는 흠뻑 적신다 — T98 의 강도 눈금이
+  //       그대로 살아난다. 새 문턱도, 새 곡선도 없다.
+  WET_LOSS: _num('BODY_WET_LOSS', 0.5),        // 젖음 1 이면 단열이 (1−이 값) 배
+  WET_DRY_SEC: _num('BODY_WET_DRY_SEC', 1600), // 실외에서 젖음 1 → 0 까지(초 · 실내는 ×0.30)
+  WET_ON: _num('T105_WET', 1),                 // ★되돌림 — 0 이면 젖음이 늘 0(= T98 세계 비트 동일)
   // ── ★★[바닷물 2026-09-01 · T3 동봉] 짠물은 갈증을 **가속**한다 ───────────────
   //   재민 확정: 확률 굴리기(식중독) 금지 — **확정적**이다. 마시면 회복 0 이고,
   //   BRINE_SEC 동안 갈증 감소가 BRINE_MULT 배가 된다(보존식 `thirst` 음수와 같은 뜻의 다른 축).
@@ -276,7 +316,7 @@ for (const a of AXES) {
 //   새 축만 `p.body` 에 0..1 로 담는다(0 좋음 … 1 최악, 사기만 0 없음 … 1 최고).
 function ensure(p) {
   if (!p.body || typeof p.body !== 'object') {
-    p.body = { cold: 0, fatigue: 0, injury: 0, morale: 0, herbUntil: 0, stages: {}, stam: 1, stamLock: false, brineUntil: 0, hpDebt: 0, deadDay: null };
+    p.body = { cold: 0, fatigue: 0, injury: 0, morale: 0, herbUntil: 0, stages: {}, stam: 1, stamLock: false, brineUntil: 0, hpDebt: 0, deadDay: null, wet: 0 };
   }
   if (!p.body.stages) p.body.stages = {};
   // ★[3층 재배선] 옛 저장본엔 스태미나가 없다 — 가득으로 시작한다(불이익 없이 승격).
@@ -288,6 +328,8 @@ function ensure(p) {
   if (!Number.isFinite(p.body.hpDebt)) p.body.hpDebt = 0;
   // ★[T43 후유증] 마지막으로 죽은 **게임일**. null 이면 후유증 없음(옛 저장본 포함).
   if (!Number.isFinite(p.body.deadDay)) p.body.deadDay = null;
+  // ★[T105 젖음] 옛 저장본엔 없다 — **마른 몸**으로 시작한다(불이익 없이 승격).
+  if (!Number.isFinite(p.body.wet)) p.body.wet = 0;
   return p.body;
 }
 
@@ -491,9 +533,58 @@ function stamina(p) { return ensure(p).stam; }
  * ★`WARMTH_MIN` 아래는 0 — 헐거운 옷은 바람이 지나간다(그래서 첫 한 벌이 겨울을 못 지운다).
  * ★고도 감률·날씨 편차와 **같은 단위**라 서로 상쇄된다: 갖옷 +4.7℃ vs 1km 고도 −6.5℃.
  */
-function warmthInsC(warmth) {
+function warmthInsC(warmth, wet) {
   const w = Math.max(0, Number(warmth) || 0);
-  return Math.max(0, w - CFG.WARMTH_MIN) * CFG.WARMTH_C_PER;
+  const dry = Math.max(0, w - CFG.WARMTH_MIN) * CFG.WARMTH_C_PER;
+  // ★[T105] 젖음은 **곱 하나**다 — 새 식이 아니라 같은 단열에 붙는 배율이다.
+  //   `wet` 을 안 주면 정확히 종전 값이다(옛 호출부·구 하네스 계약 보존 · 되돌림도 이 길로 온다).
+  return dry * wetMult(wet);
+}
+/** 젖음이 남기는 단열의 몫(0..1). 젖음 0 ⇒ 1 · 젖음 1 ⇒ 1−WET_LOSS. */
+function wetMult(wet) {
+  if (CFG.WET_ON === 0) return 1;   // ★되돌림은 **총체적**이다 — 명시로 젖음을 준 호출부에도 안 걸린다
+  const x = Math.max(0, Math.min(1, Number(wet) || 0));
+  return Math.max(0, 1 - x * CFG.WET_LOSS);
+}
+/** 지금 몸의 젖음(0..1). 정본은 `p.body.wet` 하나다. */
+function wetOf(p) { return ensure(p).wet; }
+/**
+ * ★★젖음 정본 — **함수 하나**. `tick` 이 부르고 하네스가 같은 것을 부른다(사본 0).
+ *   · 비: 실외에서 비를 맞으면 젖음의 **바닥**이 그날의 세기(`weather.precipAt`)로 곧바로 오른다.
+ *     ⚠실내 술어는 `ctx.indoor` 다 — `villageShelter` 가 아니다. 마을 한복판도 하늘은 열려 있다.
+ *       T93 클라(`37-r1-weather`)도 **같은 술어**로 비를 감춘다(`playerIsIndoors`) ⇒ 화면과 몸이 같은 말을 한다.
+ *   · 마름: **정속 증발**이다(지수 수렴이 아니다). 건조의 항률기가 그렇고, 무엇보다 "마르는 시간"이
+ *     앵커라 그 수가 화면에 그대로 나와야 한다 — 지수면 영영 0 에 안 닿아 앵커를 못 잰다.
+ *   · 주사위 0 · 시간의 함수 · NPC 는 이 길로 안 온다(`zone.js` 가 NPC 를 `Body.tick` 앞에서 거른다).
+ */
+function wetStep(p, dtSec, ctx) {
+  const b = ensure(p), c = ctx || {};
+  if (!(CFG.WET_ON !== 0)) { b.wet = 0; return 0; }
+  if (!(dtSec > 0)) return b.wet;
+  // ★마름이 **먼저**, 비의 바닥이 **나중**이다. 순서가 바뀌면 답이 dt 에 따라 달라진다:
+  //   이슬비(0.03)를 60초 조각으로 재면 그 한 조각 안에서 다 말라 0 이 되고, 1초 조각으로 재면
+  //   안 마른다 — 같은 세계가 틱 길이에 따라 다른 말을 한다(실측으로 잡았다). 비가 오는 동안은
+  //   옷이 계속 다시 젖으므로 **그날의 세기 아래로는 안 내려간다**. 그게 물리이자 dt 불변이다.
+  if (b.wet > 0) {
+    const sec = Math.max(1, CFG.WET_DRY_SEC * _dryFactor(c));
+    b.wet = Math.max(0, b.wet - dtSec / sec);
+  }
+  if (!c.indoor) {
+    const W = Number.isFinite(c.day) ? _weather() : null;
+    let pr = 0;
+    if (W && typeof W.precipAt === 'function') { try { pr = +W.precipAt(c.day) || 0; } catch (e) { pr = 0; } }
+    if (pr > b.wet) b.wet = Math.min(1, pr);
+  }
+  // ⚠상태값은 **반올림하지 않는다** — 짧은 틱의 마름(1초면 0.000625)이 4자리에서 통째로 사라져
+  //   "안 마르는 옷"이 된다. 반올림은 화면·저장에서만 한다(`selfPayload`·`toSave`).
+  b.wet = Math.max(0, Math.min(1, b.wet));
+  return b.wet;
+}
+/** 그 자리가 젖음을 말리는 빠르기 — **새 수가 아니라** 이미 있는 "여기는 얼마나 덜 추운가"다. */
+function _dryFactor(c) {
+  if (c && c.nearFire) return CFG.COLD_FIRE_TARGET;     // 불 곁 — 0.05 ⇒ 20배 빠르다
+  if (c && c.indoor) return CFG.COLD_INDOOR_MULT;       // 실내 — 0.30 ⇒ 3.3배 (앵커가 선 자리)
+  return 1;                                             // 실외 — 깎아 주는 것이 없다
 }
 let _Weather = null;
 function _weather() {
@@ -510,7 +601,10 @@ function coldTarget(ctx) {
   //     ⚠이 세계의 산은 35m 라 실제 기여는 0.23℃(추위 0.007)뿐이고, 게다가 바위 셀이 통행 불가라
   //       플레이어가 설 수 있는 고도가 지금은 0 뿐이다. **배선은 살렸고 세계가 아직 낮다**(회부).
   const outdoor = (W && W.available())
-    ? W.outdoorCold(c.day, !!c.night, +c.elevKm || 0, warmthInsC(c.warmth)) : null;
+    // ★[T105] 옷이 젖었으면 그만큼 덜 막는다 — 곱 하나가 `warmthInsC` 안에서 걸린다.
+    //   ⚠아래 폴백(4단 계단) 경로엔 안 걸린다: 거긴 옷이 ℃ 가 아니라 `exposure` 곱으로 들어가고,
+    //     그 경로는 `day` 없는 옛 호출부를 위한 **계약 보존**용이다(비도 `day` 없이는 못 묻는다).
+    ? W.outdoorCold(c.day, !!c.night, +c.elevKm || 0, warmthInsC(c.warmth, c.wet)) : null;
   if (outdoor !== null) {
     // ★연중 연속 — 계절 이름이 아니라 **그날의 기온(℃)** 이 추위를 정한다(econ `temperatureAt` 정본).
     //   옷은 이미 ℃ 로 더해져 들어왔다 ⇒ 여기서 `exposure` 를 곱하지 않는다(이중 계산 금지).
@@ -630,7 +724,11 @@ function tick(p, dtSec, ctx) {
   //   ★★[천장 해제 2026-08-31] **규약 한 줄: 상태는 0~1, 목표점은 무제한.**
   //     목표점이 1.2 면 몸은 1 에서 멈추되 (tgt − cold) 가 커서 **더 빨리** 거기 닿는다.
   //     새 속도 식을 짜지 않았다 — 아래 지수 수렴은 종전 그대로고, 위 `coldTarget` 의 클램프만 뺐다.
-  const tgt = coldTarget(c);
+  // ★★[젖음 2026-09-05 · T105] **비가 먼저 옷을 적시고, 그 다음에 몸이 추위로 간다.**
+  //   순서가 뜻을 갖는다: 이 틱에 내린 비는 이 틱의 목표점에 이미 들어 있어야 한다.
+  //   `c.wet` 을 명시로 준 호출부(하네스·계측기)는 그것을 그대로 쓴다 — 몸 상태를 안 덮어쓴다.
+  const wetNow = (c.wet === undefined) ? wetStep(p, dtSec, c) : Math.max(0, Math.min(1, Number(c.wet) || 0));
+  const tgt = coldTarget(c.wet === undefined ? Object.assign({}, c, { wet: wetNow }) : c);
   const k = 1 - Math.exp(-dtSec / Math.max(1, CFG.COLD_TAU_SEC));
   b.cold = Math.max(0, Math.min(1, b.cold + (tgt - b.cold) * k));   // ★상태는 여기서만 잘린다
 
@@ -716,6 +814,7 @@ function selfPayload(p) {
     hunger: +(p.hunger == null ? 100 : p.hunger).toFixed(2),
     thirst: +(p.thirst == null ? 100 : p.thirst).toFixed(2),
     cold: +b.cold.toFixed(4), fatigue: +b.fatigue.toFixed(4),
+    wet: +(b.wet || 0).toFixed(4),   // ★[T105] 젖음 — 추위 한 축에만 걸린다(새 게이지 아님)
     injury: +b.injury.toFixed(4), morale: +b.morale.toFixed(4),
     // ★[3층 재배선] 스태미나·회복 배율 — 화면이 "왜 못 뛰나 / 왜 안 낫나"를 말할 재료.
     stam: +b.stam.toFixed(4), stamLock: !!b.stamLock, canSprint: canSprint(p),
@@ -736,11 +835,12 @@ function selfPayload(p) {
 function peerPayload(p) { return { moodles: moodles(p).map((m) => ({ axis: m.axis, stage: m.stage })) }; }
 
 // 저장/복원 — 주기 저장(`SAVE_INTERVAL_MS`) 경로에 실린다.
-function toSave(p) { const b = ensure(p); return { cold: +b.cold.toFixed(4), fatigue: +b.fatigue.toFixed(4), injury: +b.injury.toFixed(4), morale: +b.morale.toFixed(4), stam: +b.stam.toFixed(4), deadDay: Number.isFinite(b.deadDay) ? b.deadDay : null }; }
+// ★[T105] `wet` 을 싣는다 — 젖음은 **유도값이 아니다**(같은 자리·같은 날씨라도 방금 비를 맞았는지가 다르다).
+function toSave(p) { const b = ensure(p); return { cold: +b.cold.toFixed(4), fatigue: +b.fatigue.toFixed(4), injury: +b.injury.toFixed(4), morale: +b.morale.toFixed(4), stam: +b.stam.toFixed(4), wet: +(b.wet || 0).toFixed(4), deadDay: Number.isFinite(b.deadDay) ? b.deadDay : null }; }
 function fromSave(p, saved) {
   const b = ensure(p);
   if (!saved || typeof saved !== 'object') return b;
-  for (const k of ['cold', 'fatigue', 'injury', 'morale', 'stam']) {   // ★[3층 재배선] 스태미나도 산다
+  for (const k of ['cold', 'fatigue', 'injury', 'morale', 'stam', 'wet']) {   // ★[3층 재배선] 스태미나도 산다 · ★[T105] 젖음도 산다
     if (typeof saved[k] === 'number' && Number.isFinite(saved[k])) b[k] = Math.max(0, Math.min(1, saved[k]));
   }
   // ★[T43 후유증] 죽은 날은 **게임일**이라 0~1 클램프 대상이 아니다(위 루프에 넣으면 1 로 뭉개진다).
@@ -752,17 +852,18 @@ function dirtySince(p, snap) {
   const b = ensure(p), s = snap || {};
   if (Math.abs((p.hunger == null ? 100 : p.hunger) - (s.hunger == null ? 100 : s.hunger)) > CFG.DIRTY_EPS * 100) return true;
   if (Math.abs((p.thirst == null ? 100 : p.thirst) - (s.thirst == null ? 100 : s.thirst)) > CFG.DIRTY_EPS * 100) return true;
-  for (const k of ['cold', 'fatigue', 'injury', 'morale']) {
+  for (const k of ['cold', 'fatigue', 'injury', 'morale', 'wet']) {   // ★[T105] 젖음이 변하면 저장한다(안 그러면 재접속에 안 산다)
     if (Math.abs((b[k] || 0) - (s[k] || 0)) > CFG.DIRTY_EPS) return true;
   }
   return false;
 }
-function snapshot(p) { const b = ensure(p); return { hunger: p.hunger, thirst: p.thirst, cold: b.cold, fatigue: b.fatigue, injury: b.injury, morale: b.morale }; }
+function snapshot(p) { const b = ensure(p); return { hunger: p.hunger, thirst: p.thirst, cold: b.cold, fatigue: b.fatigue, injury: b.injury, morale: b.morale, wet: b.wet }; }
 
 module.exports = {
   CFG, CURVES, AXES, KO, EMO, STAGE_AT,
   lerpCurve, xWhereBelow, ensure, severity, effects, stageOf, moodles,
   RECOVER, EFFECT_AXES, RECOVER_AXES, recoverMult, recoverParts, canSprint, stamina, coldTarget, warmthInsC, decayRate,
+  wetStep, wetOf, wetMult,   // ★[T105] 젖음 정본 — 하네스·`zone.js` 가 **이것을** 부른다(사본 0)
   drinkBrine, brineActive,
   seasonHeatOf, heatThirstMult,   // ★[T64] 여름 갈증 배율 — 하네스·계측기가 **정본을 그대로** 부른다
   extremeHpRate, extremeAt, extremeness, takeHpDamage, DRAIN_AXES,

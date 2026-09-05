@@ -51,6 +51,13 @@ function mkPlayer(name) {
   return p;
 }
 const CALM = { night: false, nearFire: false, indoor: false, warmth: 0, seasonCold: 0, moving: false, sprint: false };
+// ★★[T105 2026-09-05] **⑭·⑮·⑯ 은 비가 없던 세계에서 서명된 기준선이다.**
+//   그 절들은 "옷 티어가 겨울밤을 막는가"를 24년 표본으로 잰다. T105 가 하늘의 비를 몸에 물리자
+//   그 24밤 중 일부가 **젖은 밤**이 됐고, 그러면 그 절은 옷이 아니라 "옷 + 그날 비가 왔나"를 재게 된다.
+//   ⇒ 재는 대상을 지키려고 그 절들에 **마른 세계**를 명시로 준다. 하네스가 화면을 재기 전에
+//     바람을 끄는 것과 **같은 자리**다(T98 족보: 새 층이 서면 옛 판정의 가정이 먼저 깨진다).
+//   ⚠감추는 게 아니라 자리를 나눈 것이다 — 젖은 밤이 실제로 더 위험하다는 것은 **⑲가 숫자로** 잰다.
+const DRY = (c) => Object.assign({ wet: 0 }, c);
 // ★★[T44] **긴 틱 픽스처는 스스로 굶는다.** 갈증은 게임 1일(=실시간 24분)에 바닥나므로
 //   30분을 도는 추위 픽스처는 도중에 **갈증이 극단**이 되어 추위와 무관한 HP 감소를 만든다.
 //   (초안이 실제로 그렇게 틀렸다 — 마을 대조군이 "추위로 깎였다"고 보고했는데 원인은 갈증이었다.)
@@ -547,7 +554,7 @@ function codeOnly(src) {
     // 실제로 재 본다 — 30분을 마을에서 버텨도 3단계가 안 온다 / 야생은 5~8분에 온다
     const S3 = B.STAGE_AT.cold[2] + B.CFG.STAGE_HYST;
     const clock = (ctx) => { const P = { hunger: 100, thirst: 100 }; B.ensure(P);
-      for (let s = 1; s <= 3600; s++) { B.tick(P, 1, ctx); if (B.ensure(P).cold >= S3) return s; } return null; };
+      for (let s = 1; s <= 3600; s++) { B.tick(P, 1, DRY(ctx)); if (B.ensure(P).cold >= S3) return s; } return null; };
     const tVil = clock({ day: wd, night: true, warmth: 0, villageShelter: 1 });
     ok(tVil === null, '★★⑭㉦ 마을에선 한 시간을 버텨도 3단계가 **안 온다**', tVil === null ? '안 옴' : `${tVil}초`);
     // ★야생은 **여러 해**로 묻는다 — 날씨 편차가 있으니 "그 하루"가 아니라 "그 무렵의 밤"이 기준이다.
@@ -576,7 +583,7 @@ function codeOnly(src) {
       //     추위 극단 문턱은 0.93 인데 **평범한 한겨울 밤의 평형은 0.9278** 이다 — 아슬아슬하게 못 넘는다.
       //     날씨 편차가 얹히는 **추운 해**에만 넘는다. 그러니 판정은 24년 표본의 **분포**여야 한다.
       const freeze = (shelter, doy) => { const P = { hunger: 100, thirst: 100, hp: 77 }; let a = 0;
-        for (let s = 0; s < 1800; s++) { holdFed(P); B.tick(P, 1, { day: doy, night: true, warmth: 0, villageShelter: shelter }); a += B.takeHpDamage(P); }
+        for (let s = 0; s < 1800; s++) { holdFed(P); B.tick(P, 1, DRY({ day: doy, night: true, warmth: 0, villageShelter: shelter })); a += B.takeHpDamage(P); }
         return { a, cold: B.ensure(P).cold }; };
       let wildYears = 0, wildHp = 0, vilYears = 0;
       for (let k = 0; k < 24; k++) {
@@ -611,7 +618,7 @@ function codeOnly(src) {
     const wd = Math.round(A.winterMid);
     const S3 = B.STAGE_AT.cold[2] + B.CFG.STAGE_HYST;
     const clock = (ctx) => { const P = { hunger: 100, thirst: 100 }; B.ensure(P);
-      for (let s2 = 1; s2 <= 3600; s2++) { B.tick(P, 1, ctx); if (B.ensure(P).cold >= S3) return s2; } return null; };
+      for (let s2 = 1; s2 <= 3600; s2++) { B.tick(P, 1, DRY(ctx)); if (B.ensure(P).cold >= S3) return s2; } return null; };
     const years = (ctx, doy) => { let h = 0; const ts = [];
       for (let k = 0; k < 24; k++) { const t = clock(Object.assign({ day: (doy == null ? wd : doy) + 365 * k }, ctx)); if (t !== null) { h++; ts.push(t); } }
       ts.sort((a2, b2) => a2 - b2); return { hit: h, med: ts.length ? ts[ts.length >> 1] : null }; };
@@ -624,7 +631,7 @@ function codeOnly(src) {
     // ★상태값 불변 — 1 초과 목표점을 오래 먹여도 저장·페이로드가 1 을 넘지 않는다
     {
       const P = { hunger: 100, thirst: 100 };
-      for (let s2 = 0; s2 < 1800; s2++) B.tick(P, 1, { day: wd, night: true, warmth: 0, elevKm: 2 });
+      for (let s2 = 0; s2 < 1800; s2++) B.tick(P, 1, DRY({ day: wd, night: true, warmth: 0, elevKm: 2 }));
       const bd = B.ensure(P);
       ok(bd.cold <= 1 && bd.cold > 0.99, '★★⑮㉠ **상태는 0~1** — 목표점 1.32 를 30분 먹여도 1 에서 멈춘다', bd.cold);
       ok(B.toSave(P).cold <= 1 && B.selfPayload(P).cold <= 1, '★★⑮㉠ 저장·페이로드에도 1 초과가 안 샌다',
@@ -719,7 +726,7 @@ function codeOnly(src) {
     // ── ㉦ ★★[뒤집힘 · T44] 목표점이 높을수록 **더 빨리** 깎인다 · econ 무수정 ────
     {
       const drain = (el) => { const P = { hunger: 100, thirst: 100, hp: 63 }; let a = 0;
-        for (let s2 = 0; s2 < 1800; s2++) { holdFed(P); B.tick(P, 1, { day: wd, night: true, warmth: 0, elevKm: el }); a += B.takeHpDamage(P); }
+        for (let s2 = 0; s2 < 1800; s2++) { holdFed(P); B.tick(P, 1, DRY({ day: wd, night: true, warmth: 0, elevKm: el })); a += B.takeHpDamage(P); }
         return { a, cold: B.ensure(P).cold }; };
       const hi = drain(2), lo = drain(0);
       ok(hi.a > 0, '★★⑮㉦ 목표점 1.3 짜리 밤에 30분을 얼면 **HP 가 깎인다**(종전 "안 깎인다"의 뒤집힘 · T44)',
@@ -755,7 +762,7 @@ function codeOnly(src) {
     const WD = Math.round(A2.winterMid), SD = Math.round(A2.summerMid);
     const S3b = B.STAGE_AT.cold[2] + B.CFG.STAGE_HYST;
     const clock2 = (ctx) => { const P = { hunger: 100, thirst: 100 }; B.ensure(P);
-      for (let s2 = 1; s2 <= 3600; s2++) { B.tick(P, 1, ctx); if (B.ensure(P).cold >= S3b) return s2; } return null; };
+      for (let s2 = 1; s2 <= 3600; s2++) { B.tick(P, 1, DRY(ctx)); if (B.ensure(P).cold >= S3b) return s2; } return null; };
     const years2 = (ctx, doy) => { let h = 0; const ts = [];
       for (let k = 0; k < 24; k++) { const t = clock2(Object.assign({ day: doy + 365 * k }, ctx)); if (t !== null) { h++; ts.push(t); } }
       ts.sort((a2, b2) => a2 - b2); return { hit: h, med: ts.length ? ts[ts.length >> 1] : null }; };
@@ -962,7 +969,7 @@ function codeOnly(src) {
         // 갈증이 실제로 **더 빨리** 준다 — 같은 60초를 짠물 있음/없음으로 A/B
         const run = (brine) => { const P = { hunger: 100, thirst: 80 }; B.ensure(P);
           if (brine) B.drinkBrine(P, 0);
-          for (let s2 = 0; s2 < 60; s2++) B.tick(P, 1, { day: WD, night: false, warmth: 0, now: s2 * 1000 });
+          for (let s2 = 0; s2 < 60; s2++) B.tick(P, 1, DRY({ day: WD, night: false, warmth: 0, now: s2 * 1000 }));
           return P.thirst; };
         const plainT = run(false), brineT = run(true);
         ok(brineT < plainT - 0.05, '★★⑯㉧ 짠물 뒤엔 **갈증이 더 빨리 준다**(같은 60초 A/B)',
@@ -982,7 +989,7 @@ function codeOnly(src) {
       const P2 = { hunger: 100, thirst: 100, hp: 71 };
       B.drinkBrine(P2, 0);
       let a2 = 0;
-      for (let s2 = 0; s2 < 1800; s2++) { B.tick(P2, 1, { day: WD, night: true, warmth: 0, windExposure: 1, now: s2 * 1000 }); a2 += B.takeHpDamage(P2); }
+      for (let s2 = 0; s2 < 1800; s2++) { B.tick(P2, 1, DRY({ day: WD, night: true, warmth: 0, windExposure: 1, now: s2 * 1000 })); a2 += B.takeHpDamage(P2); }
       ok(a2 > 0 && P2.thirst === 0,
         '★★⑯㉧ 짠물 + 최대 노출 한겨울 밤 30분이면 **갈증이 바닥나고 HP 가 깎인다**(T44 캐논)',
         `${a2}HP · cold ${B.ensure(P2).cold} · thirst ${P2.thirst.toFixed(1)}`);
@@ -1317,6 +1324,195 @@ function codeOnly(src) {
         const i = dry({ seasonCold: sc, night: false, indoor: true });
         say(`       ${ko.padEnd(7)} 낮 야외 ${(d / 60).toFixed(1)}분 · 밤 ${(n / 60).toFixed(1)}분 · 낮 실내 ${(i / 60).toFixed(1)}분`);
       }
+    }
+  }
+
+  // ═══ ⑲ 젖음 — 젖은 옷은 단열을 잃는다 [T105 · 재민 확정 2026-09-05] ═══════════
+  //   ★이 절의 제1 원칙: **앵커를 두 번 적지 않는다.** 마르는 시간·손실률을 여기에 숫자로
+  //     베껴 쓰면 그게 사본이고, 누가 `body.js` 를 고치는 날 하네스가 **조용히** 초록으로 남는다.
+  //     ⇒ 기대값은 전부 `B.CFG` 와 세계의 시계(`zone-config.dayLengthMs`)에서 **유도한다.**
+  {
+    say('\n⑲ 젖음 — 비를 맞으면 옷이 단열을 잃고, 마르는 데 시간이 든다 (T105)');
+    const bsrc = codeOnly(fs.readFileSync(path.join(ROOT, 'server', 'body.js'), 'utf8'));
+    const bsrcAll = fs.readFileSync(path.join(ROOT, 'server', 'body.js'), 'utf8');
+    const Wx = require(path.join(ROOT, 'server', 'weather.js'));
+    const zcfg = require(path.join(ROOT, 'server', 'zone-config.js'));
+    // 세계의 시계에서 유도 — "게임 1시간이 몇 초인가"를 이 파일에 적지 않는다.
+    const HOUR = (zcfg.WORLD.dayLengthMs / 1000) / 24;
+    ok(HOUR === 60, '⑲ⓐ 전제 — 게임 1시간 = 실시간 60초(`zone-config WORLD.dayLengthMs` 에서 유도)', `${HOUR}초`);
+
+    // ── ⓐ 앵커 둘과 출처 — 기계가 읽는다 ────────────────────────────────────
+    ok(/usariem\.health\.mil\/assets\/docs\/partnering\/tbmed508\.pdf/.test(bsrcAll),
+      '⑲ⓐ 출처 URL 이 소스에 있다(TB MED 508 · US Army)');
+    ok(/50 percent or more/.test(bsrcAll) && /overnight/.test(bsrcAll),
+      '⑲ⓐ2 인용문 둘이 소스에 그대로 있다(손실률 · 마르는 시간)');
+    ok(B.CFG.WET_LOSS === 0.5, '⑲ⓐ3 손실률 앵커 = 0.5 (문서의 "reduced by 50 percent or more")', B.CFG.WET_LOSS);
+    // ★새 수는 **둘뿐**이다 — 젖음 이름을 단 환경변수가 셋을 넘으면(되돌림 스위치 포함) 빨강.
+    const wetKnobs = (bsrc.match(/_num\('([A-Z0-9_]*(?:WET|T105)[A-Z0-9_]*)'/g) || []).map((x) => x.slice(6, -1));
+    ok(wetKnobs.length === 3, '⑲ⓐ4 젖음이 들여온 수는 **둘 + 되돌림 하나**뿐이다', wetKnobs.join(' '));
+    // ★재질 열 0 — 출처에 재질 표가 없으므로 만들지 않았다(카드 §1).
+    ok(!/wetLoss|WET_LOSS_[A-Z]|wet.*(?:leather|fur|hemp|ramie)/i.test(bsrc),
+      '⑲ⓐ5 재질별 손실 표가 **없다** — 출처에 없는 것을 지어내지 않았다(회부)');
+
+    // ── ⓑ 마르는 시간 = 앵커 · 순서는 불 곁 > 실내 > 실외 ────────────────────
+    //   기대값을 유도한다: 실내 = WET_DRY_SEC × COLD_INDOOR_MULT · 불 = × COLD_FIRE_TARGET.
+    let dryDay = -1;
+    for (let d = 0; d < 60 && dryDay < 0; d++) if (Wx.precipAt(d) === 0) dryDay = d;
+    ok(dryDay >= 0, '⑲ⓑ 전제 — 비가 안 오는 게임일을 찾았다(비 오는 날엔 마름을 못 잰다)', `게임일 ${dryDay}`);
+    const dryTime = (ctx) => {
+      const q = mkPlayer('wetdry');
+      B.ensure(q).wet = 1;
+      let t = 0;
+      while (B.wetOf(q) > 0 && t < 200000) { B.wetStep(q, 1, Object.assign({ day: dryDay }, ctx)); t += 1; }
+      return t;
+    };
+    const tOut = dryTime({}), tIn = dryTime({ indoor: true }), tFire = dryTime({ nearFire: true });
+    const expIn = B.CFG.WET_DRY_SEC * B.CFG.COLD_INDOOR_MULT;
+    const expFire = B.CFG.WET_DRY_SEC * B.CFG.COLD_FIRE_TARGET;
+    say(`    마름: 실외 ${(tOut / HOUR).toFixed(2)}게임시간 · 실내 ${(tIn / HOUR).toFixed(2)} · 불 곁 ${(tFire / HOUR).toFixed(2)}`);
+    ok(Math.abs(tIn - expIn) <= 2, '⑲ⓑ2 ★실내 마름이 **앵커 그대로**다(하룻밤 = 8게임시간)',
+      `${tIn}초 vs 유도 ${expIn}초 (=${(expIn / HOUR).toFixed(1)}게임시간)`);
+    ok(Math.abs(tOut - B.CFG.WET_DRY_SEC) <= 2, '⑲ⓑ3 실외 마름 = `WET_DRY_SEC`', `${tOut}초 vs ${B.CFG.WET_DRY_SEC}초`);
+    ok(Math.abs(tFire - expFire) <= 2, '⑲ⓑ4 불 곁 마름 = `WET_DRY_SEC × COLD_FIRE_TARGET`', `${tFire}초 vs ${expFire}초`);
+    ok(tFire < tIn && tIn < tOut, '⑲ⓑ5 ★★불 곁 > 실내 > 실외 — 순서가 선다(새 수 0 · 세계가 이미 적어 둔 배율)');
+
+    // ── ⓒ 비 오는 날 실외 1시간 → 젖음 > 0 · 실내면 0 ────────────────────────
+    let wetDay = -1;
+    for (let d = 0; d < 60 && wetDay < 0; d++) if (Wx.precipAt(d) > 0.05) wetDay = d;
+    ok(wetDay >= 0, '⑲ⓒ 전제 — 비가 제법 오는 게임일을 찾았다', `게임일 ${wetDay} · 세기 ${Wx.precipAt(wetDay)}`);
+    const runWet = (ctx, dt, n) => { const q = mkPlayer('wetrun'); for (let i = 0; i < n; i++) B.wetStep(q, dt, Object.assign({ day: wetDay }, ctx)); return B.wetOf(q); };
+    const outHour = runWet({}, 1, HOUR);
+    ok(outHour > 0, '⑲ⓒ2 ★비 오는 날 실외에 1시간 있으면 젖는다', outHour.toFixed(4));
+    ok(Math.abs(outHour - Wx.precipAt(wetDay)) < 1e-9,
+      '⑲ⓒ3 ★젖음의 바닥이 **그날의 세기**다 — T98 의 강도 눈금이 그대로 산다(새 문턱 0)',
+      `${outHour} = precipAt ${Wx.precipAt(wetDay)}`);
+    ok(runWet({ indoor: true }, 1, HOUR) === 0, '⑲ⓒ4 ★지붕 아래선 안 젖는다(술어는 `indoor` — 마을 완충이 아니다)');
+    // ★자명 통과 금지 — 마을 한복판(완충 1)이어도 하늘은 열려 있다
+    ok(runWet({ villageShelter: 1 }, 1, HOUR) > 0, '⑲ⓒ5 ★★마을 한복판도 **젖는다** — 미기후는 지붕이 아니다');
+    // ★dt 불변 — 틱 길이가 답을 바꾸면 그건 세계가 아니라 계측 오차다(1차 실장이 여기서 틀렸다)
+    const dts = [1, 10, 60, 600].map((dt) => runWet({}, dt, Math.round(3600 / dt)));
+    ok(dts.every((v) => Math.abs(v - dts[0]) < 1e-9), '⑲ⓒ6 ★★틱 길이가 답을 안 바꾼다(dt 불변)', dts.map((v) => v.toFixed(4)).join(' '));
+
+    // ── ⓓ 곱 — 젖음 1 이면 단열이 (1−LOSS) 배 ───────────────────────────────
+    const W43 = B.warmthInsC(43), W43w = B.warmthInsC(43, 1);
+    ok(Math.abs(W43w - W43 * (1 - B.CFG.WET_LOSS)) < 1e-12,
+      '⑲ⓓ ★젖음 1 에서 단열이 정확히 `1−LOSS` 배다', `${W43.toFixed(4)}℃ → ${W43w.toFixed(4)}℃`);
+    ok(B.warmthInsC(43, 0) === W43, '⑲ⓓ2 젖음 0 은 종전과 **비트 동일**(옛 호출부 계약 보존)');
+    ok(Math.abs(B.warmthInsC(43, 0.5) - W43 * (1 - 0.5 * B.CFG.WET_LOSS)) < 1e-12, '⑲ⓓ3 중간 젖음은 선형이다');
+    // ★추위 목표점에 실제로 걸린다(곱만 있고 배선이 없으면 위 셋이 자명 통과다)
+    const CTX = { day: wetDay, night: true, warmth: 43, villageShelter: 0, windExposure: 0 };
+    const tDry = B.coldTarget(Object.assign({}, CTX, { wet: 0 }));
+    const tWet = B.coldTarget(Object.assign({}, CTX, { wet: 1 }));
+    ok(tWet > tDry, '⑲ⓓ4 ★★젖으면 **추위 목표점이 오른다** — 곱이 실제로 배선돼 있다', `${tDry} → ${tWet}`);
+
+    // ── ⓔ 추위 **한 축**만 — 허기·갈증·HP 는 안 건드린다 ────────────────────
+    //   같은 상황을 젖음만 갈아 두 번 돌린다. 추위를 **불로 눌러** 두 판의 추위를 같게 만들면
+    //   나머지 축이 갈릴 이유가 없다(추위→허기 가중은 종전부터 있던 결합이라 그건 이 카드가 아니다).
+    const runBody = (wet) => {
+      const q = mkPlayer('wetaxis'); q.hunger = 100; q.thirst = 100;
+      for (let i = 0; i < 60; i++) B.tick(q, 10, Object.assign({}, CALM, { day: dryDay, nearFire: true, warmth: 43, wet }));
+      return { hunger: q.hunger, thirst: q.thirst, hp: q.hp, hpDebt: B.ensure(q).hpDebt, cold: B.ensure(q).cold };
+    };
+    const aDry = runBody(0), aWet = runBody(1);
+    ok(aDry.hunger === aWet.hunger && aDry.thirst === aWet.thirst && aDry.hp === aWet.hp && aDry.hpDebt === aWet.hpDebt,
+      '⑲ⓔ ★★추위가 같으면 허기·갈증·HP 가 **비트 동일**하다(젖음은 그 축들에 직접 안 닿는다)',
+      `허기 ${aDry.hunger.toFixed(4)} / 갈증 ${aDry.thirst.toFixed(4)}`);
+    ok(aDry.cold === aWet.cold, '⑲ⓔ2 전제 — 불이 두 판의 추위를 같게 눌렀다(그래야 위가 자명 통과가 아니다)', aDry.cold);
+    // ★소스로도 못 박는다 — 허기·갈증·HP 줄에 `wet` 이 없다
+    for (const [ax, re] of [['허기', /p\.hunger = [^\n]*/], ['갈증', /p\.thirst = [^\n]*/], ['HP', /b\.hpDebt \+= [^\n]*/]]) {
+      const line = (bsrc.match(re) || [''])[0];
+      ok(line.length > 0 && !/wet/i.test(line), `⑲ⓔ3 ${ax} 식에 젖음이 **한 글자도** 없다`, line.trim().slice(0, 60));
+    }
+
+    // ── ⓕ 재접속에 살아남는다 — 젖음은 유도값이 아니다 ──────────────────────
+    const q1 = mkPlayer('wetsave');
+    for (let i = 0; i < 30; i++) B.wetStep(q1, 10, { day: wetDay });
+    const savedWet = B.toSave(q1);
+    ok(savedWet.wet > 0, '⑲ⓕ 전제 — 저장 직전 실제로 젖어 있었다', savedWet.wet);
+    const q2 = mkPlayer('wetsave'); B.fromSave(q2, savedWet);
+    ok(B.wetOf(q2) === savedWet.wet, '⑲ⓕ2 ★재접속에 젖음이 **그대로** 산다', `${savedWet.wet} → ${B.wetOf(q2)}`);
+    const q3 = mkPlayer('wetsave');
+    ok(B.dirtySince(q1, B.snapshot(q3)), '⑲ⓕ3 젖음이 변하면 **저장이 일어난다**(안 그러면 위가 화면 밖에서 깨진다)');
+    // ★옛 저장본 승격 — `wet` 없는 저장에서 마른 몸으로 시작한다(불이익 0)
+    const q4 = mkPlayer('wetold'); B.fromSave(q4, { cold: 0.4, fatigue: 0.1, injury: 0, morale: 0, stam: 1 });
+    ok(B.wetOf(q4) === 0, '⑲ⓕ4 옛 저장본은 **마른 몸**으로 승격된다');
+
+    // ── ⓖ 돌연변이 — 곱을 빼면 빨개진다 ─────────────────────────────────────
+    {
+      const keep = B.CFG.WET_LOSS;
+      B.CFG.WET_LOSS = 0;
+      const mutated = B.warmthInsC(43, 1);
+      B.CFG.WET_LOSS = keep;
+      ok(mutated === W43 && W43w !== W43,
+        '⑲ⓖ ★★(돌연변이) 손실률을 0 으로 두면 ⓓ 가 무너진다 — 그 판정이 실제로 곱을 재고 있다',
+        `LOSS=0 ⇒ ${mutated.toFixed(4)} · LOSS=${keep} ⇒ ${W43w.toFixed(4)}`);
+    }
+
+    // ── ⓗ 되돌림 `T105_WET=0` — T98 세계와 **비트 동일** ────────────────────
+    {
+      const bp = require.resolve(path.join(ROOT, 'server', 'body.js'));
+      const keepMod = require.cache[bp];
+      const keepEnv = process.env.T105_WET;
+      delete require.cache[bp]; process.env.T105_WET = '0';
+      let B0 = null;
+      try { B0 = require(bp); } finally {
+        delete require.cache[bp];
+        if (keepEnv === undefined) delete process.env.T105_WET; else process.env.T105_WET = keepEnv;
+        require.cache[bp] = keepMod;                       // ★원래 인스턴스를 도로 꽂는다(뒤 검사 오염 금지)
+      }
+      const z = mkPlayer('revert');
+      for (let i = 0; i < 60; i++) B0.wetStep(z, 10, { day: wetDay });
+      ok(B0.wetOf(z) === 0, '⑲ⓗ ★`T105_WET=0` 이면 비를 맞아도 젖음이 0 이다');
+      ok(B0.warmthInsC(43, 1) === B0.warmthInsC(43),
+        '⑲ⓗ2 ★★그리고 곱도 안 걸린다 — 되돌림이 **총체적**이다(명시로 젖음을 준 호출부에도)',
+        B0.warmthInsC(43, 1));
+      ok(B0.warmthInsC(43) === W43, '⑲ⓗ3 되돌린 단열이 T98 값과 **비트 동일**', W43);
+      ok(B.CFG.WET_ON !== 0, '⑲ⓗ4 (오염 검사) 되돌림 뒤에도 이 하네스의 정본은 켜져 있다');
+    }
+
+    // ── ⓙ ★★그래서 젖은 겨울밤은 얼마나 더 위험한가 — **⑮가 안 재는 수를 여기서 잰다** ──
+    //   ⑮·⑯ 의 옷 티어 계단은 이제 명시로 **마른 세계**에서 잰다(위 `DRY` 주석). 그 대신
+    //   "비 맞은 밤"의 값은 반드시 **어딘가에 적혀야** 한다 — 감추면 그건 자리를 나눈 게 아니라 숨긴 거다.
+    {
+      const PI2 = require(path.join(ROOT, 'server', 'player-items.js'));
+      const A3 = Wx.anchors();
+      const wdw = Math.round(A3.winterMid);
+      const S3w = B.STAGE_AT.cold[2] + B.CFG.STAGE_HYST;
+      const leather = PI2.craftItem('clothes', 5, { leather: 3 }).attrs.warmth;
+      const nights = (wet) => {
+        let hit = 0;
+        for (let k = 0; k < 24; k++) {
+          const P = { hunger: 100, thirst: 100 }; B.ensure(P);
+          let got = false;
+          for (let s2 = 1; s2 <= 3600 && !got; s2++) {
+            B.tick(P, 1, { day: wdw + 365 * k, night: true, warmth: leather, villageShelter: 0, wet });
+            if (B.ensure(P).cold >= S3w) got = true;
+          }
+          if (got) hit++;
+        }
+        return hit;
+      };
+      const dryN = nights(0), wetN = nights(1);
+      say(`     한겨울 자정 야생 24년 · 가죽옷(방한 ${leather}) — 마른 밤 ${dryN}/24 → **흠뻑 젖은 밤 ${wetN}/24**`);
+      ok(wetN > dryN, '⑲ⓙ ★★젖으면 같은 가죽옷으로도 겨울밤이 **눈에 띄게** 위험해진다', `${dryN} → ${wetN}`);
+      ok(dryN <= 2, '⑲ⓙ2 (대조) 마른 밤의 값은 ⑮㉣ 이 서명한 그 계단 그대로다(≤10%)', `${dryN}/24`);
+    }
+
+    // ── ⓘ 접점 — `weatherFor` 가 `wet` 을 싣고, 클라는 낱말 하나만 얹는다 ────
+    //   ⚠소스를 **글자 수로 자르지 않는다**(족보 115·T85) — 함수 끝까지 구조로 자른다.
+    {
+      const zsrc = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
+      const at = zsrc.indexOf('\nfunction weatherFor(');
+      const end = zsrc.indexOf('\n}\n', at);
+      const fn = at >= 0 && end > at ? zsrc.slice(at, end + 3) : '';
+      ok(fn.length > 0 && /exp: wexp/.test(fn), '⑲ⓘ 전제 — `weatherFor` 본문을 통째로 집었다', `${fn.split('\n').length}줄`);
+      ok(/Body\.wetOf\(/.test(fn), '⑲ⓘ2 젖음의 정본(`Body.wetOf`)을 부른다 — 여기서 다시 재지 않는다(사본 0)');
+      ok(/warmthInsC\([\s\S]*?,\s*wet\)/.test(fn), '⑲ⓘ3 ★`insC` 를 **젖은 뒤의 값**으로 보낸다(화면이 참말을 한다)');
+      ok(/\bwet:\s*\+wet/.test(fn.slice(fn.indexOf('return Object.assign'))), '⑲ⓘ4 응답에 `wet` 이 실린다');
+      const hud = fs.readFileSync(path.join(ROOT, 'public', 'client', '44-h-hud.js'), 'utf8');
+      ok(/'\s*·\s*젖음'/.test(hud), '⑲ⓘ5 ★HUD 는 **낱말 하나**다(새 패널 0)');
+      const wxc = fs.readFileSync(path.join(ROOT, 'public', 'client', '37-r1-weather.js'), 'utf8');
+      ok(!/\bwet\b/.test(wxc), '⑲ⓘ6 (T93·T98 무접촉) 비·눈 층은 `wet` 을 모른다 — 이 카드가 그 파일을 안 건드렸다');
     }
   }
 

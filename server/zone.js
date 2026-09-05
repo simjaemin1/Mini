@@ -5500,10 +5500,14 @@ function weatherFor(p, now) {
   if (!w) return null;
   // ★[옷 티어 2026-08-31] 지금 입은 옷이 **몇 ℃ 를 벌어 주는지** — 화면이 그걸 말해야
   //   "가죽옷을 사야 하나"가 판단이 된다(비네트가 원인 축을 말하게 하는 규약과 같은 자리).
+  // ★[T105 2026-09-05] 젖음 — 정본은 `Body.wetOf` 하나다(여기서 다시 재지 않는다).
+  //   ⚠`insC` 는 **젖은 뒤의 값**을 보낸다: 화면이 "입은 옷이 체감 +2.97℃" 라고 말하는데
+  //     실제로는 젖어서 +1.49℃ 였다면 그건 화면이 거짓말을 한 것이다.
+  let wet = 0; try { wet = Body.wetOf(p) || 0; } catch (e) {}
   let insC = 0;
   try {
     const cl = getEquippedEquipment(p, 'clothes');
-    insC = Body.warmthInsC((cl && cl.attrs && cl.attrs.warmth) || 0);
+    insC = Body.warmthInsC((cl && cl.attrs && cl.attrs.warmth) || 0, wet);
   } catch (e) {}
   const sh = villageShelterOf(p, now || Date.now());
   // ★`cut` 은 "마을이 실제로 몇 % 깎아 주는가" — 클라가 `COLD_VILLAGE_SHELTER` 사본을 갖지 않게 여기서 낸다.
@@ -5518,7 +5522,7 @@ function weatherFor(p, now) {
   //   ⚠비냐 눈이냐는 서버가 정하지 않는다 — 클라가 `wx.tempC` 하나로 가른다(T93 이 옳다).
   let precip = 0; try { precip = require('./weather').precipAt(day); } catch (e) {}
   return Object.assign({}, w, { shelter: sh, cut, insC: +insC.toFixed(2),
-    wind: +Wind.seasonWind(day).toFixed(3), exp: wexp, precip });
+    wind: +Wind.seasonWind(day).toFixed(3), exp: wexp, precip, wet: +wet.toFixed(4) });
 }
 // ★★[천장 해제 2026-08-31] 그 자리의 고도(km) — econ 기온 감률(−6.5℃/km)의 입력.
 //   ★★실측 보고(이 배치 §0): **지금은 언제나 0 이다. 그게 거짓말이 아니라 세계의 사실이다.**
