@@ -330,7 +330,7 @@
       // 에셋 5차: 4단계 3D 스프라이트(갈은 흙/어린싹/자람/익음). 미로드 시 아래 벡터 렌더 폴백.
       {
         const _st = isReady ? 3 : Math.min(2, Math.floor(growProgress * 3));
-        const _cs = cropSprite(_st, building ? building.x : x, building ? building.y : y);
+        const _cs = cropSprite(_st, data.crop);   // ★[T79c] 심긴 작물로 고른다(빈 밭이면 null → 곡물)
         if (_cs) {
           ctx.fillStyle = 'rgba(0,0,0,0.30)';
           ctx.beginPath(); ctx.ellipse(x, y + 4, 14, 4, 0, 0, Math.PI * 2); ctx.fill();

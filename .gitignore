@@ -36,6 +36,7 @@ scripts/nature_renders/
 # ★[T67] 가구 렌더 중간 산물 — 정본은 `scripts/props_render.py`, 배치본은 public/assets/props · icons
 scripts/icon_renders/
 scripts/crop_renders/
+scripts/field_renders/
 scripts/crop_icon_renders/
 scripts/props_renders/
 scripts/props_icon_renders/

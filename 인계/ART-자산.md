@@ -18,7 +18,7 @@
 | **`scripts/props_render.py`** ★T67 신규 · T72 확장 | **가구·시설 8종**(작업대·건조대·상자·모닥불·소금가마·벽·문·울타리) + **손도구·손에 드는 것 13종**(§9) | `public/assets/props/*.png` + `public/assets/icons/*.png` | `public/assets/props/props_anchors.json` — 클라가 **읽는다**(사본 없음) · 아이콘은 앵커 없음 |
 | `scripts/nature_render.py` | 나무·덤불·풀·갈대·부들·꽃·이끼바위 | `public/assets/nature/*.png` | `nature_anchors.json`(클라가 fetch) |
 | `scripts/icon_render.py` | 인벤 아이콘(자원·야금 사슬 등) · **공용 모듈 씀** | `icon_renders/*.png` → `icons-postprocess.js` → `public/assets/icons/` | 없음(bbox 중심) |
-| `scripts/crop_render.py` | 작물 밭 4단계(세계) · **공용 모듈 씀**[T79] | `crop_renders/*.png` → 64px → `public/assets/crops/` | — |
+| **`scripts/fields_render.py`** | 밭 세계 스프라이트 **8군 × 4단계**[T79c] | `field_renders/*.png` → `rc.downscale_png` 64px → `public/assets/crops/` | — |
 | `scripts/char_render.py` | 캐릭터 스프라이트시트 | `public/assets/char/` | 프레임 상자 메타 JSON |
 | `scripts/bridge_render.py` | 다리 | `public/assets/bridge/` | — |
 | `scripts/bake-mountain.py` · `pack-mountain.py` | 산 | `public/assets/mountains/` | `mountain_anchors.json` |
@@ -401,3 +401,51 @@ T77 이 밝힌 것: 저장소 아이콘 31장이 **Blender 4.0.2 시대 굽기**
 | 무 vs 순무 | 갈린다(길이·어깨색) | 갈린다 |
 | 마늘 vs 생강 vs 대파 | 갈린다 | 갈린다(흰 통 · 누런 마디 · 흰 대) |
 | 씨앗 20종 서로 | 갈린다(색·알 크기) | ★안 갈린다 — 전부 갈색 원반. **의도한 것**(수확물↔씨앗을 가르는 게 26px 의 일이다) |
+
+
+## 15. T79c 배치 (2026-09-04) — 밭이 작물을 안다
+
+### ★★축소 단계가 이제 코드다 — `rc.downscale_png(path, size)`
+
+밭 스프라이트는 512² 로 굽고 **64px 로 줄여** 배포한다. 그 줄이는 단계가 2026-07 커밋 메시지
+한 줄에만 있었다("512² 렌더 → 64×64 박스필터 축소(프리멀티플라이드 가중)") — 스크립트엔 없었다.
+**구전이었다는 뜻이고**, 그래서 T79 가 다시 굽자 했을 때 막혔다. `render_common` 프리셋으로 만들었다.
+
+* 알파 가중(프리멀티플라이)으로 모은다 — 안 하면 투명 가장자리 색이 배어 테두리가 뜬다.
+* **정수 배만 받는다**(아니면 예외) — 박스필터는 정수 배만 옳다.
+* T79 의 재현 어긋남 6~19/255 는 **필터 탓이 아니었다.** 어긋남이 **범프 흙이 보이는 만큼** 커졌다
+  (맨흙 19.5 → 잎이 덮은 것 6.8) — 4.0.2 가 범프 면에 얼룩을 남기던 그 서명이다(§13).
+
+### 밭 = 아이콘 빌더를 **심은 것** (새 모델 0)
+
+`models_crops.py` 가 34종을 아홉 빌더로 짓는다. 밭은 군마다 대표 빌더를 골라 줄 맞춰 심을 뿐이다.
+모델을 다시 적으면 사본이고, 아이콘을 고치는 날 밭이 조용히 갈린다(T67 캐논).
+
+★빌더 본문은 **절대 좌표로 짓는다** — 인자로 자리를 못 준다. 그래서 `_plant()` 가 짓고 나서
+**`OBJS` 의 뒤쪽만** 집어 옮기고 줄인다. 새 모델군을 밭·화분·수레에 올릴 때 같은 수법을 써라.
+
+★`models_crops.py` 의 굽는 루프는 `if __name__ == '__main__':` 아래다 — `fields_render.py` 가
+빌더를 **import** 해 쓴다. 팔레트와 씬은 import 시점에 서고 그것이 곧 밭의 팔레트다.
+
+### 밭 선택 — 좌표 해시를 지웠다
+
+종전 `cropSprite(stage, wx, wy)` 는 셀 좌표 해시 홀짝으로 `grain`/`veg` 를 골랐다.
+**여덟 자리 중 여섯을 틀리게 골랐다**(실측 · `산그림/디자인B/밭_8군.png`).
+지금은 `cropSprite(stage, crop)` 이 `crops.json` 의 `group` 으로 고른다.
+
+| 것 | 어디 |
+|---|---|
+| 슬러그 표 `_slug`(서버 group → 파일 이름) | `00-const.js` — 여덟 줄. **키는 서버 분류 그대로** |
+| 작물 → group `_of` | 서버 페이로드가 채운다(`43-i-icon.js applyCropPayload`) — `Crops.payload()` 가 **이미 group 을 싣고 있었다** |
+| 모르면 | **곡물**(주곡이 기본값 · 규약이지 주사위가 아니다) |
+
+`scripts/test-crops-world.js` 가 굽는 표의 8군과 `crops.js` 의 8군이 **1:1** 인지 잰다 —
+작물 분류가 늘면 그림보다 하네스가 먼저 빨개진다.
+
+### ★하네스가 주장을 되받은 두 번 (기록)
+
+1. "**맨 흙도 군마다 다르다**"고 걸었다가 3/8 로 빨갛게 떴다 — 이랑 수가 겹치는 군이 있다.
+   ⇒ 주장을 고쳤다. **심기 전 밭은 무엇이 심길지 말해 주지 않는다.** 지켜야 할 건 **익은 밭 여덟 장**이다.
+2. "**불투명 화소가 0→3 으로 는다**"로 자람을 쟀다가 `bean`·`tuber` 가 빨갰다.
+   자란 게 아니라 **액자가 커진 것**이다(프레임이 bbox 에 맞으니 작물이 자랄수록 흙 비율이 준다).
+   ⇒ **네 단계가 네 그림인가**로 바꾸고 숫자는 기록만 한다. 못 재는 자를 튜닝하지 마라(T76 IoU).

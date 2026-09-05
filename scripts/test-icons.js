@@ -286,7 +286,8 @@ console.log('\n[⑧ 굽는 기계 정본 — icons.lock.json 이 지금 자산�
       }
       return require('crypto').createHash('sha1').update(Buffer.concat(parts)).digest('hex').slice(0, 16);
     };
-    for (const [grp, dir] of [['icons', ICON_DIR], ['props', path.join(ROOT, 'public', 'assets', 'props')]]) {
+    for (const [grp, dir] of [['icons', ICON_DIR], ['props', path.join(ROOT, 'public', 'assets', 'props')],
+                              ['crops', path.join(ROOT, 'public', 'assets', 'crops')]]) {
       const tbl = lock[grp] || {};
       const files = fs.readdirSync(dir).filter(f => f.endsWith('.png')).map(f => f.slice(0, -4)).sort();
       const missing = files.filter(k => !(k in tbl));

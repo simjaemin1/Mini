@@ -722,16 +722,20 @@ CROP_LINEAGE = [(c, 'seed_' + c) for c in CROPS_ALL]
 
 
 # ═══════════════ 굽기 ═══════════════
-ONLY = [k for k in os.environ.get('CROPS_ONLY', '').split(',') if k]
-_n = 0
-for (key, fn) in ITEMS:
-    if ONLY and key not in ONLY:
-        continue
-    OBJS.clear()
-    fn()
-    rc.bake_transforms()
-    size = rc.render_icon_pass(OBJS, os.path.join(OUT_I, key + ".png"))
-    print(f"[crops] icon {key}: {RES_ICON}²  (size={size:.2f}m · objs={len(OBJS)})")
-    rc.cleanup()
-    _n += 1
-print("[crops] DONE ->", OUT_I, _n, "장")
+# ★[T79c] 굽는 루프는 `__main__` 아래로 내렸다 — `fields_render.py` 가 **빌더를 가져다 쓰려고**
+#   이 파일을 import 한다(밭 32장은 새 모델 0 · 여기 빌더를 밭 위에 심는다). import 가 68장을
+#   구워 버리면 안 된다. 팔레트와 씬은 import 시점에 서고, 그것이 곧 `fields_render` 의 팔레트다.
+if __name__ == '__main__':
+    ONLY = [k for k in os.environ.get('CROPS_ONLY', '').split(',') if k]
+    _n = 0
+    for (key, fn) in ITEMS:
+        if ONLY and key not in ONLY:
+            continue
+        OBJS.clear()
+        fn()
+        rc.bake_transforms()
+        size = rc.render_icon_pass(OBJS, os.path.join(OUT_I, key + ".png"))
+        print(f"[crops] icon {key}: {RES_ICON}²  (size={size:.2f}m · objs={len(OBJS)})")
+        rc.cleanup()
+        _n += 1
+    print("[crops] DONE ->", OUT_I, _n, "장")

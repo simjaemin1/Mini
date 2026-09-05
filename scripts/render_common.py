@@ -345,6 +345,53 @@ def _post_png(path, ss=1, flip=True):
     bpy.data.images.remove(out_img)
 
 
+# ═══════════════ 후처리 프리셋 — 512² → N px 박스 축소 ═══════════════
+def downscale_png(path, size=64):
+    """★★[T79c] **밭 스프라이트의 축소 단계 — 여태 코드에 없던 것.**
+
+    작물 세계 스프라이트는 512² 로 굽고 **64px 로 줄여** 배포한다. 그런데 그 줄이는 단계가
+    2026-07 커밋 메시지(`82a1bef6`) 한 줄에만 있었고 스크립트에는 없었다 —
+    "512² 렌더 → 64×64 박스필터 축소(프리멀티플라이드 가중)". 구전이었다는 뜻이다.
+    T79 가 다시 굽자 했을 때 재현이 안 돼 카드가 막혔다(T79 회부 3). 여기서 **코드로 만든다.**
+
+    ⚠T79 의 재현 어긋남(평균 6~19/255)은 **필터 탓이 아니다** — 상류(4.0.2 vs 5.0.1) 탓이다.
+      증거: 어긋남이 **범프 흙이 보이는 만큼** 커진다 — 맨흙 단계 `grain_0` 19.5 · `veg_0` 19.1 인데
+      잎이 흙을 덮은 `veg_2`·`veg_3` 는 6.8 이다. 4.0.2 가 범프 면에 얼룩을 남기던 그 서명(T79 §0-ⓒ)과
+      같은 무늬다. 박스필터는 결정적이라 같은 입력이면 같은 출력을 낸다.
+
+    ★알파 가중(프리멀티플라이)으로 모은다 — 안 그러면 투명 가장자리의 색이 배어 테두리가 뜬다.
+    ★순수 파이썬이다(`_post_png` 와 같은 규약) — Blender 번들 파이썬엔 numpy·PIL 이 없을 수 있다."""
+    img = bpy.data.images.load(path)
+    W, H = img.size
+    px = list(img.pixels[:])
+    if W % size or H % size:
+        raise ValueError(f"{W}×{H} 는 {size} 로 정수 배 축소가 안 된다 — 박스필터는 정수 배만 옳다")
+    kx, ky = W // size, H // size
+    out = [0.0] * (size * size * 4)
+    inv = 1.0 / (kx * ky)
+    for y in range(size):
+        for x in range(size):
+            r = g = b = a = 0.0
+            for sy in range(ky):
+                row = ((y * ky + sy) * W + x * kx) * 4
+                for sx in range(kx):
+                    i = row + sx * 4
+                    al = px[i + 3]
+                    r += px[i] * al; g += px[i + 1] * al; b += px[i + 2] * al; a += al
+            d = (y * size + x) * 4
+            if a > 1e-6:
+                k = 1.0 / a                     # 언프리멀티플라이
+                out[d] = r * k; out[d + 1] = g * k; out[d + 2] = b * k
+            out[d + 3] = a * inv
+    bpy.data.images.remove(img)
+    o = bpy.data.images.new("dn", size, size, alpha=True)
+    o.pixels = out
+    o.filepath_raw = path
+    o.file_format = 'PNG'
+    o.save()
+    bpy.data.images.remove(o)
+
+
 # ═══════════════ 프리셋 ① 아이콘 ═══════════════
 def render_icon_pass(objs, path):
     """ISO_DIR · 월드 bbox 맞춤 · 512² · 압축 없음 · FLIP 없음 · 태양 +35°.

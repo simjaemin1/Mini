@@ -17,24 +17,35 @@ const PRESERVE_STAGE_COLOR = { fresh: 'var(--stam)', wilt: 'var(--accent)', spoi
 //   스프라이트가 있으면 그것, 없으면 **점선 빈 칸**(캔버스에선 점선 네모)이다.
 //   ⇒ 무엇을 구워야 하는지 화면이 스스로 말한다. 굽는 것은 ART 카드(§6).
 // Phase 4d-16-d: farmland stage별 emoji (0=씨, 1=어린싹, 2=자람, 3=익음)
-// === 에셋 5차: 작물 밭 4단계 스프라이트(Blender crop_render.py — 자연물·아이콘과 동일 씬) ===
-//   곡물(grain)·채소(veg) 2계열 × 4단계(갈은 흙/어린싹/자람/익음). 계열은 셀 좌표 해시로 고정(프레임마다 안 바뀜).
-//   30종 개별 구분은 하지 않음 — 32px에서 판독 불가라 의도적으로 2계열까지만.
-const CROP_SPR = { grain: [], veg: [] };
+// === 밭 스프라이트 — **8군 × 4단계** (Blender `scripts/fields_render.py` · 자연물·아이콘과 동일 씬) ===
+//   ★★[T79c 2026-09-04] 종전엔 계열을 **셀 좌표 해시 홀짝**으로 골랐다 — 밭이 무엇이 심겼는지
+//     보지 않았다는 뜻이고, 그래서 **벼밭이 채소로 그려질 수 있었다**(T79 §0-ⓑ 실측).
+//     이제 `crops.json` 의 **`group`** 으로 고른다. 해시는 지웠다.
+//   ⓘ `_of` 는 서버 정본에서 채운다(`43-i-icon.js` 의 `applyCropPayload` — `Crops.payload()` 가
+//     이미 `group` 을 싣고 있었다). 여기 작물표 사본은 없다(족보 79).
+//   ⓘ 심긴 것을 모르면(빈 밭 · 마을 칸) **곡물**이다 — 주곡이 기본값이고, 그건 규약이지 주사위가 아니다.
+const CROP_SPR = {
+  _slug: { '곡물': 'grain', '콩류': 'bean', '채소': 'veg', '양념': 'spice',
+           '박과': 'gourd', '특용': 'special', '유료': 'oil', '구황': 'tuber' },
+  _of: {},                       // 작물 id → group(서버가 준 한글 그대로)
+  grain: [], bean: [], veg: [], spice: [], gourd: [], special: [], oil: [], tuber: [],
+};
 let _cropSprLoaded = 0;
 (function preloadCropSprites() {
   if (typeof Image !== 'function') return;
-  for (const ser of ['grain', 'veg']) for (let i = 0; i < 4; i++) {
-    const im = new Image();
-    im.onload = () => { _cropSprLoaded++; };
-    im.src = '/assets/crops/' + ser + '_' + i + '.png';
-    CROP_SPR[ser][i] = im;
+  for (const ser of Object.keys(CROP_SPR._slug).map((k) => CROP_SPR._slug[k])) {
+    for (let i = 0; i < 4; i++) {
+      const im = new Image();
+      im.onload = () => { _cropSprLoaded++; };
+      im.src = '/assets/crops/' + ser + '_' + i + '.png';
+      CROP_SPR[ser][i] = im;
+    }
   }
 })();
-function cropSprite(stage, wx, wy) {
+function cropSprite(stage, crop) {
   const st = Math.max(0, Math.min(3, stage | 0));
-  const h = Math.abs(((wx | 0) * 73856093) ^ ((wy | 0) * 19349663));
-  const im = CROP_SPR[(h % 2) ? 'veg' : 'grain'][st];
+  const ser = CROP_SPR._slug[CROP_SPR._of[crop]] || 'grain';
+  const im = CROP_SPR[ser] && CROP_SPR[ser][st];
   return (im && im.complete && im.naturalWidth > 0) ? im : null;
 }
 // §4-4 Stage 4A: 마을 시뮬 NPC 직업(p.simJob — economy-sim JOBS 12종) → 이름 옆 이모지

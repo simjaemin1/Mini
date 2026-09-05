@@ -1312,7 +1312,9 @@
           let noRender = true;   // ★[T66] 스프라이트가 없으면 점선 빈 칸(이모지 폴백 삭제)
           if (cl.facilityType === 'farmland' && cl.farmStage != null) {
             // 에셋 5차: 4단계 3D 스프라이트 우선(미로드 시 이모지 폴백)
-            const _cs = cropSprite(cl.farmStage, off + cl.x, offY + cl.y);
+            const _cs = cropSprite(cl.farmStage, cl.crop);   // ★[T79c] 마을 칸은 아직 작물을 안 싣는다
+            //   (claim 페이로드에 crop 이 없다 — `vil._crop` 은 서버 안에만 있다 · 보고 §0-ⓒ).
+            //   그래서 지금은 곡물로 떨어진다. 서버가 실어 주는 날 이 줄은 그대로 맞는다.
             // ★★[T57 2026-09-03] **셀을 꽉 채운다.** 종전 `40×40`은 셀 다이아(64×32)보다 작아
             //   다이아 한가운데 40px 짜리가 떠 있었다(재민 실기: "논밭이 셀보다 작다").
             //   ⇒ 크기를 눈대중으로 키우지 않고 **에셋 원본에서 유도**했다(족보 74):

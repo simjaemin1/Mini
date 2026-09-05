@@ -126,6 +126,9 @@
     if (!Array.isArray(list)) return;
     for (const c of list) {
       CROP_BY_ID[c.id] = c; CROP_OF_SEED['seed_' + c.id] = c;
+      // ★[T79c] 밭 스프라이트가 **작물의 군**으로 고른다 — 서버가 이미 실어 준 `group` 을 넘겨준다.
+      //   표를 옮겨 적는 게 아니라 **받은 것을 그대로** 꽂는다(족보 79).
+      if (typeof CROP_SPR === 'object' && CROP_SPR && CROP_SPR._of) CROP_SPR._of[c.id] = c.group;
       // ★[T61] 작물 이름표도 **정본 표에** 얹는다(사본이 없어졌으니 갈 데가 하나다).
       if (ITEM_LABEL_SRV) { ITEM_LABEL_SRV[c.id] = c.ko; ITEM_LABEL_SRV['seed_' + c.id] = c.ko + ' 씨앗'; }
       // ★[T66 2차] 작물은 아직 안 구웠다 ⇒ **아무것도 안 해도** 점선 칸이 된다(목록에 없으니까).
