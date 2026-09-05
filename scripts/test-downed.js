@@ -77,6 +77,31 @@ const until = async (pred, maxSecs) => {
   for (let i = 0; i < (maxSecs || 20); i++) { await sleep(1050); H.tickDowned(Date.now()); if (pred()) return true; }
   return pred();
 };
+// ★★[T88] **깨어남은 이제 거리의 함수라 고정 초로 기다리면 안 된다.**
+//   야생 사망의 지연 = 종전 + (죽은 자리 → 깨어날 자리)÷MOVE_SPEED 이므로, 멀리서 죽은 픽스처는
+//   종전 20초 창을 넘긴다(1차에 ⑥·⑩ 이 그래서 빨개졌다 — 제품이 아니라 **기다리는 자가 틀렸다**).
+//   ⇒ 게임이 적어 둔 그 마감(`p._deadUntil`)까지 기다린다. 하네스가 식을 다시 짜지 않는다.
+//   ⚠두 걸음이다: **창이 먼저 소진돼야** `_deadUntil` 이 적힌다(그 전엔 0 이라 0초를 기다리게 된다 —
+//     1차에 정확히 그래서 여전히 빨갰다). ① 창 소진을 기다리고 ② 그다음 그 마감까지 기다린다.
+//   ⚠★★그리고 **하트비트를 계속 보내야 한다**. 존은 `lastSeen` 이 35초를 넘은 접속을 *좀비*로 걷는데,
+//     T88 로 야생 지연이 83초까지 늘면 픽스처가 기다리는 도중에 **players 에서 사라져** 영영 안 깨어난다
+//     (1차에 정확히 그랬다 — 로그에 "💀 좀비 player wildman 강제 종료"). 실제로 쓰러진 사람은 접속해
+//     있고 입력을 보내므로 걷히지 않는다 ⇒ 픽스처도 그 사실을 흉내 내야 검사가 제 상황을 잰다.
+const untilWake = async (p, slackSecs) => {
+  const step = async (secs) => {
+    for (let i = 0; i < secs; i++) {
+      p.lastSeen = Date.now();                 // ★접속한 사람 = 하트비트가 온다(좀비 수거 대상 아님)
+      await sleep(1050); H.tickDowned(Date.now());
+      if (!p.isDown) return true;
+    }
+    return !p.isDown;
+  };
+  for (let i = 0; i < 20 && !((p._deadUntil || 0) > 0) && p.isDown; i++) {
+    p.lastSeen = Date.now(); await sleep(1050); H.tickDowned(Date.now());
+  }
+  const left = Math.max(0, Math.ceil(((p._deadUntil || 0) - Date.now()) / 1000));
+  return step(left + (slackSecs || 6));
+};
 
 // ★★[T64 동봉 · T56 회부] **야생은 두 증인이 있어야 야생이다.**
 //   T56 에서 `e2e-downed` 가 마을 한복판을 "완충 0 인 야생"으로 집어 들어 판정 넷이 헛돌았다
@@ -297,7 +322,7 @@ const isWildSpot = (x, y) =>
       const day0 = H.gameDayNow();
       const dx0 = p.x, dy0 = p.y;
       H.damagePlayer(p, 200, 'mob:wolf');
-      await until(() => !p.isDown, 20);
+      await untilWake(p);        // ★[T88] 지연이 거리의 함수다 — 게임이 적은 마감까지 기다린다
       ok(!p.isDown, '★⑥ 창 소진 → 사망 → **게임 시간이 흐른 뒤 깨어난다**', `hp ${p.hp}`);
       ok(Math.hypot(p.x - dx0, p.y - dy0) > 100, '★★⑥ 깨어난 자리는 **죽은 자리가 아니다**(옮겨졌다)',
         `${Math.round(Math.hypot(p.x - dx0, p.y - dy0))}px 이동`);
@@ -446,7 +471,7 @@ const isWildSpot = (x, y) =>
       const stillHas = (p.inventory.wood || 0) + (p.inventory.stone || 0);
       ok(bundles.length >= 1, '★★⑩ 야생에서 포기하면 **짐도 떨어진다**(창 소진과 같은 값)',
         `${bundles.length}덩이 · 몸에 ${stillHas}개 남음`);
-      await until(() => !p.isDown, 15);
+      await untilWake(p);        // ★[T88] 같은 이유
       ok(!p.isDown && p.hp > 0, '★⑩ 그리고 깨어난다', `hp ${Math.round(p.hp)}`);
     }
   }
@@ -946,6 +971,160 @@ const isWildSpot = (x, y) =>
       ok(after && after.x === 12345 && after.y === 67890 && after.cellKind === undefined,
         '★★⑯ 마을 안 이송(shelter·arrive·center)은 **한 글자도 안 바뀐다**(T83 규칙 셋 밖)');
     }
+  }
+
+  // ═══ ⑰ [T88 ①] 깨어남 지연은 **거리의 함수** ════════════════════════════════
+  say('\n⑰ [T88] 멀리서 죽으면 오래 걸린다 — 지연 = 종전 + 걷는 시간');
+  {
+    const SPEED = H.MOVE_SPEED, BASE = H.DOWN_WAKE_GAMEMIN;
+    pre(H._t88WakeDist() === true, '스위치가 켜져 있다(꺼져 있으면 아래가 전부 종전 값이다)', String(H._t88WakeDist()));
+    const at = (d) => H._wakeDelayMs(0, 0, { x: d, y: 0 }) / 1000;   // 게임분
+    const walk = (d) => d / SPEED;
+    ok(Math.abs(at(0) - BASE) < 1e-9, '★★⑰ 거리 0 이면 **종전 그대로**다(하한이 공짜로 선다 · 하위 호환)', `${at(0)} = ${BASE}`);
+    // ⚠이 하네스는 **시계를 줄여** 돌린다(`DOWN_WAKE_GAMEMIN=2`) — 그래서 "종전 대비 몇 %"로 재면
+    //   운영값(120)이 아니라 줄인 값과 견주게 되어 뜻이 달라진다. **더해지는 몫 그 자체**로 잰다:
+    //   가까이서 죽으면 붙는 것은 걷는 시간뿐이고, 그건 T83 표의 최소 거리(344px)보다도 작다.
+    ok(Math.abs((at(200) - BASE) - walk(200)) < 1e-9 && walk(200) < walk(344),
+      '★★⑰ 가까이(200px)서 죽으면 **붙는 몫이 걷는 시간뿐**이다 — 운영값 120 게임분 기준 +2.6%',
+      `+${walk(200).toFixed(1)} 게임분 (T83 표 최소 거리 344px = +${walk(344).toFixed(1)})`);
+    ok(at(5000) > walk(5000),
+      '★★⑰ 먼 곳(5,000px)에서 죽으면 지연이 **걷는 시간보다 길다** — 죽어서 가는 게 이득이 아니다',
+      `지연 ${at(5000).toFixed(1)} > 걷기 ${walk(5000).toFixed(1)} 게임분`);
+    ok(Math.abs(at(5000) - (BASE + walk(5000))) < 1e-6,
+      '★⑰ 식이 **종전 + 거리÷MOVE_SPEED** 하나다(새 계수 0 — 두 항 다 정본이다)',
+      `${BASE} + ${walk(5000).toFixed(1)} = ${at(5000).toFixed(1)}`);
+    // ★자명 통과 금지 — 거리가 실제로 값을 바꾸는가(안 바뀌면 위 셋이 공짜다)
+    ok(at(5000) > at(200) + 1, '★★자명 통과 금지 — 거리가 실제로 지연을 움직인다', `${at(200).toFixed(1)} → ${at(5000).toFixed(1)}`);
+    // ★T83 §4 표본이 전부 뒤집혔는지 — "죽는 게 걷는 것보다 빠르다"가 남아 있으면 구멍이 남은 것이다
+    let worse = 0, n = 0;
+    for (let d = 200; d <= 12000; d += 100) { n++; if (at(d) <= walk(d)) worse++; }
+    ok(worse === 0, '★★⑰ 200~12,000px 전 구간에서 **죽는 게 빠른 자리가 없다**', `${n}개 중 ${worse}개`);
+    // ★마을 안 이송은 종전 고정 — 아래 ⑱ 에서 실제 사슬로 다시 잰다
+    ok(H._wakeDelayMs(0, 0, null) / 1000 === BASE, '★⑰ 자리를 모르면 종전 고정으로 떨어진다(지어내지 않는다)');
+  }
+
+  // ═══ ⑱ [T88 ②] 마을 안 구제 = 곳간에서 죽 한 그릇 ════════════════════════════
+  say('\n⑱ [T88] 마을 사람이 곳간에서 한 끼를 먹인다 — 반복이 끊긴다');
+  {
+    clearPlayers();
+    for (const k of Array.from(H.groundItems.keys())) H.groundItems.delete(k);
+    pre(H._t88Meal() === true, '스위치가 켜져 있다', String(H._t88Meal()));
+    for (let k = 0; k < 12; k++) { const r = H._shelterBackfill(); if (!(r.left > 0)) break; await sleep(800); }
+    const list = SimVillages.clientVillages() || [];
+    const cand = list.filter((v) => { try { return !!SimVillages.shelterOf(v.id); } catch (e) { return false; } });
+    pre(cand.length >= 2, '쉼터가 선 마을이 둘 이상이다', `${cand.length}곳`);
+    const hFloor = 100 * (1 - B.extremeAt('hunger')), tFloor = 100 * (1 - B.extremeAt('thirst'));
+    say(`     극단 문턱(T44 표에서 유도): 허기 > ${hFloor.toFixed(1)} · 갈증 > ${tFloor.toFixed(1)}`);
+
+    // ⓐ 굶어 쓰러진 몸 — 곳간이 있는 마을
+    const vv = cand[0], sh = SimVillages.shelterOf(vv.id), g = SimVillages.villageByDbId(vv.id);
+    const before = +((g.econ.storage || {}).food || 0);
+    pre(before >= 1, '그 마을 곳간에 food 가 있다', `${before.toFixed(1)}단위`);
+    const p = mkPlayer('starving', sh.x, sh.y);
+    p.hunger = 0; p.thirst = 0;
+    const rate0 = B.extremeHpRate(p).rate;
+    pre(rate0 > 0, '★검사 상황 — 이 몸은 실제로 극단이다(안 그러면 아래가 자명하다)',
+      `${rate0.toFixed(5)} HP/게임분 ⇒ HP 20 에서 ${(20 / rate0 / 60).toFixed(1)}분 뒤 재쓰러짐(T83 §4 의 그 수)`);
+    H.damagePlayer(p, 200, 'extreme:hunger+thirst');
+    H.resolveDowned(p);
+    const after = +((g.econ.storage || {}).food || 0);
+    // ⚠곳간 재고는 정본이 **소수 3자리로 반올림해** 저장한다(`playerVillageWithdraw` 의 `toFixed(3)`) —
+    //   허용오차를 1e-6 으로 잡으면 그 반올림에 걸려 자기 발에 걸린다. 자르는 자리에서 나온 값을 쓴다.
+    ok(Math.abs((before - after) - 1) < 2e-3,
+      '★★⑱ 곳간에서 **정확히 1단위**가 나갔다(원장 대조 — 인출 정본이 실제로 돌았다)',
+      `${before.toFixed(3)} → ${after.toFixed(3)} (차 ${(before - after).toFixed(4)})`);
+    ok((p.inventory.food || 0) === 0,
+      '★★⑱ 그리고 **먹었다** — 인벤에 남지 않았다(꺼내 놓기만 한 게 아니다)', `food ${p.inventory.food || 0}`);
+    ok(p.hunger > hFloor && p.thirst > tFloor,
+      '★★⑱ 깨어날 몸의 허기·갈증이 **극단 밖**이다(문턱은 T44 표에서 유도 — 리터럴 0)',
+      `허기 ${p.hunger} · 갈증 ${p.thirst}`);
+    const rate1 = B.extremeHpRate(p).rate;
+    ok(rate1 === 0,
+      '★★★⑱ **반복이 끊겼다** — 극단 감소율이 0 이다(T83 §4 의 "4.8분 뒤 재쓰러짐"이 사라졌다)',
+      `${rate0.toFixed(5)} → ${rate1.toFixed(5)} HP/게임분`);
+    ok(p._diedInWild === false && p._deadUntil > 0, '★⑱ 여전히 **마을 안 구제**다(죽음이 아니다)');
+    const dly = Math.round((p._deadUntil - Date.now()) / 1000);
+    ok(Math.abs(dly - H.DOWN_WAKE_GAMEMIN) <= 2,
+      '★★⑱ 마을 안 이송 지연은 **종전 고정**이다(옮겨 주는 것이지 걸어가는 게 아니다 · T88 ① 밖)',
+      `${dly} ≈ ${H.DOWN_WAKE_GAMEMIN} 게임분`);
+    ok(/죽 한 그릇/.test(p._wakeMsg || ''), '★⑱ 화면이 무슨 일이 났는지 말한다', (p._wakeMsg || '').slice(-30));
+
+    // ⓑ ★★돌연변이 — "인출 없이 먹이기"는 곳간 대조가 잡는다
+    {
+      const vX = cand[1], shX = SimVillages.shelterOf(vX.id), gX = SimVillages.villageByDbId(vX.id);
+      const b0 = +((gX.econ.storage || {}).food || 0);
+      const m = mkPlayer('mutant', shX.x, shX.y);
+      m.hunger = 0; m.thirst = 0;
+      m.inventory.food = 1;                     // ← 곳간을 거치지 않고 손에 쥐여 준다(= 인출 줄을 뺀 판)
+      H.doEat(m, 'food', 1, m);                 //   먹임만 한다
+      const a0 = +((gX.econ.storage || {}).food || 0);
+      ok(Math.abs(b0 - a0) < 1e-9 && !(Math.abs((b0 - a0) - 1) < 1e-6),
+        '★★⑱ⓓ **인출 줄을 빼면 곳간이 안 줄고 → 위 검사가 빨강이다**(먹임만으로는 통과 못 한다)',
+        `곳간 ${b0.toFixed(3)} → ${a0.toFixed(3)} (차 0 · 위 검사는 1 을 요구한다)`);
+      ok(m.hunger > hFloor, '★전제 — 그런데 먹기는 먹었다(몸만 보면 구별이 안 된다 — 그래서 곳간을 본다)',
+        `허기 ${m.hunger}`);
+    }
+
+    // ⓒ 곳간이 비면 **못 먹이고 → 죽음**(굶는 마을은 사람을 못 살린다)
+    {
+      const vE = cand[2] || cand[1], shE = SimVillages.shelterOf(vE.id), gE = SimVillages.villageByDbId(vE.id);
+      const keep = Object.assign({}, gE.econ.storage);
+      for (const k of Object.keys(gE.econ.storage)) gE.econ.storage[k] = 0;
+      for (const k of Array.from(H.groundItems.keys())) H.groundItems.delete(k);
+      const q = mkPlayer('nofood', shE.x, shE.y);
+      q.hunger = 0; q.thirst = 0; q.inventory.wood = 6; q.inventory.stone = 4;
+      pre((SimVillages.playerVillageWithdrawStockFoodEq(gE) || 0) < 1,
+        '그 마을 곳간이 **정말로** 비었다(식량 등가 0 — econ 정본이 그렇게 답한다)',
+        `${SimVillages.playerVillageWithdrawStockFoodEq(gE)}`);
+      H.damagePlayer(q, 200, 'extreme:hunger+thirst');
+      H.resolveDowned(q);
+      ok(q._diedInWild === true,
+        '★★⑱ 곳간이 비면 마을 안이어도 **죽음이다**(굶는 마을은 사람을 못 살린다 · 캐논 정합)');
+      const drops = Array.from(H.groundItems.values()).filter((x) => x.keep);
+      ok(drops.length >= 1, '★★⑱ 그리고 **야생과 같은 값**을 치른다 — 짐이 떨어졌다', `${drops.length}덩이`);
+      ok(B.aftermathLeft(q, H.gameDayNow()) > 0, '★⑱ 후유증도 같이 온다(사망 갈래를 그대로 탄다)');
+      Object.assign(gE.econ.storage, keep);
+    }
+  }
+
+  // ═══ ⑲ [T88 ⓒ] 되돌림 스위치 둘 — 끄면 T83 판이다 ═══════════════════════════
+  say('\n⑲ [T88] 스위치를 끄면 **T83 판**으로 돌아간다');
+  {
+    // ★스위치는 **부를 때** 읽힌다(zone.js `_t88WakeDist`/`_t88Meal` 머리 주석) ⇒ 같은 프로세스에서
+    //   켠 판·끈 판을 **둘 다 실제로 돌려** 맞댄다. 소스만 훑으면 배선을 안 재는 것이다.
+    clearPlayers();
+    const SPEED = H.MOVE_SPEED, BASE = H.DOWN_WAKE_GAMEMIN;
+    const far = { x: 5000, y: 0 };
+    const onDelay = H._wakeDelayMs(0, 0, far) / 1000;
+    process.env.T88_WAKE_DIST = '0';
+    const offDelay = H._wakeDelayMs(0, 0, far) / 1000;
+    delete process.env.T88_WAKE_DIST;
+    const backDelay = H._wakeDelayMs(0, 0, far) / 1000;
+    ok(offDelay === BASE, '★★⑲ `T88_WAKE_DIST=0` → 5,000px 에서도 **종전 고정 지연**이다(T83 판)',
+      `${offDelay} = ${BASE}`);
+    ok(onDelay === BASE + 5000 / SPEED && backDelay === onDelay,
+      '★★⑲ 그리고 **되돌아온다** — 끄고 켠 뒤에도 켠 판의 수가 그대로다', `${onDelay} → ${offDelay} → ${backDelay}`);
+
+    // 한 끼 — 끈 판에서는 곳간이 한 톨도 안 줄고 몸도 극단 그대로여야 한다
+    for (let k = 0; k < 12; k++) { const r = H._shelterBackfill(); if (!(r.left > 0)) break; await sleep(600); }
+    const list = SimVillages.clientVillages() || [];
+    const cand = list.filter((v) => { try { return !!SimVillages.shelterOf(v.id); } catch (e) { return false; } });
+    const vv = cand[3] || cand[0], sh = SimVillages.shelterOf(vv.id), g = SimVillages.villageByDbId(vv.id);
+    const b0 = +((g.econ.storage || {}).food || 0);
+    process.env.T88_MEAL = '0';
+    const q = mkPlayer('offmeal', sh.x, sh.y);
+    q.hunger = 0; q.thirst = 0;
+    H.damagePlayer(q, 200, 'extreme:hunger+thirst');
+    H.resolveDowned(q);
+    const a0 = +((g.econ.storage || {}).food || 0);
+    delete process.env.T88_MEAL;
+    ok(Math.abs(b0 - a0) < 2e-3, '★★⑲ `T88_MEAL=0` → 곳간이 **한 톨도 안 줄었다**(인출이 아예 안 돈다)',
+      `${b0.toFixed(3)} → ${a0.toFixed(3)}`);
+    ok(q.hunger === 0 && q.thirst === 0 && B.extremeHpRate(q).rate > 0,
+      '★★⑲ 그리고 몸도 **종전 그대로** — 극단인 채로 구제된다(= T83 §4 가 재현한 그 반복)',
+      `허기 ${q.hunger} · 갈증 ${q.thirst} · 감소율 ${B.extremeHpRate(q).rate.toFixed(5)}`);
+    ok(q._diedInWild === false, '★⑲ 그래도 마을 안 구제 자체는 종전대로 선다(스위치가 사슬을 안 끊는다)');
+    ok(H._t88Meal() === true && H._t88WakeDist() === true, '★전제 — 스위치를 도로 켜 두었다(뒤 검사가 끈 판에서 돌면 안 된다)');
   }
 
   say(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
