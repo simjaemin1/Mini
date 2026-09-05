@@ -1,5 +1,7 @@
 # 듀랑고 미니 (durango-mini)
 
+[![regress-unit](https://github.com/simjaemin1/Mini/actions/workflows/regress-unit.yml/badge.svg)](https://github.com/simjaemin1/Mini/actions/workflows/regress-unit.yml) — push 마다 단위 회귀 23종(약 3분) · 전수 120종은 야간 1회
+
 **청동기 후기 한반도에서, 51개 NPC 마을이 스스로 살아가는 세계에 이방인으로 도착하는 오픈월드 생활·경제 시뮬레이션.**
 그리고 그 세계를 **여러 서버 프로세스가 지역별로 나눠 돌리는** 분산 존 서버 프로토타입.
 
