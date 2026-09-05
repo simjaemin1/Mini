@@ -291,6 +291,68 @@ console.log('\n[⑤ 자연물 앵커·잠금 — 굽는 표가 정본이다 (T97
          '잠금표가 5.0 범프 기본값 변경(Distance 1.0 → 0.001)을 적어 뒀다');
     } else ok(false, 'icons.lock.json 이 있다');
   }
+
+  // ── ⑤-b [T129] 나무 종 표 · 가을 판 · 묘목 · 그루터기 ────────────────────
+  console.log('\n[⑤-b 나무에 종이 있다 — 종 표 · 가을 판 · 묘목 · 그루터기 (T129)]');
+  {
+    const NA = JSON.parse(fs.readFileSync(NAT_ANCH, 'utf8'));   // 앵커 정본(이 절에서 다시 읽는다)
+    const SP = path.join(TREE_DIR, 'tree_species.json');
+    ok(fs.existsSync(SP), 'public/assets/trees/tree_species.json 이 있다');
+    const T = fs.existsSync(SP) ? JSON.parse(fs.readFileSync(SP, 'utf8')) : null;
+    if (T) {
+      const sp = T.species || {};
+      const ids = Object.keys(sp).sort();
+      ok(ids.length >= 8, `종 ${ids.length}가지 — ${ids.join(' ')}`);
+      // ⓐ 표가 부르는 그림이 **전부 있다**(앵커에도 있고 파일도 있다)
+      const named = [];
+      for (const id of ids) for (const k of [...(sp[id].sprites || []), ...(sp[id].autumn || []),
+                                             ...(sp[id].sapling ? [sp[id].sapling] : [])]) named.push(k);
+      const ghost = named.filter((k) => !NA[k] || !fs.existsSync(path.join(TREE_DIR, k + '.png')));
+      ok(ghost.length === 0, `종 표가 부르는 그림 ${named.length}장이 전부 있다 ${ghost.length ? '— 없는 것: ' + ghost.join(' ') : ''}`);
+      // ⓑ **모든 나무 그림이 종을 갖는다** — 그루터기만 예외(종 공통 하나)
+      const allTrees = Object.keys(NA).filter((k) => NA[k].kind === 'tree');
+      const claimed = new Set(named);
+      const orphan = allTrees.filter((k) => !claimed.has(k) && k !== 'stump01');
+      ok(orphan.length === 0, `종 없는 나무 그림 0 ${orphan.length ? '— ' + orphan.join(' ') : ''}`);
+      ok(!!NA['stump01'] && !claimed.has('stump01'), '그루터기는 종 공통 하나다(stump01 · 종 표에 안 든다)');
+      // ⓒ 종마다 묘목이 하나씩
+      const noSap = ids.filter((id) => !sp[id].sapling);
+      ok(noSap.length === 0, `종마다 묘목이 있다 ${noSap.length ? '— 없는 종: ' + noSap.join(' ') : ''}`);
+      // ⓓ ★열매종은 가을 판을 갖는다 — 그리고 **가을 판은 같은 나무다**
+      const fruiting = ids.filter((id) => sp[id].fruit_ko);
+      ok(fruiting.length === 4, `열매종 넷 — ${fruiting.map((i) => sp[i].ko + '(' + sp[i].fruit_ko + ')').join(' · ')}`);
+      const bad = [], grew = [], nofruit = [];
+      const png = (k) => {
+        const b = fs.readFileSync(path.join(TREE_DIR, k + '.png'));
+        const { PNG } = require('pngjs'); const im = PNG.sync.read(b);
+        let n = 0; for (let i = 3; i < im.data.length; i += 4) if (im.data[i] >= 128) n++;
+        return n;
+      };
+      for (const id of fruiting) {
+        const au = (sp[id].autumn || [])[0];
+        if (!au) { bad.push(id); continue; }
+        const su = au.replace(/_a$/, '');
+        if (!NA[su]) { bad.push(`${id}(여름 판 ${su} 없음)`); continue; }
+        // ★★열매는 **매달린다 — 자라지 않는다.** 수관 꼭대기(앵커 위 높이)가 그대로여야 한다.
+        //   T129 실측: Δoy 0.0~1.0px. 3px 를 넘으면 가을 판이 **다른 나무**가 된 것이다.
+        if (Math.abs(NA[au].oy - NA[su].oy) > 3) grew.push(`${au}(Δ${(NA[au].oy - NA[su].oy).toFixed(1)}px)`);
+        // ★자명 통과 금지 — 가을 판이 여름 판보다 **화소가 늘어야** 열매가 실제로 달린 것이다.
+        const a2 = png(au), s2 = png(su);
+        if (!(a2 > s2 * 1.005)) nofruit.push(`${au}(${s2}→${a2})`);
+      }
+      ok(bad.length === 0, `열매종 넷 다 가을 판이 있다 ${bad.length ? '— ' + bad.join(' ') : ''}`);
+      ok(grew.length === 0, `★가을 판의 수관 꼭대기가 여름과 같다(열매는 매달린다 · Δoy ≤ 3px) ${grew.length ? '— ' + grew.join(' ') : ''}`);
+      ok(nofruit.length === 0, `★가을 판에 열매가 실제로 달렸다(불투명 화소 +0.5% 이상) ${nofruit.length ? '— ' + nofruit.join(' ') : ''}`);
+      // ⓔ 표는 **유도된 것**이다 — 굽는 표에 없는 종 id 를 손으로 적어 넣지 않았는가
+      const py2 = fs.readFileSync(NAT_PY, 'utf8');
+      const declared = [...py2.matchAll(/'(tree_[a-z]+)':\s*\('([a-z]+)'/g)].map((m) => m[2]).sort();
+      ok(JSON.stringify(declared) === JSON.stringify(ids),
+         `종 id 가 굽는 표(nature_render SPECIES)와 1:1 — 손으로 더 적은 것 0`);
+      // ⓕ ★땅속 금지 문지기가 살아 있다(T129 3패스에서 머루 알 42자리 중 40이 땅 밑이었다)
+      ok(/지면 아래 정점/.test(py2) && /matrix_world @ _v\.co\)\.z < -0\.02/.test(py2),
+         '★굽기 전 **지면 아래 정점** 검사가 살아 있다 — 화소로는 못 재는 것을 기하로 잰다');
+    }
+  }
 }
 
 if (SELFTEST) {

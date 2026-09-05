@@ -1,0 +1,95 @@
+{
+ "_뜻": "어느 그림이 어느 나무 종인가. **수치(성장·수확·벌목)는 서버/랩이 정본**이고 여기 없다.",
+ "_유도": "scripts/nature_render.py TREE_BUILD 에서 뽑는다 — 손으로 적지 마라(다시 구우면 덮인다).",
+ "_그루터기": "stump01 — 종 공통 하나. 벤 자리는 종을 안 묻는다.",
+ "_단계": "성목(sprites) · 가을·열매(autumn) · 묘목(sapling) · 그루터기(공통).",
+ "species": {
+  "chestnut": {
+   "ko": "밤나무",
+   "latin": "Castanea crenata",
+   "sprites": [
+    "tree09",
+    "tree10"
+   ],
+   "fruit_ko": "밤",
+   "autumn": [
+    "tree09_a"
+   ],
+   "sapling": "sap_chestnut"
+  },
+  "grape": {
+   "ko": "머루",
+   "latin": "Vitis coignetiae",
+   "sprites": [
+    "tree15"
+   ],
+   "fruit_ko": "머루",
+   "autumn": [
+    "tree15_a"
+   ],
+   "sapling": "sap_grape"
+  },
+  "hazel": {
+   "ko": "개암나무",
+   "latin": "Corylus heterophylla",
+   "sprites": [
+    "tree13"
+   ],
+   "fruit_ko": "개암",
+   "autumn": [
+    "tree13_a"
+   ],
+   "sapling": "sap_hazel"
+  },
+  "jat": {
+   "ko": "잣나무",
+   "latin": "Pinus koraiensis",
+   "sprites": [
+    "tree04",
+    "tree05"
+   ],
+   "sapling": "sap_jat"
+  },
+  "mulberry": {
+   "ko": "산뽕나무",
+   "latin": "Morus bombycis",
+   "sprites": [
+    "tree14"
+   ],
+   "fruit_ko": "오디",
+   "autumn": [
+    "tree14_a"
+   ],
+   "sapling": "sap_mulberry"
+  },
+  "oak": {
+   "ko": "참나무",
+   "latin": "Quercus",
+   "sprites": [
+    "tree06",
+    "tree07",
+    "tree08"
+   ],
+   "sapling": "sap_oak"
+  },
+  "pine": {
+   "ko": "소나무",
+   "latin": "Pinus densiflora",
+   "sprites": [
+    "tree01",
+    "tree02",
+    "tree03"
+   ],
+   "sapling": "sap_pine"
+  },
+  "willow": {
+   "ko": "버드나무",
+   "latin": "Salix koreensis",
+   "sprites": [
+    "tree11",
+    "tree12"
+   ],
+   "sapling": "sap_willow"
+  }
+ }
+}

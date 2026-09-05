@@ -360,6 +360,15 @@
   "rock_angled": "f59357f2c57c938e"
  },
  "trees": {
+  "sap_chestnut": "5b6619d1e652a767",
+  "sap_grape": "c9bff3e4c4c36ae0",
+  "sap_hazel": "ab6f58aeb823a02d",
+  "sap_jat": "dcebd7e625d9d1cc",
+  "sap_mulberry": "ce06d10881a09bf4",
+  "sap_oak": "af56355ca70bdf29",
+  "sap_pine": "4c8b0edf79924aac",
+  "sap_willow": "d789df037fe23dd1",
+  "stump01": "e34d5571432eefe8",
   "tree01": "5f40b1f212aa3b1a",
   "tree02": "b5e6c6d785d45df2",
   "tree03": "76be11c1a4d822a5",
@@ -369,8 +378,15 @@
   "tree07": "f3f1d55aa3e5a917",
   "tree08": "6f3168b60fd23983",
   "tree09": "2bd03910a271f81c",
+  "tree09_a": "c8bdd89c5c571072",
   "tree10": "9b546b9342045cc0",
   "tree11": "53d5dfa4441030ce",
-  "tree12": "814bb2279a2e2bff"
+  "tree12": "814bb2279a2e2bff",
+  "tree13": "6ad92bc0d9fcf0e7",
+  "tree13_a": "ef00c3bb0eaae8f7",
+  "tree14": "bd22ddded578a83f",
+  "tree14_a": "745066b4b7d7995a",
+  "tree15": "1679a899411934f0",
+  "tree15_a": "3e5d1cd07c887ab0"
  }
 }
