@@ -3932,6 +3932,7 @@ function _lifeDoTask0(vil, npc, k, day) {
 function __farmBind() {
   return { _cellTask, _lifeDoTask, _lifeDoTask0, _villageCropFor, _pestAt, _cropRipe, _cropGrowFrac,
     _cropDormant, _cropSky,
+    lifeFarmDay, _lifeTasksPerFarmerDay,   // ★[T117] 하루치 작물 노동 정본 — 계측기가 이걸 부른다(사본 0)
     cropTaskOf, cropDoTask, cropDayTick, cropAfterHarvest,
     L_WATERGAP, L_WEEDS, L_PESTP, L_QW, L_QP, L_QMIN, L_QREC };
 }
@@ -3973,17 +3974,35 @@ function _lifeHeadlessDay(vil) {
   }
   // ② 신축 — 크루 인일=단계(실걸음과 동일 속도). 완공 시 _lifeCompleteHouse가 실체화(집·마당·침대 명부)
   if (vil._site) { let st = Math.min(LIFE_CREW, popN) * LIFE_STAGE_PDAY; while (st-- > 0 && vil._site) _lifeAdvanceSite(vil); }
-  // ③ 작물 — 농부 노동예산으로 우선순위 일괄(수확>방제>물대기>파종>김매기 — cellTask 순서가 자연 보장)
-  let budget = farmerN * _lifeTasksPerFarmerDay();   // ★날 길이 파생(구 고정 30 → 실걸음 정합)
+  // ③ 작물 — `lifeFarmDay` 정본 하나(아래). 계측기도 **이 함수를 부른다**(사본 0 · T117).
+  lifeFarmDay(vil, day, farmerN);
+  vil._hlDay = day;   // lifeDebug 노출용(결산 도장)
+}
+// ★★★[T117 2026-09-05] **하루치 작물 노동 — 정본 하나.**
+//   여기 있던 여섯 줄을 함수로 뽑았다. 왜: 밭을 도는 계측기(`scripts/farm-metrics.js`)가 이 루프를
+//   다시 쓰면 그게 사본이고, T58b 의 `farm-q-metrics.js` 가 실제로 그랬다(노동 예산을 손으로 100 이라 적었다).
+//   ⇒ **행동은 한 글자도 안 바뀐다** — 순수 추출이다(우선순위·예산·순회 순서 전부 그대로).
+//   ★`onDid` 는 **관찰자**다. 제품은 안 넘기고(그러면 관찰 비용이 0), 계측기만 넘긴다.
+//     넘긴 쪽은 매 행동의 (칸 · 일감 · 하기 전 작물 · 하기 전 심은날 · 하고 난 항목)을 받는다.
+function lifeFarmDay(vil, day, farmerN, onDid) {
+  let budget = Math.max(0, farmerN | 0) * _lifeTasksPerFarmerDay();   // ★날 길이 파생(구 고정 30 → 실걸음 정합)
+  let total = 0;
   while (budget > 0) {
     let did = 0;
     for (const k of vil._farmSet) {
       if (budget <= 0) break;
-      if (_cellTask(vil, k, day) > 0 && _lifeDoTask(vil, null, k, day)) { budget--; did++; }
+      const t = _cellTask(vil, k, day);
+      if (t <= 0) continue;
+      let e0c = null, e0p = -1;
+      if (onDid) { const e0 = vil._crop.get(k); if (e0) { e0c = e0.c; e0p = e0.p; } }
+      if (_lifeDoTask(vil, null, k, day)) {
+        budget--; did++; total++;
+        if (onDid) onDid(k, t, e0c, e0p, vil._crop.get(k) || null);
+      }
     }
     if (!did) break;   // 일감 소진(비수기·전부 생육 중)
   }
-  vil._hlDay = day;   // lifeDebug 노출용(결산 도장)
+  return total;
 }
 function _lifeNextFarmCell(vil, npc, day) {   // 랩 nextTask 동형(구역 대신 전 농지 — 서버 농지 수백 셀 스케일): 우선순위 높고 가까운 할 일
   let best = null, bp = 0, bd = 1e9;
@@ -5929,6 +5948,42 @@ module.exports = {
       anchorPx: villageAnchorPx,
       get BRIEF_PX() { return EV_BRIEF_PX; },
       get RATE() { return PV_DEPOSIT_RATE; },
+    },
+    // ★★[T117 2026-09-05] 밭 계측기용 — `_distProbe`·`_memberProbe` 와 **같은 규약**(최소 주입구 하나).
+    //   왜: 여덟 수 계측기도 econ 랩도 `Villages.init()` 을 안 불러 `state.villages` 가 안 서고,
+    //   그래서 **밭 상태기가 한 번도 안 돈다**(T112 §0ⓑ · 족보 130). 밭이 econ 에 닿는지 재려면
+    //   밭을 도는 자가 먼저다 — `scripts/farm-metrics.js` 가 이 문으로 들어온다.
+    //   ★계측기는 노동 루프·우선순위·하루 틱을 **다시 적지 않는다**. 아래가 전부 정본 함수다.
+    //   ⚠[병합 메모] 세션1 T100 의 `_clearProbe.attach` 와 이 `attach` 는 **같은 껍데기**를 만든다.
+    //     둘이 같은 나무에 서면 **하나로 합쳐라**(T100 것을 남기고 여기선 지운다 — 사본 금지).
+    _cropProbe: {
+      setup: (ta, world, db) => { state.ta = ta; state.world = world; if (db) state.db = db; return true; },
+      attach: (o) => {
+        const L = o.layout, farmSet = new Set(), drySet = new Set(), potSet = new Set(), terrSet = new Set();
+        for (const f of (L.farmland || [])) farmSet.add(f.cx + ',' + f.cy);
+        for (const f of (L.dryfield || [])) { farmSet.add(f.cx + ',' + f.cy); drySet.add(f.cx + ',' + f.cy); }
+        for (const c of (L.nongZone || [])) potSet.add(c.cx + ',' + c.cy);
+        for (const k of farmSet) potSet.delete(k);
+        for (const c of (L.territory || [])) terrSet.add(c[0] + ',' + c[1]);
+        return { dbId: o.dbId, name: o.name, ccx: o.ccx, ccy: o.ccy, econ: o.econ,
+          _terrSet: terrSet, _potSet: potSet, _farmSet: farmSet, _drySet: drySet,
+          _crop: new Map(), _cropClaim: new Set(),
+          _granList: [], _houseCells: (L.houses || []).map((h) => ({ cx: h.cx, cy: h.cy })), _site: null,
+          _farmN: (L.farmland || []).length, _dryN: (L.dryfield || []).length, _frontier: null, _frontDay: -1 };
+      },
+      // 하루치 — 라이브 `_lifeHeadlessDay` 의 ③ 절과 **같은 함수**다. `onDid` 는 관찰자(제품은 안 넘긴다).
+      tickDay: (vils, day, onDid) => {
+        let n = 0;
+        for (const vil of vils) {
+          const ev = vil.econ; if (!ev || !ev.npcs || !ev.npcs.length) continue;
+          n += lifeFarmDay(vil, day, (ev.counts && ev.counts.farmer) || 0, onDid ? (k, t, c0, p0, e1) => onDid(vil, k, t, c0, p0, e1) : null);
+          for (const [k, e] of vil._crop) cropDayTick(e, !vil._drySet.has(k), day, k);   // 라이브 하루 경계와 같은 줄
+        }
+        return n;
+      },
+      cellTask: (vil, k, day) => _cellTask(vil, k, day),
+      get L_WATERGAP() { return L_WATERGAP; },
+      get TASKS_PER_FARMER() { return _lifeTasksPerFarmerDay(); },
     },
     _distProbe: {
       compute: (reason, opts) => computeAndInjectDistMatrix(reason, opts),

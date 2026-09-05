@@ -75,7 +75,13 @@ console.log('\n[③ 개간·건설 결산은 실걸음 상한과 같은 식이�
   const hl = cut('_lifeHeadlessDay');
   chk(/Math\.min\(LIFE_CREW, farmerN\) \* LIFE_CLEAR_PDAY/.test(hl), '개간 결산 = min(크루, 농부) × LIFE_CLEAR_PDAY');
   chk(/Math\.min\(LIFE_CREW, popN\) \* LIFE_STAGE_PDAY/.test(hl), '건설 결산 = min(크루, 인구) × LIFE_STAGE_PDAY');
-  chk(/_lifeTasksPerFarmerDay\(\)/.test(hl), '작물 결산이 날 길이 파생 함수를 쓴다(고정 상수 아님)');
+  // ★[T117] 작물 절이 `lifeFarmDay` 로 **순수 추출**됐다(밭 계측기가 그 루프를 다시 안 쓰게).
+  //   그래서 검사도 따라간다 — 그리고 **계약을 강화한다**: 결산이 그 함수를 부르는지, 그리고
+  //   그 함수가 날 길이 파생을 쓰는지 **둘 다** 본다. (세션1 T100 이 개간 추출에서 한 것과 같은 문법.)
+  const fd = cut('lifeFarmDay');
+  chk(/lifeFarmDay\(vil, day, farmerN\)/.test(hl), '작물 결산이 `lifeFarmDay` 정본을 부른다(추출 뒤)');
+  chk(/_lifeTasksPerFarmerDay\(\)/.test(fd), '작물 결산이 날 길이 파생 함수를 쓴다(고정 상수 아님)');
+  chk(!/_lifeTasksPerFarmerDay\s*=\s*\d|budget\s*=\s*\w+\s*\*\s*\d+/.test(fd), '작물 예산에 **고정 숫자가 없다**(T58b 계측기가 100 이라 적었던 자리)');
   // 실걸음 쪽: 개간 1셀 = dayMs / LIFE_CLEAR_PDAY 노동, 크루 상한 LIFE_CREW → 하루 상한 동일
   chk(/t\.prog >= dayMs \/ LIFE_CLEAR_PDAY/.test(src), '실걸음 개간 1셀 = dayMs / LIFE_CLEAR_PDAY 노동(동일 근거)');
   chk(/t\.prog >= dayMs \/ LIFE_STAGE_PDAY/.test(src), '실걸음 건설 1단계 = dayMs / LIFE_STAGE_PDAY 노동(동일 근거)');
