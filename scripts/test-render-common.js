@@ -31,8 +31,10 @@ const COMMON = path.join(ROOT, 'scripts', 'render_common.py');
 const SCRIPTS = [
   ['icon_render.py', path.join(ROOT, 'scripts', 'icon_render.py')],
   ['props_render.py', path.join(ROOT, 'scripts', 'props_render.py')],
-  // ★[T97] 자연물도 편입됐다 — 씬·헬퍼 한 벌을 따로 갖고 있던 마지막 렌더 스크립트였다.
+  // ★[T97] 자연물도 편입됐다 — 씬·헬퍼 한 벌을 따로 갖고 있던 렌더 스크립트였다.
   ['nature_render.py', path.join(ROOT, 'scripts', 'nature_render.py')],
+  // ★[T103] 건물이 마지막이었다. 이제 굽는 스크립트 넷이 전부 공용 문법을 쓴다.
+  ['building_render.py', path.join(ROOT, 'scripts', 'building_render.py')],
 ];
 const NATURE = path.join(ROOT, 'scripts', 'nature_render.py');
 const REPORT = path.join(ROOT, '보고', 'T77_2026-09-03.md');
@@ -198,10 +200,48 @@ console.log('\n[⑥ 자연물 편입 — 자기 한 벌이 남아 있지 않다 
   }
 }
 
+// ── ⑦ 범프 기본값 의존 0 [T103] ────────────────────────────────
+console.log('\n[⑦ `Bump.Distance` 를 기본값에 안 맡긴다 — 판올림이 그림을 가져갔다 (T101 발견)]');
+{
+  // ★왜: 블렌더 5.0 이 `ShaderNodeBump` 의 `Distance` 기본값을 1.0 → 0.001 로 바꿨다.
+  //   범프가 1000분의 1 로 죽는데 **에러도 경고도 없다** — 그림만 매끈해진다.
+  //   T79·T97 이 그걸 "4.0.2 가 얼룩을 남긴다" 로 두 번 잘못 읽었다. 이제 검사기가 지킨다.
+  const fs2 = require('fs');
+  const dir = path.join(ROOT, 'scripts');
+  const pys = fs2.readdirSync(dir).filter(f => f.endsWith('.py'));
+  const bad = [];
+  let total = 0;
+  for (const f of pys) {
+    let src = fs2.readFileSync(path.join(dir, f), 'utf8');
+    // --selftest: 기본값에 기대는 자리를 하나 심는다 — ⑦ 이 눈멀지 않았는지 본다.
+    if (SELFTEST && f === 'render_common.py') src += '\n    zz = nt.nodes.new("ShaderNodeBump")\n';
+    const lines = src.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      if (!/nodes\.new\((['"])ShaderNodeBump\1\)/.test(lines[i])) continue;
+      total++;
+      // 같은 줄 또는 뒤따르는 세 줄 안에 `Distance` 대입이 있어야 한다
+      const win = lines.slice(i, i + 4).join('\n');
+      if (!/\[["']Distance["']\]\.default_value\s*=/.test(win)) bad.push(`${f}:${i + 1}`);
+    }
+  }
+  ok(total > 0, `\`ShaderNodeBump\` 를 만드는 자리 ${total}곳을 전수로 찾았다`);
+  ok(bad.length === 0,
+     `그 ${total}곳이 전부 \`Distance\` 를 명시한다` +
+     (bad.length ? ` — 기본값에 기대는 곳 ${bad.length}: ${bad.slice(0, 6).join(', ')}` : ''));
+  ok(/^BUMP_DIST\s*=\s*1\.0/m.test(common || ''),
+     'render_common 이 `BUMP_DIST = 1.0`(4.x 까지의 기본값)을 정본으로 갖는다');
+  // 값의 사본이 없다 — 다른 스크립트가 1.0 을 다시 적으면 그날 한쪽만 고쳐진다.
+  {
+    const dup = pys.filter(f => f !== 'render_common.py' &&
+      /BUMP_DIST\s*=\s*[\d.]/.test(fs2.readFileSync(path.join(dir, f), 'utf8')));
+    ok(dup.length === 0, `\`BUMP_DIST = <숫자>\` 를 다시 적은 스크립트 0 ${dup.length ? JSON.stringify(dup) : ''}`);
+  }
+}
+
 if (SELFTEST) {
-  console.log('\n[--selftest] 오염본을 넣었다 → 위에 ✗ 가 다섯 이상 있어야 통과다(①②③④⑥).');
-  console.log('결과: ' + (fail >= 5 ? `PASS(검사기가 오염 ${fail}건을 잡았다)` : `FAIL(${fail}건만 잡았다 — 검사기가 눈멀었다)`));
-  process.exit(fail >= 5 ? 0 : 1);
+  console.log('\n[--selftest] 오염본을 넣었다 → 위에 ✗ 가 여섯 이상 있어야 통과다(①②③④⑥⑦).');
+  console.log('결과: ' + (fail >= 6 ? `PASS(검사기가 오염 ${fail}건을 잡았다)` : `FAIL(${fail}건만 잡았다 — 검사기가 눈멀었다)`));
+  process.exit(fail >= 6 ? 0 : 1);
 }
 console.log('\n결과: ' + (fail ? `FAIL(${fail})` : 'PASS'));
 process.exit(fail ? 1 : 0);

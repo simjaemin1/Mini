@@ -9,6 +9,12 @@
 #   인덱스가 위치순 재정렬이라 [1] 참조가 빗나간다 — '색으로 찾아' 교체할 것(봉두 255 클리핑 진범).
 import bpy, math, os, json, random
 import mathutils
+# ★[T103] 블렌더 5.0 이 `Bump` 의 `Distance` 기본값을 1.0 → 0.001 로 바꿨다(범프가 1000분의 1).
+#   값은 `render_common.BUMP_DIST` 한 곳이 정본이다 — 여기 숫자를 다시 적지 않는다(사본 금지).
+import sys as _sys_bd, os as _os_bd
+_sys_bd.path.insert(0, _os_bd.path.dirname(_os_bd.path.abspath(__file__)))
+from render_common import BUMP_DIST
+
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.environ.get('MT_OUT') or os.path.join(HERE, 'mountain_renders')
@@ -75,6 +81,7 @@ def mountain_material():
     nt.links.new(ramp.outputs['Color'], p.inputs['Base Color'])
     bnoise = nt.nodes.new('ShaderNodeTexNoise'); bnoise.inputs['Scale'].default_value = 5.5; bnoise.inputs['Detail'].default_value = 8.0
     bump = nt.nodes.new('ShaderNodeBump')
+    bump.inputs["Distance"].default_value = BUMP_DIST   # ★T103 — 5.0 기본값 0.001 되돌림
     bump.inputs['Strength'].default_value = float(os.environ.get('MT_BUMP', '0.38'))
     nt.links.new(bnoise.outputs['Fac'], bump.inputs['Height'])
     if os.environ.get('MT_BUMP') != '0':
@@ -114,6 +121,7 @@ def forest_material():
     nt.links.new(ramp.outputs['Color'], p.inputs['Base Color'])
     bn = nt.nodes.new('ShaderNodeTexNoise'); bn.inputs['Scale'].default_value = 9.0; bn.inputs['Detail'].default_value = 8.0
     bp2 = nt.nodes.new('ShaderNodeBump'); bp2.inputs['Strength'].default_value = 0.5   # 수관 몽글몽글
+    bp2.inputs["Distance"].default_value = BUMP_DIST   # ★T103 — 5.0 기본값 0.001 되돌림
     nt.links.new(bn.outputs['Fac'], bp2.inputs['Height'])
     nt.links.new(bp2.outputs['Normal'], p.inputs['Normal'])
     p.inputs['Roughness'].default_value = 0.95

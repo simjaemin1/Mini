@@ -3,6 +3,12 @@
 #   결과: scripts/terrain_tex/{grass,dirt,rock,canopy}.png + water_0..5.png
 # 실행: blender -b -P scripts/bake-terrain-tex.py
 import bpy, math, os, random
+# ★[T103] 블렌더 5.0 이 `Bump` 의 `Distance` 기본값을 1.0 → 0.001 로 바꿨다(범프가 1000분의 1).
+#   값은 `render_common.BUMP_DIST` 한 곳이 정본이다 — 여기 숫자를 다시 적지 않는다(사본 금지).
+import sys as _sys_bd, os as _os_bd
+_sys_bd.path.insert(0, _os_bd.path.dirname(_os_bd.path.abspath(__file__)))
+from render_common import BUMP_DIST
+
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'terrain_tex')
 os.makedirs(OUT, exist_ok=True)
@@ -144,6 +150,7 @@ def bake_water():
     noise = nt.nodes.new('ShaderNodeTexNoise'); noise.noise_dimensions = '4D'
     noise.inputs['Scale'].default_value = 3.2; noise.inputs['Detail'].default_value = 6.0
     bump = nt.nodes.new('ShaderNodeBump'); bump.inputs['Strength'].default_value = 0.45
+    bump.inputs["Distance"].default_value = BUMP_DIST   # ★T103 — 5.0 기본값 0.001 되돌림
     nt.links.new(noise.outputs['Fac'], bump.inputs['Height'])
     nt.links.new(bump.outputs['Normal'], p.inputs['Normal'])
     w.data.materials.append(m)
@@ -166,6 +173,7 @@ def bake_dirt():
     nt.links.new(n1.outputs['Fac'], ramp.inputs['Fac'])
     nt.links.new(ramp.outputs['Color'], p.inputs['Base Color'])
     bump = nt.nodes.new('ShaderNodeBump'); bump.inputs['Strength'].default_value = 0.55
+    bump.inputs["Distance"].default_value = BUMP_DIST   # ★T103 — 5.0 기본값 0.001 되돌림
     nt.links.new(n1.outputs['Fac'], bump.inputs['Height'])
     nt.links.new(bump.outputs['Normal'], p.inputs['Normal'])
     p.inputs['Roughness'].default_value = 0.95
@@ -197,6 +205,7 @@ def bake_rock():
     nt.links.new(n1.outputs['Fac'], ramp.inputs['Fac'])
     nt.links.new(ramp.outputs['Color'], p.inputs['Base Color'])
     bump = nt.nodes.new('ShaderNodeBump'); bump.inputs['Strength'].default_value = 0.5
+    bump.inputs["Distance"].default_value = BUMP_DIST   # ★T103 — 5.0 기본값 0.001 되돌림
     nt.links.new(n1.outputs['Fac'], bump.inputs['Height'])
     nt.links.new(bump.outputs['Normal'], p.inputs['Normal'])
     p.inputs['Roughness'].default_value = 0.9

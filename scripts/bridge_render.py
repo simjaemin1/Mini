@@ -21,6 +21,12 @@
 # 고증: 청동기 후기(송국리) — 통나무 보 + 쪼갠 널 + 새끼 결속 + 말뚝. 석조 아치·제재목 금지.
 
 import bpy, os, math, random, mathutils
+# ★[T103] 블렌더 5.0 이 `Bump` 의 `Distance` 기본값을 1.0 → 0.001 로 바꿨다(범프가 1000분의 1).
+#   값은 `render_common.BUMP_DIST` 한 곳이 정본이다 — 여기 숫자를 다시 적지 않는다(사본 금지).
+import sys as _sys_bd, os as _os_bd
+_sys_bd.path.insert(0, _os_bd.path.dirname(_os_bd.path.abspath(__file__)))
+from render_common import BUMP_DIST
+
 V = mathutils.Vector
 
 RES = 256
@@ -53,6 +59,7 @@ def bumped_mat(name, c1, c2, noise_scale=9.0, bump=0.5, rough=0.85, ramp=(0.42, 
     b.inputs["Roughness"].default_value = rough
     n = nt.nodes.new("ShaderNodeTexNoise"); n.inputs["Scale"].default_value = noise_scale
     bp = nt.nodes.new("ShaderNodeBump"); bp.inputs["Strength"].default_value = bump
+    bp.inputs["Distance"].default_value = BUMP_DIST   # ★T103 — 5.0 기본값 0.001 되돌림
     nt.links.new(n.outputs["Fac"], bp.inputs["Height"])
     nt.links.new(bp.outputs["Normal"], b.inputs["Normal"])
     r1 = nt.nodes.new("ShaderNodeRGB"); r1.outputs[0].default_value = (c1[0], c1[1], c1[2], 1)
@@ -87,6 +94,7 @@ def striped_mat(name, base, stripe, scale=22.0, rough=0.75, bump=0.3):
     nt.links.new(c2.outputs[0], mx.inputs["Color2"])
     nt.links.new(mx.outputs["Color"], b.inputs["Base Color"])
     bmp = nt.nodes.new("ShaderNodeBump"); bmp.inputs["Strength"].default_value = bump
+    bmp.inputs["Distance"].default_value = BUMP_DIST   # ★T103 — 5.0 기본값 0.001 되돌림
     nt.links.new(w.outputs["Fac"], bmp.inputs["Height"])
     nt.links.new(bmp.outputs["Normal"], b.inputs["Normal"])
     return m

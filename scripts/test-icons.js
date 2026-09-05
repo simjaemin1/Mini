@@ -352,7 +352,9 @@ console.log('\n[⑧ 굽는 기계 정본 — icons.lock.json 이 지금 자산�
     for (const [grp, dir] of [['icons', ICON_DIR], ['props', path.join(ROOT, 'public', 'assets', 'props')],
                               ['crops', path.join(ROOT, 'public', 'assets', 'crops')],
                               ['nature', path.join(ROOT, 'public', 'assets', 'nature')],
-                              ['trees', path.join(ROOT, 'public', 'assets', 'trees')]]) {
+                              ['trees', path.join(ROOT, 'public', 'assets', 'trees')],
+                              // ★[T103] 건물 12 도 든다 — 마지막 4.0.2 자산이 5.0.1 로 왔다.
+                              ['buildings', path.join(ROOT, 'public', 'assets', 'buildings')]]) {
       const tbl = lock[grp] || {};
       const files = fs.readdirSync(dir).filter(f => f.endsWith('.png')).map(f => f.slice(0, -4)).sort();
       const missing = files.filter(k => !(k in tbl));
@@ -376,6 +378,9 @@ console.log('\n[⑧ 굽는 기계 정본 — icons.lock.json 이 지금 자산�
                          : `_기계_예외 ${ex.length}장이 전부 잠금표 nature 안에 있다` +
                            (notLocked.length ? ` — 밖: ${notLocked.slice(0, 4).join(', ')}` : ''));
     }
+    // ★[T103] 범프 복원이 끝났다는 것을 잠금표가 말해야 한다 — 말과 그림이 갈리면 그게 먼저 거짓말한다.
+    ok(typeof lock._범프 === 'string' && /복원 완료/.test(lock._범프) && /Distance/.test(lock._범프),
+       '잠금표 `_범프` 가 "복원 완료" 라고 적혀 있다');
     console.log('     ⇒ 다음 재굽기가 이 표와 대조한다. 기계를 바꾸면 여기가 먼저 빨개진다.');
   }
 }
