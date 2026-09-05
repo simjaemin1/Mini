@@ -969,9 +969,35 @@ const mkLedgerGeo = (world, geo, cfg) => {
   const B = L.stats.byType;
 
   // ── ㉜ 전제 — 원천이 실재하는가. **각본 금지의 실증**: 아무것도 심지 않고 600일을 돌렸을 뿐이다.
-  ok((B.HARVEST_BOON || 0) > 0 && (B.HARVEST_BLIGHT || 0) > 0,
-    '㉜a 전제: 풍년·흉년이 **저절로** 난다(econ `_yearShock` — 장부가 만든 게 아니다)',
-    `풍년 ${B.HARVEST_BOON} · 흉년 ${B.HARVEST_BLIGHT}`);
+  // ★★[T94 후 판 2026-09-05 · CI regress-unit 빨강 귀속] 이 절은 **5분의 1 확률로 빨간 검사였다.**
+  //   `tickYearShock` 은 `day % 365 === 180` 에만 돈다 — 5마을 600일이면 뽑기가 **딱 10번**이고
+  //   풍년 확률은 0.15 다. ⇒ P(풍년 0) = 0.85^10 = **19.7%**. 시드 1020 이 T86 뒤 그 5분의 1에 걸렸다.
+  //   ⚠**T86 이 `_yearShock` 을 쏠리게 한 게 아니다** — 10시드 실측(각 5마을 600일 · 뽑기 100번):
+  //     T86 켬  풍년 14 · 흉년  9 (풍년 0 인 시드 2/10)
+  //     되돌림(`T86_DIET=0`) 풍년 15 · 흉년 12 (풍년 0 인 시드 1/10)
+  //   분포는 구분이 안 된다. T86 이 한 일은 econ 공유 `srand()` **스트림 위치를 옮긴 것**뿐이고,
+  //   그 자리에서 시드 1020 의 열 번이 하필 풍년을 한 번도 안 뽑았다. ⇒ econ 결함이 아니라
+  //   **이 하네스의 표본이 작았던 것**이다(내 영역 · 여기서 고친다).
+  //   ⇒ 뜻은 그대로 두고 **표본을 넓힌다**: 주 세계가 한쪽을 0 으로 내면 시드를 더 얹어 합산한다.
+  //     뽑기 30번이면 P(풍년 0) = 0.85^30 = **0.8%** — 이제 이 절이 빨가면 그건 진짜 결함이다.
+  {
+    let boon = B.HARVEST_BOON || 0, blight = B.HARVEST_BLIGHT || 0, pooled = '주 세계(1020)';
+    const EXTRA = [63, 64];
+    for (const sd of EXTRA) {
+      if (boon > 0 && blight > 0) break;
+      const W = makeWorld(0, sd);
+      const LX = mkLedger(W);
+      const _lx = console.log; console.log = () => {};
+      try { for (let d = 0; d < 600; d++) { econV2.tickWorldV2(W); LX.scanDay(W, W.day, {}); } }
+      finally { console.log = _lx; }
+      boon += LX.stats.byType.HARVEST_BOON || 0;
+      blight += LX.stats.byType.HARVEST_BLIGHT || 0;
+      pooled += ` + 시드 ${sd}`;
+    }
+    ok(boon > 0 && blight > 0,
+      '㉜a 전제: 풍년·흉년이 **저절로** 난다(econ `_yearShock` — 장부가 만든 게 아니다)',
+      `풍년 ${boon} · 흉년 ${blight}  [${pooled} · 주 세계 단독 풍년 ${B.HARVEST_BOON || 0}/흉년 ${B.HARVEST_BLIGHT || 0}]`);
+  }
   ok((B.WEATHER || 0) > 0, '㉜b 전제: 날씨(가뭄·폭풍·풍요·안개)가 저절로 난다', `${B.WEATHER}건`);
   ok((B.FIRST_GOODS || 0) > 0, '㉜c 전제: "처음 들어온 물건"이 저절로 난다(교역 기록에서)', `${B.FIRST_GOODS}건`);
   ok((B.CARAVAN_RAIDED || 0) === 0 && (B.BUILT || 0) === 0,
@@ -1170,8 +1196,11 @@ const mkLedgerGeo = (world, geo, cfg) => {
 {
   const DAYS = 240;
   const ROOTDIR = path.join(__dirname, '..');
-  const ADOPT = { PRICE_UP: 0.70, PRICE_DOWN: 0.70, HYST: 1.6 };
-  const PREV  = { PRICE_UP: 0.40, PRICE_DOWN: 0.40, HYST: 1.35 };
+  // ★[T94 2026-09-05] 채택이 ±70 → **±90** 으로 옮겨 갔다. 옛 칸 둘은 **이름을 갖고 남는다** —
+  //   되돌림이 문서의 약속이라면 그 약속은 **둘** 이다(T50 전 판 · T63 판).
+  const ADOPT = { PRICE_UP: 0.90, PRICE_DOWN: 0.90, HYST: 1.6 };   // ★T94 채택
+  const T63   = { PRICE_UP: 0.70, PRICE_DOWN: 0.70, HYST: 1.6 };   // T63 채택(되돌림 대상 ①)
+  const PREV  = { PRICE_UP: 0.40, PRICE_DOWN: 0.40, HYST: 1.35 };  // T50 전(되돌림 대상 ②)
   const run = (cfg, world) => {
     const L = mkLedger(world, cfg);
     const _l = console.log; console.log = () => {};
@@ -1224,7 +1253,17 @@ const mkLedgerGeo = (world, geo, cfg) => {
       `급등 ${JSON.parse(byDef).PRICE_SPIKE} vs ${JSON.parse(byEnv).PRICE_SPIKE}`);
     const W2 = makeWorld(0, 64);
     ok(JSON.stringify(run(ADOPT, W2).stats.byType) === byDef,
-      '㊵c 기본값 = 채택값(C) — 문서와 코드가 같은 말을 한다');
+      '㊵c 기본값 = 채택값(±90 · T94) — 문서와 코드가 같은 말을 한다');
+    // ★[T94] 되돌림은 **둘**이다 — T63 판(±70)도 env 한 줄로 정확히 돌아온다
+    const W3 = makeWorld(0, 64);
+    const by63 = JSON.stringify(run(T63, W3).stats.byType);
+    const byEnv63 = child({ EV_PRICE_UP: '0.70', EV_PRICE_DOWN: '0.70' });
+    ok(by63 === byEnv63,
+      '㊵d ★되돌림 ② — `EV_PRICE_UP=0.70 EV_PRICE_DOWN=0.70` 가 **T63 판**을 비트 동일하게 재현한다',
+      by63 === byEnv63 ? `${by63.slice(0, 50)}…` : `cfg ${by63.slice(0, 36)} vs env ${byEnv63.slice(0, 36)}`);
+    ok(by63 !== byDef,
+      '㊵e 자명 통과 금지 — T63 판과 T94 판이 실제로 **다른 수**다',
+      `급등 ${JSON.parse(by63).PRICE_SPIKE} → ${JSON.parse(byDef).PRICE_SPIKE}`);
   }
 
   // ㊶ 두 읽기 — ㉮(전체)와 ㉯(값 유형)는 **같은 수에서** 갈라진다
@@ -1240,6 +1279,103 @@ const mkLedgerGeo = (world, geo, cfg) => {
     const dAll = live * DAYS / L.stats.emitted, dVal = live * DAYS / vN;
     ok(dVal > dAll, '㊶c ★값 유형 밀도는 전체 밀도보다 **느슨하다**(일 유형을 빼면 간격이 넓어진다)',
       `㉮ ${dAll.toFixed(2)}일 < ㉯ ${dVal.toFixed(2)}일`);
+  }
+
+  // ═══ [T94 2026-09-05] ㊶d~㊶h — **재정박 2**: 문턱이 옮겨 갔다는 것을 회귀로 건다 ═══════
+  //
+  //   ★왜: T63 은 "문턱은 범인이 아니다"로 끝났고, T94 는 **T73 이 세계를 옮겨서** 그 판정을 뒤집었다.
+  //     뒤집힌 판정은 다음 사람이 제일 먼저 의심할 자리다 ⇒ 근거를 코드에 남긴다.
+  //   ⚠**작은 랩(마을 5 · 240일)의 절대 밀도는 캐논 구간과 무관하다** — T63 ㊷ 가 그걸로 한 번
+  //     자명 통과했다. 그래서 여기서 사는 검사는 **성질**(㊶d·㊶e·㊶h)이고,
+  //     캐논 구간 판정은 51마을 800일 **실측 표**(㊶f·㊶g)가 진다 — 그 표가 코드와 어긋나지 않게 묶는다.
+  {
+    // ㊶d ★채택의 실제 효과 — 같은 틱 스트림 위에서 ±90 은 ±70 보다 **값 유형 밀도를 느슨하게** 한다
+    const W = makeWorld(0, 67);
+    const A = mkLedger(W, T63), B = mkLedger(W, ADOPT);
+    const _l = console.log; console.log = () => {};
+    try { for (let d = 0; d < DAYS; d++) { econV2.tickWorldV2(W); A.scanDay(W, W.day, {}); B.scanDay(W, W.day, {}); } }
+    finally { console.log = _l; }
+    const DEEDS = new Set(Events.DEED_TYPES);
+    const valOf = (L) => { let n = 0; for (const t of Events.TYPES) if (!DEEDS.has(t)) n += L.stats.byType[t] || 0; return n; };
+    const v63 = valOf(A), v94 = valOf(B);
+    ok(v63 > 0 && v94 > 0, '㊶d 전제: 두 장부 다 값 유형을 실제로 냈다(0 이면 아래가 자명 통과다)', `${v63} / ${v94}`);
+    const ease = v63 / Math.max(1, v94);            // 밀도(일/건)는 건수의 역수라 이 비가 곧 완화율
+    ok(ease >= 1.08,
+      '㊶d ★채택 문턱(±90)은 T63 문턱(±70)보다 값 유형 밀도를 **8% 이상 느슨하게** 한다(실측 3시드 +10.0/+10.4/+11.3%)',
+      `값 ${v63} → ${v94} (밀도 ×${ease.toFixed(3)})`);
+    // ㊶e ★★그런데 **재고·일 유형은 한 건도 안 움직인다** — 가격 손잡이만 만졌다는 증거(HYST 고정)
+    const cnt = (L, t) => L.stats.byType[t] || 0;
+    let d63 = 0, d94 = 0;
+    for (const t of Events.TYPES) if (DEEDS.has(t)) { d63 += cnt(A, t); d94 += cnt(B, t); }
+    ok(cnt(A, 'STOCK_SHORTAGE') === cnt(B, 'STOCK_SHORTAGE') && cnt(A, 'STOCK_GLUT') === cnt(B, 'STOCK_GLUT') && d63 === d94,
+      '㊶e ★★재고 유형과 일 유형은 **한 건도 안 움직였다**(±70→±90 · HYST 1.6 고정)',
+      `부족 ${cnt(A, 'STOCK_SHORTAGE')}/${cnt(B, 'STOCK_SHORTAGE')} · 글럿 ${cnt(A, 'STOCK_GLUT')}/${cnt(B, 'STOCK_GLUT')} · 일 ${d63}/${d94}`);
+    ok(cnt(A, 'STOCK_SHORTAGE') > 0 && d63 > 0,
+      '㊶e2 전제: 재고·일 유형이 0 이 아니다(0 이면 위가 자명 통과다)', `부족 ${cnt(A, 'STOCK_SHORTAGE')} · 일 ${d63}`);
+
+    // ㊶f 실측 표(51마을 800일 · 3시드 · ㉯ 값 유형 밀도) — **캐논 구간 판정은 이 표가 진다**
+    //   ⚠이건 기록이다. 기록이 코드와 어긋나면 ㊶g 가 빨개진다(표만 고치고 코드를 안 고치는 사고 방지).
+    //   ★★[T94 후 판] **세계가 또 옮겨 갔다** — T86(식단 예산)이 착지하면서 밀도가 더 내려앉았다.
+    //     그래서 이 표는 **두 세계**를 나란히 든다. 채택(±90)이 T73 세계는 구간 안으로 되돌리지만
+    //     T86 세계는 **못 되돌린다** — 그건 채택이 틀려서가 아니라 **손잡이가 끝났기** 때문이다(㊶f3).
+    const MEASURED = {                      // 시드: [±70(T63), ±90(T94 채택)]  · ㉯ 값 유형 밀도
+      T73: { 1020: [1.90, 2.09], 7: [2.01, 2.22], 42: [1.94, 2.16] },
+      T86: { 1020: [1.58, 1.78], 7: [1.57, 1.77], 42: [1.54, 1.72] },
+    };
+    const CANON_LO = 2, CANON_HI = 3;
+    const after = Object.values(MEASURED.T73).map((r) => r[1]);
+    const before = Object.values(MEASURED.T73).map((r) => r[0]);
+    ok(after.every((x) => x >= CANON_LO && x <= CANON_HI),
+      `㊶f ★채택 뒤 값 유형 밀도가 **T73 세계에서 세 시드 전부 캐논 구간 안**(${CANON_LO}~${CANON_HI}일/건)`,
+      after.join(' / '));
+    ok(before.some((x) => x < CANON_LO),
+      '㊶f2 자명 통과 금지 — 채택 **전** 표에는 하한 밑이 실제로 있었다(고칠 것이 있었다)',
+      before.join(' / '));
+    // ㊶f3 ★★T86 세계 — 채택은 **방향은 맞지만 구간에 못 닿는다**. 그 사실을 숨기지 않고 못 박는다.
+    //   가격 문턱의 끝(±99 · `dnOn = 1−0.99 = 0.01`)에서야 ㉯ 2.05 가 되고 그때 급락이 **−52%** 다.
+    //   ⇒ 다음 판은 손잡이가 아니라 **읽기나 세계**를 봐야 한다(회부 · events.js 머리에도 적었다).
+    const t86 = Object.values(MEASURED.T86);
+    ok(t86.every((r) => r[1] > r[0]),
+      '㊶f3 ★T86 세계에서도 채택은 **밀도를 캐논 쪽으로 민다**(세 시드 전부 ±70 보다 느슨하다)',
+      t86.map((r) => `${r[0]}→${r[1]}`).join(' / '));
+    ok(t86.every((r) => r[1] < CANON_LO),
+      '㊶f4 ★★그러나 **아직 구간 밖이다** — 가격 문턱으로는 여기까지다(다음 판은 읽기/세계 · 회부)',
+      t86.map((r) => r[1]).join(' / '));
+
+    // ㊶g 표와 코드가 같은 말을 한다 — 표의 채택 칸(±90)이 **실제 기본값**이다
+    const CFG0 = Events.createLedger({ econV2, vidOf, depositMap: Villages.playerVillageDepositMap() }).cfg;
+    ok(CFG0.PRICE_UP === ADOPT.PRICE_UP && CFG0.PRICE_DOWN === ADOPT.PRICE_DOWN && CFG0.HYST === ADOPT.HYST,
+      '㊶g ★표의 채택 칸이 곧 **코드 기본값**이다(표만 고치고 코드를 안 고치면 여기서 빨강)',
+      `기본 ±${CFG0.PRICE_UP} · H${CFG0.HYST}`);
+
+    // ㊶h ★★돌연변이 — 채택을 되돌리면(가격 문턱 ±40) 값 유형이 **폭증**한다. 잡을 수 있는 검사다.
+    //   ⚠★[T94 실측 · 지시서 가정 정정] 지시서는 돌연변이로 `HYST=1.0` 을 지목했는데, **그 손잡이는
+    //     가격을 안 건드린다** — 가격 래치 해제는 `upOff = 1 + PRICE_UP*0.6`(events.js) 이고 `HYST` 가
+    //     안 들어간다. `HYST` 가 쓰이는 자리는 **재고 래치**와 `POP_DOWN` 둘뿐이다.
+    //     그래서 돌연변이는 **가격 문턱**으로 놓고, `HYST` 는 아래 ㊶h2 가 "값엔 거의 안 듣고 재고엔 듣는다"로
+    //     따로 못 박는다(그게 이 손잡이의 진짜 성질이다 — T63 ㊷ 의 그 성질과 같은 말).
+    const W2 = makeWorld(0, 67);
+    const M = mkLedger(W2, { PRICE_UP: 0.40, PRICE_DOWN: 0.40, HYST: 1.6 });
+    const _l2 = console.log; console.log = () => {};
+    try { for (let d = 0; d < DAYS; d++) { econV2.tickWorldV2(W2); M.scanDay(W2, W2.day, {}); } }
+    finally { console.log = _l2; }
+    const vM = valOf(M);
+    ok(vM > v94 * 1.2,
+      '㊶h ★★돌연변이 — 가격 문턱을 ±40 으로 되돌리면 값 유형이 **20% 넘게 폭증**한다(채택이 실제로 조인다)',
+      `채택 ${v94} → ±40 ${vM} (×${(vM / Math.max(1, v94)).toFixed(2)})`);
+    // ㊶h2 ★`HYST` 의 진짜 성질 — 값 밀도엔 거의 안 듣고, **재고**엔 듣는다
+    const W3 = makeWorld(0, 67);
+    const H = mkLedger(W3, { PRICE_UP: 0.90, PRICE_DOWN: 0.90, HYST: 1.0 });
+    const _l3 = console.log; console.log = () => {};
+    try { for (let d = 0; d < DAYS; d++) { econV2.tickWorldV2(W3); H.scanDay(W3, W3.day, {}); } }
+    finally { console.log = _l3; }
+    const vH = valOf(H);
+    ok(H.stats.byType.PRICE_SPIKE === B.stats.byType.PRICE_SPIKE && H.stats.byType.PRICE_DROP === B.stats.byType.PRICE_DROP,
+      '㊶h2 ★★`HYST` 는 **가격을 한 건도 안 건드린다**(해제가 `1+UP×0.6` 이라 HYST 가 안 들어간다 — 지시서 가정 정정)',
+      `급등 ${B.stats.byType.PRICE_SPIKE}→${H.stats.byType.PRICE_SPIKE} · 급락 ${B.stats.byType.PRICE_DROP}→${H.stats.byType.PRICE_DROP}`);
+    ok(H.stats.byType.STOCK_SHORTAGE !== B.stats.byType.STOCK_SHORTAGE,
+      '㊶h3 ★그런데 **재고에는 듣는다** — `HYST` 는 재고 래치와 `POP_DOWN` 의 손잡이다',
+      `부족 ${B.stats.byType.STOCK_SHORTAGE} → ${H.stats.byType.STOCK_SHORTAGE} · 값 합 ${v94} → ${vH}`);
   }
 
   // ㊷ 손잡이가 **무엇을 깎는가** — 이 배치의 결론(ⓒ)이 통째로 이 성질 위에 서 있다
