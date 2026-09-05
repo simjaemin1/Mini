@@ -645,6 +645,15 @@ const DOWN_WAKE_GAMEMIN = parseFloat(process.env.DOWN_WAKE_GAMEMIN || '') || 120
 //   **돌아올 이유**가 남는다(§12 "죽음은 손실이지 리셋이 아니다").
 //   ★로트(kg 물건)도 **개체 단위**로 자른다 — 반 개는 없다.
 //   되돌리기: 1 이면 종전(전부 낙하 · 바이트 동일) · 0 이면 아무것도 안 떨어진다.
+// ★★[T88 2026-09-04 · PM 판정] **되돌림 스위치 둘.** T83 §4 표를 보고 재민 대행이 ⓐⓑ 를 채택했다.
+//   뒤집으면 `T88_WAKE_DIST=0` · `T88_MEAL=0` 으로 **T83 판과 비트 동일**이 된다.
+// ★이 둘만 **부를 때 읽는다**(다른 손잡이는 적재 시 읽는다). 이유는 검증 비용이다:
+//   적재 시 상수면 "끈 판"을 재려고 하네스가 **존을 한 번 더 부팅**해야 하는데, 그게 회귀 하네스
+//   하나에 10분을 얹는다(PM 이 밤에 110종을 돌린다 · 공통 §2). 읽는 값은 문자열 비교 하나이고
+//   이 갈래는 **죽음 한 번에 한 번** 지나므로 값이 없다. ⇒ `test-downed ⑲` 가 같은 프로세스에서
+//   켠 판·끈 판을 **둘 다 실제로 돌려** 비교한다(소스만 훑는 검사가 아니다).
+const _t88WakeDist = () => process.env.T88_WAKE_DIST !== '0';   // ① 깨어남 지연 = 거리의 함수
+const _t88Meal     = () => process.env.T88_MEAL      !== '0';   // ② 마을 안 구제 때 곳간에서 한 끼
 const DEATH_DROP_KG_FRAC = (() => {
   const v = parseFloat(process.env.DEATH_DROP_KG_FRAC || '');
   return Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 0.5;
@@ -8214,6 +8223,8 @@ function __testBind() {
     tryRescue, tryRespawnChoice, listRespawnOptions, resolveDowned, tickDowned, nearestVillageWake,
     // ★[T83] 죽음 캐논 ⓑ — 하네스가 표를 다시 짜지 않게 **정본 그대로** 내준다
     _deathDrop, _deathDropPick, wakeCellOf, _hutDoorNear, _standCellNear, _startVidOf, DEATH_DROP_KG_FRAC,
+    // ★[T88] 거리 비례 지연 · 곳간 한 끼 — 하네스가 식과 표를 다시 짜지 않게 정본 그대로
+    _wakeDelayMs, _villageMeal, _t88WakeDist, _t88Meal,
     // ── 외침·구조 동사(T56) — 정본 모듈을 그대로 내준다(하네스가 소리를 다시 짜지 않는다) ──
     Rescue, doEat, Onboarding, WATER_DRINK_AMOUNT, THIRST_MAX, HUNGER_MAX, FOOD_EFFECTS, isWaterTileLocal,
     RESCUE_WINDOW_MS, RESCUE_RANGE_PX, RESCUE_HOLD_MS, RESCUE_HP_FRAC, CARRY_PERSON_KG, DOWN_WAKE_GAMEMIN,
@@ -9196,20 +9207,100 @@ function _wakeUp(p, x, y, hpFrac, msg) {
 // ★★창이 끝났을 때(또는 스스로 포기했을 때) 무슨 일이 나는가 — **마을이면 이송, 야생이면 사망.**
 //   §12: *"마을 반경 안이면 창이 끝나도 마을 사람이 옮긴다. 죽음은 야생에서만."*
 //   ★마을 반경 술어는 추위가 쓰는 **완충 정본** 하나다(`SimVillages.shelterAt` — 사본 금지).
+//
+// ★★[T88 ① 2026-09-04 · PM 판정] **깨어남 지연은 거리의 함수다.**
+//   T83 §4 실측이 구멍을 숫자로 냈다: 표본 121 중 **24(20%)에서 "죽는 게 걷는 것보다 빨랐다"** —
+//   짐을 내려놓고 죽으면 사유지로 공짜 이동이다. 지연이 거리와 무관한 고정값이었기 때문이다.
+//
+// ★★**새 계수를 하나도 안 만든다** — 두 항이 전부 이미 있는 정본이다:
+//     지연(게임분) = `DOWN_WAKE_GAMEMIN`(종전 고정값) + 거리 ÷ `MOVE_SPEED`(이동 정본)
+//   ⓐ 배수가 아니라 **덧셈**인 이유: 곱하면 배수라는 **새 수**를 골라야 한다. 더하면 배수가
+//      1 + 종전/걷기 로 **유도되고**(실측: 최대 거리에서도 ×1.76 · 가까이선 ×23), 언제나 1 을 넘는다.
+//   ⓑ **하한이 공짜로 선다**: 거리 0 이면 정확히 종전 값이라 가까이서 죽으면 종전과 같다(하위 호환).
+//      실측 200px = +3.1 게임분(종전 120 대비 2.6%).
+//   ⓒ 1 실초 = 1 게임분(시간 구조 불변 캐논)이라 `거리/속도`(실초)가 곧 게임분이다 — 환산이 없다.
+//   ⇒ 실측 분포(같은 표본 121): 중앙 3.3분 · 최대 4.6분 · **121/121 이 걷기보다 느리다**.
+//   ⚠마을 안 이송은 **종전 고정**이다(옮겨 주는 것이지 걸어가는 게 아니다).
+function _wakeDelayMs(fromX, fromY, spot) {
+  const base = Math.max(0, DOWN_WAKE_GAMEMIN);
+  if (!_t88WakeDist() || !spot || !Number.isFinite(spot.x) || !Number.isFinite(spot.y)) return base * 1000;
+  const d = Math.hypot(spot.x - fromX, spot.y - fromY);
+  if (!(d > 0) || !(MOVE_SPEED > 0)) return base * 1000;
+  return Math.max(0, base + d / MOVE_SPEED) * 1000;
+}
+
+// ★★[T88 ② 2026-09-04 · PM 판정] **마을 안 구제는 죽 한 그릇까지다.**
+//   T83 §4 가 반복을 재현했다: 누운 동안 게이지가 멎고 깨어나도 **극단 그대로**(허기 0 · 갈증 0)라
+//   T44 식이 다시 깎아 **4.8분 뒤 다시 눕는다**(쉼터 ↔ 쓰러짐). 살려 놓고 다시 죽이는 구제였다.
+//
+// ★**정본 둘만 부른다**(사본 0): 인출은 `SimVillages.playerVillageWithdraw`, 먹임은 `doEat`.
+//   ⚠소속 한도(`Membership.withdraw`)는 **부르지 않는다** — 그건 곳간 인출 동사의 한 층 위고,
+//     구제는 소속과 무관하다. 게이트를 우회하는 게 아니라 **한 층 아래 정본을 그대로** 쓴다
+//     (§0 실측: 한도·소속 판정은 전부 `membership.js` 에 있고 `playerVillageWithdraw` 는 순수하다
+//      ⇒ villages.js 에 "구제 인자"를 새로 낼 필요가 없었다).
+//   ★곳간이 비었나는 econ 정본을 감싼 `playerVillageWithdrawStockFoodEq`(= `totalFoodEquivalent`)로 묻는다.
+//   ★어느 품목인가 — **`food` 하나**다. §0 실측: 시드 세계 50곳 전부 `food` 재고 ≥ 1 이고,
+//     "food 는 0 인데 식량 등가만 있는" 마을은 **0곳**이었다 ⇒ `consumeFood` 사다리를 옮겨 적을
+//     이유가 없다(옮겨 적었다면 그게 사본이다). 그런 마을이 생기면 그때 사다리를 부르면 된다.
+function _villageMeal(p, vid) {
+  if (!_t88Meal()) return { fed: false, off: true };
+  let vil = null;
+  try { vil = SimVillages.villageByDbId ? SimVillages.villageByDbId(vid | 0) : null; } catch (e) { vil = null; }
+  if (!vil) return { fed: false, empty: false, nov: true };
+  let feq = 0;
+  try { feq = SimVillages.playerVillageWithdrawStockFoodEq(vil) || 0; } catch (e) { feq = 0; }
+  if (!(feq >= 1)) return { fed: false, empty: true };          // ★굶는 마을은 사람을 못 살린다
+  let r = null;
+  try { r = SimVillages.playerVillageWithdraw(vil, p.inventory, 'food', 1); } catch (e) { r = null; }
+  if (!r || !r.ok) return { fed: false, empty: true, err: r && r.err };
+  try { doEat(p, r.item, r.qty, p); } catch (e) {}              // ★먹임 정본(T56 먹이기와 같은 함수)
+  // ★★**극단 축을 벗어나는 만큼만.** 문턱은 T44 표에서 유도한다(`Body.extremeAt` — 리터럴 금지),
+  //   여유는 그 **바로 위 첫 정수 눈금**이다(게이지는 정수로 보인다 — 새 계수가 아니라 눈금이다).
+  //   ⓐ 이미 극단 밖인 축은 **손대지 않는다**(공짜 회복이 아니다).
+  //   ⓑ 죽은 곡식 한 그릇이 갈증까지 재우는 이유: 죽은 **물에 끓인 것**이다. `FOOD_EFFECTS.food` 의
+  //     낱개 효과(허기 +50 · 갈증 0)는 마른 곡식의 것이고, 그릇째 먹이는 이 한 끼는 그 위에
+  //     **문턱을 겨우 넘기는 만큼의 물**만 얹는다(실측: 허기는 먹임만으로 이미 넘는다).
+  const lifted = [];
+  for (const a of ['hunger', 'thirst']) {
+    const at = Body.extremeAt(a);
+    if (!(at >= 0 && at < 1)) continue;
+    const floorG = Math.floor(100 * (1 - at)) + 1;              // 문턱 바로 위 첫 정수 눈금
+    const now = Math.max(0, Math.min(100, Number(p[a]) || 0));
+    if (now >= floorG) continue;                                // 이미 극단 밖 — 안 건드린다
+    p[a] = floorG; lifted.push(a);
+  }
+  return { fed: true, item: r.item, qty: r.qty, units: r.units, stockAfter: r.stockAfter, lifted };
+}
+
 function resolveDowned(p, wakeSpotOverride) {
   const inVillage = (() => { try { return (SimVillages.shelterAt(p.x, p.y) || 0) > 0; } catch (e) { return false; } })();
   if (p._carriedBy) { const c = players.get(p._carriedBy); _dropCarried(c, p, '내려놓았다'); }
   // ★[T83 ③] 자리를 고른 다음 **설 수 있는 칸**으로 내린다(사유지일 때만 — 마을 이송은 무변).
-  const spot = wakeCellOf(wakeSpotOverride || (inVillage ? nearestVillageWake(p.x, p.y) : _wakeSpotOf(p)));
-  const delayMs = Math.max(0, DOWN_WAKE_GAMEMIN * 1000);   // 1 게임분 = 1 실초(시간 구조 불변 캐논)
+  let spot = wakeCellOf(wakeSpotOverride || (inVillage ? nearestVillageWake(p.x, p.y) : _wakeSpotOf(p)));
+  // ★[T88 ②] 마을 안이면 **먼저 먹인다** — 곳간이 비어 못 먹이면 구제가 아니라 죽음이다.
+  let meal = null;
   if (inVillage) {
+    meal = _villageMeal(p, (spot && spot.vid != null) ? spot.vid : (nearestVillageWake(p.x, p.y) || {}).vid);
+    if (meal && meal.empty) {
+      send(p.ws, { type: 'notice', text: '🏘️ 마을 곳간이 비었다 — 아무도 당신을 먹일 수 없었다…' });
+      console.log(`[${ZONE_ID}] 🏘️→⚰️ ${p.name} 마을 곳간 비어 구제 실패 — 야생과 같은 값`);
+      spot = wakeCellOf(_wakeSpotOf(p));   // 죽음이므로 깨어날 자리도 사망 사다리로
+    }
+  }
+  const rescued = inVillage && !(meal && meal.empty);
+  const delayMs = rescued
+    ? Math.max(0, DOWN_WAKE_GAMEMIN * 1000)          // 마을 이송은 **종전 고정**(옮겨 주는 것이다)
+    : _wakeDelayMs(p.x, p.y, spot);                  // ★[T88 ①] 야생은 거리의 함수
+  if (rescued) {
     // ── 마을 안 불사 — 죽지 않는다. 짐도 그대로다. 마을 사람이 쉼터로 옮긴다.
     p._deadUntil = Date.now() + delayMs;
     p._wakeSpot = spot ? { x: spot.x, y: spot.y } : null;
-    p._wakeMsg = `🏘️ 마을 사람들이 당신을 쉼터로 옮겼다 — ${spot && spot.name ? spot.name + '에서 ' : ''}깨어났다`;
+    p._wakeMsg = `🏘️ 마을 사람들이 당신을 쉼터로 옮겼다 — ${spot && spot.name ? spot.name + '에서 ' : ''}깨어났다`
+               + ((meal && meal.fed) ? ' · 마을 사람이 죽 한 그릇을 먹였다' : '');
     p._diedInWild = false;
     send(p.ws, { type: 'notice', text: '🏘️ 마을 안이다 — 누군가 당신을 발견했다…' });
-    console.log(`[${ZONE_ID}] 🏘️ ${p.name} 마을 안 구제 — 쉼터 이송 대기`);
+    console.log(`[${ZONE_ID}] 🏘️ ${p.name} 마을 안 구제 — 쉼터 이송 대기`
+      + ((meal && meal.fed) ? ` · 곳간 한 끼(${meal.item} ${meal.qty} · 남은 ${meal.stockAfter})` : ''));
     return;
   }
   // ── 야생 사망 ───────────────────────────────────────────────────────────

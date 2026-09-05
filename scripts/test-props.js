@@ -73,8 +73,25 @@ for (const k of worldKeys) {
 }
 
 console.log('\n[② 아이콘 키 ⊆ 세계 키 — 같은 모델에서 나왔는가]');
+// ★[T97] 세계 키가 두 갈래다 — 건물 행(`PROPS`) 과 실내 장식(`DECOR`).
+//   장식은 서버 건물 타입도 아이콘도 없다(짐에 안 들어간다 · 해체 대상이 아니다 — §0-ⓑ).
+//   그래서 `btype`·`icon` 을 묻는 검사는 **건물 행에만** 묻고, 장식은 장식대로 따로 묻는다.
+const decorKeys = worldKeys.filter(k => A[k].decor === true).sort();
+const propKeys = worldKeys.filter(k => A[k].decor !== true);
 {
-  const icons = [...new Set(worldKeys.map(k => A[k].icon))].sort();
+  const nDecor = (fs.readFileSync(RENDER_PY, 'utf8').match(/^\s*dict\(key='/gm) || []).length;
+  ok(decorKeys.length === nDecor,
+     `실내 장식 ${nDecor}종 = 굽는 표 \`DECOR\` 항목 수 (실측 ${decorKeys.length}): ${decorKeys.join(' ')}`);
+  for (const k of decorKeys) {
+    const a = A[k];
+    ok(a.icon === null && a.btype === null,
+       `${k}: 아이콘·건물타입 둘 다 null (장식은 렌더 하나 — 아이콘은 회부)`);
+    ok(Math.abs(a.zmax_px - a.body_px) <= 1.0,
+       `${k}: 모델 실측 z ${a.zmax_px}px ≒ 몸체 ${a.body_px}px (±1 — 서버 대조가 없으니 이 줄이 유일한 자다)`);
+  }
+}
+{
+  const icons = [...new Set(propKeys.map(k => A[k].icon))].sort();
   // ★[T95] 종전엔 `=== 8` 이 박혀 있었다 — 물건이 늘면 검사기가 먼저 거짓말한다.
   //   수는 **굽는 표에서 유도**한다(`props_render.py PROPS` 의 항목 수). 표가 정본이다.
   const nProps = (fs.readFileSync(RENDER_PY, 'utf8').match(/^\s*dict\(icon='/gm) || []).length;
@@ -83,22 +100,22 @@ console.log('\n[② 아이콘 키 ⊆ 세계 키 — 같은 모델에서 나왔�
   for (const ic of icons) {
     const p = path.join(ICON_DIR, ic + '.png');
     const has = fs.existsSync(p);
-    const owned = worldKeys.filter(k => A[k].icon === ic);
+    const owned = propKeys.filter(k => A[k].icon === ic);
     let sz = null;
     if (has) sz = pngSize(p);
     ok(has && sz.w === 96 && sz.h === 96 && owned.length >= 1,
       `${ic}.png 96×96 · 세계 변형 ${owned.length}종(${owned.join(',')})`);
   }
   // 아이콘만 있고 세계 그림이 없는 가구가 있으면 그건 캐논 위반이다(§1-5).
-  const orphan = worldKeys.filter(k => !A[k].icon);
-  ok(orphan.length === 0, `아이콘 없는 세계 키 0 ${orphan.length ? JSON.stringify(orphan) : ''}`);
+  const orphan = propKeys.filter(k => !A[k].icon);
+  ok(orphan.length === 0, `아이콘 없는 건물 세계 키 0 ${orphan.length ? JSON.stringify(orphan) : ''}`);
 }
 
 console.log('\n[③ 크기 정합 — 서버 BUILDING_HEIGHT 가 정본]');
 {
   const BH = buildingHeights();
   ok(!!BH, 'server/zone.js 에서 BUILDING_HEIGHT 표를 읽었다');
-  for (const k of worldKeys) {
+  for (const k of propKeys) {
     const a = A[k], h = BH ? BH[a.btype] : undefined;
     ok(h !== undefined, `${k}: 서버에 건물 타입 '${a.btype}' 이 있다`);
     if (h === undefined) continue;
@@ -115,7 +132,7 @@ console.log('\n[③ 크기 정합 — 서버 BUILDING_HEIGHT 가 정본]');
   ok(declared.length === nDict,
      `props_render.py 의 선언 ${nDict}종을 전부 읽었다 (실측 ${declared.length})`);
   for (const d of declared) {
-    const mine = worldKeys.filter(k => A[k].btype === d.t);
+    const mine = propKeys.filter(k => A[k].btype === d.t);
     ok(mine.length > 0 && mine.every(k => A[k].body_px === d.b && A[k].flame_px === d.f),
       `${d.t}: 스크립트 선언 ${d.b}+${d.f} = 앵커 기록`);
   }
@@ -147,20 +164,29 @@ console.log('\n[④ 소스 검사 — 가구·시설 절에 몸체 도형 0]');
       .split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');   // 주석 줄은 소스가 아니다
     const shapes = (strippedForShapes.match(/ctx\.fill\(\)/g) || []).length;
     const rects = (strippedForShapes.match(/ctx\.fillRect\(/g) || []).length;
+    // 예외는 **하나씩 이름을 붙인다** — 수를 헐겁게 잡으면 검사기가 먼저 거짓말한다(T95 교훈).
     const allowFill = s0.t === 'campfire' ? 2                     // 불꽃 두 겹(코드가 얹는 상태)
-      // ★[T95] 농지 3 = 마을 시뮬 경작지 카펫 타일(논/밭 띠 — T6 이 의도적으로 남긴 층) 2 + 그림자 1.
-      //   그 층은 **셀을 꽉 채워 띠가 이어져 보이게** 하는 다른 그림이라 스프라이트로 안 덮는다(회부).
-      : s0.t === 'farmland' ? 3
-      // ★[T95] 바닥 4 = 움집 실내(거적 침상·화덕) — **바닥이 아니라 실내 가구**다. 층 표시 테두리는 stroke 라 안 센다.
-      : s0.t === 'floor' ? 4 : 0;
+      // ★[T97] 농지 1 = 스프라이트 밑 그림자 타원 하나. 마을 시뮬 카펫 띠(옛 2)는 **지웠다**
+      //   — 같은 '경작지'가 소유자에 따라 달리 보이면 정본이 둘이다(PM 판정 · 회부 2).
+      : s0.t === 'farmland' ? 1
+      // ★[T97] 바닥 1 = 화덕 잉걸빛 그라디언트 하나. **상태**라 남는다(모닥불 불꽃과 같은 경계 · T67 ⓒ).
+      //   침상·화덕 몸체(옛 3)는 `DECOR` 스프라이트 둘로 갔다.
+      : s0.t === 'floor' ? 1 : 0;
     const allowRect = s0.t === 'chest' ? 1                        // 거래소 이름표 배경 한 장
-      : s0.t === 'floor' ? 3 : 0;                                 // 움집 목침·잉걸 — 위와 같은 층
+      : s0.t === 'floor' ? 2 : 0;                                 // 잉걸 두 점 — 잉걸빛과 같은 상태(목침은 스프라이트로 갔다)
     ok(shapes <= allowFill && rects <= allowRect,
       `${s0.t}: 몸체 도형 0 (fill ${shapes}/${allowFill} · fillRect ${rects}/${allowRect})`);
     // ★[T95] 몸체를 **스프라이트에서** 그리는가. 길은 둘이다:
     //   · props 표의 물건 → `drawPropBody`(앵커 JSON 을 읽는 그 경로)
     //   · 농지 → `cropSprite`(몸이 밭 스프라이트다 — T79c 8군 × 4단계. props 표에 또 만들면 사본이다)
     const viaProp = /drawPropBody\(/.test(strippedForShapes);
+    if (s0.t === 'floor') {                                        // ★[T97] 실내 둘을 이름으로 확인
+      for (const k of ['bed', 'hearth']) {
+        ok(new RegExp(`drawPropBody\\('${k}'`).test(strippedForShapes),
+           `floor 절: 실내 ${k} 을 \`drawPropBody('${k}')\` 로 그린다`);
+        ok(!!A[k], `앵커에 ${k} 가 있다(장식 표가 구웠다)`);
+      }
+    }
     const viaCrop = s0.t === 'farmland' && /cropSprite\(/.test(strippedForShapes);
     ok(viaProp || viaCrop,
       `${s0.t}: 몸체를 스프라이트에서 그린다 (${viaProp ? 'drawPropBody' : ''}${viaCrop ? 'cropSprite' : ''})`);
@@ -172,6 +198,99 @@ console.log('\n[④ 소스 검사 — 가구·시설 절에 몸체 도형 0]');
     if (new RegExp(`['"\`]${k}['"\`]\\s*:\\s*\\[`).test(src)) { ok(false, `클라에 ${k} 앵커 사본이 있다`); }
   }
   ok(true, '클라에 앵커 수치 사본 0');
+}
+
+console.log('\n[⑤ 자연물 앵커·잠금 — 굽는 표가 정본이다 (T97)]');
+{
+  const NAT_PY = path.join(ROOT, 'scripts', 'nature_render.py');
+  const NAT_DIR = path.join(ROOT, 'public', 'assets', 'nature');
+  const TREE_DIR = path.join(ROOT, 'public', 'assets', 'trees');
+  const NAT_ANCH = path.join(NAT_DIR, 'nature_anchors.json');
+  const py = fs.existsSync(NAT_PY) ? fs.readFileSync(NAT_PY, 'utf8') : '';
+  // 수는 **굽는 표에서 유도**한다 — 손으로 적으면 표가 늘 때 검사기가 먼저 거짓말한다(T95 교훈).
+  const tblCount = (name) => {
+    const m = py.match(new RegExp(`^${name} = \\[([\\s\\S]*?)^\\]`, 'm'));
+    return m ? (m[1].match(/^\s*\("/gm) || []).length : -1;
+  };
+  const nTree = tblCount('TREE_BUILD'), nProp = tblCount('PROP_BUILD');
+  ok(nTree > 0 && nProp > 0, `굽는 표 — TREE_BUILD ${nTree} · PROP_BUILD ${nProp}`);
+  ok(fs.existsSync(NAT_ANCH), 'public/assets/nature/nature_anchors.json 이 있다');
+  if (fs.existsSync(NAT_ANCH) && nTree > 0) {
+    const NA = JSON.parse(fs.readFileSync(NAT_ANCH, 'utf8'));
+    const keys = Object.keys(NA);
+    // ★[T101] 앵커 키 = **구운 것**(굽는 표 두 개) + **파생한 것**(광맥 — 모델이 아니라 바위의 변색).
+    //   파생 수도 손으로 안 적는다: `ore-outcrop.py` 의 `N_EACH` 가 정본이다.
+    const oreN = (() => {
+      const t = fs.readFileSync(path.join(ROOT, 'scripts', 'ore-outcrop.py'), 'utf8');
+      const m = t.match(/^N_EACH\s*=\s*(\d+)/m) || t.match(/range\(1,\s*(\d+)\s*\)/);
+      return m ? (m[1].length && +m[1] > 6 ? +m[1] - 1 : +m[1]) : -1;
+    })();
+    ok(keys.length === nTree + nProp + oreN,
+       `앵커 ${keys.length}키 = 구운 ${nTree}+${nProp} + 파생 ${oreN}(광맥 — 바위의 변색이지 모델이 아니다)`);
+    const trees = keys.filter(k => NA[k].kind === 'tree');
+    ok(trees.length === nTree, `kind=tree ${trees.length} = TREE_BUILD ${nTree}`);
+    // PNG 실측 — 나무는 trees/, 소품은 nature/. w·h 는 IHDR 과 정확히 같아야 한다.
+    let sizeBad = [];
+    for (const k of keys) {
+      const p2 = path.join(NA[k].kind === 'tree' ? TREE_DIR : NAT_DIR, k + '.png');
+      if (!fs.existsSync(p2)) { sizeBad.push(k + '(없음)'); continue; }
+      const sz = pngSize(p2);
+      if (sz.w !== NA[k].w || sz.h !== NA[k].h) sizeBad.push(`${k} ${sz.w}×${sz.h}≠${NA[k].w}×${NA[k].h}`);
+    }
+    ok(sizeBad.length === 0, `앵커 ${keys.length}키 ↔ PNG 크기 전수 일치` +
+       (sizeBad.length ? ` — ${sizeBad.slice(0, 4).join(', ')}` : ''));
+    // ppu — 자연물은 **고해상 배포**다(가구와 규격이 다르다). 굽는 루프의 `ss=` 가 정본.
+    const PPU = 64 / Math.SQRT2;
+    const ssT = +(py.match(/render\(key, ss=(\d+), margin=\d+\)\n\s*anchors\[key\]\["kind"\] = "tree"/) || [])[1];
+    const ssP = +(py.match(/render\(key, ss=(\d+), margin=\d+\)\n\s*anchors\[key\]\["kind"\] = "prop"/) || [])[1];
+    ok(ssT > 0 && ssP > 0, `굽는 루프의 배수 — 나무 ×${ssT} · 소품 ×${ssP}`);
+    const ppuBad = keys.filter(k => Math.abs(NA[k].ppu - PPU * (NA[k].kind === 'tree' ? ssT : ssP)) > 0.01);
+    ok(ppuBad.length === 0, `ppu 전수 = 45.255×배수 (어긋남 ${ppuBad.length}${ppuBad.length ? ': ' + ppuBad.slice(0, 4).join(', ') : ''})`);
+    // ★★[T101] T97 회부 1 이 닫혔다 — 바위 12 는 이제 `nature_render.py` 가 굽고(PROP_BUILD),
+    //   광맥 6 은 `ore-outcrop.py` 가 그 바위에서 파생하며 **앵커까지 복사**한다.
+    //   ⇒ 앵커 밖 PNG 는 **0** 이어야 한다. 하나라도 남으면 클라가 자리를 모르는 그림이 있다는 뜻이다.
+    const strayNat = fs.readdirSync(NAT_DIR).filter(f => f.endsWith('.png'))
+      .map(f => f.slice(0, -4)).filter(k => !NA[k]).sort();
+    ok(strayNat.length === 0,
+       `앵커 밖 PNG 0장 (남은 것 ${strayNat.length}${strayNat.length ? ': ' + strayNat.slice(0, 6).join(', ') : ''})`);
+    // 광맥은 **모델이 아니다** — 바위에서 파생한다. 실루엣이 같으니 앵커도 같아야 한다.
+    {
+      const off = [...Array(6)].map((_, i) => String(i + 1).padStart(2, '0'))
+        .filter(n => JSON.stringify(NA['ore' + n]) !== JSON.stringify(NA['rock' + n]));
+      ok(off.length === 0,
+         `광맥 6키 앵커 = 바위 6키 앵커(실루엣이 같으니 자리도 같다 · 어긋남 ${off.length})`);
+    }
+    // 바위 12 가 굽는 표에 있다 — 저장소 밖 스크립트가 굽던 것이 안으로 들어왔는가.
+    {
+      const want = [...Array(6)].flatMap((_, i) => {
+        const n = String(i + 1).padStart(2, '0'); return ['rock' + n, 'mossrock' + n];
+      });
+      const miss = want.filter(k => !new RegExp(`\\("${k}", rock,`).test(py));
+      ok(miss.length === 0,
+         `막돌·이끼바위 12키가 \`nature_render.py PROP_BUILD\` 에 있다 (없는 것 ${miss.length})`);
+      // ★주석 줄은 소스가 아니다 — 여기 `hash(kind)` 는 **왜 지웠는지 적은 문장** 안에 있다
+      //   (T95 에서 주석 속 따옴표 토큰이 검사기를 속인 그 함정).
+      const pyCode = py.split('\n').filter(l => !/^\s*#/.test(l)).join('\n');
+      ok(/_KSEED = \{/.test(pyCode) && !/hash\(kind\)/.test(pyCode),
+         '바위 씨앗이 정수로 못 박혀 있다(`hash(str)` 은 프로세스마다 달라 재현이 안 됐다 · T101 §0-ⓐ)');
+    }
+    const strayTree = fs.readdirSync(TREE_DIR).filter(f => f.endsWith('.png'))
+      .map(f => f.slice(0, -4)).filter(k => !NA[k]);
+    ok(strayTree.length === 0, `trees/ 미아 PNG 0 ${strayTree.length ? JSON.stringify(strayTree) : ''}`);
+    // 잠금 — 자연물·나무도 잠금표에 든다(다음 재굽기가 여기와 대조한다).
+    const LOCK = path.join(ROOT, 'public', 'assets', 'icons.lock.json');
+    if (fs.existsSync(LOCK)) {
+      const lock = JSON.parse(fs.readFileSync(LOCK, 'utf8'));
+      for (const [grp, n] of [['nature', nProp + oreN], ['trees', nTree]]) {
+        const t = lock[grp] || {};
+        ok(Object.keys(t).length === n, `잠금표 ${grp} ${Object.keys(t).length}키 (기대 ${n})`);
+      }
+      ok(!lock._기계_예외,
+         "잠금표에 '다른 기계' 예외가 **없다** — 배포하는 그림을 전부 이 저장소가 굽는다(T97 회부 1 닫힘)");
+      ok(typeof lock._범프 === 'string' && /Distance/.test(lock._범프),
+         '잠금표가 5.0 범프 기본값 변경(Distance 1.0 → 0.001)을 적어 뒀다');
+    } else ok(false, 'icons.lock.json 이 있다');
+  }
 }
 
 if (SELFTEST) {

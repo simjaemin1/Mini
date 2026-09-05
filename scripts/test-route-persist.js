@@ -74,6 +74,27 @@ async function jfetch(u, tries = 4, ms = 20000) {
   throw last;
 }
 const jget = async (u, ms) => (await jfetch(u, 4, ms)).json();
+// ★★[T89] **진짜 접속 하나** — "접속 중에도 데운다"를 재려면 사람이 실제로 붙어 있어야 한다.
+//   브라우저를 띄우지 않는다(이 하네스는 `test-*` 다) — `ws` 로 존에 그대로 들어간다
+//   (`test-guest-identity` 와 같은 문법 · 서버가 보는 것은 똑같은 플레이어다).
+const WebSocket = require('ws');
+function connectWs(qs) {
+  return new Promise((resolve, reject) => {
+    const ws = new WebSocket(`ws://localhost:${ZPORT}/?${qs}`);
+    const st = { ws, welcome: null, hb: null };
+    const t = setTimeout(() => reject(new Error('welcome timeout')), 20000);
+    ws.on('message', (raw) => {
+      let m; try { m = JSON.parse(String(raw)); } catch (e) { return; }
+      if (m.type === 'welcome' && !st.welcome) { st.welcome = m; clearTimeout(t); resolve(st); }
+    });
+    ws.on('error', (e) => { clearTimeout(t); reject(e); });
+    // ★★심장박동 — **없으면 30초 만에 쫓겨난다**(`zone.js`: "player: 30초간 input/ping 없으면 terminate").
+    //   실측으로 걸렸다: 30초 창을 재는데 39/44 표본에서만 사람이 보였다 — 정책이 아니라
+    //   **내 하네스 손님이 조용해서 쫓겨난 것**이었다. 진짜 클라도 ping 을 보낸다(사본 아님 · 같은 규약).
+    st.hb = setInterval(() => { try { ws.send(JSON.stringify({ type: 'ping', t: Date.now() })); } catch (e) {} }, 2000);
+  });
+}
+const closeWs = (st) => new Promise((r) => { if (st.hb) clearInterval(st.hb); try { st.ws.on('close', r); st.ws.close(); } catch (e) { r(); } setTimeout(r, 1500); });
 const cp = (src, dst) => { for (const sfx of ['', '-wal', '-shm']) { try { fs.copyFileSync(src + sfx, dst + sfx); } catch (e) { try { fs.unlinkSync(dst + sfx); } catch (e2) {} } } };
 
 // ★DB 를 **지우지 않고** 다시 띄운다 — 그게 이 하네스의 주제(재기동해도 남는가)다.
@@ -194,9 +215,10 @@ async function runDays(n) {
   ok(W0.warmGapMs === WGAP && W0.warmIdleMs === WIDLE, '⑦ [상황] 이 판의 예산이 실제로 먹혔다(사본이 아니라 서버가 말한다)',
     `간격 ${W0.warmGapMs}ms · 유예 ${W0.warmIdleMs}ms`);
 
-  // ── ⑦b **유예** — 사람이 나간(=부팅한) 직후에는 한 쌍도 안 데운다.
-  //   왜 이 줄이 있나: 나간 사람의 저장이 아직 소켓 밖으로 못 나갔다. 그때 A* 를 돌리면 그 쓰기가
-  //   루프 순번을 못 받는다 — 그게 `e2e-rumor ⑦`("부재 0일")을 깨뜨린 그 자리다.
+  // ── ⑦b **부팅 유예** — 큐가 선 직후에는 한 쌍도 안 데운다.
+  //   ★★[T89] 유예의 **뜻이 좁아졌다**: 종전엔 "마지막 사람이 나간 지"였고 지금은 "**부팅한 지**"다.
+  //     T42-b 가 그 유예에 준 이유는 두 갈래였다 — ① 막 나간 사람이 곧바로 돌아온다 ② 재기동 = 접속이 몰리는 때.
+  //     ①은 한 걸음이 2.4초일 때만 아팠고 T85 뒤 31ms 다 ⇒ 지워졌다. ②는 여전히 참이라 남았다.
   //   ★★밖에서 시계로 재면 안 된다 — 유예는 **큐가 선 순간**부터 흐르는데 그 순간을 밖에서 모른다
   //     (`up()` 가 /health 를 기다린 뒤 마을 init 이 더 걸린다). 한 판이 그것 때문에 1쌍 차이로 떨어졌다.
   //     ⇒ 서버가 **남은 유예**(`warmIdleLeftMs`)를 그대로 말하고, 그게 남아 있는 동안만 판정한다.
@@ -211,8 +233,90 @@ async function runDays(n) {
   ok(idleN >= 8, '⑦ [상황] 유예 창을 실제로 여러 번 들여다봤다(자명 통과 금지)', `${idleN}회 · 간격 400ms`);
   ok(idleN * 400 / WGAP > 30, '⑦ [상황] 그 창이 충분히 넓다(유예가 없었다면 수십 쌍은 데워졌을 창)',
     `${idleN * 400}ms ÷ ${WGAP}ms = 약 ${Math.round(idleN * 400 / WGAP)}쌍`);
-  ok(idleBad === 0, '⑦ ★★유예가 지켜진다 — 그 창 안에서는 **한 쌍도 안 데운다**',
+  ok(idleBad === 0, '⑦ ★★부팅 유예가 지켜진다 — 그 창 안에서는 **한 쌍도 안 데운다**',
     idleBad ? `${idleBad}/${idleN}회 위반 · 첫 사례 ${idleWorst}` : `${idleN}회 전부 0쌍`);
+
+  // ── ★★[T89 2026-09-04 재민 확정] ⑦d **접속 중에도 데운다** ─────────────────────
+  //   T42-b 는 *"사람이 있으면 멈춘다"* 였다 — 한 걸음이 최대 2,393ms 라 사람이 붙어 있을 때 데우면
+  //   경계 스파이크를 평시 스파이크로 바꾸는 것뿐이었기 때문이다. T85 가 그 전제를 없앴다(최악 31ms).
+  //   ⇒ 이 절은 그 정책 변경이 **실제로 일어났는지**를 잰다. 자명 통과 금지가 이 절의 전부다:
+  //     ⓐ 사람이 **정말로** 붙어 있는지(서버가 `humans` 로 말한다 — 하네스가 세지 않는다)
+  //     ⓑ 그 창 안에서 남은 쌍이 **실제로 줄었는지**(종전 정책이면 0이다 — 그게 대조다)
+  //     ⓒ 그러는 동안 한 조각이 **예산 안**인지(T85 가 산 그것을 여기서도 지키는지)
+  //   ⚠부팅 유예가 끝나기를 **먼저** 기다린다 — 유예 안에서 재면 "안 데운다"가 정책 때문인지
+  //     유예 때문인지 갈리지 않는다(그러면 이 절이 ⑦b 를 두 번 재는 꼴이다).
+  for (let i = 0; i < 300; i++) {
+    const W = await jget(`http://localhost:${ZPORT}/routedbg`);
+    if (!(W.warmIdleLeftMs > 0)) break;
+    await sleep(Math.min(2000, W.warmIdleLeftMs + 100));
+  }
+  let wsA = null;
+  try { wsA = await connectWs('name=%EB%8D%B0%EC%9A%B0%EA%B8%B0%EC%86%90%EB%8B%98'); await sleep(1500); } catch (e) { wsA = null; }
+  ok(!!(wsA && wsA.welcome), '⑦d [상황] 사람 하나가 **실제로 접속했다**(가짜 플래그가 아니라 진짜 ws)',
+    wsA && wsA.welcome ? `pid ${wsA.welcome.pid || wsA.welcome.playerId || '?'}` : '접속 실패');
+  const Wc0 = await jget(`http://localhost:${ZPORT}/routedbg`);
+  ok((Wc0.humans | 0) >= 1, '⑦d [상황] 서버도 **사람이 있다**고 말한다(그래야 아래가 뜻을 갖는다)', `humans=${Wc0.humans}`);
+  ok(Wc0.warmLeft > 20, '⑦d [상황] 아직 데울 쌍이 넉넉히 남아 있다', `남은 ${Wc0.warmLeft}/${Wc0.warmTotal}`);
+  //   ★§0-ⓑ 표를 여기서 만든다 — "접속 중 워밍의 비용"은 데운 쌍 수만으로는 못 읽는다.
+  //     `ioBusy` 가 참인 비율(=정책이 아니라 **일**이 멈춘 비율)과 `pathDrop`(다른 탐색이 슬롯을 뺏은 수)을
+  //     같이 재야 왜 느린지가 갈린다. 서버가 말하는 값만 쓴다(하네스가 세지 않는다 · 사본 금지).
+  const P0c = await jget(`http://localhost:${ZPORT}/perf`);
+  const pr0 = (P0c.econTick && P0c.econTick.probe) || {};
+  const tC = Date.now();
+  let Wc = Wc0, humanSeen = 0, look = 0, busySeen = 0;
+  let hcMax = 0, hcLast = Date.now(), hcN = 0, hcStop = false;
+  const hcPing = (async () => {
+    while (!hcStop) {
+      try { await fetch(`http://localhost:${ZPORT}/health`, { headers: { connection: 'close' }, signal: AbortSignal.timeout(30000) });
+        const t = Date.now(); hcN++; if (t - hcLast > hcMax) hcMax = t - hcLast; hcLast = t; } catch (e) {}
+      await sleep(100);
+    }
+  })();
+  for (let i = 0; i < 80 && (Date.now() - tC) < 30000; i++) {
+    await sleep(400);
+    Wc = await jget(`http://localhost:${ZPORT}/routedbg`);
+    look++; if ((Wc.humans | 0) >= 1) humanSeen++; if (Wc.ioBusy) busySeen++;
+    if (Wc0.warmLeft - Wc.warmLeft >= 20) break;
+  }
+  hcStop = true; await hcPing;
+  const warmedWithHuman = Wc0.warmLeft - Wc.warmLeft;
+  const secC = Math.max(1, Math.round((Date.now() - tC) / 1000));
+  const P1c = await jget(`http://localhost:${ZPORT}/perf`);
+  const prC = (P1c.econTick && P1c.econTick.probe) || {};
+  console.log(`  §0-ⓑ 접속 중 워밍 — ${secC}초 · 데운 쌍 ${warmedWithHuman} (${(warmedWithHuman / secC).toFixed(2)}쌍/초)`);
+  console.log(`      ioBusy 참 ${busySeen}/${look} (${Math.round(busySeen / Math.max(1, look) * 100)}%) · pathJobs +${(prC.pathJobs | 0) - (pr0.pathJobs | 0)} · pathDrop +${(prC.pathDrop | 0) - (pr0.pathDrop | 0)}`);
+  console.log(`      /health 응답 간격 최대 ${hcMax}ms (${hcN}회) — 종전 T42-b 실측 2,687ms`);
+  // ⚠**내내**로 잰다(느슨하게 풀지 않는다). 한때 39/44 로 떨어졌는데 원인은 정책이 아니라
+  //   조용한 손님이 30초 만에 쫓겨난 것이었다(`connectWs` 의 심장박동 주석) — 그 자리를 고쳤다.
+  ok(humanSeen === look && look >= 5,
+    '⑦d [상황] 재는 **내내** 사람이 붙어 있었다(중간에 끊겼으면 이 절은 헛것이다)',
+    `${humanSeen}/${look}회`);
+  ok(warmedWithHuman > 0, '★★⑦d **접속 중에도 데운다** — 종전 정책이었다면 0이다(T42 회부 2 종결)',
+    `${secC}초 동안 ${warmedWithHuman}쌍 (남은 ${Wc0.warmLeft} → ${Wc.warmLeft})`);
+  ok(hcMax <= 1500, '★★⑦d 사람이 붙어 있는 동안 **서버가 계속 대답한다**(종전 한 걸음 2,687ms → 조각)',
+    `/health 응답 간격 최대 ${hcMax}ms`);
+  {
+    const Pc = await jget(`http://localhost:${ZPORT}/perf`);
+    const pr = (Pc.econTick && Pc.econTick.probe) || {};
+    const slice = Pc.sliceMs | 0;
+    ok((pr.pathJobs | 0) > 0, '⑦d [상황] 재개형으로 판 길이 실제로 있다', `${pr.pathJobs}쌍`);
+    ok((pr.pathSliceMax | 0) <= slice + (pr.pathChunkMax | 0) + 20,
+      '★⑦d 접속 중에도 **한 조각이 예산 안**이다(T85 가 산 것을 정책이 안 깎았다)',
+      `한 조각 최대 ${pr.pathSliceMax}ms ≤ 예산 ${slice}ms + 알갱이 ${pr.pathChunkMax}ms + 20ms`);
+  }
+  // ⑦e ★`ioBusy` 술어는 **그대로다** — 지금 밀려 있는 쓰기가 있으면 손을 뗀다.
+  //   (정책을 풀면서 이것까지 풀면 `e2e-rumor ⑦`("부재 0일")이 되돌아온다.)
+  {
+    const src = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8');
+    const body = (() => { const i = src.indexOf('function _routeWarmStep'); if (i < 0) return '';
+      const j = src.indexOf('\nfunction ', i + 10); return src.slice(i, j > 0 ? j : src.length); })();
+    ok(body.length > 300, '⑦e [상황] `_routeWarmStep` 본문을 통째로 잡았다(창이 짧으면 아래가 헛것이다)', `${body.length}자`);
+    ok(/d\.ioBusy && d\.ioBusy\(\)/.test(body), '★★⑦e `ioBusy` 술어가 **살아 있다** — 밀려 있는 쓰기가 있으면 손을 뗀다');
+    ok(!/isNpc\)\s*\{[^}]*return/.test(body), '★⑦e 사람 존재로 **멈추는 줄이 없다**(정책이 실제로 풀렸다 — 주석이 아니라 코드로)');
+    ok(/ROUTE_WARM_GAP_MS/.test(body) && /ROUTE_WARM_IDLE_MS/.test(body),
+      '⑦e 두 수(유예·간격)는 **그대로 쓰인다** — 새 손잡이 0');
+  }
+  if (wsA) await closeWs(wsA);
 
   // ── ⑦c 데우는 동안 **서버가 계속 대답하는가**. /health 를 100ms 로 두드려 응답 간격 최대를 잰다.
   //   ⚠한 걸음(A*) 동안은 어차피 막힌다 — 못 줄인다(정본 수술 금지 · 재개 가능 A* 는 회부).
@@ -239,7 +343,7 @@ async function runDays(n) {
   console.log(`    ↳ 데우는 동안 이벤트 루프 최대 막힘 ${WP.loop ? WP.loop.max : '?'}ms (p99 ${WP.loop ? WP.loop.p99 : '?'}) · 한 걸음 최대 ${wRouteMax}ms`);
   console.log(`    ↳ /health 응답 간격 최대 ${hMax}ms (${hN}회 두드림) — **걸음보다 오래 막히면 안 된다**`);
   console.log(`    ↳ 폴링 재시도 ${_netRetry}회 (끊긴 소켓 재접속 — 0이 정상, 러너 부하에서만 는다)`);
-  ok(W1.warmLeft === 0, '⑥ ★★사람이 없는 동안 **선계산이 완주한다**', `남은 ${W1.warmLeft}/${W0.warmTotal}`);
+  ok(W1.warmLeft === 0, '⑥ ★★선계산이 **완주한다**(★[T89] 접속 여부와 무관하게)', `남은 ${W1.warmLeft}/${W0.warmTotal}`);
   ok(warmMs >= W0.warmTotal * WGAP * 0.7, '⑦ ★간격이 실제로 지켜진다(걸음 사이를 쉬었다)',
     `완주 ${warmMs}ms ≥ ${W0.warmTotal}쌍 × ${WGAP}ms × 0.7 = ${Math.round(W0.warmTotal * WGAP * 0.7)}ms`);
   ok(hN > 100, '⑦ [상황] /health 를 실제로 여러 번 두드렸다(자명 통과 금지)', `${hN}회`);

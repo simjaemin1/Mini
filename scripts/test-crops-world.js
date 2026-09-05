@@ -68,21 +68,109 @@ if (C) {
 }
 
 // ── ① 32장 존재·치수·알파 ──────────────────────────────────────
-console.log('\n[① 8군 × 4단계 = 32장 · 64×64 · 알파]');
+// ★★[T101] 계약이 바뀌었다 — 종전은 `64×64 정사각`이었다. 그건 **아이콘 패스** 산물의 모양이고,
+//   64×32 셀 다이아와 애초에 안 맞았다(T97 §0-ⓒ). 이제 세계 패스라 크기가 장마다 다르고
+//   자리는 앵커 JSON 이 말한다. ⇒ 새 계약: **밭 바닥이 정확히 셀 다이아**이고 **이웃과 붙는다**.
+console.log('\n[① 8군 × 4단계 = 32장 · 앵커 JSON · 바닥 = 셀 다이아 64px]');
+const ANCH_P = path.join(DIR, 'crops_anchors.json');
+ok(fs.existsSync(ANCH_P), 'crops_anchors.json 이 배치돼 있다');
+const AN = fs.existsSync(ANCH_P) ? JSON.parse(fs.readFileSync(ANCH_P, 'utf8')) : {};
 const meta = {};
 let bad = 0;
 for (const s of SLUGS) for (let st = 0; st < 4; st++) {
   const k = `${s}_${st}`, p = path.join(DIR, k + '.png');
   if (!fs.existsSync(p)) { ok(false, `${k}.png 없음`); bad++; continue; }
   const m = png(p); meta[k] = m;
-  if (m.w !== 64 || m.h !== 64) { ok(false, `${k}.png ${m.w}×${m.h} (64 아님)`); bad++; }
+  const a = AN[k];
+  if (!a) { ok(false, `${k}: 앵커 JSON 에 없다`); bad++; continue; }
+  if (m.w !== a.w || m.h !== a.h) { ok(false, `${k}.png ${m.w}×${m.h} ≠ 앵커 ${a.w}×${a.h}`); bad++; }
   else if (!(m.clear > 0 && m.solid > 0)) { ok(false, `${k}.png 알파가 죽었다`); bad++; }
 }
-ok(bad === 0, `32장 전수 — 64×64 · 알파 살아 있음 (어긋남 ${bad})`);
+ok(bad === 0, `32장 전수 — 앵커 ↔ PNG 크기 일치 · 알파 살아 있음 (어긋남 ${bad})`);
+{
+  const PPU = +(64 / Math.SQRT2).toFixed(3);
+  const off = Object.keys(AN).filter((k) => Math.abs(AN[k].ppu - PPU) > 0.01);
+  ok(Object.keys(AN).length === 32 && off.length === 0,
+     `앵커 ${Object.keys(AN).length}키 · ppu 전수 = ${PPU}(게임 해상도 — 가구와 같은 규격)` +
+     (off.length ? ` 어긋남 ${JSON.stringify(off.slice(0, 4))}` : ''));
+  // ★바닥이 셀 다이아인가 — 가장 넓은 불투명 행이 **정확히 64px** 이어야 한다(1셀 = 64px).
+  //   눈대중 48/64 를 클라에 적던 시절의 반대다: 이제 굽는 쪽이 셀을 맞추고 클라는 앵커만 읽는다.
+  // ★문턱은 **절반 피복(α≥128)** 이다 — 다이아의 뾰족한 좌우 끝은 화소를 반만 덮으므로
+  //   "거의 불투명(α>200)" 으로 재면 `bean_2`·`spice_3` 이 63 으로 나온다(실측 · 안티에일리어싱).
+  //   모양의 폭을 재는 표준 정의가 절반 피복이고, 후처리 크롭도 같은 사상이다
+  //   (`nature-postprocess.py ALPHA_MIN`). α≥128 로 재면 32장 전수 정확히 64 다.
+  const wide = [];
+  for (const k of Object.keys(meta)) {
+    const m = meta[k]; let best = 0;
+    for (let y = 0; y < m.h; y++) {
+      let lo = -1, hi = -1;
+      for (let x = 0; x < m.w; x++) { if (m.data[(y * m.w + x) * 4 + 3] >= 128) { if (lo < 0) lo = x; hi = x; } }
+      if (lo >= 0) best = Math.max(best, hi - lo + 1);
+    }
+    wide.push([k, best]);
+  }
+  const s0 = wide.filter(([k]) => k.endsWith('_0'));
+  const off0 = s0.filter(([, w]) => w !== 64);
+  ok(off0.length === 0,
+     `단계 0 여덟 장의 가장 넓은 행 = 64px(셀 다이아 폭) ` +
+     (off0.length ? `— 어긋남 ${JSON.stringify(off0)}` : `(전수 ${s0[0] ? s0[0][1] : '-'})`));
+  const under = wide.filter(([, w]) => w < 64);
+  ok(under.length === 0, `32장 전수 바닥이 셀을 덮는다(가장 넓은 행 ≥ 64px · 미달 ${under.length}` +
+     `${under.length ? ': ' + JSON.stringify(under) : ''})`);
+}
 {
   const files = fs.readdirSync(DIR).filter((f) => f.endsWith('.png')).map((f) => f.slice(0, -4));
   const orphan = files.filter((f) => !(f in meta));
   ok(orphan.length === 0, `옛 스프라이트가 안 남았다 (남은 것 ${orphan.length}${orphan.length ? ': ' + orphan.join(', ') : ''})`);
+}
+
+// ── ①-b 이음새 — 넉 장을 붙이면 구멍이 없다 ────────────────────────────
+console.log('\n[①-b 이음새 — 4×4 로 붙였을 때 안쪽에 구멍이 0]');
+{
+  // 셀 중심 화면 좌표: +x 이웃 (+32,+16) · +y 이웃 (−32,+16). 앵커로만 놓는다(델타 계산 0).
+  function tile(k, N) {
+    const m = meta[k], a = AN[k];
+    const pts = [];
+    for (let gy = 0; gy < N; gy++) for (let gx = 0; gx < N; gx++) pts.push([gx, gy, (gx - gy) * 32, (gx + gy) * 16]);
+    const xs = pts.map((p) => p[2] - a.ox), ys = pts.map((p) => p[3] - a.oy);
+    const W = Math.ceil(Math.max(...xs) + m.w - Math.min(...xs)) + 4;
+    const H = Math.ceil(Math.max(...ys) + m.h - Math.min(...ys)) + 4;
+    const buf = new Uint8Array(W * H);           // 알파만
+    const ox0 = -Math.min(...xs) + 2, oy0 = -Math.min(...ys) + 2;
+    for (const [, , sx, sy] of pts) {
+      const px = Math.round(sx - a.ox + ox0), py = Math.round(sy - a.oy + oy0);
+      for (let y = 0; y < m.h; y++) for (let x = 0; x < m.w; x++) {
+        const al = m.data[(y * m.w + x) * 4 + 3];
+        if (al > 200) buf[(py + y) * W + (px + x)] = 1;
+      }
+    }
+    return { buf, W, H, ox0, oy0, a };
+  }
+  // 안쪽 셀(1,1)~(2,2) 의 다이아 안에 구멍이 있으면 이음새가 벌어진 것이다.
+  function holes(k) {
+    const N = 4, t = tile(k, N);
+    let hole = 0, tot = 0;
+    for (let gy = 1; gy <= 2; gy++) for (let gx = 1; gx <= 2; gx++) {
+      const cx = (gx - gy) * 32 - t.a.ox + t.ox0 + t.a.ox;    // 셀 중심 = 앵커 자리
+      const cy = (gx + gy) * 16 - t.a.oy + t.oy0 + t.a.oy;
+      for (let dy = -15; dy <= 15; dy++) {
+        const half = 32 - Math.abs(dy) * 2;
+        for (let dx = -half + 1; dx <= half - 1; dx++) {
+          const X = Math.round(cx + dx), Y = Math.round(cy + dy);
+          if (X < 0 || Y < 0 || X >= t.W || Y >= t.H) continue;
+          tot++; if (!t.buf[Y * t.W + X]) hole++;
+        }
+      }
+    }
+    return { hole, tot };
+  }
+  const rows = SLUGS.map((s) => [s + '_0', holes(s + '_0')]);
+  const worst = rows.reduce((a, b) => (b[1].hole > a[1].hole ? b : a));
+  for (const [k, h] of rows) {
+    ok(h.hole === 0, `${k}: 안쪽 네 칸 다이아에 빈 화소 ${h.hole}/${h.tot}`);
+  }
+  console.log(`     ⇒ 가장 나쁜 것 ${worst[0]} ${worst[1].hole}/${worst[1].tot}. ` +
+              'T97 때는 타일이 43.5~45px 라 칸마다 좌우 ~9.5px 이 비었다(보고 T97 §0-ⓒ).');
 }
 
 // ── ③ 클라가 group 으로 고른다 ─────────────────────────────────

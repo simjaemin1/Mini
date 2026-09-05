@@ -1,32 +1,42 @@
-# nature_render.py — durango-mini 자연물 스프라이트(나무 12종 · 수풀 · 물가 술 · 들꽃) [배치 21]
-#   씬·조명 정본은 building_render.py / icon_render.py / bridge_render.py 계열과 **완전 동일**:
-#   Cycles · film_transparent · ORTHO · 태양 52°/-35° energy 3.6 · 월드 (0.52,0.56,0.6)@0.55 ·
+# nature_render.py — durango-mini 자연물 스프라이트(나무 12종 · 수풀 · 물가 술 · 들꽃)
+#   [배치 21 · T97 에서 `render_common` 편입 + bpy 5.0.1 재굽기 · 재민 확정 2026-09-05]
+#
+# ★★T97 편입 — 이 파일은 씬·헬퍼를 **자기 한 벌** 갖고 있었다(718줄 중 약 150줄).
+#   `icon`/`props` 가 T77 에서 겪은 그대로다: 두 벌이면 한쪽만 고쳐지는 날이 온다.
+#   ⇒ 씬 값·재질 문법(`principled`·`simple_mat`)·PNG 후처리·프레임 계산은 `render_common` 것,
+#     **모델 본문과 재질표 `M` 은 이 파일 것**(T77 §0-ⓒ — 팔레트는 파일마다 다르다).
+#   편입 자체는 **그림을 안 바꾼다**: 같은 컨테이너·같은 bpy 로 옛 코드를 구운 대조군과
+#   38장 IDAT 동일을 확인한 뒤에야 `sensor_fit` 을 채우고 다시 구웠다(보고 T97 §1).
+#
+# ★씬·조명 정본은 `render_common` 한 곳:
+#   Cycles · film_transparent · ORTHO · 태양 52°/−35° energy 3.6 · 월드 (0.52,0.56,0.6)@0.55 ·
 #   SAMPLES 64 · OIDN 부재 자동 감지 · PPU 45.255 · ZSQ 0.8165 · 좌우 FLIP.
 #
-# ★왜 재렌더인가(재민 확정 "전면 통일"): 기존 나무·수풀은 Kenney 로우폴리 recolor 라
+# ★왜 재렌더였나(재민 확정 "전면 통일"): 기존 나무·수풀은 Kenney 로우폴리 recolor 라
 #   배치 19 의 질감 사실풍 지면 위에서 **제일 튄다**. 지면·건물과 같은 씬 정본으로 다시 굽는다.
 #
-# ★크기 규약 = 1셀 = 1m. 모델은 미터 단위로 짓고, 화면 픽셀은 render() 가 PPU·ZSQ 로 환산한다.
+# ★크기 규약 = 1셀 = 1m. 모델은 미터 단위로 짓고, 화면 픽셀은 `render()` 가 PPU·ZSQ 로 환산한다.
 #   (1m 높이 = 32 게임px. 성목 3~5m = 96~160 게임px.)
-#   슈퍼샘플: 나무 ss=4, 소품 ss=3 — 앵커 JSON 에 실제 ppu 를 적어 클라가 되돌려 축소한다
-#   (산 스프라이트 mountain_anchors.json 과 같은 규약).
+#   고해상 배포: 나무 ppu_mul=4, 소품 ppu_mul=3 — 앵커 JSON 에 실제 ppu 를 적어 **클라가 축소한다**
+#   (산 스프라이트 mountain_anchors.json 과 같은 규약). 가구·밭과 규격이 다른 자리다.
 #
-# 실행:  blender -b -P scripts/nature_render.py -- [키 필터]
+# 실행:  python3 scripts/nature_render.py [키 필터]      (pip bpy 5.0.1 — 굽는 기계 정본)
+#        blender -b -P scripts/nature_render.py -- [키 필터]
 # 결과:  scripts/nature_renders/*.png + nature_raw_anchors.json
 #        → scripts/nature-postprocess.py 가 알파 bbox 크롭 후 public/assets/ 로 배치
 #
 # 고증(청동기 후기 송국리): 중부 한반도 온대 낙엽활엽수림 + 소나무.
 #   물가는 저습지 — 갈대(Phragmites)·부들(Typha)이 본체다. 버드나무는 물가 수종.
 
-import bpy, os, math, json, sys, mathutils
-V = mathutils.Vector
+import sys, os, json
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from render_common import *              # 헬퍼·씬 상수·OBJS
+import render_common as rc
 
-SAMPLES = 64
-PPU0 = 64.0 / math.sqrt(2.0)                          # px per unit(=1셀=1m) — 셀 다이아 가로폭 64px
-ZSQ = 32.0 / (PPU0 * math.cos(math.radians(30.0)))    # 높이 압축(=0.8165) — 1m 높이 = 32px
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUTDIR = os.path.join(HERE, "nature_renders")
 os.makedirs(OUTDIR, exist_ok=True)
+
 
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 ONLY = set(ARGS) if ARGS else None
@@ -46,21 +56,6 @@ class R:
 
 
 # ═══════════════ 재질 ═══════════════
-def principled(mat):
-    for n in mat.node_tree.nodes:
-        if n.type == 'BSDF_PRINCIPLED':
-            return n
-    return mat.node_tree.nodes.get("Principled BSDF")
-
-
-def simple_mat(name, color, rough=0.8):
-    m = bpy.data.materials.new(name); m.use_nodes = True
-    b = principled(m)
-    b.inputs["Base Color"].default_value = (color[0], color[1], color[2], 1.0)
-    b.inputs["Roughness"].default_value = rough
-    return m
-
-
 def _mix2(nt, fac_out, c1, c2):
     """ColorRamp 기본 2요소만 쓰고(★elements.new() 금지 — 인덱스 재정렬 함정) MixRGB 로 두 색."""
     rmp = nt.nodes.new("ShaderNodeValToRGB")
@@ -89,6 +84,7 @@ def leaf_mat(name, c1, c2, scale=42.0, rough=0.72, bump=0.32, detail=4.0):
     mx, _ = _mix2(nt, nz.outputs["Fac"], c1, c2)
     nt.links.new(mx.outputs[0], b.inputs["Base Color"])
     bmp = nt.nodes.new("ShaderNodeBump"); bmp.inputs["Strength"].default_value = bump
+    bmp.inputs["Distance"].default_value = BUMP_DIST      # ★T101 — 5.0 기본값 0.001 되돌림
     nt.links.new(nz.outputs["Fac"], bmp.inputs["Height"])
     nt.links.new(bmp.outputs["Normal"], b.inputs["Normal"])
     return m
@@ -114,59 +110,63 @@ def bark_mat(name, base, dark, scale=26.0, rough=0.88, bump=0.55, plates=False):
     mx, _ = _mix2(nt, fac, base, dark)
     nt.links.new(mx.outputs[0], b.inputs["Base Color"])
     bmp = nt.nodes.new("ShaderNodeBump"); bmp.inputs["Strength"].default_value = bump
+    bmp.inputs["Distance"].default_value = BUMP_DIST      # ★T101 — 5.0 기본값 0.001 되돌림
     nt.links.new(fac, bmp.inputs["Height"])
     nt.links.new(bmp.outputs["Normal"], b.inputs["Normal"])
     return m
 
 
-# ═══════════════ 씬 (정본 복사) ═══════════════
-bpy.ops.object.select_all(action='SELECT'); bpy.ops.object.delete()
-scene = bpy.context.scene
-scene.render.engine = 'CYCLES'; scene.cycles.samples = SAMPLES
-scene.cycles.use_denoising = bool(getattr(bpy.app.build_options, 'openimagedenoise', False))
-print("[nat] denoise =", scene.cycles.use_denoising, "ppu0 =", round(PPU0, 3), "zsq =", round(ZSQ, 4))
-try: scene.view_settings.view_transform = 'Standard'
-except Exception: pass
-scene.render.film_transparent = True
-scene.render.image_settings.file_format = 'PNG'; scene.render.image_settings.color_mode = 'RGBA'
-if scene.world is None: scene.world = bpy.data.worlds.new("W")
-scene.world.use_nodes = True
-_bg = scene.world.node_tree.nodes.get("Background")
-if _bg:
-    _bg.inputs[0].default_value = (0.52, 0.56, 0.6, 1.0); _bg.inputs[1].default_value = 0.55
-sun_d = bpy.data.lights.new("Sun", 'SUN'); sun_d.energy = 3.6; sun_d.angle = 0.2
-sun = bpy.data.objects.new("Sun", sun_d); scene.collection.objects.link(sun)
-sun.rotation_euler = (math.radians(52), 0, math.radians(-35))
-tgt = bpy.data.objects.new("Tgt", None); scene.collection.objects.link(tgt)
-cam_d = bpy.data.cameras.new("Cam"); cam_d.type = 'ORTHO'; cam_d.clip_start = 0.1; cam_d.clip_end = 2000
-cam = bpy.data.objects.new("Cam", cam_d); scene.collection.objects.link(cam)
-cam.constraints.new('TRACK_TO').target = tgt; scene.camera = cam
+def rock_mat(name, base=(0.22, 0.20, 0.18), moss=False, seed=0):
+    """막돌 — `assets-src/legacy_mac/rock_render.py:rock_material` 본문 **그대로**(T101 편입).
+    미세 범프 + 대형 굴곡 · 투톤 계단 얼룩 · (이끼) 위쪽 노멀 게이트로 상부 모자만."""
+    m = bpy.data.materials.new(name); m.use_nodes = True
+    nt = m.node_tree; b = principled(m)
+    b.inputs["Roughness"].default_value = 0.95
+    noise = nt.nodes.new("ShaderNodeTexNoise"); noise.inputs["Scale"].default_value = 9 + (seed % 3) * 3
+    bump = nt.nodes.new("ShaderNodeBump"); bump.inputs["Strength"].default_value = 0.8
+    bump.inputs["Distance"].default_value = BUMP_DIST     # ★T101 — 5.0 기본값 0.001 되돌림
+    nt.links.new(noise.outputs["Fac"], bump.inputs["Height"])
+    big = nt.nodes.new("ShaderNodeTexNoise"); big.inputs["Scale"].default_value = 2.2
+    bump2 = nt.nodes.new("ShaderNodeBump"); bump2.inputs["Strength"].default_value = 0.5
+    bump2.inputs["Distance"].default_value = BUMP_DIST    # ★T101 — 5.0 기본값 0.001 되돌림
+    nt.links.new(big.outputs["Fac"], bump2.inputs["Height"])
+    nt.links.new(bump2.outputs["Normal"], bump.inputs["Normal"])
+    nt.links.new(bump.outputs["Normal"], b.inputs["Normal"])
+    c1 = nt.nodes.new("ShaderNodeRGB"); c1.outputs[0].default_value = (base[0], base[1], base[2], 1)
+    c2 = nt.nodes.new("ShaderNodeRGB")
+    c2.outputs[0].default_value = (base[0] * 0.45, base[1] * 0.45, base[2] * 0.5, 1)
+    n2 = nt.nodes.new("ShaderNodeTexNoise"); n2.inputs["Scale"].default_value = 4.5
+    ramp = nt.nodes.new("ShaderNodeValToRGB")
+    ramp.color_ramp.elements[0].position = 0.42; ramp.color_ramp.elements[1].position = 0.62
+    nt.links.new(n2.outputs["Fac"], ramp.inputs["Fac"])
+    mixc = nt.nodes.new("ShaderNodeMixRGB"); mixc.blend_type = 'MIX'
+    nt.links.new(ramp.outputs["Color"], mixc.inputs["Fac"])
+    nt.links.new(c2.outputs[0], mixc.inputs["Color1"])
+    nt.links.new(c1.outputs[0], mixc.inputs["Color2"])
+    out_color = mixc.outputs["Color"]
+    if moss:
+        geo = nt.nodes.new("ShaderNodeNewGeometry")
+        sep = nt.nodes.new("ShaderNodeSeparateXYZ")
+        nt.links.new(geo.outputs["Normal"], sep.inputs[0])
+        up = nt.nodes.new("ShaderNodeMath"); up.operation = 'GREATER_THAN'; up.inputs[1].default_value = 0.62
+        nt.links.new(sep.outputs["Z"], up.inputs[0])
+        n3 = nt.nodes.new("ShaderNodeTexNoise"); n3.inputs["Scale"].default_value = 5
+        mask = nt.nodes.new("ShaderNodeMath"); mask.operation = 'MULTIPLY'
+        nt.links.new(up.outputs[0], mask.inputs[0]); nt.links.new(n3.outputs["Fac"], mask.inputs[1])
+        gate = nt.nodes.new("ShaderNodeMath"); gate.operation = 'GREATER_THAN'; gate.inputs[1].default_value = 0.45
+        nt.links.new(mask.outputs[0], gate.inputs[0])
+        mg = nt.nodes.new("ShaderNodeRGB"); mg.outputs[0].default_value = (0.12, 0.24, 0.08, 1)
+        mixm = nt.nodes.new("ShaderNodeMixRGB")
+        nt.links.new(gate.outputs[0], mixm.inputs["Fac"])
+        nt.links.new(out_color, mixm.inputs["Color1"])
+        nt.links.new(mg.outputs[0], mixm.inputs["Color2"])
+        out_color = mixm.outputs["Color"]
+    nt.links.new(out_color, b.inputs["Base Color"])
+    return m
 
-THETA = math.radians(30.0)
-NHAT = V((math.cos(THETA) / math.sqrt(2), math.cos(THETA) / math.sqrt(2), math.sin(THETA)))
-RHAT = V((1.0, -1.0, 0.0)).normalized()
-UHAT = V((-math.sin(THETA) / math.sqrt(2), -math.sin(THETA) / math.sqrt(2), math.cos(THETA)))
 
-OBJS = []
-
-
-def _flip_png(path):
-    """★좌우 뒤집기 — 정본(building_render.py FLIP 주석)과 동일. 게임 투영은 +x 가 오른쪽이다."""
-    img = bpy.data.images.load(path)
-    w, h = img.size
-    px = list(img.pixels[:])
-    out = [0.0] * len(px)
-    for y in range(h):
-        row = y * w * 4
-        for x in range(w):
-            s2 = row + x * 4
-            d2 = row + (w - 1 - x) * 4
-            out[d2] = px[s2]; out[d2 + 1] = px[s2 + 1]; out[d2 + 2] = px[s2 + 2]; out[d2 + 3] = px[s2 + 3]
-    img.pixels = out
-    img.filepath_raw = path
-    img.file_format = 'PNG'
-    img.save()
-    bpy.data.images.remove(img)
+# ═══════════════ 씬 — 정본 한 곳(`render_common.build_scene`) ═══════════════
+scene, cam, cam_d, sun, tgt = rc.build_scene("nat")
 
 
 # ═══════════════ 기하 헬퍼 ═══════════════
@@ -302,60 +302,18 @@ def blob(loc, radius, mat, rng, squash=1.0, disp=0.22, sub=3, name="blob"):
     OBJS.append(ob)
     return ob
 
-
 # ═══════════════ 렌더 ═══════════════
 def render(key, ss, margin=6):
-    """OBJS 전체를 굽는다. 프레임은 화면 bbox 에 딱 맞추고, 지면 원점(0,0,0)의 픽셀좌표를 앵커로."""
-    PPU = PPU0 * ss
-    bpy.ops.object.select_all(action='DESELECT')
-    for o in OBJS:
-        o.select_set(True)
-    bpy.context.view_layer.objects.active = OBJS[0]
-    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
-    # ★z 압축은 오브젝트 scale 이 아니라 **정점 좌표**로(정본 주석: 회전된 로컬 z 는 월드 z 가 아니다)
-    for o in OBJS:
-        for v in o.data.vertices:
-            v.co.z *= ZSQ
-    umin = wmin = 1e18; umax = wmax = -1e18
-    for o in OBJS:
-        for v in o.data.vertices:
-            p = v.co
-            u = p.dot(RHAT) * PPU
-            w = -p.dot(UHAT) * PPU
-            umin = min(umin, u); umax = max(umax, u)
-            wmin = min(wmin, w); wmax = max(wmax, w)
-    Wpx = int(math.ceil(umax - umin)) + margin * 2
-    Hpx = int(math.ceil(wmax - wmin)) + margin * 2
-    a = (umin + umax) * 0.5 / PPU
-    b = -(wmin + wmax) * 0.5 / PPU
-    ctr = RHAT * a + UHAT * b
-    scene.render.resolution_x = Wpx; scene.render.resolution_y = Hpx
-    cam_d.ortho_scale = Wpx / PPU
-    tgt.location = ctr
-    cam.location = ctr + NHAT * 300.0
+    """OBJS 전체를 굽는다. 프레임은 화면 bbox 에 딱 맞추고, 지면 원점(0,0,0)의 픽셀좌표를 앵커로.
+
+    ★`ss` 는 **출력 픽셀 밀도 배수**다(초과표본이 아니다 — T97 에서 이름이 갈렸다).
+      나무 4 · 소품 3 으로 구워 그대로 배포하고, 클라가 앵커의 `ppu` 로 되돌려 줄인다."""
+    rc.bake_transforms()
+    rc.squash_z()                       # ★z 압축은 오브젝트 scale 이 아니라 **정점 좌표**로
     p = os.path.join(OUTDIR, key + ".png")
-    scene.render.filepath = p
-    bpy.ops.render.render(write_still=True)
-    _flip_png(p)
-    ox = Wpx / 2.0 - (umin + umax) * 0.5
-    oy = Hpx / 2.0 - (wmin + wmax) * 0.5
-    print(f"[nat] {key}: {Wpx}x{Hpx} anchor=({ox:.1f},{oy:.1f}) ppu={PPU:.3f}")
-    return {"w": Wpx, "h": Hpx, "ox": round(ox, 2), "oy": round(oy, 2), "ppu": round(PPU, 3)}
-
-
-def cleanup():
-    bpy.ops.object.select_all(action='DESELECT')
-    for o in OBJS:
-        try: o.select_set(True)
-        except Exception: pass
-    if OBJS:
-        bpy.context.view_layer.objects.active = OBJS[0]
-        bpy.ops.object.delete()
-    OBJS.clear()
-    for blk in (bpy.data.meshes, bpy.data.textures):
-        for d in list(blk):
-            if d.users == 0:
-                blk.remove(d)
+    rec = rc.render_world_pass(OBJS, p, margin=margin, ppu_mul=ss, ss=1)
+    print(f"[nat] {key}: {rec['w']}x{rec['h']} anchor=({rec['ox']:.1f},{rec['oy']:.1f}) ppu={rec['ppu']:.3f}")
+    return rec
 
 
 # ═══════════════ 재질 팔레트 ═══════════════
@@ -665,6 +623,50 @@ def cattail(seed, h=1.7, n=6):
 
 
 # ═══════════════ 빌드 표 ═══════════════
+# ═══════════════ 막돌 · 이끼바위 [T101 편입 — legacy_mac/rock_render.py] ═══════════════
+# ★★씨앗이 결정론이 아니었다: 옛 스크립트는 `random.seed(hash(kind) % 9973 + i*131 + 15500)` 인데
+#   파이썬 3 의 **문자열 `hash()` 는 프로세스마다 다르다**(PYTHONHASHSEED). 같은 기계에서 두 번
+#   구워도 다른 바위가 나온다 — 배포본 `rock01..06` 은 **재현이 불가능했다**(T101 §0-ⓐ 실측).
+#   ⇒ `PYTHONHASHSEED=0` 실측값을 **정수로 못 박는다**. 이제 두 번 구우면 같은 바위다.
+_KSEED = {'rock': 8765, 'mossrock': 4720}      # PYTHONHASHSEED=0 으로 잰 옛 씨앗값(위 설명 참조)
+
+
+def _boulder(mat, size=1.0, squash=None, jitter=0.45, subdiv=2):
+    """저폴리 각진 바위 — `legacy_mac/rock_render.py:make_boulder` 본문 **그대로**.
+    `random` 호출 **순서까지** 같아야 대조군과 화소가 맞는다(편입 증명 · T101 §1)."""
+    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=subdiv, radius=size)
+    o = bpy.context.active_object
+    sq = squash or (random.uniform(0.85, 1.25), random.uniform(0.85, 1.25), random.uniform(0.6, 0.9))
+    o.scale = sq
+    me = o.data
+    for v in me.vertices:
+        v.co += V((random.uniform(-1, 1), random.uniform(-1, 1), random.uniform(-1, 1))) * size * jitter * random.random()
+        if v.co.z < -size * 0.35:
+            v.co.z = -size * 0.35                       # 바닥 컷(땅에 앉음)
+    bpy.ops.object.shade_flat()
+    o.data.materials.append(mat)
+    OBJS.append(o)
+    return o
+
+
+def rock(i, moss=False):
+    """바위 한 덩이. `i` = 1..6(파일 번호). 옛 JOBS 분기 본문 그대로 — 곁돌 확률까지."""
+    kind = 'mossrock' if moss else 'rock'
+    random.seed(_KSEED[kind] + i * 131 + 15500)
+    if moss:
+        m = rock_mat("mossrock%d" % (100 + i), (0.21, 0.20, 0.18), moss=True, seed=100 + i)
+        _boulder(m, size=1.0, jitter=0.42)
+    else:
+        base = (0.22 + random.uniform(-0.03, 0.04),
+                0.20 + random.uniform(-0.03, 0.03),
+                0.18 + random.uniform(-0.02, 0.03))
+        m = rock_mat("rock%d" % i, base, moss=False, seed=i)
+        _boulder(m, size=1.0, jitter=0.4 + 0.12 * random.random())
+        if random.random() < 0.5:                       # 곁돌
+            small = _boulder(m, size=0.38, jitter=0.4)
+            small.location = V((random.uniform(0.9, 1.3), random.uniform(-0.6, 0.6), -0.25))
+
+
 PROP_BUILD = [
     ("bush01", bush_berry, dict(seed=201, w=1.55, h=1.20)),
     ("bush02", bush_berry, dict(seed=211, w=1.30, h=1.00)),
@@ -692,27 +694,44 @@ PROP_BUILD = [
     ("flower02", herb_clump, dict(seed=709, h=0.38, n=10, flower='y', fh=0.52)),
     ("flower03", herb_clump, dict(seed=719, h=0.45, n=12, flower='p', fh=0.66)),
     ("flower04", herb_clump, dict(seed=727, h=0.36, n=9, flower='r', fh=0.48)),
+    # ★[T101] 막돌 6 + 이끼바위 6 — 여태 저장소 밖 스크립트가 굽던 것(회부 1). 이제 여기서 굽는다.
+    #   광맥 `ore01..06` 은 모델이 아니다 — `scripts/ore-outcrop.py` 가 이 바위에서 PIL 로 파생한다.
+    ("rock01", rock, dict(i=1)),
+    ("rock02", rock, dict(i=2)),
+    ("rock03", rock, dict(i=3)),
+    ("rock04", rock, dict(i=4)),
+    ("rock05", rock, dict(i=5)),
+    ("rock06", rock, dict(i=6)),
+    ("mossrock01", rock, dict(i=1, moss=True)),
+    ("mossrock02", rock, dict(i=2, moss=True)),
+    ("mossrock03", rock, dict(i=3, moss=True)),
+    ("mossrock04", rock, dict(i=4, moss=True)),
+    ("mossrock05", rock, dict(i=5, moss=True)),
+    ("mossrock06", rock, dict(i=6, moss=True)),
 ]
 
-anchors = {}
-apath = os.path.join(OUTDIR, "nature_raw_anchors.json")
-if os.path.exists(apath):
-    try: anchors = json.load(open(apath))
-    except Exception: anchors = {}
+# ═══════════════ 굽기 ═══════════════
+# ★[T101] `__main__` 가드 — 대조 하네스가 **빌더만** 꺼내 쓸 수 있어야 한다(편입 증명).
+if __name__ == '__main__':
+  anchors = {}
+  apath = os.path.join(OUTDIR, "nature_raw_anchors.json")
+  if os.path.exists(apath):
+      try: anchors = json.load(open(apath))
+      except Exception: anchors = {}
 
-for key, fn, kw in TREE_BUILD:
-    if ONLY and key not in ONLY: continue
-    fn(**kw)
-    anchors[key] = render(key, ss=4, margin=8)
-    anchors[key]["kind"] = "tree"
-    cleanup()
+  for key, fn, kw in TREE_BUILD:
+      if ONLY and key not in ONLY: continue
+      fn(**kw)
+      anchors[key] = render(key, ss=4, margin=8)
+      anchors[key]["kind"] = "tree"
+      cleanup()
 
-for key, fn, kw in PROP_BUILD:
-    if ONLY and key not in ONLY: continue
-    fn(**kw)
-    anchors[key] = render(key, ss=3, margin=5)
-    anchors[key]["kind"] = "prop"
-    cleanup()
+  for key, fn, kw in PROP_BUILD:
+      if ONLY and key not in ONLY: continue
+      fn(**kw)
+      anchors[key] = render(key, ss=3, margin=5)
+      anchors[key]["kind"] = "prop"
+      cleanup()
 
-json.dump(anchors, open(apath, "w"), indent=1)
-print("[nat] DONE ->", OUTDIR, len(anchors), "keys")
+  json.dump(anchors, open(apath, "w"), indent=1)
+  print("[nat] DONE ->", OUTDIR, len(anchors), "keys")

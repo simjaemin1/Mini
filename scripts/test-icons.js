@@ -347,8 +347,12 @@ console.log('\n[⑧ 굽는 기계 정본 — icons.lock.json 이 지금 자산�
       }
       return require('crypto').createHash('sha1').update(Buffer.concat(parts)).digest('hex').slice(0, 16);
     };
+    // ★[T97] 자연물·나무도 든다 — 이 저장소가 배포하는 스프라이트는 전부 잠금표 안에 있어야 한다.
+    //   `nature` 44 중 18장(바위·이끼바위·광맥)은 **다른 기계**가 구운 것이라 `_기계_예외` 가 이름을 적는다.
     for (const [grp, dir] of [['icons', ICON_DIR], ['props', path.join(ROOT, 'public', 'assets', 'props')],
-                              ['crops', path.join(ROOT, 'public', 'assets', 'crops')]]) {
+                              ['crops', path.join(ROOT, 'public', 'assets', 'crops')],
+                              ['nature', path.join(ROOT, 'public', 'assets', 'nature')],
+                              ['trees', path.join(ROOT, 'public', 'assets', 'trees')]]) {
       const tbl = lock[grp] || {};
       const files = fs.readdirSync(dir).filter(f => f.endsWith('.png')).map(f => f.slice(0, -4)).sort();
       const missing = files.filter(k => !(k in tbl));
@@ -360,6 +364,17 @@ console.log('\n[⑧ 굽는 기계 정본 — icons.lock.json 이 지금 자산�
       const drift = files.filter(k => tbl[k] && tbl[k] !== idatSha(path.join(dir, k + '.png')));
       ok(drift.length === 0,
          `${grp}: 화소 해시가 잠금표와 같다 (어긋남 ${drift.length}${drift.length ? ' — ' + drift.slice(0, 4).join(', ') : ''})`);
+    }
+    {   // ★[T101] T97 이 두던 `_기계_예외`(저장소 밖 기계가 구운 바위 18장)는 **없어졌다** —
+      //   바위가 `nature_render.py` 로 들어왔다. 예외가 다시 생기면 그건 굽는 코드 없는 그림을
+      //   배포한다는 뜻이라, 있다면 **전부 잠금표 안에 있는지**까지는 지킨다.
+      const ex = Array.isArray(lock._기계_예외) ? lock._기계_예외 : [];
+      const nat = lock.nature || {};
+      const notLocked = ex.filter(k => !(k in nat));
+      ok(notLocked.length === 0,
+         ex.length === 0 ? '_기계_예외 0장 — 배포하는 그림을 전부 이 저장소가 굽는다'
+                         : `_기계_예외 ${ex.length}장이 전부 잠금표 nature 안에 있다` +
+                           (notLocked.length ? ` — 밖: ${notLocked.slice(0, 4).join(', ')}` : ''));
     }
     console.log('     ⇒ 다음 재굽기가 이 표와 대조한다. 기계를 바꾸면 여기가 먼저 빨개진다.');
   }

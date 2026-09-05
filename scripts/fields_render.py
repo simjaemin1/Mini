@@ -23,7 +23,7 @@
 # 결과:  public/assets/crops/<group>_<stage>.png  (64×64 · 512² 로 굽고 `rc.downscale_png` 로 줄인다)
 # =============================================================================
 
-import bpy, os, math, random, sys
+import bpy, os, math, random, sys, json
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import render_common as rc
@@ -38,8 +38,14 @@ OUT = os.path.join(HERE, "field_renders")
 os.makedirs(OUT, exist_ok=True)
 DEPLOY = os.path.join(HERE, "..", "public", "assets", "crops")
 
-TILE = 1.8                       # 한 셀 = 1.8m (종전 `crop_render.py` 값 그대로)
-PX = 64                          # 배포 크기 — 셀 다이아 폭 64px(클라 실측 주석: 원본이 셀 폭에 맞춰 구워졌다)
+# ★★[T101] `TILE = 1.0` — **한 셀은 1m 다.** 종전 1.8 은 `crop_render.py` 에서 물려받은 값인데,
+#   그때는 아이콘 패스(bbox 맞춤)로 구워 절대 축척이 **정규화돼 사라졌다** — 그래서 안 들켰다.
+#   세계 패스는 축척이 그대로 나온다: 1유닛 = 1셀 = 가로 64px 다이아 · z 1m = 32px(ZSQ).
+#   ⇒ 밭 바닥이 정확히 셀 다이아가 되려면 TILE 은 1.0 이어야 한다(T67 "모델이 셀 경계에서 끝나게").
+#   ⓘ 심는 것의 `s` 는 안 건드린다 — 옛 그림의 유효 축척이 ~33px/유닛이었고 세계 패스가 32px/유닛이라
+#     같은 `s` 가 같은 크기로 보인다(§0-ⓑ 실측). 바뀌는 건 **바닥이 셀에 맞는 것**뿐이다.
+TILE = 1.0
+PX = 64                          # 배포 크기 — 셀 다이아 폭 64px(= TILE 1.0 · PPU 45.255 의 결과)
 
 M['soil'] = bumped_mat("w_soil", (0.32, 0.22, 0.13), (0.20, 0.13, 0.07), 12, 0.6, 0.95)   # 갈아엎은 흙
 M['sprout'] = simple_mat("w_sprout", (0.44, 0.66, 0.26), 0.55)                             # 떡잎·어린싹
@@ -49,22 +55,39 @@ M['unripe'] = striped_mat("w_unripe", (0.52, 0.66, 0.28), (0.42, 0.56, 0.21), 28
 
 # ═══════════════ 밭 바닥 · 줄 심기 (종전 `crop_render.py` 문법 그대로) ═══════════════
 def soil_bed(furrows=4):
-    """갈아엎은 흙 타일 + 이랑 — 전 단계 공통 바닥(단계 0은 이것만)."""
-    box(TILE, TILE, 0.12, (0, 0, 0.06), mat=M['soil'])
+    """갈아엎은 흙 타일 + 이랑 — 전 단계 공통 바닥(단계 0은 이것만).
+
+    ★★[T101] **이랑이 이웃 칸으로 이어지게** 놓는다(T67 벽·울타리가 푼 그 규약).
+      ⓐ 바닥은 정확히 TILE×TILE — 셀 다이아 64×32 다.
+      ⓑ 이랑은 **월드 +x 를 따라** 눕는다 = 셀 다이아의 한 변과 나란하다. 길이도 TILE 꽉.
+         그래야 +x 이웃 칸의 이랑과 **끝이 맞닿는다**.
+      ⓒ y 자리는 **주기적**이다: `(i+0.5)·TILE/furrows − TILE/2`. 종전은 가운데 64%에만 몰아
+         놓아(`−0.32T + i·0.64T/(n−1)`) +y 이웃과 사이가 벌어졌다 — 빗살이 안 맞았다.
+         주기로 놓으면 이웃 칸의 첫 이랑이 내 마지막 이랑에서 **한 칸 간격**으로 이어진다."""
+    box(TILE, TILE, 0.06, (0, 0, 0.03), mat=M['soil'])
     for i in range(furrows):
-        y = -TILE * 0.32 + i * (TILE * 0.64 / max(1, furrows - 1))
-        o = cyl(0.10, TILE * 0.96, (0, y, 0.13), rot=(0, math.radians(90), 0),
+        y = (i + 0.5) * (TILE / max(1, furrows)) - TILE * 0.5
+        # ★이랑 굵기는 TILE 에 비례한다 — 옛 값 0.10 은 TILE 1.8 짜리였다. 그대로 두면
+        #   1.0 바닥의 80%를 이랑이 덮어 **널빤지**로 읽힌다(1패스 실측).
+        o = cyl(0.10 * TILE / 1.8, TILE, (0, y, 0.055), rot=(0, math.radians(90), 0),
                 mat=M['soil'], verts=6, smooth=False)
-        o.scale = (1.0, 1.0, 0.55)
+        # ★★[T101 실측] 옛 `o.scale = (1.0, 1.0, 0.55)` 는 **이랑을 눕히는 게 아니라 잘랐다.**
+        #   블렌더 오브젝트 행렬은 T·R·S — 스케일이 **로컬** 축에 먼저 걸린다. 이 원통은
+        #   `rot_y=90°` 로 로컬 +Z 가 월드 +X 를 보므로 `scale.z` 는 **길이**를 0.55 로 줄인다.
+        #   그래서 이랑이 칸의 55%만 덮고 끝이 이웃과 안 닿았다(4×4 이음새 그림 1패스에서 잡혔다).
+        #   눕히려면 단면을 눌러야 한다: 로컬 +X 가 월드 −Z(높이)다 ⇒ `scale.x`.
+        o.scale = (0.55, 1.0, 1.0)
 
 
 def rows(n_per_row, n_rows, fn, jitter=0.06, seed=1):
     """이랑 위 규칙적 식재(약간의 흔들림) — 밭처럼 줄 맞춰 서게."""
     random.seed(seed)
+    # ★[T101] 심는 자리도 **주기적**으로 — 이랑과 같은 사상이다(가운데 몰림 금지).
+    #   여백은 한 칸 간격의 절반이라 이웃 칸의 첫 포기와 내 마지막 포기 사이가 같은 간격이 된다.
     for r in range(n_rows):
-        y = -TILE * 0.32 + r * (TILE * 0.64 / max(1, n_rows - 1))
+        y = (r + 0.5) * (TILE / max(1, n_rows)) - TILE * 0.5
         for c in range(n_per_row):
-            x = -TILE * 0.36 + c * (TILE * 0.72 / max(1, n_per_row - 1))
+            x = (c + 0.5) * (TILE / max(1, n_per_row)) - TILE * 0.5
             fn(x + random.uniform(-jitter, jitter), y + random.uniform(-jitter, jitter), r * 10 + c)
 
 
@@ -165,8 +188,20 @@ def bake_farmland_icon(out_dir):
 
 
 # ═══════════════ 굽기 ═══════════════
+# ★★[T101] 세계 스프라이트는 **세계 패스**로 굽는다 — 여태 아이콘 패스였다(T97 §0-ⓒ).
+#   아이콘 패스는 시선이 `ISO_DIR`(1,−1,1.2)이고 z 압축·FLIP 이 없다. 그래서 나온 그림은
+#   **정사각**이라 64×32 셀 다이아에 절대 안 맞았다 — 키워도 안 맞는다(투영이 다르다).
+#   세계 패스(방위 45°/고도 30° · ZSQ · FLIP)로 구우면 TILE 1.0 바닥이 곧 셀 다이아가 된다.
+#   규격은 가구와 같다: `ppu_mul=1`(게임 해상도 45.255px/m) · `ss=3`(초과표본, 축소로 되돌림).
+#   ⇒ `rc.downscale_png` 는 이제 안 쓴다(세계 패스가 `_post_png` 로 되돌린다).
+#   앵커는 `crops_anchors.json` — 클라가 `drawImage(im, x-ox, y-oy)` 만 하면 된다(델타 계산 0).
 if __name__ == '__main__':
     ONLY = [k for k in os.environ.get('FIELDS_ONLY', '').split(',') if k]
+    apath = os.path.join(OUT, "crops_anchors.json")
+    anchors = {}
+    if os.path.exists(apath):
+        try: anchors = json.load(open(apath, encoding='utf-8'))
+        except Exception: anchors = {}
     n = 0
     for slug in SLUGS:
         for st in range(STAGES):
@@ -176,12 +211,28 @@ if __name__ == '__main__':
             OBJS.clear()
             build(slug, st)
             rc.bake_transforms()
+            zm = rc.zmax()
+            rc.squash_z()                          # ★게임 화법(1m=32px) — 정점 z 를 직접 누른다
             p = os.path.join(OUT, key + ".png")
-            size = rc.render_icon_pass(OBJS, p)
-            rc.downscale_png(p, PX)               # ★T79c — 축소가 이제 코드다(구전이 아니라)
-            print(f"[fields] {key}: {PX}²  (bbox {size:.2f}m · objs={len(OBJS)})")
+            rec = rc.render_world_pass(OBJS, p, margin=2, ppu_mul=1, ss=3)
+            rec["group"] = slug
+            rec["stage"] = st
+            rec["zmax_px"] = round(zm * 32.0, 2)
+            anchors[key] = rec
+            print(f"[fields] {key}: {rec['w']}×{rec['h']} anchor=({rec['ox']:.2f},{rec['oy']:.2f}) "
+                  f"z {rec['zmax_px']:.1f}px objs={len(OBJS)}")
             rc.cleanup()
             n += 1
+    json.dump(anchors, open(apath, "w", encoding='utf-8'), ensure_ascii=False, indent=1, sort_keys=True)
+    # ★[T101] 배치도 코드다 — 여태 `cp` 한 줄이 머리말 주석에만 있었다(구전 · T79c 축소 단계와 같은 함정).
+    import shutil
+    os.makedirs(DEPLOY, exist_ok=True)
+    for k in sorted(anchors):
+        src = os.path.join(OUT, k + ".png")
+        if os.path.exists(src):
+            shutil.copy2(src, os.path.join(DEPLOY, k + ".png"))
+    shutil.copy2(apath, os.path.join(DEPLOY, "crops_anchors.json"))
+    print(f"[fields] 배치 -> {DEPLOY} ({len(anchors)}장 + 앵커)")
     if not ONLY or 'item_farmland' in ONLY:
         bake_farmland_icon(OUT)               # 512² — `icons-postprocess.js` 가 96px 로
         n += 1
