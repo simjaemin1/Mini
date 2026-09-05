@@ -580,4 +580,6 @@ function generateCoastlineWaterTiles(zone, tileSize, findZoneAtFn, oceanRects) {
   return waterTiles;
 }
 
-module.exports = { Chunk, ChunkManager, CHUNK_SIZE, generateChunkResources, seedRand, generateVillagesForZone, makeVillageName, generateCoastlineWaterTiles };
+// ★[T108 2026-09-05] `RESOURCE_HP_TABLE` 을 **내준다** — `zone.js` 가 같은 표를 한 벌 더
+//   들고 있었고(운석이 빠져 3대에 깨졌다 · T90 회부), 그걸 지우려면 정본이 나가야 한다.
+module.exports = { Chunk, ChunkManager, CHUNK_SIZE, generateChunkResources, seedRand, generateVillagesForZone, makeVillageName, generateCoastlineWaterTiles, RESOURCE_HP_TABLE };

@@ -313,13 +313,15 @@
         }
         return;
       }
-      const readyAt = data.readyAt || 0;
-      const now = Date.now();
-      const isReady = now >= readyAt;
-      const growProgress = readyAt > data.plantedAt ? Math.min(1, (now - data.plantedAt) / (readyAt - data.plantedAt)) : 1;
+      // ★★★[T108 2026-09-05] **클라가 밭 시계를 안 돌린다.** 여기가 `readyAt`·`plantedAt`(벽시계)로
+      //   단계를 계산하던 자리다 — T58a 가 밭을 게임일로 옮긴 뒤로 정본 밭엔 그 둘이 **없어서**
+      //   `readyAt||0` → `now >= 0` → **심자마자 익음(단계 3)·"수확가능"** 으로 그려지고 있었다.
+      //   시계가 둘이면 언제나 이렇게 조용히 갈라진다. ⇒ 단계는 **서버가 실어 준다**(`data.farmStage`,
+      //   게임일 정본의 사영 · 새 메시지 0 — `building_updated` 에 필드 하나). 여기선 읽기만 한다.
+      const _st = Math.max(0, Math.min(3, data.farmStage | 0));
+      const isReady = _st >= 3;
       // 에셋 5차: 4단계 3D 스프라이트(갈은 흙/어린싹/자람/익음). 미로드 시 아래 벡터 렌더 폴백.
       {
-        const _st = isReady ? 3 : Math.min(2, Math.floor(growProgress * 3));
         const _cs = cropSprite(_st, data.crop);   // ★[T79c] 심긴 작물로 고른다(빈 밭이면 null → 곡물)
         if (_cs) {
           ctx.fillStyle = 'rgba(0,0,0,0.30)';

@@ -42,7 +42,7 @@ const Rooms = require('./rooms'); // ★[배치 18 ①] 방 판정 정본(벽·�
 const SIM_LON_ON = process.env.VILLAGE_LON !== '0'; // §19 경도 로컬 태양시(마을 NPC 야간 귀가) 게이트 — 기본 켜짐
 const central = require('./central-client'); // central HTTP 클라이언트
 const { Quadtree } = require('./quadtree'); // spatial index — O(N²) 검색 회피
-const { ChunkManager, CHUNK_SIZE, generateChunkResources, generateVillagesForZone, generateCoastlineWaterTiles } = require('./chunk'); // 청크 단위 entity 분류 + procedural + 해안선
+const { ChunkManager, CHUNK_SIZE, generateChunkResources, generateVillagesForZone, generateCoastlineWaterTiles, RESOURCE_HP_TABLE } = require('./chunk'); // 청크 단위 entity 분류 + procedural + 해안선 + ★[T108] 자연물 hp 정본
 const { findPath: pfFindPath } = require('./pathfind'); // Phase 14.49-b: NPC A* pathfinding
 const PathCore = require('../sim/path-core.js'); // ★[생활 층 100% ①] 랩·서버 공용 경로 정본 — smoothPath(스트링 풀링)를 주민 이동에 직결
 const { ANIMALS } = require('./animals');  // Phase 5-6: 동물 mob 36종 catalog
@@ -127,6 +127,44 @@ function updateActiveChunks() {
 //   → 매 틱 살아있는 building 객체가 활성청크 수백채로 줄어 minor/major GC 정지 제거.
 // id는 DB rowid 기반 결정값('b'+dbId) — deactivate→reactivate·재시작에도 클라 참조 안정.
 //   dedupe: 같은 청크에 이미 같은 id(=같은 dbId)가 있으면(방금 놓은 플레이어 건물 등) skip → 중복 없음.
+// ★★★[T108 2026-09-05] **옛 벽시계 밭 승격 — 로드 때 한 번, 되돌림 없음.**
+//   T58a 가 밭 시계를 게임일(`plantedDay` + `Crops.grownDays`)로 세웠는데 `Date.now()` 로 자라는
+//   밭이 DB 에 남아 있었다(`cropType:'berry'` + `readyAt` — 레거시 마을 시딩과 NPC 심기가 만든 것).
+//   **시계 둘 금지**(재민 · T62 가 econ 시계를 하나로 만든 그 규약)가 밭에도 서야 한다.
+//   ⇒ 옛 모양은 **읽기만** 하고 정본 모양으로 바꿔 올린다. 옛 모양을 쓰는 코드는 이제 0곳이다.
+//   ★`readyAt` 은 **버린다** — 벽시계를 게임일로 환산할 방법이 없다(서버가 몇 번 재시작했는지 모른다).
+//   ★그리고 `'berry'` 는 **카탈로그 34종에 없다**(작물이 아니라 채집물이다) ⇒ 심긴 것으로 못 옮긴다.
+//     빈 밭으로 남긴다 — **자리는 지킨다**(T58b: 수확해도 밭은 남는다 · `doPlant` 가 재사용한다).
+//     잃는 것은 자라던 베리 세 알이고, 얻는 것은 그 자리에 34종을 심을 수 있게 되는 것이다.
+//   ★`crop` 은 있는데 도장이 없는 행(T58a~T58b 사이에 심긴 것)은 **오늘을 심은 날로** 채운다.
+let _promotedFarms = 0, _promotedLogged = 0;
+let _lastFarmStageDay = -1;
+// ★[T108] 밭 단계 — **정본의 사영**이다(새 시계 0). 0갈은흙 · 1어린싹 · 2자람 · 3익음.
+//   빈 밭은 0, 심긴 밭은 `grownDays / growDays` 를 셋으로 나눈다(익으면 3).
+function _farmStageOf(d, today) {
+  if (!d || !d.crop || !Crops.get(d.crop)) return 0;
+  const need = Math.max(1, Crops.growDaysOf(d.crop));
+  const got = Crops.grownDays(d.crop, d.plantedDay, today);
+  return got >= need ? 3 : Math.min(2, Math.floor(got / need * 3));
+}
+function _promoteLegacyFarm(d, dbId, type) {
+  if (type !== 'farmland' || !d) return d;                         // ★밭 행만 — 다른 건물은 한 글자도 안 건드린다
+  const legacy = d.readyAt != null || d.plantedAt != null || (d.cropType != null && !Crops.get(d.cropType));
+  if (legacy) {
+    const nd = { crop: null, ready: false, farmStage: 0, supply: d.supply != null ? d.supply : 1, emptiedDay: zoneGameDay(), _t108: 1 };
+    _promotedFarms++;
+    if (dbId) { try { db.updateBuildingData(dbId, JSON.stringify(nd)); } catch (e) {} }
+    return nd;
+  }
+  if (d.crop && Crops.get(d.crop) && d.plantedDay == null) {       // 심은 날이 없는 정본 행 — 오늘로
+    const t = zoneGameDay();
+    d.plantedDay = t; d.w = d.w == null ? t : d.w; d.td = d.td == null ? t : d.td;
+    d.wd = d.wd | 0; d.ps = d.ps | 0; d.q = d.q == null ? 1 : d.q; d.qd = t; d.farmStage = _farmStageOf(d, t);
+    _promotedFarms++;
+    if (dbId) { try { db.updateBuildingData(dbId, JSON.stringify(d)); } catch (e) {} }
+  }
+  return d;
+}
 function materializeBuildingsInChunk(cx, cy) {
   const cs = chunkManager.chunkSize;
   const x0 = cx * cs, x1 = (cx + 1) * cs;
@@ -137,7 +175,7 @@ function materializeBuildingsInChunk(cx, cy) {
   for (const row of rows) {
     const id = `b${row.id}`;
     if (buildings.has(id)) continue; // 이미 메모리에 있음(플레이어 방금 건축 등) — 중복 방지
-    const parsed = row.data ? JSON.parse(row.data) : null;
+    const parsed = _promoteLegacyFarm(row.data ? JSON.parse(row.data) : null, row.id, row.type);   // ★[T108] 옛 벽시계 밭 승격
     const floor = (parsed && typeof parsed.floor === 'number') ? parsed.floor : 0;
     const b = {
       id, dbId: row.id,
@@ -151,6 +189,10 @@ function materializeBuildingsInChunk(cx, cy) {
     buildings.set(id, b);
     chunkManager.insertBuilding(b); // b._chunkKey 셋 (insertBuilding 내부)
     if (row.type === 'stair') stairAdded = true;
+  }
+  if (_promotedFarms > _promotedLogged) {   // ★[T108] 로그 한 줄 — 승격은 조용히 지나가면 안 된다
+    _promotedLogged = _promotedFarms;
+    console.log(`[${ZONE_ID}] 🌾 옛 벽시계 밭 승격 누계 ${_promotedFarms}칸 — 밭 시계는 게임일 하나다(T108)`);
   }
   if (stairAdded) stairCellDirty = true; // stair cache 재구축 트리거 (active 건물만 인덱싱)
   // §4-4 Stage 4A: 마을 농지 — village_buildings(수만 행)에서 '비영속 시각 타일'로 직접 실물화.
@@ -814,7 +856,7 @@ const BUILDING_COST = {
   //     채취 경로도 무게표도 없다 — §0 실측). 새 재료를 만들지 않는다는 규칙이 이겼다. 회부 C.
   salt_kiln: { stone: 4, wood: 3 },
 };
-const CROP_GROW_MS = 60 * 1000;
+// ★[T108] `CROP_GROW_MS`(60초 밭)를 지웠다 — 밭의 시계는 `Crops.growDays`(게임일) 하나다.
 // 14.50: door도 닫혔을 때 blocking. fence는 cell 차지하지만 통과 가능 (사용자 의도: 시야는 통과, collider만 차단).
 const BLOCKING_BUILDINGS = new Set(['wall', 'fence', 'door']);
 // 14.49-e2: 층 높이 2배 (32 → 64). 벽·계단도 같이 2배.
@@ -1233,10 +1275,11 @@ function biomeResourceType() {
   return 'water_pool';
 }
 
-// 자원 종류별 maxHp
-const RESOURCE_HP = {
-  tree: 3, rock: 4, berry_bush: 2, water_pool: 999, herb: 1, ore: 5,
-};
+// 자원 종류별 maxHp — ★★[T108 2026-09-05 · T90 회부] **표를 지웠다. 정본은 `chunk.js` 하나다.**
+//   여기 있던 사본에 `meteorite` 가 빠져 있었다 ⇒ `|| 3` 폴백에 걸려 **운석이 3대에 깨졌다**
+//   (정본은 6). 청크가 까는 운석은 `RESOURCE_HP_TABLE.meteorite` 로 hp 6 을 받는데
+//   `spawnOneResource` 로 나온 것만 3이었다 — **같은 물건이 어디서 났느냐에 따라 달랐다.**
+//   ⇒ 사본을 지우고 정본을 부른다(위 require 에서 함께 받는다). 표가 하나면 그런 날이 안 온다.
 
 // ★★[재민 확정 2026-08-29 · 배산임수 감사] **자연물 전리품 정본 — 표는 하나다.**
 //   종전엔 이 표가 **두 벌**이었다(플레이어 채집 하나 · NPC 채집 하나). 빈손 배치가 덤불에 잔가지를
@@ -1284,7 +1327,7 @@ function spawnOneResource() {
   const x = 32 + Math.random() * (ZONE.zoneWidth - 64);
   const y = 32 + Math.random() * (ZONE.zoneHeight - 64);
   const type = biomeResourceType();
-  const maxHp = RESOURCE_HP[type] || 3;
+  const maxHp = RESOURCE_HP_TABLE[type] || 3;   // ★[T108] 정본 하나(chunk.js)
   // DB에 영속화
   const dbId = db.insertResource({ type, x, y, hp: maxHp, max_hp: maxHp });
   const id = `r${nextRid++}`;
@@ -1785,8 +1828,11 @@ function buildVillageFarmland(village, vIdx) {
     const gx = Math.floor((fcx + (wx * row + pxv * col) * SZ) / SZ) * SZ + SZ / 2;
     const gy = Math.floor((fcy + (wy * row + pyv * col) * SZ) / SZ) * SZ + SZ / 2;
     if (isTerrainBlockedLocal(gx, gy)) continue;          // LAND only
-    const stage = made % 4;
-    const data = { cropType: 'berry', plantedAt: Date.now() - stage * 15000, readyAt: Date.now() + (3 - stage) * 15000, ready: stage >= 3 };
+    // ★★[T108 2026-09-05] **벽시계를 걷어냈다.** 여기가 `Date.now()+15초`로 자라는 밭을 깔던 자리다.
+    //   시딩이 깔 것은 **개간된 구획**이지 자라는 작물이 아니다 — 무엇이 심기는지는 철이 정하고,
+    //   심는 것은 NPC·플레이어의 일이다(T58a 파종창 · T58b 빈 밭 재사용).
+    //   ⇒ **빈 밭 정본 모양**으로 깐다. 새 술어 0 · 작물 고르는 산수 0.
+    const data = { crop: null, ready: false, farmStage: 0, supply: _waterSupplyAt(gx, gy), emptiedDay: zoneGameDay() };
     try { db.insertBuilding({ type: 'farmland', owner_id: `npc_farm_${ZONE_ID}_${vIdx}`, owner_name: `${village.name} 농지`, x: gx, y: gy, data: JSON.stringify(data) }); made++; } catch (e) {}
   }
   return made;
@@ -1896,7 +1942,8 @@ function decideNpcBehavior(npc, now) {
   const _nearBld = qtBuildings ? qtBuildings.queryCircle(npc.x, npc.y, 700) : [];
   for (const b of _nearBld) {
     if (b.type !== 'farmland' || b.ownerId !== npc.playerId) continue;
-    if (b.data?.ready || (b.data?.readyAt && now >= b.data.readyAt)) {
+    // ★[T108] 익음 판정도 **게임일 정본**이다(`Crops.isReady`) — 벽시계 `readyAt` 을 안 본다.
+    if (b.data && b.data.crop && Crops.isReady(b.data.crop, b.data.plantedDay, zoneGameDay())) {
       npc.behavior = 'harvest';
       npc.targetX = b.x; npc.targetY = b.y;
       npc.harvestTarget = b.id;
@@ -2300,8 +2347,19 @@ function npcStep(npc, dt, now) {
         let occupied = false;
         for (const b of buildings.values()) if (Math.abs(b.x - gx) < BUILDING_SIZE && Math.abs(b.y - gy) < BUILDING_SIZE) { occupied = true; break; }
         if (!occupied && !isTerrainBlockedLocal(gx, gy)) {  // 농지도 LAND에만 (물·바위 위 X)
+          // ★★[T108 2026-09-05] **NPC 도 카탈로그 작물을 심는다.** 여기가 60초 베리밭을 만들던 자리다.
+          //   무엇을 심나: `Crops.wildSeedAt` — **그 자리가 이 철에 내주는 씨앗**(T58a 정본 · 결정론 ·
+          //   주사위 0 · 새 술어 0). 그래서 가을 밭엔 월동 작물이 서고, 겨울엔 아무것도 안 심는다.
+          //   씨앗 값은 종전 그대로 `seed_berry` 한 줌이다(NPC 의 씨앗 재고 · 품목 변경 0).
+          const _cx = Math.round(gx / BUILDING_SIZE), _cy = Math.round(gy / BUILDING_SIZE);
+          const _today = zoneGameDay();
+          const _seed = Crops.wildSeedAt(_cx, _cy, _today, 1);      // 이 철에 못 심으면 null
+          const _cid = _seed ? Crops.cropOfSeed(_seed) : null;
+          if (!_cid) { npc.nextDecisionAt = 0; return; }             // 철이 아니다 — 밭을 안 만든다
           npc.inventory.seed_berry -= 1;
-          const data = { cropType: 'berry', plantedAt: Date.now(), readyAt: Date.now() + CROP_GROW_MS, ready: false };
+          const data = { crop: _cid, plantedDay: _today, seedFresh: 1, farmStage: 0,
+                         supply: _waterSupplyAt(gx, gy), ready: false,
+                         w: _today, td: _today, wd: 0, ps: 0, q: 1, qd: _today };
           const dbId = db.insertBuilding({ type: 'farmland', owner_id: npc.playerId, owner_name: npc.name, x: gx, y: gy, data: JSON.stringify(data) });
           const id = `b${dbId}`; // 건물 lazy-load: id는 dbId 기반 결정값 (deactivate→reactivate 안정 + materialize dedupe)
           const building = { id, dbId, type: 'farmland', ownerId: npc.playerId, ownerName: npc.name, x: gx, y: gy, data };
@@ -2313,13 +2371,24 @@ function npcStep(npc, dt, now) {
       npc.nextDecisionAt = 0;
     } else if (npc.behavior === 'harvest' && npc.harvestTarget) {
       const b = buildings.get(npc.harvestTarget);
-      if (b && b.type === 'farmland' && b.ownerId === npc.playerId && b.data && now >= b.data.readyAt) {
-        npc.inventory.berry = (npc.inventory.berry || 0) + 3;
-        npc.inventory.seed_berry = (npc.inventory.seed_berry || 0) + 1;
-        if (b.dbId) { try { db.deleteBuilding(b.dbId); } catch (e) {} }
-        chunkManager.removeBuilding(b);
-        buildings.delete(b.id);
-        broadcast({ type: 'building_removed', id: b.id });
+      // ★★[T108] 수확도 정본이다 — 익음은 `Crops.isReady`, 산출은 `Crops.harvestUnits`,
+      //   그리고 **밭을 안 지운다**(T58b: 수확해도 밭은 남는다 · 다년생은 `cropAfterHarvest` 가 그루터기로).
+      if (b && b.type === 'farmland' && b.ownerId === npc.playerId && b.data && b.data.crop
+          && Crops.isReady(b.data.crop, b.data.plantedDay, zoneGameDay())) {
+        const _t = zoneGameDay(), _cid = b.data.crop;
+        const _units = Crops.harvestUnits(_cid, { supply: b.data.supply, seedFresh: b.data.seedFresh });
+        if (_units > 0) npc.inventory[_cid] = (npc.inventory[_cid] || 0) + _units;
+        const _e = _cropEntryOf(b.data);
+        if (SimVillages.cropAfterHarvest(_e, _t)) {                  // 다년생 — 그루터기로 남는다
+          b.data = { crop: _e.c, plantedDay: _e.p, seedFresh: b.data.seedFresh, farmStage: 0,
+                     supply: b.data.supply, ready: false, stumpDay: _t };
+          _cropWriteBack(b.data, _e, _t);
+        } else {
+          npc.inventory.seed_berry = (npc.inventory.seed_berry || 0) + 1;   // 한해살이는 씨를 남긴다(종전 그대로)
+          b.data = { crop: null, ready: false, farmStage: 0, supply: b.data.supply, emptiedDay: _t };
+        }
+        if (b.dbId) { try { db.updateBuildingData(b.dbId, JSON.stringify(b.data)); } catch (e) {} }
+        broadcast({ type: 'building_updated', building: { id: b.id, data: b.data } });
       }
       npc.harvestTarget = null;
       npc.nextDecisionAt = 0;
@@ -4160,12 +4229,14 @@ function _farmlandData(player) {
   if (cid && Crops.get(cid)) {
     // ★[T58b] 돌봄 축 넷은 **NPC 작물 칸과 같은 이름·같은 뜻**이다(`w` 마지막 물댄 날 · `wd` 김맨 차례 ·
     //   `ps` 병충해 · `q` 품질). `qd` 는 **정산 도장**이다 — 틱이 없으니 볼 때 그날까지 재생한다(lazy·틱 0).
-    return { crop: cid, cropType: cid, plantedDay: zoneGameDay(),
+    return { crop: cid, plantedDay: zoneGameDay(), farmStage: 0,
              seedFresh: Number.isFinite(player._plantSeedFresh) ? player._plantSeedFresh : 1,
              supply: _waterSupplyAt(player.x, player.y), ready: false,
              w: zoneGameDay(), wd: 0, ps: 0, q: 1, qd: zoneGameDay() };
   }
-  return { cropType: 'berry', plantedAt: Date.now(), readyAt: Date.now() + CROP_GROW_MS, ready: false };
+  // ★★[T108] 작물 없이 지은 농지는 **빈 밭**이다(종전엔 60초 베리밭이었다 — 벽시계 마지막 자리).
+  //   비어 있으니 바로 심을 수 있고(`doPlant` 가 재사용), 그림도 갈은 흙으로 뜬다(T79c 기본값).
+  return { crop: null, ready: false, farmStage: 0, supply: _waterSupplyAt(player.x, player.y), emptiedDay: zoneGameDay() };
 }
 
 // === ★★★돌보기 [T58b 2026-09-03] — 플레이어 농지도 **마을과 같은 일**을 한다 ==========
@@ -4186,7 +4257,7 @@ function _cropEntryOf(d) {
   return { c: d.crop, p: d.plantedDay, td: d.td == null ? d.plantedDay : d.td,
            w: d.w == null ? d.plantedDay : d.w, wd: d.wd | 0, ps: d.ps | 0, q: d.q == null ? 1 : d.q };
 }
-function _cropWriteBack(d, e, day) { d.td = e.td; d.w = e.w; d.wd = e.wd; d.ps = e.ps; d.q = e.q; if (day != null) d.qd = day; }
+function _cropWriteBack(d, e, day) { d.td = e.td; d.w = e.w; d.wd = e.wd; d.ps = e.ps; d.q = e.q; if (day != null) { d.qd = day; d.farmStage = _farmStageOf(d, day); } }   // ★[T108] 사영도 같이 갱신
 // ★볼 때 정산한다 — 마지막 도장 다음 날부터 오늘까지 **정본 하루 틱**을 그대로 재생.
 function _cropSettle(b, today) {
   const d = b && b.data; if (!d || !d.crop || !Crops.get(d.crop)) return null;
@@ -4261,7 +4332,6 @@ function _nearestEmptyFarmland(player) {
   for (const b of near) {
     if (b.type !== 'farmland' || b.ownerId !== player.playerId) continue;
     if (b.data && b.data.crop) continue;                       // 이미 심긴 밭
-    if (b.data && b.data.cropType === 'berry' && b.data.readyAt) continue;   // 옛 베리 농지는 건드리지 않는다
     const d = Math.hypot(b.x - player.x, b.y - player.y);
     if (d < bd) { bd = d; best = b; }
   }
@@ -4273,7 +4343,7 @@ function _plantInto(player, b, cropId, today) {
   const off = Spoil.peekOffer(seed, Lots.of(player, seed), 1, today);
   Lots.consume(player, seed, 1, player.inventory, today);
   const supply = (b.data && b.data.supply != null) ? b.data.supply : _waterSupplyAt(b.x, b.y);
-  b.data = { crop: cropId, cropType: cropId, plantedDay: today, seedFresh: off.fresh,
+  b.data = { crop: cropId, plantedDay: today, seedFresh: off.fresh, farmStage: 0,
              supply, ready: false, w: today, wd: 0, ps: 0, q: 1, qd: today };
   if (b.dbId) { try { db.updateBuildingData(b.dbId, JSON.stringify(b.data)); } catch (e) {} }
   broadcast({ type: 'building_updated', building: { id: b.id, data: b.data } });
@@ -4404,10 +4474,10 @@ function tryHarvest(player) {
     const _supply = best.data.supply, _fresh = best.data.seedFresh;
     if (_stump) {
       // 그루터기 — 같은 작물·같은 자리·같은 물·같은 발아율(씨앗을 새로 안 넣었으니 그대로다).
-      best.data = { crop: _e.c, cropType: _e.c, plantedDay: _e.p, seedFresh: _fresh,
+      best.data = { crop: _e.c, plantedDay: _e.p, seedFresh: _fresh, farmStage: 0,
                     supply: _supply, ready: false, stumpDay: today };
       _cropWriteBack(best.data, _e, today);
-    } else best.data = { cropType: null, crop: null, ready: false, supply: _supply, emptiedDay: today };
+    } else best.data = { crop: null, ready: false, farmStage: 0, supply: _supply, emptiedDay: today };
     if (best.dbId) { try { db.updateBuildingData(best.dbId, JSON.stringify(best.data)); } catch (e) {} }
     broadcast({ type: 'building_updated', building: { id: best.id, data: best.data } });   // ★클라가 이미 아는 메시지(새 타입 0)
     sendInventory(player);
@@ -4421,21 +4491,10 @@ function tryHarvest(player) {
     savePlayer(player);
     return;
   }
-  if (!best.data || !best.data.ready) {
-    const remain = Math.max(0, Math.round((best.data?.readyAt - Date.now()) / 1000));
-    send(player.ws, { type: 'notice', text: `아직 자라는 중 (${remain}초 남음)` });
-    return;
-  }
-  // 수확 — berry 3 + seed_berry 1 + farmland 제거 (종전 베리 농지 · 무변경)
-  player.inventory.berry = (player.inventory.berry || 0) + 3;
-  player.inventory.seed_berry = (player.inventory.seed_berry || 0) + 1;
-  if (best.dbId) { try { db.deleteBuilding(best.dbId); } catch (e) {} }
-  chunkManager.removeBuilding(best);
-  buildings.delete(best.id);
-  broadcast({ type: 'building_removed', id: best.id });
-  sendInventory(player);
-  send(player.ws, { type: 'notice', text: '수확! 🫐 ×3 + 씨앗 ×1' });
-  savePlayer(player);
+  // ★★[T108 2026-09-05] **옛 베리 농지 갈래를 지웠다.** 여기가 `readyAt` 을 읽어 60초 밭을 거두고
+  //   **농지를 통째로 지우던** 자리다(T58b 회부 3 — "수확하면 사라진다"는 그 레거시).
+  //   승격(`_promoteLegacyFarm`)이 옛 행을 빈 밭으로 바꿔 올리므로 이 갈래에 닿을 행이 이제 없다.
+  send(player.ws, { type: 'notice', text: '빈 밭이다 — 씨앗을 들고 심어라(E)' });
 }
 
 // === 음식 먹기 ===
@@ -7555,9 +7614,12 @@ const KILN_BATCH_MAX = 20;
 //     **노가 뜨거울수록 짧다.** 시간의 근거를 온도에 두면 상수가 자의적이지 않고 era 축과 한 몸이 된다.
 //   ★계약(재민 지시 그대로):
 //     · 장입(정광·숯 즉시 차감) → `data.job = { until, ... }` → 완료 후 클릭하면 출탕
-//     · **대기 중 이탈해도 진척 보존** — 벽시계 기반이라 접속을 끊어도 흐른다(농지 readyAt 선례).
+//     · **대기 중 이탈해도 진척 보존** — 벽시계 기반이라 접속을 끊어도 흐른다.
+//       ⚠[T108] 종전 이 줄이 '농지 readyAt 선례'라 적었는데 **그 선례는 없어졌다**(밭은 게임일 하나다).
+//       불·가마의 벽시계는 밭과 다른 판단이고, 밭을 근거로 들지 마라.
 //     · 숯가마도 같은 계약(통나무 장입 → 시간 → 숯 수거).
-//   ★왜 벽시계인가: 농지(`readyAt`)가 이미 그 계약이고, 서버 재시작·재접속을 자동으로 건너뛴다.
+//   ★왜 벽시계인가: 사람이 지켜보는 **불**이라 실시간이 뜻을 갖는다(밭과 다르다 — 밭은 게절이 뜻이라
+//     게임일이다 · T108 이 밭에서 벽시계를 걷어냈다). 서버 재시작·재접속을 자동으로 건너뛰는 것도 이 쪽 이득이다.
 //     "불 붙여 놓고 로그아웃"이 최적 전략이 되는 건 **의도한 것**이다 — 청동기 제련은 원래 몇 시간 걸린다.
 const SMELT_BASE_MS = 180000;        // 기준 조업 시간(3분) — 1,150℃(도가니로+숯+풀무) 기준
 const SMELT_MIN_MS  = 45000;         // 하한 45초(고로급이어도 클릭 연타 게임이 되지 않게)
@@ -8146,7 +8208,8 @@ function tryFurnaceSmelt(player, buildingId) {
   const now = Date.now();
   const kind = (b.data && b.data.kind) || 'crucible';
   // ★★[2026-08-02e ⑤] 조업 중이면 — 아직이면 남은 시간을, 끝났으면 **출탕**한다.
-  //   진척은 벽시계라 자리를 떠도, 접속을 끊어도, 서버가 재시작해도 흐른다(농지 readyAt 선례).
+  //   진척은 벽시계라 자리를 떠도, 접속을 끊어도, 서버가 재시작해도 흐른다.
+  //   ⚠[T108] '농지 readyAt 선례'는 이제 없다 — 밭의 시계는 게임일 하나다.
   if (b.data && b.data.job) {
     const job = b.data.job;
     if (now < job.until) {
@@ -8249,7 +8312,8 @@ function __testBind() {
     // ★[부패·보존 배치 2026-08-31] 하네스가 잡을 손잡이들
     Spoil, doPreserve, preserveMenuPayload, _spoiledGuardItems, _spoiledGuardRes, _gameDayAt, __e2eFreezeZoneDay,
     // ★[작물 층 2026-08-31]
-    Crops, doPlant, plantMenuPayload, tryHarvest, _waterSupplyAt, _farmlandData, lootOfResource, CROP_GROW_MS,
+    Crops, doPlant, plantMenuPayload, tryHarvest, _waterSupplyAt, _farmlandData, lootOfResource,
+    _promoteLegacyFarm, _farmStageOf,   // ★[T108] 옛 밭 승격 · 밭 단계(게임일 정본)
     _cropTend, _cropSettle, _cropNeedsWater, _cropEntryOf, _nearestEmptyFarmland, _plantInto,   // ★[T58b] 플레이어 돌보기
     PRESERVED_EFFECTS, BUILDING_COST, BUILDING_RECIPES, ITEM_LABEL_SERVER,
     // ★[자염 배치 2026-09-01] 하네스가 잡을 손잡이들 — **정본을 그대로 내준다**
@@ -9961,11 +10025,27 @@ setInterval(() => {
     if ((Date.now() - now) > 15) break;
     npcStep(npc, dt, now);
   }
-  // 농지 ready 마크 (시간 지남) — 활성청크만 (집 ON이면 전 건물 3만+채 매틱 순회 방지)
-  for (const k of activeChunkKeys) { const c = chunkManager.chunks.get(k); if (!c) continue;
-    for (const b of c.buildings.values()) {
-      // ★[작물 층] 작물 농지는 **볼 때** 판정한다(lazy · 게임일) — 이 틱은 종전 베리 농지 전용이다.
-      if (b.type === 'farmland' && b.data && !b.data.crop && !b.data.ready && now >= b.data.readyAt) b.data.ready = true;
+  // ★★[T108 2026-09-05] **벽시계 ready 마크 틱을 지우고, 게임일 경계 한 번으로 바꿨다.**
+  //   여기가 **매 틱** 전 활성 청크의 밭을 훑어 `now >= readyAt` 으로 `ready` 를 켜던 자리다.
+  //   ★밭의 시계는 이제 게임일 하나다 ⇒ 밭 그림이 바뀔 수 있는 순간도 **하루 경계 하나**뿐이다.
+  //     그날이 아니면 훑을 이유가 없다(틱당 순회 → 하루 1회 · 활성 청크만).
+  //   ★`farmStage` 는 **정본의 사영**이다(0갈은흙 1어린싹 2자람 3익음). 클라가 성장을 다시 세면
+  //     그게 시계 둘이다 — 종전 클라가 `readyAt`·`plantedAt` 으로 그러고 있었고, 정본 밭엔 그 둘이
+  //     없어서 **심자마자 "수확가능"** 으로 그려졌다(§0ⓐ 실측). 서버가 답을 실어 준다.
+  {
+    const _gd = zoneGameDay();
+    if (_gd !== _lastFarmStageDay) {
+      _lastFarmStageDay = _gd;
+      for (const k of activeChunkKeys) { const c = chunkManager.chunks.get(k); if (!c) continue;
+        for (const b of c.buildings.values()) {
+          if (b.type !== 'farmland' || !b.data) continue;
+          const st = _farmStageOf(b.data, _gd);
+          if (st !== b.data.farmStage) {
+            b.data.farmStage = st;
+            broadcast({ type: 'building_updated', building: { id: b.id, data: b.data } });   // 클라가 이미 아는 메시지
+          }
+        }
+      }
     }
   }
 
