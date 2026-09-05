@@ -1660,27 +1660,38 @@ function _routeWarmBuild() {
   state.routeWarmQ = q;
   state.routeWarmTotal = q.length;
   // ★[T42-b] 유예 시계를 여기서 시작한다 — **부팅 직후도 한가한 순간이 아니다**(재기동 = 접속이 몰리는 때).
-  state._routeHumanAt = Date.now();
-  if (q.length) console.log(`[${state.zoneId}] 🐂 교역로 선계산 대기 ${q.length}쌍 — 사람이 없고 ${ROUTE_WARM_IDLE_MS}ms 지난 뒤부터 ${ROUTE_WARM_GAP_MS}ms 간격으로 한 쌍씩`);
+  //   ★[T89] 이 시계가 이제 유예의 **전부**다(사람 존재는 더는 시계를 밀지 않는다 — 아래 `_routeWarmStep`).
+  state._routeBootAt = Date.now();
+  if (q.length) console.log(`[${state.zoneId}] 🐂 교역로 선계산 대기 ${q.length}쌍 — 부팅 뒤 ${ROUTE_WARM_IDLE_MS}ms 지나면 ${ROUTE_WARM_GAP_MS}ms 간격으로 한 쌍씩(접속 중에도 · 조각 예산 안에서)`);
 }
+// ★★[T89 2026-09-04 재민 확정] **접속 중에도 데운다** — T42 회부 2 의 종결.
+//
+//   T42-b 가 *"사람이 있으면 멈춘다"* 를 넣은 이유는 하나였다: 한 걸음이 최대 **2,393ms** 라
+//   사람이 붙어 있을 때 데우면 **경계 스파이크를 평시 스파이크로 바꾸는 것뿐**이었기 때문이다.
+//   T85 가 그 전제를 없앴다 — 한 걸음이 이제 조각이고 **최악 31ms · 듀티 ~48%** 다(실측).
+//   ⇒ **"사람이 있다"는 더는 멈출 이유가 아니다.** 멈출 이유는 여전히 하나뿐이다: **일이 밀려 있다**.
+//
+//   ⚠두 수(유예 30초 · 간격 250ms)는 **그대로 둔다** — 새 손잡이 0. 바꾼 것은 게이트 **하나**뿐이다:
+//     "마지막 사람이 나간 지" → "**부팅한 지**". T42-b 가 그 유예에 준 이유는 두 갈래였다 —
+//       ① 막 나간 사람은 자주 곧바로 돌아온다(그 재접속이 2.4초짜리 걸음에 물리면 '먹통'으로 겪는다)
+//       ② 재기동 = 접속이 몰리는 때
+//     ①은 걸음이 2.4초일 때만 아프고 지금은 31ms 다. **②는 여전히 참이라 남긴다.**
+//   ⚠`ioBusy` 술어는 **그대로**다. 그게 T42-b 가 산 진짜 보호다(`e2e-rumor ⑦` 이 잡은 그것):
+//     fire-and-forget 은 "안 기다린다"는 뜻이지 "끝났다"는 뜻이 아니다.
+//   ⚠종전 `ioQuietMs() < 30초` 게이트는 **뺐다**. 그건 "아무도 없는 세계"의 자다:
+//     사람이 붙어 있으면 주기 저장(`SAVE_INTERVAL_MS` 30초 · 움직인 사람만)이 그 창을 계속 다시 열어
+//     **영영 안 데운다** — 정책을 바꿔 놓고 자명하게 안 도는 꼴이 된다(하네스가 그걸 잡는다).
+//     지금 밀려 있는 일은 ⓐ 가 이미 본다.
 function _routeWarmStep() {
   const q = state.routeWarmQ;
   if (!ROUTE_WARM || !q || !q.length) return;
   const now = Date.now();
-  // 사람이 있으면 멈춘다 — 데우기가 평시 스파이크가 되면 안 된다.
-  const pl = state.deps && state.deps.players;
-  if (pl) { for (const p of pl.values()) if (!p.isNpc) { state._routeHumanAt = now; return; } }
-  // ★★[T42-b] 사람이 없다 ≠ 할 일이 없다(위 주석) — 나간 사람의 저장이 먼저 다 날아가야 한다.
-  //   ⓐ **날아가는 쓰기·처리 중인 접속이 있으면 손을 뗀다**(zone.js `ioBusy`).
-  //     fire-and-forget 은 "안 기다린다"는 뜻이지 "끝났다"는 뜻이 아니고,
-  //     입장 중인 손님은 등록 전까지 `players` 에 **안 보인다** — 둘 다 "사람이 없다"로 보인다.
-  //     ⚠유예 시계도 같이 민다: 지금 막 착지했어도 뒤이어 도착 처리가 남아 있다.
   const d = state.deps || {};
-  if (d.ioBusy && d.ioBusy()) { state._routeHumanAt = now; return; }
-  //   ⓑ 마지막 쓰기가 착지한 지도 유예만큼 지나야 한다(위 시계와 같은 자로 잰다).
-  if (d.ioQuietMs && d.ioQuietMs() < ROUTE_WARM_IDLE_MS) return;
-  //   ⓒ 마지막 사람이 나간 지 유예만큼 지났는가.
-  if (now - (state._routeHumanAt || 0) < ROUTE_WARM_IDLE_MS) return;
+  //   ⓐ **날아가는 쓰기·처리 중인 접속이 있으면 손을 뗀다**(zone.js `ioBusy`).
+  //     입장 중인 손님은 등록 전까지 `players` 에 **안 보인다** — 이 술어는 그것도 본다.
+  if (d.ioBusy && d.ioBusy()) return;
+  //   ⓑ 부팅 유예 — 재기동은 접속이 몰리는 때다(T42-b 의 두 갈래 중 살아남은 쪽).
+  if (now - (state._routeBootAt || 0) < ROUTE_WARM_IDLE_MS) return;
   // ★★[T42-b] 걸음 사이에 루프를 놓아 준다 — 그래야 쓰기·접속이 끼어든다.
   if (now - (state._routeWarmAt || 0) < ROUTE_WARM_GAP_MS) return;
   // ★★[T85] 한 걸음을 **조각으로** 판다 — 종전엔 한 쌍이 통째로 최대 2,393ms 였고(T42-b 실측)
@@ -1730,12 +1741,16 @@ function routeDebug(opts) {
                 warmGapMs: ROUTE_WARM_GAP_MS, warmIdleMs: ROUTE_WARM_IDLE_MS, warmOn: ROUTE_WARM,
                 // ★[T42-b] **유예가 얼마나 남았나** — 하네스가 "지금 데워도 되는 때인가"를 시계 없이 알 수 있게.
                 //   (밖에서 부팅 시각으로 역산하면 큐가 언제 섰는지에 판정이 흔들린다 — 실제로 흔들렸다.)
-                warmIdleLeftMs: Math.max(0, ROUTE_WARM_IDLE_MS - Math.min(
-                  Date.now() - (state._routeHumanAt || 0),
-                  (state.deps && state.deps.ioQuietMs) ? state.deps.ioQuietMs() : Number.MAX_SAFE_INTEGER)),
-                // ★[T42-b] 배선 확인용 — 이 둘이 undefined 면 유예가 **시계 하나**로 되돌아간 것이다(하네스가 센다).
+                //   ★[T89] 이제 유예는 **부팅 시계 하나**다(사람 존재는 시계를 안 민다 · `ioQuietMs` 게이트는 뺐다).
+                warmIdleLeftMs: Math.max(0, ROUTE_WARM_IDLE_MS - (Date.now() - (state._routeBootAt || 0))),
+                // ★[T42-b] 배선 확인용 — `ioBusy` 가 undefined 면 술어가 빠진 것이다(하네스가 센다).
+                //   ★[T89] `ioQuietMs` 는 이제 **게이트가 아니라 계측**이다(값은 그대로 낸다 — 표에 쓴다).
                 ioBusy: (state.deps && state.deps.ioBusy) ? !!state.deps.ioBusy() : null,
                 ioQuietMs: (state.deps && state.deps.ioQuietMs) ? state.deps.ioQuietMs() : null,
+                // ★[T89] **지금 사람이 붙어 있나** — 정책이 바뀌었으니 하네스가 그걸 직접 봐야 한다
+                //   ("접속 중에도 데운다"를 재려면 접속 중인지부터 서버가 말해야 한다 · 사본 금지).
+                humans: (() => { let n = 0; const pl = state.deps && state.deps.players;
+                  if (pl) for (const p of pl.values()) if (!p.isNpc) n++; return n; })(),
                 primed: state._routePrimed | 0, coldPrimed: _probe.routeColdPrimed | 0,
                 db: (state.db && state.db.countTradeRoutes) ? state.db.countTradeRoutes(state.zoneId) : -1 };
   // ★★[T85] **재개형 감사** — 캐시에 든 길(동기 문이 판 것)과 **재개형으로 다시 판 길**이 비트 동일인가.

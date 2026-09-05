@@ -198,12 +198,20 @@ console.log('\n[G] 랩 HTML 인라인 엔진');
   const args = process.argv.slice(2);
   const labs = args.length ? args
     : ['마을실험실.html', '전쟁실험실.html'].map(f => path.join(root, '..', f)).filter(f => fs.existsSync(f));
-  if (!labs.length) wrn('랩 HTML 을 못 찾음 — 건너뜀 (디바이스 파일이라 컨테이너엔 없을 수 있다)');
+  if (!labs.length) wrn('랩 HTML 을 못 찾음 — 건너뜀 (디바이스 파일이라 컨테이너엔 없을 수 있다 · 인자로 경로를 주면 잰다)');
   else {
     try {
       execFileSync(process.execPath, [path.join(root, 'sim/inline-engine.js'), '--check', ...labs], { stdio: 'inherit' });
       ok('랩 인라인 엔진 = 번들');
     } catch (e) { bad('랩 인라인 엔진이 번들과 다르다 — node sim/inline-engine.js 로 갱신해야 한다'); }
+    // ★★[T89 2026-09-04] **path-core 사본도 같이 잰다.** 3사본 규약의 대상은 econ 번들 하나가 아니다 —
+    //   `sim/path-core.js` 도 랩 HTML 안에 사본으로 산다(`PATH-CORE-START` 마커).
+    //   여기 없었던 탓에 T85 가 정본을 고친 뒤 **랩 사본이 T85 전 판인 채로 남았고**(정본 247줄 vs 사본 180줄)
+    //   그 어긋남을 아무 검사도 말하지 않았다. 문이 하나면 다른 하나도 있어야 한다.
+    try {
+      execFileSync(process.execPath, [path.join(root, 'sim/inline-path.js'), '--check', ...labs], { stdio: 'inherit' });
+      ok('랩 인라인 path-core = 정본');
+    } catch (e) { bad('랩 인라인 path-core 가 정본과 다르다 — node sim/inline-path.js 로 갱신해야 한다 (랩이 다른 길을 판다)'); }
   }
 }
 
