@@ -4,6 +4,7 @@
 // "안 보는 마을이 보는 마을보다 빨리 살면 안 된다"(fast 모드 = 물리의 가속 shadow)를 식 수준에서 고정한다.
 //   ①작물: 헤드리스 예산 = 농부수 × (낮 실초 ÷ 건당 실초) — **날 길이 파생**이어야 한다(구 고정 30의 결함)
 //   ②개간: 헤드리스 = min(크루, 농부) × LIFE_CLEAR_PDAY = 실걸음 상한과 동일해야 한다
+//         ★[T100] 그 식은 이제 `_lifeClearDay`(순수 추출) 안에 있다 — 헤드리스는 그걸 **부른다**.
 //   ③건설: 헤드리스 = min(크루, 인구) × LIFE_STAGE_PDAY = 실걸음 상한과 동일해야 한다
 //   ④실걸음 상한의 물리 근거: 셀 체류 _jobT = 9~18초 → 건당 실초가 그 범위 밖이면 상수가 물리와 어긋난 것
 //
@@ -73,7 +74,13 @@ console.log('\n[② 건당 실초의 물리 근거 — 체류식 + 곳간 훅의
 console.log('\n[③ 개간·건설 결산은 실걸음 상한과 같은 식이어야 한다]');
 {
   const hl = cut('_lifeHeadlessDay');
-  chk(/Math\.min\(LIFE_CREW, farmerN\) \* LIFE_CLEAR_PDAY/.test(hl), '개간 결산 = min(크루, 농부) × LIFE_CLEAR_PDAY');
+  // ★[T100 2026-09-05] 개간 절이 `_lifeClearDay` 로 **순수 추출**됐다(랩이 정본을 그대로 부르려고 — 사본 0).
+  //   식은 그대로다. 그래서 ⓐ 식이 그 함수 안에 있고 ⓑ 헤드리스가 **그 함수를 부른다**를 같이 못 박는다
+  //   (둘 중 하나만 보면 식이 살아 있는데 안 불리거나, 불리는데 식이 갈린 것을 놓친다).
+  const cl = cut('_lifeClearDay');
+  chk(/Math\.min\(LIFE_CREW, farmerN\) \* LIFE_CLEAR_PDAY/.test(cl), '개간 결산 = min(크루, 농부) × LIFE_CLEAR_PDAY');
+  chk(/_lifeClearDay\(vil, farmerN\)/.test(hl), '★헤드리스가 그 개간 정본을 **부른다**(식만 살아 있고 안 불리면 안 된다)');
+  chk(!/Math\.min\(LIFE_CREW, farmerN\) \* LIFE_CLEAR_PDAY/.test(hl), '★개간 식이 **한 군데**다(헤드리스에 사본이 남아 있지 않다)');
   chk(/Math\.min\(LIFE_CREW, popN\) \* LIFE_STAGE_PDAY/.test(hl), '건설 결산 = min(크루, 인구) × LIFE_STAGE_PDAY');
   chk(/_lifeTasksPerFarmerDay\(\)/.test(hl), '작물 결산이 날 길이 파생 함수를 쓴다(고정 상수 아님)');
   // 실걸음 쪽: 개간 1셀 = dayMs / LIFE_CLEAR_PDAY 노동, 크루 상한 LIFE_CREW → 하루 상한 동일
