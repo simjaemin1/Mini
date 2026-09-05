@@ -268,3 +268,32 @@ T55 가 정본을 실어 보내고 사본을 폴백으로 남겼다. T61 이 그
   ⓪ 빚 셋  `boot()` → `99-main.js`(T0-b · 적재 순서 경쟁 종결 · `test-client-globals` 기준선 12→11)
            · 진단 훅 `__rmbDbg` 삭제(T57) · 메뉴 테두리 `--thirst` → `--line`(먹선).
 ```
+
+## 1-동사3. ★[T90 2026-09-04] 동사 정본은 서버 · 지목 · 알림 kind 는 그림이 된다
+
+```
+  ★사본 −1   `46-h-verbs` 의 한 단어 표를 지웠다. 정본은 `server/itemlabel.js` 의
+             `RESOURCE_VERBS`(`CATEGORY_KO` 곁 — 같은 파일이 이름표의 정본이다)이고
+             `welcome.resourceVerbs` 로 실려 온다(`categoryLabels`·`equipmentMeta` 와 같은 통로).
+             클라는 `resourceVerbs[type]` 을 그대로 쓴다 — **폴백 '채집' 없음**.
+             ⇒ 새 자연물이 생기면 표에 없어 종류 이름이 그대로 뜬다(조용히 안 접는다).
+             `test-itemlabel ⑭` 가 `chunk.js RESOURCE_HP_TABLE` 키 전수와 맞대 지킨다.
+  ★지목     `gather{resId}` — T68 `feed(pid)` 와 같은 꼴. `resId` 가 없으면 **종전 최근접**
+             (하위 호환 — E 키·NPC 채집 경로가 그대로 산다).
+             `tryGather` 는 지목이 오면 그 자원 하나만 보고, **거리 게이트(48px)는 그대로**다
+             (§0-ⓐ · 멀면 `"…px 떨어짐 — 48px 안에서 캔다"` · `kind:'gather'`).
+             claim 검사부터 아래 몸통은 `gatherResource(player, res)` 로 **떼어내 하나로** 썼다
+             (지목 갈래와 최근접 갈래가 같은 몸을 부른다 — 사본 0).
+             ⇒ T82 의 "최근접 아니면 빈 메뉴"·"거리 조건" 갈래는 **삭제**됐다.
+             반복 타이머는 지목 id 를 **고정으로** 든다(`startGatherLoop(stopWhen, resId)`) —
+             도는 중에 다른 자연물로 옮겨 가지 않는다.
+  ★알림 그림 `notice.kind`(T78 · 아홉) → 토스트 앞 **선 아이콘**. 표는 `50-i-panel.js` 의
+             `NOTICE_ICO` 하나이고 그림은 `05-u-icon.js` 세트에서만 온다(새 `d` 0 — 전부 재사용):
+               village home · gather axe · fishing fish · craft hammer · board scroll
+               · rescue heart · combat guild · dev warn · info eye
+             `showNotice(text, ms, kind)` — `kind` 는 **선택**이다(안 주면 종전대로 글자만).
+             ⚠`window.__notices` 는 **글자만** 담는다(수십 개 하네스가 문자열로 읽는다).
+             ⚠`#notice` 의 `textContent` 도 종전과 **글자 그대로 같다**(SVG 엔 글자가 없다) —
+               `e2e-events`·`e2e-winter` 의 "게시판은 토스트로 안 간다" 판정이 안 흔들린다.
+  ⚠지시서 정정 `showNotice` 는 `44-h-hud.js` 가 아니라 **`50-i-panel.js`** 에 있다(T90 §1 의 전제 정정).
+```

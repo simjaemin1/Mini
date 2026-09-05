@@ -678,10 +678,28 @@ function itemKo(k) {
   // ★[2026-08-25 사건 레이어] `ms` 인자 추가 — 게시판 목록은 한 줄보다 오래 떠야 읽힌다.
   //   새 패널을 만들지 않는다(설계 §3.2 "대시보드 UI 금지" · 배치 지시 "기존 HUD 문법 재사용").
   //   여러 줄은 `\n` 그대로 — `#notice` 에 `white-space: pre-line` 을 줬다.
-  function showNotice(text, ms) {
+  // ★★[T90 · T78 회부 ⑤] 알림의 **종류가 그림이 된다.** T78 이 경계 하나에서 접두 이모지를 걷고
+  //   `kind` 로 옮겨 뒀는데(서버 `notice.js`), 클라가 그 칸을 **읽지 않아** 종류가 화면에서 사라져 있었다.
+  //   ⇒ 아홉 종류를 선 아이콘 이름에 잇는다. **새 `d` 는 하나도 안 만들었다** — 세트에 이미 있는
+  //     아홉 이름을 쓴다(이름 하나 = 그림 하나이므로 아홉이 서로 다른 그림이다 · `test-itemlabel ⑬`).
+  const NOTICE_ICO = {
+    village: 'home', gather: 'axe', fishing: 'fish', craft: 'hammer', board: 'scroll',
+    rescue: 'heart', combat: 'guild', dev: 'warn', info: 'eye',
+  };
+  function showNotice(text, ms, kind) {
     // ★진단 훅(읽기 전용): 최근 알림 40건 — 하네스가 '재료 부족/의뢰 성공' 같은 서버 응답을 실측하는 통로.
+    //   ⚠**글자만** 담는다(아이콘은 화면의 일이다). 하네스 수십 개가 이 배열을 문자열로 읽는다.
     (window.__notices = window.__notices || []).push(text); if (window.__notices.length > 40) window.__notices.shift();
-    document.getElementById('notice').textContent = text;
+    const el = document.getElementById('notice');
+    // ⚠`textContent = text` 로는 아이콘을 못 붙이고, `innerHTML` 로 하면 줄바꿈(`white-space: pre-line`)이
+    //   살아 있는 여러 줄 알림에서 글자가 HTML 로 해석된다. ⇒ **비우고 · 아이콘 · 글자 마디** 셋으로 짓는다.
+    //   그러면 `el.textContent` 는 종전과 **한 글자도 다르지 않다**(SVG 엔 글자가 없다).
+    el.textContent = '';
+    if (text) {
+      const ico = NOTICE_ICO[kind] || null;
+      if (ico) el.insertAdjacentHTML('beforeend', uiIcon(ico, 13, 'nt-ico'));
+      el.appendChild(document.createTextNode(text));
+    }
     clearTimeout(noticeTimer);
     noticeTimer = setTimeout(() => {
       document.getElementById('notice').textContent = '';

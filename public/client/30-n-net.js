@@ -887,6 +887,7 @@
         if (msg.itemLabels && window.__preloadItemIcons) { try { window.__preloadItemIcons(); } catch (e) {} }
         // ★[T61] econ 자원 종류 이름 — 같은 경로·같은 규약(있으면 갱신 · 없으면 유지). 클라 사본은 지웠다.
         if (msg.categoryLabels) { CATEGORY_KO_SRV = msg.categoryLabels; window.__categoryLabels = msg.categoryLabels; }
+        if (msg.resourceVerbs) resourceVerbs = msg.resourceVerbs;   // ★[T90] 자연물 동사 이름표(사본 0)
         // ★[T66 ⓪] 직업·계절 이름 — 같은 규약(있으면 갱신 · 없으면 유지). 클라 사본 둘을 지웠다.
         if (msg.uiLabels) { UI_LABELS_SRV = msg.uiLabels; window.__uiLabels = msg.uiLabels; }
         // 플레이어 장비
@@ -1558,6 +1559,6 @@
       speechBubbles.set(msg.pid, { text: (msg.tribe ? '[길드] ' : '') + msg.text, until: performance.now() + 4000 });
       renderChatLog();
     } else if (msg.type === 'notice') {
-      showNotice(msg.text);
+      showNotice(msg.text, undefined, msg.kind);   // ★[T90] 종류가 그림이 된다(T78 이 실어 둔 칸을 이제 읽는다)
     }
   }

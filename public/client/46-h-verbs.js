@@ -143,32 +143,15 @@
       return out;
     }
     if (t.kind === 'nature') {
-      // ★★[§0-ⓐ 실측] **서버엔 자연물 종류 → 동사 이름표가 없다.** `tryGather` 는 종류를 보고
-      //   갈래를 타지만 그 갈래에 **이름을 안 붙인다**(문장은 전리품 이름으로 말한다).
-      //   ⇒ 아래 한 단어 표는 **클라가 가진 사본 후보**다 — `인계/회부.md` 에 그대로 적었다.
-      //     고침은 서버 한 줄(`welcome.resourceVerbs`)이고, 그날 이 표는 지운다.
-      //   ⚠전리품 이름(나무·돌·약초 …)은 지어내지 않는다 — 그건 이미 정본(`itemKo`)이 있다.
-      const V = { tree: '벌목', rock: '채굴', ore: '채굴', herb: '채집',
-                  berry_bush: '채집', water_pool: '물 마시기', meteorite: '채굴' };
-      const word = V[t.obj.type] || '채집';
-      // ★★그리고 **서버는 지목을 못 받는다.** `gather` 는 인자가 없고 `tryGather` 가
-      //   **제일 가까운 자원**을 고른다(GATHER_RANGE). 그래서 누른 것과 서버가 고를 것이 다르면
-      //   메뉴가 거짓말이 된다 ⇒ **누른 것이 제일 가까울 때만** 동사를 낸다.
-      //   ⚠거리 상수(48)는 여기 안 적는다 — "제일 가까운가"만 보면 되고, 너무 멀면 서버가
-      //     E 키와 **똑같은 문장으로** 답한다(메뉴는 별칭이지 새 판정이 아니다).
-      let nearest = null, nd = Infinity;
-      for (const c of conns.values()) {
-        if (!c.meta || !c.resources) continue;
-        const ox = c.meta.worldOffsetX || 0, oy = c.meta.worldOffsetY || 0;
-        for (const r of c.resources.values()) {
-          const d = Math.hypot(ox + r.x - myAbsPredicted.x, oy + r.y - myAbsPredicted.y);
-          if (d < nd) { nd = d; nearest = r.id; }
-        }
-      }
-      if (nearest !== t.id) return [];   // 더 가까운 게 있다 — 그걸 누르라는 뜻이다(거짓 메뉴 0)
-      // ★[§0-ⓑ 판정] **한 번 = 반복 시작**이다. 채굴은 60타에 덩이 하나라 한 타는 뜻이 없고,
-      //   E 는 이미 "누르고 있으면 1초마다"다. 메뉴는 그 **같은 타이머**를 켜고 끈다 —
-      //   타이머를 새로 만들면 E 와 메뉴가 두 벌로 돌아 서버에 두 배로 간다.
+      // ★★[T90] 동사 이름은 **서버 정본**에서 온다(`welcome.resourceVerbs` = `itemlabel.RESOURCE_VERBS`).
+      //   T82 가 여기 뒀던 한 단어 표는 **지웠다** — 그게 사본이었고, 스스로 회부에 적어 둔 것이다.
+      //   ⚠폴백을 두지 않는다. 서버가 모르는 종류면 이름이 안 나오고, 그건 표를 고치라는 신호다
+      //     (조용히 '채집'으로 접으면 새 자연물이 영영 이름 없이 산다 — `itemKo` 와 같은 규약).
+      const word = (resourceVerbs && resourceVerbs[t.obj.type]) || t.obj.type;
+      // ★★[T90] 그리고 이제 **지목이 간다**(`gather{resId}`). T82 의 "누른 것이 최근접일 때만"은
+      //   정책이 아니라 서버에 인자가 없어서 생긴 임시였다 — 그 조건도, 빈 메뉴 갈래도 지웠다.
+      //   멀면 **서버가** 거절한다(거리 게이트는 종전 `GATHER_RANGE` 그대로 · 새 예외 0).
+      //   ★[§0-ⓑ 판정 유지] 한 번 = 반복 시작(채굴 60타). E 키와 **같은 타이머**를 쓴다.
       const on = !!window.__eRepeat;
       out.push({ label: on ? `${word} 멈추기` : word, send: () => toggleGatherLoop(t.id) });
       return out;
@@ -241,11 +224,12 @@
   //       E    — 키를 떼면 멈춘다(종전 그대로)
   //       메뉴 — 그 자연물이 없어지면 멈춘다(다 캤다) · 다시 우클릭하면 멈춘다
   //   ⚠보내는 메시지는 종전과 같은 `gather` 하나다(서버 무접촉 · 새 동작 0).
-  function startGatherLoop(stopWhen) {
+  function startGatherLoop(stopWhen, resId) {
     if (window.__eRepeat) return;
     window.__eRepeat = setInterval(() => {
       if ((stopWhen && stopWhen()) || chatActive || myIsDown) { stopGatherLoop(); return; }
-      sendPrimary({ type: 'gather' });
+      // ★[T90] `resId` 가 있으면 매 타가 **그 자연물**로 간다(E 는 인자 없이 종전대로 최근접).
+      sendPrimary(resId === undefined ? { type: 'gather' } : { type: 'gather', resId });
     }, 1000);
   }
   function stopGatherLoop() {
@@ -261,11 +245,13 @@
     _goneStreak = here ? 0 : _goneStreak + 1;
     return _goneStreak >= 2;
   }
+  //   ★★[T90 · §0-ⓐ] 메뉴에서 시작한 반복은 **누른 그 자연물을 끝까지 든다**(`resId` 고정).
+  //     지목이 없던 때는 매 타가 최근접으로 흘렀다 — 걷다 보면 다른 나무를 베고 있었다.
   function toggleGatherLoop(resId) {
     if (window.__eRepeat) { stopGatherLoop(); showNotice('멈췄다'); return; }
-    sendPrimary({ type: 'gather' });                       // 첫 타는 즉시(E 와 같다)
+    sendPrimary({ type: 'gather', resId });                // 첫 타는 즉시(E 와 같다) · 지목해서
     _goneStreak = 0;
-    startGatherLoop(() => _resourceGone(resId));           // 다 캐면 저절로 멎는다
+    startGatherLoop(() => _resourceGone(resId), resId);    // 다 캐면 저절로 멎는다
   }
 
   // ── 우클릭 배선 ───────────────────────────────────────────────────────────

@@ -3645,6 +3645,7 @@ async function _acceptConnection(ws, req, C) {
     //   종전엔 클라(`60-t-market.js ITEM_KR` 9키)가 표를 들고 있었다. 그게 사본이고, T55 가 품목에서
     //   닫은 것과 **같은 결함**이다(서버가 종류를 늘리면 화면만 영문으로 남는다).
     categoryLabels: ItemLabel.CATEGORY_KO,
+    resourceVerbs: ItemLabel.RESOURCE_VERBS,   // ★[T90] 자연물 종류 → 동사 이름표(T82 회부 ① — 클라 사본 삭제)
     // ★★[T66 ⓪ 2026-09-03] **이 카드의 유일한 서버 줄.** 클라에 남아 있던 사본 둘을 닫는다:
     //   `60-t-market.js JOB_KR`(zone 의 `JOB_KR_NPC` 와 글자까지 같았다) · `43-i-icon.js SEASON_KO`
     //   (`events.KO_SEASON` 이 정본 — 달력이 이미 **현재** 계절만 보내서, 작물 파종철 표기가 사본을 탔다).
@@ -3777,7 +3778,7 @@ function handlePlayerInput(player, raw) {
   } else if (msg.type === 'verb') {
     Rescue.verb(player, msg);   // ★[T68] 대상 위 메뉴의 동사 하나 — 표는 `rescue.js` 가 갖는다(접점 1줄)
   } else if (msg.type === 'butcher') butcherCorpse(player, msg.cid);  // Phase 5-7
-  else if (msg.type === 'gather') tryGather(player);
+  else if (msg.type === 'gather') tryGather(player, msg.resId);   // ★[T90] 지목(없으면 종전 최근접 — 하위 호환)
   else if (msg.type === 'sort_ore') trySortOre(player);   // ★선광 — 캔 원석 덩이를 광석/맥석으로 가른다
   else if (msg.type === 'claim') tryClaim(player, msg.kind || 'personal');
   // ★[원장 승격 2026-08-30] 지목 드롭/줍기 — `ids`(개체 원장 id) · `lotDay`(로트 취득일) · `giIds`(바닥 여러 덩이).
@@ -6386,7 +6387,25 @@ function tryForage(player) {
   if (canPersist(player)) savePlayer(player);
 }
 
-function tryGather(player) {
+function tryGather(player, resId) {
+  // ★★[T90 2026-09-04 재민 확정 · T82 회부 ②] **지목**. 종전엔 인자가 없어 늘 최근접을 골랐고,
+  //   그래서 T82 의 우클릭 메뉴는 "누른 것이 최근접일 때만" 동사를 냈다(정책이 아니라 임시였다).
+  //   ⇒ `resId` 가 오면 **그 자연물**을 캔다. 없으면 종전 그대로다(E 키·옛 클라 무변).
+  //   ⚠거리 게이트는 **그대로** `GATHER_RANGE` 다 — 지목해도 멀면 거절한다(새 예외 0).
+  //   ⚠지목이 오면 물·가축·광맥 앞갈래를 **건너뛴다**. 안 그러면 물가에서 나무를 눌렀는데
+  //     물을 마시고, 메뉴가 또 거짓말을 한다("누른 것"이 뜻을 잃는다).
+  if (resId !== undefined && resId !== null) {
+    const target = resources.get(resId);
+    if (!target) { send(player.ws, { type: 'notice', text: '거기엔 아무것도 없다', kind: 'gather' }); return; }
+    const d = Math.hypot(target.x - player.x, target.y - player.y);
+    if (d > GATHER_RANGE) {
+      send(player.ws, { type: 'notice',
+        text: `${Math.round(d)}px 떨어짐 — ${GATHER_RANGE}px 안에서 캔다`, kind: 'gather' });
+      return;
+    }
+    gatherResource(player, target);
+    return;
+  }
   // Phase 5-9: 물 채취 — 강/호수 인접 시 thirst 회복 + 어업 (Phase 5-11)
   for (const [dx, dy] of [[32, 0], [-32, 0], [0, 32], [0, -32]]) {
     if (isWaterTileLocal(player.x + dx, player.y + dy)) {
@@ -6475,6 +6494,13 @@ function tryGather(player) {
     if (d < bestDist) { best = r; bestDist = d; }
   }
   if (!best) { tryForage(player); return; }
+  gatherResource(player, best);
+}
+
+// ★★[T90] 자원 하나를 실제로 캐는 일 — **여기 하나**다.
+//   종전엔 `tryGather` 안에만 있었고, 지목(`resId`)이 생기면서 두 갈래가 같은 일을 해야 했다.
+//   ⇒ 뽑아 두고 둘 다 부른다. 한 줄도 안 바꿨다(사유지 검사·물웅덩이·도구 배율·전리품·저장 전부 그대로).
+function gatherResource(player, best) {
 
   // 토지 보호 체크: 다른 사람이 클레임한 땅 안의 자원
   //   - 주인 vp >= VP_THRESHOLD (주인이 같은 zone 접속 중일 때만 확인 가능) → 보호 해제 → 채집 허용 (vp 안 늘림)
