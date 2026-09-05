@@ -1673,7 +1673,8 @@ hp 가 3이거나 6이었다**(청크가 깐 것 6 · `spawnOneResource` 3). 사
 
 ## 3-비. ★★★2026-09-05 T112 — **비가 밭에 물을 준다** (물대기 일감은 하늘을 본다)
 
-> 전문 `보고/T112_2026-09-05.md`. 베이스 `d426c25e` · 푸시 `<해시>`(`batch/rain-water-0905` → ff → main · force 0회).
+> 전문 `보고/T112_2026-09-05.md`. 베이스 `d426c25e`(리베이스 1회) · 푸시 `f3456f27`
+> (`batch/rain-water-0905` → ff → main · force 0회 · `.lock` 전수 4개 격리 → 재검 0).
 > 만진 것: `crops.js`(술어 하나) · `villages.js`(`_cropSky` 한 줄) · `test-farm-life.js`(⑥) · `test-crops.js`(⑨ 한 줄).
 > **zone.js 무접촉 · 새 수 0 · 되돌림 `T112_RAIN=0`.**
 
