@@ -75,7 +75,7 @@ EDGE_A = 0.60     # "불투명" 문턱(알파)
 
 # ── 먹선·셀 [T96 · 후처리만 · 씬 값 무변] ────────────────────────────────────
 #   ★`EDGE_K` 는 테두리 RGB 를 **곱해서** 낮췄다 — 화소마다 색이 달라 '그늘'이지 '선'이 아니다.
-#     T96 은 같은 자리를 **한 먹색**으로 덮어 비로소 선으로 세운다(`scripts/ink_post.py`).
+#     T96 은 같은 자리를 **한 먹색**으로 덮어 비로소 선으로 세운다(T116 부터 `render_common`).
 #     계약 둘(반투명 무접촉 · 1겹)과 합집합 마스크 규약은 그대로 물려받는다.
 #   ★되돌림은 스위치다: `T96_INK=0` 이면 옛 `edge_darken` 경로로 정확히 돌아간다.
 #   ★★셀 단수는 **두 자로 재서** 골랐다(§0-ⓑ · 보고서 표). 카드는 2~3단을 말했는데 **4단이다**:
@@ -106,12 +106,15 @@ EXRDIR = os.path.join(ROOT, "assets-src", "char_raw")   # ★[T107] 후처리 �
 os.makedirs(OUTDIR, exist_ok=True)
 os.makedirs(SHEETDIR, exist_ok=True)
 
-sys.path.insert(0, HERE)      # ★[T96] 같은 폴더의 `ink_post` 를 부르려고
-import ink_post               # noqa: E402  — 후처리 둘(먹선·셀). 씬은 안 건드린다.
-# ★★[T120] `render_common` 에서 **옷 재질 표만** 읽는다 — 씬·헬퍼는 여전히 이 파일 것이다.
+sys.path.insert(0, HERE)      # 같은 폴더의 `render_common` 을 부르려고
+# ★★[T120] `render_common` 에서 **옷 재질 표**를 읽는다 — 씬·헬퍼는 여전히 이 파일 것이다.
 #   그 모듈은 최상위에서 상수만 세운다(씬을 짓지 않는다) ⇒ 부르는 것만으로 굽는 그림이 안 바뀐다.
 #   ⓘ 이 파일을 `render_common` 위로 옮기는 것(씬·헬퍼까지)은 여전히 **다른 카드**다.
-import render_common as rc    # noqa: E402
+# ★★[T116] 거기서 **후처리(먹선·셀)와 상자 못박기**도 읽는다 — 옛 `ink_post.py` 는 지웠다.
+#   ⚠**이름 붙여서만** 부른다 — `from render_common import *` 는 금지다: 이 파일의 `PPU`
+#     (135.765 = PPU0×SS)와 공용의 `PPU`(45.255 = px/m)가 **같은 이름에 다른 값**이라
+#     별표 들여오기는 씬 값을 조용히 갈아 끼운다. 씬은 여전히 이 파일 것이다(공용 씬 무접촉).
+import render_common as rc    # noqa: E402  — 옷 재질 표 · 후처리 둘 · 상자 못박기
 
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 ONLY_META = "--only-meta" in ARGS
@@ -1041,25 +1044,17 @@ ANCH_Y = FH / 2.0 - (WMIN + WMAX) * 0.5
 #   ⇒ 이미 배포된 메타가 있으면 **그 값을 쓴다**. 새 상자가 그 안에 안 들어가면 **크게 실패한다**
 #     (조용히 잘리는 것보다 낫다 — 그때는 사람이 규격을 새로 정할 일이다).
 #   ⇒ 되돌림: `T107_BOXPIN=0` 이면 옛날처럼 매번 새로 잰다.
+#   ★[T116] 읽기·판정은 `render_common` 으로 올렸다 — 자연물·소품도 같은 자를 쓰게 하려고.
+#     캐릭터가 주는 것은 **제 서식뿐**이다: 메타가 클라 픽셀이라 `scale=SS` 로 굽기 픽셀에 맞춘다.
+#     (자산별 서식 `{w,h,ox,oy}` 은 `key=` 로 고른다 — 여기선 최상위 하나라 `key=None`.)
 _BOXPIN = int(os.environ.get("T107_BOXPIN", "1"))
 _pin_meta = os.path.join(SHEETDIR, "char_meta.json")
-if _BOXPIN and os.path.exists(_pin_meta):
-    with open(_pin_meta) as _f:
-        _pm = json.load(_f)
-    _pFW, _pFH = int(_pm["frameW"]) * SS, int(_pm["frameH"]) * SS
-    _pAX, _pAY = float(_pm["anchorX"]) * SS, float(_pm["anchorY"]) * SS
-    _pcu, _pcw = _pFW / 2.0 - _pAX, _pFH / 2.0 - _pAY        # 얼린 상자의 한가운데
-    _fit = (UMIN >= _pcu - _pFW / 2.0 and UMAX <= _pcu + _pFW / 2.0
-            and WMIN >= _pcw - _pFH / 2.0 and WMAX <= _pcw + _pFH / 2.0)
-    print(f"[char] 상자 못박음: 잰 값 u[{UMIN:.1f},{UMAX:.1f}] w[{WMIN:.1f},{WMAX:.1f}]"
-          f" → 얼린 값 {_pFW}x{_pFH} 중심({_pcu:.1f},{_pcw:.1f}) · 들어맞음={_fit}")
-    if not _fit:
-        raise SystemExit("[char] ★상자를 벗어난다 — 얼린 프레임에 안 들어간다. 규격을 새로 정해야 한다.")
-    FW, FH = _pFW, _pFH
+_pin = rc.read_pinned_box(_pin_meta, scale=SS) if _BOXPIN else None
+if _pin:
+    FW, FH, ANCH_X, ANCH_Y, _pcu, _pcw = rc.fit_pinned_box(_pin, UMIN, UMAX, WMIN, WMAX, label="char")
     _ca = _pcu / PPU
     _cb = -_pcw / PPU
     CTR = RHAT * _ca + UHAT * _cb
-    ANCH_X, ANCH_Y = _pAX, _pAY
 print(f"[char] 프레임 {FW}x{FH} (ss={SS}) · 앵커=({ANCH_X:.1f},{ANCH_Y:.1f}) · ppu={PPU:.3f}")
 # 화면 세로 px/m = PPU0 · ZSQ · cos30° = 32.0 (자산 정본: 1m 높이 = 32px)
 _PXM = PPU0 * ZSQ * math.cos(math.radians(30.0))
@@ -1132,13 +1127,6 @@ def downsample(px, w, h, k):
                 out[o] = r / a; out[o + 1] = g / a; out[o + 2] = b / a
             out[o + 3] = a * inv
     return out, ow, oh
-
-
-def edge_darken(sheet, w, h, k, athr=EDGE_A, mask=None):
-    """★[T107] 본문은 `ink_post.edge_darken` 으로 **옮겼다** — 굽기와 되굽기가 같은 함수를 타야
-       "바이트 동일"이 우연이 아니게 된다. 이 이름은 옛 문서·주석이 가리키므로 위임으로 남긴다.
-       규약(합집합 마스크 · 반투명 무접촉 · 1겹 · 읽기용 사본)은 그쪽 주석이 정본이다."""
-    return ink_post.edge_darken(sheet, w, h, k, athr, mask)
 
 
 def blank_sheet(w, h):
@@ -1251,7 +1239,7 @@ if not ONLY_META:
         if EXR_DUMP and built:
             os.makedirs(EXRDIR, exist_ok=True)
             for lname, sheet, SWx, SHx in built:
-                ink_post.save_exr(sheet, SWx, SHx, os.path.join(EXRDIR, f"{lname}_{clip}.exr"))
+                rc.save_exr(sheet, SWx, SHx, os.path.join(EXRDIR, f"{lname}_{clip}.exr"))
             print(f"[char] EXR {len(built)}장 → {EXRDIR}")
         if built and (INK_PX or CEL_BANDS >= 2 or EDGE_K < 0.999):
             SW, SH = built[0][2], built[0][3]
@@ -1282,7 +1270,7 @@ if not ONLY_META:
                 alpha[pn] = [psheet[i * 4 + 3] for i in range(pw * ph)]
                 return alpha[pn]
 
-            # ★★[T107] 후처리 본문은 **`ink_post.post_all` 한 자리**다 — 되굽기
+            # ★★[T107·T116] 후처리 본문은 **`render_common.post_all` 한 자리**다 — 되굽기
             #   (`scripts/ink_repost.py`)가 같은 함수를 타야 "바이트 동일"이 우연이 아니게 된다.
             def _alpha_of(nm):
                 if nm is None:
@@ -1291,7 +1279,7 @@ if not ONLY_META:
                     return alpha[nm]
                 return _partner_alpha(nm)
 
-            ink_post.post_all([(l, sh) for l, sh, _w, _h in built], SW, SH,
+            rc.post_all([(l, sh) for l, sh, _w, _h in built], SW, SH,
                               silhouette=SILHOUETTE_GROUP, partner_of=PARTNER,
                               alpha_of=_alpha_of, ink_px=INK_PX, cel_bands=CEL_BANDS,
                               edge_a=EDGE_A, edge_k=EDGE_K)

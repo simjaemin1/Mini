@@ -286,17 +286,18 @@ console.log('\n=== ⑥ 먹선 1px · 셀 셰이딩 [T96] ===');
   ok(SH.celBands >= 2, '★검사 전제 — 셀 셰이딩을 켜고 구웠다 (`shape.celBands`)', String(SH.celBands));
   ok(SH.poseSrc === 'mocap', '★검사 전제 — 포즈가 모캡 표다 (`shape.poseSrc`)', String(SH.poseSrc));
 
-  // 먹색은 `scripts/ink_post.py` 의 정본에서 읽는다(하네스가 숫자를 베끼지 않는다).
-  const inkSrc = fs.readFileSync(path.join(ROOT, 'scripts', 'ink_post.py'), 'utf8');
+  // 먹색은 정본에서 읽는다(하네스가 숫자를 베끼지 않는다).
+  // ★[T116] 정본 자리가 `ink_post.py` → `render_common.py` 로 **옮겼다**(후처리 공용 편입).
+  const inkSrc = fs.readFileSync(path.join(ROOT, 'scripts', 'render_common.py'), 'utf8');
   const m = inkSrc.match(/INK_RGB\s*=\s*\((\d+)\s*\/\s*255\.0,\s*(\d+)\s*\/\s*255\.0,\s*(\d+)\s*\/\s*255\.0\)/);
-  ok(!!m, '★먹색을 `ink_post.py` 에서 읽었다 (하네스에 숫자 사본 0)', m ? m.slice(1, 4).join(',') : '');
+  ok(!!m, '★먹색을 `render_common.py` 에서 읽었다 (하네스에 숫자 사본 0)', m ? m.slice(1, 4).join(',') : '');
   const INK = m ? [ +m[1], +m[2], +m[3] ] : [21, 19, 17];
   // ★★문턱도 **정본에서 읽는다**. 먹은 `EDGE_A`(0.60) 가 아니라 `INK_A`(200/255) 에만 닿는다 —
-  //   ④ 가 `a < 200` 을 반투명이라 부르기 때문이다(`ink_post.py` 주석에 실측·유도).
+  //   ④ 가 `a < 200` 을 반투명이라 부르기 때문이다(`render_common.py` 주석에 실측·유도).
   //   ⚠1차 하네스는 여기서 `edgeA` 를 썼다가 **없는 결함을 봤다**: 알파 153~199 구간이 실루엣에
   //     들어가 버려, 먹이 그 안쪽에 있는 것처럼 보였다(안쪽 19.1% · 2겹 6.6%). 자를 틀리게 잡은 것이다.
   const ma = inkSrc.match(/INK_A\s*=\s*(\d+)\s*\/\s*255\.0/);
-  ok(!!ma, '★먹 문턱도 `ink_post.py` 에서 읽었다', ma ? `INK_A = ${ma[1]}/255` : '');
+  ok(!!ma, '★먹 문턱도 `render_common.py` 에서 읽었다', ma ? `INK_A = ${ma[1]}/255` : '');
   const AT = ma ? +ma[1] : 200;
 
   const im = readPng(path.join(DIR, 'body_walk.png'));
@@ -453,7 +454,7 @@ console.log('\n=== ⑦ 모캡 포즈표 [T96] ===');
     const src = fs.readFileSync(path.join(ROOT, 'scripts', 'char_render.py'), 'utf8');
     ok(/T96_SINE/.test(src) && /def _pose_walk/.test(src) && /def _pose_run/.test(src),
        '★`T96_SINE=1` 되돌림 경로 — 옛 사인 함수가 지워지지 않았다');
-    ok(/import ink_post/.test(src) && /T96_INK/.test(src) && /T96_CEL/.test(src),
+    ok(/import render_common as rc/.test(src) && /T96_INK/.test(src) && /T96_CEL/.test(src),
        '★먹선·셀도 스위치로 되돌아간다 (`T96_INK=0` · `T96_CEL=0`)');
     // ★★[T120 2026-09-05] **금칙이 좁아졌다 — "부르지 마라"에서 "씬은 가져오지 마라"로.**
     //   T97 때 이 줄은 `import render_common` **자체**를 금했다. 이유는 그 파일이 그때
@@ -461,16 +462,27 @@ console.log('\n=== ⑦ 모캡 포즈표 [T96] ===');
     //   T120 이 옷 재질 표를 `render_common` 하나로 올리면서(회부 T77·T87·T95) char 는 그
     //   **표만** 읽는다 — 씬·카메라·헬퍼는 여전히 이 파일 것이다.
     //   ⇒ import 를 금하면 사본을 강제하게 된다. 금칙을 **무엇을 쓰는가**로 옮긴다.
+    //   ★[T116] 목록이 넷 늘었다 — 후처리(`post_all`·`save_exr`)와 상자 못박기
+    //     (`read_pinned_box`·`fit_pinned_box`). 옛 `ink_post.py` 가 그리로 올라간 것이다.
+    //     **여전히 씬·헬퍼는 하나도 안 가져온다** — 아래 목록이 그 사실이다.
     {
       const uses = [...src.matchAll(/\brc\.([A-Za-z_][A-Za-z_0-9]*)/g)].map((m) => m[1]);
-      const ALLOW = new Set(['CLOTH_MATS', 'CLOTH_TRIM_K', 'CLOTH_PLACKET_K', 'FUR_PAD']);
+      const ALLOW = new Set(['CLOTH_MATS', 'CLOTH_TRIM_K', 'CLOTH_PLACKET_K', 'FUR_PAD',
+                             'post_all', 'save_exr', 'read_pinned_box', 'fit_pinned_box']);
       const bad = [...new Set(uses)].filter((u) => !ALLOW.has(u));
       ok(/^\s*import\s+render_common\s+as\s+rc/m.test(src),
-         '★`render_common` 을 **표를 읽으려고만** 부른다 (`import render_common as rc`)');
+         '★`render_common` 을 **표·후처리·못박기만** 부른다 (`import render_common as rc`)');
       ok(bad.length === 0,
-         `★가져오는 것이 **옷 재질 표뿐**이다 — 씬·헬퍼 0 ${bad.length ? '— 새어 든 것: ' + bad.join(' · ') : `(쓰는 이름: ${[...new Set(uses)].sort().join(' ')})`}`);
+         `★가져오는 것이 **표·후처리·못박기뿐**이다 — 씬·헬퍼 0 ${bad.length ? '— 새어 든 것: ' + bad.join(' · ') : `(쓰는 이름: ${[...new Set(uses)].sort().join(' ')})`}`);
       ok(/^scene = bpy\.context\.scene/m.test(src) || /scene = bpy\.context\.scene/.test(src),
          '★씬은 여전히 이 파일이 세운다(`render_common.build_scene` 을 안 부른다)');
+      // ★[T116] 별표 들여오기는 목록 검사가 못 잡는다 — 이름이 `rc.` 없이 들어오기 때문이다.
+      //   그리고 그게 가장 위험하다: 공용 `PPU`(45.255)와 이 파일의 `PPU`(135.765)는 **같은 이름 다른 값**.
+      ok(!/^\s*from\s+render_common\s+import/m.test(src),
+         '★별표 들여오기 금지 — 공용 `PPU`(45.255)와 캐릭터 `PPU`(135.765)는 같은 이름 다른 값');
+      ok(/^PPU0 = 64\.0 \/ math\.sqrt\(2\.0\)/m.test(src) && /^SAMPLES = 64/m.test(src)
+         && /^SS = 3/m.test(src) && /^ZSQ = /m.test(src),
+         '★씬 값은 여전히 이 파일 것이다 — 공용에서 안 끌어온다(씬 무접촉)');
     }
   }
 }
@@ -566,11 +578,14 @@ console.log('\n=== ⑧ 도끼질·조준의 축 · EXR 되굽기 [T107] ===');
   {
     const rp = fs.readFileSync(path.join(ROOT, 'scripts', 'char_render.py'), 'utf8');
     const ip = fs.readFileSync(path.join(ROOT, 'scripts', 'ink_repost.py'), 'utf8');
-    ok(/ink_post\.post_all\(/.test(rp), '★굽기가 `ink_post.post_all` 을 부른다');
-    ok(/ink_post\.post_all\(/.test(ip), '★되굽기도 **같은** `ink_post.post_all` 을 부른다');
+    const cm = fs.readFileSync(path.join(ROOT, 'scripts', 'render_common.py'), 'utf8');
+    ok(/rc\.post_all\(/.test(rp), '★굽기가 `render_common.post_all` 을 부른다');
+    ok(/rc\.post_all\(/.test(ip), '★되굽기도 **같은** `render_common.post_all` 을 부른다');
+    ok(/^def post_all\(/m.test(cm) && !/^def post_all\(/m.test(rp) && !/^def post_all\(/m.test(ip),
+       '★본문은 공용에 **한 벌** — 캐릭터 쪽 사본 0 [T116]');
     ok(!/def\s+(cel_quantize|ink_outline|edge_darken)/.test(ip), '★되굽기가 제 후처리를 따로 만들지 않는다(사본 0)');
-    ok(/T107_BOXPIN/.test(rp) && /얼린 값/.test(rp),
-       '★공유 프레임 상자 **못박기**가 살아 있다 — 포즈를 고쳐도 앵커가 안 흔들린다');
+    ok(/T107_BOXPIN/.test(rp) && /rc\.fit_pinned_box\(/.test(rp) && /얼린 값/.test(cm),
+       '★공유 프레임 상자 **못박기**가 살아 있다 — 판정은 공용, 서식은 캐릭터 [T116]');
   }
 }
 

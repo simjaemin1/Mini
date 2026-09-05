@@ -11,6 +11,8 @@
 #            `cone`·`ico`·`plane`·`cord`) · 오브젝트 등록(`add`/`OBJS`) ·
 #            씬 조립(`build_scene`) · **프리셋 둘**(`render_icon_pass`/`render_world_pass`) ·
 #            PNG 후처리(`_post_png`·`downscale_png`)
+#          · **시트 후처리**(`cel_quantize`·`ink_outline`·`edge_darken`·`post_all`)
+#          · **상자 못박기**(`read_pinned_box`·`fit_pinned_box`)                   [T116]
 #   안 갖는다: **모델**(무엇을 만드는가) · **재질표 `M`**(어떤 색인가).
 #            팔레트는 파일마다 다르다 — icon 의 `stone` 과 props 의 `stone` 은 다른 돌이다.
 #            섞으면 그림이 바뀐다. 두 팔레트는 **두 팔레트로 남는다**(T77 §0-ⓒ).
@@ -500,3 +502,306 @@ def render_world_pass(objs, path, margin=3, ppu_mul=1.0, ss=SS):
     ox = Wpx / 2.0 - (umin + umax) * 0.5
     oy = Hpx / 2.0 - (wmin + wmax) * 0.5
     return {"w": Wpx, "h": Hpx, "ox": round(ox, 2), "oy": round(oy, 2), "ppu": round(ppu, 3)}
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# [T116] **시트 후처리 · 상자 못박기 — 공용으로 올림**
+#
+# ★어디서 왔나: 아래 두 묶음은 `scripts/ink_post.py`(T96·T107)와 `scripts/char_render.py`(T107)
+#   안에 있던 것을 **그대로 옮긴 것**이다(사본이 아니라 이동 — 원래 자리는 지웠다).
+#   주석 안의 숫자는 전부 그때의 실측이고, 옮기면서 한 톨도 안 고쳤다.
+#
+# ★왜 옮기나 [카드 T116 ②③]: T106 이 끝나 이 파일이 굽기 공용의 정본이 됐는데, 후처리와
+#   상자 못박기만 캐릭터 쪽에 남아 있었다. 자연물·소품·건물에 같은 것을 걸려면 **두 벌째를 적는
+#   날**이 오고, 그날 한쪽만 고쳐진다(이 파일 머리말의 T67 캐논이 바로 그 이야기다).
+#   ⇒ 함수는 여기 한 벌. **다만 거는 것은 아직 캐릭터뿐이다** — 자연물·소품·건물에 실제로
+#     적용하는 것은 별도 카드다(세션8). 여기서는 **부를 수 있게만** 해 둔다.
+#
+# ★캐릭터가 이 함수들을 부르고도 배포 PNG 가 **바이트 한 톨 안 바뀐다**는 것이 이 이동의 증명이다
+#   (`보고/T116` §3 — 다섯 클립 70장 전수 · `char_sheets.lock.json` 무변).
+#
+# ⚠이 파일과 캐릭터는 `PPU` 라는 **같은 이름을 다른 값으로** 쓴다(여기 45.255 = px/m,
+#   `char_render` 135.765 = 그 SS배). 그래서 캐릭터는 `from render_common import *` 가 아니라
+#   **`import render_common as rc`(이름 붙여서)** 로만 부른다. 세션8 도 같은 함정을 밟지 마라.
+# ═════════════════════════════════════════════════════════════════════════════
+
+# ── 먹색 [T96 §0-ⓐ 실측에서 유도 · 눈대중 아님] ──────────────────────────────
+#   `public/assets/char/body_walk.png` 실측: 실루엣 안 휘도 1% = 39.3 · 중앙 102.5 · 99% 180.1.
+#   선이 몸에 묻히지 않으려면 몸의 바닥보다 확실히 아래여야 한다 ⇒ **1% 의 절반**(19.7)을 잡는다.
+#   색비는 시트가 이미 가진 가장 어두운 테두리 색 (34,31,27) = 1 : 0.91 : 0.79 (따뜻한 흑갈).
+#   ⇒ 휘도 19.7 · 그 비율 → (21, 19, 17). 순검정(0,0,0)이 아니다 — 검정은 화면에서 **구멍**이 된다.
+INK_RGB = (21 / 255.0, 19 / 255.0, 17 / 255.0)
+
+# ── 먹이 닿아도 되는 알파 문턱 [실측이 정했다 · 눈대중 아님] ──────────────────
+#   ⚠1차는 `char_render.py` 의 `EDGE_A`(0.60 = 153/255)를 그대로 썼다가 **`test-charsheet ④` 를
+#     빨갛게 만들었다**(반투명 화소 중 검은 것 0.0% → **23.0%**). 한 변수씩 갈라 보면 범인이 명확하다:
+#       raw 0.0% · 옛 edge_darken 0.0% · **셀만 0.0%** · **먹선만 23.0%**
+#     `edge_darken` 은 RGB 를 0.78 **곱했으니** 합이 90 밑으로 안 내려갔고, 먹선은 **덮으니** 내려간다.
+#   ⇒ 문턱은 ④ 가 이미 쓰는 숫자에서 가져온다(족보 74): ④ 는 `a < 200` 을 **반투명**으로 친다.
+#     그러니 먹은 `a >= 200` 에만 닿는다 — 그래야 이 모듈이 적어 둔 "반투명 무접촉"이 참말이 된다.
+#   ★셀은 `EDGE_A` 로 둔다: 밝기를 **비율로** 옮길 뿐이라 검은 화소를 안 만든다(위 실측 0.0%).
+#     문턱을 올리면 테두리 한 겹이 계단을 안 타 옆 화소와 어긋난다.
+INK_A = 200 / 255.0
+
+# ── 셀 단수의 밝기 범위 — **시트 제 것을 쓴다** [T96 §0-ⓑ 실측이 시켰다] ────────
+#   ⓐ 처음엔 범위를 한 번 재서 못박았다(몸 시트의 1~99% = 39.3~180.1). 그러면 층·클립이
+#     같은 계단을 쓰니 '한 사람'이 된다고 봤다. **그런데 그게 재질을 지운다.**
+#     실측: 옷 여섯의 평균 휘도 15쌍 중 문턱(14.7 · T81 이 통과시킨 최소 간격) 미만이
+#     원본 2쌍 → 고정범위 3단에서도 2쌍이지만, 갖옷↔가죽의 **색거리가 11.7 → 3.5 로 무너졌다**
+#     (둘은 색이 거의 같고 밝기로만 갈리는 짝이라, 공통 계단이 그 밝기 차를 통째로 삼킨다).
+#   ⓑ 고치는 자리는 계단 수가 아니라 **범위**다. 셀 셰이딩이 계단 지어야 하는 것은
+#     '재질의 밝기'가 아니라 '그 재질에 진 그늘'이다 ⇒ 범위를 **시트 제 실루엣의 1~99%** 로 잡는다.
+#     재질의 평균은 그대로 남고 그늘만 계단이 된다.
+#   ⓒ 그래도 층·클립이 안 흔들리는가? 쟀다 — 같은 층의 다섯 클립에서 1% 는 0.1 이내,
+#     99% 는 최대 4 이내로 같다(`clothes_fur` 43.6~43.7 / 118.4~122.5). 계단이 거의 안 움직인다.
+CEL_P_LO = 0.01
+CEL_P_HI = 0.99
+
+# ★시트 화소 공간 = PNG 8bit ÷ 255 (선형). 실측으로 확인했다: `bpy` 이미지에 0.0·0.1·0.5·0.78·1.0
+#   을 넣고 저장하면 PNG 가 0·26·128·199·255 로 나온다 — 감마가 안 끼어 있다.
+#   그래서 위 상수는 **그냥 sRGB 8bit ÷ 255** 로 적혀 있다.
+# ★계약 둘은 어느 자산군에 걸든 그대로다(`test-charsheet ④` 가 캐릭터에서 지킨다):
+#   ⓐ **반투명(안티에일리어싱) 화소 무접촉** — 거기를 어둡게 하면 그게 검은 프린지다.
+#   ⓑ **1겹** — 읽기용 사본을 먼저 뜬다. 제자리로 고치면 방금 먹인 화소가 다음 화소의 이웃 판정에
+#      끼어들어 선이 안쪽으로 번진다.
+_LUMA = (0.2126, 0.7152, 0.0722)
+
+
+def _luma(r, g, b):
+    return _LUMA[0] * r + _LUMA[1] * g + _LUMA[2] * b
+
+
+def cel_range(sheet, w, h, athr):
+    """이 시트 실루엣 안 휘도의 1%~99%. 정렬이라 결정적이다."""
+    L = [ _luma(sheet[i * 4], sheet[i * 4 + 1], sheet[i * 4 + 2])
+          for i in range(w * h) if sheet[i * 4 + 3] >= athr ]
+    if len(L) < 8:
+        return None
+    L.sort()
+    lo = L[int(len(L) * CEL_P_LO)]
+    hi = L[min(len(L) - 1, int(len(L) * CEL_P_HI))]
+    return (lo, hi) if hi - lo > 1e-4 else None
+
+
+def cel_quantize(sheet, w, h, bands, athr, mask=None):
+    """실루엣 안 화소의 **밝기만** bands 단으로 계단 짓는다(색조 유지 · 알파 무접촉).
+
+       ★색조를 지키는 법: 휘도만 목표값으로 옮기고 RGB 를 그 비율로 곱한다.
+         (RGB 를 각각 양자화하면 색이 튄다 — 살빛이 자주색으로 돈다.)
+       ★반투명 화소는 안 건드린다(먹선과 같은 계약 · 프린지 금지).
+       ★구간은 **이 시트의** [1%, 99%] 를 bands 등분하고 값은 각 칸의 한가운데.
+         범위 밖은 가장자리 칸으로 잘린다(가장 어두운 그늘·가장 밝은 하이라이트가 안 사라진다)."""
+    if not bands or bands < 2:
+        return sheet
+    rng = cel_range(sheet, w, h, athr)
+    if rng is None:
+        return sheet
+    lo, hi = rng
+    a = mask if mask is not None else None
+    span = (hi - lo) / bands
+    levels = [lo + span * (k + 0.5) for k in range(bands)]
+    for i in range(w * h):
+        if sheet[i * 4 + 3] < athr:
+            continue
+        if a is not None and a[i] < athr:
+            continue
+        o = i * 4
+        r, g, b = sheet[o], sheet[o + 1], sheet[o + 2]
+        L = _luma(r, g, b)
+        if L <= 1e-6:
+            continue
+        k = int((L - lo) / span)
+        if k < 0:
+            k = 0
+        elif k >= bands:
+            k = bands - 1
+        s = levels[k] / L
+        sheet[o] = r * s
+        sheet[o + 1] = g * s
+        sheet[o + 2] = b * s
+    return sheet
+
+
+def ink_outline(sheet, w, h, athr=INK_A, mask=None, rgb=INK_RGB):
+    """실루엣 안쪽 **한 겹**을 먹색으로 덮는다.
+
+       mask 를 주면 그 알파를 실루엣으로 삼는다 — 몸·옷은 **합집합**을 준다.
+       안 그러면 살↔옷 경계에 없는 선이 하나 더 생긴다(겹선).
+       도구·등짐은 제 실루엣을 쓴다(손에 든 것은 손과 갈려 보여야 한다)."""
+    a = mask if mask is not None else [sheet[i * 4 + 3] for i in range(w * h)]
+    hits = []
+    for y in range(h):
+        base = y * w
+        for x in range(w):
+            i = base + x
+            if a[i] < athr or sheet[i * 4 + 3] < athr:
+                continue
+            if (x == 0 or a[i - 1] < athr or x == w - 1 or a[i + 1] < athr
+                    or y == 0 or a[i - w] < athr or y == h - 1 or a[i + w] < athr):
+                hits.append(i)
+    for i in hits:
+        o = i * 4
+        sheet[o], sheet[o + 1], sheet[o + 2] = rgb
+    return sheet
+
+
+def edge_darken(sheet, w, h, k, athr, mask=None):
+    """실루엣 안쪽 한 겹의 RGB 를 k 배로 낮춘다 — 옛 자체 아웃라인(`T96_INK=0` 되돌림 경로).
+       ★`ink_outline` 과 배타적이다: 이건 **곱해서** 낮추니 화소마다 색이 달라 '그늘'이고,
+         `ink_outline` 은 같은 자리를 **한 색으로 덮으니** 비로소 '선'이다."""
+    if k >= 0.999:
+        return sheet
+    a = mask if mask is not None else [sheet[i * 4 + 3] for i in range(w * h)]
+    for y in range(h):
+        for x in range(w):
+            i = y * w + x
+            if a[i] < athr or sheet[i * 4 + 3] < athr:
+                continue
+            edge = (x == 0 or a[i - 1] < athr or x == w - 1 or a[i + 1] < athr
+                    or y == 0 or a[i - w] < athr or y == h - 1 or a[i + w] < athr)
+            if edge:
+                o = i * 4
+                sheet[o] *= k; sheet[o + 1] *= k; sheet[o + 2] *= k
+    return sheet
+
+
+def post_all(built, w, h, *, silhouette, partner_of, alpha_of, ink_px, cel_bands, edge_a, edge_k):
+    """한 클립의 층 전부에 후처리를 건다 — **굽기와 되굽기가 같이 부르는 자리**.
+
+       built      : [(층이름, sheet), ...]  (제자리 수정)
+       silhouette : 합집합 실루엣을 쓰는 층 이름 집합(몸·옷)
+       partner_of : 층이름 → 짝 층이름 (몸의 짝은 기본 한 벌 · 옷의 짝은 몸)
+       alpha_of   : 층이름 → 알파 리스트를 내는 함수(없으면 None — 짝이 이 판에 없다는 뜻)
+       ★순서가 규약이다: **셀 먼저, 먹선 나중.** 반대로 하면 방금 그은 먹선이 양자화에 끌려
+         올라가 선이 흐려지고, 먹색이 휘도 분포에 섞여 칸 경계까지 움직인다.
+       ★[T116] 실루엣 합집합·짝 표는 **캐릭터의 정책**이라 인자로 받는다(몸↔옷). 자연물·소품은
+         층이 하나뿐이라 `silhouette=set()` 을 주면 전부 `mask=None` 경로로 간다."""
+    if not (ink_px or cel_bands >= 2 or edge_k < 0.999):
+        return
+    for lname, sheet in built:
+        if cel_bands >= 2:
+            cel_quantize(sheet, w, h, cel_bands, edge_a, mask=None)
+        if lname in silhouette:
+            uni = list(alpha_of(lname))
+            other = alpha_of(partner_of.get(lname))
+            if other:
+                for i in range(w * h):
+                    if other[i] > uni[i]:
+                        uni[i] = other[i]
+            mask = uni
+        else:
+            # 도구·등짐은 **제 실루엣**이다 — 손에 든 것이 손과 갈려 보여야 한다.
+            mask = None
+        if ink_px:
+            ink_outline(sheet, w, h, INK_A, mask=mask)
+        elif edge_k < 0.999:
+            edge_darken(sheet, w, h, edge_k, edge_a, mask=mask)
+
+
+# ── float 시트 입출력 ─────────────────────────────────────────────────────────
+#   ★[T107] 왜 있나: 8bit raw 에 후처리를 다시 걸면 양자화 칸 경계가 반올림에 옮겨 가 배포 PNG 와
+#     **바이트가 다르다**(실측 화소 14,255곳 · 최대 채널차 160). 그래서 먹선·셀 세기를 한 칸
+#     바꾸려면 1시간 27분을 다시 구워야 했다. 굽기가 후처리 **전** float 시트를 EXR 로 남기고
+#     되굽기가 그걸 읽어 **같은 `post_all`** 을 태우면, 굽기 없이 바이트가 같은 결과가 나온다.
+#   (`ink_post.py` 시절의 `import bpy` 지연 들여오기는 뺐다 — 이 파일은 이미 맨 위에서 들여온다.)
+def load_exr(path):
+    """EXR(float32 · 무손실 ZIP) → (sheet, w, h). 굽기가 남긴 **후처리 전** 값 그대로."""
+    img = bpy.data.images.load(path)
+    w, h = img.size
+    sheet = list(img.pixels[:])
+    bpy.data.images.remove(img)
+    return sheet, w, h
+
+
+def save_png(sheet, w, h, path):
+    """`char_render.save_sheet` 와 **같은 경로**로 PNG 를 쓴다 — 인코더가 같아야 바이트가 같다."""
+    img = bpy.data.images.new("sheet", width=w, height=h, alpha=True)
+    img.pixels = sheet
+    img.filepath_raw = path
+    img.file_format = 'PNG'
+    img.save()
+    bpy.data.images.remove(img)
+
+
+def save_exr(sheet, w, h, path):
+    """후처리 **전** float 시트를 EXR 로 남긴다(float32 · ZIP = 무손실).
+       ★half(16bit)로 줄이면 용량이 절반이지만 **바이트 동일을 보장 못 한다**:
+         8bit 한 칸이 1/255 = 0.0039 인데 half 의 1.0 근처 간격이 0.001 이라 네 배밖에 안 곱다 —
+         반올림 경계에 걸린 값 하나면 갈린다. 증명이 목적이므로 float32 를 쓴다."""
+    img = bpy.data.images.new("raw", width=w, height=h, alpha=True, float_buffer=True)
+    img.pixels = sheet
+    st = bpy.context.scene.render.image_settings
+    keep = (st.file_format, st.color_mode, getattr(st, "color_depth", None), getattr(st, "exr_codec", None))
+    st.file_format = 'OPEN_EXR'; st.color_mode = 'RGBA'
+    st.color_depth = '32'; st.exr_codec = 'ZIP'
+    img.save_render(path)
+    st.file_format, st.color_mode = keep[0], keep[1]
+    if keep[2] is not None:
+        st.color_depth = keep[2]
+    if keep[3] is not None:
+        st.exr_codec = keep[3]
+    bpy.data.images.remove(img)
+
+
+# ── 상자 못박기 [T107 에서 옮김 · T116 에서 공용] ──────────────────────────────
+#   ★왜 [T107 §0-ⓐ 실측]: 포즈를 고치면 상자가 다시 잡히고, 그러면 프레임 크기와 앵커가 흔들려
+#     **안 건드린 클립의 시트까지** 다시 구워야 한다. swing·aim 의 축을 바로잡자 상자가
+#     u ±160.21 → ±143.83 · w −240.57 → −225.16 으로 **줄었다**. 크기가 줄어도 규격이 바뀌면
+#     클라가 보는 자가 바뀐다. ⇒ 이미 배포된 메타가 있으면 **그 값을 쓴다**. 새 상자가 그 안에
+#     안 들어가면 **크게 실패한다** — 조용히 잘리는 것보다 낫다(그때는 사람이 규격을 새로 정할 일).
+#
+#   ★[T116 §0-ⓒ 실측] 배포 메타의 서식이 자산군마다 다르다. 그래서 읽는 쪽을 여기 한 벌 둔다:
+#     ┌ 자산군          파일                                    상자          앵커        모양
+#     │ 캐릭터          public/assets/char/char_meta.json        frameW/frameH anchorX/Y   최상위 **하나**(전 시트 공용)
+#     │ 자연물·소품·    …/nature_anchors.json · props_ · crops_  w/h           ox/oy       **자산마다** {키: {...}}
+#     │ 작물·산         …/mountain_anchors.json
+#     └ 건물            **배포 메타가 없다** — building_anchors.json 은 scripts/building_renders/
+#                       (gitignore) 에만 있다. 세션8 이 건물에 걸려면 먼저 배포로 올려야 한다.
+#     ⇒ 자산별 서식(`w/h/ox/oy`)은 바로 위 `render_world_pass()` 가 **내는 그 서식**이다.
+#       즉 공용이 쓰는 것을 공용이 읽는다 — 이름을 새로 짓지 않았다.
+def read_pinned_box(path, key=None, *, scale=1.0):
+    """배포 메타에서 얼린 상자 (FW, FH, AX, AY) 를 꺼낸다. 없으면 **None**(= 매번 새로 잰다).
+
+       path  : 배포 메타 경로. 없으면 None 을 낸다(첫 굽기 — 못박을 것이 없다).
+       key   : 자산별 서식일 때 그 자산의 키(`"bush01"`). 캐릭터처럼 최상위 하나면 None.
+       scale : 메타가 클라 픽셀이면 굽기 픽셀로 올리는 배수(캐릭터는 `SS`). 자산별 서식은 1.
+       ★`scale` 이 정수면 FW·FH 도 정수로 남는다 — 해상도로 그대로 들어가는 값이라 그래야 한다."""
+    import json                      # 이 파일 맨 위 import 줄을 안 건드리려고 여기서 들여온다
+    if not path or not os.path.exists(path):
+        return None
+    with open(path) as f:
+        m = json.load(f)
+    if key is not None:
+        m = m.get(key)
+        if not m:
+            return None
+    if "frameW" in m:                                    # 캐릭터 서식
+        fw, fh, ax, ay = m["frameW"], m["frameH"], m["anchorX"], m["anchorY"]
+    elif "w" in m and "ox" in m:                         # 자연물·소품·작물·산 서식
+        fw, fh, ax, ay = m["w"], m["h"], m["ox"], m["oy"]
+    else:
+        # ★파일이 **있는데** 서식이 둘 다 아니면 그건 "못박을 것이 없다"가 아니라 **버그**다.
+        #   여기서 None 을 내면 상자를 새로 재 버려, 못박기가 막으려던 바로 그 일(규격이 조용히
+        #   바뀌는 것)이 일어난다. 없는 것과 깨진 것을 같게 다루지 않는다.
+        raise SystemExit(f"[render_common] 상자 메타 서식을 모르겠다: {path}"
+                         f" (키 {sorted(m)[:8]}…) — frameW/frameH 나 w/h/ox/oy 중 하나여야 한다")
+    return (int(fw) * scale, int(fh) * scale, float(ax) * scale, float(ay) * scale)
+
+
+def fit_pinned_box(pinned, umin, umax, wmin, wmax, *, label="asset", verbose=True):
+    """새로 잰 상자가 얼린 상자 안에 들어가는지 본다.
+
+       pinned : `read_pinned_box()` 가 낸 (FW, FH, AX, AY) — 굽기 픽셀.
+       나머지 : 이번에 실측한 화면 상자(굽기 픽셀 · u=가로, w=세로).
+       → (FW, FH, AX, AY, cu, cw). cu·cw 는 얼린 상자의 한가운데(카메라를 그리로 옮긴다).
+       ★안 들어가면 **SystemExit** — 잘린 그림을 조용히 배포하느니 여기서 멈춘다."""
+    fw, fh, ax, ay = pinned
+    cu, cw = fw / 2.0 - ax, fh / 2.0 - ay
+    fit = (umin >= cu - fw / 2.0 and umax <= cu + fw / 2.0
+           and wmin >= cw - fh / 2.0 and wmax <= cw + fh / 2.0)
+    if verbose:
+        print(f"[{label}] 상자 못박음: 잰 값 u[{umin:.1f},{umax:.1f}] w[{wmin:.1f},{wmax:.1f}]"
+              f" → 얼린 값 {fw}x{fh} 중심({cu:.1f},{cw:.1f}) · 들어맞음={fit}")
+    if not fit:
+        raise SystemExit(f"[{label}] ★상자를 벗어난다 — 얼린 프레임에 안 들어간다. 규격을 새로 정해야 한다.")
+    return fw, fh, ax, ay, cu, cw
