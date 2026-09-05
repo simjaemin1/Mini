@@ -1464,7 +1464,7 @@ e2e-nature(★새 품목 68종 **404 0건**) · e2e-inv 71 · e2e-preserve 28 �
 
 ## 3-다년. ★★★2026-09-05 T91 — **베어도 다시 나는 밭** (다년생 · claim 작물 페이로드)
 
-> 전문 `보고/T91_2026-09-05.md`. 베이스 `d295fb3f` · 푸시 `<해시>`(`batch/perennial-0904` → ff → main).
+> 전문 `보고/T91_2026-09-05.md`. 베이스 `2ce2e095`(리베이스 2회) · 푸시 `c5ee8fd2`(`batch/perennial-0904` → ff → main · force 0회).
 > 만진 것: `crops.js`(축 유도) · `villages.js`(`cropAfterHarvest` · `cropAtCell`) · `zone.js`(수확 · claim) ·
 > `test-crops.js`(⑩⑪). **econ 0줄 · `crops.json` 손편집 0 · 새 상수 0 · 주사위 0 · 새 메시지 타입 0.**
 
