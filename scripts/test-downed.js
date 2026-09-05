@@ -1174,6 +1174,188 @@ const isWildSpot = (x, y) =>
     ok(H._t88Meal() === true && H._t88WakeDist() === true, '★전제 — 스위치를 도로 켜 두었다(뒤 검사가 끈 판에서 돌면 안 된다)');
   }
 
+  // ═══ ⑳ [T121] 꺼진 청크의 문간 — 깨어날 자리는 DB 가 안다 ════════════════════
+  //   ★T83 이 "벽 안에서 눈뜨지 않는다"를 세웠는데, **메모리(`buildings`)가 활성 청크만 담는다**는
+  //     사실 때문에 그 자리가 같은 이유로 다시 조용히 틀렸다 — 그리고 **깨어나는 자리는 정의상
+  //     내가 없는 곳**이라 그 청크는 대개 꺼져 있다(§0-ⓐ 실측: 문 → `center`, 즉 움집 **안**에서
+  //     눈을 뜬다. `_BLOCKED_STAND` 는 지형·나무만 보지 벽을 안 보니까).
+  //   ★★상황은 **찾는다, 만들지 않는다**(족보 73): "DB 엔 있는데 메모리엔 없는 움집 렉트"를
+  //     세계에 물어서 고른다. 걸어서 청크를 끄는 픽스처는 T62 쉼터 백필이 주기적으로 그 행을
+  //     **다시 올려** 상황이 안 선다(초안이 그래서 빨갰다 — 제품이 아니라 픽스처가 틀렸다).
+  say('\n⑳ [T121] 꺼진 청크의 문간 — 멀리서 죽어도 내 문 앞');
+  {
+    clearPlayers();
+    const BS2 = H.BUILDING_SIZE;
+    const R20 = BS2 * 6;                     // `_hutDoorNear(x, y, 0)` 이 쓰는 그 반경
+    const memRects = () => { const t = new Set(); for (const b of H.buildings.values()) { const r = b && b.data && b.data.hut; if (Array.isArray(r)) t.add(r.join(',')); } return t; };
+    // ── ⓐ 상황 — 꺼진 청크의 움집을 **찾는다** ──────────────────────────────
+    const MR = memRects();
+    const dbHuts = new Map();                // 렉트키 → {rect, walls:Set}
+    for (const r of H.db.getBuildings()) {
+      let d = null; try { d = r.data ? JSON.parse(r.data) : null; } catch (e) { d = null; }
+      if (!d || !Array.isArray(d.hut) || d.hut.length < 4) continue;
+      const k = d.hut.join(',');
+      if (!dbHuts.has(k)) dbHuts.set(k, { rect: d.hut, walls: new Set() });
+      if (r.type === 'wall' && !d.damaged) dbHuts.get(k).walls.add(Math.floor(r.x / BS2) + ',' + Math.floor(r.y / BS2));
+    }
+    const cold = [...dbHuts.entries()].filter(([k]) => !MR.has(k));
+    pre(cold.length > 0,
+      '**DB 엔 있는데 메모리엔 없는** 움집이 있다(= 꺼진 청크 · 이게 이 카드의 상황이다)',
+      `꺼진 움집 ${cold.length}개 / DB 전체 ${dbHuts.size} · 메모리 ${MR.size}`);
+    // 대조 표본 — 메모리에 **있는** 움집 하나(두 길이 같은 답을 내는지 맞대려면 필요하다)
+    const warmKey = [...dbHuts.keys()].find((k) => MR.has(k));
+    pre(!!warmKey, '메모리에 **있는** 움집도 하나 있다(활성 대조군)', warmKey || '없음');
+    if (cold.length && warmKey) {
+      const [ck, cv] = cold[0];
+      const t = cv.rect;
+      const mx = ((t[0] + t[2] + 1) / 2) * BS2, my = ((t[1] + t[3] + 1) / 2) * BS2;
+      // 정본 문 자리 — 하네스가 다시 계산하지 않게 **판정 함수 하나**에 물어서 얻는다
+      ok(!MR.has(ck), '★★⑳ⓐ 전제 — 그 움집은 지금 **메모리에 한 행도 없다**(있으면 아래가 자명 통과다)', ck);
+
+      // ── ⓑ 꺼진 청크에서도 문간이 나온다 · 대조군은 못 찾는다 ────────────────
+      //   ★대조군은 **옛 코드 그 자체**다(재구현 0): 옛 `_hutDoorNear` = `_hutDoorFrom(메모리 행, …)`.
+      const memOnly = [...H.buildings.values()];
+      const dOld = H._hutDoorFrom(memOnly, mx, my, R20);
+      ok(dOld === null,
+        '★★⑳ⓑ **대조군(옛 코드 = 메모리 행만)은 문을 못 찾는다** — T83 판이 조용히 축소되던 그 자리',
+        dOld ? `(${dOld.x | 0},${dOld.y | 0})` : 'null');
+      const dNew = H._hutDoorNear(mx, my, 0);
+      ok(dNew && dNew.rect.join(',') === ck,
+        '★★⑳ⓑ2 **지금은 그 움집의 문간을 찾는다** — DB 정본이 답한다(청크는 안 켠다)',
+        dNew ? `(${dNew.x | 0},${dNew.y | 0}) 렉트 ${dNew.rect.join(',')}` : 'null');
+      //   그 칸이 **정말 문**인가 — 남벽 행에서 벽이 없는 칸이어야 한다(DB 벽 행으로 직접 확인)
+      if (dNew) {
+        const doorY = (t[3] | 0) + 1, cx2 = dNew.cell[0];
+        ok(dNew.cell[1] === doorY && !cv.walls.has(cx2 + ',' + doorY),
+          '★★⑳ⓑ3 그 칸은 **남벽 행에서 벽이 빠진 칸**이다(문법이 아니라 그 움집의 제 행으로 확인)',
+          `칸 (${cx2},${doorY}) · 그 움집 벽 ${cv.walls.size}칸`);
+        ok(cv.walls.has((cx2 === (t[0] | 0) ? cx2 + 2 : t[0] | 0) + ',' + doorY) || cv.walls.size >= 2,
+          '★⑳ⓑ4 자명 통과 금지 — 그 남벽 행에 **벽이 실제로 서 있다**(전부 비었으면 아무 칸이나 문이 된다)',
+          `벽 ${cv.walls.size}칸`);
+      }
+      const wNew = H.wakeCellOf({ kind: 'personal', x: mx, y: my, cw: BS2 * 6, ch: BS2 * 4 });
+      ok(wNew && wNew.cellKind === 'door' && wNew.x === dNew.x && wNew.y === dNew.y,
+        '★★⑳ⓑ5 그래서 `wakeCellOf` 의 `cellKind` 가 **`door`** 다(옛: `near`/`center`)',
+        wNew ? `${wNew.cellKind} (${wNew.x | 0},${wNew.y | 0})` : '—');
+
+      // ── ⓑ6 활성 표본 — 메모리 길과 합친 길이 **같은 답** ────────────────────
+      {
+        const wt = dbHuts.get(warmKey).rect;
+        const wx = ((wt[0] + wt[2] + 1) / 2) * BS2, wy = ((wt[1] + wt[3] + 1) / 2) * BS2;
+        const a = H._hutDoorFrom([...H.buildings.values()], wx, wy, R20);
+        const b = H._hutDoorNear(wx, wy, 0);
+        ok(a && b && a.x === b.x && a.y === b.y,
+          '★★⑳ⓑ6 **메모리에 있는 움집은 답이 안 바뀐다**(메모리가 이긴다 · 판정 함수가 하나라서)',
+          a && b ? `(${a.x | 0},${a.y | 0}) = (${b.x | 0},${b.y | 0})` : `${a ? 'ok' : 'null'} / ${b ? 'ok' : 'null'}`);
+      }
+
+      // ── ⓒ 청크를 **켜지 않는다** ─────────────────────────────────────────────
+      const nBefore = H.buildings.size;
+      H._hutDoorNear(mx, my, 0);
+      H.wakeCellOf({ kind: 'personal', x: mx, y: my, cw: BS2 * 6, ch: BS2 * 4 });
+      ok(H.buildings.size === nBefore && !memRects().has(ck),
+        '★★⑳ⓒ 문간을 물어도 **청크가 안 켜진다**(메모리 건물 수 불변 · 그 움집은 여전히 메모리 밖)',
+        `${nBefore} → ${H.buildings.size}`);
+      {
+        const zsrc20 = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
+        const at20 = zsrc20.indexOf('\nfunction _hutDoorRows(');
+        const end20 = zsrc20.indexOf('\n}\n', at20);
+        const fn20 = at20 >= 0 && end20 > at20 ? zsrc20.slice(at20, end20 + 3) : '';
+        ok(fn20.length > 0 && /getBuildingsInRect/.test(fn20), '⑳ⓒ2 전제 — `_hutDoorRows` 본문을 통째로 집었다', `${fn20.split('\n').length}줄`);
+        ok(!/activateChunk|materializeBuildingsInChunk/.test(fn20),
+          '★★⑳ⓒ3 그 함수는 **청크를 켜는 문을 아예 안 부른다**(소스 계약)');
+        ok(/db\.getBuildingsInRect\(/.test(fn20),
+          '★★⑳ⓒ4 DB 문은 **실체화가 쓰는 그것**이다(`db.getBuildingsInRect` · 사본 0)');
+        ok(!/_promoteLegacyFarm/.test(fn20),
+          '★⑳ⓒ5 밭 승격은 **안 부른다** — 그건 DB 쓰기를 하는 문이고 문간과 무관하다');
+        const doorFn = zsrc20.slice(zsrc20.indexOf('\nfunction _hutDoorNear('), zsrc20.indexOf('\n}\n', zsrc20.indexOf('\nfunction _hutDoorNear(')) + 3);
+        ok(/_hutDoorFrom\(_hutDoorRows\(/.test(doorFn),
+          '★★⑳ⓒ6 판정은 **하나**다 — `_hutDoorNear` 가 행을 모아 그 함수 하나에 넘긴다(사본 0)');
+      }
+
+      // ── ⓓ 움집이 없는 사유지는 **종전 사다리** 그대로 ───────────────────────
+      {
+        let empty = null;
+        for (let r = 3000; r <= 60000 && !empty; r += 2500) {
+          const x = mx + r, y = my - r;
+          if (x < 2000 || y < 2000 || x > 400000 || y > 400000) continue;
+          if (!H._hutDoorNear(x, y, 0) && !H.isTerrainBlockedLocal(x, y)) empty = { x, y };
+        }
+        pre(!!empty, '움집이 **하나도 없는** 빈 자리를 찾았다(그래야 사다리 아래 칸을 잰다)', empty ? `(${empty.x | 0},${empty.y | 0})` : '못 찾음');
+        if (empty) {
+          const w = H.wakeCellOf({ kind: 'personal', x: empty.x, y: empty.y, cw: 32, ch: 32 });
+          ok(w && w.cellKind !== 'door', '★★⑳ⓓ 움집이 없으면 **종전 ②/③ 그대로**다(사다리 순서 무변)', w && w.cellKind);
+        }
+      }
+
+      // ── ⓔ 마을 안 이송은 무접촉 ─────────────────────────────────────────────
+      {
+        const before = { kind: 'shelter', x: 4321, y: 8765, vid: 1 };
+        const after = H.wakeCellOf(before);
+        ok(after && after.x === 4321 && after.y === 8765 && after.cellKind === undefined,
+          '★★⑳ⓔ `nearestVillageWake` 갈래(shelter·arrive·center)는 **한 글자도 안 바뀐다**');
+      }
+
+      // ── ⓕ 비용 — 부활 한 번당 렉트 질의 1건 ────────────────────────────────
+      {
+        const M20 = R20 + BS2 * 6;
+        const t0 = process.hrtime.bigint();
+        let n20 = 0;
+        for (let i = 0; i < 200; i++) n20 = H.db.getBuildingsInRect(mx - M20, my - M20, mx + M20, my + M20).length;
+        const ms20 = Number(process.hrtime.bigint() - t0) / 1e6 / 200;
+        const t1 = process.hrtime.bigint();
+        for (let i = 0; i < 100; i++) H._hutDoorNear(mx, my, 0);
+        const msDoor = Number(process.hrtime.bigint() - t1) / 1e6 / 100;
+        ok(ms20 < 5, '★⑳ⓕ 렉트 질의 1건이 싸다(동기 sqlite · 부활은 드문 일이다)', `${ms20.toFixed(3)}ms · 행 ${n20}개`);
+        ok(msDoor < 60, '★⑳ⓕ2 문간 한 번 전체(메모리 훑기 + DB 질의)', `${msDoor.toFixed(2)}ms · 메모리 ${H.buildings.size}행`);
+      }
+
+      // ── ⓖ 돌연변이 + 되돌림 ────────────────────────────────────────────────
+      {
+        const rowsAll = H._hutDoorRows(mx, my, R20);
+        ok(rowsAll.length > memOnly.length,
+          '★★⑳ⓖ 전제 — DB 갈래가 **실제로 행을 더 싣는다**(안 실으면 위가 자명 통과다)',
+          `메모리 ${memOnly.length} → 합쳐 ${rowsAll.length} (+${rowsAll.length - memOnly.length})`);
+        const extra = rowsAll.slice(memOnly.length);
+        ok(extra.length > 0 && extra.every((r) => r && r.data && Array.isArray(r.data.hut) && r.type !== undefined && Number.isFinite(r.x)),
+          '★⑳ⓖ2 DB 에서 실은 행은 **문 판정에 쓰는 것만**이다(정규화 한 줄 · `data` 는 파싱된 객체)',
+          `${extra.length}행 · 예 ${JSON.stringify({ type: extra[0].type, x: extra[0].x, hut: extra[0].data.hut })}`);
+        //   ★★돌연변이 — DB 갈래를 빈 배열로 하면 ⓑ2 가 못 찾는다 = 이 절이 ✗ 를 낼 수 있다
+        ok(dOld === null && dNew !== null,
+          '★★⑳ⓖ3 돌연변이 — DB 갈래를 **빼면 문을 못 찾는다**(= 옛 축소 · 이 절이 ✗ 를 낼 수 있다)',
+          `옛 null → 지금 (${dNew.x | 0},${dNew.y | 0})`);
+
+        // ★★되돌림 — 손잡이는 **부를 때 읽는다**(T88 이 같은 자리에서 배운 것: 모듈 상수면
+        //   스위치 하나 재려고 존을 한 판 더 띄워야 하고 그게 야간 하네스에 10분을 얹는다).
+        //   ⇒ 여기서 끄고, 같은 물음을 다시 하고, 도로 켠다. 자식 프로세스가 필요 없다.
+        const _keep = process.env.T121_DOORDB;
+        process.env.T121_DOORDB = '0';
+        const offRows = H._hutDoorRows(mx, my, R20);
+        const dOff = H._hutDoorNear(mx, my, 0);
+        const wOff = H.wakeCellOf({ kind: 'personal', x: mx, y: my, cw: BS2 * 6, ch: BS2 * 4 });
+        const offOn = H._t121DoorDb();
+        if (_keep === undefined) delete process.env.T121_DOORDB; else process.env.T121_DOORDB = _keep;
+        ok(offOn === 0 && H._t121DoorDb() === 1,
+          '★★⑳ⓖ4 (전제) 손잡이가 **부를 때** 읽힌다 — 껐다 켠 것이 그 자리에서 먹었다',
+          `끈 판 ${offOn} → 되돌린 판 ${H._t121DoorDb()}`);
+        ok(offRows.length === memOnly.length,
+          '★★⑳ⓖ5 끈 판은 **메모리 행만** 돌려준다(DB 갈래가 통째로 빠진다)',
+          `${offRows.length} = ${memOnly.length}`);
+        ok(dOff === null && wOff && wOff.cellKind !== 'door',
+          '★★⑳ⓖ6 **되돌림 `T121_DOORDB=0` 이 옛 축소를 정확히 재현한다**(문 못 찾음 → `near`/`center`)',
+          `${dOff === null ? 'null' : 'found'} · cellKind ${wOff && wOff.cellKind}`);
+        const dBack = H._hutDoorNear(mx, my, 0);
+        ok(dBack && dBack.x === dNew.x && dBack.y === dNew.y,
+          '★⑳ⓖ7 도로 켜면 **같은 문간**이 다시 나온다(스위치가 상태를 안 남긴다)',
+          dBack ? `(${dBack.x | 0},${dBack.y | 0})` : 'null');
+        const zsrc21 = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
+        ok(/_t121DoorDb\(\) === 0\) return out;/.test(zsrc21) && /function _t121DoorDb\(\)/.test(zsrc21),
+          '★⑳ⓖ8 그리고 그 손잡이는 **함수 하나**다(모듈 상수 사본 0 · 소스 계약)');
+      }
+    }
+    clearPlayers();
+  }
+
   say(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
   for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
   process.exit(fail ? 1 : 0);

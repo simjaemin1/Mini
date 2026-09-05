@@ -8485,6 +8485,8 @@ function __testBind() {
     tryRescue, tryRespawnChoice, listRespawnOptions, resolveDowned, tickDowned, nearestVillageWake,
     // ★[T83] 죽음 캐논 ⓑ — 하네스가 표를 다시 짜지 않게 **정본 그대로** 내준다
     _deathDrop, _deathDropPick, wakeCellOf, _hutDoorNear, _standCellNear, _startVidOf, DEATH_DROP_KG_FRAC,
+    // ★[T121] 꺼진 청크의 문간 — 판정 함수와 행 수집을 **따로** 내준다(하네스가 둘을 갈라 물을 수 있게)
+    _hutDoorFrom, _hutDoorRows, _t121DoorDb,
     // ★[T88] 거리 비례 지연 · 곳간 한 끼 — 하네스가 식과 표를 다시 짜지 않게 정본 그대로
     _wakeDelayMs, _villageMeal, _t88WakeDist, _t88Meal,
     // ★[T102] 바닥템 개체 — 하네스가 개체를 손으로 빚지 않게 **문 그대로** 내준다
@@ -9354,11 +9356,47 @@ function _standCellNear(x0, y0, blocked) {
 //     문으로 뽑혀 사람이 벽 안에서 눈을 뜬다. 조용히 틀리는 종류의 결함이다.
 //   ⇒ 그 움집의 **자기 행들**에서 벽 칸을 모은다(`e2e-rooms readHutDoor` 와 같은 문법 ·
 //     청크 활성 여부와 무관). 한 번 훑는 값은 죽음이 드문 일이라 싸다.
-function _hutDoorNear(px, py, rpx) {
-  const R = Math.max(BUILDING_SIZE * 6, (rpx || 0) + BUILDING_SIZE * 4);
+//   ★★[T121 2026-09-05 재민 확정] **그런데 메모리도 활성 청크만 담는다.**
+//     `deactivateChunk`(:237)가 그 청크 건물을 `buildings` 에서 통째로 지운다(DB 는 보존).
+//     그리고 **깨어나는 자리는 정의상 내가 없는 곳**이라 그 청크가 꺼져 있는 게 보통이다 ⇒
+//     T83 이 고친 그 자리가 **같은 이유로 다시** 조용히 틀렸다(§0-ⓐ 실측: 문 → `center`,
+//     즉 움집 **안**에서 눈을 뜬다 — `_BLOCKED_STAND` 는 지형·나무만 보지 벽을 안 본다).
+//   ⇒ 문간 탐색은 **DB 정본**(`db.getBuildingsInRect` — 실체화가 쓰는 그 문 · 사본 0)을 같이 본다.
+//     **청크는 켜지 않는다** — 부활 한 번에 청크 활성화는 비용도 부작용도 크다(자원 spawn·AOI 방송).
+//     메모리에 있는 행은 메모리가 이긴다(최신 · 미저장 변경). 판정은 **함수 하나**(`_hutDoorFrom`)가
+//     하고, 그 입력은 **행 배열**이다 — 메모리든 DB든 같은 모양으로 넘긴다.
+//   되돌림: `T121_DOORDB=0` ⇒ DB 갈래를 안 본다(= T83 판의 축소가 그대로 선다).
+//   ⚠★★손잡이는 **부를 때 읽는다**(모듈 상수가 아니다). T88 이 같은 자리에서 배운 것이다:
+//     모듈 상수로 두면 스위치 하나 재려고 **존을 한 판 더 띄워야** 하고, 그게 야간 하네스에
+//     10분을 얹었다(그리고 ETIMEDOUT 을 냈다). 부활은 초당 수천 번 나는 일이 아니라
+//     `parseInt` 한 번이 비용이 아니다 — 잴 수 있는 손잡이가 낫다.
+
+function _t121DoorDb() { const v = parseInt(process.env.T121_DOORDB, 10); return Number.isFinite(v) ? v : 1; }
+
+/** 문 판정에 쓸 **행 배열** — 메모리(최신) + 꺼진 청크의 DB 행. 청크를 켜지 않는다. */
+function _hutDoorRows(px, py, R) {
+  const out = [], seen = new Set();
+  for (const b of buildings.values()) { out.push(b); if (b && b.dbId != null) seen.add(b.dbId); }
+  if (_t121DoorDb() === 0) return out;               // ★되돌림 — 옛 축소를 그대로 재현한다
+  //   ⚠렉트는 **여유를 둔다**: 거리는 움집 렉트의 **중심**으로 재는데 그 몸통(6×4칸)은
+  //     중심에서 최대 ~115px 뻗는다. 상자를 딱 R 로 자르면 경계의 움집이 반만 잡힌다.
+  const M = R + BUILDING_SIZE * 6;
+  let rows = [];
+  try { rows = db.getBuildingsInRect(px - M, py - M, px + M, py + M) || []; } catch (e) { rows = []; }
+  for (const r of rows) {
+    if (seen.has(r.id)) continue;                    // 메모리에 있으면 메모리다(미저장 변경까지 산다)
+    let d = null; try { d = r.data ? JSON.parse(r.data) : null; } catch (e) { d = null; }
+    if (!d || !Array.isArray(d.hut)) continue;       // ★정규화 한 줄 — 문 판정에 쓰는 행만 싣는다
+    out.push({ type: r.type, x: r.x, y: r.y, data: d });
+  }
+  return out;
+}
+
+/** ★판정은 **하나**다 — 입력이 행 배열이라 메모리든 DB든 같은 길로 온다(사본 0). */
+function _hutDoorFrom(rows, px, py, R) {
   let best = null, bd = Infinity;
   const walls = new Map();                       // 렉트키 → Set("cx,cy")
-  for (const b of buildings.values()) {
+  for (const b of rows) {
     const t = b && b.data && b.data.hut;
     if (!Array.isArray(t) || t.length < 4) continue;
     const key = t.join(',');
@@ -9378,6 +9416,10 @@ function _hutDoorNear(px, py, rpx) {
     return { x: (x + 0.5) * BUILDING_SIZE, y: (doorY + 0.5) * BUILDING_SIZE, cell: [x, doorY], rect: best, dist: bd };
   }
   return null;
+}
+function _hutDoorNear(px, py, rpx) {
+  const R = Math.max(BUILDING_SIZE * 6, (rpx || 0) + BUILDING_SIZE * 4);
+  return _hutDoorFrom(_hutDoorRows(px, py, R), px, py, R);
 }
 
 // ★★[T83 ③ 재민 확정] **깨어나는 칸** — 사다리 셋: ①움집 문간 ②중심 근처 설 수 있는 칸 ③(사유지가
