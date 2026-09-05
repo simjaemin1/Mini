@@ -89,6 +89,11 @@ function pxdiff(a, b) {
   const setZ = async (z) => { await page.evaluate((v) => window.__setZoom(v), z); await sleep(700); };
   // ★세계를 멈춰 놓고 잰다 — 안 그러면 "같은 화면인가"가 풀 흔들림에 묻힌다(e2e-mtfoot ⑧ 계보)
   const wind = async (off) => { await page.evaluate((o) => { if (window.__terrain19) window.__terrain19.windOff = o; }, off); await sleep(1200); };
+  // ★[T98 2026-09-05] **하늘도 끈다** — 바람을 끈 것과 같은 자리다. T98 이 `weatherFor` 에
+  //   `precip` 을 실으면서 세계가 실제로 비를 보낸다. 비는 매 프레임 다시 그려지고 **안개 합성 뒤**에
+  //   그려지므로, 두 프레임 동일·안개 위 밝은 픽셀 같은 판정이 하늘 때문에 빨개진다.
+  //   이 하네스가 재는 건 하늘이 아니다 ⇒ 끄는 문은 T93 이 남긴 진단 훅 하나(안 켜져 있으면 무해).
+  await page.evaluate(() => { if (typeof window.__rainForce === 'function') window.__rainForce({ precip: 0 }); });
 
   // ── ⓪ 검사 상황 — 무엇을 재고 있는가 ───────────────────────────────────
   console.log('\n=== ⓪ 검사 상황 선행 assert ===');

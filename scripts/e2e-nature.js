@@ -222,6 +222,11 @@ function diffCountNoEnts(a, b, ents) {
     try { const b = await page.$('#enter'); if (b) await b.click(); } catch (e) {}
     await sleep(20000);
     const knob = async (o) => { await page.evaluate((k) => { Object.assign(window.__terrain19, k); }, o); await sleep(1500); };
+    // ★[T98 2026-09-05] **하늘도 끈다** — 바람을 끈 것과 같은 자리다. T98 이 `weatherFor` 에
+    //   `precip` 을 실으면서 세계가 실제로 비를 보낸다. 비는 매 프레임 다시 그려지고 **안개 합성 뒤**에
+    //   그려지므로, 두 프레임 동일·안개 위 밝은 픽셀 같은 판정이 하늘 때문에 빨개진다.
+    //   이 하네스가 재는 건 하늘이 아니다 ⇒ 끄는 문은 T93 이 남긴 진단 훅 하나(안 켜져 있으면 무해).
+    await page.evaluate(() => { if (typeof window.__rainForce === 'function') window.__rainForce({ precip: 0 }); });
     // ★★[2026-08-26] 프레임마다 **그 순간 생물이 그려진 화면 자리**를 같이 들고 다닌다.
     //   이 하네스의 픽셀 판정은 전부 *지형·자연물·바람*이 대상이지 **짐승이 아니다**.
     //   그런데 사슴 한 마리가 걸어 들어오면 결정론 판정(1007px)도, 무풍 잡음 바닥 판정(202 > 153)도
@@ -430,6 +435,11 @@ function diffCountNoEnts(a, b, ents) {
     try { const b = await page.$('#enter'); if (b) await b.click(); } catch (e) {}
     await sleep(20000);
     const knob = async (o) => { await page.evaluate((k) => { Object.assign(window.__terrain19, k); }, o); await sleep(1500); };
+    // ★[T98 2026-09-05] **하늘도 끈다** — 바람을 끈 것과 같은 자리다. T98 이 `weatherFor` 에
+    //   `precip` 을 실으면서 세계가 실제로 비를 보낸다. 비는 매 프레임 다시 그려지고 **안개 합성 뒤**에
+    //   그려지므로, 두 프레임 동일·안개 위 밝은 픽셀 같은 판정이 하늘 때문에 빨개진다.
+    //   이 하네스가 재는 건 하늘이 아니다 ⇒ 끄는 문은 T93 이 남긴 진단 훅 하나(안 켜져 있으면 무해).
+    await page.evaluate(() => { if (typeof window.__rainForce === 'function') window.__rainForce({ precip: 0 }); });
     await knob({ legacy: false, freezeT: 100, natOff: false, fringeOff: false, propOff: false, propNoAvoid: false });
     const clProbe = () => page.evaluate(() => (window.__claimCells ? JSON.parse(JSON.stringify(window.__claimCells)) : null)).catch(() => null);
     const claimOn = await clProbe();

@@ -92,6 +92,11 @@ function diff(a, b, box) {
   //   ⚠이건 판정 완화가 아니라 **변인 분리**다: 바람을 끈 상태에서 P6 이 통과해야
   //     "남은 차이는 전부 산 때문"이라고 말할 수 있다.
   await pg.evaluate(() => { window.__terrain19.windOff = true; });
+  // ★[T98 2026-09-05] **하늘도 끈다** — 바람을 끈 것과 같은 자리다. T98 이 `weatherFor` 에
+  //   `precip` 을 실으면서 세계가 실제로 비를 보낸다. 비는 매 프레임 다시 그려지고 **안개 합성 뒤**에
+  //   그려지므로, 두 프레임 동일·안개 위 밝은 픽셀 같은 판정이 하늘 때문에 빨개진다.
+  //   이 하네스가 재는 건 하늘이 아니다 ⇒ 끄는 문은 T93 이 남긴 진단 훅 하나(안 켜져 있으면 무해).
+  await pg.evaluate(() => { if (typeof window.__rainForce === 'function') window.__rainForce({ precip: 0 }); });
   await sleep(1200);
   const shot = async () => { const p2 = '/tmp/fz.png'; await pg.screenshot({ path: p2 }); return PNG.sync.read(fs.readFileSync(p2)); };
   const cam = await pg.evaluate(() => window.__camCellLocal());
