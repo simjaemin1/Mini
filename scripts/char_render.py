@@ -73,6 +73,21 @@ RINGS = 8         # 타원체(머리·손·관절)의 위도 분할
 EDGE_K = 0.78     # 1.0 = 끔. 0.78 = 은은한 자체 아웃라인(기존 자연물엔 아웃라인이 없다 — 세기 판정은 재민)
 EDGE_A = 0.60     # "불투명" 문턱(알파)
 
+# ── 먹선·셀 [T96 · 후처리만 · 씬 값 무변] ────────────────────────────────────
+#   ★`EDGE_K` 는 테두리 RGB 를 **곱해서** 낮췄다 — 화소마다 색이 달라 '그늘'이지 '선'이 아니다.
+#     T96 은 같은 자리를 **한 먹색**으로 덮어 비로소 선으로 세운다(`scripts/ink_post.py`).
+#     계약 둘(반투명 무접촉 · 1겹)과 합집합 마스크 규약은 그대로 물려받는다.
+#   ★되돌림은 스위치다: `T96_INK=0` 이면 옛 `edge_darken` 경로로 정확히 돌아간다.
+#   ★★셀 단수는 **두 자로 재서** 골랐다(§0-ⓑ · 보고서 표). 카드는 2~3단을 말했는데 **4단이다**:
+#     ⓐ 재질 판별(옷 여섯 15쌍 · 문턱 14.7)은 끔·2·4·5단 모두 2/15 로 같다(3단만 3/15).
+#     ⓑ 그런데 **앞뒤 단서**(`e2e-charsprite ⓕ` — 앞섶이 짙다 · 문턱 5)가 2·3단에서 **죽는다**:
+#          끔 13.12/10.73 · 2단 0.82/−2.09 · 3단 0.99/2.30 · **4단 12.23/9.31** · 5단 10.88/8.44
+#        앞섶의 밝기 차가 시트 범위의 1/4쯤이라 **칸이 넷은 돼야** 옆 칸으로 넘어간다.
+#     ⇒ 2~3단은 "사람이 어느 쪽을 보는지"를 지운다. 4단이 두 조건을 다 만족하는 가장 낮은 단수다.
+INK_PX = int(os.environ.get("T96_INK", "1"))        # 1 = 먹선 1px · 0 = 옛 edge_darken
+CEL_BANDS = int(os.environ.get("T96_CEL", "4"))     # 0 = 끔 · 2~5 (4 = 실측 채택)
+SINE_POSE = int(os.environ.get("T96_SINE", "0"))    # 1 = 모캡 표 대신 옛 사인 함수
+
 # ── 비례 손잡이 [이번 배치 신설 · 기본 1.0 = 고증 비례 무변경] ──────────────
 #   ★54px 에서 머리는 7px 다. 좀보이드·디아블로가 머리·손발을 키우는 건 사실성을 버려서가
 #     아니라 그 크기에서 "사람으로 읽히게" 하는 유일한 길이 과장이기 때문이다.
@@ -89,6 +104,9 @@ SHEETDIR = os.path.join(ROOT, "public", "assets", "char")
 BLENDOUT = os.path.join(ROOT, "assets-src", "char_body.blend")
 os.makedirs(OUTDIR, exist_ok=True)
 os.makedirs(SHEETDIR, exist_ok=True)
+
+sys.path.insert(0, HERE)      # ★[T96] 같은 폴더의 `ink_post` 를 부르려고(render_common 무접촉)
+import ink_post               # noqa: E402  — 후처리 둘(먹선·셀). 씬은 안 건드린다.
 
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 ONLY_META = "--only-meta" in ARGS
@@ -860,8 +878,42 @@ def _pose_aim(u):
     }
 
 
+# ═══════════════ 모캡 포즈표 [T96] ═══════════════
+#   ★`walk`·`run` 은 이제 **사람 모션**이다(CMU 07_01 걷기 · 09_01 달리기).
+#     사인 함수는 시계추가 아니라 **가랑이를 옆으로 벌리는 것**이었다 — §0-ⓒ 실측:
+#     사인 걸음의 넓적다리 월드 방향이 `(0, ±0.51, −0.86)` 로 **앞뒤 성분이 정확히 0** 이다.
+#     리그의 `rx` 는 뼈를 캐릭터의 **좌우(±y)** 로 눕히는데(depsgraph 로 쟀다) 걸음이 그걸 썼다.
+#     앞뒤는 `rz` 다. 모캡 리타깃은 두 평면을 다 계산하므로 이 결함이 저절로 닫힌다.
+#   ★표는 `assets-src/mocap/poses.json` — `scripts/mocap_retarget.py` 가 만들고 커밋한다.
+#     여기서는 **읽기만** 한다(굽기가 BVH 파싱·부동소수 경로를 안 탄다 = 결정론이 두 단으로 갈린다).
+_MOCAP_PATH = os.path.join(ROOT, "assets-src", "mocap", "poses.json")
+_MOCAP = None
+if not SINE_POSE and os.path.exists(_MOCAP_PATH):
+    with open(_MOCAP_PATH) as _f:
+        _MOCAP = json.load(_f)
+
+
+def _pose_table(clip):
+    """포즈표 한 클립 → `POSE_FN` 과 같은 모양의 함수. u 는 프레임 눈금에 정확히 떨어진다."""
+    tbl = _MOCAP["clips"][clip]
+    n = len(tbl)
+
+    def f(u):
+        i = int(round(u * n)) % n
+        return {k: tuple(v) for k, v in tbl[i].items()}
+    return f
+
+
 POSE_FN = {'idle': _pose_idle, 'walk': _pose_walk, 'run': _pose_run,
            'swing': _pose_swing, 'aim': _pose_aim}
+if _MOCAP:
+    for _c in ('walk', 'run'):
+        if _c in _MOCAP.get("clips", {}):
+            POSE_FN[_c] = _pose_table(_c)
+    print(f"[char] 모캡 포즈표: {', '.join(sorted(_MOCAP['clips']))} "
+          f"({_MOCAP['source']['walk']['clip']} · {_MOCAP['source']['run']['clip']})")
+else:
+    print("[char] ★사인 포즈(T96_SINE=1 또는 poses.json 없음)")
 
 
 def apply_pose(clip, fi, nframes, dirIdx):
@@ -1106,6 +1158,7 @@ META = {
     "heightM": H_TOT,
     # ★이 시트를 만든 조형 손잡이 — 시트만 보고도 무엇이 적용됐는지 알 수 있게 남긴다
     "shape": {"gen": 3, "loftSeg": LOFT_SEG, "seg": SEG, "rings": RINGS, "edgeK": EDGE_K, "edgeA": EDGE_A,
+              "inkPx": INK_PX, "celBands": CEL_BANDS, "poseSrc": ("sine" if not _MOCAP else "mocap"),
               "headK": HEAD_K, "shldK": SHLD_K, "limbK": LIMB_K, "handK": HAND_K},
     "clips": {c[0]: {"frames": c[1], "loop": c[2], "fps": c[3]} for c in CLIPS},
     "layers": [l[0] for l in LAYERS if l[0] != 'probeall'],
@@ -1156,7 +1209,7 @@ if not ONLY_META:
             built.append([lname, sheet, SW, SH])
             if RAWDUMP:   # 실루엣 강화 **전** 원본 — 세기 비교판을 재렌더 없이 만들려고 남긴다
                 save_sheet(sheet, SW, SH, os.path.join(OUTDIR, f"raw_{lname}_{clip}.png"))
-        if EDGE_K < 0.999 and built:
+        if built and (INK_PX or CEL_BANDS >= 2 or EDGE_K < 0.999):
             SW, SH = built[0][2], built[0][3]
             # ★★[T81] 실루엣 합집합은 **한 벌 기준**이다 — 몸 + '지금 그 옷' 하나.
             #   ⓐ 옷이 하나(삼베)뿐일 땐 전체 합집합과 같은 값이라 **얼린 40장의 근거가 그대로 산다.**
@@ -1183,9 +1236,23 @@ if not ONLY_META:
                 alpha[pn] = [psheet[i * 4 + 3] for i in range(pw * ph)]
                 return alpha[pn]
 
+            def _post(sheet, mask):
+                # ★[T96] 순서가 규약이다: **셀 먼저, 먹선 나중.**
+                #   반대로 하면 방금 그은 먹선이 양자화에 끌려 올라가 선이 흐려진다(그리고
+                #   먹색이 시트의 휘도 분포에 섞여 들어 칸 경계까지 움직인다).
+                if CEL_BANDS >= 2:
+                    ink_post.cel_quantize(sheet, SW, SH, CEL_BANDS, EDGE_A, mask=None)
+                if INK_PX:
+                    # ★먹 문턱은 `EDGE_A` 가 아니라 `ink_post.INK_A`(200/255) 다 — `test-charsheet ④`
+                    #   가 반투명이라 부르는 구간에 먹이 닿으면 그게 곧 프린지다(그 모듈 주석에 실측).
+                    ink_post.ink_outline(sheet, SW, SH, ink_post.INK_A, mask=mask)
+                elif EDGE_K < 0.999:
+                    edge_darken(sheet, SW, SH, EDGE_K, mask=mask)
+
             for lname, sheet, _w, _h in built:
                 if lname not in SILHOUETTE_GROUP:
-                    edge_darken(sheet, SW, SH, EDGE_K, mask=None)
+                    # 도구·등짐은 **제 실루엣**이다 — 손에 든 것이 손과 갈려 보여야 한다.
+                    _post(sheet, None)
                     continue
                 uni = list(alpha[lname])
                 other = _partner_alpha(lname)
@@ -1193,7 +1260,7 @@ if not ONLY_META:
                     for i in range(SW * SH):
                         if other[i] > uni[i]:
                             uni[i] = other[i]
-                edge_darken(sheet, SW, SH, EDGE_K, mask=uni)
+                _post(sheet, uni)
         for lname, sheet, SW, SH in built:
             key = f"{lname}_{clip}"
             save_sheet(sheet, SW, SH, os.path.join(SHEETDIR, key + ".png"))
