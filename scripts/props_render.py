@@ -131,6 +131,29 @@ M['driedb'] = simple_mat("p_driedb", (0.24, 0.09, 0.11), 0.62)                  
 M['radish'] = simple_mat("p_radish", (0.86, 0.85, 0.80), 0.45)                                     # 무 속살
 M['radskin'] = simple_mat("p_radskin", (0.62, 0.66, 0.52), 0.50)                                   # 무 껍질(윗동 푸르다)
 M['ochre'] = simple_mat("p_ochre", (0.66, 0.30, 0.18), 0.85)                                  # 붉은 흙 안료
+# ── [T95] 옷 여섯 · 시설 셋 ─────────────────────────────────────────────────
+# ★★옷 색은 **시트가 정본이다.** 아래 여섯 값은 `scripts/char_render.py` 의 `CLOTH_MATS` 를
+#   그대로 옮긴 것이다(T81 이 fiber·ramie 를 밀어낸 값 그대로 · PM 판정).
+#   짐 창의 갖옷과 몸에 걸친 갖옷이 **같은 물건**으로 읽혀야 한다 — 색이 갈리면 그 순간 두 물건이 된다.
+#   ⚠재질이 두 파일에 있다(이중화) — 공용 모듈로 올리는 것은 **회부**다. 그때까지는
+#     `scripts/test-icons.js ⑨` 가 두 파일의 값을 **대조**해서 갈리면 빨개진다.
+#   출처: char_render.py `CLOTH_MATS` = id → (기본색, rough, spec) · 순서 = server/clothes.js 표 순서
+_CL = {                                    # ★char_render.py CLOTH_MATS 전사(손으로 고치지 마라)
+    'fur':     ((0.300, 0.210, 0.145), 0.97),
+    'ramie':   ((0.885, 0.875, 0.835), 0.88),
+    'leather': ((0.400, 0.270, 0.160), 0.75),
+    'hide':    ((0.600, 0.440, 0.280), 0.85),
+    'fiber':   ((0.720, 0.665, 0.315), 0.95),
+    'hemp':    ((0.700, 0.655, 0.545), 0.90),
+}
+_TRIM_K, _PLACKET_K = 0.85, 0.56          # ★char_render.py 와 같은 상수(허리끈 · 앞섶)
+for _k, (_c, _r) in _CL.items():
+    M['cl_' + _k] = simple_mat('p_cl_' + _k, _c, _r)
+    M['cl_' + _k + '_t'] = simple_mat('p_cl_' + _k + '_t', tuple(v * _TRIM_K for v in _c), _r)
+    M['cl_' + _k + '_p'] = simple_mat('p_cl_' + _k + '_p', tuple(v * _PLACKET_K for v in _c), _r)
+M['tamped2'] = bumped_mat("p_tamped2", (0.47, 0.37, 0.24), (0.33, 0.25, 0.15), 16, 0.35, 0.95)  # 다짐 바닥
+M['tread'] = striped_mat("p_tread", (0.54, 0.40, 0.23), (0.43, 0.31, 0.17), 16, 0.84, bump=0.35, dist=3.0)  # 계단 디딤 널
+M['earth'] = bumped_mat("p_earth", (0.38, 0.28, 0.17), (0.26, 0.19, 0.11), 10, 0.55, 0.94)      # 계단 흙심
 
 
 # ═══════════════ 모델 — 가구 8종 ═══════════════
@@ -357,6 +380,120 @@ def m_fence(ori='NS'):
             bar(0.015, 0.20, (p.x, p.y, z), ('y' if along == 'x' else 'x'), M['fiber'], verts=6)
 
 
+# ═══════════════ [T95] 옷 여섯 — 개어 놓은 한 벌 ═══════════════
+def _folded(mat, trim, plk, thick=0.055, fuzz=0.0, strands=0, sheen=False, sd=901):
+    """**개어 놓은 옷 한 벌** — 입은 모습이 아니라 **물건**이다(짐에 든 것).
+
+    시트(`char_render.py`)는 몸에 걸친 옷을 그린다. 짐 창의 옷은 **개켜 쌓인 천**이어야
+    "물건"으로 읽힌다 — 옷걸이도 마네킹도 청동기에 없다.
+    ⇒ 저고리를 반 접어 쌓고, 그 위에 **허리끈**을 한 바퀴 두르고, 접힌 면에 **앞섶**이 비친다.
+      셋(본천·허리끈·앞섶)은 시트와 **같은 세 재질**이다 — 같은 물건이라는 표시다.
+
+    thick   한 겹 두께(m) — 갖옷은 두껍다(`FUR_PAD` 와 같은 뜻)
+    fuzz    가장자리 털(갖옷) — 무두질 전 털가죽이라 결이 삐져나온다
+    strands 엮은 결(풀옷) — 풀을 엮은 것이라 올이 굵다
+    sheen   무두질한 가죽의 윤(가죽옷)
+    """
+    random.seed(sd)
+    W, D = 0.62, 0.44                       # 갠 옷 한 장의 가로 · 세로
+    n = 3                                   # 겹 수
+    # ★★패스 둘을 태웠다. 1패스는 `box` 로 쌓아 **나무 궤짝**, 2패스는 이코스피어로 눌러 **알·번데기**.
+    #   갠 옷은 **납작한 층이 어긋나게 포개진 것**이고, 앞쪽에 **접힌 말이(roll)** 가 보인다.
+    #   ⇒ 층은 납작한 사각(천은 네모로 갠다) · 앞 모서리마다 가는 원통으로 **말린 자리**를 얹는다.
+    #     그 말이가 "각진 궤짝"과 "둥근 알" 사이의 답이다.
+    for i in range(n):
+        z = 0.045 + i * thick
+        w = W * (1.0 - i * 0.075)
+        d = D * (1.0 - i * 0.085)
+        ox, oy = (i - 1) * 0.020, (i - 1) * 0.016      # 층이 어긋난다 — 손으로 갠 티
+        box(w, d, thick * 0.80, (ox, oy, z), rot=(0, 0, (i - 1) * 0.045), mat=mat)
+        # 접힌 말이 — 앞 모서리와 옆 모서리. 천이 접히면 각이 아니라 **말이**가 생긴다.
+        cyl(thick * 0.40, w, (ox, oy - d * 0.5, z), rot=(0, math.radians(90), (i - 1) * 0.045),
+            mat=mat, verts=10, smooth=True)
+        cyl(thick * 0.36, d, (ox - w * 0.5, oy, z), rot=(math.radians(90), 0, (i - 1) * 0.045),
+            mat=mat, verts=10, smooth=True)
+    top = 0.045 + (n - 1) * thick + thick * 0.40
+    # 앞섶 — 여민 자리가 한 톤 짙다(시트의 주된 앞뒤 신호를 물건에서도 쓴다)
+    box(W * 0.17, D * 0.72, thick * 0.30, (-W * 0.17, -D * 0.02, top + thick * 0.12), mat=plk)
+    # 허리끈 — 갠 옷을 **묶어** 둔다. 뭉치를 감싸야지 위에 얹히면 손잡이로 읽힌다.
+    for (ax, ay, rot, ln) in ((0.0, D * 0.06, (0, math.radians(90), 0), W * 1.02),
+                              (W * 0.24, 0.0, (math.radians(90), 0, 0), D * 1.02)):
+        cyl(0.019, ln, (ax, ay, top * 0.52), rot=rot, mat=trim, verts=10, smooth=True)
+    for a in (0.7, 2.6):                    # 매듭 끝자락
+        cyl(0.016, 0.17, (W * 0.24 + math.cos(a) * 0.07, D * 0.06 + math.sin(a) * 0.07,
+                          top * 0.52 + 0.02),
+            rot=(math.sin(a) * 1.3, -math.cos(a) * 1.3, 0), mat=trim, verts=6, smooth=False)
+    if fuzz > 0:                            # 갖옷 — 털이 **윗면 전체**로 곤두선다(가장자리만이 아니다)
+        for i in range(90):
+            px = random.uniform(-W * 0.48, W * 0.48)
+            py = random.uniform(-D * 0.46, D * 0.46)
+            edge = max(abs(px) / (W * 0.5), abs(py) / (D * 0.5))
+            ln = fuzz * (0.55 + 0.75 * edge)
+            ex, ey = random.uniform(-1, 1), random.uniform(-1, 1)
+            cyl(0.0075, ln, (px, py, top + ln * 0.35),
+                rot=(ey * 0.7, -ex * 0.7, 0), mat=mat, verts=4, smooth=False)
+    if strands:                             # 풀옷 — 엮은 올이 굵어 겉으로 드러난다
+        for i in range(strands):
+            t = (i + 0.5) / strands
+            cyl(0.014, D * 0.94, (-W * 0.46 + W * 0.92 * t, 0.0, top + thick * 0.24),
+                rot=(math.radians(90), 0, 0), mat=(plk if i % 3 == 0 else mat), verts=5, smooth=False)
+    if sheen:                               # 무두질 가죽 — 접힌 면에 빛이 흐른다
+        box(W * 0.74, D * 0.13, thick * 0.16, (0.0, -D * 0.20, top + thick * 0.10), mat=trim)
+
+
+def m_clothes_fur():     _folded(M['cl_fur'], M['cl_fur_t'], M['cl_fur_p'], thick=0.085, fuzz=0.075, sd=901)
+def m_clothes_leather(): _folded(M['cl_leather'], M['cl_leather_t'], M['cl_leather_p'], thick=0.052, sheen=True, sd=902)
+def m_clothes_hide():    _folded(M['cl_hide'], M['cl_hide_t'], M['cl_hide_p'], thick=0.068, sd=903)
+def m_clothes_ramie():   _folded(M['cl_ramie'], M['cl_ramie_t'], M['cl_ramie_p'], thick=0.040, sd=904)
+def m_clothes_hemp():    _folded(M['cl_hemp'], M['cl_hemp_t'], M['cl_hemp_p'], thick=0.046, sd=905)
+def m_clothes_fiber():   _folded(M['cl_fiber'], M['cl_fiber_t'], M['cl_fiber_p'], thick=0.058, strands=11, sd=906)
+
+
+# ═══════════════ [T95] 시설 둘 — 바닥 · 계단 ═══════════════
+def m_floor():
+    """다짐 바닥 — 움집 실내 바닥 한 칸. `BUILDING_HEIGHT.floor = 4px` = 0.125m."""
+    random.seed(921)
+    box(1.0, 1.0, 0.125, (0, 0, 0.0625), mat=M['tamped2'])
+    for i in range(7):                       # 밟아 다진 자국 — 판판한 판이 아니다
+        a = i * 0.9
+        o = ico(0.13, (math.cos(a) * 0.30, math.sin(a) * 0.30, 0.122), subdiv=1, mat=M['tamped2'],
+                scale=(1.0, 1.0, 0.10), jitter=0.28, smooth=False)
+
+
+def m_stair(d='N'):
+    """계단 — **3칸 24 소단**. 클라(`36-r2-building.js`)가 그리던 그 수치 그대로다:
+       소단 24개 · 칸당 8 · 소단 깊이 4px(0.125m) · 폭 1칸 · 높이 0~64px(0~2m).
+       원점 = 칸 0 중심의 지면(덩어리형 앵커). `dir` 로 뻗는다.
+    ★흙을 다져 올리고 디딤에 널을 얹은 꼴 — 청동기에 석축 계단은 없다(못·경첩도 없다)."""
+    random.seed(922)
+    dv = {'N': (0.0, -1.0), 'S': (0.0, 1.0), 'E': (1.0, 0.0), 'W': (-1.0, 0.0)}[d]
+    along_x = abs(dv[0]) > 0.5
+    SUB, PER = 24, 8
+    for S in range(SUB):
+        cell, sub = S // PER, S % PER
+        w = cell * 1.0 + (sub - 3.5) * 0.125
+        z = (S / (SUB - 1.0)) * 2.0
+        cx, cy = dv[0] * w, dv[1] * w
+        sx = 0.125 if along_x else 1.0
+        sy = 1.0 if along_x else 0.125
+        if z > 0.02:
+            box(sx, sy, z, (cx, cy, z * 0.5), mat=M['earth'])          # 다진 흙 심
+        box(sx * 1.02, sy * 1.02, 0.030, (cx, cy, z + 0.015), mat=M['tread'])   # 디딤 널
+    # 옆을 잡아 주는 통나무 — 흙이 무너지지 않게 (양옆)
+    for sgn in (-1, 1):
+        mx = dv[0] * 1.0 + (0.0 if along_x else sgn * 0.5)
+        my = dv[1] * 1.0 + (sgn * 0.5 if along_x else 0.0)
+        o = cyl(0.055, 2.9, (mx, my, 0.52), rot=((0, math.radians(72), 0) if along_x
+                                                 else (math.radians(72), 0, math.radians(90))),
+                mat=M['log'], verts=8, smooth=True)
+
+
+def m_stair_n(): m_stair('N')
+def m_stair_e(): m_stair('E')
+def m_stair_s(): m_stair('S')
+def m_stair_w(): m_stair('W')
+
+
 # ═══════════════ 표 — 물건 하나 = 모델 하나 = 렌더 둘 ═══════════════
 # icon:      /assets/icons/<icon>.png (96px) — 인벤·조합법·바닥·거래소·창고 공용 정본
 # btype:     server/zone.js 의 건물 타입(BUILDING_HEIGHT 대조 키)
@@ -381,6 +518,15 @@ PROPS = [
                 ('door_e', {'side': 'E', 'opened': False}), ('door_e_open', {'side': 'E', 'opened': True})]),
     dict(icon='item_fence', btype='fence', build=m_fence, body_px=32, flame_px=0,
          world=[('fence_ns', {'ori': 'NS'}), ('fence_ew', {'ori': 'EW'})]),
+    # ★[T95] T67 이 남긴 마지막 셋 중 둘. 농지는 여기 없다 —
+    #   빈 밭의 **세계 스프라이트는 이미 있다**(T79c `crops/grain_0` = 이랑만 갈아 놓은 밭).
+    #   그래서 농지 아이콘은 `fields_render.py` 가 **같은 `soil_bed` 모델**로 굽는다.
+    #   여기 또 만들면 그게 사본이고, 밭을 고치는 날 짐 창과 세계가 갈린다(T67 캐논).
+    dict(icon='item_floor', btype='floor', build=m_floor, body_px=4, flame_px=0,
+         world=[('floor', {})]),
+    dict(icon='item_stair', btype='stair', build=m_stair, body_px=64, flame_px=0,
+         world=[('stair_n', {'d': 'N'}), ('stair_e', {'d': 'E'}),
+                ('stair_s', {'d': 'S'}), ('stair_w', {'d': 'W'})]),
 ]
 
 
@@ -878,6 +1024,12 @@ ITEMS = [
     ('smoked_meat', m_smoked_meat), ('dried_fruit', m_dried_fruit), ('pickled_veg', m_pickled_veg),
 ]
 # ★원물 → 보존식 계보(하네스가 실루엣 상관으로 검사한다). `spoil.PRESERVE` 가 정본이고 여기는 **이 파일이 가진 짝**만 적는다.
+# ★[T95] 옷 여섯 — 재질마다 다른 물건이다(갖옷과 삼베옷은 같은 그림일 수 없다).
+#   키는 `clothes_<mat>` · 순서는 `server/clothes.js` 표 순서(계약 · char_render.py 와 같다).
+CLOTHES = ['fur', 'ramie', 'leather', 'hide', 'fiber', 'hemp']
+for _m in CLOTHES:
+    ITEMS.append(('clothes_' + _m, globals()['m_clothes_' + _m]))
+
 ITEM_LINEAGE = [('fish', 'dried_fish'), ('oyster', 'dried_oyster'), ('seaweed', 'dried_seaweed')]
 
 

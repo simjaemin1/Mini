@@ -62,6 +62,11 @@
     'seed_garlic', 'seed_ginger', 'seed_gourd', 'seed_hemp_plant', 'seed_indigo_plant',
     'seed_korean_melon', 'seed_lettuce', 'seed_mulberry_leaf', 'seed_radish', 'seed_scallion',
     'seed_taro', 'seed_tea', 'seed_turnip', 'seed_water_dropwort', 'seed_yam',
+    // ★[T95] 옷 여섯 — 키는 `clothes_<mat>`(재질이 곧 물건이다). 순서는 server/clothes.js 표 그대로.
+    //   그림은 `props_render.py` 가 **시트와 같은 재질값**으로 굽는다 — 짐 창의 갖옷과
+    //   몸에 걸친 갖옷이 같은 물건으로 읽혀야 한다(색이 갈리면 그 순간 두 물건이 된다).
+    'clothes_fur', 'clothes_ramie', 'clothes_leather',
+    'clothes_hide', 'clothes_fiber', 'clothes_hemp',
   ]);
   // ★★[T66 2차 · 재민 확정 2026-09-03] 옛 **거부 목록** `ICON_NO_RENDER` 은 **없앴다** — 뒤집혔다.
   //   종전: "여기 있으면 렌더가 없다"(빠뜨리면 404). 지금: `ICON_RENDERED` 에 **있으면 그림, 없으면 점선 칸**.
@@ -81,6 +86,13 @@
     const im = itemIconImg(k);
     if (im) return `<img class="item-pic" src="${im.src}" width="${s}" height="${s}" alt="" title="${k}">`;
     return `<span class="item-pic-none" style="width:${s}px;height:${s}px" title="${k} — 렌더 없음"></span>`;
+  }
+  // ★★[T95] **옷은 재질마다 다른 물건이다.** 갖옷과 삼베옷이 같은 그림이면 짐 창에서 못 고른다.
+  //   갈래 아이콘(`EQUIP_ICONS`)은 무기·도구처럼 **재질이 그림을 안 바꾸는** 것에만 맞는다.
+  //   옷만 `clothes_<mat>` 로 내린다 — 키 여섯은 `server/clothes.js` 표 그대로이고,
+  //   그림은 `props_render.py` 가 **시트와 같은 재질값**으로 굽는다(색이 갈리면 두 물건이 된다).
+  function equipPicKey(type, mat) {
+    return (type === 'clothes' && mat) ? ('clothes_' + mat) : ((typeof EQUIP_ICONS === 'object' && EQUIP_ICONS[type]) || type);
   }
   // DOM(innerHTML)용 — 옛 이름. 셋째 인자(이모지 폴백)는 이제 **무시한다**(부르는 자리를 다 고치지 않으려고 남긴다).
   function itemIconHtml(k, px, _fbIgnored) { return itemPic(k, px); }

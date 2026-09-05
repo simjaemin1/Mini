@@ -267,6 +267,67 @@ console.log('\n[⑦ 작물 아이콘 — 수확물 34 · 씨앗 34 (models_crops
   }
 }
 
+// ── ⑨ [T95] 옷 여섯 — 색이 **시트와 같아야** 한다 ─────────────────
+console.log('\n[⑨ 옷 여섯 — 짐 창의 옷과 몸에 걸친 옷이 같은 물건인가]');
+{
+  const CH = path.join(ROOT, 'scripts', 'char_render.py');
+  const PR = path.join(ROOT, 'scripts', 'props_render.py');
+  const ch = fs.existsSync(CH) ? fs.readFileSync(CH, 'utf8') : null;
+  const pr = fs.existsSync(PR) ? fs.readFileSync(PR, 'utf8') : null;
+  ok(!!ch && !!pr, 'char_render.py · props_render.py 를 읽었다');
+  // 두 파일의 표를 **파싱해서 값으로** 견준다(눈으로 옮겨 적은 것을 믿지 않는다).
+  const grab = (src, name) => {
+    const m = src && src.match(new RegExp(name + '\\s*=\\s*\\{([\\s\\S]*?)\\n\\}', 'm'));
+    const out = {};
+    if (!m) return out;
+    for (const r of m[1].matchAll(/'([a-z]+)':\s*\(\(([^)]*)\)\s*,\s*([\d.]+)/g)) {
+      out[r[1]] = { c: r[2].split(',').map((v) => +v.trim()), r: +r[3] };
+    }
+    return out;
+  };
+  const sheet = grab(ch, 'CLOTH_MATS'), icon = grab(pr, '_CL');
+  ok(Object.keys(sheet).length === 6, `시트 재질 6종 (실측 ${Object.keys(sheet).length})`);
+  ok(Object.keys(icon).length === 6, `아이콘 재질 6종 (실측 ${Object.keys(icon).length})`);
+  {
+    const bad = [];
+    for (const k of Object.keys(sheet)) {
+      const a = sheet[k], b = icon[k];
+      if (!b) { bad.push(`${k}(아이콘에 없음)`); continue; }
+      const dc = a.c.some((v, i) => Math.abs(v - b.c[i]) > 1e-9);
+      if (dc || Math.abs(a.r - b.r) > 1e-9) bad.push(`${k}(시트 ${a.c}/${a.r} vs 아이콘 ${b.c}/${b.r})`);
+    }
+    ok(bad.length === 0, `여섯 재질의 색·거칠기가 시트와 **같다** ${bad.length ? '— 갈린 것: ' + bad.join(' · ') : ''}`);
+    console.log('     ⚠재질이 두 파일에 있다(이중화) — 공용 모듈로 올리는 것은 회부다.');
+    console.log('       그때까지 이 절이 두 표를 **값으로** 견준다. 한쪽만 고치면 여기가 빨개진다.');
+  }
+  // 상수 둘도 같아야 한다(허리끈 · 앞섶)
+  for (const [n, re] of [['TRIM_K', /TRIM_K,\s*PLACKET_K\s*=\s*([\d.]+),\s*([\d.]+)/],
+                         ['_TRIM_K', /_TRIM_K,\s*_PLACKET_K\s*=\s*([\d.]+),\s*([\d.]+)/]]) { void n; void re; }
+  {
+    const a = ch.match(/TRIM_K,\s*PLACKET_K\s*=\s*([\d.]+),\s*([\d.]+)/);
+    const b = pr.match(/_TRIM_K,\s*_PLACKET_K\s*=\s*([\d.]+),\s*([\d.]+)/);
+    ok(!!a && !!b && a[1] === b[1] && a[2] === b[2],
+       `허리끈·앞섶 상수도 같다 (시트 ${a ? a[1] + '/' + a[2] : '?'} · 아이콘 ${b ? b[1] + '/' + b[2] : '?'})`);
+  }
+  // 키가 서버 표와 같다
+  let CL = null; try { CL = require(path.join(ROOT, 'server', 'clothes.js')); } catch (e) {}
+  ok(!!CL, 'server/clothes.js 를 읽었다(옷 정본)');
+  if (CL) {
+    const srv = Object.keys(CL.CLOTHES).sort();
+    ok(JSON.stringify(srv) === JSON.stringify(Object.keys(icon).sort()),
+       `아이콘 여섯이 서버 옷 여섯과 같다 — ${srv.join(' ')}`);
+    const miss = srv.filter((k) => !fs.existsSync(path.join(ICON_DIR, 'clothes_' + k + '.png')));
+    ok(miss.length === 0, `clothes_<mat>.png 여섯 장이 있다 ${miss.length ? '— 없는 것: ' + miss.join(', ') : ''}`);
+    // 배선 — 갈래가 아니라 재질로 내려간다
+    const ic = fs.readFileSync(CLIENT_ICON, 'utf8');
+    ok(/function equipPicKey\(/.test(ic) && /'clothes_' \+ mat/.test(ic),
+       '클라가 옷을 `clothes_<mat>` 로 내린다(equipPicKey)');
+    const pn = fs.readFileSync(path.join(ROOT, 'public', 'client', '50-i-panel.js'), 'utf8');
+    ok(!/itemPic\(EQUIP_ICONS\[/.test(pn),
+       '조합·보유·구매 줄이 전부 equipPicKey 를 쓴다(갈래 아이콘 직접 호출 0)');
+  }
+}
+
 // ── ⑧ [T79] 굽는 기계 잠금 — icons.lock.json ─────────────────────
 console.log('\n[⑧ 굽는 기계 정본 — icons.lock.json 이 지금 자산과 맞는가]');
 {

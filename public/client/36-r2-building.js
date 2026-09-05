@@ -344,27 +344,12 @@
           return;
         }
       }
-      ctx.fillStyle = 'rgba(0,0,0,0.35)';
-      ctx.beginPath(); ctx.ellipse(x, y + 4, 14, 4, 0, 0, Math.PI * 2); ctx.fill();
-      // 흙
-      ctx.beginPath();
-      ctx.moveTo(x, y - 4); ctx.lineTo(x + 14, y + 2);
-      ctx.lineTo(x, y + 8); ctx.lineTo(x - 14, y + 2); ctx.closePath();
-      ctx.fillStyle = '#5a3a20'; ctx.fill();
-      ctx.strokeStyle = '#3a2810'; ctx.lineWidth = 1; ctx.stroke();
-      // 작물 — growProgress에 따라 크기 다름
-      const cropH = 3 + 8 * growProgress;
-      ctx.fillStyle = isReady ? '#2a8a4a' : '#5aa050';
-      for (const [ox, oy] of [[-6, -2], [0, -3], [6, -1]]) {
-        ctx.fillRect(x + ox - 1, y + oy - cropH/2, 2, cropH);
-      }
-      if (isReady) {
-        // 빨간 베리 (수확 가능 표시)
-        ctx.fillStyle = '#c83a3a';
-        for (const [ox, oy] of [[-6, -8], [0, -10], [6, -8]]) {
-          ctx.beginPath(); ctx.arc(x + ox, y + oy, 2, 0, Math.PI*2); ctx.fill();
-        }
-        // "READY" 라벨
+      // ★★[T95] 몸체 벡터를 지웠다. 농지의 몸은 **밭 스프라이트**다(T79c 8군 × 4단계) —
+      //   위 `cropSprite` 절이 그리고, 못 그리면 여기서 **점선 빈 칸**이다(T66 규약).
+      //   종전의 흙 다이아 + 초록 막대 + 빨간 베리는 8군 세트가 오기 전의 대역이었고,
+      //   지금 남겨 두면 스프라이트와 **다른 그림**이 같은 물건을 그리는 자리가 된다.
+      drawPropPending(x, y);
+      if (isReady) {                       // 라벨은 몸체가 아니라 **상태**다 — 남긴다(T67 모닥불 불꽃과 같은 판단)
         ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
         ctx.fillStyle = '#9adb6e';
         ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.lineWidth = 2;
@@ -413,20 +398,21 @@
         }
         return;
       }
-      // 14.49-e7e: 바닥 — 셀 꽉 채우는 isometric 다이아 (TS=32 ground tile과 동일 크기).
-      // 14.49-e7ak DEBUG: floor 별 색 (1층 기본, 2층 주황, 3층 빨강)
-      ctx.beginPath();
-      ctx.moveTo(x, y - 16);
-      ctx.lineTo(x + 32, y);
-      ctx.lineTo(x, y + 16);
-      ctx.lineTo(x - 32, y);
-      ctx.closePath();
-      const fl = building?.floor ?? building?.data?.floor ?? 0;
-      let fillCol = '#8a6a4a';   // 1층 (floor=0) 기본
-      if (fl === 1) fillCol = '#ff8a3c';     // 2층 — 주황
-      else if (fl === 2) fillCol = '#e63a3a'; // 3층 — 빨강
-      ctx.fillStyle = fillCol; ctx.fill();
-      ctx.strokeStyle = '#5a3a1c'; ctx.lineWidth = 0.5; ctx.stroke();
+      // ★[T95] 몸체 = 스프라이트(다짐 바닥 한 칸 · `BUILDING_HEIGHT.floor = 4px`).
+      //   종전 다이아는 셀을 꽉 채운 **단색 판**이라 흙이 다져진 느낌이 없었다.
+      if (!drawPropBody('floor', x, y)) drawPropPending(x, y);
+      // ★층 표시는 **몸체가 아니라 진단**이다(14.49-e7ak DEBUG). 몸체를 스프라이트로 옮기면서
+      //   단색 칠을 없앴으니, 층 단서는 **테두리 한 줄**로 남긴다 — 정보는 지키고 몸은 하나다.
+      {
+        const fl = building?.floor ?? building?.data?.floor ?? 0;
+        if (fl > 0) {
+          ctx.strokeStyle = fl === 1 ? 'rgba(255,138,60,0.85)' : 'rgba(230,58,58,0.85)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(x, y - 16); ctx.lineTo(x + 32, y); ctx.lineTo(x, y + 16); ctx.lineTo(x - 32, y);
+          ctx.closePath(); ctx.stroke();
+        }
+      }
     } else if (type === 'door') {
       // ★[T67] 몸체 = 스프라이트. **열림도 몸체다** — 종전의 '1/4 높이 반투명'은 폐지했다.
       //   열린 문은 문짝을 들어낸 **빈 문틀**로 굽는다(청동기 문엔 경첩이 없다 — 새끼를 풀어 들어낸다).
@@ -463,151 +449,13 @@
       //     (월드 (1,0) 은 화면 (32,16) 인데 (32,0) 으로 그었다). 스프라이트가 그것도 바로잡는다.
       if (!drawPropBody((building?.data?.orientation || 'NS') === 'EW' ? 'fence_ew' : 'fence_ns', x, y)) drawPropPending(x, y);
     } else if (type === 'stair') {
-      // === PZ식 3-cell 24-subStep 계단 (14.49-e2) ===
-      // anchor (this draw 좌표 x, y) = cell 0 (낮은 발판) 중심. dir 방향으로 cell 1, 2 추가.
-      // 총 24 sub-step (각 cell당 8 sub-step), z = subStep * (FLOOR_HEIGHT/24) (0~64).
-      // 시각: 24개 평평한 step tread + 사이 vertical riser. 진짜 미세 계단 모양.
-      const H = FLOOR_HEIGHT; // 64
-      const dir = building?.data?.dir || 'N';
-      // dir별 단위벡터 (world 좌표계)
-      const dv = dir === 'E' ? { x: 1, y: 0 } : dir === 'W' ? { x: -1, y: 0 } : dir === 'S' ? { x: 0, y: 1 } : { x: 0, y: -1 };
-      // dir 수직 (perpendicular) 단위벡터 — 어느 쪽이든 한 방향으로 잡음
-      const pv = { x: -dv.y, y: dv.x };
-      // world offset (픽셀, cell 0 anchor 기준) → 스크린 offset
-      function worldOffToScreen(wx, wy, wz) {
-        return { x: (wx - wy), y: (wx + wy) * 0.5 - wz };
-      }
-      // 그림자 (3 cell 전체 길이)
-      ctx.fillStyle = 'rgba(0,0,0,0.35)';
-      ctx.beginPath();
-      const midC = { wx: dv.x * 32, wy: dv.y * 32 }; // cell 1 중심
-      const midS = worldOffToScreen(midC.wx, midC.wy, 0);
-      ctx.ellipse(x + midS.x, y + midS.y + 4, 36, 12, 0, 0, Math.PI * 2);
-      ctx.fill();
-      // 6 sub-step 그리기. 각 sub-step:
-      //   - 시작 wx,wy = anchor 중심 + dv * (subStep - 2.5) * 16 (subStep 0 = -2.5×16 = -40, ...)
-      //     wait — anchor center가 cell 0 중심임. cell 0 안 sub-step 0의 중심 = anchor - dv*8 (반쪽 뒤로)
-      //     subStep S의 중심 (world): anchor + dv * (S - 2.5) * 16
-      //     이러면 S=0: anchor - 40, S=5: anchor + 40. cell 0 (S=0,1) = -40~-8, cell 1 (S=2,3) = 8~40, cell 2 (S=4,5) = 56~88...
-      //     아니다. cell 0 중심 = anchor, cell 1 중심 = anchor + dv*32, cell 2 중심 = anchor + dv*64.
-      //     subStep 0 (cell 0 low half) 중심 = anchor + dv * (-8) = anchor - dv*8
-      //     subStep 1 (cell 0 high half) 중심 = anchor + dv * 8
-      //     subStep 2 (cell 1 low half) 중심 = anchor + dv * 24
-      //     subStep 3 (cell 1 high half) 중심 = anchor + dv * 40
-      //     subStep 4 (cell 2 low half) 중심 = anchor + dv * 56
-      //     subStep 5 (cell 2 high half) 중심 = anchor + dv * 72
-      // 각 슬랩 두께: dv 방향 16, perpendicular 32.
-      // 각 sub-step 슬랩 — cell 0 (S=0~7), cell 1 (S=8~15), cell 2 (S=16~23). 총 24개.
-      // cell N 중심 = anchor + dv * N * 32. cell 안에서 sub-step S_in_cell (0~7) 중심 = cell_center + dv * ((S_in_cell - 3.5) * 4)
-      // (각 sub-step 너비 = 32/8 = 4 px along dir)
-      const SUB_PER_CELL = 8;
-      const SUB_TOTAL = 24;
-      const SUB_WIDTH = CL_BUILDING_SIZE / SUB_PER_CELL; // = 4 px
-      for (let S = 0; S < SUB_TOTAL; S++) {
-        const cellN = Math.floor(S / SUB_PER_CELL);
-        const subInCell = S % SUB_PER_CELL;
-        const w = cellN * CL_BUILDING_SIZE + (subInCell - 3.5) * SUB_WIDTH;
-        const z = (S / (SUB_TOTAL - 1)) * H; // 0 ~ H
-        const halfDV = SUB_WIDTH / 2;
-        const halfPV = CL_BUILDING_SIZE / 2;
-        function corner(dvSign, pvSign) {
-          const wx = dv.x * (w + halfDV * dvSign) + pv.x * halfPV * pvSign;
-          const wy = dv.y * (w + halfDV * dvSign) + pv.y * halfPV * pvSign;
-          const sc = worldOffToScreen(wx, wy, z);
-          return { x: x + sc.x, y: y + sc.y };
-        }
-        const c1 = corner(-1, -1);
-        const c2 = corner( 1, -1);
-        const c3 = corner( 1,  1);
-        const c4 = corner(-1,  1);
-        // riser — 이전 sub-step과 z 차이만큼
-        const prevZ = S === 0 ? 0 : ((S - 1) / (SUB_TOTAL - 1)) * H;
-        if (z > prevZ) {
-          const c1d = { x: c1.x, y: c1.y + (z - prevZ) };
-          const c4d = { x: c4.x, y: c4.y + (z - prevZ) };
-          ctx.fillStyle = '#4a2a14';
-          ctx.strokeStyle = '#2a1808';
-          ctx.lineWidth = 0.6;
-          ctx.beginPath();
-          ctx.moveTo(c1.x, c1.y); ctx.lineTo(c4.x, c4.y);
-          ctx.lineTo(c4d.x, c4d.y); ctx.lineTo(c1d.x, c1d.y);
-          ctx.closePath(); ctx.fill(); ctx.stroke();
-        }
-        // tread
-        ctx.fillStyle = '#b08858';
-        ctx.strokeStyle = '#5a3818';
-        ctx.lineWidth = 0.4;
-        ctx.beginPath();
-        ctx.moveTo(c1.x, c1.y); ctx.lineTo(c2.x, c2.y);
-        ctx.lineTo(c3.x, c3.y); ctx.lineTo(c4.x, c4.y);
-        ctx.closePath(); ctx.fill(); ctx.stroke();
-      }
-      // ↑ 화살표 (가장 높은 sub-step 위)
-      const topZ = H;
-      const tcell = 2, tsub = 7;
-      const tw = tcell * CL_BUILDING_SIZE + (tsub - 3.5) * SUB_WIDTH;
-      const topS = worldOffToScreen(dv.x * tw, dv.y * tw, topZ);
-      ctx.fillStyle = '#cdd6e3';
-      ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(x + topS.x, y + topS.y - 8);
-      ctx.lineTo(x + topS.x - 5, y + topS.y - 2);
-      ctx.lineTo(x + topS.x + 5, y + topS.y - 2);
-      ctx.closePath(); ctx.stroke(); ctx.fill();
-      return; // 끝 — 옛 사선 ramp 그림 코드 skip
-      // 그림자
-      ctx.fillStyle = 'rgba(0,0,0,0.4)';
-      ctx.beginPath(); ctx.ellipse(x, y + 6, 16, 5, 0, 0, Math.PI * 2); ctx.fill();
-      // 측면 W 삼각형 (그림자 톤)
-      ctx.strokeStyle = '#3a2010'; ctx.lineWidth = 1;
-      ctx.fillStyle = '#6a4a2a';
-      ctx.beginPath();
-      ctx.moveTo(sb.x, sb.y); ctx.lineTo(wb.x, wb.y); ctx.lineTo(wT.x, wT.y);
-      ctx.closePath(); ctx.fill(); ctx.stroke();
-      // 측면 E 삼각형 (햇빛 톤)
-      ctx.fillStyle = '#9a7a4a';
-      ctx.beginPath();
-      ctx.moveTo(sb.x, sb.y); ctx.lineTo(eb.x, eb.y); ctx.lineTo(eT.x, eT.y);
-      ctx.closePath(); ctx.fill(); ctx.stroke();
-      // 뒷면 NW + NE (가장 어둠)
-      ctx.fillStyle = '#5a3a1c';
-      ctx.beginPath();
-      ctx.moveTo(wb.x, wb.y); ctx.lineTo(nb.x, nb.y); ctx.lineTo(nT.x, nT.y); ctx.lineTo(wT.x, wT.y);
-      ctx.closePath(); ctx.fill(); ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(nb.x, nb.y); ctx.lineTo(eb.x, eb.y); ctx.lineTo(eT.x, eT.y); ctx.lineTo(nT.x, nT.y);
-      ctx.closePath(); ctx.fill(); ctx.stroke();
-      // 사선 top — 걸어가는 면
-      ctx.fillStyle = '#b08858';
-      ctx.beginPath();
-      ctx.moveTo(sT.x, sT.y); ctx.lineTo(wT.x, wT.y); ctx.lineTo(nT.x, nT.y); ctx.lineTo(eT.x, eT.y);
-      ctx.closePath(); ctx.fill(); ctx.stroke();
-      // step 선 5개 — S→N 방향으로 등간격, 좌우 ramp 가장자리에 닿음
-      ctx.strokeStyle = '#5a3818'; ctx.lineWidth = 1.2;
-      for (let i = 1; i <= 5; i++) {
-        const f = i / 6;
-        let l, r;
-        if (f < 0.5) {
-          const t = f * 2;
-          l = { x: sT.x + (wT.x - sT.x) * t, y: sT.y + (wT.y - sT.y) * t };
-          r = { x: sT.x + (eT.x - sT.x) * t, y: sT.y + (eT.y - sT.y) * t };
-        } else {
-          const t = (f - 0.5) * 2;
-          l = { x: wT.x + (nT.x - wT.x) * t, y: wT.y + (nT.y - wT.y) * t };
-          r = { x: eT.x + (nT.x - eT.x) * t, y: eT.y + (nT.y - eT.y) * t };
-        }
-        ctx.beginPath();
-        ctx.moveTo(l.x, l.y); ctx.lineTo(r.x, r.y);
-        ctx.stroke();
-      }
-      // 위 방향 화살표 (계단 정상)
-      ctx.fillStyle = '#cdd6e3';
-      ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.lineWidth = 2;
-      const aX = nT.x, aY = nT.y - 4;
-      ctx.beginPath();
-      ctx.moveTo(aX, aY - 5); ctx.lineTo(aX - 5, aY + 2); ctx.lineTo(aX + 5, aY + 2);
-      ctx.closePath(); ctx.stroke(); ctx.fill();
-      // 14.49-e7b: 라벨 제거 (자동 계단이라 키 안내 불필요)
+      // ★★[T95] 몸체 = 스프라이트. 종전엔 **24 소단을 프레임마다 벡터로 그렸다**
+      //   (3칸 × 8소단 · 슬랩마다 네 귀를 계산하고 챌판 선까지). 그 수치를 그대로 모델로 옮겨 구웠다:
+      //     소단 24 · 칸당 8 · 소단 깊이 0.125m(4px) · 폭 1칸 · 높이 0→2m(0→64px) · 원점 = 칸 0 중심.
+      //   방향 변형 넷 — 서버가 `data.dir ∈ {N,E,S,W}` 를 준다(§0-ⓑ 실측).
+      //   ⚠벽·문과 달리 계단은 **N 과 S 가 다른 그림**이다(오르는 쪽이 반대다) — 둘이 아니라 넷인 이유.
+      const _sd = (building?.data?.dir || 'N').toLowerCase();
+      if (!drawPropBody('stair_' + _sd, x, y)) drawPropPending(x, y);
     } else if (type === 'workbench') {
       // ★[T67] 몸체 = 스프라이트. 종전 발판 도형(통나무 다리 + 널 상판 fillRect)을 걷었다 —
       //   그때 주석이 예고한 "자연물·건물 정본 에셋으로 교체"가 이 카드다.

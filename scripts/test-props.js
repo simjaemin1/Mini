@@ -75,7 +75,11 @@ for (const k of worldKeys) {
 console.log('\n[② 아이콘 키 ⊆ 세계 키 — 같은 모델에서 나왔는가]');
 {
   const icons = [...new Set(worldKeys.map(k => A[k].icon))].sort();
-  ok(icons.length === 8, `아이콘 8종 (실측 ${icons.length}): ${icons.join(' ')}`);
+  // ★[T95] 종전엔 `=== 8` 이 박혀 있었다 — 물건이 늘면 검사기가 먼저 거짓말한다.
+  //   수는 **굽는 표에서 유도**한다(`props_render.py PROPS` 의 항목 수). 표가 정본이다.
+  const nProps = (fs.readFileSync(RENDER_PY, 'utf8').match(/^\s*dict\(icon='/gm) || []).length;
+  ok(icons.length === nProps,
+     `아이콘 ${nProps}종 = 굽는 표 항목 수 (실측 ${icons.length}): ${icons.join(' ')}`);
   for (const ic of icons) {
     const p = path.join(ICON_DIR, ic + '.png');
     const has = fs.existsSync(p);
@@ -107,7 +111,9 @@ console.log('\n[③ 크기 정합 — 서버 BUILDING_HEIGHT 가 정본]');
   const py = fs.readFileSync(RENDER_PY, 'utf8');
   const declared = [...py.matchAll(/btype='(\w+)',[^\n]*body_px=(\d+),\s*flame_px=(\d+)/g)]
     .map(m => ({ t: m[1], b: +m[2], f: +m[3] }));
-  ok(declared.length === 8, `props_render.py 가 가구 8종을 선언한다 (실측 ${declared.length})`);
+  const nDict = (py.match(/^\s*dict\(icon='/gm) || []).length;
+  ok(declared.length === nDict,
+     `props_render.py 의 선언 ${nDict}종을 전부 읽었다 (실측 ${declared.length})`);
   for (const d of declared) {
     const mine = worldKeys.filter(k => A[k].btype === d.t);
     ok(mine.length > 0 && mine.every(k => A[k].body_px === d.b && A[k].flame_px === d.f),
@@ -115,13 +121,15 @@ console.log('\n[③ 크기 정합 — 서버 BUILDING_HEIGHT 가 정본]');
   }
 }
 
-console.log('\n[④ 소스 검사 — 가구 8절에 몸체 도형 0]');
+console.log('\n[④ 소스 검사 — 가구·시설 절에 몸체 도형 0]');
 {
   let src = fs.readFileSync(CLIENT, 'utf8');
   if (SELFTEST) src = src.replace("if (!drawPropBody('workbench', x, y)) drawPropPending(x, y);",
     "ctx.fillRect(x - 13, y - 2, 3, 8);");
   // 8절을 소스에서 **잘라 내어** 검사한다(파일 전체를 보면 회부 구역의 도형까지 걸린다).
-  const TYPES = ['wall', 'door', 'chest', 'fence', 'workbench', 'drying_rack', 'salt_kiln', 'campfire'];
+  // ★[T95] T67 이 남긴 셋(농지·바닥·계단)이 여기 들어왔다 — 이제 셋 다 스프라이트다.
+  const TYPES = ['wall', 'door', 'chest', 'fence', 'workbench', 'drying_rack', 'salt_kiln', 'campfire',
+                 'farmland', 'floor', 'stair'];
   const starts = [];
   for (const t of TYPES) {
     const re = new RegExp(`(?:\\} else )?if \\(type === '${t}'\\) \\{`);
@@ -139,11 +147,23 @@ console.log('\n[④ 소스 검사 — 가구 8절에 몸체 도형 0]');
       .split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');   // 주석 줄은 소스가 아니다
     const shapes = (strippedForShapes.match(/ctx\.fill\(\)/g) || []).length;
     const rects = (strippedForShapes.match(/ctx\.fillRect\(/g) || []).length;
-    const allowFill = s0.t === 'campfire' ? 2 : 0;                // 불꽃 두 겹(코드가 얹는 상태)
-    const allowRect = s0.t === 'chest' ? 1 : 0;                   // 거래소 이름표 배경 한 장
+    const allowFill = s0.t === 'campfire' ? 2                     // 불꽃 두 겹(코드가 얹는 상태)
+      // ★[T95] 농지 3 = 마을 시뮬 경작지 카펫 타일(논/밭 띠 — T6 이 의도적으로 남긴 층) 2 + 그림자 1.
+      //   그 층은 **셀을 꽉 채워 띠가 이어져 보이게** 하는 다른 그림이라 스프라이트로 안 덮는다(회부).
+      : s0.t === 'farmland' ? 3
+      // ★[T95] 바닥 4 = 움집 실내(거적 침상·화덕) — **바닥이 아니라 실내 가구**다. 층 표시 테두리는 stroke 라 안 센다.
+      : s0.t === 'floor' ? 4 : 0;
+    const allowRect = s0.t === 'chest' ? 1                        // 거래소 이름표 배경 한 장
+      : s0.t === 'floor' ? 3 : 0;                                 // 움집 목침·잉걸 — 위와 같은 층
     ok(shapes <= allowFill && rects <= allowRect,
       `${s0.t}: 몸체 도형 0 (fill ${shapes}/${allowFill} · fillRect ${rects}/${allowRect})`);
-    ok(/drawPropBody\(/.test(strippedForShapes), `${s0.t}: drawPropBody 로 몸체를 그린다`);
+    // ★[T95] 몸체를 **스프라이트에서** 그리는가. 길은 둘이다:
+    //   · props 표의 물건 → `drawPropBody`(앵커 JSON 을 읽는 그 경로)
+    //   · 농지 → `cropSprite`(몸이 밭 스프라이트다 — T79c 8군 × 4단계. props 표에 또 만들면 사본이다)
+    const viaProp = /drawPropBody\(/.test(strippedForShapes);
+    const viaCrop = s0.t === 'farmland' && /cropSprite\(/.test(strippedForShapes);
+    ok(viaProp || viaCrop,
+      `${s0.t}: 몸체를 스프라이트에서 그린다 (${viaProp ? 'drawPropBody' : ''}${viaCrop ? 'cropSprite' : ''})`);
   }
   // 앵커 표를 클라에 옮겨 적지 않았는가 — 적는 순간 다시 굽는 날 갈린다(족보 79).
   ok(/fetch\('\/assets\/props\/props_anchors\.json'\)/.test(src),

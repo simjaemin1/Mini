@@ -129,7 +129,7 @@ function itemKo(k) {
       }).join('');
       const pvStr = pv ? `<b style="color:var(--thirst)">${pv.attrLabel} ${pv.attr} · 내구 ${pv.dura}</b>` : '';
       html += `<div class="craft-recipe ${canCraft ? 'can-make' : 'cant-make'}">
-        <div class="cr-icon">${itemPic(EQUIP_ICONS[type] || type, 22)}</div>
+        <div class="cr-icon">${itemPic(equipPicKey(type, sel), 22)}</div>
         <div class="cr-info">
           <div class="cr-name">${rc.label} <span style="color:var(--stam);font-weight:normal">${rc.skill} Lv${lvl}</span></div>
           <div class="cr-cost">${sel ? itemIconHtml(sel, 18, itemKo(sel)) : '?'} ×${rc.qty}${extraStr} ${pvStr}</div>
@@ -153,7 +153,7 @@ function itemKo(k) {
         const durBar = inst.durMax ? `<div style="height:4px;background:var(--inset);border-radius: 0;margin-top:3px;overflow:hidden"><div style="height:100%;width:${durPct}%;background:${durCol}"></div></div>` : '';
         const repairBtn = (inst.durMax && inst.dura < inst.durMax) ? `<button data-eqrepair="${inst.id}" style="margin-left:4px">수선</button>` : '';
         html += `<div class="craft-recipe ${isEq ? 'can-make' : ''}">
-          <div class="cr-icon">${itemPic(EQUIP_ICONS[inst.type] || inst.type, 22)}</div>
+          <div class="cr-icon">${itemPic(equipPicKey(inst.type, inst.mat), 22)}</div>
           <div class="cr-info">
             <div class="cr-name">${rc.label || inst.type} ${broken ? '<span style="color:var(--hp)">파손</span>' : ''}<span style="color:var(--dim-2);font-weight:normal"> · Lv${inst.craftedSkill || 0} 제작</span></div>
             <div class="cr-cost">${attrParts.join(' · ')}${inst.dura != null ? ` · 내구 ${inst.dura}/${inst.durMax}` : ''}</div>
@@ -246,7 +246,7 @@ function itemKo(k) {
           return `<button data-eqtype="${type}" data-eqmat="${m}" ${has > 0 ? '' : 'disabled'} style="${st}">${itemIconHtml(m, 18, itemKo(m))}${has ? ` ${has}` : ''}</button>`;
         }).join('');
         h += `<div class="craft-recipe ${canBuy ? 'can-make' : 'cant-make'}">
-          <div class="cr-icon">${itemPic(EQUIP_ICONS[type] || type, 22)}</div>
+          <div class="cr-icon">${itemPic(equipPicKey(type, sel), 22)}</div>
           <div class="cr-info">
             <div class="cr-name">${rc.label} <span style="color:var(--thirst);font-weight:normal">${qStr}</span></div>
             <div class="cr-cost">재료 ${sel ? itemIconHtml(sel, 18, itemKo(sel)) : '?'} ×${rc.qty} 지불</div>
@@ -269,7 +269,7 @@ function itemKo(k) {
           return false;
         })();
         h += `<div class="craft-recipe">
-          <div class="cr-icon">${itemPic(EQUIP_ICONS[inst.type] || inst.type, 22)}</div>
+          <div class="cr-icon">${itemPic(equipPicKey(inst.type, inst.mat), 22)}</div>
           <div class="cr-info"><div class="cr-name">${rc.label || inst.type} <span style="color:var(--dim-2);font-weight:normal">Lv${inst.craftedSkill || 0}</span>${_fe ? ' <span style="color:var(--accent-hi)">철기</span>' : ''}</div>
           <div class="cr-cost">용해 ${inst.mat ? itemIconHtml(inst.mat, 18, itemKo(inst.mat)) : '재료'} ×${refund} 회수${_fe ? ' &nbsp;/&nbsp; <span style="color:var(--accent-hi)">위세품으로 넘기면 마을이 값을 친다</span>' : ''}</div></div>
           <div style="display:flex;flex-direction:column;gap:3px">

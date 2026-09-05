@@ -337,29 +337,8 @@ def m_jade_raw(): # 옥 원석 — 연옥 자갈: 풍화 회백 겉껍질 + **�
     box(0.66, 0.62, 0.10, (0.34, -0.30, 0.70), rot=(math.radians(-12), math.radians(16), 0), mat=M['jadecore'])  # 매끈한 파단면
     ico(0.20, (0.56, 0.42, 0.18), subdiv=1, mat=M['jadecore'], jitter=0.28, smooth=False)    # 떨어져 나온 초록 조각
 
-def m_item_floor():  # 다짐 바닥 타일
-    box(1.7, 1.7, 0.14, (0, 0, 0.07), mat=M['tamped'])
-    random.seed(141)
-    for _ in range(9):
-        ico(0.075, (random.uniform(-0.72, 0.72), random.uniform(-0.72, 0.72), 0.14),
-            subdiv=1, mat=M['tamped'], scale=(1, 1, 0.35), jitter=0.3, smooth=False)
 
-def m_item_stair():  # 통나무 계단 3단
-    for i in range(3):
-        box(1.3, 0.44, 0.16, (0, -0.44 + i * 0.44, 0.16 + i * 0.32), mat=M['sawn'])
-        cyl(0.09, 1.32, (0, -0.63 + i * 0.44, 0.10 + i * 0.32), rot=(0, math.radians(90), 0), mat=M['peeled'], verts=10, smooth=False)
 
-def m_item_farmland():  # 갈아엎은 흙 타일 — 이랑 3줄
-    box(1.7, 1.7, 0.12, (0, 0, 0.06), mat=M['soil'])
-    random.seed(161)
-    # 이랑 = 낮고 넓은 흙둔덕(삼각 단면) — 통나무처럼 보이지 않게 반경↓·폭↑·각짐
-    for i in range(4):
-        y = -0.62 + i * 0.42
-        o = cyl(0.115, 1.68, (0, y, 0.13), rot=(0, math.radians(90), 0), mat=M['soil'], verts=6, smooth=False)
-        o.scale = (1.0, 1.0, 0.55)
-    for _ in range(10):   # 흙덩이
-        ico(0.055, (random.uniform(-0.72, 0.72), random.uniform(-0.72, 0.72), 0.17),
-            subdiv=1, mat=M['soil'], jitter=0.35, smooth=False)
 
 JOBS = [
     ("pillar", m_pillar), ("rafter", m_rafter), ("thatch", m_thatch),
@@ -372,7 +351,11 @@ JOBS = [
     #   **세계 스프라이트와 같은 모델**로 그 아이콘을 굽는다. 여기 모델을 남겨 두면 사본이 되고,
     #   이 파일을 다시 굽는 날 세계와 인벤이 조용히 갈린다(족보: 사본 금지).
     #   ⓘ 바닥·계단·농지 셋은 아직 세계 스프라이트가 없어(회부: 다음 ART 카드) 여기 남는다.
-    ("item_floor", m_item_floor), ("item_stair", m_item_stair), ("item_farmland", m_item_farmland),
+    # ★★[T95 2026-09-05] **바닥·계단·농지 셋이 여기서 빠졌다** — T67 이 남긴 마지막 셋이다.
+    #   이제 셋 다 세계 스프라이트가 있으니 캐논이 적용된다(물건 하나 = 모델 하나 = 렌더 둘):
+    #     · 바닥·계단 → `props_render.py`(PROPS 표 — 세계 스프라이트 + 아이콘 한 모델에서)
+    #     · 농지     → `fields_render.py`(빈 밭 `crops/grain_0` 과 **같은 `soil_bed`**)
+    #   여기 모델을 남겨 두면 그게 사본이고, 세계를 고치는 날 짐 창이 조용히 갈린다.
     # ★[2026-08-02e ⑦] 야금 사슬 8종 — 배치 1 산출물이 아이콘 없이 이모지 폴백이었다
     ("ore_chunk", m_ore_chunk), ("iron_ore", m_iron_ore), ("charcoal", m_charcoal),
     ("iron", m_iron), ("meteoric_iron", m_meteoric_iron),

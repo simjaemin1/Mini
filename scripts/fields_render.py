@@ -145,6 +145,25 @@ def build(slug, stage):
     rows(per, nrow, one, seed=sd + 2)
 
 
+# ═══════════════ [T95] 농지 아이콘 — **세계와 같은 모델** ═══════════════
+# ★T67 캐논: 물건 하나 = 모델 하나 = 렌더 둘. 빈 밭의 **세계 스프라이트는 여기 `grain_0`** 이고
+#   짐 창의 `item_farmland` 도 **같은 `soil_bed`** 에서 나와야 한다.
+#   `icon_render.py` 에 있던 옛 `m_item_farmland` 는 그 사본이었다 — T95 가 지웠다.
+ICON_OUT = os.path.join(HERE, "..", "public", "assets", "icons")
+
+
+def bake_farmland_icon(out_dir):
+    """빈 밭(이랑만) 아이콘 — 세계 `grain_0` 과 같은 모델, 아이콘 프리셋으로 한 번 더."""
+    OBJS.clear()
+    soil_bed(furrows=4)                       # ★곡물 이랑 수 = `grain_0` 과 같은 값
+    rc.bake_transforms()
+    p = os.path.join(out_dir, "item_farmland.png")
+    size = rc.render_icon_pass(OBJS, p)
+    rc.cleanup()
+    print(f"[fields] icon item_farmland: 512²  (bbox {size:.2f}m)")
+    return p
+
+
 # ═══════════════ 굽기 ═══════════════
 if __name__ == '__main__':
     ONLY = [k for k in os.environ.get('FIELDS_ONLY', '').split(',') if k]
@@ -163,4 +182,7 @@ if __name__ == '__main__':
             print(f"[fields] {key}: {PX}²  (bbox {size:.2f}m · objs={len(OBJS)})")
             rc.cleanup()
             n += 1
+    if not ONLY or 'item_farmland' in ONLY:
+        bake_farmland_icon(OUT)               # 512² — `icons-postprocess.js` 가 96px 로
+        n += 1
     print("[fields] DONE ->", OUT, n, "장")
