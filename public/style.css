@@ -284,11 +284,28 @@ html, body { margin: 0; padding: 0; height: 100%; font-family: var(--font); back
 .equip-btn { background: var(--inset); border-color: var(--line); }
 
 #notice {
+  /* ★★[T118 2026-09-05 재민 확정] **자리는 캔버스가 정본이다.**
+     종전엔 `#hud`(좌상) 흐름 안에 있어서 **왼쪽 레일이 첫 글자를 덮었다**(T113 대조 스크린샷 —
+     "마을에" 의 "마" 가 잘렸다. 스택 이전부터 그랬고 세 줄이 되니 세 줄 다 잘렸다).
+     캔버스(`산그림/디자인B/디자인B_HUD.jpg` · 1440×900)를 화소로 재면 알림 판은
+     **x 536~1093(폭 558) · y 17~66** — 상태 줄 오른쪽, 지도 판 왼쪽의 **위 띠**다(설계 §4
+     "촌장 한 줄은 상단(레일 오른쪽)에"). ⇒ `position: fixed` 로 그 띠에 세운다.
+     ⚠`#hud` 의 자식으로 **그대로 둔다** — 노드를 안 옮기면 `pointer-events: none` 상속이 살아 있고
+       (알림은 클릭을 먹으면 안 된다) `index.html` 도 안 건드린다. `fixed` 라 흐름에서 빠지므로
+       HUD 세로줄이 알림 줄 수에 따라 **더는 밀리지 않는다**(스택 셋이면 47px 밀던 것이 0 이 된다).
+     ⚠가로는 **화면 중심**이다(§3 판정). 캔버스 판 중심은 814 로 화면 중심(720)에서 94px 오른쪽인데,
+       그건 캔버스 왼쪽에 상태 줄이 있어서 생긴 자리다 — 해상도가 달라지면 고정 좌표는 뜻을 잃는다.
+       띠 안 가운데라는 **뜻**을 지키는 값이 `left:50%` 다. */
+  position: fixed;
+  top: 12px;                       /* `#hud`·`#minimap` 과 같은 위 띠(캔버스는 17 — 그 그림의 자체 여백이다) */
+  left: 50%; transform: translateX(-50%);
+  z-index: 10;                     /* `#hud`·`#minimap` 과 같은 층 */
   background: rgba(var(--pane-rgb), 0.9);
-  padding: 6px 11px; border-radius: 0;
-  font-size: 12px; max-width: 320px; min-height: 18px;
+  padding: 11px; border-radius: 0; /* 세로 패딩 11 — 캔버스 값(종전 6) */
+  font-size: 12px; max-width: 560px; min-height: 18px;   /* 폭은 캔버스 558 → 눈금 16 에 맞춰 560 */
   border: 1px solid rgba(var(--fg-rgb), 0.08);
   color: var(--dim);
+  text-align: center;              /* 가운데 판이니 글도 가운데 — 한 줄짜리가 왼쪽에 붙어 뜨지 않는다 */
   /* ★[2026-08-25 사건 레이어] 게시판 목록은 여러 줄이다 — 새 패널을 만들지 않고 이 한 줄로 늘린다. */
   white-space: pre-line;
   /* ★[T113] 줄 피치는 **캔버스 값**이다 — `산그림/디자인B/디자인B_HUD.jpg` 의 알림 자리를 화소로
@@ -296,6 +313,10 @@ html, body { margin: 0; padding: 0; height: 100%; font-family: var(--font); back
      새 패널도 새 노드도 아니고, 여기 한 줄이 그 자리의 리듬을 정한다. */
   line-height: 17px;
 }
+/* ★[T118] 비어 있으면 **아예 없다.** 좌상 HUD 흐름 안에 있을 땐 빈 칸이 눈에 안 띄었지만,
+   화면 위 가운데로 나오면 빈 먹판이 늘 떠 있게 된다(`min-height` + 배경 때문에). 자리를 옮기면
+   따라오는 결함이라 같은 카드에서 닫는다 — 규칙 한 줄이고 JS 는 안 건드린다. */
+#notice:empty { display: none; }
 /* ★[T90] 알림 앞의 종류 아이콘 — 글자 줄에 얹히지 않게 살짝 내려 앉힌다(색은 글자를 따라간다). */
 #notice .nt-ico { vertical-align: -2px; margin-right: 5px; }
 

@@ -676,6 +676,88 @@ async function waitHttp(url, tries = 600) {
     await page.evaluate(() => { showNotice('', 1, null); });
   }
 
+
+  // ── ⑭ ★★[T118] 알림 자리 — 상단 가운데 · **레일 겹침 0** ──────────────────
+  //   ★왜: T113 대조 스크린샷에서 **왼쪽 레일이 알림 첫 글자를 덮고 있었다**("마을에"의 "마").
+  //     `#notice` 가 `#hud`(좌상) 흐름 안에 있었기 때문이고, 스택 이전부터 그랬다.
+  //     캔버스는 알림을 **위 띠**(상태 줄 오른쪽·지도 왼쪽)에 둔다 — 자리를 그리로 옮겼다.
+  //   ★이건 화소 하네스가 아니다(`@pixel` 아님) — `getBoundingClientRect` 교집합을 재는 DOM 판정이다.
+  console.log('\n⑭ ★[T118] 알림 자리 — 레일과 안 겹친다');
+  {
+    const say = (t, ms, kind) => page.evaluate(([a, b, c]) => showNotice(a, b, c), [t, ms, kind]);
+    const geo = () => page.evaluate(() => {
+      const n = document.getElementById('notice'), s = document.getElementById('sidebar');
+      const h = document.getElementById('hud'), m = document.getElementById('minimap');
+      const r = (el) => { if (!el) return null; const b = el.getBoundingClientRect();
+        return { x: Math.round(b.left), y: Math.round(b.top), w: Math.round(b.width), h: Math.round(b.height),
+                 r: Math.round(b.right), b: Math.round(b.bottom) }; };
+      const cs = getComputedStyle(n);
+      // ★상단 상태 줄 — 캔버스는 알림을 **그 줄 오른쪽**에 둔다. 좁은 화면에서 만나는지 잰다.
+      const row = document.querySelector('#hud .hud-row');
+      return { n: r(n), s: r(s), h: r(h), m: r(m), row: r(row), vw: innerWidth, vh: innerHeight,
+               pos: cs.position, pe: cs.pointerEvents, pad: cs.paddingTop, ta: cs.textAlign };
+    });
+    const overlap = (a, b) => (a && b)
+      ? Math.max(0, Math.min(a.r, b.r) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.b, b.b) - Math.max(a.y, b.y))
+      : null;
+
+    // ★두 해상도에서 잰다 — 자리가 좌표가 아니라 **규칙**이어야 한다(창을 줄이면 다시 덮이면 안 된다).
+    for (const [vw, vh] of [[1280, 800], [1024, 700]]) {
+      await page.setViewportSize({ width: vw, height: vh });
+      await sleep(400);
+      await page.evaluate(() => showNotice('', 1, null));
+      await sleep(80);
+      // ★빈 알림은 **아예 없다** — 위 가운데에 빈 먹판이 늘 떠 있으면 안 된다.
+      const empty = await page.evaluate(() => {
+        const n = document.getElementById('notice');
+        return { disp: getComputedStyle(n).display, h: Math.round(n.getBoundingClientRect().height) };
+      });
+      ok(empty.disp === 'none' && empty.h === 0, `★★⑭ [${vw}×${vh}] 빈 알림은 **화면에 없다**`, JSON.stringify(empty));
+
+      await say('마을에 들어섰다', 20000, 'village');
+      await sleep(40); await say('나무를 벴다', 20000, 'gather');
+      await sleep(40); await say('여행자가 쓰러졌다 — 해 지는 쪽 60걸음', 20000, 'rescue');
+      await sleep(250);
+      const g = await geo();
+      ok(!!g.n && !!g.s, `★⑭ [${vw}×${vh}] (상황) 알림과 레일이 둘 다 실재한다`, JSON.stringify({ n: g.n, s: g.s }));
+      ok(overlap(g.n, g.s) === 0, `★★⑭ [${vw}×${vh}] **레일 ∩ 알림 = 0**(첫 글자가 안 잘린다)`,
+         `겹침 ${overlap(g.n, g.s)}px² · 알림 x${g.n.x}~${g.n.r} · 레일 x${g.s.x}~${g.s.r}`);
+      ok(overlap(g.n, g.m) === 0, `★⑭ [${vw}×${vh}] 지도 판과도 안 겹친다`, `겹침 ${overlap(g.n, g.m)}px²`);
+      const cx = (g.n.x + g.n.r) / 2;
+      ok(Math.abs(cx - vw / 2) <= 2, `★★⑭ [${vw}×${vh}] 알림 중심이 **화면 중심**이다`,
+         `중심 ${Math.round(cx)} vs ${vw / 2}`);
+      ok(g.n.y === 12, `★⑭ [${vw}×${vh}] 위 띠(top 12 — 지도·HUD 와 같은 줄)`, `y ${g.n.y}`);
+      ok(g.pad === '11px', `★⑭ [${vw}×${vh}] 세로 패딩은 **캔버스 값 11px**`, g.pad);
+      ok(g.pos === 'fixed' && g.pe === 'none',
+         `★⑭ [${vw}×${vh}] 흐름에서 빠졌고(HUD 를 안 민다) 클릭을 안 먹는다`, `${g.pos} · ${g.pe}`);
+      // ★캔버스는 알림을 **상태 줄 오른쪽**에 둔다(1440 판에서 66px 여유). 좁은 화면에서 그 여유가
+      //   얼마나 남는지 **재서 적는다** — 0 이하면 좁은 화면에서 상태 줄을 가린다는 뜻이다(회부 판단 자료).
+      const gap = g.row ? g.n.x - g.row.r : null;
+      console.log(`  · [상황] [${vw}×${vh}] 상태 줄 오른쪽 여유 ${gap}px (캔버스 1440 판은 66px · 알림 폭 ${g.n.w})`);
+      // ★T113 무변 — 자리만 옮겼지 스택은 그대로다
+      const lines = await page.evaluate(() => document.getElementById('notice').textContent.split('\n'));
+      ok(lines.length === 3, `★★⑭ [${vw}×${vh}] 스택 셋은 그대로다(T113 무접촉)`, JSON.stringify(lines));
+    }
+
+    // ★자명 통과 금지 — 옛 자리(HUD 흐름 안)로 되돌리면 이 판정이 **빨개진다**
+    const wouldOverlap = await page.evaluate(() => {
+      const n = document.getElementById('notice'), s = document.getElementById('sidebar');
+      const sb = s.getBoundingClientRect();
+      // 옛 자리를 흉내 낸다: HUD 흐름 안 = 좌상(12,205) 언저리
+      const old = { x: 12, y: 205, r: 12 + n.getBoundingClientRect().width, b: 205 + n.getBoundingClientRect().height };
+      const ov = Math.max(0, Math.min(old.r, sb.right) - Math.max(old.x, sb.left))
+               * Math.max(0, Math.min(old.b, sb.bottom) - Math.max(old.y, sb.top));
+      return ov;
+    });
+    ok(wouldOverlap > 0, '★⑭ 자명 통과 금지 — **옛 자리라면 겹친다**(이 검사가 늘 0 을 내는 게 아니다)',
+       `옛 자리 겹침 ${wouldOverlap}px²`);
+
+    await snap('ui-09-notice-pos');
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await sleep(300);
+    await page.evaluate(() => showNotice('', 1, null));
+  }
+
   clearInterval(ntPoll);
   const jsErrs = errs.filter((e) => !/Failed to load resource/.test(e));
   ok(jsErrs.length === 0, '클라 JS 예외 0', jsErrs.slice(0, 2).join(' | '));
