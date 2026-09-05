@@ -1722,7 +1722,8 @@ function _cropSky(e, day) { const C = _Crops(); if (e && C && !C.dormantAt(e.c, 
 
 ## 3-계측. ★★★2026-09-05 T117 — **밭을 도는 계측기** (`scripts/farm-metrics.js`)
 
-> 전문 `보고/T117_2026-09-05.md`. 베이스 `4fbe0b43` · 푸시 `<해시>`(`batch/farm-metrics-0905` → ff → main).
+> 전문 `보고/T117_2026-09-05.md`. 베이스 `ed32a366`(리베이스 2회) · 푸시 `16cd54be`
+> (`batch/farm-metrics-0905` → ff → main · force 0회 · `.lock` 전수 9개 격리 → 재검 0).
 > 신규 `scripts/farm-metrics.js`(계측기 · 러너 밖) · `scripts/test-farm-metrics.js`(하네스).
 > 접촉 `villages.js`(`lifeFarmDay` 순수 추출 + `__labProbe._cropProbe`) · `test-headless-parity.js`(계약 강화).
 > **세계 규칙 0 · 게임 행동 변경 0 · 사본 0.**
