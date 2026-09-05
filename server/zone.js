@@ -63,7 +63,31 @@ const Claims = require('./claims');           // ★[T45 2026-09-02] 사유지 v
 const Newcomers = require('./newcomers');     // ★[T19 2026-09-02] 유저 마을 시작지 등록 — "이방인 받기"(§9.3 나머지 절반)
 const Friends = require('./friends');         // ★[T115 2026-09-05] 친구 — 서로 수락한 쌍(T23 소셜 첫 칸)
 const Rescue = require('./rescue');           // ★[T56 2026-09-02] 외침·구조 동사 둘. 판정은 전부 정본을 부른다(사본 0)
-const harvestedSeeds = new Set(); // 채집된 시드 자원 (DB에서 load)
+// ★★[T122 2026-09-05] **Map 이다** — 키 → 벤 게임일. 종전엔 Set(=영원히 없음)이었다.
+//   `has` 계약은 그대로라 옛 호출부가 전부 산다. 새로 생긴 건 `get(key) = 벤 날` 하나다.
+const harvestedSeeds = new Map(); // 채집된 시드 자원 → 벤 게임일 (DB에서 load · T122 재생의 입력)
+let _harvestPromotePending = 0;
+// ★★[T122] 옛 행 승격 — **한 번**만, 그리고 게임 시계가 선 뒤에(첫 청크 활성화 시점).
+//   벤 날 = **승격일**이다: 지금부터 자라기 시작한다(즉시 성목이 되지 않는다).
+function _promoteHarvestOnce() {
+  if (!_harvestPromotePending) return;
+  const d = gameDayNow();
+  if (!Number.isFinite(d)) return;              // 시계가 아직이면 다음 기회에(멱등)
+  const today = Math.floor(d);
+  let n = 0;
+  for (const [k, v] of harvestedSeeds) if (!Number.isFinite(v) || v < 0) { harvestedSeeds.set(k, today); n++; }
+  let wrote = 0;
+  try { wrote = db.promoteHarvestedDays(today) || 0; } catch (e) {}
+  _harvestPromotePending = 0;
+  if (n || wrote) console.log(`[${ZONE_ID}] ★[T122] 벤 날 없는 옛 행 ${n}개를 게임일 ${today}로 승격 — DB ${wrote}행 기록`);
+}
+// ★벤 자리를 적는 **문 하나** — 메모리와 DB 를 같이 적는다(사본 0 · 세 호출부가 이것만 부른다).
+function _markHarvested(seedKey) {
+  if (!seedKey) return;
+  const d = gameDayNow();
+  harvestedSeeds.set(seedKey, Number.isFinite(d) ? Math.floor(d) : -1);
+  try { db.insertHarvestedSeed(seedKey, d); } catch (e) {}
+}
 
 // === 활성 청크 (12.2.b) — 사람 player + observer 위치 주변 청크만 시뮬레이션 ===
 // 비활성 청크의 mob/NPC는 멈춤 — CPU 절약. 청크 시스템의 핵심.
@@ -217,7 +241,10 @@ function activateChunk(cx, cy) {
   roomsScanChunk(cx, cy);   // ★[배치 18 ①] 건물이 메모리에 올라온 직후에 방을 찾는다(플레이어 바닥만 시드)
   // Phase 5-G: cleanZone (한반도 강·호수 검증용) — 자원 spawn skip
   if (ZONE.cleanZone) return;
-  const seedResources = generateChunkResources(ZONE_ID, ZONE.biome, cx, cy, chunkManager.chunkSize, harvestedSeeds);
+  _promoteHarvestOnce();   // ★[T122] 옛 행 승격 — 한 번 · 시계가 선 뒤
+  // ★[T122] 게임일을 넘긴다 — 벤 자리가 **빠지는** 대신 **단계**(그루터기·묘목·성목)로 난다.
+  //   정산은 **볼 때 한 번**이다(청크 활성화 · 타이머 0 · 틱 0 · 멱등).
+  const seedResources = generateChunkResources(ZONE_ID, ZONE.biome, cx, cy, chunkManager.chunkSize, harvestedSeeds, gameDayNow());
   const spawned = [];
   for (const r of seedResources) {
     if (isTerrainBlockedLocal(r.x, r.y)) continue; // 바다 위 자원 차단
@@ -1301,6 +1328,9 @@ function biomeResourceType() {
 function lootOfResource(r, ctx) {
   const t = r && r.type;
   if (t === 'tree')       return { wood: 3 + Math.floor((r.r || 8) / 3), twig: 1 };   // 크기 비례: r4~20 → wood 4~9
+  // ★[T122] 묘목 — **같은 식에 같은 크기를 넣은 것**이다(새 표 0). 묘목은 반경이 0.45배라
+  //   `wood` 가 3~4 로 저절로 떨어진다. "목재 소량"을 손으로 적지 않았다.
+  if (t === 'sapling')    return { wood: 1 + Math.floor((r.r || 4) / 3), twig: 1 };
   if (t === 'rock')       return { stone: 1, pebble: 2 };
   if (t === 'berry_bush') {
     // ★[재민 확정 2026-08-28] **덤불 E = 잔가지.** 열매·풀과 **함께** 삭정이가 나온다 —
@@ -1343,8 +1373,24 @@ function spawnOneResource() {
 // 부팅 시 채집된 시드만 DB에서 load. 기존 resources 테이블 row는 무시 (procedural로 대체).
 {
   const harvested = db.getAllHarvestedSeeds();
-  for (const k of harvested) harvestedSeeds.add(k);
-  console.log(`[${ZONE_ID}] 채집된 시드 자원 ${harvested.length}개 로드 (procedural 모드)`);
+  // ★★[T122] **옛 행 승격** — `harvested_day` 가 없던 행은 −1 로 온다. 그 자리를 즉시 성목으로
+  //   되돌리면 "벤 적 없는 세계"가 되고, 영원히 −1 로 두면 재생이 영영 안 산다.
+  //   ⇒ 벤 날 = **승격일**(지금)로 적는다: 지금부터 자라기 시작한다. DB 에도 한 번에 쓴다.
+  //   ⚠★★여기서 **게임일을 묻지 않는다**. 이 블록은 모듈 최상위라 `gameDayNow()` 가 읽는
+  //     `_e2eClock`·`_e2eDayFrozen` 이 아직 **TDZ** 다(`let` 은 호이스팅돼도 초기화 전엔 못 읽는다).
+  //     초안이 그 길로 갔다가 `test-mining` 이 부팅을 통째로 터뜨렸다 — 그리고 그건 우연히
+  //     좋은 신호였다: 부팅 시점엔 econ 시계(`SimVillages.econDay`)도 아직 안 서서, 그때 적은
+  //     "오늘"은 **틀린 날**이었을 것이다. ⇒ 승격은 **첫 청크 활성화 때** 한 번 한다(아래).
+  let _old = 0;
+  for (const row of harvested) {
+    const k = typeof row === 'string' ? row : row.seed_key;
+    const d = typeof row === 'string' ? -1 : row.harvested_day;
+    if (!Number.isFinite(d) || d < 0) _old++;
+    harvestedSeeds.set(k, Number.isFinite(d) ? d : -1);
+  }
+  _harvestPromotePending = _old;
+  console.log(`[${ZONE_ID}] 채집된 시드 자원 ${harvested.length}개 로드 (procedural 모드)`
+    + (_old ? ` · ★[T122] 벤 날 없는 옛 행 ${_old}개 — 첫 청크 활성화 때 오늘로 승격한다` : ''));
 }
 
 // === DB에서 자기 zone의 claims 로드 ===
@@ -2326,8 +2372,7 @@ function npcStep(npc, dt, now) {
           chunkManager.removeResource(r);
           resourcesDirty = true;
           if (r.isSeed && r.seedKey) {
-            harvestedSeeds.add(r.seedKey);
-            try { db.insertHarvestedSeed(r.seedKey); } catch (e) {}
+            _markHarvested(r.seedKey);          // ★[T122] 벤 게임일까지 적는다
           } else if (r.dbId) {
             db.deleteResource(r.dbId);
           }
@@ -2479,7 +2524,7 @@ function clearTreesInCells(cellKeys) {
       seen.add(r.id);
       resources.delete(r.id);
       chunkManager.removeResource(r);
-      if (r.isSeed && r.seedKey) { harvestedSeeds.add(r.seedKey); try { db.insertHarvestedSeed(r.seedKey); } catch (e) {} }
+      if (r.isSeed && r.seedKey) { _markHarvested(r.seedKey); }   // ★[T122]
       else if (r.dbId) { try { db.deleteResource(r.dbId); } catch (e) {} }
       broadcast({ type: 'resource_removed', id: r.id });
       cleared++;
@@ -5517,7 +5562,6 @@ function perfMark(kind, ms, extra) {
 //   실기로는 한 해가 6시간이고 밤이 12분이라 하네스가 그걸 기다릴 수 없다.
 //   ⇒ `gameDayNow`·`bodyNight` 만 갈아끼운다(하늘 렌더러·econ 틱은 그대로 — 세계를 바꾸지 않는다).
 //   ⚠기본 부팅에선 이 값을 세우는 코드 경로가 아예 없다(핸들러 분기가 `E2E_GIVE` 안에서만 존재).
-let _e2eClock = null;
 
 // ★★[온도 곡선 2026-08-31] **날짜 시계는 하나다.** 달력이 "겨울 12일"이라 말하는 그날과
 //   몸이 느끼는 온도의 그날이 다르면, 그건 화면이 거짓말을 하는 것이다(두 시계는 영구히 어긋난다 —
@@ -5538,6 +5582,7 @@ function bodyNight(now) {
   if (_e2eClock && typeof _e2eClock.night === 'boolean') return _e2eClock.night;
   return isNight(now);
 }
+let _e2eClock = null;
 // ★[온도 곡선] HUD 가 보여 줄 바깥 날씨 한 줄 — 옷·불·실내·마을을 **뺀** "밖이 얼마나 추운가".
 //   ⚠몸 상태(무들)와 다른 것이다: 무들은 "내가 얼마나 추운가", 이건 "밖이 얼마나 추운가"다.
 //   ⚠클라가 날짜→온도 매핑을 **갖지 않는다**(달력과 같은 규약 — 사본 금지). 서버가 문장 재료를 준다.
@@ -6698,8 +6743,7 @@ function gatherResource(player, best) {
     chunkManager.removeResource(best);
     resourcesDirty = true;
     if (best.isSeed && best.seedKey) {
-      harvestedSeeds.add(best.seedKey);
-      try { db.insertHarvestedSeed(best.seedKey); } catch (e) {}
+      _markHarvested(best.seedKey);             // ★[T122] 벤 게임일까지 적는다
     } else if (best.dbId) {
       db.deleteResource(best.dbId);
     }

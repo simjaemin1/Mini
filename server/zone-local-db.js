@@ -222,10 +222,27 @@ function updateClaimOwner(dbId, ownerId, ownerName, kind, state, heldBy, stateAt
 function deleteClaim(dbId) { if (!dbId) return false; try { stmtDeleteClaim.run(dbId); return true; } catch (e) { return false; } }
 
 // === harvested_seeds (procedural 자원 채집 기록) ===
-const stmtInsertHarvested = db.prepare('INSERT OR IGNORE INTO harvested_seeds (seed_key, harvested_at) VALUES (?, ?)');
-const stmtGetAllHarvested = db.prepare('SELECT seed_key FROM harvested_seeds');
-function insertHarvestedSeed(key) { stmtInsertHarvested.run(key, Date.now()); }
-function getAllHarvestedSeeds() { return stmtGetAllHarvested.all().map(r => r.seed_key); }
+// ★★[T122 2026-09-05 재민 확정] **벤 게임일**을 같이 적는다 — 재생이 그 수의 함수다.
+//   ⚠종전 `harvested_at` 은 **벽시계 ms** 다. 그것으로 게임일을 유도하면 안 된다:
+//     벽시계 파생(`zoneGameDay`)과 econ 틱 카운터(`world.day`)는 따라잡기가 없어 **영구히 어긋난다**
+//     (T108 이 밭에서 배운 그 교훈 — "밭 시계는 게임일 하나다"). ⇒ 게임일을 **그대로** 적는다.
+//   마이그레이션은 `mined_cells` 와 같은 문법(PRAGMA 로 보고 없으면 ALTER) · 옛 행은 −1 로 들어오고
+//   부팅 때 zone.js 가 **승격일**을 채운다(= 지금부터 자라기 시작한다 · 즉시 성목이 되지 않는다).
+{ const _hs = db.prepare('PRAGMA table_info(harvested_seeds)').all().map(c => c.name);
+  if (!_hs.includes('harvested_day')) db.exec('ALTER TABLE harvested_seeds ADD COLUMN harvested_day INTEGER NOT NULL DEFAULT -1'); }
+const stmtInsertHarvested = db.prepare('INSERT OR IGNORE INTO harvested_seeds (seed_key, harvested_at, harvested_day) VALUES (?, ?, ?)');
+const stmtGetAllHarvested = db.prepare('SELECT seed_key, harvested_day FROM harvested_seeds');
+const stmtSetHarvestedDay = db.prepare('UPDATE harvested_seeds SET harvested_day = ? WHERE harvested_day < 0');
+function insertHarvestedSeed(key, gameDay) {
+  stmtInsertHarvested.run(key, Date.now(), Number.isFinite(gameDay) ? Math.floor(gameDay) : -1);
+}
+/** `[{ seed_key, harvested_day }]` — 옛 행은 `harvested_day = -1`(부팅 때 승격한다). */
+function getAllHarvestedSeeds() { return stmtGetAllHarvested.all(); }
+/** 옛 행 승격 — 벤 날을 **승격일**로 적는다. 바뀐 행 수를 돌려준다(로그 한 줄용). */
+function promoteHarvestedDays(gameDay) {
+  if (!Number.isFinite(gameDay)) return 0;
+  try { return stmtSetHarvestedDay.run(Math.floor(gameDay)).changes || 0; } catch (e) { return 0; }
+}
 
 // === mined_cells (광맥 셀 번영도 — lazy refill) ===
 // ★[11차 채광 재설계] prosperity 컬럼은 이제 **잔여 재고**(0..ORE_K=1000)를 담는다.
@@ -533,7 +550,7 @@ module.exports = {
   getBuildings, getBuildingsInRect, insertBuilding, updateBuildingData, deleteBuilding,
   getMobs, insertMob, updateMobState, deleteMob,
   getClaims, insertClaim, updateClaimState, updateClaimOwner, deleteClaim,   // ★[T45] 사유지 v2 — 종류·상태기 영속
-  insertHarvestedSeed, getAllHarvestedSeeds,
+  insertHarvestedSeed, getAllHarvestedSeeds, promoteHarvestedDays,
   upsertMinedCell, getAllMinedCells, deleteMinedCell,
   upsertFishCell, getAllFishCells, deleteFishCell,
   // §4-4 마을 시뮬 (villages.js)

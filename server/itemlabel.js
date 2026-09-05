@@ -36,6 +36,10 @@ const CATEGORY_KO = {
 const RESOURCE_VERBS = {
   tree: '벌목', rock: '채굴', ore: '채굴', meteorite: '채굴',
   herb: '채집', berry_bush: '채집', water_pool: '물 마시기',
+  // ★[T122] 묘목도 벨 수 있다 — 다만 목재가 적다(`lootOfResource`). 동사는 나무와 **같은 말**이다.
+  //   ⚠**그루터기는 여기 없다.** 캘 수 없어서 `RESOURCE_HP_TABLE` 에도 없다(hp 0 으로 난다) —
+  //     동사가 없는 게 아니라 **자연물 종류가 아니다**(`test-itemlabel ⑭` 의 키 집합이 그대로 맞는다).
+  sapling: '벌목',
 };
 
 // ★다른 정본이 없는 이름 — 여기 말고 갈 데가 있으면 거기로 옮겨라.

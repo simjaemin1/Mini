@@ -1499,13 +1499,16 @@
         const vis = Math.max(0.15, 1 - Math.pow(d / VIEW_RADIUS, 1.4));
         ctx.globalAlpha = vis;
         if (item.r.type === 'tree') drawTreeIso(s.x, s.y, item.r.r || 8, item.r.h || 60, item.ax, item.ay);
+        // ★[T122] 벤 자리의 두 단계 — 크기는 **서버가 이미 줄여 보냈다**(클라가 배율을 짓지 않는다).
+        else if (item.r.type === 'stump') drawStumpIso(s.x, s.y, item.r.r || 7, item.r.h || 10, item.ax, item.ay);
+        else if (item.r.type === 'sapling') drawSaplingIso(s.x, s.y, item.r.r || 4, item.r.h || 20, item.ax, item.ay);
         else if (item.r.type === 'rock') drawRockIso(s.x, s.y, item.ax, item.ay);
         else if (item.r.type === 'berry_bush') drawBerryBushIso(s.x, s.y, item.ax, item.ay);
         else if (item.r.type === 'water_pool') drawWaterPoolIso(s.x, s.y);
         else if (item.r.type === 'herb') drawHerbIso(s.x, s.y, item.ax, item.ay);
         else if (item.r.type === 'ore') drawOreIso(s.x, s.y, item.ax, item.ay);
         else if (item.r.type === 'meteorite') drawMeteoriteIso(s.x, s.y, item.ax, item.ay);   // ★운철 낙하지
-        if (item.r.hp < item.r.maxHp) {
+        if (item.r.maxHp > 0 && item.r.hp < item.r.maxHp) {   // ★[T122] 그루터기는 maxHp 0 — 0 나누기 금지
           const pct = item.r.hp / item.r.maxHp;
           ctx.fillStyle = '#222'; ctx.fillRect(s.x - 10, s.y - 28, 20, 3);
           ctx.fillStyle = '#9adb6e'; ctx.fillRect(s.x - 10, s.y - 28, 20 * pct, 3);

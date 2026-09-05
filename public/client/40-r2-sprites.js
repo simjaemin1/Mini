@@ -171,6 +171,40 @@
     _img.src = '/assets/trees/tree' + String(_ti).padStart(2, '0') + '.png';
     TREE_SPRITES.push(_img);
   }
+  // ★★[T122 2026-09-05] **벤 자리의 두 단계** — 그루터기·묘목. 그림은 **T129 가 이미 구웠다**
+  //   (`stump01.png` 종 공통 하나 · `sap_<종>.png` 여덟). 축소 그림을 임시로 쓰지 않는다.
+  //   ⚠종은 아직 하나(`tree`)라 묘목은 **성목과 같은 해시**로 고른다 — 같은 자리의 나무가
+  //     자라면 같은 종이어야 한다(자리마다 종이 바뀌면 그건 재생이 아니라 다른 나무다).
+  const SAP_SPECIES = ['pine', 'jat', 'oak', 'chestnut', 'willow', 'hazel', 'mulberry', 'grape'];
+  const SAP_SPRITES = SAP_SPECIES.map((sp) => { const im = new Image(); im.src = '/assets/trees/sap_' + sp + '.png'; return im; });
+  const STUMP_SPRITE = (() => { const im = new Image(); im.src = '/assets/trees/stump01.png'; return im; })();
+  const _regrowDraw = { stump: 0, sapling: 0 };   // 하네스용 — 실제로 그린 횟수
+
+  //   ★그리는 문법은 나무와 **같다**(줄기 밑면을 (x,y)에 앵커 · h 로 스케일 · 그림자 타원).
+  function _drawStandingSprite(img, x, y, r, h, scale) {
+    if (!img || !img.complete || !img.naturalHeight) return false;
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.beginPath(); ctx.ellipse(x, y, r * 1.5, r * 0.5, 0, 0, Math.PI * 2); ctx.fill();
+    const dh = h * scale, dw = dh * (img.naturalWidth / img.naturalHeight);
+    ctx.drawImage(img, x - dw / 2, y - dh, dw, dh);
+    return true;
+  }
+  function drawStumpIso(x, y, r, h, seedX, seedY) {
+    if (_drawStandingSprite(STUMP_SPRITE, x, y, r || 7, h || 10, 1.3)) { _regrowDraw.stump++; return; }
+    // 폴백 — 낮은 원기둥 하나(그림이 아직 안 왔을 때)
+    ctx.fillStyle = 'rgba(0,0,0,0.20)';
+    ctx.beginPath(); ctx.ellipse(x, y, (r || 7) * 1.4, (r || 7) * 0.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#6b4a2a'; ctx.fillRect(x - (r || 7), y - (h || 10), (r || 7) * 2, (h || 10));
+    ctx.fillStyle = '#8a6438';
+    ctx.beginPath(); ctx.ellipse(x, y - (h || 10), (r || 7), (r || 7) * 0.4, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  function drawSaplingIso(x, y, r, h, seedX, seedY) {
+    const hsh = _treeHash(seedX != null ? seedX : x, seedY != null ? seedY : y);
+    const img = SAP_SPRITES[(hsh * SAP_SPRITES.length) | 0];
+    if (_drawStandingSprite(img, x, y, r || 4, h || 20, 1.3)) { _regrowDraw.sapling++; return; }
+    drawTreeIso(x, y, r, h, seedX, seedY);   // 폴백 — 작은 나무(크기는 서버가 이미 줄여 보냈다)
+  }
+
   const TREE_SPRITE_SCALE = 1.3;   // 나무 h 대비 스프라이트 높이 배수
   const _treeDraw = { n: 0, h: 0, px: 0, aspect: 0 };   // ★[배치 21] 하네스용 — 스프라이트 경로로 **실제 그린** 횟수
 
