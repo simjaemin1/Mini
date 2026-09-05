@@ -60,15 +60,26 @@ const isRockTileLocal = (x, y) => { if (!_inZone(x, y)) return false; try { retu
 const isTerrainBlockedLocal = (x, y) => (!_inZone(x, y)) ? true : (isRockTileLocal(x, y) || isWaterTileLocal(x, y));
 const ta = P.makeTerrainAdapter(T, ZONE, { isTerrainBlockedLocal, isWaterTileLocal });
 
-const hard = T.getZoneVillages(Z) || [];
-const picked = P.pickSeedVillages(hard, ta, { seedAll: !!ZONE.seedAllVillages, max: ZONE.villageMax || 0 });
-const seeds = [];
-for (const hv of picked) {
-  const c = P.findOpenCenter(ta, Math.round(hv.x / SZ), Math.round(hv.y / SZ));
-  if (!c) continue;
-  let layout;
-  try { if (ta.prepareFert) ta.prepareFert(c.ccx, c.ccy, 62); layout = VillageLayout.generate(ta, c.ccx, c.ccy, P.INITIAL_POP, {}); } catch (e) { continue; }
-  seeds.push({ name: hv.name, ccx: c.ccx, ccy: c.ccy, lp: P.extractLandParamsApprox(ta, c.ccx, c.ccy, layout) });
+// ★[T100 2026-09-05 · 순전한 계측 편의 · 값 무변] 51곳 `VillageLayout.generate` 는 전수 ~10분이다.
+//   결정론이라 캐시할 수 있다. **손잡이가 없으면 종전 루프 그대로**(기본값 무변 — 이 파일은 기준선의 자다).
+//   `LAB_SEEDCACHE=<경로>` 를 주면 그 파일에 적고/읽는다. 지우면 그대로 다시 만든다(값 동일).
+const _SEEDCACHE = process.env.LAB_SEEDCACHE || '';
+let seeds = null;
+if (_SEEDCACHE && fs.existsSync(_SEEDCACHE)) { try { seeds = JSON.parse(fs.readFileSync(_SEEDCACHE, 'utf8')); } catch (e) { seeds = null; } }
+if (!seeds) {
+  const hard = T.getZoneVillages(Z) || [];
+  const picked = P.pickSeedVillages(hard, ta, { seedAll: !!ZONE.seedAllVillages, max: ZONE.villageMax || 0 });
+  seeds = [];
+  for (const hv of picked) {
+    const c = P.findOpenCenter(ta, Math.round(hv.x / SZ), Math.round(hv.y / SZ));
+    if (!c) continue;
+    let layout;
+    try { if (ta.prepareFert) ta.prepareFert(c.ccx, c.ccy, 62); layout = VillageLayout.generate(ta, c.ccx, c.ccy, P.INITIAL_POP, {}); } catch (e) { continue; }
+    seeds.push({ name: hv.name, ccx: c.ccx, ccy: c.ccy, lp: P.extractLandParamsApprox(ta, c.ccx, c.ccy, layout),
+      layout: { farmland: layout.farmland, dryfield: layout.dryfield, nongZone: layout.nongZone, territory: layout.territory,
+                houses: (layout.houses || []).map((h) => ({ cx: h.cx, cy: h.cy })) } });
+  }
+  if (_SEEDCACHE) { try { fs.mkdirSync(path.dirname(_SEEDCACHE), { recursive: true }); fs.writeFileSync(_SEEDCACHE, JSON.stringify(seeds)); } catch (e) {} }
 }
 const world = econV2.createWorldV2({ seed: SEED, villageCount: seeds.length, picker: 'rational', infoRange: 5000, raidPer100: 0.005 });
 world.villages = []; world.events = [];
@@ -78,6 +89,21 @@ for (const s of seeds) {
   world.villages.push(ev);
 }
 world.day = 0;
+// ★★[T100 2026-09-05 · 손잡이 없으면 무변] **개간 관측** — 이 계측기는 여태 `ENABLE_VILLAGES=0` 이라
+//   생활층 개간이 안 돌았다. econ 이 밭을 안 봤을 땐 무해했지만(T86 까지), 밭이 밑변이 되면
+//   **밭이 시딩값에 얼어붙은 세계**를 재게 된다(라이브는 개간이 돈다). `T100_CLEAR=1` 이면 정본
+//   `_lifeClearDay` 를 하루에 한 번 돌린다 — 판정은 그 함수가 하고 계측기는 부르기만 한다(사본 0).
+const _CLEAR = process.env.T100_CLEAR === '1';
+const _clearVils = [];
+if (_CLEAR) {
+  let _rowid = 0;
+  P._clearProbe.setup(ta, world, { insertVillageBuilding: () => ++_rowid });
+  world.villages.forEach((ev, i) => {
+    const s2 = seeds[i]; if (!s2 || !s2.layout) return;
+    _clearVils.push(P._clearProbe.attach({ dbId: i + 1, name: s2.name, ccx: s2.ccx, ccy: s2.ccy, econ: ev, layout: s2.layout }));
+  });
+  console.log(`  [T100] 개간 관측 켬 — 마을 ${_clearVils.length}곳 · 초기 밭 ${_clearVils.reduce((a, v) => a + v._farmSet.size, 0)}칸`);
+}
 
 // ★해안 판정 — **엔진이 쓰는 그 값을 그대로 읽는다**(사본 금지).
 //   `server/villages.js` 의 `extractLandParamsApprox` 가 `coastal`(과 계측용 `_seaDistPx`)을 붙이고,
@@ -102,7 +128,8 @@ const L = Events.createLedger({
 L.prime(world);
 
 const _log = console.log; console.log = () => {};
-for (let d = 0; d < DAYS; d++) { econV2.tickWorldV2(world); L.scanDay(world, world.day, {}); }
+for (let d = 0; d < DAYS; d++) { econV2.tickWorldV2(world); L.scanDay(world, world.day, {}); if (_CLEAR) P._clearProbe.tickDay(_clearVils); }
+if (_CLEAR) console.log(`  [T100] 개간 관측 — 끝 밭 ${_clearVils.reduce((a, v) => a + v._farmSet.size, 0)}칸 · 마을당 중앙 ${_clearVils.map((v) => v._farmSet.size).sort((a, b) => a - b)[Math.floor(_clearVils.length / 2)]}칸`);
 console.log = _log;
 
 // ── ⓐ 기준선 ────────────────────────────────────────────────────────────────

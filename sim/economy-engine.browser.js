@@ -1371,7 +1371,7 @@ const COOK_SIDE_INGREDIENTS = ['fruit', 'vegetable', 'mushroom', 'meat', 'fish',
 const JOBS = {
   farmer: {
     field: 'farming', output: 'food', base: 1.5,
-    landBoost: (v) => v.land.fertility, toolDependent: true, inputs: {},
+    landBoost: (v) => farmLandBoost(v), toolDependent: true, inputs: {},   // ★[T100] 밭 밑변 — `T100_FIELD_YIELD=0` 이면 `v.land.fertility` 그 자체(비트 동일)
     // 곡물 다양화 + 섬유(삼밭·모시밭). ★목화(cotton)·아마(flax) 제거 유지 — 목화는 1363년 문익점 도입(청동기 부재), 아마(flax)도 한국 전통 아님(서구 bast).
     //   고대 한반도 섬유 = 삼(대마/hemp=삼베) + 모시(저마/ramie — 한국 전통 bast, 삼국~ 실증이나 flax/cotton과 범주 다름). ★유령 박멸(§9): hemp 0.19→0.06 —
     //   삼은 전용 삼밭 소출이지 전 곡물의 부산물이 아님(0.19 = 실수요의 30배 유령 산출). ★삼밭·모시밭 복원(2026-07-13): hemp 0.06→0.08(전용재배)·ramie 0.05 신설.
@@ -2032,6 +2032,50 @@ function _t86Factor(r) {
   if (r === 'food' || r === 'fish' || r === 'meat') return 1;
   if (RAW_GRAINS.indexOf(r) >= 0) return RAW_GRAIN_FOOD_FACTOR;
   return FORAGE_FOOD_FACTOR[r] || 0;
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ★★[T100 · ECON 수술 2-b 2026-09-05] **산출 식 — NPC 농사의 식량이 밭에서 나온다.**
+//   여태 농부 산출은 밭과 무관했다: `JOBS.farmer.landBoost = v.land.fertility` → 1인 하루 `1.5 × 지력`.
+//   밭 칸(생활층 `farmland`/`dryfield` 행)은 **회계에 한 번도 안 들어왔다**. 이 절이 그 밑변을 옮긴다.
+//
+//   ⓐ 앵커(§0 — 전부 이 저장소 정본에서 유도 · 새 수 0):
+//        server/crops.js:212   수확 개수 = floor(yield × waterMult × germ)   ← `yield` 는 **개수**다
+//        server/crops.js       GROUP_KG['곡물'] = 0.70 kg/개                  ← 개당 kg
+//        server/crops.js       c.kcal (조 3,600 · 보리 3,400 …)               ← kcal/kg
+//        server/kcal.js        DAY_KCAL = 2,450                               ← 사람 하루
+//        교차검산(T86 §0-ⓑ)   food 1단위 = 0.70kg × 3,500kcal = 2,450 = DAY_KCAL
+//      ⇒ 밭 1칸 1회 수확 = yield × GROUP_KG[group] × kcal ÷ DAY_KCAL  [food 단위]
+//      ⇒ ÷ growDays 로 **하루 흐름으로 편다**(지시 §0-ⓒ 첫 판 — 덩어리 수확은 회부: 시간 구조 무변).
+//      ⇒ 곡물 9종 평균 = **0.0806 food 단위/칸·일**.
+//   ※`scripts/test-econ-fieldyield.js` 가 이 값을 `crops.js`·`kcal.js` 에서 **다시 유도해 대조**한다.
+//     여기 숫자를 손으로 고치면 하네스가 빨개진다(사본 방지 규약 — T73 의 0.72 와 같은 계약).
+const CELL_FOOD_PER_DAY = 0.0806;
+//   ⓑ **텃밭 하한**(지시 §3 — "밭 0칸 마을의 농부 산출 0 이 아니라 텃밭 하한 · 굶기지 마라").
+//      단위는 §0-ⓑ 의 단위(칸/농부). 값은 생활층 정본 `server/villages.js` `LIFE_CLEAR_PDAY = 3`
+//      (농부 1인 하루 개간 셀) 그대로다 — 뜻: **밭 행이 하나도 없어도 농부가 하루면 여는 칸**은 있다.
+//      새 수가 아니다. 두 값이 갈라지면 하네스가 빨개진다(`__labProbe.LIFE_CLEAR_PDAY` 와 대조).
+//      ※경쟁 후보 "텃밭 = 집마다 4×4 = 16칸"(`villages.js:1117` — 실재하는 garden 타일)은 개간 목표
+//        `landNeedPer` 4.8~20칸/인과 **같은 크기**라 하한이 밑변을 지배한다. §0-ⓑ 표로 남기고 기각 — 회부.
+const T100_GARDEN_PER_FARMER = 3;
+const T100_FIELD_YIELD = process.env.T100_FIELD_YIELD === '1';   // 되돌림: 끄면 T86 세계 **비트 동일**
+
+// 마을 하루 농사 산출(도구·숙련·건강·포만 **전**) — 두 세계가 **이 함수 하나**로 갈린다.
+//   ⚠`v._fieldCells` 는 **브리지**다(`_paddyShare`·`_clearedFrac` 와 같은 계열): 생활층이 개간한
+//     `farmland`+`dryfield` 셀 수를 econ 이 **읽기만** 한다. 회계는 여전히 econ 한 곳(새 장부 0).
+function farmFlowPerDay(v, fN) {
+  const fert = (v.land && v.land.fertility) || 0;
+  if (!T100_FIELD_YIELD) return fN * JOBS.farmer.base * fert;
+  const cells = Math.max(v._fieldCells || 0, fN * T100_GARDEN_PER_FARMER);   // 텃밭 하한
+  return cells * CELL_FOOD_PER_DAY * fert;   // 면적(칸) × 칸·일당 × 지력 — '자리=면적 · 산출=지력' 이중산입 분리 규약 그대로
+}
+// 종전 자리(`jdef.landBoost`)에 **그대로 꽂히도록** 1인분으로 나눈 값. 끄면 옛 식 그 자체.
+function farmLandBoost(v) {
+  const fert = (v.land && v.land.fertility) || 0;
+  if (!T100_FIELD_YIELD) return fert;
+  const fN = (v.counts && v.counts.farmer) || 0;
+  if (!(fN > 0)) return fert;                // 농부 0 — 곱해질 일이 없다(무해 · NaN 방지)
+  return farmFlowPerDay(v, fN) / (JOBS.farmer.base * fN);
 }
 // ★무용재 — 실수요(use-value)가 ~0이라 수출해도 식량 못 삼. 식량안보와 무관하게 *항상* 생산 포만(성장기 누적까지 차단).
 //   광석(ore): 갑옷에 미량뿐. 장식재(금·은·보석): 화폐화 전엔 수요 0. 돌·금속(구리·주석)은 수요 있어 제외(가치재 수출).
@@ -3858,7 +3902,8 @@ function tickVillage(v, day) {
     const _foodShare = _fySum > 0 ? _fyFood / _fySum : 0;
     const _forRawCap = Math.floor((_cf.forager || 0) * 0.5) * JOBS.forager.base * JOBS.forager.landBoost(v);
     const _forCap = (v.land.forageSustain != null && _forRawCap > 0) ? Math.min(_forRawCap, v.land.forageSustain) : _forRawCap;
-    const _capFlow = (_cf.farmer || 0) * JOBS.farmer.base * (v.land.fertility || 0) * _paddyMul * (v._clearedFrac != null ? v._clearedFrac : 1)
+    // ★[T100] 부양력(prodK)도 **같은 밑변**을 본다 — 산출은 밭인데 K 는 지력이면 인구가 밭 없이 부푼다.
+    const _capFlow = farmFlowPerDay(v, _cf.farmer || 0) * _paddyMul * (v._clearedFrac != null ? v._clearedFrac : 1)
                    + _fishCap
                    + (_cf.hunter || 0) * JOBS.hunter.base * (v.land.game || 0)
                    + _forCap * _foodShare;
@@ -5470,6 +5515,7 @@ module.exports = {
   totalFoodEquivalent,   // 진단 하네스가 병기고 식량안보 게이트를 정확히 재려면 필요
   consumeFood,           // ★[T73] 식단 사다리의 **순서**를 하네스가 직접 증명하려면 필요(같은 이유)
   RAW_GRAINS, RAW_GRAIN_FOOD_FACTOR,   // ★[T73] 계수를 하네스·계측기가 옮겨 적지 않게(사본 금지)
+  farmFlowPerDay, farmLandBoost, CELL_FOOD_PER_DAY, T100_GARDEN_PER_FARMER,   // ★[T100] 같은 이유 — 하네스·계측기가 앵커를 옮겨 적지 않는다
   // 가치사슬 하네스(scripts/test-valuechain.js)가 상수를 **복제하지 않고** 읽도록 노출.
   _SMELT_PER_LABOR: SMELT_PER_LABOR, _SMELT_YIELD: SMELT_YIELD, _MELT_TOTAL,
   // ★시대 게이트 조회 — v2 원석 상한이 같은 판정을 쓰도록(사본 금지). 금속이 아니면 항상 true.

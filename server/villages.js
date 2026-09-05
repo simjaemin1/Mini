@@ -1260,6 +1260,7 @@ function foundPlayerVillage(opts) {
     _crop: new Map(), _cropClaim: new Set(), _ditch: [], _pHouses: [], _pSiteRows: [], _psite: null, _psiteCrew: 0,
     _founder: founder, _tribeId: opts.tribeId || null,
   };
+  ev._fieldCells = 0;   // ★[T100] 새 마을은 밭 0칸에서 시작한다 — econ 은 텃밭 하한으로 받는다(굶기지 마라)
   { const _cw = Math.ceil((state.deps && state.deps.zoneWidth ? state.deps.zoneWidth : (require('./zone-config').ZONES[state.zoneId] || {}).zoneWidth || 1) / SZ);
     vil._lonOff = +((ccx / Math.max(1, _cw)) * 0.045).toFixed(4); }
   state.villages.push(vil);
@@ -2497,6 +2498,7 @@ function init(deps) {
         _crop: new Map(), _cropClaim: new Set(), _ditch: ditchCells,
         _pHouses: pHouseRows, _pSiteRows: pSiteRows, _psite: null, _psiteCrew: 0,
         _shelter: shelterCell });   // ★[T62] 공용 쉼터 셀(없으면 null — 좌표를 지어내지 않는다)
+      ev._fieldCells = farmSet.size;   // ★[T100] 밭 브리지 초기값(영속 행에서 — 개간 전에도 밭은 있다)
       // ★[11차 재민 확정] 마을 안엔 숲이 없다 — 영토 셀의 나무를 벤다(개간).
       //   부팅 때마다 부르지만 이미 벤 나무는 harvestedSeeds 에 있어 다시 생성되지 않는다(멱등).
       try { if (state.deps.clearTreesInCells) { const n2 = state.deps.clearTreesInCells(terrSet); if (n2) console.log(`[${state.zoneId}] 🏘️ ${row.name} 영토 개간 — 나무 ${n2}그루`); } } catch (e) {}   // ★[생활 층] 런타임 상태(구DB=terr 0셀 → 생활층 휴면). _crop=작물 상태머신(랩 life.crop 동형 — 인메모리 관용: 재부팅=재파종)
@@ -3912,6 +3914,22 @@ function _lifeTasksPerFarmerDay() {   // 낮 실초 ÷ 건당 실초 = 농부 1�
   const dayR = (state.deps && state.deps.dayPhaseRatio) || 0.7;
   return Math.max(1, Math.round((dayMs * dayR / 1000) / LIFE_TASK_SEC));
 }
+// ★★[T100 2026-09-05 · 순수 추출 — 동작 무변] 하루치 개간. `_lifeHeadlessDay` 의 ① 절 **그대로**를
+//   이름 있는 함수로 뽑았다. 뽑은 이유 하나뿐: **econ 랩이 이 정본을 그대로 부를 수 있어야** 한다
+//   (`__labProbe._clearProbe` — 하네스가 크루 상한·프론티어 정렬을 다시 적으면 그게 사본이다).
+function _lifeClearDay(vil, farmerN) {
+  if (!(farmerN && _lifeNeedClear(vil))) return 0;
+  let done = 0;
+  let n = Math.min(LIFE_CREW, farmerN) * LIFE_CLEAR_PDAY;
+  while (n-- > 0 && _lifeNeedClear(vil)) {
+    const fr = _lifeFrontier(vil); let best = null, bd = 1e9;
+    for (const c2 of fr) { const k = c2.cx + ',' + c2.cy; if (vil._farmSet.has(k)) continue; const dx = c2.cx - vil.ccx, dy = c2.cy - vil.ccy, d2 = dx * dx + dy * dy; if (d2 < bd) { bd = d2; best = c2; } }
+    if (!best) break;
+    _lifeLiveFarmTile(vil, best.cx, best.cy, best.f === '밭' ? 'dryfield' : 'farmland');
+    done++;
+  }
+  return done;
+}
 function _lifeHeadlessDay(vil) {
   _lifeVL();   // lazy 로드 방어(단독 호출 경로 — 5e8d5f5 'is not defined' 클래스 재발 금지)
   const day = state.dayMs ? gameDayOf(_dayNow()) : 0;
@@ -3919,15 +3937,7 @@ function _lifeHeadlessDay(vil) {
   for (const pid of vil.npcPids) { const p = state.deps.players.get(pid); if (!p) continue; popN++; if (p.simJob === 'farmer') farmerN++; }
   if (!popN) return;
   // ① 개간 — 실걸음과 동일: 크루 상한 2 × 3셀/인일, 프론티어 최근접부터(마을 중심 기준)
-  if (farmerN && _lifeNeedClear(vil)) {
-    let n = Math.min(LIFE_CREW, farmerN) * LIFE_CLEAR_PDAY;
-    while (n-- > 0 && _lifeNeedClear(vil)) {
-      const fr = _lifeFrontier(vil); let best = null, bd = 1e9;
-      for (const c2 of fr) { const k = c2.cx + ',' + c2.cy; if (vil._farmSet.has(k)) continue; const dx = c2.cx - vil.ccx, dy = c2.cy - vil.ccy, d2 = dx * dx + dy * dy; if (d2 < bd) { bd = d2; best = c2; } }
-      if (!best) break;
-      _lifeLiveFarmTile(vil, best.cx, best.cy, best.f === '밭' ? 'dryfield' : 'farmland');
-    }
-  }
+  _lifeClearDay(vil, farmerN);
   // ② 신축 — 크루 인일=단계(실걸음과 동일 속도). 완공 시 _lifeCompleteHouse가 실체화(집·마당·침대 명부)
   if (vil._site) { let st = Math.min(LIFE_CREW, popN) * LIFE_STAGE_PDAY; while (st-- > 0 && vil._site) _lifeAdvanceSite(vil); }
   // ③ 작물 — 농부 노동예산으로 우선순위 일괄(수확>방제>물대기>파종>김매기 — cellTask 순서가 자연 보장)
@@ -4024,6 +4034,9 @@ function _lifeLiveFarmTile(vil, cx, cy, type) {   // 개간 완료 실체화: �
   vil._farmSet.add(cx + ',' + cy); vil._potSet.delete(cx + ',' + cy); vil._frontier = null; vil._farmArr = null;
   if (type === 'dryfield' && vil._drySet) vil._drySet.add(cx + ',' + cy);   // ★[생활 층 100% ③] 밭 구분 유지(작물 상태머신 field 판정)
   if (type === 'farmland') vil._farmN++; else vil._dryN++;
+  // ★★[T100 · ECON 2-b] **밭 브리지** — 개간한 칸 수를 econ 이 읽는다(`_paddyShare`·`_clearedFrac` 계열).
+  //   회계가 아니다: 생활 층은 `storage` 를 여전히 안 만진다(`villages.js:4617` 규약 그대로).
+  if (vil.econ) vil.econ._fieldCells = vil._farmSet.size;
   const bo = { id: `vb${rowid}`, dbId: null, sim: true, type: 'farmland', ownerId: `npc_simvil_${vil.dbId}`, ownerName: `${vil.name} 경작지`, x: cx * SZ + SZ / 2, y: cy * SZ + SZ / 2, data: { sim: 1, dry: type === 'dryfield' ? 1 : 0 }, floor: 0, villageId: vil.dbId };
   try { if (state.deps.chunkManager) state.deps.chunkManager.insertBuilding(bo); state.deps.broadcast({ type: 'buildings_spawn', buildings: [bo] }); } catch (e) {}
 }
@@ -5891,6 +5904,43 @@ module.exports = {
       compute: (reason, opts) => computeAndInjectDistMatrix(reason, opts),
       setup: (ta, ZONE, world, econ) => { state._distCtx = { ta, ZONE }; state.world = world; state.econ = econ; },
       get DIST_STEP() { return DIST_STEP; },
+    },
+    // ★[T100 2026-09-05] 개간 하네스용 — `_distProbe`·`_memberProbe` 와 **같은 규약**(최소 주입구 하나).
+    //   econ 랩(`scripts/t100-fieldbase.js`)이 800일을 도는 동안 **밭이 자라야** 산출 식을 잴 수 있다.
+    //   하네스는 크루 상한·프론티어 정렬·needLand 게이트를 **다시 적지 않는다** — 이 함수가 정본이다.
+    _clearProbe: {
+      setup: (ta, world, db) => { state.ta = ta; state.world = world; if (db) state.db = db; return true; },
+      day: (vil, farmerN) => _lifeClearDay(vil, farmerN),
+      // 랩 마을 껍데기 — **부팅 복원(state.villages.push)이 채우는 필드 그대로**를 layout 에서 채운다.
+      //   계측기가 이걸 손으로 조립하면 두 계측기가 서로 다른 마을을 재게 된다(사본 금지).
+      attach: (o) => {
+        const L = o.layout, farmSet = new Set(), drySet = new Set(), potSet = new Set(), terrSet = new Set();
+        for (const f of (L.farmland || [])) farmSet.add(f.cx + ',' + f.cy);
+        for (const f of (L.dryfield || [])) { farmSet.add(f.cx + ',' + f.cy); drySet.add(f.cx + ',' + f.cy); }
+        for (const c of (L.nongZone || [])) potSet.add(c.cx + ',' + c.cy);
+        for (const k of farmSet) potSet.delete(k);                       // 부팅 규약 동형(이미 개간된 존닝 제외)
+        for (const c of (L.territory || [])) terrSet.add(c[0] + ',' + c[1]);
+        if (o.econ) o.econ._fieldCells = farmSet.size;                   // 밭 브리지 초기값(부팅과 같은 줄)
+        return { dbId: o.dbId, name: o.name, ccx: o.ccx, ccy: o.ccy, econ: o.econ,
+          _terrSet: terrSet, _potSet: potSet, _farmSet: farmSet, _drySet: drySet,
+          _granList: [], _houseCells: (L.houses || []).map((h) => ({ cx: h.cx, cy: h.cy })), _site: null,
+          _farmN: (L.farmland || []).length, _dryN: (L.dryfield || []).length, _frontier: null, _frontDay: -1 };
+      },
+      // 하루치 — 라이브 `_lifeHeadlessDay` 의 ① 절과 **같은 함수**를 같은 순서로 부른다.
+      tickDay: (vils) => {
+        let n = 0;
+        for (const vil of vils) {
+          const ev = vil.econ; if (!ev || !ev.npcs || !ev.npcs.length) continue;
+          const c = _lifeClearDay(vil, (ev.counts && ev.counts.farmer) || 0);
+          if (c) { n += c; ev._fieldCells = vil._farmSet.size; }         // 라이브는 `_lifeLiveFarmTile` 이 같은 줄을 쓴다
+        }
+        return n;
+      },
+      needClear: (vil) => _lifeNeedClear(vil),
+      frontier: (vil) => _lifeFrontier(vil),
+      get LIFE_CLEAR_PDAY() { return LIFE_CLEAR_PDAY; },
+      get LIFE_CREW() { return LIFE_CREW; },
+      get L_LANDNEED() { return L_LANDNEED; },
     },
   },
 };
