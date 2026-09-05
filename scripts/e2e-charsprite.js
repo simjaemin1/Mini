@@ -815,6 +815,11 @@ function openSpot() {
     // ★★바람을 끈다 — 지면 풀 카펫이 프레임마다 흔들린다(`e2e-nature` 실측 52만 화소). 상자 안엔
     //   A 말고 **땅**도 들어 있어서, 안 끄면 그게 대조군을 47화소로 들어 올린다(실측). 재는 층을 격리한다.
     await B.evaluate(() => { if (window.__terrain19) window.__terrain19.windOff = true; });
+    // ★[T98 2026-09-05] **하늘도 끈다** — 바람을 끈 것과 같은 자리다. T98 이 `weatherFor` 에
+    //   `precip` 을 실으면서 세계가 실제로 비를 보낸다. 비는 매 프레임 다시 그려지고 **안개 합성 뒤**에
+    //   그려지므로, 두 프레임 동일·안개 위 밝은 픽셀 같은 판정이 하늘 때문에 빨개진다.
+    //   이 하네스가 재는 건 하늘이 아니다 ⇒ 끄는 문은 T93 이 남긴 진단 훅 하나(안 켜져 있으면 무해).
+    await B.evaluate(() => { if (typeof window.__rainForce === 'function') window.__rainForce({ precip: 0 }); });
     await sleep(600);
     // ★★상자는 **A 만** 덮어야 한다. 짝은 A 에서 월드 +60px 에 서 있고, 아이소는 그걸 화면
     //   (+60, +30) 으로 옮긴다(`w2i` = {x: wx−wy, y: (wx+wy)/2}) — 반경 26이면 짝의 몸(폭 ±13)이

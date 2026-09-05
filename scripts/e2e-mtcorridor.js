@@ -95,6 +95,11 @@ require(path.join(ROOT,'server','zone.js'));`);
   try { const b = await pg.$('#enter'); if (b) await b.click(); } catch (e) {}
   await sleep(20000);
   await pg.evaluate(() => { window.__terrain19.freezeT = 0.30; window.__terrain19.windOff = true; });
+  // ★[T98 2026-09-05] **하늘도 끈다** — 바람을 끈 것과 같은 자리다. T98 이 `weatherFor` 에
+  //   `precip` 을 실으면서 세계가 실제로 비를 보낸다. 비는 매 프레임 다시 그려지고 **안개 합성 뒤**에
+  //   그려지므로, 두 프레임 동일·안개 위 밝은 픽셀 같은 판정이 하늘 때문에 빨개진다.
+  //   이 하네스가 재는 건 하늘이 아니다 ⇒ 끄는 문은 T93 이 남긴 진단 훅 하나(안 켜져 있으면 무해).
+  await pg.evaluate(() => { if (typeof window.__rainForce === 'function') window.__rainForce({ precip: 0 }); });
   await sleep(2000);
 
   const cell = () => pg.evaluate(() => { const m = window.__getMyAbs(); return [Math.floor(m.x / 32), Math.floor(m.y / 32)]; });

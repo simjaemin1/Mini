@@ -5448,8 +5448,12 @@ function weatherFor(p, now) {
   //   ⚠클라 사본 금지 규약과 같은 자리다: 지형·계절 산수는 전부 여기서 끝난다.
   const day = gameDayNow();
   const wexp = windExposureOf(p, now || Date.now(), day, sh);
+  // ★[T98 2026-09-05] 강수 — 하늘 값 하나만 얹는다(0..1 · 0 = 안 온다). 정본은 `weather.precipAt` 이고
+  //   여기는 **전달만** 한다. 클라 `37-r1-weather`(T93)가 `wx.precip` 을 이미 읽고 있어 무접촉으로 켜진다.
+  //   ⚠비냐 눈이냐는 서버가 정하지 않는다 — 클라가 `wx.tempC` 하나로 가른다(T93 이 옳다).
+  let precip = 0; try { precip = require('./weather').precipAt(day); } catch (e) {}
   return Object.assign({}, w, { shelter: sh, cut, insC: +insC.toFixed(2),
-    wind: +Wind.seasonWind(day).toFixed(3), exp: wexp });
+    wind: +Wind.seasonWind(day).toFixed(3), exp: wexp, precip });
 }
 // ★★[천장 해제 2026-08-31] 그 자리의 고도(km) — econ 기온 감률(−6.5℃/km)의 입력.
 //   ★★실측 보고(이 배치 §0): **지금은 언제나 0 이다. 그게 거짓말이 아니라 세계의 사실이다.**
