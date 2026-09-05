@@ -307,7 +307,7 @@
         //     타일 이음새 실측표는 보고 T97 §0-ⓒ 에 있다(회부 — 밭 타일 세계 패스 재굽기).
         const _sc = cropSprite(data.dry ? 0 : 1, data.crop);
         if (_sc) {
-          ctx.drawImage(_sc, x - 24, y - 30, 48, 48);
+          ctx.drawImage(_sc, x - _sc._ox, y - _sc._oy);   // ★[T101] 앵커 정본 · 델타 0
         } else {
           drawPropPending(x, y);
         }
@@ -324,7 +324,7 @@
         if (_cs) {
           ctx.fillStyle = 'rgba(0,0,0,0.30)';
           ctx.beginPath(); ctx.ellipse(x, y + 4, 14, 4, 0, 0, Math.PI * 2); ctx.fill();
-          ctx.drawImage(_cs, x - 24, y - 30, 48, 48);
+          ctx.drawImage(_cs, x - _cs._ox, y - _cs._oy);   // ★[T101] 앵커 정본 · 델타 0
           if (isReady) {
             ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
             ctx.fillStyle = '#9adb6e'; ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.lineWidth = 2;

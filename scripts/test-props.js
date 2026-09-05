@@ -218,8 +218,15 @@ console.log('\n[⑤ 자연물 앵커·잠금 — 굽는 표가 정본이다 (T97
   if (fs.existsSync(NAT_ANCH) && nTree > 0) {
     const NA = JSON.parse(fs.readFileSync(NAT_ANCH, 'utf8'));
     const keys = Object.keys(NA);
-    ok(keys.length === nTree + nProp,
-       `앵커 ${keys.length}키 = 굽는 표 ${nTree}+${nProp} (자연물은 나무 ${nTree} + 소품 ${nProp} 이다)`);
+    // ★[T101] 앵커 키 = **구운 것**(굽는 표 두 개) + **파생한 것**(광맥 — 모델이 아니라 바위의 변색).
+    //   파생 수도 손으로 안 적는다: `ore-outcrop.py` 의 `N_EACH` 가 정본이다.
+    const oreN = (() => {
+      const t = fs.readFileSync(path.join(ROOT, 'scripts', 'ore-outcrop.py'), 'utf8');
+      const m = t.match(/^N_EACH\s*=\s*(\d+)/m) || t.match(/range\(1,\s*(\d+)\s*\)/);
+      return m ? (m[1].length && +m[1] > 6 ? +m[1] - 1 : +m[1]) : -1;
+    })();
+    ok(keys.length === nTree + nProp + oreN,
+       `앵커 ${keys.length}키 = 구운 ${nTree}+${nProp} + 파생 ${oreN}(광맥 — 바위의 변색이지 모델이 아니다)`);
     const trees = keys.filter(k => NA[k].kind === 'tree');
     ok(trees.length === nTree, `kind=tree ${trees.length} = TREE_BUILD ${nTree}`);
     // PNG 실측 — 나무는 trees/, 소품은 nature/. w·h 는 IHDR 과 정확히 같아야 한다.
@@ -239,19 +246,34 @@ console.log('\n[⑤ 자연물 앵커·잠금 — 굽는 표가 정본이다 (T97
     ok(ssT > 0 && ssP > 0, `굽는 루프의 배수 — 나무 ×${ssT} · 소품 ×${ssP}`);
     const ppuBad = keys.filter(k => Math.abs(NA[k].ppu - PPU * (NA[k].kind === 'tree' ? ssT : ssP)) > 0.01);
     ok(ppuBad.length === 0, `ppu 전수 = 45.255×배수 (어긋남 ${ppuBad.length}${ppuBad.length ? ': ' + ppuBad.slice(0, 4).join(', ') : ''})`);
-    // ★굽는 코드가 이 저장소에 **없는** 자산 — 미아가 아니라 **회부**다. 집합을 못 박아 둔다:
-    //   바위 6 + 이끼바위 6 은 `~/Mini/rock_render.py`(옛 v3 기계 · SAMPLES 48 · tree_render 씬)가
-    //   구웠고 그 스크립트는 저장소 밖이다. 광맥 6 은 `ore-outcrop.py` 가 바위에서 **파생**한다.
-    //   ⇒ 5.0.1 재굽기에 못 넣는다(모델 본문이 없으니 편입이 아니라 새로 짓는 일이다) — T97 회부 1.
-    const OUTSIDE = [...Array(6)].flatMap((_, i) => {
-      const n = String(i + 1).padStart(2, '0');
-      return ['rock' + n, 'mossrock' + n, 'ore' + n];
-    }).sort();
+    // ★★[T101] T97 회부 1 이 닫혔다 — 바위 12 는 이제 `nature_render.py` 가 굽고(PROP_BUILD),
+    //   광맥 6 은 `ore-outcrop.py` 가 그 바위에서 파생하며 **앵커까지 복사**한다.
+    //   ⇒ 앵커 밖 PNG 는 **0** 이어야 한다. 하나라도 남으면 클라가 자리를 모르는 그림이 있다는 뜻이다.
     const strayNat = fs.readdirSync(NAT_DIR).filter(f => f.endsWith('.png'))
       .map(f => f.slice(0, -4)).filter(k => !NA[k]).sort();
-    ok(JSON.stringify(strayNat) === JSON.stringify(OUTSIDE),
-       `앵커 밖 PNG ${strayNat.length}장 = 저장소에 굽는 코드가 없는 것 ${OUTSIDE.length}장(바위·이끼바위·광맥 — 회부 1)` +
-       (JSON.stringify(strayNat) === JSON.stringify(OUTSIDE) ? '' : ` — 실측 ${JSON.stringify(strayNat.slice(0, 6))}`));
+    ok(strayNat.length === 0,
+       `앵커 밖 PNG 0장 (남은 것 ${strayNat.length}${strayNat.length ? ': ' + strayNat.slice(0, 6).join(', ') : ''})`);
+    // 광맥은 **모델이 아니다** — 바위에서 파생한다. 실루엣이 같으니 앵커도 같아야 한다.
+    {
+      const off = [...Array(6)].map((_, i) => String(i + 1).padStart(2, '0'))
+        .filter(n => JSON.stringify(NA['ore' + n]) !== JSON.stringify(NA['rock' + n]));
+      ok(off.length === 0,
+         `광맥 6키 앵커 = 바위 6키 앵커(실루엣이 같으니 자리도 같다 · 어긋남 ${off.length})`);
+    }
+    // 바위 12 가 굽는 표에 있다 — 저장소 밖 스크립트가 굽던 것이 안으로 들어왔는가.
+    {
+      const want = [...Array(6)].flatMap((_, i) => {
+        const n = String(i + 1).padStart(2, '0'); return ['rock' + n, 'mossrock' + n];
+      });
+      const miss = want.filter(k => !new RegExp(`\\("${k}", rock,`).test(py));
+      ok(miss.length === 0,
+         `막돌·이끼바위 12키가 \`nature_render.py PROP_BUILD\` 에 있다 (없는 것 ${miss.length})`);
+      // ★주석 줄은 소스가 아니다 — 여기 `hash(kind)` 는 **왜 지웠는지 적은 문장** 안에 있다
+      //   (T95 에서 주석 속 따옴표 토큰이 검사기를 속인 그 함정).
+      const pyCode = py.split('\n').filter(l => !/^\s*#/.test(l)).join('\n');
+      ok(/_KSEED = \{/.test(pyCode) && !/hash\(kind\)/.test(pyCode),
+         '바위 씨앗이 정수로 못 박혀 있다(`hash(str)` 은 프로세스마다 달라 재현이 안 됐다 · T101 §0-ⓐ)');
+    }
     const strayTree = fs.readdirSync(TREE_DIR).filter(f => f.endsWith('.png'))
       .map(f => f.slice(0, -4)).filter(k => !NA[k]);
     ok(strayTree.length === 0, `trees/ 미아 PNG 0 ${strayTree.length ? JSON.stringify(strayTree) : ''}`);
@@ -259,12 +281,14 @@ console.log('\n[⑤ 자연물 앵커·잠금 — 굽는 표가 정본이다 (T97
     const LOCK = path.join(ROOT, 'public', 'assets', 'icons.lock.json');
     if (fs.existsSync(LOCK)) {
       const lock = JSON.parse(fs.readFileSync(LOCK, 'utf8'));
-      for (const [grp, n] of [['nature', keys.length - nTree + OUTSIDE.length], ['trees', nTree]]) {
+      for (const [grp, n] of [['nature', nProp + oreN], ['trees', nTree]]) {
         const t = lock[grp] || {};
         ok(Object.keys(t).length === n, `잠금표 ${grp} ${Object.keys(t).length}키 (기대 ${n})`);
       }
-      ok(Array.isArray(lock._기계_예외) && lock._기계_예외.length === OUTSIDE.length,
-         `잠금표가 '다른 기계' ${OUTSIDE.length}장을 이름으로 적어 뒀다`);
+      ok(!lock._기계_예외,
+         "잠금표에 '다른 기계' 예외가 **없다** — 배포하는 그림을 전부 이 저장소가 굽는다(T97 회부 1 닫힘)");
+      ok(typeof lock._범프 === 'string' && /Distance/.test(lock._범프),
+         '잠금표가 5.0 범프 기본값 변경(Distance 1.0 → 0.001)을 적어 뒀다');
     } else ok(false, 'icons.lock.json 이 있다');
   }
 }

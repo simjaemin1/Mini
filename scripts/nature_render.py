@@ -84,6 +84,7 @@ def leaf_mat(name, c1, c2, scale=42.0, rough=0.72, bump=0.32, detail=4.0):
     mx, _ = _mix2(nt, nz.outputs["Fac"], c1, c2)
     nt.links.new(mx.outputs[0], b.inputs["Base Color"])
     bmp = nt.nodes.new("ShaderNodeBump"); bmp.inputs["Strength"].default_value = bump
+    bmp.inputs["Distance"].default_value = BUMP_DIST      # ★T101 — 5.0 기본값 0.001 되돌림
     nt.links.new(nz.outputs["Fac"], bmp.inputs["Height"])
     nt.links.new(bmp.outputs["Normal"], b.inputs["Normal"])
     return m
@@ -109,8 +110,58 @@ def bark_mat(name, base, dark, scale=26.0, rough=0.88, bump=0.55, plates=False):
     mx, _ = _mix2(nt, fac, base, dark)
     nt.links.new(mx.outputs[0], b.inputs["Base Color"])
     bmp = nt.nodes.new("ShaderNodeBump"); bmp.inputs["Strength"].default_value = bump
+    bmp.inputs["Distance"].default_value = BUMP_DIST      # ★T101 — 5.0 기본값 0.001 되돌림
     nt.links.new(fac, bmp.inputs["Height"])
     nt.links.new(bmp.outputs["Normal"], b.inputs["Normal"])
+    return m
+
+
+def rock_mat(name, base=(0.22, 0.20, 0.18), moss=False, seed=0):
+    """막돌 — `assets-src/legacy_mac/rock_render.py:rock_material` 본문 **그대로**(T101 편입).
+    미세 범프 + 대형 굴곡 · 투톤 계단 얼룩 · (이끼) 위쪽 노멀 게이트로 상부 모자만."""
+    m = bpy.data.materials.new(name); m.use_nodes = True
+    nt = m.node_tree; b = principled(m)
+    b.inputs["Roughness"].default_value = 0.95
+    noise = nt.nodes.new("ShaderNodeTexNoise"); noise.inputs["Scale"].default_value = 9 + (seed % 3) * 3
+    bump = nt.nodes.new("ShaderNodeBump"); bump.inputs["Strength"].default_value = 0.8
+    bump.inputs["Distance"].default_value = BUMP_DIST     # ★T101 — 5.0 기본값 0.001 되돌림
+    nt.links.new(noise.outputs["Fac"], bump.inputs["Height"])
+    big = nt.nodes.new("ShaderNodeTexNoise"); big.inputs["Scale"].default_value = 2.2
+    bump2 = nt.nodes.new("ShaderNodeBump"); bump2.inputs["Strength"].default_value = 0.5
+    bump2.inputs["Distance"].default_value = BUMP_DIST    # ★T101 — 5.0 기본값 0.001 되돌림
+    nt.links.new(big.outputs["Fac"], bump2.inputs["Height"])
+    nt.links.new(bump2.outputs["Normal"], bump.inputs["Normal"])
+    nt.links.new(bump.outputs["Normal"], b.inputs["Normal"])
+    c1 = nt.nodes.new("ShaderNodeRGB"); c1.outputs[0].default_value = (base[0], base[1], base[2], 1)
+    c2 = nt.nodes.new("ShaderNodeRGB")
+    c2.outputs[0].default_value = (base[0] * 0.45, base[1] * 0.45, base[2] * 0.5, 1)
+    n2 = nt.nodes.new("ShaderNodeTexNoise"); n2.inputs["Scale"].default_value = 4.5
+    ramp = nt.nodes.new("ShaderNodeValToRGB")
+    ramp.color_ramp.elements[0].position = 0.42; ramp.color_ramp.elements[1].position = 0.62
+    nt.links.new(n2.outputs["Fac"], ramp.inputs["Fac"])
+    mixc = nt.nodes.new("ShaderNodeMixRGB"); mixc.blend_type = 'MIX'
+    nt.links.new(ramp.outputs["Color"], mixc.inputs["Fac"])
+    nt.links.new(c2.outputs[0], mixc.inputs["Color1"])
+    nt.links.new(c1.outputs[0], mixc.inputs["Color2"])
+    out_color = mixc.outputs["Color"]
+    if moss:
+        geo = nt.nodes.new("ShaderNodeNewGeometry")
+        sep = nt.nodes.new("ShaderNodeSeparateXYZ")
+        nt.links.new(geo.outputs["Normal"], sep.inputs[0])
+        up = nt.nodes.new("ShaderNodeMath"); up.operation = 'GREATER_THAN'; up.inputs[1].default_value = 0.62
+        nt.links.new(sep.outputs["Z"], up.inputs[0])
+        n3 = nt.nodes.new("ShaderNodeTexNoise"); n3.inputs["Scale"].default_value = 5
+        mask = nt.nodes.new("ShaderNodeMath"); mask.operation = 'MULTIPLY'
+        nt.links.new(up.outputs[0], mask.inputs[0]); nt.links.new(n3.outputs["Fac"], mask.inputs[1])
+        gate = nt.nodes.new("ShaderNodeMath"); gate.operation = 'GREATER_THAN'; gate.inputs[1].default_value = 0.45
+        nt.links.new(mask.outputs[0], gate.inputs[0])
+        mg = nt.nodes.new("ShaderNodeRGB"); mg.outputs[0].default_value = (0.12, 0.24, 0.08, 1)
+        mixm = nt.nodes.new("ShaderNodeMixRGB")
+        nt.links.new(gate.outputs[0], mixm.inputs["Fac"])
+        nt.links.new(out_color, mixm.inputs["Color1"])
+        nt.links.new(mg.outputs[0], mixm.inputs["Color2"])
+        out_color = mixm.outputs["Color"]
+    nt.links.new(out_color, b.inputs["Base Color"])
     return m
 
 
@@ -572,6 +623,50 @@ def cattail(seed, h=1.7, n=6):
 
 
 # ═══════════════ 빌드 표 ═══════════════
+# ═══════════════ 막돌 · 이끼바위 [T101 편입 — legacy_mac/rock_render.py] ═══════════════
+# ★★씨앗이 결정론이 아니었다: 옛 스크립트는 `random.seed(hash(kind) % 9973 + i*131 + 15500)` 인데
+#   파이썬 3 의 **문자열 `hash()` 는 프로세스마다 다르다**(PYTHONHASHSEED). 같은 기계에서 두 번
+#   구워도 다른 바위가 나온다 — 배포본 `rock01..06` 은 **재현이 불가능했다**(T101 §0-ⓐ 실측).
+#   ⇒ `PYTHONHASHSEED=0` 실측값을 **정수로 못 박는다**. 이제 두 번 구우면 같은 바위다.
+_KSEED = {'rock': 8765, 'mossrock': 4720}      # PYTHONHASHSEED=0 으로 잰 옛 씨앗값(위 설명 참조)
+
+
+def _boulder(mat, size=1.0, squash=None, jitter=0.45, subdiv=2):
+    """저폴리 각진 바위 — `legacy_mac/rock_render.py:make_boulder` 본문 **그대로**.
+    `random` 호출 **순서까지** 같아야 대조군과 화소가 맞는다(편입 증명 · T101 §1)."""
+    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=subdiv, radius=size)
+    o = bpy.context.active_object
+    sq = squash or (random.uniform(0.85, 1.25), random.uniform(0.85, 1.25), random.uniform(0.6, 0.9))
+    o.scale = sq
+    me = o.data
+    for v in me.vertices:
+        v.co += V((random.uniform(-1, 1), random.uniform(-1, 1), random.uniform(-1, 1))) * size * jitter * random.random()
+        if v.co.z < -size * 0.35:
+            v.co.z = -size * 0.35                       # 바닥 컷(땅에 앉음)
+    bpy.ops.object.shade_flat()
+    o.data.materials.append(mat)
+    OBJS.append(o)
+    return o
+
+
+def rock(i, moss=False):
+    """바위 한 덩이. `i` = 1..6(파일 번호). 옛 JOBS 분기 본문 그대로 — 곁돌 확률까지."""
+    kind = 'mossrock' if moss else 'rock'
+    random.seed(_KSEED[kind] + i * 131 + 15500)
+    if moss:
+        m = rock_mat("mossrock%d" % (100 + i), (0.21, 0.20, 0.18), moss=True, seed=100 + i)
+        _boulder(m, size=1.0, jitter=0.42)
+    else:
+        base = (0.22 + random.uniform(-0.03, 0.04),
+                0.20 + random.uniform(-0.03, 0.03),
+                0.18 + random.uniform(-0.02, 0.03))
+        m = rock_mat("rock%d" % i, base, moss=False, seed=i)
+        _boulder(m, size=1.0, jitter=0.4 + 0.12 * random.random())
+        if random.random() < 0.5:                       # 곁돌
+            small = _boulder(m, size=0.38, jitter=0.4)
+            small.location = V((random.uniform(0.9, 1.3), random.uniform(-0.6, 0.6), -0.25))
+
+
 PROP_BUILD = [
     ("bush01", bush_berry, dict(seed=201, w=1.55, h=1.20)),
     ("bush02", bush_berry, dict(seed=211, w=1.30, h=1.00)),
@@ -599,27 +694,44 @@ PROP_BUILD = [
     ("flower02", herb_clump, dict(seed=709, h=0.38, n=10, flower='y', fh=0.52)),
     ("flower03", herb_clump, dict(seed=719, h=0.45, n=12, flower='p', fh=0.66)),
     ("flower04", herb_clump, dict(seed=727, h=0.36, n=9, flower='r', fh=0.48)),
+    # ★[T101] 막돌 6 + 이끼바위 6 — 여태 저장소 밖 스크립트가 굽던 것(회부 1). 이제 여기서 굽는다.
+    #   광맥 `ore01..06` 은 모델이 아니다 — `scripts/ore-outcrop.py` 가 이 바위에서 PIL 로 파생한다.
+    ("rock01", rock, dict(i=1)),
+    ("rock02", rock, dict(i=2)),
+    ("rock03", rock, dict(i=3)),
+    ("rock04", rock, dict(i=4)),
+    ("rock05", rock, dict(i=5)),
+    ("rock06", rock, dict(i=6)),
+    ("mossrock01", rock, dict(i=1, moss=True)),
+    ("mossrock02", rock, dict(i=2, moss=True)),
+    ("mossrock03", rock, dict(i=3, moss=True)),
+    ("mossrock04", rock, dict(i=4, moss=True)),
+    ("mossrock05", rock, dict(i=5, moss=True)),
+    ("mossrock06", rock, dict(i=6, moss=True)),
 ]
 
-anchors = {}
-apath = os.path.join(OUTDIR, "nature_raw_anchors.json")
-if os.path.exists(apath):
-    try: anchors = json.load(open(apath))
-    except Exception: anchors = {}
+# ═══════════════ 굽기 ═══════════════
+# ★[T101] `__main__` 가드 — 대조 하네스가 **빌더만** 꺼내 쓸 수 있어야 한다(편입 증명).
+if __name__ == '__main__':
+  anchors = {}
+  apath = os.path.join(OUTDIR, "nature_raw_anchors.json")
+  if os.path.exists(apath):
+      try: anchors = json.load(open(apath))
+      except Exception: anchors = {}
 
-for key, fn, kw in TREE_BUILD:
-    if ONLY and key not in ONLY: continue
-    fn(**kw)
-    anchors[key] = render(key, ss=4, margin=8)
-    anchors[key]["kind"] = "tree"
-    cleanup()
+  for key, fn, kw in TREE_BUILD:
+      if ONLY and key not in ONLY: continue
+      fn(**kw)
+      anchors[key] = render(key, ss=4, margin=8)
+      anchors[key]["kind"] = "tree"
+      cleanup()
 
-for key, fn, kw in PROP_BUILD:
-    if ONLY and key not in ONLY: continue
-    fn(**kw)
-    anchors[key] = render(key, ss=3, margin=5)
-    anchors[key]["kind"] = "prop"
-    cleanup()
+  for key, fn, kw in PROP_BUILD:
+      if ONLY and key not in ONLY: continue
+      fn(**kw)
+      anchors[key] = render(key, ss=3, margin=5)
+      anchors[key]["kind"] = "prop"
+      cleanup()
 
-json.dump(anchors, open(apath, "w"), indent=1)
-print("[nat] DONE ->", OUTDIR, len(anchors), "keys")
+  json.dump(anchors, open(apath, "w"), indent=1)
+  print("[nat] DONE ->", OUTDIR, len(anchors), "keys")

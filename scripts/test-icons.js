@@ -365,13 +365,16 @@ console.log('\n[⑧ 굽는 기계 정본 — icons.lock.json 이 지금 자산�
       ok(drift.length === 0,
          `${grp}: 화소 해시가 잠금표와 같다 (어긋남 ${drift.length}${drift.length ? ' — ' + drift.slice(0, 4).join(', ') : ''})`);
     }
-    {   // 예외 목록이 **실제로 표 안에 있는 키**인지 — 이름만 적고 잠그지 않으면 적은 뜻이 없다.
+    {   // ★[T101] T97 이 두던 `_기계_예외`(저장소 밖 기계가 구운 바위 18장)는 **없어졌다** —
+      //   바위가 `nature_render.py` 로 들어왔다. 예외가 다시 생기면 그건 굽는 코드 없는 그림을
+      //   배포한다는 뜻이라, 있다면 **전부 잠금표 안에 있는지**까지는 지킨다.
       const ex = Array.isArray(lock._기계_예외) ? lock._기계_예외 : [];
       const nat = lock.nature || {};
       const notLocked = ex.filter(k => !(k in nat));
-      ok(ex.length > 0 && notLocked.length === 0,
-         `_기계_예외 ${ex.length}장이 전부 잠금표 nature 안에 있다` +
-         (notLocked.length ? ` — 밖: ${notLocked.slice(0, 4).join(', ')}` : ''));
+      ok(notLocked.length === 0,
+         ex.length === 0 ? '_기계_예외 0장 — 배포하는 그림을 전부 이 저장소가 굽는다'
+                         : `_기계_예외 ${ex.length}장이 전부 잠금표 nature 안에 있다` +
+                           (notLocked.length ? ` — 밖: ${notLocked.slice(0, 4).join(', ')}` : ''));
     }
     console.log('     ⇒ 다음 재굽기가 이 표와 대조한다. 기계를 바꾸면 여기가 먼저 빨개진다.');
   }

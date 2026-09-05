@@ -90,4 +90,19 @@ for i in range(1, 7):
     opaque = sum(1 for y in range(h) for x in range(w) if sp[x, y][3] > 0)
     print(f"  ore{i:02d} ← rock{i:02d} {rock.size}  광물 얼룩 {stained}/{opaque}px "
           f"({stained/max(1,opaque)*100:.0f}%)  색 {'적갈' if col == RUST else '녹청'}")
+# ★[T101] 앵커도 따라 붙인다 — **파생 로직은 한 줄도 안 건드렸다**(위 화소 계산 그대로).
+#   실루엣(알파)이 바위와 **동일**하므로 노두의 지면 앵커는 그 바위의 앵커와 같다.
+#   여기 안 적으면 광맥 6장만 `nature_anchors.json` 밖에 남아 클라가 자리를 모른다(T97 회부 1의 꼬리).
+import json
+_ap = os.path.join(NATURE, "nature_anchors.json")
+if os.path.exists(_ap):
+    _A = json.load(open(_ap, encoding="utf-8"))
+    _n = 0
+    for i in range(1, 7):
+        _src = _A.get("rock%02d" % i)
+        if _src:
+            _A["ore%02d" % i] = dict(_src); _n += 1
+    json.dump(_A, open(_ap, "w", encoding="utf-8"), ensure_ascii=False, indent=1, sort_keys=True)
+    print(f"[ore] 앵커 {_n}키 = 바위 앵커 복사(실루엣 동일) → nature_anchors.json {len(_A)}키")
+
 print("[ore] 노두 6종 재생성 — 실루엣(알파)은 바위와 동일, 색만 변색")

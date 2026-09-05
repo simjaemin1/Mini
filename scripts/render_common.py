@@ -70,6 +70,15 @@ CLIP_END = 2000
 
 ISO_DIR = V((1.0, -1.0, 1.2)).normalized()            # 아이콘 패스 시선
 
+# ★★★[T101 실측] **블렌더 5.0 은 `Bump` 노드의 `Distance` 기본값을 1.0 → 0.001 로 바꿨다.**
+#   범프가 1000분의 1 로 죽는다. 여태 "4.0.2 → 5.0.1 기계 차이"(T79 6~19/255 · T97 5.53/255)라
+#   불러 온 것의 **진짜 정체가 이것**이다 — 4.0.2 가 얼룩을 남긴 게 아니라 5.0.1 이 범프를 잃었다.
+#   T101 §1 증거: 같은 코드·같은 씨앗으로 막돌을 구우니 5.0.1 은 **매끈한 저폴리 덩어리**가 나왔고,
+#   `Distance` 만 1.0 으로 되돌리자 4.0.2 배포본의 돌 표면이 그대로 돌아왔다(그림 `바위_범프.png`).
+#   ⇒ 범프를 만드는 모든 자리에 **`Distance` 를 명시**한다. 기본값에 기대면 다음 판올림이 또 가져간다.
+BUMP_DIST = 1.0        # 블렌더 4.x 까지의 기본값 — 지금 미술은 전부 이 값으로 맞춰져 있다
+
+
 THETA = math.radians(30.0)                            # 세계 패스 고도
 NHAT = V((math.cos(THETA) / math.sqrt(2), math.cos(THETA) / math.sqrt(2), math.sin(THETA)))
 RHAT = V((1.0, -1.0, 0.0)).normalized()
@@ -124,6 +133,7 @@ def striped_mat(name, base, stripe, scale=22.0, rough=0.8, bump=0.35, dist=3.0):
     nt.links.new(c2.outputs[0], mx.inputs["Color2"])
     nt.links.new(mx.outputs["Color"], b.inputs["Base Color"])
     bmp = nt.nodes.new("ShaderNodeBump"); bmp.inputs["Strength"].default_value = bump
+    bmp.inputs["Distance"].default_value = BUMP_DIST     # ★T101 — 5.0 기본값 0.001 을 되돌린다
     nt.links.new(w.outputs["Fac"], bmp.inputs["Height"])
     nt.links.new(bmp.outputs["Normal"], b.inputs["Normal"])
     return m
@@ -136,6 +146,7 @@ def bumped_mat(name, c1, c2, noise_scale=9.0, bump=0.5, rough=0.85, ramp=(0.42, 
     b.inputs["Roughness"].default_value = rough
     n = nt.nodes.new("ShaderNodeTexNoise"); n.inputs["Scale"].default_value = noise_scale
     bp = nt.nodes.new("ShaderNodeBump"); bp.inputs["Strength"].default_value = bump
+    bp.inputs["Distance"].default_value = BUMP_DIST      # ★T101 — 5.0 기본값 0.001 을 되돌린다
     nt.links.new(n.outputs["Fac"], bp.inputs["Height"])
     nt.links.new(bp.outputs["Normal"], b.inputs["Normal"])
     r1 = nt.nodes.new("ShaderNodeRGB"); r1.outputs[0].default_value = (c1[0], c1[1], c1[2], 1)

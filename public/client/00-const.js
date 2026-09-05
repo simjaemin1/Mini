@@ -30,6 +30,14 @@ const CROP_SPR = {
   _of: {},                       // 작물 id → group(서버가 준 한글 그대로)
   grain: [], bean: [], veg: [], spice: [], gourd: [], special: [], oil: [], tuber: [],
 };
+//   ★★[T101 2026-09-05] **밭 타일이 이제 세계 패스로 구워진다.** 종전엔 아이콘 패스(시선
+//     `ISO_DIR` · z 압축 없음)라 나온 그림이 **정사각**이었고, 64×32 셀 다이아에 절대 안 맞았다
+//     (T97 §0-ⓒ 실측 — 크기 문제가 아니라 투영 문제였다). 이제 바닥이 곧 셀 다이아다.
+//   ⇒ 그리는 자리는 **앵커 JSON 이 정본**이다(`/assets/crops/crops_anchors.json`).
+//     가구 스프라이트와 **같은 규약**이다(`36-r2-building.js:24`): 부르는 쪽엔 델타 계산이 0 이고
+//     `drawImage(im, x - im._ox, y - im._oy)` 한 줄뿐이다. 48/64 같은 눈대중 수를 다시 적지 않는다.
+//   ⓘ 앵커가 아직 안 왔으면 `cropSprite()` 가 **null** 을 준다 — 부르는 쪽은 이미 점선 빈 칸을
+//     그린다(T66 "렌더 없음"). 폴백 좌표를 지어내면 그게 두 번째 정본이 된다.
 let _cropSprLoaded = 0;
 (function preloadCropSprites() {
   if (typeof Image !== 'function') return;
@@ -41,12 +49,23 @@ let _cropSprLoaded = 0;
       CROP_SPR[ser][i] = im;
     }
   }
+  if (typeof fetch !== 'function') return;
+  fetch('/assets/crops/crops_anchors.json').then((r) => (r.ok ? r.json() : null)).then((a) => {
+    if (!a) return;
+    CROP_SPR._anch = a;
+    for (const k in a) {                       // 키는 JSON 이 준다 — 손으로 적은 목록이 없다
+      const m = /^(\w+)_(\d)$/.exec(k); if (!m) continue;
+      const im = CROP_SPR[m[1]] && CROP_SPR[m[1]][+m[2]];
+      if (im) { im._ox = a[k].ox; im._oy = a[k].oy; }
+    }
+  }).catch(() => {});
 })();
 function cropSprite(stage, crop) {
   const st = Math.max(0, Math.min(3, stage | 0));
   const ser = CROP_SPR._slug[CROP_SPR._of[crop]] || 'grain';
   const im = CROP_SPR[ser] && CROP_SPR[ser][st];
-  return (im && im.complete && im.naturalWidth > 0) ? im : null;
+  // 그림과 앵커가 **둘 다** 와야 그린다 — 하나만으로는 자리를 모른다.
+  return (im && im.complete && im.naturalWidth > 0 && im._ox != null) ? im : null;
 }
 // §4-4 Stage 4A: 마을 시뮬 NPC 직업(p.simJob — economy-sim JOBS 12종) → 이름 옆 이모지
 // ★[T66] 이모지 0 — NPC 이름 옆 직업 꼬리표를 뗐다. 직업 **이름**이 필요하면
