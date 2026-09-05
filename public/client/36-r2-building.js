@@ -294,32 +294,22 @@
       // 갈색 흙 다이아 + 작물
       const data = building?.data || {};
       if (data.sim) {
-        // §4-4 Stage 4A: 마을 시뮬 경작지(비영속 타일) — 논(무논=물빛)·밭(이랑) 정적 렌더.
-        //   성장 게이지·'수확가능' 라벨 없음(마을 소유 — 플레이어 수확 대상 아님). 셀 꽉 채워 띠가 이어져 보임.
-        const dry = !!data.dry;
-        ctx.beginPath();
-        ctx.moveTo(x, y - 8); ctx.lineTo(x + 16, y); ctx.lineTo(x, y + 8); ctx.lineTo(x - 16, y); ctx.closePath();
-        ctx.fillStyle = dry ? '#7c6034' : '#3f5c46'; ctx.fill();
-        ctx.strokeStyle = dry ? '#5e4724' : '#324a38'; ctx.lineWidth = 0.6; ctx.stroke();
-        if (dry) {
-          // 밭이랑 2줄
-          ctx.strokeStyle = 'rgba(94,71,36,0.9)'; ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.moveTo(x - 8, y - 4); ctx.lineTo(x + 8, y + 4);
-          ctx.moveTo(x - 4, y - 6); ctx.lineTo(x + 12, y + 2);
-          ctx.stroke();
+        // §4-4 Stage 4A: 마을 시뮬 경작지(비영속 타일) — 성장 게이지·'수확가능' 라벨 없음
+        //   (마을 소유 — 플레이어 수확 대상이 아니다).
+        // ★[T97 · PM 판정] 여기 있던 **벡터 띠 층을 지웠다.** 마름모 + 이랑 2줄(밭) 또는
+        //   물빛 + 모 3포기(논)를 코드가 그리고 있었는데, 그건 플레이어 밭과 **다른 그림**이었다 —
+        //   같은 '경작지'가 소유자에 따라 달리 보이면 정본이 둘이다(T67 캐논).
+        //   ⇒ 플레이어 밭과 **같은 8군 타일**을 쓴다. 단계는 옛 벡터가 그리던 것을 그대로 옮긴다:
+        //     밭(dry) = 이랑만 그렸다 → 단계 0(갈은 흙) · 논 = 물 + 모 3포기 → 단계 1(어린싹).
+        //     작물이 없으면 `cropSprite` 가 곡물(벼)로 떨어진다 — 논에 맞는 기본값이다.
+        //   ⓘ 옛 주석은 "셀 꽉 채워 띠가 이어져 보임" 이라 했지만 실측은 아니었다 —
+        //     그 마름모는 `x±16, y±8`, **반 칸**이다(셀 다이아는 64×32). 띠는 원래도 안 이어졌다.
+        //     타일 이음새 실측표는 보고 T97 §0-ⓒ 에 있다(회부 — 밭 타일 세계 패스 재굽기).
+        const _sc = cropSprite(data.dry ? 0 : 1, data.crop);
+        if (_sc) {
+          ctx.drawImage(_sc, x - 24, y - 30, 48, 48);
         } else {
-          // 무논 물 반사 + 모 3포기
-          ctx.fillStyle = 'rgba(130,190,170,0.35)';
-          ctx.beginPath();
-          ctx.moveTo(x, y - 5); ctx.lineTo(x + 10, y); ctx.lineTo(x, y + 5); ctx.lineTo(x - 10, y); ctx.closePath();
-          ctx.fill();
-          ctx.strokeStyle = '#69a05a'; ctx.lineWidth = 1;
-          ctx.beginPath();
-          for (const [oxp, oyp] of [[-6, 0], [0, -2], [6, 1]]) {
-            ctx.moveTo(x + oxp, y + oyp); ctx.lineTo(x + oxp, y + oyp - 5);
-          }
-          ctx.stroke();
+          drawPropPending(x, y);
         }
         return;
       }
@@ -378,22 +368,18 @@
         ctx.drawImage(_tileHutC, x - 32, y - 16);
         const _dx = Math.floor(building.x / 32) - _h[2], _dy = Math.floor(building.y / 32) - (_h[3] + 2);
         const _bed = (_dy === -4 && _dx >= -4 && _dx <= -1) || (_dy === -3 && (_dx === -4 || _dx === -1));
+        // ★[T97] 실내 둘도 다른 가구와 같은 결 — **몸체는 스프라이트**다.
+        //   침상·화덕은 서버 건물 행이 아니라(§0-ⓑ) `props_render.py DECOR` 표가 굽는다.
         if (_bed) {
-          ctx.beginPath();   // 거적 침상(납작 매트)
-          ctx.moveTo(x, y - 9); ctx.lineTo(x + 20, y + 1); ctx.lineTo(x, y + 11); ctx.lineTo(x - 20, y + 1); ctx.closePath();
-          ctx.fillStyle = '#c8a95e'; ctx.fill();
-          ctx.strokeStyle = '#8a713c'; ctx.lineWidth = 1; ctx.stroke();
-          ctx.strokeStyle = 'rgba(138,113,60,0.7)'; ctx.beginPath();   // 짚결
-          ctx.moveTo(x - 12, y - 1); ctx.lineTo(x + 8, y + 7); ctx.moveTo(x - 8, y - 4); ctx.lineTo(x + 12, y + 5); ctx.stroke();
-          ctx.fillStyle = '#7a5a34'; ctx.fillRect(x - 12, y - 8, 10, 5);   // 목침(북측)
+          if (!drawPropBody('bed', x, y)) drawPropPending(x, y);
         } else if (_dx === -2 && _dy === -3) {
-          const _g = ctx.createRadialGradient(x, y, 2, x, y, 26);   // 화덕 — 은은한 잉걸빛
+          // ★잉걸빛은 **코드가 얹는 상태**다 — 모닥불 불꽃과 같은 경계(T67 ⓒ).
+          //   불이 든 화덕과 꺼진 화덕이 같은 몸이어야 하므로 발광은 모델에 굽지 않는다.
+          const _g = ctx.createRadialGradient(x, y, 2, x, y, 26);
           _g.addColorStop(0, 'rgba(255,150,60,0.35)'); _g.addColorStop(1, 'rgba(255,150,60,0)');
           ctx.fillStyle = _g; ctx.beginPath(); ctx.ellipse(x, y, 26, 13, 0, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#2e2620'; ctx.beginPath(); ctx.ellipse(x, y, 12, 6, 0, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#6e675e';
-          for (let _a = 0; _a < 6; _a++) { const _t = _a / 6 * Math.PI * 2; ctx.beginPath(); ctx.ellipse(x + Math.cos(_t) * 13, y + Math.sin(_t) * 6.5, 3.2, 2.2, 0, 0, Math.PI * 2); ctx.fill(); }
-          ctx.fillStyle = '#ff9a4a'; ctx.fillRect(x - 2, y - 2, 4, 3);
+          if (!drawPropBody('hearth', x, y)) drawPropPending(x, y);
+          ctx.fillStyle = '#ff9a4a'; ctx.fillRect(x - 2, y - 2, 4, 3);     // 잉걸 — 상태
           ctx.fillStyle = '#ffd27a'; ctx.fillRect(x - 1, y - 1, 2, 1);
         }
         return;

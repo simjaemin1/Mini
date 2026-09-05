@@ -1,32 +1,42 @@
-# nature_render.py — durango-mini 자연물 스프라이트(나무 12종 · 수풀 · 물가 술 · 들꽃) [배치 21]
-#   씬·조명 정본은 building_render.py / icon_render.py / bridge_render.py 계열과 **완전 동일**:
-#   Cycles · film_transparent · ORTHO · 태양 52°/-35° energy 3.6 · 월드 (0.52,0.56,0.6)@0.55 ·
+# nature_render.py — durango-mini 자연물 스프라이트(나무 12종 · 수풀 · 물가 술 · 들꽃)
+#   [배치 21 · T97 에서 `render_common` 편입 + bpy 5.0.1 재굽기 · 재민 확정 2026-09-05]
+#
+# ★★T97 편입 — 이 파일은 씬·헬퍼를 **자기 한 벌** 갖고 있었다(718줄 중 약 150줄).
+#   `icon`/`props` 가 T77 에서 겪은 그대로다: 두 벌이면 한쪽만 고쳐지는 날이 온다.
+#   ⇒ 씬 값·재질 문법(`principled`·`simple_mat`)·PNG 후처리·프레임 계산은 `render_common` 것,
+#     **모델 본문과 재질표 `M` 은 이 파일 것**(T77 §0-ⓒ — 팔레트는 파일마다 다르다).
+#   편입 자체는 **그림을 안 바꾼다**: 같은 컨테이너·같은 bpy 로 옛 코드를 구운 대조군과
+#   38장 IDAT 동일을 확인한 뒤에야 `sensor_fit` 을 채우고 다시 구웠다(보고 T97 §1).
+#
+# ★씬·조명 정본은 `render_common` 한 곳:
+#   Cycles · film_transparent · ORTHO · 태양 52°/−35° energy 3.6 · 월드 (0.52,0.56,0.6)@0.55 ·
 #   SAMPLES 64 · OIDN 부재 자동 감지 · PPU 45.255 · ZSQ 0.8165 · 좌우 FLIP.
 #
-# ★왜 재렌더인가(재민 확정 "전면 통일"): 기존 나무·수풀은 Kenney 로우폴리 recolor 라
+# ★왜 재렌더였나(재민 확정 "전면 통일"): 기존 나무·수풀은 Kenney 로우폴리 recolor 라
 #   배치 19 의 질감 사실풍 지면 위에서 **제일 튄다**. 지면·건물과 같은 씬 정본으로 다시 굽는다.
 #
-# ★크기 규약 = 1셀 = 1m. 모델은 미터 단위로 짓고, 화면 픽셀은 render() 가 PPU·ZSQ 로 환산한다.
+# ★크기 규약 = 1셀 = 1m. 모델은 미터 단위로 짓고, 화면 픽셀은 `render()` 가 PPU·ZSQ 로 환산한다.
 #   (1m 높이 = 32 게임px. 성목 3~5m = 96~160 게임px.)
-#   슈퍼샘플: 나무 ss=4, 소품 ss=3 — 앵커 JSON 에 실제 ppu 를 적어 클라가 되돌려 축소한다
-#   (산 스프라이트 mountain_anchors.json 과 같은 규약).
+#   고해상 배포: 나무 ppu_mul=4, 소품 ppu_mul=3 — 앵커 JSON 에 실제 ppu 를 적어 **클라가 축소한다**
+#   (산 스프라이트 mountain_anchors.json 과 같은 규약). 가구·밭과 규격이 다른 자리다.
 #
-# 실행:  blender -b -P scripts/nature_render.py -- [키 필터]
+# 실행:  python3 scripts/nature_render.py [키 필터]      (pip bpy 5.0.1 — 굽는 기계 정본)
+#        blender -b -P scripts/nature_render.py -- [키 필터]
 # 결과:  scripts/nature_renders/*.png + nature_raw_anchors.json
 #        → scripts/nature-postprocess.py 가 알파 bbox 크롭 후 public/assets/ 로 배치
 #
 # 고증(청동기 후기 송국리): 중부 한반도 온대 낙엽활엽수림 + 소나무.
 #   물가는 저습지 — 갈대(Phragmites)·부들(Typha)이 본체다. 버드나무는 물가 수종.
 
-import bpy, os, math, json, sys, mathutils
-V = mathutils.Vector
+import sys, os, json
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from render_common import *              # 헬퍼·씬 상수·OBJS
+import render_common as rc
 
-SAMPLES = 64
-PPU0 = 64.0 / math.sqrt(2.0)                          # px per unit(=1셀=1m) — 셀 다이아 가로폭 64px
-ZSQ = 32.0 / (PPU0 * math.cos(math.radians(30.0)))    # 높이 압축(=0.8165) — 1m 높이 = 32px
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUTDIR = os.path.join(HERE, "nature_renders")
 os.makedirs(OUTDIR, exist_ok=True)
+
 
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 ONLY = set(ARGS) if ARGS else None
@@ -46,21 +56,6 @@ class R:
 
 
 # ═══════════════ 재질 ═══════════════
-def principled(mat):
-    for n in mat.node_tree.nodes:
-        if n.type == 'BSDF_PRINCIPLED':
-            return n
-    return mat.node_tree.nodes.get("Principled BSDF")
-
-
-def simple_mat(name, color, rough=0.8):
-    m = bpy.data.materials.new(name); m.use_nodes = True
-    b = principled(m)
-    b.inputs["Base Color"].default_value = (color[0], color[1], color[2], 1.0)
-    b.inputs["Roughness"].default_value = rough
-    return m
-
-
 def _mix2(nt, fac_out, c1, c2):
     """ColorRamp 기본 2요소만 쓰고(★elements.new() 금지 — 인덱스 재정렬 함정) MixRGB 로 두 색."""
     rmp = nt.nodes.new("ShaderNodeValToRGB")
@@ -119,54 +114,8 @@ def bark_mat(name, base, dark, scale=26.0, rough=0.88, bump=0.55, plates=False):
     return m
 
 
-# ═══════════════ 씬 (정본 복사) ═══════════════
-bpy.ops.object.select_all(action='SELECT'); bpy.ops.object.delete()
-scene = bpy.context.scene
-scene.render.engine = 'CYCLES'; scene.cycles.samples = SAMPLES
-scene.cycles.use_denoising = bool(getattr(bpy.app.build_options, 'openimagedenoise', False))
-print("[nat] denoise =", scene.cycles.use_denoising, "ppu0 =", round(PPU0, 3), "zsq =", round(ZSQ, 4))
-try: scene.view_settings.view_transform = 'Standard'
-except Exception: pass
-scene.render.film_transparent = True
-scene.render.image_settings.file_format = 'PNG'; scene.render.image_settings.color_mode = 'RGBA'
-if scene.world is None: scene.world = bpy.data.worlds.new("W")
-scene.world.use_nodes = True
-_bg = scene.world.node_tree.nodes.get("Background")
-if _bg:
-    _bg.inputs[0].default_value = (0.52, 0.56, 0.6, 1.0); _bg.inputs[1].default_value = 0.55
-sun_d = bpy.data.lights.new("Sun", 'SUN'); sun_d.energy = 3.6; sun_d.angle = 0.2
-sun = bpy.data.objects.new("Sun", sun_d); scene.collection.objects.link(sun)
-sun.rotation_euler = (math.radians(52), 0, math.radians(-35))
-tgt = bpy.data.objects.new("Tgt", None); scene.collection.objects.link(tgt)
-cam_d = bpy.data.cameras.new("Cam"); cam_d.type = 'ORTHO'; cam_d.clip_start = 0.1; cam_d.clip_end = 2000
-cam = bpy.data.objects.new("Cam", cam_d); scene.collection.objects.link(cam)
-cam.constraints.new('TRACK_TO').target = tgt; scene.camera = cam
-
-THETA = math.radians(30.0)
-NHAT = V((math.cos(THETA) / math.sqrt(2), math.cos(THETA) / math.sqrt(2), math.sin(THETA)))
-RHAT = V((1.0, -1.0, 0.0)).normalized()
-UHAT = V((-math.sin(THETA) / math.sqrt(2), -math.sin(THETA) / math.sqrt(2), math.cos(THETA)))
-
-OBJS = []
-
-
-def _flip_png(path):
-    """★좌우 뒤집기 — 정본(building_render.py FLIP 주석)과 동일. 게임 투영은 +x 가 오른쪽이다."""
-    img = bpy.data.images.load(path)
-    w, h = img.size
-    px = list(img.pixels[:])
-    out = [0.0] * len(px)
-    for y in range(h):
-        row = y * w * 4
-        for x in range(w):
-            s2 = row + x * 4
-            d2 = row + (w - 1 - x) * 4
-            out[d2] = px[s2]; out[d2 + 1] = px[s2 + 1]; out[d2 + 2] = px[s2 + 2]; out[d2 + 3] = px[s2 + 3]
-    img.pixels = out
-    img.filepath_raw = path
-    img.file_format = 'PNG'
-    img.save()
-    bpy.data.images.remove(img)
+# ═══════════════ 씬 — 정본 한 곳(`render_common.build_scene`) ═══════════════
+scene, cam, cam_d, sun, tgt = rc.build_scene("nat")
 
 
 # ═══════════════ 기하 헬퍼 ═══════════════
@@ -302,60 +251,18 @@ def blob(loc, radius, mat, rng, squash=1.0, disp=0.22, sub=3, name="blob"):
     OBJS.append(ob)
     return ob
 
-
 # ═══════════════ 렌더 ═══════════════
 def render(key, ss, margin=6):
-    """OBJS 전체를 굽는다. 프레임은 화면 bbox 에 딱 맞추고, 지면 원점(0,0,0)의 픽셀좌표를 앵커로."""
-    PPU = PPU0 * ss
-    bpy.ops.object.select_all(action='DESELECT')
-    for o in OBJS:
-        o.select_set(True)
-    bpy.context.view_layer.objects.active = OBJS[0]
-    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
-    # ★z 압축은 오브젝트 scale 이 아니라 **정점 좌표**로(정본 주석: 회전된 로컬 z 는 월드 z 가 아니다)
-    for o in OBJS:
-        for v in o.data.vertices:
-            v.co.z *= ZSQ
-    umin = wmin = 1e18; umax = wmax = -1e18
-    for o in OBJS:
-        for v in o.data.vertices:
-            p = v.co
-            u = p.dot(RHAT) * PPU
-            w = -p.dot(UHAT) * PPU
-            umin = min(umin, u); umax = max(umax, u)
-            wmin = min(wmin, w); wmax = max(wmax, w)
-    Wpx = int(math.ceil(umax - umin)) + margin * 2
-    Hpx = int(math.ceil(wmax - wmin)) + margin * 2
-    a = (umin + umax) * 0.5 / PPU
-    b = -(wmin + wmax) * 0.5 / PPU
-    ctr = RHAT * a + UHAT * b
-    scene.render.resolution_x = Wpx; scene.render.resolution_y = Hpx
-    cam_d.ortho_scale = Wpx / PPU
-    tgt.location = ctr
-    cam.location = ctr + NHAT * 300.0
+    """OBJS 전체를 굽는다. 프레임은 화면 bbox 에 딱 맞추고, 지면 원점(0,0,0)의 픽셀좌표를 앵커로.
+
+    ★`ss` 는 **출력 픽셀 밀도 배수**다(초과표본이 아니다 — T97 에서 이름이 갈렸다).
+      나무 4 · 소품 3 으로 구워 그대로 배포하고, 클라가 앵커의 `ppu` 로 되돌려 줄인다."""
+    rc.bake_transforms()
+    rc.squash_z()                       # ★z 압축은 오브젝트 scale 이 아니라 **정점 좌표**로
     p = os.path.join(OUTDIR, key + ".png")
-    scene.render.filepath = p
-    bpy.ops.render.render(write_still=True)
-    _flip_png(p)
-    ox = Wpx / 2.0 - (umin + umax) * 0.5
-    oy = Hpx / 2.0 - (wmin + wmax) * 0.5
-    print(f"[nat] {key}: {Wpx}x{Hpx} anchor=({ox:.1f},{oy:.1f}) ppu={PPU:.3f}")
-    return {"w": Wpx, "h": Hpx, "ox": round(ox, 2), "oy": round(oy, 2), "ppu": round(PPU, 3)}
-
-
-def cleanup():
-    bpy.ops.object.select_all(action='DESELECT')
-    for o in OBJS:
-        try: o.select_set(True)
-        except Exception: pass
-    if OBJS:
-        bpy.context.view_layer.objects.active = OBJS[0]
-        bpy.ops.object.delete()
-    OBJS.clear()
-    for blk in (bpy.data.meshes, bpy.data.textures):
-        for d in list(blk):
-            if d.users == 0:
-                blk.remove(d)
+    rec = rc.render_world_pass(OBJS, p, margin=margin, ppu_mul=ss, ss=1)
+    print(f"[nat] {key}: {rec['w']}x{rec['h']} anchor=({rec['ox']:.1f},{rec['oy']:.1f}) ppu={rec['ppu']:.3f}")
+    return rec
 
 
 # ═══════════════ 재질 팔레트 ═══════════════

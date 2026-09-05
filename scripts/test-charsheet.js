@@ -108,7 +108,8 @@ console.log('\n=== ① 시트 ↔ 메타 정합 ===');
   //   "굽는 쪽이 실제로 그 자로 구웠는가"는 하나도 안 본다.
   //   2026-08-31 에 정확히 그 구멍으로 버그가 살았다: `char_render.py` 가 z 압축(ZSQ)을
   //   화면 bbox 계산에만 곱하고 **기하에는 안 걸어**, 캐릭터만 1m=39.7px 로 구워졌다.
-  //   (자연물·건물은 정점 z 에 직접 곱한다 — `nature_render.py:318` · `building_render.py:300`.)
+  //   (자연물·건물은 정점 z 에 직접 곱한다 — `render_common.squash_z()` · `building_render.py:300`.
+  //    자연물은 T97 에서 `render_common` 으로 편입되며 자기 줄이 없어졌다 — 줄 번호 대신 이름으로 적는다.)
   //   세상은 32px/m 인데 사람만 24% 컸다. 아래가 그걸 잡는 자다.
   {
     const im = readPng(path.join(DIR, 'body_idle.png'));

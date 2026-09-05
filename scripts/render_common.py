@@ -10,7 +10,7 @@
 #   갖는다 : 재질 문법(`simple_mat`·`striped_mat`·`bumped_mat`) · 기하 헬퍼(`box`·`cyl`·
 #            `cone`·`ico`·`plane`·`cord`) · 오브젝트 등록(`add`/`OBJS`) ·
 #            씬 조립(`build_scene`) · **프리셋 둘**(`render_icon_pass`/`render_world_pass`) ·
-#            PNG 후처리(`_post_png`)
+#            PNG 후처리(`_post_png`·`downscale_png`)
 #   안 갖는다: **모델**(무엇을 만드는가) · **재질표 `M`**(어떤 색인가).
 #            팔레트는 파일마다 다르다 — icon 의 `stone` 과 props 의 `stone` 은 다른 돌이다.
 #            섞으면 그림이 바뀐다. 두 팔레트는 **두 팔레트로 남는다**(T77 §0-ⓒ).
@@ -19,7 +19,9 @@
 #   Cycles · film_transparent · ORTHO · SAMPLES 64 · view_transform Standard ·
 #   월드 (0.52,0.56,0.6)@0.55 · 태양 고도 52° energy 3.6 angle 0.2
 #     [아이콘 프리셋] ISO_DIR (1,−1,1.2) · bbox 맞춤 512² · 압축 없음 · FLIP 없음 · 태양 방위 +35°
-#     [세계  프리셋] 방위 45°/고도 30° · PPU 45.255 · ZSQ 0.8165 · SS 3 · FLIP · 태양 방위 −35°
+#     [세계  프리셋] 방위 45°/고도 30° · PPU 45.255 · ZSQ 0.8165 · FLIP · 태양 방위 −35°
+#        └ 규격 둘(T97): `ppu_mul`=출력 픽셀 밀도 배수 · `ss`=초과표본 배수(축소로 되돌림)
+#          가구·밭 (1, 3) 게임 해상도 배포 · 자연물 (4 또는 3, 1) 고해상 배포 + 클라가 축소
 #
 # ★★기본값 함정 — 합치면서 갈린 기본값은 **호출부에 명시 인자로 잠갔다**(T77 §0-ⓐ 실측):
 #     ┌ 함수         인자     icon 옛 기본값   props 옛 기본값   합친 기본값   잠근 곳
@@ -269,7 +271,11 @@ def cleanup():
         bpy.context.view_layer.objects.active = OBJS[0]
         bpy.ops.object.delete()
     OBJS.clear()
-    for blk in (bpy.data.meshes,):
+    # ★`bpy.data.textures` 도 함께 — DISPLACE 모디파이어용 레거시 텍스처 데이터블록이다.
+    #   지금 이걸 만드는 건 `nature_render.py:blob()`(CLOUDS) 하나뿐이라 다른 파일엔 **빈 순회**다
+    #   (`scripts/test-render-common.js` 가 "만드는 곳 하나" 를 지킨다). 안 쓸면 38장 굽는 동안
+    #   고아 텍스처가 쌓인다 — T97 편입 전 `nature_render.py` 가 자기 `cleanup()` 에서 하던 일.
+    for blk in (bpy.data.meshes, bpy.data.textures):
         for d in list(blk):
             if d.users == 0:
                 blk.remove(d)
@@ -415,31 +421,42 @@ def render_icon_pass(objs, path):
 
 
 # ═══════════════ 프리셋 ② 세계 ═══════════════
-def render_world_pass(objs, path, margin=3):
-    """방위 45°/고도 30° · PPU 45.255 · SS 3 초과표본 · 좌우 FLIP · 태양 −35°.
+def render_world_pass(objs, path, margin=3, ppu_mul=1.0, ss=SS):
+    """방위 45°/고도 30° · ZSQ 0.8165 · 좌우 FLIP · 태양 −35°.
     프레임은 **화면 bbox** 에 맞추고, 로컬 원점 (0,0,0) 의 픽셀 좌표를 앵커로 낸다.
     ⚠호출 전에 `bake_transforms()` 와 (게임 화법이 필요하면) `squash_z()` 를 끝내 둬야 한다 —
-      여기서는 `v.co` 를 그대로 읽는다."""
+      여기서는 `v.co` 를 그대로 읽는다.
+
+    ★★[T97] **규격이 둘이라 손잡이도 둘이다.** 여태 이 함수는 한 규격만 알았다.
+      · `ppu_mul` — **출력 자체의** 픽셀 밀도 배수. 나온 PNG 가 게임 해상도의 몇 배인가.
+      · `ss`      — **초과표본** 배수. 굽고 나서 박스 축소로 되돌리므로 출력 크기엔 안 남는다.
+      두 규격:
+        [가구·밭 등]  ppu_mul 1 · ss 3 → 45.255px/m 로 배포, 굽기만 3배(앨리어싱 죽이기)
+        [자연물]      ppu_mul 3~4 · ss 1 → 135~181px/m 고해상으로 **배포**하고,
+                      앵커 JSON 의 `ppu` 를 보고 **클라가 그릴 때 줄인다**(산 스프라이트와 같은 규약).
+      자연물이 고해상을 남기는 이유: 나무는 3~5m 라 게임 해상도로 구우면 잔가지가 뭉갠다.
+      기본값(1, SS)은 T77 이 84장 `cmp` 0 으로 세운 옛 거동 그대로다 — 기존 호출부 무변."""
     SUN.rotation_euler = SUN_WORLD
+    ppu = PPU * ppu_mul
     umin = wmin = 1e18; umax = wmax = -1e18
     for o in objs:
         for v in o.data.vertices:
-            u = v.co.dot(RHAT) * PPU
-            w = -v.co.dot(UHAT) * PPU
+            u = v.co.dot(RHAT) * ppu
+            w = -v.co.dot(UHAT) * ppu
             umin = min(umin, u); umax = max(umax, u)
             wmin = min(wmin, w); wmax = max(wmax, w)
     Wpx = int(math.ceil(umax - umin)) + margin * 2
     Hpx = int(math.ceil(wmax - wmin)) + margin * 2
-    a = (umin + umax) * 0.5 / PPU
-    b = -(wmin + wmax) * 0.5 / PPU
+    a = (umin + umax) * 0.5 / ppu
+    b = -(wmin + wmax) * 0.5 / ppu
     ctr = RHAT * a + UHAT * b
-    SCENE.render.resolution_x = Wpx * SS; SCENE.render.resolution_y = Hpx * SS
-    CAM_D.ortho_scale = Wpx / PPU                 # ★해상도만 SS 배 — 픽셀 밀도가 SS 배가 된다
+    SCENE.render.resolution_x = Wpx * ss; SCENE.render.resolution_y = Hpx * ss
+    CAM_D.ortho_scale = Wpx / ppu                 # ★해상도만 ss 배 — 픽셀 밀도가 ss 배가 된다
     TGT.location = ctr
     CAM.location = ctr + NHAT * 300.0
     SCENE.render.filepath = path
     bpy.ops.render.render(write_still=True)
-    _post_png(path, ss=SS, flip=True)             # 초과표본 되돌리기 + 게임 손방향 보정
+    _post_png(path, ss=ss, flip=True)             # 초과표본 되돌리기 + 게임 손방향 보정
     ox = Wpx / 2.0 - (umin + umax) * 0.5
     oy = Hpx / 2.0 - (wmin + wmax) * 0.5
-    return {"w": Wpx, "h": Hpx, "ox": round(ox, 2), "oy": round(oy, 2), "ppu": round(PPU, 3)}
+    return {"w": Wpx, "h": Hpx, "ox": round(ox, 2), "oy": round(oy, 2), "ppu": round(ppu, 3)}

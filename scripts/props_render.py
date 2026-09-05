@@ -154,6 +154,9 @@ for _k, (_c, _r) in _CL.items():
 M['tamped2'] = bumped_mat("p_tamped2", (0.47, 0.37, 0.24), (0.33, 0.25, 0.15), 16, 0.35, 0.95)  # 다짐 바닥
 M['tread'] = striped_mat("p_tread", (0.54, 0.40, 0.23), (0.43, 0.31, 0.17), 16, 0.84, bump=0.35, dist=3.0)  # 계단 디딤 널
 M['earth'] = bumped_mat("p_earth", (0.38, 0.28, 0.17), (0.26, 0.19, 0.11), 10, 0.55, 0.94)      # 계단 흙심
+# ★[T97] 움집 실내 둘. 벡터가 쓰던 색을 그대로 옮긴다 — 침상 #c8a95e·짚결 #8a713c·목침 #7a5a34.
+M['straw'] = striped_mat("p_straw", (0.784, 0.663, 0.369), (0.541, 0.443, 0.235), 30, 0.90, bump=0.45, dist=2.0)  # 거적(볏짚)
+M['pillow'] = striped_mat("p_pillow", (0.478, 0.353, 0.204), (0.36, 0.26, 0.15), 22, 0.80, bump=0.30, dist=3.0)   # 목침
 
 
 # ═══════════════ 모델 — 가구 8종 ═══════════════
@@ -494,6 +497,61 @@ def m_stair_s(): m_stair('S')
 def m_stair_w(): m_stair('W')
 
 
+# ═══════════════ 모델 — 움집 실내 장식 둘 [T97] ═══════════════
+# ★이 둘은 **건물 행이 아니다**(T97 §0-ⓑ 실측): 서버 `BUILDING_RECIPES` 에 없고,
+#   `BUILDING_TYPE_TO_ITEM` 은 그 표에서만 만들어지며, `doDismantleBuilding` 은 `b.type` 으로 돈다.
+#   클라가 `building.data.hut` 의 실내 좌표를 보고 그리는 **장식**이라 해체 대상이 아니다.
+#   ⇒ 물건 하나 = 모델 하나 = **렌더 하나**(세계 스프라이트만). 아이콘은 회부한다 —
+#     짐에 들어가지 않는 것에 인벤 그림을 만들면 그게 쓸 데 없는 사본이다(T67 캐논).
+
+
+def m_bed():
+    """거적 침상 — 움집 실내 1인 자리. 침대 6 = 사람 여섯(랩 정본 "1인 1침대" · HOME_SLOTS 사상)이라
+    **한 칸이 한 자리**다. 그래서 셀을 꽉 채우지 않는다 — 여섯이 여섯으로 읽혀야 한다.
+    ★거적은 판 하나로 못 만든다(T79b 잎 교훈 — 납작한 판은 '종이'로 읽힌다).
+      짚 오리를 나란히 눕히고 두 곳을 새끼로 묶어 **엮은 결**을 만든다."""
+    random.seed(971)
+    box(0.74, 0.60, 0.030, (0.0, 0.0, 0.015), mat=M['straw'])              # 거적 바탕
+    for i in range(9):                                                      # 짚 오리 — 결
+        y = -0.255 + i * 0.0638
+        cyl(0.026, 0.72, (0.0, y, 0.040), rot=(0, math.radians(90), 0),
+            mat=M['straw'], verts=6, smooth=False)
+    for sx in (-0.355, 0.355):                                              # 말린 양 끝단
+        cyl(0.040, 0.60, (sx, 0.0, 0.042), rot=(math.radians(90), 0, 0),
+            mat=M['straw'], verts=8, smooth=True)
+    for sx in (-0.20, 0.20):                                                # 새끼 두 줄 — 엮은 자리
+        cord(0.012, 0.62, (sx, 0.0, 0.058), (math.radians(90), 0, 0), M['cord'])
+    # 목침 — 통나무를 깎아 만든 나무 베개. 한쪽 끝에만 둔다(머리 쪽이 정해져 있어야 자리로 읽힌다).
+    box(0.21, 0.10, 0.085, (-0.245, 0.0, 0.098), mat=M['pillow'])
+    for sy in (-0.038, 0.038):                                              # 목침 발 — 바닥에서 살짝 띄운다
+        box(0.05, 0.022, 0.055, (-0.245, sy, 0.028), mat=M['pillow'])
+
+
+def m_hearth():
+    """화덕(노지) — 수혈주거 한가운데 판 얕은 불자리. 막돌을 둘러 놓고 재가 깔린다.
+    ★**몸체만** 굽는다: 잉걸빛은 코드가 얹는다 — 모닥불과 **같은 경계**다(T67 ⓒ).
+      불이 꺼진 화덕도 같은 몸이어야 한다. 발광 재질을 여기 넣으면 그 경계가 무너진다."""
+    random.seed(972)
+    # ★1패스 실측: 재 원반(r 0.42)이 막돌 고리보다 넓어 **회색 접시 위의 돌무더기**로 읽혔다.
+    #   벡터가 옳았다 — 벡터의 그림은 어두운 불자리가 주인공이고 막돌은 테두리다
+    #   (불자리 24×12px · 막돌 6.4×4.4px · 고리 반지름 13px). 그 비례로 되돌린다.
+    cyl(0.400, 0.022, (0.0, 0.0, 0.011), mat=M['ash'], verts=20)            # 재 — 바닥에 퍼진 자리
+    cyl(0.265, 0.030, (0.0, 0.0, 0.030), mat=M['coal'], verts=18)           # 불자리 — 그을어 검다(주인공)
+    for i in range(6):                                                      # 막돌 여섯(벡터가 여섯이었다)
+        # ★고리 반지름 실측 3패스: 0.408 은 재 밖에서 **떠서 꽃잎 여섯**, 0.305 는 불자리를
+        #   **덮어 돌무더기**. 0.355 — 불자리(0.265) 테두리 바로 밖, 재(0.400) 안쪽에 걸친다.
+        t = i / 6 * 2 * math.pi
+        ico(random.uniform(0.060, 0.082), (math.cos(t) * 0.355, math.sin(t) * 0.355, 0.030),
+            subdiv=1, mat=(M['stone'] if i % 2 else M['stone2']),
+            scale=(1.25, 1.25, 0.58), jitter=0.32, seed=9720 + i)
+    for (t, tilt) in ((0.9, 84), (3.6, 84)):                                # 탄 장작 둘 — 불자리 안에
+        cyl(0.034, 0.38, (math.cos(t) * 0.04, math.sin(t) * 0.04, 0.062),
+            rot=(0, math.radians(tilt), t), mat=M['char'], verts=8)
+    for i in range(5):                                                      # 숯 조각
+        ico(random.uniform(0.028, 0.046), (random.uniform(-0.15, 0.15), random.uniform(-0.15, 0.15), 0.055),
+            subdiv=1, mat=M['coal'], scale=(1.2, 1.2, 0.6), jitter=0.3, seed=9730 + i)
+
+
 # ═══════════════ 표 — 물건 하나 = 모델 하나 = 렌더 둘 ═══════════════
 # icon:      /assets/icons/<icon>.png (96px) — 인벤·조합법·바닥·거래소·창고 공용 정본
 # btype:     server/zone.js 의 건물 타입(BUILDING_HEIGHT 대조 키)
@@ -527,6 +585,17 @@ PROPS = [
     dict(icon='item_stair', btype='stair', build=m_stair, body_px=64, flame_px=0,
          world=[('stair_n', {'d': 'N'}), ('stair_e', {'d': 'E'}),
                 ('stair_s', {'d': 'S'}), ('stair_w', {'d': 'W'})]),
+]
+
+# ═══════════════ 표 둘째 — 실내 장식(건물 행이 **아닌** 것) [T97] ═══════════════
+# ★왜 표가 둘인가: 위 `PROPS` 는 전부 서버 건물 타입이 있고, 짐에 들어가고, 해체된다.
+#   침상·화덕은 셋 다 아니다(§0-ⓑ). 같은 표에 억지로 넣으면 `btype` 칸이 거짓말을 하거나
+#   `test-props ③`(서버 BUILDING_HEIGHT 대조)이 없는 키를 찾다 빨개진다.
+#   ⇒ **다른 것은 다른 표**로 둔다. 앵커에 `decor: true` 를 적어 하네스가 갈라 보게 한다.
+# body_px: 모델 실측 z 최대와 ±1px 로 맞아야 한다(서버 대조가 없으니 이 줄이 유일한 자다).
+DECOR = [
+    dict(key='bed', build=m_bed, body_px=4),
+    dict(key='hearth', build=m_hearth, body_px=4),
 ]
 
 
@@ -1083,6 +1152,25 @@ for p in (PROPS if not os.environ.get('SKIP_PROPS') else []):
         rec["zmax_px"] = round(zm * 32.0, 2)
         anchors[wkey] = rec
         cleanup()
+
+# ── [T97] 움집 실내 장식 — **세계 스프라이트만**(아이콘 없음 · 해체 대상이 아니다) ──
+for d in (DECOR if not os.environ.get('SKIP_PROPS') else []):
+    if ONLY and d['key'] not in ONLY:
+        continue
+    OBJS.clear()
+    d['build']()
+    _bake_transforms()
+    zm = _zmax()
+    _squash_z()
+    rec = render_world(d['key'])
+    rec["icon"] = None
+    rec["btype"] = None
+    rec["decor"] = True
+    rec["body_px"] = d['body_px']
+    rec["flame_px"] = 0
+    rec["zmax_px"] = round(zm * 32.0, 2)
+    anchors[d['key']] = rec
+    cleanup()
 
 # ── [T72] 손도구·손에 드는 것 — 아이콘만 굽는다(세계 렌더는 다음 카드) ──
 _n_items = 0

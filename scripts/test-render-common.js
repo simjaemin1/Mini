@@ -31,7 +31,10 @@ const COMMON = path.join(ROOT, 'scripts', 'render_common.py');
 const SCRIPTS = [
   ['icon_render.py', path.join(ROOT, 'scripts', 'icon_render.py')],
   ['props_render.py', path.join(ROOT, 'scripts', 'props_render.py')],
+  // ★[T97] 자연물도 편입됐다 — 씬·헬퍼 한 벌을 따로 갖고 있던 마지막 렌더 스크립트였다.
+  ['nature_render.py', path.join(ROOT, 'scripts', 'nature_render.py')],
 ];
+const NATURE = path.join(ROOT, 'scripts', 'nature_render.py');
 const REPORT = path.join(ROOT, '보고', 'T77_2026-09-03.md');
 
 const rd = p => (fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : null);
@@ -163,10 +166,42 @@ if (rep) {
   ok(icons === 70 && props === 14, `내역 — 아이콘 ${icons} · 세계 스프라이트 ${props}`);
 }
 
+// ── ⑥ 자연물 편입 [T97] ─────────────────────────────────────────
+console.log('\n[⑥ 자연물 편입 — 자기 한 벌이 남아 있지 않다 (T97)]');
+{
+  const nat = SELFTEST ? (rd(NATURE) || '') + '\ndef simple_mat(name, color, rough=0.8):\n    pass\n'
+                       : rd(NATURE);
+  ok(!!nat, 'scripts/nature_render.py 가 있다');
+  if (nat) {
+    // 옛 자기 한 벌 — 정의가 0이어야 한다. `_flip_png` 은 `_post_png(ss=1)` 로 흡수됐다.
+    for (const h of ['principled', 'simple_mat', 'cleanup', '_flip_png']) {
+      const n = (nat.match(new RegExp(`^def ${h}\\(`, 'gm')) || []).length;
+      ok(n === 0, `nature_render.py: \`def ${h}…\` 정의 ${n}회`);
+    }
+    // 씬 조립도 공용 것 — 옛 최상위 씬 블록(`scene.render.engine = `)이 남아 있으면 두 벌이다.
+    ok(!/^scene\.render\.engine\s*=/m.test(nat), 'nature_render.py: 최상위 씬 조립 블록 0');
+    ok(/rc\.build_scene\(/.test(nat), 'nature_render.py: `rc.build_scene()` 로 씬을 세운다');
+    // 세계 패스 — 규격 둘을 **명시**해서 부른다(기본값에 기대면 규격이 조용히 바뀐다).
+    ok(/rc\.render_world_pass\([^)]*ppu_mul=[^)]*ss=/.test(nat),
+       'nature_render.py: `render_world_pass(…, ppu_mul=…, ss=…)` 를 명시한다');
+    ok(/^M\['/m.test(nat), 'nature_render.py: 자기 팔레트를 그대로 갖는다(§0-ⓒ)');
+  }
+  // `bpy.data.textures` 데이터블록을 만드는 곳이 하나뿐이라 공용 `cleanup()` 의 무조건 순회가
+  // 다른 파일엔 **빈 순회**다. 둘째가 생기면 이 줄이 먼저 빨개진다.
+  {
+    const makers = ['icon_render.py', 'props_render.py', 'nature_render.py', 'fields_render.py', 'models_crops.py']
+      .filter(f => /bpy\.data\.textures\.new/.test(rd(path.join(ROOT, 'scripts', f)) || ''));
+    ok(makers.length === 1 && makers[0] === 'nature_render.py',
+       `\`bpy.data.textures.new\` 를 쓰는 렌더 스크립트 = ${JSON.stringify(makers)} (nature 하나)`);
+    ok(/for blk in \(bpy\.data\.meshes, bpy\.data\.textures\)/.test(common || ''),
+       'render_common.cleanup() 이 메시·텍스처 둘 다 쓸어낸다');
+  }
+}
+
 if (SELFTEST) {
-  console.log('\n[--selftest] 오염본을 넣었다 → 위에 ✗ 가 넷 이상 있어야 통과다(①②③④).');
-  console.log('결과: ' + (fail >= 4 ? `PASS(검사기가 오염 ${fail}건을 잡았다)` : `FAIL(${fail}건만 잡았다 — 검사기가 눈멀었다)`));
-  process.exit(fail >= 4 ? 0 : 1);
+  console.log('\n[--selftest] 오염본을 넣었다 → 위에 ✗ 가 다섯 이상 있어야 통과다(①②③④⑥).');
+  console.log('결과: ' + (fail >= 5 ? `PASS(검사기가 오염 ${fail}건을 잡았다)` : `FAIL(${fail}건만 잡았다 — 검사기가 눈멀었다)`));
+  process.exit(fail >= 5 ? 0 : 1);
 }
 console.log('\n결과: ' + (fail ? `FAIL(${fail})` : 'PASS'));
 process.exit(fail ? 1 : 0);
