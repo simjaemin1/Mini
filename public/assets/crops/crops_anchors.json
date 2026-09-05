@@ -39,6 +39,26 @@
   "w": 72,
   "zmax_px": 20.76
  },
+ "bean_4": {
+  "group": "bean",
+  "h": 41,
+  "ox": 34.0,
+  "oy": 22.59,
+  "ppu": 45.255,
+  "stage": 4,
+  "w": 68,
+  "zmax_px": 7.84
+ },
+ "bean_5": {
+  "group": "bean",
+  "h": 38,
+  "ox": 34.0,
+  "oy": 19.96,
+  "ppu": 45.255,
+  "stage": 5,
+  "w": 68,
+  "zmax_px": 5.18
+ },
  "gourd_0": {
   "group": "gourd",
   "h": 38,
@@ -78,6 +98,26 @@
   "stage": 3,
   "w": 68,
   "zmax_px": 26.22
+ },
+ "gourd_4": {
+  "group": "gourd",
+  "h": 39,
+  "ox": 34.0,
+  "oy": 20.52,
+  "ppu": 45.255,
+  "stage": 4,
+  "w": 68,
+  "zmax_px": 9.78
+ },
+ "gourd_5": {
+  "group": "gourd",
+  "h": 38,
+  "ox": 34.0,
+  "oy": 19.96,
+  "ppu": 45.255,
+  "stage": 5,
+  "w": 68,
+  "zmax_px": 6.18
  },
  "grain_0": {
   "group": "grain",
@@ -119,6 +159,26 @@
   "w": 68,
   "zmax_px": 28.81
  },
+ "grain_4": {
+  "group": "grain",
+  "h": 41,
+  "ox": 34.0,
+  "oy": 22.77,
+  "ppu": 45.255,
+  "stage": 4,
+  "w": 68,
+  "zmax_px": 7.32
+ },
+ "grain_5": {
+  "group": "grain",
+  "h": 39,
+  "ox": 34.0,
+  "oy": 20.71,
+  "ppu": 45.255,
+  "stage": 5,
+  "w": 68,
+  "zmax_px": 4.85
+ },
  "oil_0": {
   "group": "oil",
   "h": 38,
@@ -158,6 +218,26 @@
   "stage": 3,
   "w": 68,
   "zmax_px": 21.09
+ },
+ "oil_4": {
+  "group": "oil",
+  "h": 40,
+  "ox": 34.0,
+  "oy": 21.78,
+  "ppu": 45.255,
+  "stage": 4,
+  "w": 68,
+  "zmax_px": 8.15
+ },
+ "oil_5": {
+  "group": "oil",
+  "h": 38,
+  "ox": 34.0,
+  "oy": 19.96,
+  "ppu": 45.255,
+  "stage": 5,
+  "w": 68,
+  "zmax_px": 5.33
  },
  "special_0": {
   "group": "special",
@@ -199,6 +279,26 @@
   "w": 68,
   "zmax_px": 20.45
  },
+ "special_4": {
+  "group": "special",
+  "h": 39,
+  "ox": 35.69,
+  "oy": 20.64,
+  "ppu": 45.255,
+  "stage": 4,
+  "w": 70,
+  "zmax_px": 7.78
+ },
+ "special_5": {
+  "group": "special",
+  "h": 38,
+  "ox": 34.0,
+  "oy": 19.96,
+  "ppu": 45.255,
+  "stage": 5,
+  "w": 68,
+  "zmax_px": 5.17
+ },
  "spice_0": {
   "group": "spice",
   "h": 38,
@@ -238,6 +338,26 @@
   "stage": 3,
   "w": 73,
   "zmax_px": 15.76
+ },
+ "spice_4": {
+  "group": "spice",
+  "h": 41,
+  "ox": 34.71,
+  "oy": 22.96,
+  "ppu": 45.255,
+  "stage": 4,
+  "w": 69,
+  "zmax_px": 7.8
+ },
+ "spice_5": {
+  "group": "spice",
+  "h": 39,
+  "ox": 34.0,
+  "oy": 20.88,
+  "ppu": 45.255,
+  "stage": 5,
+  "w": 68,
+  "zmax_px": 5.18
  },
  "tuber_0": {
   "group": "tuber",
@@ -279,6 +399,26 @@
   "w": 74,
   "zmax_px": 16.59
  },
+ "tuber_4": {
+  "group": "tuber",
+  "h": 41,
+  "ox": 34.0,
+  "oy": 22.79,
+  "ppu": 45.255,
+  "stage": 4,
+  "w": 68,
+  "zmax_px": 9.5
+ },
+ "tuber_5": {
+  "group": "tuber",
+  "h": 38,
+  "ox": 34.0,
+  "oy": 19.96,
+  "ppu": 45.255,
+  "stage": 5,
+  "w": 68,
+  "zmax_px": 6.14
+ },
  "veg_0": {
   "group": "veg",
   "h": 38,
@@ -318,5 +458,25 @@
   "stage": 3,
   "w": 68,
   "zmax_px": 19.27
+ },
+ "veg_4": {
+  "group": "veg",
+  "h": 41,
+  "ox": 34.0,
+  "oy": 22.95,
+  "ppu": 45.255,
+  "stage": 4,
+  "w": 68,
+  "zmax_px": 9.51
+ },
+ "veg_5": {
+  "group": "veg",
+  "h": 39,
+  "ox": 34.0,
+  "oy": 20.72,
+  "ppu": 45.255,
+  "stage": 5,
+  "w": 68,
+  "zmax_px": 6.16
  }
 }

@@ -6,7 +6,9 @@
 // `grain`/`veg` 를 골라서 **벼밭이 채소로 그려질 수 있었다**(T79 §0-ⓑ 실측).
 //
 // 계약 다섯:
-//   ① 32장이 있다 — 8군 × 4단계 · 전부 **64×64** · 알파가 살아 있다.
+//   ① 8군 × **STAGES** 장이 있다 — 알파가 살아 있고 앵커와 크기가 맞는다.
+//      ★[T120] 단계 수를 여기 적지 않는다 — `fields_render.py STAGES` 를 **읽는다**.
+//        4 를 손으로 적어 두었더니 T120 이 6 으로 늘리는 날 이 파일이 거짓말을 했다(사본 금지).
 //   ② 8군이 **서버 정본과 1:1** — 굽는 표(`fields_render.py GROUPS`)의 group 집합이
 //      `server/crops.js` 의 group 집합과 정확히 같다. 작물 분류가 늘면 여기가 먼저 빨개진다.
 //   ③ 클라가 **group 으로 고른다** — `cropSprite` 가 좌표를 안 받고, 좌표 해시가 0곳이며,
@@ -14,7 +16,9 @@
 //      (작물표 사본 0 · 족보 79).
 //   ④ 단계 0(맨 흙)은 군마다 **다르다** — 이랑 수가 다르다(줄 간격이 작물마다 다르니까).
 //      자명 통과 방지: 8장이 다 같으면 "군을 고른다"는 말이 그림에선 거짓이 된다.
-//   ⑤ 단계가 **자란다** — 한 군 안에서 0→3 으로 갈수록 불투명 화소가 늘어난다(빈 흙 → 무성).
+//   ⑤ 한 군의 **자라는 넷**(0..3)이 네 그림이다.
+//   ⑥ [T120] **멈춘 둘**(4 쉬는 밭 · 5 그루터기)이 자라는 넷과도, 서로도 다르다 —
+//      이 카드의 뜻이 그림에서 지켜지는 자리다(겨울 밭이 자람으로 읽히면 그게 버그였다).
 //
 // ★검사기는 정본을 스스로 찾는다: 군 목록은 `crops.js` 에서, 굽는 표는 `fields_render.py` 에서,
 //   배선은 클라 소스에서 **직접 읽는다**. 어느 표도 여기 옮겨 적지 않았다.
@@ -56,6 +60,13 @@ if (py) {
     for (const m of blk[1].matchAll(/^\s*\('([a-z]+)',\s*'([^']+)'/gm)) { SLUGS.push(m[1]); GROUPS.push(m[2]); }
   }
 }
+// ★[T120] 단계 수도 **굽는 표가 정본**이다 — 여기 상수로 적지 않는다.
+let STAGES = 0;
+{
+  const m = py && py.match(/^STAGES\s*=\s*(\d+)/m);
+  STAGES = m ? +m[1] : 0;
+  ok(STAGES >= 4, `굽는 표에서 단계 수를 읽었다 — fields_render.py STAGES = ${STAGES}`);
+}
 let C = null; try { C = require(path.join(ROOT, 'server', 'crops.js')); } catch (e) {}
 ok(!!C, 'server/crops.js 를 읽었다(분류 정본)');
 if (C) {
@@ -71,13 +82,13 @@ if (C) {
 // ★★[T101] 계약이 바뀌었다 — 종전은 `64×64 정사각`이었다. 그건 **아이콘 패스** 산물의 모양이고,
 //   64×32 셀 다이아와 애초에 안 맞았다(T97 §0-ⓒ). 이제 세계 패스라 크기가 장마다 다르고
 //   자리는 앵커 JSON 이 말한다. ⇒ 새 계약: **밭 바닥이 정확히 셀 다이아**이고 **이웃과 붙는다**.
-console.log('\n[① 8군 × 4단계 = 32장 · 앵커 JSON · 바닥 = 셀 다이아 64px]');
+console.log(`\n[① 8군 × ${STAGES}단계 = ${SLUGS.length * STAGES}장 · 앵커 JSON · 바닥 = 셀 다이아 64px]`);
 const ANCH_P = path.join(DIR, 'crops_anchors.json');
 ok(fs.existsSync(ANCH_P), 'crops_anchors.json 이 배치돼 있다');
 const AN = fs.existsSync(ANCH_P) ? JSON.parse(fs.readFileSync(ANCH_P, 'utf8')) : {};
 const meta = {};
 let bad = 0;
-for (const s of SLUGS) for (let st = 0; st < 4; st++) {
+for (const s of SLUGS) for (let st = 0; st < STAGES; st++) {
   const k = `${s}_${st}`, p = path.join(DIR, k + '.png');
   if (!fs.existsSync(p)) { ok(false, `${k}.png 없음`); bad++; continue; }
   const m = png(p); meta[k] = m;
@@ -86,11 +97,11 @@ for (const s of SLUGS) for (let st = 0; st < 4; st++) {
   if (m.w !== a.w || m.h !== a.h) { ok(false, `${k}.png ${m.w}×${m.h} ≠ 앵커 ${a.w}×${a.h}`); bad++; }
   else if (!(m.clear > 0 && m.solid > 0)) { ok(false, `${k}.png 알파가 죽었다`); bad++; }
 }
-ok(bad === 0, `32장 전수 — 앵커 ↔ PNG 크기 일치 · 알파 살아 있음 (어긋남 ${bad})`);
+ok(bad === 0, `${SLUGS.length * STAGES}장 전수 — 앵커 ↔ PNG 크기 일치 · 알파 살아 있음 (어긋남 ${bad})`);
 {
   const PPU = +(64 / Math.SQRT2).toFixed(3);
   const off = Object.keys(AN).filter((k) => Math.abs(AN[k].ppu - PPU) > 0.01);
-  ok(Object.keys(AN).length === 32 && off.length === 0,
+  ok(Object.keys(AN).length === SLUGS.length * STAGES && off.length === 0,
      `앵커 ${Object.keys(AN).length}키 · ppu 전수 = ${PPU}(게임 해상도 — 가구와 같은 규격)` +
      (off.length ? ` 어긋남 ${JSON.stringify(off.slice(0, 4))}` : ''));
   // ★바닥이 셀 다이아인가 — 가장 넓은 불투명 행이 **정확히 64px** 이어야 한다(1셀 = 64px).
@@ -98,7 +109,7 @@ ok(bad === 0, `32장 전수 — 앵커 ↔ PNG 크기 일치 · 알파 살아 �
   // ★문턱은 **절반 피복(α≥128)** 이다 — 다이아의 뾰족한 좌우 끝은 화소를 반만 덮으므로
   //   "거의 불투명(α>200)" 으로 재면 `bean_2`·`spice_3` 이 63 으로 나온다(실측 · 안티에일리어싱).
   //   모양의 폭을 재는 표준 정의가 절반 피복이고, 후처리 크롭도 같은 사상이다
-  //   (`nature-postprocess.py ALPHA_MIN`). α≥128 로 재면 32장 전수 정확히 64 다.
+  //   (`nature-postprocess.py ALPHA_MIN`). α≥128 로 재면 전수 정확히 64 다.
   const wide = [];
   for (const k of Object.keys(meta)) {
     const m = meta[k]; let best = 0;
@@ -115,7 +126,7 @@ ok(bad === 0, `32장 전수 — 앵커 ↔ PNG 크기 일치 · 알파 살아 �
      `단계 0 여덟 장의 가장 넓은 행 = 64px(셀 다이아 폭) ` +
      (off0.length ? `— 어긋남 ${JSON.stringify(off0)}` : `(전수 ${s0[0] ? s0[0][1] : '-'})`));
   const under = wide.filter(([, w]) => w < 64);
-  ok(under.length === 0, `32장 전수 바닥이 셀을 덮는다(가장 넓은 행 ≥ 64px · 미달 ${under.length}` +
+  ok(under.length === 0, `${SLUGS.length * STAGES}장 전수 바닥이 셀을 덮는다(가장 넓은 행 ≥ 64px · 미달 ${under.length}` +
      `${under.length ? ': ' + JSON.stringify(under) : ''})`);
 }
 {
@@ -222,8 +233,8 @@ const sigOf = (m) => { let h = 0; for (let i = 0; i < m.data.length; i += 4) h =
   console.log('       심기 전 밭이 무엇이 심길지 말해 주면 그게 거짓말이다. 여기선 실패로 안 센다.');
 }
 
-// ── ⑤ 한 군의 네 단계가 네 그림이다 ────────────────────────────
-console.log('\n[⑤ 한 군의 네 단계가 서로 다른 그림이다]');
+// ── ⑤ 한 군의 **자라는 넷**이 네 그림이다 ──────────────────────
+console.log('\n[⑤ 한 군의 자라는 네 단계(0..3)가 서로 다른 그림이다]');
 {
   const bad2 = [];
   for (const s of SLUGS) {
@@ -237,6 +248,65 @@ console.log('\n[⑤ 한 군의 네 단계가 서로 다른 그림이다]');
   //   자란 게 아니라 액자가 커진 것이다. 그래서 숫자는 기록만 한다(T76 §IoU 와 같은 판단).
   const line = SLUGS.map((s) => `${s} ${[0, 1, 2, 3].map((st) => (meta[`${s}_${st}`] || {}).solid || 0).join('/')}`);
   console.log('     불투명 화소(0/1/2/3) — 기록만: ' + line.join(' · '));
+}
+
+// ── ⑥ [T120] 멈춘 둘 — 자라는 넷과도, 서로도 다르다 ────────────
+// ★★이 카드의 뜻이 그림에서 지켜지는 자리다. 여태 겨울 휴면 밭도 벤 다년생도 **"2 자람"으로
+//   그려졌다**(T91 회부 4 · T99 회부 4) — 셋이 한 얼굴이면 화면은 거짓말을 한다.
+//   ⇒ 4·5 는 0..3 **어느 것과도** 같으면 안 되고, 서로도 달라야 한다.
+if (STAGES >= 6) {
+  console.log('\n[⑥ 멈춘 둘(4 쉬는 밭 · 5 그루터기)이 자라는 넷과도 서로도 다르다]');
+  const dupGrow = [], dupPair = [];
+  for (const s of SLUGS) {
+    const g = [0, 1, 2, 3].map((st) => meta[`${s}_${st}`] && sigOf(meta[`${s}_${st}`]));
+    for (const st of [4, 5]) {
+      const v = meta[`${s}_${st}`] && sigOf(meta[`${s}_${st}`]);
+      if (v == null) { dupGrow.push(`${s}_${st}(없음)`); continue; }
+      const hit = g.indexOf(v);
+      if (hit >= 0) dupGrow.push(`${s}_${st}=${s}_${hit}`);
+    }
+    const a = meta[`${s}_4`] && sigOf(meta[`${s}_4`]), b = meta[`${s}_5`] && sigOf(meta[`${s}_5`]);
+    if (a != null && a === b) dupPair.push(s);
+  }
+  ok(dupGrow.length === 0, `멈춘 둘이 자라는 넷 중 어느 것과도 같지 않다 ${dupGrow.length ? '— 겹침: ' + dupGrow.join(' · ') : ''}`);
+  ok(dupPair.length === 0, `쉬는 밭 ≠ 그루터기 ${dupPair.length ? '— 같은 군: ' + dupPair.join(' · ') : ''}`);
+  // ★자명 통과 금지 — "다르다"는 해시로도 나온다. **눈이 갈라 보는 축**을 수로 못 박는다.
+  //   ★★[T120 2패스 · 재는 축을 한 번 틀렸다] 1패스의 축은 "5 가 4 보다 푸르다"였다.
+  //     재질만 보면 맞다(밑동 `stem` 0.52/0.55/0.26 이 볏짚 `straw` 0.74/0.62/0.32 보다 푸르다).
+  //     그런데 타일 **평균**은 재질이 아니라 **덮은 넓이**가 정한다 — 4 를 강화해 볏짚을 늘리자
+  //     4 의 초록 기가 5 를 넘어섰다(5.9 vs 3.1). 판정은 빨개졌는데 **그림은 더 좋아졌다.**
+  //     ⇒ 문턱을 내려 통과시키지 않았다. **틀린 축을 버렸다.** 실제로 눈이 쓰는 축은 둘이다:
+  //       ⓐ 4 는 마른 것이 덮여 **노랗다**(맨 흙보다도, 그루터기보다도)
+  //       ⓑ 5 는 **자른 면**이 있어 밝은 화소가 는다(맨 흙 0.09% → 2.2~6.5%)
+  const cast = (k, f) => {
+    const m = meta[k]; if (!m) return null;
+    let v = 0, n = 0;
+    for (let i = 0; i < m.data.length; i += 4) {
+      if (m.data[i + 3] < 128) continue;
+      v += f(m.data[i], m.data[i + 1], m.data[i + 2]); n++;
+    }
+    return n ? v / n : null;
+  };
+  const YEL = (k) => cast(k, (r, g, b2) => (r + g) / 2 - b2);
+  const GRN = (k) => cast(k, (r, g, b2) => g - (r + b2) / 2);
+  const HI = (k) => cast(k, (r, g, b2) => (0.2126 * r + 0.7152 * g + 0.0722 * b2 > 150 ? 100 : 0));
+  {
+    const dry = [], notdry = [], cut = [], rows3 = [];
+    for (const s of SLUGS) {
+      const g2 = GRN(`${s}_2`), g4 = GRN(`${s}_4`);
+      const y0 = YEL(`${s}_0`), y4 = YEL(`${s}_4`), y5 = YEL(`${s}_5`);
+      const h0 = HI(`${s}_0`), h5 = HI(`${s}_5`);
+      if ([g2, g4, y0, y4, y5, h0, h5].some((v) => v == null)) continue;
+      if (!(g4 < g2 - 2)) dry.push(`${s}(자람 ${g2.toFixed(1)} vs 쉼 ${g4.toFixed(1)})`);
+      if (!(y4 - y0 >= 1.5 && y4 - y5 >= 1.5)) notdry.push(`${s}(맨흙Δ${(y4 - y0).toFixed(1)} 그루터기Δ${(y4 - y5).toFixed(1)})`);
+      if (!(h5 - h0 >= 1.0)) cut.push(`${s}(${h0.toFixed(2)}→${h5.toFixed(2)})`);
+      rows3.push(`${s} 초록 2:${g2.toFixed(1)}/4:${g4.toFixed(1)} · 노랑 0:${y0.toFixed(1)}/4:${y4.toFixed(1)}/5:${y5.toFixed(1)} · 밝은점 0:${h0.toFixed(2)}/5:${h5.toFixed(2)}`);
+    }
+    ok(dry.length === 0, `여덟 군 전수 ⓐ **쉬는 밭이 자람보다 덜 푸르다**(멈췄다) ${dry.length ? '— 미달: ' + dry.join(' · ') : ''}`);
+    ok(notdry.length === 0, `여덟 군 전수 ⓐ **쉬는 밭이 맨 흙보다도 그루터기보다도 노랗다**(마른 것이 덮였다 · Δ≥1.5) ${notdry.length ? '— 미달: ' + notdry.join(' · ') : ''}`);
+    ok(cut.length === 0, `여덟 군 전수 ⓑ **그루터기에 자른 면이 보인다**(밝은 화소 ≥ 맨 흙 +1.0%p) ${cut.length ? '— 미달: ' + cut.join(' · ') : ''}`);
+    console.log('     ' + rows3.join('\n     '));
+  }
 }
 
 if (SELFTEST) {

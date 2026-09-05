@@ -106,8 +106,12 @@ EXRDIR = os.path.join(ROOT, "assets-src", "char_raw")   # ★[T107] 후처리 �
 os.makedirs(OUTDIR, exist_ok=True)
 os.makedirs(SHEETDIR, exist_ok=True)
 
-sys.path.insert(0, HERE)      # ★[T96] 같은 폴더의 `ink_post` 를 부르려고(render_common 무접촉)
+sys.path.insert(0, HERE)      # ★[T96] 같은 폴더의 `ink_post` 를 부르려고
 import ink_post               # noqa: E402  — 후처리 둘(먹선·셀). 씬은 안 건드린다.
+# ★★[T120] `render_common` 에서 **옷 재질 표만** 읽는다 — 씬·헬퍼는 여전히 이 파일 것이다.
+#   그 모듈은 최상위에서 상수만 세운다(씬을 짓지 않는다) ⇒ 부르는 것만으로 굽는 그림이 안 바뀐다.
+#   ⓘ 이 파일을 `render_common` 위로 옮기는 것(씬·헬퍼까지)은 여전히 **다른 카드**다.
+import render_common as rc    # noqa: E402
 
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 ONLY_META = "--only-meta" in ARGS
@@ -296,15 +300,12 @@ M = {
 M['carrw'] = mat("carrw", (0.58, 0.44, 0.26), 0.80, 0.06)    # 지게 나무
 M['carrf'] = mat("carrf", (0.62, 0.55, 0.30), 0.90, 0.04)    # 밀삐(풀 끈)
 
-CLOTH_MATS = {                     # id → (기본색, rough, spec) · 순서 = server/clothes.js 표 순서(계약)
-    'fur':     ((0.300, 0.210, 0.145), 0.97, 0.03),
-    'ramie':   ((0.885, 0.875, 0.835), 0.88, 0.08),
-    'leather': ((0.400, 0.270, 0.160), 0.75, 0.18),
-    'hide':    ((0.600, 0.440, 0.280), 0.85, 0.10),
-    'fiber':   ((0.720, 0.665, 0.315), 0.95, 0.04),
-    'hemp':    ((0.700, 0.655, 0.545), 0.90, 0.06),
-}
-TRIM_K, PLACKET_K = 0.85, 0.56
+# ★★[T120 2026-09-05] **표는 `render_common` 하나다** — 여기 있던 여섯 줄과 상수 둘을 옮겼다.
+#   T77·T87·T95 회부가 가리키던 자리다: 같은 옷이 이 파일과 `props_render.py` 에 **따로** 적혀
+#   있었고, `test-icons ⑨` 는 둘이 갈렸는지 **검사만** 했다. 검사는 갈린 뒤에 말한다.
+#   ⓘ 값은 한 자도 안 바꿨다(§0-ⓐ 실측 차 0) — 자리만 옮겼다. 그 증거는 **굽는 바이트 무변**이다.
+CLOTH_MATS = rc.CLOTH_MATS
+TRIM_K, PLACKET_K = rc.CLOTH_TRIM_K, rc.CLOTH_PLACKET_K
 CLOTH_MATSET = {}                  # id → (본천, 허리끈, 앞섶)
 for _k, (_c, _r, _sp) in CLOTH_MATS.items():
     if _k == 'hemp':
@@ -556,7 +557,7 @@ for _sg, _sf in ((+1, 'L'), (-1, 'R')):
 # ★[T81] 갖옷 털 두께 — 반지름에 더하는 값(m). 청동기 갖옷은 무두질 전 털가죽을 그대로 두른 것이라
 #   짜서 몸에 붙는 삼베·모시와 부피가 다르다. 3cm 는 **화면에서 읽히는 최소선**으로 골랐다:
 #   PPU0 45.255px/m → 반지름 +0.03m = 한쪽 1.36px · 폭으로 2.7px = 옷 폭 21px 의 13%(§0-ⓐ 실측으로 확인).
-FUR_PAD = 0.03
+FUR_PAD = rc.FUR_PAD                 # ★[T120] 값의 자리는 `render_common` — 근거 주석은 위에 남는다
 TUNIC_R = [(0.880, 0, 0, 0.134, 0.148), (1.040, 0, 0, 0.126, 0.140),
            (1.160, 0, 0, 0.136, 0.158), (1.300, 0, 0, 0.148, 0.172 * SHLD_K),
            (1.392, 0, 0, 0.144, 0.170 * SHLD_K), (1.424, 0, 0, 0.098, 0.108)]

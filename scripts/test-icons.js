@@ -267,55 +267,84 @@ console.log('\n[⑦ 작물 아이콘 — 수확물 34 · 씨앗 34 (models_crops
   }
 }
 
-// ── ⑨ [T95] 옷 여섯 — 색이 **시트와 같아야** 한다 ─────────────────
-console.log('\n[⑨ 옷 여섯 — 짐 창의 옷과 몸에 걸친 옷이 같은 물건인가]');
+// ── ⑨ [T95 → T120] 옷 여섯 — 값이 **한 곳에만** 있는가 ─────────────────
+//   ★★T95~T119 동안 이 절은 `char_render.CLOTH_MATS` 와 `props_render._CL` **두 표를 견줬다**.
+//     견주기는 갈린 뒤에야 말한다. T120 이 표를 `render_common` 하나로 올렸으므로 이제 잴 것이
+//     바뀐다: "두 값이 같은가"가 아니라 **"값이 두 번 적히지 않았는가"** 다.
+//     (같은 물건을 두 번 적을 수 없게 만드는 것이, 두 번 적힌 것을 잡는 것보다 낫다.)
+console.log('\n[⑨ 옷 여섯 — 재질 값이 한 곳에만 있는가]');
 {
+  const RC = path.join(ROOT, 'scripts', 'render_common.py');
   const CH = path.join(ROOT, 'scripts', 'char_render.py');
   const PR = path.join(ROOT, 'scripts', 'props_render.py');
-  const ch = fs.existsSync(CH) ? fs.readFileSync(CH, 'utf8') : null;
-  const pr = fs.existsSync(PR) ? fs.readFileSync(PR, 'utf8') : null;
-  ok(!!ch && !!pr, 'char_render.py · props_render.py 를 읽었다');
-  // 두 파일의 표를 **파싱해서 값으로** 견준다(눈으로 옮겨 적은 것을 믿지 않는다).
-  const grab = (src, name) => {
-    const m = src && src.match(new RegExp(name + '\\s*=\\s*\\{([\\s\\S]*?)\\n\\}', 'm'));
+  const rd = (q) => (fs.existsSync(q) ? fs.readFileSync(q, 'utf8') : null);
+  const rc = rd(RC), ch = rd(CH), pr = rd(PR);
+  ok(!!rc && !!ch && !!pr, 'render_common.py · char_render.py · props_render.py 를 읽었다');
+  // ★주석 줄은 걸러 낸다 — T95·T101 에서 **자기 설명 주석에 스스로 걸린** 적이 두 번 있다.
+  const code = (src) => (src || '').split('\n').filter((L) => !/^\s*#/.test(L)).join('\n');
+  const grab = (src) => {
+    const m = code(src).match(/CLOTH_MATS\s*=\s*\{([\s\S]*?)\n\}/m);
     const out = {};
     if (!m) return out;
-    for (const r of m[1].matchAll(/'([a-z]+)':\s*\(\(([^)]*)\)\s*,\s*([\d.]+)/g)) {
-      out[r[1]] = { c: r[2].split(',').map((v) => +v.trim()), r: +r[3] };
+    for (const r of m[1].matchAll(/'([a-z]+)':\s*\(\(([^)]*)\)\s*,\s*([\d.]+)\s*,\s*([\d.]+)/g)) {
+      out[r[1]] = { c: r[2].split(',').map((v) => +v.trim()), r: +r[3], s: +r[4] };
     }
     return out;
   };
-  const sheet = grab(ch, 'CLOTH_MATS'), icon = grab(pr, '_CL');
-  ok(Object.keys(sheet).length === 6, `시트 재질 6종 (실측 ${Object.keys(sheet).length})`);
-  ok(Object.keys(icon).length === 6, `아이콘 재질 6종 (실측 ${Object.keys(icon).length})`);
+  const tbl = grab(rc);
+  ok(Object.keys(tbl).length === 6, `정본 표가 여섯 재질을 갖는다 — render_common.CLOTH_MATS (실측 ${Object.keys(tbl).length})`);
+  ok(Object.values(tbl).every((v) => v.c.length === 3 && v.r > 0 && v.s > 0),
+     '여섯 다 (색3 · rough · spec) 세 값을 갖는다');
+
+  // ⑨-a ★값이 **한 곳에만** 있다 — 굽는 스크립트 전수에서 정의문을 센다.
   {
-    const bad = [];
-    for (const k of Object.keys(sheet)) {
-      const a = sheet[k], b = icon[k];
-      if (!b) { bad.push(`${k}(아이콘에 없음)`); continue; }
-      const dc = a.c.some((v, i) => Math.abs(v - b.c[i]) > 1e-9);
-      if (dc || Math.abs(a.r - b.r) > 1e-9) bad.push(`${k}(시트 ${a.c}/${a.r} vs 아이콘 ${b.c}/${b.r})`);
+    const SC = path.join(ROOT, 'scripts');
+    const defs = fs.readdirSync(SC).filter((f) => f.endsWith('.py'))
+      .filter((f) => /CLOTH_MATS\s*=\s*\{/.test(code(rd(path.join(SC, f)))));
+    ok(defs.length === 1 && defs[0] === 'render_common.py',
+       `\`CLOTH_MATS = {\` 정의가 **한 곳**뿐이다 (실측 ${defs.length}곳: ${defs.join(' · ') || '없음'})`);
+  }
+  // ⑨-b ★두 소비자에 **값 리터럴이 없다** — 되돌아온 전사를 잡는 그물이다.
+  //   지문은 ramie 색(0.885,0.875,0.835) — 이 표에만 있는 수다.
+  {
+    const finger = /0\.885\s*,\s*0\.875\s*,\s*0\.835/;
+    const back = [];
+    if (finger.test(code(ch))) back.push('char_render.py');
+    if (finger.test(code(pr))) back.push('props_render.py');
+    ok(back.length === 0, `소비자 두 파일에 값 사본이 없다 ${back.length ? '— 되살아났다: ' + back.join(' · ') : ''}`);
+  }
+  // ⑨-c ★두 소비자가 실제로 **그 표를 읽는다**(자명 통과 금지 — 안 읽으면 위 둘은 공짜다).
+  ok(/rc\.CLOTH_MATS/.test(code(ch)), 'char_render.py 가 `rc.CLOTH_MATS` 를 읽는다');
+  ok(/rc\.CLOTH_MATS/.test(code(pr)), 'props_render.py 가 `rc.CLOTH_MATS` 를 읽는다');
+  // ⑨-d 상수 둘(허리끈 · 앞섶)과 갖옷 털 두께도 같은 규약 — 정의 1곳 · 소비자는 읽기만.
+  {
+    const SC = path.join(ROOT, 'scripts');
+    for (const [nm, re] of [['CLOTH_TRIM_K', /CLOTH_TRIM_K\s*=\s*[\d.]/],
+                            ['CLOTH_PLACKET_K', /CLOTH_PLACKET_K\s*=\s*[\d.]/],
+                            ['FUR_PAD', /^FUR_PAD\s*=\s*[\d.]/m]]) {
+      const d = fs.readdirSync(SC).filter((f) => f.endsWith('.py'))
+        .filter((f) => re.test(code(rd(path.join(SC, f)))));
+      ok(d.length === 1 && d[0] === 'render_common.py',
+         `\`${nm}\` 정의도 한 곳뿐이다 (실측 ${d.length}곳: ${d.join(' · ') || '없음'})`);
     }
-    ok(bad.length === 0, `여섯 재질의 색·거칠기가 시트와 **같다** ${bad.length ? '— 갈린 것: ' + bad.join(' · ') : ''}`);
-    console.log('     ⚠재질이 두 파일에 있다(이중화) — 공용 모듈로 올리는 것은 회부다.');
-    console.log('       그때까지 이 절이 두 표를 **값으로** 견준다. 한쪽만 고치면 여기가 빨개진다.');
   }
-  // 상수 둘도 같아야 한다(허리끈 · 앞섶)
-  for (const [n, re] of [['TRIM_K', /TRIM_K,\s*PLACKET_K\s*=\s*([\d.]+),\s*([\d.]+)/],
-                         ['_TRIM_K', /_TRIM_K,\s*_PLACKET_K\s*=\s*([\d.]+),\s*([\d.]+)/]]) { void n; void re; }
+  // ⑨-e ★그물 자체 검사 — 사본이 **되살아나면 정말 잡히는가.** 안 잡히는 그물은 없는 그물이다.
   {
-    const a = ch.match(/TRIM_K,\s*PLACKET_K\s*=\s*([\d.]+),\s*([\d.]+)/);
-    const b = pr.match(/_TRIM_K,\s*_PLACKET_K\s*=\s*([\d.]+),\s*([\d.]+)/);
-    ok(!!a && !!b && a[1] === b[1] && a[2] === b[2],
-       `허리끈·앞섶 상수도 같다 (시트 ${a ? a[1] + '/' + a[2] : '?'} · 아이콘 ${b ? b[1] + '/' + b[2] : '?'})`);
+    const finger = /0\.885\s*,\s*0\.875\s*,\s*0\.835/;
+    const fake = "M['x'] = mat('x', (0.885, 0.875, 0.835), 0.88, 0.08)";
+    ok(finger.test(fake) === true, '⑨-e 지문이 되살아난 사본을 잡는다(모의 한 줄)');
+    ok(finger.test("# 옛 값 0.885, 0.875, 0.835 은 이제 render_common 에 있다") === true
+       && code("# 옛 값 0.885, 0.875, 0.835 …") === '', '⑨-e 주석 줄은 걸러진다(내 설명에 스스로 안 걸린다)');
   }
+  console.log('     ⓘ T120 이전엔 두 표를 값으로 견줬다 — 그 절은 이제 필요 없다(표가 하나다).');
+
   // 키가 서버 표와 같다
   let CL = null; try { CL = require(path.join(ROOT, 'server', 'clothes.js')); } catch (e) {}
   ok(!!CL, 'server/clothes.js 를 읽었다(옷 정본)');
   if (CL) {
     const srv = Object.keys(CL.CLOTHES).sort();
-    ok(JSON.stringify(srv) === JSON.stringify(Object.keys(icon).sort()),
-       `아이콘 여섯이 서버 옷 여섯과 같다 — ${srv.join(' ')}`);
+    ok(JSON.stringify(srv) === JSON.stringify(Object.keys(tbl).sort()),
+       `정본 표 여섯이 서버 옷 여섯과 같다 — ${srv.join(' ')}`);
     const miss = srv.filter((k) => !fs.existsSync(path.join(ICON_DIR, 'clothes_' + k + '.png')));
     ok(miss.length === 0, `clothes_<mat>.png 여섯 장이 있다 ${miss.length ? '— 없는 것: ' + miss.join(', ') : ''}`);
     // 배선 — 갈래가 아니라 재질로 내려간다

@@ -455,9 +455,23 @@ console.log('\n=== ⑦ 모캡 포즈표 [T96] ===');
        '★`T96_SINE=1` 되돌림 경로 — 옛 사인 함수가 지워지지 않았다');
     ok(/import ink_post/.test(src) && /T96_INK/.test(src) && /T96_CEL/.test(src),
        '★먹선·셀도 스위치로 되돌아간다 (`T96_INK=0` · `T96_CEL=0`)');
-    // ★주석에 이름이 나오는 건 접촉이 아니다 — **import 를 본다**(T97 세션8이 그 파일을 만지는 중).
-    ok(!/^\s*(import\s+render_common|from\s+render_common)/m.test(src),
-       '★`render_common.py` 무접촉 — import 0 (T97 세션8이 그 파일을 만지는 중)');
+    // ★★[T120 2026-09-05] **금칙이 좁아졌다 — "부르지 마라"에서 "씬은 가져오지 마라"로.**
+    //   T97 때 이 줄은 `import render_common` **자체**를 금했다. 이유는 그 파일이 그때
+    //   세션8 손에 있었다는 것이고, 지킨 것은 "char 가 남의 씬·헬퍼에 얽히지 않는다"였다.
+    //   T120 이 옷 재질 표를 `render_common` 하나로 올리면서(회부 T77·T87·T95) char 는 그
+    //   **표만** 읽는다 — 씬·카메라·헬퍼는 여전히 이 파일 것이다.
+    //   ⇒ import 를 금하면 사본을 강제하게 된다. 금칙을 **무엇을 쓰는가**로 옮긴다.
+    {
+      const uses = [...src.matchAll(/\brc\.([A-Za-z_][A-Za-z_0-9]*)/g)].map((m) => m[1]);
+      const ALLOW = new Set(['CLOTH_MATS', 'CLOTH_TRIM_K', 'CLOTH_PLACKET_K', 'FUR_PAD']);
+      const bad = [...new Set(uses)].filter((u) => !ALLOW.has(u));
+      ok(/^\s*import\s+render_common\s+as\s+rc/m.test(src),
+         '★`render_common` 을 **표를 읽으려고만** 부른다 (`import render_common as rc`)');
+      ok(bad.length === 0,
+         `★가져오는 것이 **옷 재질 표뿐**이다 — 씬·헬퍼 0 ${bad.length ? '— 새어 든 것: ' + bad.join(' · ') : `(쓰는 이름: ${[...new Set(uses)].sort().join(' ')})`}`);
+      ok(/^scene = bpy\.context\.scene/m.test(src) || /scene = bpy\.context\.scene/.test(src),
+         '★씬은 여전히 이 파일이 세운다(`render_common.build_scene` 을 안 부른다)');
+    }
   }
 }
 
