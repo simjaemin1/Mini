@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @pixel    ← ★[T110] **프레임을 화소로 잰다**(쓰러짐 방향 화살 · `page.screenshot` → `PNG.sync.read`).
+//              렌더 층(`3x-r*`·`34-m-renderloop`·`37-r1-*`)을 만지는 카드는 이 표를 전수로 돌려라 —
+//              `bash scripts/run-regress.sh --list pixel`(공통 §2 ⑦).
 // === scripts/e2e-downed.js — 쓰러지고, 업히고, 죽고, 짐 찾으러 간다 (실클라 둘) ===
 //
 // ★★[재민 확정 2026-09-02 · T43 · §12] `test-downed` 는 **규약이 맞는가**를 잰다.
@@ -19,6 +22,7 @@
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
+const { PNG } = require('pngjs');   // ★[T110] 화살을 화소로 잰다
 
 const ROOT = path.join(__dirname, '..');
 const SHOTS = '/tmp/e2e-downed-shots';
@@ -61,6 +65,9 @@ async function waitHttp(url, tries = 600) {
     //   그 죽음의 깨어남을 하네스가 "구조 성공"으로 읽었다(족보 ㊻ 자명 통과).
     //   창(60초)·붙들기(20초)는 사슬을 바꾸지 않는다 — 규약은 `test-downed` 가 잰다.
     DOWN_RESCUE_WINDOW_MS: '60000', DOWN_RESCUE_HOLD_MS: '20000', DOWN_WAKE_GAMEMIN: '3',
+    // ★[T110] 외침 주기만 줄인다(기본 30초) — 반경 **안/밖** 대조를 재려면 두 번째 외침이 필요하다.
+    //   반경 자체는 안 건드린다: 창 60초 × 이속 64 × HEAR_FRAC 0.25 = **960px** 이 이 판의 반경이다.
+    DOWN_SHOUT_EVERY_MS: '3000',
   });
   ok(await waitHttp(`http://localhost:${CPORT}/zones`), 'central 기동');
   ok(await waitHttp(`http://localhost:${ZPORT}/health`), 'zone 기동');
@@ -210,6 +217,124 @@ async function waitHttp(url, tries = 600) {
     ok(/걸음/.test(shout[0] || '') && !/px|NaN|undefined/.test(shout[0] || ''),
       '★★ⓓ 그 외침은 **방위와 걸음**으로 말한다(§60 · 화면에 px 를 안 흘린다)', shout[0] || '-');
 
+    // ═══ ★★[T110 2026-09-05] 반경 안/밖 · `kind` · 방향 화살 ══════════════════
+    //   ★이 판의 반경은 **960px** 이다 — 창 60초(위 env) × 이속 64 × `HEAR_FRAC` 0.25.
+    //     제품 창 180초에서는 2,880px. 반경이 창에 매여 있다는 것이 이 카드의 요점이라
+    //     하네스가 반경을 **못 박지 않고** 창에서 따라 나오게 둔다(수를 두 곳에 적지 않는다).
+    const HEAR_R = 64 * 60 * 0.25;
+    const ap0 = await absOf(A);
+    const cries = (pg) => pg.evaluate(() => {
+      const M = window.__downedCries; if (!M) return [];
+      return [...M.values()].map((c) => ({ pid: c.pid, x: c.x, y: c.y, at: c.at, windowMs: c.windowMs }));
+    });
+    {
+      // ⓔ-1 **반경 밖은 못 듣는다** — 대조가 먼저다(안 했으면 안 움직인다)
+      await warp(Bp, ap0.x + Math.round(HEAR_R * 3), ap0.y);
+      await Bp.evaluate(() => { if (typeof window.__rainForce === 'function') window.__rainForce({ precip: 0 });
+        if (window.__terrain19) window.__terrain19.windOff = true; }).catch(() => {});
+      await clearNotices(Bp);
+      await Bp.evaluate(() => { if (window.__downedCries) window.__downedCries.clear(); });
+      await sleep(7000);                                   // 외침 주기 3초 × 2 회분
+      const outN = (await notices(Bp)).filter((t) => /쓰러졌다/.test(t));
+      const outC = await cries(Bp);
+      const bFar = await absOf(Bp);
+      pre(Math.hypot(bFar.x - ap0.x, bFar.y - ap0.y) > HEAR_R,
+        'B 가 실제로 반경 밖으로 갔다(안 갔으면 아래가 자명 통과다)',
+        `${Math.round(Math.hypot(bFar.x - ap0.x, bFar.y - ap0.y))}px > ${HEAR_R}px`);
+      ok(outN.length === 0 && outC.length === 0,
+        '★★ⓔ **반경 밖에서는 아무것도 안 온다** — 소리에는 끝이 있다(알림 0 · 화살 0)',
+        `알림 ${outN.length} · 화살 ${outC.length}`);
+      ok((await Bp.evaluate(() => window.__downedArrowN || 0)) === 0,
+        '★ⓔ 그때 화면에도 화살이 없다', `${await Bp.evaluate(() => window.__downedArrowN || 0)}개`);
+      // ★그리고 **그때의 화면**을 찍어 둔다 — 아래 화소 판정의 대조군이다(문턱을 손으로 안 고른다).
+      await Bp.locator('canvas').first().screenshot({ path: `${SHOTS}/downed-arrow-out.png` });
+    }
+    {
+      // ⓔ-2 **반경 안에서는 알림 + 자리 + 화살** — 화살이 서려면 100px 은 떨어져 있어야 한다
+      await warp(Bp, ap0.x + Math.round(HEAR_R * 0.6), ap0.y);
+      await clearNotices(Bp);
+      await sleep(7000);
+      const inN = (await notices(Bp)).filter((t) => /쓰러졌다/.test(t));
+      const inC = await cries(Bp);
+      const bNear = await absOf(Bp);
+      pre(Math.hypot(bNear.x - ap0.x, bNear.y - ap0.y) < HEAR_R,
+        'B 가 반경 안으로 돌아왔다', `${Math.round(Math.hypot(bNear.x - ap0.x, bNear.y - ap0.y))}px < ${HEAR_R}px`);
+      ok(inN.length > 0, '★★ⓔ 반경 안에서는 **다시 들린다**(위 0 이 거리 때문이지 소리가 죽은 게 아니다)',
+        JSON.stringify(inN.slice(-1)));
+      ok(inC.length === 1 && Number.isFinite(inC[0].x) && Number.isFinite(inC[0].y),
+        '★★ⓔ 알림이 **자리를 나른다** — `kind:"downed"` 한 종류만 이 칸을 채운다(글자는 글자만)',
+        inC.length ? `(${inC[0].x},${inC[0].y}) 창 ${inC[0].windowMs}ms` : '없음');
+      ok(!/\d{4,}px|NaN|undefined/.test(inN.join(' ')),
+        '★ⓔ 글자에는 여전히 px 가 안 흐른다(§60 · `__notices` 는 글자만 담는다)', inN.slice(-1)[0] || '-');
+      // ★[T104 §2 ⑦ · T98 §4-c] 화소를 재기 전에 **하늘과 바람을 끈다** — 잡음을 걷는 것이지
+      //   재는 대상을 바꾸는 게 아니다(비/눈은 프레임마다 화소를 흔든다).
+      await Bp.evaluate(() => { if (typeof window.__rainForce === 'function') window.__rainForce({ precip: 0 });
+        if (window.__terrain19) window.__terrain19.windOff = true; }).catch(() => {});
+      await sleep(600);
+      // ★화소 — 화살이 실제로 그려졌나. 색(#e06c75)은 이 화면에서 화살만 쓴다.
+      const shotP = `${SHOTS}/downed-arrow.png`;
+      // ★**캔버스 요소만** 찍는다 — 페이지 전체를 찍으면 캔버스의 페이지 오프셋만큼 좌표가 어긋나
+      //   화살 자리를 엉뚱한 곳에서 세게 된다(1차 판이 그렇게 0화소를 보고했다).
+      await Bp.locator('canvas').first().screenshot({ path: shotP });
+      // ★문턱을 손으로 고르지 않는다 — **화살 없는 같은 화면**과 견준다(대조군).
+      //   화살은 작은 다이아 하나 + 라벨 획이라 절대 화소 수가 적다. 중요한 건 **0 이 아니라 늘었다**는 것.
+      const countPx = (f) => {
+        const png = PNG.sync.read(fs.readFileSync(f));
+        let n = 0;
+        for (let i = 0; i < png.data.length; i += 4) {
+          const r = png.data[i], g = png.data[i + 1], b = png.data[i + 2];
+          if (Math.abs(r - 0xe0) < 24 && Math.abs(g - 0x6c) < 24 && Math.abs(b - 0x75) < 24) n++;
+        }
+        return n;
+      };
+      // ★그리고 **어디를** 볼지는 화면이 말해 준다(`__lastArrowAt`) — 전 화면을 훑으면 HP 막대 같은
+      //   비슷한 붉은색에 묻힌다(1차 판이 그랬다: 반경 안 46 vs 밖 46 — 둘 다 화살이 아닌 화소였다).
+      const at = await Bp.evaluate(() => window.__lastArrowAt || null);
+      pre(!!at, '화면이 화살을 그린 자리를 답한다', at ? `(${Math.round(at.x)},${Math.round(at.y)}) 캔버스 ${at.w}×${at.h}` : 'null');
+      const boxPx = (f) => {
+        if (!at) return 0;
+        const png = PNG.sync.read(fs.readFileSync(f));
+        const sx = png.width / at.w, sy = png.height / at.h;   // 캔버스 좌표 → 화면 화소(배율 실측)
+        const cx = Math.round(at.x * sx), cy = Math.round(at.y * sy), Rb = 40;
+        let n = 0;
+        for (let y = Math.max(0, cy - Rb); y < Math.min(png.height, cy + Rb); y++)
+          for (let x = Math.max(0, cx - Rb); x < Math.min(png.width, cx + Rb); x++) {
+            const i = (y * png.width + x) * 4;
+            const r = png.data[i], g = png.data[i + 1], b = png.data[i + 2];
+            if (Math.abs(r - 0xe0) < 24 && Math.abs(g - 0x6c) < 24 && Math.abs(b - 0x75) < 24) n++;
+          }
+        return n;
+      };
+      // ★★그리고 **살아 있는 캔버스**를 직접 읽는다 — 스크린샷은 합성·배율·오프셋이 한 겹 더 낀다.
+      //   `getImageData` 는 그 겹을 다 건너뛰고 "지금 이 캔버스의 그 자리"를 답한다.
+      const liveBox = () => Bp.evaluate(() => {
+        const at = window.__lastArrowAt; const cv = document.querySelector('canvas');
+        if (!at || !cv) return -1;
+        const c = cv.getContext('2d');
+        const sx = cv.width / at.w, sy = cv.height / at.h;
+        const cx = Math.round(at.x * sx), cy = Math.round(at.y * sy), R = 40;
+        const x0 = Math.max(0, cx - R), y0 = Math.max(0, cy - R);
+        const w = Math.min(cv.width, cx + R) - x0, h = Math.min(cv.height, cy + R) - y0;
+        if (w <= 0 || h <= 0) return -1;
+        const d = c.getImageData(x0, y0, w, h).data;
+        let n = 0;
+        for (let i = 0; i < d.length; i += 4)
+          if (Math.abs(d[i] - 0xe0) < 24 && Math.abs(d[i + 1] - 0x6c) < 24 && Math.abs(d[i + 2] - 0x75) < 24) n++;
+        return n;
+      });
+      const livePx = await liveBox();
+      const pxIn = boxPx(shotP), pxOut = boxPx(`${SHOTS}/downed-arrow-out.png`);
+      console.log(`    · [참고] 살아 있는 캔버스의 화살 자리 — ${livePx}화소 · 스크린샷 ${pxIn} vs 대조 ${pxOut}`);
+      ok((await Bp.evaluate(() => window.__downedArrowN || 0)) >= 1,
+        '★★ⓔ 렌더 루프가 화살을 **그렸다고 답한다**(안개 위 UI 층)',
+        `${await Bp.evaluate(() => window.__downedArrowN || 0)}개`);
+      ok(livePx > 20, '★★ⓔ 그리고 **그 자리 화소가 실제로 화살 색이다** — 계약이 화면까지 왔다',
+        `화살 자리 80×80 — 살아 있는 캔버스 ${livePx}화소`);
+      // ★전 화면 수도 같이 남긴다(대조가 왜 필요한지 다음 사람이 보게)
+      console.log(`    · [참고] 전 화면 같은 색 화소 — 안 ${countPx(shotP)} · 밖 ${countPx(`${SHOTS}/downed-arrow-out.png`)}`);
+    }
+    // 원래 자리로 — 아래 구조 절은 붙들기 거리(120px) 안이어야 한다
+    await warp(Bp, ap0.x + 60, ap0.y);
     const ap = await absOf(A), bp = await absOf(Bp);
     pre(Math.hypot(bp.x - ap.x, bp.y - ap.y) < 120, 'B 가 구조 거리 안에 그대로 있다',
       `${Math.round(Math.hypot(bp.x - ap.x, bp.y - ap.y))}px`);
@@ -267,6 +392,16 @@ async function waitHttp(url, tries = 600) {
     await sleep(20000);
     ok(!(await downPanelOpen(A)),
       '★★ⓓ **먹이고 일으켰더니 그대로 서 있다** — 극단을 벗어난 몸은 다시 안 눕는다', `hp ${await hpOf(A)}`);
+    // ★★[T110] 일어났으면 **화살도 그친다** — 지우는 자리는 `player_down_state{isDown:false}` 하나다
+    //   (새 메시지 0 · 새 타이머 0 — 화살의 수명이 곧 구조창이다).
+    await sleep(1500);
+    {
+      const left = await Bp.evaluate(() => (window.__downedCries ? window.__downedCries.size : 0));
+      const drawn = await Bp.evaluate(() => window.__downedArrowN || 0);
+      ok(left === 0 && drawn === 0,
+        '★★ⓔ 구조되어 일어나면 **화살이 사라진다**(창이 닫히거나 구조되면 — 지우는 자리 하나)',
+        `자리 ${left}개 · 그린 화살 ${drawn}개`);
+    }
     await snap('downed-02-rescued');
   }
 

@@ -121,6 +121,8 @@
   let ITEM_LABEL_SRV = null;
   // ★econ 자원 종류 이름(장마당 시세표 열) — `welcome.categoryLabels`. 정본 `server/itemlabel.js`.
   let CATEGORY_KO_SRV = null;
+  // ★[T90] 자연물 종류 → 동사 이름표(서버 정본 · `welcome.resourceVerbs`). 폴백 표 없음 — 사본 0.
+  let resourceVerbs = null;
   // ★[T66 ⓪] 직업·계절 이름 정본(`welcome.uiLabels`). 클라 사본 둘(JOB_KR·SEASON_KO)은 지웠다.
   let UI_LABELS_SRV = null;
   function seasonKo(k) { return (UI_LABELS_SRV && UI_LABELS_SRV.seasons && UI_LABELS_SRV.seasons[k]) || k; }

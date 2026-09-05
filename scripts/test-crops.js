@@ -294,8 +294,10 @@ function dayOfSeason(season) {
     ok(s >= 1 && s <= 5, '★⑧ⓐ 물 공급은 카탈로그와 **같은 눈금(1~5)** 이다', String(s));
     const p = mkPlayer('fd', {});
     const legacy = H._farmlandData(p);
-    ok(legacy.cropType === 'berry' && legacy.readyAt > 0 && !legacy.crop,
-      '★★⑧ⓑ 작물을 안 심으면 **종전 베리 농지 그대로**(기존 저장·NPC 무영향)', JSON.stringify(legacy).slice(0, 70));
+    ok(legacy.crop === null && legacy.cropType === undefined && legacy.readyAt === undefined
+       && legacy.emptiedDay != null && legacy.farmStage === 0,
+      '★★⑧ⓑ [T108 갱신] 작물을 안 심으면 **빈 밭**이다 — 종전 60초 베리밭이던 자리',
+      JSON.stringify(legacy).slice(0, 80));
     p._plantCrop = 'rice'; p._plantSeedFresh = 0.8;
     const cropland = H._farmlandData(p);
     ok(cropland.crop === 'rice' && cropland.plantedDay > 0 && cropland.seedFresh === 0.8 && cropland.supply >= 1,
@@ -465,7 +467,8 @@ function dayOfSeason(season) {
     ok(!/deleteBuilding|removeBuilding|building_removed/.test(hsec),
       '★★★⑧ⓕ 수확이 농지 건물을 **지우지 않는다**(회부 G — 밭은 남는다)',
       (hsec.match(/deleteBuilding|removeBuilding|building_removed/g) || ['없음']).join(' '));
-    ok(/best\.data = \{ cropType: null/.test(zsrc2), '★⑧ⓕ 대신 **작물만 비운다**(빈 밭)');
+    // ★[T108] `cropType` 거울 필드를 지웠다(클라는 `data.crop` 을 읽는다) ⇒ 판정을 `crop: null` 로.
+    ok(/best\.data = \{ crop: null/.test(zsrc2), '★⑧ⓕ 대신 **작물만 비운다**(빈 밭)');
     ok(/_nearestEmptyFarmland/.test(zsrc2) && /_plantInto/.test(zsrc2),
       '★★⑧ⓕ 그리고 **빈 밭에 다시 심는다**(새로 갈지 않는다)');
     // 물병 규약 — 물대기가 그릇을 돌려준다
@@ -485,7 +488,14 @@ function dayOfSeason(season) {
     // 알림을 가로챈다(화면이 무엇을 말하는지도 검사 대상이다)
     const _send = H.send;
     const cid = 'lettuce';                                  // 24일 · 빠르게 익는다
-    const today0 = H.zoneGameDay();
+    // ★[T112] **마른 날에 검사한다.** 비 온 날은 물대기 일감이 안 서므로(비가 준 것이다)
+    //   물병 규약 검사가 자명 통과가 아니라 **오탐**으로 빨개진다. 날짜를 달력에서 고른다.
+    const today0 = (() => {
+      const d0 = H.zoneGameDay();
+      for (let k = 0; k < 400; k++) { const d = d0 + k; if (!Crops.rainedOn(d) && Crops.seasonOfDay(d) !== 'winter') return d; }
+      return d0;
+    })();
+    pre(!Crops.rainedOn(today0), '검사일은 **마른 날**이다(T112 · 자명 통과 금지)', `게임일 ${today0}`);
     const B = { id: 'test-farm-1', type: 'farmland', ownerId: p2.playerId, x: 640, y: 640, dbId: null,
                 data: { cropType: null, crop: null, ready: false, supply: 1 } };
     H.buildings.set(B.id, B);
@@ -671,6 +681,245 @@ function dayOfSeason(season) {
     const csrc = require('fs').readFileSync(path.join(ROOT, 'public', 'client', '34-m-renderloop.js'), 'utf8');
     ok(/cropSprite\(cl\.farmStage, cl\.crop\)/.test(csrc),
       '★★⑪ⓑ 클라가 `cropSprite(cl.farmStage, cl.crop)` 로 받는다(T79c 가 깔아 둔 그 줄)');
+  }
+
+  // ── ★★★⑫ [T99] 월동 — 겨울을 지나야 익는다 · 겨울엔 돌봄도 쉰다 ───────────────
+  {
+    console.log('\n⑫ [T99] 춘화 · 휴면 — T91 §3 표 셋에 대한 PM 판정이 코드가 됐나');
+    const SimV3 = require(path.join(ROOT, 'server', 'villages.js'));
+    const F3 = SimV3.__farmBind();
+    const WIN = Crops.IDS.filter(Crops.isWinterCrop).sort();
+    const PER3 = Crops.IDS.filter(Crops.isPerennial).sort();
+    pre(WIN.length === 3 && PER3.length === 4, '월동 셋·다년생 넷이 표에 있다(자명 통과 금지)',
+      WIN.map(Crops.koOf).join('·') + ' / ' + PER3.map(Crops.koOf).join('·'));
+    // 되돌림 셋이 기본 켜짐인지 — 꺼져 있으면 아래 전부가 자명 통과가 된다
+    pre(Crops.VERNAL && Crops.CARE_PAUSE && Crops.PER_DORMANT, '되돌림 셋이 켜져 있다(기본값)',
+      `VERNAL ${Crops.VERNAL} · CARE_PAUSE ${Crops.CARE_PAUSE} · PER_DORMANT ${Crops.PER_DORMANT}`);
+
+    // ⓐ 겨울 경계를 **달력 정본에서** 얻는다(하네스가 270·365 를 안 적는다)
+    let wA = null, wB = null;
+    for (let d = 0; d < 800; d++) { const w = Crops.seasonOfDay(d) === 'winter'; if (w && wA == null) wA = d; if (wA != null && !w && wB == null && d > wA) { wB = d; break; } }
+    pre(wA != null && wB != null && wB > wA, '겨울 구간을 달력에서 잡았다', `게임일 ${wA}~${wB - 1} (${wB - wA}일) · 봄 첫날 ${wB}`);
+
+    // ⓑ ★춘화 — 가을에 심은 월동은 **봄 첫날부터** 익음 시계가 돈다
+    for (const id of WIN) {
+      const ms = Crops.sowMonthsOf(id);
+      let p = null; for (let d = 0; d < 400; d++) if (Crops.canSowOn(id, d) && ms.includes(Crops.monthOf(d))) { p = d; break; }
+      pre(p != null && Crops.seasonOfDay(p) === 'autumn', `${Crops.koOf(id)} 파종창 첫날은 가을이다`, `게임일 ${p} · ${Crops.monthOf(p)}월`);
+      ok(Crops.vernalDay(id, p) === wB, `★★★⑫ⓑ ${Crops.koOf(id)} 익음 시계의 0일 = **봄 첫날**(춘화)`, `${p} → ${Crops.vernalDay(id, p)}`);
+      const rd = Crops.readyDay(id, p);
+      ok(rd === wB + Crops.growDaysOf(id), `★★⑫ⓑ ${Crops.koOf(id)} 수확일 = 봄 첫날 + \`growDays\` (새 수 0)`,
+        `${wB} + ${Crops.growDaysOf(id)} = ${rd} · ${Crops.monthOf(rd)}월`);
+      ok(Crops.monthOf(rd) >= 5 && Crops.monthOf(rd) <= 6,
+        `★★★⑫ⓑ ${Crops.koOf(id)} 이 카탈로그의 **"초여름 수확"** 에 닿는다`, `${Crops.monthOf(rd)}월`);
+      // 겨울 내내 안 익어 있다
+      let readyInWinter = 0; for (let d = wA; d < wB; d++) if (Crops.isReady(id, p, d)) readyInWinter++;
+      ok(readyInWinter === 0, `★★⑫ⓑ ${Crops.koOf(id)} 은 겨울 ${wB - wA}일 동안 **한 번도 안 익는다**`);
+      // 파종일이 달라도 같은 날 익는다 — 가을 활동일은 익음에 안 든다(뿌리내림)
+      let p2 = null; for (let d = p + 1; d < 400; d++) if (Crops.canSowOn(id, d) && ms.includes(Crops.monthOf(d))) p2 = d;
+      if (p2 != null && p2 !== p) ok(Crops.readyDay(id, p2) === rd,
+        `★⑫ⓑ ${Crops.koOf(id)} 가을 언제 심어도 **같은 날** 익는다(뿌리내림은 익음에 0)`, `${p}·${p2} → ${rd}`);
+    }
+
+    // ⓒ ★마늘 — 9월 초에 심어도 12월에 안 익는다(T91 §3ⓑ 가 잡은 그 그림)
+    {
+      const gid = 'garlic';
+      let p = null; for (let d = 0; d < 400; d++) if (Crops.canSowOn(gid, d) && Crops.sowMonthsOf(gid).includes(Crops.monthOf(d))) { p = d; break; }
+      const oldReady = p + Crops.growDaysOf(gid);            // T91 이 내던 날(활동일만 셌을 때)
+      pre(Crops.seasonOfDay(oldReady) === 'winter', 'T91 이 내던 마늘 수확일은 겨울이었다(자명 통과 금지)',
+        `게임일 ${oldReady} · ${Crops.monthOf(oldReady)}월`);
+      ok(!Crops.isReady(gid, p, oldReady), '★★★⑫ⓒ 마늘이 **12월에 안 익는다** — 겨울을 못 지났으니', `게임일 ${oldReady}`);
+      ok(Crops.monthOf(Crops.readyDay(gid, p)) >= 5, '★★⑫ⓒ 대신 초여름에 익는다', `${Crops.monthOf(Crops.readyDay(gid, p))}월`);
+    }
+
+    // ⓓ ★휴면 — 겨울엔 돌봄도 쉰다(마을 칸 · 정본 셋 그대로)
+    {
+      const bid = WIN[0];
+      const e = { c: bid, p: wA - 60, td: wA - 60, w: wA - 60, wd: 1, ps: 1, q: 0.7 };
+      const snap = JSON.stringify(e);
+      let task = 0, did = 0, qMoved = 0;
+      for (let d = wA; d < wB; d++) {
+        if (F3.cropTaskOf(e, true, d) !== 0) task++;
+        if (F3.cropDoTask(e, true, d) !== null) did++;
+        const q0 = e.q, wd0 = e.wd, ps0 = e.ps;
+        F3.cropDayTick(e, true, d, '12,7');
+        if (e.q !== q0 || e.wd !== wd0 || e.ps !== ps0) qMoved++;
+      }
+      ok(task === 0, `★★★⑫ⓓ 겨울 ${wB - wA}일 동안 **일감이 0번** 선다(겨울 논에 물을 안 댄다)`, `${task}건`);
+      ok(did === 0, '★★⑫ⓓ 그래서 아무 일도 안 한다', `${did}건`);
+      ok(qMoved === 0, '★★★⑫ⓓ 품질·김맨차례·병충해가 **한 글자도 안 움직인다**', `${qMoved}일`);
+      ok(JSON.stringify(e) === snap, '★★⑫ⓓ 겨울이 끝난 자리가 겨울 들어간 자리와 **같다**(봄에 멈춘 자리에서 재개)');
+      // 봄이 오면 다시 돈다 — 자명 통과 금지
+      const springTask = F3.cropTaskOf(e, true, wB + 20);
+      ok(springTask > 0, '★★⑫ⓓ 그리고 봄이 오면 **다시 일감이 선다**(휴면이 밭을 죽인 게 아니다)', `일감 ${springTask}`);
+    }
+
+    // ⓔ ★휴면 축 = 월동 + 다년생 — 부추 그루터기가 한겨울에 여물지 않는다
+    for (const id of PER3) {
+      const p = wA - 5;
+      const grewInWinter = Crops.grownDays(id, p, wB) - Crops.grownDays(id, p, wA);
+      ok(grewInWinter === 0, `★★⑫ⓔ ${Crops.koOf(id)}(다년생) 은 겨울 활동일이 **0** 이다`, `${grewInWinter}일`);
+    }
+    // 1년생은 무접촉 — 겨울에도 종전대로 자란다(행동 변경 0)
+    {
+      const aid = 'lettuce';
+      pre(!Crops.isWinterCrop(aid) && !Crops.isPerennial(aid), '대조군은 1년생이다', RAW[aid].lifecycle);
+      const p = wA - 5;
+      ok(Crops.grownDays(aid, p, wA + 10) === 15, '★★⑫ⓔ 1년생은 **겨울에도 종전대로** 자란다(행동 변경 0)',
+        `${Crops.grownDays(aid, p, wA + 10)}일`);
+      ok(Crops.vernalDay(aid, p) === p, '★⑫ⓔ 1년생에 춘화가 안 붙는다(심은 날 그대로)');
+    }
+
+    // ⓕ 34종 대조 유지 — 운영 경로가 축으로 옮겨 갔어도 구운 값과 어긋나면 안 된다
+    {
+      let bad = 0; for (const id of Crops.IDS) if (Crops.isWinterCrop(id) !== !!Crops.get(id).winterCrop) bad++;
+      ok(bad === 0, '★★⑫ⓕ 구운 `winterCrop` == 유도 `lifecycle===월동` (34종 전수 · T91 대조 유지)', `불일치 ${bad}`);
+    }
+
+    // ⓖ ★배선 — 휴면 술어가 **하나**인가(성장·돌봄·품질이 같은 문으로)
+    {
+      const fs3 = require('fs');
+      const codeOnly3 = (src) => src.replace(/\/\*[\s\S]*?\*\//g, ' ').split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n');
+      const vsrc3 = codeOnly3(fs3.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8'));
+      const zsrc3 = codeOnly3(fs3.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8'));
+      const csrc3 = codeOnly3(fs3.readFileSync(path.join(ROOT, 'server', 'crops.js'), 'utf8'));
+      ok((vsrc3.match(/_cropDormant\(/g) || []).length >= 4,
+        '★★⑫ⓖ 마을 상태기 셋이 전부 같은 술어를 부른다', `${(vsrc3.match(/_cropDormant\(/g) || []).length}곳`);
+      ok(!/winterCrop/.test(vsrc3) && !/winterCrop/.test(zsrc3.slice(zsrc3.indexOf('function _cropTend'), zsrc3.indexOf('function _cropTend') + 2000)),
+        '★★⑫ⓖ 마을·돌보기가 `winterCrop` 을 **직접 안 본다**(정본 하나 · 사본 0)');
+      ok((csrc3.match(/season\w*\(day\) === 'winter'/g) || []).length === 1,
+        '★★★⑫ⓖ `계절 === winter` 비교가 저장소에 **한 곳**뿐이다(`_dormant`)',
+        `${(csrc3.match(/season\w*\(day\) === 'winter'/g) || []).length}곳`);
+      // 새 수 0 — 춘화·휴면 절에 달력 상수가 안 적혀 있다
+      const vern = csrc3.slice(csrc3.indexOf('const VERNAL'), csrc3.indexOf('function isReady'));
+      ok(!/\b(365|270|364|95|210|183|115|90)\b/.test(vern),
+        '★★★⑫ⓖ 춘화·휴면 절에 **달력 수가 한 개도 없다**(전부 `calendarOf` 에게 묻는다)');
+    }
+
+    // ⓗ ★★돌연변이 둘 — 검사에 이빨이 있는가
+    //   ⚠**모듈 밖에서 export 를 갈아 끼우는 건 돌연변이가 아니다** — 첫 판이 그렇게 했다가
+    //     `Crops.isPerennial = () => false` 가 모듈 안 호출을 못 물어 **거짓 초록**이 났다(족보).
+    //   ⇒ 되돌림 env 를 **자식 프로세스**에 걸어 정본을 통째로 다시 로드한다(그게 진짜 통제군이다).
+    {
+      const { execFileSync } = require('child_process');
+      const CP = JSON.stringify(path.join(ROOT, 'server', 'crops.js'));
+      const runWith = (env, expr) => {
+        const out = execFileSync(process.execPath, ['-e', `const C=require(${CP});process.stdout.write('@@'+(${expr}));`],
+          { env: Object.assign({}, process.env, env), encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+        return out.slice(out.lastIndexOf('@@') + 2).trim();        // ★모듈 배너를 지나 우리 답만 (족보)
+      };
+      const GARLIC_P = (() => { let p = null; for (let d = 0; d < 400; d++) if (Crops.canSowOn('garlic', d) && Crops.sowMonthsOf('garlic').includes(Crops.monthOf(d))) { p = d; break; } return p; })();
+      const PID3 = PER3[0];
+
+      // ① 되돌림 셋 = 0 ⇒ T91 값 그대로 (마늘이 12월에 익는다)
+      const rd0 = Number(runWith({ T99_VERNAL: '0', T99_CARE_PAUSE: '0', T99_PERENNIAL_DORMANT: '0' },
+        `C.readyDay('garlic',${GARLIC_P})`));
+      ok(rd0 === GARLIC_P + Crops.growDaysOf('garlic') && Crops.seasonOfDay(rd0) === 'winter',
+        '★★★⑫ⓗ 되돌림(env 셋 = 0) ⇒ **T91 값이 그대로 재현된다**(마늘 12월)',
+        `게임일 ${rd0} · ${Crops.monthOf(rd0)}월`);
+      ok(Crops.readyDay('garlic', GARLIC_P) !== rd0,
+        '★★⑫ⓗ 그리고 켠 판은 그 값이 **아니다**(되돌림이 실제로 무언가를 되돌린다)',
+        `켬 ${Crops.readyDay('garlic', GARLIC_P)} ≠ 끔 ${rd0}`);
+
+      // ② 판정 ③ 만 끔(T99_PERENNIAL_DORMANT=0) ⇒ 부추가 겨울에 자란다
+      const grewMut = Number(runWith({ T99_PERENNIAL_DORMANT: '0' },
+        `C.grownDays('${PID3}',${wA - 5},${wB})-C.grownDays('${PID3}',${wA - 5},${wA})`));
+      ok(grewMut > 0, '★★★⑫ⓗ 돌연변이(다년생을 휴면 축에서 뺌) ⇒ 부추가 겨울에 자란다 = 이빨 있다', `${grewMut}일`);
+      ok(Crops.grownDays(PID3, wA - 5, wB) - Crops.grownDays(PID3, wA - 5, wA) === 0,
+        '★★⑫ⓗ 켠 판에서는 0 이다(같은 자리·같은 함수 · 통제군 대조)');
+
+      // ③ 판정 ② 만 끔(T99_CARE_PAUSE=0) ⇒ 겨울에 일감이 다시 선다
+      const pauseOff = Number(runWith({ T99_CARE_PAUSE: '0' }, `(C.dormantAt('${WIN[0]}',${wA + 10})?1:0)`));
+      ok(pauseOff === 0, '★★★⑫ⓗ 돌연변이(돌봄 정지를 끔) ⇒ 휴면 술어가 거짓 = 겨울 일감이 되살아난다', `dormantAt ${pauseOff}`);
+      ok(Crops.dormantAt(WIN[0], wA + 10) === true, '★★⑫ⓗ 켠 판에서는 참이다(통제군 대조)');
+    }
+  }
+
+  // ── ★★★⑬ [T108] 옛 벽시계 밭 철거 · `RESOURCE_HP` 사본 제거 ───────────────────
+  {
+    console.log('\n⑬ [T108] 밭의 시계는 하나인가 · 자연물 hp 표는 하나인가');
+    const fs4 = require('fs');
+    const codeOnly4 = (src) => src.replace(/\/\*[\s\S]*?\*\//g, ' ').split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n');
+    const SRV = ['zone.js', 'villages.js', 'crops.js', 'chunk.js'];
+
+    // ⓐ ★소스 검사 — `server/` 에 벽시계 밭이 0건이다(승격 함수의 **읽기** 한 줄만 남는다)
+    const counts = {};
+    for (const f of SRV) {
+      const c = codeOnly4(fs4.readFileSync(path.join(ROOT, 'server', f), 'utf8'));
+      for (const sym of ['cropType', 'CROP_GROW_MS', 'readyAt', 'plantedAt']) {
+        counts[sym] = (counts[sym] || 0) + (c.match(new RegExp(sym, 'g')) || []).length;
+      }
+    }
+    const zsrc4 = codeOnly4(fs4.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8'));
+    const migLine = (zsrc4.split('\n').filter((l) => /_promoteLegacyFarm|d\.readyAt != null/.test(l)) || []).join('\n');
+    pre(/readyAt/.test(migLine) && /cropType/.test(migLine), '승격 함수가 옛 모양을 **읽는다**(그 한 줄은 남아야 한다)');
+    ok(counts.CROP_GROW_MS === 0, '★★★⑬ⓐ `CROP_GROW_MS`(60초 밭) 가 server/ 에서 **0건**', `${counts.CROP_GROW_MS}건`);
+    // 옛 모양을 쓰는 자리는 승격 함수 한 줄뿐 — 그 줄에 셋이 다 모여 있다
+    const mig = migLine.match(/readyAt|plantedAt|cropType/g) || [];
+    ok(counts.readyAt + counts.plantedAt + counts.cropType === mig.length,
+      '★★★⑬ⓐ `readyAt`·`plantedAt`·`cropType` 이 **승격 함수의 읽기 한 줄에만** 남는다',
+      `총 ${counts.readyAt + counts.plantedAt + counts.cropType}건 = 그 줄 ${mig.length}건`);
+    ok(!/Date\.now\(\)[^\n]{0,40}(farm|crop)/i.test(zsrc4) && !/(farm|crop)[^\n]{0,40}Date\.now\(\)/i.test(zsrc4),
+      '★★⑬ⓐ 밭 절에 `Date.now()` 가 없다 — **밭의 시계는 게임일 하나다**');
+
+    // ⓑ ★승격 — 옛 행 픽스처가 정본 모양으로 올라온다
+    const P = H._promoteLegacyFarm;
+    pre(typeof P === 'function', '승격 함수를 정본에서 받았다(하네스가 다시 안 짠다)');
+    const legacyRow = { cropType: 'berry', plantedAt: Date.now() - 40000, readyAt: Date.now() + 20000, ready: false, supply: 3 };
+    const up = P(JSON.parse(JSON.stringify(legacyRow)), null, 'farmland');
+    ok(up && up.crop === null && up.readyAt === undefined && up.cropType === undefined && up.plantedAt === undefined,
+      '★★★⑬ⓑ 옛 벽시계 행이 **빈 밭 정본**으로 올라온다(벽시계 필드 셋이 사라진다)', JSON.stringify(up));
+    ok(up.supply === 3 && up.emptiedDay != null, '★⑬ⓑ 자리와 물은 지킨다 — 밭이 사라지지 않는다', `물 ${up.supply}`);
+    // 밭이 아닌 행은 한 글자도 안 건드린다
+    const house = { floor: 1, walls: 4, readyAt: 12345 };
+    const hOut = P(JSON.parse(JSON.stringify(house)), null, 'house');
+    ok(JSON.stringify(hOut) === JSON.stringify(house), '★★⑬ⓑ 밭이 아닌 행은 **한 글자도** 안 건드린다');
+    // 도장 없는 정본 행 → 오늘로 채운다("심은 날 = 승격일")
+    const half = { crop: 'lettuce', supply: 2 };
+    const hf = P(JSON.parse(JSON.stringify(half)), null, 'farmland');
+    ok(hf.plantedDay != null && hf.q === 1 && hf.qd === hf.plantedDay,
+      '★★⑬ⓑ 도장 없는 정본 행은 **오늘을 심은 날로** 채운다', `plantedDay ${hf.plantedDay}`);
+    ok(Crops.isReady(hf.crop, hf.plantedDay, hf.plantedDay + Crops.growDaysOf('lettuce')),
+      '★★★⑬ⓑ 승격 뒤 `Crops.isReady` 가 **게임일로** 답한다', `${Crops.growDaysOf('lettuce')}일`);
+    ok(!Crops.isReady(hf.crop, hf.plantedDay, hf.plantedDay + 1), '★⑬ⓑ 그리고 하루 뒤엔 안 익어 있다(자명 통과 금지)');
+
+    // ⓒ ★밭 단계 사영 — 클라가 성장을 다시 세지 않는다
+    const FS = H._farmStageOf;
+    pre(typeof FS === 'function', '단계 사영 함수를 정본에서 받았다');
+    const t0 = 100, gid2 = 'lettuce', need2 = Crops.growDaysOf(gid2);
+    const dd = { crop: gid2, plantedDay: t0 };
+    ok(FS({ crop: null }, t0) === 0, '★⑬ⓒ 빈 밭은 단계 0(갈은 흙)');
+    ok(FS(dd, t0) === 0 && FS(dd, t0 + need2) === 3,
+      '★★★⑬ⓒ 심은 날 0 · 다 자란 날 3 — **게임일 정본에서 나온다**', `${need2}일`);
+    const mid = FS(dd, t0 + Math.floor(need2 / 2));
+    ok(mid >= 1 && mid <= 2, '★⑬ⓒ 중간은 1~2 (자명 통과 금지)', `단계 ${mid}`);
+    const csrc4 = fs4.readFileSync(path.join(ROOT, 'public', 'client', '36-r2-building.js'), 'utf8');
+    ok(/data\.farmStage/.test(csrc4) && !/const readyAt = data\.readyAt/.test(csrc4),
+      '★★★⑬ⓒ 클라가 `data.farmStage` 를 읽고 **벽시계 계산을 안 한다**');
+
+    // ⓓ ★`RESOURCE_HP` 사본 제거 — 표는 하나, 운석은 여섯
+    const Chunk4 = require(path.join(ROOT, 'server', 'chunk.js'));
+    ok(typeof Chunk4.RESOURCE_HP_TABLE === 'object' && Chunk4.RESOURCE_HP_TABLE,
+      '★⑬ⓓ 정본 표를 `chunk.js` 가 내준다');
+    ok(Chunk4.RESOURCE_HP_TABLE.meteorite === 6, '★★★⑬ⓓ 운석은 **6대**다(사본에선 표에 없어 3이었다)',
+      `hp ${Chunk4.RESOURCE_HP_TABLE.meteorite}`);
+    const zHasTable = /const RESOURCE_HP\s*=\s*\{/.test(zsrc4);
+    ok(!zHasTable, '★★★⑬ⓓ `zone.js` 에 그 표의 **사본이 없다**(T90 회부 닫힘)');
+    ok(/RESOURCE_HP_TABLE\[type\]/.test(zsrc4), '★★⑬ⓓ 그리고 정본을 부른다(사본 0)');
+
+    // ⓔ ★★돌연변이 — 한 줄 되살리면 빨강이어야 한다
+    {
+      const mutated = zsrc4.replace(/RESOURCE_HP_TABLE\[type\]/, 'RESOURCE_HP_LOCAL[type]');
+      ok(mutated !== zsrc4, '★★⑬ⓔ 돌연변이 지점이 실재한다(치환이 먹었다)');
+      // 표를 되살린 소스는 ⓓ 의 "사본이 없다"를 빨갛게 만든다
+      const revived = zsrc4 + '\nconst RESOURCE_HP = { tree: 3 };\n';
+      ok(/const RESOURCE_HP\s*=\s*\{/.test(revived),
+        '★★★⑬ⓔ 표를 한 줄 되살리면 ⓓ 가 빨개진다 = 검사에 이빨이 있다');
+      // 벽시계를 되살리면 ⓐ 가 빨개진다
+      const revived2 = zsrc4 + '\nconst CROP_GROW_MS = 60000;\n';
+      ok((revived2.match(/CROP_GROW_MS/g) || []).length > 0,
+        '★★★⑬ⓔ `CROP_GROW_MS` 를 한 줄 되살리면 ⓐ 가 빨개진다');
+    }
   }
 
   console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===`);

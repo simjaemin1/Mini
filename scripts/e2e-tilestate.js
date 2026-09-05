@@ -1,5 +1,9 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @pixel    ← ★[T104] **프레임을 화소로 잰다**(`page.screenshot` → `PNG.sync.read`).
+//              렌더 층(`3x-r*`·`34-m-renderloop`·`37-r1-*`)을 만지는 카드는 이 표를 전수로 돌려라 —
+//              `bash scripts/run-regress.sh --list pixel`. 이름으로는 못 찾는다(T98: `e2e-nature` 는
+//              하늘 때문에 셋이 빨갰는데 그 파일엔 `weather` 라는 낱말이 없어 `grep -l` 에 안 걸렸다).
 // =============================================================================
 // e2e-tilestate — 타일 상태계 실클라 픽셀 E2E [배치 20 B]
 //   재민 확정: *"비옥도에 따라 모든 타일이 디자인이 바뀌어야… 번영도·경작·길·채굴에 따라서도"*
@@ -114,6 +118,14 @@ function meanLum(p, box) {
   //       stateOff A/B 가 10.36 → 3.23 으로 떨어졌다. 격리는 실험을 건드리면 안 된다.
   //       ⇒ 측정 시작 **전에**, sleep 없이 끈다.
   await page.evaluate(() => { window.__terrain19.windOff = true; });
+  // ★[T98 2026-09-05] **하늘도 끈다.** 배치 21 의 바람 흔들림과 **같은 자리**다(위 주석) —
+  //   T98 이 `weatherFor` 에 `precip` 을 실으면서 세계가 실제로 비를 보내기 시작했고,
+  //   비는 매 프레임 다시 그려지므로 아래 "★화면이 완전히 정지했다"가 **영영 안 참이 된다**
+  //   (실측: 이 하네스가 도는 게임일 0 은 비 오는 날 · precip 0.0288 ⇒ 1400×900 에 획 35개.
+  //    작은 속살 상자에는 거의 안 떨어져 ⓖ 결정론은 초록인데 전화면 정지만 빨개졌다).
+  //   ⇒ 이 하네스가 재는 건 **지면 타일 색**이다. 하늘을 끄는 건 재는 대상을 바꾸는 게 아니라
+  //     바람을 끈 것과 똑같이 **잡음을 걷는 것**이다. 끄는 문은 T93 이 남긴 진단 훅 하나.
+  await page.evaluate(() => { if (typeof window.__rainForce === 'function') window.__rainForce({ precip: 0 }); });
   const grab = async (n) => { const p2 = `${SHOTS}/${n}.png`; await page.screenshot({ path: p2 }); return PNG.sync.read(fs.readFileSync(p2)); };
   const feed = async (flat) => { const n = await page.evaluate((f) => window.__tileStateFeed(f), flat); await sleep(1200); return n; };
   const feedRoad = async (flat) => { const n = await page.evaluate((f) => window.__roadFeed(f), flat); await sleep(1200); return n; };

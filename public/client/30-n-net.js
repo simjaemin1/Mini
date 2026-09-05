@@ -887,6 +887,7 @@
         if (msg.itemLabels && window.__preloadItemIcons) { try { window.__preloadItemIcons(); } catch (e) {} }
         // ★[T61] econ 자원 종류 이름 — 같은 경로·같은 규약(있으면 갱신 · 없으면 유지). 클라 사본은 지웠다.
         if (msg.categoryLabels) { CATEGORY_KO_SRV = msg.categoryLabels; window.__categoryLabels = msg.categoryLabels; }
+        if (msg.resourceVerbs) resourceVerbs = msg.resourceVerbs;   // ★[T90] 자연물 동사 이름표(사본 0)
         // ★[T66 ⓪] 직업·계절 이름 — 같은 규약(있으면 갱신 · 없으면 유지). 클라 사본 둘을 지웠다.
         if (msg.uiLabels) { UI_LABELS_SRV = msg.uiLabels; window.__uiLabels = msg.uiLabels; }
         // 플레이어 장비
@@ -1332,6 +1333,8 @@
       } else {
         if (msg.isDown) downStates.set(msg.pid, true);
         else downStates.delete(msg.pid);
+        // ★[T110] 일어났으면 화살도 그친다 — **이미 오던 메시지**가 지우는 자리다(새 메시지 0).
+        if (!msg.isDown && window.__downedCries) window.__downedCries.delete(msg.pid);
         // ★[T68] 누가 업고 있나 — 이 메시지가 **이미 싣고 있던** 칸이다(서버 무변). 종전엔 버렸다.
         //   메뉴가 "업기"와 "내려놓기"를 가르는 데 쓴다(`46-h-verbs`). 없으면 거짓말하는 메뉴가 된다.
         if (typeof onCarryState === 'function') onCarryState(msg.pid, msg.isDown ? (msg.carriedBy || null) : null);
@@ -1558,6 +1561,15 @@
       speechBubbles.set(msg.pid, { text: (msg.tribe ? '[길드] ' : '') + msg.text, until: performance.now() + 4000 });
       renderChatLog();
     } else if (msg.type === 'notice') {
-      showNotice(msg.text);
+      // ★★[T110 2026-09-05] 외침 하나만 **자리**를 나른다 — 그 자리가 안개 위 방향 화살이 된다.
+      //   새 메시지도 새 패널도 없다: `notice` 의 `kind` 와 `downed` 칸이 전부다(`server/rescue.js`).
+      //   화살의 수명은 **구조창 자체**라 여기서 타이머를 걸지 않는다 — 렌더 루프가 `at + windowMs` 를 본다.
+      if (msg.kind === 'downed' && msg.downed && Number.isFinite(msg.downed.x)) {
+        const M = (window.__downedCries = window.__downedCries || new Map());
+        const d = msg.downed;
+        M.set(d.pid, { pid: d.pid, x: d.x, y: d.y, at: d.at || Date.now(), windowMs: d.windowMs || 180000,
+          name: ((c.others && c.others.get(d.pid)) || {}).name || null });
+      }
+      showNotice(msg.text, undefined, msg.kind);   // ★[T90] 종류가 그림이 된다(T78 이 실어 둔 칸을 이제 읽는다)
     }
   }

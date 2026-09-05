@@ -132,22 +132,15 @@ M['radish'] = simple_mat("p_radish", (0.86, 0.85, 0.80), 0.45)                  
 M['radskin'] = simple_mat("p_radskin", (0.62, 0.66, 0.52), 0.50)                                   # 무 껍질(윗동 푸르다)
 M['ochre'] = simple_mat("p_ochre", (0.66, 0.30, 0.18), 0.85)                                  # 붉은 흙 안료
 # ── [T95] 옷 여섯 · 시설 셋 ─────────────────────────────────────────────────
-# ★★옷 색은 **시트가 정본이다.** 아래 여섯 값은 `scripts/char_render.py` 의 `CLOTH_MATS` 를
-#   그대로 옮긴 것이다(T81 이 fiber·ramie 를 밀어낸 값 그대로 · PM 판정).
+# ★★옷 색의 정본은 **`render_common.CLOTH_MATS`** 하나다(T81 이 fiber·ramie 를 밀어낸 값 그대로).
 #   짐 창의 갖옷과 몸에 걸친 갖옷이 **같은 물건**으로 읽혀야 한다 — 색이 갈리면 그 순간 두 물건이 된다.
-#   ⚠재질이 두 파일에 있다(이중화) — 공용 모듈로 올리는 것은 **회부**다. 그때까지는
-#     `scripts/test-icons.js ⑨` 가 두 파일의 값을 **대조**해서 갈리면 빨개진다.
-#   출처: char_render.py `CLOTH_MATS` = id → (기본색, rough, spec) · 순서 = server/clothes.js 표 순서
-_CL = {                                    # ★char_render.py CLOTH_MATS 전사(손으로 고치지 마라)
-    'fur':     ((0.300, 0.210, 0.145), 0.97),
-    'ramie':   ((0.885, 0.875, 0.835), 0.88),
-    'leather': ((0.400, 0.270, 0.160), 0.75),
-    'hide':    ((0.600, 0.440, 0.280), 0.85),
-    'fiber':   ((0.720, 0.665, 0.315), 0.95),
-    'hemp':    ((0.700, 0.655, 0.545), 0.90),
-}
-_TRIM_K, _PLACKET_K = 0.85, 0.56          # ★char_render.py 와 같은 상수(허리끈 · 앞섶)
-for _k, (_c, _r) in _CL.items():
+#   ★★[T120 2026-09-05] **전사(轉寫)를 끝냈다** — 여섯 값을 `render_common.CLOTH_MATS` 에서
+#     읽는다. 여기 있던 사본 여섯 줄과 상수 둘이 T77·T87·T95 회부가 가리키던 바로 그 이중화다.
+#     ⓘ `spec` 은 안 쓴다 — 이 파일의 옷은 `simple_mat`(색·rough)로 굽는다. 표는 셋을 갖고 있고
+#       쓰는 쪽이 필요한 둘만 집는다(표를 파일마다 깎으면 그게 다시 사본이다).
+#     ⓘ 순서는 표가 준다(`server/clothes.js` 표 순서 · 계약) — 여기서 다시 안 적는다.
+_TRIM_K, _PLACKET_K = rc.CLOTH_TRIM_K, rc.CLOTH_PLACKET_K
+for _k, (_c, _r, _sp) in rc.CLOTH_MATS.items():
     M['cl_' + _k] = simple_mat('p_cl_' + _k, _c, _r)
     M['cl_' + _k + '_t'] = simple_mat('p_cl_' + _k + '_t', tuple(v * _TRIM_K for v in _c), _r)
     M['cl_' + _k + '_p'] = simple_mat('p_cl_' + _k + '_p', tuple(v * _PLACKET_K for v in _c), _r)
@@ -1094,8 +1087,10 @@ ITEMS = [
 ]
 # ★원물 → 보존식 계보(하네스가 실루엣 상관으로 검사한다). `spoil.PRESERVE` 가 정본이고 여기는 **이 파일이 가진 짝**만 적는다.
 # ★[T95] 옷 여섯 — 재질마다 다른 물건이다(갖옷과 삼베옷은 같은 그림일 수 없다).
-#   키는 `clothes_<mat>` · 순서는 `server/clothes.js` 표 순서(계약 · char_render.py 와 같다).
-CLOTHES = ['fur', 'ramie', 'leather', 'hide', 'fiber', 'hemp']
+#   키는 `clothes_<mat>` · 순서는 `server/clothes.js` 표 순서(계약).
+# ★[T120] 목록도 **정본 표에서 받는다** — 여섯을 여기 또 적으면 그게 세 번째 사본이다
+#   (파이썬 dict 는 넣은 순서를 지키므로 `server/clothes.js` 표 순서가 그대로 온다).
+CLOTHES = list(rc.CLOTH_MATS)
 for _m in CLOTHES:
     ITEMS.append(('clothes_' + _m, globals()['m_clothes_' + _m]))
 

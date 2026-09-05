@@ -33,6 +33,7 @@ scripts/mountain_renders/
 
 # 배치 21: 자연물 베이크 산출물(에셋은 public/assets/{trees,nature} 로 복사해 커밋 — nature-postprocess.py)
 scripts/nature_renders/
+scripts/building_renders/
 # ★[T67] 가구 렌더 중간 산물 — 정본은 `scripts/props_render.py`, 배치본은 public/assets/props · icons
 scripts/icon_renders/
 scripts/crop_renders/
@@ -46,3 +47,6 @@ scripts/props_icon_renders/
 scripts/__pycache__/
 scripts/char_renders/
 assets-src/*.blend1
+
+# [T107] 굽기 중간 산물 — 후처리 전 float 시트(EXR). 재생성: python3 scripts/char_render.py -- --exronly
+assets-src/char_raw/

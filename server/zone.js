@@ -42,7 +42,7 @@ const Rooms = require('./rooms'); // ★[배치 18 ①] 방 판정 정본(벽·�
 const SIM_LON_ON = process.env.VILLAGE_LON !== '0'; // §19 경도 로컬 태양시(마을 NPC 야간 귀가) 게이트 — 기본 켜짐
 const central = require('./central-client'); // central HTTP 클라이언트
 const { Quadtree } = require('./quadtree'); // spatial index — O(N²) 검색 회피
-const { ChunkManager, CHUNK_SIZE, generateChunkResources, generateVillagesForZone, generateCoastlineWaterTiles } = require('./chunk'); // 청크 단위 entity 분류 + procedural + 해안선
+const { ChunkManager, CHUNK_SIZE, generateChunkResources, generateVillagesForZone, generateCoastlineWaterTiles, RESOURCE_HP_TABLE } = require('./chunk'); // 청크 단위 entity 분류 + procedural + 해안선 + ★[T108] 자연물 hp 정본
 const { findPath: pfFindPath } = require('./pathfind'); // Phase 14.49-b: NPC A* pathfinding
 const PathCore = require('../sim/path-core.js'); // ★[생활 층 100% ①] 랩·서버 공용 경로 정본 — smoothPath(스트링 풀링)를 주민 이동에 직결
 const { ANIMALS } = require('./animals');  // Phase 5-6: 동물 mob 36종 catalog
@@ -127,6 +127,44 @@ function updateActiveChunks() {
 //   → 매 틱 살아있는 building 객체가 활성청크 수백채로 줄어 minor/major GC 정지 제거.
 // id는 DB rowid 기반 결정값('b'+dbId) — deactivate→reactivate·재시작에도 클라 참조 안정.
 //   dedupe: 같은 청크에 이미 같은 id(=같은 dbId)가 있으면(방금 놓은 플레이어 건물 등) skip → 중복 없음.
+// ★★★[T108 2026-09-05] **옛 벽시계 밭 승격 — 로드 때 한 번, 되돌림 없음.**
+//   T58a 가 밭 시계를 게임일(`plantedDay` + `Crops.grownDays`)로 세웠는데 `Date.now()` 로 자라는
+//   밭이 DB 에 남아 있었다(`cropType:'berry'` + `readyAt` — 레거시 마을 시딩과 NPC 심기가 만든 것).
+//   **시계 둘 금지**(재민 · T62 가 econ 시계를 하나로 만든 그 규약)가 밭에도 서야 한다.
+//   ⇒ 옛 모양은 **읽기만** 하고 정본 모양으로 바꿔 올린다. 옛 모양을 쓰는 코드는 이제 0곳이다.
+//   ★`readyAt` 은 **버린다** — 벽시계를 게임일로 환산할 방법이 없다(서버가 몇 번 재시작했는지 모른다).
+//   ★그리고 `'berry'` 는 **카탈로그 34종에 없다**(작물이 아니라 채집물이다) ⇒ 심긴 것으로 못 옮긴다.
+//     빈 밭으로 남긴다 — **자리는 지킨다**(T58b: 수확해도 밭은 남는다 · `doPlant` 가 재사용한다).
+//     잃는 것은 자라던 베리 세 알이고, 얻는 것은 그 자리에 34종을 심을 수 있게 되는 것이다.
+//   ★`crop` 은 있는데 도장이 없는 행(T58a~T58b 사이에 심긴 것)은 **오늘을 심은 날로** 채운다.
+let _promotedFarms = 0, _promotedLogged = 0;
+let _lastFarmStageDay = -1;
+// ★[T108] 밭 단계 — **정본의 사영**이다(새 시계 0). 0갈은흙 · 1어린싹 · 2자람 · 3익음.
+//   빈 밭은 0, 심긴 밭은 `grownDays / growDays` 를 셋으로 나눈다(익으면 3).
+function _farmStageOf(d, today) {
+  if (!d || !d.crop || !Crops.get(d.crop)) return 0;
+  const need = Math.max(1, Crops.growDaysOf(d.crop));
+  const got = Crops.grownDays(d.crop, d.plantedDay, today);
+  return got >= need ? 3 : Math.min(2, Math.floor(got / need * 3));
+}
+function _promoteLegacyFarm(d, dbId, type) {
+  if (type !== 'farmland' || !d) return d;                         // ★밭 행만 — 다른 건물은 한 글자도 안 건드린다
+  const legacy = d.readyAt != null || d.plantedAt != null || (d.cropType != null && !Crops.get(d.cropType));
+  if (legacy) {
+    const nd = { crop: null, ready: false, farmStage: 0, supply: d.supply != null ? d.supply : 1, emptiedDay: zoneGameDay(), _t108: 1 };
+    _promotedFarms++;
+    if (dbId) { try { db.updateBuildingData(dbId, JSON.stringify(nd)); } catch (e) {} }
+    return nd;
+  }
+  if (d.crop && Crops.get(d.crop) && d.plantedDay == null) {       // 심은 날이 없는 정본 행 — 오늘로
+    const t = zoneGameDay();
+    d.plantedDay = t; d.w = d.w == null ? t : d.w; d.td = d.td == null ? t : d.td;
+    d.wd = d.wd | 0; d.ps = d.ps | 0; d.q = d.q == null ? 1 : d.q; d.qd = t; d.farmStage = _farmStageOf(d, t);
+    _promotedFarms++;
+    if (dbId) { try { db.updateBuildingData(dbId, JSON.stringify(d)); } catch (e) {} }
+  }
+  return d;
+}
 function materializeBuildingsInChunk(cx, cy) {
   const cs = chunkManager.chunkSize;
   const x0 = cx * cs, x1 = (cx + 1) * cs;
@@ -137,7 +175,7 @@ function materializeBuildingsInChunk(cx, cy) {
   for (const row of rows) {
     const id = `b${row.id}`;
     if (buildings.has(id)) continue; // 이미 메모리에 있음(플레이어 방금 건축 등) — 중복 방지
-    const parsed = row.data ? JSON.parse(row.data) : null;
+    const parsed = _promoteLegacyFarm(row.data ? JSON.parse(row.data) : null, row.id, row.type);   // ★[T108] 옛 벽시계 밭 승격
     const floor = (parsed && typeof parsed.floor === 'number') ? parsed.floor : 0;
     const b = {
       id, dbId: row.id,
@@ -151,6 +189,10 @@ function materializeBuildingsInChunk(cx, cy) {
     buildings.set(id, b);
     chunkManager.insertBuilding(b); // b._chunkKey 셋 (insertBuilding 내부)
     if (row.type === 'stair') stairAdded = true;
+  }
+  if (_promotedFarms > _promotedLogged) {   // ★[T108] 로그 한 줄 — 승격은 조용히 지나가면 안 된다
+    _promotedLogged = _promotedFarms;
+    console.log(`[${ZONE_ID}] 🌾 옛 벽시계 밭 승격 누계 ${_promotedFarms}칸 — 밭 시계는 게임일 하나다(T108)`);
   }
   if (stairAdded) stairCellDirty = true; // stair cache 재구축 트리거 (active 건물만 인덱싱)
   // §4-4 Stage 4A: 마을 농지 — village_buildings(수만 행)에서 '비영속 시각 타일'로 직접 실물화.
@@ -814,7 +856,7 @@ const BUILDING_COST = {
   //     채취 경로도 무게표도 없다 — §0 실측). 새 재료를 만들지 않는다는 규칙이 이겼다. 회부 C.
   salt_kiln: { stone: 4, wood: 3 },
 };
-const CROP_GROW_MS = 60 * 1000;
+// ★[T108] `CROP_GROW_MS`(60초 밭)를 지웠다 — 밭의 시계는 `Crops.growDays`(게임일) 하나다.
 // 14.50: door도 닫혔을 때 blocking. fence는 cell 차지하지만 통과 가능 (사용자 의도: 시야는 통과, collider만 차단).
 const BLOCKING_BUILDINGS = new Set(['wall', 'fence', 'door']);
 // 14.49-e2: 층 높이 2배 (32 → 64). 벽·계단도 같이 2배.
@@ -1233,10 +1275,11 @@ function biomeResourceType() {
   return 'water_pool';
 }
 
-// 자원 종류별 maxHp
-const RESOURCE_HP = {
-  tree: 3, rock: 4, berry_bush: 2, water_pool: 999, herb: 1, ore: 5,
-};
+// 자원 종류별 maxHp — ★★[T108 2026-09-05 · T90 회부] **표를 지웠다. 정본은 `chunk.js` 하나다.**
+//   여기 있던 사본에 `meteorite` 가 빠져 있었다 ⇒ `|| 3` 폴백에 걸려 **운석이 3대에 깨졌다**
+//   (정본은 6). 청크가 까는 운석은 `RESOURCE_HP_TABLE.meteorite` 로 hp 6 을 받는데
+//   `spawnOneResource` 로 나온 것만 3이었다 — **같은 물건이 어디서 났느냐에 따라 달랐다.**
+//   ⇒ 사본을 지우고 정본을 부른다(위 require 에서 함께 받는다). 표가 하나면 그런 날이 안 온다.
 
 // ★★[재민 확정 2026-08-29 · 배산임수 감사] **자연물 전리품 정본 — 표는 하나다.**
 //   종전엔 이 표가 **두 벌**이었다(플레이어 채집 하나 · NPC 채집 하나). 빈손 배치가 덤불에 잔가지를
@@ -1284,7 +1327,7 @@ function spawnOneResource() {
   const x = 32 + Math.random() * (ZONE.zoneWidth - 64);
   const y = 32 + Math.random() * (ZONE.zoneHeight - 64);
   const type = biomeResourceType();
-  const maxHp = RESOURCE_HP[type] || 3;
+  const maxHp = RESOURCE_HP_TABLE[type] || 3;   // ★[T108] 정본 하나(chunk.js)
   // DB에 영속화
   const dbId = db.insertResource({ type, x, y, hp: maxHp, max_hp: maxHp });
   const id = `r${nextRid++}`;
@@ -1785,8 +1828,11 @@ function buildVillageFarmland(village, vIdx) {
     const gx = Math.floor((fcx + (wx * row + pxv * col) * SZ) / SZ) * SZ + SZ / 2;
     const gy = Math.floor((fcy + (wy * row + pyv * col) * SZ) / SZ) * SZ + SZ / 2;
     if (isTerrainBlockedLocal(gx, gy)) continue;          // LAND only
-    const stage = made % 4;
-    const data = { cropType: 'berry', plantedAt: Date.now() - stage * 15000, readyAt: Date.now() + (3 - stage) * 15000, ready: stage >= 3 };
+    // ★★[T108 2026-09-05] **벽시계를 걷어냈다.** 여기가 `Date.now()+15초`로 자라는 밭을 깔던 자리다.
+    //   시딩이 깔 것은 **개간된 구획**이지 자라는 작물이 아니다 — 무엇이 심기는지는 철이 정하고,
+    //   심는 것은 NPC·플레이어의 일이다(T58a 파종창 · T58b 빈 밭 재사용).
+    //   ⇒ **빈 밭 정본 모양**으로 깐다. 새 술어 0 · 작물 고르는 산수 0.
+    const data = { crop: null, ready: false, farmStage: 0, supply: _waterSupplyAt(gx, gy), emptiedDay: zoneGameDay() };
     try { db.insertBuilding({ type: 'farmland', owner_id: `npc_farm_${ZONE_ID}_${vIdx}`, owner_name: `${village.name} 농지`, x: gx, y: gy, data: JSON.stringify(data) }); made++; } catch (e) {}
   }
   return made;
@@ -1896,7 +1942,8 @@ function decideNpcBehavior(npc, now) {
   const _nearBld = qtBuildings ? qtBuildings.queryCircle(npc.x, npc.y, 700) : [];
   for (const b of _nearBld) {
     if (b.type !== 'farmland' || b.ownerId !== npc.playerId) continue;
-    if (b.data?.ready || (b.data?.readyAt && now >= b.data.readyAt)) {
+    // ★[T108] 익음 판정도 **게임일 정본**이다(`Crops.isReady`) — 벽시계 `readyAt` 을 안 본다.
+    if (b.data && b.data.crop && Crops.isReady(b.data.crop, b.data.plantedDay, zoneGameDay())) {
       npc.behavior = 'harvest';
       npc.targetX = b.x; npc.targetY = b.y;
       npc.harvestTarget = b.id;
@@ -2300,8 +2347,19 @@ function npcStep(npc, dt, now) {
         let occupied = false;
         for (const b of buildings.values()) if (Math.abs(b.x - gx) < BUILDING_SIZE && Math.abs(b.y - gy) < BUILDING_SIZE) { occupied = true; break; }
         if (!occupied && !isTerrainBlockedLocal(gx, gy)) {  // 농지도 LAND에만 (물·바위 위 X)
+          // ★★[T108 2026-09-05] **NPC 도 카탈로그 작물을 심는다.** 여기가 60초 베리밭을 만들던 자리다.
+          //   무엇을 심나: `Crops.wildSeedAt` — **그 자리가 이 철에 내주는 씨앗**(T58a 정본 · 결정론 ·
+          //   주사위 0 · 새 술어 0). 그래서 가을 밭엔 월동 작물이 서고, 겨울엔 아무것도 안 심는다.
+          //   씨앗 값은 종전 그대로 `seed_berry` 한 줌이다(NPC 의 씨앗 재고 · 품목 변경 0).
+          const _cx = Math.round(gx / BUILDING_SIZE), _cy = Math.round(gy / BUILDING_SIZE);
+          const _today = zoneGameDay();
+          const _seed = Crops.wildSeedAt(_cx, _cy, _today, 1);      // 이 철에 못 심으면 null
+          const _cid = _seed ? Crops.cropOfSeed(_seed) : null;
+          if (!_cid) { npc.nextDecisionAt = 0; return; }             // 철이 아니다 — 밭을 안 만든다
           npc.inventory.seed_berry -= 1;
-          const data = { cropType: 'berry', plantedAt: Date.now(), readyAt: Date.now() + CROP_GROW_MS, ready: false };
+          const data = { crop: _cid, plantedDay: _today, seedFresh: 1, farmStage: 0,
+                         supply: _waterSupplyAt(gx, gy), ready: false,
+                         w: _today, td: _today, wd: 0, ps: 0, q: 1, qd: _today };
           const dbId = db.insertBuilding({ type: 'farmland', owner_id: npc.playerId, owner_name: npc.name, x: gx, y: gy, data: JSON.stringify(data) });
           const id = `b${dbId}`; // 건물 lazy-load: id는 dbId 기반 결정값 (deactivate→reactivate 안정 + materialize dedupe)
           const building = { id, dbId, type: 'farmland', ownerId: npc.playerId, ownerName: npc.name, x: gx, y: gy, data };
@@ -2313,13 +2371,24 @@ function npcStep(npc, dt, now) {
       npc.nextDecisionAt = 0;
     } else if (npc.behavior === 'harvest' && npc.harvestTarget) {
       const b = buildings.get(npc.harvestTarget);
-      if (b && b.type === 'farmland' && b.ownerId === npc.playerId && b.data && now >= b.data.readyAt) {
-        npc.inventory.berry = (npc.inventory.berry || 0) + 3;
-        npc.inventory.seed_berry = (npc.inventory.seed_berry || 0) + 1;
-        if (b.dbId) { try { db.deleteBuilding(b.dbId); } catch (e) {} }
-        chunkManager.removeBuilding(b);
-        buildings.delete(b.id);
-        broadcast({ type: 'building_removed', id: b.id });
+      // ★★[T108] 수확도 정본이다 — 익음은 `Crops.isReady`, 산출은 `Crops.harvestUnits`,
+      //   그리고 **밭을 안 지운다**(T58b: 수확해도 밭은 남는다 · 다년생은 `cropAfterHarvest` 가 그루터기로).
+      if (b && b.type === 'farmland' && b.ownerId === npc.playerId && b.data && b.data.crop
+          && Crops.isReady(b.data.crop, b.data.plantedDay, zoneGameDay())) {
+        const _t = zoneGameDay(), _cid = b.data.crop;
+        const _units = Crops.harvestUnits(_cid, { supply: b.data.supply, seedFresh: b.data.seedFresh });
+        if (_units > 0) npc.inventory[_cid] = (npc.inventory[_cid] || 0) + _units;
+        const _e = _cropEntryOf(b.data);
+        if (SimVillages.cropAfterHarvest(_e, _t)) {                  // 다년생 — 그루터기로 남는다
+          b.data = { crop: _e.c, plantedDay: _e.p, seedFresh: b.data.seedFresh, farmStage: 0,
+                     supply: b.data.supply, ready: false, stumpDay: _t };
+          _cropWriteBack(b.data, _e, _t);
+        } else {
+          npc.inventory.seed_berry = (npc.inventory.seed_berry || 0) + 1;   // 한해살이는 씨를 남긴다(종전 그대로)
+          b.data = { crop: null, ready: false, farmStage: 0, supply: b.data.supply, emptiedDay: _t };
+        }
+        if (b.dbId) { try { db.updateBuildingData(b.dbId, JSON.stringify(b.data)); } catch (e) {} }
+        broadcast({ type: 'building_updated', building: { id: b.id, data: b.data } });
       }
       npc.harvestTarget = null;
       npc.nextDecisionAt = 0;
@@ -2607,6 +2676,7 @@ Rescue.init({ players, send, ZONE_ID,
   //     (`ITEM_LABEL_SERVER` 는 작물·특산까지 흡수한 뒤 완성된다). 값으로 넘기면 빈 표를 붙든다.
   itemLabel: () => ITEM_LABEL_SERVER,
   RESCUE_RANGE_PX, RESCUE_WINDOW_MS, WATER_DRINK_AMOUNT, THIRST_MAX,
+  MOVE_SPEED,   // ★[T110] 들리는 반경을 여기서 유도한다 — `MOVE_SPEED × RESCUE_WINDOW × HEAR_FRAC`(사본 0)
   afterVerb: (p) => { try { send(p.ws, { type: 'gauges', hunger: Math.round(p.hunger), thirst: Math.round(p.thirst), body: Body.selfPayload(p) }); savePlayer(p); } catch (e) {} } });
 
 // ═══ ★★[T62 2026-09-03] NPC 마을 쉼터 백필 — **멱등 · 유저 마을은 건너뛴다** ══════
@@ -3563,7 +3633,7 @@ async function _acceptConnection(ws, req, C) {
     if (Number.isFinite(_takeover.lastSeenDay)) player.lastSeenDay = _takeover.lastSeenDay;
     if (_takeover.member) player.member = _takeover.member;   // ★[T11] 살아 있던 몸의 소속이 진실이다(보강 — 덮어쓰기 아님)
     if (_takeover._returnBriefDone) player._returnBriefDone = true;
-    if (typeof _takeover.hp === 'number') player.hp = _takeover.hp;
+    if (typeof _takeover.hp === 'number') setHp(player, _takeover.hp, 'takeover');   // ★[T109] welcome 이 곧 self.hp 를 싣는다 — 조용하다
     if (typeof _takeover.hunger === 'number') player.hunger = _takeover.hunger;
     if (typeof _takeover.thirst === 'number') player.thirst = _takeover.thirst;
     if (typeof _takeover.vp === 'number') player.vp = _takeover.vp;
@@ -3645,6 +3715,7 @@ async function _acceptConnection(ws, req, C) {
     //   종전엔 클라(`60-t-market.js ITEM_KR` 9키)가 표를 들고 있었다. 그게 사본이고, T55 가 품목에서
     //   닫은 것과 **같은 결함**이다(서버가 종류를 늘리면 화면만 영문으로 남는다).
     categoryLabels: ItemLabel.CATEGORY_KO,
+    resourceVerbs: ItemLabel.RESOURCE_VERBS,   // ★[T90] 자연물 종류 → 동사 이름표(T82 회부 ① — 클라 사본 삭제)
     // ★★[T66 ⓪ 2026-09-03] **이 카드의 유일한 서버 줄.** 클라에 남아 있던 사본 둘을 닫는다:
     //   `60-t-market.js JOB_KR`(zone 의 `JOB_KR_NPC` 와 글자까지 같았다) · `43-i-icon.js SEASON_KO`
     //   (`events.KO_SEASON` 이 정본 — 달력이 이미 **현재** 계절만 보내서, 작물 파종철 표기가 사본을 탔다).
@@ -3777,7 +3848,7 @@ function handlePlayerInput(player, raw) {
   } else if (msg.type === 'verb') {
     Rescue.verb(player, msg);   // ★[T68] 대상 위 메뉴의 동사 하나 — 표는 `rescue.js` 가 갖는다(접점 1줄)
   } else if (msg.type === 'butcher') butcherCorpse(player, msg.cid);  // Phase 5-7
-  else if (msg.type === 'gather') tryGather(player);
+  else if (msg.type === 'gather') tryGather(player, msg.resId);   // ★[T90] 지목(없으면 종전 최근접 — 하위 호환)
   else if (msg.type === 'sort_ore') trySortOre(player);   // ★선광 — 캔 원석 덩이를 광석/맥석으로 가른다
   else if (msg.type === 'claim') tryClaim(player, msg.kind || 'personal');
   // ★[원장 승격 2026-08-30] 지목 드롭/줍기 — `ids`(개체 원장 id) · `lotDay`(로트 취득일) · `giIds`(바닥 여러 덩이).
@@ -3908,7 +3979,7 @@ function handlePlayerInput(player, raw) {
     if (typeof msg.thirst === 'number') player.thirst = Math.max(0, Math.min(100, msg.thirst));
     // ★[T47] hp 도 세운다 — 존을 넘을 때 생명값이 이어지는지 **재려면** 깎아 놓을 수 있어야 한다.
     //   (코드로만 확인하고 "넘어간다"고 적는 것이 N.6 을 만든 방식이다.)
-    if (typeof msg.hp === 'number') { player.hp = Math.max(1, Math.min(player.maxHp || 100, msg.hp)); broadcast({ type: 'player_damaged', pid: player.pid, hp: player.hp }); }
+    if (typeof msg.hp === 'number') setHp(player, Math.max(1, msg.hp), 'debug');   // ★[T109] 하한 1 은 이 자리의 뜻이라 남긴다(0 이면 쓰러짐이 딸려 온다)
     for (const k of ['cold', 'fatigue', 'injury', 'morale']) {
       if (typeof msg[k] === 'number') b[k] = Math.max(0, Math.min(1, msg[k]));
     }
@@ -4159,12 +4230,14 @@ function _farmlandData(player) {
   if (cid && Crops.get(cid)) {
     // ★[T58b] 돌봄 축 넷은 **NPC 작물 칸과 같은 이름·같은 뜻**이다(`w` 마지막 물댄 날 · `wd` 김맨 차례 ·
     //   `ps` 병충해 · `q` 품질). `qd` 는 **정산 도장**이다 — 틱이 없으니 볼 때 그날까지 재생한다(lazy·틱 0).
-    return { crop: cid, cropType: cid, plantedDay: zoneGameDay(),
+    return { crop: cid, plantedDay: zoneGameDay(), farmStage: 0,
              seedFresh: Number.isFinite(player._plantSeedFresh) ? player._plantSeedFresh : 1,
              supply: _waterSupplyAt(player.x, player.y), ready: false,
              w: zoneGameDay(), wd: 0, ps: 0, q: 1, qd: zoneGameDay() };
   }
-  return { cropType: 'berry', plantedAt: Date.now(), readyAt: Date.now() + CROP_GROW_MS, ready: false };
+  // ★★[T108] 작물 없이 지은 농지는 **빈 밭**이다(종전엔 60초 베리밭이었다 — 벽시계 마지막 자리).
+  //   비어 있으니 바로 심을 수 있고(`doPlant` 가 재사용), 그림도 갈은 흙으로 뜬다(T79c 기본값).
+  return { crop: null, ready: false, farmStage: 0, supply: _waterSupplyAt(player.x, player.y), emptiedDay: zoneGameDay() };
 }
 
 // === ★★★돌보기 [T58b 2026-09-03] — 플레이어 농지도 **마을과 같은 일**을 한다 ==========
@@ -4185,7 +4258,7 @@ function _cropEntryOf(d) {
   return { c: d.crop, p: d.plantedDay, td: d.td == null ? d.plantedDay : d.td,
            w: d.w == null ? d.plantedDay : d.w, wd: d.wd | 0, ps: d.ps | 0, q: d.q == null ? 1 : d.q };
 }
-function _cropWriteBack(d, e, day) { d.td = e.td; d.w = e.w; d.wd = e.wd; d.ps = e.ps; d.q = e.q; if (day != null) d.qd = day; }
+function _cropWriteBack(d, e, day) { d.td = e.td; d.w = e.w; d.wd = e.wd; d.ps = e.ps; d.q = e.q; if (day != null) { d.qd = day; d.farmStage = _farmStageOf(d, day); } }   // ★[T108] 사영도 같이 갱신
 // ★볼 때 정산한다 — 마지막 도장 다음 날부터 오늘까지 **정본 하루 틱**을 그대로 재생.
 function _cropSettle(b, today) {
   const d = b && b.data; if (!d || !d.crop || !Crops.get(d.crop)) return null;
@@ -4207,10 +4280,17 @@ function _cropTend(player, b, today) {
   if (want === 0) {
     const grown = Crops.grownDays(cid, d.plantedDay, today), need = Crops.growDaysOf(cid);
     const rd = Crops.readyDay(cid, d.plantedDay);
-    const dormant = c.winterCrop && Crops.seasonOfDay(today) === 'winter';
+    // ★★[T99 2026-09-05] 휴면이면 **왜** 손볼 것이 없는지 말한다 — 판정은 `Crops.dormantAt` 정본이 낸다
+    //   (여기서 `winterCrop`·계절을 다시 안 본다 · 사본 0). 월동은 **춘화**까지 함께 말한다:
+    //   "봄이 와야 자란다" 가 규칙이라 화면이 그걸 안 말하면 밭이 고장 난 것처럼 보인다.
+    const dormant = Crops.dormantAt(cid, today);
+    const vd = Crops.vernalDay(cid, d.plantedDay);
     send(player.ws, { type: 'notice',
       text: `${c.ko} 자라는 중 — ${grown}/${need}일 · 품질 ${Math.round(e.q * 100)}%`
-          + (dormant ? ' · 겨울엔 안 자란다(월동)' : '')
+          + (dormant
+              ? ` · 겨울엔 쉰다(${Crops.lifecycleOf(cid)} — 자라지도, 손볼 것도 없다)`
+              : '')
+          + (Crops.isWinterCrop(cid) && today < vd ? ' · 겨울을 지나야 자라기 시작한다(춘화)' : '')
           + (rd != null ? ` · ${Math.max(0, rd - today)}일 남음` : '')
           + ' · 지금은 손볼 것이 없다' });
     return false;
@@ -4253,7 +4333,6 @@ function _nearestEmptyFarmland(player) {
   for (const b of near) {
     if (b.type !== 'farmland' || b.ownerId !== player.playerId) continue;
     if (b.data && b.data.crop) continue;                       // 이미 심긴 밭
-    if (b.data && b.data.cropType === 'berry' && b.data.readyAt) continue;   // 옛 베리 농지는 건드리지 않는다
     const d = Math.hypot(b.x - player.x, b.y - player.y);
     if (d < bd) { bd = d; best = b; }
   }
@@ -4265,7 +4344,7 @@ function _plantInto(player, b, cropId, today) {
   const off = Spoil.peekOffer(seed, Lots.of(player, seed), 1, today);
   Lots.consume(player, seed, 1, player.inventory, today);
   const supply = (b.data && b.data.supply != null) ? b.data.supply : _waterSupplyAt(b.x, b.y);
-  b.data = { crop: cropId, cropType: cropId, plantedDay: today, seedFresh: off.fresh,
+  b.data = { crop: cropId, plantedDay: today, seedFresh: off.fresh, farmStage: 0,
              supply, ready: false, w: today, wd: 0, ps: 0, q: 1, qd: today };
   if (b.dbId) { try { db.updateBuildingData(b.dbId, JSON.stringify(b.data)); } catch (e) {} }
   broadcast({ type: 'building_updated', building: { id: b.id, data: b.data } });
@@ -4396,10 +4475,10 @@ function tryHarvest(player) {
     const _supply = best.data.supply, _fresh = best.data.seedFresh;
     if (_stump) {
       // 그루터기 — 같은 작물·같은 자리·같은 물·같은 발아율(씨앗을 새로 안 넣었으니 그대로다).
-      best.data = { crop: _e.c, cropType: _e.c, plantedDay: _e.p, seedFresh: _fresh,
+      best.data = { crop: _e.c, plantedDay: _e.p, seedFresh: _fresh, farmStage: 0,
                     supply: _supply, ready: false, stumpDay: today };
       _cropWriteBack(best.data, _e, today);
-    } else best.data = { cropType: null, crop: null, ready: false, supply: _supply, emptiedDay: today };
+    } else best.data = { crop: null, ready: false, farmStage: 0, supply: _supply, emptiedDay: today };
     if (best.dbId) { try { db.updateBuildingData(best.dbId, JSON.stringify(best.data)); } catch (e) {} }
     broadcast({ type: 'building_updated', building: { id: best.id, data: best.data } });   // ★클라가 이미 아는 메시지(새 타입 0)
     sendInventory(player);
@@ -4413,21 +4492,10 @@ function tryHarvest(player) {
     savePlayer(player);
     return;
   }
-  if (!best.data || !best.data.ready) {
-    const remain = Math.max(0, Math.round((best.data?.readyAt - Date.now()) / 1000));
-    send(player.ws, { type: 'notice', text: `아직 자라는 중 (${remain}초 남음)` });
-    return;
-  }
-  // 수확 — berry 3 + seed_berry 1 + farmland 제거 (종전 베리 농지 · 무변경)
-  player.inventory.berry = (player.inventory.berry || 0) + 3;
-  player.inventory.seed_berry = (player.inventory.seed_berry || 0) + 1;
-  if (best.dbId) { try { db.deleteBuilding(best.dbId); } catch (e) {} }
-  chunkManager.removeBuilding(best);
-  buildings.delete(best.id);
-  broadcast({ type: 'building_removed', id: best.id });
-  sendInventory(player);
-  send(player.ws, { type: 'notice', text: '수확! 🫐 ×3 + 씨앗 ×1' });
-  savePlayer(player);
+  // ★★[T108 2026-09-05] **옛 베리 농지 갈래를 지웠다.** 여기가 `readyAt` 을 읽어 60초 밭을 거두고
+  //   **농지를 통째로 지우던** 자리다(T58b 회부 3 — "수확하면 사라진다"는 그 레거시).
+  //   승격(`_promoteLegacyFarm`)이 옛 행을 빈 밭으로 바꿔 올리므로 이 갈래에 닿을 행이 이제 없다.
+  send(player.ws, { type: 'notice', text: '빈 밭이다 — 씨앗을 들고 심어라(E)' });
 }
 
 // === 음식 먹기 ===
@@ -4490,8 +4558,7 @@ function doEat(player, item, amount, who) {
   //   그 몸은 더 안 맞고 영원히 안 아물어 로그아웃 말고는 빠져나올 길이 없었다).
   //   ⇒ 음(−)의 몫은 **정본 피해 경로**로 보낸다. 회복(+)은 종전 그대로 여기서 더한다.
   if (eff.hpDelta < 0) { damagePlayer(target, -eff.hpDelta * ate, `food:${item}`); }
-  else if (eff.hpDelta) { target.hp = Math.max(0, Math.min(target.maxHp, target.hp + eff.hpDelta * ate));
-                      broadcast({ type: 'player_damaged', pid: target.pid, hp: target.hp }); }
+  else if (eff.hpDelta) setHp(target, target.hp + eff.hpDelta * ate, 'food');
   // ★★상한 걸 먹으면 **확정적으로** 탈이 난다 — 주사위 없음(재민 확정: 식중독 확률 모델 금지).
   //   새 축을 안 만든다: 신체 §7 의 **부상** 축 하나를 재사용한다(HP 는 안 건드린다).
   //   ⚠[T44] "아사 폐지" 폐기와 무관하다 — 극단 HP 감소는 허기·갈증·추위 셋이고 상한 음식은 그 목록 밖이다.
@@ -4733,8 +4800,7 @@ function doEatDish(player, id) {
   const hpBuff = Math.round((dish.attrs.buff || 0) * 15 * fresh / 100);    // 버프 = 신선·고품질일수록 큰 HP 회복
   player.hunger = Math.min(HUNGER_MAX, (player.hunger ?? HUNGER_MAX) + nutrition);
   if (hpBuff > 0) {
-    player.hp = Math.max(0, Math.min(player.maxHp, player.hp + hpBuff));
-    broadcast({ type: 'player_damaged', pid: player.pid, hp: player.hp });
+    setHp(player, player.hp + hpBuff, 'dish');
   }
   player.dishes.splice(idx, 1);
   sendDishes(player);
@@ -5435,10 +5501,14 @@ function weatherFor(p, now) {
   if (!w) return null;
   // ★[옷 티어 2026-08-31] 지금 입은 옷이 **몇 ℃ 를 벌어 주는지** — 화면이 그걸 말해야
   //   "가죽옷을 사야 하나"가 판단이 된다(비네트가 원인 축을 말하게 하는 규약과 같은 자리).
+  // ★[T105 2026-09-05] 젖음 — 정본은 `Body.wetOf` 하나다(여기서 다시 재지 않는다).
+  //   ⚠`insC` 는 **젖은 뒤의 값**을 보낸다: 화면이 "입은 옷이 체감 +2.97℃" 라고 말하는데
+  //     실제로는 젖어서 +1.49℃ 였다면 그건 화면이 거짓말을 한 것이다.
+  let wet = 0; try { wet = Body.wetOf(p) || 0; } catch (e) {}
   let insC = 0;
   try {
     const cl = getEquippedEquipment(p, 'clothes');
-    insC = Body.warmthInsC((cl && cl.attrs && cl.attrs.warmth) || 0);
+    insC = Body.warmthInsC((cl && cl.attrs && cl.attrs.warmth) || 0, wet);
   } catch (e) {}
   const sh = villageShelterOf(p, now || Date.now());
   // ★`cut` 은 "마을이 실제로 몇 % 깎아 주는가" — 클라가 `COLD_VILLAGE_SHELTER` 사본을 갖지 않게 여기서 낸다.
@@ -5448,8 +5518,16 @@ function weatherFor(p, now) {
   //   ⚠클라 사본 금지 규약과 같은 자리다: 지형·계절 산수는 전부 여기서 끝난다.
   const day = gameDayNow();
   const wexp = windExposureOf(p, now || Date.now(), day, sh);
+  // ★[T98 2026-09-05] 강수 — 하늘 값 하나만 얹는다(0..1 · 0 = 안 온다). 정본은 `weather.precipAt` 이고
+  //   여기는 **전달만** 한다. 클라 `37-r1-weather`(T93)가 `wx.precip` 을 이미 읽고 있어 무접촉으로 켜진다.
+  //   ⚠비냐 눈이냐는 서버가 정하지 않는다 — 클라가 `wx.tempC` 하나로 가른다(T93 이 옳다).
+  let precip = 0; try { precip = require('./weather').precipAt(day); } catch (e) {}
+  // ★[T114 2026-09-05] 수관 차폐 — `Wind.coverAt` 정본을 **전달만** 한다(클라 사본 금지 · `exp` 와 같은 자리).
+  //   ⚠"얼마나 덜 젖는가"의 계수(`COVER_MAX`)는 여기서 안 곱한다 — 그건 몸의 축이 소유한다.
+  //     화면은 "가려 주는 자리인가"만 말하면 되고, 젖음의 결과는 `wet` 이 이미 참말로 말한다.
+  const cover = +coverOf(p).toFixed(4);
   return Object.assign({}, w, { shelter: sh, cut, insC: +insC.toFixed(2),
-    wind: +Wind.seasonWind(day).toFixed(3), exp: wexp });
+    wind: +Wind.seasonWind(day).toFixed(3), exp: wexp, precip, wet: +wet.toFixed(4), cover });
 }
 // ★★[천장 해제 2026-08-31] 그 자리의 고도(km) — econ 기온 감률(−6.5℃/km)의 입력.
 //   ★★실측 보고(이 배치 §0): **지금은 언제나 0 이다. 그게 거짓말이 아니라 세계의 사실이다.**
@@ -5493,6 +5571,13 @@ function windExposureOf(p, now, day, shelter) {
   if (dt >= 5) perfMark('wind_exposure', dt);
   p._windExp = { at: now, x: p.x, y: p.y, day, v };
   return v;
+}
+// ★★[T114 2026-09-05] 그 자리의 수관 차폐 0..1 — **정본은 `Wind.coverAt` 하나**다(여기서 안 잰다).
+//   ⚠캐시를 새로 두지 않았다. `coverAt` 은 `exposureAt` 과 **같은 셀 캐시**(`cellTerms`)를 타고,
+//     바로 위에서 노출을 이미 재고 있어 이 호출은 사실상 적중 하나다(§0 실측 0.2µs).
+//     플레이어별 TTL 캐시를 또 두면 그게 사본이고, 지형은 안 변하니 새로 잴 일도 없다.
+function coverOf(p) {
+  try { return Wind.coverAt(p.x, p.y) || 0; } catch (e) { return 0; }
 }
 // ★★[무게 배치] 걸음 배율의 **정본 하나** — 서버 이동과 클라 예측이 같은 수를 써야 러버밴딩이 안 난다.
 //   신체(§7) × 과적, 곱 폭주는 바닥에서 자른다. 이 함수를 안 거치는 배율 계산을 새로 만들지 마라.
@@ -6375,7 +6460,25 @@ function tryForage(player) {
   if (canPersist(player)) savePlayer(player);
 }
 
-function tryGather(player) {
+function tryGather(player, resId) {
+  // ★★[T90 2026-09-04 재민 확정 · T82 회부 ②] **지목**. 종전엔 인자가 없어 늘 최근접을 골랐고,
+  //   그래서 T82 의 우클릭 메뉴는 "누른 것이 최근접일 때만" 동사를 냈다(정책이 아니라 임시였다).
+  //   ⇒ `resId` 가 오면 **그 자연물**을 캔다. 없으면 종전 그대로다(E 키·옛 클라 무변).
+  //   ⚠거리 게이트는 **그대로** `GATHER_RANGE` 다 — 지목해도 멀면 거절한다(새 예외 0).
+  //   ⚠지목이 오면 물·가축·광맥 앞갈래를 **건너뛴다**. 안 그러면 물가에서 나무를 눌렀는데
+  //     물을 마시고, 메뉴가 또 거짓말을 한다("누른 것"이 뜻을 잃는다).
+  if (resId !== undefined && resId !== null) {
+    const target = resources.get(resId);
+    if (!target) { send(player.ws, { type: 'notice', text: '거기엔 아무것도 없다', kind: 'gather' }); return; }
+    const d = Math.hypot(target.x - player.x, target.y - player.y);
+    if (d > GATHER_RANGE) {
+      send(player.ws, { type: 'notice',
+        text: `${Math.round(d)}px 떨어짐 — ${GATHER_RANGE}px 안에서 캔다`, kind: 'gather' });
+      return;
+    }
+    gatherResource(player, target);
+    return;
+  }
   // Phase 5-9: 물 채취 — 강/호수 인접 시 thirst 회복 + 어업 (Phase 5-11)
   for (const [dx, dy] of [[32, 0], [-32, 0], [0, 32], [0, -32]]) {
     if (isWaterTileLocal(player.x + dx, player.y + dy)) {
@@ -6464,6 +6567,13 @@ function tryGather(player) {
     if (d < bestDist) { best = r; bestDist = d; }
   }
   if (!best) { tryForage(player); return; }
+  gatherResource(player, best);
+}
+
+// ★★[T90] 자원 하나를 실제로 캐는 일 — **여기 하나**다.
+//   종전엔 `tryGather` 안에만 있었고, 지목(`resId`)이 생기면서 두 갈래가 같은 일을 해야 했다.
+//   ⇒ 뽑아 두고 둘 다 부른다. 한 줄도 안 바꿨다(사유지 검사·물웅덩이·도구 배율·전리품·저장 전부 그대로).
+function gatherResource(player, best) {
 
   // 토지 보호 체크: 다른 사람이 클레임한 땅 안의 자원
   //   - 주인 vp >= VP_THRESHOLD (주인이 같은 zone 접속 중일 때만 확인 가능) → 보호 해제 → 채집 허용 (vp 안 늘림)
@@ -6813,6 +6923,62 @@ function _takeGroundLots(player, item, total) {
   const recs = Lots.moveOut(player, item, total, player.inventory, zoneGameDay(), 0);
   return recs.length ? recs : null;
 }
+// ★★★[T102 2026-09-05 재민 확정] **바닥템이 개체를 통째로 싣는다 — 문 하나.**
+//
+//   T83 §5 가 남기고 회부가 두 번 적은 자리: 바닥템이 실을 수 있는 건 `{item,n,kg,led,lots,tool}` 뿐이라
+//   장비 개체는 **떨어뜨리면 다른 물건이 됐다**. `gi.tool` 이 `type·d·max` **셋만** 베끼기 때문이다.
+//   §0 실측이 잃어버리는 것을 셌다: 개체는 `{type, q, craftedSkill, attrs{…}, dura, durMax}`(+`id`·`mat`·`mix`)
+//   ⇒ **품질 q · 제작 숙련 · 속성표 · 재료**가 통째로 사라진다. 좋은 도끼를 떨어뜨리면 평범한 도끼가 됐다.
+//
+// ★해법은 필드를 더 베끼는 게 아니라 **베끼기를 그만두는 것**이다: `gi.inst = inst` — 정본 객체 그대로.
+//   ⓐ 새 직렬화가 없다 — `serializeBody` 가 `equipment` 를 **있는 그대로** 싣고(§0: JSON 왕복 무손실),
+//      바닥템은 DB 영속이 아예 없다(메모리 Map). 그래서 실을 형식을 새로 정할 일이 없다.
+//   ⓑ 어느 서랍에서 왔는지만 적는다(`instKind`) — 그건 필드 베끼기가 아니라 **주소**다.
+//      도구 개체(`toolItems` · `{id,type,d,max}`)와 장비 개체(`equipment` · 위 모양)는 사는 서랍이 다르다.
+//   ⓒ 옛 `gi.tool` 은 **유도해서** 남긴다(아래 `_giTool`) — 클라 접점 0(§0: 읽는 자리는 하네스 훅 하나뿐).
+// ★★★[T102 ② 2026-09-05 재민 확정 · 규약] **몸에 걸친 것은 짐이 아니다.**
+//   캐논은 "짐 **일부** 낙하"(T83)인데, 무엇이 "짐"인지가 여태 임시 규약이었다. 여기서 못 박는다:
+//     · **입은 장비는 죽어도 몸에 남는다** — 옷·갑옷·지게·손에 든 것. 시신에서 벗겨 가는 층은 없다.
+//     · **가방 안 것은 짐이다** — 벌크·도구 개체·**안 입은 장비 개체**(T102 가 이걸 후보에 넣었다).
+//     · 지게는 입은 것이라 안 떨어지지만 **지게 안의 짐은 짐이다** — §0 실측: 지게는 적재 상한을
+//       올릴 뿐 별도 칸이 아니라, 그 안의 짐은 그냥 인벤이고 **이미 후보였다**(고칠 줄 0).
+//   ★"입었나"의 정본은 `equipSlots` 하나다(무엇을 걸쳤는지 적는 유일한 자리 · 사본 금지).
+function _isWorn(player, id) {
+  if (!id || !player || !player.equipSlots) return false;
+  for (const k in player.equipSlots) if (player.equipSlots[k] === id) return true;
+  return false;
+}
+
+// gid 문자열 → 32비트 정수. **주사위가 아니라 함수다**(같은 gid = 같은 수 · FNV-1a).
+function _gidHash(gid) {
+  let h = 0x811c9dc5;
+  const s = String(gid);
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+  return h >>> 0;
+}
+function _instParcel(kind, inst, kg) {
+  return { n: 1, kg: +(+(kg != null ? kg : Weights.kgOfOrDefault(inst.type))).toFixed(3), instKind: kind, inst };
+}
+// 옛 읽기 호환 — `gi.tool` 을 개체에서 **유도한다**(따로 저장하지 않는다: 두 벌이면 그게 사본이다).
+function _giTool(gi) {
+  const inst = gi && gi.inst;
+  if (!inst) return gi && gi.tool ? gi.tool : null;
+  const d = (inst.d != null) ? inst.d : inst.dura;
+  const m = (inst.max != null) ? inst.max : inst.durMax;
+  return { type: inst.type, d: d | 0, max: m | 0 };
+}
+// 꺼내기 — **왔던 서랍으로** 되돌린다. `id` 만 새로 매긴다(남의 주소를 물려받지 않는다 — 개체 원장과 같은 규약).
+//   ★얕은 복사는 **id 를 새로 붙이기 위한 것**이고 필드를 골라 베끼지 않는다(`Object.assign` — 이름 0개).
+function _instTake(player, gi) {
+  const inst = gi && gi.inst;
+  if (!inst) return null;
+  const kind = gi.instKind || ((inst.durMax != null || inst.attrs) ? 'equip' : 'tool');
+  const copy = Object.assign({}, inst);
+  if (kind === 'equip') { copy.id = genEquipId(); (player.equipment = player.equipment || []).push(copy); }
+  else { copy.id = genToolId(); (player.toolItems = player.toolItems || []).push(copy); }
+  return { kind, inst: copy };
+}
+
 function _spawnGroundItems(player, item, parcels, lotRecs) {
   const out = [];
   const _gd = zoneGameDay();
@@ -6831,8 +6997,12 @@ function _spawnGroundItems(player, item, parcels, lotRecs) {
     return got.length ? got : null;
   };
   for (const pc of parcels) {
-    const ox = (Math.random() - 0.5) * 16, oy = 8 + Math.random() * 8;
     const gid = `g${nextGiId++}`;
+    // ★★[T102 ③] **주사위를 뺀다.** 캐논은 "낙하물 스캐터 금지 · 주사위 금지"인데 여기 `Math.random()`
+    //   둘이 있었다. 흩뿌림 **폭과 개수는 그대로** 두고(보기가 달라지면 그건 다른 카드다) 자리만
+    //   `gid` 해시로 정한다 ⇒ 같은 입력이면 같은 자리다(재현 가능 · 하네스가 두 판을 맞댈 수 있다).
+    const _h = _gidHash(gid);
+    const ox = ((_h & 0xffff) / 0x10000 - 0.5) * 16, oy = 8 + ((_h >>> 16) & 0xffff) / 0x10000 * 8;
     const gi = { id: gid, x: player.x + ox, y: player.y + oy, item, count: pc.n, droppedAt: Date.now(), kg: +(+pc.kg).toFixed(3) };
     if (pc.led && pc.led.length) gi.led = pc.led.map((e) => (Number.isFinite(e.d) ? { kg: e.kg, d: e.d } : { kg: e.kg }));
     const _lr = _cut(pc.n);
@@ -6841,8 +7011,9 @@ function _spawnGroundItems(player, item, parcels, lotRecs) {
       const _pf = Spoil.placeFields(_placeKeyOfGround(player.x, player.y, player.floor));
       gi.lots = _lr.map((r) => Object.assign({}, r, { m: _pf.m, w: _pf.w, t: _gd }));
     }
-    // ★[인벤 마무리] 도구 개체 — 내구도까지 그대로 싣는다(주우면 그 도구가 그대로 돌아온다).
-    if (pc.tool) gi.tool = { type: pc.tool.type, d: pc.tool.d | 0, max: pc.tool.max | 0 };
+    // ★★[T102 ①] 개체는 **참조 그대로** 싣는다 — 필드를 베끼지 않는다.
+    if (pc.inst) { gi.inst = pc.inst; gi.instKind = pc.instKind || 'tool'; gi.tool = _giTool(gi); }
+    else if (pc.tool) { gi.tool = { type: pc.tool.type, d: pc.tool.d | 0, max: pc.tool.max | 0 }; }   // 옛 호출부 호환
     groundItems.set(gid, gi);
     broadcast({ type: 'ground_item_added', gi });
     out.push(gi);
@@ -6869,10 +7040,27 @@ function tryDropItem(player, item, amount, opts) {
     if (player.equipped === inst.id) { player.equipped = null; }      // 들고 있던 것이면 손에서 놓는다
     if (player.hotkey1 === inst.id) { player.hotkey1 = null; }
     const kg = Weights.kgOfOrDefault(inst.type);
-    _spawnGroundItems(player, inst.type, [{ n: 1, kg, tool: { type: inst.type, d: inst.d, max: inst.max } }]);
+    _spawnGroundItems(player, inst.type, [_instParcel('tool', inst, kg)]);   // ★[T102] 개체 그대로
     sendInventory(player, 'drop:tool');
     send(player.ws, { type: 'tools', toolItems: player.toolItems || [], equipped: player.equipped, hotkey1: player.hotkey1 || null });
     send(player.ws, { type: 'notice', text: `🪓 ${ITEM_LABEL_SERVER[inst.type] || inst.type} 버림 (내구 ${inst.d}/${inst.max})` });
+    savePlayer(player);
+    return;
+  }
+
+  // ── ⓪-b ★[T102] 장비 개체 지목 — 가방 안 장비(안 입은 것)를 버린다.
+  //   입은 것은 못 버린다: 그건 짐이 아니라 몸에 걸친 것이다(아래 죽음 낙하와 **같은 규약**).
+  //   ⚠클라에 새 동사를 안 만들었다(§0: 클라 접점 0 목표) — 서버 문만 열어 둔다.
+  if (opts.equipId) {
+    const arr = player.equipment || [];
+    const ix = arr.findIndex((e) => e && e.id === opts.equipId);
+    if (ix < 0) { send(player.ws, { type: 'notice', text: '그 장비가 없다' }); return; }
+    if (_isWorn(player, opts.equipId)) { send(player.ws, { type: 'notice', text: '입고 있는 것은 벗어야 버린다' }); return; }
+    const inst = arr.splice(ix, 1)[0];
+    _spawnGroundItems(player, inst.type, [_instParcel('equip', inst)]);
+    sendInventory(player, 'drop:equip');
+    try { sendEquipment(player); } catch (e) {}
+    send(player.ws, { type: 'notice', text: `${PlayerItems.displayItem(inst)} 버림` });
     savePlayer(player);
     return;
   }
@@ -6977,6 +7165,19 @@ function tryPickupItem(player, gid) {
   }
   // ★[인벤 마무리 2026-08-30] 도구 개체는 **인벤 수량이 아니라 인스턴스**로 돌아온다.
   //   id 는 새로 매긴다(남의 주소를 물려받지 않는다 — 개체 원장과 같은 규약). 내구도는 그대로.
+  // ★★[T102] 개체가 실려 있으면 **왔던 서랍으로** 그대로 돌아간다(품질·속성·숙련까지 · 문 하나).
+  if (gi.inst) {
+    const r = _instTake(player, gi);
+    groundItems.delete(gid);
+    sendInventory(player, r.kind === 'equip' ? 'pickup:equip' : 'pickup:tool');
+    if (r.kind === 'equip') { try { sendEquipment(player); } catch (e) {} }
+    else send(player.ws, { type: 'tools', toolItems: player.toolItems, equipped: player.equipped, hotkey1: player.hotkey1 || null });
+    send(player.ws, { type: 'notice', text: `🤚 ${PlayerItems.displayItem(r.inst)} 주움` });
+    savePlayer(player);
+    broadcast({ type: 'ground_item_removed', id: gid });
+    return;
+  }
+  // 옛 바닥템(개체 없이 `tool` 셋만 실린 것) — 종전 그대로 받는다.
   if (gi.tool && gi.tool.type) {
     if (!player.toolItems) player.toolItems = [];
     const mx = gi.tool.max || TOOL_MAX_DURABILITY[gi.tool.type] || 100;
@@ -7518,9 +7719,12 @@ const KILN_BATCH_MAX = 20;
 //     **노가 뜨거울수록 짧다.** 시간의 근거를 온도에 두면 상수가 자의적이지 않고 era 축과 한 몸이 된다.
 //   ★계약(재민 지시 그대로):
 //     · 장입(정광·숯 즉시 차감) → `data.job = { until, ... }` → 완료 후 클릭하면 출탕
-//     · **대기 중 이탈해도 진척 보존** — 벽시계 기반이라 접속을 끊어도 흐른다(농지 readyAt 선례).
+//     · **대기 중 이탈해도 진척 보존** — 벽시계 기반이라 접속을 끊어도 흐른다.
+//       ⚠[T108] 종전 이 줄이 '농지 readyAt 선례'라 적었는데 **그 선례는 없어졌다**(밭은 게임일 하나다).
+//       불·가마의 벽시계는 밭과 다른 판단이고, 밭을 근거로 들지 마라.
 //     · 숯가마도 같은 계약(통나무 장입 → 시간 → 숯 수거).
-//   ★왜 벽시계인가: 농지(`readyAt`)가 이미 그 계약이고, 서버 재시작·재접속을 자동으로 건너뛴다.
+//   ★왜 벽시계인가: 사람이 지켜보는 **불**이라 실시간이 뜻을 갖는다(밭과 다르다 — 밭은 게절이 뜻이라
+//     게임일이다 · T108 이 밭에서 벽시계를 걷어냈다). 서버 재시작·재접속을 자동으로 건너뛰는 것도 이 쪽 이득이다.
 //     "불 붙여 놓고 로그아웃"이 최적 전략이 되는 건 **의도한 것**이다 — 청동기 제련은 원래 몇 시간 걸린다.
 const SMELT_BASE_MS = 180000;        // 기준 조업 시간(3분) — 1,150℃(도가니로+숯+풀무) 기준
 const SMELT_MIN_MS  = 45000;         // 하한 45초(고로급이어도 클릭 연타 게임이 되지 않게)
@@ -8109,7 +8313,8 @@ function tryFurnaceSmelt(player, buildingId) {
   const now = Date.now();
   const kind = (b.data && b.data.kind) || 'crucible';
   // ★★[2026-08-02e ⑤] 조업 중이면 — 아직이면 남은 시간을, 끝났으면 **출탕**한다.
-  //   진척은 벽시계라 자리를 떠도, 접속을 끊어도, 서버가 재시작해도 흐른다(농지 readyAt 선례).
+  //   진척은 벽시계라 자리를 떠도, 접속을 끊어도, 서버가 재시작해도 흐른다.
+  //   ⚠[T108] '농지 readyAt 선례'는 이제 없다 — 밭의 시계는 게임일 하나다.
   if (b.data && b.data.job) {
     const job = b.data.job;
     if (now < job.until) {
@@ -8212,19 +8417,22 @@ function __testBind() {
     // ★[부패·보존 배치 2026-08-31] 하네스가 잡을 손잡이들
     Spoil, doPreserve, preserveMenuPayload, _spoiledGuardItems, _spoiledGuardRes, _gameDayAt, __e2eFreezeZoneDay,
     // ★[작물 층 2026-08-31]
-    Crops, doPlant, plantMenuPayload, tryHarvest, _waterSupplyAt, _farmlandData, lootOfResource, CROP_GROW_MS,
+    Crops, doPlant, plantMenuPayload, tryHarvest, _waterSupplyAt, _farmlandData, lootOfResource,
+    _promoteLegacyFarm, _farmStageOf,   // ★[T108] 옛 밭 승격 · 밭 단계(게임일 정본)
     _cropTend, _cropSettle, _cropNeedsWater, _cropEntryOf, _nearestEmptyFarmland, _plantInto,   // ★[T58b] 플레이어 돌보기
     PRESERVED_EFFECTS, BUILDING_COST, BUILDING_RECIPES, ITEM_LABEL_SERVER,
     // ★[자염 배치 2026-09-01] 하네스가 잡을 손잡이들 — **정본을 그대로 내준다**
     //   (하네스가 염도·수율을 다시 계산하면 그게 사본이다).
     Salt, doBoilSalt, isSeaTileLocal, WATER_TILES, tryGather, _SEASON_DAY_MS, ITEM_RECIPES, doCraftItem,
-    Wind, windExposureOf, isRockTileLocal, villageShelterOf, gameDayNow, elevKmAt,
+    Wind, windExposureOf, coverOf, isRockTileLocal, villageShelterOf, gameDayNow, elevKmAt,
     // ── 쓰러짐·구조·사망(T43) ──
     tryRescue, tryRespawnChoice, listRespawnOptions, resolveDowned, tickDowned, nearestVillageWake,
     // ★[T83] 죽음 캐논 ⓑ — 하네스가 표를 다시 짜지 않게 **정본 그대로** 내준다
     _deathDrop, _deathDropPick, wakeCellOf, _hutDoorNear, _standCellNear, _startVidOf, DEATH_DROP_KG_FRAC,
     // ★[T88] 거리 비례 지연 · 곳간 한 끼 — 하네스가 식과 표를 다시 짜지 않게 정본 그대로
     _wakeDelayMs, _villageMeal, _t88WakeDist, _t88Meal,
+    // ★[T102] 바닥템 개체 — 하네스가 개체를 손으로 빚지 않게 **문 그대로** 내준다
+    _instParcel, _instTake, _giTool, _isWorn, _gidHash, _spawnGroundItems, genEquipId, genToolId,
     // ── 외침·구조 동사(T56) — 정본 모듈을 그대로 내준다(하네스가 소리를 다시 짜지 않는다) ──
     Rescue, doEat, Onboarding, WATER_DRINK_AMOUNT, THIRST_MAX, HUNGER_MAX, FOOD_EFFECTS, isWaterTileLocal,
     RESCUE_WINDOW_MS, RESCUE_RANGE_PX, RESCUE_HOLD_MS, RESCUE_HP_FRAC, CARRY_PERSON_KG, DOWN_WAKE_GAMEMIN,
@@ -8836,11 +9044,40 @@ async function isAtWar(guildA, guildB) {
   );
 }
 
+// ★★[T109 2026-09-05 재민 확정] **HP 를 바꾸는 문 하나.**
+//   §0-ⓐ 실측: `zone.js` 에서 사람의 hp 를 쓰는 자리가 **열 군데**였고, 규칙이 자리마다 달랐다 —
+//     하한이 0 인 곳(먹기·요리)과 1 인 곳(핸드오프 픽스처)이 섞였고, 상한은 안 거는 곳도 있었으며
+//     (`damagePlayer` 의 `p.hp -= dmg`), 그 자리는 **음수 hp 를 그대로 방송**하고 나서 0 으로 눌렀다.
+//     알리는 규칙도 넷은 방송하고 여섯은 조용했다. 사본이 열 벌이면 다음 자리는 또 다르게 틀린다.
+//   ⇒ 값·하한·상한·알림을 **여기 하나**로 모은다. 부르는 쪽은 "얼마로" 와 "왜" 만 말한다.
+//   ⚠**남에게 가는 규약은 한 비트도 안 바뀐다.** 종전에 방송하던 넷은 그대로 방송하고,
+//     조용하던 자리는 조용하거나 **자기에게만** 간다(`send` — 새 메시지 타입 0).
+//   ⚠**값이 안 바뀌면 안 보낸다.** 그리고 화면이 읽는 것은 정수(`Math.round`)라, 정수로 안 변한
+//     소수 변화도 안 보낸다 — 대역폭이 늘 이유가 없다.
+//   ⚠자연 회복(`regen`)은 **조용하다.** T61 이 초당 하나 나가는 `gauges` 에 hp 를 이미 실어 뒀고
+//     (`§0-ⓑ` · 클라 `30-n-net.js` 가 그 칸을 읽는다), 그게 곧 **1hp 양자화이자 틱 정본**이다.
+//     여기서 또 보내면 초당 열 건이 되는데, 화면이 얻는 것은 0 이다(새 수 0 · 초당 메시지 표는 보고 §2).
+const HP_PEER = new Set(['damage', 'food', 'dish', 'debug']);   // 종전에 방송하던 넷 — 규약 무변
+const HP_QUIET = new Set(['regen', 'respawn', 'takeover']);     // 이미 다른 문이 나른다(gauges · player_respawn · welcome)
+function setHp(p, v, why) {
+  const max = p.maxHp || PLAYER_MAX_HP;
+  const prev = p.hp;
+  const next = Math.max(0, Math.min(max, v));
+  if (next === prev) return prev;
+  p.hp = next;
+  if (Math.round(next) === Math.round(prev)) return next;
+  if (HP_QUIET.has(why)) return next;
+  if (HP_PEER.has(why)) broadcast({ type: 'player_damaged', pid: p.pid, hp: p.hp });
+  else if (p.ws) send(p.ws, { type: 'player_damaged', pid: p.pid, hp: p.hp });
+  return next;
+}
+
 function damagePlayer(p, dmg, source) {
   if (p.hp <= 0 || p.isDown) return;
-  p.hp -= dmg;
+  // ★[T109] 종전엔 **음수 hp 를 그대로 방송**하고 그 뒤에 0 으로 눌렀다(화면이 잠깐 음수를 봤다).
+  //   이제 문 하나가 0 으로 눌러 두고 방송한다 — 게임 판정(`p.hp <= 0`)은 그대로다.
+  setHp(p, p.hp - dmg, 'damage');
   p.lastDamagedAt = Date.now();
-  broadcast({ type: 'player_damaged', pid: p.pid, hp: p.hp });
   // ★[신체 상태 §7] 부상 — **주사위가 아니라 피해량 문턱**이다(일관성 원칙: 같은 상황이면 같은 결과).
   //   잔타는 안 다치고 늑대 한 대는 다친다. 회복은 시간 + 약초(medicinal_herb 가 재촉한다).
   if (!p.isNpc) {
@@ -8851,7 +9088,7 @@ function damagePlayer(p, dmg, source) {
     }
   }
   if (p.hp <= 0) {
-    p.hp = 0;
+    // ★[T109] `p.hp = 0` 은 지웠다 — `setHp` 가 이미 하한 0 으로 눌렀다(사본 0).
     if (p.isNpc) {
       // NPC: 30초 후 자기 사유지 중심에 부활 (기존 로직 유지)
       console.log(`[${ZONE_ID}] 🤖 NPC ${p.name} 사망 (by ${source}) — ${NPC_RESPAWN_MS/1000}초 후 부활`);
@@ -8860,7 +9097,7 @@ function damagePlayer(p, dmg, source) {
       if (village) { respawnX = village.x; respawnY = village.y; }
       setTimeout(() => {
         if (!players.has(p.pid)) return;
-        p.hp = p.maxHp;
+        setHp(p, p.maxHp, 'respawn');   // ★[T109] 바로 아래 `player_respawn` 이 이미 알린다 — 조용하다
         p.x = respawnX; p.y = respawnY;
         p.vx = 0; p.vy = 0;
         p.hunger = HUNGER_MAX; p.thirst = THIRST_MAX;
@@ -9194,7 +9431,7 @@ function _wakeUp(p, x, y, hpFrac, msg) {
   p._rescueHoldMs = 0;
   p._deadUntil = 0;
   Body.ensure(p).hpDebt = 0;            // ★누워 있는 동안 쌓인 극단 빚을 지우고 일어난다(T44 와의 접점)
-  p.hp = Math.max(1, Math.round(p.maxHp * hpFrac));
+  setHp(p, Math.max(1, Math.round(p.maxHp * hpFrac)), 'rescue');   // ★[T109] 일어난 순간이 화면에 바로 온다(자기에게만)
   if (Number.isFinite(x) && Number.isFinite(y)) { p.x = x; p.y = y; }
   p.vx = 0; p.vy = 0;
   p.lastDamagedAt = Date.now();
@@ -9356,6 +9593,13 @@ function _deathDropPick(p, frac) {
     }
   }
   for (const inst of (p.toolItems || [])) cand.push({ tool: inst, item: inst.type, kg: Weights.kgOfOrDefault(inst.type) });
+  // ★★[T102 ②] **안 입은 장비 개체도 짐이다.** 종전엔 `equipment[]` 가 통째로 후보 밖이라
+  //   가방에 넣어 둔 좋은 도끼가 죽어도 안 떨어졌다(입은 것과 구별이 없었다).
+  //   ⇒ 입은 것만 뺀다(`_isWorn` — `equipSlots` 정본). 그리고 떨어져도 **그 물건 그대로**다(①).
+  for (const inst of (p.equipment || [])) {
+    if (!inst || _isWorn(p, inst.id)) continue;
+    cand.push({ equip: inst, item: inst.type, kg: Weights.kgOfOrDefault(inst.type) });
+  }
   // ⓑ 무거운 것부터 — 절반(kg)에 **닿을 때까지**. 같은 무게면 원래 순서(안정 정렬).
   const total = cand.reduce((s, c) => s + c.kg, 0);
   const target = total * f;
@@ -9390,18 +9634,28 @@ function _deathDrop(p) {
     try { Lots.reconcile(p, item, p.inventory, zoneGameDay()); } catch (e) {}
     n += k;
   }
-  // ⓓ 도구 개체 — 내구도까지 그대로. 손에 들고 있던 것이 떨어졌으면 그 손만 비운다.
+  // ⓓ 도구 개체 — **개체 그대로**(T102 문 하나). 손에 들고 있던 것이 떨어졌으면 그 손만 비운다.
   const dropTools = cand.filter((c, ix) => c.tool && picked.has(ix)).map((c) => c.tool);
   for (const inst of dropTools) {
     const ix = (p.toolItems || []).findIndex((t) => t && t.id === inst.id);
     if (ix >= 0) p.toolItems.splice(ix, 1);
     if (p.equipped === inst.id) p.equipped = null;
     if (p.hotkey1 === inst.id) p.hotkey1 = null;
-    const kg = Weights.kgOfOrDefault(inst.type);
-    const gis = _spawnGroundItems(p, inst.type, [{ n: 1, kg, tool: { type: inst.type, d: inst.d, max: inst.max } }]);
+    const gis = _spawnGroundItems(p, inst.type, [_instParcel('tool', inst)]);
     for (const g of gis) g.keep = 1;
     n++;
   }
+  // ⓔ ★[T102 ②] **가방 안 장비 개체** — 품질·속성·숙련까지 실려 떨어진다. 입은 것은 여기 안 온다
+  //   (`_deathDropPick` 이 `_isWorn` 으로 이미 걸렀다 — 규약은 한 자리에서만 판정한다).
+  const dropEquip = cand.filter((c, ix) => c.equip && picked.has(ix)).map((c) => c.equip);
+  for (const inst of dropEquip) {
+    const ix = (p.equipment || []).findIndex((e) => e && e.id === inst.id);
+    if (ix >= 0) p.equipment.splice(ix, 1);
+    const gis = _spawnGroundItems(p, inst.type, [_instParcel('equip', inst)]);
+    for (const g of gis) g.keep = 1;
+    n++;
+  }
+  if (dropEquip.length) { try { sendEquipment(p); } catch (e) {} }
   try { sendInventory(p, 'death'); } catch (e) {}
   send(p.ws, { type: 'tools', toolItems: p.toolItems || [], equipped: p.equipped || null, hotkey1: p.hotkey1 || null });
   return n;
@@ -9924,11 +10178,27 @@ setInterval(() => {
     if ((Date.now() - now) > 15) break;
     npcStep(npc, dt, now);
   }
-  // 농지 ready 마크 (시간 지남) — 활성청크만 (집 ON이면 전 건물 3만+채 매틱 순회 방지)
-  for (const k of activeChunkKeys) { const c = chunkManager.chunks.get(k); if (!c) continue;
-    for (const b of c.buildings.values()) {
-      // ★[작물 층] 작물 농지는 **볼 때** 판정한다(lazy · 게임일) — 이 틱은 종전 베리 농지 전용이다.
-      if (b.type === 'farmland' && b.data && !b.data.crop && !b.data.ready && now >= b.data.readyAt) b.data.ready = true;
+  // ★★[T108 2026-09-05] **벽시계 ready 마크 틱을 지우고, 게임일 경계 한 번으로 바꿨다.**
+  //   여기가 **매 틱** 전 활성 청크의 밭을 훑어 `now >= readyAt` 으로 `ready` 를 켜던 자리다.
+  //   ★밭의 시계는 이제 게임일 하나다 ⇒ 밭 그림이 바뀔 수 있는 순간도 **하루 경계 하나**뿐이다.
+  //     그날이 아니면 훑을 이유가 없다(틱당 순회 → 하루 1회 · 활성 청크만).
+  //   ★`farmStage` 는 **정본의 사영**이다(0갈은흙 1어린싹 2자람 3익음). 클라가 성장을 다시 세면
+  //     그게 시계 둘이다 — 종전 클라가 `readyAt`·`plantedAt` 으로 그러고 있었고, 정본 밭엔 그 둘이
+  //     없어서 **심자마자 "수확가능"** 으로 그려졌다(§0ⓐ 실측). 서버가 답을 실어 준다.
+  {
+    const _gd = zoneGameDay();
+    if (_gd !== _lastFarmStageDay) {
+      _lastFarmStageDay = _gd;
+      for (const k of activeChunkKeys) { const c = chunkManager.chunks.get(k); if (!c) continue;
+        for (const b of c.buildings.values()) {
+          if (b.type !== 'farmland' || !b.data) continue;
+          const st = _farmStageOf(b.data, _gd);
+          if (st !== b.data.farmStage) {
+            b.data.farmStage = st;
+            broadcast({ type: 'building_updated', building: { id: b.id, data: b.data } });   // 클라가 이미 아는 메시지
+          }
+        }
+      }
     }
   }
 
@@ -10301,7 +10571,7 @@ setInterval(() => {
         if (entity.ws) {
           damagePlayer(entity, dmg, 'fall');
         } else {
-          entity.hp = Math.max(0, entity.hp - dmg);
+          setHp(entity, entity.hp - dmg, 'fall');   // NPC — ws 가 없어 아무 데도 안 간다(종전 그대로)
         }
       }
       entity.fallStartFloor = 0;
@@ -10346,6 +10616,8 @@ setInterval(() => {
     const _sh = villageShelterOf(p, now);
     Body.tick(p, dt, { day: _day, elevKm: elevKmAt(p), night: _night, nearFire: _fire, indoor: _indoor, warmth,
                        villageShelter: _sh, windExposure: windExposureOf(p, now, _day, _sh),
+                       // ★[T114] 수관 차폐 — 젖음이 이 곱 하나를 쓴다(`Body.coverMult` · 추위 축 무접촉)
+                       cover: coverOf(p),
                        seasonCold: seasonColdNow(), moving, sprint: p.sprint, carryRatio: _cr, now });
     // ★★★[캐논 변경 2026-09-01 · T44] 극단이면 HP 가 천천히 깎인다("아사 폐지" 폐기).
     //   `Body` 가 **비율**을 내고 쌓아 두면, 여기서 1 HP 이상 쌓였을 때 **정본 피해 경로**로 낸다.
@@ -10398,7 +10670,7 @@ setInterval(() => {
       //     ⇒ 극단 감소가 걸린 동안은 자연 회복을 멈춘다. 회복 식은 그대로 두고 **게이트만** 얹는다.
       const _rm = p.isNpc ? 1 : Body.recoverMult(p);
       const _extreme = p.isNpc ? 0 : Body.extremeHpRate(p).rate;
-      if (_rm > 0 && _extreme <= 0) p.hp = Math.min(p.maxHp, p.hp + 2 * dt * 5 * _rm); // 만복 기준 초당 ~10hp
+      if (_rm > 0 && _extreme <= 0) setHp(p, p.hp + 2 * dt * 5 * _rm, 'regen'); // 만복 기준 초당 ~10hp · `gauges` 가 초당 하나로 나른다
     }
   }
 

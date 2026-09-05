@@ -119,7 +119,13 @@ const depositMap = Villages.playerVillageDepositMap();
 const shortByItem = new Map(), glutByItem = new Map(), reqByItem = new Map();
 const L = Events.createLedger({
   econV2, vidOf: (v, i) => i, depositMap,
-  cfg: { PRICE_UP: 0.70, PRICE_DOWN: 0.70, HYST: 1.6 },
+  // ★[T94 2026-09-05] 여기 있던 `cfg: { PRICE_UP: 0.70, PRICE_DOWN: 0.70, HYST: 1.6 }` 를 **뺐다**.
+  //   그건 채택 문턱의 **사본**이었고, T94 가 채택을 ±90 으로 옮기자 이 계측기만 옛 문턱으로 재면서
+  //   "기준선 정본"의 일/건 열을 조용히 옛 값으로 찍고 있었다(실측: 22469건 · 1.82일 — ±70 의 수).
+  //   ⇒ 정본(`events.js` 기본값)을 그대로 따른다. 되돌려 보고 싶으면 env 한 줄이다
+  //     (`EV_PRICE_UP=0.70 EV_PRICE_DOWN=0.70 node scripts/t17-metrics.js 800 1020`).
+  //   ⚠econ 일곱 열(인구·소멸·무기Q·확장셀·도구Q·보존식·소금)은 **장부와 무관**하다 —
+  //     장부는 관측자라 문턱을 바꿔도 그 일곱은 한 자도 안 움직인다(T94 보고 §3 이 3시드로 증명한다).
   onEvent: (e) => {
     if (e.type === 'STOCK_SHORTAGE') shortByItem.set(e.item, (shortByItem.get(e.item) || 0) + 1);
     else if (e.type === 'STOCK_GLUT') glutByItem.set(e.item, (glutByItem.get(e.item) || 0) + 1);

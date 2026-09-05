@@ -678,14 +678,70 @@ function itemKo(k) {
   // ★[2026-08-25 사건 레이어] `ms` 인자 추가 — 게시판 목록은 한 줄보다 오래 떠야 읽힌다.
   //   새 패널을 만들지 않는다(설계 §3.2 "대시보드 UI 금지" · 배치 지시 "기존 HUD 문법 재사용").
   //   여러 줄은 `\n` 그대로 — `#notice` 에 `white-space: pre-line` 을 줬다.
-  function showNotice(text, ms) {
-    // ★진단 훅(읽기 전용): 최근 알림 40건 — 하네스가 '재료 부족/의뢰 성공' 같은 서버 응답을 실측하는 통로.
-    (window.__notices = window.__notices || []).push(text); if (window.__notices.length > 40) window.__notices.shift();
-    document.getElementById('notice').textContent = text;
+  // ★★[T90 · T78 회부 ⑤] 알림의 **종류가 그림이 된다.** T78 이 경계 하나에서 접두 이모지를 걷고
+  //   `kind` 로 옮겨 뒀는데(서버 `notice.js`), 클라가 그 칸을 **읽지 않아** 종류가 화면에서 사라져 있었다.
+  //   ⇒ 아홉 종류를 선 아이콘 이름에 잇는다. **새 `d` 는 하나도 안 만들었다** — 세트에 이미 있는
+  //     아홉 이름을 쓴다(이름 하나 = 그림 하나이므로 아홉이 서로 다른 그림이다 · `test-itemlabel ⑬`).
+  const NOTICE_ICO = {
+    village: 'home', gather: 'axe', fishing: 'fish', craft: 'hammer', board: 'scroll',
+    rescue: 'heart', combat: 'guild', dev: 'warn', info: 'eye',
+    // ★[T110] 남이 쓰러졌다는 외침 — 이미 있던 `shout`(확성기) 그림을 쓴다(새 그림 0 · 이름 하나 = 그림 하나)
+    downed: 'shout',
+  };
+  // ★★[T113 2026-09-05 재민 확정] **알림이 겹치면 줄이 선다.**
+  //   종전엔 `#notice` 가 **한 칸**이라 새 알림이 앞 것을 지웠다. T78 이 종류를 아홉으로 늘리고
+  //   T90 이 그림을 붙인 뒤로, 의뢰 성공과 쓰러진 사람의 외침이 같은 초에 오면 **하나가 사라졌다**.
+  //   ⇒ 같은 노드 안에 **줄**을 쌓는다(새 패널 0 · 새 노드 0 — `\n` 텍스트 마디가 줄을 가른다.
+  //     `#notice` 는 이미 `white-space: pre-line` 이라 그 한 글자가 곧 줄바꿈이다).
+  //
+  //   ★N = 3 — **캔버스에서 유도했다**(보고 §0-ⓑ 표 · 새 수는 이 하나뿐이다).
+  //     `산그림/디자인B/디자인B_HUD.jpg` 의 알림 자리를 화소로 재면 **높이 50px · 글줄 피치 17px ·
+  //     패딩 11px** 이고, 그 안에 글줄이 **둘** 들어간다(11 + 17 + 11 + 11 = 50).
+  //     설계 §3 의 간격 눈금은 4·8·12·16 이다 — 슬롯을 눈금 한 칸(16) 키우면 66~67px 이고
+  //     그건 정확히 **세 줄**이다(17×3 + 16). 캔버스가 스택을 안 그렸으므로 갱신 제안은 회부에 적었다.
+  //
+  //   ⚠**규약 무변**(§0-ⓐ 실측): `window.__notices` 는 **글자만·40건** 그대로다(28개 하네스가 읽는다).
+  //     `#notice` 의 DOM 을 읽는 하네스는 **하나뿐**이고(`e2e-verbs ⑫` · 이 카드가 같이 고쳤다),
+  //     `textContent` 는 이제 **보이는 줄들을 `\n` 로 이은 것**이다 — 한 줄만 떠 있으면 종전과 같다.
+  const NOTICE_MAX = 3;
+  let _ntLines = [];   // [{ text, kind, n, until }] — 뒤가 최근. 넘치면 **앞(오래된 것)** 이 밀려 사라진다.
+  function _ntRender() {
+    const el = document.getElementById('notice');
+    if (!el) return;
+    el.textContent = '';
+    _ntLines.forEach((L, i) => {
+      if (i > 0) el.appendChild(document.createTextNode('\n'));
+      const ico = NOTICE_ICO[L.kind] || null;
+      if (ico) el.insertAdjacentHTML('beforeend', uiIcon(ico, 13, 'nt-ico'));
+      el.appendChild(document.createTextNode(L.n > 1 ? `${L.text} ×${L.n}` : L.text));
+    });
+  }
+  function _ntArm() {
     clearTimeout(noticeTimer);
+    if (!_ntLines.length) return;
+    // ★타이머는 **하나**다(새 상태 0). 제일 먼저 죽을 줄에 맞춰 깨고, 죽은 줄을 걷고, 다시 잰다.
+    //   줄마다 `setTimeout` 을 달면 타이머가 N 개로 늘고 지우기가 어려워진다.
+    const next = Math.min(..._ntLines.map((L) => L.until));
     noticeTimer = setTimeout(() => {
-      document.getElementById('notice').textContent = '';
-    }, ms || 2500);
+      const now = Date.now();
+      _ntLines = _ntLines.filter((L) => L.until > now);
+      _ntRender(); _ntArm();
+    }, Math.max(16, next - Date.now()));
+  }
+  function showNotice(text, ms, kind) {
+    // ★진단 훅(읽기 전용): 최근 알림 40건 — 하네스가 '재료 부족/의뢰 성공' 같은 서버 응답을 실측하는 통로.
+    //   ⚠**글자만** 담는다(아이콘도 ×n 도 화면의 일이다). 하네스 28개가 이 배열을 문자열로 읽는다.
+    (window.__notices = window.__notices || []).push(text); if (window.__notices.length > 40) window.__notices.shift();
+    if (!text) { _ntLines = []; clearTimeout(noticeTimer); _ntRender(); return; }   // 빈 글자 = 지우기(종전 뜻)
+    const life = ms || 2500, until = Date.now() + life;
+    // ★같은 말이 연달아 오면 **겹치지 말고 ×n**(스팸 억제). 마지막 줄 하나만 본다 — 새 상태 0.
+    //   ⚠맨 앞 줄까지 뒤지면 "A B A" 가 `A ×2 · B` 로 뭉쳐 **온 차례가 거짓말**이 된다.
+    const last = _ntLines[_ntLines.length - 1];
+    if (last && last.text === text && last.kind === kind) { last.n += 1; last.until = until; }
+    else _ntLines.push({ text, kind, n: 1, until });
+    while (_ntLines.length > NOTICE_MAX) _ntLines.shift();
+    _ntRender();
+    _ntArm();
   }
 
   // ★[T82 ⓪] `boot()` 호출은 **`99-main.js`** 로 옮겼다 — T0-b: 최상위 실행문은 그 파일 하나다.

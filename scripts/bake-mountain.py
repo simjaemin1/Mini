@@ -9,6 +9,12 @@
 #   인덱스가 위치순 재정렬이라 [1] 참조가 빗나간다 — '색으로 찾아' 교체할 것(봉두 255 클리핑 진범).
 import bpy, math, os, json, random
 import mathutils
+# ★[T103] 블렌더 5.0 이 `Bump` 의 `Distance` 기본값을 1.0 → 0.001 로 바꿨다(범프가 1000분의 1).
+#   값은 `render_common.BUMP_DIST` 한 곳이 정본이다 — 여기 숫자를 다시 적지 않는다(사본 금지).
+import sys as _sys_bd, os as _os_bd
+_sys_bd.path.insert(0, _os_bd.path.dirname(_os_bd.path.abspath(__file__)))
+from render_common import BUMP_DIST
+
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.environ.get('MT_OUT') or os.path.join(HERE, 'mountain_renders')
@@ -75,6 +81,7 @@ def mountain_material():
     nt.links.new(ramp.outputs['Color'], p.inputs['Base Color'])
     bnoise = nt.nodes.new('ShaderNodeTexNoise'); bnoise.inputs['Scale'].default_value = 5.5; bnoise.inputs['Detail'].default_value = 8.0
     bump = nt.nodes.new('ShaderNodeBump')
+    bump.inputs["Distance"].default_value = BUMP_DIST   # ★T103 — 5.0 기본값 0.001 되돌림
     bump.inputs['Strength'].default_value = float(os.environ.get('MT_BUMP', '0.38'))
     nt.links.new(bnoise.outputs['Fac'], bump.inputs['Height'])
     if os.environ.get('MT_BUMP') != '0':
@@ -114,6 +121,7 @@ def forest_material():
     nt.links.new(ramp.outputs['Color'], p.inputs['Base Color'])
     bn = nt.nodes.new('ShaderNodeTexNoise'); bn.inputs['Scale'].default_value = 9.0; bn.inputs['Detail'].default_value = 8.0
     bp2 = nt.nodes.new('ShaderNodeBump'); bp2.inputs['Strength'].default_value = 0.5   # 수관 몽글몽글
+    bp2.inputs["Distance"].default_value = BUMP_DIST   # ★T103 — 5.0 기본값 0.001 되돌림
     nt.links.new(bn.outputs['Fac'], bp2.inputs['Height'])
     nt.links.new(bp2.outputs['Normal'], p.inputs['Normal'])
     p.inputs['Roughness'].default_value = 0.95
@@ -203,18 +211,17 @@ for a in range(8):
     for v in range(2):   # ★숲산 세그먼트 [재민 "무조건 돌산이네.. 다른 버전도 가능해?"] — 낮고 둥글게
         SPECS.append(('mt_F%dv%d' % (a, v), 2.5, 4.2 - 0.4 * v, 3, 300 + a * 11 + v * 97,
                       (2.1, a * 22.5 + 90), 'F'))
-# ★★둥근 판 [재민 2026-08-07: "둥근 버전도 만들어서, 여러 개 혼합해서 쓰자.
-#   물론 한반도 지역은 둥근 거 위주로"] — 이름 규약: **접두 R = 둥근**.
-#   섞는 비율은 굽기가 아니라 **배치 쪽 손잡이**다(굽기는 재료만 댄다).
-for a in range(8):
-    for v in range(3):   # 둥근 돌산 — 닳은 화강암 능선
-        SPECS.append(('mt_RG%dv%d' % (a, v), float(os.environ.get('MT_RBR', '3.05')),
-                      float(os.environ.get('MT_RH', '3.9')) - 0.35 * v, 3 + (v % 2),
-                      700 + a * 7 + v * 131, (2.1, a * 22.5 + 90), 'R'))
-    for v in range(2):   # 둥근 숲산 — 노년기 구릉
-        SPECS.append(('mt_RF%dv%d' % (a, v), float(os.environ.get('MT_RBR', '3.05')) + 0.2,
-                      float(os.environ.get('MT_RH', '3.9')) - 0.7 - 0.3 * v, 3,
-                      900 + a * 11 + v * 97, (2.1, a * 22.5 + 90), 'FR'))
+# ★★[T120 2026-09-05] **둥근 판 `mt_R*` 40종을 지웠다 — 굽는 표에만 있고 배포본이 0 이었다.**
+#   여기 있던 두 겹 반복(`mt_RG*` 24 + `mt_RF*` 16)이 `SPECS` 를 85 로 부풀렸는데 배포는 45다
+#   (T106 §ⓐ-3 실측 · `MT_ONLY` 로 45만 구워 왔다). 굽지 않는 재료표는 **읽는 사람을 속인다** —
+#   "85종이 있다"고 말하면서 `public/assets/mountains` 에는 45장뿐이다.
+#   ⚠**지운 것은 재료표지 뜻이 아니다.** 재민 2026-08-07 "둥근 버전도 만들어서, 여러 개 혼합해서
+#     쓰자 · 물론 한반도 지역은 둥근 거 위주로" 는 **아직 안 닿은 일감**이고, 그 카드가 오는 날
+#     되살릴 자리는 `git show <이 커밋>^:scripts/bake-mountain.py` 한 줄이다(회부에 적었다).
+#   ⓘ 둥근 **모양 코드**(`isR`)는 그대로 둔다 — 주봉 `SPECS_X` 의 `mt_X1`·`mt_X2` 가 쓴다.
+#     ⇒ 지운 것은 "무엇을 굽나"(재료표)뿐이고, "어떻게 둥글게 굽나"(모양)는 살아 있다.
+#   ⓘ `mock-mountain-cover.js` 의 `ROUND_MIX` 갈래는 `AN['mt_RG0v0']` 가 있을 때만 켜지므로
+#     오늘도 내일도 안 켜진다(앵커가 없다). 그 갈래는 **뜻의 기록**이라 안 지웠다 — 회부.
 # ★주봉 [재민 2: "큰 봉우리가 잘 안 선다"] — **별도 굽기**(MT_X=1 MT_RES=4096)로 배율 4.3 까지 선명.
 #   2048 로는 확대 없는 한계가 1.96 이라 주봉을 크게 세우면 다시 뭉갠다.
 SPECS_X = [

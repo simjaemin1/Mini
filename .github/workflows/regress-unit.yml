@@ -1,0 +1,72 @@
+# === .github/workflows/regress-unit.yml — 단위 회귀 CI [PM · 2026-09-05] ==================
+#
+# ★무엇을 돌리나: 회귀 하네스(120종 · 전수 ~3시간)는 CI 에 못 올린다 — 실클라(Playwright)·존 서버를
+#   띄우고 2코어 부하가 거짓 빨강을 만든다는 걸 실측했다(공통.md §2 · 족보 111). 여기는 그중
+#   **서버·브라우저를 안 띄우고 60초 안에 끝나는 단위 계층**만 push 마다 돈다(약 3분).
+#   전수는 여전히 야간(망고링고 04:00 KST)이 main 에서 한다.
+# ★러너는 레포의 것 하나(`scripts/run-regress.sh` — 파이프 종료코드·결과줄 0 = 크래시 판정). 여기서 사본 안 만든다.
+# ★두 잡: core = 반드시 초록 · watch = 지금 main 에서 빨간 둘(귀속 카드 있음) — 고쳐지면 core 로 옮긴다.
+#   watch 는 continue-on-error 라 배지를 안 깨지만 로그엔 남는다. 숨기는 게 아니라 **알면서 기다리는 것**.
+# ★TIDE_FREEZE_MS=372603 — test-body ⑯㉧ 은 물때에 따라 갈린다(T52 가 심었다 · 공통 상시 목록). 만조로 못 박는다.
+# ★DRAIN_SEC=1 — 서버를 안 띄우는 하네스뿐이라 하네스 사이 8초 대기가 필요 없다.
+name: regress-unit
+
+on:
+  push:
+    branches: ['main', 'batch/**']
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: regress-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core:
+    name: 단위 회귀 (반드시 초록)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      TIDE_FREEZE_MS: '372603'
+      DRAIN_SEC: '1'
+      TIMEOUT_SEC: '180'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci --no-audit --no-fund
+      - name: 러너 자가 검사 (크래시를 실패로 잡는가)
+        run: bash scripts/run-regress.sh --selftest
+      - name: 단위 하네스 23종
+        run: |
+          bash scripts/run-regress.sh \
+            test-harness-lint.js test-client-globals.js test-calendar.js \
+            test-kcal.js test-crops.js test-crops-world.js test-farm-life.js \
+            test-econ-diet.js test-econ-rawgrain.js test-winter.js \
+            test-carrier.js test-weight.js test-spoil2.js test-preserve.js test-salt.js \
+            test-membership.js test-newcomers.js test-village-found.js \
+            test-icons.js test-props.js test-render-common.js test-charsheet.js \
+            test-body.js
+
+  watch:
+    name: 지켜보는 둘 (main 에서 빨강 · 귀속 카드 있음)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: true
+    env:
+      TIDE_FREEZE_MS: '372603'
+      DRAIN_SEC: '1'
+      TIMEOUT_SEC: '180'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci --no-audit --no-fund
+      # test-tidal  : "zone 이 갯벌 정본을 부르는 자리는 셋뿐" — T58b(035566db) 가 물대기용 FRESH 읽기를 더해 4곳. 하네스 수 갱신은 세션3.
+      # test-events : ㉜a "풍년·흉년이 저절로 난다" — T86 세계에서 풍년 0 · 흉년 3. 귀속은 세션6 T94(사건 밀도 재정박 2).
+      - name: test-tidal · test-events
+        run: bash scripts/run-regress.sh test-tidal.js test-events.js

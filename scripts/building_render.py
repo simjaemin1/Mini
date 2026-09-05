@@ -1,123 +1,49 @@
-# building_render.py — durango-mini 건물 스프라이트(움집 지붕 · 큰집 지붕 · 고상곳간 통짜)
-#   씬·조명 정본은 icon_render.py / bridge_render.py 계열과 동일(Cycles · film_transparent · ORTHO ·
-#   태양 52°/35° energy 3.6 · 월드 (0.52,0.56,0.6)@0.55 · SAMPLES 64 · OIDN 부재 자동 감지).
+# building_render.py — durango-mini 건물 스프라이트(움집 지붕 · 큰집 지붕 · 고상곳간 · 공정 단계)
+#   [8차 · T103 에서 `render_common` 편입 + bpy 5.0.1 재굽기 · 재민 확정 2026-09-05]
+#
+# ★★T103 편입 — 이 파일이 **씬·헬퍼 한 벌을 따로 갖고 있던 마지막 렌더 스크립트**였다.
+#   `icon`/`props`(T77) · `nature`(T97) 와 같은 길이다. 씬 값·재질 문법·기하 헬퍼·PNG 후처리는
+#   `render_common` 것, **모델 본문과 재질표 `M` 은 이 파일 것**(T77 §0-ⓒ).
+#   편입은 그림을 안 바꾼다: 같은 컨테이너·같은 bpy 로 옛 코드를 구운 대조군과 12장 IDAT 동일을
+#   확인한 뒤에야 정본 `sensor_fit`·`BUMP_DIST` 로 다시 구웠다(보고 T103 §2).
+#
+# ★★프레임은 **발자국 공식**이다 — bbox 가 아니다.
+#   `Wpx = (W+1 + D+1)·32 + 8` · `Hpx = (W+1 + D+1)·16 + 용마루·32 + 12`.
+#   클라가 같은 수학으로 앵커를 재계산해 대조한다(`scripts/test-building-anchor.js`).
+#   그래서 세계 프리셋(`render_world_pass`, bbox 맞춤)을 못 쓴다 — 이 파일이 자기 `render()` 를 갖는다.
+#   ⓘ 12장 전부 **가로가 세로보다 길다**(실측표 = 보고 T103 §0-ⓒ). 그래서 `sensor_fit` 누락이
+#     자연물에서 15장을 자르던 일이 여기서는 **한 장도 없다** — 붙여도 프레임·앵커가 안 바뀐다.
 #
 # ★게임 정합(다리 규약의 일반화 — 발자국 N×M셀로 확장):
 #   클라 투영  w2i(wx,wy,wz) = { x: wx-wy, y: (wx+wy)/2 - wz }  (2:1 다이메트릭)
-#   → 카메라 방위 45°·고도 30°.  1셀(=32 게임px) 가로폭 = 64px 이므로 **px/unit = 64/√2 = 45.255**.
-#   ★높이 축만 게임 화법이 따로 있다: 클라 베이크 아트는 **1m(=1셀) 높이 = 32px**(WALL_HEIGHT 64px = 2m).
-#     물리적으로 정확한 렌더는 45.255×cos30 = 39.2px/유닛이므로, 모델 z를 **32/39.2 = 0.8165배**로 눌러
-#     기존 벽·처마선과 정확히 맞춘다(= 1/√1.5. 2:1 등각 화법의 표준 압축).
-#   ★앵커 규약: 클라는 `drawImage(img, s.x - img._ox, s.y - img._oy)`로 그리고, s는 **지붕 로컬 원점**
-#     (발자국+오버행의 북서 모서리, 지면)의 화면 좌표다. 그래서 렌더 시 그 점의 픽셀 위치를 계산해
-#     `building_anchors.json`으로 함께 내보낸다(클라가 그대로 _ox/_oy로 쓴다).
+#   → 카메라 방위 45°·고도 30°. 1셀(=32 게임px) 가로폭 = 64px 이므로 **px/unit = 64/√2 = 45.255**.
+#   ★높이 축만 게임 화법이 따로 있다: 1m(=1셀) 높이 = 32px. 모델 z 를 0.8165배로 눌러 벽·처마선과 맞춘다.
+#   ★앵커 규약: 클라는 `drawImage(img, s.x - img._ox, s.y - img._oy)` 로 그리고, s 는 **지붕 로컬 원점**
+#     (발자국+오버행의 북서 모서리, 지면)의 화면 좌표다. 그 점의 픽셀 위치를 `building_anchors.json` 으로 낸다.
 #
-# 실행:  blender -b -P building_render.py
-# 결과:  ./building_renders/{hut_roof,hall_roof,granary}.png + building_anchors.json
+# ★★좌우 뒤집기(FLIP) — 8차 실측으로 확정된 필수 보정. Blender TRACK_TO 카메라를 (+x,+y,+z) 에 두면
+#   화면 오른쪽이 (−1,+1,0) 이 되는데 게임 투영 w2i 는 +x 가 오른쪽이다. 뒤집지 않으면 x/y 가 뒤바뀌어
+#   **맞배지붕 용마루가 90° 돌아간 것처럼** 보인다(7차 스프라이트의 실제 결함 — 실화면 A/B 로 발견).
+#   앵커(_ox)는 원래부터 게임 규약 기준이라 뒤집은 뒤에 그대로 맞는다. 지금은 `rc._post_png(flip=True)` 가 한다.
+#
+# 실행:  python3 scripts/building_render.py        (pip `bpy` 5.0.1 — 굽는 기계 정본)
+#        BLD_ONLY=hut_roof,granary … 일부만
+# 결과:  scripts/building_renders/*.png + building_anchors.json
 # 고증: 청동기 후기(송국리) — 지상 통나무 벽 + 맞배 이엉, 큰집 8×8 굴립주, 고상곳간 5×3(문 없음·사다리).
 
-import bpy, os, math, random, json, mathutils
-V = mathutils.Vector
+import sys, os, json, math, random
 
-SAMPLES = 64
-PPU = 64.0 / math.sqrt(2.0)      # px per Blender unit(=1셀=1m) — 셀 다이아 가로폭 64px
-ZSQ = 32.0 / (PPU * math.cos(math.radians(30.0)))   # 높이 압축(=0.8165) — 1m 높이 = 32px
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from render_common import *              # 헬퍼·씬 상수·OBJS
+import render_common as rc
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUTDIR = os.path.join(HERE, "building_renders")
 os.makedirs(OUTDIR, exist_ok=True)
 
 
-def principled(mat):
-    for n in mat.node_tree.nodes:
-        if n.type == 'BSDF_PRINCIPLED':
-            return n
-    return mat.node_tree.nodes.get("Principled BSDF")
-
-
-def simple_mat(name, color, rough=0.8):
-    m = bpy.data.materials.new(name); m.use_nodes = True
-    b = principled(m)
-    b.inputs["Base Color"].default_value = (color[0], color[1], color[2], 1.0)
-    b.inputs["Roughness"].default_value = rough
-    return m
-
-
-def striped_mat(name, base, stripe, scale=22.0, rough=0.8, bump=0.35, dist=3.0):
-    m = bpy.data.materials.new(name); m.use_nodes = True
-    nt = m.node_tree; b = principled(m)
-    b.inputs["Roughness"].default_value = rough
-    w = nt.nodes.new("ShaderNodeTexWave"); w.inputs["Scale"].default_value = scale
-    try: w.inputs["Distortion"].default_value = dist
-    except Exception: pass
-    rmp = nt.nodes.new("ShaderNodeValToRGB")
-    rmp.color_ramp.elements[0].position = 0.45; rmp.color_ramp.elements[1].position = 0.58
-    nt.links.new(w.outputs["Fac"], rmp.inputs["Fac"])
-    c1 = nt.nodes.new("ShaderNodeRGB"); c1.outputs[0].default_value = (base[0], base[1], base[2], 1)
-    c2 = nt.nodes.new("ShaderNodeRGB"); c2.outputs[0].default_value = (stripe[0], stripe[1], stripe[2], 1)
-    mx = nt.nodes.new("ShaderNodeMixRGB")
-    nt.links.new(rmp.outputs["Color"], mx.inputs["Fac"])
-    nt.links.new(c1.outputs[0], mx.inputs["Color1"])
-    nt.links.new(c2.outputs[0], mx.inputs["Color2"])
-    nt.links.new(mx.outputs["Color"], b.inputs["Base Color"])
-    bmp = nt.nodes.new("ShaderNodeBump"); bmp.inputs["Strength"].default_value = bump
-    nt.links.new(w.outputs["Fac"], bmp.inputs["Height"])
-    nt.links.new(bmp.outputs["Normal"], b.inputs["Normal"])
-    return m
-
-
-# ===== 씬 =====
-bpy.ops.object.select_all(action='SELECT'); bpy.ops.object.delete()
-scene = bpy.context.scene
-scene.render.engine = 'CYCLES'; scene.cycles.samples = SAMPLES
-scene.cycles.use_denoising = bool(getattr(bpy.app.build_options, 'openimagedenoise', False))
-print("[bld] denoise =", scene.cycles.use_denoising, "ppu =", round(PPU, 3), "zsq =", round(ZSQ, 4))
-try: scene.view_settings.view_transform = 'Standard'
-except Exception: pass
-scene.render.film_transparent = True
-scene.render.image_settings.file_format = 'PNG'; scene.render.image_settings.color_mode = 'RGBA'
-if scene.world is None: scene.world = bpy.data.worlds.new("W")
-scene.world.use_nodes = True
-bg = scene.world.node_tree.nodes.get("Background")
-if bg:
-    bg.inputs[0].default_value = (0.52, 0.56, 0.6, 1.0); bg.inputs[1].default_value = 0.55
-sun_d = bpy.data.lights.new("Sun", 'SUN'); sun_d.energy = 3.6; sun_d.angle = 0.2
-sun = bpy.data.objects.new("Sun", sun_d); scene.collection.objects.link(sun)
-sun.rotation_euler = (math.radians(52), 0, math.radians(-35))   # ★좌우 뒤집기 보정(아래 _flip_png) — 뒤집은 뒤 기존 베이크와 같은 방향에서 빛이 온다
-tgt = bpy.data.objects.new("Tgt", None); scene.collection.objects.link(tgt)
-cam_d = bpy.data.cameras.new("Cam"); cam_d.type = 'ORTHO'; cam_d.clip_start = 0.1; cam_d.clip_end = 2000
-cam = bpy.data.objects.new("Cam", cam_d); scene.collection.objects.link(cam)
-cam.constraints.new('TRACK_TO').target = tgt; scene.camera = cam
-
-THETA = math.radians(30.0)
-NHAT = V((math.cos(THETA) / math.sqrt(2), math.cos(THETA) / math.sqrt(2), math.sin(THETA)))
-RHAT = V((1.0, -1.0, 0.0)).normalized()
-UHAT = V((-math.sin(THETA) / math.sqrt(2), -math.sin(THETA) / math.sqrt(2), math.cos(THETA)))
-
-# =============================================================================
-# ★★좌우 뒤집기(FLIP) — 8차 실측으로 확정된 필수 보정.
-#   Blender TRACK_TO 카메라를 (+x,+y,+z)에 두면 **화면 오른쪽이 (-1,+1,0)** 이 된다(축 실측:
-#   (1,0,0)=왼쪽 86px · (0,1,0)=오른쪽 214px · 중심 150). 그런데 게임 투영 w2i는 +x가 오른쪽이다.
-#   → 렌더 결과를 좌우로 뒤집어야 게임과 같은 손방향이 된다. 뒤집지 않으면 x/y가 뒤바뀌어
-#     **맞배지붕 용마루가 90° 돌아간 것처럼** 보인다(7차 건물 스프라이트의 실제 결함 — 실화면 A/B로 발견).
-#   앵커(_ox)는 원래부터 '게임 규약(+x 오른쪽)' 기준으로 계산해 왔으므로 **뒤집은 뒤에 그대로 맞는다**
-#   (하네스 test-building-anchor.js가 같은 수학으로 대조).
-# =============================================================================
-def _flip_png(path):
-    img = bpy.data.images.load(path)
-    w, h = img.size
-    px = list(img.pixels[:])                       # (Blender 번들 파이썬엔 numpy가 없을 수 있어 순수 파이썬으로)
-    out = [0.0] * len(px)
-    for y in range(h):
-        row = y * w * 4
-        for x in range(w):
-            s2 = row + x * 4
-            d2 = row + (w - 1 - x) * 4
-            out[d2] = px[s2]; out[d2 + 1] = px[s2 + 1]; out[d2 + 2] = px[s2 + 2]; out[d2 + 3] = px[s2 + 3]
-    img.pixels = out
-    img.filepath_raw = path
-    img.file_format = 'PNG'
-    img.save()
-    bpy.data.images.remove(img)
+# ═══════════════ 씬 — 정본 한 곳(`render_common.build_scene`) ═══════════════
+scene, cam, cam_d, sun, tgt = rc.build_scene("bld")
 
 
 M = {}
@@ -132,28 +58,6 @@ M['dark'] = simple_mat("dark", (0.07, 0.06, 0.05), 0.95)                        
 M['soil'] = striped_mat("soil", (0.34, 0.25, 0.15), (0.24, 0.17, 0.10), 9, 0.95, 0.6, 6.0)        # 파낸 흙(수혈·둔덕)
 M['soil2'] = striped_mat("soil2", (0.28, 0.20, 0.12), (0.19, 0.13, 0.08), 12, 0.95, 0.5, 6.0)     # 수혈 바닥 다짐흙(그늘)
 M['fiber'] = simple_mat("fiber", (0.62, 0.55, 0.30), 0.9)                                          # 새끼·풀 결속
-
-OBJS = []
-
-
-def add(o, mat):
-    if mat is not None:
-        o.data.materials.append(mat)
-    OBJS.append(o)
-    return o
-
-
-def cyl(r, d, loc, rot=(0, 0, 0), mat=None, verts=14):
-    bpy.ops.mesh.primitive_cylinder_add(vertices=verts, radius=r, depth=d, location=loc, rotation=rot)
-    return add(bpy.context.active_object, mat)
-
-
-def box(sx, sy, sz, loc, rot=(0, 0, 0), mat=None):
-    bpy.ops.mesh.primitive_cube_add(size=1, location=loc, rotation=rot)
-    o = bpy.context.active_object; o.scale = (sx, sy, sz)
-    return add(o, mat)
-
-
 
 def dome(r, h, loc, mat=None, seg=24, ring=8, jitter=0.0):
     """반구 둔덕 — **지면 아래가 없는** 돔 메시. UV 구를 쓰면 아랫반구가 땅속에 그대로 남아
@@ -198,10 +102,17 @@ def tri_prism(pts, depth, axis_loc, mat=None):
     return add(o, mat)
 
 
+
 # =============================================================================
 # 지붕 — 맞배 이엉. 발자국 W×D셀 + 오버행 0.5셀 사방 ⇒ 로컬 [0..W+1]×[0..D+1]
 #   처마 EAVE_M(m) · 용마루 = 처마 + (반깊이 × 물매). 클라 베이크와 같은 물매 0.6(19.2px/셀).
 # =============================================================================
+# ★★[T103] 합치며 갈린 기본값은 **호출부에 명시로 잠갔다**(T77 §0-ⓐ 문법):
+#     ┌ 함수  인자     building 옛 기본값   합친 기본값   잠근 곳
+#     │ cyl   verts    14                  12           호출 28곳 중 생략 1곳에 `verts=14`
+#     └ cyl   smooth   (인자 없음 = 안 함)  True         호출 **28곳 전부**에 `smooth=False`
+#   `scripts/test-render-common.js ④` 가 "생략 0" 을 지킨다 — 새 모델이 무심코 생략하면
+#   공용 기본값(12·매끈)이 닿아 옛 그림과 달라진다.
 SLOPE = 0.6            # 물매(수직/수평) — 클라 베이크 19.2px/셀 ÷ 32px/m
 EAVE_M = 2.0           # 처마 높이 2m(=WALL_HEIGHT 64px) — 벽 유닛 위에 얹히는 규약
 
@@ -225,7 +136,7 @@ def gable_roof(W, D, eave=EAVE_M, seed=0, ridge_pole=True):
     # ② 용마루 이엉 마루 + 눌림대 통나무
     box(DI, 0.42, 0.20, (DI / 2, jc, ridge + 0.05), mat=M['thatch'])
     if ridge_pole:
-        cyl(0.075, DI + 0.10, (DI / 2, jc, ridge + 0.16), rot=(0, math.radians(90), 0), mat=M['log'])
+        cyl(0.075, DI + 0.10, (DI / 2, jc, ridge + 0.16), rot=(0, math.radians(90), 0), mat=M['log'], verts=14, smooth=False)
     # ③ 합각(박공) — 동·서 마구리 삼각면
     pts = [(0.0, eave), (DJ, eave), (jc, ridge)]
     for x_at in (0.02, DI - 0.02):
@@ -237,10 +148,10 @@ def gable_roof(W, D, eave=EAVE_M, seed=0, ridge_pole=True):
     # ④ 처마 밑 서까래 끝(손으로 엮은 티) — 남·북 처마선에 일정 간격
     for i in range(1, int(DI)):
         for (jj, s2) in ((0.10, -1), (DJ - 0.10, 1)):
-            cyl(0.05, 0.34, (i + 0.5, jj, eave - 0.04), rot=(math.radians(90 - s2 * 18), 0, 0), mat=M['log'], verts=8)
+            cyl(0.05, 0.34, (i + 0.5, jj, eave - 0.04), rot=(math.radians(90 - s2 * 18), 0, 0), mat=M['log'], verts=8, smooth=False)
     # ⑤ 새끼줄 눌림(용마루 가로 결속)
     for i in range(1, int(DI), 2):
-        cyl(0.028, 0.70, (i + 0.5, jc, ridge + 0.14), rot=(math.radians(90), 0, 0), mat=M['cord'], verts=8)
+        cyl(0.028, 0.70, (i + 0.5, jc, ridge + 0.14), rot=(math.radians(90), 0, 0), mat=M['cord'], verts=8, smooth=False)
 
 
 # =============================================================================
@@ -256,7 +167,7 @@ def granary():
     b0, b1i, b1j = 0.5, DI - 0.5, DJ - 0.5      # 발자국(오버행 안쪽)
     # ① 굴립주 6주
     for (sx2, sy2) in ((b0, b0), (DI / 2, b0), (b1i, b0), (b0, b1j), (DI / 2, b1j), (b1i, b1j)):
-        cyl(0.11, STILT + 0.18, (sx2, sy2, (STILT + 0.18) / 2), mat=M['log'], verts=10)
+        cyl(0.11, STILT + 0.18, (sx2, sy2, (STILT + 0.18) / 2), mat=M['log'], verts=10, smooth=False)
     # ② 들린 바닥(판재) + 밑면 그늘
     box(W, D, 0.14, (DI / 2, DJ / 2, STILT + 0.07), mat=M['plank'])
     box(W - 0.1, D - 0.1, 0.02, (DI / 2, DJ / 2, STILT - 0.01), mat=M['dark'])
@@ -267,10 +178,10 @@ def granary():
     # ④ 사다리(남면 중앙) — 세로 2줄 + 가로장
     for dx in (-0.22, 0.22):
         cyl(0.05, eave + 0.30, (DI / 2 + dx, b1j + 0.34, (eave + 0.30) / 2 - 0.05),
-            rot=(math.radians(14), 0, 0), mat=M['log'], verts=8)
+            rot=(math.radians(14), 0, 0), mat=M['log'], verts=8, smooth=False)
     for k in range(4):
         z = 0.28 + k * 0.44
-        cyl(0.035, 0.50, (DI / 2, b1j + 0.30 - (z - eave / 2) * 0.06, z), rot=(0, math.radians(90), 0), mat=M['log'], verts=8)
+        cyl(0.035, 0.50, (DI / 2, b1j + 0.30 - (z - eave / 2) * 0.06, z), rot=(0, math.radians(90), 0), mat=M['log'], verts=8, smooth=False)
     # ⑤ 이엉 맞배 지붕(같은 물매)
     gable_roof(W, D, eave=eave, seed=7)
 
@@ -283,24 +194,18 @@ def hall_roof():
     gable_roof(8.0, 8.0, seed=2)
 
 
+
 # =============================================================================
 # 렌더 — 로컬 원점(0,0,0)의 화면 픽셀 좌표(_ox,_oy)를 계산해 앵커로 내보낸다.
+#   ★프레임이 **발자국 공식**이라 세계 프리셋을 못 쓴다(위 머리말). 나머지는 전부 공용 것이다:
+#     변환 굽기 · z 압축 · 씬 · PNG 후처리(초과표본 없음 · FLIP 함).
 # =============================================================================
 def render(key, W, D, top_m):
     """W×D=발자국(셀). top_m=최고 높이(m, z압축 전). 이미지는 오버행 포함 전체를 담는다."""
-    # ★z 압축 — 게임 화법(1m=32px). **오브젝트 scale로 누르면 안 된다**: 회전된 오브젝트의 로컬 z는
-    #   월드 z가 아니라서 형태가 어긋난다(1패스 실패의 원인). 변환을 굽고 **정점 좌표**를 직접 누른다.
-    bpy.ops.object.select_all(action='DESELECT')
-    for o in OBJS:
-        o.select_set(True)
-    bpy.context.view_layer.objects.active = OBJS[0]
-    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
-    for o in OBJS:
-        for v in o.data.vertices:
-            v.co.z *= ZSQ
-    bpy.ops.object.select_all(action='DESELECT')
+    rc.SUN.rotation_euler = rc.SUN_WORLD          # 세계 패스 태양(FLIP 보정 뒤 +35°와 같은 방향)
+    rc.bake_transforms()
+    rc.squash_z()                                 # ★z 압축은 오브젝트 scale 이 아니라 **정점 좌표**로
     DI, DJ = W + 1.0, D + 1.0
-    # 화면 픽셀 폭/높이(클라 베이크와 동일 계산): 가로 (DI+DJ)*32, 세로 (DI+DJ)*16 + 최고높이px + 여유
     top_px = top_m * 32.0
     Wpx = int((DI + DJ) * 32) + 8
     Hpx = int((DI + DJ) * 16 + top_px) + 12
@@ -312,8 +217,7 @@ def render(key, W, D, top_m):
     _p = os.path.join(OUTDIR, key + ".png")
     scene.render.filepath = _p
     bpy.ops.render.render(write_still=True)
-    _flip_png(_p)                     # ★게임 손방향 보정(위 FLIP 주석)
-    # 로컬 원점(0,0,0)의 픽셀 좌표 = 앵커
+    rc._post_png(_p, ss=1, flip=True)             # ★게임 손방향 보정(위 FLIP 머리말)
     rel = V((0.0, 0.0, 0.0)) - ctr
     ox = Wpx / 2.0 + rel.dot(RHAT) * PPU
     oy = Hpx / 2.0 - rel.dot(UHAT) * PPU
@@ -321,13 +225,7 @@ def render(key, W, D, top_m):
     return {"w": Wpx, "h": Hpx, "ox": round(ox, 1), "oy": round(oy, 1)}
 
 
-def cleanup():
-    bpy.ops.object.select_all(action='DESELECT')
-    for o in OBJS:
-        try: o.select_set(True)
-        except Exception: pass
-    bpy.ops.object.delete()
-
+cleanup = rc.cleanup
 
 # =============================================================================
 # 움집 4단계 공정(HUT_STAGES) — 서버 stage 1~3이 '움집터'로 보이는 구간. 4단계=완공(hut_roof가 대체).
@@ -367,15 +265,15 @@ def hut_s1():
     """① 수혈 굴착 — 구덩이 + 흙 둔덕 + 파낸 자리 말뚝 표시 2개."""
     _hut_pit()
     for (x, y) in ((1.2, 0.75), (HUT_W - 0.2, HUT_D + 0.25)):
-        cyl(0.04, 0.42, (x, y, 0.21), mat=M['log'], verts=8)
+        cyl(0.04, 0.42, (x, y, 0.21), mat=M['log'], verts=8, smooth=False)
 
 
 def hut_s2():
     """② 굴립주 기둥 6 — 2m 통나무를 수혈 바닥에 묻어 세운다."""
     _hut_pit()
     for (x, y) in _hut_posts():
-        cyl(0.115, EAVE_M + 0.20, (x, y, (EAVE_M + 0.20) / 2 - 0.10), mat=M['log'], verts=10)
-        cyl(0.15, 0.10, (x, y, 0.03), mat=M['soil'], verts=10)           # 밑동 되메운 흙
+        cyl(0.115, EAVE_M + 0.20, (x, y, (EAVE_M + 0.20) / 2 - 0.10), mat=M['log'], verts=10, smooth=False)
+        cyl(0.15, 0.10, (x, y, 0.03), mat=M['soil'], verts=10, smooth=False)           # 밑동 되메운 흙
 
 
 def hut_s3():
@@ -385,11 +283,11 @@ def hut_s3():
     ridge = EAVE_M + jc * SLOPE
     # 처마도리(장변 2줄)
     for y in (0.9, HUT_D + 0.1):
-        cyl(0.075, HUT_W + 0.5, ((HUT_W + 1) / 2, y, EAVE_M), rot=(0, math.radians(90), 0), mat=M['log'], verts=10)
+        cyl(0.075, HUT_W + 0.5, ((HUT_W + 1) / 2, y, EAVE_M), rot=(0, math.radians(90), 0), mat=M['log'], verts=10, smooth=False)
     # 마룻대(종도리) + 받침 기둥 2
-    cyl(0.085, HUT_W + 0.6, ((HUT_W + 1) / 2, jc, ridge), rot=(0, math.radians(90), 0), mat=M['log'], verts=10)
+    cyl(0.085, HUT_W + 0.6, ((HUT_W + 1) / 2, jc, ridge), rot=(0, math.radians(90), 0), mat=M['log'], verts=10, smooth=False)
     for x in (1.2, HUT_W - 0.2):
-        cyl(0.09, ridge, (x, jc, ridge / 2), mat=M['log'], verts=10)
+        cyl(0.09, ridge, (x, jc, ridge / 2), mat=M['log'], verts=10, smooth=False)
     # 서까래 — 마룻대에서 양 처마로
     ang = math.atan2(ridge - EAVE_M, jc)
     ln = math.hypot(jc, ridge - EAVE_M)
@@ -398,14 +296,14 @@ def hut_s3():
         for sgn in (-1, 1):
             cy2 = jc + sgn * jc / 2
             cz = (EAVE_M + ridge) / 2
-            cyl(0.038, ln, (x, cy2, cz), rot=(math.radians(90) - sgn * ang, 0, 0), mat=M['log'], verts=7)
+            cyl(0.038, ln, (x, cy2, cz), rot=(math.radians(90) - sgn * ang, 0, 0), mat=M['log'], verts=7, smooth=False)
     # 들보(장변 기둥을 가로로 묶는 보 2줄) — 골조가 '서 있는 구조'로 읽히게
     for x in (1.6, HUT_W - 0.6):
-        cyl(0.06, HUT_D - 0.6, (x, jc, EAVE_M - 0.12), rot=(math.radians(90), 0, 0), mat=M['log'], verts=8)
+        cyl(0.06, HUT_D - 0.6, (x, jc, EAVE_M - 0.12), rot=(math.radians(90), 0, 0), mat=M['log'], verts=8, smooth=False)
     # 결속 새끼(마룻대 몇 군데)
     for i in range(3):
         x = 1.4 + i * (HUT_W - 1.6) / 2
-        cyl(0.03, 0.34, (x, jc, ridge), rot=(math.radians(90), 0, 0), mat=M['fiber'], verts=8)
+        cyl(0.03, 0.34, (x, jc, ridge), rot=(math.radians(90), 0, 0), mat=M['fiber'], verts=8, smooth=False)
 
 
 # =============================================================================
@@ -454,7 +352,7 @@ FCX, FCY = (FURN_W + 1) / 2, (FURN_D + 1) / 2      # 오버행 포함 로컬 중
 def _furn_base(seed=201):
     """① 노 터 — 다진 바닥 + 막돌 기초 고리. 돌은 크기·각도가 제각각이라야 '쌓은 것'으로 읽힌다."""
     random.seed(seed)
-    cyl(0.80, 0.05, (FCX, FCY, -0.02), mat=M['soil2'], verts=20)                   # 다진 바닥(노 둘레만 — 네모 판이면 '깔개'로 읽힌다)
+    cyl(0.80, 0.05, (FCX, FCY, -0.02), mat=M['soil2'], verts=20, smooth=False)                   # 다진 바닥(노 둘레만 — 네모 판이면 '깔개'로 읽힌다)
     for i in range(16):
         t = i / 16 * 2 * math.pi + random.uniform(-0.09, 0.09)
         rr = 0.62 + random.uniform(-0.04, 0.04)
@@ -480,7 +378,7 @@ def _furn_shaft(h, plaster=False):
             o = bpy.context.active_object
             o.scale = (1.1, 1.1, 0.78); o.rotation_euler = (0, 0, random.uniform(0, 3.14))
             add(o, M['clay'] if plaster else M['stone'])
-    cyl(0.40, 0.03, (FCX, FCY, 0.12), mat=M['clay_hot'], verts=18)                  # 노 바닥(내부)
+    cyl(0.40, 0.03, (FCX, FCY, 0.12), mat=M['clay_hot'], verts=18, smooth=False)                  # 노 바닥(내부)
 
 
 def _furn_tuyere_bellows():
@@ -488,7 +386,7 @@ def _furn_tuyere_bellows():
     ★카메라가 (+x,+y,+z) 쪽에 있으므로 **+x+y 모서리가 화면 앞**이다. 풀무를 거기 둬야 노에 안 가린다.
       1패스에서 작게 뒀더니 노 그림자에 묻혀 '베이지 얼룩'으로 읽혔다 — 키우고 색을 진하게."""
     # 진흙 송풍구(노벽을 비스듬히 뚫고 들어간다)
-    cyl(0.07, 0.78, (FCX + 0.60, FCY + 0.60, 0.46), rot=(math.radians(72), 0, math.radians(-45)), mat=M['clay'], verts=9)
+    cyl(0.07, 0.78, (FCX + 0.60, FCY + 0.60, 0.46), rot=(math.radians(72), 0, math.radians(-45)), mat=M['clay'], verts=9, smooth=False)
     # 풀무 — 나무 판 두 장 사이의 가죽 주머니
     bx, by = FCX + 1.02, FCY + 1.02
     box(0.62, 0.40, 0.07, (bx, by, 0.22), rot=(0, 0, math.radians(45)), mat=M['plank'])
@@ -496,9 +394,9 @@ def _furn_tuyere_bellows():
     o = bpy.context.active_object; o.scale = (1.3, 1.0, 0.80); o.rotation_euler = (0, 0, math.radians(45))
     add(o, M['hide_m'])
     box(0.62, 0.40, 0.07, (bx, by, 0.64), rot=(0, math.radians(-10), math.radians(45)), mat=M['plank'])
-    cyl(0.036, 0.56, (bx + 0.22, by + 0.22, 0.80), rot=(math.radians(64), 0, math.radians(-45)), mat=M['log'], verts=7)   # 손잡이
+    cyl(0.036, 0.56, (bx + 0.22, by + 0.22, 0.80), rot=(math.radians(64), 0, math.radians(-45)), mat=M['log'], verts=7, smooth=False)   # 손잡이
     for dx2, dy2 in ((-0.24, 0.24), (0.24, -0.24)):   # 풀무를 받치는 말뚝
-        cyl(0.045, 0.24, (bx + dx2, by + dy2, 0.11), mat=M['log'], verts=7)
+        cyl(0.045, 0.24, (bx + dx2, by + dy2, 0.11), mat=M['log'], verts=7, smooth=False)
 
 
 def _furn_yard(fire=False):
@@ -513,7 +411,7 @@ def _furn_yard(fire=False):
             o = bpy.context.active_object; o.scale = (1.2, 1.2, 0.62)
             add(o, mat)
     if fire:
-        cyl(0.26, 0.05, (FCX, FCY, 1.14), mat=M['ember'], verts=16)                 # 노 아가리의 잉걸(작게 — 원반이 크면 불이 아니라 조명이 된다)
+        cyl(0.26, 0.05, (FCX, FCY, 1.14), mat=M['ember'], verts=16, smooth=False)                 # 노 아가리의 잉걸(작게 — 원반이 크면 불이 아니라 조명이 된다)
         for i in range(5):                                                          # 불꽃 혀
             t = i / 5 * 2 * math.pi
             bpy.ops.mesh.primitive_cone_add(vertices=7, radius1=random.uniform(0.045, 0.075), depth=random.uniform(0.14, 0.24),
@@ -542,7 +440,7 @@ def kiln_s1():
     """① 가마 구덩이 — 파낸 구덩이 + 둘레 흙둔덕. 노 터(막돌 고리)와 **한눈에 구별돼야** 한다:
     노는 돌을 동그랗게 쌓고, 가마는 땅을 파고 흙을 둘러 쌓는다(1패스에선 둘이 똑같아 보였다)."""
     random.seed(301)
-    cyl(0.72, 0.07, (FCX, FCY, -0.06), mat=M['soil2'], verts=20)                   # 파인 바닥
+    cyl(0.72, 0.07, (FCX, FCY, -0.06), mat=M['soil2'], verts=20, smooth=False)                   # 파인 바닥
     for i in range(22):                                                            # 파낸 흙 둔덕(연속된 테두리)
         t = i / 22 * 2 * math.pi
         rr = 0.70 + random.uniform(-0.03, 0.03)
@@ -551,7 +449,7 @@ def kiln_s1():
         o = bpy.context.active_object; o.scale = (1.3, 1.3, 0.55)
         add(o, M['soil'])
     for (x2, y2) in ((FCX - 0.30, FCY - 0.20), (FCX + 0.18, FCY + 0.26)):          # 쟁이려 갖다 둔 통나무
-        cyl(0.075, 0.66, (x2, y2, 0.03), rot=(0, math.radians(90), random.uniform(0, 3)), mat=M['log'], verts=8)
+        cyl(0.075, 0.66, (x2, y2, 0.03), rot=(0, math.radians(90), random.uniform(0, 3)), mat=M['log'], verts=8, smooth=False)
 
 
 def charcoal_kiln():
@@ -560,11 +458,11 @@ def charcoal_kiln():
     #   눌려 납작한 모래밭이 됐다. 탄요는 "장작을 흙으로 **덮어** 재우는 물건"이라 실루엣이 곧 반구다.
     #   ⇒ 통나무는 밑동만 삐죽 보이게 줄이고, 둔덕은 압축을 감안해 z를 키운다.
     random.seed(311)
-    cyl(0.80, 0.06, (FCX, FCY, -0.05), mat=M['soil2'], verts=20)
+    cyl(0.80, 0.06, (FCX, FCY, -0.05), mat=M['soil2'], verts=20, smooth=False)
     for i in range(8):   # 쟁인 통나무 — 덮다 만 밑동만 보인다
         t = i / 8 * 2 * math.pi
         cyl(0.075, 0.34, (FCX + math.cos(t) * 0.66, FCY + math.sin(t) * 0.66, 0.12),
-            rot=(math.radians(20), 0, t), mat=M['log'], verts=8)
+            rot=(math.radians(20), 0, t), mat=M['log'], verts=8, smooth=False)
     # 봉토 둔덕(반구) — 노(수직 원통)와 실루엣이 반대라 멀리서도 구별된다. z압축 보정으로 1.35배.
     #   ★UV 구를 얹으면 아랫반구가 그대로 보여 '공'이 된다(렌더엔 지면 가림막이 없다) — 돔 메시를 쓴다.
     dome(0.80, 0.82, (FCX, FCY, 0.0), mat=M['soil'], seg=26, ring=9, jitter=0.035)
@@ -577,10 +475,10 @@ def charcoal_kiln():
     # 연도(굴뚝) — 둔덕 **꼭대기**에 낸다(연기가 나가는 자리). 살짝 비껴 세워야 앞뒤가 읽힌다.
     kx, ky = FCX + 0.14, FCY + 0.14
     for k in range(3):
-        cyl(0.115 - k * 0.012, 0.17, (kx, ky, 0.66 + k * 0.16), mat=M['stone'], verts=10)
-    cyl(0.085, 0.05, (kx, ky, 1.12), mat=M['coal'], verts=10)                      # 연도 아가리(그을음)
+        cyl(0.115 - k * 0.012, 0.17, (kx, ky, 0.66 + k * 0.16), mat=M['stone'], verts=10, smooth=False)
+    cyl(0.085, 0.05, (kx, ky, 1.12), mat=M['coal'], verts=10, smooth=False)                      # 연도 아가리(그을음)
     # 아궁이(불구멍) — 앞면 아래 한 곳만 열린다
-    cyl(0.11, 0.22, (FCX + 0.34, FCY + 0.56, 0.14), rot=(math.radians(78), 0, math.radians(-30)), mat=M['clay_hot'], verts=10)
+    cyl(0.11, 0.22, (FCX + 0.34, FCY + 0.56, 0.14), rot=(math.radians(78), 0, math.radians(-30)), mat=M['clay_hot'], verts=10, smooth=False)
     for i in range(7):   # 곁에 부려 둔 숯 — 이게 이 설비가 뭘 만드는지 말해 준다
         bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=random.uniform(0.07, 0.12),
                                               location=(FCX - 0.95 + random.uniform(-0.18, 0.18),
@@ -606,21 +504,24 @@ JOBS = [
     ("kiln_s1", kiln_s1, 2.0, 2.0, 0.30),
     ("charcoal_kiln", charcoal_kiln, 2.0, 2.0, 1.25),
 ]
-ONLY = [k for k in os.environ.get('BLD_ONLY', '').split(',') if k]
-anchors = {}
-for (key, fn, W, D, top) in JOBS:
-    if ONLY and key not in ONLY:
-        continue
-    OBJS = []
-    globals()['OBJS'] = OBJS
-    fn()
-    print("[bld] render", key, "objs=", len(OBJS))
-    anchors[key] = render(key, W, D, top)
-    cleanup()
+# ═══════════════ 굽기 ═══════════════
+# ★[T103] `__main__` 가드 — 대조 하네스가 **빌더만** 꺼내 쓸 수 있어야 한다(편입 증명 · T101 문법).
+if __name__ == '__main__':
+  ONLY = [k for k in os.environ.get('BLD_ONLY', '').split(',') if k]
+  anchors = {}
+  for (key, fn, W, D, top) in JOBS:
+      if ONLY and key not in ONLY:
+          continue
+      OBJS.clear()          # ★옛 `OBJS = []; globals()['OBJS'] = OBJS` 는 **이름을 다시 묶는** 것이라
+                            #   `from render_common import *` 로 들어온 리스트와 갈라진다. 제자리로 비운다.
+      fn()
+      print("[bld] render", key, "objs=", len(OBJS))
+      anchors[key] = render(key, W, D, top)
+      cleanup()
 
-apath = os.path.join(OUTDIR, "building_anchors.json")
-if ONLY and os.path.exists(apath):
-    try: anchors = {**json.load(open(apath)), **anchors}
-    except Exception: pass
-json.dump(anchors, open(apath, "w"), indent=1)
-print("[bld] DONE ->", OUTDIR, json.dumps(anchors))
+  apath = os.path.join(OUTDIR, "building_anchors.json")
+  if ONLY and os.path.exists(apath):
+      try: anchors = {**json.load(open(apath)), **anchors}
+      except Exception: pass
+  json.dump(anchors, open(apath, "w"), indent=1)
+  print("[bld] DONE ->", OUTDIR, len(anchors), "keys")

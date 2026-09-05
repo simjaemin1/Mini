@@ -64,6 +64,11 @@ async function waitHttp(url, tries = 600) {
   page.on('pageerror', (e) => errs.push(String(e.message).slice(0, 160)));
   page.on('console', (m) => { if (m.type() === 'error') errs.push('console: ' + m.text().slice(0, 160)); });
   const snap = async (n) => { const f = path.join(SHOTS, n + '.png'); await page.screenshot({ path: f }); shots.push(f); return f; };
+  // ★[T113 §0-ⓒ] 알림이 실제로 얼마나 몰리는지 **재려고** 하네스가 폴링한다(제품 훅 0 · T57).
+  const ntSamples = [];
+  const ntPoll = setInterval(async () => {
+    try { const n = await page.evaluate(() => (window.__notices || []).length); ntSamples.push({ t: Date.now(), len: n }); } catch (e) {}
+  }, 250);
 
   // ★★[T66 2차 ⑬] **캔버스에 토큰 문자열이 닿으면 잡는다.**
   //   `ctx.fillStyle = 'var(--accent)'` 는 예외도 콘솔 오류도 없이 **조용히 무시**되고 앞 색이 남는다
@@ -556,6 +561,204 @@ async function waitHttp(url, tries = 600) {
     ok(!!col && /^#[0-9a-fA-F]{6}$/.test(col), '★★⑫ 그래도 서버로 간 색은 **유효한 값**이다(서버 접점 0)', String(col));
   }
 
+
+  // ── ⑬ ★★[T113] 알림이 겹치면 **줄이 선다** ────────────────────────────────
+  //   ★왜: `#notice` 는 한 칸이었다 — 의뢰 성공과 쓰러진 사람의 외침이 같은 초에 오면 하나가
+  //     **사라졌다**(T78 이 종류를 아홉으로, T90 이 그림을 붙인 뒤로 잃는 것이 더 커졌다).
+  //   ★N = 3 은 캔버스에서 유도했다(보고 §0-ⓑ). 이 절은 그 셋이 **동시에 보이는지**를 잰다.
+  console.log('\n⑬ ★[T113] 알림 스택 — 셋이 같이 보인다 · 같은 말은 ×n');
+  {
+    const say = (t, ms, kind) => page.evaluate(([a, b, c]) => showNotice(a, b, c), [t, ms, kind]);
+    const readNotice = () => page.evaluate(() => {
+      const el = document.getElementById('notice');
+      return {
+        text: el.textContent,
+        lines: el.textContent ? el.textContent.split('\n') : [],
+        icons: [...el.querySelectorAll('svg path')].map((p) => p.getAttribute('d')),
+        h: Math.round(el.getBoundingClientRect().height),
+        emoji: /\p{Extended_Pictographic}/u.test(el.textContent),
+      };
+    });
+    const nts = () => page.evaluate(() => (window.__notices || []).slice(-6));
+
+    // ── 셋을 200ms 안에 — 옛 코드는 여기서 **하나만** 남았다
+    await page.evaluate(() => { showNotice('', 1, null); window.__notices.length = 0; });
+    await say('첫째 알림', 8000, 'village');
+    await sleep(60); await say('둘째 알림', 8000, 'gather');
+    await sleep(60); await say('셋째 알림', 8000, 'craft');
+    await sleep(200);
+    let v = await readNotice();
+    ok(v.lines.length === 3, '★★⑬ 200ms 안에 온 알림 **셋이 다 보인다**(옛 코드는 하나였다)',
+       JSON.stringify(v.lines));
+    ok(v.lines[0].includes('첫째') && v.lines[2].includes('셋째'),
+       '★★⑬ 그리고 **온 차례대로** 쌓인다(최근이 아래)', JSON.stringify(v.lines));
+    ok(v.icons.length === 3 && new Set(v.icons).size === 3,
+       '★★⑬ 줄마다 **제 종류의 그림**을 단다(셋이 서로 다르다 · T90 규약 유지)', `${v.icons.length}개 · ${new Set(v.icons).size}종`);
+    ok(!v.emoji, '★⑬ 이모지 0(화면 규칙 B)');
+    ok((await nts()).length === 3, '★★⑬ `__notices` 는 **3건**이다(글자만 · 규약 무변)', JSON.stringify(await nts()));
+
+    // ── N 을 넘기면 **오래된 줄이 밀려 사라진다**
+    await say('넷째 알림', 8000, 'board');
+    await sleep(120);
+    v = await readNotice();
+    ok(v.lines.length === 3 && !v.text.includes('첫째') && v.text.includes('넷째'),
+       '★★⑬ 넷째가 오면 **첫째가 밀려 사라진다**(N=3 · 캔버스 유도)', JSON.stringify(v.lines));
+
+    // ── 같은 말이 연달아 오면 겹치지 말고 ×n
+    await page.evaluate(() => { showNotice('', 1, null); window.__notices.length = 0; });
+    await say('재료가 모자란다', 8000, 'craft');
+    await sleep(40); await say('재료가 모자란다', 8000, 'craft');
+    await sleep(40); await say('재료가 모자란다', 8000, 'craft');
+    await sleep(150);
+    v = await readNotice();
+    ok(v.lines.length === 1 && /재료가 모자란다 ×3/.test(v.text),
+       '★★⑬ 같은 말 셋은 **한 줄 ×3** 이다(스팸 억제)', JSON.stringify(v.lines));
+    ok((await nts()).length === 3, '★★⑬ 그래도 `__notices` 엔 **3건 그대로** 들어간다(하네스 규약 무변)',
+       JSON.stringify(await nts()));
+    // ★자명 통과 금지 — 사이에 다른 말이 끼면 **안 뭉친다**(차례가 거짓말이 되면 안 된다)
+    await page.evaluate(() => { showNotice('', 1, null); });
+    await say('가', 8000, 'info'); await sleep(40);
+    await say('나', 8000, 'info'); await sleep(40);
+    await say('가', 8000, 'info'); await sleep(150);
+    v = await readNotice();
+    ok(v.lines.length === 3 && !/×/.test(v.text), '★⑬ 자명 통과 금지 — `가 나 가` 는 **안 뭉친다**',
+       JSON.stringify(v.lines));
+
+    // ── 줄마다 **제 ms** 로 사라진다
+    await page.evaluate(() => { showNotice('', 1, null); });
+    await say('짧은 것', 900, 'info');
+    await sleep(60); await say('긴 것', 6000, 'info');
+    await sleep(200);
+    const both = await readNotice();
+    ok(both.lines.length === 2, '★⑬ (상황) 둘이 함께 떠 있다', JSON.stringify(both.lines));
+    await sleep(1400);
+    v = await readNotice();
+    ok(v.lines.length === 1 && v.text.includes('긴 것'),
+       '★★⑬ 짧은 줄만 **제 ms 뒤에** 사라진다(줄마다 제 시계)', JSON.stringify(v.lines));
+
+    // ── ⓐ 계약: 한 줄만 떠 있으면 `textContent` 는 **종전과 같다**
+    await page.evaluate(() => { showNotice('', 1, null); });
+    await say('한 줄뿐', 6000, null);
+    await sleep(120);
+    v = await readNotice();
+    ok(v.text === '한 줄뿐', '★★⑬ 한 줄일 때 `textContent` 는 **그 글자 그대로**다(§0-ⓐ 계약)',
+       JSON.stringify(v.text));
+
+    // ── §0-ⓒ 실측: 이 판에서 실제로 알림이 얼마나 몰렸나 · 같은 말이 연달아 온 비율
+    //   ⚠제품에 진단 훅을 새로 달지 않는다(T57). 이미 있는 `__notices` 를 **하네스가 폴링**해서 잰다.
+    {
+      const seq = ntSamples;                                     // [{t, len}] — 입장 직후부터 250ms 간격
+      let maxPerSec = 0;
+      for (let i = 0; i < seq.length; i++) {
+        let j = i; while (j + 1 < seq.length && seq[j + 1].t - seq[i].t <= 1000) j++;
+        const d = seq[j].len - seq[i].len; if (d > maxPerSec) maxPerSec = d;
+      }
+      const all = await page.evaluate(() => (window.__notices || []).slice());
+      let dup = 0; for (let i = 1; i < all.length; i++) if (all[i] === all[i - 1]) dup++;
+      console.log(`  · [상황] §0-ⓒ 이 판의 알림 — 표본 ${seq.length}회 · 초당 최대 ${maxPerSec}건 · 연속 같은 말 ${dup}/${Math.max(1, all.length - 1)}`);
+    }
+
+    // 화면 B 결 — 대조 스크린샷
+    await page.evaluate(() => { showNotice('', 1, null); });
+    await say('마을에 들어섰다', 20000, 'village');
+    await sleep(40); await say('나무를 벴다 ×4', 20000, 'gather');
+    await sleep(40); await say('여행자가 쓰러졌다 — 해 지는 쪽 60걸음', 20000, 'rescue');
+    await sleep(250);
+    await snap('ui-08-notice-stack');
+    const box = await page.evaluate(() => {
+      const r = document.getElementById('notice').getBoundingClientRect();
+      const cs = getComputedStyle(document.getElementById('notice'));
+      return { h: Math.round(r.height), lh: cs.lineHeight, radius: cs.borderRadius, shadow: cs.boxShadow };
+    });
+    ok(box.lh === '17px', '★★⑬ 줄 피치가 **캔버스 값 17px** 이다(N 의 출처와 같은 자)', JSON.stringify(box));
+    ok(box.radius === '0px' && (box.shadow === 'none' || /none/.test(box.shadow)),
+       '★⑬ 모서리 0 · 그림자 0(화면 규칙 B)', JSON.stringify(box));
+    await page.evaluate(() => { showNotice('', 1, null); });
+  }
+
+
+  // ── ⑭ ★★[T118] 알림 자리 — 상단 가운데 · **레일 겹침 0** ──────────────────
+  //   ★왜: T113 대조 스크린샷에서 **왼쪽 레일이 알림 첫 글자를 덮고 있었다**("마을에"의 "마").
+  //     `#notice` 가 `#hud`(좌상) 흐름 안에 있었기 때문이고, 스택 이전부터 그랬다.
+  //     캔버스는 알림을 **위 띠**(상태 줄 오른쪽·지도 왼쪽)에 둔다 — 자리를 그리로 옮겼다.
+  //   ★이건 화소 하네스가 아니다(`@pixel` 아님) — `getBoundingClientRect` 교집합을 재는 DOM 판정이다.
+  console.log('\n⑭ ★[T118] 알림 자리 — 레일과 안 겹친다');
+  {
+    const say = (t, ms, kind) => page.evaluate(([a, b, c]) => showNotice(a, b, c), [t, ms, kind]);
+    const geo = () => page.evaluate(() => {
+      const n = document.getElementById('notice'), s = document.getElementById('sidebar');
+      const h = document.getElementById('hud'), m = document.getElementById('minimap');
+      const r = (el) => { if (!el) return null; const b = el.getBoundingClientRect();
+        return { x: Math.round(b.left), y: Math.round(b.top), w: Math.round(b.width), h: Math.round(b.height),
+                 r: Math.round(b.right), b: Math.round(b.bottom) }; };
+      const cs = getComputedStyle(n);
+      // ★상단 상태 줄 — 캔버스는 알림을 **그 줄 오른쪽**에 둔다. 좁은 화면에서 만나는지 잰다.
+      const row = document.querySelector('#hud .hud-row');
+      return { n: r(n), s: r(s), h: r(h), m: r(m), row: r(row), vw: innerWidth, vh: innerHeight,
+               pos: cs.position, pe: cs.pointerEvents, pad: cs.paddingTop, ta: cs.textAlign };
+    });
+    const overlap = (a, b) => (a && b)
+      ? Math.max(0, Math.min(a.r, b.r) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.b, b.b) - Math.max(a.y, b.y))
+      : null;
+
+    // ★두 해상도에서 잰다 — 자리가 좌표가 아니라 **규칙**이어야 한다(창을 줄이면 다시 덮이면 안 된다).
+    for (const [vw, vh] of [[1280, 800], [1024, 700]]) {
+      await page.setViewportSize({ width: vw, height: vh });
+      await sleep(400);
+      await page.evaluate(() => showNotice('', 1, null));
+      await sleep(80);
+      // ★빈 알림은 **아예 없다** — 위 가운데에 빈 먹판이 늘 떠 있으면 안 된다.
+      const empty = await page.evaluate(() => {
+        const n = document.getElementById('notice');
+        return { disp: getComputedStyle(n).display, h: Math.round(n.getBoundingClientRect().height) };
+      });
+      ok(empty.disp === 'none' && empty.h === 0, `★★⑭ [${vw}×${vh}] 빈 알림은 **화면에 없다**`, JSON.stringify(empty));
+
+      await say('마을에 들어섰다', 20000, 'village');
+      await sleep(40); await say('나무를 벴다', 20000, 'gather');
+      await sleep(40); await say('여행자가 쓰러졌다 — 해 지는 쪽 60걸음', 20000, 'rescue');
+      await sleep(250);
+      const g = await geo();
+      ok(!!g.n && !!g.s, `★⑭ [${vw}×${vh}] (상황) 알림과 레일이 둘 다 실재한다`, JSON.stringify({ n: g.n, s: g.s }));
+      ok(overlap(g.n, g.s) === 0, `★★⑭ [${vw}×${vh}] **레일 ∩ 알림 = 0**(첫 글자가 안 잘린다)`,
+         `겹침 ${overlap(g.n, g.s)}px² · 알림 x${g.n.x}~${g.n.r} · 레일 x${g.s.x}~${g.s.r}`);
+      ok(overlap(g.n, g.m) === 0, `★⑭ [${vw}×${vh}] 지도 판과도 안 겹친다`, `겹침 ${overlap(g.n, g.m)}px²`);
+      const cx = (g.n.x + g.n.r) / 2;
+      ok(Math.abs(cx - vw / 2) <= 2, `★★⑭ [${vw}×${vh}] 알림 중심이 **화면 중심**이다`,
+         `중심 ${Math.round(cx)} vs ${vw / 2}`);
+      ok(g.n.y === 12, `★⑭ [${vw}×${vh}] 위 띠(top 12 — 지도·HUD 와 같은 줄)`, `y ${g.n.y}`);
+      ok(g.pad === '11px', `★⑭ [${vw}×${vh}] 세로 패딩은 **캔버스 값 11px**`, g.pad);
+      ok(g.pos === 'fixed' && g.pe === 'none',
+         `★⑭ [${vw}×${vh}] 흐름에서 빠졌고(HUD 를 안 민다) 클릭을 안 먹는다`, `${g.pos} · ${g.pe}`);
+      // ★캔버스는 알림을 **상태 줄 오른쪽**에 둔다(1440 판에서 66px 여유). 좁은 화면에서 그 여유가
+      //   얼마나 남는지 **재서 적는다** — 0 이하면 좁은 화면에서 상태 줄을 가린다는 뜻이다(회부 판단 자료).
+      const gap = g.row ? g.n.x - g.row.r : null;
+      console.log(`  · [상황] [${vw}×${vh}] 상태 줄 오른쪽 여유 ${gap}px (캔버스 1440 판은 66px · 알림 폭 ${g.n.w})`);
+      // ★T113 무변 — 자리만 옮겼지 스택은 그대로다
+      const lines = await page.evaluate(() => document.getElementById('notice').textContent.split('\n'));
+      ok(lines.length === 3, `★★⑭ [${vw}×${vh}] 스택 셋은 그대로다(T113 무접촉)`, JSON.stringify(lines));
+    }
+
+    // ★자명 통과 금지 — 옛 자리(HUD 흐름 안)로 되돌리면 이 판정이 **빨개진다**
+    const wouldOverlap = await page.evaluate(() => {
+      const n = document.getElementById('notice'), s = document.getElementById('sidebar');
+      const sb = s.getBoundingClientRect();
+      // 옛 자리를 흉내 낸다: HUD 흐름 안 = 좌상(12,205) 언저리
+      const old = { x: 12, y: 205, r: 12 + n.getBoundingClientRect().width, b: 205 + n.getBoundingClientRect().height };
+      const ov = Math.max(0, Math.min(old.r, sb.right) - Math.max(old.x, sb.left))
+               * Math.max(0, Math.min(old.b, sb.bottom) - Math.max(old.y, sb.top));
+      return ov;
+    });
+    ok(wouldOverlap > 0, '★⑭ 자명 통과 금지 — **옛 자리라면 겹친다**(이 검사가 늘 0 을 내는 게 아니다)',
+       `옛 자리 겹침 ${wouldOverlap}px²`);
+
+    await snap('ui-09-notice-pos');
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await sleep(300);
+    await page.evaluate(() => showNotice('', 1, null));
+  }
+
+  clearInterval(ntPoll);
   const jsErrs = errs.filter((e) => !/Failed to load resource/.test(e));
   ok(jsErrs.length === 0, '클라 JS 예외 0', jsErrs.slice(0, 2).join(' | '));
   console.log(`\n  스크린샷: ${shots.join(' ')}`);

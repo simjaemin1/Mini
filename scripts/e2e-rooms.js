@@ -1,5 +1,9 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @pixel    ← ★[T104] **프레임을 화소로 잰다**(`page.screenshot` → `PNG.sync.read`).
+//              렌더 층(`3x-r*`·`34-m-renderloop`·`37-r1-*`)을 만지는 카드는 이 표를 전수로 돌려라 —
+//              `bash scripts/run-regress.sh --list pixel`. 이름으로는 못 찾는다(T98: `e2e-nature` 는
+//              하늘 때문에 셋이 빨갰는데 그 파일엔 `weather` 라는 낱말이 없어 `grep -l` 에 안 걸렸다).
 // =============================================================================
 // e2e-rooms — 방 판정 실클라 E2E [배치 18 ①]
 //   재민 확정: "건축 제대로 하자." 플레이어가 **ㄱ자**로 지은 집이 실내로 잡히는가를
@@ -220,6 +224,11 @@ const rget = async (q) => (await (await fetch(`http://localhost:${ZPORT}/roomdbg
   //     예고했던 그 오염이 드디어 실현됐다. **기준을 낮추지 않고 재는 층을 격리**한다.
   //     sleep 없는 evaluate 로 곧바로 끈다 — 격리가 실험 타이밍을 밀면 안 된다.
   await page.evaluate(() => { if (window.__terrain19) window.__terrain19.windOff = true; });
+  // ★[T98 2026-09-05] **하늘도 끈다** — 바람을 끈 것과 같은 자리다. T98 이 `weatherFor` 에
+  //   `precip` 을 실으면서 세계가 실제로 비를 보낸다. 비는 매 프레임 다시 그려지고 **안개 합성 뒤**에
+  //   그려지므로, 두 프레임 동일·안개 위 밝은 픽셀 같은 판정이 하늘 때문에 빨개진다.
+  //   이 하네스가 재는 건 하늘이 아니다 ⇒ 끄는 문은 T93 이 남긴 진단 훅 하나(안 켜져 있으면 무해).
+  await page.evaluate(() => { if (typeof window.__rainForce === 'function') window.__rainForce({ precip: 0 }); });
   await page.screenshot({ path: `${SHOTS}/01-inside.png` });
 
   const send = (m) => page.evaluate((mm) => { window.__sendPrimary(mm); return true; }, m);
@@ -330,6 +339,11 @@ const rget = async (q) => (await (await fetch(`http://localhost:${ZPORT}/roomdbg
   //     예고했던 그 오염이 드디어 실현됐다. **기준을 낮추지 않고 재는 층을 격리**한다.
   //     sleep 없는 evaluate 로 곧바로 끈다 — 격리가 실험 타이밍을 밀면 안 된다.
   await p2.evaluate(() => { if (window.__terrain19) window.__terrain19.windOff = true; });
+  // ★[T98 2026-09-05] **하늘도 끈다** — 바람을 끈 것과 같은 자리다. T98 이 `weatherFor` 에
+  //   `precip` 을 실으면서 세계가 실제로 비를 보낸다. 비는 매 프레임 다시 그려지고 **안개 합성 뒤**에
+  //   그려지므로, 두 프레임 동일·안개 위 밝은 픽셀 같은 판정이 하늘 때문에 빨개진다.
+  //   이 하네스가 재는 건 하늘이 아니다 ⇒ 끄는 문은 T93 이 남긴 진단 훅 하나(안 켜져 있으면 무해).
+  await p2.evaluate(() => { if (typeof window.__rainForce === 'function') window.__rainForce({ precip: 0 }); });
   await p2.screenshot({ path: `${SHOTS}/04-roof-on.png` });
   const rr2 = await p2.evaluate(() => window.__roomRoofDbg || null).catch(() => null);
   ok(rr2 && rr2.myRoom === null, '밖에서: 내 방이 없다(실외)');
@@ -492,6 +506,11 @@ const rget = async (q) => (await (await fetch(`http://localhost:${ZPORT}/roomdbg
   //     예고했던 그 오염이 드디어 실현됐다. **기준을 낮추지 않고 재는 층을 격리**한다.
   //     sleep 없는 evaluate 로 곧바로 끈다 — 격리가 실험 타이밍을 밀면 안 된다.
   await p3.evaluate(() => { if (window.__terrain19) window.__terrain19.windOff = true; });
+  // ★[T98 2026-09-05] **하늘도 끈다** — 바람을 끈 것과 같은 자리다. T98 이 `weatherFor` 에
+  //   `precip` 을 실으면서 세계가 실제로 비를 보낸다. 비는 매 프레임 다시 그려지고 **안개 합성 뒤**에
+  //   그려지므로, 두 프레임 동일·안개 위 밝은 픽셀 같은 판정이 하늘 때문에 빨개진다.
+  //   이 하네스가 재는 건 하늘이 아니다 ⇒ 끄는 문은 T93 이 남긴 진단 훅 하나(안 켜져 있으면 무해).
+  await p3.evaluate(() => { if (typeof window.__rainForce === 'function') window.__rainForce({ precip: 0 }); });
   await p3.screenshot({ path: `${SHOTS}/06-two-floor-outside.png` });
   const srv2 = await rget();
   ok(srv2.rooms === 2, `★서버가 방 2개(1층·2층)를 판정했다 (실측 ${srv2.rooms})`);
@@ -584,6 +603,11 @@ const rget = async (q) => (await (await fetch(`http://localhost:${ZPORT}/roomdbg
       await sleep(15000);
       // 바람 정지 + 생물 자리 훅 — 생물은 가려서 뺀다(e2e-nature 와 같은 문법: 클라가 자리를 낸다)
       await p4.evaluate(() => { if (window.__terrain19) { window.__terrain19.windOff = true; window.__terrain19.entBoxes = true; } });
+      // ★[T98 2026-09-05] **하늘도 끈다** — 바람을 끈 것과 같은 자리다. T98 이 `weatherFor` 에
+      //   `precip` 을 실으면서 세계가 실제로 비를 보낸다. 비는 매 프레임 다시 그려지고 **안개 합성 뒤**에
+      //   그려지므로, 두 프레임 동일·안개 위 밝은 픽셀 같은 판정이 하늘 때문에 빨개진다.
+      //   이 하네스가 재는 건 하늘이 아니다 ⇒ 끄는 문은 T93 이 남긴 진단 훅 하나(안 켜져 있으면 무해).
+      await p4.evaluate(() => { if (typeof window.__rainForce === 'function') window.__rainForce({ precip: 0 }); });
       await sleep(1200);
       // ★존 오프셋 — 스폰이 곧 mainSquare 다. **검산**: 그 오프셋으로 발자국 바닥이 전부 있어야 한다.
       const geo = await p4.evaluate(([cam, rect, doorXs, doorY, SZ]) => {

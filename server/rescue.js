@@ -38,8 +38,29 @@ const _int = (k, d) => { const v = parseInt(process.env[k], 10); return Number.i
 //   조용한 들에서 사람의 비명이 닿는 거리는 300m 남짓이다. 그 300m(=9,600px)를 잡고,
 //   **"들은 사람은 제때 닿는가"를 반대로 검산한다**: 9,600px 은 약 96초 ⇒ 175초 예산에
 //   **79초(≈45%)가 남는다** — 그 여유가 지형 우회분이다. 소리가 먼저고 도달이 검산이다.
+//
+//   ★★★[재민 확정 2026-09-05 · T110 · PM 판정 ②] **반경의 출처가 바뀌었다.**
+//     T56 은 위 문단대로 "조용한 들에서 비명이 닿는 거리 300m" 를 먼저 잡고 도달을 검산했다.
+//     그런데 그 수는 **세계 밖에서** 온 것이라 창(`RESCUE_WINDOW_MS`)이 바뀌면 같이 안 움직인다.
+//     ⇒ 이제 반경은 **정본 둘에서 유도한다**: `MOVE_SPEED × RESCUE_WINDOW × HEAR_FRAC`.
+//       새로 만드는 수는 `HEAR_FRAC` **하나** — "소리는 걸어서 창의 몇 분의 몇 안까지 간다".
+//
+//     ⓑ 실측 표(실지도 51마을 · `MOVE_SPEED` 64px/s × 창 180초 = 11,520px):
+//       ```
+//       HEAR_FRAC  반경        마을 지름(1600px) 덮나   이웃 마을 침범   들은 사람 도달(82px/s)
+//         1/4      2,880px( 90걸음)      예                0/51           ~35초 / 예산 175초   ★채택
+//         1/3      3,840px(120걸음)      예                2/51           ~47초
+//         1/2      5,760px(180걸음)      예               10/51           ~70초
+//        (T56 9,600px = 5/6)             예              40/51          ~117초
+//       ```
+//       이웃 마을 간격 실측: 최소 3,217 · 중앙 7,924 · 최대 17,705px.
+//     ★고른 이유는 **한 줄**이다: 쓰러진 자리가 마을 문간이면 그 마을 사람이 듣고(반경 > 마을 지름),
+//       **다음 마을은 못 듣는다**(반경 < 가장 가까운 마을 간격 3,217px). 1/4 만 그 둘을 동시에 만족한다.
+//       T56 의 9,600px 은 51마을 중 **40곳**에서 이웃 마을까지 닿아 있었다 — 들판의 소리가 아니라 방송이었다.
+//     ⚠되돌리는 스위치는 그대로다: `DOWN_SHOUT_RANGE_PX=9600` 이면 T56 판이 정확히 재현된다.
 const CFG = {
-  SHOUT_RANGE_PX: _int('DOWN_SHOUT_RANGE_PX', 9600),      // 300걸음(=300m · 32px=1m 캐논)
+  HEAR_FRAC: _num('DOWN_HEAR_FRAC', 0.25),                // ★새 수 하나 — 창의 몇 분의 몇 안까지 들리나
+  SHOUT_RANGE_PX: _int('DOWN_SHOUT_RANGE_PX', 0),         // 0 = 위 식으로 유도(아래 `shoutRange`)
   //   ★주기 — 창 안에 **반경으로 걸어 들어온 사람**도 듣게. 가장자리에서 들은 사람의 여유가
   //     79초이므로 그보다 넉넉히 짧게 잡는다. 30초면 창(180초) 동안 여섯 번 — 도배가 아니다.
   SHOUT_EVERY_MS: _int('DOWN_SHOUT_EVERY_MS', 30000),
@@ -54,7 +75,17 @@ let _timer = null;
 
 function init(host) { H = host || {}; _shout.clear(); _stopTimer(); return true; }
 function ready() { return !!H; }
-function _send(p, text) { try { if (H && H.send && p && p.ws) H.send(p.ws, { type: 'notice', text }); } catch (e) {} }
+/** 들리는 반경 — **정본 둘 × 새 수 하나**. env 로 못 박으면 그 값이 이긴다(T56 되돌림). */
+function shoutRange() {
+  if (CFG.SHOUT_RANGE_PX > 0) return CFG.SHOUT_RANGE_PX;
+  const spd = (H && Number.isFinite(H.MOVE_SPEED)) ? H.MOVE_SPEED : 64;
+  const win = ((H && Number.isFinite(H.RESCUE_WINDOW_MS)) ? H.RESCUE_WINDOW_MS : 180000) / 1000;
+  return Math.round(spd * win * CFG.HEAR_FRAC);
+}
+/** 알림 한 줄. ★[T110] 종류는 `kind` 가, 자리는 `downed` 가 나른다 — 글자는 글자만 나른다(T78·T71). */
+function _send(p, text, extra) {
+  try { if (H && H.send && p && p.ws) H.send(p.ws, Object.assign({ type: 'notice', text }, extra || {})); } catch (e) {}
+}
 
 // ── 외침 ──────────────────────────────────────────────────────────────────────
 //   §12: *"마을 안이면 마을 사람이 옮긴다."* ⇒ 마을 안에서는 **외치지 않는다** —
@@ -79,11 +110,17 @@ function shoutOnce(downed, now) {
   if (!ready() || !downed || !downed.isDown) return 0;
   if (_inVillage(downed.x, downed.y)) return 0;                 // 마을은 조용하다(위 주석)
   let heard = 0;
+  const RANGE = shoutRange();
+  // ★[T110] 창이 얼마나 남았나 — **새 상태를 만들지 않는다**. `downedAt` 과 창 하나로 뺀다.
+  const win = (H && Number.isFinite(H.RESCUE_WINDOW_MS)) ? H.RESCUE_WINDOW_MS : 180000;
+  const at = Number.isFinite(downed.downedAt) ? downed.downedAt : (Number.isFinite(now) ? now : Date.now());
   for (const q of (H.players ? H.players.values() : [])) {
     if (!q || q === downed || q.isNpc || q.isDown || !q.ws) continue;
     const d = Math.hypot(q.x - downed.x, q.y - downed.y);
-    if (d > CFG.SHOUT_RANGE_PX) continue;
-    _send(q, `🗣️ ${downed.name}이(가) 쓰러졌다 — ${_dir(q.x, q.y, downed.x, downed.y)} ${steps(d)}걸음`);
+    if (d > RANGE) continue;
+    // ★이모지 0(T71·T78) — 종류는 `kind`, 방향 화살은 `downed` 의 좌표가 그린다(클라 `34-m-renderloop`).
+    _send(q, `${downed.name}이(가) 쓰러졌다 — ${_dir(q.x, q.y, downed.x, downed.y)} ${steps(d)}걸음`,
+      { kind: 'downed', downed: { pid: downed.pid, x: Math.round(downed.x), y: Math.round(downed.y), at, windowMs: win } });
     heard++;
   }
   return heard;
@@ -274,7 +311,7 @@ function verb(player, msg) {
 }
 
 module.exports = {
-  CFG, init, ready, onDown, shoutOnce, steps, handleChat, feed, water, verb,
+  CFG, init, ready, onDown, shoutOnce, shoutRange, steps, handleChat, feed, water, verb,
   freshWaterNear, seaOnlyNear,
   // ★하네스용 — 시계를 밖에서 밀 수 있게(정본을 그대로 내준다 · 하네스가 사슬을 다시 짜지 않는다)
   __probe: { tick: _tick, shoutMap: _shout, downedNear: _downedNear, resolveItem: _resolveItem },

@@ -73,6 +73,21 @@ RINGS = 8         # 타원체(머리·손·관절)의 위도 분할
 EDGE_K = 0.78     # 1.0 = 끔. 0.78 = 은은한 자체 아웃라인(기존 자연물엔 아웃라인이 없다 — 세기 판정은 재민)
 EDGE_A = 0.60     # "불투명" 문턱(알파)
 
+# ── 먹선·셀 [T96 · 후처리만 · 씬 값 무변] ────────────────────────────────────
+#   ★`EDGE_K` 는 테두리 RGB 를 **곱해서** 낮췄다 — 화소마다 색이 달라 '그늘'이지 '선'이 아니다.
+#     T96 은 같은 자리를 **한 먹색**으로 덮어 비로소 선으로 세운다(`scripts/ink_post.py`).
+#     계약 둘(반투명 무접촉 · 1겹)과 합집합 마스크 규약은 그대로 물려받는다.
+#   ★되돌림은 스위치다: `T96_INK=0` 이면 옛 `edge_darken` 경로로 정확히 돌아간다.
+#   ★★셀 단수는 **두 자로 재서** 골랐다(§0-ⓑ · 보고서 표). 카드는 2~3단을 말했는데 **4단이다**:
+#     ⓐ 재질 판별(옷 여섯 15쌍 · 문턱 14.7)은 끔·2·4·5단 모두 2/15 로 같다(3단만 3/15).
+#     ⓑ 그런데 **앞뒤 단서**(`e2e-charsprite ⓕ` — 앞섶이 짙다 · 문턱 5)가 2·3단에서 **죽는다**:
+#          끔 13.12/10.73 · 2단 0.82/−2.09 · 3단 0.99/2.30 · **4단 12.23/9.31** · 5단 10.88/8.44
+#        앞섶의 밝기 차가 시트 범위의 1/4쯤이라 **칸이 넷은 돼야** 옆 칸으로 넘어간다.
+#     ⇒ 2~3단은 "사람이 어느 쪽을 보는지"를 지운다. 4단이 두 조건을 다 만족하는 가장 낮은 단수다.
+INK_PX = int(os.environ.get("T96_INK", "1"))        # 1 = 먹선 1px · 0 = 옛 edge_darken
+CEL_BANDS = int(os.environ.get("T96_CEL", "4"))     # 0 = 끔 · 2~5 (4 = 실측 채택)
+SINE_POSE = int(os.environ.get("T96_SINE", "0"))    # 1 = 모캡 표 대신 옛 사인 함수
+
 # ── 비례 손잡이 [이번 배치 신설 · 기본 1.0 = 고증 비례 무변경] ──────────────
 #   ★54px 에서 머리는 7px 다. 좀보이드·디아블로가 머리·손발을 키우는 건 사실성을 버려서가
 #     아니라 그 크기에서 "사람으로 읽히게" 하는 유일한 길이 과장이기 때문이다.
@@ -87,8 +102,16 @@ ROOT = os.path.dirname(HERE)
 OUTDIR = os.path.join(HERE, "char_renders")           # .gitignore (배치 19~21 산출물 규약)
 SHEETDIR = os.path.join(ROOT, "public", "assets", "char")
 BLENDOUT = os.path.join(ROOT, "assets-src", "char_body.blend")
+EXRDIR = os.path.join(ROOT, "assets-src", "char_raw")   # ★[T107] 후처리 전 float 시트(배포 밖)
 os.makedirs(OUTDIR, exist_ok=True)
 os.makedirs(SHEETDIR, exist_ok=True)
+
+sys.path.insert(0, HERE)      # ★[T96] 같은 폴더의 `ink_post` 를 부르려고
+import ink_post               # noqa: E402  — 후처리 둘(먹선·셀). 씬은 안 건드린다.
+# ★★[T120] `render_common` 에서 **옷 재질 표만** 읽는다 — 씬·헬퍼는 여전히 이 파일 것이다.
+#   그 모듈은 최상위에서 상수만 세운다(씬을 짓지 않는다) ⇒ 부르는 것만으로 굽는 그림이 안 바뀐다.
+#   ⓘ 이 파일을 `render_common` 위로 옮기는 것(씬·헬퍼까지)은 여전히 **다른 카드**다.
+import render_common as rc    # noqa: E402
 
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 ONLY_META = "--only-meta" in ARGS
@@ -101,6 +124,13 @@ CLIP_FILTER = set(a for a in ARGS if not a.startswith("--")) or None
 #   ⇒ 새 레이어만 굽고 **기존 20장은 건드리지 않는다.** 필터가 없으면 그게 불가능하다.
 #   ⚠실루엣 강화(EDGE_K)의 합집합 마스크는 body/clothes 만 쓰므로 도구만 굽는 판에서도 무해하다
 #     (도구는 `SILHOUETTE_GROUP` 밖이라 mask=None 경로 — 전체 판과 같은 결과).
+# ★[T107] 후처리 **전** float 시트를 EXR 로 남길지. `--rawexr` 또는 `T107_EXR=1`.
+#   자리는 `assets-src/char_raw/`(배포 밖 · `.gitignore` — 크기는 보고서 §0-ⓑ).
+EXR_DUMP = ("--rawexr" in ARGS) or int(os.environ.get("T107_EXR", "0"))
+EXR_ONLY = "--exronly" in ARGS      # EXR 만 남기고 배포 PNG 는 **안 건드린다**(무변 보장)
+if EXR_ONLY:
+    EXR_DUMP = 1
+
 LAYER_FILTER = None
 for _a in ARGS:
     if _a.startswith("--layer="):
@@ -112,6 +142,7 @@ for _a in ARGS:
     if _a.startswith("--sheetdir="):
         SHEETDIR = os.path.abspath(_a[len("--sheetdir="):])
         BLENDOUT = os.path.join(SHEETDIR, "char_body.blend")
+        EXRDIR = os.path.join(SHEETDIR, "char_raw")
         os.makedirs(SHEETDIR, exist_ok=True)
 
 DIRS = 8   # 8방향. 16방향은 회부(연속 페이싱 재론과 함께)
@@ -269,15 +300,12 @@ M = {
 M['carrw'] = mat("carrw", (0.58, 0.44, 0.26), 0.80, 0.06)    # 지게 나무
 M['carrf'] = mat("carrf", (0.62, 0.55, 0.30), 0.90, 0.04)    # 밀삐(풀 끈)
 
-CLOTH_MATS = {                     # id → (기본색, rough, spec) · 순서 = server/clothes.js 표 순서(계약)
-    'fur':     ((0.300, 0.210, 0.145), 0.97, 0.03),
-    'ramie':   ((0.885, 0.875, 0.835), 0.88, 0.08),
-    'leather': ((0.400, 0.270, 0.160), 0.75, 0.18),
-    'hide':    ((0.600, 0.440, 0.280), 0.85, 0.10),
-    'fiber':   ((0.720, 0.665, 0.315), 0.95, 0.04),
-    'hemp':    ((0.700, 0.655, 0.545), 0.90, 0.06),
-}
-TRIM_K, PLACKET_K = 0.85, 0.56
+# ★★[T120 2026-09-05] **표는 `render_common` 하나다** — 여기 있던 여섯 줄과 상수 둘을 옮겼다.
+#   T77·T87·T95 회부가 가리키던 자리다: 같은 옷이 이 파일과 `props_render.py` 에 **따로** 적혀
+#   있었고, `test-icons ⑨` 는 둘이 갈렸는지 **검사만** 했다. 검사는 갈린 뒤에 말한다.
+#   ⓘ 값은 한 자도 안 바꿨다(§0-ⓐ 실측 차 0) — 자리만 옮겼다. 그 증거는 **굽는 바이트 무변**이다.
+CLOTH_MATS = rc.CLOTH_MATS
+TRIM_K, PLACKET_K = rc.CLOTH_TRIM_K, rc.CLOTH_PLACKET_K
 CLOTH_MATSET = {}                  # id → (본천, 허리끈, 앞섶)
 for _k, (_c, _r, _sp) in CLOTH_MATS.items():
     if _k == 'hemp':
@@ -529,7 +557,7 @@ for _sg, _sf in ((+1, 'L'), (-1, 'R')):
 # ★[T81] 갖옷 털 두께 — 반지름에 더하는 값(m). 청동기 갖옷은 무두질 전 털가죽을 그대로 두른 것이라
 #   짜서 몸에 붙는 삼베·모시와 부피가 다르다. 3cm 는 **화면에서 읽히는 최소선**으로 골랐다:
 #   PPU0 45.255px/m → 반지름 +0.03m = 한쪽 1.36px · 폭으로 2.7px = 옷 폭 21px 의 13%(§0-ⓐ 실측으로 확인).
-FUR_PAD = 0.03
+FUR_PAD = rc.FUR_PAD                 # ★[T120] 값의 자리는 `render_common` — 근거 주석은 위에 남는다
 TUNIC_R = [(0.880, 0, 0, 0.134, 0.148), (1.040, 0, 0, 0.126, 0.140),
            (1.160, 0, 0, 0.136, 0.158), (1.300, 0, 0, 0.148, 0.172 * SHLD_K),
            (1.392, 0, 0, 0.144, 0.170 * SHLD_K), (1.424, 0, 0, 0.098, 0.108)]
@@ -829,39 +857,92 @@ def _pose_swing(u):
         k = (u - 0.62) / 0.38
         up = 0.0
         fwd = 1.0 - k
+    # ★★[T107] **축을 바로잡았다 — 수는 한 톨도 안 바꿨다.**
+    #   T96 이 `depsgraph` 로 잰 리그의 축: 사지 뼈는 `rx` = 좌우(관상) · `rz` = 앞뒤(시상).
+    #   1차 판은 팔을 `rx` 로 올렸으므로 도끼가 **몸 옆에서** 오르내렸다 — §0-ⓐ 실측:
+    #     들어올린 꼭대기(u=0.4) 에서 `uarmR` 월드 방향 = (앞 0.018, 왼 −0.999, 위 −0.04)
+    #     — 앞 성분이 **0.018**, 즉 팔이 오른쪽으로 **수평으로** 뻗어 있었다.
+    #     도끼 무게중심도 오른쪽 0.64m · 앞 0.076m 로, 한 번도 몸 앞에 오지 않았다.
+    #   ⇒ 사지 뼈만 **축을 맞바꾼다**: `rx' = rz_old`(팔을 몸에서 조금 띄우던 상수는 관상으로) ·
+    #     `rz' = −rx_old`(휘두르는 값은 시상으로).
+    #   ★부호가 −인 근거는 **이 함수의 제 문장**이다: *"들어올림 → 내려침"*.
+    #     시상에서 `+rz` = 사지가 뒤로다(T96 표). 들어올림은 뒤·위여야 하므로 `−118 → +118`,
+    #     내려침은 앞·아래여야 하므로 `+62 → −62`. 크기는 그대로다.
+    #   ★몸통(`root`·`spine`)은 **안 건드린다** — 그 둘의 `rz` 는 이미 시상이고 값이 맞다
+    #     (`spine` 은 들 때 16° 젖히고 칠 때 12° 숙인다). 축 결함은 사지에만 있었다.
     return {
         'spine':  (math.radians(-8 * up + 15 * fwd), 0, math.radians(16 * up - 12 * fwd)),
-        'uarmR':  (math.radians(-118 * up + 62 * fwd), 0, math.radians(-8)),
-        'larmR':  (math.radians(-70 * up + 6 * fwd), 0, 0),
-        'handR':  (math.radians(-25 * up + 18 * fwd), 0, 0),
-        'uarmL':  (math.radians(-16 * up + 22 * fwd), 0, math.radians(10)),
-        'larmL':  (math.radians(-28), 0, 0),
+        'uarmR':  (math.radians(-8), 0, math.radians(118 * up - 62 * fwd)),
+        'larmR':  (0, 0, math.radians(70 * up - 6 * fwd)),
+        'handR':  (0, 0, math.radians(25 * up - 18 * fwd)),
+        'uarmL':  (math.radians(10), 0, math.radians(16 * up - 22 * fwd)),
+        'larmL':  (0, 0, math.radians(28)),
         'root':   (math.radians(5 * fwd), 0, 0),
-        'thighL': (math.radians(-9 * fwd), 0, 0),
-        'thighR': (math.radians(9 * fwd), 0, 0),
+        'thighL': (0, 0, math.radians(9 * fwd)),
+        'thighR': (0, 0, math.radians(-9 * fwd)),
     }
 
 
 def _pose_aim(u):
     """조준 자세 — 낮춘 무게중심·앞으로 내민 손. 2프레임(미세 호흡)."""
     s = 1.0 if u < 0.5 else 0.0
+    # ★★[T107] 같은 축 교정. 수는 그대로, 축만 사지 `rx`→`rz`.
+    #   ⚠**부호는 `swing` 과 반대다(+).** 한 규칙으로 못 덮는다 — 그게 이 결함의 성질이다:
+    #     망가진 축이 **서로 다른 두 뜻을 한 값으로 뭉개고 있었다.** 이 함수의 제 문장은
+    #     *"낮춘 무게중심 · **앞으로 내민 손**"* 이고, 시상에서 앞은 `−rz` 다 ⇒ `−58 → −58`.
+    #     `swing` 의 들어올림은 뒤였으므로 `−118 → +118`. 둘 다 "크기 무변 · 축만".
+    #   §0-ⓐ 실측(옛): `uarmR` 월드 방향 (앞 0.139, 왼 −0.756, 위 −0.640) — 앞이 아니라 **오른쪽**이었다.
     return {
         'root':   (math.radians(6), 0, 0),
         'spine':  (math.radians(4 + 0.7 * s), 0, math.radians(-9)),
-        'uarmR':  (math.radians(-58 - 1.2 * s), 0, math.radians(-26)),
-        'larmR':  (math.radians(-34), 0, 0),
-        'handR':  (math.radians(-12), 0, 0),
-        'uarmL':  (math.radians(-50), 0, math.radians(30)),
-        'larmL':  (math.radians(-58), 0, 0),
-        'thighL': (math.radians(-13), 0, 0),
-        'thighR': (math.radians(11), 0, 0),
-        'shinL':  (math.radians(16), 0, 0),
-        'shinR':  (math.radians(14), 0, 0),
+        'uarmR':  (math.radians(-26), 0, math.radians(-58 - 1.2 * s)),
+        'larmR':  (0, 0, math.radians(-34)),
+        'handR':  (0, 0, math.radians(-12)),
+        'uarmL':  (math.radians(30), 0, math.radians(-50)),
+        'larmL':  (0, 0, math.radians(-58)),
+        'thighL': (0, 0, math.radians(-13)),
+        'thighR': (0, 0, math.radians(11)),
+        'shinL':  (0, 0, math.radians(16)),
+        'shinR':  (0, 0, math.radians(14)),
     }
+
+
+# ═══════════════ 모캡 포즈표 [T96] ═══════════════
+#   ★`walk`·`run` 은 이제 **사람 모션**이다(CMU 07_01 걷기 · 09_01 달리기).
+#     사인 함수는 시계추가 아니라 **가랑이를 옆으로 벌리는 것**이었다 — §0-ⓒ 실측:
+#     사인 걸음의 넓적다리 월드 방향이 `(0, ±0.51, −0.86)` 로 **앞뒤 성분이 정확히 0** 이다.
+#     리그의 `rx` 는 뼈를 캐릭터의 **좌우(±y)** 로 눕히는데(depsgraph 로 쟀다) 걸음이 그걸 썼다.
+#     앞뒤는 `rz` 다. 모캡 리타깃은 두 평면을 다 계산하므로 이 결함이 저절로 닫힌다.
+#   ★표는 `assets-src/mocap/poses.json` — `scripts/mocap_retarget.py` 가 만들고 커밋한다.
+#     여기서는 **읽기만** 한다(굽기가 BVH 파싱·부동소수 경로를 안 탄다 = 결정론이 두 단으로 갈린다).
+_MOCAP_PATH = os.path.join(ROOT, "assets-src", "mocap", "poses.json")
+_MOCAP = None
+if not SINE_POSE and os.path.exists(_MOCAP_PATH):
+    with open(_MOCAP_PATH) as _f:
+        _MOCAP = json.load(_f)
+
+
+def _pose_table(clip):
+    """포즈표 한 클립 → `POSE_FN` 과 같은 모양의 함수. u 는 프레임 눈금에 정확히 떨어진다."""
+    tbl = _MOCAP["clips"][clip]
+    n = len(tbl)
+
+    def f(u):
+        i = int(round(u * n)) % n
+        return {k: tuple(v) for k, v in tbl[i].items()}
+    return f
 
 
 POSE_FN = {'idle': _pose_idle, 'walk': _pose_walk, 'run': _pose_run,
            'swing': _pose_swing, 'aim': _pose_aim}
+if _MOCAP:
+    for _c in ('walk', 'run'):
+        if _c in _MOCAP.get("clips", {}):
+            POSE_FN[_c] = _pose_table(_c)
+    print(f"[char] 모캡 포즈표: {', '.join(sorted(_MOCAP['clips']))} "
+          f"({_MOCAP['source']['walk']['clip']} · {_MOCAP['source']['run']['clip']})")
+else:
+    print("[char] ★사인 포즈(T96_SINE=1 또는 poses.json 없음)")
 
 
 def apply_pose(clip, fi, nframes, dirIdx):
@@ -952,6 +1033,33 @@ CTR = RHAT * _ca + UHAT * _cb
 #   (bbox 계산이 이미 게임 규약 RHAT=+x-오른쪽 으로 재고 있으므로).
 ANCH_X = FW / 2.0 - (UMIN + UMAX) * 0.5
 ANCH_Y = FH / 2.0 - (WMIN + WMAX) * 0.5
+
+# ★★[T107] **공유 프레임 상자를 얼린다.** 포즈를 고치면 상자가 다시 잡히고, 그러면 프레임 크기와
+#   앵커가 흔들려 **안 건드린 클립의 시트까지** 다시 구워야 한다. 실측(§0-ⓐ): swing·aim 의 축을
+#   바로잡자 상자가 u ±160.21 → ±143.83 · w −240.57 → −225.16 으로 **줄었다**(팔을 옆으로 뻗던 것이
+#   앞뒤로 바뀌니 화면에서 좁아진다). 크기가 줄어도 규격이 바뀌면 클라가 보는 자가 바뀐다.
+#   ⇒ 이미 배포된 메타가 있으면 **그 값을 쓴다**. 새 상자가 그 안에 안 들어가면 **크게 실패한다**
+#     (조용히 잘리는 것보다 낫다 — 그때는 사람이 규격을 새로 정할 일이다).
+#   ⇒ 되돌림: `T107_BOXPIN=0` 이면 옛날처럼 매번 새로 잰다.
+_BOXPIN = int(os.environ.get("T107_BOXPIN", "1"))
+_pin_meta = os.path.join(SHEETDIR, "char_meta.json")
+if _BOXPIN and os.path.exists(_pin_meta):
+    with open(_pin_meta) as _f:
+        _pm = json.load(_f)
+    _pFW, _pFH = int(_pm["frameW"]) * SS, int(_pm["frameH"]) * SS
+    _pAX, _pAY = float(_pm["anchorX"]) * SS, float(_pm["anchorY"]) * SS
+    _pcu, _pcw = _pFW / 2.0 - _pAX, _pFH / 2.0 - _pAY        # 얼린 상자의 한가운데
+    _fit = (UMIN >= _pcu - _pFW / 2.0 and UMAX <= _pcu + _pFW / 2.0
+            and WMIN >= _pcw - _pFH / 2.0 and WMAX <= _pcw + _pFH / 2.0)
+    print(f"[char] 상자 못박음: 잰 값 u[{UMIN:.1f},{UMAX:.1f}] w[{WMIN:.1f},{WMAX:.1f}]"
+          f" → 얼린 값 {_pFW}x{_pFH} 중심({_pcu:.1f},{_pcw:.1f}) · 들어맞음={_fit}")
+    if not _fit:
+        raise SystemExit("[char] ★상자를 벗어난다 — 얼린 프레임에 안 들어간다. 규격을 새로 정해야 한다.")
+    FW, FH = _pFW, _pFH
+    _ca = _pcu / PPU
+    _cb = -_pcw / PPU
+    CTR = RHAT * _ca + UHAT * _cb
+    ANCH_X, ANCH_Y = _pAX, _pAY
 print(f"[char] 프레임 {FW}x{FH} (ss={SS}) · 앵커=({ANCH_X:.1f},{ANCH_Y:.1f}) · ppu={PPU:.3f}")
 # 화면 세로 px/m = PPU0 · ZSQ · cos30° = 32.0 (자산 정본: 1m 높이 = 32px)
 _PXM = PPU0 * ZSQ * math.cos(math.radians(30.0))
@@ -1027,28 +1135,10 @@ def downsample(px, w, h, k):
 
 
 def edge_darken(sheet, w, h, k, athr=EDGE_A, mask=None):
-    """실루엣 안쪽 한 겹의 RGB 를 k 배로 낮춘다 — **자체 아웃라인**.
-       mask 를 주면 그 알파를 실루엣으로 삼는다(몸·옷은 **합집합** 실루엣을 쓴다 —
-       레이어마다 제 실루엣을 그으면 살↔옷 경계에 없는 선이 하나 더 생긴다).
-       ★불투명(a>=athr) 화소 중 4이웃에 비어 있는(a<athr) 화소가 있는 것만 건드린다.
-         반투명(안티에일리어싱) 화소는 손대지 않는다 — 거기를 어둡게 하면 그게 검은 프린지이고,
-         test-charsheet ④ 가 정확히 그 증상을 잡는다.
-       ★읽기용 사본을 먼저 뜬다 — 제자리 수정하면 어두워진 화소가 다음 화소의 이웃 판정에
-         끼어들어 아웃라인이 안쪽으로 번진다(1겹 계약 위반)."""
-    if k >= 0.999:
-        return sheet
-    a = mask if mask is not None else [sheet[i * 4 + 3] for i in range(w * h)]
-    for y in range(h):
-        for x in range(w):
-            i = y * w + x
-            if a[i] < athr or sheet[i * 4 + 3] < athr:   # 실루엣 위 + 제 화소도 불투명일 것
-                continue
-            edge = (x == 0 or a[i - 1] < athr or x == w - 1 or a[i + 1] < athr
-                    or y == 0 or a[i - w] < athr or y == h - 1 or a[i + w] < athr)
-            if edge:
-                o = i * 4
-                sheet[o] *= k; sheet[o + 1] *= k; sheet[o + 2] *= k
-    return sheet
+    """★[T107] 본문은 `ink_post.edge_darken` 으로 **옮겼다** — 굽기와 되굽기가 같은 함수를 타야
+       "바이트 동일"이 우연이 아니게 된다. 이 이름은 옛 문서·주석이 가리키므로 위임으로 남긴다.
+       규약(합집합 마스크 · 반투명 무접촉 · 1겹 · 읽기용 사본)은 그쪽 주석이 정본이다."""
+    return ink_post.edge_darken(sheet, w, h, k, athr, mask)
 
 
 def blank_sheet(w, h):
@@ -1106,6 +1196,7 @@ META = {
     "heightM": H_TOT,
     # ★이 시트를 만든 조형 손잡이 — 시트만 보고도 무엇이 적용됐는지 알 수 있게 남긴다
     "shape": {"gen": 3, "loftSeg": LOFT_SEG, "seg": SEG, "rings": RINGS, "edgeK": EDGE_K, "edgeA": EDGE_A,
+              "inkPx": INK_PX, "celBands": CEL_BANDS, "poseSrc": ("sine" if not _MOCAP else "mocap"),
               "headK": HEAD_K, "shldK": SHLD_K, "limbK": LIMB_K, "handK": HAND_K},
     "clips": {c[0]: {"frames": c[1], "loop": c[2], "fps": c[3]} for c in CLIPS},
     "layers": [l[0] for l in LAYERS if l[0] != 'probeall'],
@@ -1156,7 +1247,13 @@ if not ONLY_META:
             built.append([lname, sheet, SW, SH])
             if RAWDUMP:   # 실루엣 강화 **전** 원본 — 세기 비교판을 재렌더 없이 만들려고 남긴다
                 save_sheet(sheet, SW, SH, os.path.join(OUTDIR, f"raw_{lname}_{clip}.png"))
-        if EDGE_K < 0.999 and built:
+        # ★[T107] 후처리 **전** float 시트를 EXR 로 남긴다 — 세기를 바꿀 때 다시 안 굽는다.
+        if EXR_DUMP and built:
+            os.makedirs(EXRDIR, exist_ok=True)
+            for lname, sheet, SWx, SHx in built:
+                ink_post.save_exr(sheet, SWx, SHx, os.path.join(EXRDIR, f"{lname}_{clip}.exr"))
+            print(f"[char] EXR {len(built)}장 → {EXRDIR}")
+        if built and (INK_PX or CEL_BANDS >= 2 or EDGE_K < 0.999):
             SW, SH = built[0][2], built[0][3]
             # ★★[T81] 실루엣 합집합은 **한 벌 기준**이다 — 몸 + '지금 그 옷' 하나.
             #   ⓐ 옷이 하나(삼베)뿐일 땐 전체 합집합과 같은 값이라 **얼린 40장의 근거가 그대로 산다.**
@@ -1165,6 +1262,8 @@ if not ONLY_META:
             #   ⓒ 옷 하나만 굽는 판(`--layer=clothes_fur`)에서도 **몸을 같이 굽는다** — 저장은 안 한다.
             #      안 그러면 합집합에 몸이 빠져 목·소매·단에 **없는 선**이 생긴다(edge_darken 주석).
             PARTNER = {"body": "clothes_hemp"}   # 몸의 짝은 기본 한 벌(삼베) — 얼린 바이트의 기준
+            for _l in SILHOUETTE_GROUP:          # 옷의 짝은 몸 (post_all 이 표만 보게 채워 둔다)
+                PARTNER.setdefault(_l, "body")
             alpha = {}
             for lname, sheet, _w, _h in built:
                 if lname in SILHOUETTE_GROUP:
@@ -1183,23 +1282,30 @@ if not ONLY_META:
                 alpha[pn] = [psheet[i * 4 + 3] for i in range(pw * ph)]
                 return alpha[pn]
 
-            for lname, sheet, _w, _h in built:
-                if lname not in SILHOUETTE_GROUP:
-                    edge_darken(sheet, SW, SH, EDGE_K, mask=None)
-                    continue
-                uni = list(alpha[lname])
-                other = _partner_alpha(lname)
-                if other:
-                    for i in range(SW * SH):
-                        if other[i] > uni[i]:
-                            uni[i] = other[i]
-                edge_darken(sheet, SW, SH, EDGE_K, mask=uni)
+            # ★★[T107] 후처리 본문은 **`ink_post.post_all` 한 자리**다 — 되굽기
+            #   (`scripts/ink_repost.py`)가 같은 함수를 타야 "바이트 동일"이 우연이 아니게 된다.
+            def _alpha_of(nm):
+                if nm is None:
+                    return None
+                if nm in alpha:
+                    return alpha[nm]
+                return _partner_alpha(nm)
+
+            ink_post.post_all([(l, sh) for l, sh, _w, _h in built], SW, SH,
+                              silhouette=SILHOUETTE_GROUP, partner_of=PARTNER,
+                              alpha_of=_alpha_of, ink_px=INK_PX, cel_bands=CEL_BANDS,
+                              edge_a=EDGE_A, edge_k=EDGE_K)
         for lname, sheet, SW, SH in built:
             key = f"{lname}_{clip}"
+            if EXR_ONLY:            # ★[T107] EXR 만 채우는 판 — 배포 PNG 는 손도 안 댄다
+                continue
             save_sheet(sheet, SW, SH, os.path.join(SHEETDIR, key + ".png"))
             print(f"[char] {key}: {SW}x{SH}")
 
 META["sheets"] = rebuild_sheets()
+if EXR_ONLY:
+    print("[char] --exronly — 메타·PNG 무접촉")
+    raise SystemExit(0)
 with open(os.path.join(SHEETDIR, "char_meta.json"), "w") as f:
     json.dump(META, f, indent=1, sort_keys=True)
 print(f"[char] 메타 저장: {len(META['sheets'])}장 · {os.path.join(SHEETDIR, 'char_meta.json')}")

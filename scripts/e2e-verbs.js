@@ -367,7 +367,7 @@ async function waitHttp(url, tries = 600) {
   const sub = await menuWithin(3000);
   ok(Array.isArray(sub) && sub.length > 0, '★★③ **하위 목록이 열린다** — 내 짐의 먹을 것', JSON.stringify(sub));
   ok(!!sub && sub.some((t) => /×\d/.test(t)), '★③ 그 목록은 **가진 수량**까지 말한다', JSON.stringify(sub));
-  await R.evaluate(() => { document.getElementById('ctxMenu').children[0].click(); });
+  await R.evaluate(() => { const _m = document.getElementById('ctxMenu'); if (_m && _m.children[0]) _m.children[0].click(); });
   await sleep(1800);
 
   const rn = await notices(R);
@@ -462,17 +462,30 @@ async function waitHttp(url, tries = 600) {
     ok(!!probe && probe.onEdge === true && probe.outside === false,
        '★★⑦ 경계가 **정확히 14px** 이다(±14 AABB — 종전 그대로)', JSON.stringify(probe));
     // ★자명 통과 금지 — 사람 갈래는 **기본으로 꺼져 있다**(좌클릭이 안 달라졌다는 증거)
-    const off = await R.evaluate((pid) => {
-      let t = null;
+    //   ⚠[T90 판에서 한 번 걸렸다] A 가 R 의 시야 묶음(`others`)에 **그 찰나에 없어서** `null` 이었다
+    //     (재접속이 pid 를 갈거나 묶음 갱신 사이에 낀다 — T68·T82 가 이미 밟은 그 함정).
+    //     제품 결함이 아니다 ⇒ 보일 때까지 몇 번 다시 묻는다(값이 오면 판정은 종전 그대로다).
+    //   ⇒ **A 여야 할 이유가 없다.** 이 줄이 재는 것은 "사람 층이 좌클릭에선 꺼져 있다"이고,
+    //     그건 R 이 보는 **아무 사람 하나**로 성립한다. A 를 먼저 찾고, 없으면 보이는 사람을 쓴다.
+    const probeOff = (pid) => R.evaluate((p2) => {
+      let t = null, who = null;
       for (const c of conns.values()) {
         if (!c.meta || !c.others) continue;
-        const o = c.others.get(pid);
-        if (o) { t = { x: (c.meta.worldOffsetX || 0) + o.x, y: (c.meta.worldOffsetY || 0) + o.y }; break; }
+        const ox = c.meta.worldOffsetX || 0, oy = c.meta.worldOffsetY || 0;
+        const o = c.others.get(p2);
+        if (o) { t = { x: ox + o.x, y: oy + o.y }; who = p2; break; }
+        for (const [k, v] of c.others) { t = { x: ox + v.x, y: oy + v.y }; who = k; break; }
+        if (t) break;
       }
       if (!t) return null;
-      return { withoutFlag: (pickAt(t.x, t.y) || {}).kind || null,
+      return { who, isA: who === p2,
+               withoutFlag: (pickAt(t.x, t.y) || {}).kind || null,
                withFlag: (pickAt(t.x, t.y, { live: true }) || {}).kind || null };
-    }, aPid);
+    }, pid);
+    let off = null;
+    for (let i = 0; i < 8 && !off; i++) { off = await probeOff(aPid); if (!off) await sleep(500); }
+    pre(!!off, 'R 이 **사람 하나**를 실제로 보고 있다 — 아니면 아래가 잴 것이 없다',
+        off ? `pid ${off.who}${off.isA ? ' (=A)' : ' (A 는 그 찰나 시야 밖 — 아무나로 잰다)'}` : '아무도 안 보인다');
     ok(!!off && off.withoutFlag !== 'player' && off.withFlag === 'player',
        '★★⑦ 사람·나·자연물 갈래는 **우클릭만 켠다** — 좌클릭 사슬은 종전 그대로다', JSON.stringify(off));
   }
@@ -509,12 +522,16 @@ async function waitHttp(url, tries = 600) {
         const rc = cv.getBoundingClientRect();
         return { x: rc.left + sc.px * (rc.width / cv.width), y: rc.top + sc.py * (rc.height / cv.height) };
       }, [res.x, res.y]);
+      // ⚠[T90 판] 세 번 두드려도 안 뜬 판이 있었다 — 그리고 그때 아래 클릭이 `null.children` 으로
+      //   **하네스 전체를 죽였다**(한 절의 흔들림이 전수를 못 죽이게, 클릭은 전부 방어로 바꿨다).
+      //   두드림도 다섯으로 늘린다: 렌더 루프가 밀리면 400ms 문턱을 넘겨 탭이 홀드로 읽힌다.
       let nLab = null;
-      for (let i = 0; i < 3 && !nLab; i++) { await rightTap(rPt); nLab = await menuWithin(3000); }
+      for (let i = 0; i < 5 && !nLab; i++) { await rightTap(rPt); nLab = await menuWithin(3000); await sleep(200); }
       ok(!!nLab && nLab.length > 0, '★★⑧ 자연물 위 우클릭에 **메뉴가 뜬다**', JSON.stringify(nLab));
-      const WORD = { tree: '벌목', rock: '채굴', ore: '채굴', herb: '채집', berry_bush: '채집',
-                     water_pool: '물 마시기', meteorite: '채굴' };
-      const want = WORD[res.type] || '채집';
+      // ★[T90] 이 표를 하네스가 들고 있으면 그것도 **사본**이다 — 정본(`server/itemlabel.js`)을 부른다.
+      const WORD = require(path.join(ROOT, 'server', 'itemlabel.js')).RESOURCE_VERBS;
+      const want = WORD[res.type];
+      ok(!!want, `★⑧ 전제: 정본 표가 이 종류를 안다(${res.type})`, want || '모른다');
       ok(!!nLab && nLab.some((t2) => t2.includes(want)),
          `★★⑧ 그 동사가 **종류에 맞는 말**이다(${res.type} → ${want})`, JSON.stringify(nLab));
       ok(!!nLab && !/\p{Extended_Pictographic}/u.test(nLab.join('')), '★⑧ 메뉴 글자에 이모지 0');
@@ -524,7 +541,7 @@ async function waitHttp(url, tries = 600) {
         return null;
       }, res.id);
       await clearNotices(R);
-      await R.evaluate(() => { document.getElementById('ctxMenu').children[0].click(); });
+      await R.evaluate(() => { const _m = document.getElementById('ctxMenu'); if (_m && _m.children[0]) _m.children[0].click(); });
       await sleep(2500);
       const after = await R.evaluate((id) => {
         for (const c of conns.values()) { const r = c.resources && c.resources.get(id); if (r) return r.hp; }
@@ -541,12 +558,16 @@ async function waitHttp(url, tries = 600) {
       // 다시 우클릭 → "멈추기". ★**바로** 잰다 — 늑장 부리면 그 사이 다 캐여서 저절로 멎는다
       //   (그건 옳은 동작인데 하네스가 "토글이 안 된다"로 읽는다 — 초안이 그렇게 두 판 빨갰다).
       if (looping) {
-        await rightTap(rPt);
-        const l2 = await menuWithin(2000);
+        // ★★[T90 판에서 한 번 더 걸렸다] 탭 **한 번**만 하고 2초 기다렸더니 메뉴가 없었다.
+        //   반복이 도는 동안엔 1초마다 `gather` 가 나가 렌더 루프가 더 밀린다 ⇒ `mousedown→auxclick`
+        //   이 400ms 문턱을 넘겨 **옳은 탭이 홀드로 읽힌다**(T68 이 250→400 으로 올릴 때 잰 그 현상).
+        //   제품 결함이 아니다 — 검사가 참을성이 없었다. 위 ⑧ 첫 탭과 **같은 규약**으로 세 번 시도한다.
+        let l2 = null;
+        for (let i = 0; i < 3 && !l2; i++) { await rightTap(rPt); l2 = await menuWithin(2000); }
         const stillOn = await R.evaluate(() => !!window.__eRepeat);
         if (stillOn) {
           ok(!!l2 && l2.some((t2) => /멈추기/.test(t2)), '★⑧ 도는 중엔 메뉴가 **멈추기**라고 말한다', JSON.stringify(l2));
-          if (l2) { await R.evaluate(() => { document.getElementById('ctxMenu').children[0].click(); }); await sleep(400); }
+          if (l2) { await R.evaluate(() => { const _m = document.getElementById('ctxMenu'); if (_m && _m.children[0]) _m.children[0].click(); }); await sleep(400); }
           ok((await R.evaluate(() => !!window.__eRepeat)) === false, '★⑧ 눌렀더니 멈췄다');
         } else {
           // 다 캐서 저절로 멎었다 — 그것도 계약이다(§0-ⓑ: "다 캐면 저절로 멎는다").
@@ -557,54 +578,202 @@ async function waitHttp(url, tries = 600) {
     }
   }
 
-  // ── ⑧-b ★★[T82] **누른 것이 제일 가깝지 않으면 동사를 안 낸다** ────────────
-  //   이게 이 카드에서 제일 정직해야 하는 줄이다. `gather` 는 지목을 못 받고 서버가 최근접을
-  //   고르므로, 먼 것을 눌렀는데 메뉴가 뜨면 **다른 나무가 베인다** — 메뉴가 거짓말을 한다.
-  //   ⇒ 자원 **둘**을 찾아, 먼 쪽을 눌렀을 때 **빈 메뉴**인지 잰다(자명 통과 방지: 가까운 쪽은 뜬다).
-  console.log('\n⑧-b ★[T82] 더 가까운 게 있으면 먼 것엔 동사가 안 뜬다');
+  // ── ⑧-b ★★[T90] **최근접이 아닌 것을 눌러도, 누른 그것이 깎인다** ───────────
+  //   ★T82 에서 이 자리는 "먼 것엔 메뉴가 안 뜬다"였다. `gather` 가 지목을 못 받아
+  //     서버가 최근접을 골랐고, 메뉴를 띄우면 **다른 나무가 베였을** 것이기 때문이다.
+  //     T90 이 `gather{resId}` 를 열었으니 계약이 뒤집힌다 — 누른 것이 깎여야 한다.
+  //   ⇒ 증거는 **id 대조** 하나다: 먼 쪽 hp 가 줄고, **가까운 쪽 hp 는 그대로**여야 한다.
+  //     (먼 쪽만 보면, 서버가 최근접을 골랐는데 우연히 둘 다 깎이는 판을 못 가른다.)
+  console.log('\n⑧-b ★[T90] 최근접이 아닌 자연물을 지목한다 — id 대조');
   {
-    const two = await R.evaluate(() => {
+    // 둘 다 48px(`GATHER_RANGE`) 안에 들면서 **먼 쪽을 누를** 자리가 필요하다.
+    // 자리를 지어내지 않는다 — 보이는 자원들에서 **제일 붙어 있는 쌍**을 찾고,
+    // 그 선분 위 a 쪽으로 치우친 점을 목표로 삼는다(a 가 가깝고 b 가 멀되 둘 다 48 안).
+    // ⚠**한 번만 묻지 않는다.** 바로 앞 절이 반복을 멈춘 직후엔 시야 묶음이 갱신 중이라
+    //   `c.resources` 가 잠깐 비어 "쌍이 없다"가 나온다(한 판에서 ⑧-b·⑧-c 가 나란히 그랬다).
+    const pickPair = () => R.evaluate(() => {
       const all = [];
       for (const c of conns.values()) {
         if (!c.meta || !c.resources) continue;
         const ox = c.meta.worldOffsetX || 0, oy = c.meta.worldOffsetY || 0;
         for (const r of c.resources.values()) {
-          const x = ox + r.x, y = oy + r.y;
-          all.push({ id: r.id, type: r.type, x, y, d: Math.hypot(x - myAbsPredicted.x, y - myAbsPredicted.y) });
+          if (!(r.hp > 0)) continue;
+          // ⚠`water_pool` 은 제외한다 — **hp 를 안 깎고** 갈증만 채운다(`zone.js:6495` 실측 · hp 999 고정).
+          //   증거가 "그것이 깎였는가"인 절에서 물웅덩이를 고르면 초록도 빨강도 뜻이 없다
+          //   (초안이 실제로 `hp 999 → 999` 로 빨갰다 — 제품이 아니라 표적 고르기가 틀렸다).
+          if (r.type === 'water_pool') continue;
+          all.push({ id: r.id, type: r.type, hp: r.hp, x: ox + r.x, y: oy + r.y });
         }
       }
-      all.sort((a, b) => a.d - b.d);
-      return all.length >= 2 ? { near: all[0], far: all[1] } : null;
+      let best = null;
+      for (let i = 0; i < all.length; i++) for (let j = 0; j < all.length; j++) {
+        if (i === j) continue;
+        const a = all[i], b = all[j];
+        const s = Math.hypot(a.x - b.x, a.y - b.y);
+        // ⚠**제일 붙은 쌍**을 고르면 안 된다 — 9px 떨어진 두 나무는 서 있는 자리에서
+        //   3px vs 6px 이 되어 "누가 먼 쪽인지"가 워프 오차에 묻힌다(초안이 그렇게 걸렸다).
+        //   둘 다 48 안에 들면서 **차이가 뚜렷한** 간격, 즉 55px 언저리를 고른다.
+        if (s < 20 || s > 67) continue;
+        const score = Math.abs(s - 55);
+        if (!best || score < best.score) best = { a, b, s, score, px: a.x + (b.x - a.x) * 0.35, py: a.y + (b.y - a.y) * 0.35 };
+      }
+      return best;
     });
-    pre(!!two, '자원이 둘 이상 보인다 — 아니면 이 절이 뜻이 없다',
-        two ? `가까운 ${two.near.type} ${Math.round(two.near.d)}px · 먼 ${two.far.type} ${Math.round(two.far.d)}px` : '하나뿐');
-    if (two) {
-      const ptOf = (w) => R.evaluate(([wx, wy]) => {
+    let pair = null;
+    for (let i = 0; i < 8 && !pair; i++) { pair = await pickPair(); if (!pair) await sleep(500); }
+    pre(!!pair, '48px 안에 **둘**이 함께 드는 자원 쌍이 실재한다 — 아니면 이 절이 뜻이 없다',
+        pair ? `${pair.a.type}↔${pair.b.type} 사이 ${Math.round(pair.s)}px` : '없음');
+    if (pair) {
+      await warp(R, pair.px - OFF.x, pair.py - OFF.y, 8, 14);
+      await sleep(800);
+      // ★자리를 **실측해서** 누가 가깝고 누가 먼지 다시 판정한다(서버가 걸을 수 있는 칸으로 붙인다).
+      //   ⚠자원 좌표는 **월드 절대**(존 오프셋이 더해진 값)다 — `absOf` 는 존 로컬을 준다.
+      //     초안이 그 둘을 맞대 `413014px` 라는 없는 거리를 보고했다. 여기선 절대끼리 잰다.
+      const me = await rawAbs(R);
+      const dA = me ? Math.hypot(pair.a.x - me.x, pair.a.y - me.y) : 1e9;
+      const dB = me ? Math.hypot(pair.b.x - me.x, pair.b.y - me.y) : 1e9;
+      const near = dA <= dB ? pair.a : pair.b, far = dA <= dB ? pair.b : pair.a;
+      const dNear = Math.min(dA, dB), dFar = Math.max(dA, dB);
+      pre(dFar <= 48 && dFar - dNear > 4,
+          '선 자리에서 **먼 쪽도 48px 안**이고 둘의 차가 뚜렷하다',
+          `가까운 ${near.type} ${Math.round(dNear)}px · 먼 ${far.type} ${Math.round(dFar)}px`);
+      if (dFar <= 48 && dFar - dNear > 4) {
+        const ptOf = (w) => R.evaluate(([wx, wy]) => {
+          const sc = window.__w2s(wx, wy);
+          const cv = document.getElementById('canvas');
+          const rc = cv.getBoundingClientRect();
+          return { x: rc.left + sc.px * (rc.width / cv.width), y: rc.top + sc.py * (rc.height / cv.height) };
+        }, [w.x, w.y]);
+        // ⚠둘을 **한 번에** 읽는다. 따로 읽으면 그 사이 시야 묶음이 갱신돼 한쪽만 `gone` 으로 보인다.
+        //   그리고 맵이 잠깐 빈 찰나면 둘 다 `gone` 이라 판정이 헛돈다 ⇒ 찰 때까지 다시 묻는다.
+        const hpPair = async () => {
+          for (let i = 0; i < 8; i++) {
+            const v = await R.evaluate((ids) => {
+              let n = 0, out = { a: 'gone', b: 'gone' };
+              for (const c of conns.values()) {
+                if (!c.resources) continue;
+                n += c.resources.size;
+                const ra = c.resources.get(ids[0]), rb = c.resources.get(ids[1]);
+                if (ra) out.a = ra.hp;
+                if (rb) out.b = rb.hp;
+              }
+              return { out, n };
+            }, [far.id, near.id]);
+            if (v.n > 0) return v.out;
+            await sleep(400);
+          }
+          return { a: 'gone', b: 'gone' };
+        };
+        const NW = ['벌목', '채굴', '채집', '물 마시기'];
+        let farMenu = null;
+        for (let i = 0; i < 3 && !farMenu; i++) { await rightTap(await ptOf(far)); farMenu = await menuWithin(2500); }
+        ok(!!farMenu && farMenu.some((t2) => NW.some((w) => t2.includes(w))),
+           '★★⑧-b 최근접이 **아닌** 것에도 자연물 동사가 뜬다(T82 의 빈 메뉴 자리)', JSON.stringify(farMenu));
+        const p0 = await hpPair(); const hpFar0 = p0.a, hpNear0 = p0.b;
+        if (farMenu) { await R.evaluate(() => { const _m = document.getElementById('ctxMenu'); if (_m && _m.children[0]) _m.children[0].click(); }); }
+        await sleep(2600);
+        const p1 = await hpPair(); const hpFar1 = p1.a, hpNear1 = p1.b;
+        await R.evaluate(() => { if (window.__eRepeat) { clearInterval(window.__eRepeat); window.__eRepeat = null; } });
+        const farHit = hpFar1 === 'gone' || (typeof hpFar0 === 'number' && typeof hpFar1 === 'number' && hpFar1 < hpFar0);
+        const nearHit = hpNear1 === 'gone' || (typeof hpNear0 === 'number' && typeof hpNear1 === 'number' && hpNear1 < hpNear0);
+        ok(farHit, '★★⑧-b 눌렀더니 **누른 그것**이 깎였다(`gather{resId}` 가 지목대로 갔다)',
+           `먼 것 hp ${hpFar0} → ${hpFar1}`);
+        ok(!nearHit, '★★⑧-b 그리고 **더 가까운 것은 그대로다**(서버가 최근접을 고르지 않았다 — id 대조)',
+           `가까운 것 hp ${hpNear0} → ${hpNear1}`);
+        await R.keyboard.press('Escape');
+        await R.evaluate(() => { const m = document.getElementById('ctxMenu'); if (m) m.remove(); });
+      }
+    }
+  }
+
+  // ── ⑧-c ★★[T90] 지목해도 **멀면 거절**한다(거리 게이트는 그대로) ────────────
+  //   지목 인자를 열었다고 48px 이 사라지면, 화면 끝의 나무를 눌러 캐게 된다.
+  //   §0-ⓐ 판정: 게이트는 그대로 · 거절은 **말로** 온다(`kind:'gather'`).
+  console.log('\n⑧-c ★[T90] 멀리서 지목하면 거절 알림');
+  {
+    const pickTgt = () => R.evaluate(() => {
+      let best = null;
+      for (const c of conns.values()) {
+        if (!c.meta || !c.resources) continue;
+        const ox = c.meta.worldOffsetX || 0, oy = c.meta.worldOffsetY || 0;
+        for (const r of c.resources.values()) {
+          if (!(r.hp > 0)) continue;
+          if (r.type === 'water_pool') continue;   // ⚠hp 를 안 깎는다 — "안 깎였다"가 자명 통과가 된다
+          if (!best || r.hp > best.hp) best = { id: r.id, type: r.type, hp: r.hp, x: ox + r.x, y: oy + r.y };
+        }
+      }
+      return best;
+    });
+    let tgt = null;   // ⚠같은 이유로 여기도 다시 묻는다(갱신 찰나엔 자원 맵이 잠깐 빈다)
+    for (let i = 0; i < 8 && !tgt; i++) { tgt = await pickTgt(); if (!tgt) await sleep(500); }
+    pre(!!tgt, '살아 있는 자연물이 하나라도 있다', tgt ? `${tgt.type} hp${tgt.hp}` : '없음');
+    if (tgt) {
+      // ⚠200px 를 떨어졌더니 한 판에서 그 자연물이 **화면 밖**으로 밀려 탭이 캔버스를 못 짚었다
+      //   (알림이 아예 0 이었다 — 제품이 아니라 자리 잡기가 틀렸다). 48 보다 넉넉히 멀되 화면 안인 120 으로.
+      await warp(R, tgt.x - OFF.x + 120, tgt.y - OFF.y, 8, 30);
+      await sleep(1200);
+      const me = await rawAbs(R);                 // ⚠절대끼리 잰다(위 ⑧-b 의 같은 함정)
+      const d = me ? Math.hypot(tgt.x - me.x, tgt.y - me.y) : 0;
+      pre(d > 48, '그 자연물에서 **48px 밖**에 섰다', `${Math.round(d)}px`);
+      // ⚠화면 점은 **카메라 상대**다 — 한 번 재 두고 여러 번 두드리면, 그 사이 내가 밀리거나
+      //   카메라가 움직였을 때 그 점이 더는 그 자연물 위가 아니다(한 판에서 아홉 번 두드려도
+      //   메뉴가 안 떴다 — 그때 옆에서 사람이 쓰러져 화면이 움직이고 있었다). ⇒ 두드릴 때마다 다시 잰다.
+      const ptNow = () => R.evaluate(([wx, wy]) => {
         const sc = window.__w2s(wx, wy);
         const cv = document.getElementById('canvas');
         const rc = cv.getBoundingClientRect();
         return { x: rc.left + sc.px * (rc.width / cv.width), y: rc.top + sc.py * (rc.height / cv.height) };
-      }, [w.x, w.y]);
-      // 먼 것 — 빈 메뉴여야 한다
-      await rightTap(await ptOf(two.far));
-      await sleep(1200);
-      const farMenu = await menuLabels();
-      ok(farMenu === null, '★★⑧-b 더 가까운 자원이 있으면 먼 것엔 **메뉴가 안 뜬다**(거짓 메뉴 0)', JSON.stringify(farMenu));
-      // ★자명 통과 금지 — 가까운 것은 **뜬다**(늘 안 뜨는 규칙이 아니다)
-      //   ⚠**"뜨기만 하면 통과"로 쓰면 안 된다.** 초안이 그랬다가 자원이 내 몸 상자(±18) 안에 들어
-      //     `me` 갈래가 먼저 잡혔고, 메뉴는 떴지만 그건 **자기 자신 메뉴**였다
-      //     (`["먹기…","마시기 — …","짐과 장비"]`) — 자연물 규칙을 하나도 안 잰 초록이다.
-      //   ⇒ 내 몸에서 **비켜선 뒤** 누르고, 뜬 것이 **자연물 동사**인지까지 본다.
-      const NW = ['벌목', '채굴', '채집', '물 마시기'];
-      await warp(R, two.near.x - OFF.x - 44, two.near.y - OFF.y, 6, 30);
-      await sleep(900);
-      let nearMenu = null;
-      for (let i = 0; i < 3 && !nearMenu; i++) { await rightTap(await ptOf(two.near)); nearMenu = await menuWithin(2500); }
-      ok(!!nearMenu && nearMenu.some((t2) => NW.some((w) => t2.includes(w))),
-         '★★⑧-b 자명 통과 금지 — **제일 가까운 것엔 자연물 동사가 뜬다**', JSON.stringify(nearMenu));
+      }, [tgt.x, tgt.y]);
+      // ⚠**어느 자연물이 눌렸는지 지어내지 않는다.** 그 점에 이웃이 겹칠 수 있고, `pickAt` 은
+      //   겹칠 때 **가장 가까운 것이 아니라 먼저 만난 것**을 고른다(회부). 한 판에서 `ore` 를 겨눴는데
+      //   메뉴가 "벌목"이었다 — 나무가 겹쳐 있었다. 한 id 만 보면 "안 깎였다"가 엉뚱한 것을 본다.
+      //   ⇒ **내 둘레 300px 의 자연물 전부**를 찍어 두고, 그 중 하나라도 깎였는지 본다
+      //     (멀리서 NPC 가 캐는 것과 섞이지 않게 둘레를 자른다).
+      const snap = () => R.evaluate((c0) => {
+        const out = {};
+        for (const c of conns.values()) {
+          if (!c.meta || !c.resources) continue;
+          const ox = c.meta.worldOffsetX || 0, oy = c.meta.worldOffsetY || 0;
+          for (const r of c.resources.values()) {
+            if (Math.hypot(ox + r.x - c0[0], oy + r.y - c0[1]) > 300) continue;
+            out[r.id] = r.hp;
+          }
+        }
+        return out;
+      }, [me ? me.x : tgt.x, me ? me.y : tgt.y]);
+      // ⚠시야 묶음이 갱신되는 찰나엔 `c.resources` 가 **잠깐 빈다**(`_resourceGone` 이 두 번 묻는 그 이유).
+      //   한 번만 찍으면 0개가 나오고, 그러면 "전부 사라졌다 = 전부 깎였다"로 읽혀 **없는 결함**을
+      //   보고한다(한 판에서 33개 전부가 그렇게 빨갰다). 찰 때까지 다시 찍는다 — 전·후 둘 다.
+      const snapN = async () => {
+        for (let i = 0; i < 10; i++) { const v = await snap(); if (Object.keys(v).length) return v; await sleep(400); }
+        return {};
+      };
+      const hp0 = await snapN();
+      pre(Object.keys(hp0).length > 0, '둘레 300px 안에 찍어 둘 자연물이 있다', `${Object.keys(hp0).length}개`);
+      // ★메뉴를 열고 눌러 **거절을 받아 낸다.** 한 번에 안 오면 다시 한다 — 그 사이 화면이 갱신
+      //   중이었을 뿐이고, 이 절이 재는 것은 "48px 밖에서 지목하면 서버가 거절한다"이지 첫 판의 운이 아니다.
+      let m = null, nz = [];
+      for (let round = 0; round < 3 && !nz.some((t2) => /안에서 캔다/.test(t2)); round++) {
+        await clearNotices(R);
+        m = null;
+        for (let i = 0; i < 3 && !m; i++) { await rightTap(await ptNow()); m = await menuWithin(2500); await sleep(200); }
+        if (m) await R.evaluate(() => { const _m = document.getElementById('ctxMenu'); if (_m && _m.children[0]) _m.children[0].click(); });
+        await sleep(1600);
+        await R.evaluate(() => { if (window.__eRepeat) { clearInterval(window.__eRepeat); window.__eRepeat = null; } });
+        nz = await notices(R);
+      }
+      // ★멀어도 **메뉴는 뜬다** — 거리 판정은 서버 몫이고 메뉴는 별칭이다. 그리고 이 줄이 없으면
+      //   아래 "알림이 온다"가 **메뉴가 안 떠서** 빨간 것과 구분되지 않는다(한 판에서 실제로 그랬다).
+      ok(!!m, '★⑧-c 먼 데서도 메뉴는 뜬다(거리 판정은 서버가 한다)', JSON.stringify(m));
+      const hp1 = await snapN();
+      ok(nz.some((t2) => /안에서 캔다/.test(t2)), '★★⑧-c 멀면 **거절 알림**이 온다(48px 게이트 그대로)',
+         JSON.stringify(nz.slice(-3)));
+      const chipped = Object.keys(hp1).length
+        ? Object.keys(hp0).filter((k) => !(k in hp1) || hp1[k] < hp0[k]) : ['(맵이 비어 못 쟀다)'];
+      ok(chipped.length === 0, '★★⑧-c 그리고 **둘레의 무엇도 안 깎였다**(엉뚱한 것을 캐지도 않았다)',
+         chipped.length ? chipped.join(' ') : `${Object.keys(hp0).length}개 전부 그대로`);
       await R.keyboard.press('Escape');
-      await R.evaluate(() => { const m = document.getElementById('ctxMenu'); if (m) m.remove(); });
-      await R.evaluate(() => { if (window.__eRepeat) { clearInterval(window.__eRepeat); window.__eRepeat = null; } });
+      await R.evaluate(() => { const el = document.getElementById('ctxMenu'); if (el) el.remove(); });
     }
   }
 
@@ -637,7 +806,7 @@ async function waitHttp(url, tries = 600) {
     ok(!!expect && expect.length > 0, '★⑨ (상황) 먹을 것이 실제로 있다 — 빈 목록이면 위가 자명 통과다');
     // 눌러 본다 — `eat` 하나(새 메시지 0)
     const h0 = (await bodyOf(R) || {}).hunger;
-    await R.evaluate(() => { document.getElementById('ctxMenu').children[0].click(); });
+    await R.evaluate(() => { const _m = document.getElementById('ctxMenu'); if (_m && _m.children[0]) _m.children[0].click(); });
     await sleep(1600);
     const h1 = (await bodyOf(R) || {}).hunger;
     ok(h1 != null && h0 != null && h1 >= h0, '★★⑨ 눌렀더니 **`eat` 가 갔다**(허기가 안 줄었다)', `${Math.round(h0)} → ${Math.round(h1)}`);
@@ -659,6 +828,68 @@ async function waitHttp(url, tries = 600) {
     ok(/border:1px solid var\(--line\)/.test(strip(rd('44-h-hud.js'))), '★⑩ 메뉴 테두리가 `--line` 이다(먹선)');
     // ★자명 통과 금지 — 이 검사기가 되살린 코드를 잡는가
     ok(/__rmbDbg/.test("window.__rmbDbg = { tap: true };"), '★⑩ 자명 통과 금지 — 훅을 되살린 소스는 잡힌다');
+  }
+
+  // ── ⑪ ★★[T90] 그 말이 **서버에서 왔다** — 클라엔 표가 없다 ─────────────────
+  //   소스에 표가 없다는 것만으로는 부족하다(어딘가 다른 파일에 옮겨 놨을 수도 있다).
+  //   ⇒ **살아 있는 판**에서 `resourceVerbs` 가 채워져 있고, 그 값이 서버 정본과 **글자까지 같은지** 본다.
+  console.log('\n⑪ ★[T90] 동사 정본은 서버 — welcome 이 실어 온다');
+  {
+    const SRV = require(path.join(ROOT, 'server', 'itemlabel.js')).RESOURCE_VERBS;
+    const got = await R.evaluate(() => (typeof resourceVerbs !== 'undefined' ? resourceVerbs : null));
+    ok(!!got && Object.keys(got).length > 0, '★★⑪ `welcome` 이 `resourceVerbs` 를 **실어 왔다**',
+       got ? `${Object.keys(got).length}종` : 'null');
+    ok(!!got && JSON.stringify(got) === JSON.stringify(SRV),
+       '★★⑪ 그 표가 서버 정본과 **글자까지 같다**(사본이 갈릴 자리가 없다)',
+       JSON.stringify(got));
+    // ★클라 소스 어디에도 한 단어 표가 없다 — 파일 전수로 본다(46 만 보면 옮겨 놓기를 놓친다).
+    const dir = path.join(ROOT, 'public', 'client');
+    const guilty = fs.readdirSync(dir).filter((f) => f.endsWith('.js'))
+      .filter((f) => /tree\s*:\s*'벌목'|rock\s*:\s*'채굴'|berry_bush\s*:\s*'채집'/.test(fs.readFileSync(path.join(dir, f), 'utf8')));
+    ok(guilty.length === 0, '★★⑪ 클라 **소스 전수**에 한 단어 표가 없다(사본 −1)', guilty.join(' ') || '0개 파일');
+    ok(/tree\s*:\s*'벌목'/.test("const W = { tree: '벌목' };"), '★⑪ 자명 통과 금지 — 표를 되살린 소스는 잡힌다');
+  }
+
+  // ── ⑫ ★★[T90] 알림 종류 — **화면에서 각각 다른 그림**이 된다 ──────────
+  //   `test-itemlabel ⑮` 는 표를 본다. 여기서는 **실제로 그려진 것**을 본다 —
+  //   T66 이 배운 함정(이름을 글자로 찍고도 검사는 초록)을 이 자리에서 다시 밟지 않는다.
+  //   ★[T110 2026-09-05] 아홉 → **열**. `downed`(남이 쓰러졌다는 외침)를 `rescue` 아홉에서 갈라냈다 —
+  //     받는 쪽이 그 한 종류에만 방향 화살을 세우기 때문이다. 수를 손으로 적지 않고 **표에서 읽는다**:
+  //     `KINDS.length` 를 그대로 쓰면 종류가 늘 때마다 이 줄을 고칠 일이 없고, 대신 **표가 안 비었는지**와
+  //     **표에 없는 종류가 화면에 없는지**를 잰다(그게 이 절이 원래 재던 것이다).
+  console.log('\n⑫ ★[T90·T110] kind 가 각각 다른 선 그림으로 그려진다');
+  {
+    const KINDS = require(path.join(ROOT, 'server', 'notice.js')).KINDS;
+    ok(KINDS.length >= 9 && KINDS.includes('downed'),
+      '★⑫ 전제: 서버가 아는 종류를 표에서 읽었다(비어 있지 않고 T110 의 `downed` 가 있다)',
+      `${KINDS.length}종: ${KINDS.join(' ')}`);
+    const drawn = await R.evaluate((ks) => {
+      const out = {};
+      for (const k of ks) {
+        // ★[T113] 알림이 **스택**이 됐다 — 그냥 아홉 번 부르면 줄이 쌓여 `querySelector` 가
+        //   제일 오래된 줄의 그림을 준다(그러면 아홉이 다 같은 그림으로 보인다).
+        //   ⇒ 한 종류씩 **비우고** 재서 이 절의 뜻("이름 하나 = 그림 하나")을 그대로 지킨다.
+        showNotice('', 1, null);
+        showNotice('알림 ' + k, 60000, k);
+        const el = document.getElementById('notice');
+        const p = el.querySelector('svg path');
+        out[k] = { d: p ? p.getAttribute('d') : null, text: el.textContent };
+      }
+      showNotice('', 1, null);
+      return out;
+    }, KINDS);
+    const ds = KINDS.map((k) => drawn[k] && drawn[k].d);
+    ok(ds.every((d) => !!d), `★★⑫ ${KINDS.length}종이 **전부 그림을 그린다**(빈 자리 0)`,
+       KINDS.filter((k, i) => !ds[i]).join(' ') || `${KINDS.length}종 전부`);
+    ok(new Set(ds).size === ds.length, `★★⑫ 그리고 ${KINDS.length}종이 **서로 다른 그림**이다(뜻이 안 뭉개진다)`,
+       `${new Set(ds).size}종`);
+    const texts = KINDS.map((k) => (drawn[k] ? drawn[k].text : ''));
+    ok(!/\p{Extended_Pictographic}/u.test(texts.join('')), '★⑫ 그 자리에 이모지 0', JSON.stringify(texts.slice(0, 2)));
+    // ★글자로 새지 않았다 — 아이콘 **이름**이 토스트에 찍히면 T66 의 결함이 돌아온 것이다.
+    ok(!texts.some((t2) => /\b(home|axe|fish|hammer|scroll|heart|guild|warn|eye|shout)\b/.test(t2)),
+       '★★⑫ 아이콘 **이름이 글자로 찍히지 않았다**(T66 이 밟은 함정)', JSON.stringify(texts.slice(0, 2)));
+    // ★자명 통과 금지 — 알림 문구 자체는 살아 있다(그림만 그리고 말을 잃으면 안 된다)
+    ok(texts.every((t2) => /알림/.test(t2)), '★⑫ 자명 통과 금지 — 말은 그대로 남는다', JSON.stringify(texts[0]));
   }
 
   ok(allErrs.length === 0, '클라 JS 예외 0', allErrs.slice(0, 3).join(' | '));

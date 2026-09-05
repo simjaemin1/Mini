@@ -3481,6 +3481,9 @@ const SCH_REST_IN = 0.6;     // 요양 진입 hp 비율(랩 hp<60/100)
 //     · **30 ∖ 34 = ∅** — 랩 30종은 카탈로그에 **전부** 있다(랩 '벼' = 카탈로그 `rice` "쌀(벼)").
 //     · **34 ∖ 30 = 4종** — 삼·쪽·뽕(잎)·차 — **전부 `group:'특용'`(비식량)**이라 NPC 농사에 없던 게 맞다.
 //     · 생육일 차 셋(보리·밀·마늘 210 vs 88~90)은 **단위 차이지 값 차이가 아니다** —
+//       ★[T99 2026-09-05] 그 둘의 차를 재 봤더니 랩 210 vs 실측 183 이었고, PM 이 **춘화**로 갈랐다:
+//       이제 정본은 "달력일 183" 도 "달력일 210" 도 아니라 **"겨울 뒤 활동일 88"** 이다
+//       (가을은 뿌리내림 · 익음 시계는 봄 첫날부터 · `crops.vernalDay`). ⇒ 보리 5월 말 · 밀·마늘 6월 초.
 //       랩 주석 7929 가 *"grow=달력일(월동 …은 ~210)"* 이라 적고, 카탈로그는 **활동일**이다
 //       (`winterCrop:true` + `Crops.grownDays` 가 겨울을 안 센다). 카탈로그 쪽이 정본이다.
 //   ⚠그리고 **옮겨 적는 동안 두 군데가 틀어졌다**(이 배치가 고치는 것):
@@ -3818,6 +3821,23 @@ function _pestAt(k, cropId, day) {
   return C.h32(cx, cy, (day | 0) * 131 + cix * 7919) / 4294967296 < L_PESTP;
 }
 function _cropRipe(e, day) { const C = _Crops(); return C ? C.isReady(e.c, e.p, day) : false; }
+// ★★★[T99 2026-09-05] **휴면 — 겨울엔 돌봄도 쉰다.** 술어는 `crops.dormantAt` **하나**이고
+//   성장(`grownDays`)이 쓰는 그 답과 같다. 아래 셋(`cropTaskOf`/`cropDoTask`/`cropDayTick`)이
+//   전부 이 문으로 들어간다 ⇒ 플레이어 밭도 자동으로 같다(zone 이 이 셋만 부른다 · T58b).
+//   ⚠두 벌이 되면 *"겨울엔 안 자라는데 물은 대라"* 는 밭이 생긴다 — T91 §3ⓒ 가 잰 그 그림이다.
+function _cropDormant(e, day) { const C = _Crops(); return !!C && C.dormantAt(e.c, day); }
+// ★★★[T112 2026-09-05] **비 온 날은 물 준 날이다 — 갱신은 여기 한 줄뿐이다.**
+//   판정은 `crops.rainedOn` 정본이 낸다(하늘은 `weather.precipAt` · 사본 0 · 강도 문턱 없음 = 새 수 0).
+//   ★상태기 셋(`cropTaskOf`·`cropDoTask`·`cropDayTick`)이 **전부 이 문으로 들어간다** ⇒ 일감 판정과
+//     수행과 품질 벌점이 같은 하늘을 본다. 하나만 넣으면 *"비가 오는데 물대기 표시는 뜨는"* 날이 온다.
+//   ★멱등이다(`e.w = day` 를 몇 번 해도 같다) — 그래서 셋이 다 불러도 안전하고, 플레이어 밭의
+//     lazy 재생(`zone._cropSettle` 이 하루씩 되돌려 감는 그것)에서도 같은 답이 나온다.
+//   ★`e.w` **하나만** 만진다: 그 자리의 물 공급(`supply`)은 안 건드린다 — 비는 *"오늘 물을 댔다"* 이지
+//     *"그 자리에 물이 있다"* 가 아니다(논 물길은 회부 E 그대로).
+//   ★★**휴면 중엔 하늘도 밭을 안 건드린다.** 첫 판이 이 갈래를 빼먹어 겨울 비가 `e.w` 를 옮겼고,
+//     T99 가 세운 *"겨울이 끝난 자리가 겨울 들어간 자리와 같다"* 가 깨졌다(`test-crops ⑫ⓓ` 가 잡았다).
+//     휴면은 성장·돌봄·품질을 다 멈추는 것이고, 물때도 그 안에 있다 — 겨울 밭은 물을 안 기다린다.
+function _cropSky(e, day) { const C = _Crops(); if (e && C && !C.dormantAt(e.c, day) && C.rainedOn(day)) e.w = day; }
 function _cropGrowFrac(e, day) {
   const C = _Crops(); if (!C) return 0;
   const need = Math.max(1, C.growDaysOf(e.c));
@@ -3829,7 +3849,9 @@ function _cropGrowFrac(e, day) {
 //   ⚠마을 특유의 것(빈 칸에 무엇을 심을지 = 특산 선택)은 여기 없다 — 그건 마을의 일이다.
 function cropTaskOf(e, nong, day) {          // 5수확 4방제 3물대기 1김매기 0없음 (빈 칸의 2파종은 부르는 쪽이 낸다)
   if (!e) return 0;
-  if (_cropRipe(e, day)) return 5;
+  _cropSky(e, day);                           // ★[T112] 하늘을 먼저 본다 — 비 온 날엔 물대기가 안 선다
+  if (_cropRipe(e, day)) return 5;            // ★익은 것은 겨울에도 거둔다 — 휴면은 **돌봄**을 멈추는 것이다
+  if (_cropDormant(e, day)) return 0;         // ★★[T99] 휴면 — 손볼 것이 없다(겨울 논에 물을 안 댄다)
   if (e.ps) return 4;
   if (nong && day - (e.w || e.p) >= L_WATERGAP) return 3;
   const wd = e.wd || 0; if (wd < L_WEEDS.length && _cropGrowFrac(e, day) >= L_WEEDS[wd]) return 1;
@@ -3838,7 +3860,9 @@ function cropTaskOf(e, nong, day) {          // 5수확 4방제 3물대기 1김�
 // 그 칸의 일을 **한 가지** 한다. 무엇을 했는지 돌려준다(`'harvest'|'pest'|'water'|'weed'|null`).
 function cropDoTask(e, nong, day) {
   if (!e) return null;
+  _cropSky(e, day);                           // ★[T112] 같은 문 — 일감과 수행이 같은 하늘을 본다
   if (_cropRipe(e, day)) return 'harvest';
+  if (_cropDormant(e, day)) return null;      // ★★[T99] 휴면 — 아무 일도 안 한다(`cropTaskOf` 와 같은 문)
   if (e.ps) { e.ps = 0; e.td = day; e.q = Math.min(1, e.q + L_QREC); return 'pest'; }
   if (nong && day - (e.w || e.p) >= L_WATERGAP) { e.w = day; e.q = Math.min(1, e.q + L_QREC); return 'water'; }
   const wd = e.wd || 0;
@@ -3849,6 +3873,9 @@ function cropDoTask(e, nong, day) {
 //   ★익은 뒤에는 아무 일도 안 한다(수확 일감으로 남는다 — 랩과 같다).
 function cropDayTick(e, nong, day, cellKey) {
   if (!e || _cropRipe(e, day)) return;
+  _cropSky(e, day);                           // ★[T112] 같은 문 — 물 못 댄 벌점도 하늘을 본다
+  if (_cropDormant(e, day)) return;           // ★★[T99] 휴면 — 품질도 안 깎이고 병충해도 안 붙는다.
+  //   ★봄에 **멈춘 자리에서 재개**한다: `wd`(김맨 차례)·`q`·`ps` 를 겨울이 한 글자도 안 건드리므로.
   const wd = e.wd || 0, gf = _cropGrowFrac(e, day);
   if (e.ps) e.q -= L_QP;
   else if (wd < L_WEEDS.length && gf >= L_WEEDS[wd] + 0.06) e.q -= L_QW;
@@ -3906,6 +3933,8 @@ function _lifeDoTask0(vil, npc, k, day) {
 //   운영 경로는 이 함수를 부르지 않는다(`__p3Bind` 와 같은 관례) — 하네스가 상태기를 다시 짜면 그게 사본이다.
 function __farmBind() {
   return { _cellTask, _lifeDoTask, _lifeDoTask0, _villageCropFor, _pestAt, _cropRipe, _cropGrowFrac,
+    _cropDormant, _cropSky,
+    lifeFarmDay, _lifeTasksPerFarmerDay,   // ★[T117] 하루치 작물 노동 정본 — 계측기가 이걸 부른다(사본 0)
     cropTaskOf, cropDoTask, cropDayTick, cropAfterHarvest,
     L_WATERGAP, L_WEEDS, L_PESTP, L_QW, L_QP, L_QMIN, L_QREC };
 }
@@ -3955,17 +3984,35 @@ function _lifeHeadlessDay(vil) {
   _lifeClearDay(vil, farmerN);
   // ② 신축 — 크루 인일=단계(실걸음과 동일 속도). 완공 시 _lifeCompleteHouse가 실체화(집·마당·침대 명부)
   if (vil._site) { let st = Math.min(LIFE_CREW, popN) * LIFE_STAGE_PDAY; while (st-- > 0 && vil._site) _lifeAdvanceSite(vil); }
-  // ③ 작물 — 농부 노동예산으로 우선순위 일괄(수확>방제>물대기>파종>김매기 — cellTask 순서가 자연 보장)
-  let budget = farmerN * _lifeTasksPerFarmerDay();   // ★날 길이 파생(구 고정 30 → 실걸음 정합)
+  // ③ 작물 — `lifeFarmDay` 정본 하나(아래). 계측기도 **이 함수를 부른다**(사본 0 · T117).
+  lifeFarmDay(vil, day, farmerN);
+  vil._hlDay = day;   // lifeDebug 노출용(결산 도장)
+}
+// ★★★[T117 2026-09-05] **하루치 작물 노동 — 정본 하나.**
+//   여기 있던 여섯 줄을 함수로 뽑았다. 왜: 밭을 도는 계측기(`scripts/farm-metrics.js`)가 이 루프를
+//   다시 쓰면 그게 사본이고, T58b 의 `farm-q-metrics.js` 가 실제로 그랬다(노동 예산을 손으로 100 이라 적었다).
+//   ⇒ **행동은 한 글자도 안 바뀐다** — 순수 추출이다(우선순위·예산·순회 순서 전부 그대로).
+//   ★`onDid` 는 **관찰자**다. 제품은 안 넘기고(그러면 관찰 비용이 0), 계측기만 넘긴다.
+//     넘긴 쪽은 매 행동의 (칸 · 일감 · 하기 전 작물 · 하기 전 심은날 · 하고 난 항목)을 받는다.
+function lifeFarmDay(vil, day, farmerN, onDid) {
+  let budget = Math.max(0, farmerN | 0) * _lifeTasksPerFarmerDay();   // ★날 길이 파생(구 고정 30 → 실걸음 정합)
+  let total = 0;
   while (budget > 0) {
     let did = 0;
     for (const k of vil._farmSet) {
       if (budget <= 0) break;
-      if (_cellTask(vil, k, day) > 0 && _lifeDoTask(vil, null, k, day)) { budget--; did++; }
+      const t = _cellTask(vil, k, day);
+      if (t <= 0) continue;
+      let e0c = null, e0p = -1;
+      if (onDid) { const e0 = vil._crop.get(k); if (e0) { e0c = e0.c; e0p = e0.p; } }
+      if (_lifeDoTask(vil, null, k, day)) {
+        budget--; did++; total++;
+        if (onDid) onDid(k, t, e0c, e0p, vil._crop.get(k) || null);
+      }
     }
     if (!did) break;   // 일감 소진(비수기·전부 생육 중)
   }
-  vil._hlDay = day;   // lifeDebug 노출용(결산 도장)
+  return total;
 }
 function _lifeNextFarmCell(vil, npc, day) {   // 랩 nextTask 동형(구역 대신 전 농지 — 서버 농지 수백 셀 스케일): 우선순위 높고 가까운 할 일
   let best = null, bp = 0, bd = 1e9;
@@ -5914,6 +5961,42 @@ module.exports = {
       anchorPx: villageAnchorPx,
       get BRIEF_PX() { return EV_BRIEF_PX; },
       get RATE() { return PV_DEPOSIT_RATE; },
+    },
+    // ★★[T117 2026-09-05] 밭 계측기용 — `_distProbe`·`_memberProbe` 와 **같은 규약**(최소 주입구 하나).
+    //   왜: 여덟 수 계측기도 econ 랩도 `Villages.init()` 을 안 불러 `state.villages` 가 안 서고,
+    //   그래서 **밭 상태기가 한 번도 안 돈다**(T112 §0ⓑ · 족보 130). 밭이 econ 에 닿는지 재려면
+    //   밭을 도는 자가 먼저다 — `scripts/farm-metrics.js` 가 이 문으로 들어온다.
+    //   ★계측기는 노동 루프·우선순위·하루 틱을 **다시 적지 않는다**. 아래가 전부 정본 함수다.
+    //   ⚠[병합 메모] 세션1 T100 의 `_clearProbe.attach` 와 이 `attach` 는 **같은 껍데기**를 만든다.
+    //     둘이 같은 나무에 서면 **하나로 합쳐라**(T100 것을 남기고 여기선 지운다 — 사본 금지).
+    _cropProbe: {
+      setup: (ta, world, db) => { state.ta = ta; state.world = world; if (db) state.db = db; return true; },
+      attach: (o) => {
+        const L = o.layout, farmSet = new Set(), drySet = new Set(), potSet = new Set(), terrSet = new Set();
+        for (const f of (L.farmland || [])) farmSet.add(f.cx + ',' + f.cy);
+        for (const f of (L.dryfield || [])) { farmSet.add(f.cx + ',' + f.cy); drySet.add(f.cx + ',' + f.cy); }
+        for (const c of (L.nongZone || [])) potSet.add(c.cx + ',' + c.cy);
+        for (const k of farmSet) potSet.delete(k);
+        for (const c of (L.territory || [])) terrSet.add(c[0] + ',' + c[1]);
+        return { dbId: o.dbId, name: o.name, ccx: o.ccx, ccy: o.ccy, econ: o.econ,
+          _terrSet: terrSet, _potSet: potSet, _farmSet: farmSet, _drySet: drySet,
+          _crop: new Map(), _cropClaim: new Set(),
+          _granList: [], _houseCells: (L.houses || []).map((h) => ({ cx: h.cx, cy: h.cy })), _site: null,
+          _farmN: (L.farmland || []).length, _dryN: (L.dryfield || []).length, _frontier: null, _frontDay: -1 };
+      },
+      // 하루치 — 라이브 `_lifeHeadlessDay` 의 ③ 절과 **같은 함수**다. `onDid` 는 관찰자(제품은 안 넘긴다).
+      tickDay: (vils, day, onDid) => {
+        let n = 0;
+        for (const vil of vils) {
+          const ev = vil.econ; if (!ev || !ev.npcs || !ev.npcs.length) continue;
+          n += lifeFarmDay(vil, day, (ev.counts && ev.counts.farmer) || 0, onDid ? (k, t, c0, p0, e1) => onDid(vil, k, t, c0, p0, e1) : null);
+          for (const [k, e] of vil._crop) cropDayTick(e, !vil._drySet.has(k), day, k);   // 라이브 하루 경계와 같은 줄
+        }
+        return n;
+      },
+      cellTask: (vil, k, day) => _cellTask(vil, k, day),
+      get L_WATERGAP() { return L_WATERGAP; },
+      get TASKS_PER_FARMER() { return _lifeTasksPerFarmerDay(); },
     },
     _distProbe: {
       compute: (reason, opts) => computeAndInjectDistMatrix(reason, opts),

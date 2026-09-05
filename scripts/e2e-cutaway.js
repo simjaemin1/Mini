@@ -1,5 +1,9 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @pixel    ← ★[T104] **프레임을 화소로 잰다**(`page.screenshot` → `PNG.sync.read`).
+//              렌더 층(`3x-r*`·`34-m-renderloop`·`37-r1-*`)을 만지는 카드는 이 표를 전수로 돌려라 —
+//              `bash scripts/run-regress.sh --list pixel`. 이름으로는 못 찾는다(T98: `e2e-nature` 는
+//              하늘 때문에 셋이 빨갰는데 그 파일엔 `weather` 라는 낱말이 없어 `grep -l` 에 안 걸렸다).
 // =============================================================================
 // e2e-cutaway — 실내 컷어웨이 실클라 E2E [배치 17 ①]
 //   재민 관측: "건물 안으로 들어가도 내부가 안 보이네.. 동쪽 벽과 남쪽 벽이 투명해지도록 한 게 안 먹네"
@@ -138,6 +142,11 @@ function boxDiff(a, b, x0, y0, x1, y1) {
     //     형제들(15~24초) 중 가장 짧고, 그 30초 없이는 **지붕이 아직 안 그려진 화면**을 찍는다
     //     (실측: 밖 화면의 이엉 0.0%). 우연을 지웠으니 그 만큼을 **말로** 적는다:
     //     진단값이 설 때까지 본 뒤, 옛 흐름과 같은 만큼 화면이 여물기를 기다린다.
+    // ★[T104 · T98 §4-c 문법] 화소를 재기 전에 **하늘과 바람을 끈다** — 재는 대상을 바꾸는 게 아니라
+    //   잡음을 걷는 것이다(비/눈은 프레임마다 화소를 흔들고, 풀 흔들림도 같은 일을 한다).
+    //   T98 이 11개에 넣은 그 두 줄인데 이 파일은 빠져 있었다 — `@pixel` 표를 세우며 드러났다.
+    await page.evaluate(() => { if (typeof window.__rainForce === 'function') window.__rainForce({ precip: 0 }); 
+      if (window.__terrain19) window.__terrain19.windOff = true; }).catch(() => {});
     const shotT0 = Date.now();
     for (let i = 0; i < 45 && !(await page.evaluate(() => !!window.__cutawayDbg).catch(() => false)); i++) await sleep(1000);
     while (Date.now() - shotT0 < 44000) await sleep(1000);

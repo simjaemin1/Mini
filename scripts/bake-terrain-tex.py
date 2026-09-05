@@ -3,6 +3,12 @@
 #   결과: scripts/terrain_tex/{grass,dirt,rock,canopy}.png + water_0..5.png
 # 실행: blender -b -P scripts/bake-terrain-tex.py
 import bpy, math, os, random
+# ★[T103] 블렌더 5.0 이 `Bump` 의 `Distance` 기본값을 1.0 → 0.001 로 바꿨다(범프가 1000분의 1).
+#   값은 `render_common.BUMP_DIST` 한 곳이 정본이다 — 여기 숫자를 다시 적지 않는다(사본 금지).
+import sys as _sys_bd, os as _os_bd
+_sys_bd.path.insert(0, _os_bd.path.dirname(_os_bd.path.abspath(__file__)))
+from render_common import BUMP_DIST
+
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'terrain_tex')
 os.makedirs(OUT, exist_ok=True)
@@ -144,6 +150,7 @@ def bake_water():
     noise = nt.nodes.new('ShaderNodeTexNoise'); noise.noise_dimensions = '4D'
     noise.inputs['Scale'].default_value = 3.2; noise.inputs['Detail'].default_value = 6.0
     bump = nt.nodes.new('ShaderNodeBump'); bump.inputs['Strength'].default_value = 0.45
+    bump.inputs["Distance"].default_value = BUMP_DIST   # ★T103 — 5.0 기본값 0.001 되돌림
     nt.links.new(noise.outputs['Fac'], bump.inputs['Height'])
     nt.links.new(bump.outputs['Normal'], p.inputs['Normal'])
     w.data.materials.append(m)
@@ -166,6 +173,7 @@ def bake_dirt():
     nt.links.new(n1.outputs['Fac'], ramp.inputs['Fac'])
     nt.links.new(ramp.outputs['Color'], p.inputs['Base Color'])
     bump = nt.nodes.new('ShaderNodeBump'); bump.inputs['Strength'].default_value = 0.55
+    bump.inputs["Distance"].default_value = BUMP_DIST   # ★T103 — 5.0 기본값 0.001 되돌림
     nt.links.new(n1.outputs['Fac'], bump.inputs['Height'])
     nt.links.new(bump.outputs['Normal'], p.inputs['Normal'])
     p.inputs['Roughness'].default_value = 0.95
@@ -197,6 +205,7 @@ def bake_rock():
     nt.links.new(n1.outputs['Fac'], ramp.inputs['Fac'])
     nt.links.new(ramp.outputs['Color'], p.inputs['Base Color'])
     bump = nt.nodes.new('ShaderNodeBump'); bump.inputs['Strength'].default_value = 0.5
+    bump.inputs["Distance"].default_value = BUMP_DIST   # ★T103 — 5.0 기본값 0.001 되돌림
     nt.links.new(n1.outputs['Fac'], bump.inputs['Height'])
     nt.links.new(bump.outputs['Normal'], p.inputs['Normal'])
     p.inputs['Roughness'].default_value = 0.9
@@ -345,7 +354,13 @@ def bake_grass_angled(name, seed, density, cols, hs, soil, flowers, samples=96):
 def bake_flat_angled(name, c0, c1, scale, pebbles=0, samples=64):
     """평평한 지면 질감(맨땅·진흙) — 세로 구조가 없어 각도 무관하지만 같은 조명·같은 주기로 굽는다."""
     clear_meshes()
-    random.seed(hash(name) & 0xffff)
+    # ★★[T106 실측] 종전은 `random.seed(hash(name) & 0xffff)` 였다 — 파이썬 3 의 **문자열 `hash()` 는
+    #   프로세스마다 다르다**(PYTHONHASHSEED). 같은 코드로 두 번 구워도 조약돌 자리가 달라져
+    #   `mud_angled.png` 은 **재현이 불가능했다**(T101 이 `rock_render.py` 에서 잡은 그 함정과 같은 것).
+    #   ⇒ 이름별 고정 시드라는 뜻은 지키되 값을 **정수로 못 박는다**(PYTHONHASHSEED=0 실측값).
+    #   ⚠이 때문에 `mud_angled` 의 조약돌 배치는 배포본과 달라진다 — 옛 배치는 되살릴 수 없다.
+    _SEEDS = {'mud_angled': 37335}
+    random.seed(_SEEDS.get(name, sum(ord(c) * (i + 1) for i, c in enumerate(name)) & 0xffff))
     _ground_plane(c0, c1, scale)
     pm = principled(name + '_peb', (0.34, 0.31, 0.27), 0.9, 0.15)
     for i in range(pebbles):

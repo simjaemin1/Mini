@@ -142,6 +142,107 @@ function mkVil(dbId) {
     ok(spring.length > 20, '★⑤ 봄에는 파종창이 넉넉히 열린다', spring.length + '일');
   }
 
+  // ── ★★★⑥ [T112] 비가 밭에 물을 준다 — 물대기 일감은 하늘을 본다 ────────────
+  say('\n⑥ [T112] 비 온 날은 물 준 날 — 술어 하나 · e.w 갱신 한 곳');
+  {
+    const Wx = require(path.join(ROOT, 'server', 'weather.js'));
+    const L = F.L_WATERGAP;
+    pre(Crops.RAIN_WATER === true, '되돌림 스위치가 켜져 있다(기본값 · 자명 통과 금지)', `T112_RAIN=${Crops.RAIN_WATER ? 1 : 0}`);
+
+    // ⓐ 술어가 정본 하늘을 그대로 읽는다(사본 0)
+    let same = 0, rain = 0;
+    for (let d = 0; d < 800; d++) { const r = Wx.precipAt(d) > 0; if (r) rain++; if (Crops.rainedOn(d) === r) same++; }
+    pre(rain > 0 && rain < 800, '800일 안에 비 온 날과 마른 날이 둘 다 있다', `비 ${rain}일 · 마름 ${800 - rain}일`);
+    ok(same === 800, '★★★⑥ⓐ `rainedOn` 이 **정본 `weather.precipAt` 그대로**다(800일 전수 · 사본 0)', `${same}/800`);
+
+    // 검사에 쓸 비 온 날 · 마른 날을 **달력에서** 찾는다(하네스가 날짜를 안 적는다)
+    let wet = -1, dry = -1;
+    for (let d = 200; d < 700 && (wet < 0 || dry < 0); d++) {
+      if (Crops.seasonOfDay(d) === 'winter') continue;                 // 휴면은 T99 가 이미 0으로 만든다
+      if (wet < 0 && Crops.rainedOn(d)) wet = d;
+      if (dry < 0 && !Crops.rainedOn(d)) {                             // 앞 L 일이 전부 마른 날이어야 물대기가 선다
+        let ok2 = true; for (let k = d - L; k <= d; k++) if (Crops.rainedOn(k)) { ok2 = false; break; }
+        if (ok2) dry = d;
+      }
+    }
+    pre(wet > 0 && dry > 0, '비 온 날과 **연속으로 마른** 날을 달력에서 찾았다', `비 ${wet} · 마름 ${dry}(앞 ${L}일 마름)`);
+    const dry0 = () => dry;
+
+    // ⓑ 비 온 날 — 물대기 일감이 안 선다
+    const mk = (d0) => ({ c: 'rice', p: d0 - 60, td: d0 - 60, w: d0 - 60, wd: 0, ps: 0, q: 1 });
+    {
+      const e = mk(wet);
+      pre(wet - e.w >= L, '그 밭은 물때가 지났다(비가 아니면 반드시 선다)', `${wet - e.w}일 ≥ ${L}`);
+      ok(F.cropTaskOf(e, true, wet) !== 3, '★★★⑥ⓑ **비 온 날엔 물대기 일감이 안 선다**', `일감 ${F.cropTaskOf(e, true, wet)}`);
+      ok(e.w === wet, '★★⑥ⓑ 그리고 **마지막 물댄 날이 오늘로** 갱신된다(비가 준 것이다)', `w ${e.w}`);
+      const e2 = mk(wet);
+      ok(F.cropDoTask(e2, true, wet) !== 'water', '★★⑥ⓑ 수행도 물대기를 안 한다(일감과 같은 하늘)');
+      // 물 벌점만 남기고 본다 — 김매기 차례를 다 써 버려야 **물 갈래만** 잰다
+      //   (첫 판이 김매기 벌점을 물 벌점으로 오독해 빨갛게 나왔다 · 족보)
+      const e3 = mk(wet); e3.w = wet - (L + 20); e3.wd = F.L_WEEDS.length;
+      const q0 = e3.q; F.cropDayTick(e3, true, wet, '9,9');
+      ok(e3.q >= q0, '★★★⑥ⓑ 물 못 댄 품질 벌점도 **안 깎인다**(셋이 같은 문으로 들어간다)', `q ${q0} → ${e3.q}`);
+      // 대조 — 되돌리면 그 벌점이 실제로 있다(자명 통과 금지)
+      const e4 = mk(dry0()); e4.w = e4.p - (L + 20); e4.wd = F.L_WEEDS.length;
+      const q1 = e4.q; F.cropDayTick(e4, true, e4.p, '9,9');
+      ok(e4.q < q1, '★★⑥ⓑ 마른 날 같은 밭은 **실제로 깎인다**(검사에 이빨이 있다)', `q ${q1} → ${e4.q}`);
+    }
+
+    // ⓒ 마른 날 — 종전 그대로다(회귀 0)
+    {
+      const e = mk(dry);
+      pre(dry - e.w >= L, '그 밭도 물때가 지났다', `${dry - e.w}일`);
+      ok(F.cropTaskOf(e, true, dry) === 3, '★★★⑥ⓒ **마른 날엔 종전대로 물대기가 선다**', `일감 ${F.cropTaskOf(e, true, dry)}`);
+      const e2 = mk(dry);
+      ok(F.cropDoTask(e2, true, dry) === 'water' && e2.w === dry, '★★⑥ⓒ 그리고 물을 댄다(종전 그대로)');
+      // 밭(논이 아닌 곳)은 비가 와도 물대기가 원래 없다 — 자명 통과 금지 대조
+      const e3 = mk(wet);
+      ok(F.cropTaskOf(e3, false, wet) !== 3, '★⑥ⓒ 밭(논 아님)은 원래 물대기가 없다(대조)');
+    }
+
+    // ⓓ 플레이어 밭도 **같은 답** — zone 이 상태기 셋만 부르므로 자동이다
+    {
+      const zsrc = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
+      const zcode = codeOnly(zsrc);
+      // ⚠zone 은 하늘을 **클라 페이로드**로 싣는다(T98 `precipAt` — 그건 밭과 무관하다).
+      //   여기서 재는 것은 **밭 절**이 하늘을 직접 보는가다(첫 판이 파일 전체를 봐서 오탐했다 · 족보).
+      const tendSec = zcode.slice(zcode.indexOf('function _cropTend'), zcode.indexOf('function _cropTend') + 2500);
+      const harvSec = zcode.slice(zcode.indexOf('function tryHarvest'), zcode.indexOf('function tryHarvest') + 3000);
+      ok(!/rainedOn|precipAt/.test(tendSec + harvSec),
+        '★★⑥ⓓ zone 의 **밭 절**이 하늘을 직접 안 본다(상태기 셋을 통해서만 · 사본 0)');
+      ok(!/_cropNeedsWater[^\n]*precip|supply\s*=\s*[^\n]*rain/i.test(zcode),
+        '★★⑥ⓓ 그리고 그 자리 물 공급(`supply`)을 **안 건드린다**(비는 "오늘 물댔다"지 "물이 있다"가 아니다)');
+      const vcode = codeOnly(fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8'));
+      ok((vcode.match(/_cropSky\(/g) || []).length >= 4,
+        '★★⑥ⓓ 상태기 셋이 전부 같은 문으로 들어간다', `${(vcode.match(/_cropSky\(/g) || []).length}곳`);
+      // `e.w = day` 는 둘이다: **물을 댄 행동**(cropDoTask)과 **비**(_cropSky). 재는 것은 뒤엣것이 하나인가다.
+      const skySec = vcode.slice(vcode.indexOf('function _cropSky'), vcode.indexOf('function _cropSky') + 200);
+      ok((skySec.match(/e\.w = day/g) || []).length === 1,
+        '★★★⑥ⓓ 비로 인한 `e.w` 갱신은 **한 곳**뿐이다(`_cropSky` 안 한 줄)', `${(skySec.match(/e\.w = day/g) || []).length}곳`);
+      ok(/rainedOn/.test(skySec) && !/rainedOn/.test(vcode.replace(skySec, '')),
+        '★★⑥ⓓ 그리고 `rainedOn` 을 부르는 자리도 **그 한 곳**뿐이다(사본 0)');
+    }
+
+    // ⓔ ★★돌연변이 · 되돌림 — 자식 프로세스 + env (족보 128)
+    {
+      const { execFileSync } = require('child_process');
+      const CP = JSON.stringify(path.join(ROOT, 'server', 'crops.js'));
+      const VP = JSON.stringify(path.join(ROOT, 'server', 'villages.js'));
+      const runWith = (env, expr) => {
+        const out = execFileSync(process.execPath, ['-e',
+          `const C=require(${CP});const V=require(${VP});const F=V.__farmBind();process.stdout.write('@@'+(${expr}));`],
+          { env: Object.assign({}, process.env, env), encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+        return out.slice(out.lastIndexOf('@@') + 2).trim();
+      };
+      const EXPR = `F.cropTaskOf({c:'rice',p:${wet - 60},td:${wet - 60},w:${wet - 60},wd:0,ps:0,q:1},true,${wet})`;
+      ok(runWith({ T112_RAIN: '0' }, EXPR) === '3',
+        '★★★⑥ⓔ 되돌림(`T112_RAIN=0`) ⇒ 비 온 날에도 물대기가 선다 = **T108 세계 재현**');
+      ok(runWith({}, EXPR) !== '3', '★★⑥ⓔ 켠 판은 그 값이 아니다(되돌림이 실제로 무언가를 되돌린다)');
+      ok(runWith({ WEATHER_SEED: '1' }, `C.rainedOn(${wet})`) !== undefined,
+        '★⑥ⓔ 날씨 씨앗을 바꾸면 다른 하늘이 된다(술어가 정본을 실제로 읽는다)');
+    }
+  }
+
   console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===`);
   process.exit(fail ? 1 : 0);
 })();

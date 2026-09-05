@@ -258,6 +258,49 @@ console.log('\n=== [T66] 화면 규칙 B — 이모지 0 · 색은 토큰 하나
     ok(Object.values(pb).some((v) => v.length > 1), '★⑬ 자명 통과 금지 — 겹친 표를 넣으면 잡힌다');
   }
 
+  // ── ★★[T90] ⑭ 자연물 동사 이름표 — **종류 전수를 덮는가** ──────────────────
+  //   ★왜: T82 는 이 표를 클라에 두고 폴백('채집')으로 접었다. 그러면 새 자연물이 생겨도
+  //     화면은 조용히 '채집'이라 말하고 **아무도 모른다**(연표 아이콘 ③ 이 배운 그 함정).
+  //   ⇒ 정본은 서버(`itemlabel.RESOURCE_VERBS`)이고, 키 집합을 **자연물 정본**과 맞대 본다.
+  //     자연물 정본은 `server/chunk.js` 의 `RESOURCE_HP_TABLE` 이다(스폰이 그 표로 hp 를 준다).
+  {
+    const RV = require(path.join(ROOT, 'server', 'itemlabel.js')).RESOURCE_VERBS;
+    const chunkSrc = fs.readFileSync(path.join(ROOT, 'server', 'chunk.js'), 'utf8');
+    const m4 = chunkSrc.match(/const RESOURCE_HP_TABLE = \{([^}]*)\}/);
+    ok(!!m4 && !!RV, '★⑭ 전제: 두 표를 실제로 읽었다(자연물 hp 정본 · 동사 이름표)');
+    const kinds = m4 ? [...m4[1].matchAll(/(\w+)\s*:/g)].map((x) => x[1]) : [];
+    ok(kinds.length >= 6, '★⑭ (상황) 자연물 종류가 실제로 여럿이다 — 빈 표면 아래가 자명 통과다',
+       `${kinds.length}종: ${kinds.join(' ')}`);
+    const missing = kinds.filter((k) => !RV[k]);
+    const extra = Object.keys(RV || {}).filter((k) => !kinds.includes(k));
+    ok(missing.length === 0, '★★⑭ 동사 이름표가 **자연물 종류를 전부 덮는다**(빠지면 이름 없이 뜬다)',
+       missing.length ? missing.join(' ') : `${kinds.length}종 전부`);
+    ok(extra.length === 0, '★⑭ 그리고 없는 종류를 지어내지 않았다', extra.join(' ') || '0건');
+    // ★자명 통과 금지 — 한 종류를 빼면 잡는가
+    ok(['a', 'b'].filter((k) => !({ a: 1 })[k]).length === 1, '★⑭ 자명 통과 금지 — 빠진 키를 집어낸다');
+    // ★클라에 그 표의 **사본이 없다**(T82 가 자인한 사본 — 이 카드에서 지웠다)
+    const verbsSrc = fs.readFileSync(path.join(CLI, '46-h-verbs.js'), 'utf8');
+    ok(!/tree:\s*'벌목'/.test(verbsSrc), '★★⑭ 클라에 한 단어 표의 **사본이 없다**(사본 −1)');
+  }
+
+  // ── ★★[T90] ⑮ 알림 종류 — **각각 다른 그림** (★[T110] 아홉 → 열: `downed` 신설) ─────────
+  {
+    const noticeKinds = require(path.join(ROOT, 'server', 'notice.js')).KINDS;
+    const panelSrc = fs.readFileSync(path.join(CLI, '50-i-panel.js'), 'utf8');
+    const m5 = panelSrc.match(/const NOTICE_ICO = \{([\s\S]*?)\};/);
+    ok(!!m5 && !!noticeKinds, '★⑮ 전제: 서버 `KINDS` 와 클라 `NOTICE_ICO` 를 읽었다');
+    const map = {};
+    if (m5) for (const x of m5[1].matchAll(/(\w+):\s*'([\w]+)'/g)) map[x[1]] = x[2];
+    const miss = (noticeKinds || []).filter((k) => !map[k]);
+    ok(miss.length === 0, '★★⑮ 모든 종류가 **전부 그림을 갖는다**(T78 이 실은 칸을 화면이 읽는다 · 수는 표에서 읽는다)',
+       miss.length ? miss.join(' ') : `${(noticeKinds || []).length}종 전부`);
+    const names = (noticeKinds || []).map((k) => map[k]).filter(Boolean);
+    ok(new Set(names).size === names.length, '★★⑮ 그리고 **서로 다른 그림**이다(종류가 안 뭉개진다)',
+       names.join(' '));
+    const bad = names.filter((n) => !icoMap[n]);
+    ok(bad.length === 0, '★★⑮ 그 이름이 전부 **세트에 실재한다**(없으면 점선 네모가 뜬다)', bad.join(' ') || '0건');
+  }
+
   const css = fs.readFileSync(path.join(ROOT, 'public', 'style.css'), 'utf8');
   const body = css.slice(css.indexOf('\n}\n') + 3);
   ok(!/#[0-9a-fA-F]{3,8}\b|rgba?\(\s*\d/.test(body),

@@ -26,6 +26,18 @@ const CATEGORY_KO = {
   forage: '🌿 채집물', cooked: '🍲 요리', fish: '🐟 생선', meat: '🥩 고기',
 };
 
+// ★★[T90 2026-09-04 재민 확정 · T82 회부 ①] **자연물 종류 → 동사 이름표.**
+//   T82 가 이 표를 클라(`46-h-verbs.js`)에 두고 **사본 후보로 자인**했다. 여기가 그 자리다 —
+//   품목 이름표와 같은 통로(`welcome`)로 실린다. 클라 표는 이 카드에서 지웠다.
+//   ⚠키는 **자연물 종류 전수**다: 정본은 `server/chunk.js RESOURCE_HP_TABLE` 의 키 집합이고
+//     `test-itemlabel` 이 둘을 맞대 본다(새 종류가 생기면 여기가 빨개진다 — 조용히 '채집'으로
+//     접히지 않는다). `zone.js` 의 `RESOURCE_HP` 는 그 표의 **낡은 사본**이라 `meteorite` 가 없다(회부).
+//   ⚠이건 **동사**지 전리품 이름이 아니다. 전리품 이름은 `itemLabels` 가 이미 안다(나무·돌·약초).
+const RESOURCE_VERBS = {
+  tree: '벌목', rock: '채굴', ore: '채굴', meteorite: '채굴',
+  herb: '채집', berry_bush: '채집', water_pool: '물 마시기',
+};
+
 // ★다른 정본이 없는 이름 — 여기 말고 갈 데가 있으면 거기로 옮겨라.
 const NO_CANON = {
   ore_chunk: '원석(kg·미확인)',   // 선광 전 미확인 덩이. `specialty` 는 무게만 알고 이름은 모른다.
@@ -48,4 +60,4 @@ function itemLabels(base, buildingRecipes) {
   return out;
 }
 
-module.exports = { CATEGORY_KO, NO_CANON, itemLabels, koOfLabel };
+module.exports = { CATEGORY_KO, RESOURCE_VERBS, NO_CANON, itemLabels, koOfLabel };

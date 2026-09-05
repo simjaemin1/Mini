@@ -1,7 +1,7 @@
 {
  "_": "char_render.py \uc0b0\ubb3c \u2014 \uc190\ud3b8\uc9d1 \uae08\uc9c0. \uaddc\uc57d\uc740 \uadf8 \ud30c\uc77c\uc774 \uc815\ubcf8.",
  "anchorX": 54.5,
- "anchorY": 81.308,
+ "anchorY": 81.663,
  "clips": {
   "aim": {
    "fps": 2.0,
@@ -55,13 +55,16 @@
  "renderPpu": 135.7645,
  "rowOrder": "\ud589 0 = \ubc29\ud5a5 0, \uc704\uc5d0\uc11c \uc544\ub798\ub85c. \uc5f4 = \ud504\ub808\uc784 0..n-1, \uc67c\ucabd\uc5d0\uc11c \uc624\ub978\ucabd\uc73c\ub85c.",
  "shape": {
+  "celBands": 4,
   "edgeA": 0.6,
   "edgeK": 0.78,
   "gen": 3,
   "handK": 1.0,
   "headK": 1.0,
+  "inkPx": 1,
   "limbK": 1.0,
   "loftSeg": 16,
+  "poseSrc": "mocap",
   "rings": 8,
   "seg": 14,
   "shldK": 1.0
