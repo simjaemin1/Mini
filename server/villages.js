@@ -3824,6 +3824,18 @@ function _cropRipe(e, day) { const C = _Crops(); return C ? C.isReady(e.c, e.p, 
 //   전부 이 문으로 들어간다 ⇒ 플레이어 밭도 자동으로 같다(zone 이 이 셋만 부른다 · T58b).
 //   ⚠두 벌이 되면 *"겨울엔 안 자라는데 물은 대라"* 는 밭이 생긴다 — T91 §3ⓒ 가 잰 그 그림이다.
 function _cropDormant(e, day) { const C = _Crops(); return !!C && C.dormantAt(e.c, day); }
+// ★★★[T112 2026-09-05] **비 온 날은 물 준 날이다 — 갱신은 여기 한 줄뿐이다.**
+//   판정은 `crops.rainedOn` 정본이 낸다(하늘은 `weather.precipAt` · 사본 0 · 강도 문턱 없음 = 새 수 0).
+//   ★상태기 셋(`cropTaskOf`·`cropDoTask`·`cropDayTick`)이 **전부 이 문으로 들어간다** ⇒ 일감 판정과
+//     수행과 품질 벌점이 같은 하늘을 본다. 하나만 넣으면 *"비가 오는데 물대기 표시는 뜨는"* 날이 온다.
+//   ★멱등이다(`e.w = day` 를 몇 번 해도 같다) — 그래서 셋이 다 불러도 안전하고, 플레이어 밭의
+//     lazy 재생(`zone._cropSettle` 이 하루씩 되돌려 감는 그것)에서도 같은 답이 나온다.
+//   ★`e.w` **하나만** 만진다: 그 자리의 물 공급(`supply`)은 안 건드린다 — 비는 *"오늘 물을 댔다"* 이지
+//     *"그 자리에 물이 있다"* 가 아니다(논 물길은 회부 E 그대로).
+//   ★★**휴면 중엔 하늘도 밭을 안 건드린다.** 첫 판이 이 갈래를 빼먹어 겨울 비가 `e.w` 를 옮겼고,
+//     T99 가 세운 *"겨울이 끝난 자리가 겨울 들어간 자리와 같다"* 가 깨졌다(`test-crops ⑫ⓓ` 가 잡았다).
+//     휴면은 성장·돌봄·품질을 다 멈추는 것이고, 물때도 그 안에 있다 — 겨울 밭은 물을 안 기다린다.
+function _cropSky(e, day) { const C = _Crops(); if (e && C && !C.dormantAt(e.c, day) && C.rainedOn(day)) e.w = day; }
 function _cropGrowFrac(e, day) {
   const C = _Crops(); if (!C) return 0;
   const need = Math.max(1, C.growDaysOf(e.c));
@@ -3835,6 +3847,7 @@ function _cropGrowFrac(e, day) {
 //   ⚠마을 특유의 것(빈 칸에 무엇을 심을지 = 특산 선택)은 여기 없다 — 그건 마을의 일이다.
 function cropTaskOf(e, nong, day) {          // 5수확 4방제 3물대기 1김매기 0없음 (빈 칸의 2파종은 부르는 쪽이 낸다)
   if (!e) return 0;
+  _cropSky(e, day);                           // ★[T112] 하늘을 먼저 본다 — 비 온 날엔 물대기가 안 선다
   if (_cropRipe(e, day)) return 5;            // ★익은 것은 겨울에도 거둔다 — 휴면은 **돌봄**을 멈추는 것이다
   if (_cropDormant(e, day)) return 0;         // ★★[T99] 휴면 — 손볼 것이 없다(겨울 논에 물을 안 댄다)
   if (e.ps) return 4;
@@ -3845,6 +3858,7 @@ function cropTaskOf(e, nong, day) {          // 5수확 4방제 3물대기 1김�
 // 그 칸의 일을 **한 가지** 한다. 무엇을 했는지 돌려준다(`'harvest'|'pest'|'water'|'weed'|null`).
 function cropDoTask(e, nong, day) {
   if (!e) return null;
+  _cropSky(e, day);                           // ★[T112] 같은 문 — 일감과 수행이 같은 하늘을 본다
   if (_cropRipe(e, day)) return 'harvest';
   if (_cropDormant(e, day)) return null;      // ★★[T99] 휴면 — 아무 일도 안 한다(`cropTaskOf` 와 같은 문)
   if (e.ps) { e.ps = 0; e.td = day; e.q = Math.min(1, e.q + L_QREC); return 'pest'; }
@@ -3857,6 +3871,7 @@ function cropDoTask(e, nong, day) {
 //   ★익은 뒤에는 아무 일도 안 한다(수확 일감으로 남는다 — 랩과 같다).
 function cropDayTick(e, nong, day, cellKey) {
   if (!e || _cropRipe(e, day)) return;
+  _cropSky(e, day);                           // ★[T112] 같은 문 — 물 못 댄 벌점도 하늘을 본다
   if (_cropDormant(e, day)) return;           // ★★[T99] 휴면 — 품질도 안 깎이고 병충해도 안 붙는다.
   //   ★봄에 **멈춘 자리에서 재개**한다: `wd`(김맨 차례)·`q`·`ps` 를 겨울이 한 글자도 안 건드리므로.
   const wd = e.wd || 0, gf = _cropGrowFrac(e, day);
@@ -3916,7 +3931,7 @@ function _lifeDoTask0(vil, npc, k, day) {
 //   운영 경로는 이 함수를 부르지 않는다(`__p3Bind` 와 같은 관례) — 하네스가 상태기를 다시 짜면 그게 사본이다.
 function __farmBind() {
   return { _cellTask, _lifeDoTask, _lifeDoTask0, _villageCropFor, _pestAt, _cropRipe, _cropGrowFrac,
-    _cropDormant,
+    _cropDormant, _cropSky,
     cropTaskOf, cropDoTask, cropDayTick, cropAfterHarvest,
     L_WATERGAP, L_WEEDS, L_PESTP, L_QW, L_QP, L_QMIN, L_QREC };
 }

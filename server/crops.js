@@ -194,6 +194,29 @@ function _dormant(id, day) { return _dormantKind(id) && seasonOfDay(day) === 'wi
 // 돌봄·품질이 부르는 문 — **성장 휴면과 같은 답**이고 되돌림만 따로 열려 있다.
 function dormantAt(id, day) { return CARE_PAUSE && _dormant(id, day); }
 
+// ── ★★★[T112 2026-09-05] **비 온 날은 물 준 날이다** ────────────────────────
+//   T98 이 하늘에 비를 세웠는데(`weather.precipAt` · 0..1 · 전 존 공통 · 결정론) **밭이 몰랐다.**
+//   물대기 일감은 `day − (e.w || e.p) >= L_WATERGAP(7)` 이고, 그 `e.w` 가 하늘을 안 봤다
+//   ⇒ 장마철에도 NPC 가 논에 물을 이고 다녔다(§0ⓐ 실측: 비 온 날 물대기 일감 6,072건).
+//   ★**술어는 하나**다. 마을 밭과 플레이어 밭이 같은 답을 본다(상태기 셋이 같은 문으로 들어간다).
+//   ★**강도 문턱이 없다 = 새 수 0.** 비가 오면 준 것이다(첫 판). 세기로 가르려면 문턱이 필요하고
+//     그건 새 수다 — T98 회부의 앵커가 서면 그때 가른다(회부).
+//   ★날씨를 못 물으면 **거짓**이다(비 없음). 랩·하네스처럼 하늘이 없는 자리에서 종전 그대로 돈다
+//     — `weather.js` 머리의 `available()` 과 같은 규약이고, **거짓말을 지어내지 않는다.**
+//   ⚠`weather.js` 는 달을 물으려고 이 파일을 부른다(맞물림) ⇒ 양쪽 다 **lazy** 다. 로드 시점엔 안 문다.
+const RAIN_WATER = _num('T112_RAIN', 1) !== 0;
+let _Weather = null;
+function _weather() {
+  if (_Weather === null) { try { const m = require('./weather'); _Weather = (m && typeof m.precipAt === 'function') ? m : false; } catch (e) { _Weather = false; } }
+  return _Weather || null;
+}
+function rainedOn(day) {
+  if (!RAIN_WATER) return false;
+  const W = _weather(); if (!W) return false;
+  let p = 0; try { p = +W.precipAt(_day(day)) || 0; } catch (e) { p = 0; }
+  return p > 0;
+}
+
 // ── 춘화 — "겨울이 끝난 날" 을 달력 정본에게서 얻는다 ───────────────────────
 //   ★계절 수는 **표에서 센다**(4 를 안 적는다). 한 해 안에 겨울은 반드시 한 번 온다.
 //   ⚠`_SEASON_IX`(야생 채종 절)는 **아래에** 선언돼 있다 — 여기서 상수로 굳히면 TDZ 로 죽는다
@@ -408,6 +431,7 @@ module.exports = {
   monthOf, sowMonthsOf, fitsField, sowableMonth, h32, MONTHS_PER_YEAR, ANCHOR_MONTH,
   lifecycleOf, isPerennial, isWinterCrop, LC_WINTER, LC_PERENNIAL,
   dormantAt, vernalDay, VERNAL, CARE_PAUSE, PER_DORMANT,   // ★[T99] 휴면 술어 하나 · 춘화일 — 마을·플레이어가 같이 부른다
+  rainedOn, RAIN_WATER,   // ★[T112] 비 온 날은 물 준 날 — 상태기 셋이 같이 부른다
   grownDays, isReady, readyDay, waterMult, harvestUnits,
   shelfMap, weightMap, foodMap, labelMap, emojiMap, payload,
 };

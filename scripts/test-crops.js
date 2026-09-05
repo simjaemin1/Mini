@@ -488,7 +488,14 @@ function dayOfSeason(season) {
     // 알림을 가로챈다(화면이 무엇을 말하는지도 검사 대상이다)
     const _send = H.send;
     const cid = 'lettuce';                                  // 24일 · 빠르게 익는다
-    const today0 = H.zoneGameDay();
+    // ★[T112] **마른 날에 검사한다.** 비 온 날은 물대기 일감이 안 서므로(비가 준 것이다)
+    //   물병 규약 검사가 자명 통과가 아니라 **오탐**으로 빨개진다. 날짜를 달력에서 고른다.
+    const today0 = (() => {
+      const d0 = H.zoneGameDay();
+      for (let k = 0; k < 400; k++) { const d = d0 + k; if (!Crops.rainedOn(d) && Crops.seasonOfDay(d) !== 'winter') return d; }
+      return d0;
+    })();
+    pre(!Crops.rainedOn(today0), '검사일은 **마른 날**이다(T112 · 자명 통과 금지)', `게임일 ${today0}`);
     const B = { id: 'test-farm-1', type: 'farmland', ownerId: p2.playerId, x: 640, y: 640, dbId: null,
                 data: { cropType: null, crop: null, ready: false, supply: 1 } };
     H.buildings.set(B.id, B);
