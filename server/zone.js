@@ -9651,6 +9651,22 @@ function _villageMeal(p, vid) {
   return { fed: true, item: r.item, qty: r.qty, units: r.units, stockAfter: r.stockAfter, lifted };
 }
 
+// ★★[T119 2026-09-05] **구조는 사건이다.** 살아난 그 순간을 마을 장부에 한 줄 남긴다.
+//   ★접점을 **함수 하나**로 둔다 — 부르는 자리가 둘(마을 이송 · 사람이 일으킴)이고,
+//     둘이 같은 다섯 필드를 만들어야 한다(㉝ 계약). 두 자리에 같은 식을 쓰면 그게 사본이다.
+//   ★`vid` 는 **가장 가까운 마을**이다 — 야생에서 일어난 일도 어느 마을의 소식이 된다(T7 소문의 전제).
+//   ★`mag` 는 **남은 구조창 ÷ 구조창**이다(관측÷기준 문법 · `|ln(mag)|` 이 곧 심각도).
+//     늦게 살아났을수록 작아 계절 연표에서 먼저 선다 — 마을 이송은 창이 다 지난 뒤라 바닥값이다.
+function _noteRescueEvent(p, by) {
+  try {
+    const v = nearestVillageWake(p.x, p.y);
+    if (!v || v.vid == null) return;                       // 마을이 하나도 없는 존 — 좌표를 지어내지 않는다
+    const spent = Math.max(0, Date.now() - (p.downedAt || 0));
+    const remain = Math.max(0, RESCUE_WINDOW_MS - spent) / Math.max(1, RESCUE_WINDOW_MS);
+    SimVillages.noteRescue(v.vid, by || 'village', remain);
+  } catch (e) {}
+}
+
 function resolveDowned(p, wakeSpotOverride) {
   const inVillage = (() => { try { return (SimVillages.shelterAt(p.x, p.y) || 0) > 0; } catch (e) { return false; } })();
   if (p._carriedBy) { const c = players.get(p._carriedBy); _dropCarried(c, p, '내려놓았다'); }
@@ -9677,6 +9693,7 @@ function resolveDowned(p, wakeSpotOverride) {
     p._wakeMsg = `🏘️ 마을 사람들이 당신을 쉼터로 옮겼다 — ${spot && spot.name ? spot.name + '에서 ' : ''}깨어났다`
                + ((meal && meal.fed) ? ' · 마을 사람이 죽 한 그릇을 먹였다' : '');
     p._diedInWild = false;
+    _noteRescueEvent(p, 'village');   // ★[T119] 사건 장부 접점 1줄 — 마을이 옮긴 것도 구조다
     send(p.ws, { type: 'notice', text: '🏘️ 마을 안이다 — 누군가 당신을 발견했다…' });
     console.log(`[${ZONE_ID}] 🏘️ ${p.name} 마을 안 구제 — 쉼터 이송 대기`
       + ((meal && meal.fed) ? ` · 곳간 한 끼(${meal.item} ${meal.qty} · 남은 ${meal.stockAfter})` : ''));
@@ -9822,6 +9839,7 @@ function tickDowned(now) {
       p._rescueHoldMs = (p._rescueHoldMs || 0) + dt;
       if (p._rescueHoldMs >= RESCUE_HOLD_MS) {
         _dropCarried(c, p, null);
+        _noteRescueEvent(p, c.name || 'village');   // ★[T119] 사건 장부 접점 1줄 — 일으킨 이의 이름이 연표에 남는다
         _wakeUp(p, p.x, p.y, RESCUE_HP_FRAC, `🤝 ${c.name}님이 당신을 일으켰다 (HP ${Math.round(p.maxHp * RESCUE_HP_FRAC)})`);
         send(c.ws, { type: 'notice', text: `🤝 ${p.name}님을 구했다` });
         console.log(`[${ZONE_ID}] 🤝 ${c.name} → ${p.name} 구조 성공(${Math.round(RESCUE_HOLD_MS / 1000)}초 붙들기)`);

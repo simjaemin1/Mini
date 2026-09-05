@@ -82,6 +82,9 @@
 //     BUILT           mag = 1 (이상이 아니라 완공)
 //     FIRST_GOODS     mag = 1 (이상이 아니라 처음)
 //     WINTER_KEPT     mag = 그해 겨울 목표 달성률 (≥1)          [T20]
+//     RESCUED         mag = 남은 구조창 ÷ 구조창 (0~1)          [T119]
+//                     ⇒ 늦게 살아났을수록 작고 |ln(mag)| 가 커진다 — 계절 연표에서 **구사일생이 먼저 선다**.
+//                       마을 이송은 창이 다 지난 뒤라 바닥값(0.01)이고, 그래서 제일 무겁다.
 //     WINTER_SHORT    mag = 같은 달성률 (<1)
 //   ⚠**sev 로만 정렬하면 이 일곱은 영원히 안 보인다.** 흉년은 sev 0.36 이고 소금값 9배는 2.2 라,
 //     한 자로 재면 촌장은 흉년 대신 소금값을 말한다. 그게 T18 회부 A-1 의 내용이고 이 배치가 온 이유다.
@@ -189,15 +192,21 @@ const TYPES = ['STOCK_SHORTAGE', 'STOCK_GLUT', 'PRICE_SPIKE', 'PRICE_DROP', 'CAR
   // ★[T50 2026-09-02] 2차 — 세계의 "일". 원천이 §0 에서 실증된 것만 여기 있다(원천 없는 후보는 회부).
   'HARVEST_BOON', 'HARVEST_BLIGHT', 'WEATHER', 'POP_COLLAPSE', 'CARAVAN_RAIDED', 'TRADER_KILLED', 'BUILT', 'FIRST_GOODS',
   // ★[T20 2026-09-02] 겨울나기 공동 프로젝트의 **판정**. 공표는 사건이 아니라 `SEASON_CHANGE` 의 meta 다.
-  'WINTER_KEPT', 'WINTER_SHORT'];
+  'WINTER_KEPT', 'WINTER_SHORT',
+  // ★[T119 2026-09-05] **구조** — 쓰러진 사람이 살아난 그 순간. 원천 둘 다 실데이터다(§0-ⓐ):
+  //   `zone.js` `resolveDowned`(마을 이송) · `tickDowned`(사람이 업어 일으킴). 각본 0.
+  'RESCUED'];
 // ★★[T50] **"일" 유형** — 값의 이탈이 아니라 일어난 일. 정렬에서 먼저 서고, 연표 sev 문턱을 면제받는다.
 //   면제의 근거는 **드묾**이다(실측 3.3%). 이 목록에 흔한 유형을 넣으면 그 순간 연표가 그것으로 덮인다.
 const DEED_TYPES = String(process.env.EV_DEED_TYPES
-  || 'HARVEST_BOON,HARVEST_BLIGHT,WEATHER,POP_COLLAPSE,CARAVAN_RAIDED,TRADER_KILLED,BUILT,FIRST_GOODS,WINTER_KEPT,WINTER_SHORT')
+  || 'HARVEST_BOON,HARVEST_BLIGHT,WEATHER,POP_COLLAPSE,CARAVAN_RAIDED,TRADER_KILLED,BUILT,FIRST_GOODS,WINTER_KEPT,WINTER_SHORT,RESCUED')
   .split(',').map((x) => x.trim()).filter(Boolean);
 // ★이웃 마을에서 **여기까지 회자되는** 일. 날씨(573건 — 국지적이고 일주일이면 끝난다)·완공(남의 집)·
 //   첫 물건(남의 곳간)은 빠진다. 남는 것은 그 마을의 운과 사람과 길의 안부다.
 //   ⚠[T20] 겨울나기 판정도 **빠진다** — 남의 마을이 올겨울 넉넉한지는 이 마을 연표에 적을 일이 아니다.
+//   ⚠[T119] **구조(`RESCUED`)도 빠진다** — 이웃 마을에 회자되는 것은 *그 마을의* 운·사람·길이지
+//     한 사람이 하루 살아난 일이 아니다(`POP_COLLAPSE` 가 여기 있는 것은 마을이 죽어 가서다).
+//     이 목록은 짧아야 한다: 흔한 유형이 들어오는 순간 이웃 연표가 그것으로 덮인다.
 const DEED_FOREIGN = String(process.env.EV_DEED_FOREIGN
   || 'HARVEST_BOON,HARVEST_BLIGHT,POP_COLLAPSE,CARAVAN_RAIDED,TRADER_KILLED')
   .split(',').map((x) => x.trim()).filter(Boolean);
@@ -648,6 +657,15 @@ function createLedger(opts) {
       if (e == null || e.vid == null) continue;
       commit(st(e.vid), [{ day, vid: e.vid | 0, type: String(e.type), item: e.item || null,
         mag: +e.mag || 1, meta: e.meta || null }], out);
+    }
+
+    // ⑪ ★[T119] **구조** — 호스트가 넘긴 것만(완공·겨울 판정과 **같은 자리·같은 문법**).
+    //    장부는 쓰러짐도 구조도 모른다 — 살아난 그 순간을 실체 층이 알려 줄 뿐이다.
+    //    ⚠플레이어가 없는 랩에서는 **구조적으로 0 건**이다(쓰러질 사람이 없다) — 그게 각본 0 의 증거다.
+    for (const r of ((!cfg.DEEDS_OFF && extra && extra.rescues) || [])) {
+      if (r == null || r.vid == null) continue;
+      commit(st(r.vid), [{ day, vid: r.vid | 0, type: 'RESCUED', item: r.by || 'village',
+        mag: Math.max(0.01, Math.min(1, +r.mag || 0.01)), meta: null }], out);
     }
 
     // ⑦ 의뢰 — 부족 **래치**가 서 있으면 걸려 있고, 회복하면 거둔다(사건 에지가 아니라 상태)
@@ -1153,6 +1171,15 @@ const LINES = {
   //   ⚠`vid·day·type·item·mag` 만으로 만든다(㉝ 계약) — 기여자 이름·수량은 `meta` 라 여기 못 쓴다.
   WINTER_KEPT: (ev) => { const n = koRes(ev.item); return `올겨울은 넉넉하이. ${n} 곳간이 든든하네 — 자네들 덕일세.`; },
   WINTER_SHORT: (ev) => { const n = koRes(ev.item); return `올겨울 ${n}${josa(n, '은', '는')} 좀 궁하겠어. 그래도 손을 보탠 이가 있었네.`; },
+  // ── ★[T119 2026-09-05] 구조 ────────────────────────────────────────────────
+  //   ⚠㉝ 계약 — `vid·day·type·item·mag` 다섯 필드로만 만든다. 그래서 **이름은 `item` 한 칸**이다:
+  //     `'village'` 면 마을이 옮긴 것이고, 그 밖이면 그 글자가 **일으킨 사람의 이름**이다.
+  //     쓰러진 사람의 이름은 안 싣는다 — 칸이 하나뿐이고, 연표에 남을 이름은 **한 이를 살린 이**다.
+  RESCUED: (ev) => {
+    const who = String(ev.item || '');
+    if (!who || who === 'village') return '쓰러진 이를 마을 사람들이 쉼터로 옮겼다네.';
+    return `${who}${josa(who, '이', '가')} 쓰러진 이를 일으켰다는군.`;
+  },
 };
 function briefLine(ev) {
   const f = LINES[ev.type];

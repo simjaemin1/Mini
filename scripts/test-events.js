@@ -1416,6 +1416,84 @@ const mkLedgerGeo = (world, geo, cfg) => {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
+// ㊹ [T119 2026-09-05] **구조는 사건이다** — 유형 하나 · 원천 없으면 0건 · 돌연변이
+//
+//   ★T50 규약: 원천이 실재하는 것만 유형이 된다. 구조의 원천은 둘이고(마을 이송 · 사람이 일으킴)
+//     둘 다 `zone.js` 의 실데이터다. 장부는 그걸 **모른다** — 호스트가 넘긴 것만 적는다
+//     (완공 `builds`·겨울 판정 `winter.emit` 과 **같은 자리·같은 문법**).
+//   ★그래서 **플레이어가 없는 랩에서는 구조적으로 0 건**이다. 그게 각본 0 의 증거이고,
+//     아래 ㊹b 가 그걸 못 박는다(0 이 "안 만들어서"가 아니라 "일어날 일이 없어서"임을 ㊹c 가 가른다).
+// ═════════════════════════════════════════════════════════════════════════════
+{
+  const W = makeWorld(0, 71);
+  const L = mkLedger(W);
+  const _l = console.log; console.log = () => {};
+  try { for (let d = 0; d < 120; d++) { econV2.tickWorldV2(W); L.scanDay(W, W.day, {}); } }
+  finally { console.log = _l; }
+
+  ok(Events.TYPES.includes('RESCUED'), '㊹ `RESCUED` 가 유형 표에 있다', `${Events.TYPES.length}종`);
+  ok(Events.DEED_TYPES.includes('RESCUED'),
+    '㊹ ★그리고 **일 유형**이다 — 값의 이탈이 아니라 일어난 일(정렬에서 먼저 서고 sev 문턱을 면제받는다)');
+  ok((L.stats.byType.RESCUED || 0) === 0,
+    '㊹b ★★플레이어 없는 랩에서 구조는 **구조적으로 0 건**이다(장부가 지어내지 않는다 — 각본 0)',
+    `${L.stats.byType.RESCUED || 0}건 · 다른 유형은 ${L.stats.emitted}건 났다`);
+  ok(L.stats.emitted > 100,
+    '㊹c 자명 통과 금지 — 그 판에서 **다른 사건은 실제로 많이 났다**(장부가 죽어서 0 이 아니다)',
+    `${L.stats.emitted}건`);
+
+  // ㊹d 호스트가 넘기면 **그 자리에** 적힌다 — 완공과 같은 문법(`extra.rescues`)
+  {
+    const W2 = makeWorld(0, 72);
+    const L2 = mkLedger(W2);
+    const _l2 = console.log; console.log = () => {};
+    try {
+      for (let d = 0; d < 10; d++) { econV2.tickWorldV2(W2); L2.scanDay(W2, W2.day, {}); }
+      econV2.tickWorldV2(W2);
+      L2.scanDay(W2, W2.day, { rescues: [{ vid: 0, by: '재민', mag: 0.4 }, { vid: 1, by: 'village', mag: 0.01 }] });
+    } finally { console.log = _l2; }
+    ok((L2.stats.byType.RESCUED || 0) === 2,
+      '㊹d ★호스트가 넘긴 구조 둘이 **그대로 두 건**이 된다(완공·겨울 판정과 같은 자리)',
+      `${L2.stats.byType.RESCUED || 0}건`);
+    const ev0 = L2.ringOf(0).filter((e) => e.type === 'RESCUED')[0] || null;
+    ok(!!ev0 && ev0.item === '재민' && ev0.mag === 0.4 && ev0.vid === 0,
+      '㊹d2 ★다섯 필드가 그대로다 — `vid·day·type·item·mag`(㉝ 계약 · `meta` 없이 문장이 나온다)',
+      ev0 ? `vid ${ev0.vid} · item ${ev0.item} · mag ${ev0.mag} · meta ${ev0.meta === null ? 'null' : '있음'}` : '없음');
+    ok(!!ev0 && /재민/.test(Events.briefLine(ev0)) && /일으켰/.test(Events.briefLine(ev0)),
+      '㊹e ★★문장이 **다섯 필드만으로** 만들어진다 — 일으킨 이의 이름이 연표에 남는다',
+      ev0 ? Events.briefLine(ev0) : '-');
+    const ev1 = L2.ringOf(1).filter((e) => e.type === 'RESCUED')[0] || null;
+    ok(!!ev1 && /마을 사람들/.test(Events.briefLine(ev1)) && !/undefined|null/.test(Events.briefLine(ev1)),
+      '㊹e2 ★`village` 면 마을이 옮긴 것으로 읽힌다(같은 유형 · 다른 문장)', ev1 ? Events.briefLine(ev1) : '-');
+    // ★연대기에 오른다 — 일 유형이라 sev 문턱을 면제받는다(드묾이 곧 등급)
+    ok(L2.chronOf(0).some((e) => e.type === 'RESCUED'),
+      '㊹f ★★구조는 **연대기에 영구히 남는다**(일 유형 면제 — T50 규약)');
+    ok(L2.isDeed(ev0) === true, '㊹f2 그 판정이 `isDeed` 하나에서 나온다(사본 0)');
+  }
+
+  // ㊹g ★★돌연변이 — 되돌릴 줄 하나(`EV_DEED_TYPES` 에서 빼면 값 유형이 되어 연대기에서 빠진다)
+  //   ⚠공통 §2 ⑨: `CFG` 는 **모듈 적재 때** env 를 읽는다 ⇒ 자식 프로세스로 잰다.
+  {
+    const { execFileSync } = require('child_process');
+    const _ROOT = path.join(__dirname, '..');   // ★`ROOTDIR` 은 T63 블록 안의 이름이다 — 여기선 직접 만든다
+    const code = `
+      const path=require('path');const R=(p)=>require(path.join(${JSON.stringify(_ROOT)},p));
+      const Events=R('server/events');
+      process.stdout.write('@@'+JSON.stringify({ deed: Events.DEED_TYPES.includes('RESCUED'),
+        types: Events.TYPES.includes('RESCUED') }));`;
+    const run = (env) => {
+      const out = execFileSync(process.execPath, ['-e', code],
+        { env: Object.assign({}, process.env, { ENABLE_VILLAGES: '0' }, env), encoding: 'utf8' });
+      return JSON.parse(out.slice(out.lastIndexOf('@@') + 2).trim());
+    };
+    const on = run({});
+    const off = run({ EV_DEED_TYPES: 'HARVEST_BOON,HARVEST_BLIGHT,WEATHER,POP_COLLAPSE,CARAVAN_RAIDED,TRADER_KILLED,BUILT,FIRST_GOODS,WINTER_KEPT,WINTER_SHORT' });
+    ok(on.deed === true && off.deed === false && off.types === true,
+      '㊹g ★★돌연변이 — `EV_DEED_TYPES` 에서 빼면 **일 유형이 아니게 된다**(유형은 남고 등급만 빠진다 · 되돌릴 줄 하나)',
+      `켬 ${on.deed} → 끔 ${off.deed} (유형 표엔 그대로 ${off.types})`);
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 // ㊸ [T71 2026-09-03] **서버 문장에 이모지가 없다** — 소스 검사(AST)
 //
 //   ★왜 [재민 확정 2026-09-03 · `설계/설계_화면규칙_B_먹선.md` §1-2 "UI 이모지 0"]

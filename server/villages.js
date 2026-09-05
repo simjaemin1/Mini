@@ -5330,10 +5330,22 @@ function noteVillageBuilt(vil, kind) {
 }
 function _buildsToday() { const out = _evBuilds.slice(); _evBuilds.length = 0; return out; }
 
+// ★★[T119 2026-09-05] **구조** — 완공과 **같은 자리·같은 문법**이다. 장부는 쓰러짐을 모른다;
+//   살아난 그 순간을 `zone.js` 가 여기 한 줄 남기고 하루 경계에 장부가 가져간다.
+//   ⚠구조는 **실시간**에 나고 장부는 **하루 눈금**이라 그 사이를 이 줄이 잇는다(새 시계 0).
+//   ⚠`by` 는 일으킨 사람의 이름 또는 `'village'`(마을 이송) — 다섯 필드의 `item` 칸으로 간다(㉝).
+const _evRescues = [];
+function noteRescue(vid, by, magRemain) {
+  if (vid == null) return;
+  if (_evRescues.length < 256) _evRescues.push({ vid: vid | 0, by: by || 'village', mag: +magRemain || 0.01 });
+}
+function _rescuesToday() { const out = _evRescues.slice(); _evRescues.length = 0; return out; }
+
 function _scanEventsDaily() {
   if (!state.ledger) return;
   const t0 = Date.now();
   const evs = state.ledger.scanDay(state.world, state.world.day, { caravanDelays: _caravanDelaysToday(), builds: _buildsToday(),
+    rescues: _rescuesToday(),                                      // ★[T119] 구조 — 완공과 같은 자리
     winter: Winter.dailyExtra(state.world.day, state.villages) });   // ★[T20] 겨울나기 — 공표(가을 첫날)·판정(겨울 첫날)
   // 의뢰 진척 저장은 납품 시점에 한다(여기선 게시/철회만 — onRequest 훅이 이미 했다).
   if (state.world.day % 30 === 0) {
@@ -5875,6 +5887,8 @@ module.exports = {
   tickSliceMs: () => TICK_SLICE_MS,   // ★[T1] `/perf` 가 '지금 어떤 예산으로 도는가'를 그대로 말하게(대조군 판별)
   // Stage 4A — zone.js 소비: 농지 lazy 실물화 / welcome 영토 페이로드 / 레거시 디듀프 판정
   farmTilesInRect, clientVillages, isLegacyVillageClaimed,
+  // ★[T119] 구조 사건 접점 — `zone.js` 가 살아난 그 순간에 한 줄 남긴다(완공 `noteVillageBuilt` 와 같은 자리)
+  noteRescue,
   // ★곳간② 클라 표시 — welcome 스냅샷(델타는 onGameTick에서 gran_stock 방송)
   granStocks,
   // ★[10차 T4] 장마당 — welcome 스냅샷(변경분은 onGameTick의 markets 방송)
