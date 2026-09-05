@@ -130,9 +130,12 @@ async function waitHttp(url, tries = 600) {
     }
     return false;
   };
-  ok(await inWorld(R), '[R] 존 입장');
-  ok(await inWorld(A), '[A] 존 입장');
-  ok(await inWorld(C), '[C] 존 입장');
+  // ⚠[T126 판에서 다시 걸렸다] R 은 셋 중 **제일 먼저** 들어와 A·C 가 드는 몇 분을 기다린다 —
+  //   그 사이 소켓이 한 번 끊기면 90초 안에 못 돌아오는 판이 있다(A·C 는 초록인데 R 만 빨강 ·
+  //   재시도 진단줄이 안 찍힌 게 "들어왔다가 끊겼다"는 증거다). 제품이 아니라 검사의 참을성이다.
+  ok(await inWorld(R, 180), '[R] 존 입장');
+  ok(await inWorld(A, 180), '[A] 존 입장');
+  ok(await inWorld(C, 180), '[C] 존 입장');
 
   const snap = async (n) => { await R.screenshot({ path: path.join(SHOTS, n + '.png') }); };
   const notices = (pg) => pg.evaluate(() => (window.__notices || []).slice(-40));
@@ -175,13 +178,21 @@ async function waitHttp(url, tries = 600) {
   //       모든 마을 중심에서 먼 자리를 **서버가 답한 내 위치**로 잡는다.
   const { DatabaseSync } = require('node:sqlite');
   const db = new DatabaseSync(ZDB);
+  // ⚠시딩은 **게임 시간**을 먹는다. 입장이 빨리 끝난 판에서는 60초로 모자라 0곳이 나왔고,
+  //   바로 다음 줄이 `rows[0].cx` 로 **하네스를 통째로 죽였다**(뒤 절 예순이 안 돌았다).
+  //   ⇒ 넉넉히 기다리고, 그래도 없으면 **빨갛게 멈추되 죽지는 않는다**(T113 이 배운 것).
   let rows = [];
-  for (let i = 0; i < 60; i++) {
+  for (let i = 0; i < 180; i++) {
     rows = db.prepare('SELECT id, name, cx, cy FROM villages WHERE zone = ?').all('hanbando');
     if (rows.length) break;
     await sleep(1000);
   }
   ok(rows.length > 0, `마을이 시딩됐다 (${rows.length}곳)`);
+  if (!rows.length) {
+    console.log('\n마을 0 — 이 상자가 시딩을 못 끝냈다(카드 것이 아니다). 여기서 멈춘다.');
+    console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===`);
+    await browser.close(); shutdown(); process.exit(1);
+  }
   const V0 = rows[0], vx = V0.cx * 32 + 16, vy = V0.cy * 32 + 16;
   {
     await clearNotices(R);
@@ -890,6 +901,212 @@ async function waitHttp(url, tries = 600) {
        '★★⑫ 아이콘 **이름이 글자로 찍히지 않았다**(T66 이 밟은 함정)', JSON.stringify(texts.slice(0, 2)));
     // ★자명 통과 금지 — 알림 문구 자체는 살아 있다(그림만 그리고 말을 잃으면 안 된다)
     ok(texts.every((t2) => /알림/.test(t2)), '★⑫ 자명 통과 금지 — 말은 그대로 남는다', JSON.stringify(texts[0]));
+  }
+
+
+  // ── ⑬ ★★[T126] NPC 에게 동사 둘 — 말 걸기 · 거래 ───────────────────────────
+  //   ★T82·T90 이 회부해 둔 `if (t.npc) return []` 자리다. §0 실측이 지시서 전제 하나를 고쳤다:
+  //     **이 세계엔 촌장이라는 개체가 없다**(`makeEntry` 는 `npc`·`simJob`·`tribeName` 만 싣고
+  //     마을엔 촌장 NPC 가 없다 — 촌장은 마을이 내는 **목소리** `village_brief` 다).
+  //     ⇒ 촌장/주민을 안 가르고, **누구에게 물어도 그 마을이 아는 소식**이 그 사람 입에서 나온다.
+  console.log('\n⑬ ★[T126] NPC 우클릭 — 말 걸기 · 거래');
+  {
+    // ★NPC 를 **게임에 물어서** 고른다(지어내지 않는다). 마을 안 NPC 여야 거래 게이트도 성립한다.
+    // ⚠**나에게 가까운 NPC** 가 아니라 **마을 중심에 가까운 NPC** 를 고른다.
+    //   초안이 나 기준으로 골랐더니 마을에서 520px 떨어진 사람이 잡혔고, 그 곁에 서니
+    //   260px 게이트 **밖**이라 거래 동사가 조건을 잃었다(제품이 아니라 표적 고르기가 틀렸다).
+    //   ★★[실측이 표적 고르기를 두 번 고쳤다]
+    //     ① 나 기준으로 고르면 마을에서 520px 떨어진 사람이 잡힌다 → 그 곁에 서면 게이트 밖이다.
+    //     ② 그렇다고 "마을 중심 240px 안의 사람"을 찾으면 **아무도 없다** — 실측하니 이 세계의
+    //        주민들은 중심에서 400~615px 떨어져 밭·광산에서 일한다(중심에 서 있지 않다).
+    //     ⇒ 게이트는 **내가** 넘는 것이다(그 사람이 아니라). 나는 **마을 중심에 서고**,
+    //       화면 안에 보이는 사람을 누른다 — `pickAt` 도 `verbsFor` 도 거리 게이트가 없다.
+    const findNpc = () => R.evaluate(() => {
+      const cv = document.getElementById('canvas');
+      let best = null;
+      for (const c of conns.values()) {
+        if (!c.meta || !c.others) continue;
+        const ox = c.meta.worldOffsetX || 0, oy = c.meta.worldOffsetY || 0;
+        for (const o of c.others.values()) {
+          if (!o.npc) continue;
+          const x = ox + o.x, y = oy + o.y;
+          const sc = window.__w2s(x, y);
+          // ★화면 **안**에 있어야 두드릴 수 있다(가장자리 24px 은 뺀다).
+          if (!(sc.px > 24 && sc.py > 24 && sc.px < cv.width - 24 && sc.py < cv.height - 24)) continue;
+          const d = Math.hypot(x - myAbsPredicted.x, y - myAbsPredicted.y);
+          if (!best || d < best.d) best = { pid: o.pid, name: o.name || '', tribe: o.tribeName || null, x, y, d };
+        }
+      }
+      return best;
+    });
+    // 마을 하나를 DB 에서 골라 그 중심으로 간다 — 거기 NPC 가 산다(게이트 안이라 거래도 뜬다).
+    const vrows = (() => { try {
+      const dbv = new DatabaseSync(ZDB);
+      const r = dbv.prepare('SELECT id, name, cx, cy FROM villages WHERE zone = ?').all('hanbando');
+      dbv.close(); return r;
+    } catch (e) { return []; } })();
+    pre(vrows.length > 0, '마을이 시딩됐다 — NPC 가 사는 자리', `${vrows.length}곳`);
+    // ⚠마을 `cx,cy` 는 **존 로컬 셀**이다(`e2e-events` 와 같은 규약: `cx*32+16`).
+    //   `warp` 도 존 로컬을 받는다 ⇒ 여기서 `OFF` 를 빼면 안 된다(초안이 빼서 엉뚱한 데로 갔다 —
+    //   자원 좌표는 절대라 빼야 하고, 마을 셀은 이미 로컬이다).
+    // ⚠그리고 **마을 하나만 보고 포기하면 안 된다** — 그 순간 그 마을 사람들이 다 밭에 나가 있을 수
+    //   있다(초안이 한 판은 찾고 한 판은 못 찾았다 · 제품이 아니라 표적 고르기가 얕았다).
+    //   ⇒ 마을 몇 곳을 돌며 **게임에 물어** 사람이 보이는 곳에서 멈춘다.
+    // ⚠**멀리 있는 사람은 두드려도 안 눌린다.** 실측이 뚜렷했다: 130~190px 이면 열리고
+    //   270~424px 이면 스무 번 두드려도 안 열린다. 아이소메트릭 화면에서 월드→화면→월드 왕복이
+    //   멀어질수록 어긋나 `pickAt` 의 ±18 상자를 벗어나는 것으로 보인다(제품 쪽은 회부에 적었다).
+    //   ⇒ 하네스는 **가까이 오는 사람을 기다린다** — 마을 한복판에 서면 사람들이 지나다닌다.
+    let npc = null, vsel = null;
+    for (const v of vrows.slice(0, 8)) {
+      if (npc) break;
+      await warp(R, v.cx * 32 + 16, v.cy * 32 + 16, 6, 120);
+      await sleep(1500);
+      const gate = await R.evaluate(() => window.__evNearVid);
+      if (gate == null) continue;                         // 중심에 못 섰다 — 다음 마을
+      for (let i = 0; i < 40 && !npc; i++) {              // 최대 ~40초, 200px 안으로 올 때까지
+        const cand = await findNpc();
+        if (cand && cand.d <= 200) { npc = cand; vsel = v; break; }
+        await sleep(1000);
+      }
+    }
+    pre(!!npc, '마을 한복판에 서서 화면 안의 NPC 하나를 잡았다',
+        npc ? `${npc.name}(${npc.tribe}) · 나에게서 ${Math.round(npc.d)}px` : '없음');
+    if (npc) {
+      const inGate = await R.evaluate(() => window.__evNearVid);
+      pre(inGate != null, '마을 게이트(260px) 안에 섰다 — 거래 동사의 조건', String(inGate));
+
+      // ⚠**NPC 는 걷는다.** 한 번 잡아 둔 좌표로 두드리면 그 사이 자리를 떠서 아무것도 안 눌린다
+      //   (초안이 그렇게 `null` 을 다섯 번 받았다 — 제품이 아니라 표적이 움직인 것이다).
+      //   ⇒ 두드릴 때마다 **그 pid 의 지금 자리**를 다시 묻고 그 점을 찍는다.
+      // ⚠**NPC 는 걷고, 걸어서 시야를 아주 벗어난다.** 한 사람을 찍어 두고 그 pid 만 쫓으면
+      //   그 사이 사라져 아무것도 못 누른다(초안이 그렇게 `사라졌다` 를 받았다 — 규칙이 아니라
+      //   표적이 떠난 것이다). ⇒ **두드릴 때마다 지금 화면에 있는 사람 중 제일 가까운 이**를
+      //   다시 고르고, 메뉴가 뜬 그 사람을 이 절의 주인공으로 삼는다.
+      const ptNpc = () => R.evaluate(() => {
+        const cv = document.getElementById('canvas');
+        const rc = cv.getBoundingClientRect();
+        let best = null;
+        for (const c of conns.values()) {
+          if (!c.meta || !c.others) continue;
+          const ox = c.meta.worldOffsetX || 0, oy = c.meta.worldOffsetY || 0;
+          for (const o of c.others.values()) {
+            if (!o.npc) continue;
+            const wx = ox + o.x, wy = oy + o.y;
+            const sc = window.__w2s(wx, wy);
+            if (!(sc.px > 24 && sc.py > 24 && sc.px < cv.width - 24 && sc.py < cv.height - 24)) continue;
+            const d = Math.hypot(wx - myAbsPredicted.x, wy - myAbsPredicted.y);
+            if (!best || d < best.d) best = {
+              pid: o.pid, name: o.name || '', d,
+              x: rc.left + sc.px * (rc.width / cv.width), y: rc.top + sc.py * (rc.height / cv.height) };
+          }
+        }
+        return best;
+      });
+
+      // ★게이트 밖 판정용 — 화면에 보이는 아무 NPC 에게 손잡이가 무슨 동사를 내는지 **직접** 묻는다
+      //   (두드릴 필요가 없다 — 규칙을 재는 것이지 자리를 재는 것이 아니다).
+      const farVerbs = () => R.evaluate(() => {
+        for (const c of conns.values()) {
+          if (!c.meta || !c.others) continue;
+          const ox = c.meta.worldOffsetX || 0, oy = c.meta.worldOffsetY || 0;
+          for (const o of c.others.values()) {
+            if (!o.npc) continue;
+            const t2 = pickAt(ox + o.x, oy + o.y, { live: true });
+            if (t2 && t2.kind === 'player' && t2.npc) return verbsFor(t2, null).map((v) => v.label);
+          }
+        }
+        return null;
+      });
+
+      let lab = null, lastPt = null;
+      for (let i = 0; i < 20 && !lab; i++) {
+        const p0 = await ptNpc();
+        if (!p0 || p0.d > 220) { await sleep(500); continue; }   // 가까울 때만 두드린다(위 실측)
+        await rightTap(p0); lab = await menuWithin(2000); await sleep(150);
+        if (lab) lastPt = p0;                       // 메뉴가 뜬 그 사람이 주인공이다
+      }
+      pre(!!lastPt, '화면 안의 그 사람에게 메뉴가 열렸다',
+          lastPt ? `${lastPt.name} · ${Math.round(lastPt.d)}px` : '아무도 안 눌렸다');
+      if (lastPt) npc = { ...npc, pid: lastPt.pid, name: lastPt.name };
+      ok(!!lab && lab.length === 2, '★★⑬ NPC 위 우클릭에 **동사 둘**이 뜬다(T82 의 빈 배열 자리)', JSON.stringify(lab));
+      // ★라벨은 **서버 표**에서 온다 — 클라에 사본이 없다(T90 규약).
+      const SRV = require(path.join(ROOT, 'server', 'itemlabel.js')).NPC_VERBS;
+      ok(!!lab && lab[0] === SRV.talk && lab[1] === SRV.trade,
+         '★★⑬ 그 말이 **서버 정본과 글자까지 같다**(사본 0)', `${JSON.stringify(lab)} vs ${JSON.stringify(SRV)}`);
+      ok(!!lab && !/\p{Extended_Pictographic}/u.test(lab.join('')), '★⑬ 메뉴 글자에 이모지 0');
+
+      // ── 말 걸기 → 그 사람 입에서 **마을이 아는 소식**이 나온다
+      await clearNotices(R);
+      await R.evaluate(() => { const m = document.getElementById('ctxMenu'); if (m) m.children[0].click(); });
+      await sleep(2500);
+      const said = await R.evaluate((pid) => {
+        const b = speechBubbles.get(pid);
+        return { bubble: b ? b.text : null, brief: window.__evLastBrief || null,
+                 notices: (window.__notices || []).slice(-3) };
+      }, npc.pid);
+      ok(!!said.bubble, '★★⑬ **그 사람 머리 위에 말풍선**이 떴다(채팅이 쓰는 그 통로 · 새 UI 0)',
+         JSON.stringify(said.bubble));
+      // ★★문장이 **서버 장부에서 왔는가** — 클라가 지은 글자가 아니라는 증거다.
+      ok(!!said.brief && Array.isArray(said.brief.lines) && said.bubble === said.brief.lines[0],
+         '★★⑬ 그 말은 **서버 `village_brief` 의 첫 줄과 같다**(새 문장 0 · `events.briefLine` 정본)',
+         `${JSON.stringify(said.bubble)} vs ${JSON.stringify(said.brief && said.brief.lines && said.brief.lines[0])}`);
+      ok(said.notices.some((t2) => t2.includes(npc.name) && t2.includes(said.bubble)),
+         '★⑬ 알림에도 **그 사람 이름과 함께** 남는다(놓쳐도 보인다)', JSON.stringify(said.notices.slice(-1)));
+      // ★사건이 없는 마을이면 그 문장은 서버의 정본 한 줄이다(둘 중 어느 갈래든 서버가 냈다).
+      console.log(`  · [상황] 그 마을이 아는 소식 ${said.brief && said.brief.lines ? said.brief.lines.length : 0}줄 ·`
+        + ` 첫 줄 ${JSON.stringify(said.bubble)}`);
+
+      // ── 거래 → **이미 있는 거래소 탭**이 열린다(새 패널 0)
+      // ⚠사람들이 걸어 나가면 화면에 아무도 없는 구간이 생긴다 — 그 구간을 **기다린다**
+      //   (초안이 15번 만에 포기해 이 절을 조용히 건너뛰었다).
+      let lab2 = null;
+      for (let i = 0; i < 40 && !lab2; i++) {
+        const p2 = await ptNpc(); if (!p2 || p2.d > 220) { await sleep(500); continue; }
+        await rightTap(p2); lab2 = await menuWithin(2000); await sleep(150);
+      }
+      // ★못 열었으면 **조용히 건너뛰지 않는다** — 건너뛴 사실이 로그에 남아야 다음 판을 읽을 수 있다.
+      if (!lab2 || lab2.length !== 2) {
+        console.log(`  · [상황] 거래 절을 못 쟀다 — 메뉴를 다시 못 열었다(그 사람이 걸어 나갔다) ${JSON.stringify(lab2)}`);
+      }
+      if (lab2 && lab2.length === 2) {
+        await R.evaluate(() => { const m = document.getElementById('ctxMenu'); if (m) m.children[1].click(); });
+        await sleep(1800);
+        const side = await R.evaluate(() => {
+          const p = document.getElementById('sidePanel');
+          return { open: !!(p && p.classList.contains('open')),
+                   title: (document.getElementById('spTitle') || {}).textContent || '',
+                   board: !!window.__tradeBoard };
+        });
+        ok(side.open && /거래소/.test(side.title), '★★⑬ 거래 → **종전 거래소 탭**이 열린다(새 패널 0)',
+           JSON.stringify(side));
+        ok(side.board, '★⑬ 그리고 열면서 **서버에 시세를 물었다**(클라 캐시 아님)', String(side.board));
+        await R.keyboard.press('Escape');
+        await R.evaluate(() => { const p = document.getElementById('sidePanel'); if (p) p.classList.remove('open'); });
+      }
+
+      // ── ★게이트 밖에선 **거래가 안 보인다**(자명 통과 금지 — 늘 둘이 뜨는 게 아니다)
+      // ⚠**멀리 가면 그 사람이 시야에서 사라진다**(초안이 900px 밖으로 나갔다가 `others` 가 비어
+      //   `null` 을 두 번 받았다 — 규칙이 아니라 표적을 잃은 것이다).
+      //   ⇒ 게이트(260)만 넉넉히 넘고 AOI 안에는 남는 자리로 간다: 마을 중심에서 400px.
+      await warp(R, vsel.cx * 32 + 16 + 400, vsel.cy * 32 + 16, 8, 120);
+      await sleep(1800);
+      const outGate = await R.evaluate(() => window.__evNearVid);
+      pre(outGate == null, '마을에서 벗어났다(게이트 밖)', String(outGate));
+      if (outGate == null) {
+        // ⚠여기서도 화면에 사람이 없을 수 있다 — **보일 때까지 기다렸다가** 규칙을 묻는다.
+        let far = null;
+        for (let i = 0; i < 20 && !far; i++) {
+          far = await farVerbs();
+          if (!far) await sleep(500);
+        }
+          // 화면 밖으로 나갔을 수 있다 — 손잡이에 **직접** 물어 라벨만 본다(탭은 자리를 타지만 규칙은 안 탄다).
+        ok(!!far && far.length === 1, '★★⑬ 게이트 **밖**에선 동사가 하나다 — 거래가 사라진다',
+           JSON.stringify(far));
+        ok(!!far && far[0] === SRV.talk, '★⑬ 남는 하나는 말 걸기다', JSON.stringify(far));
+      }
+      await R.keyboard.press('Escape');
+      await R.evaluate(() => { const m = document.getElementById('ctxMenu'); if (m) m.remove(); });
+    }
   }
 
   ok(allErrs.length === 0, '클라 JS 예외 0', allErrs.slice(0, 3).join(' | '));

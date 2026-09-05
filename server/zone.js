@@ -3816,6 +3816,7 @@ async function _acceptConnection(ws, req, C) {
     //   닫은 것과 **같은 결함**이다(서버가 종류를 늘리면 화면만 영문으로 남는다).
     categoryLabels: ItemLabel.CATEGORY_KO,
     resourceVerbs: ItemLabel.RESOURCE_VERBS,   // ★[T90] 자연물 종류 → 동사 이름표(T82 회부 ① — 클라 사본 삭제)
+    npcVerbs: ItemLabel.NPC_VERBS,             // ★[T126] 사람에게 쓰는 동사 이름표(같은 통로 · 클라 표 0)
     // ★★[T66 ⓪ 2026-09-03] **이 카드의 유일한 서버 줄.** 클라에 남아 있던 사본 둘을 닫는다:
     //   `60-t-market.js JOB_KR`(zone 의 `JOB_KR_NPC` 와 글자까지 같았다) · `43-i-icon.js SEASON_KO`
     //   (`events.KO_SEASON` 이 정본 — 달력이 이미 **현재** 계절만 보내서, 작물 파종철 표기가 사본을 탔다).

@@ -888,6 +888,7 @@
         // ★[T61] econ 자원 종류 이름 — 같은 경로·같은 규약(있으면 갱신 · 없으면 유지). 클라 사본은 지웠다.
         if (msg.categoryLabels) { CATEGORY_KO_SRV = msg.categoryLabels; window.__categoryLabels = msg.categoryLabels; }
         if (msg.resourceVerbs) resourceVerbs = msg.resourceVerbs;   // ★[T90] 자연물 동사 이름표(사본 0)
+        if (msg.npcVerbs) npcVerbs = msg.npcVerbs;                   // ★[T126] 사람 동사 이름표(같은 규약)
         // ★[T66 ⓪] 직업·계절 이름 — 같은 규약(있으면 갱신 · 없으면 유지). 클라 사본 둘을 지웠다.
         if (msg.uiLabels) { UI_LABELS_SRV = msg.uiLabels; window.__uiLabels = msg.uiLabels; }
         // 플레이어 장비
@@ -1400,7 +1401,18 @@
       // ★촌장 브리핑 — 말풍선(세계 안) + 알림 한 줄(놓치지 않게). 수치는 안 보여 준다.
       const b = msg.brief || {};
       window.__evLastBrief = b;
-      if (b.lines && b.lines.length) {
+      // ★★[T126] **사람에게 물어본 답이면 그 사람 입에서 나온다.**
+      //   §0-ⓐ 실측: 이 세계엔 촌장이라는 **개체가 없다** — 촌장은 마을이 내는 **목소리**이고
+      //   그 목소리의 정본이 이 메시지다. 그래서 새 메시지도 새 문장도 안 만들었다:
+      //   메뉴에서 물으면 같은 메시지를 보내고, **답을 그 NPC 의 말풍선**(채팅이 쓰는 그 통로)에 건다.
+      //   ⚠짝짓기는 `vid` + 6초 창이다(`npcAskTake` — 46-h-verbs 가 갖고 있고 가져가며 지운다).
+      //     근접 브리핑이 그 사이 끼면 창 밖이라 종전 길로 간다.
+      const _ask = (b.lines && b.lines.length) ? npcAskTake(b.vid) : null;
+      if (_ask) {
+        speechBubbles.set(_ask.pid, { text: b.lines[0], until: performance.now() + 6000 });
+        showNotice(`${_ask.name} — ${b.lines[0]}`, 5000, 'village');
+        needsRedraw = true;
+      } else if (b.lines && b.lines.length) {
         villageBubbles.set(b.vid, { lines: b.lines.slice(0, 3), until: performance.now() + 9000 });
         showNotice(`${b.name} 촌장 — ${b.lines[0]}` + (b.board ? `  (게시판 ${b.board}건 · Shift+G)` : ''), 5000);
         needsRedraw = true;

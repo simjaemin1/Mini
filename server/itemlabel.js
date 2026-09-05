@@ -42,6 +42,16 @@ const RESOURCE_VERBS = {
   sapling: '벌목',
 };
 
+// ★★[T126 2026-09-05 재민 확정 · T82·T90 회부 "NPC 우클릭 동사"] **사람에게 쓰는 동사 이름표.**
+//   T90 의 `RESOURCE_VERBS` 와 **같은 문법**이다: 정본은 여기, 통로는 `welcome`, 클라는 표만 읽고
+//   **폴백을 두지 않는다**(서버가 모르는 키면 키가 그대로 뜬다 — 조용히 접히는 것보다 낫다).
+//   ⚠새 동사가 아니다. 둘 다 **이미 있는 문**이다:
+//     talk  → 종전 근접 브리핑이 쓰던 `village_brief` 그대로(새 메시지 0 · 새 문장 0 —
+//             무엇을 말할지는 `events.briefLine` 하나가 정한다. 사건이 없으면 그 함수가
+//             "별일 없네…" 를 낸다. 클라는 한 글자도 안 짓는다).
+//     trade → 종전 거래소 탭을 여는 그 길(`openSide('trade')`) — 새 패널 0.
+const NPC_VERBS = { talk: '말 걸기', trade: '거래' };
+
 // ★다른 정본이 없는 이름 — 여기 말고 갈 데가 있으면 거기로 옮겨라.
 const NO_CANON = {
   ore_chunk: '원석(kg·미확인)',   // 선광 전 미확인 덩이. `specialty` 는 무게만 알고 이름은 모른다.
@@ -64,4 +74,4 @@ function itemLabels(base, buildingRecipes) {
   return out;
 }
 
-module.exports = { CATEGORY_KO, RESOURCE_VERBS, NO_CANON, itemLabels, koOfLabel };
+module.exports = { CATEGORY_KO, RESOURCE_VERBS, NPC_VERBS, NO_CANON, itemLabels, koOfLabel };

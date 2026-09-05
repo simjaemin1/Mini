@@ -115,7 +115,20 @@
     if (!t) return [];
     const out = [];
     if (t.kind === 'player') {
-      if (t.npc) return [];                       // NPC 는 회부(§4) — 빈 배열이면 메뉴를 안 연다
+      // ★★[T126 2026-09-05] **NPC 에게 동사 둘.** T82·T90 이 회부해 둔 `if (t.npc) return []` 자리다.
+      //   §0 실측이 지시서 ①의 전제 하나를 고쳤다: **이 세계엔 촌장이라는 개체가 없다.**
+      //   `makeEntry` 가 싣는 것은 `npc` 1비트·`simJob`·`tribeName` 뿐이고 마을엔 촌장 NPC 가 없다 —
+      //   촌장은 마을이 내는 **목소리**(`village_brief`)다. ⇒ 촌장/주민을 가르지 않고,
+      //   **누구에게 물어도 그 마을이 아는 소식**이 그 사람 입에서 나온다(디에게틱하게도 그게 맞다).
+      //   새 메시지 0 · 새 문장 0 · 새 패널 0 — 둘 다 이미 있는 문을 부른다.
+      if (t.npc) {
+        const V = (k) => (npcVerbs && npcVerbs[k]) || k;   // 폴백 없음(T90 규약) — 모르면 키가 뜬다
+        const out2 = [{ label: V('talk'), send: () => talkToNpc(t) }];
+        // 거래는 **게이트 안에서만** 보인다. 게이트 술어는 클라가 새로 안 만든다 —
+        //   `41-h-bubble.js` 가 260px(`EV_BRIEF_PX`)로 이미 잡아 둔 `__evNearVid` 하나다.
+        if (window.__evNearVid != null) out2.push({ label: V('trade'), send: () => openSide('trade') });
+        return out2;
+      }
       if (!t.down) return [];                     // 성한 사람도 회부(자기 자신·거래는 T69 뒤)
       // 먹이기 — 하위 목록은 **내 짐의 먹을 것**이다. 무엇이 먹을 것인가는 서버 표
       //   (`foodEffects` = `FOOD_EFFECTS`)가 정한다. 클라가 목록을 다시 적지 않는다.
@@ -256,6 +269,33 @@
     sendPrimary({ type: 'gather', resId });                // 첫 타는 즉시(E 와 같다) · 지목해서
     _goneStreak = 0;
     startGatherLoop(() => _resourceGone(resId), resId);    // 다 캐면 저절로 멎는다
+  }
+
+  // ★★[T126] **말 걸기** — 보내는 것은 종전 `village_brief` 그대로다(새 메시지 0).
+  //   ⚠어느 마을을 묻나: 서 있는 자리의 마을(`__evNearVid`)이 먼저다. 게이트 밖이면 그 사람이
+  //     속한 마을(`tribeName` → `simVillages` 이름)을 보내고, **거절 문장은 서버가 낸다**
+  //     ('마을 중심에서 너무 멀다'). 클라가 "너무 멀다"를 지어 쓰면 그게 곧 사본이다.
+  //   ⚠답을 이 사람 것으로 알아보려면 물어본 사실을 기억해야 한다. **창에 안 건다** —
+  //     `window.X` 를 두 파일이 대입하면 `test-client-globals ⑤c` 가 (옳게) 빨개진다.
+  //     여기 `let` 하나를 두고, 받는 쪽은 `npcAskTake(vid)` 로 **가져가며 지운다**(대입은 이 파일 하나).
+  let _npcAsk = null;   // { pid, name, vid, at }
+  function npcAskTake(vid) {
+    if (!_npcAsk || _npcAsk.vid !== vid || Date.now() - _npcAsk.at > 6000) return null;
+    const a = _npcAsk; _npcAsk = null; return a;
+  }
+  function talkToNpc(t) {
+    let vid = window.__evNearVid;
+    if (vid == null) {
+      const tn = t.obj && t.obj.tribeName;
+      for (const c of conns.values()) {
+        if (!c.simVillages) continue;
+        for (const v of c.simVillages) if (v.name === tn) { vid = v.id; break; }
+        if (vid != null) break;
+      }
+    }
+    if (vid == null) return;                       // 마을을 모르는 사람 — 물을 데가 없다(메뉴는 떴다)
+    _npcAsk = { pid: t.id, name: (t.obj && t.obj.name) || '', vid, at: Date.now() };
+    sendPrimary({ type: 'village_brief', vid });
   }
 
   // ── 우클릭 배선 ───────────────────────────────────────────────────────────

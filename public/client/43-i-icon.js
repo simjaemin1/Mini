@@ -123,6 +123,8 @@
   let CATEGORY_KO_SRV = null;
   // ★[T90] 자연물 종류 → 동사 이름표(서버 정본 · `welcome.resourceVerbs`). 폴백 표 없음 — 사본 0.
   let resourceVerbs = null;
+  // ★[T126] 사람에게 쓰는 동사 이름표(서버 정본 · `welcome.npcVerbs`). 폴백 없음 — 사본 0.
+  let npcVerbs = null;
   // ★[T66 ⓪] 직업·계절 이름 정본(`welcome.uiLabels`). 클라 사본 둘(JOB_KR·SEASON_KO)은 지웠다.
   let UI_LABELS_SRV = null;
   function seasonKo(k) { return (UI_LABELS_SRV && UI_LABELS_SRV.seasons && UI_LABELS_SRV.seasons[k]) || k; }
