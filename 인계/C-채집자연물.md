@@ -1547,7 +1547,8 @@ function cropAtCell(cx, cy) {
 
 ## 3-월동. ★★★2026-09-05 T99 — **겨울을 지나야 익는다 · 겨울엔 돌봄도 쉰다**
 
-> 전문 `보고/T99_2026-09-05.md`. 베이스 `11c28e05` · 푸시 `<해시>`(`batch/winter-crops-0905` → ff → main · force 0회).
+> 전문 `보고/T99_2026-09-05.md`. 베이스 `c350a132`(리베이스 5회 · A/B 4회) · 푸시 `235dc206`
+> (`batch/winter-crops-0905-r5` → ff → main · force 0회 · `.lock` 전수 9개 격리 → 재검 0).
 > 만진 것: `crops.js`(춘화·휴면 술어) · `villages.js`(상태기 셋 + 주석) · `zone.js`(`_cropTend` 절만) ·
 > `test-crops.js`(⑫). **새 수 0 · 새 열 0 · `crops.json` 무변 · econ 0줄 · 클라 0줄 · 1년생 행동 변경 0.**
 > 되돌림 `T99_VERNAL`·`T99_CARE_PAUSE`·`T99_PERENNIAL_DORMANT`(1 기본 · 0 이면 T91 그대로).
