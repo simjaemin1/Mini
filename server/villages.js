@@ -3479,6 +3479,9 @@ const SCH_REST_IN = 0.6;     // 요양 진입 hp 비율(랩 hp<60/100)
 //     · **30 ∖ 34 = ∅** — 랩 30종은 카탈로그에 **전부** 있다(랩 '벼' = 카탈로그 `rice` "쌀(벼)").
 //     · **34 ∖ 30 = 4종** — 삼·쪽·뽕(잎)·차 — **전부 `group:'특용'`(비식량)**이라 NPC 농사에 없던 게 맞다.
 //     · 생육일 차 셋(보리·밀·마늘 210 vs 88~90)은 **단위 차이지 값 차이가 아니다** —
+//       ★[T99 2026-09-05] 그 둘의 차를 재 봤더니 랩 210 vs 실측 183 이었고, PM 이 **춘화**로 갈랐다:
+//       이제 정본은 "달력일 183" 도 "달력일 210" 도 아니라 **"겨울 뒤 활동일 88"** 이다
+//       (가을은 뿌리내림 · 익음 시계는 봄 첫날부터 · `crops.vernalDay`). ⇒ 보리 5월 말 · 밀·마늘 6월 초.
 //       랩 주석 7929 가 *"grow=달력일(월동 …은 ~210)"* 이라 적고, 카탈로그는 **활동일**이다
 //       (`winterCrop:true` + `Crops.grownDays` 가 겨울을 안 센다). 카탈로그 쪽이 정본이다.
 //   ⚠그리고 **옮겨 적는 동안 두 군데가 틀어졌다**(이 배치가 고치는 것):
@@ -3816,6 +3819,11 @@ function _pestAt(k, cropId, day) {
   return C.h32(cx, cy, (day | 0) * 131 + cix * 7919) / 4294967296 < L_PESTP;
 }
 function _cropRipe(e, day) { const C = _Crops(); return C ? C.isReady(e.c, e.p, day) : false; }
+// ★★★[T99 2026-09-05] **휴면 — 겨울엔 돌봄도 쉰다.** 술어는 `crops.dormantAt` **하나**이고
+//   성장(`grownDays`)이 쓰는 그 답과 같다. 아래 셋(`cropTaskOf`/`cropDoTask`/`cropDayTick`)이
+//   전부 이 문으로 들어간다 ⇒ 플레이어 밭도 자동으로 같다(zone 이 이 셋만 부른다 · T58b).
+//   ⚠두 벌이 되면 *"겨울엔 안 자라는데 물은 대라"* 는 밭이 생긴다 — T91 §3ⓒ 가 잰 그 그림이다.
+function _cropDormant(e, day) { const C = _Crops(); return !!C && C.dormantAt(e.c, day); }
 function _cropGrowFrac(e, day) {
   const C = _Crops(); if (!C) return 0;
   const need = Math.max(1, C.growDaysOf(e.c));
@@ -3827,7 +3835,8 @@ function _cropGrowFrac(e, day) {
 //   ⚠마을 특유의 것(빈 칸에 무엇을 심을지 = 특산 선택)은 여기 없다 — 그건 마을의 일이다.
 function cropTaskOf(e, nong, day) {          // 5수확 4방제 3물대기 1김매기 0없음 (빈 칸의 2파종은 부르는 쪽이 낸다)
   if (!e) return 0;
-  if (_cropRipe(e, day)) return 5;
+  if (_cropRipe(e, day)) return 5;            // ★익은 것은 겨울에도 거둔다 — 휴면은 **돌봄**을 멈추는 것이다
+  if (_cropDormant(e, day)) return 0;         // ★★[T99] 휴면 — 손볼 것이 없다(겨울 논에 물을 안 댄다)
   if (e.ps) return 4;
   if (nong && day - (e.w || e.p) >= L_WATERGAP) return 3;
   const wd = e.wd || 0; if (wd < L_WEEDS.length && _cropGrowFrac(e, day) >= L_WEEDS[wd]) return 1;
@@ -3837,6 +3846,7 @@ function cropTaskOf(e, nong, day) {          // 5수확 4방제 3물대기 1김�
 function cropDoTask(e, nong, day) {
   if (!e) return null;
   if (_cropRipe(e, day)) return 'harvest';
+  if (_cropDormant(e, day)) return null;      // ★★[T99] 휴면 — 아무 일도 안 한다(`cropTaskOf` 와 같은 문)
   if (e.ps) { e.ps = 0; e.td = day; e.q = Math.min(1, e.q + L_QREC); return 'pest'; }
   if (nong && day - (e.w || e.p) >= L_WATERGAP) { e.w = day; e.q = Math.min(1, e.q + L_QREC); return 'water'; }
   const wd = e.wd || 0;
@@ -3847,6 +3857,8 @@ function cropDoTask(e, nong, day) {
 //   ★익은 뒤에는 아무 일도 안 한다(수확 일감으로 남는다 — 랩과 같다).
 function cropDayTick(e, nong, day, cellKey) {
   if (!e || _cropRipe(e, day)) return;
+  if (_cropDormant(e, day)) return;           // ★★[T99] 휴면 — 품질도 안 깎이고 병충해도 안 붙는다.
+  //   ★봄에 **멈춘 자리에서 재개**한다: `wd`(김맨 차례)·`q`·`ps` 를 겨울이 한 글자도 안 건드리므로.
   const wd = e.wd || 0, gf = _cropGrowFrac(e, day);
   if (e.ps) e.q -= L_QP;
   else if (wd < L_WEEDS.length && gf >= L_WEEDS[wd] + 0.06) e.q -= L_QW;
@@ -3904,6 +3916,7 @@ function _lifeDoTask0(vil, npc, k, day) {
 //   운영 경로는 이 함수를 부르지 않는다(`__p3Bind` 와 같은 관례) — 하네스가 상태기를 다시 짜면 그게 사본이다.
 function __farmBind() {
   return { _cellTask, _lifeDoTask, _lifeDoTask0, _villageCropFor, _pestAt, _cropRipe, _cropGrowFrac,
+    _cropDormant,
     cropTaskOf, cropDoTask, cropDayTick, cropAfterHarvest,
     L_WATERGAP, L_WEEDS, L_PESTP, L_QW, L_QP, L_QMIN, L_QREC };
 }

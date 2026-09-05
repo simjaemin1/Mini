@@ -277,8 +277,14 @@ function mkPlayer(name, x, y) {
       `install ${inj} · gate ${gate}`);
     ok(vg === 1 && de === 1 && rt === 1, '★★★T54 접점이 **정확히 셋**이다 — 용기 술어 · 말린 것 효과 주입 · `returns` 읽기',
       `usesVessel ${vg}줄 · driedEffects ${de}줄 · eff.returns ${rt}줄`);
+    // ★[T99 2026-09-05 · CI regress-unit 이 잡았다] 기대값 **3 → 4**.
+    //   넷째는 **T58b(`035566db`)의 플레이어 물대기**다: `_cropTend` 가 물 한 되를 셀 때
+    //   `require('./tidal').FRESH` 를 읽는다(`server/zone.js` — 민물 품목 이름을 zone 이 옮겨 적지
+    //   않으려고 정본에게 물은 것이다 · T54 그릇 규약과 같은 결). 예산이 늘어난 게 아니라
+    //   **정본을 한 번 더 부른 것**이라 옳은 방향이고, 그래서 수를 낮추는 게 아니라 올린다.
+    //   ⚠다섯째가 생기면 여기가 다시 빨개진다 — 그게 이 검사가 있는 이유다(zone 예산 감시).
     const tidalRefs = (zsrc.match(/require\('\.\/tidal'\)/g) || []).length;
-    ok(tidalRefs === 3, '★zone 이 갯벌 정본을 부르는 자리는 **셋뿐**이다', `${tidalRefs}곳`);
+    ok(tidalRefs === 4, '★zone 이 갯벌 정본을 부르는 자리는 **넷뿐**이다(주입 · 용기 술어 · 말린 것 효과 · 민물 이름)', `${tidalRefs}곳`);
     ok(!/\bTidal\b/.test(zsrc.replace(/require\('\.\/tidal'\)/g, '')), '★★zone 이 갯벌 정본을 **모듈로 안 들고 있다**(한 줄에서만 부른다)');
   }
 
