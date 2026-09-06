@@ -579,6 +579,19 @@ function onMobHit(sh, dmgMain, attacker) {
 function init(host) {
   if (!ENABLED) { console.log(`[${host.ZONE_ID}] 🐾 wildlife: ENABLE_WILDLIFE=0 — 비활성(no-op)`); return; }
   Object.assign(H, host);
+  // ★★[T146 2026-09-06] **빈 Map 을 채운다.** `S.gameRich` 는 여태 빈 Map 이라 몹이 늘
+  //   `MOB_WILD_RICH` 기본값으로만 섰다 — 마릿수 식(`vg/L_GAMEMAX×MOB_DENS` :89)은 이미 개체군을
+  //   읽게 짜여 있었는데 **읽을 것이 없었다.** 마을 생활층이 그 장부를 갖게 됐으니 여기 연결한다.
+  //   ⚠사본을 만들지 않는다 — 값을 복사해 오면 두 장부가 갈린다. `get`/`has` 만 위임하는 **얇은 보기**다
+  //     (이 파일이 쓰는 것은 `get`·`has`·`size`·`delete`·`set` 뿐이고, 쓰기는 정본으로 간다).
+  if (typeof host.gameRichAt === 'function') {
+    S.gameRich = {
+      get: (k) => host.gameRichAt(k), has: (k) => host.gameRichAt(k) !== undefined,
+      set: () => {}, delete: () => false,            // 쓰기는 정본(마을 하루 틱)이 한다 — 여기서 안 쓴다
+      get size() { return host.gameRichSize ? host.gameRichSize() : 0; },
+      values: function* () {}, entries: function* () {}, [Symbol.iterator]: function* () {},
+    };
+  }
   NX = Math.ceil(host.ZONE.zoneWidth / 32); NY = Math.ceil(host.ZONE.zoneHeight / 32); N = Math.max(NX, NY);
   _rockM = new Uint8Array(NX * NY); _forM = new Uint8Array(NX * NY);   // ~NX×NY bytes ×2 (한반도 8.9M셀 ≈ 17.8MB)
   TR.terrain.isBlocked = (x, y) => H.isTerrainBlockedLocal(x * 32 + 16, y * 32 + 16);   // 물+바위 — NPC 이동과 동일 판정
