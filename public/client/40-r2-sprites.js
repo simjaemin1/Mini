@@ -431,6 +431,25 @@
     weaponsmith: 'tool_hammer',    // ⚔️
     armorsmith: 'tool_hammer',     // 🛡️
   };
+  // ★★[T134 2026-09-06] **사람의 도구도 표로 고른다** — 종전엔 정규식 한 줄이었다:
+  //     `/rod|fish|낚/i.test(t) ? 'tool_rod' : 'tool_axe'`
+  //   §0-ⓒ 실측이 그 줄을 뒤집었다. 사람이 실제로 들 수 있는 `tool` 문자열은 열이고
+  //   (`axe·pickaxe·sword·saw·hammer·crude_axe·crude_pick·crude_blade` + 장비 슬롯 `tool·weapon`),
+  //   **그중 아무것도 `rod|fish|낚` 에 안 걸린다** — 낚싯대라는 품목이 이 게임에 없기 때문이다.
+  //   ⇒ 실루엣 둘이라던 것이 실은 **하나**였다. 곡괭이도 망치도 검도 전부 도끼로 그려지고 있었다.
+  //   ★시트에는 `tool_*` 이 **여섯** 구워져 있다(메타 확인 · 굽기 0). 그 여섯으로 표를 만든다.
+  //   ⚠**없는 것을 지어내지 않는다**: 톱·검은 시트에 없으므로 종전 그대로 도끼 자리에 둔다.
+  //     곡괭이 → 괭이는 **판단**이다(둘 다 긴 자루 + 가로 날 · 26px 에서 같은 실루엣이고,
+  //     도끼로 그리는 것보다 참말이다). 되돌리려면 이 표에서 두 줄을 지우면 된다.
+  const PLAYER_TOOL_LAYER = {
+    axe: 'tool_axe', crude_axe: 'tool_axe',
+    pickaxe: 'tool_hoe', crude_pick: 'tool_hoe',   // 곡괭이 ≈ 괭이 실루엣(판단 · 보고 §0-ⓒ)
+    hammer: 'tool_hammer',                          // ★새로 산다 — 종전엔 도끼로 그려졌다
+    hoe: 'tool_hoe', spear: 'tool_spear', basket: 'tool_basket', rod: 'tool_rod',   // 품목이 생기면 그날 맞는다
+  };
+  //   ★표에 없으면 도끼다 — 종전 기본값 그대로다(톱·검·`tool`·`weapon` 이 여기 온다).
+  const PLAYER_TOOL_FALLBACK = 'tool_axe';
+
   // ★★[T125 2026-09-05] 여기 있던 `npcCharLayers` 는 **지웠다**(사본 −1). 그 함수가 옷을
   //   `clothes_hemp` 로 **못 박고** 있었고, 그래서 마을 곳간에 갖옷이 쌓여도 화면은 전부 삼베였다.
   //   이제 층 목록은 사람·주민 한 함수(`42-r2-char.js charLayersFor`)가 만들고, 이 표는

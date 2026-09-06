@@ -11109,7 +11109,10 @@ setInterval(() => {
       //   `tool` 은 도구 인스턴스의 `type`(클라가 실루엣 둘로 접는다 — 판정 함수는 자기 것과 **같은 하나**),
       //   `carrier` 는 1비트(지게를 졌나). 옷이 열어 둔 그 자리에 두 줄이면 축이 셋이 된다.
       if (isNew || now - (o._wornAt || 0) < 1200) e.tool = (getEquippedTool(o) || {}).type || null;
-      if (isNew || now - (o._wornAt || 0) < 1200) e.carrier = Carry.carrierOf(o) ? 1 : 0;
+      //   ★[T134 2026-09-06] 주민도 이 한 비트를 탄다 — 출처만 갈린다(사람=장비 슬롯 · 주민=진 짐).
+      //     `_carry` 는 곳간② 물리 장부(수확 +1 · 인출 +q · 저장 0)이고 회계가 아니다.
+      if (isNew || now - (o._wornAt || 0) < 1200)
+        e.carrier = o.isNpc ? (((o._carry || 0) > 0) ? 1 : 0) : (Carry.carrierOf(o) ? 1 : 0);
       return e;
     }
     // Phase 14.38: mob facing — vx/vy 포함. 14.49-d: floor + z

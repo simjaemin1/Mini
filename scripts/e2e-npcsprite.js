@@ -135,7 +135,7 @@ const ZENV = {
   console.log('\n=== ① NPC 가 도형이 아니라 시트로 그려진다 ===');
   const dbgNpc = async () => page.evaluate(() =>
     Object.entries(window.__charDbg || {}).filter(([, v]) => v && v.job)
-      .map(([pid, v]) => ({ pid, on: !!v.on, clip: v.clip, row: v.row, job: v.job, clothes: v.clothes || null, layers: (v.layers || []).slice() })));
+      .map(([pid, v]) => ({ pid, on: !!v.on, clip: v.clip, row: v.row, job: v.job, clothes: v.clothes || null, carrier: !!v.carrier, layers: (v.layers || []).slice() })));
   // ★한 번만 읽지 마라 — `__charDbg` 는 **그 프레임에 실제로 그린** NPC 만 채운다(시야·컬링).
   //   한 판 읽고 끝내면 화면에 24명인데 2명만 본 채로 판정하게 된다(1차 실행이 그랬다).
   //   ⇒ 여러 판을 **누적**해서 본다 — pid 로 합친다.
@@ -240,6 +240,77 @@ const ZENV = {
     for (const s2 of acc.values()) { if (!before.has(s2.pid)) continue; checked++;
       if (s2.layers.filter((L) => /^clothes_/.test(L)).join(',') !== before.get(s2.pid)) flick++; }
     ok(flick === 0, `★★4초 동안 **안 깜빡인다** — ${checked}명 중 바뀐 주민 ${flick}명 (신원으로 고르기 때문)`);
+    seen = [...acc.values()];
+  }
+
+  // ── ②″ [T134] 짐을 진 주민은 지게를 진다 ────────────────────────────────────
+  console.log('\n=== ②″ 주민의 지게 — 진 짐이 화면에 보인다 (T134) ===');
+  {
+    // ★자를 둘 놓는다: **서버 진실**(`/lifedbg` 의 `carrying` = `_carry>0` 인 주민 수)과
+    //   **화면**(`__charDbg` 의 `back_carrier` 층). 하네스가 규칙을 다시 짜지 않는다.
+    const carryingNow = async () => {
+      try {
+        const d = await (await fetch(`http://localhost:${ZPORT}/lifedbg`)).json();
+        const rows = d && (d.villages || d.rows || (Array.isArray(d) ? d : []));
+        let n = 0; for (const r of (rows || [])) n += (r.carrying | 0);
+        return n;
+      } catch (e) { return -1; }
+    };
+    let srvMax = 0, seenBack = 0, bad = 0, samples = 0;
+    const acc2 = new Map();
+    for (let k = 0; k < 30; k++) {
+      const [srv, rows] = await Promise.all([carryingNow(), dbgNpc()]);
+      if (srv > srvMax) srvMax = srv;
+      for (const r of rows) {
+        acc2.set(r.pid, r); samples++;
+        const has = r.layers.includes('back_carrier');
+        if (has !== r.carrier) bad++;              // 비트와 층이 어긋나면 층 함수가 거짓말이다
+        if (has) seenBack++;
+      }
+      await sleep(400);
+    }
+    console.log(`    서버가 본 '짐 진 주민' 최대 ${srvMax}명 · 화면 표본 ${samples}건 중 지게 ${seenBack}건`);
+    ok(bad === 0, `★★[T134] 지게 비트와 \`back_carrier\` 층이 **정확히 같다** (표본 ${samples}건 · 어긋남 ${bad})`);
+    // ★자명 통과 금지 — 서버가 한 번이라도 "짐 진 주민 ≥1" 이라고 말했으면 화면에서도 봤어야 한다.
+    if (srvMax >= 1) {
+      ok(seenBack >= 1, `★★[T134] 서버가 짐 진 주민 ${srvMax}명이라 했고 **화면에도 지게가 떴다** (${seenBack}건)`);
+    } else {
+      // ★★**여기서 "통과"라고 말하지 않는다.** 서버가 0 이라 했으면 화면이 0 인 것은 당연하고,
+      //   그건 지게가 **뜨는지**를 재지 못한 것이다(자명 통과 금지 · 이 레포의 캐논).
+      //   ⇒ 재지 못했다는 사실을 **빨강이 아니라 글로** 남기고, 뜨는 쪽은 아래 두 자로 대신 건다.
+      console.log('    ⚠양성 갈래(짐 진 주민이 실제로 뜨는 것)는 **이 판에서 못 봤다** — 서버도 0 이었다.');
+      console.log('      실측(T134 §0-ⓐ′): 갓 심은 마을은 관찰 창 안에 수확을 못 한다.');
+      console.log('      세계 하루가 현실 24분(`WORLD.dayLengthMs`)이고 작물은 게임일이 필요하다 —');
+      console.log('      150초 프로브에서 라벨은 출근·휴식·귀가뿐이고 `carrying` 은 내내 0 이었다(곳간 재고도 0).');
+      ok(seenBack === 0, '★[T134] 서버 0 · 화면 0 — **음성 갈래만** 밟았다(양성은 아래 두 자로 건다)');
+    }
+    // ★양성 갈래를 대신 거는 자 둘 — **코드가 한 줄이라는 사실**과 **사람 쪽 실측**이다.
+    //   ⓐ 주민과 사람은 지게를 **같은 한 줄**로 고른다(`42-r2-char.js charLayersFor`).
+    //      그 줄이 갈리면 여기서 빨개진다.
+    //   ⓑ 그 줄의 양성(비트 1 → `back_carrier` 등장)은 `e2e-charsprite ⑤` 가 **사람으로** 이미 잰다
+    //      (지게를 진 남이 `body,clothes_*,back_carrier,tool_*` 로 그려지는 것을 본다).
+    //   ⇒ 서버가 주민에게 비트를 1 로 놓기만 하면 그림은 따라온다 — 그 놓는 자리도 소스로 건다.
+    {
+      const codeOnly = (t) => t.split('\n').filter((L) => !/^\s*(\/\/|\*|\/\*)/.test(L)).join('\n');
+      const cs = codeOnly(fs.readFileSync(path.join(ROOT, 'public', 'client', '42-r2-char.js'), 'utf8'));
+      const backLines = cs.split('\n').filter((L) => /back_carrier/.test(L) || /const back = /.test(L));
+      ok(/const back = isMe \? [^:]+: !!\(o && o\.carrier\);/.test(cs),
+         '★★[T134] 주민과 사람이 지게를 **같은 한 줄**로 고른다 (갈래 0)', backLines.map((L) => L.trim()).join(' | ').slice(0, 160));
+      const zs = codeOnly(fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8'));
+      ok(/e\.carrier = o\.isNpc \? \(\(\(o\._carry \|\| 0\) > 0\) \? 1 : 0\)/.test(zs),
+         '★★[T134] 서버가 주민의 **진 짐**(`_carry`)으로 그 비트를 놓는다');
+      const vs = codeOnly(fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8'));
+      ok(/npc\._carryOn = on; npc\._wornAt = Date\.now\(\);/.test(vs),
+         '★[T134] 0↔1 이 뒤집힌 순간에만 전송 창을 연다 (매 틱 도장 금지)');
+    }
+    // 사람 쪽 계약은 그대로다 — 주민이 지게를 지든 말든 층 순서는 몸 → 옷 → 지게 → 손
+    const wrongOrder = [...acc2.values()].filter((r) => {
+      const bi = r.layers.indexOf('back_carrier'); if (bi < 0) return false;
+      const ti = r.layers.findIndex((L) => /^tool_/.test(L));
+      return bi === 0 || (ti >= 0 && ti < bi);
+    });
+    ok(wrongOrder.length === 0, '★지게는 옷 뒤·손 앞이다 (순서 계약 · 사람과 같다)',
+       wrongOrder.length ? JSON.stringify(wrongOrder[0].layers) : `${acc2.size}명 검사`);
     seen = [...acc.values()];
   }
 

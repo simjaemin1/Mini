@@ -5004,6 +5004,17 @@ function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(�
 }
 function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도주 뒤·야간 귀가 게이트 앞) — true=일과 소유(레거시 차단)
   if (!LIFE_ON) return false;
+  // ★★[T134 2026-09-06] **짐을 진 주민에게 지게를 입힌다.** 정본은 `npc._carry`(곳간② 물리 짐 칸수)다 —
+  //   수확이 +1, 곳간 인출이 +q, 저장·귀가가 0 으로 만든다. 여기서는 **읽기만** 한다(회계 무접촉).
+  //   ⚠`_lifeAct` 라벨('운반'·'저장')은 **못 쓴다**: 그 라벨은 곳간 과업 창 안에서만 찍히는데,
+  //     수확한 짐을 지고 밭에서 걸어 나오는 주민은 그 창 밖이면서 **짐은 지고 있다**. 상태가 곧 진실이다.
+  //   ★전송은 새 필드 0 — 사람의 지게와 **같은 `e.carrier` 한 비트**를 탄다(`zone.js makeEntry`).
+  //     그 비트는 무상태 델타(최초 가시 + `_wornAt` 뒤 1.2초)라, **0↔1 이 뒤집힌 순간에만** 도장을 찍는다.
+  //     매 틱 찍으면 창이 영영 안 닫혀 문자열·비트가 계속 나간다(옷이 그래서 이 규약을 쓴다).
+  {
+    const on = (npc._carry || 0) > 0;
+    if (on !== !!npc._carryOn) { npc._carryOn = on; npc._wornAt = Date.now(); }
+  }
   const vil = state.byDbId && state.byDbId.get(npc.simVillageId);
   if (!vil || !vil._terrSet || !vil._terrSet.size) return false;
   _lifeVL();

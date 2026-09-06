@@ -105,7 +105,9 @@
     const jt = job ? NPC_JOB_TOOL[job] : null;
     if (jt) { if (hasCharLayer(jt)) L.push(jt); return L; }
     const t = isMe ? myToolType() : String((o && o.tool) || '');
-    if (t) L.push(/rod|fish|낚/i.test(t) ? 'tool_rod' : 'tool_axe');
+    // ★[T134] 정규식 대신 표다(`40-r2-sprites.js PLAYER_TOOL_LAYER`) — 옛 줄은 열 종류를 도끼 하나로
+    //   접고 있었다(§0-ⓒ). 표에 없으면 종전 기본값(도끼)이라 **기존 그림이 안 바뀐다**.
+    if (t) { const k = PLAYER_TOOL_LAYER[t] || PLAYER_TOOL_FALLBACK; if (hasCharLayer(k)) L.push(k); }
     return L;
   }
   // 시트가 실제로 구워져 있나 — 없는 층을 넣으면 `drawCharSprite` 가 통째로 도형으로 떨어진다.
@@ -182,6 +184,7 @@
                          layers: layers.slice(),
                          job: opts.job || null,      // ★[T13] NPC 직업 — 하네스가 표식을 판정하는 재료
                          clothes: opts.clothes || null,   // ★[T125] 서버가 실어 온 옷 재질(주민은 마을 곳간)
+                         carrier: !!opts.carrier,        // ★[T134] 서버가 실어 온 지게 1비트(주민은 진 짐)
 
                          speed: +(opts.speed || 0).toFixed(2),
                          aiming: !!opts.aiming, isMe: !!isMe, fw, fh,
