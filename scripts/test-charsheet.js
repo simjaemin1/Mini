@@ -597,5 +597,110 @@ console.log('\n=== ⑧ 도끼질·조준의 축 · EXR 되굽기 [T107] ===');
   }
 }
 
+console.log('\n=== ⑨ 누운 판 · 업는 판 [T137] ===');
+{
+  const FW = META.frameW, FH = META.frameH;
+  // 한 방향의 한 프레임을 잘라 알파 모양을 잰다(하네스가 포즈를 다시 계산하지 않는다 — 그림을 본다).
+  const shape = (key, d, frame) => {
+    const im = readPng(path.join(DIR, key + '.png'));
+    const x0 = (frame || 0) * FW, y0 = d * FH;
+    let n = 0, minx = 1e9, maxx = -1e9, miny = 1e9, maxy = -1e9, sx = 0, sy = 0;
+    for (let y = 0; y < FH; y++) for (let x = 0; x < FW; x++) {
+      const a2 = im.px[((y0 + y) * im.w + (x0 + x)) * 4 + 3];
+      if (a2 < 140) continue;
+      n++; sx += x; sy += y;
+      if (x < minx) minx = x; if (x > maxx) maxx = x;
+      if (y < miny) miny = y; if (y > maxy) maxy = y;
+    }
+    return { n, w: maxx - minx + 1, h: maxy - miny + 1, top: miny, bot: maxy, cx: sx / n, cy: sy / n };
+  };
+
+  // ⓐ 메타 — 정적 한 판짜리 클립 둘
+  for (const c of ['down', 'carry']) {
+    const cl = META.clips[c];
+    ok(!!cl && cl.frames === 1 && cl.loop === false,
+       `★\`${c}\` 이 **정적 한 판**이다 (frames 1 · loop false)`, cl ? JSON.stringify(cl) : '없음');
+    ok(META.layers.every((L) => META.sheets[L + '_' + c]),
+       `★\`${c}\` 이 **전 층**에 있다 (${META.layers.length}장 — 입은 채 눕는다·업는다)`);
+  }
+  ok(META.frameW === 109 && META.frameH === 90 && META.anchorX === 54.5,
+     '★★프레임 규격이 **안 움직였다** — 누운 폭이 얼린 상자 안에 든다(T107 못박기)',
+     `${META.frameW}x${META.frameH} anchor ${META.anchorX},${META.anchorY}`);
+
+  // ⓑ **누웠는가** — 서 있는 판과 가로세로가 뒤집힌다(방향 0 = +x 동)
+  {
+    const st = shape('body_idle', 0, 0), dn = shape('body_down', 0, 0);
+    ok(st.h > st.w * 1.8, `★검사 전제 — 선 몸은 세로로 길다 ${st.w}×${st.h}`);
+    ok(dn.w > dn.h * 1.2, `★★**누웠다** — 누운 몸은 가로로 길다 ${dn.w}×${dn.h} (선 몸 ${st.w}×${st.h})`);
+    ok(dn.w > st.w * 2, `★가로가 ${(dn.w / st.w).toFixed(1)}배로 늘었다`);
+    // ⓑ′ 땅에 붙어 있다 — 발밑 선이 같다(접지 실측이 한 일)
+    ok(Math.abs(dn.bot - st.bot) <= 3,
+       `★★**땅에 붙어 있다** — 누운 몸의 아랫선 ${dn.bot} vs 선 몸 ${st.bot} (차 ${Math.abs(dn.bot - st.bot)}px ≤ 3)`);
+    ok(dn.top > st.top + 10, `★머리 높이가 내려왔다 — 윗선 ${st.top} → ${dn.top}`);
+  }
+
+  // ⓒ **업는 자세인가** — 서 있되 숙였다(키가 줄고, 눕지는 않았다)
+  {
+    const st = shape('body_idle', 0, 0), cy = shape('body_carry', 0, 0);
+    ok(cy.h < st.h && cy.h > cy.w, `★★**숙였되 서 있다** — ${cy.w}×${cy.h} (선 몸 ${st.w}×${st.h})`);
+    ok(cy.h >= st.h * 0.7, `★너무 숙이지 않았다 — 키 ${(100 * cy.h / st.h).toFixed(0)}% (넘어진 게 아니다)`);
+    // ★★자를 **이미 배포된 시트에서 뽑는다**(족보 74 — 문턱을 지어내지 않는다).
+    //   1차는 `|carry.bot − idle.bot| ≤ 3` 이라고 내가 정했다가 빨개졌다(80 vs 84). 그런데 재 보니
+    //   **옛 클립들이 이미 그만큼 흔들린다**: run 77~85 · walk 81~86 · aim 86(idle 보다 2px 아래).
+    //   포즈가 발을 들고 낮추는 것은 정상이고, 내가 캐논보다 엄한 바를 세웠던 것이다.
+    //   ⇒ 묻는 것은 "**옛 판들이 이미 서 있는 띠 안에** 드는가"다.
+    {
+      const bots = [];
+      for (const c of ['idle', 'walk', 'run', 'swing', 'aim']) {
+        const n = META.clips[c].frames;
+        for (let f = 0; f < n; f++) bots.push(shape('body_' + c, 0, f).bot);
+      }
+      const lo = Math.min(...bots), hi = Math.max(...bots);
+      ok(hi > lo, `★검사 전제 — 옛 클립의 지면선이 이미 폭을 갖는다 ${lo}~${hi}`);
+      ok(cy.bot >= lo && cy.bot <= hi,
+         `★★업는 사람의 발이 **옛 판들이 서 있는 띠 안**이다 — ${cy.bot} ∈ ${lo}~${hi}`);
+      const dn2 = shape('body_down', 0, 0);
+      ok(dn2.bot >= lo && dn2.bot <= hi,
+         `★누운 사람도 같은 띠 안이다 — ${dn2.bot} ∈ ${lo}~${hi}`);
+    }
+  }
+
+  // ⓓ **업기 오프셋** — 여덟 방향 · 등에 얹힌다(머리 위로 뜨지 않는다)
+  {
+    const off = META.carryOffset;
+    ok(Array.isArray(off) && off.length === 8, `★업기 오프셋이 여덟 방향 다 있다`, JSON.stringify(off && off.length));
+    if (Array.isArray(off) && off.length === 8) {
+      ok(off.every((o) => Array.isArray(o) && o.length === 2 && isFinite(o[0]) && isFinite(o[1])), '★값이 전부 수다');
+      // 좌우 대칭 — 방향 0 과 2 는 x 부호만 뒤집힌 짝이다(리그를 z 로 돌린 결과)
+      ok(Math.abs(off[0][0] + off[2][0]) < 0.01 && Math.abs(off[0][1] - off[2][1]) < 0.01,
+         '★방향 0↔2 가 좌우 대칭이다 (뼈에서 유도한 값이라 저절로 그렇다)', `${JSON.stringify(off[0])} ${JSON.stringify(off[2])}`);
+      // ★★기하 — 그 오프셋으로 옮긴 누운 몸이 **업는 사람의 몸통 높이**에 온다.
+      //   1차는 업는 사람의 등 좌표만 썼다가 업힌 몸이 **머리 위로 떴다**(중심 y 22 vs 등 41).
+      //   그래서 두 포즈의 등끼리 맞대는 값으로 고쳤다 — 이 줄이 그 수리를 붙든다.
+      for (const d of [0, 1, 2]) {
+        const cy = shape('body_carry', d, 0), dn = shape('body_down', d, 0);
+        const movedCy = dn.cy + off[d][1];          // 옮긴 뒤 업힌 몸의 중심 y
+        ok(movedCy > cy.top && movedCy < cy.bot,
+           `★★방향 ${d} — 업힌 몸의 중심이 업는 사람의 **몸 안**에 온다 (${movedCy.toFixed(1)} ∈ ${cy.top}~${cy.bot})`);
+        ok(movedCy < cy.cy,
+           `★방향 ${d} — 그리고 **위쪽**이다(등이지 다리가 아니다) ${movedCy.toFixed(1)} < ${cy.cy.toFixed(1)}`);
+      }
+    }
+  }
+
+  // ⓔ 클라 — 다운이 시트로 간다 · 오프셋을 **메타에서 읽는다**
+  {
+    const cl2 = require('./client-src.js').readClientSrc();
+    ok(!/!downFlag && !item\._war/.test(cl2), '★★다운 제외가 풀렸다 (T137 — 쓰러진 사람도 시트로)');
+    ok(/down: downFlag/.test(cl2), '★렌더루프가 `down` 을 넘긴다');
+    ok(/m\.carryOffset\[row\]/.test(cl2), '★★업기 오프셋을 **메타에서 읽는다** (클라에 숫자 사본 0)');
+    ok(!/carryOffset\s*=\s*\[/.test(cl2), '★클라가 그 표를 다시 적지 않았다');
+    ok(/function drawDownTag/.test(cl2) && /else if \(downFlag\) drawDownTag/.test(cl2),
+       '★쓰러진 이름표(`× 이름`)를 **한 함수**가 그린다 — 도형 경로와 시트 경로가 같은 말을 한다');
+    ok(/function drawCharShadow/.test(cl2) && (cl2.match(/drawCharShadow\(/g) || []).length >= 3,
+       '★그림자도 한 자리다 (도형·시트 두 경로가 같은 것을 부른다)');
+  }
+}
+
 console.log(`\n=== test-charsheet 결과: 통과 ${pass} · 실패 ${fail} ===`);
 process.exit(fail ? 1 : 0);

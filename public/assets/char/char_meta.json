@@ -2,11 +2,55 @@
  "_": "char_render.py \uc0b0\ubb3c \u2014 \uc190\ud3b8\uc9d1 \uae08\uc9c0. \uaddc\uc57d\uc740 \uadf8 \ud30c\uc77c\uc774 \uc815\ubcf8.",
  "anchorX": 54.5,
  "anchorY": 81.663,
+ "carryOffset": [
+  [
+   21.325,
+   -12.602
+  ],
+  [
+   0.0,
+   -8.185
+  ],
+  [
+   -21.325,
+   -12.602
+  ],
+  [
+   -30.158,
+   -23.264
+  ],
+  [
+   -21.325,
+   -33.927
+  ],
+  [
+   -0.0,
+   -38.344
+  ],
+  [
+   21.325,
+   -33.927
+  ],
+  [
+   30.158,
+   -23.265
+  ]
+ ],
  "clips": {
   "aim": {
    "fps": 2.0,
    "frames": 2,
    "loop": true
+  },
+  "carry": {
+   "fps": 1.0,
+   "frames": 1,
+   "loop": false
+  },
+  "down": {
+   "fps": 1.0,
+   "frames": 1,
+   "loop": false
   },
   "idle": {
    "fps": 0.9,
@@ -78,6 +122,22 @@
    "rows": 8,
    "w": 218
   },
+  "back_carrier_carry": {
+   "clip": "carry",
+   "cols": 1,
+   "h": 720,
+   "layer": "back_carrier",
+   "rows": 8,
+   "w": 109
+  },
+  "back_carrier_down": {
+   "clip": "down",
+   "cols": 1,
+   "h": 720,
+   "layer": "back_carrier",
+   "rows": 8,
+   "w": 109
+  },
   "back_carrier_idle": {
    "clip": "idle",
    "cols": 4,
@@ -117,6 +177,22 @@
    "layer": "body",
    "rows": 8,
    "w": 218
+  },
+  "body_carry": {
+   "clip": "carry",
+   "cols": 1,
+   "h": 720,
+   "layer": "body",
+   "rows": 8,
+   "w": 109
+  },
+  "body_down": {
+   "clip": "down",
+   "cols": 1,
+   "h": 720,
+   "layer": "body",
+   "rows": 8,
+   "w": 109
   },
   "body_idle": {
    "clip": "idle",
@@ -158,6 +234,22 @@
    "rows": 8,
    "w": 218
   },
+  "clothes_fiber_carry": {
+   "clip": "carry",
+   "cols": 1,
+   "h": 720,
+   "layer": "clothes_fiber",
+   "rows": 8,
+   "w": 109
+  },
+  "clothes_fiber_down": {
+   "clip": "down",
+   "cols": 1,
+   "h": 720,
+   "layer": "clothes_fiber",
+   "rows": 8,
+   "w": 109
+  },
   "clothes_fiber_idle": {
    "clip": "idle",
    "cols": 4,
@@ -197,6 +289,22 @@
    "layer": "clothes_fur",
    "rows": 8,
    "w": 218
+  },
+  "clothes_fur_carry": {
+   "clip": "carry",
+   "cols": 1,
+   "h": 720,
+   "layer": "clothes_fur",
+   "rows": 8,
+   "w": 109
+  },
+  "clothes_fur_down": {
+   "clip": "down",
+   "cols": 1,
+   "h": 720,
+   "layer": "clothes_fur",
+   "rows": 8,
+   "w": 109
   },
   "clothes_fur_idle": {
    "clip": "idle",
@@ -238,6 +346,22 @@
    "rows": 8,
    "w": 218
   },
+  "clothes_hemp_carry": {
+   "clip": "carry",
+   "cols": 1,
+   "h": 720,
+   "layer": "clothes_hemp",
+   "rows": 8,
+   "w": 109
+  },
+  "clothes_hemp_down": {
+   "clip": "down",
+   "cols": 1,
+   "h": 720,
+   "layer": "clothes_hemp",
+   "rows": 8,
+   "w": 109
+  },
   "clothes_hemp_idle": {
    "clip": "idle",
    "cols": 4,
@@ -277,6 +401,22 @@
    "layer": "clothes_hide",
    "rows": 8,
    "w": 218
+  },
+  "clothes_hide_carry": {
+   "clip": "carry",
+   "cols": 1,
+   "h": 720,
+   "layer": "clothes_hide",
+   "rows": 8,
+   "w": 109
+  },
+  "clothes_hide_down": {
+   "clip": "down",
+   "cols": 1,
+   "h": 720,
+   "layer": "clothes_hide",
+   "rows": 8,
+   "w": 109
   },
   "clothes_hide_idle": {
    "clip": "idle",
@@ -318,6 +458,22 @@
    "rows": 8,
    "w": 218
   },
+  "clothes_leather_carry": {
+   "clip": "carry",
+   "cols": 1,
+   "h": 720,
+   "layer": "clothes_leather",
+   "rows": 8,
+   "w": 109
+  },
+  "clothes_leather_down": {
+   "clip": "down",
+   "cols": 1,
+   "h": 720,
+   "layer": "clothes_leather",
+   "rows": 8,
+   "w": 109
+  },
   "clothes_leather_idle": {
    "clip": "idle",
    "cols": 4,
@@ -357,6 +513,22 @@
    "layer": "clothes_ramie",
    "rows": 8,
    "w": 218
+  },
+  "clothes_ramie_carry": {
+   "clip": "carry",
+   "cols": 1,
+   "h": 720,
+   "layer": "clothes_ramie",
+   "rows": 8,
+   "w": 109
+  },
+  "clothes_ramie_down": {
+   "clip": "down",
+   "cols": 1,
+   "h": 720,
+   "layer": "clothes_ramie",
+   "rows": 8,
+   "w": 109
   },
   "clothes_ramie_idle": {
    "clip": "idle",
@@ -398,6 +570,22 @@
    "rows": 8,
    "w": 218
   },
+  "tool_axe_carry": {
+   "clip": "carry",
+   "cols": 1,
+   "h": 720,
+   "layer": "tool_axe",
+   "rows": 8,
+   "w": 109
+  },
+  "tool_axe_down": {
+   "clip": "down",
+   "cols": 1,
+   "h": 720,
+   "layer": "tool_axe",
+   "rows": 8,
+   "w": 109
+  },
   "tool_axe_idle": {
    "clip": "idle",
    "cols": 4,
@@ -437,6 +625,22 @@
    "layer": "tool_basket",
    "rows": 8,
    "w": 218
+  },
+  "tool_basket_carry": {
+   "clip": "carry",
+   "cols": 1,
+   "h": 720,
+   "layer": "tool_basket",
+   "rows": 8,
+   "w": 109
+  },
+  "tool_basket_down": {
+   "clip": "down",
+   "cols": 1,
+   "h": 720,
+   "layer": "tool_basket",
+   "rows": 8,
+   "w": 109
   },
   "tool_basket_idle": {
    "clip": "idle",
@@ -478,6 +682,22 @@
    "rows": 8,
    "w": 218
   },
+  "tool_hammer_carry": {
+   "clip": "carry",
+   "cols": 1,
+   "h": 720,
+   "layer": "tool_hammer",
+   "rows": 8,
+   "w": 109
+  },
+  "tool_hammer_down": {
+   "clip": "down",
+   "cols": 1,
+   "h": 720,
+   "layer": "tool_hammer",
+   "rows": 8,
+   "w": 109
+  },
   "tool_hammer_idle": {
    "clip": "idle",
    "cols": 4,
@@ -517,6 +737,22 @@
    "layer": "tool_hoe",
    "rows": 8,
    "w": 218
+  },
+  "tool_hoe_carry": {
+   "clip": "carry",
+   "cols": 1,
+   "h": 720,
+   "layer": "tool_hoe",
+   "rows": 8,
+   "w": 109
+  },
+  "tool_hoe_down": {
+   "clip": "down",
+   "cols": 1,
+   "h": 720,
+   "layer": "tool_hoe",
+   "rows": 8,
+   "w": 109
   },
   "tool_hoe_idle": {
    "clip": "idle",
@@ -558,6 +794,22 @@
    "rows": 8,
    "w": 218
   },
+  "tool_rod_carry": {
+   "clip": "carry",
+   "cols": 1,
+   "h": 720,
+   "layer": "tool_rod",
+   "rows": 8,
+   "w": 109
+  },
+  "tool_rod_down": {
+   "clip": "down",
+   "cols": 1,
+   "h": 720,
+   "layer": "tool_rod",
+   "rows": 8,
+   "w": 109
+  },
   "tool_rod_idle": {
    "clip": "idle",
    "cols": 4,
@@ -597,6 +849,22 @@
    "layer": "tool_spear",
    "rows": 8,
    "w": 218
+  },
+  "tool_spear_carry": {
+   "clip": "carry",
+   "cols": 1,
+   "h": 720,
+   "layer": "tool_spear",
+   "rows": 8,
+   "w": 109
+  },
+  "tool_spear_down": {
+   "clip": "down",
+   "cols": 1,
+   "h": 720,
+   "layer": "tool_spear",
+   "rows": 8,
+   "w": 109
   },
   "tool_spear_idle": {
    "clip": "idle",

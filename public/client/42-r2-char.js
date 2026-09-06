@@ -116,7 +116,15 @@
     return !!(m && Array.isArray(m.layers) && m.layers.indexOf(key) >= 0);
   }
 
-  function charState(pid, speed, aiming, attackAt, dtSec) {
+  // ★[T137] `force` 가 오면 상태기계를 건너뛴다 — 쓰러진 사람은 속도·조준과 무관하게 `down` 이고,
+  //   업는 사람은 `carry` 다. 둘 다 프레임 하나짜리 정적 클립이라 시간도 안 센다.
+  function charState(pid, speed, aiming, attackAt, dtSec, force) {
+    if (force) {
+      let st2 = _charAnim.get(pid);
+      if (!st2) { st2 = { clip: force, t: 0, one: null, oneT: 0, lastAtk: attackAt || 0 }; _charAnim.set(pid, st2); }
+      st2.clip = force; st2.one = null; st2.t = 0;
+      return { clip: force, frame: 0 };
+    }
     let st = _charAnim.get(pid);
     if (!st) { st = { clip: 'idle', t: 0, one: null, oneT: 0, lastAtk: attackAt || 0 }; _charAnim.set(pid, st); }
     const m = _charMeta;
@@ -153,7 +161,10 @@
     const st0 = _charAnim.get(opts.pid);
     const now = performance.now();
     const dtSec = st0 && st0.lastT ? Math.min(0.25, (now - st0.lastT) / 1000) : 0;
-    const stt = charState(opts.pid, opts.speed || 0, !!opts.aiming, opts.attackAt || 0, dtSec);
+    // ★★[T137] 쓰러진 사람·업는 사람·업힌 사람은 **정적 클립**이라 상태기계를 건너뛴다.
+    //   업힌 사람은 제 몸을 따로 굽지 않는다 — 쓰러진 판(`down`)을 그대로 쓰고 **자리만** 옮긴다.
+    const force = opts.carriedOn ? 'down' : (opts.down ? 'down' : (opts.carrying ? 'carry' : null));
+    const stt = charState(opts.pid, opts.speed || 0, !!opts.aiming, opts.attackAt || 0, dtSec, force);
     _charAnim.get(opts.pid).lastT = now;
     const imgs = [];
     for (const L of layers) {
@@ -173,10 +184,17 @@
     //   뒤집었는데(2026-08-31 오전), 그건 부분해였고 3차에서 홀드아웃으로 대체됐다.
     const fw = m.frameW, fh = m.frameH;
     const sx = stt.frame * fw, sy = row * fh;
-    const dx = Math.round(x - m.anchorX), dy = Math.round(y - m.anchorY);
+    // ★★[T137 ②] **업힌 사람은 업는 사람의 등으로 옮겨 그린다** — 오프셋은 메타가 준다
+    //   (`carryOffset[방향]` · `char_render.py` 가 두 포즈의 **척추 끝**을 맞대 실측한 값).
+    //   ⚠클라는 이 수를 하나도 하드코딩하지 않는다 — 포즈를 고치면 굽기가 새 값을 적어 온다.
+    let ox = 0, oy = 0;
+    if (opts.carriedOn && Array.isArray(m.carryOffset) && m.carryOffset[row]) {
+      ox = m.carryOffset[row][0]; oy = m.carryOffset[row][1];
+    }
+    const dx = Math.round(x + ox - m.anchorX), dy = Math.round(y + oy - m.anchorY);
     // 발밑 그림자 — 도형 경로와 같은 자리·같은 크기(시트가 바뀌어도 접지감은 유지)
-    ctx.fillStyle = 'rgba(0,0,0,0.45)';
-    ctx.beginPath(); ctx.ellipse(x, y + 2, 8, 3, 0, 0, Math.PI * 2); ctx.fill();
+    //   ★업힌 사람은 땅에 안 닿는다 ⇒ 그림자 없음(업는 사람의 것 하나만 남는다).
+    if (!opts.carriedOn) drawCharShadow(x, y, !!opts.down);
     for (const img of imgs) ctx.drawImage(img, sx, sy, fw, fh, dx, dy, fw, fh);
     // ★진단 훅은 **pid 별**이다 — 마지막에 그린 하나만 남기면 "타 플레이어도 같은 애니"를 못 잰다.
     if (!window.__charDbg) window.__charDbg = {};
@@ -185,12 +203,36 @@
                          job: opts.job || null,      // ★[T13] NPC 직업 — 하네스가 표식을 판정하는 재료
                          clothes: opts.clothes || null,   // ★[T125] 서버가 실어 온 옷 재질(주민은 마을 곳간)
                          carrier: !!opts.carrier,        // ★[T134] 서버가 실어 온 지게 1비트(주민은 진 짐)
+                         down: !!opts.down, carriedOn: !!opts.carriedOn, carrying: !!opts.carrying,   // ★[T137]
+                         off: [ox, oy],                  // ★[T137] 업힌 사람에게 적용한 등 오프셋(0,0 이면 안 업힌 것)
 
                          speed: +(opts.speed || 0).toFixed(2),
                          aiming: !!opts.aiming, isMe: !!isMe, fw, fh,
                          facing: [+(opts.fvx || 0).toFixed(4), +(opts.fvy || 0).toFixed(4)],
                          anchor: [m.anchorX, m.anchorY], t: performance.now() };
     return true;
+  }
+
+  // ★★[T137] 그림자와 '쓰러진 이름표'를 **한 자리**로 모은다 — 종전엔 도형 경로 안에만 있었고,
+  //   시트 경로가 다운을 그리게 되면서 두 벌이 될 뻔했다. 숫자는 도형 경로의 것 그대로다(무변).
+  function drawCharShadow(x, y, down) {
+    ctx.fillStyle = down ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.45)';
+    ctx.beginPath();
+    if (down) ctx.ellipse(x, y + 4, 14, 4, 0, 0, Math.PI * 2);
+    else ctx.ellipse(x, y + 2, 8, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  /** 쓰러진 사람의 이름표 — `× 이름`(붉은색). 도형 경로와 시트 경로가 **같은 것을 부른다**. */
+  function drawDownTag(x, y, name) {
+    if (!name) return;
+    ctx.font = '11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ff8888';
+    ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+    ctx.lineWidth = 3;
+    ctx.strokeText('× ' + name, x, y - 12);
+    ctx.fillText('× ' + name, x, y - 12);
+    ctx.textAlign = 'start';
   }
 
   function drawPlayerIso(x, y, name, color, isMe = false, opts = {}) {
@@ -202,9 +244,7 @@
     if (opts.cap) { ctx.strokeStyle = 'rgba(200,200,200,0.85)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(x, y + 4, 11, 4.5, 0, 0, Math.PI * 2); ctx.stroke(); }
     // Phase 14.41: 다운 — 누워있는 모습 (옆으로 길게)
     if (isDown) {
-      // 그림자 크게
-      ctx.fillStyle = 'rgba(0,0,0,0.5)';
-      ctx.beginPath(); ctx.ellipse(x, y + 4, 14, 4, 0, 0, Math.PI * 2); ctx.fill();
+      drawCharShadow(x, y, true);   // ★[T137] 그림자는 한 자리에서 온다(시트 경로와 같은 것)
       // 몸통 (옆으로 누움)
       ctx.fillStyle = color;
       ctx.fillRect(x - 12, y - 2, 22, 7);
@@ -217,14 +257,7 @@
       ctx.strokeStyle = '#000'; ctx.lineWidth = 1.2;
       ctx.beginPath(); ctx.moveTo(x + 10, y - 1); ctx.lineTo(x + 13, y + 2);
       ctx.moveTo(x + 13, y - 1); ctx.lineTo(x + 10, y + 2); ctx.stroke();
-      // 이름 + 💀
-      ctx.font = '11px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillStyle = '#ff8888';
-      ctx.strokeStyle = 'rgba(0,0,0,0.85)'; ctx.lineWidth = 3;
-      ctx.strokeText('× ' + name, x, y - 12);
-      ctx.fillText('× ' + name, x, y - 12);
-      ctx.textAlign = 'start';
+      drawDownTag(x, y, name);   // ★[T137] 이름표도 한 자리에서 온다
       return;
     }
     // §4-4 P4: 전쟁 병사 전투 스타일 — 기존 휴머노이드 경로(서버 위치 보간·걷기)를 유지하고

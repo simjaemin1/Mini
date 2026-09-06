@@ -158,6 +158,10 @@ CLIPS = [
     ("run",   8,  True,  14.0),
     ("swing", 6,  False, 14.0),   # 원샷 — 끝나면 이전 상태 복귀
     ("aim",   2,  True,  2.0),
+    # ★★[T137 2026-09-06] **정적 한 판짜리 클립 둘.** 루프도 원샷도 아니다 — 프레임이 하나다.
+    #   `u = fi / max(1, n-1)` 이므로 n=1 이면 u=0 하나뿐이고, 포즈 함수는 상수를 돌려준다.
+    ("down",  1,  False, 1.0),   # 쓰러진 사람 — 죽음 캐논의 3분 창이 이 그림 위에서 돈다
+    ("carry", 1,  False, 1.0),   # 업는 사람 — 업힌 쪽은 굽지 않는다(클라가 `down` 판을 등에 얹는다)
 ]
 
 # ═══════════════ 씬 정본 (nature_render.py 와 동일 — 바꾸지 마라) ═══════════════
@@ -910,6 +914,58 @@ def _pose_aim(u):
     }
 
 
+def _pose_down(u):
+    """쓰러진 사람 — **정적 한 판**. 모캡도 사인도 아니다(카드 T137 ①).
+
+       ★어떻게 눕히나: **리그 오브젝트를 기울이지 않는다.** 오브젝트에는 z 압축
+         `rig.scale = (1,1,ZSQ)` 가 걸려 있고, 블렌더의 행렬은 `T @ R @ S` 라 오브젝트를 기울이면
+         그 압축이 **몸의 길이 방향**으로 눌린다 — 누운 사람이 짧아진다. 압축은 **세상의 높이**를
+         누르라고 있는 것이다(T96 주석의 "포즈한 다음 누르기"). ⇒ **골반 뼈(`root`)를 눕힌다.**
+         자식(척추·다리)이 함께 돌아 몸이 한 줄로 눕는다 — 머리는 뒤(−x), 발은 앞(+x).
+       ★축은 T107 캐논이다: 몸통 뼈(rest = 위)는 `rz` 가 시상면이고 **`+` 가 뒤로 젖힘**이다.
+         `root rz = +84°` = 뒤로 넘어진 자세(등을 대고 눕는다). 90° 가 아니라 84° 인 것은
+         완전 수평이 아니라 **약간 무너진** 모양이라야 사람처럼 보이기 때문이다.
+       ★땅에 붙이는 값(`_down_drop`)은 **고르지 않고 잰다** — 이 포즈의 월드 최저점을 depsgraph 로
+         재서 그만큼 내린다(족보 86). 포즈를 고치면 그 값이 저절로 따라온다.
+       ★옷·도구·등짐 층은 그대로 실린다 — **입은 채 눕는다**(T102 규약). 층 목록은 클립과 무관하다."""
+    r = math.radians
+    return {
+        'root':   (0, 0, r(80)),            # 골반을 눕힌다 — 몸 전체가 따라 눕는다
+        'spine':  (0, 0, r(11)),            # 등이 조금 더 젖는다(뒤통수가 땅에 먼저 닿은 모양)
+        'head':   (r(11), 0, r(-24)),       # 고개가 옆으로 떨구어진다(rx=+ → 캐릭터의 오른쪽)
+        'uarmL':  (r(-26), 0, r(28)),       # 팔은 몸에서 벌어져 늘어진다
+        'uarmR':  (r(24), 0, r(34)),
+        'larmL':  (0, 0, r(22)),
+        'larmR':  (0, 0, r(15)),
+        'thighL': (r(-7), 0, r(-16)),       # 무릎이 살짝 굽고 다리가 조금 벌어진다
+        'thighR': (r(8), 0, r(-7)),
+        'shinL':  (0, 0, r(20)),
+        'shinR':  (0, 0, r(12)),
+    }
+
+
+def _pose_carry(u):
+    """업는 사람 — **정적 한 판**(카드 T137 ②). 업힌 쪽은 굽지 않는다.
+
+       ★한국식 업기: 상체를 앞으로 기울여 등을 평평하게 만들고, 두 팔을 **뒤·아래**로 돌려
+         업힌 사람의 다리를 받친다. 시상면은 `rz` 이고 **앞은 `−`** 다(T107 `aim` 주석의 그 규약).
+       ★무릎을 조금 굽혀 무게를 받는다 — 그래야 서 있는 판(`idle`)과 실루엣이 갈린다."""
+    r = math.radians
+    return {
+        'root':   (0, 0, r(-15)),           # 상체 앞으로 — 등이 평평해진다(1차 −26 은 넘어지는 것처럼 읽혔다)
+        'spine':  (0, 0, r(-9)),
+        'head':   (0, 0, r(13)),            # 고개는 도로 든다(앞을 본다)
+        'uarmL':  (r(-9), 0, r(32)),        # 팔을 뒤로 돌려 받친다(+rz = 뒤 · 1차 52 는 만세로 읽혔다)
+        'uarmR':  (r(9), 0, r(32)),
+        'larmL':  (0, 0, r(-72)),           # 팔꿈치를 깊게 접어 손이 앞·아래로 온다(업힌 다리를 받친다)
+        'larmR':  (0, 0, r(-72)),
+        'thighL': (0, 0, r(11)),            # 무게를 받는 무릎
+        'thighR': (0, 0, r(11)),
+        'shinL':  (0, 0, r(-17)),
+        'shinR':  (0, 0, r(-17)),
+    }
+
+
 # ═══════════════ 모캡 포즈표 [T96] ═══════════════
 #   ★`walk`·`run` 은 이제 **사람 모션**이다(CMU 07_01 걷기 · 09_01 달리기).
 #     사인 함수는 시계추가 아니라 **가랑이를 옆으로 벌리는 것**이었다 — §0-ⓒ 실측:
@@ -937,7 +993,8 @@ def _pose_table(clip):
 
 
 POSE_FN = {'idle': _pose_idle, 'walk': _pose_walk, 'run': _pose_run,
-           'swing': _pose_swing, 'aim': _pose_aim}
+           'swing': _pose_swing, 'aim': _pose_aim,
+           'down': _pose_down, 'carry': _pose_carry}   # ★[T137] 정적 둘
 if _MOCAP:
     for _c in ('walk', 'run'):
         if _c in _MOCAP.get("clips", {}):
@@ -946,6 +1003,54 @@ if _MOCAP:
           f"({_MOCAP['source']['walk']['clip']} · {_MOCAP['source']['run']['clip']})")
 else:
     print("[char] ★사인 포즈(T96_SINE=1 또는 poses.json 없음)")
+
+
+# ★★[T137] **땅에 붙이는 값은 고르지 않고 잰다**(족보 86). `down` 은 골반을 눕히는 포즈라
+#   몸이 골반 높이(≈0.9m)에 떠 있다. 그 포즈의 **월드 최저점**을 한 번 재서 그만큼 내린다 —
+#   포즈 숫자를 고치면 이 값이 저절로 따라온다(상수를 손으로 적으면 그날 발이 땅에 묻힌다).
+#   ★방향 회전은 z 축이라 최저점을 안 바꾼다 ⇒ **한 번만 재서 여덟 방향에 그대로 쓴다.**
+#   ★★`carry` 도 여기 든다 — **하네스가 잡아서 알았다.** 무게를 받으려고 무릎을 굽혔더니
+#     다리가 짧아져 **발이 지면에서 5px 떠 있었다**(`test-charsheet ⑨`: 발밑 79 vs 선 몸 84).
+#     같은 자를 대면 저절로 내려앉는다 — 포즈마다 손으로 값을 적었으면 이 결함이 남았을 것이다.
+_GROUND_CLIPS = {'down', 'carry'}
+_ground_drop = {}
+_ground_ref_v = []
+
+
+def _feet_objs():
+    """짚신 둘 — **서 있는 판의 접지 정본**.
+       ★1차는 전 층의 최저점을 썼다. 그런데 그건 **치마·옷자락**이 잡는다 — 선 판도 업는 판도
+         똑같이 0.0000 이 나오고, 무릎을 굽혀 **발이 4px 떠도 값이 안 움직인다.**
+         `test-charsheet ⑨`(발밑 80 vs 선 몸 84)가 그걸 잡았다. 재는 자를 발로 바꿨다."""
+    return [o for o in ALLOBJ if o.name in ('footL', 'footR')]
+
+
+def _ground_ref():
+    """지면 기준선 = **선 판(`idle`)의 발바닥 최저 z**. 새 클립은 그 줄에 맞춘다 —
+       0 이 아니라 **이미 배포된 선 판과 같은 땅**을 딛게 하려는 것이다.
+       ★한 번만 잰다(방향 회전은 z 축이라 최저점을 안 바꾼다)."""
+    if not _ground_ref_v:
+        _save = (tuple(rig.location), tuple(rig.rotation_euler))
+        apply_pose('idle', 0, CLIP_N['idle'], 0)
+        _ground_ref_v.append(_world_min_z(_feet_objs()))
+        rig.location, rig.rotation_euler = _save
+        bpy.context.view_layer.update()
+    return _ground_ref_v[0]
+
+
+def _world_min_z(objs):
+    dg = bpy.context.evaluated_depsgraph_get()
+    lo = 1e18
+    for ob in objs:
+        eo = ob.evaluated_get(dg)
+        me = eo.to_mesh()
+        mw = eo.matrix_world
+        for v in me.vertices:
+            z = (mw @ v.co).z
+            if z < lo:
+                lo = z
+        eo.to_mesh_clear()
+    return lo
 
 
 def apply_pose(clip, fi, nframes, dirIdx):
@@ -965,6 +1070,19 @@ def apply_pose(clip, fi, nframes, dirIdx):
     rig.location = (0.0, 0.0, bob * ZSQ)   # ★location 은 제 오브젝트 스케일을 안 먹는다
     rig.rotation_euler = (0.0, 0.0, dirIdx * (2 * math.pi / DIRS))
     bpy.context.view_layer.update()
+    if clip in _GROUND_CLIPS:
+        if clip not in _ground_drop:
+            # ★자를 클립마다 다르게 댄다 — **무엇이 땅에 닿는가**가 다르기 때문이다.
+            #   서서 업는 사람은 **발바닥**이 닿고, 누운 사람은 **몸통 어딘가**가 닿는다.
+            _lo = _world_min_z(_feet_objs() if clip == 'carry' else all_layer_objects())
+            _ground_drop[clip] = _lo - _ground_ref()
+            print(f"[char] {clip} 접지 실측: 월드 최저 z = {_lo:.4f} · 선 판 기준선 {_ground_ref():.4f}"
+                  f" → {_ground_drop[clip]:+.4f} 만큼 내린다")
+            # 기준을 다시 걸려면 이 포즈를 다시 세워야 한다(기준 측정이 리그를 건드렸다)
+            apply_pose(clip, fi, nframes, dirIdx)
+            return
+        rig.location = (0.0, 0.0, -_ground_drop[clip])
+        bpy.context.view_layer.update()
 
 
 CLIP_LOOP = {c[0]: c[2] for c in CLIPS}
@@ -1059,6 +1177,30 @@ print(f"[char] 프레임 {FW}x{FH} (ss={SS}) · 앵커=({ANCH_X:.1f},{ANCH_Y:.1f
 # 화면 세로 px/m = PPU0 · ZSQ · cos30° = 32.0 (자산 정본: 1m 높이 = 32px)
 _PXM = PPU0 * ZSQ * math.cos(math.radians(30.0))
 print(f"[char] 시트 프레임(클라) = {FW//SS}x{FH//SS}px · 키 {H_TOT}m → {H_TOT*_PXM:.1f}px (1m={_PXM:.1f}px)")
+
+# ★★[T137 ②] **업기 오프셋 — 굽지 않고 잰다.** 업힌 사람은 시트를 따로 굽지 않는다:
+#   클라가 그 사람의 `down` 판을 업는 사람의 **등 위치**에 얹는다(사본 0 · 카드 ②).
+#   그 자리는 눈대중이 아니라 `carry` 포즈의 **척추 뼈 끝(윗등)** 월드 좌표다 — 여기서 재서 메타에 적는다.
+#   ⇒ 포즈를 고치면 오프셋이 저절로 따라오고, 클라는 규격을 하나도 하드코딩하지 않는다(캐논).
+#   ★여덟 방향을 다 잰다 — 리그를 z 로 돌리므로 등의 화면 좌표가 방향마다 다르다.
+#   ★★맞대는 점은 **등끼리**다. 1차는 업는 사람의 등 좌표만 썼는데(업힌 사람의 **발밑 원점**을
+#     거기 놓는 것), 실측해 보니 업힌 몸이 업는 사람의 **머리 위로** 떠올랐다(중심 y 22 vs 등 41).
+#     누운 몸의 살은 제 원점보다 19px 위에 있기 때문이다 — 원점은 땅이고 몸은 그 위에 눕는다.
+#   ⇒ 두 포즈의 척추 끝을 **서로 맞댄다**: `offset = 등(carry) − 등(down)`. 그러면 업힌 사람의
+#     윗등이 업는 사람의 윗등에 정확히 얹힌다(들쳐 업은 모양). 둘 다 뼈에서 나온 값이라 눈대중 0.
+def _back_screen(clip, d):
+    apply_pose(clip, 0, CLIP_N[clip], d)
+    pw = rig.matrix_world @ rig.pose.bones['spine'].tail     # 윗등(척추 끝) 월드 좌표
+    return (pw.dot(RHAT) * PPU, -pw.dot(UHAT) * PPU)         # 화면 (가로, 세로) 슈퍼샘플 px
+
+
+CARRY_OFF = []
+if 'carry' in CLIP_N and 'down' in CLIP_N:
+    for _d in range(DIRS):
+        _cu, _cw = _back_screen('carry', _d)
+        _du, _dw = _back_screen('down', _d)
+        CARRY_OFF.append([round((_cu - _du) / SS, 3), round((_cw - _dw) / SS, 3)])   # 클라 픽셀
+    print(f"[char] 업기 오프셋(등↔등 · 클라 px · 8방향): {CARRY_OFF}")
 
 scene.render.resolution_x = FW
 scene.render.resolution_y = FH
@@ -1187,6 +1329,9 @@ META = {
               "inkPx": INK_PX, "celBands": CEL_BANDS, "poseSrc": ("sine" if not _MOCAP else "mocap"),
               "headK": HEAD_K, "shldK": SHLD_K, "limbK": LIMB_K, "handK": HAND_K},
     "clips": {c[0]: {"frames": c[1], "loop": c[2], "fps": c[3]} for c in CLIPS},
+    # ★[T137 ②] 업힌 사람을 업는 사람의 등에 얹는 화면 오프셋(클라 px · 방향 0~7).
+    #   클라는 이 값을 **읽기만** 한다 — `down` 판의 앵커를 여기로 옮겨 그린다.
+    "carryOffset": CARRY_OFF,
     "layers": [l[0] for l in LAYERS if l[0] != 'probeall'],
     "sheets": {},
 }
