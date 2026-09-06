@@ -191,9 +191,13 @@ function treeCountOf(v) {
   // ★손잡이 `T135_SCATTER=0` — 둘째 항을 끈다. **1판으로 되돌리는 문**이자 하네스의 돌연변이 자리다
   //   (족보 128: 돌연변이는 수출을 갈아 끼우는 게 아니라 **자식 프로세스 + env** 로 건다).
   const scatter = (_num('T135_SCATTER', 1) !== 0 && typeof CH.scatterTreesPerCell === 'function') ? CH.scatterTreesPerCell(_biome()) : 0;
+  // ★[3판] 첫 항도 **실물대로** — 간격 상한(가장 성긴 숲) 대신 간격 구간의 평균 밀도를 쓴다.
+  //   손잡이 `T135_FOREST_MEAN=0` 이면 2판(상한)으로 돌아간다 — 하네스의 돌연변이 자리다.
+  const useMean = _num('T135_FOREST_MEAN', 1) !== 0 && typeof CH.forestTreesPerCellMean === 'function';
+  const perForestCell = useMean ? CH.forestTreesPerCellMean() : CH.forestTreesPerCell();
   //   숲 셀엔 **그리드**가 서고, 그 밖의 셀엔 **흩어진 나무**가 선다.
   //   (숲 셀에도 일반 루프 나무가 겹쳐 서지만 그건 세지 않는다 — 아래로 잡는다.)
-  return forestCells * CH.forestTreesPerCell() + Math.max(0, all - forestCells) * scatter;
+  return forestCells * perForestCell + Math.max(0, all - forestCells) * scatter;
 }
 /** 품목별 **연간** 예산(위 ④⑤). `{item: amount}` */
 function annualFruitBudget(v) {
