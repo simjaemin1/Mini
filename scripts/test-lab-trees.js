@@ -6,7 +6,7 @@
 // 지키는 것의 절반은 "무엇이 있는가"가 아니라 **"무엇이 없는가"**다 — 서버 무접촉·새 수 0·사본 0.
 //
 //  ① 표 ≡ 파일        `build-trees.js --check` (랩 `TREES` 와 `lab/trees.json` 이 어긋나면 빨강)
-//  ② 서버 무접촉      server/·public/ 에 T123 이름이 한 곳도 없다(이식 전이라는 사실 자체를 잠근다)
+//  ② 이식 자리        [T135] 서버가 이 층을 **이식했다** — 랩과 서버가 같은 표를 보는지만 본다
 //  ③ 부등식 새 수 0   `fellOK` 본문에 숫자 리터럴 0 — 표의 축과 그림자가격만 쓴다
 //  ④ 종에 우열 없음   표의 축이 정확히 일곱 키(ko·wood·mature·char·fruit·fy·fs) — "좋은 나무" 축 금지
 //  ⑤ 주사위 금지      종 배정·열매 정산에 Math.random 0 (자리 × 시드의 함수)
@@ -45,18 +45,25 @@ try {
   execFileSync(process.execPath, [path.join(ROOT, 'scripts', 'build-trees.js'), '--check'], { stdio: 'pipe' });
   ok(true, 'build-trees.js --check 통과(표와 파일이 같다)');
 } catch (e) { ok(false, 'build-trees.js --check 실패 — `node scripts/build-trees.js` 를 돌려라'); }
-const TJ = JSON.parse(fs.readFileSync(path.join(ROOT, 'lab', 'trees.json'), 'utf8'));
+// ★[T135] 구운 자리가 `lab/` → `server/` 로 옮겨졌다(이식). 굽는 대상은 여전히 **하나**다.
+const TJ = JSON.parse(fs.readFileSync(path.join(ROOT, 'server', 'trees.json'), 'utf8'));
 ok(Object.keys(TJ.trees).length >= 5, '종 ' + Object.keys(TJ.trees).length + '개(≥5)');
 
 // ── ② 서버 무접촉 ───────────────────────────────────────────────────────────
-sec('② 서버 무접촉 — 이식은 다음 카드(승인 게이트)다');
-const walk = (d, out) => { for (const f of fs.readdirSync(d)) { const p = path.join(d, f);
-  const st = fs.statSync(p); if (st.isDirectory()) { if (f !== 'node_modules') walk(p, out); }
-  else if (/\.(js|json)$/.test(f)) out.push(p); } return out; };
-const serverFiles = walk(path.join(ROOT, 'server'), []).concat(walk(path.join(ROOT, 'public'), []));
-for (const name of ['fellOK', 'fruitSettle', 'treeAt', 'trees.json', 'T123_FRUIT']) {
-  const hits = serverFiles.filter((p) => fs.readFileSync(p, 'utf8').includes(name));
-  ok(hits.length === 0, `server/·public/ 에 \`${name}\` 0곳` + (hits.length ? ' — ' + hits.map((p) => path.relative(ROOT, p)).join(', ') : ''));
+sec('② 이식 자리 — [T135] 서버가 이 층을 가져갔다(랩과 같은 표를 보는가)');
+{
+  // T123 때 이 절은 "server/ 에 이 이름이 0곳"이었다. T135 가 이식했으므로 **반대**를 검사한다:
+  //   서버 정본(`server/trees.js`)이 랩과 **같은 표**를 보고, 랩의 되돌림 손잡이는 랩에만 남았는가.
+  const Tsrv = require(path.join(ROOT, 'server', 'trees.js'));
+  const labIds = Object.keys(TJ.trees).sort().join(',');
+  ok(Tsrv.ids().sort().join(',') === labIds, '서버 정본이 같은 표를 읽는다(종 ' + Tsrv.ids().length + ')');
+  const labFruit = Object.entries(TJ.trees).filter(([, t]) => t.fruit).map(([k, t]) => k + ':' + t.fruit).sort().join(' ');
+  const srvFruit = Tsrv.fruitIds().map((k) => k + ':' + Tsrv.fruitOf(k)).sort().join(' ');
+  ok(labFruit === srvFruit, '열매 짝도 같다 — ' + srvFruit);
+  ok(!fs.existsSync(path.join(ROOT, 'lab', 'trees.json')), '옛 자리(lab/trees.json)는 없다 — 굽는 대상은 하나');
+  // 랩 전용 손잡이는 랩에만 있어야 한다(서버로 새어 들어가면 그게 사본이다)
+  const srv = fs.readFileSync(path.join(ROOT, 'server', 'trees.js'), 'utf8');
+  ok(!/T123_FRUIT/.test(srv), '랩 전용 손잡이(T123_FRUIT)는 서버로 안 넘어왔다');
 }
 
 // ── ③ 부등식 새 수 0 ────────────────────────────────────────────────────────

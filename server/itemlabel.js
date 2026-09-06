@@ -42,6 +42,14 @@ const RESOURCE_VERBS = {
   sapling: '벌목',
 };
 
+// ★★[T135 2026-09-06] **두 번째 동사** — 열매나무는 베는 것과 **따는 것**이 다른 일이다.
+//   ⚠`RESOURCE_VERBS` 는 종류 하나에 동사 하나라 여기 넣을 수 없다(그 표의 키 집합은
+//     `RESOURCE_HP_TABLE` 전수와 맞대 놓았다 — `test-itemlabel ⑭`). 그래서 **곁표**를 둔다.
+//   ⚠`hp` 무접촉이 이 표의 뜻이다: 따도 나무는 안 죽는다. 재고만 준다(`server/trees.js fruitTake`).
+//     그래서 `RESOURCE_HP_TABLE` 에 새 종류를 만들지 않았다 — 같은 나무의 다른 손짓일 뿐이다.
+//   키는 **반드시 위 표의 부분집합**이어야 한다(하네스가 본다).
+const RESOURCE_VERBS_ALT = { tree: '열매 따기' };
+
 // ★★[T126 2026-09-05 재민 확정 · T82·T90 회부 "NPC 우클릭 동사"] **사람에게 쓰는 동사 이름표.**
 //   T90 의 `RESOURCE_VERBS` 와 **같은 문법**이다: 정본은 여기, 통로는 `welcome`, 클라는 표만 읽고
 //   **폴백을 두지 않는다**(서버가 모르는 키면 키가 그대로 뜬다 — 조용히 접히는 것보다 낫다).
@@ -74,4 +82,4 @@ function itemLabels(base, buildingRecipes) {
   return out;
 }
 
-module.exports = { CATEGORY_KO, RESOURCE_VERBS, NPC_VERBS, NO_CANON, itemLabels, koOfLabel };
+module.exports = { CATEGORY_KO, RESOURCE_VERBS, RESOURCE_VERBS_ALT, NPC_VERBS, NO_CANON, itemLabels, koOfLabel };

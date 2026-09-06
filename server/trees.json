@@ -1,6 +1,6 @@
 {
  "_source": "lab/전쟁실험실.html `const TREES` (T123) — 손편집 금지 · `node scripts/build-trees.js` 로 굽는다",
- "_note": "서버는 아직 이 파일을 읽지 않는다(이식은 승인 게이트 카드). 종에 우열 없음 — 값은 그림자가격이 정한다.",
+ "_note": "읽는 쪽은 server/trees.js 하나. 종에 우열 없음 — 값은 그림자가격이 정한다.",
  "_axes": {
   "ko": "이름",
   "wood": "목재 수율(소나무=1.00 상대 재적)",

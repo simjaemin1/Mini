@@ -126,6 +126,9 @@
   // ★[T124] 심을 수 있는 씨앗 목록(서버 정본 · `welcome.plantSeeds`). 폴백 표 없음 — 사본 0.
   //   비어 있으면 심기 동사가 안 뜬다(= 되돌림 `T124_PLANT=0` 이 화면까지 그대로 걸린다).
   let plantSeeds = [];
+  // ★[T135] 두 번째 동사 표(열매 따기). 같은 규약 — 서버 정본 하나, 클라 폴백 0.
+  let resourceVerbsAlt = null;
+  let treeFruitKo = null;     // 종 → 열매 이름(서버 `welcome.treeFruitKo`). 클라는 종 목록을 안 적는다.
   // ★[T126] 사람에게 쓰는 동사 이름표(서버 정본 · `welcome.npcVerbs`). 폴백 없음 — 사본 0.
   let npcVerbs = null;
   // ★[T66 ⓪] 직업·계절 이름 정본(`welcome.uiLabels`). 클라 사본 둘(JOB_KR·SEASON_KO)은 지웠다.
