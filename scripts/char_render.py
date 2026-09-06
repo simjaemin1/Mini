@@ -662,6 +662,30 @@ def set_cloth_material(key):
             _o.data.materials[_i] = ms[_r]
 
 
+# ═══════════════ 병종 띠 [T143 2026-09-06] ═══════════════
+# ★★카드 T143 ① — 병종색은 **팔레트 한 줄**이지 새 클립이 아니다. §0-ⓑ 는 청동기 부대 표지의
+#   출처를 못 찾았다(방패 문양 연구는 삼국시대다) ⇒ 카드의 폴백대로 **T81 허리끈** 그 조각이다.
+# ★★**새 형상 0** — 여기서 짓는 기하는 없다. `build_cloth` 이 이미 지은 `belt` **그 오브젝트**를
+#   제 층으로 한 번 더 굽는다. 왜 사본을 안 만드나 — 이 파일의 T81 절이 적어 둔 그대로,
+#   *"씬에 안 보이는 기하가 늘면 Cycles 의 BVH·표본이 흔들려 **이미 얼린 시트의 바이트를 위협**한다"*.
+#   오브젝트를 그대로 쓰면 씬 구성이 한 자도 안 변한다 — 기존 100장 바이트 무변의 근거가 이것이다.
+# ★재질만 갈아 끼운다: 물들일 **바탕**. 중립이라 (1,1,1) 이다 — 고른 값이 아니라 "색을 안 섞는
+#   유일한 바탕"이다(족보 74 — 눈대중 금지). rough·spec 은 허리끈 그대로(0.90/0.06).
+# ★클라는 이 층을 **날로 안 그린다** — `source-in` 으로 **알파만** 남기고 병종색으로 채운다
+#   (`42-r2-char.js tintFrame`). 그러니 이 시트가 나르는 것은 **허리끈의 모양(알파)** 이다.
+#   ⓘ 곱하기가 아닌 근거는 그 함수의 주석에 실측으로 적혀 있다(불투명 화소 97.1% 가 셀 한 단).
+# ★홀드아웃은 몸 — 도구·등짐과 같다. 소매는 z 1.180~1.405 라 허리끈(z 0.998~1.048) 에
+#   닿지 않고(실측), 튜닉은 그 높이에서 rx 0.126~0.128 로 허리끈 0.130 보다 **안쪽**이라 가리지 못한다.
+M['band'] = mat("band", (1.0, 1.0, 1.0), 0.90, 0.06)
+BAND = [_o for _o in CLOTH if _o.name == 'belt']
+assert len(BAND) == 1, "허리끈 오브젝트가 하나가 아니다 — build_cloth 가 바뀌었다"
+
+
+def set_band_material():
+    for _i in range(len(BAND[0].data.materials)):
+        BAND[0].data.materials[_i] = M['band']
+
+
 # ── 도구(손에 드는 것) — 오른손(모델 −y) 기준 ───────────────────────────────
 #   ★목록 주도: 여기 한 줄을 더하면 파이프라인이 자동으로 그 도구 시트를 굽는다.
 def build_axe():
@@ -724,8 +748,33 @@ def build_basket():
     return L
 
 
+def build_rope():
+    """포로의 결박 — **소품 하나**(카드 T143 ②). 도구와 **같은 문법**이다: 오른손(모델 −y)에
+       강체로 물리고 `TOOL_BUILDERS` 한 줄. 새 클립 0 · 새 포즈 0.
+
+       ★★§0-ⓒ 실측이 형태를 정했다 — **두 손목을 잇는 한 조각은 이 문법에 안 든다.**
+         리그에 `handL` 이 **없다**(뼈 열둘: root·spine·head·uarmL/R·larmL/R·handR·thighL/R·shinL/R).
+         왼 손목을 물릴 뼈가 없으니 두 손을 잇는 줄은 오른손만 따라가고 걸음에서 왼팔과 벌어진다.
+       ⇒ **손목 하나 기준**으로 만든다(§0 이 미리 허용한 그 길): 오른 손목의 **고리** 하나와,
+         몸 가운데로 뻗다 끊기는 **짧은 줄** 하나. 26px 에서 읽히는 것은 "손목에 뭔가 감겼다"이지
+         줄의 끝이 아니다. 두 뼈에 걸친 줄(로프트 가중)은 회부에 남긴다.
+       ★자리는 손 뼈에서 나온다: `handR` 머리 = (0, −(SH_W+0.045), Z_SHLD−0.56) = (0, −ARM_Y, …).
+       ★재질은 `cord` — 도끼·창의 **묶음 끈과 같은 것**이다(새 재질 0).
+       ★굵기는 **고르지 않고 캐논에서 온다**(족보 74). 1차엔 0.028m 로 지었다가 실측이 잡았다:
+         한 판에 남는 화소가 2~14개였고 여덟 방향 중 둘은 **0개**였다(손이 몸 뒤인 방향 — 홀드아웃).
+         0.028m × PPU0 45.255 = 화면 **1.27px** 이라 애초에 안 보이는 굵기였다.
+       이 레포가 이미 정한 "화면에서 읽히는 최소선"은 T81 의 갖옷 두께다 —
+         *"3cm 는 화면에서 읽히는 최소선으로 골랐다: … 반지름 +0.03m = 한쪽 1.36px · 폭으로 2.7px"*.
+       ⇒ 줄의 단면을 **0.06m(= 폭 2.7px)** 로 둔다. 새끼줄 굵기로도 무리가 아니다."""
+    L = []
+    prism("rope_cuff", 0.02, -ARM_Y, Z_SHLD - 0.575, 0.075, 0.075, 0.06, M['cord'], L, seg=10)
+    box("rope_span", 0.02, -ARM_Y * 0.5, Z_SHLD - 0.575, 0.06, ARM_Y, 0.06, M['cord'], L)
+    return L
+
+
 TOOL_BUILDERS = [("axe", build_axe), ("rod", build_rod), ("hoe", build_hoe), ("hammer", build_hammer),
-                 ("spear", build_spear), ("basket", build_basket)]
+                 ("spear", build_spear), ("basket", build_basket),
+                 ("rope", build_rope)]   # ★[T143] 포로 결박 — 도구가 아니라 표지지만 **같은 층 문법**이다
 for _tn, _tb in TOOL_BUILDERS:
     TOOLS[_tn] = _tb()
 
@@ -769,6 +818,7 @@ WEIGHT = {
     'footL': 'shinL', 'footR': 'shinR',
     'axe_haft': 'handR', 'axe_head': 'handR', 'axe_bind': 'handR',
     'rod_pole': 'handR', 'rod_grip': 'handR',
+    'rope_cuff': 'handR', 'rope_span': 'handR',   # ★[T143] 결박 — 오른 손목 기준(§0-ⓒ · `handL` 이 없다)
 }
 # ★[T87] 등짐은 몸통에 묶인 강체 — 전부 `spine`(도구가 `handR` 인 것과 같은 규약).
 for _bo in BACK:
@@ -1188,10 +1238,15 @@ print(f"[char] 시트 프레임(클라) = {FW//SS}x{FH//SS}px · 키 {H_TOT}m �
 #     누운 몸의 살은 제 원점보다 19px 위에 있기 때문이다 — 원점은 땅이고 몸은 그 위에 눕는다.
 #   ⇒ 두 포즈의 척추 끝을 **서로 맞댄다**: `offset = 등(carry) − 등(down)`. 그러면 업힌 사람의
 #     윗등이 업는 사람의 윗등에 정확히 얹힌다(들쳐 업은 모양). 둘 다 뼈에서 나온 값이라 눈대중 0.
-def _back_screen(clip, d):
-    apply_pose(clip, 0, CLIP_N[clip], d)
-    pw = rig.matrix_world @ rig.pose.bones['spine'].tail     # 윗등(척추 끝) 월드 좌표
+def _bone_screen(clip, d, bone, tail=True, fi=0):
+    apply_pose(clip, fi, CLIP_N[clip], d)
+    pb = rig.pose.bones[bone]
+    pw = rig.matrix_world @ (pb.tail if tail else pb.head)
     return (pw.dot(RHAT) * PPU, -pw.dot(UHAT) * PPU)         # 화면 (가로, 세로) 슈퍼샘플 px
+
+
+def _back_screen(clip, d):
+    return _bone_screen(clip, d, 'spine', tail=True)         # 윗등(척추 끝)
 
 
 CARRY_OFF = []
@@ -1201,6 +1256,23 @@ if 'carry' in CLIP_N and 'down' in CLIP_N:
         _du, _dw = _back_screen('down', _d)
         CARRY_OFF.append([round((_cu - _du) / SS, 3), round((_cw - _dw) / SS, 3)])   # 클라 픽셀
     print(f"[char] 업기 오프셋(등↔등 · 클라 px · 8방향): {CARRY_OFF}")
+
+# ★★[T143] **손 뼈의 화면 자리** — 밧줄 소품이 손목에 있는지 하네스가 잴 자다.
+#   T137 의 `carryOffset` 과 같은 문법이다: 눈대중 대신 **뼈에서 나온 수**를 메타가 실어 준다.
+#   ⚠도끼 화소를 자로 쓰려던 1차는 틀렸다(실측 |Δ가로중심| 최대 4.18px): 도끼는 자루가 z 로
+#     ±0.31m 뻗어 있어 손목이 꺾이면 그만큼 화면에서 쓸린다. 짧은 밧줄과 중심이 같을 수가 없다.
+#   ⇒ **뼈를 직접 잰다.** 값은 프레임 좌표(클라 px) — 앵커를 더해 두므로 시트 좌표와 바로 견준다.
+#   ★**프레임마다** 잰다 — 걸음에서 팔이 흔들리니 방향 하나에 값 하나로는 못 잰다
+#     (1차엔 프레임 0 만 넣었다가 walk 4번 판에서 손목이 밧줄 상자 밖으로 나갔다).
+HAND_SCREEN = {}
+for _c in CLIP_N:
+    HAND_SCREEN[_c] = []
+    for _d in range(DIRS):
+        _row = []
+        for _f in range(CLIP_N[_c]):
+            _hu, _hw = _bone_screen(_c, _d, 'handR', tail=False, fi=_f)   # 손목 = handR 머리
+            _row.append([round((ANCH_X + _hu) / SS, 3), round((ANCH_Y + _hw) / SS, 3)])
+        HAND_SCREEN[_c].append(_row)
 
 scene.render.resolution_x = FW
 scene.render.resolution_y = FH
@@ -1238,6 +1310,9 @@ for _ck in CLOTH_MATS:
 LAYERS.append(("back_carrier", lambda: BACK, lambda: BODY, None))   # ★[T87] 등짐 — 홀드아웃은 몸(도구와 같다)
 for _tn, _ in TOOL_BUILDERS:
     LAYERS.append(("tool_" + _tn, (lambda n: (lambda: TOOLS[n]))(_tn), lambda: BODY, None))
+# ★[T143] 병종 띠 — 기하는 옷의 허리끈 **그 오브젝트**다(새 형상 0). `pre` 가 재질만 바탕으로 갈아
+#   끼우고, 다음 판의 옷 층 `pre`(`set_cloth_material`)가 도로 돌려놓는다.
+LAYERS.append(("band", lambda: BAND, lambda: BODY, set_band_material))
 
 # ★검사용 대조 레이어(`--probe`): 몸+옷+도끼를 **한 번에** 굽는다.
 #   런타임 합성(레이어를 화가 순서로 겹치기)과 이 대조를 견주면 **가림(occlusion) 오차**가 수치로 나온다.
@@ -1320,6 +1395,7 @@ META = {
     "pxPerMeterH": round(PPU0 * ZSQ * math.cos(math.radians(30.0)), 4),
     "frameW": FW // SS, "frameH": FH // SS,
     "anchorX": round(ANCH_X / SS, 3), "anchorY": round(ANCH_Y / SS, 3),
+    "handScreen": HAND_SCREEN,          # ★[T143] 클립×방향×프레임 손목(handR 머리) 프레임 좌표(클라 px)
     "dirs": DIRS,
     "dirOrder": "d = round(atan2(fy,fx)/(PI/4)) mod 8 — 월드 방향. d=0 은 +x(동).",
     "rowOrder": "행 0 = 방향 0, 위에서 아래로. 열 = 프레임 0..n-1, 왼쪽에서 오른쪽으로.",
@@ -1365,6 +1441,8 @@ def rebuild_sheets():
 
 # ★몸·옷은 **한 몸의 실루엣**을 공유한다(도구는 항상 맨 위에 그려지니 제 실루엣).
 SILHOUETTE_GROUP = set(l[0] for l in LAYERS if l[0] == 'body' or l[0].startswith('clothes'))
+# ★[T143] 몸 **안쪽**에만 있는 층 — 화면 실루엣을 만들지 않으므로 먹선·가장자리를 안 받는다.
+INTERIOR_LAYERS = {'band'}
 
 
 if not ONLY_META:
@@ -1424,10 +1502,25 @@ if not ONLY_META:
                     return alpha[nm]
                 return _partner_alpha(nm)
 
-            rc.post_all([(l, sh) for l, sh, _w, _h in built], SW, SH,
-                              silhouette=SILHOUETTE_GROUP, partner_of=PARTNER,
-                              alpha_of=_alpha_of, ink_px=INK_PX, cel_bands=CEL_BANDS,
-                              edge_a=EDGE_A, edge_k=EDGE_K)
+            # ★★[T143] **실루엣을 안 만드는 층은 제 테두리에 먹선을 안 긋는다.**
+            #   §0 실측이 시켰다: 허리끈은 화면에서 15×7px 인데 먹선(2px)이 사방을 물면
+            #   남는 속살이 없다 — 1차로 구운 `band` 은 **불투명 화소 313개가 전부 먹색**이었고
+            #   (휘도 뭉치 1개 · L=19) 그걸 병종색으로 곱하면 배수 0.075, 즉 **검정**이다.
+            #   왜 애초에 안 긋는 게 맞나: 이 층은 몸 **위에 얹히는 무늬**라 화면의 실루엣을
+            #   만들지 않는다. 옷 시트 안에서도 허리끈과 튜닉 사이엔 먹선이 없다(이어진 한 면).
+            #   가장자리 어둡히기(edge_darken)도 같은 이유로 끈다 — 그것도 실루엣의 자다.
+            #   ⇒ `render_common` 은 한 자도 안 고친다. **부르는 쪽이 두 번 부른다**(T116 계약 유지).
+            _inner = [(l, sh) for l, sh, _w, _h in built if l in INTERIOR_LAYERS]
+            _outer = [(l, sh) for l, sh, _w, _h in built if l not in INTERIOR_LAYERS]
+            if _outer:
+                rc.post_all(_outer, SW, SH,
+                            silhouette=SILHOUETTE_GROUP, partner_of=PARTNER,
+                            alpha_of=_alpha_of, ink_px=INK_PX, cel_bands=CEL_BANDS,
+                            edge_a=EDGE_A, edge_k=EDGE_K)
+            if _inner:
+                rc.post_all(_inner, SW, SH,
+                            silhouette=set(), partner_of={}, alpha_of=lambda _n: None,
+                            ink_px=0, cel_bands=CEL_BANDS, edge_a=EDGE_A, edge_k=1.0)
         for lname, sheet, SW, SH in built:
             key = f"{lname}_{clip}"
             if EXR_ONLY:            # ★[T107] EXR 만 채우는 판 — 배포 PNG 는 손도 안 댄다
@@ -1445,6 +1538,7 @@ print(f"[char] 메타 저장: {len(META['sheets'])}장 · {os.path.join(SHEETDIR
 
 # ═══════════════ .blend 정본 저장 (재민이 열어 보라고) ═══════════════
 set_visible(all_layer_objects())
+set_cloth_material('hemp')   # ★[T143] 띠 층이 허리끈을 바탕색으로 두고 끝난다 — 정본은 삼베로 돌려놓는다
 try:
     bpy.ops.wm.save_as_mainfile(filepath=BLENDOUT)
     print("[char] .blend 저장:", BLENDOUT)

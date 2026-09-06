@@ -1582,15 +1582,17 @@
         //   ⚠NPC 는 **걷기·서기 둘만** 쓴다(T13 지시). 그래서 속도를 달리기 문턱 아래로 **묶어서**
         //     넘긴다 — 안 묶으면 빠른 NPC 가 `run` 시트를 찾고, 그건 있지만 "걷기·서기" 계약 밖이다.
         //     (시트가 없으면 `drawCharSprite` 가 false 를 내고 도형으로 떨어진다 — 폴백은 그대로 산다.)
-        //   다운/전쟁 병사/포로는 종전 도형 경로 유지(누운 모습·병종색·밧줄은 시트에 없다).
+        //   ★[T143] 이 자리에 있던 *"다운/전쟁 병사/포로는 종전 도형 경로 유지"* 는 지웠다 — 셋 다 시트다.
         const _npcRun = (uiCfg.charRunMin || 102);
         const _rawSpeed = item.isMe ? Math.hypot(myVel.vx, myVel.vy)
                                     : Math.hypot(item.vx || 0, item.vy || 0);
-        // ★★[T137 2026-09-06] **다운 제외가 풀렸다.** 종전 주석이 그 이유를 적어 뒀다 —
-        //   *"다운/전쟁 병사/포로는 종전 도형 경로 유지(누운 모습·병종색·밧줄은 **시트에 없다**)"*.
-        //   이제 누운 판이 있다(`down` 클립). 병종색·밧줄은 여전히 없으므로 **그 둘만** 도형에 남는다.
-        //   ⚠시트가 아직 안 떴으면 `drawCharSprite` 가 false 를 내고 도형이 그대로 받는다(폴백 유지).
-        const _spriteOk = !item._war && !item.cap &&
+        // ★★[T143 2026-09-06] **도형 경로가 닫혔다.** 자취를 남긴다 —
+        //   T13 이 "다운/전쟁 병사/포로는 도형 유지"로 시작해, T137 이 다운을 시트로 보내며
+        //   *"병종색·밧줄은 여전히 없으므로 **그 둘만** 도형에 남는다"* 로 줄었고, 이 카드가
+        //   그 둘을 시트로 보냈다(`band` 물들이기 · `tool_rope`). ⇒ **조건 없는 시트 경로**다.
+        //   ⚠폴백은 그대로 산다: 시트가 한 장이라도 안 떴으면 `drawCharSprite` 가 false 를 내고
+        //     도형이 받는다(T137 규약). 도형은 종전 그림 그대로 — 표식이 줄면 그게 회귀다.
+        const _spriteOk =
           drawCharSprite(s.x, s.y, !!item.isMe, {
             pid: item.pid, fvx, fvy,
             speed: item.npc ? Math.min(_rawSpeed, _npcRun - 1) : _rawSpeed,
@@ -1602,6 +1604,10 @@
             // ★[T137] 정적 셋 — 쓰러짐 · 업기 · 업힘. 업힘은 아직 서버 필드가 없다(이송 카드 몫) —
             //   클라 자리는 여기 서 있고, 그 값이 오는 날 한 줄도 안 고친다.
             down: downFlag, carrying: !!item.carrying, carriedOn: !!item.carriedOn,
+            // ★[T143] 전쟁 넷 + 포로 하나 — 서버 `makeEntry` 가 이미 싣고 있던 필드 그대로(서버 diff 0).
+            //   `war`·`bt` 는 띠를 물들이고, `br` 은 궤주 반투명, `cap` 은 밧줄 층을 부른다.
+            //   `bs`(진영)·`bc`(지휘관)는 시트가 안 나른다 — 게이지와 표식이 나른다(아래).
+            war: !!item._war, bt: item.bt, br: item.br, cap: !!item.cap,
           });
         if (!_spriteOk) drawPlayerIso(s.x, s.y, item.name, item.color, item.isMe, { moving, attackPhase, fvx, fvy, isDown: downFlag, war: item._war, bt: item.bt, bs: item.bs, bc: item.bc, br: item.br, cap: item.cap, act: item.act });
         // ★★[T57 2026-09-03] **시트 경로에도 이름표를 붙인다.** 도형 경로는 `drawPlayerIso` 안에서
@@ -1609,8 +1615,13 @@
         //   결함이었던 자리: 시트가 성공하면 위 줄이 안 돌아 이름표가 통째로 빠졌다(T13 시트 배치의 회귀).
         // ★[T137] 쓰러진 사람의 이름표는 `× 이름`(붉은색)이다 — 도형 경로가 쓰던 그 함수를 그대로 부른다.
         //   (시트가 그리든 도형이 그리든 화면의 말은 같아야 한다 — 게이지·이름표 유지 규약.)
-        else if (downFlag) drawDownTag(s.x, s.y, item.name);
-        else drawNameTag(s.x, s.y, item.name, !!item.isMe, item.act);
+        // ★[T143] 시트 경로의 표식 — 포로 발치 링 · 지휘관 금테+★. 도형 경로는 제 안에서
+        //   **같은 함수**를 부른다(사본 0 · `42-r2-char.js drawWarMarks`).
+        else {
+          drawWarMarks(s.x, s.y, { cap: !!item.cap, war: !!item._war, bc: item.bc });
+          if (downFlag) drawDownTag(s.x, s.y, item.name);
+          else drawNameTag(s.x, s.y, item.name, !!item.isMe, item.act);
+        }
         // HP bar for others (전쟁 병사는 만피여도 항상 표시 + 진영색 테두리)
         if (!item.isMe) {
           const o = item.hp !== undefined ? item : null;

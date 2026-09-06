@@ -96,12 +96,23 @@
   //     ⓑ **도구는 두 출처가 한 자리에서 만난다**: 사람은 `o.tool`(실루엣 둘), 주민은 직업표
   //        (`NPC_JOB_TOOL` — 다섯 실루엣). 직업표를 `tool` 문자열로 접지 **않는다**: 그러면
   //        괭이·채반·창·망치가 도끼/장대 둘로 뭉개진다(§0-ⓑ 표 — 통일이 정보를 줄이는 자리다).
+  //     ⓒ ★★[T143 2026-09-06] **병종 띠와 포로 밧줄이 여기로 들어온다** — 종전엔 이 둘만
+  //        도형 경로에 남아 있었다(`34-m-renderloop.js` 의 `!item._war && !item.cap`).
+  //        띠는 층 하나(`band` — 옷의 허리끈 그 기하)를 **병종색으로 물들여** 그리고,
+  //        밧줄은 도구 문법 그대로 `tool_rope` 다. 둘 다 새 클립 0.
   function charLayersFor(isMe, o) {
     const job = (!isMe && o) ? o.job : null;
     const L = ['body'];
     if (!(job && o && !o.clothes)) L.push(clothLayerOf(isMe ? myClothMat() : (o && o.clothes)));
+    // ★[T143] 병종 띠 — 옷 **위**, 등짐 **아래**다. 지게는 등 바깥(x −0.158)이라 허리끈보다 뒤에
+    //   그리면 뒤를 보는 방향에서 띠가 지게를 뚫는다(굽기의 홀드아웃은 몸까지만 잡는다).
+    if (o && o.war && hasCharLayer('band')) L.push('band');
     const back = isMe ? !!(equipSlots && equipSlots.back) : !!(o && o.carrier);
     if (back && hasCharLayer('back_carrier')) L.push('back_carrier');
+    // ★[T143] 포로의 밧줄 — **묶인 손엔 연장이 없다**. 그래서 도구보다 먼저 판정하고 끊는다.
+    //   ⚠누운 판엔 안 얹는다(카드 ② — 누운 포로는 밧줄 없이 눕는다). 업힌 사람도 누운 판을 쓴다.
+    const lying = !!(o && (o.down || o.carriedOn));
+    if (o && o.cap && !lying && hasCharLayer('tool_rope')) { L.push('tool_rope'); return L; }
     const jt = job ? NPC_JOB_TOOL[job] : null;
     if (jt) { if (hasCharLayer(jt)) L.push(jt); return L; }
     const t = isMe ? myToolType() : String((o && o.tool) || '');
@@ -114,6 +125,38 @@
   function hasCharLayer(key) {
     const m = charMeta();
     return !!(m && Array.isArray(m.layers) && m.layers.indexOf(key) >= 0);
+  }
+
+  // ★★[T143 2026-09-06] **한 장을 물들여 그린다** — 병종 띠 전용 자리.
+  //   `band` 시트는 흰 바탕으로 구운 **본**이다: 쓰는 것은 그 **알파(허리끈의 모양)**이고
+  //   색은 팔레트가 준다. 그래서 `source-in` — 실루엣만 남기고 그 안을 병종색으로 채운다.
+  //   반투명(안티에일리어싱) 화소는 제 알파 그대로 물드니 테두리가 계단지지 않는다.
+  //
+  //   ★★왜 곱하기(multiply)가 아닌가 — **실측이 정했다**(족보 86: 고르지 않고 잰다):
+  //     구운 `band_idle` 의 불투명 화소 313개 중 **304개(97.1%)가 셀 한 단**에 몰려 있다
+  //     (L 141~142 · 나머지 셋을 합쳐 9개). 즉 화면의 허리끈엔 **지킬 음영이 없다**.
+  //     그런데 곱하기는 그 한 단의 밝기(141/255 = **0.555**)를 색에 그대로 곱해 팔레트를
+  //     절반 넘게 어둡히고(#5a8ad0 → #324d73) 병종 여덟이 어두운 쪽에서 서로 가까워진다.
+  //     ⇒ 얻는 것 없이 색만 잃는다.
+  //   ★그리고 이것이 **종전 그림 그대로**다: 도형 경로도 병종색을 음영 없이 통째로 칠했다
+  //     (`ctx.fillStyle = bodyColor; ctx.fillRect(…)`). 처리도 수도 안 바뀐다.
+  //   ★버퍼는 프레임 한 장(109×90) 하나뿐이다 — 병종×클립으로 캐시를 불리면 56장이 뜬다.
+  //   ⓘ 합성 문법은 이 레포의 것 그대로다(`10-r1-terrain.js` 의 모래톱 — source-in/atop).
+  // ★[T143] 궤주(패주) 반투명 — 도형 경로가 쓰던 그 수다. **두 경로가 같은 상수를 읽는다**(사본 0).
+  const WAR_ROUT_A = 0.45;
+  let _tintCv = null, _tintCtx = null;
+  function tintFrame(img, sx, sy, fw, fh, col) {
+    if (!_tintCv) { _tintCv = document.createElement('canvas'); _tintCtx = _tintCv.getContext('2d'); }
+    if (_tintCv.width !== fw || _tintCv.height !== fh) { _tintCv.width = fw; _tintCv.height = fh; }
+    const t = _tintCtx;
+    t.setTransform(1, 0, 0, 1, 0, 0); t.globalAlpha = 1;
+    t.globalCompositeOperation = 'source-over';
+    t.clearRect(0, 0, fw, fh);
+    t.drawImage(img, sx, sy, fw, fh, 0, 0, fw, fh);
+    t.globalCompositeOperation = 'source-in';
+    t.fillStyle = col; t.fillRect(0, 0, fw, fh);
+    t.globalCompositeOperation = 'source-over';
+    return _tintCv;
   }
 
   // ★[T137] `force` 가 오면 상태기계를 건너뛴다 — 쓰러진 사람은 속도·조준과 무관하게 `down` 이고,
@@ -194,8 +237,18 @@
     const dx = Math.round(x + ox - m.anchorX), dy = Math.round(y + oy - m.anchorY);
     // 발밑 그림자 — 도형 경로와 같은 자리·같은 크기(시트가 바뀌어도 접지감은 유지)
     //   ★업힌 사람은 땅에 안 닿는다 ⇒ 그림자 없음(업는 사람의 것 하나만 남는다).
+    // ★[T143] 궤주 반투명 — 도형 경로와 **같은 상수**. 몸을 그리는 동안만 걸고 바로 되돌린다
+    //   (이름표·표식은 호출자가 정상 알파로 그린다 — 종전 계약 그대로).
+    const _aSave = ctx.globalAlpha;
+    if (opts.war && opts.br) ctx.globalAlpha = _aSave * WAR_ROUT_A;
     if (!opts.carriedOn) drawCharShadow(x, y, !!opts.down);
-    for (const img of imgs) ctx.drawImage(img, sx, sy, fw, fh, dx, dy, fw, fh);
+    // ★[T143] 병종 띠 한 장만 **물들여** 그린다 — 색은 도형 경로가 쓰던 그 팔레트다(새 수 0).
+    const _bandCol = opts.war ? (WAR_BT_COL[opts.bt | 0] || null) : null;
+    for (let _i = 0; _i < imgs.length; _i++) {
+      if (layers[_i] === 'band' && _bandCol) ctx.drawImage(tintFrame(imgs[_i], sx, sy, fw, fh, _bandCol), dx, dy);
+      else ctx.drawImage(imgs[_i], sx, sy, fw, fh, dx, dy, fw, fh);
+    }
+    ctx.globalAlpha = _aSave;
     // ★진단 훅은 **pid 별**이다 — 마지막에 그린 하나만 남기면 "타 플레이어도 같은 애니"를 못 잰다.
     if (!window.__charDbg) window.__charDbg = {};
     window.__charDbg[opts.pid] = { on: true, clip: stt.clip, frame: stt.frame, row,
@@ -204,6 +257,8 @@
                          clothes: opts.clothes || null,   // ★[T125] 서버가 실어 온 옷 재질(주민은 마을 곳간)
                          carrier: !!opts.carrier,        // ★[T134] 서버가 실어 온 지게 1비트(주민은 진 짐)
                          down: !!opts.down, carriedOn: !!opts.carriedOn, carrying: !!opts.carrying,   // ★[T137]
+                         war: !!opts.war, bt: (opts.war ? (opts.bt | 0) : null),   // ★[T143] 병종 — 하네스가 색을 가르는 재료
+                         cap: !!opts.cap, bandCol: _bandCol,                       // ★[T143] 포로 1비트 · 실제로 먹인 색
                          off: [ox, oy],                  // ★[T137] 업힌 사람에게 적용한 등 오프셋(0,0 이면 안 업힌 것)
 
                          speed: +(opts.speed || 0).toFixed(2),
@@ -235,13 +290,37 @@
     ctx.textAlign = 'start';
   }
 
+  /** ★★[T143 2026-09-06] **전쟁·포로 표식은 그리기 경로가 둘이어도 함수 하나다.**
+      T137 이 그림자·이름표로 먼저 간 길이다 — 도형 경로 안에만 있던 표식을 밖으로 **옮긴다**(사본 0).
+      숫자는 도형 경로의 것 그대로다(무변) — 둘 다 **발치**에 앉는 표식이라 실루엣을 안 타기 때문이다.
+      ★여기 없는 둘: **병종색과 밧줄**은 이제 시트다(`band` 층 · `tool_rope` 층).
+      ★궤주 반투명(br)도 여기 없다 — 그건 몸을 **그리는 동안** 걸려 있어야 해서
+        호출자(`34-m-renderloop.js`)가 두 경로 앞에서 한 번 건다(이름표는 정상 가시 — 종전 계약).
+      ★진영 테두리(bs)는 **안 옮겼다**: 도형의 그것은 몸통 사각형(12×14px)에 물린 수라
+        60px 짜리 시트(실측 — body_idle 통합 bbox 29×60)에 그대로 안 맞는다. 진영은
+        **체력 게이지**가 이미 나른다 — 호출자가 경로와 무관하게 `WAR_SIDE_COL[bs]` 로 칠하고
+        전쟁 병사는 만피여도 항상 보인다. 새 표시를 발명하지 않는다(T57 규약) — 다르게 하려면 회부.
+      ★★★ 도형 경로는 이 함수 **밖에서** 병종색(몸통 채우기)·진영 테두리를 계속 그린다 —
+        폴백은 종전 그림 그대로여야 한다(시트가 안 뜬 판에서 표식이 줄면 그게 회귀다). */
+  function drawWarMarks(x, y, opts, mx, my, bob) {
+    if (opts.cap) { ctx.strokeStyle = 'rgba(200,200,200,0.85)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(x, y + 4, 11, 4.5, 0, 0, Math.PI * 2); ctx.stroke(); }
+    // §4-4 P4: 지휘관 금테 + ★ (bc) — 발치 금색 링 + 그 위 별.
+    if (opts.war && opts.bc) {
+      // ★도형이 쓰던 자리 그대로: 링은 (lx, ly+6) · 별은 (hx, hy−8) = (lx, ly−19+까딱).
+      //   시트 경로는 돌진·까딱이 없으므로(정지 기준) 인자를 안 준다 ⇒ (x, y) 가 그 자리다.
+      const cx = (mx === undefined ? x : mx), cy = (my === undefined ? y : my), cb = bob || 0;
+      ctx.strokeStyle = '#ffe14d'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.ellipse(cx, cy + 6, 11, 5, 0, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = '#ffe14d'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText('★', cx, cy - 19 + cb); ctx.textAlign = 'start';
+    }
+  }
+
   function drawPlayerIso(x, y, name, color, isMe = false, opts = {}) {
     const t = performance.now() * 0.01;
     const moving = opts.moving || false;
     const isDown = !!opts.isDown; // Phase 14.41
     const attackP = Math.max(0, opts.attackPhase || 0); // 0=쉼, 1=시작, 0.5=중간
-    // §18 3파: 포로 표식 — 발치 회색 테두리 링(호송·억류. 서버 makeEntry cap 1비트)
-    if (opts.cap) { ctx.strokeStyle = 'rgba(200,200,200,0.85)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(x, y + 4, 11, 4.5, 0, 0, Math.PI * 2); ctx.stroke(); }
     // Phase 14.41: 다운 — 누워있는 모습 (옆으로 길게)
     if (isDown) {
       drawCharShadow(x, y, true);   // ★[T137] 그림자는 한 자리에서 온다(시트 경로와 같은 것)
@@ -257,6 +336,9 @@
       ctx.strokeStyle = '#000'; ctx.lineWidth = 1.2;
       ctx.beginPath(); ctx.moveTo(x + 10, y - 1); ctx.lineTo(x + 13, y + 2);
       ctx.moveTo(x + 13, y - 1); ctx.lineTo(x + 10, y + 2); ctx.stroke();
+      // ★[T143] 쓰러진 포로도 발치 링을 받는다 — 종전엔 링이 이 갈래 **앞**에 있었고 여기서
+      //   일찍 돌아가므로, 표식을 함수로 옮기며 이 자리에도 부른다(폴백에서 표식이 줄면 회귀다).
+      drawWarMarks(x, y, opts);
       drawDownTag(x, y, name);   // ★[T137] 이름표도 한 자리에서 온다
       return;
     }
@@ -265,7 +347,7 @@
     const isWar = !!opts.war;
     const bodyColor = isWar ? (WAR_BT_COL[opts.bt | 0] || color) : color;
     const _aSave = ctx.globalAlpha;
-    if (isWar && opts.br) ctx.globalAlpha = _aSave * 0.45;   // 궤주=반투명
+    if (isWar && opts.br) ctx.globalAlpha = _aSave * WAR_ROUT_A;   // 궤주=반투명
     // Phase 14.37: facing — vx/vy를 iso 화면 방향으로 변환
     // world(vx,vy) → iso 화면 dx,dy: dx = vx-vy, dy = (vx+vy)/2
     const fvx = opts.fvx || 0, fvy = opts.fvy || 0;
@@ -337,13 +419,11 @@
       ctx.beginPath(); ctx.arc(hx + eyeOX - perpX * 1.5, hy + eyeOY - perpY * 1.5, 0.9, 0, Math.PI*2); ctx.fill();
     }
 
-    // §4-4 P4: 지휘관 금테 + ★ (bc) — 발치 금색 링 + 머리 위 별.
-    if (isWar && opts.bc) {
-      ctx.strokeStyle = '#ffe14d'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.ellipse(lx, ly + 6, 11, 5, 0, 0, Math.PI * 2); ctx.stroke();
-      ctx.fillStyle = '#ffe14d'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
-      ctx.fillText('★', hx, hy - 8); ctx.textAlign = 'start';
-    }
+    // ★[T143] 포로 발치 링 · 지휘관 금테+★ — **두 경로가 같은 함수를 부른다**(사본 0).
+    //   ⚠종전엔 포로 링이 몸 **아래**, 지휘관 표식이 몸 **위**였다. 한 자리로 모으면서 둘 다
+    //     몸 위로 왔다 — 발치 링 4.5px 이 다리(y+3~+8)와 겹치는 그만큼 z 차례가 바뀐다.
+    //     안 보이는 표식은 표식이 아니라 **위**로 통일했다(도형·시트 같은 그림).
+    drawWarMarks(x, y, opts, lx, ly, bob);
     if (isWar) ctx.globalAlpha = _aSave;   // 알파 복원 — 이름표는 정상 가시(궤주여도 라벨 판독)
 
     // 이름표 — ★[T57 2026-09-03] **함수 하나로 뺐다.** 아래 `drawNameTag` 참조.
