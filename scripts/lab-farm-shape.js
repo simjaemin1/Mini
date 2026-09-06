@@ -7,11 +7,11 @@
 //   경작칸 = `인구 × landNeedPer(비옥도, L_LANDNEED)` · 1.3× · 1.5× = **8 → 10.4 · 12**.
 //
 // ⚠계측기다 — 러너 등재 표(`// @regress`)가 **없다**. 판정하지 않고 그림과 수치를 낸다.
-// ⚠**랩 파일 무접촉 · 엔진 코드 0.** 상수는 `/tmp` 의 **복제본에 주입**해서 연다
-//   (`scripts/farm-mutations.sh` 가 쓰는 하드링크 복제 규약과 같은 자리 — 원본은 안 건드린다).
-//   §0-ⓐ 실측: 랩의 `L_LANDNEED` 는 **최상위 `const`** 라 `window.L_LANDNEED=` 로는 못 덮는다
-//   (`VillageLayout.generate` 의 `typeof L_LANDNEED!=='undefined'` 가 그 const 를 먼저 본다).
-//
+// ★[T100 4판 ② 2026-09-06] **이제 복제본이 필요 없다.** 랩에 배수 토글(`setLandMul`)이 들어갔다
+//   (`L_LAND_BASE=8` 정본 × 배수). 그래서 `/tmp` 에 값을 박은 판을 만들지 않고 **랩 원본을 그대로 열어**
+//   적재 전에 `window.L_LANDNEED` 를 심는다. T138 1판의 복제본 경로는 지운다 — 그때 남긴 표는 그대로 선다
+//   (토글로 다시 재면 같은 수가 나온다: 농촌1 인구80 = 414 / 538 / 621칸 · 실측 대조 완료).
+// ⚠엔진 코드 0.
 // 그림은 랩 자신의 `gen()` → `draw()` 가 그린 것을 그대로 찍는다(렌더를 다시 짜지 않는다 — 사본 0).
 //
 // 실행: node scripts/lab-farm-shape.js [outdir=/tmp/t138]
@@ -21,7 +21,6 @@ const { chromium } = require('playwright');
 const ROOT = path.join(__dirname, '..');
 const OUT = process.argv[2] || '/tmp/t138';
 const LAB = path.join(ROOT, 'lab', '전쟁실험실.html');
-const ANCHOR = 'const L_CLEAR=90, L_FRONTIER_R=180, L_LANDNEED=8;';
 
 // 지도 실마을의 `fert·water` — `/tmp/farm-seeds.json`(시딩 캐시)의 `lp` 값 그대로
 const VILLS = [
@@ -37,20 +36,13 @@ const LANDS = [{ v: 8, tag: '8' }, { v: 10.4, tag: '10.4' }, { v: 12, tag: '12' 
 
 (async () => {
   fs.mkdirSync(path.join(OUT, 'panels'), { recursive: true });
-  const src = fs.readFileSync(LAB, 'utf8');
-  if (src.split(ANCHOR).length !== 2) { console.error('앵커가 하나가 아니다 — 랩이 바뀌었다. 멈춘다.'); process.exit(1); }
-  const files = {};
-  for (const L of LANDS) {
-    const f = path.join(OUT, `lab_L${L.tag}.html`);
-    fs.writeFileSync(f, src.replace(ANCHOR, ANCHOR.replace('L_LANDNEED=8', `L_LANDNEED=${L.v}`)));
-    files[L.tag] = f;
-  }
   const browser = await chromium.launch();
   const rows = [];
   for (const L of LANDS) {
     const page = await browser.newPage({ viewport: { width: 1400, height: 1000 } });
     page.on('pageerror', (e) => console.error(`  [page] ${L.tag}: ${String(e).slice(0, 120)}`));
-    await page.goto('file://' + files[L.tag], { waitUntil: 'load' });
+    await page.addInitScript((v) => { window.L_LANDNEED = v; }, L.v);   // 적재 전 주입(랩이 이 값을 받는다)
+    await page.goto('file://' + LAB, { waitUntil: 'load' });
     // ⚠랩의 `VillageLayout`·`V` 는 최상위 `let/const` 라 **`window` 에 안 붙는다** — 맨이름으로 읽는다.
     await page.waitForFunction(() => typeof gen === 'function' && typeof VillageLayout !== 'undefined', null, { timeout: 60000 });
     // 상수가 실제로 갈렸는지 — 자명 통과 금지

@@ -21,6 +21,8 @@
   .stat{background:#1a2028;border:1px solid #2a3340;border-radius:6px;padding:8px 10px;margin-top:8px;font-size:12px;}
   .lg span{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:5px;vertical-align:middle;}
   .note{color:#7a8494;font-size:11.5px;margin-top:8px;}
+#landMul button{margin-right:4px;padding:2px 8px;background:#2b3038;color:#c8d0da;border:1px solid #454c58;border-radius:4px;cursor:pointer}
+#landMul button.on{background:#3d6b9a;color:#fff;border-color:#5a8cc4}
 </style>
 </head>
 <body>
@@ -35,6 +37,7 @@
     <div class="row"><label>응집도</label><input type="range" id="compactW" min="0" max="2" step="0.1" value="0" oninput="gen()"><b id="cwv">0.0</b> <span style="color:#7a8494">0=칠레리본 (둥근타입만; 어촌은 고정띠)</span></div>
     <div class="row"><label>비옥도</label><input type="range" id="fertV" min="0.1" max="1" step="0.05" value="0.55" oninput="gen()"><b id="fvv">0.55</b> <span style="color:#7a8494">토질 → 농부</span></div>
     <div class="row"><label>어장</label><input type="range" id="waterV" min="0" max="1" step="0.05" value="0.5" oninput="gen()"><b id="wvv">0.50</b> <span style="color:#7a8494">물 풍부도 → 어부 (타입은 도출)</span></div>
+    <div class="row"><label>경작지</label><span id="landMul"><button type="button" class="on" data-m="1" onclick="setLandMul(1)">×1.0</button><button type="button" data-m="1.3" onclick="setLandMul(1.3)">×1.3</button><button type="button" data-m="1.5" onclick="setLandMul(1.5)">×1.5</button></span> <b id="lmv">×1.0 (인당 8칸)</b> <span style="color:#7a8494">인당 경작칸 배수 — 정본 8 × 배수(8 / 10.4 / 12)</span></div>
     <div class="row"><label>크기배율</label><input type="range" id="sizeMul" min="0.5" max="2.5" step="0.1" value="1.5" oninput="gen()"><b id="smv">1.5</b>× <span style="color:#7a8494">타입 비율 유지</span></div>
     <div class="row"><button id="playBtn" onclick="togglePlay()">▶ NPC 재생</button> <button onclick="step1()">▷ 한 틱</button></div>
     <div class="row"><label>표시</label>
@@ -8589,6 +8592,14 @@ function _insideBldgV(VV,x,y){ if(!VV)return false;   // 건물 풋프린트(bbo
   const hl=VV.hall||VV.center; if(hl&&x>=hl.cx-4.5&&x<=hl.cx+3.5&&y>=hl.cy-4.5&&y<=hl.cy+3.5)return true;
   if(Array.isArray(VV.gran))for(const g of VV.gran){ if(g.done&&x>=g.cx-2.5&&x<=g.cx+2.5&&y>=g.cy-1.5&&y<=g.cy+1.5)return true; }   // ★고상곳간 5×3 풋프린트
   return false; }
+// ★[T100 4판 ②] 경작지 배수 토글 — 정본 `L_LAND_BASE` 에 배수만 곱하고 `gen()` 을 다시 부른다.
+//   논밭 캐시만 비운다(집은 그대로 둬야 같은 마을에서 밭만 달라진 걸 본다).
+function setLandMul(m){ L_LANDMUL=(+m>0)?+m:1; L_LANDNEED=L_LAND_BASE*L_LANDMUL;
+  const b=document.getElementById('lmv'); if(b)b.textContent='×'+L_LANDMUL.toFixed(1)+' (인당 '+(+L_LANDNEED.toFixed(2))+'칸)';
+  document.querySelectorAll('#landMul button').forEach(el=>el.classList.toggle('on',Math.abs(+el.dataset.m-L_LANDMUL)<1e-9));
+  staticFarmland=null; staticDryfield=null;   // 논밭만 무효화(집·영토는 유지)
+  if(typeof gen==='function')gen(); }
+if(typeof window!=='undefined')window.setLandMul=setLandMul;
 function gen(){const pop=+document.getElementById('pop').value;document.getElementById('popv').textContent=pop;const compactW=+document.getElementById('compactW').value;const cw=document.getElementById('cwv');if(cw)cw.textContent=compactW.toFixed(1);const sizeMul=+document.getElementById('sizeMul').value;const sm=document.getElementById('smv');if(sm)sm.textContent=sizeMul.toFixed(1);const fert=+document.getElementById('fertV').value;const fv=document.getElementById('fvv');if(fv)fv.textContent=fert.toFixed(2);const water=+document.getElementById('waterV').value;const wv=document.getElementById('wvv');if(wv)wv.textContent=water.toFixed(2);const settlement=document.getElementById('settType').value;const c=pickCenter();const sig=seed+','+compactW+','+sizeMul+','+fert+','+water+','+settlement;if(sig!==staticSig){staticHouses=null;staticFarmland=null;staticDryfield=null;staticTcells=0;staticPop=0;staticSig=sig;}if(pop<staticPop){staticHouses=null;staticFarmland=null;staticDryfield=null;staticTcells=0;}staticPop=pop;/*★축소=순수 재계산(줄어듦)·확대=증분(안 지워짐)*/staticTcells=Math.max(staticTcells,Math.round(Math.min((1500+Math.ceil(pop/VillageLayout.HOUSE_CAP)*VillageLayout.LAND_PER_HOUSE)*sizeMul,MAX_CELLS)));V=VillageLayout.generate(TR.terrain,c.cx,c.cy,pop,{compactW,sizeMul,fert,water,settlement,maxCells:MAX_CELLS,targetCells:staticTcells,equilibrium:true,existingHouses:staticHouses,existingFarmland:staticFarmland,existingDryfield:staticDryfield});staticHouses=V.houses;staticFarmland=V.farmland;staticDryfield=V.dryfield;/*★equilibrium: 논밭=항상 순수 균형해(인구×8) — 구 상태저장이 프리뷰 논밭을 동결시키던 것 수정(집 위치만 상태 유지)*/V.pop=pop;V.walls=buildWalls();initNPCs();draw();}
 function rebuild(){seed=+document.getElementById('seed').value;TR=buildTerrain(seed);renderTerrain();gen();}
 function reseed(){document.getElementById('seed').value=Math.floor(Math.random()*9999);rebuild();}
@@ -9246,7 +9257,17 @@ function updateMobs(s,step){
   if(s._blood&&s._blood.length){for(const b of s._blood)b.t-=dt;s._blood=s._blood.filter(b=>b.t>0);}   // 핏자국 증발(45분)
   reapDead(s);   // ★사망자 정리(agent 제거 + 인구 감소)
 }
-const L_CLEAR=90, L_FRONTIER_R=180, L_LANDNEED=8;   // 개간: 셀당 노동량 · 반경(영역 backstop, ★85→180 §3b — 현재 참조처 없는 휴면 상수) · 1인당 경작 셀. (L_POPMAX·L_NONGMAX 삭제 — 둘 다 죽은 상수. 인구 상한 = econ 자연 K[slotK·prodK·fuelK+MB/MC], 논 비율 = 물가 띠 지오메트리(dwOf≤dMax)×riceShare(물 함수) — 이미 지형이 결정)
+const L_CLEAR=90, L_FRONTIER_R=180;   // 개간: 셀당 노동량 · 반경(영역 backstop, ★85→180 §3b — 현재 참조처 없는 휴면 상수) · 1인당 경작 셀. (L_POPMAX·L_NONGMAX 삭제 — 둘 다 죽은 상수. 인구 상한 = econ 자연 K[slotK·prodK·fuelK+MB/MC], 논 비율 = 물가 띠 지오메트리(dwOf≤dMax)×riceShare(물 함수) — 이미 지형이 결정)
+// ★★[T100 4판 ② · 재민/PM 승인 2026-09-06] **경작지 배수 토글** — 슬라이더 옆 ×1.0/1.3/1.5.
+//   `L_LAND_BASE=8` 이 정본이다(보즈럽 기준 인당 경작칸 · `village-layout.js` LAND_NEED 와 같은 수).
+//   토글은 **배수만** 곱한다 — 새 수 0(1.3·1.5 는 재민이 보고 싶다고 한 그 배수다).
+//   ⚠종전엔 `const L_LANDNEED=8` 이라 밖에서 못 바꿨다(T138 §0-ⓐ: 그래서 /tmp 복제본에 박아 열었다).
+//     PM 승인 문구는 `const ... window.L_LANDNEED ...` 였는데 **그 꼴로는 콘솔 토글이 안 된다** —
+//     `const` 는 적재 때 한 번 평가되어 나중에 `window.L_LANDNEED=12` 를 쳐도 안 읽는다.
+//     그래서 **`let`** 으로 두고 토글이 그 자리를 바꾼다. `window.L_LANDNEED`(적재 전 주입)도 그대로 받는다.
+const L_LAND_BASE=8;   // ★정본 — 이 수는 안 바뀐다
+let L_LANDMUL=(typeof window!=='undefined'&&window.L_LANDMUL!=null)?+window.L_LANDMUL:1;
+let L_LANDNEED=(typeof window!=='undefined'&&window.L_LANDNEED!=null)?+window.L_LANDNEED:L_LAND_BASE*L_LANDMUL;
 // ────── 도적단(마을 전용 — 야생 몹 공유 블록 밖: 별도 상태·별도 함수, 사냥실험실 이식과 무관) ──────
 //   철학: 도적은 스폰되지 않는다 — *몰락한 사람들*이다. 원천 ①마을 소멸(해체 순간 잔존자 일부가 econ 인구에서 이탈해 전환 — 부활·유령 없음)
 //   ②절망 이탈(불행+기아 마을에서 30일마다 1명이 *기존* 단으로 — 단이 새로 생기진 않음). 하한 보장 없음: 전 마을이 건재한 평화 시드엔 도적 0이 정직한 결과.
