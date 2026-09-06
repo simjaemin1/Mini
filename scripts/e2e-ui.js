@@ -362,9 +362,12 @@ async function waitHttp(url, tries = 600) {
       return page.evaluate(() => (window.__t55sent || []).map((m) => m.type));
     };
     ok((await sentAfterClick('harvest')).includes('harvest'), '★★⑧ 수확 버튼이 그대로 `harvest` 를 보낸다(동사가 산다)');
-    ok((await sentAfterClick('feed')).includes('feed'), '★★⑧ 먹이 버튼이 그대로 `feed` 를 보낸다(동사가 산다)');
+    // ★[T140] 버튼의 낱말은 `tame_feed` 로 갈렸지만 **선에 나가는 이름은 여전히 `feed`** 다.
+    //   이 한 줄이 그 둘을 동시에 못 박는다(프로토콜 무변 · 행동 변경 0).
+    ok((await sentAfterClick('tame_feed')).includes('feed'),
+       '★★⑧ 먹이 버튼(`tame_feed`)이 그대로 `feed` 를 보낸다(동사가 산다 · 프로토콜 무변)');
     // ★없는 단축키를 광고하지 않는다
-    const btnTx = await page.evaluate(() => ['harvest', 'feed'].map((a) => (document.querySelector(`[data-action="${a}"]`) || {}).textContent || ''));
+    const btnTx = await page.evaluate(() => ['harvest', 'tame_feed'].map((a) => (document.querySelector(`[data-action="${a}"]`) || {}).textContent || ''));
     ok(!btnTx.some((t) => /\(O\)|\(G\)/.test(t)), '★⑧ 그 버튼들이 이제 없는 단축키를 광고하지 않는다', JSON.stringify(btnTx));
   }
 

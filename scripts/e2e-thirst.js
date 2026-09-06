@@ -74,9 +74,12 @@ async function waitHttp(url, tries = 600) {
   // ★[T84] 로비 버튼은 글자가 아니라 **id**(`#enter`) 로 집는다 — 라벨이 바뀌어도 안 죽는다.
   const enterBtn = await page.$('#enter');
   if (enterBtn) await enterBtn.click();
-  for (let i = 0; i < 60 && !(await page.evaluate(() => !!(window.__inWorld && window.__inWorld()))); i++) await sleep(500);
+  // ★[T140] 30초로 자르지 않는다 — 부하가 있으면 그 안에 못 들어온다(픽스처 정본 · 판정은 그대로).
+  const FX = require('./fixture-clock.js');   // ★[T140] 앵커·기대값·얼림·참을성이 전부 이 한 자리다(사본 0)
+  const enter = await FX.waitInWorld(page);
   await sleep(1800);
-  ok(await page.evaluate(() => !!(window.__inWorld && window.__inWorld())), '존 입장 — 월드 안이다');
+  ok(enter.ok && await page.evaluate(() => !!(window.__inWorld && window.__inWorld())),
+     '존 입장 — 월드 안이다', `${enter.waited}ms 기다림`);
 
   // ★화면이 말하는 HP — 새 훅을 안 만든다(클라 무접촉)
   const hpNow = async () => page.evaluate(() => {
@@ -113,11 +116,15 @@ async function waitHttp(url, tries = 600) {
 
   // ── ① 여름 낮으로 시계를 세운다 — **추위를 변수에서 뺀다** ─────────────────
   //   갈증만 재는 자리라 추위가 끼면 두 축이 섞인다(그러면 무엇을 쟀는지 알 수 없다).
-  const Wx = require(path.join(ROOT, 'server', 'weather.js'));
-  const SUMMER = Math.round(Wx.anchors().summerMid);
-  await page.evaluate((d) => window.__sendPrimary({ type: '__e2e_clock', day: d, night: false }), SUMMER);
-  await sleep(2000);
-  const wx0 = await page.evaluate(() => (window.__wx ? window.__wx() : null));
+  // ★★[T140 2026-09-06] 여기 있던 `sleep(2000)` 이 이 하네스를 여섯 번 빨갛게 만든 자리다.
+  //   클라의 `__wx` 는 **초당 하나 오는 `gauges`** 로만 갱신된다 — 존 틱이 밀리면 2초 안에 안 오고
+  //   하네스는 **얼기 전의 값**을 읽는다(0.5634 = day 0·낮 · 0.8647 = day 0·밤 — 부하가 밤낮을 갈랐다).
+  //   ⇒ 정해진 초를 자지 않는다. **세계가 그 시계를 말할 때까지 기다린다**(픽스처 정본 · 사본 0).
+  const SUMMER = FX.anchorDays().summer;
+  const fx1 = await FX.setClock(page, { day: SUMMER, night: false });
+  ok(fx1.ok, '★★① (픽스처) **시계가 실제로 얼었다** — 세계가 그 날·그 밤을 말한다(부하와 무관)',
+    `day ${SUMMER} · 기대 ${fx1.want.tempC}℃ · 실측 ${fx1.got ? fx1.got.tempC : 'null'}℃ · ${fx1.waited}ms`);
+  const wx0 = fx1.got;
   ok(wx0 && wx0.cold < 0.2, '★① (상황) 한여름 낮이다 — 추위 축이 변수에서 빠졌다(갈증만 남는다)',
     wx0 ? `추위 ${wx0.cold} · ${wx0.ko}` : 'null');
 
@@ -179,10 +186,9 @@ async function waitHttp(url, tries = 600) {
 
   // ── ⑤ 마을 안이라고 봐주지 않는다 [§12 · §0-ⓓ] ────────────────────────────
   //   §12 의 "마을 안 불사"는 **쓰러진 뒤** 마을 사람이 옮긴다는 뜻이지 HP 가 안 깎인다는 뜻이 아니다.
-  const { DatabaseSync } = require('node:sqlite');
-  const db = new DatabaseSync(ZDB);
-  const rows = db.prepare('SELECT id, name, cx, cy FROM villages WHERE zone = ?').all('hanbando');
-  ok(rows.length > 0, `마을이 시딩됐다 (${rows.length}곳)`);
+  // ★[T140] 같은 픽스처 정본 — 마을이 심길 때까지 기다린다(사본 0).
+  const { rows, waited: vWait } = await FX.waitVillages(ZDB);
+  ok(rows.length > 0, `마을이 시딩됐다 (${rows.length}곳)`, `${vWait}ms 기다림`);
   if (rows.length) {
     const V = rows[0], vx = V.cx * 32 + 16, vy = V.cy * 32 + 16;
     for (let i = 0; i < 12; i++) {
@@ -210,17 +216,18 @@ async function waitHttp(url, tries = 600) {
     //     찍어 두고 5분을 기다렸다. 추위는 평형 수렴이라 여름 목표점(≈0)으로 **곧장 내려가** 셋이
     //     아니라 둘만 극단이었고, 그래서 예상보다 한참 덜 깎였다(예상 100HP · 실측 24HP).
     //     ⇒ 세 축을 정말 극단으로 두려면 **가장 추운 해의 한겨울 밤 · 야생 · 맨몸**이어야 한다.
-    const WINTER = Wx.anchors().winterMid;
-    let coldestDay = Math.round(WINTER), best = -1;
+    const WINTER = FX.anchorDays().winter;
+    let coldestDay = WINTER, best = -1;
     for (let k = 0; k < 24; k++) {
-      const d = Math.round(WINTER) + 365 * k;
+      const d = WINTER + 365 * k;
       const t = B.coldTarget({ day: d, night: true, warmth: 0, villageShelter: 0 });
       if (t > best) { best = t; coldestDay = d; }
     }
     ok(best > 1, '★⑥ (상황) 24년 중 **목표점이 1 을 넘는 밤**을 골랐다 — 추위가 극단에 머문다',
       `day ${coldestDay} · 목표점 ${best}`);
-    await page.evaluate((d) => window.__sendPrimary({ type: '__e2e_clock', day: d, night: true }), coldestDay);
-    await sleep(1500);
+    const fx6 = await FX.setClock(page, { day: coldestDay, night: true });   // ★[T140] 같은 정본
+    ok(fx6.ok, '★⑥ (픽스처) 그 밤으로 시계가 얼었다',
+      `day ${coldestDay} · 기대 ${fx6.want.tempC}℃ · 실측 ${fx6.got ? fx6.got.tempC : 'null'}℃ · ${fx6.waited}ms`);
     // 야생으로 — 마을 완충이 있으면 추위가 극단에 못 간다
     let wildOk = false;
     outerWild:
