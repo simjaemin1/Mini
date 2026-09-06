@@ -888,6 +888,8 @@
         // ★[T61] econ 자원 종류 이름 — 같은 경로·같은 규약(있으면 갱신 · 없으면 유지). 클라 사본은 지웠다.
         if (msg.categoryLabels) { CATEGORY_KO_SRV = msg.categoryLabels; window.__categoryLabels = msg.categoryLabels; }
         if (msg.resourceVerbs) resourceVerbs = msg.resourceVerbs;   // ★[T90] 자연물 동사 이름표(사본 0)
+        if (msg.resourceVerbsAlt) resourceVerbsAlt = msg.resourceVerbsAlt;   // ★[T135] 두 번째 동사(열매 따기)
+        if (msg.treeFruitKo) treeFruitKo = msg.treeFruitKo;   // ★[T135] 종 → 열매 이름(서버 표 하나 · 클라 목록 0)
         if (msg.npcVerbs) npcVerbs = msg.npcVerbs;                   // ★[T126] 사람 동사 이름표(같은 규약)
         // ★[T66 ⓪] 직업·계절 이름 — 같은 규약(있으면 갱신 · 없으면 유지). 클라 사본 둘을 지웠다.
         if (msg.uiLabels) { UI_LABELS_SRV = msg.uiLabels; window.__uiLabels = msg.uiLabels; }

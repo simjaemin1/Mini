@@ -56,6 +56,7 @@ const Spoil = require('./spoil');
 const Crops = require('./crops');
 const Salt = require('./salt');            // ★[자염 배치 2026-09-01] 염도·수율·땔감·시간 정본 하나
 const ItemLabel = require('./itemlabel');  // ★[T61] 이름표 정본이 사는 곳(품목 합치기 · econ 자원 종류 이름)
+const Trees = require('./trees');         // ★[T135] 나무 정본 — 종 축·열매 규약·벌목 부등식(표는 trees.json)
 const Onboarding = require('./onboarding');   // ★[온보딩 v2 2026-09-01] 도착 지점·30분 대본·빈터 권리 정본(§9). init 전엔 완전 no-op
 const Notice = require('./notice');           // ★[T78 2026-09-03] 알림 경계 — 접두 이모지 → `kind` · 글자 제거
 const Membership = require('./membership');   // ★[T11 2026-09-02] 마을 소속·곳간 인출. 기여 계량기는 온보딩 정본 **하나**를 읽는다
@@ -3816,6 +3817,9 @@ async function _acceptConnection(ws, req, C) {
     //   닫은 것과 **같은 결함**이다(서버가 종류를 늘리면 화면만 영문으로 남는다).
     categoryLabels: ItemLabel.CATEGORY_KO,
     resourceVerbs: ItemLabel.RESOURCE_VERBS,   // ★[T90] 자연물 종류 → 동사 이름표(T82 회부 ① — 클라 사본 삭제)
+    resourceVerbsAlt: ItemLabel.RESOURCE_VERBS_ALT,   // ★[T135] 두 번째 동사(열매 따기) — 같은 통로, 같은 규약
+    // ★[T135] 어느 종이 무슨 열매를 다는가 — **표 하나**(`trees.json`)에서 파생. 클라는 목록을 안 적는다.
+    treeFruitKo: (() => { const o = {}; for (const id of Trees.fruitIds()) { const it = Trees.fruitOf(id); o[id] = ItemLabel.itemLabels ? (ItemLabel.itemLabels()[it] || it) : it; } return o; })(),
     npcVerbs: ItemLabel.NPC_VERBS,             // ★[T126] 사람에게 쓰는 동사 이름표(같은 통로 · 클라 표 0)
     // ★★[T66 ⓪ 2026-09-03] **이 카드의 유일한 서버 줄.** 클라에 남아 있던 사본 둘을 닫는다:
     //   `60-t-market.js JOB_KR`(zone 의 `JOB_KR_NPC` 와 글자까지 같았다) · `43-i-icon.js SEASON_KO`
@@ -3950,6 +3954,7 @@ function handlePlayerInput(player, raw) {
     Rescue.verb(player, msg);   // ★[T68] 대상 위 메뉴의 동사 하나 — 표는 `rescue.js` 가 갖는다(접점 1줄)
   } else if (msg.type === 'butcher') butcherCorpse(player, msg.cid);  // Phase 5-7
   else if (msg.type === 'gather') tryGather(player, msg.resId);   // ★[T90] 지목(없으면 종전 최근접 — 하위 호환)
+  else if (msg.type === 'pick_fruit') tryPickFruit(player, msg.resId);   // ★[T135] 베는 것과 **따는 것**은 다른 일
   else if (msg.type === 'sort_ore') trySortOre(player);   // ★선광 — 캔 원석 덩이를 광석/맥석으로 가른다
   else if (msg.type === 'claim') tryClaim(player, msg.kind || 'personal');
   // ★[원장 승격 2026-08-30] 지목 드롭/줍기 — `ids`(개체 원장 id) · `lotDay`(로트 취득일) · `giIds`(바닥 여러 덩이).
@@ -6559,6 +6564,37 @@ function tryForage(player) {
           + ` · 소금 한 줌엔 ${Salt.brinePerPot()}되가 든다` });
   } else send(player.ws, { type: 'notice',
     text: `🤏 ${src.where}에서 ${ITEM_LABEL_SERVER[src.kind] || src.kind} ${got} (남은 양 ${Forage.left(src.key, now).toFixed(1)})` });
+  if (canPersist(player)) savePlayer(player);
+}
+
+// ★★[T135 2026-09-06] **열매 따기** — 나무를 베지 않고 그 해의 열매만 딴다.
+//   · `hp` 무접촉: 나무는 안 죽고 안 줄어든다. 주는 것은 **그 해의 재고**뿐이다.
+//   · 규약 넷은 `server/trees.js` 가 쥔다(연 1회 · 겨울 소멸 · 볼 때 정산 · 크기 비례) — 여기 안 적는다.
+//   · 거리 게이트는 `GATHER_RANGE` **그대로**다(새 예외 0 — T90 이 세운 규약).
+const _fruitStore = new Map();          // 존 전체의 열매 재고(자리 키 → {n, yr}) — 볼 때 정산이라 틱 0
+function tryPickFruit(player, resId) {
+  const T = Trees;
+  if (!T || !T.ON()) { send(player.ws, { type: 'notice', text: '열매를 딸 수 없다', kind: 'gather' }); return; }
+  const target = (resId !== undefined && resId !== null) ? resources.get(resId) : null;
+  if (!target) { send(player.ws, { type: 'notice', text: '거기엔 아무것도 없다', kind: 'gather' }); return; }
+  const d = Math.hypot(target.x - player.x, target.y - player.y);
+  if (d > GATHER_RANGE) { send(player.ws, { type: 'notice', text: `${Math.round(d)}px 떨어짐 — ${GATHER_RANGE}px 안에서 딴다`, kind: 'gather' }); return; }
+  const sp = target.sp, item = sp && T.fruitOf(sp);
+  if (!item) { send(player.ws, { type: 'notice', text: '열매가 열리는 나무가 아니다', kind: 'gather' }); return; }
+  const day = zoneGameDay();
+  const key = target.seedKey || target.id;
+  const sz = Number.isFinite(target.szf) ? target.szf : 0.5;
+  // 한 번에 따는 양은 **그 나무에 달린 만큼**이 상한이다 — 새 수를 안 짓는다(있는 대로 딴다).
+  const got = T.fruitTake(_fruitStore, key, sp, day, sz, T.fruitYieldOf(sp));
+  if (!(got > 0)) {
+    send(player.ws, { type: 'notice', text: `${T.koOf(sp)} — 아직 열매가 없다(${['봄','여름','가을','겨울'][['spring','summer','autumn','winter'].indexOf(T.fruitSeasonOf(sp))]}에 열린다)`, kind: 'gather' });
+    return;
+  }
+  const n = Math.max(1, Math.round(got * 10));   // 재고 단위(연간수율=1.0 기준) → 낱개. 표의 눈금 그대로 열 배.
+  player.inventory = player.inventory || {};
+  player.inventory[item] = (player.inventory[item] || 0) + n;
+  send(player.ws, { type: 'notice', text: `🌰 ${T.koOf(sp)}에서 ${ITEM_LABEL_SERVER[item] || item} ${n}`, kind: 'gather' });
+  send(player.ws, { type: 'inventory', inventory: player.inventory });
   if (canPersist(player)) savePlayer(player);
 }
 

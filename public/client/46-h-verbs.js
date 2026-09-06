@@ -171,6 +171,14 @@
       //   ★[§0-ⓑ 판정 유지] 한 번 = 반복 시작(채굴 60타). E 키와 **같은 타이머**를 쓴다.
       const on = !!window.__eRepeat;
       out.push({ label: on ? `${word} 멈추기` : word, send: () => toggleGatherLoop(t.id) });
+      // ★★[T135] **베는 것과 따는 것은 다른 일이다.** 열매가 실제로 달린 나무에만 두 번째 동사가 뜬다.
+      //   ⚠클라는 "무엇이 열매나무인가"를 모른다 — 서버가 개체에 `fruitKo`(달린 열매 이름)를 실어 줄 때만
+      //     뜬다. 종 목록을 여기 적으면 그게 또 사본이다(T90 이 지운 그 표의 재발).
+      const altWord = resourceVerbsAlt && resourceVerbsAlt[t.obj.type];
+      const fko = (altWord && treeFruitKo && t.obj.sp) ? treeFruitKo[t.obj.sp] : null;
+      // ★열매가 **지금** 달렸는지는 클라가 모른다(계절·그 해 재고는 서버의 일이다) —
+      //   메뉴는 "이 종은 열매를 단다"까지만 알고, 안 열렸으면 **서버가 거절한다**(거리 게이트와 같은 규약).
+      if (fko) out.push({ label: `${altWord}(${fko})`, send: () => sendPrimary({ type: 'pick_fruit', resId: t.id }) });
       return out;
     }
     if (t.kind === 'me') {

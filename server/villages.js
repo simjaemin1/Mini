@@ -376,9 +376,12 @@ function seaDistPx(zoneId, ccx, ccy) {
   }
   return Math.sqrt(best2) * SZ;
 }
+// ★[T135] 부존 스캔 반경 — 종전 함수 안의 리터럴 `R = 140` 을 이름으로 올린 것뿐(행동 무변).
+//   나무 층이 "이 마을 생활권 숲이 몇 셀인가"를 되풀이해 적지 않게 한다(사본 0).
+const LAND_SCAN_R = 140;
 function extractLandParamsApprox(ta, ccx, ccy, layout) {
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
-  const R = 140, STEP = 4;
+  const R = LAND_SCAN_R, STEP = 4;
   let rock = 0, forest = 0, ore = 0, n = 0;
   // ★[11차] 사냥터는 **마을 밖 40~130셀 밴드**다(랩 huntCells와 같은 밴드 — 마을 안엔 짐승이 안 산다).
   //   전에는 사냥(game)이 임업(wood)과 **같은 수식**이라 독립 지도가 없었다.
@@ -2509,6 +2512,10 @@ function init(deps) {
     });
     world.villages = [];
     world.events = [];
+    // ★★[T135] 나무 층을 econ 에 꽂는다 — `priceFn` 과 같은 계약(econ 은 지형·청크를 모른다).
+    //   ⚠계측기(`scripts/t17-metrics.js`)도 **같은 문**을 부른다. 한쪽만 부르면 여덟 수가
+    //     대체를 못 보고 "안 움직인다"고 말한다 — 그게 족보 130 이 경고한 사고다.
+    require('./trees').attachToWorld(world);
     let maxDay = 0;
 
     const seededById = new Map((seeded || []).map(r => [r.dbId, r]));
@@ -4106,6 +4113,26 @@ function _lifeJobSites(vil, day) {   // 마을 생활권의 직업별 현장 후
   return (vil._jobSites = { day, lumberjack: top(bk.lumberjack), miner: top(bk.miner), forager: top(bk.forager), hunter: hunt, fisher: bank });
 }
 
+// ★[T135] 이 마을의 그림자가격 조회 함수 — econ 정본(`world.priceFn`)을 **부르기만** 한다.
+//   표를 여기서 만들지 않는다(사본 0). 없으면 null → 부등식이 종을 안 가린다.
+function _lifeShadowPrice(vil) {
+  const ev = vil && vil.econ; const w = state.world;
+  if (!ev || !w || typeof w.priceFn !== 'function') return null;
+  let tbl = null; try { tbl = w.priceFn(ev); } catch (e) { tbl = null; }
+  if (!tbl) return null;
+  return (r) => Math.max(0.05, Math.min(200, (tbl[r] || 1)));   // 랩과 같은 클램프(전쟁실험실 벌목 자리)
+}
+// ★[T135] 그 나무에 지금 열매가 달렸나 — `Trees.fruitSettle`(볼 때 정산)을 그대로 쓴다.
+//   재고는 **마을이 쥔다**(청크는 다시 만들어지는 물건이라 상태를 못 얹는다 — T108 의 그 교훈).
+function _lifeTreeHasFruit(vil, r, day) {
+  const T = _trees(); if (!T || !T.ON() || !r || !r.sp || !T.isFruitTree(r.sp)) return false;
+  if (!vil._fruitStore) vil._fruitStore = new Map();
+  const sz = Number.isFinite(r.szf) ? r.szf : 0.5;
+  return T.fruitSettle(vil._fruitStore, r.seedKey || r.id, r.sp, day, sz) > 0;
+}
+let _TRv = undefined;
+function _trees() { if (_TRv === undefined) { try { _TRv = require('./trees'); } catch (e) { _TRv = null; } } return _TRv; }
+
 function _lifeFarmTooClose(vil, x, y) {   // 랩 farmTooClose 동형: 부지 원+2·마당 원+2·곳간 5×3+1버퍼
   for (const h of vil._houseCells) if (_lifeVL().houseFarmBlock(h.cx, h.cy, x, y)) return true;
   if (_lifeVL().hallFarmBlock(vil.ccx, vil.ccy, x, y)) return true;
@@ -5146,7 +5173,29 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
     const qt = state.deps.qtResources && state.deps.qtResources();
     const near = qt ? qt.queryCircle(ws.x, ws.y, 260) : [];
     let best = null, bd = 1e9;
-    for (const r of near) { if (!JOB_RES[job].includes(r.type)) continue; const dx = r.x - npc.x, dy = r.y - npc.y, d2 = dx * dx + dy * dy; if (d2 < bd) { bd = d2; best = r; } }
+    // ★★★[T135] **고를 때 부등식이 선다** — 랩(T123 §2③)과 같은 식·같은 사전식.
+    //     w(목재)×목재수율 ≥ 성목햇수 × w(열매)×연간열매수율 ⇒ 벤다.
+    //   ① 목재 전용 종이 생활권에 있으면 그것부터 ② 열매종은 부등식이 서야 벤다.
+    //   `w` 는 이 마을의 그림자가격(정본은 econ `priceFn` — 표를 여기서 다시 만들지 않는다).
+    //   값을 모르면 종을 안 가린다(랩과 같은 계약) ⇒ 종전 그대로 가장 가까운 나무.
+    //   ★채집꾼은 반대다 — 결실철에 **열매 달린 나무**가 현장 후보가 된다(카드 ④).
+    //     ⚠랩이 여기서 한 번 틀렸다: 열매를 따도 채집 재고가 안 줄어 채집꾼이 스스로 자리를 안 옮긴다.
+    //       그래서 "고갈되면 옮긴다"가 아니라 **결실철엔 먼저 본다**로 넣는다.
+    const _T135 = _trees();
+    const _w135 = (_T135 && _T135.ON() && job === 'lumberjack') ? _lifeShadowPrice(vil) : null;
+    let bestF = null, bdF = 1e9;
+    for (const r of near) {
+      if (!JOB_RES[job].includes(r.type)) continue;
+      const dx = r.x - npc.x, dy = r.y - npc.y, d2 = dx * dx + dy * dy;
+      if (_T135 && _T135.ON() && r.type === 'tree' && r.sp) {
+        if (job === 'lumberjack') {
+          if (_T135.isFruitTree(r.sp)) { if (!_T135.fellOK(r.sp, _w135)) continue; if (d2 < bdF) { bdF = d2; bestF = r; } continue; }   // ②열매종은 뒤로
+        } else if (job === 'forager' && _lifeTreeHasFruit(vil, r, day)) { if (d2 < bdF) { bdF = d2; bestF = r; } continue; }             // 결실철·열매 있음 → 먼저
+      }
+      if (d2 < bd) { bd = d2; best = r; }
+    }
+    if (job === 'forager') { if (bestF) best = bestF; }          // 채집: 열매나무 먼저(사전식)
+    else if (!best && bestF) best = bestF;                        // 벌목: 목재 전용이 없을 때만 열매종
     if (best) { npc.behavior = 'gather'; npc.targetX = best.x; npc.targetY = best.y; npc.gatherTarget = best.id; npc._jobT = now + 6000 + (h % 5) * 1000; _lifeAct(npc, job === 'lumberjack' ? '벌목' : (job === 'miner' ? '채광' : '채집')); return true; }   // 실물 채집(기존 gather 실행부·리스폰이 처리)
     npc._workSite = null;   // 현장 고갈 — 다음 결정 때 재배정(랩 resourceTick '더 풍부한 셀로' 동형)
     npc.behavior = 'wander'; npc.targetX = ws.x + ((h % 5) - 2) * 24; npc.targetY = ws.y + ((((h / 5) | 0) % 5) - 2) * 24; npc.gatherTarget = null; npc._jobT = now + 5000;
@@ -6019,6 +6068,7 @@ module.exports = {
   //   본 게임은 20곳이었다.
   // ★[T62] 하네스가 **집터 필터 정본을 그대로 쥔다**(규칙을 다시 적으면 그게 사본이다).
   __probe: { lifeSiteFilters: (vil) => _lifeSiteFilters(vil), liveHut6x4: (v, x, y, o, n, m) => _liveHut6x4(v, x, y, o, n, m) },
+  LAND_SCAN_R,   // ★[T135] 부존 스캔 반경 — 나무 층이 생활권 숲 셀 수를 유도할 때 읽는다(사본 0)
   __labProbe: {
     makeTerrainAdapter, extractLandParamsApprox, findOpenCenter, pickSeedVillages,
     setZoneId: (z) => { state.zoneId = z; },
