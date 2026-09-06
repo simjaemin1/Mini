@@ -61,7 +61,7 @@
    "wood": 0.45,
    "mature": 8,
    "char": 0.4,
-   "fruit": "mulberry",
+   "fruit": "mulberry_fruit",
    "fy": 0.8,
    "fs": 1
   },

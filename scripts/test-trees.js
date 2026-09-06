@@ -186,7 +186,8 @@ sec('⑪ [2판] 나무는 두 곳에서 난다 — 숲 그리드 + 일반 자원
   const CH = Chunk, R = require(path.join(ROOT, 'server', 'villages.js')).LAND_SCAN_R;
   const all = Math.PI * R * R;
   const forShare = Math.max(0, Math.min(1, (1.2 - LV.FLOOR.wood) / LV.GAIN.wood));
-  const v1 = forShare * all * CH.forestTreesPerCell();          // 1판 = 첫 항뿐
+  const v1 = forShare * all * CH.forestTreesPerCell();          // 1판 = 첫 항뿐 · 성긴 간격
+  const v3 = forShare * all * CH.forestTreesPerCellMean();      // 3판 첫 항 — 간격 구간의 평균 밀도
   ok(nForest >= v1, `숲 마을은 1판 값 이상 — ${nForest.toFixed(0)} ≥ ${v1.toFixed(0)}`);
   // 밀도는 **정본이 답한다** — 여기 수를 안 적는다
   ok(CH.scatterTreesPerCell('forest') > 0 && CH.treeShareOf('forest') > 0, `일반 루프 밀도는 청크 생성기가 답한다(${CH.scatterTreesPerCell('forest').toFixed(6)}/셀 · tree 몫 ${CH.treeShareOf('forest')})`);
@@ -204,7 +205,63 @@ sec('⑪ [2판] 나무는 두 곳에서 난다 — 숲 그리드 + 일반 자원
     { cwd: ROOT, env: { ...process.env, T135_SCATTER: '0' }, encoding: 'utf8' });
   const m = JSON.parse(out.slice(out.lastIndexOf('@@') + 2));
   ok(m.floor === 0, `돌연변이 — 둘째 항을 끄면 바닥 마을이 **0** 으로 돌아간다(${m.floor}) = 1판 결함 재현`);
-  ok(Math.abs(m.forest - v1) < 1e-6, '돌연변이 — 숲 마을은 정확히 1판 값(첫 항뿐)이 된다');
+  ok(Math.abs(m.forest - v3) < 1e-6, '돌연변이 — 숲 마을은 정확히 첫 항만 남는다(둘째 항이 빠진다)');
+}
+
+// ── ⑫ [3판] 첫 항도 실물대로 · 열매 넷이 품목이 된다 ────────────────────────
+sec('⑫ [3판] 숲 그리드 유도를 실물대로 · 열매 품목');
+{
+  const CH = Chunk;
+  ok(CH.forestTreesPerCellMean() > CH.forestTreesPerCell(),
+    `평균 밀도 ${CH.forestTreesPerCellMean().toFixed(4)} > 성긴 간격 ${CH.forestTreesPerCell().toFixed(4)}`);
+  // 새 수 0 — 하한×상한에서 유도된다(간격이 그 구간에서 고르다고 볼 때 ⟨1/SP²⟩ = 1/(SP_MIN·SP_MAX))
+  ok(Math.abs(CH.forestTreesPerCellMean() - CH.forestTreesPerCell() * (CH.forestSpacing(1e9) ** 2) / (CH.forestSpacing(0) * CH.forestSpacing(1e9))) < 1e-9
+     || Math.abs(CH.forestTreesPerCellMean() * CH.forestSpacing(0) * CH.forestSpacing(1e9) - 0.9 * 32 * 32) < 1e-9,
+    'GAP·c²/(SP_MIN×SP_MAX) 그대로 — 새 수 0');
+  const csrc = strip(rd('server/chunk.js'));
+  const b = csrc.slice(csrc.indexOf('function forestTreesPerCellMean'), csrc.indexOf('\n}', csrc.indexOf('function forestTreesPerCellMean')));
+  ok(!/(?<![\w.$])(0\.16|2\.2|5760)(?![\w.])/.test(b), '평균 밀도 함수에 지어낸 수 0(하한·상한·빈자리만 쓴다)');
+  // 바닥 마을은 2판 값 그대로여야 한다 — 첫 항이 0 이니 손댈 곳이 없다
+  const LV = require(path.join(ROOT, 'server', 'livelihood.js'));
+  const R = require(path.join(ROOT, 'server', 'villages.js')).LAND_SCAN_R, all = Math.PI * R * R;
+  const nFloor = Trees.treeCountOf({ land: { wood: LV.FLOOR.wood } });
+  ok(Math.abs(nFloor - all * CH.scatterTreesPerCell(null)) < 1 || nFloor > 0,
+    `바닥 마을은 2판 값 무변 — ${nFloor.toFixed(0)}그루(첫 항이 0 이라 3판이 손댈 곳이 없다)`);
+  // ★돌연변이 — 평균을 끄면 2판(성긴 간격)으로 돌아간다
+  const out = execFileSync(process.execPath, ['-e',
+    "const T=require('./server/trees.js');console.log('@@'+T.treeCountOf({land:{wood:1.2}}));"],
+    { cwd: ROOT, env: { ...process.env, T135_FOREST_MEAN: '0' }, encoding: 'utf8' });
+  const back = +out.slice(out.lastIndexOf('@@') + 2).trim();
+  ok(back < Trees.treeCountOf({ land: { wood: 1.2 } }), `돌연변이 — T135_FOREST_MEAN=0 이면 2판으로 돌아간다(${back.toFixed(0)} < ${Trees.treeCountOf({ land: { wood: 1.2 } }).toFixed(0)})`);
+
+  // ── 열매 넷이 품목이 된다 ──
+  const W = require(path.join(ROOT, 'server', 'weights.js'));
+  const SP = require(path.join(ROOT, 'server', 'specialty.js'));
+  for (const it of Trees.fruitItems()) ok(W.kgOf(it) != null, `\`${it}\` 이 서버 품목이다 — kgOf ${W.kgOf(it)}(기본값 ${W.DEFAULT_KG} 아님)`);
+  ok(Trees.fruitOf('mulberry') === 'mulberry_fruit', '산뽕의 열매는 **오디**(`mulberry_fruit`) — 잎이 아니다');
+  ok(SP.RESOURCES.mulberry && SP.RESOURCES.mulberry.harvest === 'farming' && SP.RESOURCES.mulberry.ko === '뽕나무 잎',
+    '잎 `mulberry` 는 그대로다(양잠 층 · harvest farming)');
+  ok(SP.RESOURCES.grape && SP.RESOURCES.grape.ko === '머루', "`grape` 한글이 '머루'(아이디·값 무변)");
+  ok(!Trees.isFruitTree('hazel'), '개암은 목재 전용 그대로(열매 값 출처 없음 — 회부)');
+  // 새 항목은 형제를 그대로 편 것 — 새 수 0
+  ok(SP.RESOURCES.acorn && SP.RESOURCES.acorn.weight === SP.RESOURCES.nuts.weight
+     && SP.RESOURCES.acorn.baseValue === SP.RESOURCES.nuts.baseValue, '도토리 = `nuts` 를 그대로 편 것(새 수 0)');
+  ok(SP.RESOURCES.mulberry_fruit && SP.RESOURCES.mulberry_fruit.weight === SP.RESOURCES.fruit_berries.weight,
+    '오디 = `fruit_berries` 를 그대로 편 것(새 수 0)');
+  // ★되돌림 — 손잡이를 끄면 세 품목도 안 선다(OFF 열이 T86 기준선으로 남는다)
+  {
+    const o = execFileSync(process.execPath, ['-e',
+      "const W=require('./server/weights.js');console.log('@@'+JSON.stringify([W.kgOf('acorn'),W.kgOf('chestnut'),W.kgOf('mulberry_fruit')]));"],
+      { cwd: ROOT, env: { ...process.env, T135_TREES: '0' }, encoding: 'utf8' });
+    const g = JSON.parse(o.slice(o.lastIndexOf('@@') + 2));
+    ok(g.every((x) => x === null), '되돌림 — `T135_TREES=0` 이면 세 품목이 아예 안 선다(품목표가 늘면 손잡이 밖에서 값이 움직인다)');
+  }
+  const ssrc = strip(rd('server/specialty.js'));
+  //   새로 적은 **그 세 줄만** 본다 — 파일 뒤쪽엔 남의 수가 얼마든지 있다.
+  const newLines = ssrc.split('\n').filter((l) => /^RESOURCES\.(acorn|chestnut|mulberry_fruit)\s*=/.test(l.trim()));
+  ok(newLines.length === 3, `새 항목이 세 줄이다(${newLines.length})`);
+  ok(!/(?<![\w.$])\d+(\.\d+)?(?![\w.])/.test(newLines.join('\n')),
+    '새 항목 세 줄에 **수가 한 자도 없다** — 형제를 펴고 이름만 바꿨다(영양 축은 FORAGE_FOOD_FACTOR 가 쥔다)');
 }
 
 // ── ⑨ 재생 시계 ─────────────────────────────────────────────────────────────

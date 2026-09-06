@@ -340,6 +340,22 @@ function forestTreesPerCell(fCov, cellPx) {
   return FOREST_GAP * (c * c) / (SP * SP);
 }
 
+/**
+ * ★★[T135 3판] 숲 셀 하나의 **평균** 나무 수 — 간격 상한만 쓰지 않는다.
+ *   `forestSpacing` 은 커버리지에 따라 SP 를 [60, 96] 사이에서 고른다. 1·2판은 그중 **상한**(가장 성긴 숲)
+ *   하나만 썼고, 그래서 숲 마을 유도가 실물의 64% 였다(보고 3판 §0ⓐ).
+ *   ⇒ SP 가 그 구간 안에서 고르다고 보면 밀도의 평균은 **정확히 1/(하한×상한)** 이다:
+ *        ⟨GAP·c²/SP²⟩ = GAP·c² · (1/(SP_MAX−SP_MIN))∫ SP⁻² dSP = GAP·c² / (SP_MIN·SP_MAX)
+ *   새 수 0 — 하한·상한·빈자리 셋 다 위 그리드가 이미 쓰던 값이다. 실측 대조는 보고 §0ⓐ(102.9%).
+ *   ⚠**커버리지를 마을에서 유도하지는 못한다** — `forShare`(면적 몫)와 실제 `fCov`(배율)의 상관은 0.44 다
+ *     (forShare 1.000 인 마을의 meanFcov 가 2.6~3.2 로 갈리고, forShare 0.331 인 마을이 3.20 이다).
+ *     지형을 다시 훑지 않고 마을별로 맞히는 길은 없다 — 그건 `trees.js` 가 안 하는 일이다(econ 무접촉).
+ */
+function forestTreesPerCellMean(cellPx) {
+  const c = Number.isFinite(cellPx) ? cellPx : 32;
+  return FOREST_GAP * (c * c) / (FOREST_SP_MIN * FOREST_SP_MAX);
+}
+
 // ★★[T135 2판] **나무는 두 곳에서 난다.** 위 숲 그리드 말고, 아래 **일반 자원 루프**도 나무를 세운다 —
 //   그리고 그건 **숲 밖에도** 선다(`pickResourceType` 이 biome 마다 `tree` 몫을 갖는다).
 //   `FLOOR.wood`("숲이 없어도 땔감은 좀 난다")의 실체가 바로 이 흩어진 나무들이다.
@@ -754,4 +770,4 @@ function generateCoastlineWaterTiles(zone, tileSize, findZoneAtFn, oceanRects) {
 
 // ★[T108 2026-09-05] `RESOURCE_HP_TABLE` 을 **내준다** — `zone.js` 가 같은 표를 한 벌 더
 //   들고 있었고(운석이 빠져 3대에 깨졌다 · T90 회부), 그걸 지우려면 정본이 나가야 한다.
-module.exports = { Chunk, ChunkManager, CHUNK_SIZE, generateChunkResources, regrowStageOf, REGROW, seedRand, forestSpacing, forestTreesPerCell, scatterTreesPerCell, treeShareOf, FOREST_MIN_COV, RESOURCES_PER_CHUNK, generateVillagesForZone, makeVillageName, generateCoastlineWaterTiles, RESOURCE_HP_TABLE };
+module.exports = { Chunk, ChunkManager, CHUNK_SIZE, generateChunkResources, regrowStageOf, REGROW, seedRand, forestSpacing, forestTreesPerCell, forestTreesPerCellMean, scatterTreesPerCell, treeShareOf, FOREST_MIN_COV, RESOURCES_PER_CHUNK, generateVillagesForZone, makeVillageName, generateCoastlineWaterTiles, RESOURCE_HP_TABLE };

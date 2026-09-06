@@ -422,7 +422,9 @@ const RESOURCES = {
   coffee:      { ko: '커피',     emoji: '☕', category: 'agri', weight: 0.3, baseValue: 20,   utility: 0.6, contributes: { happiness: 1.0 }, harvest: 'farming' },
   cocoa:       { ko: '카카오',   emoji: '🍫', category: 'agri', weight: 0.3, baseValue: 25,   utility: 0.5, contributes: { happiness: 0.8, prestige: 0.3 }, harvest: 'farming' },
   tobacco:     { ko: '담배',     emoji: '🌿', category: 'agri', weight: 0.25, baseValue: 10,   utility: 0.4, contributes: { happiness: 0.5 }, harvest: 'farming' },
-  grape:       { ko: '포도',     emoji: '🍇', category: 'agri', weight: 0.6, baseValue: 2,    utility: 0.5, contributes: { happiness: 0.4 }, harvest: 'foraging' },
+  // ★[T135 3판] 한글만 '포도' → '머루'. sim 이 이 품목을 이미 **산포도**로 부르고 있었고
+  //   (`economy-sim.js` 주석 "산포도 → `fruit`"), 나무 표의 `grape` 도 머루다. 아이디·값 전부 무변.
+  grape:       { ko: '머루',     emoji: '🍇', category: 'agri', weight: 0.6, baseValue: 2,    utility: 0.5, contributes: { happiness: 0.4 }, harvest: 'foraging' },
   olive:       { ko: '올리브',   emoji: '🫒', category: 'agri', weight: 0.55, baseValue: 4,    utility: 0.5, contributes: { subsistence: 0.3, happiness: 0.4 }, harvest: 'foraging' },
   dates:       { ko: '대추야자', emoji: '🌴', category: 'agri', weight: 0.45, baseValue: 3,    utility: 0.6, contributes: { subsistence: 0.5, happiness: 0.3 }, harvest: 'foraging' },
   fig:         { ko: '무화과',   emoji: '🫐', category: 'agri', weight: 0.55, baseValue: 4,    utility: 0.4, contributes: { subsistence: 0.3, happiness: 0.3 }, harvest: 'foraging' },
@@ -623,6 +625,33 @@ const RESOURCES = {
   scroll:      { ko: '두루마리',     emoji: '📜', category: 'jewel', weight: 0.2,  baseValue: 80,   utility: 0.3, contributes: { prestige: 1.0 }, harvest: 'crafting' },
 
 };
+
+// ══ ★★[T135 3판 2026-09-06 · 재민 판정] **나무 열매 셋이 품목이 된다** ══════════
+//
+// T135 가 나무에 열매를 달았는데(`server/trees.json`) 그 열매의 **품목이 없었다** —
+// 그래서 따면 `weights.kgOfOrDefault` 의 기본값 **1 kg** 이 붙었다(그물이지 답이 아니다).
+//
+// ★★**새 수 0.** 값을 짓지 않는다 — 이미 있는 형제 항목을 **그대로 편다**:
+//   · 도토리·밤 = `nuts`(견과류)   — 같은 숲 채집물이고 같은 손짓이다
+//   · 오디      = `fruit_berries`(산딸기) — 같은 숲 열매다
+//   ⇒ kg·값·효용·기여·철·범주가 전부 그 형제의 것이다. 한 줄도 새로 적지 않았다.
+//   ⚠**영양의 종별 차이는 여기 적지 않는다** — 그건 `economy-sim.js` 의 `FORAGE_FOOD_FACTOR`
+//     (도토리 0.25 · 밤 0.5)가 이미 쥔 축이다. 여기 또 적으면 그게 사본이고, 둘이 조용히 갈린다.
+//
+// ⚠**오디는 새 아이디**다(`mulberry_fruit`). `mulberry` 는 **뽕나무 잎**이고 `harvest: 'farming'` 이라
+//   양잠 층의 것이다 — 그 자리를 열매가 빼앗으면 잎을 읽는 자리가 조용히 뒤바뀐다.
+//   ⚠개암(`hazel`)은 **목재 전용 그대로** 둔다 — 열매 값의 출처가 아직 없다(재민 판정 · 회부).
+//
+// ⚠**되돌림 손잡이 안에 둔다**(`T135_TREES=0` 이면 셋이 아예 안 선다). 왜:
+//   품목표는 econ 의 `TRADABLE` 집합이라, 항목이 늘면 **나무 층과 무관하게** 값과 교역이 움직인다.
+//   실측(3판 §0ⓑ): 손잡이를 끄고도 시드 1020 인구가 6,459 → 6,580 으로 갔다. 그러면 OFF 열이
+//   T86 기준선이 아니게 되고 *"되돌림이 곧 증명"* 이라는 이 카드의 증거가 무너진다.
+//   ⇒ **열매가 없으면 열매 품목도 없다.**
+if (process.env.T135_TREES !== '0') {
+  RESOURCES.acorn = { ...RESOURCES.nuts, ko: '도토리' };
+  RESOURCES.chestnut = { ...RESOURCES.nuts, ko: '밤' };
+  RESOURCES.mulberry_fruit = { ...RESOURCES.fruit_berries, ko: '오디' };
+}
 
 // 카테고리별 통계 (확인용)
 function _summary() {
@@ -9050,7 +9079,7 @@ const TREES={
   oak:       { ko:'참나무', wood:0.95, mature: 40, char:1.00, fruit:'acorn',    fy:0.60, fs:2 },   // 도토리 — 구황(FORAGE 0.25)
   chestnut:  { ko:'밤',    wood:0.75, mature: 12, char:0.70, fruit:'chestnut', fy:1.00, fs:2 },   // 밤 — FORAGE 0.5
   hazel:     { ko:'개암',  wood:0.35, mature:  6, char:0.45, fruit:null,       fy:0,    fs:2 },   // 개암 품목 없음 — 회부
-  mulberry:  { ko:'산뽕',  wood:0.45, mature:  8, char:0.40, fruit:'mulberry', fy:0.80, fs:1 },   // 뽕나무 잎(양잠) — specialty 정본 id
+  mulberry:  { ko:'산뽕',  wood:0.45, mature:  8, char:0.40, fruit:'mulberry_fruit', fy:0.80, fs:1 },   // ★[T135 3판] **오디**(열매). 잎 `mulberry`(harvest:farming · 양잠)는 그대로 — 열매가 그 자리를 뺏으면 잎을 읽는 자리가 조용히 뒤바뀐다
   grape:     { ko:'머루',  wood:0.10, mature:  4, char:0.10, fruit:'grape',    fy:0.90, fs:2 },   // 산포도 — FORAGE 0.3
   willow:    { ko:'버들',  wood:0.50, mature:  7, char:0.30, fruit:null,       fy:0,    fs:2 },
 };
