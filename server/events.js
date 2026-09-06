@@ -186,6 +186,10 @@ const CFG = {
   //   T7 의 `RUMOR_OFF`·T50 의 `EV_DEEDS_OFF` 와 **같은 자리**다 — 배치의 기여를 재려면 되돌릴 줄이 있어야 한다.
   //   ⚠새 손잡이가 아니라 **스위치**다(눈금은 손잡이가 아니라 mag 자신의 자릿수에서 나온다 — 새 수 0).
   BLUR: _num('T127_BLUR', 1),
+  // ★★[T133 2026-09-06] **장부는 하역 뒤의 값을 본다** — `T133_FRESH=0` 이면 T133 이전 동작
+  //   (하루 캐시 = 하역 전 시세)이 정확히 재현된다. T127 의 `BLUR` 와 같은 자리다.
+  //   ⚠새 손잡이가 아니라 **스위치**다(문턱도 계수도 아니다 — 무엇을 읽느냐만 바뀐다).
+  PRICE_FRESH: _num('T133_FRESH', 1),
 };
 // ★연표에 실을 사건 유형 — 기본은 **계절 전환을 뺀 전부**다.
 //   계절은 사건이 아니라 **연표의 축**이라(연·계절로 묶는 그 기준) 항목으로 또 적으면 겹친다.
@@ -319,6 +323,29 @@ function pricesOf(econV2, v, day) {
 //   ⚠여전히 **정본 함수 하나**를 부를 뿐이다 — 가격을 여기서 계산하지 않는다.
 //   ⚠NPC 교역(`tickTradeV2`)은 종전대로 하루 캐시를 읽는다 — 이 접근자는 그 경로를 안 건드린다.
 function pricesFresh(econV2, v) { return econV2.computeShadowPrices(v); }
+// ── ★★[T133 2026-09-06] **장부가 값을 묻는 시점** — 세션1 T130 이 잡은 계측 시점 결함 ────────
+//   증상: 곡물 가격 사건(시드 1020 800일 · 급등 1,815 · 급락 2,110)의 **21.1%**(급등의 38.5%)가
+//   "문 앞에 온 짐을 못 본 빈 곳간"의 값이었다. 표본 `d61 어촌5 wheat ×4.14` — 그날 재고는
+//   0 → 75.1 로 찼는데(`carIn 77.5`) 장부가 읽은 값은 **0 이던 때의 시세**였다.
+//
+//   ★왜 그런가 — 틱 순서가 그렇다(§0-ⓐ 실측 · `sim/economy-sim-v2.js tickWorldV2`):
+//     ① tickVillage·tickSubsistence·tickDecay   재고가 오늘치로 바뀐다
+//     ② **tickTradeV2**                          `_priceCache` 가 여기서 뜬다(:603) — 하역 **전**
+//     ③ **tickCaravansV2**                       하역(carIn)이 여기서 곳간에 들어온다
+//     ④ ledger.scanDay                           장부 판정
+//   ⇒ 장부는 ④에서 **오늘 재고**(하역 후)와 **어제 아침 시세**(하역 전)를 나란히 놓고 있었다.
+//     같은 순간의 두 수가 아니면 그 비율은 세계가 아니라 **계측 시점**을 재는 것이다.
+//
+//   ★고침(재민 판정): 사건 판정은 `pricesFresh` — 지금 재고의 함수 — 를 읽는다. **사본 0**:
+//     그 접근자는 이미 있었고(거래소가 2026-08-27 에 같은 결함으로 옮겨 갔다), 여기서도
+//     **정본 함수 하나**를 부를 뿐이다. 캐시 갱신을 하역 뒤로 미루는 쪽은 불가능하다 —
+//     `tickTradeV2` 는 캐러밴을 **띄우려고** 그 값을 쓰므로 그 앞에 있어야 하고,
+//     그 경로는 무접촉 규약이다(위 `pricesFresh` 주석 마지막 줄).
+//   ⚠**econ 은 한 줄도 안 바뀐다.** `computeShadowPrices` 는 `v` 에 아무것도 안 쓰는 순수 읽기라
+//     (하는 일은 `return prices` 하나) 몇 번을 더 불러도 세계가 움직이지 않는다 —
+//     그게 "장부는 관측자"의 이 카드판 증명이고, 3시드 여덟 수가 그걸 확인한다.
+//   ⚠게시(`makeRequest`)의 시세는 **안 옮겼다.** 그건 사건이 아니라 **약속의 값**이고,
+//     여덟 수의 '게시' 열이 거기 걸려 있다 — 같은 카드에서 두 가지를 흔들면 귀속이 안 된다. 회부.
 
 // ── 장부 ──────────────────────────────────────────────────────────────────────
 // ── ★★[T127 2026-09-05] 소문 왜곡 — 홉을 거칠수록 **수가 뭉개진다** ──────────────
@@ -371,6 +398,12 @@ function createLedger(opts) {
   //   ⚠남기는 건 **사건 하나당 한 행**이다(마을×사건이 아니라). 누가 언제 들었는지는
   //   도달표가 **결정론적으로** 되돌려 주므로 저장할 이유가 없다(파생값 미저장 — spoil.js 규약).
   const onChronicle = o.onChronicle || null;  // (ev) => void
+  // ★★[T133 2026-09-06] 장부가 값을 묻는 **문 하나** — 사건 판정도 프라이밍도 여기를 통과한다.
+  //   되돌림(`T133_FRESH=0`)이면 종전의 하루 캐시를 그대로 읽는다(비트 동일 재현).
+  //   ⚠사본 금지: 가격을 여기서 계산하지 않는다 — 접근자 둘 중 하나를 고를 뿐이다.
+  function priceView(v, day) {
+    return cfg.PRICE_FRESH ? pricesFresh(econV2, v) : pricesOf(econV2, v, day);
+  }
 
   // 마을별 상태. 전부 이 Map 안에만 산다(econ 객체 무오염).
   //   det: Map<item, {pEma,pN,short,glut,up,down}>
@@ -558,7 +591,7 @@ function createLedger(opts) {
       const vid = vidOf(v, i);
       if (vid == null) return;
       const s = st(vid);
-      const prices = pricesOf(econV2, v, day);
+      const prices = priceView(v, day);      // ★[T133] 래치의 기준선도 관측과 **같은 자로** 잰다
       const e = v._consEMA || {}, sto = v.storage || {};
       for (const r of itemsOf(s, v)) {
         const d = det(s, r);
@@ -613,7 +646,7 @@ function createLedger(opts) {
       if (!v.npcs || v.npcs.length === 0) return;   // 사람이 없는 마을엔 소식이 없다
       const s = st(vid);
       const mine = [];
-      const prices = pricesOf(econV2, v, day);
+      const prices = priceView(v, day);      // ★★[T133] 하역 뒤의 값 — 위 주석
       const e = v._consEMA || {}, sto = v.storage || {};
 
       for (const r of itemsOf(s, v)) {

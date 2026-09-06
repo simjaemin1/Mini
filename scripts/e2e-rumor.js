@@ -182,18 +182,28 @@ async function waitHttp(url, tries = 900) {
   await snap('ru-01-at-A');
 
   // ── ③ A 에서 사건을 세운다 — 그리고 A 는 **그날 바로** 안다 ────────────────
+  // ★★[T133 2026-09-06] **"자기 마을 줄이 있다"로 멈추면 안 된다 — 그게 방금 난 줄이라는 보장이 없다.**
+  //   게시판은 상한(`BOARD_NEWS_N`)이 있어 자기 마을 최신 줄이 **몇십 일 전 것**일 수 있다. 그걸 골라
+  //   ④("아직 B 엔 없다")·⑤("며칠 뒤 나타난다")를 재면, 그 사건은 이미 B 에 도달했거나 이미 밀려나 있어
+  //   **제품이 옳은데 하네스가 빨개진다.** T127 이 이 흔들림을 회부 B-6 으로 적었고(세 판에서 ④·⑤·⑦ 이
+  //   각각 한 번씩 빨갰다), T133 이 가짜 급등 20% 를 걷어내며 게시판 구성이 바뀌자 다시 나왔다.
+  //   ⇒ **이 픽스처가 만든 줄**(기준일 이후에 난 것)이 나올 때까지 돈다. 조건을 assert 로 건다.
+  const evDayStart = await gameDay();
   let evA = null, boardA = null;
   for (let i = 0; i < 30 && !evA; i++) {
     await page.evaluate((vid) => window.__sendPrimary({ type: '__e2e_village_short', vid }), A.id);
     await sleep(1100);                                   // 하루 경계가 지나가게
     boardA = await askBoard(A.id);
-    const own = ((boardA && boardA.news) || []).filter((r) => r.from == null);
+    const own = ((boardA && boardA.news) || []).filter((r) => r.from == null && r.day >= evDayStart);
     if (own.length) evA = own.slice().sort((a, b) => b.day - a.day)[0];
   }
   ok(!!(boardA && Array.isArray(boardA.news)), '③a 게시판 응답에 소식(news)이 실려 온다(T7 추가 필드)',
     boardA ? `news ${((boardA.news) || []).length}건 · 의뢰 ${((boardA.rows) || []).length}건` : 'X');
   ok(!!evA, '③ A 마을은 **자기 사건을 그날 바로** 안다(직접 목격 = 지연 0)',
     evA ? `${evA.type} ${evA.item} day${evA.day} heard${evA.heard}` : '(사건 없음)');
+  ok(!!evA && evA.day >= evDayStart,
+    '③a2 전제: 고른 사건이 **이 픽스처가 만든 것**이다(게시판 상한에 밀린 옛 줄이 아니다 · T133)',
+    evA ? `기준일 ${evDayStart} · 사건일 ${evA.day}` : '-');
   ok(!!evA && evA.heard === evA.day, '③b 자기 마을 사건의 도달일 = 사건일(하루도 안 걸린다)',
     evA ? `${evA.day} → ${evA.heard}` : '');
   ok(!!evA && evA.from == null, '③c 자기 마을 사건엔 출처 마을 이름이 안 붙는다');
@@ -217,6 +227,9 @@ async function waitHttp(url, tries = 900) {
   const news0 = (boardB0 && boardB0.news) || [];
   ok(news0.length > 0, '④c 전제: B 게시판에도 소식이 실린다(빈 목록으로 인한 자명 통과가 아니다)',
     `news ${news0.length}건 — ${JSON.stringify(news0.slice(0, 2).map((r) => r.line))}`);
+  ok(!!evA && (frozenDay - evA.day) <= 3,
+    '④c2 전제: 얼린 순간이 사건 직후다(소문이 아직 걸어올 시간이 없었다 · T133)',
+    evA ? `얼린 날 ${frozenDay} − 사건일 ${evA.day} = ${frozenDay - evA.day}일` : '-');
   const seen0 = evA ? news0.some((r) => keyOf(r, B.name) === keyOf(evA, A.name)) : true;
   ok(evA && !seen0, '④ A 에서 난 사건이 **B 에는 아직 없다**(도달 전 사건은 없는 것과 같다)',
     `frozenDay=${frozenDay} · 사건일 ${evA && evA.day} · 최소 ${minDays}일 필요`);

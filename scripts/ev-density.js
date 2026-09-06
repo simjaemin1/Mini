@@ -81,6 +81,10 @@ const CANDS = BASE_ONLY ? [] : [
   { tag: 'B ±55 · H1.6', cfg: { PRICE_UP: 0.55, PRICE_DOWN: 0.55, HYST: 1.6 } },
   { tag: 'C ±70 · H1.6 (T63)', cfg: { PRICE_UP: 0.70, PRICE_DOWN: 0.70, HYST: 1.6 } },
   { tag: 'E ±90 · H1.6 ★채택', cfg: { PRICE_UP: 0.90, PRICE_DOWN: 0.90, HYST: 1.6 } },
+  // ★★[T133 2026-09-06] **되돌림 열** — 채택 문턱은 그대로 두고 `PRICE_FRESH` 만 끈다(하역 전 시세).
+  //   장부는 관측자라 같은 세계에 얹으면 **카오스 잡음 0** 으로 계측 시점의 기여만 뽑을 수 있다
+  //   (판을 두 번 돌려 견주면 그 차이엔 세계의 흔들림이 섞인다).
+  { tag: 'F ±90 · 하역 전 시세(T133 되돌림)', cfg: { PRICE_UP: 0.90, PRICE_DOWN: 0.90, HYST: 1.6, PRICE_FRESH: 0 } },
 ];
 // ★[T63 2026-09-03] 처방 A(가격 문턱 재스윕)의 **수**를 재려고 후보를 더 얹는다.
 //   `EV_SWEEP_EXTRA="0.85:1.6,1.00:1.8"` 형식(문턱:HYST). 안 주면 위 셋 그대로 — **기본 동작 무변경**.
@@ -406,6 +410,38 @@ if (LS.length) {
     console.log(`     처방 A/B/C 와 그 비용은 \`보고/T63_2026-09-03.md\` ⓒ 에 있다(문턱을 흔들기 전에 읽어라).`);
   } else {
     console.log(`  ✓ 두 읽기 모두 캐논 구간 안(${CANON_LO}~${CANON_HI}일/건)`);
+  }
+}
+
+// ── ⓘ ★★[T133 2026-09-06] 계측 시점 — **하역 뒤 vs 하역 전**을 같은 세계에서 견준다 ──────────
+//   세션1 T130 이 잡은 것: 가격 사건의 21.1%(급등의 38.5%)가 "문 앞에 온 짐을 못 본 빈 곳간"의 값이었다.
+//   ⚠두 열의 차이는 **오직 장부가 값을 묻는 시점**이다(문턱·세계·틱 스트림 전부 같다).
+if (LS.length) {
+  const ADOPT = LS.find((x) => /★채택/.test(x.tag));
+  const REV = LS.find((x) => x.cfg && x.cfg.PRICE_FRESH === 0);
+  if (ADOPT && REV) {
+    const A = ADOPT.L.stats, B = REV.L.stats;
+    const bA = A.byType || {}, bB = B.byType || {};
+    console.log(`\nⓘ [T133] 계측 시점 — 하역 뒤(채택) vs 하역 전(되돌림) · 같은 세계 · ${live}마을 × ${DAYS}일`);
+    console.log('  ' + '유형'.padEnd(18) + '하역 뒤'.padStart(10) + '하역 전'.padStart(10) + '차이'.padStart(10) + '     증감');
+    for (const t of Events.TYPES) {
+      const a = bA[t] || 0, b = bB[t] || 0;
+      if (!a && !b) continue;
+      const d = a - b;
+      console.log('  ' + t.padEnd(18) + String(a).padStart(10) + String(b).padStart(10) + String(d).padStart(10)
+        + '     ' + (b ? ((d / b) * 100).toFixed(1) + '%' : '—'));
+    }
+    const dens = (n) => (n > 0 ? (live * DAYS / n) : Infinity);
+    const DEED = new Set(Events.DEED_TYPES || []);
+    const valOf = (b) => Events.TYPES.reduce((acc, t) => acc + (DEED.has(t) ? 0 : (b[t] || 0)), 0);
+    const vA = valOf(bA), vB = valOf(bB);
+    console.log(`  ${'─'.repeat(60)}`);
+    console.log(`  합계 ${A.emitted} vs ${B.emitted} (${A.emitted - B.emitted} · ${((A.emitted - B.emitted) / Math.max(1, B.emitted) * 100).toFixed(1)}%)`);
+    console.log(`  ㉮ 전체 밀도   하역 뒤 ${dens(A.emitted).toFixed(2)}일/건  ←  하역 전 ${dens(B.emitted).toFixed(2)}일/건`);
+    console.log(`  ㉯ 값 유형 밀도 하역 뒤 ${dens(vA).toFixed(2)}일/건  ←  하역 전 ${dens(vB).toFixed(2)}일/건   (캐논 2~3일)`);
+    console.log(`  ★밀도가 캐논 구간에 **가까워지는 방향**인지만 적는다 — 판정은 재민이 한다(장부는 관측자).`);
+    // 비용 — 하루 51마을에 시세를 한 번 더 묻는 값
+    console.log(`  ★비용(§0-ⓑ): 위 ⓑ 표의 ms/일 두 열이 그 답이다 — 같은 판·같은 세계라 그 차이가 곧 \`pricesFresh\` 값이다.`);
   }
 }
 

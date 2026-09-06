@@ -1793,6 +1793,135 @@ const mkLedgerGeo = (world, geo, cfg) => {
   }
 }
 
+// ═════════════════════════════════════════════════════════════════════════════
+// ㊻ [T133 2026-09-06] **장부는 하역 뒤를 본다** — 계측 시점 결함(세션1 T130)
+//
+//   ★무엇이 틀렸었나: econ 틱은 ②`tickTradeV2`(여기서 `_priceCache` 가 뜬다) → ③`tickCaravansV2`
+//     (여기서 하역) 순이다. 장부는 ④에서 **오늘 재고**(하역 후)와 **하루 캐시**(하역 전)를
+//     나란히 놓고 비율을 냈다 — 같은 순간의 두 수가 아니면 그 비율은 세계가 아니라 **시점**을 잰다.
+//   ★검사가 무엇을 잡아야 하나:
+//     ①고침이 안 걸리면 ㊻c 가 빨개진다(빈 곳간 시세로 사건이 난다).
+//     ②고침이 과하면(사건이 다 사라지면) ㊻e 가 빨개진다(진짜 급등은 여전히 난다).
+//     ③econ 을 건드리면 ㊻b 가 빨개진다(시세를 물어도 세계가 안 움직인다).
+//     ④틱 순서가 바뀌면 ㊻a 가 빨개진다(이 카드의 전제가 econ 쪽에서 사라진 것이다).
+// ═════════════════════════════════════════════════════════════════════════════
+{
+  // ── ㊻a 전제(소스 계약) — econ 틱에서 **캐시 갱신이 하역보다 먼저**다
+  {
+    const src = require('fs').readFileSync(path.join(__dirname, '..', 'sim', 'economy-sim-v2.js'), 'utf8');
+    const body = (src.match(/function tickWorldV2\(world\)[\s\S]*?\n\}/) || [''])[0];
+    const iTrade = body.indexOf('tickTradeV2(world');
+    const iCar = body.indexOf('tickCaravansV2(world');
+    ok(iTrade > 0 && iCar > 0 && iTrade < iCar,
+      '㊻a 전제(소스 계약): `tickTradeV2`(캐시 갱신)가 `tickCaravansV2`(하역)보다 **먼저** 돈다 — 이 카드의 전제',
+      `tickTradeV2@${iTrade} < tickCaravansV2@${iCar}`);
+    ok(/a\.v\._priceCache = a\.prices;/.test(src),
+      '㊻a2 전제: 하루 캐시를 세우는 자리가 `tickTradeV2` 안에 있다(캐시가 하역 전 값인 근거)');
+  }
+
+  const W = makeWorld(0, 88);
+  const LF = mkLedger(W);                          // 채택 — 하역 뒤(fresh)
+  const LC = mkLedger(W, { PRICE_FRESH: 0 });      // 되돌림 — 하역 전(하루 캐시)
+  const _l = console.log; console.log = () => {};
+  try { for (let d = 0; d < 90; d++) { econV2.tickWorldV2(W); LF.scanDay(W, W.day, {}); LC.scanDay(W, W.day, {}); } }
+  finally { console.log = _l; }
+
+  // ── ㊻b ★★시세를 물어도 **세계는 안 움직인다**(`computeShadowPrices` 는 순수 읽기)
+  {
+    const before = snapEcon(W);
+    for (const v of W.villages) for (let k = 0; k < 5; k++) econV2.computeShadowPrices(v);
+    ok(snapEcon(W) === before,
+      '㊻b ★★시세를 몇 번을 더 물어도 econ 상태가 **비트 동일**하다 — 장부는 관측자(이 카드판 증명)');
+    const p1 = econV2.computeShadowPrices(W.villages[0]);
+    const p2 = econV2.computeShadowPrices(W.villages[0]);
+    ok(p1 !== p2 && JSON.stringify(p1) === JSON.stringify(p2),
+      '㊻b2 그리고 매번 **새 객체**를 낸다(캐시 객체를 남이 고칠 수 없다) · 값은 같다(결정론)');
+  }
+
+  // ── 표본 재현 — `d61 어촌5 wheat ×4.14 · 당일 재고 0→75.1 · carIn 77.5` 의 **모양**
+  //   ⚠사건을 지어내지 않는다: 곳간을 비운 채 그날 캐시를 뜨게 하고(=하역 전 시세),
+  //     그 다음 곳간을 채운다(=하역). 그 두 줄이 T130 이 잡은 순서 그대로다.
+  const tgt = pickFresh(W, LF, { minEma: 0.2 });
+  ok(!!tgt, '㊻ 전제: 래치가 꺼진 표적을 골랐다(픽스처가 성립하는 자리)', tgt ? `v${tgt.vid} ${tgt.r} 재고 ${tgt.stock.toFixed(1)}` : '없음');
+  if (tgt) {
+    const v = tgt.v, R = tgt.r;
+    const dF = LF.detOf(tgt.vid, R), dC = LC.detOf(tgt.vid, R);
+    ok(!!dF && dF.pN >= LF.cfg.PRICE_WIN,
+      '㊻2 전제: 그 품목의 가격 자기평균이 **데워져 있다**(안 데워지면 아래가 자명 통과다)',
+      dF ? `pN ${dF.pN} ≥ ${LF.cfg.PRICE_WIN} · pEma ${(+dF.pEma).toFixed(3)}` : '-');
+
+    const keep = +v.storage[R] || 0;
+    v.storage[R] = 0;                                        // ① 곳간이 비었던 순간
+    W.day += 1;
+    const stale = econV2.computeShadowPrices(v);             // ② 그때 뜬 하루 캐시(= tickTradeV2 자리)
+    v._priceCache = stale; v._priceCacheDay = W.day;
+    v.storage[R] = keep + Math.max(keep, 20);                // ③ 캐러밴이 짐을 내린다(캐시 **뒤**)
+    const fresh = econV2.computeShadowPrices(v);             // ④ 장부가 판정하는 순간의 진짜 시세
+
+    const pStale = +stale[R] || 0, pFresh = +fresh[R] || 0, base = +dF.pEma || 0;
+    ok(pStale > pFresh * 1.5 && base > 0,
+      '㊻3 전제: 픽스처가 **의도한 상황**이다 — 하역 전 시세가 하역 후보다 훨씬 높다(표본 d61 의 모양)',
+      `하역 전 ${pStale.toFixed(3)} · 하역 후 ${pFresh.toFixed(3)} · 자기평균 ${base.toFixed(3)}`);
+    ok(pStale / base > 1 + LF.cfg.PRICE_UP,
+      '㊻3b 전제: 하역 전 값이면 **문턱을 넘는다**(안 넘으면 아래 대조가 자명 통과다)',
+      `×${(pStale / base).toFixed(2)} > ×${(1 + LF.cfg.PRICE_UP).toFixed(2)}`);
+
+    const outF = LF.scanDay(W, W.day, {});
+    const outC = LC.scanDay(W, W.day, {});
+    const spike = (out) => out.filter((x) => x.type === 'PRICE_SPIKE' && x.vid === tgt.vid && x.item === R);
+    ok(spike(outC).length === 1,
+      '㊻c ★★되돌림(하역 전 시세)은 **없는 급등을 적는다** — T130 이 잡은 그 결함이 여기서 재현된다',
+      `×${(spike(outC)[0] || {}).mag || '-'}`);
+    ok(spike(outF).length === 0,
+      '㊻ ★★고침: 장부는 **하역 뒤의 값**을 본다 — 문 앞에 온 짐을 본 곳간에는 급등이 없다',
+      `하역 뒤 시세 ×${(pFresh / base).toFixed(2)} (문턱 ×${(1 + LF.cfg.PRICE_UP).toFixed(2)})`);
+    ok(outF.filter((x) => x.vid === tgt.vid && x.item === R && /STOCK_/.test(x.type)).length
+       === outC.filter((x) => x.vid === tgt.vid && x.item === R && /STOCK_/.test(x.type)).length,
+      '㊻d ★재고 유형은 **한 건도 안 달라진다** — 이 카드가 만진 것은 가격 축 하나다');
+  }
+
+  // ── ㊻e ★진짜 급등은 여전히 난다(고침이 사건을 죽인 게 아니다)
+  {
+    const t2 = pickFresh(W, LF, { minEma: 0.2, skip: new Set([tgt ? tgt.vid + ':' + tgt.r : '']) });
+    ok(!!t2, '㊻e0 전제: 둘째 표적을 골랐다', t2 ? `v${t2.vid} ${t2.r}` : '없음');
+    if (t2) {
+      const d2 = LF.detOf(t2.vid, t2.r);
+      if (d2 && d2.pN >= LF.cfg.PRICE_WIN) {
+        W.day += 1;
+        t2.v.storage[t2.r] = 0;                    // 진짜로 비었다 — 하역도 없다
+        const outF = LF.scanDay(W, W.day, {});
+        ok(outF.some((x) => x.type === 'PRICE_SPIKE' && x.vid === t2.vid && x.item === t2.r),
+          '㊻e ★★**진짜 급등은 그대로 난다** — 고침이 가격 축을 죽인 게 아니다(과잉 수리 방지)');
+      } else {
+        ok(false, '㊻e 전제 미충족: 둘째 표적의 가격 평균이 안 데워졌다', `pN ${d2 && d2.pN}`);
+      }
+    }
+  }
+
+  // ── ㊻f ★★돌연변이 — 되돌림 스위치(`T133_FRESH=0`) · 자식 프로세스 + env (공통 §2 ⑨)
+  {
+    const { execFileSync } = require('child_process');
+    const _ROOT = path.join(__dirname, '..');
+    const code = `
+      const path=require('path');const R=(p)=>require(path.join(${JSON.stringify(_ROOT)},p));
+      const Events=R('server/events');
+      const L=Events.createLedger({ econV2: R('sim/economy-sim-v2'), vidOf:(v,i)=>i });
+      process.stdout.write('@@'+JSON.stringify({ cfg: L.cfg.PRICE_FRESH,
+        src: /priceView\\(v, day\\)/.test(require('fs').readFileSync(path.join(${JSON.stringify(_ROOT)},'server/events.js'),'utf8')) }));`;
+    const run = (env) => {
+      const out = execFileSync(process.execPath, ['-e', code],
+        { env: Object.assign({}, process.env, { ENABLE_VILLAGES: '0' }, env), encoding: 'utf8' });
+      return JSON.parse(out.slice(out.lastIndexOf('@@') + 2).trim());
+    };
+    const on = run({}), off = run({ T133_FRESH: '0' });
+    ok(on.cfg === 1 && off.cfg === 0,
+      '㊻f ★★돌연변이 — `T133_FRESH=0` 이 **모듈 적재 때** 읽혀 스위치가 실제로 내려간다(자식 프로세스+env)',
+      `켬 ${on.cfg} → 끔 ${off.cfg}`);
+    ok(on.src === true,
+      '㊻f2 사건 판정이 **문 하나**(`priceView`)를 지난다 — 접근자를 호출부마다 고르면 그게 사본이다');
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
 try { require('fs').unlinkSync(process.env.DB_PATH); } catch (e) {}
