@@ -9,4 +9,5 @@
 * 랩 검증 카드 규약(새 기전을 서버에 넣기 전): 전쟁실험실에 기전을 넣고 800일 표 → 답이 서면 서버로 이식(랩 동형 하네스) → 승인 게이트. 랩이 먼저, 이식이 뒤.
 * 랩 검사 다섯의 기본 경로가 레포 **밖**(`~/Mini/…`)이라 컨테이너·CI 에선 늘 건너뛰거나 못 찾았다 — 2026-09-05 T123 이 전부 `lab/` 로 고쳤다(`inline-engine`·`inline-path`·`lab-wiring-check`·`test-lab-{market,mining,psite}`). **건너뜀은 검사가 아니다.**
 * 나무 종·열매·벌목 부등식·채집은 T123 이 랩에 세웠다(`보고/T123_2026-09-05.md`). 표는 `node scripts/build-trees.js` 로 `lab/trees.json` 에 굽는다(손편집 금지 · `--check` 가 어긋남을 잡는다 · `--table` 이 성목 햇수를 실시간으로 환산). 800일 표는 `node scripts/lab-trees.js [일수] [시드] [--nofruit]`.
+* 사냥은 T144 가 랩에서 **답만** 냈다(`보고/T144_2026-09-06.md`). 개체군(`gameRich`)·로지스틱 회복(`L_GAMER`)·CPUE(`land.game`)는 **이미 있었고**, 빠져 있던 수확의 포화(Holling II · `huntTake`)만 채웠다. 800일 표는 `node scripts/lab-hunt.js [일수] [시드] [--off]`. **답: 마을 스케일에서 남획은 안 일어난다**(압력÷MSY 중앙 0.14 · 1.0 넘는 마을 0/20) — 사냥터가 커서다. 이식 전에 재민 판정이 필요하다.
 * ⚠**랩은 그냥 두면 두 번이 다르다**(`Math.random`). 랩 표를 인용하는 도구는 `test-lab-mining` 처럼 페이지 뜨기 전에 PRNG 를 시드로 갈아 끼워라 — `scripts/lab-trees.js` 가 그 예다.
