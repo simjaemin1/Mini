@@ -2679,6 +2679,10 @@ Wildlife.init({
   getActiveChunkKeys: () => activeChunkKeys, isPositionActive,
   spawnCorpse, damagePlayer, broadcast, WORLD,
   simVillages: () => SimVillages.clientVillages(), legacyVillages: VILLAGES,
+  // ★[T146] 몹 마릿수가 **마을 사냥터 개체군**을 따라 서게 — 정본은 `villages.js` 하나다(사본 0).
+  gameRichAt: (k) => { const ci = String(k).indexOf(','); return ci < 0 ? undefined
+    : SimVillages.gameRichAt(+String(k).slice(0, ci), +String(k).slice(ci + 1)); },
+  gameRichSize: () => SimVillages.gameRichSize ? SimVillages.gameRichSize() : 0,
   // §4-4 P3: 실체 전쟁 병사 pid 위치(px)를 야생 위협원으로 주입(_buildWarThreats 서버판 — 행군/전투 병사를 몹이 인지·회피).
   warThreats: () => SimVillages.warThreats(),
 });
@@ -9249,7 +9253,11 @@ async function tryAttack(player) {
     bestMob.dirty = true;
     broadcast({ type: 'mob_damaged', mid: bestMob.mid, hp: bestMob.hp });
     // §4-4 wildlife 브리지: 본체 hp(×10 스케일)→랩 hp 동기 + 피격 반응(놀람 도주/멧돼지·늑대 반격 돌진)
-    if (bestMob.isWild) Wildlife.onMobHit(bestMob, atk, player);
+    if (bestMob.isWild) {
+      Wildlife.onMobHit(bestMob, atk, player);
+      // ★[T146] 플레이어가 잡았으면 **마을 장부에서도 한 마리 준다**(§0-ⓒ) — 새 수 0(잡은 것이 곧 그 수).
+      if (bestMob.hp <= 0) { try { SimVillages.huntKillAt(bestMob.x, bestMob.y); } catch (e) {} }
+    }
     // 늑대는 공격당하면 즉시 어그로 — 단 길든 mob은 어그로 안 가짐. 팩 동료도 같이 어그로.
     if (bestMob.type === 'wolf' && !bestMob.tameOwner) {
       bestMob.aggroTarget = player.pid;
