@@ -340,6 +340,28 @@ function forestTreesPerCell(fCov, cellPx) {
   return FOREST_GAP * (c * c) / (SP * SP);
 }
 
+// ★★[T135 2판] **나무는 두 곳에서 난다.** 위 숲 그리드 말고, 아래 **일반 자원 루프**도 나무를 세운다 —
+//   그리고 그건 **숲 밖에도** 선다(`pickResourceType` 이 biome 마다 `tree` 몫을 갖는다).
+//   `FLOOR.wood`("숲이 없어도 땔감은 좀 난다")의 실체가 바로 이 흩어진 나무들이다.
+//   ⚠1판의 예산 유도가 이걸 0 으로 적었다 — 실측: 마을 스캔 원 안 나무의 **58.8%** 가 이쪽이다.
+/**
+ * 이 biome 에서 일반 루프가 `tree` 를 고를 확률. **표를 옮겨 적지 않는다** —
+ * `pickResourceType` 을 촘촘히 불러 그 표 자신에게 물어본다(정본이 하나여야 한다).
+ */
+function treeShareOf(biome, samples) {
+  const N = Number.isFinite(samples) ? samples : 10000;
+  let n = 0;
+  for (let i = 0; i < N; i++) if (pickResourceType(biome, (i + 0.5) / N) === 'tree') n++;
+  return n / N;
+}
+/** 일반 루프가 32px 셀 하나에 세우는 나무 수 — 청크당 자원 수 × `tree` 몫 ÷ 청크 셀 수. 새 수 0. */
+function scatterTreesPerCell(biome, cellPx, chunkPx) {
+  const c = Number.isFinite(cellPx) ? cellPx : 32;
+  const cp = Number.isFinite(chunkPx) ? chunkPx : CHUNK_SIZE;
+  const cellsPerChunk = (cp / c) * (cp / c);
+  return RESOURCES_PER_CHUNK * treeShareOf(biome) / cellsPerChunk;
+}
+
 // 청크 안 자원 시드 생성. harvestedSet에 있는 건 제외.
 // 청크당 자원 N개 (기본 5개) — 청크 면적 256² = 65536. zone 4096이면 16×16=256 청크. 총 자원 1280.
 // Phase 5-1: terrain (forest·mountain·ore·water) 반영.
@@ -732,4 +754,4 @@ function generateCoastlineWaterTiles(zone, tileSize, findZoneAtFn, oceanRects) {
 
 // ★[T108 2026-09-05] `RESOURCE_HP_TABLE` 을 **내준다** — `zone.js` 가 같은 표를 한 벌 더
 //   들고 있었고(운석이 빠져 3대에 깨졌다 · T90 회부), 그걸 지우려면 정본이 나가야 한다.
-module.exports = { Chunk, ChunkManager, CHUNK_SIZE, generateChunkResources, regrowStageOf, REGROW, seedRand, forestSpacing, forestTreesPerCell, FOREST_MIN_COV, generateVillagesForZone, makeVillageName, generateCoastlineWaterTiles, RESOURCE_HP_TABLE };
+module.exports = { Chunk, ChunkManager, CHUNK_SIZE, generateChunkResources, regrowStageOf, REGROW, seedRand, forestSpacing, forestTreesPerCell, scatterTreesPerCell, treeShareOf, FOREST_MIN_COV, RESOURCES_PER_CHUNK, generateVillagesForZone, makeVillageName, generateCoastlineWaterTiles, RESOURCE_HP_TABLE };

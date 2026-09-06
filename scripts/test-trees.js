@@ -172,6 +172,41 @@ sec('⑧ 되돌림 — T135_TREES=0 이면 econ 접점이 잠든다');
   ok(+out3.slice(out3.lastIndexOf('@@') + 2).trim() === 0, '청크가 종을 안 찍는다(개체 모양 무변)');
 }
 
+// ── ⑪ [2판] 예산은 나무를 **두 곳** 다 센다 ─────────────────────────────────
+sec('⑪ [2판] 나무는 두 곳에서 난다 — 숲 그리드 + 일반 자원 루프');
+{
+  const LV = require(path.join(ROOT, 'server', 'livelihood.js'));
+  const floorV = { land: { wood: LV.FLOOR.wood } };            // 바닥 마을 — 숲 몫 0
+  const forestV = { land: { wood: 1.2 } };
+  const nFloor = Trees.treeCountOf(floorV), nForest = Trees.treeCountOf(forestV);
+  ok(nFloor > 0, `바닥 마을(land.wood == FLOOR.wood ${LV.FLOOR.wood})의 나무가 **0 이 아니다** — ${nFloor.toFixed(0)}그루`);
+  ok(Object.values(Trees.annualFruitBudget(floorV)).reduce((a, x) => a + x, 0) > 0, '바닥 마을도 연간 열매 예산이 선다');
+  ok(nForest > nFloor, `숲 마을이 더 많다 — ${nForest.toFixed(0)} > ${nFloor.toFixed(0)}`);
+  // 숲 마을은 **1판 값 이상**이어야 한다(둘째 항은 더하기지 빼기가 아니다)
+  const CH = Chunk, R = require(path.join(ROOT, 'server', 'villages.js')).LAND_SCAN_R;
+  const all = Math.PI * R * R;
+  const forShare = Math.max(0, Math.min(1, (1.2 - LV.FLOOR.wood) / LV.GAIN.wood));
+  const v1 = forShare * all * CH.forestTreesPerCell();          // 1판 = 첫 항뿐
+  ok(nForest >= v1, `숲 마을은 1판 값 이상 — ${nForest.toFixed(0)} ≥ ${v1.toFixed(0)}`);
+  // 밀도는 **정본이 답한다** — 여기 수를 안 적는다
+  ok(CH.scatterTreesPerCell('forest') > 0 && CH.treeShareOf('forest') > 0, `일반 루프 밀도는 청크 생성기가 답한다(${CH.scatterTreesPerCell('forest').toFixed(6)}/셀 · tree 몫 ${CH.treeShareOf('forest')})`);
+  const tsrc = strip(rd('server/trees.js'));
+  ok(!/0\.003|0\.05469|RESOURCES_PER_CHUNK\s*\*/.test(tsrc), 'trees.js 가 밀도를 옮겨 적지 않았다(부르기만 한다)');
+  // `treeShareOf` 는 표를 옮겨 적지 않고 `pickResourceType` 에게 물어본다
+  const csrc = strip(rd('server/chunk.js'));
+  const ts = csrc.slice(csrc.indexOf('function treeShareOf'), csrc.indexOf('\n}', csrc.indexOf('function treeShareOf')));
+  ok(/pickResourceType\(biome/.test(ts), '`treeShareOf` 가 표 자신에게 물어본다(사본 0)');
+
+  // ★돌연변이 — 둘째 항을 끄면 바닥 마을이 다시 0 이 된다(자식 프로세스 + env · 족보 128)
+  const out = execFileSync(process.execPath, ['-e',
+    "const T=require('./server/trees.js');const L=require('./server/livelihood.js');"
+    + "console.log('@@'+JSON.stringify({floor:T.treeCountOf({land:{wood:L.FLOOR.wood}}),forest:T.treeCountOf({land:{wood:1.2}})}));"],
+    { cwd: ROOT, env: { ...process.env, T135_SCATTER: '0' }, encoding: 'utf8' });
+  const m = JSON.parse(out.slice(out.lastIndexOf('@@') + 2));
+  ok(m.floor === 0, `돌연변이 — 둘째 항을 끄면 바닥 마을이 **0** 으로 돌아간다(${m.floor}) = 1판 결함 재현`);
+  ok(Math.abs(m.forest - v1) < 1e-6, '돌연변이 — 숲 마을은 정확히 1판 값(첫 항뿐)이 된다');
+}
+
 // ── ⑨ 재생 시계 ─────────────────────────────────────────────────────────────
 sec('⑨ 재생 — T122 단계 판정이 종별 햇수를 읽는다(비율은 T122 것)');
 {

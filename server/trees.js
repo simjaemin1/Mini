@@ -146,10 +146,18 @@ function fellOK(id, w) {
 // ★★예산은 **지어낸 수가 아니라 유도**다(새 수 0):
 //   ① 숲 몫  `forShare = (land.wood − FLOOR.wood) / GAIN.wood`  ← `livelihood.js` 정본의 역함수
 //   ② 숲 셀  `forShare × π × R²`                                 ← `villages.LAND_SCAN_R`(부존 스캔 반경)
-//   ③ 나무 수 `숲 셀 × chunk.forestTreesPerCell()`               ← 숲 그리드 정본(간격·빈자리)
+//   ③ 나무 수 **두 항의 합** — 나무는 두 곳에서 난다(아래 ★2판)
+//        숲 셀 × `chunk.forestTreesPerCell()`  +  (πR² − 숲 셀) × `chunk.scatterTreesPerCell(biome)`
 //   ④ 종 몫  종은 자리의 함수라 넓은 면적에선 **고르게** 섞인다 ⇒ 종당 1/종수
 //   ⑤ 크기   `chunk` 의 크기는 U(0,1) ⇒ 평균 0.5 (분포의 평균이지 새 수가 아니다)
 //   ⇒ 품목별 연간 예산 = Σ_그 품목을 내는 종 (나무 수 × 1/종수 × fy × 0.5)
+//
+// ★★[2판 2026-09-06 · PM 판정] **1판은 나무를 한 곳만 셌다.**
+//   보고 §0ⓑ 가 스스로 적었듯 나무는 **두 곳**에서 난다 — 숲 그리드와 **일반 자원 루프**.
+//   일반 루프 나무는 **숲 밖에도** 선다. `FLOOR.wood`("숲이 없어도 땔감은 좀 난다")의 실체가 그것이다.
+//   ⇒ `land.wood` 가 바닥인 마을 17/51 이 나무 **0** 그루로 유도됐다. 실물은 **184그루**
+//     (그중 183 = 99.5% 가 일반 루프). 1판 소멸 1/51 의 첫 후보가 이 자리다.
+//   ⇒ 둘째 항을 더한다. 밀도는 **청크 생성기 정본이 답한다**(`scatterTreesPerCell` — 새 수 0).
 //
 // ★규약 넷은 랩과 같다: 연 1회(결실철 첫 진입에 채움) · 겨울 소멸 · 볼 때 정산 · 못 대면 덜 온다.
 const SIZE_MEAN = 0.5;                              // chunk 의 크기 U(0,1) 평균 — 분포의 성질
@@ -161,7 +169,16 @@ function _scanR() {
   const r = _VG && _VG.LAND_SCAN_R;
   return r > 0 ? r : 140;                           // villages 를 못 부르는 판(단독 하네스)에서만
 }
-/** 이 마을 숲의 나무 수(유도 · 위 ①②③). 못 재면 0. */
+// biome 은 존 설정이 정한다 — 여기 이름을 안 적는다(`pickResourceType` 이 biome 마다 다른 몫을 준다).
+let _BIOME = undefined;
+function _biome() {
+  if (_BIOME === undefined) {
+    _BIOME = null;
+    try { const cfg = require('./zone-config'); const z = cfg.ZONES[process.env.ZONE_ID || 'hanbando']; _BIOME = (z && z.biome) || null; } catch (e) { _BIOME = null; }
+  }
+  return _BIOME;
+}
+/** 이 마을 생활권의 나무 수(유도 · 위 ①②③ · **두 항의 합**). 못 재면 0. */
 function treeCountOf(v) {
   const LV = _livelihood(), CH = _chunk();
   if (!LV || !CH || !v || !v.land) return 0;
@@ -169,8 +186,14 @@ function treeCountOf(v) {
   if (!Number.isFinite(w)) return 0;
   const forShare = Math.max(0, Math.min(1, (w - LV.FLOOR.wood) / (LV.GAIN.wood || 1)));
   const R = _scanR();
-  const cells = forShare * Math.PI * R * R;
-  return cells * CH.forestTreesPerCell();
+  const all = Math.PI * R * R;
+  const forestCells = forShare * all;
+  // ★손잡이 `T135_SCATTER=0` — 둘째 항을 끈다. **1판으로 되돌리는 문**이자 하네스의 돌연변이 자리다
+  //   (족보 128: 돌연변이는 수출을 갈아 끼우는 게 아니라 **자식 프로세스 + env** 로 건다).
+  const scatter = (_num('T135_SCATTER', 1) !== 0 && typeof CH.scatterTreesPerCell === 'function') ? CH.scatterTreesPerCell(_biome()) : 0;
+  //   숲 셀엔 **그리드**가 서고, 그 밖의 셀엔 **흩어진 나무**가 선다.
+  //   (숲 셀에도 일반 루프 나무가 겹쳐 서지만 그건 세지 않는다 — 아래로 잡는다.)
+  return forestCells * CH.forestTreesPerCell() + Math.max(0, all - forestCells) * scatter;
 }
 /** 품목별 **연간** 예산(위 ④⑤). `{item: amount}` */
 function annualFruitBudget(v) {
