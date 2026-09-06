@@ -296,6 +296,9 @@ if __name__ == '__main__':
             rc.squash_z()                          # ★게임 화법(1m=32px) — 정점 z 를 직접 누른다
             p = os.path.join(OUT, key + ".png")
             rec = rc.render_world_pass(OBJS, p, margin=2, ppu_mul=1, ss=3)
+            # ★[T132] 상자 못박기 — 밭 타일도 크롭 없이 그대로 배포된다(앵커까지 함께).
+            rc.assert_pinned_box(os.path.join(DEPLOY, "crops_anchors.json"), key,
+                                 rec["w"], rec["h"], rec["ox"], rec["oy"], label="fields")
             rec["group"] = slug
             rec["stage"] = st
             rec["zmax_px"] = round(zm * 32.0, 2)

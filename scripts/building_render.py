@@ -40,6 +40,7 @@ import render_common as rc
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUTDIR = os.path.join(HERE, "building_renders")
 os.makedirs(OUTDIR, exist_ok=True)
+DEPLOY = os.path.join(HERE, "..", "public", "assets", "buildings")   # ★[T132] 메타가 사는 자리
 
 
 # ═══════════════ 씬 — 정본 한 곳(`render_common.build_scene`) ═══════════════
@@ -209,18 +210,27 @@ def render(key, W, D, top_m):
     top_px = top_m * 32.0
     Wpx = int((DI + DJ) * 32) + 8
     Hpx = int((DI + DJ) * 16 + top_px) + 12
+    ctr = V((DI / 2, DJ / 2, (top_m * ZSQ) / 2))
+    rel = V((0.0, 0.0, 0.0)) - ctr
+    ox = Wpx / 2.0 + rel.dot(RHAT) * PPU
+    oy = Hpx / 2.0 - rel.dot(UHAT) * PPU
+    # ★★[T132] **상자 못박기.** 건물 틀은 재는 게 아니라 **발자국 공식**이 낸다
+    #   (`Wpx=(W+1+D+1)·32+8` · `Hpx=(…)·16+top·32+12`). 형상을 고쳐도 틀은 안 움직이지만,
+    #   **선언값(W·D·top)을 고치면 틀이 조용히 바뀐다** — 그 순간 클라가 든 앵커 표가 낡는다.
+    #   ⇒ 배포 메타가 있으면 **정확히 같아야** 한다. 여기선 `fit_pinned_box`(들어가나?)를 안 쓴다:
+    #     공식이 낸 값은 "들어가면 된다"가 아니라 **그 값이어야** 한다(작아져도 규격이 바뀐 것이다).
+    #     ⓘ 재는 상자(캐릭터·자연물)에는 `fit_pinned_box` 가 맞다 — 자산군마다 재는 방식이 다르다.
+    if rc.assert_pinned_box(os.path.join(DEPLOY, "building_anchors.json"), key,
+                            Wpx, Hpx, round(ox, 1), round(oy, 1), label="bld"):
+        print(f"[bld] {key}: 상자 못박음 {Wpx}x{Hpx} anchor=({ox:.1f},{oy:.1f})")
     scene.render.resolution_x = Wpx; scene.render.resolution_y = Hpx
     cam_d.ortho_scale = Wpx / PPU
-    ctr = V((DI / 2, DJ / 2, (top_m * ZSQ) / 2))
     tgt.location = ctr
     cam.location = ctr + NHAT * 200.0
     _p = os.path.join(OUTDIR, key + ".png")
     scene.render.filepath = _p
     bpy.ops.render.render(write_still=True)
     rc._post_png(_p, ss=1, flip=True)             # ★게임 손방향 보정(위 FLIP 머리말)
-    rel = V((0.0, 0.0, 0.0)) - ctr
-    ox = Wpx / 2.0 + rel.dot(RHAT) * PPU
-    oy = Hpx / 2.0 - rel.dot(UHAT) * PPU
     print(f"[bld] {key}: {Wpx}×{Hpx} anchor=({ox:.1f},{oy:.1f})")
     return {"w": Wpx, "h": Hpx, "ox": round(ox, 1), "oy": round(oy, 1)}
 
@@ -524,4 +534,15 @@ if __name__ == '__main__':
       try: anchors = {**json.load(open(apath)), **anchors}
       except Exception: pass
   json.dump(anchors, open(apath, "w"), indent=1)
+  # ★★[T132] **메타를 배포로 올린다.** 여태 건물 앵커는 `scripts/building_renders/`(gitignore)에만
+  #   있었다 — 즉 **저장소에 없는 정본**이었다. 그래서 클라가 같은 수를 손으로 베껴 들고 있고
+  #   (`20-r2-visibility.js` 의 `A` 표 12키), 하네스가 결정적 재계산으로 그 둘을 맞대 왔다.
+  #   ⇒ 다른 자산군(`nature_anchors`·`props_anchors`·`crops_anchors`·`mountain_anchors`)처럼
+  #     배포 자리에 둔다. 이 카드는 **파일만 올린다** — 클라 배선은 다음 카드다(회부).
+  if not ONLY:                       # 일부만 구운 판으로 배포 메타를 덮지 않는다
+      os.makedirs(DEPLOY, exist_ok=True)
+      dpath = os.path.join(DEPLOY, "building_anchors.json")
+      json.dump(anchors, open(dpath, "w", encoding="utf-8"),
+                ensure_ascii=False, indent=1, sort_keys=True)
+      print("[bld] 배포 메타 ->", os.path.normpath(dpath), len(anchors), "keys")
   print("[bld] DONE ->", OUTDIR, len(anchors), "keys")

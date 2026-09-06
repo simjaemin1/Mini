@@ -10,6 +10,8 @@
 # 실행: python3 scripts/nature-postprocess.py
 import json, os, sys
 from PIL import Image
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import render_common as _RC      # ★[T132] 못박기 헬퍼 한 벌(사본 0). bpy 를 부르지만 씬은 안 짓는다.
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -58,6 +60,13 @@ for key, a in sorted(raw.items()):
         dst = os.path.join(TREES, key + ".png"); n_tree += 1
     else:
         dst = os.path.join(NATURE, key + ".png"); n_prop += 1
+    # ★★[T132] **상자 못박기 — 자연물·나무는 여기가 규격이 정해지는 자리다.**
+    #   굽기가 낸 틀은 크롭 전이고, 배포되는 규격은 **알파 크롭 뒤**의 (w,h,ox,oy)다.
+    #   즉 못박을 자리는 굽기가 아니라 **후처리**다. 모양이 조금만 커져도 크롭 상자가 커지고,
+    #   그러면 배포 PNG 크기와 앵커가 함께 움직여 **읽는 쪽이 조용히 낡는다**.
+    #   ⇒ 이미 배포된 키면 규격이 정확히 같아야 한다(새 키는 잠자코 지나간다 — 못박을 게 없다).
+    _RC.assert_pinned_box(_ap_out, key, im2.width, im2.height, round(ox, 2), round(oy, 2),
+                          label="nat-post")
     im2.save(dst)
     out[key] = {"w": im2.width, "h": im2.height, "ox": round(ox, 2), "oy": round(oy, 2),
                 "ppu": a["ppu"], "kind": a.get("kind", "prop")}

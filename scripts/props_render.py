@@ -1115,6 +1115,10 @@ def render_world(key, margin=3):
     """세계 패스 — building_render.py 와 **같은 프리셋**(45°/30° · PPU 45.255 · ZSQ · FLIP).
     프레임은 화면 bbox 에 맞추고, **로컬 원점(0,0,0)의 픽셀 좌표**를 앵커로 낸다."""
     rec = rc.render_world_pass(OBJS, os.path.join(OUT_W, key + ".png"), margin=margin)
+    # ★[T132] 상자 못박기 — 소품 세계 스프라이트는 크롭 없이 **그대로 배포**되므로
+    #   배포 앵커(`public/assets/props/props_anchors.json`)와 규격이 정확히 같아야 한다.
+    rc.assert_pinned_box(os.path.join(HERE, "..", "public", "assets", "props", "props_anchors.json"),
+                         key, rec["w"], rec["h"], rec["ox"], rec["oy"], label="props")
     print(f"[props] world {key}: {rec['w']}×{rec['h']} "
           f"anchor=({rec['ox']:.2f},{rec['oy']:.2f}) ppu={rec['ppu']:.3f}")
     return rec

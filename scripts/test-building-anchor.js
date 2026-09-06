@@ -65,5 +65,36 @@ for (const k in JOBS) {
   ok(w === JOBS[k].w && h === JOBS[k].h, `${k}.png ${w}×${h} = 계산 ${JOBS[k].w}×${JOBS[k].h}`);
 }
 
+// ── ③ ★[T132] 배포 메타 = 계산값 = 클라 표 (세 자리가 한 값인가) ──
+// ★여태 건물 앵커의 정본은 **저장소에 없었다**(`scripts/building_renders/` 는 gitignore).
+//   그래서 클라가 수를 손으로 베껴 들고, 이 하네스가 결정적 재계산으로 그 둘을 맞대 왔다.
+//   T132 가 `public/assets/buildings/building_anchors.json` 을 배포로 올렸으니 이제 셋이다 —
+//   **셋이 한 값**임을 여기서 못 박는다. 그래야 다음 카드가 클라 사본을 안심하고 지운다.
+console.log('\n[③ 배포 메타 = 계산값 = 클라 표 (T132)]');
+{
+  const MP = path.join(__dirname, '..', 'public', 'assets', 'buildings', 'building_anchors.json');
+  ok(fs.existsSync(MP), 'public/assets/buildings/building_anchors.json 이 배포돼 있다');
+  if (fs.existsSync(MP)) {
+    const MA = JSON.parse(fs.readFileSync(MP, 'utf8'));
+    const keys = Object.keys(JOBS);
+    const missing = keys.filter((k) => !MA[k]);
+    const extra = Object.keys(MA).filter((k) => !JOBS[k]);
+    ok(missing.length === 0 && extra.length === 0,
+       `메타 ${Object.keys(MA).length}키 ↔ 굽는 표 ${keys.length}키 전수 일치` +
+       (missing.length ? ` — 메타에 없음: ${missing.join(', ')}` : '') +
+       (extra.length ? ` — 표에 없음: ${extra.join(', ')}` : ''));
+    const bad = keys.filter((k) => !MA[k] || MA[k].w !== JOBS[k].w || MA[k].h !== JOBS[k].h
+      || Math.abs(MA[k].ox - JOBS[k].ox) > 0.05 || Math.abs(MA[k].oy - JOBS[k].oy) > 0.05);
+    ok(bad.length === 0, `배포 메타가 결정적 재계산값과 같다 ${bad.length ? '— 어긋남: ' + bad.join(', ') : `(${keys.length}키)`}`);
+    // ★자명 통과 금지 — 메타가 서식을 갖췄나(w·h·ox·oy 넷 다)
+    const shape = keys.filter((k) => MA[k] && ['w', 'h', 'ox', 'oy'].every((f) => typeof MA[k][f] === 'number'));
+    ok(shape.length === keys.length, `메타 서식 {w,h,ox,oy} 전수 (${shape.length}/${keys.length}) — 못박기 읽개가 읽는 그 서식이다`);
+    // ★굽기가 이 파일을 **못박기 자로 쓴다**(읽고 버리는 게 아니다)
+    const py = fs.readFileSync(path.join(__dirname, 'building_render.py'), 'utf8');
+    ok(/assert_pinned_box\(/.test(py) && /building_anchors\.json/.test(py),
+       '★굽기가 이 메타를 **상자 못박기 자**로 쓴다 — 발자국을 고치면 굽기가 먼저 죽는다');
+  }
+}
+
 console.log('\n결과: ' + (fail ? `FAIL(${fail})` : 'PASS'));
 process.exit(fail ? 1 : 0);
