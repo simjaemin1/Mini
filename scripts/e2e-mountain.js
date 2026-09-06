@@ -359,6 +359,96 @@ function changedPct(a, b, box, thr) {
   const dDet = meanAbsDiff(f1, f2, bxRock);
   ok(dDet < 0.5, `★같은 상태 두 프레임이 동일 (|Δ| ${dDet.toFixed(3)}) — 배치에 Math.random() 이 없다`);
 
+  // ── ⓕ 둥근/뾰족 섞기 (T145) ────────────────────────────────────────────────
+  say('\n[ⓕ 둥근 산이 섞여 서는가 — `mtRound` 손잡이 · **스프라이트 판**]');
+  {
+    // ★★재는 자리를 먼저 고른다. 라이브 기본은 **3D 메시**(`mt3`)고 그쪽 산 모양은 높이장이
+    //   정한다 — 종(種) 개념이 없어 `mt_R*` 가 한 화소도 안 나온다(T145 §0-ⓑ 뒤늦은 실측).
+    //   `mtRound` 가 사는 곳은 **스프라이트 판**이다 ⇒ 그 판을 켜고 잰다.
+    //   ⚠1차엔 안 켜고 쟀다가 화면 전체 |Δ| 0.01 을 보고 "손잡이가 안 먹는다"로 오독할 뻔했다.
+    //     이름은 441/559 가 바뀌어 있었다 — **그 이름이 화면에 안 닿는 판**이었을 뿐이다.
+    await page.evaluate(() => { window.__terrain19.mt3dOff = true; });
+    await page.evaluate(() => window.__mtSetRound(null));
+    await sleep(2600);
+    const dbg3 = await page.evaluate(() => window.__mtDbg);
+    ok(dbg3 && dbg3.mt3d === false, `스프라이트 판으로 내려섰다 (mt3d=${dbg3 && dbg3.mt3d})`);
+    const namesAt = async (v) => {
+      await page.evaluate((k) => window.__mtSetRound(k), v);   // ★값+다시칠하기 한 문
+      await sleep(1600);
+      const pr = await page.evaluate(() => window.__mtProbe());
+      return (pr || []).map((g) => ({ nm: g.nm, x: g.x, y: g.y, sc: g.sc, tier: g.ridge }));
+    };
+    const nDef = await namesAt(null);        // 캐논 기본값
+    const rDef = nDef.filter((g) => /^mt_R/.test(g.nm)).length;
+    const oct = nDef.filter((g) => /^mt_R?[FG]\d/.test(g.nm)).length;   // 옥탄트 판(캡·매듭은 둥근 짝이 없다)
+    say(`    기본값 — 세그먼트 ${nDef.length}장 · 옥탄트 판 ${oct} · 그중 둥근 ${rDef} (${oct ? (rDef / oct * 100).toFixed(1) : '?'}%)`);
+    ok(nDef.length > 0, `배치가 세그먼트를 낸다 (${nDef.length}장)`);
+    ok(rDef > 0, `★★기본값에서 **둥근 장이 실제로 찍힌다** (${rDef}장) — 재료만 굽고 안 쓰던 T120 이전 상태가 아니다`);
+
+    // ★자리의 함수 — 같은 손잡이로 두 번 물으면 **자리마다 같은 이름**이다(주사위 0).
+    const nDef2 = await namesAt(null);
+    let jitter = 0;
+    // ★열쇠에 **계층**이 든다 — L·M·S 는 같은 자리에 겹쳐 설 수 있어 (x,y) 만으론 유일하지 않다.
+    //   1차에 (x,y) 로만 걸었더니 같은 손잡이 두 판에서 14/812 가 어긋나 보였다(자가 틀렸다).
+    const key = (g) => g.tier + '_' + g.x + '_' + g.y;
+    const m1 = new Map(nDef.map((g) => [key(g), g.nm]));
+    for (const g of nDef2) { const a = m1.get(key(g)); if (a && a !== g.nm) jitter++; }
+    ok(jitter === 0, `★★자리의 함수 — 같은 자리 두 번이 같은 이름이다 (어긋남 ${jitter}/${nDef2.length}) — Math.random() 이 없다`);
+
+    // ★★되돌림 — 0 이면 **T145 이전과 같은 배치**. 이름에서 R 만 빠지고 나머지가 전부 같아야 한다.
+    //   ⓘ 같은 세션에 T145 이전 빌드가 없으므로 화소로는 못 잰다. **이름 항등식이 더 강하다** —
+    //     화면 밖 세그먼트까지 포함해 자리·배율·옥탄트·변종을 전부 맞대기 때문이다.
+    const n0 = await namesAt(0);
+    const r0 = n0.filter((g) => /^mt_R/.test(g.nm)).length;
+    ok(r0 === 0, `★mtRound 0 이면 둥근 장이 **하나도** 없다 (${r0}장)`);
+    let bad = 0, matched = 0;
+    const m0 = new Map(n0.map((g) => [key(g), g.nm]));
+    for (const g of nDef) {
+      const b = m0.get(key(g)); if (!b) continue;
+      matched++;
+      if (b !== g.nm.replace(/^mt_R/, 'mt_')) bad++;
+    }
+    ok(matched > 0 && bad === 0,
+       `★★되돌림 — 기본값의 이름에서 R 만 빼면 mtRound 0 과 **자리마다 같다** (맞댄 ${matched}장 · 어긋남 ${bad})`);
+    const OLD45 = Object.keys(JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'public', 'assets', 'mountains', 'mountain_anchors.json'), 'utf8')))
+      .filter((k) => !/^mt_(R|X)/.test(k));
+    const outside = n0.filter((g) => !OLD45.includes(g.nm)).length;
+    ok(outside === 0, `★mtRound 0 이 부르는 그림이 전부 **종전 45장 안**이다 (밖 ${outside}장) — 새 자산이 안 낀다`);
+
+    // ★★화소 — 손잡이가 그림을 실제로 바꾸나(반례: 같은 손잡이 두 판은 잡음 바닥)
+    //   ⚠**화면 전체**로 잰다. 1차엔 `bxRock`(180×220 · 파괴 시험용 한 자리)으로 쟀다가
+    //     |Δ| 0.00 을 봤다 — 그 좁은 상자에 마침 **둥근 짝이 없는 판**(캡 `mt_S*`·매듭 `mt_M*`·
+    //     `mt_L1`)만 들어 있었다. 441/559 장이 바뀌었는데도 그 창으로는 안 보인다.
+    //     자리가 좁으면 참인 것도 0 으로 읽힌다. 창을 넓히는 게 맞지 문턱을 낮출 일이 아니다.
+    await page.evaluate(() => window.__mtSetRound(null));
+    await sleep(2200);
+    const shotRound = await grab('08-round-def');
+    await page.evaluate(() => window.__mtSetRound(0));
+    await sleep(2200);
+    const shotFlat = await grab('09-round-off');
+    await sleep(2200);
+    const shotFlat2 = await grab('10-round-off-b');
+    const bxAll = [0, 0, shotRound.width, shotRound.height];
+    const dMix = meanAbsDiff(shotRound, shotFlat, bxAll);
+    const dBase = meanAbsDiff(shotFlat, shotFlat2, bxAll);
+    const pMix = changedPct(shotRound, shotFlat, bxAll, 12);
+    const pBase = changedPct(shotFlat, shotFlat2, bxAll, 12);
+    say(`    화소(화면 전체 ${shotRound.width}×${shotRound.height}) — 기본값 ↔ mtRound 0 |Δ| ${dMix.toFixed(2)} · 바뀐 화소 ${pMix.toFixed(2)}%`);
+    say(`      **잡음 바닥**(0 두 판) |Δ| ${dBase.toFixed(2)} · 바뀐 화소 ${pBase.toFixed(2)}%`);
+    ok(dMix > Math.max(0.5, dBase * 4),
+       `★★둥근 섞기가 **화면을 실제로 바꾼다** (|Δ| ${dMix.toFixed(2)} ≫ 바닥 ${dBase.toFixed(2)})`);
+    ok(pMix > 1.0, `★★바뀐 화소가 화면의 1%를 넘는다 (${pMix.toFixed(2)}%) — 눈에 보이는 변화다`);
+    ok(dBase < 0.5, `★반례 — 같은 손잡이 두 판은 잡음 바닥 안이다 (|Δ| ${dBase.toFixed(2)} · 바뀐 화소 ${pBase.toFixed(2)}%)`);
+
+    // ★상한 — 1 이면 옥탄트 판이 전부 둥글다(캡·매듭 `mt_S/M/L` 은 둥근 짝이 없어 그대로다)
+    const n1 = await namesAt(1);
+    const oct1 = n1.filter((g) => /^mt_R?[FG]\d/.test(g.nm));
+    const notR = oct1.filter((g) => !/^mt_R/.test(g.nm)).length;
+    ok(oct1.length > 0 && notR === 0, `★mtRound 1 이면 옥탄트 판 ${oct1.length}장이 **전부** 둥글다 (안 둥근 것 ${notR})`);
+    await page.evaluate(() => window.__mtSetRound(null));
+    await page.evaluate(() => { window.__terrain19.mt3dOff = false; });
+  }
+
   await browser.close(); try { z.kill(); } catch (e) { }
   for (const p2 of procs) { try { p2.kill(); } catch (e) { } }
   say(`\n=== 산 장벽 세그먼트: 통과 ${pass} · 실패 ${fail} ===`);

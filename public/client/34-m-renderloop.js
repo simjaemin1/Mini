@@ -480,6 +480,11 @@
     };
     // 여유 셀을 바꿔 가며 **한 번의 부팅으로 여러 값을 재기** 위한 훅(probe-mttol 이 쓴다)
     window.__mtSetTol = (v) => { MT_FIT_TOL = +v; _mtChunk.clear(); needsRedraw = true; return MT_FIT_TOL; };
+    // ★★[T145] 둥근 비율 손잡이의 **정본 문**. `_t19.mtRound` 를 직접 넣어도 배치는 바뀌지만
+    //   (`_mtChunkSegs` 가 서명으로 캐시를 버린다) **화면은 안 다시 그려진다** — 이 층은
+    //   `needsRedraw` 로 칠하기 때문이다. 그래서 화소로 A/B 를 재려던 하네스가 |Δ| 0.00 을 봤다.
+    //   ⇒ 값과 다시 칠하기를 **한 문**으로 묶는다(`__mtSetTol` 과 같은 자리·같은 문법).
+    window.__mtSetRound = (v) => { _t19.mtRound = (v == null ? null : +v); _mtChunk.clear(); needsRedraw = true; return _t19.mtRound; };
     window.__mtOccAt = (wx, wy) => {
       if (!_mtToScr || !_mtAnchors || !_mtLastRend) return null;
       const p = w2i(wx, wy), sp = _mtToScr(p.x, p.y);

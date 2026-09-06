@@ -890,13 +890,14 @@
     return n;
   }
   let _mt3Fail = 0;
-  let _mtChunkSig = '';
   function _mtCollectCover(out, cx0, cy0) {
     const zid = primaryZoneId; if (!zid) return 0;
     // ★청크는 **굽는 시점의 손잡이 값**을 품는다 — 손잡이를 뒤집어도 캐시가 그대로면
-    //   A/B 대조군이 그림에 안 나타난다(하네스가 이걸 잡았다). 서명이 바뀌면 다시 굽는다.
-    const sig = (_t19.footOff ? 'F' : '') + (_t19.fitOff ? 'X' : '') + zid;
-    if (sig !== _mtChunkSig) { _mtChunkSig = sig; _mtChunk.clear(); }
+    //   A/B 대조군이 그림에 안 나타난다(하네스가 이걸 잡았다).
+    //   ★★[T145] 서명 검사를 **`_mtChunkSegs` 안으로 옮겼다.** 여기 있으면 이 함수를 지나는
+    //     길만 지킨다 — `__mtProbe`(34-m-renderloop)는 `_mtChunkSegs` 를 **직접** 부르므로
+    //     손잡이를 뒤집어도 옛 이름을 그대로 받았다(T145 1차 하네스가 그걸 잡았다: mtRound 0
+    //     인데 둥근 441장). 캐시를 읽는 자리는 하나이므로 **검사도 거기 하나여야 한다.**
     const c0 = Math.floor((cx0 - MT_VIEW_PAD) / 32), c1 = Math.floor((cx0 + MT_VIEW_PAD) / 32);
     const r0 = Math.floor((cy0 - MT_VIEW_PAD) / 32), r1 = Math.floor((cy0 + MT_VIEW_PAD) / 32);
     let n = 0;
@@ -1911,7 +1912,17 @@
   //     dirRawCell — CPU 방향 평활을 끄고 셀 단위 방향(NEAREST)으로 되돌리는 대조군.
   //     shearRaw — 전단선(맞부딪치는 두 강) 보호를 끄는 대조군. 켜면 90° 넘는 이웃까지
   //     평균·연결한다 = 단위벡터가 상쇄돼 방향이 난수가 되던 옛 동작.
-                 phaseRelax: null, dirRawCell: false, shearRaw: false };
+                 phaseRelax: null, dirRawCell: false, shearRaw: false,
+  //   ★[T145 2026-09-06] mtRound — 둥근 산 비율의 **대조군**. null = 캐논값(0.8 · `_mtPick`).
+  //     0 을 주면 T145 이전 배치로 **정확히** 돌아간다(둥근 판정이 늘 거짓 ⇒ 이름·자리 비트 동일).
+  //     하네스가 "둥근 게 실제로 찍혔다"를 주장하려면 안 찍힌 프레임이 같은 시계에서 필요하다.
+  //   ⚠⚠**`mtRound` 는 스프라이트 판에서만 그림이 된다.** 라이브 기본은 3D 메시(`mt3`)고,
+  //     그쪽 산 모양은 **높이장**(`_mt3Field` — 바위 마스크 + 잡음)이 정한다. 종(種) 개념이 없다.
+  //     ⇒ `mt_R*` 40장은 `mt3dOff` 를 켠 화면에서만 보인다. 3D 반영은 회부(보고 §3-라).
+                 mtRound: null,
+  //   ★[T145] mt3dOff — 이미 코드가 읽고 있었는데 **표에 없어서 이름이 없었다**(`undefined` 로
+  //     늘 거짓). 스프라이트 판으로 되돌리는 문이고, T145 의 둥근 판이 사는 자리가 거기다.
+                 mt3dOff: false };
   // 시험 전용 — 띠 높이를 바꿔 "비용이 blit 횟수에 비례하나 픽셀 수에 비례하나"를 가른다.
   window.__gtStrip = (v) => { GT_STRIP = Math.max(4, v | 0); _groundTiles.clear(); needsRedraw = true; return GT_STRIP; };
   window.__gtFrac = (v) => { _gtFrac = !!v; needsRedraw = true; return _gtFrac; };

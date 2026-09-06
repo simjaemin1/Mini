@@ -426,6 +426,48 @@ console.log('\n[⑧ 굽는 기계 정본 — icons.lock.json 이 지금 자산�
       ok(drift.length === 0,
          `mountains: 파일 해시가 잠금표와 같다 (어긋남 ${drift.length}${drift.length ? ' — ' + drift.slice(0, 4).join(', ') : ''})`);
       ok(/webp/.test(lock._규약 || ''), '잠금표 `_규약` 이 webp 는 파일 전체 해시라고 적어 뒀다');
+      // ★★[T145] **표 셋이 같은 이름을 부르나** — 파일 · 잠금표 · 앵커.
+      //   ⚠`pack-mountain.py` 는 팩한 것만 담아 `mountain_anchors.json` 을 **통째로 다시 쓴다**.
+      //     몇 장만 다시 구워 팩하면 나머지 앵커가 조용히 사라진다(T129 가 자연물에서 밟은 그 지뢰 —
+      //     거기선 `ore*` 6키가 소리 없이 날아갔다). T145 가 `MT_BASE` 합치기를 붙였고,
+      //     **이 검사가 그게 실제로 지켜졌는지 보는 자다**. 알파 지도도 같은 파일에서 같이 잘린다.
+      const AN = JSON.parse(fs.readFileSync(path.join(MTD, 'mountain_anchors.json'), 'utf8'));
+      const AL = JSON.parse(fs.readFileSync(path.join(MTD, 'mountain_alpha.json'), 'utf8'));
+      const anK = Object.keys(AN).sort(), alK = Object.keys(AL.a || {}).sort();
+      ok(anK.length === files.length && anK.every((k, i) => k === files[i]),
+         `mountains: 앵커 ${anK.length} ↔ 파일 ${files.length} 전수 일치` +
+         (anK.length === files.length ? '' : ` — 앵커에만: ${anK.filter(k => !files.includes(k)).slice(0, 4).join(', ')} · 파일에만: ${files.filter(k => !anK.includes(k)).slice(0, 4).join(', ')}`));
+      ok(alK.length === files.length, `mountains: 알파 지도 ${alK.length}키 = 파일 ${files.length}장 (클라·하네스 공용 정본)`);
+      // ★자는 하나다 — 새로 온 판도 종전 45장과 **같은 규격**을 지켜야 클라 셈이 성립한다.
+      //   `sc = (64/√2)/ppu` 라 ppu 가 자다. 팩은 **확대를 안 한다**(없는 정보는 못 만든다) ⇒ ppu ≤ 98.
+      const NEED = ['ox', 'oy', 'ppu', 'w_units', 'h_units', 'w', 'h', 'ext'];
+      const noField = anK.filter(k => !NEED.every(f2 => f2 in AN[k]));
+      ok(noField.length === 0, `mountains: 앵커 여덟 칸이 전부 있다 (빠진 키 ${noField.length}${noField.length ? ' — ' + noField.slice(0, 3).join(', ') : ''})`);
+      const upscaled = anK.filter(k => AN[k].ppu > 98.001);
+      ok(upscaled.length === 0, `★mountains: **확대된 판 0** — 전부 ppu ≤ 98 (넘는 것 ${upscaled.length}${upscaled.length ? ' — ' + upscaled.slice(0, 3).join(', ') : ''})`);
+      const notWebp = anK.filter(k => AN[k].ext !== '.webp');
+      ok(notWebp.length === 0, `mountains: 앵커가 스스로 형식을 적는다 — 전부 .webp (${notWebp.length}건 예외)`);
+      // ★원점은 **프레임 안**에, 그리고 **아래쪽 절반**에 있다(산은 발치에서 위로 자란다).
+      const offFrame = anK.filter(k => { const a = AN[k]; return !(a.ox > 0 && a.ox < a.w && a.oy > 0 && a.oy < a.h); });
+      ok(offFrame.length === 0, `★mountains: 원점이 프레임 안이다 (밖 ${offFrame.length}${offFrame.length ? ' — ' + offFrame.slice(0, 3).join(', ') : ''})`);
+      // ★★원점은 **제 키만큼은** 밑에 있다 — `oy ≥ h_units·ppu·ZSQ`.
+      //   메시 꼭대기(월드 z = h_units)는 원점 줄보다 그만큼 위에 찍힌다. 원점을 발치가 아니라
+      //   봉우리에 잡으면 이 비가 1 아래로 떨어진다(그 산은 땅에 박혀 그려진다).
+      //   ⚠**"원점이 프레임 아래 절반"은 법이 아니다** — T145 1차에 그렇게 걸었다가
+      //     `mt_RF1v1`(둥근 숲산 · 키 2.69단위 · 제일 납작하고 넓다)에서 0.472 로 빨개졌다.
+      //     아이소메트릭에서 **넓고 낮은 산은 발자국이 원점 아래로 크게 퍼진다** — 화소가
+      //     원점 줄 밑에 있다고 땅에 박힌 게 아니다(T129 가 포도에서 배운 그것).
+      //     자가 틀렸지 그림이 틀린 게 아니었다 ⇒ 문턱을 낮추는 대신 **축을 바꿨다**.
+      const ZSQ_MT = 32.0 / ((64.0 / Math.SQRT2) * Math.cos(30 * Math.PI / 180));
+      const sunk = anK.filter(k => AN[k].oy < AN[k].h_units * AN[k].ppu * ZSQ_MT);
+      const rMin = Math.min(...anK.map(k => AN[k].oy / (AN[k].h_units * AN[k].ppu * ZSQ_MT)));
+      ok(sunk.length === 0, `★mountains: 원점이 제 키만큼은 밑에 있다 — oy ≥ h_units·ppu·ZSQ (어긋남 ${sunk.length}${sunk.length ? ' — ' + sunk.slice(0, 3).join(', ') : ''} · 최저 비 ${rMin.toFixed(3)})`);
+      // ★원점은 가로로 **프레임 한가운데 근처**다(메시가 원점 중심이고 카메라가 그걸 겨눈다).
+      //   실측 0.398~0.581 ⇒ 0.15 는 그 폭의 1.5배. 앵커가 가로로 밀리면 산이 옆걸음질친다.
+      const offMid = anK.filter(k => Math.abs(AN[k].ox / AN[k].w - 0.5) > 0.15);
+      ok(offMid.length === 0, `★mountains: 원점이 가로 한가운데 근처다 (|ox/w−0.5| ≤ 0.15 · 벗어남 ${offMid.length}${offMid.length ? ' — ' + offMid.slice(0, 3).join(', ') : ''})`);
+      const R = anK.filter(k => /^mt_R/.test(k)), X = anK.filter(k => /^mt_X/.test(k));
+      console.log(`     ⓘ 산 ${anK.length}장 = 뾰족 ${anK.length - R.length - X.length} · 둥근 ${R.length} · 주봉 ${X.length}`);
     }
     // ★[T106] 4.0.2 산출물 0 — 굽는 기계 줄이 그걸 말해야 한다.
     ok(/4\.0\.2 산출물 0/.test(lock._기계 || ''),

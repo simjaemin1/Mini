@@ -35,11 +35,28 @@ Q = int(sys.argv[4]) if len(sys.argv) > 4 else 92
 MARGIN = 3
 PPU_SCR = 64.0 / (2 ** 0.5)
 
+# ★★[T145 2026-09-06] **표를 덮어쓰지 않고 합친다.** — `MT_BASE=<배포 디렉토리>`
+#   ⚠여기 있던 지뢰: 이 스크립트는 `SRC` 에 있는 것만 담아 `mountain_anchors.json` 과
+#     `mountain_alpha.json` 을 **통째로 다시 쓴다.** 산을 몇 장만 새로 구워 팩하면
+#     나머지 배포 키가 **조용히 사라진다**(T129 가 `nature-postprocess.py` 에서 밟은 그 지뢰와 같은 것 —
+#     거기선 앵커 6키가 소리 없이 날아갔다). 전수를 다시 굽는 날엔 안 터지므로 더 위험하다.
+#   ⇒ `MT_BASE` 를 주면 그 디렉토리의 두 표를 **먼저 읽고** 새 키만 얹는다.
+#     손대지 않은 키는 값을 다시 만들지 않고 **그대로 둔다** — 그래야 바이트가 안 움직인다.
+BASE = os.environ.get('MT_BASE') or ''
 os.makedirs(DST, exist_ok=True)
 an = json.load(open(os.path.join(SRC, 'mountain_anchors.json')))
 out = {}
 ALPHA = {}
+if BASE:
+    bp = os.path.join(BASE, 'mountain_anchors.json')
+    ba = os.path.join(BASE, 'mountain_alpha.json')
+    if os.path.exists(bp):
+        out.update(json.load(open(bp)))
+    if os.path.exists(ba):
+        ALPHA.update(json.load(open(ba)).get('a', {}))
+    print(f'[base] 기존 표 {len(out)}키 · 알파 {len(ALPHA)}키 를 먼저 실었다 ({BASE})')
 tot_src = tot_dst = 0
+n_packed = 0
 worst = (0.0, '')
 ups = []
 
@@ -84,6 +101,7 @@ for name, a in sorted(an.items()):
     if mad > worst[0]:
         worst = (mad, name)
 
+    n_packed += 1
     out[name] = {'ox': round(ox - x0, 1), 'oy': round(oy - y0, 1), 'ppu': round(ppu, 2),
                  'w_units': a['w_units'], 'h_units': a['h_units'],
                  'w': cr.width, 'h': cr.height, 'ext': '.webp'}
@@ -99,7 +117,8 @@ json.dump(out, open(os.path.join(DST, 'mountain_anchors.json'), 'w'), indent=1)
 json.dump({'n': 64, 'a': ALPHA}, open(os.path.join(DST, 'mountain_alpha.json'), 'w'))
 ppus = sorted(v['ppu'] for v in out.values())
 areas = [v['w'] * v['h'] for v in out.values()]
-print(f'{len(out)}종 · {tot_src/1e6:.1f}MB → {tot_dst/1e6:.2f}MB ({tot_dst/tot_src*100:.1f}%)')
+print(f'표 {len(out)}키 · 알파 {len(ALPHA)}키 (이번에 판 것 {n_packed}종)')
+print(f'{n_packed}종 · {tot_src/1e6:.1f}MB → {tot_dst/1e6:.2f}MB ({tot_dst/tot_src*100:.1f}%)')
 print(f'  ppu {ppus[0]:.1f}~{ppus[-1]:.1f} (목표 {TARGET_PPU:.0f}) '
       f'→ 배율 {min(ppus)/PPU_SCR:.2f} 까지 확대 없음')
 print(f'  평균 면적 {sum(areas)/len(areas)/1e6:.2f}MP · '
