@@ -711,6 +711,9 @@ function itemKo(k) {
   //   ⚠**규약 무변**(§0-ⓐ 실측): `window.__notices` 는 **글자만·40건** 그대로다(28개 하네스가 읽는다).
   //     `#notice` 의 DOM 을 읽는 하네스는 **하나뿐**이고(`e2e-verbs ⑫` · 이 카드가 같이 고쳤다),
   //     `textContent` 는 이제 **보이는 줄들을 `\n` 로 이은 것**이다 — 한 줄만 떠 있으면 종전과 같다.
+  //   ★[T139 2026-09-06] 이 수의 **정본은 `server/notice.js NOTICE_MAX`** 다 — 서버가 로그인 때
+  //     여러 줄을 한꺼번에 보내면서 "몇 건부터 접나"를 이 수로 정한다. 클라가 실제로 자르는 자리는
+  //     여기 그대로이고, 둘이 갈리면 `test-notice ⑲` 가 빨개진다(그 검사가 둘을 묶어 둔다).
   const NOTICE_MAX = 3;
   let _ntLines = [];   // [{ text, kind, n, until }] — 뒤가 최근. 넘치면 **앞(오래된 것)** 이 밀려 사라진다.
   function _ntRender() {

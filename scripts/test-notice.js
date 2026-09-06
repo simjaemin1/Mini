@@ -163,6 +163,20 @@ console.log('\n=== 알림 경계 하네스 (이모지 → kind) ===\n');
   walk(ast);
   ok(sendSeen, '④c 전제: `zone.js` 에서 `send()` 를 찾았다(못 찾으면 아래가 자명 통과다)');
   ok(wired, '④ ★접점 한 줄이 **실제로 배선돼 있다** — `send()` 안에서 `Notice.normalize` 를 부른다');
+
+  // ★★[T139 2026-09-06] ⑲ 알림 스택 줄 수는 **한 수**다.
+  //   서버가 로그인 때 밀린 부름을 여러 줄로 보낸다 ⇒ 넘치면 오래된 줄이 **소리 없이** 밀려난다.
+  //   그래서 접는 쪽(서버)과 자르는 쪽(클라)이 같은 수를 봐야 하고, 이 절이 그 둘을 묶는다.
+  //   ⚠자명 통과 금지: 클라 파일에서 **실제로 수를 읽었는지** 먼저 못 박는다.
+  const N = require(path.join(__dirname, '..', 'server', 'notice.js')).NOTICE_MAX;
+  const panel = fs.readFileSync(path.join(__dirname, '..', 'public', 'client', '50-i-panel.js'), 'utf8');
+  const m = panel.match(/^\s*const NOTICE_MAX = (\d+);/m);
+  ok(!!m, '⑲a 전제: 클라 조각에서 `NOTICE_MAX` 를 **실제로 읽었다**(못 읽으면 아래가 자명 통과다)',
+     m ? m[1] : '못 읽음');
+  ok(Number.isInteger(N) && N >= 1, '⑲b 서버 쪽 정본이 수다', String(N));
+  ok(!!m && Number(m[1]) === N,
+     '★★⑲ 알림 스택 줄 수가 **서버와 클라에서 같다**(갈리면 오래된 줄이 소리 없이 사라진다)',
+     `서버 ${N} · 클라 ${m ? m[1] : '?'}`);
 }
 
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);

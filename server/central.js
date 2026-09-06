@@ -386,6 +386,22 @@ const stmtFriendRow = db.prepare('SELECT a, b, since FROM friends WHERE (a = ? A
 const stmtFriendDel = db.prepare('DELETE FROM friends WHERE (a = ? AND b = ?) OR (a = ? AND b = ?)');
 const stmtFriendIns = db.prepare('INSERT INTO friends (a, b, since) VALUES (?, ?, NULL)');
 const stmtFriendAccept = db.prepare('INSERT INTO friends (a, b, since) VALUES (?, ?, ?)');
+// ★★[T139 2026-09-06] **밀린 친구 요청** — `since IS NULL` 이고 `b` 가 나인 행이 곧 "나를 부른 사람"이다.
+//   ⓐ 방향이 있다(T115 표 주석 211줄): `a` 가 부른 쪽, `b` 가 불린 쪽. 그래서 `b = ?` 하나로 족하다.
+//   ⓑ **새 컬럼 0** — 이 표에는 시각이 없다(`since` 는 수락 시각이라 요청 중엔 NULL 이다).
+//     ⇒ 요청은 **순서를 못 준다**. 길드 부름(`tribe_invites.at`)과 달리 "가장 최근"이 없고,
+//       그래서 친구 쪽은 종전대로 **이름을 받아** 고른다(`/친구 <이름>`) — 고르기 문제가 애초에 없다.
+const stmtFriendPending = db.prepare(`
+  SELECT p.player_id AS id, p.name AS name FROM friends f
+  JOIN players p ON p.player_id = f.a
+  WHERE f.b = ? AND f.since IS NULL
+`);
+/** 나를 부른 사람들(아직 수락 전) — `[{id, name}]`. 못 읽으면 빈 배열(막지 않는다). */
+function friendPending(playerId) {
+  const id = String(playerId || '');
+  if (!id) return [];
+  try { return stmtFriendPending.all(id) || []; } catch (e) { return []; }
+}
 const stmtFriendsOf = db.prepare(`
   SELECT p.player_id AS id, p.name AS name FROM friends f
   JOIN players p ON p.player_id = (CASE WHEN f.a = ? THEN f.b ELSE f.a END)
@@ -857,6 +873,15 @@ const server = http.createServer(async (req, res) => {
       if (!other) return jsonResp(res, 200, { ok: false, reason: 'no_such_name' });
       const r = friendRemove(String(pid || ''), other.player_id);
       return jsonResp(res, 200, { ...r, name: other.name, player_id: other.player_id });
+    }
+    // ★[T139 2026-09-06] 부름 알림함 — **밀린 요청을 세는 문 하나**. 표도 컬럼도 안 늘렸다.
+    //   ⚠`GET /friends/<key>` 가 **접두로 먼저 걸린다** — 그래서 POST 이고, 위에 둔다
+    //     (T128 이 `/tribe/intros` 로 물렸던 그 자리와 같은 함정이다).
+    //   ⚠`player_id` 로 묻는다(이름 갈래 아님) — 이건 **로그인 뒤** 존이 묻는 문이라
+    //     "그 이름의 사람에게 요청이 있나"가 새지 않는다(T115 가 남긴 그 누수와 다른 자리다).
+    if (req.url === '/friend/pending' && req.method === 'POST') {
+      const { player_id: pid } = await readBody(req);
+      return jsonResp(res, 200, { ok: true, requests: friendPending(pid) });
     }
     if (req.url.startsWith('/friends/') && req.method === 'GET') {
       const [path, qs] = req.url.split('?');

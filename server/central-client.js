@@ -95,15 +95,19 @@ async function friendsOfName(name) {
 
 // ★★[T128 2026-09-05] 길드 초대·승인제·소개문 — 문 여섯. T115 와 같은 규약:
 //   **실패는 예외가 아니라 빈 답**이다(호출부가 매번 try 를 쓰지 않게 · central 이 죽어도 안 막는다).
-const _guildDoor = (method, path) => async (body) => {
+// ★[T139 2026-09-06] 이름을 고쳤다(`_guildDoor` → `_softDoor`) — **길드 전용이 아니다.**
+//   친구 쪽 문도 같은 규약을 쓰는데 이름이 `guild` 면 다음 사람이 문을 하나 더 짓는다(그게 사본이다).
+const _softDoor = (method, path) => async (body) => {
   try { const r = await request(method, path, body); return r.data || { ok: false, reason: 'down' }; }
   catch (e) { return { ok: false, reason: 'down' }; }
 };
-const tribeInvite = (playerId, name) => _guildDoor('POST', '/tribe/invite')({ player_id: playerId, name });
-const tribeInvites = (playerId) => _guildDoor('POST', '/tribe/invites')({ player_id: playerId });
-const tribeInviteAccept = (playerId, tribeId) => _guildDoor('POST', '/tribe/invite_accept')({ player_id: playerId, tribe_id: tribeId == null ? null : (tribeId | 0) });
-const tribeMode = (playerId, mode) => _guildDoor('POST', '/tribe/mode')({ player_id: playerId, mode });
-const tribeIntro = (playerId, intro) => _guildDoor('POST', '/tribe/intro')({ player_id: playerId, intro });
+const tribeInvite = (playerId, name) => _softDoor('POST', '/tribe/invite')({ player_id: playerId, name });
+const tribeInvites = (playerId) => _softDoor('POST', '/tribe/invites')({ player_id: playerId });
+const tribeInviteAccept = (playerId, tribeId) => _softDoor('POST', '/tribe/invite_accept')({ player_id: playerId, tribe_id: tribeId == null ? null : (tribeId | 0) });
+const tribeMode = (playerId, mode) => _softDoor('POST', '/tribe/mode')({ player_id: playerId, mode });
+const tribeIntro = (playerId, intro) => _softDoor('POST', '/tribe/intro')({ player_id: playerId, intro });
+// ★[T139] 밀린 친구 요청 — 문 하나. 실패는 빈 답(`ok:false`)이라 로그인이 안 막힌다.
+const friendPending = (playerId) => _softDoor('POST', '/friend/pending')({ player_id: playerId });
 async function tribeIntros() {
   try {
     const r = await request('GET', '/tribe_intros');
@@ -141,6 +145,6 @@ async function getTribe(id) {
 
 module.exports = { authenticate, checkUsernameTaken, getPlayer, updatePlayer, request,
   guestIdentity, promoteGuest,   // ★[배치 13] 게스트 영속 신원 · ★[배치 14] 승계
-  friendRequest, friendRemove, friendsOf, friendsOfName,
+  friendRequest, friendRemove, friendsOf, friendsOfName, friendPending,   // ★[T139] 밀린 요청 문 하나
   tribeInvite, tribeInvites, tribeInviteAccept, tribeMode, tribeIntro, tribeIntros,   // ★[T128] 길드 문 여섯   // ★[T115] 친구 — 문 셋(실패는 빈 답)
   tribeAddVp, tribeTreasury, tribeNpcUpsert, getTribe };

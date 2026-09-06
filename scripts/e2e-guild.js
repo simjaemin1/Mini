@@ -159,31 +159,150 @@ const last = (C) => JSON.stringify(C.notices.slice(-1));
   ok(!!si && si.villages.every((v) => v.player || v.intro === ''),
     '③g ★NPC 마을엔 소개가 안 붙는다 — 세운 길드가 없다');
 
-  // ── ④ central 이 죽어도 세계는 안 멎는다 ────────────────────────────────
+  // ── ④ [T139] 부름 알림함 — 접속 중이 아니어도 부름은 남는다 ─────────────
+  //   ★이 절이 재는 것: **끊겨 있던 사이에 온 부름이 다음 접속에 말이 되는가.**
+  //     T128 까지는 `tellPlayer` 가 접속 중인 사람만 찾았고, 없으면 그 말은 허공으로 갔다.
+  {
+    const NMAX = require(path.join(ROOT, 'server', 'notice.js')).NOTICE_MAX;
+    ok(Number.isInteger(NMAX) && NMAX >= 2, '④ 전제: 접는 수를 **정본에서 읽었다**(손으로 안 적는다)', NMAX);
+
+    // ⓐ 길드 부름 — 받는 사람이 **꺼져 있는 동안** 부른다
+    const I1 = await connect('inbox', 'pw5');           // 계정을 만들고
+    await sleep(600); close(I1); await sleep(1200);      // 나간다
+    L.notices.length = 0; say(L, '/초대 inbox'); await sleep(1500);
+    ok(L.notices.some((t) => /불렀다/.test(t)), '④a 전제: 꺼져 있는 사람도 부를 수는 있다(central 이 행을 남긴다)', last(L));
+    const inv0 = await jpost(`${CEN}/tribe/invites`, { player_id: I1.playerId });
+    ok(!!inv0 && inv0.invites.length === 1, '④a2 전제: 부름 행이 실제로 남아 있다', JSON.stringify(inv0 && inv0.invites.map((x) => x.name)));
+
+    // ⓑ 다시 들어오면 **그 말이 선다**
+    const I2 = await connect('inbox', 'pw5');
+    await sleep(2500);
+    ok(I2.playerId === I1.playerId, '④b 전제: 같은 사람으로 다시 들어왔다', I2.playerId);
+    ok(I2.notices.some((t) => /\[돌칼\] 이\(가\) 자네를 부른다/.test(t)),
+       '★★④ 끊겨 있던 사이의 **길드 부름이 다음 접속에 말이 된다**', JSON.stringify(I2.notices));
+    ok(I2.kinds.includes('guild'), '④b2 그 줄의 종류는 `guild` 다(T128 이 만든 그 종류 그대로 · 새 종류 0)', JSON.stringify(I2.kinds));
+    //   ★자명 통과 금지 — 부름은 **읽기만** 했다. 그 자리에서 사라지지 않는다(수락이 지운다).
+    const inv1 = await jpost(`${CEN}/tribe/invites`, { player_id: I2.playerId });
+    ok(!!inv1 && inv1.invites.length === 1, '④b3 ★★세었다고 **부름이 지워지지 않는다** — 지우는 것은 수락뿐이다',
+       JSON.stringify(inv1 && inv1.invites.map((x) => x.name)));
+
+    // ⓒ 밀린 **친구 요청**도 같다 — 표만 다르고 자리가 같다
+    const F1 = await connect('offfriend', 'pw6'); await sleep(600); close(F1); await sleep(1200);
+    O.notices.length = 0; say(O, '/친구 offfriend'); await sleep(1500);
+    ok(O.notices.some((t) => /청했다/.test(t)), '④c 전제: 꺼져 있는 사람에게도 청할 수 있다', last(O));
+    const pend = await jpost(`${CEN}/friend/pending`, { player_id: F1.playerId });
+    ok(!!(pend && pend.ok && pend.requests.length === 1 && pend.requests[0].name === 'outsider'),
+       '④c2 ★밀린 요청을 세는 문이 **새 표 없이** 답한다(`since IS NULL` 술어 하나)', JSON.stringify(pend && pend.requests));
+    const F2 = await connect('offfriend', 'pw6'); await sleep(2500);
+    ok(F2.notices.some((t) => /outsider 이\(가\) 벗이 되자고 청했다/.test(t)),
+       '★★④c 끊겨 있던 사이의 **친구 요청도 다음 접속에 말이 된다**', JSON.stringify(F2.notices));
+    ok(F2.kinds.includes('info'), '④c3 그 줄의 종류는 `info` 다(친구는 종전 종류 그대로)', JSON.stringify(F2.kinds));
+    close(F2);
+
+    // ⓓ 둘이 부르면 **이름으로 고른다**(T128 회부 5)
+    say(K, '/초대 inbox'); await sleep(1500);           // 열린뜰도 부른다
+    const inv2 = await jpost(`${CEN}/tribe/invites`, { player_id: I2.playerId });
+    ok(!!inv2 && inv2.invites.length === 2, '④d 전제: 두 길드가 같은 사람을 불렀다', JSON.stringify(inv2 && inv2.invites.map((x) => x.name)));
+    I2.notices.length = 0; say(I2, '/수락 열린뜰'); await sleep(2000);
+    ok(I2.notices.some((t) => /\[열린뜰\] 에 들었다/.test(t)), '★★④d `/수락 <이름>` 이 **부른 곳 중 하나를 고른다**', last(I2));
+    const who = await jget(`${CEN}/player/${encodeURIComponent(I2.playerId)}`);
+    ok(!!who && who.player.tribe_id === OPEN_TID, '④d2 고른 쪽으로 실제로 들었다(가장 최근이 아니다)', who && who.player.tribe_id);
+    //   ★자명 통과 금지 — 안 부른 이름은 못 고른다
+    const G1 = await connect('picker', 'pw7'); await sleep(600); close(G1); await sleep(800);
+    say(L, '/초대 picker'); await sleep(1500);
+    const G2 = await connect('picker', 'pw7'); await sleep(1500);
+    G2.notices.length = 0; say(G2, '/수락 없는길드'); await sleep(1500);
+    ok(G2.notices.some((t) => /부르지 않았다/.test(t)), '④d3 ★★안 부른 이름을 대면 **안 든다**(그리고 부른 곳을 알려 준다)', last(G2));
+    const still = await jget(`${CEN}/player/${encodeURIComponent(G2.playerId)}`);
+    ok(!!still && !still.player.tribe_id, '④d4 그때 소속은 **안 바뀐다**');
+    close(G2);
+
+    // ⓔ N 을 넘으면 **접는다** — 넘겨 보내면 오래된 줄이 소리 없이 밀려난다
+    const H1 = await connect('manycall', 'pw8'); await sleep(600); close(H1); await sleep(1200);
+    for (const [C0, nm] of [[L, 'leader'], [M, 'member'], [O, 'outsider'], [K, 'keeper']]) {
+      say(C0, '/친구 manycall'); await sleep(900);
+    }
+    const pend4 = await jpost(`${CEN}/friend/pending`, { player_id: H1.playerId });
+    ok(!!pend4 && pend4.requests.length === NMAX + 1, `④e 전제: 밀린 부름이 **N+1(${NMAX + 1})건**이다`, pend4 && pend4.requests.length);
+    const H2 = await connect('manycall', 'pw8'); await sleep(2500);
+    ok(H2.notices.length === NMAX, `★★④e 넘쳐도 **정확히 N(${NMAX})줄**만 온다 — 오래된 줄이 소리 없이 사라지지 않는다`,
+       `${H2.notices.length}줄 ${JSON.stringify(H2.notices)}`);
+    ok(H2.notices.some((t) => /외 2건의 부름이 더 있다/.test(t)), '★★④e2 그리고 **접힌 만큼을 말한다**("… 외 k건")', last(H2));
+    close(H2);
+
+    // ⓕ 부름이 없으면 **아무 말도 안 한다**(자명 통과 금지의 뒷면)
+    const Q1 = await connect('quiet', 'pw9'); await sleep(2500);
+    ok(Q1.notices.length === 0, '④f ★부름이 없는 사람에게는 **한 줄도 안 뜬다**', JSON.stringify(Q1.notices));
+    close(Q1);
+  }
+
+  // ── ⑤ central 이 죽어도 세계는 안 멎는다 ────────────────────────────────
   for (const x of procs) if (x.name === 'central') { try { x.p.kill('SIGKILL'); } catch (e) {} }
   await sleep(1500);
   L.notices.length = 0; say(L, '/초대 member'); await sleep(7000);
-  ok(!L.closed, '④ ★central 이 죽어도 **놀던 사람은 안 끊긴다**');
-  ok(L.notices.some((t) => /못 불렀다/.test(t)), '④b ★조용히 실패하지 않는다 — 말로 알려 준다', last(L));
+  ok(!L.closed, '⑤ ★central 이 죽어도 **놀던 사람은 안 끊긴다**');
+  ok(L.notices.some((t) => /못 불렀다/.test(t)), '⑤b ★조용히 실패하지 않는다 — 말로 알려 준다', last(L));
   const siDown = await jget(`http://localhost:${ZPORT}/startinfo`);
-  ok(!!(siDown && siDown.ok), '④c 시작 화면은 그대로 뜬다');
+  ok(!!(siDown && siDown.ok), '⑤c 시작 화면은 그대로 뜬다');
+  //   ★[T139] **문이 닫혀 있을 때 알림함이 어떻게 실패하나** — 던지면 로그인 경로가 죽는다.
+  //     죽은 포트를 향한 별도 프로세스로 잰다(공통.md §2 ⑨ · export 바꿔치기 금지).
+  {
+    const code = `
+      process.env.CENTRAL_URL = 'http://127.0.0.1:1';
+      const F = require(${JSON.stringify(path.join(ROOT, 'server', 'friends.js'))});
+      const G = require(${JSON.stringify(path.join(ROOT, 'server', 'guild.js'))});
+      const central = require(${JSON.stringify(path.join(ROOT, 'server', 'central-client.js'))});
+      F.init({ central }); G.init({ central });
+      Promise.all([F.pendingLines('nobody'), G.pendingLines('nobody')])
+        .then((r) => { console.log('OK ' + JSON.stringify(r)); process.exit(0); })
+        .catch((e) => { console.log('THREW ' + e.message); process.exit(2); });
+      setTimeout(() => { console.log('HUNG'); process.exit(3); }, 20000);
+    `;
+    const out = await new Promise((res) => {
+      const c = spawn(process.execPath, ['-e', code], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'] });
+      let buf = ''; c.stdout.on('data', (b) => { buf += String(b); });
+      c.on('close', () => res(buf.trim()));
+    });
+    ok(/^OK \[\[\],\[\]\]$/.test(out), '★★⑤d central 이 없으면 알림함은 **빈 줄을 답한다** — 던지지도 멎지도 않는다', JSON.stringify(out));
+  }
 
-  // ── ⑤ 소스 — 표 하나·컬럼 둘 · 사람이 쓴 문장은 그리는 쪽이 막는다 ──────
+  // ── ⑥ 소스 — 표 하나·컬럼 둘 · 사람이 쓴 문장은 그리는 쪽이 막는다 ──────
   {
     const cen = fs.readFileSync(path.join(ROOT, 'server', 'central.js'), 'utf8');
     const lob = fs.readFileSync(path.join(ROOT, 'public', 'client', '70-lobby.js'), 'utf8');
     const nt = fs.readFileSync(path.join(ROOT, 'server', 'notice.js'), 'utf8');
     const codeOnly = (x) => x.replace(/\/\*[\s\S]*?\*\//g, ' ').split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n');
-    ok((cen.match(/CREATE TABLE IF NOT EXISTS tribe_invites/g) || []).length === 1, '⑤ central 에 새 표는 **하나**다');
+    ok((cen.match(/CREATE TABLE IF NOT EXISTS tribe_invites/g) || []).length === 1, '⑥ central 에 새 표는 **하나**다');
     //   ⚠`codeOnly` 를 안 쓴다 — 블록 주석 지우개가 문자열 안의 `/*` 를 만나면 그 뒤를 통째로 먹는다
     //     (초안이 그래서 0건을 봤다). 여기서 세는 것은 **SQL 문**이라 원문 그대로가 맞다.
     const added = (cen.match(/ALTER TABLE tribes ADD COLUMN (\w+)/g) || []).map((x) => x.split(' ').pop());
-    ok(added.includes('join_mode') && added.includes('intro'), '⑤b 새 컬럼 **둘**이 있다', added.join(' '));
-    ok(added.length === 7, '⑤b2 ★`tribes` 의 컬럼 증설은 **일곱**이다(종전 다섯 + 이 카드 둘) — 하나 더 늘면 여기가 빨개진다', added.length);
-    ok(/onbEsc\(v\.intro\)/.test(lob), '⑤c ★사람이 쓴 문장은 **그리는 쪽이 막는다**(꺾쇠 이스케이프)');
-    ok(!/slice\(0, ?60\)|substring\(0, ?60\)/.test(codeOnly(lob)), '⑤d ★길이 상한을 로비가 **다시 자르지 않는다**(사본 0)');
-    ok(/'guild'/.test(codeOnly(nt)) && (codeOnly(nt).match(/KINDS = \[/g) || []).length === 1, '⑤e 알림 종류 표는 **하나**이고 거기에 `guild` 가 있다');
-    ok(cen.length > 1000 && lob.length > 1000 && nt.length > 500, '⑤f (자명 통과 방지) 세 파일을 실제로 읽었다');
+    ok(added.includes('join_mode') && added.includes('intro'), '⑥b 새 컬럼 **둘**이 있다', added.join(' '));
+    ok(added.length === 7, '⑥b2 ★`tribes` 의 컬럼 증설은 **일곱**이다(종전 다섯 + 이 카드 둘) — 하나 더 늘면 여기가 빨개진다', added.length);
+    ok(/onbEsc\(v\.intro\)/.test(lob), '⑥c ★사람이 쓴 문장은 **그리는 쪽이 막는다**(꺾쇠 이스케이프)');
+    ok(!/slice\(0, ?60\)|substring\(0, ?60\)/.test(codeOnly(lob)), '⑥d ★길이 상한을 로비가 **다시 자르지 않는다**(사본 0)');
+    ok(/'guild'/.test(codeOnly(nt)) && (codeOnly(nt).match(/KINDS = \[/g) || []).length === 1, '⑥e 알림 종류 표는 **하나**이고 거기에 `guild` 가 있다');
+    ok(cen.length > 1000 && lob.length > 1000 && nt.length > 500, '⑥f (자명 통과 방지) 세 파일을 실제로 읽었다');
+    // ★[T139] 알림함이 **아무것도 안 늘렸다** — 표도 컬럼도(⑥b2 가 컬럼을, 여기서 표를 센다).
+    const tables = (cen.match(/CREATE TABLE IF NOT EXISTS (\w+)/g) || []).map((x) => x.split(' ').pop());
+    ok(tables.length >= 5 && new Set(tables).size === tables.length,
+       '⑥g 전제: central 의 표를 실제로 세었다(중복 0)', `${tables.length}개: ${tables.join(' ')}`);
+    ok(!tables.some((t2) => /inbox|pending|call/i.test(t2)),
+       '★⑥g2 부름 알림함은 **새 표를 안 만들었다** — 있는 두 표를 읽기만 한다', tables.join(' '));
+    // ★접는 수를 zone 이 **손으로 안 적었다** — 정본에서 읽는다
+    const zn = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
+    const hook = zn.slice(zn.indexOf('Friends.pendingLines'), zn.indexOf('Friends.pendingLines') + 1200);
+    ok(hook.length > 200, '⑥h 전제: welcome 훅을 실제로 찾았다(못 찾으면 아래가 자명 통과다)', hook.length);
+    ok(/Notice\.NOTICE_MAX/.test(hook), '★★⑥h2 접는 수는 **정본에서 읽는다**(`Notice.NOTICE_MAX` · 새 수 0)');
+    ok(!/[^\w.]3[^\w]/.test(hook.replace(/\/\/.*$/gm, '')), '⑥h3 ★그 훅에 **수 3이 손으로 적혀 있지 않다**');
+    // ★"○○이 청했다"·"[△△]이 부른다" 문장은 **한 자리**다 — 그 자리에서 하는 말과 밀린 말이 같아야 한다
+    const fj = codeOnly(fs.readFileSync(path.join(ROOT, 'server', 'friends.js'), 'utf8'));
+    const gj = codeOnly(fs.readFileSync(path.join(ROOT, 'server', 'guild.js'), 'utf8'));
+    //   ⚠**받는 쪽 문장**만 센다. 청한 쪽에게 하는 말("…에게 벗이 되자고 청했다")은 다른 문장이라
+    //     그것까지 세면 초록이 될 길이 없다(초안이 여기서 2를 봤다).
+    ok((fj.match(/이\(가\) 벗이 되자고 청했다/g) || []).length === 1, '★⑥i 친구 청함 문장은 **한 자리**다(`askedLine`)',
+       (fj.match(/이\(가\) 벗이 되자고 청했다/g) || []).length);
+    ok((gj.match(/자네를 부른다/g) || []).length === 1, '★⑥i2 길드 부름 문장도 **한 자리**다(`calledLine`)',
+       (gj.match(/자네를 부른다/g) || []).length);
   }
 
   close(L); close(M); close(O); close(K);

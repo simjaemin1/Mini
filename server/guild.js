@@ -73,21 +73,37 @@ function handleChat(player, text) {
         return;
       }
       say(`${r.name} 을(를) [${r.tribe}] 로 불렀다 — 상대가 \`/수락\` 하면 든다`);
-      if (H.tellPlayer) H.tellPlayer(r.player_id, `[${r.tribe}] 이(가) 자네를 부른다 — \`/수락\` 하면 든다`, 'guild');
+      if (H.tellPlayer) H.tellPlayer(r.player_id, calledLine(r.tribe), 'guild');
     }).catch(() => say('지금은 못 불렀다 — 잠시 뒤 다시'));
     return true;
   }
 
   if (t.startsWith('/수락')) {
-    H.central.tribeInviteAccept(me, null).then((r) => {
-      if (!r || !r.ok) {
-        say(r && r.reason === 'no_invite' ? '자네를 부른 길드가 없다'
-          : r && r.reason === 'already_in_tribe' ? '이미 길드에 들어 있다 — 먼저 `/탈퇴`'
-          : '지금은 못 들었다 — 잠시 뒤 다시');
-        return;
-      }
-      say(`[${r.name}] 에 들었다${(r.more | 0) > 0 ? ` (다른 부름 ${r.more}건은 지웠다)` : ''}`);
-      if (H.refreshTribe) H.refreshTribe(me);
+    // ★★[T139 2026-09-06] `/수락 <길드이름>` — **여럿이 불렀을 때 고른다**(T128 회부 5).
+    //   ⚠이름을 **나머지 전부**로 받는다: `tribes.name` 은 `trim().slice(0,20)` 만 거치므로
+    //     **공백이 들어 있을 수 있다**(§0-ⓒ 실측). 첫 낱말만 떼면 두 낱말 길드는 영영 못 고른다.
+    //   ⚠고르는 판정은 여기서 하지 않는다 — central 이 `tribe_id` 로 고르는 문을 이미 갖고 있다
+    //     (T128 `/tribe/invite_accept` 의 `pick`). 여기서 하는 일은 **이름 → tribe_id** 하나뿐이다.
+    const want = t.slice('/수락'.length).trim();
+    const go = (tribeId) => {
+      H.central.tribeInviteAccept(me, tribeId).then((r) => {
+        if (!r || !r.ok) {
+          say(r && r.reason === 'no_invite' ? '자네를 부른 길드가 없다'
+            : r && r.reason === 'already_in_tribe' ? '이미 길드에 들어 있다 — 먼저 `/탈퇴`'
+            : '지금은 못 들었다 — 잠시 뒤 다시');
+          return;
+        }
+        say(`[${r.name}] 에 들었다${(r.more | 0) > 0 ? ` (다른 부름 ${r.more}건은 지웠다)` : ''}`);
+        if (H.refreshTribe) H.refreshTribe(me);
+      }).catch(() => say('지금은 못 들었다 — 잠시 뒤 다시'));
+    };
+    if (!want) { go(null); return true; }        // 안 고르면 종전 그대로(가장 최근)
+    H.central.tribeInvites(me).then((r) => {
+      const list = (r && r.ok && Array.isArray(r.invites)) ? r.invites : [];
+      if (!list.length) { say('자네를 부른 길드가 없다'); return; }
+      const pick = list.find((x) => String(x.name || '').trim() === want);
+      if (!pick) { say(`[${want}] 은(는) 자네를 부르지 않았다 — 부른 곳: ${list.map((x) => `[${x.name}]`).join(' ')}`); return; }
+      go(pick.tribe_id);
     }).catch(() => say('지금은 못 들었다 — 잠시 뒤 다시'));
     return true;
   }
@@ -124,9 +140,27 @@ function handleChat(player, text) {
   }
 }
 
+// ★★[T139 2026-09-06] **부름 알림함** — 그 자리에서 하는 말과 다음 접속에 밀린 말이 **같은 문장**이다.
+//   둘을 따로 쓰면 그게 사본이고, 한쪽만 고쳐지는 날이 온다(친구 쪽 `askedLine` 과 같은 규약).
+function calledLine(tribeName) {
+  return `[${tribeName}] 이(가) 자네를 부른다 — \`/수락\` 하면 든다`;
+}
+/**
+ * 밀린 길드 부름 — 로그인 때 세울 줄들. `[{ text, kind }]` · **최근 것이 먼저**(central 이 `at DESC`).
+ * ⚠못 물어보면 빈 배열이다(T115 규약 ② · 로그인은 한 군데도 안 막힌다).
+ * ⚠**새 표 0 · 새 컬럼 0** — T128 이 만든 `tribe_invites` 와 `/tribe/invites` 문을 그대로 읽는다.
+ */
+async function pendingLines(playerId) {
+  if (!ready()) return [];
+  let r = null;
+  try { r = await H.central.tribeInvites(String(playerId || '')); } catch (e) { return []; }
+  const rows = (r && r.ok && Array.isArray(r.invites)) ? r.invites : [];
+  return rows.filter((x) => x && x.name).map((x) => ({ text: calledLine(x.name), kind: 'guild' }));
+}
+
 function debug() {
   const m = _intro.map;
   return { cfg: CFG, ready: ready(), intros: m ? [...m.entries()] : null, at: _intro.at };
 }
 
-module.exports = { CFG, init, ready, handleChat, introMap, introOfTribe, debug, __introBust: _introBust };
+module.exports = { CFG, init, ready, handleChat, introMap, introOfTribe, pendingLines, calledLine, debug, __introBust: _introBust };

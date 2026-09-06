@@ -122,7 +122,7 @@ function handleChat(player, text) {
     else if (r.state === 'already_requested') say(`🙋 ${r.name} 에게 이미 청해 두었다 — 상대가 같은 말을 하면 성립한다`);
     else {
       say(`🙋 ${r.name} 에게 벗이 되자고 청했다 — 상대도 \`/친구 ${player.name}\` 이라 하면 성립한다`);
-      if (H.tellPlayer) H.tellPlayer(r.player_id, `🙋 ${player.name} 이(가) 벗이 되자고 청했다 — \`/친구 ${player.name}\``);
+      if (H.tellPlayer) H.tellPlayer(r.player_id, askedLine(player.name));
     }
   }).catch(() => say('🙋 지금은 못 청했다 — 잠시 뒤 다시'));
   return true;
@@ -153,6 +153,27 @@ async function startVidCounts(playerId) {
 //     그 지연이 `e2e-onboarding` 을 61/0 → 58/4 로 밀었다(대본이 시간에 붙어 있다). 값이 아니라
 //     **시간**을 바꾼 것이 결함이었다 — 같은 실수를 두 번 하지 않게 여기 적어 둔다.
 //   ⇒ 지금 아는 것을 **곧바로** 답하고, 낡았으면 뒤에서 다시 물어 다음 물음에 맞춘다.
+// ★★[T139 2026-09-06] **부름 알림함** — "○○이 청했다"는 한 문장의 집을 여기 하나로 만든다.
+//   그 자리에서 하는 말(위 `handleChat`)과 다음 접속에 밀린 말(아래 `pendingLines`)이 **같은 문장**이어야
+//   한다 — 둘을 따로 쓰면 그게 사본이고, 한쪽만 고쳐지는 날이 온다.
+function askedLine(fromName) {
+  return `🙋 ${fromName} 이(가) 벗이 되자고 청했다 — \`/친구 ${fromName}\``;
+}
+/**
+ * 밀린 친구 요청 — 로그인 때 세울 줄들. `[{ text, kind }]`.
+ * ⚠**못 물어보면 빈 배열**이다(규약 ②: central 이 죽은 것을 사람의 죄로 삼지 않는다).
+ *   "요청 없음"과 같은 값이지만, 여기서 둘을 가른들 화면이 할 일이 없다 — 안내는 안 뜨고 로그인은 된다.
+ * ⚠순서를 못 준다 — `friends` 표에 요청 시각이 없다(`since` 는 수락 시각이다 · 새 컬럼 0).
+ *   친구 쪽은 애초에 **이름으로** 고르니(`/친구 <이름>`) 순서가 필요 없다.
+ */
+async function pendingLines(playerId) {
+  if (!ready()) return [];
+  let r = null;
+  try { r = await H.central.friendPending(String(playerId || '')); } catch (e) { return []; }
+  const rows = (r && r.ok && Array.isArray(r.requests)) ? r.requests : [];
+  return rows.filter((x) => x && x.name).map((x) => ({ text: askedLine(x.name), kind: 'info' }));
+}
+
 function nameVids(name) {
   const key = String(name || '').trim();
   if (!key || !ready()) return null;
@@ -180,4 +201,4 @@ function debug(playerId) {
   return { cfg: CFG, cached: _cache.size, me: rec ? { ok: rec.ok, ids: [...rec.ids], names: [...rec.names] } : null };
 }
 
-module.exports = { CFG, init, ready, load, knownIds, isFriend, handleChat, startVidCounts, nameVids, debug, __bust: _bust, __reload: _reload };
+module.exports = { CFG, init, ready, load, knownIds, isFriend, handleChat, startVidCounts, nameVids, pendingLines, askedLine, debug, __bust: _bust, __reload: _reload };

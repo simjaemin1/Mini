@@ -102,4 +102,11 @@ function normalize(obj) {
   } catch (e) { return obj; }
 }
 
-module.exports = { normalize, stripEmoji, kindOfText, KIND_OF, KINDS, CLUSTER, LEAD };
+// ★★[T139 2026-09-06] **알림 스택이 한 번에 이고 있는 줄 수** — 서버가 여러 줄을 한꺼번에 보낼 때
+//   이 수를 넘기면 **오래된 줄이 소리 없이 밀려난다**(`50-i-panel.js _ntLines`). 그래서 접는 쪽이
+//   이 수를 알아야 하고, 그 수의 집은 **알림의 경계인 여기 하나**다(새 수 0 — T113 이 캔버스에서 유도한 3).
+//   ⚠클라 조각에도 같은 이름의 상수가 있다(그쪽이 실제로 자르는 자리다). 둘이 갈리면
+//     `test-notice ⑲` 가 빨개진다 — 그 검사가 이 둘을 **하나로 묶어 둔다**.
+const NOTICE_MAX = 3;
+
+module.exports = { normalize, stripEmoji, kindOfText, KIND_OF, KINDS, CLUSTER, LEAD, NOTICE_MAX };

@@ -4022,6 +4022,33 @@ async function _acceptConnection(ws, req, C) {
     broadcast({ type: 'player_down_state', pid: player.pid, isDown: true });
   }
 
+  // ★★[T139 2026-09-06] **부름 알림함** — 접속 중이 아니어도 부름은 남는다(T128 회부 2 · T115 와 같은 자리).
+  //   ⓐ 정본 표는 이미 둘 다 central 에 있다(`friends.since IS NULL` · `tribe_invites`).
+  //     이 카드는 **새 표 0 · 새 컬럼 0 · 새 패널 0** — 그 둘을 로그인 때 한 번 읽어 **줄로 세운다**.
+  //   ⓑ **await 하지 않는다** — central 이 느린 날 로그인이 그만큼 늦어지면 안 된다(T115 규약 ②).
+  //     ⇒ 이 줄들은 welcome **뒤에** 늦게 닿는다. 화면이 먼저 서고 말이 따라오는 것이 맞다.
+  //   ⓒ 접는 수는 `Notice.NOTICE_MAX` 다(새 수 0 · T113 이 캔버스에서 유도한 그 수).
+  //     그보다 많이 보내면 **오래된 줄이 소리 없이 밀려난다**(`50-i-panel.js _ntLines`)
+  //     ⇒ N-1 줄 + "… 외 k건" 한 줄 = 정확히 N 줄. 접기가 곧 **말을 잃지 않는 방법**이다.
+  //   ⚠게임 행동은 한 줄도 안 바뀐다 — 안내뿐이다. 부름 자체는 손대지 않는다(만료는 회부).
+  (async () => {
+    try {
+      const [fr, gu] = await Promise.all([
+        Friends.pendingLines(player.playerId).catch(() => []),
+        Guild.pendingLines(player.playerId).catch(() => []),
+      ]);
+      let lines = [].concat(fr || [], gu || []);
+      if (!lines.length) return;
+      const N = Math.max(1, Notice.NOTICE_MAX | 0);
+      if (lines.length > N) {
+        const k = lines.length - (N - 1);
+        lines = lines.slice(0, N - 1).concat([{ text: `… 외 ${k}건의 부름이 더 있다`, kind: 'info' }]);
+      }
+      if (!ws || ws.readyState !== 1) return;      // 그새 나갔다 — 다음 접속에 다시 센다
+      for (const L of lines) send(ws, { type: 'notice', text: L.text, kind: L.kind });
+    } catch (e) { /* 못 물어봤다 — 막지 않는다(다음 접속에 다시 센다) */ }
+  })();
+
   // ws에 player input/close 핸들러 attach
   C.stage = 'handlers';
   attachPlayerHandlers(ws, player);
