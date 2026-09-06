@@ -101,7 +101,10 @@
         }
       }
     }
-    return null;
+    // ④ ★★[T124 2026-09-06] **빈 땅** — 아무것도 안 맞으면 그 자리 자체가 대상이다.
+    //   ⚠메뉴가 아무 데서나 뜨지는 않는다: `verbsFor` 가 빈 배열이면 부르는 쪽이 안 연다
+    //     (`if (!verbs.length) return;` — 종전 그대로다). 그래서 여기서 대상을 내도 안전하다.
+    return { kind: 'ground', id: null, obj: null, absX: wx, absY: wy };
   }
 
   // ── verbsFor — 이 대상 위에 뜰 동사들 ─────────────────────────────────────
@@ -153,6 +156,17 @@
       const by = _carriedBy.get(t.id) || null;
       if (!by) out.push({ label: '업기', send: () => sendPrimary({ type: 'rescue_request', pid: t.id }) });
       else if (by === myPid) out.push({ label: '내려놓기', send: () => sendPrimary({ type: 'rescue_request', pid: t.id }) });
+      return out;
+    }
+    // ★★[T124] 빈 땅 — 씨앗을 들고 있으면 **심기**. 어떤 씨앗이 심기는지는 **서버가 정한다**
+    //   (`welcome.plantSeeds`). 클라에 씨앗 목록을 두면 그게 사본이고, 되돌림(`T124_PLANT=0`)이
+    //   서버에서만 걸려 화면과 서버가 갈린다. 목록이 비면 동사가 아예 안 뜬다 = 되돌림이 공짜다.
+    if (t.kind === 'ground') {
+      for (const k of (plantSeeds || [])) {
+        if ((inventory[k] || 0) <= 0) continue;
+        out.push({ label: `심기 — ${itemKo(k)}`,
+          send: () => sendPrimary({ type: 'plant_tree', x: t.absX, y: t.absY, item: k }) });
+      }
       return out;
     }
     if (t.kind === 'nature') {

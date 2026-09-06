@@ -87,16 +87,23 @@ db.exec(`
 `);
 
 // === resources ===
+// ★★[T124 2026-09-06] **심은 날**을 같이 적는다 — 자란 단계가 그 수의 함수다(T122 와 같은 시계).
+//   마이그레이션 문법은 `mined_cells`·`harvested_seeds` 와 같다(PRAGMA 로 보고 없으면 ALTER).
+//   ⚠`created_at` 은 **벽시계 ms** 라 게임일로 못 쓴다(T108·T122 가 배운 그 자리).
+{ const _rs = db.prepare('PRAGMA table_info(resources)').all().map(c => c.name);
+  if (!_rs.includes('planted_day')) db.exec('ALTER TABLE resources ADD COLUMN planted_day INTEGER NOT NULL DEFAULT -1');
+  if (!_rs.includes('species')) db.exec("ALTER TABLE resources ADD COLUMN species TEXT NOT NULL DEFAULT ''"); }
 const stmtGetResources = db.prepare('SELECT * FROM resources');
 const stmtInsertResource = db.prepare(
-  'INSERT INTO resources (type, x, y, hp, max_hp, created_at) VALUES (?, ?, ?, ?, ?, ?)'
+  'INSERT INTO resources (type, x, y, hp, max_hp, created_at, planted_day, species) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
 );
 const stmtUpdateResourceHp = db.prepare('UPDATE resources SET hp = ? WHERE id = ?');
 const stmtDeleteResource = db.prepare('DELETE FROM resources WHERE id = ?');
 
 function getResources() { return stmtGetResources.all(); }
 function insertResource(r) {
-  const result = stmtInsertResource.run(r.type, r.x, r.y, r.hp, r.max_hp, Date.now());
+  const result = stmtInsertResource.run(r.type, r.x, r.y, r.hp, r.max_hp, Date.now(),
+    Number.isFinite(r.planted_day) ? Math.floor(r.planted_day) : -1, r.species || '');
   return result.lastInsertRowid;
 }
 function updateResourceHp(id, hp) { stmtUpdateResourceHp.run(hp, id); }

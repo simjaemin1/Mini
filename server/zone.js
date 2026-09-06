@@ -42,7 +42,7 @@ const Rooms = require('./rooms'); // ★[배치 18 ①] 방 판정 정본(벽·�
 const SIM_LON_ON = process.env.VILLAGE_LON !== '0'; // §19 경도 로컬 태양시(마을 NPC 야간 귀가) 게이트 — 기본 켜짐
 const central = require('./central-client'); // central HTTP 클라이언트
 const { Quadtree } = require('./quadtree'); // spatial index — O(N²) 검색 회피
-const { ChunkManager, CHUNK_SIZE, generateChunkResources, generateVillagesForZone, generateCoastlineWaterTiles, RESOURCE_HP_TABLE } = require('./chunk'); // 청크 단위 entity 분류 + procedural + 해안선 + ★[T108] 자연물 hp 정본
+const { ChunkManager, CHUNK_SIZE, generateChunkResources, regrowStageOf, REGROW, generateVillagesForZone, generateCoastlineWaterTiles, RESOURCE_HP_TABLE } = require('./chunk'); // ★[T124] 재생 정산은 T122 정본을 그대로 받는다(사본 0) // 청크 단위 entity 분류 + procedural + 해안선 + ★[T108] 자연물 hp 정본
 const { findPath: pfFindPath } = require('./pathfind'); // Phase 14.49-b: NPC A* pathfinding
 const PathCore = require('../sim/path-core.js'); // ★[생활 층 100% ①] 랩·서버 공용 경로 정본 — smoothPath(스트링 풀링)를 주민 이동에 직결
 const { ANIMALS } = require('./animals');  // Phase 5-6: 동물 mob 36종 catalog
@@ -243,6 +243,7 @@ function activateChunk(cx, cy) {
   // Phase 5-G: cleanZone (한반도 강·호수 검증용) — 자원 spawn skip
   if (ZONE.cleanZone) return;
   _promoteHarvestOnce();   // ★[T122] 옛 행 승격 — 한 번 · 시계가 선 뒤
+  _shapePlantedAll();      // ★[T124] 심은 나무의 단계 정산 — **볼 때**(T122 와 같은 규약 · 멱등)
   // ★[T122] 게임일을 넘긴다 — 벤 자리가 **빠지는** 대신 **단계**(그루터기·묘목·성목)로 난다.
   //   정산은 **볼 때 한 번**이다(청크 활성화 · 타이머 0 · 틱 0 · 멱등).
   const seedResources = generateChunkResources(ZONE_ID, ZONE.biome, cx, cy, chunkManager.chunkSize, harvestedSeeds, gameDayNow());
@@ -1326,9 +1327,22 @@ function biomeResourceType() {
 //   ⚠수량은 **부산물 급**이다. 이 값이 채집의 주 경로가 되면 안 된다(덤불·지형이 주 경로).
 // ★★[작물 층 2026-08-31] `ctx` 는 **선택**이다 — 주면 계절 야생 씨앗이 나오고, 안 주면 종전 그대로.
 //   NPC 채집 경로(2025행)는 ctx 를 안 준다 ⇒ **econ 쪽 동작은 한 줄도 안 달라진다.**
+// ★[T124] 벌목 부산물 도토리 — econ 의 그 수(`economy-sim.js:221` byproduct acorn 0.06)를 그대로 쓴다.
+const ACORN_BYPRODUCT = (() => { const v = parseFloat(process.env.T124_ACORN); return Number.isFinite(v) ? v : 0.06; })();
 function lootOfResource(r, ctx) {
   const t = r && r.type;
-  if (t === 'tree')       return { wood: 3 + Math.floor((r.r || 8) / 3), twig: 1 };   // 크기 비례: r4~20 → wood 4~9
+  if (t === 'tree') {
+    const l = { wood: 3 + Math.floor((r.r || 8) / 3), twig: 1 };   // 크기 비례: r4~20 → wood 4~9
+    // ★★[T124 2026-09-06] **도토리는 나무에서 온다** — econ 이 이미 그렇게 적어 뒀다:
+    //   `economy-sim.js:221` 벌목 부산물 `{ resin: 0.08, bark: 0.10, acorn: 0.06 }`.
+    //   그런데 그 부산물은 **마을 회계에만** 있었고 플레이어 손엔 한 번도 안 왔다(§0-ⓑ 실측).
+    //   ⇒ 같은 비율(0.06)을 플레이어 쪽에도 연다. **새 수가 아니라 econ 의 그 수**다.
+    // ★★그리고 **주사위가 아니다.** "이 나무에 도토리가 달렸나"는 그 나무의 성질이지
+    //   뽑기가 아니다 ⇒ 자리로 결정한다(T102 의 `_gidHash` 정본을 그대로 쓴다 · 사본 0).
+    //   같은 나무는 몇 번을 물어도 같은 답이고, 재부팅해도 같다.
+    if ((_gidHash(`acorn:${Math.round(r.x)}:${Math.round(r.y)}`) % 10000) / 10000 < ACORN_BYPRODUCT) l.acorn = 1;
+    return l;
+  }
   // ★[T122] 묘목 — **같은 식에 같은 크기를 넣은 것**이다(새 표 0). 묘목은 반경이 0.45배라
   //   `wood` 가 3~4 로 저절로 떨어진다. "목재 소량"을 손으로 적지 않았다.
   if (t === 'sapling')    return { wood: 1 + Math.floor((r.r || 4) / 3), twig: 1 };
@@ -1355,6 +1369,70 @@ function lootOfResource(r, ctx) {
   return {};
 }
 
+// ★★[T124 2026-09-06 재민 확정] **DB 자원의 죽은 길을 살린다.**
+//   종전: `spawnOneResource` 는 **아무도 안 부르는** 함수였고(전수 grep 0회), 부팅은 `resources`
+//   표를 통째로 무시했다(*"기존 resources 테이블 row는 무시 (procedural로 대체)"*). 그래서
+//   DB 에 자원을 넣어도 **재부팅에 사라졌다** — 심기가 설 자리가 없었다.
+//   ⇒ 심는 좌표는 **플레이어가 준다**(`Math.random` 0). 그리고 부팅이 그 행들을 도로 올린다.
+//   ⚠`isSeed: false` 다 — `deactivateChunk` 는 `isSeed` 인 것만 걷으므로(:287) 청크가 꺼져도
+//     **안 지워진다**(종전 규약 그대로). 심은 나무는 세계의 사물이지 시드 산출물이 아니다.
+/** DB 행 하나 → 메모리 자원 하나. 시드 자원과 **같은 모양**이다(그려지는 길·캐는 길이 하나라서). */
+function _liveResourceRow(row) {
+  if (!row || resourcesByDbId.has(row.id)) return null;
+  const id = `r${nextRid++}`;
+  const r = { id, dbId: row.id, x: row.x, y: row.y, type: row.type,
+              hp: row.hp, maxHp: row.max_hp, isSeed: false };
+  if (Number.isFinite(row.planted_day) && row.planted_day >= 0) r.plantedDay = row.planted_day;
+  if (row.species) r.species = row.species;
+  //   ⚠여기서 **단계를 입히지 않는다.** 이 함수는 부팅 최상위에서도 불리는데 그때 `gameDayNow()` 는
+  //     TDZ 이고 econ 시계도 안 섰다(T122 가 `test-mining` 으로 배운 그 자리). 단계는 **볼 때**
+  //     — 청크가 켜질 때 — 입힌다. 그게 T122 의 "볼 때 정산"과 같은 규약이기도 하다.
+  resources.set(id, r);
+  resourcesByDbId.set(row.id, r);
+  chunkManager.insertResource(r);
+  resourcesDirty = true;
+  return r;
+}
+// ★★[T124] 심은 나무의 **지금 단계** — T122 의 `regrowStageOf` 를 **그대로** 부른다(사본 0).
+//   벤 자리는 "벤 날부터 그루터기", 심은 자리는 "심은 날부터 **묘목**"이라 축이 하나 다르다:
+//   심기는 그루터기 단계를 건너뛴다(씨앗을 묻었지 나무를 벤 게 아니다). ⇒ 경과일에
+//   그루터기 기간을 **더해서** 같은 함수에 묻는다 — 새 표도, 새 분기도 만들지 않는다.
+function _shapeRegrown(r) {
+  if (!r || r.plantedDay == null) return r;
+  const Y = _regrowYearDays();
+  const elapsed = (gameDayNow() - r.plantedDay) + REGROW.TREE_STUMP_Y() * Y;
+  const stage = regrowStageOf('tree', elapsed);
+  if (stage === 'mature' || stage === null) {
+    r.type = 'tree'; r.maxHp = RESOURCE_HP_TABLE.tree; r.r = PLANT_R; r.h = PLANT_H;
+  } else {
+    r.type = 'sapling'; r.maxHp = RESOURCE_HP_TABLE.sapling; r.r = PLANT_R * 0.45; r.h = PLANT_H * 0.30;
+  }
+  if (!(r.hp > 0) || r.hp > r.maxHp) r.hp = r.maxHp;
+  r.regrown = stage;
+  return r;
+}
+// ★[T124] 심은 것 전부를 한 번 정산한다 — 개수가 플레이어가 심은 만큼이라 싸다(실측 §0-ⓒ).
+//   멱등: 같은 게임일이면 같은 답이다(T122 의 그 성질을 그대로 물려받는다).
+function _shapePlantedAll() {
+  if (!Number.isFinite(gameDayNow())) return;
+  for (const r of resourcesByDbId.values()) {
+    if (r.plantedDay == null) continue;
+    const before = r.type;
+    _shapeRegrown(r);
+    //   모양이 바뀌면 **다시 보낸다** — `resource_spawn` 은 클라에서 `set` 이라 덮어쓰기다(제거 아님).
+    if (r.type !== before) { broadcast({ type: 'resource_spawn', resource: r }); resourcesDirty = true; }
+  }
+}
+let _regrowY = 0;
+function _regrowYearDays() {
+  if (!_regrowY) { try { _regrowY = require('./events').yearDaysOf() || 365; } catch (e) { _regrowY = 365; } }
+  return _regrowY;
+}
+// 심은 나무의 크기 — 시드 나무 분포의 **가운데**를 쓴다(새 수가 아니라 있는 범위의 중앙).
+//   시드 나무는 r 4~20 · h 46~166 이므로 그 중앙이 r 12 · h 106 이다.
+const PLANT_R = 12, PLANT_H = 106;
+const resourcesByDbId = new Map();   // dbId → 자원(중복 적재 방지 · 부팅과 심기가 같은 행을 두 번 올리지 않게)
+
 function spawnOneResource() {
   const x = 32 + Math.random() * (ZONE.zoneWidth - 64);
   const y = 32 + Math.random() * (ZONE.zoneHeight - 64);
@@ -1363,15 +1441,29 @@ function spawnOneResource() {
   // DB에 영속화
   const dbId = db.insertResource({ type, x, y, hp: maxHp, max_hp: maxHp });
   const id = `r${nextRid++}`;
-  const r = { id, dbId, x, y, type, hp: maxHp, maxHp };
+  const r = { id, dbId, x, y, type, hp: maxHp, maxHp, isSeed: false };
   resources.set(id, r);
+  resourcesByDbId.set(dbId, r);
   chunkManager.insertResource(r);
   resourcesDirty = true;
   return r;
 }
 
 // === Phase 12.2.e: procedural — 자원은 청크 활성화 시 lazy 생성 ===
-// 부팅 시 채집된 시드만 DB에서 load. 기존 resources 테이블 row는 무시 (procedural로 대체).
+// 부팅 시 채집된 시드를 DB에서 load.
+// ★★[T124 2026-09-06] 그리고 **`resources` 표도 다시 읽는다.** 종전 주석은
+//   *"기존 resources 테이블 row는 무시 (procedural로 대체)"* 였고 그게 맞았다 — 그때는 그 표에
+//   들어가는 길이 아무 데도 없었으니까(`spawnOneResource` 는 아무도 안 불렀다). 이제 **심기**가
+//   그 표에 쓴다 ⇒ 안 읽으면 심은 나무가 재부팅에 사라진다.
+//   ⚠시드 자원과 겹칠 걱정은 없다: 심을 때 그 셀에 자원이 있으면 **서버가 거절**하고,
+//     심을 수 있는 자리는 정의상 내가 서 있는 활성 청크라 시드 자원이 이미 메모리에 있다.
+{
+  let rows = [];
+  try { rows = db.getResources() || []; } catch (e) { rows = []; }
+  let n = 0;
+  for (const row of rows) if (_liveResourceRow(row)) n++;
+  if (rows.length) console.log(`[${ZONE_ID}] ★[T124] DB 자원 ${n}개 적재(심은 나무 등 · isSeed=false — 청크가 꺼져도 안 지운다)`);
+}
 {
   const harvested = db.getAllHarvestedSeeds();
   // ★★[T122] **옛 행 승격** — `harvested_day` 가 없던 행은 −1 로 온다. 그 자리를 즉시 성목으로
@@ -3864,6 +3956,7 @@ async function _acceptConnection(ws, req, C) {
     //   닫은 것과 **같은 결함**이다(서버가 종류를 늘리면 화면만 영문으로 남는다).
     categoryLabels: ItemLabel.CATEGORY_KO,
     resourceVerbs: ItemLabel.RESOURCE_VERBS,   // ★[T90] 자연물 종류 → 동사 이름표(T82 회부 ① — 클라 사본 삭제)
+    plantSeeds: plantSeedList(),   // ★[T124] 심을 수 있는 씨앗 — 서버가 정한다(되돌림이면 빈 배열 = 동사 숨김)
     npcVerbs: ItemLabel.NPC_VERBS,             // ★[T126] 사람에게 쓰는 동사 이름표(같은 통로 · 클라 표 0)
     // ★★[T66 ⓪ 2026-09-03] **이 카드의 유일한 서버 줄.** 클라에 남아 있던 사본 둘을 닫는다:
     //   `60-t-market.js JOB_KR`(zone 의 `JOB_KR_NPC` 와 글자까지 같았다) · `43-i-icon.js SEASON_KO`
@@ -3998,6 +4091,7 @@ function handlePlayerInput(player, raw) {
     Rescue.verb(player, msg);   // ★[T68] 대상 위 메뉴의 동사 하나 — 표는 `rescue.js` 가 갖는다(접점 1줄)
   } else if (msg.type === 'butcher') butcherCorpse(player, msg.cid);  // Phase 5-7
   else if (msg.type === 'gather') tryGather(player, msg.resId);   // ★[T90] 지목(없으면 종전 최근접 — 하위 호환)
+  else if (msg.type === 'plant_tree') tryPlantTree(player, msg.x, msg.y, msg.item);   // ★[T124] 심기
   else if (msg.type === 'sort_ore') trySortOre(player);   // ★선광 — 캔 원석 덩이를 광석/맥석으로 가른다
   else if (msg.type === 'claim') tryClaim(player, msg.kind || 'personal');
   // ★[원장 승격 2026-08-30] 지목 드롭/줍기 — `ids`(개체 원장 id) · `lotDay`(로트 취득일) · `giIds`(바닥 여러 덩이).
@@ -6611,6 +6705,100 @@ function tryForage(player) {
   if (canPersist(player)) savePlayer(player);
 }
 
+// ══ ★★[T124 2026-09-06 재민 확정] **심기 — 남의 땅만 아니면 어디든** ═══════════
+//
+// 재민 확정: *"남의 사유지·남의 길드 영토만 아니면 어디든 심을 수 있다."*
+//   그리고 **사유지 밖에 심은 나무는 세계 것**이다 — NPC 벌목꾼이 벨 수 있고, 그게 맞다
+//   (내 땅 밖에 심은 나무에 내 이름표를 다는 규칙은 이 세계에 없다).
+//
+// ★되돌림 `T124_PLANT=0` — 동사를 **숨긴다**(서버가 씨앗 목록을 안 실어 준다). 부를 때 읽는다
+//   (T88·T121 이 배운 그 자리 — 모듈 상수면 스위치 하나에 존을 한 판 더 띄워야 한다).
+function _t124Plant() { const v = parseInt(process.env.T124_PLANT, 10); return Number.isFinite(v) ? v : 1; }
+// 씨앗 → 종. 지금은 **하나**다(T135 가 종 카탈로그를 이식하면 여기 줄이 는다 · 회부).
+const PLANT_SEEDS = { acorn: 'oak' };
+function plantSeedList() { return _t124Plant() === 0 ? [] : Object.keys(PLANT_SEEDS); }
+
+/**
+ * ★"남의 땅"의 정본 — 그 점을 품은 클레임 중 **내 것도 내 길드 것도 아닌** 첫 놈.
+ *   ⚠`gatherResource` 의 침입 판정과 **일부러 안 합쳤다**: 그쪽은 VP 문턱이 보호를 풀어 주는
+ *     다른 정책이다(주인이 벌점 중이면 캘 수 있다). 심기엔 그 예외가 없다 — 재민 규칙이
+ *     "남의 땅만 아니면"이지 "남의 땅이라도 조건부"가 아니다. 두 규칙을 한 함수로 묶으면
+ *     한쪽을 고칠 때 다른 쪽이 조용히 따라 바뀐다(회부: 합칠 거면 정책을 인자로).
+ *   ★내 길드 영토 판정은 정본(`findGuildClaimContaining`)을 그대로 부른다(사본 0).
+ */
+function foreignClaimAt(player, x, y) {
+  const mine = findGuildClaimContaining(x, y, player.tribeId);
+  for (const c of claims.values()) {
+    if (!(x >= c.x && x < c.x + c.w && y >= c.y && y < c.y + c.h)) continue;
+    if (c.ownerPid === player.playerId) continue;              // 내 사유지
+    if (mine && c === mine) continue;                          // 내 길드 영토
+    if (c.kind === 'guild' && c.guildTribeId && c.guildTribeId === player.tribeId) continue;
+    return c;
+  }
+  return null;
+}
+
+function tryPlantTree(player, x, y, item) {
+  if (_t124Plant() === 0) { send(player.ws, { type: 'notice', text: '지금은 심을 수 없다', kind: 'plant' }); return; }
+  const seed = String(item || '');
+  const species = PLANT_SEEDS[seed];
+  if (!species) { send(player.ws, { type: 'notice', text: '심을 수 있는 씨앗이 아니다', kind: 'plant' }); return; }
+  if ((player.inventory[seed] || 0) < 1) {
+    send(player.ws, { type: 'notice', text: `${ITEM_LABEL_SERVER[seed] || seed}이(가) 없다`, kind: 'plant' }); return;
+  }
+  // ★셀 가운데로 스냅한다 — 나무는 칸에 선다(자리를 소수점으로 흩뿌리면 겹침 판정이 흔들린다).
+  const px = Math.floor(x / BUILDING_SIZE) * BUILDING_SIZE + BUILDING_SIZE / 2;
+  const py = Math.floor(y / BUILDING_SIZE) * BUILDING_SIZE + BUILDING_SIZE / 2;
+  const d = Math.hypot(px - player.x, py - player.y);
+  if (d > GATHER_RANGE) {
+    send(player.ws, { type: 'notice', text: `${Math.round(d)}px 떨어짐 — ${GATHER_RANGE}px 안에만 심는다`, kind: 'plant' }); return;
+  }
+  // ⓐ 지형 — 물·바위엔 못 심는다(정본 술어 그대로 · 새 판정 0)
+  if (isTerrainBlockedLocal(px, py)) {
+    send(player.ws, { type: 'notice', text: '여기엔 못 심는다 — 물이나 바위다', kind: 'plant' }); return;
+  }
+  // ⓑ 남의 땅
+  const foreign = foreignClaimAt(player, px, py);
+  if (foreign) {
+    send(player.ws, { type: 'notice',
+      text: `${foreign.ownerName || '남'}의 ${foreign.kind === 'guild' ? '길드 영토' : '사유지'}다 — 남의 땅엔 못 심는다`, kind: 'plant' });
+    return;
+  }
+  // ⓒ 그 칸이 비었나 — 자원·건물이 있으면 안 된다(같은 칸에 둘이 서면 그게 결함이다)
+  for (const r of resources.values()) {
+    if (Math.floor(r.x / BUILDING_SIZE) === Math.floor(px / BUILDING_SIZE)
+        && Math.floor(r.y / BUILDING_SIZE) === Math.floor(py / BUILDING_SIZE)) {
+      send(player.ws, { type: 'notice', text: '이미 뭔가 서 있다', kind: 'plant' }); return;
+    }
+  }
+  for (const b of buildings.values()) {
+    if (Math.floor(b.x / BUILDING_SIZE) === Math.floor(px / BUILDING_SIZE)
+        && Math.floor(b.y / BUILDING_SIZE) === Math.floor(py / BUILDING_SIZE)) {
+      send(player.ws, { type: 'notice', text: '이미 뭔가 서 있다', kind: 'plant' }); return;
+    }
+  }
+  // ── 심는다: DB 행 하나 + 메모리 하나. 단계는 **T122 정산 함수**가 정한다(사본 0).
+  const today = gameDayNow();
+  const day = Number.isFinite(today) ? Math.floor(today) : 0;
+  let dbId = null;
+  try {
+    dbId = db.insertResource({ type: 'sapling', x: px, y: py,
+      hp: RESOURCE_HP_TABLE.sapling, max_hp: RESOURCE_HP_TABLE.sapling, planted_day: day, species });
+  } catch (e) { dbId = null; }
+  if (!dbId) { send(player.ws, { type: 'notice', text: '심지 못했다', kind: 'plant' }); return; }
+  const r = _liveResourceRow({ id: dbId, type: 'sapling', x: px, y: py,
+    hp: RESOURCE_HP_TABLE.sapling, max_hp: RESOURCE_HP_TABLE.sapling, planted_day: day, species });
+  if (r) _shapeRegrown(r);
+  player.inventory[seed] -= 1;
+  if (player.inventory[seed] <= 0) delete player.inventory[seed];
+  sendInventory(player);
+  savePlayer(player);
+  if (r) broadcast({ type: 'resource_spawn', resource: r });
+  send(player.ws, { type: 'notice',
+    text: `${ITEM_LABEL_SERVER[seed] || seed}을(를) 심었다 — 묘목이 섰다`, kind: 'plant' });
+  return r;
+}
+
 function tryGather(player, resId) {
   // ★★[T90 2026-09-04 재민 확정 · T82 회부 ②] **지목**. 종전엔 인자가 없어 늘 최근접을 골랐고,
   //   그래서 T82 의 우클릭 메뉴는 "누른 것이 최근접일 때만" 동사를 냈다(정책이 아니라 임시였다).
@@ -7374,6 +7562,10 @@ const ITEM_LABEL_SERVER = {
   food: '곡식', food_cooked: '익힌 곡식',   // ★[곡물 품목화 2026-08-27]
   // ★[빈손 시작 2026-08-28] 땅에서 줍는 것 + 그걸로 엮는 조잡한 석기
   twig: '잔가지', pebble: '자갈',
+  // ★[T124 2026-09-06] `acorn` 은 **econ 이 이미 아는 품목**이다(`economy-sim.js` 벌목 부산물 0.06 ·
+  //   FORAGE 표 · 812행 `acorn:'forage'`). 그런데 **플레이어 이름표에만 구멍이 있었다** — T38 이
+  //   `plank` 에서 잡은 그 자리와 같은 종류다. 새 품목이 아니라 **메우는 것**이다.
+  acorn: '도토리',
   crude_axe: '조잡한 돌도끼', crude_pick: '조잡한 돌괭이', crude_blade: '조잡한 돌칼',
   axe: '도끼', pickaxe: '곡괭이', sword: '검',
   // ★[T38 2026-09-01] `plank`(판자)가 **서버 표에만** 없었다 — 클라 사본에는 있어서 여태 안 보였다.
@@ -8595,6 +8787,9 @@ function __testBind() {
     doEquipItem, doUnequipItem, wearEquipment, getEquippedEquipment, CARRIER_WEAR_MS, EQUIPMENT_META,
     // ── 원장 승격(2026-08-30) ── 드롭·줍기·바닥 지도를 **정본 그대로**. 하네스가 바닥템을 손으로 빚으면 사본이다.
     tryDropItem, tryPickupItem, groundItems, sendInventory, consumeItem, handlePlayerInput,
+    // ★[T124] 심기 — 정본을 그대로 내준다(하네스가 규칙을 다시 짜면 사본이다)
+    tryPlantTree, foreignClaimAt, _liveResourceRow, _shapeRegrown, _shapePlantedAll, resourcesByDbId,
+    plantSeedList, _t124Plant, PLANT_SEEDS, resources, spawnOneResource,
     // ── 빈손 시작(2026-08-28) ── 줍기·제작·도구 표를 **정본 그대로** 내준다
     RECIPES, TOOL_EFFECTS, TOOL_MAX_DURABILITY, EQUIPMENT_RECIPES, CRUDE_EFF_FRAC, CRUDE_DURA_FRAC,
     doCraft, doEquip, tryForage, Forage, _forageCtx, lootOfResource, getEquippedTool, consumeEquippedDurability,
