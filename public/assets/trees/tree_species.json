@@ -13,7 +13,8 @@
    ],
    "fruit_ko": "밤",
    "autumn": [
-    "tree09_a"
+    "tree09_a",
+    "tree10_a"
    ],
    "sapling": "sap_chestnut"
   },
@@ -69,6 +70,12 @@
     "tree06",
     "tree07",
     "tree08"
+   ],
+   "fruit_ko": "도토리",
+   "autumn": [
+    "tree06_a",
+    "tree07_a",
+    "tree08_a"
    ],
    "sapling": "sap_oak"
   },

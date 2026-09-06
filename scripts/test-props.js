@@ -319,8 +319,12 @@ console.log('\n[⑤ 자연물 앵커·잠금 — 굽는 표가 정본이다 (T97
       const noSap = ids.filter((id) => !sp[id].sapling);
       ok(noSap.length === 0, `종마다 묘목이 있다 ${noSap.length ? '— 없는 종: ' + noSap.join(' ') : ''}`);
       // ⓓ ★열매종은 가을 판을 갖는다 — 그리고 **가을 판은 같은 나무다**
-      const fruiting = ids.filter((id) => sp[id].fruit_ko);
-      ok(fruiting.length === 4, `열매종 넷 — ${fruiting.map((i) => sp[i].ko + '(' + sp[i].fruit_ko + ')').join(' · ')}`);
+      // ★[T141] **가을 판이 있는 종을 전부** 본다 — 수를 여기 적지 않는다.
+      //   종전엔 `=== 4` 였는데 T141 이 참나무를 더하자 그 줄이 먼저 거짓이 됐다.
+      //   그리고 검사 대상도 `fruit_ko` 가 아니라 **`autumn` 이 있는 종**이어야 한다:
+      //   가을 판을 가진 종은 전부 "같은 나무인가"를 지켜야 하기 때문이다(참나무가 그 예다).
+      const fruiting = ids.filter((id) => (sp[id].autumn || []).length);
+      ok(fruiting.length >= 4, `가을 판을 가진 종 ${fruiting.length} — ${fruiting.map((i) => sp[i].ko + (sp[i].fruit_ko ? '(' + sp[i].fruit_ko + ')' : '')).join(' · ')}`);
       const bad = [], grew = [], nofruit = [];
       const png = (k) => {
         const b = fs.readFileSync(path.join(TREE_DIR, k + '.png'));
@@ -328,9 +332,9 @@ console.log('\n[⑤ 자연물 앵커·잠금 — 굽는 표가 정본이다 (T97
         let n = 0; for (let i = 3; i < im.data.length; i += 4) if (im.data[i] >= 128) n++;
         return n;
       };
-      for (const id of fruiting) {
-        const au = (sp[id].autumn || [])[0];
-        if (!au) { bad.push(id); continue; }
+      for (const id of fruiting) for (const au of (sp[id].autumn || [])) {
+        // ★[T141] 종마다 가을 판이 **여럿일 수 있다**(참나무는 성목 셋 → 가을 셋).
+        //   하나만 보면 "가을엔 저 한 그루만 도토리가 달린다"를 못 잡는다.
         const su = au.replace(/_a$/, '');
         if (!NA[su]) { bad.push(`${id}(여름 판 ${su} 없음)`); continue; }
         // ★★열매는 **매달린다 — 자라지 않는다.** 수관 꼭대기(앵커 위 높이)가 그대로여야 한다.
@@ -340,7 +344,13 @@ console.log('\n[⑤ 자연물 앵커·잠금 — 굽는 표가 정본이다 (T97
         const a2 = png(au), s2 = png(su);
         if (!(a2 > s2 * 1.005)) nofruit.push(`${au}(${s2}→${a2})`);
       }
-      ok(bad.length === 0, `열매종 넷 다 가을 판이 있다 ${bad.length ? '— ' + bad.join(' ') : ''}`);
+      ok(bad.length === 0, `가을 판마다 짝이 되는 여름 판이 있다 ${bad.length ? '— ' + bad.join(' ') : ''}`);
+      // ★자명 통과 금지 — 성목이 여럿인 종은 **가을 판도 그만큼** 있어야 한다(한 그루만 물들면 거짓말이다)
+      {
+        const half = ids.filter((id) => (sp[id].autumn || []).length &&
+          (sp[id].autumn || []).length !== (sp[id].sprites || []).length);
+        ok(half.length === 0, `성목 수 = 가을 판 수 ${half.length ? '— 어긋남: ' + half.map((i) => `${i}(${sp[i].sprites.length}↔${sp[i].autumn.length})`).join(' ') : ''}`);
+      }
       ok(grew.length === 0, `★가을 판의 수관 꼭대기가 여름과 같다(열매는 매달린다 · Δoy ≤ 3px) ${grew.length ? '— ' + grew.join(' ') : ''}`);
       ok(nofruit.length === 0, `★가을 판에 열매가 실제로 달렸다(불투명 화소 +0.5% 이상) ${nofruit.length ? '— ' + nofruit.join(' ') : ''}`);
       // ⓔ 표는 **유도된 것**이다 — 굽는 표에 없는 종 id 를 손으로 적어 넣지 않았는가

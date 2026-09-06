@@ -684,7 +684,10 @@ function itemKo(k) {
   //     아홉 이름을 쓴다(이름 하나 = 그림 하나이므로 아홉이 서로 다른 그림이다 · `test-itemlabel ⑬`).
   const NOTICE_ICO = {
     village: 'home', gather: 'axe', fishing: 'fish', craft: 'hammer', board: 'scroll',
-    rescue: 'heart', combat: 'guild', dev: 'warn', info: 'eye',
+    // ★[T141] 싸움은 **제 그림**을 갖는다 — 종전엔 `guild`(방패)를 빌려 쓰고 있었다(T78).
+    //   ⚠`guild` 그림은 **안 지웠다**: T128 이 부름을 `people` 로 옮겨 지금은 아무도 안 쓰지만,
+    //     다음 길드 카드가 쓸 그림이다. 안 쓰는 것과 없는 것은 다르다.
+    rescue: 'heart', combat: 'bow', dev: 'warn', info: 'eye',
     // ★[T110] 남이 쓰러졌다는 외침 — 이미 있던 `shout`(확성기) 그림을 쓴다(새 그림 0 · 이름 하나 = 그림 하나)
     downed: 'shout',
     // ★[T128] 길드의 부름과 문 — 이미 있던 `people`(사람들) 그림을 쓴다(새 그림 0).

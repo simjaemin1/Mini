@@ -365,6 +365,9 @@ M['lf_mul'] = leaf_mat("lf_mul", _fix((0.29, 0.43, 0.16)), _fix((0.16, 0.29, 0.1
 M['lf_vine'] = leaf_mat("lf_vine", _fix((0.22, 0.34, 0.12)), _fix((0.12, 0.22, 0.08)), 30.0, 0.74, 0.36)  # 머루 — 크고 짙은 잎
 # ★가을 잎 — **초록을 노랑·붉은 쪽으로 돌린 같은 잎**이다(다른 잎이 아니다).
 #   `_fix()` 는 청회색 앰비언트를 되미는 보정이라 가을 색에도 그대로 통과시킨다(색계 하나).
+M['lf_oak_a'] = leaf_mat("lf_oak_a", _fix((0.46, 0.30, 0.10)), _fix((0.30, 0.18, 0.06)), 40.0, 0.72, 0.36)      # 참나무 — 붉은 갈(가장 늦게 진다)
+M['fr_acorn'] = bark_mat("fr_acorn", (0.52, 0.36, 0.16), (0.36, 0.24, 0.10), 30.0, 0.55, 0.26)             # 도토리 알 — 매끈한 갈
+M['fr_acup'] = bark_mat("fr_acup", (0.30, 0.21, 0.11), (0.19, 0.13, 0.06), 64.0, 0.88, 0.55)               # 깍정이 — 거칠고 어둡다(알보다 짙어야 알이 산다)
 M['lf_chest_a'] = leaf_mat("lf_chest_a", _fix((0.52, 0.40, 0.12)), _fix((0.34, 0.24, 0.08)), 38.0, 0.72, 0.34)  # 밤 — 노란 갈
 M['lf_haz_a'] = leaf_mat("lf_haz_a", _fix((0.55, 0.42, 0.13)), _fix((0.36, 0.26, 0.09)), 36.0, 0.72, 0.34)      # 개암 — 노랑
 M['lf_mul_a'] = leaf_mat("lf_mul_a", _fix((0.58, 0.45, 0.11)), _fix((0.38, 0.28, 0.08)), 34.0, 0.68, 0.32)      # 산뽕 — 밝은 노랑
@@ -467,9 +470,14 @@ def tree_jat(seed, h=4.2, spread=1.35):
                squash=1.0, droop=0.12, rmin=0.1, name="jat_tip")
 
 
-def tree_oak(seed, h=4.0, spread=2.1):
-    """참나무(Quercus) — 굵고 짧은 줄기 · 넓게 퍼진 둥근 수관 · 짙은 초록."""
+def tree_oak(seed, h=4.0, spread=2.1, autumn=False):
+    """참나무(Quercus) — 굵고 짧은 줄기 · 넓게 퍼진 둥근 수관 · 짙은 초록.
+
+    ★[T141] `autumn=True` — 도토리 가을 판. T135 종 표가 `oak.fruit = acorn · fy 0.6 · 가을` 인데
+      그림 표엔 참나무 가을판이 없었다(T129 는 열매종 넷만 했다). 기본값 `False` 라
+      `tree06`·`tree07`·`tree08` 출력은 한 화소도 안 바뀐다."""
     rng = R(seed)
+    LF = M['lf_oak_a'] if autumn else M['lf_oak']
     pts, rad = trunk_curve(h * 0.48, rng.r(-0.28, 0.28), rng.r(-0.22, 0.22), seed, 0.22, 0.12)
     tube(pts, rad, M['bark_oak'], name="oak_trunk")
     fork = V(pts[-1])
@@ -485,12 +493,16 @@ def tree_oak(seed, h=4.0, spread=2.1):
         cr = spread * rng.r(0.40, 0.54)
         cen = tip + V((0, 0, cr * 0.30))
         blob(cen, cr * 0.42, M['in_dark'], rng, squash=0.86, disp=0.3, sub=2, name="oak_in")
-        leaf_shell(cen, cr, int(560 + 260 * rng.f()), 0.125, 0.20, M['lf_oak'], rng,
+        leaf_shell(cen, cr, int(560 + 260 * rng.f()), 0.125, 0.20, LF, rng,
                    squash=0.86, droop=0.34, rmin=0.18, name="oak_cl")
+        if autumn:
+            _fruit_cluster(cen, cr, seed * 29 + 3, kind='acorn', n=5)
     cr = spread * rng.r(0.52, 0.64)
     cen = fork + V((0, 0, h * 0.40))
     blob(cen, cr * 0.42, M['in_dark'], rng, squash=0.76, disp=0.3, sub=2, name="oak_tin")
-    leaf_shell(cen, cr, 720, 0.125, 0.20, M['lf_oak'], rng, squash=0.76, droop=0.30, rmin=0.18, name="oak_top")
+    leaf_shell(cen, cr, 720, 0.125, 0.20, LF, rng, squash=0.76, droop=0.30, rmin=0.18, name="oak_top")
+    if autumn:
+        _fruit_cluster(cen, cr, seed * 29 + 17, kind='acorn', n=6)
 
 
 # ═══════════════ [T129] 열매 · 가을 판 문법 ═══════════════
@@ -515,6 +527,7 @@ def _fruit_cluster(center, R_, fseed, kind='burr', n=None):
         'burr':  (11, 0.105, M['fr_burr'],  0.30),   # 밤송이 — 가시 공
         'haz':   (12, 0.062, M['fr_haz'],   0.24),   # 개암 — 작은 견과
         'mul':   (20, 0.042, M['fr_mul'],   0.30),   # 오디 — 잘고 많다
+        'acorn': (14, 0.058, M['fr_acorn'], 0.26),   # 도토리 — 알 + 깍정이
         'grape': (7,  0.000, M['fr_grape'], 0.55),   # 머루 — 송이라 따로 짓는다(잎 더미 아래로)
     }[kind]
     cnt = n if n is not None else spec[0]
@@ -543,6 +556,11 @@ def _fruit_cluster(center, R_, fseed, kind='burr', n=None):
             blob(c, spec[1], spec[2], rng, squash=0.92, disp=0.30, sub=2, name="ch_burr")
             leaf_shell(c, spec[1] * 1.5, 26, 0.010, 0.075, spec[2], rng,
                        squash=0.9, droop=0.0, rmin=0.72, tilt=1.0, name="ch_spine")
+        elif kind == 'acorn':
+            # ★도토리는 **깍정이가 표지**다 — 알만 두면 개암과 같은 얼굴이 된다(T129 실측 계보).
+            blob(c, spec[1], spec[2], rng, squash=0.86, disp=0.12, sub=2, name="ac_nut")
+            blob(c + V((0, 0, spec[1] * 0.72)), spec[1] * 0.82, M['fr_acup'], rng,
+                 squash=0.46, disp=0.18, sub=2, name="ac_cup")
         elif kind == 'haz':
             blob(c, spec[1], spec[2], rng, squash=0.9, disp=0.16, sub=2, name="haz_nut")
             # 초록 총포 — 견과를 감싼 잎턱. 노란 가을 잎 위에서 견과를 **띄워 준다**.
@@ -765,7 +783,16 @@ TREE_BUILD = [
     # ═══ [T129] 열매종 · 가을 판 · 그루터기 · 묘목 ═══
     # ★밤나무는 **이미 있다**(tree09·tree10). 그러니 밤의 "모델"을 새로 짓지 않는다 —
     #   가을 판만 더한다. `tree09` 와 **같은 씨앗·같은 인자**라 실루엣이 그대로다(§0-ⓑ).
+    # ★[T141] 참나무 가을(도토리) — 성목 **셋 다** 짝을 준다. 종 표가 스프라이트 목록을 그대로
+    #   `autumn` 으로 옮기므로, 셋 중 하나만 만들면 "가을엔 저 한 그루만 도토리가 달린다"가 된다.
+    ("tree06_a", tree_oak, dict(seed=61, h=4.1, spread=2.15, autumn=True)),
+    ("tree07_a", tree_oak, dict(seed=71, h=3.4, spread=1.85, autumn=True)),
+    ("tree08_a", tree_oak, dict(seed=83, h=4.7, spread=2.45, autumn=True)),
     ("tree09_a", tree_chestnut, dict(seed=97, h=4.3, spread=1.90, autumn=True)),
+    # ★[T141] `tree10_a` — **T129 가 빠뜨린 짝**이다. 밤나무 성목은 둘인데 가을판이 하나였다
+    #   ⇒ 가을이면 한 그루만 밤이 달리고 옆 그루는 여름인 채로 서 있었다.
+    #   T141 이 "성목 수 = 가을 판 수"를 하네스에 넣자 **그 줄이 먼저 빨개져** 드러났다.
+    ("tree10_a", tree_chestnut, dict(seed=101, h=3.6, spread=1.62, autumn=True)),
     ("tree13", tree_hazel, dict(seed=137, h=2.8, spread=1.55)),
     ("tree13_a", tree_hazel, dict(seed=137, h=2.8, spread=1.55, autumn=True)),
     ("tree14", tree_mulberry, dict(seed=149, h=3.4, spread=1.90)),
@@ -1004,8 +1031,12 @@ SPECIES = {
     'tree_mulberry':  ('mulberry', '산뽕나무', 'Morus bombycis'),
     'tree_grape':     ('grape',    '머루',     'Vitis coignetiae'),
 }
-# 열매가 달리는 종 — 가을 판이 있는 넷. 열매 품목 id 는 **서버가 아직 모른다**(회부).
-FRUITING = {'chestnut': '밤', 'hazel': '개암', 'mulberry': '오디', 'grape': '머루'}
+# 열매가 달리는 종 — 가을 판이 있는 것들. 열매 품목 id 는 **서버가 아직 모른다**(회부).
+# ★[T141] 참나무를 더했다 — T135 종 표가 `oak.fruit = acorn · fy 0.6 · 가을` 인데
+#   그림 표엔 참나무 가을판이 없었다(T129 는 열매종 넷만 했다).
+#   ⚠`hazel` 은 반대 방향으로 어긋나 있다 — 그림엔 개암 열매판이 있는데 T135 표는 `fruit: null`(fy 0) 이다.
+#     어느 쪽이 정본인지는 재민+T135 판정이라 **여기서 고치지 않는다**(대조표만 · 보고 §3).
+FRUITING = {'oak': '도토리', 'chestnut': '밤', 'hazel': '개암', 'mulberry': '오디', 'grape': '머루'}
 
 
 def build_species_table():
