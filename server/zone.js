@@ -9219,8 +9219,12 @@ function setHp(p, v, why) {
   p.hp = next;
   if (Math.round(next) === Math.round(prev)) return next;
   if (HP_QUIET.has(why)) return next;
-  if (HP_PEER.has(why)) broadcast({ type: 'player_damaged', pid: p.pid, hp: p.hp });
-  else if (p.ws) send(p.ws, { type: 'player_damaged', pid: p.pid, hp: p.hp });
+  // ★[T131 2026-09-06] 이름을 사실에 맞췄다: `player_damaged` → **`hp_changed`**.
+  //   T109 가 회복·구조·먹기까지 이 한 창구로 보내면서 "damaged" 는 거짓말이 됐다(T109 회부).
+  //   ⚠**옛 이름 폴백 0** — 두 이름을 동시에 보내면 그게 사본이고, 클라가 둘 다 읽으면 두 벌이 된다.
+  //     한 번에 갈아 끼운다(서버 2줄 · 클라 1줄 · 하네스 참조 전수 — 보고 §0-ⓐ 표).
+  if (HP_PEER.has(why)) broadcast({ type: 'hp_changed', pid: p.pid, hp: p.hp });
+  else if (p.ws) send(p.ws, { type: 'hp_changed', pid: p.pid, hp: p.hp });
   return next;
 }
 
@@ -10903,7 +10907,7 @@ setInterval(() => {
         type: 'gauges',
         // ★★[T61 2026-09-03] **HP 를 여기 싣는다 — 실측이 시킨 한 줄이다.**
         //   §0-ⓐ 가 물은 것: "아묾을 서버 칸 없이 클라가 알 수 있나?" 답은 **아니다**, 그리고 이유가 나쁘다:
-        //   클라의 `myHp` 는 `welcome` · `player_damaged` · `player_respawn` 에서만 갱신된다.
+        //   클라의 `myHp` 는 `welcome` · `hp_changed`(T131 개명 전 `player_damaged`) · `player_respawn` 에서만 갱신된다.
         //   **자연 회복은 아무 메시지도 안 낸다** ⇒ 40에서 100까지 아물어도 화면은 계속 `40/100` 이다.
         //   "회복이 화면에 안 실린다"는 표식이 없다는 뜻이 아니라 **숫자 자체가 낡았다**는 뜻이었다.
         //   ⇒ 이미 초당 하나 나가는 이 메시지에 두 수를 얹는다(새 창구 0 · 방송 아님 · self 전용).

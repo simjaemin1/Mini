@@ -1285,7 +1285,9 @@
     } else if (msg.type === 'mob_tamed') {
       const m = c.mobs.get(msg.mid);
       if (m) { m.tameOwner = msg.owner; m.tameOwnerName = msg.ownerName; }
-    } else if (msg.type === 'player_damaged') {
+    } else if (msg.type === 'hp_changed') {
+      // ★[T131] 옛 이름은 `player_damaged` 였다. T109 뒤로 이 창구는 다침만이 아니라
+      //   회복·구조·먹기까지 나른다 — 이름이 사실과 어긋나 있었다(T109 회부). 폴백은 안 둔다.
       if (msg.pid === myPid) { myHp = msg.hp; updateHud(); }
       else {
         const o = c.others.get(msg.pid); if (o) o.hp = msg.hp;

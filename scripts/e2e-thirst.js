@@ -86,11 +86,14 @@ async function waitHttp(url, tries = 600) {
     return m ? +m[1] : null;
   });
   const thirstNow = async () => page.evaluate(() => (window.__getGauges ? window.__getGauges().thirst : null));
-  // ★★[이 하네스가 먼저 틀린 자리 · 족보 ㊻] **화면의 HP 는 깎일 때만 갱신된다.**
-  //   서버는 `player_damaged` 로만 hp 를 보내고 **자연 회복은 브로드캐스트가 없다**
-  //   (`self.hp` 는 welcome 때 한 번뿐이다 — 소스로 확인). 그래서 회복 뒤에 읽은 값은 **낡았다**.
-  //   초안이 그걸 모르고 낡은 값을 기준선으로 삼아 "마을에서 3HP 가 **찼다**"는 없는 결함을 냈다.
-  //   ⇒ 기준선을 믿지 말고 **연속 관측의 단조 감소**로 판정한다.
+  // ★★[이 하네스가 먼저 틀린 자리 · 족보 ㊻] 초안이 낡은 값을 기준선으로 삼아
+  //   "마을에서 3HP 가 **찼다**"는 없는 결함을 냈다.
+  //   ⇒ 기준선을 믿지 말고 **연속 관측의 단조 감소**로 판정한다. 그 판정은 지금도 옳다.
+  // ⚠[T131 2026-09-06 주석 정정] 여기 있던 이유 설명은 **더는 사실이 아니다.**
+  //   종전 주석: "서버는 `player_damaged` 로만 hp 를 보내고 자연 회복은 브로드캐스트가 없다 ·
+  //   `self.hp` 는 welcome 때 한 번뿐". **T61 이 `gauges` 에 `hp`·`maxHp` 를 실으면서 닫혔다** —
+  //   지금은 초당 하나 나가는 그 메시지가 회복을 나르고, 창구 이름도 `hp_changed` 다(T131 개명).
+  //   판정(단조 감소)은 그대로 두고 **이유만** 고친다 — 다음 사람이 없는 결함을 좇지 않게.
   const watchHp = async (secs, stepMs) => {
     const out = [];
     const step = stepMs || 5000;
