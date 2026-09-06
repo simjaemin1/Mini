@@ -41,6 +41,9 @@ const JOBS = {
   furnace: anchor(2, 2, 1.55),
   kiln_s1: anchor(2, 2, 0.30),
   charcoal_kiln: anchor(2, 2, 1.25),
+  // ★[T136] 공용 쉼터 — 움집과 **같은 발자국·같은 용마루고**. 같아야 한다:
+  //   클라가 지붕을 고정 오프셋으로 놓으므로 틀이 다르면 자리가 어긋난다(같은 값인지 아래 ④가 잰다).
+  shelter_roof: anchor(6, 4, EAVE + 2.5 * SLOPE + 0.4),
 };
 
 // ── ① client.js A표 파싱 ──
@@ -94,6 +97,29 @@ console.log('\n[③ 배포 메타 = 계산값 = 클라 표 (T132)]');
     ok(/assert_pinned_box\(/.test(py) && /building_anchors\.json/.test(py),
        '★굽기가 이 메타를 **상자 못박기 자**로 쓴다 — 발자국을 고치면 굽기가 먼저 죽는다');
   }
+}
+
+// ── ④ ★[T136] 쉼터 지붕은 움집 지붕과 **틀·앵커가 같아야 한다** ──
+// ★왜 — 클라는 지붕을 `w2i(rax-96, ray-128)` 고정 오프셋에 놓는다(34-m-renderloop).
+//   즉 자리 계산이 그림마다 다르지 않다. 틀이 1px 라도 다르면 쉼터만 어긋나 뜬다.
+//   ⇒ "같은 발자국"이라는 말을 **수로** 못 박는다.
+console.log('\n[④ 쉼터 지붕 = 움집 지붕과 같은 틀·앵커 (T136)]');
+{
+  const a = JOBS.hut_roof, b = JOBS.shelter_roof;
+  ok(a.w === b.w && a.h === b.h && a.ox === b.ox && a.oy === b.oy,
+     `틀·앵커 동일 — 움집 ${a.w}×${a.h}(${a.ox},${a.oy}) · 쉼터 ${b.w}×${b.h}(${b.ox},${b.oy})`);
+  // ★자명 통과 금지 — 그림은 **달라야** 한다(같은 틀에 같은 그림이면 갈릴 이유가 없다)
+  const rd = (k) => fs.readFileSync(path.join(__dirname, '..', 'public', 'assets', 'buildings', k + '.png'));
+  const h = rd('hut_roof'), sh = rd('shelter_roof');
+  ok(!h.equals(sh), '★그림은 다르다 — 같은 틀에 같은 그림이면 쉼터를 세운 뜻이 없다');
+  // ★클라가 **선언으로** 고른다 — 이름 문자열로 고르면 이름표가 렌더 열쇠가 된다
+  const rl = fs.readFileSync(path.join(__dirname, '..', 'public', 'client', '34-m-renderloop.js'), 'utf8');
+  ok(/data\.shelter\b/.test(rl) && /_bldSpr\.shelter_roof/.test(rl),
+     '★클라가 `data.shelter` 선언으로 고른다(이름 파싱 0)');
+  const vg = fs.readFileSync(path.join(__dirname, '..', 'server', 'villages.js'), 'utf8');
+  ok(/shelter:\s*1/.test(vg), '★서버가 `shelter: 1` 을 실어 준다 — 선언이 있어야 화면이 갈린다');
+  ok(!/ownerName[^\n]*쉼터|쉼터[^\n]*indexOf|includes\('쉼터'\)/.test(rl),
+     '★렌더가 이름표(`쉼터`)를 파싱하지 않는다');
 }
 
 console.log('\n결과: ' + (fail ? `FAIL(${fail})` : 'PASS'));

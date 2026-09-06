@@ -852,7 +852,10 @@
               const rax = ox + b.x, ray = oy + b.y;
               if (Math.abs(rax - worldCx) <= VIEW_RADIUS + 200 && Math.abs(ray - worldCy) <= VIEW_RADIUS + 200) {
                 const _riso = w2i(rax - 96, ray - 128);       // 지붕 로컬 원점 = 북서 오버행 모서리(캐리어 중심 - (3,4)셀)
-                renderables.push({ z: (rax + ray) * 0.5 + 64, kind: 'hutroof', img: _hutI, iso: _riso, wx: rax, wy: ray });   // ★지붕은 자기 집 벽 4면보다 무조건 앞[사용자 지적]: 벽 z 최대=남벽 동단·동벽 남단 (캐리어+56) — +24는 SE 구간 벽이 처마를 덮었음. +64로 전부 상회. 남측 개체는 지붕이 64px 떠 있어 픽셀 비겹침(플레이어는 +500 별도)이라 안전
+                // ★[T136] 공용 쉼터는 **다른 지붕**이다 — 서버가 `data.shelter` 로 선언한다(T62 회부).
+                //   실체는 움집과 같으니 자리·z·컷어웨이는 그대로고, 고르는 그림만 갈린다.
+                const _roofI = (b.data.shelter && _bldSpr.shelter_roof) || _hutI;
+                renderables.push({ z: (rax + ray) * 0.5 + 64, kind: 'hutroof', img: _roofI, iso: _riso, wx: rax, wy: ray });   // ★지붕은 자기 집 벽 4면보다 무조건 앞[사용자 지적]: 벽 z 최대=남벽 동단·동벽 남단 (캐리어+56) — +24는 SE 구간 벽이 처마를 덮었음. +64로 전부 상회. 남측 개체는 지붕이 64px 떠 있어 픽셀 비겹침(플레이어는 +500 별도)이라 안전
               }
             }
             if (_t19.floorOutOff) continue;   // ★대조군 — 옛 동작(밖에서 바닥 억제)
