@@ -105,9 +105,25 @@ const CHRON_RAW = [];
 const SAMPLE_WANT = new Set(String(process.env.EV_SAMPLE_TYPES || '').split(',').map((x) => x.trim()).filter(Boolean));
 const SAMPLES = [];
 const BYITEM = new Map();   // `type|item` → 건수 (채택 문턱 하나에 대해서만)
+// ★★[T142 2026-09-06] 게시 시점 원자료 — **약속이 어떤 값으로 지어졌나**.
+//   채택 열과 되돌림 열(`PRICE_FRESH:0`)에만 훅을 단다. 훅이 없을 때와 결과가 같다(장부는 관측자).
+//   ⚠하역 전 시세와 하역 뒤 시세를 **그 자리에서** 둘 다 물어 비율을 남긴다 —
+//     비율이 크면 그 약속은 "곳간이 비었을 때의 귀함"으로 지어진 것이다(T130 표본 문법).
+const POSTLOG = new Map();   // tag → [{ vid, item, day, qty, rewItem, rewQty, fit, ratio }]
 const LS = CANDS.map((c) => {
   const adopted = /★채택/.test(c.tag);
+  const _post = (adopted || (c.cfg && c.cfg.PRICE_FRESH === 0)) ? [] : null;
+  if (_post) POSTLOG.set(c.tag, _post);
   const L = Events.createLedger({ econV2, vidOf: (v, i) => i, depositMap, cfg: c.cfg,
+    onRequest: _post ? ((req, kind) => {
+      if (kind !== 'open' || req == null || req.vid == null) return;
+      const v = world.villages[req.vid | 0]; if (!v) return;
+      const pf = +Events.pricesFresh(econV2, v)[req.item] || 0;              // 하역 뒤(지금 재고)
+      const pc = +Events.pricesOf(econV2, v, world.day)[req.item] || 0;      // 하루 캐시(하역 전)
+      _post.push({ vid: req.vid | 0, item: req.item, day: req.day | 0, qty: req.qty,
+        rewItem: req.rewItem, rewQty: req.rewQty, fit: req.fit || 'full',
+        ratio: (pf > 0 ? pc / pf : 0) });
+    }) : null,
     onEvent: adopted ? ((e) => {
       CHRON_RAW.push({ t: e.type, s: Math.abs(Math.log(Math.max(1e-6, e.mag || 1))), m: +e.mag || 1 });   // ★[T127] mag 도 싣는다 — 뭉갬 눈금이 자릿수에서 나온다
       if (SAMPLE_WANT.has(e.type)) SAMPLES.push({ vid: e.vid, day: e.day, type: e.type, item: e.item, mag: e.mag });
@@ -442,6 +458,61 @@ if (LS.length) {
     console.log(`  ★밀도가 캐논 구간에 **가까워지는 방향**인지만 적는다 — 판정은 재민이 한다(장부는 관측자).`);
     // 비용 — 하루 51마을에 시세를 한 번 더 묻는 값
     console.log(`  ★비용(§0-ⓑ): 위 ⓑ 표의 ms/일 두 열이 그 답이다 — 같은 판·같은 세계라 그 차이가 곧 \`pricesFresh\` 값이다.`);
+  }
+}
+
+// ── ⓙ ★★[T142 2026-09-06] 게시 시세 — **약속도 하역 뒤를 보나** ────────────────────────
+//   T133 은 사건 판정을 하역 뒤로 옮겼고 게시(`makeRequest`)는 두고 갔다(여덟 수 '게시' 열 귀속).
+//   이 절이 그 열이 얼마나 움직이는지, 그리고 **어떤 약속이 지어졌는지**를 낸다.
+//   ⚠랩엔 플레이어가 없어 **납품이 구조적으로 0** 이다 ⇒ "성사"는 못 잰다.
+//     랩이 낼 수 있는 대리 지표는 셋: **축소**(갚을 수 있는 선까지 줄인 것) · **못갚아미게시** ·
+//     **재검증철회**(어제 갚을 수 있던 약속을 오늘 못 갚아 거둔 것 = 깨진 약속).
+if (LS.length) {
+  const ADOPT = LS.find((x) => /★채택/.test(x.tag));
+  const REV = LS.find((x) => x.cfg && x.cfg.PRICE_FRESH === 0);
+  if (ADOPT && REV) {
+    const A = ADOPT.L.stats, B = REV.L.stats;
+    console.log(`\nⓙ [T142] 게시 시세 — 하역 뒤(채택) vs 하역 전(되돌림) · 같은 세계 · ${live}마을 × ${DAYS}일`);
+    console.log('  ' + '열'.padEnd(16) + '하역 뒤'.padStart(10) + '하역 전'.padStart(10) + '차이'.padStart(10) + '     증감');
+    const row = (k, a, b) => console.log('  ' + k.padEnd(16) + String(a).padStart(10) + String(b).padStart(10)
+      + String(a - b).padStart(10) + '     ' + (b ? (((a - b) / b) * 100).toFixed(1) + '%' : '—'));
+    row('게시', A.reqOpened, B.reqOpened);
+    row('철회', A.reqClosed, B.reqClosed);
+    row('축소', A.reqShrunk, B.reqShrunk);
+    row('못갚아미게시', A.reqNoPay, B.reqNoPay);
+    row('재검증철회', A.reqRevalidated, B.reqRevalidated);
+
+    // ⓙ-2 **어떤 값으로 지어진 약속인가** — 게시 순간의 (하루 캐시 ÷ 하역 뒤) 비율 분포
+    const bucketize = (rows) => {
+      const b = { '≥2.0': 0, '1.5~2.0': 0, '1.1~1.5': 0, '0.9~1.1': 0, '<0.9': 0 };
+      let n = 0, stale = 0, sumRew = 0, sumRewStale = 0, nStale = 0, shrunk = 0, shrunkStale = 0;
+      for (const r of rows) {
+        const x = r.ratio; if (!(x > 0)) continue;
+        n++;
+        if (x >= 2) b['≥2.0']++; else if (x >= 1.5) b['1.5~2.0']++; else if (x >= 1.1) b['1.1~1.5']++;
+        else if (x >= 0.9) b['0.9~1.1']++; else b['<0.9']++;
+        const mult = r.qty > 0 ? (r.rewQty / r.qty) : 0;
+        sumRew += mult;
+        if (r.fit === 'shrunk') shrunk++;
+        if (x >= 1.5 || x < 0.9) { stale++; sumRewStale += mult; nStale++; if (r.fit === 'shrunk') shrunkStale++; }
+      }
+      return { b, n, stale, shrunk, shrunkStale, rewAll: sumRew / Math.max(1, n), rewStale: sumRewStale / Math.max(1, nStale) };
+    };
+    const pa = bucketize(POSTLOG.get(ADOPT.tag) || []);
+    const pb = bucketize(POSTLOG.get(REV.tag) || []);
+    console.log(`\n  ⓙ-2 게시 순간의 **하루 캐시 ÷ 하역 뒤 시세** 분포(그 자리에서 둘 다 물었다)`);
+    console.log('  ' + '읽기'.padEnd(12) + '게시'.padStart(8)
+      + ['≥2.0', '1.5~2.0', '1.1~1.5', '0.9~1.1', '<0.9'].map((k) => k.padStart(10)).join('')
+      + '   **어긋난 값**' + '  보상배율(전체/어긋난)');
+    const line = (tag, p) => console.log('  ' + tag.padEnd(12) + String(p.n).padStart(8)
+      + ['≥2.0', '1.5~2.0', '1.1~1.5', '0.9~1.1', '<0.9'].map((k) => `${p.b[k]}`.padStart(10)).join('')
+      + `   ${(p.stale / Math.max(1, p.n) * 100).toFixed(1)}%`
+      + `        ${p.rewAll.toFixed(2)} / ${p.rewStale.toFixed(2)}`);
+    line('하역 뒤', pa);
+    line('하역 전', pb);
+    console.log(`  ★"어긋난 값" = 하루 캐시가 하역 뒤 시세와 **1.5배 이상 벌어졌거나 0.9 미만**인 자리다.`);
+    console.log(`    하역 전 열의 그 비율이 곧 **"재고 0 일 때의 귀함으로 지어진 약속"의 몫**이다(T142 §0-ⓑ).`);
+    console.log(`    ⚠랩엔 플레이어가 없어 **성사(납품)는 구조적으로 0** ⇒ 위 축소·미게시·재검증철회가 대리 지표다.`);
   }
 }
 
