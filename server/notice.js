@@ -57,7 +57,11 @@ const KIND_OF = {
   // dev — 테스트 픽스처(4건 · E2E_GIVE 갈래에서만 난다)
   '🧪': 'dev', '🤖': 'dev',
 };
-const KINDS = ['village', 'gather', 'fishing', 'craft', 'board', 'rescue', 'downed', 'combat', 'dev', 'info'];
+// ★[T128 2026-09-05] `guild` — **길드의 부름과 문**. `village`(마을·시설)에서 갈라냈다:
+//   부름은 장소가 아니라 **사람 사이의 일**이고, 받는 쪽이 그 한 종류만 보고 `/수락` 을 친다.
+//   ⚠접두 이모지 표(`KIND_OF`)에는 안 넣는다 — 이 종류의 알림은 `guild.js` 가 `kind` 로 **직접** 보낸다
+//     (옛 문장이 없으므로 이모지에서 유도할 것도 없다 · 위 88줄 규약: 호출부의 `kind` 를 존중한다).
+const KINDS = ['village', 'gather', 'fishing', 'craft', 'board', 'rescue', 'downed', 'combat', 'guild', 'dev', 'info'];
 
 const _base = (s) => String(s).split(VS16).join('').split(ZWJ)[0];
 

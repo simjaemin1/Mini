@@ -93,6 +93,24 @@ async function friendsOfName(name) {
   } catch (e) { return null; }
 }
 
+// ★★[T128 2026-09-05] 길드 초대·승인제·소개문 — 문 여섯. T115 와 같은 규약:
+//   **실패는 예외가 아니라 빈 답**이다(호출부가 매번 try 를 쓰지 않게 · central 이 죽어도 안 막는다).
+const _guildDoor = (method, path) => async (body) => {
+  try { const r = await request(method, path, body); return r.data || { ok: false, reason: 'down' }; }
+  catch (e) { return { ok: false, reason: 'down' }; }
+};
+const tribeInvite = (playerId, name) => _guildDoor('POST', '/tribe/invite')({ player_id: playerId, name });
+const tribeInvites = (playerId) => _guildDoor('POST', '/tribe/invites')({ player_id: playerId });
+const tribeInviteAccept = (playerId, tribeId) => _guildDoor('POST', '/tribe/invite_accept')({ player_id: playerId, tribe_id: tribeId == null ? null : (tribeId | 0) });
+const tribeMode = (playerId, mode) => _guildDoor('POST', '/tribe/mode')({ player_id: playerId, mode });
+const tribeIntro = (playerId, intro) => _guildDoor('POST', '/tribe/intro')({ player_id: playerId, intro });
+async function tribeIntros() {
+  try {
+    const r = await request('GET', '/tribe_intros');
+    return (r.status === 200 && r.data && Array.isArray(r.data.intros)) ? r.data.intros : null;
+  } catch (e) { return null; }   // ★null = "못 물어봤다"(빈 목록과 다르다)
+}
+
 async function getPlayer(playerId) {
   const r = await request('GET', `/player/${encodeURIComponent(playerId)}`);
   return r.status === 200 ? r.data.player : null;
@@ -123,5 +141,6 @@ async function getTribe(id) {
 
 module.exports = { authenticate, checkUsernameTaken, getPlayer, updatePlayer, request,
   guestIdentity, promoteGuest,   // ★[배치 13] 게스트 영속 신원 · ★[배치 14] 승계
-  friendRequest, friendRemove, friendsOf, friendsOfName,   // ★[T115] 친구 — 문 셋(실패는 빈 답)
+  friendRequest, friendRemove, friendsOf, friendsOfName,
+  tribeInvite, tribeInvites, tribeInviteAccept, tribeMode, tribeIntro, tribeIntros,   // ★[T128] 길드 문 여섯   // ★[T115] 친구 — 문 셋(실패는 빈 답)
   tribeAddVp, tribeTreasury, tribeNpcUpsert, getTribe };

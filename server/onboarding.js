@@ -590,6 +590,9 @@ function startInfo(opts) {
       // ★[T115] 함께 도착 — **그 마을을 처음 고른 벗이 몇인가**(지금 어디 있느냐가 아니다).
       //   `player: 1`·`founderName` 과 **같은 문법**이다: 서버가 세고 로비는 그리기만 한다.
       friendsHere: fv ? (fv.get(v.id) || 0) : 0,
+      // ★[T128] 마을 소개문 — 그 마을을 세운 **길드장이 쓴 한 줄**(길이 상한은 central 하나).
+      //   유저 마을에만 붙는다: NPC 마을엔 세운 길드가 없다(그래서 `v.player` 게이트가 여기 산다).
+      intro: (v.player && H.introOfVillage) ? (H.introOfVillage(v.id) || '') : '',
     });
   }
   // 추천 = "이방인 환영" — 도착 지점이 성립하고(배산임수 감사 합격) · 쉼터가 되고(사람이 산다) ·

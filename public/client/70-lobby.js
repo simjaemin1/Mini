@@ -57,6 +57,15 @@ function onbFetchInfo(zoneId) {
 //   근황이 곧 선택 근거이자, 세계가 살아있다는 첫 증명이다.
 // ★[T66] CSS 토큰 하나를 읽어 온다 — SVG 는 currentColor 를 못 쓰는 자리가 있어 값이 필요하다.
 //   ⚠값을 여기 적지 않는다: 적는 순간 `style.css` 와 갈리고, 그게 사본이다.
+// ★★[T128] **사람이 쓴 문장**이 처음으로 화면에 온다(길드 소개문) ⇒ 여기 한 자리에서 막는다.
+//   ⚠이 로비는 `innerHTML` 로 줄을 짓는다. 서버가 길이는 자르지만 **꺾쇠는 안 자른다**(자르면 그건
+//     문장을 바꾸는 것이다) — 그러니 **그리는 쪽**이 막는 게 맞다. 마을 이름·근황은 서버가 짓는
+//     문장이라 종전대로 두고, **사람이 쓴 것만** 이 함수를 지난다.
+function onbEsc(s) {
+  return String(s == null ? '' : s)
+    .split('&').join('&amp;').split('<').join('&lt;').split('>').join('&gt;')
+    .split('"').join('&quot;');
+}
 function onbTok(name) {
   try { return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || 'currentColor'; }
   catch (e) { return 'currentColor'; }
@@ -154,6 +163,8 @@ function onbRenderCard() {
     + (v.player ? `<br/><span class="accent">사람이 세운 마을 — 이방인을 받는다${v.founderName ? ` (${v.founderName})` : ''}</span>` : '')
     // ★[T115] 함께 도착 — **서버가 센 수를 그대로** 쓴다(로비가 다시 세지 않는다).
     + ((v.friendsHere | 0) ? `<br/><span class="accent">벗 ${v.friendsHere}명이 여기서 시작했다</span>` : '')
+    // ★[T128] 마을 소개문 — 길드장이 쓴 한 줄. **서버가 자른 문장을 그대로** 쓴다(길이 상한 사본 0).
+    + (v.intro ? `<br/><span class="quote">“${onbEsc(v.intro)}”</span>` : '')
     + `<br/><span class="quote">“${v.news}”</span>`
     + (v.board ? `<br/><span class="dim">게시판에 걸린 일 ${v.board}건</span>` : '')
     + (v.welcome && !v.welcome.ok ? `<br/><span class="warn">이방인을 받기엔 아직 이르다 — ${v.welcome.why.join(' · ')}</span>` : '');
@@ -174,6 +185,7 @@ function onbRenderCards() {
     + `<div class="vc-news">${v.news || ''}</div>`
     + (v.player ? '<span class="vc-badge">사람이 세운 마을 — 이방인을 받는다</span>' : '')
     + ((v.friendsHere | 0) ? `<span class="vc-badge">벗 ${v.friendsHere}명</span>` : '')
+    + (v.intro ? `<div class="vc-news">${onbEsc(v.intro)}</div>` : '')
     + '</div>').join('');
   el.querySelectorAll('[data-onbvid]').forEach((c) => {
     c.onclick = () => onbSelect(+c.dataset.onbvid);

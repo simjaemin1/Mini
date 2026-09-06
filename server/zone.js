@@ -62,6 +62,7 @@ const Membership = require('./membership');   // ★[T11 2026-09-02] 마을 소�
 const Claims = require('./claims');           // ★[T45 2026-09-02] 사유지 v2 — 종류 영속·인접·연결성·부재 상태기(정본 하나)
 const Newcomers = require('./newcomers');     // ★[T19 2026-09-02] 유저 마을 시작지 등록 — "이방인 받기"(§9.3 나머지 절반)
 const Friends = require('./friends');         // ★[T115 2026-09-05] 친구 — 서로 수락한 쌍(T23 소셜 첫 칸)
+const Guild = require('./guild');             // ★[T128 2026-09-05] 길드 모집 — 초대·승인제·마을 소개문
 const Rescue = require('./rescue');           // ★[T56 2026-09-02] 외침·구조 동사 둘. 판정은 전부 정본을 부른다(사본 0)
 // ★★[T122 2026-09-05] **Map 이다** — 키 → 벤 게임일. 종전엔 Set(=영원히 없음)이었다.
 //   `has` 계약은 그대로라 옛 호출부가 전부 산다. 새로 생긴 건 `get(key) = 벤 날` 하나다.
@@ -2674,7 +2675,16 @@ Onboarding.init({ SimVillages, terrain: _terrain, ZONE, ZONE_ID, db: db.db, send
   shelterOf: (vid) => { try { return SimVillages.shelterOf ? SimVillages.shelterOf(vid) : null; } catch (e) { return null; } },
   // ★[T115] 함께 도착 — 이름으로 물어 **vid → 벗 수**를 낸다. 세는 정본은 `friends.js` 하나다.
   //   ⚠못 물어보면 `null` 이고 시작 화면은 친구 칸 0 으로 그대로 뜬다(막지 않는다).
-  friendVidsByName: (name) => Friends.nameVids(name) });
+  friendVidsByName: (name) => Friends.nameVids(name),
+  // ★[T128] 마을 소개문 — 마을과 길드를 잇는 것은 `_tribeId` 하나다(여기서 새로 잇지 않는다).
+  //   ⚠**캐시로만** 답한다(요청 경로에서 central 을 안 기다린다 — T115 가 여기서 물렸다).
+  introOfVillage: (vid) => {
+    try {
+      const vil = SimVillages.villageByDbId ? SimVillages.villageByDbId(vid) : null;
+      const tid = (vil && vil.econ && vil.econ._tribeId != null) ? vil.econ._tribeId : null;
+      return Guild.introOfTribe(tid);
+    } catch (e) { return ''; }
+  } });
 
 // ★[T11 2026-09-02] 마을 소속·곳간 인출 — **이미 있는 것만 넘긴다**(사본 금지).
 //   기여 계량기는 안 넘긴다: `membership.js` 가 온보딩 정본을 직접 읽는다(계량기는 하나다).
@@ -2736,6 +2746,32 @@ Friends.init({
       if (pids.has(p.pid)) p.viewerState.seenPlayers = new Set();
       else for (const q of pids) p.viewerState.seenPlayers.delete(q);
     }
+  },
+});
+
+// ★[T128 2026-09-05] 길드 모집 — **이미 있는 것만 넘긴다**(사본 금지). 정본 표는 central 에 있다.
+Guild.init({
+  central, send,
+  //   접속 중인 사람에게 한마디(`kind` 를 같이 준다 — 알림 경계가 호출부의 `kind` 를 존중한다).
+  tellPlayer: (pid, text, kind) => {
+    for (const p of players.values()) if (!p.isNpc && p.playerId === String(pid)) { try { send(p.ws, { type: 'notice', text, kind }); } catch (e) {} }
+  },
+  //   ★들었으면 **이 판의 몸에도** 길드를 얹는다 — 종전 `tribe_set` 이 하던 일과 같은 자리다
+  //     (클라가 central 을 거쳐 알려 주던 길을 서버가 직접 걷는다 · 새 메시지 축 0).
+  refreshTribe: (pid) => {
+    (async () => {
+      try {
+        const row = await central.getPlayer(String(pid));
+        if (!row) return;
+        for (const p of players.values()) {
+          if (p.isNpc || p.playerId !== String(pid)) continue;
+          p.tribeId = row.tribe_id || null;
+          if (p.tribeId) { try { const tr = await central.getTribe(p.tribeId); p.tribeName = (tr && tr.tribe && tr.tribe.name) || null; } catch (e) {} }
+          else p.tribeName = null;
+          try { savePlayer(p); } catch (e) {}
+        }
+      } catch (e) { /* central down — 다음 접속에 붙는다(막지 않는다) */ }
+    })();
   },
 });
 
@@ -2884,6 +2920,16 @@ const server = http.createServer((req, res) => {
       myVid: pid ? (() => { try { return Onboarding.stateOf(String(pid)).start_vid; } catch (e) { return null; } })() : null };
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
     res.end(JSON.stringify(out));
+    return;
+  }
+  // ★[T128] 길드 관측창 — 읽기 전용. 소개문 캐시가 무엇을 아는지 그대로 낸다(사람 이름 0).
+  if (req.url && req.url.startsWith('/guilddbg') && req.method === 'GET') {
+    //   ⚠`?warm=1` 이면 **캐시를 한 번 건드린다**(값을 바꾸는 게 아니라 낡았으면 뒤에서 다시 묻게 한다).
+    //     소개문 캐시는 게을러서(요청 경로에서 안 기다린다) 아무도 안 부르면 영영 비어 있다 —
+    //     관측창이 "없다"와 "아무도 안 물었다"를 못 가르면 그 창은 거짓말을 한다.
+    if (/(?:^|[?&])warm=1(?:&|$)/.test(req.url)) { try { Guild.introMap(); } catch (e) {} }
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify(Guild.debug()));
     return;
   }
   // ★[T19] 이방인 받기 상태 읽기 전용 JSON — 하네스 관측창(`/claimdbg` 와 같은 규약).
@@ -3755,6 +3801,8 @@ async function _acceptConnection(ws, req, C) {
     //   ★이름 갈래도 같이 데운다 — 시작 화면은 **로그인 전**에 묻는다(그때 기다릴 수 없다).
     //     다음에 로비를 열면 이미 답이 있다.
     if (player.name) Friends.nameVids(player.name);
+    //   ★[T128] 길드 소개문도 같이 데운다 — 시작 화면은 **로그인 전**에 묻고, 거기서 기다릴 수 없다.
+    Guild.introMap();
   } catch (e) {}
 
   // 환영 메시지 — 존 정보와 현재 상태 모두 전달
@@ -4006,6 +4054,7 @@ function handlePlayerInput(player, raw) {
     if (Membership.handleChat(player, text)) return;
     if (Newcomers.handleChat(player, text)) return;   // ★[T19] `/이방인` — 새 클라 조건 0
     if (Friends.handleChat(player, text)) return;     // ★[T115] `/친구` — 새 패널 0 · 새 클라 조건 0
+    if (Guild.handleChat(player, text)) return;       // ★[T128] `/초대` `/수락` `/길드` `/소개`
     // ★[T56] 구조 동사 둘 — `/먹이기 <음식>` `/물`. 채팅은 이미 있다(클라 무접촉 · T11 선례).
     if (Rescue.handleChat(player, text)) return;
     if (text.startsWith('/t ')) {

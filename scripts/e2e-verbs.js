@@ -897,8 +897,14 @@ async function waitHttp(url, tries = 600) {
     const texts = KINDS.map((k) => (drawn[k] ? drawn[k].text : ''));
     ok(!/\p{Extended_Pictographic}/u.test(texts.join('')), '★⑫ 그 자리에 이모지 0', JSON.stringify(texts.slice(0, 2)));
     // ★글자로 새지 않았다 — 아이콘 **이름**이 토스트에 찍히면 T66 의 결함이 돌아온 것이다.
-    ok(!texts.some((t2) => /\b(home|axe|fish|hammer|scroll|heart|guild|warn|eye|shout)\b/.test(t2)),
-       '★★⑫ 아이콘 **이름이 글자로 찍히지 않았다**(T66 이 밟은 함정)', JSON.stringify(texts.slice(0, 2)));
+    //   ★[T128 2026-09-05] 이 절이 **제가 넣은 글자에 제가 걸렸다**. 문구를 `'알림 ' + k` 로 짓는데,
+    //     kind 이름과 아이콘 이름이 같은 낱말일 수 있다(`guild` 는 T78 부터 `combat` 의 그림 이름이고,
+    //     T128 에서 kind 이름이 되기도 했다). 그러면 **아무것도 새지 않아도** 이 줄이 빨개진다.
+    //     ⇒ 재기 전에 **내가 심은 문구를 걷어낸다**. 남은 것에 아이콘 이름이 있으면 그건 진짜 샌 것이다.
+    //     (문구가 지워지지 않는지는 바로 아래 '자명 통과 금지' 줄이 따로 지킨다.)
+    const rest = texts.map((t2, i) => t2.replace('알림 ' + KINDS[i], ''));
+    ok(!rest.some((t2) => /\b(home|axe|fish|hammer|scroll|heart|guild|warn|eye|shout)\b/.test(t2)),
+       '★★⑫ 아이콘 **이름이 글자로 찍히지 않았다**(T66 이 밟은 함정)', JSON.stringify(rest.slice(0, 2)));
     // ★자명 통과 금지 — 알림 문구 자체는 살아 있다(그림만 그리고 말을 잃으면 안 된다)
     ok(texts.every((t2) => /알림/.test(t2)), '★⑫ 자명 통과 금지 — 말은 그대로 남는다', JSON.stringify(texts[0]));
   }
