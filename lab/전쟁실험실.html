@@ -23,6 +23,8 @@
   .note{color:#7a8494;font-size:11.5px;margin-top:8px;}
 #landMul button{margin-right:4px;padding:2px 8px;background:#2b3038;color:#c8d0da;border:1px solid #454c58;border-radius:4px;cursor:pointer}
 #landMul button.on{background:#3d6b9a;color:#fff;border-color:#5a8cc4}
+#happyWork button{margin-right:4px;padding:2px 8px;background:#2b3038;color:#c8d0da;border:1px solid #454c58;border-radius:4px;cursor:pointer}
+#happyWork button.on{background:#3d6b9a;color:#fff;border-color:#5a8cc4}
 </style>
 </head>
 <body>
@@ -38,6 +40,7 @@
     <div class="row"><label>비옥도</label><input type="range" id="fertV" min="0.1" max="1" step="0.05" value="0.55" oninput="gen()"><b id="fvv">0.55</b> <span style="color:#7a8494">토질 → 농부</span></div>
     <div class="row"><label>어장</label><input type="range" id="waterV" min="0" max="1" step="0.05" value="0.5" oninput="gen()"><b id="wvv">0.50</b> <span style="color:#7a8494">물 풍부도 → 어부 (타입은 도출)</span></div>
     <div class="row"><label>경작지</label><span id="landMul"><button type="button" data-v="8" onclick="setLandNeed(8)">8칸</button><button type="button" data-v="10.4" onclick="setLandNeed(10.4)">10.4칸</button><button type="button" class="on" data-v="12" onclick="setLandNeed(12)">12칸</button></span> <b id="lmv">인당 12칸 (정본)</b> <span style="color:#7a8494">인당 경작칸 — 정본 12(옛 8 · ×1.3 = 10.4)</span></div>
+    <div class="row"><label>행복→일</label><span id="happyWork"><button type="button" data-v="0" onclick="setHappyWork(0)">끔</button><button type="button" class="on" data-v="0.24" onclick="setHappyWork(0.24)">H=0.24</button></span> <b id="hwv">행복→작업량 H=0.24 (±12.0%)</b> <span style="color:#7a8494">Oswald·Proto·Sgroi 2015 — 중립→행복 생산성 +12% ⇒ H=0.24 · 다음 <b>lifeInit</b>(세계 재생성)부터 적용</span></div>
     <div class="row"><label>크기배율</label><input type="range" id="sizeMul" min="0.5" max="2.5" step="0.1" value="1.5" oninput="gen()"><b id="smv">1.5</b>× <span style="color:#7a8494">타입 비율 유지</span></div>
     <div class="row"><button id="playBtn" onclick="togglePlay()">▶ NPC 재생</button> <button onclick="step1()">▷ 한 틱</button></div>
     <div class="row"><label>표시</label>
@@ -2071,6 +2074,13 @@ const MASTER_INHERIT_RATE = 0.45;      // 상속률(0.4~0.5) — 견습이 명�
 const TIGERHIDE_PRESTIGE_W = 4;          // 호피 0.025/인(120명 마을 3장)에서 상한 도달 — 희소재 소량으로 위신 성립
 const TIGERHIDE_PRESTIGE_CAP = 0.1;      // 상한(PRESTIGE_MOD_CAP 0.25 스케일 대비 소폭 — 위신재 한 종의 왜곡 방지)
 // ★건강 → 작업량(생산성) — 건강한 마을이 더 생산적(상한 있어 폭주 X). happiness는 인구만(유지).
+// ★★[T157] 행복 → 작업량 배수 — **순수 함수**(하네스가 이걸 직접 물어본다 · 사본 0).
+//   0.5 가 중립 · 대칭 · 상한은 `H` 자신(`1 ± H/2`) — 자르는 값을 따로 짓지 않는다.
+//   ⚠계수 `H` 는 이 파일이 안 갖는다: 부르는 쪽(=랩의 `world.happyWorkW`)이 준다.
+function happyWorkMul(happiness, W) {
+  if (!(W > 0) || typeof happiness !== 'number' || !isFinite(happiness)) return 1;
+  return Math.max(1 - W * 0.5, Math.min(1 + W * 0.5, 1 + (happiness - 0.5) * W));
+}
 const HEALTH_PROD_W = 0.15;              // (health−0.5)×W → ±0.075(상한 클램프 ±0.1). 완만 — 과채광 억제
 // ★죽은 커플링 연결: production stat(자재·도구·금속 비축)이 이제 실제 생산성을 올림 — 잘 갖춰진 작업장이 더 생산적(고증: 도구·설비 = 생산력).
 const PROD_STAT_W = 0.03;                // production stat × W → 생산성 보너스
@@ -3437,6 +3447,25 @@ function tickVillage(v, day) {
   // ★건강 → 작업량(생산성) — 지난 틱 health로 실제 생산 스케일(±10% 상한). 잠재력(dailyProductionPotential)엔 미적용 → K 오염·아사 스파이럴 방지.
   const _hpm = (v.lastStats && typeof v.lastStats.health === 'number')
     ? Math.max(0.9, Math.min(1.1, 1 + (v.lastStats.health - 0.5) * HEALTH_PROD_W)) : 1;
+// ★★★[T157 2026-09-07 · 이 파일의 유일한 접점] **행복도 작업량에 닿는다 — 건강과 같은 문법.**
+//   재민 물음(09-05): *"행복이 오로지 리비히 상한 역할만? 높으면 더 좋아지는 것도 있어야."*
+//   여태 행복은 연속 항 `(happiness−0.5)×0.6` 으로 **인구에만** 닿았다. 건강은 이미 위 한 줄로
+//   작업량에 닿는다. 그 문법을 그대로 빌린다: **0.5 가 중립 · 대칭 · 같은 자리에서 곱한다.**
+//
+//   ⚠**주입이 없으면 한 글자도 안 바뀐다.** 계수는 이 파일이 안 갖는다 — `world.happyWorkW` 가 준다.
+//     지금 그것을 주는 것은 **랩**(`lab/전쟁실험실.html` `L_HAPPYWORK`)과 그 A/B 계측기뿐이고,
+//     서버·CLI·하네스·픽스처는 안 주므로 `_hwW = 0` → 배수 1 → **비트 동일**이다(T135 `forageTakeFn` 선례).
+//   ⚠**상한은 새 수가 아니라 `H` 자신이다.** 출처(Oswald·Proto·Sgroi 2015)가 잰 것은 *중립 → 행복*
+//     구간의 생산성 차이다 ⇒ 우리 축으로 0.5 → 1.0 의 반쪽 폭. 그래서 배수를 `1 ± H×0.5` 로 자른다.
+//     행복은 이 세계에서 **1 을 넘는다**(실측 중앙 0.845 · 최고 2.07) — 자르지 않으면 출처가 재지 않은
+//     구간까지 외삽하게 된다. 자르는 값을 따로 짓지 않는 것이 요점이다.
+const _hwW = (v._world && typeof v._world.happyWorkW === 'number' && v._world.happyWorkW > 0) ? v._world.happyWorkW : 0;
+let _hwm = 1;
+if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
+  _hwm = happyWorkMul(v.lastStats.happiness, _hwW);
+  if (_hwm !== 1 + (v.lastStats.happiness - 0.5) * _hwW) v._hwClampDays = (v._hwClampDays || 0) + 1;   // 계측 전용 — 상한이 어디서 서나(회계 아님)
+  v._hwmLast = _hwm;
+}
   // ★production stat → 생산성(자재·설비 비축이 실제 생산력↑). 상한 클램프로 스노볼 방지. 잠재력엔 미적용(K 오염 방지).
   const _prodMul = (v.lastStats && typeof v.lastStats.production === 'number')
     ? 1 + Math.min(PROD_STAT_CAP, v.lastStats.production * PROD_STAT_W) : 1;
@@ -3506,7 +3535,7 @@ function tickVillage(v, day) {
       const sm = satMul(r);
       _potA += amt; _actA += amt * sm;   // 여유노동 측정: 잠재(감산 전) vs 실제(감산 후)
       dailyProductionPotential[r] = (dailyProductionPotential[r] || 0) + amt;   // 잠재 생산(건강·포만 적용 전) — prodK용
-      amt *= _hpm * _prodMul * sm * (v._laborMul || 1) * _siegeM * _capM;   // ★건강→작업량(±10%) × production stat × 포만 × 부상노동력(요양=일손 X·부상=효율↓ — 생활층서 계산) × 포위 봉쇄(야외 직업만, 미설치=1) × 포로 노동(captive만 0.6, 미설치=1)
+      amt *= _hpm * _hwm * _prodMul * sm * (v._laborMul || 1) * _siegeM * _capM;   // ★건강→작업량(±10%) × **행복→작업량(T157 · 주입 없으면 1)** × production stat × 포만 × 부상노동력(요양=일손 X·부상=효율↓ — 생활층서 계산) × 포위 봉쇄(야외 직업만, 미설치=1) × 포로 노동(captive만 0.6, 미설치=1)
       if (amt <= 0) return;
       if (r === 'food') v._grainToday = (v._grainToday || 0) + amt;   // ★오늘 곡물 실생산 → 볏짚 연료(아래 연료 블록)
       const tax = amt * TAX_RATE;
@@ -5746,6 +5775,7 @@ module.exports = {
   T100_ANCHOR_N, T100_HARVEST_PER_FARMER_YEAR, T100_K, T100_FIELD_YIELD,   // ★[T100 4판] 앵커 하나 · 실측 하나 · 유도값 하나 · 손잡이 — 생활층(`villages.js`)과 하네스가 **여기서만** 읽는다(사본 0)
   DAILY_FOOD_CONSUMPTION,   // ★[T100 4판] 하루 1인 식량 정본 — `k` 유도의 한 항(하네스가 1.0 을 옮겨 적지 않는다)
   seedFoodDays, SEED_FOOD_DAYS_D0, SEED_FOOD_DAYS_LEGACY,   // ★[T100 5판] 창설 곳간의 밑변 — 하네스가 `crops.js` 에서 다시 유도해 대조한다
+  HEALTH_PROD_W, happyWorkMul,   // ★[T157] 건강→작업량 계수 — 하네스가 "행복은 건강과 같은 문법" 을 대조한다(사본 0)
   gardenFloorTopUp, T100_GARDEN, T100_GARDEN_CELLS, T100_GARDEN_FLOOR,   // ★[T100 5판 ⓒ] 텃밭 하한 — 값·손잡이·유도식을 하네스가 다시 계산한다
   FARMER_BASE: JOBS.farmer.base,   // ★[T100] 농부 1인 기준 산출(옛 밑변 `1.5 × 지력`의 1.5) — 계측기·하네스가 이 수를 옮겨 적지 않게
   // ★[T125] 옷감 보온 가중 — `server/villages.js` 가 주민 착장 재질을 고를 때 **읽는다**.
@@ -9784,6 +9814,24 @@ function bdtPairSync(){   // 은거지↔마을쌍 경로 인접(30m) 매핑 →
     const gs=[];
     for(const b of BANDITS){let hit=false;for(let k=0;k<p.length;k+=2){const q=p[k];if((q.x-b.camp.cx)*(q.x-b.camp.cx)+(q.y-b.camp.cy)*(q.y-b.camp.cy)<=BDT_RAID_R*BDT_RAID_R){hit=true;break;}}if(hit)gs.push(b);}   // ★약탈 사정거리(소굴서 원정)
     if(gs.length){const k=A.econ.name<B.econ.name?A.econ.name+'|'+B.econ.name:B.econ.name+'|'+A.econ.name;_bdtPairs.set(k,gs);}}}
+// ★★★[T157 2026-09-07] **행복 → 작업량** — 랩이 계수를 주는 자리(엔진은 계수를 안 갖는다).
+//   재민 물음(09-05): "행복이 오로지 리비히 상한 역할만? 높으면 더 좋아지는 것도 있어야."
+//   엔진(`sim/economy-sim.js`)엔 `world.happyWorkW` 를 읽는 한 줄뿐이고, **그 값을 주는 것은 여기다.**
+//   ⇒ 서버·CLI·하네스는 안 주므로 그쪽 세계는 **비트 동일**(T135 `forageTakeFn` 선례).
+//
+//   ★새 수는 `H` 하나다 — 출처:
+//     Oswald · Proto · Sgroi (2015) "Happiness and Productivity", *Journal of Labor Economics* 33(4).
+//     무작위 처치(코미디 영상·간식)로 **행복이 오른 집단의 생산성이 약 10~12% 높았다**(초록 "approximately 12%").
+//     처치는 *중립 → 행복* 이므로 우리 축의 **0.5 → 1.0**(반쪽 폭)에 대응한다 ⇒ 0.5 × H = 0.12 ⇒ **H = 0.24**.
+//   ⚠배수는 엔진이 `1 ± H×0.5` 로 자른다 — 자르는 값을 새로 짓지 않으려고 **H 자신**을 상한으로 쓴다
+//     (행복은 이 세계에서 1 을 넘는다: 실측 중앙 0.845 · 최고 2.07 — 안 자르면 출처 밖으로 외삽한다).
+//   되돌림: `L_HAPPYWORK=0` 이면 훅이 0 을 주고 엔진은 배수 1 → 랩도 **비트 동일**.
+const L_HAPPYWORK_BASE=0.24;   // ★출처 유도값 — 손으로 다른 수를 적으면 `test-lab-happywork` 가 빨개진다
+let L_HAPPYWORK=(typeof window!=='undefined'&&window.L_HAPPYWORK!=null)?+window.L_HAPPYWORK:L_HAPPYWORK_BASE;
+function setHappyWork(v){ L_HAPPYWORK=(+v>=0)?+v:L_HAPPYWORK_BASE; hwInstallHook();
+  const b=document.getElementById('hwv'); if(b)b.textContent='행복→작업량 H='+(+L_HAPPYWORK.toFixed(3))+(L_HAPPYWORK>0?' (±'+(L_HAPPYWORK*50).toFixed(1)+'%)':' (끔)');
+  document.querySelectorAll('#happyWork button').forEach(el=>el.classList.toggle('on',Math.abs(+el.dataset.v-L_HAPPYWORK)<1e-9)); }
+function hwInstallHook(){ if(!ECON_WORLD)return; ECON_WORLD.happyWorkW=L_HAPPYWORK; }
 function bdtInstallHooks(){if(!ECON_WORLD)return;   // econ 계약 훅(lifeInit서 1회): 지형 판정·장물 환산은 전부 호스트(지형층) 소관
   ECON_WORLD.banditRouteRisk=(va,vb)=>{if(!BANDITS.length)return 0;const k=va.name<vb.name?va.name+'|'+vb.name:vb.name+'|'+va.name;return _bdtPairs.has(k)?BDT_RT_X:0;};
   ECON_WORLD.banditGang=(va,vb)=>{if(!BANDITS.length)return null;const k=va.name<vb.name?va.name+'|'+vb.name:vb.name+'|'+va.name;const gs=_bdtPairs.get(k);return gs&&gs.length?gs[0]:null;};   // ★[de-abstract] 길목 실재 갱 반환 → econ이 per-entity 약탈 전투에 사용(주사위 대체)
@@ -10864,7 +10912,7 @@ function lifeInit(){
   BANDITS=[];_bdtSeq=1;_bdtPairs=new Map();_bdtSig='';_bdtRoutes=null;DENS=[];_denSeq=1;   // ★도적 상태 초기화(새 세계 — 소굴은 마을·교역로 확정 후 bdtDenScan이 재배치)
   WARS=[];_warSeq=1;TRIBUTES=[];   // ★전쟁 상태 초기화(새 세계). 원한·피로·목책은 마을(vil)에 붙어 재생성과 함께 리셋
   const centers=pickCenters(NV,275),M=centers.length;   // ★마을 간격 128→275(§3b 게임필 확정값, 도보 2.3분 — R_MAX 135×2=270<275라 영토 비겹침 보장)
-  if(typeof EconEngine!=='undefined'){EconEngine.setSeed(seed);ECON_WORLD=EconEngine.createWorldV2({seed,villageCount:M,picker:'rational',infoRange:5000,raidPer100:0.005});bdtInstallHooks();}   // ★도적 econ 계약 훅(도적 0이면 완전 무해 — banditRouteRisk=0·onBanditLoot 미호출)
+  if(typeof EconEngine!=='undefined'){EconEngine.setSeed(seed);ECON_WORLD=EconEngine.createWorldV2({seed,villageCount:M,picker:'rational',infoRange:5000,raidPer100:0.005});bdtInstallHooks();hwInstallHook();}   // ★도적 econ 계약 훅(도적 0이면 완전 무해 — banditRouteRisk=0·onBanditLoot 미호출)
   for(let i=0;i<M;i++){
     const s={day:L_START,pop:p0,food:p0*150,houses:[],farmland:[],dryfield:[],cultFarm:[],cultDry:[],plots:[],agents:[],fishers:0,crop:new Map(),spoiled:0,seed:(seed^Math.imul(i+1,0x9e3779b1))>>>0,V:null,name:'마을'+(i+1)};
     setupVillage(s,centers[i]);   // V 생성·농지·plot·NPC
