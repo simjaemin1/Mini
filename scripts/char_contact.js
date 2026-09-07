@@ -8,6 +8,12 @@
 // ★팔레트도 클라 원본에서 읽는다(`20-r2-visibility.js` 의 `WAR_BT_COL`) — 사본 0.
 //
 // 실행: node scripts/char_contact.js [출력.png]
+//       node scripts/char_contact.js --captive [출력.png]   ← T149 판(포로 두 손 · 옛 판 대조)
+//
+// ★[T149] 옛 판(T143)을 어떻게 그리나 — **클립을 지운 클라**로 그린다.
+//   `drawCharSprite` 는 묶인 판이 없으면 종전 상태기로 떨어지므로(폴백), `__charMeta.clips` 에서
+//   `captive_*` 를 빼고 같은 함수를 부르면 그게 **정확히 T143 의 그림**이다.
+//   옛 그림을 따로 짜 넣지 않는다 — 그러면 정본이 둘이 된다.
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -15,7 +21,9 @@ const http = require('http');
 
 const ROOT = path.resolve(__dirname, '..');
 const PUB = path.join(ROOT, 'public');
-const OUT = process.argv[2] || path.join(ROOT, '산그림', '디자인B', '병사_포로.png');
+const ARGV = process.argv.slice(2).filter((v) => v !== '--captive');
+const CAPTIVE = process.argv.includes('--captive');
+const OUT = ARGV[0] || path.join(ROOT, '산그림', '디자인B', CAPTIVE ? '포로_두손.png' : '병사_포로.png');
 
 const MIME = { '.js': 'text/javascript', '.json': 'application/json', '.png': 'image/png', '.html': 'text/html' };
 const srv = http.createServer((req, res) => {
@@ -50,8 +58,8 @@ let WAR_BT_COL = null, WAR_SIDE_COL = null;
     if (Object.keys(m.sheets).every((k) => charSheet(k))) break;
     await new Promise((r) => setTimeout(r, 50));
   }
-  window.__draw = (jobs) => {
-    ctx.fillStyle = '#20242c'; ctx.fillRect(0, 0, cv.width, cv.height);
+  window.__draw = (jobs, keep) => {
+    if (!keep) { ctx.fillStyle = '#20242c'; ctx.fillRect(0, 0, cv.width, cv.height); }
     ctx.font = '13px sans-serif';
     for (const j of jobs) {
       ctx.save(); ctx.translate(j.x, j.y);
@@ -76,6 +84,13 @@ let WAR_BT_COL = null, WAR_SIDE_COL = null;
     }
     ctx.imageSmoothingEnabled = true;
   };
+  // ★클립을 잠깐 빼고 그린다 — 폴백 경로가 곧 옛 그림이다(사본 0).
+  window.__withoutClips = (keys, fn) => {
+    const m = window.__charMeta, saved = {};
+    for (const k of keys) { saved[k] = m.clips[k]; delete m.clips[k]; }
+    try { return fn(); } finally { for (const k of keys) if (saved[k]) m.clips[k] = saved[k]; }
+  };
+  window.__drawOld = (jobs) => window.__withoutClips(['captive_walk', 'captive_idle'], () => window.__draw(jobs, true));
   window.__label = (items) => {
     ctx.textAlign = 'center';
     for (const it of items) {
@@ -89,6 +104,50 @@ let WAR_BT_COL = null, WAR_SIDE_COL = null;
 })().catch((e) => { window.__err = String(e && e.stack || e); });
 </script></body>`;
 
+/** T149 판 — 옛 판(T143 · 팔이 옆) vs 이 판(묶인 자세) · 8방향. */
+async function captiveSheet(pg, pal) {
+  const CW = 150, CH = 118, X0 = 150, Y0 = 96;
+  await pg.evaluate((h) => { document.getElementById('cv').height = h; }, Y0 + 8 * CH + 60);
+  const dirVec = (d) => { const a = d * Math.PI / 4; return [Math.cos(a), Math.sin(a)]; };
+  const labels = [];
+  labels.push({ t: 'T149 — 포로: 옛 판(T143) vs 묶인 자세 (8방향 · 걷기)', x: 490, y: 32, size: 18, bold: true });
+  labels.push({ t: '옛 판은 클립을 뺀 **같은 클라**가 그린 것이다 — 시트가 없을 때의 폴백이 곧 그 그림이다', x: 490, y: 54, size: 12, color: '#9fb0c4' });
+  ['옛 판 · 팔이 옆', '이 판 · 두 손 앞', '이 판 · 서 있는 포로'].forEach((t, i) =>
+    labels.push({ t, x: X0 + i * CW, y: Y0 - 18, size: 13, bold: true }));
+  const mk = (col, d, opts) => ({ x: X0 + col * CW, y: Y0 + d * CH + 80, mode: 'sheet', name: '', color: '#5a9ae0', opts });
+  const oldJobs = [], newJobs = [];
+  for (let d = 0; d < 8; d++) {
+    const [fx, fy] = dirVec(d);
+    labels.push({ t: 'd' + d, x: 60, y: Y0 + d * CH + 10, size: 12, color: '#9fb0c4' });
+    oldJobs.push(mk(0, d, { pid: 'old' + d, fvx: fx, fvy: fy, speed: 40, cap: true, clothes: 'hemp' }));
+    newJobs.push(mk(1, d, { pid: 'new' + d, fvx: fx, fvy: fy, speed: 40, cap: true, clothes: 'hemp' }));
+    newJobs.push(mk(2, d, { pid: 'sit' + d, fvx: fx, fvy: fy, speed: 0, cap: true, clothes: 'hemp' }));
+  }
+  await pg.evaluate((j) => window.__draw(j), newJobs);
+  await pg.evaluate((j) => window.__drawOld(j), oldJobs);
+  const dbg = await pg.evaluate('JSON.parse(JSON.stringify(window.__charDbg||{}))');
+  for (const k of ['old1', 'new1', 'sit1']) console.log('[층] ' + k + ': ' + (dbg[k] ? `${(dbg[k].layers||[]).join('+')} · clip ${dbg[k].clip} f${dbg[k].frame}` : '없음'));
+  // 확대 — 손목 자리는 메타에서 딴다(눈대중 0)
+  const meta = await pg.evaluate('window.__charMeta');
+  const D = 1;
+  const rel = (p) => [p[0] - meta.anchorX, p[1] - meta.anchorY];
+  const [ow, oh] = rel(meta.handScreen.walk[D][0]);
+  const [nw, nh] = rel(meta.handScreen.captive_walk[D][0]);
+  const ZS = [
+    { sx: X0 + ow - 20, sy: Y0 + D * CH + 80 + oh - 15, w: 40, h: 30, k: 5, dx: 620, dy: Y0 + 8, t: '옛 판 손목 ×5' },
+    { sx: X0 + CW + nw - 20, sy: Y0 + D * CH + 80 + nh - 15, w: 40, h: 30, k: 5, dx: 620, dy: Y0 + 190, t: '이 판 손목 ×5' },
+  ];
+  await pg.evaluate((z) => window.__zoom(z), ZS);
+  for (const z of ZS) labels.push({ t: z.t, x: z.dx + z.w * z.k / 2, y: z.dy - 8, size: 12, color: '#9fb0c4' });
+  labels.push({ t: `묶인 손 목표(굽기가 푼 값): 앞 ${meta.captiveGrip[0]}m · 반간격 ${meta.captiveGrip[1]}m · 높이 ${meta.captiveGrip[2]}m · 잔차 ${meta.captiveHitMm}mm`,
+                x: 490, y: Y0 + 8 * CH + 34, size: 12, color: '#9fb0c4' });
+  await pg.evaluate((l) => window.__label(l), labels);
+  fs.mkdirSync(path.dirname(OUT), { recursive: true });
+  const buf = await pg.locator('#cv').screenshot();
+  fs.writeFileSync(OUT, buf);
+  console.log('[대조표] ' + OUT + ' · ' + buf.length + ' bytes');
+}
+
 (async () => {
   const { chromium } = require('playwright');
   await new Promise((r) => srv.listen(3099, r));
@@ -101,6 +160,8 @@ let WAR_BT_COL = null, WAR_SIDE_COL = null;
   const err = await pg.evaluate('window.__err || null');
   if (err) throw new Error(err);
   const pal = await pg.evaluate('window.__pal');
+
+  if (CAPTIVE) { await captiveSheet(pg, pal); await br.close(); srv.close(); return; }
 
   // ── 판 짜기 — 행 8방향 · 열 넷(병사 도형/시트 · 포로 도형/시트) + 병종 여덟 띠 ─────
   const CW = 150, CH = 118, X0 = 120, Y0 = 92;

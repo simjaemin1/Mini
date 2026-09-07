@@ -739,8 +739,16 @@ console.log('\n=== ⑩ 병종 띠 · 포로 밧줄 [T143] ===');
     ok(META.frameW === 109 && META.frameH === 90 && META.anchorX === 54.5,
        '★★프레임 규격이 **안 움직였다** — 새 층이 얼린 상자를 안 밀었다(T107 못박기)',
        `${META.frameW}x${META.frameH} anchor ${META.anchorX},${META.anchorY}`);
-    ok(!META.clips.captive && Object.keys(META.clips).length === 7,
-       '★★**새 클립 0** — 카드 ①②의 절대 규칙(팔레트·소품 층만)', Object.keys(META.clips).join(','));
+    // ★★[T149] 이 줄은 **갈아 끼웠다.** 종전 판정은 `클립 일곱`이라는 **그때 카드의 제약**을
+    //   하네스에 얼려 둔 것이었다(T143 은 새 클립 0 이었다). T149 가 묶인 판 둘을 열었으므로
+    //   그 수는 이제 틀리다. 계약은 "클립이 **몰래** 늘지 않는다"이지 "일곱"이 아니다.
+    //   ⇒ **아는 이름의 집합**으로 잰다 — 새 클립을 열면 이 줄도 같이 열어야 한다(그게 문서다).
+    {
+      const KNOWN = ['aim', 'captive_idle', 'captive_walk', 'carry', 'down', 'idle', 'run', 'swing', 'walk'];
+      const got = Object.keys(META.clips).sort();
+      ok(got.length === KNOWN.length && got.every((c, i) => c === KNOWN[i]),
+         '★★클립이 **아는 아홉**뿐이다 — 몰래 늘지 않았다(T143 일곱 + T149 묶인 판 둘)', got.join(','));
+    }
   }
 
   // ⓑ 띠는 **몸 안**에 있다 — 실루엣을 안 만든다(그래서 먹선도 안 받는다)
@@ -909,6 +917,132 @@ console.log('\n=== ⑩ 병종 띠 · 포로 밧줄 [T143] ===');
        '★띠는 **팔레트로 채워** 그린다 — 클라에 색 사본 0');
     ok(/war: !!item\._war, bt: item\.bt, br: item\.br, cap: !!item\.cap/.test(CL),
        '★서버가 이미 싣던 필드를 그대로 넘긴다 (서버 diff 0)');
+  }
+}
+
+console.log('\n=== ⑪ 포로 자세 — 두 손이 앞에 있다 [T149] ===');
+{
+  const FW = META.frameW, FH = META.frameH;
+  const CL = require('./client-src.js').readClientSrc();
+  const cell = (key, d, f) => {
+    const im = readPng(path.join(DIR, key + '.png'));
+    const x0 = (f || 0) * FW, y0 = d * FH;
+    const on = [];
+    for (let y = 0; y < FH; y++) for (let x = 0; x < FW; x++) {
+      if (im.px[((y0 + y) * im.w + (x0 + x)) * 4 + 3] >= 140) on.push({ x, y });
+    }
+    return on;
+  };
+
+  // ⓐ 클립 둘 — 걸음 판은 `walk` 규약 그대로, 선 판은 한 판
+  {
+    const cw = META.clips.captive_walk, ci = META.clips.captive_idle, w = META.clips.walk;
+    ok(!!cw && !!ci, '★묶인 판 둘이 있다 — `captive_walk` · `captive_idle`');
+    ok(cw && w && cw.frames === w.frames && cw.fps === w.fps && cw.loop === w.loop,
+       '★★묶인 걸음은 **같은 걸음**이다 — 판 수·fps·루프가 `walk` 와 같다(카드 ①)',
+       cw ? `${cw.frames}판 ${cw.fps}fps loop=${cw.loop} vs walk ${w.frames}/${w.fps}/${w.loop}` : '');
+    ok(ci && ci.frames === 1 && ci.loop === false, '★선 포로는 **한 판**이다', ci ? JSON.stringify(ci) : '');
+    for (const c of ['captive_walk', 'captive_idle']) {
+      ok(META.layers.every((L) => META.sheets[L + '_' + c]),
+         `★\`${c}\` 이 **전 층**에 있다 (${META.layers.length}장)`);
+    }
+    ok(META.frameW === 109 && META.frameH === 90 && META.anchorX === 54.5,
+       '★★프레임 규격이 **안 움직였다** — 두 팔이 앞이어도 얼린 상자(327×270) 안이다(카드 ④)',
+       `${META.frameW}x${META.frameH} anchor ${META.anchorX},${META.anchorY}`);
+  }
+
+  // ⓑ **두 손이 모였다** — 자는 메타가 준다(`captiveGrip` 의 반간격). 지어낸 수 0.
+  {
+    const grip = META.captiveGrip, hs = META.handScreen, hl = META.handScreenL;
+    ok(Array.isArray(grip) && grip.length === 3 && grip.every((v) => v > 0),
+       '★묶인 손의 목표 자리가 메타에 있다 (앞·반간격·높이 · 아마추어 m)', JSON.stringify(grip));
+    ok(typeof META.captiveHitMm === 'number' && META.captiveHitMm < 0.001,
+       '★★그 자리에 **정확히** 놓였다 — 닫힌 식 2뼈 IK 라 잔차가 0 이다(고른 각이 아니다)',
+       `${META.captiveHitMm}mm`);
+    ok(!!hl && !!hl.captive_walk, '★왼 손목 표도 있다 (`handScreenL` — `larmL` 끝)');
+    // 두 손목의 3차원 간격은 2×반간격이다. 정사영이라 **화면 길이는 그보다 길 수 없다**
+    //   ⇒ 문턱 = 2·W·ppu + 반올림 여유(메타가 소수 셋째 자리까지라 0.01px 이면 넉넉하다).
+    const BOUND = 2 * grip[1] * META.ppu + 0.01;
+    const sep = (clip) => {
+      let mx = 0, at = '';
+      for (let d = 0; d < 8; d++) for (let f = 0; f < META.clips[clip].frames; f++) {
+        const a = hs[clip][d][f], b = hl[clip][d][f];
+        const q = Math.hypot(a[0] - b[0], a[1] - b[1]);
+        if (q > mx) { mx = q; at = `d${d} f${f}`; }
+      }
+      return { mx, at };
+    };
+    for (const c of ['captive_walk', 'captive_idle']) {
+      const r = sep(c);
+      ok(r.mx <= BOUND, `★★\`${c}\` — **두 손목이 붙어 있다** (전 방향·전 프레임)`,
+         `최대 ${r.mx.toFixed(2)}px ≤ ${BOUND.toFixed(2)}px @${r.at}`);
+    }
+    // ★자명 통과 금지 — 같은 잣대를 **맨 걸음**에 대면 빨개져야 한다(자가 살아 있는가)
+    const rw = sep('walk');
+    ok(rw.mx > BOUND * 3, '★자가 살아 있다 — 맨 걸음의 두 손목은 그 몇 배로 벌어져 있다',
+       `${rw.mx.toFixed(2)}px (문턱 ${BOUND.toFixed(2)}px · ${(rw.mx / BOUND).toFixed(1)}배)`);
+  }
+
+  // ⓒ **가슴 높이로 올라왔다** — 화면 세로(w)가 맨 걸음보다 위다
+  {
+    const hs = META.handScreen;
+    let up = 0, tot = 0, dmin = 1e9;
+    for (let d = 0; d < 8; d++) for (let f = 0; f < META.clips.walk.frames; f++) {
+      const a = hs.captive_walk[d][f][1], b = hs.walk[d][f][1];
+      tot++; if (a < b) up++;
+      dmin = Math.min(dmin, b - a);
+    }
+    ok(up === tot, '★★묶인 손이 **올라와 있다** — 전 판에서 맨 걸음의 손목보다 화면 위쪽',
+       `${up}/${tot} · 가장 적게 오른 판도 ${dmin.toFixed(2)}px`);
+  }
+
+  // ⓓ **밧줄** — 자는 T143 ⑩ⓔ 와 같다(고리 반지름 + 화소 양자화). 다만 **보이는 판**이 갈렸다.
+  //   ⚠손이 앞으로 왔으므로 **등을 보이는 방향에선 몸이 밧줄을 통째로 가린다**(홀드아웃).
+  //     그건 결함이 아니라 기하다 — 그리고 어느 방향인지는 **유도된다**: 등척 카메라의 시선이
+  //     (1,1,·) 쪽이므로 앞으로 내민 손(아마추어 +x)이 카메라 쪽인 방향은 `cosθ+sinθ ≥ 0`,
+  //     즉 d0·d1·d2·d3·d7 다. 실측이 그 다섯과 정확히 같다.
+  {
+    const hs = META.handScreen;
+    const CUFF = 0.075 * 0.5 * META.ppu, THR = CUFF + Math.SQRT2 / 2;
+    const camSide = (d) => Math.cos(d * Math.PI / 4) + Math.sin(d * Math.PI / 4) >= -1e-9;
+    let worst = 0, at = '', seen = new Set(), away = 0, awayAt = '';
+    for (const clip of ['captive_walk', 'captive_idle']) {
+      const nf = META.clips[clip].frames;
+      for (let d = 0; d < 8; d++) for (let f = 0; f < nf; f++) {
+        const on = cell('tool_rope_' + clip, d, f);
+        if (!on.length) continue;
+        const [hx, hy] = hs[clip][d][f];
+        let mn = 1e9;
+        for (const p of on) { const q = Math.hypot(p.x - hx, p.y - hy); if (q < mn) mn = q; }
+        if (camSide(d)) { seen.add(d); if (mn > worst) { worst = mn; at = `${clip} d${d} f${f}`; } }
+        else if (on.length > away) { away = on.length; awayAt = `${clip} d${d} f${f}`; }
+      }
+    }
+    const want = [0, 1, 2, 3, 4, 5, 6, 7].filter(camSide);
+    const got = [...seen].sort((a2, b2) => a2 - b2);
+    ok(got.length === want.length && got.every((d, i2) => d === want[i2]),
+       '★★손이 카메라 쪽인 **다섯 방향 모두**에서 밧줄이 보인다', `[${got}] = 유도 [${want}]`);
+    ok(worst <= THR, '★★그 방향들에서 밧줄은 **손목에 감겨 있다** (뼈 투영에서 고리 반지름 안)',
+       `최대 ${worst.toFixed(2)}px ≤ ${THR.toFixed(2)}px @${at}`);
+    // 등을 보이는 셋(d4·d5·d6)은 몸이 가린다 — 남는 것이 고리 넓이보다 작으면 '고리는 안 보인다'가 맞다.
+    ok(away <= Math.PI * CUFF * CUFF,
+       '★등을 보이는 방향에선 몸이 가린다 — 남는 것은 고리 한 개 넓이보다 작다(줄 끝 자락)',
+       `최대 ${away}화소 @${awayAt} · 고리 넓이 ${(Math.PI * CUFF * CUFF).toFixed(1)}`);
+  }
+
+  // ⓔ 클라 — 강제 클립이 여러 판일 수 있다 · 차례가 뜻이다
+  {
+    ok(/function hasCharClip/.test(CL), '★클립 유무를 묻는 자리가 있다 (`hasCharClip` — 없으면 폴백)');
+    ok(/function charWalkMin/.test(CL) && !/uiCfg\.charWalkMin \|\| 4[\s\S]{0,80}uiCfg\.charWalkMin \|\| 4/.test(CL),
+       '★★걷기 문턱이 **한 자리**다 — 상태기와 포로 판정이 같은 수를 읽는다(사본 0)');
+    ok(/cf && cf\.frames > 1/.test(CL),
+       '★★강제 클립도 **여러 판일 수 있다** — 판 수를 메타에서 읽는다(다운·업기는 한 판이라 무변)');
+    ok(/const _lying = !!\(opts\.carriedOn \|\| opts\.down\);/.test(CL) &&
+       /let force = _lying \? 'down' : null;/.test(CL),
+       '★★차례가 뜻이다 — **누운 판이 먼저**다(누운 포로는 밧줄 없이 눕는다 · T143 ②)');
+    ok(/'captive_walk' : 'captive_idle'/.test(CL) && /charWalkMin\(\)/.test(CL),
+       '★포로의 걷기/서기 전환이 그 문턱 하나로 갈린다');
+    ok(!/captiveGrip\s*=|CAPT_[DWH]\s*=/.test(CL), '★클라에 자리 값 사본 0 (수는 굽기가 갖는다)');
   }
 }
 
