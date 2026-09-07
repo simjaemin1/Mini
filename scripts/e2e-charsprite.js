@@ -982,6 +982,131 @@ function openSpot() {
   ok(real(A._errs).length === 0, '[A] 페이지 오류 0 (favicon 404 제외)', real(A._errs).slice(0, 2).join(' | '));
   ok(real(B._errs).length === 0, '[B] 페이지 오류 0', real(B._errs).slice(0, 2).join(' | '));
 
+  // ★★[T162] ⑧ 절은 **맨 끝**이다. 갓 들어온 클라를 재는 절이라 판이 조용해야 한다:
+  //   ⓐ 앞쪽(A·B 가 십 분 굴러간 뒤)에 두었더니 시트 192장이 3초 대신 **93초**에 들어왔고
+  //      전환이 아예 안 떴다. ⓑ 그렇다고 앞으로 옮기면 셋째 클라가 ⑤(두 클라 짝)를 흔든다
+  //      (실제로 "남이 걸으면 walk" 한 줄이 빨개졌다 — 대조군: 이 절 없이는 90/0).
+  //   ⇒ **다 끝내고 A·B 를 닫은 뒤** 혼자 들어간다. 사람이 처음 들어오는 순간이 그 조건이다.
+  await A.close(); await B.close();
+  // ── ⑧ 시트 예산 — 선적재 목록 · 첫 프레임 폴백 → 전환 [T162 2026-09-07] ────────
+  //
+  // ★★못 박는 것 셋(전부 T162 에서 실측한 자리다):
+  //   ⓐ **선적재 목록** — 지금 규약은 "메타가 아는 시트를 **전부** 한꺼번에"다
+  //      (`42-r2-char.js` `charMeta()`). 청구된 키 집합 == `char_meta.json` 의 시트 집합.
+  //      ⚠지연 적재를 넣는 카드는 이 줄이 **크게 빨개진다** — 그게 이 줄의 쓰임이다.
+  //   ⓑ **첫 프레임은 도형이고, 전환이 화소로 보인다** — 시트가 오기 전 `drawCharSprite` 는
+  //      false 를 돌리고 도형 경로가 그린다(T137 폴백 규약). 문턱은 지어내지 않고
+  //      **그 프레임 풀밭의 최소 밝기**에서 뽑는다(족보 74).
+  //   ⓒ **시트 도착 전에 상태기가 안 흔들린다** — 폴백 구간 내내 `clip` 이 그대로다.
+  //
+  // ★★★[계측기가 제품을 느리게 만든 자리 — 1차·2차 실행이 여기서 죽었다]
+  //   처음엔 바깥에서 `page.evaluate` 를 150ms 마다 쏴 상태를 봤다. 이 자리엔 클라 셋이
+  //   두 코어를 나눠 쓰고 있어서, **그 폴링 자체가 페이지 주 스레드를 잡아먹었다**:
+  //   시트 192장이 3초(깨끗한 판) 대신 **93초**에 들어왔고 전환은 아예 안 떴다.
+  //   ⇒ 지금은 **감시자를 페이지 안에 한 번 심고**(setInterval 100ms) 결과만 한 번 꺼낸다.
+  //   evaluate 왕복이 둘뿐이라 관측이 대상을 안 흔든다. (`page.screenshot` 도 못 쓴다 —
+  //   폰트를 기다리다 30초 타임아웃이 난다. 캔버스에서 직접 오린다.)
+  console.log('\n=== ⑧ 시트 예산 — 선적재 목록 · 폴백 → 전환 [T162] ===');
+  {
+    const P = require(path.join(ROOT, 'node_modules', 'pngjs')).PNG;
+    const DIR = path.join(ROOT, 'public', 'assets', 'char');
+    const META8 = JSON.parse(fs.readFileSync(path.join(DIR, 'char_meta.json'), 'utf8'));
+    const want = new Set(Object.keys(META8.sheets || {}));
+    const CUTW = 256, CUTH = 240;
+
+    const C = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+    const got = new Set(); const tAt = {};
+    const t0 = Date.now();
+    C.on('requestfinished', (r) => {
+      const m = /\/assets\/char\/([^/]+)\.png$/.exec(r.url());
+      if (m) { got.add(m[1]); tAt[m[1]] = Date.now() - t0; }
+    });
+    await C.goto(`http://localhost:${CPORT}/`, { waitUntil: 'domcontentloaded' });
+    for (let i = 0; i < 200; i++) {
+      if (await C.evaluate(() => { const e = document.querySelector('#enter'); return !!(e && !e.disabled); })) break;
+      await sleep(250);
+    }
+    const tBtn = Date.now() - t0;
+    await C.click('#enter');
+
+    // ── 감시자를 **페이지 안에** 심는다(왕복 1회) ────────────────────────────
+    await C.evaluate(([w, h]) => {
+      const S = window.__t162 = { shape: null, sheet: null, clips: [], cutShape: null, cutSheet: null, why: null };
+      // 인물 자리는 정본 아이소 변환(`__w2s`)에서 받는다 — 좌표 사본 0.
+      const cut = () => { try {
+        const cv = document.getElementById('canvas'); const me = window.__getMyAbs && window.__getMyAbs();
+        if (!cv || !me || !window.__w2s) return null;
+        const p = window.__w2s(me.x, me.y);
+        const k = cv.width / (cv.clientWidth || cv.width);
+        const o = document.createElement('canvas'); o.width = w; o.height = h;
+        o.getContext('2d').drawImage(cv, Math.round(p.px * k - w / 2), Math.round(p.py * k - h / 2), w, h, 0, 0, w, h);
+        return o.toDataURL('image/png');
+      } catch (e) { return null; } };
+      const id = setInterval(() => {
+        const d = window.__charDbg || {}; const k = Object.keys(d).find((x) => d[x].isMe);
+        if (!k) return;
+        if (d[k].on === false) {
+          if (S.clips.indexOf(d[k].clip) < 0) S.clips.push(d[k].clip);
+          if (!S.cutShape) { S.shape = Math.round(performance.now()); S.why = d[k].why || null; S.cutShape = cut(); }
+        }
+        if (d[k].on === true && !S.cutSheet) { S.sheet = Math.round(performance.now()); S.cutSheet = cut(); clearInterval(id); }
+      }, 100);
+    }, [CUTW, CUTH]);
+
+    // 시트가 다 올 때까지 **evaluate 없이** 기다린다(네트워크 이벤트만 센다).
+    for (let i = 0; i < 180 && got.size < want.size; i++) await sleep(1000);
+    const tAll = got.size >= want.size ? Date.now() - t0 : -1;
+    // 전환은 디코드까지 끝나야 뜬다 — 도착 뒤 넉넉히, 그러나 **드물게** 확인한다.
+    let S = null;
+    for (let i = 0; i < 60; i++) { S = await C.evaluate(() => window.__t162); if (S && S.cutSheet) break; await sleep(2000); }
+
+    // ⓐ 선적재 목록
+    const missing = [...want].filter((k) => !got.has(k));
+    ok(missing.length === 0,
+      '★★ⓐ **선적재 = 메타가 아는 시트 전부**(지금 규약 — 지연 적재를 넣는 카드는 이 줄을 뒤집어라)',
+      `메타 ${want.size}장 · 청구 ${got.size}장 · 빠진 ${missing.length}${missing.length ? ' (' + missing.slice(0, 3).join(',') + ')' : ''}`);
+    // ⓑ 첫 프레임은 도형이다 — 화소로
+    ok(!!(S && S.cutShape) && /^sheet:/.test(S.why || ''),
+      '★★ⓑ1 첫 그림은 **도형**이다(시트가 아직 없다 — 훅이 그 자리에서 이유를 적는다)', S ? `why=${S.why}` : 'null');
+    if (S && S.cutShape && S.cutSheet) {
+      const buf = (u) => Buffer.from(u.split(',')[1], 'base64');
+      const L = (p, x, y) => { const i = (p.width * y + x) << 2; return 0.299 * p.data[i] + 0.587 * p.data[i + 1] + 0.114 * p.data[i + 2]; };
+      const bx = (p, x0, y0, w, h) => { const v = []; for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) v.push(L(p, x, y)); return v.sort((a, b) => a - b); };
+      // 오려 온 칸은 인물이 한가운데(앵커가 발). 대조는 **양옆 두 칸 중 더 밝은 쪽** — 옆에 남이 서도 안 흔들린다.
+      const FIG = [CUTW / 2 - 18, CUTH / 2 - 70, 36, 90];
+      const CL = [CUTW / 2 - 94, CUTH / 2 - 70, 36, 90], CR = [CUTW / 2 + 58, CUTH / 2 - 70, 36, 90];
+      const inkOf = (b) => { const p = P.sync.read(b);
+        const bar = Math.max(bx(p, ...CL)[0], bx(p, ...CR)[0]);   // ★문턱 = 그 프레임 풀밭의 최소 밝기
+        return { bar, ink: bx(p, ...FIG).filter((v) => v < bar).length, p };
+      };
+      const a8 = inkOf(buf(S.cutShape)), b8 = inkOf(buf(S.cutSheet));
+      console.log(`    풀밭 최소 밝기 L=${a8.bar.toFixed(1)}/${b8.bar.toFixed(1)} · 인물 칸의 그보다 어두운 화소 도형 ${a8.ink} → 시트 ${b8.ink}`);
+      ok(a8.ink > 0, '★★ⓑ2 **폴백이 실제로 그린다** — 도형 구간의 인물 칸에 풀밭보다 어두운 화소가 있다(구멍이 아니다)', `${a8.ink}px`);
+      ok(b8.ink > 0, '★ⓑ3 시트 구간에도 인물이 있다', `${b8.ink}px`);
+      let diff = 0; for (let y = 0; y < a8.p.height; y++) for (let x = 0; x < a8.p.width; x++) if (Math.abs(L(a8.p, x, y) - L(b8.p, x, y)) > 8) diff++;
+      ok(diff > 0, '★★ⓑ4 **전환이 화소로 보인다** — 도형 컷과 시트 컷이 다르다', `${diff}px`);
+      fs.writeFileSync(path.join(SHOTS, 'cs-08-shape.png'), buf(S.cutShape));
+      fs.writeFileSync(path.join(SHOTS, 'cs-08-sheet.png'), buf(S.cutSheet));
+    } else {
+      const diag = await C.evaluate(() => { const d = window.__charDbg || {};
+        const k = Object.keys(d).find((x) => d[x].isMe);
+        return { hook: k ? { on: d[k].on, why: d[k].why, clip: d[k].clip } : null, meta: !!window.__charMeta, hidden: document.hidden };
+      });
+      ok(false, 'ⓑ2 폴백/시트 두 컷을 못 잡았다', `shape=${!!(S && S.cutShape)} sheet=${!!(S && S.cutSheet)} · ${JSON.stringify(diag)}`);
+    }
+    // ⓒ 시트 도착 전 상태기 무변
+    ok(!!S && S.clips.length === 1, '★★ⓒ 시트가 오기 전에도 **상태기는 한 상태**다(도형이 그리는 동안 클립이 안 흔들린다)',
+      S ? `[${S.clips.join(',')}]` : 'null');
+    // 진입 시간 표 — 카드 T162 §0-ⓑ 와 같은 표식
+    // ⚠두 시계다: 도형·스프라이트는 **페이지 안**(`performance.now()` · 항해 기준),
+    //   전 시트는 **하네스 밖**(`Date.now()` · goto 직전 기준). 몇백 ms 어긋난다 — 견주지 말 것.
+    console.log(`    진입 표 · 페이지 시계(ms) 도형 ${S ? S.shape : '?'} → 스프라이트 ${S ? S.sheet : '?'}`);
+    console.log(`    진입 표 · 하네스 시계(ms) 버튼 ${tBtn} · 전 시트 ${tAll}`);
+    console.log(`    첫 프레임이 쓴 두 장: body_idle ${tAt.body_idle}ms · clothes_hemp_idle ${tAt.clothes_hemp_idle}ms  (192장 중 대기줄 ${[...want].indexOf('body_idle')}·${[...want].indexOf('clothes_hemp_idle')}번째)`);
+    console.log('    접점: char_meta.json · charMeta() · charSheet() · Image · fetch · drawCharSprite · __charDbg');
+    await C.close();
+  }
+
   await browser.close();
   console.log(`\n    스크린샷: ${SHOTS}`);
   console.log(`\n=== e2e-charsprite 결과: 통과 ${pass} · 실패 ${fail} ===`);
