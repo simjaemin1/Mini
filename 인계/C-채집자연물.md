@@ -1949,3 +1949,74 @@ T123 의 책임이 아니다(진단은 보고 §6).
 컨테이너에서 번들(`git bundle create … <base>..<branch>`) → `SendUserFile` → `device_commit_files` 로 `~/Mini/` →
 디바이스에서 `푸시_번들_ff.command` 방식(PAT askpass · `FETCH_HEAD` 만 · 임시 브랜치 0)으로 민다.
 확인은 `git fetch` 가 아니라 **`git ls-remote`** 로 한다(브리지가 unlink 를 막아 `origin/main.lock` 이 남는다).
+
+---
+
+## 3-곳간. ★★★2026-09-07 T100 4판 — **밭이 곳간에 닿는다** (수확 한 번 = `k` 식량등가)
+
+> 전문 `보고/T100_2026-09-07.md`. 가지 `batch/field-yield-0905` (**승인 게이트 — main 은 재민 승인 뒤**).
+> 접촉 `sim/economy-sim.js` · `server/villages.js`(수확 갈래 한 줄) · `server/village-layout.js`(`LAND_NEED`) ·
+> 랩 2종 · 하네스 `scripts/test-econ-fieldyield.js` · 표 `scripts/t100-ab.js`(새 파일 · 러너 밖).
+> **되돌림 `T100_FIELD_YIELD=0`(기본) = T86 세계 비트 동일** — 단 `LAND_NEED` 는 손잡이 밖이다(아래 ⚠).
+
+### 여태 어땠나 · 4판이 무엇을 바꿨나
+
+T58b ⓖ 가 못 박은 그대로였다: **생활층은 곳간에 아무것도 안 넣고**(`_lifeDoTask0` 수확 갈래는
+`npc._carry += 1` 만 했다), econ 의 농부 산출은 **밭과 무관한** `1.5 × 지력` 이었다. 밭을 아무리 갈아도
+곳간은 그대로였다. T100 3판은 그 자리에 **모델식**(`밭칸 × 0.0806 × 지력`)을 꽂았고, T117 자로 재 보니
+**실제 수확은 그 추상 산출의 0.22~0.26** 이었다 — 1셀=1m 캐논이라 지도의 밭이 작다.
+
+4판(재민 판정 2026-09-07)은 모델식을 **버리고** 손잡이 둘로 간다.
+
+1. **경작지 ×1.5** — 인당 기준 경작칸 `8 → 12`. **정본은 `server/village-layout.js LAND_NEED` 하나**다.
+2. **칸당 산출은 부양 인원 앵커에서 유도** — 곳간에 드는 것은 **실제 수확 건수 × `k`**.
+
+### 앵커는 하나 · `k` 는 유도값
+
+```
+  새 수      N  = 1.33     농부 한 사람의 밭이 한 해에 먹이는 사람 수
+                           출처 Gregory Clark, UC Davis Econ 210A ch.4 "The Malthusian Economy" —
+                           산업화 전 농업사회는 인구의 70~80% 가 농사 ⇒ N = 1/0.80 ~ 1/0.70 = 1.25~1.43, 중앙 1.33
+  실측       H  = 90.88    농부 1인 연간 수확 건수 (T117 자 · 시드 1020 · 800일 · 51마을 · 경작지 12칸)
+                           Σ harvestN 190,602 ÷ (Σ fDays 765,497 ÷ 365)
+  유도       k  = N × (DAILY_FOOD_CONSUMPTION 1.0 × 365) ÷ H = 5.3417
+```
+
+⚠**`k` 를 숫자로 적지 마라.** `sim/economy-sim.js` 에 유도식 한 줄로만 있고, 하네스 ①이 같은 식을
+다시 계산해 대조한다. 손으로 적으면 빨개진다(⑦ 돌연변이가 그 판을 실제로 만들어 본다).
+⚠`H` 를 고치는 것은 **세계를 고치는 게 아니라 자를 고치는 것**이다 — 재측정 명령이 상수 옆에 있다.
+
+### 배선 — 곳간에 닿는 자리는 **한 줄**이다
+
+```
+  server/villages.js  _lifeDoTask0  수확 갈래
+     … if (vil.econ) _lifeEcon().harvestToGranary(vil.econ, 1); …      ← 산수 없음(사본 0)
+  sim/economy-sim.js  harvestToGranary(v, n)                            ← 세금·볏짚·곳간이 여기 하나
+```
+
+* **대체이지 얹기가 아니다.** 켜면 `addProduce(jdef.output, baseAmt)` 가 **농부에게만** 막힌다.
+  둘 다 넣으면 식량이 배로 들어와 곡물가가 붕괴한다(T123 마을5).
+* **부산물은 안 막는다** — 밀·쌀·보리·삼·모시는 `baseAmt` 를 그대로 타고 나간다(섬유·곡물 사슬 무변).
+* `harvestToGranary` 는 `addProduce` 와 **같은 꼴**로 세금(`TAX_RATE` 3%)을 금고로 보내고
+  **볏짚 연료 밑변(`v._grainToday`)을 채운다**. 안 채우면 짚이 사라져 땔감 수요가 통째로 나무로 몰린다.
+* 부양력(`prodK`)의 농부 항 `farmFlowPerDay` 는 켜면 **앵커 그 자체**다(`농부수 × N × 하루 1인 식량`).
+  산출은 밭인데 K 만 옛 밑변이면 **인구가 밭 없이 분다**(3판 §2-① 실측).
+
+### ⚠`LAND_NEED` 8 → 12 는 **손잡이 밖**이다
+
+`T100_FIELD_YIELD=0` 은 산출식만 되돌린다. 경작지는 두 팔 모두 12칸이다 —
+그러니 **끈 팔은 더 이상 T86 기준선이 아니다**(밭이 1.5배 넓다). A/B 는
+"L12·산출식 끔" 대 "L12·산출식 켬" 이고, T86(L8)은 참고 행으로만 둔다.
+
+### 인당 기준 경작칸의 사본은 **넷**이었다 — 지금은 정본 하나 + 손 사본 넷을 검사가 문다
+
+| 자리 | 종전 | 지금 | 누가 지키나 |
+|---|---|---|---|
+| `server/village-layout.js LAND_NEED` | 8 | **12 (정본)** | `test-econ-fieldyield ②` |
+| `server/villages.js const L_LANDNEED` | 8 | **삭제** → `_lifeVL().LAND_NEED` | 하네스 ② · `lab-wiring-check` |
+| `lab/전쟁실험실.html L_LAND_BASE` | 8 | 12 | `lab-wiring-check [T100]` |
+| `lab/마을실험실.html L_LANDNEED` | 8 | 12 (`L_LAND_BASE`) | `lab-wiring-check [T100]` |
+| 랩 2종 인라인 layout 폴백 `?L_LANDNEED:8` | 8 | 12 | `lab-wiring-check [T100]` |
+
+⚠랩은 **인라인 규약 밖**이다(`inline-engine`·`inline-path`·`inline-battle` 셋뿐 — village-layout 은 없다).
+그래서 손으로 맞추고 검사가 대조한다. 랩에 개간 관련 수를 새로 박기 전에 그 검사부터 본다.

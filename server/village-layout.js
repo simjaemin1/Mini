@@ -23,7 +23,14 @@
   const HOUSE_HALF = 2;            // (레거시 호환 수출 — 서버 materialize 5×5 한옥 건물 반폭. 부지·판정은 아래 원판이 정본)
   const HOUSE_CAP_PER_FLOOR = 6;   // ★[고증 v2 재동기 — 랩 선행분 이관] 8→6: 단층 움집 6명(송국리 장방형 24~28㎡ 발굴 추정 5~6명의 상단). 신규 시딩만 영향(econ housing 무관)
   const LAND_PER_HOUSE = 400;      // ★채당 영토 배분 400셀 — 영토 공식의 유일 정본: 채당 수용이 바뀌어도 취락:영토 비율 불변
-  const LAND_NEED = 8;             // 인당 기준 경작칸(비옥 0.55 기준 — landNeedPer가 비옥도로 조정)
+  // ★★[T100 4판 · 재민 판정 2026-09-07] **인당 기준 경작칸 8 → 12**(×1.5).
+  //   T138 이 모양을 보증한 값이다: 54판 전부 영토 밖 0 · 집 붙음 0(광산3 인구150 의 1% 뿐 · 표에 적고 넘어간다)
+  //   · 둘레/칸은 오히려 내려간다(리본이 굵어지지 갈라지지 않는다) · 영토 포화 최악 59%.
+  //   ★★**이 줄이 정본이다.** 종전엔 사본 셋(여기 · `villages.js L_LANDNEED` · 랩 인라인)이었다.
+  //     `villages.js` 는 이제 `_lifeVL().LAND_NEED` 로 읽는다(사본 삭제). 랩은 자동 인라인 대상이
+  //     아니라(`inline-engine`·`inline-path`·`inline-battle` 셋뿐 — village-layout 인라인 스크립트가 없다)
+  //     손으로 맞추고 `scripts/lab-wiring-check.js` 가 두 값을 대조한다(어긋나면 빨강).
+  const LAND_NEED = 12;            // 인당 기준 경작칸(비옥 0.55 기준 — landNeedPer가 비옥도로 조정)
   const HALL_YARD = 10, LOT_R = 6.5, FARM_GAP = 2, ALLEY_R = 12.5, HALL_CLEAR = HALL_YARD + LOT_R;   // ★구역 기하 정본[사용자 확정 "전부 원으로 통일"]: 마당 원 r10·부지 원 r6.5·완충=부지 기준 정확 2타일 등방·골목 r12.5·HALL_CLEAR=마당 원과 부지 원이 셀 하나도 안 겹치는 최소 중심거리[사용자 지시 "초기 두 채 침범 금지"]
   const inDisc = (cx, cy, R, x, y) => { const ax = x + 0.5 - cx, ay = y + 0.5 - cy; return ax * ax + ay * ay < R * R; };   // 셀 중심(x+.5,y+.5)이 격자점(cx,cy) 반경 R 안(엄격<) — 전 구역 판정의 단일 원식(렌더도 같은 셀 집합=판정과 픽셀 일치)
   const discCells = (R) => { const o = [], B = Math.ceil(R); for (let dx = -B; dx < B; dx++) for (let dy = -B; dy < B; dy++) if ((dx + 0.5) * (dx + 0.5) + (dy + 0.5) * (dy + 0.5) < R * R) o.push([dx, dy]); return o; };
@@ -353,7 +360,8 @@
     return { ok: diagOnly === 0, comps, diagOnly };
   }
 
-  const API = { generate, footprintLand, axisAt, nearestBank, waterEDT, maskEDT, HOUSE_HALF, HOUSE_CAP: HOUSE_CAP_PER_FLOOR, HOUSE_CAP_PER_FLOOR, LAND_PER_HOUSE, landNeedPer, HALL_YARD, LOT_R, FARM_GAP, ALLEY_R, HALL_CLEAR, inDisc, LOT_CELLS, LOT_GUARD, YARD_CELLS, houseFarmBlock, hallFarmBlock,
+  const API = { LAND_NEED,   // ★[T100 4판] 정본 — 밖(villages.js·계측기·하네스)이 이 값을 읽는다
+    generate, footprintLand, axisAt, nearestBank, waterEDT, maskEDT, HOUSE_HALF, HOUSE_CAP: HOUSE_CAP_PER_FLOOR, HOUSE_CAP_PER_FLOOR, LAND_PER_HOUSE, landNeedPer, HALL_YARD, LOT_R, FARM_GAP, ALLEY_R, HALL_CLEAR, inDisc, LOT_CELLS, LOT_GUARD, YARD_CELLS, houseFarmBlock, hallFarmBlock,
     ditchRing, ditchConnectivity, DITCH_W, DITCH_AXIS_RATIO, DITCH_GATE_HALF, DITCH_MARGIN };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   if (typeof window !== 'undefined') window.VillageLayout = API;

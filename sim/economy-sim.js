@@ -848,47 +848,72 @@ function _t86Factor(r) {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// ★★[T100 · ECON 수술 2-b 2026-09-05] **산출 식 — NPC 농사의 식량이 밭에서 나온다.**
-//   여태 농부 산출은 밭과 무관했다: `JOBS.farmer.landBoost = v.land.fertility` → 1인 하루 `1.5 × 지력`.
-//   밭 칸(생활층 `farmland`/`dryfield` 행)은 **회계에 한 번도 안 들어왔다**. 이 절이 그 밑변을 옮긴다.
+// ★★[T100 · ECON 수술 2-b] **밭이 곳간에 닿는다.** — 4판(2026-09-07 · 재민 판정)이 정본이다.
 //
-//   ⓐ 앵커(§0 — 전부 이 저장소 정본에서 유도 · 새 수 0):
-//        server/crops.js:212   수확 개수 = floor(yield × waterMult × germ)   ← `yield` 는 **개수**다
-//        server/crops.js       GROUP_KG['곡물'] = 0.70 kg/개                  ← 개당 kg
-//        server/crops.js       c.kcal (조 3,600 · 보리 3,400 …)               ← kcal/kg
-//        server/kcal.js        DAY_KCAL = 2,450                               ← 사람 하루
-//        교차검산(T86 §0-ⓑ)   food 1단위 = 0.70kg × 3,500kcal = 2,450 = DAY_KCAL
-//      ⇒ 밭 1칸 1회 수확 = yield × GROUP_KG[group] × kcal ÷ DAY_KCAL  [food 단위]
-//      ⇒ ÷ growDays 로 **하루 흐름으로 편다**(지시 §0-ⓒ 첫 판 — 덩어리 수확은 회부: 시간 구조 무변).
-//      ⇒ 곡물 9종 평균 = **0.0806 food 단위/칸·일**.
-//   ※`scripts/test-econ-fieldyield.js` 가 이 값을 `crops.js`·`kcal.js` 에서 **다시 유도해 대조**한다.
-//     여기 숫자를 손으로 고치면 하네스가 빨개진다(사본 방지 규약 — T73 의 0.72 와 같은 계약).
-const CELL_FOOD_PER_DAY = 0.0806;
-//   ⓑ **텃밭 하한**(지시 §3 — "밭 0칸 마을의 농부 산출 0 이 아니라 텃밭 하한 · 굶기지 마라").
-//      단위는 §0-ⓑ 의 단위(칸/농부). 값은 생활층 정본 `server/villages.js` `LIFE_CLEAR_PDAY = 3`
-//      (농부 1인 하루 개간 셀) 그대로다 — 뜻: **밭 행이 하나도 없어도 농부가 하루면 여는 칸**은 있다.
-//      새 수가 아니다. 두 값이 갈라지면 하네스가 빨개진다(`__labProbe.LIFE_CLEAR_PDAY` 와 대조).
-//      ※경쟁 후보 "텃밭 = 집마다 4×4 = 16칸"(`villages.js:1117` — 실재하는 garden 타일)은 개간 목표
-//        `landNeedPer` 4.8~20칸/인과 **같은 크기**라 하한이 밑변을 지배한다. §0-ⓑ 표로 남기고 기각 — 회부.
-const T100_GARDEN_PER_FARMER = 3;
+//   여태 농부 산출은 밭과 무관했다: `JOBS.farmer.landBoost = v.land.fertility` → 1인 하루 `1.5 × 지력`.
+//   3판은 그 자리에 **모델식**(`밭칸 × 0.0806 × 지력`)을 꽂았다. T117 자(실제 밭을 도는 계측기)로
+//   재 보니 **실제 수확은 그 추상 산출의 0.22~0.26** 이었다 — 지도가 1셀=1m 캐논이라 칸이 모자란
+//   것이지 식이 틀린 게 아니다. 재민 판정(넷째 길): 모델식은 **버리고**(사본·이중산입의 씨앗)
+//   손잡이 둘로 간다.
+//     ① 경작지 ×1.5 — `server/village-layout.js LAND_NEED 8 → 12`(정본 하나 · T138 이 모양 보증)
+//     ② 칸당 산출 — **부양 인원 앵커 `N` 에서 유도**. 곳간에 드는 것은 **실제 수확 × k** 다.
+//
+//   ⓐ 새 수는 **`N` 하나**다 — 농부 한 사람의 밭이 한 해에 먹이는 사람 수.
+//      출처: Gregory Clark, *UC Davis Econ 210A · Chapter 4 "The Malthusian Economy"* —
+//        산업화 전 농업사회에서 "**70–80% of the population labored upon the land**".
+//      ⇒ N = 1 ÷ 0.80 = **1.25**  ~  1 ÷ 0.70 = **1.43**,  중앙 1 ÷ 0.75 = **1.33**.
+//      (지시가 준 세 점 1.2 · 1.35 · 1.5 는 보고 §0-ⓑ 표에 같이 적었다 — 채택은 **출처의 중앙값**.)
+const T100_ANCHOR_N = 1.33;
+//   ⓑ 실측 — **T117 자**(`scripts/farm-metrics.js` · 실지도 51마을 · 시드 1020 · 800일 · 경작지 12칸 팔).
+//      농부 1인이 한 해에 실제로 치른 **수확 건수**: `Σ harvestN ÷ (Σ fDays ÷ 365)`.
+//      유도의 **분모**이지 손잡이가 아니다(고치면 세계가 아니라 자가 바뀐다).
+//      재측정: `LAB_SEEDCACHE=/tmp/s.json FARM_JSON=/tmp/x.json node scripts/farm-metrics.js 800 1020`
+//        측정판(2026-09-07 · 시드 1020 · 800일 · 51마을 · 씨앗캐시도 12칸으로 새로 구움):
+//          Σ harvestN 190,602 ÷ (Σ fDays 765,497 ÷ 365) = 90.88건/농부·해
+//          (같은 판 참고: 밭 칸 5,050 → 54,053 · 식량등가 200,745 · 농부 1인 실측 부양 0.262인)
+const T100_HARVEST_PER_FARMER_YEAR = 90.88;
+//   ⓒ 유도 — **`k` 는 새 수가 아니다.** 아래 한 줄이 유도식이고, 하네스가 같은 식을 다시 계산해 대조한다.
+//        k = N × (하루 1인 식량 `DAILY_FOOD_CONSUMPTION` × 365) ÷ 농부 1인 연간 수확 건수
+//      뜻: 수확 한 번이 곳간에 넣는 식량등가. `k` 를 손으로 적으면 하네스가 빨개진다.
+const T100_K = T100_ANCHOR_N * DAILY_FOOD_CONSUMPTION * 365 / T100_HARVEST_PER_FARMER_YEAR;
 const T100_FIELD_YIELD = process.env.T100_FIELD_YIELD === '1';   // 되돌림: 끄면 T86 세계 **비트 동일**
 
-// 마을 하루 농사 산출(도구·숙련·건강·포만 **전**) — 두 세계가 **이 함수 하나**로 갈린다.
-//   ⚠`v._fieldCells` 는 **브리지**다(`_paddyShare`·`_clearedFrac` 와 같은 계열): 생활층이 개간한
-//     `farmland`+`dryfield` 셀 수를 econ 이 **읽기만** 한다. 회계는 여전히 econ 한 곳(새 장부 0).
+// 마을 하루 농사 **용량**(부양력 prodK 가 읽는 밑변) — 두 세계가 이 함수 하나로 갈린다.
+//   켜면 **앵커 그 자체**다: 농부 1인은 하루에 `N` 사람 몫을 낸다(= N × 하루 1인 식량).
+//   ⚠**곳간 유입은 여기서 나오지 않는다.** 4판의 산출 자리는 `server/villages.js` `_lifeDoTask0`
+//     수확 갈래 **한 곳**이다(실제 수확 × `T100_K`). 이 함수는 **용량만** 답한다 —
+//     K 가 밭보다 헐거우면 인구가 밭 없이 부푼다(3판 §2-① 실측), 그걸 막는 자리다.
 function farmFlowPerDay(v, fN) {
   const fert = (v.land && v.land.fertility) || 0;
   if (!T100_FIELD_YIELD) return fN * JOBS.farmer.base * fert;
-  const cells = Math.max(v._fieldCells || 0, fN * T100_GARDEN_PER_FARMER);   // 텃밭 하한
-  return cells * CELL_FOOD_PER_DAY * fert;   // 면적(칸) × 칸·일당 × 지력 — '자리=면적 · 산출=지력' 이중산입 분리 규약 그대로
+  return fN * T100_ANCHOR_N * DAILY_FOOD_CONSUMPTION;
 }
-// 종전 자리(`jdef.landBoost`)에 **그대로 꽂히도록** 1인분으로 나눈 값. 끄면 옛 식 그 자체.
+// 종전 자리(`jdef.landBoost`) — 4판은 **손대지 않는다**(3판 모델식 폐기).
+//   부산물(밀·쌀·보리·삼·모시)이 `baseAmt` 를 타고 나오므로 여기를 건드리면 곡물·섬유 사슬이
+//   T86 에서 떨어진다. 농부의 *식량* 산출만 `addProduce(jdef.output, …)` **한 줄**에서 막는다
+//   (대체 · 얹기 0 — T123 마을5 가격 붕괴의 교훈).
 function farmLandBoost(v) {
-  const fert = (v.land && v.land.fertility) || 0;
-  if (!T100_FIELD_YIELD) return fert;
-  const fN = (v.counts && v.counts.farmer) || 0;
-  if (!(fN > 0)) return fert;                // 농부 0 — 곱해질 일이 없다(무해 · NaN 방지)
-  return farmFlowPerDay(v, fN) / (JOBS.farmer.base * fN);
+  return (v.land && v.land.fertility) || 0;
+}
+// ★★[T100 4판 ⓓ] 생활층이 **실제로 거둔 수확 한 번**을 곳간에 넣는 **유일한 입구**.
+//   `server/villages.js` `_lifeDoTask0` 수확 갈래가 이 함수를 부른다(그쪽엔 산수가 없다 — 사본 0).
+//   회계는 여전히 econ 한 곳이다(새 장부 0): `addProduce` 와 **같은 꼴**로
+//     · 세금(`TAX_RATE`)을 떼어 금고로 보내고,
+//     · 볏짚 연료 밑변(`v._grainToday`)을 채운다 — 대체로 걷어낸 자리를 그대로 메우는 것이지
+//       새 흐름을 다는 게 아니다(안 채우면 짚이 사라져 땔감 수요가 통째로 나무로 몰린다).
+//   ⚠`satMul`·건강·포만 배수는 **안 건다**: 그 감산들은 econ 틱 안에서 *노동*에 걸리는 것이고,
+//     여기 들어오는 값은 이미 파종창·물때·김매기·계절이 다 물린 **실제 수확**이다(이중 감산 금지).
+//   ⚠품목은 일반 `food` — 2-c(곳간 구성 = 구체 작물) 전이니 3판 규약 그대로다.
+//   끄면(`T100_FIELD_YIELD=0`) 한 톨도 안 넣는다 → T86 세계 **비트 동일**.
+function harvestToGranary(v, n) {
+  if (!T100_FIELD_YIELD || !v || !v.storage) return 0;
+  const amt = ((n > 0 ? n : 1)) * T100_K;
+  v._grainToday = (v._grainToday || 0) + amt;
+  const tax = amt * TAX_RATE;
+  v.storage.food = (v.storage.food || 0) + (amt - tax);
+  if (v.treasury) v.treasury.food = (v.treasury.food || 0) + tax;
+  v._t100HarvestN = (v._t100HarvestN || 0) + (n > 0 ? n : 1);   // 계측 전용 누계(회계 아님 · 표가 스스로 말하게)
+  return amt;
 }
 // ★무용재 — 실수요(use-value)가 ~0이라 수출해도 식량 못 삼. 식량안보와 무관하게 *항상* 생산 포만(성장기 누적까지 차단).
 //   광석(ore): 갑옷에 미량뿐. 장식재(금·은·보석): 화폐화 전엔 수요 0. 돌·금속(구리·주석)은 수요 있어 제외(가치재 수출).
@@ -2420,7 +2445,12 @@ function tickVillage(v, day) {
         const _t = Math.min(v.storage[inp] || 0, per);
         if (_t > 0) { v.storage[inp] -= _t; _cons(v, inp, _t); }   // ★flow-EMA
       }
-      addProduce(jdef.output, baseAmt);
+      // ★★[T100 4판 · 대체] 농부의 **추상 식량 산출은 여기서 나오지 않는다.**
+      //   4판의 농사 산출은 생활층이 실제로 거둔 수확(`_lifeDoTask0` 수확 갈래 · 건당 `T100_K`)이다.
+      //   ⚠**얹지 않고 걷어낸다** — 둘 다 넣으면 식량이 배로 들어와 곡물가가 붕괴한다(T123 마을5).
+      //   ⚠막는 것은 이 **한 줄**뿐이다: 아래 부산물 루프(밀·쌀·보리·삼·모시)는 `baseAmt` 를 그대로
+      //     타고 나가 T86 그대로다(섬유·곡물 사슬 무변 — 4판이 건드리는 것은 `food` 하나).
+      if (!(T100_FIELD_YIELD && npc.currentJob === 'farmer')) addProduce(jdef.output, baseAmt);
       if (jdef.byproduct) {
         for (const [r, rate] of Object.entries(jdef.byproduct)) {
           // ★모시(ramie) 수요-캡 공급(2026-07-13, 사용자 결정 — 교역 무교란): 재고가 수요(flowT=소비EMA×30, +부트스트랩 floor N×RAMIE_BOOT_PC) 이상이면 산출 스킵.
@@ -4328,7 +4358,9 @@ module.exports = {
   totalFoodEquivalent,   // 진단 하네스가 병기고 식량안보 게이트를 정확히 재려면 필요
   consumeFood,           // ★[T73] 식단 사다리의 **순서**를 하네스가 직접 증명하려면 필요(같은 이유)
   RAW_GRAINS, RAW_GRAIN_FOOD_FACTOR,   // ★[T73] 계수를 하네스·계측기가 옮겨 적지 않게(사본 금지)
-  farmFlowPerDay, farmLandBoost, CELL_FOOD_PER_DAY, T100_GARDEN_PER_FARMER,   // ★[T100] 같은 이유 — 하네스·계측기가 앵커를 옮겨 적지 않는다
+  farmFlowPerDay, farmLandBoost, harvestToGranary,   // ★[T100] 같은 이유 — 하네스·계측기가 앵커를 옮겨 적지 않는다
+  T100_ANCHOR_N, T100_HARVEST_PER_FARMER_YEAR, T100_K, T100_FIELD_YIELD,
+  DAILY_FOOD_CONSUMPTION,   // ★[T100 4판] 하루 1인 식량 정본 — `k` 유도의 한 항(하네스가 1.0 을 옮겨 적지 않는다)   // ★[T100 4판] 앵커 하나 · 실측 하나 · 유도값 하나 · 손잡이 — 생활층(`villages.js`)과 하네스가 **여기서만** 읽는다(사본 0)
   FARMER_BASE: JOBS.farmer.base,   // ★[T100] 농부 1인 기준 산출(옛 밑변 `1.5 × 지력`의 1.5) — 계측기·하네스가 이 수를 옮겨 적지 않게
   // ★[T125] 옷감 보온 가중 — `server/villages.js` 가 주민 착장 재질을 고를 때 **읽는다**.
   //   같은 이유(사본 금지)로 이름만 낸다. 값·틱 로직 무접촉 — 이 줄은 시뮬을 한 톨도 안 바꾼다.

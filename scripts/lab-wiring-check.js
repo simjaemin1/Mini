@@ -218,5 +218,36 @@ console.log('\n[G] 랩 HTML 인라인 엔진');
   }
 }
 
+// ★★[T100 4판 2026-09-07] **인당 기준 경작칸의 정본은 하나다.**
+//   `server/village-layout.js LAND_NEED` 가 정본이고, `server/villages.js` 는 `_lifeVL().LAND_NEED` 로 읽는다.
+//   랩(`lab/전쟁실험실.html`)만은 **손 사본**이다 — village-layout 을 넣어 주는 인라인 스크립트가 없다
+//   (`inline-engine`·`inline-path`·`inline-battle` 셋뿐). 그래서 여기서 두 값을 대조한다.
+console.log('\n[T100] 인당 기준 경작칸 — 정본 하나인가');
+{
+  const VL = require(path.join(root, 'server', 'village-layout.js'));
+  const canon = VL.LAND_NEED;
+  if (canon == null) bad('village-layout.js 가 LAND_NEED 를 안 내준다 — 정본이 없다');
+  // ★랩은 **둘 다** 본다(마을실험실·전쟁실험실). 그리고 한 랩에 사본이 **둘**이다:
+  //   ⓐ `L_LAND_BASE`(개간 목표가 읽는 값) ⓑ 인라인 village-layout 의 폴백 `?L_LANDNEED:<수>`.
+  //   ⓑ 를 안 보면 죽은 8 이 파일에 남아 다음 사람이 그걸 정본으로 읽는다(T100 4판 §0-ⓐ 실측).
+  for (const f of ['마을실험실.html', '전쟁실험실.html']) {
+    const labSrc = fs.readFileSync(path.join(root, 'lab', f), 'utf8');
+    const m = labSrc.match(/L_LAND_BASE\s*=\s*([0-9.]+)/);
+    const labV = m ? +m[1] : null;
+    if (labV == null) bad(`랩 ${f} 에서 L_LAND_BASE 를 못 찾았다`);
+    else if (Math.abs(labV - canon) > 1e-9) bad(`랩 ${f} L_LAND_BASE ${labV} ≠ 정본 LAND_NEED ${canon} — 손으로 맞춰라`);
+    else ok(`랩 ${f} L_LAND_BASE ${labV} = 정본 village-layout.js LAND_NEED ${canon}`);
+    const fb = labSrc.match(/typeof L_LANDNEED!=='undefined'\)\?L_LANDNEED:([0-9.]+)/);
+    const fbV = fb ? +fb[1] : null;
+    if (fbV == null) bad(`랩 ${f} 인라인 layout 의 LAND_NEED 폴백을 못 찾았다`);
+    else if (Math.abs(fbV - canon) > 1e-9) bad(`랩 ${f} 인라인 layout 폴백 ${fbV} ≠ 정본 ${canon} — 죽은 사본이 남았다`);
+    else ok(`랩 ${f} 인라인 layout 폴백 ${fbV} = 정본 ${canon}`);
+  }
+  const vsrc = fs.readFileSync(path.join(root, 'server', 'villages.js'), 'utf8')
+    .split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n');
+  if (/const\s+L_LANDNEED\s*=\s*\d/.test(vsrc)) bad('villages.js 에 L_LANDNEED 사본이 다시 생겼다 — 정본에서 읽어라');
+  else ok('villages.js 에 사본이 없다 — `_lifeVL().LAND_NEED` 로 읽는다');
+}
+
 console.log(`\n=== 배선 검사: 실패 ${fail} · 경고 ${warn} ===`);
 process.exit(fail ? 1 : 0);

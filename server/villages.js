@@ -3519,7 +3519,14 @@ let _vlMod = null;   // ★lazy require(설계 계약: 시뮬 off면 sim 모듈 
 //   ⇒ 가드를 한 줄 더 다는 대신 **잊을 수 있는 이름 자체를 없앴다.** 읽는 길은 이제 이 함수뿐이다.
 //   (`5e8d5f5` 의 'is not defined' 도, 이 배치의 'null' 도 같은 족 — 이제 구조적으로 못 난다.)
 const _lifeVL = () => _vlMod || (_vlMod = require('./village-layout'));
-const L_LANDNEED = 8;        // 랩 동형: 인당 기준 경작칸(landNeedPer가 비옥도 보정)
+// ★★[T100 4판] 사본 삭제 — 인당 기준 경작칸의 **정본은 `village-layout.js LAND_NEED` 하나**다.
+//   여기 있던 `const L_LANDNEED = 8` 이 그 사본이었다(정본이 12 로 가도 여긴 8 로 남는 자리).
+const _landNeed = () => _lifeVL().LAND_NEED;
+// ★★[T100 4판] econ 정본 lazy 접근자 — `_lifeVL()` 과 **같은 관례**(맨 이름을 안 둔다).
+//   4판이 생활층에서 econ 을 읽는 곳은 수확 갈래 한 곳뿐이고, 그 한 곳도 **숫자를 안 적는다**:
+//   앵커(`T100_ANCHOR_N`)·유도값(`T100_K`)·손잡이(`T100_FIELD_YIELD`)는 전부 econ 정본이 답한다.
+let _econMod = null;
+const _lifeEcon = () => _econMod || (_econMod = require('../sim/economy-sim'));
 // ★랩 JOBACT 대상 직업 = 현장(논밭·물·숲·산) 직업. 이 집합 밖은 랩 'villager' 버킷(회관 내부 앵커 + 역할 라벨).
 const LIFE_FIELD_JOBS = new Set(['farmer', 'fisher', 'hunter', 'lumberjack', 'miner', 'forager']);
 let _vgStuckN = 0;           // ★기타직 정체 가드 발동 누계(부팅 이후) — lifedbg가 노출
@@ -3985,7 +3992,12 @@ function _lifeDoTask0(vil, npc, k, day) {
   // ★[T58b] 아래 한 줄이 정본이다 — 우선순위·품질 산수는 `cropDoTask` 안에 하나뿐이다(플레이어도 이걸 부른다).
   const did = cropDoTask(e, nong, day);
   if (!did) return false;
-  if (did === 'harvest') { if (!cropAfterHarvest(e, day)) vil._crop.delete(k); if (npc) { npc._carry = (npc._carry || 0) + 1; _lifeAct(npc, '수확'); } return true; }   // 수확 — 식량은 econ이 이미 계상(연출만). ★곳간② 물리 짐 1칸분 적재(회계 아님) · ★[T91] 다년생은 그루터기로 남는다
+  // ★★[T100 4판 ⓓ] **밭이 곳간에 닿는 자리 — 이 한 줄이다.**
+  //   T86 까지는 "식량은 econ 이 이미 계상(연출만)" 이었다. 4판은 econ 에서 농부의 추상 식량 산출을
+  //   **걷어냈고**(`economy-sim.js` `addProduce(jdef.output, …)` 한 줄), 그 자리를 여기가 채운다.
+  //   수확 한 번 = `T100_K` 식량등가. 산수·세금·볏짚은 전부 econ 쪽 `harvestToGranary` 안에 있다
+  //   (여기엔 숫자가 없다 — 사본 0). 끄면 안 부른 것과 같다(비트 동일).
+  if (did === 'harvest') { if (!cropAfterHarvest(e, day)) vil._crop.delete(k); if (npc) { npc._carry = (npc._carry || 0) + 1; _lifeAct(npc, '수확'); } if (vil.econ) _lifeEcon().harvestToGranary(vil.econ, 1); return true; }   // ★곳간② 물리 짐 1칸분 적재(회계 아님) · ★[T91] 다년생은 그루터기로 남는다
   if (npc) _lifeAct(npc, did === 'pest' ? '방제' : did === 'water' ? '물대기' : (nong ? '논매기' : '김매기'));
   return true;
 }
@@ -4148,7 +4160,7 @@ function _lifeNeedClear(vil) {   // 랩 needLand 동형: 보즈럽 수요 게이
   const e = vil.econ; if (!e || !vil._potSet) return false;
   if (((e.storage && e.storage.food) || 0) > e.npcs.length * 120) return false;
   const fert = (e.land && e.land.fertility != null) ? e.land.fertility : 0.55;
-  return vil._farmSet.size < Math.ceil(e.npcs.length * _lifeVL().landNeedPer(fert, L_LANDNEED));
+  return vil._farmSet.size < Math.ceil(e.npcs.length * _lifeVL().landNeedPer(fert, _landNeed()));
 }
 function _lifeLiveFarmTile(vil, cx, cy, type) {   // 개간 완료 실체화: 영속 행 + 라이브 시각 타일(farmTilesInRect 규약 동형)
   vil._mCl = (vil._mCl || 0) + 1;   // ★[LIFE_* 튜닝 계측] 오늘 개간된 셀 수(실걸음·LOD 배치 공통 싱크)
@@ -6137,7 +6149,7 @@ module.exports = {
       frontier: (vil) => _lifeFrontier(vil),
       get LIFE_CLEAR_PDAY() { return LIFE_CLEAR_PDAY; },
       get LIFE_CREW() { return LIFE_CREW; },
-      get L_LANDNEED() { return L_LANDNEED; },
+      get L_LANDNEED() { return _landNeed(); },   // ★[T100 4판] 정본(`village-layout.js LAND_NEED`)을 그대로 내준다
     },
   },
 };

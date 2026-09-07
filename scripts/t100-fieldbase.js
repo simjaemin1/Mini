@@ -109,7 +109,10 @@ const perDay = (c) => cellFoodUnits(c) / Math.max(1, c.growDays || 1);
 const gAvg = grains.reduce((a, c) => a + perDay(c), 0) / grains.length;
 console.log(`\n══ T100 계측기 — 시드 ${SEED} · ${DAYS}일 · FIELD_YIELD ${FY ? 'ON' : 'off'} · 개간 ${CLEAR_ON ? 'ON' : 'off'} ══`);
 console.log(`  앵커: 밭 1칸 1회 = yield × GROUP_KG × kcal ÷ DAY_KCAL(${DAYK})  ·  food 1단위 = ${W.kgOf('food')}kg × ${KC.KCAL_PER_KG.food} = ${W.kgOf('food') * KC.KCAL_PER_KG.food}`);
-console.log(`  ★곡물 ${grains.length}종 평균 = **${gAvg.toFixed(4)} food 단위/칸·일**  (econ 상수 ${econ.CELL_FOOD_PER_DAY} · 텃밭 하한 ${econ.T100_GARDEN_PER_FARMER}칸/농부 = 생활층 개간속도 ${CP.LIFE_CLEAR_PDAY})`);
+console.log(`  ★곡물 ${grains.length}종 평균 = **${gAvg.toFixed(4)} food 단위/칸·일**  (여기서 유도 · econ 상수는 4판이 폐기했다)`);
+console.log(`  ⚠**이 계측기는 3판(모델식) 유물이다.** 4판이 채택한 자는 \`scripts/farm-metrics.js\`(실제 수확)와`);
+console.log(`     \`scripts/t100-ab.js\`(A/B 표)다. 여기의 \`foodEq\` 는 여전히 **모델값**이고, econ 은 이제 그 식을 안 쓴다.`);
+console.log(`     4판 유도값: 앵커 N ${econ.T100_ANCHOR_N} · 실측 ${econ.T100_HARVEST_PER_FARMER_YEAR}건/농부·해 ⇒ k ${econ.T100_K.toFixed(4)}`);
 
 // ═════════════════════════════════════════════════════════════════════════════
 // ★★[재민 확정 2026-09-05 · T112/T117 열 이름] **세션1·세션3 이 같은 열을 쓴다.**
@@ -166,7 +169,7 @@ const q = (a, p) => a[Math.min(a.length - 1, Math.floor(a.length * p))];
 console.log(`\n══ 열 규약(재민 확정 · 세션1·3 공통) ══`);
 console.log('  ' + CANON_COLS.join(' · '));
 console.log('  ★이 계측기가 **못 채우는 열**: harvestN · qMean · tasksWater · tasksWeed = null (작물 상태기 미가동)');
-console.log('  ★`foodEq` 는 **모델값**이다: cells × ' + econ.CELL_FOOD_PER_DAY + ' × fert × ' + YEAR_DAYS + '  (T117 은 harvestN 에서 실측)');
+console.log('  ★`foodEq` 는 **모델값**이다: cells × ' + gAvg.toFixed(4) + ' × fert × ' + YEAR_DAYS + '  (T117 은 harvestN 에서 실측 · 4판은 이 식을 폐기했다)');
 console.log('  ★`ratio` = foodEq / econFood (**밭 ÷ econ**) — 1판 보고의 "어긋남"은 그 역수였다');
 console.log(`\n══ 소멸 ${dead.length}/${rows.length}  ·  총인구 ${rows.reduce((a, r) => a + r.N, 0)} ══`);
 if (dead.length) console.log('   소멸: ' + dead.map(r => r.name).join(' '));

@@ -151,6 +151,52 @@ for (const [id, r] of [...CROP.entries()].sort((a, b) => b[1].sow - a[1].sow).sl
     + String(r.sow).padStart(7) + String(r.harvest).padStart(10) + String(r.units).padStart(9) + String(Math.round(r.foodEq)).padStart(11));
 }
 
+// ★[T100 4판 · 손잡이 없으면 무변] `FARM_JSON=<경로>` 면 **51마을 전수**를 JSON 으로도 낸다.
+//   4판이 `k`(칸당 산출 계수)를 유도하려면 상위 14가 아니라 전수의 `harvestN·foodEq·fDays` 가 필요하다.
+//   화면 출력·계산은 한 줄도 안 바뀐다 — 쓰기만 더 한다.
+if (process.env.FARM_JSON) {
+  const rows = vils.map((v, i) => { const m = M[i], ev = v.econ;
+    return { vid: i, name: v.name, fert: +((ev.land && ev.land.fertility) || 0).toFixed(2),
+      N: (ev.npcs || []).length, fN: (ev.counts && ev.counts.farmer) || 0, fDays: m.fDays,
+      cells: v._farmSet.size, cells0: cells0[i], cleared: v._farmSet.size - cells0[i],
+      harvestN: m.harvestN, units: m.units, foodEq: +m.foodEq.toFixed(2),
+      tasksWater: m.tasksWater, tasksWeed: m.tasksWeed,
+      econFood: +(((ev.storage && ev.storage.food) || 0)).toFixed(1),
+      // ★[T100 4판 ⓒ 귀속] 인구가 왜 움직였나 — 정본이 **이미 남겨 둔 것**을 옮겨 적기만 한다(판정 0 · 새 계산 0).
+      //   `_dpDebug` 는 economy-sim 의 인구식이 매 틱 써 두는 항 분해다(K·물류·기근·건강·행복·위세·주거 게이트).
+      dp: ev._dpDebug || null,
+      housing: ev.housing != null ? +(+ev.housing).toFixed(1) : null,
+      prodK: ev._prodKema != null ? +ev._prodKema.toFixed(1) : null,
+      fuelK: ev._fuelKema != null ? +ev._fuelKema.toFixed(1) : null,
+      hunger: ev.hunger != null ? +(+ev.hunger).toFixed(3) : null,
+      stockFoodEq: +econ.totalFoodEquivalent(ev).toFixed(1),
+      stock: ['food', 'fish', 'meat', 'cooked_food', 'wheat', 'rice', 'barley', 'wood']
+        .reduce((o, r) => (o[r] = +((ev.storage[r] || 0)).toFixed(1), o), {}) }; });
+  // ★[T100 4판 ④] 같은 판의 **여덟 수**(T17/T86 문법 · 읽는 자리는 `t17-metrics.js` ⓐⓓⓔ 와 같다)를
+  //   같이 담는다 — A/B 표(`scripts/t100-ab.js`)가 두 팔을 **같은 자**로 견주려면 한 파일에 있어야 한다.
+  const _stock = (r) => world.villages.reduce((a, v) => a + (v.storage[r] || 0), 0);
+  let _pop = 0, _dead = 0, _ever = 0, _weapQ = 0, _expand = 0, _toolQ = 0, _hungry = 0;
+  for (const v of world.villages) {
+    const n = (v.npcs || []).length; _pop += n;
+    if (v._everPop) _ever++;
+    if (v._everPop && n <= 0) _dead++;
+    _weapQ += (v.storage.weapon || 0) * (v._weapQ != null ? v._weapQ : 1);
+    _expand += v.expansions || 0;
+    _toolQ += (v.storage.tool || 0) * (v._toolQ != null ? v._toolQ : 1);
+    if ((v.hunger || 0) > 0) _hungry++;
+  }
+  const _pres = ['dried_fish', 'dried_fruit', 'smoked_meat', 'pickled_veg'].reduce((a, r) => a + _stock(r), 0);
+  const world8 = { pop: _pop, dead: _dead, ever: _ever, weapQ: +_weapQ.toFixed(1), expand: _expand,
+    trades: (world.tradeLog || []).length, toolQ: +_toolQ.toFixed(1), preserved: +_pres.toFixed(1),
+    salt: +_stock('salt').toFixed(1), econFood: +econFoodTot.toFixed(1), hungry: _hungry,
+    cells0: cells0Tot, cells: cellsTot, cleared: clearedTot,
+    harvestN: totH, foodEq: +totF.toFixed(1), fDays: M.reduce((a, m) => a + m.fDays, 0),
+    T100_FIELD_YIELD: process.env.T100_FIELD_YIELD === '1',
+    k: (() => { try { return R('sim/economy-sim').T100_K; } catch (e) { return null; } })(),
+    N: (() => { try { return R('sim/economy-sim').T100_ANCHOR_N; } catch (e) { return null; } })() };
+  try { fs.writeFileSync(process.env.FARM_JSON, JSON.stringify({ days: DAYS, seed: SEED, world8, rows }, null, 1));
+    console.log(`  [json] ${process.env.FARM_JSON} · ${rows.length}마을`); } catch (e) {}
+}
 console.log('\nⓔ 마을별 (밭 칸 많은 순 · 상위 14) — ★열 이름은 PM 지정(세션1 T100 과 같은 자)');
 console.log('  vid name         fert    N   fN cells cells0 cleared perFarmer  need harvestN   foodEq qMean tasksWater tasksWeed econFood ratio');
 const order = vils.map((v, i) => i).sort((a, b) => vils[b]._farmSet.size - vils[a]._farmSet.size);
@@ -185,8 +231,21 @@ for (const i of order.slice(0, 14)) {
   console.log(`\nⓕ 같은 판의 econ — 인구 ${nf(pop)} · 소멸 ${dead}/${ever} · 무기Q ${weapQ.toFixed(0)} · 확장셀 ${nf(expand)} · 곳간 식량 ${nf(Math.round(econFoodTot))}`);
   const ratio = econFoodTot > 0 ? (totF / (DAYS / 365)) / econFoodTot : 0;
   console.log(`\nⓖ ★★"밭이 곳간에 닿는가" — 밭이 해마다 **식량등가 ${nf(Math.round(totF / (DAYS / 365)))}** 를 내는데`);
-  console.log(`   econ 곳간(${nf(Math.round(econFoodTot))})에 그중 **0** 이 들어간다. \`_lifeDoTask0\` 의 수확 갈래는`);
-  console.log(`   \`npc._carry += 1\` 만 하고 주석이 *"식량은 econ이 이미 계상(연출만)"* 이라 적어 둔 그대로다.`);
-  console.log(`   ⇒ ratio = ${ratio.toFixed(2)} — 이 수가 **ECON 2-b 가 이을 때 곳간에 더해질 밑변**이다.`);
-  console.log(`   ⇒ 그리고 이제 그 말을 **재고 하는 것**이다. 종전엔 여덟 수 0줄로 말했고, 그건 틀린 근거였다(족보 130).`);
+  // ★[T100 4판 2026-09-07] 이 절의 **"그중 0 이 들어간다"는 이제 팔에 따라 다르다.**
+  //   손잡이를 켜면 `_lifeDoTask0` 수확 갈래가 `harvestToGranary(vil.econ, 1)` 를 부른다(수확 건당 `k`).
+  //   T117 이 적어 둔 원문(끈 팔)은 그대로 두고, 켠 팔만 사실대로 갈아 끼운다.
+  let _T100K = null; try { _T100K = R('sim/economy-sim').T100_FIELD_YIELD ? R('sim/economy-sim').T100_K : null; } catch (e) {}
+  if (_T100K != null) {
+    const inflow = totH * _T100K;
+    console.log(`   econ 곳간(${nf(Math.round(econFoodTot))})에 **${nf(Math.round(inflow))}** 가 800일 동안 들어갔다`);
+    console.log(`   (수확 ${nf(totH)}건 × k ${_T100K.toFixed(4)} — \`_lifeDoTask0\` 수확 갈래 → \`harvestToGranary\` 한 곳).`);
+    const fy = M.reduce((a, m) => a + m.fDays, 0) / 365;
+    console.log(`   ⇒ **농부 1인 부양 실측 ${(inflow / fy / 365).toFixed(3)}인** (앵커 N = ${R('sim/economy-sim').T100_ANCHOR_N} · 유도의 자기 검산)`);
+    console.log(`   ⇒ ratio(밭 연간 식량등가 ÷ 곳간) = ${ratio.toFixed(2)} — T117 자의 원래 뜻(곳간 대비 밭 규모)은 그대로 둔다.`);
+  } else {
+    console.log(`   econ 곳간(${nf(Math.round(econFoodTot))})에 그중 **0** 이 들어간다. \`_lifeDoTask0\` 의 수확 갈래는`);
+    console.log(`   \`npc._carry += 1\` 만 하고 주석이 *"식량은 econ이 이미 계상(연출만)"* 이라 적어 둔 그대로다.`);
+    console.log(`   ⇒ ratio = ${ratio.toFixed(2)} — 이 수가 **ECON 2-b 가 이을 때 곳간에 더해질 밑변**이다.`);
+    console.log(`   ⇒ 그리고 이제 그 말을 **재고 하는 것**이다. 종전엔 여덟 수 0줄로 말했고, 그건 틀린 근거였다(족보 130).`);
+  }
 }
