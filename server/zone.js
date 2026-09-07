@@ -3045,7 +3045,11 @@ const server = http.createServer((req, res) => {
     let _econ = null; try { _econ = SimVillages.tickPerf ? SimVillages.tickPerf() : null; } catch (e) {}
     const _rst = req.url.indexOf('reset=1') >= 0;
     res.end(JSON.stringify({ zone: ZONE_ID, now: Date.now(), sliceMs: SimVillages.tickSliceMs ? SimVillages.tickSliceMs() : null,
-      events: _perfRing.slice(), econTick: _econ, loop: loopDelayStats(_rst) }));
+      events: _perfRing.slice(), econTick: _econ, loop: loopDelayStats(_rst),
+      // ★[T153] 틱 시계 — 벽시계(`wall`)와 **세계가 실제로 적분한 시간**(`sim`)을 나란히 낸다.
+      //   `lagPct` 가 곧 "세계가 얼마나 뒤졌나"다(종전 5.3% · 빚을 이월하면 0 근처).
+      tick: Object.assign({}, _tick, { on: TICK_DEBT_ON, dtMax: DT_MAX, debtMax: TICK_DEBT_MAX,
+        lagPct: _tick.wall > 0 ? +(100 * (_tick.wall - _tick.sim) / _tick.wall).toFixed(3) : null }) }));
     return;
   }
   if (req.url === '/health' && req.method === 'GET') {
@@ -10725,12 +10729,54 @@ setInterval(async () => {
 // === 게임 틱 ===
 const TICK_MS = 1000 / TICK_HZ;
 let lastTick = Date.now();
+// ★★[T153 2026-09-07] 한 틱이 적분하는 **최대** 시간(초). 종전 상수 그대로 — 이 카드는 이 수를 안 올린다.
+const DT_MAX = 0.2;
+// ★★[T153] **이월 빚의 상한**(초) — 이 카드가 들이는 **새 수는 이것 하나**이고, 고른 게 아니라 **유도했다**.
+//   ⚠유도의 앵커가 지시서의 예상과 달랐다(보고 §0-ⓒ): 틱을 200ms 너머로 미는 것은 **하루 경계가 아니다.**
+//     `econ_frame` 실측 최악은 **22~28ms** 로 상한 근처도 못 간다. 실제로 잃는 몫은 **한 판에 딱 한 번 오는
+//     12~13초짜리 이벤트 루프 정지** 하나다(`loop.max` 12,985~13,195ms · `clipN` 1~10 · 그 한 번이 손실 전부).
+//   ⇒ 앵커는 **관측된 최악 틱 간격**이다. 존만 띄운 판에서 12.20~13.19초, **실클라 하네스 + 코어 부하**
+//     판에서 **15.49초**가 최악이었다(보고 §0-ⓐ 표 · 아홉 판 전수). 그 **2배 = 30.98초**를 올려 **31초**.
+//     한 줄로: *"가장 크게 밀린 한 순간의 두 배까지는 통째로 갚고, 그보다 더면 갚기를 포기하고 로그를 남긴다."*
+//   ★갚는 속도: 한 틱이 `DT_MAX − 1/TICK_HZ` = 0.167초씩 갚고 30Hz 이므로 **벽시계 1초에 5초**를 갚는다
+//     ⇒ 31초 빚도 **6.2초**면 사라진다(나선이 아니라 **회수**다).
+//   `TICK_DEBT_MAX_MS` 로 덮어쓸 수 있다(하네스가 문턱을 실제로 넘겨 보려면 필요하다).
+const TICK_DEBT_MAX = Math.max(0.05, (parseInt(process.env.TICK_DEBT_MAX_MS || '', 10) || 31000) / 1000);
+// ★되돌림 — `T153_DEBT=0` 이면 종전과 비트 동일(빚 0). 계측 줄은 남는다(관측자).
+const TICK_DEBT_ON = process.env.T153_DEBT !== '0';
+let _tickDebt = 0;
+// ★계측(관측자) — `/perf` 가 그대로 내준다. 하네스가 "빚이 몇 %냐"를 **소스가 아니라 세계에** 묻는다.
+const _tick = { n: 0, wall: 0, sim: 0, clip: 0, clipped: 0, maxGap: 0, debt: 0, dropN: 0, dropped: 0 };
 
 setInterval(() => {
   const now = Date.now();
-  const dt = Math.min(0.2, (now - lastTick) / 1000);
+  // ★★[T153 2026-09-07 재민 확정] **틱 빚 — 잘라 낸 몫을 버리지 않고 다음 틱에 얹는다.**
+  //   종전: `dt = Math.min(0.2, elapsed)`. 상한은 옳다(죽음의 나선을 막는다) — 그런데 **잘린 몫을 버렸다.**
+  //   그래서 세계의 적분 시계(`Body.tick` · 물리 · 타이머)가 벽시계보다 **영구히** 뒤졌다:
+  //   T148-A 실측으로 **부하 0 에서도 122초에 6.5초(5.3%)**. 그런데 하루 경계는 벽시계다
+  //   (`SimVillages.onGameTick(now)` · 하루 24분 캐논) ⇒ **시계가 둘**이었다 — 달력은 정시에 가고 몸은 5% 느리다.
+  //   ⇒ 고정 스텝 누산기(Gaffer, *Fix Your Timestep!* — 출처 하나)로 **한 시계**로 되돌린다.
+  //   ★★상한은 그대로 0.2 다 ⇒ **어떤 계도 종전보다 큰 dt 를 한 번도 안 본다**(이월이 곧 분할 스텝이다).
+  //     빚은 다음 틱들이 0.2 까지 나눠 갚는다(30Hz 라 한 틱이 0.167초씩 갚는다 — 회수는 빠르다).
+  //   ⚠빚에도 상한을 둔다(`TICK_DEBT_MAX`) — 없으면 한 번 크게 밀린 존이 영영 빚을 갚느라
+  //     매 틱 0.2 를 적분하고, 그게 곧 나선이다. 넘친 몫은 **버리고 로그로 남긴다**(조용히 잃지 않는다).
+  //   ★되돌림 `T153_DEBT=0` → 종전과 **비트 동일**(빚 0 · 계측만 남는다).
+  const _elapsed = (now - lastTick) / 1000;
+  const _want = TICK_DEBT_ON ? (_elapsed + _tickDebt) : _elapsed;
+  const dt = Math.min(DT_MAX, _want);
+  const _left = _want - dt;
+  if (TICK_DEBT_ON) {
+    _tickDebt = Math.min(TICK_DEBT_MAX, _left);
+    if (_left > TICK_DEBT_MAX) { _tick.dropN++; _tick.dropped += _left - TICK_DEBT_MAX;
+      perfMark('tick_debt_drop', (_left - TICK_DEBT_MAX) * 1000); }
+  }
+  // ★계측은 손잡이가 아니다 — 아무 동작도 안 바꾼다(관측자 규약 · `perfMark` 와 같은 자리).
+  _tick.n++; _tick.wall += _elapsed; _tick.sim += dt; _tick.debt = _tickDebt;
+  if (_elapsed > DT_MAX) { _tick.clip++; _tick.clipped += _elapsed - DT_MAX; }
+  if (_elapsed > _tick.maxGap) _tick.maxGap = _elapsed;
   // 플레이어/NPC 이동은 클라 예측(고정 PRED_STEP=1/TICK_HZ)과 '동일한 고정 dt'로 — 리컨실리에이션 어긋남 0(떨림 제거).
   //   (가변 dt면 서버 위치가 매 틱 클라 고정스텝과 ±몇px 달라져 30Hz 떨림.) 다른 시스템(타이머·물리)은 실시간 dt 유지.
+  //   ★[T153] `moveDt` 는 **무접촉**이다 — 이동은 빚과 무관한 고정 스텝이다(클라 예측 동형).
   const moveDt = 1 / TICK_HZ;
   lastTick = now;
 

@@ -153,12 +153,21 @@ async function waitHttp(url, tries = 600) {
   //   코어가 눌려 틱이 200ms 를 넘으면 적분된 게임분이 벽시계보다 **영구히** 뒤진다.
   //   ⇒ "게임 1.5일에 HP 100" 은 **게임분에 대한 주장**이다. 벽시계를 대입한 것이 틀렸다.
   //
-  //   ★증인: **허기**. 같은 `Body.tick(dt)` 가 HP 빚과 허기 감쇠를 **같은 dt** 로 적분한다.
-  //     허기는 소수 둘째 자리까지 오므로(HP 는 1 단위 양자화) 오히려 더 곱게 읽힌다.
-  //     환산은 **정본 함수**를 그대로 부른다(`B.decayRate` — 사본 0).
+  //   ★★[T153 2026-09-07 전제 정정] T148-A 는 증인으로 **허기**를 골랐다 — "소수 둘째 자리까지 온다"고
+  //     적었는데 **틀렸다**: 선에 나가는 것은 `hunger: Math.round(player.hunger)` 로 **정수**다
+  //     (`zone.js:4266` 등 · `Body.selfPayload` 가 아니라 `gauges` 페이로드가 반올림한다).
+  //     ⇒ 한 점이 **19.2초**라 ±16% 짜리 자다. 그 자로 6.00 점을 읽어 115.2초가 나온 것이고,
+  //       ±40% 문턱 덕에 통과했을 뿐이다(자가 굵어서 통과한 것은 통과가 아니다).
+  //   ⇒ 증인을 **서버의 틱 시계**로 바꾼다(`/perf.tick.sim` — 세계가 실제로 적분한 초 · ms 해상도).
+  //     T153 이 그 계측을 세웠고, 그건 **관측자**라 동작을 안 바꾼다. 허기는 **교차 검사**로 남긴다.
+  const tickStat = async () => { try { return (await (await fetch(`http://localhost:${ZPORT}/perf`)).json()).tick; } catch (e) { return null; } };
   const hunNow = async () => page.evaluate(() => (window.__getGauges ? window.__getGauges().hunger : null));
   const coldNow = async () => page.evaluate(() => ((window.__bodyState || {}).cold));
   const hunA = await hunNow();
+  //   window 양끝을 같은 자리에서 잡는다. t0 는 위 읽기 넷보다 앞이라 벽시계가 그만큼 더 길게 잡히고,
+  //   부하 판에서 그 1~1.5초가 곧 "1.2% 뒤짐" 으로 보였다(세계가 아니라 자의 눈금이 어긋난 것).
+  const tkA = await tickStat();
+  const wA = Date.now();
   const cold0 = await coldNow();
   //   ★추우면 허기가 빨리 준다(`cm = 1 + COLD_HUNGER_EXTRA·cold`). ①이 여름 낮을 얼려 뒀으니 0 이어야 한다 —
   //     그걸 **전제로 못 박고** 나서 cm = 1 을 쓴다(가정이 아니라 검사다).
@@ -167,15 +176,54 @@ async function waitHttp(url, tries = 600) {
   await sleep(120000);         // 2분 — 표대로면 100/2160×120 ≈ 5.6HP(세계가 제 속도로 돌 때)
   const hpB = await hpNow();
   const hunB = await hunNow();
-  const secs = (Date.now() - t0) / 1000;                                   // 벽시계(참고용)
+  const wB = Date.now();
+  const tkB = await tickStat();
+  const secs = (Date.now() - t0) / 1000;                                   // 벽시계(HP 창 · 표시용)
+  const wallWin = (wB - wA) / 1000;      // 시계 충실도를 재는 창 — 틱 시계 두 읽기 사이만 센다
+  // ★★적분된 게임분 = **세계가 실제로 적분한 초**(서버 틱 시계). ms 해상도라 자가 굵지 않다.
+  const gsec = (tkA && tkB) ? (tkB.sim - tkA.sim) : 0;
+  // ★교차 검사(굵은 자) — 허기는 정수라 한 점이 19.2초다. 방향과 크기만 본다.
   const rate = B.decayRate(hunA, B.CFG.HUNGER_SEC);                        // ★정본 함수(사본 0)
-  const gsec = (hunA !== null && hunB !== null && rate > 0) ? (hunA - hunB) / rate : 0;   // **적분된 게임분**
+  const gsecHun = (hunA !== null && hunB !== null && rate > 0) ? (hunA - hunB) / rate : 0;
   const lost = hpA - hpB;
   ok(hunB > B.CFG.DECAY_SPLIT * 100,
     '★③ (상황) 허기가 감쇠율이 꺾이는 문턱 위에 있다 — 환산이 한 구간 안이다',
     `허기 ${hunA} → ${hunB} (문턱 ${B.CFG.DECAY_SPLIT * 100})`);
   ok(gsec > 0, '★★③ (상황) 세계가 실제로 게임분을 적분했다 — 환산의 분모가 0 이 아니다',
-    `게임분 ${gsec.toFixed(1)} · 벽시계 ${secs.toFixed(0)}초 (뒤진 몫 ${(secs - gsec).toFixed(1)}초)`);
+    `게임분 ${gsec.toFixed(1)} · 벽시계 ${secs.toFixed(1)}초 (뒤진 몫 ${(secs - gsec).toFixed(2)}초)`);
+  //   ★굵은 자로도 같은 말을 하는가 — 허기 한 점이 19.2초이므로 그 폭 안이면 어긋난 게 아니다.
+  ok(Math.abs(gsecHun - gsec) <= (1 / rate) + 1,
+    '★③ (교차) 허기로 재도 같은 말을 한다(정수 자 · 한 점 = 19.2초)',
+    `허기자 ${gsecHun.toFixed(1)}초 vs 틱시계 ${gsec.toFixed(1)}초 (허용 ±${(1 / rate).toFixed(1)}초)`);
+  // ★★[T153 2026-09-07] **시계가 하나다.** 종전엔 잘라 낸 몫을 버려서 부하 0 에서도 5.3% 가 뒤졌다
+  //   (하루 경계는 벽시계인데 몸은 5% 느린 **두 번째 시계** — T108 족보의 서버 판).
+  //   이제 빚을 이월하므로 **적분된 게임분 = 벽시계 ±1%** 여야 한다.
+  //   ⚠이 절은 하네스가 잰 두 수만 쓴다 — 서버 계측을 안 믿어도 성립한다(아래 ③-틱이 그걸 따로 본다).
+  //   ⚠**적분된 것**과 **셈이 된 것**은 다르다. 창이 닫히는 순간 세계가 아직 못 갚은 빚이 남아 있을 수 있다
+  //     (부하 판 실측: 한 틱이 15초 넘게 밀린다). 그 몫은 **잃은 게 아니라 곧 갚을 것**이다.
+  //     ⇒ 시계 충실도는 `적분 + 남은 빚` 으로 본다. 그리고 **버린 몫이 0** 이어야 그 말이 참이다(아래 ③-틱).
+  //     HP 속도는 위처럼 **적분된 몫**으로만 잰다 — 안 돈 시간에 HP 가 깎일 리 없다.
+  const acc = (tkA && tkB) ? ((tkB.sim + tkB.debt) - (tkA.sim + tkA.debt)) : 0;
+  const lagPct = 100 * (wallWin - acc) / wallWin;
+  ok(Math.abs(lagPct) <= 1.0,
+    '★★★③ **세계의 시계가 벽시계와 같이 간다**(틱 빚 이월 — 종전 5.3%)',
+    `뒤진 몫 ${lagPct.toFixed(2)}% (셈 ${acc.toFixed(2)}초 = 적분 ${gsec.toFixed(2)} + 남은 빚 ${(tkB ? tkB.debt : 0).toFixed(2)} vs 벽시계 ${wallWin.toFixed(2)}초)`);
+  // ★서버 계측(관측자)도 같이 본다 — 하네스의 산수와 세계의 셈이 어긋나면 그게 신호다.
+  {
+    const tk = tkB;   // ★위에서 이미 읽은 그 값 — 두 번 묻지 않는다(같은 창 안이어야 한다)
+    ok(!!tk, '★③-틱 서버가 틱 시계를 내준다(`/perf.tick` · 관측자)', tk ? JSON.stringify({ on: tk.on, dtMax: tk.dtMax, debtMax: tk.debtMax }) : 'null');
+    ok(tk && tk.on === true && tk.dtMax === 0.2,
+      '★★③-틱 **상한은 그대로 0.2 다** — 이월이 곧 분할 스텝이라 어떤 계도 종전보다 큰 dt 를 안 본다',
+      tk ? `dtMax ${tk.dtMax} · 이월 ${tk.on}` : '');
+    ok(tk && tk.lagPct !== null && Math.abs(tk.lagPct) <= 1.0,
+      '★★③-틱 서버가 센 뒤진 몫도 ±1% 안이다(부팅부터 누적)', tk ? `${tk.lagPct}%` : '');
+    ok(tk && tk.clip > 0,
+      '★③-틱 (상황) 실제로 **절단이 일어난 판**이다 — 안 그러면 위가 자명 통과다',
+      tk ? `절단 ${tk.clip}회 · 잘린 몫 ${(+tk.clipped).toFixed(2)}초 · 최악 간격 ${(+tk.maxGap).toFixed(2)}초` : '');
+    ok(tk && tk.dropN === 0,
+      '★③-틱 그리고 상한을 넘겨 **버린 몫이 없다**(있으면 로그로 남는다 · `tick_debt_drop`)',
+      tk ? `버림 ${tk.dropN}회 · ${(+tk.dropped).toFixed(2)}초` : '');
+  }
   ok(lost > 0, '★★③ **물 안 마시면 HP 가 실제로 깎인다**(캐논 변경 — 화면이 그렇게 말한다)',
     `${hpA} → ${hpB} (게임분 ${gsec.toFixed(1)} 에 ${lost}HP)`);
   // ★기대치는 손으로 정하지 않는다 — 역산 표(HP/게임분)에서 그대로 나온다.
