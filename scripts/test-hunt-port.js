@@ -430,7 +430,13 @@ say('\n⑩ 접점 — econ 무접촉 · kill→곳간 0 · wildlife 는 빈 Map 
   const econ = fs.readFileSync(path.join(ROOT, 'sim', 'economy-sim.js'), 'utf8');
   ok(/case 'hunter':\s+return \(L\.game \|\| 0\) \* 0\.7/.test(econ),
     '★★⑩ econ 사냥 소득 식이 **그대로**다(`land.game×0.7`) — 이 카드는 부존만 갱신한다');
-  ok(!/gameRich|huntTake|T146/.test(econ), '★★⑩ econ 엔진에 T146 이름이 **하나도 없다**');
+  //   ⚠★★**코드에게 묻는다 — 주석에게 묻지 않는다.** T154 가 엔진에 사냥 소득 주입 문을 넣으면서
+  //     그 자리 주석이 "T146 이 장부를 올렸으니…"라고 **설명**한다. 원문으로 재면 그 설명문에 걸린다
+  //     (T144 `@regress` · T154 `_hstat` 에 이어 **같은 함정 세 번째**다 — 계약은 코드에게 물어라).
+  const econC = codeOnly(econ);
+  ok(!/gameRich|huntTake|T146/.test(econC),
+    '★★⑩ econ 엔진 **코드**에 T146 이름이 하나도 없다(개체 장부는 생활층 소유)',
+    (econC.match(/gameRich|huntTake|T146/g) || []).join(',') || '0개');
   const vs = codeOnly(VSRC);
   ok(!/storage\.meat/.test(vs.slice(vs.indexOf('function _lifeGameDay'), vs.indexOf('function huntDeforest'))),
     '★★⑩ 하루 틱이 **곳간에 고기를 안 넣는다**(kill→회계는 다음 판 · 랩 규약)');

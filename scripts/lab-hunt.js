@@ -21,6 +21,9 @@ const { chromium } = require('playwright');
 const DAYS = parseInt(process.argv[2], 10) || 800;
 const SEED = parseInt(process.argv[3], 10) || 1020;
 const OFF = process.argv.includes('--off');
+// ★[T154] 사냥 소득 축 — abstract(기본 · 종전 비트) vs real(장부 마릿수 × 마리당 1 단위)
+const _II = process.argv.indexOf('--income');
+const INCOME = _II > 0 ? process.argv[_II + 1] : 'abstract';
 const JSONI = process.argv.indexOf('--json');
 const JSONP = JSONI > 0 ? process.argv[JSONI + 1] : null;
 
@@ -39,15 +42,16 @@ const PRNG_INIT = (seed) => `(() => {
   p.on('console', (m) => { if (m.type() === 'error') errs.push('CONSOLE ' + m.text().slice(0, 120)); });
   await p.goto('file://' + path.resolve(__dirname, '..', 'lab', '전쟁실험실.html'), { waitUntil: 'load', timeout: 180000 });
   await p.waitForTimeout(2000);
-  const r = await p.evaluate(({ days, seed, off }) => {
+  const r = await p.evaluate(({ days, seed, off, income }) => {
     const out = { rows: [], err: null };
     try {
       if (off) window.L_HUNTREAL = 0;
+      window.L_HUNTINCOME = income;   // ★[T154]
       const si = document.getElementById('seed'); if (si) si.value = String(seed);
       const nv = document.getElementById('nvil'); if (nv) nv.value = '8';
       reseed(); lifeInit();
       out.vil0 = VILS.length;
-      out.canon = { L_GAMEMAX, L_GAMER, L_HUNT,
+      out.canon = { L_GAMEMAX, L_GAMER, L_HUNT, income: (typeof _huntIncomeMode === 'function' ? _huntIncomeMode() : null),
         L_GAMEHALF: (typeof L_GAMEHALF !== 'undefined' ? L_GAMEHALF : null),
         huntReal: (typeof _huntReal === 'function' ? _huntReal() : null) };
       // ★초기 P — 마을별 개체군(gameRich 합) · 셀 수
@@ -60,6 +64,7 @@ const PRNG_INIT = (seed) => `(() => {
         lifeDayAll(true);
         for (const v of VILS) { const bb = v.econ && v.econ.dailyProductionBuf; if (!bb) continue;
           out.abs.meat += bb.meat || 0; out.abs.hide += bb.hide || 0; }
+        for (const v of VILS) { out.kills = (out.kills || 0) + (v.econ ? (v.econ._hkillDay || 0) : 0); }
         if (d % 5 === 0 || d === days - 1) {
           let P = 0, H = 0, M = 0;
           for (const v of VILS) { if (v.gameRich) for (const g of v.gameRich.values()) P += g;
@@ -97,17 +102,20 @@ const PRNG_INIT = (seed) => `(() => {
       out.day = VILS[0] ? VILS[0].day : null;
     } catch (e) { out.err = String(e && e.stack || e).slice(0, 400); }
     return out;
-  }, { days: DAYS, seed: SEED, off: OFF });
+  }, { days: DAYS, seed: SEED, off: OFF, income: INCOME });
   await b.close();
   if (r.err) { console.error('랩 오류:', r.err); process.exit(1); }
   if (errs.length) console.log('⚠ 페이지 오류 ' + errs.length + '건: ' + errs.slice(0, 3).join(' | '));
 
   const med = (a) => { const s = a.slice().sort((x, y) => x - y); return s.length ? s[s.length >> 1] : 0; };
-  console.log(`\n=== 랩 사냥 표 — ${DAYS}일 · 시드 ${SEED} · ${OFF ? 'OFF(현재 랩)' : 'ON(실체)'} ===`);
+  console.log(`\n=== 랩 사냥 표 — ${DAYS}일 · 시드 ${SEED} · ${OFF ? 'OFF(현재 랩)' : 'ON(실체)'} · 소득 ${INCOME} ===`);
   console.log(`정본: L_GAMEMAX=${r.canon.L_GAMEMAX} L_GAMER=${r.canon.L_GAMER} L_HUNT=${r.canon.L_HUNT}`
     + ` L_GAMEHALF=${r.canon.L_GAMEHALF} huntReal=${r.canon.huntReal}`);
   console.log(`인구 ${r.pop} · 소멸 ${r.dead}/${r.vil0} · 거래 ${r.trade} · day ${r.day}`);
-  console.log(`추상 산출 누계 — meat ${r.abs.meat.toFixed(0)} · hide ${r.abs.hide.toFixed(0)}`);
+  console.log(`산출 누계(곳간에 든 것) — meat ${r.abs.meat.toFixed(0)} · hide ${r.abs.hide.toFixed(0)}`);
+  const _kk = r.rows.reduce((a, x) => a + (x.took || 0), 0);
+  console.log(`장부 마릿수 누계 ${_kk.toFixed(0)} · 장부/산출 ${(r.abs.meat ? _kk / r.abs.meat : 0).toFixed(2)}배`
+    + ` · 소득 모드 ${r.canon.income}`);
   console.log('\n마을'.padEnd(10) + 'N'.padStart(5) + '사냥꾼'.padStart(7) + '셀'.padStart(6)
     + 'P'.padStart(8) + 'P%'.padStart(7) + '빈셀'.padStart(6) + 'MSY/일'.padStart(8)
     + 'land.game'.padStart(11) + '고기'.padStart(7) + '가죽'.padStart(7));
