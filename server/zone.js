@@ -4406,7 +4406,9 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'fish_strike') tryFishStrike(player);  // ★[낚시 v2] 챔질(서버 시각으로만 판정)
   else if (msg.type === 'fish_reel') { if (player._fish) { player._fish = null; send(player.ws, { type: 'fish_state', state: 'idle' }); send(player.ws, { type: 'notice', text: '🎣 줄을 거뒀다' }); } }
   else if (msg.type === 'harvest') tryHarvest(player);
-  else if (msg.type === 'feed') tryFeed(player);
+  // ★[T148 2026-09-07] 개명 `feed` → `tame_feed`(짐승 길들이기). **옛 이름 폴백 0.**
+  //   사람 먹이기는 `{type:'verb', name:'feed'}`(`Rescue.verb`)라 봉투가 다르고, 이제 이름도 안 겹친다.
+  else if (msg.type === 'tame_feed') tryFeed(player);
   else if (msg.type === 'tribe_set') {
     // 클라가 central에 길드 만들기/가입/탈퇴 후 자기 zone에 알림
     player.tribeId = msg.tribeId || null;

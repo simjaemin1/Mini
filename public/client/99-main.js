@@ -393,12 +393,15 @@
       // ★[11차 T4] 마을 크루에게 집 의뢰 — placementMode.special 재사용(발명 0). 검증·재료·배치는 서버 권위.
       else if (a === 'psite_request') { buildMode = true; placementMode = { special: 'psite' }; showNotice('집 의뢰 모드 — 마을 영토 안을 클릭 (기둥6·서까래8·이엉8 선납 · B=취소)'); }
       else if (a === 'harvest') sendPrimary({ type: 'harvest' });
-      // ★★[T140 2026-09-06] 낱말 하나를 갈았다: `data-action="feed"` → **`tame_feed`**.
-      //   `feed` 가 이 클라에서 **두 뜻**이었다 — 여기(짐승 길들이기 `tryFeed`)와
-      //   우클릭 동사 `{ type:'verb', name:'feed' }`(쓰러진 사람 먹이기 · `rescue.feed`).
-      //   ⚠**선에 나가는 이름은 안 건드린다** — 서버 프로토콜은 여전히 `{ type: 'feed' }` 다
-      //     (T140 지시: 서버 프로토콜 이름이 걸린 쪽은 안 건드린다 · 행동 변경 0 · 폴백 0).
-      else if (a === 'tame_feed') sendPrimary({ type: 'feed' });
+      // ★★[T148 2026-09-07] **선의 이름까지 갈았다: `feed` → `tame_feed`.**
+      //   T140 은 버튼 낱말만 갈고 프로토콜은 뒀다 — 그래서 `feed` 가 선에서 여전히 두 뜻이었다
+      //   (짐승 쪽 메시지 타입 하나 · 사람 쪽은 `verb` 봉투의 `name`). 봉투가 달라 서버는
+      //   안 헷갈리지만 **읽는 사람이 헷갈린다**(T140 회부 2). 이제 짐승 쪽은 이름이 하나다.
+      //   ⚠**옛 이름 폴백 0** — 두 이름을 동시에 받으면 그게 사본이다(T131 규약).
+      //     한 번에 갈아 끼운다: 클라 1줄 · 서버 분기 1줄 · 하네스 문구 전수(보고 §0-ⓐ 표).
+      //   ★사람 쪽 `{type:'verb', name:'feed'}` 는 **안 건드린다** — 이제 `feed` 는 그 하나뿐이라
+      //     더는 두 뜻이 아니다(`rescue.feed` · `/먹이기` 정본 그대로).
+      else if (a === 'tame_feed') sendPrimary({ type: 'tame_feed' });
       else if (a === 'tribe') toggleTribePanel();
       else if (a === 'pvp_toggle') sendPrimary({ type: 'pvp_set', enabled: !myPvpEnabled });
       else if (a === 'cook') toggleCookPanel();

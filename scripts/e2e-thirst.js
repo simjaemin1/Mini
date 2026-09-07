@@ -147,25 +147,48 @@ async function waitHttp(url, tries = 600) {
   const t0 = Date.now();
   const hpA = await hpNow();
   ok((await thirstNow()) === 0, '★③ (상황) 갈증이 실제로 0 이다 — 자명 통과 금지', `${await thirstNow()}`);
-  //   ★**충분히 길게 잰다.** 적용은 1HP 단위로 양자화돼 있어(총량은 보존) 짧게 재면 반올림이
-  //     외삽을 통째로 흔든다 — 60초 초안은 그래서 "51분"이라는 없는 결함을 냈다. 2분이면 잦아든다.
-  await sleep(120000);         // 2분 — 표대로면 100/2160×120 ≈ 5.6HP
+  // ★★[T148 2026-09-07] **벽시계로 외삽하지 않는다 — 게임분으로 잰다**(T140 회부 1 ⓐ).
+  //   T140 부하 판에서 이 절이 "50.7분 vs 표 36.0분"으로 빨갰다. 결함이 아니라 **세계가 느리게 돈 것**이다:
+  //   `zone.js:10556` 이 `dt = Math.min(0.2, …)` 로 한 틱을 **0.2초에서 자르고 따라잡지 않는다**.
+  //   코어가 눌려 틱이 200ms 를 넘으면 적분된 게임분이 벽시계보다 **영구히** 뒤진다.
+  //   ⇒ "게임 1.5일에 HP 100" 은 **게임분에 대한 주장**이다. 벽시계를 대입한 것이 틀렸다.
+  //
+  //   ★증인: **허기**. 같은 `Body.tick(dt)` 가 HP 빚과 허기 감쇠를 **같은 dt** 로 적분한다.
+  //     허기는 소수 둘째 자리까지 오므로(HP 는 1 단위 양자화) 오히려 더 곱게 읽힌다.
+  //     환산은 **정본 함수**를 그대로 부른다(`B.decayRate` — 사본 0).
+  const hunNow = async () => page.evaluate(() => (window.__getGauges ? window.__getGauges().hunger : null));
+  const coldNow = async () => page.evaluate(() => ((window.__bodyState || {}).cold));
+  const hunA = await hunNow();
+  const cold0 = await coldNow();
+  //   ★추우면 허기가 빨리 준다(`cm = 1 + COLD_HUNGER_EXTRA·cold`). ①이 여름 낮을 얼려 뒀으니 0 이어야 한다 —
+  //     그걸 **전제로 못 박고** 나서 cm = 1 을 쓴다(가정이 아니라 검사다).
+  ok(cold0 !== undefined && cold0 <= 0.01,
+    '★③ (상황) 추위가 0 이다 — 허기 환산의 곱이 1 이다(자명 통과 금지)', `추위 ${cold0}`);
+  await sleep(120000);         // 2분 — 표대로면 100/2160×120 ≈ 5.6HP(세계가 제 속도로 돌 때)
   const hpB = await hpNow();
-  const secs = (Date.now() - t0) / 1000;
+  const hunB = await hunNow();
+  const secs = (Date.now() - t0) / 1000;                                   // 벽시계(참고용)
+  const rate = B.decayRate(hunA, B.CFG.HUNGER_SEC);                        // ★정본 함수(사본 0)
+  const gsec = (hunA !== null && hunB !== null && rate > 0) ? (hunA - hunB) / rate : 0;   // **적분된 게임분**
   const lost = hpA - hpB;
+  ok(hunB > B.CFG.DECAY_SPLIT * 100,
+    '★③ (상황) 허기가 감쇠율이 꺾이는 문턱 위에 있다 — 환산이 한 구간 안이다',
+    `허기 ${hunA} → ${hunB} (문턱 ${B.CFG.DECAY_SPLIT * 100})`);
+  ok(gsec > 0, '★★③ (상황) 세계가 실제로 게임분을 적분했다 — 환산의 분모가 0 이 아니다',
+    `게임분 ${gsec.toFixed(1)} · 벽시계 ${secs.toFixed(0)}초 (뒤진 몫 ${(secs - gsec).toFixed(1)}초)`);
   ok(lost > 0, '★★③ **물 안 마시면 HP 가 실제로 깎인다**(캐논 변경 — 화면이 그렇게 말한다)',
-    `${hpA} → ${hpB} (${secs.toFixed(0)}초에 ${lost}HP)`);
+    `${hpA} → ${hpB} (게임분 ${gsec.toFixed(1)} 에 ${lost}HP)`);
   // ★기대치는 손으로 정하지 않는다 — 역산 표(HP/게임분)에서 그대로 나온다.
-  const expect = B.CFG.EXTREME_HP_THIRST * secs;      // 1 게임분 = 1 실초
+  const expect = B.CFG.EXTREME_HP_THIRST * gsec;      // ★게임분 × (HP/게임분)
   ok(Math.abs(lost - expect) <= 2,
     '★★③ 속도가 **역산 표 그대로**다(갈증 극단 최심 = 게임 1.5일에 HP 100)',
-    `실측 ${lost}HP vs 표 ${expect.toFixed(2)}HP`);
+    `실측 ${lost}HP vs 표 ${expect.toFixed(2)}HP (게임분 ${gsec.toFixed(1)})`);
   ok(lost <= 9, '★③ 그리고 **아주 천천히**다 — 2분에 몇 점(즉사가 아니다)', `${lost}HP/2분`);
-  // 외삽 — 기다리지 않고 "36분이면 0" 을 확인한다
-  const toZero = (lost > 0) ? (100 / (lost / secs)) : Infinity;
-  ok(Math.abs(toZero - 2160) < 2160 * 0.4,
-    '★★③ 외삽하면 **실시간 36분 ≈ 게임 1.5일**에 HP 100 이 빈다(기다리지 않고 대조)',
-    `외삽 ${(toZero / 60).toFixed(1)}분 vs 표 36.0분`);
+  // 외삽 — 기다리지 않고 "게임 2160분이면 0" 을 확인한다(벽시계가 아니라 **게임분**이 눈금이다)
+  const toZeroG = (lost > 0) ? (100 / (lost / gsec)) : Infinity;
+  ok(Math.abs(toZeroG - 2160) < 2160 * 0.4,
+    '★★③ 외삽하면 **게임 2160분(= 1.5 게임일)**에 HP 100 이 빈다(기다리지 않고 대조)',
+    `외삽 ${toZeroG.toFixed(0)} 게임분 vs 표 2160 · 세계가 제 속도로 돌면 실시간 ${(toZeroG / 60).toFixed(1)}분`);
   await snap('thirst-01-drain');
 
   // ── ④ 물을 마시면 **즉시** 멎는다 · 그리고 다시 아문다 ────────────────────
