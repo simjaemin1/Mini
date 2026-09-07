@@ -2173,8 +2173,62 @@ function harvestToGranary(v, n) {
   const tax = amt * TAX_RATE;
   v.storage.food = (v.storage.food || 0) + (amt - tax);
   if (v.treasury) v.treasury.food = (v.treasury.food || 0) + tax;
+  v._t100InflowToday = (v._t100InflowToday || 0) + amt;         // 오늘치 — ⓒ 텃밭 하한이 이걸 보고 모자란 만큼만 댄다
   v._t100HarvestN = (v._t100HarvestN || 0) + (n > 0 ? n : 1);   // 계측 전용 누계(회계 아님 · 표가 스스로 말하게)
   return amt;
+}
+// ★★[T100 5판 · 재민/PM 판정 2026-09-07] **창설 곳간은 첫 수확까지다.**
+//   4판이 드러낸 골짜기: 산출이 밭에 물리는 순간 곡물은 **첫 수확이 날 때까지 0** 인데
+//   창설 부존은 `initN × 45` 였다(첫 40일 파종 7,981 · 수확 332 · 곳간은 45일에 바닥).
+//   45 는 어디서도 유도되지 않은 수다 — 원 주석이 스스로 말한다("옛 300일치는 글럿").
+//   ⇒ **정본 `server/crops.js daysToFirstHarvest(bornDay)`** 가 답한다(파종창 + 익음 시계 ·
+//     휴면·춘화 T99 포함 · 겨울 창설이면 봄 첫 파종창까지 굴러간다 · **여유 0**).
+//   ⚠**브라우저 번들엔 `crops.js` 가 없다**(카탈로그·날씨·사건까지 끌고 온다 — 번들 대상은
+//     era·specialty·econ 셋뿐). 그래서 여기엔 **창설일 0 의 값 하나**를 적어 두고 폴백으로 쓴다:
+//     랩이 세우는 마을은 전부 게임일 0 창설이라 그 한 값이면 서버와 갈리지 않는다.
+//     하네스가 `crops.js` 에서 **다시 유도해 대조**한다(손으로 고치면 빨개진다).
+const SEED_FOOD_DAYS_D0 = 55;        // = crops.daysToFirstHarvest(0) · 게임일 0 = 3월(봄 첫날 · CROP_ANCHOR_MONTH)
+const SEED_FOOD_DAYS_LEGACY = 45;    // T86 세계의 그 수 — 손잡이를 끄면 이것 그대로다(비트 동일)
+let _cropsMod;
+function _crops() { if (_cropsMod === undefined) { try { _cropsMod = require('../server/crops'); } catch (e) { _cropsMod = null; } } return _cropsMod; }
+function seedFoodDays(bornDay) {
+  if (!T100_FIELD_YIELD) return SEED_FOOD_DAYS_LEGACY;   // ★되돌림 — T86 세계 **비트 동일**
+  const C = _crops();
+  if (C && typeof C.daysToFirstHarvest === 'function') {
+    const d = C.daysToFirstHarvest(bornDay | 0);
+    if (d > 0) return d;
+  }
+  return SEED_FOOD_DAYS_D0;                              // 브라우저 번들 · 정본 부재 폴백(랩은 게임일 0 창설뿐)
+}
+// ★★[T100 5판 ⓒ · 조건부] **텃밭 하한 — 수확 없는 날의 바닥.**
+//   3판에 있던 그 장치다(밭 0칸 마을의 농부 산출이 0 이 아니게). 4판이 산출을 실제 수확으로 옮기면서
+//   같이 사라졌는데, 5판 ⓑ(창설 곳간)만으로 골짜기가 안 메워지면 이것이 바닥을 댄다.
+//   ⚠**새 수 0** — 셋 다 이 파일·이 저장소가 이미 답한 값이다:
+//     · 텃밭 칸수  = 생활층 정본 `server/villages.js LIFE_CLEAR_PDAY`(농부 1인 하루 개간 셀) = 3
+//     · 익음 주기  = 창설 곳간과 **같은 유도**(`SEED_FOOD_DAYS_D0` — 한 칸이 한 번 익는 데 걸리는 날)
+//     · 수확 한 건 = `T100_K`(4판 유도값)
+//   ⇒ 농부 1인 하루 바닥 = 텃밭 칸수 × k ÷ 익음 주기.  실제 수확이 이보다 많은 날엔 **아무 일도 안 한다**(max).
+//   ⚠이 하한은 "밭이 실제로 낸 것만 들어간다"는 4판 규약의 **구멍**이다. 그래서 손잡이로 끌 수 있고
+//     (`T100_GARDEN=0`), 보고가 **하한이 낸 몫 ÷ 수확이 낸 몫**을 적는다.
+const T100_GARDEN_CELLS = 3;         // = server/villages.js LIFE_CLEAR_PDAY (하네스가 두 값을 대조한다)
+const T100_GARDEN = process.env.T100_GARDEN !== '0';   // 되돌림: ⓑ 만 보려면 T100_GARDEN=0
+const T100_GARDEN_FLOOR = T100_GARDEN_CELLS * T100_K / SEED_FOOD_DAYS_D0;   // 농부 1인 하루 식량등가 바닥(유도값)
+// 하루 한 번 — econ 틱이 부른다. 오늘 들어온 수확이 바닥보다 적으면 그 차이만 메운다.
+function gardenFloorTopUp(v) {
+  if (!T100_FIELD_YIELD || !T100_GARDEN || !v || !v.storage) return 0;
+  const fN = (v.counts && v.counts.farmer) || 0;
+  const got = v._t100InflowToday || 0;
+  v._t100InflowToday = 0;
+  if (!(fN > 0)) return 0;
+  const need = fN * T100_GARDEN_FLOOR;
+  const gap = need - got;
+  if (!(gap > 0)) return 0;
+  v._grainToday = (v._grainToday || 0) + gap;
+  const tax = gap * TAX_RATE;
+  v.storage.food = (v.storage.food || 0) + (gap - tax);
+  if (v.treasury) v.treasury.food = (v.treasury.food || 0) + tax;
+  v._t100FloorTot = (v._t100FloorTot || 0) + gap;    // 계측 전용 누계 — 보고가 "하한이 낸 몫"을 적는다
+  return gap;
 }
 // ★무용재 — 실수요(use-value)가 ~0이라 수출해도 식량 못 삼. 식량안보와 무관하게 *항상* 생산 포만(성장기 누적까지 차단).
 //   광석(ore): 갑옷에 미량뿐. 장식재(금·은·보석): 화폐화 전엔 수요 0. 돌·금속(구리·주석)은 수요 있어 제외(가치재 수출).
@@ -3152,7 +3206,7 @@ function createVillage(opts) {
   }
   // 초기 비축 — 비자급 마을(광물/사막)도 교역 시작할 시간. ★45일치(옛 300일치는 글럿→satiation이 식량생산 억제→
   //   부양력 오판·농부 이탈로 초반 인구 진동시켰음). 45일이면 satiation 거의 0(secF~0.1) + 교역 부트스트랩 충분.
-  v.storage.food = initN * 45;
+  v.storage.food = initN * seedFoodDays(opts.bornDay || 0);   // ★[T100 5판] 45 → **첫 수확까지**(끄면 45 그대로 · 위 `seedFoodDays`)
   v.storage.tool = initN * 3;         // 도구 충분
   v.storage.clothes = initN * 1.1;    // ★의복(2026-07-12): 정착민은 입고 온다(1인 1벌+α) — 옷 0벌 창설이 첫 겨울(day270) 한랭 나선을 만들던 부트스트랩 구멍 봉합(herb·활 시드 동형). 정상상태 수요는 마모(CLOTH_WEAR_PC)가 유지
   v.storage.wood = initN * 8;         // 초기 주거 건축 부트스트랩(사용자 확정: 원값 유지) + 벌채 부산물(deforestCell)은 별도 소량 보충
@@ -3732,6 +3786,7 @@ function tickVillage(v, day) {
   }
   // ★여유노동 비율 저장 — 교역 동시성 상한(tickTradeV2 spareCap)에서 사용.
   v._idleFrac = _potA > 0 ? Math.max(0, 1 - _actA / _potA) : 0;
+  gardenFloorTopUp(v);   // ★[T100 5판 ⓒ] 텃밭 하한 — 하루 한 번(끄면 즉시 0 을 돌려준다 · 위 함수)
 
   // ★S3 막석기 자급 안전망 — 도구(석기)가 치명적으로 부족(커버리지<SELF_TOOL_COV)하면 도구의존 노동자가 급할 때 막석기를 손수 자급.
   //   "농부는 도구만 급할 때 자급"(스펙 8) — 무기는 자급 안 함(석공·대장장이 전담). 낮은 노동(0.02/인), 돌 있을 때만. 정교 석기는 석공.
@@ -5620,8 +5675,10 @@ module.exports = {
   consumeFood,           // ★[T73] 식단 사다리의 **순서**를 하네스가 직접 증명하려면 필요(같은 이유)
   RAW_GRAINS, RAW_GRAIN_FOOD_FACTOR,   // ★[T73] 계수를 하네스·계측기가 옮겨 적지 않게(사본 금지)
   farmFlowPerDay, farmLandBoost, harvestToGranary,   // ★[T100] 같은 이유 — 하네스·계측기가 앵커를 옮겨 적지 않는다
-  T100_ANCHOR_N, T100_HARVEST_PER_FARMER_YEAR, T100_K, T100_FIELD_YIELD,
-  DAILY_FOOD_CONSUMPTION,   // ★[T100 4판] 하루 1인 식량 정본 — `k` 유도의 한 항(하네스가 1.0 을 옮겨 적지 않는다)   // ★[T100 4판] 앵커 하나 · 실측 하나 · 유도값 하나 · 손잡이 — 생활층(`villages.js`)과 하네스가 **여기서만** 읽는다(사본 0)
+  T100_ANCHOR_N, T100_HARVEST_PER_FARMER_YEAR, T100_K, T100_FIELD_YIELD,   // ★[T100 4판] 앵커 하나 · 실측 하나 · 유도값 하나 · 손잡이 — 생활층(`villages.js`)과 하네스가 **여기서만** 읽는다(사본 0)
+  DAILY_FOOD_CONSUMPTION,   // ★[T100 4판] 하루 1인 식량 정본 — `k` 유도의 한 항(하네스가 1.0 을 옮겨 적지 않는다)
+  seedFoodDays, SEED_FOOD_DAYS_D0, SEED_FOOD_DAYS_LEGACY,   // ★[T100 5판] 창설 곳간의 밑변 — 하네스가 `crops.js` 에서 다시 유도해 대조한다
+  gardenFloorTopUp, T100_GARDEN, T100_GARDEN_CELLS, T100_GARDEN_FLOOR,   // ★[T100 5판 ⓒ] 텃밭 하한 — 값·손잡이·유도식을 하네스가 다시 계산한다
   FARMER_BASE: JOBS.farmer.base,   // ★[T100] 농부 1인 기준 산출(옛 밑변 `1.5 × 지력`의 1.5) — 계측기·하네스가 이 수를 옮겨 적지 않게
   // ★[T125] 옷감 보온 가중 — `server/villages.js` 가 주민 착장 재질을 고를 때 **읽는다**.
   //   같은 이유(사본 금지)로 이름만 낸다. 값·틱 로직 무접촉 — 이 줄은 시뮬을 한 톨도 안 바꾼다.

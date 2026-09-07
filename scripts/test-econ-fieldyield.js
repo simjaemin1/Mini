@@ -20,6 +20,8 @@
 //   ⑦ 돌연변이  : `k` 를 손으로 1 이라 적으면 ①이 빨개진다(자식 프로세스 · 변조 사본)
 //   ⑧ 추출 무변 : 개간 정본은 하나다(`_lifeClearDay`) — 랩도 라이브도 **그 함수**를 부른다
 //   ⑨ 3사본     : 번들이 소스와 같은 표·같은 손잡이를 갖는다
+//   ⑩ 창설 곳간 : `45` 대신 **첫 수확까지**가 `crops.js` 정본에서 유도된다(겨울 창설은 봄까지 · 여유 0)
+//   ⑪ 텃밭 하한 : 수확 없는 날의 바닥이 `LIFE_CLEAR_PDAY`·`k`·익음 주기에서 유도된다(손잡이 `T100_GARDEN=0`)
 //
 // 실행: node scripts/test-econ-fieldyield.js
 'use strict';
@@ -131,7 +133,7 @@ console.log('\n④ 무접촉 — 어부·사냥꾼·채집 산출은 안 건드�
   ok(/landBoost: \(v\) => v\.land\.game/.test(SRC), '④ 사냥꾼 `landBoost` 가 `v.land.game` 그대로다(소스)');
   const CODE = SRC.replace(/\/\*[\s\S]*?\*\//g, ' ').split('\n').map(l => l.replace(/\/\/.*$/, '')).join('\n');
   const hits = CODE.split('\n').filter(l => l.indexOf('T100_FIELD_YIELD') >= 0).length;
-  ok(hits === 5, '④ ★손잡이를 무는 줄이 **다섯뿐**이다(선언 1 + `farmFlowPerDay` 1 + `harvestToGranary` 1 + 대체 1 + 내보내기 1 — 주석 제외)', `${hits}줄`);
+  ok(hits === 7, '④ ★손잡이를 무는 줄이 **일곱뿐**이다(선언 1 + `farmFlowPerDay` 1 + `harvestToGranary` 1 + `seedFoodDays` 1 + `gardenFloorTopUp` 1 + 대체 1 + 내보내기 1 — 주석 제외)', `${hits}줄`);
   ok(/farmFlowPerDay\(v, _cf\.farmer \|\| 0\)/.test(SRC), '④ 부양력(prodK)도 **같은 함수**를 본다(K 만 옛 밑변이면 인구가 밭 없이 분다)');
   // 부양력은 켜면 앵커 그 자체다 — 용량과 산출이 같은 앵커를 본다.
   const v = econ.createVillage({ initialPop: 0, name: '픽스처', fertility: 0.8 });
@@ -204,6 +206,16 @@ if (!process.env.T100_CHILD) {
     ok(run({ T100_FIELD_YIELD: '1', T100_MUT_MOD: MUTNAME }) !== 0,
       '⑦ ★★★`k` 를 손으로 1 이라 적으면 **①이 빨개진다**(곳간에 드는 식량이 1/k 로 급감하는 판)');
   } finally { if (made) { try { fs.unlinkSync(MUTPATH); } catch (e) { console.log('  ⚠변조 사본 정리 실패: ' + MUTPATH); } } }
+  // ★변조 둘째 — 창설 곳간을 옛 수 45 로 되돌린 사본(4판의 골짜기를 되살리는 판)
+  let made2 = false;
+  try {
+    const mutSrc2 = SRC.replace('const SEED_FOOD_DAYS_D0 = 55;', 'const SEED_FOOD_DAYS_D0 = 45;')
+                       .replace("if (C && typeof C.daysToFirstHarvest === 'function') {", 'if (false) {');
+    ok(mutSrc2 !== SRC, '⑦ 창설 곳간의 변조 지점이 소스에 **실재한다**');
+    fs.writeFileSync(MUTPATH, mutSrc2); made2 = true;
+    ok(run({ T100_FIELD_YIELD: '1', T100_MUT_MOD: MUTNAME }) !== 0,
+      '⑦ ★★★창설 곳간을 **45 로 되돌리면 ⑩ 이 빨개진다**(4판의 골짜기를 되살리는 판)');
+  } finally { if (made2) { try { fs.unlinkSync(MUTPATH); } catch (e) { console.log('  ⚠변조 사본 정리 실패: ' + MUTPATH); } } }
   const mutated = VSRC.replace('  if (vil.econ) vil.econ._fieldCells = vil._farmSet.size;',
     '  if (vil.econ) { vil.econ._fieldCells = vil._farmSet.size; vil.econ.storage.food += 1; }');
   ok(mutated !== VSRC && bites(mutated),
@@ -220,11 +232,81 @@ console.log('\n⑧ 개간 정본 — 랩도 라이브도 같은 함수를 부른
     '⑧ ★★랩 주입구가 **그 함수 자체**를 내준다(하네스가 크루 상한·프론티어를 다시 적지 않는다)');
 }
 
+// ── ⑩ 창설 곳간 — 45 는 지어낸 수였다 ─────────────────────────────────────
+console.log('\n⑩ 창설 곳간 — 첫 수확까지(T100 5판 · 여유 0)');
+{
+  const CR = R('server/crops.js');
+  ok(typeof CR.daysToFirstHarvest === 'function',
+    '⑩ 정본 `crops.js daysToFirstHarvest` 가 있다(창설 곳간의 밑변을 econ 이 지어내지 않는다)');
+  const d0 = CR.daysToFirstHarvest(0);
+  ok(d0 === econ.SEED_FOOD_DAYS_D0,
+    '⑩ ★★★econ 이 적어 둔 창설일 0 값을 `crops.js` 에서 **다시 유도해도 같다**(브라우저 폴백 = 서버 정본)',
+    `유도 ${d0} = 상수 ${econ.SEED_FOOD_DAYS_D0}`);
+  ok(econ.SEED_FOOD_DAYS_LEGACY === 45,
+    '⑩ 옛 수 45 는 **끈 팔의 값으로만** 남아 있다(비트 동일의 뿌리)', String(econ.SEED_FOOD_DAYS_LEGACY));
+  ok(d0 !== econ.SEED_FOOD_DAYS_LEGACY, '⑩ [자명 통과 금지] 유도값이 옛 수와 **실제로 다르다**', `${d0} ≠ 45`);
+  // 겨울 창설 — 봄 첫 파종창까지 굴러간다(T99 휴면 그대로)
+  const winter = [];
+  for (let d = 0; d < 365; d++) if (CR.sowableMonth('논', CR.monthOf(d)).length === 0 && CR.sowableMonth('밭', CR.monthOf(d)).length === 0) winter.push(d);
+  pre(winter.length > 0, '심을 수 없는 날(겨울)이 실제로 있다 — 자명 통과 금지', `${winter.length}일`);
+  if (winter.length) {
+    const w = winter[Math.floor(winter.length / 2)];
+    const dw = CR.daysToFirstHarvest(w);
+    ok(dw > d0, '⑩ ★★겨울에 세운 마을은 **봄 첫 수확까지** 더 오래 버텨야 한다', `게임일 ${w}(${CR.monthOf(w)}월) → ${dw}일 > 봄 ${d0}일`);
+    ok(CR.sowableMonth('논', CR.monthOf(w + dw)).length + CR.sowableMonth('밭', CR.monthOf(w + dw)).length >= 0,
+      '⑩ 그 날 수가 실제 달력 위에 앉는다(휴면 T99 를 통과한 값)');
+  }
+  // 손잡이 — 끄면 옛 수 그대로
+  if (ON) {
+    ok(econ.seedFoodDays(0) === d0, '⑩ ★[켬] 창설 곳간이 유도값을 쓴다', `${econ.seedFoodDays(0)}일`);
+    const v = econ.createVillage({ initialPop: 10, name: '픽스처', fertility: 1.0 });
+    ok(Math.abs((v.storage.food || 0) - 10 * d0) < 1e-9,
+      '⑩ ★★창설 부존이 실제로 `initN × 유도값` 이다(한 줄이 그 값을 쓴다)', (v.storage.food || 0).toFixed(1));
+  } else {
+    ok(econ.seedFoodDays(0) === 45, '⑩ ★[끔] 창설 곳간이 옛 수 45 그대로다(비트 동일)');
+    const v = econ.createVillage({ initialPop: 10, name: '픽스처', fertility: 1.0 });
+    ok(Math.abs((v.storage.food || 0) - 450) < 1e-9, '⑩ [끔] 창설 부존 = initN × 45', (v.storage.food || 0).toFixed(1));
+  }
+  ok(/v\.storage\.food = initN \* seedFoodDays\(opts\.bornDay \|\| 0\);/.test(SRC),
+    '⑩ 창설 자리가 **한 줄**이고 그 줄에 숫자가 없다(45 를 다시 적으면 빨개진다)');
+}
+
+// ── ⑪ 텃밭 하한(조건부 ⓒ) ─────────────────────────────────────────────────
+console.log('\n⑪ 텃밭 하한 — 수확 없는 날의 바닥(T100 5판 ⓒ · 새 수 0)');
+{
+  const V = R('server/villages.js');
+  ok(econ.T100_GARDEN_CELLS === V.__labProbe._clearProbe.LIFE_CLEAR_PDAY,
+    '⑪ ★★텃밭 칸수 = 생활층 정본 `LIFE_CLEAR_PDAY`(두 곳이 갈리면 여기가 빨개진다)',
+    `econ ${econ.T100_GARDEN_CELLS} = 생활층 ${V.__labProbe._clearProbe.LIFE_CLEAR_PDAY}`);
+  const derived = econ.T100_GARDEN_CELLS * econ.T100_K / econ.SEED_FOOD_DAYS_D0;
+  ok(Math.abs(derived - econ.T100_GARDEN_FLOOR) < 1e-12,
+    '⑪ ★★★바닥을 `텃밭 칸수 × k ÷ 익음 주기` 로 **다시 유도해도 같다**(손으로 적은 수 0)',
+    `유도 ${derived.toFixed(6)} = 상수 ${econ.T100_GARDEN_FLOOR.toFixed(6)}`);
+  ok(/const T100_GARDEN_FLOOR = T100_GARDEN_CELLS \* T100_K \/ SEED_FOOD_DAYS_D0;/.test(SRC),
+    '⑪ ★소스에 바닥이 **유도식으로만** 있다');
+  ok(econ.T100_GARDEN_FLOOR < econ.T100_ANCHOR_N,
+    '⑪ 바닥은 앵커보다 **아래**다(하한이지 산출이 아니다)',
+    `${econ.T100_GARDEN_FLOOR.toFixed(4)} < ${econ.T100_ANCHOR_N} (${(econ.T100_GARDEN_FLOOR / econ.T100_ANCHOR_N * 100).toFixed(1)}%)`);
+  const v = econ.createVillage({ initialPop: 0, name: '픽스처', fertility: 1.0 });
+  v.counts = Object.assign({}, v.counts, { farmer: 10 });
+  const f0 = v.storage.food || 0;
+  const put = econ.gardenFloorTopUp(v);
+  if (ON && econ.T100_GARDEN) {
+    ok(Math.abs(put - 10 * econ.T100_GARDEN_FLOOR) < 1e-9, '⑪ ★수확이 0 인 날엔 농부수 × 바닥을 댄다', put.toFixed(4));
+    ok(Math.abs((v.storage.food - f0) - put * 0.97) < 1e-9, '⑪ 곳간에 실제로 들어간다(세금 3% 는 금고로 — 같은 꼴)');
+    econ.harvestToGranary(v, 100);
+    ok(econ.gardenFloorTopUp(v) === 0, '⑪ ★★수확이 바닥보다 많은 날엔 **한 톨도 안 댄다**(max — 얹기 0)');
+  } else {
+    ok(put === 0 && (v.storage.food || 0) === f0, '⑪ [끔/손잡이 0] 바닥이 **한 톨도 안 댄다**');
+  }
+  ok(/gardenFloorTopUp\(v\);/.test(SRC), '⑪ 하루 한 번 부르는 자리가 소스에 있다(econ 틱 · 생활층 아님)');
+}
+
 // ── ⑨ 3사본 ────────────────────────────────────────────────────────────────
 console.log('\n⑨ 3사본 · 소스 계약');
 {
   const B = fs.readFileSync(path.join(ROOT, 'sim', 'economy-engine.browser.js'), 'utf8');
-  for (const k of ['T100_ANCHOR_N', 'T100_HARVEST_PER_FARMER_YEAR', 'T100_K', 'T100_FIELD_YIELD', 'farmFlowPerDay', 'harvestToGranary'])
+  for (const k of ['T100_ANCHOR_N', 'T100_HARVEST_PER_FARMER_YEAR', 'T100_K', 'T100_FIELD_YIELD', 'farmFlowPerDay', 'harvestToGranary', 'SEED_FOOD_DAYS_D0', 'seedFoodDays', 'T100_GARDEN_FLOOR', 'gardenFloorTopUp'])
     ok(B.indexOf(k) >= 0, `⑨ 번들에 \`${k}\` 가 있다`);
   const n = (B.match(/T100_FIELD_YIELD/g) || []).length, m = (SRC.match(/T100_FIELD_YIELD/g) || []).length;
   ok(n === m, '⑨ ★손잡이가 무는 자리 수가 소스와 **같다**', `번들 ${n} = 소스 ${m}`);

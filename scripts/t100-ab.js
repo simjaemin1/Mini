@@ -22,6 +22,11 @@ const path = require('path');
 const DIR = process.argv[2] && process.argv[2][0] !== '-' ? process.argv[2] : '/tmp/t100ab';
 const si = process.argv.indexOf('--seeds');
 const SEEDS = si >= 0 && process.argv[si + 1] ? process.argv[si + 1].split(',').map(Number) : [1020, 7, 42];
+// ★[T100 5판] 두 팔의 **파일 이름표**를 고를 수 있게 — 4판은 off/on, 5판은 ⓑ만(b)/ⓑ+ⓒ(bc) 를 견준다.
+//   자료가 바뀌는 것이지 산수가 바뀌는 게 아니다(이 파일엔 여전히 비율 하나뿐).
+const ai = process.argv.indexOf('--arms');
+const ARMS = ai >= 0 && process.argv[ai + 1] ? process.argv[ai + 1].split(',') : ['off', 'on'];
+const [A0, A1] = ARMS;
 
 const load = (p) => { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch (e) { return null; } };
 const nf = (x) => (x == null ? '—' : Number(x).toLocaleString());
@@ -37,11 +42,11 @@ const COLS = [
 
 console.log('\n=== T100 4판 A/B — 밭이 곳간에 닿는다 (같은 자: scripts/farm-metrics.js) ===');
 console.log(`  자료 ${DIR} · 시드 ${SEEDS.join('·')}`);
-console.log('  팔: OFF = 경작지 12칸 · 산출식 끔(농부 추상 산출 그대로)  /  ON = 경작지 12칸 · 산출식 켬(수확 × k)');
+console.log(`  팔: ${A0.toUpperCase()} → ${A1.toUpperCase()}  (4판 기본 off/on = 산출식 끔/켬 · 5판은 --arms b,bc 로 ⓑ만/ⓑ+ⓒ)`);
 
 const got = [];
 for (const s of SEEDS) {
-  const off = load(path.join(DIR, `off_${s}.json`)), on = load(path.join(DIR, `on_${s}.json`));
+  const off = load(path.join(DIR, `${A0}_${s}.json`)), on = load(path.join(DIR, `${A1}_${s}.json`));
   if (!off || !on || !off.world8 || !on.world8) { console.log(`  ⚠시드 ${s} — 자료가 없다(off ${!!off} · on ${!!on})`); continue; }
   got.push({ s, off: off.world8, on: on.world8, offRows: off.rows, onRows: on.rows, days: on.days });
 }
@@ -57,8 +62,8 @@ console.log('  시드  팔      ' + COLS.map(([, ko]) => ko.padStart(w)).join(''
 for (const g of got) {
   const row = (tag, o) => '  ' + String(g.s).padEnd(6) + tag.padEnd(8)
     + COLS.map(([k]) => (k === 'dead' ? `${o.dead}/${o.ever}` : nf(typeof o[k] === 'number' ? Math.round(o[k]) : o[k])).padStart(w)).join('');
-  console.log(row('OFF', g.off));
-  console.log(row('ON', g.on));
+  console.log(row(A0.toUpperCase(), g.off));
+  console.log(row(A1.toUpperCase(), g.on));
   console.log('  ' + ''.padEnd(6) + 'Δ'.padEnd(8)
     + COLS.map(([k]) => (k === 'dead' ? `${g.on.dead - g.off.dead}` : pct(g.on[k], g.off[k])).padStart(w)).join(''));
 }

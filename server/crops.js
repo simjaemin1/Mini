@@ -275,6 +275,39 @@ function readyDay(id, plantedDay, maxScanDays) {
   return null;
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// ★★[T100 5판 2026-09-07] **창설 곳간의 밑변** — "이 날 터를 잡은 마을이 **첫 수확**을 거두기까지 며칠인가".
+//
+//   econ 의 창설 부존(`sim/economy-sim.js` — `storage.food = initN × ?`)이 여태 **45** 였다.
+//   그 45 는 어디서도 유도되지 않은 수였고(주석: *"옛 300일치는 글럿"* — 즉 글럿을 피하려 고른 수),
+//   T100 4판에서 산출이 밭에 물리자 그 자리가 **골짜기**로 드러났다: 첫 40일에 심은 것이 7,981 인데
+//   거둔 것은 332 였고, 곳간은 45일에 바닥났다.
+//
+//   여기서 답한다 — **새 수 0**. 쓰는 것은 이 파일의 정본 둘뿐이다:
+//     · 파종창 `sowableMonth(field, month)`  ← `_villageCropFor` 가 고르는 **바로 그 후보 집합**(사본 0)
+//     · 익음 시계 `readyDay(id, plantedDay)` ← 휴면·춘화(T99)가 이미 물려 있다
+//   규약 셋:
+//     ⓐ 그 날 심을 수 있는 것이 없으면(겨울) **심을 수 있는 날까지 굴러간다** — 봄 첫 파종창까지 기다린 뒤 익는다.
+//     ⓑ 후보는 **논·밭 합집합** — 창설 마을이 둘 다 연다.
+//     ⓒ 무엇을 심을지는 마을마다 갈리니 **중앙값**을 쓴다(최소=낙관 · 최대=비관 · 평균은 월동 하나가 끈다).
+//   ⚠**여유를 안 더한다.** 여유는 새 수다 — 모자라면 다른 장치가 바닥을 대야지 여기서 부풀리지 않는다.
+function daysToFirstHarvest(fromDay, maxScanDays) {
+  const d0 = _day(fromDay);
+  const cap = Math.max(1, maxScanDays || 900);
+  for (let p = d0; p < d0 + cap; p++) {
+    const mo = monthOf(p);
+    const cand = [...new Set([...sowableMonth('논', mo), ...sowableMonth('밭', mo)])].sort();
+    if (!cand.length) continue;                       // ⓐ 겨울 — 심을 수 있는 날까지 굴러간다
+    const rd = [];
+    for (const id of cand) { const r = readyDay(id, p, cap); if (r != null) rd.push(r - d0); }
+    if (!rd.length) continue;
+    rd.sort((a, b) => a - b);
+    const mid = (rd.length % 2) ? rd[(rd.length - 1) / 2] : (rd[rd.length / 2 - 1] + rd[rd.length / 2]) / 2;
+    return Math.max(1, Math.round(mid));              // ⓒ 중앙값 · 여유 0
+  }
+  return null;                                        // 한 해를 돌아도 못 심는다 — 부르는 쪽이 판단한다
+}
+
 // ── 물·관리 → 수확량 ────────────────────────────────────────────────────────
 //   `supply` 는 그 자리의 물 공급(1~5 · 부르는 쪽이 지형 정본으로 잰다 — 여기서 지형을 안 푼다).
 //   ★못 미친 만큼을 **관리난이도에 비례**해 깎는다. 넘치는 물은 이득이 아니다(논에 물을 더 대도 소용없다).
@@ -433,5 +466,6 @@ module.exports = {
   dormantAt, vernalDay, VERNAL, CARE_PAUSE, PER_DORMANT,   // ★[T99] 휴면 술어 하나 · 춘화일 — 마을·플레이어가 같이 부른다
   rainedOn, RAIN_WATER,   // ★[T112] 비 온 날은 물 준 날 — 상태기 셋이 같이 부른다
   grownDays, isReady, readyDay, waterMult, harvestUnits,
+  daysToFirstHarvest,   // ★[T100 5판] 창설 곳간의 밑변 — econ 이 45 를 지어내지 않게(사본 0)
   shelfMap, weightMap, foodMap, labelMap, emojiMap, payload,
 };

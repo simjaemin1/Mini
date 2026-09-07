@@ -192,6 +192,10 @@ if (process.env.FARM_JSON) {
     cells0: cells0Tot, cells: cellsTot, cleared: clearedTot,
     harvestN: totH, foodEq: +totF.toFixed(1), fDays: M.reduce((a, m) => a + m.fDays, 0),
     T100_FIELD_YIELD: process.env.T100_FIELD_YIELD === '1',
+    // ★[T100 5판 ⓒ] 텃밭 하한이 낸 몫 — econ 이 남겨 둔 누계를 옮겨 적기만 한다(판정 0).
+    floorTot: +world.villages.reduce((a, v) => a + (v._t100FloorTot || 0), 0).toFixed(1),
+    garden: process.env.T100_GARDEN !== '0',
+    seedFoodDays: (() => { try { return R('sim/economy-sim').seedFoodDays(0); } catch (e) { return null; } })(),
     k: (() => { try { return R('sim/economy-sim').T100_K; } catch (e) { return null; } })(),
     N: (() => { try { return R('sim/economy-sim').T100_ANCHOR_N; } catch (e) { return null; } })() };
   try { fs.writeFileSync(process.env.FARM_JSON, JSON.stringify({ days: DAYS, seed: SEED, world8, rows }, null, 1));
@@ -236,9 +240,13 @@ for (const i of order.slice(0, 14)) {
   //   T117 이 적어 둔 원문(끈 팔)은 그대로 두고, 켠 팔만 사실대로 갈아 끼운다.
   let _T100K = null; try { _T100K = R('sim/economy-sim').T100_FIELD_YIELD ? R('sim/economy-sim').T100_K : null; } catch (e) {}
   if (_T100K != null) {
-    const inflow = totH * _T100K;
-    console.log(`   econ 곳간(${nf(Math.round(econFoodTot))})에 **${nf(Math.round(inflow))}** 가 800일 동안 들어갔다`);
-    console.log(`   (수확 ${nf(totH)}건 × k ${_T100K.toFixed(4)} — \`_lifeDoTask0\` 수확 갈래 → \`harvestToGranary\` 한 곳).`);
+    const harv = totH * _T100K;
+    const floor = world.villages.reduce((a, v) => a + (v._t100FloorTot || 0), 0);   // ★[T100 5판 ⓒ] 텃밭 하한 몫
+    const inflow = harv + floor;
+    console.log(`   econ 곳간(${nf(Math.round(econFoodTot))})에 **${nf(Math.round(inflow))}** 가 ${DAYS}일 동안 들어갔다`);
+    console.log(`   (수확 ${nf(totH)}건 × k ${_T100K.toFixed(4)} = ${nf(Math.round(harv))}`
+      + (floor > 0 ? `  +  텃밭 하한 ${nf(Math.round(floor))}(${(floor / inflow * 100).toFixed(1)}%)` : '  · 텃밭 하한 0(끔)')
+      + ` — \`harvestToGranary\`/\`gardenFloorTopUp\` 두 입구).`);
     const fy = M.reduce((a, m) => a + m.fDays, 0) / 365;
     console.log(`   ⇒ **농부 1인 부양 실측 ${(inflow / fy / 365).toFixed(3)}인** (앵커 N = ${R('sim/economy-sim').T100_ANCHOR_N} · 유도의 자기 검산)`);
     console.log(`   ⇒ ratio(밭 연간 식량등가 ÷ 곳간) = ${ratio.toFixed(2)} — T117 자의 원래 뜻(곳간 대비 밭 규모)은 그대로 둔다.`);
