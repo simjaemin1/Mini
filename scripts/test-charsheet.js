@@ -58,6 +58,40 @@ console.log('\n=== ⓪ 검사 상황 선행 assert — 무엇을 재고 있는�
 const metaPath = path.join(DIR, 'char_meta.json');
 ok(fs.existsSync(metaPath), '★메타가 있다 (클라가 규격을 하드코딩하지 않는 근거)');
 const META = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+
+// ★[T155] 프레임 규격 — 파일 스코프의 자(아래 헬퍼들이 읽는다). 값은 메타 하나에서 온다.
+const FW = META.frameW, FH = META.frameH;
+
+// ★★[T155] 도끼의 **움직인 방향**을 재는 자 — ⑧(T107)이 만든 것을 파일 스코프로 올렸다.
+//   ⑫(모캡 둘째 판)가 **같은 자**로 재야 두 판을 견줄 수 있다. 사본을 만들면 그 순간 비교가 죽는다.
+const cent = (im, frame, d) => {
+  let sx = 0, sy = 0, n = 0;
+  for (let y = d * FH; y < (d + 1) * FH; y++) {
+    for (let x = frame * FW; x < (frame + 1) * FW; x++) {
+      if (im.px[(y * im.w + x) * 4 + 3] >= 200) { sx += x - frame * FW; sy += y - d * FH; n++; }
+    }
+  }
+  return n ? [sx / n, sy / n, n] : null;
+};
+// 아이소 투영 — 정본 `w2i(wx,wy) = (wx−wy, (wx+wy)/2)` 와 같은 식(화면 y 는 아래로).
+const split = (dx, dy, d, rot) => {
+  const a = ((d + (rot || 0)) % 8) * Math.PI / 4;
+  const fw = [Math.cos(a), Math.sin(a)], sd = [-Math.sin(a), Math.cos(a)];
+  const pf = [fw[0] - fw[1], (fw[0] + fw[1]) / 2], ps = [sd[0] - sd[1], (sd[0] + sd[1]) / 2];
+  const nf = Math.hypot(pf[0], pf[1]) || 1, ns = Math.hypot(ps[0], ps[1]) || 1;
+  return [(dx * pf[0] + dy * pf[1]) / nf, (dx * ps[0] + dy * ps[1]) / ns];
+};
+const move = (imA, fa, imB, fb, rot) => {
+  const front = [], side = [];
+  for (let d = 0; d < 8; d++) {
+    const a = cent(imA, fa, d), b = cent(imB, fb, d);
+    if (!a || !b) continue;                       // 도끼가 몸에 완전히 가린 행 — 홀드아웃이 판 것
+    const [f, sq] = split(b[0] - a[0], b[1] - a[1], d, rot);
+    front.push(f); side.push(sq);
+  }
+  const m = (v) => v.reduce((x, y) => x + Math.abs(y), 0) / Math.max(1, v.length);
+  return { front, side, F: m(front), S: m(side), n: front.length };
+};
 {
   const rp = path.join(ROOT, 'scripts', 'char_render.py');
   const src = fs.readFileSync(rp, 'utf8');
@@ -416,8 +450,12 @@ console.log('\n=== ⑦ 모캡 포즈표 [T96] ===');
   ok(fs.existsSync(MP), '★포즈표가 커밋돼 있다 (`assets-src/mocap/poses.json`)');
   const raw0 = fs.readFileSync(MP);
   const P = JSON.parse(raw0.toString('utf8'));
-  ok(P.nframes === META.clips.walk.frames && P.nframes === META.clips.run.frames,
-     `★표 프레임 수 = 클립 프레임 수 (${P.nframes})`);
+  // ★★[T155] 이 줄은 **갈아 끼웠다.** 종전엔 `nframes` 가 수 하나였다(walk·run 만 있었다).
+  //   모캡 클립이 다섯이 되면서 클립마다 판 수가 달라 **표**가 됐다. 계약은 "표의 판 수가 클립의
+  //   판 수와 같다"이지 "여덟"이 아니다.
+  ok(P.nframes && typeof P.nframes === 'object' &&
+     Object.keys(P.clips).every((c) => P.nframes[c] === META.clips[c].frames),
+     `★표 프레임 수 = 클립 프레임 수 (${JSON.stringify(P.nframes)})`);
   for (const f of ['cmu_07_01_walk.bvh', 'cmu_09_01_run.bvh']) {
     ok(fs.existsSync(path.join(ROOT, 'assets-src', 'mocap', f)), `★원본 BVH 가 커밋돼 있다 — ${f} (표를 다시 만들 수 있다)`);
   }
@@ -501,35 +539,6 @@ console.log('\n=== ⑧ 도끼질·조준의 축 · EXR 되굽기 [T107] ===');
   //   자리로 재면 손이 늘 몸 오른쪽(−y)에 붙어 있는 붙박이 치우침이 신호를 덮는다
   //   (1차 계측: 옛 0.73 vs 새 1.25 — 갈리긴 하는데 `idle` 대조군이 0.98 이라 못 쓴다).
   //   두 프레임의 무게중심 **차**를 쓰면 그 붙박이가 빠지고 동작만 남는다.
-  const FW = META.frameW, FH = META.frameH, AX = META.anchorX, AY = META.anchorY;
-  const cent = (im, frame, d) => {
-    let sx = 0, sy = 0, n = 0;
-    for (let y = d * FH; y < (d + 1) * FH; y++) {
-      for (let x = frame * FW; x < (frame + 1) * FW; x++) {
-        if (im.px[(y * im.w + x) * 4 + 3] >= 200) { sx += x - frame * FW; sy += y - d * FH; n++; }
-      }
-    }
-    return n ? [sx / n, sy / n, n] : null;
-  };
-  // 아이소 투영 — 정본 `w2i(wx,wy) = (wx−wy, (wx+wy)/2)` 와 같은 식(화면 y 는 아래로).
-  const split = (dx, dy, d, rot) => {
-    const a = ((d + (rot || 0)) % 8) * Math.PI / 4;
-    const fw = [Math.cos(a), Math.sin(a)], sd = [-Math.sin(a), Math.cos(a)];
-    const pf = [fw[0] - fw[1], (fw[0] + fw[1]) / 2], ps = [sd[0] - sd[1], (sd[0] + sd[1]) / 2];
-    const nf = Math.hypot(pf[0], pf[1]) || 1, ns = Math.hypot(ps[0], ps[1]) || 1;
-    return [(dx * pf[0] + dy * pf[1]) / nf, (dx * ps[0] + dy * ps[1]) / ns];
-  };
-  const move = (imA, fa, imB, fb, rot) => {
-    const front = [], side = [];
-    for (let d = 0; d < 8; d++) {
-      const a = cent(imA, fa, d), b = cent(imB, fb, d);
-      if (!a || !b) continue;                       // 도끼가 몸에 완전히 가린 행 — 홀드아웃이 판 것
-      const [f, sq] = split(b[0] - a[0], b[1] - a[1], d, rot);
-      front.push(f); side.push(sq);
-    }
-    const m = (v) => v.reduce((x, y) => x + Math.abs(y), 0) / Math.max(1, v.length);
-    return { front, side, F: m(front), S: m(side), n: front.length };
-  };
   const axe = {};
   for (const c of ['idle', 'swing', 'aim']) axe[c] = readPng(path.join(DIR, `tool_axe_${c}.png`));
 
@@ -744,10 +753,12 @@ console.log('\n=== ⑩ 병종 띠 · 포로 밧줄 [T143] ===');
     //   그 수는 이제 틀리다. 계약은 "클립이 **몰래** 늘지 않는다"이지 "일곱"이 아니다.
     //   ⇒ **아는 이름의 집합**으로 잰다 — 새 클립을 열면 이 줄도 같이 열어야 한다(그게 문서다).
     {
-      const KNOWN = ['aim', 'captive_idle', 'captive_walk', 'carry', 'down', 'idle', 'run', 'swing', 'walk'];
+      const KNOWN = ['aim', 'aim2', 'captive_idle', 'captive_walk', 'carry', 'down',
+                     'idle', 'idle2', 'run', 'swing', 'swing2', 'walk'];
       const got = Object.keys(META.clips).sort();
       ok(got.length === KNOWN.length && got.every((c, i) => c === KNOWN[i]),
-         '★★클립이 **아는 아홉**뿐이다 — 몰래 늘지 않았다(T143 일곱 + T149 묶인 판 둘)', got.join(','));
+         '★★클립이 **아는 열둘**뿐이다 — 몰래 늘지 않았다(T143 일곱 + T149 둘 + T155 모캡 셋)',
+         got.join(','));
     }
   }
 
@@ -1043,6 +1054,179 @@ console.log('\n=== ⑪ 포로 자세 — 두 손이 앞에 있다 [T149] ===');
     ok(/'captive_walk' : 'captive_idle'/.test(CL) && /charWalkMin\(\)/.test(CL),
        '★포로의 걷기/서기 전환이 그 문턱 하나로 갈린다');
     ok(!/captiveGrip\s*=|CAPT_[DWH]\s*=/.test(CL), '★클라에 자리 값 사본 0 (수는 굽기가 갖는다)');
+  }
+}
+
+console.log('\n=== ⑫ 모션 둘째 판 — 도끼질·조준·서기를 모캡으로 [T155] ===');
+{
+  const CL = require('./client-src.js').readClientSrc();
+  const POSES = JSON.parse(fs.readFileSync(path.join(ROOT, 'assets-src', 'mocap', 'poses.json'), 'utf8'));
+  const RP = fs.readFileSync(path.join(ROOT, 'scripts', 'char_render.py'), 'utf8');
+  const NEW = ['swing2', 'aim2', 'idle2'];
+
+  // ⓐ **표가 둘이 안 갈렸다** — 판 수·fps·루프를 두 파일이 손으로 적는 자리다
+  {
+    let bad = [];
+    for (const c of NEW.concat(['walk', 'run'])) {
+      const src = POSES.source[c];
+      const m = RP.match(new RegExp('\\("' + c + '",\\s*(\\d+),\\s*(True|False),\\s*([0-9.]+)\\)'));
+      if (!src || !m) { bad.push(c + '(못 찾음)'); continue; }
+      if (src.nframes !== +m[1] || src.loop !== (m[2] === 'True') || Math.abs(src.clipFps - +m[3]) > 1e-9)
+        bad.push(`${c}(표 ${src.nframes}/${src.loop}/${src.clipFps} vs 굽기 ${m[1]}/${m[2]}/${m[3]})`);
+    }
+    ok(bad.length === 0, '★★모캡 표와 굽기 표가 **안 갈렸다** — 판 수·fps·루프가 같다', bad.join(' ') || '다섯 클립 일치');
+  }
+
+  // ⓑ 새 클립 셋 — 전 층에 있고 규격 안이다
+  {
+    for (const c of NEW) {
+      ok(!!META.clips[c] && META.layers.every((L) => META.sheets[L + '_' + c]),
+         `★\`${c}\` 이 **전 층**에 있다 (${META.layers.length}장)`);
+    }
+    ok(META.frameW === 109 && META.frameH === 90 && META.anchorX === 54.5,
+       '★★프레임 규격이 **안 움직였다** — 머리 위로 든 도끼도 얼린 상자(327×270) 안이다(카드 ②)',
+       `${META.frameW}x${META.frameH} anchor ${META.anchorX},${META.anchorY}`);
+    for (const c of ['swing', 'aim', 'idle']) {
+      const a = META.clips[c], b = META.clips[c + '2'];
+      ok(a && b && a.frames === b.frames && a.fps === b.fps && a.loop === b.loop,
+         `★\`${c}2\` 가 \`${c}\` 와 **같은 규격**이다 — 같은 자리에서 재야 대조가 된다`,
+         b ? `${b.frames}판 ${b.fps}fps loop=${b.loop}` : '없음');
+    }
+  }
+
+  // ⓒ **내려침이 앞으로 간다** — T107 의 그 자(⑧ 과 **같은 함수**). 내려치는 판 쌍은 **잰다**.
+  {
+    const im2 = readPng(path.join(DIR, 'tool_axe_swing2.png'));
+    const imOld = readPng(path.join(DIR, 'tool_axe_swing.png'));
+    const nf = META.clips.swing2.frames;
+    // ★★자를 두 번 고쳤다(둘 다 실측이 시켰다):
+    //   ⓐ `F`(절댓값 평균)로 고르면 '가장 많이 움직인 쌍'이 뽑혀 **들어올리는 쌍**이 걸린다
+    //      (실측 f4→f5: `13 24 9 3 −9 −28 −7 5` — 부호가 반반).
+    //   ⓑ **이웃 쌍만** 보면 안 된다. 모캡 도끼질은 내려오는 데 두 판이 걸려서, 이웃 쌍 다섯 중
+    //      여덟 방향이 다 양수인 것이 **하나도 없다**(가장 나은 f1→f2 가 한 방향 −1.6).
+    //      구간을 열어 보면 **f0→f2 가 여덟 방향 전부 양수**다(min +3.0 · 앞/옆 1.74).
+    //   ⇒ 계약 자체로 고른다: **앞 성분의 최솟값이 가장 큰 구간**이 '앞으로 나가는 구간'이다.
+    let best = null;
+    for (let i = 0; i < nf; i++) for (let j = i + 1; j < nf; j++) {
+      const r = move(im2, i, im2, j, 0);
+      const mn = Math.min(...r.front);
+      if (!best || mn > best.mn) best = { f: i, g: j, r, mn };
+    }
+    ok(!!best && best.r.n >= 6, `★전제 — 여덟 행 중 ${best ? best.r.n : 0}행에서 도끼가 보인다`);
+    ok(best.r.front.every((v) => v > 0),
+       `★★모캡 도끼질에서 도끼가 **여덟 행 모두 앞으로** 가는 구간이 있다 (f${best.f}→f${best.g})`,
+       best.r.front.map((v) => v.toFixed(0)).join(' '));
+    // 옛 판의 그 수(⑧ 이 f2→f3 에서 재는 것)와 나란히 놓는다 — 이 카드의 실기 물음이 이것이다.
+    const old = move(imOld, 2, imOld, 3, 0);
+    ok(best.r.F / best.r.S > 1.5,
+       `★★앞 성분이 옆의 1.5배 넘는다 — 앞 ${best.r.F.toFixed(1)}px 옆 ${best.r.S.toFixed(1)}px (${(best.r.F / best.r.S).toFixed(2)}배)`,
+       `옛 손 포즈판 ${(old.F / old.S).toFixed(2)}배 (앞 ${old.F.toFixed(1)} 옆 ${old.S.toFixed(1)})`);
+    // ★★자명 통과 금지 — 행을 넷 돌리면(앞뒤 맞바꿈) 부호가 통째로 뒤집힌다
+    const rot = move(im2, best.f, im2, best.g, 4);
+    ok(rot.front.every((v) => v < 0), '★★돌연변이 — 앞뒤를 맞바꾸면 부호가 **전부** 뒤집힌다');
+  }
+
+  // ⓓ **조준이 손을 앞으로 내민다** — 쉼(idle2)에서 aim2 로
+  {
+    const a = readPng(path.join(DIR, 'tool_axe_idle2.png'));
+    const b = readPng(path.join(DIR, 'tool_axe_aim2.png'));
+    const r = move(a, 0, b, 0, 0);
+    ok(r.front.every((v) => v > 0), '★★모캡 조준은 손을 **여덟 행 모두 앞으로** 내민다',
+       r.front.map((v) => v.toFixed(0)).join(' '));
+    ok(r.F > r.S, `★조준 앞 ${r.F.toFixed(1)}px > 옆 ${r.S.toFixed(1)}px (${(r.F / r.S).toFixed(2)}배)`);
+  }
+
+  // ⓔ **도구가 새 클립의 손에 붙는다** — 자는 **옛 판 자신**이다(문턱을 지어내지 않는다).
+  //   손목에서 가장 가까운 도끼 화소까지의 거리를 옛/새 판에서 같은 식으로 재고, 새 판이
+  //   **옛 판보다 나쁘지 않은지**만 묻는다. ⚠절대 문턱(자루 반지름)은 못 쓴다 — 손이 몸 뒤로
+  //   가는 판에서는 도끼가 통째로 잘리고 먼 자락만 남아, 옛 판도 그 문턱을 넘는다(1차 실측 7.76px).
+  {
+    const hs = META.handScreen;
+    const near = (clip) => {
+      const im = readPng(path.join(DIR, 'tool_axe_' + clip + '.png'));
+      let worst = 0, at = '', seen = 0, tot = 0;
+      const ds = [];
+      for (let d = 0; d < 8; d++) for (let f = 0; f < META.clips[clip].frames; f++) {
+        tot++;
+        let mn = 1e9;
+        const [hx, hy] = hs[clip][d][f];
+        for (let y = d * FH; y < (d + 1) * FH; y++) for (let x = f * FW; x < (f + 1) * FW; x++) {
+          if (im.px[(y * im.w + x) * 4 + 3] < 140) continue;
+          const q = Math.hypot(x - f * FW - hx, y - d * FH - hy);
+          if (q < mn) mn = q;
+        }
+        if (mn < 1e9) { seen++; ds.push(mn); if (mn > worst) { worst = mn; at = `d${d} f${f}`; } }
+      }
+      ds.sort((x, y) => x - y);
+      return { worst, at, seen, tot, med: ds[ds.length >> 1], p75: ds[Math.floor(ds.length * 0.75)] };
+    };
+    // ★★자는 **중앙값과 3사분위**다. 최댓값은 못 쓴다 — 손이 몸 뒤로 가는 판에서는 도끼가 통째로
+    //   잘리고 **먼 자락만** 남아 거리가 튀는데, 그건 붙었느냐가 아니라 가렸느냐다.
+    //   옛 판도 같은 이유로 5~7.5px 을 낸다(idle 7.45 · walk 6.64). 그래서 옛 판이 자다.
+    // ★★자를 **배포된 옛 클립들에서 뽑는다**(T137 문법 — 문턱을 지어내지 않는다).
+    //   짝 하나와만 견주면 자세가 달라 생긴 0.1px 차이에 빨개진다(1차: swing2 1.75 vs swing 1.66).
+    //   묻는 것은 "**옛 판들이 이미 서 있는 띠 안**인가"다.
+    const OLD = ['swing', 'aim', 'idle', 'walk', 'run'].map(near);
+    const BAND = Math.max(...OLD.map((o) => o.med));
+    ok(BAND > 0, '★검사 전제 — 옛 클립 다섯의 중앙값이 띠를 이룬다',
+       OLD.map((o, i) => `${['swing', 'aim', 'idle', 'walk', 'run'][i]} ${o.med.toFixed(2)}`).join(' · '));
+    for (const [nw, od] of [['swing2', 'swing'], ['aim2', 'aim'], ['idle2', 'idle']]) {
+      const A = near(nw), B = near(od);
+      ok(A.seen >= B.seen * 0.8,
+         `★\`${nw}\` 에서 도끼가 옛 판만큼 보인다 — ${A.seen}/${A.tot}판 (옛 ${B.seen}/${B.tot})`);
+      ok(A.med <= BAND,
+         `★★도구 소품이 **\`${nw}\` 의 손에도** 붙는다 (같은 뼈 규약이라 저절로 따라온다)`,
+         `중앙 ${A.med.toFixed(2)}px ≤ 옛 판들의 띠 ${BAND.toFixed(2)} (짝 ${od} ${B.med.toFixed(2)})`
+         + ` · 최대 ${A.worst.toFixed(2)}@${A.at}(가린 판)`);
+    }
+    // ★그리고 **손을 따라가는가** — 손목 이동 대비 도끼 무게중심 이동의 어긋남(배율 없는 자).
+    //   가림이 무게중심을 흔들어도 옛 판과 같은 크기여야 한다.
+    {
+      const fol = (clip) => {
+        const im = readPng(path.join(DIR, 'tool_axe_' + clip + '.png'));
+        const nf = META.clips[clip].frames, ds = [];
+        for (let d = 0; d < 8; d++) for (let f = 0; f + 1 < nf; f++) {
+          const a2 = cent(im, f, d), b2 = cent(im, f + 1, d);
+          if (!a2 || !b2) continue;
+          const w0 = hs[clip][d][f], w1 = hs[clip][d][f + 1];
+          const wl = Math.hypot(w1[0] - w0[0], w1[1] - w0[1]);
+          if (wl < 1) continue;                    // 손이 안 움직인 판은 나눗셈이 뜻이 없다
+          ds.push(Math.hypot((b2[0] - a2[0]) - (w1[0] - w0[0]), (b2[1] - a2[1]) - (w1[1] - w0[1])) / wl);
+        }
+        ds.sort((x, y) => x - y);
+        return ds.length ? ds[ds.length >> 1] : null;
+      };
+      const band = Math.max(...['swing', 'walk', 'run'].map(fol));
+      const v = fol('swing2');
+      ok(v !== null && v <= band,
+         '★★도끼가 **손을 따라간다** — 손목 이동 대비 어긋남이 옛 판들의 띠 안이다',
+         `swing2 ${v === null ? '-' : v.toFixed(2)} ≤ 띠 ${band.toFixed(2)} (swing·walk·run 에서 뽑음)`);
+    }
+  }
+
+  // ⓕ 손잡이 — **기본은 옛 키**다(픽셀 동일)
+  {
+    ok(/const CLIP_MOCAP2 = \{ idle: 'idle2', swing: 'swing2', aim: 'aim2' \};/.test(CL),
+       '★★표가 **한 줄**이다 — 옛 이름 → 둘째 판 이름');
+    ok(/if \(!uiCfg\.charMocap2\) return c;/.test(CL),
+       '★★손잡이가 꺼져 있으면 **받은 이름을 그대로** 돌려준다 — 화면이 한 화소도 안 바뀐다');
+    ok(/charMocap2: false/.test(CL), '★기본이 꺼짐이다');
+    ok(/clipKey\(active\)/.test(CL) && !/clipKey\(force\)/.test(CL),
+       '★강제 클립(다운·업기·포로)은 표를 안 탄다 — 그 셋은 둘째 판이 없다');
+    ok(/window\.__setCharMocap2/.test(CL), '★대조용 토글이 있다(같은 화면에서 둘을 견준다)');
+    ok(NEW.every((c) => new RegExp('\\("' + c + '",').test(RP)), '★굽기 표에 새 클립 셋이 있다');
+  }
+
+  // ⓖ 모캡 원본이 커밋됐다 — 표만 남기면 다시 못 만든다(README 규약)
+  {
+    const SRC = path.join(ROOT, 'assets-src', 'mocap');
+    const want = ['cmu_80_71_chop.bvh', 'cmu_113_24_throw.bvh', 'cmu_77_02_stand.bvh'];
+    ok(want.every((f) => fs.existsSync(path.join(SRC, f))), '★새 원본 셋이 저장소에 있다', want.join(' '));
+    const rd = fs.readFileSync(path.join(SRC, 'README.md'), 'utf8');
+    ok(want.every((f) => rd.includes(f)), '★README 표가 그 셋을 적는다(출처·클립 번호)');
+    // ⚠파일은 ASCII 이스케이프로 저장된다(`json.dump` 기본) — 날문자열로 찾으면 못 찾는다.
+    ok(/산물 — 손편집 금지/.test(JSON.parse(fs.readFileSync(path.join(SRC, 'poses.json'), 'utf8'))._ || ''),
+       '★포즈표가 산물임을 스스로 적는다');
   }
 }
 

@@ -135,6 +135,18 @@
   // ★[T149] 걷기 문턱은 **한 자리**다 — 상태기와 포로 판정이 같은 수를 읽는다(사본 0).
   function charWalkMin() { return uiCfg.charWalkMin || 4; }
 
+  // ★★[T155 2026-09-07] **모션 둘째 판 — 표 한 줄.** 손으로 지은 셋(`idle`·`swing`·`aim`)에
+  //   CMU 모캡판이 생겼다(`*2` 키). 옛 장은 **그대로 남는다** — 갈아 끼우면 배포된 시트가 바뀐다.
+  //   ⚠**기본은 옛 키다.** 손잡이가 꺼져 있으면 이 함수는 받은 이름을 그대로 돌려주므로
+  //     화면이 한 화소도 안 바뀐다(하네스가 그걸 검사한다). 켜기는 재민 눈 판정 뒤(회부).
+  //   ⓘ 서버 env 키는 아직 없다(이 카드는 서버 무접촉) — 대조용 토글은 `__setCharMocap2`.
+  const CLIP_MOCAP2 = { idle: 'idle2', swing: 'swing2', aim: 'aim2' };
+  function clipKey(c) {
+    if (!uiCfg.charMocap2) return c;
+    const k = CLIP_MOCAP2[c];
+    return (k && hasCharClip(k)) ? k : c;      // 아직 안 구운 판이면 옛 키로 (폴백)
+  }
+
   // ★★[T143 2026-09-06] **한 장을 물들여 그린다** — 병종 띠 전용 자리.
   //   `band` 시트는 흰 바탕으로 구운 **본**이다: 쓰는 것은 그 **알파(허리끈의 모양)**이고
   //   색은 팔레트가 준다. 그래서 `source-in` — 실루엣만 남기고 그 안을 병종색으로 채운다.
@@ -207,7 +219,9 @@
     let fi;
     if (st.one) fi = Math.min(c.frames - 1, Math.floor(st.oneT * c.fps));
     else fi = Math.floor(st.t * c.fps) % c.frames;
-    return { clip: active, frame: fi };
+    // ★[T155] 판 수·fps 는 **옛 클립의 것**으로 센다(둘째 판이 같은 규격이라 값이 같다) —
+    //   그래야 손잡이를 켜고 끄는 순간에 애니가 안 튄다. 바뀌는 것은 **시트 이름뿐**이다.
+    return { clip: clipKey(active), frame: fi };
   }
 
   /** 스프라이트로 그린다. 성공하면 true — 실패(시트 미로딩·플래그 OFF)면 false 로 도형 경로에 넘긴다. */

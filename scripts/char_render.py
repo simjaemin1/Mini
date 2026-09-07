@@ -166,6 +166,13 @@ CLIPS = [
     #   (카드 ① — 새 걸음이 아니라 같은 걸음에 팔만 묶인 것이다). 선 판은 한 판(`idle` 위 덮어쓰기).
     ("captive_walk", 8, True,  10.0),
     ("captive_idle", 1, False, 1.0),
+    # ★★[T155 2026-09-07] **모션 둘째 판** — 손으로 지은 셋을 CMU 모캡으로 다시 굽는다.
+    #   ⚠**새 키다**(옛 `swing`·`aim`·`idle` 은 그대로 남는다) — 갈아 끼우면 배포된 장이 바뀐다.
+    #     클라는 손잡이(`uiCfg.charMocap2`)가 켜질 때만 이 키를 본다(기본은 옛 키 · 켜기는 재민).
+    #   판 수·루프·fps 는 **옛 것과 같다**(대조가 되려면 같은 자리에서 재야 한다).
+    ("swing2", 6, False, 14.0),
+    ("aim2",   2, True,  2.0),
+    ("idle2",  4, True,  0.90),
 ]
 
 # ═══════════════ 씬 정본 (nature_render.py 와 동일 — 바꾸지 마라) ═══════════════
@@ -1035,24 +1042,32 @@ if not SINE_POSE and os.path.exists(_MOCAP_PATH):
         _MOCAP = json.load(_f)
 
 
-def _pose_table(clip):
-    """포즈표 한 클립 → `POSE_FN` 과 같은 모양의 함수. u 는 프레임 눈금에 정확히 떨어진다."""
+def _pose_table(clip, loop=True):
+    """포즈표 한 클립 → `POSE_FN` 과 같은 모양의 함수. u 는 프레임 눈금에 정확히 떨어진다.
+
+       ★[T155] **루프인지 원샷인지로 눈금이 갈린다.** `apply_pose` 는 루프면 `u = k/n`,
+         원샷이면 `u = k/(n−1)` 을 준다. 종전 식(`u*n`)은 루프 전용이라 원샷 6판에서
+         k=3 이 4번 포즈를, k=5 가 0번 포즈를 집는다. 루프 클립에서는 값이 같으므로
+         walk·run 은 **한 자도 안 바뀐다**(바이트 무변의 근거)."""
     tbl = _MOCAP["clips"][clip]
     n = len(tbl)
+    m = n if loop else max(1, n - 1)
 
     def f(u):
-        i = int(round(u * n)) % n
+        i = int(round(u * m)) % n
         return {k: tuple(v) for k, v in tbl[i].items()}
     return f
 
 
+CLIP_LOOP0 = {c[0]: c[2] for c in CLIPS}      # ★[T155] 루프 여부 — `_pose_table` 눈금이 이걸 본다
 POSE_FN = {'idle': _pose_idle, 'walk': _pose_walk, 'run': _pose_run,
            'swing': _pose_swing, 'aim': _pose_aim,
            'down': _pose_down, 'carry': _pose_carry}   # ★[T137] 정적 둘
 if _MOCAP:
-    for _c in ('walk', 'run'):
-        if _c in _MOCAP.get("clips", {}):
-            POSE_FN[_c] = _pose_table(_c)
+    # ★[T155] 표에 있는 클립은 **전부** 표에서 온다 — 목록을 여기 두 번 적지 않는다.
+    for _c in _MOCAP.get("clips", {}):
+        if _c in CLIP_LOOP0:
+            POSE_FN[_c] = _pose_table(_c, CLIP_LOOP0[_c])
     print(f"[char] 모캡 포즈표: {', '.join(sorted(_MOCAP['clips']))} "
           f"({_MOCAP['source']['walk']['clip']} · {_MOCAP['source']['run']['clip']})")
 else:
@@ -1363,13 +1378,21 @@ UMAX = WMAX = -1e18
 #   ★회부 B-1 의 ⓐ(방향별 z 순서)는 버렸다 — 두 번 만들었다 두 번 틀렸고
 #     ⓑ 가 공짜로 되는 순간 순서표는 정확도도 단순함도 진다. 기록은 인계 문서에.
 _probe = all_layer_objects()
+CLIP_BOX = {}                                    # ★[T155] 클립별 실측 상자 — §0-ⓑ 표의 재료
 for cname, n, loop, _fps in CLIPS:
+    cu0 = cw0 = 1e18
+    cu1 = cw1 = -1e18
     for d in range(DIRS):
         for fi in range(n):
             apply_pose(cname, fi, n, d)
             a, b, c2, d2 = screen_bbox_now(_probe)
             UMIN = min(UMIN, a); UMAX = max(UMAX, b)
             WMIN = min(WMIN, c2); WMAX = max(WMAX, d2)
+            cu0 = min(cu0, a); cu1 = max(cu1, b)
+            cw0 = min(cw0, c2); cw1 = max(cw1, d2)
+    CLIP_BOX[cname] = (cu0, cu1, cw0, cw1)
+    print(f"[char] 상자(클립) {cname:13s} u[{cu0:8.1f},{cu1:7.1f}] w[{cw0:8.1f},{cw1:7.1f}]"
+          f"  폭 {cu1 - cu0:6.1f} 높이 {cw1 - cw0:6.1f}")
 
 
 def _ceil_ss(v):

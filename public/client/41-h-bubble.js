@@ -87,6 +87,9 @@
   // ★[캐릭 시트] 성능 짝 비교 전용 토글 — **같은 화면·같은 순간**에 ON/OFF 를 견주려면 필요하다
   //   (라이브 rAF 짝 비교 캐논). 서버 env 정본은 안 바꾼다 — 이 세션의 화면만 뒤집는다.
   window.__setCharSprite = (v) => { const p = uiCfg.charSprite; uiCfg.charSprite = !!v; return p; };
+  // ★[T155] 모션 둘째 판 토글 — **같은 화면에서** 손 포즈판과 모캡판을 견주려고 둔다(대조표가 이걸 쓴다).
+  //   서버 env 정본은 없다(이 카드는 서버 무접촉) — 켜기는 재민 눈 판정 뒤 카드 몫.
+  window.__setCharMocap2 = (v) => { const p = uiCfg.charMocap2; uiCfg.charMocap2 = !!v; return p; };
 // @@moved:12091
 
   function drawSpeechBubble(x, y, text) {
