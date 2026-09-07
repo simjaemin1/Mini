@@ -232,14 +232,140 @@ say("\n⑦' 밴드 구축 — 예산 안에서 끊고 이어 짓는다(실측: �
     ok(!!one && one.size === done.size, "★★⑦' 끊어 지은 밴드가 **한 번에 지은 것과 같다**(셀을 안 흘린다)", `${done.size} vs ${one ? one.size : 0}`);
     let same = true; for (const k of one.keys()) if (!done.has(k)) same = false;
     ok(same, "★★⑦' 셀 하나하나까지 같다");
-    //   ★숲이 없으면 두 번 안 훑는다
-    HP.setTa({ forestMult: () => 1, isRock: () => false, isBlocked: () => false });
+    //   ★풀밭도 숲도 없으면(전부 바위) 두 번 안 훑는다
+    HP.setTa({ forestMult: () => 1, isRock: () => true, isBlocked: () => false });
     const v3 = { name: 'B3', ccx: 500, ccy: 500, econ: { land: { game: 1 } } };
     let g = null, d3 = 0; while (!g && d3 < 400) { g = V._huntBandBuild(v3); d3++; }
     ok(v3._gameNone === 1 && V._huntBandBuild(v3) === null,
-      "★★⑦' 숲이 없는 마을은 **없다고 못박고 다시 안 훑는다**(광산4 처럼 밴드 0 인 곳이 실제로 있다)");
+      "★★⑦' 풀밭도 숲도 없으면 **없다고 못박고 다시 안 훑는다**(두 번 안 훑는다)");
     HP.setTa(keep);
   }
+}
+
+// ═══ ⑪ [2판] 사냥터가 없는 마을은 없다 — 바닥을 실체로 깐다 ═══════════════════
+say('\n⑪ [2판] 밴드 최소 보장 — 바닥(`FLOOR.game`)이 실체를 얻는다');
+{
+  const LV = require(path.join(ROOT, 'server', 'livelihood.js'));
+  const HP = V.__labProbe && V.__labProbe._huntProbe;
+  //   ★셀 수는 **`landOf` 의 역함수**여야 한다 — 손으로 적은 수면 안 된다
+  {
+    const vsrc = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8');
+    const i = vsrc.indexOf('function _bandMinCells');
+    const body = codeOnly(vsrc.slice(i, vsrc.indexOf('\n}', i)));
+    ok(/livelihood/.test(body) && /GAIN\.game/.test(body),
+      '★★⑪ 최소 셀 수가 **`livelihood` 의 상수에서 나온다**(역함수 · 사본 0)');
+    const lits = (body.match(/\b\d+(\.\d+)?\b/g) || []).filter((x) => x !== '0' && x !== '10');
+    ok(lits.length === 0, '★★⑪ 그리고 본문에 **새 수가 0개**', lits.join(',') || '0개');
+    const v = { econ: { land: { game: LV.FLOOR.game } } };
+    ok(V._bandMinCells(v, 12028) === Math.round(12028 * (LV.FLOOR.game / LV.GAIN.game)),
+      '★★⑪ 바닥뿐인 마을도 **셀을 요구한다**(초지 사냥 — `livelihood.js:27`)',
+      `${V._bandMinCells(v, 12028)}셀 = 12028 × ${LV.FLOOR.game}/${LV.GAIN.game}`);
+    ok(V._bandMinCells({ econ: { land: { game: 0.9 } } }, 12028) > V._bandMinCells(v, 12028),
+      '★★⑪ `land.game` 이 클수록 더 요구한다(단조 — 뒤집히지 않는다)');
+  }
+  if (HP) {
+    const mkTa = (forest) => ({ forestMult: () => (forest ? 2 : 1), isRock: () => false, isBlocked: () => false });
+    const build = (v) => { let g = null, d = 0; while (!g && d < 500) { g = V._huntBandBuild(v); d++; } return g; };
+    const keep = HP.setTa(mkTa(false));   // 숲 0 · 전부 풀밭 — 19곳과 같은 상황
+    const v = { name: 'F', ccx: 700, ccy: 700, econ: { land: { game: LV.FLOOR.game } } };
+    const m = build(v);
+    ok(!!m && m.size > 0, '★★⑪ **숲이 하나도 없는 마을에도 사냥터가 선다**', `${m ? m.size : 0}셀`);
+    ok(m && m.size === V._bandMinCells(v, 12028),
+      '★★⑪ 그 수가 **역함수가 요구한 그 수**다', `${m ? m.size : 0}`);
+    //   ★자리의 함수다 — 두 번 지으면 같은 셀
+    const v2 = { name: 'F2', ccx: 700, ccy: 700, econ: { land: { game: LV.FLOOR.game } } };
+    const m2 = build(v2);
+    let same = m && m2 && m.size === m2.size;
+    if (same) for (const k of m.keys()) if (!m2.has(k)) { same = false; break; }
+    ok(same, '★★⑪ 두 번 지어도 **같은 셀**이다(자리의 함수 · 주사위 0)');
+    //   ★★고른 셀은 **밴드 전체에 흩어져** 있어야 한다 — 앞줄부터 긁어 오면 자리의 함수가 아니라 순서의 함수다
+    {
+      const dys = [];
+      for (const k of m.keys()) { const ci = k.indexOf(','); dys.push(+k.slice(ci + 1) - 700); }
+      dys.sort((a, b) => a - b);
+      const span = dys[dys.length - 1] - dys[0];
+      //   후보 풀 자체의 폭(=260)에 견준다. 앞에서부터 want 개를 긁으면 폭이 그 일부에 그친다.
+      ok(span > 240, '★★⑪ 고른 셀이 **밴드 전체에 흩어진다**(앞줄부터 긁어 오지 않는다 — 자리의 함수)', `세로 폭 ${span} / 260`);
+      const mid = dys[dys.length >> 1];
+      ok(Math.abs(mid) < 20, '★★⑪ 그리고 **한쪽으로 쏠리지 않는다**(중앙값이 밴드 한가운데)', `중앙 dy ${mid}`);
+    }
+    //   ★밴드가 겹치는 이웃 마을은 **겹치는 자리에서 같은 판단**을 한다(마을이 아니라 자리가 정한다)
+    {
+      const vn = { name: 'F4', ccx: 700, ccy: 704, econ: { land: { game: LV.FLOOR.game } } };
+      const mn = build(vn);
+      let both = 0, onlyOne = 0;
+      if (mn) for (const k of mn.keys()) {
+        const ci = k.indexOf(','), x = +k.slice(0, ci), y = +k.slice(ci + 1);
+        const d2 = (x - 700) * (x - 700) + (y - 700) * (y - 700);
+        if (d2 < 40 * 40 || d2 > 130 * 130) continue;    // 이쪽 마을 밴드 밖 — 비교 대상 아님
+        if (m.has(k)) both++; else onlyOne++;
+      }
+      pre(both + onlyOne > 200, "⑪ [상황] 두 밴드가 실제로 겹친다", `겹치는 후보 ${both + onlyOne}셀`);
+      ok(both > onlyOne * 3,
+        '★★⑪ 겹치는 자리에선 **두 마을이 같은 셀을 고른다**(마을이 아니라 자리가 정한다)',
+        `같음 ${both} · 다름 ${onlyOne}`);
+    }
+    //   ★밴드 셀은 전부 반경 안이다
+    let outside = 0;
+    for (const k of m.keys()) { const ci = k.indexOf(','), x = +k.slice(0, ci), y = +k.slice(ci + 1);
+      const d2 = (x - 700) * (x - 700) + (y - 700) * (y - 700);
+      if (d2 < 40 * 40 || d2 > 130 * 130) outside++; }
+    ok(outside === 0, '★★⑪ 채운 셀이 **전부 사냥터 밴드 안**이다(마을 안에 짐승 안 놓는다)', `밖 ${outside}셀`);
+    //   ★★이미 밴드가 있는 마을은 **안 건드린다**(카드 §1 절대 규칙 "32곳 비트 동일")
+    //     ⚠상황을 제대로 세운다: 숲이 **조금** 있고(최소 요구보다 적다) 풀밭도 많은 마을 —
+    //       게이트가 없으면 여기에 풀밭이 보태진다. 전부 숲인 판으로 재면 자명 통과다.
+    const sparseTa = { forestMult: (cx, cy) => ((cx + cy) % 40 === 0 ? 2 : 1), isRock: () => false, isBlocked: () => false };
+    HP.setTa(sparseTa);
+    const vf = { name: 'W', ccx: 700, ccy: 700, econ: { land: { game: LV.FLOOR.game } } };
+    const mf = build(vf);
+    const needF = V._bandMinCells(vf, 12028);
+    pre(mf && mf.size > 0 && mf.size < needF,
+      "⑪ [상황] 숲이 **있긴 한데 최소 요구보다 적다**(게이트가 실제로 판단할 상황)", `숲 ${mf ? mf.size : 0}셀 < 요구 ${needF}셀`);
+    ok(mf && vf._gameFloorN === undefined && mf.size < needF,
+      '★★⑪ 그래도 **한 셀도 안 보탠다**(기본 · 32곳 비트 동일)', `${mf ? mf.size : 0}셀 · 보탠 것 ${vf._gameFloorN || 0}`);
+    //   ★그리고 카드 ① 문자 그대로인 `max` 꼴은 손잡이로 켠다 — 켜면 실제로 채운다
+    {
+      const keepAll = process.env.T146_BAND_ALL;
+      process.env.T146_BAND_ALL = '1';
+      const va = { name: 'WA', ccx: 700, ccy: 700, econ: { land: { game: LV.FLOOR.game } } };
+      const ma = build(va);
+      if (keepAll === undefined) delete process.env.T146_BAND_ALL; else process.env.T146_BAND_ALL = keepAll;
+      ok(ma && ma.size === needF && va._gameFloorN > 0,
+        '★★⑪ `T146_BAND_ALL=1` 이면 **숲이 있어도 최소까지 채운다**(카드 ① 문자 그대로 · 보고 ⓒ)',
+        `${ma ? ma.size : 0}셀 · 보탠 것 ${va._gameFloorN || 0}`);
+      ok(V._t146BandAll() === false, '★⑪ 그 손잡이도 **부를 때** 읽힌다(기본은 꺼져 있다)');
+    }
+    //   ★손잡이 — 끄면 종전(19곳 밴드 0)
+    const keepEnv = process.env.T146_BAND;
+    process.env.T146_BAND = '0';
+    HP.setTa(mkTa(false));
+    const vo = { name: 'OFF', ccx: 700, ccy: 700, econ: { land: { game: LV.FLOOR.game } } };
+    let g2 = null, d2 = 0; while (!g2 && d2 < 500) { g2 = V._huntBandBuild(vo); d2++; }
+    if (keepEnv === undefined) delete process.env.T146_BAND; else process.env.T146_BAND = keepEnv;
+    ok(g2 === null && vo._gameNone === 1,
+      '★★⑪ `T146_BAND=0` 이면 **종전 비트**(숲 없는 마을은 밴드 0)');
+    ok(V._t146Band() === 1, '★⑪ 그리고 손잡이는 **부를 때** 읽힌다(껐다 켠 것이 그 자리에서 먹었다)');
+    HP.setTa(keep);
+  } else pre(false, "⑪ 전제 — 지형 주입구", '_huntProbe 없음');
+}
+
+// ═══ ⑫ [2판] `_huntWk` 왕복이 닫힌다 ═══════════════════════════════════════
+say('\n⑫ [2판] px ↔ 셀 왕복 — 셀 중앙을 되읽으면 그 셀이 나온다');
+{
+  const SZ = 32;
+  let bad = 0, first = null;
+  for (let c = 0; c < 500; c++) { const back = V._cellOfPx(c * SZ + SZ / 2); if (back !== c) { bad++; if (first === null) first = `${c} → ${back}`; } }
+  ok(bad === 0, '★★⑫ 셀 중앙 `c*SZ+SZ/2` 를 되읽으면 **그 셀 `c`** 다', bad ? `어긋난 것 ${bad}개(${first})` : '500칸 전부 닫힘');
+  //   ★셀 안 아무 데서나 되읽어도 그 셀이다(경계 포함)
+  let bad2 = 0;
+  for (let c = 0; c < 200; c++) for (const off of [0, 1, SZ / 2, SZ - 1]) if (V._cellOfPx(c * SZ + off) !== c) bad2++;
+  ok(bad2 === 0, '★★⑫ 셀 안 어디서 읽어도 **그 셀**이다(경계 포함)', `${bad2}`);
+  //   ★그리고 **정본이 하나**다 — 되읽는 자리가 이 함수를 쓴다(사본 0)
+  const vsrc = codeOnly(fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8'));
+  const rounds = (vsrc.match(/Math\.round\((?:ws|p\._workSite)\.[xy]\s*\/\s*SZ\)/g) || []);
+  ok(rounds.length === 0, '★★⑫ 작업 좌표를 `Math.round` 로 되읽는 자리가 **0곳**이다', rounds.join(' ') || '0곳');
+  const uses = (vsrc.match(/_cellOfPx\(/g) || []).length;
+  ok(uses >= 4, '★★⑫ 되읽는 자리들이 **같은 문**을 쓴다(사본 0)', `${uses}곳`);
 }
 
 // ═══ ⑧ 되돌림 ══════════════════════════════════════════════════════════════
