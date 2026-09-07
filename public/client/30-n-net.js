@@ -1384,6 +1384,10 @@
       // ★★[신체 상태 §8.3] 서버가 정본이다. 클라는 **그린다**(단계도 서버가 매겨 보낸다 —
       //   여기서 다시 양자화하면 히스테리시스가 두 벌이 되어 깜빡임이 되살아난다).
       if (msg.weather) { myWeather = msg.weather; window.__weather = msg.weather; }   // ★[온도] 바깥 날씨 + 마을 완충
+      // ★★[T147 2026-09-07] 따라가는 벗의 자리 — 새 창구 0(초당 하나 나가는 이 메시지에 얹혀 온다).
+      //   ⚠`'follow' in msg` 로 본다: `null` 이 **화살을 거두라는 말**이라 `if (msg.follow)` 로는 못 읽는다.
+      //   ⚠자리는 T110 외침 화살(`__downedCries`)과 **따로** 둔다 — 둘이 같이 떠야 한다(뜻이 다르다).
+      if ('follow' in msg) window.__followTarget = msg.follow || null;
       if (msg.body) {
         myBody = msg.body; window.__bodyState = msg.body;
         // ★[3층 재배선] 스태미나·회복 배율은 몸 페이로드에 실려 온다(별도 창구 안 만든다).

@@ -70,6 +70,22 @@ function isFriend(viewerPlayerId, otherPlayerId) {
   return !!(s && otherPlayerId && s.has(String(otherPlayerId)));
 }
 
+/**
+ * ★★[T147 2026-09-07] **이름으로 친구 하나** — `{ id, name }` 이거나 `null`.
+ * ⚠판정은 여기서 새로 하지 않는다: 이미 있는 캐시(`load`)의 **수락된 쌍**만 본다
+ *   (`stmtFriendsOf` 가 `since IS NOT NULL` 로 거른 그 목록이다). 친구가 아니면 `null` 이고,
+ *   그건 "그런 사람이 없다"와 같은 답이다 — **친구가 아닌 사람의 존재 여부를 알려 주지 않는다.**
+ * ⚠못 물어봤을 때(`ok:false`)도 `null` 이다. 모름과 아님을 여기서 가르면 그 차이가 곧 누수다.
+ */
+function friendByName(playerId, name) {
+  const want = String(name || '').trim();
+  if (!want) return null;
+  const rec = _cache.get(String(playerId || ''));
+  if (!rec || !rec.ok) return null;
+  for (const [id, nm] of rec.names) if (String(nm) === want) return { id: String(id), name: String(nm) };
+  return null;
+}
+
 // ── 채팅 명령 ────────────────────────────────────────────────────────────────
 //   `/친구`            — 지금 친구가 누구인가
 //   `/친구 <이름>`      — 친구가 되자고 한다(상대가 이미 그랬으면 그 자리에서 성립)
@@ -201,4 +217,4 @@ function debug(playerId) {
   return { cfg: CFG, cached: _cache.size, me: rec ? { ok: rec.ok, ids: [...rec.ids], names: [...rec.names] } : null };
 }
 
-module.exports = { CFG, init, ready, load, knownIds, isFriend, handleChat, startVidCounts, nameVids, pendingLines, askedLine, debug, __bust: _bust, __reload: _reload };
+module.exports = { CFG, init, ready, load, knownIds, isFriend, handleChat, startVidCounts, nameVids, pendingLines, askedLine, friendByName, debug, __bust: _bust, __reload: _reload };

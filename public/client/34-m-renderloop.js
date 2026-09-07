@@ -2343,6 +2343,7 @@
     drawNeighborArrow(pConn.meta.south, '남');
     // === 5a) ★[T110] 쓰러진 사람 방향 화살 — 안개 위 UI 층(인접 존 화살과 같은 자리·같은 문법) ===
     window.__downedArrowN = drawDownedArrows();
+    window.__followArrowN = drawFollowArrow();   // ★[T147] 따라가기 화살 — 외침과 같이 뜬다
     // === 5b) §4-4 P4: 진행 전투 지시자(화면 안=교전 마커, 화면 밖=방향 화살) ===
     drawBattleIndicators(toScreen);
   }
@@ -2403,6 +2404,16 @@
   }
   // ★[T110] 쓰러진 사람 쪽 화살 — **창이 열려 있는 동안만**. 새 타이머 0(수명이 곧 구조창이다).
   //   자리는 `30-n-net.js` 가 `notice{kind:'downed'}` 에서 받아 둔 `window.__downedCries` 하나다.
+  // ★★[T147 2026-09-07] 따라가는 벗 쪽 화살 — **그리는 함수는 T110 의 것 그대로**(`drawWorldArrow`).
+  //   외침 화살과 **같이 뜬다**: 자리가 둘이라(`__downedCries` · `__followTarget`) 서로 안 밀어낸다.
+  //   수명·끄기는 전부 서버가 정한다(도착·사라짐·`/따라가기 끝`) — 클라에 타이머 0.
+  function drawFollowArrow() {
+    const t = window.__followTarget;
+    if (!t || !Number.isFinite(t.x) || !Number.isFinite(t.y)) return 0;
+    //   ★걸음 수는 **T110 반경 안에서만** 온다(밖이면 `steps` 가 null 이고 방향만 말한다).
+    const label = (t.steps == null) ? `${t.name || '벗'} 쪽` : `${t.name || '벗'} ${t.steps}걸음`;
+    return drawWorldArrow(t.x, t.y, label, '#98c379') ? 1 : 0;
+  }
   function drawDownedArrows() {
     const M = window.__downedCries;
     if (!M || !M.size) return 0;

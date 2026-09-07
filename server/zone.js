@@ -2872,6 +2872,117 @@ Guild.init({
   },
 });
 
+// ★★[T147 2026-09-07] 따라가기 — 회부 A-1 의 마지막 칸. **새 패널 0 · 새 표 0 · 새 수 0.**
+//   ⓐ 거리·방위·화살은 전부 **T110 의 정본을 부른다**(사본 0):
+//      `Rescue.shoutRange()`(= MOVE_SPEED × RESCUE_WINDOW × HEAR_FRAC) · `Rescue.steps()` ·
+//      `Onboarding.dirWord()` · 도착 판정은 `RESCUE_RANGE_PX`(T43 이 정한 그 반경).
+//   ⓑ 위치는 **central 을 안 거친다** — 같은 존이면 `players` 맵이 안다. 다른 존이면 존 이름까지만이고
+//      그 이름도 `zone-config` 의 `ZONES` 에 이미 있다(문 0 · 좌표는 회부).
+//   ⓒ 갱신은 **이미 초당 하나 나가는 `gauges`** 에 얹는다(새 타이머 0 · 아래 11100줄대).
+//      알림에 얹으면 `window.__notices` 규약이 초당 한 줄씩 더러워진다 — 그래서 거기가 아니다.
+const _followOf = (player) => (player && player._follow) || null;
+/** 지금 이 존에 있고 **숨지 않은** 그 사람 — 없으면 null. */
+function _onlineHere(playerId) {
+  for (const p of players.values()) {
+    if (p.isNpc || String(p.playerId) !== String(playerId)) continue;
+    return p._hidden ? null : p;
+  }
+  return null;
+}
+/** 다른 존이면 그 존 이름 한 마디 — 좌표는 주지 않는다(캐논 회부). */
+function _elsewhereLine(name, playerId, say) {
+  central.getPlayer(String(playerId)).then((row) => {
+    const z = row && row.last_zone;
+    const nm = (z && ZONES[z] && ZONES[z].displayName) || null;
+    say(nm ? `${name} 은(는) 다른 곳에 있다 — ${nm}` : `${name} 은(는) 다른 곳에 있다`);
+  }).catch(() => say(`${name} 은(는) 다른 곳에 있다`));
+}
+/** 따라가기를 끈다 — 이유를 한 줄로 말하고, 다음 `gauges` 가 화살을 거둔다(`follow: null`). */
+function _followStop(player, why) {
+  if (!player || !player._follow) return;
+  player._follow = null;
+  player._followOff = true;                 // ★다음 초에 `follow: null` 을 한 번 실어 보낸다
+  if (why) send(player.ws, { type: 'notice', text: why });
+}
+/**
+ * `/어디 <이름>` · `/따라가기 <이름>` · `/따라가기 끝` · `/숨기` · `/숨기 끝`
+ * ★분기 **한 줄**로 붙는다(위 채팅 표). 게임 행동은 한 줄도 안 바뀐다 — 안내와 화살뿐이다.
+ */
+/**
+ * ★★[T147] 따라가는 벗의 자리 — `gauges` 에 실릴 조각(`{follow}` 이거나 `null`).
+ * **끄는 자리가 여기 하나**다(도착 · 사라짐 · 숨음). 채팅의 `/따라가기 끝` 만 밖에 있다.
+ */
+function _followPayload(p) {
+  if (p._followOff) { p._followOff = false; return { follow: null }; }
+  const f = _followOf(p);
+  if (!f) return null;
+  const t = _onlineHere(f.id);
+  if (!t) { _followStop(p, `${f.name} 이(가) 보이지 않는다 — 따라가기를 거둔다`); return { follow: null }; }
+  const dx = t.x - p.x, dy = t.y - p.y;
+  const d = Math.hypot(dx, dy);
+  //   ★도착 — 그 반경도 T110/T43 의 것이다(`RESCUE_RANGE_PX` · 손으로 적은 수 0).
+  if (d <= RESCUE_RANGE_PX) { _followStop(p, `${f.name} 에게 닿았다`); return { follow: null }; }
+  //   ★T110 반경 밖이면 **방향만** — 걸음 수는 걸어 닿는 거리 안에서만 뜻이 있다.
+  const far = d > Rescue.shoutRange();
+  return { follow: { pid: t.pid, x: Math.round(t.x), y: Math.round(t.y), name: f.name,
+                     steps: far ? null : Rescue.steps(d) } };
+}
+
+function followChat(player, text) {
+  if (!player) return false;
+  const t = String(text || '').trim();
+  const isCmd = t.startsWith('/어디') || t.startsWith('/따라가기') || t.startsWith('/숨기');
+  if (!isCmd) return false;
+  const say = (m) => { try { send(player.ws, { type: 'notice', text: m }); } catch (e) {} };
+  if (!player.playerId || String(player.playerId).startsWith('anon_')) { say('손님은 아직 벗을 찾을 수 없다'); return true; }
+
+  // ── `/숨기` — 세션 동안만. DB 0(영속은 회부).
+  if (t.startsWith('/숨기')) {
+    const arg = t.slice('/숨기'.length).trim();
+    if (arg === '끝') { player._hidden = false; say('이제 벗들에게 자리가 보인다'); return true; }
+    if (arg) { say('자리를 숨긴다 — `/숨기` · 되돌리려면 `/숨기 끝`'); return true; }
+    player._hidden = true;
+    say('자리를 숨겼다 — 벗들에게 "다른 곳"으로만 보인다(`/숨기 끝` 이면 되돌린다)');
+    return true;
+  }
+
+  // ── `/따라가기 끝`
+  if (t.startsWith('/따라가기')) {
+    const arg = t.slice('/따라가기'.length).trim();
+    if (arg === '끝') {
+      if (!_followOf(player)) { say('따라가던 벗이 없다'); return true; }
+      _followStop(player, '따라가기를 그만뒀다');
+      return true;
+    }
+    if (!arg) { say('누구를 따라가나 — `/따라가기 <이름>` · 그만두려면 `/따라가기 끝`'); return true; }
+    const f = Friends.friendByName(player.playerId, arg);
+    if (!f) { say(`${arg} 은(는) 자네의 벗이 아니다`); return true; }
+    const there = _onlineHere(f.id);
+    if (!there) { _elsewhereLine(f.name, f.id, say); say('여기 없는 벗은 따라갈 수 없다'); return true; }
+    player._follow = { id: f.id, name: f.name };
+    player._followOff = false;
+    say(`${f.name} 을(를) 따라간다 — 화살이 그쪽을 가리킨다(도착하면 저절로 꺼진다)`);
+    return true;
+  }
+
+  // ── `/어디 <이름>`
+  {
+    const arg = t.slice('/어디'.length).trim();
+    if (!arg) { say('누구를 찾나 — `/어디 <이름>`'); return true; }
+    const f = Friends.friendByName(player.playerId, arg);
+    if (!f) { say(`${arg} 은(는) 자네의 벗이 아니다`); return true; }
+    const there = _onlineHere(f.id);
+    if (!there) { _elsewhereLine(f.name, f.id, say); return true; }
+    const dx = there.x - player.x, dy = there.y - player.y;
+    const d = Math.hypot(dx, dy);
+    const dir = Onboarding.dirWord(dx, dy) || '어딘가';
+    //   ★T110 반경 **밖이면 방향만** — 그 너머의 걸음 수는 "걸어서 닿는 거리"를 넘어 뜻이 없다.
+    if (d > Rescue.shoutRange()) { say(`${f.name} 은(는) ${dir} 쪽 멀리 있다`); return true; }
+    say(`${f.name} 은(는) ${dir} 쪽 ${Rescue.steps(d)}걸음 거리에 있다`);
+    return true;
+  }
+}
+
 Rescue.init({ players, send, ZONE_ID,
   shelterAt: (x, y) => SimVillages.shelterAt(x, y),
   isWaterTile: isWaterTileLocal, isSeaTile: isSeaTileLocal,
@@ -3004,6 +3115,21 @@ const server = http.createServer((req, res) => {
   }
   // ★[T115] 친구 관측창 — 읽기 전용(`/claimdbg` 와 같은 규약). `?pid=<playerId>` 면 그 사람의 캐시도 낸다.
   //   ⚠**이름은 안 낸다**(캐시 요약뿐) — 관측창이 사교 관계를 흘리는 문이 되면 안 된다.
+  // ★[T147 2026-09-07] 따라가기 관측창 — `/friendsdbg`·`/guilddbg` 와 같은 규약(읽기 전용 · 제품 무접촉).
+  //   하네스가 **좌표를 알아야** 텔레포트로 판을 짤 수 있다(막힌 땅을 피해 가며).
+  if (req.url && req.url.startsWith('/followdbg') && req.method === 'GET') {
+    const rows = [];
+    for (const p of players.values()) {
+      if (p.isNpc) continue;
+      rows.push({ name: p.name, playerId: p.playerId, pid: p.pid,
+        x: Math.round(p.x), y: Math.round(p.y), hidden: !!p._hidden,
+        follow: p._follow ? p._follow.name : null });
+    }
+    const out = { ok: true, rescueRangePx: RESCUE_RANGE_PX, shoutRangePx: Rescue.shoutRange(), players: rows };
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify(out));
+    return;
+  }
   if (req.url && req.url.startsWith('/friendsdbg') && req.method === 'GET') {
     const q = (req.url.split('?')[1] || '');
     const m = /(?:^|&)pid=([^&]*)/.exec(q);
@@ -4185,6 +4311,7 @@ function handlePlayerInput(player, raw) {
     if (Newcomers.handleChat(player, text)) return;   // ★[T19] `/이방인` — 새 클라 조건 0
     if (Friends.handleChat(player, text)) return;     // ★[T115] `/친구` — 새 패널 0 · 새 클라 조건 0
     if (Guild.handleChat(player, text)) return;       // ★[T128] `/초대` `/수락` `/길드` `/소개`
+    if (followChat(player, text)) return;             // ★[T147] `/어디` `/따라가기` `/숨기` — 분기 한 줄
     // ★[T56] 구조 동사 둘 — `/먹이기 <음식>` `/물`. 채팅은 이미 있다(클라 무접촉 · T11 선례).
     if (Rescue.handleChat(player, text)) return;
     if (text.startsWith('/t ')) {
@@ -11191,6 +11318,12 @@ setInterval(() => {
         // ★[무게 배치] 소지 무게·용량·과적 배율. **클라 예측이 같은 수를 써야** 러버밴딩이 안 난다 —
         //   그래서 `combined`(신체×과적, 바닥 적용)를 실어 보내고 클라는 그걸 쓴다.
         carry: Object.assign(Carry.payload(p), { combined: moveMultOf(p) }),
+        // ★★[T147 2026-09-07] 따라가는 벗의 **지금 자리** — 갱신은 여기 하나다(새 타이머 0).
+        //   자리가 여기인 이유: 초당 하나 나가는 self 전용 메시지가 **이미 있다**. 알림에 얹으면
+        //   `window.__notices` 규약이 초당 한 줄씩 더러워지고(28개 하네스가 그 배열을 읽는다),
+        //   틱(30Hz)에 얹으면 초당 30번 보낼 이유가 없는 것을 30번 보낸다.
+        //   ⚠키는 **따라갈 때만** 실린다 — 끈 그 순간에 한 번 `null` 을 실어 화살을 거둔다.
+        ...(_followPayload(p) || {}),
       });
     }
   }
