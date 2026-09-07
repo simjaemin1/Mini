@@ -470,6 +470,23 @@ function _updateVillageAnchor() {
 //   a._fgl(econ 식량 잉여 가중)=0 폴백(식 유지 — 미연결 시 무효과).
 function _hunterBrain(a, s, dt) {
   const bMoveTo = (a2, cx, cy) => { a2._hgx = cx; a2._hgy = cy; a2._hgo = 1; return true; };   // 목표 기록(성공은 본체 경로층이 판정 — stuck·재경로 흡수)
+  // ★★[T158 2026-09-07] **보이는 사냥은 장부의 연출이다.**
+  //   여태 이 두뇌는 제 속도로 잡았고 그 kill 은 곳간·장부와 무관했다(랩 규약 "전투는 연출").
+  //   그러니 **관객이 보는 사냥과 세계가 세는 사냥이 다른 수**였다. 이제 하루 예산을 장부에서 읽는다.
+  //   ⓐ 잡은 수 세기 — 실행층(287행 블록 · **원문 무수정**)이 사체를 물리면 `a._carc` 가 새로 앉는다.
+  //      그 갈림을 여기서 본다(블록을 안 고치고 세는 유일한 자리).
+  if (a._carc && a._carc !== a._carcSeen) { a._carcSeen = a._carc; const rp0 = a._real; if (rp0) rp0._huntKil = (rp0._huntKil || 0) + 1; }
+  //   ⓑ 예산 소진 — **새 표적을 안 잡는다**. 이미 물어 둔 사체는 마저 바른다(그건 어제 센 그 마리다).
+  //      예산을 못 읽는 판(주입 없음·되돌림)은 `Infinity` 라 종전 그대로다.
+  if (typeof H.huntBudgetOf === 'function' && !(a._carc && a._carc.st === 'dead' && a._carc.rot > 0)) {
+    let left = Infinity; try { left = H.huntBudgetOf(a._real); } catch (e) {}
+    if (!(left > 0)) {
+      a._bm = null; a._tgt = null; a._cm = null; a.sneak = false;
+      if ((a.dwell = (a.dwell || 0) - dt) > 0) return;
+      bMoveTo(a, a.home.cx, a.home.cy); a.action = '귀환'; a.dwell = 24 + Math.random() * 24;
+      return;
+    }
+  }
   // ── 프레임 가드(랩 8030~8037 — dwell 무관 매 프레임) ──
   if (a._bm) {
     const b2 = a._bm, ded = b2.hp <= 0 || b2.st === 'dead', fle = b2.st === 'flee';
