@@ -319,8 +319,14 @@ const SUS = R('server/sustain');
     + `   [값 ${vN} · 일 ${dN} · 합 ${S.emitted}]`);
   console.log(`  약속      게시 ${S.reqOpened} · 철회 ${S.reqClosed} · 축소 ${S.reqShrunk}`
     + ` · 못갚아미게시 ${S.reqNoPay} · **깨진 약속(재검증철회) ${S.reqRevalidated}**`);
-  console.log(`  land.game 최저 ${gMin == null ? '—' : gMin.toFixed(2)} · 중앙 ${gMed == null ? '—' : gMed.toFixed(2)}`
+  // ★★[T152 실측 · 족보 (130)] 이 두 수는 **시딩값(정적)** 이다 — econ 랩은 `villages.js` 생활층
+  //   하루 틱(`_lifeDaily`)을 **안 돈다.** T146 이 얹은 **동적** `land.game`(사냥으로 줄고 회복하는 그 값)은
+  //   여기 안 잡힌다(T146 자신도 "3시드 A/B 전부 비트 동일 — econ 랩은 _lifeDaily 를 안 돈다"고 적었고,
+  //   T152 가 `T146_GAME=0` 으로 되돌려도 JSON 이 비트 동일함을 재확인했다).
+  //   ⇒ 동적 land.game 의 기준선은 **T146 계측기**에서 읽어라. 여기 수를 그 자리에 쓰면 틀린 근거가 된다.
+  console.log(`  land.game(시딩값 · 정적) 최저 ${gMin == null ? '—' : gMin.toFixed(2)} · 중앙 ${gMed == null ? '—' : gMed.toFixed(2)}`
     + `   [바닥 ${require(path.join(__dirname, '..', 'server', 'livelihood')).FLOOR.game}]`);
+  console.log(`            ⚠동적 land.game(T146)은 이 랩이 **안 돈다**(생활층 미실행 · 족보 130) — T146 계측기를 봐라.`);
 }
 
 // ── ⓛ ★★[T152] 석재 바닥의 나선 — **몇 곳이 칼날 위에 있나**(귀속만 · 구현 0) ─────────────
