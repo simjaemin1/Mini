@@ -90,12 +90,23 @@ function snapOne(v) {
   // 산출 — 엔진이 그날 찍어 둔 일일 생산 버퍼(사본 아님)
   const prod = {};
   const dp = v.dailyProductionBuf || null;
-  if (dp) for (const k of ['fruit', 'vegetable', 'mushroom', 'twig', 'pebble', 'chestnut', 'walnut', 'honey', 'herb', 'grape', 'acorn', 'mulberry_fruit', 'stone'])
-    if (dp[k]) prod[k] = +dp[k].toFixed(4);
+  if (dp) for (const k in dp) if (dp[k] > 0) prod[k] = +dp[k].toFixed(4);
   return {
     name: v.name, pop: (v.npcs || []).length,
     food: +(econ.totalFoodEquivalent ? econ.totalFoodEquivalent(v) : 0).toFixed(1),
     jobs, price, prod,
+    // 픽커가 **무엇을 골랐나** — 엔진이 이미 찍어 두는 진단 필드를 읽는다(배분식을 베끼지 않는다)
+    pick: (v._dbgSwitch && v._dbgSwitch.need) || null,
+    fscale: (v._forageScale != null) ? +v._forageScale.toFixed(4) : null,
+    // ★인구식이 무엇에 막혔나 — 엔진이 이미 찍어 두는 진단 필드(`_dpDebug`)를 그대로 읽는다.
+    //   K · 굶주림 · 건강 · 행복 · 위신 · 주거 · **gated**(무엇이 상한이었나) — 사본 0.
+    dp: v._dpDebug || null,
+    // ★K 는 무엇에 막혔나 — `_kDbg = {slot, prod, fuel}` 은 엔진이 이미 노출하는 분해다(리비히 min).
+    kdb: v._kDbg || null,
+    ws: { wood: +(v.storage.wood || 0).toFixed(1), stone: +(v.storage.stone || 0).toFixed(1),
+          tool: +(v.storage.tool || 0).toFixed(1), food: +(v.storage.food || 0).toFixed(1) },
+    housing: (v.housing != null) ? +v.housing.toFixed(1) : null,
+    exp: v.expansions || 0,
     stock: { acorn: +(v.storage.acorn || 0).toFixed(1), chestnut: +(v.storage.chestnut || 0).toFixed(1),
              mulberry_fruit: +(v.storage.mulberry_fruit || 0).toFixed(1), grape: +(v.storage.grape || 0).toFixed(1),
              vegetable: +(v.storage.vegetable || 0).toFixed(1), fruit: +(v.storage.fruit || 0).toFixed(1) },
