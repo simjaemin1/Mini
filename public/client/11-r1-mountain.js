@@ -326,6 +326,14 @@
     if (_mgl.gl) { _mgl.gl.useProgram(_mgl.pr); _mgl.gl.uniform1f(_mgl.uni.uHmax, MT3_HMAX); }
     _mgl.hKey = ''; _mt3Chunk.clear(); _mt3Sig = ''; return [MT3_HMAX, MT3_LAM]; };
   window.__mt3mpad = (v) => { MT3_MPAD = v | 0; _mt3Chunk.clear(); _mt3Sig = ''; return MT3_MPAD; };
+  // ★★[T150 2026-09-07] 둥글기 축 r ∈ [0,1]. **기본 0 = T150 이전과 비트 동일** — 켜기는 재민 눈 뒤.
+  //   ⓘ mt3 는 T145 의 스프라이트 판과 **무효화 방식이 다르다**: 계산된 서명이 아니라
+  //     손잡이가 제 손으로 `_mt3Chunk.clear(); _mt3Sig = ''` 을 한다(위 열두 손잡이가 전부 그 문법).
+  //     `_mt3Field` 자체는 캐시가 없어 `__mtHeightGrid` 같은 계측 훅은 늘 지금 값을 본다 —
+  //     그래서 T145 가 밟은 "훅은 새 값, 화면은 옛 값" 갈림이 여기선 안 난다(그림은 `_mt3Chunk` 가 낸다).
+  window.__mt3SetRound = (v) => { MT3_ROUND = Math.max(0, Math.min(1, +v || 0));
+    _mt3Chunk.clear(); _mt3Sig = ''; needsRedraw = true; return MT3_ROUND; };
+  window.__mt3Round = () => MT3_ROUND;
   window.__mt3trees = (p, px) => { MT3_TREEP = +p; if (px) MT3_TREEPX = +px;
     _mt3Chunk.clear(); _mt3Sig = ''; return [MT3_TREEP, MT3_TREEPX]; };
   window.__mt3macro = (a, b) => { MT3_MACRO = +a; if (b != null) MT3_MACROH = +b;

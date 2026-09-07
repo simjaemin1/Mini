@@ -449,6 +449,74 @@ function changedPct(a, b, box, thr) {
     await page.evaluate(() => { window.__terrain19.mt3dOff = false; });
   }
 
+  // ── ⓖ 3D 둥글기 축 (T150) ────────────────────────────────────────────────
+  say('\n[ⓖ 3D 높이장의 둥글기 축 — `__mt3SetRound(r)`]');
+  {
+    await page.evaluate(() => { window.__terrain19.mt3dOff = false; });   // ⓕ 가 내려섰던 판을 되올린다
+    await page.evaluate(() => window.__mt3SetRound(0));
+    await sleep(2200);
+    ok(await page.evaluate(() => window.__mt3Round()) === 0, '기본값이 0 이다 — 켜기는 재민 눈 뒤(카드 §1)');
+
+    const cam = await page.evaluate(() => window.__camCellLocal());
+    const cx0 = Array.isArray(cam) ? cam[0] : cam.lcx, cy0 = Array.isArray(cam) ? cam[1] : cam.lcy;
+    const GW = 90, GH = 90, gx0 = cx0 - GW / 2, gy0 = cy0 - GH / 2;
+    const gridAt = async (r) => {
+      await page.evaluate((v) => window.__mt3SetRound(v), r);
+      await sleep(600);
+      return page.evaluate(([a, b, w, h]) => window.__mtHeightGrid(a, b, w, h), [gx0, gy0, GW, GH]);
+    };
+    const med = (g) => { const nz = g.filter((v) => v > 0.13).sort((a, b) => a - b); return nz.length ? nz[nz.length >> 1] : 0; };
+    const tall = (g) => { const nz = g.filter((v) => v > 0.13); return nz.length ? nz.filter((v) => v > 17.5).length / nz.length : 0; };
+    // 최대 이웃 단차 = 그 창의 **가장 가파른 사면**(m/셀). 경사 길이가 늘면 이 수가 준다.
+    const slope = (g) => { let mx = 0; for (let b = 0; b < GH; b++) for (let a = 0; a + 1 < GW; a++) {
+        const i2 = b * GW + a; if (g[i2] > 0.13 && g[i2 + 1] > 0.13) mx = Math.max(mx, Math.abs(g[i2] - g[i2 + 1])); } return mx; };
+
+    const g0 = await gridAt(0), g0b = await gridAt(0), g8 = await gridAt(0.8), g1 = await gridAt(1);
+    const rockN = g0.filter((v) => v > 0.13).length;
+    ok(rockN > 200, `창에 바위 셀이 충분하다 (${rockN}칸) — 산 없는 창에서 재면 전부 0 이다`);
+
+    let same = 0; for (let k = 0; k < g0.length; k++) if (g0[k] === g0b[k]) same++;
+    ok(same === g0.length, `★★자리의 함수 — r=0 두 번이 **한 셀도 안 다르다** (${same}/${g0.length}) · Math.random() 이 없다`);
+
+    say(`    높이장 — 중앙 r0 ${med(g0).toFixed(2)}m → r0.8 ${med(g8).toFixed(2)}m → r1 ${med(g1).toFixed(2)}m`);
+    say(`      17.5m 넘는 비 ${(tall(g0)*100).toFixed(1)}% → ${(tall(g8)*100).toFixed(1)}% → ${(tall(g1)*100).toFixed(1)}%`);
+    say(`      가장 가파른 사면 ${slope(g0).toFixed(2)} → ${slope(g8).toFixed(2)} → ${slope(g1).toFixed(2)} m/셀`);
+    ok(med(g8) < med(g0) * 0.95, `★★r=0.8 이면 **마루가 낮아진다** (중앙 ${med(g0).toFixed(2)} → ${med(g8).toFixed(2)}m)`);
+    ok(slope(g8) < slope(g0), `★★r=0.8 이면 **사면이 눕는다** = 경사 길이가 늘었다 (${slope(g0).toFixed(2)} → ${slope(g8).toFixed(2)} m/셀)`);
+    ok(med(g1) < med(g8), `★단조 — r 이 크면 더 낮다 (${med(g8).toFixed(2)} → ${med(g1).toFixed(2)}m)`);
+
+    // ★★반사실 — 카드가 말한 이진 문턱이었다면 둥근셀↔뾰족셀 경계 **한 셀**에서 이만큼 갈린다.
+    let mx = 0, sum = 0, n = 0;
+    for (let k = 0; k < g0.length; k++) if (g0[k] > 0.13 && g1[k] > 0.13) { const d = Math.abs(g0[k] - g1[k]); if (d > mx) mx = d; sum += d; n++; }
+    say(`    ★반사실(이진이었다면) — |h(r=1)−h(r=0)| 최대 ${mx.toFixed(2)}m · 평균 ${(sum/n).toFixed(2)}m`);
+    ok(mx > slope(g0) * 2, `★★이진 문턱을 못 쓰는 까닭이 수로 선다 — 경계 단차 ${mx.toFixed(2)}m 가 그 창의 가장 가파른 사면 ${slope(g0).toFixed(2)}m/셀 보다 훨씬 크다`);
+    ok(slope(g8) <= slope(g0), `★반례 — 부드러운 장은 **새 절벽을 안 만든다** (최대 사면이 안 늘었다)`);
+
+    // ★화소 — 서명이 실제로 캐시를 버리나(T145 가 밟은 그 함정의 mt3 판)
+    //   ⚠**고정 sleep 을 쓰면 안 된다.** mt3 는 프레임당 청크 하나만 굽고(`mt3bakeMs` 14초대),
+    //     손잡이를 뒤집으면 화면이 여러 프레임에 걸쳐 다시 찬다. 1차에 2.2초 고정으로 쟀더니
+    //     **잡음 바닥이 14.19** 로 나와 신호(2.07)를 삼켰다 — 재고 있던 건 굽기 지연이다.
+    //     ⇒ 이 하네스가 ⓓ 에서 쓰는 처방 그대로 **연속 두 장이 같아질 때까지** 기다린다.
+    await page.evaluate(() => window.__mt3SetRound(0));
+    const dim = await grab('11-mt3-dim');
+    const bxAll = [0, 0, dim.width, dim.height];
+    const stA = await settleShot('11-mt3-r0', bxAll); const sA = stA.img;
+    await sleep(2200);
+    const sA2 = await grab('12-mt3-r0-b');
+    await page.evaluate(() => window.__mt3SetRound(0.8));
+    const stB = await settleShot('13-mt3-r08', bxAll); const sB = stB.img;
+    say(`    (그림이 멈추기까지 — r0 ${stA.ms}ms${stA.timeout ? ' ※시간초과' : ''} · r0.8 ${stB.ms}ms${stB.timeout ? ' ※시간초과' : ''})`);
+    const dBase = meanAbsDiff(sA, sA2, bxAll), dR = meanAbsDiff(sA, sB, bxAll);
+    const pR = changedPct(sA, sB, bxAll, 12);
+    say(`    화소(화면 전체) — r0↔r0.8 |Δ| ${dR.toFixed(2)} · 바뀐 화소 ${pR.toFixed(2)}% · 잡음 바닥 ${dBase.toFixed(2)}`);
+    ok(dR > Math.max(0.5, dBase * 4), `★★손잡이가 **그림에 닿는다** (|Δ| ${dR.toFixed(2)} ≫ 바닥 ${dBase.toFixed(2)}) — 서명이 청크 캐시를 실제로 버렸다`);
+    ok(pR > 1.0, `★★바뀐 화소가 화면의 1%를 넘는다 (${pR.toFixed(2)}%)`);
+    await page.evaluate(() => window.__mt3SetRound(0));
+    const stC = await settleShot('14-mt3-back0', bxAll); const sC = stC.img;
+    const dBack = meanAbsDiff(sA, sC, bxAll);
+    ok(dBack < Math.max(0.5, dBase * 2), `★★되돌림 — r 을 0 으로 되돌리면 **처음 그림과 구별되지 않는다** (|Δ| ${dBack.toFixed(2)} vs 바닥 ${dBase.toFixed(2)})`);
+  }
+
   await browser.close(); try { z.kill(); } catch (e) { }
   for (const p2 of procs) { try { p2.kill(); } catch (e) { } }
   say(`\n=== 산 장벽 세그먼트: 통과 ${pass} · 실패 ${fail} ===`);

@@ -25,6 +25,7 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
+const { readClientSrc } = require('./client-src.js');   // ★[T150] 클라 원본은 한 곳에서 읽는다(사본 금지)
 const SELFTEST = process.argv.includes('--selftest');
 let fail = 0;
 const ok = (c, m) => { console.log((c ? '  ✓ ' : '  ✗ ') + m); if (!c) fail++; };
@@ -468,6 +469,38 @@ console.log('\n[⑧ 굽는 기계 정본 — icons.lock.json 이 지금 자산�
       ok(offMid.length === 0, `★mountains: 원점이 가로 한가운데 근처다 (|ox/w−0.5| ≤ 0.15 · 벗어남 ${offMid.length}${offMid.length ? ' — ' + offMid.slice(0, 3).join(', ') : ''})`);
       const R = anK.filter(k => /^mt_R/.test(k)), X = anK.filter(k => /^mt_X/.test(k));
       console.log(`     ⓘ 산 ${anK.length}장 = 뾰족 ${anK.length - R.length - X.length} · 둥근 ${R.length} · 주봉 ${X.length}`);
+      // ★★[T150] 3D 높이장의 둥글기 배수는 **재료표에서 유도한 수**다 — 여기서 다시 계산해 대조한다.
+      //   사본이 굳는 것을 막는 자다: 재료표를 고치면(밑변·키) 이 검사가 **먼저** 빨개진다.
+      //   ⓘ 3D 판(`_mt3Field`)과 스프라이트 판(`mt_R*` 40장)이 같은 모양 언어를 쓰게 하는 고리.
+      {
+        const py = fs.readFileSync(path.join(ROOT, 'scripts', 'bake-mountain.py'), 'utf8');
+        const G  = py.match(/'mt_G%dv%d' % \(a, v\), ([\d.]+), ([\d.]+) - ([\d.]+) \* v/);
+        const F  = py.match(/'mt_F%dv%d' % \(a, v\), ([\d.]+), ([\d.]+) - ([\d.]+) \* v/);
+        const RG = py.match(/'mt_RG%dv%d' % \(a, v\), float\(os\.environ\.get\('MT_RBR', '([\d.]+)'\)\),\s*float\(os\.environ\.get\('MT_RH', '([\d.]+)'\)\) - ([\d.]+) \* v/);
+        const RF = py.match(/'mt_RF%dv%d' % \(a, v\), float\(os\.environ\.get\('MT_RBR', '([\d.]+)'\)\) \+ ([\d.]+),\s*float\(os\.environ\.get\('MT_RH', '([\d.]+)'\)\) - ([\d.]+) - ([\d.]+) \* v/);
+        ok(!!(G && F && RG && RF), '재료표 네 무리(G·F·RG·RF)를 `bake-mountain.py` 에서 읽었다');
+        if (G && F && RG && RF) {
+          const mean = (a) => a.reduce((x, y) => x + y, 0) / a.length;
+          const gh = [0, 1, 2].map(v => G[2] - G[3] * v), fh = [0, 1].map(v => F[2] - F[3] * v);
+          const rgr = +RG[1], rgh = [0, 1, 2].map(v => RG[2] - RG[3] * v);
+          const rfr = +RF[1] + +RF[2], rfh = [0, 1].map(v => RF[3] - RF[4] - RF[5] * v);
+          const pR = (24 * G[1] + 16 * F[1]) / 40, pH = (24 * mean(gh) + 16 * mean(fh)) / 40;
+          const rR = (24 * rgr + 16 * rfr) / 40, rH = (24 * mean(rgh) + 16 * mean(rfh)) / 40;
+          const kL = rR / pR, kH = rH / pH;
+          console.log(`     ⓘ 재료표 평균 — 뾰족 밑변 ${pR.toFixed(2)} 키 ${pH.toFixed(2)} · 둥근 밑변 ${rR.toFixed(2)} 키 ${rH.toFixed(2)}`);
+          const src = readClientSrc();
+          const mL = src.match(/MT3_RLAM\s*=\s*([\d.]+)\s*\/\s*([\d.]+)/);
+          const mH = src.match(/MT3_RHMAX\s*=\s*([\d.]+)\s*\/\s*([\d.]+)/);
+          ok(!!(mL && mH), '클라가 두 배수를 **나눗셈 그대로** 적어 뒀다(출처가 코드에 보인다)');
+          if (mL && mH) {
+            const cL = +mL[1] / +mL[2], cH = +mH[1] / +mH[2];
+            ok(Math.abs(cL - kL) < 0.005, `★MT3_RLAM ${cL.toFixed(4)} = 재료표 밑변비 ${kL.toFixed(4)} (둥근이 ${(kL*100-100).toFixed(1)}% 더 넓게 눕는다)`);
+            ok(Math.abs(cH - kH) < 0.005, `★MT3_RHMAX ${cH.toFixed(4)} = 재료표 키비 ${kH.toFixed(4)} (둥근이 ${(100-kH*100).toFixed(1)}% 낮다)`);
+          }
+        }
+        ok(/let MT3_ROUND = 0;/.test(readClientSrc()),
+           '★3D 둥글기 축의 **기본값이 0** 이다 — 켜기는 재민 눈 뒤(T150 §1)');
+      }
     }
     // ★[T106] 4.0.2 산출물 0 — 굽는 기계 줄이 그걸 말해야 한다.
     ok(/4\.0\.2 산출물 0/.test(lock._기계 || ''),
