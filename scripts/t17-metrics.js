@@ -137,8 +137,34 @@ const L = Events.createLedger({
 });
 L.prime(world);
 
+// ★★[T152 2026-09-07] **석재 바닥 마을 궤적 표본** — 계측만(엔진 무접촉 · 코드 변경 0).
+//   `land.stone == FLOOR(0.25)` 인 마을만 하루치 상태를 받아 둔다(그 밖의 마을은 안 본다 = 비용 ~0).
+//   왜 이 마을들인가: T135 2판이 농촌12 로 본 죽음의 고리 —
+//     석재 0 → 석공이 도구를 못 만든다(`produceSpecial` 게이트 `stone >= _stCost`) → 도구 0 →
+//     전 직업 생산 ×0.25(맨손) → 기근 → 인구 0. 그 고리는 **바닥 마을에서만** 상시 임계다.
+const STONE_FLOOR = require(path.join(__dirname, '..', 'server', 'livelihood')).FLOOR.stone;
+const floorIdx = world.villages.map((v, i) => [v, i]).filter(([v]) => (v.land && v.land.stone || 0) <= STONE_FLOOR + 1e-9);
+const floorTrace = floorIdx.map(([v]) => ({ name: v.name, land: +(v.land.stone || 0).toFixed(3),
+  pop0: (v.npcs || []).length, popMax: (v.npcs || []).length, stoneMin: Infinity, toolMin: Infinity,
+  daysStone0: 0, daysTool0: 0, forDays: 0, masonDays: 0, days: 0 }));
+
 const _log = console.log; console.log = () => {};
-for (let d = 0; d < DAYS; d++) { econV2.tickWorldV2(world); L.scanDay(world, world.day, {}); if (_CLEAR) P._clearProbe.tickDay(_clearVils); }
+for (let d = 0; d < DAYS; d++) {
+  econV2.tickWorldV2(world); L.scanDay(world, world.day, {});
+  if (_CLEAR) P._clearProbe.tickDay(_clearVils);                 // [T100 4판] 개간 관측
+  for (let k = 0; k < floorIdx.length; k++) {                    // ★[T152] 석재 바닥 마을 표본
+    const v = floorIdx[k][0], t = floorTrace[k];
+    const n = (v.npcs || []).length, st = +(v.storage.stone || 0), tl = +(v.storage.tool || 0);
+    t.days++;
+    if (n > t.popMax) t.popMax = n;
+    if (st < t.stoneMin) t.stoneMin = st;
+    if (tl < t.toolMin) t.toolMin = tl;
+    if (st < 0.2) t.daysStone0++;                 // STONE_NET 1차 발동 문턱(절대 0.2) 아래에 있던 날
+    if (tl < 0.05) t.daysTool0++;                 // 도구가 사실상 0 이던 날
+    t.forDays += ((v.counts || {}).forager || 0);
+    t.masonDays += ((v.counts || {}).mason || 0);
+  }
+}
 if (_CLEAR) console.log(`  [T100] 개간 관측 — 끝 밭 ${_clearVils.reduce((a, v) => a + v._farmSet.size, 0)}칸 · 마을당 중앙 ${_clearVils.map((v) => v._farmSet.size).sort((a, b) => a - b)[Math.floor(_clearVils.length / 2)]}칸`);
 console.log = _log;
 
@@ -268,6 +294,65 @@ const SUS = R('server/sustain');
   console.log(`\nⓙ 사장 셋   woodSustain 잰 마을 ${wN}(합 ${wS.toFixed(1)}) · forageSustain ${fN}(합 ${fS.toFixed(1)}) · marginalQ ${mN}`);
   console.log(`           지금 land 에 실린 것: wood ${world.villages.filter((v) => v.land && v.land.woodSustain != null).length} · forage ${world.villages.filter((v) => v.land && v.land.forageSustain != null).length} · marginalQ ${world.villages.filter((v) => v.land && v.land.marginalQ != null).length}  ← **전부 0 이면 사장**`);
   console.log(`           켜지면 물릴 대상 — 벌목꾼 ${lumber}명 · 채집꾼 ${forager}명 (어부 ${world.villages.reduce((a, v) => a + ((v.counts && v.counts.fisher) || 0), 0)}명과 같은 자리)`);
+}
+
+// ── ⓚ ★★[T152 2026-09-07] **기준선 한 줄** — 카드들이 각자 다른 문법으로 내던 열을 한 자리에 ──────
+//   ㉮/㉯ 밀도(T133 문법) · 게시·깨진 약속(T142 문법) · `land.game` 최저·중앙(T146 문법 자리) ·
+//   그리고 위 ⓐ 여덟 수. 이 한 줄이 다음 카드들이 견줄 기준선이다.
+{
+  const DEED = new Set(Events.DEED_TYPES || []);
+  const B = S.byType || {};
+  let vN = 0, dN = 0;
+  for (const t of Events.TYPES) { const n = B[t] || 0; if (DEED.has(t)) dN += n; else vN += n; }
+  const dens = (n) => (n > 0 ? (live * DAYS / n) : Infinity);
+  // 생곡 — 밀·쌀·보리·기장 곳간 합(T73 이 만든 열 · 공통.md 기준선 표의 그 이름).
+  const RAWGRAIN = ['wheat', 'rice', 'barley', 'millet'];
+  const rawGrainStock = RAWGRAIN.reduce((a, r) => a + stockOf(r), 0);
+  const games = world.villages.filter((v) => (v.npcs || []).length > 0)
+    .map((v) => +((v.land && v.land.game) || 0)).sort((a, b) => a - b);
+  const gMin = games.length ? games[0] : null;
+  const gMed = games.length ? games[games.length >> 1] : null;
+  console.log(`\nⓚ [T152] 기준선 한 줄 — 시드 ${SEED} · ${DAYS}일 · 인구있는 마을 ${live}`);
+  console.log(`  여덟 수   인구 ${pop} · 소멸 ${dead}/${ever} · 무기Q ${weapQ.toFixed(0)} · 확장셀 ${expand}`
+    + ` · 게시 ${S.reqOpened} · 도구Q ${toolQ.toFixed(1)} · 보존식 ${presStock.toFixed(1)} · 생곡 ${rawGrainStock.toFixed(1)}`);
+  console.log(`  밀도      ㉮ 전체 ${dens(S.emitted).toFixed(2)}일/건 · ㉯ 값 유형 ${dens(vN).toFixed(2)}일/건 (캐논 2~3일)`
+    + `   [값 ${vN} · 일 ${dN} · 합 ${S.emitted}]`);
+  console.log(`  약속      게시 ${S.reqOpened} · 철회 ${S.reqClosed} · 축소 ${S.reqShrunk}`
+    + ` · 못갚아미게시 ${S.reqNoPay} · **깨진 약속(재검증철회) ${S.reqRevalidated}**`);
+  console.log(`  land.game 최저 ${gMin == null ? '—' : gMin.toFixed(2)} · 중앙 ${gMed == null ? '—' : gMed.toFixed(2)}`
+    + `   [바닥 ${require(path.join(__dirname, '..', 'server', 'livelihood')).FLOOR.game}]`);
+}
+
+// ── ⓛ ★★[T152] 석재 바닥의 나선 — **몇 곳이 칼날 위에 있나**(귀속만 · 구현 0) ─────────────
+{
+  console.log(`\nⓛ [T152] 석재 바닥 마을 — \`land.stone == FLOOR(${STONE_FLOOR})\` 전수`);
+  if (!floorTrace.length) {
+    console.log(`  이 시드엔 바닥 마을이 **0곳**이다(그래서 이 시드에선 그 궤적이 못 난다).`);
+  } else {
+    console.log('  ' + '마을'.padEnd(12) + 'land'.padStart(6) + '인구(끝/최고)'.padStart(14)
+      + '돌 최저'.padStart(9) + '도구 최저'.padStart(10) + '돌<0.2 일수'.padStart(12)
+      + '도구≈0 일수'.padStart(12) + '채집·석공(누적 인·일)'.padStart(22) + '  궤적');
+    let onEdge = 0;
+    for (let k = 0; k < floorTrace.length; k++) {
+      const v = floorIdx[k][0], t = floorTrace[k];
+      const now = (v.npcs || []).length;
+      // ★"궤적 진입" 의 정의(이 표 안에서만 쓰는 말): 도구가 사실상 0 이던 날이 전체의 10% 를 넘고,
+      //   그 판에서 인구가 최고점의 절반 밑으로 내려간 적이 있다 — T135 2판이 적은 그 고리의 관측 가능한 그림자.
+      const spiral = (t.daysTool0 / Math.max(1, t.days) > 0.1) && (now < t.popMax * 0.5);
+      if (spiral) onEdge++;
+      console.log('  ' + String(t.name).padEnd(12) + t.land.toFixed(2).padStart(6)
+        + `${now}/${t.popMax}`.padStart(14) + (isFinite(t.stoneMin) ? t.stoneMin.toFixed(2) : '—').padStart(9)
+        + (isFinite(t.toolMin) ? t.toolMin.toFixed(2) : '—').padStart(10)
+        + String(t.daysStone0).padStart(12) + String(t.daysTool0).padStart(12)
+        + `${t.forDays}/${t.masonDays}`.padStart(22) + (spiral ? '  ★진입' : '  —'));
+    }
+    console.log(`  ⇒ **칼날 위 ${onEdge}곳 / 바닥 마을 ${floorTrace.length}곳**(인구있는 마을 ${live} 중).`);
+  }
+  console.log(`  ★산수(귀속): 바닥 마을 채집꾼의 돌 산출은 \`land.stone × 스킬 × MSY × 0.9\` = **0.225/인·일**(스킬 1 기준)이 상한이고,`);
+  console.log(`    석공의 도구 한 배치가 \`_stCost = 0.2 × taper\`, 마제석검 한 자루가 **0.5** 다(economy-sim.js:2152·2178).`);
+  console.log(`    ⇒ 바닥 마을에선 채집꾼 하나가 석공 하나를 겨우 먹인다 — 전사 무장이 한 번 끼면 그 자리에서 0 이 된다.`);
+  console.log(`    STONE_NET 은 **부르는 사람**은 맞게 부른다(게이트 \`land.stone >= 0.25\` 가 바닥을 포함하도록 \`>\`→\`>=\` 로 고쳐져 있다).`);
+  console.log(`    못 잡는 것은 **흐름의 굵기**다 — 바닥 마을은 그 안전망이 여는 관이 세계에서 가장 가늘다.`);
 }
 
 if (process.env.T17_JSON) {
