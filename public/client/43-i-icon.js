@@ -67,6 +67,13 @@
     //   몸에 걸친 갖옷이 같은 물건으로 읽혀야 한다(색이 갈리면 그 순간 두 물건이 된다).
     'clothes_fur', 'clothes_ramie', 'clothes_leather',
     'clothes_hide', 'clothes_fiber', 'clothes_hemp',
+    // ★★[T156 2026-09-07] 열매 넷 — T135 3판이 품목으로 세운 것들(`acorn`·`chestnut`·
+    //   `mulberry_fruit`(오디 · 새 아이디)·`grape`(머루)). 그림은 `nature_render.py ICON_BUILD` 가
+    //   `_fruit_cluster` 기하 그대로 굽는다.
+    //   ⓘ **T72·T76 때와 달리 배선을 회부하지 않았다.** `test-itemlabel ⑪` 이 이 목록과
+    //     `public/assets/icons/` 의 **정확한 일치**를 못 박은 뒤로(T66 착지), 그림만 넣고 키를
+    //     안 올리면 그 자리에서 빨개진다 — 배선은 이제 "아이콘을 굽는 일"의 일부다.
+    'acorn', 'chestnut', 'mulberry_fruit', 'grape',
   ]);
   // ★★[T66 2차 · 재민 확정 2026-09-03] 옛 **거부 목록** `ICON_NO_RENDER` 은 **없앴다** — 뒤집혔다.
   //   종전: "여기 있으면 렌더가 없다"(빠뜨리면 404). 지금: `ICON_RENDERED` 에 **있으면 그림, 없으면 점선 칸**.

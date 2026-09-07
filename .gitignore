@@ -36,6 +36,7 @@ scripts/nature_renders/
 scripts/building_renders/
 # ★[T67] 가구 렌더 중간 산물 — 정본은 `scripts/props_render.py`, 배치본은 public/assets/props · icons
 scripts/icon_renders/
+scripts/icon_renders_nat/          # ★[T156] 열매 아이콘 512² 원본 — 배포본은 96px 이고 이건 중간 산물이다
 scripts/crop_renders/
 scripts/field_renders/
 scripts/crop_icon_renders/

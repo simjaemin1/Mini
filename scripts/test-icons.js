@@ -359,6 +359,59 @@ console.log('\n[⑨ 옷 여섯 — 재질 값이 한 곳에만 있는가]');
 }
 
 // ── ⑧ [T79] 굽는 기계 잠금 — icons.lock.json ─────────────────────
+console.log('\n[⑩ 열매 아이콘 넷 — `nature_render.py ICON_BUILD` 이 굽는 표]');
+{
+  // ★★[T156] ①②③ 은 `props_render.py ITEMS` 만 돈다. 열매 넷은 **자연물 굽기**가 굽는다
+  //   (`_fruit_cluster` 기하를 그대로 쓰려면 그 파일이어야 한다) ⇒ 그 표를 따로 읽는다.
+  //   ⓘ 여기서도 키를 손으로 안 적는다 — 굽는 표에서 뽑는다(사본 금지).
+  const npy = fs.readFileSync(path.join(ROOT, 'scripts', 'nature_render.py'), 'utf8');
+  const blk = npy.match(/^ICON_BUILD = \[([\s\S]*?)^\]/m);
+  ok(!!blk, 'nature_render.py 에서 ICON_BUILD 표를 읽었다');
+  const FKEYS = blk ? [...blk[1].matchAll(/\('([a-z_]+)',\s*ic_/g)].map(m => m[1]) : [];
+  ok(FKEYS.length === 4, `열매 아이콘 넷 (실측 ${FKEYS.length}: ${FKEYS.join(' ')})`);
+  const W2 = require(path.join(ROOT, 'server', 'weights.js'));
+  const fmeta = {};
+  for (const k of FKEYS) {
+    const q = path.join(ICON_DIR, k + '.png');
+    if (!fs.existsSync(q)) { ok(false, `${k}.png 이 없다`); continue; }
+    const m = pngMeta(q); fmeta[k] = m;
+    ok(m.w === 96 && m.h === 96, `${k}.png ${m.w}×${m.h}`);
+    ok(m.clear > 200 && m.solid > 200, `${k}: 투명 ${m.clear} · 불투명 ${m.solid} 화소`);
+    // ★③ 과 같은 자 — 아이콘 키는 **서버 품목**이어야 한다(T135 가 넷을 품목으로 세웠다)
+    const kg = W2.kgOf(k);
+    ok(kg != null, `${k}: 서버 무게 ${kg == null ? '없음(가짜 키)' : kg + 'kg'}`);
+  }
+  // ⚠개암은 굽지 않는다 — 품목이 아니다. 그 판정이 **뒤집히면** 알려 준다(회부가 닫힌 날).
+  ok(W2.kgOf('hazelnut') == null,
+     `개암(hazelnut)은 아직 품목이 아니다 — 그래서 안 굽는다 (kgOf ${JSON.stringify(W2.kgOf('hazelnut'))})`);
+
+  // ★★짐 창에서 갈리는가 — **자를 배포본에서 유도한다**(문턱을 지어내지 않는다).
+  //   기존 아이콘 전 짝의 화소 |Δ| 분포를 재면 중앙값 95.8 · 5% 분위 43.5 · 최소 10.4
+  //   (최소는 씨앗들끼리다 — 씨앗은 원래 서로 닮았다). 새 넷은 그 **5% 분위 위**에 있어야 한다.
+  //   ⓘ 전 짝(10,296)을 매번 다시 재면 느리다 ⇒ 새 넷 대 나머지(4×147)만 잰다.
+  const FLOOR = 40;   // 5% 분위 43.5 를 내림 — 유도 근거는 위 주석(보고 §0-ⓒ 에 표)
+  const { PNG: PNG2 } = require('pngjs');
+  const px = {};
+  const all = fs.readdirSync(ICON_DIR).filter(f => f.endsWith('.png')).map(f => f.slice(0, -4));
+  const rd = (k) => px[k] || (px[k] = PNG2.sync.read(fs.readFileSync(path.join(ICON_DIR, k + '.png'))));
+  const dist = (a, b) => {
+    const A = rd(a), B = rd(b); let s = 0, n = 0;
+    for (let i = 0; i < A.data.length; i += 4) {
+      if (A.data[i + 3] > 96 || B.data[i + 3] > 96) {
+        s += Math.abs(A.data[i] - B.data[i]) + Math.abs(A.data[i + 1] - B.data[i + 1]) + Math.abs(A.data[i + 2] - B.data[i + 2]);
+        n++;
+      }
+    }
+    return n ? s / (3 * n) : 0;
+  };
+  for (const k of FKEYS) {
+    if (!fmeta[k]) continue;
+    let best = 1e9, who = '';
+    for (const o2 of all) { if (o2 === k) continue; const d = dist(k, o2); if (d < best) { best = d; who = o2; } }
+    ok(best >= FLOOR, `${k}: 가장 닮은 아이콘 ${who} 와 |Δ| ${best.toFixed(1)} ≥ ${FLOOR} (배포본 5% 분위 43.5 에서 유도)`);
+  }
+}
+
 console.log('\n[⑧ 굽는 기계 정본 — icons.lock.json 이 지금 자산과 맞는가]');
 {
   const LOCK = path.join(ROOT, 'public', 'assets', 'icons.lock.json');
