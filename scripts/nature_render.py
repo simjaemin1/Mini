@@ -35,6 +35,7 @@ import render_common as rc
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUTDIR = os.path.join(HERE, "nature_renders")
+ICON_OUT = os.path.join(HERE, "icon_renders_nat")   # ★[T156] 열매 아이콘 512² 원본(배포 전 단계)
 os.makedirs(OUTDIR, exist_ok=True)
 
 
@@ -595,6 +596,99 @@ def _grape_bunch(top, rng):
             blob(c, 0.034, M['fr_grape'], rng, squash=1.0, disp=0.10, sub=1, name="gr_berry")
 
 
+# ═══════════════ 열매 아이콘 [T156 2026-09-07] ═══════════════
+# ★★**새 형상 0.** 아래 넷은 `_fruit_cluster`·`_grape_bunch` 가 쓰는 것과 **같은 부름**이다 —
+#   같은 `blob`/`leaf_shell`, 같은 반지름, 같은 `squash`·`disp`·`sub`, 같은 재질(`M['fr_*']`).
+#   달라지는 것은 **자리 배치 하나**뿐이다: 수관에 흩뿌리는 대신 96px 액자 안에 모아 놓는다.
+#   ⓘ `render_icon_pass` 가 bbox 에 카메라를 맞추므로 **키우지 않는다**(비율까지 캐논 그대로).
+# ⚠개암은 굽지 않는다 — `weights.kgOf('hazelnut')` 이 null 이라 **품목이 아니다**(카드 §① · 회부).
+# ⚠아이콘은 `squash_z()` 를 **안 먹인다**(`render_icon_pass` 는 압축·FLIP 없는 프리셋이다).
+
+def ic_acorn():
+    """도토리 — `_fruit_cluster` 의 `'acorn'` 갈래 **두 부름 그대로**(알 + 깍정이).
+    ★깍정이가 표지다(T141) — 알만 두면 개암과 같은 얼굴이 되고, 짐 창에서 밤과도 안 갈린다.
+
+    ⚠**깍정이를 곧추 얹으면 아이콘에선 안 보인다.** 나무 그림은 45°/30°(비스듬)로 보지만
+      아이콘은 `ISO_DIR`(1,−1,1.2)로 **더 내려다본다** — 알 위에 얹은 깍정이가 위에서 눌려
+      "어두운 동전"으로 읽혔다(1패스 실측: acorn↔chestnut 화소 |Δ| 56.5 로 제일 약한 짝).
+      ⇒ 도토리를 **눕힌다**(자루에 담긴 도토리가 실제로 그렇다). 부름도 반지름도 그대로고,
+        옮긴 것은 깍정이가 붙는 **방향**뿐이다."""
+    rng = R(9101)
+    r = 0.058                                   # `_fruit_cluster` spec['acorn'][1]
+    #   (자리, 깍정이 방향) — 방향은 단위 벡터. 곧추(0,0,1) 대신 옆으로 눕혔다.
+    LAY = [((-0.066, 0.016, 0.004), (-0.74, 0.60, 0.31)),
+           ((0.052, -0.042, 0.002), (0.62, -0.72, 0.31)),
+           ((0.010, 0.068, -0.004), (-0.20, 0.90, 0.39))]
+    for c0, d in LAY:
+        c = V(c0)
+        blob(c, r, M['fr_acorn'], rng, squash=0.86, disp=0.12, sub=2, name="ic_ac_nut")
+        blob(c + V(d) * (r * 0.72), r * 0.82, M['fr_acup'], rng,
+             squash=0.46, disp=0.18, sub=2, name="ic_ac_cup")
+
+
+def ic_chestnut():
+    """밤 — 알 둘 + 벌어진 밤송이 하나.
+    ★`M['fr_chest']`(밤 알)는 T129 가 **정의만 해 두고 안 쓰던** 재질이다 — 나무에는 송이만
+      보이고 알은 안 보이기 때문이다. 짐 창의 품목은 **알**이라 여기서 처음 쓴다.
+    ★송이(가시 공)를 뒤에 하나 둔다 — 96px 에서 도토리와 가르는 것은 색이 아니라 **가시**다."""
+    rng = R(9102)
+    #   ⚠**밤 알에는 캐논 반지름이 없다** — `M['fr_chest']` 는 T129 가 정의만 해 둔 재질이고
+    #     나무 그림에는 알이 안 나온다. 그래서 0.082 는 **내가 고른 수**다(정직하게 적는다).
+    #     송이(0.105)보다 작고 도토리 알(0.058)보다 크게 — 셋이 짐 창에서 크기로도 갈린다.
+    rb = 0.105                                  # `_fruit_cluster` spec['burr'][1] — 송이는 캐논
+    #   ★**벌어진 송이 안에 알이 든 꼴**로 짠다. 나무에서는 닫힌 송이만 보이지만(알이 안 보인다)
+    #     짐 창의 품목은 알이다 — 가시 껍질은 "밤"이라고 말해 주는 표지로 뒤에 남긴다.
+    #   ⚠가시 수를 26 → 64 로 늘리고 길이를 0.075 → 0.052 로 줄였다. 캐논 값은 **나무 축척**
+    #     (송이 여럿을 멀리서 본다)에 맞춰져 있어, 96px 한 알을 채우면 **흩어진 나뭇가지**로
+    #     읽혔다(1패스 그림). 부름과 재질은 그대로고 **수와 길이**만 액자에 맞췄다.
+    burr = V((-0.026, 0.026, 0.048))
+    blob(burr, rb * 0.94, M['fr_burr'], rng, squash=0.86, disp=0.30, sub=2, name="ic_ch_burr")
+    leaf_shell(burr, rb * 1.42, 76, 0.009, 0.056, M['fr_burr'], rng,
+               squash=0.9, droop=0.0, rmin=0.80, tilt=1.0, name="ic_ch_spine")
+    for (x, y, z) in [(0.052, -0.052, -0.026), (-0.036, -0.070, -0.030)]:
+        blob(V((x, y, z)), 0.082, M['fr_chest'], rng,
+             squash=0.66, disp=0.10, sub=2, name="ic_ch_nut")
+
+
+def ic_mulberry_fruit():
+    """오디 — `_fruit_cluster` 의 `'mul'` 알(`fr_mul` · r 0.042)을 **집합과로 뭉친다**.
+    나무에서는 같은 알을 수관에 흩뿌린다(잘고 많다). 오디는 실제로 작은 핵과가 뭉친
+    집합과이므로, **같은 알을 모으면** 그게 열매 하나다 — 새 형상이 아니라 같은 단위의 배치다.
+    ★흩뿌린 채로 아이콘을 만들면 `seed_berry`(잔 씨앗 흩뿌림)와 같은 얼굴이 된다."""
+    rng = R(9103)
+    r = 0.042                                   # `_fruit_cluster` spec['mul'][1] — 나무의 오디 한 알
+    #   ⚠**여기만 캐논에 없는 구조다.** 나무는 이 알 하나를 오디 한 개로 친다(수관 축척의 단순화).
+    #     짐 창에서는 알 하나가 그냥 구슬이라 `berry` 와 같은 얼굴이 된다 ⇒ 실제 오디처럼
+    #     **작은 핵과가 뭉친 집합과**로 벌린다. 재질과 알의 성질(`blob`)은 그대로다.
+    #   ★송이(머루)와 갈리는 축은 **꼴**이다: 오디는 짧고 통통하고, 머루는 길게 늘어진 원뿔이다.
+    #     1패스는 오디를 길쭉하게 지어 머루와 |Δ| 50.4 로 붙었다 — 짧고 굵게 고쳤다.
+    def _drupe(o, L, W):
+        for k in range(6):
+            t = k / 5.0
+            rr = W * (1.0 - 0.30 * t)
+            m = max(2, int(round(6 * (1.0 - 0.35 * t))))
+            for j in range(m):
+                a = j * 6.2832 / m + rng.r(-0.30, 0.30)
+                blob(V(o) + V((math.cos(a) * rr, math.sin(a) * rr, L * (0.5 - t))),
+                     r * 0.52, M['fr_mul'], rng, squash=1.0, disp=0.16, sub=1, name="ic_mu_dr")
+    _drupe((-0.050, 0.026, 0.0), 0.088, 0.062)
+    _drupe((0.058, -0.030, -0.010), 0.076, 0.054)
+
+
+def ic_grape():
+    """머루 — `_grape_bunch` **그대로 한 송이**(rows 6 · rr 0.072 · 알 0.034 · `fr_grape`).
+    ★청동기 한반도의 머루(*Vitis coignetiae*)는 재배 포도가 아니라 **산에 나는 덩굴의 작은 송이**다.
+      송이 꼴(위가 넓고 아래로 뾰족)이 `berry`(굵은 알 넷)와 갈리는 자리다."""
+    rng = R(9104)
+    _grape_bunch(V((0.0, 0.0, 0.46)), rng)      # z 는 `_grape_bunch` 의 지면 하한(top.z − 0.18)만 넘기면 된다
+
+
+ICON_BUILD = [
+    ('acorn', ic_acorn), ('chestnut', ic_chestnut),
+    ('mulberry_fruit', ic_mulberry_fruit), ('grape', ic_grape),
+]
+
+
 def tree_hazel(seed, h=2.8, spread=1.55, autumn=False):
     """개암나무(Corylus heterophylla) — **뿌리에서 여러 대가 올라오는 관목형 나무**.
     실루엣의 표식은 굵은 줄기 하나가 없다는 것이다 — 참나무 옆에 두면 그것으로 갈린다."""
@@ -1076,6 +1170,21 @@ def build_species_table():
 # ═══════════════ 굽기 ═══════════════
 # ★[T101] `__main__` 가드 — 대조 하네스가 **빌더만** 꺼내 쓸 수 있어야 한다(편입 증명).
 if __name__ == '__main__':
+ # ★[T156] 아이콘 갈래 — `NAT_ICONS=1` 이면 **열매 아이콘만** 굽고 끝낸다.
+ #   나무·소품 굽기 경로는 한 줄도 안 지난다(배포본 무변의 근거).
+ if os.environ.get('NAT_ICONS') == '1':
+  os.makedirs(ICON_OUT, exist_ok=True)
+  for key, fn in ICON_BUILD:
+      if ONLY and key not in ONLY: continue
+      fn()
+      rc.bake_transforms()                      # ⚠squash_z 는 안 먹인다 — 아이콘 프리셋은 압축이 없다
+      size = rc.render_icon_pass(OBJS, os.path.join(ICON_OUT, key + ".png"))
+      print(f"[nat-icon] {key}: {rc.RES_ICON}^2 (size={size:.3f}m)")
+      cleanup()
+  print("[nat-icon] DONE ->", ICON_OUT)
+  sys.exit(0)
+
+ if True:
   anchors = {}
   apath = os.path.join(OUTDIR, "nature_raw_anchors.json")
   if os.path.exists(apath):

@@ -331,7 +331,7 @@ function dayOfSeason(season) {
   // ── ★★⑦ [T58a] 표가 하나다 · 달력 앵커는 역산이다 · 병충해는 결정론이다 ─────
   {
     const fs2 = require('fs');
-    const codeOnly = (src) => src.replace(/\/\*[\s\S]*?\*\//g, ' ').split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n');
+    const codeOnly = (src) => src.split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n').replace(/\/\*[\s\S]*?\*\//g, ' ');   // ★[T100 5판 수리] **줄 주석을 먼저** — `villages.js:20` 의 `// … sim/* …` 가 블록 주석을 여는 것으로 읽혀 2,474~5,005 줄이 통째로 지워졌다(⑦ⓓ·⑫ⓖ 가 소스를 못 찾아 빨갰다 · origin/main 에서도 이미 빨갰다)
     console.log('\n⑦ [T58a] 작물 표가 하나다 — `villages.js` 에서 지웠다');
     const vsrc = codeOnly(fs2.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8'));
     ok(!/const CROPS\s*=\s*\[/.test(vsrc), '★★★⑦ⓐ `villages.js` 에 작물 표가 **없다**(정본은 `crops.js` 하나)',
@@ -407,7 +407,7 @@ function dayOfSeason(season) {
   // ── ★★⑧ [T58b] 플레이어 돌보기 · 품질 · 빈 밭 ─────────────────────────────
   {
     const fs3 = require('fs');
-    const codeOnly2 = (src) => src.replace(/\/\*[\s\S]*?\*\//g, ' ').split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n');
+    const codeOnly2 = (src) => src.split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n').replace(/\/\*[\s\S]*?\*\//g, ' ');   // ★[T100 5판 수리] **줄 주석을 먼저** — `villages.js:20` 의 `// … sim/* …` 가 블록 주석을 여는 것으로 읽혀 2,474~5,005 줄이 통째로 지워졌다(⑦ⓓ·⑫ⓖ 가 소스를 못 찾아 빨갰다 · origin/main 에서도 이미 빨갰다)
     const SV = require(path.join(ROOT, 'server', 'villages.js'));
     console.log('\n⑧ [T58b] 돌보기 — 플레이어 밭도 마을과 **같은 함수**를 쓴다');
 
@@ -779,7 +779,7 @@ function dayOfSeason(season) {
     // ⓖ ★배선 — 휴면 술어가 **하나**인가(성장·돌봄·품질이 같은 문으로)
     {
       const fs3 = require('fs');
-      const codeOnly3 = (src) => src.replace(/\/\*[\s\S]*?\*\//g, ' ').split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n');
+      const codeOnly3 = (src) => src.split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n').replace(/\/\*[\s\S]*?\*\//g, ' ');   // ★[T100 5판 수리] **줄 주석을 먼저** — `villages.js:20` 의 `// … sim/* …` 가 블록 주석을 여는 것으로 읽혀 2,474~5,005 줄이 통째로 지워졌다(⑦ⓓ·⑫ⓖ 가 소스를 못 찾아 빨갰다 · origin/main 에서도 이미 빨갰다)
       const vsrc3 = codeOnly3(fs3.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8'));
       const zsrc3 = codeOnly3(fs3.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8'));
       const csrc3 = codeOnly3(fs3.readFileSync(path.join(ROOT, 'server', 'crops.js'), 'utf8'));
@@ -839,7 +839,7 @@ function dayOfSeason(season) {
   {
     console.log('\n⑬ [T108] 밭의 시계는 하나인가 · 자연물 hp 표는 하나인가');
     const fs4 = require('fs');
-    const codeOnly4 = (src) => src.replace(/\/\*[\s\S]*?\*\//g, ' ').split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n');
+    const codeOnly4 = (src) => src.split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n').replace(/\/\*[\s\S]*?\*\//g, ' ');   // ★[T100 5판 수리] **줄 주석을 먼저** — `villages.js:20` 의 `// … sim/* …` 가 블록 주석을 여는 것으로 읽혀 2,474~5,005 줄이 통째로 지워졌다(⑦ⓓ·⑫ⓖ 가 소스를 못 찾아 빨갰다 · origin/main 에서도 이미 빨갰다)
     const SRV = ['zone.js', 'villages.js', 'crops.js', 'chunk.js'];
 
     // ⓐ ★소스 검사 — `server/` 에 벽시계 밭이 0건이다(승격 함수의 **읽기** 한 줄만 남는다)

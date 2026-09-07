@@ -56,6 +56,7 @@ const Spoil = require('./spoil');
 const Crops = require('./crops');
 const Salt = require('./salt');            // ★[자염 배치 2026-09-01] 염도·수율·땔감·시간 정본 하나
 const ItemLabel = require('./itemlabel');  // ★[T61] 이름표 정본이 사는 곳(품목 합치기 · econ 자원 종류 이름)
+const Trees = require('./trees');         // ★[T135] 나무 정본 — 종 축·열매 규약·벌목 부등식(표는 trees.json)
 const Onboarding = require('./onboarding');   // ★[온보딩 v2 2026-09-01] 도착 지점·30분 대본·빈터 권리 정본(§9). init 전엔 완전 no-op
 const Notice = require('./notice');           // ★[T78 2026-09-03] 알림 경계 — 접두 이모지 → `kind` · 글자 제거
 const Membership = require('./membership');   // ★[T11 2026-09-02] 마을 소속·곳간 인출. 기여 계량기는 온보딩 정본 **하나**를 읽는다
@@ -2679,6 +2680,10 @@ Wildlife.init({
   getActiveChunkKeys: () => activeChunkKeys, isPositionActive,
   spawnCorpse, damagePlayer, broadcast, WORLD,
   simVillages: () => SimVillages.clientVillages(), legacyVillages: VILLAGES,
+  // ★[T146] 몹 마릿수가 **마을 사냥터 개체군**을 따라 서게 — 정본은 `villages.js` 하나다(사본 0).
+  gameRichAt: (k) => { const ci = String(k).indexOf(','); return ci < 0 ? undefined
+    : SimVillages.gameRichAt(+String(k).slice(0, ci), +String(k).slice(ci + 1)); },
+  gameRichSize: () => SimVillages.gameRichSize ? SimVillages.gameRichSize() : 0,
   // §4-4 P3: 실체 전쟁 병사 pid 위치(px)를 야생 위협원으로 주입(_buildWarThreats 서버판 — 행군/전투 병사를 몹이 인지·회피).
   warThreats: () => SimVillages.warThreats(),
 });
@@ -2867,6 +2872,117 @@ Guild.init({
   },
 });
 
+// ★★[T147 2026-09-07] 따라가기 — 회부 A-1 의 마지막 칸. **새 패널 0 · 새 표 0 · 새 수 0.**
+//   ⓐ 거리·방위·화살은 전부 **T110 의 정본을 부른다**(사본 0):
+//      `Rescue.shoutRange()`(= MOVE_SPEED × RESCUE_WINDOW × HEAR_FRAC) · `Rescue.steps()` ·
+//      `Onboarding.dirWord()` · 도착 판정은 `RESCUE_RANGE_PX`(T43 이 정한 그 반경).
+//   ⓑ 위치는 **central 을 안 거친다** — 같은 존이면 `players` 맵이 안다. 다른 존이면 존 이름까지만이고
+//      그 이름도 `zone-config` 의 `ZONES` 에 이미 있다(문 0 · 좌표는 회부).
+//   ⓒ 갱신은 **이미 초당 하나 나가는 `gauges`** 에 얹는다(새 타이머 0 · 아래 11100줄대).
+//      알림에 얹으면 `window.__notices` 규약이 초당 한 줄씩 더러워진다 — 그래서 거기가 아니다.
+const _followOf = (player) => (player && player._follow) || null;
+/** 지금 이 존에 있고 **숨지 않은** 그 사람 — 없으면 null. */
+function _onlineHere(playerId) {
+  for (const p of players.values()) {
+    if (p.isNpc || String(p.playerId) !== String(playerId)) continue;
+    return p._hidden ? null : p;
+  }
+  return null;
+}
+/** 다른 존이면 그 존 이름 한 마디 — 좌표는 주지 않는다(캐논 회부). */
+function _elsewhereLine(name, playerId, say) {
+  central.getPlayer(String(playerId)).then((row) => {
+    const z = row && row.last_zone;
+    const nm = (z && ZONES[z] && ZONES[z].displayName) || null;
+    say(nm ? `${name} 은(는) 다른 곳에 있다 — ${nm}` : `${name} 은(는) 다른 곳에 있다`);
+  }).catch(() => say(`${name} 은(는) 다른 곳에 있다`));
+}
+/** 따라가기를 끈다 — 이유를 한 줄로 말하고, 다음 `gauges` 가 화살을 거둔다(`follow: null`). */
+function _followStop(player, why) {
+  if (!player || !player._follow) return;
+  player._follow = null;
+  player._followOff = true;                 // ★다음 초에 `follow: null` 을 한 번 실어 보낸다
+  if (why) send(player.ws, { type: 'notice', text: why });
+}
+/**
+ * `/어디 <이름>` · `/따라가기 <이름>` · `/따라가기 끝` · `/숨기` · `/숨기 끝`
+ * ★분기 **한 줄**로 붙는다(위 채팅 표). 게임 행동은 한 줄도 안 바뀐다 — 안내와 화살뿐이다.
+ */
+/**
+ * ★★[T147] 따라가는 벗의 자리 — `gauges` 에 실릴 조각(`{follow}` 이거나 `null`).
+ * **끄는 자리가 여기 하나**다(도착 · 사라짐 · 숨음). 채팅의 `/따라가기 끝` 만 밖에 있다.
+ */
+function _followPayload(p) {
+  if (p._followOff) { p._followOff = false; return { follow: null }; }
+  const f = _followOf(p);
+  if (!f) return null;
+  const t = _onlineHere(f.id);
+  if (!t) { _followStop(p, `${f.name} 이(가) 보이지 않는다 — 따라가기를 거둔다`); return { follow: null }; }
+  const dx = t.x - p.x, dy = t.y - p.y;
+  const d = Math.hypot(dx, dy);
+  //   ★도착 — 그 반경도 T110/T43 의 것이다(`RESCUE_RANGE_PX` · 손으로 적은 수 0).
+  if (d <= RESCUE_RANGE_PX) { _followStop(p, `${f.name} 에게 닿았다`); return { follow: null }; }
+  //   ★T110 반경 밖이면 **방향만** — 걸음 수는 걸어 닿는 거리 안에서만 뜻이 있다.
+  const far = d > Rescue.shoutRange();
+  return { follow: { pid: t.pid, x: Math.round(t.x), y: Math.round(t.y), name: f.name,
+                     steps: far ? null : Rescue.steps(d) } };
+}
+
+function followChat(player, text) {
+  if (!player) return false;
+  const t = String(text || '').trim();
+  const isCmd = t.startsWith('/어디') || t.startsWith('/따라가기') || t.startsWith('/숨기');
+  if (!isCmd) return false;
+  const say = (m) => { try { send(player.ws, { type: 'notice', text: m }); } catch (e) {} };
+  if (!player.playerId || String(player.playerId).startsWith('anon_')) { say('손님은 아직 벗을 찾을 수 없다'); return true; }
+
+  // ── `/숨기` — 세션 동안만. DB 0(영속은 회부).
+  if (t.startsWith('/숨기')) {
+    const arg = t.slice('/숨기'.length).trim();
+    if (arg === '끝') { player._hidden = false; say('이제 벗들에게 자리가 보인다'); return true; }
+    if (arg) { say('자리를 숨긴다 — `/숨기` · 되돌리려면 `/숨기 끝`'); return true; }
+    player._hidden = true;
+    say('자리를 숨겼다 — 벗들에게 "다른 곳"으로만 보인다(`/숨기 끝` 이면 되돌린다)');
+    return true;
+  }
+
+  // ── `/따라가기 끝`
+  if (t.startsWith('/따라가기')) {
+    const arg = t.slice('/따라가기'.length).trim();
+    if (arg === '끝') {
+      if (!_followOf(player)) { say('따라가던 벗이 없다'); return true; }
+      _followStop(player, '따라가기를 그만뒀다');
+      return true;
+    }
+    if (!arg) { say('누구를 따라가나 — `/따라가기 <이름>` · 그만두려면 `/따라가기 끝`'); return true; }
+    const f = Friends.friendByName(player.playerId, arg);
+    if (!f) { say(`${arg} 은(는) 자네의 벗이 아니다`); return true; }
+    const there = _onlineHere(f.id);
+    if (!there) { _elsewhereLine(f.name, f.id, say); say('여기 없는 벗은 따라갈 수 없다'); return true; }
+    player._follow = { id: f.id, name: f.name };
+    player._followOff = false;
+    say(`${f.name} 을(를) 따라간다 — 화살이 그쪽을 가리킨다(도착하면 저절로 꺼진다)`);
+    return true;
+  }
+
+  // ── `/어디 <이름>`
+  {
+    const arg = t.slice('/어디'.length).trim();
+    if (!arg) { say('누구를 찾나 — `/어디 <이름>`'); return true; }
+    const f = Friends.friendByName(player.playerId, arg);
+    if (!f) { say(`${arg} 은(는) 자네의 벗이 아니다`); return true; }
+    const there = _onlineHere(f.id);
+    if (!there) { _elsewhereLine(f.name, f.id, say); return true; }
+    const dx = there.x - player.x, dy = there.y - player.y;
+    const d = Math.hypot(dx, dy);
+    const dir = Onboarding.dirWord(dx, dy) || '어딘가';
+    //   ★T110 반경 **밖이면 방향만** — 그 너머의 걸음 수는 "걸어서 닿는 거리"를 넘어 뜻이 없다.
+    if (d > Rescue.shoutRange()) { say(`${f.name} 은(는) ${dir} 쪽 멀리 있다`); return true; }
+    say(`${f.name} 은(는) ${dir} 쪽 ${Rescue.steps(d)}걸음 거리에 있다`);
+    return true;
+  }
+}
+
 Rescue.init({ players, send, ZONE_ID,
   shelterAt: (x, y) => SimVillages.shelterAt(x, y),
   isWaterTile: isWaterTileLocal, isSeaTile: isSeaTileLocal,
@@ -2999,6 +3115,21 @@ const server = http.createServer((req, res) => {
   }
   // ★[T115] 친구 관측창 — 읽기 전용(`/claimdbg` 와 같은 규약). `?pid=<playerId>` 면 그 사람의 캐시도 낸다.
   //   ⚠**이름은 안 낸다**(캐시 요약뿐) — 관측창이 사교 관계를 흘리는 문이 되면 안 된다.
+  // ★[T147 2026-09-07] 따라가기 관측창 — `/friendsdbg`·`/guilddbg` 와 같은 규약(읽기 전용 · 제품 무접촉).
+  //   하네스가 **좌표를 알아야** 텔레포트로 판을 짤 수 있다(막힌 땅을 피해 가며).
+  if (req.url && req.url.startsWith('/followdbg') && req.method === 'GET') {
+    const rows = [];
+    for (const p of players.values()) {
+      if (p.isNpc) continue;
+      rows.push({ name: p.name, playerId: p.playerId, pid: p.pid,
+        x: Math.round(p.x), y: Math.round(p.y), hidden: !!p._hidden,
+        follow: p._follow ? p._follow.name : null });
+    }
+    const out = { ok: true, rescueRangePx: RESCUE_RANGE_PX, shoutRangePx: Rescue.shoutRange(), players: rows };
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify(out));
+    return;
+  }
   if (req.url && req.url.startsWith('/friendsdbg') && req.method === 'GET') {
     const q = (req.url.split('?')[1] || '');
     const m = /(?:^|&)pid=([^&]*)/.exec(q);
@@ -3957,6 +4088,9 @@ async function _acceptConnection(ws, req, C) {
     categoryLabels: ItemLabel.CATEGORY_KO,
     resourceVerbs: ItemLabel.RESOURCE_VERBS,   // ★[T90] 자연물 종류 → 동사 이름표(T82 회부 ① — 클라 사본 삭제)
     plantSeeds: plantSeedList(),   // ★[T124] 심을 수 있는 씨앗 — 서버가 정한다(되돌림이면 빈 배열 = 동사 숨김)
+    resourceVerbsAlt: ItemLabel.RESOURCE_VERBS_ALT,   // ★[T135] 두 번째 동사(열매 따기) — 같은 통로, 같은 규약
+    // ★[T135] 어느 종이 무슨 열매를 다는가 — **표 하나**(`trees.json`)에서 파생. 클라는 목록을 안 적는다.
+    treeFruitKo: (() => { const o = {}; for (const id of Trees.fruitIds()) { const it = Trees.fruitOf(id); o[id] = ItemLabel.itemLabels ? (ItemLabel.itemLabels()[it] || it) : it; } return o; })(),
     npcVerbs: ItemLabel.NPC_VERBS,             // ★[T126] 사람에게 쓰는 동사 이름표(같은 통로 · 클라 표 0)
     // ★★[T66 ⓪ 2026-09-03] **이 카드의 유일한 서버 줄.** 클라에 남아 있던 사본 둘을 닫는다:
     //   `60-t-market.js JOB_KR`(zone 의 `JOB_KR_NPC` 와 글자까지 같았다) · `43-i-icon.js SEASON_KO`
@@ -4119,6 +4253,7 @@ function handlePlayerInput(player, raw) {
   } else if (msg.type === 'butcher') butcherCorpse(player, msg.cid);  // Phase 5-7
   else if (msg.type === 'gather') tryGather(player, msg.resId);   // ★[T90] 지목(없으면 종전 최근접 — 하위 호환)
   else if (msg.type === 'plant_tree') tryPlantTree(player, msg.x, msg.y, msg.item);   // ★[T124] 심기
+  else if (msg.type === 'pick_fruit') tryPickFruit(player, msg.resId);   // ★[T135] 베는 것과 **따는 것**은 다른 일
   else if (msg.type === 'sort_ore') trySortOre(player);   // ★선광 — 캔 원석 덩이를 광석/맥석으로 가른다
   else if (msg.type === 'claim') tryClaim(player, msg.kind || 'personal');
   // ★[원장 승격 2026-08-30] 지목 드롭/줍기 — `ids`(개체 원장 id) · `lotDay`(로트 취득일) · `giIds`(바닥 여러 덩이).
@@ -4176,6 +4311,7 @@ function handlePlayerInput(player, raw) {
     if (Newcomers.handleChat(player, text)) return;   // ★[T19] `/이방인` — 새 클라 조건 0
     if (Friends.handleChat(player, text)) return;     // ★[T115] `/친구` — 새 패널 0 · 새 클라 조건 0
     if (Guild.handleChat(player, text)) return;       // ★[T128] `/초대` `/수락` `/길드` `/소개`
+    if (followChat(player, text)) return;             // ★[T147] `/어디` `/따라가기` `/숨기` — 분기 한 줄
     // ★[T56] 구조 동사 둘 — `/먹이기 <음식>` `/물`. 채팅은 이미 있다(클라 무접촉 · T11 선례).
     if (Rescue.handleChat(player, text)) return;
     if (text.startsWith('/t ')) {
@@ -4402,7 +4538,9 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'fish_strike') tryFishStrike(player);  // ★[낚시 v2] 챔질(서버 시각으로만 판정)
   else if (msg.type === 'fish_reel') { if (player._fish) { player._fish = null; send(player.ws, { type: 'fish_state', state: 'idle' }); send(player.ws, { type: 'notice', text: '🎣 줄을 거뒀다' }); } }
   else if (msg.type === 'harvest') tryHarvest(player);
-  else if (msg.type === 'feed') tryFeed(player);
+  // ★[T148 2026-09-07] 개명 `feed` → `tame_feed`(짐승 길들이기). **옛 이름 폴백 0.**
+  //   사람 먹이기는 `{type:'verb', name:'feed'}`(`Rescue.verb`)라 봉투가 다르고, 이제 이름도 안 겹친다.
+  else if (msg.type === 'tame_feed') tryFeed(player);
   else if (msg.type === 'tribe_set') {
     // 클라가 central에 길드 만들기/가입/탈퇴 후 자기 zone에 알림
     player.tribeId = msg.tribeId || null;
@@ -6824,6 +6962,37 @@ function tryPlantTree(player, x, y, item) {
   send(player.ws, { type: 'notice',
     text: `${ITEM_LABEL_SERVER[seed] || seed}을(를) 심었다 — 묘목이 섰다`, kind: 'plant' });
   return r;
+}
+
+// ★★[T135 2026-09-06] **열매 따기** — 나무를 베지 않고 그 해의 열매만 딴다.
+//   · `hp` 무접촉: 나무는 안 죽고 안 줄어든다. 주는 것은 **그 해의 재고**뿐이다.
+//   · 규약 넷은 `server/trees.js` 가 쥔다(연 1회 · 겨울 소멸 · 볼 때 정산 · 크기 비례) — 여기 안 적는다.
+//   · 거리 게이트는 `GATHER_RANGE` **그대로**다(새 예외 0 — T90 이 세운 규약).
+const _fruitStore = new Map();          // 존 전체의 열매 재고(자리 키 → {n, yr}) — 볼 때 정산이라 틱 0
+function tryPickFruit(player, resId) {
+  const T = Trees;
+  if (!T || !T.ON()) { send(player.ws, { type: 'notice', text: '열매를 딸 수 없다', kind: 'gather' }); return; }
+  const target = (resId !== undefined && resId !== null) ? resources.get(resId) : null;
+  if (!target) { send(player.ws, { type: 'notice', text: '거기엔 아무것도 없다', kind: 'gather' }); return; }
+  const d = Math.hypot(target.x - player.x, target.y - player.y);
+  if (d > GATHER_RANGE) { send(player.ws, { type: 'notice', text: `${Math.round(d)}px 떨어짐 — ${GATHER_RANGE}px 안에서 딴다`, kind: 'gather' }); return; }
+  const sp = target.sp, item = sp && T.fruitOf(sp);
+  if (!item) { send(player.ws, { type: 'notice', text: '열매가 열리는 나무가 아니다', kind: 'gather' }); return; }
+  const day = zoneGameDay();
+  const key = target.seedKey || target.id;
+  const sz = Number.isFinite(target.szf) ? target.szf : 0.5;
+  // 한 번에 따는 양은 **그 나무에 달린 만큼**이 상한이다 — 새 수를 안 짓는다(있는 대로 딴다).
+  const got = T.fruitTake(_fruitStore, key, sp, day, sz, T.fruitYieldOf(sp));
+  if (!(got > 0)) {
+    send(player.ws, { type: 'notice', text: `${T.koOf(sp)} — 아직 열매가 없다(${['봄','여름','가을','겨울'][['spring','summer','autumn','winter'].indexOf(T.fruitSeasonOf(sp))]}에 열린다)`, kind: 'gather' });
+    return;
+  }
+  const n = Math.max(1, Math.round(got * 10));   // 재고 단위(연간수율=1.0 기준) → 낱개. 표의 눈금 그대로 열 배.
+  player.inventory = player.inventory || {};
+  player.inventory[item] = (player.inventory[item] || 0) + n;
+  send(player.ws, { type: 'notice', text: `🌰 ${T.koOf(sp)}에서 ${ITEM_LABEL_SERVER[item] || item} ${n}`, kind: 'gather' });
+  send(player.ws, { type: 'inventory', inventory: player.inventory });
+  if (canPersist(player)) savePlayer(player);
 }
 
 function tryGather(player, resId) {
@@ -9249,7 +9418,11 @@ async function tryAttack(player) {
     bestMob.dirty = true;
     broadcast({ type: 'mob_damaged', mid: bestMob.mid, hp: bestMob.hp });
     // §4-4 wildlife 브리지: 본체 hp(×10 스케일)→랩 hp 동기 + 피격 반응(놀람 도주/멧돼지·늑대 반격 돌진)
-    if (bestMob.isWild) Wildlife.onMobHit(bestMob, atk, player);
+    if (bestMob.isWild) {
+      Wildlife.onMobHit(bestMob, atk, player);
+      // ★[T146] 플레이어가 잡았으면 **마을 장부에서도 한 마리 준다**(§0-ⓒ) — 새 수 0(잡은 것이 곧 그 수).
+      if (bestMob.hp <= 0) { try { SimVillages.huntKillAt(bestMob.x, bestMob.y); } catch (e) {} }
+    }
     // 늑대는 공격당하면 즉시 어그로 — 단 길든 mob은 어그로 안 가짐. 팩 동료도 같이 어그로.
     if (bestMob.type === 'wolf' && !bestMob.tameOwner) {
       bestMob.aggroTarget = player.pid;
@@ -11145,6 +11318,12 @@ setInterval(() => {
         // ★[무게 배치] 소지 무게·용량·과적 배율. **클라 예측이 같은 수를 써야** 러버밴딩이 안 난다 —
         //   그래서 `combined`(신체×과적, 바닥 적용)를 실어 보내고 클라는 그걸 쓴다.
         carry: Object.assign(Carry.payload(p), { combined: moveMultOf(p) }),
+        // ★★[T147 2026-09-07] 따라가는 벗의 **지금 자리** — 갱신은 여기 하나다(새 타이머 0).
+        //   자리가 여기인 이유: 초당 하나 나가는 self 전용 메시지가 **이미 있다**. 알림에 얹으면
+        //   `window.__notices` 규약이 초당 한 줄씩 더러워지고(28개 하네스가 그 배열을 읽는다),
+        //   틱(30Hz)에 얹으면 초당 30번 보낼 이유가 없는 것을 30번 보낸다.
+        //   ⚠키는 **따라갈 때만** 실린다 — 끈 그 순간에 한 번 `null` 을 실어 화살을 거둔다.
+        ...(_followPayload(p) || {}),
       });
     }
   }

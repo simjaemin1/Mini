@@ -83,6 +83,10 @@ if (!seeds) {
 }
 const world = econV2.createWorldV2({ seed: SEED, villageCount: seeds.length, picker: 'rational', infoRange: 5000, raidPer100: 0.005 });
 world.villages = []; world.events = [];
+// ★★[T135] 나무 층 주입 — **서버가 부르는 그 문**(`server/villages.js` Stage 3)을 계측기도 부른다.
+//   ⚠족보 130: 계측기가 이 문을 안 열면 여덟 수는 대체를 못 보고 "안 움직인다"고 말한다.
+//     그건 대체가 없다는 증거가 아니라 **자가 그 층을 안 돈다**는 증거다. `test-trees` 가 두 자리를 다 본다.
+require('../server/trees').attachToWorld(world);
 for (const s of seeds) {
   const ev = econ.createVillage({ ...s.lp, initialPop: P.INITIAL_POP, name: s.name });
   ev._world = world; ev.coord = { x: s.ccx * 2.5, y: s.ccy * 2.5 };

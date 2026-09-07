@@ -2191,8 +2191,20 @@ function tickVillage(v, day) {
     // skill 효과 — 만렙(10)이면 ×1.5. 분업/교역 의존 강화 위해 효율 ↓.
     const skillMul = 1 + skillLvl * 0.05;
     const jobScale = npc.currentJob === 'fisher' ? _fishScale : (npc.currentJob === 'forager' ? _forageScale : 1);   // ★어장/임연부 지속수확 상한(위 precompute) — 어부·채집만 스케일, 그 외 1
-    const baseAmt = jdef.base * landBoost * skillMul * toolBoost * inputMult * jobScale
+    let baseAmt = jdef.base * landBoost * skillMul * toolBoost * inputMult * jobScale
       * (f === 'farming' ? _paddyMul * (v._clearedFrac != null ? v._clearedFrac : 1) : 1);   // ★농사엔 논 프리미엄 × 개간완료율(공간 브리지) — 개간 안 된 밭은 소출 없음. 인구↑→개간목표↑→완료율 일시↓→소출·prodK 눌림→개간이 따라잡으면 회복 = 보즈럽 시차가 K에 실시간 반영(잠재 기준 slotK는 그대로 → 데드락 없음)
+    // ★★[T154 2026-09-07] **사냥 소득 주입 문** — 고기는 장부가 잡은 만큼만.
+    //   여태 사냥 산출은 `base 0.7 × land.game` 이라는 **추상**이었다(밭은 T100 4판에서, 채집은 T135 에서
+    //   이미 실물이 됐는데 사냥만 남아 있었다). T146 이 서버에 개체 장부를 올렸으니 이제 그 장부가
+    //   그날 실제로 잡은 마릿수를 안다 — 소득은 그 수를 따라야 한다.
+    //   ⚠**규약은 `priceFn`·`netExportFn` 과 같다**: world 에 함수가 심겼을 때만 산다.
+    //     미주입이면 `null` 이라 `baseAmt` 가 그대로 간다 = **종전 비트**(랩 기본 abstract · 서버 무주입).
+    //   ⚠**대체지 얹기가 아니다.** 여기서 `baseAmt` 를 바꾸면 산출(meat)도 부산물(hide·bone…)도
+    //     같은 수를 따라간다 — 두 장부가 갈리지 않는다.
+    if (npc.currentJob === 'hunter' && v._world && typeof v._world.huntIncomeFn === 'function') {
+      const _hi = v._world.huntIncomeFn(v, npc, baseAmt);
+      if (typeof _hi === 'number' && _hi >= 0) baseAmt = _hi;
+    }
     // ★[포위 봉쇄 훅] 야외 직업(농부·어부·사냥·벌목·광부·채집)만 v._siegeOutMul(호스트 설치 시)로 감산 — 성 밖 노동이 끊김(잠행 노동 잔존).
     //   실내 직업(석공·대장장이·요리사 등)=불변. 잠재(dailyProductionPotential)엔 미적용(_laborMul과 동형 — K 오염·아사 스파이럴 방지). 미설치(undefined)=1(무해).
     const _siegeM = (v._siegeOutMul != null && SIEGE_OUTDOOR_JOBS[npc.currentJob]) ? v._siegeOutMul : 1;
@@ -2216,8 +2228,31 @@ function tickVillage(v, day) {
       if (baseAmt > 0) {
         const yields = foragerYieldsFor(v);
         const sumW = Object.values(yields).reduce((a, b) => a + b, 0) || 1;
+        // ★★★[T135 2026-09-06 · 이 파일의 유일한 접점] **추상 열매를 걷어내고 실체로 갈아 끼운다.**
+        //   랩(T123 ⓑ)이 잰 것: 실체를 추상 *위에* 얹으면 그 품목 그림자가격이 하한으로 무너지고,
+        //   노동 배분이 채집을 0 으로 읽어 **채집꾼이라는 직업이 사라진다**(시드 42 인구 −41%).
+        //   채집꾼은 열매만 가져오는 게 아니라서, 그때 채소·버섯·약재·돌이 같이 끊긴다.
+        //   ⇒ **대체는 성능이 아니라 안전 조건이다.** 얹지 않는다.
+        //
+        //   ★새 수 0 — 무엇을 걷어낼지는 `world.forageRealItems`(나무 층이 대는 품목 목록)가 정하고,
+        //     얼마나 걷어낼지는 **걷어낸 몫 자체**가 정한다(아래 `repShare`). 상수를 하나도 안 짓는다.
+        //   ★주입이 없으면(v1 CLI · 픽스처 · 하네스 · 되돌림 `T135_TREES=0`) **한 글자도 안 바뀐다** —
+        //     `repl` 이 비고 `repShare` 가 0 이라 아래 루프가 종전 식과 완전히 같아진다(비트 동일).
+        const _W = v._world || null;                        // ★world 는 마을에 백참조로 달려 있다(priceFn 선례)
+        const _realFn = (_W && typeof _W.forageTakeFn === 'function') ? _W.forageTakeFn : null;
+        const _replSet = (_realFn && _W.forageRealItems) ? _W.forageRealItems : null;
+        let repW = 0;
+        if (_replSet) for (const [r, w] of Object.entries(yields)) if (_replSet.indexOf(r) >= 0) repW += w;
+        const repShare = repW / sumW;                       // 걷어낸 몫(0 이면 종전 그대로)
         for (const [r, w] of Object.entries(yields)) {
+          if (_replSet && _replSet.indexOf(r) >= 0) continue;   // ★걷어낸다 — 추상 산출은 여기서 끝난다
           addProduce(r, baseAmt * (w / sumW));
+        }
+        // ★그 자리를 **실물**이 채운다 — 채집꾼 하루가 그 마을 숲에서 실제로 딸 수 있는 만큼만.
+        //   숲이 못 대면 그만큼 덜 온다. 그게 공짜 점심을 걷어낸다는 뜻이다.
+        if (_realFn && repShare > 0) {
+          const got = _realFn(v, baseAmt * repShare) || null;
+          if (got) for (const r in got) { const a = got[r]; if (a > 0) addProduce(r, a); }
         }
         // ★S1 돌=채집 자원(광부 아님): 강가/돌밭(land.stone) 채집꾼이 돌을 *주 산출*로 가져옴(식량 믹스와 별개 가산).
         //   계수 0.9 ≈ 옛 광부(base1.5×land.stone) 스케일에 근접 → 돌밭 마을은 채집꾼만으로 돌 풍족(병목 없음).
@@ -2513,6 +2548,10 @@ function tickVillage(v, day) {
           //   ★addProduce를 *스킵*해야 _potA(잠재생산) 미오염 — satMul taper만으론 잠재가 idle로 잡혀 부족. 삼베(hemp)·곡물은 기존 경로 불변(의류 사슬 재튜닝 금지 준수).
           // ★[T17 ③] 자염은 **바다에 닿는 마을만** 굽는다(위 fisher.byproduct 주석).
           if (r === 'salt') { if (!T17_SALT || !(v.land && v.land.coastal)) continue; }
+          // ★[T135] 나무 층이 대는 품목은 부산물로도 안 낸다 — **같은 이중계상**이다.
+          //   벌목꾼의 `acorn 0.06/일` 이 그것이다: 도토리는 이제 참나무를 베거나 딸 때 실제로 나온다.
+          //   주입이 없으면(되돌림·v1) 이 줄은 아무것도 안 한다(비트 동일).
+          if (v._world && v._world.forageTakeFn && v._world.forageRealItems && v._world.forageRealItems.indexOf(r) >= 0) continue;
           if (r === 'ramie') {
             if (v.npcs.length < RAMIE_MIN_POP) continue;   // 미성숙 마을(개척기) 모시 안 짬 — 콜로니 취약 궤적 무교란
             if ((v.storage.ramie || 0) >= Math.max(v.npcs.length * RAMIE_BOOT_PC, ((v._consEMA || {}).ramie || 0) * 30)) continue;   // 수요 충족 → 스킵(잉여 0)

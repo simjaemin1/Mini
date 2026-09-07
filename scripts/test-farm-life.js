@@ -23,7 +23,7 @@ let pass = 0, fail = 0;
 const ok = (c, m, x) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (x !== undefined && x !== '' ? `  ${x}` : '')); };
 const pre = (c, m, x) => { if (!c) { fail++; console.log('  ✗ [상황] ' + m + (x !== undefined ? `  ${x}` : '')); } else console.log('  · [상황] ' + m + (x !== undefined ? `  ${x}` : '')); };
 const say = (m) => console.log(m);
-const codeOnly = (src) => src.replace(/\/\*[\s\S]*?\*\//g, ' ').split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n');
+const codeOnly = (src) => src.split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n').replace(/\/\*[\s\S]*?\*\//g, ' ');   // ★[T100 5판 수리] **줄 주석을 먼저** — `villages.js:20` 의 `// … sim/* …` 가 블록 주석을 여는 것으로 읽혀 2,474~5,005 줄이 통째로 지워졌다(⑥ⓓ 가 소스를 못 찾아 빨갰다 · origin/main 에서도 이미 빨갰다)
 
 process.env.ZONE_ID = 'hanbando';
 process.env.ENABLE_VILLAGES = '0'; process.env.ENABLE_WILDLIFE = '0';

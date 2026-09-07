@@ -301,7 +301,8 @@ function cropSprite(stage, crop) {
   const ulOpen = new Set();
   // ★[정비 배치] 클라 손잡이 — welcome 의 `uiCfg` 가 덮어쓴다(정본은 서버 env · `carryCfg` 와 같은 규약).
   let uiCfg = { vignetteTint: true, moodleShowMax: 3, ghostStallMs: 5000, ghostReconnectMs: 10000,
-                charSprite: false, charWalkMin: 4, charRunMin: 102 };   // ★[캐릭 시트] 기본 OFF
+                charSprite: false, charWalkMin: 4, charRunMin: 102,     // ★[캐릭 시트] 기본 OFF
+                charMocap2: false };   // ★[T155] 모션 둘째 판 — 기본 OFF · 서버 env 키는 아직 없다(회부)
   // ★비네트 색조 — **축 계열**. 새 아트를 만들지 않고 색만 바꾼다(§8.3 아날로그 채널은 최소로).
   //   갈증=청 · 허기=황 · 추위=창백한 하늘색 · 피로=보라 · 부상=적 · 과적=흙빛.
   const VIGNETTE_RGB = {

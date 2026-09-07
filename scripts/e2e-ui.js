@@ -349,7 +349,7 @@ async function waitHttp(url, tries = 600) {
     const mainSrc = fs.readFileSync(path.join(ROOT, 'public/client/99-main.js'), 'utf8');
     const chain = mainSrc.slice(mainSrc.indexOf("window.addEventListener('keydown'"), mainSrc.indexOf("window.addEventListener('keyup'"));
     ok(!/k === 'o'\)\s*sendPrimary\(\{ type: 'harvest'/.test(chain), "★⑧ 키 체인에 `'o' → harvest` 분기가 없다");
-    ok(!/k === 'g'\)\s*sendPrimary\(\{ type: 'feed'/.test(chain), "★⑧ 키 체인에 `'g' → feed` 분기가 없다");
+    ok(!/k === 'g'\)\s*sendPrimary\(\{ type: '(?:feed|tame_feed)'/.test(chain), "★⑧ 키 체인에 `'g' → 먹이` 분기가 없다");
     ok(!/k === '1'\)\s*sendPrimary\(\{ type: 'equip', tool: 'axe'/.test(chain), "★⑧ 키 체인에 `'1' → equip axe` 분기가 없다");
     // ★자명 통과 금지 — 안 지운 것은 그대로 있다(정규식이 늘 참이 아니다)
     ok(/k === '2'\) sendPrimary\(\{ type: 'equip', tool: 'pickaxe'/.test(chain),
@@ -362,10 +362,15 @@ async function waitHttp(url, tries = 600) {
       return page.evaluate(() => (window.__t55sent || []).map((m) => m.type));
     };
     ok((await sentAfterClick('harvest')).includes('harvest'), '★★⑧ 수확 버튼이 그대로 `harvest` 를 보낸다(동사가 산다)');
-    // ★[T140] 버튼의 낱말은 `tame_feed` 로 갈렸지만 **선에 나가는 이름은 여전히 `feed`** 다.
-    //   이 한 줄이 그 둘을 동시에 못 박는다(프로토콜 무변 · 행동 변경 0).
-    ok((await sentAfterClick('tame_feed')).includes('feed'),
-       '★★⑧ 먹이 버튼(`tame_feed`)이 그대로 `feed` 를 보낸다(동사가 산다 · 프로토콜 무변)');
+    // ★★[T148] 이제 **선의 이름도 `tame_feed`** 다(T140 은 버튼 낱말만 갈았다).
+    //   ⚠`includes('tame_feed')` 는 옛 이름 `feed` 로도 참이 되지 **않는다** — 정확히 그 문자열을 센다.
+    const feedSent = await sentAfterClick('tame_feed');
+    ok(feedSent.includes('tame_feed'),
+       '★★⑧ 먹이 버튼이 **`tame_feed`** 를 보낸다(짐승 먹이기 · 이름이 하나다)', JSON.stringify(feedSent));
+    ok(!feedSent.includes('feed'),
+       '★★⑧ ★옛 이름 `feed` 는 **한 건도 안 나간다**(폴백 0 · 두 벌 금지)', JSON.stringify(feedSent));
+    // ★소스로도 한 번 — 클라에 옛 타입이 남아 있지 않다(`e2e-hp ⓪` 문법)
+    ok(!/type:\s*'feed'/.test(mainSrc), "★⑧ 클라 소스에 `type: 'feed'` 가 **없다**(개명이 끝났다)");
     // ★없는 단축키를 광고하지 않는다
     const btnTx = await page.evaluate(() => ['harvest', 'tame_feed'].map((a) => (document.querySelector(`[data-action="${a}"]`) || {}).textContent || ''));
     ok(!btnTx.some((t) => /\(O\)|\(G\)/.test(t)), '★⑧ 그 버튼들이 이제 없는 단축키를 광고하지 않는다', JSON.stringify(btnTx));

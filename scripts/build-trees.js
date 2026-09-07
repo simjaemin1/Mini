@@ -10,18 +10,23 @@
 //   손으로 옮겨 적는 순간 그게 사본이고, 랩과 파일이 조용히 어긋난다(인라인 사본 규약과 같은 이유).
 //   `--check` 가 그 어긋남을 잡는다 — `sim/inline-engine.js --check` 와 같은 계약.
 //
-// ⚠**서버는 이 파일을 아직 안 읽는다.** 서버 이식은 승인 게이트가 달린 별도 카드다(T123 §4 회부).
-//   `scripts/test-lab-trees.js` 가 "서버가 trees.json 을 부르는 자리 0" 을 지킨다.
+// ★[T135] 이제 **서버가 읽는다** — `server/trees.js` 가 이 파일 하나를 읽고 축을 파생한다
+//   (`server/crops.js` ← `server/crops.json` 과 같은 문법). T123 때의 "서버 무접촉"은 끝났다.
 //
 // 실행:  node scripts/build-trees.js          # 굽는다
 //        node scripts/build-trees.js --check  # 랩 표와 파일이 같은가(다르면 exit 1)
 //        node scripts/build-trees.js --table  # 재민 판정거리 표(성목 햇수 → 실시간)
+//
+// 원천 `lab/전쟁실험실.html` · 산출 `server/trees.json`(T135 이전엔 `lab/trees.json` 이었다).
 'use strict';
 const fs = require('fs');
 const path = require('path');
 
 const LAB = path.resolve(__dirname, '..', 'lab', '전쟁실험실.html');
-const OUT = path.resolve(__dirname, '..', 'lab', 'trees.json');
+// ★[T135] 구운 자리는 `server/trees.json` — `server/crops.json` 과 같은 자리, 같은 문법.
+//   T123 때는 `lab/trees.json` 이었다(서버가 안 읽던 초안). 이식과 함께 옮겼다 — **사본 0**:
+//   랩 HTML 의 인라인 `TREES` 는 랩의 인라인 사본 규약(--check)이 지키고, 굽는 대상은 이 하나뿐이다.
+const OUT = path.resolve(__dirname, '..', 'server', 'trees.json');
 
 // ── 랩에서 표만 떼어 온다 ────────────────────────────────────────────────────
 // 파서를 쓰지 않는다(HTML 안의 스크립트라 AST 도구를 끌어올 이유가 없다). 대신
@@ -69,7 +74,7 @@ function build() {
   }
   return {
     _source: 'lab/전쟁실험실.html `const TREES` (T123) — 손편집 금지 · `node scripts/build-trees.js` 로 굽는다',
-    _note: '서버는 아직 이 파일을 읽지 않는다(이식은 승인 게이트 카드). 종에 우열 없음 — 값은 그림자가격이 정한다.',
+    _note: '읽는 쪽은 server/trees.js 하나. 종에 우열 없음 — 값은 그림자가격이 정한다.',
     _axes: AXES,
     trees,
   };
@@ -101,9 +106,9 @@ if (process.argv.includes('--table')) {
 const json = JSON.stringify(build(), null, 1) + '\n';
 if (process.argv.includes('--check')) {
   const cur = fs.existsSync(OUT) ? fs.readFileSync(OUT, 'utf8') : '';
-  if (cur === json) { console.log('[trees] lab/trees.json: 최신 ✅'); process.exit(0); }
-  console.error('[trees] lab/trees.json: ✗ 랩 표와 어긋난다 — `node scripts/build-trees.js` 를 돌려라');
+  if (cur === json) { console.log('[trees] server/trees.json: 최신 ✅'); process.exit(0); }
+  console.error('[trees] server/trees.json: ✗ 랩 표와 어긋난다 — `node scripts/build-trees.js` 를 돌려라');
   process.exit(1);
 }
 fs.writeFileSync(OUT, json);
-console.log('[trees] lab/trees.json 굽기 완료 — 종 ' + Object.keys(build().trees).length);
+console.log('[trees] server/trees.json 굽기 완료 — 종 ' + Object.keys(build().trees).length);

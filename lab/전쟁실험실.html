@@ -425,7 +425,9 @@ const RESOURCES = {
   coffee:      { ko: '커피',     emoji: '☕', category: 'agri', weight: 0.3, baseValue: 20,   utility: 0.6, contributes: { happiness: 1.0 }, harvest: 'farming' },
   cocoa:       { ko: '카카오',   emoji: '🍫', category: 'agri', weight: 0.3, baseValue: 25,   utility: 0.5, contributes: { happiness: 0.8, prestige: 0.3 }, harvest: 'farming' },
   tobacco:     { ko: '담배',     emoji: '🌿', category: 'agri', weight: 0.25, baseValue: 10,   utility: 0.4, contributes: { happiness: 0.5 }, harvest: 'farming' },
-  grape:       { ko: '포도',     emoji: '🍇', category: 'agri', weight: 0.6, baseValue: 2,    utility: 0.5, contributes: { happiness: 0.4 }, harvest: 'foraging' },
+  // ★[T135 3판] 한글만 '포도' → '머루'. sim 이 이 품목을 이미 **산포도**로 부르고 있었고
+  //   (`economy-sim.js` 주석 "산포도 → `fruit`"), 나무 표의 `grape` 도 머루다. 아이디·값 전부 무변.
+  grape:       { ko: '머루',     emoji: '🍇', category: 'agri', weight: 0.6, baseValue: 2,    utility: 0.5, contributes: { happiness: 0.4 }, harvest: 'foraging' },
   olive:       { ko: '올리브',   emoji: '🫒', category: 'agri', weight: 0.55, baseValue: 4,    utility: 0.5, contributes: { subsistence: 0.3, happiness: 0.4 }, harvest: 'foraging' },
   dates:       { ko: '대추야자', emoji: '🌴', category: 'agri', weight: 0.45, baseValue: 3,    utility: 0.6, contributes: { subsistence: 0.5, happiness: 0.3 }, harvest: 'foraging' },
   fig:         { ko: '무화과',   emoji: '🫐', category: 'agri', weight: 0.55, baseValue: 4,    utility: 0.4, contributes: { subsistence: 0.3, happiness: 0.3 }, harvest: 'foraging' },
@@ -626,6 +628,33 @@ const RESOURCES = {
   scroll:      { ko: '두루마리',     emoji: '📜', category: 'jewel', weight: 0.2,  baseValue: 80,   utility: 0.3, contributes: { prestige: 1.0 }, harvest: 'crafting' },
 
 };
+
+// ══ ★★[T135 3판 2026-09-06 · 재민 판정] **나무 열매 셋이 품목이 된다** ══════════
+//
+// T135 가 나무에 열매를 달았는데(`server/trees.json`) 그 열매의 **품목이 없었다** —
+// 그래서 따면 `weights.kgOfOrDefault` 의 기본값 **1 kg** 이 붙었다(그물이지 답이 아니다).
+//
+// ★★**새 수 0.** 값을 짓지 않는다 — 이미 있는 형제 항목을 **그대로 편다**:
+//   · 도토리·밤 = `nuts`(견과류)   — 같은 숲 채집물이고 같은 손짓이다
+//   · 오디      = `fruit_berries`(산딸기) — 같은 숲 열매다
+//   ⇒ kg·값·효용·기여·철·범주가 전부 그 형제의 것이다. 한 줄도 새로 적지 않았다.
+//   ⚠**영양의 종별 차이는 여기 적지 않는다** — 그건 `economy-sim.js` 의 `FORAGE_FOOD_FACTOR`
+//     (도토리 0.25 · 밤 0.5)가 이미 쥔 축이다. 여기 또 적으면 그게 사본이고, 둘이 조용히 갈린다.
+//
+// ⚠**오디는 새 아이디**다(`mulberry_fruit`). `mulberry` 는 **뽕나무 잎**이고 `harvest: 'farming'` 이라
+//   양잠 층의 것이다 — 그 자리를 열매가 빼앗으면 잎을 읽는 자리가 조용히 뒤바뀐다.
+//   ⚠개암(`hazel`)은 **목재 전용 그대로** 둔다 — 열매 값의 출처가 아직 없다(재민 판정 · 회부).
+//
+// ⚠**되돌림 손잡이 안에 둔다**(`T135_TREES=0` 이면 셋이 아예 안 선다). 왜:
+//   품목표는 econ 의 `TRADABLE` 집합이라, 항목이 늘면 **나무 층과 무관하게** 값과 교역이 움직인다.
+//   실측(3판 §0ⓑ): 손잡이를 끄고도 시드 1020 인구가 6,459 → 6,580 으로 갔다. 그러면 OFF 열이
+//   T86 기준선이 아니게 되고 *"되돌림이 곧 증명"* 이라는 이 카드의 증거가 무너진다.
+//   ⇒ **열매가 없으면 열매 품목도 없다.**
+if (process.env.T135_TREES !== '0') {
+  RESOURCES.acorn = { ...RESOURCES.nuts, ko: '도토리' };
+  RESOURCES.chestnut = { ...RESOURCES.nuts, ko: '밤' };
+  RESOURCES.mulberry_fruit = { ...RESOURCES.fruit_berries, ko: '오디' };
+}
 
 // 카테고리별 통계 (확인용)
 function _summary() {
@@ -3452,8 +3481,20 @@ function tickVillage(v, day) {
     // skill 효과 — 만렙(10)이면 ×1.5. 분업/교역 의존 강화 위해 효율 ↓.
     const skillMul = 1 + skillLvl * 0.05;
     const jobScale = npc.currentJob === 'fisher' ? _fishScale : (npc.currentJob === 'forager' ? _forageScale : 1);   // ★어장/임연부 지속수확 상한(위 precompute) — 어부·채집만 스케일, 그 외 1
-    const baseAmt = jdef.base * landBoost * skillMul * toolBoost * inputMult * jobScale
+    let baseAmt = jdef.base * landBoost * skillMul * toolBoost * inputMult * jobScale
       * (f === 'farming' ? _paddyMul * (v._clearedFrac != null ? v._clearedFrac : 1) : 1);   // ★농사엔 논 프리미엄 × 개간완료율(공간 브리지) — 개간 안 된 밭은 소출 없음. 인구↑→개간목표↑→완료율 일시↓→소출·prodK 눌림→개간이 따라잡으면 회복 = 보즈럽 시차가 K에 실시간 반영(잠재 기준 slotK는 그대로 → 데드락 없음)
+    // ★★[T154 2026-09-07] **사냥 소득 주입 문** — 고기는 장부가 잡은 만큼만.
+    //   여태 사냥 산출은 `base 0.7 × land.game` 이라는 **추상**이었다(밭은 T100 4판에서, 채집은 T135 에서
+    //   이미 실물이 됐는데 사냥만 남아 있었다). T146 이 서버에 개체 장부를 올렸으니 이제 그 장부가
+    //   그날 실제로 잡은 마릿수를 안다 — 소득은 그 수를 따라야 한다.
+    //   ⚠**규약은 `priceFn`·`netExportFn` 과 같다**: world 에 함수가 심겼을 때만 산다.
+    //     미주입이면 `null` 이라 `baseAmt` 가 그대로 간다 = **종전 비트**(랩 기본 abstract · 서버 무주입).
+    //   ⚠**대체지 얹기가 아니다.** 여기서 `baseAmt` 를 바꾸면 산출(meat)도 부산물(hide·bone…)도
+    //     같은 수를 따라간다 — 두 장부가 갈리지 않는다.
+    if (npc.currentJob === 'hunter' && v._world && typeof v._world.huntIncomeFn === 'function') {
+      const _hi = v._world.huntIncomeFn(v, npc, baseAmt);
+      if (typeof _hi === 'number' && _hi >= 0) baseAmt = _hi;
+    }
     // ★[포위 봉쇄 훅] 야외 직업(농부·어부·사냥·벌목·광부·채집)만 v._siegeOutMul(호스트 설치 시)로 감산 — 성 밖 노동이 끊김(잠행 노동 잔존).
     //   실내 직업(석공·대장장이·요리사 등)=불변. 잠재(dailyProductionPotential)엔 미적용(_laborMul과 동형 — K 오염·아사 스파이럴 방지). 미설치(undefined)=1(무해).
     const _siegeM = (v._siegeOutMul != null && SIEGE_OUTDOOR_JOBS[npc.currentJob]) ? v._siegeOutMul : 1;
@@ -3477,8 +3518,31 @@ function tickVillage(v, day) {
       if (baseAmt > 0) {
         const yields = foragerYieldsFor(v);
         const sumW = Object.values(yields).reduce((a, b) => a + b, 0) || 1;
+        // ★★★[T135 2026-09-06 · 이 파일의 유일한 접점] **추상 열매를 걷어내고 실체로 갈아 끼운다.**
+        //   랩(T123 ⓑ)이 잰 것: 실체를 추상 *위에* 얹으면 그 품목 그림자가격이 하한으로 무너지고,
+        //   노동 배분이 채집을 0 으로 읽어 **채집꾼이라는 직업이 사라진다**(시드 42 인구 −41%).
+        //   채집꾼은 열매만 가져오는 게 아니라서, 그때 채소·버섯·약재·돌이 같이 끊긴다.
+        //   ⇒ **대체는 성능이 아니라 안전 조건이다.** 얹지 않는다.
+        //
+        //   ★새 수 0 — 무엇을 걷어낼지는 `world.forageRealItems`(나무 층이 대는 품목 목록)가 정하고,
+        //     얼마나 걷어낼지는 **걷어낸 몫 자체**가 정한다(아래 `repShare`). 상수를 하나도 안 짓는다.
+        //   ★주입이 없으면(v1 CLI · 픽스처 · 하네스 · 되돌림 `T135_TREES=0`) **한 글자도 안 바뀐다** —
+        //     `repl` 이 비고 `repShare` 가 0 이라 아래 루프가 종전 식과 완전히 같아진다(비트 동일).
+        const _W = v._world || null;                        // ★world 는 마을에 백참조로 달려 있다(priceFn 선례)
+        const _realFn = (_W && typeof _W.forageTakeFn === 'function') ? _W.forageTakeFn : null;
+        const _replSet = (_realFn && _W.forageRealItems) ? _W.forageRealItems : null;
+        let repW = 0;
+        if (_replSet) for (const [r, w] of Object.entries(yields)) if (_replSet.indexOf(r) >= 0) repW += w;
+        const repShare = repW / sumW;                       // 걷어낸 몫(0 이면 종전 그대로)
         for (const [r, w] of Object.entries(yields)) {
+          if (_replSet && _replSet.indexOf(r) >= 0) continue;   // ★걷어낸다 — 추상 산출은 여기서 끝난다
           addProduce(r, baseAmt * (w / sumW));
+        }
+        // ★그 자리를 **실물**이 채운다 — 채집꾼 하루가 그 마을 숲에서 실제로 딸 수 있는 만큼만.
+        //   숲이 못 대면 그만큼 덜 온다. 그게 공짜 점심을 걷어낸다는 뜻이다.
+        if (_realFn && repShare > 0) {
+          const got = _realFn(v, baseAmt * repShare) || null;
+          if (got) for (const r in got) { const a = got[r]; if (a > 0) addProduce(r, a); }
         }
         // ★S1 돌=채집 자원(광부 아님): 강가/돌밭(land.stone) 채집꾼이 돌을 *주 산출*로 가져옴(식량 믹스와 별개 가산).
         //   계수 0.9 ≈ 옛 광부(base1.5×land.stone) 스케일에 근접 → 돌밭 마을은 채집꾼만으로 돌 풍족(병목 없음).
@@ -3774,6 +3838,10 @@ function tickVillage(v, day) {
           //   ★addProduce를 *스킵*해야 _potA(잠재생산) 미오염 — satMul taper만으론 잠재가 idle로 잡혀 부족. 삼베(hemp)·곡물은 기존 경로 불변(의류 사슬 재튜닝 금지 준수).
           // ★[T17 ③] 자염은 **바다에 닿는 마을만** 굽는다(위 fisher.byproduct 주석).
           if (r === 'salt') { if (!T17_SALT || !(v.land && v.land.coastal)) continue; }
+          // ★[T135] 나무 층이 대는 품목은 부산물로도 안 낸다 — **같은 이중계상**이다.
+          //   벌목꾼의 `acorn 0.06/일` 이 그것이다: 도토리는 이제 참나무를 베거나 딸 때 실제로 나온다.
+          //   주입이 없으면(되돌림·v1) 이 줄은 아무것도 안 한다(비트 동일).
+          if (v._world && v._world.forageTakeFn && v._world.forageRealItems && v._world.forageRealItems.indexOf(r) >= 0) continue;
           if (r === 'ramie') {
             if (v.npcs.length < RAMIE_MIN_POP) continue;   // 미성숙 마을(개척기) 모시 안 짬 — 콜로니 취약 궤적 무교란
             if ((v.storage.ramie || 0) >= Math.max(v.npcs.length * RAMIE_BOOT_PC, ((v._consEMA || {}).ramie || 0) * 30)) continue;   // 수요 충족 → 스킵(잉여 0)
@@ -9174,7 +9242,7 @@ const TREES={
   oak:       { ko:'참나무', wood:0.95, mature: 40, char:1.00, fruit:'acorn',    fy:0.60, fs:2 },   // 도토리 — 구황(FORAGE 0.25)
   chestnut:  { ko:'밤',    wood:0.75, mature: 12, char:0.70, fruit:'chestnut', fy:1.00, fs:2 },   // 밤 — FORAGE 0.5
   hazel:     { ko:'개암',  wood:0.35, mature:  6, char:0.45, fruit:null,       fy:0,    fs:2 },   // 개암 품목 없음 — 회부
-  mulberry:  { ko:'산뽕',  wood:0.45, mature:  8, char:0.40, fruit:'mulberry', fy:0.80, fs:1 },   // 뽕나무 잎(양잠) — specialty 정본 id
+  mulberry:  { ko:'산뽕',  wood:0.45, mature:  8, char:0.40, fruit:'mulberry_fruit', fy:0.80, fs:1 },   // ★[T135 3판] **오디**(열매). 잎 `mulberry`(harvest:farming · 양잠)는 그대로 — 열매가 그 자리를 뺏으면 잎을 읽는 자리가 조용히 뒤바뀐다
   grape:     { ko:'머루',  wood:0.10, mature:  4, char:0.10, fruit:'grape',    fy:0.90, fs:2 },   // 산포도 — FORAGE 0.3
   willow:    { ko:'버들',  wood:0.50, mature:  7, char:0.30, fruit:null,       fy:0,    fs:2 },
 };
@@ -9264,7 +9332,19 @@ const L_GAMEMAX=100, L_GAMER=0.002, L_HUNT=4;       // ★사냥감 생태: 셀 
 //     그 밀도에서 수확이 만땅의 절반이 되게 잡으면, **사냥꾼이 자리를 뜰 즈음 수확이 반으로 준다** —
 //     두 규칙이 같은 밀도를 말한다. (T123 의 `L_WOODREGLOG` 가 "구 선형과 같은 값"으로 이은 것과 같은 논법.)
 //   되돌림 `L_HUNTREAL=0` ⇒ 상수 차감(= 이 카드 전 랩 비트 동일). 부를 때 읽는다(T88·T121 의 그 수리).
-const L_GAMEHALF=L_GAMEMAX*0.15;                    // 반포화 밀도 B — 랩 자신의 "사냥터로 안 치는 밀도"에서 유도(새 수 0)
+const L_GAMEHALF=L_GAMEMAX*0.15;
+/* ★★[T154 2026-09-07] 사냥 소득 = **장부가 잡은 마릿수**. 되돌림 `L_HUNTINCOME`(기본 'abstract' = 종전 비트).
+     여태 사냥 산출은 `base 0.7 × land.game` 이라는 추상이었다 — 밭(T100 4판)·채집(T135)은 이미 실물인데
+     사냥만 남아 있었다. T146 이 개체 장부를 올렸으니 그날 실제로 뺀 마릿수(`huntTake` 합)가 소득이다.
+     ⚠**마리당 1 단위**로 첫 판을 놓는다(새 수 0 — 도체율·가죽 무게는 축산 표가 와야 정해진다 · 회부).
+     ⚠**하루 늦다**: 랩 하루는 `tickWorldV2`(econ) → `lifeDay`(장부 차감) 순이라, econ 이 읽는 것은
+       **어제 잡은 수**다. 800일 궤적에서 하루 시차는 무의미하지만 사실이라 적어 둔다. */
+function _huntIncomeMode(){return (typeof window!=='undefined'&&window.L_HUNTINCOME)?window.L_HUNTINCOME:'abstract';}
+function huntIncomeReal(v,npc,baseAmt){
+  const kills=v._hkillDay||0, hn=(v.counts&&v.counts.hunter)||0;
+  if(!(hn>0))return 0;
+  return kills/hn;   /* 마리당 1 단위 — 부산물(hide·bone…)은 엔진 자신의 byproduct 비율이 이 수를 따라간다(사본 0) */
+}                    // 반포화 밀도 B — 랩 자신의 "사냥터로 안 치는 밀도"에서 유도(새 수 0)
 function _huntReal(){const v=(typeof window!=='undefined'&&window.L_HUNTREAL!==undefined)?window.L_HUNTREAL:1;return v===0?0:1;}
 function huntTake(G){                               // 하루 한 사람이 그 셀에서 빼는 개체 — 밀도의 함수
   if(!_huntReal())return L_HUNT;                    // ★되돌림 — 상수(종전)
@@ -10840,6 +10920,10 @@ function roadShadowDaily(){   // ★[fast=가속 shadow 원칙 — "수개월 �
   }
 }
 function lifeDayAll(doBulk){   // 하루: econ world 한 번 틱(전 마을 경제) + 각 마을 공간 처리(life/V 전환)
+  /* ★[T154] 어제 잡은 마릿수를 확정해 econ 이 읽을 자리에 놓고, 오늘 치를 0 에서 다시 센다.
+       주입은 **여기 한 줄**이다(엔진 규약: world 에 함수가 있을 때만 산다 — 없으면 종전 비트). */
+  for(const vil of VILS){const ev=vil.econ;if(!ev)continue;ev._hkillDay=vil._hkill||0;vil._hkill=0;}
+  if(ECON_WORLD)ECON_WORLD.huntIncomeFn=(_huntIncomeMode()==='real')?huntIncomeReal:undefined;
   if(ECON_WORLD&&typeof EconEngine!=='undefined')EconEngine.tickWorldV2(ECON_WORLD);
   // ★[전쟁실험실] 개인 무기 숙련 일일 성장(경제 함수 밖 훅) — 전사=검·창 상비 훈련↑. economy 무수정, econ.npcs에 _ws* 부착.
   for(const vil of VILS){ if(vil.econ)warTickWeaponSkills(vil.econ); }
@@ -10981,7 +11065,7 @@ function resourceTick(s,day){   // ★숲·광맥 자원: 재생 + 벌목/채광
         const b=bF||bA;if(b){a.work={cx:b.cx,cy:b.cy};a.cpath=null;}}}
     else if(a.job==='hunter'&&s.gameRich){const m=s.gameRich,k=a.work&&(a.work.cx+','+a.work.cy);   // ★사냥 압력: 작업 셀 개체수 감소, 비면 짐승 많은 사냥터로 이동(실제 사냥 행태)
       if(k&&m.has(k)){const _g0=m.get(k),_tk=Math.min(_g0,huntTake(_g0));m.set(k,Math.max(0,_g0-_tk));   // ★[T144] 포화형 수확(Holling II · 되돌림이면 상수)
-        s._hstat=s._hstat||{took:0,days:0};s._hstat.took+=_tk;s._hstat.days++;}                          /*랩단독 계측 — 세계 규칙은 이걸 안 읽는다*/
+        s._hstat=s._hstat||{took:0,days:0};s._hstat.took+=_tk;s._hstat.days++;s._hkill=(s._hkill||0)+_tk;}   /*_hstat=계측(세계 규칙 무관) · _hkill=★[T154] 오늘 잡은 수(소득 정본이 읽는다)*/
       if(!k||!m.has(k)||(m.get(k)||0)<L_GAMEMAX*0.12){
         // ★분산 사냥: 다른 사냥꾼 사냥터 ±5 안은 피해 *빈* 풍부 셀 우선(잠행은 단독이 자연) — 전부 argmax로 몰리던 우르르 떼사냥 제거. 다 차 있으면 공유(몰이 폴백)
         const hw=[];for(const o of s.agents)if(o!==a&&o.job==='hunter'&&o.work)hw.push(o.work);

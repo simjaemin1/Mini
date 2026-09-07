@@ -25,6 +25,7 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
+const { readClientSrc } = require('./client-src.js');   // ★[T150] 클라 원본은 한 곳에서 읽는다(사본 금지)
 const SELFTEST = process.argv.includes('--selftest');
 let fail = 0;
 const ok = (c, m) => { console.log((c ? '  ✓ ' : '  ✗ ') + m); if (!c) fail++; };
@@ -358,6 +359,59 @@ console.log('\n[⑨ 옷 여섯 — 재질 값이 한 곳에만 있는가]');
 }
 
 // ── ⑧ [T79] 굽는 기계 잠금 — icons.lock.json ─────────────────────
+console.log('\n[⑩ 열매 아이콘 넷 — `nature_render.py ICON_BUILD` 이 굽는 표]');
+{
+  // ★★[T156] ①②③ 은 `props_render.py ITEMS` 만 돈다. 열매 넷은 **자연물 굽기**가 굽는다
+  //   (`_fruit_cluster` 기하를 그대로 쓰려면 그 파일이어야 한다) ⇒ 그 표를 따로 읽는다.
+  //   ⓘ 여기서도 키를 손으로 안 적는다 — 굽는 표에서 뽑는다(사본 금지).
+  const npy = fs.readFileSync(path.join(ROOT, 'scripts', 'nature_render.py'), 'utf8');
+  const blk = npy.match(/^ICON_BUILD = \[([\s\S]*?)^\]/m);
+  ok(!!blk, 'nature_render.py 에서 ICON_BUILD 표를 읽었다');
+  const FKEYS = blk ? [...blk[1].matchAll(/\('([a-z_]+)',\s*ic_/g)].map(m => m[1]) : [];
+  ok(FKEYS.length === 4, `열매 아이콘 넷 (실측 ${FKEYS.length}: ${FKEYS.join(' ')})`);
+  const W2 = require(path.join(ROOT, 'server', 'weights.js'));
+  const fmeta = {};
+  for (const k of FKEYS) {
+    const q = path.join(ICON_DIR, k + '.png');
+    if (!fs.existsSync(q)) { ok(false, `${k}.png 이 없다`); continue; }
+    const m = pngMeta(q); fmeta[k] = m;
+    ok(m.w === 96 && m.h === 96, `${k}.png ${m.w}×${m.h}`);
+    ok(m.clear > 200 && m.solid > 200, `${k}: 투명 ${m.clear} · 불투명 ${m.solid} 화소`);
+    // ★③ 과 같은 자 — 아이콘 키는 **서버 품목**이어야 한다(T135 가 넷을 품목으로 세웠다)
+    const kg = W2.kgOf(k);
+    ok(kg != null, `${k}: 서버 무게 ${kg == null ? '없음(가짜 키)' : kg + 'kg'}`);
+  }
+  // ⚠개암은 굽지 않는다 — 품목이 아니다. 그 판정이 **뒤집히면** 알려 준다(회부가 닫힌 날).
+  ok(W2.kgOf('hazelnut') == null,
+     `개암(hazelnut)은 아직 품목이 아니다 — 그래서 안 굽는다 (kgOf ${JSON.stringify(W2.kgOf('hazelnut'))})`);
+
+  // ★★짐 창에서 갈리는가 — **자를 배포본에서 유도한다**(문턱을 지어내지 않는다).
+  //   기존 아이콘 전 짝의 화소 |Δ| 분포를 재면 중앙값 95.8 · 5% 분위 43.5 · 최소 10.4
+  //   (최소는 씨앗들끼리다 — 씨앗은 원래 서로 닮았다). 새 넷은 그 **5% 분위 위**에 있어야 한다.
+  //   ⓘ 전 짝(10,296)을 매번 다시 재면 느리다 ⇒ 새 넷 대 나머지(4×147)만 잰다.
+  const FLOOR = 40;   // 5% 분위 43.5 를 내림 — 유도 근거는 위 주석(보고 §0-ⓒ 에 표)
+  const { PNG: PNG2 } = require('pngjs');
+  const px = {};
+  const all = fs.readdirSync(ICON_DIR).filter(f => f.endsWith('.png')).map(f => f.slice(0, -4));
+  const rd = (k) => px[k] || (px[k] = PNG2.sync.read(fs.readFileSync(path.join(ICON_DIR, k + '.png'))));
+  const dist = (a, b) => {
+    const A = rd(a), B = rd(b); let s = 0, n = 0;
+    for (let i = 0; i < A.data.length; i += 4) {
+      if (A.data[i + 3] > 96 || B.data[i + 3] > 96) {
+        s += Math.abs(A.data[i] - B.data[i]) + Math.abs(A.data[i + 1] - B.data[i + 1]) + Math.abs(A.data[i + 2] - B.data[i + 2]);
+        n++;
+      }
+    }
+    return n ? s / (3 * n) : 0;
+  };
+  for (const k of FKEYS) {
+    if (!fmeta[k]) continue;
+    let best = 1e9, who = '';
+    for (const o2 of all) { if (o2 === k) continue; const d = dist(k, o2); if (d < best) { best = d; who = o2; } }
+    ok(best >= FLOOR, `${k}: 가장 닮은 아이콘 ${who} 와 |Δ| ${best.toFixed(1)} ≥ ${FLOOR} (배포본 5% 분위 43.5 에서 유도)`);
+  }
+}
+
 console.log('\n[⑧ 굽는 기계 정본 — icons.lock.json 이 지금 자산과 맞는가]');
 {
   const LOCK = path.join(ROOT, 'public', 'assets', 'icons.lock.json');
@@ -468,6 +522,38 @@ console.log('\n[⑧ 굽는 기계 정본 — icons.lock.json 이 지금 자산�
       ok(offMid.length === 0, `★mountains: 원점이 가로 한가운데 근처다 (|ox/w−0.5| ≤ 0.15 · 벗어남 ${offMid.length}${offMid.length ? ' — ' + offMid.slice(0, 3).join(', ') : ''})`);
       const R = anK.filter(k => /^mt_R/.test(k)), X = anK.filter(k => /^mt_X/.test(k));
       console.log(`     ⓘ 산 ${anK.length}장 = 뾰족 ${anK.length - R.length - X.length} · 둥근 ${R.length} · 주봉 ${X.length}`);
+      // ★★[T150] 3D 높이장의 둥글기 배수는 **재료표에서 유도한 수**다 — 여기서 다시 계산해 대조한다.
+      //   사본이 굳는 것을 막는 자다: 재료표를 고치면(밑변·키) 이 검사가 **먼저** 빨개진다.
+      //   ⓘ 3D 판(`_mt3Field`)과 스프라이트 판(`mt_R*` 40장)이 같은 모양 언어를 쓰게 하는 고리.
+      {
+        const py = fs.readFileSync(path.join(ROOT, 'scripts', 'bake-mountain.py'), 'utf8');
+        const G  = py.match(/'mt_G%dv%d' % \(a, v\), ([\d.]+), ([\d.]+) - ([\d.]+) \* v/);
+        const F  = py.match(/'mt_F%dv%d' % \(a, v\), ([\d.]+), ([\d.]+) - ([\d.]+) \* v/);
+        const RG = py.match(/'mt_RG%dv%d' % \(a, v\), float\(os\.environ\.get\('MT_RBR', '([\d.]+)'\)\),\s*float\(os\.environ\.get\('MT_RH', '([\d.]+)'\)\) - ([\d.]+) \* v/);
+        const RF = py.match(/'mt_RF%dv%d' % \(a, v\), float\(os\.environ\.get\('MT_RBR', '([\d.]+)'\)\) \+ ([\d.]+),\s*float\(os\.environ\.get\('MT_RH', '([\d.]+)'\)\) - ([\d.]+) - ([\d.]+) \* v/);
+        ok(!!(G && F && RG && RF), '재료표 네 무리(G·F·RG·RF)를 `bake-mountain.py` 에서 읽었다');
+        if (G && F && RG && RF) {
+          const mean = (a) => a.reduce((x, y) => x + y, 0) / a.length;
+          const gh = [0, 1, 2].map(v => G[2] - G[3] * v), fh = [0, 1].map(v => F[2] - F[3] * v);
+          const rgr = +RG[1], rgh = [0, 1, 2].map(v => RG[2] - RG[3] * v);
+          const rfr = +RF[1] + +RF[2], rfh = [0, 1].map(v => RF[3] - RF[4] - RF[5] * v);
+          const pR = (24 * G[1] + 16 * F[1]) / 40, pH = (24 * mean(gh) + 16 * mean(fh)) / 40;
+          const rR = (24 * rgr + 16 * rfr) / 40, rH = (24 * mean(rgh) + 16 * mean(rfh)) / 40;
+          const kL = rR / pR, kH = rH / pH;
+          console.log(`     ⓘ 재료표 평균 — 뾰족 밑변 ${pR.toFixed(2)} 키 ${pH.toFixed(2)} · 둥근 밑변 ${rR.toFixed(2)} 키 ${rH.toFixed(2)}`);
+          const src = readClientSrc();
+          const mL = src.match(/MT3_RLAM\s*=\s*([\d.]+)\s*\/\s*([\d.]+)/);
+          const mH = src.match(/MT3_RHMAX\s*=\s*([\d.]+)\s*\/\s*([\d.]+)/);
+          ok(!!(mL && mH), '클라가 두 배수를 **나눗셈 그대로** 적어 뒀다(출처가 코드에 보인다)');
+          if (mL && mH) {
+            const cL = +mL[1] / +mL[2], cH = +mH[1] / +mH[2];
+            ok(Math.abs(cL - kL) < 0.005, `★MT3_RLAM ${cL.toFixed(4)} = 재료표 밑변비 ${kL.toFixed(4)} (둥근이 ${(kL*100-100).toFixed(1)}% 더 넓게 눕는다)`);
+            ok(Math.abs(cH - kH) < 0.005, `★MT3_RHMAX ${cH.toFixed(4)} = 재료표 키비 ${kH.toFixed(4)} (둥근이 ${(100-kH*100).toFixed(1)}% 낮다)`);
+          }
+        }
+        ok(/let MT3_ROUND = 0;/.test(readClientSrc()),
+           '★3D 둥글기 축의 **기본값이 0** 이다 — 켜기는 재민 눈 뒤(T150 §1)');
+      }
     }
     // ★[T106] 4.0.2 산출물 0 — 굽는 기계 줄이 그걸 말해야 한다.
     ok(/4\.0\.2 산출물 0/.test(lock._기계 || ''),

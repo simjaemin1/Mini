@@ -1922,6 +1922,130 @@ const mkLedgerGeo = (world, geo, cfg) => {
   }
 }
 
+// ═════════════════════════════════════════════════════════════════════════════
+// ㊼ [T142 2026-09-06] **약속의 값도 하역 뒤를 본다** — 게시 시세
+//
+//   T133(㊻)은 사건 판정을 하역 뒤로 옮기고 게시는 두고 갔다(여덟 수 '게시' 열 귀속).
+//   이 절이 그 나머지 절반이다. 같은 결함 · 같은 문(`priceView`) · 같은 손잡이(`T133_FRESH`).
+//   ★게시가 사건보다 **더** 지금이어야 하는 이유: 사건은 한 줄의 말이고 게시는 **약속**이다.
+//     곳간이 이미 찼는데 "비었을 때의 귀함"으로 값을 매기면 플레이어가 그 값을 보고 실제로 낸다.
+//   ★검사가 잡아야 하는 것: ①안 옮기면 ㊼c 가 빨개진다 ②과잉 수리(값이 안 갈리는 자리까지
+//     흔들면) ㊼e 가 빨개진다 ③접근자를 호출부마다 고르면(사본) ㊼a 가 빨개진다.
+// ═════════════════════════════════════════════════════════════════════════════
+{
+  // ── ㊼a 소스 계약 — 게시 시세가 **문 하나**를 지난다(사본 0)
+  {
+    const src = require('fs').readFileSync(path.join(__dirname, '..', 'server', 'events.js'), 'utf8');
+    const sync = (src.match(/function syncRequests\(world, day\)[\s\S]*?\n  \}/) || [''])[0];
+    ok(sync.length > 200, '㊼a0 전제: `syncRequests` 본문을 실제로 읽었다', `${sync.length}자`);
+    ok(/prices = priceView\(v, day\)/.test(sync) && !/pricesOf\(econV2/.test(sync),
+      '㊼a ★게시 시세가 `priceView` 하나를 지난다 — 하루 캐시를 직접 안 읽는다');
+  }
+
+  const DEP2 = new Set(Object.values(Villages.playerVillageDepositMap()));
+  const W = makeWorld(0, 91);
+  const LF = mkLedger(W);                          // 채택 — 하역 뒤
+  const LC = mkLedger(W, { PRICE_FRESH: 0 });      // 되돌림 — 하역 전(하루 캐시)
+  const _l = console.log; console.log = () => {};
+  try { for (let d = 0; d < 120; d++) { econV2.tickWorldV2(W); LF.scanDay(W, W.day, {}); LC.scanDay(W, W.day, {}); } }
+  finally { console.log = _l; }
+
+  const tgt = pickFresh(W, LF, { deliverable: DEP2, needSurplus: true, surplusMin: 5, minEma: 0.2 });
+  ok(!!tgt, '㊼ 전제: 낼 수 있는 품목이고 래치가 꺼진 표적을 골랐다',
+    tgt ? `v${tgt.vid} ${tgt.r}` : '없음');
+  if (tgt) {
+    const v = tgt.v, R = tgt.r, VID = tgt.vid;
+    // 갚을 잉여를 넉넉히 — 검사 대상이 아닌 전제를 고정한다(축소·미게시로 갈라지면 값을 못 견준다)
+    const pay = makePayable(v, R, DEP2, 1000000);
+    ok(!!pay, '㊼1 전제: 이 마을이 **전액 갚을 수 있다**(축소·미게시가 아니라 값을 견주는 검사다)', `${pay}`);
+
+    const ema = +((v._consEMA || {})[R]) || 0;
+    const thr = ema * LF.cfg.SHORT_DAYS;
+    W.day += 1;
+    // ① 곳간이 비었던 순간 → ② 그때 뜬 하루 캐시(= tickTradeV2 자리) → ③ 하역(캐시 뒤)
+    v.storage[R] = 0;
+    const stale = econV2.computeShadowPrices(v);
+    v._priceCache = stale; v._priceCacheDay = W.day;
+    v.storage[R] = +(thr * 0.5).toFixed(3);          // 짐이 조금 들어왔지만 아직 부족하다(래치는 선다)
+    const fresh = econV2.computeShadowPrices(v);
+
+    const pStale = +stale[R] || 0, pFresh = +fresh[R] || 0;
+    ok(pStale > pFresh * 1.5 && pFresh > 0,
+      '㊼2 전제: 픽스처가 의도한 상황이다 — 하역 전 시세가 하역 후보다 훨씬 높다',
+      `하역 전 ${pStale.toFixed(3)} · 하역 후 ${pFresh.toFixed(3)} (×${(pStale / pFresh).toFixed(2)})`);
+
+    const _l2 = console.log; console.log = () => {};
+    try { LF.scanDay(W, W.day, {}); LC.scanDay(W, W.day, {}); } finally { console.log = _l2; }
+
+    const reqOf = (L) => (L.board(VID) || []).filter((x) => x.item === R)[0] || null;
+    const rf = reqOf(LF), rc = reqOf(LC);
+    ok(!!rf && !!rc, '㊼3 전제: 두 장부 모두 그 품목의 의뢰를 걸었다(둘 다 걸려야 값을 견준다)',
+      `채택 ${rf ? '○' : '×'} · 되돌림 ${rc ? '○' : '×'}`);
+    if (rf && rc) {
+      ok(rf.qty === rc.qty,
+        '㊼b ★**구하는 양은 안 바뀐다** — 그건 소비EMA 가 정하지 시세가 정하지 않는다', `둘 다 ${rf.qty}`);
+      ok(rf.item === rc.item && rf.rewItem === rc.rewItem,
+        '㊼b2 품목도 갚는 품목도 같다 — 바뀌는 것은 **약속의 크기** 하나다',
+        `${rf.item} → ${rf.rewItem}`);
+      ok(rc.rewQty > rf.rewQty,
+        '㊼c ★★되돌림(하역 전 시세)은 **비었을 때의 귀함으로 약속한다** — 곳간이 이미 찼는데도',
+        `되돌림 ${rc.rewQty} vs 채택 ${rf.rewQty} (×${(rc.rewQty / Math.max(1, rf.rewQty)).toFixed(2)})`);
+      ok(Math.abs(rf.rewQty / rf.qty - (pFresh / (+fresh[rf.rewItem] || 1)) * (1 + LF.cfg.REQ_PREMIUM)) < 0.6,
+        '㊼d ★채택의 약속이 **하역 뒤 시세의 등가**다(값을 지어내지 않았다)',
+        `배율 ${(rf.rewQty / rf.qty).toFixed(2)} vs 등가 ${((pFresh / (+fresh[rf.rewItem] || 1)) * (1 + LF.cfg.REQ_PREMIUM)).toFixed(2)}`);
+    }
+  }
+
+  // ── ㊼e ★진짜 부족 땐 **그대로 약속한다**(과잉 수리 방지)
+  //   캐시를 손대지 않으면 두 읽기는 같은 값을 본다 ⇒ 약속도 같아야 한다.
+  {
+    const t2 = pickFresh(W, LF, { deliverable: DEP2, needSurplus: true, surplusMin: 5, minEma: 0.2,
+      skip: new Set([tgt ? tgt.vid + ':' + tgt.r : '']) });
+    ok(!!t2, '㊼e0 전제: 둘째 표적을 골랐다', t2 ? `v${t2.vid} ${t2.r}` : '없음');
+    if (t2) {
+      const v2 = t2.v, R2 = t2.r;
+      makePayable(v2, R2, DEP2, 1000000);
+      W.day += 1;
+      v2.storage[R2] = +(((+v2._consEMA[R2]) * LF.cfg.SHORT_DAYS) * 0.5).toFixed(3);
+      v2._priceCache = econV2.computeShadowPrices(v2);      // ★하역이 없다 — 캐시 = 지금 값
+      v2._priceCacheDay = W.day;
+      const _l3 = console.log; console.log = () => {};
+      try { LF.scanDay(W, W.day, {}); LC.scanDay(W, W.day, {}); } finally { console.log = _l3; }
+      const a = (LF.board(t2.vid) || []).filter((x) => x.item === R2)[0] || null;
+      const b = (LC.board(t2.vid) || []).filter((x) => x.item === R2)[0] || null;
+      ok(!!a && !!b, '㊼e1 전제: 두 장부 모두 걸었다', `${a ? '○' : '×'}/${b ? '○' : '×'}`);
+      if (a && b) {
+        ok(a.rewQty === b.rewQty && a.qty === b.qty,
+          '㊼e ★★**하역이 없으면 두 읽기가 같은 약속을 한다** — 고침이 값을 흔든 게 아니다',
+          `${a.qty} → ${a.rewQty} (양쪽 같다)`);
+      }
+    }
+  }
+
+  // ── ㊼f ★★돌연변이 — 한 손잡이가 **둘을 같이** 되돌린다(T133 사건 + T142 게시)
+  {
+    const { execFileSync } = require('child_process');
+    const _ROOT = path.join(__dirname, '..');
+    const code = `
+      const path=require('path');const R=(p)=>require(path.join(${JSON.stringify(_ROOT)},p));
+      const Events=R('server/events');
+      const L=Events.createLedger({ econV2: R('sim/economy-sim-v2'), vidOf:(v,i)=>i });
+      const src=require('fs').readFileSync(path.join(${JSON.stringify(_ROOT)},'server/events.js'),'utf8');
+      const sync=(src.match(/function syncRequests\\(world, day\\)[\\s\\S]*?\\n  \\}/)||[''])[0];
+      process.stdout.write('@@'+JSON.stringify({ cfg: L.cfg.PRICE_FRESH,
+        postGate: /prices = priceView\\(v, day\\)/.test(sync) }));`;
+    const run = (env) => {
+      const out = execFileSync(process.execPath, ['-e', code],
+        { env: Object.assign({}, process.env, { ENABLE_VILLAGES: '0' }, env), encoding: 'utf8' });
+      return JSON.parse(out.slice(out.lastIndexOf('@@') + 2).trim());
+    };
+    const on = run({}), off = run({ T133_FRESH: '0' });
+    ok(on.cfg === 1 && off.cfg === 0 && on.postGate === true,
+      '㊼f ★★돌연변이 — `T133_FRESH=0` **한 손잡이**가 사건 판정과 게시 시세를 같이 되돌린다(새 손잡이 0)',
+      `켬 ${on.cfg} → 끔 ${off.cfg} · 게시 문 ${on.postGate}`);
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
 try { require('fs').unlinkSync(process.env.DB_PATH); } catch (e) {}

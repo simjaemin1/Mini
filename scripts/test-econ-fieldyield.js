@@ -45,6 +45,13 @@ const VSRC = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8');
 const LSRC = fs.readFileSync(path.join(ROOT, 'server', 'village-layout.js'), 'utf8');
 const ON = process.env.T100_FIELD_YIELD === '1';
 
+// ★★[T100 5판 · main 병합 뒤 수리] **줄 주석을 먼저 지우고 블록 주석을 지운다.**
+//   종전엔 순서가 반대였는데, `villages.js:20` 의 줄 주석 안에 있는 `sim/*` 가 **블록 주석을 여는
+//   것으로 읽혀** 2,474~5,005 줄이 통째로 지워졌다(⑥ 이 "곳간에 닿는 자리 0줄" 이라 빨개졌다 —
+//   코드는 멀쩡했는데 **자가 틀렸다**). 순서를 바꾸면 그 함정이 구조적으로 사라진다.
+const codeOf = (src) => src.split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n')
+  .replace(/\/\*[\s\S]*?\*\//g, ' ');
+
 console.log('\n=== 밭이 곳간에 닿는다 (ECON 수술 2-b · T100 4판) ===');
 console.log(`  손잡이: T100_FIELD_YIELD=${ON ? '켬' : '끔'}${MUT ? '  ⚠변조 사본 ' + MUT : ''}`);
 
@@ -76,7 +83,7 @@ console.log('\n② 정본 하나 — 인당 기준 경작칸 12 가 한 곳에�
   const VL = R('server/village-layout.js');
   const V = R('server/villages.js');
   ok(VL.LAND_NEED === 12, '② 정본 `village-layout.js LAND_NEED` = 12 (T100 4판 ×1.5)', String(VL.LAND_NEED));
-  const VCODE = VSRC.replace(/\/\*[\s\S]*?\*\//g, ' ').split('\n').map(l => l.replace(/\/\/.*$/, '')).join('\n');
+  const VCODE = codeOf(VSRC);
   ok(!/const\s+L_LANDNEED\s*=\s*\d/.test(VCODE),
     '② ★★★`villages.js` 에 **사본 상수가 없다**(정본이 12 로 가도 여긴 8 로 남던 자리)');
   ok(V.__labProbe._clearProbe.L_LANDNEED === VL.LAND_NEED,
@@ -131,7 +138,7 @@ console.log('\n④ 무접촉 — 어부·사냥꾼·채집 산출은 안 건드�
   ok(econ.FARMER_BASE === 1.5, '④ `FARMER_BASE` 가 노출돼 있다(계측기가 1.5 를 옮겨 적지 않는다)', String(econ.FARMER_BASE));
   ok(/landBoost: \(v\) => v\.land\.water/.test(SRC), '④ 어부 `landBoost` 가 `v.land.water` 그대로다(소스)');
   ok(/landBoost: \(v\) => v\.land\.game/.test(SRC), '④ 사냥꾼 `landBoost` 가 `v.land.game` 그대로다(소스)');
-  const CODE = SRC.replace(/\/\*[\s\S]*?\*\//g, ' ').split('\n').map(l => l.replace(/\/\/.*$/, '')).join('\n');
+  const CODE = codeOf(SRC);
   const hits = CODE.split('\n').filter(l => l.indexOf('T100_FIELD_YIELD') >= 0).length;
   ok(hits === 7, '④ ★손잡이를 무는 줄이 **일곱뿐**이다(선언 1 + `farmFlowPerDay` 1 + `harvestToGranary` 1 + `seedFoodDays` 1 + `gardenFloorTopUp` 1 + 대체 1 + 내보내기 1 — 주석 제외)', `${hits}줄`);
   ok(/farmFlowPerDay\(v, _cf\.farmer \|\| 0\)/.test(SRC), '④ 부양력(prodK)도 **같은 함수**를 본다(K 만 옛 밑변이면 인구가 밭 없이 분다)');
@@ -174,7 +181,7 @@ const bites = (src) => /\.(storage|treasury)\s*(\[|\.)\s*[A-Za-z_'"`]/.test(
   clearRegion(src).replace(/\/\/.*$/gm, ''));
 {
   ok(!bites(VSRC), '⑥ ★★개간·실체화 절엔 여전히 `storage`/`treasury` 쓰기가 **한 줄도 없다**(회계는 econ 한 곳)');
-  const CODE = VSRC.replace(/\/\*[\s\S]*?\*\//g, ' ').split('\n').map(l => l.replace(/\/\/.*$/, '')).join('\n');
+  const CODE = codeOf(VSRC);
   const calls = CODE.split('\n').filter(l => l.indexOf('harvestToGranary') >= 0);
   ok(calls.length === 1, '⑥ ★★★생활층이 곳간에 닿는 자리가 **한 줄**이다', `${calls.length}줄`);
   ok(calls.length === 1 && /_lifeEcon\(\)\.harvestToGranary\(vil\.econ, 1\)/.test(calls[0]),

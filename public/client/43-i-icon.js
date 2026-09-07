@@ -67,6 +67,13 @@
     //   몸에 걸친 갖옷이 같은 물건으로 읽혀야 한다(색이 갈리면 그 순간 두 물건이 된다).
     'clothes_fur', 'clothes_ramie', 'clothes_leather',
     'clothes_hide', 'clothes_fiber', 'clothes_hemp',
+    // ★★[T156 2026-09-07] 열매 넷 — T135 3판이 품목으로 세운 것들(`acorn`·`chestnut`·
+    //   `mulberry_fruit`(오디 · 새 아이디)·`grape`(머루)). 그림은 `nature_render.py ICON_BUILD` 가
+    //   `_fruit_cluster` 기하 그대로 굽는다.
+    //   ⓘ **T72·T76 때와 달리 배선을 회부하지 않았다.** `test-itemlabel ⑪` 이 이 목록과
+    //     `public/assets/icons/` 의 **정확한 일치**를 못 박은 뒤로(T66 착지), 그림만 넣고 키를
+    //     안 올리면 그 자리에서 빨개진다 — 배선은 이제 "아이콘을 굽는 일"의 일부다.
+    'acorn', 'chestnut', 'mulberry_fruit', 'grape',
   ]);
   // ★★[T66 2차 · 재민 확정 2026-09-03] 옛 **거부 목록** `ICON_NO_RENDER` 은 **없앴다** — 뒤집혔다.
   //   종전: "여기 있으면 렌더가 없다"(빠뜨리면 404). 지금: `ICON_RENDERED` 에 **있으면 그림, 없으면 점선 칸**.
@@ -126,6 +133,9 @@
   // ★[T124] 심을 수 있는 씨앗 목록(서버 정본 · `welcome.plantSeeds`). 폴백 표 없음 — 사본 0.
   //   비어 있으면 심기 동사가 안 뜬다(= 되돌림 `T124_PLANT=0` 이 화면까지 그대로 걸린다).
   let plantSeeds = [];
+  // ★[T135] 두 번째 동사 표(열매 따기). 같은 규약 — 서버 정본 하나, 클라 폴백 0.
+  let resourceVerbsAlt = null;
+  let treeFruitKo = null;     // 종 → 열매 이름(서버 `welcome.treeFruitKo`). 클라는 종 목록을 안 적는다.
   // ★[T126] 사람에게 쓰는 동사 이름표(서버 정본 · `welcome.npcVerbs`). 폴백 없음 — 사본 0.
   let npcVerbs = null;
   // ★[T66 ⓪] 직업·계절 이름 정본(`welcome.uiLabels`). 클라 사본 둘(JOB_KR·SEASON_KO)은 지웠다.

@@ -204,14 +204,23 @@ function _yearDays() {
  *   `gone`  = 아직 아무것도 없다(덤불·약초의 재생 전)
  *   `mature`= 종전 그대로 난다(= 안 벤 것과 같다)
  */
-function regrowStageOf(type, elapsedDays) {
+// ★★[T135] 종이 갈렸다 — T122 가 여기 적어 둔 회부가 닫힌다:
+//   *"종은 아직 하나(`tree`)다 — 종별 표는 T123 카탈로그가 온 뒤다."* 그 표가 `server/trees.json` 이다.
+//   `regrowStageOf` 에 **종을 하나 더 받는다**(안 주면 종전 그대로 — 옛 호출부·구 하네스 무변).
+//   그루터기/성목 햇수는 `Trees.stageYearsOf` 가 정한다: 표의 `mature` 와 **T122 의 비율**뿐 — 새 수 0.
+let _TR = undefined;
+function _trees() { if (_TR === undefined) { try { _TR = require('./trees'); } catch (e) { _TR = null; } } return _TR; }
+function regrowStageOf(type, elapsedDays, species) {
   if (!(REGROW.ON() !== 0)) return null;              // ★되돌림 — 종전(영구 소실)
   const d = Number.isFinite(elapsedDays) ? elapsedDays : -1;
   if (d < 0) return null;                             // 벤 날을 모른다 — 종전대로 뺀다
   const Y = _yearDays();
   if (type === 'tree') {
-    if (d < REGROW.TREE_STUMP_Y() * Y) return 'stump';
-    if (d < REGROW.TREE_FULL_Y() * Y) return 'sapling';
+    let sY = REGROW.TREE_STUMP_Y(), fY = REGROW.TREE_FULL_Y();
+    const T = _trees();
+    if (species && T && T.ON()) { const g = T.stageYearsOf(species, sY, fY); sY = g[0]; fY = g[1]; }
+    if (d < sY * Y) return 'stump';
+    if (d < fY * Y) return 'sapling';
     return 'mature';
   }
   if (type === 'berry_bush') return d < REGROW.BUSH_Y() * Y ? 'gone' : 'mature';
@@ -313,6 +322,62 @@ function pickResourceType(biome, r) {
   return 'water_pool';
 }
 
+// ★★[T135] 숲 그리드의 **밀도 정본** — 아래 그리드가 쓰던 세 수를 함수 하나로 올렸다(행동 무변).
+//   ⚠올린 이유: 마을의 **연간 열매 예산**(`server/trees.js` ← `villages.js` 주입)이 "그 숲에 나무가
+//     몇 그루인가"를 알아야 하는데, 그걸 저쪽에서 다시 적으면 그게 사본이다. 숫자는 여기 하나뿐이다.
+const FOREST_SPACING_BASE = 120;   // 나무 간격(px) 기준 — 작게=빽빽(부하↑) · 크게=듬성. 밀도 손잡이
+const FOREST_SP_MIN = 60, FOREST_SP_MAX = 96;
+const FOREST_MIN_COV = 1.5;        // 이 아래 커버리지엔 숲 그리드를 안 깐다
+const FOREST_GAP = 0.9;            // 10% 빈자리(자연스러움) — 그리드의 `j2 > 0.9` 그대로
+function forestSpacing(fCov) { return Math.max(FOREST_SP_MIN, Math.min(FOREST_SP_MAX, Math.round(FOREST_SPACING_BASE / Math.sqrt(fCov)))); }
+/**
+ * 32px 셀 하나에 서는 나무 수. 인자가 없으면 **가장 성긴 숲**(SP 상한)으로 — 아래로 잡는다.
+ * 새 수 0: 간격·빈자리 둘 다 위 그리드가 이미 쓰던 값이다.
+ */
+function forestTreesPerCell(fCov, cellPx) {
+  const SP = forestSpacing(Number.isFinite(fCov) ? fCov : FOREST_MIN_COV + 1e-9);
+  const c = Number.isFinite(cellPx) ? cellPx : 32;
+  return FOREST_GAP * (c * c) / (SP * SP);
+}
+
+/**
+ * ★★[T135 3판] 숲 셀 하나의 **평균** 나무 수 — 간격 상한만 쓰지 않는다.
+ *   `forestSpacing` 은 커버리지에 따라 SP 를 [60, 96] 사이에서 고른다. 1·2판은 그중 **상한**(가장 성긴 숲)
+ *   하나만 썼고, 그래서 숲 마을 유도가 실물의 64% 였다(보고 3판 §0ⓐ).
+ *   ⇒ SP 가 그 구간 안에서 고르다고 보면 밀도의 평균은 **정확히 1/(하한×상한)** 이다:
+ *        ⟨GAP·c²/SP²⟩ = GAP·c² · (1/(SP_MAX−SP_MIN))∫ SP⁻² dSP = GAP·c² / (SP_MIN·SP_MAX)
+ *   새 수 0 — 하한·상한·빈자리 셋 다 위 그리드가 이미 쓰던 값이다. 실측 대조는 보고 §0ⓐ(102.9%).
+ *   ⚠**커버리지를 마을에서 유도하지는 못한다** — `forShare`(면적 몫)와 실제 `fCov`(배율)의 상관은 0.44 다
+ *     (forShare 1.000 인 마을의 meanFcov 가 2.6~3.2 로 갈리고, forShare 0.331 인 마을이 3.20 이다).
+ *     지형을 다시 훑지 않고 마을별로 맞히는 길은 없다 — 그건 `trees.js` 가 안 하는 일이다(econ 무접촉).
+ */
+function forestTreesPerCellMean(cellPx) {
+  const c = Number.isFinite(cellPx) ? cellPx : 32;
+  return FOREST_GAP * (c * c) / (FOREST_SP_MIN * FOREST_SP_MAX);
+}
+
+// ★★[T135 2판] **나무는 두 곳에서 난다.** 위 숲 그리드 말고, 아래 **일반 자원 루프**도 나무를 세운다 —
+//   그리고 그건 **숲 밖에도** 선다(`pickResourceType` 이 biome 마다 `tree` 몫을 갖는다).
+//   `FLOOR.wood`("숲이 없어도 땔감은 좀 난다")의 실체가 바로 이 흩어진 나무들이다.
+//   ⚠1판의 예산 유도가 이걸 0 으로 적었다 — 실측: 마을 스캔 원 안 나무의 **58.8%** 가 이쪽이다.
+/**
+ * 이 biome 에서 일반 루프가 `tree` 를 고를 확률. **표를 옮겨 적지 않는다** —
+ * `pickResourceType` 을 촘촘히 불러 그 표 자신에게 물어본다(정본이 하나여야 한다).
+ */
+function treeShareOf(biome, samples) {
+  const N = Number.isFinite(samples) ? samples : 10000;
+  let n = 0;
+  for (let i = 0; i < N; i++) if (pickResourceType(biome, (i + 0.5) / N) === 'tree') n++;
+  return n / N;
+}
+/** 일반 루프가 32px 셀 하나에 세우는 나무 수 — 청크당 자원 수 × `tree` 몫 ÷ 청크 셀 수. 새 수 0. */
+function scatterTreesPerCell(biome, cellPx, chunkPx) {
+  const c = Number.isFinite(cellPx) ? cellPx : 32;
+  const cp = Number.isFinite(chunkPx) ? chunkPx : CHUNK_SIZE;
+  const cellsPerChunk = (cp / c) * (cp / c);
+  return RESOURCES_PER_CHUNK * treeShareOf(biome) / cellsPerChunk;
+}
+
 // 청크 안 자원 시드 생성. harvestedSet에 있는 건 제외.
 // 청크당 자원 N개 (기본 5개) — 청크 면적 256² = 65536. zone 4096이면 16×16=256 청크. 총 자원 1280.
 // Phase 5-1: terrain (forest·mountain·ore·water) 반영.
@@ -325,12 +390,16 @@ const terrain = require('./terrain');
 function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet, gameDay) {
   // ★[T122] 벤 날 조회 — `Set` 이 오면 `get` 이 없다(옛 호출부·구 하네스 계약을 그대로 살린다).
   const _cutDay = (k) => (harvestedSet && typeof harvestedSet.get === 'function') ? harvestedSet.get(k) : undefined;
-  const _stage = (k, type) => {
+  const _stage = (k, type, sp) => {
     if (!Number.isFinite(gameDay)) return null;
     const cd = _cutDay(k);
     if (!Number.isFinite(cd)) return null;
-    return regrowStageOf(type, gameDay - cd);
+    return regrowStageOf(type, gameDay - cd, sp);
   };
+  // ★[T135] 그 자리의 **종** — 자리 × 존의 함수(주사위 0 · 멱등).
+  //   ⚠`seedKey` 가 아니라 **좌표**로 묻는다: 키는 그리드 인덱스라 간격이 바뀌면 같은 나무의 종이
+  //     바뀐다. 자리로 물으면 지도가 그대로인 한 종도 그대로다(작물 야생채종과 같은 계약).
+  const _spAt = (x, y) => { const T = _trees(); return (T && T.ON()) ? T.speciesAt(zoneId, Math.floor(x / 32), Math.floor(y / 32)) : null; };
   const result = [];
   // 청크당 자원 수 — forest/mountain 영역이면 ↑ (대표 점 sample)
   const sampleX = cx * chunkSize + chunkSize / 2;
@@ -368,7 +437,7 @@ function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet, 
     //   "무엇이 다시 나는가"가 흔들리지 않는다 — 벤 나무 자리엔 나무가 난다.
     let stage = null;
     if (_cut) {
-      stage = _stage(seedKey, type);
+      stage = _stage(seedKey, type, type === 'tree' ? _spAt(x, y) : null);
       if (stage === null || stage === 'gone') continue;     // 종전 그대로 빠진다
     }
     let outType = type, maxHp = RESOURCE_HP_TABLE[type] || 3;
@@ -389,6 +458,11 @@ function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet, 
       // ★[T122] 어린 것은 **작다** — 같은 자리·같은 씨앗의 나무가 그대로 줄어든 것이다(새 수 0).
       if (outType === 'stump') { entity.r *= 0.9; entity.h = 10; }
       else if (outType === 'sapling') { entity.r *= 0.45; entity.h *= 0.30; }
+      // ★[T135] 종을 **개체에 찍는다** — 그림(T129 sap_<종>)·동사(열매 따기)·부등식이 같은 값을 본다.
+      //   그루터기는 종을 안 묻는다(T129: "벤 자리는 종을 안 묻는다" — 그림이 하나뿐이다).
+      const _s1 = _spAt(x, y);
+      if (_s1 && outType !== 'stump') entity.sp = _s1;
+      if (_s1 && outType === 'tree') entity.szf = +r3.toFixed(3);   // 크기 0..1 — 숲 그리드와 같은 이름
     }
     result.push(entity);
   }
@@ -447,7 +521,7 @@ function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet, 
         const type = g.kind || 'berry_bush';
         // ★[T122] 군락도 같은 문법 — 덤불은 이듬해 다시 열리고, 바위는 종전대로 안 난다.
         if (harvestedSet && harvestedSet.has(seedKey)) {
-          const st = _stage(seedKey, type);
+          const st = _stage(seedKey, type, null);
           if (st !== 'mature') continue;
         }
         const maxHp = RESOURCE_HP_TABLE[type] || 3;
@@ -466,11 +540,10 @@ function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet, 
     terrain.getForestMultiplier(zoneId, sampleX - qd, sampleY + qd),
     terrain.getForestMultiplier(zoneId, sampleX + qd, sampleY + qd)
   );
-  if (fCov > 1.5) {
-    // 나무 간격(px) — 밀도(densityMult) 클수록 촘촘. ↓이 숫자(FOREST_SPACING_BASE)가 밀도 조절 손잡이.
+  if (fCov > FOREST_MIN_COV) {
+    // 나무 간격(px)은 `forestSpacing` 이 정한다(정본 하나 — 아래 참조).
     //   작게=더 빽빽(부하↑), 크게=듬성. 92 → 큰숲 ~51px·청크당 ~340그루.
-    const FOREST_SPACING_BASE = 120;
-    const SP = Math.max(60, Math.min(96, Math.round(FOREST_SPACING_BASE / Math.sqrt(fCov))));
+    const SP = forestSpacing(fCov);
     const cs = chunkSize;
     let gi = 0;
     for (let gy = 0; gy < cs; gy += SP) {
@@ -485,11 +558,12 @@ function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet, 
         if (terrain.isWaterCellLocal(zoneId, x, y)) continue;
         if (typeof terrain.isRockCellLocal === 'function' && terrain.isRockCellLocal(zoneId, x, y)) continue;
         const seedKey = `${cx}_${cy}_ft${gx}_${gy}`;
+        const fsp = _spAt(x, y);                        // ★[T135] 이 자리의 종(주사위 0)
         // ★★[T122] **여기가 숲의 본체다**(청크당 ~340그루 · NPC 벌목꾼이 실제로 베는 자리).
         //   위 일반 자원 갈래와 **같은 판정 함수**를 쓴다(사본 0).
         let fstage = null;
         if (harvestedSet && harvestedSet.has(seedKey)) {
-          fstage = _stage(seedKey, 'tree');
+          fstage = _stage(seedKey, 'tree', fsp);
           if (fstage === null || fstage === 'gone') continue;
         }
         const sz = seedRand(zoneId, cx, cy, 91000000 + gi);  // 크기(0~1) — 위치와 독립
@@ -503,6 +577,8 @@ function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet, 
           h: fh,            // 키도 크기에 비례 (46~166)
         };
         if (fstage) fe.regrown = fstage;
+        if (fsp && ftype !== 'stump') fe.sp = fsp;      // ★[T135] 종 — 위 갈래와 같은 자리에 같은 이름
+        if (fsp && ftype === 'tree') fe.szf = +sz.toFixed(3);   // 크기 0..1 — 열매 재고가 이걸 읽는다(사본 0)
         result.push(fe);
       }
     }
@@ -694,4 +770,4 @@ function generateCoastlineWaterTiles(zone, tileSize, findZoneAtFn, oceanRects) {
 
 // ★[T108 2026-09-05] `RESOURCE_HP_TABLE` 을 **내준다** — `zone.js` 가 같은 표를 한 벌 더
 //   들고 있었고(운석이 빠져 3대에 깨졌다 · T90 회부), 그걸 지우려면 정본이 나가야 한다.
-module.exports = { Chunk, ChunkManager, CHUNK_SIZE, generateChunkResources, regrowStageOf, REGROW, seedRand, generateVillagesForZone, makeVillageName, generateCoastlineWaterTiles, RESOURCE_HP_TABLE };
+module.exports = { Chunk, ChunkManager, CHUNK_SIZE, generateChunkResources, regrowStageOf, REGROW, seedRand, forestSpacing, forestTreesPerCell, forestTreesPerCellMean, scatterTreesPerCell, treeShareOf, FOREST_MIN_COV, RESOURCES_PER_CHUNK, generateVillagesForZone, makeVillageName, generateCoastlineWaterTiles, RESOURCE_HP_TABLE };

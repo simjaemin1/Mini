@@ -126,6 +126,26 @@
     const m = charMeta();
     return !!(m && Array.isArray(m.layers) && m.layers.indexOf(key) >= 0);
   }
+  // ★[T149] 클립도 같은 방식으로 묻는다 — 없는 클립을 강제하면 시트를 못 찾아 도형으로 떨어진다.
+  //   (폴백은 살지만, 묶인 표시가 통째로 도형이 되는 것보다 **묶인 소품만 얹힌 걷기**가 낫다.)
+  function hasCharClip(key) {
+    const m = charMeta();
+    return !!(m && m.clips && m.clips[key]);
+  }
+  // ★[T149] 걷기 문턱은 **한 자리**다 — 상태기와 포로 판정이 같은 수를 읽는다(사본 0).
+  function charWalkMin() { return uiCfg.charWalkMin || 4; }
+
+  // ★★[T155 2026-09-07] **모션 둘째 판 — 표 한 줄.** 손으로 지은 셋(`idle`·`swing`·`aim`)에
+  //   CMU 모캡판이 생겼다(`*2` 키). 옛 장은 **그대로 남는다** — 갈아 끼우면 배포된 시트가 바뀐다.
+  //   ⚠**기본은 옛 키다.** 손잡이가 꺼져 있으면 이 함수는 받은 이름을 그대로 돌려주므로
+  //     화면이 한 화소도 안 바뀐다(하네스가 그걸 검사한다). 켜기는 재민 눈 판정 뒤(회부).
+  //   ⓘ 서버 env 키는 아직 없다(이 카드는 서버 무접촉) — 대조용 토글은 `__setCharMocap2`.
+  const CLIP_MOCAP2 = { idle: 'idle2', swing: 'swing2', aim: 'aim2' };
+  function clipKey(c) {
+    if (!uiCfg.charMocap2) return c;
+    const k = CLIP_MOCAP2[c];
+    return (k && hasCharClip(k)) ? k : c;      // 아직 안 구운 판이면 옛 키로 (폴백)
+  }
 
   // ★★[T143 2026-09-06] **한 장을 물들여 그린다** — 병종 띠 전용 자리.
   //   `band` 시트는 흰 바탕으로 구운 **본**이다: 쓰는 것은 그 **알파(허리끈의 모양)**이고
@@ -165,7 +185,17 @@
     if (force) {
       let st2 = _charAnim.get(pid);
       if (!st2) { st2 = { clip: force, t: 0, one: null, oneT: 0, lastAtk: attackAt || 0 }; _charAnim.set(pid, st2); }
-      st2.clip = force; st2.one = null; st2.t = 0;
+      if (st2.clip !== force) st2.t = 0;      // 클립이 바뀔 때만 되감는다(같은 클립이면 이어 간다)
+      st2.clip = force; st2.one = null;
+      // ★★[T149] **강제 클립도 여러 판일 수 있다** — 묶인 걸음(`captive_walk` 8판)이 그렇다.
+      //   종전엔 강제가 곧 정지였다(다운·업기는 한 판짜리라 그래도 됐다). 판 수를 **메타에서 읽어**
+      //   갈래를 하나 더 둔다. 판이 하나면 아래 else 가 종전 그대로라 **다운·업기 그림은 무변**이다.
+      const cf = (_charMeta && _charMeta.clips) ? _charMeta.clips[force] : null;
+      if (cf && cf.frames > 1) {
+        st2.t += dtSec;
+        return { clip: force, frame: Math.floor(st2.t * cf.fps) % cf.frames };
+      }
+      st2.t = 0;
       return { clip: force, frame: 0 };
     }
     let st = _charAnim.get(pid);
@@ -180,7 +210,7 @@
     }
     let clip = 'idle';
     if (speed > (uiCfg.charRunMin || 102)) clip = 'run';
-    else if (speed > (uiCfg.charWalkMin || 4)) clip = 'walk';
+    else if (speed > charWalkMin()) clip = 'walk';
     if (aiming && clip === 'idle') clip = 'aim';
     if (st.clip !== clip) { st.clip = clip; st.t = 0; }
     st.t += dtSec;
@@ -189,7 +219,9 @@
     let fi;
     if (st.one) fi = Math.min(c.frames - 1, Math.floor(st.oneT * c.fps));
     else fi = Math.floor(st.t * c.fps) % c.frames;
-    return { clip: active, frame: fi };
+    // ★[T155] 판 수·fps 는 **옛 클립의 것**으로 센다(둘째 판이 같은 규격이라 값이 같다) —
+    //   그래야 손잡이를 켜고 끄는 순간에 애니가 안 튄다. 바뀌는 것은 **시트 이름뿐**이다.
+    return { clip: clipKey(active), frame: fi };
   }
 
   /** 스프라이트로 그린다. 성공하면 true — 실패(시트 미로딩·플래그 OFF)면 false 로 도형 경로에 넘긴다. */
@@ -206,7 +238,17 @@
     const dtSec = st0 && st0.lastT ? Math.min(0.25, (now - st0.lastT) / 1000) : 0;
     // ★★[T137] 쓰러진 사람·업는 사람·업힌 사람은 **정적 클립**이라 상태기계를 건너뛴다.
     //   업힌 사람은 제 몸을 따로 굽지 않는다 — 쓰러진 판(`down`)을 그대로 쓰고 **자리만** 옮긴다.
-    const force = opts.carriedOn ? 'down' : (opts.down ? 'down' : (opts.carrying ? 'carry' : null));
+    // ★★[T149] **포로는 제 판이 있다** — 두 손을 앞에 모은 걷기·서기.
+    //   차례가 뜻이다: 누운 판(다운·업힘)이 먼저다 — 누운 포로는 밧줄 없이 눕는다(T143 ②).
+    //   그다음이 묶임, 그다음이 업기. 묶인 사람은 남을 업지 않는다.
+    //   ⚠클립이 아직 안 구워졌으면 `null` 로 두고 종전 상태기로 간다(폴백 — 걷기에 소품만 얹힌다).
+    const _lying = !!(opts.carriedOn || opts.down);
+    let force = _lying ? 'down' : null;
+    if (!force && opts.cap) {
+      const k = (opts.speed || 0) > charWalkMin() ? 'captive_walk' : 'captive_idle';
+      if (hasCharClip(k)) force = k;
+    }
+    if (!force && opts.carrying) force = 'carry';
     const stt = charState(opts.pid, opts.speed || 0, !!opts.aiming, opts.attackAt || 0, dtSec, force);
     _charAnim.get(opts.pid).lastT = now;
     const imgs = [];

@@ -823,12 +823,21 @@ function createLedger(opts) {
       // ①b 약속 재검증 — 갚을 수 없게 된 의뢰는 조건을 바꾸지 않고 거두거나 받은 만큼으로 닫는다
       revalidate(s, v, day);
       // ② 게시 — 부족이 서 있고, 플레이어가 낼 수 있고, 쉬는 기간이 지난 품목
+      // ★★[T142 2026-09-06] **약속의 값도 하역 뒤를 본다.** T133 이 사건 판정을 옮길 때 여기는
+      //   일부러 두고 갔다(여덟 수의 '게시' 열이 걸려 있어 같은 카드에서 흔들면 귀속이 무너진다).
+      //   이제 옮긴다 — 같은 결함, 다른 층이고, **같은 문**(`priceView`)을 지난다:
+      //     하루 캐시는 `tickTradeV2` 가 하역 **전**에 뜬 값이다(T133 §0-ⓐ 틱 순서 표).
+      //     그 값으로 "이만큼 주면 저만큼 갚겠다"를 적으면, 곳간이 이미 찬 뒤인데도 **비었을 때의
+      //     귀함**으로 값을 매긴 약속이 게시판에 걸린다. 게시판은 사건보다 더 오래 걸려 있고
+      //     플레이어가 실제로 물건을 낸다 — 사건보다 **더** 지금이어야 하는 값이다.
+      //   ⚠새 접근자 0 · 새 손잡이 0: 되돌림은 T133 과 **한 손잡이**(`T133_FRESH=0`)로 둘 다 돌아간다.
+      //   ⚠`tickTradeV2` 가 캐러밴을 띄울 때 쓰는 값은 그대로다(그건 "지금 시장"이 맞다 · 무접촉 규약).
       let prices = null;
       for (const [item, d] of s.det) {
         if (!d.short || s.reqs.has(item)) continue;
         if (!DEL.fromEcon.has(item)) continue;                 // 낼 수 없는 의뢰는 의뢰가 아니라 벽이다
         if (d.reqClosedDay != null && (day - d.reqClosedDay) < cfg.REQ_COOLDOWN) continue;
-        if (!prices) prices = pricesOf(econV2, v, day);
+        if (!prices) prices = priceView(v, day);
         const req = makeRequest(s, v, item, prices, day);
         if (!req) continue;
         s.reqs.set(item, req);

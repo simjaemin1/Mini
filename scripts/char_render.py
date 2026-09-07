@@ -162,6 +162,17 @@ CLIPS = [
     #   `u = fi / max(1, n-1)` 이므로 n=1 이면 u=0 하나뿐이고, 포즈 함수는 상수를 돌려준다.
     ("down",  1,  False, 1.0),   # 쓰러진 사람 — 죽음 캐논의 3분 창이 이 그림 위에서 돈다
     ("carry", 1,  False, 1.0),   # 업는 사람 — 업힌 쪽은 굽지 않는다(클라가 `down` 판을 등에 얹는다)
+    # ★★[T149 2026-09-07] **포로 둘.** 걸음 판은 `walk` 의 프레임 수·fps·루프를 **그대로** 쓴다
+    #   (카드 ① — 새 걸음이 아니라 같은 걸음에 팔만 묶인 것이다). 선 판은 한 판(`idle` 위 덮어쓰기).
+    ("captive_walk", 8, True,  10.0),
+    ("captive_idle", 1, False, 1.0),
+    # ★★[T155 2026-09-07] **모션 둘째 판** — 손으로 지은 셋을 CMU 모캡으로 다시 굽는다.
+    #   ⚠**새 키다**(옛 `swing`·`aim`·`idle` 은 그대로 남는다) — 갈아 끼우면 배포된 장이 바뀐다.
+    #     클라는 손잡이(`uiCfg.charMocap2`)가 켜질 때만 이 키를 본다(기본은 옛 키 · 켜기는 재민).
+    #   판 수·루프·fps 는 **옛 것과 같다**(대조가 되려면 같은 자리에서 재야 한다).
+    ("swing2", 6, False, 14.0),
+    ("aim2",   2, True,  2.0),
+    ("idle2",  4, True,  0.90),
 ]
 
 # ═══════════════ 씬 정본 (nature_render.py 와 동일 — 바꾸지 마라) ═══════════════
@@ -1031,28 +1042,178 @@ if not SINE_POSE and os.path.exists(_MOCAP_PATH):
         _MOCAP = json.load(_f)
 
 
-def _pose_table(clip):
-    """포즈표 한 클립 → `POSE_FN` 과 같은 모양의 함수. u 는 프레임 눈금에 정확히 떨어진다."""
+def _pose_table(clip, loop=True):
+    """포즈표 한 클립 → `POSE_FN` 과 같은 모양의 함수. u 는 프레임 눈금에 정확히 떨어진다.
+
+       ★[T155] **루프인지 원샷인지로 눈금이 갈린다.** `apply_pose` 는 루프면 `u = k/n`,
+         원샷이면 `u = k/(n−1)` 을 준다. 종전 식(`u*n`)은 루프 전용이라 원샷 6판에서
+         k=3 이 4번 포즈를, k=5 가 0번 포즈를 집는다. 루프 클립에서는 값이 같으므로
+         walk·run 은 **한 자도 안 바뀐다**(바이트 무변의 근거)."""
     tbl = _MOCAP["clips"][clip]
     n = len(tbl)
+    m = n if loop else max(1, n - 1)
 
     def f(u):
-        i = int(round(u * n)) % n
+        i = int(round(u * m)) % n
         return {k: tuple(v) for k, v in tbl[i].items()}
     return f
 
 
+CLIP_LOOP0 = {c[0]: c[2] for c in CLIPS}      # ★[T155] 루프 여부 — `_pose_table` 눈금이 이걸 본다
 POSE_FN = {'idle': _pose_idle, 'walk': _pose_walk, 'run': _pose_run,
            'swing': _pose_swing, 'aim': _pose_aim,
            'down': _pose_down, 'carry': _pose_carry}   # ★[T137] 정적 둘
 if _MOCAP:
-    for _c in ('walk', 'run'):
-        if _c in _MOCAP.get("clips", {}):
-            POSE_FN[_c] = _pose_table(_c)
+    # ★[T155] 표에 있는 클립은 **전부** 표에서 온다 — 목록을 여기 두 번 적지 않는다.
+    for _c in _MOCAP.get("clips", {}):
+        if _c in CLIP_LOOP0:
+            POSE_FN[_c] = _pose_table(_c, CLIP_LOOP0[_c])
     print(f"[char] 모캡 포즈표: {', '.join(sorted(_MOCAP['clips']))} "
           f"({_MOCAP['source']['walk']['clip']} · {_MOCAP['source']['run']['clip']})")
 else:
     print("[char] ★사인 포즈(T96_SINE=1 또는 poses.json 없음)")
+
+
+# ═══════════════ 포로 자세 — 두 손을 앞에 모은다 [T149 2026-09-07] ═══════════════
+# ★★카드 T149 ① — T143 이 남긴 회부를 닫는다. 그때는 새 클립 0 이라 손목 고리만 얹었고,
+#   실기 답이 *"두 손이 묶였다로는 안 읽힌다"* 였다. 팔이 옆으로 내려가 있으면 줄이 몸 안으로
+#   들어가 홀드아웃에 잘리기 때문이다(T143 보고 §6). ⇒ **자세**가 필요하다.
+# ★건드리는 것은 **팔 채널 넷뿐**이다(`uarmL/R`·`larmL/R`). 다리·척추·머리는 걸음 모캡 그대로다 —
+#   그래야 "묶인 채 걷는다"이지 "새 걸음"이 아니다(카드 ①).
+#
+# ★★**값은 고르지 않고 푼다**(족보 86 · T137 접지 문법). 목표 자리도 **기존 수에서 유도**한다:
+#     높이 H  = 척추 뼈의 한가운데(= 명치)에 가장 가까운 **튜닉 링**의 z.
+#               척추는 Z_WAIST~Z_SHLD 이므로 한가운데는 1.215 이고, 링 넷 중 1.160 이 가장 가깝다.
+#     앞 D    = 그 링의 반지름 + 손목의 팔뚝 반지름 ⇒ 손목이 **튜닉 앞면 바로 바깥**에 온다.
+#     반간격 W = 손목의 팔뚝 반지름 ⇒ 두 팔뚝이 **중심선에서 맞닿는다**(겹치지 않는다).
+#   새 수는 하나도 없다 — 셋 다 이미 있는 표(`TUNIC_R`·`ARM_R`)와 뼈 자리에서 나온다.
+_CAPT_SPINE_MID = (Z_WAIST + Z_SHLD) * 0.5
+_CAPT_RING = min(TUNIC_R, key=lambda r: abs(r[0] - _CAPT_SPINE_MID))
+_CAPT_RW = min(ARM_R, key=lambda r: abs(r[0] - (Z_SHLD - 0.56)))[1] * LIMB_K
+CAPT_H = _CAPT_RING[0]
+CAPT_D = _CAPT_RING[3] + _CAPT_RW
+CAPT_W = _CAPT_RW
+
+
+def _set_bones(pose):
+    """포즈 딕셔너리만 리그에 얹는다(방향·bob·접지 없음) — 푸는 동안 쓰는 최소 적용."""
+    for pb in rig.pose.bones:
+        pb.rotation_mode = 'XYZ'
+        pb.rotation_euler = pose.get(pb.name, (0.0, 0.0, 0.0))
+        pb.location = (0.0, 0.0, 0.0)
+    bpy.context.view_layer.update()
+
+
+def _wrist_of(sfx):
+    """손목의 **아마추어 공간** 좌표. 오른쪽은 `handR` 머리, 왼쪽은 `larmL` 끝이다 —
+       ★왼손 뼈가 없다(§0-ⓒ · T143 이 이미 잰 사실). 그래서 왼팔의 손목은 아래팔의 끝이고,
+         손 살은 `larmL` 에 물려 있다(`_hand = 'handR' if R else 'larmL'` — 팔 로프트의 가중표)."""
+    return rig.pose.bones['handR'].head if sfx == 'R' else rig.pose.bones['larmL'].tail
+
+
+def _euler_for_dir(M0, d):
+    """뼈의 Y축(뼈가 뻗는 방향)을 아마추어 공간의 `d` 로 보내는 (rx, 0, rz).
+
+       ★닫힌 식이다 — 블렌더 XYZ 오일러는 M = Rz·Ry·Rx 이고 ry=0 이면
+         M @ (0,1,0) = (−cos rx·sin rz, cos rx·cos rz, sin rx) 이므로
+         rx = asin(d.z) · rz = atan2(−d.x, d.y). (ry 는 뼈 축 둘레의 **비틀림**이라 방향을 안 바꾼다.)
+       ★`M0` 는 '부모가 지금 자세일 때의 이 뼈의 쉬는 자리' 행렬이다 — 그걸로 d 를 뼈 공간에 내린다."""
+    dl = (M0.to_3x3().inverted() @ d).normalized()
+    rx = math.asin(max(-1.0, min(1.0, dl.z)))
+    rz = math.atan2(-dl.x, dl.y)
+    return (rx, 0.0, rz)
+
+
+def _rest_in_parent(pb):
+    """부모의 **지금 자세** 위에서 이 뼈가 쉬는 자리 행렬(= pb.matrix @ basis⁻¹)."""
+    if pb.parent is None:
+        return rig.matrix_basis.copy()
+    return pb.parent.matrix @ pb.parent.bone.matrix_local.inverted() @ pb.bone.matrix_local
+
+
+def _place_arm(sfx, base, target):
+    """그 팔의 손목을 target 에 놓는다 — **푸는 게 아니라 짓는다**(닫힌 식 2뼈 IK).
+
+       ★★**팔꿈치 자리가 이 함수의 요점이다.** 손목 하나를 세 각으로 맞추는 문제는 답이 여럿이고
+         잔차만 보면 어느 답이나 0 이다. 수치로 풀다 두 번 틀렸다(둘 다 잔차 0.01mm 인데 그림이 틀렸다):
+           ⓐ 0 에서 출발 · 걸음 무제한 → **허수아비**(팔을 좌우로 벌린 채 팔꿈치만 꺾었다).
+           ⓑ 걸음의 제 각에서 출발 · 걸음 제한 · 호모토피(앞으로 들었다 모으기) → **팔꿈치가 가슴 속**
+              (양쪽 다 y≈0 · x≈−0.06 — 몸을 뚫었다).
+         ⇒ 팔꿈치를 **고르는 규칙**을 세운다. 팔꿈치는 어깨에서 L1, 손목에서 L2 인 **원** 위에 있다.
+           그 원에서 **z 가 가장 낮은 점**을 쓴다 — *팔꿈치는 아래로 처진다*(중력). 상수가 없는 규칙이고,
+           실측이 그것을 뒷받침한다: 그 점이 어깨 바로 밑(위팔이 거의 수직)으로 떨어진다.
+       ★길이는 뼈에서 읽는다(하드코딩 0). 닿지 않는 목표면 원이 없으므로 팔을 곧게 편다."""
+    u, l = 'uarm' + sfx, 'larm' + sfx
+    _set_bones(base)
+    pbu, pbl = rig.pose.bones[u], rig.pose.bones[l]
+    L1, L2 = pbu.bone.length, pbl.bone.length
+    S, W = pbu.head.copy(), V(target)
+    v = W - S
+    D = v.length
+    if D < 1e-9 or D >= L1 + L2:                     # 안 닿는다 — 곧게 펴서 겨눈다
+        n = v.normalized() if D > 1e-9 else V((0.0, 0.0, -1.0))
+        E = S + n * L1
+    else:
+        n = v / D
+        a = (L1 * L1 - L2 * L2 + D * D) / (2 * D)
+        h = math.sqrt(max(0.0, L1 * L1 - a * a))
+        C = S + n * a
+        u1 = n.cross(V((0.0, 0.0, 1.0)))
+        if u1.length < 1e-7:
+            u1 = n.cross(V((1.0, 0.0, 0.0)))
+        u1.normalize()
+        u2 = n.cross(u1)
+        # 원 위에서 z 가 가장 낮은 점: cosφ·u1.z + sinφ·u2.z 를 최소로 —
+        #   (cosφ, sinφ) = −(u1.z, u2.z)/|(u1.z, u2.z)| (둘 다 0 이면 원이 수평이라 아무 점이나 같다)
+        m = math.hypot(u1.z, u2.z)
+        cs, sn = (-u1.z / m, -u2.z / m) if m > 1e-9 else (1.0, 0.0)
+        E = C + (u1 * cs + u2 * sn) * h
+    out = {}
+    out[u] = _euler_for_dir(_rest_in_parent(pbu), (E - S).normalized())
+    p2 = dict(base); p2[u] = out[u]
+    _set_bones(p2)                                   # 아래팔의 부모가 이제 그 자세다
+    out[l] = _euler_for_dir(_rest_in_parent(rig.pose.bones[l]), (W - E).normalized())
+    p3 = dict(p2); p3[l] = out[l]
+    _set_bones(p3)
+    return out, (_wrist_of(sfx) - W).length
+
+
+_CAPT_CACHE = {}
+
+
+def _captive_arms(base):
+    """이 프레임의 몸 포즈(base) 위에서 두 팔을 풀어 **덮어쓸 채널 넷**을 낸다."""
+    key = tuple(sorted((k, tuple(round(x, 6) for x in v)) for k, v in base.items()
+                       if k in ('root', 'spine')))
+    hit = _CAPT_CACHE.get(key)
+    if hit is None:
+        _r, er = _place_arm('R', base, (CAPT_D, -CAPT_W, CAPT_H))
+        _l, el = _place_arm('L', base, (CAPT_D, +CAPT_W, CAPT_H))
+        hit = dict(_r); hit.update(_l)
+        _CAPT_CACHE[key] = hit
+        _CAPT_ERR.append((max(er, el), len(_CAPT_CACHE)))
+    return hit
+
+
+_CAPT_ERR = []
+
+
+def _pose_captive_walk(u):
+    """걷되 두 손은 앞에 묶여 있다 — 다리·척추는 `walk` 그대로."""
+    p = dict(POSE_FN['walk'](u))
+    p.update(_captive_arms(p))
+    return p
+
+
+def _pose_captive_idle(u):
+    """서 있는 포로 — `idle` 위에 같은 팔 덮어쓰기(한 판)."""
+    p = dict(_pose_idle(0.0))
+    p.update(_captive_arms(p))
+    return p
+
+
+POSE_FN['captive_walk'] = _pose_captive_walk
+POSE_FN['captive_idle'] = _pose_captive_idle
 
 
 # ★★[T137] **땅에 붙이는 값은 고르지 않고 잰다**(족보 86). `down` 은 골반을 눕히는 포즈라
@@ -1114,8 +1275,9 @@ def apply_pose(clip, fi, nframes, dirIdx):
         pb.location = (0.0, 0.0, 0.0)
     # 걸음의 상하 흔들림(bob) — 리그 전체를 살짝 올렸다 내린다
     bob = 0.0
-    if clip in ('walk', 'run'):
-        amp = 0.012 if clip == 'walk' else 0.022
+    if clip in ('walk', 'run', 'captive_walk'):
+        # ★[T149] 묶인 걸음도 같은 걸음이다 — 흔들림 값을 `walk` 에서 **읽는다**(사본 0).
+        amp = 0.022 if clip == 'run' else 0.012
         bob = amp * abs(math.sin(u * 2 * math.pi))
     rig.location = (0.0, 0.0, bob * ZSQ)   # ★location 은 제 오브젝트 스케일을 안 먹는다
     rig.rotation_euler = (0.0, 0.0, dirIdx * (2 * math.pi / DIRS))
@@ -1171,6 +1333,42 @@ def all_layer_objects():
     return objs
 
 
+# ★★[T149] 포로 팔을 **먼저 푼다** — 상자 계산이 그 포즈를 쓰기 전에 값이 서 있어야 하고,
+#   §0 표(잔차·각)를 로그에 남겨 하네스·보고가 같은 수를 본다.
+if 'captive_walk' in CLIP_N:
+    print(f"[char] 포로 목표(아마추어 공간): 앞 {CAPT_D:.4f} · 반간격 {CAPT_W:.4f} · 높이 {CAPT_H:.4f}"
+          f"  (명치 = 척추 한가운데 {_CAPT_SPINE_MID:.4f} 에 가장 가까운 튜닉 링)")
+    for _c in ('captive_walk', 'captive_idle'):
+        for _f in range(CLIP_N[_c]):
+            POSE_FN[_c](_f / (CLIP_N[_c] if CLIP_LOOP[_c] else max(1, CLIP_N[_c] - 1)))
+    _worst = max(e for e, _ in _CAPT_ERR)
+    print(f"[char] 포로 팔 IK: 푼 자세 {len(_CAPT_CACHE)}개 · 최대 잔차 {_worst * 1000:.3f}mm")
+    for _k, _v in sorted(_CAPT_CACHE.items(), key=lambda kv: str(kv[0]))[:1]:
+        print("[char]   보기 한 판: " + " · ".join(
+            f"{n} rx{math.degrees(v[0]):+.1f}° rz{math.degrees(v[2]):+.1f}°" for n, v in sorted(_v.items())))
+
+if os.environ.get("T149_PROBE"):
+    # ★§0-ⓒ 진단 — 포로 자세에서 밧줄 소품이 어디로 가나(굽기 전에 기하로 본다).
+    for _c in ('walk', 'captive_walk'):
+        apply_pose(_c, 0, CLIP_N[_c], 0)
+        _dg = bpy.context.evaluated_depsgraph_get()
+        print(f"[probe] --- {_c} f0 d0 ---")
+        print(f"[probe]   손목R(아마추어) {tuple(round(v,4) for v in rig.pose.bones['handR'].head)}"
+              f" · 손목L {tuple(round(v,4) for v in rig.pose.bones['larmL'].tail)}")
+        for _bn in ('uarmR', 'larmR', 'uarmL', 'larmL'):
+            _pb = rig.pose.bones[_bn]
+            _v = (_pb.tail - _pb.head).normalized()
+            print(f"[probe]   {_bn} 방향(앞,왼,위) = ({_v.x:+.3f}, {_v.y:+.3f}, {_v.z:+.3f})"
+                  f"  끝 {tuple(round(t,3) for t in _pb.tail)}")
+        for _o in TOOLS['rope']:
+            _eo = _o.evaluated_get(_dg); _me = _eo.to_mesh(); _mw = _eo.matrix_world
+            _ps = [_mw @ _v.co for _v in _me.vertices]
+            _lo = [round(min(q[i] for q in _ps), 4) for i in range(3)]
+            _hi = [round(max(q[i] for q in _ps), 4) for i in range(3)]
+            print(f"[probe]   {_o.name}: x{_lo[0]}~{_hi[0]} y{_lo[1]}~{_hi[1]} z{_lo[2]}~{_hi[2]}")
+            _eo.to_mesh_clear()
+    raise SystemExit(0)
+
 print("[char] 공유 프레임 박스 계산 — 전 클립×전 방향×전 프레임×전 레이어")
 UMIN = WMIN = 1e18
 UMAX = WMAX = -1e18
@@ -1180,13 +1378,21 @@ UMAX = WMAX = -1e18
 #   ★회부 B-1 의 ⓐ(방향별 z 순서)는 버렸다 — 두 번 만들었다 두 번 틀렸고
 #     ⓑ 가 공짜로 되는 순간 순서표는 정확도도 단순함도 진다. 기록은 인계 문서에.
 _probe = all_layer_objects()
+CLIP_BOX = {}                                    # ★[T155] 클립별 실측 상자 — §0-ⓑ 표의 재료
 for cname, n, loop, _fps in CLIPS:
+    cu0 = cw0 = 1e18
+    cu1 = cw1 = -1e18
     for d in range(DIRS):
         for fi in range(n):
             apply_pose(cname, fi, n, d)
             a, b, c2, d2 = screen_bbox_now(_probe)
             UMIN = min(UMIN, a); UMAX = max(UMAX, b)
             WMIN = min(WMIN, c2); WMAX = max(WMAX, d2)
+            cu0 = min(cu0, a); cu1 = max(cu1, b)
+            cw0 = min(cw0, c2); cw1 = max(cw1, d2)
+    CLIP_BOX[cname] = (cu0, cu1, cw0, cw1)
+    print(f"[char] 상자(클립) {cname:13s} u[{cu0:8.1f},{cu1:7.1f}] w[{cw0:8.1f},{cw1:7.1f}]"
+          f"  폭 {cu1 - cu0:6.1f} 높이 {cw1 - cw0:6.1f}")
 
 
 def _ceil_ss(v):
@@ -1264,15 +1470,22 @@ if 'carry' in CLIP_N and 'down' in CLIP_N:
 #   ⇒ **뼈를 직접 잰다.** 값은 프레임 좌표(클라 px) — 앵커를 더해 두므로 시트 좌표와 바로 견준다.
 #   ★**프레임마다** 잰다 — 걸음에서 팔이 흔들리니 방향 하나에 값 하나로는 못 잰다
 #     (1차엔 프레임 0 만 넣었다가 walk 4번 판에서 손목이 밧줄 상자 밖으로 나갔다).
+# ★[T149] **왼 손목도 싣는다.** 두 손이 모였는지는 한쪽만 보고는 못 잰다.
+#   왼쪽의 손목은 `larmL` 의 **끝**이다 — `handL` 뼈가 없기 때문이고, 손 살도 거기 물려 있다(§0-ⓒ).
 HAND_SCREEN = {}
+HAND_SCREEN_L = {}
 for _c in CLIP_N:
     HAND_SCREEN[_c] = []
+    HAND_SCREEN_L[_c] = []
     for _d in range(DIRS):
-        _row = []
+        _row, _rowL = [], []
         for _f in range(CLIP_N[_c]):
             _hu, _hw = _bone_screen(_c, _d, 'handR', tail=False, fi=_f)   # 손목 = handR 머리
             _row.append([round((ANCH_X + _hu) / SS, 3), round((ANCH_Y + _hw) / SS, 3)])
+            _lu, _lw = _bone_screen(_c, _d, 'larmL', tail=True, fi=_f)    # 왼 손목 = larmL 끝
+            _rowL.append([round((ANCH_X + _lu) / SS, 3), round((ANCH_Y + _lw) / SS, 3)])
         HAND_SCREEN[_c].append(_row)
+        HAND_SCREEN_L[_c].append(_rowL)
 
 scene.render.resolution_x = FW
 scene.render.resolution_y = FH
@@ -1396,6 +1609,12 @@ META = {
     "frameW": FW // SS, "frameH": FH // SS,
     "anchorX": round(ANCH_X / SS, 3), "anchorY": round(ANCH_Y / SS, 3),
     "handScreen": HAND_SCREEN,          # ★[T143] 클립×방향×프레임 손목(handR 머리) 프레임 좌표(클라 px)
+    "handScreenL": HAND_SCREEN_L,       # ★[T149] 같은 표의 왼쪽 — 손목 = `larmL` 끝(handL 뼈가 없다)
+    # ★[T149] 묶인 손의 **목표 자리**(아마추어 공간 m · 앞·반간격·높이) + 그것을 푼 최대 잔차(mm).
+    #   셋 다 유도된 값이다(`TUNIC_R` 의 가슴 링 · `ARM_R` 의 손목 반지름 · 척추 뼈 한가운데) —
+    #   하네스가 문턱을 지어내지 않고 여기서 읽는다.
+    "captiveGrip": [round(CAPT_D, 4), round(CAPT_W, 4), round(CAPT_H, 4)],
+    "captiveHitMm": round(max([e for e, _ in _CAPT_ERR] or [0.0]) * 1000, 4),
     "dirs": DIRS,
     "dirOrder": "d = round(atan2(fy,fx)/(PI/4)) mod 8 — 월드 방향. d=0 은 +x(동).",
     "rowOrder": "행 0 = 방향 0, 위에서 아래로. 열 = 프레임 0..n-1, 왼쪽에서 오른쪽으로.",
@@ -1480,27 +1699,30 @@ if not ONLY_META:
                 if lname in SILHOUETTE_GROUP:
                     alpha[lname] = [sheet[i * 4 + 3] for i in range(SW * SH)]
 
-            def _partner_alpha(lname):
-                pn = PARTNER.get(lname, "body")
-                if pn in alpha:
-                    return alpha[pn]
-                ent = next((l for l in LAYERS if l[0] == pn), None)
+            # ★★[T149] **이름을 준 층의 알파를 낸다.** 종전 함수(`_partner_alpha`)는 이름을 받아
+            #   그 층의 **짝**을 구웠다 — 그래서 `--layer=body` 만 굽는 판에서 `clothes_hemp` 의
+            #   알파를 물으면 `PARTNER['clothes_hemp']='body'` 를 타고 **몸의 알파가 되돌아왔다**.
+            #   합집합이 몸∪몸 = 몸이 되어 목·어깨·단에 **없는 먹선**이 생긴다(T149 실측: 397화소).
+            #   ⚠전량 굽기에선 모든 실루엣 층이 `built` 에 있어 이 길을 안 타므로 **잠자던 결함**이고,
+            #     그래서 배포된 시트는 무사하다(전량으로 구웠다). 부분 굽기만 틀렸다.
+            #   ⓘ 종전 주석 ⓒ 가 지키려던 것(옷 하나만 굽는 판에서 몸을 같이 굽기)은 그대로 산다 —
+            #     그쪽은 이름이 `body` 라 어차피 `body` 를 굽는다.
+            def _render_alpha(nm):
+                if nm in alpha:
+                    return alpha[nm]
+                ent = next((l for l in LAYERS if l[0] == nm), None)
                 if not ent:
                     return None
                 if ent[3]:
                     ent[3]()
-                psheet, pw, ph = render_layer(pn, ent[1](), clip, n, ent[2]())   # 마스크용 — 저장 안 한다
-                alpha[pn] = [psheet[i * 4 + 3] for i in range(pw * ph)]
-                return alpha[pn]
+                psheet, pw, ph = render_layer(nm, ent[1](), clip, n, ent[2]())   # 마스크용 — 저장 안 한다
+                alpha[nm] = [psheet[i * 4 + 3] for i in range(pw * ph)]
+                return alpha[nm]
 
             # ★★[T107·T116] 후처리 본문은 **`render_common.post_all` 한 자리**다 — 되굽기
             #   (`scripts/ink_repost.py`)가 같은 함수를 타야 "바이트 동일"이 우연이 아니게 된다.
             def _alpha_of(nm):
-                if nm is None:
-                    return None
-                if nm in alpha:
-                    return alpha[nm]
-                return _partner_alpha(nm)
+                return None if nm is None else _render_alpha(nm)
 
             # ★★[T143] **실루엣을 안 만드는 층은 제 테두리에 먹선을 안 긋는다.**
             #   §0 실측이 시켰다: 허리끈은 화면에서 15×7px 인데 먹선(2px)이 사방을 물면

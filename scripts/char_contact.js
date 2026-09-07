@@ -8,6 +8,12 @@
 // ★팔레트도 클라 원본에서 읽는다(`20-r2-visibility.js` 의 `WAR_BT_COL`) — 사본 0.
 //
 // 실행: node scripts/char_contact.js [출력.png]
+//       node scripts/char_contact.js --captive [출력.png]   ← T149 판(포로 두 손 · 옛 판 대조)
+//
+// ★[T149] 옛 판(T143)을 어떻게 그리나 — **클립을 지운 클라**로 그린다.
+//   `drawCharSprite` 는 묶인 판이 없으면 종전 상태기로 떨어지므로(폴백), `__charMeta.clips` 에서
+//   `captive_*` 를 빼고 같은 함수를 부르면 그게 **정확히 T143 의 그림**이다.
+//   옛 그림을 따로 짜 넣지 않는다 — 그러면 정본이 둘이 된다.
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -15,7 +21,11 @@ const http = require('http');
 
 const ROOT = path.resolve(__dirname, '..');
 const PUB = path.join(ROOT, 'public');
-const OUT = process.argv[2] || path.join(ROOT, '산그림', '디자인B', '병사_포로.png');
+const ARGV = process.argv.slice(2).filter((v) => !v.startsWith('--'));
+const CAPTIVE = process.argv.includes('--captive');
+const MOCAP = process.argv.includes('--mocap');
+const OUT = ARGV[0] || path.join(ROOT, '산그림', '디자인B',
+  MOCAP ? '캐릭터_모캡_도끼질_조준.png' : (CAPTIVE ? '포로_두손.png' : '병사_포로.png'));
 
 const MIME = { '.js': 'text/javascript', '.json': 'application/json', '.png': 'image/png', '.html': 'text/html' };
 const srv = http.createServer((req, res) => {
@@ -50,8 +60,8 @@ let WAR_BT_COL = null, WAR_SIDE_COL = null;
     if (Object.keys(m.sheets).every((k) => charSheet(k))) break;
     await new Promise((r) => setTimeout(r, 50));
   }
-  window.__draw = (jobs) => {
-    ctx.fillStyle = '#20242c'; ctx.fillRect(0, 0, cv.width, cv.height);
+  window.__draw = (jobs, keep) => {
+    if (!keep) { ctx.fillStyle = '#20242c'; ctx.fillRect(0, 0, cv.width, cv.height); }
     ctx.font = '13px sans-serif';
     for (const j of jobs) {
       ctx.save(); ctx.translate(j.x, j.y);
@@ -76,6 +86,48 @@ let WAR_BT_COL = null, WAR_SIDE_COL = null;
     }
     ctx.imageSmoothingEnabled = true;
   };
+  // ★클립을 잠깐 빼고 그린다 — 폴백 경로가 곧 옛 그림이다(사본 0).
+  window.__withoutClips = (keys, fn) => {
+    const m = window.__charMeta, saved = {};
+    for (const k of keys) { saved[k] = m.clips[k]; delete m.clips[k]; }
+    try { return fn(); } finally { for (const k of keys) if (saved[k]) m.clips[k] = saved[k]; }
+  };
+  window.__drawOld = (jobs) => window.__withoutClips(['captive_walk', 'captive_idle'], () => window.__draw(jobs, true));
+  // ★[T155] 클립·판을 **지정해서** 한 판을 합성한다 — 대조표는 "그 판"을 보여야 하는데
+  //   'drawCharSprite' 는 시간이 판을 고른다(도끼질은 원샷이라 더 그렇다).
+  //   ⚠고르는 것은 **판뿐**이다: 어느 층을 쌓을지는 클라의 'charLayersFor' 가 정하고,
+  //     시트도 클라의 'charSheet' 가 준다. 자리는 메타의 앵커다(수 사본 0).
+  window.__cell = (x, y, clip, frame, row, opts) => {
+    const m = window.__charMeta;
+    const layers = charLayersFor(false, opts || {});
+    const fw = m.frameW, fh = m.frameH;
+    const dx = Math.round(x - m.anchorX), dy = Math.round(y - m.anchorY);
+    for (const L of layers) {
+      const img = charSheet(L + '_' + clip);
+      if (!img) return false;
+      ctx.drawImage(img, frame * fw, row * fh, fw, fh, dx, dy, fw, fh);
+    }
+    return true;
+  };
+  window.__lumaDiff = (clipA, clipB, frame, row, layer) => {
+    const m = window.__charMeta, fw = m.frameW, fh = m.frameH;
+    const a = charSheet(layer + '_' + clipA), b = charSheet(layer + '_' + clipB);
+    if (!a || !b) return null;
+    const cv2 = document.createElement('canvas'); cv2.width = fw * 2; cv2.height = fh;
+    const t = cv2.getContext('2d');
+    t.drawImage(a, frame * fw, row * fh, fw, fh, 0, 0, fw, fh);
+    t.drawImage(b, frame * fw, row * fh, fw, fh, fw, 0, fw, fh);
+    const d = t.getImageData(0, 0, fw * 2, fh).data;
+    let s = 0, n = 0;
+    for (let i = 0; i < fw * fh; i++) {
+      const p = i * 4, q = (fw * fh + i) * 4;
+      if (d[p + 3] < 200 && d[q + 3] < 200) continue;
+      const L1 = d[p + 3] < 200 ? 0 : 0.2126 * d[p] + 0.7152 * d[p + 1] + 0.0722 * d[p + 2];
+      const L2 = d[q + 3] < 200 ? 0 : 0.2126 * d[q] + 0.7152 * d[q + 1] + 0.0722 * d[q + 2];
+      s += Math.abs(L1 - L2); n++;
+    }
+    return n ? +(s / n).toFixed(2) : null;
+  };
   window.__label = (items) => {
     ctx.textAlign = 'center';
     for (const it of items) {
@@ -89,6 +141,118 @@ let WAR_BT_COL = null, WAR_SIDE_COL = null;
 })().catch((e) => { window.__err = String(e && e.stack || e); });
 </script></body>`;
 
+/** T155 판 — 손 포즈 vs CMU 모캡 · 도끼질·조준·서기 · 8방향 + 옷 셋 + |Δ휘도|. */
+async function mocapSheet(pg) {
+  const CW = 112, CH = 112, X0 = 96, Y0 = 136;
+  await pg.evaluate((h) => { document.getElementById('cv').height = h; }, Y0 + 8 * CH + 210);
+  const meta = await pg.evaluate('window.__charMeta');
+  // 내려치는 판은 **잰다** — 하네스와 같은 뜻으로, 손이 가장 앞으로 나가는 이웃 쌍의 뒤 판.
+  const strike = await pg.evaluate((m) => {
+    const hs = m.handScreen.swing2; let best = 0, bf = 1;
+    for (let f = 0; f + 1 < m.clips.swing2.frames; f++) {
+      let s = 0;
+      for (let d = 0; d < 8; d++) s += hs[d][f + 1][1] - hs[d][f][1];   // 화면에서 아래로 = 내려침
+      if (s > best) { best = s; bf = f + 1; }
+    }
+    return bf;
+  }, meta);
+  // ★도끼질은 **들어올림과 내려침을 같이** 보여야 한다 — 내려침 한 판만 놓으면 모캡판이
+  //   허리를 접은 그림 하나로만 읽힌다(실제로 그 판이 그렇다). 두 판을 나란히 두는 것이 공정하다.
+  const raise2 = await pg.evaluate((m) => {
+    const hs = m.handScreen.swing2; let best = 1e9, bf = 0;
+    for (let f = 0; f < m.clips.swing2.frames; f++) {
+      let s = 0; for (let d = 0; d < 8; d++) s += hs[d][f][1];   // 화면에서 위 = 작은 y
+      if (s < best) { best = s; bf = f; }
+    }
+    return bf;
+  }, meta);
+  const cols = [['도끼질 손 · 들어올림', 'swing', 2], ['도끼질 손 · 내려침', 'swing', 3],
+                ['도끼질 모캡 · 들어올림', 'swing2', raise2], ['도끼질 모캡 · 내려침', 'swing2', strike],
+                ['조준 · 손 포즈', 'aim', 0], ['조준 · 모캡', 'aim2', 0],
+                ['서기 · 손 포즈', 'idle', 0], ['서기 · 모캡', 'idle2', 0]];
+  const labels = [];
+  labels.push({ t: 'T155 — 도끼질·조준·서기: 손 포즈 vs CMU 모캡 (8방향)', x: 490, y: 34, size: 18, bold: true });
+  labels.push({ t: '왼쪽이 지금 배포본(손으로 지은 포즈) · 오른쪽이 둘째 판(CMU 모캡) — 같은 판 번호·같은 방향', x: 490, y: 56, size: 12, color: '#9fb0c4' });
+  labels.push({ t: `모캡 판 번호는 재서 골랐다 — 들어올림 f${raise2}(손이 화면에서 가장 높은 판) · 내려침 f${strike}(가장 많이 내려가는 이웃 쌍)`, x: 490, y: 76, size: 11, color: '#7f8ea3' });
+  cols.forEach((c, i) => labels.push({ t: c[0], x: X0 + i * CW, y: Y0 - 22 - (i % 2 ? 0 : 15), size: 11, bold: true }));
+  const cells = [];
+  for (let d = 0; d < 8; d++) {
+    labels.push({ t: 'd' + d, x: 44, y: Y0 + d * CH + 8, size: 12, color: '#9fb0c4' });
+    cols.forEach((c, i) => cells.push({ x: X0 + i * CW, y: Y0 + d * CH + 74, clip: c[1], frame: c[2], row: d,
+                                        opts: { clothes: 'hemp' } }));
+  }
+  // 옷 셋 — 삼베·갖옷·가죽으로 도끼질 두 판을 나란히(d1)
+  const CY = Y0 + 8 * CH + 92;
+  labels.push({ t: '옷 셋 — 도끼질 손 포즈 vs 모캡 (d1 · 삼베 · 갖옷 · 가죽)', x: 490, y: CY - 78, size: 13, bold: true });
+  ['hemp', 'fur', 'leather'].forEach((mat, k) => {
+    cells.push({ x: 180 + k * 220, y: CY, clip: 'swing', frame: cols[0][2], row: 1, opts: { clothes: mat } });
+    cells.push({ x: 265 + k * 220, y: CY, clip: 'swing2', frame: strike, row: 1, opts: { clothes: mat } });
+    labels.push({ t: mat, x: 222 + k * 220, y: CY + 18, size: 11, color: '#9fb0c4' });
+  });
+  const bad = [];
+  for (const c of cells) {
+    const okc = await pg.evaluate((j) => window.__cell(j.x, j.y, j.clip, j.frame, j.row, j.opts), c);
+    if (!okc) bad.push(c.clip + ' f' + c.frame + ' d' + c.row);
+  }
+  if (bad.length) console.error('[대조표] ⚠못 그린 칸: ' + bad.slice(0, 5).join(', '));
+  // |Δ휘도| — 같은 판·같은 방향에서 두 판이 얼마나 다른가(몸 층 기준)
+  const dl = [];
+  for (const [a2, b2, f] of [['swing', 'swing2', 0], ['aim', 'aim2', 0], ['idle', 'idle2', 0]]) {
+    const v = await pg.evaluate((q) => window.__lumaDiff(q[0], q[1], q[2], 1, 'body'), [a2, b2, f]);
+    dl.push(`${a2}↔${b2} ${v}`);
+  }
+  labels.push({ t: '|Δ휘도| (몸 층 · d1 · f0 · 실루엣 합집합 안): ' + dl.join('  ·  '), x: 490, y: CY + 56, size: 12, color: '#9fb0c4' });
+  await pg.evaluate((l) => window.__label(l), labels);
+  fs.mkdirSync(path.dirname(OUT), { recursive: true });
+  const buf = await pg.locator('#cv').screenshot();
+  fs.writeFileSync(OUT, buf);
+  console.log('[대조표] ' + OUT + ' · ' + buf.length + ' bytes · 내려침 판 f' + strike);
+}
+
+/** T149 판 — 옛 판(T143 · 팔이 옆) vs 이 판(묶인 자세) · 8방향. */
+async function captiveSheet(pg, pal) {
+  const CW = 150, CH = 118, X0 = 150, Y0 = 96;
+  await pg.evaluate((h) => { document.getElementById('cv').height = h; }, Y0 + 8 * CH + 60);
+  const dirVec = (d) => { const a = d * Math.PI / 4; return [Math.cos(a), Math.sin(a)]; };
+  const labels = [];
+  labels.push({ t: 'T149 — 포로: 옛 판(T143) vs 묶인 자세 (8방향 · 걷기)', x: 490, y: 32, size: 18, bold: true });
+  labels.push({ t: '옛 판은 클립을 뺀 **같은 클라**가 그린 것이다 — 시트가 없을 때의 폴백이 곧 그 그림이다', x: 490, y: 54, size: 12, color: '#9fb0c4' });
+  ['옛 판 · 팔이 옆', '이 판 · 두 손 앞', '이 판 · 서 있는 포로'].forEach((t, i) =>
+    labels.push({ t, x: X0 + i * CW, y: Y0 - 18, size: 13, bold: true }));
+  const mk = (col, d, opts) => ({ x: X0 + col * CW, y: Y0 + d * CH + 80, mode: 'sheet', name: '', color: '#5a9ae0', opts });
+  const oldJobs = [], newJobs = [];
+  for (let d = 0; d < 8; d++) {
+    const [fx, fy] = dirVec(d);
+    labels.push({ t: 'd' + d, x: 60, y: Y0 + d * CH + 10, size: 12, color: '#9fb0c4' });
+    oldJobs.push(mk(0, d, { pid: 'old' + d, fvx: fx, fvy: fy, speed: 40, cap: true, clothes: 'hemp' }));
+    newJobs.push(mk(1, d, { pid: 'new' + d, fvx: fx, fvy: fy, speed: 40, cap: true, clothes: 'hemp' }));
+    newJobs.push(mk(2, d, { pid: 'sit' + d, fvx: fx, fvy: fy, speed: 0, cap: true, clothes: 'hemp' }));
+  }
+  await pg.evaluate((j) => window.__draw(j), newJobs);
+  await pg.evaluate((j) => window.__drawOld(j), oldJobs);
+  const dbg = await pg.evaluate('JSON.parse(JSON.stringify(window.__charDbg||{}))');
+  for (const k of ['old1', 'new1', 'sit1']) console.log('[층] ' + k + ': ' + (dbg[k] ? `${(dbg[k].layers||[]).join('+')} · clip ${dbg[k].clip} f${dbg[k].frame}` : '없음'));
+  // 확대 — 손목 자리는 메타에서 딴다(눈대중 0)
+  const meta = await pg.evaluate('window.__charMeta');
+  const D = 1;
+  const rel = (p) => [p[0] - meta.anchorX, p[1] - meta.anchorY];
+  const [ow, oh] = rel(meta.handScreen.walk[D][0]);
+  const [nw, nh] = rel(meta.handScreen.captive_walk[D][0]);
+  const ZS = [
+    { sx: X0 + ow - 20, sy: Y0 + D * CH + 80 + oh - 15, w: 40, h: 30, k: 5, dx: 620, dy: Y0 + 8, t: '옛 판 손목 ×5' },
+    { sx: X0 + CW + nw - 20, sy: Y0 + D * CH + 80 + nh - 15, w: 40, h: 30, k: 5, dx: 620, dy: Y0 + 190, t: '이 판 손목 ×5' },
+  ];
+  await pg.evaluate((z) => window.__zoom(z), ZS);
+  for (const z of ZS) labels.push({ t: z.t, x: z.dx + z.w * z.k / 2, y: z.dy - 8, size: 12, color: '#9fb0c4' });
+  labels.push({ t: `묶인 손 목표(굽기가 푼 값): 앞 ${meta.captiveGrip[0]}m · 반간격 ${meta.captiveGrip[1]}m · 높이 ${meta.captiveGrip[2]}m · 잔차 ${meta.captiveHitMm}mm`,
+                x: 490, y: Y0 + 8 * CH + 34, size: 12, color: '#9fb0c4' });
+  await pg.evaluate((l) => window.__label(l), labels);
+  fs.mkdirSync(path.dirname(OUT), { recursive: true });
+  const buf = await pg.locator('#cv').screenshot();
+  fs.writeFileSync(OUT, buf);
+  console.log('[대조표] ' + OUT + ' · ' + buf.length + ' bytes');
+}
+
 (async () => {
   const { chromium } = require('playwright');
   await new Promise((r) => srv.listen(3099, r));
@@ -101,6 +265,9 @@ let WAR_BT_COL = null, WAR_SIDE_COL = null;
   const err = await pg.evaluate('window.__err || null');
   if (err) throw new Error(err);
   const pal = await pg.evaluate('window.__pal');
+
+  if (MOCAP) { await mocapSheet(pg); await br.close(); srv.close(); return; }
+  if (CAPTIVE) { await captiveSheet(pg, pal); await br.close(); srv.close(); return; }
 
   // ── 판 짜기 — 행 8방향 · 열 넷(병사 도형/시트 · 포로 도형/시트) + 병종 여덟 띠 ─────
   const CW = 150, CH = 118, X0 = 120, Y0 = 92;

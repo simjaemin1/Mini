@@ -36,6 +36,10 @@ scripts/nature_renders/
 scripts/building_renders/
 # ★[T67] 가구 렌더 중간 산물 — 정본은 `scripts/props_render.py`, 배치본은 public/assets/props · icons
 scripts/icon_renders/
+# ★[T156] 열매 아이콘 512² 원본 — 배포본은 96px 이고 이건 중간 산물이다.
+#   ⚠`.gitignore` 는 **줄 끝 주석을 안 받는다** — 패턴 뒤에 붙이면 그 글자까지 패턴이 되어
+#     규칙이 조용히 죽는다(T156 이 그렇게 넣었다가 훅이 잡았다). 주석은 반드시 제 줄에.
+scripts/icon_renders_nat/
 scripts/crop_renders/
 scripts/field_renders/
 scripts/crop_icon_renders/

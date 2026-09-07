@@ -376,9 +376,12 @@ function seaDistPx(zoneId, ccx, ccy) {
   }
   return Math.sqrt(best2) * SZ;
 }
+// ★[T135] 부존 스캔 반경 — 종전 함수 안의 리터럴 `R = 140` 을 이름으로 올린 것뿐(행동 무변).
+//   나무 층이 "이 마을 생활권 숲이 몇 셀인가"를 되풀이해 적지 않게 한다(사본 0).
+const LAND_SCAN_R = 140;
 function extractLandParamsApprox(ta, ccx, ccy, layout) {
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
-  const R = 140, STEP = 4;
+  const R = LAND_SCAN_R, STEP = 4;
   let rock = 0, forest = 0, ore = 0, n = 0;
   // ★[11차] 사냥터는 **마을 밖 40~130셀 밴드**다(랩 huntCells와 같은 밴드 — 마을 안엔 짐승이 안 산다).
   //   전에는 사냥(game)이 임업(wood)과 **같은 수식**이라 독립 지도가 없었다.
@@ -2510,6 +2513,10 @@ function init(deps) {
     });
     world.villages = [];
     world.events = [];
+    // ★★[T135] 나무 층을 econ 에 꽂는다 — `priceFn` 과 같은 계약(econ 은 지형·청크를 모른다).
+    //   ⚠계측기(`scripts/t17-metrics.js`)도 **같은 문**을 부른다. 한쪽만 부르면 여덟 수가
+    //     대체를 못 보고 "안 움직인다"고 말한다 — 그게 족보 130 이 경고한 사고다.
+    require('./trees').attachToWorld(world);
     let maxDay = 0;
 
     const seededById = new Map((seeded || []).map(r => [r.dbId, r]));
@@ -4128,6 +4135,26 @@ function _lifeJobSites(vil, day) {   // 마을 생활권의 직업별 현장 후
   return (vil._jobSites = { day, lumberjack: top(bk.lumberjack), miner: top(bk.miner), forager: top(bk.forager), hunter: hunt, fisher: bank });
 }
 
+// ★[T135] 이 마을의 그림자가격 조회 함수 — econ 정본(`world.priceFn`)을 **부르기만** 한다.
+//   표를 여기서 만들지 않는다(사본 0). 없으면 null → 부등식이 종을 안 가린다.
+function _lifeShadowPrice(vil) {
+  const ev = vil && vil.econ; const w = state.world;
+  if (!ev || !w || typeof w.priceFn !== 'function') return null;
+  let tbl = null; try { tbl = w.priceFn(ev); } catch (e) { tbl = null; }
+  if (!tbl) return null;
+  return (r) => Math.max(0.05, Math.min(200, (tbl[r] || 1)));   // 랩과 같은 클램프(전쟁실험실 벌목 자리)
+}
+// ★[T135] 그 나무에 지금 열매가 달렸나 — `Trees.fruitSettle`(볼 때 정산)을 그대로 쓴다.
+//   재고는 **마을이 쥔다**(청크는 다시 만들어지는 물건이라 상태를 못 얹는다 — T108 의 그 교훈).
+function _lifeTreeHasFruit(vil, r, day) {
+  const T = _trees(); if (!T || !T.ON() || !r || !r.sp || !T.isFruitTree(r.sp)) return false;
+  if (!vil._fruitStore) vil._fruitStore = new Map();
+  const sz = Number.isFinite(r.szf) ? r.szf : 0.5;
+  return T.fruitSettle(vil._fruitStore, r.seedKey || r.id, r.sp, day, sz) > 0;
+}
+let _TRv = undefined;
+function _trees() { if (_TRv === undefined) { try { _TRv = require('./trees'); } catch (e) { _TRv = null; } } return _TRv; }
+
 function _lifeFarmTooClose(vil, x, y) {   // 랩 farmTooClose 동형: 부지 원+2·마당 원+2·곳간 5×3+1버퍼
   for (const h of vil._houseCells) if (_lifeVL().houseFarmBlock(h.cx, h.cy, x, y)) return true;
   if (_lifeVL().hallFarmBlock(vil.ccx, vil.ccy, x, y)) return true;
@@ -4949,6 +4976,246 @@ function _lifeHunterEconLink(vil) {
   }
 }
 
+// ══ ★★[T146 2026-09-06 · 승인 대기] **사냥 이식 — 짐승이 곳간과 부존을 움직인다** ══
+//
+// T144 가 랩에서 답을 냈고(`보고/T144_2026-09-06.md`) 이 절이 그 생활층을 **서버 마을**로 옮긴다.
+// 옮기는 것은 넷: 개체군 · 로지스틱 회복 · **포화형** 수확 차감 · `land.game` 14일 갱신.
+// 옮기지 **않는** 것: kill→곳간 실물 회계(랩 규약 *"사냥꾼 전투는 연출 · 고갈은 하루 틱만"* · 다음 판).
+//
+// ★값은 **랩 그대로**다(새 수 0). 이름도 랩 이름을 쓴다 — 재정박은 재민 판정 뒤 손잡이로 (회부).
+//   `lab/전쟁실험실.html` 9103·9116~9121(정본) · 10760(회복) · 10801(차감) · 10879(부존 갱신).
+// ★econ 식은 **한 글자도 안 건드린다**. 사냥 소득은 여전히 `land.game × 0.7` 이다 —
+//   이 카드가 하는 일은 **부존 표를 살아 있게** 만드는 것이지 소득 식을 바꾸는 게 아니다.
+//   (그래서 "대체"가 아니라 "부존 갱신"이다 — 랩이 이미 그 모양이고, 서버가 그 모양이 된다.)
+// ★되돌림 `T146_GAME=0` ⇒ 개체군을 안 만들고 `land.game` 을 안 건드린다(= 종전 비트 동일). 부를 때 읽는다.
+const L_GAMEMAX = 100, L_GAMER = 0.002, L_HUNT = 4;   // 랩 9103 그대로 — K · 로지스틱 증가율/일 · 1인 일일 수확
+const L_GAMEHALF = L_GAMEMAX * 0.15;                  // 랩 9116 그대로 — 반포화(랩 자신의 "사냥터로 안 치는 밀도"에서 유도)
+const HUNT_BAND0 = 40, HUNT_BAND1 = 130;
+const BAND_SALT = 0x7146;   // 자리 해시 소금(밴드 최소 보장 전용 — 다른 해시 층과 안 겹치게)
+function _t146() { const v = parseInt(process.env.T146_GAME, 10); return Number.isFinite(v) ? v : 1; }
+function _t146BuildMs() { const v = parseInt(process.env.T146_BUILD_MS, 10); return Number.isFinite(v) && v > 0 ? v : 20; }   // 밴드 구축 하루치(마을당 ms)
+function _t146Band() { const v = parseInt(process.env.T146_BAND, 10); return Number.isFinite(v) ? v : 1; }        // 밴드 최소 보장(0=끈다 · 종전 비트)
+function _t146BandAll() { return process.env.T146_BAND_ALL === '1'; }                                            // 1 = 카드 ① 문자 그대로(max 꼴 · 이미 밴드 있는 마을도 채운다)
+/**
+ * ★밴드 최소 셀 수 — **`livelihood.landOf` 의 역함수**다(새 수 0 · 저쪽 상수만 쓴다).
+ *   `land.game = FLOOR.game + GAIN.game × huntShare` 이므로 그 값을 **같은 환율로** 셀 몫으로 되돌리면
+ *   `share = land.game / GAIN.game`. 바닥(0.45)뿐인 마을도 `0.45/1.8 = 0.25` —
+ *   즉 **`FLOOR.game` 은 이미 "숲 25% 짜리 밴드"만큼을 약속하고 있다**(초지 사냥 · `livelihood.js:27`).
+ *   ⚠그 약속을 실체로 깔면 바닥 마을이 **지금 밴드 있는 32곳 중 21곳보다 넓어진다** — 값 판정거리(재민).
+ */
+function _bandMinCells(vil, candN) {
+  if (_t146Band() === 0) return 0;
+  const g = (vil.econ && vil.econ.land) ? vil.econ.land.game : null;
+  if (!(g > 0)) return 0;
+  return Math.round(candN * (g / require('./livelihood').GAIN.game));
+}
+/** 랩 `huntTake` 그대로 — 하루 한 사람이 그 셀에서 빼는 개체(밀도의 함수 · 만땅에서 정확히 `L_HUNT`). */
+function huntTake(G) {
+  const g = Math.max(0, G);
+  return L_HUNT * (g / (g + L_GAMEHALF)) / (L_GAMEMAX / (L_GAMEMAX + L_GAMEHALF));
+}
+/**
+ * ★사냥터 개체군을 **한 번** 짓는다(마을당 · 첫 하루 틱). 셀은 랩과 같은 **2칸 샘플**이다
+ *   (랩 주석: *"forestRich·gameRich는 2칸 간격 샘플이라 ±1은 이웃 없음"*) — K 도 그 샘플에 맞춰 잰 값이라
+ *   간격을 바꾸면 `L_GAMEMAX`·MSY 산수가 통째로 어긋난다.
+ * ⚠**밴드에 숲이 없으면 개체군을 안 만든다**(51마을 중 여럿이 그렇다 — §0-ⓐ). 그런 마을은
+ *   `land.game` 도 **안 건드린다**: 짐승 장부가 없는데 부존을 0.05 로 깎으면 그건 실측이 아니라 사고다.
+ */
+function _huntBandBuild(vil) {
+  if (vil._gameRich || vil._gameNone) return vil._gameRich || null;
+  const ta = state.ta;
+  if (!ta || !ta.forestMult) { return null; }
+  // ★★[실측 2026-09-06] 밴드 전수는 **한 마을에 최대 2.7초**다(51곳 합 12.9초 · 임업2 8032셀).
+  //   숲 판정을 통과한 셀마다 바위·물을 또 묻는데 그 한 쌍이 0.3ms 다. 하루 틱은 이걸 못 삼킨다.
+  //   그래서 **줄 단위로 끊어 며칠에 걸쳐** 짓는다 — 다 지어질 때까지 그 마을엔 사냥터가 없다(차감 0).
+  //   손잡이 `T146_BUILD_MS`(마을 하루치 · 기본 20ms). 다 짓는 데 걸리는 날은 마을마다 다르다:
+  //   중앙값 마을 2일 · 가장 넓은 임업2 약 135일. **이 수는 값 판정거리다(재민)** — 보고 §ⓔ.
+  const budget = _t146BuildMs();
+  const st = vil._gameScan || (vil._gameScan = { dy: -HUNT_BAND1, m: new Map(), g: [], n: 0 });
+  const t0 = Date.now();
+  for (; st.dy <= HUNT_BAND1; st.dy += 2) {
+    const dy = st.dy;
+    for (let dx = -HUNT_BAND1; dx <= HUNT_BAND1; dx += 2) {
+      const d2 = dx * dx + dy * dy;
+      if (d2 < HUNT_BAND0 * HUNT_BAND0 || d2 > HUNT_BAND1 * HUNT_BAND1) continue;
+      const cx = vil.ccx + dx, cy = vil.ccy + dy;
+      if (cx < 1 || cy < 1) continue;
+      st.n++;                                                  // 후보 셀(= `huntShare` 의 분모 — 역함수가 이걸 쓴다)
+      if (ta.isRock && ta.isRock(cx, cy)) continue;
+      if (ta.isBlocked && ta.isBlocked(cx, cy)) continue;      // 물·바위 — NPC 이동과 같은 판정
+      if (ta.forestMult(cx, cy) > 1.2) st.m.set(cx + ',' + cy, L_GAMEMAX);   // 서버 부존 스캔(:391)과 **같은 술어**
+      else if (_t146Band() !== 0) st.g.push(cx, cy);           // ★[T146 2판] 풀밭 후보 — 최소 보장이 여기서 채운다
+    }
+    if (Date.now() - t0 >= budget) { st.dy += 2; return null; }   // 오늘치 끝 — 내일 이 줄부터(커서를 남긴다)
+  }
+  _bandFloorFill(vil, st);                                     // ★[T146 2판] 최소 보장(§ⓐ)
+  vil._gameScan = null;
+  if (!st.m.size) { vil._gameNone = 1; return null; }
+  vil._gameRich = st.m;
+  vil._gameTot0 = st.m.size * L_GAMEMAX;
+  vil._baseGame = (vil.econ && vil.econ.land) ? vil.econ.land.game : null;   // 갱신의 기준(랩 `baseGame`)
+  return st.m;
+}
+/**
+ * ★★[T146 2판] 사냥터가 없는 마을은 없다 — **바닥을 실체로 깐다**.
+ *
+ *   `livelihood.js:27` 이 `FLOOR.game = 0.45` 를 두고 그 이유를 적어 두었다:
+ *   *"초지 사냥(사슴·멧돼지) — 숲이 없어도 짐승은 산다"*. 그런데 밴드는 **숲만** 셌다.
+ *   그래서 51곳 중 **19곳**은 econ 이 "짐승이 있다"고 말하는데 실체가 0 이었다 —
+ *   사냥꾼은 서는데 깎을 데가 없고 `land.game` 은 영원히 안 내려간다(남획이 불가능한 마을).
+ *
+ *   ⇒ 모자란 만큼을 **반경 안 풀밭 셀**에서 채운다. 어느 셀을 고르는지는 **자리의 함수**다
+ *     (`Crops.h32` — 주사위 0 · 두 번 지어도 같은 셀). 새 수 0: 셀 수는 `landOf` 의 역함수,
+ *     풀밭 셀의 K 도 숲과 같은 `L_GAMEMAX`(초지 K 를 따로 두는 것은 **값 판정거리** — 회부).
+ *
+ *   ⚠기본은 **밴드가 0 인 마을에만** 채운다(카드 §1 "34곳 비트 동일"). 카드 ① 의 문자 그대로인
+ *     `max(밴드, 최소)` 꼴은 `T146_BAND_ALL=1` 로 켠다 — 그러면 32곳 중 **21곳이 움직인다**(보고 ⓒ).
+ */
+function _bandFloorFill(vil, st) {
+  const need = _bandMinCells(vil, st.n);
+  if (!need || st.m.size >= need) return 0;
+  if (st.m.size > 0 && !_t146BandAll()) return 0;   // 기본: 밴드가 이미 있으면 안 건드린다
+  const g = st.g;
+  if (!g || !g.length) return 0;
+  const Crops = require('./crops');
+  const want = Math.min(need - st.m.size, g.length >> 1);
+  // 자리 해시가 작은 순서로 want 개 — 자리의 함수라 두 번 지어도 같은 셀이 나온다(정렬은 결정론)
+  const idx = [];
+  for (let i = 0; i < g.length; i += 2) idx.push(i);
+  idx.sort((a, b) => (Crops.h32(g[a], g[a + 1], BAND_SALT) - Crops.h32(g[b], g[b + 1], BAND_SALT)) || (a - b));
+  for (let k = 0; k < want; k++) { const i = idx[k]; st.m.set(g[i] + ',' + g[i + 1], L_GAMEMAX); }
+  vil._gameFloorN = want;   // 계측 — 세계 규칙은 안 읽는다
+  return want;
+}
+/**
+ * ★px → 셀 — **정본 하나**(사본 0). 셀 `c` 의 중앙은 이 파일 전체에서 `c*SZ + SZ/2` 다.
+ *   그러니 되읽는 자는 `Math.floor(px/SZ)` 여야 왕복이 닫힌다.
+ *   ⚠`Math.round` 로 되읽으면 셀 중앙이 `c+1` 로 나온다 — T146 1판 회부 6 이 그 자리였다.
+ */
+function _cellOfPx(px) { return Math.floor(px / SZ); }
+/**
+ * ★위치 → 장부 셀 — 밴드는 **2칸 간격 샘플**이다(랩 9130 주석: `forestRich·gameRich는 2칸 간격 샘플`).
+ *   랩은 사냥꾼 작업 셀을 `huntCells` 에서 **골라 주기 때문에** 언제나 격자 위에 있지만,
+ *   서버는 사냥꾼 현장을 **몹 실좌표**에서 얻는다(`_lifeJobSites().hunter`) — 격자에서 벗어난다.
+ *   그대로 두면 넷 중 셋은 장부를 못 찾아 **아무도 아무것도 안 잡는 판**이 된다.
+ *   그래서 위치를 자기 표본 셀로 맞춘다(격자 위 입력에는 항등 — 랩 수는 한 자리도 안 변한다).
+ */
+function _gameKey(vil, cx, cy) {
+  const m = vil && vil._gameRich; if (!m) return null;
+  if (Math.abs(cx - vil.ccx) > HUNT_BAND1 || Math.abs(cy - vil.ccy) > HUNT_BAND1) return null;   // 밴드는 이 사각 안에만 있다 — 먼 마을은 Map 조회 전에 뺀다(뷰 재구축이 셀마다 51마을을 훑는다)
+  const xs = ((cx - vil.ccx) & 1) ? [cx - 1, cx + 1] : [cx];
+  const ys = ((cy - vil.ccy) & 1) ? [cy - 1, cy + 1] : [cy];
+  let best = null, bg = -1;
+  for (const x of xs) for (const y of ys) { const g = m.get(x + ',' + y); if (g !== undefined && g > bg) { bg = g; best = x + ',' + y; } }
+  return best;
+}
+/** 그 셀에서 개체를 뺀다 — 사냥꾼 하루치(랩 10801) · 플레이어 사냥(§0-ⓒ) 둘 다 이 문으로 온다(사본 0). */
+function huntTakeAt(vil, cx, cy, people) {
+  const m = vil && vil._gameRich; if (!m) return 0;
+  const k = _gameKey(vil, cx, cy); if (k === null) return 0;
+  const g = m.get(k);
+  if (!(g > 0)) return 0;
+  const t = Math.min(g, huntTake(g) * (people > 0 ? people : 1));
+  m.set(k, g - t);
+  vil._gameTook = (vil._gameTook || 0) + t;    // 계측 — 세계 규칙은 안 읽는다
+  return t;
+}
+/** 그 자리(px)를 품은 마을의 개체군에서 한 마리 뺀다 — 플레이어가 실제로 잡았을 때(zone.js 브리지). */
+function huntKillAt(px, py) {
+  if (_t146() === 0) return 0;
+  const cx = _cellOfPx(px), cy = _cellOfPx(py);
+  for (const v of state.villages) { const m = v._gameRich; if (!m) continue;
+    const k = _gameKey(v, cx, cy); if (k === null) continue;   // 표본 격자로 맞춘다(위 `_gameKey` — 사본 0)
+    const g = m.get(k); if (!(g > 0)) continue;
+    m.set(k, Math.max(0, g - 1));               // ★한 마리 = 1 개체(새 수 0 — 잡은 것이 곧 그 수다)
+    return 1; }
+  return 0;
+}
+/** 지금 장부에 오른 사냥터 셀 수 — `wildlife.js` 의 `s.gameRich.size` 자리(캐시 서명에만 쓰인다). */
+function gameRichSize() { let n = 0; for (const v of state.villages) if (v._gameRich) n += v._gameRich.size; return n; }
+/** 그 셀의 개체 풍부도 — `wildlife.js` 가 마릿수를 정할 때 읽는다(빈 Map 을 이걸로 채운다). */
+function gameRichAt(cx, cy) {
+  for (const v of state.villages) { const k = _gameKey(v, cx, cy); if (k !== null) return v._gameRich.get(k); }
+  return undefined;
+}
+/**
+ * ★사냥꾼 하루치 차감 — **그 사람의 작업 셀에서** 뺀다(랩 10801: 작업 셀 · 비면 짐승 많은 곳으로 옮긴다).
+ *   `players` 는 `state.deps.players` 와 같은 모양의 Map(부팅 전이면 null — 그때는 뺄 사람이 없다).
+ *   @returns {number} 오늘 실제로 빠진 마릿수 합
+ */
+function huntHunters(vil, players, day) {
+  const m = vil && vil._gameRich; if (!m) return 0;
+  let took = 0;
+  // ★랩 10825 — 다른 사냥꾼이 이미 쥔 자리(분산 사냥의 기준). 먼저 모은다.
+  const hw = [];
+  for (const pid of (vil.npcPids || [])) {
+    const p0 = players && players.get(pid);
+    if (p0 && p0.simJob === 'hunter' && p0._huntWk) hw.push(p0._huntWk);
+  }
+  for (const pid of (vil.npcPids || [])) {
+    const p = players && players.get(pid); if (!p || p.simJob !== 'hunter') continue;
+    const w = p._huntWk || (p._workSite ? { cx: _cellOfPx(p._workSite.x), cy: _cellOfPx(p._workSite.y) } : null);
+    const k = w ? _gameKey(vil, w.cx, w.cy) : null;
+    if (k !== null) {
+      took += huntTakeAt(vil, w.cx, w.cy, 1);                       // ★랩 10821 — 먼저 잡는다
+      const ci0 = k.indexOf(',');
+      p._huntWk = { cx: +k.slice(0, ci0), cy: +k.slice(ci0 + 1) };  // 표본 격자에 맞춰 둔다(랩 `a.work` 는 늘 격자다)
+    }
+    // ★랩 10823 — 자리가 없거나 **개체가 12% 아래로 내려가면** 옮긴다.
+    //   ⚠옮긴 날엔 **안 잡는다**(랩도 `a.work` 만 바꾼다 — 오늘치는 이미 위에서 끝났다).
+    if (k === null || (m.get(k) || 0) < L_GAMEMAX * 0.12) {
+      // ★랩 10824~10830 분산 사냥 — 다른 사냥꾼 자리 ±5 를 피해 **빈** 풍부 셀 우선, 다 차 있으면 공유(몰이 폴백)
+      let bFree = null, rFree = L_GAMEMAX * 0.15, bAny = null, rAny = L_GAMEMAX * 0.15;
+      for (const [k2, rr] of m) {
+        if (rr > rAny) { rAny = rr; bAny = k2; }
+        if (rr > rFree) {
+          const ci = k2.indexOf(','), cx2 = +k2.slice(0, ci), cy2 = +k2.slice(ci + 1);
+          let occ = false;
+          for (const o of hw) if (Math.abs(o.cx - cx2) <= 5 && Math.abs(o.cy - cy2) <= 5) { occ = true; break; }
+          if (!occ) { rFree = rr; bFree = k2; }
+        }
+      }
+      const b = bFree || bAny;
+      if (b) {
+        const ci = b.indexOf(','), bx = +b.slice(0, ci), by = +b.slice(ci + 1);
+        p._huntWk = { cx: bx, cy: by };
+        p._workSite = { x: bx * SZ + SZ / 2, y: by * SZ + SZ / 2, day };   // 시각 층도 그 자리로 출근한다
+        hw.push(p._huntWk);
+      }
+    }
+  }
+  return took;
+}
+/**
+ * ★하루 틱 — 회복(주 단위 로지스틱) · 사냥꾼 차감 · 14일마다 `land.game` 갱신 · 절멸 셀 재정착.
+ *   전부 랩 `lifeDayAll` 의 그 줄들이다(라인은 위 머리말).
+ */
+function _lifeGameDay(vil, day) {
+  if (_t146() === 0) return;
+  const m = _huntBandBuild(vil);
+  if (!m) return;
+  //   ① 사냥꾼 하루치 차감 — 정본 하나(하루 틱도 하네스도 이 문으로 들어온다)
+  huntHunters(vil, state.deps && state.deps.players, day);
+  // ② 회복 — 주 단위 배치 로지스틱(랩 10760 그대로 · r 이 느려 1차 근사 동일)
+  if (day % 7 === 0) for (const [k2, g2] of m) {
+    if (g2 > 0 && g2 < L_GAMEMAX) { const ng = g2 + 7 * L_GAMER * g2 * (1 - g2 / L_GAMEMAX);
+      m.set(k2, ng > L_GAMEMAX - 0.5 ? L_GAMEMAX : ng); }
+  }
+  // ③ 14일마다 부존 갱신 + 절멸 셀 재정착(랩 10879~10883 그대로)
+  if (day % 14 === 0 && vil.econ && vil._baseGame != null) {
+    let gsum = 0; for (const g2 of m.values()) gsum += g2;
+    vil.econ.land.game = +((vil._baseGame) * Math.max(0.05, Math.min(1, gsum / (vil._gameTot0 || 1)))).toFixed(2);
+    for (const [k2, g2] of m) { if (g2 < 2) { const ci = k2.indexOf(','), x = +k2.slice(0, ci), y = +k2.slice(ci + 1);
+      for (const d of [[2, 0], [-2, 0], [0, 2], [0, -2]]) { const ng = m.get((x + d[0]) + ',' + (y + d[1]));
+        if (ng > L_GAMEMAX * 0.3) { m.set(k2, g2 + 2); break; } } } }
+  }
+}
+/** 벌채·개간으로 서식지가 없어지면 그 셀의 짐승도 없어진다(랩 `deforestCell` 그대로 · K 영구 감소). */
+function huntDeforest(vil, cx, cy) {
+  const m = vil && vil._gameRich; if (!m) return false;
+  return m.delete(cx + ',' + cy);
+}
+
 function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(디스폰 누수 자가치유) + 신축 판단 + 작물 하루 성장
   if (!LIFE_ON || !vil._terrSet || !vil._terrSet.size || !vil.econ) return;
   _lifeVL();
@@ -4968,6 +5235,8 @@ function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(�
     const day = state.dayMs ? gameDayOf(_dayNow()) : 0;
     for (const [k, e] of vil._crop) cropDayTick(e, !vil._drySet.has(k), day, k);   // ★[T58b] 정본 하나(플레이어 농지도 이걸 재생한다)
   }
+  // ★[T146] 사냥 하루 정산 — 개체군 회복·차감·부존 갱신(랩 `lifeDayAll` 동형 · 값 그대로)
+  try { _lifeGameDay(vil, state.world.day | 0); } catch (e) { console.error(`[${state.zoneId}] 사냥 하루 틱 실패(${vil.name}):`, e.message); }
   _sub('gran');
   vil._psiteCrew = 0;
   for (const pid of vil.npcPids) { const p = state.deps.players.get(pid); if (p && p._lifeTask) { if (p._lifeTask.k === 'clear') { vil._claim.add(p._lifeTask.cx + ',' + p._lifeTask.cy); vil._clearCrew++; } else if (p._lifeTask.k === 'build') { if (p._lifeTask.ps) vil._psiteCrew++; else vil._buildCrew++; } } }
@@ -5171,7 +5440,29 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
     const qt = state.deps.qtResources && state.deps.qtResources();
     const near = qt ? qt.queryCircle(ws.x, ws.y, 260) : [];
     let best = null, bd = 1e9;
-    for (const r of near) { if (!JOB_RES[job].includes(r.type)) continue; const dx = r.x - npc.x, dy = r.y - npc.y, d2 = dx * dx + dy * dy; if (d2 < bd) { bd = d2; best = r; } }
+    // ★★★[T135] **고를 때 부등식이 선다** — 랩(T123 §2③)과 같은 식·같은 사전식.
+    //     w(목재)×목재수율 ≥ 성목햇수 × w(열매)×연간열매수율 ⇒ 벤다.
+    //   ① 목재 전용 종이 생활권에 있으면 그것부터 ② 열매종은 부등식이 서야 벤다.
+    //   `w` 는 이 마을의 그림자가격(정본은 econ `priceFn` — 표를 여기서 다시 만들지 않는다).
+    //   값을 모르면 종을 안 가린다(랩과 같은 계약) ⇒ 종전 그대로 가장 가까운 나무.
+    //   ★채집꾼은 반대다 — 결실철에 **열매 달린 나무**가 현장 후보가 된다(카드 ④).
+    //     ⚠랩이 여기서 한 번 틀렸다: 열매를 따도 채집 재고가 안 줄어 채집꾼이 스스로 자리를 안 옮긴다.
+    //       그래서 "고갈되면 옮긴다"가 아니라 **결실철엔 먼저 본다**로 넣는다.
+    const _T135 = _trees();
+    const _w135 = (_T135 && _T135.ON() && job === 'lumberjack') ? _lifeShadowPrice(vil) : null;
+    let bestF = null, bdF = 1e9;
+    for (const r of near) {
+      if (!JOB_RES[job].includes(r.type)) continue;
+      const dx = r.x - npc.x, dy = r.y - npc.y, d2 = dx * dx + dy * dy;
+      if (_T135 && _T135.ON() && r.type === 'tree' && r.sp) {
+        if (job === 'lumberjack') {
+          if (_T135.isFruitTree(r.sp)) { if (!_T135.fellOK(r.sp, _w135)) continue; if (d2 < bdF) { bdF = d2; bestF = r; } continue; }   // ②열매종은 뒤로
+        } else if (job === 'forager' && _lifeTreeHasFruit(vil, r, day)) { if (d2 < bdF) { bdF = d2; bestF = r; } continue; }             // 결실철·열매 있음 → 먼저
+      }
+      if (d2 < bd) { bd = d2; best = r; }
+    }
+    if (job === 'forager') { if (bestF) best = bestF; }          // 채집: 열매나무 먼저(사전식)
+    else if (!best && bestF) best = bestF;                        // 벌목: 목재 전용이 없을 때만 열매종
     if (best) { npc.behavior = 'gather'; npc.targetX = best.x; npc.targetY = best.y; npc.gatherTarget = best.id; npc._jobT = now + 6000 + (h % 5) * 1000; _lifeAct(npc, job === 'lumberjack' ? '벌목' : (job === 'miner' ? '채광' : '채집')); return true; }   // 실물 채집(기존 gather 실행부·리스폰이 처리)
     npc._workSite = null;   // 현장 고갈 — 다음 결정 때 재배정(랩 resourceTick '더 풍부한 셀로' 동형)
     npc.behavior = 'wander'; npc.targetX = ws.x + ((h % 5) - 2) * 24; npc.targetY = ws.y + ((((h / 5) | 0) % 5) - 2) * 24; npc.gatherTarget = null; npc._jobT = now + 5000;
@@ -5219,7 +5510,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
     // 뷰 안(활성 청크)=wildlife가 몹·핏자국·전투 전부 구동(LOD 계약): 여기는 마킹+주도권 소유만 —
     //   목표·잠행·속도는 wildlife 두뇌가 본체로 역전달(npc.targetX/_huntSpd). 스케줄(밤·요양·반일)은 위 게이트가 우선.
     if (state.deps.isPositionActive && state.deps.isPositionActive(npc.x, npc.y)) {
-      npc._huntOn = 1; npc._huntWk = { cx: Math.round(ws.x / SZ), cy: Math.round(ws.y / SZ) };
+      npc._huntOn = 1; npc._huntWk = { cx: _cellOfPx(ws.x), cy: _cellOfPx(ws.y) };   // ★[T146 2판] 왕복 정본 하나 — 셀 중앙 c*SZ+SZ/2 를 되읽으면 그 셀이 나온다
       if (Math.hypot(npc.x - ws.x, npc.y - ws.y) > 900 && !npc._bmOn) { npc.behavior = 'wander'; npc.targetX = ws.x; npc.targetY = ws.y; npc.gatherTarget = null; }   // 초기 출근(두뇌 목표 오기 전)
       return true;
     }
@@ -5988,6 +6279,9 @@ module.exports = {
   tickSliceMs: () => TICK_SLICE_MS,   // ★[T1] `/perf` 가 '지금 어떤 예산으로 도는가'를 그대로 말하게(대조군 판별)
   // Stage 4A — zone.js 소비: 농지 lazy 실물화 / welcome 영토 페이로드 / 레거시 디듀프 판정
   farmTilesInRect, clientVillages, isLegacyVillageClaimed,
+  // ★[T146] 사냥 개체군 — 정본을 그대로 내준다(하네스·wildlife·zone 이 이것을 부른다 · 사본 0)
+  gameRichAt, gameRichSize, huntKillAt, huntTake, huntTakeAt, huntHunters, huntDeforest, _gameKey, _cellOfPx, _bandMinCells, _bandFloorFill, _t146Band, _t146BandAll, _t146BuildMs, _huntBandBuild, _lifeGameDay,
+  L_GAMEMAX, L_GAMER, L_HUNT, L_GAMEHALF, _t146,
   // ★[T119] 구조 사건 접점 — `zone.js` 가 살아난 그 순간에 한 줄 남긴다(완공 `noteVillageBuilt` 와 같은 자리)
   noteRescue,
   // ★[T125] 주민 착장 배정 — `scripts/test-npc-clothes.js` 가 **이 함수 그대로**를 검사한다(사본 0)
@@ -6044,9 +6338,14 @@ module.exports = {
   //   본 게임은 20곳이었다.
   // ★[T62] 하네스가 **집터 필터 정본을 그대로 쥔다**(규칙을 다시 적으면 그게 사본이다).
   __probe: { lifeSiteFilters: (vil) => _lifeSiteFilters(vil), liveHut6x4: (v, x, y, o, n, m) => _liveHut6x4(v, x, y, o, n, m) },
+  LAND_SCAN_R,   // ★[T135] 부존 스캔 반경 — 나무 층이 생활권 숲 셀 수를 유도할 때 읽는다(사본 0)
   __labProbe: {
     makeTerrainAdapter, extractLandParamsApprox, findOpenCenter, pickSeedVillages,
     setZoneId: (z) => { state.zoneId = z; },
+    // ★[T146 2026-09-06] 사냥터 밴드 하네스용 — `_distProbe`·`_memberProbe` 와 **같은 규약**(최소 주입구 하나).
+    //   왜: 밴드 구축은 지형을 훑는다. 예산에서 끊고 이어 짓는지 재려면 **지형을 하네스가 쥐어야** 한다.
+    //   ⚠하네스는 밴드 규칙(고리 반경·숲 문턱·바위·물)을 다시 적지 않는다 — `_huntBandBuild` 정본을 그대로 부른다.
+    _huntProbe: { setTa: (ta) => { const k = state.ta; state.ta = ta; return k; } },
     get VILLAGE_MAX() { return VILLAGE_MAX; },
     get INITIAL_POP() { return INITIAL_POP; },
     get SZ() { return SZ; },

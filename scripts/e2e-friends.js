@@ -59,6 +59,9 @@ function connect(username, password, startVid) {
       let m = null; try { m = JSON.parse(String(raw)); } catch (e) { return; }
       if (m.type === 'welcome') { C.pid = m.pid; C.playerId = m.playerId; clearTimeout(to); resolve(C); }
       else if (m.type === 'notice') C.notices.push(String(m.text || ''));
+      // ★[T147] 따라가기 자리는 **초당 하나 나가는 `gauges`** 에 실려 온다(새 창구 0).
+      //   `'follow' in m` 으로 본다 — `null` 이 "화살을 거두라"는 말이라 `if (m.follow)` 로는 못 읽는다.
+      else if (m.type === 'gauges') { if ('follow' in m) { C.follow = m.follow; C.followSeen = (C.followSeen || 0) + 1; } }
       else if (m.type === 'tick' && Array.isArray(m.players)) {
         for (const e of m.players) {
           const prev = C.others.get(e.pid) || {};
@@ -99,7 +102,7 @@ const seen = (C, pid) => C.others.get(pid) || null;
   const VID_A = arrivable[0].vid, VID_B = arrivable[1].vid;
 
   const A = await connect('alice', 'pw1', VID_A);
-  const B = await connect('bob', 'pw2', VID_B);
+  let B = await connect('bob', 'pw2', VID_B);
   const C3 = await connect('carol', 'pw3', VID_A);
   ok(!!(A.playerId && B.playerId && A.playerId !== B.playerId), '⓪ 셋이 다른 신원으로 들어왔다',
     `${A.playerId} / ${B.playerId} / ${C3.playerId}`);
@@ -168,6 +171,106 @@ const seen = (C, pid) => C.others.get(pid) || null;
   const asNone = await jget(`http://localhost:${ZPORT}/startinfo`);
   ok(!!asNone && asNone.ok && asNone.villages.every((v) => (v.friendsHere | 0) === 0),
     '④d 이름을 안 주면 0 — 종전 시작 화면과 **같은 답**이다');
+
+  // ── ④-2 [T147] 따라가기 — 어디 있는지, 그리고 그리로 ────────────────────
+  //   ★이 절이 재는 것: **움직이는 표적**이다. T110 화살의 표적(쓰러진 사람)은 안 움직였다.
+  const fdbg = async () => (await jget(`http://localhost:${ZPORT}/followdbg`)) || { players: [] };
+  const posOf = async (nm) => ((await fdbg()).players.find((r) => r.name === nm) || null);
+  //   ★막힌 땅(물·바위)은 텔레포트를 거절한다 ⇒ **성공할 때까지 후보를 옮겨 가며** 판을 짠다.
+  const warp = async (C, x, y) => {
+    for (let i = 0; i < 24; i++) {
+      C.notices.length = 0;
+      C.ws.send(JSON.stringify({ type: 'teleport_debug', x: Math.round(x) + i * 37, y: Math.round(y) + i * 29 }));
+      await sleep(400);
+      if (C.notices.some((t) => /🌀|텔레포트 →/.test(t))) return true;
+    }
+    return false;
+  };
+  {
+    const meta = await fdbg();
+    ok(!!(meta.ok && meta.players.length >= 2), '④-2 전제: 관측창이 사람들의 자리를 안다',
+       `${meta.players.length}명 · 구조반경 ${meta.rescueRangePx} · T110 반경 ${meta.shoutRangePx}`);
+    const R80 = meta.rescueRangePx, R_FAR = meta.shoutRangePx;
+
+    // ⓐ 친구가 아니면 거절한다 — 그리고 **그 사람이 있는지조차 말하지 않는다**
+    A.notices.length = 0; say(A, '/어디 carol'); await sleep(1200);
+    ok(A.notices.some((t) => /벗이 아니다/.test(t)), '★④-2ⓐ 친구가 아니면 `/어디` 는 **거절한다**', JSON.stringify(A.notices.slice(-1)));
+
+    // ⓑ 같은 존의 벗 — 방위와 걸음
+    const a0 = await posOf('alice');
+    ok(!!a0, '④-2ⓑ 전제: alice 의 자리를 읽었다', a0 && `${a0.x},${a0.y}`);
+    ok(await warp(B, a0.x + 1200, a0.y + 400), '④-2ⓑ2 전제: bob 을 걸어 닿을 거리에 세웠다');
+    await sleep(600);
+    A.notices.length = 0; say(A, '/어디 bob'); await sleep(1500);
+    ok(A.notices.some((t) => /쪽 \d+걸음 거리에 있다/.test(t)),
+       '★★④-2ⓑ 같은 존이면 **방위와 걸음**으로 답한다(T110 어휘 그대로)', JSON.stringify(A.notices.slice(-1)));
+
+    // ⓒ T110 반경 밖이면 **방향만** — 걸음 수는 걸어 닿는 거리 안에서만 뜻이 있다
+    ok(await warp(B, a0.x + R_FAR + 2000, a0.y), '④-2ⓒ 전제: bob 을 T110 반경 밖으로 보냈다');
+    await sleep(600);
+    A.notices.length = 0; say(A, '/어디 bob'); await sleep(1500);
+    ok(A.notices.some((t) => /쪽 멀리 있다/.test(t)) && !A.notices.some((t) => /걸음 거리에 있다/.test(t)),
+       '★★④-2ⓒ 반경 **밖이면 방향만** — 걸음 수를 말하지 않는다', JSON.stringify(A.notices.slice(-1)));
+
+    // ⓓ 따라가기 — 화살이 서고, **표적이 움직이면 따라 돈다**
+    ok(await warp(B, a0.x + 1500, a0.y + 500), '④-2ⓓ 전제: bob 을 다시 걸어 닿을 거리에 세웠다');
+    await sleep(600);
+    A.follow = undefined; A.notices.length = 0;
+    say(A, '/따라가기 bob'); await sleep(2500);
+    const b1 = await posOf('bob');
+    ok(!!(A.follow && Number.isFinite(A.follow.x)), '★★④-2ⓓ 화살 자리가 **초당 하나 나가는 `gauges`** 에 실려 왔다', JSON.stringify(A.follow));
+    ok(!!(A.follow && Math.hypot(A.follow.x - b1.x, A.follow.y - b1.y) <= 4),
+       '★★④-2ⓓ2 그 자리가 **bob 의 지금 자리**다', A.follow && `(${A.follow.x},${A.follow.y}) vs (${b1.x},${b1.y})`);
+    const first = A.follow ? { x: A.follow.x, y: A.follow.y } : null;
+    ok(await warp(B, a0.x + 900, a0.y - 700), '④-2ⓔ 전제: bob 이 자리를 옮겼다');
+    await sleep(2500);
+    const b2 = await posOf('bob');
+    ok(!!(A.follow && (A.follow.x !== first.x || A.follow.y !== first.y)),
+       '★★④-2ⓔ 표적이 움직이면 **화살도 따라 돈다**(두 자리가 다르다)',
+       `${JSON.stringify(first)} → ${JSON.stringify(A.follow && { x: A.follow.x, y: A.follow.y })}`);
+    ok(!!(A.follow && Math.hypot(A.follow.x - b2.x, A.follow.y - b2.y) <= 4),
+       '④-2ⓔ2 그리고 여전히 **bob 의 지금 자리**다', A.follow && `(${A.follow.x},${A.follow.y}) vs (${b2.x},${b2.y})`);
+
+    // ⓕ 도착하면 **저절로 꺼진다** — 그 반경도 T110/T43 의 것이다
+    A.notices.length = 0;
+    ok(await warp(B, a0.x + Math.round(R80 / 2), a0.y), '④-2ⓕ 전제: bob 이 구조 반경 안으로 들어왔다');
+    await sleep(2500);
+    ok(A.follow === null, '★★④-2ⓕ 도착하면 화살이 **거둬진다**(`follow: null`)', JSON.stringify(A.follow));
+    ok(A.notices.some((t) => /닿았다/.test(t)), '④-2ⓕ2 그리고 그렇게 말한다', JSON.stringify(A.notices.slice(-2)));
+
+    // ⓖ `/숨기` — 숨은 벗은 "다른 곳"으로만 보인다
+    B.notices.length = 0; say(B, '/숨기'); await sleep(1200);
+    ok(B.notices.some((t) => /숨겼다/.test(t)), '④-2ⓖ 전제: bob 이 자리를 숨겼다', JSON.stringify(B.notices.slice(-1)));
+    A.notices.length = 0; say(A, '/어디 bob'); await sleep(2000);
+    ok(A.notices.some((t) => /다른 곳에 있다/.test(t)) && !A.notices.some((t) => /걸음|쪽 멀리/.test(t)),
+       '★★④-2ⓖ 숨은 벗은 **"다른 곳"까지만** 보인다(같은 존인데도)', JSON.stringify(A.notices.slice(-1)));
+    A.notices.length = 0; say(A, '/따라가기 bob'); await sleep(2000);
+    ok(!A.follow, '★④-2ⓖ2 숨은 벗은 **따라갈 수도 없다**', JSON.stringify(A.follow));
+    B.notices.length = 0; say(B, '/숨기 끝'); await sleep(1200);
+    ok(B.notices.some((t) => /보인다/.test(t)), '④-2ⓖ3 `/숨기 끝` 이면 되돌아온다', JSON.stringify(B.notices.slice(-1)));
+
+    // ⓗ 벗이 나가면 꺼진다
+    ok(await warp(B, a0.x + 1500, a0.y + 500), '④-2ⓗ 전제: bob 이 다시 멀리 섰다');
+    await sleep(600);
+    A.follow = undefined; A.notices.length = 0; say(A, '/따라가기 bob'); await sleep(2500);
+    ok(!!(A.follow && Number.isFinite(A.follow.x)), '④-2ⓗ2 전제: 화살이 다시 섰다', JSON.stringify(A.follow));
+    close(B); await sleep(3000);
+    ok(A.follow === null, '★★④-2ⓗ 벗이 나가면 화살이 **거둬진다**', JSON.stringify(A.follow));
+    ok(A.notices.some((t) => /보이지 않는다/.test(t)), '④-2ⓗ3 그리고 그렇게 말한다', JSON.stringify(A.notices.slice(-2)));
+
+    // ⓘ `__notices` 규약 무변 — 따라가는 동안 알림이 **초당 한 줄씩 쌓이지 않았다**
+    ok(A.notices.length < 6, '★★④-2ⓘ 따라가는 동안 알림이 **안 쌓인다**(자리가 `gauges` 라서 — 규약 무변)',
+       `${A.notices.length}줄`);
+    ok((A.followSeen | 0) >= 3, '④-2ⓘ2 (자명 통과 방지) 그동안 `gauges` 의 follow 칸은 여러 번 왔다', A.followSeen);
+
+    // 다음 절(⑤ 끊기)이 bob 을 다시 쓴다 — 되돌려 놓는다.
+    //   ⚠**자리까지 되돌려야 한다**: ⑤c 는 A 가 B 를 **보고 있어야** 표지가 지워진 걸 잰다(AOI).
+    //     이 절이 B 를 멀리 보내 놓고 그냥 넘기면 ⑤c 가 `null` 을 보고 빨개진다(초안이 그랬다).
+    B = await connect('bob', 'pw2', VID_B);
+    await sleep(1500);
+    await warp(B, a0.x + 150, a0.y + 150);
+    await sleep(2000);
+  }
 
   // ── ⑤ 끊기 — 표지가 **지워진다** ────────────────────────────────────────
   A.notices.length = 0;
@@ -240,6 +343,30 @@ const seen = (C, pid) => C.others.get(pid) || null;
     ok(!/ALTER TABLE players ADD COLUMN friend/.test(cen), '⑦g 기존 표에 새 컬럼 **0**');
     // ★자명 통과 금지 — 검사가 실제로 그 파일을 읽었는지
     ok(rl.length > 1000 && lob.length > 1000 && cen.length > 1000, '⑦h (자명 통과 방지) 네 파일을 실제로 읽었다');
+
+    // ★★[T147] 화살은 **T110 것을 그대로 부른다** — 그리는 함수도, 반경도, 걸음도, 방위도.
+    const zn = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
+    const znCode = codeOnly(zn);
+    ok(/function drawFollowArrow\(\)/.test(rl), '⑦i 전제: 따라가기 화살 함수를 실제로 찾았다(못 찾으면 아래가 자명 통과다)');
+    const fa = rl.slice(rl.indexOf('function drawFollowArrow()'), rl.indexOf('function drawDownedArrows()'));
+    ok(/drawWorldArrow\(/.test(fa), '★★⑦i 따라가기 화살은 **T110 의 그리는 함수를 그대로 부른다**(사본 0)');
+    ok(!/ctx\.(beginPath|moveTo|lineTo|fill)\(/.test(fa), '⑦i2 ★그 함수는 화살을 **다시 그리지 않는다**(붓질 0줄)');
+    //   ★자리가 둘이라 **같이 뜬다** — 한 자리에 밀어 넣으면 외침과 따라가기가 서로를 지운다.
+    ok(/__downedCries/.test(rl) && /__followTarget/.test(rl), '★★⑦j 외침과 따라가기는 **자리가 둘**이다(같이 뜬다)');
+    const frame = rl.slice(rl.indexOf('__downedArrowN'), rl.indexOf('__downedArrowN') + 260);
+    ok(/__followArrowN/.test(frame), '★★⑦j2 그리고 **같은 프레임에서 둘 다** 그린다', JSON.stringify(frame.split('\n')[1] || ''));
+    //   ★반경·걸음·방위에 손으로 적은 수가 없다 — 전부 정본을 부른다
+    const fp = znCode.slice(znCode.indexOf('function _followPayload'), znCode.indexOf('function followChat'));
+    ok(fp.length > 200, '⑦k 전제: 서버 쪽 갱신 함수를 실제로 찾았다', fp.length);
+    ok(/RESCUE_RANGE_PX/.test(fp) && /Rescue\.shoutRange\(\)/.test(fp) && /Rescue\.steps\(/.test(fp),
+       '★★⑦k 반경 둘과 걸음이 **전부 T110/T43 정본에서 온다**');
+    ok(!/[^\w.]\d{2,}[^\w]/.test(fp), '⑦k2 ★그 함수에 **손으로 적은 수가 없다**',
+       JSON.stringify((fp.match(/[^\w.]\d{2,}[^\w]/g) || []).slice(0, 3)));
+    //   ★따라가기가 **알림 축을 안 쓴다** — 초당 한 줄이면 `window.__notices` 규약이 더러워진다
+    ok(!/type: 'notice'/.test(fp), '★★⑦l 갱신은 **알림으로 나가지 않는다**(`__notices` 규약 무변)');
+    ok(/'follow' in msg/.test(net), '⑦m 클라는 `null` 을 **"거두라"로 읽는다**(`in` 검사 · `if (msg.follow)` 아님)');
+    //   ★친구 판정은 여전히 서버다(⑦d 의 짝) — 이름→벗 대응도 클라에 없다
+    ok(!/friendByName/.test(codeOnly(rl) + codeOnly(net) + codeOnly(lob)), '⑦n ★클라에 이름→벗 대응이 **없다**');
   }
 
   close(A); close(B); close(C3);
