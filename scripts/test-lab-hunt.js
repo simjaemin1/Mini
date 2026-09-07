@@ -15,6 +15,7 @@
 //  ⑧ 실행(랩)         사냥꾼 0 이면 P→K · 사냥꾼 과잉이면 P 바닥 → 수확이 준다(붕괴가 보인다)
 //  ⑨ 계측은 관측자    `_hstat` 를 읽는 곳은 계측기뿐(랩의 세계 규칙이 계측을 안 읽는다)
 //  ⑩ 랩 경로          레포 안 랩을 본다(레포 밖 homedir 기본값 0)
+//  ⑪ [T154] 소득     고기는 장부가 잡은 만큼만 — 주입 문 하나 · 대체(얹기 0) · 되돌림 기본 abstract
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -164,8 +165,18 @@ sec('⑨⑩ 계측은 관측자 · 랩 경로');
 {
   const reads = (LAB.match(/_hstat/g) || []).length;
   ok(reads >= 2, '⑨ 전제 — `_hstat` 자리가 있다', `${reads}회`);
-  const rule = LAB.replace(/s\._hstat=s\._hstat\|\|\{took:0,days:0\};s\._hstat\.took\+=_tk;s\._hstat\.days\+\+;/g, '');
-  ok(!/_hstat/.test(rule), '★★⑨ 랩의 **세계 규칙은 `_hstat` 를 안 읽는다**(계측이 세계를 바꾸지 않는다)');
+  //   ⚠★★**코드에게 묻는다 — 주석에게 묻지 않는다.** 이 줄 옆 주석이 `_hstat` 라는 글자를 담고 있어
+  //     원문 그대로 재면 자기 설명문에 걸려 빨개진다(T144 의 `@regress` 와 같은 함정).
+  const LABC = strip(LAB);
+  const rule = LABC.replace(/s\._hstat=s\._hstat\|\|\{took:0,days:0\};s\._hstat\.took\+=_tk;s\._hstat\.days\+\+;/g, '');
+  ok(!/_hstat/.test(rule), '★★⑨ 랩의 **세계 규칙은 `_hstat` 를 안 읽는다**(계측이 세계를 바꾸지 않는다)',
+    (rule.match(/_hstat/g) || []).length ? `남은 ${(rule.match(/_hstat/g) || []).length}회` : '0회');
+  //   ★★[T154] 그런데 `_hkill` 은 **반대**다 — 세계가 읽으라고 만든 수다(소득 정본).
+  //     둘이 같은 줄에 나란히 앉아 있으니, 이 절이 그 구분을 못 박아 둔다.
+  ok(/_hkill/.test(LABC),
+    '★★⑨ 대신 `_hkill`(그날 잡은 수)은 **세계가 읽는다**(계측과 정본을 갈라 둔다)');
+  const rule2 = LABC.replace(/s\._hkill=\(s\._hkill\|\|0\)\+_tk;/g, '');
+  ok(/_hkill/.test(rule2), '★⑨ (대조) 쓰는 자리 말고 **읽는 자리도 있다**(안 그러면 죽은 값이다)');
   const runner = fs.readFileSync(path.join(ROOT, 'scripts', 'lab-hunt.js'), 'utf8');
   ok(/lab', '전쟁실험실\.html'/.test(runner) || /'lab'/.test(runner),
     '★⑩ 계측기가 **레포 안 랩**을 본다(레포 밖 homedir 기본값 0)');
@@ -175,6 +186,59 @@ sec('⑨⑩ 계측은 관측자 · 랩 경로');
   ok(!regLine, '★⑩ 그리고 계측기는 러너에 안 들어간다(줄머리 `// @regress` 표식 없음)');
   const hOwn = fs.readFileSync(__filename, 'utf8').split('\n').some((l) => /^\s*\/\/\s*@regress\s*$/.test(l));
   ok(hOwn, '★⑩ (대조) 이 하네스는 **표식이 있다** — 검사가 실제로 그 형식을 본다');
+}
+
+// ═══ ⑪ [T154] 사냥 소득 = 장부가 잡은 만큼 ═════════════════════════════════
+sec('⑪ [T154] 고기는 **장부가 잡은 만큼만** — 주입 문 하나 · 대체 · 되돌림');
+{
+  //   ★주입 문은 **엔진 규약**을 따라야 한다(priceFn·netExportFn 과 같은 꼴 — world 에 있을 때만 산다)
+  const ENG = fs.readFileSync(path.join(ROOT, 'sim', 'economy-sim.js'), 'utf8');
+  const eb = strip(ENG);
+  ok(/typeof v\._world\.huntIncomeFn === 'function'/.test(eb),
+    '★★⑪ 엔진의 주입 문이 **`priceFn` 과 같은 규약**이다(world 에 심겼을 때만 산다)');
+  const hooks = (eb.match(/huntIncomeFn/g) || []).length;
+  ok(hooks <= 3, '★★⑪ 그리고 주입 문은 **한 자리**뿐이다(사본 0)', `${hooks}회 언급`);
+  //   ★★대체지 얹기가 아니다 — 추상 산출을 **덮어쓴다**(별도 addProduce 를 더하지 않는다)
+  const i = eb.indexOf('huntIncomeFn');
+  const around = eb.slice(Math.max(0, i - 400), i + 400);
+  ok(/baseAmt = _hi/.test(around) && !/addProduce\(/.test(around),
+    '★★⑪ 산출을 **덮어쓴다**(추상 위에 얹지 않는다 — 두 장부가 안 갈린다)');
+  //   ★그리고 사냥꾼에만 걸린다(다른 직업 무접촉)
+  ok(/currentJob === 'hunter' && v\._world/.test(eb),
+    '★★⑪ 사냥꾼에만 걸린다(농부·어부·채집 무접촉)');
+
+  //   ★랩 쪽 — 손잡이 기본이 **abstract**(종전 비트)여야 한다
+  const mode = bodyOf('_huntIncomeMode');
+  ok(/'abstract'/.test(mode), "★★⑪ 되돌림 기본이 **`abstract`** 다(안 켜면 종전 비트)");
+  ok(/window\.L_HUNTINCOME/.test(mode), '★⑪ 손잡이 이름은 `L_HUNTINCOME` · **부를 때** 읽는다');
+  //   ★소득 함수 — 마리당 **새 수 0**(리터럴 도체율이 없다)
+  const inc = bodyOf('huntIncomeReal');
+  const lits = (strip(inc).match(/\b\d+(\.\d+)?\b/g) || []).filter((x) => x !== '0');
+  ok(lits.length === 0, '★★⑪ 마리당 **새 수 0**(도체율 리터럴이 없다 — 축산 표 전이라 1 단위)', lits.join(',') || '0개');
+  ok(/kills\s*\/\s*hn/.test(strip(inc)) || /kills \/ hn/.test(strip(inc)),
+    '★★⑪ 소득 = **장부 마릿수 ÷ 사냥꾼 수**(1인분 · 엔진이 사람마다 부른다)');
+  ok(/if\(!\(hn>0\)\)return 0;|hn > 0/.test(strip(inc)),
+    '★★⑪ 사냥꾼이 0 이면 **소득 0**(0 으로 안 나눈다)');
+  //   ★★개체가 0 이면 소득도 0 — 붕괴가 소득에 보인다
+  ok(/v\._hkillDay\|\|0|v\._hkillDay \|\| 0/.test(strip(inc)),
+    '★★⑪ 그리고 **그날 잡은 수**를 읽는다(개체가 0 이면 잡은 수도 0 ⇒ 소득 0 — 붕괴가 보인다)');
+
+  //   ★하루 경계 — 어제치를 확정하고 오늘을 0 에서 센다(누계를 소득으로 쓰면 곳간이 폭발한다)
+  const dayAll = strip(bodyOf('lifeDayAll'));
+  ok(/_hkillDay\s*=\s*vil\._hkill\s*\|\|\s*0\s*;\s*vil\._hkill\s*=\s*0/.test(dayAll.replace(/\s+/g, ' ').replace(/ /g, '')) ||
+     /ev\._hkillDay=vil\._hkill\|\|0;vil\._hkill=0/.test(dayAll.replace(/\s/g, '')),
+    '★★⑪ 하루 경계에서 **어제치를 확정하고 오늘을 0 으로** 되돌린다(누계가 아니다)');
+  ok(/ECON_WORLD\.huntIncomeFn=/.test(dayAll.replace(/\s/g, '')),
+    '★★⑪ 주입은 **하루 경계 한 줄**이다');
+  ok(/'real'/.test(dayAll), "★⑪ 그리고 `real` 일 때만 심는다(abstract 면 안 심는다 = 비트 동일)");
+
+  //   ★차감 자리가 오늘 잡은 수를 **같은 문**에서 센다(계측 `_hstat` 와 한 줄 — 사본 0)
+  const rt = strip(bodyOf('resourceTick')).replace(/\s/g, '');
+  ok(/_hkill=\(s\._hkill\|\|0\)\+_tk/.test(rt),
+    '★★⑪ 잡은 수를 **실제로 뺀 그 자리**에서 센다(`_tk` — 따로 다시 계산하지 않는다)');
+  //   ★★자명 통과 금지 — `_tk` 는 포화 수확이라 상수가 아니다(위 ④⑤ 가 그걸 잠근다)
+  ok(/_tk=Math\.min\(_g0,huntTake\(_g0\)\)/.test(rt),
+    '★★⑪ 그리고 그 `_tk` 는 **포화 수확**이다(밀도를 따른다 — 상수 아님)');
 }
 
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
