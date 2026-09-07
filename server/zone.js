@@ -2684,6 +2684,8 @@ Wildlife.init({
   gameRichAt: (k) => { const ci = String(k).indexOf(','); return ci < 0 ? undefined
     : SimVillages.gameRichAt(+String(k).slice(0, ci), +String(k).slice(ci + 1)); },
   gameRichSize: () => SimVillages.gameRichSize ? SimVillages.gameRichSize() : 0,
+  // ★[T158] 뷰 사냥꾼의 하루 예산 — 장부가 그날 실제로 뺀 수(읽기만 · 정본은 `villages.js`).
+  huntBudgetOf: (p) => (SimVillages.huntVisLeft ? SimVillages.huntVisLeft(p) : Infinity),
   // §4-4 P3: 실체 전쟁 병사 pid 위치(px)를 야생 위협원으로 주입(_buildWarThreats 서버판 — 행군/전투 병사를 몹이 인지·회피).
   warThreats: () => SimVillages.warThreats(),
 });

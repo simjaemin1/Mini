@@ -4995,7 +4995,21 @@ const BAND_SALT = 0x7146;   // 자리 해시 소금(밴드 최소 보장 전용 
 function _t146() { const v = parseInt(process.env.T146_GAME, 10); return Number.isFinite(v) ? v : 1; }
 function _t146BuildMs() { const v = parseInt(process.env.T146_BUILD_MS, 10); return Number.isFinite(v) && v > 0 ? v : 20; }   // 밴드 구축 하루치(마을당 ms)
 function _t146Band() { const v = parseInt(process.env.T146_BAND, 10); return Number.isFinite(v) ? v : 1; }        // 밴드 최소 보장(0=끈다 · 종전 비트)
-function _t146BandAll() { return process.env.T146_BAND_ALL === '1'; }                                            // 1 = 카드 ① 문자 그대로(max 꼴 · 이미 밴드 있는 마을도 채운다)
+function _t146BandAll() { return process.env.T146_BAND_ALL === '1'; }
+function _t158() { const v = parseInt(process.env.T158_LEDGER_VIS, 10); return Number.isFinite(v) ? v : 1; }   // 뷰 사냥 = 장부 예산(0 = 지금 연출 그대로)
+/**
+ * ★★[T158 2026-09-07] **보이는 사냥은 장부의 연출이다** — 그날 그 사냥꾼에게 남은 마릿수.
+ *   `wildlife.js` 의 사냥꾼 두뇌가 이걸 읽고, 다 쓰면 **새 표적을 안 잡는다**(귀환).
+ *   ⚠**읽기 전용**이다 — 개체 장부(`_gameRich`)를 여기서 안 건드린다. 깎는 것은 하루 틱뿐이고
+ *     보이는 kill 은 그 수를 **다시 깎지 않는다**(이중 차감 0 · 랩 규약 "전투는 연출").
+ *   ⚠예산은 `huntHunters` 가 그날 **실제로 뺀 수**를 그대로 적어 둔 것이다 — 새 수 0.
+ *   @returns {number} 남은 마릿수(손잡이가 꺼져 있으면 `Infinity` = 종전 연출)
+ */
+function huntVisLeft(p) {
+  if (_t158() === 0) return Infinity;
+  if (!p) return 0;
+  return (p._huntBud || 0) - (p._huntKil || 0);
+}                                            // 1 = 카드 ① 문자 그대로(max 꼴 · 이미 밴드 있는 마을도 채운다)
 /**
  * ★밴드 최소 셀 수 — **`livelihood.landOf` 의 역함수**다(새 수 0 · 저쪽 상수만 쓴다).
  *   `land.game = FLOOR.game + GAIN.game × huntShare` 이므로 그 값을 **같은 환율로** 셀 몫으로 되돌리면
@@ -5156,8 +5170,12 @@ function huntHunters(vil, players, day) {
     const p = players && players.get(pid); if (!p || p.simJob !== 'hunter') continue;
     const w = p._huntWk || (p._workSite ? { cx: _cellOfPx(p._workSite.x), cy: _cellOfPx(p._workSite.y) } : null);
     const k = w ? _gameKey(vil, w.cx, w.cy) : null;
+    // ★[T158] 오늘 예산을 연다 — 어제 쓴 것은 여기서 지운다(하루 경계는 이 함수다).
+    //   ⚠예산은 아래에서 **실제로 뺀 수**를 그대로 적는 것이라 새 수가 없다.
+    p._huntBud = 0; p._huntKil = 0;
     if (k !== null) {
-      took += huntTakeAt(vil, w.cx, w.cy, 1);                       // ★랩 10821 — 먼저 잡는다
+      const t0h = huntTakeAt(vil, w.cx, w.cy, 1);                   // ★랩 10821 — 먼저 잡는다
+      took += t0h; p._huntBud = t0h;                                // ★[T158] 이 사람이 오늘 잡은 수 = 뷰 연출의 예산
       const ci0 = k.indexOf(',');
       p._huntWk = { cx: +k.slice(0, ci0), cy: +k.slice(ci0 + 1) };  // 표본 격자에 맞춰 둔다(랩 `a.work` 는 늘 격자다)
     }
@@ -6280,7 +6298,7 @@ module.exports = {
   // Stage 4A — zone.js 소비: 농지 lazy 실물화 / welcome 영토 페이로드 / 레거시 디듀프 판정
   farmTilesInRect, clientVillages, isLegacyVillageClaimed,
   // ★[T146] 사냥 개체군 — 정본을 그대로 내준다(하네스·wildlife·zone 이 이것을 부른다 · 사본 0)
-  gameRichAt, gameRichSize, huntKillAt, huntTake, huntTakeAt, huntHunters, huntDeforest, _gameKey, _cellOfPx, _bandMinCells, _bandFloorFill, _t146Band, _t146BandAll, _t146BuildMs, _huntBandBuild, _lifeGameDay,
+  gameRichAt, gameRichSize, huntKillAt, huntTake, huntTakeAt, huntHunters, huntVisLeft, _t158, huntDeforest, _gameKey, _cellOfPx, _bandMinCells, _bandFloorFill, _t146Band, _t146BandAll, _t146BuildMs, _huntBandBuild, _lifeGameDay,
   L_GAMEMAX, L_GAMER, L_HUNT, L_GAMEHALF, _t146,
   // ★[T119] 구조 사건 접점 — `zone.js` 가 살아난 그 순간에 한 줄 남긴다(완공 `noteVillageBuilt` 와 같은 자리)
   noteRescue,
