@@ -14,3 +14,10 @@
 * ⚠**랩은 그냥 두면 두 번이 다르다**(`Math.random`). 랩 표를 인용하는 도구는 `test-lab-mining` 처럼 페이지 뜨기 전에 PRNG 를 시드로 갈아 끼워라 — `scripts/lab-trees.js` 가 그 예다.
 
 * ★[T157 2026-09-07] **행복 → 작업량** — `L_HAPPYWORK`(기본 0.24 · 토글 `끔`/`H=0.24`). 계수는 엔진이 안 갖고 랩이 `world.happyWorkW` 로 준다(서버 무접촉 · 비트 동일). 출처 Oswald·Proto·Sgroi 2015. 표 `scripts/lab-happywork-ab.js` · 하네스 `scripts/test-lab-happywork.js` · 보고 `보고/T157_2026-09-07.md`.
+## 배분 — 실현 산출 손잡이 (T161 · 2026-09-07 · **기본 꺼짐**)
+
+`window.L_ALLOC_REAL = 1` 을 `lifeInit` **전에** 심으면 배분식의 "양"이 땅의 상수가 아니라
+**직업별 1인당 실현 산출**(엔진 버퍼 `dailyProductionBuf` 의 EMA · 창 = `period`)이 되고,
+값 자리도 그 직업의 **실제 바구니**(엔진 표가 정한다) 양가중 평균이 된다. 창 배수는 `window.L_ALLOC_WIN`
+(0 = 평활 없음 · 돌연변이용). **기본은 0 — 이 랩이 다른 세션의 기준선이라 조용히 움직이면 안 된다.**
+전문 `보고/T161_2026-09-07.md`(4팔 3시드 · 폭주 · 창 길이 표) · 하네스 `scripts/test-lab-alloc.js`.

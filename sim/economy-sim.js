@@ -419,6 +419,14 @@ const FORAGE_FOOD_FACTOR = { fruit: 0.4, vegetable: 0.4, mushroom: 0.3,
   //   잡히고도 안 먹혀 수천 단위 썩던 유령(실측 시드7 @700d: 연어 2519·새우 2287·게 1433·굴 1330 = 식량등가 ~7,500).
   //   1차(견과·해조) 선례 그대로 편입 — 연안 마을이 제 어획을 실제로 먹는다(고증). 계수 보수적(생선 1.0 대비 손질·저열량).
   salmon: 0.7, shrimp: 0.35, crab: 0.35, oyster: 0.3 };
+// ★★[T161 2026-09-07 · T135 3판 누락 수리] **오디(`mulberry_fruit`)에 소비처가 없었다.**
+//   3판이 `specialty.RESOURCES` 에는 등재했는데(팔린다) 이 표에는 안 넣어서, 800일에 4,095 를 걷어도
+//   **식량등가가 0** 이었다(T151 §ⓐ 실측 · 먹히지도 K 에 잡히지도 않는 그 "유령" 모양 그대로다).
+//   ⇒ **새 수 0** — 이 표가 이미 쥔 산포도(`grape` 0.3) 값을 그대로 쓴다. 근거는 이 표 자신의 규칙이다:
+//     위 주석이 *"계수 보수적(≤0.5) … 산포도 0.3"* 이라 적었고, 오디는 같은 부류(작은 산과일)다.
+//     (3판이 `specialty` 에서 고른 형제는 산딸기 `fruit_berries` 인데, 이 표에는 산딸기 줄이 없다 —
+//      이 표에서 이름 붙은 산과일의 선례는 `grape` 하나다.)
+FORAGE_FOOD_FACTOR.mulberry_fruit = FORAGE_FOOD_FACTOR.grape;
 
 // 소비 (일일 1인당)
 const DAILY_FOOD_CONSUMPTION = 1.0;
@@ -3698,8 +3706,28 @@ function pickDeficitJob_rational(v, world) {
   }
   // ★대장장이·무기장·갑옷장은 marginal 후보에서 제외 — 위의 스톡-플로우 노동목표(smithTarget 등)가
   //   전담 결정. 자본재 장인을 식량·자원직과 한계가치로 경쟁시키면 글럿 마을서 과잉(도구가격 floor 탓).
-  candidates.sort((a, b) => b[1] - a[1]);
-  if (candidates.length > 0) return candidates[0][0];
+
+  // ★★★[T161 2026-09-07] **배분 주입 문 하나.** T151 이 잡은 결함은 위 후보 목록의 "양" 자리가
+  //   **실현 산출이 아니라 땅의 상수**라는 것이다(`land.fertility*0.4` 따위). 실현 산출이 85% 떨어져도
+  //   배분은 못 보고, 값 자리도 실제 바구니와 다르다(보고 T151 ⓑ).
+  //   ⇒ 처방은 **랩에서 먼저** 세운다(T151 ⓒ 판정: 이 성질은 랩에서 그대로 난다 = 랩이 정본).
+  //     이 파일이 하는 일은 **문 하나**뿐이다 — 후보 목록을 바깥이 다시 쓸 수 있게 넘긴다.
+  //   ⚠`world.allocFn` 이 없으면(서버 · v1 CLI · 하네스 · 픽스처) **한 글자도 안 바뀐다** —
+  //     아래 sort/return 이 종전 그대로 돈다(비트 동일). 되돌림은 "문을 안 여는 것"이다.
+  //   ⚠문은 **후보 목록만** 준다. 게이트(기근·석재·도구·자본재 노동목표)는 위에서 이미 return 했다 —
+  //     그 판단은 배분식이 아니라 **안전망**이고, 이 문은 거기까지 손대지 않는다.
+  let _cands = candidates;
+  if (world && typeof world.allocFn === 'function') {
+    const _alt = world.allocFn(v, world, candidates, {
+      period, cap, counts, forageLandMean,
+      w,                                   // ★같은 가격 접근자를 그대로 넘긴다(사본 0)
+      forageYields: () => foragerYieldsFor(v),   // 게으르다 — 문이 안 열리면 안 부른다
+      JOBS,
+    });
+    if (Array.isArray(_alt) && _alt.length > 0) _cands = _alt;
+  }
+  _cands.sort((a, b) => b[1] - a[1]);
+  if (_cands.length > 0) return _cands[0][0];
   return null;
 }
 
