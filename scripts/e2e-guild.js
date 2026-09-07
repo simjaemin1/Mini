@@ -75,6 +75,7 @@ const last = (C) => JSON.stringify(C.notices.slice(-1));
     PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB,
     CENTRAL_URL: `http://localhost:${CPORT}`,
     VILLAGE_MAX: '2', VILLAGE_DAY_MS: '2000',
+    E2E_GIVE: '1',        // ★[T159] `__e2e_body` 로 소속을 앉힌다(T11 이 낸 검사 전용 손잡이)
     ENABLE_BANDITS: '0', ENABLE_ROADS: '0', ENABLE_WILDLIFE: '0',
   });
   ok(await waitHttp(`http://localhost:${CPORT}/zones`), '⓪ central 기동');
@@ -277,7 +278,9 @@ const last = (C) => JSON.stringify(C.notices.slice(-1));
     //     (초안이 그래서 0건을 봤다). 여기서 세는 것은 **SQL 문**이라 원문 그대로가 맞다.
     const added = (cen.match(/ALTER TABLE tribes ADD COLUMN (\w+)/g) || []).map((x) => x.split(' ').pop());
     ok(added.includes('join_mode') && added.includes('intro'), '⑥b 새 컬럼 **둘**이 있다', added.join(' '));
-    ok(added.length === 7, '⑥b2 ★`tribes` 의 컬럼 증설은 **일곱**이다(종전 다섯 + 이 카드 둘) — 하나 더 늘면 여기가 빨개진다', added.length);
+    //   ★[T159 2026-09-07] 일곱 → **여덟**. `granary_open` 하나를 더했다. 이 줄은 손으로 세는 자리라
+    //     늘 때마다 고쳐야 하고, **고치는 그 행위가 곧 "컬럼을 늘렸다"는 자백**이다(그게 이 검사의 뜻이다).
+    ok(added.length === 8, '⑥b2 ★`tribes` 의 컬럼 증설은 **여덟**이다(T128 일곱 + T159 하나) — 하나 더 늘면 여기가 빨개진다', added.length);
     ok(/onbEsc\(v\.intro\)/.test(lob), '⑥c ★사람이 쓴 문장은 **그리는 쪽이 막는다**(꺾쇠 이스케이프)');
     ok(!/slice\(0, ?60\)|substring\(0, ?60\)/.test(codeOnly(lob)), '⑥d ★길이 상한을 로비가 **다시 자르지 않는다**(사본 0)');
     ok(/'guild'/.test(codeOnly(nt)) && (codeOnly(nt).match(/KINDS = \[/g) || []).length === 1, '⑥e 알림 종류 표는 **하나**이고 거기에 `guild` 가 있다');
@@ -303,6 +306,88 @@ const last = (C) => JSON.stringify(C.notices.slice(-1));
        (fj.match(/이\(가\) 벗이 되자고 청했다/g) || []).length);
     ok((gj.match(/자네를 부른다/g) || []).length === 1, '★⑥i2 길드 부름 문장도 **한 자리**다(`calledLine`)',
        (gj.match(/자네를 부른다/g) || []).length);
+  }
+
+  // ── ⑦ [T159] 마을 소속 · 곳간 인출 — 길드 마을의 문 ─────────────────────
+  //   ⚠central 은 ⑤에서 죽였다 ⇒ 이 절은 **central 없이 되는 것만** 잰다:
+  //     소속 표지 · 인출 한 자리 · 곳간 실제 감소 · 비소속 거절. 길드 문(central 판정)은
+  //     `test-membership ⑪e` 가 "못 물어보면 열린 것으로 본다"까지, central 라우트 자체는 ⑧이 소스로 본다.
+  {
+    const si7 = await jget(`http://localhost:${ZPORT}/startinfo`);
+    ok(!!(si7 && si7.ok && si7.villages.length), '⑦ 전제: 시작 화면이 마을을 안다', si7 && si7.villages.length);
+    ok(si7.villages.every((v) => typeof v.member === 'number'),
+       '★★⑦ 시작 화면의 **모든 줄에 소속 칸**이 있다(T115 `friendsHere` 와 같은 문법)');
+    ok(si7.villages.every((v) => v.member === 0), '⑦b 아직 아무도 마을 사람이 아니다(자명 통과 금지의 앞면)');
+    const V0 = si7.villages[0];
+
+    // ⓐ 소속이 없으면 곳간이 안 열린다
+    O.notices.length = 0; say(O, '/곳간'); await sleep(1200);
+    ok(O.notices.some((t) => /마을 사람이 아니다/.test(t)), '★⑦c 마을 사람이 아니면 **곳간을 못 연다**', last(O));
+
+    // ⓑ 소속을 앉히고(검사 전용 손잡이) 마을 앞에 선다
+    O.ws.send(JSON.stringify({ type: '__e2e_body', quiet: true,
+      member: { zone: 'hanbando', vid: V0.vid | 0, name: V0.name, since: 0, wdDay: -1, wdUsed: 0 } }));
+    await sleep(800);
+    //   ⚠`startInfo` 의 `cx,cy` 는 **존 로컬 셀**이다 — 텔레포트는 **px** 를 받는다(`cx*32+16` · e2e-verbs 규약).
+    //     초안이 셀 값을 그대로 보내 "마을 중심에서 너무 멀다"를 받았다(근접 게이트가 제 일을 한 것이다).
+    const AX = (V0.cx | 0) * 32 + 16, AY = (V0.cy | 0) * 32 + 16;
+    for (let i = 0; i < 20; i++) {
+      O.notices.length = 0;
+      O.ws.send(JSON.stringify({ type: 'teleport_debug', x: AX + i * 31, y: AY + i * 17 }));
+      await sleep(400);
+      if (O.notices.some((t) => /텔레포트 →/.test(t))) break;
+    }
+    O.notices.length = 0; say(O, '/곳간'); await sleep(1500);
+    const line0 = O.notices.find((t) => /곳간 —/.test(t)) || '';
+    ok(!!line0, '★⑦d 마을 사람이 되니 **곳간이 형편을 말한다**', JSON.stringify(line0));
+    const stock0 = parseFloat((/식량 재고 ([\d.]+)/.exec(line0) || [])[1]);
+    ok(Number.isFinite(stock0) && stock0 > 0, '⑦d2 전제: 곳간에 식량이 실제로 있다', stock0);
+
+    // ⓒ 사람 말로 꺼낸다 — 그리고 곳간이 **실제로 준다**
+    O.notices.length = 0; say(O, '/곳간 식량 1'); await sleep(1800);
+    ok(!O.notices.some((t) => /그런 물건은 없다/.test(t)), '⑦e ★"식량"이라는 우리말이 재화로 풀린다', last(O));
+    O.notices.length = 0; say(O, '/곳간'); await sleep(1500);
+    const line1 = O.notices.find((t) => /곳간 —/.test(t)) || '';
+    const stock1 = parseFloat((/식량 재고 ([\d.]+)/.exec(line1) || [])[1]);
+    ok(Number.isFinite(stock1) && stock1 < stock0,
+       '★★⑦e2 곳간이 **실제로 줄었다** — 가짜 인출이 아니다', `${stock0} → ${stock1}`);
+
+    // ⓓ 모르는 말은 아무것도 안 준다(자명 통과 금지의 뒷면)
+    O.notices.length = 0; say(O, '/곳간 없는물건 1'); await sleep(1500);
+    ok(O.notices.some((t) => /그런 물건은 없다/.test(t)), '★⑦f 모르는 말엔 **아무것도 안 나온다**', last(O));
+    O.notices.length = 0; say(O, '/곳간'); await sleep(1500);
+    const stock2 = parseFloat((/식량 재고 ([\d.]+)/.exec(O.notices.find((t) => /곳간 —/.test(t)) || '') || [])[1]);
+    ok(stock2 === stock1, '⑦f2 그리고 곳간도 그대로다', `${stock1} → ${stock2}`);
+
+    // ⓔ 시작 화면이 소속을 안다 — **접속 중인 사람만**(honest: 그 한계를 여기 적는다)
+    const si8 = await jget(`http://localhost:${ZPORT}/startinfo?as=outsider`);
+    const row = si8 && si8.ok && si8.villages.find((v) => v.vid === V0.vid);
+    ok(!!row && row.member === 1, '★★⑦g `startInfo?as=<이름>` 이 **그 사람의 소속**을 답한다', row && row.member);
+    const si9 = await jget(`http://localhost:${ZPORT}/startinfo?as=leader`);
+    const row9 = si9 && si9.ok && si9.villages.find((v) => v.vid === V0.vid);
+    ok(!!row9 && row9.member === 0, '⑦g2 ★남의 소속은 안 붙는다(보는 사람 기준)', row9 && row9.member);
+  }
+
+  // ── ⑧ [T159] 소스 — 컬럼 하나 · 인출 경로 하나 · 이름표 한 자리 ──────────
+  {
+    const cen = fs.readFileSync(path.join(ROOT, 'server', 'central.js'), 'utf8');
+    const zn = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
+    const mem = fs.readFileSync(path.join(ROOT, 'server', 'membership.js'), 'utf8');
+    const rl = fs.readFileSync(path.join(ROOT, 'public', 'client', '34-m-renderloop.js'), 'utf8');
+    const added = (cen.match(/ALTER TABLE tribes ADD COLUMN (\w+)/g) || []).map((x) => x.split(' ').pop());
+    ok(added.includes('granary_open'), '⑧ 길드 표에 **컬럼 하나**를 더했다', added.join(' '));
+    ok(added.length === 8, '★⑧b `tribes` 컬럼 증설은 **여덟**이다(T128 일곱 + 이 카드 하나)', added.length);
+    //   ★인출 경로는 하나다 — `/곳간` 이 제 손으로 재고를 만지지 않는다
+    const gran = mem.slice(mem.indexOf("if (cmd === '/곳간')"), mem.indexOf("if (cmd === '/인출')"));
+    ok(gran.length > 400, '⑧c 전제: `/곳간` 절을 실제로 찾았다', gran.length);
+    ok(/withdraw\(player, vid, r0, n\)/.test(gran), '★★⑧c2 `/곳간` 은 **인출 정본을 부른다**(제 길을 안 낸다)');
+    ok(!/storage\[/.test(gran) && !/playerVillageWithdraw\(/.test(gran),
+       '★★⑧c3 그 절은 **곳간을 직접 안 만진다**(사본 0)');
+    //   ★이름표 표지는 벗 비트와 같은 자리
+    ok(/e\.mb = Membership\.memberOf\(o\) \? 1 : 0/.test(zn), '⑧d 마을 표지 1비트는 **정본을 부를 뿐**이다');
+    ok(/o\.fr \? '벗 ' : \(o\.mb \? '마을 ' : ''\)/.test(rl), '★⑧d2 그 비트가 화면에서 **낱말 하나**가 된다(이모지 0)');
+    ok(!/[\u{1F300}-\u{1FAFF}]/u.test((rl.match(/o\.fr \? '벗 '[^\n]*/) || [''])[0]), '⑧d3 그 낱말에 이모지가 없다');
+    ok(cen.length > 1000 && zn.length > 1000 && mem.length > 1000 && rl.length > 1000, '⑧e (자명 통과 방지) 네 파일을 실제로 읽었다');
   }
 
   close(L); close(M); close(O); close(K);

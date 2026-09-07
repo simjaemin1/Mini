@@ -108,6 +108,9 @@ const tribeMode = (playerId, mode) => _softDoor('POST', '/tribe/mode')({ player_
 const tribeIntro = (playerId, intro) => _softDoor('POST', '/tribe/intro')({ player_id: playerId, intro });
 // ★[T139] 밀린 친구 요청 — 문 하나. 실패는 빈 답(`ok:false`)이라 로그인이 안 막힌다.
 const friendPending = (playerId) => _softDoor('POST', '/friend/pending')({ player_id: playerId });
+// ★[T159] 길드 곳간 문 — 읽기 하나 · 쓰기 하나. 실패는 빈 답(막지 않는다).
+const tribeGranary = (tribeId) => _softDoor('POST', '/tribe/granary')({ tribe_id: tribeId | 0 });
+const tribeGranarySet = (playerId, open) => _softDoor('POST', '/tribe/granary_set')({ player_id: playerId, open: !!open });
 async function tribeIntros() {
   try {
     const r = await request('GET', '/tribe_intros');
@@ -146,5 +149,5 @@ async function getTribe(id) {
 module.exports = { authenticate, checkUsernameTaken, getPlayer, updatePlayer, request,
   guestIdentity, promoteGuest,   // ★[배치 13] 게스트 영속 신원 · ★[배치 14] 승계
   friendRequest, friendRemove, friendsOf, friendsOfName, friendPending,   // ★[T139] 밀린 요청 문 하나
-  tribeInvite, tribeInvites, tribeInviteAccept, tribeMode, tribeIntro, tribeIntros,   // ★[T128] 길드 문 여섯   // ★[T115] 친구 — 문 셋(실패는 빈 답)
+  tribeInvite, tribeInvites, tribeInviteAccept, tribeMode, tribeIntro, tribeIntros, tribeGranary, tribeGranarySet,   // ★[T128] 길드 문 여섯   // ★[T115] 친구 — 문 셋(실패는 빈 답)
   tribeAddVp, tribeTreasury, tribeNpcUpsert, getTribe };

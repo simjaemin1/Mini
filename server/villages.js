@@ -4435,6 +4435,21 @@ function villageWithdrawGate(vid, px, py) {
   return _villageNear(vid, px, py);
 }
 
+// ★★[T159 2026-09-07] **마을이 굶는 날인가** — 엔진의 판단을 **읽는다**(다시 세지 않는다).
+//   §0-ⓑ 실측: 굶주림 술어는 `economy-sim.js` 의 인구식 안에 **인라인**으로 산다
+//     (`surplusEMA.food < 0 && totalFoodEquivalent(v) < N*3` · `foodGap > 0`) — 밖으로 안 나온다.
+//   ⇒ 그런데 그 식이 **자기 판정을 매일 적어 둔다**: `v._dpDebug.hunger`(= `_hungerTerm`).
+//     음수면 그날 인구식이 굶주림으로 사람을 깎았다는 뜻이다. **그 부호 하나가 곧 기근이다.**
+//   ⚠술어를 여기 옮겨 적지 않는다 — 그게 사본이고, 문턱(N×3)이 바뀌는 날 둘이 갈린다.
+//     그리고 `sim/**` 은 이 카드가 못 건드린다(econ 무수정) ⇒ **읽는 쪽**이 맞는 자리다.
+//   ⚠아직 하루도 안 돈 마을은 `_dpDebug` 가 없다 — 그건 "모른다"이고 **막지 않는다**(false).
+function villageFamine(vil) {
+  const v = vil && vil.econ;
+  const d = v && v._dpDebug;
+  if (!d || !Number.isFinite(d.hunger)) return false;
+  return d.hunger < 0;
+}
+
 // ═══ ★★[T62 2026-09-03 재민 확정] 공용 쉼터 — 좌표 정본 하나 ═══════════════════
 //
 // ★★**"쉼터"라는 말이 이 저장소에서 여섯 자리를 가리키고 있었다**(§0 실측):
@@ -6320,6 +6335,7 @@ module.exports = {
   shelterOf, hasShelter, addShelter, ensureShelter, pickShelterSpot, villageOfCell,   // ★[T62] 공용 쉼터 — 좌표 정본 하나
   cropAtCell,   // ★[T91 · T79c 회부 1] 그 칸의 작물 — claim 페이로드가 이걸 싣는다(사본 0)
   playerVillageWithdraw, playerVillageWithdrawStock, villageWithdrawGate,   // ★[T11] 곳간 인출 — 납품의 역연산(같은 표·같은 환산율)
+  villageFamine, playerVillageDepositMap,   // ★[T159] 기근 판정(엔진 판단을 읽는다) · 품목→재화 대응표
   playerVillageWithdrawStockFoodEq, _countsAsFoodEq,   // ★[T20-ⓑ] 한도의 밑변 = econ 식량 등가(보존식 포함)
   // ★[2026-08-25 사건 레이어] 촌장 브리핑 · 게시판 · 납품 — zone.js 핸들러가 소비
   villageBrief, villageBoard, villageDeliver, villageAnchorPx, briefRadiusPx,

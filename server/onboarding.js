@@ -544,6 +544,8 @@ function startInfo(opts) {
   // ★[T115] `opts.friendVids` — vid → 친구 수(Map). **여기서 세지 않는다**: 세는 정본은
   //   `server/friends.js` 이고 이 함수는 그 결과를 줄에 얹기만 한다(클라 재계산 0 규약의 서버 쪽 짝).
   const fv = (opts && opts.friendVids instanceof Map) ? opts.friendVids : null;
+  //   ★[T159] `opts.memberVid` — 그 사람이 소속한 마을 하나(없으면 null). 세는 곳은 `membership.js` 다.
+  const mv = (opts && opts.memberVid != null) ? (opts.memberVid | 0) : null;
   const list = _villages();
   if (!list) return { ok: false, err: 'not_ready' };
   const counts = _econCounts();
@@ -593,6 +595,11 @@ function startInfo(opts) {
       // ★[T128] 마을 소개문 — 그 마을을 세운 **길드장이 쓴 한 줄**(길이 상한은 central 하나).
       //   유저 마을에만 붙는다: NPC 마을엔 세운 길드가 없다(그래서 `v.player` 게이트가 여기 산다).
       intro: (v.player && H.introOfVillage) ? (H.introOfVillage(v.id) || '') : '',
+      // ★★[T159 2026-09-07] **내가 이 마을 사람인가** — `friendsHere`·`player` 와 같은 문법(서버가 세고 로비는 그린다).
+      //   ⚠로비는 로그인 **전**이라 `player_id` 를 모른다 ⇒ T115 가 낸 `?as=<이름>` 갈래를 그대로 탄다.
+      //   ⚠**지금 이 존에 접속해 있는 사람**만 답할 수 있다(소속은 몸에 실려 있다 · T11 제3 규약).
+      //     로그아웃한 사람의 소속을 로비에서 읽으려면 몸을 꺼내 봐야 하고 그건 이 카드가 아니다(회부).
+      member: (mv != null && (mv | 0) === (v.id | 0)) ? 1 : 0,
     });
   }
   // 추천 = "이방인 환영" — 도착 지점이 성립하고(배산임수 감사 합격) · 쉼터가 되고(사람이 산다) ·
@@ -847,7 +854,7 @@ function httpStartInfo(req, res) {
   // ★★[T115] `?as=<이름>` — 로비는 **아직 로그인 전**이라 자기 `player_id` 를 모른다.
   //   게스트 토큰으로 물으면 안 된다(그건 열쇠다 · 배치 13). 그래서 **이름**으로 묻고 세는 건 서버가 한다.
   //   ⚠못 물어봐도 **막지 않는다** — 친구 칸이 0 일 뿐 시작 화면은 그대로 뜬다.
-  let friendVids = null;
+  let friendVids = null, memberVid = null;
   try {
     const q = String(req.url || '').split('?')[1] || '';
     const m = /(?:^|&)as=([^&]*)/.exec(q);
@@ -855,8 +862,10 @@ function httpStartInfo(req, res) {
     //   ⚠**여기서 기다리지 않는다.** 캐시로만 답하고 갱신은 뒤에서 돈다(`friends.js nameVids` 주석 —
     //     1차 실장이 여기서 기다렸다가 온보딩 대본의 시계를 밀어 하네스를 깼다).
     if (asName && H && H.friendVidsByName) friendVids = H.friendVidsByName(asName);
+    //   ★[T159] 소속도 같은 이름으로 묻는다 — **접속 중인 사람만** 답이 있다(위 `member` 칸 주석).
+    if (asName && H && H.memberVidByName) memberVid = H.memberVidByName(asName);
   } catch (e) { friendVids = null; }
-  try { res.end(JSON.stringify(startInfo({ friendVids }))); }
+  try { res.end(JSON.stringify(startInfo({ friendVids, memberVid }))); }
   catch (e) { res.end(JSON.stringify({ ok: false, err: e.message })); }
 }
 

@@ -96,6 +96,13 @@ async function waitHttp(url, tries = 900) {
   ok(info.villages.every((v) => typeof v.news === 'string' && v.news.length > 0), '★근황 한 줄이 붙어 온다 — 세계가 살아있다는 첫 증명(§9.1)',
     JSON.stringify(info.villages.map((v) => `${v.chEmo}${v.name}: ${v.news}`).slice(0, 2)));
   ok(info.recommend != null, '"아무 곳이나(추천)"가 가리킬 마을이 있다', `vid=${info.recommend}`);
+  // ★★[T159 2026-09-07] 소속 칸 — `friendsHere`·`player` 와 **같은 문법**(서버가 세고 로비는 그린다).
+  //   ⚠여기서 재는 것은 **칸이 있고 기본이 0** 이라는 것뿐이다. "소속이 실제로 1 이 되는가"는
+  //     central·길드 판이 서 있어야 해서 `e2e-guild ⑦g` 가 잰다(그 하네스가 그 판을 이미 세운다).
+  ok(info.villages.every((v) => typeof v.member === 'number'),
+    '★[T159] 시작 화면의 **모든 줄에 소속 칸**이 있다');
+  ok(info.villages.every((v) => v.member === 0),
+    '★[T159] 아직 아무도 마을 사람이 아니다(자명 통과 금지 — 칸이 늘 1 이면 뜻이 없다)');
 
   const { chromium } = require('playwright');
   const browser = await chromium.launch({ headless: !HEADED, executablePath: require('playwright').chromium.executablePath() });

@@ -331,6 +331,47 @@ console.log('\n⑩ ★이 하네스가 실패할 줄 아는가 — 일부러 틀
      `${b0} → ${+VIL.econ.storage.food}`);
 }
 
+// ═══ ⑪ ★★[T159 2026-09-07] 기근 · 길드 문 · 품목 이름 ═════════════════════════
+//   이 절이 재는 것: 한도(기여)와 재고(실물) **위에** 마을의 형편이 하나 더 있다는 것.
+{
+  console.log('\n⑪ ★[T159] 굶는 마을은 곳간을 안 연다 · 길드장이 문을 잠근다 · 사람 말로 부른다');
+  const p = mkPlayer('mb_famine');
+  const s = Onb.stateOf(p.playerId); s.contrib = M.CFG.N_MEMBER; Onb.__probe.save(p.playerId, s);
+  const acc = M.accept(p, VID);
+  ok(acc.ok, '⑪ 전제: 문턱을 채워 마을 사람이 됐다', acc.ok ? `기여 ${acc.contrib}` : acc.err);
+  VIL.econ.storage.food = Math.max(50, +VIL.econ.storage.food || 0);
+  const before = +VIL.econ.storage.food;
+  //   ⓐ 굶지 않는 날 — 꺼내진다(자명 통과 금지의 앞면)
+  delete VIL.econ._dpDebug;
+  ok(!Villages.villageFamine(VIL), '⑪a 전제: 아직 굶는다는 판단이 없다(모르면 막지 않는다)');
+  const w0 = M.withdraw(p, VID, 'food', 1);
+  ok(w0.ok, '⑪a2 전제: 평시엔 꺼내진다', w0.ok ? `${w0.item} ${w0.qty}` : w0.err);
+  ok(+VIL.econ.storage.food < before, '⑪a3 전제: 그때 곳간이 실제로 줄었다', `${before} → ${+VIL.econ.storage.food}`);
+  //   ⓑ 굶는 날 — 엔진이 제 판단을 적어 두면(`_dpDebug.hunger < 0`) 곳간이 안 열린다
+  VIL.econ._dpDebug = { hunger: -0.42, dP: -0.4 };
+  ok(Villages.villageFamine(VIL), '⑪b 전제: 엔진의 판단을 **읽었다**(다시 세지 않았다)', VIL.econ._dpDebug.hunger);
+  const mid = +VIL.econ.storage.food;
+  const w1 = M.withdraw(p, VID, 'food', 1);
+  ok(!w1.ok && /굶고 있다/.test(w1.err || ''), '★★⑪b2 굶는 마을은 **곳간을 안 연다**', w1.err);
+  ok(+VIL.econ.storage.food === mid, '★⑪b3 그리고 곳간은 **한 톨도 안 줄었다**(거절이 진짜다)', `${mid} → ${+VIL.econ.storage.food}`);
+  //   ⓒ 판단이 양수면(굶지 않는다) 다시 열린다 — 부호 하나가 문이다
+  VIL.econ._dpDebug = { hunger: 0, dP: 0.1 };
+  ok(!Villages.villageFamine(VIL), '⑪c 굶주림 항이 0 이면 기근이 아니다(부호 하나가 문이다)');
+  const w2 = M.withdraw(p, VID, 'food', 1);
+  ok(w2.ok, '⑪c2 ★★그러면 다시 열린다 — 이 게이트는 **그 판단만** 본다', w2.ok ? `${w2.item} ${w2.qty}` : w2.err);
+
+  //   ⓓ 품목 이름 — 사람이 부르는 말로 재화를 찾는다(표는 남의 정본 셋)
+  ok(M.resolveRes('food') === 'food', '⑪d 재화 키 그대로');
+  ok(M.resolveRes('식량') === 'food', '⑪d2 ★재화의 우리말(`ItemLabel.CATEGORY_KO`)', M.resolveRes('식량'));
+  ok(M.resolveRes('wood') === 'wood' && M.resolveRes('나무') === 'wood', '⑪d3 ★나무도 같은 길로 풀린다', M.resolveRes('나무'));
+  ok(M.resolveRes('berry') === 'fruit', '⑪d4 ★품목 키는 **납품 대응표**로 재화가 된다(`playerVillageDepositMap`)', M.resolveRes('berry'));
+  ok(M.resolveRes('없는것') === null, '★⑪d5 자명 통과 금지 — 모르는 말은 **null** 이다(아무거나 안 준다)');
+
+  //   ⓔ 길드 문 — central 을 못 물어보면 **열린 것으로 본다**(막지 않는다)
+  ok(M.granaryOpen(0) === true, '⑪e 길드가 없는 마을엔 문이 없다(NPC 마을)');
+  ok(M.granaryOpen(999) === true, '★⑪e2 못 물어본 길드의 문은 **열린 것으로 본다**(T115 규약 ②)');
+}
+
 console.log(`\n=== PASS ${pass} / FAIL ${fail} ===`);
 try { _db.close(); fs.unlinkSync(process.env.DB_PATH); } catch (e) {}
 process.exit(fail ? 1 : 0);

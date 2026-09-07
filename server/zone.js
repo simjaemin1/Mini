@@ -2775,6 +2775,18 @@ Onboarding.init({ SimVillages, terrain: _terrain, ZONE, ZONE_ID, db: db.db, send
   // ★[T115] 함께 도착 — 이름으로 물어 **vid → 벗 수**를 낸다. 세는 정본은 `friends.js` 하나다.
   //   ⚠못 물어보면 `null` 이고 시작 화면은 친구 칸 0 으로 그대로 뜬다(막지 않는다).
   friendVidsByName: (name) => Friends.nameVids(name),
+  //   ★[T159] 그 이름의 사람이 소속한 마을 하나 — **접속 중인 사람만** 안다(소속은 몸에 실려 있다).
+  //     판정은 `membership.js` 정본(`memberOf`)이 하고 여기선 이름으로 사람을 찾을 뿐이다.
+  memberVidByName: (name) => {
+    try {
+      for (const p of players.values()) {
+        if (p.isNpc || p.name !== name) continue;
+        const m = Membership.memberOf(p);
+        return m ? (m.vid | 0) : null;
+      }
+    } catch (e) {}
+    return null;
+  },
   // ★[T128] 마을 소개문 — 마을과 길드를 잇는 것은 `_tribeId` 하나다(여기서 새로 잇지 않는다).
   //   ⚠**캐시로만** 답한다(요청 경로에서 central 을 안 기다린다 — T115 가 여기서 물렸다).
   introOfVillage: (vid) => {
@@ -2789,6 +2801,9 @@ Onboarding.init({ SimVillages, terrain: _terrain, ZONE, ZONE_ID, db: db.db, send
 //   기여 계량기는 안 넘긴다: `membership.js` 가 온보딩 정본을 직접 읽는다(계량기는 하나다).
 // ★[T20 회부 · 2026-09-03] 인출 하루 몫도 **같은 시계**를 센다(위와 같은 이유 — 시계 둘 금지).
 Membership.init({ SimVillages, ZONE_ID, send, players, gameDay: gameDayNow,
+  //   ★[T159] 길드 곳간 문(central 이 판정) · 품목의 우리말(존이 들고 있는 이름표).
+  //     ⚠이름표는 **함수로** 넘긴다 — 표가 이 줄보다 뒤에서 완성된다(`Rescue.init` 선례).
+  central, itemLabel: () => ITEM_LABEL_SERVER,
   afterWithdraw: (player, r) => _afterWithdraw(player, r) });
 
 // ★[T45 2026-09-02] 사유지 v2 — **이미 있는 것만 넘긴다**(사본 금지).
@@ -11594,7 +11609,12 @@ setInterval(() => {
         //     `refreshTags` 가 그 둘을 다시 처음 본 것으로 만들어 이 줄이 다시 나간다.
         //   ⚠1 일 때만 싣지 **않는다**: 벗을 끊으면 `refreshTags` 가 이 줄을 다시 내보내는데,
         //     그때 키가 없으면 클라의 승계 규약(`미수신 = 유지`)이 옛 1 을 붙들어 **표지가 안 지워진다.**
-        if (viewer && !o.isNpc && o.playerId) e.fr = Friends.isFriend(viewer, o.playerId) ? 1 : 0; }
+        if (viewer && !o.isNpc && o.playerId) e.fr = Friends.isFriend(viewer, o.playerId) ? 1 : 0;
+        // ★★[T159 2026-09-07] **마을 사람 1비트** — 벗 비트와 **같은 문법**이다(같은 창 · 0 도 싣는다).
+        //   ⚠벗과 달리 **보는 사람과 무관**하다: 소속은 쌍이 아니라 그 사람의 것이다.
+        //     그래서 `refreshTags` 같은 되돌림이 필요 없다 — 소속이 바뀌면 다음 가시분에 붙는다.
+        //   ⚠판정은 `membership.js` 정본 하나(`memberOf`)가 하고 여기선 부를 뿐이다.
+        if (!o.isNpc && o.playerId) e.mb = Membership.memberOf(o) ? 1 : 0; }
       // ★[액션 라벨 가시화 — 생활 층 100%] 행동 라벨(모내기·잠행·개간·건축·취침…): 변경 후 1.2s 윈도우 + 최초가시에만
       //   문자열 전송(무상태 델타 — 뷰어별 추적 없이 25틱 중복이 상한). 클라는 수신 시 갱신·미수신 시 유지. ''=라벨 제거.
       if (o._lifeAct !== undefined && (isNew || now - (o._lifeActAt || 0) < 1200)) e.act = o._lifeAct;

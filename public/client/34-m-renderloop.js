@@ -950,7 +950,10 @@
         // ★★[T115 2026-09-05] **벗 표지 한 글자.** 판정은 서버가 보낸 1비트(`fr`)뿐이다 —
         //   클라는 누가 누구와 친구인지 **모른다**(알면 그게 사본이자 남의 쌍을 아는 것이다).
         //   ⚠이모지 0(화면 규칙 B: 세계는 리터럴). 아이콘 판이 아니라 캔버스 글자라 낱말 하나를 쓴다.
-        const displayName = (o.fr ? '벗 ' : '') + (o.tribeName ? `[${o.tribeName}] ${o.name}` : o.name);
+        // ★[T159] 마을 사람 표지 — 벗 표지와 **같은 자리·같은 문법**(낱말 하나 · 이모지 0).
+        //   ⚠벗이 먼저다: 둘 다면 "벗"이 더 가까운 관계다(그리고 줄이 길어지면 이름이 밀린다).
+        const displayName = (o.fr ? '벗 ' : (o.mb ? '마을 ' : ''))
+          + (o.tribeName ? `[${o.tribeName}] ${o.name}` : o.name);
         const oFloor = o.floor || 0;
         const oZ = oFloor * FLOOR_HEIGHT + (o.z || 0); // 14.49-d: 계단 위 z 포함
         const isoF = w2i(ax, ay, oZ);

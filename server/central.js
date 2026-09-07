@@ -312,6 +312,12 @@ try {
   //   `join_mode` — 'open'(종전 그대로 아무나) | 'invite'(초대 없이는 못 든다). **기본은 open** 이라
   //     이미 있는 길드의 행동이 한 줄도 안 바뀐다(승격은 불이익 없이).
   //   `intro` — 그 길드가 세운 마을의 **한 줄 소개**. 시작 화면이 읽는다(T19 `founderName` 과 같은 자리).
+  // ★★[T159 2026-09-07] `granary_open` — **그 길드가 세운 마을의 곳간 문**. T128 `join_mode` 와 같은 문법:
+  //   기본이 **열림**이라 이미 있는 길드의 행동이 한 줄도 안 바뀐다(불이익 없는 승격).
+  if (!tribeCols.includes('granary_open')) {
+    db.exec('ALTER TABLE tribes ADD COLUMN granary_open INTEGER NOT NULL DEFAULT 1');
+    console.log('[central/db] tribes.granary_open 컬럼 추가됨');
+  }
   if (!tribeCols.includes('join_mode')) {
     db.exec("ALTER TABLE tribes ADD COLUMN join_mode TEXT NOT NULL DEFAULT 'open'");
     console.log('[central/db] tribes.join_mode 컬럼 추가됨');
@@ -1167,6 +1173,23 @@ const server = http.createServer(async (req, res) => {
       stmtInvDelAll.run(me.player_id);
       console.log(`[central] 길드 초대 수락: ${me.player_id} → ${pick.name}`);
       return jsonResp(res, 200, { ok: true, tribe_id: pick.tribe_id, name: pick.name, more: list.length - 1 });
+    }
+    // ★[T159] 곳간 문 — 읽기(존이 캐시로 쓴다) · 쓰기(길드장만). T128 `/tribe/mode` 와 같은 판정.
+    if (req.url === '/tribe/granary' && req.method === 'POST') {
+      const { tribe_id } = await readBody(req);
+      const t = stmtTribeGet.get(tribe_id | 0);
+      if (!t) return jsonResp(res, 200, { ok: false, reason: 'no_tribe' });
+      return jsonResp(res, 200, { ok: true, tribe_id: t.id, name: t.name, open: (t.granary_open == null) ? true : !!t.granary_open });
+    }
+    if (req.url === '/tribe/granary_set' && req.method === 'POST') {
+      const { player_id: pid, open } = await readBody(req);
+      const me = stmtGetPlayer.get(String(pid || ''));
+      if (!me || !me.tribe_id) return jsonResp(res, 200, { ok: false, reason: 'not_in_tribe' });
+      const t = stmtTribeGet.get(me.tribe_id);
+      if (!t) return jsonResp(res, 200, { ok: false, reason: 'no_tribe' });
+      if (t.leader_id !== me.player_id) return jsonResp(res, 200, { ok: false, reason: 'not_leader' });
+      db.prepare('UPDATE tribes SET granary_open = ? WHERE id = ?').run(open ? 1 : 0, t.id);
+      return jsonResp(res, 200, { ok: true, tribe_id: t.id, name: t.name, open: !!open });
     }
     if (req.url === '/tribe/mode' && req.method === 'POST') {
       const { player_id: pid, mode } = await readBody(req);
