@@ -1348,6 +1348,7 @@
   // 기슭도 같은 규격 아래로 — 1.6셀 자락이면 '미세한 오차' 안이다(5.2셀은 침범이다)
   const MT_FOOT = { step: 2.2, dMax: 1.6, s0: 0.26, s1: 0.46, vy0: 0.26, vy1: 0.52 };
   const _mtChunk = new Map();            // "gx_gy" → 세그먼트(절대 셀 청크 · 파괴 시 무효화)
+  let _mtChunkSig = '';                  // 그 캐시가 품고 있는 **손잡이 값**(아래 `_mtChunkSegs`)
   let _mtRidgeSeg = null;                // 전 존 능선 폴리라인을 절대 좌표로 편 목록(각도·숲/돌 판정용)
   function _mtRidgeSegs() {
     if (_mtRidgeSeg) return _mtRidgeSeg;
@@ -1377,6 +1378,21 @@
     }
     return { ang, isF };
   }
+  // ★★[T145 2026-09-06] 둥근/뾰족 **섞기** [재민 2026-08-07: "둥근 버전도 만들어서 여러 개
+  //   혼합해서 쓰자 · 물론 한반도 지역은 둥근 거 위주로"]. 굽기는 재료(`mt_R*` 40장)만 대고,
+  //   비율은 **여기 배치 쪽 손잡이**다. 0 = 전부 뾰족(T145 이전과 비트 동일) · 1 = 전부 둥근.
+  //   ★기본값 0.8 은 눈이 아니라 **지형학 표에서 유도했다**(보고 §0-ⓒ):
+  //     한반도 저위산지(평균고도 ≤300m · 평균경사 3~9° = 완만) 31.0% 대
+  //     저위산악지(같은 고도대 · 경사 >9° = 험준) 7.1% ⇒ 31.0/(31.0+7.1) = 0.813.
+  //     같은 고도대에서 **경사만** 다른 두 값이라 둥근/뾰족을 가르는 자와 정확히 같은 축이다.
+  //     셋째 자리는 배치 주사위의 분해능 아래라 0.8 로 적는다(거짓 정밀 금지).
+  //   ⚠**존별 값은 이 카드 밖이다** — `_mtPick` 은 절대 셀만 받고 존을 안 받는다(전 존 한 표).
+  //     지금은 한반도 단독 운영이라 손잡이 하나로 족하다. 존이 늘면 그때 인자를 늘린다(회부).
+  const MT_ROUND_MIX = 0.8;
+  function _mtRoundMix() {
+    const v = _t19.mtRound;                       // 하네스·시안 대조군(null = 캐논값)
+    return (typeof v === 'number') ? v : MT_ROUND_MIX;
+  }
   function _mtPick(cx, cy, ang, isF, T) {
     if (_cellHash(cx, cy, T.seed + 7) < T.sp) return T.solo[(_cellHash(cx, cy, T.seed + 8) * T.solo.length) | 0];
     // ★능선 각도에 ±14° 해시 흔들림 — 직선 능선에서 같은 옥탄트가 줄서면 '아코디언 벽'이 된다
@@ -1384,7 +1400,14 @@
     let deg = ((ang + jit) * 180 / Math.PI) % 180; if (deg < 0) deg += 180;
     const oct = Math.round(deg / 22.5) % 8;
     const v = isF ? ((_cellHash(cx, cy, 77) * 2) | 0) : ((_cellHash(cx, cy, 77) * 3) | 0);
-    return (isF ? 'mt_F' : 'mt_G') + oct + 'v' + v;
+    // ★**자리의 함수** — 주사위 0. 같은 셀은 언제 봐도 같은 판이다(프레임마다 바뀌면 산이 깜빡인다).
+    //   ⚠소금(`T.seed + 21`)은 **이 판정 전용**이다. 위 세 해시 중 하나를 재탕하면
+    //     "둥근 것만 늘 v0" 같은 상관이 생긴다(옥탄트·변종과 독립이어야 한다).
+    //   ⚠앵커 가드 — 자산이 아직 안 실렸으면 뾰족으로 떨어진다. 없는 그림 이름을 내면
+    //     `_mtCovers` 가 false 를 돌려주며 그 셀이 **덮개에서 빠진다**(맨 바위가 뚫린다).
+    const rnd = _cellHash(cx, cy, T.seed + 21) < _mtRoundMix()
+                && !!(_mtAnchors && _mtAnchors['mt_RG0v0']);
+    return (rnd ? 'mt_R' : 'mt_') + (isF ? 'F' : 'G') + oct + 'v' + v;
   }
   function _mtHgt(dE, cx, cy, seed) {          // 높이 = 가장자리 거리 램프 + 자리 지터
     const t = dE < 0 ? 0 : (dE > 14 ? 1 : dE / 14);
@@ -1401,6 +1424,11 @@
     return _mtAlphaAt(sg.name, u, v) > 0.30;
   }
   function _mtChunkSegs(zid, gx, gy) {
+    // ★★캐시를 읽는 **유일한 자리** — 그러니 손잡이 서명도 여기서 본다.
+    //   배치를 바꾸는 손잡이가 늘면 이 줄에 넣어라. 다른 데 넣으면 그 길로만 지켜진다.
+    const sig = (_t19.footOff ? 'F' : '') + (_t19.fitOff ? 'X' : '')
+                + 'R' + (_t19.mtRound == null ? '-' : _t19.mtRound) + zid;
+    if (sig !== _mtChunkSig) { _mtChunkSig = sig; _mtChunk.clear(); }
     const key = gx + '_' + gy;
     const hit = _mtChunk.get(key); if (hit) return hit;
     const W = MT_CH + MT_CHPAD * 2, c0 = gx * MT_CH - MT_CHPAD, r0 = gy * MT_CH - MT_CHPAD;

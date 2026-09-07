@@ -174,6 +174,18 @@ function diffCountNoEnts(a, b, ents) {
   const anch = JSON.parse(fs.readFileSync(path.join(ROOT, 'public/assets/nature/nature_anchors.json'), 'utf8'));
   say('\n[0] 자산 규격 — 1셀=1m 규약');
   let treeN = 0, badSize = [], badFile = [];
+  // ★[T129] 어느 그림이 성목/묘목/그루터기인가 — **종 표가 말한다**(여기 목록을 안 적는다).
+  const TSTAGE = {}; const TSTAGE_N = { adult: 0, sapling: 0, stump: 0 };
+  {
+    const sp = JSON.parse(fs.readFileSync(path.join(ROOT, 'public/assets/trees/tree_species.json'), 'utf8')).species || {};
+    for (const id of Object.keys(sp)) {
+      for (const k of [...(sp[id].sprites || []), ...(sp[id].autumn || [])]) TSTAGE[k] = 'adult';
+      if (sp[id].sapling) TSTAGE[sp[id].sapling] = 'sapling';
+    }
+    TSTAGE['stump01'] = 'stump';
+    for (const v of Object.values(TSTAGE)) TSTAGE_N[v]++;
+  }
+  const TREE_EXPECT = Object.keys(TSTAGE).length;
   for (const k of Object.keys(anch)) {
     const a = anch[k];
     const dir = a.kind === 'tree' ? 'trees' : 'nature';
@@ -183,12 +195,20 @@ function diffCountNoEnts(a, b, ents) {
     if (im.width !== a.w || im.height !== a.h) badFile.push(k + '(치수불일치)');
     if (a.kind === 'tree') {
       treeN++;
-      if (!(a.m >= 3.0 && a.m <= 8.0)) badSize.push(`${k}=${a.m}m`);
+      // ★★[T129] 높이 규격은 **성목에만** 건다. `kind=tree` 안에 이제 세 종류가 산다:
+      //   성목(3~8m) · 묘목(0.4~1.6m) · 그루터기(0.3~1.2m). 셋에 한 자를 대면
+      //   묘목이 "규격 미달 나무"로 빨개진다 — 자가 틀린 것이지 그림이 틀린 게 아니다.
+      const st = TSTAGE[k] || 'adult';
+      const band = { adult: [3.0, 8.0], sapling: [0.4, 1.6], stump: [0.3, 1.2] }[st];
+      if (!(a.m >= band[0] && a.m <= band[1])) badSize.push(`${k}=${a.m}m(${st} ${band[0]}~${band[1]})`);
     }
   }
-  ok(treeN === 12, `나무 12종 앵커 등록 (${treeN})`);
+  // ★[T129] 그루터기·묘목이 늘면서 12 가 아니게 됐다. **수를 여기 적지 않는다** —
+  //   종 표(`tree_species.json`)가 정본이고, 거기에 그루터기 하나를 더한 것이 전부여야 한다.
+  ok(treeN === TREE_EXPECT,
+     `나무 그림 ${treeN}장 = 종 표가 부르는 ${TREE_EXPECT}장(성목 ${TSTAGE_N.adult} · 묘목 ${TSTAGE_N.sapling} · 그루터기 ${TSTAGE_N.stump})`);
   ok(badFile.length === 0, `모든 스프라이트 파일 존재·치수 일치 ${badFile.length ? JSON.stringify(badFile) : ''}`);
-  ok(badSize.length === 0, `★성목 높이 3~8m 규격 ${badSize.length ? JSON.stringify(badSize) : '(전부 통과)'}`);
+  ok(badSize.length === 0, `★단계별 높이 규격(성목 3~8m · 묘목 0.4~1.6m · 그루터기 0.3~1.2m) ${badSize.length ? JSON.stringify(badSize) : '(전부 통과)'}`);
   const fringeKeys = Object.keys(anch).filter((k) => /^(grass|reed|cattail)/.test(k));
   ok(fringeKeys.length === 10, `물가 술 10종(풀포기4·갈대3·부들3) = ${fringeKeys.length}`);
   const reeds = Object.keys(anch).filter((k) => /^(reed|cattail)/.test(k)).map((k) => anch[k].m);

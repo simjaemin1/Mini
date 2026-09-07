@@ -71,7 +71,14 @@ fi
 
 echo
 echo "[판정] $WHY"
-[ -n "${CHANGED:-}" ] && echo "$CHANGED" | sed 's/^/         /' | head -20
+# 바뀐 파일 앞 20줄만 보인다. `| head -20` 은 금지 — set -o pipefail 아래서 입력이 크면
+# head 가 먼저 닫혀 sed 가 SIGPIPE(141) 로 죽고 set -e 가 스크립트를 여기서 끝낸다
+# (2026-09-06 · 689개 바뀐 배포에서 실제로 [판정] 뒤 조용히 종료). sed 로 자르면 입력을 끝까지 읽는다.
+if [ -n "${CHANGED:-}" ]; then
+  echo "$CHANGED" | sed -n '1,20{s/^/         /;p}'
+  _N="$(echo "$CHANGED" | wc -l | tr -d ' ')"
+  [ "$_N" -gt 20 ] && echo "         … 외 $(( _N - 20 ))개"
+fi
 echo "         central: $([ "$DO_CENTRAL" = 1 ] && echo '한다' || echo '건너뛴다')  ·  zone: $([ "$DO_ZONE" = 1 ] && echo '한다' || echo '★건너뛴다 — 존이 쓰는 파일이 안 바뀌었다')"
 echo
 

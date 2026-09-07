@@ -180,6 +180,31 @@ const seen = (C, pid) => C.others.get(pid) || null;
   ok(!!aSeesB2 && aSeesB2.fr === 0, '⑤c ★★표지가 **실제로 지워진다** — 1 만 보내면 옛 값이 남는다(승계 규약의 함정)',
     aSeesB2 && aSeesB2.fr);
 
+  // ── ⑤-2 [T139] 끊겨 있던 사이의 청함이 **다음 접속에 말이 된다** ─────────
+  //   ★T115 는 여기까지 못 갔다 — `tellPlayer` 가 접속 중인 사람만 찾고, 없으면 그 말은 허공으로 갔다
+  //     (`friends.js` 주석이 그걸 "알림함은 이 카드가 아니다(회부)"라 적어 뒀다). T139 가 그 회부를 닫는다.
+  {
+    const D1 = await connect('dave', 'pw4', VID_B);
+    await sleep(600); close(D1); await sleep(1200);
+    C3.notices.length = 0; say(C3, '/친구 dave'); await sleep(1500);
+    ok(C3.notices.some((t) => /청했다/.test(t)), '⑤-2 전제: 꺼져 있는 사람에게도 청할 수 있다', JSON.stringify(C3.notices.slice(-1)));
+    const D2 = await connect('dave', 'pw4', VID_B);
+    await sleep(2500);
+    ok(D2.playerId === D1.playerId, '⑤-2b 전제: 같은 사람으로 다시 들어왔다', D2.playerId);
+    ok(D2.notices.some((t) => /carol 이\(가\) 벗이 되자고 청했다/.test(t)),
+       '★★⑤-2 밀린 친구 요청이 **다음 접속에 한 줄로 선다**', JSON.stringify(D2.notices));
+    //   ★자명 통과 금지 — 세었다고 요청이 사라지지 않는다(수락만이 지운다)
+    const pend = await (async (u, body) => {
+      try {
+        const r = await fetch(u, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        return await r.json();
+      } catch (e) { return null; }
+    })(`http://localhost:${CPORT}/friend/pending`, { player_id: D2.playerId });
+    ok(!!(pend && pend.ok && pend.requests.length === 1),
+       '⑤-2c ★★읽기만 한다 — **요청 행은 그대로 남는다**', JSON.stringify(pend && pend.requests));
+    close(D2);
+  }
+
   // ── ⑥ central 을 못 물어봐도 **친구가 세계를 막지 않는다** ──────────────
   //   ⚠정직 보고: **등록 계정의 로그인은 원래 central 이 권위**다(계정 표가 거기 있다). 그건 이 카드가
   //     만든 제약이 아니고 고칠 자리도 아니다. 여기서 재는 것은 **친구가 새 벽을 세웠는가**이다:

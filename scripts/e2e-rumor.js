@@ -182,18 +182,28 @@ async function waitHttp(url, tries = 900) {
   await snap('ru-01-at-A');
 
   // ── ③ A 에서 사건을 세운다 — 그리고 A 는 **그날 바로** 안다 ────────────────
+  // ★★[T133 2026-09-06] **"자기 마을 줄이 있다"로 멈추면 안 된다 — 그게 방금 난 줄이라는 보장이 없다.**
+  //   게시판은 상한(`BOARD_NEWS_N`)이 있어 자기 마을 최신 줄이 **몇십 일 전 것**일 수 있다. 그걸 골라
+  //   ④("아직 B 엔 없다")·⑤("며칠 뒤 나타난다")를 재면, 그 사건은 이미 B 에 도달했거나 이미 밀려나 있어
+  //   **제품이 옳은데 하네스가 빨개진다.** T127 이 이 흔들림을 회부 B-6 으로 적었고(세 판에서 ④·⑤·⑦ 이
+  //   각각 한 번씩 빨갰다), T133 이 가짜 급등 20% 를 걷어내며 게시판 구성이 바뀌자 다시 나왔다.
+  //   ⇒ **이 픽스처가 만든 줄**(기준일 이후에 난 것)이 나올 때까지 돈다. 조건을 assert 로 건다.
+  const evDayStart = await gameDay();
   let evA = null, boardA = null;
   for (let i = 0; i < 30 && !evA; i++) {
     await page.evaluate((vid) => window.__sendPrimary({ type: '__e2e_village_short', vid }), A.id);
     await sleep(1100);                                   // 하루 경계가 지나가게
     boardA = await askBoard(A.id);
-    const own = ((boardA && boardA.news) || []).filter((r) => r.from == null);
+    const own = ((boardA && boardA.news) || []).filter((r) => r.from == null && r.day >= evDayStart);
     if (own.length) evA = own.slice().sort((a, b) => b.day - a.day)[0];
   }
   ok(!!(boardA && Array.isArray(boardA.news)), '③a 게시판 응답에 소식(news)이 실려 온다(T7 추가 필드)',
     boardA ? `news ${((boardA.news) || []).length}건 · 의뢰 ${((boardA.rows) || []).length}건` : 'X');
   ok(!!evA, '③ A 마을은 **자기 사건을 그날 바로** 안다(직접 목격 = 지연 0)',
     evA ? `${evA.type} ${evA.item} day${evA.day} heard${evA.heard}` : '(사건 없음)');
+  ok(!!evA && evA.day >= evDayStart,
+    '③a2 전제: 고른 사건이 **이 픽스처가 만든 것**이다(게시판 상한에 밀린 옛 줄이 아니다 · T133)',
+    evA ? `기준일 ${evDayStart} · 사건일 ${evA.day}` : '-');
   ok(!!evA && evA.heard === evA.day, '③b 자기 마을 사건의 도달일 = 사건일(하루도 안 걸린다)',
     evA ? `${evA.day} → ${evA.heard}` : '');
   ok(!!evA && evA.from == null, '③c 자기 마을 사건엔 출처 마을 이름이 안 붙는다');
@@ -217,6 +227,9 @@ async function waitHttp(url, tries = 900) {
   const news0 = (boardB0 && boardB0.news) || [];
   ok(news0.length > 0, '④c 전제: B 게시판에도 소식이 실린다(빈 목록으로 인한 자명 통과가 아니다)',
     `news ${news0.length}건 — ${JSON.stringify(news0.slice(0, 2).map((r) => r.line))}`);
+  ok(!!evA && (frozenDay - evA.day) <= 3,
+    '④c2 전제: 얼린 순간이 사건 직후다(소문이 아직 걸어올 시간이 없었다 · T133)',
+    evA ? `얼린 날 ${frozenDay} − 사건일 ${evA.day} = ${frozenDay - evA.day}일` : '-');
   const seen0 = evA ? news0.some((r) => keyOf(r, B.name) === keyOf(evA, A.name)) : true;
   ok(evA && !seen0, '④ A 에서 난 사건이 **B 에는 아직 없다**(도달 전 사건은 없는 것과 같다)',
     `frozenDay=${frozenDay} · 사건일 ${evA && evA.day} · 최소 ${minDays}일 필요`);
@@ -361,6 +374,34 @@ async function waitHttp(url, tries = 900) {
         ok(deedB.heard - deedB.day >= minDays, '⑨e 지연이 캐러밴 시계 하한 이상이다(값 유형과 같은 표)',
           `${deedB.heard - deedB.day}일 ≥ ${minDays}일`);
         ok(deedB.line === deedA.line, '⑨f B 가 듣는 말이 A 에서 난 그 말과 같다(문장 사본 0)', JSON.stringify(deedB.line));
+
+        // ── ★★[T127 2026-09-05] ⑩ 소문 왜곡 — **사실은 남고 크기만 흐려진다** ──────────
+        //   여기가 이 배치의 전부다. 같은 가뭄을 A 는 제 눈으로 보고(0홉 · 정확) B 는 건너 듣는다.
+        //   ⚠픽스처를 새로 만들지 않는다 — ⑨ 가 이미 세운 그 가뭄을 그대로 쓴다.
+        //     `__e2eForceDeed('가뭄')` 은 `fertility 0.65` 를 부르므로 **mag 은 0.65 로 결정**돼 있고
+        //     (1 에서 가장 멀리 벗어난 배수 — `events.js` 파일 머리 정의), 눈금 0.1 위에서 0.7 이 된다.
+        //     즉 이 절은 시드에 안 흔들린다(합성 수 0 · 각본 0).
+        const Ev = require(path.join(ROOT, 'server', 'events'));
+        ok(deedA.mag != null && deedB.mag != null,
+          '⑩a 전제: 게시판 소식이 **들은 크기**를 싣는다(T127 추가 필드 · 없으면 아래가 자명 통과다)',
+          `A ${deedA.mag} · B ${deedB.mag}`);
+        ok(deedA.type === deedB.type && deedA.item === deedB.item && deedA.day === deedB.day && deedA.line === deedB.line,
+          '⑩b ★★**유형·품목·난 날·문장이 한 칸도 안 바뀐다** — 사실은 그대로 걸어온다',
+          `${deedB.type}/${deedB.item} day${deedB.day}`);
+        ok(deedA.mag === 0.65,
+          '⑩c ★A 는 **제 눈으로 본다**(0홉) — 장부의 값 그대로다', `mag ${deedA.mag}`);
+        ok(deedB.mag !== deedA.mag,
+          '⑩ ★★**B 는 얼마나 심한지 모른다** — 건너 들은 값은 눈금 위에 선다(소문 왜곡)',
+          `A ${deedA.mag} → B ${deedB.mag}`);
+        ok([1, 2, 3, 4].some((h) => Ev.blurMag(deedA.mag, h) === deedB.mag),
+          '⑩d ★그 값이 **뭉갬 정본이 내는 값**이다(서버가 딴 수를 지어내지 않았다 · 사본 0)',
+          `blur(${deedA.mag}, h) = ${[1, 2, 3].map((h) => Ev.blurMag(deedA.mag, h)).join('/')}`);
+        ok(deedB.mag > 0 && deedB.mag !== 1 && (deedB.mag < 1) === (deedA.mag < 1),
+          '⑩e ★★뭉개도 **사실은 안 지워진다** — 0 도 1 도 되지 않고 1 을 건너지 않는다(가뭄이 평년으로 안 들린다)',
+          `${deedB.mag}`);
+        ok(!/\d/.test(String(deedB.line)),
+          '⑩f 그래도 **화면엔 수가 안 나온다**(대시보드 톤 금지 §3.2) — 뭉갬은 장부의 일이지 문장의 일이 아니다',
+          JSON.stringify(deedB.line));
       }
     }
   }

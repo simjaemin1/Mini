@@ -219,6 +219,18 @@ db.exec(`
     PRIMARY KEY (a, b)
   );
   CREATE INDEX IF NOT EXISTS idx_friends_b ON friends(b);
+  -- ★★[T128 2026-09-05 재민 확정] 길드 초대 — 표 하나. friends 와 같은 문법이다:
+  --   행이 있으면 부름이고, 그 행을 지우는 것이 수락이자 거절이다(상태 컬럼을 안 만든다).
+  --   ⓐ 한 사람이 여러 길드에서 불릴 수 있다 ⇒ PK 는 (tribe_id, player_id) 쌍이다.
+  --   ⓑ 수락하면 행을 **지운다** — 가입의 정본은 players.tribe_id 하나이고, 초대 행은 그리로
+  --      가는 문일 뿐이다. 문을 지난 뒤에도 문이 남아 있으면 그게 곧 어긋난 상태다.
+  CREATE TABLE IF NOT EXISTS tribe_invites (
+    tribe_id  INTEGER NOT NULL,
+    player_id TEXT NOT NULL,
+    at        INTEGER NOT NULL,
+    PRIMARY KEY (tribe_id, player_id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_tribe_invites_player ON tribe_invites(player_id);
 `);
 
 // 마이그레이션 — 기존 DB에 새 컬럼 없으면 추가
@@ -296,6 +308,18 @@ try {
     db.exec("ALTER TABLE tribes ADD COLUMN treasury_json TEXT NOT NULL DEFAULT '{}'");
     console.log('[central/db] tribes.treasury_json 컬럼 추가됨');
   }
+  // ★★[T128] 컬럼 **둘**.
+  //   `join_mode` — 'open'(종전 그대로 아무나) | 'invite'(초대 없이는 못 든다). **기본은 open** 이라
+  //     이미 있는 길드의 행동이 한 줄도 안 바뀐다(승격은 불이익 없이).
+  //   `intro` — 그 길드가 세운 마을의 **한 줄 소개**. 시작 화면이 읽는다(T19 `founderName` 과 같은 자리).
+  if (!tribeCols.includes('join_mode')) {
+    db.exec("ALTER TABLE tribes ADD COLUMN join_mode TEXT NOT NULL DEFAULT 'open'");
+    console.log('[central/db] tribes.join_mode 컬럼 추가됨');
+  }
+  if (!tribeCols.includes('intro')) {
+    db.exec('ALTER TABLE tribes ADD COLUMN intro TEXT');
+    console.log('[central/db] tribes.intro 컬럼 추가됨');
+  }
   if (!tribeCols.includes('is_npc')) {
     db.exec('ALTER TABLE tribes ADD COLUMN is_npc INTEGER NOT NULL DEFAULT 0');
     console.log('[central/db] tribes.is_npc 컬럼 추가됨');
@@ -362,6 +386,22 @@ const stmtFriendRow = db.prepare('SELECT a, b, since FROM friends WHERE (a = ? A
 const stmtFriendDel = db.prepare('DELETE FROM friends WHERE (a = ? AND b = ?) OR (a = ? AND b = ?)');
 const stmtFriendIns = db.prepare('INSERT INTO friends (a, b, since) VALUES (?, ?, NULL)');
 const stmtFriendAccept = db.prepare('INSERT INTO friends (a, b, since) VALUES (?, ?, ?)');
+// ★★[T139 2026-09-06] **밀린 친구 요청** — `since IS NULL` 이고 `b` 가 나인 행이 곧 "나를 부른 사람"이다.
+//   ⓐ 방향이 있다(T115 표 주석 211줄): `a` 가 부른 쪽, `b` 가 불린 쪽. 그래서 `b = ?` 하나로 족하다.
+//   ⓑ **새 컬럼 0** — 이 표에는 시각이 없다(`since` 는 수락 시각이라 요청 중엔 NULL 이다).
+//     ⇒ 요청은 **순서를 못 준다**. 길드 부름(`tribe_invites.at`)과 달리 "가장 최근"이 없고,
+//       그래서 친구 쪽은 종전대로 **이름을 받아** 고른다(`/친구 <이름>`) — 고르기 문제가 애초에 없다.
+const stmtFriendPending = db.prepare(`
+  SELECT p.player_id AS id, p.name AS name FROM friends f
+  JOIN players p ON p.player_id = f.a
+  WHERE f.b = ? AND f.since IS NULL
+`);
+/** 나를 부른 사람들(아직 수락 전) — `[{id, name}]`. 못 읽으면 빈 배열(막지 않는다). */
+function friendPending(playerId) {
+  const id = String(playerId || '');
+  if (!id) return [];
+  try { return stmtFriendPending.all(id) || []; } catch (e) { return []; }
+}
 const stmtFriendsOf = db.prepare(`
   SELECT p.player_id AS id, p.name AS name FROM friends f
   JOIN players p ON p.player_id = (CASE WHEN f.a = ? THEN f.b ELSE f.a END)
@@ -396,6 +436,25 @@ function friendRequest(fromId, toId) {
   stmtFriendIns.run(A, B);
   return { ok: true, state: 'requested' };
 }
+// ── ★★[T128] 길드 초대 — 정본 술어 다섯. 여기 말고 어디서도 이 표를 해석하지 않는다 ──────
+const stmtTribeGet = db.prepare('SELECT * FROM tribes WHERE id = ?');
+const stmtInvIns = db.prepare('INSERT OR REPLACE INTO tribe_invites (tribe_id, player_id, at) VALUES (?, ?, ?)');
+const stmtInvDel = db.prepare('DELETE FROM tribe_invites WHERE tribe_id = ? AND player_id = ?');
+const stmtInvDelAll = db.prepare('DELETE FROM tribe_invites WHERE player_id = ?');
+const stmtInvOf = db.prepare(`
+  SELECT i.tribe_id AS tribe_id, t.name AS name, i.at AS at FROM tribe_invites i
+  JOIN tribes t ON t.id = i.tribe_id WHERE i.player_id = ? ORDER BY i.at DESC
+`);
+const stmtInvHas = db.prepare('SELECT 1 AS x FROM tribe_invites WHERE tribe_id = ? AND player_id = ?');
+/** 그 사람에게 온 부름들 — 최근 것이 먼저. */
+function invitesOf(playerId) {
+  const id = String(playerId || '');
+  if (!id) return [];
+  try { return stmtInvOf.all(id) || []; } catch (e) { return []; }
+}
+/** 길드의 문이 잠겼나 — 'invite' 면 부름 없이는 못 든다. 모르는 값은 **열린 것으로 본다**(막지 않는다). */
+function tribeClosed(t) { return !!(t && String(t.join_mode || 'open') === 'invite'); }
+
 /** 끊기 — 친구든 아직 요청뿐이든 **그 쌍을 지운다**(방향 무관). */
 function friendRemove(aId, bId) {
   const A = String(aId || ''), B = String(bId || '');
@@ -815,6 +874,15 @@ const server = http.createServer(async (req, res) => {
       const r = friendRemove(String(pid || ''), other.player_id);
       return jsonResp(res, 200, { ...r, name: other.name, player_id: other.player_id });
     }
+    // ★[T139 2026-09-06] 부름 알림함 — **밀린 요청을 세는 문 하나**. 표도 컬럼도 안 늘렸다.
+    //   ⚠`GET /friends/<key>` 가 **접두로 먼저 걸린다** — 그래서 POST 이고, 위에 둔다
+    //     (T128 이 `/tribe/intros` 로 물렸던 그 자리와 같은 함정이다).
+    //   ⚠`player_id` 로 묻는다(이름 갈래 아님) — 이건 **로그인 뒤** 존이 묻는 문이라
+    //     "그 이름의 사람에게 요청이 있나"가 새지 않는다(T115 가 남긴 그 누수와 다른 자리다).
+    if (req.url === '/friend/pending' && req.method === 'POST') {
+      const { player_id: pid } = await readBody(req);
+      return jsonResp(res, 200, { ok: true, requests: friendPending(pid) });
+    }
     if (req.url.startsWith('/friends/') && req.method === 'GET') {
       const [path, qs] = req.url.split('?');
       const key = decodeURIComponent(path.slice('/friends/'.length));
@@ -1062,6 +1130,75 @@ const server = http.createServer(async (req, res) => {
       }
       return jsonResp(res, 200, { ok: true, tribe_id: t.id, name: t.name, behavior_tier: tier });
     }
+    // === ★[T128] 길드 초대 · 승인제 · 소개문 ===
+    //   ⚠이름으로 사람을 찾는 정본은 `findAccount` 하나다(T115 와 같은 자리).
+    if (req.url === '/tribe/invite' && req.method === 'POST') {
+      const { player_id: pid, name } = await readBody(req);
+      const me = stmtGetPlayer.get(String(pid || ''));
+      if (!me) return jsonResp(res, 404, { ok: false, reason: 'no_self' });
+      if (!me.tribe_id) return jsonResp(res, 200, { ok: false, reason: 'not_in_tribe' });
+      const other = findAccount(String(name || '').trim());
+      if (!other) return jsonResp(res, 200, { ok: false, reason: 'no_such_name' });
+      if (other.player_id === me.player_id) return jsonResp(res, 200, { ok: false, reason: 'self' });
+      if (other.tribe_id === me.tribe_id) return jsonResp(res, 200, { ok: false, reason: 'already_member' });
+      if (other.tribe_id) return jsonResp(res, 200, { ok: false, reason: 'in_other_tribe', name: other.name });
+      const t = stmtTribeGet.get(me.tribe_id);
+      if (!t) return jsonResp(res, 200, { ok: false, reason: 'no_tribe' });
+      stmtInvIns.run(t.id, other.player_id, Date.now());
+      return jsonResp(res, 200, { ok: true, tribe_id: t.id, tribe: t.name, name: other.name, player_id: other.player_id });
+    }
+    if (req.url === '/tribe/invites' && req.method === 'POST') {
+      const { player_id: pid } = await readBody(req);
+      return jsonResp(res, 200, { ok: true, invites: invitesOf(pid) });
+    }
+    if (req.url === '/tribe/invite_accept' && req.method === 'POST') {
+      const { player_id: pid, tribe_id } = await readBody(req);
+      const me = stmtGetPlayer.get(String(pid || ''));
+      if (!me) return jsonResp(res, 404, { ok: false, reason: 'no_self' });
+      if (me.tribe_id) return jsonResp(res, 200, { ok: false, reason: 'already_in_tribe' });
+      const list = invitesOf(me.player_id);
+      if (!list.length) return jsonResp(res, 200, { ok: false, reason: 'no_invite' });
+      //   ★고르지 않으면 **가장 최근에 부른 곳**이다(목록은 `at DESC` 다). 여럿이면 그 사실을 같이 준다.
+      const pick = (tribe_id != null) ? list.find((x) => x.tribe_id === (tribe_id | 0)) : list[0];
+      if (!pick) return jsonResp(res, 200, { ok: false, reason: 'no_invite' });
+      db.prepare('UPDATE players SET tribe_id = ? WHERE player_id = ?').run(pick.tribe_id, me.player_id);
+      //   ★★들어갔으면 **문을 치운다** — 이 사람에게 온 부름 전부. 남겨 두면 "이미 들어갔는데 부름이 남은"
+      //     어긋난 상태가 생기고, 다른 길드의 부름은 나가면 다시 받으면 된다.
+      stmtInvDelAll.run(me.player_id);
+      console.log(`[central] 길드 초대 수락: ${me.player_id} → ${pick.name}`);
+      return jsonResp(res, 200, { ok: true, tribe_id: pick.tribe_id, name: pick.name, more: list.length - 1 });
+    }
+    if (req.url === '/tribe/mode' && req.method === 'POST') {
+      const { player_id: pid, mode } = await readBody(req);
+      const me = stmtGetPlayer.get(String(pid || ''));
+      if (!me || !me.tribe_id) return jsonResp(res, 200, { ok: false, reason: 'not_in_tribe' });
+      const t = stmtTribeGet.get(me.tribe_id);
+      if (!t) return jsonResp(res, 200, { ok: false, reason: 'no_tribe' });
+      if (t.leader_id !== me.player_id) return jsonResp(res, 200, { ok: false, reason: 'not_leader' });
+      const m = (String(mode || '') === 'invite') ? 'invite' : 'open';
+      db.prepare('UPDATE tribes SET join_mode = ? WHERE id = ?').run(m, t.id);
+      return jsonResp(res, 200, { ok: true, tribe_id: t.id, name: t.name, mode: m });
+    }
+    if (req.url === '/tribe/intro' && req.method === 'POST') {
+      const { player_id: pid, intro } = await readBody(req);
+      const me = stmtGetPlayer.get(String(pid || ''));
+      if (!me || !me.tribe_id) return jsonResp(res, 200, { ok: false, reason: 'not_in_tribe' });
+      const t = stmtTribeGet.get(me.tribe_id);
+      if (!t) return jsonResp(res, 200, { ok: false, reason: 'no_tribe' });
+      if (t.leader_id !== me.player_id) return jsonResp(res, 200, { ok: false, reason: 'not_leader' });
+      //   ★길이 상한 **하나**(60자). 시작 화면의 한 줄이라 그보다 길면 줄이 두 줄이 된다.
+      //     ⚠자르는 자리는 여기 하나다 — 클라가 또 자르면 그게 사본이고 둘이 갈린다.
+      const txt = String(intro == null ? '' : intro).replace(/\s+/g, ' ').trim().slice(0, 60);
+      db.prepare('UPDATE tribes SET intro = ? WHERE id = ?').run(txt || null, t.id);
+      return jsonResp(res, 200, { ok: true, tribe_id: t.id, name: t.name, intro: txt });
+    }
+    //   ⚠경로 이름이 `/tribe/…` 가 **아니다**: 위(988줄)의 `GET /tribe/<id>` 가 먼저 걸려 404 를 낸다
+    //     (하네스 ③b 가 그걸 잡았다). 새 라우트를 옛 접두 아래로 밀어 넣지 마라.
+    if (req.url === '/tribe_intros' && req.method === 'GET') {
+      //   ★시작 화면이 읽는다 — **소개가 있는 길드만**. 이름은 안 준다(줄에 실리는 건 문장 하나다).
+      const rows = db.prepare("SELECT id, intro FROM tribes WHERE intro IS NOT NULL AND intro <> ''").all();
+      return jsonResp(res, 200, { ok: true, intros: rows });
+    }
     if (req.url === '/tribe/create' && req.method === 'POST') {
       const data = await readBody(req);
       const playerId = data.player_id;
@@ -1091,7 +1228,13 @@ const server = http.createServer(async (req, res) => {
       if (p.tribe_id) return jsonResp(res, 400, { error: '이미 길드에 소속됨' });
       const t = db.prepare('SELECT * FROM tribes WHERE id = ?').get(tribeId);
       if (!t) return jsonResp(res, 404, { error: '길드 없음' });
+      // ★★[T128] 승인제 — **초대제 길드는 부름 없이는 못 든다.** 열린 길드는 종전 그대로다
+      //   (기본값이 'open' 이라 이미 있는 길드의 행동이 한 줄도 안 바뀐다).
+      if (tribeClosed(t) && !stmtInvHas.get(tribeId, playerId)) {
+        return jsonResp(res, 200, { ok: false, reason: 'invite_only', error: '초대를 받아야 드는 길드다' });
+      }
       db.prepare('UPDATE players SET tribe_id = ? WHERE player_id = ?').run(tribeId, playerId);
+      stmtInvDel.run(tribeId, playerId);          // 부름으로 들어왔으면 그 문은 치운다
       let promoted = false;
       // Phase 14.11 — NPC 길드의 첫 인간 멤버는 자동으로 leader가 됨 (설계 §7.3)
       if (t.is_npc && t.leader_id === 'npc_leader') {

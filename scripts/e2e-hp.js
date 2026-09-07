@@ -88,11 +88,12 @@ async function waitHttp(url, tries = 600) {
     const peers = m ? [...m[1].matchAll(/'([a-z]+)'/g)].map((x) => x[1]).sort() : [];
     ok(JSON.stringify(peers) === JSON.stringify(['damage', 'debug', 'dish', 'food']),
        '★★⓪ 방송하는 갈래는 **종전 넷 그대로**다(남의 규약 무변)', JSON.stringify(peers));
-    // ★새 메시지 타입 0 — `player_damaged` 말고 hp 전용 타입을 만들지 않았다
-    ok(!/type:\s*'hp_changed'|type:\s*'hp_update'/.test(code), '★★⓪ 새 메시지 타입 0');
-    // ★클라 접점 0 — `player_damaged` 핸들러가 이미 자기 hp 를 세운다(T109 는 클라를 안 만졌다)
+    // ★[T131] 창구는 **하나**다 — `hp_changed` 말고 hp 전용 타입을 또 만들지 않았다.
+    ok(!/type:\s*'hp_update'|type:\s*'player_damaged'/.test(code),
+       '★★⓪ hp 창구는 하나(`hp_changed`) — 옛 이름도 새 타입도 없다');
+    // ★클라 접점 — `hp_changed` 핸들러가 자기 hp 를 세운다(T131 개명 전 이름은 `player_damaged`)
     const net = fs.readFileSync(path.join(ROOT, 'public', 'client', '30-n-net.js'), 'utf8');
-    ok(/msg\.type === 'player_damaged'/.test(net) && /msg\.pid === myPid.*myHp = msg\.hp/s.test(net),
+    ok(/msg\.type === 'hp_changed'/.test(net) && /msg\.pid === myPid.*myHp = msg\.hp/s.test(net),
        '★★⓪ 클라는 **이미** 그 메시지로 자기 hp 를 세운다(클라 접점 0)');
     ok(/typeof msg\.hp === 'number'.*myHp = msg\.hp/s.test(net),
        '★⓪ 그리고 `gauges` 의 hp 칸도 이미 읽는다(T61 — 자연 회복이 실리는 통로)');
@@ -158,7 +159,7 @@ async function waitHttp(url, tries = 600) {
   {
     // ⚠"1초 뒤에 정확히 40" 을 기대하면 안 된다 — 픽스처는 `lastDamagedAt` 을 안 건드려서
     //   회복(초당 ~10hp)이 곧바로 돈다(초안이 `화면 45` 로 두 판 빨갰다 — 제품이 아니라 기대가 틀렸다).
-    //   ⇒ **즉시성**은 초 단위 숫자가 아니라 **프레임**으로 잰다: 400ms 안에 `player_damaged` 가 왔는가.
+    //   ⇒ **즉시성**은 초 단위 숫자가 아니라 **프레임**으로 잰다: 400ms 안에 `hp_changed` 가 왔는가.
     //     그게 `gauges`(초당 하나)가 아니라 방송이 날랐다는 증거다.
     //   ⚠고정 400ms 로 잘라 재면 안 된다 — 크로미움 둘이 2코어에서 지도를 그리는 중엔 왕복이
     //     그보다 늦는 판이 있다(초안이 `+0건` 으로 빨갰는데, 같은 판의 ③ 은 같은 경로로 `+1` 을 셌다.
@@ -169,10 +170,10 @@ async function waitHttp(url, tries = 600) {
     let dmgMs = null;
     for (let i = 0; i < 30 && dmgMs === null; i++) {
       const f = await frames(A);
-      if ((f.player_damaged || 0) - (f0.player_damaged || 0) >= 1) dmgMs = Date.now() - t0;
+      if ((f.hp_changed || 0) - (f0.hp_changed || 0) >= 1) dmgMs = Date.now() - t0;
       else await sleep(100);
     }
-    ok(dmgMs !== null, '★★① hp 가 바뀌자 `player_damaged` 가 **방송으로** 왔다(다침 규약 무변)',
+    ok(dmgMs !== null, '★★① hp 가 바뀌자 `hp_changed` 가 **방송으로** 왔다(다침 규약 무변)',
        dmgMs === null ? '3초 안에 안 왔다' : `${dmgMs}ms`);
     const h = await hpOf(A);
     ok(h !== null && h < 60, '★① 그리고 화면이 깎인 값을 말한다', `화면 ${h}`);
@@ -218,10 +219,10 @@ async function waitHttp(url, tries = 600) {
     await body(A, { hp: 25, hunger: 100, thirst: 100 });   // A 가 깎이고 → 다시 아문다
     await sleep(6000);
     const b1 = await frames(Bp), a1 = await frames(A);
-    const dB = (b1.player_damaged || 0) - (b0.player_damaged || 0);
-    const dA = (a1.player_damaged || 0) - (a0.player_damaged || 0);
+    const dB = (b1.hp_changed || 0) - (b0.hp_changed || 0);
+    const dA = (a1.hp_changed || 0) - (a0.hp_changed || 0);
     // A 가 6초 동안 30→100 까지 아무는 동안, B 에게는 **픽스처 한 방(방송)** 말고 아무것도 안 간다.
-    ok(dB <= 2, '★★③ 6초 회복 동안 **남(B)에게 간 `player_damaged` 는 두 건 이하**(방송 규약 무변)', `B +${dB}`);
+    ok(dB <= 2, '★★③ 6초 회복 동안 **남(B)에게 간 `hp_changed` 는 두 건 이하**(방송 규약 무변)', `B +${dB}`);
     ok(dA <= 2, '★★③ 그리고 자기(A)에게도 회복분이 **따로 안 간다**(`gauges` 가 이미 나른다 · 새 수 0)', `A +${dA}`);
     // ★초당 메시지 표 — `gauges` 는 초당 하나다(양자화의 정본). 이게 무너지면 위 둘이 무의미하다.
     const g = ((a1.gauges || 0) - (a0.gauges || 0)) / 6;

@@ -62,6 +62,9 @@ const CHRON_TYPE_EMO = {
   //   T55 의 클라 표가 안 따라가서 `test-chron-icons ③` 이 베이스에서도 빨갰다. 여기서 닫는다.
   //   불(모닥불을 지켜 냈다) / 눈(모자랐다) — 서로 다른 얼굴이어야 ④ 가 초록이다.
   WINTER_KEPT: 'fire', WINTER_SHORT: 'snow',
+  // ★[T119 2026-09-05] 구조 — 손을 내미는 그림. `heart`(TRADER_KILLED)·`people`(POP_COLLAPSE) 와
+  //   겹치면 두 사건이 같은 얼굴이 된다(④ 가 그걸 잡는다) ⇒ 아직 임자 없는 `hand` 를 쓴다.
+  RESCUED: 'hand',
 };
 function chronIcon(it) { return uiIcon((it && CHRON_TYPE_EMO[it.type]) || 'scroll', 16); }
 

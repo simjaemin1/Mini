@@ -50,7 +50,10 @@ async function waitHttp(url, tries = 600) {
 (async () => {
   console.log('\n=== 겨울 추위 — 야생 밤 → 마을 → 모닥불 실클라 E2E (Chromium) ===');
   const Wx = require(path.join(ROOT, 'server', 'weather.js'));
-  const WINTER = Math.round(Wx.anchors().winterMid);   // ★한겨울 = econ 기온 곡선의 최한일(사본 금지)
+  // ★★[T140 2026-09-06] 앵커·기대값·**얼림**은 픽스처 정본 하나에서 온다(`e2e-thirst` 와 같은 파일).
+  //   두 하네스가 각자 세우면 그게 사본이고, 각자 `sleep()` 하면 그게 T131 이 회부한 그 흔들림이다.
+  const FX = require('./fixture-clock.js');
+  const WINTER = FX.anchorDays().winter;   // ★한겨울 = econ 기온 곡선의 최한일(사본 금지)
   boot('central', 'central.js', { PORT: String(CPORT), DB_PATH: CDB, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
   boot('zone', 'zone.js', {
     PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
@@ -74,14 +77,19 @@ async function waitHttp(url, tries = 600) {
   const enterBtn = await page.$('#enter');
   if (enterBtn) await enterBtn.click();
   // ★입장 판정은 `__inWorld()` — `__getMyAbs` 는 초기값이 있어 **언제나 truthy** 라 자명 통과였다(족보).
-  for (let i = 0; i < 60 && !(await page.evaluate(() => !!(window.__inWorld && window.__inWorld()))); i++) await sleep(500);
+  // ★[T140] 30초로 자르지 않는다 — 부하가 있으면 그 안에 못 들어온다(픽스처 정본 · 판정은 그대로).
+  const enter = await FX.waitInWorld(page);
   await sleep(1800);
-  ok(await page.evaluate(() => !!(window.__inWorld && window.__inWorld())), '존 입장 — 월드 안이다');
+  ok(enter.ok && await page.evaluate(() => !!(window.__inWorld && window.__inWorld())),
+     '존 입장 — 월드 안이다', `${enter.waited}ms 기다림`);
 
   // ── ① 배지가 실제로 뜬다 — 서버가 준 값으로 ────────────────────────────────
-  await page.evaluate((d) => window.__sendPrimary({ type: '__e2e_clock', day: d, night: true }), WINTER);
-  await sleep(2500);
-  const wx0 = await page.evaluate(() => (window.__wx ? window.__wx() : null));
+  // ★★[T140] `sleep(2500)` 이 여기 있었다 — 그게 ①("혹한급")을 부하마다 다른 수로 빨갛게 만든 자리다.
+  //   정해진 초 대신 **세계가 그 시계를 말할 때까지** 기다린다(증인은 `tempC` — 순수 함수).
+  const fx1 = await FX.setClock(page, { day: WINTER, night: true });
+  ok(fx1.ok, '★★① (픽스처) **시계가 실제로 얼었다** — 세계가 그 날·그 밤을 말한다(부하와 무관)',
+    `day ${WINTER} · 기대 ${fx1.want.tempC}℃ · 실측 ${fx1.got ? fx1.got.tempC : 'null'}℃ · ${fx1.waited}ms`);
+  const wx0 = fx1.got;
   ok(!!wx0, '★① 클라가 서버 날씨 페이로드를 받았다', wx0 ? JSON.stringify(wx0) : 'null');
   const badge = await page.evaluate(() => {
     const el = document.getElementById('wxBadge');
@@ -93,9 +101,9 @@ async function waitHttp(url, tries = 600) {
   await snap('cold-01-winter-night');
 
   // ── ② 야생 — 완충이 없다 · 몸이 실제로 언다 ────────────────────────────────
-  const { DatabaseSync } = require('node:sqlite');
-  const db = new DatabaseSync(ZDB);
-  const rows = db.prepare('SELECT id, name, cx, cy FROM villages WHERE zone = ?').all('hanbando');
+  // ★[T140] 정해진 초 대신 **마을이 실제로 심길 때까지** 기다린다(픽스처 정본 · e2e-thirst 와 같은 함수).
+  //   실측: 같은 커밋에서 한 판은 50곳, 다음 판은 0곳으로 통째로 중단됐다 — 부하가 시딩을 늦춘 것뿐이다.
+  const { rows, waited: vWait } = await FX.waitVillages(ZDB);
   ok(rows.length > 0, `마을이 시딩됐다 (${rows.length}곳)`, rows.slice(0, 3).map((r) => `${r.name}(${r.cx},${r.cy})`).join(' '));
   if (!rows.length) { console.log('\n마을 0 — 중단'); await browser.close(); shutdown(); process.exit(1); }
   const V = rows[0];
@@ -421,10 +429,12 @@ async function waitHttp(url, tries = 600) {
     ok(wxBare && (wxBare.shelter || 0) < 0.01 && (wxBare.insC || 0) === 0,
       '★⑧ (상황) 한겨울 야생 밤 · 완충 0 · **맨몸**이다', `shelter ${wxBare && wxBare.shelter} · 단열 +${wxBare && wxBare.insC}℃`);
 
-    // ★★[이 하네스가 먼저 틀린 자리 · 족보 ㊻] **화면의 HP 는 깎일 때만 갱신된다.**
-    //   서버는 `player_damaged` 로만 hp 를 보내고 **자연 회복은 브로드캐스트가 없다**
-    //   (`self.hp` 는 welcome 때 한 번뿐 — 소스로 확인). 그래서 회복 뒤에 읽은 값은 **낡았다**.
-    //   초안이 낡은 96 을 기준선으로 삼아 "9초에 −3HP(**늘었다**)"는 없는 결함을 냈다.
+    // ★★[이 하네스가 먼저 틀린 자리 · 족보 ㊻] 초안이 낡은 96 을 기준선으로 삼아
+    //   "9초에 −3HP(**늘었다**)"는 없는 결함을 냈다.
+    // ⚠[T131 2026-09-06 주석 정정] 여기 있던 이유 설명("`player_damaged` 로만 보낸다 ·
+    //   자연 회복은 브로드캐스트가 없다 · `self.hp` 는 welcome 때 한 번뿐")은 **더는 사실이 아니다** —
+    //   T61 이 `gauges` 에 `hp`·`maxHp` 를 실으면서 닫혔고, 창구 이름도 `hp_changed` 다(T131).
+    //   아래 판정(단조 감소·신선할 때만 "안 깎인다")은 그대로 옳다 — **이유만** 고친다.
     //   ⇒ 기준선 차이 대신 **연속 관측의 단조 감소**로 판정하고, "안 깎인다"는 판정은
     //     **방금 깎인 뒤**(=값이 신선할 때)에만 건다.
     const watchHp = async (secs, stepMs) => {
@@ -459,8 +469,9 @@ async function waitHttp(url, tries = 600) {
     }
     ok(bestT > 1, '★⑧ⓑ (상황) 24년 중 **목표점이 1 을 넘는 밤**을 골랐다 — 추위가 극단에 머문다',
       `day ${coldestDay} · 목표점 ${bestT}`);
-    await page.evaluate((d) => window.__sendPrimary({ type: '__e2e_clock', day: d, night: true }), coldestDay);
-    await sleep(1500);
+    const fx8 = await FX.setClock(page, { day: coldestDay, night: true });   // ★[T140] 같은 정본
+    ok(fx8.ok, '★⑧ⓑ (픽스처) 가장 추운 밤으로 시계가 얼었다',
+      `day ${coldestDay} · 기대 ${fx8.want.tempC}℃ · 실측 ${fx8.got ? fx8.got.tempC : 'null'}℃ · ${fx8.waited}ms`);
     await page.evaluate(() => window.__sendPrimary({ type: '__e2e_body', cold: 1, hunger: 100, thirst: 100, quiet: true }));
     await sleep(1200);
     const seqB = await watchHp(15);
@@ -485,8 +496,9 @@ async function waitHttp(url, tries = 600) {
     // ⓐ **평범한 한겨울 밤**은 문턱을 못 넘는다 ⇒ 한 점도 안 깎인다
     //   ★ⓒ 덕에 기준선이 신선한 지금 잰다. 그리고 시계를 평범한 밤으로 되돌린다 —
     //     가장 추운 해(목표점 1.048)에 두면 몸이 문턱 위로 **다시 올라가** 검사 대상이 바뀐다.
-    await page.evaluate((d) => window.__sendPrimary({ type: '__e2e_clock', day: d, night: true }), WINTER);
-    await sleep(1500);
+    const fxA = await FX.setClock(page, { day: WINTER, night: true });   // ★[T140] 같은 정본
+    ok(fxA.ok, '★⑧ⓐ (픽스처) 평범한 한겨울 밤으로 시계가 되돌아왔다',
+      `day ${WINTER} · 기대 ${fxA.want.tempC}℃ · 실측 ${fxA.got ? fxA.got.tempC : 'null'}℃ · ${fxA.waited}ms`);
     const tgtOrd = Bcfg2.coldTarget({ day: WINTER, night: true, warmth: 0, villageShelter: 0 });
     ok(tgtOrd < gate, '★★⑧ⓐ (상황·정직 보고) **평범한 한겨울 밤의 평형은 극단 문턱을 못 넘는다**',
       `평형 ${tgtOrd} < 문턱 ${gate.toFixed(3)} — 얼어 죽는 건 가장 추운 밤이다`);

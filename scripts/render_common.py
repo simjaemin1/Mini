@@ -755,10 +755,19 @@ def save_exr(sheet, w, h, path):
 #     │ 캐릭터          public/assets/char/char_meta.json        frameW/frameH anchorX/Y   최상위 **하나**(전 시트 공용)
 #     │ 자연물·소품·    …/nature_anchors.json · props_ · crops_  w/h           ox/oy       **자산마다** {키: {...}}
 #     │ 작물·산         …/mountain_anchors.json
-#     └ 건물            **배포 메타가 없다** — building_anchors.json 은 scripts/building_renders/
-#                       (gitignore) 에만 있다. 세션8 이 건물에 걸려면 먼저 배포로 올려야 한다.
+#     └ 건물            …/buildings/building_anchors.json        w/h           ox/oy       **자산마다**
+#                       ★[T132] T116 이 여기 "배포 메타가 없다"고 적어 둔 자리다 — 그때는
+#                       `scripts/building_renders/`(gitignore)에만 있었다. T132 가 배포로 올렸다.
 #     ⇒ 자산별 서식(`w/h/ox/oy`)은 바로 위 `render_world_pass()` 가 **내는 그 서식**이다.
 #       즉 공용이 쓰는 것을 공용이 읽는다 — 이름을 새로 짓지 않았다.
+#
+#   ★[T132] 자가 **둘**이다 — 재는 방식이 다르면 자도 달라야 한다:
+#     · `fit_pinned_box`    상자를 **재서** 정하는 자산(캐릭터: 포즈 합집합) → 얼린 틀 **안에 들면** 된다.
+#     · `assert_pinned_box` 규격이 **공식·크롭으로** 정해지는 자산(건물 발자국 · 자연물 알파 크롭 ·
+#                           소품 · 밭) → 값이 **그 값이어야** 한다. 작아져도 규격이 바뀐 것이다.
+#     ⓘ 못박기는 **규격**을 얼린다. 화소를 얼리는 것은 `icons.lock.json`(sha1) 이다 — 다른 문지기다.
+#       실측(T132): 스테이징이 낡아 다시 저장된 나무 두 장은 **화소가 달라도 규격은 같아서**
+#       못박기를 통과했다. 둘 다 필요한 이유가 그것이다.
 def read_pinned_box(path, key=None, *, scale=1.0):
     """배포 메타에서 얼린 상자 (FW, FH, AX, AY) 를 꺼낸다. 없으면 **None**(= 매번 새로 잰다).
 
@@ -786,6 +795,33 @@ def read_pinned_box(path, key=None, *, scale=1.0):
         raise SystemExit(f"[render_common] 상자 메타 서식을 모르겠다: {path}"
                          f" (키 {sorted(m)[:8]}…) — frameW/frameH 나 w/h/ox/oy 중 하나여야 한다")
     return (int(fw) * scale, int(fh) * scale, float(ax) * scale, float(ay) * scale)
+
+
+def assert_pinned_box(path, key, w, h, ox, oy, *, label="asset", env="T132_BOXPIN", tol=0.05):
+    """배포 메타에 얼린 규격과 **정확히 같은지** 본다. 다르면 크게 실패한다.
+
+    ★`fit_pinned_box` 와 무엇이 다른가 — **재는 방식이 다르면 자도 달라야 한다.**
+      · `fit_pinned_box` : 상자를 **재서** 정하는 자산(캐릭터 시트 · 포즈 합집합).
+        새 상자가 얼린 틀 **안에 들어가기만** 하면 된다 — 틀은 안 움직인다.
+      · `assert_pinned_box`: 규격이 **공식이나 크롭으로 정해지는** 자산(건물 발자국 · 자연물
+        알파 크롭 · 밭 타일). 여기선 "들어간다"가 답이 아니다 — 값이 **그 값이어야** 한다.
+        작아져도 규격이 바뀐 것이고, 배포된 PNG 크기·앵커가 그 순간 낡는다.
+    ⓘ 메타가 없으면(첫 굽기) 잠자코 지나간다 — 못박을 것이 없다.
+    ⓘ `env` 환경변수를 `0` 으로 두면 끈다(규격을 새로 정하는 판)."""
+    if os.environ.get(env, "1") == "0":
+        return False
+    pinned = read_pinned_box(path, key=key)
+    if not pinned:
+        return False
+    fw, fh, ax, ay = pinned
+    if (int(fw), int(fh)) != (int(w), int(h)) or abs(ax - ox) > tol or abs(ay - oy) > tol:
+        raise SystemExit(
+            f"[{label}] ★{key}: 규격이 배포 메타와 다르다 — "
+            f"얼린 값 {int(fw)}x{int(fh)} anchor=({ax:.2f},{ay:.2f}) · "
+            f"이번 값 {int(w)}x{int(h)} anchor=({ox:.2f},{oy:.2f}). "
+            f"모양을 키웠거나 규약을 고쳤으면 **규격을 새로 정하고** 읽는 쪽도 같이 옮겨야 한다 "
+            f"(되돌림: {env}=0)")
+    return True
 
 
 def fit_pinned_box(pinned, umin, umax, wmin, wmax, *, label="asset", verbose=True):

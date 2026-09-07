@@ -322,7 +322,7 @@
     else if (k === 'p') sendPrimary({ type: 'build', buildType: 'farmland', floor: myBuildFloor });
     // ★★[T61 2026-09-03 · PM 판정] **죽은 분기 둘을 지웠다**(여기 있던 `'o' harvest` · `'g' feed`).
     //   둘 다 같은 글자의 **앞 분기**(선광 `o` · 원거리 공격 `g`)에 가려 한 번도 닿은 적이 없다.
-    //   지워도 동사는 산다: 수확·먹이기는 좌측 행동 버튼(`data-action="harvest"` · `"feed"`)이 그대로 보낸다.
+    //   지워도 동사는 산다: 수확·먹이기는 좌측 행동 버튼(`data-action="harvest"` · `"tame_feed"`)이 그대로 보낸다.
     //   ⇒ 단축키 표를 다시 짜지 않는다(버튼 라벨의 "(O)"·"(G)"만 걷었다 — 없는 단축키를 광고하지 않는다).
     else if (k === 'n') toggleTribePanel();
     else if (k === 'v') sendPrimary({ type: 'pvp_set', enabled: !myPvpEnabled });
@@ -393,7 +393,12 @@
       // ★[11차 T4] 마을 크루에게 집 의뢰 — placementMode.special 재사용(발명 0). 검증·재료·배치는 서버 권위.
       else if (a === 'psite_request') { buildMode = true; placementMode = { special: 'psite' }; showNotice('집 의뢰 모드 — 마을 영토 안을 클릭 (기둥6·서까래8·이엉8 선납 · B=취소)'); }
       else if (a === 'harvest') sendPrimary({ type: 'harvest' });
-      else if (a === 'feed') sendPrimary({ type: 'feed' });
+      // ★★[T140 2026-09-06] 낱말 하나를 갈았다: `data-action="feed"` → **`tame_feed`**.
+      //   `feed` 가 이 클라에서 **두 뜻**이었다 — 여기(짐승 길들이기 `tryFeed`)와
+      //   우클릭 동사 `{ type:'verb', name:'feed' }`(쓰러진 사람 먹이기 · `rescue.feed`).
+      //   ⚠**선에 나가는 이름은 안 건드린다** — 서버 프로토콜은 여전히 `{ type: 'feed' }` 다
+      //     (T140 지시: 서버 프로토콜 이름이 걸린 쪽은 안 건드린다 · 행동 변경 0 · 폴백 0).
+      else if (a === 'tame_feed') sendPrimary({ type: 'feed' });
       else if (a === 'tribe') toggleTribePanel();
       else if (a === 'pvp_toggle') sendPrimary({ type: 'pvp_set', enabled: !myPvpEnabled });
       else if (a === 'cook') toggleCookPanel();

@@ -146,7 +146,78 @@ function seedRand(zoneId, cx, cy, n) {
   return (h % 2147483647) / 2147483647;
 }
 
-const RESOURCE_HP_TABLE = { tree: 3, rock: 4, berry_bush: 2, water_pool: 999, herb: 1, ore: 5, meteorite: 6 };
+const RESOURCE_HP_TABLE = { tree: 3, rock: 4, berry_bush: 2, water_pool: 999, herb: 1, ore: 5, meteorite: 6, sapling: 1 };
+
+// ══ ★★[T122 2026-09-05 재민 확정] **나무는 다시 난다** ═══════════════════════
+//
+// 재민: *"당연히 나무도 리젠되어야 한다."* 종전엔 캔 시드 자원이 `harvested_seeds` 에 박혀
+// **그 세계에서 영원히** 없었다(주석 "Phase 12.2.e 자원 respawn 제거"). 그런데 NPC 벌목꾼이
+// 매일 실물을 벤다(`_lifeJobSites` → zone.js) ⇒ 마을 근처 숲은 줄기만 하고 안 돌아온다. 결함이다.
+//
+// ★문법은 **이미 있는 것**을 그대로 쓴다 — 광맥(`Specialty.oreRegen`)·어장·밭(`qd` 정산)이 하는 것:
+//   **수확 시각을 적고, 볼 때 경과일로 정산한다.** 타이머 0 · 틱 0 · 주사위 0 · 멱등.
+//   여기선 그보다 더 단순하다: 재생이 **연속량이 아니라 단계**라 닫힌 해도 필요 없다.
+//
+// ★★출처(앵커 하나) — Lee, C.S. et al., *"Establishment, Regeneration, and Succession of
+//   Korean Red Pine (Pinus densiflora S. et Z.) Forest in Korea,"* in *Conifers*,
+//   ed. A.C. Gonçalves, IntechOpen, 2018. doi:**10.5772/intechopen.80236**
+//     · *"To arrive at 60 cm/year … **22 years are required and height of saplings at that
+//        time reaches about 2 m**."*                         ⇒ 그루터기 → 묘목 = **22 게임년**
+//     · *"it is calculated that **52 years are required until saplings grow to mature trees,
+//        which form overstory canopy** by height growth."*   ⇒ 묘목 → 성목 = **52 게임년**
+//   소나무를 고른 이유: 송국리기 한반도의 대표 수종이고(T129 가 `tree01~03` 을 *Pinus densiflora*
+//   로 적어 뒀다), 한 논문이 **두 수를 다 준다**(앵커 하나 규약).
+//   ⚠종은 **아직 하나(`tree`)** 다 — 종별 표는 T123 카탈로그가 온 뒤다(회부).
+//   ⚠참나무는 그루터기에서 **맹아**로 다시 난다(coppice) — 소나무는 안 그런다. 종이 갈리는 날
+//     그루터기 기간이 종별로 갈릴 자리가 바로 여기다(회부).
+//
+// ★★그리고 **실시간 환산을 숨기지 않는다**(§0-ⓑ · 재민 판정 자리):
+//   게임일 = 24 실분 ⇒ 게임 1년 = 365 게임일 ≈ **6.08 실일**.
+//     그루터기 → 묘목  22 게임년 ≈ **134 실일**(4.4개월)
+//     묘목 → 성목      52 게임년 ≈ **316 실일**(10.4개월)
+//   ⇒ **플레이어는 사실상 성목이 되는 걸 못 본다.** 그게 임학이 말하는 크기이고, 첫 판은
+//     카드 지시대로 **출처값 그대로** 세운다. 짧게 할 근거가 생기면 `T122_STUMP_Y`·`T122_TREE_Y`
+//     두 손잡이만 갈면 된다(값을 지어내지 않는다 · 재민 판정 뒤).
+//
+// ★덤불·약초 — 같은 문법, 훨씬 짧다. 이건 **베는 것이 아니라 따는 것**이라 개체가 안 죽는다:
+//   덤불은 이듬해 다시 열매를 달고 여러해살이 풀은 한 철이면 돌아온다 ⇒ **1 게임년 / 반 해**.
+//   (연 단위 결실·한 철 재생은 이 세계가 `Crops` 에서 이미 쓰는 시간 눈금과 같은 층이다.)
+// ★바위·광맥·운철·둠벙은 **종전 그대로** — 바위는 안 나고(그게 맞다) 광맥은 이미 제 재생이 있다.
+const _rgNum = (k, d) => { const v = parseFloat(process.env[k]); return Number.isFinite(v) ? v : d; };
+const REGROW = {
+  ON: () => _rgNum('T122_REGROW', 1),            // ★되돌림 — 0 이면 종전(= 영구 소실). 부를 때 읽는다
+  TREE_STUMP_Y: () => _rgNum('T122_STUMP_Y', 22),  // 그루터기 기간(게임년) — 출처 위
+  TREE_FULL_Y: () => _rgNum('T122_TREE_Y', 52),    // 성목까지(게임년) — 출처 위
+  BUSH_Y: () => _rgNum('T122_BUSH_Y', 1),          // 덤불 — 이듬해 다시 열린다
+  HERB_Y: () => _rgNum('T122_HERB_Y', 0.5),        // 여러해살이 풀 — 한 철
+};
+// 한 해의 길이는 **econ 계절 정본에서 유도**한다(365 를 여기 적지 않는다 — `events.yearDaysOf` 규약).
+let _EV = undefined;
+function _yearDays() {
+  if (_EV === undefined) { try { _EV = require('./events'); } catch (e) { _EV = null; } }
+  try { return (_EV && _EV.yearDaysOf && _EV.yearDaysOf()) || 365; } catch (e) { return 365; }
+}
+/**
+ * ★★재생 정산 — **함수 하나**. 벤 뒤 경과 게임일을 단계로 바꾼다(사본 0 · 주사위 0 · 멱등).
+ * @returns {null|'gone'|'stump'|'sapling'|'mature'}
+ *   `null`  = 이 종류는 재생하지 않는다(바위·광맥·운철·둠벙 — 호출부가 종전대로 뺀다)
+ *   `gone`  = 아직 아무것도 없다(덤불·약초의 재생 전)
+ *   `mature`= 종전 그대로 난다(= 안 벤 것과 같다)
+ */
+function regrowStageOf(type, elapsedDays) {
+  if (!(REGROW.ON() !== 0)) return null;              // ★되돌림 — 종전(영구 소실)
+  const d = Number.isFinite(elapsedDays) ? elapsedDays : -1;
+  if (d < 0) return null;                             // 벤 날을 모른다 — 종전대로 뺀다
+  const Y = _yearDays();
+  if (type === 'tree') {
+    if (d < REGROW.TREE_STUMP_Y() * Y) return 'stump';
+    if (d < REGROW.TREE_FULL_Y() * Y) return 'sapling';
+    return 'mature';
+  }
+  if (type === 'berry_bush') return d < REGROW.BUSH_Y() * Y ? 'gone' : 'mature';
+  if (type === 'herb') return d < REGROW.HERB_Y() * Y ? 'gone' : 'mature';
+  return null;                                        // 바위·광맥·운철·둠벙 — 무변
+}
 
 // ★★[재민 확정 · 2026-08-02] 운철(隕鐵) — "거의 불가능"의 **'거의'**.
 //   era.js §METEORIC: 실제 운철은 Fe-Ni 자연합금이라 **제련이 필요 없다**. 이미 금속이다.
@@ -247,7 +318,19 @@ function pickResourceType(biome, r) {
 // Phase 5-1: terrain (forest·mountain·ore·water) 반영.
 const RESOURCES_PER_CHUNK = 5;
 const terrain = require('./terrain');
-function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet) {
+/**
+ * @param harvestedSet  `Set<key>`(옛 계약) 또는 `Map<key, 벤 게임일>`(T122). Map 이면 재생이 산다.
+ * @param gameDay       지금 게임일. 없으면 재생 판정을 안 한다(= 종전 그대로 빠진다).
+ */
+function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet, gameDay) {
+  // ★[T122] 벤 날 조회 — `Set` 이 오면 `get` 이 없다(옛 호출부·구 하네스 계약을 그대로 살린다).
+  const _cutDay = (k) => (harvestedSet && typeof harvestedSet.get === 'function') ? harvestedSet.get(k) : undefined;
+  const _stage = (k, type) => {
+    if (!Number.isFinite(gameDay)) return null;
+    const cd = _cutDay(k);
+    if (!Number.isFinite(cd)) return null;
+    return regrowStageOf(type, gameDay - cd);
+  };
   const result = [];
   // 청크당 자원 수 — forest/mountain 영역이면 ↑ (대표 점 sample)
   const sampleX = cx * chunkSize + chunkSize / 2;
@@ -260,7 +343,7 @@ function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet) 
   const count = oreCluster ? baseCount + 3 : baseCount;  // ore cluster: 광물 노드 추가
   for (let n = 0; n < count; n++) {
     const seedKey = `${cx}_${cy}_${n}`;
-    if (harvestedSet && harvestedSet.has(seedKey)) continue;
+    const _cut = !!(harvestedSet && harvestedSet.has(seedKey));
     const r1 = seedRand(zoneId, cx, cy, n * 3);
     const r2 = seedRand(zoneId, cx, cy, n * 3 + 1);
     const r3 = seedRand(zoneId, cx, cy, n * 3 + 2);
@@ -281,18 +364,31 @@ function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet) 
     } else {
       type = pickResourceType(biome, r3);
     }
-    const maxHp = RESOURCE_HP_TABLE[type] || 3;
+    // ★★[T122] 벤 자리는 **빠지는** 대신 **단계**로 난다. 종류는 이미 정해졌으므로(위 결정론)
+    //   "무엇이 다시 나는가"가 흔들리지 않는다 — 벤 나무 자리엔 나무가 난다.
+    let stage = null;
+    if (_cut) {
+      stage = _stage(seedKey, type);
+      if (stage === null || stage === 'gone') continue;     // 종전 그대로 빠진다
+    }
+    let outType = type, maxHp = RESOURCE_HP_TABLE[type] || 3;
+    if (stage === 'stump') { outType = 'stump'; maxHp = 0; }        // 그림만 — 캘 수 없다
+    else if (stage === 'sapling') { outType = 'sapling'; maxHp = RESOURCE_HP_TABLE.sapling; }
     const entity = {
       id: `s_${cx}_${cy}_${n}`,
       seedKey, isSeed: true,
-      x, y, type, hp: maxHp, maxHp,
+      x, y, type: outType, hp: maxHp, maxHp,
     };
+    if (stage) entity.regrown = stage;                             // 화면·하네스가 단계를 물을 수 있게
     // Phase 5-8: tree는 입체 — radius + height (콜라이더 + 시야 차단 + 시각)
     if (type === 'tree') {
       // sub-pixel 지름 8~30px (반경 4~15px, 단 1 cell=32px 미만)
       entity.r = 4 + (r3 * 16);  // 반경 4~20 (forest 그리드와 동일 범위)
       // 높이 — 크기에 비례
       entity.h = 46 + (r3 * 120);  // 46~166
+      // ★[T122] 어린 것은 **작다** — 같은 자리·같은 씨앗의 나무가 그대로 줄어든 것이다(새 수 0).
+      if (outType === 'stump') { entity.r *= 0.9; entity.h = 10; }
+      else if (outType === 'sapling') { entity.r *= 0.45; entity.h *= 0.30; }
     }
     result.push(entity);
   }
@@ -307,6 +403,7 @@ function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet) 
       const seedKey = `${cx}_${cy}_met`;
       const wet = terrain.isWaterCellLocal(zoneId, mx, my);
       const rock = typeof terrain.isRockCellLocal === 'function' && terrain.isRockCellLocal(zoneId, mx, my);
+      // ★[T122] 운철은 **재생하지 않는다**(`regrowStageOf` 가 null 을 낸다) — 종전 그대로 빠진다.
       if (!wet && !rock && !(harvestedSet && harvestedSet.has(seedKey))) {
         result.push({ id: `s_${cx}_${cy}_met`, seedKey, isSeed: true, x: mx, y: my,
                       type: 'meteorite', hp: RESOURCE_HP_TABLE.meteorite, maxHp: RESOURCE_HP_TABLE.meteorite });
@@ -347,8 +444,12 @@ function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet) 
         if (terrain.isWaterCellLocal(zoneId, x, y)) continue;
         if (typeof terrain.isRockCellLocal === 'function' && terrain.isRockCellLocal(zoneId, x, y)) continue;
         const seedKey = `gv${gi}_${i}`;
-        if (harvestedSet && harvestedSet.has(seedKey)) continue;
         const type = g.kind || 'berry_bush';
+        // ★[T122] 군락도 같은 문법 — 덤불은 이듬해 다시 열리고, 바위는 종전대로 안 난다.
+        if (harvestedSet && harvestedSet.has(seedKey)) {
+          const st = _stage(seedKey, type);
+          if (st !== 'mature') continue;
+        }
         const maxHp = RESOURCE_HP_TABLE[type] || 3;
         result.push({ id: `s_${seedKey}`, seedKey, isSeed: true, x, y, type, hp: maxHp, maxHp });
       }
@@ -384,14 +485,25 @@ function generateChunkResources(zoneId, biome, cx, cy, chunkSize, harvestedSet) 
         if (terrain.isWaterCellLocal(zoneId, x, y)) continue;
         if (typeof terrain.isRockCellLocal === 'function' && terrain.isRockCellLocal(zoneId, x, y)) continue;
         const seedKey = `${cx}_${cy}_ft${gx}_${gy}`;
-        if (harvestedSet && harvestedSet.has(seedKey)) continue;
+        // ★★[T122] **여기가 숲의 본체다**(청크당 ~340그루 · NPC 벌목꾼이 실제로 베는 자리).
+        //   위 일반 자원 갈래와 **같은 판정 함수**를 쓴다(사본 0).
+        let fstage = null;
+        if (harvestedSet && harvestedSet.has(seedKey)) {
+          fstage = _stage(seedKey, 'tree');
+          if (fstage === null || fstage === 'gone') continue;
+        }
         const sz = seedRand(zoneId, cx, cy, 91000000 + gi);  // 크기(0~1) — 위치와 독립
-        result.push({
+        let ftype = 'tree', fhp = 3, fr = 4 + sz * 16, fh = 46 + sz * 120;
+        if (fstage === 'stump') { ftype = 'stump'; fhp = 0; fr *= 0.9; fh = 10; }
+        else if (fstage === 'sapling') { ftype = 'sapling'; fhp = RESOURCE_HP_TABLE.sapling; fr *= 0.45; fh *= 0.30; }
+        const fe = {
           id: `s_${seedKey}`, seedKey, isSeed: true,
-          x, y, type: 'tree', hp: 3, maxHp: 3,
-          r: 4 + sz * 16,            // 반경 4~20 (제각각)
-          h: 46 + sz * 120,          // 키도 크기에 비례 (46~166)
-        });
+          x, y, type: ftype, hp: fhp, maxHp: fhp,
+          r: fr,            // 반경 4~20 (제각각)
+          h: fh,            // 키도 크기에 비례 (46~166)
+        };
+        if (fstage) fe.regrown = fstage;
+        result.push(fe);
       }
     }
   }
@@ -582,4 +694,4 @@ function generateCoastlineWaterTiles(zone, tileSize, findZoneAtFn, oceanRects) {
 
 // ★[T108 2026-09-05] `RESOURCE_HP_TABLE` 을 **내준다** — `zone.js` 가 같은 표를 한 벌 더
 //   들고 있었고(운석이 빠져 3대에 깨졌다 · T90 회부), 그걸 지우려면 정본이 나가야 한다.
-module.exports = { Chunk, ChunkManager, CHUNK_SIZE, generateChunkResources, seedRand, generateVillagesForZone, makeVillageName, generateCoastlineWaterTiles, RESOURCE_HP_TABLE };
+module.exports = { Chunk, ChunkManager, CHUNK_SIZE, generateChunkResources, regrowStageOf, REGROW, seedRand, generateVillagesForZone, makeVillageName, generateCoastlineWaterTiles, RESOURCE_HP_TABLE };

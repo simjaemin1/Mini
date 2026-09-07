@@ -298,6 +298,44 @@ console.log('\n[⑧ 먹선·셀·상자 못박기 — 공용 한 벌 · 캐릭�
      '★못박기 읽개가 서식 **둘**을 읽는다 — 캐릭터 최상위 · 자산별 {w,h,ox,oy}');
   ok(/raise SystemExit/.test((common || '').split('def fit_pinned_box')[1] || ''),
      '★안 들어맞으면 **크게 실패한다** (조용히 잘리지 않는다)');
+
+  // ⓖ ★[T132] **상자 못박기가 어느 자산군에 걸렸나** — 후처리(ⓔ)와 **다른 목록**이다.
+  //   ⓔ 의 `WIRED` 는 먹선·셀이고 그건 아직 캐릭터뿐이다(재민 눈 판정 뒤 카드).
+  //   못박기는 T132 가 전 자산군에 걸었다. 두 목록을 한 줄로 섞으면 "무엇이 걸렸나"를 못 읽는다.
+  //   ⚠자산군을 새로 걸면 **여기 목록을 늘려라**(지우지 말 것 — ⓔ 와 같은 규약).
+  const PINNED = {
+    'char_render.py': 'fit_pinned_box',        // 재는 상자 — 들어가기만 하면 된다
+    'building_render.py': 'assert_pinned_box', // 발자국 공식 — 값이 그 값이어야 한다
+    'props_render.py': 'assert_pinned_box',
+    'fields_render.py': 'assert_pinned_box',
+    'nature-postprocess.py': 'assert_pinned_box',   // 크롭 뒤가 규격이 정해지는 자리
+  };
+  {
+    const miss = [], wrong = [];
+    for (const [f, fn] of Object.entries(PINNED)) {
+      const q = path.join(dir, f);
+      if (!fs3.existsSync(q)) { miss.push(f + '(파일 없음)'); continue; }
+      const src = fs3.readFileSync(q, 'utf8');
+      const uses = new RegExp(`(rc|_RC)\\.${fn}\\(`).test(src);
+      if (!uses) miss.push(f);
+      // 사본 금지 — 부르기만 하고 제 손으로 다시 정의하지 않는다
+      if (new RegExp(`^def ${fn}\\(`, 'm').test(src)) wrong.push(f);
+    }
+    ok(miss.length === 0,
+       `상자 못박기가 걸린 굽기 ${Object.keys(PINNED).length}곳 ${miss.length ? '— 안 걸린 것: ' + miss.join(', ') : '(char·건물·소품·밭·자연물)'}`);
+    ok(wrong.length === 0, `못박기 함수 사본 0 ${wrong.length ? '→ ' + wrong.join(', ') : ''}`);
+    // ★자명 통과 금지 — 못박기를 **안 건** 굽기가 남아 있으면 이름을 찍는다(실패로는 안 센다).
+    const bakers = fs3.readdirSync(dir).filter((f) => /_render\.py$|^bake-|postprocess\.py$/.test(f));
+    const unpinned = bakers.filter((f) => !PINNED[f] &&
+      !/(rc|_RC)\.(assert|fit)_pinned_box\(/.test(fs3.readFileSync(path.join(dir, f), 'utf8')));
+    console.log(`     아직 안 건 굽기 ${unpinned.length}: ${unpinned.join(' ') || '—'}`);
+    console.log('     ⓘ `nature_render.py` 가 여기 있는 건 빠뜨린 게 아니다 — 자연물·나무의 규격은');
+    console.log('       **크롭 뒤**에 정해지므로 못박기가 `nature-postprocess.py` 에 걸려 있다.');
+    console.log('     ⓘ 산(`pack-mountain.py`)은 `mountain_anchors.json` 이 있으니 걸 수 있다 — 회부.');
+  }
+  // ⓗ 두 자가 **뜻이 다르다**는 것이 공용에 적혀 있다(둘을 같은 것으로 쓰면 규격이 샌다)
+  ok(/들어가기만|들어간다|안에 들어가/.test((common || '').split('def assert_pinned_box')[1] || ''),
+     '★공용이 `fit`(들어가나) 과 `assert`(그 값인가) 의 차이를 적어 뒀다');
 }
 
 if (SELFTEST) {

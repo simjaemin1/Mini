@@ -171,6 +171,40 @@
     _img.src = '/assets/trees/tree' + String(_ti).padStart(2, '0') + '.png';
     TREE_SPRITES.push(_img);
   }
+  // ★★[T122 2026-09-05] **벤 자리의 두 단계** — 그루터기·묘목. 그림은 **T129 가 이미 구웠다**
+  //   (`stump01.png` 종 공통 하나 · `sap_<종>.png` 여덟). 축소 그림을 임시로 쓰지 않는다.
+  //   ⚠종은 아직 하나(`tree`)라 묘목은 **성목과 같은 해시**로 고른다 — 같은 자리의 나무가
+  //     자라면 같은 종이어야 한다(자리마다 종이 바뀌면 그건 재생이 아니라 다른 나무다).
+  const SAP_SPECIES = ['pine', 'jat', 'oak', 'chestnut', 'willow', 'hazel', 'mulberry', 'grape'];
+  const SAP_SPRITES = SAP_SPECIES.map((sp) => { const im = new Image(); im.src = '/assets/trees/sap_' + sp + '.png'; return im; });
+  const STUMP_SPRITE = (() => { const im = new Image(); im.src = '/assets/trees/stump01.png'; return im; })();
+  const _regrowDraw = { stump: 0, sapling: 0 };   // 하네스용 — 실제로 그린 횟수
+
+  //   ★그리는 문법은 나무와 **같다**(줄기 밑면을 (x,y)에 앵커 · h 로 스케일 · 그림자 타원).
+  function _drawStandingSprite(img, x, y, r, h, scale) {
+    if (!img || !img.complete || !img.naturalHeight) return false;
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.beginPath(); ctx.ellipse(x, y, r * 1.5, r * 0.5, 0, 0, Math.PI * 2); ctx.fill();
+    const dh = h * scale, dw = dh * (img.naturalWidth / img.naturalHeight);
+    ctx.drawImage(img, x - dw / 2, y - dh, dw, dh);
+    return true;
+  }
+  function drawStumpIso(x, y, r, h, seedX, seedY) {
+    if (_drawStandingSprite(STUMP_SPRITE, x, y, r || 7, h || 10, 1.3)) { _regrowDraw.stump++; return; }
+    // 폴백 — 낮은 원기둥 하나(그림이 아직 안 왔을 때)
+    ctx.fillStyle = 'rgba(0,0,0,0.20)';
+    ctx.beginPath(); ctx.ellipse(x, y, (r || 7) * 1.4, (r || 7) * 0.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#6b4a2a'; ctx.fillRect(x - (r || 7), y - (h || 10), (r || 7) * 2, (h || 10));
+    ctx.fillStyle = '#8a6438';
+    ctx.beginPath(); ctx.ellipse(x, y - (h || 10), (r || 7), (r || 7) * 0.4, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  function drawSaplingIso(x, y, r, h, seedX, seedY) {
+    const hsh = _treeHash(seedX != null ? seedX : x, seedY != null ? seedY : y);
+    const img = SAP_SPRITES[(hsh * SAP_SPRITES.length) | 0];
+    if (_drawStandingSprite(img, x, y, r || 4, h || 20, 1.3)) { _regrowDraw.sapling++; return; }
+    drawTreeIso(x, y, r, h, seedX, seedY);   // 폴백 — 작은 나무(크기는 서버가 이미 줄여 보냈다)
+  }
+
   const TREE_SPRITE_SCALE = 1.3;   // 나무 h 대비 스프라이트 높이 배수
   const _treeDraw = { n: 0, h: 0, px: 0, aspect: 0 };   // ★[배치 21] 하네스용 — 스프라이트 경로로 **실제 그린** 횟수
 
@@ -397,13 +431,29 @@
     weaponsmith: 'tool_hammer',    // ⚔️
     armorsmith: 'tool_hammer',     // 🛡️
   };
-  // 직업 → 그릴 레이어 목록. 몸·삼베는 언제나 있고 소품만 갈린다.
-  //   ★`charLayersFor` 와 **같은 순서 계약**(몸 → 옷 → 도구)을 지킨다 — 깊이는 시트를 구울 때
-  //     홀드아웃이 이미 잡았고, 런타임은 겹치기만 한다.
-  function npcCharLayers(job) {
-    const t = NPC_JOB_TOOL[job];
-    return t ? ['body', 'clothes_hemp', t] : ['body', 'clothes_hemp'];
-  }
+  // ★★[T134 2026-09-06] **사람의 도구도 표로 고른다** — 종전엔 정규식 한 줄이었다:
+  //     `/rod|fish|낚/i.test(t) ? 'tool_rod' : 'tool_axe'`
+  //   §0-ⓒ 실측이 그 줄을 뒤집었다. 사람이 실제로 들 수 있는 `tool` 문자열은 열이고
+  //   (`axe·pickaxe·sword·saw·hammer·crude_axe·crude_pick·crude_blade` + 장비 슬롯 `tool·weapon`),
+  //   **그중 아무것도 `rod|fish|낚` 에 안 걸린다** — 낚싯대라는 품목이 이 게임에 없기 때문이다.
+  //   ⇒ 실루엣 둘이라던 것이 실은 **하나**였다. 곡괭이도 망치도 검도 전부 도끼로 그려지고 있었다.
+  //   ★시트에는 `tool_*` 이 **여섯** 구워져 있다(메타 확인 · 굽기 0). 그 여섯으로 표를 만든다.
+  //   ⚠**없는 것을 지어내지 않는다**: 톱·검은 시트에 없으므로 종전 그대로 도끼 자리에 둔다.
+  //     곡괭이 → 괭이는 **판단**이다(둘 다 긴 자루 + 가로 날 · 26px 에서 같은 실루엣이고,
+  //     도끼로 그리는 것보다 참말이다). 되돌리려면 이 표에서 두 줄을 지우면 된다.
+  const PLAYER_TOOL_LAYER = {
+    axe: 'tool_axe', crude_axe: 'tool_axe',
+    pickaxe: 'tool_hoe', crude_pick: 'tool_hoe',   // 곡괭이 ≈ 괭이 실루엣(판단 · 보고 §0-ⓒ)
+    hammer: 'tool_hammer',                          // ★새로 산다 — 종전엔 도끼로 그려졌다
+    hoe: 'tool_hoe', spear: 'tool_spear', basket: 'tool_basket', rod: 'tool_rod',   // 품목이 생기면 그날 맞는다
+  };
+  //   ★표에 없으면 도끼다 — 종전 기본값 그대로다(톱·검·`tool`·`weapon` 이 여기 온다).
+  const PLAYER_TOOL_FALLBACK = 'tool_axe';
+
+  // ★★[T125 2026-09-05] 여기 있던 `npcCharLayers` 는 **지웠다**(사본 −1). 그 함수가 옷을
+  //   `clothes_hemp` 로 **못 박고** 있었고, 그래서 마을 곳간에 갖옷이 쌓여도 화면은 전부 삼베였다.
+  //   이제 층 목록은 사람·주민 한 함수(`42-r2-char.js charLayersFor`)가 만들고, 이 표는
+  //   그 함수가 **직업 소품**을 고를 때 읽는다(표는 여기 남는다 — 소품은 R2 의 것이다).
   //   ⚠표를 `window` 에 올리지 않는다 — 그건 **최상위 실행문**이고 조각 규약상 `99-main.js` 에만
   //     허용된다(`test-client-globals ③` 이 잡는다 · 실제로 잡혔다). 하네스는 이 표를 베끼지 말고
   //     ⓐ 소스에서 정규식으로 읽거나 ⓑ `window.__charDbg[pid].layers`(이미 있는 진단 훅)를 봐라.

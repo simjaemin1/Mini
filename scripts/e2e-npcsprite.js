@@ -135,7 +135,7 @@ const ZENV = {
   console.log('\n=== ① NPC 가 도형이 아니라 시트로 그려진다 ===');
   const dbgNpc = async () => page.evaluate(() =>
     Object.entries(window.__charDbg || {}).filter(([, v]) => v && v.job)
-      .map(([pid, v]) => ({ pid, on: !!v.on, clip: v.clip, row: v.row, job: v.job, layers: (v.layers || []).slice() })));
+      .map(([pid, v]) => ({ pid, on: !!v.on, clip: v.clip, row: v.row, job: v.job, clothes: v.clothes || null, carrier: !!v.carrier, layers: (v.layers || []).slice() })));
   // ★한 번만 읽지 마라 — `__charDbg` 는 **그 프레임에 실제로 그린** NPC 만 채운다(시야·컬링).
   //   한 판 읽고 끝내면 화면에 24명인데 2명만 본 채로 판정하게 된다(1차 실행이 그랬다).
   //   ⇒ 여러 판을 **누적**해서 본다 — pid 로 합친다.
@@ -145,9 +145,22 @@ const ZENV = {
   ok(seen.length >= 1, `NPC ${seen.length}명이 시트 경로를 탔다`, seen.slice(0, 3).map((s) => `${s.job}:${s.clip}`).join(' · '));
   ok(seen.length >= 1 && seen.every((s) => s.on), '★전원 `on:true` — 반쪽 합성·투명 NPC 없음',
      seen.filter((s) => !s.on).map((s) => s.job).join(',') || '실패 0');
-  ok(seen.every((s) => s.layers[0] === 'body' && s.layers[1] === 'clothes_hemp'),
-     '★몸+삼베가 언제나 앞 두 장 — 알몸 금지·순서 계약(몸→옷→도구)',
+  ok(seen.every((s) => s.layers[0] === 'body'), '★몸이 언제나 첫 장 — 순서 계약(몸→옷→도구)',
      seen[0] ? seen[0].layers.join('+') : '');
+  // ★★[T125 2026-09-05] 이 줄은 **뒤집혔다.** 종전 판정은 `layers[1] === 'clothes_hemp'` 를
+  //   요구했고 — 그건 T13 의 `npcCharLayers` 가 옷을 **못 박고 있었기 때문**이다. 마을 곳간에
+  //   갖옷이 쌓여도 화면은 언제나 삼베였고, 이 하네스가 그 결함을 **규격으로** 적고 있었다.
+  //   ⇒ T125 의 새 계약: 옷은 **곳간이 정한다.** 재고가 있으면 그 재질, 없으면 **맨몸**이다.
+  //     (`clothes` 는 서버 `makeEntry` 가 실어 온 값 — 사람과 **같은 필드**다.)
+  {
+    const bad = seen.filter((s) => {
+      const cl = s.layers.filter((L) => /^clothes_/.test(L));
+      return s.clothes ? !(cl.length === 1 && cl[0] === 'clothes_' + s.clothes) : cl.length !== 0;
+    });
+    ok(bad.length === 0,
+       `★★곳간이 화면과 **같은 말**을 한다 — 재질 ${JSON.stringify([...new Set(seen.map((s) => s.clothes))])} · 어긋난 NPC ${bad.length}`,
+       bad.length ? JSON.stringify(bad[0]) : `${seen.length}명 검사`);
+  }
 
   // ── ② 직업 표식 — 표는 **소스에서 읽는다**(사본 금지) ───────────────────────
   console.log('\n=== ② 직업 표식 — 손에 든 것으로 가른다 ===');
@@ -186,19 +199,120 @@ const ZENV = {
   }
   ok(marked.length >= 1, '②-b ★표 직업 NPC 가 실제로 그려지는 것을 봤다(위 판정이 공짜가 아니다)',
      `표 직업 ${marked.length}명 · 표 밖 ${plain.length}명 · 그린 직업 [${[...new Set([...acc.values()].map((s) => s.job))].join(',')}]`);
-  ok(marked.length >= 1 && marked.every((s) => s.layers[2] === tbl[s.job]),
-     `★표에 있는 직업은 그 소품을 든다 (${marked.length}명)`,
-     marked.slice(0, 4).map((s) => `${s.job}=${s.layers[2] || '없음'}`).join(' · '));
+  // ★[T125] 자리를 `layers[2]` 로 못 박지 않는다 — 곳간이 비면 옷 층이 빠져 소품이 앞으로 당겨진다.
+  //   묻는 것은 자리가 아니라 **들었는가**다(순서 계약은 위 ①이 `body` 로 지킨다).
+  ok(marked.length >= 1 && marked.every((s) => s.layers[s.layers.length - 1] === tbl[s.job]),
+     `★표에 있는 직업은 그 소품을 든다 — **맨 뒤 장**이다 (${marked.length}명)`,
+     marked.slice(0, 4).map((s) => `${s.job}=${s.layers[s.layers.length - 1] || '없음'}`).join(' · '));
   // ⚠"맨손"은 **그려진 것 중에** 표 밖 직업이 있으면 그것이 2장인지를 묻는 성질 판정이다.
   //   "표 밖 직업을 꼭 봐야 한다"로 만들면 안 된다 — 마을에 한 명뿐인 직업(실측: tailor 1/24)이
   //   그 판에 시야에 안 들어오는 것은 흔한 일이고, 그건 제품이 아니라 **표본**이다.
   //   ⇒ 이 절이 공짜가 아니라는 증명은 위 ②-b 가 이미 한다(표 직업이 실제로 그려지는 것을 봤다).
   const worldPlain = worldJobs.filter((j) => !tbl[j]);
   console.log(`    표 밖 직업 — 마을에 ${worldPlain.length}명 · 이번에 그려진 것 ${plain.length}명`);
-  ok(plain.every((s) => s.layers.length === 2),
-     `★표에 없는 직업은 맨손 (그린 ${plain.length}명 검사)`,
-     plain.slice(0, 3).map((s) => `${s.job}:${s.layers.length}장`).join(' · ') || '이번 판에 표 밖 직업이 안 그려졌다(성질은 성립)');
+  // ★[T125] 장수는 옷이 있느냐에 달렸다(맨몸이면 몸 한 장). 묻는 것은 **소품이 없다**는 것이다.
+  ok(plain.every((s) => !s.layers.some((L) => /^tool_/.test(L))),
+     `★표에 없는 직업은 맨손 — 소품 층 0 (그린 ${plain.length}명 검사)`,
+     plain.slice(0, 3).map((s) => `${s.job}:${s.layers.join('+')}`).join(' · ') || '이번 판에 표 밖 직업이 안 그려졌다(성질은 성립)');
   seen = [...acc.values()];
+
+  // ── ②′ [T125] 옷은 곳간에서 온다 — 안 깜빡인다 ──────────────────────────────
+  console.log('\n=== ②′ 주민의 옷 — 마을 곳간이 정한다 (T125) ===');
+  {
+    const dressed = seen.filter((s) => s.clothes);
+    const bare = seen.filter((s) => !s.clothes);
+    console.log(`    이번 판: 옷 입은 주민 ${dressed.length}명 · 맨몸 ${bare.length}명`
+      + ` (곳간 옷 재고가 인구를 못 따라가면 맨몸이 나온다 — 갓 심은 마을은 대개 전원 맨몸이다)`);
+    ok(dressed.length + bare.length === seen.length, '★두 갈래로 갈린다 — 옷 입은 주민과 맨몸');
+    // 맨몸이면 옷 층이 **아예 없다**(종전엔 언제나 `clothes_hemp` 가 들어갔다 — 그게 이 카드의 결함)
+    ok(bare.every((s) => !s.layers.some((L) => /^clothes_/.test(L))),
+       `★★맨몸은 옷 층이 **0장**이다 (${bare.length}명) — 종전 \`npcCharLayers\` 는 여기 삼베를 넣었다`,
+       bare[0] ? bare[0].layers.join('+') : '맨몸 0명');
+    // 옷을 입었으면 그 재질 층이 **정확히 하나**
+    ok(dressed.every((s) => s.layers.filter((L) => /^clothes_/.test(L)).join(',') === 'clothes_' + s.clothes),
+       `★옷 입은 주민은 **그 재질** 한 장이다 (${dressed.length}명)`,
+       dressed.slice(0, 4).map((s) => `${s.job}=${s.clothes}`).join(' · ') || '이 판엔 옷 입은 주민 0(곳간이 비었다)');
+    // ★★안 깜빡인다 — 자리가 아니라 신원으로 고르므로 걸어 다녀도 옷이 안 바뀐다.
+    //   (자리 해시였다면 매틱 바뀌고, `makeEntry` 의 1.2초 창이 그 깜빡임을 네트워크로 실어 나른다.)
+    const before = new Map(seen.map((s) => [s.pid, s.layers.filter((L) => /^clothes_/.test(L)).join(',')]));
+    for (let k = 0; k < 10; k++) { for (const s2 of await dbgNpc()) acc.set(s2.pid, s2); await sleep(400); }
+    let flick = 0, checked = 0;
+    for (const s2 of acc.values()) { if (!before.has(s2.pid)) continue; checked++;
+      if (s2.layers.filter((L) => /^clothes_/.test(L)).join(',') !== before.get(s2.pid)) flick++; }
+    ok(flick === 0, `★★4초 동안 **안 깜빡인다** — ${checked}명 중 바뀐 주민 ${flick}명 (신원으로 고르기 때문)`);
+    seen = [...acc.values()];
+  }
+
+  // ── ②″ [T134] 짐을 진 주민은 지게를 진다 ────────────────────────────────────
+  console.log('\n=== ②″ 주민의 지게 — 진 짐이 화면에 보인다 (T134) ===');
+  {
+    // ★자를 둘 놓는다: **서버 진실**(`/lifedbg` 의 `carrying` = `_carry>0` 인 주민 수)과
+    //   **화면**(`__charDbg` 의 `back_carrier` 층). 하네스가 규칙을 다시 짜지 않는다.
+    const carryingNow = async () => {
+      try {
+        const d = await (await fetch(`http://localhost:${ZPORT}/lifedbg`)).json();
+        const rows = d && (d.villages || d.rows || (Array.isArray(d) ? d : []));
+        let n = 0; for (const r of (rows || [])) n += (r.carrying | 0);
+        return n;
+      } catch (e) { return -1; }
+    };
+    let srvMax = 0, seenBack = 0, bad = 0, samples = 0;
+    const acc2 = new Map();
+    for (let k = 0; k < 30; k++) {
+      const [srv, rows] = await Promise.all([carryingNow(), dbgNpc()]);
+      if (srv > srvMax) srvMax = srv;
+      for (const r of rows) {
+        acc2.set(r.pid, r); samples++;
+        const has = r.layers.includes('back_carrier');
+        if (has !== r.carrier) bad++;              // 비트와 층이 어긋나면 층 함수가 거짓말이다
+        if (has) seenBack++;
+      }
+      await sleep(400);
+    }
+    console.log(`    서버가 본 '짐 진 주민' 최대 ${srvMax}명 · 화면 표본 ${samples}건 중 지게 ${seenBack}건`);
+    ok(bad === 0, `★★[T134] 지게 비트와 \`back_carrier\` 층이 **정확히 같다** (표본 ${samples}건 · 어긋남 ${bad})`);
+    // ★자명 통과 금지 — 서버가 한 번이라도 "짐 진 주민 ≥1" 이라고 말했으면 화면에서도 봤어야 한다.
+    if (srvMax >= 1) {
+      ok(seenBack >= 1, `★★[T134] 서버가 짐 진 주민 ${srvMax}명이라 했고 **화면에도 지게가 떴다** (${seenBack}건)`);
+    } else {
+      // ★★**여기서 "통과"라고 말하지 않는다.** 서버가 0 이라 했으면 화면이 0 인 것은 당연하고,
+      //   그건 지게가 **뜨는지**를 재지 못한 것이다(자명 통과 금지 · 이 레포의 캐논).
+      //   ⇒ 재지 못했다는 사실을 **빨강이 아니라 글로** 남기고, 뜨는 쪽은 아래 두 자로 대신 건다.
+      console.log('    ⚠양성 갈래(짐 진 주민이 실제로 뜨는 것)는 **이 판에서 못 봤다** — 서버도 0 이었다.');
+      console.log('      실측(T134 §0-ⓐ′): 갓 심은 마을은 관찰 창 안에 수확을 못 한다.');
+      console.log('      세계 하루가 현실 24분(`WORLD.dayLengthMs`)이고 작물은 게임일이 필요하다 —');
+      console.log('      150초 프로브에서 라벨은 출근·휴식·귀가뿐이고 `carrying` 은 내내 0 이었다(곳간 재고도 0).');
+      ok(seenBack === 0, '★[T134] 서버 0 · 화면 0 — **음성 갈래만** 밟았다(양성은 아래 두 자로 건다)');
+    }
+    // ★양성 갈래를 대신 거는 자 둘 — **코드가 한 줄이라는 사실**과 **사람 쪽 실측**이다.
+    //   ⓐ 주민과 사람은 지게를 **같은 한 줄**로 고른다(`42-r2-char.js charLayersFor`).
+    //      그 줄이 갈리면 여기서 빨개진다.
+    //   ⓑ 그 줄의 양성(비트 1 → `back_carrier` 등장)은 `e2e-charsprite ⑤` 가 **사람으로** 이미 잰다
+    //      (지게를 진 남이 `body,clothes_*,back_carrier,tool_*` 로 그려지는 것을 본다).
+    //   ⇒ 서버가 주민에게 비트를 1 로 놓기만 하면 그림은 따라온다 — 그 놓는 자리도 소스로 건다.
+    {
+      const codeOnly = (t) => t.split('\n').filter((L) => !/^\s*(\/\/|\*|\/\*)/.test(L)).join('\n');
+      const cs = codeOnly(fs.readFileSync(path.join(ROOT, 'public', 'client', '42-r2-char.js'), 'utf8'));
+      const backLines = cs.split('\n').filter((L) => /back_carrier/.test(L) || /const back = /.test(L));
+      ok(/const back = isMe \? [^:]+: !!\(o && o\.carrier\);/.test(cs),
+         '★★[T134] 주민과 사람이 지게를 **같은 한 줄**로 고른다 (갈래 0)', backLines.map((L) => L.trim()).join(' | ').slice(0, 160));
+      const zs = codeOnly(fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8'));
+      ok(/e\.carrier = o\.isNpc \? \(\(\(o\._carry \|\| 0\) > 0\) \? 1 : 0\)/.test(zs),
+         '★★[T134] 서버가 주민의 **진 짐**(`_carry`)으로 그 비트를 놓는다');
+      const vs = codeOnly(fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8'));
+      ok(/npc\._carryOn = on; npc\._wornAt = Date\.now\(\);/.test(vs),
+         '★[T134] 0↔1 이 뒤집힌 순간에만 전송 창을 연다 (매 틱 도장 금지)');
+    }
+    // 사람 쪽 계약은 그대로다 — 주민이 지게를 지든 말든 층 순서는 몸 → 옷 → 지게 → 손
+    const wrongOrder = [...acc2.values()].filter((r) => {
+      const bi = r.layers.indexOf('back_carrier'); if (bi < 0) return false;
+      const ti = r.layers.findIndex((L) => /^tool_/.test(L));
+      return bi === 0 || (ti >= 0 && ti < bi);
+    });
+    ok(wrongOrder.length === 0, '★지게는 옷 뒤·손 앞이다 (순서 계약 · 사람과 같다)',
+       wrongOrder.length ? JSON.stringify(wrongOrder[0].layers) : `${acc2.size}명 검사`);
+    seen = [...acc.values()];
+  }
 
   // ── ③ 걷기·서기 둘만 ────────────────────────────────────────────────────────
   console.log('\n=== ③ NPC 는 걷기·서기 둘만 쓴다(달리기 클램프) ===');

@@ -22,7 +22,7 @@
 //   G. 인라인   — 랩 HTML 의 인라인 엔진이 그 번들과 같은가
 //
 // 실행: node scripts/lab-wiring-check.js [랩HTML...]
-//   HTML 을 안 주면 ../../마을실험실.html · ../../전쟁실험실.html 을 찾아본다(없으면 건너뜀).
+//   HTML 을 안 주면 lab/마을실험실.html · lab/전쟁실험실.html 을 잰다(랩은 2026-09-05 레포 안으로 들어왔다).
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -197,7 +197,10 @@ console.log('\n[G] 랩 HTML 인라인 엔진');
 {
   const args = process.argv.slice(2);
   const labs = args.length ? args
-    : ['마을실험실.html', '전쟁실험실.html'].map(f => path.join(root, '..', f)).filter(f => fs.existsSync(f));
+    // ★[T123 2026-09-05] 랩이 레포 안(`lab/`)으로 들어왔다(PM c7778a49) — 기본 대상을 거기로.
+    //   종전 기본값은 저장소 **밖**(`../`)이라 컨테이너에선 늘 "못 찾음 — 건너뜀"이었다.
+    //   건너뜀은 검사가 아니다(이 파일이 `inline-path` 에 대해 스스로 적어 둔 그 말이다).
+    : ['마을실험실.html', '전쟁실험실.html'].map(f => path.join(root, 'lab', f)).filter(f => fs.existsSync(f));
   if (!labs.length) wrn('랩 HTML 을 못 찾음 — 건너뜀 (디바이스 파일이라 컨테이너엔 없을 수 있다 · 인자로 경로를 주면 잰다)');
   else {
     try {

@@ -18,8 +18,9 @@ const { chromium } = require('playwright');
 const path = require('path');
 
 const CHROME = process.env.CHROME_PATH || undefined;   // 미지정이면 playwright 기본 브라우저
-// ★랩 파일 경로: LAB_FILE 환경변수(기본 ~/Mini/전쟁실험실.html). 랩은 레포 밖(디바이스)에 산다.
-const LAB = 'file://' + (process.env.LAB_FILE || path.join(require('os').homedir(), 'Mini', '전쟁실험실.html'));
+// ★랩 파일 경로: LAB_FILE 환경변수(기본 `lab/전쟁실험실.html`).
+//   ⚠[T123 2026-09-05] 종전 기본값은 레포 밖 `~/Mini/…` 였다 — 랩이 레포 안으로 들어온 뒤에도 남아 조용히 어긋났다.
+const LAB = 'file://' + (process.env.LAB_FILE || path.resolve(__dirname, '..', 'lab', '전쟁실험실.html'));
 const SPEED = 119;          // 관찰(slow) 상한 — dGM=119×0.016667=1.983 < 6이라 slow 유지(실보행·현장 체류 적산)
 const NVIL = 2, POP = 40, SEED = 7;
 const WARMUP = 2;           // 지정 전 정착 일수(상대)

@@ -403,9 +403,9 @@ central 부하)이 남아 있고, **서버 로그 없이는 단정할 수 없다
   server/zone.js  setHp(p, v, why)   ★사람 hp 를 쓰는 **유일한 자리**(`p.hp = next` 한 줄)
      v      얼마로 — 하한 0 · 상한 `maxHp` 를 여기서 한 번만 누른다
      why    왜   — 알림 규칙을 고른다:
-       HP_PEER  = damage · food · dish · debug   → `broadcast('player_damaged')` (종전 넷 그대로)
+       HP_PEER  = damage · food · dish · debug   → `broadcast('hp_changed')` (종전 넷 그대로)
        HP_QUIET = regen · respawn · takeover     → 안 보낸다(다른 문이 이미 나른다)
-       그 밖(rescue · fall …)                    → **자기에게만** `send('player_damaged')`
+       그 밖(rescue · fall …)                    → **자기에게만** `send('hp_changed')`
      값이 안 바뀌면 안 보낸다. 정수(`Math.round`)로 안 바뀌어도 안 보낸다 — 화면이 읽는 게 정수다.
 ```
 
@@ -421,6 +421,9 @@ T61 이 초당 하나 나가는 `gauges` 에 `hp`·`maxHp` 를 실었고(위 1-�
 자연 회복은 `regen` = 조용이고, 초당 하나인 `gauges` 가 곧 **1hp 양자화이자 틱 정본**이다.
 새로 생긴 전송은 `rescue`(일어나는 순간) 하나뿐이고, 그건 사람당 몇 번 있는 사건이다.
 
-**클라 접점 0.** `player_damaged` 핸들러가 이미 `msg.pid === myPid` 일 때 `myHp` 를 세운다 —
-자기에게 보내도 클라는 한 줄도 안 고쳐도 된다(새 메시지 타입 0). 이름이 "damaged" 인데 회복도
-나르는 것은 사실이고, 개명(`hp_changed`)은 클라 접점이 넓어 **회부**로 뒀다.
+**클라 접점 0.** `hp_changed` 핸들러가 이미 `msg.pid === myPid` 일 때 `myHp` 를 세운다 —
+자기에게 보내도 클라는 한 줄도 안 고쳐도 된다(새 메시지 타입 0).
+
+★**[T131 2026-09-06] 이름은 `hp_changed` 다** — T109 때 이 타입은 `player_damaged` 였고, 회복·구조·
+먹기까지 나르면서 이름이 거짓이 되어 **회부**로 뒀던 것을 T131 이 갈아 끼웠다. **옛 이름 폴백 0** —
+서버 두 줄 · 클라 한 줄 · 하네스 참조 전수를 한 번에 바꿨다(두 이름을 동시에 보내면 그게 사본이다).

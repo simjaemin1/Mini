@@ -40,6 +40,7 @@ import render_common as rc
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUTDIR = os.path.join(HERE, "building_renders")
 os.makedirs(OUTDIR, exist_ok=True)
+DEPLOY = os.path.join(HERE, "..", "public", "assets", "buildings")   # ★[T132] 메타가 사는 자리
 
 
 # ═══════════════ 씬 — 정본 한 곳(`render_common.build_scene`) ═══════════════
@@ -194,6 +195,94 @@ def hall_roof():
     gable_roof(8.0, 8.0, seed=2)
 
 
+# =============================================================================
+# ★★[T136] 공용 쉼터 지붕 — **남의 집과 갈려야 한다** (T62 회부 · `인계/회부.md`)
+#
+# §0-ⓐ 실측: 쉼터의 실체는 마을 움집과 **완전히 같다**(`villages.js:922` — 같은 6×4 · 같은 남벽
+#   2칸 문 · 같은 `hut` 태그). 다른 것은 구조물 **이름**(`"<마을> 쉼터"`)뿐이다.
+#   ⇒ 화면에서 갈릴 근거가 지금은 **없다**. 그래서 지붕 한 장을 따로 굽는다.
+#
+# ★★**틀은 움집 지붕과 똑같아야 한다.** 클라가 지붕을 놓는 자리는 고정 오프셋이다
+#   (`34-m-renderloop.js:855` — `w2i(rax-96, ray-128)`). 발자국 공식이 틀을 내므로
+#   **W·D·top 을 움집과 같은 값으로 두면** 392×328 · 앵커 (164.0,130.4) 가 그대로 나온다.
+#   ⇒ 변형은 전부 **그 봉투 안**에서 한다. 용마루를 올리거나 처마 밖으로 내밀면 **잘린다**
+#     (틀이 bbox 가 아니라 공식이라 조용히 잘린다 — T132 못박기가 그걸 잡으려고 있는 것이다).
+#
+# ★고증 후보 셋 — **표식 그림이 아니라 건축의 차이**로 정한다(카드: 이모지·표식 0).
+#   ⓐ 까치구멍  : 용마루 양 끝 박공에 낸 **배연구 둘**. 공용 화덕이 크면 연기가 더 나가야 한다.
+#                 근거 — 한국 민가의 까치구멍(지붕마루 끝 배연구)은 실내 노(爐)의 연기를 뽑는 장치다.
+#   ⓑ 처마 걸이 : 남쪽 처마 밑 가로 장대에 **마른 단·그물**이 걸린다. 공용 건물은 공용 물건이 걸리는 자리다.
+#                 근거 — 민속지에서 공동가옥·모정의 처마는 공동 도구를 거는 자리로 쓰인다.
+#   ⓒ 트인 문간 : 남벽 문간 위로 **차양**이 나오고 문짝이 없다. 아무의 집도 아니므로 닫지 않는다.
+#                 근거 — 마을 공용 시설(모정·정자)은 벽·문을 두지 않는 열린 구조가 일반적이다.
+#   ⇒ 셋을 다 굽고 대조표로 재민이 고른다. 배포는 첫 후보(ⓐ) — `SHELTER_VAR` 로 한 글자만 바꾼다.
+SHELTER_VAR = os.environ.get('SHELTER_VAR', 'a')
+
+
+def _shelter_vents():
+    """ⓐ 까치구멍 — 박공 꼭대기 양 끝에 배연구 둘.
+
+    ★★[T136 2패스 · 실측이 시켰다] 1패스는 구멍 0.34×0.62×0.46 이었는데, 1배로 움집과 견주니
+      **다른 화소 305px · 실루엣 밖 4px**(평균 |Δ| 0.099) — 즉 화면에서 **안 갈렸다**.
+      다른 둘은 1300px 넘게 실루엣이 달랐다. 이 카드의 뜻이 "한눈에 갈린다"이므로 그건 실패다.
+      원인: 구멍은 **형태를 안 바꾼다**(색만 바꾼다). 등축에서 박공면은 거의 옆으로 서 있어
+      그 위의 색 변화는 몇 화소로 줄어든다.
+      ⇒ 구멍을 키우고, **연기막이(눈썹)를 지붕 면 위로 세운다** — 실루엣을 건드려야 읽힌다.
+      ⓘ 봉투(용마루 3.5 + 마루대 0.16 ↔ top 3.9)에 여유가 0.24m 뿐이라 위로는 그만큼만 쓴다."""
+    DI, DJ = 7.0, 5.0
+    jc = DJ / 2.0
+    ridge = EAVE_M + jc * SLOPE
+    for x_at in (0.42, DI - 0.42):
+        # ① 배연구 — 크게(연기가 나가는 구멍이다)
+        box(0.52, 1.05, 0.78, (x_at, jc, ridge - 0.62), mat=M['dark'])
+        # ② 연기막이 — 구멍 위를 덮어 비를 막는 작은 맞배. **지붕 면 위로 솟아 실루엣을 만든다**
+        for sgn in (-1, 1):
+            box(0.62, 0.62, 0.09, (x_at, jc + sgn * 0.30, ridge + 0.06),
+                rot=(-sgn * math.radians(28), 0, 0), mat=M['thatch'])
+        cyl(0.045, 0.70, (x_at, jc, ridge + 0.19), rot=(0, math.radians(90), 0),
+            mat=M['log'], verts=8, smooth=False)
+        # ③ 구멍 테두리 통나무 — 검은 구멍이 '뚫린 자리'로 읽히게 한다
+        for sgn in (-1, 1):
+            cyl(0.038, 0.86, (x_at, jc + sgn * 0.50, ridge - 0.62),
+                rot=(0, math.radians(90), 0), mat=M['log'], verts=7, smooth=False)
+
+
+def _shelter_eave_hang():
+    """ⓑ 처마 걸이 — 남쪽 처마 밑 가로 장대 + 마른 단 셋 + 그물 한 장."""
+    DI, DJ = 7.0, 5.0
+    y = DJ - 0.34                      # 처마 안쪽(오버행 밖으로 안 나간다)
+    cyl(0.055, DI - 1.2, (DI / 2, y, EAVE_M - 0.30), rot=(0, math.radians(90), 0),
+        mat=M['log'], verts=10, smooth=False)
+    random.seed(136)
+    for k in range(3):
+        x = 1.5 + k * (DI - 3.0) / 2.0
+        h = random.uniform(0.52, 0.72)
+        box(0.30, 0.22, h, (x, y, EAVE_M - 0.34 - h / 2), mat=M['thatch'])       # 마른 단
+        cyl(0.022, 0.16, (x, y, EAVE_M - 0.26), mat=M['cord'], verts=6, smooth=False)
+    box(0.90, 0.05, 0.55, (DI - 1.05, y - 0.06, EAVE_M - 0.60), mat=M['fiber'])   # 그물
+    for k in range(4):                                                            # 그물코(듬성한 결)
+        cyl(0.016, 0.55, (DI - 1.45 + k * 0.26, y - 0.06, EAVE_M - 0.60), mat=M['fiber'], verts=6, smooth=False)
+
+
+def _shelter_awning():
+    """ⓒ 트인 문간 — 남벽 문간(x0+2·x0+3 셀) 위로 차양. 문짝은 애초에 안 그린다(지붕 장이다)."""
+    DI, DJ = 7.0, 5.0
+    y = DJ - 0.12
+    cx = 3.0                            # 문 두 칸의 가운데(발자국 로컬)
+    # 차양 판 — 처마에서 조금 더 내려온다(아래로만 · 밖으로는 안 나간다)
+    box(2.10, 0.72, 0.09, (cx, y - 0.30, EAVE_M - 0.46), rot=(math.radians(-16), 0, 0), mat=M['thatch2'])
+    for dx in (-0.95, 0.95):            # 버팀 기둥 둘
+        cyl(0.055, EAVE_M - 0.62, (cx + dx, y - 0.58, (EAVE_M - 0.62) / 2), mat=M['log'], verts=8, smooth=False)
+    cyl(0.045, 2.10, (cx, y - 0.62, EAVE_M - 0.62), rot=(0, math.radians(90), 0),
+        mat=M['log'], verts=8, smooth=False)
+
+
+def shelter_roof():
+    """공용 쉼터 지붕 — 움집 지붕과 **같은 몸**에 표지 하나. 씨앗도 같다(같은 이엉 결)."""
+    gable_roof(6.0, 4.0, seed=1)        # ★움집과 같은 씨앗 — 같은 마을의 같은 손이 얹은 이엉이다
+    {'a': _shelter_vents, 'b': _shelter_eave_hang, 'c': _shelter_awning}[SHELTER_VAR]()
+
+
 
 # =============================================================================
 # 렌더 — 로컬 원점(0,0,0)의 화면 픽셀 좌표(_ox,_oy)를 계산해 앵커로 내보낸다.
@@ -209,18 +298,27 @@ def render(key, W, D, top_m):
     top_px = top_m * 32.0
     Wpx = int((DI + DJ) * 32) + 8
     Hpx = int((DI + DJ) * 16 + top_px) + 12
+    ctr = V((DI / 2, DJ / 2, (top_m * ZSQ) / 2))
+    rel = V((0.0, 0.0, 0.0)) - ctr
+    ox = Wpx / 2.0 + rel.dot(RHAT) * PPU
+    oy = Hpx / 2.0 - rel.dot(UHAT) * PPU
+    # ★★[T132] **상자 못박기.** 건물 틀은 재는 게 아니라 **발자국 공식**이 낸다
+    #   (`Wpx=(W+1+D+1)·32+8` · `Hpx=(…)·16+top·32+12`). 형상을 고쳐도 틀은 안 움직이지만,
+    #   **선언값(W·D·top)을 고치면 틀이 조용히 바뀐다** — 그 순간 클라가 든 앵커 표가 낡는다.
+    #   ⇒ 배포 메타가 있으면 **정확히 같아야** 한다. 여기선 `fit_pinned_box`(들어가나?)를 안 쓴다:
+    #     공식이 낸 값은 "들어가면 된다"가 아니라 **그 값이어야** 한다(작아져도 규격이 바뀐 것이다).
+    #     ⓘ 재는 상자(캐릭터·자연물)에는 `fit_pinned_box` 가 맞다 — 자산군마다 재는 방식이 다르다.
+    if rc.assert_pinned_box(os.path.join(DEPLOY, "building_anchors.json"), key,
+                            Wpx, Hpx, round(ox, 1), round(oy, 1), label="bld"):
+        print(f"[bld] {key}: 상자 못박음 {Wpx}x{Hpx} anchor=({ox:.1f},{oy:.1f})")
     scene.render.resolution_x = Wpx; scene.render.resolution_y = Hpx
     cam_d.ortho_scale = Wpx / PPU
-    ctr = V((DI / 2, DJ / 2, (top_m * ZSQ) / 2))
     tgt.location = ctr
     cam.location = ctr + NHAT * 200.0
     _p = os.path.join(OUTDIR, key + ".png")
     scene.render.filepath = _p
     bpy.ops.render.render(write_still=True)
     rc._post_png(_p, ss=1, flip=True)             # ★게임 손방향 보정(위 FLIP 머리말)
-    rel = V((0.0, 0.0, 0.0)) - ctr
-    ox = Wpx / 2.0 + rel.dot(RHAT) * PPU
-    oy = Hpx / 2.0 - rel.dot(UHAT) * PPU
     print(f"[bld] {key}: {Wpx}×{Hpx} anchor=({ox:.1f},{oy:.1f})")
     return {"w": Wpx, "h": Hpx, "ox": round(ox, 1), "oy": round(oy, 1)}
 
@@ -489,6 +587,9 @@ def charcoal_kiln():
 
 JOBS = [
     ("hut_roof", hut_roof, 6.0, 4.0, EAVE_M + 2.5 * SLOPE + 0.4),
+    # ★[T136] 공용 쉼터 — **움집과 같은 W·D·top**(그래야 틀 392×328 · 앵커 164.0/130.4 가 같다).
+    #   클라가 지붕을 고정 오프셋으로 놓으므로 틀이 다르면 자리가 어긋난다.
+    ("shelter_roof", shelter_roof, 6.0, 4.0, EAVE_M + 2.5 * SLOPE + 0.4),
     ("hall_roof", hall_roof, 8.0, 8.0, EAVE_M + 4.5 * SLOPE + 0.4),
     ("granary", granary, 5.0, 3.0, 2.0 + 2.0 * SLOPE + 0.4),
     # ★움집 공정 — 발자국은 완공과 같은 6×4(같은 앵커 계약), 높이만 단계별
@@ -524,4 +625,28 @@ if __name__ == '__main__':
       try: anchors = {**json.load(open(apath)), **anchors}
       except Exception: pass
   json.dump(anchors, open(apath, "w"), indent=1)
+  # ★★[T132] **메타를 배포로 올린다.** 여태 건물 앵커는 `scripts/building_renders/`(gitignore)에만
+  #   있었다 — 즉 **저장소에 없는 정본**이었다. 그래서 클라가 같은 수를 손으로 베껴 들고 있고
+  #   (`20-r2-visibility.js` 의 `A` 표 12키), 하네스가 결정적 재계산으로 그 둘을 맞대 왔다.
+  #   ⇒ 다른 자산군(`nature_anchors`·`props_anchors`·`crops_anchors`·`mountain_anchors`)처럼
+  #     배포 자리에 둔다. 이 카드는 **파일만 올린다** — 클라 배선은 다음 카드다(회부).
+  # ★★[T136] **배치도 코드다.** 여태 건물 PNG 를 배포로 옮기는 것은 머리말에도 없는 구전이었다
+  #   (T101 이 밭에서 고친 그 함정 — `cp` 한 줄이 사람 머릿속에만 있으면 언젠가 안 옮겨진다).
+  #   ⚠단 **`BLD_ONLY` 로 이름을 댄 것만** 옮긴다. 통째로 옮기면 T132 §2 에서 잰 그 일이 난다:
+  #     스테이징 재굽기는 배포본과 화소가 미세하게 다르고(가장자리 잡음), 규격은 같아서
+  #     못박기도 안 문다 ⇒ **안 건드릴 열두 장이 조용히 갈린다.** 이름을 댄 것만 옮긴다.
+  if ONLY:
+      import shutil
+      os.makedirs(DEPLOY, exist_ok=True)
+      for k in ONLY:
+          src = os.path.join(OUTDIR, k + ".png")
+          if os.path.exists(src):
+              shutil.copy2(src, os.path.join(DEPLOY, k + ".png"))
+              print("[bld] 배치 ->", os.path.join("public/assets/buildings", k + ".png"))
+  if not ONLY:                       # 일부만 구운 판으로 배포 메타를 덮지 않는다
+      os.makedirs(DEPLOY, exist_ok=True)
+      dpath = os.path.join(DEPLOY, "building_anchors.json")
+      json.dump(anchors, open(dpath, "w", encoding="utf-8"),
+                ensure_ascii=False, indent=1, sort_keys=True)
+      print("[bld] 배포 메타 ->", os.path.normpath(dpath), len(anchors), "keys")
   print("[bld] DONE ->", OUTDIR, len(anchors), "keys")

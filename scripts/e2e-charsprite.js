@@ -235,6 +235,44 @@ function openSpot() {
   const offD = await dbgOf(A);
   ok(offD && !offD.layers.includes('tool_axe'), '해제하면 레이어가 사라진다', offD ? offD.layers.join(',') : '');
 
+  // ── ④′ [T134] 도구가 **종류대로** 그려진다 — 실루엣 하나가 셋이 됐다 ─────────
+  //   ★종전 판정은 정규식 한 줄이었다: `/rod|fish|낚/i ? tool_rod : tool_axe`.
+  //     §0-ⓒ 실측 — 사람이 들 수 있는 `tool` 문자열 열 종류 중 **아무것도 그 정규식에 안 걸린다**
+  //     (낚싯대라는 품목이 없다). 곡괭이도 망치도 검도 전부 **도끼로 그려지고 있었다.**
+  //   ★표는 **소스에서 읽는다**(하네스가 표를 베끼지 않는다 — T13 규약 그대로).
+  {
+    const src = fs.readFileSync(path.join(ROOT, 'public', 'client', '40-r2-sprites.js'), 'utf8');
+    const m = /const PLAYER_TOOL_LAYER = \{([\s\S]*?)\};/.exec(src);
+    ok(!!m, '★[T134] 도구 표를 소스에서 읽었다 (하네스에 표 사본 0)', m ? '' : '정규식 불일치(표가 옮겨졌나)');
+    const tbl = {};
+    if (m) for (const mm of m[1].matchAll(/(\w+)\s*:\s*'([\w_]+)'/g)) tbl[mm[1]] = mm[2];
+    // ★주석에 옛 줄을 **인용해 남겨 뒀다**(왜 갈렸는지가 거기 있다) — 그래서 주석을 걷고 **코드만** 본다.
+    const codeOnly = (txt) => txt.split('\n').filter((L) => !/^\s*(\/\/|\*|\/\*)/.test(L)).join('\n');
+    const charSrc = codeOnly(fs.readFileSync(path.join(ROOT, 'public', 'client', '42-r2-char.js'), 'utf8'));
+    ok(!/rod\|fish\|낚/.test(charSrc), '★[T134] 옛 정규식이 **코드에서** 없어졌다 (표로 갈렸다)');
+    ok(/PLAYER_TOOL_LAYER\[t\]/.test(charSrc), '★[T134] 층 함수가 그 표를 부른다');
+    // 지급 → 장착 → 층. 표가 시키는 그 층이 나와야 한다.
+    for (const kind of ['hammer', 'pickaxe']) {
+      const want = tbl[kind];
+      if (!want) { ok(false, `표에 ${kind} 가 없다`); continue; }
+      await A.evaluate((k) => window.__sendPrimary({ type: '__e2e_give', tools: [k] }), kind);
+      await sleep(900);
+      const ts = await A.evaluate(() => window.__getTools());
+      const it = ts.filter((t) => t.type === kind).pop();
+      ok(!!it, `${kind} 인스턴스 지급`, ts.map((t) => t.type).join(','));
+      if (!it) continue;
+      await A.evaluate((id) => window.__sendPrimary({ type: 'equip', toolItemId: id }), it.id);
+      await sleep(900);
+      const d2 = await dbgOf(A);
+      ok(!!d2 && d2.layers.includes(want),
+         `★[T134] ${kind} → \`${want}\` (종전엔 전부 tool_axe 였다)`, d2 ? d2.layers.join(',') : '?');
+      ok(!!d2 && !(want !== 'tool_axe' && d2.layers.includes('tool_axe')),
+         `★${kind} 이 도끼로 안 그려진다 (자명 통과 금지)`, d2 ? d2.layers.join(',') : '?');
+    }
+    await A.evaluate(() => window.__sendPrimary({ type: 'equip', toolItemId: null }));
+    await sleep(700);
+  }
+
   // ── ⑤ 두 클라 짝 — 타 플레이어도 같은 애니 ──────────────────────────────
   console.log('\n=== ⑤ 두 클라 짝 — 타 플레이어도 같은 애니 ===');
   const B = await newClient('B');
@@ -288,8 +326,18 @@ function openSpot() {
   ok(seen.length >= 1, `[A] 화면에 남이 스프라이트로 보인다 ${seen.length}명`, seen.map((x) => x.clip).join(','));
   ok(seen.length >= 1 && seen[0].clip === 'idle', '남도 정지 = idle');
   // B 가 걸으면 A 화면에서도 walk
-  await B.keyboard.down('KeyS'); await sleep(1400);
-  const seenW = await A.evaluate(() => Object.values(window.__charDbg || {}).filter((v) => !v.isMe).map((v) => ({ clip: v.clip, speed: v.speed, row: v.row })));
+  // ★★[T134 2026-09-06] **한 판만 읽던 것을 폴링으로 바꾼다** — `인계/회부.md` 가 적어 둔 그 수리다:
+  //   *"부하가 걸리면 `clip=idle speed=0` 으로 빨개진다(T106 실측). 앞의 폴링과 같은 꼴로
+  //     `clip` 이 walk 가 될 때까지 폴링하면 끝난다. char 영역(T96) 손이라 세션이 안 만졌다."*
+  //   ⇒ char 영역 카드에서 손댄다. **최대 5초**까지 기다리고, 안 되면 그때 실패로 센다(감추지 않는다).
+  //   ⚠키는 폴링이 끝난 **뒤에** 뗀다 — 중간에 떼면 감속이 시작돼 무엇을 재는지가 흐려진다.
+  await B.keyboard.down('KeyS');
+  let seenW = [];
+  for (let k = 0; k < 25; k++) {
+    await sleep(200);
+    seenW = await A.evaluate(() => Object.values(window.__charDbg || {}).filter((v) => !v.isMe).map((v) => ({ clip: v.clip, speed: v.speed, row: v.row })));
+    if (seenW.length >= 1 && (seenW[0].clip === 'walk' || seenW[0].clip === 'run')) break;
+  }
   await B.keyboard.up('KeyS'); await sleep(900);
   ok(seenW.length >= 1 && (seenW[0].clip === 'walk' || seenW[0].clip === 'run'),
      `★남이 걸으면 A 화면에서도 walk — **애니용 새 네트워크 필드 0**(tick 의 vx/vy 로 유도)`,

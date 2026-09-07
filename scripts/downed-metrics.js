@@ -76,13 +76,16 @@ const PX_PER_M = 32;                                                   // 실축
 
   // ═══ ⓑ 외침 반경·주기 — 채택값의 검산 ════════════════════════════════════
   say('\nⓑ 외침 — 소리가 먼저, 도달이 검산');
-  const R = Rescue.CFG.SHOUT_RANGE_PX, EV = Rescue.CFG.SHOUT_EVERY_MS;
+  //   ⚠★[T119] 여기 있던 `Rescue.CFG.SHOUT_RANGE_PX` 는 **T110 뒤 0(=유도해라)** 이다.
+  //     상수를 읽으면 이 계측기만 "반경 0" 을 보고한다 ⇒ 정본 함수에 묻는다(사본 0).
+  const R = Rescue.shoutRange(), EV = Rescue.CFG.SHOUT_EVERY_MS;
   //   반경 R 에서 출발하면 몇 초 걸리나 — reach 의 역함수(단조라 이분법으로 충분하다)
   let lo = 0, hi = 3600;
   for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; if (reach(m) < R) lo = m; else hi = m; }
   const tEdge = (lo + hi) / 2;
   const slack = budget - tEdge;
-  say(`     채택 반경 ${R}px = ${fmt(R / PX_PER_M, 0)}m = ${Rescue.steps(R)}걸음 (조용한 들에서 비명이 닿는 거리)`);
+  say(`     채택 반경 ${R}px = ${fmt(R / PX_PER_M, 0)}m = ${Rescue.steps(R)}걸음`
+    + `  (★[T110] 손으로 적은 수가 아니라 **유도**된다: 이속 ${SPEED} × 창 ${H.RESCUE_WINDOW_MS / 1000}초 × HEAR_FRAC ${Rescue.CFG.HEAR_FRAC})`);
   say(`     가장자리에서 달려오면 ${fmt(tEdge)}초 · 예산 ${fmt(budget)}초 ⇒ **여유 ${fmt(slack)}초(${fmt(100 * slack / budget)}%)**`);
   say(`     그 여유가 지형 우회분이다 — 직선의 ${fmt(100 * budget / tEdge - 100)}% 를 더 걸어도 닿는다.`);
   say(`     채택 주기 ${EV / 1000}초 ⇒ 창(${H.RESCUE_WINDOW_MS / 1000}초) 동안 ${Math.floor(H.RESCUE_WINDOW_MS / EV)}번.`
@@ -117,6 +120,51 @@ const PX_PER_M = 32;                                                   // 실축
     }
     say(`     ★죽음의 대가는 "짐을 잃는 것"이 아니라 **중앙값 ${fmt(q(0.5) / vAvg / 60)}분짜리 왕복**이다`);
     say(`       (편도. 돌아오는 길은 짐을 지고 걷는다 — 과적이면 더 느리다).`);
+  }
+
+  // ═══ ★[T119 2026-09-05] ⓔ **실효 구조율** — 쓰러지면 어떻게 되는가 ═════════
+  //
+  //   ★왜 여기인가: T110 이 "소리에는 끝이 있다"를 세웠고, T119 가 구조를 **사건**으로 만들었다.
+  //     그러면 물어야 할 것이 생긴다 — *쓰러진 사람 100 중 몇이 살아나는가.*
+  //   ⚠★**사람 없이 재는 수와 사람이 있어야 재는 수를 가른다.** 이 계측기엔 플레이어가 없다.
+  //     그래서 여기서 내는 것은 **지형이 정하는 몫**이다:
+  //       · 마을 이송률 = 쓰러진 자리가 마을 완충 안일 확률 (`resolveDowned` 의 판정 그대로)
+  //       · 외침이 닿는 곳에 **마을이 있는가** — 사람이 있을 만한 자리가 소리 안에 있나(T110 이 남긴 자리)
+  //     플레이어 구조율 자체는 **사람이 있어야 나오는 수**다 — 지어내지 않는다(회부).
+  say('\n★ⓔ 실효 구조율 — 쓰러지면 어떻게 되는가 (지형이 정하는 몫)');
+  {
+    const vils = (SimVillages.clientVillages() || []).map((v) => ({ x: v.cx * 32 + 16, y: v.cy * 32 + 16, name: v.name }));
+    const side2 = Math.ceil(Math.sqrt(N));
+    let stand = 0, inVil = 0, wild2 = 0, heard = 0;
+    const nearD = [];
+    for (let i = 0; i < side2; i++) {
+      for (let j = 0; j < side2; j++) {
+        const x = Math.round((i + 0.5) * W / side2), y = Math.round((j + 0.5) * Hh / side2);
+        if (H.isWaterTileLocal(x, y) || H.isTerrainBlockedLocal(x, y)) continue;
+        stand++;
+        if ((SimVillages.shelterAt(x, y) || 0) > 0) { inVil++; continue; }   // 마을 안 — 이송(§12)
+        wild2++;
+        let bd = Infinity;
+        for (const v of vils) { const d = Math.hypot(v.x - x, v.y - y); if (d < bd) bd = d; }
+        if (isFinite(bd)) { nearD.push(bd); if (bd <= R) heard++; }
+      }
+    }
+    const pc = (a, b) => (b > 0 ? fmt(100 * a / b) : '—');
+    say(`     설 수 있는 칸 ${stand} — 마을 안 ${inVil}(${pc(inVil, stand)}%) · 야생 ${wild2}(${pc(wild2, stand)}%)`);
+    say(`     ⇒ **마을 이송률 ${pc(inVil, stand)}%** — 여기서 쓰러지면 짐도 안 잃고 후유증도 없다(T88 죽 한 그릇 포함).`);
+    say(`     ⇒ 야생 ${pc(wild2, stand)}% 는 **사람이 오지 않으면 죽음**이다. 그 사람이 올 수 있는지가 아래다.`);
+    say(`     야생 칸 중 외침 반경(${R}px) 안에 **마을이 있는** 칸 ${heard}/${wild2} = **${pc(heard, wild2)}%**`);
+    nearD.sort((a, b) => a - b);
+    const q2 = (f) => (nearD.length ? nearD[Math.min(nearD.length - 1, Math.floor(f * nearD.length))] : 0);
+    say(`     야생에서 가장 가까운 마을까지 — 중앙 ${fmt(q2(0.5), 0)}px(${fmt(q2(0.5) / PX_PER_M, 0)}m) · 1사분위 ${fmt(q2(0.25), 0)}px · 3사분위 ${fmt(q2(0.75), 0)}px`);
+    // ★대조 — T110 이 반경을 옮기기 전(9,600px)과 나란히. 수가 **왜** 그렇게 정해졌는지가 여기 보인다.
+    for (const [ko, RR] of [['T56 옛 반경', 9600], ['채택(T110)', R]]) {
+      let h2 = 0; for (const d of nearD) if (d <= RR) h2++;
+      say(`       ${ko.padEnd(12)} ${String(RR).padStart(5)}px → 마을이 소리 안인 야생 칸 ${pc(h2, wild2)}%`);
+    }
+    say(`     ★읽는 법: 이 %는 "구조된다"가 아니라 **"소리가 사람 사는 곳에 닿는다"** 다.`);
+    say(`       실제 구조율은 그때 그 마을에 **깨어 있는 사람이 있었는가**에 달렸고, 그건 사람이 있어야 나오는 수다(회부).`);
+    say(`     ★그리고 이제 살아난 순간은 **장부에 남는다**(T119 \`RESCUED\`) — 실서버 연표를 세면 진짜 구조율이 나온다.`);
   }
 
   // ═══ ⓓ 더위 — 회부용 표(구현 금지) ═══════════════════════════════════════

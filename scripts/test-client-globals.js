@@ -241,5 +241,42 @@ console.log('\n⑥ ★재대입 감사의 돌연변이와 대조');
   fs.rmSync(T2, { recursive: true, force: true });
 }
 
+// ── ⑦ ★★[T131] `data-action` 버튼 — **버튼과 분기가 정확히 맞물린다** ─────────────
+//   ★왜: T90 이 "`data-action` 버튼 정리"를 회부했는데, T131 §0 이 재 보니 **정리할 것이 없었다**
+//     (죽은 버튼 0 · 죽은 분기 0 · 이모지 0). 회부를 "확인했다"로 닫으면 다음 달에 또 썩는다 —
+//     그래서 **그때 잰 것을 여기 박아 둔다**. 버튼을 지우고 분기를 안 지우면(또는 그 반대면) 빨개진다.
+//   ⚠중복 하나는 **일부러**다: `furnace_start` 가 둘(도가니로·괴련로)이고 `data-kind` 로 갈린다.
+//     그래서 "중복 0"이 아니라 "중복은 `data-kind` 를 가진 것뿐"으로 잰다.
+console.log('\n⑦ ★[T131] `data-action` — 버튼 ↔ 분기 맞물림');
+{
+  const html = fs.readFileSync(path.join(PUB, 'index.html'), 'utf8');
+  const main = fs.readFileSync(path.join(PUB, 'client', '99-main.js'), 'utf8');
+  const btnTags = [...html.matchAll(/<button[^>]*data-action="([a-z_]+)"[^>]*>/g)];
+  const btns = btnTags.map((m) => m[1]);
+  const disp = [...main.matchAll(/a === '([a-z_]+)'/g)].map((m) => m[1]);
+  const sb = new Set(btns), sd = new Set(disp);
+  ok(btns.length >= 20 && disp.length >= 20,
+     '⑦a 전제: 버튼과 분기를 실제로 여럿 읽었다(0 이면 아래가 자명 통과다)',
+     `버튼 ${btns.length} · 분기 ${disp.length}`);
+  const deadBtn = [...sb].filter((x) => !sd.has(x));
+  ok(deadBtn.length === 0, '⑦b ★★눌러도 **아무 일 없는 버튼이 없다**(버튼만 있고 분기 없음 0)',
+     deadBtn.join(' ') || `${sb.size}종 전부 분기가 있다`);
+  const deadDisp = [...sd].filter((x) => !sb.has(x));
+  ok(deadDisp.length === 0, '⑦c ★★**아무도 안 부르는 분기가 없다**(분기만 있고 버튼 없음 0)',
+     deadDisp.join(' ') || `${sd.size}종 전부 버튼이 있다`);
+  const dup = btns.filter((x, i) => btns.indexOf(x) !== i);
+  const dupOk = dup.every((a2) => btnTags.filter((m) => m[1] === a2).every((m) => /data-kind="/.test(m[0])));
+  ok(dupOk, '⑦d ★중복 버튼은 **`data-kind` 로 갈리는 것뿐**이다(같은 버튼을 두 번 두지 않는다)',
+     dup.length ? dup.join(' ') : '중복 0');
+  const row = html.slice(html.indexOf('hud-actions'), html.indexOf('</div>', html.indexOf('hud-actions')));
+  ok(!/\p{Extended_Pictographic}/u.test(row), '⑦e ★버튼 줄에 이모지 0(화면 규칙 B)');
+  // ★자명 통과 금지 — 버튼 하나를 지운 셈 치면 잡는가
+  {
+    const b2 = btns.filter((x) => x !== btns[0]), s2 = new Set(b2);
+    ok([...sd].filter((x) => !s2.has(x)).length === 1,
+       '⑦f 자명 통과 금지 — 버튼 하나를 지우면 **분기가 떠도는 것**을 잡는다');
+  }
+}
+
 console.log(`\n=== PASS ${pass} / FAIL ${fail} ===`);
 process.exit(fail ? 1 : 0);

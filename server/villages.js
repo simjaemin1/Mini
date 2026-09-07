@@ -807,6 +807,61 @@ function syncVillageJobs(vil, changedOut) {
   }
 }
 
+// ★★[T125 2026-09-05] **마을 옷 재고 → 주민 착장.** 재민 캐논: 실체는 회계를 보여 준다.
+//   econ 은 이미 옷을 센다(`storage.clothes` — 재봉 산출 · `CLOTH_TARGET_PC` 1인 1.2벌 목표 ·
+//   `_clothCov` 로 한랭 행복에 들어간다). 그런데 화면의 주민은 **전부 삼베**였다.
+//   ⇒ 곳간에 있는 벌수만큼 입힌다. 이 함수는 econ 을 **읽기만** 한다(재고를 안 깎는다 —
+//     마모는 econ 이 `CLOTH_WEAR_PC` 로 이미 한다. 여기서 또 깎으면 이중 차감이다).
+//
+//   ★결정론 셋:
+//     ⓐ **누가 입나** — `npcPids` 를 **신원 해시**(`_pidHash`)로 줄 세워 앞에서부터 벌수만큼.
+//       ⚠**자리(좌표)로 세우지 않는다.** 주민은 걸어 다니므로 자리를 쓰면 옷이 매틱 깜빡인다
+//         (그리고 `makeEntry` 의 1.2초 창이 그 깜빡임을 그대로 네트워크에 싣는다).
+//         해시는 pid 가 안 바뀌는 한 고정이라 같은 사람이 계속 같은 옷을 입는다.
+//     ⓑ **무슨 재질인가** — 재봉이 오늘 쓸 재료 믹스 그대로다: `storage[m] × 보온가중`.
+//       가중표는 econ 정본(`econ.CLOTH_MATS`)을 **읽는다** — 여기 숫자를 베끼면 둘이 조용히 어긋난다.
+//       ⇒ 모피가 쌓인 마을은 갖옷이 섞이고, 삼밭뿐인 마을은 전부 삼베다. **곳간이 그대로 보인다.**
+//     ⓒ **없으면 맨몸** — 재고 0 이면 `null`. 클라의 `clothLayerOf(null)` 이 삼베로 떨어지므로
+//       맨몸을 그리려면 층 자체를 빼야 한다(그건 클라 몫 — `charLayersFor`).
+//
+//   ★전송은 **옷과 같은 창**을 탄다(사본 0): 값이 바뀐 순간 `_wornAt` 을 찍으면
+//     `zone.js makeEntry` 의 무상태 델타(최초 가시 + 바뀐 뒤 1.2초)가 그대로 실어 나른다.
+//   ★인자를 셋 다 받는다(모듈 상태를 안 읽는다) — 그래야 `scripts/test-npc-clothes.js` 가
+//     **이 함수 그대로**를 가짜 마을에 걸어 배정표를 잴 수 있다(하네스가 산수를 베끼지 않는다).
+function syncVillageClothes(vil, players, econMod) {
+  const pids = vil.npcPids || [];
+  if (!pids.length || !vil.econ || !players) return;
+  const st = vil.econ.storage || {};
+  // 재료 믹스 — 보온 가중 재고 비율(재봉이 소비하는 그 비율).
+  //   ⚠`econ` 은 이 파일의 **모듈 전역이 아니다**(함수마다 지역 이름이다) — 정본은 `state.econ`.
+  //     처음에 `econ.CLOTH_MATS` 로 적었다가 `econ is not defined` 로 일틱이 통째로 죽었고,
+  //     `e2e-village` 가 7건 빨강으로 그걸 잡았다. 여기 적어 둔다.
+  const W = (econMod && econMod.CLOTH_MATS) || null;
+  const mats = [];
+  let haveW = 0;
+  if (W) for (const m in W) { const w = (st[m] || 0) * W[m]; if (w > 0) { mats.push([m, w]); haveW += w; } }
+  mats.sort((a, b) => (b[1] - a[1]) || (a[0] < b[0] ? -1 : 1));   // 값이 같으면 이름순 — 부동소수 순서에 안 흔들린다
+  // 있는 주민만 줄 세운다(스폰 지연·사망으로 pid 가 비면 그 자리를 건너뛴다 = 배정이 밀리지 않는다).
+  const live = [];
+  for (const pid of pids) { const p = players.get(pid); if (p) live.push(p); }
+  if (!live.length) return;
+  live.sort((a, b) => (_pidHash(a.pid) - _pidHash(b.pid)) || (a.pid < b.pid ? -1 : 1));
+  const wearN = Math.max(0, Math.min(live.length, Math.floor(st.clothes || 0)));
+  for (let i = 0; i < live.length; i++) {
+    let mat = null;
+    if (i < wearN) {
+      mat = 'hemp';                                  // 곳간에 옷감이 하나도 안 잡히면 삼베(가장 흔한 것)
+      if (haveW > 0) {
+        const q = (i + 0.5) / wearN * haveW;          // 벌수를 믹스 비율로 자른다(칸 한가운데를 찍는다)
+        let acc = 0;
+        for (const [m, w] of mats) { acc += w; if (q <= acc) { mat = m; break; } }
+      }
+    }
+    const p = live[i];
+    if (p._simCloth !== mat) { p._simCloth = mat; p._wornAt = Date.now(); }   // 옷과 같은 전송 창
+  }
+}
+
 // =============================================================================
 // Stage 4A — 건물 실물화 ①: 회관·집 → 기존 buildings 테이블(wall/floor 행).
 //   · owner 'npc_simvil_<dbId>' — zone.js 부팅 wipe("owner_id LIKE 'npc_%'", ~1001행)가 매 부팅
@@ -868,7 +923,11 @@ function materializeVillageStructures(db, vil, bRows) {
       // ★★[T62 2026-09-03] **공용 쉼터 — 파지 않은 움집.** 실체는 마을 움집과 **완전히 같다**
       //   (같은 6×4 · 같은 남벽 2칸 문 · 같은 `hut` 태그) ⇒ **새 스프라이트 0 · 클라 렌더 접점 0.**
       //   다른 것은 이름과 뜻뿐이다: 이 집은 **아무의 집도 아니고, 그래서 누구나 잔다**.
-      rows += buildStructureRect(db, vil.dbId, b.cx - 5, b.cy - 5, b.cx + 0, b.cy - 2, ownerId, `${vil.name} 쉼터`, [b.cx - 3, b.cx - 2], { hut: [b.cx - 5, b.cy - 5, b.cx + 0, b.cy - 2] });
+      //   ★[T136] `shelter: 1` 한 칸 — **화면이 갈리려면 선언이 있어야 한다.** 실체는 그대로 움집이고
+      //     물리·문·콜라이더는 한 글자도 안 바뀐다. 클라는 이 칸으로 지붕 그림만 바꿔 고른다.
+      //     ⚠이름(`"<마을> 쉼터"`)으로 고르지 않는다 — 이름표는 **보여 주는 말**이지 렌더 열쇠가 아니다
+      //       (번역·개명이 그림을 바꾸면 그게 사본이다 · T66 "이름표 정본은 서버" 와 같은 사상).
+      rows += buildStructureRect(db, vil.dbId, b.cx - 5, b.cy - 5, b.cx + 0, b.cy - 2, ownerId, `${vil.name} 쉼터`, [b.cx - 3, b.cx - 2], { hut: [b.cx - 5, b.cy - 5, b.cx + 0, b.cy - 2], shelter: 1 });
     } else if (b.type === 'granary') {
       // ★고상곳간 5×3([cx-2..cx+2]×[cy-1..cy+1]) — 문 없는 밀폐(사다리 출입 고증, 상호작용은 인접 셀). 송국리 소형 굴립주 5.3×3.2 실측.
       //   data.gran 태그[에셋 2차]: 클라가 벽·바닥 시각 억제 + 고상 통짜 스프라이트(기둥+판벽+이엉) 합성 — 콜라이더·밀폐 불변.
@@ -3211,6 +3270,7 @@ function _openDayJobs(now) {
       C.econPop += vil.econ.npcs.length;
       syncVillagePop(vil, POP_SYNC_PER_DAY); // 완만 반영: ±POP_SYNC_PER_DAY/일
       syncVillageJobs(vil, C.jobChanges);    // Stage 4A: econ counts 비례 재동기(신규 스폰 포함)
+      syncVillageClothes(vil, state.deps.players, state.econ);   // ★[T125] 곳간 옷 재고 → 주민 착장(econ 읽기만)
       C.npcCount += vil.npcPids.length;
       C.pops[vil.dbId] = vil.econ.npcs.length;
     }
@@ -4961,6 +5021,17 @@ function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(�
 }
 function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도주 뒤·야간 귀가 게이트 앞) — true=일과 소유(레거시 차단)
   if (!LIFE_ON) return false;
+  // ★★[T134 2026-09-06] **짐을 진 주민에게 지게를 입힌다.** 정본은 `npc._carry`(곳간② 물리 짐 칸수)다 —
+  //   수확이 +1, 곳간 인출이 +q, 저장·귀가가 0 으로 만든다. 여기서는 **읽기만** 한다(회계 무접촉).
+  //   ⚠`_lifeAct` 라벨('운반'·'저장')은 **못 쓴다**: 그 라벨은 곳간 과업 창 안에서만 찍히는데,
+  //     수확한 짐을 지고 밭에서 걸어 나오는 주민은 그 창 밖이면서 **짐은 지고 있다**. 상태가 곧 진실이다.
+  //   ★전송은 새 필드 0 — 사람의 지게와 **같은 `e.carrier` 한 비트**를 탄다(`zone.js makeEntry`).
+  //     그 비트는 무상태 델타(최초 가시 + `_wornAt` 뒤 1.2초)라, **0↔1 이 뒤집힌 순간에만** 도장을 찍는다.
+  //     매 틱 찍으면 창이 영영 안 닫혀 문자열·비트가 계속 나간다(옷이 그래서 이 규약을 쓴다).
+  {
+    const on = (npc._carry || 0) > 0;
+    if (on !== !!npc._carryOn) { npc._carryOn = on; npc._wornAt = Date.now(); }
+  }
   const vil = state.byDbId && state.byDbId.get(npc.simVillageId);
   if (!vil || !vil._terrSet || !vil._terrSet.size) return false;
   _lifeVL();
@@ -5343,10 +5414,22 @@ function noteVillageBuilt(vil, kind) {
 }
 function _buildsToday() { const out = _evBuilds.slice(); _evBuilds.length = 0; return out; }
 
+// ★★[T119 2026-09-05] **구조** — 완공과 **같은 자리·같은 문법**이다. 장부는 쓰러짐을 모른다;
+//   살아난 그 순간을 `zone.js` 가 여기 한 줄 남기고 하루 경계에 장부가 가져간다.
+//   ⚠구조는 **실시간**에 나고 장부는 **하루 눈금**이라 그 사이를 이 줄이 잇는다(새 시계 0).
+//   ⚠`by` 는 일으킨 사람의 이름 또는 `'village'`(마을 이송) — 다섯 필드의 `item` 칸으로 간다(㉝).
+const _evRescues = [];
+function noteRescue(vid, by, magRemain) {
+  if (vid == null) return;
+  if (_evRescues.length < 256) _evRescues.push({ vid: vid | 0, by: by || 'village', mag: +magRemain || 0.01 });
+}
+function _rescuesToday() { const out = _evRescues.slice(); _evRescues.length = 0; return out; }
+
 function _scanEventsDaily() {
   if (!state.ledger) return;
   const t0 = Date.now();
   const evs = state.ledger.scanDay(state.world, state.world.day, { caravanDelays: _caravanDelaysToday(), builds: _buildsToday(),
+    rescues: _rescuesToday(),                                      // ★[T119] 구조 — 완공과 같은 자리
     winter: Winter.dailyExtra(state.world.day, state.villages) });   // ★[T20] 겨울나기 — 공표(가을 첫날)·판정(겨울 첫날)
   // 의뢰 진척 저장은 납품 시점에 한다(여기선 게시/철회만 — onRequest 훅이 이미 했다).
   if (state.world.day % 30 === 0) {
@@ -5440,6 +5523,11 @@ function _newsRows(vid, n) {
     type: r.ev.type, item: r.ev.item,
     day: r.ev.day,          // 사건이 난 날
     heard: r.heard,         // ★이 마을이 들은 날 — 둘의 차이가 곧 소문이 걸어온 일수다
+    // ★★[T127 2026-09-05] **이 마을이 들은 크기**(뭉갠 값). T50 이 연표에 `sev` 를 실은 것과
+    //   같은 이유다: 소문 왜곡 뒤로 "얼마나 심한지"는 **마을마다 다른 사실**이 됐고, 화면은
+    //   그걸 유도할 방법이 없다(장부 원본을 볼 수 없으니). 유도하게 두면 그게 사본이다.
+    //   ⚠장부 원본이 아니라 `visibleEvents` 가 내준 **들은 사건**의 값이다(0홉이면 정확).
+    mag: r.ev.mag,
     from: r.ev.vid === (vid | 0) ? null : ((state.byDbId.get(r.ev.vid) || {}).name || null),
   })).filter((r) => r.line);
 }
@@ -5888,6 +5976,11 @@ module.exports = {
   tickSliceMs: () => TICK_SLICE_MS,   // ★[T1] `/perf` 가 '지금 어떤 예산으로 도는가'를 그대로 말하게(대조군 판별)
   // Stage 4A — zone.js 소비: 농지 lazy 실물화 / welcome 영토 페이로드 / 레거시 디듀프 판정
   farmTilesInRect, clientVillages, isLegacyVillageClaimed,
+  // ★[T119] 구조 사건 접점 — `zone.js` 가 살아난 그 순간에 한 줄 남긴다(완공 `noteVillageBuilt` 와 같은 자리)
+  noteRescue,
+  // ★[T125] 주민 착장 배정 — `scripts/test-npc-clothes.js` 가 **이 함수 그대로**를 검사한다(사본 0)
+  syncVillageClothes,
+  _pidHash,
   // ★곳간② 클라 표시 — welcome 스냅샷(델타는 onGameTick에서 gran_stock 방송)
   granStocks,
   // ★[10차 T4] 장마당 — welcome 스냅샷(변경분은 onGameTick의 markets 방송)

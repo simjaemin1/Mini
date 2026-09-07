@@ -13,8 +13,11 @@ const { chromium } = require('playwright');
 const path = require('path');
 
 const CHROME = process.env.CHROME_PATH || undefined;   // 미지정이면 playwright 기본 브라우저
-// ★랩 파일 경로: LAB_FILE 환경변수(기본 ~/Mini/전쟁실험실.html). 랩은 레포 밖(디바이스)에 산다.
-const LAB = 'file://' + (process.env.LAB_FILE || path.join(require('os').homedir(), 'Mini', '전쟁실험실.html'));
+// ★랩 파일 경로: LAB_FILE 환경변수(기본 `lab/전쟁실험실.html`).
+//   ⚠[T123 2026-09-05] 종전 기본값은 `~/Mini/전쟁실험실.html`(레포 밖)이었다 — 랩이 레포 안으로
+//     들어온 뒤(PM c7778a49)에도 남아 있어서, 컨테이너·CI 에선 *파일을 못 찾고* 맥에선 *레포가 아닌 사본*을 쟀다.
+//     같은 사고를 sim/inline-engine.js·inline-path.js·scripts/lab-wiring-check.js 에서도 고쳤다.
+const LAB = 'file://' + (process.env.LAB_FILE || path.resolve(__dirname, '..', 'lab', '전쟁실험실.html'));
 const SPEED = 119, NVIL = 4, POP = 40, SEED = 7;
 const WAIT_MS = 900000;
 

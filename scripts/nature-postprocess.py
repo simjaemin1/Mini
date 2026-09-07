@@ -10,6 +10,8 @@
 # 실행: python3 scripts/nature-postprocess.py
 import json, os, sys
 from PIL import Image
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import render_common as _RC      # ★[T132] 못박기 헬퍼 한 벌(사본 0). bpy 를 부르지만 씬은 안 짓는다.
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -18,10 +20,31 @@ TREES = os.path.join(ROOT, "public", "assets", "trees")
 NATURE = os.path.join(ROOT, "public", "assets", "nature")
 ALPHA_MIN = 10          # 이보다 옅은 픽셀은 없는 것으로 — Cycles 샘플 꼬리가 bbox 를 부풀린다
 
+# ★★[T129 2026-09-05] **손잡이 둘을 달았다 — 둘 다 실측이 시켰다.**
+#   ⓐ `--only k1,k2` : 준 키만 배치한다. 안 그러면 이 스크립트가 **50장을 전부 다시 저장**하는데,
+#     `scripts/nature_renders/` 의 옛 산출물이 지금 코드가 굽는 것과 다르면(실측: `tree09` 이
+#     평균 |Δ| 0.45/255 · 다른 화소 29.3% — 눈엔 같고 가장자리 잡음이다) **안 건드릴 자산이
+#     조용히 갈린다**. 새 자산을 더하는 카드는 새 키만 배치해야 한다.
+#   ⓑ 앵커를 **덮어쓰지 않고 합친다** : 종전은 `out` 을 새로 만들어 통째로 썼다. 그런데
+#     `ore-outcrop.py` 가 광맥 6키를 이 파일에 **합쳐 넣는다**(그 스크립트 §앵커 절).
+#     ⇒ 이 스크립트를 혼자 돌리면 **광맥 6키가 소리 없이 사라졌다**(T129 §0 에서 실측 —
+#     56키 → 50키 · 값이 바뀐 키는 0). 클라가 광맥 자리를 모르게 되는 길이었다.
+ONLY = None
+for _a in sys.argv[1:]:
+    if _a.startswith("--only="):
+        ONLY = set(k for k in _a[len("--only="):].split(",") if k)
+    elif _a == "--only":
+        pass
 raw = json.load(open(os.path.join(SRC, "nature_raw_anchors.json"), encoding="utf-8"))
+_ap_out = os.path.join(NATURE, "nature_anchors.json")
 out = {}
+if os.path.exists(_ap_out):                     # ⓑ 있던 앵커를 먼저 싣는다(광맥 6키가 여기 산다)
+    try: out = json.load(open(_ap_out, encoding="utf-8"))
+    except Exception: out = {}
 n_tree = n_prop = 0
 for key, a in sorted(raw.items()):
+    if ONLY and key not in ONLY:
+        continue
     p = os.path.join(SRC, key + ".png")
     if not os.path.exists(p):
         print("  ! 없음:", key); continue
@@ -37,6 +60,13 @@ for key, a in sorted(raw.items()):
         dst = os.path.join(TREES, key + ".png"); n_tree += 1
     else:
         dst = os.path.join(NATURE, key + ".png"); n_prop += 1
+    # ★★[T132] **상자 못박기 — 자연물·나무는 여기가 규격이 정해지는 자리다.**
+    #   굽기가 낸 틀은 크롭 전이고, 배포되는 규격은 **알파 크롭 뒤**의 (w,h,ox,oy)다.
+    #   즉 못박을 자리는 굽기가 아니라 **후처리**다. 모양이 조금만 커져도 크롭 상자가 커지고,
+    #   그러면 배포 PNG 크기와 앵커가 함께 움직여 **읽는 쪽이 조용히 낡는다**.
+    #   ⇒ 이미 배포된 키면 규격이 정확히 같아야 한다(새 키는 잠자코 지나간다 — 못박을 게 없다).
+    _RC.assert_pinned_box(_ap_out, key, im2.width, im2.height, round(ox, 2), round(oy, 2),
+                          label="nat-post")
     im2.save(dst)
     out[key] = {"w": im2.width, "h": im2.height, "ox": round(ox, 2), "oy": round(oy, 2),
                 "ppu": a["ppu"], "kind": a.get("kind", "prop")}
@@ -49,4 +79,5 @@ for key, a in sorted(raw.items()):
 
 json.dump(out, open(os.path.join(NATURE, "nature_anchors.json"), "w", encoding="utf-8"),
           ensure_ascii=False, indent=1, sort_keys=True)
-print(f"[nat-post] 나무 {n_tree} · 소품 {n_prop} → nature_anchors.json {len(out)}키")
+print(f"[nat-post] 나무 {n_tree} · 소품 {n_prop} → nature_anchors.json {len(out)}키"
+      + (f"  (--only {len(ONLY)}키)" if ONLY else ""))

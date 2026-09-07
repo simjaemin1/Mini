@@ -480,6 +480,11 @@
     };
     // 여유 셀을 바꿔 가며 **한 번의 부팅으로 여러 값을 재기** 위한 훅(probe-mttol 이 쓴다)
     window.__mtSetTol = (v) => { MT_FIT_TOL = +v; _mtChunk.clear(); needsRedraw = true; return MT_FIT_TOL; };
+    // ★★[T145] 둥근 비율 손잡이의 **정본 문**. `_t19.mtRound` 를 직접 넣어도 배치는 바뀌지만
+    //   (`_mtChunkSegs` 가 서명으로 캐시를 버린다) **화면은 안 다시 그려진다** — 이 층은
+    //   `needsRedraw` 로 칠하기 때문이다. 그래서 화소로 A/B 를 재려던 하네스가 |Δ| 0.00 을 봤다.
+    //   ⇒ 값과 다시 칠하기를 **한 문**으로 묶는다(`__mtSetTol` 과 같은 자리·같은 문법).
+    window.__mtSetRound = (v) => { _t19.mtRound = (v == null ? null : +v); _mtChunk.clear(); needsRedraw = true; return _t19.mtRound; };
     window.__mtOccAt = (wx, wy) => {
       if (!_mtToScr || !_mtAnchors || !_mtLastRend) return null;
       const p = w2i(wx, wy), sp = _mtToScr(p.x, p.y);
@@ -852,7 +857,10 @@
               const rax = ox + b.x, ray = oy + b.y;
               if (Math.abs(rax - worldCx) <= VIEW_RADIUS + 200 && Math.abs(ray - worldCy) <= VIEW_RADIUS + 200) {
                 const _riso = w2i(rax - 96, ray - 128);       // 지붕 로컬 원점 = 북서 오버행 모서리(캐리어 중심 - (3,4)셀)
-                renderables.push({ z: (rax + ray) * 0.5 + 64, kind: 'hutroof', img: _hutI, iso: _riso, wx: rax, wy: ray });   // ★지붕은 자기 집 벽 4면보다 무조건 앞[사용자 지적]: 벽 z 최대=남벽 동단·동벽 남단 (캐리어+56) — +24는 SE 구간 벽이 처마를 덮었음. +64로 전부 상회. 남측 개체는 지붕이 64px 떠 있어 픽셀 비겹침(플레이어는 +500 별도)이라 안전
+                // ★[T136] 공용 쉼터는 **다른 지붕**이다 — 서버가 `data.shelter` 로 선언한다(T62 회부).
+                //   실체는 움집과 같으니 자리·z·컷어웨이는 그대로고, 고르는 그림만 갈린다.
+                const _roofI = (b.data.shelter && _bldSpr.shelter_roof) || _hutI;
+                renderables.push({ z: (rax + ray) * 0.5 + 64, kind: 'hutroof', img: _roofI, iso: _riso, wx: rax, wy: ray });   // ★지붕은 자기 집 벽 4면보다 무조건 앞[사용자 지적]: 벽 z 최대=남벽 동단·동벽 남단 (캐리어+56) — +24는 SE 구간 벽이 처마를 덮었음. +64로 전부 상회. 남측 개체는 지붕이 64px 떠 있어 픽셀 비겹침(플레이어는 +500 별도)이라 안전
               }
             }
             if (_t19.floorOutOff) continue;   // ★대조군 — 옛 동작(밖에서 바닥 억제)
@@ -1499,13 +1507,16 @@
         const vis = Math.max(0.15, 1 - Math.pow(d / VIEW_RADIUS, 1.4));
         ctx.globalAlpha = vis;
         if (item.r.type === 'tree') drawTreeIso(s.x, s.y, item.r.r || 8, item.r.h || 60, item.ax, item.ay);
+        // ★[T122] 벤 자리의 두 단계 — 크기는 **서버가 이미 줄여 보냈다**(클라가 배율을 짓지 않는다).
+        else if (item.r.type === 'stump') drawStumpIso(s.x, s.y, item.r.r || 7, item.r.h || 10, item.ax, item.ay);
+        else if (item.r.type === 'sapling') drawSaplingIso(s.x, s.y, item.r.r || 4, item.r.h || 20, item.ax, item.ay);
         else if (item.r.type === 'rock') drawRockIso(s.x, s.y, item.ax, item.ay);
         else if (item.r.type === 'berry_bush') drawBerryBushIso(s.x, s.y, item.ax, item.ay);
         else if (item.r.type === 'water_pool') drawWaterPoolIso(s.x, s.y);
         else if (item.r.type === 'herb') drawHerbIso(s.x, s.y, item.ax, item.ay);
         else if (item.r.type === 'ore') drawOreIso(s.x, s.y, item.ax, item.ay);
         else if (item.r.type === 'meteorite') drawMeteoriteIso(s.x, s.y, item.ax, item.ay);   // ★운철 낙하지
-        if (item.r.hp < item.r.maxHp) {
+        if (item.r.maxHp > 0 && item.r.hp < item.r.maxHp) {   // ★[T122] 그루터기는 maxHp 0 — 0 나누기 금지
           const pct = item.r.hp / item.r.maxHp;
           ctx.fillStyle = '#222'; ctx.fillRect(s.x - 10, s.y - 28, 20, 3);
           ctx.fillStyle = '#9adb6e'; ctx.fillRect(s.x - 10, s.y - 28, 20 * pct, 3);
@@ -1571,15 +1582,22 @@
         // ★[캐릭터 스프라이트] 플래그가 켜져 있고 시트가 다 떠 있으면 시트로, 아니면 종전 도형으로.
         //   ★★[T13 2026-09-02] **NPC 주민도 시트로 간다** — 별도 배치(이것)가 왔다.
         //     서버는 첫 가시 메타에 `npc` 1비트와 `simJob` 을 이미 실어 준다(makeEntry). 서버 무접촉.
-        //     직업 표식은 `simJob` → 소품 레이어(`npcCharLayers` · `40-r2-sprites.js`).
+        //     직업 표식은 `simJob` → 소품 레이어(`NPC_JOB_TOOL` · `40-r2-sprites.js`).
+        //   ★[T125] 옷은 `clothes` 로 온다 — 사람과 **같은 필드**다(마을 곳간이 정한 재질).
         //   ⚠NPC 는 **걷기·서기 둘만** 쓴다(T13 지시). 그래서 속도를 달리기 문턱 아래로 **묶어서**
         //     넘긴다 — 안 묶으면 빠른 NPC 가 `run` 시트를 찾고, 그건 있지만 "걷기·서기" 계약 밖이다.
         //     (시트가 없으면 `drawCharSprite` 가 false 를 내고 도형으로 떨어진다 — 폴백은 그대로 산다.)
-        //   다운/전쟁 병사/포로는 종전 도형 경로 유지(누운 모습·병종색·밧줄은 시트에 없다).
+        //   ★[T143] 이 자리에 있던 *"다운/전쟁 병사/포로는 종전 도형 경로 유지"* 는 지웠다 — 셋 다 시트다.
         const _npcRun = (uiCfg.charRunMin || 102);
         const _rawSpeed = item.isMe ? Math.hypot(myVel.vx, myVel.vy)
                                     : Math.hypot(item.vx || 0, item.vy || 0);
-        const _spriteOk = !downFlag && !item._war && !item.cap &&
+        // ★★[T143 2026-09-06] **도형 경로가 닫혔다.** 자취를 남긴다 —
+        //   T13 이 "다운/전쟁 병사/포로는 도형 유지"로 시작해, T137 이 다운을 시트로 보내며
+        //   *"병종색·밧줄은 여전히 없으므로 **그 둘만** 도형에 남는다"* 로 줄었고, 이 카드가
+        //   그 둘을 시트로 보냈다(`band` 물들이기 · `tool_rope`). ⇒ **조건 없는 시트 경로**다.
+        //   ⚠폴백은 그대로 산다: 시트가 한 장이라도 안 떴으면 `drawCharSprite` 가 false 를 내고
+        //     도형이 받는다(T137 규약). 도형은 종전 그림 그대로 — 표식이 줄면 그게 회귀다.
+        const _spriteOk =
           drawCharSprite(s.x, s.y, !!item.isMe, {
             pid: item.pid, fvx, fvy,
             speed: item.npc ? Math.min(_rawSpeed, _npcRun - 1) : _rawSpeed,
@@ -1588,12 +1606,27 @@
             job: item.npc ? (item.simJob || '주민') : null,
             clothes: item.clothes || null,   // ★[T81] 남의 옷 재질(내 것은 charLayersFor 가 내 장비에서 읽는다)
             tool: item.tool || null, carrier: !!item.carrier,   // ★[T87] 남이 든 것·진 것(같은 규약)
+            // ★[T137] 정적 셋 — 쓰러짐 · 업기 · 업힘. 업힘은 아직 서버 필드가 없다(이송 카드 몫) —
+            //   클라 자리는 여기 서 있고, 그 값이 오는 날 한 줄도 안 고친다.
+            down: downFlag, carrying: !!item.carrying, carriedOn: !!item.carriedOn,
+            // ★[T143] 전쟁 넷 + 포로 하나 — 서버 `makeEntry` 가 이미 싣고 있던 필드 그대로(서버 diff 0).
+            //   `war`·`bt` 는 띠를 물들이고, `br` 은 궤주 반투명, `cap` 은 밧줄 층을 부른다.
+            //   `bs`(진영)·`bc`(지휘관)는 시트가 안 나른다 — 게이지와 표식이 나른다(아래).
+            war: !!item._war, bt: item.bt, br: item.br, cap: !!item.cap,
           });
         if (!_spriteOk) drawPlayerIso(s.x, s.y, item.name, item.color, item.isMe, { moving, attackPhase, fvx, fvy, isDown: downFlag, war: item._war, bt: item.bt, bs: item.bs, bc: item.bc, br: item.br, cap: item.cap, act: item.act });
         // ★★[T57 2026-09-03] **시트 경로에도 이름표를 붙인다.** 도형 경로는 `drawPlayerIso` 안에서
         //   같은 함수를 부르므로 어느 쪽이든 **정확히 한 번** 그려진다(둘 다 그리는 판이 없다).
         //   결함이었던 자리: 시트가 성공하면 위 줄이 안 돌아 이름표가 통째로 빠졌다(T13 시트 배치의 회귀).
-        else drawNameTag(s.x, s.y, item.name, !!item.isMe, item.act);
+        // ★[T137] 쓰러진 사람의 이름표는 `× 이름`(붉은색)이다 — 도형 경로가 쓰던 그 함수를 그대로 부른다.
+        //   (시트가 그리든 도형이 그리든 화면의 말은 같아야 한다 — 게이지·이름표 유지 규약.)
+        // ★[T143] 시트 경로의 표식 — 포로 발치 링 · 지휘관 금테+★. 도형 경로는 제 안에서
+        //   **같은 함수**를 부른다(사본 0 · `42-r2-char.js drawWarMarks`).
+        else {
+          drawWarMarks(s.x, s.y, { cap: !!item.cap, war: !!item._war, bc: item.bc });
+          if (downFlag) drawDownTag(s.x, s.y, item.name);
+          else drawNameTag(s.x, s.y, item.name, !!item.isMe, item.act);
+        }
         // HP bar for others (전쟁 병사는 만피여도 항상 표시 + 진영색 테두리)
         if (!item.isMe) {
           const o = item.hp !== undefined ? item : null;

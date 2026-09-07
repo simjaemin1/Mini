@@ -72,7 +72,15 @@ const META = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
   //   이름이 곧 해제 조건이었다 — *"마을 적용은 회부된 별도 배치"*. **그 배치가 T13 이다.**
   //   ⇒ 지우지 않고 **새 계약으로 갈아 끼운다**: NPC 도 시트로 가되, 직업 표를 쓰고, 폴백은 산다.
   ok(!/!item\.npc &&/.test(cl), '★★NPC 제외가 풀렸다 (T13 — 마을 주민도 소체 시트)');
-  ok(/npcCharLayers\(/.test(cl), '★NPC 는 직업 표(`npcCharLayers`)로 레이어를 고른다');
+  // ★★[T125 2026-09-05] 이 줄도 **갈아 끼운다.** T13 은 주민에게 *별도 함수*(`npcCharLayers`)를
+  //   줬고, 그 함수가 옷을 `clothes_hemp` 로 **못 박고** 있었다 — 마을 곳간에 갖옷이 쌓여도
+  //   화면은 전부 삼베였다. T125 가 그 갈래를 없애고 **사람과 같은 함수**로 보냈다.
+  //   ⇒ 새 계약: 층 함수는 **하나**이고, 주민 옷은 `o.clothes`(마을 곳간)에서 온다.
+  ok(!/function npcCharLayers/.test(cl), '★★주민 전용 층 함수가 없다 (T125 — 사본 −1)');
+  ok(/const layers = charLayersFor\(isMe, opts\);/.test(cl),
+     '★사람도 주민도 **같은 한 줄**로 층을 고른다');
+  ok(/const jt = job \? NPC_JOB_TOOL\[job\] : null;/.test(cl),
+     '★직업 소품은 그 한 함수 안에서 표를 읽는다 (다섯 실루엣이 안 뭉개진다)');
   ok(/const NPC_JOB_TOOL = \{/.test(cl), '★직업 표가 클라 소스에 하나뿐이다(사본 금지)');
   ok(/job: item\.npc \?/.test(cl), '★`job` 은 NPC 일 때만 실린다 — 사람 경로는 종전 그대로');
   ok(/Math\.min\(_rawSpeed, _npcRun - 1\)/.test(cl),
@@ -586,6 +594,321 @@ console.log('\n=== ⑧ 도끼질·조준의 축 · EXR 되굽기 [T107] ===');
     ok(!/def\s+(cel_quantize|ink_outline|edge_darken)/.test(ip), '★되굽기가 제 후처리를 따로 만들지 않는다(사본 0)');
     ok(/T107_BOXPIN/.test(rp) && /rc\.fit_pinned_box\(/.test(rp) && /얼린 값/.test(cm),
        '★공유 프레임 상자 **못박기**가 살아 있다 — 판정은 공용, 서식은 캐릭터 [T116]');
+  }
+}
+
+console.log('\n=== ⑨ 누운 판 · 업는 판 [T137] ===');
+{
+  const FW = META.frameW, FH = META.frameH;
+  // 한 방향의 한 프레임을 잘라 알파 모양을 잰다(하네스가 포즈를 다시 계산하지 않는다 — 그림을 본다).
+  const shape = (key, d, frame) => {
+    const im = readPng(path.join(DIR, key + '.png'));
+    const x0 = (frame || 0) * FW, y0 = d * FH;
+    let n = 0, minx = 1e9, maxx = -1e9, miny = 1e9, maxy = -1e9, sx = 0, sy = 0;
+    for (let y = 0; y < FH; y++) for (let x = 0; x < FW; x++) {
+      const a2 = im.px[((y0 + y) * im.w + (x0 + x)) * 4 + 3];
+      if (a2 < 140) continue;
+      n++; sx += x; sy += y;
+      if (x < minx) minx = x; if (x > maxx) maxx = x;
+      if (y < miny) miny = y; if (y > maxy) maxy = y;
+    }
+    return { n, w: maxx - minx + 1, h: maxy - miny + 1, top: miny, bot: maxy, cx: sx / n, cy: sy / n };
+  };
+
+  // ⓐ 메타 — 정적 한 판짜리 클립 둘
+  for (const c of ['down', 'carry']) {
+    const cl = META.clips[c];
+    ok(!!cl && cl.frames === 1 && cl.loop === false,
+       `★\`${c}\` 이 **정적 한 판**이다 (frames 1 · loop false)`, cl ? JSON.stringify(cl) : '없음');
+    ok(META.layers.every((L) => META.sheets[L + '_' + c]),
+       `★\`${c}\` 이 **전 층**에 있다 (${META.layers.length}장 — 입은 채 눕는다·업는다)`);
+  }
+  ok(META.frameW === 109 && META.frameH === 90 && META.anchorX === 54.5,
+     '★★프레임 규격이 **안 움직였다** — 누운 폭이 얼린 상자 안에 든다(T107 못박기)',
+     `${META.frameW}x${META.frameH} anchor ${META.anchorX},${META.anchorY}`);
+
+  // ⓑ **누웠는가** — 서 있는 판과 가로세로가 뒤집힌다(방향 0 = +x 동)
+  {
+    const st = shape('body_idle', 0, 0), dn = shape('body_down', 0, 0);
+    ok(st.h > st.w * 1.8, `★검사 전제 — 선 몸은 세로로 길다 ${st.w}×${st.h}`);
+    ok(dn.w > dn.h * 1.2, `★★**누웠다** — 누운 몸은 가로로 길다 ${dn.w}×${dn.h} (선 몸 ${st.w}×${st.h})`);
+    ok(dn.w > st.w * 2, `★가로가 ${(dn.w / st.w).toFixed(1)}배로 늘었다`);
+    // ⓑ′ 땅에 붙어 있다 — 발밑 선이 같다(접지 실측이 한 일)
+    ok(Math.abs(dn.bot - st.bot) <= 3,
+       `★★**땅에 붙어 있다** — 누운 몸의 아랫선 ${dn.bot} vs 선 몸 ${st.bot} (차 ${Math.abs(dn.bot - st.bot)}px ≤ 3)`);
+    ok(dn.top > st.top + 10, `★머리 높이가 내려왔다 — 윗선 ${st.top} → ${dn.top}`);
+  }
+
+  // ⓒ **업는 자세인가** — 서 있되 숙였다(키가 줄고, 눕지는 않았다)
+  {
+    const st = shape('body_idle', 0, 0), cy = shape('body_carry', 0, 0);
+    ok(cy.h < st.h && cy.h > cy.w, `★★**숙였되 서 있다** — ${cy.w}×${cy.h} (선 몸 ${st.w}×${st.h})`);
+    ok(cy.h >= st.h * 0.7, `★너무 숙이지 않았다 — 키 ${(100 * cy.h / st.h).toFixed(0)}% (넘어진 게 아니다)`);
+    // ★★자를 **이미 배포된 시트에서 뽑는다**(족보 74 — 문턱을 지어내지 않는다).
+    //   1차는 `|carry.bot − idle.bot| ≤ 3` 이라고 내가 정했다가 빨개졌다(80 vs 84). 그런데 재 보니
+    //   **옛 클립들이 이미 그만큼 흔들린다**: run 77~85 · walk 81~86 · aim 86(idle 보다 2px 아래).
+    //   포즈가 발을 들고 낮추는 것은 정상이고, 내가 캐논보다 엄한 바를 세웠던 것이다.
+    //   ⇒ 묻는 것은 "**옛 판들이 이미 서 있는 띠 안에** 드는가"다.
+    {
+      const bots = [];
+      for (const c of ['idle', 'walk', 'run', 'swing', 'aim']) {
+        const n = META.clips[c].frames;
+        for (let f = 0; f < n; f++) bots.push(shape('body_' + c, 0, f).bot);
+      }
+      const lo = Math.min(...bots), hi = Math.max(...bots);
+      ok(hi > lo, `★검사 전제 — 옛 클립의 지면선이 이미 폭을 갖는다 ${lo}~${hi}`);
+      ok(cy.bot >= lo && cy.bot <= hi,
+         `★★업는 사람의 발이 **옛 판들이 서 있는 띠 안**이다 — ${cy.bot} ∈ ${lo}~${hi}`);
+      const dn2 = shape('body_down', 0, 0);
+      ok(dn2.bot >= lo && dn2.bot <= hi,
+         `★누운 사람도 같은 띠 안이다 — ${dn2.bot} ∈ ${lo}~${hi}`);
+    }
+  }
+
+  // ⓓ **업기 오프셋** — 여덟 방향 · 등에 얹힌다(머리 위로 뜨지 않는다)
+  {
+    const off = META.carryOffset;
+    ok(Array.isArray(off) && off.length === 8, `★업기 오프셋이 여덟 방향 다 있다`, JSON.stringify(off && off.length));
+    if (Array.isArray(off) && off.length === 8) {
+      ok(off.every((o) => Array.isArray(o) && o.length === 2 && isFinite(o[0]) && isFinite(o[1])), '★값이 전부 수다');
+      // 좌우 대칭 — 방향 0 과 2 는 x 부호만 뒤집힌 짝이다(리그를 z 로 돌린 결과)
+      ok(Math.abs(off[0][0] + off[2][0]) < 0.01 && Math.abs(off[0][1] - off[2][1]) < 0.01,
+         '★방향 0↔2 가 좌우 대칭이다 (뼈에서 유도한 값이라 저절로 그렇다)', `${JSON.stringify(off[0])} ${JSON.stringify(off[2])}`);
+      // ★★기하 — 그 오프셋으로 옮긴 누운 몸이 **업는 사람의 몸통 높이**에 온다.
+      //   1차는 업는 사람의 등 좌표만 썼다가 업힌 몸이 **머리 위로 떴다**(중심 y 22 vs 등 41).
+      //   그래서 두 포즈의 등끼리 맞대는 값으로 고쳤다 — 이 줄이 그 수리를 붙든다.
+      for (const d of [0, 1, 2]) {
+        const cy = shape('body_carry', d, 0), dn = shape('body_down', d, 0);
+        const movedCy = dn.cy + off[d][1];          // 옮긴 뒤 업힌 몸의 중심 y
+        ok(movedCy > cy.top && movedCy < cy.bot,
+           `★★방향 ${d} — 업힌 몸의 중심이 업는 사람의 **몸 안**에 온다 (${movedCy.toFixed(1)} ∈ ${cy.top}~${cy.bot})`);
+        ok(movedCy < cy.cy,
+           `★방향 ${d} — 그리고 **위쪽**이다(등이지 다리가 아니다) ${movedCy.toFixed(1)} < ${cy.cy.toFixed(1)}`);
+      }
+    }
+  }
+
+  // ⓔ 클라 — 다운이 시트로 간다 · 오프셋을 **메타에서 읽는다**
+  {
+    const cl2 = require('./client-src.js').readClientSrc();
+    ok(!/!downFlag && !item\._war/.test(cl2), '★★다운 제외가 풀렸다 (T137 — 쓰러진 사람도 시트로)');
+    ok(/down: downFlag/.test(cl2), '★렌더루프가 `down` 을 넘긴다');
+    ok(/m\.carryOffset\[row\]/.test(cl2), '★★업기 오프셋을 **메타에서 읽는다** (클라에 숫자 사본 0)');
+    ok(!/carryOffset\s*=\s*\[/.test(cl2), '★클라가 그 표를 다시 적지 않았다');
+    // ★★[T143] 이 줄은 **갈아 끼웠다.** 종전 판정은 `else if (downFlag) drawDownTag` 라는
+    //   **문장 모양**을 요구했는데, 이 카드가 시트 경로에 표식 호출을 더하며 그 자리가
+    //   블록(`else { … }`)이 됐다. 계약은 "두 경로가 같은 함수를 부른다"이지 문장 모양이 아니다.
+    //   ⇒ 그림자와 **같은 잣대**로 잰다: 정의 하나 + 부르는 자리 둘(도형·시트).
+    ok(/function drawDownTag/.test(cl2) && (cl2.match(/drawDownTag\(/g) || []).length >= 3,
+       '★쓰러진 이름표(`× 이름`)를 **한 함수**가 그린다 — 도형 경로와 시트 경로가 같은 말을 한다',
+       `호출 ${(cl2.match(/drawDownTag\(/g) || []).length}`);
+    ok(/function drawCharShadow/.test(cl2) && (cl2.match(/drawCharShadow\(/g) || []).length >= 3,
+       '★그림자도 한 자리다 (도형·시트 두 경로가 같은 것을 부른다)');
+  }
+}
+
+console.log('\n=== ⑩ 병종 띠 · 포로 밧줄 [T143] ===');
+{
+  const FW = META.frameW, FH = META.frameH;
+  const CL = require('./client-src.js').readClientSrc();
+
+  // 한 판(방향 d · 프레임 f)의 화소를 모은다 — 시트를 **본다**(포즈를 다시 계산하지 않는다).
+  const cell = (key, d, f) => {
+    const im = readPng(path.join(DIR, key + '.png'));
+    const x0 = (f || 0) * FW, y0 = d * FH;
+    const on = [], set = new Set();
+    let sx = 0, sy = 0;
+    for (let y = 0; y < FH; y++) for (let x = 0; x < FW; x++) {
+      const i = ((y0 + y) * im.w + (x0 + x)) * 4;
+      const a = im.px[i + 3];
+      if (a < 140) continue;
+      on.push({ x, y, r: im.px[i], g: im.px[i + 1], b: im.px[i + 2], a });
+      set.add(y * FW + x); sx += x; sy += y;
+    }
+    return { n: on.length, on, set, cx: sx / on.length, cy: sy / on.length };
+  };
+
+  // ⓐ 층이 늘었고, 늘어난 만큼만 늘었다
+  {
+    ok(META.layers.includes('band') && META.layers.includes('tool_rope'),
+       '★층 둘이 새로 있다 — `band`(병종 띠) · `tool_rope`(포로 결박)', `층 ${META.layers.length}`);
+    for (const L of ['band', 'tool_rope']) {
+      ok(Object.keys(META.clips).every((c) => META.sheets[L + '_' + c]),
+         `★\`${L}\` 이 **전 클립**에 있다 (${Object.keys(META.clips).length}판 — 파이프라인이 목록 주도라 저절로)`);
+    }
+    ok(META.frameW === 109 && META.frameH === 90 && META.anchorX === 54.5,
+       '★★프레임 규격이 **안 움직였다** — 새 층이 얼린 상자를 안 밀었다(T107 못박기)',
+       `${META.frameW}x${META.frameH} anchor ${META.anchorX},${META.anchorY}`);
+    ok(!META.clips.captive && Object.keys(META.clips).length === 7,
+       '★★**새 클립 0** — 카드 ①②의 절대 규칙(팔레트·소품 층만)', Object.keys(META.clips).join(','));
+  }
+
+  // ⓑ 띠는 **몸 안**에 있다 — 실루엣을 안 만든다(그래서 먹선도 안 받는다)
+  {
+    let out = 0, tot = 0;
+    for (const d of [0, 2, 4, 6]) {
+      const bd = cell('band_idle', d, 0), cl = cell('clothes_hemp_idle', d, 0);
+      tot += bd.n;
+      for (const p of bd.on) if (!cl.set.has(p.y * FW + p.x)) out++;
+    }
+    ok(tot > 0, '★검사 전제 — 띠에 화소가 있다', `네 방향 합 ${tot}`);
+    ok(out === 0, '★★띠가 **옷 실루엣 밖으로 안 나간다** — 몸에 얹힌 무늬이지 제 실루엣이 아니다',
+       `밖 ${out}/${tot}`);
+  }
+
+  // ⓒ 띠에는 **먹선이 없다** — 15×7px 을 2px 먹선이 물면 속살이 안 남는다(§0 실측)
+  {
+    const isInk = (p) => p.r <= 34 && p.g <= 32 && p.b <= 30;   // 먹 (21,19,17) ±13 — ⑥ 과 같은 잣대
+    const bd = cell('band_idle', 0, 0);
+    const inkB = bd.on.filter(isInk).length;
+    ok(bd.n > 0 && inkB === 0, '★★띠에 먹색 화소가 **0** 이다 (INTERIOR_LAYERS — 실루엣이 없으니 테두리도 없다)',
+       `${inkB}/${bd.n}`);
+    // ★자명 통과 금지 — 같은 잣대로 **손에 든 소품**은 먹선이 있어야 한다(자가 살아 있는가)
+    const ax = cell('tool_axe_idle', 0, 0);
+    ok(ax.on.filter(isInk).length > 0, '★자가 살아 있다 — 같은 잣대로 도끼엔 먹색이 있다',
+       `${ax.on.filter(isInk).length}/${ax.n}`);
+    // ★그리고 띠의 밝기는 **한 단에 몰려 있다** — 그래서 곱하기가 아니라 채우기다(클라 주석의 근거).
+    //   ⚠**완전 불투명 화소만** 센다: 반투명(안티에일리어싱) 화소는 셀 양자화가 안 건드리는
+    //     계약이라(④·⑥) 거기 섞으면 "셀 몇 단인가"가 아니라 "테두리가 얼마나 부드러운가"를 재게 된다.
+    {
+      const im = readPng(path.join(DIR, 'band_idle.png'));
+      const top = new Map(); let nOp = 0;
+      for (let i = 0; i < im.w * im.h; i++) {
+        if (im.px[i * 4 + 3] < 250) continue;
+        nOp++;
+        const L = Math.round(0.2126 * im.px[i * 4] + 0.7152 * im.px[i * 4 + 1] + 0.0722 * im.px[i * 4 + 2]);
+        top.set(L, (top.get(L) || 0) + 1);
+      }
+      // ★한 **단**은 휘도 값 하나가 아니다: 셀 양자화는 휘도를 목표값으로 옮기고 RGB 를 그 비율로
+      //   곱하므로(`render_common.cel_quantize`) 8bit 반올림이 ±1 로 흩어진다. 이웃(≤2)을 묶어 센다.
+      const ks = [...top.keys()].sort((a2, b2) => a2 - b2);
+      let big = 0, run = 0, prev = null;
+      for (const k of ks) { run = (prev !== null && k - prev <= 2) ? run + top.get(k) : top.get(k); prev = k; if (run > big) big = run; }
+      ok(nOp > 100, '★검사 전제 — 셀 셈에 쓸 불투명 화소가 있다', `${nOp}개 · 휘도 값 ${ks.length}종`);
+      ok(big / nOp > 0.9, '★★띠엔 **지킬 음영이 없다** — 셀 한 단이 불투명 화소의 90% 를 넘는다',
+         `${(100 * big / nOp).toFixed(1)}% (${big}/${nOp})`);
+    }
+  }
+
+  // ⓓ **병종별로 색이 갈린다** — 팔레트는 클라 원본에서 읽는다(하네스에 사본 0)
+  {
+    const mm = CL.match(/const WAR_BT_COL\s*=\s*\[([^\]]+)\]/);
+    ok(!!mm, '★팔레트를 클라 원본에서 읽었다 (`WAR_BT_COL`)');
+    const pal = mm ? mm[1].split(',').map((s) => s.trim().replace(/^['"]|['"]$/g, '')) : [];
+    ok(pal.length === 8 && pal.every((c) => /^#[0-9a-f]{6}$/i.test(c)), '★병종 여덟 색이다', pal.join(' '));
+    // 클라가 하는 일: `source-in` 으로 띠의 **알파만** 남기고 그 색으로 채운다 ⇒ 결과색 = 팔레트색
+    const hex = (c) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16));
+    const seen = new Set(pal.map((c) => hex(c).join(',')));
+    ok(seen.size === 8, '★★여덟 색이 **서로 다르다** — 병종이 색으로 갈린다', `서로 다른 색 ${seen.size}/8`);
+    // 가장 가까운 두 색이 얼마나 떨어져 있나 — 갈린다는 말의 크기(보고용 수치)
+    let mind = 1e9, pair = '';
+    for (let i = 0; i < 8; i++) for (let j = i + 1; j < 8; j++) {
+      const a = hex(pal[i]), b = hex(pal[j]);
+      const dd = Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+      if (dd < mind) { mind = dd; pair = `${pal[i]}↔${pal[j]}`; }
+    }
+    ok(mind > 20, '★가장 가까운 두 병종색도 충분히 떨어져 있다 (RGB 거리)', `${mind.toFixed(1)} ${pair}`);
+    // 그 색이 실제로 **띠 자리에** 칠해진다 — 칠할 화소가 여덟 방향 전부에 있는가
+    let miss = 0;
+    for (let d = 0; d < 8; d++) if (cell('band_idle', d, 0).n === 0) miss++;
+    ok(miss === 0, '★★여덟 방향 **모두** 띠에 칠할 화소가 있다 (뒤를 봐도 허리끈은 보인다)', `빈 방향 ${miss}`);
+  }
+
+  // ⓔ **밧줄이 손목 자리에 있다** — 자는 `char_meta.handScreen`(손 뼈의 화면 자리)다.
+  //   ⚠1차엔 `tool_axe` 화소를 자로 쓰려 했다가 틀렸다(실측 |Δ가로중심| 최대 4.18px):
+  //     도끼는 자루가 z 로 ±0.31m 뻗어 손목이 꺾이면 그만큼 화면에서 쓸린다 — 짧은 밧줄과
+  //     중심이 같을 수가 없다. **뼈를 직접 재는 표**를 굽기가 실어 오게 고쳤다(T137 `carryOffset` 문법).
+  {
+    const hs = META.handScreen;
+    ok(hs && Object.keys(hs).length === Object.keys(META.clips).length,
+       '★손목 표가 **전 클립**에 있다 (`handScreen` — 굽기가 뼈에서 잰 값)', hs ? Object.keys(hs).join(',') : '없음');
+    ok(hs && hs.walk && hs.walk.length === 8 && hs.walk[0].length === META.clips.walk.frames,
+       '★★표가 **방향×프레임**이다 — 걸음에서 팔이 흔들리니 방향당 값 하나로는 못 잰다');
+    // 자: **고리의 반지름**이다. 고리 지름 0.075m ÷ 2 × PPU(45.2548) = 1.70px.
+    //   여기에 화소 중심 양자화(√2/2 = 0.71px)를 더해 **2.41px** — 전부 기하에서 나온 수다(눈대중 0).
+    const CUFF = 0.075 * 0.5 * META.ppu, THR = CUFF + Math.SQRT2 / 2;
+    let worst = 0, worstAt = '', blank = 0, tot = 0;
+    for (const clip of ['idle', 'walk']) {
+      const nf = META.clips[clip].frames;
+      for (let d = 0; d < 8; d++) for (let f = 0; f < nf; f++) {
+        tot++;
+        const c = cell('tool_rope_' + clip, d, f);
+        if (!c.n) { blank++; continue; }
+        const [hx, hy] = hs[clip][d][f];
+        let mn = 1e9;
+        for (const p of c.on) { const dd = Math.hypot(p.x - hx, p.y - hy); if (dd < mn) mn = dd; }
+        if (mn > worst) { worst = mn; worstAt = `${clip} d${d} f${f}`; }
+      }
+    }
+    ok(tot - blank > 0, '★검사 전제 — 잴 판이 있다', `${tot - blank}/${tot}판`);
+    ok(worst <= THR, '★★밧줄이 **손목에 감겨 있다** — 손 뼈에서 가장 가까운 밧줄 화소가 고리 반지름 안이다',
+       `최대 ${worst.toFixed(2)}px ≤ ${THR.toFixed(2)}px @${worstAt}`);
+    // 손이 몸 뒤인 방향에선 소품이 통째로 잘린다(홀드아웃) — 도구가 원래 그렇다. 걸으면 다 보인다.
+    let dirSeen = 0;
+    for (let d = 0; d < 8; d++) {
+      let seen = false;
+      for (let f = 0; f < META.clips.walk.frames && !seen; f++) if (cell('tool_rope_walk', d, f).n) seen = true;
+      if (seen) dirSeen++;
+    }
+    ok(dirSeen === 8, '★★걷는 포로는 **여덟 방향 모두**에서 밧줄이 보인다 (몸 뒤로 간 판은 홀드아웃이 자른다)',
+       `${dirSeen}/8 · 안 보이는 판 ${blank}/${tot}`);
+
+    // ★★**읽히는가** — 자는 T81 이 이미 인정한 바다: *"기준 14.7 은 어디서 왔나 — T65 가 앞뒤를
+    //   가르려고 채택한 앞섶 신호가 평균 휘도차 +14.73"*. 그걸 밧줄에도 그대로 쓴다(새 바 0).
+    //   ⚠1차 굵기(0.028m)는 이 검사를 세우기도 전에 **화소 수**에서 떨어졌다(판당 2~14개).
+    {
+      const lum = (r, g, b) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      const sheets = {};
+      for (const k of ['tool_rope_walk', 'body_walk', 'clothes_hemp_walk']) sheets[k] = readPng(path.join(DIR, k + '.png'));
+      const at = (im, X, Y) => { const i = (Y * im.w + X) * 4; return [im.px[i], im.px[i + 1], im.px[i + 2], im.px[i + 3]]; };
+      const ds = []; let onBg = 0, nOp = 0;
+      for (let d = 0; d < 8; d++) for (let f = 0; f < META.clips.walk.frames; f++)
+        for (let y = 0; y < FH; y++) for (let x = 0; x < FW; x++) {
+          const X = f * FW + x, Y = d * FH + y;
+          const rp = at(sheets.tool_rope_walk, X, Y);
+          if (rp[3] < 200) continue;
+          nOp++;
+          const cb = at(sheets.clothes_hemp_walk, X, Y), bb = at(sheets.body_walk, X, Y);
+          const back = cb[3] >= 200 ? lum(cb[0], cb[1], cb[2]) : (bb[3] >= 200 ? lum(bb[0], bb[1], bb[2]) : null);
+          if (back === null) { onBg++; continue; }
+          ds.push(Math.abs(lum(rp[0], rp[1], rp[2]) - back));
+        }
+      const mean = ds.reduce((a2, b2) => a2 + b2, 0) / ds.length;
+      ok(nOp > 200, '★검사 전제 — 잴 밧줄 화소가 있다', `불투명 ${nOp} · 그 중 배경 위 ${onBg}`);
+      ok(mean >= 14.73, '★★밧줄이 **몸 위에서 읽힌다** — 평균 |Δ휘도| 이 T81 의 인정선(14.73) 이상',
+         `${mean.toFixed(2)} (배경 위 ${(100 * onBg / nOp).toFixed(0)}% 는 실루엣 밖이라 더 잘 보인다)`);
+    }
+  }
+
+  // ⓕ **누운 포로엔 밧줄이 없다** — 클라가 층을 안 부른다(시트는 있어도 안 쓴다)
+  {
+    ok(/const lying = !!\(o && \(o\.down \|\| o\.carriedOn\)\)/.test(CL),
+       '★누운 판정이 한 줄이다 (`down` · `carriedOn` 둘 다 누운 판을 쓴다 — T137)');
+    ok(/o\.cap && !lying && hasCharLayer\('tool_rope'\)/.test(CL),
+       '★★누운 포로에겐 밧줄 층을 **안 얹는다** (카드 ② — 밧줄 없이 눕는다)');
+    ok(/\{ L\.push\('tool_rope'\); return L; \}/.test(CL),
+       '★묶인 손엔 연장이 없다 — 밧줄을 얹으면 도구 판정을 끊는다');
+  }
+
+  // ⓖ **도형 분기가 없다** — 폴백만 남았다
+  {
+    // ⚠판정은 **코드 모양**을 봐야 한다 — 지운 줄을 주석에 인용해 두는 것이 이 레포의 문법이라
+    //   낱말만 찾으면 그 인용에 걸린다(1차 하네스가 실제로 제 주석에 빨개졌다).
+    ok(!/_spriteOk\s*=\s*!item/.test(CL),
+       '★★"병사·포로는 도형" 분기가 **없다** (T13→T137→T143 으로 줄어 닫혔다)');
+    ok(/const _spriteOk =\s*\n?\s*drawCharSprite\(/.test(CL),
+       '★시트 경로에 **조건이 없다** — 판정은 `drawCharSprite` 의 성패뿐(T137 폴백 규약)');
+    ok(/function drawPlayerIso/.test(CL) && /if \(!_spriteOk\) drawPlayerIso\(/.test(CL),
+       '★폴백은 산다 — 시트가 안 뜨면 도형이 받는다');
+    ok(/function drawWarMarks/.test(CL) && (CL.match(/drawWarMarks\(/g) || []).length >= 3,
+       '★전쟁·포로 표식도 **한 자리**다 (도형·시트 두 경로가 같은 것을 부른다)',
+       `호출 ${(CL.match(/drawWarMarks\(/g) || []).length}`);
+    ok((CL.match(/WAR_ROUT_A/g) || []).length >= 3 && (CL.match(/globalAlpha = _aSave \* 0\.45/g) || []).length === 0,
+       '★★궤주 반투명이 **상수 하나**다 — 두 경로가 같은 수를 읽는다(사본 0)');
+    ok(/globalCompositeOperation = 'source-in'/.test(CL) && /WAR_BT_COL\[opts\.bt \| 0\]/.test(CL),
+       '★띠는 **팔레트로 채워** 그린다 — 클라에 색 사본 0');
+    ok(/war: !!item\._war, bt: item\.bt, br: item\.br, cap: !!item\.cap/.test(CL),
+       '★서버가 이미 싣던 필드를 그대로 넘긴다 (서버 diff 0)');
   }
 }
 

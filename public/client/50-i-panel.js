@@ -684,9 +684,17 @@ function itemKo(k) {
   //     아홉 이름을 쓴다(이름 하나 = 그림 하나이므로 아홉이 서로 다른 그림이다 · `test-itemlabel ⑬`).
   const NOTICE_ICO = {
     village: 'home', gather: 'axe', fishing: 'fish', craft: 'hammer', board: 'scroll',
-    rescue: 'heart', combat: 'guild', dev: 'warn', info: 'eye',
+    // ★[T141] 싸움은 **제 그림**을 갖는다 — 종전엔 `guild`(방패)를 빌려 쓰고 있었다(T78).
+    //   ⚠`guild` 그림은 **안 지웠다**: T128 이 부름을 `people` 로 옮겨 지금은 아무도 안 쓰지만,
+    //     다음 길드 카드가 쓸 그림이다. 안 쓰는 것과 없는 것은 다르다.
+    rescue: 'heart', combat: 'bow', dev: 'warn', info: 'eye',
     // ★[T110] 남이 쓰러졌다는 외침 — 이미 있던 `shout`(확성기) 그림을 쓴다(새 그림 0 · 이름 하나 = 그림 하나)
     downed: 'shout',
+    // ★[T128] 길드의 부름과 문 — 이미 있던 `people`(사람들) 그림을 쓴다(새 그림 0).
+    //   ⚠`guild` 그림을 쓰려다 물렸다: **`combat` 이 이미 그걸 쓰고 있다**(T78 이 그렇게 뒀다)
+    //     — `test-itemlabel ⑮` 가 "종류마다 다른 그림"을 못 박고 있어 그 자리에서 빨개졌다.
+    //     싸움 쪽 그림을 새로 정하는 건 이 카드가 아니다(회부) ⇒ **부름은 사람 사이의 일**이니 `people` 이 맞다.
+    guild: 'people',
   };
   // ★★[T113 2026-09-05 재민 확정] **알림이 겹치면 줄이 선다.**
   //   종전엔 `#notice` 가 **한 칸**이라 새 알림이 앞 것을 지웠다. T78 이 종류를 아홉으로 늘리고
@@ -703,6 +711,9 @@ function itemKo(k) {
   //   ⚠**규약 무변**(§0-ⓐ 실측): `window.__notices` 는 **글자만·40건** 그대로다(28개 하네스가 읽는다).
   //     `#notice` 의 DOM 을 읽는 하네스는 **하나뿐**이고(`e2e-verbs ⑫` · 이 카드가 같이 고쳤다),
   //     `textContent` 는 이제 **보이는 줄들을 `\n` 로 이은 것**이다 — 한 줄만 떠 있으면 종전과 같다.
+  //   ★[T139 2026-09-06] 이 수의 **정본은 `server/notice.js NOTICE_MAX`** 다 — 서버가 로그인 때
+  //     여러 줄을 한꺼번에 보내면서 "몇 건부터 접나"를 이 수로 정한다. 클라가 실제로 자르는 자리는
+  //     여기 그대로이고, 둘이 갈리면 `test-notice ⑲` 가 빨개진다(그 검사가 둘을 묶어 둔다).
   const NOTICE_MAX = 3;
   let _ntLines = [];   // [{ text, kind, n, until }] — 뒤가 최근. 넘치면 **앞(오래된 것)** 이 밀려 사라진다.
   function _ntRender() {

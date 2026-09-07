@@ -187,12 +187,22 @@ async function waitHttp(url, tries = 900) {
   // ── ④ A 에서 큰 사건을 만든다 → A 연표에 **그날 바로** 적힌다
   const before = (c) => (c ? c.seasons.reduce((a, b) => a + b.items.length, 0) : 0);
   const n0 = before(c1);
-  let cA = null, addedA = 0;
-  for (let i = 0; i < 30 && addedA <= 0; i++) {
+  // ★★[T133 2026-09-06] **"줄이 늘었다"로 멈추면 안 된다 — `evA` 가 방금 난 줄이라는 보장이 없다.**
+  //   연표는 계절당 상한이 있어 "가장 최신 값 유형 줄"이 **몇십 일 전 것**일 수 있다. 그걸 골라 놓고
+  //   ⑤("아직 B 엔 없다")를 재면, 그 사건은 이미 B 에 도달해 있어서 **제품이 옳은데 하네스가 빨개진다.**
+  //   실제로 그렇게 났다: T133 이 가짜 급등 20% 를 걷어내자 연표 구성이 바뀌면서 최신 값 줄이
+  //   day51(얼린 날 67)로 밀렸다 — 베이스에선 day43(얼린 날 44)이라 우연히 통과하던 자리였다.
+  //   ⇒ **이 픽스처가 만든 줄**(오늘 이후에 난 값 유형)이 나올 때까지 돈다. 조건을 assert 로 건다.
+  const dayStart = await gameDay();
+  const crossOf = (c) => [].concat(...((c && c.seasons) || []).map((b) => b.items))
+    .filter((x) => x.from == null && !x.deed);
+  let cA = null, addedA = 0, freshCross = [];
+  for (let i = 0; i < 30 && !freshCross.length; i++) {
     await page.evaluate((vid) => window.__sendPrimary({ type: '__e2e_village_short', vid }), A.id);
     await sleep(1200);
     cA = await askChron(A.id, null);
     addedA = before(cA) - n0;
+    freshCross = crossOf(cA).filter((x) => x.day >= dayStart);
   }
   ok(addedA > 0, '④ 사건이 나면 **그 마을 연표에 바로** 적힌다', `${n0} → ${before(cA)}줄`);
   const mineItems = [].concat(...((cA && cA.seasons) || []).map((b) => b.items)).filter((x) => x.from == null);
@@ -206,7 +216,11 @@ async function waitHttp(url, tries = 900) {
   //   일 유형이 이웃 연표에서 걸러진다는 사실 자체는 `test-events ㉞e` 가 따로 검사한다.
   const crossable = mineItems.filter((x) => !x.deed);
   ok(crossable.length > 0, '④d 전제: 이웃까지 넘어갈 수 있는 줄(값 유형)이 있다', `${crossable.length}/${mineItems.length}줄`);
-  const evA = crossable.slice().sort((a, b) => b.day - a.day)[0];
+  // ★[T133] **이 판에서 난 줄**을 고른다(위 주석) — 없으면 아래 ⑤ 는 잴 수가 없다.
+  ok(freshCross.length > 0,
+    '④e 전제: 고른 줄이 **이 픽스처가 만든 줄**이다(연표 상한에 밀린 옛 줄이 아니다)',
+    `기준일 ${dayStart} 이후 ${freshCross.length}줄 / 값 유형 전체 ${crossable.length}줄`);
+  const evA = (freshCross.length ? freshCross : crossable).slice().sort((a, b) => b.day - a.day)[0];
   console.log(`    A 최신 항목: day${evA.day} · ${evA.line}`);
 
   // ── ⑤ 날을 얼리고 B 로 — **아직 B 연표엔 없다**
@@ -221,6 +235,11 @@ async function waitHttp(url, tries = 900) {
   const seen0 = allB0.some((x) => keyOf(x, B.name) === keyOf(evA, A.name));
   // ★자명 통과 방지 — "B 연표가 비어서 없는 것"이 아니라 **다른 것은 있는데 이것만 없다**를 보인다.
   ok(allB0.length > 0, '⑤c 전제: B 연표에 이미 다른 줄이 있다(빈 목록으로 인한 자명 통과가 아니다)', `${allB0.length}줄`);
+  // ★[T133] **잴 수 있는 상황인지 먼저 못 박는다.** 사건이 난 지 오래면 이미 B 에 도달해 있고,
+  //   그러면 아래는 제품이 아니라 픽스처의 지연을 재는 것이다(위 ④ 주석의 그 실패).
+  ok(frozenDay - evA.day <= 3,
+    '⑤b2 전제: 얼린 순간이 사건 직후다(소문이 아직 걸어올 시간이 없었다)',
+    `얼린 날 ${frozenDay} − 사건일 ${evA.day} = ${frozenDay - evA.day}일`);
   ok(!seen0, '⑤ A 에서 난 일이 **B 연표에는 아직 없다**(도달 전 사건은 연표에도 없다)',
     `frozenDay=${frozenDay} · 사건일 ${evA.day} · 그 해 ${yearAtFreeze}년`);
   await snap('ch-02-before');

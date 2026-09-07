@@ -57,7 +57,11 @@ const KIND_OF = {
   // dev — 테스트 픽스처(4건 · E2E_GIVE 갈래에서만 난다)
   '🧪': 'dev', '🤖': 'dev',
 };
-const KINDS = ['village', 'gather', 'fishing', 'craft', 'board', 'rescue', 'downed', 'combat', 'dev', 'info'];
+// ★[T128 2026-09-05] `guild` — **길드의 부름과 문**. `village`(마을·시설)에서 갈라냈다:
+//   부름은 장소가 아니라 **사람 사이의 일**이고, 받는 쪽이 그 한 종류만 보고 `/수락` 을 친다.
+//   ⚠접두 이모지 표(`KIND_OF`)에는 안 넣는다 — 이 종류의 알림은 `guild.js` 가 `kind` 로 **직접** 보낸다
+//     (옛 문장이 없으므로 이모지에서 유도할 것도 없다 · 위 88줄 규약: 호출부의 `kind` 를 존중한다).
+const KINDS = ['village', 'gather', 'fishing', 'craft', 'board', 'rescue', 'downed', 'combat', 'guild', 'dev', 'info'];
 
 const _base = (s) => String(s).split(VS16).join('').split(ZWJ)[0];
 
@@ -98,4 +102,11 @@ function normalize(obj) {
   } catch (e) { return obj; }
 }
 
-module.exports = { normalize, stripEmoji, kindOfText, KIND_OF, KINDS, CLUSTER, LEAD };
+// ★★[T139 2026-09-06] **알림 스택이 한 번에 이고 있는 줄 수** — 서버가 여러 줄을 한꺼번에 보낼 때
+//   이 수를 넘기면 **오래된 줄이 소리 없이 밀려난다**(`50-i-panel.js _ntLines`). 그래서 접는 쪽이
+//   이 수를 알아야 하고, 그 수의 집은 **알림의 경계인 여기 하나**다(새 수 0 — T113 이 캔버스에서 유도한 3).
+//   ⚠클라 조각에도 같은 이름의 상수가 있다(그쪽이 실제로 자르는 자리다). 둘이 갈리면
+//     `test-notice ⑲` 가 빨개진다 — 그 검사가 이 둘을 **하나로 묶어 둔다**.
+const NOTICE_MAX = 3;
+
+module.exports = { normalize, stripEmoji, kindOfText, KIND_OF, KINDS, CLUSTER, LEAD, NOTICE_MAX };

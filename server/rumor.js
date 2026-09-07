@@ -71,11 +71,18 @@ function travelDaysOf(dist) {
 //     A–B 749px → 1일, B–C 749px → 1일 ⇒ 2일.  A–C 1498px → 3일.
 //   즉 **이웃을 거쳐 가는 게 하루 빠른 쌍이 실제로 있다.** 소문은 마을을 징검다리로 건너므로
 //   그게 물리적으로도 옳다(행상이 한 번에 안 가는 길이다).
+// ★★[T127 2026-09-05] **홉 수** — 이 표엔 원래 없었다(§0-ⓐ 실측: 있는 것은 **도달 일수**뿐).
+//   왜 필요한가: 소문 왜곡(T34 ⓑ)은 *"몇 사람 건너 들었나"* 의 함수다. 그런데 일수는 거리라
+//   "가까운 두 마을을 여러 번 건넌 소식"과 "먼 한 마을에서 곧장 온 소식"을 못 가른다.
+//   ⇒ Dijkstra 가 **이미 걷고 있는 그 경로**의 길이를 같이 센다(새 그래프 0 · 새 순회 0).
+//     `hops[j] = hops[u] + 1` 한 줄이다. 최단 **일수** 경로의 홉 수이지 최소 홉 수가 아니다 —
+//     소문이 실제로 타고 온 길이 그 길이므로 그게 맞다(주사위 0 · 같은 세계면 같은 값).
 function createGraph(geo) {
   const rows = new Map();                 // vid → { [vid]: days }
+  const hopRows = new Map();              // vid → { [vid]: hops }  ★[T127] 같은 순회에서 같이 나온다
   const stats = { walks: 0, walkMs: 0, hits: 0, misses: 0, nodes: 0, gen: 0 };
 
-  function invalidate() { rows.clear(); stats.gen++; }
+  function invalidate() { rows.clear(); hopRows.clear(); stats.gen++; }
 
   // 한 출발 마을의 전 마을 도달 일수 — 밀집 그래프 Dijkstra(N≈51 ⇒ O(N²)).
   function walk(from) {
@@ -85,13 +92,20 @@ function createGraph(geo) {
     const idx = new Map(); for (let i = 0; i < n; i++) idx.set(ids[i], i);
     const src = idx.get(from);
     const best = new Array(n).fill(Infinity);
+    const hop = new Array(n).fill(Infinity);      // ★[T127] 같은 경로의 홉 수
     const done = new Array(n).fill(false);
     const out = Object.create(null);
-    if (src == null) { rows.set(from, out); return out; }
-    best[src] = 0;
+    const outH = Object.create(null);
+    if (src == null) { rows.set(from, out); hopRows.set(from, outH); return out; }
+    best[src] = 0; hop[src] = 0;
     for (;;) {
-      let u = -1, bu = Infinity;
-      for (let i = 0; i < n; i++) if (!done[i] && best[i] < bu) { bu = best[i]; u = i; }
+      //   ★[T127] 꺼내는 순서도 **(일수, 홉)** 사전식이다 — 일수만 보고 꺼내면 동점 마을의 홉이
+      //     확정 전에 굳을 수 있다. 사전식으로 꺼내야 아래 완화의 동점 규칙이 실제로 성립한다.
+      let u = -1, bu = Infinity, hu = Infinity;
+      for (let i = 0; i < n; i++) {
+        if (done[i]) continue;
+        if (best[i] < bu || (best[i] === bu && hop[i] < hu)) { bu = best[i]; hu = hop[i]; u = i; }
+      }
       if (u < 0) break;
       done[u] = true;
       for (let j = 0; j < n; j++) {
@@ -99,11 +113,14 @@ function createGraph(geo) {
         const w = travelDaysOf(geo.dist(ids[u], ids[j]));
         if (!isFinite(w)) continue;
         const nd = bu + w;
-        if (nd < best[j]) best[j] = nd;
+        //   ★[T127] 일수가 같으면 **홉이 적은 쪽**을 남긴다 — 결정론(같은 세계면 같은 답)을 위해
+        //     동점을 규칙으로 가른다. 안 그러면 마을 순서가 바뀔 때 홉 수가 흔들린다.
+        const nh = hu + 1;
+        if (nd < best[j] || (nd === best[j] && nh < hop[j])) { best[j] = nd; hop[j] = nh; }
       }
     }
-    for (let i = 0; i < n; i++) if (isFinite(best[i])) out[ids[i]] = best[i];
-    rows.set(from, out);
+    for (let i = 0; i < n; i++) if (isFinite(best[i])) { out[ids[i]] = best[i]; outH[ids[i]] = hop[i]; }
+    rows.set(from, out); hopRows.set(from, outH);
     stats.walks++; stats.nodes = n;
     stats.walkMs += Number(process.hrtime.bigint() - t0) / 1e6;
     return out;
@@ -114,6 +131,18 @@ function createGraph(geo) {
     if (r) { stats.hits++; return r; }
     stats.misses++;
     return walk(vid);
+  }
+  // ★[T127] 홉 수 — 도달 일수와 **같은 표·같은 대칭**을 쓴다(사본 0 · 행을 두 번 데우지 않는다).
+  function hopsBetween(a, b) {
+    if (a === b) return 0;
+    if (CFG.OFF) return Infinity;
+    let r = hopRows.get(a);
+    if (r) { const h = r[b]; return (h == null) ? Infinity : h; }
+    r = hopRows.get(b);
+    if (r) { const h = r[a]; return (h == null) ? Infinity : h; }
+    rowOf(a);                                  // 행을 데우면 홉 행도 같이 선다
+    const h = (hopRows.get(a) || {})[b];
+    return (h == null) ? Infinity : h;
   }
 
   // 며칠 걸리는가 — 같은 마을 0, 못 닿으면 Infinity.
@@ -131,7 +160,7 @@ function createGraph(geo) {
     return (d == null) ? Infinity : d;
   }
 
-  return { rowOf, delayBetween, invalidate, stats, cfg: CFG };
+  return { rowOf, delayBetween, hopsBetween, invalidate, stats, cfg: CFG };
 }
 
 module.exports = { createGraph, travelDaysOf, CFG };

@@ -81,6 +81,10 @@ const CANDS = BASE_ONLY ? [] : [
   { tag: 'B ±55 · H1.6', cfg: { PRICE_UP: 0.55, PRICE_DOWN: 0.55, HYST: 1.6 } },
   { tag: 'C ±70 · H1.6 (T63)', cfg: { PRICE_UP: 0.70, PRICE_DOWN: 0.70, HYST: 1.6 } },
   { tag: 'E ±90 · H1.6 ★채택', cfg: { PRICE_UP: 0.90, PRICE_DOWN: 0.90, HYST: 1.6 } },
+  // ★★[T133 2026-09-06] **되돌림 열** — 채택 문턱은 그대로 두고 `PRICE_FRESH` 만 끈다(하역 전 시세).
+  //   장부는 관측자라 같은 세계에 얹으면 **카오스 잡음 0** 으로 계측 시점의 기여만 뽑을 수 있다
+  //   (판을 두 번 돌려 견주면 그 차이엔 세계의 흔들림이 섞인다).
+  { tag: 'F ±90 · 하역 전 시세(T133 되돌림)', cfg: { PRICE_UP: 0.90, PRICE_DOWN: 0.90, HYST: 1.6, PRICE_FRESH: 0 } },
 ];
 // ★[T63 2026-09-03] 처방 A(가격 문턱 재스윕)의 **수**를 재려고 후보를 더 얹는다.
 //   `EV_SWEEP_EXTRA="0.85:1.6,1.00:1.8"` 형식(문턱:HYST). 안 주면 위 셋 그대로 — **기본 동작 무변경**.
@@ -105,7 +109,7 @@ const LS = CANDS.map((c) => {
   const adopted = /★채택/.test(c.tag);
   const L = Events.createLedger({ econV2, vidOf: (v, i) => i, depositMap, cfg: c.cfg,
     onEvent: adopted ? ((e) => {
-      CHRON_RAW.push({ t: e.type, s: Math.abs(Math.log(Math.max(1e-6, e.mag || 1))) });
+      CHRON_RAW.push({ t: e.type, s: Math.abs(Math.log(Math.max(1e-6, e.mag || 1))), m: +e.mag || 1 });   // ★[T127] mag 도 싣는다 — 뭉갬 눈금이 자릿수에서 나온다
       if (SAMPLE_WANT.has(e.type)) SAMPLES.push({ vid: e.vid, day: e.day, type: e.type, item: e.item, mag: e.mag });
       // ★[T63 ⓖ] 유형만으로는 "무엇이 늘었나"를 못 묻는다 — **품목까지** 센다(읽기만).
       const bk = `${e.type}|${e.item == null ? '' : e.item}`;
@@ -119,11 +123,26 @@ const LS = CANDS.map((c) => {
 //   실지도 51마을에서 연표가 몇 행 쌓이고 조회가 몇 ms 인지를 잰다.
 //   ⚠거리는 `econ.villageDist` 정본 함수다 — 여기엔 지형 BFS 행렬이 없으니 **유클리드로 떨어진다**
 //     (그래서 실서버보다 도달이 **조금 빠르다**. 행 수는 지리와 무관하고, 조회 비용만 하한이 된다).
-const CHRON = BASE_ONLY ? null : (() => {
+// ★[T127 2026-09-05 자인] 여기 문턱이 **손으로 베낀 사본**이었다(`{PRICE_UP:0.70, …}`) — T94 가 채택을
+//   ±90 으로 옮겼는데 이 줄만 ±70 에 남아, "채택 문턱과 같은 cfg"라는 위 주석이 조용히 거짓이 됐다.
+//   t17-metrics 에서 T94 가 걷어낸 것과 **같은 자인**이다 ⇒ 채택 후보의 cfg 를 **그대로 가리킨다**.
+const _ADOPT_CFG = (CANDS.find((c) => /★채택/.test(c.tag)) || CANDS[CANDS.length - 1] || { cfg: {} }).cfg;
+const _chronGeo = () => {
   const vids = world.villages.map((_, i) => i);
+  return { vids: () => vids, dist: (a, b) => econ.villageDist(world.villages[a], world.villages[b]) };
+};
+const CHRON = BASE_ONLY ? null : (() => {
   const L = Events.createLedger({ econV2, vidOf: (v, i) => i, depositMap,
-    cfg: { PRICE_UP: 0.70, PRICE_DOWN: 0.70, HYST: 1.6 },
-    geo: { vids: () => vids, dist: (a, b) => econ.villageDist(world.villages[a], world.villages[b]) } });
+    cfg: _ADOPT_CFG, geo: _chronGeo() });
+  L.prime(world);
+  return L;
+})();
+// ★★[T127] **되돌림 대조 장부** — 같은 세계·같은 문턱·같은 지리에 `BLUR: 0` 만 다르다.
+//   장부는 관측자니 한 세계에 둘을 얹을 수 있다(이 스크립트의 존재 이유). ⇒ 뭉갬의 기여를
+//   카오스 잡음 0 으로 견준다(`T127_BLUR=0` 되돌림이 실제로 옛 연표를 되살리는지도 이걸로 본다).
+const CHRON_NB = BASE_ONLY ? null : (() => {
+  const L = Events.createLedger({ econV2, vidOf: (v, i) => i, depositMap,
+    cfg: Object.assign({}, _ADOPT_CFG, { BLUR: 0 }), geo: _chronGeo() });
   L.prime(world);
   return L;
 })();
@@ -134,6 +153,7 @@ for (let d = 0; d < DAYS; d++) {
   econV2.tickWorldV2(world);
   for (const x of LS) x.L.scanDay(world, world.day, {});
   if (CHRON) CHRON.scanDay(world, world.day, {});
+  if (CHRON_NB) CHRON_NB.scanDay(world, world.day, {});
 }
 console.log = _log;
 
@@ -229,6 +249,115 @@ if (CHRON) {
   console.log(`     (보관된 일 사건 ${dCand}건 중 ${dKept}줄이 화면까지 왔다 — 일은 드물어서 상한에 거의 안 걸린다)`);
 }
 
+// ── ⓗ ★★[T127 2026-09-05] 소문 왜곡 — 자릿수·홉·뭉갬의 실제 크기 ────────────────
+//   §0-ⓑ(mag 분포 → 눈금 유도) 와 작업 ③(0·1·2홉 예시 표) 이 한 절이다.
+//   ⚠재기만 한다. 뭉갬은 **읽을 때** 걸리므로 이 절이 세계를 바꿀 방법은 없다(장부는 관측자).
+if (CHRON && CHRON_NB && CHRON_RAW.length) {
+  const B = Events.blurMag;
+  const sevOf = (m) => Math.abs(Math.log(Math.max(1e-6, m)));
+  // ⓗ-1 유형별 mag 자릿수와 뭉갬의 크기
+  console.log(`\nⓗ-1 [T127] mag 의 자릿수와 뭉갬 (채택 문턱 · ${CHRON_RAW.length}건)`);
+  console.log('  ' + '유형'.padEnd(18) + '건수'.padStart(8) + 'mag p50'.padStart(10) + '자릿수 e'.padStart(10)
+    + '1홉에서 값이 변함'.padStart(20) + '  Δsev 평균' + '   2홉이 1홉과 다름');
+  const byT = new Map();
+  for (const r of CHRON_RAW) { if (!byT.has(r.t)) byT.set(r.t, []); byT.get(r.t).push(r.m); }
+  let allN = 0, allCh = 0, all2 = 0, allD = 0;
+  for (const t of Events.TYPES) {
+    const arr = byT.get(t); if (!arr || !arr.length) continue;
+    const sorted = arr.slice().sort((a, b) => a - b);
+    const p50 = sorted[sorted.length >> 1];
+    const es = new Map();
+    let ch = 0, d2 = 0, dsum = 0;
+    for (const m of arr) {
+      const e = Math.floor(Math.log10(Math.abs(m) || 1));
+      es.set(e, (es.get(e) || 0) + 1);
+      const h1 = B(m, 1), h2 = B(m, 2);
+      if (h1 !== m) { ch++; dsum += Math.abs(sevOf(h1) - sevOf(m)); }
+      if (h2 !== h1) d2++;
+    }
+    allN += arr.length; allCh += ch; all2 += d2; allD += dsum;
+    const eStr = [...es.entries()].sort((a, b) => a[0] - b[0]).map(([e, n]) => `${e}:${(n / arr.length * 100).toFixed(0)}%`).join(' ');
+    console.log('  ' + t.padEnd(18) + String(arr.length).padStart(8) + p50.toFixed(3).padStart(10)
+      + eStr.padStart(10) + `${(ch / arr.length * 100).toFixed(1)}%`.padStart(20)
+      + `  ${(dsum / Math.max(1, ch)).toFixed(3)}` + `        ${(d2 / arr.length * 100).toFixed(1)}%`);
+  }
+  console.log(`  ${'─'.repeat(96)}`);
+  console.log(`  합계 ${allN}건 — 1홉에서 값이 변하는 사건 ${(allCh / Math.max(1, allN) * 100).toFixed(1)}% · Δsev 평균 ${(allD / Math.max(1, allCh)).toFixed(3)}`
+    + ` · **2홉이 1홉과 다른 사건 ${(all2 / Math.max(1, allN) * 100).toFixed(1)}%**`);
+  console.log(`  ★사다리가 **어디서 두 칸 서고 어디서 한 칸에 멈추나** — mag 은 관측÷기준이라 1 이 "아무 일 없음"이다.`);
+  console.log(`    1 아래는 눈금이 한 자리밖에 없다(0.65→0.7 다음은 1 = 평년 = 거짓말) ⇒ 부족·흉년은 1홉에서 포화한다.`);
+  console.log(`    1 에서 멀리 벗어난 값(글럿·급락 등 자릿수를 넓게 쓰는 유형)만 2홉에서 또 뭉개진다 — 위 마지막 열이 그 수다.`);
+
+  // ⓗ-2 이 랩 지리의 홉 분포 — 실지도 수는 `scripts/rumor-metrics.js` ④ 가 낸다(여긴 유클리드 하한).
+  {
+    const vids = CHRON.vids; const hh = new Map(); let n = 0, mx = 0;
+    for (const a of vids) for (const b of vids) { if (a === b) continue; const h = CHRON.hopsTo(a, b); hh.set(h, (hh.get(h) || 0) + 1); n++; if (h > mx) mx = h; }
+    console.log(`\nⓗ-2 [T127] 홉 수 분포 (랩 유클리드 지리 · 마을 ${vids.length}곳)`);
+    console.log('  ' + [...hh.entries()].sort((a, b) => a[0] - b[0]).map(([h, c]) => `${h}홉 ${c}(${(c / Math.max(1, n) * 100).toFixed(1)}%)`).join(' · ') + ` · 최대 ${mx}홉`);
+    console.log(`  ⚠실지도(지형 BFS) 수는 \`node scripts/rumor-metrics.js\` ④ 를 봐라 — 이 절은 하한이다.`);
+  }
+
+  // ⓗ-3 같은 사건이 0·1·2홉에서 어떻게 읽히나 (작업 ③ 예시 표)
+  {
+    const N = 12;
+    const rows = [];
+    const seen = new Map();
+    const stride = Math.max(1, Math.floor(CHRON_RAW.length / (N * 8)));
+    for (let i = 0; i < CHRON_RAW.length && rows.length < N; i += stride) {
+      const r = CHRON_RAW[i];
+      const c = seen.get(r.t) || 0; if (c >= 3) continue;    // 한 유형이 표를 덮지 않게
+      seen.set(r.t, c + 1); rows.push(r);
+    }
+    console.log(`\nⓗ-3 [T127] **같은 사건이 몇 마을 건너 들리느냐에 따라** (0홉=내 눈 · 1홉=이웃 · 2홉=건너 들음)`);
+    console.log('  ' + '유형'.padEnd(18) + '0홉(장부)'.padStart(12) + '1홉'.padStart(10) + '2홉'.padStart(10) + '   sev  0홉 → 1홉 → 2홉');
+    for (const r of rows) {
+      const h1 = B(r.m, 1), h2 = B(r.m, 2);
+      console.log('  ' + r.t.padEnd(18) + r.m.toFixed(4).padStart(12) + String(h1).padStart(10) + String(h2).padStart(10)
+        + `   ${sevOf(r.m).toFixed(3)} → ${sevOf(h1).toFixed(3)} → ${sevOf(h2).toFixed(3)}`);
+    }
+    console.log(`  ★유형·품목·마을·날짜는 한 칸도 안 바뀐다 — 바뀌는 건 크기뿐이다(㉝ 다섯 필드 중 mag 하나).`);
+  }
+
+  // ⓗ-4 되돌림 대조 — 같은 세계에 얹은 두 장부(BLUR 1 vs 0)의 연표가 실제로 얼마나 갈리나
+  {
+    const YD = Events.yearDaysOf();
+    const yrs = Math.max(1, Math.ceil(DAYS / YD));
+    //   ★수만 견주면 안 된다 — 이웃 상한(`CHRON_FOREIGN`)이 걸려 있어 **줄 수는 같은데 내용이 다를**
+    //     수 있다. 그래서 줄 하나하나를 열쇠(유형|품목|난 날|출처)로 맞춰 본다.
+    const read = (L) => {
+      let shown = 0, mine = 0, abroad = 0, cut = 0;
+      const keys = { mine: new Map(), abroad: new Map() };
+      for (const vid of L.vids) for (let y = 0; y < yrs; y++) {
+        for (const b of L.chronicle(vid, { year: y }).seasons) {
+          shown += b.items.length; cut += b.more;
+          for (const it of b.items) {
+            const k = `${vid}|${it.from == null ? 'me' : it.from}|${it.type}|${it.item || ''}|${it.day}`;
+            if (it.from == null) { mine++; keys.mine.set(k, it.sev); } else { abroad++; keys.abroad.set(k, it.sev); }
+          }
+        }
+      }
+      return { shown, mine, abroad, cut, keys };
+    };
+    const on = read(CHRON), off = read(CHRON_NB);
+    const cmp = (a, b) => {                      // a=켬 b=끔
+      let same = 0, sevDiff = 0, onlyA = 0, onlyB = 0;
+      for (const [k, v] of a) { if (b.has(k)) { same++; if (b.get(k) !== v) sevDiff++; } else onlyA++; }
+      for (const k of b.keys()) if (!a.has(k)) onlyB++;
+      return { same, sevDiff, onlyA, onlyB };
+    };
+    const cMine = cmp(on.keys.mine, off.keys.mine), cAbr = cmp(on.keys.abroad, off.keys.abroad);
+    console.log(`\nⓗ-4 [T127] 되돌림 대조 — 같은 세계 · 같은 문턱 · \`BLUR\` 만 다른 장부 둘`);
+    console.log('  ' + '읽기'.padEnd(16) + '뜨는 줄'.padStart(10) + '우리 마을'.padStart(11) + '이웃 소식'.padStart(11) + '"그 밖에"'.padStart(11));
+    console.log('  ' + '뭉갬 켬(기본)'.padEnd(16) + String(on.shown).padStart(10) + String(on.mine).padStart(11) + String(on.abroad).padStart(11) + String(on.cut).padStart(11));
+    console.log('  ' + 'T127_BLUR=0'.padEnd(16) + String(off.shown).padStart(10) + String(off.mine).padStart(11) + String(off.abroad).padStart(11) + String(off.cut).padStart(11));
+    console.log(`  줄 대조(열쇠 = 마을|출처|유형|품목|난 날):`);
+    console.log(`    우리 마을 — 같은 줄 ${cMine.same} · 그중 sev 가 다른 줄 ${cMine.sevDiff} · 켬에만 ${cMine.onlyA} · 끔에만 ${cMine.onlyB}`);
+    console.log(`    이웃 소식 — 같은 줄 ${cAbr.same} · 그중 sev 가 다른 줄 ${cAbr.sevDiff} · 켬에만 ${cAbr.onlyA} · 끔에만 ${cAbr.onlyB}`);
+    console.log(`  ★**우리 마을 줄은 한 줄도 안 움직여야 한다**(0홉 = 정확) — 움직이면 뭉갬이 자기 마을에 샌 것이다.`);
+    console.log(`    갈리는 것은 이웃 소식뿐이고, 그게 이 배치의 뜻이다("먼 마을 흉년이 얼마나 심한지는 모른다").`);
+  }
+}
+
 console.log(`\nⓓ 의뢰(플레이어 없음 → 납품 0 · 게시/철회만)`);
 for (const x of LS) console.log(`  ${x.tag.padEnd(24)} 게시 ${String(x.L.stats.reqOpened).padStart(6)} · 철회 ${String(x.L.stats.reqClosed).padStart(6)}`
   + ` · 축소 ${String(x.L.stats.reqShrunk).padStart(5)} · 못갚아미게시 ${String(x.L.stats.reqNoPay).padStart(6)} · 재검증철회 ${String(x.L.stats.reqRevalidated).padStart(5)}`
@@ -281,6 +410,38 @@ if (LS.length) {
     console.log(`     처방 A/B/C 와 그 비용은 \`보고/T63_2026-09-03.md\` ⓒ 에 있다(문턱을 흔들기 전에 읽어라).`);
   } else {
     console.log(`  ✓ 두 읽기 모두 캐논 구간 안(${CANON_LO}~${CANON_HI}일/건)`);
+  }
+}
+
+// ── ⓘ ★★[T133 2026-09-06] 계측 시점 — **하역 뒤 vs 하역 전**을 같은 세계에서 견준다 ──────────
+//   세션1 T130 이 잡은 것: 가격 사건의 21.1%(급등의 38.5%)가 "문 앞에 온 짐을 못 본 빈 곳간"의 값이었다.
+//   ⚠두 열의 차이는 **오직 장부가 값을 묻는 시점**이다(문턱·세계·틱 스트림 전부 같다).
+if (LS.length) {
+  const ADOPT = LS.find((x) => /★채택/.test(x.tag));
+  const REV = LS.find((x) => x.cfg && x.cfg.PRICE_FRESH === 0);
+  if (ADOPT && REV) {
+    const A = ADOPT.L.stats, B = REV.L.stats;
+    const bA = A.byType || {}, bB = B.byType || {};
+    console.log(`\nⓘ [T133] 계측 시점 — 하역 뒤(채택) vs 하역 전(되돌림) · 같은 세계 · ${live}마을 × ${DAYS}일`);
+    console.log('  ' + '유형'.padEnd(18) + '하역 뒤'.padStart(10) + '하역 전'.padStart(10) + '차이'.padStart(10) + '     증감');
+    for (const t of Events.TYPES) {
+      const a = bA[t] || 0, b = bB[t] || 0;
+      if (!a && !b) continue;
+      const d = a - b;
+      console.log('  ' + t.padEnd(18) + String(a).padStart(10) + String(b).padStart(10) + String(d).padStart(10)
+        + '     ' + (b ? ((d / b) * 100).toFixed(1) + '%' : '—'));
+    }
+    const dens = (n) => (n > 0 ? (live * DAYS / n) : Infinity);
+    const DEED = new Set(Events.DEED_TYPES || []);
+    const valOf = (b) => Events.TYPES.reduce((acc, t) => acc + (DEED.has(t) ? 0 : (b[t] || 0)), 0);
+    const vA = valOf(bA), vB = valOf(bB);
+    console.log(`  ${'─'.repeat(60)}`);
+    console.log(`  합계 ${A.emitted} vs ${B.emitted} (${A.emitted - B.emitted} · ${((A.emitted - B.emitted) / Math.max(1, B.emitted) * 100).toFixed(1)}%)`);
+    console.log(`  ㉮ 전체 밀도   하역 뒤 ${dens(A.emitted).toFixed(2)}일/건  ←  하역 전 ${dens(B.emitted).toFixed(2)}일/건`);
+    console.log(`  ㉯ 값 유형 밀도 하역 뒤 ${dens(vA).toFixed(2)}일/건  ←  하역 전 ${dens(vB).toFixed(2)}일/건   (캐논 2~3일)`);
+    console.log(`  ★밀도가 캐논 구간에 **가까워지는 방향**인지만 적는다 — 판정은 재민이 한다(장부는 관측자).`);
+    // 비용 — 하루 51마을에 시세를 한 번 더 묻는 값
+    console.log(`  ★비용(§0-ⓑ): 위 ⓑ 표의 ms/일 두 열이 그 답이다 — 같은 판·같은 세계라 그 차이가 곧 \`pricesFresh\` 값이다.`);
   }
 }
 
