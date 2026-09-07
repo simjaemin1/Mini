@@ -38,7 +38,11 @@ const ROOT = path.join(__dirname, '..');
 const CPORT = 3010, ZPORT = 3020;
 const DAY_MS = parseInt(process.env.ROUTE_DAY_MS || '', 10) || 3000;
 const DAYS = parseInt(process.env.ROUTE_DAYS || '', 10) || 5;
-const SEED_C = '/tmp/slicer-seed-central.db', SEED_Z = '/tmp/slicer-seed-zone.db';
+// ★★[T160 2026-09-07] 씨앗 경로·시딩은 `scripts/slicer-seed.js` 가 **정본**이다 — 옮겨 적지 않는다.
+//   종전엔 이 두 줄이 경로를 **사본**으로 갖고, 없으면 "`test-tick-slicer` 를 먼저 돌려라"며 죽었다.
+//   러너는 이름순이라 그 말이 성립하지 않는다(아래 ★). T49 가 `test-site-memo` 에서 이미
+//   같은 자리를 고쳐 뒀고, 이 카드는 남은 둘을 그 정본에 붙인다(사본 −2).
+const { SEED_C, SEED_Z, ensureSeed } = require('./slicer-seed.js');
 const CDB = '/tmp/routep-c.db', ZDB = '/tmp/routep-z.db';
 
 let pass = 0, fail = 0;
@@ -122,7 +126,12 @@ async function runDays(n) {
 
 (async () => {
   console.log('\n=== 교역로 캐시 영속 — 한 번 판 길은 재기동해도 남는다 ===');
-  if (!fs.existsSync(SEED_Z)) { console.log('  ✗ 씨앗 DB 없음 — `node scripts/test-tick-slicer.js` 를 먼저 한 번 돌려라'); process.exit(1); }
+  // ★씨앗이 없으면 **스스로 만든다**(족보 ㊾ 의 러너판 · T49 가 `test-site-memo` 에서 판 길).
+  //   ⚠이 하네스는 러너 이름순에서 `test-tick-slicer` **앞**이다(70번 vs 80번) —
+  //     그래서 신선한 기계의 전수에서는 **매번 반드시** 죽었다. 우연이 아니라 구조였다.
+  { const r = await ensureSeed();
+    if (!r.ok) { console.log(`  ✗ 씨앗 준비 실패 — ${r.why}`); process.exit(1); }
+    if (r.built) console.log('  (이 판이 씨앗을 만들었다 — 다음 실행부터는 곧바로 시작한다)'); }
   cp(SEED_C, CDB); cp(SEED_Z, ZDB);
 
   // ── 1판: 첫 부팅 — 콜드가 쌓인다 ────────────────────────────────────────

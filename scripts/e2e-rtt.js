@@ -31,7 +31,11 @@ const ROOT = path.join(__dirname, '..');
 const CPORT = 3010, ZPORT = 3020;
 const DAY_MS = parseInt(process.env.RTT_DAY_MS || '', 10) || 5000;
 const SECS = parseInt(process.env.RTT_SECS || '', 10) || 50;
-const SEED_C = '/tmp/slicer-seed-central.db', SEED_Z = '/tmp/slicer-seed-zone.db';
+// ★★[T160 2026-09-07] 씨앗 경로·시딩은 `scripts/slicer-seed.js` 가 **정본**이다 — 옮겨 적지 않는다.
+//   종전엔 이 두 줄이 경로를 **사본**으로 갖고, 없으면 "`test-tick-slicer` 를 먼저 돌려라"며 죽었다.
+//   러너는 이름순이라 그 말이 성립하지 않는다(아래 ★). T49 가 `test-site-memo` 에서 이미
+//   같은 자리를 고쳐 뒀고, 이 카드는 남은 둘을 그 정본에 붙인다(사본 −2).
+const { SEED_C, SEED_Z, ensureSeed } = require('./slicer-seed.js');
 
 let pass = 0, fail = 0;
 const ok = (c, m, extra) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (extra !== undefined && extra !== '' ? `  ${extra}` : '')); };
@@ -110,10 +114,13 @@ async function arm(label, sliceMs) {
 (async () => {
   console.log('\n=== 일틱 조각내기 RTT 짝 비교 (같은 DB 스냅샷 · 진짜 WS) ===');
   console.log(`  폴링 재시도 ${_netRetry}회 (끊긴 소켓 재접속 — 0이 정상, 러너 부하에서만 는다)`);
-  if (!fs.existsSync(SEED_Z)) {
-    console.log('  ✗ 씨앗 DB 가 없다 — `node scripts/test-tick-slicer.js` 를 먼저 한 번 돌려라(씨앗을 만든다).');
-    process.exit(1);
-  }
+  // ★씨앗이 없으면 **스스로 만든다**(앞 하네스가 남긴 것에 기대지 않는다 — 족보 ㊾ 의 러너판).
+  //   ⚠종전 문구는 "`test-tick-slicer` 를 먼저 돌려라"였는데, 러너는 이름순이라 사람이 그 말을
+  //     들을 자리가 없다. 이 하네스는 러너에서 `test-tick-slicer` **뒤**(e2e 급)에 오므로 오늘은
+  //     우연히 초록이었다 — 앞의 그 하네스가 죽는 날 같이 죽는 **숨은 순서 의존**이었다.
+  { const r = await ensureSeed();
+    if (!r.ok) { console.log(`  ✗ 씨앗 준비 실패 — ${r.why}`); process.exit(1); }
+    if (r.built) console.log('  (이 판이 씨앗을 만들었다 — 다음 실행부터는 곧바로 시작한다)'); }
   const A = await arm('base', 0);
   // ★★[T49 2026-09-02] 자기 실패 검사기 — `RTT_SABOTAGE=1` 이면 **조각내기 팔에도 끈을 뽑는다.**
   const SLICE_MS = process.env.RTT_SABOTAGE === '1' ? 0 : 16;

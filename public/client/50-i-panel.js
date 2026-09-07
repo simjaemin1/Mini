@@ -1192,18 +1192,28 @@ function itemKo(k) {
       //   `itemIconHtml(k, 18, itemKo(k))` 의 셋째 인자는 아이콘이 없을 때 대신 찍는 것인데 거기에 키를 넣어 뒀다
       //   ⇒ 자염처럼 아이콘이 아직 없는 품목이 화면에 `brine` 으로 떴다(실측: e2e-salt).
       //   이름표는 **서버가 준다**(`r.costKo` · `m.ko` — zone.js `_facilityRecipes`). 클라 표는 폴백일 뿐이다.
-      const koOf = (k) => (r.costKo && r.costKo[k]) || itemKo(k);   // [T55] 서버 `costKo` 이름표 정본 사본 키
+      // ★★[T160 2026-09-07] **이름을 실제로 찍는다.** T38·T55 가 `costKo` 를 서버에서 받아 오고
+      //   `koOf` 까지 세워 뒀는데, 그 값을 `itemIconHtml(k, 18, koOf(k))` 의 **셋째 인자**로 넘겼다.
+      //   그런데 그 인자는 `43-i-icon.js:105` 에서 **무시된다**(T66 이 이모지 폴백을 없애며 남긴 자리):
+      //     `function itemIconHtml(k, px, _fbIgnored) { return itemPic(k, px); }`
+      //   ⇒ 화면에 남는 건 **그림 + 숫자**뿐이고 이름은 어디에도 안 찍혔다.
+      //   ⚠회부 D-1 은 "영문 키 `brine` 이 뜬다"고 적었는데 **그것도 아니었다** — 키는 `title`
+      //     속성에만 있어 `textContent` 엔 없다. 실측: 패널 글자에 `brine` 도 `짠물` 도 **둘 다 없다**
+      //     (`e2e-salt ③` 31/1 · 그 하네스의 안내 문구가 스스로를 오독하고 있었다 — 같이 고쳤다).
+      //   ⇒ 짐 창 줄(`44-h-hud.js:252`)이 이미 쓰는 문법 그대로 **그림 다음에 이름**을 놓는다.
+      //     `itemIconHtml` 의 시그니처는 안 건드린다(부르는 자리가 열 곳이다 — 여기 셋만 고친다).
+      const koOf = (k) => (r.costKo && r.costKo[k]) || itemKo(k);
       let costStr, q2 = null;
       if (r.options) {
         const o = r.options.find((x) => x.material === pick) || r.options[0] || {};
-        costStr = `${itemIconHtml(o.material, 18, koOf(o.material))} ${o.need} <span style="color:var(--dim-2)">(보유 ${o.have})</span>`
+        costStr = `${itemIconHtml(o.material, 18)} ${koOf(o.material)} ${o.need} <span style="color:var(--dim-2)">(보유 ${o.have})</span>`
           // ★[T12 지게] 곁재료도 같이 적는다 — `r.can`·버튼은 이미 `r.cost`(곁재료 포함)로 갈리는데
           //   글자만 주재료를 보여 주면 "왜 못 만들지"가 화면에 안 적힌다.
           //   이름표는 T38 규약대로 **서버가 준 `costKo`** 를 통해 찾는다(클라 표는 폴백이다).
-          + Object.entries(r.extra || {}).map(([k, n]) => ` · ${itemIconHtml(k, 18, koOf(k))} ${n}`).join('');
+          + Object.entries(r.extra || {}).map(([k, n]) => ` · ${itemIconHtml(k, 18)} ${koOf(k)} ${n}`).join('');
         q2 = o.q;
       } else {
-        costStr = Object.entries(r.cost).map(([k, n]) => `${itemIconHtml(k, 18, koOf(k))} ${n}`).join(' · ');
+        costStr = Object.entries(r.cost).map(([k, n]) => `${itemIconHtml(k, 18)} ${koOf(k)} ${n}`).join(' · ');
       }
       // 모자란 재료 칸은 이름표를 **아예 안 찾고 있었다**(`m.item` 을 그대로 찍었다).
       const lack = r.missing.length ? `<span style="color:var(--hp)">— ${r.missing.map((m) => `${m.ko || m.item} ${m.have}/${m.need}`).join(' · ')}</span>` : '';

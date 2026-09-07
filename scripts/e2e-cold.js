@@ -26,6 +26,18 @@ fs.mkdirSync(SHOTS, { recursive: true });
 const HEADED = process.argv.includes('--headed');
 const CPORT = 3010, ZPORT = 3020;
 const CDB = `/tmp/e2e-cold-central-${process.pid}.db`, ZDB = `/tmp/e2e-cold-zone-${process.pid}.db`;
+// ★★[T160 2026-09-07] **물때를 못 박는다** — ⑦㉣("바닷가에서 마시면 「짠물」이라고 말한다")이
+//   **돌린 시각의 물때에 따라** 갈렸다(족보 (56) 자명 통과의 그 자리 · 회부 D "조석 위상").
+//   회부가 세 판으로 증명해 뒀다: HEAD 만조 52/0 · HEAD 간조 51/1 · 베이스 간조도 51/1.
+//   T52 가 바다 게이트를 바꾼 뒤로, 병 없는 사람은 **간조엔 채집이 먼저**라 그 안내가 안 뜬다.
+//   ⇒ 만조로 얼려 두면 그 절이 늘 같은 세계를 본다. 오늘 초록인 것은 운이었다(아래 실측).
+//   ★값을 손으로 안 적는다 — 주기는 `server/tidal.js` 가 정본이고 만조는 그 절반이다
+//     (`e2e-tidal.js` 의 `FLOOD_MS` 와 **같은 유도**다 · 사본 0).
+//   ★★[실측 2026-09-07] 얼림이 **다른 절을 안 깬다**는 것을 A/B 로 쟀다:
+//     안 얼림 55/55 · 만조 얼림 55/55(같은 기계·연달아). 갈린 것은 열 값의 잡음뿐
+//     (−0.0019↔−0.0018 · 갖옷 +3.83℃↔+3.15℃ — 판정 문턱과 무관).
+//     ⇒ 절마다 다른 얼림(픽스처 헬퍼)은 **필요 없었다**. 필요해지면 그때 헬퍼로 간다.
+const TIDE_FLOOD_MS = Math.round(require(path.join(ROOT, 'server', 'tidal.js')).CFG.PERIOD_MS / 2);
 for (const f of [CDB, ZDB, CDB + '-wal', ZDB + '-wal', CDB + '-shm', ZDB + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
 
 let pass = 0, fail = 0;
@@ -59,6 +71,8 @@ async function waitHttp(url, tries = 600) {
     PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
     ENABLE_VILLAGES: '1', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', ENABLE_WILDLIFE: '0',
     E2E_GIVE: '1',   // ★`__e2e_clock`·`__e2e_body` 픽스처가 이 게이트로만 산다
+    // ★[T160] 물때 못 박기(위 유도) — 이 줄이 ⑦㉣ 을 시각 의존에서 꺼낸다.
+    TIDE_FREEZE_MS: String(TIDE_FLOOD_MS),
   });
   ok(await waitHttp(`http://localhost:${CPORT}/zones`), 'central 기동');
   ok(await waitHttp(`http://localhost:${ZPORT}/health`), 'zone 기동');

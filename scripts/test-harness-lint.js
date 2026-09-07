@@ -218,5 +218,36 @@ ok(bad.length === 0, '② ★판정 자리에 이모지 0 (정규식 · 술어 �
     '⑤g 돌연변이 — 하늘·바람을 끄는 소스와 안 끄는 소스를 **가른다**');
 }
 
+// ── ⑥ [T160] 하네스는 **다른 하네스를 먼저 돌리라고 시키지 않는다** ────────────
+{
+  console.log('\n[⑥ 순서 의존 — "X 를 먼저 돌려라"라고 말하는 하네스 0]');
+  // ★★왜: 러너는 **이름순**으로 돈다(`run-regress.sh` 의 `LC_ALL=C sort`). "먼저 돌려라"는
+  //   사람에게 하는 말인데, 전수는 사람이 안 본다 — 이름이 앞이면 **매번 반드시** 죽는다.
+  //   T49 가 `test-site-memo` 에서, T160 이 `e2e-rtt`·`test-route-persist` 에서 같은 자리를 고쳤다.
+  //   고치는 길은 하나다: **없으면 자기가 만든다**(픽스처를 정본 모듈에 두고 부른다 · 사본 0).
+  //   ⇒ 이 검사는 그 규약이 다시 무너지는 것을 막는다. 문구가 아니라 **패턴**을 본다.
+  const ORDER = /먼저\s*(한\s*번\s*)?(돌려라|실행|돌려)|를\s*먼저\s*돌린|run .{0,40} first/;
+  const bad = [];
+  for (const f of files) {
+    // ★이 파일 자신은 뺀다 — 규칙과 돌연변이 픽스처가 **그 문구 자체**다(②의 예외와 같은 까닭).
+    if (f === 'test-harness-lint.js') continue;
+    const src = fs.readFileSync(path.join(SCRIPTS, f), 'utf8');
+    // 판정·출력 줄만 본다(주석 속 설명은 역사다 — 이 파일 위 주석들이 그렇다)
+    for (const line of src.split('\n')) {
+      const t = line.trim();
+      if (t.startsWith('//') || t.startsWith('*')) continue;
+      if (ORDER.test(line)) { bad.push(`${f}: ${t.slice(0, 72)}`); break; }
+    }
+  }
+  ok(bad.length === 0,
+     '⑥ ★"다른 하네스를 먼저 돌려라"라고 죽는 하네스 0 — 없으면 **스스로 만든다**',
+     bad.join(' | '));
+  // ★자명 통과 금지 — 이 정규식이 실제로 그 말을 잡는지 본다
+  ok(ORDER.test("console.log('  ✗ 씨앗 DB 없음 — `node scripts/test-tick-slicer.js` 를 먼저 한 번 돌려라');") === true,
+     '⑥b 돌연변이 — 옛 문구(T160 이 고친 그 줄)를 이 검사가 **잡는다**');
+  ok(ORDER.test("console.log('  ✓ 씨앗을 스스로 만들었다');") === false,
+     '⑥c 대조 — 스스로 만드는 하네스는 안 잡는다');
+}
+
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
 process.exit(fail ? 1 : 0);
