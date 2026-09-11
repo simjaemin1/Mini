@@ -181,8 +181,10 @@ function handleChat(player, text) {
   if (!b) { say('🏘️ 우리 마을 회관 앞에서 말하게'); return true; }
   const vid = (b.data && b.data.villageDbId != null) ? (b.data.villageDbId | 0) : null;
   if (vid == null) { say('🏘️ 이 회관에 딸린 마을을 찾지 못했다'); return true; }
-  if (arg === '켜' || arg === 'on') { if (H.setSwitch) H.setSwitch(player, b, true); return true; }
-  if (arg === '꺼' || arg === 'off') { if (H.setSwitch) H.setSwitch(player, b, false); return true; }
+  // ★[T167 2026-09-10] `받기`·`막기` 를 **같은 자리에** 더한다 — T128 `/길드 초대제|공개` 와 같은 말결이다.
+  //   ⚠새 경로가 아니라 **같은 인자 표**다: 켜/꺼(종전) 와 받기/막기가 한 줄에서 갈린다(사본 0).
+  if (arg === '켜' || arg === 'on' || arg === '받기') { if (H.setSwitch) H.setSwitch(player, b, true); return true; }
+  if (arg === '꺼' || arg === 'off' || arg === '막기') { if (H.setSwitch) H.setSwitch(player, b, false); return true; }
   const e = listable(vid);
   say(`🏘️ 이방인 받기 ${e.on ? '켬' : '끔'}${e.listed ? ' · 시작 지도에 올라 있다' : ''}`
     + ` — 인구 ${e.pop} · 자립 ${e.foodDays}일`
