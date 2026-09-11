@@ -6947,6 +6947,25 @@ function tickCaravansV2(world, day) {
         }
         returnRes = bestR;
       }
+      // ★★★[T173 2026-09-11 · 이 파일의 유일한 접점] **귀환 화물 우선순위를 밖에서 물어본다.**
+      //   여기가 "대금으로 무엇을 실어 오는가"를 정하는 자리다 — 지금 규칙은 `ratio` 최대 하나뿐이고,
+      //   예외는 **식량 pull**(위 P1b) 하나다. 식량은 굶으면 끌어오는데 **돌은 그런 자리가 없다.**
+      //   T173 §0-ⓑ 실측: 석재 바닥 36마을이 800일 동안 받은 돌이 **0**(파는 마을은 13곳 · 판 것은 11,723).
+      //
+      //   ⚠**주입이 없으면 한 글자도 안 바뀐다.** 규칙은 이 파일이 안 갖는다 — `world.returnPullFn` 이 준다.
+      //     지금 그것을 주는 것은 **랩**(`lab/전쟁실험실.html` `L_STONE_TRADE`)뿐이고, 서버·CLI·하네스는
+      //     안 주므로 폴백이 곧 종전 = **비트 동일**(T135 `forageTakeFn` · T157 `happyWorkW` ·
+      //     T161 `allocFn` · T163 `stoneBudgetFn` 선례).
+      //   ⚠**문은 규칙을 느슨하게 하지 않는다** — 파는 쪽에 실물이 있고(>1) 받는 쪽이 글럿이 아닌
+      //     경우에만 갈아 끼운다(위 두 게이트를 그대로 다시 건다 · 공짜 돌 0).
+      {
+        const _rpFn = (world && typeof world.returnPullFn === 'function') ? world.returnPullFn : null;
+        if (_rpFn) {
+          let _r = null;
+          try { _r = _rpFn(c.from, c.to, returnRes); } catch (e) { _r = null; }
+          if (_r && _r !== c.giveRes && (c.to.storage[_r] || 0) > 1 && !_returnGlutted(_r)) returnRes = _r;
+        }
+      }
       // ★pull 계측(#26 — 행동 무영향 카운터): 위기 발주촌 대금 구성(식량류 비율). 회귀 불변식이 pull 채널의 조용한 회귀를 감시.
       if (c.from.surplusEMA && c.from.surplusEMA.food < 0) {
         const _ps = world._pullStats || (world._pullStats = { crisisReturns: 0, crisisFoodReturns: 0 });

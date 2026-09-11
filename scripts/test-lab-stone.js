@@ -178,6 +178,124 @@ console.log('\n⑦ 랩 배선 — 기본이 꺼져 있고 훅이 한 자리인�
     '⑦ ★★랩 **인라인 엔진**에도 문이 실려 있다(번들 재생성·재인라인 완료)');
 }
 
-console.log(`\n=== T163 랩 석재: 통과 ${pass} · 실패 ${fail} ===`);
-console.log('접점 심볼: t17-metrics|FLOOR.stone|land.stone|_stCost|STONE_NET|L_STONEREAL|stoneBudgetFn|scatterRocksPerCell');
+// ════════════════════════════════════════════════════════════════════════════════════════
+// ★★[T173 2026-09-11] **처방 ① — 관을 밖에서 넓힌다**(같은 파일 다른 절 · 위는 ②의 자리다)
+//   §0 진단이 갈래를 잘랐다: 바닥 36마을이 800일 동안 캐러밴으로 받은 돌이 **0**(0곳/36곳)인데
+//   파는 마을은 13~14곳이고 바닥 마을의 수출 총량은 그 밖 15곳 합보다 크다 — 막힌 것은
+//   **대금이 아니라 우선순위**다. 귀환 화물 규칙엔 **식량 pull** 만 있고 돌에는 그 자리가 없다.
+// ════════════════════════════════════════════════════════════════════════════════════════
+const V2SRC = fs.readFileSync(path.join(ROOT, 'sim', 'economy-sim-v2.js'), 'utf8');
+const V2CODE = codeOf(V2SRC);
+
+console.log('\n⑧ 문(T173) — `economy-sim-v2.js` 의 접점은 한 줄인가');
+{
+  const hitLines = V2CODE.split('\n').filter((l) => l.indexOf('returnPullFn') >= 0).length;
+  ok(hitLines === 1, '⑧ ★★엔진에서 `returnPullFn` 을 읽는 **줄이 하나**다(문 하나)', `${hitLines}줄`);
+  ok(/const _rpFn = \(world && typeof world\.returnPullFn === 'function'\) \? world\.returnPullFn : null;/.test(V2CODE),
+    '⑧ 문 문법이 T135/T157/T161/T163 선례와 같다');
+  ok(!/returnPullFn/.test(fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8')),
+    '⑧ ★★서버는 이 문을 **안 연다**(= 라이브 무변)');
+  ok(/if \(_r && _r !== c\.giveRes && \(c\.to\.storage\[_r\] \|\| 0\) > 1 && !_returnGlutted\(_r\)\) returnRes = _r;/.test(V2CODE),
+    '⑧ ★★★**공짜 돌 0** — 문이 종전 두 게이트(실물 >1 · 글럿 아님)를 그대로 다시 건다');
+}
+
+console.log('\n⑨ 되돌림(T173) — 문을 안 열면 비트 동일 · 열면 돌이 실제로 실린다');
+//   ★픽스처 둘. `starve` 는 **바닥 마을의 돌을 매일 0 으로 비운다** — 작은 세계에선 소비처가 없어
+//     돌이 곳간에 쌓이고(실측 396~1,248) 그러면 엔진의 글럿 게이트가 문을 막아 **자명 통과**가 된다.
+//     실지도 36마을이 800일 중 절반을 `돌<0.2` 로 사는 그 상태를 여기서 강제로 만든다.
+const mkTrade = (inject, starve) => {
+  const w = econV2.createWorldV2({ seed: 909, villageCount: 0, picker: 'rational', infoRange: 5000, raidPer100: 0.005 });
+  w.villages = []; w.events = []; w.caravans = [];
+  if (inject) w.returnPullFn = (from, to, cur) => (cur === 'stone' ? null : 'stone');
+  const LP = [{ stone: LV.FLOOR.stone, name: '바닥' }, { stone: 2.5, name: '산촌' }];
+  for (let i = 0; i < 6; i++) {
+    const base = LP[i % 2];
+    const v = econ.createVillage({ fertility: 1.2, water: 0.9, stone: base.stone, ore: 0.2, wood: 1.2, game: 0.7,
+                                   arable: 1, size: 70, initialPop: 40, name: base.name + i });
+    v._world = w; v.coord = { x: (i % 3) * 120, y: Math.floor(i / 3) * 120 };
+    w.villages.push(v);
+  }
+  w.day = 0;
+  //   ★귀환 화물은 **실려 있는 동안** 세야 한다 — 집에 닿은 캐러밴은 목록에서 빠진다(끝에 세면 늘 0).
+  w._t173 = { stoneReturns: 0, stoneAmt: 0, returns: 0 };
+  const seen = new Set();
+  for (let d = 0; d < 300; d++) {
+    if (starve) for (let i = 0; i < w.villages.length; i += 2) w.villages[i].storage.stone = 0;
+    econV2.tickWorldV2(w, d);
+    for (const c of (w.caravans || [])) {
+      if (seen.has(c.id) || !c._returningRes) continue;
+      seen.add(c.id); w._t173.returns++;
+      if (c._returningRes === 'stone') { w._t173.stoneReturns++; w._t173.stoneAmt += (+c._returningAmt || 0); }
+    }
+  }
+  return w;
+};
+const digest = (w) => JSON.stringify(w.villages.map((v) => ({ n: v.npcs.length, s: +(v.storage.stone || 0).toFixed(9),
+  t: +(v.storage.tool || 0).toFixed(9), f: +(v.storage.food || 0).toFixed(9) })));
+{
+  const a = mkTrade(false, false), b = mkTrade(false, false);
+  ok(digest(a) === digest(b), '⑨ ★★주입 없는 두 판이 **비트 동일**(결정론 · 되돌림의 뿌리)');
+  const so = mkTrade(false, true), sn = mkTrade(true, true);
+  pre(so._t173.returns > 0, '이 세계에서 캐러밴이 실제로 귀환한다(안 돌면 아래가 자명 통과가 된다)', `귀환 ${so._t173.returns}건`);
+  ok(digest(so) !== digest(sn), '⑨ ★주입하면 실제로 **다른 세계**가 된다(문이 죽어 있지 않다)');
+  ok(sn._t173.stoneReturns > so._t173.stoneReturns,
+    '⑨ ★★★ON 에서 **돌 귀환 화물이 실제로 늘었다**(자명 통과 금지)',
+    `${so._t173.stoneReturns}건 → ${sn._t173.stoneReturns}건 (${so._t173.stoneAmt.toFixed(0)} → ${sn._t173.stoneAmt.toFixed(0)} 단위)`);
+  ok(sn._t173.stoneAmt > so._t173.stoneAmt * 2,
+    '⑨ 늘어난 폭이 잡음이 아니다(2배 이상)', `×${(so._t173.stoneAmt ? sn._t173.stoneAmt / so._t173.stoneAmt : 0).toFixed(2)}`);
+  //   ★굶기지 않으면 문은 **안 선다**(글럿 게이트가 막는다) — 문이 규칙을 느슨하게 하지 않는 증거
+  const ng = mkTrade(true, false);
+  ok(digest(ng) === digest(a), '⑨ ★★돌이 남아도는 세계에선 문이 **아무것도 안 바꾼다**(글럿 게이트 · 공짜 돌 0)');
+}
+
+console.log('\n⑩ 진단 계측기 — T142 계측기를 재사용했나(정본 재구현 0)');
+{
+  const D = fs.readFileSync(path.join(ROOT, 'scripts', 'stone-trade-diag.js'), 'utf8');
+  const DC = codeOf(D);
+  ok(/Events\.createLedger\(/.test(DC), '⑩ 장부를 **정본에서** 만든다(`Events.createLedger`)');
+  ok(/onRequest:/.test(DC), '⑩ ★T142 가 뚫어 둔 `onRequest` 훅을 쓴다(새 창구 0)');
+  ok(/Villages\.playerVillageDepositMap\(\)/.test(DC),
+    '⑩ ★★납품 가능 품목표를 정본에서 받는다 — 없으면 의뢰가 **0건**이 된다(첫 판이 그렇게 틀렸다)');
+  ok(!/reqOpened\s*[+]{2}|reqNoPay\s*[+]{2}|reqShrunk\s*[+]{2}/.test(DC),
+    '⑩ ★★다섯 갈래 수를 **자기가 세지 않는다**(장부의 `stats` 를 읽기만 한다)');
+  ok(/ledger\.stats/.test(DC), '⑩ 장부의 `stats` 를 읽는다');
+}
+
+console.log('\n⑪ 랩 팔(T173) — 문턱이 엔진의 그 수인가 · 자명 통과 금지');
+const LAB_NET = (() => { const m = LCODE.match(/L_STONE_NET_THRESH\s*=\s*([0-9.]+)/); return m ? +m[1] : null; })();
+{
+  pre(LAB_NET != null, '랩에서 `L_STONE_NET_THRESH` 를 찾았다', String(LAB_NET));
+  // 엔진의 STONE_NET 1차 문턱을 **소스에서 읽어** 대조한다(옮겨 적은 수인지 기계가 본다)
+  const m = CODE.match(/STONE_NET_ON && _toolCrit && \(v\.land\.stone \|\| 0\) >= 0\.25 && \(v\.storage\.stone \|\| 0\) < ([0-9.]+)/);
+  pre(!!m, '엔진에서 STONE_NET 1차 문턱 줄을 찾았다', m ? m[1] : '못 찾음');
+  ok(!!m && LAB_NET === +m[1], '⑪ ★★★랩 문턱 = 엔진 STONE_NET 1차 문턱(새 수 0)', `${LAB_NET} vs ${m ? m[1] : '?'}`);
+  ok(/if \(window\.L_STONE_TRADE === undefined\) window\.L_STONE_TRADE = 0;/.test(LCODE),
+    '⑪ ★★손잡이 기본 **0**(문을 안 연다 = 다른 세션 기준선 무변)');
+  ok(/if\(\+window\.L_STONE_TRADE!==0\)ECON_WORLD\.returnPullFn=stoneTradePullFn;/.test(LCODE),
+    '⑪ ★훅이 `reseed` 한 자리에서 걸린다');
+  // 순수 함수 자체를 랩 소스에서 떼어 내 **네 갈래를 다 밟는다**(자명 통과 금지)
+  const fsrc = LCODE.match(/function stoneTradePullFn\(from, to, cur\)\{[\s\S]*?\n\}/);
+  pre(!!fsrc, '랩에서 `stoneTradePullFn` 본문을 떼어 냈다');
+  if (fsrc) {
+    // eslint-disable-next-line no-new-func
+    const f = new Function('L_STONE_NET_THRESH', fsrc[0] + '; return stoneTradePullFn;')(LAB_NET);
+    const starving = { storage: { stone: 0.05 } }, rich = { storage: { stone: 50 } }, poor = { storage: { stone: 0.5 } };
+    ok(f(starving, rich, 'food') === 'stone', '⑪ 굶는 마을 + 파는 마을 → **돌**');
+    ok(f(starving, rich, 'stone') === null, '⑪ 이미 돌이면 끼어들지 않는다');
+    ok(f({ storage: { stone: 5 } }, rich, 'food') === null, '⑪ ★안 굶으면 끼어들지 않는다(문턱 위)');
+    ok(f(starving, poor, 'food') === null, '⑪ ★★파는 쪽에 실물이 없으면 **못 산다**(공짜 돌 0)');
+    ok(f(null, rich, 'food') === null && f(starving, null, 'food') === null, '⑪ 인자가 없으면 종전(폴백이 곧 종전)');
+  }
+}
+
+console.log('\n⑫ 공짜 돌 0 — 파는 쪽 재고를 엔진이 실제로 뺀다');
+{
+  ok(/c\.to\.storage\[returnRes\] = \(c\.to\.storage\[returnRes\] \|\| 0\) - _buy\.qty;/.test(V2CODE),
+    '⑫ ★★도착 마을 재고에서 **산 만큼 빠진다**(`_impactBuyV2` 정산 · 이 줄이 사라지면 공짜 돌이 된다)');
+  ok(/const _buy = _impactBuyV2\(c\.to, returnRes, _budget\);/.test(V2CODE),
+    '⑫ 매수량은 **예산 역산**이다(시장 충격 정산 — 문이 이 식을 우회하지 않는다)');
+}
+
+console.log(`\n=== T163·T173 랩 석재: 통과 ${pass} · 실패 ${fail} ===`);
+console.log('접점 심볼: t17-metrics|FLOOR.stone|land.stone|_stCost|STONE_NET|L_STONEREAL|L_STONE_TRADE|stoneBudgetFn|returnPullFn|scatterRocksPerCell');
 process.exit(fail ? 1 : 0);
