@@ -65,6 +65,7 @@ const Newcomers = require('./newcomers');     // ★[T19 2026-09-02] 유저 마�
 const Friends = require('./friends');         // ★[T115 2026-09-05] 친구 — 서로 수락한 쌍(T23 소셜 첫 칸)
 const Guild = require('./guild');             // ★[T128 2026-09-05] 길드 모집 — 초대·승인제·마을 소개문
 const Rescue = require('./rescue');           // ★[T56 2026-09-02] 외침·구조 동사 둘. 판정은 전부 정본을 부른다(사본 0)
+const Credits = require('./credits');         // ★[T168 2026-09-10] `/크레딧` — `CREDITS.md` 를 읽어 요구 문구를 띄운다(사본 0)
 // ★★[T122 2026-09-05] **Map 이다** — 키 → 벤 게임일. 종전엔 Set(=영원히 없음)이었다.
 //   `has` 계약은 그대로라 옛 호출부가 전부 산다. 새로 생긴 건 `get(key) = 벤 날` 하나다.
 const harvestedSeeds = new Map(); // 채집된 시드 자원 → 벤 게임일 (DB에서 load · T122 재생의 입력)
@@ -4333,6 +4334,7 @@ function handlePlayerInput(player, raw) {
     if (Friends.handleChat(player, text)) return;     // ★[T115] `/친구` — 새 패널 0 · 새 클라 조건 0
     if (Guild.handleChat(player, text)) return;       // ★[T128] `/초대` `/수락` `/길드` `/소개`
     if (followChat(player, text)) return;             // ★[T147] `/어디` `/따라가기` `/숨기` — 분기 한 줄
+    if (Credits.handleChat(send, player, text)) return;   // ★[T168] `/크레딧` — 문구 정본은 `CREDITS.md`(사본 0)
     // ★[T56] 구조 동사 둘 — `/먹이기 <음식>` `/물`. 채팅은 이미 있다(클라 무접촉 · T11 선례).
     if (Rescue.handleChat(player, text)) return;
     if (text.startsWith('/t ')) {

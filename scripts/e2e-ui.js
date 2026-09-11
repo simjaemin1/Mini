@@ -766,6 +766,53 @@ async function waitHttp(url, tries = 600) {
     await page.evaluate(() => showNotice('', 1, null));
   }
 
+  // ── ⑮ `/크레딧` — 빌린 것의 이름이 **CREDITS.md 에서** 온다 [T168 2026-09-10] ─────
+  //
+  // ★★못 박는 것 둘.
+  //   ⓐ **알림에 뜬 글자 == `CREDITS.md` §1 의 줄**(문자열 대조). 라이선스가 요구하는 문장은
+  //      한 글자만 달라도 요구를 못 지킨 것이라, 눈으로 "떴다"가 아니라 **글자로** 견준다.
+  //   ⓑ **클라 소스에 문구 사본 0.** 서버가 파일을 읽어 보내므로 `public/` 어디에도 그 문장이
+  //      없어야 한다. 사본이 생기는 순간 둘이 갈리고, 갈린 쪽이 화면에 뜬다.
+  //   ⓘ 알림 스택은 셋이다(`notice.js NOTICE_MAX`) — 요구 문구가 넷이 되면 ⓒ 가 빨개진다.
+  //      그때 할 일은 문턱을 올리는 게 아니라 **띄우는 방식을 다시 정하는 것**(T168 회부).
+  console.log('\n=== ⑮ `/크레딧` — 요구 문구가 파일에서 온다 [T168] ===');
+  {
+    const md = fs.readFileSync(path.join(ROOT, 'CREDITS.md'), 'utf8');
+    const A = md.indexOf('<!-- 요구문구:시작 -->'), B = md.indexOf('<!-- 요구문구:끝 -->');
+    const want = (A >= 0 && B > A ? md.slice(A + '<!-- 요구문구:시작 -->'.length, B) : '')
+      .split('\n').map((s) => s.trim()).filter((s) => s.startsWith('- ')).map((s) => s.slice(2).trim());
+    ok(want.length > 0, '★검사 상황 — `CREDITS.md` 에 요구 문구 블록이 있다', `${want.length}줄`);
+
+    await page.evaluate(() => { window.__notices && (window.__notices.length = 0); });
+    await page.evaluate(() => window.__sendPrimary({ type: 'chat', text: '/크레딧' }));
+    await sleep(900);
+    const got = await page.evaluate(() => (window.__notices || []).slice());
+    ok(got.length === want.length,
+       '★⑮a 알림이 **요구 문구 수만큼** 왔다(머리말 0 — 스택 셋을 안 넘긴다)', `${got.length} / ${want.length}`);
+    const same = want.every((w) => got.includes(w));
+    ok(same, '★★⑮b **글자가 파일 그대로다**(문자열 대조 — 서버가 CREDITS.md 를 읽는다)',
+       same ? want.map((w) => w.slice(0, 28) + '…').join(' | ') : `받은 것: ${got.join(' | ').slice(0, 160)}`);
+    ok(want.length <= 3, '★⑮c 요구 문구가 알림 스택(3) 안에 든다 — 넘치면 앞 줄이 밀려 사라진다', `${want.length} ≤ 3`);
+
+    // ⓑ 클라 소스에 사본 0 — `public/` 전수(js·html·css)
+    const pub = [];
+    (function walk(d) { for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      const p = path.join(d, e.name);
+      if (e.isDirectory()) { if (e.name !== 'assets') walk(p); }
+      else if (/\.(js|html|css)$/.test(e.name)) pub.push(p);
+    } })(path.join(ROOT, 'public'));
+    const leak = [];
+    for (const f of pub) { const body = fs.readFileSync(f, 'utf8');
+      for (const w of want) if (body.includes(w)) leak.push(path.relative(ROOT, f) + ' ← ' + w.slice(0, 24)); }
+    ok(leak.length === 0, '★★⑮d **클라 소스에 문구 사본 0** — 정본은 `CREDITS.md` 하나다',
+       leak.length ? leak.slice(0, 2).join(' · ') : `${pub.length}개 파일 훑음`);
+    // 자명 통과 금지 — 이 검사가 늘 0 을 내는 게 아니다(있는 문장을 넣으면 잡힌다)
+    const canary = pub.some((f) => fs.readFileSync(f, 'utf8').includes('showNotice'));
+    ok(canary, '★⑮e 자명 통과 금지 — 같은 훑기로 **있는 문자열은 찾는다**(`showNotice`)');
+    console.log('    접점: handleChat · CREDITS · showNotice · __notices · server/credits.js');
+    await page.evaluate(() => showNotice('', 1, null));
+  }
+
   clearInterval(ntPoll);
   const jsErrs = errs.filter((e) => !/Failed to load resource/.test(e));
   ok(jsErrs.length === 0, '클라 JS 예외 0', jsErrs.slice(0, 2).join(' | '));
