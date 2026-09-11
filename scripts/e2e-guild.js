@@ -58,6 +58,8 @@ function connect(username, password) {
       let m = null; try { m = JSON.parse(String(raw)); } catch (e) { return; }
       if (m.type === 'welcome') { C.pid = m.pid; C.playerId = m.playerId; clearTimeout(to); resolve(C); }
       else if (m.type === 'notice') { C.notices.push(String(m.text || '')); C.kinds.push(String(m.kind || '')); }
+      //   ★[T174] 짐 — **떠내려가지 않는 자리**다. 곳간은 주민이 먹어 스스로 줄지만 짐은 안 그렇다.
+      else if (m.type === 'inventory' && m.inventory) C.inv = m.inventory;
     });
     ws.on('error', (e) => { clearTimeout(to); reject(e); });
     ws.on('close', () => { C.closed = true; });
@@ -353,11 +355,14 @@ const last = (C) => JSON.stringify(C.notices.slice(-1));
        '★★⑦e2 곳간이 **실제로 줄었다** — 가짜 인출이 아니다', `${stock0} → ${stock1}`);
 
     // ⓓ 모르는 말은 아무것도 안 준다(자명 통과 금지의 뒷면)
+    //   ⚠**곳간으로 재지 마라** — 마을은 살아 있어서 주민이 먹는다(실측: 두 번 읽는 사이 341 → 340).
+    //     초안이 `stock2 === stock1` 로 재다 그 자연 감소에 걸렸다. 안 움직이는 자리는 **짐**이다.
+    const packOf = (C) => Object.entries(C.inv || {}).reduce((a, [, v]) => a + (Number(v) || 0), 0);
+    const pack0 = packOf(O);
     O.notices.length = 0; say(O, '/곳간 없는물건 1'); await sleep(1500);
     ok(O.notices.some((t) => /그런 물건은 없다/.test(t)), '★⑦f 모르는 말엔 **아무것도 안 나온다**', last(O));
-    O.notices.length = 0; say(O, '/곳간'); await sleep(1500);
-    const stock2 = parseFloat((/식량 재고 ([\d.]+)/.exec(O.notices.find((t) => /곳간 —/.test(t)) || '') || [])[1]);
-    ok(stock2 === stock1, '⑦f2 그리고 곳간도 그대로다', `${stock1} → ${stock2}`);
+    ok(packOf(O) === pack0, '★★⑦f2 그리고 **짐이 한 톨도 안 늘었다**(거절이 진짜다 · 곳간은 주민이 먹어 스스로 준다)',
+       `${pack0} → ${packOf(O)}`);
 
     // ⓔ 시작 화면이 소속을 안다 — **접속 중인 사람만**(honest: 그 한계를 여기 적는다)
     const si8 = await jget(`http://localhost:${ZPORT}/startinfo?as=outsider`);

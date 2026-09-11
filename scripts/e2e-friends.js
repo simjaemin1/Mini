@@ -182,7 +182,10 @@ const seen = (C, pid) => C.others.get(pid) || null;
       C.notices.length = 0;
       C.ws.send(JSON.stringify({ type: 'teleport_debug', x: Math.round(x) + i * 37, y: Math.round(y) + i * 29 }));
       await sleep(400);
-      if (C.notices.some((t) => /🌀|텔레포트 →/.test(t))) return true;
+      //   ★[T174 2026-09-11] 판정 자리에서 **이모지를 뺐다** — `test-harness-lint ②` 가 잡은 자리다.
+      //     T147 이 `/🌀|…/` 로 썼는데, 그림이 판정에 끼면 그림을 바꾸는 날 하네스가 조용히 눈이 먼다.
+      //     글자가 정본이다(`teleport_debug` 응답 문구는 `텔레포트 → (x,y)`).
+      if (C.notices.some((t) => /텔레포트 →/.test(t))) return true;
     }
     return false;
   };
