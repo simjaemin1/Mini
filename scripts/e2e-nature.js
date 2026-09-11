@@ -179,7 +179,10 @@ function diffCountNoEnts(a, b, ents) {
   {
     const sp = JSON.parse(fs.readFileSync(path.join(ROOT, 'public/assets/trees/tree_species.json'), 'utf8')).species || {};
     for (const id of Object.keys(sp)) {
-      for (const k of [...(sp[id].sprites || []), ...(sp[id].autumn || [])]) TSTAGE[k] = 'adult';
+      // ★[T169] 열매판 칸이 둘이 됐다(`summer`·`autumn`) — 철 이름 칸이다. 여기 이름을 적지 않고
+      //   **종 표가 부르는 칸을 전부** 훑는다: 칸이 또 늘어도 이 줄은 안 고친다.
+      const PLATES = ['sprites', 'summer', 'autumn'];
+      for (const k of PLATES.flatMap((c) => sp[id][c] || [])) TSTAGE[k] = 'adult';
       if (sp[id].sapling) TSTAGE[sp[id].sapling] = 'sapling';
     }
     TSTAGE['stump01'] = 'stump';
