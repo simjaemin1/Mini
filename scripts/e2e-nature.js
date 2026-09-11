@@ -510,7 +510,7 @@ function diffCountNoEnts(a, b, ents) {
         const TR = require(path.join(ROOT, 'server', 'terrain.js'));
         let rows = [];
         for (let k = 0; k < 6 && !rows.length; k++) {
-          try { rows = CH.generateChunkResources('hanbando', 'forest', 300 + k, 300 + k, 512, new Set(), 100) || []; } catch (e) { rows = []; }
+          try { rows = CH.generateChunkResources('hanbando', 'forest', 300 + k, 300 + k, CH.CHUNK_SIZE, new Set(), 100) || []; } catch (e) { rows = []; }
         }
         const trees = rows.filter((r) => r.type === 'tree');
         const withSp = trees.filter((r) => r.sp);
@@ -535,6 +535,193 @@ function diffCountNoEnts(a, b, ents) {
     FARM = { claimOn, claimOff, site: farmSite, farmN };
     await browser.close(); try { z.kill(); } catch (e) {}
     await sleep(2500);
+  }
+
+  // ═══ ★★[T170 2026-09-11 재민 확정] **가을에 밤이 보인다** — `fruitNow` 한 비트 ════════════
+  //   재민 캐논: *"열매는 보이고, 가서 딴다."* T148-B 가 앞 절반(밤나무는 밤나무로 보인다)을 했고,
+  //   여기는 뒤 절반이다 — **지금 이 나무에 열매가 달렸나**가 선을 타고 화면까지 온다.
+  //
+  //   ★소스를 안 읽는다. **세계에게 묻는다** — 실클라가 쓰는 그 웹소켓으로 붙어, 서버가 실제로
+  //     보낸 개체 행의 `fruitNow` 를 읽는다(하네스가 서버 함수를 다시 부르면 그게 사본 계측기다).
+  //   ★자리·날짜·기대값을 손으로 안 적는다: 자리는 시더 정본(`chunk.js` · `CHUNK_SIZE` 도 정본에서)이
+  //     고르고, 철은 `Trees.fruitSeasonOf`(서버 종 표)가 말하고, 판 이름은 `tree_species.json` 이 말한다.
+  //   ★픽스처 규약(공통 §2 ⑩): 정해진 초를 안 잔다 — **세계가 그 시계를 말할 때까지** 기다리고
+  //     (증인 ① 서버가 되돌려 주는 `시계 세움` 알림), 그 다음 **세계가 그 철을 살 때까지** 기다린다
+  //     (증인 ② 개체 행의 비트). 증인이 하나면 T140 이 잡은 그 구멍이 다시 열린다.
+  {
+    const WebSocket = require('ws');
+    const TR = require(path.join(ROOT, 'server', 'trees.js'));
+    const CH2 = require(path.join(ROOT, 'server', 'chunk.js'));
+    const TBL2 = JSON.parse(fs.readFileSync(path.join(ROOT, 'public/assets/trees/tree_species.json'), 'utf8')).species;
+    const YD = TR.yearDays(), CS = CH2.CHUNK_SIZE;
+
+    // ── 자리 — **기계가 고른다**(하드코딩 0). 밤나무와 소나무가 같은 화면에 서는 숲 청크 하나.
+    //    시더 정본을 **존과 같은 청크 크기로** 불러 세우므로 화면이 받을 그 행과 같은 답이다(사본 0).
+    let FSITE = null;
+    outer:
+    for (let cx = 50; cx <= 350 && !FSITE; cx += 3) for (let cy = 50; cy <= 350; cy += 3) {
+      let rws = []; try { rws = CH2.generateChunkResources('hanbando', 'forest', cx, cy, CS, new Set(), 100) || []; } catch (e) { continue; }
+      const tr = rws.filter((r) => r.type === 'tree');
+      if (tr.length < 40) continue;
+      const chn = tr.filter((r) => r.sp === 'chestnut'), pns = tr.filter((r) => r.sp === 'pine');
+      if (chn.length >= 8 && pns.length >= 4) {
+        // 가장 가운데 있는 밤나무의 **셀 중심**에 광장을 놓는다(스폰은 셀 중심에 스냅된다 —
+        // zone.js `sx = floor(sx/32)*32+16`) ⇒ 그 나무는 반드시 `GATHER_RANGE` 안이다.
+        const c0 = cx * CS + CS / 2, c1 = cy * CS + CS / 2;
+        chn.sort((a, b) => (Math.hypot(a.x - c0, a.y - c1) - Math.hypot(b.x - c0, b.y - c1)));
+        FSITE = { cx, cy, n: tr.length, ch: chn.length, pn: pns.length, tree: chn[0] };
+        break outer;
+      }
+    }
+    if (!FSITE) {
+      ok(false, '★★열매① 밤나무·소나무가 같이 선 숲 청크를 못 찾았다 — 못 쟀다');
+    } else {
+      const SQ = { x: Math.floor(FSITE.tree.x / 32) * 32 + 16, y: Math.floor(FSITE.tree.y / 32) * 32 + 16 };
+      say(`\n── 열매 자리: 청크(${FSITE.cx},${FSITE.cy})·${CS}px 나무 ${FSITE.n}그루 · 밤나무 ${FSITE.ch} · 소나무 ${FSITE.pn} — 광장 (${SQ.x},${SQ.y})`);
+      const z3 = boot('zone', '/tmp/zone-wrap.js', {
+        PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
+        ENABLE_VILLAGES: '0', ENABLE_BANDITS: '0', E2E_GIVE: '1',
+        WRAP_ZONE_PATCH: JSON.stringify({ mainSquare: { x: SQ.x, y: SQ.y, name: '열매 프로브' } }),
+      });
+      ok(await waitHttp(`http://localhost:${ZPORT}/health`), 'zone 기동 (열매)');
+
+      // ── 실클라가 쓰는 그 선 — 붙어서 **서버가 보낸 행**을 그대로 모은다 ────────────────
+      const rows = new Map();       // id → 행(서버가 마지막으로 보낸 것)
+      const feed = { spawn1: 0, spawnN: 0, update: 0 };
+      const notices = [];
+      const soak = (m) => {
+        if (m.type === 'welcome') for (const r of (m.resources || [])) rows.set(r.id, r);
+        else if (m.type === 'resources_spawn') { feed.spawnN++; for (const r of (m.resources || [])) rows.set(r.id, r); }
+        else if (m.type === 'resource_spawn') { feed.spawn1++; if (m.resource) rows.set(m.resource.id, m.resource); }
+        else if (m.type === 'resource_update') { feed.update++; const r = rows.get(m.id); if (r) r.hp = m.hp; }
+        else if (m.type === 'resources_removed') for (const id of (m.ids || [])) rows.delete(id);
+        else if (m.type === 'resource_removed') rows.delete(m.id);
+      };
+      const W = await new Promise((res, rej) => {
+        const ws = new WebSocket(`ws://localhost:${ZPORT}/?name=%EC%97%B4%EB%A7%A4`);
+        const t = setTimeout(() => rej(new Error('welcome timeout')), 30000);
+        ws.on('message', (raw) => {
+          let m; try { m = JSON.parse(String(raw)); } catch (e) { return; }
+          soak(m);
+          if (m.type === 'notice') notices.push(m.text);
+          if (m.type === 'welcome') { clearTimeout(t); res(ws); }
+        });
+        ws.on('error', (e) => { clearTimeout(t); rej(e); });
+      }).catch((e) => { ok(false, `★★열매① 존에 못 붙었다 — ${e.message}`); return null; });
+
+      if (W) {
+        const sendW = (m) => { try { W.send(JSON.stringify(m)); } catch (e) {} };
+        // ★숨쉬기 — 30초 입력이 없으면 존이 좀비로 보고 선을 끊는다(zone.js `STALE_WS_MS`).
+        //   실측으로 그걸 밟았다: 끊긴 뒤엔 시계도 안 서고 방송도 안 와 판정이 전부 거짓 빨강이 됐다.
+        let _seq = 0; const HB = setInterval(() => sendW({ type: 'input', seq: ++_seq, vx: 0, vy: 0 }), 5000);
+        const treesOf = (sp) => [...rows.values()].filter((r) => r.type === 'tree' && r.sp === sp);
+        const until = async (fn, ms, every) => {
+          const t0 = Date.now();
+          while (Date.now() - t0 < (ms || 60000)) { if (fn()) return true; await sleep(200); if (every) every(); }
+          return fn();
+        };
+        await until(() => treesOf('chestnut').length > 0, 60000);
+        const nCh = treesOf('chestnut').length, nPn = treesOf('pine').length, nMu = treesOf('mulberry').length;
+        ok(nCh > 0 && nPn > 0, `★★열매① 세계가 밤나무 ${nCh}그루·소나무 ${nPn}그루·산뽕 ${nMu}그루를 **선으로** 실어 보냈다`);
+        ok(treesOf('chestnut').every((r) => typeof r.fruitNow === 'boolean'),
+          `★★열매① 그 행에 **\`fruitNow\` 한 비트**가 실려 있다(열매 종 ${nCh}그루 전부 boolean)`);
+
+        // ── 철 세우기 — 증인 둘(시계 알림 · 개체 비트). 날짜는 달력 정본이 고른다(손으로 안 적는다).
+        const midOf = (se, yr) => { const ds = []; for (let d = 0; d < YD; d++) if (TR.seasonOfDay(d) === se) ds.push(d); return yr * YD + ds[Math.floor(ds.length / 2)]; };
+        const setSeason = async (se, yr, cond) => {
+          const day = midOf(se, yr), n0 = notices.length; let last = 0;
+          const seen = await until(() => notices.slice(n0).some((t) => t.includes('시계 세움') && t.includes('"day":' + day)), 30000,
+            () => { if (Date.now() - last > 2000) { last = Date.now(); sendW({ type: '__e2e_clock', day, night: false }); } });
+          const okk = seen && await until(cond, 30000);
+          return { day, seen, ok: okk, se: TR.seasonOfDay(day) };
+        };
+        const allF = (sp) => () => treesOf(sp).every((r) => !r.fruitNow);
+        const allT = (sp) => () => { const a = treesOf(sp); return a.length > 0 && a.every((r) => r.fruitNow === true); };
+        const onN = (sp) => treesOf(sp).filter((r) => r.fruitNow).length;
+
+        // ⓐ 겨울 — 아무것도 안 달렸다(겨울 소멸이 여기서 일어나 다음 해가 깨끗한 판이 된다)
+        const w0 = await setSeason('winter', 0, () => allF('chestnut')() && allF('mulberry')());
+        ok(w0.ok, `★★열매ⓐ **겨울엔 안 달렸다** — day ${w0.day}(${w0.se}) · 밤나무 ${onN('chestnut')}/${nCh} · 산뽕 ${onN('mulberry')}/${nMu}`);
+        // ⓑ 봄 — 아직이다
+        const s1 = await setSeason('spring', 1, () => allF('chestnut')() && allF('mulberry')());
+        ok(s1.ok, `★★열매ⓑ **봄에도 아직이다** — day ${s1.day}(${s1.se}) · 밤나무 ${onN('chestnut')}/${nCh}`);
+        // ⓒ 여름 — 밤은 아직, **산뽕은 익는다**. 철은 서버 종 표가 정본이다(비트가 철을 다시 안 말한다)
+        const u1 = await setSeason('summer', 1, () => allF('chestnut')() && (nMu === 0 || allT('mulberry')()));
+        ok(u1.ok && onN('chestnut') === 0,
+          `★★★열매ⓒ **여름엔 오디가 익고 밤은 아직이다** — day ${u1.day}(${u1.se}) · 산뽕 ${onN('mulberry')}/${nMu}(표 \`${TR.fruitSeasonOf('mulberry')}\`) · 밤나무 ${onN('chestnut')}/${nCh}(표 \`${TR.fruitSeasonOf('chestnut')}\`)`);
+        // ⓓ 가을 — **밤이 보인다**. 그 순간 개체 방송이 **실제로 나간다**(ⓕ 의 대조군)
+        const fb = { ...feed };
+        const a1 = await setSeason('autumn', 1, allT('chestnut'));
+        const burst = (feed.spawnN - fb.spawnN) + (feed.spawn1 - fb.spawn1);
+        ok(a1.ok, `★★★열매ⓓ **가을에 밤이 보인다** — day ${a1.day}(${a1.se}) · 밤나무 ${onN('chestnut')}/${nCh} 전부 \`fruitNow=true\``);
+        ok(burst > 0, `★★열매ⓓ 그리고 그 **뒤집히는 순간에만** 방송이 나갔다 — 철이 바뀌며 개체 방송 ${burst}건`);
+        ok(treesOf('pine').every((r) => r.fruitNow === undefined),
+          `★★열매ⓔ **소나무엔 비트가 아예 없다** — 열매가 안 여는 종은 이 물음의 대상이 아니다(소나무 ${nPn}그루)`);
+
+        // ⓕ 매 틱 0 — 철을 고정해 둔 동안 개체 방송이 **한 건도 안 온다**(대조군은 위 ⓓ 의 ${burst}건)
+        const f0 = { ...feed };
+        await sleep(6000);
+        const dN = (feed.spawnN - f0.spawnN) + (feed.spawn1 - f0.spawn1);
+        ok(dN === 0, `★★★열매ⓕ **매 틱 안 온다** — 철을 고정한 6초 동안 개체 방송 ${dN}건 (뒤집힐 땐 ${burst}건이 나갔다)`);
+
+        // ⓖ 따감 — 그 나무만 꺼진다 · 나머지는 그대로 · `hp` 무접촉
+        const target = treesOf('chestnut').sort((a, b) => Math.hypot(a.x - SQ.x, a.y - SQ.y) - Math.hypot(b.x - SQ.x, b.y - SQ.y))[0];
+        const dist = Math.hypot(target.x - SQ.x, target.y - SQ.y);
+        const hp0 = target.hp, nOn0 = onN('chestnut'), nt0 = notices.length;
+        sendW({ type: 'pick_fruit', resId: target.id });
+        await until(() => notices.length > nt0, 15000);
+        const got = notices.slice(nt0).join(' | ');
+        await until(() => { const r = rows.get(target.id); return r && r.fruitNow === false; }, 15000);
+        const after = rows.get(target.id);
+        ok(got.includes(TR.koOf('chestnut')), `★열매ⓖ 자명 통과 금지 — 실제로 **땄다**(${dist.toFixed(1)}px · 알림 「${got.slice(0, 40)}」)`);
+        ok(!!after && after.fruitNow === false,
+          `★★★열매ⓖ **따면 그 순간 꺼진다** — ${target.id} \`fruitNow\` true → ${after ? after.fruitNow : 'null'}`);
+        ok(!!after && after.hp === hp0, `★★열매ⓖ 그런데 **나무는 안 줄었다** — hp ${hp0} → ${after ? after.hp : 'null'}(\`hp\` 무접촉 — T135 규약)`);
+        ok(onN('chestnut') === nOn0 - 1, `★★열매ⓖ 그리고 **딴 그 한 그루만** 꺼졌다 — ${nOn0} → ${onN('chestnut')}그루`);
+        // ⓗ 이듬해 그 철엔 다시 — 세계의 규약(연 1회)이 그렇게 말한다
+        const a2 = await setSeason('autumn', 2, allT('chestnut'));
+        ok(a2.ok, `★★열매ⓗ **이듬해 가을엔 다시 달린다** — day ${a2.day}(${a2.se}) · 밤나무 ${onN('chestnut')}/${nCh}`);
+        // ⓘ 자명 통과 금지 — 같은 나무·같은 판정이 철에 따라 답을 바꿨다(둘 다 통과한 게 아니다)
+        ok(w0.ok && u1.ok && a1.ok && w0.day !== a1.day,
+          `★열매ⓘ 자명 통과 금지 — 같은 판정이 겨울·봄·여름엔 false, 가을엔 true 였다`);
+
+        // ── 화면 — 그 비트를 **그리는 함수**에 그대로 먹인다(T148-B 의 `__treeSpriteFor`) ──
+        const browser = await chromium.launch({ headless: true, executablePath: require('playwright').chromium.executablePath() });
+        const page = await (await browser.newContext({ viewport: { width: 1400, height: 900 } })).newPage();
+        await page.goto(`http://localhost:${CPORT}/`); await sleep(2500);
+        await page.waitForFunction(() => { const b = document.getElementById('enter'); return !!(b && b.onclick && !b.disabled); }, { timeout: 45000 }).catch(() => {});
+        try { const b = await page.$('#enter'); if (b) await b.click(); } catch (e) {}
+        await page.waitForFunction(() => typeof window.__treeSpriteFor === 'function', { timeout: 60000 }).catch(() => {});
+        await page.waitForFunction(() => !!(window.__treeSpeciesTable && window.__treeSpeciesTable()), { timeout: 60000 }).catch(() => {});
+        await sleep(6000);
+        await page.evaluate(() => { if (typeof window.__rainForce === 'function') window.__rainForce({ precip: 0 }); });
+        const live = treesOf('chestnut').filter((r) => r.fruitNow)[0] || treesOf('chestnut')[0];
+        const plate = await page.evaluate((a) => (window.__treeSpriteFor ? window.__treeSpriteFor(a[0], a[1], a[2], a[3]) : null),
+          [live.sp, live.x, live.y, !!live.fruitNow]);
+        const plateOff = await page.evaluate((a) => (window.__treeSpriteFor ? window.__treeSpriteFor(a[0], a[1], a[2], false) : null),
+          [live.sp, live.x, live.y]);
+        ok(!!plate && TBL2.chestnut.autumn.includes(plate),
+          `★★★열매ⓙ **세계가 실은 그 비트로 화면이 열매판을 고른다** — ${live.id} fruitNow=${live.fruitNow} → \`${plate}\` (표의 \`autumn\`)`);
+        ok(!!plateOff && TBL2.chestnut.sprites.includes(plateOff) && plateOff !== plate,
+          `★★열매ⓙ 비트가 false 면 **성목판**이다 — \`${plateOff}\`(표의 \`sprites\`) ≠ \`${plate}\``);
+        const pineLive = treesOf('pine')[0];
+        if (pineLive) {
+          const pp = await page.evaluate((a) => window.__treeSpriteFor(a[0], a[1], a[2], true), [pineLive.sp, pineLive.x, pineLive.y]);
+          const pq = await page.evaluate((a) => window.__treeSpriteFor(a[0], a[1], a[2], false), [pineLive.sp, pineLive.x, pineLive.y]);
+          ok(pp === pq && TBL2.pine.sprites.includes(pp),
+            `★★열매ⓚ 소나무는 **비트가 와도 그림이 안 바뀐다** — \`${pp}\`(없는 그림을 지어내지 않는다)`);
+        }
+        // ── 대조 스크린샷 한 장 (재민 ④) ─────────────────────────────────────────────
+        await sleep(2500);
+        await page.screenshot({ path: `${SHOTS}/나무_종별_가을.png` }).catch(() => {});
+        say(`    대조 스크린샷 → ${SHOTS}/나무_종별_가을.png (가을 day ${a2.day} · 밤나무 ${onN('chestnut')}/${nCh} 열매판)`);
+        await browser.close();
+        clearInterval(HB);
+        try { W.close(); } catch (e) {}
+      }
+      try { z3.kill(); } catch (e) {}
+      await sleep(2500);
+    }
   }
 
   say('\n[1] 계약 — __natDbg');

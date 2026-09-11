@@ -252,6 +252,7 @@ function activateChunk(cx, cy) {
   const spawned = [];
   for (const r of seedResources) {
     if (isTerrainBlockedLocal(r.x, r.y)) continue; // 바다 위 자원 차단
+    _fruitStamp(r);                 // ★[T170] 스폰 방송에 `fruitNow` 한 비트가 실린다(볼 때 정산 — 여기가 "볼 때")
     resources.set(r.id, r);
     chunkManager.insertResource(r);
     spawned.push(r);
@@ -6992,6 +6993,41 @@ function tryPlantTree(player, x, y, item) {
 //   · 규약 넷은 `server/trees.js` 가 쥔다(연 1회 · 겨울 소멸 · 볼 때 정산 · 크기 비례) — 여기 안 적는다.
 //   · 거리 게이트는 `GATHER_RANGE` **그대로**다(새 예외 0 — T90 이 세운 규약).
 const _fruitStore = new Map();          // 존 전체의 열매 재고(자리 키 → {n, yr}) — 볼 때 정산이라 틱 0
+
+// ★★[T170 2026-09-11 재민 확정] **`fruitNow` 한 비트** — "지금 이 나무에 열매가 달렸나".
+//   값의 정본은 `Trees.fruitSettle`(볼 때 정산)이다 — 규약 넷(연 1회·겨울 소멸·볼 때·크기 비례)을
+//   **여기 다시 안 적는다**. 이 함수가 하는 일은 그 답을 개체 행에 **찍는 것** 하나다(사본 0).
+//   ⚠철(`fs`)을 다시 말하지 않는다 — 어느 철에 여는지는 서버 종 표가 정본이고, 이 비트는 "달렸나"다.
+//   ⚠클라는 한 줄도 안 고친다: `resource_spawn` 은 클라에서 `set` 이라 **덮어쓰기**고(`_shapePlantedAll`
+//     이 쓰는 그 문법 · zone.js:1425), 그림은 T148-B 가 이미 `item.r.fruitNow` 를 넘긴다.
+//   @returns 비트가 **뒤집혔으면** true(부르는 쪽이 그때만 방송한다 — 매 틱 방송 0)
+function _fruitStamp(r) {
+  const T = Trees;
+  const on = !!(T && T.ON() && r && r.type === 'tree' && r.sp && T.isFruitTree(r.sp));
+  if (!on) { if (r && r.fruitNow !== undefined) { delete r.fruitNow; return true; } return false; }
+  const sz = Number.isFinite(r.szf) ? r.szf : 0.5;
+  const now = T.fruitSettle(_fruitStore, r.seedKey || r.id, r.sp, gameDayNow(), sz) > 0;
+  const changed = (!!r.fruitNow !== now);
+  r.fruitNow = now;
+  return changed;
+}
+// ★[T170] **철이 바뀌는 날 한 번** — 익음(결실철 첫 정산)과 겨울 소멸이 이 자리에서 뒤집힌다.
+//   평시 비용은 낱말 비교 하나다(`Soil.onGameTick` 과 같은 규약 — 경계에서만 일한다 · 새 타이머 0).
+//   방송은 있는 배치 문법(`resources_spawn`) 그대로 — 새 메시지 유형 0.
+//   ⚠열쇠는 **해+철**이다(철 이름만이 아니다). `fruitSettle` 의 재고는 `yr` 이 바뀔 때도 뒤집히고
+//     (연 1회 규약), 실측으로 그걸 잡았다: 가을에 따 간 나무가 **이듬해 가을에 안 돌아왔다**
+//     — 철 이름이 둘 다 'autumn' 이라 쓸기가 안 돌았기 때문이다.
+let _fruitSeason = null;
+function _fruitSeasonSweep() {
+  const T = Trees; if (!T || !T.ON()) return;
+  const d = gameDayNow();
+  const se = Math.floor(d / T.yearDays()) + ':' + T.seasonOfDay(d);
+  if (se === _fruitSeason) return;                     // 평시 O(1)
+  _fruitSeason = se;
+  const changed = [];
+  for (const r of resources.values()) if (_fruitStamp(r)) changed.push(r);
+  if (changed.length) { resourcesDirty = true; broadcast({ type: 'resources_spawn', resources: changed }); }
+}
 function tryPickFruit(player, resId) {
   const T = Trees;
   if (!T || !T.ON()) { send(player.ws, { type: 'notice', text: '열매를 딸 수 없다', kind: 'gather' }); return; }
@@ -7001,11 +7037,17 @@ function tryPickFruit(player, resId) {
   if (d > GATHER_RANGE) { send(player.ws, { type: 'notice', text: `${Math.round(d)}px 떨어짐 — ${GATHER_RANGE}px 안에서 딴다`, kind: 'gather' }); return; }
   const sp = target.sp, item = sp && T.fruitOf(sp);
   if (!item) { send(player.ws, { type: 'notice', text: '열매가 열리는 나무가 아니다', kind: 'gather' }); return; }
-  const day = zoneGameDay();
+  // ★★[T170 2026-09-11] **날짜 시계는 하나다.** 종전엔 여기만 `zoneGameDay()`(벽시계 파생)였다 —
+  //   달력·온도·계절은 전부 `gameDayNow()` 를 쓴다(zone.js:5899 의 그 계약). 두 시계가 갈리면
+  //   화면이 "가을"이라 적은 날 나무가 여름을 산다. §0-ⓒ 실측: 가을 픽스처(`__e2e_clock`)를 세워도
+  //   따기는 **얼기 전의 철**을 봤다 — 얼리는 손잡이가 `gameDayNow` 만 갈아끼우기 때문이다.
+  const day = gameDayNow();
   const key = target.seedKey || target.id;
   const sz = Number.isFinite(target.szf) ? target.szf : 0.5;
   // 한 번에 따는 양은 **그 나무에 달린 만큼**이 상한이다 — 새 수를 안 짓는다(있는 대로 딴다).
   const got = T.fruitTake(_fruitStore, key, sp, day, sz, T.fruitYieldOf(sp));
+  // ★[T170] 딴 그 순간이 "정산이 뒤집히는" 세 자리 중 하나다 — 바뀌었으면 그 행을 다시 보낸다.
+  if (_fruitStamp(target)) broadcast({ type: 'resource_spawn', resource: target });
   if (!(got > 0)) {
     send(player.ws, { type: 'notice', text: `${T.koOf(sp)} — 아직 열매가 없다(${['봄','여름','가을','겨울'][['spring','summer','autumn','winter'].indexOf(T.fruitSeasonOf(sp))]}에 열린다)`, kind: 'gather' });
     return;
@@ -10809,6 +10851,7 @@ setInterval(() => {
   // §16 답압 길 — 게임일 경계 dirty 플러시·coarse 재구축·클라 변경분(평시 O(1) 비교)
   Roads.onGameTick(now);
   Soil.onGameTick(now);   // [배치 20 B] 토양치 게임일 1회 플러시 + tile_state 변경분 방송
+  _fruitSeasonSweep();    // ★[T170] 철이 바뀌는 날 한 번 — 열매 비트 뒤집힘 방송(평시 낱말 비교 1회)
 
   // === 14.49-e3-perf5: idle zone skip ===
   // 사람 player(isNpc=false) + observer 모두 0명이면 tick 풀 처리 skip.
