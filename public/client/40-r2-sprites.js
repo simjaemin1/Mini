@@ -171,12 +171,78 @@
     _img.src = '/assets/trees/tree' + String(_ti).padStart(2, '0') + '.png';
     TREE_SPRITES.push(_img);
   }
+
+  // ═══ ★★[T148-B 2026-09-07] **스프라이트는 종이 정한다** ═══════════════════════
+  //
+  // ★재민 캐논: *"열매는 보이고, 가서 딴다."* 그 앞 절반이 이 카드다 — **밤나무는 밤나무로 보인다.**
+  //
+  // ★§0 실측이 고친 것 둘:
+  //   ① 위 고리는 `tree01~12` 만 싣는다. 표는 **열다섯**을 적어 뒀다 —
+  //      `tree13`(개암) `tree14`(산뽕) `tree15`(머루)는 **한 번도 화면에 온 적이 없다**.
+  //   ② 아래 있던 `SAP_SPECIES` 여덟 줄은 **표의 사본**이었다(클라가 종 목록을 적고 있었다).
+  //      게다가 묘목을 `sp` 가 아니라 **해시**로 골랐다 — 같은 자리의 나무가 자라도 종이 안 맞았다.
+  //
+  // ★규약: **종 목록을 클라에 적지 않는다**(T90 문법). `tree_species.json` 이 정본이고
+  //   그 파일은 굽기(`scripts/nature_render.py`)가 적는다 — 손으로 고치면 다시 구울 때 덮인다.
+  //   같은 종 안에서 몇 번째 판인지는 **지금의 자리 해시 그대로**(`_treeHash` · 주사위 0 · 사본 0).
+  //   `sp` 가 없으면(옛 저장 · `T135_TREES=0`) **종전 그대로** 열두 장 해시 — 되돌림 = 비트 동일.
+  const TREE_SPECIES = { ok: false, byId: null };     // 표 원본(그대로 둔다 — 클라가 다시 안 적는다)
+  const _spriteCache = new Map();                     // 이름 → Image (한 번만 만든다)
+  function _sprite(name) {
+    let im = _spriteCache.get(name);
+    if (!im) { im = new Image(); im.src = '/assets/trees/' + name + '.png'; _spriteCache.set(name, im); }
+    return im;
+  }
+  // ★열매가 달린 판의 키 이름은 **표가 들고 있다**. 지금 표엔 `autumn` 뿐이지만 오디는 여름에 익는다 —
+  //   세션8(T169)이 `summer` 키를 더할 때 **클라는 한 줄도 안 고쳐야 한다** ⇒ 둘 다 받아들인다.
+  //   (종 하나는 열매 철이 하나다 — 서버 `Trees.fruitSeasonOf` 가 그 정본이고 클라는 안 베낀다.)
+  const FRUIT_KEYS = ['autumn', 'summer'];
+  function _fruitList(e) { for (const k of FRUIT_KEYS) if (e && Array.isArray(e[k]) && e[k].length) return e[k]; return null; }
+  // ★T0-b 규약 — **최상위 실행문을 늘리지 않는다**(`test-client-globals` 표가 그걸 센다).
+  //   그래서 표 적재도 훅 달기도 **함수 선언 안**에 넣고, 첫 그리기가 한 번 부른다(게으른 초기화).
+  let _spLoadStarted = false;
+  function _ensureSpecies() {
+    if (_spLoadStarted) return;
+    _spLoadStarted = true;
+    // ★하네스 훅(읽기 전용) — "그 종이 실제로 어느 파일을 썼나"를 화면에 묻는다(소스 대조 아님).
+    window.__treeSpriteFor = (sp, sx, sy, fruitNow) => {
+      const im = _speciesImg(sp, _treeHash(sx, sy), !!fruitNow);
+      return im ? String(im.src).replace(/^.*\//, '').replace(/\.png$/, '') : null;
+    };
+    window.__treeSpeciesTable = () => (TREE_SPECIES.ok ? Object.keys(TREE_SPECIES.byId) : null);
+    try {
+      fetch('/assets/trees/tree_species.json').then((r) => r.json()).then((j) => {
+        if (!j || !j.species) return;
+        TREE_SPECIES.byId = j.species; TREE_SPECIES.ok = true;
+        // 표가 말하는 그림만 미리 만든다(열다섯 + 가을판 + 묘목 여덟) — 이름을 여기서 짓지 않는다.
+        for (const e of Object.values(j.species)) {
+          for (const n of (e.sprites || [])) _sprite(n);
+          for (const n of (_fruitList(e) || [])) _sprite(n);
+          if (e.sapling) _sprite(e.sapling);
+        }
+        try { _mt3Chunk.clear(); _mt3Sig = ''; } catch (err) {}
+      }).catch(() => {});
+    } catch (e) {}
+  }
+  // 그 종의 **지금 판** — 열매가 달렸으면 열매판, 아니면 성목판. 판 번호는 자리 해시(종전 그대로).
+  function _speciesImg(sp, hsh, fruitNow) {
+    if (!TREE_SPECIES.ok || !sp) return null;
+    const e = TREE_SPECIES.byId[sp];
+    if (!e) return null;                              // 표에 없는 종 = 옛 저장 ⇒ 종전 길로 떨어진다
+    const grown = e.sprites || [];
+    if (!grown.length) return null;
+    const i = Math.min(grown.length - 1, (hsh * grown.length) | 0);
+    if (fruitNow) { const fl = _fruitList(e); if (fl && fl[i]) return _sprite(fl[i]); }
+    return _sprite(grown[i]);
+  }
+
   // ★★[T122 2026-09-05] **벤 자리의 두 단계** — 그루터기·묘목. 그림은 **T129 가 이미 구웠다**
   //   (`stump01.png` 종 공통 하나 · `sap_<종>.png` 여덟). 축소 그림을 임시로 쓰지 않는다.
   //   ⚠종은 아직 하나(`tree`)라 묘목은 **성목과 같은 해시**로 고른다 — 같은 자리의 나무가
   //     자라면 같은 종이어야 한다(자리마다 종이 바뀌면 그건 재생이 아니라 다른 나무다).
-  const SAP_SPECIES = ['pine', 'jat', 'oak', 'chestnut', 'willow', 'hazel', 'mulberry', 'grape'];
-  const SAP_SPRITES = SAP_SPECIES.map((sp) => { const im = new Image(); im.src = '/assets/trees/sap_' + sp + '.png'; return im; });
+  // ★★[T148-B] 여기 있던 `SAP_SPECIES` 여덟 줄(표의 사본)을 **지웠다.** 묘목은 이제 `sp` 로 고른다 —
+  //   위 주석이 스스로 적어 둔 그 자리다: *"종은 아직 하나라 묘목은 성목과 같은 해시로 고른다."*
+  //   종 축이 왔으므로 해시가 아니라 **그 나무의 종**이 답이다(같은 자리가 자라면 같은 종이다).
   const STUMP_SPRITE = (() => { const im = new Image(); im.src = '/assets/trees/stump01.png'; return im; })();
   const _regrowDraw = { stump: 0, sapling: 0 };   // 하네스용 — 실제로 그린 횟수
 
@@ -198,23 +264,28 @@
     ctx.fillStyle = '#8a6438';
     ctx.beginPath(); ctx.ellipse(x, y - (h || 10), (r || 7), (r || 7) * 0.4, 0, 0, Math.PI * 2); ctx.fill();
   }
-  function drawSaplingIso(x, y, r, h, seedX, seedY) {
-    const hsh = _treeHash(seedX != null ? seedX : x, seedY != null ? seedY : y);
-    const img = SAP_SPRITES[(hsh * SAP_SPRITES.length) | 0];
+  function drawSaplingIso(x, y, r, h, seedX, seedY, sp) {
+    _ensureSpecies();
+    // ★[T148-B] 표의 `sapling` 하나 — `sp` 가 없거나 표에 없는 종이면 그림이 없고, 아래 폴백으로 간다.
+    const e = (TREE_SPECIES.ok && sp) ? TREE_SPECIES.byId[sp] : null;
+    const img = (e && e.sapling) ? _sprite(e.sapling) : null;
     if (_drawStandingSprite(img, x, y, r || 4, h || 20, 1.3)) { _regrowDraw.sapling++; return; }
-    drawTreeIso(x, y, r, h, seedX, seedY);   // 폴백 — 작은 나무(크기는 서버가 이미 줄여 보냈다)
+    drawTreeIso(x, y, r, h, seedX, seedY, sp);   // 폴백 — 작은 나무(크기는 서버가 이미 줄여 보냈다)
   }
 
   const TREE_SPRITE_SCALE = 1.3;   // 나무 h 대비 스프라이트 높이 배수
   const _treeDraw = { n: 0, h: 0, px: 0, aspect: 0 };   // ★[배치 21] 하네스용 — 스프라이트 경로로 **실제 그린** 횟수
 
-  function drawTreeIso(x, y, r, h, seedX, seedY) {
+  function drawTreeIso(x, y, r, h, seedX, seedY, sp, fruitNow) {
+    _ensureSpecies();
     r = r || 8;
     h = h || 60;
     const hsh = _treeHash(seedX != null ? seedX : x, seedY != null ? seedY : y);
     // 스프라이트 로드됐으면 그걸로 — 해시로 종류 고정, 줄기 밑면을 (x,y)에 앵커, h로 스케일
-    if (_treeSpritesLoaded > 0) {
-      const _img = TREE_SPRITES[(hsh * TREE_SPRITES.length) | 0];
+    // ★★[T148-B] **종이 먼저다.** 표가 왔고 그 나무가 종을 들고 있으면 그 종의 판을 쓴다.
+    //   표가 아직 안 왔거나 `sp` 가 없으면 아래 종전 길(열두 장 해시)로 그대로 떨어진다 — 되돌림 동형.
+    if (_treeSpritesLoaded > 0 || TREE_SPECIES.ok) {
+      const _img = _speciesImg(sp, hsh, fruitNow) || TREE_SPRITES[(hsh * TREE_SPRITES.length) | 0];
       if (_img && _img.complete && _img.naturalHeight) {
         ctx.fillStyle = 'rgba(0,0,0,0.18)';
         ctx.beginPath(); ctx.ellipse(x, y, r * 1.5, r * 0.5, 0, 0, Math.PI * 2); ctx.fill();
