@@ -124,5 +124,45 @@ sec('⑦ 셈 — 나무꾼 0 → 소득 0 · 벤 것 0 → 소득 0');
   ok(f({ _wcutDay: 0, counts: { lumberjack: 3 } }) === 0, '★★⑦ 벤 것 0 → 0(숲 고갈이 소득에 보인다)');
 }
 
+// ── ⑧ [T172] 배율은 실체가 나는 곳에 ──────────────────────────────────────────
+sec('⑧ [T172] 배율 자리 — 문에는 양과 배율을 **따로** 넘기고, 배율은 실체에 건다');
+{
+  const e = strip(ENG);
+  //   ★문이 배율을 **따로** 넘긴다(덮어쓰면서 지워 버리지 않는다)
+  ok(/woodIncomeFn\(v, npc, baseAmt, _mul\)/.test(e),
+    '★★⑧ 문이 **양과 배율을 따로** 넘긴다(`baseAmt`, `_mul`)');
+  ok(/const _mul = skillMul \* toolBoost \* inputMult/.test(e),
+    '★★⑧ 배율은 `skillMul × toolBoost × inputMult` — 엔진이 **한 번만** 센다(사본 0)');
+  //   ★★문이 돌려준 값을 **그대로** 받는다 — 배율을 한 번 더 곱하면 이중이다.
+  //     ⚠넓게 묻는다: 대입문에 `_mul` 이 끼어들면 어떤 꼴이든 빨강(`_wi * _mul` 도 포함).
+  ok(/baseAmt = _wi;/.test(e), '★★⑧ 문이 돌려준 값을 **그대로** 받는다(`baseAmt = _wi;`)');
+  const asg = e.match(/baseAmt = _wi[^;]*;/g) || [];
+  ok(asg.length === 1 && !/_mul/.test(asg[0]),
+    '★★⑧ 그 대입에 배율이 **안 끼어든다**(곱하면 이중이다)', asg.join(' ') || '없음');
+  //   ★두 문 **모두** `inputMult` 를 배율에 넣는다(하나만 넣으면 그쪽만 투입 게이트가 산다)
+  const muls = e.match(/const _mul = [^;]+;/g) || [];
+  ok(muls.length === 2 && muls.every((m) => /skillMul \* toolBoost \* inputMult/.test(m)),
+    '★★⑧ **사냥·벌목 두 문 모두** 배율 = `skillMul × toolBoost × inputMult`', `${muls.length}곳`);
+  //   ★`baseAmt` 식은 한 글자도 안 변했다 — 미주입 팔 비트 동일의 근거
+  ok(/let baseAmt = jdef\.base \* landBoost \* skillMul \* toolBoost \* inputMult \* jobScale/.test(e),
+    '★★⑧ `baseAmt` 계산식이 **종전 그대로**다(곱셈 순서까지 — 미주입 비트 동일)');
+  //   ★랩: 배율은 **벤 자리**에 걸린다
+  ok(/_r1=Math\.max\(0,_r0-L_CHOP\*t172Mul\(a\)\)/.test(LAB.replace(/\s/g, '')),
+    '★★⑧ 랩에서 배율이 **하루 벌목량에 걸린다**(잘 드는 도끼가 더 벤다)');
+  //   ★접근자는 읽기만 한다(정본은 엔진)
+  const mf = strip(bodyOf('t172Mul'));
+  ok(/_t172mul/.test(mf) && !/skills|toolBoost|storage/.test(mf),
+    '★★⑧ 랩 접근자는 **엔진이 심은 값을 읽기만** 한다(배율을 다시 안 짠다)');
+  const lits = (mf.match(/\b\d+(\.\d+)?\b/g) || []).filter((x) => x !== '0' && x !== '1' && x !== '172');
+  ok(lits.length === 0, '★★⑧ 접근자 본문에 **새 수가 0개**', lits.join(',') || '0개');
+  //   ★실기 — 숙련·도구가 갈리면 실체가 갈린다
+  const _i2 = LAB.indexOf('function t172Mul');
+  const _b2 = bodyOf('t172Mul');
+  const f = new Function('return (' + LAB.slice(_i2, LAB.indexOf(_b2, _i2) + _b2.length) + ')')();
+  ok(f({ _esk: { _t172mul: 1.5 } }) === 1.5, '★★⑧ 숙련 10·좋은 도구 → 배율 1.5(더 벤다)');
+  ok(f({ _esk: { _t172mul: 0 } }) === 0, '★★⑧ **`inputMult=0` 이면 배율 0 ⇒ 실체 0**(못 벤다)');
+  ok(f({}) === 1 && f({ _esk: null }) === 1, '★⑧ 미연결·미주입은 **1**(종전 그대로)');
+}
+
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
 process.exit(fail ? 1 : 0);

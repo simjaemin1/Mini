@@ -3528,8 +3528,18 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
     //     미주입이면 `null` 이라 `baseAmt` 가 그대로 간다 = **종전 비트**(랩 기본 abstract · 서버 무주입).
     //   ⚠**대체지 얹기가 아니다.** 여기서 `baseAmt` 를 바꾸면 산출(meat)도 부산물(hide·bone…)도
     //     같은 수를 따라간다 — 두 장부가 갈리지 않는다.
+    //   ★★[T172 2026-09-11] **배율은 문 뒤가 아니라 실체 쪽에 건다.** T154·T166 의 문은 `baseAmt` 를
+    //     통째로 덮어써서 `skillMul·toolBoost·inputMult` 를 **세계에서 지웠다** — 숙련 10 사냥꾼과
+    //     초보가 같은 고기를 가져왔다. 값 판정이 아니라 **자리 결함**이다(족보 145).
+    //     ⇒ 문에는 **양**(`baseAmt`)과 **배율**(`_mul`)을 **따로** 넘긴다. 문 뒤에 다시 곱하지 않는다
+    //       (그러면 이중이다) — 배율은 **실체가 나는 곳**(랩 하루 벌목량·하루 수확)에 걸려
+    //       "더 베고 더 잡는" 것으로 나타나고, 소득은 그 장부를 그대로 따른다.
+    //     ⚠`baseAmt` 의 계산식은 **한 글자도 안 건드렸다** — 미주입 팔은 곱셈 순서까지 종전 그대로다.
+    //     ⚠사냥·벌목은 `jobScale === 1` 이다(어부·채집만 ≠1 — 위 `jobScale` 줄) ⇒ 배율은 셋뿐.
     if (npc.currentJob === 'hunter' && v._world && typeof v._world.huntIncomeFn === 'function') {
-      const _hi = v._world.huntIncomeFn(v, npc, baseAmt);
+      const _mul = skillMul * toolBoost * inputMult;
+      npc._t172mul = _mul;                                   // 실체 자리가 읽는다(정본은 여기 하나 — 사본 0)
+      const _hi = v._world.huntIncomeFn(v, npc, baseAmt, _mul);
       if (typeof _hi === 'number' && _hi >= 0) baseAmt = _hi;
     }
     // ★★[T166 2026-09-10] **목재 소득 주입 문** — 나무는 벤 만큼만.
@@ -3537,7 +3547,9 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
     //   소득은 `base 0.3 × land.wood` 라는 **추상**이었다. 벤 그루가 소득을 정해야 한다.
     //   규약·이유는 위 사냥 주입 문과 같다(world 에 심겼을 때만 · 미주입 = 종전 비트 · **대체**).
     if (npc.currentJob === 'lumberjack' && v._world && typeof v._world.woodIncomeFn === 'function') {
-      const _wi = v._world.woodIncomeFn(v, npc, baseAmt);
+      const _mul = skillMul * toolBoost * inputMult;         // ★[T172] 위 사냥 문과 같은 규약
+      npc._t172mul = _mul;
+      const _wi = v._world.woodIncomeFn(v, npc, baseAmt, _mul);
       if (typeof _wi === 'number' && _wi >= 0) baseAmt = _wi;
     }
     // ★[포위 봉쇄 훅] 야외 직업(농부·어부·사냥·벌목·광부·채집)만 v._siegeOutMul(호스트 설치 시)로 감산 — 성 밖 노동이 끊김(잠행 노동 잔존).
@@ -9363,6 +9375,13 @@ function fellOK(sp,w){
 //   종 축·부등식은 그대로 돈다(벌목 판단은 값이 있어야 뜻이 있으니 별개 스위치가 필요 없다).
 const T123_FRUIT=()=>!(typeof window!=='undefined'&&window.T123_FRUIT===0);
 // ★랩 계측 — 종별 벌목/열매 수확 누계(표만 · 세계 규칙 0)
+/* ★★[T172 2026-09-11] **배율은 실체가 나는 곳에 건다.** 엔진 주입 문이 그 사람의
+     `skillMul × toolBoost × inputMult` 를 `npc._t172mul` 에 심어 둔다(정본은 엔진 하나 — 여기서 다시 안 짠다).
+     실체 자리(하루 벌목량 `L_CHOP` · 하루 수확 `huntTake`)가 그걸 곱해 **더 베고 더 잡는다**.
+     ⚠문 뒤에 또 곱하면 **이중**이다 — 소득은 장부를 그대로 따르고, 배율은 장부를 키운다.
+     ⚠`inputMult=0`(투입 없음)이면 이 값이 0 이라 **실체 행위도 0**이다(못 베고 못 잡는다).
+     미연결·미주입이면 1(종전 그대로). */
+function t172Mul(a){const n=a&&a._esk;const m=n&&n._t172mul;return (typeof m==='number'&&m>=0)?m:1;}
 function _tStat(s){return s._tstat||(s._tstat={felled:{},felledFruit:0,felledWood:0,fruitHarv:0,fruitDrop:0,ineq:{}});}
 /* ★★[T166 2026-09-10] 목재 소득 = **그날 벤 그루**. 되돌림 `L_WOODINCOME`(기본 'abstract' = 종전 비트).
      여태 나무꾼 산출은 `base 0.3 × land.wood` 라는 추상이었다 — 그런데 벌목꾼은 이미 `forestRich` 를
@@ -10857,6 +10876,7 @@ function lifeSync(sv){const s=sv||life,V2=(s&&s.V)||V,H=V2.houses;/*★다마을
   const placePair=(arr,cells)=>{const src=(cells&&cells.length)?cells:[hall];for(let i=0;i<arr.length;i++){const a=arr[i],w=src[(i>>1)%src.length];a._mp=i>>1;a.home=homeOf();if(!a.work)a.work={cx:w.cx,cy:w.cy};a.area=src;if(!a.px){a.px=a.home.cx;a.py=a.home.cy;}}};
   place(fi,bank);place(hu,(s.huntCells&&s.huntCells.length)?s.huntCells:s.forestCells);place(fg,forageCells);place(lj,s.forestCells);placePair(mi,s.oreCells&&s.oreCells.length?s.oreCells:s.rockEdge);   // ★사냥꾼만 사냥터 밴드(마을 밖 40~130m)로 원정 — a.area=밴드라 사냥터 이동 탐색도 자동으로 밴드 안. ★광부는 2인 1조
   for(let i=0;i<ot.length;i++){const a=ot[i];a.home=homeOf();a.work={cx:hall.cx+((i%6)-3),cy:hall.cy+((((i/6)|0)%6)-3)};a.role=otRole(s.econ,i);if(!a.px){a.px=a.home.cx;a.py=a.home.cy;}}   // ★회관 내부 앵커([-3..2]² = 8×8 회관의 벽 안 6×6, 문(0,3) 경유 도달)
+  {const _el=(s.econ&&s.econ.npcs)?s.econ.npcs.filter(n=>n.currentJob==='lumberjack'):[];for(let i2=0;i2<lj.length;i2++)lj[i2]._esk=_el.length?_el[i2%_el.length]:null;}   /*★[T172] 나무꾼↔econ NPC 연결 — 사냥꾼 `_esk` 와 같은 문법. 배율(숙련·도구·투입)이 실체에 걸리려면 그 사람을 알아야 한다*/
   {const _eh=(s.econ&&s.econ.npcs)?s.econ.npcs.filter(n=>n.currentJob==='hunter'):[];for(let i2=0;i2<hu.length;i2++){hu[i2]._esk=_eh.length?_eh[i2%_eh.length]:null;hu[i2]._fgl=(s.econ&&s.econ._fGlut)||0;hu[i2]._arm=(s.econ&&s.econ.storage)?Math.min(1,(s.econ.storage.armor||0)/Math.max(1,(s.econ.counts.warrior||0)+(s.econ.counts.hunter||0))):0;}}   // ★시각 사냥꾼↔econ NPC 연결: 살아있는 참조라 일일 xp 성장이 행동(명중·잠행·도살)에 그대로 반영
   s.agents=fa.concat(fi,hu,fg,lj,mi,ot);
   for(const a of s.agents)if(a.hp===undefined)a.hp=NPC_MAXHP;}   // ★신규/기존 agent HP 초기화(만피). 부상=hurtNPC, 회복=lifeDay
@@ -11272,7 +11292,7 @@ function resourceTick(s,day){   // ★숲·광맥 자원: 재생 + 벌목/채광
     if(a.job==='lumberjack'){const m=s.forestRich,k=a.work&&(a.work.cx+','+a.work.cy);
       // ★★★[T123] 벤 나무의 **종**을 세고, 열매종이면 남은 열매가 **같이 떨어진다**(증발 0).
       if(k&&m.has(k)){const _cx=a.work.cx,_cy=a.work.cy,_sp=treeAt(_cx,_cy),_T=TREES[_sp];
-        const _r0=m.get(k), _r1=Math.max(0,_r0-L_CHOP); m.set(k,_r1);
+        const _r0=m.get(k), _r1=Math.max(0,_r0-L_CHOP*t172Mul(a)); m.set(k,_r1);   /*★[T172] 숙련·도구가 실체에 걸린다 — 잘 드는 도끼가 더 벤다*/
         const _st=_tStat(s); const _grew=(_r0-_r1)/L_WOODMAX; _st.felled[_sp]=(_st.felled[_sp]||0)+_grew;
         /*★[T166] 오늘 벤 목재 — 소득 정본이 읽는다. **단위는 랩이 이미 정해 뒀다**(11305행):
             "벌목꾼 1인 = L_CHOP richness = 0.9×baseWood econ". 그 환산을 그대로 쓴다(새 수 0).
@@ -11313,7 +11333,7 @@ function resourceTick(s,day){   // ★숲·광맥 자원: 재생 + 벌목/채광
             if(!taken){rF=rr;bF=c;}}}
         const b=bF||bA;if(b){a.work={cx:b.cx,cy:b.cy};a.cpath=null;}}}
     else if(a.job==='hunter'&&s.gameRich){const m=s.gameRich,k=a.work&&(a.work.cx+','+a.work.cy);   // ★사냥 압력: 작업 셀 개체수 감소, 비면 짐승 많은 사냥터로 이동(실제 사냥 행태)
-      if(k&&m.has(k)){const _g0=m.get(k),_tk=Math.min(_g0,huntTake(_g0));m.set(k,Math.max(0,_g0-_tk));   // ★[T144] 포화형 수확(Holling II · 되돌림이면 상수)
+      if(k&&m.has(k)){const _g0=m.get(k),_tk=Math.min(_g0,huntTake(_g0)*t172Mul(a));m.set(k,Math.max(0,_g0-_tk));   /*★[T172] 숙련·활이 실체에 걸린다 — 잘 쏘는 사람이 더 잡는다*/   // ★[T144] 포화형 수확(Holling II · 되돌림이면 상수)
         s._hstat=s._hstat||{took:0,days:0};s._hstat.took+=_tk;s._hstat.days++;s._hkill=(s._hkill||0)+_tk;}   /*_hstat=계측(세계 규칙 무관) · _hkill=★[T154] 오늘 잡은 수(소득 정본이 읽는다)*/
       if(!k||!m.has(k)||(m.get(k)||0)<L_GAMEMAX*0.12){
         // ★분산 사냥: 다른 사냥꾼 사냥터 ±5 안은 피해 *빈* 풍부 셀 우선(잠행은 단독이 자연) — 전부 argmax로 몰리던 우르르 떼사냥 제거. 다 차 있으면 공유(몰이 폴백)

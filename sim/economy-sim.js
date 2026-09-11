@@ -2235,8 +2235,18 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
     //     미주입이면 `null` 이라 `baseAmt` 가 그대로 간다 = **종전 비트**(랩 기본 abstract · 서버 무주입).
     //   ⚠**대체지 얹기가 아니다.** 여기서 `baseAmt` 를 바꾸면 산출(meat)도 부산물(hide·bone…)도
     //     같은 수를 따라간다 — 두 장부가 갈리지 않는다.
+    //   ★★[T172 2026-09-11] **배율은 문 뒤가 아니라 실체 쪽에 건다.** T154·T166 의 문은 `baseAmt` 를
+    //     통째로 덮어써서 `skillMul·toolBoost·inputMult` 를 **세계에서 지웠다** — 숙련 10 사냥꾼과
+    //     초보가 같은 고기를 가져왔다. 값 판정이 아니라 **자리 결함**이다(족보 145).
+    //     ⇒ 문에는 **양**(`baseAmt`)과 **배율**(`_mul`)을 **따로** 넘긴다. 문 뒤에 다시 곱하지 않는다
+    //       (그러면 이중이다) — 배율은 **실체가 나는 곳**(랩 하루 벌목량·하루 수확)에 걸려
+    //       "더 베고 더 잡는" 것으로 나타나고, 소득은 그 장부를 그대로 따른다.
+    //     ⚠`baseAmt` 의 계산식은 **한 글자도 안 건드렸다** — 미주입 팔은 곱셈 순서까지 종전 그대로다.
+    //     ⚠사냥·벌목은 `jobScale === 1` 이다(어부·채집만 ≠1 — 위 `jobScale` 줄) ⇒ 배율은 셋뿐.
     if (npc.currentJob === 'hunter' && v._world && typeof v._world.huntIncomeFn === 'function') {
-      const _hi = v._world.huntIncomeFn(v, npc, baseAmt);
+      const _mul = skillMul * toolBoost * inputMult;
+      npc._t172mul = _mul;                                   // 실체 자리가 읽는다(정본은 여기 하나 — 사본 0)
+      const _hi = v._world.huntIncomeFn(v, npc, baseAmt, _mul);
       if (typeof _hi === 'number' && _hi >= 0) baseAmt = _hi;
     }
     // ★★[T166 2026-09-10] **목재 소득 주입 문** — 나무는 벤 만큼만.
@@ -2244,7 +2254,9 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
     //   소득은 `base 0.3 × land.wood` 라는 **추상**이었다. 벤 그루가 소득을 정해야 한다.
     //   규약·이유는 위 사냥 주입 문과 같다(world 에 심겼을 때만 · 미주입 = 종전 비트 · **대체**).
     if (npc.currentJob === 'lumberjack' && v._world && typeof v._world.woodIncomeFn === 'function') {
-      const _wi = v._world.woodIncomeFn(v, npc, baseAmt);
+      const _mul = skillMul * toolBoost * inputMult;         // ★[T172] 위 사냥 문과 같은 규약
+      npc._t172mul = _mul;
+      const _wi = v._world.woodIncomeFn(v, npc, baseAmt, _mul);
       if (typeof _wi === 'number' && _wi >= 0) baseAmt = _wi;
     }
     // ★[포위 봉쇄 훅] 야외 직업(농부·어부·사냥·벌목·광부·채집)만 v._siegeOutMul(호스트 설치 시)로 감산 — 성 밖 노동이 끊김(잠행 노동 잔존).
