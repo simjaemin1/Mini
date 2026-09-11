@@ -304,8 +304,12 @@ console.log('\n[⑤ 자연물 앵커·잠금 — 굽는 표가 정본이다 (T97
       const ids = Object.keys(sp).sort();
       ok(ids.length >= 8, `종 ${ids.length}가지 — ${ids.join(' ')}`);
       // ⓐ 표가 부르는 그림이 **전부 있다**(앵커에도 있고 파일도 있다)
+      // ★[T169] 열매판 칸이 둘(`summer`·`autumn`)이다 — 칸 이름을 여기 박지 않고 표에서 읽는다.
+      const PLATES = ['sprites', 'summer', 'autumn'];
+      const platesOf = (id) => PLATES.flatMap((c) => sp[id][c] || []);          // 열매판 포함 전수
+      const fruitPlatesOf = (id) => [...(sp[id].summer || []), ...(sp[id].autumn || [])];
       const named = [];
-      for (const id of ids) for (const k of [...(sp[id].sprites || []), ...(sp[id].autumn || []),
+      for (const id of ids) for (const k of [...platesOf(id),
                                              ...(sp[id].sapling ? [sp[id].sapling] : [])]) named.push(k);
       const ghost = named.filter((k) => !NA[k] || !fs.existsSync(path.join(TREE_DIR, k + '.png')));
       ok(ghost.length === 0, `종 표가 부르는 그림 ${named.length}장이 전부 있다 ${ghost.length ? '— 없는 것: ' + ghost.join(' ') : ''}`);
@@ -323,8 +327,8 @@ console.log('\n[⑤ 자연물 앵커·잠금 — 굽는 표가 정본이다 (T97
       //   종전엔 `=== 4` 였는데 T141 이 참나무를 더하자 그 줄이 먼저 거짓이 됐다.
       //   그리고 검사 대상도 `fruit_ko` 가 아니라 **`autumn` 이 있는 종**이어야 한다:
       //   가을 판을 가진 종은 전부 "같은 나무인가"를 지켜야 하기 때문이다(참나무가 그 예다).
-      const fruiting = ids.filter((id) => (sp[id].autumn || []).length);
-      ok(fruiting.length >= 4, `가을 판을 가진 종 ${fruiting.length} — ${fruiting.map((i) => sp[i].ko + (sp[i].fruit_ko ? '(' + sp[i].fruit_ko + ')' : '')).join(' · ')}`);
+      const fruiting = ids.filter((id) => fruitPlatesOf(id).length);
+      ok(fruiting.length >= 4, `열매 판을 가진 종 ${fruiting.length} — ${fruiting.map((i) => sp[i].ko + (sp[i].fruit_ko ? '(' + sp[i].fruit_ko + ')' : '') + '·' + ((sp[i].summer || []).length ? '여름' : '가을')).join(' · ')}`);
       const bad = [], grew = [], nofruit = [];
       const png = (k) => {
         const b = fs.readFileSync(path.join(TREE_DIR, k + '.png'));
@@ -332,10 +336,11 @@ console.log('\n[⑤ 자연물 앵커·잠금 — 굽는 표가 정본이다 (T97
         let n = 0; for (let i = 3; i < im.data.length; i += 4) if (im.data[i] >= 128) n++;
         return n;
       };
-      for (const id of fruiting) for (const au of (sp[id].autumn || [])) {
-        // ★[T141] 종마다 가을 판이 **여럿일 수 있다**(참나무는 성목 셋 → 가을 셋).
+      for (const id of fruiting) for (const au of fruitPlatesOf(id)) {
+        // ★[T141] 종마다 열매 판이 **여럿일 수 있다**(참나무는 성목 셋 → 가을 셋).
         //   하나만 보면 "가을엔 저 한 그루만 도토리가 달린다"를 못 잡는다.
-        const su = au.replace(/_a$/, '');
+        // ★[T169] 접미가 둘이다 — `_a`(가을 잎) · `_s`(여름 잎). 둘 다 성목판으로 되돌린다.
+        const su = au.replace(/_[as]$/, '');
         if (!NA[su]) { bad.push(`${id}(여름 판 ${su} 없음)`); continue; }
         // ★★열매는 **매달린다 — 자라지 않는다.** 수관 꼭대기(앵커 위 높이)가 그대로여야 한다.
         //   T129 실측: Δoy 0.0~1.0px. 3px 를 넘으면 가을 판이 **다른 나무**가 된 것이다.
@@ -345,11 +350,38 @@ console.log('\n[⑤ 자연물 앵커·잠금 — 굽는 표가 정본이다 (T97
         if (!(a2 > s2 * 1.005)) nofruit.push(`${au}(${s2}→${a2})`);
       }
       ok(bad.length === 0, `가을 판마다 짝이 되는 여름 판이 있다 ${bad.length ? '— ' + bad.join(' ') : ''}`);
-      // ★자명 통과 금지 — 성목이 여럿인 종은 **가을 판도 그만큼** 있어야 한다(한 그루만 물들면 거짓말이다)
+      // ★자명 통과 금지 — 성목이 여럿인 종은 열매 판도 그만큼 있어야 한다(한 그루만 열리면 거짓말이다)
+      // ★★[T169] **규약 갱신 한 줄**: 옛 규약은 `가을 판 수 = 성목 수` 였다. 산뽕이 들어오며 거짓이 된다 —
+      //   오디는 여름에 익고(서버 `fs = 1`), 그 종의 성목 목록엔 **다른 철의 잎판**(`tree14_a` 가을 잎)이
+      //   섞여 있기 때문이다. 그래서 규약은 이렇게 읽는다:
+      //     **열매 판 수 = 그 철에 서는 성목 수** — 성목에서 *다른 철* 잎판(`_a` 가을 · `_s` 여름)을 뺀 수.
+      //   철 없는 키(접미 없음)는 어느 철에나 선다. 참나무는 성목 셋 · 가을 셋(변화 없음),
+      //   산뽕은 성목 둘 중 여름에 서는 것이 하나(`tree14`) · 여름 판 하나(`tree14_s`)로 맞는다.
       {
-        const half = ids.filter((id) => (sp[id].autumn || []).length &&
-          (sp[id].autumn || []).length !== (sp[id].sprites || []).length);
-        ok(half.length === 0, `성목 수 = 가을 판 수 ${half.length ? '— 어긋남: ' + half.map((i) => `${i}(${sp[i].sprites.length}↔${sp[i].autumn.length})`).join(' ') : ''}`);
+        const leafSeason = (k) => ({ a: 'autumn', s: 'summer' }[(k.match(/_([as])$/) || [])[1]] || null);
+        const season = (S, id) => ((S[id].summer || []).length ? 'summer'
+                                 : (S[id].autumn || []).length ? 'autumn' : null);
+        const standing = (S, id, se) => (S[id].sprites || [])
+          .filter((k) => { const ls = leafSeason(k); return ls === null || ls === se; });
+        const mismatch = (S) => Object.keys(S)
+          .filter((id) => [...(S[id].summer || []), ...(S[id].autumn || [])].length)
+          .filter((id) => [...(S[id].summer || []), ...(S[id].autumn || [])].length
+                       !== standing(S, id, season(S, id)).length);
+        const half = mismatch(sp);
+        ok(half.length === 0, `열매 판 수 = 그 철에 서는 성목 수 ${half.length
+          ? '— 어긋남: ' + half.map((i) => `${i}(성목 ${standing(sp, i, season(sp, i)).length}↔판 ${[...(sp[i].summer || []), ...(sp[i].autumn || [])].length})`).join(' ')
+          : '(' + fruiting.map((i) => `${i} ${season(sp, i) === 'summer' ? '여름' : '가을'} ${standing(sp, i, season(sp, i)).length}`).join(' · ') + ')'}`);
+        // ★전제 — 이 자가 **실제로 거른다**(안 거르면 위 줄은 옛 규약과 같은 말이라 자명 통과다)
+        const filtered = ids.filter((id) => (sp[id].sprites || []).length !== standing(sp, id, season(sp, id)).length);
+        ok(filtered.length > 0, `다른 철 잎판이 실제로 걸러진 종 ${filtered.length} — ${filtered.map((i) => `${i}(${(sp[i].sprites || []).join('+')} → ${standing(sp, i, season(sp, i)).join('+')})`).join(' ')}`);
+        // ★돌연변이 둘 — 열매 판을 빼도, 성목을 더해도 **빨개져야** 한다
+        const clone = () => JSON.parse(JSON.stringify(sp));
+        const m1 = clone(); m1.oak.autumn.pop();
+        ok(mismatch(m1).includes('oak'), '돌연변이 — 참나무 가을 판 하나를 빼면 이 검사가 잡는다');
+        const m2 = clone(); m2.mulberry.sprites.push('tree14b');
+        ok(mismatch(m2).includes('mulberry'), '돌연변이 — 산뽕 성목(철 없는 키)을 하나 더하면 이 검사가 잡는다');
+        const m3 = clone(); m3.mulberry.sprites.push('tree14x_a');
+        ok(!mismatch(m3).includes('mulberry'), '대조 — 더한 것이 **가을 잎판**이면 여름 셈에 안 든다(안 잡는다)');
       }
       ok(grew.length === 0, `★가을 판의 수관 꼭대기가 여름과 같다(열매는 매달린다 · Δoy ≤ 3px) ${grew.length ? '— ' + grew.join(' ') : ''}`);
       ok(nofruit.length === 0, `★가을 판에 열매가 실제로 달렸다(불투명 화소 +0.5% 이상) ${nofruit.length ? '— ' + nofruit.join(' ') : ''}`);

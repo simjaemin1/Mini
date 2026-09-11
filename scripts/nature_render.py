@@ -712,11 +712,17 @@ def tree_hazel(seed, h=2.8, spread=1.55, autumn=False):
             _fruit_cluster(cen, cr, seed * 17 + i * 31 + 3, kind='haz', n=4)
 
 
-def tree_mulberry(seed, h=3.4, spread=1.90, autumn=False):
+def tree_mulberry(seed, h=3.4, spread=1.90, autumn=False, summer=False):
     """산뽕나무(Morus bombycis) — 짧은 줄기에서 **옆으로 벌어지는 성근 수관** · 윤 나는 잎.
-    참나무보다 낮고 성글다 — 그 틈으로 하늘이 보이는 것이 표식이다."""
+    참나무보다 낮고 성글다 — 그 틈으로 하늘이 보이는 것이 표식이다.
+
+    ★[T169] **오디는 여름에 익는다**(서버 `mulberry.fs = 1`). 그래서 이 종만 열매 갈래가 둘이다:
+      `summer=True` → **여름 잎에 오디**(= `tree14_s` · 열매판) · `autumn=True` → 가을 잎에 오디(= `tree14_a`).
+      잎 재질만 갈리고 **기하는 `tree14` 와 한 자도 안 다르다** — 열매는 매달리지 자라지 않는다(T129).
+      열매 무리의 씨앗도 `_a` 와 **같은 식**이라 오디가 같은 자리에 달린다(가을판과 여름판이 같은 나무다)."""
     rng = R(seed)
     LF = M['lf_mul_a'] if autumn else M['lf_mul']
+    fruit = autumn or summer
     pts, rad = trunk_curve(h * 0.40, rng.r(-0.30, 0.30), rng.r(-0.24, 0.24), seed, 0.155, 0.085)
     tube(pts, rad, M['bark_mul'], name="ml_trunk")
     fork = V(pts[-1])
@@ -731,7 +737,7 @@ def tree_mulberry(seed, h=3.4, spread=1.90, autumn=False):
         cen = tip + V((0, 0, cr * 0.26))
         leaf_shell(cen, cr, int(300 + 160 * rng.f()), 0.115, 0.18, LF, rng,
                    squash=0.78, droop=0.40, rmin=0.24, name="ml_cl")
-        if autumn:
+        if fruit:
             _fruit_cluster(cen, cr, seed * 19 + i * 37 + 7, kind='mul', n=9)
 
 
@@ -890,7 +896,15 @@ TREE_BUILD = [
     ("tree13", tree_hazel, dict(seed=137, h=2.8, spread=1.55)),
     ("tree13_a", tree_hazel, dict(seed=137, h=2.8, spread=1.55, autumn=True)),
     ("tree14", tree_mulberry, dict(seed=149, h=3.4, spread=1.90)),
-    ("tree14_a", tree_mulberry, dict(seed=149, h=3.4, spread=1.90, autumn=True)),
+    # ★★[T169] **오디는 여름에 익는다** — 서버(T135)가 `mulberry.fs = 1`(여름)인데 그림엔 `_a`(가을)뿐이라
+    #   이름이 거짓이었다(T141 ③ · T156 ③ 이 표만 내고 넘긴 자리). PM 판정: **키를 안 바꾸고 여름판을 더한다.**
+    #   `tree14_s` = `tree14` + 오디 — 잎은 여름 그대로, 열매 씨앗은 `_a` 와 같은 식이라 **같은 나무**다.
+    ("tree14_s", tree_mulberry, dict(seed=149, h=3.4, spread=1.90, summer=True)),
+    # ★`tree14_a` 는 **그대로 둔다**(키·PNG·앵커 무변). 다만 산뽕은 가을에 열매가 없으므로
+    #   종 표의 `autumn`(열매판) 자리에서 내리고 **성목판**으로 센다 — `slot` 은 굽기가 아니라
+    #   **표만 보는 지시**다(렌더 인자가 아니라서 그림이 한 화소도 안 움직인다).
+    #   ⚠이 판에는 가을 잎에 오디가 달려 있다(다시 안 구우니 그대로다) — 보고 §3 회부.
+    ("tree14_a", tree_mulberry, dict(seed=149, h=3.4, spread=1.90, autumn=True, slot='sprites')),
     ("tree15", tree_grape, dict(seed=157, h=1.9, spread=1.75)),
     ("tree15_a", tree_grape, dict(seed=157, h=1.9, spread=1.75, autumn=True)),
     # 그루터기 — 종 공통 하나(카드). 묘목 — 종별 여덟.
@@ -1133,6 +1147,16 @@ SPECIES = {
 FRUITING = {'oak': '도토리', 'chestnut': '밤', 'hazel': '개암', 'mulberry': '오디', 'grape': '머루'}
 
 
+# ★[T169] **표만 보는 지시 키** — 굽기 인자가 아니다. `fn(**BKW(kw))` 로 반드시 걷어내고 부른다.
+#   (`slot`: 이 그림이 종 표의 어느 칸에 실리는가. 굽기 문법과 표의 뜻이 갈릴 때만 쓴다.)
+TABLE_ONLY = ('slot',)
+
+
+def BKW(kw):
+    """굽기에 넘길 인자만 남긴다 — 표 전용 지시를 빌더에 흘리면 `TypeError` 다."""
+    return {k: v for k, v in kw.items() if k not in TABLE_ONLY}
+
+
 def build_species_table():
     """`TREE_BUILD` 를 훑어 종 표를 만든다 — 사람이 적는 칸은 위 `SPECIES` 뿐이다."""
     out = {}
@@ -1149,20 +1173,29 @@ def build_species_table():
         sid, ko, latin = SPECIES[nm]
         e = out.setdefault(sid, {})
         e['ko'] = ko; e['latin'] = latin
-        if kw.get('autumn'):
-            e.setdefault('autumn', []).append(key)
-        else:
-            e.setdefault('sprites', []).append(key)
+        # ★[T169] 칸은 셋이다: 성목(`sprites`) · 열매판 둘(`summer`·`autumn`).
+        #   `slot` 지시가 있으면 그것이 먼저다 — 굽기 문법(`_a` = 가을 잎)과 표의 뜻(열매철)이
+        #   갈리는 종이 있기 때문이다(산뽕: 가을 잎 판은 있으나 **가을엔 열매가 없다**).
+        slot = kw.get('slot') or ('summer' if kw.get('summer') else
+                                  'autumn' if kw.get('autumn') else 'sprites')
+        e.setdefault(slot, []).append(key)
         if sid in FRUITING:
             e['fruit_ko'] = FRUITING[sid]
+            # ★열매종은 **두 칸을 다 적는다** — 빈 칸도 적는다. `autumn: []` 은 정보다:
+            #   "이 종은 가을에 열매가 없다"를 표가 **말해야** 클라가 헤매지 않는다(T148-B).
+            for k in ('summer', 'autumn'):
+                e.setdefault(k, [])
     for sid, e in out.items():
-        for k in ('sprites', 'autumn'):
+        for k in ('sprites', 'summer', 'autumn'):
             if k in e: e[k] = sorted(e[k])
     return {
         '_뜻': '어느 그림이 어느 나무 종인가. **수치(성장·수확·벌목)는 서버/랩이 정본**이고 여기 없다.',
         '_유도': 'scripts/nature_render.py TREE_BUILD 에서 뽑는다 — 손으로 적지 마라(다시 구우면 덮인다).',
         '_그루터기': 'stump01 — 종 공통 하나. 벤 자리는 종을 안 묻는다.',
-        '_단계': '성목(sprites) · 가을·열매(autumn) · 묘목(sapling) · 그루터기(공통).',
+        '_단계': '성목(sprites) · 열매판(summer·autumn) · 묘목(sapling) · 그루터기(공통).',
+        '_철': ('열매판은 **철 이름 칸**이다 — 어느 칸을 그릴지는 서버 종 표의 `fs`(결실철: 1 여름 · 2 가을)가 정본이다. '
+                '빈 칸(`[]`)은 "그 철엔 열매가 없다"는 뜻이다(산뽕 `autumn: []` — 오디는 초여름에 익는다). '
+                '키의 `_a`/`_s` 접미는 **굽기 문법**(가을 잎/여름 잎)이지 철 판정이 아니다 — 판정은 이 칸 이름으로 한다.'),
         'species': dict(sorted(out.items())),
     }
 
@@ -1193,14 +1226,14 @@ if __name__ == '__main__':
 
   for key, fn, kw in TREE_BUILD:
       if ONLY and key not in ONLY: continue
-      fn(**kw)
+      fn(**BKW(kw))
       anchors[key] = render(key, ss=4, margin=8)
       anchors[key]["kind"] = "tree"
       cleanup()
 
   for key, fn, kw in PROP_BUILD:
       if ONLY and key not in ONLY: continue
-      fn(**kw)
+      fn(**BKW(kw))
       anchors[key] = render(key, ss=3, margin=5)
       anchors[key]["kind"] = "prop"
       cleanup()
