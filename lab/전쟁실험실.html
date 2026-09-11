@@ -6941,6 +6941,25 @@ function tickCaravansV2(world, day) {
         }
         returnRes = bestR;
       }
+      // ★★★[T173 2026-09-11 · 이 파일의 유일한 접점] **귀환 화물 우선순위를 밖에서 물어본다.**
+      //   여기가 "대금으로 무엇을 실어 오는가"를 정하는 자리다 — 지금 규칙은 `ratio` 최대 하나뿐이고,
+      //   예외는 **식량 pull**(위 P1b) 하나다. 식량은 굶으면 끌어오는데 **돌은 그런 자리가 없다.**
+      //   T173 §0-ⓑ 실측: 석재 바닥 36마을이 800일 동안 받은 돌이 **0**(파는 마을은 13곳 · 판 것은 11,723).
+      //
+      //   ⚠**주입이 없으면 한 글자도 안 바뀐다.** 규칙은 이 파일이 안 갖는다 — `world.returnPullFn` 이 준다.
+      //     지금 그것을 주는 것은 **랩**(`lab/전쟁실험실.html` `L_STONE_TRADE`)뿐이고, 서버·CLI·하네스는
+      //     안 주므로 폴백이 곧 종전 = **비트 동일**(T135 `forageTakeFn` · T157 `happyWorkW` ·
+      //     T161 `allocFn` · T163 `stoneBudgetFn` 선례).
+      //   ⚠**문은 규칙을 느슨하게 하지 않는다** — 파는 쪽에 실물이 있고(>1) 받는 쪽이 글럿이 아닌
+      //     경우에만 갈아 끼운다(위 두 게이트를 그대로 다시 건다 · 공짜 돌 0).
+      {
+        const _rpFn = (world && typeof world.returnPullFn === 'function') ? world.returnPullFn : null;
+        if (_rpFn) {
+          let _r = null;
+          try { _r = _rpFn(c.from, c.to, returnRes); } catch (e) { _r = null; }
+          if (_r && _r !== c.giveRes && (c.to.storage[_r] || 0) > 1 && !_returnGlutted(_r)) returnRes = _r;
+        }
+      }
       // ★pull 계측(#26 — 행동 무영향 카운터): 위기 발주촌 대금 구성(식량류 비율). 회귀 불변식이 pull 채널의 조용한 회귀를 감시.
       if (c.from.surplusEMA && c.from.surplusEMA.food < 0) {
         const _ps = world._pullStats || (world._pullStats = { crisisReturns: 0, crisisFoodReturns: 0 });
@@ -11099,6 +11118,47 @@ function stoneRealFn(ev){
 }
 // ════════════════════════════════════════════════════════════════════════════════════════
 
+
+// ════════════════════════════════════════════════════════════════════════════════════════
+// ★★★[T173 2026-09-11 · 랩 석재 교역 절] **관을 밖에서 넓힌다 — 바닥 마을이 돌을 사 온다**
+//
+// T163 이 처방 ②(바닥항을 실체로)를 기각했다(실물 바위 16개 < 상수 바닥항의 1/34).
+// PM 판정: **순서를 ①로** — "교역으로 석재가 들어오게 · 캐러밴 의뢰 우선"(T152 ⓒ).
+//
+// ★★§0 진단이 갈래를 골랐다(보고 §1):
+//   · 바닥 36마을이 800일 동안 캐러밴으로 받은 돌 = **0** (0곳/36곳)
+//   · 파는 마을은 있다 — 13곳이 11,723 단위를 수출한다
+//   · 갚을 것도 있다 — 바닥 마을이 실제로 판 것이 **389,193 단위**(그 밖 15곳 합보다 많다)
+//   ⇒ 막힌 것은 **대금이 아니라 우선순위**다. 귀환 화물 규칙(`economy-sim-v2.js` 도착 절)은
+//     `ratio` 최대 하나뿐이고, 예외는 **식량 pull** 하나다 — 굶으면 식량을 끌어오는데
+//     **돌에는 그런 자리가 없다.** 이 절은 그 자리에 한 줄을 더한다.
+//
+// ⚠**새 수 0.** 문턱은 엔진이 이미 쓰는 STONE_NET 1차 문턱(`storage.stone < 0.2`)이다
+//   (`sim/economy-sim.js` :3580 · :3629). 손으로 다른 수를 적으면 `test-lab-stone` 이
+//   엔진 소스에서 다시 읽어 대조하고 **빨개진다**(T163 `L_STONE_SCATTER` 선례).
+// ⚠**공짜 돌 0.** 파는 쪽 재고는 엔진이 실제로 빼 간다(`_impactBuyV2`) — 문은 규칙을
+//   느슨하게 하지 않는다(실물 >1 · 글럿 아님 두 게이트를 엔진이 그대로 다시 건다).
+//
+// 손잡이 — `L_STONE_TRADE=1` 이면 문을 연다. **기본은 0 = 문을 안 연다 = 종전 비트.**
+if (window.L_STONE_TRADE === undefined) window.L_STONE_TRADE = 0;
+const L_STONE_NET_THRESH = 0.2;   // = sim/economy-sim.js STONE_NET 1차 문턱(`storage.stone < 0.2`)
+
+/**
+ * 귀환 화물 우선순위 — 식량 pull 과 **같은 문법**.
+ *   ① 돌이 STONE_NET 문턱 아래인 마을이(= 안전망이 이미 사람을 부르고 있는 마을이)
+ *   ② 돌이 있는 마을에 캐러밴을 보냈으면
+ *   ③ 대금을 **돌로** 받아 온다.
+ * 그 밖엔 `null` — 종전 규칙(`ratio` 최대)이 그대로 선다.
+ */
+function stoneTradePullFn(from, to, cur){
+  if(!from||!to) return null;
+  if(cur==='stone') return null;                                        // 이미 돌이면 끼어들 일이 없다
+  if(((from.storage&&from.storage.stone)||0) >= L_STONE_NET_THRESH) return null;   // 굶지 않으면 안 끼어든다
+  if(((to.storage&&to.storage.stone)||0) <= 1) return null;             // 파는 쪽에 실물이 없으면 못 산다
+  return 'stone';
+}
+// ════════════════════════════════════════════════════════════════════════════════════════
+
 let VILS=[],ECON_WORLD=null,lifeFocal=0,_claimedAll=new Map();   // ★다마을: 모든 마을 상태 / 공유 econ world / 초점 / 전역 영토 소유맵(셀→마을, 이웃 성장 회피)
 function lifeInit(){
   const p0=Math.max(8,+document.getElementById('pop').value),seed=((+document.getElementById('seed').value)||0)>>>0;
@@ -11107,7 +11167,7 @@ function lifeInit(){
   BANDITS=[];_bdtSeq=1;_bdtPairs=new Map();_bdtSig='';_bdtRoutes=null;DENS=[];_denSeq=1;   // ★도적 상태 초기화(새 세계 — 소굴은 마을·교역로 확정 후 bdtDenScan이 재배치)
   WARS=[];_warSeq=1;TRIBUTES=[];   // ★전쟁 상태 초기화(새 세계). 원한·피로·목책은 마을(vil)에 붙어 재생성과 함께 리셋
   const centers=pickCenters(NV,275),M=centers.length;   // ★마을 간격 128→275(§3b 게임필 확정값, 도보 2.3분 — R_MAX 135×2=270<275라 영토 비겹침 보장)
-  if(typeof EconEngine!=='undefined'){EconEngine.setSeed(seed);ECON_WORLD=EconEngine.createWorldV2({seed,villageCount:M,picker:'rational',infoRange:5000,raidPer100:0.005});if(+window.L_ALLOC_REAL!==0)ECON_WORLD.allocFn=allocRealFn;if(+window.L_STONEREAL!==0)ECON_WORLD.stoneBudgetFn=stoneRealFn;bdtInstallHooks();hwInstallHook();}   // ★[T161] 실현 배분 주입(되돌림 L_ALLOC_REAL=0 = 문을 안 연다 = 종전 비트) · ★도적 econ 계약 훅(도적 0이면 완전 무해) · ★[T157] 행복→작업량 훅
+  if(typeof EconEngine!=='undefined'){EconEngine.setSeed(seed);ECON_WORLD=EconEngine.createWorldV2({seed,villageCount:M,picker:'rational',infoRange:5000,raidPer100:0.005});if(+window.L_ALLOC_REAL!==0)ECON_WORLD.allocFn=allocRealFn;if(+window.L_STONEREAL!==0)ECON_WORLD.stoneBudgetFn=stoneRealFn;if(+window.L_STONE_TRADE!==0)ECON_WORLD.returnPullFn=stoneTradePullFn;bdtInstallHooks();hwInstallHook();}   // ★[T161] 실현 배분 주입(되돌림 L_ALLOC_REAL=0 = 문을 안 연다 = 종전 비트) · ★도적 econ 계약 훅(도적 0이면 완전 무해) · ★[T157] 행복→작업량 훅
   for(let i=0;i<M;i++){
     const s={day:L_START,pop:p0,food:p0*150,houses:[],farmland:[],dryfield:[],cultFarm:[],cultDry:[],plots:[],agents:[],fishers:0,crop:new Map(),spoiled:0,seed:(seed^Math.imul(i+1,0x9e3779b1))>>>0,V:null,name:'마을'+(i+1)};
     setupVillage(s,centers[i]);   // V 생성·농지·plot·NPC
