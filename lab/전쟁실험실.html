@@ -4873,6 +4873,76 @@ function cookTarget(v) {
   return Math.min(Math.floor(sideFlow / 3), Math.floor(N * 0.06));   // 부재료 흐름이 정원(1인 ~2.5/일 소비) · 6% 안전 클램프(최후 보루)
 }
 
+// ═══ ★★★[T164 2026-09-10] 실현 배분 — **정본 함수 둘** (랩·서버 공용 · 사본 0) ═══════════
+//
+// 손잡이 하나로 랩(브라우저)과 서버(node)가 같은 코드를 탄다:
+//   서버 `L_ALLOC_REAL=1 node …`  ·  랩 `window.L_ALLOC_REAL = 1`(lifeInit 전)
+// **기본은 0(꺼짐)** — 손잡이가 없으면 이 파일은 종전 비트 그대로다.
+// 창 배수 `L_ALLOC_WIN`(기본 1 · 0 이면 평활 없음 = 매일 요동 · 돌연변이 시험용).
+function _allocKnob(name) {
+  const g = (typeof window !== 'undefined') ? window : null;
+  if (g && g[name] !== undefined && g[name] !== null) return String(g[name]);
+  if (typeof process !== 'undefined' && process.env && process.env[name] !== undefined) return String(process.env[name]);
+  return null;
+}
+function allocRealOn() { const x = _allocKnob('L_ALLOC_REAL'); return x !== null && x !== '0'; }
+function allocRealWin() { const x = _allocKnob('L_ALLOC_WIN'); const n = (x === null) ? 1 : parseFloat(x); return Number.isFinite(n) ? n : 1; }
+
+// 직업의 **바구니** — 엔진 표에게 물어본다(새 목록을 손으로 안 적는다). 없으면 null(→ 폴백).
+//   ⚠**겹침 실측(T164 §0ⓑ)**: 후보로 서는 직업들 사이 겹침은 `acorn`(나무꾼 ∩ 채집꾼 · 나무 층이 켜졌을 때)
+//     **하나뿐**이다. `weapon`(대장장이 ∩ 무기장)은 애초에 한계가치 후보에서 빠져 있다.
+//     광부 바구니는 `JOBS.miner.output` = `ore` 하나다 — 부산물(salt·clay·tin·obsidian·jade)은
+//     `produceSpecial` 코드가 내므로 표에 없다. 종전 식도 그 부산물을 안 봤으니 **덮는 범위가 안 줄었다**.
+function allocBasketOf(job, ctx, world) {
+  const J = ctx.JOBS && ctx.JOBS[job]; if (!J) return null;
+  const out = [];
+  if (J.output) out.push(J.output);
+  for (const r in (J.byproduct || {})) out.push(r);
+  if (J.produceSpecial === 'forager') {
+    const y = (ctx.forageYields && ctx.forageYields()) || {};
+    for (const r in y) out.push(r);
+    out.push('stone');                             // 종전 식이 이미 이름을 댄 그 항(`land.stone*0.9*w('stone')`)
+    const real = world && world.forageRealItems;   // 나무 층(T135)이 켜져 있으면 실물 열매도 이 바구니다
+    if (real) for (const r of real) out.push(r);
+  }
+  return out.length ? Array.from(new Set(out)) : null;
+}
+
+// 후보 목록 `[[job, gain], …]` 을 받아 **다시 쓴 목록**을 돌려준다.
+//   폴백이 곧 종전이다: 첫 정산 전 · 생산 없는 직업(상인·전사) · 실현이 아직 0 이면 **받은 값 그대로**.
+//   ★새 수 0 — 창 길이는 엔진이 이미 쓰는 `period`(한계효용 평가 윈도우)다.
+function allocRealCandidates(v, world, cands, ctx) {
+  const day = (world && world.day) || 0;
+  const e = v._allocEma || (v._allocEma = {});
+  const prev = (v._allocDay === undefined) ? null : v._allocDay;
+  // 이 함수는 전환일(기본 7일)에만 불린다 — 지난 날수만큼 접는다(α = Δ일 / 창).
+  const dd = (prev === null) ? 1 : Math.max(1, day - prev);
+  const win = ctx.period * allocRealWin();
+  const a = (win > 0) ? Math.min(1, dd / win) : 1;   // 창 0 = 평활 없음(돌연변이)
+  const dp = v.dailyProductionBuf || {};
+  for (const r in dp) { const x = dp[r] || 0; e[r] = (e[r] === undefined) ? x : (1 - a) * e[r] + a * x; }
+  v._allocDay = day;
+  if (prev === null) return null;                   // ★첫 정산 전 — 종전 그대로(폴백)
+
+  const out = [];
+  for (let i = 0; i < cands.length; i++) {
+    const job = cands[i][0], gain = cands[i][1];
+    const b = allocBasketOf(job, ctx, world);
+    const n = (ctx.counts && ctx.counts[job]) || 0;
+    if (!b || n <= 0) { out.push([job, gain]); continue; }     // 폴백
+    let q = 0, inc = 0;
+    for (let k = 0; k < b.length; k++) { const x = e[b[k]] || 0; if (x > 0) { q += x; inc += x * ctx.w(b[k]); } }
+    if (!(q > 0)) { out.push([job, gain]); continue; }         // 폴백 — 아직 실현이 0
+    // 한계가치 = (1인당 실현 산출) × (그 바구니의 **양 가중 평균값**) × period
+    //          = (Σ 실현ᵣ · w(r)) / 인원 × period — 양과 값이 **같은 바구니**를 본다.
+    let g = (inc / n) * ctx.period;
+    // ★사냥 위험 프리미엄은 생산이 아니라 **기회비용**이라 실현 산출에 안 들어 있다 — 그대로 곱한다.
+    if (job === 'hunter' && v._huntRisk != null) g *= (1 - Math.min(1, Math.max(0, v._huntRisk)));
+    out.push([job, g]);
+  }
+  return out;
+}
+
 function pickDeficitJob_rational(v, world) {
   const N = v.npcs.length || 1;
   const cap = jobCapacity(v);
@@ -5054,23 +5124,26 @@ function pickDeficitJob_rational(v, world) {
   // ★대장장이·무기장·갑옷장은 marginal 후보에서 제외 — 위의 스톡-플로우 노동목표(smithTarget 등)가
   //   전담 결정. 자본재 장인을 식량·자원직과 한계가치로 경쟁시키면 글럿 마을서 과잉(도구가격 floor 탓).
 
-  // ★★★[T161 2026-09-07] **배분 주입 문 하나.** T151 이 잡은 결함은 위 후보 목록의 "양" 자리가
-  //   **실현 산출이 아니라 땅의 상수**라는 것이다(`land.fertility*0.4` 따위). 실현 산출이 85% 떨어져도
-  //   배분은 못 보고, 값 자리도 실제 바구니와 다르다(보고 T151 ⓑ).
-  //   ⇒ 처방은 **랩에서 먼저** 세운다(T151 ⓒ 판정: 이 성질은 랩에서 그대로 난다 = 랩이 정본).
-  //     이 파일이 하는 일은 **문 하나**뿐이다 — 후보 목록을 바깥이 다시 쓸 수 있게 넘긴다.
-  //   ⚠`world.allocFn` 이 없으면(서버 · v1 CLI · 하네스 · 픽스처) **한 글자도 안 바뀐다** —
-  //     아래 sort/return 이 종전 그대로 돈다(비트 동일). 되돌림은 "문을 안 여는 것"이다.
-  //   ⚠문은 **후보 목록만** 준다. 게이트(기근·석재·도구·자본재 노동목표)는 위에서 이미 return 했다 —
-  //     그 판단은 배분식이 아니라 **안전망**이고, 이 문은 거기까지 손대지 않는다.
+  // ★★★[T164 2026-09-10 · T161 이식] **실현 배분 — 정본은 이 파일 하나다.**
+  //   T151 이 잡은 결함: 위 후보 목록의 "양" 자리가 **실현 산출이 아니라 땅의 상수**다
+  //   (`land.fertility*0.4` 따위). 채집꾼 1인당 실현 산출이 85~91% 떨어져도 배분이 못 보고
+  //   (오히려 더 뽑았다 · 573→609), 값 자리도 **실제 바구니와 다르다**(천장 붙은 네 열매 값이 식에 없다).
+  //   T161 이 처방을 랩에 세워 성질을 잠갔고(하네스 19/0), T164 가 그 함수를 **여기로 옮겼다** —
+  //   랩은 인라인 번들로 같은 함수를 따라온다(**사본 0**). 손잡이 하나가 랩·서버 공용이다.
+  //   ⚠**기본은 꺼짐.** `L_ALLOC_REAL` 이 없거나 0 이면 아래 sort/return 이 종전 그대로 돈다(비트 동일).
+  //   ⚠게이트(기근·석재·도구·자본재 노동목표)는 위에서 이미 `return` 했다 — 그건 배분식이 아니라
+  //     **안전망**이고, 이 처방은 거기까지 손대지 않는다. 다시 쓰는 것은 **한계가치 후보 목록뿐**이다.
   let _cands = candidates;
-  if (world && typeof world.allocFn === 'function') {
-    const _alt = world.allocFn(v, world, candidates, {
-      period, cap, counts, forageLandMean,
-      w,                                   // ★같은 가격 접근자를 그대로 넘긴다(사본 0)
-      forageYields: () => foragerYieldsFor(v),   // 게으르다 — 문이 안 열리면 안 부른다
+  if (allocRealOn()) {
+    const _alt = allocRealCandidates(v, world, candidates, {
+      period, counts, w,                          // ★같은 가격 접근자를 그대로 쓴다(사본 0)
+      forageYields: () => foragerYieldsFor(v),     // 게으르다 — 꺼져 있으면 안 부른다
       JOBS,
     });
+    if (Array.isArray(_alt) && _alt.length > 0) _cands = _alt;
+  } else if (world && typeof world.allocFn === 'function') {
+    // ★남겨 둔 주입 문(T161) — 정본을 안 쓰고 **다른** 배분을 실험할 때만 쓴다. 손잡이가 켜지면 정본이 이긴다.
+    const _alt = world.allocFn(v, world, candidates, { period, cap, counts, forageLandMean, w, forageYields: () => foragerYieldsFor(v), JOBS });
     if (Array.isArray(_alt) && _alt.length > 0) _cands = _alt;
   }
   _cands.sort((a, b) => b[1] - a[1]);
@@ -5888,6 +5961,8 @@ module.exports = {
   computeVillagePrices,
   computeDailyConsumption,
   FORAGE_FOOD_FACTOR,   // ★식량 pull(v2 FOOD_CLASSES 파생용 단일 진실 — 구황·해산물 식용 등가)
+  // ★[T164] 실현 배분 정본 — 랩도 하네스도 **이 함수들을** 부른다(사본 0).
+  allocRealOn, allocRealWin, allocBasketOf, allocRealCandidates,
   JOB_NAMES,
   FIELDS,
   RESOURCES,
@@ -11033,173 +11108,10 @@ function pickCenters(NV,minDist){   // 강둑 좋은 자리 NV곳(서로 minDist
   while(chosen.length<NV&&pickMax(c=>c.base)){tag('agri');}   // 나머지는 농지순(더 못 두면 중단)
   if(chosen.length<NV)for(let i=0;i<N*N&&chosen.length<NV;i++){if(TR.water[i]||TR.rock[i])continue;const x=i%N,y=(i/N)|0;if((x&7)||(y&7))continue;if(x<MG||y<MG||x>=N-MG||y>=N-MG)continue;if(far({x,y}))chosen.push({x,y,role:'agri'});}
   return chosen.length?chosen.map(c=>({cx:c.x,cy:c.y,role:c.role||'agri'})):[pickCenter()];}
-// ═══ ★★★[T161 2026-09-07] 실현 배분 — 배분식의 "양"이 땅의 상수가 아니라 **실현 산출**이다 ═══
-//
-// T151 이 잡은 결함: `pickDeficitJob_rational` 의 한계가치가 **땅 상수 × 값**이라
-//   ① 채집꾼 1인당 실현 산출이 85~91% 떨어져도 배분이 못 본다(오히려 더 뽑았다 · 573→609)
-//   ② 값 자리(`w(vegetable)+0.6·w(herb)+land.stone·w(stone)`)가 **실제 바구니와 다르다**
-//      — 천장(200)에 붙은 네 열매 값이 식에 한 글자도 없다.
-// T151 ⓒ 판정: 이 성질은 랩에서 그대로 난다(품목 셋 등재만으로 인구 −20%) ⇒ **랩이 정본 · 처방도 랩에서.**
-//
-// ⚠**econ 절은 안 고친다.** `sim/economy-sim.js` 에 뚫은 것은 **문 하나**(`world.allocFn`)뿐이고,
-//   문이 안 열리면 그 파일은 종전 비트 그대로다. 처방은 전부 여기 — 랩 쪽 — 에 있다.
-// ⚠**새 수 0.** 창 길이는 엔진이 이미 쓰는 `period`(한계효용 평가 윈도우)를 그대로 쓴다.
-//   바구니는 엔진이 이미 쥔 표(`JOBS[j].output`·`byproduct`·`foragerYieldsFor`)가 정한다.
-//
-// 손잡이 — `L_ALLOC_REAL=1` 이면 문을 연다 · 창 배수 `L_ALLOC_WIN`(0 이면 평활 없음 = 매일 요동 · 돌연변이용).
-//   러너·콘솔에서 `lifeInit` **전에** 심는다.
-// ★★**기본은 0 — 문을 안 연다(= 종전 비트).** 처방이 아직 재민 판정 전이기도 하지만, 더 큰 이유는
-//   이 랩을 **다른 세션들이 기준선으로 쓰고 있다**는 것이다(T152 기준선 · T154 사냥 · T157 행복).
-//   기본을 1 로 두면 그 기준선이 **조용히** 움직인다 — 그건 이 카드가 살 권한이 없는 값이다.
-//   4팔 표(보고 ⓒ)가 이 처방이 아직 순이득이 아님을 보였으므로 더더욱 기본은 꺼 둔다.
-if (window.L_ALLOC_REAL === undefined) window.L_ALLOC_REAL = 0;
-if (window.L_ALLOC_WIN  === undefined) window.L_ALLOC_WIN  = 1;
-
-// 직업의 **바구니** — 엔진 표에게 물어본다(사본 0). 없으면 null(→ 폴백).
-function allocBasketOf(job, ctx, world) {
-  const J = ctx.JOBS && ctx.JOBS[job]; if (!J) return null;
-  const out = [];
-  if (J.output) out.push(J.output);
-  for (const r in (J.byproduct || {})) out.push(r);
-  if (J.produceSpecial === 'forager') {
-    const y = (ctx.forageYields && ctx.forageYields()) || {};
-    for (const r in y) out.push(r);
-    out.push('stone');                                  // 종전 식이 이미 이름을 댄 그 항(`land.stone*0.9*w('stone')`)
-    const real = world && world.forageRealItems;        // 나무 층이 켜져 있으면 실물 열매도 이 바구니다
-    if (real) for (const r of real) out.push(r);
-  }
-  return out.length ? Array.from(new Set(out)) : null;
-}
-
-// 문에 걸리는 함수. 후보 목록 `[[job, gain], …]` 을 받아 **다시 쓴 목록**을 돌려준다.
-//   폴백이 곧 종전이다: 첫 정산 전 · 생산 없는 직업(상인·전사) · 실현 0 이면 **받은 값 그대로** 돌려준다.
-function allocRealFn(v, world, cands, ctx) {
-  const day = world.day || 0;
-  const e = v._t161ema || (v._t161ema = {});
-  const prev = (v._t161day === undefined) ? null : v._t161day;
-  // ★창 길이 = `period`. 문이 7일에 한 번 열리므로 지난 날수만큼 접는다(α = Δ일 / 창).
-  const dd = (prev === null) ? 1 : Math.max(1, day - prev);
-  const win = ctx.period * (+window.L_ALLOC_WIN);
-  const a = (win > 0) ? Math.min(1, dd / win) : 1;      // 창 0 = 평활 없음(돌연변이)
-  const dp = v.dailyProductionBuf || {};
-  for (const r in dp) { const x = dp[r] || 0; e[r] = (e[r] === undefined) ? x : (1 - a) * e[r] + a * x; }
-  v._t161day = day;
-  if (prev === null) return null;                        // ★첫 정산 전 — 종전 그대로(폴백)
-
-  const out = [];
-  for (const c of cands) {
-    const job = c[0], gain = c[1];
-    const b = allocBasketOf(job, ctx, world);
-    const n = (ctx.counts && ctx.counts[job]) || 0;
-    if (!b || n <= 0) { out.push([job, gain]); continue; }     // 폴백
-    let q = 0, inc = 0;
-    for (let i = 0; i < b.length; i++) { const x = e[b[i]] || 0; if (x > 0) { q += x; inc += x * ctx.w(b[i]); } }
-    if (!(q > 0)) { out.push([job, gain]); continue; }         // 폴백 — 아직 실현이 0
-    // 한계가치 = (1인당 실현 산출) × (그 바구니의 **양 가중 평균값**) × period
-    //          = (Σ 실현ᵣ · w(r)) / 인원 × period  — 양과 값이 같은 바구니를 본다.
-    let g = (inc / n) * ctx.period;
-    // ★사냥 위험 프리미엄은 **생산이 아니라 기회비용**이라 실현 산출에 안 들어 있다 — 그대로 곱한다.
-    //   (생활층이 `_huntRisk` 를 안 실어 주면 할인 없음 — 엔진 기본 0.08 과 그만큼 다르다. 보고 ⓑ 에 적었다.)
-    if (job === 'hunter' && v._huntRisk != null) g *= (1 - Math.min(1, Math.max(0, v._huntRisk)));
-    out.push([job, g]);
-  }
-  return out;
-}
-
-// ════════════════════════════════════════════════════════════════════════════════════════
-// ★★★[T163 2026-09-10 · 랩 석재 절] **바닥 마을의 돌 — 관 굵기를 실물 바위에서 유도한다**
-//
-// T152 (B) 가 잡은 것: 석재 바닥 마을이 51곳 중 **36곳**이고, 그 36곳 **전부**가 800일 중
-//   절반 넘는 날을 `storage.stone < 0.2` 아래에서 산다. STONE_NET 은 *사람은* 부르는데
-//   *관을 못 넓힌다* — 굵기를 정하는 것이 `land.stone` 이고 바닥 마을의 그 값은 상수 바닥항이다.
-//
-// 처방 ②(재민 승인 순서 ②→①→③): **그 바닥항을 실체로 채운다.** T135 2판 문법 그대로 —
-//   "예산이 나무를 한 곳만 셌다" 와 같은 종류의 누락을 바위에서 찾는다.
-//
-// ★★§0-ⓑ 실측이 **부호를 뒤집었다**(보고 §2 — 이 절은 그 실측 위에 서 있다):
-//   청크를 굽어 세니 스캔 원(61,575셀) 안 실물 바위가 **바닥 36곳 중앙 16 · 그 밖 15곳 중앙 14** 다.
-//   `land.stone` 은 0.25~2.50 으로 10배 갈리는데 **실물 바위 수는 안 갈린다.**
-//   까닭: 바위는 나무와 달리 **제 그리드가 없다 — 산 그 자체가 그리드**이고, 그 산(바위 셀)은
-//   청크 생성기가 `isRockCellLocal` 로 **spawn 을 막는 자리**다. 산이 많을수록 흩어진 바위는 되레 준다.
-//   ⇒ 나무(바닥 마을 실물 183그루 · 예산 0)와 **반대 방향**이다. 바닥 마을은 바위가 없는 게 아니라
-//     **어디에도 바위가 별로 없다**(나무의 1/11). 바닥항 0.25 는 실물보다 훨씬 후한 수다.
-//
-// 그래서 이 절이 재는 것은 "관이 얼마나 넓어지나"가 아니라 **"실체로 갈아 끼우면 세계가 얼마나 움직이나"** 다.
-//   랩은 기전을 보이는 자리이지 판정 자리가 아니다(족보 141) — 이식 판정은 서버 3시드로, 다음 카드.
-//
-// ⚠**econ 절은 안 고친다.** `sim/economy-sim.js` 에 뚫은 것은 **문 하나**(`world.stoneBudgetFn`)뿐이고,
-//   문이 안 열리면 그 파일은 종전 비트 그대로다(T135 `forageTakeFn` · T157 `happyWorkW` · T161 `allocFn` 선례).
-// ⚠**새 수 0.** 흩어진 바위 밀도는 **청크 생성기 정본이 답한다**(`server/chunk.js scatterRocksPerCell`)—
-//   아래 `L_STONE_SCATTER` 는 그 함수의 값을 적어 둔 것이고, 손으로 다른 수를 적으면
-//   `test-lab-stone` 이 정본에서 다시 유도해 대조하고 **빨개진다**(T100 `L_LAND_BASE` 선례).
-//   바닥항·지형항은 랩 부존식(`L_STONE_FLOOR`·`L_STONE_GAIN`)의 그 수를 그대로 되읽는다.
-//
-// 손잡이 — `L_STONEREAL=1` 이면 문을 연다. **기본은 0 = 문을 안 연다 = 종전 비트.**
-//   기본을 켜 두면 이 랩을 기준선으로 쓰는 다른 세션들(T152 기준선 · T154 사냥 · T157 행복 · T161 배분)의
-//   세계가 **조용히** 움직인다 — 이 카드가 살 권한이 없는 값이다.
-if (window.L_STONEREAL === undefined) window.L_STONEREAL = 0;
-const L_STONE_SCATTER = 0.000244140625;   // = server/chunk.js scatterRocksPerCell('forest') = 5 × P(rock|forest)=0.05 ÷ (1024/32)²
-
-/**
- * 채집꾼 돌 산출의 **관 굵기**(엔진이 `v.land.stone` 자리에 쓰던 그 수)를 실물 바위에서 유도한다.
- *   ① **역함수** — 랩 부존식 `stone = FLOOR + GAIN×rockD` 를 되읽어 바위 셀 비율 `rockD` 를 되찾는다.
- *   ② 실물은 **두 곳**에서 난다: 산(바위 셀 `rockD`) + 흩어진 바위(나머지 셀 × 정본 밀도).
- *   ③ 바닥항을 **안 얹는다** — 바닥을 실체로 갈아 끼우는 것이 이 실험이다.
- * 마을당 한 번만 셈한다(부존은 안 변한다 · 주사위 0 · 멱등).
- */
-function stoneRealFn(ev){
-  if(!ev) return 0;
-  if(ev._t163K != null) return ev._t163K;
-  const base=(ev._baseStone!=null)?ev._baseStone:((ev.land&&ev.land.stone)||0);
-  const rockD=Math.max(0,(base-L_STONE_FLOOR)/L_STONE_GAIN);          // ★역함수
-  const share=rockD+(1-rockD)*L_STONE_SCATTER;                        // ① 산 + ② 흩어진 바위
-  const k=L_STONE_GAIN*share;
-  ev._t163K=k;
-  return k;
-}
-// ════════════════════════════════════════════════════════════════════════════════════════
-
-
-// ════════════════════════════════════════════════════════════════════════════════════════
-// ★★★[T173 2026-09-11 · 랩 석재 교역 절] **관을 밖에서 넓힌다 — 바닥 마을이 돌을 사 온다**
-//
-// T163 이 처방 ②(바닥항을 실체로)를 기각했다(실물 바위 16개 < 상수 바닥항의 1/34).
-// PM 판정: **순서를 ①로** — "교역으로 석재가 들어오게 · 캐러밴 의뢰 우선"(T152 ⓒ).
-//
-// ★★§0 진단이 갈래를 골랐다(보고 §1):
-//   · 바닥 36마을이 800일 동안 캐러밴으로 받은 돌 = **0** (0곳/36곳)
-//   · 파는 마을은 있다 — 13곳이 11,723 단위를 수출한다
-//   · 갚을 것도 있다 — 바닥 마을이 실제로 판 것이 **389,193 단위**(그 밖 15곳 합보다 많다)
-//   ⇒ 막힌 것은 **대금이 아니라 우선순위**다. 귀환 화물 규칙(`economy-sim-v2.js` 도착 절)은
-//     `ratio` 최대 하나뿐이고, 예외는 **식량 pull** 하나다 — 굶으면 식량을 끌어오는데
-//     **돌에는 그런 자리가 없다.** 이 절은 그 자리에 한 줄을 더한다.
-//
-// ⚠**새 수 0.** 문턱은 엔진이 이미 쓰는 STONE_NET 1차 문턱(`storage.stone < 0.2`)이다
-//   (`sim/economy-sim.js` :3580 · :3629). 손으로 다른 수를 적으면 `test-lab-stone` 이
-//   엔진 소스에서 다시 읽어 대조하고 **빨개진다**(T163 `L_STONE_SCATTER` 선례).
-// ⚠**공짜 돌 0.** 파는 쪽 재고는 엔진이 실제로 빼 간다(`_impactBuyV2`) — 문은 규칙을
-//   느슨하게 하지 않는다(실물 >1 · 글럿 아님 두 게이트를 엔진이 그대로 다시 건다).
-//
-// 손잡이 — `L_STONE_TRADE=1` 이면 문을 연다. **기본은 0 = 문을 안 연다 = 종전 비트.**
-if (window.L_STONE_TRADE === undefined) window.L_STONE_TRADE = 0;
-const L_STONE_NET_THRESH = 0.2;   // = sim/economy-sim.js STONE_NET 1차 문턱(`storage.stone < 0.2`)
-
-/**
- * 귀환 화물 우선순위 — 식량 pull 과 **같은 문법**.
- *   ① 돌이 STONE_NET 문턱 아래인 마을이(= 안전망이 이미 사람을 부르고 있는 마을이)
- *   ② 돌이 있는 마을에 캐러밴을 보냈으면
- *   ③ 대금을 **돌로** 받아 온다.
- * 그 밖엔 `null` — 종전 규칙(`ratio` 최대)이 그대로 선다.
- */
-function stoneTradePullFn(from, to, cur){
-  if(!from||!to) return null;
-  if(cur==='stone') return null;                                        // 이미 돌이면 끼어들 일이 없다
-  if(((from.storage&&from.storage.stone)||0) >= L_STONE_NET_THRESH) return null;   // 굶지 않으면 안 끼어든다
-  if(((to.storage&&to.storage.stone)||0) <= 1) return null;             // 파는 쪽에 실물이 없으면 못 산다
-  return 'stone';
-}
-// ════════════════════════════════════════════════════════════════════════════════════════
-
+// ═══ ★[T164 2026-09-10] 실현 배분 — **정본은 `sim/economy-sim.js` 로 옮겼다**(사본 0) ═══
+//   T161 이 여기 뒀던 `allocBasketOf`/`allocRealFn` 은 이제 econ 정본의 함수다(인라인 번들로 따라온다).
+//   랩은 손잡이만 쓴다 — `window.L_ALLOC_REAL = 1` 을 `lifeInit` **전에**(창 배수는 `window.L_ALLOC_WIN`).
+//   **기본은 꺼짐** — 정본이 손잡이 없으면 종전 비트다. 전문 `보고/T164_2026-09-10.md`.
 let VILS=[],ECON_WORLD=null,lifeFocal=0,_claimedAll=new Map();   // ★다마을: 모든 마을 상태 / 공유 econ world / 초점 / 전역 영토 소유맵(셀→마을, 이웃 성장 회피)
 function lifeInit(){
   const p0=Math.max(8,+document.getElementById('pop').value),seed=((+document.getElementById('seed').value)||0)>>>0;
@@ -11208,7 +11120,7 @@ function lifeInit(){
   BANDITS=[];_bdtSeq=1;_bdtPairs=new Map();_bdtSig='';_bdtRoutes=null;DENS=[];_denSeq=1;   // ★도적 상태 초기화(새 세계 — 소굴은 마을·교역로 확정 후 bdtDenScan이 재배치)
   WARS=[];_warSeq=1;TRIBUTES=[];   // ★전쟁 상태 초기화(새 세계). 원한·피로·목책은 마을(vil)에 붙어 재생성과 함께 리셋
   const centers=pickCenters(NV,275),M=centers.length;   // ★마을 간격 128→275(§3b 게임필 확정값, 도보 2.3분 — R_MAX 135×2=270<275라 영토 비겹침 보장)
-  if(typeof EconEngine!=='undefined'){EconEngine.setSeed(seed);ECON_WORLD=EconEngine.createWorldV2({seed,villageCount:M,picker:'rational',infoRange:5000,raidPer100:0.005});if(+window.L_ALLOC_REAL!==0)ECON_WORLD.allocFn=allocRealFn;if(+window.L_STONEREAL!==0)ECON_WORLD.stoneBudgetFn=stoneRealFn;if(+window.L_STONE_TRADE!==0)ECON_WORLD.returnPullFn=stoneTradePullFn;bdtInstallHooks();hwInstallHook();}   // ★[T161] 실현 배분 주입(되돌림 L_ALLOC_REAL=0 = 문을 안 연다 = 종전 비트) · ★도적 econ 계약 훅(도적 0이면 완전 무해) · ★[T157] 행복→작업량 훅
+  if(typeof EconEngine!=='undefined'){EconEngine.setSeed(seed);ECON_WORLD=EconEngine.createWorldV2({seed,villageCount:M,picker:'rational',infoRange:5000,raidPer100:0.005});if(+window.L_STONEREAL!==0)ECON_WORLD.stoneBudgetFn=stoneRealFn;if(+window.L_STONE_TRADE!==0)ECON_WORLD.returnPullFn=stoneTradePullFn;bdtInstallHooks();hwInstallHook();}   // ★[T161] 실현 배분 주입(되돌림 L_ALLOC_REAL=0 = 문을 안 연다 = 종전 비트) · ★도적 econ 계약 훅(도적 0이면 완전 무해) · ★[T157] 행복→작업량 훅   // ★[T164] 실현 배분은 econ 정본이 손잡이(L_ALLOC_REAL)로 직접 켠다 — 랩 주입 없음
   for(let i=0;i<M;i++){
     const s={day:L_START,pop:p0,food:p0*150,houses:[],farmland:[],dryfield:[],cultFarm:[],cultDry:[],plots:[],agents:[],fishers:0,crop:new Map(),spoiled:0,seed:(seed^Math.imul(i+1,0x9e3779b1))>>>0,V:null,name:'마을'+(i+1)};
     setupVillage(s,centers[i]);   // V 생성·농지·plot·NPC

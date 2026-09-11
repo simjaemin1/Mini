@@ -1,17 +1,22 @@
 #!/usr/bin/env node
-// === scripts/test-lab-alloc.js — T161 하네스: 실현 배분이 실제로 실현을 보는가 ============
+// === scripts/test-lab-alloc.js — T161/T164 하네스: 실현 배분이 실제로 실현을 보는가 ==========
 //
 // @regress 아님 — **랩 하네스다**(브라우저를 띄운다). 러너 전수에는 안 넣는다.
 //
+// ★[T164] 정본이 `sim/economy-sim.js` 로 옮겨왔다. 그래서 이 하네스는 **두 경로를 다 건다**:
+//   ⓢ 서버 경로 — `require('sim/economy-sim').allocRealCandidates` 를 직접 부른다(브라우저 없이)
+//   ⓛ 랩 경로   — 인라인 번들이 **같은 함수**를 태우는지(손잡이 하나로 켜지는지)
+//
 // 무엇을 거나:
-//   ① 되돌림 — `L_ALLOC_REAL=0` 이면 문이 안 열린다(`world.allocFn` 부재 = 종전 비트)
-//   ② 문이 열리면 후보 목록이 실제로 다시 쓰인다(EMA 가 선다)
-//   ③ 첫 정산 전 폴백 = **종전 값 그대로**(문이 열려도 첫 호출은 null 을 돌려준다)
-//   ④ ★양 자리 — 실현 산출을 반으로 줄이면 한계가치도 반이 된다
-//   ⑤ ★값 자리 — 바구니 구성이 바뀌면(한 품목 값만 올리면) 한계가치가 그 몫만큼 따라간다
-//   ⑥ 바구니는 **엔진 표**가 정한다(사본 0) — `JOBS[j].output`·`byproduct`·`foragerYieldsFor`
+//   ① 되돌림 = 기본 — 손잡이가 없으면 `allocRealOn()` 이 거짓이고 마을에 EMA 가 안 선다
+//   ② 손잡이를 켜면 후보 목록이 실제로 다시 쓰인다
+//   ③ 첫 정산 전 폴백 = **종전 값 그대로**(첫 호출은 null)
+//   ④ ★양 자리 — 실현 산출을 반으로 줄이면 한계가치도 반
+//   ⑤ ★값 자리 — 바구니 구성이 바뀌면 한계가치가 그 몫만큼 따라간다
+//   ⑥ 바구니는 **엔진 표**가 정한다(사본 0)
 //   ⑦ 돌연변이 — 창을 0 으로(`L_ALLOC_WIN=0`) 하면 평활이 사라져 하루치 요동이 그대로 든다
 //   ⑧ 서버 표 — `FORAGE_FOOD_FACTOR` 에 `mulberry_fruit` 이 있고 값은 산포도와 같다(새 수 0)
+//   ⑨ ★사본 0 — 랩 HTML 이 제 `allocRealFn`/`allocBasketOf` 를 **안 들고 있다**
 //
 // 실행: node scripts/test-lab-alloc.js
 'use strict';
@@ -50,14 +55,73 @@ async function open(env) {
        '소스가 **수를 안 적고 참조로** 쓴다(손으로 0.3 을 적지 않았다)');
   }
 
+  // ── ⑨ 사본 0 — 랩 HTML 이 제 처방을 안 들고 있다 ───────────────────────────
+  console.log('\n⑨ 사본 0 — 정본은 econ 한 곳뿐');
+  {
+    const fs = require('fs');
+    const html = fs.readFileSync(LAB, 'utf8');
+    const inl = html.slice(html.indexOf('economy-engine'));   // 인라인 엔진 블록 이후 = 번들이 실은 정본
+    const own = html.slice(0, html.indexOf('economy-engine'));
+    ok(!/function\s+allocRealFn\s*\(/.test(html), '랩에 `allocRealFn` 정의가 **없다**(T161 사본 제거)');
+    ok((html.match(/function\s+allocBasketOf\s*\(/g) || []).length === 1,
+       '`allocBasketOf` 정의는 **하나**뿐이다(인라인 번들이 실은 정본)');
+    ok(/ECON_WORLD\.allocFn/.test(html) === false, '랩이 `ECON_WORLD.allocFn` 을 안 건다(정본이 손잡이로 켠다)');
+  }
+
+  // ── ⓢ 서버 경로 — 브라우저 없이 정본을 직접 부른다 ─────────────────────────
+  console.log('\nⓢ 서버 경로 — 정본 함수를 직접');
+  {
+    const E = require(path.resolve(__dirname, '..', 'sim', 'economy-sim.js'));
+    delete process.env.L_ALLOC_REAL;
+    ok(E.allocRealOn() === false, '손잡이가 없으면 **꺼짐**이 기본이다');
+    process.env.L_ALLOC_REAL = '1';
+    ok(E.allocRealOn() === true, '`L_ALLOC_REAL=1` 이면 켜진다');
+    process.env.L_ALLOC_REAL = '0';
+    ok(E.allocRealOn() === false, '`L_ALLOC_REAL=0` 이면 꺼진다(되돌림)');
+    delete process.env.L_ALLOC_REAL;
+    const JOBS = { farmer: { output: 'food', byproduct: { wheat: 0.25 } }, merchant: {} };
+    const ctx = (counts, wf) => ({ period: 100, counts, w: wf || (() => 1), JOBS, forageYields: () => ({}) });
+    const W = { day: 0 };
+    const settle = (prod, counts, wf) => {
+      const v = { dailyProductionBuf: Object.assign({}, prod) };
+      W.day = 0; E.allocRealCandidates(v, W, [['farmer', 1]], ctx(counts, wf));
+      W.day = 100000;                                   // Δ일 ≫ 창 ⇒ α=1 ⇒ EMA = 오늘치
+      return E.allocRealCandidates(v, W, [['farmer', 1]], ctx(counts, wf))[0][1];
+    };
+    const v0 = { dailyProductionBuf: { food: 1 } };
+    W.day = 0;
+    ok(E.allocRealCandidates(v0, W, [['farmer', 9]], ctx({ farmer: 1 })) === null,
+       'ⓢ③ 첫 호출은 **null**(폴백 = 종전 값)');
+    const g1 = settle({ food: 20 }, { farmer: 2 });
+    const g2 = settle({ food: 10 }, { farmer: 2 });
+    ok(Math.abs(g2 - g1 / 2) < 1e-9, 'ⓢ④ 실현이 반이면 한계가치도 반', `${g1} → ${g2}`);
+    const g3 = settle({ food: 20 }, { farmer: 2 }, (r) => (r === 'food' ? 2 : 1));
+    ok(Math.abs(g3 - g1 * 2) < 1e-9, 'ⓢ⑤ 값이 두 배면 두 배', `${g1} → ${g3}`);
+    const g4 = settle({ food: 10, wheat: 10 }, { farmer: 2 });
+    const g5 = settle({ food: 10, wheat: 10 }, { farmer: 2 }, (r) => (r === 'wheat' ? 3 : 1));
+    ok(Math.abs(g5 - g4 * 2) < 1e-9, "ⓢ⑤' 바구니 절반 값 3배 → 평균 2배(양 가중)", `${g4} → ${g5}`);
+    const vm = { dailyProductionBuf: { food: 10 } };
+    W.day = 0; E.allocRealCandidates(vm, W, [['merchant', 7]], ctx({ merchant: 1 })); W.day = 100000;
+    ok(E.allocRealCandidates(vm, W, [['merchant', 7]], ctx({ merchant: 1 }))[0][1] === 7,
+       'ⓢ 생산 없는 직업(상인)은 **받은 값 그대로**');
+    // ⓢ⑦ 창 돌연변이
+    const win = (wv) => { if (wv === null) delete process.env.L_ALLOC_WIN; else process.env.L_ALLOC_WIN = String(wv);
+      const v = { dailyProductionBuf: { food: 0 } };
+      W.day = 0; E.allocRealCandidates(v, W, [['farmer', 1]], ctx({ farmer: 1 }));
+      v.dailyProductionBuf.food = 100; W.day = 1;
+      return E.allocRealCandidates(v, W, [['farmer', 1]], ctx({ farmer: 1 }))[0][1]; };
+    const w1 = win(null), w0 = win(0); delete process.env.L_ALLOC_WIN;
+    ok(w0 > w1 * 5, 'ⓢ⑦ 돌연변이 — 창 0 이면 하루 요동이 그대로', `창1 ${w1.toFixed(2)} · 창0 ${w0.toFixed(2)}`);
+  }
+
   // ── ① 되돌림 ───────────────────────────────────────────────────────────────
   console.log('\n① 되돌림 = **기본** — 문을 안 연다(다른 세션의 랩 기준선을 안 건드린다)');
   {
-    const { b, p, errs } = await open(null);   // ★기본이 곧 되돌림이다(문을 안 연다)
+    const { b, p, errs } = await open(null);   // ★기본이 곧 되돌림이다(손잡이가 없다)
     const r = await p.evaluate(() => { document.getElementById('seed').value = '7'; document.getElementById('nvil').value = '4'; reseed(); lifeInit();
       for (let d = 0; d < 40; d++) lifeDayAll(true);
-      return { attached: typeof (ECON_WORLD || {}).allocFn === 'function', ema: !!(VILS[0].econ._t161ema), pop: VILS.reduce((a, v) => a + v.econ.npcs.length, 0) }; });
-    ok(!r.attached, '`world.allocFn` 이 **없다**');
+      return { on: !!(EconEngine.allocRealOn && EconEngine.allocRealOn()), ema: !!(VILS[0].econ._allocEma), pop: VILS.reduce((a, v) => a + v.econ.npcs.length, 0) }; });
+    ok(!r.on, '랩에서도 `allocRealOn()` 이 **거짓**이다(손잡이 없음 = 기본)');
     ok(!r.ema, '마을에 EMA 가 안 선다(처방이 한 번도 안 돌았다)');
     ok(errs.length === 0, '페이지 오류 0', errs.join(' | '));
     await b.close();
@@ -69,17 +133,17 @@ async function open(env) {
     const { b, p, errs } = await open('window.L_ALLOC_REAL=1;');
     const r = await p.evaluate(() => {
       document.getElementById('seed').value = '7'; document.getElementById('nvil').value = '4'; reseed(); lifeInit();
-      const out = { attached: typeof ECON_WORLD.allocFn === 'function' };
-      // 첫 호출 — 손으로 문을 두드려 본다(엔진이 부르는 것과 같은 계약)
+      const out = { on: !!EconEngine.allocRealOn() };
+      // 정본을 직접 부른다 — 랩이 태운 그 함수가 서버 것과 **같은 함수**인지 본다
       const v = VILS[0].econ;
       const ctx = { period: 100, counts: { farmer: 1 }, w: () => 1, JOBS: { farmer: { output: 'food' } }, forageYields: () => ({}) };
-      out.first = ECON_WORLD.allocFn(v, ECON_WORLD, [['farmer', 42]], ctx);
-      out.emaAfterFirst = !!v._t161ema;
+      out.first = EconEngine.allocRealCandidates(v, ECON_WORLD, [['farmer', 42]], ctx);
+      out.emaAfterFirst = !!v._allocEma;
       v.dailyProductionBuf.food = 10;
       ECON_WORLD.day = (ECON_WORLD.day || 0) + 100;
-      out.second = ECON_WORLD.allocFn(v, ECON_WORLD, [['farmer', 42]], ctx);
+      out.second = EconEngine.allocRealCandidates(v, ECON_WORLD, [['farmer', 42]], ctx);
       return out; });
-    ok(r.attached, '`world.allocFn` 이 걸려 있다');
+    ok(r.on, '랩에서 손잡이가 켜지면 `allocRealOn()` 이 참이다');
     ok(r.first === null, '★첫 호출은 **null** 을 돌려준다 = 종전 후보 그대로(폴백)');
     ok(r.emaAfterFirst, '그래도 EMA 는 그때부터 접기 시작한다');
     ok(Array.isArray(r.second) && r.second.length === 1 && r.second[0][0] === 'farmer',
@@ -94,16 +158,16 @@ async function open(env) {
     const { b, p, errs } = await open('window.L_ALLOC_REAL=1;');
     const r = await p.evaluate(() => {
       document.getElementById('seed').value = '7'; document.getElementById('nvil').value = '4'; reseed(); lifeInit();
-      const W = ECON_WORLD, out = {};
+      const W = ECON_WORLD, out = {}, A = EconEngine.allocRealCandidates;
       const mk = () => { const v = { dailyProductionBuf: {}, npcs: [] }; return v; };
       const ctx = (counts, wf, JOBS, yields) => ({ period: 100, counts, w: wf || (() => 1),
         JOBS: JOBS || { farmer: { output: 'food' } }, forageYields: () => (yields || {}) });
       const settle = (v, c, prod, wf, JOBS, yields) => {      // 두 번 불러 EMA 를 세운다(창을 다 채운다)
-        W.day = 0; v._t161day = undefined; v._t161ema = undefined;
+        W.day = 0; v._allocDay = undefined; v._allocEma = undefined;
         v.dailyProductionBuf = Object.assign({}, prod);
-        W.allocFn(v, W, [['farmer', 1]], ctx(c, wf, JOBS, yields));
+        A(v, W, [['farmer', 1]], ctx(c, wf, JOBS, yields));
         W.day = 100000;                                       // Δ일 ≫ 창 ⇒ α=1 ⇒ EMA = 오늘치
-        return W.allocFn(v, W, [['farmer', 1]], ctx(c, wf, JOBS, yields))[0][1];
+        return A(v, W, [['farmer', 1]], ctx(c, wf, JOBS, yields))[0][1];
       };
       // ④ 양 — 실현을 반으로
       const g1 = settle(mk(), { farmer: 2 }, { food: 20 });
@@ -126,16 +190,16 @@ async function open(env) {
       // ⑥' 채집꾼 — forageYields 가 바구니에 들어간다
       const JF = { forager: { produceSpecial: 'forager' } };
       const cf = (c, wf, y) => ({ period: 100, counts: c, w: wf || (() => 1), JOBS: JF, forageYields: () => y });
-      const settleF = (prod, y) => { const v = mk(); W.day = 0; v._t161day = undefined; v._t161ema = undefined;
+      const settleF = (prod, y) => { const v = mk(); W.day = 0; v._allocDay = undefined; v._allocEma = undefined;
         v.dailyProductionBuf = Object.assign({}, prod);
-        W.allocFn(v, W, [['forager', 1]], cf({ forager: 1 }, null, y)); W.day = 100000;
-        return W.allocFn(v, W, [['forager', 1]], cf({ forager: 1 }, null, y))[0][1]; };
+        A(v, W, [['forager', 1]], cf({ forager: 1 }, null, y)); W.day = 100000;
+        return A(v, W, [['forager', 1]], cf({ forager: 1 }, null, y))[0][1]; };
       out.forage = [settleF({ mushroom: 5, stone: 5 }, { mushroom: 1 }), settleF({ mushroom: 5, stone: 5 }, {})];
       // ⑦ 창 — 0 이면 평활 없음(하루치가 그대로), 1 이면 Δ일/창 만큼만 접힌다
       const winTest = (win) => { window.L_ALLOC_WIN = win; const v = mk();
-        W.day = 0; v.dailyProductionBuf = { food: 0 }; W.allocFn(v, W, [['farmer', 1]], ctx({ farmer: 1 }));
+        W.day = 0; v.dailyProductionBuf = { food: 0 }; A(v, W, [['farmer', 1]], ctx({ farmer: 1 }));
         W.day = 1; v.dailyProductionBuf = { food: 100 };                       // 하루만 폭등
-        return W.allocFn(v, W, [['farmer', 1]], ctx({ farmer: 1 }))[0][1]; };
+        return A(v, W, [['farmer', 1]], ctx({ farmer: 1 }))[0][1]; };
       out.win = [winTest(1), winTest(0)];
       window.L_ALLOC_WIN = 1;
       return out; });
