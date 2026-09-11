@@ -3584,7 +3584,20 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
         // ★S1 돌=채집 자원(광부 아님): 강가/돌밭(land.stone) 채집꾼이 돌을 *주 산출*로 가져옴(식량 믹스와 별개 가산).
         //   계수 0.9 ≈ 옛 광부(base1.5×land.stone) 스케일에 근접 → 돌밭 마을은 채집꾼만으로 돌 풍족(병목 없음).
         //   채집 스킬(foraging)이 효율을 높이고, 임연부 MSY(_forageScale)에 연동(공유지 비극 방지). 돌은 흔하니 누구나(스킬↑) 조달.
-        const stoneYield = (v.land.stone || 0) * skillMul * _forageScale * 0.9;
+        // ★★★[T163 2026-09-10 · 이 파일의 유일한 접점] **관 굵기를 밖에서 물어본다.**
+        //   여기 `v.land.stone` 은 *바위 셀 비율*만 보는 수다(`server/livelihood.js landOf`:
+        //   `FLOOR.stone + GAIN.stone × rockShare`). 그런데 실물 바위는 두 곳에서 난다 —
+        //   **산(바위 셀)** 과 **흩어진 바위**(청크 일반 자원 루프 `rock`). 뒤쪽을 이 식은 0 으로 적는다.
+        //   T135 가 나무에서 잡은 것과 **같은 종류의 누락**이다(그쪽은 부호가 반대였다 — §0-ⓑ).
+        //
+        //   ⚠**주입이 없으면 한 글자도 안 바뀐다.** 예산을 대는 것은 이 파일이 아니다 —
+        //     `world.stoneBudgetFn(v)` 가 준다. 지금 그것을 주는 것은 **랩**(`lab/전쟁실험실.html`
+        //     `L_STONEREAL`)뿐이고, 서버·CLI·하네스·픽스처는 안 주므로 폴백이 곧 종전 =
+        //     **비트 동일**이다(T135 `forageTakeFn` · T157 `happyWorkW` · T161 `allocFn` 선례).
+        const _sbFn = (v._world && typeof v._world.stoneBudgetFn === 'function') ? v._world.stoneBudgetFn : null;
+        let _stoneK = (v.land.stone || 0);
+        if (_sbFn) { const _k = _sbFn(v); if (Number.isFinite(_k) && _k >= 0) _stoneK = _k; }   // 폴백이 곧 종전(못 재면 받은 값 그대로)
+        const stoneYield = _stoneK * skillMul * _forageScale * 0.9;
         if (stoneYield > 0) addProduce('stone', stoneYield);
         workNPC(npc);
       }
@@ -10752,6 +10765,10 @@ const L_HALF=0.542;   // ★반일 근무 퇴근 시각(13시) — econ 여유�
 // ===== S2: 지형 → economy-sim land params 추출 =====
 // economy-sim village.land = {fertility,water,stone,ore,wood,game,size}.
 // 마을실험실 간이지형(fert/water/rock)에서 추출. stone/ore=바위밀도(실측), wood/game=숲 프록시(추후 forest 레이어 필요).
+// ★★[T163 2026-09-10] 랩 부존식의 **바닥항·지형항을 이름으로 올렸다**(값 무변 · 아래 `stone:` 한 줄이 쓰던 그 두 수).
+//   올린 이유: 석재 바닥 ② 처방(`L_STONEREAL`)이 이 식의 **역함수**로 바위 셀 비율을 되찾는데,
+//   그걸 저쪽에 다시 적으면 그게 사본이다. 수는 여기 하나뿐이다.
+const L_STONE_FLOOR=0.1, L_STONE_GAIN=12;
 function extractLandParams(V,TR){
   const c=V.center,R=140;let rock=0,forest=0,wat=0,n=0;   // ★반경=영토 크기(58→140, §3b 거리 압축 확정값): 골짜기 마을이 조금 떨어진 산·숲도 자기 자원으로 인식(채광 사정거리↑)
   for(let dy=-R;dy<=R;dy++)for(let dx=-R;dx<=R;dx++){if(dx*dx+dy*dy>R*R)continue;const x=c.cx+dx,y=c.cy+dy;if(x<0||y<0||x>=N||y>=N)continue;n++;const i=idx(x,y);if(TR.rock[i])rock++;if(TR.water[i])wat++;if(TR.forest&&TR.forest[i])forest++;}
@@ -10763,7 +10780,7 @@ function extractLandParams(V,TR){
     fertility: +(fert*2.0).toFixed(2),            // 토질: 0.55→1.1(자급 가능), 0.3→0.6(척박, 교역 의존), 0.9→1.8(비옥)
     arable:    tn?+((tn-tw)/tn).toFixed(2):1.0,   // ★경작지 비율 = *영토* 기반(≈1): 영토는 이미 물·바위 피해 형성 → 지리는 size·프론티어가 반영. (반경 기반은 지리를 size와 이중 카운트라 폐기. fertility는 산출에만 — 이중산입 분리 유지)
     water:     +(V.water*1.6).toFixed(2),         // 어장/물접근 — 거리 감쇠는 V.water(레이아웃 1−nd/140)가 담당. ★wProx 폐지: V.water가 이미 거리 함수라 이중 감쇠였음(사용자 검증 요구로 적발)
-    stone:     +(0.1+rockD*12).toFixed(2),        // 돌 ∝ 바위밀도. 계수 大(×12): 물가 바위 6% → stone 0.82(풍부). 바닥 0.1 유지 → 산 없으면 광부 0
+    stone:     +(L_STONE_FLOOR+rockD*L_STONE_GAIN).toFixed(2),        // 돌 ∝ 바위밀도. 계수 大(×12): 물가 바위 6% → stone 0.82(풍부). 바닥 0.1 유지 → 산 없으면 광부 0
     ore:       +(0.08+rockD*12).toFixed(2),       // 광맥 ∝ 바위밀도. 계수 大(×12): 바위 6% → ore 0.80(풍부) → 광부·탐사·야금 사슬 가동
     wood:      +(0.25+forD*2.8).toFixed(2),       // 목재 ∝ 숲 밀도(실측)
     game:      +(0.2+forD*2.6).toFixed(2),        // 사냥감 ∝ 숲 밀도(실측)
@@ -11004,6 +11021,60 @@ function allocRealFn(v, world, cands, ctx) {
   }
   return out;
 }
+
+// ════════════════════════════════════════════════════════════════════════════════════════
+// ★★★[T163 2026-09-10 · 랩 석재 절] **바닥 마을의 돌 — 관 굵기를 실물 바위에서 유도한다**
+//
+// T152 (B) 가 잡은 것: 석재 바닥 마을이 51곳 중 **36곳**이고, 그 36곳 **전부**가 800일 중
+//   절반 넘는 날을 `storage.stone < 0.2` 아래에서 산다. STONE_NET 은 *사람은* 부르는데
+//   *관을 못 넓힌다* — 굵기를 정하는 것이 `land.stone` 이고 바닥 마을의 그 값은 상수 바닥항이다.
+//
+// 처방 ②(재민 승인 순서 ②→①→③): **그 바닥항을 실체로 채운다.** T135 2판 문법 그대로 —
+//   "예산이 나무를 한 곳만 셌다" 와 같은 종류의 누락을 바위에서 찾는다.
+//
+// ★★§0-ⓑ 실측이 **부호를 뒤집었다**(보고 §2 — 이 절은 그 실측 위에 서 있다):
+//   청크를 굽어 세니 스캔 원(61,575셀) 안 실물 바위가 **바닥 36곳 중앙 16 · 그 밖 15곳 중앙 14** 다.
+//   `land.stone` 은 0.25~2.50 으로 10배 갈리는데 **실물 바위 수는 안 갈린다.**
+//   까닭: 바위는 나무와 달리 **제 그리드가 없다 — 산 그 자체가 그리드**이고, 그 산(바위 셀)은
+//   청크 생성기가 `isRockCellLocal` 로 **spawn 을 막는 자리**다. 산이 많을수록 흩어진 바위는 되레 준다.
+//   ⇒ 나무(바닥 마을 실물 183그루 · 예산 0)와 **반대 방향**이다. 바닥 마을은 바위가 없는 게 아니라
+//     **어디에도 바위가 별로 없다**(나무의 1/11). 바닥항 0.25 는 실물보다 훨씬 후한 수다.
+//
+// 그래서 이 절이 재는 것은 "관이 얼마나 넓어지나"가 아니라 **"실체로 갈아 끼우면 세계가 얼마나 움직이나"** 다.
+//   랩은 기전을 보이는 자리이지 판정 자리가 아니다(족보 141) — 이식 판정은 서버 3시드로, 다음 카드.
+//
+// ⚠**econ 절은 안 고친다.** `sim/economy-sim.js` 에 뚫은 것은 **문 하나**(`world.stoneBudgetFn`)뿐이고,
+//   문이 안 열리면 그 파일은 종전 비트 그대로다(T135 `forageTakeFn` · T157 `happyWorkW` · T161 `allocFn` 선례).
+// ⚠**새 수 0.** 흩어진 바위 밀도는 **청크 생성기 정본이 답한다**(`server/chunk.js scatterRocksPerCell`)—
+//   아래 `L_STONE_SCATTER` 는 그 함수의 값을 적어 둔 것이고, 손으로 다른 수를 적으면
+//   `test-lab-stone` 이 정본에서 다시 유도해 대조하고 **빨개진다**(T100 `L_LAND_BASE` 선례).
+//   바닥항·지형항은 랩 부존식(`L_STONE_FLOOR`·`L_STONE_GAIN`)의 그 수를 그대로 되읽는다.
+//
+// 손잡이 — `L_STONEREAL=1` 이면 문을 연다. **기본은 0 = 문을 안 연다 = 종전 비트.**
+//   기본을 켜 두면 이 랩을 기준선으로 쓰는 다른 세션들(T152 기준선 · T154 사냥 · T157 행복 · T161 배분)의
+//   세계가 **조용히** 움직인다 — 이 카드가 살 권한이 없는 값이다.
+if (window.L_STONEREAL === undefined) window.L_STONEREAL = 0;
+const L_STONE_SCATTER = 0.000244140625;   // = server/chunk.js scatterRocksPerCell('forest') = 5 × P(rock|forest)=0.05 ÷ (1024/32)²
+
+/**
+ * 채집꾼 돌 산출의 **관 굵기**(엔진이 `v.land.stone` 자리에 쓰던 그 수)를 실물 바위에서 유도한다.
+ *   ① **역함수** — 랩 부존식 `stone = FLOOR + GAIN×rockD` 를 되읽어 바위 셀 비율 `rockD` 를 되찾는다.
+ *   ② 실물은 **두 곳**에서 난다: 산(바위 셀 `rockD`) + 흩어진 바위(나머지 셀 × 정본 밀도).
+ *   ③ 바닥항을 **안 얹는다** — 바닥을 실체로 갈아 끼우는 것이 이 실험이다.
+ * 마을당 한 번만 셈한다(부존은 안 변한다 · 주사위 0 · 멱등).
+ */
+function stoneRealFn(ev){
+  if(!ev) return 0;
+  if(ev._t163K != null) return ev._t163K;
+  const base=(ev._baseStone!=null)?ev._baseStone:((ev.land&&ev.land.stone)||0);
+  const rockD=Math.max(0,(base-L_STONE_FLOOR)/L_STONE_GAIN);          // ★역함수
+  const share=rockD+(1-rockD)*L_STONE_SCATTER;                        // ① 산 + ② 흩어진 바위
+  const k=L_STONE_GAIN*share;
+  ev._t163K=k;
+  return k;
+}
+// ════════════════════════════════════════════════════════════════════════════════════════
+
 let VILS=[],ECON_WORLD=null,lifeFocal=0,_claimedAll=new Map();   // ★다마을: 모든 마을 상태 / 공유 econ world / 초점 / 전역 영토 소유맵(셀→마을, 이웃 성장 회피)
 function lifeInit(){
   const p0=Math.max(8,+document.getElementById('pop').value),seed=((+document.getElementById('seed').value)||0)>>>0;
@@ -11012,7 +11083,7 @@ function lifeInit(){
   BANDITS=[];_bdtSeq=1;_bdtPairs=new Map();_bdtSig='';_bdtRoutes=null;DENS=[];_denSeq=1;   // ★도적 상태 초기화(새 세계 — 소굴은 마을·교역로 확정 후 bdtDenScan이 재배치)
   WARS=[];_warSeq=1;TRIBUTES=[];   // ★전쟁 상태 초기화(새 세계). 원한·피로·목책은 마을(vil)에 붙어 재생성과 함께 리셋
   const centers=pickCenters(NV,275),M=centers.length;   // ★마을 간격 128→275(§3b 게임필 확정값, 도보 2.3분 — R_MAX 135×2=270<275라 영토 비겹침 보장)
-  if(typeof EconEngine!=='undefined'){EconEngine.setSeed(seed);ECON_WORLD=EconEngine.createWorldV2({seed,villageCount:M,picker:'rational',infoRange:5000,raidPer100:0.005});if(+window.L_ALLOC_REAL!==0)ECON_WORLD.allocFn=allocRealFn;bdtInstallHooks();hwInstallHook();}   // ★[T161] 실현 배분 주입(되돌림 L_ALLOC_REAL=0 = 문을 안 연다 = 종전 비트) · ★도적 econ 계약 훅(도적 0이면 완전 무해) · ★[T157] 행복→작업량 훅
+  if(typeof EconEngine!=='undefined'){EconEngine.setSeed(seed);ECON_WORLD=EconEngine.createWorldV2({seed,villageCount:M,picker:'rational',infoRange:5000,raidPer100:0.005});if(+window.L_ALLOC_REAL!==0)ECON_WORLD.allocFn=allocRealFn;if(+window.L_STONEREAL!==0)ECON_WORLD.stoneBudgetFn=stoneRealFn;bdtInstallHooks();hwInstallHook();}   // ★[T161] 실현 배분 주입(되돌림 L_ALLOC_REAL=0 = 문을 안 연다 = 종전 비트) · ★도적 econ 계약 훅(도적 0이면 완전 무해) · ★[T157] 행복→작업량 훅
   for(let i=0;i<M;i++){
     const s={day:L_START,pop:p0,food:p0*150,houses:[],farmland:[],dryfield:[],cultFarm:[],cultDry:[],plots:[],agents:[],fishers:0,crop:new Map(),spoiled:0,seed:(seed^Math.imul(i+1,0x9e3779b1))>>>0,V:null,name:'마을'+(i+1)};
     setupVillage(s,centers[i]);   // V 생성·농지·plot·NPC
@@ -11022,7 +11093,7 @@ function lifeInit(){
       s.role=centers[i].role||'agri';
       _lp.fertility = (s.role==='agri') ? 2.8 : (s.role==='mining') ? 0.02 : 0.63;   // ★광산촌=농사 완전 불가(금광 실험): 식량 전량 수입
       if (s.role==='mining') { _lp.ore = 1.5; _lp.stone = 1.5; }   // ★디버그: 보장된 초부유 광맥(지형 무관) → 탐사 확실 가동 → 금(부산물) 교역
-      const ev=EconEngine.createVillage(Object.assign(_lp,{initialPop:p0,name:s.name}));ev._world=ECON_WORLD;ECON_WORLD.villages[i]=ev;s.econ=ev;s.baseWood=ev.land.wood;s.baseStone=ev.land.stone;s.baseOre=ev.land.ore;s.baseGame=ev.land.game;s.baseWater=ev.land.water;s.pop=ev.npcs.length;
+      const ev=EconEngine.createVillage(Object.assign(_lp,{initialPop:p0,name:s.name}));ev._world=ECON_WORLD;ECON_WORLD.villages[i]=ev;s.econ=ev;s.baseWood=ev.land.wood;s.baseStone=ev.land.stone;ev._baseStone=ev.land.stone;/*★[T163] 역함수가 읽는 자 — land.stone 은 광맥 고갈로 움직인다*/s.baseOre=ev.land.ore;s.baseGame=ev.land.game;s.baseWater=ev.land.water;s.pop=ev.npcs.length;
       ev.coord={x:centers[i].cx*2.5,y:centers[i].cy*2.5};   // ★econ 좌표 = 실제 grid 마을중심×2.5(랜덤 coord 폐지) → villageDist·왕복시간·운반비·약탈이 실제 지오메트리 기반
       ev.land.liveLand=true;   // ★live land: 지형 실측이 진실(엔진 합성 β·arable 폴백 비활성) — S_eff=size(희석은 fertility 재추출이), q=프론티어 실측
       if(s.V&&s.V.territory)for(const c of s.V.territory)_claimedAll.set(c[0]+','+c[1],s);   // 초기 영토 전역 등록

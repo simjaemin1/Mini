@@ -3507,7 +3507,20 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
         // ★S1 돌=채집 자원(광부 아님): 강가/돌밭(land.stone) 채집꾼이 돌을 *주 산출*로 가져옴(식량 믹스와 별개 가산).
         //   계수 0.9 ≈ 옛 광부(base1.5×land.stone) 스케일에 근접 → 돌밭 마을은 채집꾼만으로 돌 풍족(병목 없음).
         //   채집 스킬(foraging)이 효율을 높이고, 임연부 MSY(_forageScale)에 연동(공유지 비극 방지). 돌은 흔하니 누구나(스킬↑) 조달.
-        const stoneYield = (v.land.stone || 0) * skillMul * _forageScale * 0.9;
+        // ★★★[T163 2026-09-10 · 이 파일의 유일한 접점] **관 굵기를 밖에서 물어본다.**
+        //   여기 `v.land.stone` 은 *바위 셀 비율*만 보는 수다(`server/livelihood.js landOf`:
+        //   `FLOOR.stone + GAIN.stone × rockShare`). 그런데 실물 바위는 두 곳에서 난다 —
+        //   **산(바위 셀)** 과 **흩어진 바위**(청크 일반 자원 루프 `rock`). 뒤쪽을 이 식은 0 으로 적는다.
+        //   T135 가 나무에서 잡은 것과 **같은 종류의 누락**이다(그쪽은 부호가 반대였다 — §0-ⓑ).
+        //
+        //   ⚠**주입이 없으면 한 글자도 안 바뀐다.** 예산을 대는 것은 이 파일이 아니다 —
+        //     `world.stoneBudgetFn(v)` 가 준다. 지금 그것을 주는 것은 **랩**(`lab/전쟁실험실.html`
+        //     `L_STONEREAL`)뿐이고, 서버·CLI·하네스·픽스처는 안 주므로 폴백이 곧 종전 =
+        //     **비트 동일**이다(T135 `forageTakeFn` · T157 `happyWorkW` · T161 `allocFn` 선례).
+        const _sbFn = (v._world && typeof v._world.stoneBudgetFn === 'function') ? v._world.stoneBudgetFn : null;
+        let _stoneK = (v.land.stone || 0);
+        if (_sbFn) { const _k = _sbFn(v); if (Number.isFinite(_k) && _k >= 0) _stoneK = _k; }   // 폴백이 곧 종전(못 재면 받은 값 그대로)
+        const stoneYield = _stoneK * skillMul * _forageScale * 0.9;
         if (stoneYield > 0) addProduce('stone', stoneYield);
         workNPC(npc);
       }

@@ -378,6 +378,28 @@ function scatterTreesPerCell(biome, cellPx, chunkPx) {
   return RESOURCES_PER_CHUNK * treeShareOf(biome) / cellsPerChunk;
 }
 
+// ★★[T163 2026-09-10] **바위도 같은 자리에서 난다** — 나무와 완전히 같은 문법(사본 0 · 새 수 0).
+//   ⚠그런데 부호가 반대다. 나무는 숲 그리드가 따로 있어 바닥 마을에도 흩어진 나무가 **183그루** 섰는데,
+//     바위는 그리드가 없고 **산 그 자체가 그리드**다. 그리고 산(바위 셀)은 아래 생성 루프가
+//     `isRockCellLocal` 로 **spawn 을 막는 자리**라, 산이 많을수록 흩어진 바위는 되레 준다.
+//   ⇒ T163 §0-ⓑ 실측: 스캔 원(61,575셀) 안 실물 바위가 바닥 36곳 중앙 **16** · 그 밖 15곳 중앙 **14**.
+//     `land.stone` 은 0.25~2.50 로 10배 갈리는데 실물 바위 수는 안 갈린다.
+//   이 둘은 **랩(`lab/전쟁실험실.html` `L_STONEREAL`)이 관 굵기를 유도할 때** 읽는다 — 서버는 안 부른다.
+/** 이 biome 에서 일반 루프가 `rock` 을 고를 확률. 표를 옮겨 적지 않는다 — `pickResourceType` 이 답한다. */
+function rockShareOf(biome, samples) {
+  const N = Number.isFinite(samples) ? samples : 10000;
+  let n = 0;
+  for (let i = 0; i < N; i++) if (pickResourceType(biome, (i + 0.5) / N) === 'rock') n++;
+  return n / N;
+}
+/** 일반 루프가 32px 셀 하나에 놓는 바위 수 — 청크당 자원 수 × `rock` 몫 ÷ 청크 셀 수. 새 수 0. */
+function scatterRocksPerCell(biome, cellPx, chunkPx) {
+  const c = Number.isFinite(cellPx) ? cellPx : 32;
+  const cp = Number.isFinite(chunkPx) ? chunkPx : CHUNK_SIZE;
+  const cellsPerChunk = (cp / c) * (cp / c);
+  return RESOURCES_PER_CHUNK * rockShareOf(biome) / cellsPerChunk;
+}
+
 // 청크 안 자원 시드 생성. harvestedSet에 있는 건 제외.
 // 청크당 자원 N개 (기본 5개) — 청크 면적 256² = 65536. zone 4096이면 16×16=256 청크. 총 자원 1280.
 // Phase 5-1: terrain (forest·mountain·ore·water) 반영.
@@ -770,4 +792,4 @@ function generateCoastlineWaterTiles(zone, tileSize, findZoneAtFn, oceanRects) {
 
 // ★[T108 2026-09-05] `RESOURCE_HP_TABLE` 을 **내준다** — `zone.js` 가 같은 표를 한 벌 더
 //   들고 있었고(운석이 빠져 3대에 깨졌다 · T90 회부), 그걸 지우려면 정본이 나가야 한다.
-module.exports = { Chunk, ChunkManager, CHUNK_SIZE, generateChunkResources, regrowStageOf, REGROW, seedRand, forestSpacing, forestTreesPerCell, forestTreesPerCellMean, scatterTreesPerCell, treeShareOf, FOREST_MIN_COV, RESOURCES_PER_CHUNK, generateVillagesForZone, makeVillageName, generateCoastlineWaterTiles, RESOURCE_HP_TABLE };
+module.exports = { Chunk, ChunkManager, CHUNK_SIZE, generateChunkResources, regrowStageOf, REGROW, seedRand, forestSpacing, forestTreesPerCell, forestTreesPerCellMean, scatterTreesPerCell, treeShareOf, scatterRocksPerCell, rockShareOf, FOREST_MIN_COV, RESOURCES_PER_CHUNK, generateVillagesForZone, makeVillageName, generateCoastlineWaterTiles, RESOURCE_HP_TABLE };

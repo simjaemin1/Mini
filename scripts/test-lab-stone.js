@@ -1,0 +1,183 @@
+#!/usr/bin/env node
+// @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// === scripts/test-lab-stone.js — 바닥 마을의 돌: 관 굵기를 실물 바위에서 (T163 · 랩) ======
+//
+// ★왜 [T152 (B) → PM 승인 순서 ②→①→③ · 지시 T163]
+//   석재 바닥 마을이 51곳 중 36곳이고, 그 36곳 **전부**가 800일 중 절반 넘는 날을
+//   `storage.stone < 0.2`(STONE_NET 1차 문턱) **아래**에서 산다. 안전망은 *사람은* 부르는데
+//   *관을 못 넓힌다* — 굵기를 정하는 것이 `land.stone` 이고 바닥 마을의 그 값은 **상수 바닥항**이다.
+//   처방 ②: 그 바닥항을 **실체로 채운다**(T135 2판 "예산이 나무를 한 곳만 셌다" 와 같은 문법).
+//
+// ★★이 하네스가 지키는 것
+//   ① 문      : `sim/economy-sim.js` 의 접점은 **`world.stoneBudgetFn` 한 곳**뿐이다
+//   ② 되돌림  : 주입이 없으면(서버·CLI·하네스·`L_STONEREAL=0`) 세계가 **비트 동일**
+//   ③ 유도    : 랩의 `L_STONE_SCATTER` 를 **청크 생성기 정본에서 다시 유도해도 같다**(새 수 0)
+//   ④ 역함수  : 랩 부존식 `FLOOR + GAIN×rockD` 를 되읽어 `rockD` 를 되찾는다(왕복 항등)
+//   ⑤ 실측    : 바닥 마을 돌 예산 대 `land.stone × 0.9` — **카드가 건 부등호는 실측이 뒤집었다**(아래)
+//   ⑥ 돌연변이: 흩어진 바위 밀도를 0 으로 적으면 바닥 마을 예산이 **0** 이 된다 → 빨강
+//   ⑦ 랩 배선 : 상수가 한 곳뿐이고(사본 0) 손잡이 기본이 **OFF** 이며 훅이 `reseed` 에서 걸린다
+//
+// 실행: node scripts/test-lab-stone.js
+'use strict';
+process.env.ENABLE_VILLAGES = process.env.ENABLE_VILLAGES || '0';
+process.env.DB_PATH = process.env.DB_PATH || `/tmp/t163-st-${process.pid}.db`;
+const path = require('path');
+const fs = require('fs');
+const ROOT = path.join(__dirname, '..');
+const R = (p) => require(path.join(ROOT, p));
+let pass = 0, fail = 0;
+const ok = (c, m, extra) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (extra !== undefined && extra !== '' ? `  ${extra}` : '')); };
+const pre = (c, m, x) => { if (!c) { fail++; console.log('  ✗ [상황] ' + m + (x !== undefined ? `  ${x}` : '')); } else console.log('  · [상황] ' + m + (x !== undefined ? `  ${x}` : '')); };
+const note = (m) => console.log('  ⓘ ' + m);
+
+const econ = R('sim/economy-sim');
+const econV2 = R('sim/economy-sim-v2');
+const CH = R('server/chunk');
+const LV = R('server/livelihood');
+const SRC = fs.readFileSync(path.join(ROOT, 'sim', 'economy-sim.js'), 'utf8');
+const LAB = fs.readFileSync(path.join(ROOT, 'lab', '전쟁실험실.html'), 'utf8');
+// ★줄 주석을 **먼저** 지우고 블록 주석을 지운다(T100 5판 수리 — `// … sim/* …` 함정 · T152 §3 회부).
+const codeOf = (src) => src.split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n').replace(/\/\*[\s\S]*?\*\//g, ' ');
+const CODE = codeOf(SRC), LCODE = codeOf(LAB);
+
+console.log('\n=== 바닥 마을의 돌 — 관 굵기를 실물 바위에서 (T163 · 랩) ===');
+
+// ── ① 문 — 접점은 한 곳 ────────────────────────────────────────────────────
+console.log('\n① 문 — `sim/economy-sim.js` 의 접점은 한 곳뿐인가');
+{
+  //   ★한 **줄**로 센다 — 문의 관용구가 한 줄에서 이름을 두 번 쓴다(`typeof … ? … : null`).
+  //     낱말 수로 세면 그 관용구가 빨개진다(T157·T161 의 문도 같은 꼴이다).
+  const hitLines = CODE.split('\n').filter((l) => l.indexOf('stoneBudgetFn') >= 0).length;
+  ok(hitLines === 1, '① ★★엔진에서 `stoneBudgetFn` 을 읽는 **줄이 하나**다(문 하나)', `${hitLines}줄`);
+  ok(/const _sbFn = \(v\._world && typeof v\._world\.stoneBudgetFn === 'function'\) \? v\._world\.stoneBudgetFn : null;/.test(CODE),
+    '① 문 문법이 T135/T157/T161 선례와 같다(`v._world` 백참조 · typeof 검사)');
+  ok(/const stoneYield = _stoneK \* skillMul \* _forageScale \* 0\.9;/.test(CODE),
+    '① ★산출식은 **한 줄 그대로**다 — 바뀐 것은 첫 인자 하나뿐');
+  ok(!/stoneBudgetFn/.test(fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8')),
+    '① ★★서버(`server/villages.js`)는 이 문을 **안 연다**(= 라이브 무변)');
+}
+
+// ── ② 되돌림 — 주입이 없으면 비트 동일 ──────────────────────────────────────
+console.log('\n② 되돌림 — 문을 안 열면 세계가 비트 동일한가');
+const mkWorld = (inject) => {
+  const w = econV2.createWorldV2({ seed: 4242, villageCount: 0, picker: 'rational', infoRange: 5000, raidPer100: 0.005 });
+  w.villages = []; w.events = [];
+  if (inject) w.stoneBudgetFn = (v) => 0.9;                      // 아무 값이나 — 문이 열리면 세계가 달라야 한다
+  for (let i = 0; i < 6; i++) {
+    const v = econ.createVillage({ fertility: 1.0, water: 0.8, stone: LV.FLOOR.stone, ore: 0.1, wood: 0.9, game: 0.6,
+                                   arable: 1, size: 60, initialPop: 30, name: '마을' + i });
+    v._world = w; v.coord = { x: i * 400, y: 0 };
+    w.villages.push(v);
+  }
+  w.day = 0;
+  for (let d = 0; d < 200; d++) econV2.tickWorldV2(w, d);
+  return w.villages.map((v) => ({ n: v.npcs.length, s: +(v.storage.stone || 0).toFixed(9), t: +(v.storage.tool || 0).toFixed(9),
+                                  f: +(v.storage.food || 0).toFixed(9) }));
+};
+{
+  const a = JSON.stringify(mkWorld(false));
+  const b = JSON.stringify(mkWorld(false));
+  const c = JSON.stringify(mkWorld(true));
+  ok(a === b, '② ★★주입 없는 두 판이 **비트 동일**(결정론 · 되돌림의 뿌리)');
+  ok(a !== c, '② ★주입하면 실제로 **다른 세계**가 된다(문이 죽어 있지 않다)');
+}
+
+// ── ③ 유도 — 랩 상수를 청크 정본에서 다시 만든다 ────────────────────────────
+console.log('\n③ 유도 — 랩 `L_STONE_SCATTER` 를 정본에서 다시 만들어도 같은가');
+const LAB_SCATTER = (() => { const m = LCODE.match(/L_STONE_SCATTER\s*=\s*([0-9.eE+-]+)/); return m ? +m[1] : null; })();
+const ZONES = R('server/zone-config').ZONES;
+const BIOME = (ZONES.hanbando && ZONES.hanbando.biome) || 'forest';
+{
+  pre(typeof CH.scatterRocksPerCell === 'function' && typeof CH.rockShareOf === 'function',
+    '정본이 `scatterRocksPerCell`·`rockShareOf` 를 내준다(`server/chunk.js`)');
+  const canon = CH.scatterRocksPerCell(BIOME);
+  pre(LAB_SCATTER != null, '랩에서 `L_STONE_SCATTER` 를 찾았다', String(LAB_SCATTER));
+  ok(LAB_SCATTER != null && Math.abs(LAB_SCATTER - canon) < 1e-12,
+    `③ ★★★랩 상수 = 정본 유도값(biome=${BIOME})`, `${LAB_SCATTER} vs ${canon}`);
+  // 그 유도가 **표를 옮겨 적지 않았는가** — `pickResourceType` 자신에게 물었는지
+  const CHSRC = codeOf(fs.readFileSync(path.join(ROOT, 'server', 'chunk.js'), 'utf8'));
+  ok(/function rockShareOf[\s\S]{0,400}?pickResourceType\(biome/.test(CHSRC),
+    '③ ★`rockShareOf` 가 **표에게 물어본다**(확률을 손으로 안 적었다)');
+  ok(/return RESOURCES_PER_CHUNK \* rockShareOf\(biome\) \/ cellsPerChunk;/.test(CHSRC),
+    '③ 밀도 = 청크당 자원 수 × `rock` 몫 ÷ 청크 셀 수 (새 수 0)');
+  // 청크 크기는 **서버가 부르는 것**이어야 한다(T135 2판 족보 — 하네스의 청크가 아니다)
+  ok(CH.CHUNK_SIZE === 1024, '③ ★청크 크기는 서버가 부르는 값(`zone.js` 가 chunkSize 를 안 준다 = 기본값)', String(CH.CHUNK_SIZE));
+}
+
+// ── ④ 역함수 — 부존식을 되읽는다 ────────────────────────────────────────────
+console.log('\n④ 역함수 — 랩 부존식을 되읽어 바위 셀 비율을 되찾나');
+const LAB_FLOOR = (() => { const m = LCODE.match(/L_STONE_FLOOR\s*=\s*([0-9.]+)/); return m ? +m[1] : null; })();
+const LAB_GAIN = (() => { const m = LCODE.match(/L_STONE_GAIN\s*=\s*([0-9.]+)/); return m ? +m[1] : null; })();
+{
+  pre(LAB_FLOOR != null && LAB_GAIN != null, '랩에서 부존식의 두 수를 찾았다', `FLOOR=${LAB_FLOOR} GAIN=${LAB_GAIN}`);
+  ok(/stone:\s*\+\(L_STONE_FLOOR\+rockD\*L_STONE_GAIN\)\.toFixed\(2\)/.test(LCODE),
+    '④ ★★부존식이 그 **이름**을 쓴다(수가 한 곳뿐 — 사본 0)');
+  const nFloor = (LCODE.match(/L_STONE_FLOOR\s*=/g) || []).length, nGain = (LCODE.match(/L_STONE_GAIN\s*=/g) || []).length;
+  ok(nFloor === 1 && nGain === 1, '④ 두 수의 **정의가 각각 하나**다', `FLOOR ${nFloor}회 · GAIN ${nGain}회`);
+  ok(/const rockD=Math\.max\(0,\(base-L_STONE_FLOOR\)\/L_STONE_GAIN\)/.test(LCODE),
+    '④ ★★★역함수가 그 두 수로 `rockD` 를 되찾는다(왕복)');
+  // 왕복 항등 — 임의의 rockD 를 넣어 부존식을 돌리고 되읽으면 같은 수가 나온다
+  let worst = 0;
+  for (let i = 0; i <= 20; i++) {
+    const rd = i / 200;                                   // 0 ~ 0.10 (실지도 rockShare 구간)
+    const st = +(LAB_FLOOR + rd * LAB_GAIN).toFixed(2);   // 랩 부존식(소수 둘째 자리 반올림 포함)
+    const back = Math.max(0, (st - LAB_FLOOR) / LAB_GAIN);
+    worst = Math.max(worst, Math.abs(back - rd));
+  }
+  ok(worst <= 0.005 / LAB_GAIN + 1e-12, '④ 왕복 오차가 부존식의 **반올림 폭 안**이다', `최대 ${worst.toFixed(6)}`);
+  ok(/const share=rockD\+\(1-rockD\)\*L_STONE_SCATTER/.test(LCODE),
+    '④ ★실물은 **두 곳**에서 난다 — 산(바위 셀) + 흩어진 바위(나머지 셀)');
+}
+
+// ── ⑤ 실측 — 카드가 건 부등호를 그대로 잰다 ─────────────────────────────────
+console.log('\n⑤ 실측 — 바닥 마을 돌 예산 대 `land.stone × 0.9`');
+{
+  //   카드 §3 이 건 판: "바닥 마을 돌 예산 > `land.stone × 0.9`".
+  //   ⚠**§0-ⓑ 실측이 이 부등호를 뒤집었다.** 청크를 굽어 세니 스캔 원(61,575셀) 안 실물 바위가
+  //     바닥 36곳 중앙 16 · 그 밖 15곳 중앙 14 다 — `land.stone` 은 10배 갈리는데 실물은 안 갈린다.
+  //     까닭: 바위는 **제 그리드가 없고 산 자체가 그리드**인데, 그 산(바위 셀)은 청크 생성기가
+  //     `isRockCellLocal` 로 **spawn 을 막는 자리**다. 나무(바닥 마을 실물 183그루)와 부호가 반대다.
+  //   ⇒ 거짓 하네스를 짓지 않는다. 부등호를 **판정이 아니라 수치로** 낸다(판정은 재민 · 회부).
+  const scanCells = Math.PI * R('server/villages').LAND_SCAN_R * R('server/villages').LAND_SCAN_R;
+  const rocks = CH.scatterRocksPerCell(BIOME) * scanCells;
+  const floorK = LAB_GAIN * (0 + (1 - 0) * LAB_SCATTER);                  // 랩 바닥 마을의 유도 관 굵기
+  const floorNow = LAB_FLOOR;                                             // 종전(상수 바닥항)
+  note(`스캔 원 ${Math.round(scanCells).toLocaleString()}셀 · 흩어진 바위 **${rocks.toFixed(1)}개**(정본 유도 · 실측 중앙 16 과 일치)`);
+  note(`랩 바닥 마을 관 굵기  종전 ${floorNow} → 유도 ${floorK.toFixed(5)}  (×${(floorK / floorNow).toFixed(4)})`);
+  note(`카드 §3 의 부등호(예산 > land.stone×0.9)는 **거짓**이다 — ${floorK.toFixed(5)} < ${(floorNow * 0.9).toFixed(4)}. 회부(보고 §2).`);
+  ok(rocks > 0, '⑤ 바닥 마을에도 흩어진 바위는 **있다**(0 이 아니다)', `${rocks.toFixed(1)}개`);
+  ok(floorK < floorNow, '⑤ ★★그러나 실물로 유도한 관은 상수 바닥항보다 **얇다** — 부호가 나무와 반대', `${floorK.toFixed(5)} < ${floorNow}`);
+}
+
+// ── ⑥ 돌연변이 — 밀도를 0 으로 적으면 빨개지나 ──────────────────────────────
+console.log('\n⑥ 돌연변이 — 흩어진 바위 밀도가 0 이면');
+{
+  const mutK = LAB_GAIN * (0 + 1 * 0);
+  ok(mutK === 0, '⑥ ★밀도 0 → 바닥 마을 예산이 **0** — 채집꾼 돌 산출이 통째로 끊긴다(종전보다 나빠짐)', String(mutK));
+  ok(LAB_SCATTER > 0, '⑥ 지금 랩 상수는 0 이 아니다(돌연변이가 아니다)', String(LAB_SCATTER));
+  //   ★족보 128: 돌연변이는 수출을 갈아 끼우는 게 아니라 값을 바꿔 **그 결과**를 본다. 여기선 순수식이라 직접 센다.
+  ok(CH.rockShareOf('mountain') > CH.rockShareOf('plains'),
+    '⑥ 정본이 살아 있다 — 산의 `rock` 몫이 초지보다 크다',
+    `${CH.rockShareOf('mountain').toFixed(3)} > ${CH.rockShareOf('plains').toFixed(3)}`);
+}
+
+// ── ⑦ 랩 배선 — 기본 OFF · 훅은 한 자리 ─────────────────────────────────────
+console.log('\n⑦ 랩 배선 — 기본이 꺼져 있고 훅이 한 자리인가');
+{
+  ok(/if \(window\.L_STONEREAL === undefined\) window\.L_STONEREAL = 0;/.test(LCODE),
+    '⑦ ★★손잡이 기본 **0**(문을 안 연다 = 다른 세션 기준선 무변)');
+  ok(/if\(\+window\.L_STONEREAL!==0\)ECON_WORLD\.stoneBudgetFn=stoneRealFn;/.test(LCODE),
+    '⑦ ★훅이 `reseed` 의 econ world 조립 줄 **한 자리**에서 걸린다');
+  const hooks = (LCODE.match(/ECON_WORLD\.stoneBudgetFn\s*=/g) || []).length;
+  ok(hooks === 1, '⑦ 훅이 한 자리뿐이다', `${hooks}회`);
+  ok(/function stoneRealFn\(ev\)\{/.test(LCODE), '⑦ 주입 함수가 랩에 있다(엔진이 계수를 안 갖는다)');
+  ok(/ev\._baseStone=ev\.land\.stone;/.test(LCODE),
+    '⑦ ★역함수가 읽는 자는 **초기 부존**이다(`land.stone` 은 광맥 고갈로 움직인다)');
+  // 인라인 3사본 규약 — 랩 안 엔진에도 문이 실려 있어야 한다(안 그러면 랩만 옛 엔진)
+  ok(/stoneBudgetFn/.test(LCODE.split('function stoneRealFn')[0]),
+    '⑦ ★★랩 **인라인 엔진**에도 문이 실려 있다(번들 재생성·재인라인 완료)');
+}
+
+console.log(`\n=== T163 랩 석재: 통과 ${pass} · 실패 ${fail} ===`);
+console.log('접점 심볼: t17-metrics|FLOOR.stone|land.stone|_stCost|STONE_NET|L_STONEREAL|stoneBudgetFn|scatterRocksPerCell');
+process.exit(fail ? 1 : 0);
