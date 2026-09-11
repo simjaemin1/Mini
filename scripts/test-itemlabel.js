@@ -38,6 +38,22 @@ try {
   const Crops = require(path.join(ROOT, 'server', 'crops.js'));
   for (const k of Object.keys(Crops.labelMap ? Crops.labelMap() : {})) SERVER_KEYS.add(k);
 } catch (e) { console.log(`    (crops.js 로드 실패 — 그만큼 덜 센다: ${e.message})`); }
+// ★★[T182] zone 이 마지막에 **품목 이름표 정본을 통째로 흡수한다**(`ItemLabel.itemLabels`).
+//   그 합성본이 서버 표의 일부이므로 여기서도 같은 정본을 불러 센다 — 옮겨 적지 않는다.
+let ITEM_LABELS_CANON = {};
+try {
+  const ItemLabel = require(path.join(ROOT, 'server', 'itemlabel.js'));
+  const br = (() => {
+    const b = src.match(/const BUILDING_RECIPES = \{([\s\S]*?)\n\};/);
+    const o = {};
+    if (b) for (const mm of b[1].matchAll(/(\w+):\s*\{[^{}]*label:\s*'([^']*)'/g)) o[mm[1]] = { label: mm[2] };
+    return o;
+  })();
+  ITEM_LABELS_CANON = ItemLabel.itemLabels({}, br);
+  // ⚠`SERVER_KEYS` 에는 **안 넣는다** — 그 집합은 "zone 이 스스로 가진 표"를 뜻하고,
+  //   아래 ⑩ 이 *"합치면 늘어나는가"* 를 그것으로 묻는다. 흡수분을 섞으면 그 물음이 자명 통과가 된다
+  //   (1차 판이 정확히 그렇게 ⑩ 을 여섯 줄 빨갛게 만들었다 — 검사 범위를 넓히면 검사가 거짓말한다).
+} catch (e) { console.log(`    (itemlabel.js 로드 실패 — 그만큼 덜 센다: ${e.message})`); }
 
 console.log('\n=== 이름표 — 화면에 영문 키가 뜰 품목이 남아 있나 (T38) ===');
 console.log(`  서버 이름표 ${SERVER_KEYS.size}키`);
@@ -299,6 +315,64 @@ console.log('\n=== [T66] 화면 규칙 B — 이모지 0 · 색은 토큰 하나
        names.join(' '));
     const bad = names.filter((n) => !icoMap[n]);
     ok(bad.length === 0, '★★⑮ 그 이름이 전부 **세트에 실재한다**(없으면 점선 네모가 뜬다)', bad.join(' ') || '0건');
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // ★★★[T182] 이름표는 하나 — 나무 종 이름의 정본은 **그림 표**, 열매 **품목** 이름의 정본은 품목 표.
+  //   둘은 다른 것이다(나무 `밤나무` ↔ 품목 `밤`) ⇒ 정본이 둘인 게 맞고, **둘 사이 사본이 0** 이어야 한다.
+  console.log('\n=== [T182] 나무·열매 이름표 — 정본 하나 · 사본 0 ===');
+  {
+    const Trees = require(path.join(ROOT, 'server', 'trees.js'));
+    const SP = JSON.parse(fs.readFileSync(path.join(ROOT, 'public', 'assets', 'trees', 'tree_species.json'), 'utf8')).species || {};
+    // ⓐ 전제 — 서버가 그림 표를 **실제로 읽었다**(0 이면 아래가 자명 통과다)
+    ok(Trees.koSourceSize() > 0 && Trees.koSourceSize() === Object.keys(SP).length,
+       '⑯ 전제: 서버가 그림 표의 종 이름을 실제로 읽었다', `${Trees.koSourceSize()}종 / 표 ${Object.keys(SP).length}종`);
+    // ⓑ 전수 — 여덟 종이 한 글자도 안 다르다
+    const off = Trees.ids().filter((id) => Trees.koOf(id) !== (SP[id] || {}).ko);
+    ok(off.length === 0, '★★⑯ 나무 이름 = 그림 표 전수 일치(사본 0)',
+       off.length ? off.map((i) => `${i}(${Trees.koOf(i)}↔${(SP[i] || {}).ko})`).join(' ') : Trees.ids().map((i) => Trees.koOf(i)).join(' '));
+    // ⓒ ★사본이 **살아 있지 않다** — `server/trees.json` 의 옛 `ko` 칸과 갈려도 서버는 그림 표를 따른다.
+    //   (그 칸은 랩에서 구워 오는 것이라 여기서 못 고친다 — 그래서 "고친다"가 아니라 "안 읽는다"가 답이다.)
+    {
+      const TJ = JSON.parse(fs.readFileSync(path.join(ROOT, 'server', 'trees.json'), 'utf8')).trees || {};
+      const diverged = Object.keys(TJ).filter((id) => TJ[id].ko && SP[id] && TJ[id].ko !== SP[id].ko);
+      ok(diverged.length > 0, '⑯ 전제: 옛 사본 칸이 실제로 갈려 있다(0 이면 이 검사가 자명 통과다)',
+         diverged.map((i) => `${i} ${TJ[i].ko}↔${SP[i].ko}`).join(' · '));
+      const follow = diverged.filter((id) => Trees.koOf(id) !== SP[id].ko);
+      ok(follow.length === 0, '★★⑯ 갈린 종에서 서버가 **그림 표를 따른다**(옛 칸을 안 읽는다)',
+         follow.length ? follow.join(' ') : diverged.map((i) => `${i}→${Trees.koOf(i)}`).join(' '));
+    }
+    // ⓓ ★돌연변이 — `trees.js` 코드에 **한국어를 박으면** 잡는다(사본이 되돌아오는 길을 막는다)
+    {
+      const tsrc = fs.readFileSync(path.join(ROOT, 'server', 'trees.js'), 'utf8');
+      const strip = (t) => t.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n')
+        .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+      const hangul = (t) => (strip(t).match(/['"`][^'"`]*[가-힣][^'"`]*['"`]/g) || []);
+      ok(hangul(tsrc).length === 0, '★⑯ `server/trees.js` 코드에 한국어 이름 문자열 0(주석은 뺀다)',
+         hangul(tsrc).slice(0, 4).join(' '));
+      ok(hangul(tsrc + "\nconst X = { ko: '밤나무' };\n").length === 1,
+         '⑯ 돌연변이 — 코드에 한국어를 한 줄 박으면 이 검사가 잡는다');
+    }
+    // ⓔ ★열매 **품목** 이름표 전수 — 이 넷이 알림에 영문으로 새던 자리다
+    {
+      const miss = Trees.fruitItems().filter((k) => !ITEM_LABELS_CANON[k]);
+      ok(miss.length === 0, '★★⑯ 열매 품목 이름표 전수 있음',
+         miss.length ? '— 없는 것: ' + miss.join(' ') : Trees.fruitItems().map((k) => `${k}=${ITEM_LABELS_CANON[k]}`).join(' · '));
+      // 나무 이름과 품목 이름은 **다른 것이다** — 같아지면 둘 중 하나가 사본이다
+      ok(ITEM_LABELS_CANON.chestnut !== Trees.koOf('chestnut'),
+         '⑯ 나무 이름 ≠ 품목 이름(정본이 둘인 이유)', `${Trees.koOf('chestnut')} / ${ITEM_LABELS_CANON.chestnut}`);
+    }
+    // ⓕ ★★알림 문장 — 두 정본에서 조립된다. `zone.js` 의 그 줄을 **소스에서 읽어** 같은 꼴로 만든다.
+    {
+      const line = (src.match(/text: `🌰 \$\{T\.koOf\(sp\)\}에서 \$\{ITEM_LABEL_SERVER\[item\] \|\| item\} \$\{n\}`/) || [])[0];
+      ok(!!line, '⑯ 전제: 채집 알림 줄을 `zone.js` 에서 찾았다(형식이 바뀌면 아래가 거짓이 된다)');
+      const sentence = `🌰 ${Trees.koOf('chestnut')}에서 ${ITEM_LABELS_CANON[Trees.fruitOf('chestnut')]} 4`;
+      ok(sentence === '🌰 밤나무에서 밤 4', '★★⑯ 「밤나무에서 밤 4」', sentence);
+      const s2 = `🌰 ${Trees.koOf('mulberry')}에서 ${ITEM_LABELS_CANON[Trees.fruitOf('mulberry')]} 4`;
+      ok(s2 === '🌰 산뽕나무에서 오디 4', '★⑯ 산뽕도 같다', s2);
+      ok(!/[A-Za-z_]{3,}/.test(sentence.replace('🌰 ', '')) && !/[A-Za-z_]{3,}/.test(s2.replace('🌰 ', '')),
+         '★⑯ 두 문장에 영문 키가 0(이 카드가 고친 그 증상)');
+    }
   }
 
   const css = fs.readFileSync(path.join(ROOT, 'public', 'style.css'), 'utf8');

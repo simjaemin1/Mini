@@ -7856,6 +7856,17 @@ for (const k of Object.keys(FOOD_EFFECTS)) FOOD_EFFECTS[k].hunger = Kcal.hungerO
 for (const [k, v] of Object.entries(Spoil.PRESERVED_ITEMS)) ITEM_LABEL_SERVER[k] = v.ko;
 // ★[작물 층] 작물·씨앗 이름표도 crops 정본에서(옮겨 적지 않는다)
 for (const [k, ko] of Object.entries(Crops.labelMap())) ITEM_LABEL_SERVER[k] = ko;
+// ★★★[T182] 마지막으로 **품목 이름표 정본을 통째로 흡수한다.** `itemlabel.itemLabels` 가 이미
+//   그 합성의 정본이다(자원 정본 `specialty.RESOURCES.ko` + 건축 라벨 + `NO_CANON`).
+//   ⚠왜 필요했나: 알림 줄들은 이 표를 **직접** 읽는데, 그 합성본은 여태 **클라로 나가는 길에서만**
+//     만들어졌다(4107행) ⇒ 서버 알림에만 영문 키가 샜다. 실측: 열매 넷 중 `acorn` 만 T124 가
+//     손으로 메워 놓아 도토리로 뜨고, `chestnut`·`mulberry_fruit`·`grape` 는 **아이디 그대로** 떴다
+//     (「밤에서 chestnut 4」). 품목 199개가 같은 구멍에 있었다.
+//   이름을 여기 옮겨 적지 않는다 — `itemLabels` 의 규약("base 가 먼저 · 덮지 않는다")이
+//   위 손글씨·주입 이름을 그대로 지키고, 빠진 것만 정본에서 채운다.
+for (const [k, ko] of Object.entries(ItemLabel.itemLabels(ITEM_LABEL_SERVER, BUILDING_RECIPES))) {
+  if (!(k in ITEM_LABEL_SERVER)) ITEM_LABEL_SERVER[k] = ko;
+}
 
 // === 자동 decay: 10분 이상된 ground item 정리 (5초마다 체크) ===
 setInterval(() => {

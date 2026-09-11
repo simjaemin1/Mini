@@ -44,7 +44,28 @@ function fruitSeasonOf(id) { const t = TREES[id]; return t ? (_SEASON_NAMES[t.fs
 function get(id) { return TREES[id] || null; }
 function ids() { return IDS.slice(); }
 function fruitIds() { return FRUIT_IDS.slice(); }
-function koOf(id) { const t = get(id); return t ? t.ko : id; }
+// ★★★[T182] **나무 종 이름의 정본은 그림 표다** — `public/assets/trees/tree_species.json`.
+//   왜 여기가 아니라 저기인가: 그 표는 **굽기가 적고**(`nature_render.build_species_table`),
+//   **클라도 그것을 읽는다**(T148-B). 이름이 두 곳에 있으면 갈린다 — 실제로 넷이 갈려 있었다:
+//     `밤/밤나무 · 개암/개암나무 · 산뽕/산뽕나무 · 버들/버드나무`.
+//   ⚠`trees.json.ko` 는 랩(`lab/전쟁실험실.html TREES`)에서 구워 오는 칸이라 여기서 못 고친다
+//     (월드 데이터 손편집 금지) ⇒ **안 읽는다.** 사본을 지우는 길은 "고치기"가 아니라 "안 읽기"다.
+//   ⚠떨어지면 아이디를 그대로 낸다 — 옛 칸으로 **되돌아가지 않는다**. 되돌아가면 갈림이
+//     조용히 살아난다. 표가 8종을 다 덮는지는 하네스가 전수로 잰다.
+const _SPECIES_JSON = path.join(__dirname, '..', 'public', 'assets', 'trees', 'tree_species.json');
+let _SP_KO = null;
+function _spKo() {
+  if (_SP_KO) return _SP_KO;
+  _SP_KO = {};
+  try {
+    const sp = JSON.parse(require('fs').readFileSync(_SPECIES_JSON, 'utf8')).species || {};
+    for (const k of Object.keys(sp)) if (sp[k] && sp[k].ko) _SP_KO[k] = sp[k].ko;
+  } catch (e) { /* 표가 없으면 아이디로 — 옛 사본으로 돌아가지 않는다 */ }
+  return _SP_KO;
+}
+function koOf(id) { return _spKo()[id] || id; }
+// 표가 몇 종을 덮나 — 하네스가 "전제: 실제로 읽었다"를 이 값으로 잰다(0 이면 자명 통과다)
+function koSourceSize() { return Object.keys(_spKo()).length; }
 function woodOf(id) { const t = get(id); return t ? +t.wood : 1; }
 function charOf(id) { const t = get(id); return t ? +t.char : 0; }
 function fruitOf(id) { const t = get(id); return t ? (t.fruit || null) : null; }
@@ -256,7 +277,7 @@ function attachToWorld(world) {
 
 module.exports = {
   attachToWorld, forageTake, annualFruitBudget, treeCountOf, SIZE_MEAN,
-  ON, get, ids, fruitIds, koOf, woodOf, charOf, fruitOf, fruitYieldOf, isFruitTree,
+  ON, get, ids, fruitIds, koOf, koSourceSize, woodOf, charOf, fruitOf, fruitYieldOf, isFruitTree,
   matureYearsOf, fruitItems, fruitSeasonOf, seasonOfDay, yearDays,
   speciesAt, stageYearsOf, fruitSettle, fruitTake, fellOK,
   MATURE_MODE, _axes: DATA._axes,
