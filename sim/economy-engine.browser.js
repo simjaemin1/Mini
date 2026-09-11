@@ -4742,6 +4742,76 @@ function cookTarget(v) {
   return Math.min(Math.floor(sideFlow / 3), Math.floor(N * 0.06));   // 부재료 흐름이 정원(1인 ~2.5/일 소비) · 6% 안전 클램프(최후 보루)
 }
 
+// ═══ ★★★[T164 2026-09-10] 실현 배분 — **정본 함수 둘** (랩·서버 공용 · 사본 0) ═══════════
+//
+// 손잡이 하나로 랩(브라우저)과 서버(node)가 같은 코드를 탄다:
+//   서버 `L_ALLOC_REAL=1 node …`  ·  랩 `window.L_ALLOC_REAL = 1`(lifeInit 전)
+// **기본은 0(꺼짐)** — 손잡이가 없으면 이 파일은 종전 비트 그대로다.
+// 창 배수 `L_ALLOC_WIN`(기본 1 · 0 이면 평활 없음 = 매일 요동 · 돌연변이 시험용).
+function _allocKnob(name) {
+  const g = (typeof window !== 'undefined') ? window : null;
+  if (g && g[name] !== undefined && g[name] !== null) return String(g[name]);
+  if (typeof process !== 'undefined' && process.env && process.env[name] !== undefined) return String(process.env[name]);
+  return null;
+}
+function allocRealOn() { const x = _allocKnob('L_ALLOC_REAL'); return x !== null && x !== '0'; }
+function allocRealWin() { const x = _allocKnob('L_ALLOC_WIN'); const n = (x === null) ? 1 : parseFloat(x); return Number.isFinite(n) ? n : 1; }
+
+// 직업의 **바구니** — 엔진 표에게 물어본다(새 목록을 손으로 안 적는다). 없으면 null(→ 폴백).
+//   ⚠**겹침 실측(T164 §0ⓑ)**: 후보로 서는 직업들 사이 겹침은 `acorn`(나무꾼 ∩ 채집꾼 · 나무 층이 켜졌을 때)
+//     **하나뿐**이다. `weapon`(대장장이 ∩ 무기장)은 애초에 한계가치 후보에서 빠져 있다.
+//     광부 바구니는 `JOBS.miner.output` = `ore` 하나다 — 부산물(salt·clay·tin·obsidian·jade)은
+//     `produceSpecial` 코드가 내므로 표에 없다. 종전 식도 그 부산물을 안 봤으니 **덮는 범위가 안 줄었다**.
+function allocBasketOf(job, ctx, world) {
+  const J = ctx.JOBS && ctx.JOBS[job]; if (!J) return null;
+  const out = [];
+  if (J.output) out.push(J.output);
+  for (const r in (J.byproduct || {})) out.push(r);
+  if (J.produceSpecial === 'forager') {
+    const y = (ctx.forageYields && ctx.forageYields()) || {};
+    for (const r in y) out.push(r);
+    out.push('stone');                             // 종전 식이 이미 이름을 댄 그 항(`land.stone*0.9*w('stone')`)
+    const real = world && world.forageRealItems;   // 나무 층(T135)이 켜져 있으면 실물 열매도 이 바구니다
+    if (real) for (const r of real) out.push(r);
+  }
+  return out.length ? Array.from(new Set(out)) : null;
+}
+
+// 후보 목록 `[[job, gain], …]` 을 받아 **다시 쓴 목록**을 돌려준다.
+//   폴백이 곧 종전이다: 첫 정산 전 · 생산 없는 직업(상인·전사) · 실현이 아직 0 이면 **받은 값 그대로**.
+//   ★새 수 0 — 창 길이는 엔진이 이미 쓰는 `period`(한계효용 평가 윈도우)다.
+function allocRealCandidates(v, world, cands, ctx) {
+  const day = (world && world.day) || 0;
+  const e = v._allocEma || (v._allocEma = {});
+  const prev = (v._allocDay === undefined) ? null : v._allocDay;
+  // 이 함수는 전환일(기본 7일)에만 불린다 — 지난 날수만큼 접는다(α = Δ일 / 창).
+  const dd = (prev === null) ? 1 : Math.max(1, day - prev);
+  const win = ctx.period * allocRealWin();
+  const a = (win > 0) ? Math.min(1, dd / win) : 1;   // 창 0 = 평활 없음(돌연변이)
+  const dp = v.dailyProductionBuf || {};
+  for (const r in dp) { const x = dp[r] || 0; e[r] = (e[r] === undefined) ? x : (1 - a) * e[r] + a * x; }
+  v._allocDay = day;
+  if (prev === null) return null;                   // ★첫 정산 전 — 종전 그대로(폴백)
+
+  const out = [];
+  for (let i = 0; i < cands.length; i++) {
+    const job = cands[i][0], gain = cands[i][1];
+    const b = allocBasketOf(job, ctx, world);
+    const n = (ctx.counts && ctx.counts[job]) || 0;
+    if (!b || n <= 0) { out.push([job, gain]); continue; }     // 폴백
+    let q = 0, inc = 0;
+    for (let k = 0; k < b.length; k++) { const x = e[b[k]] || 0; if (x > 0) { q += x; inc += x * ctx.w(b[k]); } }
+    if (!(q > 0)) { out.push([job, gain]); continue; }         // 폴백 — 아직 실현이 0
+    // 한계가치 = (1인당 실현 산출) × (그 바구니의 **양 가중 평균값**) × period
+    //          = (Σ 실현ᵣ · w(r)) / 인원 × period — 양과 값이 **같은 바구니**를 본다.
+    let g = (inc / n) * ctx.period;
+    // ★사냥 위험 프리미엄은 생산이 아니라 **기회비용**이라 실현 산출에 안 들어 있다 — 그대로 곱한다.
+    if (job === 'hunter' && v._huntRisk != null) g *= (1 - Math.min(1, Math.max(0, v._huntRisk)));
+    out.push([job, g]);
+  }
+  return out;
+}
+
 function pickDeficitJob_rational(v, world) {
   const N = v.npcs.length || 1;
   const cap = jobCapacity(v);
@@ -4923,23 +4993,26 @@ function pickDeficitJob_rational(v, world) {
   // ★대장장이·무기장·갑옷장은 marginal 후보에서 제외 — 위의 스톡-플로우 노동목표(smithTarget 등)가
   //   전담 결정. 자본재 장인을 식량·자원직과 한계가치로 경쟁시키면 글럿 마을서 과잉(도구가격 floor 탓).
 
-  // ★★★[T161 2026-09-07] **배분 주입 문 하나.** T151 이 잡은 결함은 위 후보 목록의 "양" 자리가
-  //   **실현 산출이 아니라 땅의 상수**라는 것이다(`land.fertility*0.4` 따위). 실현 산출이 85% 떨어져도
-  //   배분은 못 보고, 값 자리도 실제 바구니와 다르다(보고 T151 ⓑ).
-  //   ⇒ 처방은 **랩에서 먼저** 세운다(T151 ⓒ 판정: 이 성질은 랩에서 그대로 난다 = 랩이 정본).
-  //     이 파일이 하는 일은 **문 하나**뿐이다 — 후보 목록을 바깥이 다시 쓸 수 있게 넘긴다.
-  //   ⚠`world.allocFn` 이 없으면(서버 · v1 CLI · 하네스 · 픽스처) **한 글자도 안 바뀐다** —
-  //     아래 sort/return 이 종전 그대로 돈다(비트 동일). 되돌림은 "문을 안 여는 것"이다.
-  //   ⚠문은 **후보 목록만** 준다. 게이트(기근·석재·도구·자본재 노동목표)는 위에서 이미 return 했다 —
-  //     그 판단은 배분식이 아니라 **안전망**이고, 이 문은 거기까지 손대지 않는다.
+  // ★★★[T164 2026-09-10 · T161 이식] **실현 배분 — 정본은 이 파일 하나다.**
+  //   T151 이 잡은 결함: 위 후보 목록의 "양" 자리가 **실현 산출이 아니라 땅의 상수**다
+  //   (`land.fertility*0.4` 따위). 채집꾼 1인당 실현 산출이 85~91% 떨어져도 배분이 못 보고
+  //   (오히려 더 뽑았다 · 573→609), 값 자리도 **실제 바구니와 다르다**(천장 붙은 네 열매 값이 식에 없다).
+  //   T161 이 처방을 랩에 세워 성질을 잠갔고(하네스 19/0), T164 가 그 함수를 **여기로 옮겼다** —
+  //   랩은 인라인 번들로 같은 함수를 따라온다(**사본 0**). 손잡이 하나가 랩·서버 공용이다.
+  //   ⚠**기본은 꺼짐.** `L_ALLOC_REAL` 이 없거나 0 이면 아래 sort/return 이 종전 그대로 돈다(비트 동일).
+  //   ⚠게이트(기근·석재·도구·자본재 노동목표)는 위에서 이미 `return` 했다 — 그건 배분식이 아니라
+  //     **안전망**이고, 이 처방은 거기까지 손대지 않는다. 다시 쓰는 것은 **한계가치 후보 목록뿐**이다.
   let _cands = candidates;
-  if (world && typeof world.allocFn === 'function') {
-    const _alt = world.allocFn(v, world, candidates, {
-      period, cap, counts, forageLandMean,
-      w,                                   // ★같은 가격 접근자를 그대로 넘긴다(사본 0)
-      forageYields: () => foragerYieldsFor(v),   // 게으르다 — 문이 안 열리면 안 부른다
+  if (allocRealOn()) {
+    const _alt = allocRealCandidates(v, world, candidates, {
+      period, counts, w,                          // ★같은 가격 접근자를 그대로 쓴다(사본 0)
+      forageYields: () => foragerYieldsFor(v),     // 게으르다 — 꺼져 있으면 안 부른다
       JOBS,
     });
+    if (Array.isArray(_alt) && _alt.length > 0) _cands = _alt;
+  } else if (world && typeof world.allocFn === 'function') {
+    // ★남겨 둔 주입 문(T161) — 정본을 안 쓰고 **다른** 배분을 실험할 때만 쓴다. 손잡이가 켜지면 정본이 이긴다.
+    const _alt = world.allocFn(v, world, candidates, { period, cap, counts, forageLandMean, w, forageYields: () => foragerYieldsFor(v), JOBS });
     if (Array.isArray(_alt) && _alt.length > 0) _cands = _alt;
   }
   _cands.sort((a, b) => b[1] - a[1]);
@@ -5757,6 +5830,8 @@ module.exports = {
   computeVillagePrices,
   computeDailyConsumption,
   FORAGE_FOOD_FACTOR,   // ★식량 pull(v2 FOOD_CLASSES 파생용 단일 진실 — 구황·해산물 식용 등가)
+  // ★[T164] 실현 배분 정본 — 랩도 하네스도 **이 함수들을** 부른다(사본 0).
+  allocRealOn, allocRealWin, allocBasketOf, allocRealCandidates,
   JOB_NAMES,
   FIELDS,
   RESOURCES,
