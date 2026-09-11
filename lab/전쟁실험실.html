@@ -3532,6 +3532,14 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
       const _hi = v._world.huntIncomeFn(v, npc, baseAmt);
       if (typeof _hi === 'number' && _hi >= 0) baseAmt = _hi;
     }
+    // ★★[T166 2026-09-10] **목재 소득 주입 문** — 나무는 벤 만큼만.
+    //   벌목도 사냥과 같은 자리였다: 실체(서버·랩 벌목꾼이 `forestRich` 를 실제로 깎는다)는 있는데
+    //   소득은 `base 0.3 × land.wood` 라는 **추상**이었다. 벤 그루가 소득을 정해야 한다.
+    //   규약·이유는 위 사냥 주입 문과 같다(world 에 심겼을 때만 · 미주입 = 종전 비트 · **대체**).
+    if (npc.currentJob === 'lumberjack' && v._world && typeof v._world.woodIncomeFn === 'function') {
+      const _wi = v._world.woodIncomeFn(v, npc, baseAmt);
+      if (typeof _wi === 'number' && _wi >= 0) baseAmt = _wi;
+    }
     // ★[포위 봉쇄 훅] 야외 직업(농부·어부·사냥·벌목·광부·채집)만 v._siegeOutMul(호스트 설치 시)로 감산 — 성 밖 노동이 끊김(잠행 노동 잔존).
     //   실내 직업(석공·대장장이·요리사 등)=불변. 잠재(dailyProductionPotential)엔 미적용(_laborMul과 동형 — K 오염·아사 스파이럴 방지). 미설치(undefined)=1(무해).
     const _siegeM = (v._siegeOutMul != null && SIEGE_OUTDOOR_JOBS[npc.currentJob]) ? v._siegeOutMul : 1;
@@ -9343,6 +9351,22 @@ function fellOK(sp,w){
 const T123_FRUIT=()=>!(typeof window!=='undefined'&&window.T123_FRUIT===0);
 // ★랩 계측 — 종별 벌목/열매 수확 누계(표만 · 세계 규칙 0)
 function _tStat(s){return s._tstat||(s._tstat={felled:{},felledFruit:0,felledWood:0,fruitHarv:0,fruitDrop:0,ineq:{}});}
+/* ★★[T166 2026-09-10] 목재 소득 = **그날 벤 그루**. 되돌림 `L_WOODINCOME`(기본 'abstract' = 종전 비트).
+     여태 나무꾼 산출은 `base 0.3 × land.wood` 라는 추상이었다 — 그런데 벌목꾼은 이미 `forestRich` 를
+     **실제로 깎는다**(T123). 실체는 있고 장부만 없던 자리다(사냥 T146/T154 와 같은 모양).
+     ★그루당 목재 = **종별 `wood` 계수 × 크기**이고, **크기는 `richness/K`** 다(랩 9314·9327 이 열매에
+       쓰는 그 정의 — 여기서 새로 만들지 않는다). 그래서 벤 richness 를 K 로 나눈 값이 곧 "그루 수×크기"다.
+     ★단위는 랩이 이미 정해 뒀다(11305행 `woodSustain`): **벌목꾼 1인 = `L_CHOP` richness = `0.9×baseWood` econ**.
+       그 환산을 그대로 쓴다 — 다른 환산을 만들면 `fuelK` 상한과 소득이 **다른 말을 한다**(T154 §0-ⓐ 의 그 병).
+     ⇒ 새 수 0: `Σ (벤 richness / L_CHOP) × 0.9 × baseWood × TREES[종].wood`.
+     ⚠**하루 늦다** — 랩 하루는 `tickWorldV2`(econ) → `lifeDay`(벌목) 순이라 econ 이 읽는 것은 어제 벤 것이다
+       (T154 사냥과 같은 시차). 800일 궤적에서 무의미하지만 사실이라 적는다. */
+function _woodIncomeMode(){return (typeof window!=='undefined'&&window.L_WOODINCOME)?window.L_WOODINCOME:'abstract';}
+function woodIncomeReal(v,npc,baseAmt){
+  const cut=v._wcutDay||0, ln=(v.counts&&v.counts.lumberjack)||0;
+  if(!(ln>0))return 0;
+  return cut/ln;   /* 1인분 — 엔진이 사람마다 부른다 */
+}
 const L_WOODREGLOG=0.004, L_WOODDIFF=0.015;         // ★숲 리젠 승격: 선형 r+0.10 → 로지스틱 dG=r_log·G·(1−G/K)+D·(이웃4셀 평균−G). r_log=0.004로 중간재고(G=K/2) 흐름 r_log·K/4=0.10 = 구 선형과 동일(연속성). D=이웃 확산(전벌지는 자체재생 0, 확산으로만 씨 유입 → 가장자리부터 회복·고립 개벌지 극느림). ※MSY=Σ r_log·K/4(관리수확 하 잠재재생, 만땅숲 0 아님)라 값 불변 → fuelK 보존
 // ★★[11차 재민 확정 — 채광 전면 재설계] 광맥 = 셀별 재고(깊이). 단위가 전부 실측에서 유도된다.
 //   · 1타 = 1초 = **1 게임분**(L_MINDAY 1440분 = 실시간 24분 → 1 게임분 = 1 실시간초)
@@ -11070,8 +11094,10 @@ function roadShadowDaily(){   // ★[fast=가속 shadow 원칙 — "수개월 �
 function lifeDayAll(doBulk){   // 하루: econ world 한 번 틱(전 마을 경제) + 각 마을 공간 처리(life/V 전환)
   /* ★[T154] 어제 잡은 마릿수를 확정해 econ 이 읽을 자리에 놓고, 오늘 치를 0 에서 다시 센다.
        주입은 **여기 한 줄**이다(엔진 규약: world 에 함수가 있을 때만 산다 — 없으면 종전 비트). */
-  for(const vil of VILS){const ev=vil.econ;if(!ev)continue;ev._hkillDay=vil._hkill||0;vil._hkill=0;}
+  for(const vil of VILS){const ev=vil.econ;if(!ev)continue;ev._hkillDay=vil._hkill||0;vil._hkill=0;
+    ev._wcutDay=vil._wcut||0;vil._wcut=0;}                                  /*★[T166] 어제 벤 목재 확정*/
   if(ECON_WORLD)ECON_WORLD.huntIncomeFn=(_huntIncomeMode()==='real')?huntIncomeReal:undefined;
+  if(ECON_WORLD)ECON_WORLD.woodIncomeFn=(_woodIncomeMode()==='real')?woodIncomeReal:undefined;
   if(ECON_WORLD&&typeof EconEngine!=='undefined')EconEngine.tickWorldV2(ECON_WORLD);
   // ★[전쟁실험실] 개인 무기 숙련 일일 성장(경제 함수 밖 훅) — 전사=검·창 상비 훈련↑. economy 무수정, econ.npcs에 _ws* 부착.
   for(const vil of VILS){ if(vil.econ)warTickWeaponSkills(vil.econ); }
@@ -11176,7 +11202,11 @@ function resourceTick(s,day){   // ★숲·광맥 자원: 재생 + 벌목/채광
       // ★★★[T123] 벤 나무의 **종**을 세고, 열매종이면 남은 열매가 **같이 떨어진다**(증발 0).
       if(k&&m.has(k)){const _cx=a.work.cx,_cy=a.work.cy,_sp=treeAt(_cx,_cy),_T=TREES[_sp];
         const _r0=m.get(k), _r1=Math.max(0,_r0-L_CHOP); m.set(k,_r1);
-        const _st=_tStat(s); _st.felled[_sp]=(_st.felled[_sp]||0)+(_r0-_r1)/L_WOODMAX;
+        const _st=_tStat(s); const _grew=(_r0-_r1)/L_WOODMAX; _st.felled[_sp]=(_st.felled[_sp]||0)+_grew;
+        /*★[T166] 오늘 벤 목재 — 소득 정본이 읽는다. **단위는 랩이 이미 정해 뒀다**(11305행):
+            "벌목꾼 1인 = L_CHOP richness = 0.9×baseWood econ". 그 환산을 그대로 쓴다(새 수 0).
+            거기에 **종별 수율**을 곱한다 — 같은 richness 라도 머루(0.10)와 소나무(1.00)는 다른 목재다. */
+        s._wcut=(s._wcut||0)+((_r0-_r1)/L_CHOP)*0.9*(s.baseWood||1)*((_T&&_T.wood)||0);
         if(_T&&_T.fruit){_st.felledFruit+=(_r0-_r1)/L_WOODMAX;
           const _fn=T123_FRUIT()?fruitSettle(s,_cx,_cy,s.day||0):0;   // 볼 때 정산 — 벨 때가 그 "볼 때"다(통제군은 열매가 없다)
           if(_fn>0){const _drop=_fn*((_r0-_r1)/Math.max(1,_r0));      // 벤 만큼의 열매가 떨어진다

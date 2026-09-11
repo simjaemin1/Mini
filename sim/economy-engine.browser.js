@@ -3455,6 +3455,14 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
       const _hi = v._world.huntIncomeFn(v, npc, baseAmt);
       if (typeof _hi === 'number' && _hi >= 0) baseAmt = _hi;
     }
+    // ★★[T166 2026-09-10] **목재 소득 주입 문** — 나무는 벤 만큼만.
+    //   벌목도 사냥과 같은 자리였다: 실체(서버·랩 벌목꾼이 `forestRich` 를 실제로 깎는다)는 있는데
+    //   소득은 `base 0.3 × land.wood` 라는 **추상**이었다. 벤 그루가 소득을 정해야 한다.
+    //   규약·이유는 위 사냥 주입 문과 같다(world 에 심겼을 때만 · 미주입 = 종전 비트 · **대체**).
+    if (npc.currentJob === 'lumberjack' && v._world && typeof v._world.woodIncomeFn === 'function') {
+      const _wi = v._world.woodIncomeFn(v, npc, baseAmt);
+      if (typeof _wi === 'number' && _wi >= 0) baseAmt = _wi;
+    }
     // ★[포위 봉쇄 훅] 야외 직업(농부·어부·사냥·벌목·광부·채집)만 v._siegeOutMul(호스트 설치 시)로 감산 — 성 밖 노동이 끊김(잠행 노동 잔존).
     //   실내 직업(석공·대장장이·요리사 등)=불변. 잠재(dailyProductionPotential)엔 미적용(_laborMul과 동형 — K 오염·아사 스파이럴 방지). 미설치(undefined)=1(무해).
     const _siegeM = (v._siegeOutMul != null && SIEGE_OUTDOOR_JOBS[npc.currentJob]) ? v._siegeOutMul : 1;

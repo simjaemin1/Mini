@@ -15,6 +15,9 @@ const { chromium } = require('playwright');
 const DAYS = parseInt(process.argv[2], 10) || 800;
 const SEED = parseInt(process.argv[3], 10) || 1020;
 const NOFRUIT = process.argv.includes('--nofruit');
+// ★[T166] 목재 소득 축 — abstract(기본 · 종전 비트) vs real(벤 그루 × 그루당)
+const _WI = process.argv.indexOf('--income');
+const INCOME = _WI > 0 ? process.argv[_WI + 1] : 'abstract';
 
 // ★★결정론 — 랩은 기본적으로 `Math.random` 을 쓴다(수확량 0.8~1.2 흔들림 등).
 //   그대로 두면 같은 시드로 두 번 돌려도 표가 다르다 — **계측기가 못 쓸 물건이 된다.**
@@ -36,10 +39,11 @@ const PRNG_INIT = (seed) => `(() => {
   p.on('console', (m) => { if (m.type() === 'error') errs.push('CONSOLE ' + m.text().slice(0, 120)); });
   await p.goto('file://' + path.resolve(__dirname, '..', 'lab', '전쟁실험실.html'), { waitUntil: 'load', timeout: 180000 });
   await p.waitForTimeout(2000);
-  const r = await p.evaluate(({ days, seed, nofruit }) => {
+  const r = await p.evaluate(({ days, seed, nofruit, income }) => {
     const out = { rows: [], trees: {}, err: null };
     try {
       if (nofruit) window.T123_FRUIT = 0;
+      window.L_WOODINCOME = income;   // ★[T166]
       const si = document.getElementById('seed'); if (si) si.value = String(seed);
       const nv = document.getElementById('nvil'); if (nv) nv.value = '8';
       reseed(); lifeInit();
@@ -48,12 +52,13 @@ const PRNG_INIT = (seed) => `(() => {
       //   `foragerYieldsFor` 로 `fruit`·`chestnut`·`grape` 를 *추상으로* 만든다(economy-sim.js:388).
       //   T123 이 얹은 것은 **실체**다. 둘 중 어느 쪽이 곳간을 채우는지는 재 봐야 안다 —
       //   엔진이 오늘 만든 양은 `v.econ.dailyProductionBuf` 에 그대로 있다(읽기만 한다).
-      const ABS_KEYS = Array.from(new Set(Object.keys(TREES).map((k) => TREES[k].fruit).filter(Boolean).concat(['fruit'])));   // + 추상 catch-all `fruit`
+      const ABS_KEYS = Array.from(new Set(Object.keys(TREES).map((k) => TREES[k].fruit).filter(Boolean).concat(['fruit', 'wood'])));   // + 추상 catch-all `fruit` + ★[T166] 목재
       out.abs = {};
       for (let d = 0; d < days; d++) {
         lifeDayAll(true);
         for (const v of VILS) { const b = v.econ && v.econ.dailyProductionBuf; if (!b) continue;
           for (const k of ABS_KEYS) if (b[k]) out.abs[k] = (out.abs[k] || 0) + b[k]; }
+        for (const v of VILS) out.cut = (out.cut || 0) + ((v.econ && v.econ._wcutDay) || 0);   // ★[T166] 장부(벤 목재) 누계
       }
       out.treeTable = Object.keys(TREES).map((k) => ({ id: k, ko: TREES[k].ko, wood: TREES[k].wood,
         mature: TREES[k].mature, char: TREES[k].char, fruit: TREES[k].fruit, fy: TREES[k].fy, fs: TREES[k].fs }));
@@ -81,6 +86,7 @@ const PRNG_INIT = (seed) => `(() => {
           N: (ev && ev.npcs) ? ev.npcs.length : 0,
           fN: (ev && ev.counts) ? Math.round(ev.counts.lumberjack || 0) : 0,
           forN: (ev && ev.counts) ? Math.round(ev.counts.forager || 0) : 0,
+          ljN: (ev && ev.counts) ? Math.round(ev.counts.lumberjack || 0) : 0,   // ★[T166] 나무꾼 배분(물음 ⓓ)
           cells: v.forestRich ? v.forestRich.size : 0,
           forest0: v._initForestTotal || 0, forest1: forest,
           forestPct: v._initForestTotal ? +(100 * forest / v._initForestTotal).toFixed(1) : 0,
@@ -124,7 +130,7 @@ const PRNG_INIT = (seed) => `(() => {
       }
     } catch (e) { out.err = String(e.message).slice(0, 300); }
     return out;
-  }, { days: DAYS, seed: SEED, nofruit: NOFRUIT });
+  }, { days: DAYS, seed: SEED, nofruit: NOFRUIT, income: INCOME });
   await b.close();
 
   if (r.err) { console.error('랩 오류:', r.err); process.exit(1); }
@@ -132,7 +138,19 @@ const PRNG_INIT = (seed) => `(() => {
   console.log(`\n=== 랩 나무·열매 표 — 전쟁실험실 · 시드 ${SEED} · ${DAYS}일 · 마을 ${r.rows.length} · 열매실체 ${NOFRUIT ? '끔(통제군)' : '켬'} ===`);
   console.log(`  인구 ${nf(r.pop)} · 게임일 ${r.day} · pageerror ${errs.length} · Math.random 시드 ${SEED}(결정론)`);
 
-  console.log('\nⓐ 종 표 (랩 정본 · `trees.json` 뼈대)');
+    // ★[T166] 벌목 소득 — 장부(벤 목재) vs 곳간에 든 wood
+  {
+    const _cut = r.cut || 0, _abs = (r.abs && r.abs.wood) || 0;
+    const _fp = r.rows.map((x) => x.forestPct).filter((x) => x != null).sort((a, b) => a - b);
+    const _lj = r.rows.map((x) => x.ljN || 0);
+    console.log(`\nⓖ [T166] 벌목 소득 — 모드 ${INCOME}`);
+    console.log(`   장부(벤 목재) Σ ${_cut.toFixed(0)} · 곳간 wood 산출 Σ ${_abs.toFixed(0)}`
+      + ` · 장부/산출 ${_abs ? (_cut / _abs).toFixed(2) : 'n/a'}배`);
+    console.log(`   숲 잔존율 — 중앙 ${_fp.length ? _fp[_fp.length >> 1] : 'n/a'}% · 최소 ${_fp.length ? _fp[0] : 'n/a'}%`
+      + ` · 20% 아래 마을 ${_fp.filter((x) => x < 20).length}곳`);
+    console.log(`   나무꾼(마을별) — ${_lj.join(' ')} · 합 ${_lj.reduce((a, b) => a + b, 0)}`);
+  }
+console.log('\nⓐ 종 표 (랩 정본 · `trees.json` 뼈대)');
   console.log('  id          ko      wood  mature  char  fruit            fy   fs');
   for (const t of r.treeTable) console.log('  ' + t.id.padEnd(11) + String(t.ko).padEnd(7)
     + t.wood.toFixed(2).padStart(5) + String(t.mature).padStart(7) + t.char.toFixed(2).padStart(7)
