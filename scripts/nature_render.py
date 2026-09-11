@@ -900,11 +900,12 @@ TREE_BUILD = [
     #   이름이 거짓이었다(T141 ③ · T156 ③ 이 표만 내고 넘긴 자리). PM 판정: **키를 안 바꾸고 여름판을 더한다.**
     #   `tree14_s` = `tree14` + 오디 — 잎은 여름 그대로, 열매 씨앗은 `_a` 와 같은 식이라 **같은 나무**다.
     ("tree14_s", tree_mulberry, dict(seed=149, h=3.4, spread=1.90, summer=True)),
-    # ★`tree14_a` 는 **그대로 둔다**(키·PNG·앵커 무변). 다만 산뽕은 가을에 열매가 없으므로
-    #   종 표의 `autumn`(열매판) 자리에서 내리고 **성목판**으로 센다 — `slot` 은 굽기가 아니라
-    #   **표만 보는 지시**다(렌더 인자가 아니라서 그림이 한 화소도 안 움직인다).
-    #   ⚠이 판에는 가을 잎에 오디가 달려 있다(다시 안 구우니 그대로다) — 보고 §3 회부.
-    ("tree14_a", tree_mulberry, dict(seed=149, h=3.4, spread=1.90, autumn=True, slot='sprites')),
+    # ★★[T175] `tree14_a` 는 **퇴역판**이다 — 어느 칸에도 안 실린다(`slot=None`).
+    #   T169 는 이것을 `sprites`(성목판)에 넣었는데, 클라(T148-B)는 **칸 이름으로만 고르고
+    #   접미를 안 읽으므로** 여름에도 "가을 잎 + 오디" 산뽕이 성목판으로 뜰 수 있었다.
+    #   접미를 클라가 읽게 하는 길은 굽기 문법의 **사본**이라 안 된다(T148-B 원칙) ⇒ 표에서 뺀다.
+    #   **세계에 없는 나무는 표에 없다.** 파일·잠금표는 그대로 둔다(기존 PNG 무변 · 처분은 회부 ㉠).
+    ("tree14_a", tree_mulberry, dict(seed=149, h=3.4, spread=1.90, autumn=True, slot=None)),
     ("tree15", tree_grape, dict(seed=157, h=1.9, spread=1.75)),
     ("tree15_a", tree_grape, dict(seed=157, h=1.9, spread=1.75, autumn=True)),
     # 그루터기 — 종 공통 하나(카드). 묘목 — 종별 여덟.
@@ -1148,7 +1149,8 @@ FRUITING = {'oak': '도토리', 'chestnut': '밤', 'hazel': '개암', 'mulberry'
 
 
 # ★[T169] **표만 보는 지시 키** — 굽기 인자가 아니다. `fn(**BKW(kw))` 로 반드시 걷어내고 부른다.
-#   (`slot`: 이 그림이 종 표의 어느 칸에 실리는가. 굽기 문법과 표의 뜻이 갈릴 때만 쓴다.)
+#   (`slot`: 이 그림이 종 표의 어느 칸에 실리는가. 굽기 문법과 표의 뜻이 갈릴 때만 쓴다.
+#    ★[T175] `slot=None` 은 **어느 칸에도 안 싣는다** = 퇴역판. 세계에 없는 나무는 표에 없다.)
 TABLE_ONLY = ('slot',)
 
 
@@ -1160,6 +1162,7 @@ def BKW(kw):
 def build_species_table():
     """`TREE_BUILD` 를 훑어 종 표를 만든다 — 사람이 적는 칸은 위 `SPECIES` 뿐이다."""
     out = {}
+    retired = []
     for key, fn, kw in TREE_BUILD:
         nm = getattr(fn, '__name__', '')
         if nm == 'sapling':
@@ -1176,9 +1179,14 @@ def build_species_table():
         # ★[T169] 칸은 셋이다: 성목(`sprites`) · 열매판 둘(`summer`·`autumn`).
         #   `slot` 지시가 있으면 그것이 먼저다 — 굽기 문법(`_a` = 가을 잎)과 표의 뜻(열매철)이
         #   갈리는 종이 있기 때문이다(산뽕: 가을 잎 판은 있으나 **가을엔 열매가 없다**).
-        slot = kw.get('slot') or ('summer' if kw.get('summer') else
-                                  'autumn' if kw.get('autumn') else 'sprites')
-        e.setdefault(slot, []).append(key)
+        # ★★[T175] `slot=None` 이면 **어느 칸에도 안 싣는다**(퇴역판). `kw.get` 이 아니라
+        #   `'slot' in kw` 로 가른다 — `None` 과 "지시 없음"은 다른 말이기 때문이다.
+        slot = kw['slot'] if 'slot' in kw else ('summer' if kw.get('summer') else
+                                                'autumn' if kw.get('autumn') else 'sprites')
+        if slot:
+            e.setdefault(slot, []).append(key)
+        else:
+            retired.append(key)                       # 퇴역판 — 칸엔 없지만 **이름은 남긴다**
         if sid in FRUITING:
             e['fruit_ko'] = FRUITING[sid]
             # ★열매종은 **두 칸을 다 적는다** — 빈 칸도 적는다. `autumn: []` 은 정보다:
@@ -1193,6 +1201,11 @@ def build_species_table():
         '_유도': 'scripts/nature_render.py TREE_BUILD 에서 뽑는다 — 손으로 적지 마라(다시 구우면 덮인다).',
         '_그루터기': 'stump01 — 종 공통 하나. 벤 자리는 종을 안 묻는다.',
         '_단계': '성목(sprites) · 열매판(summer·autumn) · 묘목(sapling) · 그루터기(공통).',
+        '_퇴역': sorted(retired),
+        '_퇴역_뜻': ('구웠으나 **어느 칸에도 안 실리는** 그림이다 — 세계에 없으니 아무도 못 부른다. '
+                     '파일과 잠금표에는 남는다(다시 굽지 않으려고). 배포 앵커에서도 빠진다 — '
+                     '`nature-postprocess.py` 가 이 목록을 보고 지운다(손편집 0). '
+                     '`tree14_a`: 가을 잎에 오디가 달린 판인데 산뽕은 가을에 열매가 없다(T175).'),
         '_철': ('열매판은 **철 이름 칸**이다 — 어느 칸을 그릴지는 서버 종 표의 `fs`(결실철: 1 여름 · 2 가을)가 정본이다. '
                 '빈 칸(`[]`)은 "그 철엔 열매가 없다"는 뜻이다(산뽕 `autumn: []` — 오디는 초여름에 익는다). '
                 '키의 `_a`/`_s` 접미는 **굽기 문법**(가을 잎/여름 잎)이지 철 판정이 아니다 — 판정은 이 칸 이름으로 한다.'),

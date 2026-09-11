@@ -214,6 +214,16 @@ console.log('\n[⑤ 자연물 앵커·잠금 — 굽는 표가 정본이다 (T97
   };
   const nTree = tblCount('TREE_BUILD'), nProp = tblCount('PROP_BUILD');
   ok(nTree > 0 && nProp > 0, `굽는 표 — TREE_BUILD ${nTree} · PROP_BUILD ${nProp}`);
+  // ★★[T175] **퇴역판** — 구웠으나 종 표의 어느 칸에도 안 실리는 그림. 파일·잠금표엔 남고
+  //   배포 앵커에선 빠진다(`nature-postprocess.py` 가 이 목록을 보고 지운다). 그래서 아래 수 검사들은
+  //   "구운 수"가 아니라 **"구운 수 − 퇴역"** 을 기대해야 한다 — 자가 낡으면 옳은 자산이 빨개진다.
+  //   목록은 여기 안 적는다: 종 표의 `_퇴역` 이 정본이고 그건 굽기가 유도해 적는다(사본 0).
+  const RETIRED = (() => {
+    const p0 = path.join(ROOT, 'public', 'assets', 'trees', 'tree_species.json');
+    try { return JSON.parse(fs.readFileSync(p0, 'utf8'))._퇴역 || []; } catch (e) { return []; }
+  })();
+  const nTreeLive = nTree - RETIRED.length;
+  ok(Array.isArray(RETIRED), `퇴역판 ${RETIRED.length}장${RETIRED.length ? ' — ' + RETIRED.join(' ') : ''} (구운 ${nTree} → 세계에 선 ${nTreeLive})`);
   ok(fs.existsSync(NAT_ANCH), 'public/assets/nature/nature_anchors.json 이 있다');
   if (fs.existsSync(NAT_ANCH) && nTree > 0) {
     const NA = JSON.parse(fs.readFileSync(NAT_ANCH, 'utf8'));
@@ -225,10 +235,15 @@ console.log('\n[⑤ 자연물 앵커·잠금 — 굽는 표가 정본이다 (T97
       const m = t.match(/^N_EACH\s*=\s*(\d+)/m) || t.match(/range\(1,\s*(\d+)\s*\)/);
       return m ? (m[1].length && +m[1] > 6 ? +m[1] - 1 : +m[1]) : -1;
     })();
-    ok(keys.length === nTree + nProp + oreN,
-       `앵커 ${keys.length}키 = 구운 ${nTree}+${nProp} + 파생 ${oreN}(광맥 — 바위의 변색이지 모델이 아니다)`);
+    ok(keys.length === nTreeLive + nProp + oreN,
+       `앵커 ${keys.length}키 = 구운 ${nTree}+${nProp} − 퇴역 ${RETIRED.length} + 파생 ${oreN}(광맥 — 바위의 변색이지 모델이 아니다)`);
     const trees = keys.filter(k => NA[k].kind === 'tree');
-    ok(trees.length === nTree, `kind=tree ${trees.length} = TREE_BUILD ${nTree}`);
+    ok(trees.length === nTreeLive, `kind=tree ${trees.length} = TREE_BUILD ${nTree} − 퇴역 ${RETIRED.length}`);
+    // ★자명 통과 금지 — 퇴역판은 앵커에 **정말로 없어야** 한다(빼는 손이 실제로 뺐나)
+    {
+      const still = RETIRED.filter(k => k in NA);
+      ok(still.length === 0, `퇴역판이 배포 앵커에 남아 있지 않다 ${still.length ? '— 남음: ' + still.join(' ') : '(전부 내려감)'}`);
+    }
     // PNG 실측 — 나무는 trees/, 소품은 nature/. w·h 는 IHDR 과 정확히 같아야 한다.
     let sizeBad = [];
     for (const k of keys) {
@@ -274,9 +289,16 @@ console.log('\n[⑤ 자연물 앵커·잠금 — 굽는 표가 정본이다 (T97
       ok(/_KSEED = \{/.test(pyCode) && !/hash\(kind\)/.test(pyCode),
          '바위 씨앗이 정수로 못 박혀 있다(`hash(str)` 은 프로세스마다 달라 재현이 안 됐다 · T101 §0-ⓐ)');
     }
+    // ★[T175] 미아 = 앵커에도 없고 **퇴역 목록에도 없는** PNG. 퇴역판은 미아가 아니다 —
+    //   이름이 종 표에 적혀 있으니 "자리를 모르는 그림"이 아니라 "세계에 안 서는 그림"이다.
     const strayTree = fs.readdirSync(TREE_DIR).filter(f => f.endsWith('.png'))
-      .map(f => f.slice(0, -4)).filter(k => !NA[k]);
+      .map(f => f.slice(0, -4)).filter(k => !NA[k] && !RETIRED.includes(k));
     ok(strayTree.length === 0, `trees/ 미아 PNG 0 ${strayTree.length ? JSON.stringify(strayTree) : ''}`);
+    // ★퇴역판의 **파일은 남아 있다**(다시 굽지 않으려고 · 처분은 회부 ㉠)
+    {
+      const gone = RETIRED.filter(k => !fs.existsSync(path.join(TREE_DIR, k + '.png')));
+      ok(gone.length === 0, `퇴역판 파일은 그대로 있다 ${gone.length ? '— 없어진 것: ' + gone.join(' ') : `(${RETIRED.join(' ')})`}`);
+    }
     // 잠금 — 자연물·나무도 잠금표에 든다(다음 재굽기가 여기와 대조한다).
     const LOCK = path.join(ROOT, 'public', 'assets', 'icons.lock.json');
     if (fs.existsSync(LOCK)) {
@@ -371,9 +393,23 @@ console.log('\n[⑤ 자연물 앵커·잠금 — 굽는 표가 정본이다 (T97
         ok(half.length === 0, `열매 판 수 = 그 철에 서는 성목 수 ${half.length
           ? '— 어긋남: ' + half.map((i) => `${i}(성목 ${standing(sp, i, season(sp, i)).length}↔판 ${[...(sp[i].summer || []), ...(sp[i].autumn || [])].length})`).join(' ')
           : '(' + fruiting.map((i) => `${i} ${season(sp, i) === 'summer' ? '여름' : '가을'} ${standing(sp, i, season(sp, i)).length}`).join(' · ') + ')'}`);
-        // ★전제 — 이 자가 **실제로 거른다**(안 거르면 위 줄은 옛 규약과 같은 말이라 자명 통과다)
-        const filtered = ids.filter((id) => (sp[id].sprites || []).length !== standing(sp, id, season(sp, id)).length);
-        ok(filtered.length > 0, `다른 철 잎판이 실제로 걸러진 종 ${filtered.length} — ${filtered.map((i) => `${i}(${(sp[i].sprites || []).join('+')} → ${standing(sp, i, season(sp, i)).join('+')})`).join(' ')}`);
+        // ★★[T175] T169 는 여기서 *"이 자가 실제로 거른다"* 를 전제로 삼았다(그때는 `tree14_a` 가
+        //   성목판에 있었다). 이제 그 그림은 표에서 내려갔으므로 **거를 것이 없는 것이 옳다** —
+        //   전제가 뒤집힌다: **성목판엔 다른 철 잎판이 아예 없다.**
+        //   왜 이게 더 센 규약인가: 클라(T148-B)는 **칸 이름으로만** 고르고 키의 접미(`_a`·`_s`)를
+        //   안 읽는다. 접미를 읽게 하면 굽기 문법의 **사본**이 하나 더 생긴다(사본 금지).
+        //   ⇒ 철이 걸린 그림은 철 칸에만 실려야 하고, 성목판은 철을 안 타는 그림만 담는다.
+        const seasoned = (S) => Object.keys(S).flatMap((id) =>
+          (S[id].sprites || []).filter((k) => leafSeason(k)).map((k) => `${id}:${k}`));
+        {
+          const bad = seasoned(sp);
+          ok(bad.length === 0, `성목판에 다른 철 잎판 0 ${bad.length ? '— ' + bad.join(' ') : '(성목판은 철을 안 타는 그림뿐이다)'}`);
+          // 돌연변이 — 넣으면 잡는가 / 철 칸에 든 것은 안 잡는가
+          const c1 = JSON.parse(JSON.stringify(sp)); c1.mulberry.sprites.push('tree14_a');
+          ok(seasoned(c1).length === 1, '돌연변이 — 성목판에 `_a` 를 도로 넣으면 이 검사가 잡는다');
+          const c2 = JSON.parse(JSON.stringify(sp)); c2.mulberry.summer.push('tree14x_s');
+          ok(seasoned(c2).length === 0, '대조 — **철 칸**에 든 철 잎판은 안 잡는다(거기가 제자리다)');
+        }
         // ★돌연변이 둘 — 열매 판을 빼도, 성목을 더해도 **빨개져야** 한다
         const clone = () => JSON.parse(JSON.stringify(sp));
         const m1 = clone(); m1.oak.autumn.pop();

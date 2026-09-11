@@ -41,6 +41,17 @@ out = {}
 if os.path.exists(_ap_out):                     # ⓑ 있던 앵커를 먼저 싣는다(광맥 6키가 여기 산다)
     try: out = json.load(open(_ap_out, encoding="utf-8"))
     except Exception: out = {}
+# ★★[T175] **퇴역판은 배포 앵커에서 뺀다.** 종 표(`tree_species.json._퇴역`)가 정본이고 —
+#   그 표는 `nature_render.build_species_table()` 이 적는다 — 여기선 읽기만 한다(손편집 0 · 사본 0).
+#   ⓑ 의 "덮어쓰지 않고 합친다" 는 **더하기만** 하므로, 표에서 내린 키가 앵커엔 영원히 남는다.
+#   그러면 `e2e-nature` 의 "나무 그림 수 = 종 표가 부르는 수" 가 어긋난다 — 자가 옳고 앵커가 낡은 것이다.
+_spj = os.path.join(ROOT, "public", "assets", "trees", "tree_species.json")
+if os.path.exists(_spj):
+    try: _ret = json.load(open(_spj, encoding="utf-8")).get("_퇴역") or []
+    except Exception: _ret = []
+    _gone = [k for k in _ret if k in out]
+    for k in _gone: del out[k]
+    if _gone: print("  [퇴역] 배포 앵커에서 내림:", " ".join(_gone))
 n_tree = n_prop = 0
 for key, a in sorted(raw.items()):
     if ONLY and key not in ONLY:
