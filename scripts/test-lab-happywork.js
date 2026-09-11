@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
-// === scripts/test-lab-happywork.js — 행복이 높으면 더 일한다 (T157 · 랩) ======
+// === scripts/test-lab-happywork.js — 행복이 높으면 더 일한다 (T157 랩 → T165 이식) ===
 //
 // ★왜 [재민 물음 2026-09-05 → PM 판정 2026-09-07 · 지시 T157]
 //   *"행복이 오로지 리비히 상한 역할만? 높으면 더 좋아지는 것도 있어야."*
@@ -9,9 +9,9 @@
 //
 // ★★이 하네스가 지키는 것
 //   ① 문법     : 0.5 가 중립(배수 1) · 대칭(0.3 ↔ 0.7) · 상한은 `H` 자신(`1 ± H/2` · 새 수 0)
-//   ② 유도     : `H = 0.24` 를 출처의 관측(+12%)에서 **다시 유도해도 같다** · 랩이 그 값을 준다
-//   ③ 주입     : 계수는 **엔진이 안 갖는다** — `world.happyWorkW` 한 곳뿐이고 서버는 안 준다
-//   ④ 되돌림   : 주입이 없으면(=서버·CLI·하네스) 세계가 **비트 동일** · 주면 실제로 다르다
+//   ② 유도     : `H = 0.24` 를 출처의 관측(+12%)에서 **다시 유도해도 같다**(T165: 엔진 정본 상수)
+//   ③ 정본     : 계수는 **엔진에 하나**뿐이다 — 랩엔 수가 없고(번들로 읽는다) 서버는 손잡이로만 켠다
+//   ④ 되돌림   : 손잡이가 꺼져 있으면(기본) 세계가 **비트 동일** · 켜면 실제로 다르다
 //   ⑤ 곱       : 건강 배수와 **곱한다**(둘 다 낮으면 둘 다 곱) — 같은 자리 한 줄
 //   ⑥ 돌연변이 : `H` 를 10 으로 적으면 배수가 6배까지 벌어진다(세계가 아니라 폭주) → 빨강
 //   ⑦ 랩 배선  : 랩 `L_HAPPYWORK_BASE` 가 유도값과 같다 · 훅이 `lifeInit` 에서 설치된다
@@ -22,6 +22,7 @@ process.env.ENABLE_VILLAGES = process.env.ENABLE_VILLAGES || '0';
 process.env.DB_PATH = process.env.DB_PATH || `/tmp/t157-hz-${process.pid}.db`;
 const path = require('path');
 const fs = require('fs');
+const { execFileSync } = require('child_process');
 const ROOT = path.join(__dirname, '..');
 const R = (p) => require(path.join(ROOT, p));
 let pass = 0, fail = 0;
@@ -38,6 +39,7 @@ const codeOf = (src) => src.split('\n').map((l) => l.replace(/\/\/.*$/, '')).joi
 // 출처가 잰 수 — 이 하네스가 유일하게 손으로 적는 것이고, ②가 이것으로 `H` 를 다시 만든다.
 const SRC_GAIN = 0.12;   // Oswald·Proto·Sgroi 2015, JOLE 33(4) 초록: "approximately 12% greater productivity"
 const H = 0.24;
+const KNOB = process.env.T157_HAPPYWORK === '1';   // 이 판에서 손잡이가 켜져 있나(기본은 꺼짐)
 
 console.log('\n=== 행복이 높으면 더 일한다 (T157 · 랩) ===');
 
@@ -67,25 +69,39 @@ console.log('\n② 유도 — `H` 는 고른 수가 아니라 나온 수다');
   ok(Math.abs(derived - H) < 1e-12,
     '② ★★★`H` 를 출처의 관측(+12%)에서 **다시 유도해도 같다** (0.5 × H = 0.12 ⇒ H = 0.24)',
     `유도 ${derived} = 채택 ${H}`);
-  const m = LAB.match(/L_HAPPYWORK_BASE=([0-9.]+)/);
-  ok(!!m && Math.abs(+m[1] - H) < 1e-12, '② ★★랩이 주는 값이 그 유도값이다', m ? m[1] : '없다');
-  ok(/Oswald/.test(LAB) && /Journal of Labor Economics/.test(LAB),
-    '② 출처가 **값 옆에** 적혀 있다(저자·학술지 — 다음 사람이 다시 잴 수 있게)');
+  ok(Math.abs(econ.T157_HAPPYWORK_H - H) < 1e-12,
+    '② ★★★[T165] 엔진 정본 상수가 그 유도값이다', String(econ.T157_HAPPYWORK_H));
+  ok(/Oswald/.test(SRC) && /Journal of Labor Economics/.test(SRC),
+    '② 출처가 **정본 값 옆에** 적혀 있다(저자·학술지 — 다음 사람이 다시 잴 수 있게)');
+  // ★랩엔 수가 없어야 한다 — 엔진 블록(자동 생성물) 밖만 본다
+  const LOWN = LAB.slice(0, LAB.indexOf('ENGINE-BUNDLE-START')) + LAB.slice(LAB.indexOf('ENGINE-BUNDLE-END'));
+  ok(!/L_HAPPYWORK_BASE\s*=\s*[0-9]/.test(LOWN) && /L_HAPPYWORK_BASE=\(typeof EconEngine/.test(LOWN),
+    '② ★★[T165] 랩엔 **수가 없다** — `EconEngine.T157_HAPPYWORK_H` 를 읽는다(사본 0)');
   ok(econ.HEALTH_PROD_W === 0.15,
     '② [견줌] 건강 계수는 0.15 다 — 행복(0.24)이 **더 센 지렛대**임을 표에 적었다', String(econ.HEALTH_PROD_W));
 }
 
 // ── ③ 주입 — 계수는 엔진이 안 갖는다 ───────────────────────────────────────
-console.log('\n③ 주입 — 엔진엔 계수가 없다(랩이 준다)');
+console.log('\n③ 정본 — 계수는 엔진에 하나뿐이다(T165 이식)');
 {
   const CODE = codeOf(SRC);
-  ok(!/happyWorkW\s*=[^=]/.test(CODE), '③ ★★★엔진은 `happyWorkW` 에 **값을 안 넣는다**(읽기만 — 값은 밖에서 온다)');
-  const reads = CODE.split('\n').filter((l) => l.indexOf('happyWorkW') >= 0);
-  ok(reads.length === 1, '③ ★엔진이 그것을 읽는 자리가 **한 곳**이다', `${reads.length}곳`);
-  ok(/v\._world && typeof v\._world\.happyWorkW === 'number'/.test(SRC),
-    '③ 읽는 길이 `world` 백참조다(T135 `forageTakeFn` 선례 — 새 배선 0)');
+  ok((CODE.match(/const T157_HAPPYWORK_H = [0-9.]+;/g) || []).length === 1,
+    '③ ★★★정본 상수가 **한 줄**이다');
+  ok(/const T157_HAPPYWORK = process\.env\.T157_HAPPYWORK === '1';/.test(CODE),
+    '③ ★손잡이가 env 한 줄이고 **기본이 끔**이다(비트 동일의 뿌리)');
+  ok(econ.T157_HAPPYWORK === KNOB,
+    KNOB ? '③ ★[손잡이 켠 판] env 가 실제로 읽힌다' : '③ ★★기본 판에서 손잡이가 실제로 꺼져 있다(실기 0)',
+    String(econ.T157_HAPPYWORK));
+  const reads = CODE.split('\n').filter((l) => /_world\.happyWorkW/.test(l));
+  ok(reads.length === 1, '③ ★덮어쓰기(`world.happyWorkW`)를 읽는 자리가 **한 곳**이다', `${reads.length}곳`);
+  ok(econ.happyWorkWOf({}) === (KNOB ? H : 0),
+    KNOB ? '③ ★손잡이 켬 → 계수가 정본 H 다' : '③ ★★손잡이 끔 → 계수 0', String(econ.happyWorkWOf({})));
+  ok(econ.happyWorkWOf({ _world: { happyWorkW: 0 } }) === 0,
+    '③ ★★덮어쓰기 0 은 **손잡이보다 세다**(랩의 "끔" 이 언제나 끈다)');
+  ok(econ.happyWorkWOf({ _world: { happyWorkW: econ.T157_HAPPYWORK_H } }) === econ.T157_HAPPYWORK_H,
+    '③ 덮어쓰기는 A/B·랩 토글의 길이다(값은 여전히 정본에서 읽는다)');
   const VSRC = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8');
-  ok(VSRC.indexOf('happyWorkW') < 0, '③ ★★서버 생활층은 그것을 **안 준다**(랩만 · 서버 0)');
+  ok(VSRC.indexOf('happyWorkW') < 0, '③ ★★생활층은 계수를 **안 만진다**(엔진 한 곳)');
 }
 
 // ── ④ 되돌림 — 주입이 없으면 비트 동일 ─────────────────────────────────────
@@ -93,17 +109,26 @@ console.log('\n④ 되돌림 — 주입이 없으면 세계가 한 톨도 안 �
 {
   const fp = (hw) => {
     const w = econV2.createWorldV2({ seed: 42, villageCount: 5, namePool: ['가', '나', '다', '라', '마'], infoRange: 5000, raidPer100: 0.005, picker: 'rational' });
-    if (hw > 0) w.happyWorkW = hw;
+    if (hw != null) w.happyWorkW = hw;
     const _l = console.log; console.log = () => {};
     for (let d = 0; d < 300; d++) econV2.tickWorldV2(w);
     console.log = _l;
     return w.villages.map((v) => `${v.name}:${v.npcs.length}/f${v.storage.food.toFixed(6)}/w${(v.storage.wood || 0).toFixed(6)}`).join(' ');
   };
+  // 덮어쓰기 0 = 확실히 끈 세계(손잡이 상태와 무관) · 덮어쓰기 H = 확실히 켠 세계
   const off = fp(0), off2 = fp(0), on = fp(H);
   ok(off === off2, '④ 끈 판이 스스로 재현된다(결정론)');
-  ok(off !== on, '④ ★★[자명 통과 금지] 준 판은 **실제로 다르다**', on.slice(0, 44) + '…');
-  // 주입은 있는데 값이 0 이면 = 안 준 것과 같다(랩의 "끔" 버튼)
-  ok(fp(0) === off, '④ ★★랩의 "끔"(`L_HAPPYWORK=0`)이 **안 준 것과 같다**');
+  ok(KNOB || fp(null) === off, '④ ★★[기본 판] 덮어쓰기를 아예 안 줘도 끈 세계다(기본 끔)');
+  ok(off !== on, '④ ★★[자명 통과 금지] 켠 판은 **실제로 다르다**', on.slice(0, 44) + '…');
+  ok(fp(0) === off, '④ ★★랩의 "끔"(덮어쓰기 0)이 **손잡이 끔과 같다**');
+  // ★손잡이(env)로 켠 판 = 덮어쓰기로 켠 판 — 두 길이 같은 세계로 간다
+  const child = execFileSync(process.execPath, ['-e',
+    `process.env.T157_HAPPYWORK='1';const V2=require(${JSON.stringify(path.join(ROOT, 'sim', 'economy-sim-v2.js'))});` +
+    `const w=V2.createWorldV2({seed:42,villageCount:5,namePool:['가','나','다','라','마'],infoRange:5000,raidPer100:0.005,picker:'rational'});` +
+    `const _l=console.log;console.log=()=>{};for(let d=0;d<300;d++)V2.tickWorldV2(w);console.log=_l;` +
+    `process.stdout.write('FP:'+w.villages.map(v=>v.name+':'+v.npcs.length+'/f'+v.storage.food.toFixed(6)+'/w'+(v.storage.wood||0).toFixed(6)).join(' '));`],
+    { env: Object.assign({}, process.env, { T157_HAPPYWORK: '1' }), stdio: 'pipe' }).toString().split('FP:')[1] || 'NONE';
+  ok(child === on, '④ ★★★손잡이(env)로 켠 세계 = 덮어쓰기로 켠 세계 (두 길이 **같은 수**를 쓴다)', child.slice(0, 40) + '…');
 }
 
 // ── ⑤ 곱 — 건강과 같은 자리에서 곱한다 ─────────────────────────────────────
@@ -132,11 +157,13 @@ console.log('\n⑥ ★이 하네스가 실패할 줄 아는가');
   const wild = f(2.07, 10);
   ok(wild >= 6, '⑥ ★★★`H` 를 10 으로 적으면 배수가 **6배까지** 벌어진다(세계가 아니라 폭주)', `×${wild.toFixed(2)}`);
   ok(f(0, 10) < 0, '⑥ ★그 판은 하한이 **음수**가 된다 — 생산이 마이너스인 세계다', String(f(0, 10)));
-  // ② 의 유도 대조가 그 판에서 실제로 빨개지는가(감지기 자기검사)
-  const mutLab = LAB.replace(/L_HAPPYWORK_BASE=0\.24/, 'L_HAPPYWORK_BASE=10');
-  const m2 = mutLab.match(/L_HAPPYWORK_BASE=([0-9.]+)/);
-  ok(mutLab !== LAB && !!m2 && Math.abs(+m2[1] - H) > 1e-9,
-    '⑥ ★★랩에 10 을 적은 판을 만들면 ②의 대조가 **문다**(감지기 자기검사)');
+  // ② 의 유도 대조가 그 판에서 실제로 빨개지는가(감지기 자기검사) — T165 부터는 **엔진 정본**을 변조한다
+  const mutSrc = SRC.replace('const T157_HAPPYWORK_H = 0.24;', 'const T157_HAPPYWORK_H = 10;');
+  const m2 = mutSrc.match(/const T157_HAPPYWORK_H = ([0-9.]+);/);
+  ok(mutSrc !== SRC && !!m2 && Math.abs(+m2[1] - H) > 1e-9,
+    '⑥ ★★정본에 10 을 적은 판을 만들면 ②의 대조가 **문다**(감지기 자기검사)', m2 ? m2[1] : '없다');
+  ok((SRC.match(/T157_HAPPYWORK_H/g) || []).length >= 3,
+    '⑥ 정본 이름이 실제로 쓰인다(선언·계수·내보내기 — 죽은 상수가 아니다)');
 }
 
 // ── ⑦ 랩 배선 ──────────────────────────────────────────────────────────────
@@ -148,10 +175,10 @@ console.log('\n⑦ 랩 배선 — 훅이 세계 생성 때 설치된다');
   ok(/bdtInstallHooks\(\);hwInstallHook\(\);/.test(LCODE),
     '⑦ ★★`lifeInit` 이 세계를 만든 **그 자리**에서 설치한다(도적 훅과 같은 관례)');
   ok(/window\.L_HAPPYWORK/.test(LAB), '⑦ 적재 전 주입(`window.L_HAPPYWORK`)도 받는다(계측기·A/B 용)');
-  ok(/id="happyWork"/.test(LAB) && /setHappyWork\(0\)/.test(LAB),
-    '⑦ 눈으로 켜고 끄는 자리가 있다(끔 / H=0.24 토글)');
+  ok(/id="happyWork"/.test(LAB) && /setHappyWork\(0\)/.test(LAB) && /setHappyWork\(-1\)/.test(LAB),
+    '⑦ 눈으로 켜고 끄는 자리가 있다(끔 / 정본 H 토글 — 라벨의 수도 정본에서 온다)');
   const B = fs.readFileSync(path.join(ROOT, 'sim', 'economy-engine.browser.js'), 'utf8');
-  for (const k of ['happyWorkMul', 'happyWorkW', '_hwm']) ok(B.indexOf(k) >= 0, `⑦ 번들에 \`${k}\` 가 있다(3사본)`);
+  for (const k of ['happyWorkMul', 'happyWorkW', '_hwm', 'T157_HAPPYWORK_H']) ok(B.indexOf(k) >= 0, `⑦ 번들에 \`${k}\` 가 있다(3사본)`);
 }
 
 console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===\n`);

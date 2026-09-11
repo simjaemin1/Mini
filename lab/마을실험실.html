@@ -2076,9 +2076,26 @@ const MASTER_INHERIT_RATE = 0.45;      // 상속률(0.4~0.5) — 견습이 명�
 const TIGERHIDE_PRESTIGE_W = 4;          // 호피 0.025/인(120명 마을 3장)에서 상한 도달 — 희소재 소량으로 위신 성립
 const TIGERHIDE_PRESTIGE_CAP = 0.1;      // 상한(PRESTIGE_MOD_CAP 0.25 스케일 대비 소폭 — 위신재 한 종의 왜곡 방지)
 // ★건강 → 작업량(생산성) — 건강한 마을이 더 생산적(상한 있어 폭주 X). happiness는 인구만(유지).
+// ★★★[T165 2026-09-10 · 이식] **계수가 엔진 정본이 됐다.**
+//   T157 은 랩만 켜려고 계수를 밖(`world.happyWorkW`)에서 받았다. PM 판정(09-10): 이식하되
+//   **상수 하나 + env 손잡이**로 두고 **기본은 끔**(비트 동일)이다. 랩은 번들로 따라온다.
+//   ★새 수는 이것 하나이고 출처가 있다:
+//     Oswald · Proto · Sgroi (2015) "Happiness and Productivity", *Journal of Labor Economics* 33(4).
+//     무작위 처치(코미디 영상·간식)로 행복이 오른 집단의 생산성이 **약 12%** 높았다(초록 · 본문 10~12%).
+//     처치는 *중립 → 행복* 이라 우리 축의 **0.5 → 1.0**(반쪽 폭)에 대응한다 ⇒ 0.5 × H = 0.12 ⇒ **H = 0.24**.
+//   ⚠상한도 새 수가 아니다 — `H` 자신(`1 ± H/2`)으로 자른다(아래 `happyWorkMul`).
+const T157_HAPPYWORK_H = 0.24;
+const T157_HAPPYWORK = process.env.T157_HAPPYWORK === '1';   // 되돌림: 기본 **끔** = T157 이전 세계 비트 동일
+// 이 마을에 걸릴 계수. 정본은 위 상수이고, `world.happyWorkW` 는 **A/B·랩 토글의 덮어쓰기**다
+//   (숫자를 주는 자리가 아니라, 이미 있는 수를 잠깐 다른 값으로 재는 자리 — 랩은 0 과 정본만 오간다).
+function happyWorkWOf(v) {
+  const o = v && v._world && v._world.happyWorkW;
+  if (typeof o === 'number' && o >= 0) return o;
+  return T157_HAPPYWORK ? T157_HAPPYWORK_H : 0;
+}
 // ★★[T157] 행복 → 작업량 배수 — **순수 함수**(하네스가 이걸 직접 물어본다 · 사본 0).
 //   0.5 가 중립 · 대칭 · 상한은 `H` 자신(`1 ± H/2`) — 자르는 값을 따로 짓지 않는다.
-//   ⚠계수 `H` 는 이 파일이 안 갖는다: 부르는 쪽(=랩의 `world.happyWorkW`)이 준다.
+//   ⚠계수 `H` 는 위 `T157_HAPPYWORK_H` 하나다(T165 이식) — 부르는 쪽은 그걸 `happyWorkWOf(v)` 로 받는다.
 function happyWorkMul(happiness, W) {
   if (!(W > 0) || typeof happiness !== 'number' || !isFinite(happiness)) return 1;
   return Math.max(1 - W * 0.5, Math.min(1 + W * 0.5, 1 + (happiness - 0.5) * W));
@@ -3454,14 +3471,14 @@ function tickVillage(v, day) {
 //   여태 행복은 연속 항 `(happiness−0.5)×0.6` 으로 **인구에만** 닿았다. 건강은 이미 위 한 줄로
 //   작업량에 닿는다. 그 문법을 그대로 빌린다: **0.5 가 중립 · 대칭 · 같은 자리에서 곱한다.**
 //
-//   ⚠**주입이 없으면 한 글자도 안 바뀐다.** 계수는 이 파일이 안 갖는다 — `world.happyWorkW` 가 준다.
+//   ⚠**손잡이가 꺼져 있으면 한 글자도 안 바뀐다**(T165 기본) — `happyWorkWOf(v)` 가 0 을 돌려준다.
 //     지금 그것을 주는 것은 **랩**(`lab/전쟁실험실.html` `L_HAPPYWORK`)과 그 A/B 계측기뿐이고,
-//     서버·CLI·하네스·픽스처는 안 주므로 `_hwW = 0` → 배수 1 → **비트 동일**이다(T135 `forageTakeFn` 선례).
+//     `T157_HAPPYWORK=1` 이면 정본 `H` 가 걸린다. 랩·A/B 는 `world.happyWorkW` 로 덮어쓴다(값은 여전히 정본에서 읽는다).
 //   ⚠**상한은 새 수가 아니라 `H` 자신이다.** 출처(Oswald·Proto·Sgroi 2015)가 잰 것은 *중립 → 행복*
 //     구간의 생산성 차이다 ⇒ 우리 축으로 0.5 → 1.0 의 반쪽 폭. 그래서 배수를 `1 ± H×0.5` 로 자른다.
 //     행복은 이 세계에서 **1 을 넘는다**(실측 중앙 0.845 · 최고 2.07) — 자르지 않으면 출처가 재지 않은
 //     구간까지 외삽하게 된다. 자르는 값을 따로 짓지 않는 것이 요점이다.
-const _hwW = (v._world && typeof v._world.happyWorkW === 'number' && v._world.happyWorkW > 0) ? v._world.happyWorkW : 0;
+const _hwW = happyWorkWOf(v);
 let _hwm = 1;
 if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
   _hwm = happyWorkMul(v.lastStats.happiness, _hwW);
@@ -3537,7 +3554,7 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
       const sm = satMul(r);
       _potA += amt; _actA += amt * sm;   // 여유노동 측정: 잠재(감산 전) vs 실제(감산 후)
       dailyProductionPotential[r] = (dailyProductionPotential[r] || 0) + amt;   // 잠재 생산(건강·포만 적용 전) — prodK용
-      amt *= _hpm * _hwm * _prodMul * sm * (v._laborMul || 1) * _siegeM * _capM;   // ★건강→작업량(±10%) × **행복→작업량(T157 · 주입 없으면 1)** × production stat × 포만 × 부상노동력(요양=일손 X·부상=효율↓ — 생활층서 계산) × 포위 봉쇄(야외 직업만, 미설치=1) × 포로 노동(captive만 0.6, 미설치=1)
+      amt *= _hpm * _hwm * _prodMul * sm * (v._laborMul || 1) * _siegeM * _capM;   // ★건강→작업량(±10%) × **행복→작업량(T157/T165 · 손잡이 끄면 1)** × production stat × 포만 × 부상노동력(요양=일손 X·부상=효율↓ — 생활층서 계산) × 포위 봉쇄(야외 직업만, 미설치=1) × 포로 노동(captive만 0.6, 미설치=1)
       if (amt <= 0) return;
       if (r === 'food') v._grainToday = (v._grainToday || 0) + amt;   // ★오늘 곡물 실생산 → 볏짚 연료(아래 연료 블록)
       const tax = amt * TAX_RATE;
@@ -5798,6 +5815,7 @@ module.exports = {
   DAILY_FOOD_CONSUMPTION,   // ★[T100 4판] 하루 1인 식량 정본 — `k` 유도의 한 항(하네스가 1.0 을 옮겨 적지 않는다)
   seedFoodDays, SEED_FOOD_DAYS_D0, SEED_FOOD_DAYS_LEGACY,   // ★[T100 5판] 창설 곳간의 밑변 — 하네스가 `crops.js` 에서 다시 유도해 대조한다
   HEALTH_PROD_W, happyWorkMul,   // ★[T157] 건강→작업량 계수 — 하네스가 "행복은 건강과 같은 문법" 을 대조한다(사본 0)
+  T157_HAPPYWORK_H, T157_HAPPYWORK, happyWorkWOf,   // ★[T165 이식] 정본 상수 하나 · 손잡이 · 마을별 계수 — 랩·계측기가 이 수를 옮겨 적지 않는다
   gardenFloorTopUp, T100_GARDEN, T100_GARDEN_CELLS, T100_GARDEN_FLOOR,   // ★[T100 5판 ⓒ] 텃밭 하한 — 값·손잡이·유도식을 하네스가 다시 계산한다
   FARMER_BASE: JOBS.farmer.base,   // ★[T100] 농부 1인 기준 산출(옛 밑변 `1.5 × 지력`의 1.5) — 계측기·하네스가 이 수를 옮겨 적지 않게
   // ★[T125] 옷감 보온 가중 — `server/villages.js` 가 주민 착장 재질을 고를 때 **읽는다**.
