@@ -464,6 +464,62 @@ function diffCountNoEnts(a, b, ents) {
     //   그려지므로, 두 프레임 동일·안개 위 밝은 픽셀 같은 판정이 하늘 때문에 빨개진다.
     //   이 하네스가 재는 건 하늘이 아니다 ⇒ 끄는 문은 T93 이 남긴 진단 훅 하나(안 켜져 있으면 무해).
     await page.evaluate(() => { if (typeof window.__rainForce === 'function') window.__rainForce({ precip: 0 }); });
+
+    // ═══ ★★[T148-B 2026-09-07] 나무는 **제 종으로** 선다 ═════════════════════════
+    //   재민 캐논: *"열매는 보이고, 가서 딴다."* 그 앞 절반 — **밤나무는 밤나무로 보인다.**
+    //   ★소스를 읽지 않는다. **화면에게 묻는다**(`__treeSpriteFor` 는 실제로 그리는 그 함수를 탄다).
+    //   ★기대값은 손으로 안 적는다 — `tree_species.json` **표**를 그대로 대조한다(사본 0).
+    {
+      const TBL = JSON.parse(fs.readFileSync(path.join(ROOT, 'public/assets/trees/tree_species.json'), 'utf8')).species;
+      const names = await page.evaluate(() => (window.__treeSpeciesTable ? window.__treeSpeciesTable() : null));
+      ok(!!names && names.length === Object.keys(TBL).length,
+        `★★나무① 클라가 **표를 읽었다** — 종 ${names ? names.length : 'null'}개 (표 ${Object.keys(TBL).length}개 · 클라에 종 목록 0)`);
+      // ⓐ 종이 다르면 판도 다르다 — 같은 자리에서 종만 바꿔 묻는다(자리 해시는 고정 ⇒ 갈린 건 종뿐)
+      const at = (sp, f) => page.evaluate((a2) => (window.__treeSpriteFor ? window.__treeSpriteFor(a2[0], 1000, 1000, a2[1]) : null), [sp, !!f]);
+      const pine = await at('pine'), chest = await at('chestnut');
+      ok(pine && chest && pine !== chest,
+        `★★나무ⓐ 종이 다르면 **다른 판**을 쓴다 — 소나무 ${pine} ≠ 밤나무 ${chest}`);
+      ok(TBL.pine.sprites.includes(pine) && TBL.chestnut.sprites.includes(chest),
+        `★★나무ⓐ 그리고 그 둘은 **표가 그 종에 적어 둔 판**이다(사본 0)`);
+      // ⓑ 같은 자리 두 번 = 같은 판(주사위 0)
+      ok((await at('pine')) === pine, `★나무ⓑ 같은 자리·같은 종은 **몇 번을 물어도 같은 판**이다(주사위 0)`);
+      // ⓒ 자리가 다르면 같은 종 안에서 판이 갈린다(판이 여럿인 종으로만 — 소나무 3장)
+      const p2 = await page.evaluate(() => window.__treeSpriteFor('pine', 1064, 2312, false));
+      ok(TBL.pine.sprites.includes(p2), `★나무ⓒ 다른 자리도 **소나무 판 셋 중 하나**다 (${p2})`);
+      // ⓓ 열매철엔 열매판 — 표의 열매 목록(지금은 `autumn` · T169 이 `summer` 를 더해도 클라 무변)
+      const fkey = TBL.chestnut.autumn ? 'autumn' : 'summer';
+      const cf = await at('chestnut', true);
+      ok(TBL.chestnut[fkey].includes(cf) && cf !== chest,
+        `★★나무ⓓ 열매가 달리면 **열매판**으로 갈린다 — ${chest} → ${cf} (표의 \`${fkey}\`)`);
+      // ⓔ 열매판이 **없는** 종은 열매철이어도 성목판 그대로(소나무엔 열매 그림이 없다)
+      ok((await at('pine', true)) === pine, `★★나무ⓔ 열매판이 없는 종은 그대로다 — 소나무 ${pine}(없는 그림을 지어내지 않는다)`);
+      // ⓕ 되돌림 — `sp` 가 없으면(옛 저장 · T135_TREES=0) 종전 열두 장 해시로 떨어진다
+      ok((await at(null)) === null && (await at('nosuchtree')) === null,
+        `★★나무ⓕ \`sp\` 가 없거나 표에 없는 종이면 **표 경로를 안 탄다** — 종전 그림으로 떨어진다(되돌림)`);
+      // ⓖ 자명 통과 금지 — 표에 없는 이름을 물으면 null 이어야 하고, 위 ⓐ가 그걸 통과로 세지 않는다
+      ok(pine !== null && (await at('nosuchtree')) === null,
+        `★나무ⓖ 자명 통과 금지 — 아는 종엔 답이 있고 모르는 종엔 없다`);
+      // ⓗ 세계가 실제로 종을 실어 보낸다 — **시더 정본에게 직접 묻는다**(새 클라 훅 0).
+      //   클라에 `resources` 를 내주는 훅이 없고, 그걸 만들면 최상위 전역이 는다(T0-b 표).
+      //   ⇒ 화면이 받는 그 행을 만드는 **그 함수**(`chunk.js`)를 그대로 불러 센다 — 사본 0.
+      {
+        const CH = require(path.join(ROOT, 'server', 'chunk.js'));
+        const TR = require(path.join(ROOT, 'server', 'terrain.js'));
+        let rows = [];
+        for (let k = 0; k < 6 && !rows.length; k++) {
+          try { rows = CH.generateChunkResources('hanbando', 'forest', 300 + k, 300 + k, 512, new Set(), 100) || []; } catch (e) { rows = []; }
+        }
+        const trees = rows.filter((r) => r.type === 'tree');
+        const withSp = trees.filter((r) => r.sp);
+        const kinds = Array.from(new Set(withSp.map((r) => r.sp)));
+        ok(trees.length > 0 && withSp.length === trees.length,
+          `★★나무ⓗ 시더가 내는 나무가 **전부 종을 들고 있다** — ${withSp.length}/${trees.length} (종 ${kinds.join(',')})`);
+        ok(kinds.every((k2) => !!TBL[k2]),
+          `★★나무ⓗ 그리고 그 종 이름이 **전부 표에 있다** — 서버가 내는 이름과 그림 표가 같은 낱말을 쓴다`);
+        void TR;
+      }
+    }
+
     await knob({ legacy: false, freezeT: 100, natOff: false, fringeOff: false, propOff: false, propNoAvoid: false });
     const clProbe = () => page.evaluate(() => (window.__claimCells ? JSON.parse(JSON.stringify(window.__claimCells)) : null)).catch(() => null);
     const claimOn = await clProbe();

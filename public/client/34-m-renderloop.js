@@ -1509,10 +1509,12 @@
         //   거리 vignette 는 남긴다 — AOI(650px) 경계에서 튀어나오는 팝인을 무르게 하는 장치다.
         const vis = Math.max(0.15, 1 - Math.pow(d / VIEW_RADIUS, 1.4));
         ctx.globalAlpha = vis;
-        if (item.r.type === 'tree') drawTreeIso(s.x, s.y, item.r.r || 8, item.r.h || 60, item.ax, item.ay);
+        // ★[T148-B] 종(`sp`)과 "지금 열매가 달렸나"(`fruitNow`)를 **그대로 넘긴다** — 클라가 다시 안 정한다.
+        //   ⚠`fruitNow` 는 아직 서버가 안 싣는다(T148-B 회부 1) — 그날 한 줄이 오면 이 줄은 그대로 산다.
+        if (item.r.type === 'tree') drawTreeIso(s.x, s.y, item.r.r || 8, item.r.h || 60, item.ax, item.ay, item.r.sp, item.r.fruitNow);
         // ★[T122] 벤 자리의 두 단계 — 크기는 **서버가 이미 줄여 보냈다**(클라가 배율을 짓지 않는다).
         else if (item.r.type === 'stump') drawStumpIso(s.x, s.y, item.r.r || 7, item.r.h || 10, item.ax, item.ay);
-        else if (item.r.type === 'sapling') drawSaplingIso(s.x, s.y, item.r.r || 4, item.r.h || 20, item.ax, item.ay);
+        else if (item.r.type === 'sapling') drawSaplingIso(s.x, s.y, item.r.r || 4, item.r.h || 20, item.ax, item.ay, item.r.sp);
         else if (item.r.type === 'rock') drawRockIso(s.x, s.y, item.ax, item.ay);
         else if (item.r.type === 'berry_bush') drawBerryBushIso(s.x, s.y, item.ax, item.ay);
         else if (item.r.type === 'water_pool') drawWaterPoolIso(s.x, s.y);
