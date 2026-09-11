@@ -9,6 +9,14 @@
 // 실행: node scripts/lab-alloc-server.js [일수=800] [시드=1020]
 //   L_ALLOC_REAL=1 …   ← 실현 배분 팔   ·   (없음) ← 종전 팔
 //   T164_JSON=/tmp/x.json  표를 JSON 으로도 남긴다
+//
+// ★★[T177 2026-09-12] **궤적 추적** `T177_TRACE=1` — 코드 0(엔진 무접촉).
+//   `L_ALLOC_REAL` 을 **끄고** 정본에 남아 있는 주입 문(`world.allocFn`)에 관찰자를 건다:
+//     · `T177_ARM=old`  → 후보 목록만 **기록하고 null** 을 돌려준다 = 종전 팔 그대로
+//     · `T177_ARM=real` → 기록한 뒤 **정본 `allocRealCandidates` 를 그대로 부른다** = 실현 팔 그대로
+//   ⚠정본을 다시 구현하지 않는다 — 그 함수를 **부른다**(사본 0). 문이 넘기는 ctx 는 직접 호출 때의
+//     상위집합이라(period·counts·w·forageYields·JOBS 전부 포함) 두 경로의 수가 같아야 한다 —
+//     `T177_ARM=real` 이 T164 §3-1 의 여덟 수를 그대로 내는지가 이 계측기의 자기검사다.
 'use strict';
 process.env.ENABLE_VILLAGES = process.env.ENABLE_VILLAGES || '0';
 process.env.DB_PATH = process.env.DB_PATH || `/tmp/t164-${process.pid}.db`;
@@ -51,6 +59,8 @@ for (const hv of picked) {
   try { if (ta.prepareFert) ta.prepareFert(c.ccx, c.ccy, 62); layout = VillageLayout.generate(ta, c.ccx, c.ccy, P.INITIAL_POP, {}); } catch (e) { continue; }
   seeds.push({ name: hv.name, ccx: c.ccx, ccy: c.ccy, lp: P.extractLandParamsApprox(ta, c.ccx, c.ccy, layout) });
 }
+const TRACE = process.env.T177_TRACE === '1';
+const TARM = process.env.T177_ARM || 'old';
 const world = econV2.createWorldV2({ seed: SEED, villageCount: seeds.length, picker: 'rational', infoRange: 5000, raidPer100: 0.005 });
 world.villages = []; world.events = [];
 R('server/trees').attachToWorld(world);        // ★족보 130 — 서버가 여는 그 문을 계측기도 연다
@@ -61,12 +71,60 @@ for (const s of seeds) {
 }
 world.day = 0;
 
+// ── ★[T177] 관찰자 문 ─────────────────────────────────────────────────────────
+const TR = { job: {}, calls: 0, rewritten: 0 };
+const _trJob = (j) => (TR.job[j] || (TR.job[j] = { n: 0, oldSum: 0, newSum: 0, ratioSum: 0, ratioN: 0,
+  pickedOld: 0, pickedNew: 0, cntSum: 0, toolSum: 0, toolN: 0, zeroReal: 0 }));
+function _toolCov(v) {
+  const c = v.counts || {}; let td = 0;
+  for (const j in c) { const jd = econ.JOBS[j]; if (jd && jd.toolDependent) td += c[j] || 0; }
+  const stock = (v.storage.tool || 0) + (v.storage.bronze_tool || 0) + (v.storage.iron_tool || 0);
+  return td > 0 ? Math.min(1, stock / td) : 1;
+}
+if (TRACE) {
+  world.allocFn = (v, w2, cands, ctx) => {
+    TR.calls++;
+    const alt = (TARM === 'real') ? econ.allocRealCandidates(v, w2, cands, ctx) : null;
+    const cov = _toolCov(v);
+    const oldBest = cands.slice().sort((a, b) => b[1] - a[1])[0];
+    const newBest = alt ? alt.slice().sort((a, b) => b[1] - a[1])[0] : null;
+    if (alt) TR.rewritten++;
+    for (let i = 0; i < cands.length; i++) {
+      const j = cands[i][0], go = cands[i][1];
+      const t = _trJob(j);
+      t.n++; t.oldSum += go; t.cntSum += (ctx.counts && ctx.counts[j]) || 0;
+      t.toolSum += cov; t.toolN++;
+      if (alt) {
+        const gn = alt[i][1];
+        t.newSum += gn;
+        if (gn === go) t.zeroReal++;                       // 폴백(실현 0 · 인원 0 · 바구니 없음)
+        else if (go > 0) { t.ratioSum += gn / go; t.ratioN++; }
+      }
+      if (oldBest && oldBest[0] === j) t.pickedOld++;
+      if (newBest && newBest[0] === j) t.pickedNew++;
+    }
+    return alt;
+  };
+}
+
+// ── ★[T177] 마을 궤적(10일) — 소멸 귀속용 ────────────────────────────────────
+const VT = TRACE ? world.villages.map(() => []) : null;
+function _snapVil() {
+  world.villages.forEach((v, i) => {
+    const jc = {}; for (const n of (v.npcs || [])) jc[n.currentJob] = (jc[n.currentJob] || 0) + 1;
+    VT[i].push({ d: world.day, pop: (v.npcs || []).length, jobs: jc,
+      k: v._kDbg ? { s: +v._kDbg.slot.toFixed(1), p: +v._kDbg.prod.toFixed(1), f: +v._kDbg.fuel.toFixed(1) } : null,
+      st: +(v.storage.stone || 0).toFixed(1), tl: +(v.storage.tool || 0).toFixed(1),
+      wd: +(v.storage.wood || 0).toFixed(1), cov: +_toolCov(v).toFixed(3) });
+  });
+}
+
 // 장부 — `t17-metrics.js` 와 같은 계약(정본 문턱 그대로 · cfg 사본 없음)
 const L = Events.createLedger({ econV2, vidOf: (v, i) => i, depositMap: Villages.playerVillageDepositMap(), onEvent: () => {} });
 L.prime(world);
 
 const _log = console.log; console.log = () => {};
-for (let d = 0; d < DAYS; d++) { econV2.tickWorldV2(world); L.scanDay(world, world.day, {}); }
+for (let d = 0; d < DAYS; d++) { econV2.tickWorldV2(world); L.scanDay(world, world.day, {}); if (TRACE && world.day % 10 === 0) _snapVil(); }
 console.log = _log;
 
 // ── 여덟 수 ──────────────────────────────────────────────────────────────────
@@ -108,7 +166,7 @@ const foodEq = world.villages.reduce((a, v) => a + econ.totalFoodEquivalent(v), 
 const FF = econ.FORAGE_FOOD_FACTOR;
 const forageEq = world.villages.reduce((a, v) => a + Object.keys(FF).reduce((b, r) => b + (v.storage[r] || 0) * FF[r], 0), 0);
 
-const ARM = econ.allocRealOn() ? '실현' : '종전';
+const ARM = econ.allocRealOn() ? '실현' : (TRACE ? (TARM === 'real' ? '실현(문)' : '종전(문)') : '종전');
 console.log(`\n=== T164 서버 A/B — 실지도 ${seeds.length}곳 · 시드 ${SEED} · ${DAYS}일 · 배분 **${ARM}**`
   + (econ.allocRealOn() ? ` (창 ×${econ.allocRealWin()})` : '') + ' ===');
 console.log(`  여덟 수   인구 ${pop} · 소멸 ${dead}/${ever} · 무기Q ${weapQ.toFixed(0)} · 확장셀 ${expand}`);
@@ -119,6 +177,33 @@ console.log(`            ${jobs.slice(0, 8).map(([k, n]) => `${k} ${n}`).join(' 
 console.log(`  MSY       평균 ${msyMean == null ? '—' : msyMean.toFixed(3)} · 최소 ${msyMin == null ? '—' : msyMin.toFixed(3)} · **무는 마을 ${msyBite}/${fsArr.length}**`);
 console.log(`  ratio     식량등가 ${foodEq.toFixed(0)} · 그중 구황(채집) ${forageEq.toFixed(0)} = ${(forageEq / Math.max(1, foodEq) * 100).toFixed(1)}%`);
 
+if (TRACE) {
+  console.log(`\n  [T177] 문 호출 ${TR.calls}회 · 다시 쓴 호출 ${TR.rewritten}회`);
+  console.log('  직업'.padEnd(14) + '평균인원'.padStart(9) + '종전가치'.padStart(12) + '실현가치'.padStart(12)
+    + '실현/종전'.padStart(11) + '폴백%'.padStart(8) + '고른횟수 종전→실현'.padStart(20) + '  도구커버' + '  도구의존');
+  const rows = Object.entries(TR.job).sort((a, b) => b[1].n - a[1].n);
+  for (const [j, t] of rows) {
+    const jd = econ.JOBS[j] || {};
+    console.log('  ' + j.padEnd(12)
+      + (t.cntSum / Math.max(1, t.n)).toFixed(1).padStart(9)
+      + (t.oldSum / Math.max(1, t.n)).toFixed(1).padStart(12)
+      + (t.newSum / Math.max(1, t.n)).toFixed(1).padStart(12)
+      + (t.ratioN ? (t.ratioSum / t.ratioN).toFixed(3) : '—').padStart(11)
+      + (100 * t.zeroReal / Math.max(1, t.n)).toFixed(0).padStart(8)
+      + `${t.pickedOld} → ${t.pickedNew}`.padStart(20)
+      + '  ' + (t.toolSum / Math.max(1, t.toolN)).toFixed(3).padStart(8)
+      + '  ' + (jd.toolDependent ? '**예**' : '아니오').padStart(7));
+  }
+}
+if (process.env.T177_JSON) {
+  fs.writeFileSync(process.env.T177_JSON, JSON.stringify({ seed: SEED, days: DAYS, arm: ARM,
+    pop, dead, ever, weapQ, expand, toolQ, presStock, posted: S.reqOpened,
+    job: TR.job, calls: TR.calls, rewritten: TR.rewritten,
+    vil: world.villages.map((v, i) => ({ name: v.name, pop: (v.npcs || []).length,
+      landStone: +(v.land.stone || 0).toFixed(3), landWood: +(v.land.wood || 0).toFixed(3),
+      everPop: !!v._everPop, trace: VT ? VT[i] : null })) }));
+  console.log(`  T177 JSON: ${process.env.T177_JSON}`);
+}
 if (process.env.T164_JSON) {
   fs.writeFileSync(process.env.T164_JSON, JSON.stringify({ seed: SEED, days: DAYS, arm: ARM,
     pop, dead, ever, weapQ, expand, toolQ, presStock, posted: S.reqOpened, daysPer,
