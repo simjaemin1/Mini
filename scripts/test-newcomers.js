@@ -334,6 +334,56 @@ console.log('\n⑦ ★이 하네스가 실패할 줄 아는가');
   ok(justOk && !justNo, `⑦-c 통제 실험: 벌점 ${Newcomers.CFG.MAX_GUILD_VP} 을 0.02 사이에 두고 답이 갈린다`);
 }
 
+// ═══ ⑧ ★★[T167 2026-09-10] `받기`·`막기` · 유저 마을엔 촌장이 없다 ═════════════
+{
+  console.log('\n⑧ ★[T167] `/이방인 받기|막기` · 유저 마을 첫 의뢰 없음 · 소개문이 인사가 된다');
+  const VID8 = 81;
+  const { hall } = mkVillage(VID8, { pop: 3, food: 300 });
+  _vils.set(VID8, _vils.get(VID8) || null);
+  //   ★랩의 마을 표에 넣는다(위 픽스처 규약 그대로)
+  const mk = mkVillage(VID8 + 1, { pop: 3, food: 300 });
+  _vils.set(VID8 + 1, mk.vil);
+  _arrOk.add(VID8 + 1);
+  let _sw = null;
+  Newcomers.init(Object.assign({}, {
+    buildings, players, central: { getPlayer: async () => null, getTribe: async () => null }, ZONE_ID: 'hanbando',
+    econ: require(path.join(ROOT, 'sim', 'economy-sim')),
+    villageOf: (vid) => _vils.get(vid | 0) || null,
+    playerVillages: () => [..._vils.values()].filter(Boolean),
+    arrivalOf: (vid) => (_arrOk.has(vid | 0) ? { x: 1, y: 1, kind: 'gate' } : null),
+    updateBuildingData: (dbId, json) => { _saved.set(dbId, json); },
+    holdDays: 14, send: () => {},
+    hasShelter: () => true,
+    //   ★스위치를 누가 켜는지(권한)는 이 절의 몫이 아니다 — `zone._furnaceCanUse` 정본이다(제2 규약).
+    //     여기서는 **인자 표가 갈리는가**만 잰다.
+    nearHall: () => mk.hall,
+    setSwitch: (pl, b, on) => { _sw = on; Newcomers.setOn((b.data.villageDbId | 0), on); },
+  }));
+  const P = { name: '길드장', ws: null, playerId: 'nc_founder' };
+  _sw = null; Newcomers.handleChat(P, '/이방인 받기');
+  ok(_sw === true, '★★⑧ `/이방인 받기` 가 스위치를 **켠다**', String(_sw));
+  ok(Newcomers.isOn(VID8 + 1) === true, '⑧a2 그리고 회관에 실제로 앉는다(`data.welcomeStrangers`)');
+  _sw = null; Newcomers.handleChat(P, '/이방인 막기');
+  ok(_sw === false, '★★⑧b `/이방인 막기` 가 **끈다**', String(_sw));
+  ok(Newcomers.isOn(VID8 + 1) === false, '⑧b2 그리고 회관에서도 꺼진다');
+  //   ★종전 말도 그대로 산다 — 같은 인자 표에 더했지 새 경로를 안 냈다
+  _sw = null; Newcomers.handleChat(P, '/이방인 켜');
+  ok(_sw === true, '⑧c 종전 `켜` 도 그대로 산다(사본 0 · 같은 자리)');
+  //   ★자명 통과 금지 — 모르는 인자는 **스위치를 안 건드린다**(형편만 말한다)
+  _sw = null; Newcomers.handleChat(P, '/이방인 어쩌구');
+  ok(_sw === null, '★⑧d 모르는 말은 **스위치를 안 만진다**', String(_sw));
+
+  //   ⓔ 유저 마을엔 촌장이 없다 — 첫 의뢰 게이트와 소개문 인사가 **소스에 실제로 있다**
+  const onbSrc = fs.readFileSync(path.join(ROOT, 'server', 'onboarding.js'), 'utf8');
+  ok(/function pickFirstQuest\(vid\)[\s\S]{0,900}?if \(_isPlayerVillage\(vid\)\) return null;/.test(onbSrc),
+     '★★⑧e 첫 의뢰가 **유저 마을에서 막힌다**(뜻을 적어 뒀다 — 판이 비어서가 아니라)');
+  ok(/const _intro = \(_isPlayerVillage\(vid\) && H\.introOfVillage\)/.test(onbSrc),
+     '★★⑧e2 인사 자리가 **T128 소개문 정본을 부른다**(문장의 집이 하나다)');
+  ok(/if \(v\.player && !\(nc && nc\.listed\)\) continue;/.test(onbSrc),
+     '⑧e3 ★그리고 시작 화면은 **받기인 유저 마을만** 싣는다(T19 가 놓은 그 줄 — 이 카드가 안 건드렸다)');
+  ok(onbSrc.length > 1000, '⑧e4 (자명 통과 방지) 그 파일을 실제로 읽었다');
+}
+
 console.log(`\n=== PASS ${pass} / FAIL ${fail} ===`);
 for (const f of [process.env.DB_PATH, process.env.DB_PATH + '-wal', process.env.DB_PATH + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
 process.exit(fail ? 1 : 0);

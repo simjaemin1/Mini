@@ -685,6 +685,12 @@ function startGauges() { return { hunger: CFG.START_HUNGER, thirst: CFG.START_TH
 function pickFirstQuest(vid) {
   const ledger = (H.SimVillages && H.SimVillages.eventLedger) || null;
   if (!ledger) return null;
+  // ★★[T167 2026-09-10] **첫 의뢰는 NPC 마을 것만이다.** 유저 마을엔 의뢰 정본이 없다 —
+  //   게시판(`ledger.board`)은 econ 이 스스로 낸 부족·글럿에서 나오고, 그건 NPC 마을의 살림이다.
+  //   §0-ⓑ 실측: 지금도 유저 마을은 빈 판을 돌려줘 `q = null` 로 **떨어지긴 한다**. 그런데 그건
+  //   "없어서 안 나온" 것이지 **안 내주기로 한** 것이 아니다 — 언젠가 유저 마을에 판이 서면
+  //   그날 촌장 없는 마을이 촌장 대사로 의뢰를 건넨다. ⇒ **뜻을 여기 적어 둔다**(회부: 유저 마을 의뢰 정본).
+  if (_isPlayerVillage(vid)) return null;
   let rows = [];
   try { rows = ledger.board(vid | 0) || []; } catch (e) { return null; }
   if (!rows.length) return null;
@@ -714,13 +720,27 @@ const _DIRWORD = (dx, dy) => {
   if (a >= -112.5 && a < -67.5) return '북쪽';
   return '해 뜨는 북쪽';
 };
+/** 사람이 세운 마을인가 — 정본은 `villages` 의 `econ.founder` 하나다(여기서 다시 풀지 않는다). */
+function _isPlayerVillage(vid) {
+  try {
+    const list = _villages();
+    const v = list && list.find((x) => x.id === (vid | 0));
+    return !!(v && v.player);
+  } catch (e) { return false; }
+}
 function greetLines(vid, playerId) {
   const a = arrivalOf(vid);
   const q = pickFirstQuest(vid);
   const s = stateOf(playerId);
   const ko = (r) => { try { return H.Events.koRes(r); } catch (e) { return r; } };
   const lines = [];
-  if (s.first_done) {
+  // ★★[T167 2026-09-10] **유저 마을엔 촌장이 없다 — 길드장이 써 둔 소개문이 그 자리에 선다.**
+  //   T128 이 시작 화면 줄에 실은 그 한 줄(`/소개`)을 **여기서도 부른다**(문장의 집이 하나다 · 사본 0).
+  //   ⚠소개문이 없으면 종전 인사 그대로다 — 빈 줄을 만들지 않는다.
+  const _intro = (_isPlayerVillage(vid) && H.introOfVillage) ? String(H.introOfVillage(vid) || '').trim() : '';
+  if (_intro) {
+    lines.push(`"${_intro}"`);
+  } else if (s.first_done) {
     lines.push('또 왔는가. 손이 여물었군.');
   } else {
     lines.push('낯선 얼굴이군. 어디서 왔나.');
@@ -873,7 +893,7 @@ module.exports = {
   CFG, init, ready, invalidate,
   arrivals, arrivalOf, arriveFor, startGauges,
   startInfo, httpStartInfo, characterOf, worldSectors, SECTORS, CHARS, popBand, busyBand,
-  pickFirstQuest, greetLines, onDeliver, handleMsg, daySummary,
+  pickFirstQuest, greetLines, onDeliver, handleMsg, daySummary, __isPlayerVillage: _isPlayerVillage,
   noteVillage,   // ★[T19] 마을이 하나 늘었을 때 그 곳만 굽는다
   dirWord: _DIRWORD,   // ★[T56] 방위말 정본 — 쓰러짐의 외침이 촌장과 **같은 어휘**를 쓴다
 
