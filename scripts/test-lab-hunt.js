@@ -237,8 +237,33 @@ sec('⑪ [T154] 고기는 **장부가 잡은 만큼만** — 주입 문 하나 �
   ok(/_hkill=\(s\._hkill\|\|0\)\+_tk/.test(rt),
     '★★⑪ 잡은 수를 **실제로 뺀 그 자리**에서 센다(`_tk` — 따로 다시 계산하지 않는다)');
   //   ★★자명 통과 금지 — `_tk` 는 포화 수확이라 상수가 아니다(위 ④⑤ 가 그걸 잠근다)
-  ok(/_tk=Math\.min\(_g0,huntTake\(_g0\)\)/.test(rt),
+  //   ★★[T172 가 이 줄을 넓혔다] 원래는 `_tk=Math.min(_g0,huntTake(_g0))` 를 글자 그대로 봤다.
+  //     T172 가 **배율을 실체에 걸면서** `*t172Mul(a)` 가 붙었다 — 잰 것의 뜻(포화 수확이지 상수가 아니다)은
+  //     그대로이므로 **포화 핵을 보고**, 배율이 그 **밖에** 곱해졌는지는 ⑫ 가 따로 잠근다.
+  ok(/_tk=Math\.min\(_g0,huntTake\(_g0\)/.test(rt),
     '★★⑪ 그리고 그 `_tk` 는 **포화 수확**이다(밀도를 따른다 — 상수 아님)');
+}
+
+// ═══ ⑫ [T172] 배율은 실체가 나는 곳에 ═══════════════════════════════════════
+sec('⑫ [T172] 배율 자리 — 사냥 문도 양과 배율을 따로 넘긴다');
+{
+  const ENG = fs.readFileSync(path.join(ROOT, 'sim', 'economy-sim.js'), 'utf8');
+  const e = strip(ENG);
+  ok(/huntIncomeFn\(v, npc, baseAmt, _mul\)/.test(e),
+    '★★⑫ 사냥 문이 **양과 배율을 따로** 넘긴다');
+  const asg = e.match(/baseAmt = _hi[^;]*;/g) || [];
+  ok(asg.length === 1 && !/_mul/.test(asg[0]),
+    '★★⑫ 문이 돌려준 값을 **그대로** 받는다(대입에 배율이 안 끼어든다 — 이중 금지)', asg.join(' ') || '없음');
+  //   ★랩: 배율이 **잡는 자리**에 걸린다
+  ok(/_tk=Math\.min\(_g0,huntTake\(_g0\)\*t172Mul\(a\)\)/.test(LAB.replace(/\s/g, '')),
+    '★★⑫ 랩에서 배율이 **하루 수확에 걸린다**(잘 쏘는 사람이 더 잡는다)');
+  //   ★★그런데 `huntTake` 자체는 **그대로**다(포화 식에 배율을 섞지 않았다)
+  const ht = strip(bodyOf('huntTake'));
+  ok(!/t172Mul|_t172mul|skill/.test(ht),
+    '★★⑫ 그리고 `huntTake` 포화 식은 **한 글자도 안 변했다**(배율은 밖에서 곱한다)');
+  //   ★나무꾼도 econ NPC 와 이어져 있다(사냥꾼과 같은 문법)
+  ok(/lj\[i2\]\._esk=_el\.length\?_el\[i2%_el\.length\]:null/.test(LAB.replace(/\s/g, '')),
+    '★★⑫ 나무꾼도 `_esk` 로 이어진다(사냥꾼과 **같은 문법** — 새 규약 0)');
 }
 
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
