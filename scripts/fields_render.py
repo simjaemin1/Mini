@@ -276,6 +276,86 @@ def bake_farmland_icon(out_dir):
 #   규격은 가구와 같다: `ppu_mul=1`(게임 해상도 45.255px/m) · `ss=3`(초과표본, 축소로 되돌림).
 #   ⇒ `rc.downscale_png` 는 이제 안 쓴다(세계 패스가 `_post_png` 로 되돌린다).
 #   앵커는 `crops_anchors.json` — 클라가 `drawImage(im, x-ox, y-oy)` 만 하면 된다(델타 계산 0).
+# ═══════════════ [T201] 종별 시안 — 굽기 0 · 배포 0 · 판정 자료 ═══════════════
+# ★★**새 모델 0.** `models_crops` 가 이미 34종을 **종별로** 짓고 있다(`m_rice`·`m_sorghum` …).
+#   위 8군 굽기는 군마다 대표 하나를 심는데, 이 갈래는 **그 종의 아이콘 모델을 그대로 심는다** —
+#   "종별로 구우면 이렇게 보인다"를 세계 크기에서 눈으로 재는 것이 이 카드의 전부다.
+# ★단계 둘: **익음(3)은 종별**(`m_<종>`) · **자람(2)은 군 공용 그대로**(이 카드는 새 모델 0).
+#   자라는 단계가 군 공용이라는 것 자체가 답의 일부다 — 종이 가장 안 갈리는 단계가 거기다.
+# ★배포 자리(`public/assets/crops/`)를 **안 지난다** · 못박기(`assert_pinned_box`)도 안 건다
+#   (종별 판은 상자가 군 판과 다르다 — 그 자는 배포본의 자다).
+# 실행: CROP_SIAN=1 python3 scripts/fields_render.py   → scripts/field_renders/_sian/<종>_<단계>.png
+SIAN_PAIRS = [
+    # (군 슬러그, 종 id, 종 이름, 짝 안에서 무엇이 다른가 — 보고 표의 근거 열)
+    ('grain',   'rice',          '벼',     '이삭이 고개를 숙인다 · 줄이 촘촘하다'),
+    ('grain',   'sorghum',       '수수',   '꼭대기에 뭉친 원추 이삭 · 키가 가장 크다'),
+    ('bean',    'soybean',       '콩',     '굵은 꼬투리 3알 · 솜털 재질'),
+    ('bean',    'mungbean',      '녹두',   '가늘고 긴 꼬투리 5알 · 마른 꼬투리 재질'),
+    ('veg',     'cabbage',       '배추',   '결구 — 가운데 덩어리가 있다'),
+    ('veg',     'chive',         '부추',   '가는 잎 열 장이 곧게 선다(폭 0.095)'),
+    ('spice',   'scallion',      '대파',   '속 빈 관 잎 · 가장 길다'),
+    ('spice',   'ginger',        '생강',   '낮고 넓은 잎 · 뿌리줄기'),
+    ('gourd',   'gourd',         '박',     '목이 있는 큰 열매'),
+    ('gourd',   'korean_melon',  '참외',   '작고 둥근 열매 · 세로 줄무늬'),
+    ('special', 'hemp_plant',    '삼',     '외대가 높이 선다'),
+    ('special', 'tea',           '차',     '낮은 관목 · 잎이 뭉친다'),
+    ('oil',     'perilla',       '들깨',   '성긴 총상화서 · 넓은 잎'),
+    ('oil',     'sesame',        '참깨',   '줄기에 붙은 세로 삭과'),
+    ('tuber',   'taro',          '토란',   '큰 잎 한두 장 · 알줄기'),
+    ('tuber',   'yam',           '마',     '덩굴 · 가는 잎'),
+]
+
+if os.environ.get('CROP_SIAN') == '1':
+    SOUT = os.path.join(OUT, '_sian')
+    os.makedirs(SOUT, exist_ok=True)
+    recs = {}
+    for slug, cid, ko, why in SIAN_PAIRS:
+        g = next(x for x in GROUPS if x[0] == slug)
+        _, group, (per, nrow), furrows, sd, b2, b3, s2, s3 = g
+        fn = getattr(MC, 'm_' + cid, None)
+        if fn is None:
+            print('  ! 종 모델 없음:', cid); continue
+        for st, builder, sz in ((2, b2, s2), (3, fn, s3)):
+            OBJS.clear()
+            soil_bed(furrows=furrows)
+            random.seed(sd + st)
+            rz = [random.uniform(-0.5, 0.5) for _ in range(per * nrow)]
+            k = [0]
+            def one(x, y, i, _b=builder, _s=sz):
+                _plant(_b, x, y, _s, rz[min(k[0], len(rz) - 1)]); k[0] += 1
+            rows(per, nrow, one, seed=sd + 2)
+            rc.bake_transforms(); rc.squash_z()
+            key = f'{cid}_{st}'
+            p2 = os.path.join(SOUT, key + '.png')
+            rec = rc.render_world_pass(OBJS, p2, margin=2, ppu_mul=1, ss=3)
+            rec.update(group=slug, stage=st, ko=ko, why=why, shared=(st == 2))
+            recs[key] = rec
+            print(f"[sian] {key}({ko}): {rec['w']}x{rec['h']} anchor=({rec['ox']:.2f},{rec['oy']:.2f}) objs={len(OBJS)}")
+            rc.cleanup()
+    # ★★잡음 바닥 — **같은 종을 심는 자리만 바꿔** 한 장 더 굽는다.
+    #   화소 |Δ| 로 "종이 갈리나"를 재면 거짓말이 된다(잎 자리가 난수다). 그 거짓말의 크기를 잰다.
+    if 'perilla_3' in recs:
+        g = next(x for x in GROUPS if x[0] == 'oil')
+        _, _, (per, nrow), furrows, sd, _, _, _, s3 = g
+        OBJS.clear(); soil_bed(furrows=furrows)
+        random.seed(sd + 3 + 77)
+        rz = [random.uniform(-0.5, 0.5) for _ in range(per * nrow)]
+        k = [0]
+        def one2(x, y, i):
+            _plant(MC.m_perilla, x, y, s3, rz[min(k[0], len(rz) - 1)]); k[0] += 1
+        rows(per, nrow, one2, seed=sd + 2 + 77)     # ★자리 씨앗만 다르다
+        rc.bake_transforms(); rc.squash_z()
+        rec = rc.render_world_pass(OBJS, os.path.join(SOUT, 'perilla_3ctl.png'), margin=2, ppu_mul=1, ss=3)
+        rec.update(group='oil', stage=3, ko='들깨(대조 · 자리만 다름)', why='잡음 바닥', shared=False)
+        recs['perilla_3ctl'] = rec
+        print(f"[sian] perilla_3ctl: {rec['w']}x{rec['h']} — 같은 종 · 자리 씨앗만 다름(잡음 바닥)")
+        rc.cleanup()
+    json.dump(recs, open(os.path.join(SOUT, 'sian.json'), 'w', encoding='utf-8'),
+              ensure_ascii=False, indent=1, sort_keys=True)
+    print('[sian] DONE ->', SOUT, len(recs), '장 (배포 0 · 못박기 0)')
+    sys.exit(0)
+
+
 if __name__ == '__main__':
     ONLY = [k for k in os.environ.get('FIELDS_ONLY', '').split(',') if k]
     apath = os.path.join(OUT, "crops_anchors.json")
