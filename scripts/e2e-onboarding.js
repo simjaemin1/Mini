@@ -36,6 +36,29 @@ const shots = [];
 const ok = (c, m, extra) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (extra !== undefined && extra !== '' ? `  ${extra}` : '')); };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// ═══ ★★[T192 2026-09-12] **소멸 진단** — "예외 0 · 종료 코드 0 · 조용히 사라짐"의 자리를 남긴다 ══
+//   T181 이 걸음마다 찍게 만든 덕에 **어디서** 죽는지는 남았다(`village_start` 직후). 남은 물음은
+//   **누가 끊었나**다: 이 프로세스가 스스로 나갔나(`exit`) · 루프가 말랐나(`beforeExit`) ·
+//   누가 신호를 보냈나(SIGTERM/SIGKILL=OOM) · 아니면 **자식 서버**가 먼저 죽고 ws 만 남았나.
+//   ⚠이 훅들은 **늘 켜 둔다** — 값이 싸고(문자열 몇 줄), 꺼 두면 다음에 또 못 잡는다.
+//   ⚠`SIGKILL` 은 훅을 못 단다(규약상 잡을 수 없다) — 그래서 **바깥에서 종료 코드를 읽는 것**이
+//     짝이다: `node scripts/e2e-onboarding.js; echo "종료=$?"` · **137 = 128+9 = OOM 킬러**.
+const T0 = Date.now();
+//   ★제 메모리만으로는 모자란다 — OOM 킬러는 **판 전체**를 보고 고른다. 남은 방(`MemAvailable`)을 같이 찍는다.
+const sysAvailM = () => { try { const m = /MemAvailable:\s+(\d+) kB/.exec(fs.readFileSync('/proc/meminfo', 'utf8')); return m ? (m[1] / 1024) | 0 : -1; } catch (e) { return -1; } };
+const mem = () => { const m = process.memoryUsage(); return `rss ${(m.rss / 1048576) | 0}M · heap ${(m.heapUsed / 1048576) | 0}M · 판에 남은 방 ${sysAvailM()}M`; };
+const D = (s) => { try { process.stdout.write(`  ‼[진단 +${((Date.now() - T0) / 1000).toFixed(1)}s] ${s}\n`); } catch (e) {} };
+let _exiting = false;
+process.on('exit', (code) => { _exiting = true; D(`exit(${code}) · ${mem()}`); });
+//   ★이것이 조용한 죽음의 1순위 용의자다: **아무도 안 죽였는데 할 일이 없어 나가는** 자리.
+//     await 중이면 타이머가 루프를 붙잡으므로, 이 줄이 뜨면 붙잡던 핸들이 전부 풀렸다는 뜻이다.
+process.on('beforeExit', (code) => { if (!_exiting) D(`★beforeExit(${code}) — 이벤트 루프가 말랐다(붙잡는 핸들 0) · ${mem()}`); });
+for (const sig of ['SIGTERM', 'SIGINT', 'SIGHUP', 'SIGQUIT', 'SIGABRT', 'SIGPIPE']) {
+  try { process.on(sig, () => { D(`★신호 ${sig} 받음 · ${mem()} — 바깥이 끊었다`); shutdown(); process.exit(90); }); } catch (e) {}
+}
+process.on('uncaughtException', (e) => { D(`uncaught: ${e && e.stack ? e.stack.split('\n').slice(0, 3).join(' | ') : e}`); });
+process.on('unhandledRejection', (e) => { D(`rejection: ${e && e.message ? e.message : e}`); });
+
 const procs = [];
 function boot(name, file, env) {
   const p = spawn(process.execPath, [path.join(ROOT, 'server', file)], {
@@ -43,7 +66,10 @@ function boot(name, file, env) {
   });
   // ★[T84] 서버 콘솔 줄은 **말**로 거른다(로그의 이모지가 빠지면 필터가 조용히 죽는다).
   p.stdout.on('data', (b) => { const s = String(b); if (/up on|시딩|마을 시뮬 준비|사건 장부|도착 지점/.test(s)) process.stdout.write(`  [${name}] ${s.trim().slice(0, 120)}\n`); });
-  p.stderr.on('data', () => {});
+  //   ★★[T192] **서버 stderr 를 버리지 않는다.** 여태 이 한 줄이 `() => {}` 여서, 존이 먼저 죽어도
+  //     하네스는 아무 말도 못 했다. 존의 죽음은 이 하네스의 죽음과 **구별해야 하는 사건**이다.
+  p.stderr.on('data', (b) => { const s = String(b).trim(); if (s) D(`[${name} stderr] ${s.slice(0, 300)}`); });
+  p.on('exit', (code, sig) => { if (!_exiting) D(`★자식 [${name}] 이 먼저 나갔다 — code=${code} sig=${sig} (그 뒤 ws 는 그냥 닫힌다)`); });
   procs.push(p);
   return p;
 }
@@ -347,7 +373,12 @@ async function waitHttp(url, tries = 900) {
       //   ⇒ **DB 의 claims 행 수**로 센다. 세우면 늘고, 거절되면 그대로다. 거짓말할 수 없는 신호다.
       const { DatabaseSync: DBS } = require('node:sqlite');
       const zdb = new DBS(ZDB);
-      const claimN = () => { try { return zdb.prepare('SELECT COUNT(*) AS n FROM claims').get().n | 0; } catch (e) { return -1; } };
+      //   ★★[T192] 세는 것은 **이 사람의 땅**이다(`owner_id`). 전에는 표 전체를 셌는데, 그건
+      //     "세상에 사유지가 하나도 없다"는 뜻이라 호 절이 제 마을을 세우는 순간 거짓이 된다.
+      //     문장이 이미 *"아직 **내** 땅이 하나도 없다"* 였으니 이게 그 문장의 제 뜻이다(완화 아님 —
+      //     아래 델타 둘도 같은 필터로 좁아져서 오히려 더 엄해진다).
+      const MYPID = await page.evaluate(() => (window.__getPlayerId ? window.__getPlayerId() : null));
+      const claimN = () => { try { return zdb.prepare('SELECT COUNT(*) AS n FROM claims WHERE owner_id = ?').get(String(MYPID || '')).n | 0; } catch (e) { return -1; } };
       const claimTry = async (x, y) => {
         await page.evaluate(([px, py]) => window.__sendPrimary({ type: 'teleport_debug', x: px, y: py }), [x, y]);
         await sleep(1500);
@@ -417,10 +448,13 @@ async function waitHttp(url, tries = 900) {
   const ARC = [];
   //   ★걸음은 **그 자리에서 찍는다** — 판이 중간에 죽어도 어디까지 갔는지가 남는다
   //     (1차 판이 표를 끝에만 찍었다가 프로세스가 조용히 죽어 아무것도 안 남았다).
-  const step = (n, okv, note) => {
-    const r = { n, ok: !!okv, note: note === undefined ? '' : String(note) };
+  //   ★★[T192] 걸음마다 **메모리도** 찍는다 — 조용한 죽음이 OOM 이면 그 기울기가 증거다.
+  //   ★네 번째 인자 `deleg` = **대리 초록**(이 판이 안 재고 다른 하네스를 가리키며 찍은 것).
+  //     T192 가 그 네 줄을 전부 걷어냈으므로 이제 0 이어야 하고, 아래 판정이 그걸 지킨다.
+  const step = (n, okv, note, deleg) => {
+    const r = { n, ok: !!okv, note: note === undefined ? '' : String(note), deleg: !!deleg };
     ARC.push(r);
-    console.log(`    ${r.ok ? '○' : '●'} ${r.n}${r.note ? '  — ' + r.note : ''}`);
+    console.log(`    ${r.ok ? '○' : '●'} ${r.n}${r.note ? '  — ' + r.note : ''}   [${mem()}]`);
     return !!okv;
   };
   {
@@ -477,10 +511,10 @@ async function waitHttp(url, tries = 900) {
     //     ⇒ **기본은 끈다**(대본이 늘 돌아야 한다) · 메모리가 넉넉한 판에서 `ARC_FIRST=1` 로 켠다.
     let A = null, NEWVID = null, HALL = null;
     if (process.env.ARC_FIRST !== '1') {
-      step('⓪b~② 젊은 판 걷기', false, '`ARC_FIRST=1` 로 켠다 — 켜면 ①② 초록(실측 · 보고 §0-ⓒ) · 이 상자에선 그 뒤가 못 버틴다');
-      step('③ 건립(village_start→advance×3)', false, '미도달 — 회부');
-      step('④ 인구(곳간 식량→주민)', false, '미도달 — 회부');
-      step('⑤ 곳간 3일치', false, '미도달 — 회부');
+      step('⓪b~② 젊은 판 걷기', false, '★`ARC_FIRST=1 ARC_FOUND=1` 로 켠다 — 켜면 **16걸음 중 15 초록**(T192 실측 · 한 판 ~5분 · 대본은 그대로 67/0)');
+      step('③ 건립(임시 4칸→village_start→advance×3)', false, '손잡이 뒤 — 미측정');
+      step('④ 인구(곳간 식량→주민)', false, '손잡이 뒤 — 미측정');
+      step('⑤ 곳간 3일치', false, '손잡이 뒤 — 미측정');
     } else {
     try {
         let si0 = null;
@@ -521,29 +555,88 @@ async function waitHttp(url, tries = 900) {
         step('② 빈터 권리', !!(st1 && st1.state.lotOk && LOT), LOT ? `(${Math.round(LOT.x)},${Math.round(LOT.y)}) r=${LOT.r}` : '없다');
         if (!LOT) throw new Error('빈터 없음');
 
-        // ── ③④⑤ 건립·인구·곳간 — **이 상자에서는 못 걷는다(실측 · 손잡이 뒤로 뺐다)**
-        //   ★★measured: `village_start` 를 보내는 순간 **하네스 프로세스가 통째로 죽는다** —
-        //     예외도, 거부 메시지도, 종료 코드도 없다. 걸음을 그 자리에서 찍게 해 둔 덕에
-        //     마지막 줄이 `· 착공 보냄` 이라는 것까지 남았다(세 판 연속 같은 자리 · arc11·12·13).
-        //     브라우저를 나중에 띄워 메모리를 비켜 줘도 같았고, 그때는 더 앞(기여)에서 죽었다.
-        //   ⇒ **상자(2코어)의 한계로 본다.** 코드는 지우지 않고 `ARC_FOUND=1` 뒤에 둔다 —
-        //     메모리가 넉넉한 판에서 그 한 줄만 켜면 ③④⑤ 가 이어진다(다음 카드가 쓸 자리다).
+        // ═══ ③ 건립 — ★★[T192 2026-09-12] **T181 의 귀속이 틀렸다. 게임이 말을 하고 있었다.** ═══
+        //   T181 은 이 자리에서 하네스가 "예외 0 · 조용히" 죽는 것을 보고 **상자 탓**으로 적었다.
+        //   새 상자에서 같은 줄을 그대로 돌리니 **죽지 않았다** — 대신 게시판처럼 또렷한 한 줄이 왔다:
+        //     `여기엔 마을을 못 세운다 — [농촌1] 의 땅과 너무 가깝다 — 53셀은 떨어져야 한다`
+        //   ⇒ 죽음은 상자의 것이었고, 그 뒤에 **진짜 벽**이 서 있었다. 벽의 정체(코드 실측):
+        //     ⓐ `villages.foundPlayerVillage` — 기존 마을 중심에서 `max(4, _maxRPx/32) + 10` 셀 밖.
+        //     ⓑ `zone._claimFootprint` — 2×2 **네 셀 전부**가 내 사유지여야 한다.
+        //     ⓒ `zone.tryClaim` — 개인 사유지는 길드 영토 안에서만. 길드 없는 새 사람의 문은
+        //        **임시 사유지(T) 뿐**이고, 그 슬롯이 정확히 **4개**다(`CLAIM_SLOT_TEMPORARY_START`).
+        //   ⇒ 즉 혼자 온 사람의 건립 경로는 **"멀리 걸어가 임시 4칸을 깔고 그 위에 회관"**이다.
+        //     T181 이 빈터(`lot`) 위에서 착공을 시도한 것은 **호를 잘못 읽은 것**이다 —
+        //     빈터는 *"거기다 자네 **집**을 올리게"*(onboarding.js `lot` 대사)이지 마을 자리가 아니다.
+        //     두 곳은 **같을 수 없다**: 빈터는 어귀(중심에서 10셀)고 건립은 53셀 밖이다.
+        //   ⚠게임 코드는 한 자리도 안 고친다 — 규칙이 어긋난 게 아니라 **하네스가 호를 잘못 걸었다**.
+        //     (다만 "빈터=내 집터 / 건립=멀리"가 대사 두 줄뿐이라 사람에게 안 보인다 — §3 회부.)
         if (process.env.ARC_FOUND !== '1') {
-          step('③ 건립(village_start→advance×3)', false, '이 상자에서 `village_start` 가 하네스를 죽인다(실측 3판) — `ARC_FOUND=1` 로 켠다');
+          step('③ 건립(임시 4칸→village_start→advance×3)', false, '`ARC_FOUND=1` 로 켠다');
           step('④ 인구(곳간 식량→주민)', false, '③ 뒤 — 미도달');
           step('⑤ 곳간 3일치', false, '③ 뒤 — 미도달');
         } else {
-        // ── ③ 건립 — 돌 30 / 돌 40+통나무 20 / 통나무 60 · 곡괭이(픽스처는 물건만 준다)
-          //   ★판이 조용히 죽던 자리라 **한 걸음마다 찍는다**(무엇을 하다 죽었는지 남긴다).
-          process.on('uncaughtException', (e) => { console.log('    ‼ uncaught:', e && e.message); });
-          process.on('unhandledRejection', (e) => { console.log('    ‼ rejection:', e && e.message); });
-          console.log('    · 빈터로 이동');
-          await warp(A, LOT.x, LOT.y);
-          console.log('    · 재료 지급(돌·통나무·곡괭이)');
-          snd(A, { type: '__e2e_give', items: { stone: 400, wood: 400, pickaxe: 3 } }); await sleep(900);
-          console.log('    · 착공 보냄');
-          A.notices.length = 0;
-          snd(A, { type: 'village_start', atX: Math.round(LOT.x), atY: Math.round(LOT.y) });
+          //   ★재료 — 임시 사유지 4칸(통나무 1씩) + 회관 3단(돌 70 · 통나무 80) + 곡괭이(①② 가 5씩 닳는다).
+          //     픽스처는 **물건만** 준다(캐는 사슬은 이 하네스가 재는 것이 아니다 · `E2E_GIVE` 게이트).
+          console.log(`    · 재료 지급(돌·통나무·곡괭이)  [${mem()}]`);
+          //   ⚠**곡괭이는 `items` 가 아니라 `tools`** 로 준다 — 도구는 수량이 아니라 **인스턴스**({id,type,d})이고
+          //     `hasTool` 이 그 배열을 본다. T181 이 `items:{pickaxe:3}` 으로 준 것은 인벤 숫자만 올린 것이라
+          //     ①단 `곡괭이 필요` 에서 막혔다(실측 · 이 한 줄이 ③ 을 세우던 두 번째 벽이었다).
+          snd(A, { type: '__e2e_give', items: { stone: 400, wood: 400 }, tools: ['pickaxe', 'pickaxe', 'pickaxe'] }); await sleep(900);
+          //   ★자리 찾기는 **서버에게 묻는다**(사본 금지). `tryVillageStart` 는 거리부터 보고(dryRun)
+          //     그 다음에 사유지를 보므로, 땅 없이 쏴 보면 답이 자리를 알려 준다:
+          //       `너무 가깝다` → 더 멀리 · `사유지` → **거리는 통과** · `물·바위` → 딴 쪽.
+          const CELL = 32;
+          const cellsOf = (C) => ({ x: Math.floor(C.x / CELL), y: Math.floor(C.y / CELL) });
+          //   ★정확한 셀에 선다(사유지는 **선 셀**에 깔린다 — 워프 링이 밀면 엉뚱한 칸을 산다)
+          const warpCell = async (C, X, Y) => {
+            C.notices.length = 0;
+            snd(C, { type: 'teleport_debug', x: X * CELL + 16, y: Y * CELL + 16 });
+            await sleep(400);
+            return C.notices.some((t) => /텔레포트 →/.test(t));
+          };
+          const probe = async (X, Y) => {
+            A.notices.length = 0;
+            snd(A, { type: 'village_start', atX: X * CELL + 16, atY: Y * CELL + 16 });
+            await sleep(700);
+            return (A.notices.slice(-3).join(' | ') || '(답 없음)');
+          };
+          const VC = (si0.villages || []).map((v) => ({ cx: v.cx | 0, cy: v.cy | 0, name: v.name }));
+          const far = (X, Y, n) => VC.every((v) => Math.hypot(X - v.cx, Y - v.cy) >= n);
+          let SITE = null, lastWhy = '';
+          //   바깥으로 넓혀 가며 8방 — 첫 고리를 60셀로 잡는다(실측 문턱 53 + 여유)
+          outer:
+          for (const R of [60, 75, 95, 120, 150]) {
+            for (const [ux, uy] of [[1, 0], [0, 1], [-1, 0], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]]) {
+              const X = (V.cx | 0) + Math.round(ux * R), Y = (V.cy | 0) + Math.round(uy * R);
+              if (X < 8 || Y < 8) continue;
+              if (!far(X, Y, 58)) continue;
+              if (!(await warpCell(A, X, Y))) { lastWhy = `워프 실패 (${X},${Y})`; continue; }
+              const why = await probe(X, Y);
+              if (/사유지/.test(why)) { SITE = { X, Y }; break outer; }
+              lastWhy = why;
+              if (/물·바위/.test(why)) continue;
+            }
+          }
+          step('③a 건립 자리(마을 밖 · 서버가 거리를 통과시킨다)', !!SITE,
+            SITE ? `셀 (${SITE.X},${SITE.Y}) · ${V.name} 중심에서 ${Math.round(Math.hypot(SITE.X - (V.cx | 0), SITE.Y - (V.cy | 0)))}셀` : lastWhy);
+          if (!SITE) throw new Error('건립 자리 못 찾음');
+
+          //   ★임시 사유지 4칸 = 회관 발자국 2×2. 슬롯이 **정확히 4개**인 것이 이 경로의 설계다.
+          let got = 0;
+          for (const [dx, dy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) {
+            if (!(await warpCell(A, SITE.X + dx, SITE.Y + dy))) continue;
+            A.notices.length = 0;
+            snd(A, { type: 'claim', kind: 'temporary' });
+            await sleep(600);
+            if (A.notices.some((t) => /사유지|영지|claim/i.test(t) && !/부족|한도|겹칩|없습니다/.test(t))) got++;
+          }
+          step('③b 임시 사유지 4칸(혼자 온 사람의 유일한 땅문)', got >= 4, `${got}/4 · ${lastN(A, 1)}`);
+
+          //   ★착공은 발자국 좌상 셀에서 200px 안 — 좌상 셀에 서서 쏜다
+          await warpCell(A, SITE.X, SITE.Y);
+          A.notices.length = 0; A.msgs.length = 0;
+          console.log(`    · 착공 보냄  [${mem()}]`);
+          snd(A, { type: 'village_start', atX: SITE.X * CELL + 16, atY: SITE.Y * CELL + 16 });
           await sleep(1500);
           let site = null;
           for (let k = 0; k < 12 && !site; k++) {
@@ -551,7 +644,7 @@ async function waitHttp(url, tries = 900) {
             if (m) site = m.building;
             else { await sleep(700); }
           }
-          step('③a 회관 착공(village_start)', !!site, site ? `site ${site.id}` : lastN(A, 2));
+          step('③c 회관 착공(village_start)', !!site, site ? `site ${site.id}` : lastN(A, 2));
           if (!site) throw new Error('착공 실패');
           let founded = null;
           for (let k = 0; k < 12 && !founded; k++) {
@@ -563,13 +656,15 @@ async function waitHttp(url, tries = 900) {
           }
           step('③ 건립(foundPlayerVillage)', !!founded, founded ? (HALL ? `회관 ${HALL.id}` : '섰다') : lastN(A, 2));
           if (!founded) throw new Error('건립 실패');
-          //   ★새 마을의 vid — 시작 화면 줄에서 **사람이 세운 마을**로 찾는다(정본이 세는 그 칸)
+          //   ★새 마을의 vid — **`/welcomedbg` 에서** 찾는다. `/startinfo` 가 아닌 이유:
+          //     그 줄은 `listable`(받기 ∧ 쉼터 ∧ 인구 ∧ 곳간)을 통과한 마을만 싣는다(T19 규약) —
+          //     방금 선 마을은 당연히 아직 안 실린다. `Newcomers.debug()` 는 **사람이 세운 마을 전부**를 준다.
           for (let k = 0; k < 20 && NEWVID == null; k++) {
-            const si = await jget2(`http://localhost:${ZPORT}/startinfo`);
-            const pv = si && si.ok && si.villages.find((v) => v.player);
-            if (pv) NEWVID = pv.vid | 0; else await sleep(1000);
+            const d = await jget2(`http://localhost:${ZPORT}/welcomedbg`);
+            const pv = d && Array.isArray(d.villages) && d.villages[d.villages.length - 1];
+            if (pv && pv.vid != null) NEWVID = pv.vid | 0; else await sleep(1000);
           }
-          step('③b 새 마을이 세계에 등록됐다', NEWVID != null, NEWVID != null ? `vid ${NEWVID}` : '못 찾음(받기 전이라 줄에 없을 수 있다)');
+          step('③d 새 마을이 세계에 등록됐다', NEWVID != null, NEWVID != null ? `vid ${NEWVID}` : '못 찾음');
 
           // ── ④⑤ 인구 · 곳간 3일치 — 곳간에 식량을 넣고 게임일을 보낸다(잠 0 · 게임분)
           if (HALL) {
@@ -592,34 +687,130 @@ async function waitHttp(url, tries = 900) {
         step('③~⑤ (제 판)', false, e.message);
       }
     }
+    // ═══ ⑥~⑨ — ★★[T192] **대리(다른 하네스가 잰다) 를 걷어내고 이 판에서 직접 걷는다** ═══
+    //   T174/T181 은 여기 네 줄을 "다른 하네스가 잰다"로 두고 ○ 를 찍었다. 그건 **호를 잰 것이 아니다** —
+    //   각 하네스는 제 판을 따로 세운다. 호의 뜻은 *"한 판에서 이어지는가"* 이므로 여기서 이어 걷는다.
+    if (A && NEWVID != null && HALL) {
+      try {
+        // ── ⑥ `/이방인 받기` — 회관 앞에서, 창설자가 ─────────────────────────
+        //   ⚠`listable` 은 받기만으로 안 열린다: **쉼터**(이방인이 잘 자리) 도 자격이다(T62 규약).
+        //     그래서 쉼터를 먼저 세운다 — 마을 땅이 곧 허가라 사유지 슬롯을 안 쓴다(SHELTER_SPEC).
+        const HX = Math.round(HALL.x), HY = Math.round(HALL.y);
+        await warp(A, HX + 96, HY + 96);
+        snd(A, { type: '__e2e_give', items: { pillar: 12, rafter: 16, fiber: 12, thatch: 16 } }); await sleep(700);
+        A.msgs.length = 0; A.notices.length = 0;
+        snd(A, { type: 'shelter_start', atX: HX + 96, atY: HY + 96 }); await sleep(1200);
+        let sh = A.msgs.slice().reverse().find((m) => m.type === 'building_added' && m.building && m.building.type === 'shelter_site');
+        for (let k = 0; k < 6 && sh; k++) { snd(A, { type: 'shelter_advance', buildingId: sh.building.id }); await sleep(1100); }
+        const shDone = A.msgs.slice().reverse().some((m) => m.type === 'building_added' && m.building && m.building.type === 'shelter');
+        step('⑥a 공용 쉼터(이방인이 잘 자리 — 받기 자격의 첫 항)', shDone, shDone ? '섰다' : lastN(A, 2));
+
+        await warp(A, HX + 40, HY + 40);
+        A.notices.length = 0;
+        chat(A, '/이방인 받기'); await sleep(1200);
+        let wd = await jget2(`http://localhost:${ZPORT}/welcomedbg`);
+        let row = wd && (wd.villages || []).find((r) => (r.vid | 0) === (NEWVID | 0));
+        step('⑥ /이방인 받기 — 스위치가 켜졌다', !!(row && row.on), row ? `on=${row.on} · 인구 ${row.pop} · 자립 ${row.foodDays}일 · 쉼터 ${row.shelter}` : lastN(A, 2));
+
+        // ── ⑦ 시작 화면 줄 — `listable` 을 통과해 **로비 목록에 실린다** ─────
+        let listed = null, sline = null;
+        for (let k = 0; k < 25; k++) {
+          const si = await jget2(`http://localhost:${ZPORT}/startinfo`);
+          sline = si && si.ok && (si.villages || []).find((v) => (v.vid | 0) === (NEWVID | 0));
+          if (sline) { listed = true; break; }
+          await sleep(1200);
+        }
+        wd = await jget2(`http://localhost:${ZPORT}/welcomedbg`);
+        row = wd && (wd.villages || []).find((r) => (r.vid | 0) === (NEWVID | 0));
+        step('⑦ 시작 화면에 뜬다(`?start_vid=` 가 가리킬 줄이 섰다)', !!listed,
+          listed ? `${sline.name} · player=${sline.player} · 도착 (${sline.arrive && Math.round(sline.arrive.x)},${sline.arrive && Math.round(sline.arrive.y)})`
+                 : (row ? `listed=${row.listed} · 아직: ${(row.why || []).join(' · ')}` : '관측창 못 읽음'));
+
+        // ── ⑧ 소개문이 인사로 ────────────────────────────────────────────────
+        //   ★★[T192 실측] **혼자 세운 마을에는 소개문이 존재할 수 없다.** 코드가 그렇게 닫혀 있다:
+        //     `introOfVillage(vid)` → `Guild.introOfTribe(vil.econ._tribeId)` 인데 `_tribeId` 는
+        //     `foundPlayerVillage({tribeId})` 로만 서고, 그 인자는 `_claimFootprint` 가 **2×2 네 칸이
+        //     전부 길드 사유지**일 때만 길드 id 를 준다. 그런데 사유지 한 장은 **1칸**(`w=h=SZ`)이고
+        //     길드 사유지는 **길드당 하나**다(`tryClaim` 이 새로 놓을 때 기존 것을 지운다).
+        //     ⇒ 네 칸이 전부 길드 땅인 상태는 **만들 수 없다** ⇒ `_tribeId` 는 언제나 null
+        //     ⇒ T128 의 마을 소개문은 **유저 마을에 닿지 못한다**(§3 회부 1 · 게임 코드는 안 고친다).
+        //   여기서는 그 사실을 **줄에서** 잰다 — 시작 화면이 실제로 빈 칸을 준다.
+        let greetSaw = null, introCol = null;
+        if (listed) {
+          introCol = String(sline.intro == null ? '(칸 없음)' : sline.intro);
+          const B = await wsConnect('arcguest', 'arcpw', NEWVID | 0);
+          await sleep(1500);
+          B.msgs.length = 0; snd(B, { type: 'onboarding_greet' }); await sleep(1200);
+          const gm = B.msgs.slice().reverse().find((m) => m.type === 'onboarding_quest' || m.type === 'onboarding_greet');
+          greetSaw = gm && Array.isArray(gm.lines) ? gm.lines : (B.notices.slice(-3));
+          shut(B);
+        }
+        step('⑧ 소개문이 인사로 나온다', !!(introCol && introCol.length > 0 && Array.isArray(greetSaw) && greetSaw.some((l) => l.includes(introCol))),
+          `시작 화면 intro 칸 = ${JSON.stringify(introCol)} · 인사 ${JSON.stringify(greetSaw)}`
+          + ' — ★혼자 세운 마을은 `_tribeId` 가 없어 소개문이 **구조적으로** 빈다(회부 1)');
+
+        // ── ⑨ `/곳간` 인출 — **내가 세운 마을의 곳간이 실제로 준다** ──────────
+        //   ⚠소속은 픽스처로 앉힌다(`__e2e_body {member}` · `test-handoff-body` 가 쓰는 그 문). 이유:
+        //     소속 문턱은 누적 기여 **12**(K-2)인데 창설자의 기여는 제 마을이 아니라 **NPC 마을** 것이다.
+        //     "창설자는 제 마을 사람인가"는 이 하네스가 답할 물음이 아니다(§3 회부 2).
+        //     재는 것은 **인출 경로가 유저 마을에서 실제로 차감하는가** 하나다.
+        snd(A, { type: '__e2e_body', member: { zone: 'hanbando', vid: NEWVID | 0, name: '내 마을', since: 0, wdDay: -1, wdUsed: 0 }, quiet: true });
+        await sleep(700);
+        await warp(A, HX + 40, HY + 40);
+        //   ★재는 자리는 **등짐**이다(T174 ⑦f2 가 배운 것: 살아 있는 마을은 제 곳간을 저 혼자 축낸다 —
+        //     곳간의 감소는 인출의 증거가 못 된다). 곳간 쪽은 참고로만 적는다.
+        const packFood = () => { const m = A.msgs.slice().reverse().find((x) => x.type === 'inventory' && x.inventory); return m ? (+m.inventory.food || 0) : NaN; };
+        A.msgs.length = 0; snd(A, { type: '__e2e_give', items: { stone: 1 } }); await sleep(700);
+        const p0 = packFood();
+        A.notices.length = 0; A.msgs.length = 0;
+        //   ⚠품목 이름은 **재화의 우리말**이다(`ItemLabel.CATEGORY_KO.food = '🍞 식량'`) — 요리 이름(`밥`)이 아니다.
+        //     `곳간에 그런 물건은 없다 — "밥"` 이 그 자리를 알려 줬다(실측).
+        chat(A, '/곳간 식량 20'); await sleep(1800);
+        snd(A, { type: '__e2e_give', items: { stone: 1 } }); await sleep(700);   // 등짐을 한 번 더 받는다(실패해도 NaN 안 나게)
+        const p1 = packFood();
+        step('⑨ 인출 — 내가 세운 마을 곳간이 실제로 등짐에 준다', Number.isFinite(p0) && Number.isFinite(p1) && p1 > p0,
+          `등짐 밥 ${p0} → ${p1} · ${lastN(A, 2)}`);
+        //   ★★호가 끝나면 **세계를 원래대로 돌려 놓는다** — 받기를 다시 끈다.
+        //     안 그러면 뒤따르는 실클라 대본의 로비에 마을이 하나 더 뜨고(`시작 화면이 마을 목록을 받았다`),
+        //     그건 대본이 깨진 게 아니라 **이 절이 남긴 자국**이다(실측 · 5곳/4곳).
+        await warp(A, HX + 40, HY + 40);
+        chat(A, '/이방인 막기'); await sleep(1000);
+        const wd2 = await jget2(`http://localhost:${ZPORT}/welcomedbg`);
+        const row2 = wd2 && (wd2.villages || []).find((r) => (r.vid | 0) === (NEWVID | 0));
+        console.log(`    · 호 뒷정리 — 받기 ${row2 ? (row2.on ? '아직 켬(!)' : '껐다') : '?'}  [${mem()}]`);
+      } catch (e) {
+        step('⑥~⑨ (제 판)', false, e.message);
+      }
+    } else {
+      step('⑥a 공용 쉼터(이방인이 잘 자리 — 받기 자격의 첫 항)', false, '③ 미도달 — 미측정');
+      step('⑥ /이방인 받기 — 스위치가 켜졌다', false, '③ 미도달 — 미측정');
+      step('⑦ 시작 화면에 뜬다(`?start_vid=` 가 가리킬 줄이 섰다)', false, '③ 미도달 — 미측정');
+      step('⑧ 소개문이 인사로 나온다', false, '③ 미도달 — 미측정');
+      step('⑨ 인출 — 내가 세운 마을 곳간이 실제로 준다', false, '③ 미도달 — 미측정');
+    }
+
     if (A) shut(A);
     A = null;
     //   ★자리를 비운다 — 뒤에 실클라 대본이 돈다(2코어 상자에서 이 한 줄이 브라우저를 살린다)
     await sleep(3000);
     if (global.gc) { try { global.gc(); } catch (e) {} }
-    //   ★★①② 는 **이 대본이 위에서 이미 실클라로 걷는다**(같은 파일 · 같은 판):
-    //     `누적 기여 n/3` · `빈터 권리가 섰다` · `마을 어귀 빈터에 내 땅을 걸었다(목표 ③ 도달)`.
-    //     여기 ws 재현이 빨간 것은 **세계가 이미 늙어서**다 — 대본이 수백 게임일을 돌린 뒤라
-    //     그 마을 게시판에 열린 줄이 없다(게이트가 아니라 **빈 판**이다 · 위 `_boardErr` 가 비어 있다).
-    //     ⇒ 걸음 ①② 의 판정은 **대본 절의 그 세 줄**이 갖는다. 여기 줄은 그 사실을 적는 자리다.
-    step('①② 기여·빈터 (대본이 이미 걷는다)', true, '`누적 기여 n/3` · `빈터 권리가 섰다` · `어귀 빈터에 내 땅을 걸었다` — 이 파일 위쪽 절');
-    //   ★③ 건립부터는 **아무 하네스에도 없다**(T128·T159·T167 이 각자 회부로 넘긴 그 자리).
-    step('⑥ /이방인 받기', true, '`test-newcomers ⑧`(T167) 이 스위치·회관까지 잰다');
-    step('⑦ 시작 화면에 뜸', true, '`test-newcomers ⑦`(T19) 이 `listable` 을 · `⑧e3` 이 줄 필터를 잰다');
-    step('⑧ 소개문이 인사로', true, '`test-newcomers ⑧e2`(T167) 소스 · 실판 미검증');
-    step('⑨ 인출(실제 차감)', true, '`e2e-guild ⑦e2`(T159) 가 **곳간이 실제로 준다**를 잰다');
-
     // ── 걸음 표 — 이 절의 산출물이다(카드 §2 ③: 깨진 자리는 고치지 말고 표)
     console.log('\n  ── [T174/T181] 호 걸음 표(위 줄들의 요약) ──');
     for (const r of ARC) console.log(`    ${r.ok ? '○' : '●'} ${r.n}`);
     const green = ARC.filter((r) => r.ok).length;
     console.log(`  ⇒ 호 ${ARC.length}걸음 중 ${green} 초록`);
-    console.log('    ※ ○ = 이 판 또는 다른 하네스가 **실제로 잰다** · ● = 아무도 안 잰다(회부)');
+    console.log('    ※ [T192] ○ = **이 판이 직접 쟀다** · ● = 이 판에서 못 걸었다(회부) — 대리(딴 하네스 가리키기)는 0 이다');
     ok(ARC.length >= 8, `★[T174] 호 ${ARC.length}걸음을 **표로 세웠다** — ${green} 초록 · ${ARC.length - green} 미검증(회부)`,
        `${green}/${ARC.length}`);
-    //   ★자명 통과 금지 — "다 초록"이면 이 절은 아무 말도 안 한 것이다
-    ok(green < ARC.length, '★[T174] 자명 통과 금지 — **미검증 걸음이 실제로 남아 있다**(전부 초록이면 표가 거짓말이다)',
-       `미검증 ${ARC.length - green}걸음`);
+    //   ★★[T192 2026-09-12] **T174 의 "전부 초록이면 빨강" 을 뒤집는다**(카드 §2 ③).
+    //     그 줄이 막으려던 것은 *"다 초록"* 자체가 아니라 **대리 초록** —
+    //     "이건 다른 하네스가 잽니다" 하고 true 를 찍던 네 줄이었다(⑥⑦⑧⑨). 호의 뜻은
+    //     *"한 판에서 이어지는가"* 인데, 다른 판의 초록을 빌려 오면 그 물음에 답한 적이 없다.
+    //     T192 가 그 넷을 이 판에서 직접 걷게 만들었으므로, 이제 지킬 것은
+    //     **"초록이 전부 이 판의 실측인가"** 다. 그래서 빨강의 수가 아니라 **대리의 수**를 센다.
+    const deleg = ARC.filter((r) => r.deleg);
+    ok(deleg.length === 0, '★[T192] 대리 초록 0 — 표의 모든 걸음을 **이 판이 직접 쟀다**(빌려 온 초록 금지)',
+       deleg.length ? JSON.stringify(deleg.map((r) => r.n)) : `${ARC.length}걸음 전수 실측`);
   }
 
 
