@@ -430,6 +430,11 @@ FORAGE_FOOD_FACTOR.mulberry_fruit = FORAGE_FOOD_FACTOR.grape;
 
 // 소비 (일일 1인당)
 const DAILY_FOOD_CONSUMPTION = 1.0;
+// ★★[T200 2026-09-12] **흐름 EMA 의 계수를 이름으로 올렸다**(값 무변 — 아래 `surplusEMA.food` 폴드가 쓰던 그 두 수).
+//   올린 이유: T180 ㉠ 이 회부한 결함 — **수출 문턱이 순간 재고를 본다**. 그 문턱을 재고 EMA 로 바꾸려면
+//   `economy-sim-v2.js` 가 관성 계수를 알아야 하는데, 저쪽에 다시 적으면 그게 사본이다.
+//   **새 계수 0** — 이 세계가 이미 쓰던 관성(≈20일)을 그대로 빌린다.
+const SURPLUS_EMA_A = 0.95, SURPLUS_EMA_B = 0.05;
 // ★도구 사용마모(storage.tool=석기에만 적용, line ~1047). 도구=석기 전용 전환으로 석기가 유일 자본재가 됨 →
 //   종전 값(농부 0.04·기타 0.02)은 석기가 "희생 풀"(청동/철도구가 실 자본)이던 시절 калиб — 이제 이 마모를 대장장이가 다 메워야 하는데
 //   throughput(0.4/일·인) 대비 과대(90인 마을 ~2.5/일 소모 → 대장장이 7~8명 필요, 저커버리지 poverty-trap→아사). 절반으로 하향 = 석기를 내구 자본재로 취급.
@@ -2917,7 +2922,7 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
   // 3) Surplus EMA (식량 흐름) — food_equivalent 기준
   const dailyFoodProd = totalFoodProductionEquivalent(dailyProduction);
   const dailySurplus = dailyFoodProd - foodNeed;
-  v.surplusEMA.food = 0.95 * v.surplusEMA.food + 0.05 * dailySurplus;
+  v.surplusEMA.food = SURPLUS_EMA_A * v.surplusEMA.food + SURPLUS_EMA_B * dailySurplus;
 
   // 4) K (수용 한계) — 식량 자리 합. 영토 확장으로 자리 ↑ = K ↑
   //    실제 산출 K_prod = (자체 생산 + 외부 import) / 소비.
@@ -4589,7 +4594,8 @@ function computeVillagePrices(v) {
 }
 
 module.exports = {
-  STONE_NET_STOCK,   // ★[T180] STONE_NET 1차 문턱 — v2 수출 게이트가 읽는다(사본 0)
+  STONE_NET_STOCK,
+  SURPLUS_EMA_A, SURPLUS_EMA_B,   // ★[T200] 흐름 EMA 관성 — v2 수출 문턱이 재고 EMA 를 쓸 때 읽는다(사본 0)   // ★[T180] STONE_NET 1차 문턱 — v2 수출 게이트가 읽는다(사본 0)
 
   _LEGACY_CONTRIBUTES: LEGACY_CONTRIBUTES,
   totalFoodEquivalent,   // 진단 하네스가 병기고 식량안보 게이트를 정확히 재려면 필요

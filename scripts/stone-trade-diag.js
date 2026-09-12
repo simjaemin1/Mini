@@ -65,6 +65,9 @@ if (!seeds) {
 const world = econV2.createWorldV2({ seed: SEED, villageCount: seeds.length, picker: 'rational', infoRange: 5000, raidPer100: 0.005 });
 world.villages = []; world.events = [];
 require('../server/trees').attachToWorld(world);
+// ★[T200 · 계측 전용] 두 문 — 도구 마모 배수(T191 손잡이)와 재고 EMA 수출 문턱. env 없으면 무변.
+{ const _tw = parseFloat(process.env.T191_TOOLWEAR || ''); if (Number.isFinite(_tw) && _tw > 0 && _tw !== 1) world.toolWearMul = _tw; }
+if (process.env.T200_EXPORT_EMA === '1') world.exportStockEma = true;
 for (const s of seeds) {
   const ev = econ.createVillage({ ...s.lp, initialPop: P.INITIAL_POP, name: s.name });
   ev._world = world; ev.coord = { x: s.ccx * 2.5, y: s.ccy * 2.5 };
@@ -196,6 +199,32 @@ for (const [lab, g] of [['**바닥**', fl], ['그 밖', rest]]) {
   const agg2 = {};
   for (const r of rest) for (const k in r.expCand) agg2[k] = (agg2[k] || 0) + r.expCand[k];
   console.log(`  수출 총량 — 바닥 ${tot.toFixed(0)} · 그 밖 ${Object.values(agg2).reduce((a, b) => a + b, 0).toFixed(0)}`);
+}
+
+// ── ★[T200 ①] 게시 귀속 — 품목 · 마을 · 구간 ───────────────────────────────────────
+{
+  const W = 200;                                  // 구간 폭(800일 ÷ 4) — 새 수가 아니라 표의 칸이다
+  const byItem = {}, byVil = {}, byWin = {};
+  for (const x of openS) {
+    byItem[x.item] = (byItem[x.item] || 0) + 1;
+    byVil[x.vid] = (byVil[x.vid] || 0) + 1;
+    const w = Math.min(3, Math.floor(x.day / W));
+    byWin[w] = (byWin[w] || 0) + 1;
+  }
+  console.log(`\nⓒ [T200] 게시 귀속 — 품목 · 마을 · 구간 (게시 ${openS.length}건)`);
+  console.log(`  품목 — ${Object.entries(byItem).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k} ${n}`).join(' · ')}`);
+  console.log(`  구간 — ${[0, 1, 2, 3].map((w) => `${w * W}~${(w + 1) * W - 1}일 ${byWin[w] || 0}`).join(' · ')}`);
+  const vn = new Map(rows.map((r) => [r.vid, r]));
+  const vtop = Object.entries(byVil).map(([v, n]) => ({ v: +v, n, r: vn.get(+v) })).sort((a, b) => b.n - a.n);
+  console.log(`  마을 상위 — ${vtop.slice(0, 10).map((x) => `${x.r ? x.r.name : x.v}${x.r && x.r.floor ? '(바닥)' : ''} ${x.n}`).join(' · ')}`);
+  const flN = vtop.filter((x) => x.r && x.r.floor).reduce((a, b) => a + b.n, 0);
+  console.log(`  바닥 36곳 몫 **${flN}건** / 전체 ${openS.length}건 (${(flN / Math.max(1, openS.length) * 100).toFixed(1)}%)`);
+  if (process.env.T200_JSON) {
+    fs.writeFileSync(process.env.T200_JSON, JSON.stringify({ seed: SEED, open: openS.length, byItem, byWin,
+      byVil: vtop.map((x) => ({ vid: x.v, name: x.r ? x.r.name : String(x.v), floor: !!(x.r && x.r.floor), n: x.n })),
+      stats: st }, null, 1));
+    console.log(`  T200 JSON: ${process.env.T200_JSON}`);
+  }
 }
 
 if (process.env.T173_JSON) {

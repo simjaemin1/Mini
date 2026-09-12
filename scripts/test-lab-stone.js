@@ -387,4 +387,67 @@ console.log('\n⑯ 배율 자리 [T179] — 문이 `skillMul` 을 삼키지 않�
     '⑯ ⓘ `toolBoost`·`inputMult` 는 **문 이전부터** 이 줄에 없었다(문이 죽인 게 아니다 — T179 §0ⓐ)');
 }
 
+// ════════════════════════════════════════════════════════════════════════════════════════
+// ★★[T200 2026-09-12] **수출 문턱이 오늘 재고 하나를 본다** — 비교 대상을 재고 EMA 로.
+//   T180 ㉠ 의 회부: 800일 중 절반을 `돌<0.2` 로 사는 바닥 36마을이 **꼬리 며칠**에 잉여로 읽혀
+//   돌 8,110~11,947 단위를 판다(족보 150 톱니). 관성은 이 세계가 이미 쓰는 것 — **새 계수 0**.
+// ════════════════════════════════════════════════════════════════════════════════════════
+console.log('\n⑲ EMA 수출 문턱(T200) — 계수는 정본 것 · 문 한 자리 · 기본 끔');
+{
+  const V2C = codeOf(fs.readFileSync(path.join(ROOT, 'sim', 'economy-sim-v2.js'), 'utf8'));
+  ok(econ.SURPLUS_EMA_A === 0.95 && econ.SURPLUS_EMA_B === 0.05,
+    '⑲ ★정본이 관성 두 수를 내준다(`surplusEMA.food` 의 그 값 · 값 무변)', `${econ.SURPLUS_EMA_A}/${econ.SURPLUS_EMA_B}`);
+  ok(/v\.surplusEMA\.food = SURPLUS_EMA_A \* v\.surplusEMA\.food \+ SURPLUS_EMA_B \* dailySurplus;/.test(CODE),
+    '⑲ ★★폴드가 그 **이름**을 쓴다(수가 한 곳뿐 — 사본 0)');
+  ok(/_e\[r\] = \(_e\[r\] == null\) \? stock : \(v1\.SURPLUS_EMA_A \* _e\[r\] \+ v1\.SURPLUS_EMA_B \* stock\);/.test(V2C),
+    '⑲ ★★★v2 가 **정본을 읽는다**(계수를 옮겨 적지 않았다)');
+  ok(!/0\.95 \* _e\[r\]/.test(V2C), '⑲ v2 에 계수 리터럴이 없다');
+  const lines = V2C.split('\n').filter((l) => l.indexOf('exportStockEma') >= 0).length;
+  ok(lines === 1, '⑲ ★엔진 접점이 **한 줄**이다', `${lines}줄`);
+  ok(/if \(window\.L_EXPORT_EMA === undefined\) window\.L_EXPORT_EMA = 0;/.test(LCODE),
+    '⑲ ★★랩 손잡이 기본 **0**(끔 = 종전 비트 · 세계를 움직이는 손잡이)');
+  ok(/if\(\+window\.L_EXPORT_EMA!==0\) ECON_WORLD\.exportStockEma = true;/.test(LCODE),
+    '⑲ 훅이 `reseed` 한 자리에서 걸린다');
+  ok(/cmpStock = Math\.min\(stock, _e\[r\]\);/.test(V2C),
+    '⑲ ★판정이 `min(오늘, 평소)` 다(곳간 음수 방지 — `surplus = max(1, stock-keep)` 때문)');
+  ok(/if \(cmpStock > thresh\) candidates\.push/.test(V2C), '⑲ 문턱식 자체는 한 줄 그대로다');
+}
+
+console.log('\n⑳ EMA 문턱 — 끄면 비트 동일 · 켜면 문턱이 EMA 를 본다(자명 통과 금지)');
+{
+  const mkEma = (on, starve) => {
+    const w = econV2.createWorldV2({ seed: 616, villageCount: 0, picker: 'rational', infoRange: 5000, raidPer100: 0.005 });
+    w.villages = []; w.events = []; w.caravans = [];
+    if (on) w.exportStockEma = true;
+    for (let i = 0; i < 6; i++) {
+      const v = econ.createVillage({ fertility: 1.2, water: 0.9, stone: (i % 2 ? 2.5 : LV.FLOOR.stone), ore: 0.2,
+                                     wood: 1.2, game: 0.7, arable: 1, size: 70, initialPop: 40, name: (i % 2 ? '산촌' : '바닥') + i });
+      v._world = w; v.coord = { x: (i % 3) * 120, y: Math.floor(i / 3) * 120 };
+      w.villages.push(v);
+    }
+    w.day = 0;
+    //   ★톱니 픽스처 — 바닥 마을 돌을 **주기적으로** 비운다(30일마다). 오늘 재고는 솟지만 평소는 낮다.
+    for (let d = 0; d < 300; d++) {
+      if (starve && d % 30 < 20) for (let i = 0; i < w.villages.length; i += 2) w.villages[i].storage.stone = 0;
+      econV2.tickWorldV2(w, d);
+    }
+    const exp = w.villages.filter((v, i) => i % 2 === 0)
+      .reduce((a, v) => a + (((v.tradeStats || {}).exportBy || {}).stone || 0), 0);
+    return { exp, hasEma: !!w.villages[0]._stockEMA,
+             dig: JSON.stringify(w.villages.map((v) => ({ n: v.npcs.length, s: +(v.storage.stone || 0).toFixed(9), t: +(v.storage.tool || 0).toFixed(9) }))) };
+  };
+  const a = mkEma(false, false), b = mkEma(false, false);
+  ok(a.dig === b.dig, '⑳ ★★끈 두 판이 **비트 동일**(결정론)');
+  ok(a.hasEma === false, '⑳ ★★끄면 `_stockEMA` **칸 자체가 안 생긴다**(비트 동일의 뿌리)');
+  const c = mkEma(true, false);
+  ok(c.hasEma === true, '⑳ 켜면 칸이 생긴다');
+  const so = mkEma(false, true), sn = mkEma(true, true);
+  pre(so.exp > 0, '톱니 픽스처에서 바닥 마을이 실제로 돌을 판다(안 팔면 아래가 자명 통과)', `${so.exp.toFixed(0)} 단위`);
+  ok(sn.exp < so.exp, '⑳ ★★★EMA 문턱이면 **꼬리 수출이 준다**(자명 통과 금지)',
+    `${so.exp.toFixed(0)} → ${sn.exp.toFixed(0)} 단위`);
+  ok(so.dig !== sn.dig, '⑳ ★두 팔이 다른 세계다(문이 죽어 있지 않다)');
+}
+
+console.log(`\n=== T200 EMA 문턱 포함: 통과 ${pass} · 실패 ${fail} ===`);
+console.log('접점 심볼: thresh|target|keep|surplusEMA|SURPLUS_EMA_A|SURPLUS_EMA_B|exportStockEma|L_EXPORT_EMA|_stockEMA|STONE_NET_STOCK|toolWearMul');
 process.exit(fail ? 1 : 0);

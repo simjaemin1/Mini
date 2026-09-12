@@ -640,6 +640,8 @@ function tickTradeV2(world, day) {
       const WEAPONR = { weapon: 1, armor: 1 };      // ★무기·갑옷=전사 장비. 전사 수만큼 보유(팔면 전사 무장해제).
       const warN = (a.v.counts && a.v.counts.warrior) || 0;
       const huntN3 = (a.v.counts && a.v.counts.hunter) || 0;   // ★활(§9 3차): 사냥꾼 활도 마을 장비 — 수출 유보에 포함(마을 활을 팔아치우면 사냥 무장해제)
+      // ★[T200] 재고 EMA 문턱 — 주입이 없으면 한 글자도 안 바뀐다(랩 `L_EXPORT_EMA` 만 연다).
+      const _exEma = !!(world && world.exportStockEma);
       const candidates = [];
       for (const r of TRADABLE) {
         if (_oreBanned(r)) continue;   // ★[2026-08-02f ①-3] 원석은 산지에서만 녹인다 — 발주 후보에서 제외
@@ -662,7 +664,21 @@ function tickTradeV2(world, day) {
         //   ⇒ 돌 수출 후보는 **안전망 문턱 위**일 때만. 수는 v1 정본에서 읽는다(사본 0 · 새 수 0).
         //   되돌림 `T180_STONE_EXPORT=0` → 종전 비트 동일.
         if (r === 'stone' && T180_STONE_EXPORT && stock < v1.STONE_NET_STOCK) continue;
-        if (stock > thresh) candidates.push({ res: r, surplus: Math.max(1, stock - keep) });
+        // ★★★[T200 2026-09-12 · T180 ㉠ 의 회부를 여는 자리] **문턱이 오늘 재고 하나를 본다.**
+        //   그래서 중앙값이 0.2 아래인 바닥 마을이 **꼬리 며칠**에 "잉여"로 읽혀 돌을 판다
+        //   (T180 §2 산수 · 족보 150 톱니 — 실측 8,110~11,947 단위).
+        //   ⇒ 문이 열리면 비교 대상을 **재고 EMA** 로 바꾼다. 관성은 이 세계가 이미 쓰는 것
+        //     (`v1.SURPLUS_EMA_A/B` = `surplusEMA.food` 의 그 두 수) — **새 수 0 · 새 계수 0**.
+        //   ⚠`min(오늘, 평소)` 인 이유: 평소엔 많은데 **오늘 없는** 것을 실어 보내면 곳간이 음수가 된다
+        //     (`surplus = max(1, stock-keep)` 이 1 을 돌려주므로). *오늘도 있고 평소에도 있어야* 잉여다.
+        //   ⚠**문이 닫히면 칸도 안 생긴다**(`_stockEMA` 자체가 없다) = 비트 동일.
+        let cmpStock = stock;
+        if (_exEma) {
+          const _e = a.v._stockEMA || (a.v._stockEMA = {});
+          _e[r] = (_e[r] == null) ? stock : (v1.SURPLUS_EMA_A * _e[r] + v1.SURPLUS_EMA_B * stock);
+          cmpStock = Math.min(stock, _e[r]);
+        }
+        if (cmpStock > thresh) candidates.push({ res: r, surplus: Math.max(1, stock - keep) });
       }
       if (!candidates.length) break;
 
