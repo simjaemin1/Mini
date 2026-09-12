@@ -1287,6 +1287,13 @@ function foundPlayerVillage(opts) {
     name = `${name} ${k}`;
   }
   const ev = econ.createVillage({ ...lp, initialPop: 0, name, bornDay: day, founder });
+  // ★★[T203 2026-09-12 재민 확정] **창설자 이름을 읽는 칸에 앉힌다.** `zone.js:8554` 가 `founderName` 을
+  //   넘기는데 여기서는 **마을 이름 짓는 데만** 썼고(위 `name`), `zone.js:2789` 는 `vil.econ.founderName`
+  //   을 읽는다 ⇒ 시작 화면의 창설자 칸은 영영 빈 문자열이었다(T199 §0-ⓐ #19 실측:
+  //   이름은 "founder의 마을"인데 칸은 ""). T178 의 `r.species` 와 같은 모양 — 넘어온 값이 아무도
+  //   안 읽는 자리에 앉는다. ⇒ 한 낱말. econ 표(`createVillage`)는 이 이름을 모르므로 여기서 얹는다
+  //   (`ev._world`·`ev.coord` 와 같은 자리 · 랩은 이 갈래를 안 탄다 — NPC 마을은 창설자가 없다).
+  if (opts.founderName) ev.founderName = String(opts.founderName);
   // ★★[낚시 v2 2026-08-26] **어장 MSY 기준값을 여기서 붙잡아 둔다.**
   //   `extractSustain`(=server/sustain.js)이 잰 `fishSustain` 은 `createVillage` 의 land 화이트리스트에
   //   없어서 **조용히 버려진다**(woodSustain·forageSustain·marginalQ 도 같다 — 11차 배선이 통째로 사장돼 있다.
@@ -1305,7 +1312,8 @@ function foundPlayerVillage(opts) {
       village_id: dbId, type: 'hall', cx: ccx, cy: ccy, floors: 1,
       //   ★[T197] `tribeId` 도 **있는 `data` 칸에** 실어 둔다(새 열 0) — 안 그러면 재시작 한 번에
       //     마을이 길드를 잊고 소개문·곳간문이 다시 죽는다(`_founder` 옆에 `founder` 가 이미 이렇게 산다).
-      data: JSON.stringify({ typeLabel: 'player', land: lp, seedType: 'player', founder, tribeId: opts.tribeId || null, bnd: territoryBoundary(territory, ccx, ccy) }),
+      //   ★[T203] `founderName` 도 같은 칸에 — 재시작 뒤에도 시작 화면이 창설자를 안다(새 열 0).
+      data: JSON.stringify({ typeLabel: 'player', land: lp, seedType: 'player', founder, founderName: opts.founderName || null, tribeId: opts.tribeId || null, bnd: territoryBoundary(territory, ccx, ccy) }),
     });
     for (const c of territory) db.insertVillageBuilding({ village_id: dbId, type: 'terr', cx: c[0], cy: c[1], floors: 0, data: null });
     db.db.exec('COMMIT');
@@ -2583,6 +2591,9 @@ function init(deps) {
         //   ★[T197] 회관 행에 실어 둔 길드를 되살린다 — 없으면 null(무길드 마을·NPC 마을·구DB 전부 여기).
         _tribeId: (hallData && hallData.tribeId != null) ? hallData.tribeId : null,
         _shelter: shelterCell });   // ★[T62] 공용 쉼터 셀(없으면 null — 좌표를 지어내지 않는다)
+      //   ★[T203] 창설자 이름도 되살린다 — 읽는 자리가 `econ` 이므로 `econ` 에 얹는다(`_tribeId` 와 같은 짝).
+      //     ⚠**있을 때만** 얹는다: NPC 마을엔 이 칸이 아예 없고, 그래서 랩·기준선은 한 비트도 안 움직인다.
+      if (hallData && hallData.founderName) ev.founderName = String(hallData.founderName);
       ev._fieldCells = farmSet.size;   // ★[T100] 밭 브리지 초기값(영속 행에서 — 개간 전에도 밭은 있다)
       // ★[11차 재민 확정] 마을 안엔 숲이 없다 — 영토 셀의 나무를 벤다(개간).
       //   부팅 때마다 부르지만 이미 벤 나무는 harvestedSeeds 에 있어 다시 생성되지 않는다(멱등).

@@ -131,6 +131,106 @@ async function waitHttp(url, tries = 900) {
   ok(info.villages.every((v) => v.member === 0),
     '★[T159] 아직 아무도 마을 사람이 아니다(자명 통과 금지 — 칸이 늘 1 이면 뜻이 없다)');
 
+  // ═══ ★★★[T203 2026-09-12 재민 확정] **등록 계정의 생애 첫 접속도 도착이다** ═══════════
+  //   T199 §0-ⓐ 가 #4·#5 를 **양쪽 마을에서 못 쟀다**고 적었다. 이유가 이것이다:
+  //   `arriveFor` 는 "이 존에 좌표가 있나"로 `returning` 을 읽는데 central `/auth` 는 **가입 그 순간**
+  //   `home_zone`·`last_zone`·좌표를 박는다 ⇒ **등록 계정은 생애 첫 접속이 이미 '이어하기'** 다.
+  //   그래서 도착 지점(#3→#4)도 시작 허기(#5)도 등록한 사람에겐 **한 번도 안 걸렸다** — 게스트만 나루터에 왔다.
+  //   ⇒ T203 이 "처음 온 사람"의 정본을 좌표가 아니라 `lastSeenDay`(T7)로 바꿨다.
+  //   ★이 절이 재는 것 넷: ⓐ 등록 첫 접속 = 도착 + 허기 · ⓑ 같은 계정 둘째 접속 = 이어하기(자리 그대로)
+  //     · ⓒ **게스트 경로 비트 동일** · ⓓ 자명 통과 금지(고치기 전이면 ⓐ 가 빨갛다).
+  {
+    const WS2 = require('ws');
+    const ARR = info.villages.find((v) => v.arrive && Number.isFinite(v.arrive.x)) || info.villages[0];
+    const conn = (q) => new Promise((res, rej) => {
+      const ws = new WS2(`ws://localhost:${ZPORT}/?${q}`);
+      const C = { ws, welcome: null, gauges: null, notices: [], msgs: [] };
+      const to = setTimeout(() => rej(new Error('접속 시간초과 · ' + JSON.stringify(C.msgs.map((m) => m.type).slice(0, 8)))), 40000);
+      ws.on('message', (raw) => { let m = null; try { m = JSON.parse(String(raw)); } catch (e) { return; }
+        if (m.type === 'gauges') { if (!C.gauges) C.gauges = m; return; }
+        if (m.type !== 'tick') { C.msgs.push(m); if (C.msgs.length > 80) C.msgs.shift(); }
+        if (m.type === 'notice') C.notices.push(String(m.text || ''));
+        if (m.type === 'welcome') { C.welcome = m; clearTimeout(to); res(C); } });
+      ws.on('error', (e) => { clearTimeout(to); rej(e); });
+      C.beat = setInterval(() => { try { if (ws.readyState === 1) ws.send(JSON.stringify({ type: 'ping' })); } catch (e) {} }, 2000);
+    });
+    const bye = (C) => { try { clearInterval(C.beat); C.ws.close(); } catch (e) {} };
+    //   ★게이지는 **초당 한 번** 오는 것이라 붙자마자 없을 수 있다 — 세계가 말할 때까지 기다린다(픽스처 규약).
+    const gaugesOf = async (C) => { for (let i = 0; i < 40; i++) { if (C.gauges) return C.gauges; await sleep(300); } return null; };
+    //   ★자리는 **관전자의 눈**으로 읽는다(서버가 말하는 내 좌표 — 클라 예측이 아니다).
+    const obs = await new Promise((res) => { const w = new WS2(`ws://localhost:${ZPORT}/?observer=1`); w.on('open', () => res(w)); w.on('error', () => res(null)); setTimeout(() => res(null), 8000); });
+    const seen = new Map();
+    if (obs) { obs.on('message', (raw) => { let m = null; try { m = JSON.parse(String(raw)); } catch (e) { return; }
+      if (m.type === 'tick' && Array.isArray(m.players)) for (const p of m.players) seen.set(p.pid, { x: p.x, y: p.y }); }); }
+    const look = (x, y) => { try { obs && obs.send(JSON.stringify({ type: 'viewport_update', x, y, w: 2000, h: 2000 })); } catch (e) {} };
+    //   ⚠**캐시를 먼저 비운다** — 안 비우면 옮기기 전 좌표를 읽는다(1차 실측: 워프 뒤에도 "도착에서 0px").
+    //     `want` 를 주면 그 자리에 닿을 때까지 기다린다(정해진 초를 안 잔다 · 픽스처 규약).
+    const posOf = async (C, at, want) => { const a = at || ARR.arrive;
+      seen.delete(C.welcome.pid);
+      for (let i = 0; i < 40; i++) { look(a.x, a.y); await sleep(300);
+        const p = seen.get(C.welcome.pid);
+        if (p && (!want || Math.hypot(p.x - want.x, p.y - want.y) <= 160)) return p; }
+      return seen.get(C.welcome.pid) || null; };
+    const dTo = (p) => (p ? Math.hypot(p.x - ARR.arrive.x, p.y - ARR.arrive.y) : Infinity);
+
+    const uname = 'onb203_' + (Date.now() % 100000);
+    const qReg = (vid) => new URLSearchParams({ username: uname, password: 'pw203', name: uname, color: '#5a9ae0', start_vid: String(vid) }).toString();
+    // ⓐ 등록 계정 — **생애 첫 접속**
+    const R1 = await conn(qReg(ARR.vid)).catch((e) => { ok(false, `★[T203] 등록 계정 첫 접속 — 못 붙었다: ${e.message}`); return null; });
+    if (R1) {
+      const p1 = await posOf(R1);
+      const g1 = await gaugesOf(R1);
+      ok(dTo(p1) <= 64, `★★★[T203] **등록 계정의 첫 접속이 도착 지점에 선다** — Δ${dTo(p1).toFixed(0)}px (${ARR.name} · ${ARR.arrive.kind}) · 종전엔 마을 광장이었다`,
+        p1 ? `(${Math.round(p1.x)},${Math.round(p1.y)}) ↔ 도착 (${Math.round(ARR.arrive.x)},${Math.round(ARR.arrive.y)})`
+           : '도착 지점 반경 안에 **없다** — 마을 광장에 발생했다(고치기 전의 그 답)');
+      ok(!!(g1 && g1.hunger > 40 && g1.hunger < 70),
+        `★★★[T203] 그리고 **여행자로 온다** — 허기 ${g1 ? Math.round(g1.hunger) : '?'}(§9.4 결핍 ① · 1단계 문턱 코앞) · 종전엔 100 이었다`);
+      //   ★**자리를 옮겨 두고** 끊는다 — 그래야 "이어하기는 있던 자리"가 자명 통과가 아니다.
+      const AWAY = { x: Math.round(ARR.arrive.x) + 900, y: Math.round(ARR.arrive.y) };
+      for (let i = 0; i < 6; i++) { try { R1.ws.send(JSON.stringify({ type: 'teleport_debug', x: AWAY.x, y: AWAY.y })); } catch (e) {} await sleep(400);
+        if (R1.notices.some((t) => /텔레포트 →/.test(t))) break; }
+      const pAway = await posOf(R1, AWAY, AWAY);
+      ok(!!pAway && Math.hypot(pAway.x - AWAY.x, pAway.y - AWAY.y) <= 96 && dTo(pAway) > 400,
+        `★[T203] (상황) 끊기 전에 **도착 지점을 떠났다** — 도착에서 ${dTo(pAway).toFixed(0)}px`,
+        pAway ? `(${Math.round(pAway.x)},${Math.round(pAway.y)})` : 'X');
+      bye(R1); await sleep(3000);
+      // ⓑ 같은 계정 **둘째 접속** — 이어하기(떠나 있던 자리 그대로 · 도착으로 다시 안 끌려간다)
+      const R2 = await conn(qReg(ARR.vid)).catch(() => null);
+      if (R2) {
+        const p2 = await posOf(R2, AWAY);
+        ok(!!p2 && dTo(p2) > 400 && Math.hypot(p2.x - AWAY.x, p2.y - AWAY.y) <= 160,
+          `★★★[T203] **둘째 접속은 이어하기다** — 떠나 있던 자리로 돌아온다(도착에서 ${dTo(p2).toFixed(0)}px · 다시 안 끌려간다)`,
+          p2 ? `(${Math.round(p2.x)},${Math.round(p2.y)})` : 'X');
+        const g2 = await gaugesOf(R2);
+        ok(!!(g2 && Math.round(g2.hunger) !== 100),
+          `★[T203] (상황) 둘째 접속의 허기는 저장본이다 — ${g2 ? Math.round(g2.hunger) : '?'}(시작값을 다시 안 건다)`);
+        bye(R2); await sleep(1500);
+      } else ok(false, '★[T203] 같은 계정 둘째 접속을 못 했다');
+    }
+    // ⓒ 게스트 경로 — **비트 동일**(고치기 전과 같은 답이어야 한다)
+    const G1 = await conn(new URLSearchParams({ name: '게스트203', color: '#5a9ae0', start_vid: String(ARR.vid) }).toString()).catch(() => null);
+    if (G1) {
+      const gp = await posOf(G1);
+      ok(dTo(gp) <= 64, `★★[T203] **게스트 첫 접속은 종전 그대로** 도착 지점에 선다 — Δ${dTo(gp).toFixed(0)}px (이 절이 게스트를 안 깼다)`);
+      const gg1 = await gaugesOf(G1);
+      ok(!!(gg1 && gg1.hunger > 40 && gg1.hunger < 70),
+        `★★[T203] 게스트 시작 허기도 종전 그대로 — ${gg1 ? Math.round(gg1.hunger) : '?'}`);
+      const tok = G1.welcome && G1.welcome.guestToken;
+      bye(G1); await sleep(2500);
+      if (tok) {
+        const G2 = await conn(new URLSearchParams({ name: '게스트203', color: '#5a9ae0', guest_token: tok, start_vid: String(ARR.vid) }).toString()).catch(() => null);
+        if (G2) {
+          const gg2 = await gaugesOf(G2);
+          ok(!!(gg2 && Number.isFinite(gg2.hunger)),
+            `★[T203] 돌아온 게스트도 종전 그대로 — 허기 ${gg2 ? Math.round(gg2.hunger) : '?'}(이어하기 · 시작값 재적용 0)`);
+          bye(G2);
+        }
+      }
+    } else ok(false, '★[T203] 게스트 접속을 못 했다');
+    try { obs && obs.close(); } catch (e) {}
+    await sleep(1500);
+  }
+
   const { chromium } = require('playwright');
   const browser = await chromium.launch({ headless: !HEADED, executablePath: require('playwright').chromium.executablePath() });
 
@@ -777,6 +877,11 @@ async function waitHttp(url, tries = 900) {
         const sline = await startLineOf(NEWVID, true);
         step('⑦ 시작 화면에 뜬다(`?start_vid=` 가 가리킬 줄이 섰다)', !!sline,
           sline ? `${sline.name} · player=${sline.player} · 도착 (${sline.arrive && Math.round(sline.arrive.x)},${sline.arrive && Math.round(sline.arrive.y)})` : '안 뜬다');
+        //   ★★[T203] 그 줄에 **창설자 이름**이 있다. T199 §0-ⓐ #19 실측: 마을 이름은 "◯◯의 마을"인데
+        //     `founderName` 칸은 영영 빈 문자열이었다(`zone.js:8554` 가 넘긴 값을 `villages.js` 가
+        //     이름 짓는 데만 쓰고 `econ` 에 안 앉혔다 — T178 `r.species` 와 같은 모양).
+        step('⑦b [T203] 시작 화면에 **창설자 이름**이 있다', !!(sline && String(sline.founderName || '').length > 0),
+          sline ? `founderName = ${JSON.stringify(sline.founderName)} · 마을 이름 ${JSON.stringify(sline.name)}` : '줄이 없다');
 
         // ── ⑧ ★★[T197] 소개문이 시작 화면과 **인사**에 뜬다 ──────────────────
         //   T192 는 여기가 **구조적으로** 빈다는 것을 쟀다: `introOfVillage` → `vil.econ._tribeId` 인데

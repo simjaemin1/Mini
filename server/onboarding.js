@@ -635,10 +635,28 @@ function _welcomes(v, a) {
 //     허허벌판에 떨어지지 않는다. 대본(촌장 근접·첫 의뢰)은 거기서도 그대로 돈다.
 //   회부: 「월드 입장」(마을 미선택)의 기본값을 추천 마을로 할 것인가 — 그러려면 위 하네스들이
 //   스폰 도구를 `teleport_debug` 로 옮겨야 한다(T10 몫). `회부_온보딩_다음층.md` B-6.
-function arriveFor(startVid, acct, zoneId, playerId) {
+function arriveFor(startVid, acct, zoneId, playerId, lastSeenDay) {
   if (!ready()) return null;
-  const returning = !!(acct && ((acct.last_zone === zoneId && typeof acct.last_x === 'number')
-                              || (acct.home_zone === zoneId && typeof acct.home_x === 'number')));
+  // ★★[T203 2026-09-12 재민 확정] **"처음 온 사람"의 정본은 좌표가 아니다.**
+  //   종전 판정은 "이 존에 좌표가 있나"(`last_x`·`home_x`)였다. 그런데 central `/auth` 는
+  //   **가입 그 순간** `home_zone`·`last_zone`·좌표를 박는다 ⇒ 등록 계정은 **생애 첫 접속이
+  //   이미 '이어하기'** 다. 실측(T199 §0-ⓐ #4·#5): 새 계정으로 마을을 골라 들어와도 도착 지점에
+  //   안 서고 시작 허기도 안 걸린다 — 온보딩 v2 의 첫 문장("빈손으로, 배고픈 채 도착한다")이
+  //   **등록한 사람에겐 거짓**이었다(게스트만 나루터에 온다).
+  //   ⇒ "세계를 본 적이 있나"의 정본은 이미 있다: `lastSeenDay`(T7 · `zone.js:412`
+  //     *"없으면 처음 온 사람 — 복귀 브리핑은 안 나간다"*). 저장이 늘 그 값을 쓰므로
+  //     (`_lastSeenDayToSave`) **한 번이라도 저장된 몸은 유한**이고, 가입만 한 몸은 `null` 이다.
+  //   ★새 수 0 · 새 컬럼 0 · 새 메시지 0.
+  //   ⚠**좌표 항을 지우지 않는다** — 둘의 **곱**이다. 게스트는 좌표가 생기는 그 저장이 곧
+  //     `lastSeenDay` 를 쓰는 저장이라 두 항이 언제나 함께 서고 ⇒ **게스트 경로는 비트 동일**이다
+  //     (하네스가 그걸 잰다). 바뀌는 것은 "좌표는 있는데 세계를 본 적은 없는" 한 갈래뿐이고,
+  //     그 갈래가 정확히 위의 등록 계정 첫 접속이다.
+  //   ⚠인자가 안 오면(옛 호출부) 종전과 **글자 그대로 같다** — `undefined` 는 유한이 아니므로
+  //     `seen` 을 좌표 항으로 떨어뜨린다(아래 `=== undefined` 갈래).
+  const _hasPos = !!(acct && ((acct.last_zone === zoneId && typeof acct.last_x === 'number')
+                            || (acct.home_zone === zoneId && typeof acct.home_x === 'number')));
+  const _seen = (lastSeenDay === undefined) ? _hasPos : Number.isFinite(lastSeenDay);
+  const returning = _hasPos && _seen;
   // ★★[T115 2026-09-05 · 실측으로 드러난 상류 결함] **고른 것을 적는 일과 데려다 놓는 일은 다르다.**
   //   종전엔 둘이 붙어 있어서 `returning` 이면 **기록까지** 건너뛰었다. 그런데 등록 계정은
   //   `/auth` 가 **첫 가입 그 순간** `home_zone`·`last_zone` 을 박는다(central `/auth` — "신규 가입자에게

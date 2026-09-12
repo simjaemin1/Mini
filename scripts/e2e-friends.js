@@ -153,14 +153,32 @@ const seen = (C, pid) => C.others.get(pid) || null;
   // ── ② 상대가 같은 말을 하면 **그 자리에서 성립** ────────────────────────
   B.notices.length = 0;
   say(B, '/친구 alice');
-  await sleep(1500);
+  //   ★★[T203 2026-09-12] `sleep(1500)` 이었다. 그런데 T203 부터 **등록 계정도 제가 고른 마을의
+  //     도착 지점에 선다** — bob 은 이제 다른 마을 어귀에서 태어나고, 그 순간 청크가 켜지면서
+  //     수백 개체가 그 소켓으로 먼저 흐른다. 말은 왔는데 **1.5초 안에 못 읽는 판**이 생겼다
+  //     (실측: 쌍은 섰는데(②b·②c 초록) 알림만 빈 배열). ⇒ 정해진 초를 자지 말고 **들을 때까지** 기다린다.
+  for (let i = 0; i < 40 && !B.notices.some((t) => /벗이 되었다/.test(t)); i++) await sleep(250);
   ok(B.notices.some((t) => /벗이 되었다/.test(t)), '② ★서로 청하면 그 자리에서 벗이 된다', JSON.stringify(B.notices.slice(-1)));
   say(A, '/친구'); say(B, '/친구'); await sleep(1200);
   ok(await nFriends(A.playerId) === 1, '②b alice 쪽에서 1명', await nFriends(A.playerId));
   ok(await nFriends(B.playerId) === 1, '②c bob 쪽에서도 1명 — **쌍은 하나**다', await nFriends(B.playerId));
 
   // ── ③ 이름표 1비트 — **보는 사람 기준** ─────────────────────────────────
-  await sleep(2500);
+  //   ★★[T203 2026-09-12] **모아 놓고 본다.** 종전엔 셋이 같은 마을 광장에 발생했으므로 그냥 보였다.
+  //     T203 부터 등록 계정도 **제가 고른 마을**의 도착 지점에 서고, bob 은 다른 마을을 골랐다
+  //     ⇒ 서로의 시야 밖이다(실측: `bob false · carol true`). 시야 표지를 재려면 시야 안에 있어야 하고,
+  //     그건 **하네스가 만들 상황**이지 스폰이 우연히 줘야 할 것이 아니다(자명 통과 금지의 반대편).
+  //   ⚠정해진 초를 안 잔다 — **알 때까지** 기다린다(공통 §2 ⑩).
+  {
+    const AP = arrivable[0].arrive;
+    for (let i = 0; i < 24; i++) {
+      B.notices.length = 0;
+      B.ws.send(JSON.stringify({ type: 'teleport_debug', x: Math.round(AP.x) + i * 37, y: Math.round(AP.y) + i * 29 }));
+      await sleep(400);
+      if (B.notices.some((t) => /텔레포트 →/.test(t))) break;
+    }
+    for (let i = 0; i < 40; i++) { if (seen(A, B.pid) && seen(A, C3.pid) && seen(B, A.pid)) break; await sleep(300); }
+  }
   const aSeesB = seen(A, B.pid), bSeesA = seen(B, A.pid), aSeesC = seen(A, C3.pid), cSeesA = seen(C3, A.pid);
   ok(!!aSeesB && !!aSeesC, '③ 전제 — alice 의 시야에 bob 과 carol 이 **둘 다** 있다(없으면 아래가 자명 통과다)',
     `bob ${!!aSeesB} · carol ${!!aSeesC}`);

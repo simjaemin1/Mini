@@ -3947,7 +3947,9 @@ async function _acceptConnection(ws, req, C) {
     }
     // ★★[온보딩 v2 §9.2] **캐릭터는 발생하지 않고 도착한다.** 첫 접속이면 시작 화면에서 고른 마을의
     //   어귀(나루터·길목)에 앉는다. 이어하기(last_x/y·home)면 `arriveFor` 가 null 이라 있던 자리 그대로다.
-    const _onbArr = Onboarding.arriveFor(url.searchParams.get('start_vid'), acct, ZONE_ID, playerId);
+    //   ★[T203] 다섯째 인자 = **세계를 본 적이 있는 날**(T7 정본 · 이 접속이 복원한 그 값).
+    //     좌표만으로는 등록 계정의 생애 첫 접속이 '이어하기'로 분류된다(T199 §0-ⓐ #4·#5).
+    const _onbArr = Onboarding.arriveFor(url.searchParams.get('start_vid'), acct, ZONE_ID, playerId, _loadLastSeenDay);
     if (_onbArr) { sx = _onbArr.x; sy = _onbArr.y; const _g = Onboarding.startGauges(); initHunger = _g.hunger; initThirst = _g.thirst; }
     // Phase 5-G: spawn 좌표를 cell center에 정확히 snap (시각 NE 16px 치우침 fix)
     // cell center = cellTile * 32 + 16. 모든 entity가 cell 격자에 align되어 보임.
