@@ -93,6 +93,9 @@ require('../server/trees').attachToWorld(world);
 //   ⚠이 줄을 여기 둔 이유: ⓚ 여덟 수를 **다시 구현하지 않기 위해서**다(계측기 정본 재구현 0 · T163 규약).
 //     `T191_TOOLWEAR` 를 안 주면 `world.toolWearMul` 이 없고 엔진 배수는 1 이다 — 기준선 계측기 무변.
 { const _tw = parseFloat(process.env.T191_TOOLWEAR || ''); if (Number.isFinite(_tw) && _tw > 0 && _tw !== 1) world.toolWearMul = _tw; }
+// ★[T206 · 계측 전용] 남는 용량에 둘째 후보 — `T206_CARGO_TWO=1` 일 때만 문을 연다(없으면 무변).
+//   랩은 `window.L_CARGO_TWO` 로 **같은 문**을 연다(문은 하나 — 하네스가 지문으로 대조한다).
+if (process.env.T206_CARGO_TWO === '1') world.cargoTwo = true;
 for (const s of seeds) {
   const ev = econ.createVillage({ ...s.lp, initialPop: P.INITIAL_POP, name: s.name });
   ev._world = world; ev.coord = { x: s.ccx * 2.5, y: s.ccy * 2.5 };

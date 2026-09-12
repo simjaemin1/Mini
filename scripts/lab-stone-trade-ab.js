@@ -27,7 +27,9 @@ async function arm(seed, on) {
   const b = await chromium.launch();
   const p = await b.newPage();
   await p.addInitScript(PRNG(seed));
-  await p.addInitScript(`window.L_STONE_TRADE=${on ? 1 : 0};`);
+  //   ★[T206] 같은 계측기로 손잡이를 갈아 쓴다 — `T206_ARM=cargo` 면 `L_CARGO_TWO` 를 가른다.
+  const KNOB = (process.env.T206_ARM === 'cargo') ? 'L_CARGO_TWO' : 'L_STONE_TRADE';
+  await p.addInitScript(`window.${KNOB}=${on ? 1 : 0};`);
   const errs = [];
   p.on('pageerror', (e) => errs.push(String(e.message).slice(0, 160)));
   await p.goto('file://' + path.resolve(__dirname, '..', 'lab', '전쟁실험실.html'), { waitUntil: 'load', timeout: 180000 });
@@ -39,7 +41,7 @@ async function arm(seed, on) {
       document.getElementById('nvil').value = String(nvil);
       reseed(); lifeInit();
       o.vil0 = VILS.length;
-      o.attached = typeof (ECON_WORLD || {}).returnPullFn === 'function';
+      o.attached = (typeof (ECON_WORLD || {}).returnPullFn === 'function') || (ECON_WORLD || {}).cargoTwo === true;
       o.thresh = (typeof L_STONE_NET_THRESH !== 'undefined') ? L_STONE_NET_THRESH : null;
       o.floorConst = (typeof L_STONE_FLOOR !== 'undefined') ? L_STONE_FLOOR : null;
       const tr = VILS.map((v) => ({ name: v.name,
@@ -100,7 +102,7 @@ const pctOf = (x) => (x == null ? '—' : (x * 100).toFixed(1) + '%');
     if (on.err) console.log(`  ⚠ seed ${seed} ON 오류: ${on.err}`);
   }
   const a0 = all[0] && all[0].on;
-  console.log(`\n=== T173 (B) 석재 처방 ① 랩 A/B — ${DAYS}일 · 마을 ${NVIL} · 시드 ${SEEDS.join(',')} ===`);
+  console.log(`\n=== 석재/수레 랩 A/B(${process.env.T206_ARM === 'cargo' ? 'T206 둘째 화물' : 'T173 귀환 우선순위'}) — ${DAYS}일 · 마을 ${NVIL} · 시드 ${SEEDS.join(',')} ===`);
   if (a0) console.log(`  주입 문 열림(ON) ${a0.attached} · 문턱 L_STONE_NET_THRESH=${a0.thresh} · 랩 바닥항 ${a0.floorConst}`);
   const fl = (r) => r.rows.filter((t) => t.base != null && r.floorConst != null && Math.abs(t.base - r.floorConst) < 1e-9);
   const nf = (r) => r.rows.filter((t) => !(t.base != null && r.floorConst != null && Math.abs(t.base - r.floorConst) < 1e-9));
