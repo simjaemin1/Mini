@@ -55,6 +55,22 @@ let _cropSprLoaded = 0;
     CROP_SPR._anch = a;
     for (const k in a) {                       // 키는 JSON 이 준다 — 손으로 적은 목록이 없다
       const m = /^(\w+)_(\d)$/.exec(k); if (!m) continue;
+      // ★★[T205] **종별 판**(`lettuce_3` …)도 같은 표로 온다 — 종 목록을 여기 안 적는다.
+      //   군 여덟 말고 다른 이름이 표에 있으면 그것이 종별 판이고, 그때 실어 온다(없으면 안 실린다).
+      if (!CROP_SPR[m[1]]) {
+        CROP_SPR[m[1]] = [];
+        if (typeof Image === 'function') {
+          const si = new Image();
+          si.onload = () => { _cropSprLoaded++; };
+          si.src = '/assets/crops/' + m[1] + '_' + m[2] + '.png';
+          CROP_SPR[m[1]][+m[2]] = si;
+        }
+      } else if (CROP_SPR[m[1]][+m[2]] === undefined && !CROP_SPR._slug[m[1]] && typeof Image === 'function') {
+        const si = new Image();
+        si.onload = () => { _cropSprLoaded++; };
+        si.src = '/assets/crops/' + m[1] + '_' + m[2] + '.png';
+        CROP_SPR[m[1]][+m[2]] = si;
+      }
       const im = CROP_SPR[m[1]] && CROP_SPR[m[1]][+m[2]];
       if (im) { im._ox = a[k].ox; im._oy = a[k].oy; }
     }
@@ -62,7 +78,11 @@ let _cropSprLoaded = 0;
 })();
 function cropSprite(stage, crop) {
   const st = Math.max(0, Math.min(3, stage | 0));
-  const ser = CROP_SPR._slug[CROP_SPR._of[crop]] || 'grain';
+  // ★★[T205] **종별 판이 있으면 종, 없으면 군**(폴백). 어느 종이 종별인지는 **표가 안다** —
+  //   목록을 여기 안 적는다(굽기가 낸 앵커 JSON 에 그 키가 있으면 그림도 실려 있다).
+  //   ⓘ 종별로 구운 단계는 2·3 뿐이다 — 0·1 은 종을 안 묻고, 그때는 군 판으로 떨어진다.
+  const ser = (crop && CROP_SPR[crop] && CROP_SPR[crop][st]) ? crop
+            : (CROP_SPR._slug[CROP_SPR._of[crop]] || 'grain');
   const im = CROP_SPR[ser] && CROP_SPR[ser][st];
   // 그림과 앵커가 **둘 다** 와야 그린다 — 하나만으로는 자리를 모른다.
   return (im && im.complete && im.naturalWidth > 0 && im._ox != null) ? im : null;

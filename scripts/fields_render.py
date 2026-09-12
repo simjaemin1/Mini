@@ -305,6 +305,24 @@ SIAN_PAIRS = [
     ('tuber',   'yam',           '마',     '덩굴 · 가는 잎'),
 ]
 
+# ★★[T205] **34종 전수 자 재기** — `CROP_SIAN=all` 이면 종 표(`server/crops.json`)의 **모든 종**의
+#   익음(3) 판을 시안 경로로 굽는다. 목록을 여기 안 적는다(표가 정본 · 사본 0).
+#   ⇒ 그 판과 **제 군 대표 판**의 평균RGB 거리가 T201 문턱(10) 을 넘는 종만 종별로 배포한다.
+def _sian_all_pairs():
+    cj = json.load(open(os.path.join(HERE, '..', 'server', 'crops.json'), encoding='utf-8'))
+    g2s = {g[1]: g[0] for g in GROUPS}          # 서버 group(한글) → 슬러그
+    out = []
+    for cid, c in sorted(cj.get('crops', {}).items()):
+        slug = g2s.get(c.get('group'))
+        if slug and getattr(MC, 'm_' + cid, None):
+            out.append((slug, cid, c.get('ko', cid), '전수'))
+    return out
+
+
+if os.environ.get('CROP_SIAN') == 'all':
+    SIAN_PAIRS = _sian_all_pairs()
+    os.environ['CROP_SIAN'] = '1'
+
 if os.environ.get('CROP_SIAN') == '1':
     SOUT = os.path.join(OUT, '_sian')
     os.makedirs(SOUT, exist_ok=True)
@@ -315,7 +333,8 @@ if os.environ.get('CROP_SIAN') == '1':
         fn = getattr(MC, 'm_' + cid, None)
         if fn is None:
             print('  ! 종 모델 없음:', cid); continue
-        for st, builder, sz in ((2, b2, s2), (3, fn, s3)):
+        _stages = ((3, fn, s3),) if os.environ.get('CROP_SIAN_RIPE') == '1' else ((2, b2, s2), (3, fn, s3))
+        for st, builder, sz in _stages:
             OBJS.clear()
             soil_bed(furrows=furrows)
             random.seed(sd + st)
@@ -334,7 +353,7 @@ if os.environ.get('CROP_SIAN') == '1':
             rc.cleanup()
     # ★★잡음 바닥 — **같은 종을 심는 자리만 바꿔** 한 장 더 굽는다.
     #   화소 |Δ| 로 "종이 갈리나"를 재면 거짓말이 된다(잎 자리가 난수다). 그 거짓말의 크기를 잰다.
-    if 'perilla_3' in recs:
+    if 'perilla_3' in recs and os.environ.get('CROP_SIAN_RIPE') != '1':
         g = next(x for x in GROUPS if x[0] == 'oil')
         _, _, (per, nrow), furrows, sd, _, _, _, s3 = g
         OBJS.clear(); soil_bed(furrows=furrows)
@@ -353,6 +372,59 @@ if os.environ.get('CROP_SIAN') == '1':
     json.dump(recs, open(os.path.join(SOUT, 'sian.json'), 'w', encoding='utf-8'),
               ensure_ascii=False, indent=1, sort_keys=True)
     print('[sian] DONE ->', SOUT, len(recs), '장 (배포 0 · 못박기 0)')
+    sys.exit(0)
+
+
+# ═══════════════ [T205] 종별 판 — **자가 고른 종만** 굽는다 ═══════════════
+# ★★고르는 자는 T201 의 것이다: 그 종의 익음 판이 **제 군 대표 판**과 평균RGB **10 이상** 떨어지면
+#   종별로 굽는다(10 은 지어낸 수가 아니라 T201 이 눈과 맞춰 잰 문턱이다 · 보고 §0-ⓐ).
+#   목록은 여기 안 적는다 — `CROP_SIAN=all` 로 34종을 재고 그 결과를 `FIELDS_SPECIES` 로 넘긴다.
+# ★단계는 **2·3 둘뿐**이다. 0(갈은 흙)·1(어린싹)·4(쉬는 밭)·5(그루터기)는 **종을 안 묻는다** —
+#   위 굽기 주석이 그렇게 적고 있고(`_sprouts` 는 "군을 안 가린다"), 그 넷은 군 판이 그대로 산다.
+# ★배포 자리엔 **더하기만** 한다 — 군 판 48장은 한 바이트도 안 건드린다(복사 대상을 종 키로 한정).
+#   ⚠`scripts/field_renders/` 의 옛 산출물이 지금 코드와 다를 수 있다(실측: 단계 4·5 열여섯 장).
+#     그러니 "전부 다시 복사"는 안 된다 — T129 가 잡은 그 지뢰다.
+# 실행: FIELDS_SPECIES=rice,sorghum python3 scripts/fields_render.py
+_SPECIES = [k for k in os.environ.get('FIELDS_SPECIES', '').split(',') if k]
+if _SPECIES:
+    cj = json.load(open(os.path.join(HERE, '..', 'server', 'crops.json'), encoding='utf-8'))
+    g2s = {g[1]: g[0] for g in GROUPS}
+    apath = os.path.join(OUT, "crops_anchors.json")
+    anchors = json.load(open(apath, encoding='utf-8')) if os.path.exists(apath) else {}
+    made = []
+    for cid in _SPECIES:
+        c = cj['crops'][cid]
+        slug = g2s[c['group']]
+        g = next(x for x in GROUPS if x[0] == slug)
+        _, _, (per, nrow), furrows, sd, b2, b3, s2, s3 = g
+        fn = getattr(MC, 'm_' + cid)
+        for st, builder, sz in ((2, b2, s2), (3, fn, s3)):
+            OBJS.clear(); soil_bed(furrows=furrows)
+            random.seed(sd + st)
+            rz = [random.uniform(-0.5, 0.5) for _ in range(per * nrow)]
+            k = [0]
+            def one(x, y, i, _b=builder, _s=sz):
+                _plant(_b, x, y, _s, rz[min(k[0], len(rz) - 1)]); k[0] += 1
+            rows(per, nrow, one, seed=sd + 2)
+            rc.bake_transforms(); rc.squash_z()
+            key = f'{cid}_{st}'
+            rec = rc.render_world_pass(OBJS, os.path.join(OUT, key + '.png'), margin=2, ppu_mul=1, ss=3)
+            rc.assert_pinned_box(os.path.join(DEPLOY, "crops_anchors.json"), key,
+                                 rec["w"], rec["h"], rec["ox"], rec["oy"], label="fields-species")
+            rec["group"] = slug; rec["stage"] = st; rec["species"] = cid
+            anchors[key] = rec; made.append(key)
+            print(f"[species] {key}({c['ko']}): {rec['w']}x{rec['h']} anchor=({rec['ox']:.2f},{rec['oy']:.2f})")
+            rc.cleanup()
+    json.dump(anchors, open(apath, "w", encoding='utf-8'), ensure_ascii=False, indent=1, sort_keys=True)
+    import shutil
+    os.makedirs(DEPLOY, exist_ok=True)
+    for k in made:                                  # ★종 키만 배치한다(군 판 무변)
+        shutil.copy2(os.path.join(OUT, k + '.png'), os.path.join(DEPLOY, k + '.png'))
+    dj = os.path.join(DEPLOY, "crops_anchors.json")
+    cur = json.load(open(dj, encoding='utf-8')) if os.path.exists(dj) else {}
+    for k in made: cur[k] = anchors[k]              # ★앵커도 더하기만(군 키 무변)
+    json.dump(cur, open(dj, "w", encoding='utf-8'), ensure_ascii=False, indent=1, sort_keys=True)
+    print(f"[species] 배치 -> {DEPLOY} ({len(made)}장 · 앵커 {len(cur)}키 · 군 판 무접촉)")
     sys.exit(0)
 
 

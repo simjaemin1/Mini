@@ -59,6 +59,146 @@
   "w": 68,
   "zmax_px": 5.18
  },
+ "buckwheat_2": {
+  "group": "grain",
+  "h": 60,
+  "ox": 34.0,
+  "oy": 41.52,
+  "ppu": 45.255,
+  "species": "buckwheat",
+  "stage": 2,
+  "w": 68
+ },
+ "buckwheat_3": {
+  "group": "grain",
+  "h": 51,
+  "ox": 34.0,
+  "oy": 32.72,
+  "ppu": 45.255,
+  "species": "buckwheat",
+  "stage": 3,
+  "w": 68
+ },
+ "chive_2": {
+  "group": "veg",
+  "h": 41,
+  "ox": 34.04,
+  "oy": 22.74,
+  "ppu": 45.255,
+  "species": "chive",
+  "stage": 2,
+  "w": 69
+ },
+ "chive_3": {
+  "group": "veg",
+  "h": 51,
+  "ox": 40.39,
+  "oy": 32.91,
+  "ppu": 45.255,
+  "species": "chive",
+  "stage": 3,
+  "w": 79
+ },
+ "cucumber_2": {
+  "group": "veg",
+  "h": 41,
+  "ox": 34.04,
+  "oy": 22.74,
+  "ppu": 45.255,
+  "species": "cucumber",
+  "stage": 2,
+  "w": 69
+ },
+ "cucumber_3": {
+  "group": "veg",
+  "h": 60,
+  "ox": 34.0,
+  "oy": 41.6,
+  "ppu": 45.255,
+  "species": "cucumber",
+  "stage": 3,
+  "w": 68
+ },
+ "curled_mallow_2": {
+  "group": "veg",
+  "h": 41,
+  "ox": 34.04,
+  "oy": 22.74,
+  "ppu": 45.255,
+  "species": "curled_mallow",
+  "stage": 2,
+  "w": 69
+ },
+ "curled_mallow_3": {
+  "group": "veg",
+  "h": 49,
+  "ox": 34.45,
+  "oy": 30.68,
+  "ppu": 45.255,
+  "species": "curled_mallow",
+  "stage": 3,
+  "w": 71
+ },
+ "eggplant_2": {
+  "group": "veg",
+  "h": 41,
+  "ox": 34.04,
+  "oy": 22.74,
+  "ppu": 45.255,
+  "species": "eggplant",
+  "stage": 2,
+  "w": 69
+ },
+ "eggplant_3": {
+  "group": "veg",
+  "h": 55,
+  "ox": 34.18,
+  "oy": 36.76,
+  "ppu": 45.255,
+  "species": "eggplant",
+  "stage": 3,
+  "w": 72
+ },
+ "garlic_2": {
+  "group": "spice",
+  "h": 46,
+  "ox": 36.86,
+  "oy": 27.84,
+  "ppu": 45.255,
+  "species": "garlic",
+  "stage": 2,
+  "w": 71
+ },
+ "garlic_3": {
+  "group": "spice",
+  "h": 47,
+  "ox": 34.0,
+  "oy": 28.72,
+  "ppu": 45.255,
+  "species": "garlic",
+  "stage": 3,
+  "w": 68
+ },
+ "ginger_2": {
+  "group": "spice",
+  "h": 46,
+  "ox": 36.86,
+  "oy": 27.84,
+  "ppu": 45.255,
+  "species": "ginger",
+  "stage": 2,
+  "w": 71
+ },
+ "ginger_3": {
+  "group": "spice",
+  "h": 44,
+  "ox": 39.87,
+  "oy": 25.7,
+  "ppu": 45.255,
+  "species": "ginger",
+  "stage": 3,
+  "w": 80
+ },
  "gourd_0": {
   "group": "gourd",
   "h": 38,
@@ -179,6 +319,86 @@
   "w": 68,
   "zmax_px": 4.85
  },
+ "korean_melon_2": {
+  "group": "gourd",
+  "h": 45,
+  "ox": 34.0,
+  "oy": 26.65,
+  "ppu": 45.255,
+  "species": "korean_melon",
+  "stage": 2,
+  "w": 68
+ },
+ "korean_melon_3": {
+  "group": "gourd",
+  "h": 50,
+  "ox": 34.0,
+  "oy": 31.51,
+  "ppu": 45.255,
+  "species": "korean_melon",
+  "stage": 3,
+  "w": 68
+ },
+ "lettuce_2": {
+  "group": "veg",
+  "h": 41,
+  "ox": 34.04,
+  "oy": 22.74,
+  "ppu": 45.255,
+  "species": "lettuce",
+  "stage": 2,
+  "w": 69
+ },
+ "lettuce_3": {
+  "group": "veg",
+  "h": 44,
+  "ox": 34.85,
+  "oy": 22.98,
+  "ppu": 45.255,
+  "species": "lettuce",
+  "stage": 3,
+  "w": 69
+ },
+ "millet_2": {
+  "group": "grain",
+  "h": 60,
+  "ox": 34.0,
+  "oy": 41.52,
+  "ppu": 45.255,
+  "species": "millet",
+  "stage": 2,
+  "w": 68
+ },
+ "millet_3": {
+  "group": "grain",
+  "h": 61,
+  "ox": 37.63,
+  "oy": 42.59,
+  "ppu": 45.255,
+  "species": "millet",
+  "stage": 3,
+  "w": 73
+ },
+ "mulberry_leaf_2": {
+  "group": "special",
+  "h": 41,
+  "ox": 34.0,
+  "oy": 22.8,
+  "ppu": 45.255,
+  "species": "mulberry_leaf",
+  "stage": 2,
+  "w": 68
+ },
+ "mulberry_leaf_3": {
+  "group": "special",
+  "h": 41,
+  "ox": 34.43,
+  "oy": 22.72,
+  "ppu": 45.255,
+  "species": "mulberry_leaf",
+  "stage": 3,
+  "w": 69
+ },
  "oil_0": {
   "group": "oil",
   "h": 38,
@@ -238,6 +458,46 @@
   "stage": 5,
   "w": 68,
   "zmax_px": 5.33
+ },
+ "radish_2": {
+  "group": "veg",
+  "h": 41,
+  "ox": 34.04,
+  "oy": 22.74,
+  "ppu": 45.255,
+  "species": "radish",
+  "stage": 2,
+  "w": 69
+ },
+ "radish_3": {
+  "group": "veg",
+  "h": 57,
+  "ox": 34.0,
+  "oy": 38.56,
+  "ppu": 45.255,
+  "species": "radish",
+  "stage": 3,
+  "w": 68
+ },
+ "sorghum_2": {
+  "group": "grain",
+  "h": 60,
+  "ox": 34.0,
+  "oy": 41.52,
+  "ppu": 45.255,
+  "species": "sorghum",
+  "stage": 2,
+  "w": 68
+ },
+ "sorghum_3": {
+  "group": "grain",
+  "h": 63,
+  "ox": 34.0,
+  "oy": 44.61,
+  "ppu": 45.255,
+  "species": "sorghum",
+  "stage": 3,
+  "w": 68
  },
  "special_0": {
   "group": "special",
@@ -359,6 +619,26 @@
   "w": 68,
   "zmax_px": 5.18
  },
+ "tea_2": {
+  "group": "special",
+  "h": 41,
+  "ox": 34.0,
+  "oy": 22.8,
+  "ppu": 45.255,
+  "species": "tea",
+  "stage": 2,
+  "w": 68
+ },
+ "tea_3": {
+  "group": "special",
+  "h": 46,
+  "ox": 34.0,
+  "oy": 27.52,
+  "ppu": 45.255,
+  "species": "tea",
+  "stage": 3,
+  "w": 68
+ },
  "tuber_0": {
   "group": "tuber",
   "h": 38,
@@ -419,6 +699,26 @@
   "w": 68,
   "zmax_px": 6.14
  },
+ "turnip_2": {
+  "group": "veg",
+  "h": 41,
+  "ox": 34.04,
+  "oy": 22.74,
+  "ppu": 45.255,
+  "species": "turnip",
+  "stage": 2,
+  "w": 69
+ },
+ "turnip_3": {
+  "group": "veg",
+  "h": 51,
+  "ox": 37.77,
+  "oy": 32.6,
+  "ppu": 45.255,
+  "species": "turnip",
+  "stage": 3,
+  "w": 72
+ },
  "veg_0": {
   "group": "veg",
   "h": 38,
@@ -478,5 +778,25 @@
   "stage": 5,
   "w": 68,
   "zmax_px": 6.16
+ },
+ "water_dropwort_2": {
+  "group": "veg",
+  "h": 41,
+  "ox": 34.04,
+  "oy": 22.74,
+  "ppu": 45.255,
+  "species": "water_dropwort",
+  "stage": 2,
+  "w": 69
+ },
+ "water_dropwort_3": {
+  "group": "veg",
+  "h": 48,
+  "ox": 34.0,
+  "oy": 29.95,
+  "ppu": 45.255,
+  "species": "water_dropwort",
+  "stage": 3,
+  "w": 68
  }
 }

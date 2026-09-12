@@ -101,8 +101,11 @@ ok(bad === 0, `${SLUGS.length * STAGES}장 전수 — 앵커 ↔ PNG 크기 일�
 {
   const PPU = +(64 / Math.SQRT2).toFixed(3);
   const off = Object.keys(AN).filter((k) => Math.abs(AN[k].ppu - PPU) > 0.01);
-  ok(Object.keys(AN).length === SLUGS.length * STAGES && off.length === 0,
-     `앵커 ${Object.keys(AN).length}키 · ppu 전수 = ${PPU}(게임 해상도 — 가구와 같은 규격)` +
+  // ★[T205] 앵커엔 군 판 48 + **종별 판**(자가 고른 종 × 2단계)이 함께 산다. 수를 여기 안 적는다 —
+  //   군 키는 `SLUGS × STAGES` 로 셈하고, 나머지는 전부 종별이어야 한다(⑥ 이 그 목록을 검사한다).
+  const _grpKeys = Object.keys(AN).filter((k) => SLUGS.includes(String(k).replace(/_\d+$/, '')));
+  ok(_grpKeys.length === SLUGS.length * STAGES && off.length === 0,
+     `앵커 ${Object.keys(AN).length}키(군 ${_grpKeys.length} + 종별 ${Object.keys(AN).length - _grpKeys.length}) · ppu 전수 = ${PPU}(게임 해상도 — 가구와 같은 규격)` +
      (off.length ? ` 어긋남 ${JSON.stringify(off.slice(0, 4))}` : ''));
   // ★바닥이 셀 다이아인가 — 가장 넓은 불투명 행이 **정확히 64px** 이어야 한다(1셀 = 64px).
   //   눈대중 48/64 를 클라에 적던 시절의 반대다: 이제 굽는 쪽이 셀을 맞추고 클라는 앵커만 읽는다.
@@ -131,7 +134,8 @@ ok(bad === 0, `${SLUGS.length * STAGES}장 전수 — 앵커 ↔ PNG 크기 일�
 }
 {
   const files = fs.readdirSync(DIR).filter((f) => f.endsWith('.png')).map((f) => f.slice(0, -4));
-  const orphan = files.filter((f) => !(f in meta));
+  // ★[T205] 종별 판은 미아가 아니다 — **앵커가 이름을 댄다**(목록을 여기 안 적는다).
+  const orphan = files.filter((f) => !(f in meta) && !(f in AN));
   ok(orphan.length === 0, `옛 스프라이트가 안 남았다 (남은 것 ${orphan.length}${orphan.length ? ': ' + orphan.join(', ') : ''})`);
 }
 
@@ -321,8 +325,64 @@ if (SELFTEST) {
   chk(!/73856093/.test('const h = (wx*73856093) ^ (wy*19349663);'), '[오염] 좌표 해시를 되살리면 ③ 이 잡는다');
   // ④를 깬다 — 맨 흙 여덟 장이 다 같다면
   chk(new Set(['a', 'a', 'a', 'a', 'a', 'a', 'a', 'a']).size === 8, '[오염] 익은 밭이 다 같으면 ④ 가 잡는다');
-  console.log('결과: ' + (s2 === 3 ? 'PASS(검사기가 오염 3건을 다 잡았다)' : `FAIL(${s2}/3 만 잡았다)`));
-  process.exit(s2 === 3 ? 0 : 1);
+  // ★[T205] ⑥을 깬다 — 종별 판 이름에 유령을 넣으면 ⑥ⓐ 가 잡는다
+  chk(new Set(C.list().map((c) => c.id)).has('__ghost__'), '[오염] 종별 판에 유령 이름이 있으면 ⑥ⓐ 가 잡는다');
+  // ★[T205] ⑥을 깬다 — 종별 판 단계가 2·3 밖이면 ⑥ⓑ 가 잡는다
+  chk(/_(2|3)$/.test('lettuce_1'), '[오염] 종별 판 단계가 0·1·4·5 면 ⑥ⓑ 가 잡는다');
+  console.log('결과: ' + (s2 === 5 ? 'PASS(검사기가 오염 5건을 다 잡았다)' : `FAIL(${s2}/5 만 잡았다)`));
+  process.exit(s2 === 5 ? 0 : 1);
 }
+// ══════════════════════════════════════════════════════════════════════════════
+// ★★★[T205] 종별 판 — **자가 고른 종만** 있고, 없는 종은 군으로 떨어진다
+console.log('\n[⑥ 종별 판 — 목록은 굽기가 낸 앵커가 말한다(손편집 0) · 폴백은 군 (T205)]');
+{
+  const A = AN;
+  const SLUG = new Set(SLUGS);                              // 군 슬러그 여덟
+  const spKeys = Object.keys(A).filter((k) => { const m = /^(\w+)_(\d)$/.exec(k); return m && !SLUG.has(m[1]); });
+  const species = [...new Set(spKeys.map((k) => k.replace(/_\d$/, '')))].sort();
+  ok(species.length > 0, `★종별 판을 가진 종 ${species.length} — ${species.join(' ')}`);
+  // ⓐ 종 이름은 **서버 작물표에 있는 것**이어야 한다(지어낸 키 0)
+  const ids = new Set(C.list().map((c) => c.id));
+  const ghost = species.filter((k) => !ids.has(k));
+  ok(ghost.length === 0, `종별 판의 이름이 전부 서버 작물이다 ${ghost.length ? '— 유령: ' + ghost.join(' ') : ''}`);
+  // ⓑ 단계는 **2·3 뿐**이다 — 0·1·4·5 는 종을 안 묻는다(군 판이 산다)
+  const badSt = spKeys.filter((k) => !/_(2|3)$/.test(k));
+  ok(badSt.length === 0, `종별 판의 단계가 2·3 뿐 ${badSt.length ? '— 그 밖: ' + badSt.join(' ') : `(${spKeys.length}장 = ${species.length}종 × 2)`}`);
+  ok(spKeys.length === species.length * 2, `종마다 두 장이 다 있다(자람·익음) — ${spKeys.length}장`);
+  // ⓒ 파일이 실재하고 앵커와 치수가 맞는다
+  const badF = [];
+  for (const k of spKeys) {
+    const f = path.join(DIR, k + '.png');
+    if (!fs.existsSync(f)) { badF.push(k + '(없음)'); continue; }
+    const d = fs.readFileSync(f);
+    const w = d.readUInt32BE(16), h = d.readUInt32BE(20);
+    if (w !== A[k].w || h !== A[k].h) badF.push(`${k} ${w}x${h}!=${A[k].w}x${A[k].h}`);
+  }
+  ok(badF.length === 0, `종별 판 파일 전수 존재·치수 일치 ${badF.length ? '— ' + badF.slice(0, 4).join(', ') : ''}`);
+  // ⓓ ★군 판은 **그대로 산다** — 종별이 아닌 종은 군으로 떨어진다(폴백이 살아 있다)
+  const noSp = C.list().map((c) => c.id).filter((k) => !species.includes(k));
+  ok(noSp.length > 0, `종별 판이 **없는** 종 ${noSp.length} — 이들은 군 판으로 떨어진다(폴백 · ${noSp.slice(0, 6).join(' ')} …)`);
+  // ⓔ ★클라가 그 규약대로 고른다 — 종이 먼저, 없으면 군(목록 사본 0)
+  const c00 = fs.readFileSync(CONST, 'utf8');
+  const cs = c00.match(/function cropSprite\([\s\S]*?\n\}/)[0];
+  ok(/CROP_SPR\[crop\]/.test(cs) && /_slug\[CROP_SPR\._of\[crop\]\]/.test(cs),
+     '★클라 `cropSprite` 가 **종 먼저 · 군 폴백**이다');
+  // ★주석은 소스가 아니다 — 검사 범위를 넓히면 검사가 거짓말한다(T95·T182 의 그 함정).
+  const c00code = c00.split('\n').filter((l) => !/^\s*(\/\/|\*)/.test(l)).join('\n').replace(/\/\/[^\n]*/g, '');
+  ok(!/lettuce|sorghum|ginger|cucumber/.test(c00code), '★클라 **코드**에 종 목록 사본이 없다(표가 말한다)');
+  // ⓕ 자명 통과 금지 — 종별 판이 군 판과 **실제로 다른 그림**이다
+  {
+    const idat = (f) => { const b = fs.readFileSync(f); let i = 8; const q = [];
+      while (i < b.length) { const ln = b.readUInt32BE(i), t = b.toString('ascii', i + 4, i + 8);
+        if (t === 'IDAT') q.push(b.subarray(i + 8, i + 8 + ln)); i += 12 + ln; }
+      return require('crypto').createHash('sha1').update(Buffer.concat(q)).digest('hex'); };
+    const same = species.filter((sp) => {
+      const g = A[sp + '_3'] && A[sp + '_3'].group; if (!g) return false;
+      return idat(path.join(DIR, sp + '_3.png')) === idat(path.join(DIR, g + '_3.png'));
+    });
+    ok(same.length === 0, `★종별 익음 판이 군 판과 **다른 그림**이다 ${same.length ? '— 같은 것: ' + same.join(' ') : `(${species.length}종 전수)`}`);
+  }
+}
+
 console.log('\n결과: ' + (fail ? `FAIL(${fail})` : 'PASS'));
 process.exit(fail ? 1 : 0);
