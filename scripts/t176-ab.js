@@ -202,6 +202,12 @@ const JOBNAMES = econ.JOB_NAMES || Object.keys(econ.JOBS || {});   // ★정본 
 const _ECONSRC = fs.readFileSync(path.join(__dirname, '..', 'sim', 'economy-sim.js'), 'utf8');
 const _constOf = (name) => { const m = _ECONSRC.match(new RegExp('const\\s+' + name + '\\s*=\\s*([0-9.]+)\\s*;')); return m ? +m[1] : null; };
 const HOUSE_WOOD = _constOf('HOUSE_WOOD'), HOUSE_DECAY = _constOf('HOUSE_DECAY');
+// ★[T210] 연료 절의 정본 상수 — 같은 규약(옮겨 적지 않고 정본 소스에서 읽는다)
+const FIREWOOD_PC = _constOf('FIREWOOD_PC'), FUEL_COLD_W = _constOf('FUEL_COLD_W'),
+      SMELT_FUEL_PER = _constOf('SMELT_FUEL_PER'), STRAW_FUEL_PER_FOOD = _constOf('STRAW_FUEL_PER_FOOD'),
+      FUEL_HEALTH_W = _constOf('FUEL_HEALTH_W'), POP_GROWTH_RATE = _constOf('POP_GROWTH_RATE');
+// ★건강 → 인구식 계수도 정본 줄에서 읽는다(`_healthTerm = (stats.health − 0.5) × w × N × POP_GROWTH_RATE`)
+const HEALTH_DP_W = (() => { const m = _ECONSRC.match(/_healthTerm = \(stats\.health - 0\.5\) \* ([0-9.]+) \* N \* POP_GROWTH_RATE;/); return m ? +m[1] : null; })();
 const P = Villages.__labProbe;
 const CP = P._cropProbe;
 const CL = P._clearProbe || null;
@@ -283,6 +289,12 @@ const M = vils.map(() => ({ harvestN: 0, units: 0, foodEq: 0, sow: 0, fDays: 0, 
   woodStockSum: 0, woodZeroDays: 0,   // 재고 평균 · **한 채도 못 지을 만큼 모자란 날**(재고 < HOUSE_WOOD)
   priceWoodSum: 0, priceWoodN: 0,     // 목재 그림자가격 표본(식량과 같은 자리·같은 문법)
   fuelCovSum: 0,
+  // ★[T210] 연료 수요·공급 분해 + `_fuelCov` 가 건강에 하는 일(전부 정본 값·정본 식 · 새 수 0)
+  fuelNeedSum: 0, fuelNeedHeat: 0, fuelNeedSmelt: 0, fuelColdSum: 0,
+  strawSum: 0, lowSum: 0, woodFuelSum: 0,     // 공급 세 갈래(볏짚 · 하급 · 목재)
+  covLtDays: 0, covMin: 9,                     // 충당률이 1 미만인 날 · 최저
+  dHealthSum: 0, dHpmSum: 0, dHealthTermSum: 0,   // `_fuelCov=1` 로 떼면 돌아오는 몫(닫힌 꼴 · 첫째 차수)
+  healthSum: 0, hpmSum: 0, dpHealthSum: 0, dpSum: 0, statDays: 0,
   d40: null,                      // 40일째 한 장(게이트가 처음 걸리는 그 날 · 카드 ④)
   traj: [] }));                   // ⓒ 궤적(20일마다)
 const IX = new Map(vils.map((v, i) => [v, i]));
@@ -315,8 +327,10 @@ for (let day = 0; day < DAYS; day++) {
     if (_h != null && m._hPrev != null) { const d = _h - m._hPrev; m.houseDelta += d; if (d > 1e-9) m.houseUp++; else if (d < -1e-9) m.houseDown++; }
     // ★[T207] 그날 **지은 양** — 정본은 `housing *= (1−HOUSE_DECAY)` 뒤 `housing += built` 이므로
     //   `built = housing_t − housing_{t−1}×(1−HOUSE_DECAY)` 다(역산 · 새 수 0).
+    m._builtToday = 0;
     if (_h != null && m._hPrev != null && HOUSE_DECAY != null) {
       const _b = _h - m._hPrev * (1 - HOUSE_DECAY);
+      m._builtToday = _b > 1e-12 ? _b : 0;
       if (_b > 1e-12) { m.builtSum += _b; if (HOUSE_WOOD != null) m.woodBuilt += _b * HOUSE_WOOD; }
     }
     if (_h != null) m._hPrev = _h;
@@ -324,7 +338,36 @@ for (let day = 0; day < DAYS; day++) {
     m.woodCons += +((ev._consDay && ev._consDay.wood) || 0);
     const _ws = +((ev.storage.wood || 0));
     m.woodStockSum += _ws; if (HOUSE_WOOD != null && _ws < HOUSE_WOOD) m.woodZeroDays++;
-    m.fuelCovSum += +((ev._fuelCov != null ? ev._fuelCov : 1));
+    const _cov = +((ev._fuelCov != null ? ev._fuelCov : 1));
+    m.fuelCovSum += _cov;
+    if (_cov < 1) m.covLtDays++;
+    if (_cov < m.covMin) m.covMin = _cov;
+    // ★[T210] 수요 — 정본 `:3012` 그대로: `N × FIREWOOD_PC × (1 + FUEL_COLD_W × 한랭) + 제련공 × SMELT_FUEL_PER`
+    if (n > 0 && FIREWOOD_PC != null) {
+      const _cold = +((ev._coldStress || 0));
+      const _sm = ((ev.counts && ev.counts.smith) || 0) + ((ev.counts && ev.counts.weaponsmith) || 0) + ((ev.counts && ev.counts.armorsmith) || 0);
+      const _heat = n * FIREWOOD_PC * (1 + FUEL_COLD_W * _cold), _smN = _sm * SMELT_FUEL_PER;
+      m.fuelNeedHeat += _heat; m.fuelNeedSmelt += _smN; m.fuelNeedSum += _heat + _smN; m.fuelColdSum += _cold;
+      // ★공급 — 목재분은 `_consDay.wood − 건축분`(T207 문법 · `_cons(v,'wood',…)` 유출이 둘뿐)
+      const _wf = +((ev._consDay && ev._consDay.wood) || 0) - (m._builtToday || 0) * (HOUSE_WOOD || 0);
+      m.woodFuelSum += _wf;
+      // ★볏짚 — 정본 `:3011` 그대로. `_grainToday` 는 틱 안에서 비워지지만 그 값은 `dailyProductionBuf.food`
+      //   와 **같다**(끈 팔은 `addProduce` 가 둘 다에 같은 `amt` 를 적고, 켠 팔+장부는 T193 줄이 그렇게 맞춘다).
+      const _straw = Math.min(n * FIREWOOD_PC, _led * STRAW_FUEL_PER_FOOD);
+      m.strawSum += _straw;
+      // ★하급 연료 — 나머지(충당률 × 수요 − 목재 − 볏짚). 잔차가 아니라 **정본 항등식**의 남은 한 자리다.
+      m.lowSum += Math.max(0, _cov * (_heat + _smN) - _wf - _straw);
+    }
+    // ★[T210] `_fuelCov = 1` 로 떼면 — 그 항은 `:118` 한 줄의 **닫힌 꼴**이라 정확히 떼어진다(첫째 차수).
+    if (ev.lastStats && typeof ev.lastStats.health === 'number' && FUEL_HEALTH_W != null) {
+      const h = ev.lastStats.health, dh = _cov < 1 ? (1 - _cov) * FUEL_HEALTH_W : 0;
+      const hp = (x) => Math.max(0.9, Math.min(1.1, 1 + (x - 0.5) * econ.HEALTH_PROD_W));
+      m.healthSum += h; m.hpmSum += hp(h); m.statDays++;
+      m.dHealthSum += dh; m.dHpmSum += hp(h + dh) - hp(h);
+      m.dHealthTermSum += dh * (HEALTH_DP_W || 0) * n * (POP_GROWTH_RATE || 0);   // 계수도 `:3101` 정본 줄에서 읽었다
+      m.dpHealthSum += (ev._dpDebug ? +ev._dpDebug.health : 0);
+      m.dpSum += (ev._dpDebug ? +ev._dpDebug.dP : 0);
+    }
     if (day % 10 === 0 && typeof world.priceFn === 'function') {
       try { const _pw = world.priceFn(ev); if (_pw && _pw.wood > 0) { m.priceWoodSum += _pw.wood; m.priceWoodN++; } } catch (e) {}
     }
@@ -420,7 +463,16 @@ for (let i = 0; i < world.villages.length; i++) {
     woodStockEnd: +((v.storage.wood || 0)).toFixed(1),
     woodImported: +((v.tradeStats && v.tradeStats.woodImported) || 0).toFixed(1),
     priceWood: m.priceWoodN ? +(m.priceWoodSum / m.priceWoodN).toFixed(4) : null,
-    fuelCovMean: +(m.fuelCovSum / DAYS).toFixed(4),
+    fuelCovMean: +(m.fuelCovSum / DAYS).toFixed(4), covLtDays: m.covLtDays, covMin: +m.covMin.toFixed(4),
+    fuelNeed: +m.fuelNeedSum.toFixed(1), fuelHeat: +m.fuelNeedHeat.toFixed(1), fuelSmelt: +m.fuelNeedSmelt.toFixed(1),
+    coldMean: +(m.fuelColdSum / DAYS).toFixed(4),
+    supStraw: +m.strawSum.toFixed(1), supLow: +m.lowSum.toFixed(1), supWood: +m.woodFuelSum.toFixed(1),
+    healthMean: m.statDays ? +(m.healthSum / m.statDays).toFixed(4) : null,
+    hpmMean: m.statDays ? +(m.hpmSum / m.statDays).toFixed(5) : null,
+    dHealthMean: m.statDays ? +(m.dHealthSum / m.statDays).toFixed(5) : null,
+    dHpmMean: m.statDays ? +(m.dHpmSum / m.statDays).toFixed(6) : null,
+    dHealthTermSum: +m.dHealthTermSum.toFixed(2),
+    dpHealthSum: +m.dpHealthSum.toFixed(2), dpSum: +m.dpSum.toFixed(2),
     mapBeds: v._mapBeds != null ? +v._mapBeds : null, d40: m.d40,
     surplusMean: +(m.surplusSum / DAYS).toFixed(4), surplusNegDays: m.surplusNegDays,
     famineDays: m.famineDays, clearedFracDays: m.clearedFracDays,
@@ -499,6 +551,18 @@ const out = {
   priceWoodMean: +(per.filter((p) => p.priceWood != null).reduce((a, p) => a + p.priceWood, 0)
                    / Math.max(1, per.filter((p) => p.priceWood != null).length)).toFixed(4),
   fuelCovMean: +(per.reduce((a, p) => a + p.fuelCovMean, 0) / Math.max(1, per.length)).toFixed(4),
+  FIREWOOD_PC, FUEL_COLD_W, SMELT_FUEL_PER, STRAW_FUEL_PER_FOOD, FUEL_HEALTH_W, POP_GROWTH_RATE, HEALTH_DP_W,
+  HEALTH_PROD_W: econ.HEALTH_PROD_W,
+  fuelNeedTot: +per.reduce((a, p) => a + p.fuelNeed, 0).toFixed(1),
+  fuelHeatTot: +per.reduce((a, p) => a + p.fuelHeat, 0).toFixed(1),
+  fuelSmeltTot: +per.reduce((a, p) => a + p.fuelSmelt, 0).toFixed(1),
+  supStrawTot: +per.reduce((a, p) => a + p.supStraw, 0).toFixed(1),
+  supLowTot: +per.reduce((a, p) => a + p.supLow, 0).toFixed(1),
+  supWoodTot: +per.reduce((a, p) => a + p.supWood, 0).toFixed(1),
+  covLtDaysTot: per.reduce((a, p) => a + p.covLtDays, 0),
+  dHealthTermTot: +per.reduce((a, p) => a + p.dHealthTermSum, 0).toFixed(2),
+  dpHealthTot: +per.reduce((a, p) => a + p.dpHealthSum, 0).toFixed(2),
+  dpTot: +per.reduce((a, p) => a + p.dpSum, 0).toFixed(2),
   caravansTot: per.reduce((a, p) => a + p.caravans, 0),
   floorTot: +world.villages.reduce((a, v) => a + (v._t100FloorTot || 0), 0).toFixed(1),
   floorDaysTot: M.reduce((a, m) => a + m.floorDays, 0),
