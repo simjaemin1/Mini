@@ -1155,13 +1155,18 @@ const server = http.createServer(async (req, res) => {
       return jsonResp(res, 200, { ok: true, tribe_id: t.id, name: t.name, behavior_tier: tier });
     }
     // === ★[T128] 길드 초대 · 승인제 · 소개문 ===
-    //   ⚠이름으로 사람을 찾는 정본은 `findAccount` 하나다(T115 와 같은 자리).
+    //   ⚠이름으로 사람을 찾는 정본은 `findPerson` 하나다(T208 이 예약 술어에서 떼어낸 그 술어).
+    //   ★★[T211 2026-09-12] **부름도 지목이다.** T208 이 친구 셋을 옮길 때 이 한 자리가 `findAccount`
+    //     (= 예약 술어 · `password_hash IS NOT NULL`)로 남아 있었고, 그래서 **벗은 될 수 있는데
+    //     길드에는 못 불리는** 사람이 생겼다 — 게스트는 영속 신원인데(T115) 문이 아니라 벽이었다.
+    //     ⚠수락 쪽(`/tribe/invite_accept`·`/tribe/invites`)은 처음부터 `player_id` 로 물어서 멀쩡했다 —
+    //       막혀 있던 것은 **이름으로 지목하는 그 한 줄**뿐이다(§0-ⓐ 표).
     if (req.url === '/tribe/invite' && req.method === 'POST') {
       const { player_id: pid, name } = await readBody(req);
       const me = stmtGetPlayer.get(String(pid || ''));
       if (!me) return jsonResp(res, 404, { ok: false, reason: 'no_self' });
       if (!me.tribe_id) return jsonResp(res, 200, { ok: false, reason: 'not_in_tribe' });
-      const other = findAccount(String(name || '').trim());
+      const other = findPerson(String(name || '').trim());   // ★[T211] 지목 — 게스트도 불린다
       if (!other) return jsonResp(res, 200, { ok: false, reason: 'no_such_name' });
       if (other.player_id === me.player_id) return jsonResp(res, 200, { ok: false, reason: 'self' });
       if (other.tribe_id === me.tribe_id) return jsonResp(res, 200, { ok: false, reason: 'already_member' });

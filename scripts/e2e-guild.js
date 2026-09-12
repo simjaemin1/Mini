@@ -66,6 +66,25 @@ function connect(username, password) {
     C.beat = setInterval(() => { try { if (ws.readyState === 1) ws.send(JSON.stringify({ type: 'ping' })); } catch (e) {} }, 2000);
   });
 }
+// ── ★[T211] 게스트 손님 — 이름·비밀번호가 아니라 **토큰**으로 붙는다(클라가 하는 그대로) ──
+//   ⚠`username` 을 안 보낸다. 그게 게스트의 정의다(`myUsername = inputName; // 빈 문자열이면 게스트`).
+function connectGuest(token) {
+  return new Promise((resolve, reject) => {
+    const q = new URLSearchParams({ name: '여행자', color: '#5a9ae0' });
+    if (token) q.set('guest_token', token);
+    const ws = new WebSocket(`ws://localhost:${ZPORT}/?${q}`);
+    const C = { ws, username: null, pid: null, playerId: null, notices: [], kinds: [], closed: false };
+    const to = setTimeout(() => reject(new Error('게스트 접속 시간초과')), 30000);
+    ws.on('message', (raw) => {
+      let m = null; try { m = JSON.parse(String(raw)); } catch (e) { return; }
+      if (m.type === 'welcome') { C.pid = m.pid; C.playerId = m.playerId; clearTimeout(to); resolve(C); }
+      else if (m.type === 'notice') { C.notices.push(String(m.text || '')); C.kinds.push(String(m.kind || '')); }
+    });
+    ws.on('error', (e) => { clearTimeout(to); reject(e); });
+    ws.on('close', () => { C.closed = true; });
+    C.beat = setInterval(() => { try { if (ws.readyState === 1) ws.send(JSON.stringify({ type: 'ping' })); } catch (e) {} }, 2000);
+  });
+}
 const say = (C, text) => { try { C.ws.send(JSON.stringify({ type: 'chat', text })); } catch (e) {} };
 const close = (C) => { try { clearInterval(C.beat); C.ws.close(); } catch (e) {} };
 const last = (C) => JSON.stringify(C.notices.slice(-1));
@@ -237,6 +256,50 @@ const last = (C) => JSON.stringify(C.notices.slice(-1));
     const Q1 = await connect('quiet', 'pw9'); await sleep(2500);
     ok(Q1.notices.length === 0, '④f ★부름이 없는 사람에게는 **한 줄도 안 뜬다**', JSON.stringify(Q1.notices));
     close(Q1);
+  }
+
+  // ── ⑨ ★★[T211] **게스트도 길드에 불린다** — 지목 술어 하나가 남아 있었다 ──
+  //   T208 이 친구 셋(`/friend/req`·`/friend/del`·`?by=name`)을 `findPerson` 으로 옮길 때
+  //   `/tribe/invite` 하나가 `findAccount`(= 예약 술어 · `password_hash IS NOT NULL`)로 남았다.
+  //   그래서 **벗은 될 수 있는데 길드에는 못 불리는** 사람이 생겼다 — 문이 아니라 벽이다.
+  //   ⚠이 절은 §② 가 걸어 둔 **초대제** 길드에 든다 — 부름이 진짜 문 노릇을 하는지 같이 잰다.
+  {
+    const g1 = await jpost(`${CEN}/guest`, {});
+    const gname = g1 && g1.player && g1.player.name;
+    ok(!!(g1 && g1.ok && gname && /^여행자/.test(gname)), '⑨ 전제: 게스트 신원이 **제 이름**을 갖고 발급된다(T208)', gname);
+    const G = await connectGuest(g1.token); await sleep(1200);
+    ok(G.playerId === g1.player_id, '⑨a 전제: 존이 그 신원을 그대로 받는다(1회용 폴백이 아니다)', G.playerId);
+    //   ⓐ 부른다 — 고치기 전엔 여기서 `'여행자XXXX' 은 없는 이름이다` 가 나왔다
+    L.notices.length = 0; G.notices.length = 0;
+    say(L, `/초대 ${gname}`); await sleep(1800);
+    ok(L.notices.some((t) => /불렀다/.test(t)), '⑨ ★★**게스트를 길드로 부를 수 있다**(T208 회부 1 이 닫힌다)', last(L));
+    ok(G.notices.some((t) => /부른다/.test(t)), '⑨b 불린 게스트에게 **알림이 간다**', JSON.stringify(G.notices.slice(-1)));
+    ok(G.kinds.includes('guild'), '⑨b2 그 알림의 종류는 `guild` 다(새 종류 0)', JSON.stringify(G.kinds.slice(-2)));
+    //   ⓑ 든다 — 초대제 길드라 **부름이 있어야** 지난다
+    const before = await jget(`${CEN}/player/${encodeURIComponent(G.playerId)}`);
+    ok(!!before && !before.player.tribe_id, '⑨c 전제 — 아직 길드에 안 들어 있다(아래가 자명 통과가 아니다)');
+    G.notices.length = 0; say(G, '/수락'); await sleep(2000);
+    ok(G.notices.some((t) => /에 들었다/.test(t)), '⑨ ★게스트가 `/수락` 한 마디로 든다', JSON.stringify(G.notices.slice(-1)));
+    const after = await jget(`${CEN}/player/${encodeURIComponent(G.playerId)}`);
+    ok(!!after && after.player.tribe_id === TID, '⑨d 가입의 정본(`players.tribe_id`)이 실제로 바뀌었다', after && after.player.tribe_id);
+    //   ⓒ **밀린 부름**도 게스트에게 선다(T139 의 그 자리 — 표도 코드도 그대로다)
+    const g2 = await jpost(`${CEN}/guest`, {});
+    const gname2 = g2 && g2.player && g2.player.name;
+    const G2a = await connectGuest(g2.token); await sleep(600); close(G2a); await sleep(1200);
+    L.notices.length = 0; say(L, `/초대 ${gname2}`); await sleep(1800);
+    ok(L.notices.some((t) => /불렀다/.test(t)), '⑨e 전제: 꺼져 있는 게스트도 부를 수는 있다', last(L));
+    const G2b = await connectGuest(g2.token); await sleep(2500);
+    ok(G2b.notices.some((t) => /\[돌칼\] 이\(가\) 자네를 부른다/.test(t)),
+      '⑨ ★밀린 부름이 **게스트에게도** 다음 접속에 말이 된다(T139 문법 그대로)', JSON.stringify(G2b.notices));
+    close(G2b);
+    //   ⓓ 승계 뒤에도 **길드가 그대로다** — 행을 갈아치우지 않으니(배치 14 ①) 당연해야 한다
+    const pr = await jpost(`${CEN}/promote`, { token: g1.token, username: 'promoted-g', password: 'pw-t211' });
+    ok(!!(pr && pr.ok && pr.player && pr.player.player_id === g1.player_id), '⑨f 승계는 같은 `player_id` 위에 이름을 얹는다', pr && pr.player && pr.player.name);
+    ok(!!(pr && pr.player && pr.player.tribe_id === TID), '⑨ ★승계 뒤에도 **길드가 그대로다**(소속은 pid 에 달려 있다)', pr && pr.player && pr.player.tribe_id);
+    //   ⓔ 자명 통과 금지 — 아무 이름이나 불리는 게 아니다
+    L.notices.length = 0; say(L, '/초대 여행자없음'); await sleep(1500);
+    ok(L.notices.some((t) => /없는 이름이다/.test(t)), '⑨g ★자명 통과 금지 — 없는 이름은 여전히 없다', last(L));
+    close(G);
   }
 
   // ── ⑤ central 이 죽어도 세계는 안 멎는다 ────────────────────────────────
