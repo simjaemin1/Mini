@@ -93,7 +93,9 @@ const imp = seeds.map(() => ({}));     // vid → {item: qty}
 const seenReturn = new Set();
 // 바닥 마을의 `돌<0.2` 일수 · 수출 가능 잉여 품목(출발 leg 문턱 그대로 물어본다)
 const rows = world.villages.map((v, i) => ({ vid: i, name: v.name, floor: isFloor(v), stone0: 0, days: 0,
-  toolLow: 0, expCand: {}, stoneImp: 0, stoneExp: 0 }));
+  toolLow: 0, expCand: {}, stoneImp: 0, stoneExp: 0,
+  // ★[T180] 수출 문턱이 왜 안 무나 — **순간 재고**의 꼬리를 본다(문턱은 `N×0.64` 라 0.2 와 자리가 다르다)
+  stoneMax: 0, dGt10: 0, dGt50: 0, popEnd: 0 }));
 
 const SUBS = econV2.__t173 && econV2.__t173.SUBSISTENCE_PER_NPC;   // 없으면 아래 근사 안 쓴다
 
@@ -115,7 +117,11 @@ for (let d = 0; d < DAYS; d++) {
     const v = world.villages[i], r = rows[i];
     if (!v.npcs || !v.npcs.length) continue;
     r.days++;
-    if ((v.storage.stone || 0) < 0.2) r.stone0++;
+    const _st = v.storage.stone || 0;
+    if (_st < 0.2) r.stone0++;
+    if (_st > r.stoneMax) r.stoneMax = _st;
+    if (_st > 10) r.dGt10++;
+    if (_st > 50) r.dGt50++;
     if ((v.storage.tool || 0) < 0.05) r.toolLow++;
   }
   ledger.scanDay(world, d);
@@ -128,6 +134,7 @@ for (let i = 0; i < world.villages.length; i++) {
   for (const k in eb) r.expCand[k] = eb[k];
   r.stoneExp = eb.stone || 0;
   r.stoneImp = imp[i].stone || 0;
+  r.popEnd = (v.npcs && v.npcs.length) || 0;
 }
 
 const fl = rows.filter((r) => r.floor), rest = rows.filter((r) => !r.floor);
@@ -173,6 +180,13 @@ for (const [lab, g] of [['**바닥**', fl], ['그 밖', rest]]) {
   console.log(`  파는 마을(돌 수출 > 0): **${sellers.length}곳** / 그 밖 ${rest.length}곳 — ${sellers.slice(0, 8).map((r) => `${r.name} ${r.stoneExp.toFixed(0)}`).join(' · ')}`);
   const buyers = fl.filter((r) => r.stoneImp > 0);
   console.log(`  돌이 한 번이라도 들어온 바닥 마을: **${buyers.length}곳** / ${fl.length}곳`);
+  // ★[T180] 수출 문턱(`target×0.8` · stone 은 `subs=0` 이라 `N×0.64`)은 STONE_NET 문턱(0.2)과 **자리가 다르다**.
+  //   굶는 마을이 돌을 파는 것은 "굶는 순간에 파는" 것이 아니라 **꼬리에서 파는** 것이다 — 그 꼬리를 센다.
+  const flE = fl.filter((r) => r.stoneExp > 0);
+  console.log(`  ▸ 돌을 판 바닥 마을 ${flE.length}곳 — 순간 재고 최대 중앙 **${med(flE.map((r) => r.stoneMax)).toFixed(0)}**`
+    + ` · 재고>10 인 날 중앙 ${med(flE.map((r) => r.dGt10))}일 · 재고>50 인 날 중앙 ${med(flE.map((r) => r.dGt50))}일`
+    + ` · 수출 문턱(N×0.64) 중앙 ${med(flE.map((r) => r.popEnd * 0.64)).toFixed(0)}`);
+  console.log(`  ⇒ 문턱은 **0.2 가 아니라 ${med(flE.map((r) => r.popEnd * 0.64)).toFixed(0)} 자리**다 — 두 수는 만나지 않는다(보고 §4).`);
   // 바닥 마을은 무엇으로 갚나 — 실제 수출량 상위
   const agg = {};
   for (const r of fl) for (const k in r.expCand) agg[k] = (agg[k] || 0) + r.expCand[k];

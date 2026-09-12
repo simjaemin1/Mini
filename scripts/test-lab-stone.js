@@ -265,10 +265,13 @@ console.log('\n⑪ 랩 팔(T173) — 문턱이 엔진의 그 수인가 · 자명
 const LAB_NET = (() => { const m = LCODE.match(/L_STONE_NET_THRESH\s*=\s*([0-9.]+)/); return m ? +m[1] : null; })();
 {
   pre(LAB_NET != null, '랩에서 `L_STONE_NET_THRESH` 를 찾았다', String(LAB_NET));
-  // 엔진의 STONE_NET 1차 문턱을 **소스에서 읽어** 대조한다(옮겨 적은 수인지 기계가 본다)
-  const m = CODE.match(/STONE_NET_ON && _toolCrit && \(v\.land\.stone \|\| 0\) >= 0\.25 && \(v\.storage\.stone \|\| 0\) < ([0-9.]+)/);
-  pre(!!m, '엔진에서 STONE_NET 1차 문턱 줄을 찾았다', m ? m[1] : '못 찾음');
-  ok(!!m && LAB_NET === +m[1], '⑪ ★★★랩 문턱 = 엔진 STONE_NET 1차 문턱(새 수 0)', `${LAB_NET} vs ${m ? m[1] : '?'}`);
+  // 엔진의 STONE_NET 1차 문턱을 **정본에서 읽어** 대조한다(옮겨 적은 수인지 기계가 본다)
+  //   ★[T180] 그 수가 `STONE_NET_STOCK` 으로 올라갔다 — 리터럴을 찾지 말고 **수출된 값**을 읽는다.
+  const canonNet = econ.STONE_NET_STOCK;
+  pre(typeof canonNet === 'number', '엔진 정본이 `STONE_NET_STOCK` 을 내준다', String(canonNet));
+  ok(LAB_NET === canonNet, '⑪ ★★★랩 문턱 = 엔진 STONE_NET 1차 문턱(새 수 0)', `${LAB_NET} vs ${canonNet}`);
+  ok(/\(v\.storage\.stone \|\| 0\) < STONE_NET_STOCK\b/.test(CODE),
+    '⑪ ★엔진의 1차 게이트가 **그 이름**을 쓴다(리터럴이 아니다)');
   ok(/if \(window\.L_STONE_TRADE === undefined\) window\.L_STONE_TRADE = 0;/.test(LCODE),
     '⑪ ★★손잡이 기본 **0**(문을 안 연다 = 다른 세션 기준선 무변)');
   ok(/if\(\+window\.L_STONE_TRADE!==0\)ECON_WORLD\.returnPullFn=stoneTradePullFn;/.test(LCODE),
@@ -296,6 +299,77 @@ console.log('\n⑫ 공짜 돌 0 — 파는 쪽 재고를 엔진이 실제로 뺀
     '⑫ 매수량은 **예산 역산**이다(시장 충격 정산 — 문이 이 식을 우회하지 않는다)');
 }
 
-console.log(`\n=== T163·T173 랩 석재: 통과 ${pass} · 실패 ${fail} ===`);
-console.log('접점 심볼: t17-metrics|FLOOR.stone|land.stone|_stCost|STONE_NET|L_STONEREAL|L_STONE_TRADE|stoneBudgetFn|returnPullFn|scatterRocksPerCell');
+// ════════════════════════════════════════════════════════════════════════════════════════
+// ★★[T180 2026-09-12] **셋째 갈래 — 도구 수명** + **㉢ 한 줄**(굶는 마을은 제 돌을 안 판다)
+//   T163(②)·T173(①)이 서로 다른 방향에서 같은 곳을 가리켰다: 움직이는 것은 `도구≈0` 일수다.
+// ════════════════════════════════════════════════════════════════════════════════════════
+
+console.log('\n⑬ 도구 마모 문(T180) — 접점 한 줄 · 배수 1 이면 비트 동일');
+{
+  const hitLines = CODE.split('\n').filter((l) => l.indexOf('toolWearMul') >= 0).length;
+  ok(hitLines === 1, '⑬ ★★엔진에서 `toolWearMul` 을 읽는 **줄이 하나**다(문 하나)', `${hitLines}줄`);
+  ok(/\}, 0\) \* _twMul;/.test(CODE), '⑬ ★마모 합에 **배수 하나만** 곱한다(감가율은 그대로)');
+  ok(/const DAILY_TOOL_WEAR_PER_FARMER = 0\.02;/.test(CODE) && /const DAILY_TOOL_WEAR_PER_OTHER = 0\.01;/.test(CODE),
+    '⑬ ★★**새 수 0** — 감가율 두 수가 그대로다(랩이 주는 것은 A/B 의 눈금)');
+  ok(!/toolWearMul/.test(fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8')),
+    '⑬ ★★서버는 이 문을 **안 연다**(= 라이브 무변)');
+  ok(/if \(window\.L_TOOL_WEAR === undefined\) window\.L_TOOL_WEAR = 1;/.test(LCODE),
+    '⑬ ★랩 손잡이 기본 **1**(= 지금 값 = 종전 비트)');
+  ok(/if\(Number\.isFinite\(m\) && m>0 && m!==1\) ECON_WORLD\.toolWearMul=m;/.test(LCODE),
+    '⑬ ★★배수 1 이면 랩이 **문을 아예 안 연다**(비트 동일의 뿌리)');
+}
+
+console.log('\n⑭ 도구 마모 — 배수가 실제로 도구 궤적을 바꾸나(자명 통과 금지)');
+{
+  const mkTool = (mul) => {
+    const w = econV2.createWorldV2({ seed: 777, villageCount: 0, picker: 'rational', infoRange: 5000, raidPer100: 0.005 });
+    w.villages = []; w.events = []; w.caravans = [];
+    if (mul !== 1) w.toolWearMul = mul;
+    for (let i = 0; i < 4; i++) {
+      const v = econ.createVillage({ fertility: 1.1, water: 0.8, stone: LV.FLOOR.stone, ore: 0.1, wood: 1.0, game: 0.6,
+                                     arable: 1, size: 60, initialPop: 35, name: '마을' + i });
+      v._world = w; v.coord = { x: i * 150, y: 0 };
+      w.villages.push(v);
+    }
+    w.day = 0;
+    let toolLow = 0;
+    for (let d = 0; d < 400; d++) {
+      econV2.tickWorldV2(w, d);
+      for (const v of w.villages) if (((v.storage.tool) || 0) < 0.05) toolLow++;
+    }
+    return { toolLow, tool: w.villages.reduce((a, v) => a + (v.storage.tool || 0), 0),
+             dig: JSON.stringify(w.villages.map((v) => ({ n: v.npcs.length, t: +(v.storage.tool || 0).toFixed(9) }))) };
+  };
+  const b1 = mkTool(1), b2 = mkTool(1), h = mkTool(0.5), d2 = mkTool(2);
+  ok(b1.dig === b2.dig, '⑭ ★★배수 1 인 두 판이 **비트 동일**(문을 안 연다 · 되돌림의 뿌리)');
+  ok(h.dig !== b1.dig, '⑭ ★반으로 줄이면 실제로 **다른 세계**가 된다');
+  ok(h.tool > b1.tool, '⑭ ★★★마모를 반으로 하면 도구 재고가 **는다**(자명 통과 금지)', `${b1.tool.toFixed(1)} → ${h.tool.toFixed(1)}`);
+  ok(d2.tool < b1.tool, '⑭ ★반대 방향도 산다 — 배수 2 면 도구가 **준다**(돌연변이 대조)', `${b1.tool.toFixed(1)} → ${d2.tool.toFixed(1)}`);
+  note(`도구≈0 일수(4마을×400일) 기본 ${b1.toolLow} · 반 ${h.toolLow} · 배수2 ${d2.toolLow}`);
+}
+
+console.log('\n⑮ ㉢ 한 줄(T180) — 굶는 마을은 제 돌을 팔지 않나');
+{
+  ok(/if \(r === 'stone' && T180_STONE_EXPORT && stock < v1\.STONE_NET_STOCK\) continue;/.test(V2CODE),
+    '⑮ ★★수출 후보에서 **문턱 아래 돌을 뺀다**(한 줄)');
+  ok(/const T180_STONE_EXPORT = !\(typeof process !== 'undefined' && process\.env && process\.env\.T180_STONE_EXPORT === '0'\);/.test(V2CODE),
+    '⑮ ★되돌림이 `=== \'0\'` 꼴이다(기본 ON = 채택값 · lab-wiring-check 문법)');
+  // ★돌연변이 — 문턱을 손으로 적었는지 기계가 본다(엔진 정본에서 읽어 대조)
+  const canon = econ.STONE_NET_STOCK;
+  pre(typeof canon === 'number', 'v1 정본이 `STONE_NET_STOCK` 을 내준다', String(canon));
+  ok(canon === 0.2, '⑮ 정본 문턱 값이 그대로다(0.2 · 값 무변 hoist)', String(canon));
+  const lit = (V2CODE.match(/r === 'stone' && T180_STONE_EXPORT && stock < ([^)]+)\)/) || [])[1];
+  ok(lit === 'v1.STONE_NET_STOCK', '⑮ ★★★수를 **옮겨 적지 않았다** — v1 정본을 읽는다(사본 0)', String(lit));
+  // 엔진 두 게이트도 같은 이름을 쓰는가(수가 한 곳뿐인가)
+  const gates = (CODE.match(/STONE_NET_STOCK/g) || []).length;
+  ok(gates >= 3, '⑮ ★엔진의 STONE_NET 게이트들도 **그 이름**을 쓴다(정의 1 + 게이트 2 이상)', `${gates}회`);
+  ok(!/\(v\.storage\.stone \|\| 0\) < 0\.2\b/.test(CODE), '⑮ 엔진에 문턱 리터럴 `0.2` 가 남아 있지 않다');
+  //   ⚠엔진은 이 손잡이를 **모듈 적재 때** 읽는다 ⇒ 같은 프로세스 안에서는 A/B 를 못 가른다
+  //     (족보 ⑨ — 돌연변이는 자식 프로세스 + env). 여기서는 **소스와 사본 0** 을 지키고,
+  //     굶는 마을 수출이 실제로 얼마나 줄었는지는 3시드 계측기가 낸다(`보고/T180` §3).
+  note('굶는 마을 수출 3시드 A/B 는 자식 프로세스 + env 로 잰다(족보 ⑨) — 표는 `보고/T180` §3');
+}
+
+console.log(`\n=== T163·T173·T180 랩 석재: 통과 ${pass} · 실패 ${fail} ===`);
+console.log('접점 심볼: _stCost|taper|toolBoost|STONE_NET|STONE_NET_STOCK|thresh|candidates|toolWearMul|L_TOOL_WEAR|L_STONE_TRADE|L_STONEREAL');
 process.exit(fail ? 1 : 0);

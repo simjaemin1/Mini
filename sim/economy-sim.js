@@ -1095,6 +1095,12 @@ const SWITCH2_ON = (typeof process !== 'undefined' && process.env && process.env
 //     소멸 1.33 → **0.00** (3/3 시드 전부 0) · 좀비(<10명) 8.33 → **0.67** · 인구 1,610 → 3,128 · 도구 2,603 → 4,758.
 //     STONE_NET=0 으로 채택 이전 동작을 정확히 재현한다(LANDFIT 선례).
 const STONE_NET_ON = !(typeof process !== 'undefined' && process.env && process.env.STONE_NET === '0');
+// ★★[T180 2026-09-12] STONE_NET **1차 문턱을 이름으로 올렸다**(값 무변 · 아래 두 게이트가 쓰던 그 수).
+//   올린 이유: T173 §0-ⓑ 가 잡은 결함 — 캐러밴 **수출 후보 문턱**(`target×0.8`)이 이 수를 **모른다**.
+//   그래서 절반 넘는 날을 `돌<0.2` 로 사는 마을이 어쩌다 재고가 차면 그걸 잉여로 읽고 **실어 보낸다**
+//   (실측: 바닥 36마을이 800일에 8,110~11,947 단위를 수출한다). 그 게이트가 이 수를 읽어야 하는데
+//   저쪽에 다시 적으면 그게 사본이다. **수는 여기 하나뿐이다**(`test-lab-stone` 이 대조한다).
+const STONE_NET_STOCK = 0.2;
 // ═══ ★★부얼타운(광산촌) 판정 — **단일 정의**. 시딩(villages.js)도 이 함수를 부른다(사본 금지) ═══
 //   ⚠1차 시도의 실패에서 배운 것: "식량 부양력이 하한 미달"만으로 잡으면 **너무 많이 잡힌다.**
 //     선별된 마을 20곳 중 절반 가까이가 부양력 1.3~2.0 구간이라, 거기에 식량을 얹고 농사 탈출구를
@@ -2699,12 +2705,20 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
   const foodNeed = N * DAILY_FOOD_CONSUMPTION;
   const foodGap = consumeFood(v, foodNeed);  // 남으면 굶주림
   // 도구 마모 — tool dependent NPC만
+  // ★★★[T180 2026-09-12 · 이 파일의 유일한 접점] **도구 수명을 밖에서 물어본다.**
+  //   T163(②)·T173(①)이 서로 다른 방향에서 같은 곳을 가리켰다 — 움직이는 것은 `도구≈0` 일수다.
+  //   그 자리가 여기다: 마모가 도구 재고를 깎고, 재고가 마르면 석공이 `_stCost` 게이트에서 멈춘다.
+  //   ⚠**주입이 없으면 한 글자도 안 바뀐다** — 배수는 이 파일이 안 갖는다(`world.toolWearMul` 이 준다).
+  //     지금 그것을 주는 것은 **랩**(`lab/전쟁실험실.html` `L_TOOL_WEAR`)뿐이고 서버·CLI·하네스는
+  //     안 주므로 배수 1 = **비트 동일**(T135 `forageTakeFn` · T157 `happyWorkW` · T163 `stoneBudgetFn` 선례).
+  //   ⚠**새 수 0** — 감가율은 `DAILY_TOOL_WEAR_PER_*` 그대로다. 랩이 주는 것은 **A/B 의 눈금**(배수)이다.
+  const _twMul = (v._world && typeof v._world.toolWearMul === 'number' && v._world.toolWearMul > 0) ? v._world.toolWearMul : 1;
   const toolWear = v.npcs.reduce((sum, n) => {
     const jd = JOBS[n.currentJob];
     if (!jd.toolDependent) return sum;
     return sum + (n.currentJob === 'farmer'
       ? DAILY_TOOL_WEAR_PER_FARMER : DAILY_TOOL_WEAR_PER_OTHER);
-  }, 0);
+  }, 0) * _twMul;
   v.storage.tool = Math.max(0, v.storage.tool - toolWear);
   // ★★[T17 ① 2026-09-02 · 재민 확정] **마모를 흐름으로 기록한다** — `_cons` 한 줄.
   //   왜 이 한 줄인가: 도구는 이미 이 econ 에서 **생산되고(mason) 소비되고(위 마모) 거래된다**.
@@ -3589,7 +3603,7 @@ function pickDeficitJob_rational(v, world) {
     //   석재 189 → 0 → 도구 0 → 생산 ×0.25 → 만성 기근 → 기근 게이트가 영구 점유 → 석재 영영 0.
     //   ⇒ 도구가 치명적으로 부족한데 **재료조차 없으면** 채집꾼을 기근보다 먼저 부른다.
     //     (도구가 멀쩡하면 발동 안 함 = 평시 노동 잠식 없음. 채집은 식량도 같이 가져오므로 기근 대응이기도 하다.)
-    if (STONE_NET_ON && _toolCrit && (v.land.stone || 0) >= 0.25 && (v.storage.stone || 0) < 0.2
+    if (STONE_NET_ON && _toolCrit && (v.land.stone || 0) >= 0.25 && (v.storage.stone || 0) < STONE_NET_STOCK
         && hasSlot(v, 'forager', cap, counts)) return 'forager';
   }
 
@@ -3638,7 +3652,7 @@ function pickDeficitJob_rational(v, world) {
   //   ⇒ 석재 결손이면 채집꾼을 **석공보다 먼저** 부른다. 경계도 `>` → `>=` 로 고친다:
   //     livelihood.js 의 FLOOR.stone 이 정확히 0.25 라서, 바위 지형이 전혀 없는 마을(=가장 절실한 마을)이
   //     엡실론 하나 차이로 통째로 제외돼 있었다. 그 바닥값 주석이 이미 "돌은 흔하다 — 누구나 조달"이다.
-  if (STONE_NET_ON && (v.land.stone || 0) >= 0.25 && (v.storage.stone || 0) < 0.2 * Math.max(1, masonTarget(v))
+  if (STONE_NET_ON && (v.land.stone || 0) >= 0.25 && (v.storage.stone || 0) < STONE_NET_STOCK * Math.max(1, masonTarget(v))
       && hasSlot(v, 'forager', cap, counts)) return 'forager';
   // ★S2 석공(석기 도구 + 저티어 무기[마제석검·활]) — 돌 있으면 충원. masonTarget이 도구+무기 수요 통합.
   if ((counts.mason || 0) < masonTarget(v) && ((v.storage.stone || 0) >= 0.2 || (v.storage.wood || 0) > N * 0.5)) return 'mason';
@@ -4535,6 +4549,8 @@ function computeVillagePrices(v) {
 }
 
 module.exports = {
+  STONE_NET_STOCK,   // ★[T180] STONE_NET 1차 문턱 — v2 수출 게이트가 읽는다(사본 0)
+
   _LEGACY_CONTRIBUTES: LEGACY_CONTRIBUTES,
   totalFoodEquivalent,   // 진단 하네스가 병기고 식량안보 게이트를 정확히 재려면 필요
   consumeFood,           // ★[T73] 식단 사다리의 **순서**를 하네스가 직접 증명하려면 필요(같은 이유)

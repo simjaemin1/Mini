@@ -16,6 +16,8 @@
 // =============================================================================
 
 const v1 = require('./economy-sim');
+// ★[T180] 되돌림 — 끄면 종전(굶는 마을도 돌을 판다) **비트 동일**. 채택값은 ON(한 줄 결함 수리).
+const T180_STONE_EXPORT = !(typeof process !== 'undefined' && process.env && process.env.T180_STONE_EXPORT === '0');
 
 // === 새 상수 — v1과 분리 ===
 // v2 round 2: 가격 완화 + weapon/tool BASE 낮춤 + 외곽 살리기 + cargo↑
@@ -653,6 +655,13 @@ function tickTradeV2(world, day) {
         else if (r === 'tigerhide') { keep = Math.max(1, N * TIGERHIDE_KEEP_PC); thresh = Math.max(2, N * TIGERHIDE_KEEP_PC * 1.6); }   // ★호피(§9 3차): 한계 위신 포화점(CAP/W≈0.025/인)×1.2만 쥐고 잉여=순수출재 — 일반칙(0.4N)이면 희소 위신재는 영영 수출 불가. 금·은·보석은 위신 포화(2/인)가 일반칙 위라 기존 규칙 유지
         else if (r === 'tin') { keep = Math.max(3, N * TIN_EXPORT_KEEP_PC); thresh = keep + N * TIN_EXPORT_SURPLUS_PC; }   // ★청동 희소성: 주석=전략재. 산지 마을이 대량 비축(자체 청동 독점 + 위세) 후 얇은 잉여만 수출 → 무산지 마을은 만성 주석 기근(청동 편중 유지, 무산지는 석기)
         else { keep = target * 0.5; thresh = target * 0.8; }                // 그 외: 15일치
+        // ★★★[T180 2026-09-12 · 한 줄 결함 수리] **굶는 마을은 제 돌을 팔지 않는다.**
+        //   T173 §0-ⓑ 실측: 절반 넘는 날을 `돌<0.2`(STONE_NET 1차 문턱) 아래서 사는 바닥 36마을이
+        //   800일에 돌 **8,110~11,947 단위**를 수출한다. 위 문턱(`target×0.8`)은 STONE_NET 문턱을
+        //   **모른다** — 어쩌다 재고가 차면 그걸 잉여로 읽고 실어 보내고, 그 자리에서 다시 0 이 된다.
+        //   ⇒ 돌 수출 후보는 **안전망 문턱 위**일 때만. 수는 v1 정본에서 읽는다(사본 0 · 새 수 0).
+        //   되돌림 `T180_STONE_EXPORT=0` → 종전 비트 동일.
+        if (r === 'stone' && T180_STONE_EXPORT && stock < v1.STONE_NET_STOCK) continue;
         if (stock > thresh) candidates.push({ res: r, surplus: Math.max(1, stock - keep) });
       }
       if (!candidates.length) break;
