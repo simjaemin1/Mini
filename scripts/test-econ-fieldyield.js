@@ -184,8 +184,10 @@ const bites = (src) => /\.(storage|treasury)\s*(\[|\.)\s*[A-Za-z_'"`]/.test(
   const CODE = codeOf(VSRC);
   const calls = CODE.split('\n').filter(l => l.indexOf('harvestToGranary') >= 0);
   ok(calls.length === 1, '⑥ ★★★생활층이 곳간에 닿는 자리가 **한 줄**이다', `${calls.length}줄`);
-  ok(calls.length === 1 && /_lifeEcon\(\)\.harvestToGranary\(vil\.econ, 1\)/.test(calls[0]),
-    '⑥ ★그 한 줄이 **econ 입구를 부르기만** 한다(계수·환산·세금은 전부 econ 안 — 사본 0)');
+  ok(calls.length === 1 && /_lifeEcon\(\)\.harvestToGranary\(vil\.econ, 1, _farmMul\(vil, npc\)\)/.test(calls[0]),
+    '⑥ ★그 한 줄이 **econ 입구를 부르기만** 한다(건수 1 + 배율 하나 — 계수·환산·세금은 전부 econ 안 · 사본 0)');
+  ok(calls.length === 1 && !/[*/+]|T100_K|TAX_RATE/.test(calls[0].split('harvestToGranary')[1] || ''),
+    '⑥ ★★[T190] 그 줄에 **산수가 없다**(배율을 여기서 곱하지 않는다 — 이중 0)');
   ok(calls.length === 1 && /if \(did === 'harvest'\)/.test(calls[0]), '⑥ 그 자리가 **수확 갈래**다(파종·김매기가 곳간을 안 만진다)');
   ok(/if \(vil\.econ\) vil\.econ\._fieldCells = vil\._farmSet\.size;/.test(VSRC),
     '⑥ 칸 수 브리지는 그대로다(`_paddyShare`·`_clearedFrac` 계열 — 장부가 아니다)');
@@ -265,6 +267,25 @@ if (!process.env.T100_CHILD) {
     ok(run({ T100_FIELD_YIELD: '1', T100_MUT_MOD: MUTNAME }) !== 0,
       '⑦ ★★★배율을 **두 번** 물리면 ⑬ 의 「한 줄」 감지기가 문다(이중 0)');
   } finally { if (made6) { try { fs.unlinkSync(MUTPATH); } catch (e) { console.log('  ⚠변조 사본 정리 실패: ' + MUTPATH); } } }
+  // ★변조 일곱째 [T190] — 배율을 **안 넘기는** 사본(T179 가 문만 열어 두고 끝낸 그 상태)
+  let made7 = false;
+  try {
+    const mutV = VSRC.replace('_lifeEcon().harvestToGranary(vil.econ, 1, _farmMul(vil, npc))',
+                              '_lifeEcon().harvestToGranary(vil.econ, 1)');
+    ok(mutV !== VSRC, '⑦ [T190] 호출부의 변조 지점이 소스에 **실재한다**');
+    const VMUT = codeOf(mutV).split('\n').filter((l) => l.indexOf('harvestToGranary') >= 0)[0] || '';
+    ok(!/_farmMul\(vil, npc\)/.test(VMUT),
+      '⑦ ★★★배율을 **안 넘기면** ⑥·⑬·⑮ 의 호출부 검사가 문다(켠 팔이 다시 평평해지는 판)');
+    made7 = true;
+  } finally { if (!made7) console.log('  ⚠[T190] 일곱째 변조 점검 실패'); }
+  // ★변조 여덟째 [T190] — 생활층에서 배율을 **한 번 더** 곱하는 사본(이중)
+  {
+    const mutV2 = VSRC.replace(', 1, _farmMul(vil, npc))', ', 1, _farmMul(vil, npc) * 2)');   // ★호출부만(선언부가 아니라)
+    ok(mutV2 !== VSRC, '⑦ [T190] 이중 곱셈의 변조 지점이 소스에 **실재한다**');
+    const line = codeOf(mutV2).split('\n').filter((l) => l.indexOf('harvestToGranary') >= 0)[0] || '';
+    ok(/[*/+]/.test(line.split('harvestToGranary')[1] || ''),
+      '⑦ ★★★생활층에서 배율을 **두 번** 물리면 ⑥ 의 「산수 없다」 감지기가 문다(이중 0)');
+  }
   const mutated = VSRC.replace('  if (vil.econ) vil.econ._fieldCells = vil._farmSet.size;',
     '  if (vil.econ) { vil.econ._fieldCells = vil._farmSet.size; vil.econ.storage.food += 1; }');
   ok(mutated !== VSRC && bites(mutated),
@@ -469,13 +490,13 @@ console.log('\n⑬ 배율 자리 [T179] — 대체가 삼킨 배율 셋을 문�
     ok(a0 === 0 && a1 === 0 && aS === 0 && aZ === 0,
       '⑬ [끔] 배율을 줘도 **한 톨도 안 넣는다**(손잡이가 먼저다 — 비트 동일)');
   }
-  // ⓔ 실체 자리는 아직 서버다 — 이 카드는 랩/엔진 문만(회부: 켜기 판정 #11)
+  // ⓔ 실체 자리는 서버다 — T190 이 그 자리를 놓았다(⑮ 절이 본다)
   const VCODE = codeOf(VSRC);
   const calls = VCODE.split('\n').filter((l) => l.indexOf('harvestToGranary') >= 0);
-  ok(calls.length === 1 && /harvestToGranary\(vil\.econ, 1\)/.test(calls[0]),
-    '⑬ ★생활층은 아직 **배율을 안 넘긴다**(서버 자리 = 회부 · 이 줄이 바뀌면 세계가 움직인다)');
-  ok(VCODE.indexOf('_t172mul') < 0,
-    '⑬ 생활층은 배율 정본(`_t172mul`)을 **아직 한 번도 안 읽는다**(회부: 농부 `_esk` 링크가 먼저다)');
+  ok(calls.length === 1 && /harvestToGranary\(vil\.econ, 1, _farmMul\(vil, npc\)\)/.test(calls[0]),
+    '⑬ ★생활층이 **배율을 넘긴다**(T190 — 문이 열린 채 비어 있던 셋째 인수)');
+  ok(VCODE.indexOf('_t172mul') >= 0,
+    '⑬ 생활층이 배율 정본(`_t172mul`)을 **읽는다**(심는 곳은 econ 하나 · 여기선 읽기만)');
 }
 
 // ── ⑭ 나머지 두 문은 살아 있다 [T179 §0ⓐ] ─────────────────────────────────
@@ -492,6 +513,69 @@ console.log('\n⑭ 나머지 두 문 — 채집·석재는 배율을 안 삼킨�
     '⑭ ★★석재 문은 **관 굵기(`_stoneK`)만** 갈아 끼우고 `skillMul` 은 문 **뒤에** 남는다');
   ok(/let _stoneK = \(v\.land\.stone \|\| 0\);/.test(CODE) && /if \(_sbFn\) \{ const _k = _sbFn\(v\); if \(Number\.isFinite\(_k\) && _k >= 0\) _stoneK = _k; \}/.test(CODE),
     '⑭ 석재 문의 폴백이 곧 종전이다(미주입 = 비트 동일)');
+}
+
+// ── ⑮ 서버 자리 [T190] — 배율을 넘기는 쪽 ─────────────────────────────────
+//   T179 는 econ 문을 `harvestToGranary(v, n, mul)` 로 열어 두고 `mul` 을 아무도 안 넘기는 상태로 뒀다.
+//   T190 이 그 자리를 놓는다: 농부 `_esk` 링크(사냥꾼 규칙 그대로) + 수확 갈래 한 줄.
+console.log('\n⑮ 서버 자리 [T190] — 생활층이 그 농부의 배율을 넘기는가');
+{
+  const VCODE = codeOf(VSRC);
+  // ⓐ 짝짓는 규칙은 **하나**다 — 사냥꾼이 쓰던 그것(사본 0)
+  ok(/function _lifeEconLink\(vil, simJob\) \{/.test(VCODE),
+    '⑮ ★짝짓는 규칙이 **한 함수**다(직업만 다르다 — 사냥꾼 원문에서 뽑았다)');
+  ok(/vs\[i2\]\._esk = _e\.length \? _e\[i2 % _e\.length\] : null;/.test(VCODE),
+    '⑮ ★라운드로빈·`null` 폴백이 사냥꾼 원문 **그대로**다(새 규약 0)');
+  const eskAssign = VCODE.split('\n').filter((l) => /\._esk\s*=/.test(l));
+  ok(eskAssign.length === 1, '⑮ ★★`_esk` 를 심는 자리가 **한 줄**이다(사본 0)', `${eskAssign.length}줄`);
+  ok(/_lifeHunterEconLink\(vil\);/.test(VCODE) && /_lifeEconLink\(vil, 'farmer'\);/.test(VCODE),
+    '⑮ 일일 재대사에서 **사냥꾼·농부 둘 다** 잇는다');
+  ok(/function _lifeHunterEconLink\(vil\) \{\s*\n\s*const hu = _lifeEconLink\(vil, 'hunter'\);/.test(VSRC),
+    '⑮ 사냥꾼 함수가 **그 규칙을 부른다**(자기 산수 `_fgl`·`_arm` 만 남았다 — HSK 무변)');
+  // ⓑ 배율을 집는 자리 — 산수 0 · 못 집으면 undefined(문이 1 로 받는다)
+  ok(/function _farmMul\(vil, npc\) \{/.test(VCODE),
+    '⑮ ★배율을 집는 자리가 **하나**다');
+  ok(/return \(e && typeof e\._t172mul === 'number'\) \? e\._t172mul : undefined;/.test(VCODE),
+    '⑮ ★★못 집으면 **`undefined`** 를 넘긴다 — 1 로 받는 것은 **econ 문 안 한 곳**이다(사본 0)');
+  ok(!/_t172mul[^\n]*[*/+]/.test(VCODE) && !/[*/+][^\n]*_t172mul/.test(VCODE),
+    '⑮ ★★★생활층이 배율에 **산수를 안 한다**(읽어 넘기기만 — 이중 0)');
+  ok(!/skillMul|toolBoost|inputMult/.test(VCODE),
+    '⑮ 배율의 구성(`skillMul`·`toolBoost`·`inputMult`)은 **여기 없다**(정본은 econ 한 곳)');
+  // ⓒ 헤드리스 갈래 — 측정 경로가 전부 이쪽이다(npc 가 없다)
+  ok(/_lifeDoTask\(vil, null, k, day\)/.test(VCODE),
+    '⑮ ⓘ 헤드리스 결산은 `npc` **없이** 돈다(관측자 없는 마을 · `t176-ab`·`farm-metrics` 전부 이 길)');
+  ok(/const ns = \(ec && ec\.npcs\) \? ec\.npcs\.filter\(\(n\) => n\.currentJob === 'farmer'\) : \[\];/.test(VCODE)
+     && /ns\[\(ec\._t100HarvestN \|\| 0\) % ns\.length\]/.test(VCODE),
+    '⑮ ★★★`npc` 가 없으면 econ 농부 명부를 **같은 라운드로빈**으로 집는다(지표는 이미 있는 수확 누계 — 새 수 0)');
+  // ★그 갈래가 없으면 켠 팔은 배율을 **한 번도 안 쓴다** — 측정기의 마을엔 `npcPids` 자체가 없다.
+  {
+    const V2 = R('server/villages.js');
+    const CP = V2.__labProbe && V2.__labProbe._cropProbe;
+    const mk = CP && CP.attach({ dbId: 1, name: '측정', ccx: 0, ccy: 0, econ: null, layout: {} });
+    ok(mk && mk.npcPids === undefined,
+      '⑮ ★★★측정기가 세우는 마을엔 `npcPids` 가 **없다**(`t176-ab`·`farm-metrics`) ⇒ `_esk` 는 거기서 절대 안 선다');
+    ok(/if \(!econ \|\| !pl \|\| !vil\.npcPids \|\| !vil\.npcPids\.length\) return null;/.test(VCODE),
+      '⑮ 링크 함수가 `npcPids` 없으면 **바로 돌아선다**(위 줄의 근거)');
+  }
+  // ⓓ 실측 — 켠 팔에서 실제로 갈리는가(픽스처: econ 농부 둘에 서로 다른 배율)
+  const v = econ.createVillage({ initialPop: 0, name: 'T190', fertility: 1.0 });
+  v.npcs.push({ currentJob: 'farmer', _t172mul: 0.5 }, { currentJob: 'farmer', _t172mul: 1.5 });
+  const V = R('server/villages.js');
+  const fm = V.__labProbe && V.__labProbe._farmMulProbe;
+  if (typeof fm === 'function') {
+    const m0 = fm({ econ: v }, null);                       // 헤드리스 — 누계 0 → 첫째 농부
+    v._t100HarvestN = 1;
+    const m1 = fm({ econ: v }, null);                       // 누계 1 → 둘째 농부
+    const mE = fm({ econ: v }, { _esk: { _t172mul: 1.25 } });   // 실걸음 — `_esk` 가 이긴다
+    ok(m0 === 0.5 && m1 === 1.5, '⑮ ★★헤드리스 수확이 농부마다 **다른 배율**을 집는다(라운드로빈)', `${m0} → ${m1}`);
+    ok(mE === 1.25, '⑮ ★실걸음 수확은 **그 농부의 `_esk`** 를 쓴다(링크가 이긴다)', String(mE));
+    ok(fm({ econ: { npcs: [] } }, null) === undefined,
+      '⑮ ★농부가 없으면 `undefined`(문이 1 로 받는다 — 종전 비트)');
+    ok(fm({ econ: { npcs: [{ currentJob: 'farmer' }] } }, null) === undefined,
+      '⑮ ★배율이 안 심긴 농부(손잡이 끔)도 `undefined` — **끔이 곧 종전이다**');
+  } else {
+    ok(false, '⑮ `__labProbe._farmMulProbe` 가 없다(하네스가 정본을 못 부른다 — 사본 금지)');
+  }
 }
 
 console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===\n`);

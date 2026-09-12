@@ -3992,6 +3992,29 @@ function _lifeDoTask(vil, npc, k, day) {   // 도착한 셀 처리(랩 doTask �
   if (_r) vil._mTk = (vil._mTk || 0) + 1;
   return _r;
 }
+// ★★[T190 2026-09-12] **수확 한 번에 걸리는 배율은 그 수확을 한 농부의 것이다.**
+//   T179 가 econ 문을 `harvestToGranary(v, n, mul)` 로 열어 두고 `mul` 을 **아무도 안 넘기는** 상태로
+//   남겼다(그쪽 §3 회부). 넘길 사람은 여기다. 배율 정본은 econ 이 심어 둔 `npc._t172mul`
+//   (= `skillMul × toolBoost × inputMult` · 손잡이를 켠 팔에서만 심긴다) — **여기엔 산수가 없다**.
+//
+//   ⚠수확 갈래엔 시각 NPC 가 **있을 때도 없을 때도** 있다:
+//     · 관측자 있는 마을 — 실걸음 농부가 셀에 도착해 처리한다(`npc` 있음) ⇒ `_esk` 링크가 답한다.
+//     · 관측자 없는 마을 — 헤드리스 결산이 `lifeFarmDay(vil, day, farmerN)` 로 **`npc` 없이** 돈다.
+//       ★**측정 경로가 전부 이쪽이다**(`t176-ab`·`farm-metrics` 는 `npcPids` 자체가 없다) —
+//         여기서 1 로 떨어지면 켠 팔은 배율을 **한 번도 안 쓴다**(T190 §0ⓑ 실측).
+//       ⇒ 같은 마을이 관측 여부에 따라 다른 식량을 내는 것도 막는다.
+//   ⇒ 두 갈래 모두 **같은 규칙**으로 집는다 — `_lifeEconLink` 의 그 라운드로빈이고,
+//     지표는 이미 있는 수확 누계(`econ._t100HarvestN`)다. **새 수 0 · 새 규약 0.**
+//   ⚠못 집으면 `undefined` 를 그대로 넘긴다 — 1 로 받는 것은 **econ 문 안 한 곳**이다(사본 0).
+function _farmMul(vil, npc) {
+  let e = (npc && npc._esk) ? npc._esk : null;
+  if (!e) {
+    const ec = vil && vil.econ;
+    const ns = (ec && ec.npcs) ? ec.npcs.filter((n) => n.currentJob === 'farmer') : [];
+    if (ns.length) e = ns[(ec._t100HarvestN || 0) % ns.length];
+  }
+  return (e && typeof e._t172mul === 'number') ? e._t172mul : undefined;
+}
 function _lifeDoTask0(vil, npc, k, day) {
   const e = vil._crop.get(k), nong = !vil._drySet.has(k);
   const ci = k.indexOf(','), par = (+k.slice(0, ci) + +k.slice(ci + 1)) & 1;
@@ -4004,7 +4027,7 @@ function _lifeDoTask0(vil, npc, k, day) {
   //   **걷어냈고**(`economy-sim.js` `addProduce(jdef.output, …)` 한 줄), 그 자리를 여기가 채운다.
   //   수확 한 번 = `T100_K` 식량등가. 산수·세금·볏짚은 전부 econ 쪽 `harvestToGranary` 안에 있다
   //   (여기엔 숫자가 없다 — 사본 0). 끄면 안 부른 것과 같다(비트 동일).
-  if (did === 'harvest') { if (!cropAfterHarvest(e, day)) vil._crop.delete(k); if (npc) { npc._carry = (npc._carry || 0) + 1; _lifeAct(npc, '수확'); } if (vil.econ) _lifeEcon().harvestToGranary(vil.econ, 1); return true; }   // ★곳간② 물리 짐 1칸분 적재(회계 아님) · ★[T91] 다년생은 그루터기로 남는다
+  if (did === 'harvest') { if (!cropAfterHarvest(e, day)) vil._crop.delete(k); if (npc) { npc._carry = (npc._carry || 0) + 1; _lifeAct(npc, '수확'); } if (vil.econ) _lifeEcon().harvestToGranary(vil.econ, 1, _farmMul(vil, npc)); return true; }   // ★곳간② 물리 짐 1칸분 적재(회계 아님) · ★[T91] 다년생은 그루터기로 남는다 · ★[T190] 셋째 인수 = 그 농부의 배율(없으면 econ 이 1 로 받는다 — 사본 0)
   if (npc) _lifeAct(npc, did === 'pest' ? '방제' : did === 'water' ? '물대기' : (nong ? '논매기' : '김매기'));
   return true;
 }
@@ -4974,18 +4997,28 @@ function _lifeCompleteGranary(vil, cx, cy) {
 //   ★살아있는 참조를 심는다 — econ 일일 xp 성장이 다음 사격의 명중률(HSK_W)·잠행/도살(HSK_F)에 그대로 반영.
 //   개체별 페어링(랩과 동일). econ 사냥꾼 수가 시각 사냥꾼보다 적으면 라운드로빈으로 공유(랩 동형).
 //   ※서버 econ v2엔 _fGlut 미존재 → _fgl=0 폴백(무효과, wildlife 470행 주석의 그 경로). 엔진 재인라인 시 자동 활성.
-function _lifeHunterEconLink(vil) {
+// ★★[T190 2026-09-12] **짝짓는 규칙은 직업이 다르지 않다.** 위 사냥꾼 블록이 쓰던 규칙
+//   (`npcPids` 순서로 고른 그 직업의 시각 NPC × econ 같은 직업 NPC 라운드로빈 · 없으면 `null`)을
+//   농부도 써야 해서(밭 배율 — T179 §3) **여기 하나로 뽑는다**. 뽑기만 한다 — 순서도 나눗셈도
+//   `null` 폴백도 사냥꾼 원문 그대로다(**새 규약 0 · 동작 무변** · 아래 사냥꾼 함수가 이걸 부른다).
+function _lifeEconLink(vil, simJob) {
   const econ = vil.econ, pl = state.deps.players;
-  if (!econ || !pl || !vil.npcPids || !vil.npcPids.length) return;
-  const hu = [];
-  for (const pid of vil.npcPids) { const p = pl.get(pid); if (p && p.simJob === 'hunter') hu.push(p); }
-  if (!hu.length) return;
-  const _eh = (econ && econ.npcs) ? econ.npcs.filter(n => n.currentJob === 'hunter') : [];
+  if (!econ || !pl || !vil.npcPids || !vil.npcPids.length) return null;
+  const vs = [];
+  for (const pid of vil.npcPids) { const p = pl.get(pid); if (p && p.simJob === simJob) vs.push(p); }
+  if (!vs.length) return null;
+  const _e = (econ && econ.npcs) ? econ.npcs.filter(n => n.currentJob === simJob) : [];
+  for (let i2 = 0; i2 < vs.length; i2++) vs[i2]._esk = _e.length ? _e[i2 % _e.length] : null;
+  return vs;
+}
+function _lifeHunterEconLink(vil) {
+  const hu = _lifeEconLink(vil, 'hunter');
+  if (!hu) return;
+  const econ = vil.econ;
   const _armV = (econ && econ.storage)
     ? Math.min(1, (econ.storage.armor || 0) / Math.max(1, ((econ.counts && econ.counts.warrior) || 0) + ((econ.counts && econ.counts.hunter) || 0)))
     : 0;
   for (let i2 = 0; i2 < hu.length; i2++) {
-    hu[i2]._esk = _eh.length ? _eh[i2 % _eh.length] : null;
     hu[i2]._fgl = (econ && econ._fGlut) || 0;
     hu[i2]._arm = _armV;
   }
@@ -5261,6 +5294,7 @@ function _lifeDaily(vil) {   // 게임일 경계: 크루·클레임 재대사(�
   vil._cropClaim = new Set(); vil._jobSites = null;   // ★[생활 층 100% ③] 작물 셀 클레임·직업 현장 캐시 일일 리셋(자가치유·현장 재평가)
   _sub('crop');
   _lifeHunterEconLink(vil);   // ★[HSK↔econ] 시각 사냥꾼 ↔ econ 사냥꾼 NPC 연결(랩 배치 루틴 verbatim — 일일 재대사)
+  _lifeEconLink(vil, 'farmer');   // ★[T190] 시각 농부 ↔ econ 농부 — **같은 규칙**(수확이 그 농부의 배율을 쓴다 · 손잡이 끄면 배율이 1 이라 무해)
   _sub('hunter');
   try { _lifeGranAdd(vil); } catch (e) { console.error(`[${state.zoneId}] 생활층 곳간 증설 실패(${vil.name}):`, e.message); }   // ★[곳간 증설 런타임] 재고 비례 링 증설(랩 _granAdd)
   // 작물 하루 틱(랩 7920 동형): 김매기·물대기 놓치면 품질↓ · 병충해 발생(내일 방제 일감) — 상태·연출만(식량은 econ 소유)
@@ -6380,6 +6414,8 @@ module.exports = {
     //   왜: 밴드 구축은 지형을 훑는다. 예산에서 끊고 이어 짓는지 재려면 **지형을 하네스가 쥐어야** 한다.
     //   ⚠하네스는 밴드 규칙(고리 반경·숲 문턱·바위·물)을 다시 적지 않는다 — `_huntBandBuild` 정본을 그대로 부른다.
     _huntProbe: { setTa: (ta) => { const k = state.ta; state.ta = ta; return k; } },
+    // ★[T190] 배율을 집는 **그 함수 자체**를 내준다 — 하네스가 라운드로빈을 다시 적으면 그게 사본이다.
+    _farmMulProbe: (vil, npc) => _farmMul(vil, npc),
     get VILLAGE_MAX() { return VILLAGE_MAX; },
     get INITIAL_POP() { return INITIAL_POP; },
     get SZ() { return SZ; },
