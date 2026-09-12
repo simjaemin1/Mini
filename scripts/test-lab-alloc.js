@@ -19,6 +19,7 @@
 //   ⑨ ★사본 0 — 랩 HTML 이 제 `allocRealFn`/`allocBasketOf` 를 **안 들고 있다**
 //   ⑩ ★[T184 2판] 주산물 항 — 항이 종전식의 그 품목·그 값식이고, 되돌림이 1판으로 돌아간다
 //   ⑪ ★[T184 2판] **축 검사** — 실현÷종전 배율이 직업 간 한 자릿수 안(1판이면 두 자릿수 → 빨강)
+//   ⑫ ★[T189] 폴백 축 맞춤(`L_ALLOC_FB`) — 인원 0 직업의 폴백이 축 배율만큼 오르고, 실현 있는 직업은 무변
 //
 // 실행: node scripts/test-lab-alloc.js
 'use strict';
@@ -168,6 +169,31 @@ async function open(env) {
     }
     const spread = Math.max.apply(null, ratios) / Math.min.apply(null, ratios);
     ok(spread < 10, '★⑪ 축 검사 — 직업 간 배율 퍼짐이 **한 자릿수 안**', `퍼짐 ×${spread.toFixed(2)}`);
+
+    // ⑫ ★[T189] 폴백 축 맞춤 — `L_ALLOC_FB=1` 이면 실현 없는 직업의 폴백이 **축 배율**만큼 올라간다
+    {
+      delete process.env.L_ALLOC_FB;
+      const mk = () => ({ dailyProductionBuf: { food: per * N, wood: per * N } });
+      const cands = () => [['farmer', 10], ['lumberjack', 10], ['miner', 10]];
+      const c3 = ctx({ farmer: N, lumberjack: N, miner: 0 });           // 광부 인원 0 → 폴백
+      const go = (fb) => {
+        if (fb) process.env.L_ALLOC_FB = '1'; else delete process.env.L_ALLOC_FB;
+        const v = mk(); W0.day = 0; E.allocRealCandidates(v, W0, cands(), c3);
+        W0.day = 100000; return E.allocRealCandidates(v, W0, cands(), c3);
+      };
+      const off = go(false), on = go(true);
+      delete process.env.L_ALLOC_FB;
+      ok(E.allocFbMode() === false, '⑫ 폴백 축 맞춤은 **기본 꺼짐**');
+      ok(off[2][0] === 'miner' && off[2][1] === 10, '⑫ 꺼짐 — 인원 0 인 광부는 **종전 값 그대로**', `${off[2][1]}`);
+      ok(on[0][1] === off[0][1] && on[1][1] === off[1][1],
+         '⑫ 켬 — 실현이 있는 직업은 **한 자도 안 움직인다**');
+      const rs = [off[0][1] / 10, off[1][1] / 10].sort((a, b) => a - b);
+      const med = (rs[0] + rs[1]) / 2;
+      ok(Math.abs(on[2][1] - 10 * med) < 1e-6,
+         '★⑫ 켬 — 폴백 값 × **그 호출의 축 배율 중앙값**(새 수 0)', `${off[2][1]} → ${on[2][1].toFixed(0)} (중앙 ×${med.toFixed(0)})`);
+      ok(on[2][1] > off[2][1], '★⑫ 돌연변이 — 폴백을 종전 값으로 되돌리면 광부 후보가 다시 눌린다',
+         `${on[2][1].toFixed(0)} → ${off[2][1]}`);
+    }
 
     // ⑪ 돌연변이 — 1판(바구니 전체)으로 되돌리면 같은 설정에서 배율이 흩어진다
     process.env.L_ALLOC_BASKET = '1';
