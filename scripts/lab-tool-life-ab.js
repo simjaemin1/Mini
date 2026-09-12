@@ -17,7 +17,9 @@ const fs = require('fs');
 const { chromium } = require('playwright');
 const DAYS = parseInt(process.argv[2], 10) || 800;
 const NVIL = parseInt(process.argv[3], 10) || 8;
-const HALF = parseFloat(process.argv[4]) || 0.5;
+// ★[T191] 팔을 여럿 받는다 — `0.9,0.75,0.5` 처럼. 기본은 T180 의 한 팔(`0.5`).
+const MULS = String(process.argv[4] || '0.5').split(',').map(parseFloat).filter((x) => x > 0);
+const HALF = MULS[0];
 const SEEDS = (process.env.T180_SEEDS || '1020,7,42').split(',').map((x) => parseInt(x, 10)).filter(Number.isFinite);
 const OUT = process.env.T180_LAB_JSON || '';
 const PRNG = (seed) => `(()=>{let s=${seed}|0;Math.random=function(){s=(s+0x6D2B79F5)|0;let t=Math.imul(s^(s>>>15),1|s);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296;};})();`;
@@ -83,10 +85,10 @@ const sum = (a) => a.reduce((x, y) => x + y, 0);
   const all = [];
   for (const seed of SEEDS) {
     const base = await arm(seed, 1);
-    const half = await arm(seed, HALF);
-    all.push({ seed, base, half });
+    const arms = {};
+    for (const m of MULS) { arms[m] = await arm(seed, m); if (arms[m].err) console.log(`  ⚠ seed ${seed} ×${m} 오류: ${arms[m].err}`); }
+    all.push({ seed, base, arms, half: arms[HALF] });
     if (base.err) console.log(`  ⚠ seed ${seed} 기본 오류: ${base.err}`);
-    if (half.err) console.log(`  ⚠ seed ${seed} 반 오류: ${half.err}`);
   }
   console.log(`\n=== T180 ③ 도구 수명 랩 A/B — ${DAYS}일 · 마을 ${NVIL} · 시드 ${SEEDS.join(',')} · 눈금 ×${HALF} ===`);
   const a0 = all[0];
@@ -116,5 +118,21 @@ const sum = (a) => a.reduce((x, y) => x + y, 0);
     const fo = fl(s.base), fn = fl(s.half);
     console.log(`  ${String(s.seed).padStart(4)} | ${sum(fo.map((t) => t.popMax))} → ${sum(fn.map((t) => t.popMax))}`);
   }
+  // ── ★[T191] 눈금 표 — 팔 전부를 한 판에 ───────────────────────────────────
+  console.log(`\n★[T191] 눈금 표 — ×1 / ${MULS.map((m) => '×' + m).join(' / ')} (3시드 · 바닥 마을은 중앙 · 전체는 합)`);
+  const cols = ['도구≈0', '돌<0.2', '인구', '소멸', '도구Q', '무기Q', '돌재고', '바닥최고인구'];
+  console.log(`  시드 | 팔 | ${cols.join(' | ')}`);
+  for (const s of all) {
+    for (const m of [1].concat(MULS)) {
+      const r = (m === 1) ? s.base : s.arms[m];
+      if (!r || !r.rows) continue;
+      const f = r.rows.filter((t) => t.base != null && r.floorConst != null && Math.abs(t.base - r.floorConst) < 1e-9);
+      console.log(`  ${String(s.seed).padStart(4)} | ×${String(m).padEnd(4)} | ${String(med(f.map((t) => t.toolLow))).padStart(4)}`
+        + ` | ${String(med(f.map((t) => t.dLow))).padStart(4)} | ${String(r.pop).padStart(4)}`
+        + ` | ${r.vil0 - r.vil1}/${r.vil0} | ${r.toolQ.toFixed(0).padStart(5)} | ${r.weapQ.toFixed(0).padStart(4)}`
+        + ` | ${r.stone.toFixed(0).padStart(5)} | ${String(sum(f.map((t) => t.popMax))).padStart(4)}`);
+    }
+  }
+  // ★×1 두 팔이 같은가(되돌림 · 팔을 여럿 돌려도 ×1 은 하나다 — 시드마다 한 번씩만 돈다)
   if (OUT) { fs.writeFileSync(OUT, JSON.stringify(all, null, 1)); console.log(`\n  JSON: ${OUT}`); }
 })();
