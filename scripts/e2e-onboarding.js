@@ -509,13 +509,163 @@ async function waitHttp(url, tries = 900) {
     //     T174 회부 2("젊은 판이 필요하다")가 그렇게 닫혔다. 그런데 **이 상자(2코어)에서는**
     //     그 뒤가 못 버틴다: 건립을 부르면 하네스가 예외 없이 죽고(3판), 건립을 꺼도 곧 죽는다.
     //     ⇒ **기본은 끈다**(대본이 늘 돌아야 한다) · 메모리가 넉넉한 판에서 `ARC_FIRST=1` 로 켠다.
-    let A = null, NEWVID = null, HALL = null;
+    let A = null, NEWVID = null, HALL = null, TID = null, V = null, NPC = [];
+    const INTRO = '돌칼 사람들은 강가에 산다';
     if (process.env.ARC_FIRST !== '1') {
-      step('⓪b~② 젊은 판 걷기', false, '★`ARC_FIRST=1 ARC_FOUND=1` 로 켠다 — 켜면 **16걸음 중 15 초록**(T192 실측 · 한 판 ~5분 · 대본은 그대로 67/0)');
+      step('⓪b~② 젊은 판 걷기', false, '★`ARC_FIRST=1 ARC_FOUND=1` 로 켠다 — 켜면 **전수 초록**(T197 실측 · 한 판 ~6분 · 대본은 그대로 67/0)');
+      step('⓪d 길드를 세우고 소개를 적었다', false, '손잡이 뒤 — 미측정');
       step('③ 건립(임시 4칸→village_start→advance×3)', false, '손잡이 뒤 — 미측정');
+      step('③c ★창설 = 소속(픽스처 0)', false, '손잡이 뒤 — 미측정');
       step('④ 인구(곳간 식량→주민)', false, '손잡이 뒤 — 미측정');
       step('⑤ 곳간 3일치', false, '손잡이 뒤 — 미측정');
+      step('⑥ /이방인 받기 · ⑦ 시작 화면', false, '손잡이 뒤 — 미측정');
+      step('⑧ 소개문이 시작 화면과 인사에 뜬다', false, '손잡이 뒤 — 미측정');
+      step('⑨ 인출(세운 사람) · ⑨b 잠금 · ⑨c 열기', false, '손잡이 뒤 — 미측정');
+      step('⑩ 무길드 대조 팔', false, '손잡이 뒤 — 미측정');
     } else {
+    // ═══ 건립 한 벌 — ★[T197] **두 팔이 같은 함수를 쓴다**(길드 창설자 · 무길드 창설자 · 사본 0) ═══
+    const CELL = 32;
+    //   ★정확한 셀에 선다(사유지는 **선 셀**에 깔린다 — 워프 링이 밀면 엉뚱한 칸을 산다)
+    const warpCell = async (C, X, Y) => {
+      C.notices.length = 0;
+      snd(C, { type: 'teleport_debug', x: X * CELL + 16, y: Y * CELL + 16 });
+      await sleep(400);
+      return C.notices.some((t) => /텔레포트 →/.test(t));
+    };
+    //   ★자리 찾기는 **서버에게 묻는다**(사본 금지). `tryVillageStart` 는 거리부터 보고(dryRun)
+    //     그 다음에 사유지를 보므로, 땅 없이 쏴 보면 답이 자리를 알려 준다:
+    //       `너무 가깝다` → 더 멀리 · `사유지` → **거리는 통과** · `물·바위` → 딴 쪽.
+    const probe = async (C, X, Y) => {
+      C.notices.length = 0;
+      snd(C, { type: 'village_start', atX: X * CELL + 16, atY: Y * CELL + 16 });
+      await sleep(700);
+      return (C.notices.slice(-3).join(' | ') || '(답 없음)');
+    };
+    //   반환 { SITE, hall, vid, why } — 실패하면 hall 이 null 이고 why 가 그 이유다.
+    const foundAt = async (C, baseCx, baseCy, centers, tag) => {
+      //   ★재료 — 임시 사유지 4칸(통나무 1씩) + 회관 3단(돌 70 · 통나무 80) + 곡괭이(①② 가 5씩 닳는다).
+      //     픽스처는 **물건만** 준다(캐는 사슬은 이 하네스가 재는 것이 아니다 · `E2E_GIVE` 게이트).
+      //     ⚠**곡괭이는 `items` 가 아니라 `tools`** — 도구는 수량이 아니라 인스턴스다(T192 실측).
+      snd(C, { type: '__e2e_give', items: { stone: 400, wood: 400 }, tools: ['pickaxe', 'pickaxe', 'pickaxe'] }); await sleep(900);
+      const far = (X, Y, n) => centers.every((v) => Math.hypot(X - v.cx, Y - v.cy) >= n);
+      let SITE = null, why = '';
+      outer:
+      for (const R of [60, 75, 95, 120, 150]) {
+        for (const [ux, uy] of [[1, 0], [0, 1], [-1, 0], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]]) {
+          const X = baseCx + Math.round(ux * R), Y = baseCy + Math.round(uy * R);
+          if (X < 8 || Y < 8) continue;
+          if (!far(X, Y, 58)) continue;
+          if (!(await warpCell(C, X, Y))) { why = `워프 실패 (${X},${Y})`; continue; }
+          const w = await probe(C, X, Y);
+          if (/사유지/.test(w)) { SITE = { X, Y }; break outer; }
+          why = w;
+        }
+      }
+      if (!SITE) return { SITE: null, hall: null, vid: null, why: `자리 못 찾음 — ${why}` };
+      //   ★임시 사유지 4칸 = 회관 발자국 2×2. 슬롯이 **정확히 4개**인 것이 이 경로의 설계다.
+      let got = 0;
+      for (const [dx, dy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) {
+        if (!(await warpCell(C, SITE.X + dx, SITE.Y + dy))) continue;
+        C.notices.length = 0;
+        snd(C, { type: 'claim', kind: 'temporary' });
+        await sleep(600);
+        if (C.notices.some((t) => /사유지 설치/.test(t))) got++;
+      }
+      if (got < 4) return { SITE, hall: null, vid: null, why: `임시 사유지 ${got}/4 · ${lastN(C, 1)}` };
+      await warpCell(C, SITE.X, SITE.Y);
+      C.notices.length = 0; C.msgs.length = 0;
+      console.log(`    · [${tag}] 착공 보냄 (${SITE.X},${SITE.Y})  [${mem()}]`);
+      snd(C, { type: 'village_start', atX: SITE.X * CELL + 16, atY: SITE.Y * CELL + 16 });
+      await sleep(1500);
+      let site = null;
+      for (let k = 0; k < 12 && !site; k++) {
+        const m = C.msgs.slice().reverse().find((x) => x.type === 'building_added' && x.building && x.building.type === 'village_site');
+        if (m) site = m.building; else await sleep(700);
+      }
+      if (!site) return { SITE, hall: null, vid: null, why: `착공 실패 · ${lastN(C, 2)}` };
+      let hall = null;
+      for (let k = 0; k < 12 && !hall; k++) {
+        C.notices.length = 0; C.msgs.length = 0;
+        snd(C, { type: 'village_advance', buildingId: site.id }); await sleep(1500);
+        const hm = C.msgs.slice().reverse().find((x) => x.type === 'building_added' && x.building && x.building.type === 'village_hall');
+        if (hm) hall = hm.building;
+      }
+      if (!hall) return { SITE, hall: null, vid: null, why: `건립 실패 · ${lastN(C, 2)}` };
+      //   ★새 마을의 vid — **`/welcomedbg` 에서** 찾는다(`/startinfo` 는 `listable` 통과분만 싣는다).
+      let vid = null;
+      for (let k = 0; k < 20 && vid == null; k++) {
+        const d = await jget2(`http://localhost:${ZPORT}/welcomedbg`);
+        const rows = (d && Array.isArray(d.villages)) ? d.villages : [];
+        const mine = rows.filter((r) => !centers.some((c) => (c.vid | 0) === (r.vid | 0)));
+        if (mine.length) vid = mine[mine.length - 1].vid | 0; else await sleep(1000);
+      }
+      return { SITE, hall, vid, why: '' };
+    };
+    //   ★곳간 채우기 · 쉼터 · 받기 — 세 팔이 같은 줄을 쓴다(사본 0)
+    const fillGranary = async (C, hall) => {
+      for (let k = 0; k < 6; k++) {
+        snd(C, { type: '__e2e_give', items: { food: 300 } }); await sleep(400);
+        snd(C, { type: 'village_deposit', buildingId: hall.id, want: { food: 300 } }); await sleep(900);
+      }
+    };
+    const buildShelterAndOpen = async (C, hall) => {
+      const HX = Math.round(hall.x), HY = Math.round(hall.y);
+      await warp(C, HX + 96, HY + 96);
+      snd(C, { type: '__e2e_give', items: { pillar: 12, rafter: 16, fiber: 12, thatch: 16 } }); await sleep(700);
+      C.msgs.length = 0; C.notices.length = 0;
+      snd(C, { type: 'shelter_start', atX: HX + 96, atY: HY + 96 }); await sleep(1200);
+      const sh = C.msgs.slice().reverse().find((m) => m.type === 'building_added' && m.building && m.building.type === 'shelter_site');
+      for (let k = 0; k < 6 && sh; k++) { snd(C, { type: 'shelter_advance', buildingId: sh.building.id }); await sleep(1100); }
+      const done = C.msgs.slice().reverse().some((m) => m.type === 'building_added' && m.building && m.building.type === 'shelter');
+      await warp(C, HX + 40, HY + 40);
+      C.notices.length = 0; chat(C, '/이방인 받기'); await sleep(1200);
+      return done;
+    };
+    //   ★★[T197] `wantIntro` — 소개문은 **캐시로만** 답한다(guild.js 규약 ④: 시작 화면은 기다릴 수 없다).
+    //     그래서 **첫 요청은 설계상 빈 칸**이고 그 요청이 채우기를 시작한다. 로비를 한 번 더 새로
+    //     고치면 온다 — 하네스도 사람처럼 다시 물어야 한다(이게 규약을 존중하는 읽기다).
+    const startLineOf = async (vid, wantIntro) => {
+      let last = null;
+      for (let k = 0; k < 30; k++) {
+        const si = await jget2(`http://localhost:${ZPORT}/startinfo`);
+        const r = si && si.ok && (si.villages || []).find((v) => (v.vid | 0) === (vid | 0));
+        if (r) { last = r; if (!wantIntro || String(r.intro || '')) return r; }
+        await sleep(1200);
+      }
+      return last;
+    };
+    //   ★등짐의 밥 — 인출이 **실제로 주는지**는 곳간이 아니라 여기서 잰다(T174 ⑦f2 가 배운 것:
+    //     살아 있는 마을은 제 곳간을 저 혼자 축낸다 — 곳간의 감소는 인출의 증거가 못 된다).
+    const packFood = (C) => { const m = C.msgs.slice().reverse().find((x) => x.type === 'inventory' && x.inventory); return m ? (+m.inventory.food || 0) : NaN; };
+    const withdrawOnce = async (C, hall) => {
+      await warp(C, Math.round(hall.x) + 40, Math.round(hall.y) + 40);
+      C.msgs.length = 0; snd(C, { type: '__e2e_give', items: { stone: 1 } }); await sleep(700);
+      const p0 = packFood(C);
+      C.notices.length = 0; C.msgs.length = 0;
+      //   ⚠품목 이름은 **재화의 우리말**이다(`ItemLabel.CATEGORY_KO.food = '🍞 식량'`) — 요리 이름(`밥`)이 아니다.
+      chat(C, '/곳간 식량 20'); await sleep(1800);
+      snd(C, { type: '__e2e_give', items: { stone: 1 } }); await sleep(700);
+      const notes = lastN(C, 2), p1 = packFood(C);
+      return { p0, p1, notes, gave: Number.isFinite(p0) && Number.isFinite(p1) && p1 > p0,
+        locked: /잠갔다/.test(notes), quota: /오늘 몫은 다 꺼냈다/.test(notes) };
+    };
+    //   ★★[T197] 한 번으로 판정하지 않는 이유 **둘 다 설계다**:
+    //     ⓐ 곳간문도 **캐시**다 — `granaryBust` 뒤 첫 물음은 "모른다 ⇒ 안 막는다"(membership 규약 ②).
+    //     ⓑ 하루 몫이 1 이라 같은 게임일에 두 번째는 `오늘 몫은 다 꺼냈다` 가 온다 — 그건 잠금도
+    //        열림도 아닌 **판정 불가**다. 그 판은 세지 않고 다음 날을 기다린다(게임일 0.5초).
+    const withdrawUntil = async (C, hall, want) => {
+      let last = null;
+      for (let k = 0; k < 8; k++) {
+        const r = await withdrawOnce(C, hall);
+        last = r;
+        if (r.quota) { await sleep(1200); continue; }
+        if (want === 'give' && r.gave) return { ...r, n: k + 1 };
+        if (want === 'lock' && r.locked) return { ...r, n: k + 1 };
+        await sleep(1200);
+      }
+      return { ...last, n: 8 };
+    };
+
     try {
         let si0 = null;
         for (let i = 0; i < 180; i++) {
@@ -523,13 +673,29 @@ async function waitHttp(url, tries = 900) {
           if (si0 && si0.ok && si0.villages && si0.villages.length) break;
           await sleep(1000);
         }
-        const V = si0 && si0.ok && si0.villages.find((v) => !v.player);
+        V = si0 && si0.ok && si0.villages.find((v) => !v.player);
         step('⓪b 제 판에 NPC 마을이 섰다', !!V, V ? `${V.name} (vid ${V.vid}) · ${si0.villages.length}곳` : '없다');
         if (!V) throw new Error('마을 없음');
+        NPC = (si0.villages || []).map((v) => ({ cx: v.cx | 0, cy: v.cy | 0, vid: v.vid | 0, name: v.name }));
 
         A = await wsConnect('arcfounder', 'arcpw', V.vid | 0);
         await sleep(1500);
         step('⓪c 그 마을을 시작지로 접속', !!A.playerId, A.playerId);
+
+        // ── ⓪d 길드 하나 — **종전 경로 그대로**(central `/tribe/create` → `tribe_set` → `/소개`) ──
+        //   ★[T197] 이 줄이 있어야 ⑧ 이 잴 것이 생긴다. 픽스처가 아니라 `e2e-guild` 가 쓰는 그 문이다.
+        try {
+          const r = await fetch(`http://localhost:${CPORT}/tribe/create`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ player_id: A.playerId, name: '돌칼' }) });
+          const j = r.ok ? await r.json() : null;
+          TID = j && j.ok ? j.tribe_id : null;
+        } catch (e) {}
+        if (TID) { snd(A, { type: 'tribe_set', tribeId: TID, tribeName: '돌칼' }); await sleep(900); }
+        A.notices.length = 0; chat(A, `/소개 ${INTRO}`); await sleep(1500);
+        step('⓪d 길드를 세우고 소개를 적었다', !!(TID && A.notices.some((t) => /소개를 적었다/.test(t))),
+          `tribe ${TID} · ${lastN(A, 1)}`);
+
         await warp(A, (V.cx | 0) * 32 + 16, (V.cy | 0) * 32 + 16);
 
         // ── ① 기여 3회 — 판이 새것이라 의뢰 줄이 열려 있다
@@ -555,124 +721,27 @@ async function waitHttp(url, tries = 900) {
         step('② 빈터 권리', !!(st1 && st1.state.lotOk && LOT), LOT ? `(${Math.round(LOT.x)},${Math.round(LOT.y)}) r=${LOT.r}` : '없다');
         if (!LOT) throw new Error('빈터 없음');
 
-        // ═══ ③ 건립 — ★★[T192 2026-09-12] **T181 의 귀속이 틀렸다. 게임이 말을 하고 있었다.** ═══
-        //   T181 은 이 자리에서 하네스가 "예외 0 · 조용히" 죽는 것을 보고 **상자 탓**으로 적었다.
-        //   새 상자에서 같은 줄을 그대로 돌리니 **죽지 않았다** — 대신 게시판처럼 또렷한 한 줄이 왔다:
-        //     `여기엔 마을을 못 세운다 — [농촌1] 의 땅과 너무 가깝다 — 53셀은 떨어져야 한다`
-        //   ⇒ 죽음은 상자의 것이었고, 그 뒤에 **진짜 벽**이 서 있었다. 벽의 정체(코드 실측):
-        //     ⓐ `villages.foundPlayerVillage` — 기존 마을 중심에서 `max(4, _maxRPx/32) + 10` 셀 밖.
-        //     ⓑ `zone._claimFootprint` — 2×2 **네 셀 전부**가 내 사유지여야 한다.
-        //     ⓒ `zone.tryClaim` — 개인 사유지는 길드 영토 안에서만. 길드 없는 새 사람의 문은
-        //        **임시 사유지(T) 뿐**이고, 그 슬롯이 정확히 **4개**다(`CLAIM_SLOT_TEMPORARY_START`).
-        //   ⇒ 즉 혼자 온 사람의 건립 경로는 **"멀리 걸어가 임시 4칸을 깔고 그 위에 회관"**이다.
-        //     T181 이 빈터(`lot`) 위에서 착공을 시도한 것은 **호를 잘못 읽은 것**이다 —
-        //     빈터는 *"거기다 자네 **집**을 올리게"*(onboarding.js `lot` 대사)이지 마을 자리가 아니다.
-        //     두 곳은 **같을 수 없다**: 빈터는 어귀(중심에서 10셀)고 건립은 53셀 밖이다.
-        //   ⚠게임 코드는 한 자리도 안 고친다 — 규칙이 어긋난 게 아니라 **하네스가 호를 잘못 걸었다**.
-        //     (다만 "빈터=내 집터 / 건립=멀리"가 대사 두 줄뿐이라 사람에게 안 보인다 — §3 회부.)
+        // ═══ ③ 건립 — ★[T192] 빈터는 **집터**다(어귀 10셀). 마을은 **53셀 밖**에 임시 4칸을 깔고 세운다 ═══
         if (process.env.ARC_FOUND !== '1') {
           step('③ 건립(임시 4칸→village_start→advance×3)', false, '`ARC_FOUND=1` 로 켠다');
           step('④ 인구(곳간 식량→주민)', false, '③ 뒤 — 미도달');
           step('⑤ 곳간 3일치', false, '③ 뒤 — 미도달');
         } else {
-          //   ★재료 — 임시 사유지 4칸(통나무 1씩) + 회관 3단(돌 70 · 통나무 80) + 곡괭이(①② 가 5씩 닳는다).
-          //     픽스처는 **물건만** 준다(캐는 사슬은 이 하네스가 재는 것이 아니다 · `E2E_GIVE` 게이트).
-          console.log(`    · 재료 지급(돌·통나무·곡괭이)  [${mem()}]`);
-          //   ⚠**곡괭이는 `items` 가 아니라 `tools`** 로 준다 — 도구는 수량이 아니라 **인스턴스**({id,type,d})이고
-          //     `hasTool` 이 그 배열을 본다. T181 이 `items:{pickaxe:3}` 으로 준 것은 인벤 숫자만 올린 것이라
-          //     ①단 `곡괭이 필요` 에서 막혔다(실측 · 이 한 줄이 ③ 을 세우던 두 번째 벽이었다).
-          snd(A, { type: '__e2e_give', items: { stone: 400, wood: 400 }, tools: ['pickaxe', 'pickaxe', 'pickaxe'] }); await sleep(900);
-          //   ★자리 찾기는 **서버에게 묻는다**(사본 금지). `tryVillageStart` 는 거리부터 보고(dryRun)
-          //     그 다음에 사유지를 보므로, 땅 없이 쏴 보면 답이 자리를 알려 준다:
-          //       `너무 가깝다` → 더 멀리 · `사유지` → **거리는 통과** · `물·바위` → 딴 쪽.
-          const CELL = 32;
-          const cellsOf = (C) => ({ x: Math.floor(C.x / CELL), y: Math.floor(C.y / CELL) });
-          //   ★정확한 셀에 선다(사유지는 **선 셀**에 깔린다 — 워프 링이 밀면 엉뚱한 칸을 산다)
-          const warpCell = async (C, X, Y) => {
-            C.notices.length = 0;
-            snd(C, { type: 'teleport_debug', x: X * CELL + 16, y: Y * CELL + 16 });
-            await sleep(400);
-            return C.notices.some((t) => /텔레포트 →/.test(t));
-          };
-          const probe = async (X, Y) => {
-            A.notices.length = 0;
-            snd(A, { type: 'village_start', atX: X * CELL + 16, atY: Y * CELL + 16 });
-            await sleep(700);
-            return (A.notices.slice(-3).join(' | ') || '(답 없음)');
-          };
-          const VC = (si0.villages || []).map((v) => ({ cx: v.cx | 0, cy: v.cy | 0, name: v.name }));
-          const far = (X, Y, n) => VC.every((v) => Math.hypot(X - v.cx, Y - v.cy) >= n);
-          let SITE = null, lastWhy = '';
-          //   바깥으로 넓혀 가며 8방 — 첫 고리를 60셀로 잡는다(실측 문턱 53 + 여유)
-          outer:
-          for (const R of [60, 75, 95, 120, 150]) {
-            for (const [ux, uy] of [[1, 0], [0, 1], [-1, 0], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]]) {
-              const X = (V.cx | 0) + Math.round(ux * R), Y = (V.cy | 0) + Math.round(uy * R);
-              if (X < 8 || Y < 8) continue;
-              if (!far(X, Y, 58)) continue;
-              if (!(await warpCell(A, X, Y))) { lastWhy = `워프 실패 (${X},${Y})`; continue; }
-              const why = await probe(X, Y);
-              if (/사유지/.test(why)) { SITE = { X, Y }; break outer; }
-              lastWhy = why;
-              if (/물·바위/.test(why)) continue;
-            }
-          }
-          step('③a 건립 자리(마을 밖 · 서버가 거리를 통과시킨다)', !!SITE,
-            SITE ? `셀 (${SITE.X},${SITE.Y}) · ${V.name} 중심에서 ${Math.round(Math.hypot(SITE.X - (V.cx | 0), SITE.Y - (V.cy | 0)))}셀` : lastWhy);
-          if (!SITE) throw new Error('건립 자리 못 찾음');
+          const f1 = await foundAt(A, V.cx | 0, V.cy | 0, NPC, '길드팔');
+          step('③ 건립(임시 4칸 → village_start → advance×3)', !!f1.hall,
+            f1.hall ? `회관 ${f1.hall.id} · 셀 (${f1.SITE.X},${f1.SITE.Y}) · ${V.name} 에서 ${Math.round(Math.hypot(f1.SITE.X - (V.cx | 0), f1.SITE.Y - (V.cy | 0)))}셀` : f1.why);
+          if (!f1.hall) throw new Error(f1.why);
+          HALL = f1.hall; NEWVID = f1.vid;
+          step('③b 새 마을이 세계에 등록됐다', NEWVID != null, NEWVID != null ? `vid ${NEWVID}` : '못 찾음');
 
-          //   ★임시 사유지 4칸 = 회관 발자국 2×2. 슬롯이 **정확히 4개**인 것이 이 경로의 설계다.
-          let got = 0;
-          for (const [dx, dy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) {
-            if (!(await warpCell(A, SITE.X + dx, SITE.Y + dy))) continue;
-            A.notices.length = 0;
-            snd(A, { type: 'claim', kind: 'temporary' });
-            await sleep(600);
-            if (A.notices.some((t) => /사유지|영지|claim/i.test(t) && !/부족|한도|겹칩|없습니다/.test(t))) got++;
-          }
-          step('③b 임시 사유지 4칸(혼자 온 사람의 유일한 땅문)', got >= 4, `${got}/4 · ${lastN(A, 1)}`);
+          // ── ③c ★★[T197] **창설 = 소속** — 픽스처 없이, 세운 그 순간 제 마을 사람이다 ──
+          A.msgs.length = 0; snd(A, { type: 'onboarding_state' }); await sleep(600);
+          A.notices.length = 0; chat(A, '/곳간'); await sleep(1200);
+          const memLine = A.notices.slice(-2).join(' | ');
+          step('③c ★창설 = 소속(픽스처 0 — 기여 12 를 지어내지 않는다)',
+            !/아직 마을 사람이 아니다/.test(memLine) && /곳간|몫|자립|남은/.test(memLine), memLine);
 
-          //   ★착공은 발자국 좌상 셀에서 200px 안 — 좌상 셀에 서서 쏜다
-          await warpCell(A, SITE.X, SITE.Y);
-          A.notices.length = 0; A.msgs.length = 0;
-          console.log(`    · 착공 보냄  [${mem()}]`);
-          snd(A, { type: 'village_start', atX: SITE.X * CELL + 16, atY: SITE.Y * CELL + 16 });
-          await sleep(1500);
-          let site = null;
-          for (let k = 0; k < 12 && !site; k++) {
-            const m = A.msgs.slice().reverse().find((x) => x.type === 'building_added' && x.building && x.building.type === 'village_site');
-            if (m) site = m.building;
-            else { await sleep(700); }
-          }
-          step('③c 회관 착공(village_start)', !!site, site ? `site ${site.id}` : lastN(A, 2));
-          if (!site) throw new Error('착공 실패');
-          let founded = null;
-          for (let k = 0; k < 12 && !founded; k++) {
-            A.notices.length = 0; A.msgs.length = 0;
-            snd(A, { type: 'village_advance', buildingId: site.id }); await sleep(1500);
-            if (A.notices.some((t) => /이\(가\) 섰다|마을이 섰다/.test(t))) founded = true;
-            const hm = A.msgs.slice().reverse().find((x) => x.type === 'building_added' && x.building && x.building.type === 'village_hall');
-            if (hm) { HALL = hm.building; founded = true; }
-          }
-          step('③ 건립(foundPlayerVillage)', !!founded, founded ? (HALL ? `회관 ${HALL.id}` : '섰다') : lastN(A, 2));
-          if (!founded) throw new Error('건립 실패');
-          //   ★새 마을의 vid — **`/welcomedbg` 에서** 찾는다. `/startinfo` 가 아닌 이유:
-          //     그 줄은 `listable`(받기 ∧ 쉼터 ∧ 인구 ∧ 곳간)을 통과한 마을만 싣는다(T19 규약) —
-          //     방금 선 마을은 당연히 아직 안 실린다. `Newcomers.debug()` 는 **사람이 세운 마을 전부**를 준다.
-          for (let k = 0; k < 20 && NEWVID == null; k++) {
-            const d = await jget2(`http://localhost:${ZPORT}/welcomedbg`);
-            const pv = d && Array.isArray(d.villages) && d.villages[d.villages.length - 1];
-            if (pv && pv.vid != null) NEWVID = pv.vid | 0; else await sleep(1000);
-          }
-          step('③d 새 마을이 세계에 등록됐다', NEWVID != null, NEWVID != null ? `vid ${NEWVID}` : '못 찾음');
-
-          // ── ④⑤ 인구 · 곳간 3일치 — 곳간에 식량을 넣고 게임일을 보낸다(잠 0 · 게임분)
-          if (HALL) {
-            for (let k = 0; k < 6; k++) {
-              snd(A, { type: '__e2e_give', items: { food: 300 } }); await sleep(400);
-              snd(A, { type: 'village_deposit', buildingId: HALL.id, want: { food: 300 } }); await sleep(900);
-            }
-          }
+          await fillGranary(A, HALL);
           let elig = null;
           for (let k = 0; k < 90; k++) {
             const d = await jget2(`http://localhost:${ZPORT}/welcomedbg`);
@@ -686,109 +755,108 @@ async function waitHttp(url, tries = 900) {
       } catch (e) {
         step('③~⑤ (제 판)', false, e.message);
       }
-    }
-    // ═══ ⑥~⑨ — ★★[T192] **대리(다른 하네스가 잰다) 를 걷어내고 이 판에서 직접 걷는다** ═══
-    //   T174/T181 은 여기 네 줄을 "다른 하네스가 잰다"로 두고 ○ 를 찍었다. 그건 **호를 잰 것이 아니다** —
-    //   각 하네스는 제 판을 따로 세운다. 호의 뜻은 *"한 판에서 이어지는가"* 이므로 여기서 이어 걷는다.
+    // ═══ ⑥~⑩ — ★[T192] 대리 초록을 걷어낸 자리 · ★[T197] ⑧ 과 잠금·무길드 두 팔 ═══
     if (A && NEWVID != null && HALL) {
       try {
-        // ── ⑥ `/이방인 받기` — 회관 앞에서, 창설자가 ─────────────────────────
+        // ── ⑥ 쉼터 + `/이방인 받기` ─────────────────────────────────────────
         //   ⚠`listable` 은 받기만으로 안 열린다: **쉼터**(이방인이 잘 자리) 도 자격이다(T62 규약).
-        //     그래서 쉼터를 먼저 세운다 — 마을 땅이 곧 허가라 사유지 슬롯을 안 쓴다(SHELTER_SPEC).
-        const HX = Math.round(HALL.x), HY = Math.round(HALL.y);
-        await warp(A, HX + 96, HY + 96);
-        snd(A, { type: '__e2e_give', items: { pillar: 12, rafter: 16, fiber: 12, thatch: 16 } }); await sleep(700);
-        A.msgs.length = 0; A.notices.length = 0;
-        snd(A, { type: 'shelter_start', atX: HX + 96, atY: HY + 96 }); await sleep(1200);
-        let sh = A.msgs.slice().reverse().find((m) => m.type === 'building_added' && m.building && m.building.type === 'shelter_site');
-        for (let k = 0; k < 6 && sh; k++) { snd(A, { type: 'shelter_advance', buildingId: sh.building.id }); await sleep(1100); }
-        const shDone = A.msgs.slice().reverse().some((m) => m.type === 'building_added' && m.building && m.building.type === 'shelter');
+        const shDone = await buildShelterAndOpen(A, HALL);
         step('⑥a 공용 쉼터(이방인이 잘 자리 — 받기 자격의 첫 항)', shDone, shDone ? '섰다' : lastN(A, 2));
-
-        await warp(A, HX + 40, HY + 40);
-        A.notices.length = 0;
-        chat(A, '/이방인 받기'); await sleep(1200);
         let wd = await jget2(`http://localhost:${ZPORT}/welcomedbg`);
         let row = wd && (wd.villages || []).find((r) => (r.vid | 0) === (NEWVID | 0));
-        step('⑥ /이방인 받기 — 스위치가 켜졌다', !!(row && row.on), row ? `on=${row.on} · 인구 ${row.pop} · 자립 ${row.foodDays}일 · 쉼터 ${row.shelter}` : lastN(A, 2));
+        step('⑥ /이방인 받기 — 스위치가 켜졌다', !!(row && row.on),
+          row ? `on=${row.on} · 인구 ${row.pop} · 자립 ${row.foodDays}일 · 쉼터 ${row.shelter}` : lastN(A, 2));
 
         // ── ⑦ 시작 화면 줄 — `listable` 을 통과해 **로비 목록에 실린다** ─────
-        let listed = null, sline = null;
-        for (let k = 0; k < 25; k++) {
-          const si = await jget2(`http://localhost:${ZPORT}/startinfo`);
-          sline = si && si.ok && (si.villages || []).find((v) => (v.vid | 0) === (NEWVID | 0));
-          if (sline) { listed = true; break; }
-          await sleep(1200);
-        }
-        wd = await jget2(`http://localhost:${ZPORT}/welcomedbg`);
-        row = wd && (wd.villages || []).find((r) => (r.vid | 0) === (NEWVID | 0));
-        step('⑦ 시작 화면에 뜬다(`?start_vid=` 가 가리킬 줄이 섰다)', !!listed,
-          listed ? `${sline.name} · player=${sline.player} · 도착 (${sline.arrive && Math.round(sline.arrive.x)},${sline.arrive && Math.round(sline.arrive.y)})`
-                 : (row ? `listed=${row.listed} · 아직: ${(row.why || []).join(' · ')}` : '관측창 못 읽음'));
+        const sline = await startLineOf(NEWVID, true);
+        step('⑦ 시작 화면에 뜬다(`?start_vid=` 가 가리킬 줄이 섰다)', !!sline,
+          sline ? `${sline.name} · player=${sline.player} · 도착 (${sline.arrive && Math.round(sline.arrive.x)},${sline.arrive && Math.round(sline.arrive.y)})` : '안 뜬다');
 
-        // ── ⑧ 소개문이 인사로 ────────────────────────────────────────────────
-        //   ★★[T192 실측] **혼자 세운 마을에는 소개문이 존재할 수 없다.** 코드가 그렇게 닫혀 있다:
-        //     `introOfVillage(vid)` → `Guild.introOfTribe(vil.econ._tribeId)` 인데 `_tribeId` 는
-        //     `foundPlayerVillage({tribeId})` 로만 서고, 그 인자는 `_claimFootprint` 가 **2×2 네 칸이
-        //     전부 길드 사유지**일 때만 길드 id 를 준다. 그런데 사유지 한 장은 **1칸**(`w=h=SZ`)이고
-        //     길드 사유지는 **길드당 하나**다(`tryClaim` 이 새로 놓을 때 기존 것을 지운다).
-        //     ⇒ 네 칸이 전부 길드 땅인 상태는 **만들 수 없다** ⇒ `_tribeId` 는 언제나 null
-        //     ⇒ T128 의 마을 소개문은 **유저 마을에 닿지 못한다**(§3 회부 1 · 게임 코드는 안 고친다).
-        //   여기서는 그 사실을 **줄에서** 잰다 — 시작 화면이 실제로 빈 칸을 준다.
+        // ── ⑧ ★★[T197] 소개문이 시작 화면과 **인사**에 뜬다 ──────────────────
+        //   T192 는 여기가 **구조적으로** 빈다는 것을 쟀다: `introOfVillage` → `vil.econ._tribeId` 인데
+        //   `_tribeId` 는 ⓐ `vil` 에 살고(econ 이 아니다) ⓑ 2×2 전부 길드 사유지일 때만 섰다 —
+        //   플레이어 길드 사유지는 한 칸·길드당 하나라 **만들 수 없는 조건**이었다.
+        //   T197 이 둘 다 고쳤다: 마을은 **세운 사람의 길드** 것이고, 읽는 자리는 `vil._tribeId` 다.
         let greetSaw = null, introCol = null;
-        if (listed) {
-          introCol = String(sline.intro == null ? '(칸 없음)' : sline.intro);
+        if (sline) {
+          introCol = String(sline.intro == null ? '' : sline.intro);
           const B = await wsConnect('arcguest', 'arcpw', NEWVID | 0);
           await sleep(1500);
           B.msgs.length = 0; snd(B, { type: 'onboarding_greet' }); await sleep(1200);
           const gm = B.msgs.slice().reverse().find((m) => m.type === 'onboarding_quest' || m.type === 'onboarding_greet');
-          greetSaw = gm && Array.isArray(gm.lines) ? gm.lines : (B.notices.slice(-3));
+          greetSaw = gm && Array.isArray(gm.lines) ? gm.lines : B.notices.slice(-3);
           shut(B);
         }
-        step('⑧ 소개문이 인사로 나온다', !!(introCol && introCol.length > 0 && Array.isArray(greetSaw) && greetSaw.some((l) => l.includes(introCol))),
-          `시작 화면 intro 칸 = ${JSON.stringify(introCol)} · 인사 ${JSON.stringify(greetSaw)}`
-          + ' — ★혼자 세운 마을은 `_tribeId` 가 없어 소개문이 **구조적으로** 빈다(회부 1)');
+        step('⑧ 소개문이 시작 화면과 인사에 뜬다',
+          !!(introCol === INTRO && Array.isArray(greetSaw) && greetSaw.some((l) => String(l).includes(INTRO))),
+          `시작 화면 intro = ${JSON.stringify(introCol)} · 인사 ${JSON.stringify(greetSaw)}`);
 
-        // ── ⑨ `/곳간` 인출 — **내가 세운 마을의 곳간이 실제로 준다** ──────────
-        //   ⚠소속은 픽스처로 앉힌다(`__e2e_body {member}` · `test-handoff-body` 가 쓰는 그 문). 이유:
-        //     소속 문턱은 누적 기여 **12**(K-2)인데 창설자의 기여는 제 마을이 아니라 **NPC 마을** 것이다.
-        //     "창설자는 제 마을 사람인가"는 이 하네스가 답할 물음이 아니다(§3 회부 2).
-        //     재는 것은 **인출 경로가 유저 마을에서 실제로 차감하는가** 하나다.
-        snd(A, { type: '__e2e_body', member: { zone: 'hanbando', vid: NEWVID | 0, name: '내 마을', since: 0, wdDay: -1, wdUsed: 0 }, quiet: true });
-        await sleep(700);
-        await warp(A, HX + 40, HY + 40);
-        //   ★재는 자리는 **등짐**이다(T174 ⑦f2 가 배운 것: 살아 있는 마을은 제 곳간을 저 혼자 축낸다 —
-        //     곳간의 감소는 인출의 증거가 못 된다). 곳간 쪽은 참고로만 적는다.
-        const packFood = () => { const m = A.msgs.slice().reverse().find((x) => x.type === 'inventory' && x.inventory); return m ? (+m.inventory.food || 0) : NaN; };
-        A.msgs.length = 0; snd(A, { type: '__e2e_give', items: { stone: 1 } }); await sleep(700);
-        const p0 = packFood();
-        A.notices.length = 0; A.msgs.length = 0;
-        //   ⚠품목 이름은 **재화의 우리말**이다(`ItemLabel.CATEGORY_KO.food = '🍞 식량'`) — 요리 이름(`밥`)이 아니다.
-        //     `곳간에 그런 물건은 없다 — "밥"` 이 그 자리를 알려 줬다(실측).
-        chat(A, '/곳간 식량 20'); await sleep(1800);
-        snd(A, { type: '__e2e_give', items: { stone: 1 } }); await sleep(700);   // 등짐을 한 번 더 받는다(실패해도 NaN 안 나게)
-        const p1 = packFood();
-        step('⑨ 인출 — 내가 세운 마을 곳간이 실제로 등짐에 준다', Number.isFinite(p0) && Number.isFinite(p1) && p1 > p0,
-          `등짐 밥 ${p0} → ${p1} · ${lastN(A, 2)}`);
+        // ── ⑨ 인출 — **픽스처 소속 없이**, 세운 사람이 제 곳간을 연다 ─────────
+        const w1 = await withdrawUntil(A, HALL, 'give');
+        step('⑨ 인출 — 세운 사람이 제 곳간을 연다(픽스처 0)', w1.gave, `등짐 밥 ${w1.p0} → ${w1.p1} · ${w1.n}판 · ${w1.notes}`);
+
+        // ── ⑨b ★[T159 절이 유저 마을에서 실제로 산다] 길드장이 곳간을 잠근다 ──
+        A.notices.length = 0; chat(A, '/곳간 잠금'); await sleep(1800);
+        const lockSaid = A.notices.some((t) => /곳간을 잠갔다/.test(t));
+        const w2 = await withdrawUntil(A, HALL, 'lock');
+        step('⑨b 길드장이 잠그면 **인출이 막힌다**(T159 가 죽어 있던 가지)',
+          lockSaid && w2.locked && !w2.gave, `잠금 ${lockSaid} · 등짐 ${w2.p0} → ${w2.p1} · ${w2.n}판 · ${w2.notes}`);
+        A.notices.length = 0; chat(A, '/곳간 열기'); await sleep(1800);
+        const w3 = await withdrawUntil(A, HALL, 'give');
+        step('⑨c 다시 열면 **도로 준다**(자명 통과 금지 — 잠금이 늘 막는 게 아니다)',
+          w3.gave, `등짐 밥 ${w3.p0} → ${w3.p1} · ${w3.n}판 · ${w3.notes}`);
+
+        // ── ⑩ ★대조 팔 — **무길드 창설자**: 소개문 없이, 곳간은 열린 채 ────────
+        //   ⑧⑨b 가 자명 통과가 아님을 지키는 줄이다. 무길드는 죄가 아니다(T19) —
+        //   `_tribeId` 가 null 이면 소개문은 빈 칸이고 곳간문은 **열린 것으로 본다**(종전 그대로).
+        const D = await wsConnect('arcsolo', 'arcpw', V.vid | 0);
+        await sleep(1200);
+        const centers2 = NPC.concat([{ cx: 0, cy: 0, vid: NEWVID | 0 }]);
+        const si2 = await jget2(`http://localhost:${ZPORT}/startinfo`);
+        const mine1 = si2 && si2.ok && (si2.villages || []).find((v) => (v.vid | 0) === (NEWVID | 0));
+        if (mine1) { centers2[centers2.length - 1] = { cx: mine1.cx | 0, cy: mine1.cy | 0, vid: NEWVID | 0 }; }
+        const f2 = await foundAt(D, (V.cx | 0), (V.cy | 0), centers2, '무길드팔');
+        step('⑩a 무길드 창설자도 마을을 세운다(길드는 건립의 조건이 아니다)', !!f2.hall,
+          f2.hall ? `회관 ${f2.hall.id} · vid ${f2.vid}` : f2.why);
+        if (f2.hall) {
+          await fillGranary(D, f2.hall);
+          await buildShelterAndOpen(D, f2.hall);
+          const sline2 = await startLineOf(f2.vid, false);
+          //   ★대조가 참이려면 **표가 데워져 있어야** 한다 — 길드 마을 줄이 여전히 소개문을 갖는지 같이 본다.
+          const slineA = await startLineOf(NEWVID, false);
+          const w4 = await withdrawUntil(D, f2.hall, 'give');
+          step('⑩ 무길드 마을 — **소개문은 빈 칸 · 곳간은 열림**(대조: ⑧⑨b 가 자명 통과가 아니다)',
+            !!(sline2 && String(sline2.intro || '') === '' && w4.gave && slineA && String(slineA.intro || '') === INTRO),
+            sline2 ? `무길드 intro=${JSON.stringify(sline2.intro)} · 같은 표에서 길드 마을 intro=${JSON.stringify(slineA && slineA.intro)} · 등짐 밥 ${w4.p0} → ${w4.p1} · ${w4.notes}` : '줄이 안 떴다');
+          //   뒷정리 — 이 마을도 받기를 끈다
+          await warp(D, Math.round(f2.hall.x) + 40, Math.round(f2.hall.y) + 40);
+          chat(D, '/이방인 막기'); await sleep(900);
+        } else {
+          step('⑩ 무길드 마을 — 소개문 빈 칸 · 곳간 열림', false, '⑩a 미도달');
+        }
+        shut(D);
+
         //   ★★호가 끝나면 **세계를 원래대로 돌려 놓는다** — 받기를 다시 끈다.
-        //     안 그러면 뒤따르는 실클라 대본의 로비에 마을이 하나 더 뜨고(`시작 화면이 마을 목록을 받았다`),
-        //     그건 대본이 깨진 게 아니라 **이 절이 남긴 자국**이다(실측 · 5곳/4곳).
-        await warp(A, HX + 40, HY + 40);
+        //     안 그러면 뒤따르는 실클라 대본의 로비에 마을이 더 뜨고(`시작 화면이 마을 목록을 받았다`),
+        //     그건 대본이 깨진 게 아니라 **이 절이 남긴 자국**이다(T192 실측 · 5곳/4곳).
+        await warp(A, Math.round(HALL.x) + 40, Math.round(HALL.y) + 40);
         chat(A, '/이방인 막기'); await sleep(1000);
         const wd2 = await jget2(`http://localhost:${ZPORT}/welcomedbg`);
-        const row2 = wd2 && (wd2.villages || []).find((r) => (r.vid | 0) === (NEWVID | 0));
-        console.log(`    · 호 뒷정리 — 받기 ${row2 ? (row2.on ? '아직 켬(!)' : '껐다') : '?'}  [${mem()}]`);
+        console.log(`    · 호 뒷정리 — 받기 ${JSON.stringify((wd2 && wd2.villages || []).map((r) => [r.vid, r.on]))}  [${mem()}]`);
       } catch (e) {
-        step('⑥~⑨ (제 판)', false, e.message);
+        step('⑥~⑩ (제 판)', false, e.message);
       }
     } else {
       step('⑥a 공용 쉼터(이방인이 잘 자리 — 받기 자격의 첫 항)', false, '③ 미도달 — 미측정');
       step('⑥ /이방인 받기 — 스위치가 켜졌다', false, '③ 미도달 — 미측정');
       step('⑦ 시작 화면에 뜬다(`?start_vid=` 가 가리킬 줄이 섰다)', false, '③ 미도달 — 미측정');
-      step('⑧ 소개문이 인사로 나온다', false, '③ 미도달 — 미측정');
-      step('⑨ 인출 — 내가 세운 마을 곳간이 실제로 준다', false, '③ 미도달 — 미측정');
+      step('⑧ 소개문이 시작 화면과 인사에 뜬다', false, '③ 미도달 — 미측정');
+      step('⑨ 인출 — 세운 사람이 제 곳간을 연다(픽스처 0)', false, '③ 미도달 — 미측정');
+      step('⑨b 길드장이 잠그면 인출이 막힌다', false, '③ 미도달 — 미측정');
+      step('⑨c 다시 열면 도로 준다', false, '③ 미도달 — 미측정');
+      step('⑩ 무길드 마을 — 소개문 빈 칸 · 곳간 열림', false, '③ 미도달 — 미측정');
     }
-
+    }
     if (A) shut(A);
     A = null;
     //   ★자리를 비운다 — 뒤에 실클라 대본이 돈다(2코어 상자에서 이 한 줄이 브라우저를 살린다)

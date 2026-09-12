@@ -2812,7 +2812,10 @@ Onboarding.init({ SimVillages, terrain: _terrain, ZONE, ZONE_ID, db: db.db, send
   introOfVillage: (vid) => {
     try {
       const vil = SimVillages.villageByDbId ? SimVillages.villageByDbId(vid) : null;
-      const tid = (vil && vil.econ && vil.econ._tribeId != null) ? vil.econ._tribeId : null;
+      //   ★★[T197] `_tribeId` 는 **`vil` 에 산다**(`villages.js` 가 `_founder` 옆에 적는다) — `vil.econ` 이 아니다.
+      //     여태 `vil.econ._tribeId` 를 읽어서, 값이 서 있었더라도 **언제나 undefined** 였다.
+      //     (같은 오독이 `membership.withdraw` 에도 하나 있었다 — 둘 다 여기서 고친다. 읽는 자리 전수 = 넷.)
+      const tid = (vil && vil._tribeId != null) ? vil._tribeId : null;
       return Guild.introOfTribe(tid);
     } catch (e) { return ''; }
   } });
@@ -8551,10 +8554,21 @@ const VILLAGE_SPEC = {
   onDone: (player, done, ctx) => {
     const ccx = ctx.x0, ccy = ctx.y0;   // 2×2 발자국의 좌상 셀을 마을 중심으로 삼는다(회관 좌표 = 그 셀)
     const r = SimVillages.foundPlayerVillage
-      ? SimVillages.foundPlayerVillage({ ccx, ccy, founder: player.playerId, founderName: player.name, tribeId: ctx.tribeId || null, name: player.name ? `${player.name}의 마을` : null })
+      //   ★★[T197 2026-09-12] **마을은 세운 사람의 길드 것이다** — 땅 종류를 묻지 않는다.
+      //     여태 `ctx.tribeId` 뿐이었고 그건 `_claimFootprint` 가 **2×2 네 칸 전부 길드 사유지**일 때만
+      //     온다. 그런데 플레이어 길드 사유지는 **한 칸**(`w=h=SZ`)이고 **길드당 하나**다
+      //     (`tryClaim` 이 새로 놓을 때 기존 것을 지운다 · 넓은 길드 영토는 NPC 마을 전용 코드).
+      //     ⇒ 그 조건은 **만들 수 없다** ⇒ 유저 마을의 `_tribeId` 는 언제나 null 이었고,
+      //       거기 달린 T128 소개문·T159 곳간문이 **둘 다 죽어 있었다**(T192 §0-ⓐ 실측).
+      //     땅 규약은 안 바꾼다(그건 큰 판이다). 대신 **창설자의 길드**를 그대로 싣는다.
+      //     ⚠무길드면 `null` 그대로다 — 소개문 없음 · 곳간문 열림(지금과 같다 · T19 "무길드는 죄가 아니다").
+      ? SimVillages.foundPlayerVillage({ ccx, ccy, founder: player.playerId, founderName: player.name, tribeId: ctx.tribeId || player.tribeId || null, name: player.name ? `${player.name}의 마을` : null })
       : { ok: false, err: '마을 시뮬이 이 서버에 없다' };
     if (!r.ok) { send(player.ws, { type: 'notice', text: `🏘️ 회관은 섰지만 마을이 서지 못했다 — ${r.err}` }); return; }
     done.data.villageDbId = r.dbId;   // 회관 ↔ 마을 결속(재고 UI 가 이 셀로 마을을 찾는다)
+    //   ★★[T197] **창설 = 소속** — 세운 사람은 제 마을 사람이다(`membership.seatFounder` 한 자리).
+    //     여태는 제가 세운 마을의 곳간을 못 열었다(소속 문턱 기여 12 는 *남의* 마을 문이다).
+    try { Membership.seatFounder(player, r.dbId); } catch (e) {}
     try { db.updateBuildingData(done.dbId, JSON.stringify(done.data)); } catch (e) {}
     broadcast({ type: 'building_added', building: done });
     send(player.ws, { type: 'notice', text: `🏘️ **[${r.name}]** 이(가) 섰다 — 인구 0. 곳간에 식량을 채우면 사람이 깃든다 (회관 클릭 = 재고)` });

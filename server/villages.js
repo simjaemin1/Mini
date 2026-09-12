@@ -1303,7 +1303,9 @@ function foundPlayerVillage(opts) {
     dbId = db.insertVillage({ zone: state.zoneId, name, cx: ccx, cy: ccy, population: 0, econ_state: serializeEcon(ev), day });
     db.insertVillageBuilding({
       village_id: dbId, type: 'hall', cx: ccx, cy: ccy, floors: 1,
-      data: JSON.stringify({ typeLabel: 'player', land: lp, seedType: 'player', founder, bnd: territoryBoundary(territory, ccx, ccy) }),
+      //   ★[T197] `tribeId` 도 **있는 `data` 칸에** 실어 둔다(새 열 0) — 안 그러면 재시작 한 번에
+      //     마을이 길드를 잊고 소개문·곳간문이 다시 죽는다(`_founder` 옆에 `founder` 가 이미 이렇게 산다).
+      data: JSON.stringify({ typeLabel: 'player', land: lp, seedType: 'player', founder, tribeId: opts.tribeId || null, bnd: territoryBoundary(territory, ccx, ccy) }),
     });
     for (const c of territory) db.insertVillageBuilding({ village_id: dbId, type: 'terr', cx: c[0], cy: c[1], floors: 0, data: null });
     db.db.exec('COMMIT');
@@ -2578,6 +2580,8 @@ function init(deps) {
         _terrSet: terrSet, _potSet: potSet, _farmSet: farmSet, _drySet: drySet, _granList: granList, _houseCells: houseCells, _pendSite, _site: null, _clearCrew: 0, _buildCrew: 0, _claim: new Set(),
         _crop: new Map(), _cropClaim: new Set(), _ditch: ditchCells,
         _pHouses: pHouseRows, _pSiteRows: pSiteRows, _psite: null, _psiteCrew: 0,
+        //   ★[T197] 회관 행에 실어 둔 길드를 되살린다 — 없으면 null(무길드 마을·NPC 마을·구DB 전부 여기).
+        _tribeId: (hallData && hallData.tribeId != null) ? hallData.tribeId : null,
         _shelter: shelterCell });   // ★[T62] 공용 쉼터 셀(없으면 null — 좌표를 지어내지 않는다)
       ev._fieldCells = farmSet.size;   // ★[T100] 밭 브리지 초기값(영속 행에서 — 개간 전에도 밭은 있다)
       // ★[11차 재민 확정] 마을 안엔 숲이 없다 — 영토 셀의 나무를 벤다(개간).

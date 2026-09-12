@@ -119,6 +119,11 @@ function onDeliver(player, r, vid) {
 }
 
 // ── 수락 · 탈퇴 · 추방 ───────────────────────────────────────────────────────
+//   ★소속을 앉히는 **한 줄**. `accept`(남의 마을에 드는 문)와 `seatFounder`(세운 사람)가 같이 쓴다 — 사본 0.
+function _seat(player, v) {
+  player.member = { zone: (H && H.ZONE_ID) || null, vid: v | 0, name: _villageName(v), since: _day(), wdDay: -1, wdUsed: 0 };
+  return player.member;
+}
 function accept(player, vid) {
   if (!ready() || !player) return { ok: false, err: '아직 준비되지 않았다' };
   if (memberOf(player)) return { ok: false, err: '이미 소속이 있다 — 먼저 "/탈퇴" 해야 한다' };
@@ -126,8 +131,20 @@ function accept(player, vid) {
   if (v == null) return { ok: false, err: '촌장이 아직 권하지 않았다' };
   const k = contribOf(player.playerId);
   if (k < CFG.N_MEMBER) return { ok: false, err: `아직 이르다 — 누적 기여 ${k}/${CFG.N_MEMBER}` };
-  player.member = { zone: (H && H.ZONE_ID) || null, vid: v | 0, name: _villageName(v), since: _day(), wdDay: -1, wdUsed: 0 };
+  _seat(player, v);
   return { ok: true, member: player.member, contrib: k };
+}
+// ★★[T197 2026-09-12 · PM 판정 · 재민 거부권] **창설 = 소속.**
+//   기여 12(K-2)는 **남의 마을에 들어가는 문**이다. 세운 사람은 그 문을 지날 이유가 없다 —
+//   여태는 제 마을 곳간을 못 열었다(`isMemberHere` 가 먼저 막는다). 문턱을 **우회하지 않는다**:
+//   기여를 지어내지 않고(`contribOf` 무변 · 한도는 여전히 `limitOf(기여)`가 정한다) 소속만 앉힌다.
+//   ⚠이미 다른 마을 사람이어도 **옮긴다** — 한 사람은 한 마을(K-1)이고, 제가 세운 마을을 두고
+//     남의 마을 사람으로 남는 쪽이 더 이상하다. 말은 안 보탠다(건립 알림이 이미 있다 · 새 메시지 0).
+function seatFounder(player, vid) {
+  if (!ready() || !player || vid == null) return { ok: false, err: '아직 준비되지 않았다' };
+  const was = memberOf(player);
+  _seat(player, vid | 0);
+  return { ok: true, member: player.member, moved: !!(was && (was.vid | 0) !== (vid | 0)) };
 }
 // ★탈퇴해도 **기여는 남는다**(이력서 캐논 §2 — 한 일은 없던 일이 되지 않는다).
 //   빈터 권리·사유지는 이 축과 무관하다(§13 · T45 의 몫).
@@ -168,7 +185,8 @@ function withdraw(player, vid, res, qty) {
   }
   // ★★[T159] 길드 마을이면 **길드장이 문을 잠글 수 있다**(T128 `join_mode` 와 같은 문법).
   //   못 물어봤으면 열린 것으로 본다 — central 이 잠깐 안 뜬 것을 사람의 죄로 삼지 않는다.
-  const _tid = (g.vil && g.vil.econ && g.vil.econ._tribeId) | 0;
+  //   ★[T197] `_tribeId` 의 집은 `vil` 이다(`vil.econ` 이 아니다 — `zone.introOfVillage` 와 같은 오독이었다).
+  const _tid = (g.vil && g.vil._tribeId) | 0;
   if (_tid && !granaryOpen(_tid)) {
     return { ok: false, err: '길드장이 곳간을 잠갔다' };
   }
@@ -368,6 +386,6 @@ function publicState(player, stock) {
 
 module.exports = {
   CFG, init, ready, contribOf, memberOf, isMemberHere, limitOf, remainOf,
-  onDeliver, accept, leave, expel, withdraw, orderBrief, handleChat, publicState,
+  onDeliver, accept, seatFounder, leave, expel, withdraw, orderBrief, handleChat, publicState,   // ★[T197] 창설 = 소속
   resolveRes, resKo, granaryOpen, granaryBust,   // ★[T159] 품목 해석 · 길드 곳간 문
 };
