@@ -75,6 +75,32 @@ function connect(username, password, startVid) {
     C.beat = setInterval(() => { try { if (ws.readyState === 1) ws.send(JSON.stringify({ type: 'ping' })); } catch (e) {} }, 2000);
   });
 }
+// ── ★[T208] 게스트 손님 — 이름·비밀번호가 아니라 **토큰**으로 붙는다(클라가 하는 그대로) ──
+//   ⚠`username` 을 안 보낸다. 그게 게스트의 정의다(`myUsername = inputName; // 빈 문자열이면 게스트`).
+function connectGuest(token) {
+  return new Promise((resolve, reject) => {
+    const q = new URLSearchParams({ name: '여행자', color: '#5a9ae0' });
+    if (token) q.set('guest_token', token);
+    const ws = new WebSocket(`ws://localhost:${ZPORT}/?${q}`);
+    const C = { ws, username: null, pid: null, playerId: null, notices: [], others: new Map(), closed: false };
+    const to = setTimeout(() => reject(new Error('게스트 접속 시간초과')), 30000);
+    ws.on('message', (raw) => {
+      let m = null; try { m = JSON.parse(String(raw)); } catch (e) { return; }
+      if (m.type === 'welcome') { C.pid = m.pid; C.playerId = m.playerId; C.guestToken = m.guestToken || null; clearTimeout(to); resolve(C); }
+      else if (m.type === 'notice') C.notices.push(String(m.text || ''));
+      else if (m.type === 'tick' && Array.isArray(m.players)) {
+        for (const e of m.players) {
+          const prev = C.others.get(e.pid) || {};
+          C.others.set(e.pid, Object.assign({}, prev, e,
+            { name: e.name !== undefined ? e.name : prev.name, fr: e.fr !== undefined ? e.fr : prev.fr }));
+        }
+      }
+    });
+    ws.on('error', (e) => { clearTimeout(to); reject(e); });
+    ws.on('close', () => { C.closed = true; });
+    C.beat = setInterval(() => { try { if (ws.readyState === 1) ws.send(JSON.stringify({ type: 'ping' })); } catch (e) {} }, 2000);
+  });
+}
 const say = (C, text) => { try { C.ws.send(JSON.stringify({ type: 'chat', text })); } catch (e) {} };
 const close = (C) => { try { clearInterval(C.beat); C.ws.close(); } catch (e) {} };
 const seen = (C, pid) => C.others.get(pid) || null;
@@ -309,6 +335,56 @@ const seen = (C, pid) => C.others.get(pid) || null;
     ok(!!(pend && pend.ok && pend.requests.length === 1),
        '⑤-2c ★★읽기만 한다 — **요청 행은 그대로 남는다**', JSON.stringify(pend && pend.requests));
     close(D2);
+  }
+
+  // ── ⑧ ★★[T208] **게스트끼리 벗이 된다** — 이름이 사람을 가리키게 됐는가 ─────
+  //   고치기 전 실측(§0-ⓐ): 게스트는 **전원 `여행자`** 였고, 이름을 줘도 **player_id 를 그대로 줘도**
+  //   `no_such_name` 이었다 — 벽이 둘이었기 때문이다.
+  //     ⓐ central 이 발급 때 `여행자` 를 박고(이름이 안 갈린다)
+  //     ⓑ 지목 술어가 `findAccount`(= `password_hash IS NOT NULL`)라 **게스트를 구조적으로 못 찾는다**
+  //   ⓑ 가 결정적이다: ⓐ 만 고쳐도 아무 일이 안 일어난다.
+  {
+    const jpost = async (u, b) => { try { const r = await fetch(u, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }); return r.ok ? await r.json() : null; } catch (e) { return null; } };
+    const g1 = await jpost(`http://localhost:${CPORT}/guest`, {});
+    const g2 = await jpost(`http://localhost:${CPORT}/guest`, {});
+    const n1 = g1 && g1.player && g1.player.name, n2 = g2 && g2.player && g2.player.name;
+    ok(!!(n1 && n2 && n1 !== n2), '⑧ ★게스트 둘은 **서로 다른 이름**으로 발급된다(고치기 전엔 둘 다 `여행자`)', `${n1} · ${n2}`);
+    ok(!!(n1 && /^여행자/.test(n1) && n1.length <= 16), '⑧b 이름은 종전 말결 그대로다(`여행자` + 있는 식별자 · 16자 안)', n1);
+    const G1 = await connectGuest(g1.token), G2 = await connectGuest(g2.token);
+    await sleep(1200);
+    ok(G1.playerId === g1.player_id && G2.playerId === g2.player_id,
+      '⑧c 존이 central 신원을 그대로 받는다(1회용 폴백이 아니다)', `${G1.playerId} · ${G2.playerId}`);
+    //   ★★존이 **central 이름을 그대로 쓰는가** — 여기가 T208 의 두 번째 자리다(작명소가 하나여야 한다).
+    let seenName = null;
+    for (let i = 0; i < 12 && !seenName; i++) { const e = G2.others.get(G1.pid); if (e && e.name) seenName = e.name; else await sleep(500); }
+    ok(seenName === n1, '⑧d ★★화면 이름 = 신원의 이름(작명소가 하나다 — 갈리면 지목이 깨진다)', `${JSON.stringify(seenName)} vs ${JSON.stringify(n1)}`);
+    //   ★서로 부른다 — 정본은 종전 `friendRequest` 그대로다(사본 0)
+    G1.notices.length = 0; say(G1, `/친구 ${n2}`); await sleep(1800);
+    ok(G1.notices.some((t) => /벗이 되자고 청했다/.test(t)), '⑧e 게스트가 게스트를 **이름으로 부른다**', JSON.stringify(G1.notices.slice(-1)));
+    G2.notices.length = 0; say(G2, `/친구 ${n1}`); await sleep(1800);
+    ok(G2.notices.some((t) => /벗이 되었다/.test(t)), '⑧ ★★**게스트 둘이 벗이 되었다**(T115 회부 5 가 닫힌다)', JSON.stringify(G2.notices.slice(-1)));
+    const fl = await jget(`http://localhost:${CPORT}/friends/${encodeURIComponent(G1.playerId)}`);
+    ok(!!(fl && fl.friends && fl.friends.length === 1 && fl.friends[0].id === G2.playerId),
+      '⑧f 정본(central `friends` 표)에 그 쌍이 있다', JSON.stringify(fl && fl.friends));
+    //   ★시작 화면 갈래도 게스트를 안다(T115 ④ 문법 그대로 · `?by=name`)
+    const byName = await jget(`http://localhost:${CPORT}/friends/${encodeURIComponent(n1)}?by=name`);
+    ok(!!(byName && byName.friends && byName.friends.length === 1),
+      '⑧g 시작 화면 갈래(`?by=name`)도 게스트를 가리킨다 — id 만 준다(이름은 안 샌다)', JSON.stringify(byName));
+    ok(!!(byName && byName.friends && byName.friends.every((f) => f.name === undefined)),
+      '⑧g2 자명 통과 금지 — 그 갈래는 여전히 **이름을 안 준다**(T115 규약 무변)');
+    //   ★자명 통과 금지 — 없는 이름은 여전히 없다
+    G1.notices.length = 0; say(G1, '/친구 여행자없음'); await sleep(1500);
+    ok(G1.notices.some((t) => /없는 이름이다/.test(t)), '⑧h ★자명 통과 금지 — 아무 이름이나 되는 게 아니다', JSON.stringify(G1.notices.slice(-1)));
+    //   ★★승계(게스트 → 계정) 뒤에도 **벗이 유지된다** — 쌍은 `player_id` 로 묶였지 이름으로가 아니다
+    const pr = await jpost(`http://localhost:${CPORT}/promote`, { token: g1.token, username: 'promoted1', password: 'pw-t208' });
+    ok(!!(pr && pr.ok && pr.player && pr.player.player_id === g1.player_id),
+      '⑧i 승계는 **같은 `player_id`** 위에 이름·비밀번호를 얹는다(행을 갈아치우지 않는다)', JSON.stringify(pr && pr.player && pr.player.name));
+    const fl2 = await jget(`http://localhost:${CPORT}/friends/${encodeURIComponent(g1.player_id)}`);
+    ok(!!(fl2 && fl2.friends && fl2.friends.length === 1 && fl2.friends[0].id === G2.playerId),
+      '⑧ ★★승계 뒤에도 **벗이 그대로다**(이름이 바뀌어도 쌍은 pid 로 묶여 있다)', JSON.stringify(fl2 && fl2.friends));
+    const byNew = await jget(`http://localhost:${CPORT}/friends/promoted1?by=name`);
+    ok(!!(byNew && byNew.friends && byNew.friends.length === 1), '⑧j 새 이름으로 물어도 같은 벗이 나온다', JSON.stringify(byNew));
+    close(G1); close(G2);
   }
 
   // ── ⑥ central 을 못 물어봐도 **친구가 세계를 막지 않는다** ──────────────

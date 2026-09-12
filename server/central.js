@@ -383,6 +383,15 @@ const stmtTouchGuest = db.prepare('UPDATE players SET last_seen = ? WHERE player
 const stmtGetAccountByName = db.prepare(
   'SELECT * FROM players WHERE password_hash IS NOT NULL AND (player_id = ? OR name = ?) LIMIT 1');
 function findAccount(username) { return username ? stmtGetAccountByName.get(username, username) : null; }
+// ★★[T208 2026-09-12] **이름으로 사람을 찾는다** — `findAccount` 와 **다른 물음**이다.
+//   `findAccount` 가 답하는 것은 *"이 이름이 **계정으로 예약**됐나"* 이고, 그래서 `password_hash IS NOT NULL`
+//   이 붙어 있다(바로 위 382줄 주석: 게스트 이름은 아무것도 예약하지 않는다 — 맞는 말이다).
+//   그런데 **지목**(친구·함께 도착)은 다른 물음이다: *"그 이름의 **사람**이 누구인가"*.
+//   여태 둘이 한 함수였고(863줄 주석이 "정본은 findAccount 하나"라고 못박아 두었다), 그래서
+//   **게스트는 이름으로 지목될 수 없었다** — 실측: 이름이 아니라 `player_id` 를 그대로 줘도 `no_such_name`.
+//   ⇒ 예약 술어는 그대로 두고(게스트 이름이 등록을 막으면 안 된다) **지목 술어를 하나 세운다.**
+const stmtGetPersonByName = db.prepare('SELECT * FROM players WHERE player_id = ? OR name = ? LIMIT 1');
+function findPerson(name) { return name ? stmtGetPersonByName.get(name, name) : null; }
 
 // ── ★★[T115] 친구 — 정본 술어 넷. 여기 말고 어디서도 이 표를 해석하지 않는다 ──────
 //   ★쌍의 정렬은 **한 자리에서만** 한다(`_pair`). 호출부마다 정렬하면 그게 사본이고,
@@ -799,8 +808,15 @@ const server = http.createServer(async (req, res) => {
       // 새 게스트 — playerId 와 토큰을 함께 만든다. 충돌은 사실상 없지만 유니크 제약이 있으니 재시도한다.
       for (let i = 0; i < 4; i++) {
         const pid = newGuestPlayerId(), t = newGuestToken();
+        // ★★[T208 2026-09-12] **이름은 여기서 한 번만 지어진다.** 여태 전원이 `여행자` 였고,
+        //   그래서 `/친구 <이름>` 이 게스트를 못 가리켰다(둘이 같은 이름이면 지목이 성립하지 않는다).
+        //   식별자는 **있는 것**을 쓴다 — `player_id`(`anon_` + base64url 12자)의 꼬리 넷.
+        //   유일성도 **있는 것**이 지킨다: 이 `for` 는 원래 pid 유니크 충돌 때문에 도는 재시도 루프다.
+        //   이름이 겹치면 같은 자리에서 다시 뽑는다 ⇒ 충돌 확률은 새 규약 없이 사실상 0(보고 §0-ⓑ).
+        const gname = `여행자${pid.slice(-4)}`;
+        if (findPerson(gname)) continue;
         try {
-          stmtInsertGuest.run(pid, `여행자`, '#5a9ae0', t, now, now);
+          stmtInsertGuest.run(pid, gname, '#5a9ae0', t, now, now);
           console.log(`[central] 게스트 신원 발급: ${pid}`);   // ★playerId 만 — 토큰은 절대 안 찍는다
           return jsonResp(res, 200, { ok: true, player_id: pid, token: t, isNew: true, player: stmtGetPlayer.get(pid) });
         } catch (e) { /* 충돌 — 다시 뽑는다 */ }
@@ -861,13 +877,15 @@ const server = http.createServer(async (req, res) => {
       return jsonResp(res, 200, { taken: !!findAccount(u) });
     }
     // === ★[T115] 친구 — 요청·끊기·목록 ===
-    //   ⚠이름으로 사람을 찾는 정본은 `findAccount` 하나다(승계된 계정까지 그 함수가 안다).
+    //   ⚠이름으로 사람을 찾는 정본은 `findPerson` 하나다(승계된 계정도 게스트도 그 함수가 안다).
     //     여기서 `players.name` 을 직접 조회하면 그게 사본이고, 승계 계정에서 조용히 어긋난다.
+    //   ★★[T208] 여기 셋(`/friend/req`·`/friend/del`·`/friends/?by=name`)은 **지목**이라 `findPerson` 이다.
+    //     `findAccount`(예약 술어)를 쓰던 동안 게스트는 이름으로도 id 로도 찾히지 않았다 — 실측.
     if (req.url === '/friend/req' && req.method === 'POST') {
       const { player_id: pid, name } = await readBody(req);
       const me = stmtGetPlayer.get(String(pid || ''));
       if (!me) return jsonResp(res, 404, { ok: false, reason: 'no_self' });
-      const other = findAccount(String(name || '').trim());
+      const other = findPerson(String(name || '').trim());
       if (!other) return jsonResp(res, 200, { ok: false, reason: 'no_such_name' });
       if (other.player_id === me.player_id) return jsonResp(res, 200, { ok: false, reason: 'self' });
       const r = friendRequest(me.player_id, other.player_id);
@@ -875,7 +893,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.url === '/friend/del' && req.method === 'POST') {
       const { player_id: pid, name } = await readBody(req);
-      const other = findAccount(String(name || '').trim());
+      const other = findPerson(String(name || '').trim());   // ★[T208] 지목 — 게스트도 끊을 수 있어야 한다
       if (!other) return jsonResp(res, 200, { ok: false, reason: 'no_such_name' });
       const r = friendRemove(String(pid || ''), other.player_id);
       return jsonResp(res, 200, { ...r, name: other.name, player_id: other.player_id });
@@ -899,7 +917,7 @@ const server = http.createServer(async (req, res) => {
       //   ⚠그래도 이 갈래는 "그 이름의 사람에게 친구가 있는가"까지는 드러낸다. 제대로 닫으려면
       //     시작 화면이 인증된 뒤에 물어야 하고 그건 로비의 순서를 바꾸는 일이라 **회부**다.
       if (qs && /(^|&)by=name(&|$)/.test(qs)) {
-        const other = findAccount(key);
+        const other = findPerson(key);   // ★[T208] 지목 — 시작 화면 "함께 도착"이 게스트 벗도 센다
         if (!other) return jsonResp(res, 200, { ok: true, friends: [] });
         return jsonResp(res, 200, { ok: true, friends: friendsOf(other.player_id).map((f) => ({ id: f.id })) });
       }

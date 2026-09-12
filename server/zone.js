@@ -3814,7 +3814,16 @@ async function _acceptConnection(ws, req, C) {
       playerId = acct.player_id;
       //   ★표시 이름: 등록 계정은 계정 이름. 게스트는 이번에 입력한 이름이 있으면 그것(종전 동작),
       //     없으면 저장된 이름. 소유 판정에 이름을 쓰는 곳은 0곳이다(배치 13 전수 — 배치 14 재실행).
-      name = (inUsername && inPassword) ? acct.name : (inUsername || acct.name || `여행자${nextPid}`);
+      //   ★★[T208 2026-09-12] **이름 짓는 자리를 하나로 줄였다.** 여태 이 줄이 두 번째 작명소였다:
+      //     게스트가 비밀번호 없이 이름칸만 채우면 화면 이름이 `inUsername` 이 되는데 central 행은
+      //     그대로 `여행자` 여서, **화면 이름과 신원의 이름이 갈렸다.** 지목(친구·함께 도착)은
+      //     central 이름으로 찾으니 그 사람은 이름으로 불릴 수 없었다.
+      //   ⇒ 등록 계정은 종전 그대로 `acct.name`. **게스트도 `acct.name`**(central 이 발급 때 지은 그 이름).
+      //   ⚠부수 효과를 숨기지 않는다: 비밀번호 없이 이름만 친 게스트는 이제 그 별명 대신
+      //     `여행자XXXX` 로 보인다. 그 별명은 아무것도 예약하지 않고 누구나 같이 쓸 수 있었으며,
+      //     **지목을 깨뜨리던 바로 그 값**이다. 별명을 되살리려면 central 이 그 이름을 알아야 한다
+      //     (게스트 개명 문 = 새 규약) — 보고 §3 회부.
+      name = acct.name || `여행자${nextPid}`;
       color = acct.color || color;
       // wood/stone은 컬럼, 나머지는 inventory_json에
       let extInv = {};
