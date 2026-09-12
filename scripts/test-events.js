@@ -614,9 +614,28 @@ const mkLedgerGeo = (world, geo, cfg) => {
   {
     const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'sim', 'economy-sim-v2.js'), 'utf8');
     const reroute = /c\.distance = bestAlt\.dist;[\s\S]{0,1400}?c\.travelDays = extraDays;/.test(src);
-    const giveup = /c\.distance = v1\.villageDist\(c\.to, c\.from\);[\s\S]{0,600}?c\.travelDays = travelDaysForDistance\(c\.distance\);/.test(src);
+    // ★[T214] 근접 정규식(600자 창)을 **구간 잘라내기**로 바꿨다 — 주석 한 줄이 늘면 창을 넘겨
+    //   계약이 거짓으로 깨진다(실측: T214 주석이 그렇게 ⑲d 를 빨갛게 했다 · 코드는 그대로였다).
+    //   자르는 두 끝은 **코드 문장**이라 주석 길이와 무관하다.
+    const _gi = src.indexOf('c._returningRes = c.giveRes;');
+    const _ge = src.indexOf('world.tradeLog.push', _gi);
+    const gblk = (_gi >= 0 && _ge > _gi) ? src.slice(_gi, _ge) : '';
+    const giveup = /c\.distance = v1\.villageDist\(c\.to, c\.from\);/.test(gblk)
+                && /c\.travelDays = travelDaysForDistance\(c\.distance\);/.test(gblk);
+    ok(gblk.length > 0, '⑲d 전제: 빈손 귀환 구간을 실제로 잘라냈다(못 자르면 아래가 자명 통과다)', `${gblk.length}자`);
     ok(reroute && giveup, '⑲d 시계를 미는 두 자리가 **`travelDays` 를 같이 갱신한다**(소스 계약 · T17 ④)',
       `재routing ${reroute ? 'O' : 'X'} · 빈손귀환 ${giveup ? 'O' : 'X'} · 표본 안 꺾임 ${bentN}/${cars.length}건`);
+    // ★★[T214] 그리고 **`departDay` 는 안 옮긴다** — 빈손 귀환은 `state` 가 inbound 가 되고,
+    //   귀환 구간을 읽는 자리는 전부 `arriveDay → returnArriveDay` 다(`central.js` · `villages.js`).
+    //   여기서 `departDay` 를 밀면 `arriveDay − departDay` 만 0 이 되어 위 ⑲c 가 빨개진다.
+    //   재routing 은 **여전히 outbound** 라 옮기는 게 맞다 — 그래서 이 계약은 이 구간에만 건다.
+    const departMoved = /c\.departDay\s*=/.test(gblk);
+    ok(gblk.length > 0 && !departMoved,
+      '⑲d ★★빈손 귀환은 `departDay` 를 **안 건드린다**(가는 구간의 값 · inbound 에서 읽는 자리 0)',
+      departMoved ? '빈손 귀환 구간에 departDay 대입이 있다' : '대입 0');
+    // ★자명 통과 금지 — 같은 자로 그 대입을 되살리면 잡는다(미끼 · 소스 무수정)
+    { const bait = gblk + '\n' + ['c', '.depart', 'Day', ' = day;'].join('');
+      ok(/c\.departDay\s*=/.test(bait), '⑲d ★자명 통과 금지 — 대입을 한 줄 되살리면 같은 자가 잡는다'); }
   }
   const daySet = new Set(cars.map((c) => c.travelDays));
   ok(daySet.size >= 2, '⑲b 전제: 대조 구간이 한 점이 아니다(일수가 여러 값으로 갈린다)',

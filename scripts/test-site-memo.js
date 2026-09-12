@@ -130,8 +130,19 @@ const st = (E, k) => (E && E.stages && E.stages[k]) ? E.stages[k] : { p50: 0, p9
   // ② ★★같은 답인가 — 단조성 감사(이 하네스의 심장)
   ok(pd.auditN >= 1000, '② [전제] 감사가 실제로 돌았다 — 건너뛴 셀을 다시 판정한 횟수', `${pd.auditN}회`);
   ok(pd.auditBad === 0, '② ★★건너뛴 셀 중 **지금은 통과할 자리가 하나도 없다**(단조성 성립)', pd.auditBad ? `위반 ${pd.auditBad} · 첫 사례 ${pd.auditFirst}` : `위반 0 / ${pd.auditN}`);
-  ok(JSON.stringify(pa.siteLog) === JSON.stringify(pb.siteLog), '② 선택된 집터 로그가 두 판에서 같다',
-    `${pa.siteLog.length}건 vs ${pb.siteLog.length}건${pa.siteLog.length ? '' : ' (이 세계는 성공 0 — ②의 감사가 본검사다)'}`);
+  // ★★[T214 2026-09-12] **공통 날 창**에서만 견준다 — 두 팔은 같은 게임일에 안 멈춘다.
+  //   `arm()` 은 2초마다 `/perf` 를 보고 `days >= DAYS` 면 멈추는데 하루가 3.5초다. 러너 부하에서
+  //   한 폴링이 여러 날을 건너뛰면 팔마다 **끝난 날이 다르다**(실측: 러너 "1건 vs 2건" · 단독 "1건 vs 1건").
+  //   로그는 누적이라 더 오래 산 팔이 한 줄 더 갖는다 — 그건 **다른 답**이 아니라 **다른 길이**다.
+  //   ⇒ 문턱을 안 고른다. 줄마다 **날이 박혀 있으므로**(`day:vil:x,y:s|l`) 두 팔이 **둘 다 산 날**까지만
+  //     자른다. 자르는 수는 세계가 말한 `E.days` 둘의 최소값이다 — 새 수 0.
+  const _cut = Math.min(A.days | 0, B.days | 0);
+  const _upto = (log) => (log || []).filter((t) => (parseInt(String(t).split(':')[0], 10) | 0) <= _cut);
+  const la = _upto(pa.siteLog), lb = _upto(pb.siteLog);
+  ok(_cut > 0, '② [전제] 두 팔이 둘 다 산 날이 있다(0이면 아래가 자명 통과다)', `공통 ${_cut}일 (종전 ${A.days}일 · 채택 ${B.days}일)`);
+  ok(JSON.stringify(la) === JSON.stringify(lb), '② 선택된 집터 로그가 두 판에서 같다(공통 날 창)',
+    `${la.length}건 vs ${lb.length}건 · 공통 ${_cut}일까지 (자르기 전 ${pa.siteLog.length} vs ${pb.siteLog.length})`
+    + `${la.length ? '' : ' (이 세계는 성공 0 — ②의 감사가 본검사다)'}`);
 
   // ③ 싸졌는가
   ok(pb.siteSkip > 0, '③ [전제] 실제로 건너뛰었다', `스킵 ${pb.siteSkip}`);

@@ -373,6 +373,39 @@ console.log('\n⑧ 판정 자리에 벽시계 0 [T185]');
     };
     walk(ast, false); }
   ok(cHit === 1, '★⑧b 자명 통과 금지 — 같은 자로 **잠 한 줄을 판정에 넣으면 잡는다**', `미끼 ${cHit}건`);
+
+  // ── ⑧c **입장 기다리기는 정본 하나다** [T214 2026-09-12] ─────────────────────
+  //   T140 이 `fixture-clock.waitInWorld` 를 세우며 적었다: *"두 하네스 모두 `for (i<60) sleep(500)`
+  //   = 30초로 잘라 놓았는데, 부하가 있으면 그 안에 못 들어온다 … 늦는 것과 안 되는 것은 다른 일이다."*
+  //   그런데 **사본이 더 있었다**: `e2e-downed`(러너에서 `[A] 존 입장` 빨강 → 뒤가 줄줄이 무너졌다 ·
+  //   단독 35/0) · `e2e-hp`(같은 30초 · 아직 안 걸렸을 뿐) · `e2e-verbs`(제 손으로 180초).
+  //   ⇒ **제 손으로 `__inWorld` 폴링 루프를 세우지 않는다.** 한 번 읽어 판정하는 것은 그대로 둔다 —
+  //     막는 것은 **기다리는 방식의 사본**이다(⑦a 가 `codeOnly` 에 건 것과 같은 규약).
+  //   ※`scripts/fixture-clock.js` 는 `test-*`·`e2e-*` 가 아니라 이 훑기에 안 든다 — 정본은 거기 하나다.
+  {
+    const hasTok = (n, w) => { let f = false; (function g(x) { if (f || !x || typeof x !== 'object') return;
+      if (Array.isArray(x)) { for (const y of x) g(y); return; }
+      if ((x.type === 'Identifier' && x.name === w) || (x.type === 'Literal' && x.value === w)) { f = true; return; }
+      for (const k of Object.keys(x)) { if (k === 'type' || k === 'start' || k === 'end') continue; g(x[k]); } })(n); return f; };
+    const LOOP = /^(For|While|DoWhile|ForOf|ForIn)Statement$/;
+    const scan = (src) => { const out = [];
+      let ast; try { ast = acornL.parse(src, { ecmaVersion: 2022, allowHashBang: true }); } catch (e) { return out; }
+      (function w(n) { if (!n || typeof n !== 'object') return;
+        if (Array.isArray(n)) { for (const x of n) w(x); return; }
+        if (LOOP.test(n.type) && hasTok(n, '__inWorld')) out.push(src.slice(0, n.start).split('\n').length);
+        for (const k of Object.keys(n)) { if (k === 'type' || k === 'start' || k === 'end') continue; w(n[k]); } })(ast);
+      return out; };
+    const copies = [];
+    const hFiles = fs.readdirSync(SCRIPTS).filter((x) => /^(test|e2e)-.*\.js$/.test(x));
+    for (const f of hFiles) for (const ln of scan(fs.readFileSync(path.join(SCRIPTS, f), 'utf8'))) copies.push(`${f}:${ln}`);
+    ok(fs.existsSync(path.join(SCRIPTS, 'fixture-clock.js')), '⑧c [전제] 정본 파일이 실제로 있다(없으면 아래가 자명 통과다)');
+    ok(copies.length === 0, '★★⑧c **입장 기다리기 사본 0** — `__inWorld` 폴링 루프를 제 손으로 안 세운다(정본 `fixture-clock.waitInWorld`)',
+       copies.length ? copies.slice(0, 4).join(' · ') : `${hFiles.length}개 훑음 · 사본 0`);
+    // 자명 통과 금지 — 같은 자로 사본 한 루프를 넣으면 잡는다(조각을 이어 만든다 · 제 소스 자기 일치 금지 · T143)
+    const bait = 'async function f(pg){ for (let i = 0; i < 60 && !(await pg.evaluate(() => !!(window.'
+      + ['__in', 'World'].join('') + ' && window.' + ['__in', 'World'].join('') + '()))); i++) await sleep(500); }';
+    ok(scan(bait).length === 1, '★⑧c 자명 통과 금지 — 같은 자로 **폴링 루프 한 줄을 되살리면 잡는다**', `미끼 ${scan(bait).length}건`);
+  }
   console.log('    접점: fixture-clock · __e2e_clock · __evGameDay · __getSrvAbs · /perf loop · ok()');
 }
 

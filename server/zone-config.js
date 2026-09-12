@@ -419,10 +419,27 @@ for (const [id, z] of Object.entries(ZONES_BASE)) {
   };
 }
 
+// ★★[T214 2026-09-12 · 재민 확정] `CENTRAL_URL` 을 **읽는 쪽에 이었다** — 정본은 여기 하나다.
+//   §0-ⓒ 실측: 스크립트 **90개**가 존에 `CENTRAL_URL` 을 넘기는데 `server/` 에서 읽는 자리가 **0**이었다
+//   (T10 이 2026-09-01 에 이미 적었고 T208 §3 이 다시 회부했다). 그중 **88개**는 `CENTRAL_PORT` 를
+//   같이 안 넘기고, 88개 모두 `CPORT = 3010` 이라 **기본값과 우연히 같아서** 돌고 있었다.
+//   ⇒ 넘기는 88자리를 지우는 대신(그중 여럿이 진행 중 카드의 파일이다) **읽는 자리 하나**를 잇는다.
+//   ⚠오늘 동작은 한 글자도 안 바뀐다: `CENTRAL_HOST`/`CENTRAL_PORT` 를 **명시하면 그쪽이 이긴다**.
+//     `CENTRAL_URL` 은 둘이 없을 때의 기본값 자리만 채운다 — 지금 88자리의 값이 곧 기본값이다.
+const _CU = (() => {
+  const raw = process.env.CENTRAL_URL;
+  if (!raw) return null;
+  try {
+    const u = new URL(raw);
+    const proto = (u.protocol || '').replace(':', '');
+    return { host: u.hostname || null, port: u.port ? parseInt(u.port, 10) : null,
+             proto: (proto === 'http' || proto === 'https') ? proto : null };
+  } catch (e) { console.warn(`[zone-config] CENTRAL_URL 을 못 읽었다 — 무시한다: ${raw}`); return null; }
+})();
 const CENTRAL = {
-  host: process.env.CENTRAL_HOST || 'localhost',
-  port: parseInt(process.env.CENTRAL_PORT || '3010', 10),
-  proto: HTTP_PROTO,
+  host: process.env.CENTRAL_HOST || (_CU && _CU.host) || 'localhost',
+  port: parseInt(process.env.CENTRAL_PORT || String((_CU && _CU.port) || 3010), 10),
+  proto: process.env.HTTP_PROTO || (_CU && _CU.proto) || HTTP_PROTO,
 };
 
 let _maxX = 0, _maxY = 0;

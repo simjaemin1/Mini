@@ -268,14 +268,23 @@ async function waitHttp(url, tries = 900) {
   //   ★**날을 얼린다.** 이 존은 검사용으로 하루가 0.6초다 — 안 얼리면 인출할 때마다 날이 바뀌어
   //     한도가 매번 새로 열리고, 이 절은 "한도가 없다"를 보게 된다(재는 것이 한도가 아니라 시계다).
   await clearNotices();
-  await page.evaluate(() => window.__sendPrimary({ type: '__e2e_day_freeze', on: true }));
-  await sleep(900);
+  // ★★[T214 2026-09-12] **답이 올 때까지** 기다린다 — 정해진 초를 자고 한 번 보지 않는다(족보 ⑩).
+  //   러너 빨강 실측: `④-0 … ""` — 서버 회신이 900ms 안에 안 왔을 뿐이고 단독이면 25/0 이다.
+  //   판정은 그대로("끝내 안 오면 빨강"). 바뀐 것은 **언제 보느냐** 하나다. 상한은 판정이 아니라 안전망이다.
   {
-    // ★링 **전체**를 본다 — 하루 0.6초 존에서는 브리핑·게시판 알림이 계속 밀려들어
-    //   `slice(-4)` 로 보면 방금 받은 답이 뒤에서 밀려난다(러너 부하에서 실제로 그렇게 빨개졌다).
-    const n = await notices();
-    const froze = n.find((t) => /게임일 정지/.test(t)) || '';
-    ok(!!froze, `④-0 게임일 정지(상호작용 구간) — 여기부터 시계가 검사를 앞지르지 않는다`, JSON.stringify(froze.slice(0, 60)));
+    const t0 = Date.now();
+    let froze = '';
+    for (let i = 0; i < 60 && !froze; i++) {                  // 60 × 0.9초 = 54초까지(안전망)
+      await page.evaluate(() => window.__sendPrimary({ type: '__e2e_day_freeze', on: true }));
+      for (let k = 0; k < 9 && !froze; k++) {                 // 0.9초를 9번에 나눠 본다 — 오면 즉시 끝
+        await sleep(100);
+        // ★링 **전체**를 본다 — 하루 0.6초 존에서는 브리핑·게시판 알림이 계속 밀려들어
+        //   `slice(-4)` 로 보면 방금 받은 답이 뒤에서 밀려난다(러너 부하에서 실제로 그렇게 빨개졌다).
+        froze = (await notices()).find((t) => /게임일 정지/.test(t)) || '';
+      }
+    }
+    ok(!!froze, `④-0 게임일 정지(상호작용 구간) — 여기부터 시계가 검사를 앞지르지 않는다`,
+       `${JSON.stringify(froze.slice(0, 60))} · ${Date.now() - t0}ms 만에`);
   }
   {
     let refused = '';

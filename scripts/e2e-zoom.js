@@ -89,6 +89,22 @@ function pxdiff(a, b) {
   await sleep(2500);
 
   const shot = async (n) => { const p2 = path.join(SHOTS, n + '.png'); await page.screenshot({ path: p2 }); return PNG.sync.read(fs.readFileSync(p2)); };
+  // ★★[T214 2026-09-12] **다 그려질 때까지 찍는다** — 정해진 초를 자고 한 장 찍지 않는다(족보 ⑩).
+  //   러너 빨강 실측: `⑤ … 평균 화소 차 5.765`(바 1.0 · 단독 28/0). 배율을 되돌린 뒤 `sleep(900)`
+  //   안에 다시 그리기가 안 끝나면 **그리는 중간 프레임**이 찍힌다 — 화면이 틀린 게 아니라 아직 덜 된 것이다.
+  //   ⇒ 증인은 화면 자신이다: **연속 두 장이 서로 멎을 때까지** 찍는다. 문턱도 안 지어냈다 —
+  //     아래 판정이 쓰는 그 바(`settleBar`)를 그대로 쓴다(새 수 0). 상한은 판정이 아니라 안전망이다.
+  const settleBar = 1.0;                  // ⑤ 판정의 바 — 여기 한 자리에서 온다(사본 0)
+  const shotSettled = async (n) => {
+    let prev = await shot(n), tries = 0;
+    for (; tries < 20; tries++) {         // 20 × 400ms = 8초까지(안전망)
+      await sleep(400);
+      const cur = await shot(n);
+      if (pxdiff(prev, cur) < settleBar) return { png: cur, tries, settled: true };
+      prev = cur;
+    }
+    return { png: prev, tries, settled: false };
+  };
   const zdbg = () => page.evaluate(() => window.__zoomDbg());
   const setZ = async (z) => { await page.evaluate((v) => window.__setZoom(v), z); await sleep(700); };
   // ★세계를 멈춰 놓고 잰다 — 안 그러면 "같은 화면인가"가 풀 흔들림에 묻힌다(e2e-mtfoot ⑧ 계보)
@@ -98,6 +114,23 @@ function pxdiff(a, b) {
   //   그려지므로, 두 프레임 동일·안개 위 밝은 픽셀 같은 판정이 하늘 때문에 빨개진다.
   //   이 하네스가 재는 건 하늘이 아니다 ⇒ 끄는 문은 T93 이 남긴 진단 훅 하나(안 켜져 있으면 무해).
   await page.evaluate(() => { if (typeof window.__rainForce === 'function') window.__rainForce({ precip: 0 }); });
+  // ★★[T214 2026-09-12] **날도 얼린다** — 바람·하늘을 끈 것과 같은 자리다(새 손잡이 0 · `__e2e_day_freeze`).
+  //   §0-ⓐ 실측이 가리킨 자리다: ⑤ 가 러너에서 빨갛던 두 장(`01-z1` vs `03-back-to-1`)을 뜯어 보니
+  //   **평균 RGB 가 통째로 (−4.67, −4.65, −1.75) 움직였고**, 20 넘게 다른 화소는 **0.12%** 뿐이었다 —
+  //   무언가 **움직인** 게 아니라 **빛이 바뀐** 것이다. 이 존은 하루가 0.5초(`VILLAGE_DAY_MS=500`)라
+  //   ①~⑤ 를 도는 30초 사이 낮밤이 수십 번 돈다. 그러면 "같은 화면인가"는 배율이 아니라 **시각**을 잰다.
+  //   ⇒ 세계를 세우고 잰다. 그리고 **얼었다는 말을 세계에서 듣고** 다음으로 간다(정해진 초를 안 잔다).
+  const dayFroze = await (async () => {
+    for (let i = 0; i < 40; i++) {                      // 40 × 0.25초 = 10초까지(안전망)
+      await page.evaluate(() => window.__sendPrimary({ type: '__e2e_day_freeze', on: true }));
+      for (let k = 0; k < 5; k++) {
+        await sleep(250);
+        const t = await page.evaluate(() => (window.__notices || []).filter((x) => /게임일 정지/.test(x)).slice(-1)[0] || '');
+        if (t) return t;
+      }
+    }
+    return '';
+  })();
 
   // ── ⓪ 검사 상황 — 무엇을 재고 있는가 ───────────────────────────────────
   console.log('\n=== ⓪ 검사 상황 선행 assert ===');
@@ -115,7 +148,10 @@ function pxdiff(a, b) {
   // ── ① 휠이 실제로 배율을 바꾼다 ────────────────────────────────────────
   console.log('\n=== ① 휠 = 확대/축소 ===');
   await wind(true);
-  const base = await shot('01-z1');
+  ok(!!dayFroze, '★⓪ [전제] **날이 얼었다** — 아니면 아래의 "같은 화면인가"는 배율이 아니라 시각을 잰다', dayFroze || '(서버가 답을 안 했다)');
+  const _b0 = await shotSettled('01-z1');               // ★[T214] 기준 장도 **멎은 뒤**에 찍는다
+  ok(_b0.settled, '★⓪ [전제] 기준 화면이 멎었다(안 멎었으면 아래가 덜 그린 프레임과 견준다)', `${_b0.tries}번 만에 멎음`);
+  const base = _b0.png;
   const WX = Math.round(1280 * 0.5), WY = Math.round(800 * 0.62);
   await page.mouse.move(WX, WY);
   await page.mouse.wheel(0, -120); await sleep(700);          // 위로 = 확대
@@ -190,12 +226,14 @@ function pxdiff(a, b) {
 
   // ── ⑤ 1 로 돌아오면 처음 화면 그대로 (되돌림 실증) ─────────────────────
   console.log('\n=== ⑤ 배율 1 복귀 = 종전 화면 그대로 ===');
-  await setZ(1); await sleep(900);
-  const back = await shot('03-back-to-1');
+  await setZ(1);
+  const _bk = await shotSettled('03-back-to-1');            // ★[T214] 멎을 때까지 — 판정은 그대로
+  const back = _bk.png;
   const dBack = pxdiff(base, back);
   const zBack = await zdbg();
   ok(zBack.off === null, '★배율 1 로 돌아오면 오프스크린이 사라진다');
-  ok(dBack < 1.0, '★★1 → 1.5 → 2 → 1 을 돌고 와도 화면이 처음과 같다 (바람 격리)', `평균 화소 차 ${dBack.toFixed(3)} (확대 때는 ${dUp.toFixed(2)} 였다)`);
+  ok(_bk.settled, '★★⑤ [전제] 화면이 **멎었다**(안 멎었으면 아래는 덜 그린 프레임을 재는 것이다)', `${_bk.tries}번 만에 멎음`);
+  ok(dBack < settleBar, '★★1 → 1.5 → 2 → 1 을 돌고 와도 화면이 처음과 같다 (바람 격리)', `평균 화소 차 ${dBack.toFixed(3)} (확대 때는 ${dUp.toFixed(2)} 였다)`);
   await wind(false);
 
   // ── ⑥ 성능 — 축소는 세계 화소가 1/z² 로 는다 ───────────────────────────

@@ -17,6 +17,9 @@
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
+// ★★[T214] 입장 기다리기 **정본 하나**(`fixture-clock.waitInWorld` · T140). 여기 있던
+//   `for (i<60) sleep(500)`(=30초)은 T140 이 걷어낸 그 꼴의 사본이었다 — 러너 부하에서 30초는 짧다.
+const FixClock = require('./fixture-clock.js');
 
 const ROOT = path.join(__dirname, '..');
 const SHOTS = '/tmp/e2e-hp-shots';
@@ -135,7 +138,7 @@ async function waitHttp(url, tries = 600) {
     await pg.goto(`http://localhost:${CPORT}/`, { waitUntil: 'domcontentloaded' });
     await sleep(2500);
     const b = await pg.$('#enter'); if (b) await b.click();
-    for (let i = 0; i < 60 && !(await pg.evaluate(() => !!(window.__inWorld && window.__inWorld()))); i++) await sleep(500);
+    await FixClock.waitInWorld(pg);           // ★[T214] 될 때까지 + 상한(정본)
     await sleep(1500);
     return pg.evaluate(() => !!(window.__inWorld && window.__inWorld()));
   };
@@ -253,7 +256,7 @@ async function waitHttp(url, tries = 600) {
     await A.reload({ waitUntil: 'domcontentloaded' });
     await sleep(2500);
     const b = await A.$('#enter'); if (b) await b.click();
-    for (let i = 0; i < 60 && !(await A.evaluate(() => !!(window.__inWorld && window.__inWorld()))); i++) await sleep(500);
+    await FixClock.waitInWorld(A);            // ★[T214] 같은 정본 — 재입장도 늦을 수 있다
     await sleep(1500);
     // ⚠여기도 **한 번에** 읽는다(②의 그 함정 — 따로 읽으면 그 사이 아물어 `100 vs 93` 이 나온다).
     const pair = await A.evaluate(() => {

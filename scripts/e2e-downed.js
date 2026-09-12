@@ -23,6 +23,10 @@ const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
 const { PNG } = require('pngjs');   // ★[T110] 화살을 화소로 잰다
+// ★★[T214] 입장 기다리기는 **정본 하나**다 — `fixture-clock.waitInWorld`(T140).
+//   여기 있던 `for (i<60) sleep(500)`(=30초)은 T140 이 두 하네스에서 걷어낸 그 꼴의 **세 번째 사본**이었다.
+//   러너 빨강 실측: `[A] 존 입장` 이 빨갛고 그 뒤가 줄줄이 무너졌다(단독 35/0). 늦은 것과 안 되는 것은 다르다.
+const FixClock = require('./fixture-clock.js');
 
 const ROOT = path.join(__dirname, '..');
 const SHOTS = '/tmp/e2e-downed-shots';
@@ -86,7 +90,7 @@ async function waitHttp(url, tries = 600) {
     // ★[T84] 로비 버튼은 글자가 아니라 **id**(`#enter`) 로 집는다 — 라벨이 바뀌어도 안 죽는다.
     const enter = await page.$('#enter');
     if (enter) await enter.click();
-    for (let i = 0; i < 60 && !(await page.evaluate(() => !!(window.__inWorld && window.__inWorld()))); i++) await sleep(500);
+    await FixClock.waitInWorld(page);          // ★[T214] 될 때까지 + 상한(정본 · 판정은 아래 `ok` 가 한다)
     await sleep(1800);
     return page;
   }
@@ -476,7 +480,7 @@ async function waitHttp(url, tries = 600) {
     await sleep(3000);
     const enter = await A.$('#enter');
     if (enter) await enter.click();
-    for (let i = 0; i < 60 && !(await A.evaluate(() => !!(window.__inWorld && window.__inWorld()))); i++) await sleep(500);
+    await FixClock.waitInWorld(A);             // ★[T214] 같은 정본 — 재입장도 늦을 수 있다
     await sleep(2500);
     const hpBack = await hpOf(A);
     ok(hpBack !== null && hpBack < 100,

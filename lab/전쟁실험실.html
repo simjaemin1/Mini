@@ -6966,7 +6966,17 @@ function tickCaravansV2(world, day) {
         c.returnArriveDay = day + travelDaysForDistance(c.distance);
         // ★[T17 ④] 빈손 귀환도 같은 규약 — `distance` 를 귀환 거리로 덮었으면 시계도 그 구간의 것이다.
         //   (안 맞추면 `tradeLog` 한 행에 **귀환 거리**와 **왕로 일수**가 나란히 찍힌다 — 실제로 그랬다.)
-        c.departDay = day;
+        // ★★[T214 2026-09-12 · 재민 확정] `departDay` 는 **가는 구간**의 값이다 — 여기서 옮기면 안 된다.
+        //   재routing(위)은 **여전히 outbound** 라 `arriveDay`·`departDay`·`travelDays` 셋을 같이 옮기는
+        //   게 맞다. 빈손 귀환은 `state` 가 **inbound** 로 바뀌고, 귀환 구간을 읽는 자리는 전부
+        //   `arriveDay → returnArriveDay` 다(`central.js:669-674,690` · `villages.js:1984`) —
+        //   inbound 에서 `departDay` 를 읽는 자리는 **한 곳도 없다**(전수 grep). 그런데 여기서
+        //   `day` 를 써 넣으면 `arriveDay − departDay` 만 0 이 되어 T60 ③ 의 세 값 규약이 깨진다.
+        //   실측(3시드 240일 · 버림 13건): 전 `arr−dep === travelDays` ✓ → 후 `arr−dep = 0` ✗ ·
+        //   `returnArriveDay − arriveDay === travelDays` 는 전후 모두 ✓ · 거리는 대칭이라
+        //   `travelDays` 는 값이 안 바뀐다(620.58→620.58 …). ⇒ 움직인 것은 이 한 줄뿐이었다.
+        //   `test-events ⑲c` 가 잡은 것이 이것이다(T185 가 `363c38cb` 로 이분할한 그 빨강 —
+        //   그 커밋은 **표본이 이 갈래를 처음 밟게** 했을 뿐, 결함은 빈손 귀환이 생긴 이래 있었다).
         c.travelDays = travelDaysForDistance(c.distance);
         world.tradeLog.push({
           day, from: c.from.name, to: c.to.name,

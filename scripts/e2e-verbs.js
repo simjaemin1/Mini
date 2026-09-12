@@ -16,6 +16,7 @@
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
+const FixClock = require('./fixture-clock.js');   // ★[T214] 입장 기다리기 정본
 
 const ROOT = path.join(__dirname, '..');
 const SHOTS = '/tmp/e2e-verbs-shots';
@@ -105,8 +106,8 @@ async function waitHttp(url, tries = 600) {
       const enter = await page.$('#enter');
       if (enter) await enter.click();
       for (let i = 0; i < 90; i++) {
-        if (await page.evaluate(() => !!(window.__inWorld && window.__inWorld()))) { await sleep(1800); return page; }
-        await sleep(500);
+        if ((await FixClock.waitInWorld(page)).ok) { await sleep(1800); return page; }   // ★[T214] 정본
+        break;
       }
       console.log(`  · [상황] [${tag}] 입장이 늦다 — 판을 새로 깔고 다시 든다(시도 ${round + 1})`);
     }
@@ -123,13 +124,9 @@ async function waitHttp(url, tries = 600) {
   //     한 번씩 끊기고 클라가 스스로 다시 붙는다(`33-m-conn`). 초안은 30초만 보고 "입장 실패"라고
   //     적었는데, 그때 R 은 **들어왔다가 재접속 중**이었다(입장 실패 진단줄이 안 찍힌 게 증거다).
   //     ⇒ 넉넉히 기다린다. 재접속이 끝나면 참이 된다 — 없는 결함을 보고하지 않는다.
-  const inWorld = async (pg, secs) => {
-    for (let i = 0; i < (secs || 90) * 2; i++) {
-      if (await pg.evaluate(() => !!(window.__inWorld && window.__inWorld()))) return true;
-      await sleep(500);
-    }
-    return false;
-  };
+  // ★[T214] 정본 하나로 — `fixture-clock.waitInWorld` 의 기본 상한이 마침 **180초**라
+  //   위 T126 의 참을성(180)이 한 글자도 안 줄어든다(사본만 사라진다).
+  const inWorld = async (pg, secs) => (await FixClock.waitInWorld(pg, { timeoutMs: (secs || 90) * 1000 })).ok;
   // ⚠[T126 판에서 다시 걸렸다] R 은 셋 중 **제일 먼저** 들어와 A·C 가 드는 몇 분을 기다린다 —
   //   그 사이 소켓이 한 번 끊기면 90초 안에 못 돌아오는 판이 있다(A·C 는 초록인데 R 만 빨강 ·
   //   재시도 진단줄이 안 찍힌 게 "들어왔다가 끊겼다"는 증거다). 제품이 아니라 검사의 참을성이다.
@@ -315,6 +312,28 @@ async function waitHttp(url, tries = 600) {
     }
     return null;
   };
+  // ★★[T214 2026-09-12] **탭이 탭으로 읽힐 때까지** 누른다 — 정해진 횟수를 쓰지 않는다(족보 ⑩).
+  //   §0-ⓐ 실측(러너 빨강): `★⑧ 도는 중엔 메뉴가 **멈추기**라고 말한다  null` ·
+  //   `[상황] 화면 안의 그 사람에게 메뉴가 열렸다  아무도 안 눌렸다` — 단독이면 77/0 이다.
+  //   기전은 위 T90 주석이 이미 적었다: 2코어에 실클라 셋이면 `mousedown→auxclick` 이 제품의
+  //   **400ms 문턱**을 넘겨 옳은 탭이 홀드로 읽힌다. 그건 시간이 흐르는 속도 문제라 DOM 을
+  //   더 오래 본다고 안 고쳐진다 — **다시 누르는 수밖에 없다.** 그래서 시도 횟수(3·5·20·40)를
+  //   **증인**으로 바꾼다: 클라가 메뉴를 DOM 에 올리면 그 순간 끝난다. 상한은 판정이 아니라 안전망이다.
+  //   ★자리(`pt`)도 함수로 받는다 — 사람이 걸어 나가면 **다음 판에 다시 고른다**(고정 좌표를 계속 두드리지 않는다).
+  const tapUntilMenu = async (ptOrFn, capMs) => {
+    const t0 = Date.now(), cap = capMs || 60000;   // 60초 — 안전망(판정은 부르는 쪽의 `ok` 가 한다)
+    let taps = 0, lastPt = null;
+    while (Date.now() - t0 < cap) {
+      const pt = (typeof ptOrFn === 'function') ? await ptOrFn() : ptOrFn;
+      if (!pt) { await sleep(300); continue; }     // 세계가 아직 그 사람을 안 줬다 — 기다린다
+      lastPt = pt; taps++;
+      await rightTap(pt);
+      const l = await menuWithin(2000);
+      if (l) return { labels: l, pt, taps, ms: Date.now() - t0 };
+      await sleep(200);
+    }
+    return { labels: null, pt: lastPt, taps, ms: Date.now() - t0 };
+  };
 
   // ★한 번 누르고 포기하지 않는다 — 실클라 셋이 붙은 2코어 상자에서 이벤트가 밀리면
   //   옳은 탭도 한 번은 홀드로 읽힐 수 있다. 몇 번 눌러 보고, 그래도 안 뜨면 **왜 안 떴는지**를 찍는다.
@@ -324,8 +343,13 @@ async function waitHttp(url, tries = 600) {
   //   ⇒ **R 이 그 사람을 쓰러진 것으로 볼 때까지** 기다린 뒤에 누른다. 이건 검사의 전제지
   //     제품의 회피가 아니다 — 안 기다리면 없는 결함을 보고한다.
   const aPt = await clientPtOf(A);
+  //   ★★[T214] 기다리기만 하면 안 된다 — 위 주석이 적은 기전(**재접속 → 새 pid** → R 의 `downStates`
+  //     는 옛 pid 로만 차 있다)은 **시간이 지난다고 안 풀린다**. ①이 쓰는 그 멱등 픽스처를
+  //     기다리는 동안 **다시 보낸다**(①의 `i % 20` 규약 그대로) — 그러면 지금 붙어 있는 pid 가 눕는다.
+  //     실측: 러너 4종 청크에서 이 `[상황]` 이 세 판 연속 빨갰고(단독은 초록) 그 뒤 ②가 통째로 무너졌다.
   const seenDown = await (async () => {
-    for (let i = 0; i < 60; i++) {
+    for (let i = 0; i < 90; i++) {
+      if (i % 10 === 0) await starve(A);
       const ok2 = await R.evaluate(([wx, wy]) => {
         const t = pickAt(wx, wy, { live: true });
         return !!(t && t.kind === 'player' && t.down);
@@ -336,10 +360,11 @@ async function waitHttp(url, tries = 600) {
     return false;
   })();
   pre(seenDown, 'R 의 화면이 그 사람을 **쓰러진 것으로 본다** — 아니면 아래가 전부 헛것이다');
+  // ★[T214] 고정 자리 3회 → **살아 있는 자리로 뜰 때까지**(상한 안전망). 사람이 걸어가면 자리가 낡는다.
+  const aPtNow = async () => (await clientPtOf(A)) || aPt;
   let labels = null;
   for (let i = 0; i < 3 && !labels; i++) {
-    await rightTap(aPt);
-    labels = await menuWithin(3000);
+    labels = (await tapUntilMenu(aPtNow, 20000)).labels;
     if (!labels) {
       // ★"안 떴다"로 끝내지 않는다 — **누른 그 자리에서 무엇이 잡혔는지**를 같이 묻는다.
       //   대상 판정(`pickAt`)과 동사 판정(`verbsFor`)은 서로 다른 층이다 — 어느 층이 끊겼는지 말한다.
@@ -355,7 +380,7 @@ async function waitHttp(url, tries = 600) {
         return { world: [Math.round(w.wx), Math.round(w.wy)],
                  pick: t ? { kind: t.kind, id: t.id, down: t.down, npc: t.npc, at: [Math.round(t.absX), Math.round(t.absY)] } : null,
                  verbs: (verbsFor(t, null) || []).length, others, downs };
-      }, [aPt.x, aPt.y]);
+      }, [(await aPtNow()).x, (await aPtNow()).y]);
       console.log(`  · [상황] 메뉴가 안 떴다(시도 ${i + 1}) — ${JSON.stringify(why)}`);
     }
   }
@@ -372,8 +397,11 @@ async function waitHttp(url, tries = 600) {
   pre(!!aBefore && !!cBefore, '두 몸의 지금 값을 읽었다',
       `A 배고픔 ${Math.round((aBefore || {}).hunger || 0)} · C ${Math.round((cBefore || {}).hunger || 0)}`);
   await clearNotices(R);
-  const feedIdx = labels.findIndex((t) => /먹이기/.test(t));
-  await R.evaluate((i) => { document.getElementById('ctxMenu').children[i].click(); }, feedIdx);
+  // ★[T214] ② 가 흔들려도 **하네스 전체가 죽으면 안 된다**(T90 규약: "한 절의 흔들림이 전수를 못 죽이게").
+  //   실측: `labels` 가 null 인 판에서 `labels.findIndex` 가 TypeError 로 하네스를 통째로 끊었다(결과줄 15개).
+  const feedIdx = (labels || []).findIndex((t) => /먹이기/.test(t));
+  if (feedIdx >= 0) await R.evaluate((i) => { const _m = document.getElementById('ctxMenu'); if (_m && _m.children[i]) _m.children[i].click(); }, feedIdx);
+  else console.log('  · [상황] ②가 메뉴를 못 열어 ③의 하위 목록을 못 연다 — 아래는 그 사실대로 빨갛다');
   // 하위 목록도 **기다린다**(위와 같은 이유 — 고정 대기는 밀린 판에서 거짓 실패를 만든다)
   const sub = await menuWithin(3000);
   ok(Array.isArray(sub) && sub.length > 0, '★★③ **하위 목록이 열린다** — 내 짐의 먹을 것', JSON.stringify(sub));
@@ -527,17 +555,21 @@ async function waitHttp(url, tries = 600) {
       // 그 자연물 **바로 옆**에 선다 — 그래야 "누른 것 = 서버가 고를 것" 이 성립한다(§0-ⓐ).
       await warp(R, res.x - OFF.x + 20, res.y - OFF.y, 8, 30);
       await sleep(800);
-      const rPt = await R.evaluate(([wx, wy]) => {
+      // ★★[T214] 화면 자리는 **누를 때마다 다시 묻는다** — 한 번 재 둔 화면점은 카메라가 움직이면
+      //   그 자원을 안 가리킨다(실측: 러너 2회차에서 60초를 두드려도 메뉴가 안 떴다 — 고정점이었다).
+      //   월드 좌표(`res.x,y`)는 안 변한다. 변하는 것은 **월드→화면 변환**이므로 그것만 다시 본다.
+      const rPt = () => R.evaluate(([wx, wy]) => {
         const sc = window.__w2s(wx, wy);
         const cv = document.getElementById('canvas');
         const rc = cv.getBoundingClientRect();
+        if (!(sc.px > 8 && sc.py > 8 && sc.px < cv.width - 8 && sc.py < cv.height - 8)) return null;  // 화면 밖이면 기다린다
         return { x: rc.left + sc.px * (rc.width / cv.width), y: rc.top + sc.py * (rc.height / cv.height) };
       }, [res.x, res.y]);
       // ⚠[T90 판] 세 번 두드려도 안 뜬 판이 있었다 — 그리고 그때 아래 클릭이 `null.children` 으로
       //   **하네스 전체를 죽였다**(한 절의 흔들림이 전수를 못 죽이게, 클릭은 전부 방어로 바꿨다).
       //   두드림도 다섯으로 늘린다: 렌더 루프가 밀리면 400ms 문턱을 넘겨 탭이 홀드로 읽힌다.
-      let nLab = null;
-      for (let i = 0; i < 5 && !nLab; i++) { await rightTap(rPt); nLab = await menuWithin(3000); await sleep(200); }
+      const _nR = await tapUntilMenu(rPt);   // ★[T214] 다섯 번이 아니라 **뜰 때까지**(상한 안전망)
+      const nLab = _nR.labels;
       ok(!!nLab && nLab.length > 0, '★★⑧ 자연물 위 우클릭에 **메뉴가 뜬다**', JSON.stringify(nLab));
       // ★[T90] 이 표를 하네스가 들고 있으면 그것도 **사본**이다 — 정본(`server/itemlabel.js`)을 부른다.
       const WORD = require(path.join(ROOT, 'server', 'itemlabel.js')).RESOURCE_VERBS;
@@ -553,16 +585,24 @@ async function waitHttp(url, tries = 600) {
       }, res.id);
       await clearNotices(R);
       await R.evaluate(() => { const _m = document.getElementById('ctxMenu'); if (_m && _m.children[0]) _m.children[0].click(); });
-      await sleep(2500);
-      const after = await R.evaluate((id) => {
+      // ★★[T214] 정해진 2.5초를 자지 않는다 — **그 자원이 답할 때까지** 본다(족보 ⑩).
+      //   러너 빨강 실측: `★★⑧ … hp 3 → 3`(단독 초록). `gather` 왕복(클라→서버→방송→클라 자원표)이
+      //   부하에서 2.5초를 넘는다. 판정(`moved`)은 그대로 — 끝내 안 깎이면 그대로 빨갛다. 상한은 안전망.
+      const _hpNow = () => R.evaluate((id) => {
         for (const c of conns.values()) { const r = c.resources && c.resources.get(id); if (r) return r.hp; }
         return 'gone';
       }, res.id);
+      let after = hp0, _w8 = 0;
+      for (let i = 0; i < 60; i++) {                 // 60 × 250ms = 15초까지(안전망)
+        await sleep(250); _w8 += 250;
+        after = await _hpNow();
+        if (after === 'gone' || (hp0 != null && typeof after === 'number' && after < hp0)) break;
+      }
       // ★증거는 **그 자원이 실제로 깎였는가** 하나다. 인벤이 안 비었다는 식의 곁가지 조건을
       //   `||` 로 붙이면 그건 자명 통과다(초안이 그렇게 `hp 3 → 3` 인데도 초록이었다).
       const moved = (after === 'gone') || (hp0 != null && after !== 'gone' && after != null && after < hp0);
       ok(moved, '★★⑧ 눌렀더니 **`gather` 가 실제로 갔다**(그 자원의 hp 가 줄거나 사라진다)',
-         `hp ${hp0} → ${after}`);
+         `hp ${hp0} → ${after} · ${_w8}ms 만에`);
       // 반복이 켜졌다 — §0-ⓑ 판정("한 번 = 반복 시작"). 그리고 **타이머는 하나**다.
       const looping = await R.evaluate(() => !!window.__eRepeat);
       ok(looping || after === 'gone', '★★⑧ 한 번 누르면 **반복이 시작된다**(채굴 60타 규약)', String(looping));
@@ -573,8 +613,8 @@ async function waitHttp(url, tries = 600) {
         //   반복이 도는 동안엔 1초마다 `gather` 가 나가 렌더 루프가 더 밀린다 ⇒ `mousedown→auxclick`
         //   이 400ms 문턱을 넘겨 **옳은 탭이 홀드로 읽힌다**(T68 이 250→400 으로 올릴 때 잰 그 현상).
         //   제품 결함이 아니다 — 검사가 참을성이 없었다. 위 ⑧ 첫 탭과 **같은 규약**으로 세 번 시도한다.
-        let l2 = null;
-        for (let i = 0; i < 3 && !l2; i++) { await rightTap(rPt); l2 = await menuWithin(2000); }
+        const _l2R = await tapUntilMenu(rPt);   // ★[T214] 같은 정본 — 아래 `stillOn` 이 갈래를 가른다
+        const l2 = _l2R.labels;
         const stillOn = await R.evaluate(() => !!window.__eRepeat);
         if (stillOn) {
           ok(!!l2 && l2.some((t2) => /멈추기/.test(t2)), '★⑧ 도는 중엔 메뉴가 **멈추기**라고 말한다', JSON.stringify(l2));
@@ -677,18 +717,26 @@ async function waitHttp(url, tries = 600) {
         };
         const NW = ['벌목', '채굴', '채집', '물 마시기'];
         let farMenu = null;
-        for (let i = 0; i < 3 && !farMenu; i++) { await rightTap(await ptOf(far)); farMenu = await menuWithin(2500); }
+        farMenu = (await tapUntilMenu(() => ptOf(far))).labels;   // ★[T214] 세 번이 아니라 뜰 때까지
         ok(!!farMenu && farMenu.some((t2) => NW.some((w) => t2.includes(w))),
            '★★⑧-b 최근접이 **아닌** 것에도 자연물 동사가 뜬다(T82 의 빈 메뉴 자리)', JSON.stringify(farMenu));
         const p0 = await hpPair(); const hpFar0 = p0.a, hpNear0 = p0.b;
         if (farMenu) { await R.evaluate(() => { const _m = document.getElementById('ctxMenu'); if (_m && _m.children[0]) _m.children[0].click(); }); }
-        await sleep(2600);
-        const p1 = await hpPair(); const hpFar1 = p1.a, hpNear1 = p1.b;
+        // ★★[T214] 2.6초 고정 → **둘 중 하나가 움직일 때까지**(판정은 그대로 · 상한은 안전망).
+        let p1 = p0, _w8b = 0;
+        for (let i = 0; i < 60; i++) {               // 60 × 250ms = 15초까지
+          await sleep(250); _w8b += 250;
+          p1 = await hpPair();
+          const mvF = p1.a === 'gone' || (typeof p0.a === 'number' && typeof p1.a === 'number' && p1.a < p0.a);
+          const mvN = p1.b === 'gone' || (typeof p0.b === 'number' && typeof p1.b === 'number' && p1.b < p0.b);
+          if (mvF || mvN) break;
+        }
+        const hpFar1 = p1.a, hpNear1 = p1.b;
         await R.evaluate(() => { if (window.__eRepeat) { clearInterval(window.__eRepeat); window.__eRepeat = null; } });
         const farHit = hpFar1 === 'gone' || (typeof hpFar0 === 'number' && typeof hpFar1 === 'number' && hpFar1 < hpFar0);
         const nearHit = hpNear1 === 'gone' || (typeof hpNear0 === 'number' && typeof hpNear1 === 'number' && hpNear1 < hpNear0);
         ok(farHit, '★★⑧-b 눌렀더니 **누른 그것**이 깎였다(`gather{resId}` 가 지목대로 갔다)',
-           `먼 것 hp ${hpFar0} → ${hpFar1}`);
+           `먼 것 hp ${hpFar0} → ${hpFar1} · ${_w8b}ms 만에`);
         ok(!nearHit, '★★⑧-b 그리고 **더 가까운 것은 그대로다**(서버가 최근접을 고르지 않았다 — id 대조)',
            `가까운 것 hp ${hpNear0} → ${hpNear1}`);
         await R.keyboard.press('Escape');
@@ -978,7 +1026,15 @@ async function waitHttp(url, tries = 600) {
     pre(!!npc, '마을 한복판에 서서 화면 안의 NPC 하나를 잡았다',
         npc ? `${npc.name}(${npc.tribe}) · 나에게서 ${Math.round(npc.d)}px` : '없음');
     if (npc) {
-      const inGate = await R.evaluate(() => window.__evNearVid);
+      // ★[T214] 게이트도 **한 번만 안 묻는다** — 위 NPC 기다리기가 최대 40초라 그 사이 게이트 밖으로
+      //   밀릴 수 있다(실측: 단독 판에서 이 `[상황]` 이 `null`). 다시 물어보고, 그래도 없으면 한복판으로
+      //   다시 선 뒤 묻는다. 판정은 그대로 — 끝내 못 서면 그대로 빨갛다.
+      let inGate = await R.evaluate(() => window.__evNearVid);
+      for (let i = 0; i < 10 && inGate == null; i++) { await sleep(500); inGate = await R.evaluate(() => window.__evNearVid); }
+      if (inGate == null && vsel) {
+        await warp(R, vsel.cx * 32 + 16, vsel.cy * 32 + 16, 6, 120);
+        for (let i = 0; i < 10 && inGate == null; i++) { await sleep(500); inGate = await R.evaluate(() => window.__evNearVid); }
+      }
       pre(inGate != null, '마을 게이트(260px) 안에 섰다 — 거래 동사의 조건', String(inGate));
 
       // ⚠**NPC 는 걷는다.** 한 번 잡아 둔 좌표로 두드리면 그 사이 자리를 떠서 아무것도 안 눌린다
@@ -1024,13 +1080,11 @@ async function waitHttp(url, tries = 600) {
         return null;
       });
 
-      let lab = null, lastPt = null;
-      for (let i = 0; i < 20 && !lab; i++) {
-        const p0 = await ptNpc();
-        if (!p0 || p0.d > 220) { await sleep(500); continue; }   // 가까울 때만 두드린다(위 실측)
-        await rightTap(p0); lab = await menuWithin(2000); await sleep(150);
-        if (lab) lastPt = p0;                       // 메뉴가 뜬 그 사람이 주인공이다
-      }
+      // ★[T214] 시도 20회(벽시계) → **증인**. 가까운 사람이 없으면 기다렸다가 다시 고른다.
+      const _nearNpc = async () => { const p0 = await ptNpc(); return (p0 && p0.d <= 220) ? p0 : null; };
+      const _r13 = await tapUntilMenu(_nearNpc);
+      const lab = _r13.labels;
+      const lastPt = _r13.labels ? _r13.pt : null;  // 메뉴가 뜬 그 사람이 주인공이다
       pre(!!lastPt, '화면 안의 그 사람에게 메뉴가 열렸다',
           lastPt ? `${lastPt.name} · ${Math.round(lastPt.d)}px` : '아무도 안 눌렸다');
       if (lastPt) npc = { ...npc, pid: lastPt.pid, name: lastPt.name };
@@ -1065,11 +1119,7 @@ async function waitHttp(url, tries = 600) {
       // ── 거래 → **이미 있는 거래소 탭**이 열린다(새 패널 0)
       // ⚠사람들이 걸어 나가면 화면에 아무도 없는 구간이 생긴다 — 그 구간을 **기다린다**
       //   (초안이 15번 만에 포기해 이 절을 조용히 건너뛰었다).
-      let lab2 = null;
-      for (let i = 0; i < 40 && !lab2; i++) {
-        const p2 = await ptNpc(); if (!p2 || p2.d > 220) { await sleep(500); continue; }
-        await rightTap(p2); lab2 = await menuWithin(2000); await sleep(150);
-      }
+      const lab2 = (await tapUntilMenu(_nearNpc)).labels;   // ★[T214] 같은 정본(40회 → 증인)
       // ★못 열었으면 **조용히 건너뛰지 않는다** — 건너뛴 사실이 로그에 남아야 다음 판을 읽을 수 있다.
       if (!lab2 || lab2.length !== 2) {
         console.log(`  · [상황] 거래 절을 못 쟀다 — 메뉴를 다시 못 열었다(그 사람이 걸어 나갔다) ${JSON.stringify(lab2)}`);
