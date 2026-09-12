@@ -338,7 +338,7 @@ const seen = (C, pid) => C.others.get(pid) || null;
     ok(!/[\u{1F300}-\u{1FAFF}]/u.test((rl.match(/o\.fr \? [^\n]*/) || [''])[0]), '⑦b 그 낱말에 이모지가 **없다**(화면 규칙 B)');
     ok(/fr: pp\.fr !== undefined \? pp\.fr : prev\?\.fr/.test(net), '⑦c 클라는 `fr` 을 **받아서 승계**할 뿐 스스로 안 정한다');
     //   ★주석은 걷어내고 본다 — 설명문이 증거로 오독되면 하네스가 없는 결함을 보고한다(족보 ㊻).
-    const codeOnly = (x) => x.replace(/\/\*[\s\S]*?\*\//g, ' ').split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n');
+    const codeOnly = require('./code-only.js');   // ★[T171] 주석 제거기 **정본**(acorn onComment · 사본 0). 옛 정규식 판은 `villages.js:20` 의 `// … sim/* …` 에 걸려 파일의 67.9% 를 삼켰다
     ok(!/isFriend\(|friendsOf\(|friendRequest\(/.test(codeOnly(rl) + codeOnly(net) + codeOnly(lob)),
       '⑦d ★★클라에 친구 **판정이 없다** — 누가 누구와 친구인지 클라는 모른다');
     ok(/v\.friendsHere/.test(lob) && !/friendsOf|isFriend|friends\.length/.test(lob), '⑦e 로비는 서버가 센 수를 **그대로** 쓴다(재계산 0)');

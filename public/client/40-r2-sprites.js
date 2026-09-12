@@ -108,7 +108,10 @@
     h = (h ^ (h >>> 13)) >>> 0;
     return (h % 997) / 997;
   }
-  // 나무 스프라이트 (Kenney Nature Kit, 초록 recolor) — public/assets/trees/. 로드되면 벡터 대신 사용.
+  // 나무 스프라이트 — `public/assets/trees/`. 로드되면 벡터 대신 사용.
+  // ★[T171 2026-09-11] 옛 주석은 여기를 "Kenney Nature Kit, 초록 recolor" 라 적어 두었는데
+  //   그 판은 배치19 에서 **Blender 정본 씬으로 12종을 전부 다시 구웠다**(`scripts/nature_render.py`).
+  //   배포본에 Kenney 파일은 0장이다(T168 §0-ⓐ: 배포 이미지 611/612 가 잠금표 안). 주석만 고친다 — 그림 0.
   // ★[에셋 3차 — 자연물 리스킨] RD 생성 스프라이트(assets-src/rd-nature-sheet.png에서 추출·분류) — 나무 파이프라인 동형.
   //   rock=바위6+이끼바위6 풀, ore=구리 광맥6, bush=딸기 덤불6, herb=약초6. 로드 전엔 기존 절차 렌더 폴백.
   const NATURE_SPRITES = {};

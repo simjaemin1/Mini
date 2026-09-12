@@ -68,10 +68,7 @@ const holdFed = (P) => { P.hunger = 100; P.thirst = 100; };
 //   1차 실행에서 두 판정이 자기 발에 걸렸다: `body.js` 의 주석이 "`lastSeen` 으로 따라잡기를 넣지 마라"라고
 //   적어 뒀는데 내 grep 이 그 **금지 문구**를 금지 대상으로 읽었고, 이 파일 머리말의 "`savePlayer` 를 불러
 //   … 사고가 있었다"도 마찬가지였다. **설명문이 증거로 오독되면 하네스는 없는 결함을 보고한다.**
-function codeOnly(src) {
-  return src.replace(/\/\*[\s\S]*?\*\//g, ' ').split('\n')
-    .map((l) => l.replace(/\/\/.*$/, '')).join('\n');
-}
+const codeOnly = require('./code-only.js');   // ★[T171] 주석 제거기 **정본**(acorn onComment · 사본 0)
 
 (async () => {
   say('\n=== 신체 상태 §7 — 판단의 접속면 (서버 정본 E2E) ===');

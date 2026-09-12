@@ -102,7 +102,7 @@ ok(leak.length === 0, '★★③ 서버 이름표가 모든 제작 재료를 안
   ok(/r\.costKo/.test(panel) && /m\.ko \|\| m\.item/.test(panel),
      '★⑤ 제작창이 **서버 이름표를 먼저** 본다(클라 표는 폴백)');
   // ★주석 줄은 뺀다 — 이 검사를 설명하는 **내 주석**이 검사에 걸렸다(test-hist 의 `/splice/` 와 같은 함정).
-  const codeOnly = (t) => t.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+  const codeOnly = require('./code-only.js');   // ★[T171] 주석 제거기 **정본**(acorn onComment · 사본 0). 옛 정규식 판은 `villages.js:20` 의 `// … sim/* …` 에 걸려 파일의 67.9% 를 삼켰다
   const sideSrc = fs.readFileSync(path.join(ROOT, 'public', 'client', '51-s-side.js'), 'utf8');
   const bad = [['50-i-panel.js', codeOnly(panel)], ['51-s-side.js', codeOnly(sideSrc)]]
     .filter(([, t]) => /itemIconHtml\((\w[\w.]*),\s*\d+,\s*\1\)/.test(t)).map(([n]) => n);
@@ -117,7 +117,7 @@ ok(leak.length === 0, '★★③ 서버 이름표가 모든 제작 재료를 안
 //   ⇒ 이 검사는 **한글 이름 리터럴이 클라 소스에 있는가**를 본다. 주석은 뺀다(설명이 검사에 걸린다).
 console.log('\n=== [T61] 클라에 이름표 사본이 남았나 ===');
 {
-  const codeOnly = (t) => t.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+  const codeOnly = require('./code-only.js');   // ★[T171] 주석 제거기 **정본**(acorn onComment · 사본 0). 옛 정규식 판은 `villages.js:20` 의 `// … sim/* …` 에 걸려 파일의 67.9% 를 삼켰다
   const FILES = ['43-i-icon.js', '60-t-market.js'];
   const KO = /[가-힣]/;
   const ILmod = require(path.join(ROOT, 'server', 'itemlabel.js'));

@@ -274,7 +274,7 @@ const last = (C) => JSON.stringify(C.notices.slice(-1));
     const cen = fs.readFileSync(path.join(ROOT, 'server', 'central.js'), 'utf8');
     const lob = fs.readFileSync(path.join(ROOT, 'public', 'client', '70-lobby.js'), 'utf8');
     const nt = fs.readFileSync(path.join(ROOT, 'server', 'notice.js'), 'utf8');
-    const codeOnly = (x) => x.replace(/\/\*[\s\S]*?\*\//g, ' ').split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n');
+    const codeOnly = require('./code-only.js');   // ★[T171] 주석 제거기 **정본**(acorn onComment · 사본 0). 옛 정규식 판은 `villages.js:20` 의 `// … sim/* …` 에 걸려 파일의 67.9% 를 삼켰다
     ok((cen.match(/CREATE TABLE IF NOT EXISTS tribe_invites/g) || []).length === 1, '⑥ central 에 새 표는 **하나**다');
     //   ⚠`codeOnly` 를 안 쓴다 — 블록 주석 지우개가 문자열 안의 `/*` 를 만나면 그 뒤를 통째로 먹는다
     //     (초안이 그래서 0건을 봤다). 여기서 세는 것은 **SQL 문**이라 원문 그대로가 맞다.
