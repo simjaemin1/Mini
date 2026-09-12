@@ -74,7 +74,9 @@ world.day = 0;
 // ── ★[T177] 관찰자 문 ─────────────────────────────────────────────────────────
 const TR = { job: {}, calls: 0, rewritten: 0 };
 const _trJob = (j) => (TR.job[j] || (TR.job[j] = { n: 0, oldSum: 0, newSum: 0, ratioSum: 0, ratioN: 0,
-  pickedOld: 0, pickedNew: 0, cntSum: 0, toolSum: 0, toolN: 0, zeroReal: 0 }));
+  pickedOld: 0, pickedNew: 0, cntSum: 0, toolSum: 0, toolN: 0, zeroReal: 0,
+  // ★[T189] 폴백 갈래 — 폴백 호출 수와 그 안에서 실제로 뽑힌 수
+  fbN: 0, fbPicked: 0, rwN: 0, rwPicked: 0, cnt0: 0, firstReal: null }));
 function _toolCov(v) {
   const c = v.counts || {}; let td = 0;
   for (const j in c) { const jd = econ.JOBS[j]; if (jd && jd.toolDependent) td += c[j] || 0; }
@@ -94,11 +96,15 @@ if (TRACE) {
       const t = _trJob(j);
       t.n++; t.oldSum += go; t.cntSum += (ctx.counts && ctx.counts[j]) || 0;
       t.toolSum += cov; t.toolN++;
+      const nHere = (ctx.counts && ctx.counts[j]) || 0;
+      if (nHere <= 0) t.cnt0++;                            // ★인원 0 인 채로 후보에 선 호출
       if (alt) {
         const gn = alt[i][1];
         t.newSum += gn;
-        if (gn === go) t.zeroReal++;                       // 폴백(실현 0 · 인원 0 · 바구니 없음)
-        else if (go > 0) { t.ratioSum += gn / go; t.ratioN++; }
+        const isFb = (gn === go);
+        if (isFb) { t.zeroReal++; t.fbN++; if (newBest && newBest[0] === j) t.fbPicked++; }
+        else { t.rwN++; if (newBest && newBest[0] === j) t.rwPicked++; if (go > 0) { t.ratioSum += gn / go; t.ratioN++; } }
+        if (!isFb && t.firstReal === null) t.firstReal = (w2 && w2.day) || 0;   // ★실현이 처음 생긴 날
       }
       if (oldBest && oldBest[0] === j) t.pickedOld++;
       if (newBest && newBest[0] === j) t.pickedNew++;
@@ -179,20 +185,21 @@ console.log(`  ratio     식량등가 ${foodEq.toFixed(0)} · 그중 구황(채�
 
 if (TRACE) {
   console.log(`\n  [T177] 문 호출 ${TR.calls}회 · 다시 쓴 호출 ${TR.rewritten}회`);
-  console.log('  직업'.padEnd(14) + '평균인원'.padStart(9) + '종전가치'.padStart(12) + '실현가치'.padStart(12)
-    + '실현/종전'.padStart(11) + '폴백%'.padStart(8) + '고른횟수 종전→실현'.padStart(20) + '  도구커버' + '  도구의존');
+  console.log('  직업'.padEnd(14) + '평균인원'.padStart(9) + '실현/종전'.padStart(11) + '폴백%'.padStart(7)
+    + '폴백중뽑힘%'.padStart(13) + '실현중뽑힘%'.padStart(13) + '인원0%'.padStart(8)
+    + '실현첫날'.padStart(10) + '고른 종전→실현'.padStart(18));
   const rows = Object.entries(TR.job).sort((a, b) => b[1].n - a[1].n);
   for (const [j, t] of rows) {
     const jd = econ.JOBS[j] || {};
     console.log('  ' + j.padEnd(12)
       + (t.cntSum / Math.max(1, t.n)).toFixed(1).padStart(9)
-      + (t.oldSum / Math.max(1, t.n)).toFixed(1).padStart(12)
-      + (t.newSum / Math.max(1, t.n)).toFixed(1).padStart(12)
-      + (t.ratioN ? (t.ratioSum / t.ratioN).toFixed(3) : '—').padStart(11)
-      + (100 * t.zeroReal / Math.max(1, t.n)).toFixed(0).padStart(8)
-      + `${t.pickedOld} → ${t.pickedNew}`.padStart(20)
-      + '  ' + (t.toolSum / Math.max(1, t.toolN)).toFixed(3).padStart(8)
-      + '  ' + (jd.toolDependent ? '**예**' : '아니오').padStart(7));
+      + (t.ratioN ? (t.ratioSum / t.ratioN).toFixed(2) : '—').padStart(11)
+      + (100 * t.fbN / Math.max(1, t.n)).toFixed(0).padStart(7)
+      + (t.fbN ? (100 * t.fbPicked / t.fbN).toFixed(1) : '—').padStart(13)
+      + (t.rwN ? (100 * t.rwPicked / t.rwN).toFixed(1) : '—').padStart(13)
+      + (100 * t.cnt0 / Math.max(1, t.n)).toFixed(0).padStart(8)
+      + String(t.firstReal === null ? '—' : 'd' + t.firstReal).padStart(10)
+      + `${t.pickedOld} → ${t.pickedNew}`.padStart(18));
   }
 }
 if (process.env.T177_JSON) {

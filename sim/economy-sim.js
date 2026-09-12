@@ -3629,6 +3629,10 @@ function allocRealOn() { const x = _allocKnob('L_ALLOC_REAL'); return x !== null
 function allocRealWin() { const x = _allocKnob('L_ALLOC_WIN'); const n = (x === null) ? 1 : parseFloat(x); return Number.isFinite(n) ? n : 1; }
 // ★[T184] 되돌림 — `L_ALLOC_BASKET=1` 이면 1판(바구니 전체 소득)으로 돌아간다. 기본은 2판(주산물 항).
 function allocBasketMode() { const x = _allocKnob('L_ALLOC_BASKET'); return x !== null && x !== '0'; }
+// ★[T189] 폴백 축 맞춤 — `L_ALLOC_FB=1` 이면 **실현이 없는 직업**의 폴백 값에 그 호출의 **축 배율**
+//   (같은 호출에서 실제로 다시 쓰인 직업들의 실현÷종전 **중앙값**)을 곱한다. 기본 꺼짐.
+//   새 수 0 — 배율은 그 호출 안에서 계산된 값들의 중앙값이고, 바깥에서 아무 상수도 안 가져온다.
+function allocFbMode() { const x = _allocKnob('L_ALLOC_FB'); return x !== null && x !== '0'; }
 
 // ★★★[T184 2026-09-12 · 2판] 직업의 **주산물 항** — 종전식이 보던 그 품목과 그 값식 그대로.
 //
@@ -3708,37 +3712,52 @@ function allocRealCandidates(v, world, cands, ctx) {
 
   const B1 = allocBasketMode();                     // 되돌림 — 1판(바구니 전체 소득)
   const out = [];
+  const _fb = [], _fbRatio = [];                    // ★[T189] 폴백으로 간 자리 · 이 호출의 축 배율 표본
   for (let i = 0; i < cands.length; i++) {
     const job = cands[i][0], gain = cands[i][1];
     const n = (ctx.counts && ctx.counts[job]) || 0;
-    if (n <= 0) { out.push([job, gain]); continue; }           // 폴백 — 아직 그 일을 하는 사람이 없다
+    if (n <= 0) { _fb.push(out.length); out.push([job, gain]); continue; }           // 폴백 — 아직 그 일을 하는 사람이 없다
     let g = 0, any = false;
 
     if (B1) {
       // ── 1판(되돌림): 바구니 전체 소득 ──────────────────────────────────────
       const b = allocBasketOf(job, ctx, world);
-      if (!b) { out.push([job, gain]); continue; }
+      if (!b) { _fb.push(out.length); out.push([job, gain]); continue; }
       let q = 0, inc = 0;
       for (let k = 0; k < b.length; k++) { const x = e[b[k]] || 0; if (x > 0) { q += x; inc += x * ctx.w(b[k]); } }
-      if (!(q > 0)) { out.push([job, gain]); continue; }
+      if (!(q > 0)) { _fb.push(out.length); out.push([job, gain]); continue; }
       g = (inc / n) * ctx.period; any = true;
     } else {
       // ── ★2판: 항마다 (1인당 실현 양) × (종전 값식) — 축이 종전과 같다 ─────
       const terms = allocTermsOf(job, ctx, world);
-      if (!terms) { out.push([job, gain]); continue; }          // 상인·전사 — 폴백
+      if (!terms) { _fb.push(out.length); out.push([job, gain]); continue; }          // 상인·전사 — 폴백
       for (let t = 0; t < terms.length; t++) {
         const keys = terms[t][0];
         let q = 0;
         for (let k = 0; k < keys.length; k++) q += (e[keys[k]] || 0);
         if (q > 0) { g += (q / n) * terms[t][1]() * ctx.period; any = true; }
       }
-      if (!any) { out.push([job, gain]); continue; }            // 폴백 — 아직 실현이 0
+      if (!any) { _fb.push(out.length); out.push([job, gain]); continue; }            // 폴백 — 아직 실현이 0
     }
 
     // ★사냥 위험 프리미엄은 생산이 아니라 **기회비용**이라 실현 산출에 안 들어 있다 — 종전식 그대로 곱한다.
     if (job === 'hunter' && v._huntRisk != null) g *= (1 - Math.min(1, Math.max(0, v._huntRisk)));
     // ★채집 MSY 포화도 종전식에 있던 항이다 — 실현 양엔 이미 들어 있으니 **두 번 곱하지 않는다**(주석으로 남긴다).
     out.push([job, g]);
+    if (gain > 0) { _fbRatio.push(g / gain); }                 // ★[T189] 이 호출의 축 배율 표본
+  }
+
+  // ★★[T189] **폴백 축 맞춤**(`L_ALLOC_FB=1` · 기본 꺼짐).
+  //   실현이 없는 직업(인원 0 · 아직 안 캐 본 일)은 폴백 = **종전 값 그대로**인데, 같은 호출의 다른
+  //   직업들은 실현으로 1~5배가 된다 ⇒ 폴백 값이 **상대적으로 눌린다**(T189 §0ⓐ: 나무꾼 폴백 갈래에서
+  //   뽑히는 비율 2.4~5.6% vs 실현 갈래 25~28%). 그래서 폴백도 **같은 축에 세운다** —
+  //   배율은 이 호출에서 실제로 다시 쓰인 직업들의 실현÷종전 **중앙값**이다(새 수 0 · 바깥 상수 0).
+  //   ⚠부호는 직업마다 다르다: 사냥·어로·채집은 폴백이 **유리**했으므로(폴백중뽑힘 29~82%) 이 손잡이가
+  //     그쪽을 깎는다. 공짜 수리가 아니라 **거래**다 — 표가 판정한다.
+  if (_fb.length > 0 && allocFbMode() && _fbRatio.length > 0) {
+    const srt = _fbRatio.slice().sort((x, y) => x - y);
+    const med = srt.length % 2 ? srt[(srt.length - 1) / 2] : (srt[srt.length / 2 - 1] + srt[srt.length / 2]) / 2;
+    for (let k = 0; k < _fb.length; k++) out[_fb[k]][1] *= med;
   }
   return out;
 }
@@ -4764,7 +4783,7 @@ module.exports = {
   computeDailyConsumption,
   FORAGE_FOOD_FACTOR,   // ★식량 pull(v2 FOOD_CLASSES 파생용 단일 진실 — 구황·해산물 식용 등가)
   // ★[T164] 실현 배분 정본 — 랩도 하네스도 **이 함수들을** 부른다(사본 0).
-  allocRealOn, allocRealWin, allocBasketMode, allocBasketOf, allocTermsOf, allocRealCandidates,
+  allocRealOn, allocRealWin, allocBasketMode, allocFbMode, allocBasketOf, allocTermsOf, allocRealCandidates,
   JOB_NAMES,
   FIELDS,
   RESOURCES,
