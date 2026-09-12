@@ -350,7 +350,8 @@ console.log('\n[⑤ 자연물 앵커·잠금 — 굽는 표가 정본이다 (T97
       //   그리고 검사 대상도 `fruit_ko` 가 아니라 **`autumn` 이 있는 종**이어야 한다:
       //   가을 판을 가진 종은 전부 "같은 나무인가"를 지켜야 하기 때문이다(참나무가 그 예다).
       const fruiting = ids.filter((id) => fruitPlatesOf(id).length);
-      ok(fruiting.length >= 4, `열매 판을 가진 종 ${fruiting.length} — ${fruiting.map((i) => sp[i].ko + (sp[i].fruit_ko ? '(' + sp[i].fruit_ko + ')' : '') + '·' + ((sp[i].summer || []).length ? '여름' : '가을')).join(' · ')}`);
+      // ★[T188] 열매 **이름**은 이 표에 없다(정본은 품목 표 하나) — 로그엔 나무 이름과 철만 적는다.
+      ok(fruiting.length >= 4, `열매 판을 가진 종 ${fruiting.length} — ${fruiting.map((i) => sp[i].ko + '·' + ((sp[i].summer || []).length ? '여름' : '가을')).join(' · ')}`);
       const bad = [], grew = [], nofruit = [];
       const png = (k) => {
         const b = fs.readFileSync(path.join(TREE_DIR, k + '.png'));

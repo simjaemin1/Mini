@@ -2,7 +2,6 @@
  "_source": "lab/전쟁실험실.html `const TREES` (T123) — 손편집 금지 · `node scripts/build-trees.js` 로 굽는다",
  "_note": "읽는 쪽은 server/trees.js 하나. 종에 우열 없음 — 값은 그림자가격이 정한다.",
  "_axes": {
-  "ko": "이름",
   "wood": "목재 수율(소나무=1.00 상대 재적)",
   "mature": "성목 햇수(벤 자리가 다시 성목이 되기까지)",
   "char": "숯 수율(참나무=1.00 상대)",
@@ -12,7 +11,6 @@
  },
  "trees": {
   "pine": {
-   "ko": "소나무",
    "wood": 1,
    "mature": 25,
    "char": 0.55,
@@ -21,7 +19,6 @@
    "fs": 2
   },
   "jat": {
-   "ko": "잣나무",
    "wood": 0.9,
    "mature": 30,
    "char": 0.5,
@@ -30,7 +27,6 @@
    "fs": 2
   },
   "oak": {
-   "ko": "참나무",
    "wood": 0.95,
    "mature": 40,
    "char": 1,
@@ -39,7 +35,6 @@
    "fs": 2
   },
   "chestnut": {
-   "ko": "밤",
    "wood": 0.75,
    "mature": 12,
    "char": 0.7,
@@ -48,7 +43,6 @@
    "fs": 2
   },
   "hazel": {
-   "ko": "개암",
    "wood": 0.35,
    "mature": 6,
    "char": 0.45,
@@ -57,7 +51,6 @@
    "fs": 2
   },
   "mulberry": {
-   "ko": "산뽕",
    "wood": 0.45,
    "mature": 8,
    "char": 0.4,
@@ -66,7 +59,6 @@
    "fs": 1
   },
   "grape": {
-   "ko": "머루",
    "wood": 0.1,
    "mature": 4,
    "char": 0.1,
@@ -75,7 +67,6 @@
    "fs": 2
   },
   "willow": {
-   "ko": "버들",
    "wood": 0.5,
    "mature": 7,
    "char": 0.3,

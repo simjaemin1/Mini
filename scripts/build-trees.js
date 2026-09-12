@@ -53,8 +53,10 @@ function extractTrees(src) {
 // ── 전사(轉寫)만 한다 — 파생은 하지 않는다 ───────────────────────────────────
 // 성장 ms·숯 굽는 시간·열매 무게 같은 건 여기서 계산하지 않는다(build-crops.py 와 같은 계약).
 // 여기서 하는 일: 축 이름 붙이기 · 안정된 키 순서. 그뿐이다.
+// ★★[T188] `ko`(이름) 칸은 **없다.** 나무 종 이름의 정본은 그림 표 하나다
+//   (`public/assets/trees/tree_species.json.ko` — 굽기가 적고 서버·클라가 그것을 읽는다 · T182).
+//   여기 두면 갈린다 — 실제로 여덟 중 넷이 갈려 있었다. 이 표는 **축만** 옮겨 적는다.
 const AXES = {
-  ko: '이름',
   wood: '목재 수율(소나무=1.00 상대 재적)',
   mature: '성목 햇수(벤 자리가 다시 성목이 되기까지)',
   char: '숯 수율(참나무=1.00 상대)',
@@ -69,7 +71,7 @@ function build() {
   const trees = {};
   for (const id of Object.keys(T)) {
     const t = T[id];
-    trees[id] = { ko: t.ko, wood: t.wood, mature: t.mature, char: t.char,
+    trees[id] = { wood: t.wood, mature: t.mature, char: t.char,
       fruit: t.fruit == null ? null : t.fruit, fy: t.fy, fs: t.fs };
   }
   return {
@@ -86,6 +88,14 @@ function build() {
 //   "참나무 성목 40년"은 표 안에서는 그냥 40 이지만, 재민이 판정할 수 있는 건 **실시간 며칠**이다.
 if (process.argv.includes('--table')) {
   const T = build().trees;
+  // ★[T188] 이름은 **그림 표**에서 읽는다(정본 하나 · 여기 옮겨 적지 않는다).
+  const KO = (() => {
+    try {
+      const sp = JSON.parse(fs.readFileSync(path.resolve(__dirname, '..', 'public', 'assets',
+        'trees', 'tree_species.json'), 'utf8')).species || {};
+      const o = {}; for (const k of Object.keys(sp)) if (sp[k].ko) o[k] = sp[k].ko; return o;
+    } catch (e) { return {}; }
+  })();
   const dayMs = require(path.resolve(__dirname, '..', 'server', 'zone-config')).WORLD.dayLengthMs;
   const yearDays = require(path.resolve(__dirname, '..', 'server', 'events')).calendarOf(0).yearDays;
   const yearMin = yearDays * (dayMs / 60000);
@@ -96,7 +106,7 @@ if (process.argv.includes('--table')) {
   for (const [id, t] of Object.entries(T).sort((a, b) => a[1].mature - b[1].mature)) {
     const min = t.mature * yearMin;
     const rt = min >= 1440 ? (min / 1440).toFixed(1) + '일' : (min / 60).toFixed(1) + '시간';
-    console.log('  ' + (id + '(' + t.ko + ')').padEnd(16) + String(t.mature).padStart(5) + '년'
+    console.log('  ' + (id + '(' + (KO[id] || id) + ')').padEnd(16) + String(t.mature).padStart(5) + '년'
       + rt.padStart(12) + '  ' + String(t.fruit || '—').padEnd(14) + String(t.fy).padStart(6));
   }
   console.log('\n  ※ 이 열이 벌목 부등식의 오른쪽(잃는 것)을 만든다: 성목햇수 × w(열매) × 연간수율.');

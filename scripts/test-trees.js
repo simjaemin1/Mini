@@ -296,5 +296,53 @@ sec('⑩ 동사 — 베는 것과 따는 것');
   ok(/resourceVerbsAlt/.test(c) && !/oak|chestnut|mulberry/.test(c), '클라가 종 목록을 안 적는다(서버 표만 읽는다)');
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// ★★★[T188] 이름 칸 사본이 없다 — 나무 이름의 정본은 그림 표 하나
+sec('⑧ 이름 사본 0 — `trees.json` 에도 랩 `TREES` 에도 이름 칸이 없다 (T188)');
+{
+  const fs8 = require('fs');
+  const SP8 = require(path.join(ROOT, 'server', 'specialty.js'));   // 열매 이름의 정본
+  const TJ = JSON.parse(fs8.readFileSync(path.join(ROOT, 'server', 'trees.json'), 'utf8'));
+  const ids8 = Object.keys(TJ.trees || {});
+  ok(ids8.length === 8, '전제: 굽힌 표를 실제로 읽었다(8종)', `${ids8.length}종`);
+  ok(ids8.every((id) => !('ko' in TJ.trees[id])), '★★`server/trees.json` 의 종마다 이름 칸이 없다',
+     ids8.filter((id) => 'ko' in TJ.trees[id]).join(' ') || '8종 전부 축만');
+  ok(!(TJ._axes || {}).ko, '★축 설명에도 `ko` 가 없다(굽기가 그 칸을 안 만든다)');
+  // ★원천도 같다 — 랩 `TREES` 리터럴에 이름 칸이 없다(굽기만 고치면 원천이 남아 또 갈린다)
+  {
+    const lab = fs8.readFileSync(path.join(ROOT, 'lab', '전쟁실험실.html'), 'utf8');
+    const i = lab.indexOf('const TREES={');
+    let d = 0, j = i + 'const TREES='.length - 1;
+    for (; j < lab.length; j++) { const ch = lab[j]; if (ch === '{') d++; else if (ch === '}') { d--; if (!d) break; } }
+    const lit = lab.slice(i, j + 1);
+    ok(i >= 0 && lit.length > 100, '전제: 랩 `TREES` 리터럴을 잘라 냈다', `${lit.length}자`);
+    ok(!/\bko\s*:/.test(lit), '★★원천(랩 `TREES`)에도 이름 칸이 없다 — 갈릴 자리 자체가 사라졌다');
+    ok(!/[가-힣]/.test(lit.split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n').replace(/\/\/[^\n]*/g, '')),
+       '★그 표의 **코드 줄**에 한국어가 0(주석은 뺀다)');
+  }
+  // ★★돌연변이 — 이름을 다시 실으면 잡는다(사본이 되돌아오는 길을 막는다)
+  {
+    const withKo = { ...TJ, trees: { ...TJ.trees, pine: { ...TJ.trees.pine, ko: '소나무' } } };
+    const bad = Object.keys(withKo.trees).filter((id) => 'ko' in withKo.trees[id]);
+    ok(bad.length === 1 && bad[0] === 'pine', '돌연변이 — 한 종에 이름을 도로 실으면 이 검사가 잡는다', bad.join(' '));
+  }
+  // ★서버가 그 칸이 없어도 이름을 낸다 — 정본이 그림 표이기 때문이다
+  const SPj = JSON.parse(fs8.readFileSync(path.join(ROOT, 'public', 'assets', 'trees', 'tree_species.json'), 'utf8')).species || {};
+  const off8 = Trees.ids().filter((id) => Trees.koOf(id) !== (SPj[id] || {}).ko);
+  ok(off8.length === 0, '★★이름은 그림 표에서 온다 — 전수 일치', Trees.ids().map((i) => Trees.koOf(i)).join(' '));
+  // ★열매 이름도 같은 결 — 그림 표엔 `fruit_ko` 가 없고, 품목 표가 정본이다
+  {
+    const withFk = Object.keys(SPj).filter((id) => 'fruit_ko' in SPj[id]);
+    ok(withFk.length === 0, '★★그림 표에 `fruit_ko` 가 없다(열매 이름의 정본은 품목 표 하나)',
+       withFk.length ? '— 남은 종: ' + withFk.join(' ') : '');
+    // 대신 **이을 수 있다** — `trees.json.fruit` → `RESOURCES.ko`
+    const pairs = Trees.ids().filter((id) => Trees.fruitOf(id))
+      .map((id) => `${Trees.koOf(id)}→${(SP8.RESOURCES[Trees.fruitOf(id)] || {}).ko}`);
+    const broken = Trees.ids().filter((id) => Trees.fruitOf(id) && !(SP8.RESOURCES[Trees.fruitOf(id)] || {}).ko);
+    ok(broken.length === 0, '★열매 이름은 **이어서** 얻는다(`trees.json.fruit` → `RESOURCES.ko`)',
+       broken.length ? '— 이름 없는 열매: ' + broken.join(' ') : pairs.join(' · '));
+  }
+}
+
 console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===`);
 process.exit(fail ? 1 : 0);

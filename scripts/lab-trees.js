@@ -11,6 +11,7 @@
 // 실행: node scripts/lab-trees.js [일수=800] [시드=1020] [--nofruit]
 'use strict';
 const path = require('path');
+const fs = require('fs');            // ★[T188] 이름 정본(그림 표)을 읽는다
 const { chromium } = require('playwright');
 const DAYS = parseInt(process.argv[2], 10) || 800;
 const SEED = parseInt(process.argv[3], 10) || 1020;
@@ -60,7 +61,8 @@ const PRNG_INIT = (seed) => `(() => {
           for (const k of ABS_KEYS) if (b[k]) out.abs[k] = (out.abs[k] || 0) + b[k]; }
         for (const v of VILS) out.cut = (out.cut || 0) + ((v.econ && v.econ._wcutDay) || 0);   // ★[T166] 장부(벤 목재) 누계
       }
-      out.treeTable = Object.keys(TREES).map((k) => ({ id: k, ko: TREES[k].ko, wood: TREES[k].wood,
+      // ★[T188] 랩 표엔 이름 칸이 없다(정본은 그림 표 하나) — 축만 꺼내고 이름은 아래서 붙인다.
+      out.treeTable = Object.keys(TREES).map((k) => ({ id: k, wood: TREES[k].wood,
         mature: TREES[k].mature, char: TREES[k].char, fruit: TREES[k].fruit, fy: TREES[k].fy, fs: TREES[k].fs }));
       for (let i = 0; i < VILS.length; i++) {
         const v = VILS[i], ev = v.econ, st = v._tstat || { felled: {}, felledFruit: 0, felledWood: 0, fruitHarv: 0, fruitDrop: 0 };
@@ -150,9 +152,17 @@ const PRNG_INIT = (seed) => `(() => {
       + ` · 20% 아래 마을 ${_fp.filter((x) => x < 20).length}곳`);
     console.log(`   나무꾼(마을별) — ${_lj.join(' ')} · 합 ${_lj.reduce((a, b) => a + b, 0)}`);
   }
-console.log('\nⓐ 종 표 (랩 정본 · `trees.json` 뼈대)');
-  console.log('  id          ko      wood  mature  char  fruit            fy   fs');
-  for (const t of r.treeTable) console.log('  ' + t.id.padEnd(11) + String(t.ko).padEnd(7)
+console.log('\nⓐ 종 표 (랩 정본 · `trees.json` 뼈대 · 이름은 그림 표에서)');
+  // ★[T188] 이름의 정본은 `public/assets/trees/tree_species.json` 하나다 — 여기 옮겨 적지 않는다.
+  const _KO = (() => {
+    try {
+      const sp = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'public', 'assets',
+        'trees', 'tree_species.json'), 'utf8')).species || {};
+      const o = {}; for (const k of Object.keys(sp)) if (sp[k].ko) o[k] = sp[k].ko; return o;
+    } catch (e) { return {}; }
+  })();
+  console.log('  id          ko        wood  mature  char  fruit            fy   fs');
+  for (const t of r.treeTable) console.log('  ' + t.id.padEnd(11) + String(_KO[t.id] || t.id).padEnd(9)
     + t.wood.toFixed(2).padStart(5) + String(t.mature).padStart(7) + t.char.toFixed(2).padStart(7)
     + '  ' + String(t.fruit || '—').padEnd(15) + String(t.fy).padStart(5) + String(['봄','여름','가을','겨울'][t.fs]).padStart(5));
 

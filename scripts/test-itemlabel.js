@@ -331,16 +331,18 @@ console.log('\n=== [T66] 화면 규칙 B — 이모지 0 · 색은 토큰 하나
     const off = Trees.ids().filter((id) => Trees.koOf(id) !== (SP[id] || {}).ko);
     ok(off.length === 0, '★★⑯ 나무 이름 = 그림 표 전수 일치(사본 0)',
        off.length ? off.map((i) => `${i}(${Trees.koOf(i)}↔${(SP[i] || {}).ko})`).join(' ') : Trees.ids().map((i) => Trees.koOf(i)).join(' '));
-    // ⓒ ★사본이 **살아 있지 않다** — `server/trees.json` 의 옛 `ko` 칸과 갈려도 서버는 그림 표를 따른다.
-    //   (그 칸은 랩에서 구워 오는 것이라 여기서 못 고친다 — 그래서 "고친다"가 아니라 "안 읽는다"가 답이다.)
+    // ⓒ ★★[T188] 사본이 **사라졌다** — `server/trees.json` 에 이름 칸이 아예 없다.
+    //   T182 는 "안 읽는다"로 막았고(갈려 있어도 그림 표를 따랐다), T188 이 **갈릴 자리 자체**를 없앴다.
+    //   랩 `TREES` 에서 `ko` 를 빼고 `build-trees.js` 가 안 굽는다 ⇒ 두 곳에 있을 수가 없다.
     {
-      const TJ = JSON.parse(fs.readFileSync(path.join(ROOT, 'server', 'trees.json'), 'utf8')).trees || {};
-      const diverged = Object.keys(TJ).filter((id) => TJ[id].ko && SP[id] && TJ[id].ko !== SP[id].ko);
-      ok(diverged.length > 0, '⑯ 전제: 옛 사본 칸이 실제로 갈려 있다(0 이면 이 검사가 자명 통과다)',
-         diverged.map((i) => `${i} ${TJ[i].ko}↔${SP[i].ko}`).join(' · '));
-      const follow = diverged.filter((id) => Trees.koOf(id) !== SP[id].ko);
-      ok(follow.length === 0, '★★⑯ 갈린 종에서 서버가 **그림 표를 따른다**(옛 칸을 안 읽는다)',
-         follow.length ? follow.join(' ') : diverged.map((i) => `${i}→${Trees.koOf(i)}`).join(' '));
+      const TJ = JSON.parse(fs.readFileSync(path.join(ROOT, 'server', 'trees.json'), 'utf8'));
+      const withKo = Object.keys(TJ.trees || {}).filter((id) => 'ko' in TJ.trees[id]);
+      ok(withKo.length === 0, '★★⑯ `server/trees.json` 에 이름 칸이 **없다**(사본 1→0)',
+         withKo.length ? '— 남은 종: ' + withKo.join(' ') : `${Object.keys(TJ.trees || {}).length}종 전부 축만`);
+      ok(!(TJ._axes || {}).ko, '★⑯ 축 설명에도 `ko` 가 없다(굽기가 그 칸을 안 만든다)');
+      // ★자명 통과 금지 — 표를 실제로 읽었고 종이 여덟이다
+      ok(Object.keys(TJ.trees || {}).length === Trees.ids().length,
+         '⑯ 전제: `trees.json` 을 실제로 읽었다', `${Object.keys(TJ.trees || {}).length}종`);
     }
     // ⓓ ★돌연변이 — `trees.js` 코드에 **한국어를 박으면** 잡는다(사본이 되돌아오는 길을 막는다)
     {

@@ -76,8 +76,10 @@ ok(/T\.mature\s*\*\s*w\(T\.fruit\)\s*\*\s*T\.fy/.test(fell), '오른쪽 = 성목
 ok(/if\(!T\.fruit\)return true;/.test(fell), '목재 전용 종은 언제나 벤다(사전식 ①의 근거)');
 
 // ── ④ 종에 우열 없음 ────────────────────────────────────────────────────────
-sec('④ 종에 우열 없음 — 축은 넷(+이름·품목·철)뿐');
-const AX = ['ko', 'wood', 'mature', 'char', 'fruit', 'fy', 'fs'].sort().join(',');
+// ★[T188] `ko`(이름)가 축에서 빠졌다 — 이름의 정본은 그림 표 하나다(`tree_species.json.ko`).
+//   이 표는 **축만** 갖는다: 목재·성목·숯 + 열매(품목·수율·철).
+sec('④ 종에 우열 없음 — 축은 넷(+품목·수율·철)뿐 · 이름 칸 없음');
+const AX = ['wood', 'mature', 'char', 'fruit', 'fy', 'fs'].sort().join(',');
 let axOk = true, axBad = '';
 for (const [id, t] of Object.entries(TJ.trees)) { const k = Object.keys(t).sort().join(','); if (k !== AX) { axOk = false; axBad = id + ':' + k; } }
 ok(axOk, '모든 종의 축이 정확히 [' + AX + ']' + (axOk ? '' : ' — ' + axBad));

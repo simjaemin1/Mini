@@ -1145,7 +1145,17 @@ SPECIES = {
 #   그림 표엔 참나무 가을판이 없었다(T129 는 열매종 넷만 했다).
 #   ⚠`hazel` 은 반대 방향으로 어긋나 있다 — 그림엔 개암 열매판이 있는데 T135 표는 `fruit: null`(fy 0) 이다.
 #     어느 쪽이 정본인지는 재민+T135 판정이라 **여기서 고치지 않는다**(대조표만 · 보고 §3).
-FRUITING = {'oak': '도토리', 'chestnut': '밤', 'hazel': '개암', 'mulberry': '오디', 'grape': '머루'}
+# ★★★[T188] **`fruit_ko` 를 뺐다 — 열매 이름의 정본은 품목 표(`specialty.RESOURCES.ko`) 하나다.**
+#   여기 있던 `FRUITING` 은 그 이름 넷을 손으로 옮겨 적은 **사본**이었다(지금은 갈림 0 이지만,
+#   두 곳에 있으면 언젠가 갈린다 — 나무 이름이 정확히 그렇게 넷이 갈렸다 · T182).
+#   ⓘ 굽기가 `RESOURCES` 에서 **읽어 적는** 길도 있었지만 안 갔다: 그 표의 넷 중 둘이
+#     `RESOURCES.chestnut = { ...nuts, ko: '밤' }` 꼴로 **코드가 만든다**. 파이썬 굽기가 그걸 파싱하면
+#     값이 아니라 **정본의 모양**을 베끼는 사본이 하나 더 생긴다. 읽는 곳이 하나(하네스 로그 장식)뿐이라
+#     **안 싣는 쪽**이 사본 0 이다. 읽는 쪽이 필요하면 `trees.json.fruit` → `RESOURCES.ko` 로 잇는다.
+#   ⓘ 곁가지 하나가 같이 닫혔다: `hazel` 은 그림엔 열매판이 있는데 서버는 `fruit: null` 이라
+#     이 표만 '개암'이라고 **세계에 없는 열매를 주장**하고 있었다(T129 이래의 어긋남).
+#
+# 열매판을 가진 종 = **표가 스스로 안다**(`summer`·`autumn` 칸에 그림이 있는 종) — 목록을 안 적는다.
 
 
 # ★[T169] **표만 보는 지시 키** — 굽기 인자가 아니다. `fn(**BKW(kw))` 로 반드시 걷어내고 부른다.
@@ -1187,15 +1197,19 @@ def build_species_table():
             e.setdefault(slot, []).append(key)
         else:
             retired.append(key)                       # 퇴역판 — 칸엔 없지만 **이름은 남긴다**
-        if sid in FRUITING:
-            e['fruit_ko'] = FRUITING[sid]
-            # ★열매종은 **두 칸을 다 적는다** — 빈 칸도 적는다. `autumn: []` 은 정보다:
-            #   "이 종은 가을에 열매가 없다"를 표가 **말해야** 클라가 헤매지 않는다(T148-B).
+    # ★[T188] 열매종 판정은 **표가 스스로** 한다: 열매판 칸에 그림이 있는 종.
+    #   그 종만 두 칸을 다 적는다 — 빈 칸도 적는다. `autumn: []` 은 정보다:
+    #   "이 종은 가을에 열매가 없다"를 표가 **말해야** 클라가 헤매지 않는다(T148-B · T169).
+    for sid, e in out.items():
+        if any(e.get(k) for k in ('summer', 'autumn')):
             for k in ('summer', 'autumn'):
                 e.setdefault(k, [])
-    for sid, e in out.items():
         for k in ('sprites', 'summer', 'autumn'):
             if k in e: e[k] = sorted(e[k])
+    # ★칸 순서를 못 박는다 — 굽는 순서가 바뀌어도 파일이 안 흔들린다(diff 가 뜻을 갖는다).
+    _ORDER = ('ko', 'latin', 'sprites', 'summer', 'autumn', 'sapling')
+    for sid, e in list(out.items()):
+        out[sid] = {k: e[k] for k in _ORDER if k in e}
     return {
         '_뜻': '어느 그림이 어느 나무 종인가. **수치(성장·수확·벌목)는 서버/랩이 정본**이고 여기 없다.',
         '_유도': 'scripts/nature_render.py TREE_BUILD 에서 뽑는다 — 손으로 적지 마라(다시 구우면 덮인다).',

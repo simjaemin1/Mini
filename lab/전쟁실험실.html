@@ -9412,14 +9412,18 @@ const L_WOODMAX=100, L_WOODREGROW=0.10, L_CHOP=8;   // 숲: 최대 richness · (
 //        ⇒ 개암·잣의 열매 품목은 **아직 없다**(회부 — `hazelnut`·`pine_nut` 을 넣을지는 이식 카드 판정).
 const TREES={
   //           목재  성목  숯    열매품목       연간열매  결실철(0봄1여2가3겨)
-  pine:      { ko:'소나무', wood:1.00, mature: 25, char:0.55, fruit:null,       fy:0,    fs:2 },
-  jat:       { ko:'잣나무', wood:0.90, mature: 30, char:0.50, fruit:null,       fy:0,    fs:2 },   // 잣 품목 없음 — 회부
-  oak:       { ko:'참나무', wood:0.95, mature: 40, char:1.00, fruit:'acorn',    fy:0.60, fs:2 },   // 도토리 — 구황(FORAGE 0.25)
-  chestnut:  { ko:'밤',    wood:0.75, mature: 12, char:0.70, fruit:'chestnut', fy:1.00, fs:2 },   // 밤 — FORAGE 0.5
-  hazel:     { ko:'개암',  wood:0.35, mature:  6, char:0.45, fruit:null,       fy:0,    fs:2 },   // 개암 품목 없음 — 회부
-  mulberry:  { ko:'산뽕',  wood:0.45, mature:  8, char:0.40, fruit:'mulberry_fruit', fy:0.80, fs:1 },   // ★[T135 3판] **오디**(열매). 잎 `mulberry`(harvest:farming · 양잠)는 그대로 — 열매가 그 자리를 뺏으면 잎을 읽는 자리가 조용히 뒤바뀐다
-  grape:     { ko:'머루',  wood:0.10, mature:  4, char:0.10, fruit:'grape',    fy:0.90, fs:2 },   // 산포도 — FORAGE 0.3
-  willow:    { ko:'버들',  wood:0.50, mature:  7, char:0.30, fruit:null,       fy:0,    fs:2 },
+  // ★★[T188] **이름 칸(`ko`)을 뺐다.** 나무 종 이름의 정본은 그림 표(`tree_species.json.ko`) 하나다 —
+  //   굽기가 적고 클라·서버가 그것을 읽는다(T182). 여기 두면 갈린다 — 실제로 넷이 갈려 있었다
+  //   (`밤/밤나무 · 개암/개암나무 · 산뽕/산뽕나무 · 버들/버드나무`). 이 표는 **축만** 갖는다.
+  //   ⓘ 랩 엔진은 이름을 한 번도 안 읽었다 — 전수로 쟀다(이 주석 말고는 이 파일에 `.ko` 사용 0).
+  pine:      { wood:1.00, mature: 25, char:0.55, fruit:null,       fy:0,    fs:2 },
+  jat:       { wood:0.90, mature: 30, char:0.50, fruit:null,       fy:0,    fs:2 },   // 잣 품목 없음 — 회부
+  oak:       { wood:0.95, mature: 40, char:1.00, fruit:'acorn',    fy:0.60, fs:2 },   // 도토리 — 구황(FORAGE 0.25)
+  chestnut:  { wood:0.75, mature: 12, char:0.70, fruit:'chestnut', fy:1.00, fs:2 },   // 밤 — FORAGE 0.5
+  hazel:     { wood:0.35, mature:  6, char:0.45, fruit:null,       fy:0,    fs:2 },   // 개암 품목 없음 — 회부
+  mulberry:  { wood:0.45, mature:  8, char:0.40, fruit:'mulberry_fruit', fy:0.80, fs:1 },   // ★[T135 3판] **오디**(열매). 잎 `mulberry`(harvest:farming · 양잠)는 그대로 — 열매가 그 자리를 뺏으면 잎을 읽는 자리가 조용히 뒤바뀐다
+  grape:     { wood:0.10, mature:  4, char:0.10, fruit:'grape',    fy:0.90, fs:2 },   // 산포도 — FORAGE 0.3
+  willow:    { wood:0.50, mature:  7, char:0.30, fruit:null,       fy:0,    fs:2 },
 };
 const TREE_IDS=Object.keys(TREES);
 const T_FRUIT_IDS=TREE_IDS.filter(k=>TREES[k].fruit);

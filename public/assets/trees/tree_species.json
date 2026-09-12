@@ -16,7 +16,6 @@
     "tree09",
     "tree10"
    ],
-   "fruit_ko": "밤",
    "summer": [],
    "autumn": [
     "tree09_a",
@@ -30,7 +29,6 @@
    "sprites": [
     "tree15"
    ],
-   "fruit_ko": "머루",
    "summer": [],
    "autumn": [
     "tree15_a"
@@ -43,7 +41,6 @@
    "sprites": [
     "tree13"
    ],
-   "fruit_ko": "개암",
    "summer": [],
    "autumn": [
     "tree13_a"
@@ -65,7 +62,6 @@
    "sprites": [
     "tree14"
    ],
-   "fruit_ko": "오디",
    "summer": [
     "tree14_s"
    ],
@@ -80,7 +76,6 @@
     "tree07",
     "tree08"
    ],
-   "fruit_ko": "도토리",
    "summer": [],
    "autumn": [
     "tree06_a",
