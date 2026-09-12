@@ -229,9 +229,33 @@
         const trees = clientNearbyTrees(myAbsPredicted.x, myAbsPredicted.y);
         // ★탈출 밸브(서버 movePlayerStep 미러): 현재 위치가 이미 콜라이더 안이면 차단 해제 — 걸어나올 수 있게
         if (trees && !clientIsBlockedByTree(myAbsPredicted.x, myAbsPredicted.y, trees)) {
-          if (clientIsBlockedByTree(nx, myAbsPredicted.y, trees)) nx = myAbsPredicted.x;
-          if (clientIsBlockedByTree(myAbsPredicted.x, ny, trees)) ny = myAbsPredicted.y;
-          if (clientIsBlockedByTree(nx, ny, trees)) { nx = myAbsPredicted.x; ny = myAbsPredicted.y; }
+          const _bx = clientIsBlockedByTree(nx, myAbsPredicted.y, trees);
+          const _by = clientIsBlockedByTree(myAbsPredicted.x, ny, trees);
+          // ★★★[T194 2026-09-12] **접선 슬라이드 — 서버 `movePlayerStep` 과 같은 줄.**
+          //   미러는 사본이 아니라 **규약**이다: 둘이 다르면 매 틱 되감기(러버밴딩)다.
+          //   손잡이도 서버가 내려준 그 값 하나를 본다(`welcome.moveCfg.slide` → `_moveParams.slide`).
+          let _slid = false;
+          if (_moveParams.slide && (_bx !== _by) && ((_bx && !wy) || (_by && !wx))) {
+            const _c = _bx ? clientTreeBlockerAt(nx, myAbsPredicted.y, trees)
+                           : clientTreeBlockerAt(myAbsPredicted.x, ny, trees);
+            const _dx = nx - myAbsPredicted.x, _dy = ny - myAbsPredicted.y, _L = Math.hypot(_dx, _dy);
+            const _rx = _c ? (myAbsPredicted.x - _c.x) : 0, _ry = _c ? (myAbsPredicted.y - _c.y) : 0;
+            const _rl = Math.hypot(_rx, _ry);
+            if (_c && _rl > 1e-6 && _L > 1e-6) {
+              let _tx = -_ry / _rl, _ty = _rx / _rl;
+              if (_tx * _dx + _ty * _dy < 0) { _tx = -_tx; _ty = -_ty; }
+              const _sx = myAbsPredicted.x + _tx * _L, _sy = myAbsPredicted.y + _ty * _L;
+              if (!clientIsBlockedByTree(_sx, _sy, trees)
+                  && !clientIsBlockedByWall(_sx, _sy, myAbsPredicted.x, myAbsPredicted.y, myFloor)) {
+                nx = _sx; ny = _sy; _slid = true;
+              }
+            }
+          }
+          if (!_slid) {
+            if (_bx) nx = myAbsPredicted.x;
+            if (_by) ny = myAbsPredicted.y;
+            if (clientIsBlockedByTree(nx, ny, trees)) { nx = myAbsPredicted.x; ny = myAbsPredicted.y; }
+          }
         }
       }
       if (isTerrainBlockedAtAbs(nx, myAbsPredicted.y)) {

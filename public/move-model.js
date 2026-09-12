@@ -52,6 +52,12 @@
       accelT: Math.max(1e-4, num(s.accelT, DEFAULTS.accelT)),
       decelT: Math.max(1e-4, num(s.decelT, DEFAULTS.decelT)),
       aimSpeedFrac: num(s.aimSpeedFrac, DEFAULTS.aimSpeedFrac),
+      // ★★[T194 2026-09-12] **나무 접선 슬라이드 손잡이 — 한 곳에서 실어 나른다.**
+      //   이 칸은 적분에 안 쓰인다(이 모듈은 값을 **나르기만** 한다). 그런데 여기 있어야 하는 이유:
+      //   서버 `movePlayerStep` 과 클라 `predictStep` 이 **같은 손잡이**를 봐야 되감기가 0 이다.
+      //   `welcome.moveCfg` 가 이미 이 객체를 통째로 나르므로, 칸 하나면 새 메시지도 새 env 도 없다
+      //   (클라에 `T194_SLIDE` 를 따로 적으면 그게 사본이고, 끄는 날 한쪽만 꺼진다).
+      slide: !(s.slide === false || s.slide === 0 || s.slide === '0'),
     };
   }
   function num(v, d) { var n = (typeof v === 'number') ? v : parseFloat(v); return (isFinite(n)) ? n : d; }

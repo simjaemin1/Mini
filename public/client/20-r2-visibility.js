@@ -600,14 +600,17 @@
     }
     return out;
   }
-  function clientIsBlockedByTree(x, y, trees) {
-    if (!trees) return false;
+  // ★[T194] **막은 원을 돌려준다** — 서버 `treeBlockerAt` 미러(판정은 한 글자도 안 바뀐다).
+  //   접선을 그리려면 중심과 반지름이 필요하고, 이 루프가 이미 쥐고 있던 값이다.
+  function clientTreeBlockerAt(x, y, trees) {
+    if (!trees) return null;
     for (const t of trees) {
       const tr = t.rock ? ROCK_COLLIDER_R : Math.min(t.r, TRUNK_COLLIDER_MAX);   // 서버와 동일(바위=고정 반경)
-      if (Math.hypot(t.tx - x, t.ty - y) < tr + PLAYER_BODY_R) return true;
+      if (Math.hypot(t.tx - x, t.ty - y) < tr + PLAYER_BODY_R) return { x: t.tx, y: t.ty, R: tr + PLAYER_BODY_R };
     }
-    return false;
+    return null;
   }
+  function clientIsBlockedByTree(x, y, trees) { return !!clientTreeBlockerAt(x, y, trees); }
 
   function clientIsBlockedByWall(newX, newY, oldX, oldY, playerFloor = 0) {
     const oc = clCellOf(oldX, oldY);

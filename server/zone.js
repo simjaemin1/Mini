@@ -684,9 +684,13 @@ const MOVE_AIM_SPEED_FRAC = parseFloat(process.env.MOVE_AIM_SPEED_FRAC || '') ||
 // Phase 14.40 — Shift 달리기: 2.5× 속도(걷기2 × 2.5 = 5m/s, 고증 달리기), hunger/thirst 1.5× 빠른 감소.
 // 단 hunger/thirst가 5 이하면 자동 해제 (지쳐서 못 뜀).
 const SPRINT_MULT = 2.5;
+// ★[T194 2026-09-12] 나무 접선 슬라이드 — **기본 켬**. `T194_SLIDE=0` 이면 서버·클라 둘 다 종전 비트다
+//   (손잡이는 `moveCfg` 를 타고 클라로 내려간다 — 두 곳에 따로 안 적는다 · `public/move-model.js` 주석).
+const T194_SLIDE = process.env.T194_SLIDE !== '0';
 const MOVE_PARAMS = MoveModel.paramsFrom({
   model: MOVE_MODEL, baseSpeed: MOVE_SPEED, sprintMult: SPRINT_MULT,
   accelT: MOVE_ACCEL_T, decelT: MOVE_DECEL_T, aimSpeedFrac: MOVE_AIM_SPEED_FRAC,
+  slide: T194_SLIDE,
 });
 // ⚠[신체 상태 §7 2026-08-26] **사장(死藏)됨** — 감쇠·추위는 이제 `server/body.js` 정본이다.
 //   지우지 않고 남기면 다음 사람이 "여기가 정본"이라 믿고 여기를 고친다(아무 일도 안 일어난다).
@@ -10610,21 +10614,25 @@ function isBlockedByStairSide(newX, newY, oldX, oldY, entityFloor = 0) {
 const PLAYER_BODY_R = 6;
 const TRUNK_COLLIDER_MAX = 9;   // 줄기 충돌 반경 상한 — 캐노피가 커도 줄기는 가늘다(스프라이트 줄기와 정합). r은 occlusion용(최대 20).
 const ROCK_COLLIDER_R = 14;     // ★바위·광맥 차단 반경(대형 스프라이트 66px의 코어) — 나무와 동형의 물리 실체 [사용자 확정]. 클라 미러 동일 상수.
-function isBlockedByTree(x, y) {
-  if (!qtResources) return false;
+// ★[T194] **막은 원을 돌려준다.** 판정은 한 글자도 안 바뀐다 — `isBlockedByTree` 가 이 함수의
+//   불리언 껍데기가 됐을 뿐이다(사본 0). 접선을 그리려면 중심과 반지름이 필요하고, 그 둘은
+//   이미 이 루프가 쥐고 있었는데 버려지고 있었다.
+function treeBlockerAt(x, y) {
+  if (!qtResources) return null;
   // 검색 반경 28 = 최대 충돌(max(TRUNK 9, ROCK 14) + PLAYER_BODY_R 6 = 20)보다 충분히 큼. 클라 스캔(40)과 함께 둘 다 모든 차단 개체 포함 → 일관.
   const nearby = qtResources.queryCircle(x, y, 28);
   for (const item of nearby) {
     const r = item.ref || item;
     if (r.type === 'tree' && r.r) {
       const tr = Math.min(r.r, TRUNK_COLLIDER_MAX);   // 줄기 반경 (캐노피 r 아님)
-      if (Math.hypot(r.x - x, r.y - y) < tr + PLAYER_BODY_R) return true;
+      if (Math.hypot(r.x - x, r.y - y) < tr + PLAYER_BODY_R) return { x: r.x, y: r.y, R: tr + PLAYER_BODY_R };
     } else if (r.type === 'rock' || r.type === 'ore') {   // ★대형 자연물 콜라이더(채광 GATHER_RANGE 48 > 20이라 작업 무영향)
-      if (Math.hypot(r.x - x, r.y - y) < ROCK_COLLIDER_R + PLAYER_BODY_R) return true;
+      if (Math.hypot(r.x - x, r.y - y) < ROCK_COLLIDER_R + PLAYER_BODY_R) return { x: r.x, y: r.y, R: ROCK_COLLIDER_R + PLAYER_BODY_R };
     }
   }
-  return false;
+  return null;
 }
+function isBlockedByTree(x, y) { return !!treeBlockerAt(x, y); }
 
 // 인접 cell (cx,cy) → (cx+sx, cy+sy)로의 cardinal 한 칸 이동이 wall/door edge로 막히나
 function edgeBlockedStep(cx, cy, sx, sy, floor) {
@@ -10964,7 +10972,7 @@ setInterval(() => {
 
   // 이동 1스텝 — 입력 1개 = 1스텝 (클라 predictStep과 1:1 일치). 호출측이 handingOff/dormant 판정.
   //   moveDt 는 tick 클로저에서 캡처. 핸드오프 발생 시 내부에서 p.handingOff=true 세팅.
-  function movePlayerStep(p) {
+  function movePlayerStep(p, inp) {   // ★[T194] `inp` 는 **그 틱의 입력**(플레이어만) — NPC 는 안 넘긴다(종전 비트)
     // === auto-eject: 어떤 이유로든(핸드오프 착지·지형변경·관통) 중심이 물/바위에 빠졌으면,
     //   "자유이동(escape valve)" 대신 가장 가까운 통행가능 셀로 밀어낸다 → 강 안에서 헤엄치는 버그 차단.
     if (isTerrainBlockedLocal(p.x, p.y)) {
@@ -11023,9 +11031,37 @@ setInterval(() => {
     //   ★탈출 밸브: 현재 위치가 이미 콜라이더 안이면(스폰·핸드오프·자원 리스폰이 몸 위에 겹친 경우) 차단을 풀어 걸어나올 수 있게
     //   — isTerrainBlockedLocal의 !현재위치 가드와 동일 패턴. 클라 predictStep 미러 동일.
     if (pf === 0 && !isBlockedByTree(p.x, p.y)) {
-      if (isBlockedByTree(nx, p.y)) nx = p.x;
-      if (isBlockedByTree(p.x, ny)) ny = p.y;
-      if (isBlockedByTree(nx, ny)) { nx = p.x; ny = p.y; }
+      const _bx = isBlockedByTree(nx, p.y), _by = isBlockedByTree(p.x, ny);
+      // ★★★[T194 2026-09-12 재민 확정] **나무에 닿으면 미끄러진다.**
+      //   종전: 축마다 막고 그 축 성분을 **버렸다**. 입력이 한 축뿐이면 미끄러질 성분이 0 이라
+      //   첫 나무에 붙어 선다 — T187 §0-ⓒ 실측: 같은 입력 300개로 빈터 60.2px/s ↔ 숲 **0.8px/s**
+      //   (숲 표본 49개가 전부 ≈0 — 느린 게 아니라 **선** 것이다).
+      //   ⇒ 콜라이더는 **원**이다(`TRUNK_COLLIDER_MAX`·`ROCK_COLLIDER_R` + `PLAYER_BODY_R`) ⇒ 접선이 정의된다.
+      //     막은 원의 중심에서 나를 향하는 반지름에 **수직**인 두 방향 중 **가던 쪽**으로,
+      //     **같은 길이만큼** 돌린다(속도 보존 — `MOVE_SPEED/TICK_HZ` 그대로 · 손으로 적은 수 0).
+      //   ⚠**다른 축 입력이 0 인 틱에만** 돈다. 두 축을 다 밀고 있으면 종전 축별 슬라이드가 이미 답이다.
+      //   ⚠돌린 자리도 막히면(나무·벽) **종전대로 선다** — 터널링 0.
+      //   ⚠NPC 는 `inp` 없이 `movePlayerStep(p)` 을 부르므로 이 갈래를 **안 탄다**(§0-ⓐ 주체 표) —
+      //     NPC 길찾기는 격자(`_BLOCKED_STAND`)가 따로 한다. ⇒ NPC 이동은 비트 동일.
+      let _slid = false;
+      if (MOVE_PARAMS.slide && inp && (_bx !== _by) && ((_bx && !inp.vy) || (_by && !inp.vx))) {
+        const _c = _bx ? treeBlockerAt(nx, p.y) : treeBlockerAt(p.x, ny);
+        const _dx = nx - p.x, _dy = ny - p.y, _L = Math.hypot(_dx, _dy);
+        const _rx = _c ? (p.x - _c.x) : 0, _ry = _c ? (p.y - _c.y) : 0, _rl = Math.hypot(_rx, _ry);
+        if (_c && _rl > 1e-6 && _L > 1e-6) {
+          let _tx = -_ry / _rl, _ty = _rx / _rl;                          // 반지름에 수직 = 접선
+          if (_tx * _dx + _ty * _dy < 0) { _tx = -_tx; _ty = -_ty; }      // 둘 중 **가던 쪽**
+          const _sx = p.x + _tx * _L, _sy = p.y + _ty * _L;               // 길이 보존
+          if (!isBlockedByTree(_sx, _sy) && !isBlockedByWall(_sx, _sy, p.x, p.y, pf, trace)) {
+            nx = _sx; ny = _sy; _slid = true;
+          }
+        }
+      }
+      if (!_slid) {
+        if (_bx) nx = p.x;
+        if (_by) ny = p.y;
+        if (isBlockedByTree(nx, ny)) { nx = p.x; ny = p.y; }
+      }
     }
     // 14.45: 빙하 콜라이더 — y가 극지방 진입하면 ny 무효
     if (isInIceBand(ny) && !isInIceBand(p.y)) ny = p.y;
@@ -11125,7 +11161,7 @@ setInterval(() => {
           moveDt, MOVE_PARAMS);
         p.vx = _mv.vx; p.vy = _mv.vy;
         p.lastInputSeq = inp.seq;
-        movePlayerStep(p);
+        movePlayerStep(p, inp);
         consumed++;
         if (p.handingOff) break; // 핸드오프 발생 → 이 zone에선 더 안 움직임
       }

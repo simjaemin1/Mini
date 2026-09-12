@@ -28,6 +28,7 @@ const fs = require('fs');
 const { spawn, execSync } = require('child_process');
 const { PNG } = require('pngjs');
 const ROOT = path.join(__dirname, '..');
+const SPDm = require(path.join(__dirname, '..', 'public', 'move-model.js'));   // ★[T194] 걸음 문턱은 정본에서 유도한다(하네스가 수를 안 적는다)
 const SHOTS = process.env.SHOTS || '/tmp/e2e-nature-shots';
 const CPORT = 3010, ZPORT = 3020;
 const ZDB = process.env.ZDB || '/tmp/e2e-nature.db';
@@ -833,6 +834,36 @@ function diffCountNoEnts(a, b, ents) {
               `★★심기⑥ 열매가 없으면 **${TR.koOf(T3.sp)} 성목판**이다 — \`${opOff}\` (표 \`${T3.sp}.sprites\`) ≠ \`${op}\``);
           }
         }
+        // ── ★★[T194] **되감기 0** — 숲에서 실클라가 직접 걷는다(서버-클라 미러 검사) ────────
+        //   미러가 어긋나면 리컨실리에이션이 매 틱 위치를 되감는다(러버밴딩). 그 되감김의 크기가
+        //   `__moveDbg().corrLast`(서버 권위 위치 − 내 예측 위치, px)다 — 진단 훅 그대로(새 훅 0).
+        {
+          const d0 = await page.evaluate(() => window.__moveDbg());
+          ok(!!(d0.cfg && d0.cfg.slide === true),
+            `★★걸음① **손잡이가 클라까지 내려왔다** — \`welcome.moveCfg.slide=${d0.cfg ? d0.cfg.slide : 'null'}\` (두 곳에 따로 안 적는다)`);
+          await page.evaluate(() => { window.__corrN = 0; window.__corrLast = 0; });
+          await page.keyboard.down('KeyD');
+          const corr = [];
+          for (let i = 0; i < 40; i++) { await sleep(200); const d = await page.evaluate(() => window.__moveDbg()); corr.push(d.corrLast | 0); }
+          await page.keyboard.up('KeyD');
+          await sleep(600);
+          const d1 = await page.evaluate(() => window.__moveDbg());
+          const moved = Math.hypot(d1.pos.x - d0.pos.x, d1.pos.y - d0.pos.y);
+          const cMax = corr.length ? Math.max(...corr) : -1;
+          // ★문턱을 손으로 안 적는다 — **비행 중 입력**의 상한에서 유도한다.
+          //   리컨실리에이션은 매 틱 서버 권위 위치에 앵커하고 **아직 ack 안 된 입력을 replay** 한다
+          //   (`33-m-conn.js`). 그러니 `corrLast` 는 미러가 완벽해도 0 이 아니다 — 그 순간 날아가고 있던
+          //   입력 몇 개만큼이다. 서버가 한 틱에 최대 여덟 개를 흡수하므로(`consumed < 8`) 상한은 그 여덟 걸음.
+          //   ⇒ 미러가 **어긋났다면** 클라는 "나무에 붙어 섰다"로 예측하고 서버는 계속 가므로
+          //     이 값이 수십~수백 px 로 **벌어진다**(그게 러버밴딩이다). 그래서 이 한 줄이 미러 검사다.
+          const _st1 = SPDm.maxSpeedOf(SPDm.paramsFrom({}), false, 1, false) / 30;   // 한 걸음(px) — 정본 유도
+          const _budget = 8 * _st1;
+          ok(moved > 100,
+            `★★걸음② **실클라가 숲에서 실제로 걸었다** — 8초에 ${moved.toFixed(0)}px(오른쪽 키만 눌렀다 · 자명 통과 금지: 안 걸으면 아래 되감기가 0 이어도 뜻이 없다)`);
+          ok(cMax >= 0 && cMax <= _budget,
+            `★★★걸음③ **되감기 0** — 걷는 내내 서버 권위와 내 예측의 차가 최대 ${cMax}px = 비행 중 입력 ${(cMax / _st1).toFixed(1)}개분(상한 ${_budget.toFixed(1)}px = 틱당 흡수 8걸음) · 걸은 거리의 ${(cMax / moved * 100).toFixed(1)}% · 표본 ${corr.length} · 보정 ${d1.corrN}회`);
+        }
+
         // ── 대조 스크린샷 한 장 (재민 ④) ─────────────────────────────────────────────
         await sleep(2500);
         await page.screenshot({ path: `${SHOTS}/나무_종별_가을.png` }).catch(() => {});
@@ -844,6 +875,108 @@ function diffCountNoEnts(a, b, ents) {
       }
       try { z3.kill(); } catch (e) {}
       await sleep(2500);
+    }
+  }
+
+  // ═══ ★★★[T194 2026-09-12 재민 확정] **숲에서 걷는다** — 접선 슬라이드 표 ══════════════
+  //   T187 §0-ⓒ 가 잰 것: 같은 입력 300개로 **빈터 60.2px/s ↔ 숲 0.8px/s**(숲 표본 49개 전부 ≈0).
+  //   느린 게 아니라 **선** 것이었다 — 한 축만 밀면 축별 차단에서 미끄러질 성분이 0 이다.
+  //   이 절은 그 표를 하네스로 굳힌다: **두 자리 × 손잡이 켬/끔 네 칸**.
+  //   ★소스를 안 읽는다 — 실클라가 쓰는 그 선으로 걷고, 관전자의 눈으로 **세계가 말하는 내 좌표**를 읽는다.
+  //   ★자리는 기계가 고른다: 숲은 시더 정본이 나무를 가장 많이 놓는 청크, 빈터는 동쪽 700px 에
+  //     막을 것이 하나도 없는 청크(둘 다 하드코딩 0).
+  {
+    const WebSocket = require('ws');
+    const CH3 = require(path.join(ROOT, 'server', 'chunk.js'));
+    const TRN = require(path.join(ROOT, 'server', 'terrain.js'));
+    const CS3 = CH3.CHUNK_SIZE;
+    const SPD = require(path.join(ROOT, 'public', 'move-model.js'));
+    let FOREST = null, OPEN = null;
+    for (let cx = 50; cx <= 350 && !(FOREST && OPEN); cx += 3) for (let cy = 50; cy <= 350; cy++) {
+      if (FOREST && OPEN) break;
+      let rws = []; try { rws = CH3.generateChunkResources('hanbando', 'forest', cx, cy, CS3, new Set(), 100) || []; } catch (e) { continue; }
+      const c0 = cx * CS3 + CS3 / 2, c1 = cy * CS3 + CS3 / 2;
+      if (TRN.isWaterCellLocal('hanbando', c0, c1)) continue;
+      if (TRN.isRockCellLocal && TRN.isRockCellLocal('hanbando', c0, c1)) continue;
+      const tr = rws.filter((r) => r.type === 'tree');
+      const near = rws.filter((r) => (r.type === 'tree' || r.type === 'rock' || r.type === 'ore')
+        && Math.abs(r.x - c0) < 700 && Math.abs(r.y - c1) < 200);
+      if (!FOREST && tr.length >= 40 && near.length >= 8) FOREST = { x: c0, y: c1, trees: tr.length, near: near.length };
+      if (!OPEN && near.length === 0 && tr.length < 3) {
+        let clear = true;
+        for (let d = 0; d < 700 && clear; d += 16) {
+          if (TRN.isWaterCellLocal('hanbando', c0 + d, c1)) clear = false;
+          if (TRN.isRockCellLocal && TRN.isRockCellLocal('hanbando', c0 + d, c1)) clear = false;
+        }
+        if (clear) OPEN = { x: c0, y: c1, trees: tr.length, near: 0 };
+      }
+    }
+    ok(!!FOREST && !!OPEN, `★걸음⓪ 자리를 **기계가 골랐다** — 숲(나무 ${FOREST ? FOREST.trees : '?'}그루 · 앞길에 ${FOREST ? FOREST.near : '?'}개) · 빈터(앞길 700px 무장애)`);
+    if (FOREST && OPEN) {
+      // 한 스텝의 이론값 — **정본에서 유도한다**(하네스가 수를 안 적는다)
+      const STEP6 = 6 * SPD.maxSpeedOf(SPD.paramsFrom({}), false, 1, false) / 30;   // 200ms = 입력 6개 × (MOVE_SPEED/TICK_HZ)
+      const walkAt = async (tag, site, slideOn) => {
+        const env = { PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
+          ENABLE_VILLAGES: '0', ENABLE_BANDITS: '0', E2E_GIVE: '1',
+          WRAP_ZONE_PATCH: JSON.stringify({ mainSquare: { x: site.x, y: site.y, name: '걸음 ' + tag } }) };
+        if (!slideOn) env.T194_SLIDE = '0';       // ★되돌림 손잡이 — 두 쪽 다 종전 비트
+        const zz = boot('zone', '/tmp/zone-wrap.js', env);
+        if (!await waitHttp(`http://localhost:${ZPORT}/health`)) { try { zz.kill(); } catch (e) {} return null; }
+        let ack = 0, wel = null;
+        const ws = await new Promise((res, rej) => {
+          const w = new WebSocket(`ws://localhost:${ZPORT}/?name=%EA%B1%B8%EC%9D%8C`);
+          const t = setTimeout(() => rej(new Error('welcome timeout')), 30000);
+          w.on('message', (raw) => { let m; try { m = JSON.parse(String(raw)); } catch (e) { return; }
+            if (m.type === 'tick' && m.ackSeq !== undefined) ack = m.ackSeq;
+            if (m.type === 'welcome') { wel = m; clearTimeout(t); res(w); } });
+          w.on('error', (e) => { clearTimeout(t); rej(e); });
+        }).catch(() => null);
+        if (!ws) { try { zz.kill(); } catch (e) {} return null; }
+        let pos = null;
+        const obs = new WebSocket(`ws://localhost:${ZPORT}/?observer=1`);
+        await new Promise((r) => { obs.on('open', r); obs.on('error', r); setTimeout(r, 8000); });
+        obs.on('message', (raw) => { let m; try { m = JSON.parse(String(raw)); } catch (e) { return; }
+          if (m.type === 'tick' && Array.isArray(m.players)) { const me = m.players.find((q) => q.pid === 'p1'); if (me) pos = { x: me.x, y: me.y }; } });
+        const look = () => { try { obs.send(JSON.stringify({ type: 'viewport_update', x: site.x, y: site.y, w: 8000, h: 8000 })); } catch (e) {} };
+        look(); await sleep(4000);
+        const p0 = pos ? { ...pos } : { x: site.x, y: site.y };
+        const seg = []; let seq = 0; const t0 = Date.now();
+        for (let i = 0; i < 50; i++) {
+          for (let k = 0; k < 6; k++) { try { ws.send(JSON.stringify({ type: 'input', seq: ++seq, vx: 1, vy: 0 })); } catch (e) {} }
+          await sleep(200); look();
+          if (pos) seg.push({ x: pos.x, y: pos.y });
+        }
+        await sleep(600);
+        const p1 = pos ? { ...pos } : p0, secs = (Date.now() - t0) / 1000;
+        const d = []; for (let i = 1; i < seg.length; i++) d.push(Math.hypot(seg[i].x - seg[i - 1].x, seg[i].y - seg[i - 1].y));
+        const rate = Math.hypot(p1.x - p0.x, p1.y - p0.y) / secs;
+        const full = d.filter((v) => Math.abs(v - STEP6) < 0.05).length, zero = d.filter((v) => v < 0.5).length;
+        try { ws.close(); } catch (e) {} try { obs.close(); } catch (e) {}
+        try { zz.kill(); } catch (e) {} await sleep(2500);
+        return { tag, rate, full, zero, n: d.length, ack, seq, slide: wel && wel.moveCfg ? wel.moveCfg.slide : null };
+      };
+      const W = {};
+      for (const [tag, site, on] of [['숲켬', FOREST, true], ['숲끔', FOREST, false], ['빈터켬', OPEN, true], ['빈터끔', OPEN, false]]) {
+        W[tag] = await walkAt(tag, site, on);
+        const w = W[tag];
+        say(`    [${tag}] ${w ? `${w.rate.toFixed(1)}px/s · 표본 ${w.n} 중 ${STEP6.toFixed(1)}px 정확히 ${w.full} · ≈0 ${w.zero} · 입력 ${w.seq}/ack ${w.ack} · moveCfg.slide=${w.slide}` : '못 쟀다'}`);
+      }
+      const ok4 = W['숲켬'] && W['숲끔'] && W['빈터켬'] && W['빈터끔'];
+      ok(!!ok4, '★걸음⓪ 네 칸을 전부 쟀다(숲·빈터 × 켬·끔)');
+      if (ok4) {
+        ok(W['빈터끔'].full === W['빈터끔'].n && W['빈터켬'].full === W['빈터켬'].n,
+          `★★걸음④ **빈터에선 비트 동일** — 켬/끔 둘 다 표본 전부 ${STEP6.toFixed(1)}px(= 입력 6개 × MOVE_SPEED/TICK_HZ · 정본 유도) · ${W['빈터켬'].full}/${W['빈터켬'].n} · ${W['빈터끔'].full}/${W['빈터끔'].n}`);
+        ok(W['숲끔'].rate < 5 && W['숲끔'].zero > W['숲끔'].n * 0.8,
+          `★★걸음⑤ **손잡이를 끄면 숲 0.8px/s 가 재현된다** — ${W['숲끔'].rate.toFixed(1)}px/s · 표본 ${W['숲끔'].zero}/${W['숲끔'].n} 이 ≈0 (되돌림이 종전 비트다)`);
+        ok(W['숲켬'].rate > W['빈터켬'].rate * 0.5,
+          `★★★걸음⑥ **숲에서 나무를 돌아 나간다** — 켬 ${W['숲켬'].rate.toFixed(1)}px/s (끔 ${W['숲끔'].rate.toFixed(1)} · 빈터 ${W['빈터켬'].rate.toFixed(1)}) = 빈터의 ${(W['숲켬'].rate / W['빈터켬'].rate * 100).toFixed(0)}%`);
+        ok(W['숲켬'].full > 0,
+          `★★걸음⑥ 그리고 **속도가 보존된다** — 숲(켬) 표본 ${W['숲켬'].full}/${W['숲켬'].n} 이 빈터와 **같은 ${STEP6.toFixed(1)}px** (접선은 방향만 돌린다 · 길이는 그대로)`);
+        ok(W['숲켬'].ack === W['숲켬'].seq && W['빈터켬'].ack === W['빈터켬'].seq,
+          `★걸음⑥ 자명 통과 금지 — 서버가 입력을 **다 먹었다**(숲 ${W['숲켬'].ack}/${W['숲켬'].seq} · 빈터 ${W['빈터켬'].ack}/${W['빈터켬'].seq}) ⇒ 차이의 출처는 입력이 아니다`);
+        ok(W['숲켬'].slide === true && W['숲끔'].slide === false,
+          `★★걸음⑥ 손잡이가 **세계에 실제로 걸렸다** — 켬 \`moveCfg.slide=${W['숲켬'].slide}\` · 끔 \`${W['숲끔'].slide}\``);
+      }
     }
   }
 
