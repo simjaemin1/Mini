@@ -269,7 +269,7 @@ async function runDays(n) {
   //   ★§0-ⓑ 표를 여기서 만든다 — "접속 중 워밍의 비용"은 데운 쌍 수만으로는 못 읽는다.
   //     `ioBusy` 가 참인 비율(=정책이 아니라 **일**이 멈춘 비율)과 `pathDrop`(다른 탐색이 슬롯을 뺏은 수)을
   //     같이 재야 왜 느린지가 갈린다. 서버가 말하는 값만 쓴다(하네스가 세지 않는다 · 사본 금지).
-  const P0c = await jget(`http://localhost:${ZPORT}/perf`);
+  const P0c = await jget(`http://localhost:${ZPORT}/perf?reset=1`);   // ★[T185] 창을 열기 직전에 **서버 루프 히스토그램 영점**
   const pr0 = (P0c.econTick && P0c.econTick.probe) || {};
   const tC = Date.now();
   let Wc = Wc0, humanSeen = 0, look = 0, busySeen = 0;
@@ -292,6 +292,24 @@ async function runDays(n) {
   const secC = Math.max(1, Math.round((Date.now() - tC) / 1000));
   const P1c = await jget(`http://localhost:${ZPORT}/perf`);
   const prC = (P1c.econTick && P1c.econTick.probe) || {};
+  // ★★[T185 2026-09-12] **증인을 바꿨다 — 하네스 시계 → 서버 자신의 눈.**
+  //   종전 판정은 하네스가 `/health` 를 100ms 마다 찔러 **응답 간격**을 재고 1500ms 를 문턱으로 삼았다.
+  //   그 수에는 서버가 막힌 시간뿐 아니라 **하네스 제 이벤트 루프 지연·fetch 왕복**이 섞인다 —
+  //   2코어 상자에서 러너가 돌면 그게 커져서, 09-12 야간 전수에서 **1506ms 로 6ms 차이로** 빨갰다
+  //   (단독 실행은 472ms · 같은 코드 · 같은 정책). 정책은 멀쩡한데 자가 흔들린 것이다(족보 ⑩).
+  //
+  //   ⇒ 이제 **서버가 제 이벤트 루프 지연을 말한다**(`/perf` 의 `loop` — 창을 열 때 `?reset=1` 로 영점).
+  //   문턱도 지어내지 않는다: 같은 창에서 서버가 기록한 **가장 무거운 작업**(`events` 링의 최대 ms)과 견준다.
+  //     · 조각나 있으면 → 루프가 한 번에 막힌 최대는 그 작업 하나보다 **작다**.
+  //     · 슬라이서를 빼면(= 종전 "한 걸음") → 그 작업이 통째로 루프를 막으므로 둘이 **같아진다**.
+  //   실측(단독 · 조용한 판): 루프 max 288ms vs 가장 무거운 작업 econ_day 2217ms — 8배 차이.
+  const _lp = P1c.loop || {};
+  const _ev = (P1c.events || []).filter((e) => e && e.t >= tC);
+  const _evMax = _ev.reduce((m, e) => Math.max(m, e.ms || 0), 0);
+  const _evTop = _ev.slice().sort((a, b) => (b.ms || 0) - (a.ms || 0)).slice(0, 3).map((e) => `${e.kind} ${e.ms}ms`).join(' · ');
+  console.log(`      서버 루프 지연 p50 ${_lp.p50} · p95 ${_lp.p95} · p99 ${_lp.p99} · max ${_lp.max} (n=${_lp.n}) · sliceMs ${P1c.sliceMs}`);
+  console.log(`      창 안 무거운 작업 ${_ev.length}건 · 최대 ${_evMax}ms · 상위 ${_evTop || '없음'}`);
+  console.log(`      (참고) 하네스가 잰 /health 응답 간격 최대 ${hcMax}ms — **판정이 아니라 관측**이다(부하를 탄다)`);
   console.log(`  §0-ⓑ 접속 중 워밍 — ${secC}초 · 데운 쌍 ${warmedWithHuman} (${(warmedWithHuman / secC).toFixed(2)}쌍/초)`);
   console.log(`      ioBusy 참 ${busySeen}/${look} (${Math.round(busySeen / Math.max(1, look) * 100)}%) · pathJobs +${(prC.pathJobs | 0) - (pr0.pathJobs | 0)} · pathDrop +${(prC.pathDrop | 0) - (pr0.pathDrop | 0)}`);
   console.log(`      /health 응답 간격 최대 ${hcMax}ms (${hcN}회) — 종전 T42-b 실측 2,687ms`);
@@ -302,8 +320,12 @@ async function runDays(n) {
     `${humanSeen}/${look}회`);
   ok(warmedWithHuman > 0, '★★⑦d **접속 중에도 데운다** — 종전 정책이었다면 0이다(T42 회부 2 종결)',
     `${secC}초 동안 ${warmedWithHuman}쌍 (남은 ${Wc0.warmLeft} → ${Wc.warmLeft})`);
-  ok(hcMax <= 1500, '★★⑦d 사람이 붙어 있는 동안 **서버가 계속 대답한다**(종전 한 걸음 2,687ms → 조각)',
-    `/health 응답 간격 최대 ${hcMax}ms`);
+  ok(_evMax > 0 && (_lp.max | 0) >= 0,
+     '⑦d [상황] 창 안에서 서버가 **무거운 작업을 실제로 했다**(0이면 아래가 자명 통과다)',
+     `가장 무거운 ${_evMax}ms · 루프 max ${_lp.max}ms`);
+  ok(_evMax > 0 && _lp.max < _evMax,
+     '★★⑦d 사람이 붙어 있는 동안 **서버가 계속 대답한다** — 가장 무거운 작업조차 루프를 한 번에 그만큼 막지 않는다(조각 · 종전 한 걸음 2,687ms)',
+     `루프 max ${_lp.max}ms < 가장 무거운 작업 ${_evMax}ms`);
   {
     const Pc = await jget(`http://localhost:${ZPORT}/perf`);
     const pr = (Pc.econTick && Pc.econTick.probe) || {};

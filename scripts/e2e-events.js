@@ -177,8 +177,33 @@ async function waitHttp(url, tries = 900) {
   //     그건 정상 동작이므로, 검사하려는 순간에 **다시 세우는** 헬퍼를 둔다(상황을 고정할 뿐
   //     판정을 무르게 하지 않는다 — 아래 assert 는 그대로다).
   let sh = null;
+  // ★★[T185 2026-09-12] **게임일로 센다 — 반복 횟수가 아니라.**
+  //   이 픽스처는 "소비EMA 가 자란 품목"을 찾는데, EMA 는 **게임일**로 자란다(0.5초/일).
+  //   종전엔 시도 횟수(30 · 회당 벽시계 ~1.8초)로 예산을 잡았다 — 러너 안에서는 존 틱이 밀려
+  //   같은 벽시계 동안 **게임일이 덜 흐르고**, EMA 가 안 자라 09-12 야간 전수에서
+  //   "성립 실패 — 소비EMA 미성숙"으로 빨갰다(단독은 초록 · 같은 코드). 족보 ⑩ 의 그 병이다.
+  //   ⇒ 예산을 **서버가 말하는 게임일**(`window.__evGameDay`)로 바꾼다. 판정은 그대로다 —
+  //     느린 판에서는 벽시계를 더 쓰되 **같은 수의 게임일**을 기다려 준다.
+  const gday = () => page.evaluate(() => window.__evGameDay | 0);
+  // ★★[T185 2026-09-12] **증인을 한 순간의 세 줄이 아니라 알림 이력 전체에서 찾는다.**
+  //   종전엔 픽스처를 부른 뒤 `sleep(900)` 하고 **그때의 마지막 세 줄**에서 찾았다. 그런데
+  //   게시판이 제 힘으로 서면(마을 경제가 스스로 부족해지면) 고리가 **그 줄을 보기 전에** 게시판
+  //   경로로 돌아가 버리고, 픽스처 알림은 그 뒤에 도착한다 — 단독 실행에서도 그렇게 놓쳤다
+  //   (실측: day 35 에 `농촌1 wood 0→6.334 (문턱 7.038 · 갚을거 food 100000)` 이 **게임일 정지 뒤**에 찍혔다).
+  //   ⇒ 알림은 40건까지 남는다(`50-i-panel.js` 규약). 판정 직전에 **이력 전체**를 훑는다 —
+  //     서버가 한 말은 사라지지 않으므로, 언제 도착했든 증인은 증인이다. 판정 문장은 그대로다.
+  const shWitness = () => page.evaluate(() => (window.__notices || [])
+    .filter((t) => /문턱 .*갚을거/.test(t) && !/없다|미지원|없음/.test(t)).slice(-1)[0] || null);
   async function ensureBoard(tries) {
-    for (let i = 0; i < (tries || 30); i++) {
+    const d0 = await gday();
+    const dayBudget = (tries || 30);          // 시도 횟수를 **게임일 예산**으로 그대로 읽는다(새 수 0)
+    //   ⚠아래 `deadline` 은 **판정이 아니라 안전망**이다(게임일이 아예 안 오는 판에서 안 멈추면
+    //     하네스가 영영 돈다). 판정은 위 게임일 예산 하나뿐이고, 이 그물에 걸리면 그건 세계가
+    //     안 돈다는 뜻이라 아래 assert 가 정직하게 빨개진다.
+    const deadline = Date.now() + 6 * 60 * 1000;
+    for (let i = 0; i < 400 && Date.now() < deadline; i++) {
+      const dn = await gday();
+      if (d0 > 0 && dn > 0 && (dn - d0) > dayBudget) break;   // 게임일을 다 썼다
       // ★★[2026-08-26] **픽스처를 부르기 전에 먼저 본다.**
       //   픽스처는 재고를 깎는 행위다 — 부를 때마다 세계를 흔든다. 이미 의뢰가 걸려 있는데도
       //   매 회 깎았더니, 열린 의뢰가 **보상으로 약속한 품목**을 깎아 마을이 못 갚게 만들었다
@@ -196,10 +221,9 @@ async function waitHttp(url, tries = 900) {
       }
       await page.evaluate((vid) => window.__sendPrimary({ type: '__e2e_village_short', vid }), V.id);
       await sleep(900);
-      const last = await page.evaluate(() => (window.__notices || []).slice(-3).join(' | '));
       // ★[T78] 이모지(`🧪`)로 찾지 않는다 — 알림 경계가 접두 이모지를 `kind` 로 옮기고 글자를 뺐다.
       //   픽스처 알림은 본문이 `… 품목 before→after (문턱 … · 갚을거 …)` 라 **그 모양**으로 찾는다(뜻 그대로).
-      if (/문턱 .*갚을거/.test(last) && !/없다|미지원|없음/.test(last)) sh = sh || last;
+      sh = sh || (await shWitness());
       await page.evaluate((vid) => window.__sendPrimary({ type: 'village_board', vid }), V.id);
       await sleep(500);
       const b = await page.evaluate(() => window.__evLastBoard || null);
@@ -213,6 +237,7 @@ async function waitHttp(url, tries = 900) {
   await sleep(800);
   ok((await page.evaluate(() => (window.__notices || []).slice(-4).join(' | '))).includes('게임일 정지'),
     '★게임일 정지(상호작용 구간) — 여기부터 경제가 검사를 앞지르지 않는다');
+  sh = sh || (await shWitness());   // ★[T185] 판정 직전에 한 번 더 — 늦게 도착한 증인도 센다
   ok(!!sh, '부족 픽스처 성립(소비EMA 가 자란 품목의 재고를 문턱 아래로 · 갚을 잉여도 갖춤)', sh || '(성립 실패 — 소비EMA 미성숙)');
   ok(!!(board && board.rows && board.rows.length), '게시판에 납품 의뢰가 걸렸다', board ? JSON.stringify(board.rows.map((r) => r.line)) : 'X');
   await snap('ev-04-board');

@@ -314,5 +314,67 @@ console.log('\n⑦ 주석 제거기 정본 하나 [T171]');
   console.log('    접점: codeOnly · acorn · onComment · code-only.js · villages.js:20');
 }
 
+// ── ⑧ 판정 자리에 **벽시계가 없다** [T185 2026-09-12] ──────────────────────────
+//
+// ★★족보 ⑩ 의 병: 하네스가 **정해진 초를 자고** 그 뒤에 판정한다. 조용한 판에서 고른 수라
+//   러너 안(2코어 · 열 몇 종이 같이 돈다)에서는 안 선다. 09-12 야간 전수가 낸 셋이 전부 그 병이었다:
+//     · `test-route-persist ⑦d` — 하네스가 `/health` 응답 간격을 재고 **1500ms** 문턱 → 러너 1506ms(6ms 차)
+//     · `e2e-emptystart warp` — 텔레포트 뒤 **900ms** 자고 한 번 본다 × 20 → 예산 소진 → "도착" 전제 빨강
+//     · `e2e-events ensureBoard` — **시도 횟수**로 예산(회당 ~1.8초) → 게임일이 덜 흘러 EMA 미성숙
+//   셋 다 판정은 그대로 두고 **증인**만 바꿨다(서버 루프 히스토그램 · 서버 권위 좌표 · 게임일).
+//
+// ★이 검사가 지키는 것: **`ok(...)` 의 조건에 벽시계 수가 직접 들어가지 않는다.**
+//   `sleep` 자체는 못 없앤다(입력을 쏘고 세계가 한 틱 도는 것을 기다리는 건 정당하다) —
+//   막는 것은 **잰 시간을 판정의 근거로 삼는 것**이다.
+console.log('\n⑧ 판정 자리에 벽시계 0 [T185]');
+{
+  // 판정 안에서 `Date.now()` 로 잰 값을 상수와 견주는 모양을 찾는다(AST — 낱말 grep 아님).
+  const acornL = require(path.join(ROOT, 'node_modules', 'acorn'));
+  const CLOCKY = /^(hcMax|elapsed|took|dur|durMs|waitMs|ms)$/;
+  const hits = [];
+  for (const f of fs.readdirSync(SCRIPTS).filter((x) => /^(test|e2e)-.*\.js$/.test(x))) {
+    const src = fs.readFileSync(path.join(SCRIPTS, f), 'utf8');
+    let ast; try { ast = acornL.parse(src, { ecmaVersion: 2022, allowHashBang: true }); } catch (e) { continue; }
+    const walk = (n, inOk) => {
+      if (!n || typeof n !== 'object') return;
+      if (Array.isArray(n)) { for (const x of n) walk(x, inOk); return; }
+      let nowOk = inOk;
+      if (n.type === 'CallExpression' && n.callee && n.callee.name === 'ok') {
+        // 첫 인자(판정 조건)만 본다 — 셋째 인자(설명)에는 시간이 있어도 된다
+        walk(n.arguments[0], true);
+        for (const a of n.arguments.slice(1)) walk(a, false);
+        return;
+      }
+      if (inOk && n.type === 'BinaryExpression' && ['<', '<=', '>', '>='].indexOf(n.operator) >= 0) {
+        const side = [n.left, n.right];
+        const clocky = side.some((x) => x && x.type === 'Identifier' && CLOCKY.test(x.name));
+        const lit = side.some((x) => x && x.type === 'Literal' && typeof x.value === 'number' && x.value >= 100);
+        if (clocky && lit) hits.push(`${f}:${src.slice(0, n.start).split('\n').length}`);
+      }
+      for (const k of Object.keys(n)) { if (k === 'type' || k === 'start' || k === 'end') continue; walk(n[k], nowOk); }
+    };
+    walk(ast, false);
+  }
+  ok(hits.length === 0, '★★⑧a **판정 조건에 "하네스가 잰 시간 vs 상수" 가 없다**(족보 ⑩ — 러너에서만 빨개지는 병)',
+     hits.length ? hits.slice(0, 4).join(' · ') : `${fs.readdirSync(SCRIPTS).filter((x) => /^(test|e2e)-.*\.js$/.test(x)).length}개 훑음 · 0건`);
+  // 자명 통과 금지 — 같은 자로 그 모양을 넣으면 잡는다
+  const canarySrc = 'const hcMax = 1; ok(hcMax <= 1500, "x");';
+  let cHit = 0;
+  { const ast = acornL.parse(canarySrc, { ecmaVersion: 2022 });
+    const walk = (n, inOk) => { if (!n || typeof n !== 'object') return;
+      if (Array.isArray(n)) { for (const x of n) walk(x, inOk); return; }
+      if (n.type === 'CallExpression' && n.callee && n.callee.name === 'ok') { walk(n.arguments[0], true); return; }
+      if (inOk && n.type === 'BinaryExpression' && ['<', '<=', '>', '>='].indexOf(n.operator) >= 0) {
+        const side = [n.left, n.right];
+        if (side.some((x) => x && x.type === 'Identifier' && CLOCKY.test(x.name))
+         && side.some((x) => x && x.type === 'Literal' && typeof x.value === 'number' && x.value >= 100)) cHit++;
+      }
+      for (const k of Object.keys(n)) { if (k === 'type' || k === 'start' || k === 'end') continue; walk(n[k], inOk); }
+    };
+    walk(ast, false); }
+  ok(cHit === 1, '★⑧b 자명 통과 금지 — 같은 자로 **잠 한 줄을 판정에 넣으면 잡는다**', `미끼 ${cHit}건`);
+  console.log('    접점: fixture-clock · __e2e_clock · __evGameDay · __getSrvAbs · /perf loop · ok()');
+}
+
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);
 process.exit(fail ? 1 : 0);

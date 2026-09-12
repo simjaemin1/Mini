@@ -125,14 +125,24 @@ function findForageSpots() {
     //   재접속·orphan 복구 직후 예측이 권위와 갈리기 때문이다. 그 상태로 ⑤가 진행되면
     //   "마을 밖에서 거래"가 되어 **간헐로** 실패하고, 실패 이유는 화면에 안 남는다.
     //   ⇒ 권위(`__getSrvAbs`)를 기준으로 삼고, 예측은 **참고로 같이 찍는다**(둘이 갈리면 그게 단서다).
+    //
+    // ★★[T185 2026-09-12] **"900ms 면 서버가 답한다"는 전제를 뺐다.**
+    //   종전엔 보내고 `sleep(900)` 한 뒤 한 번 보고, 그걸 20번 했다(총 18초). 그 900 은
+    //   조용한 판에서 고른 수라 러너 안에서는 안 선다 — 09-12 야간 전수에서 이 `warp` 가
+    //   예산을 다 쓰고 `null` 을 돌려 ⑤의 "마을에 도착했다" 전제가 빨갰다(단독은 19/0).
+    //   ⇒ 기다림을 **증인으로** 바꾼다: 보낸 뒤 권위 좌표를 촘촘히(120ms) 들여다보고
+    //     **도착하면 그 즉시** 끝낸다. 한 번 보낸 뒤 권위가 움직이지도 않으면 그때만 다시 보낸다.
+    //     빠른 판에서는 종전보다 빠르고, 느린 판에서는 **기다려 준다** — 판정은 그대로다.
     let pred = null, srv = null;
     for (let i = 0; i < 20; i++) {
       await page.evaluate(([a, b]) => window.__sendPrimary({ type: 'teleport_debug', x: a, y: b }), [x, y]);
-      await sleep(900);
-      pred = await page.evaluate(() => window.__getMyAbs());
-      srv = await page.evaluate(() => (window.__getSrvAbs ? window.__getSrvAbs() : null));
-      const ref = srv || pred;   // 권위가 아직 없으면(첫 틱 전) 예측으로 버틴다
-      if (ref && Math.hypot(ref.x - (x + WOX), ref.y - (y + WOY)) <= tolPx) return ref;
+      for (let k = 0; k < 25; k++) {            // 25 × 120ms = 3초까지 **증인**을 기다린다
+        await sleep(120);
+        pred = await page.evaluate(() => window.__getMyAbs());
+        srv = await page.evaluate(() => (window.__getSrvAbs ? window.__getSrvAbs() : null));
+        const ref0 = srv || pred;               // 권위가 아직 없으면(첫 틱 전) 예측으로 버틴다
+        if (ref0 && Math.hypot(ref0.x - (x + WOX), ref0.y - (y + WOY)) <= tolPx) return ref0;
+      }
     }
     const d = (p) => (p ? `${Math.round(p.x)},${Math.round(p.y)}` : '없음');
     console.log(`    ⚠ 워프 미도달 → 로컬(${x},${y})=절대(${x + WOX},${y + WOY})`);
