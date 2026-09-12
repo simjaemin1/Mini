@@ -6729,6 +6729,35 @@ function tickTradeV2(world, day) {
           tg = Math.max(subs * 30, buf), st = Math.max(0.1, a.v.storage[r] || 0);
         a.prices[r] = base * Math.max(PRICE_ADJ_MIN, Math.min(PRICE_ADJ_MAX, Math.pow(tg / st, elast))); }
 
+      // ★★★[T206 2026-09-12 · 이 파일의 접점 ①/② 중 ①] **남는 용량에 둘째 후보.**
+      //   §0-ⓐ 실측(시드 1020 · 8,152 leg): 적재율 중앙 92%(바닥 마을 82.8%) · 만재는 46.6% 뿐이고
+      //   **빈자리가 있는데 둘째 후보도 있던 leg 가 48.8%**(3,979건 · 더 실을 수 있던 양 124,134 단위).
+      //   T173(귀환 화물 하나)·T200(출발 화물 하나 · 품목 간 대체 · 족보 161)이 만난 그 벽이 이 한 줄이다.
+      //   ⚠**용량·후보 규칙 무변**: 용량은 `CARGO_PER_TRIP` 그대로, 순서는 위 `candidates` 정렬 그대로,
+      //     **셋째 이상은 안 싣는다**. 값·차감·정산은 품목마다 있는 문법을 그대로 한 번 더 쓴다.
+      //   ⚠주입이 없으면(`world.cargoTwo` 미설정) 이 블록은 통째로 건너뛴다 = **비트 동일**.
+      let _res2 = null, _n2 = 0, _p2 = 0;
+      if (world.cargoTwo) {
+        const _room = CARGO_PER_TRIP - N_units;
+        if (_room >= 1) {
+          for (const c2 of candidates) {
+            if (c2.res === cand.res) continue;
+            const _q = Math.min(c2.surplus, _room, a.v.storage[c2.res] || 0);
+            if (!(_q >= 1)) continue;
+            _res2 = c2.res; _n2 = _q; _p2 = a.prices[c2.res] || 0;
+            break;                                    // ★첫 번째로 실리는 둘째 하나뿐 — 셋째 이상 0
+          }
+        }
+      }
+      if (_res2 && _n2 >= 1) {
+        a.v.storage[_res2] -= _n2;                    // 출발 즉시 차감(첫 품목과 같은 자리·같은 문법)
+        a.sent += _n2 * _p2;
+        { const r = _res2, base = BASE_VALUE_V2[r] || 1, elast = ELASTICITY[r] || 1,
+            subs = (SUBSISTENCE_PER_NPC[r] || 0) * N, buf = N * Math.max(0.5, (UTILITY_WEIGHT[r] || 0.1) * 1.2),
+            tg = Math.max(subs * 30, buf), st = Math.max(0.1, a.v.storage[r] || 0);
+          a.prices[r] = base * Math.max(PRICE_ADJ_MIN, Math.min(PRICE_ADJ_MAX, Math.pow(tg / st, elast))); }
+      }
+
       // 가져갈 자원 결정
       // ※[2026-08-01 기근 반출 게이트 — 시도했다가 **철회**] "기근 마을의 식량은 반출 화물로 못 사간다"를
       //   넣어봤다(농촌22 궤적: 이웃들이 모피 단가 1,170 을 싣고 와 굶는 마을의 마지막 보리를 실어 갔다).
@@ -6782,6 +6811,7 @@ function tickTradeV2(world, day) {
         trader: lp.npc,               // ★교역 나간 NPC — 도적에게 죽으면 마을서 제거
         from: a.v, to: b.v,
         giveRes: cand.res, giveAmt: N_units,
+        giveRes2: _res2 || null, giveAmt2: _n2 || 0, pFrom2_at_depart: _p2 || 0,   // ★[T206] 둘째 화물(미주입이면 null/0)
         pFrom_at_depart: pFrom, pTo_at_depart: pTo,
         returnRes: bestReturnRes,
         distance: dist, escort,
@@ -6792,11 +6822,26 @@ function tickTradeV2(world, day) {
         travelDays,
       });
 
+      // ★★[T206 2026-09-12 · **계측 전용 문** — 주입이 없으면 한 글자도 안 바뀐다] 출발 leg 한 건의 자.
+      //   같은 벽을 두 번 만났다(T173 귀환 화물 · T200 출발 화물): **캐러밴 하나 = 품목 하나**이고,
+      //   잉여가 `CARGO_PER_TRIP` 에 못 미치면 수레가 **빈 채로** 간다. 그 빈 자리를 재려면
+      //   `candidates` 를 밖에서 봐야 하는데, 문턱 규칙을 계측기에 다시 적으면 그게 사본이다(사본 0).
+      //   ⇒ **읽기만 하는 훅 하나**(`onRequest`·`onEvent` 문법). 서버·CLI·랩은 안 준다 = 비트 동일.
+      if (world.onTradeLeg) {
+        try {
+          world.onTradeLeg({ day, vid: a.i, from: a.v.name, to: b.v.name,
+            res: cand.res, units: N_units, cap: CARGO_PER_TRIP,
+            cands: candidates.map((c) => ({ res: c.res, surplus: c.surplus })),
+            ret: bestReturnRes || null, second: _res2 || null, secondUnits: _n2 || 0 });
+        } catch (e) {}
+      }
       if (a.v.tradeStats) {
         a.v.tradeStats.caravansSent++;
         a.v.tradeStats.cargoSent += N_units;
         const eb = a.v.tradeStats.exportBy || (a.v.tradeStats.exportBy = {});
         eb[cand.res] = (eb[cand.res] || 0) + N_units;   // ★자원별 수출량(감사용) — 광산마을이 뭘 팔아 식량 사는지 진단
+        if (_res2 && _n2 > 0) eb[_res2] = (eb[_res2] || 0) + _n2;   // ★[T206] 둘째 화물도 같은 감사 열에
+        if (_res2 && _n2 > 0) a.v.tradeStats.cargoSent += _n2;
       }
     } // while
   } // for (const a of data)
@@ -6946,6 +6991,7 @@ function tickCaravansV2(world, day) {
           c.returnArriveDay = c.arriveDay + travelDaysForDistance(v1.villageDist(bestAlt.v, c.from));
           c._rerouted = rerouted + 1;
           c.giveAmt = deliveredGive; // 약탈 손실 반영해서 실제 남은 양
+          if (c.giveRes2 && c.giveAmt2 > 0) c.giveAmt2 = c.giveAmt2 * (1 - outboundLoss);   // ★[T206] 둘째도 같이 간다
           world.tradeLog.push({
             day, from: c.from.name, to: c.to.name,
             sent: { res: c.giveRes, amt: +deliveredGive.toFixed(2), pAtFrom: +c.pFrom_at_depart.toFixed(2), pAtTo: +pTo.toFixed(2) },
@@ -6960,6 +7006,8 @@ function tickCaravansV2(world, day) {
         // 2) 대안 없음 → 빈손 귀환 (자원 보존)
         c._returningRes = c.giveRes;
         c._returningAmt = deliveredGive;
+        // ★[T206] 둘째 화물도 **집으로 돌아온다** — 안 적으면 그 양이 세계에서 사라진다(질량 누수).
+        if (c.giveRes2 && c.giveAmt2 > 0) { c._returningRes2 = c.giveRes2; c._returningAmt2 = c.giveAmt2 * (1 - outboundLoss); }
         c._abandoned = true;
         c.state = 'inbound';
         c.distance = v1.villageDist(c.to, c.from); // 귀환 거리
@@ -6990,8 +7038,18 @@ function tickCaravansV2(world, day) {
       //   폴드는 재고 가산 **전**에(기존 재고량이 가중치라 순서가 의미를 갖는다).
       if (c.giveRes === 'ore' && v1.foldOreMix) v1.foldOreMix(c.to, c.to.storage.ore || 0, deliveredGive, v1.oreMixOf(c.from));
       c.to.storage[c.giveRes] = (c.to.storage[c.giveRes] || 0) + deliveredGive;
-      const taxTo = grossCredit * TAU;
-      const netCreditAfterArrival = grossCredit - taxTo;
+      // ★★[T206 · 접점 ②] 둘째 화물 매도 — **첫 품목과 완전히 같은 문법을 한 번 더** 쓴다.
+      //   (충격 정산 `_impactSellV2` · 원석 조성 폴드 · 재고 가산 · 세금 — 순서까지 같다.)
+      //   미주입 세계에는 `giveRes2` 가 없으므로 이 블록도 통째로 건너뛴다 = 비트 동일.
+      let _gross2 = 0, _delivered2 = 0;
+      if (c.giveRes2 && c.giveAmt2 > 0) {
+        _delivered2 = c.giveAmt2 * (1 - outboundLoss);
+        _gross2 = _impactSellV2(c.to, c.giveRes2, _delivered2);
+        if (c.giveRes2 === 'ore' && v1.foldOreMix) v1.foldOreMix(c.to, c.to.storage.ore || 0, _delivered2, v1.oreMixOf(c.from));
+        c.to.storage[c.giveRes2] = (c.to.storage[c.giveRes2] || 0) + _delivered2;
+      }
+      const taxTo = (grossCredit + _gross2) * TAU;
+      const netCreditAfterArrival = (grossCredit + _gross2) - taxTo;
       // 도착 마을 treasury (자원으로 누적 X — 회계가치만 합산해 numeric treasury)
       c.to.treasury._cash = (c.to.treasury._cash || 0) + taxTo;
 
@@ -7131,6 +7189,12 @@ function tickCaravansV2(world, day) {
         if (!c._abandoned && c.from.tradeStats && c._returningRes === 'wood') {
           c.from.tradeStats.woodImported = (c.from.tradeStats.woodImported || 0) + received;   // ★fuelK(리비히 연료)용 — 목재 수입도 부양력에 반영(교역이 숲빈약 마을 부양)
         }
+      }
+      // ★[T206] 빈손 귀환으로 되돌아온 **둘째 화물** — 첫 품목과 같은 문법(세금은 안 붙는다: 안 판 짐이다).
+      if (c._returningRes2 && c._returningAmt2 > 0) {
+        const received2 = c._returningAmt2 * (1 - inboundLoss);
+        if (c._returningRes2 === 'ore' && v1.foldOreMix) v1.foldOreMix(c.from, c.from.storage.ore || 0, received2, v1.oreMixOf(c.to));
+        c.from.storage[c._returningRes2] = (c.from.storage[c._returningRes2] || 0) + received2;
       }
       c._done = true;
     }
@@ -11288,6 +11352,27 @@ function twInstallHook(){ if(!ECON_WORLD) return; const m=+window.L_TOOL_WEAR;
   if(Number.isFinite(m) && m>0 && m!==1) ECON_WORLD.toolWearMul=m; }   // ★배수 1 이면 문을 안 연다(비트 동일)
 // ════════════════════════════════════════════════════════════════════════════════════════
 
+
+// ════════════════════════════════════════════════════════════════════════════════════════
+// ★★★[T206 2026-09-12 · 랩 수레 절] **캐러밴 하나 = 품목 하나** — 같은 벽을 두 번 만났다
+//
+// T173: 귀환 화물이 하나라 돌을 실으면 식량·도구가 안 온다(기회비용).
+// T200: 출발 화물이 하나라 문턱을 조이면 덜 파는 게 아니라 **다른 걸 판다**(품목 간 대체 · 족보 161).
+// 두 벽의 자리는 `economy-sim-v2.js` 한 줄이다: `N_units = min(cand.surplus, CARGO_PER_TRIP)`.
+//
+// §0-ⓐ 실측(시드 1020 · 출발 leg 8,152건): 적재율 중앙 **92%**(바닥 마을 82.8%) · 만재 46.6% ·
+//   **빈자리가 있는데 둘째 후보도 있던 leg 48.8%**(3,979건 · 더 실을 수 있던 양 **124,134 단위**).
+//   ⇒ 카드 ⑤ 의 자가 처방 절단선에 안 걸린다 — 둘째 후보는 **흔하다**.
+//
+// 이 절은 **남는 용량에 둘째 후보 하나**를 싣는다. 용량(`CARGO_PER_TRIP`)·후보 순서는 **무변**이고
+// 셋째 이상은 안 싣는다. 값·차감·도착 정산은 품목마다 있는 문법을 그대로 한 번 더 쓴다.
+//
+// ⚠**econ 절은 안 고친다** — 문(`world.cargoTwo`)이 닫히면 출발·도착 두 블록을 통째로 건너뛴다 = 비트 동일.
+// 손잡이 — `L_CARGO_TWO=1` 이면 문을 연다. **기본 0 = 끔**(세계를 움직이는 손잡이).
+if (window.L_CARGO_TWO === undefined) window.L_CARGO_TWO = 0;
+function cargoTwoInstallHook(){ if(!ECON_WORLD) return; if(+window.L_CARGO_TWO!==0) ECON_WORLD.cargoTwo = true; }
+// ════════════════════════════════════════════════════════════════════════════════════════
+
 let VILS=[],ECON_WORLD=null,lifeFocal=0,_claimedAll=new Map();   // ★다마을: 모든 마을 상태 / 공유 econ world / 초점 / 전역 영토 소유맵(셀→마을, 이웃 성장 회피)
 function lifeInit(){
   const p0=Math.max(8,+document.getElementById('pop').value),seed=((+document.getElementById('seed').value)||0)>>>0;
@@ -11296,7 +11381,7 @@ function lifeInit(){
   BANDITS=[];_bdtSeq=1;_bdtPairs=new Map();_bdtSig='';_bdtRoutes=null;DENS=[];_denSeq=1;   // ★도적 상태 초기화(새 세계 — 소굴은 마을·교역로 확정 후 bdtDenScan이 재배치)
   WARS=[];_warSeq=1;TRIBUTES=[];   // ★전쟁 상태 초기화(새 세계). 원한·피로·목책은 마을(vil)에 붙어 재생성과 함께 리셋
   const centers=pickCenters(NV,275),M=centers.length;   // ★마을 간격 128→275(§3b 게임필 확정값, 도보 2.3분 — R_MAX 135×2=270<275라 영토 비겹침 보장)
-  if(typeof EconEngine!=='undefined'){EconEngine.setSeed(seed);ECON_WORLD=EconEngine.createWorldV2({seed,villageCount:M,picker:'rational',infoRange:5000,raidPer100:0.005});if(+window.L_ALLOC_REAL!==0)ECON_WORLD.allocFn=allocRealFn;if(+window.L_STONEREAL!==0)ECON_WORLD.stoneBudgetFn=stoneRealFn;if(+window.L_STONE_TRADE!==0)ECON_WORLD.returnPullFn=stoneTradePullFn;twInstallHook();bdtInstallHooks();hwInstallHook();}   // ★[T161] 실현 배분 주입(되돌림 L_ALLOC_REAL=0 = 문을 안 연다 = 종전 비트) · ★도적 econ 계약 훅(도적 0이면 완전 무해) · ★[T157] 행복→작업량 훅
+  if(typeof EconEngine!=='undefined'){EconEngine.setSeed(seed);ECON_WORLD=EconEngine.createWorldV2({seed,villageCount:M,picker:'rational',infoRange:5000,raidPer100:0.005});if(+window.L_ALLOC_REAL!==0)ECON_WORLD.allocFn=allocRealFn;if(+window.L_STONEREAL!==0)ECON_WORLD.stoneBudgetFn=stoneRealFn;if(+window.L_STONE_TRADE!==0)ECON_WORLD.returnPullFn=stoneTradePullFn;twInstallHook();cargoTwoInstallHook();bdtInstallHooks();hwInstallHook();}   // ★[T161] 실현 배분 주입(되돌림 L_ALLOC_REAL=0 = 문을 안 연다 = 종전 비트) · ★도적 econ 계약 훅(도적 0이면 완전 무해) · ★[T157] 행복→작업량 훅
   for(let i=0;i<M;i++){
     const s={day:L_START,pop:p0,food:p0*150,houses:[],farmland:[],dryfield:[],cultFarm:[],cultDry:[],plots:[],agents:[],fishers:0,crop:new Map(),spoiled:0,seed:(seed^Math.imul(i+1,0x9e3779b1))>>>0,V:null,name:'마을'+(i+1)};
     setupVillage(s,centers[i]);   // V 생성·농지·plot·NPC
