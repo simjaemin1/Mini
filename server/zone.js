@@ -4044,6 +4044,11 @@ async function _acceptConnection(ws, req, C) {
     sx = player.x; sy = player.y;   // 아래 저장·로그·welcome 이 같은 값을 봐야 한다
     console.log(`[${ZONE_ID}] ↻ 몸 승계: ${name} (${playerId}) @ (${sx.toFixed(0)}, ${sy.toFixed(0)}) — 저장본 대신 살아 있던 몸`);
   }
+  //   ★★[T202 2026-09-12] **길드원은 제 길드 마을 사람이다** — 도착 한 자리(`membership` 이 규칙을 쥔다).
+  //     여기인 이유: `player.tribeId` 가 방금 섰고(계정 행 또는 핸드오프), `_takeover.member` 도 방금
+  //     얹혔다 — **소속을 정할 재료가 다 모인 첫 지점**이고, welcome·`startinfo` 보다 앞이라
+  //     이름표(`마을`)·소속 칸이 그 판부터 참이다. 빈자리일 때만 앉는다(그 이유는 `membership.js`).
+  try { Membership.seatGuildMember(player); } catch (e) {}
   C.stage = 'spawn'; _connFailPoint('spawn');
   players.set(pid, player);
   C.pid = pid;   // ★뒤에서 던지면 이 반쪽 등록을 치워야 한다(안 치우면 유령 몸이 남는다)

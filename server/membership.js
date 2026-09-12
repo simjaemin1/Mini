@@ -140,6 +140,40 @@ function accept(player, vid) {
 //   기여를 지어내지 않고(`contribOf` 무변 · 한도는 여전히 `limitOf(기여)`가 정한다) 소속만 앉힌다.
 //   ⚠이미 다른 마을 사람이어도 **옮긴다** — 한 사람은 한 마을(K-1)이고, 제가 세운 마을을 두고
 //     남의 마을 사람으로 남는 쪽이 더 이상하다. 말은 안 보탠다(건립 알림이 이미 있다 · 새 메시지 0).
+// ★★[T202 2026-09-12] **길드원은 제 길드 마을 사람이다** — 마을이 길드 것이면(T197) 그 길드의
+//   사람도 그 마을 사람이어야 말이 된다. 기여 12(K-2)는 **남의** 마을에 드는 문이지 제 집 문이 아니다.
+//
+//   ★자리 — **도착 훅 하나**다(`zone.js` 접속 경로). §0-ⓐ 실측: 사람이 마을에 "온다"는 사건을
+//     서버가 아는 자리는 **접속뿐**이다(첫 접속 `?start_vid=` · 재접속·몸 승계 · 존 핸드오프 —
+//     셋이 전부 같은 경로로 모인다). "걸어서 영토 진입"은 **서버 훅이 없다**: 근접(`_villageNear` 260px)은
+//     브리핑·게시판·거래소·인출이 **물을 때만** 재는 술어다. 걸어 들어온 사람도 그 전에 접속은 했으므로
+//     이 한 자리가 셋을 다 덮는다.
+//
+//   ⚠⚠**이미 어느 마을 사람이면 안 건드린다.** 카드는 "다른 마을 사람이면 옮긴다(K-1)"였는데,
+//     실측해 보니 그 규약은 여기서 **덫**이 된다(보고 §0-ⓑ · 회부 1):
+//       기여 12 로 NPC 마을 A 에 든 사람이 길드 마을 B 를 가진 길드에 들면 → 접속마다 B 로 끌려간다.
+//       `/탈퇴` 하고 A 에 다시 들어도(납품 한 번이면 촌장이 다시 권한다) **다음 접속에 또 끌려간다.**
+//     T197 의 옮김은 **창설**이라는 사람의 행위 한 번이었다. 이건 배경 규칙이고, 배경 규칙이 사람의
+//     선택을 매번 되돌리면 그건 문이 아니라 벽이다(§9.1). ⇒ **빈자리일 때만 앉힌다.**
+//     그래서 `/탈퇴` 가 곧 "제 길드 마을로 돌아가는 문"이 된다 — 새 말 0 · 새 수 0.
+//   ⚠무길드·타길드·소속 있음은 전부 **무변**(기여 문 그대로).
+function seatGuildMember(player) {
+  if (!ready() || !player || !player.tribeId) return null;
+  if (memberOf(player)) return null;                       // 이미 어딘가의 사람 — 안 건드린다(위 ⚠)
+  const V = H.SimVillages;
+  const list = (V && V.playerVillages) ? V.playerVillages() : null;
+  if (!list || !list.length) return null;
+  let best = null, bd = Infinity;
+  for (const vil of list) {
+    if (vil._tribeId == null || String(vil._tribeId) !== String(player.tribeId)) continue;
+    //   여럿이면 **선 자리에서 가까운** 것 — 도착한 곳이 제 마을이다(새 수 0 · 거리는 있던 산수).
+    const d = Math.hypot((vil.ccx | 0) * 32 - (player.x || 0), (vil.ccy | 0) * 32 - (player.y || 0));
+    if (d < bd) { bd = d; best = vil; }
+  }
+  if (!best) return null;
+  _seat(player, best.dbId | 0);
+  return player.member;
+}
 function seatFounder(player, vid) {
   if (!ready() || !player || vid == null) return { ok: false, err: '아직 준비되지 않았다' };
   const was = memberOf(player);
@@ -386,6 +420,6 @@ function publicState(player, stock) {
 
 module.exports = {
   CFG, init, ready, contribOf, memberOf, isMemberHere, limitOf, remainOf,
-  onDeliver, accept, seatFounder, leave, expel, withdraw, orderBrief, handleChat, publicState,   // ★[T197] 창설 = 소속
+  onDeliver, accept, seatFounder, seatGuildMember, leave, expel, withdraw, orderBrief, handleChat, publicState,   // ★[T197] 창설 = 소속 · ★[T202] 길드원도
   resolveRes, resKo, granaryOpen, granaryBust,   // ★[T159] 품목 해석 · 길드 곳간 문
 };

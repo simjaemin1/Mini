@@ -498,6 +498,7 @@ async function waitHttp(url, tries = 900) {
       return false;
     };
     const jget2 = async (u) => { try { const r = await fetch(u); return r.ok ? await r.json() : null; } catch (e) { return null; } };
+    const jpost2 = async (u, b) => { try { const r = await fetch(u, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }); return r.ok ? await r.json() : null; } catch (e) { return null; } };
 
     // ★★[T181 2026-09-12] **제 판**을 띄운다 — T174 가 잰 것이 곧 이유다: 대본 뒤 세계는
     //   수백 게임일이 지나 **의뢰 줄이 없다**(게이트가 아니라 빈 판이었다). 호 ①~⑤ 를 걸으려면
@@ -522,6 +523,7 @@ async function waitHttp(url, tries = 900) {
       step('⑧ 소개문이 시작 화면과 인사에 뜬다', false, '손잡이 뒤 — 미측정');
       step('⑨ 인출(세운 사람) · ⑨b 잠금 · ⑨c 열기', false, '손잡이 뒤 — 미측정');
       step('⑩ 무길드 대조 팔', false, '손잡이 뒤 — 미측정');
+      step('⑪ 길드원 도착 → 소속(+비길드원 대조 · 옮김 여부)', false, '손잡이 뒤 — 미측정');
     } else {
     // ═══ 건립 한 벌 — ★[T197] **두 팔이 같은 함수를 쓴다**(길드 창설자 · 무길드 창설자 · 사본 0) ═══
     const CELL = 32;
@@ -647,7 +649,10 @@ async function waitHttp(url, tries = 900) {
       snd(C, { type: '__e2e_give', items: { stone: 1 } }); await sleep(700);
       const notes = lastN(C, 2), p1 = packFood(C);
       return { p0, p1, notes, gave: Number.isFinite(p0) && Number.isFinite(p1) && p1 > p0,
-        locked: /잠갔다/.test(notes), quota: /오늘 몫은 다 꺼냈다/.test(notes) };
+        locked: /잠갔다/.test(notes), quota: /오늘 몫은 다 꺼냈다/.test(notes),
+        //   ★[T202] **기근은 잠금이 아니다**(T159 의 다른 문 · 마을의 형편). 셋을 갈라 놓지 않으면
+        //     대조 팔이 "곳간이 잠겼다"와 "마을이 굶는다"를 구별 못 하고 거짓 빨강이 난다(실측).
+        famine: /마을이 굶고 있다/.test(notes) };
     };
     //   ★★[T197] 한 번으로 판정하지 않는 이유 **둘 다 설계다**:
     //     ⓐ 곳간문도 **캐시**다 — `granaryBust` 뒤 첫 물음은 "모른다 ⇒ 안 막는다"(membership 규약 ②).
@@ -659,6 +664,7 @@ async function waitHttp(url, tries = 900) {
         const r = await withdrawOnce(C, hall);
         last = r;
         if (r.quota) { await sleep(1200); continue; }
+        if (r.famine) return { ...r, n: k + 1 };            // 기근은 기다려도 안 풀린다 — 그 자리에서 돌려준다
         if (want === 'give' && r.gave) return { ...r, n: k + 1 };
         if (want === 'lock' && r.locked) return { ...r, n: k + 1 };
         await sleep(1200);
@@ -825,9 +831,12 @@ async function waitHttp(url, tries = 900) {
           //   ★대조가 참이려면 **표가 데워져 있어야** 한다 — 길드 마을 줄이 여전히 소개문을 갖는지 같이 본다.
           const slineA = await startLineOf(NEWVID, false);
           const w4 = await withdrawUntil(D, f2.hall, 'give');
-          step('⑩ 무길드 마을 — **소개문은 빈 칸 · 곳간은 열림**(대조: ⑧⑨b 가 자명 통과가 아니다)',
-            !!(sline2 && String(sline2.intro || '') === '' && w4.gave && slineA && String(slineA.intro || '') === INTRO),
-            sline2 ? `무길드 intro=${JSON.stringify(sline2.intro)} · 같은 표에서 길드 마을 intro=${JSON.stringify(slineA && slineA.intro)} · 등짐 밥 ${w4.p0} → ${w4.p1} · ${w4.notes}` : '줄이 안 떴다');
+          //   ★재는 것은 **길드 문이 안 걸린다**는 것이다(`_tid` 가 0 이라 그 가지를 안 탄다).
+          //     밥이 실제로 나오느냐는 **마을의 형편**(T159 기근 문)이 따로 정한다 — 갓 선 마을은
+          //     굶는 날이 있고, 그건 이 대조가 재는 것이 아니다(실측: `마을이 굶고 있다` 로 빨개졌었다).
+          step('⑩ 무길드 마을 — **소개문은 빈 칸 · 길드 잠금은 안 걸린다**(대조: ⑧⑨b 가 자명 통과가 아니다)',
+            !!(sline2 && String(sline2.intro || '') === '' && !w4.locked && (w4.gave || w4.famine) && slineA && String(slineA.intro || '') === INTRO),
+            sline2 ? `무길드 intro=${JSON.stringify(sline2.intro)} · 같은 표에서 길드 마을 intro=${JSON.stringify(slineA && slineA.intro)} · 잠금=${w4.locked} · ${w4.gave ? `등짐 밥 ${w4.p0} → ${w4.p1}` : (w4.famine ? '기근(길드 문 아님)' : w4.notes)}` : '줄이 안 떴다');
           //   뒷정리 — 이 마을도 받기를 끈다
           await warp(D, Math.round(f2.hall.x) + 40, Math.round(f2.hall.y) + 40);
           chat(D, '/이방인 막기'); await sleep(900);
@@ -836,6 +845,94 @@ async function waitHttp(url, tries = 900) {
         }
         shut(D);
 
+        // ── ⑪ ★★[T202] **길드원은 제 길드 마을 사람이다** — 도착만으로, 픽스처 0 ──────
+        //   세 팔을 한 판에서 잰다: 길드원 · 비길드원(대조) · 이미 남의 마을 사람인 길드원.
+        //   ⚠길드는 **접속 전에** 들어야 한다 — `player.tribeId` 는 계정 행에서 서고(`initTribeId`),
+        //     그 값이 있어야 도착 훅이 볼 것이 생긴다. 그래서 한 번 붙어 신원을 만들고,
+        //     central 로 길드에 든 뒤 **다시 붙는다**(사람이 겪는 순서 그대로 · 픽스처 0).
+        const HX2 = Math.round(HALL.x), HY2 = Math.round(HALL.y);
+        const joinAndReconnect = async (name, seatFirstVid) => {
+          let C = await wsConnect(name, 'arcpw', NEWVID | 0); await sleep(1200);
+          if (seatFirstVid != null) {
+            //   ★선행 조건만 픽스처로 세운다(T11 `__e2e_body` — `test-handoff-body` 가 쓰는 그 문).
+            //     재는 것은 **그 뒤에 도착 훅이 무엇을 하는가**다.
+            snd(C, { type: '__e2e_body', member: { zone: 'hanbando', vid: seatFirstVid | 0, name: 'NPC마을', since: 0, wdDay: -1, wdUsed: 0 }, quiet: true });
+            await sleep(700);
+          }
+          const pid2 = C.playerId;
+          const jr = await jpost2(`http://localhost:${CPORT}/tribe/join`, { player_id: pid2, tribe_id: TID });
+          shut(C); await sleep(900);
+          C = await wsConnect(name, 'arcpw', NEWVID | 0); await sleep(1600);
+          return { C, joined: !!(jr && jr.ok) };
+        };
+        //   ⑪a 길드원 — 도착만으로 곳간이 열린다
+        const E = await joinAndReconnect('arcmate', null);
+        step('⑪a 길드원이 길드에 들었다(종전 경로 · central `/tribe/join`)', E.joined, `tribe ${TID}`);
+        await warp(E.C, HX2 + 40, HY2 + 40);
+        E.C.notices.length = 0; chat(E.C, '/곳간'); await sleep(1300);
+        const mateLine = E.C.notices.slice(-2).join(' | ');
+        const w5 = await withdrawUntil(E.C, HALL, 'give');
+        step('⑪ ★길드원은 **도착만으로** 제 길드 마을 곳간을 연다(픽스처 0)',
+          !/아직 마을 사람이 아니다/.test(mateLine) && w5.gave,
+          `/곳간 → ${mateLine} · 등짐 밥 ${w5.p0} → ${w5.p1} · ${w5.n}판`);
+        //   ⑪b 대조 — 비길드원은 **기여 문** 그대로다(자명 통과 금지)
+        const F = await wsConnect('arcstranger', 'arcpw', NEWVID | 0); await sleep(1500);
+        await warp(F, HX2 + 40, HY2 + 40);
+        F.notices.length = 0; chat(F, '/곳간'); await sleep(1300);
+        const strLine = F.notices.slice(-2).join(' | ');
+        step('⑪b 대조 — 비길드원에겐 **기여 문**이 그대로 있다',
+          /아직 마을 사람이 아니다/.test(strLine), strLine);
+        shut(F);
+        //   ⑪c ★이미 남의 마을 사람이던 길드원은 **안 끌려온다**(카드의 "옮긴다"를 안 했다 — 회부 1)
+        //   ⚠재는 자리를 **NPC 마을 줄**로 잡는다: 유저 마을 줄은 `listable`(받기·쉼터·인구·곳간·활동)을
+        //     통과해야 실리고 그 판정은 판이 늙으며 흔들린다 — 1차 판이 그래서 `undefined` 를 봤다(실측).
+        //     NPC 마을 줄은 늘 실린다. **옮겨졌다면 거기가 0 이 된다** — 그 한 칸이면 판정에 충분하다.
+        const G = await joinAndReconnect('arcbound', (V.vid | 0));
+        const si3 = await jget2(`http://localhost:${ZPORT}/startinfo?as=${encodeURIComponent('arcbound')}`);
+        const rowNpc = si3 && si3.ok && (si3.villages || []).find((v) => (v.vid | 0) === (V.vid | 0));
+        step('⑪c ★이미 소속이 있던 길드원은 **그대로다**(배경 규칙이 사람의 선택을 안 되돌린다 · 회부 1)',
+          !!(rowNpc && rowNpc.member === 1),
+          `${V.name} 소속 칸 = ${rowNpc && rowNpc.member} (옮겨졌다면 0 이 된다)`);
+
+        // ── ⑫ ★[T202 §0-ⓑ] **탈퇴·이적·해체 때 마을 소속은?** — 표를 만들 뿐, 아무것도 안 바꾼다 ──
+        //   카드 §1: "탈퇴·이적·해체는 **표만**". 여기서는 **지금 코드가 하는 일을 잰다**.
+        //   ★재는 자리는 `/곳간` **문장**이다 — 사람이 실제로 보는 것이고, 시작 화면 줄과 달리
+        //     `listable` 에 안 매인다(위 ⑪c 의 그 이유).
+        const granaryLine = async (C) => {
+          await warp(C, HX2 + 40, HY2 + 40);
+          C.notices.length = 0; chat(C, '/곳간'); await sleep(1300);
+          return C.notices.slice(-2).join(' | ');
+        };
+        const isMember = (line) => /곳간 —/.test(line) && !/아직 마을 사람이 아니다/.test(line);
+        //   ⑫a 마을 탈퇴(`/탈퇴`) — 소속은 사라지고 **기여는 남는다**
+        E.C.notices.length = 0; chat(E.C, '/탈퇴'); await sleep(1300);
+        const l1 = await granaryLine(E.C);
+        step('⑫a 마을 `/탈퇴` → 소속은 사라진다(기여 문이 도로 선다)', !isMember(l1) && /아직 마을 사람이 아니다/.test(l1), l1);
+        //   ⑫b 재접속 — 도착 훅이 **빈자리**를 다시 앉힌다. 그게 이 규약의 얼굴이다:
+        //     `/탈퇴` 는 "지금 이 판에서 빠진다"이고, 다음 접속에 제 길드 마을로 돌아온다.
+        shut(E.C); await sleep(900);
+        const E2 = await wsConnect('arcmate', 'arcpw', NEWVID | 0); await sleep(1600);
+        const l2 = await granaryLine(E2);
+        step('⑫b 재접속하면 **제 길드 마을로 돌아온다**(도착 훅이 빈자리를 앉힌다)', isMember(l2), l2);
+        //   ⑫c **길드 탈퇴** — central 이 `players.tribe_id` 를 지운다. 마을 소속은 **안 건드린다**(코드 무접촉).
+        await jpost2(`http://localhost:${CPORT}/tribe/leave`, { player_id: E2.playerId });
+        snd(E2, { type: 'tribe_set', tribeId: null, tribeName: null }); await sleep(1200);
+        const l3 = await granaryLine(E2);
+        step('⑫c ★**길드를 나가도 마을 소속은 그대로다**(지금 코드 — 안 바꿨다 · 재민 판정 자리)', isMember(l3), l3);
+        shut(E2);
+        //   ⑫d **길드 해체** — 마지막 사람까지 나가면 central 이 길드 행을 지운다(`/tribe/leave` 안의 그 줄).
+        //     마을의 `_tribeId` 는 **없는 길드**를 가리키게 된다 ⇒ 소개문은 `introOfTribe` 가 빈 줄을 주고
+        //     곳간문은 "못 물어봤다 ⇒ 열림"(규약 ②)이 된다. **마을 소속은 안 건드린다** — 그걸 잰다.
+        await jpost2(`http://localhost:${CPORT}/tribe/leave`, { player_id: G.C.playerId });
+        snd(G.C, { type: 'tribe_set', tribeId: null, tribeName: null }); await sleep(600);
+        shut(G.C); await sleep(600);
+        await jpost2(`http://localhost:${CPORT}/tribe/leave`, { player_id: A.playerId });
+        snd(A, { type: 'tribe_set', tribeId: null, tribeName: null }); await sleep(1400);
+        const gone = await jget2(`http://localhost:${CPORT}/tribe_intros`);
+        const stillThere = !!(gone && Array.isArray(gone.intros) && gone.intros.some((r) => r.id === TID));
+        const l4 = await granaryLine(A);
+        step('⑫d ★**길드가 해체돼도 마을 소속은 그대로다**(지금 코드 — 재민 판정 자리)',
+          !stillThere && isMember(l4), `길드 행 남음=${stillThere} · ${l4}`);
         //   ★★호가 끝나면 **세계를 원래대로 돌려 놓는다** — 받기를 다시 끈다.
         //     안 그러면 뒤따르는 실클라 대본의 로비에 마을이 더 뜨고(`시작 화면이 마을 목록을 받았다`),
         //     그건 대본이 깨진 게 아니라 **이 절이 남긴 자국**이다(T192 실측 · 5곳/4곳).
@@ -854,7 +951,8 @@ async function waitHttp(url, tries = 900) {
       step('⑨ 인출 — 세운 사람이 제 곳간을 연다(픽스처 0)', false, '③ 미도달 — 미측정');
       step('⑨b 길드장이 잠그면 인출이 막힌다', false, '③ 미도달 — 미측정');
       step('⑨c 다시 열면 도로 준다', false, '③ 미도달 — 미측정');
-      step('⑩ 무길드 마을 — 소개문 빈 칸 · 곳간 열림', false, '③ 미도달 — 미측정');
+      step('⑩ 무길드 마을 — 소개문 빈 칸 · 길드 잠금 안 걸림', false, '③ 미도달 — 미측정');
+      step('⑪ 길드원은 도착만으로 제 길드 마을 곳간을 연다', false, '③ 미도달 — 미측정');
     }
     }
     if (A) shut(A);
