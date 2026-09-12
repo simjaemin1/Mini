@@ -41,3 +41,12 @@
   파는 마을은 13~14곳이고 바닥 마을 수출 총량은 그 밖 15곳 합보다 크다 ⇒ 막힌 것은 **우선순위**다.
   진단 표 `scripts/stone-trade-diag.js` · 랩 표 `scripts/lab-stone-trade-ab.js` · 보고 `보고/T173_2026-09-11.md`.
 * 하네스 하나가 둘을 다 본다: `scripts/test-lab-stone.js`(T163 ①~⑦ · T173 ⑧~⑫).
+* ★[T179 2026-09-12] **주입 문 셋 감사 — 배율을 삼킨 것은 밭 하나뿐이다(1/3).**
+  채집(T135 `forageTakeFn`)은 `baseAmt × repShare` 를 **예산으로 건네고**, 석재(T163 `stoneBudgetFn`)는
+  **관 굵기만** 갈아 끼워 `skillMul` 이 문 뒤에 남는다 — 둘 다 살아 있다(고친 것 0 · 회귀 방지만 박았다).
+  밭(T100)만 대체가 `skillMul·toolBoost·inputMult` 셋을 통째로 삼켰다(켠 세계 실측 **5.12배** 폭).
+  ⇒ T172 와 같은 자리로 옮겼다: `harvestToGranary(v, n, mul)` — 문은 **양과 배율을 따로**, 안 주면 1(종전 비트) ·
+  걷어낸 자리는 `npc._t172mul` 에 배율만 **심어 둔다**(사냥·벌목과 같은 필드 · 여기서 곱하지 않는다).
+  ⚠**세계는 아직 안 움직인다** — 부르는 자리가 `server/villages.js:4007` 한 줄뿐이고 그쪽은 서버라
+  이 카드 밖이다(회부: 켜기 판정 #11 · 농부 `_esk` 링크가 먼저). 3시드 800일 미주입 **비트 동일**.
+  하네스 `scripts/test-econ-fieldyield.js` ⑬⑭ · `test-lab-trees` ⑧-b · `test-lab-stone` ⑬ · 보고 `보고/T179_2026-09-12.md`.

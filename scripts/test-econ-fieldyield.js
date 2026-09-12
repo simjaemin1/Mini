@@ -140,7 +140,7 @@ console.log('\n④ 무접촉 — 어부·사냥꾼·채집 산출은 안 건드�
   ok(/landBoost: \(v\) => v\.land\.game/.test(SRC), '④ 사냥꾼 `landBoost` 가 `v.land.game` 그대로다(소스)');
   const CODE = codeOf(SRC);
   const hits = CODE.split('\n').filter(l => l.indexOf('T100_FIELD_YIELD') >= 0).length;
-  ok(hits === 8, '④ ★손잡이를 무는 줄이 **여덟뿐**이다(선언 1 + `farmFlowPerDay` 1 + `harvestToGranary` 1 + `seedFoodDays` 1 + `gardenFloorTopUp` 1 + 대체 1 + **잠재(T183) 1** + 내보내기 1 — 주석 제외)', `${hits}줄`);
+  ok(hits === 9, '④ ★손잡이를 무는 줄이 **아홉뿐**이다(선언 1 + `farmFlowPerDay` 1 + `harvestToGranary` 1 + `seedFoodDays` 1 + `gardenFloorTopUp` 1 + 대체 1 + **잠재(T183) 1** + **배율 심기(T179) 1** + 내보내기 1 — 주석 제외)', `${hits}줄`);
   ok(/farmFlowPerDay\(v, _cf\.farmer \|\| 0\)/.test(SRC), '④ 부양력(prodK)도 **같은 함수**를 본다(K 만 옛 밑변이면 인구가 밭 없이 분다)');
   // 부양력은 켜면 앵커 그 자체다 — 용량과 산출이 같은 앵커를 본다.
   const v = econ.createVillage({ initialPop: 0, name: '픽스처', fertility: 0.8 });
@@ -246,6 +246,25 @@ if (!process.env.T100_CHILD) {
     ok(run({ T100_FIELD_YIELD: '1', T100_MUT_MOD: MUTNAME }) !== 0,
       '⑦ ★★★잠재에 **×2** 를 끼우면 빨개진다(⑫ 꼴 검사 — 새 수 0 의 파수꾼)');
   } finally { if (made4) { try { fs.unlinkSync(MUTPATH); } catch (e) { console.log('  ⚠변조 사본 정리 실패: ' + MUTPATH); } } }
+  // ★변조 다섯째 [T179] — 문에서 배율을 다시 떼어낸 사본(대체가 배율을 삼키던 그 판)
+  let made5 = false;
+  try {
+    const mutSrc3 = SRC.replace('const amt = ((n > 0 ? n : 1)) * T100_K * _m;',
+                                'const amt = ((n > 0 ? n : 1)) * T100_K;   // 하네스 변조본 — 배율을 다시 삼킨다');
+    ok(mutSrc3 !== SRC, '⑦ 배율 자리의 변조 지점이 소스에 **실재한다**');
+    fs.writeFileSync(MUTPATH, mutSrc3); made5 = true;
+    ok(run({ T100_FIELD_YIELD: '1', T100_MUT_MOD: MUTNAME }) !== 0,
+      '⑦ ★★★문에서 `_m` 을 떼면 **⑬ 이 빨개진다**(숙련 10 농부가 다시 초보와 같아지는 판)');
+  } finally { if (made5) { try { fs.unlinkSync(MUTPATH); } catch (e) { console.log('  ⚠변조 사본 정리 실패: ' + MUTPATH); } } }
+  // ★변조 여섯째 [T179] — 배율을 문 **뒤에서 한 번 더** 곱한 사본(이중 — T172 가 처음에 못 잡았던 그것)
+  let made6 = false;
+  try {
+    const mutSrc4 = SRC.replace('  const tax = amt * TAX_RATE;', '  v._t100Dbl = amt * _m;   // 하네스 변조본 — 배율을 두 번 문다\n  const tax = amt * TAX_RATE;');
+    ok(mutSrc4 !== SRC, '⑦ 이중 곱셈의 변조 지점이 소스에 **실재한다**');
+    fs.writeFileSync(MUTPATH, mutSrc4); made6 = true;
+    ok(run({ T100_FIELD_YIELD: '1', T100_MUT_MOD: MUTNAME }) !== 0,
+      '⑦ ★★★배율을 **두 번** 물리면 ⑬ 의 「한 줄」 감지기가 문다(이중 0)');
+  } finally { if (made6) { try { fs.unlinkSync(MUTPATH); } catch (e) { console.log('  ⚠변조 사본 정리 실패: ' + MUTPATH); } } }
   const mutated = VSRC.replace('  if (vil.econ) vil.econ._fieldCells = vil._farmSet.size;',
     '  if (vil.econ) { vil.econ._fieldCells = vil._farmSet.size; vil.econ.storage.food += 1; }');
   ok(mutated !== VSRC && bites(mutated),
@@ -400,6 +419,79 @@ console.log('\n⑨ 3사본 · 소스 계약');
     ok(B.indexOf(k) >= 0, `⑨ 번들에 \`${k}\` 가 있다`);
   const n = (B.match(/T100_FIELD_YIELD/g) || []).length, m = (SRC.match(/T100_FIELD_YIELD/g) || []).length;
   ok(n === m, '⑨ ★손잡이가 무는 자리 수가 소스와 **같다**', `번들 ${n} = 소스 ${m}`);
+}
+
+// ── ⑬ 배율 자리 [T179] — 대체가 삼킨 `skillMul·toolBoost·inputMult` ───────
+//   T172 가 사냥·벌목에서 잡은 것과 **같은 결함**이 밭에도 있었다: 농부의 추상 산출을 걷어내면
+//   그 안의 배율 셋도 같이 사라진다(숙련 10 농부와 초보가 같은 식량을 거둔다).
+//   ⇒ 문(`harvestToGranary`)은 **양**(`n`)과 **배율**(`mul`)을 따로 받고, 배율은 실체 자리가 계산한다.
+//   ⚠지금 부르는 자리(서버 수확 갈래)는 아직 `mul` 을 안 준다 ⇒ 미전달 = 1 = **종전 비트**.
+console.log('\n⑬ 배율 자리 [T179] — 대체가 삼킨 배율 셋을 문이 되받는가');
+{
+  const CODE = codeOf(SRC);
+  // ⓐ 문이 배율을 받는다 — 인수는 셋, 기본은 1
+  ok(/function harvestToGranary\(v, n, mul\) \{/.test(CODE),
+    '⑬ ★문이 **양과 배율을 따로** 받는다(`harvestToGranary(v, n, mul)`)');
+  ok(/const _m = \(typeof mul === 'number' && mul >= 0\) \? mul : 1;/.test(CODE),
+    '⑬ ★미전달·음수·NaN 은 **1** 이다(되돌림의 뿌리 — 지금 부르는 자리는 안 준다)');
+  // ⓑ 이중 0 — 배율이 곱해지는 줄이 **하나뿐**이다
+  const mLines = CODE.split('\n').filter((l) => /\b_m\b/.test(l) && l.indexOf('const _m =') < 0);
+  ok(mLines.length === 1 && /const amt = \(\(n > 0 \? n : 1\)\) \* T100_K \* _m;/.test(mLines[0]),
+    '⑬ ★★★배율이 물리는 줄이 **하나**다(이중 0 — 두 번 곱하면 빨개진다)', `${mLines.length}줄`);
+  ok(!/_t100HarvestN[^\n]*_m/.test(CODE),
+    '⑬ ★건수 계측(`_t100HarvestN`)은 배율에 **안 물린다**(수확 횟수지 양이 아니다)');
+  // ⓒ 걷어낸 자리가 배율을 **심는다** — 실체 자리가 읽을 정본 하나(사본 0)
+  ok(/if \(T100_FIELD_YIELD && npc\.currentJob === 'farmer'\) npc\._t172mul = skillMul \* toolBoost \* inputMult;/.test(CODE),
+    '⑬ ★★대체가 막는 그 자리에서 배율 셋을 **심어 둔다**(`_t172mul` — 사냥·벌목 문과 같은 필드)');
+  const setLines = CODE.split('\n').filter((l) => /_t172mul\s*=/.test(l));
+  const mulDefs = CODE.split('\n').filter((l) => /const _mul = /.test(l));
+  ok(setLines.length === 3 && setLines.every((l) => /_t172mul = (_mul|skillMul \* toolBoost \* inputMult);/.test(l))
+     && mulDefs.length === 2 && mulDefs.every((l) => /skillMul \* toolBoost \* inputMult/.test(l)),
+    '⑬ ★`_t172mul` 을 심는 자리가 **셋**(사냥·벌목·밭)이고 전부 **같은 셋 곱**이다',
+    `${setLines.length}자리 · _mul 정의 ${mulDefs.length}`);
+  ok(!/npc\._t172mul[^\n]*addProduce/.test(CODE) && /\) addProduce\(jdef\.output, baseAmt\);\n[\s\S]{0,900}?\n\s*if \(T100_FIELD_YIELD && npc\.currentJob === 'farmer'\) npc\._t172mul/.test(SRC),
+    '⑬ ★심기만 하고 **여기서 곱하지 않는다**(배율은 실체가 나는 곳에 한 번 · 대체 게이트 **바로 뒤**)');
+  // ⓓ 실측 — 숙련 10(×1.5) 이 실체에서 갈린다 · `inputMult=0` → 실체 0 · 미전달 비트 동일
+  const mk = () => econ.createVillage({ initialPop: 0, name: 'T179', fertility: 1.0 });
+  const v0 = mk(), v1 = mk(), v2 = mk(), v3 = mk();
+  const a0 = econ.harvestToGranary(v0, 1);          // 미전달
+  const a1 = econ.harvestToGranary(v1, 1, 1);       // 초보(숙련 0 · 맨손 · 투입 충족)
+  const aS = econ.harvestToGranary(v2, 1, 1.5);     // 숙련 10 = 1 + 10×0.05
+  const aZ = econ.harvestToGranary(v3, 1, 0);       // inputMult = 0
+  if (ON) {
+    ok(a0 === a1 && a0 > 0, '⑬ ★★미전달 = `mul 1` **비트 동일**(서버가 안 줘도 종전 그대로)', a0.toFixed(6));
+    ok(Math.abs(aS - a0 * 1.5) < 1e-12 && aS > a0,
+      '⑬ ★★★숙련 10 농부가 **실제로 더 거둔다**(×1.5 — 대체 전 세계의 그 배율)', `${a0.toFixed(4)} → ${aS.toFixed(4)}`);
+    ok(aZ === 0, '⑬ ★★`inputMult = 0` 이면 **실체가 0**(씨앗 없는 농부는 한 톨도 못 거둔다)');
+    ok(Math.abs((v2._t100HarvestN || 0) - 1) < 1e-12 && Math.abs((v2.storage.food || 0) - aS * 0.97) < 1e-9,
+      '⑬ 배율이 붙어도 **건수는 1** 이고 세금은 같은 꼴로 떨어진다', `건수 ${v2._t100HarvestN}`);
+  } else {
+    ok(a0 === 0 && a1 === 0 && aS === 0 && aZ === 0,
+      '⑬ [끔] 배율을 줘도 **한 톨도 안 넣는다**(손잡이가 먼저다 — 비트 동일)');
+  }
+  // ⓔ 실체 자리는 아직 서버다 — 이 카드는 랩/엔진 문만(회부: 켜기 판정 #11)
+  const VCODE = codeOf(VSRC);
+  const calls = VCODE.split('\n').filter((l) => l.indexOf('harvestToGranary') >= 0);
+  ok(calls.length === 1 && /harvestToGranary\(vil\.econ, 1\)/.test(calls[0]),
+    '⑬ ★생활층은 아직 **배율을 안 넘긴다**(서버 자리 = 회부 · 이 줄이 바뀌면 세계가 움직인다)');
+  ok(VCODE.indexOf('_t172mul') < 0,
+    '⑬ 생활층은 배율 정본(`_t172mul`)을 **아직 한 번도 안 읽는다**(회부: 농부 `_esk` 링크가 먼저다)');
+}
+
+// ── ⑭ 나머지 두 문은 살아 있다 [T179 §0ⓐ] ─────────────────────────────────
+//   채집(T135 `forageTakeFn`)·석재(T163 `stoneBudgetFn`)는 `baseAmt` 를 **안 덮는다**.
+//   표가 아니라 **회귀 방지**다 — 뒤 카드가 이 둘을 T154 꼴로 바꾸면 여기가 빨개진다.
+console.log('\n⑭ 나머지 두 문 — 채집·석재는 배율을 안 삼킨다(회귀 방지)');
+{
+  const CODE = codeOf(SRC);
+  ok(/const got = _realFn\(v, baseAmt \* repShare\) \|\| null;/.test(CODE),
+    '⑭ ★★채집 문은 `baseAmt` 를 **예산으로 건넨다**(덮어쓰기 0 — 배율 셋이 이미 그 안에 있다)');
+  ok(!/baseAmt\s*=\s*[^=]/.test(CODE.split("produceSpecial === 'forager'")[1].split("produceSpecial === 'cook'")[0]),
+    '⑭ ★채집 절 안에서 `baseAmt` 에 **다시 대입하는 줄이 없다**');
+  ok(/const stoneYield = _stoneK \* skillMul \* _forageScale \* 0\.9;/.test(CODE),
+    '⑭ ★★석재 문은 **관 굵기(`_stoneK`)만** 갈아 끼우고 `skillMul` 은 문 **뒤에** 남는다');
+  ok(/let _stoneK = \(v\.land\.stone \|\| 0\);/.test(CODE) && /if \(_sbFn\) \{ const _k = _sbFn\(v\); if \(Number\.isFinite\(_k\) && _k >= 0\) _stoneK = _k; \}/.test(CODE),
+    '⑭ 석재 문의 폴백이 곧 종전이다(미주입 = 비트 동일)');
 }
 
 console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===\n`);

@@ -920,15 +920,24 @@ function farmLandBoost(v) {
 //     여기 들어오는 값은 이미 파종창·물때·김매기·계절이 다 물린 **실제 수확**이다(이중 감산 금지).
 //   ⚠품목은 일반 `food` — 2-c(곳간 구성 = 구체 작물) 전이니 3판 규약 그대로다.
 //   끄면(`T100_FIELD_YIELD=0`) 한 톨도 안 넣는다 → T86 세계 **비트 동일**.
-function harvestToGranary(v, n) {
+//   ★★[T179 2026-09-12] **배율 자리** — T172 가 사냥·벌목에서 잡은 것과 **같은 결함**이 여기 있었다:
+//     농부의 `addProduce(jdef.output, baseAmt)` 를 대체가 걷어내면서 `skillMul·toolBoost·inputMult`
+//     셋이 **세계에서 지워졌다**(숙련 10 농부와 초보가 같은 식량을 거뒀다). 값 판정이 아니라 자리 결함이다.
+//   ⇒ 세 번째 인수 `mul` 로 **실체 자리가 계산한 배율**을 받는다(문은 양 `n` 만 · 배율은 따로 · 이중 0).
+//     정본은 `npc._t172mul` 하나다(아래 대체 자리에서 심는다 — 사본 0).
+//   ⚠**안 주면 1** — 지금 부르는 자리(`server/villages.js _lifeDoTask0`)는 아직 안 준다 ⇒ **종전 비트**.
+//     그쪽이 주려면 생활층 농부 ↔ econ 농부 링크(`_esk`)가 먼저 필요하다(사냥꾼엔 있고 농부엔 없다) —
+//     그건 **서버 자리**라 이 카드 밖이다(회부: 켜기 판정 #11 과 함께).
+function harvestToGranary(v, n, mul) {
   if (!T100_FIELD_YIELD || !v || !v.storage) return 0;
-  const amt = ((n > 0 ? n : 1)) * T100_K;
+  const _m = (typeof mul === 'number' && mul >= 0) ? mul : 1;   // ★[T179] 미전달 = 1(종전 비트) · 음수·NaN 도 1
+  const amt = ((n > 0 ? n : 1)) * T100_K * _m;
   v._grainToday = (v._grainToday || 0) + amt;
   const tax = amt * TAX_RATE;
   v.storage.food = (v.storage.food || 0) + (amt - tax);
   if (v.treasury) v.treasury.food = (v.treasury.food || 0) + tax;
   v._t100InflowToday = (v._t100InflowToday || 0) + amt;         // 오늘치 — ⓒ 텃밭 하한이 이걸 보고 모자란 만큼만 댄다
-  v._t100HarvestN = (v._t100HarvestN || 0) + (n > 0 ? n : 1);   // 계측 전용 누계(회계 아님 · 표가 스스로 말하게)
+  v._t100HarvestN = (v._t100HarvestN || 0) + (n > 0 ? n : 1);   // 계측 전용 누계(회계 아님 · 표가 스스로 말하게) · ★[T179] **건수는 배율에 안 물린다**(수확 횟수지 양이 아니다)
   return amt;
 }
 // ★★[T100 5판 · 재민/PM 판정 2026-09-07] **창설 곳간은 첫 수확까지다.**
@@ -2607,6 +2616,16 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
       //   ⚠막는 것은 이 **한 줄**뿐이다: 아래 부산물 루프(밀·쌀·보리·삼·모시)는 `baseAmt` 를 그대로
       //     타고 나가 T86 그대로다(섬유·곡물 사슬 무변 — 4판이 건드리는 것은 `food` 하나).
       if (!(T100_FIELD_YIELD && npc.currentJob === 'farmer')) addProduce(jdef.output, baseAmt);
+      // ★★[T179 2026-09-12] **걷어낸 자리에 배율만 남겨 둔다.** 위 한 줄이 농부의 추상 산출을 막는 순간
+      //   `baseAmt` 안의 `skillMul·toolBoost·inputMult` 도 같이 사라진다 — T154·T166 의 문이 `baseAmt` 를
+      //   통째로 덮어써서 저지른 것과 **같은 결함**이다(족보 145). 여기선 덮을 문이 없으니 **심어 둔다**:
+      //   실체 자리(생활층 수확 갈래)가 이걸 읽어 `harvestToGranary(v, n, mul)` 로 넘기면 산다.
+      //   ⚠**여기서 곱하지 않는다** — 곱하면 이중이다(배율은 실체가 나는 곳에 한 번).
+      //   ⚠읽는 자리가 아직 없으므로(서버 손잡이 끔 · `_esk` 농부 링크 없음) **세계는 안 움직인다**.
+      //   ⚠사냥·벌목 문과 **같은 필드**를 쓴다(정본 하나 — 사본 0). 농부는 `jobScale === 1` 이라 배율은 셋뿐.
+      //   ⚠`else` 가 아니라 **독립한 `if`** 다: 위 대체 게이트를 건드리는 돌연변이(T183 ⑦ 셋째)가
+      //     매달린 `else` 를 문법 오류로 만들어 **엉뚱한 이유로 빨개지는** 것을 막는다.
+      if (T100_FIELD_YIELD && npc.currentJob === 'farmer') npc._t172mul = skillMul * toolBoost * inputMult;
       if (jdef.byproduct) {
         for (const [r, rate] of Object.entries(jdef.byproduct)) {
           // ★모시(ramie) 수요-캡 공급(2026-07-13, 사용자 결정 — 교역 무교란): 재고가 수요(flowT=소비EMA×30, +부트스트랩 floor N×RAMIE_BOOT_PC) 이상이면 산출 스킵.

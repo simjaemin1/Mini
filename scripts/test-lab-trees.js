@@ -138,6 +138,28 @@ ok(/o\.job==='forager'&&o\.work/.test(fora), '분산 — 다른 채집꾼이 붙
 ok(/_e2\.n=Math\.max\(0,_e2\.n-_take\)/.test(fora), '딴 만큼 나무 재고에서 빠진다(베지 않는다)');
 ok(!/L_CHOP/.test(fora), '채집 자리에 벌목 눈금(L_CHOP) 0 — 따는 것과 베는 것은 다른 일');
 
+// ── ⑧-b 배율 자리 [T179] — 채집 문은 배율을 삼키지 않았다(회귀 방지) ────────
+sec('⑧-b 배율 자리 [T179] — 채집 문이 `baseAmt` 를 덮지 않는가');
+{
+  // T154·T166 의 문은 `baseAmt` 를 통째로 덮어써 `skillMul·toolBoost·inputMult` 를 지웠다(T172 가 고침).
+  //   채집 문(T135)은 그 꼴이 아니다 — `baseAmt * repShare` 를 **예산으로 건넨다**(배율이 예산 안에 산다).
+  //   3사본 둘(엔진 소스 · 랩 인라인 사본)을 같이 본다 — 한쪽만 바뀌면 여기가 빨개진다.
+  const ESRC = stripComments(fs.readFileSync(path.join(ROOT, 'sim', 'economy-sim.js'), 'utf8'));
+  const LSRC = stripComments(LAB);
+  for (const [nm, C] of [['엔진 소스', ESRC], ['랩 사본', LSRC]]) {
+    ok(/const got = _realFn\(v, baseAmt \* repShare\) \|\| null;/.test(C),
+      `⑧-b [${nm}] 채집 문이 baseAmt 를 **예산으로 건넨다**(덮어쓰기 0)`);
+    const seg = (C.split("produceSpecial === 'forager'")[1] || '').split("produceSpecial === 'cook'")[0];
+    ok(seg.length > 200 && !/baseAmt\s*=\s*[^=]/.test(seg),
+      `⑧-b [${nm}] 채집 절 안에 baseAmt **재대입이 없다**(배율 셋 생존)`);
+    // 밭 문 — T179 가 옮긴 자리(엔진 정본과 랩 사본이 같아야 한다)
+    ok(/function harvestToGranary\(v, n, mul\)/.test(C),
+      `⑧-b ★[${nm}] 밭 문이 **양과 배율을 따로** 받는다(T179 자리 옮김)`);
+    ok(/const amt = \(\(n > 0 \? n : 1\)\) \* T100_K \* _m;/.test(C),
+      `⑧-b ★[${nm}] 배율이 물리는 줄이 그 한 줄이다(이중 0)`);
+  }
+}
+
 // ── ⑨ 계측은 관측자 ─────────────────────────────────────────────────────────
 sec('⑨ 계측은 관측자 — 세계 규칙이 계측을 안 읽는다');
 const worldReads = (stripComments(LAB).match(/_tstat/g) || []).length;

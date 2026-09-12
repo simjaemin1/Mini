@@ -296,6 +296,21 @@ console.log('\n⑫ 공짜 돌 0 — 파는 쪽 재고를 엔진이 실제로 뺀
     '⑫ 매수량은 **예산 역산**이다(시장 충격 정산 — 문이 이 식을 우회하지 않는다)');
 }
 
+console.log('\n⑬ 배율 자리 [T179] — 문이 `skillMul` 을 삼키지 않았는가(회귀 방지)');
+{
+  // T172 가 사냥·벌목에서 잡은 결함: 문이 `baseAmt` 를 **통째로 덮어** 배율을 지웠다.
+  //   석재 문(T163)은 그 꼴이 아니다 — **관 굵기(`_stoneK`)만** 갈아 끼우고 곱은 문 **뒤에** 온다.
+  //   뒤 카드가 이 줄을 T154 꼴로 바꾸면 여기가 빨개진다(3사본 둘 다 본다).
+  for (const [nm, C] of [['소스', CODE], ['랩 사본', LCODE]]) {
+    ok(/const stoneYield = _stoneK \* skillMul \* _forageScale \* 0\.9;/.test(C),
+      `⑬ ★★[${nm}] 문 **뒤에** skillMul 이 남는다(숙련 10 채집꾼이 돌을 더 캔다)`);
+    ok(/let _stoneK = \(v\.land\.stone \|\| 0\);/.test(C) && !/baseAmt = [^\n]*_sbFn/.test(C),
+      `⑬ ★[${nm}] 문이 덮는 것은 **관 굵기 하나**다(baseAmt 무접촉 — 폴백이 곧 종전)`);
+  }
+  ok(!/toolBoost/.test(CODE.slice(CODE.indexOf('const _sbFn'), CODE.indexOf('const stoneYield'))),
+    '⑬ ⓘ `toolBoost`·`inputMult` 는 **문 이전부터** 이 줄에 없었다(문이 죽인 게 아니다 — T179 §0ⓐ)');
+}
+
 console.log(`\n=== T163·T173 랩 석재: 통과 ${pass} · 실패 ${fail} ===`);
-console.log('접점 심볼: t17-metrics|FLOOR.stone|land.stone|_stCost|STONE_NET|L_STONEREAL|L_STONE_TRADE|stoneBudgetFn|returnPullFn|scatterRocksPerCell');
+console.log('접점 심볼: t17-metrics|FLOOR.stone|land.stone|_stCost|STONE_NET|L_STONEREAL|L_STONE_TRADE|stoneBudgetFn|returnPullFn|scatterRocksPerCell|skillMul');
 process.exit(fail ? 1 : 0);
