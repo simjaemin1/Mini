@@ -257,7 +257,7 @@ const DAY_KCAL = KCAL.DAY_KCAL;                  // ★정본(사본 0)
 //   자란 만큼 분모가 부풀어 밭의 몫이 낮게 나온다 — 그건 틀린 수다).
 //   `gatedDays` 는 정본이 매 틱 써 두는 `_dpDebug.gated` 를 **세기만** 한다(판정 0 · 새 계산 0).
 const M = vils.map(() => ({ harvestN: 0, units: 0, foodEq: 0, sow: 0, fDays: 0, floorDays: 0, popMax: 0, first: null,
-  popDays: 0, cellDays: 0, gatedDays: 0, hungerDays: 0, housingDays: 0 }));
+  popDays: 0, cellDays: 0, gatedDays: 0, hungerDays: 0, housingDays: 0, idleDays: 0 }));
 const IX = new Map(vils.map((v, i) => [v, i]));
 const GRAN = {};
 let clearedTot = 0;
@@ -278,6 +278,7 @@ for (let day = 0; day < DAYS; day++) {
     m.popDays += n;
     m.cellDays += v._farmSet.size;
     m.housingDays += +(ev.housing || 0);
+    m.idleDays += +(ev._idleFrac || 0);
     if (ev._dpDebug && ev._dpDebug.gated) m.gatedDays++;
     if ((ev.hunger || 0) > 0) m.hungerDays++;
     if (ev.npcs && ev.npcs.length) m.fDays += (ev.counts && ev.counts.farmer) || 0;
@@ -330,6 +331,11 @@ for (let i = 0; i < world.villages.length; i++) {
     floorTot: +((v._t100FloorTot || 0)).toFixed(1), floorDays: m.floorDays, firstHarvest: m.first,
     popDays: m.popDays, cellDays: m.cellDays, gatedDays: m.gatedDays, hungerDays: m.hungerDays,
     housingMean: +(m.housingDays / DAYS).toFixed(1),
+    // ★[T183 ⓐ] `addProduce` 를 건너뛰는 바람에 켠 팔이 잃는 것 전수 — 정본이 이미 써 둔 값만 옮겨 적는다.
+    //   `_kDbg` = K 분해(자리·생산·연료) · `_idleFrac` = 잠재 대비 실제(여가→행복 · 교역 동시성 상한의 밑변).
+    kSlot: v._kDbg ? v._kDbg.slot : null, kProd: v._kDbg ? v._kDbg.prod : null, kFuel: v._kDbg ? v._kDbg.fuel : null,
+    idleFrac: v._idleFrac != null ? +(+v._idleFrac).toFixed(4) : null,
+    idleMean: +(m.idleDays / DAYS).toFixed(4),
     econFood: +((v.storage.food || 0)).toFixed(1), stockFoodEq: +econ.totalFoodEquivalent(v).toFixed(1),
     hunger: v.hunger != null ? +(+v.hunger).toFixed(3) : null,
     housing: v.housing != null ? +(+v.housing).toFixed(1) : null,
@@ -367,6 +373,10 @@ const out = {
   popDaysTot: M.reduce((a, m) => a + m.popDays, 0), cellDaysTot: M.reduce((a, m) => a + m.cellDays, 0),
   gatedDaysTot: M.reduce((a, m) => a + m.gatedDays, 0), hungerDaysTot: M.reduce((a, m) => a + m.hungerDays, 0),
   housingMeanTot: +M.reduce((a, m) => a + m.housingDays / DAYS, 0).toFixed(1),
+  idleMeanTot: +(M.reduce((a, m) => a + m.idleDays / DAYS, 0) / Math.max(1, M.length)).toFixed(4),
+  kProdTot: +per.reduce((a, p) => a + (p.kProd || 0), 0).toFixed(1),
+  kFuelTot: +per.reduce((a, p) => a + (p.kFuel || 0), 0).toFixed(1),
+  kSlotTot: +per.reduce((a, p) => a + (p.kSlot || 0), 0).toFixed(1),
   floorTot: +world.villages.reduce((a, v) => a + (v._t100FloorTot || 0), 0).toFixed(1),
   floorDaysTot: M.reduce((a, m) => a + m.floorDays, 0),
   firstHarvestDay: firsts.length ? Math.min(...firsts) : null,

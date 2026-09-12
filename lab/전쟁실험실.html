@@ -3924,7 +3924,28 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
   }
   // ★여유노동 비율 저장 — 교역 동시성 상한(tickTradeV2 spareCap)에서 사용.
   v._idleFrac = _potA > 0 ? Math.max(0, 1 - _actA / _potA) : 0;
-  gardenFloorTopUp(v);   // ★[T100 5판 ⓒ] 텃밭 하한 — 하루 한 번(끄면 즉시 0 을 돌려준다 · 위 함수)
+  // ★★[T183 2026-09-12 · 이 파일의 유일한 접점] **켠 팔에서도 농부의 잠재가 쌓인다.**
+  //   T176 §1 이 잰 비대칭: 켠 팔은 `addProduce` 를 건너뛰고 `harvestToGranary` 로 곳간에 직접 넣으므로
+  //   `dailyProductionPotential.food` 에 농부 몫이 **안 쌓인다.** 그 값을 밑변으로 쓰는 자리가 둘이다 —
+  //     `totalFoodProductionEquivalent(dailyProductionPotential)` → **prodK**(리비히 상한의 생산 다리),
+  //     `woodCapFlow += dailyProductionPotential.food × STRAW_FUEL_PER_FOOD` → **fuelK**(볏짚 연료 부양력).
+  //   ⇒ 켠 팔은 짚을 때면서(`_grainToday` 에는 들어온다) "짚이 없다"고 셌다. 그건 세계가 아니라 **계산 자리**다.
+  //   ★고치는 자리는 **실체가 나는 여기 하나**다(족보 145 "배율은 실체 나는 곳에" 와 같은 결):
+  //     오늘 밭이 곳간에 실제로 넣은 그 수를 **그대로** 잠재에도 적는다. 새 수 0 · 사본 0 ·
+  //     추상식 부활 0(4판이 걷어낸 `JOBS.farmer.base × 지력` 을 되살리지 않는다).
+  //   ★이중 0: 켠 팔에서 농부의 `food` 는 `addProduce` 를 **안 탄다**(위 `T100_FIELD_YIELD` 게이트 한 줄) —
+  //     그러니 잠재에 들어오는 길은 이 줄 하나뿐이다. 부산물(밀·쌀·보리)은 끈 팔과 **같은 길**로 간다(무변).
+  //   ★끈 팔 비트 동일: 끄면 `harvestToGranary` 가 `_t100InflowToday` 를 아예 안 만들고
+  //     `gardenFloorTopUp` 이 0 을 돌려주므로 `_pot` 이 0 이고 **아래 if 가 한 번도 안 열린다**(속성도 안 생긴다).
+  //   ⚠하루 시차: 생활층 수확은 econ 틱 **다음**에 돌므로 이 수는 어제치다 — 텃밭 하한(5판)이 이미 그 규약이다.
+  //   ★손잡이 밖: `T100_FIELD_YIELD` 를 **이 줄에서도** 본다. 실지에선 끈 팔에 `_t100InflowToday` 가
+  //     아예 안 생기지만(두 입구가 이미 손잡이를 본다), 밖에서 누가 그 필드를 심어도 끈 팔은 안 움직인다.
+  const _t100In = T100_FIELD_YIELD ? (v._t100InflowToday || 0) : 0;   // 오늘 수확이 곳간에 넣은 양(아래가 비우기 전에 읽는다)
+  const _t100Pot = _t100In + gardenFloorTopUp(v);   // + 텃밭 하한이 채운 양 — 둘 다 **밭이 낸 식량**이다
+  if (_t100Pot > 0) {
+    v._t100InflowToday = 0;   // ★텃밭을 끈 판(`T100_GARDEN=0`)에서도 오늘치로 비운다 — 누적 누수 차단
+    dailyProductionPotential.food = (dailyProductionPotential.food || 0) + _t100Pot;
+  }
 
   // ★S3 막석기 자급 안전망 — 도구(석기)가 치명적으로 부족(커버리지<SELF_TOOL_COV)하면 도구의존 노동자가 급할 때 막석기를 손수 자급.
   //   "농부는 도구만 급할 때 자급"(스펙 8) — 무기는 자급 안 함(석공·대장장이 전담). 낮은 노동(0.02/인), 돌 있을 때만. 정교 석기는 석공.

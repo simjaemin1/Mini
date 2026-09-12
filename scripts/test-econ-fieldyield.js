@@ -140,7 +140,7 @@ console.log('\n④ 무접촉 — 어부·사냥꾼·채집 산출은 안 건드�
   ok(/landBoost: \(v\) => v\.land\.game/.test(SRC), '④ 사냥꾼 `landBoost` 가 `v.land.game` 그대로다(소스)');
   const CODE = codeOf(SRC);
   const hits = CODE.split('\n').filter(l => l.indexOf('T100_FIELD_YIELD') >= 0).length;
-  ok(hits === 7, '④ ★손잡이를 무는 줄이 **일곱뿐**이다(선언 1 + `farmFlowPerDay` 1 + `harvestToGranary` 1 + `seedFoodDays` 1 + `gardenFloorTopUp` 1 + 대체 1 + 내보내기 1 — 주석 제외)', `${hits}줄`);
+  ok(hits === 8, '④ ★손잡이를 무는 줄이 **여덟뿐**이다(선언 1 + `farmFlowPerDay` 1 + `harvestToGranary` 1 + `seedFoodDays` 1 + `gardenFloorTopUp` 1 + 대체 1 + **잠재(T183) 1** + 내보내기 1 — 주석 제외)', `${hits}줄`);
   ok(/farmFlowPerDay\(v, _cf\.farmer \|\| 0\)/.test(SRC), '④ 부양력(prodK)도 **같은 함수**를 본다(K 만 옛 밑변이면 인구가 밭 없이 분다)');
   // 부양력은 켜면 앵커 그 자체다 — 용량과 산출이 같은 앵커를 본다.
   const v = econ.createVillage({ initialPop: 0, name: '픽스처', fertility: 0.8 });
@@ -223,6 +223,29 @@ if (!process.env.T100_CHILD) {
     ok(run({ T100_FIELD_YIELD: '1', T100_MUT_MOD: MUTNAME }) !== 0,
       '⑦ ★★★창설 곳간을 **45 로 되돌리면 ⑩ 이 빨개진다**(4판의 골짜기를 되살리는 판)');
   } finally { if (made2) { try { fs.unlinkSync(MUTPATH); } catch (e) { console.log('  ⚠변조 사본 정리 실패: ' + MUTPATH); } } }
+  // ★변조 셋째 [T183] — **두 번 넣는 판**: 농부 게이트를 지우면 실현(추상 `addProduce`)과 잠재(T183 자리)에
+  //   같은 밭 식량이 두 번 든다. 그 판이 초록이면 "이중 0" 은 빈말이다.
+  let made3 = false;
+  try {
+    const mutSrc3 = SRC.replace(
+      "if (!(T100_FIELD_YIELD && npc.currentJob === 'farmer')) addProduce(jdef.output, baseAmt);",
+      'addProduce(jdef.output, baseAmt);   // 하네스 변조본 — 대체를 걷어내 **두 번** 넣는다');
+    ok(mutSrc3 !== SRC, '⑦ [T183] 두 번 넣기의 변조 지점(대체 게이트)이 소스에 **실재한다**');
+    fs.writeFileSync(MUTPATH, mutSrc3); made3 = true;
+    ok(run({ T100_FIELD_YIELD: '1', T100_MUT_MOD: MUTNAME }) !== 0,
+      '⑦ ★★★실현에도 잠재에도 **두 번** 넣으면 빨개진다(③ 대체 · ⑫ 이중 0)');
+  } finally { if (made3) { try { fs.unlinkSync(MUTPATH); } catch (e) { console.log('  ⚠변조 사본 정리 실패: ' + MUTPATH); } } }
+  // ★변조 넷째 [T183] — 잠재에 **배수**를 끼우는 판(`_t100Pot * 2`). ⑫ⓑ 의 꼴 검사가 물어야 한다.
+  let made4 = false;
+  try {
+    const mutSrc4 = SRC.replace(
+      'dailyProductionPotential.food = (dailyProductionPotential.food || 0) + _t100Pot;',
+      'dailyProductionPotential.food = (dailyProductionPotential.food || 0) + _t100Pot * 2;');
+    ok(mutSrc4 !== SRC, '⑦ [T183] 잠재 배수의 변조 지점이 소스에 **실재한다**');
+    fs.writeFileSync(MUTPATH, mutSrc4); made4 = true;
+    ok(run({ T100_FIELD_YIELD: '1', T100_MUT_MOD: MUTNAME }) !== 0,
+      '⑦ ★★★잠재에 **×2** 를 끼우면 빨개진다(⑫ 꼴 검사 — 새 수 0 의 파수꾼)');
+  } finally { if (made4) { try { fs.unlinkSync(MUTPATH); } catch (e) { console.log('  ⚠변조 사본 정리 실패: ' + MUTPATH); } } }
   const mutated = VSRC.replace('  if (vil.econ) vil.econ._fieldCells = vil._farmSet.size;',
     '  if (vil.econ) { vil.econ._fieldCells = vil._farmSet.size; vil.econ.storage.food += 1; }');
   ok(mutated !== VSRC && bites(mutated),
@@ -307,6 +330,66 @@ console.log('\n⑪ 텃밭 하한 — 수확 없는 날의 바닥(T100 5판 ⓒ �
     ok(put === 0 && (v.storage.food || 0) === f0, '⑪ [끔/손잡이 0] 바닥이 **한 톨도 안 댄다**');
   }
   ok(/gardenFloorTopUp\(v\);/.test(SRC), '⑪ 하루 한 번 부르는 자리가 소스에 있다(econ 틱 · 생활층 아님)');
+}
+
+// ── ⑫ 켠 팔의 잠재 — 농부가 `dailyProductionPotential` 에서 사라지지 않는다 (T183) ─
+console.log('\n⑫ 켠 팔의 잠재 — 밭이 낸 식량이 **잠재에도** 쌓이나(T183 · 새 수 0)');
+{
+  // ⓐ 잠재를 건드리는 자리 전수 — 주석을 뺀 코드에서 센다(자리가 늘면 여기가 빨개진다)
+  const C = codeOf(SRC);
+  const hits = C.split('\n').map((l, i) => [i + 1, l]).filter(([, l]) => /dailyProductionPotential/.test(l));
+  const writes = hits.filter(([, l]) => /dailyProductionPotential(\[[^\]]+\]|\.food)\s*=/.test(l));
+  const reads = hits.filter(([, l]) => !/dailyProductionPotential(\[[^\]]+\]|\.food)\s*=/.test(l) && !/const dailyProductionPotential = \{\}/.test(l));
+  ok(hits.length === 5, '⑫ 잠재를 건드리는 자리는 **다섯**이다(선언 1 · 쓰기 2 · 읽기 2)', `실제 ${hits.length}`);
+  ok(writes.length === 2, '⑫ ★쓰는 곳 **둘** — `addProduce`(끈 팔의 길) · T183(켠 팔의 길)', `실제 ${writes.length}`);
+  ok(reads.length === 2, '⑫ 읽는 곳 **둘** — `totalFoodProductionEquivalent`(prodK) · 볏짚(fuelK)', `실제 ${reads.length}`);
+  ok(/const dailyFoodProdPotential = totalFoodProductionEquivalent\(dailyProductionPotential\);/.test(C)
+     && /\(dailyProductionPotential\.food \|\| 0\) \* STRAW_FUEL_PER_FOOD/.test(C),
+    '⑫ 읽는 두 곳의 꼴이 그대로다(prodK 다리 · 볏짚 다리)');
+
+  // ⓑ T183 자리 — **정확한 꼴**로 있다(배수·중복을 끼워 넣으면 여기가 빨개진다)
+  ok(/const _t100In = T100_FIELD_YIELD \? \(v\._t100InflowToday \|\| 0\) : 0;/.test(C),
+    '⑫ ★비우기 **전에** 오늘치를 읽고, **이 줄에서도 손잡이를 본다**(끈 팔은 밖에서 심어도 안 움직인다)');
+  ok(/const _t100Pot = _t100In \+ gardenFloorTopUp\(v\);/.test(C),
+    '⑫ ★수확분 + 텃밭 하한분 — 둘 다 밭이 낸 식량이다(하한만 빼면 잠재가 실체보다 작아진다)');
+  ok(/dailyProductionPotential\.food = \(dailyProductionPotential\.food \|\| 0\) \+ _t100Pot;/.test(C),
+    '⑫ ★★★잠재에 적는 수는 **실체 그대로**다 — 배수 0 · 새 수 0(`* 2` 같은 걸 끼우면 여기가 빨개진다)');
+  ok(/v\._t100InflowToday = 0;/.test(C.slice(C.indexOf('const _t100Pot'))),
+    '⑫ 텃밭을 끈 판에서도 오늘치로 비운다(누적 누수 차단)');
+  ok(!hits.some(([, l]) => /farmFlowPerDay|JOBS\.farmer\.base/.test(l)),
+    '⑫ ★잠재를 채우는 자리에 **추상식이 없다**(4판이 걷어낸 `base × 지력` 으로 잠재를 메우지 않는다 — 사본 0)');
+  ok(/const _capFlow = farmFlowPerDay\(v, _cf\.farmer \|\| 0\)/.test(C),
+    '⑫ 그 추상식이 사는 곳은 **`PRODK_CAP` 의 용량 다리** 하나다(T100 4판이 밭 밑변으로 갈아 끼운 그 자리 · 무변)');
+
+  // ⓒ 기능 — 잠재가 실제로 움직이나(`_kDbg.fuel` 의 볏짚 다리로 본다 · 상수 사본 0)
+  //   ★자명 통과 금지: Δ 가 0 이면 빨강. 그리고 **선형**이어야 한다(2배 넣으면 2배 움직인다).
+  const probe = (inj) => {
+    const w = econV2.createWorldV2({ seed: 5, villageCount: 1, namePool: ['가'], infoRange: 5000, raidPer100: 0 });
+    const v = w.villages[0];
+    v._t100InflowToday = inj;
+    const _l = console.log; console.log = () => {};
+    try { econV2.tickWorldV2(w); } finally { console.log = _l; }
+    return { fuel: v._kDbg ? v._kDbg.fuel : null, prod: v._kDbg ? v._kDbg.prod : null, food: +(v.storage.food || 0).toFixed(6) };
+  };
+  const p0 = probe(0), p1 = probe(50), p2 = probe(100);
+  if (ON) {
+    ok(p1.fuel > p0.fuel, '⑫ ★★★밭이 낸 식량을 넣으면 **연료 부양력(fuelK)이 오른다**(0 이면 빨강 — 자명 통과 금지)',
+      `${p0.fuel} → ${p1.fuel} (Δ ${(p1.fuel - p0.fuel).toFixed(1)})`);
+    const d1 = p1.fuel - p0.fuel, d2 = p2.fuel - p0.fuel;
+    ok(d1 > 0 && Math.abs(d2 - 2 * d1) <= 0.15,
+      '⑫ ★**선형**이다 — 두 배 넣으면 두 배 움직인다(상한·EMA 가 아니라 볏짚 다리를 탔다는 뜻)',
+      `Δ(50) ${d1.toFixed(1)} · Δ(100) ${d2.toFixed(1)}`);
+    ok(p0.food === p1.food && p1.food === p2.food,
+      '⑫ ★곳간은 **한 톨도 안 변한다** — 이 자리는 잠재만 적는다(실체는 `harvestToGranary` 가 이미 넣었다 · 이중 0)');
+    ok(p0.prod === p1.prod && p1.prod === p2.prod,
+      '⑫ ★★[T176 §1 정정] prodK 는 **안 움직인다** — `PRODK_CAP`(기본 켬)이 잠재 다리를 덮어쓰기 때문이다.',
+      `prod ${p0.prod} 고정 · 그래서 켠 팔이 실제로 잃던 것은 **볏짚(fuelK) 하나**다`);
+  } else {
+    ok(p0.fuel === p1.fuel && p1.fuel === p2.fuel && p0.prod === p1.prod,
+      '⑫ ★★[끔] 밖에서 `_t100InflowToday` 를 **심어도** fuelK·prodK 가 한 자도 안 변한다(비트 동일 — 손잡이 밖)',
+      `fuel ${p0.fuel} · prod ${p0.prod} 고정`);
+    ok(p0.food === p1.food, '⑫ [끔] 곳간도 안 변한다');
+  }
 }
 
 // ── ⑨ 3사본 ────────────────────────────────────────────────────────────────
