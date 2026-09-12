@@ -311,8 +311,11 @@ console.log('\n⑬ 도구 마모 문(T180) — 접점 한 줄 · 배수 1 이면
   ok(/\}, 0\) \* _twMul;/.test(CODE), '⑬ ★마모 합에 **배수 하나만** 곱한다(감가율은 그대로)');
   ok(/const DAILY_TOOL_WEAR_PER_FARMER = 0\.02;/.test(CODE) && /const DAILY_TOOL_WEAR_PER_OTHER = 0\.01;/.test(CODE),
     '⑬ ★★**새 수 0** — 감가율 두 수가 그대로다(랩이 주는 것은 A/B 의 눈금)');
-  ok(!/toolWearMul/.test(fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8')),
-    '⑬ ★★서버는 이 문을 **안 연다**(= 라이브 무변)');
+  //   ★[T195] 서버에도 자리가 생겼다 — 그러나 **기본 1 이면 안 연다**(`!== 1` 가드 · 아래 ⑰⑱ 이 본다).
+  //     T180 때의 "서버는 이 문을 안 연다" 는 이 줄로 바뀐다: **채택값에서** 안 연다.
+  ok(/if \(econ\.TOOL_WEAR_MUL !== 1\) world\.toolWearMul = econ\.TOOL_WEAR_MUL;/
+       .test(codeOf(fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8'))),
+    '⑬ ★★서버는 **정본이 1 이 아닐 때만** 이 문을 연다(채택값 1 = 라이브 무변)');
   ok(/if \(window\.L_TOOL_WEAR === undefined\) window\.L_TOOL_WEAR = 1;/.test(LCODE),
     '⑬ ★랩 손잡이 기본 **1**(= 지금 값 = 종전 비트)');
   ok(/if\(Number\.isFinite\(m\) && m>0 && m!==1\) ECON_WORLD\.toolWearMul=m;/.test(LCODE),
@@ -387,4 +390,61 @@ console.log('\n⑯ 배율 자리 [T179] — 문이 `skillMul` 을 삼키지 않�
     '⑯ ⓘ `toolBoost`·`inputMult` 는 **문 이전부터** 이 줄에 없었다(문이 죽인 게 아니다 — T179 §0ⓐ)');
 }
 
+// ════════════════════════════════════════════════════════════════════════════════════════
+// ★★[T195 2026-09-12] **배수의 정본 자리** — 엔진 상수 + env 손잡이 + 서버 한 줄.
+//   T180 의 문은 랩·계측기만 열 수 있었다. 서버 세계에 값을 둘 자리를 만들고, **기본 1 이면
+//   문을 아예 안 연다**(`!== 1` 가드)는 것을 **자식 프로세스**로 확인한다(족보 ⑨ · T165 ⓒ 문법).
+// ════════════════════════════════════════════════════════════════════════════════════════
+console.log('\n⑰ 정본 자리(T195) — 상수 · 손잡이 · 서버 한 줄');
+{
+  const VCODE2 = codeOf(fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8'));
+  ok(/const TOOL_WEAR_MUL = \(\(\) => \{/.test(CODE), '⑰ 엔진에 상수 자리가 있다(`TOOL_WEAR_MUL`)');
+  ok(econ.TOOL_WEAR_MUL === 1, '⑰ ★★**기본 1**(= 현행 채택값 · env 미설정)', String(econ.TOOL_WEAR_MUL));
+  ok(/process\.env\.T195_TOOL_WEAR/.test(CODE), '⑰ 손잡이 이름이 `T195_TOOL_WEAR` 다');
+  const vLines = VCODE2.split('\n').filter((l) => l.indexOf('toolWearMul') >= 0).length;
+  ok(vLines === 1, '⑰ ★서버 접점이 **한 줄**이다', `${vLines}줄`);
+  ok(/상한만/.test(SRC) && /하한/.test(SRC),
+    '⑰ ★[T191 ㉢] 하향 문장 옆에 "상한만 말했다 · 하한은 T191 표" 가 적혀 있다');
+  ok(/DAILY_TOOL_WEAR_PER_FARMER = 0\.02/.test(CODE) && /DAILY_TOOL_WEAR_PER_OTHER = 0\.01/.test(CODE),
+    '⑰ ★**새 수 0** — 감가율 두 수가 그대로다');
+}
+
+console.log('\n⑱ 정본 자리 — env 없으면 문이 안 열리고, 있으면 랩 주입과 **같은 세계**인가(자식 프로세스)');
+{
+  //   ★엔진은 손잡이를 **모듈 적재 때** 읽는다 ⇒ 같은 프로세스에서는 못 가른다(족보 ⑨).
+  const { execFileSync } = require('child_process');
+  const PROG = `
+    process.env.ENABLE_VILLAGES='0';
+    const econ=require(${JSON.stringify(path.join(ROOT, 'sim', 'economy-sim'))});
+    const econV2=require(${JSON.stringify(path.join(ROOT, 'sim', 'economy-sim-v2'))});
+    const MODE=process.env.T195_MODE;   // node -e 에서는 argv[1] 부터다 — 헷갈리지 않게 env 로 받는다
+    const w=econV2.createWorldV2({seed:515,villageCount:0,picker:'rational',infoRange:5000,raidPer100:0.005});
+    w.villages=[];w.events=[];w.caravans=[];
+    if(MODE==='canon'){ if(econ.TOOL_WEAR_MUL!==1) w.toolWearMul=econ.TOOL_WEAR_MUL; }
+    else if(MODE==='lab'){ const m=0.9; if(Number.isFinite(m)&&m>0&&m!==1) w.toolWearMul=m; }
+    for(let i=0;i<4;i++){const v=econ.createVillage({fertility:1.1,water:0.8,stone:0.25,ore:0.1,wood:1.0,game:0.6,arable:1,size:60,initialPop:35,name:'마을'+i});
+      v._world=w;v.coord={x:i*150,y:0};w.villages.push(v);}
+    w.day=0; for(let d=0;d<300;d++) econV2.tickWorldV2(w,d);
+    const dig=JSON.stringify(w.villages.map(v=>({n:v.npcs.length,t:+(v.storage.tool||0).toFixed(9),s:+(v.storage.stone||0).toFixed(9)})));
+    process.stdout.write('MUL='+(w.toolWearMul===undefined?'none':w.toolWearMul)+'|'+require('crypto').createHash('sha1').update(dig).digest('hex').slice(0,12));
+  `;
+  const run = (mode, mul) => {
+    const env = Object.assign({}, process.env);
+    if (mul == null) delete env.T195_TOOL_WEAR; else env.T195_TOOL_WEAR = String(mul);
+    env.T195_MODE = mode;
+    //   ⚠엔진 적재가 배너를 찍는다(`[econ-sim-v2] …`) — **마지막 줄**만 읽는다.
+    const out = String(execFileSync(process.execPath, ['-e', PROG], { env, stdio: ['ignore', 'pipe', 'ignore'] })).trim();
+    const lines = out.split('\n').filter((l) => l.indexOf('MUL=') >= 0);
+    return lines.length ? lines[lines.length - 1].trim() : out;
+  };
+  const a = run('canon', null), b = run('canon', 0.9), c = run('lab', null);
+  ok(a.startsWith('MUL=none'), '⑱ ★★env 가 없으면 `world.toolWearMul` 이 **아예 안 붙는다**', a.split('|')[0]);
+  ok(b.startsWith('MUL=0.9'), '⑱ `T195_TOOL_WEAR=0.9` 면 정본이 0.9 를 건넨다', b.split('|')[0]);
+  ok(a.split('|')[1] !== b.split('|')[1], '⑱ ★두 팔이 **다른 세계**다(손잡이가 죽어 있지 않다)');
+  ok(b.split('|')[1] === c.split('|')[1],
+    '⑱ ★★★`=0.9` 정본 주입 = **랩 주입과 같은 지문**(문이 하나라는 증거)', `${b.split('|')[1]} vs ${c.split('|')[1]}`);
+}
+
+console.log(`\n=== T195 정본 자리 포함: 통과 ${pass} · 실패 ${fail} ===`);
+console.log('접점 심볼: toolWearMul|TOOL_WEAR_MUL|T195_TOOL_WEAR|DAILY_TOOL_WEAR_PER_FARMER|DAILY_TOOL_WEAR_PER_OTHER|_stCost|toolBoostShared|STONE_NET_STOCK');
 process.exit(fail ? 1 : 0);

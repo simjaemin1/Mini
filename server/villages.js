@@ -2517,6 +2517,11 @@ function init(deps) {
     //   ⚠계측기(`scripts/t17-metrics.js`)도 **같은 문**을 부른다. 한쪽만 부르면 여덟 수가
     //     대체를 못 보고 "안 움직인다"고 말한다 — 그게 족보 130 이 경고한 사고다.
     require('./trees').attachToWorld(world);
+    // ★★[T195 2026-09-12] 도구 마모 배수 — **정본에서 한 번 읽어** econ 에 건넨다(`attachToWorld` 와 같은 자리).
+    //   ⚠기본은 1 이고, 1 이면 **문을 아예 안 연다** — 랩 `twInstallHook` 의 `m!==1` 가드와 같은 문법이라
+    //     `T195_TOOL_WEAR` 를 안 준 세계는 `world.toolWearMul` 이 **없는** 세계다(= 비트 동일).
+    //   값 판정 전이므로 채택값은 1 — 눈금 표는 `보고/T191_2026-09-12.md`, 판정은 재민(#12).
+    if (econ.TOOL_WEAR_MUL !== 1) world.toolWearMul = econ.TOOL_WEAR_MUL;
     let maxDay = 0;
 
     const seededById = new Map((seeded || []).map(r => [r.dbId, r]));

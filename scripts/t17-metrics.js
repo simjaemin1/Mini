@@ -92,6 +92,10 @@ require('../server/trees').attachToWorld(world);
 //   카드 T191 ②: 랩 8마을이 못 보는 꼬리(족보 144)를 51마을로 한 번 본다.
 //   ⚠이 줄을 여기 둔 이유: ⓚ 여덟 수를 **다시 구현하지 않기 위해서**다(계측기 정본 재구현 0 · T163 규약).
 //     `T191_TOOLWEAR` 를 안 주면 `world.toolWearMul` 이 없고 엔진 배수는 1 이다 — 기준선 계측기 무변.
+// ★[T195] **서버가 쓰는 그 줄을 그대로** 쓴다(`server/villages.js` `attachToWorld` 바로 아래) —
+//   그래야 이 계측기가 재는 세계가 서버 세계와 같은 배선이다(사본 0 · 그 줄 한 자도 안 바꿨다).
+if (econ.TOOL_WEAR_MUL !== 1) world.toolWearMul = econ.TOOL_WEAR_MUL;
+//   계측 전용 명시 덮어쓰기(T191 표가 쓴 이름 — 정본 손잡이보다 뒤에 온다).
 { const _tw = parseFloat(process.env.T191_TOOLWEAR || ''); if (Number.isFinite(_tw) && _tw > 0 && _tw !== 1) world.toolWearMul = _tw; }
 for (const s of seeds) {
   const ev = econ.createVillage({ ...s.lp, initialPop: P.INITIAL_POP, name: s.name });

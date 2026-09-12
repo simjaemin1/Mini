@@ -435,6 +435,18 @@ const DAILY_FOOD_CONSUMPTION = 1.0;
 //   throughput(0.4/일·인) 대비 과대(90인 마을 ~2.5/일 소모 → 대장장이 7~8명 필요, 저커버리지 poverty-trap→아사). 절반으로 하향 = 석기를 내구 자본재로 취급.
 const DAILY_TOOL_WEAR_PER_FARMER = 0.02;  // 농부가 도구 마모(석기)
 const DAILY_TOOL_WEAR_PER_OTHER = 0.01;
+// ★★★[T195 2026-09-12] **배수의 정본 자리.** 위 두 수는 그대로 두고, 그 곁에 배수 하나를 둔다.
+//   ⓐ 왜 여기인가: T180 이 뚫은 문(`world.toolWearMul`)은 **랩과 계측기만** 열 수 있었다 —
+//     서버 세계엔 그 값을 둘 자리가 없었다(T191 은 계측기 한 줄로 심었다). 자리를 만든다.
+//   ⓑ **기본 1 = 비트 동일.** `T195_TOOL_WEAR` 를 안 주면 배수가 1 이고, 서버는 그때 문을 **아예 안 연다**
+//     (`server/villages.js` 가 `!== 1` 일 때만 건넨다 — 랩 `twInstallHook` 과 같은 가드).
+//   ⓒ **새 수 0** — 눈금은 A/B 이고 값 판정은 재민(#12)이다. 지금 채택값은 **1**(= 현행).
+//   ★[T191 ㉢] 위 하향 문장은 **상한만** 말했다(*"throughput 대비 과대 → poverty-trap"*) —
+//     **하한은 말하지 않는다.** 하한 쪽 눈금 표는 `보고/T191_2026-09-12.md` §3(랩 넷)·§2(서버 ×0.75)다.
+const TOOL_WEAR_MUL = (() => {
+  const v = parseFloat((typeof process !== 'undefined' && process.env && process.env.T195_TOOL_WEAR) || '');
+  return (Number.isFinite(v) && v > 0) ? v : 1;
+})();
 
 // ★★[T17 2026-09-02 · 재민 확정] **ECON 수술의 세 축 손잡이.**
 //   지시 §3 이 "①~③ 각각 끈 시드 1개씩"을 대조군으로 요구한다 — 파급을 축별로 귀속할 수 있어야
@@ -4589,7 +4601,8 @@ function computeVillagePrices(v) {
 }
 
 module.exports = {
-  STONE_NET_STOCK,   // ★[T180] STONE_NET 1차 문턱 — v2 수출 게이트가 읽는다(사본 0)
+  STONE_NET_STOCK,
+  TOOL_WEAR_MUL,   // ★[T195] 도구 마모 배수 정본 — 서버가 world 를 세울 때 한 번 읽는다(기본 1 = 문 안 열림)   // ★[T180] STONE_NET 1차 문턱 — v2 수출 게이트가 읽는다(사본 0)
 
   _LEGACY_CONTRIBUTES: LEGACY_CONTRIBUTES,
   totalFoodEquivalent,   // 진단 하네스가 병기고 식량안보 게이트를 정확히 재려면 필요
