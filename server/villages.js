@@ -2527,6 +2527,9 @@ function init(deps) {
     //   ⚠계측기(`scripts/t17-metrics.js`)도 **같은 문**을 부른다. 한쪽만 부르면 여덟 수가
     //     대체를 못 보고 "안 움직인다"고 말한다 — 그게 족보 130 이 경고한 사고다.
     require('./trees').attachToWorld(world);
+    // ★★[T213] 사냥 소득 문 — **손잡이가 켜졌을 때만** 심는다(`forageTakeFn`·`priceFn` 과 같은 계약).
+    //   끄면 이 줄이 아무것도 안 해서 `world.huntIncomeFn` 이 `undefined` 고, 엔진은 종전 식을 쓴다(비트 동일).
+    if (T213_HUNT_REAL) world.huntIncomeFn = _huntIncomeServer;
     let maxDay = 0;
 
     const seededById = new Map((seeded || []).map(r => [r.dbId, r]));
@@ -3255,6 +3258,9 @@ function _openDayJobs(now) {
     }
     // econ 1일 틱 — tickWorldV2 내부 로그(캐러밴·회복 등)는 침묵시키고 아래 요약 1줄만.
     //   (헤드리스 하네스 regression-check 126행과 같은 검증된 패턴)
+    // ★★[T213] 어제 잡은 마릿수를 econ 이 읽을 자리에 확정하고 오늘 치를 0 에서 다시 센다.
+    //   랩 `lifeDayAll` 머리의 그 두 줄과 **같은 순서**다(econ 틱 → 생활층이라 econ 이 읽는 것은 어제 것 — 하루 시차).
+    for (const _v of state.villages) { const _e = _v.econ; if (!_e) continue; _e._hkillDay = _v._hkill || 0; _v._hkill = 0; }
     const _log = console.log;
     console.log = () => {};
     try {
@@ -3540,6 +3546,21 @@ const LIFE_ON = process.env.VILLAGE_LIFE !== '0';
 //     부양력 `prodK` 를 직접 움직인다 ⇒ 살리는 순간 **기준선이 바뀐다**(승인 게이트 · §0ⓐ).
 //   ⇒ 기본은 **끔**: 안 심으면 econ 이 `null → ×1` 로 받아 **비트 동일**이다.
 const T198_BRIDGE = process.env.T198_BRIDGE === '1';
+// ★★[T213 2026-09-12] **사냥 소득을 서버 장부에 묶는 문.**
+//   엔진엔 문이 이미 있다(`sim/economy-sim.js` `huntIncomeFn` — T154 가 뚫고 T172 가 배율 자리를 고쳤다).
+//   심는 것은 여태 **랩뿐**이라 서버 51마을은 아직 추상 소득(`base 0.7 × land.game`)을 쓴다.
+//   ⚠이 손잡이가 꺼져 있으면 `world.huntIncomeFn` 이 **아예 안 붙는다** ⇒ 엔진이 종전 식을 그대로 쓴다(비트 동일).
+const T213_HUNT_REAL = process.env.T213_HUNT_REAL === '1';
+// ★사냥 소득 — **랩과 같은 말**을 한다: 그 마을이 어제 실제로 잡은 마릿수를 사냥꾼 수로 나눈 1인분.
+//   랩 정본(`lab/전쟁실험실.html` `huntIncomeReal`): `const kills=v._hkillDay||0, hn=(v.counts&&v.counts.hunter)||0;`
+//   ⚠**새 수 0** — 마리당 1 단위라는 첫 판(T154)을 그대로 쓴다. 도체율·가죽 무게는 축산 표 뒤(#6 재민).
+//   ⚠엔진은 사람마다 한 번씩 부른다 ⇒ 1인분을 돌려준다(합이 아니다 — 랩과 같은 계약).
+//   ⚠배율(`_mul`)은 **안 쓴다**: T172 가 배율을 실체 자리(잡는 곳)로 옮겼기 때문이다. 여기서 곱하면 이중이다.
+function _huntIncomeServer(v, npc, baseAmt, _mul) {
+  const hn = (v && v.counts && v.counts.hunter) || 0;
+  if (!(hn > 0)) return 0;
+  return ((v && v._hkillDay) || 0) / hn;
+}
 // ★밭 브리지 — econ 이 읽는 공간 값을 심는 **유일한 자리**(사본 0 · 부팅·개간·랩이 같은 줄을 쓴다).
 //   유도는 생활층 정본 셋에서만 온다(**새 수 0**):
 //     `_clearedFrac = |개간| / (|개간| + |미개간 존닝|)`   — `_farmSet` · `_potSet`
@@ -5301,7 +5322,10 @@ function _lifeGameDay(vil, day) {
   const m = _huntBandBuild(vil);
   if (!m) return;
   //   ① 사냥꾼 하루치 차감 — 정본 하나(하루 틱도 하네스도 이 문으로 들어온다)
-  huntHunters(vil, state.deps && state.deps.players, day);
+  //   ★[T213] 그 함수는 **오늘 실제로 빠진 마릿수 합**을 돌려주는데 여태 버리고 있었다.
+  //     랩과 같은 칸 이름(`_hkill`)에 적어 둔다 — 소득 문이 읽는 것은 econ 틱이 확정한 `_hkillDay` 다.
+  //     ⚠손잡이와 무관하게 적는다: 아무도 안 읽으면 무해하고(종전 비트), §0 표가 이 칸을 본다.
+  vil._hkill = huntHunters(vil, state.deps && state.deps.players, day);
   // ② 회복 — 주 단위 배치 로지스틱(랩 10760 그대로 · r 이 느려 1차 근사 동일)
   if (day % 7 === 0) for (const [k2, g2] of m) {
     if (g2 > 0 && g2 < L_GAMEMAX) { const ng = g2 + 7 * L_GAMER * g2 * (1 - g2 / L_GAMEMAX);
@@ -6458,6 +6482,9 @@ module.exports = {
     _farmMulProbe: (vil, npc) => _farmMul(vil, npc),
     // ★[T198] 공간 브리지를 심는 **그 함수 자체**를 내준다 — 하네스가 유도식을 다시 적으면 그게 사본이다.
     _fieldBridgeProbe: (vil) => _fieldBridge(vil),
+    // ★[T213] 사냥 소득 문 **그 함수 자체** — 하네스가 나눗셈을 다시 적으면 그게 사본이다.
+    _huntIncomeProbe: (v, npc, baseAmt, mul) => _huntIncomeServer(v, npc, baseAmt, mul),
+    _t213HuntReal: () => T213_HUNT_REAL,
     get VILLAGE_MAX() { return VILLAGE_MAX; },
     get INITIAL_POP() { return INITIAL_POP; },
     get SZ() { return SZ; },

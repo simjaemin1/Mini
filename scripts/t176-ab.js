@@ -277,6 +277,7 @@ const M = vils.map(() => ({ harvestN: 0, units: 0, foodEq: 0, sow: 0, fDays: 0, 
   surplusSum: 0, surplusNegDays: 0,   // `surplusEMA.food` 의 합·음수 일수(v2 의 "적자 마을" 신호)
   famineDays: 0,                  // `totalFoodEquivalent < N×30` — 배분의 기근 게이트가 열린 날
   clearedFracDays: 0,             // `_clearedFrac` 이 실제로 심긴 날(0 이면 그 다리는 죽어 있다)
+  hkillDays: 0,                   // ★[T213] `_hkillDay > 0` 인 날(0 이면 이 자는 사냥 층을 안 돈다 — 족보 130)
   priceSum: 0, priceN: 0,         // 식량 그림자가격 표본(10일마다 · 배분식의 `w('food')`)
   // ★[T193] 장부·주거 게이트 — 전부 정본이 써 둔 값을 **읽기만** 한다
   ledgerDays: 0,                  // `dailyProductionBuf.food > 0` 인 날(장부가 밭을 본 날 · 덩어리인가 흐름인가)
@@ -385,6 +386,7 @@ for (let day = 0; day < DAYS; day++) {
     m.surplusSum += _sp; if (_sp < 0) m.surplusNegDays++;
     if (n > 0 && econ.totalFoodEquivalent(ev) < n * 30) m.famineDays++;
     if (ev._clearedFrac != null) m.clearedFracDays++;
+    if ((ev._hkillDay || 0) > 0) m.hkillDays++;   // ★[T213 · 관측 전용] 서버 사냥 장부가 실제로 선 날(0 이면 이 자는 그 층을 안 돈다)
     if (day % 10 === 0 && typeof world.priceFn === 'function') {
       try { const _pt = world.priceFn(ev); if (_pt && _pt.food > 0) { m.priceSum += _pt.food; m.priceN++; } } catch (e) {}
     }
@@ -475,7 +477,7 @@ for (let i = 0; i < world.villages.length; i++) {
     dpHealthSum: +m.dpHealthSum.toFixed(2), dpSum: +m.dpSum.toFixed(2),
     mapBeds: v._mapBeds != null ? +v._mapBeds : null, d40: m.d40,
     surplusMean: +(m.surplusSum / DAYS).toFixed(4), surplusNegDays: m.surplusNegDays,
-    famineDays: m.famineDays, clearedFracDays: m.clearedFracDays,
+    famineDays: m.famineDays, clearedFracDays: m.clearedFracDays, hkillDays: m.hkillDays,
     priceFood: m.priceN ? +(m.priceSum / m.priceN).toFixed(4) : null,
     taxFood: +((v.treasury && v.treasury.food) || 0).toFixed(1),
     foodImported: +((v.tradeStats && v.tradeStats.foodImported) || 0).toFixed(1),

@@ -297,6 +297,21 @@ if (!process.env.T100_CHILD) {
     ok(run({ T100_FIELD_YIELD: '1', T193_LEDGER: '1', T100_MUT_MOD: MUTNAME }) !== 0,
       '⑦ ★★★장부에 **×2** 를 끼우면 빨개진다(⑮ 꼴·양 검사 — 새 수 0 의 파수꾼)');
   } finally { if (made9) { try { fs.unlinkSync(MUTPATH); } catch (e) { console.log('  ⚠변조 사본 정리 실패: ' + MUTPATH); } } }
+  // ★변조 아홉째 [T213] — 장부를 **다시 버리는** 사본(여태 그러던 그 상태)
+  {
+    const mutV = VSRC.replace('vil._hkill = huntHunters(vil, state.deps && state.deps.players, day);',
+                              'huntHunters(vil, state.deps && state.deps.players, day);');
+    ok(mutV !== VSRC, '⑦ [T213] 장부 줄의 변조 지점이 소스에 **실재한다**');
+    ok(!/vil\._hkill = huntHunters\(/.test(codeOf(mutV)),
+      '⑦ ★★★반환을 **다시 버리면** ⑱ⓐ 가 문다(소득 문이 늘 0 을 읽는 판)');
+  }
+  // ★변조 열째 [T213] — 확정을 econ 틱 **뒤로** 옮긴 사본(하루 시차가 뒤집히는 판)
+  {
+    const L = 'for (const _v of state.villages) { const _e = _v.econ; if (!_e) continue; _e._hkillDay = _v._hkill || 0; _v._hkill = 0; }\n';
+    const mutV2 = VSRC.replace('    ' + L, '').replace('    } finally { console.log = _log; }', '    } finally { console.log = _log; }\n    ' + L);
+    ok(mutV2 !== VSRC && mutV2.indexOf('_e._hkillDay = _v._hkill') > mutV2.indexOf('state.econV2.tickWorldV2(state.world)'),
+      '⑦ ★★★확정을 econ 틱 **뒤로** 옮기면 ⑱ⓑ 의 순서 검사가 문다(하루 시차가 뒤집힌다)');
+  }
   const mutated = VSRC.replace('  _fieldBridge(vil);\n  const bo = {',
     '  _fieldBridge(vil); vil.econ.storage.food += 1;\n  const bo = {');
   ok(mutated !== VSRC && bites(mutated),
@@ -711,6 +726,87 @@ console.log('\n⑰ 공간 브리지 [T198] — 두 칸을 손잡이 뒤에 심�
   ok(mulLines.length === 2, '⑰ ★두 칸을 곱하는 자리가 **둘**이다(농부 `baseAmt` · 부양력 `_capFlow`)', `${mulLines.length}곳`);
   ok(mulLines.every((l) => l.indexOf('T100_FIELD_YIELD') < 0),
     '⑰ ★★★그 둘은 **T100 손잡이 밖**이다 — 살리면 **끈 팔도 움직인다**(승인 게이트 · §0ⓐ)');
+}
+
+// ── ⑱ 사냥 소득의 서버 자리 [T213] ────────────────────────────────────────
+//   엔진 문(`huntIncomeFn`)은 T154 가 뚫고 T172 가 배율 자리를 고쳤는데 **심는 것은 랩뿐**이었다.
+//   T213 이 서버 `world` 에 손잡이 뒤로 심는다 — 끄면 문이 **아예 안 붙어** 종전 식 그대로다.
+console.log('\n⑱ 사냥 소득 서버 자리 [T213] — 장부를 버리지 않고 문에 잇는가');
+{
+  const VCODE = codeOf(VSRC);
+  const ON213 = process.env.T213_HUNT_REAL === '1';
+  // ⓐ 장부 — `huntHunters` 의 반환을 버리지 않는다
+  ok(/vil\._hkill = huntHunters\(vil, state\.deps && state\.deps\.players, day\);/.test(VCODE),
+    '⑱ ★★하루 차감 함수의 **반환(오늘 잡은 합)을 적는다**(여태 버리던 수 — 칸 이름은 랩과 같다)');
+  const hh = VCODE.split('\n').filter((l) => /huntHunters\(/.test(l) && l.indexOf('function') < 0);
+  ok(hh.length === 1, '⑱ ★차감을 부르는 자리가 **한 줄**이다(정본 하나 — 사본 0)', `${hh.length}줄`);
+  // ⓑ 확정 — econ 틱 **직전**(랩 `lifeDayAll` 머리와 같은 순서 · 하루 시차)
+  ok(/for \(const _v of state\.villages\) \{ const _e = _v\.econ; if \(!_e\) continue; _e\._hkillDay = _v\._hkill \|\| 0; _v\._hkill = 0; \}/.test(VCODE),
+    '⑱ ★★어제치를 `_hkillDay` 로 확정하고 오늘 치를 0 에서 다시 센다(랩과 같은 두 줄)');
+  ok(VCODE.indexOf('_e._hkillDay = _v._hkill') < VCODE.indexOf('state.econV2.tickWorldV2(state.world)'),
+    '⑱ ★★★확정이 econ 틱보다 **앞**이다 — econ 이 읽는 것은 어제 것(랩과 같은 하루 시차)');
+  // ⓒ 손잡이 — 끄면 문이 아예 안 붙는다
+  ok(/const T213_HUNT_REAL = process\.env\.T213_HUNT_REAL === '1';/.test(VCODE),
+    '⑱ ★손잡이가 있고 `=== 1` 이라야 켜진다(기본 끔)');
+  ok(/if \(T213_HUNT_REAL\) world\.huntIncomeFn = _huntIncomeServer;/.test(VCODE),
+    '⑱ ★★★끄면 `world.huntIncomeFn` 이 **아예 안 붙는다**(엔진이 종전 식 — 비트 동일의 뿌리)');
+  const inj = VCODE.split('\n').filter((l) => /world\.huntIncomeFn\s*=/.test(l));
+  ok(inj.length === 1, '⑱ 문을 심는 자리가 **한 줄**이다', `${inj.length}줄`);
+  ok(!/world\.woodIncomeFn\s*=/.test(VCODE),
+    '⑱ ⓘ 벌목 문은 **안 심었다** — 서버엔 벤 그루를 세는 장부가 없다(§0ⓐ · 회부)');
+  // ⓓ 배율 — 문 뒤에서 곱하지 않는다(T172 규약)
+  const body = (VSRC.split('function _huntIncomeServer')[1] || '').split('\n}')[0];
+  ok(body.indexOf('_mul') === body.lastIndexOf('_mul') || !/[*/+]\s*_mul|_mul\s*[*/+]/.test(body),
+    '⑱ ★★배율(`_mul`)을 **안 쓴다** — 배율은 실체가 나는 곳에 한 번이다(T172 · 이중 0)');
+  ok(!/[0-9]\s*[*/]|[*/]\s*[0-9]/.test(codeOf(body)),
+    '⑱ ★식에 **지어낸 수가 없다**(장부 ÷ 사냥꾼 수뿐 — 새 수 0)');
+  // ⓔ 헤드리스 — 관측자 게이트 **밖**에서 돈다
+  ok(VCODE.indexOf('_lifeGameDay(vil, state.world.day | 0)') < VCODE.indexOf('const anyNear = state.deps.anyViewerNear;'),
+    '⑱ ★★★사냥 하루 틱이 **관측자 게이트보다 앞**이다 — 관측자 없는 마을도 장부가 돈다(T190 §0ⓑ 함정 회피)');
+  // ⓕ 랩과 같은 말인가 — 랩 정본 식과 대조(사본이 갈리면 빨개진다)
+  const LABSRC = fs.readFileSync(path.join(ROOT, 'lab', '전쟁실험실.html'), 'utf8');
+  ok(/const kills=v\._hkillDay\|\|0, hn=\(v\.counts&&v\.counts\.hunter\)\|\|0;/.test(LABSRC)
+     && /return kills\/hn;/.test(LABSRC),
+    '⑱ ★랩 정본이 여전히 `_hkillDay ÷ counts.hunter` 다(서버가 같은 말을 하는지의 기준)');
+  // ⓖ 실측 — **그 함수 자체**를 불러 잰다(사본 0)
+  const V = R('server/villages.js');
+  const hp = V.__labProbe && V.__labProbe._huntIncomeProbe;
+  if (typeof hp === 'function') {
+    ok(hp({ _hkillDay: 12, counts: { hunter: 4 } }, {}, 99, 1.5) === 3,
+      '⑱ ★★★어제 12마리 · 사냥꾼 4명 → **1인분 3**(엔진이 사람마다 부른다)');
+    ok(hp({ _hkillDay: 12, counts: { hunter: 4 } }, {}, 99, 1.5) === hp({ _hkillDay: 12, counts: { hunter: 4 } }, {}, 99, 1),
+      '⑱ ★★배율을 바꿔도 **같은 수**다(문은 양만 — 배율은 실체 자리)');
+    ok(hp({ _hkillDay: 12, counts: { hunter: 0 } }, {}, 99, 1) === 0
+       && hp({ counts: { hunter: 3 } }, {}, 99, 1) === 0,
+      '⑱ 사냥꾼이 없거나 장부가 비면 **0**(지어낸 폴백 0)');
+    ok(typeof V.__labProbe._t213HuntReal === 'function' && V.__labProbe._t213HuntReal() === ON213,
+      '⑱ 손잡이 상태를 하네스가 **정본에서** 읽는다', String(ON213));
+  } else {
+    ok(false, '⑱ `__labProbe._huntIncomeProbe` 가 없다(하네스가 정본을 못 부른다 — 사본 금지)');
+  }
+  // ⓘ 이어서 돌린다 — 차감 정본 → 장부 → 문. 사이에 손으로 적은 수가 없다.
+  {
+    const K = V.L_GAMEMAX;
+    const m = new Map(); for (let i = 0; i < 12; i++) m.set((100 + i * 2) + ',100', K);
+    const vil = { name: 'T213', ccx: 100, ccy: 100, npcPids: ['h1', 'h2'], _gameRich: m,
+      _gameTot0: m.size * K, _baseGame: 1.0, econ: { land: { game: 1.0 }, counts: { hunter: 2 } } };
+    const players = new Map([
+      ['h1', { simJob: 'hunter', _huntWk: { cx: 100, cy: 100 } }],
+      ['h2', { simJob: 'hunter', _huntWk: { cx: 102, cy: 100 } }],
+    ]);
+    const took = V.huntHunters(vil, players, 1);          // ★정본 차감 함수 그대로
+    ok(took > 0, '⑱ [상황] 사냥꾼 둘이 실제로 잡는다(자명 통과 금지)', took.toFixed(3));
+    vil.econ._hkillDay = took;                            // 확정 줄이 하는 일(위 ⓑ 가 그 줄을 소스에서 본다)
+    const per = hp(vil.econ, {}, 99, 1);
+    ok(Math.abs(per - took / 2) < 1e-12,
+      '⑱ ★★★차감 정본이 뺀 수가 **그대로** 1인분 소득이 된다(환산 0 · 사본 0)', `${took.toFixed(3)} ÷ 2 = ${per.toFixed(3)}`);
+    ok(Math.abs(per * 2 - took) < 1e-12, '⑱ 사람 수를 곱하면 장부로 **되돌아온다**(잃는 것도 더하는 것도 없다)');
+  }
+  // ⓗ 벌목 — 서버엔 벨 것을 세는 장부가 없다(§0ⓐ 의 근거를 코드에 남긴다)
+  ok(VSRC.indexOf('forestRich =') < 0 && !/vil\._wcut/.test(VCODE),
+    '⑱ ★★서버엔 `forestRich` 도 `_wcut` 도 **없다** — 벤 그루를 세는 자리가 없다(T166 은 랩만)');
+  ok(/_lifeAct\(npc, job === 'lumberjack' \? '벌목'/.test(VCODE),
+    '⑱ ⓘ 서버 벌목은 **시각 NPC 의 `gather`** 다(관측자 근처에서만 돈다 — 그래서 헤드리스 장부가 안 생긴다)');
 }
 
 console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===\n`);
