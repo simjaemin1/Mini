@@ -69,6 +69,7 @@ async function waitHttp(url, tries = 900) {
   });
   ok(await waitHttp(`http://localhost:${CPORT}/zones`), 'central 기동');
   ok(await waitHttp(`http://localhost:${ZPORT}/health`), 'zone 기동');
+
   let zmap = null;
   for (let i = 0; i < 120; i++) {
     zmap = await (await fetch(`http://localhost:${CPORT}/zones`)).json();
@@ -402,18 +403,11 @@ async function waitHttp(url, tries = 900) {
     return { errs };
   }
 
-  // ── 첫 사람: 추천 원클릭(마을은 서버가 고른다) ────────────────────────────
-  const t0 = Date.now();
-  const r1 = await runScript('첫 사람 · 추천 원클릭', null, true);
-  const t1 = Date.now();
-
-  // ── 두 번째 사람: **다른 유형** 마을에서 같은 대본 ────────────────────────
-  const recV = info.villages.find((v) => v.vid === info.recommend);
-  const other = info.villages.find((v) => v.ch !== (recV && recV.ch)) || info.villages.find((v) => v.vid !== info.recommend);
-  ok(!!other, '유형이 다른 마을이 세계에 있다', other ? `${other.chKo} ${other.name} (추천은 ${recV && recV.chKo})` : 'X');
-  if (other) await runScript(`두 번째 사람 · ${other.chKo} ${other.name}`, other.vid, false);
-  const t2 = Date.now();
-
+  // ★★[T181 2026-09-12] **호를 대본보다 먼저 걷는다.** T174 가 잰 것이 이유다:
+  //   대본이 수백 게임일을 돌린 뒤에는 **의뢰 줄이 없어** 기여가 안 쌓인다(게이트가 아니라 빈 판).
+  //   ⇒ 판이 젊을 때 ①~⑤ 를 걷고, 그 뒤 대본이 제 두 사람을 걷고, 마지막에 ⑥~⑨ 를 마저 걷는다.
+  //   ⚠이 순서가 대본을 밀지 않는 이유: ⑤까지는 **아무것도 시작 화면에 안 올린다**
+  //     (`이방인 받기` 는 기본 꺼짐 — 유저 마을은 줄에 안 실린다 · T19 규약).
   // ═══ ★★[T174 2026-09-11] **온보딩 전체 호** — 세 카드가 각자 제 절만 재고 넘긴 그 호 ════════
   //   T128(빈터·건립·소개문) · T167(받기·시작 화면 줄·인사가 소개문) · T159(소속 표지·인출)이
   //   **한 판에서** 참인지 본다. 여기서는 브라우저를 안 쓴다 — 재는 것이 그림이 아니라 **계약**이고,
@@ -421,28 +415,39 @@ async function waitHttp(url, tries = 900) {
   //   ⚠**깨지는 자리는 고치지 않는다**(이 카드는 하네스만) — 걸음 표에 적고 회부한다.
   console.log('\n══ [T174] 온보딩 전체 호 — 기여 → 빈터 → 건립 → 인구 → 받기 → 시작 → 인사 → 인출 ══');
   const ARC = [];
-  const step = (n, okv, note) => { ARC.push({ n, ok: !!okv, note: note === undefined ? '' : String(note) }); return !!okv; };
+  //   ★걸음은 **그 자리에서 찍는다** — 판이 중간에 죽어도 어디까지 갔는지가 남는다
+  //     (1차 판이 표를 끝에만 찍었다가 프로세스가 조용히 죽어 아무것도 안 남았다).
+  const step = (n, okv, note) => {
+    const r = { n, ok: !!okv, note: note === undefined ? '' : String(note) };
+    ARC.push(r);
+    console.log(`    ${r.ok ? '○' : '●'} ${r.n}${r.note ? '  — ' + r.note : ''}`);
+    return !!okv;
+  };
   {
     const WebSocket = require('ws');
-    const wsConnect = (username, password, startVid) => new Promise((resolve, reject) => {
+    const wsConnect = (username, password, startVid, port) => new Promise((resolve, reject) => {
       const q = new URLSearchParams({ username, password, name: username, color: '#5a9ae0' });
       if (startVid != null) q.set('start_vid', String(startVid));
-      const ws = new WebSocket(`ws://localhost:${ZPORT}/?${q}`);
+      const ws = new WebSocket(`ws://localhost:${port || ZPORT}/?${q}`);
       const C = { ws, username, pid: null, playerId: null, notices: [], msgs: [], closed: false };
       const to = setTimeout(() => reject(new Error(`${username} 접속 시간초과`)), 30000);
       ws.on('message', (raw) => {
         let m = null; try { m = JSON.parse(String(raw)); } catch (e) { return; }
-        C.msgs.push(m);
+        //   ★★틱은 담지 않는다 — 30Hz 짜리가 몇 분이면 수십만 개다. 1차 판이 여기서
+        //     **조용히 죽었다**(표도 안 남기고). 나머지도 마지막 300개만 든다.
+        if (m.type !== 'tick' && m.type !== 'gauges') { C.msgs.push(m); if (C.msgs.length > 300) C.msgs.shift(); }
         if (m.type === 'welcome') { C.pid = m.pid; C.playerId = m.playerId; clearTimeout(to); resolve(C); }
         else if (m.type === 'notice') C.notices.push(String(m.text || ''));
       });
       ws.on('error', (e) => { clearTimeout(to); reject(e); });
       ws.on('close', () => { C.closed = true; });
       C.beat = setInterval(() => { try { if (ws.readyState === 1) ws.send(JSON.stringify({ type: 'ping' })); } catch (e) {} }, 2000);
+      //   ★알림도 마지막 200줄만(같은 이유)
+      C.trim = setInterval(() => { if (C.notices.length > 200) C.notices.splice(0, C.notices.length - 200); }, 5000);
     });
     const snd = (C, o) => { try { C.ws.send(JSON.stringify(o)); } catch (e) {} };
     const chat = (C, t) => snd(C, { type: 'chat', text: t });
-    const shut = (C) => { try { clearInterval(C.beat); C.ws.close(); } catch (e) {} };
+    const shut = (C) => { try { clearInterval(C.beat); clearInterval(C.trim); C.ws.close(); } catch (e) {} };
     const lastN = (C, n) => JSON.stringify(C.notices.slice(-(n || 1)));
     //   ★막힌 땅을 피해 가며 선다(e2e-friends 와 같은 규약 · 판정 자리에 이모지 0)
     //   ⚠후보를 **가까이** 둔다 — 초안은 한 걸음 37px 씩 밀어 24번째엔 900px 밖이었고,
@@ -460,56 +465,138 @@ async function waitHttp(url, tries = 900) {
     };
     const jget2 = async (u) => { try { const r = await fetch(u); return r.ok ? await r.json() : null; } catch (e) { return null; } };
 
-    let A = null, NEWVID = null;
-    try {
-      A = await wsConnect('arcfounder', 'arcpw');
-      await sleep(1200);
-      step("⓪' ws 손님 하나(대본 뒤 세계)", !!A.playerId, A.playerId);
+    // ★★[T181 2026-09-12] **제 판**을 띄운다 — T174 가 잰 것이 곧 이유다: 대본 뒤 세계는
+    //   수백 게임일이 지나 **의뢰 줄이 없다**(게이트가 아니라 빈 판이었다). 호 ①~⑤ 를 걸으려면
+    //   **새 판**이 필요하다. 기동 문법은 `test-handoff-body` 의 두 번째 존 그대로다(새 픽스처 0):
+    //   같은 central(3010) · 다른 포트(3021) · 다른 존 id(`nippon`) · 제 DB.
 
-      // ── 걸음 ① 기여 3회 — 게시판 의뢰를 실제로 납품한다(픽스처는 물건만 준다)
-      const si0 = await jget2(`http://localhost:${ZPORT}/startinfo`);
-      const V = si0 && si0.ok && si0.villages.find((v) => !v.player);
-      step("①'a 전제: NPC 마을 하나", !!V, V ? `${V.name} (vid ${V.vid})` : '없다');
-      if (V) {
+    //   ★★[T181 2026-09-12] **젊은 판 걷기는 손잡이 뒤에 둔다(`ARC_FIRST=1`).**
+    //     실측: 이 절을 대본보다 먼저 두면 ①② 가 **초록**이 된다(기여 3/3 · 빈터 (14832,78704) r=320) —
+    //     T174 회부 2("젊은 판이 필요하다")가 그렇게 닫혔다. 그런데 **이 상자(2코어)에서는**
+    //     그 뒤가 못 버틴다: 건립을 부르면 하네스가 예외 없이 죽고(3판), 건립을 꺼도 곧 죽는다.
+    //     ⇒ **기본은 끈다**(대본이 늘 돌아야 한다) · 메모리가 넉넉한 판에서 `ARC_FIRST=1` 로 켠다.
+    let A = null, NEWVID = null, HALL = null;
+    if (process.env.ARC_FIRST !== '1') {
+      step('⓪b~② 젊은 판 걷기', false, '`ARC_FIRST=1` 로 켠다 — 켜면 ①② 초록(실측 · 보고 §0-ⓒ) · 이 상자에선 그 뒤가 못 버틴다');
+      step('③ 건립(village_start→advance×3)', false, '미도달 — 회부');
+      step('④ 인구(곳간 식량→주민)', false, '미도달 — 회부');
+      step('⑤ 곳간 3일치', false, '미도달 — 회부');
+    } else {
+    try {
+        let si0 = null;
+        for (let i = 0; i < 180; i++) {
+          si0 = await jget2(`http://localhost:${ZPORT}/startinfo`);
+          if (si0 && si0.ok && si0.villages && si0.villages.length) break;
+          await sleep(1000);
+        }
+        const V = si0 && si0.ok && si0.villages.find((v) => !v.player);
+        step('⓪b 제 판에 NPC 마을이 섰다', !!V, V ? `${V.name} (vid ${V.vid}) · ${si0.villages.length}곳` : '없다');
+        if (!V) throw new Error('마을 없음');
+
+        A = await wsConnect('arcfounder', 'arcpw', V.vid | 0);
+        await sleep(1500);
+        step('⓪c 그 마을을 시작지로 접속', !!A.playerId, A.playerId);
         await warp(A, (V.cx | 0) * 32 + 16, (V.cy | 0) * 32 + 16);
+
+        // ── ① 기여 3회 — 판이 새것이라 의뢰 줄이 열려 있다
         let done = 0;
-        //   ⚠`rows[].item` 은 **재화**다 — 낼 수 있는 **품목**은 같은 줄의 `give` 가 준다(장부 정본).
-        //     초안이 재화 이름으로 주고 재화 이름으로 냈다가 납품 0 이었다(그 줄이 이 주석이다).
-        //   ⚠`want` 는 **낱개 수**이고 `remain` 은 **재화 단위**다 ⇒ 넉넉히 내고 남는 건 돌려받는다
-        //     (그래야 그 의뢰가 **닫히고**, 닫혀야 `r.done` 이 서고, 그래야 기여가 오른다).
-        //   ⚠판이 한 번에 한 줄만 열려 있을 수 있다 — 다 채우면 **다음 게임일에** 새 줄이 선다.
-        //     초안이 그 자리에서 `break` 해 기여 1 에서 멈췄다(하루 0.5초짜리 판이라 기다리면 된다).
-        for (let k = 0; k < 40 && done < 3; k++) {
-          A.msgs.length = 0; snd(A, { type: 'village_board', vid: V.vid | 0 }); await sleep(900);
+        for (let k = 0; k < 60 && done < 3; k++) {
+          A.msgs.length = 0; snd(A, { type: 'village_board', vid: V.vid | 0 }); await sleep(800);
           const bd = A.msgs.slice().reverse().find((m) => m.type === 'village_board' && m.board && Array.isArray(m.board.rows));
           const row = bd && bd.board.rows.find((r) => r && (r.remain | 0) > 0 && Array.isArray(r.give) && r.give.length);
-          if (!row) {
-            //   ★게시판이 **왜** 안 열렸나를 표에 남긴다(게이트인지 빈 판인지 — 없으면 회부가 헛돈다)
-            if (!bd) ARC._boardErr = (A.notices.slice(-1)[0] || '(답 없음)');
-            await sleep(2000); continue;
-          }
-          const give = row.give[0];
-          const n = Math.max(4, (row.remain | 0) * 4);
-          snd(A, { type: '__e2e_give', items: { [give]: n } }); await sleep(700);
+          if (!row) { if (!bd) ARC._boardErr = (A.notices.slice(-1)[0] || '(답 없음)'); await sleep(1500); continue; }
+          const give = row.give[0], n = Math.max(4, (row.remain | 0) * 4);
+          snd(A, { type: '__e2e_give', items: { [give]: n } }); await sleep(500);
           A.notices.length = 0;
           snd(A, { type: 'village_deliver', vid: V.vid | 0, item: give, want: n });
-          await sleep(1500);
+          await sleep(1200);
           if (A.notices.some((t) => /납품/.test(t))) done++;
         }
-        //   ★상태는 **정본이 이미 내주는 통로**로 읽는다(`onboarding_state` · 새 관측창 0)
         A.msgs.length = 0; snd(A, { type: 'onboarding_state' }); await sleep(900);
         const st1 = A.msgs.slice().reverse().find((m) => m.type === 'onboarding_state' && m.state);
         const contrib = st1 ? (st1.state.contrib | 0) : -1;
-        step("①' ws 재현: 기여 3회", contrib >= 3, `기여 ${contrib}/${st1 ? st1.state.need : '?'} · 납품성사 ${done}`
+        step('① 기여 3회', contrib >= 3, `기여 ${contrib}/${st1 ? st1.state.need : '?'} · 납품성사 ${done}`
           + (contrib < 3 && ARC._boardErr ? ` · 게시판: ${ARC._boardErr}` : ''));
-        step("②' ws 재현: 빈터 권리", !!(st1 && st1.state.lotOk), st1 ? `lotOk=${!!st1.state.lotOk} · 빈터 ${st1.state.lot ? '있다' : '없다'}` : '못 읽음');
-        ARC._lot = st1 && st1.state.lot ? st1.state.lot : null;
-      }
-    } catch (e) {
-      step("⓪' ws 손님 하나(대본 뒤 세계)", false, e.message);
-    }
+        const LOT = st1 && st1.state.lot ? st1.state.lot : null;
+        step('② 빈터 권리', !!(st1 && st1.state.lotOk && LOT), LOT ? `(${Math.round(LOT.x)},${Math.round(LOT.y)}) r=${LOT.r}` : '없다');
+        if (!LOT) throw new Error('빈터 없음');
 
+        // ── ③④⑤ 건립·인구·곳간 — **이 상자에서는 못 걷는다(실측 · 손잡이 뒤로 뺐다)**
+        //   ★★measured: `village_start` 를 보내는 순간 **하네스 프로세스가 통째로 죽는다** —
+        //     예외도, 거부 메시지도, 종료 코드도 없다. 걸음을 그 자리에서 찍게 해 둔 덕에
+        //     마지막 줄이 `· 착공 보냄` 이라는 것까지 남았다(세 판 연속 같은 자리 · arc11·12·13).
+        //     브라우저를 나중에 띄워 메모리를 비켜 줘도 같았고, 그때는 더 앞(기여)에서 죽었다.
+        //   ⇒ **상자(2코어)의 한계로 본다.** 코드는 지우지 않고 `ARC_FOUND=1` 뒤에 둔다 —
+        //     메모리가 넉넉한 판에서 그 한 줄만 켜면 ③④⑤ 가 이어진다(다음 카드가 쓸 자리다).
+        if (process.env.ARC_FOUND !== '1') {
+          step('③ 건립(village_start→advance×3)', false, '이 상자에서 `village_start` 가 하네스를 죽인다(실측 3판) — `ARC_FOUND=1` 로 켠다');
+          step('④ 인구(곳간 식량→주민)', false, '③ 뒤 — 미도달');
+          step('⑤ 곳간 3일치', false, '③ 뒤 — 미도달');
+        } else {
+        // ── ③ 건립 — 돌 30 / 돌 40+통나무 20 / 통나무 60 · 곡괭이(픽스처는 물건만 준다)
+          //   ★판이 조용히 죽던 자리라 **한 걸음마다 찍는다**(무엇을 하다 죽었는지 남긴다).
+          process.on('uncaughtException', (e) => { console.log('    ‼ uncaught:', e && e.message); });
+          process.on('unhandledRejection', (e) => { console.log('    ‼ rejection:', e && e.message); });
+          console.log('    · 빈터로 이동');
+          await warp(A, LOT.x, LOT.y);
+          console.log('    · 재료 지급(돌·통나무·곡괭이)');
+          snd(A, { type: '__e2e_give', items: { stone: 400, wood: 400, pickaxe: 3 } }); await sleep(900);
+          console.log('    · 착공 보냄');
+          A.notices.length = 0;
+          snd(A, { type: 'village_start', atX: Math.round(LOT.x), atY: Math.round(LOT.y) });
+          await sleep(1500);
+          let site = null;
+          for (let k = 0; k < 12 && !site; k++) {
+            const m = A.msgs.slice().reverse().find((x) => x.type === 'building_added' && x.building && x.building.type === 'village_site');
+            if (m) site = m.building;
+            else { await sleep(700); }
+          }
+          step('③a 회관 착공(village_start)', !!site, site ? `site ${site.id}` : lastN(A, 2));
+          if (!site) throw new Error('착공 실패');
+          let founded = null;
+          for (let k = 0; k < 12 && !founded; k++) {
+            A.notices.length = 0; A.msgs.length = 0;
+            snd(A, { type: 'village_advance', buildingId: site.id }); await sleep(1500);
+            if (A.notices.some((t) => /이\(가\) 섰다|마을이 섰다/.test(t))) founded = true;
+            const hm = A.msgs.slice().reverse().find((x) => x.type === 'building_added' && x.building && x.building.type === 'village_hall');
+            if (hm) { HALL = hm.building; founded = true; }
+          }
+          step('③ 건립(foundPlayerVillage)', !!founded, founded ? (HALL ? `회관 ${HALL.id}` : '섰다') : lastN(A, 2));
+          if (!founded) throw new Error('건립 실패');
+          //   ★새 마을의 vid — 시작 화면 줄에서 **사람이 세운 마을**로 찾는다(정본이 세는 그 칸)
+          for (let k = 0; k < 20 && NEWVID == null; k++) {
+            const si = await jget2(`http://localhost:${ZPORT}/startinfo`);
+            const pv = si && si.ok && si.villages.find((v) => v.player);
+            if (pv) NEWVID = pv.vid | 0; else await sleep(1000);
+          }
+          step('③b 새 마을이 세계에 등록됐다', NEWVID != null, NEWVID != null ? `vid ${NEWVID}` : '못 찾음(받기 전이라 줄에 없을 수 있다)');
+
+          // ── ④⑤ 인구 · 곳간 3일치 — 곳간에 식량을 넣고 게임일을 보낸다(잠 0 · 게임분)
+          if (HALL) {
+            for (let k = 0; k < 6; k++) {
+              snd(A, { type: '__e2e_give', items: { food: 300 } }); await sleep(400);
+              snd(A, { type: 'village_deposit', buildingId: HALL.id, want: { food: 300 } }); await sleep(900);
+            }
+          }
+          let elig = null;
+          for (let k = 0; k < 90; k++) {
+            const d = await jget2(`http://localhost:${ZPORT}/welcomedbg`);
+            const row = d && d.villages && d.villages.find((r) => (r.vid | 0) === (NEWVID | 0));
+            if (row) { elig = row; if ((row.pop | 0) >= 1 && (row.foodDays || 0) >= 3) break; }
+            await sleep(1500);
+          }
+          step('④ 인구(주민이 깃든다)', !!(elig && (elig.pop | 0) >= 1), elig ? `인구 ${elig.pop}` : '관측창 못 읽음');
+          step('⑤ 곳간 3일치(자립일수 ≥ 3)', !!(elig && (elig.foodDays || 0) >= 3), elig ? `자립 ${elig.foodDays}일` : '관측창 못 읽음');
+        }
+      } catch (e) {
+        step('③~⑤ (제 판)', false, e.message);
+      }
+    }
     if (A) shut(A);
+    A = null;
+    //   ★자리를 비운다 — 뒤에 실클라 대본이 돈다(2코어 상자에서 이 한 줄이 브라우저를 살린다)
+    await sleep(3000);
+    if (global.gc) { try { global.gc(); } catch (e) {} }
     //   ★★①② 는 **이 대본이 위에서 이미 실클라로 걷는다**(같은 파일 · 같은 판):
     //     `누적 기여 n/3` · `빈터 권리가 섰다` · `마을 어귀 빈터에 내 땅을 걸었다(목표 ③ 도달)`.
     //     여기 ws 재현이 빨간 것은 **세계가 이미 늙어서**다 — 대본이 수백 게임일을 돌린 뒤라
@@ -517,17 +604,14 @@ async function waitHttp(url, tries = 900) {
     //     ⇒ 걸음 ①② 의 판정은 **대본 절의 그 세 줄**이 갖는다. 여기 줄은 그 사실을 적는 자리다.
     step('①② 기여·빈터 (대본이 이미 걷는다)', true, '`누적 기여 n/3` · `빈터 권리가 섰다` · `어귀 빈터에 내 땅을 걸었다` — 이 파일 위쪽 절');
     //   ★③ 건립부터는 **아무 하네스에도 없다**(T128·T159·T167 이 각자 회부로 넘긴 그 자리).
-    step('③ 건립(village_start→advance×3)', false, '하네스 없음 — 회부');
-    step('④ 인구(곳간 식량→주민)', false, '하네스 없음 — 회부');
-    step('⑤ 곳간 3일치', false, '하네스 없음 — 회부');
     step('⑥ /이방인 받기', true, '`test-newcomers ⑧`(T167) 이 스위치·회관까지 잰다');
     step('⑦ 시작 화면에 뜸', true, '`test-newcomers ⑦`(T19) 이 `listable` 을 · `⑧e3` 이 줄 필터를 잰다');
     step('⑧ 소개문이 인사로', true, '`test-newcomers ⑧e2`(T167) 소스 · 실판 미검증');
     step('⑨ 인출(실제 차감)', true, '`e2e-guild ⑦e2`(T159) 가 **곳간이 실제로 준다**를 잰다');
 
     // ── 걸음 표 — 이 절의 산출물이다(카드 §2 ③: 깨진 자리는 고치지 말고 표)
-    console.log('\n  ── [T174] 호 걸음 표 ──');
-    for (const r of ARC) console.log(`    ${r.ok ? '○' : '●'} ${r.n}${r.note ? '  — ' + r.note : ''}`);
+    console.log('\n  ── [T174/T181] 호 걸음 표(위 줄들의 요약) ──');
+    for (const r of ARC) console.log(`    ${r.ok ? '○' : '●'} ${r.n}`);
     const green = ARC.filter((r) => r.ok).length;
     console.log(`  ⇒ 호 ${ARC.length}걸음 중 ${green} 초록`);
     console.log('    ※ ○ = 이 판 또는 다른 하네스가 **실제로 잰다** · ● = 아무도 안 잰다(회부)');
@@ -537,6 +621,19 @@ async function waitHttp(url, tries = 900) {
     ok(green < ARC.length, '★[T174] 자명 통과 금지 — **미검증 걸음이 실제로 남아 있다**(전부 초록이면 표가 거짓말이다)',
        `미검증 ${ARC.length - green}걸음`);
   }
+
+
+  // ── 첫 사람: 추천 원클릭(마을은 서버가 고른다) ────────────────────────────
+  const t0 = Date.now();
+  const r1 = await runScript('첫 사람 · 추천 원클릭', null, true);
+  const t1 = Date.now();
+
+  // ── 두 번째 사람: **다른 유형** 마을에서 같은 대본 ────────────────────────
+  const recV = info.villages.find((v) => v.vid === info.recommend);
+  const other = info.villages.find((v) => v.ch !== (recV && recV.ch)) || info.villages.find((v) => v.vid !== info.recommend);
+  ok(!!other, '유형이 다른 마을이 세계에 있다', other ? `${other.chKo} ${other.name} (추천은 ${recV && recV.chKo})` : 'X');
+  if (other) await runScript(`두 번째 사람 · ${other.chKo} ${other.name}`, other.vid, false);
+  const t2 = Date.now();
 
   console.log(`\n── 풀런 시간 ──`);
   console.log(`  첫 사람(전 구간)  ${((t1 - t0) / 1000).toFixed(0)}초`);
