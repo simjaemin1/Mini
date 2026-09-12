@@ -1407,8 +1407,17 @@ function _liveResourceRow(row) {
 function _shapeRegrown(r) {
   if (!r || r.plantedDay == null) return r;
   const Y = _regrowYearDays();
-  const elapsed = (gameDayNow() - r.plantedDay) + REGROW.TREE_STUMP_Y() * Y;
-  const stage = regrowStageOf('tree', elapsed);
+  // ★★[T187 2026-09-12 재민 확정] **심은 것도 종을 넘긴다.** 종전엔 여기만 종을 안 넘겨
+  //   심은 나무가 **종 공통 햇수**(22/52)로 자랐다 — 시더는 벤 자리에 `_spAt` 을 넘긴다(chunk.js:462).
+  //   ⇒ 같은 참나무가 "벤 자리냐 심은 자리냐"로 다른 햇수를 사는 세계였다. 그게 사본이다.
+  //   정본은 `Trees.stageYearsOf` 하나 — **새 수 0**(표의 `mature` × T122 비율).
+  //   ⚠건너뛰는 그루터기 기간도 **그 종의 것**이어야 한다. 전역 22년을 더하면 종 표를 반만 쓰는 셈이고,
+  //     짧은 종(머루 1.7년)에서는 건너뛰기가 성목 햇수보다 커져 심자마자 성목이 된다.
+  const _sp = r.sp || null;
+  const _gy = (_sp && Trees && Trees.ON()) ? Trees.stageYearsOf(_sp, REGROW.TREE_STUMP_Y(), REGROW.TREE_FULL_Y())
+                                           : [REGROW.TREE_STUMP_Y(), REGROW.TREE_FULL_Y()];
+  const elapsed = (gameDayNow() - r.plantedDay) + _gy[0] * Y;
+  const stage = regrowStageOf('tree', elapsed, _sp);
   if (stage === 'mature' || stage === null) {
     r.type = 'tree'; r.maxHp = RESOURCE_HP_TABLE.tree; r.r = PLANT_R; r.h = PLANT_H;
   } else {
@@ -6909,7 +6918,18 @@ function tryForage(player) {
 //   (T88·T121 이 배운 그 자리 — 모듈 상수면 스위치 하나에 존을 한 판 더 띄워야 한다).
 function _t124Plant() { const v = parseInt(process.env.T124_PLANT, 10); return Number.isFinite(v) ? v : 1; }
 // 씨앗 → 종. 지금은 **하나**다(T135 가 종 카탈로그를 이식하면 여기 줄이 는다 · 회부).
-const PLANT_SEEDS = { acorn: 'oak' };
+// ★★[T187 2026-09-12 재민 확정] **씨앗 표를 손으로 안 적는다 — 종 표에서 유도한다.**
+//   재민 캐논: *"열매는 보이고, 가서 딴다."* 그 열매가 곧 씨앗이다 — 따서 든 것을 그대로 묻는다.
+//   ⇒ 심을 수 있는 종 = **열매 품목이 있는 종**(`Trees.fruitIds`), 씨앗 이름 = 그 품목(`Trees.fruitOf`).
+//   소나무·잣·버들·개암은 표에 열매 품목이 없어 못 심는다 — 그게 맞다(없는 품목을 지어내지 않는다).
+//   ⚠되돌림: `T135_TREES=0` 이면 종 축이 잠기므로 **종전 한 줄**(도토리→참나무)로 떨어진다(비트 동일).
+const PLANT_SEEDS = (() => {
+  const out = {};
+  try {
+    if (Trees && Trees.ON()) for (const id of Trees.fruitIds()) { const it = Trees.fruitOf(id); if (it) out[it] = id; }
+  } catch (e) { /* 표가 없으면 아래 폴백 */ }
+  return Object.keys(out).length ? out : { acorn: 'oak' };
+})();
 function plantSeedList() { return _t124Plant() === 0 ? [] : Object.keys(PLANT_SEEDS); }
 
 /**

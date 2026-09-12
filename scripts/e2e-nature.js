@@ -581,7 +581,7 @@ function diffCountNoEnts(a, b, ents) {
       const z3 = boot('zone', '/tmp/zone-wrap.js', {
         PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
         ENABLE_VILLAGES: '0', ENABLE_BANDITS: '0', E2E_GIVE: '1',
-        ZONE_TEST_INV: 'acorn:3',          // ★[T178] 심기 절 — 있는 테스트 손잡이 하나(운영엔 분기 0)
+        ZONE_TEST_INV: 'acorn:3,chestnut:3',   // ★[T178·T187] 심기 절 — 있는 테스트 손잡이 하나(운영엔 분기 0)
         WRAP_ZONE_PATCH: JSON.stringify({ mainSquare: { x: SQ.x, y: SQ.y, name: '열매 프로브' } }),
       });
       ok(await waitHttp(`http://localhost:${ZPORT}/health`), 'zone 기동 (열매)');
@@ -590,8 +590,9 @@ function diffCountNoEnts(a, b, ents) {
       const rows = new Map();       // id → 행(서버가 마지막으로 보낸 것)
       const feed = { spawn1: 0, spawnN: 0, update: 0 };
       const notices = [];
+      let WELCOME = null;
       const soak = (m) => {
-        if (m.type === 'welcome') for (const r of (m.resources || [])) rows.set(r.id, r);
+        if (m.type === 'welcome') { WELCOME = m; for (const r of (m.resources || [])) rows.set(r.id, r); }
         else if (m.type === 'resources_spawn') { feed.spawnN++; for (const r of (m.resources || [])) rows.set(r.id, r); }
         else if (m.type === 'resource_spawn') { feed.spawn1++; if (m.resource) rows.set(m.resource.id, m.resource); }
         else if (m.type === 'resource_update') { feed.update++; const r = rows.get(m.id); if (r) r.hp = m.hp; }
@@ -687,70 +688,101 @@ function diffCountNoEnts(a, b, ents) {
         ok(w0.ok && u1.ok && a1.ok && w0.day !== a1.day,
           `★열매ⓘ 자명 통과 금지 — 같은 판정이 겨울·봄·여름엔 false, 가을엔 true 였다`);
 
-        // ══ ★★[T178 2026-09-12 재민 확정] **심은 나무도 종이 있다** ════════════════════
-        //   §0-ⓐ 실측: 심은 나무의 종은 `r.species` 에 앉았고 **그 이름을 읽는 곳이 없었다**
-        //   (시더·클라·열매 비트가 전부 `sp` 를 본다) ⇒ 심은 나무는 종을 들고서 그림도 열매도 못 받았다.
-        //   ★심은 나무의 종은 **씨앗이 정한다**(`PLANT_SEEDS` · 도토리→참나무) — 자리가 아니다.
-        //     그래서 `speciesAt`(야생 종축)을 안 부른다. 주사위 0 은 "도토리를 심으면 참나무"로 지켜진다.
-        let PLANTED = null;
+        // ══ ★★[T187 2026-09-12 재민 확정] **심은 나무 둘째 판** — 종별 햇수 · 씨앗은 표에서 ══
+        //   T178 이 심은 나무에 종(`sp`)을 실었다. 이 절은 그 다음 둘을 잰다:
+        //     ① 씨앗 표를 **손으로 안 적는다** — 열매 품목이 있는 종이 곧 심을 수 있는 종이다.
+        //     ② 심은 것도 **제 종의 햇수**로 자란다 — 벤 자리(시더)는 진작 그랬고 심은 자리만 안 그랬다.
+        //   ★★돌연변이 손잡이가 여기 안에 있다: **같은 날 심은 밤나무와 참나무는 다른 날 성목이 된다.**
+        //     종을 안 넘기던 종전 코드라면 둘 다 같은 날(공통 30년)이라 ③-2 가 빨개진다.
+        let PLANTED = null, PLANTED_CH = null;
         {
-          // ① 심는다 — 내 칸은 나무가 차 있으니(광장 = 밤나무 셀) 이웃 칸 여섯을 차례로 시도한다
-          let planted = null; const tried = [];
-          for (const [dx, dy] of [[32, 0], [-32, 0], [0, 32], [0, -32], [32, 32], [-32, -32]]) {
+          // ⓪ 씨앗 표 — **세계가 내주는 목록**(`welcome.plantSeeds`)과 종 표에서 유도한 것이 같은가
+          const DERIVED = {};
+          for (const id of TR.fruitIds()) { const it = TR.fruitOf(id); if (it) DERIVED[it] = id; }
+          const served = (WELCOME && WELCOME.plantSeeds) ? WELCOME.plantSeeds.slice().sort() : null;
+          const want = Object.keys(DERIVED).sort();
+          ok(!!served && served.join(',') === want.join(','),
+            `★★★심기⓪ **씨앗 표가 종 표에서 유도된다** — 세계가 내준 목록 [${served ? served.join(',') : 'null'}] = 열매 품목이 있는 종 [${want.join(',')}] (손편집 0)`);
+          ok(want.length > 1, `★심기⓪ 자명 통과 금지 — 심을 수 있는 씨앗이 실제로 여럿이다(${want.length}종 · 종전엔 도토리 하나였다)`);
+          const noFruit = TR.ids().filter((id) => !TR.fruitOf(id));
+          ok(noFruit.length > 0 && noFruit.every((id) => !Object.values(DERIVED).includes(id)),
+            `★★심기⓪ **열매가 없는 종은 못 심는다** — ${noFruit.map((i) => TR.koOf(i)).join('·')} (없는 품목을 지어내지 않는다)`);
+          {   // 표에 없는 씨앗은 거절한다 — 소나무 씨앗 같은 건 애초에 없다
             const n0 = notices.length;
-            sendW({ type: 'plant_tree', x: SQ.x + dx, y: SQ.y + dy, item: 'acorn' });
+            sendW({ type: 'plant_tree', x: SQ.x + 64, y: SQ.y + 64, item: 'pine_seed' });
             await until(() => notices.length > n0, 8000);
-            const msg = notices.slice(n0).join(' | ');
-            tried.push(msg.slice(0, 24));
-            if (/심었다/.test(msg)) {
-              await until(() => [...rows.values()].some((r) => r.isSeed === false && r.type === 'sapling'), 8000);
-              planted = [...rows.values()].find((r) => r.isSeed === false && r.type === 'sapling') || null;
-              if (planted) break;
-            }
+            ok(/심을 수 있는 씨앗이 아니다/.test(notices.slice(n0).join(' | ')),
+              `★★심기⓪ 그리고 표에 없는 씨앗은 **거절한다** — 「${notices.slice(n0).join(' | ').slice(0, 24)}」`);
           }
-          ok(!!planted, `★★심기① **도토리를 심었다** — ${planted ? `${planted.id} (${planted.x | 0},${planted.y | 0})` : '못 심었다: ' + tried.join(' / ')}`);
-          if (planted) {
-            ok(planted.sp === 'oak',
-              `★★★심기② 그 묘목이 **종을 들고 온다** — \`sp=${planted.sp}\` (씨앗 \`acorn\` → 표 \`${TR.koOf('oak')}\` · 자리 해시가 아니다)`);
-            ok(planted.isSeed === false && Number.isFinite(planted.plantedDay),
-              `★심기② 심은 것이다(시더가 아니다) — \`isSeed=false\` · 심은 날 ${planted.plantedDay}`);
-            // ② 자란다 — 성목까지의 햇수는 T122 정본이 정한다(하네스가 수를 안 적는다)
+
+          // ① 심는다 — 밤과 도토리를 **같은 날** 이웃 칸에(성숙일 비교의 대조군)
+          const plantOne = async (item) => {
+            for (const [dx, dy] of [[32, 0], [-32, 0], [0, 32], [0, -32], [32, 32], [-32, -32], [64, 0], [0, 64]]) {
+              const before = new Set([...rows.keys()]);
+              const n0 = notices.length;
+              sendW({ type: 'plant_tree', x: SQ.x + dx, y: SQ.y + dy, item });
+              await until(() => notices.length > n0, 8000);
+              if (!/심었다/.test(notices.slice(n0).join(' | '))) continue;
+              await until(() => [...rows.values()].some((r) => r.isSeed === false && !before.has(r.id)), 8000);
+              const got = [...rows.values()].find((r) => r.isSeed === false && !before.has(r.id));
+              if (got) return got;
+            }
+            return null;
+          };
+          const pCh = await plantOne('chestnut');
+          const pOak = await plantOne('acorn');
+          ok(!!pCh && !!pOak, `★★심기① **밤과 도토리를 같은 날 심었다** — 밤 ${pCh ? pCh.id : '✗'} · 도토리 ${pOak ? pOak.id : '✗'}`);
+          if (pCh && pOak) {
+            ok(pCh.sp === 'chestnut' && pOak.sp === 'oak',
+              `★★★심기② **씨앗이 종을 정한다** — \`chestnut\`→\`${pCh.sp}\`(${TR.koOf('chestnut')}) · \`acorn\`→\`${pOak.sp}\`(${TR.koOf('oak')})`);
+            ok(pCh.plantedDay === pOak.plantedDay, `★심기② 둘은 **같은 날** 심겼다 — day ${pCh.plantedDay}`);
+
+            // ② 성숙 실일 — **정본이 정한다**(하네스가 수를 안 적는다)
             const RG = require(path.join(ROOT, 'server', 'chunk.js')).REGROW;
-            const needY = RG.TREE_FULL_Y() - RG.TREE_STUMP_Y();          // 심은 자리는 그루터기 단계를 건너뛴다
-            const plantYr = Math.floor(planted.plantedDay / YD);
-            const tgtDay = (plantYr + needY + 1) * YD + (midOf('autumn', 0) % YD);   // 넉넉히 한 해 더 + 그해 가을
-            const n0 = notices.length; let last = 0;
-            const seenClock = await until(() => notices.slice(n0).some((t) => t.includes('시계 세움') && t.includes('"day":' + tgtDay)), 30000,
-              () => { if (Date.now() - last > 2000) { last = Date.now(); sendW({ type: '__e2e_clock', day: tgtDay, night: false }); } });
-            // ★★단계 정산은 **볼 때**다 — `_shapePlantedAll()` 은 청크가 켜지는 순간에만 돈다
-            //   (`activateChunk` · zone.js:248). ⇒ 세계가 **다시 보게** 만들어야 한다.
-            //   §0 실측이 길을 둘 버렸다:
-            //     ① 걸어서 청크를 넘는다 → 실측 2,694걸음(90초)에 새 청크 **0건**. 재 보니 걸음이
-            //        초당 7.7px 였다(64px/s 가 아니다 — 300입력에 76.8px). 하네스가 못 도착한다.
-            //     ② 선을 끊고 다시 붙는다 → 사람이 0 이면 틱이 **idle 로 조기 return** 해서
-            //        (`updateActiveChunks` 앞이다) 청크가 아예 안 꺼진다 ⇒ 다시 붙어도 새로 켜질 게 없다.
-            //   ⇒ **관전자의 시선도 청크를 켠다**(`updateActiveChunks` 가 `observers` 를 같이 훑는다).
-            //     있는 문법(`?observer=1` + `viewport_update`) 하나로, 걸음 없이 "다시 봄"을 만든다.
-            const nb0 = feed.spawnN + feed.spawn1;
+            const needOf = (sp) => { const g = TR.stageYearsOf(sp, RG.TREE_STUMP_Y(), RG.TREE_FULL_Y()); return (g[1] - g[0]) * YD; };
+            const nCh2 = needOf('chestnut'), nOak2 = needOf('oak');
+            const D0 = pCh.plantedDay;
+            // 관전자의 시선이 "볼 때"를 만든다(T178 §2 — 걸음도 재접속도 안 통한다)
             const obs = new WebSocket(`ws://localhost:${ZPORT}/?observer=1`);
             await new Promise((r) => { obs.on('open', r); obs.on('error', r); setTimeout(r, 8000); });
             let look = 0;
-            const grown = await until(() => { const r = rows.get(planted.id); return !!(r && r.type === 'tree'); }, 45000,
-              () => {   // 시선을 번갈아 옮긴다 — 옮길 때마다 안 켜진 청크가 켜진다
-                look++;
-                const far = (look % 2) ? CS * 3 : -CS * 3;
-                try { obs.send(JSON.stringify({ type: 'viewport_update', x: SQ.x + far, y: SQ.y + far, w: 1400, h: 900 })); } catch (e) {}
-              });
+            const relook = () => { look++; const far = (look % 2) ? CS * 3 : -CS * 3;
+              try { obs.send(JSON.stringify({ type: 'viewport_update', x: SQ.x + far, y: SQ.y + far, w: 1400, h: 900 })); } catch (e) {} };
+            const setDay = async (day) => {
+              const n0 = notices.length; let last = 0;
+              return until(() => notices.slice(n0).some((t) => t.includes('시계 세움') && t.includes('"day":' + day)), 30000,
+                () => { if (Date.now() - last > 2000) { last = Date.now(); sendW({ type: '__e2e_clock', day, night: false }); } });
+            };
+            const settle = async (want) => { await until(want, 25000, relook); };
+            const nudge = async (n) => { for (let i = 0; i < n; i++) { relook(); await sleep(400); } };
+            const typeOf = (r0) => { const r = rows.get(r0.id); return r ? r.type : null; };
+
+            // ③-1 문턱 **바로 앞** — 아직 묘목이다(자명 통과 금지: 이 검사는 빨개질 줄 안다)
+            await setDay(D0 + Math.floor(nCh2) - 5);
+            await nudge(6);   // 시선을 몇 번 옮겨 정산을 시킨다(멱등 · 여기선 "안 바뀌는 것"이 판정이라 기다릴 게 없다)
+            ok(typeOf(pCh) === 'sapling' && typeOf(pOak) === 'sapling',
+              `★★심기③ 문턱 **5일 전** — 둘 다 아직 묘목이다 (day ${D0 + Math.floor(nCh2) - 5} · 밤 \`${typeOf(pCh)}\` · 참 \`${typeOf(pOak)}\`)`);
+            // ③-2 밤나무 문턱을 넘는다 — ★밤은 서고 참나무는 아직이다(= 종별 햇수가 실재한다)
+            await setDay(D0 + Math.ceil(nCh2) + 5);
+            await settle(() => typeOf(pCh) === 'tree');
+            ok(typeOf(pCh) === 'tree',
+              `★★★심기③ **밤나무가 먼저 선다** — 심은 지 ${Math.round(nCh2)}일(${TR.matureYearsOf('chestnut')}년 · 표) · day ${D0 + Math.ceil(nCh2) + 5}`);
+            ok(typeOf(pOak) === 'sapling',
+              `★★★심기③ 그런데 **참나무는 아직 묘목이다** — 같은 날 심었는데 ${Math.round(nOak2)}일이 필요하다(${TR.matureYearsOf('oak')}년) ⇒ 종별 햇수가 실재한다(종을 안 넘기면 둘 다 성목이라 이 줄이 빨개진다)`);
+            // ③-3 참나무 문턱도 넘긴다 — 그리고 그 해 가을로 맞춘다(열매판 확인용)
+            const yr3 = Math.floor((D0 + nOak2) / YD) + 1;
+            const dAut = yr3 * YD + (midOf('autumn', 0) % YD);
+            await setDay(dAut);
+            await settle(() => typeOf(pOak) === 'tree');
+            ok(typeOf(pOak) === 'tree', `★★심기③ **참나무도 제 날에 선다** — day ${dAut}`);
             try { obs.close(); } catch (e) {}
-            const after = rows.get(planted.id);
-            ok(seenClock && grown,
-              `★★★심기③ **심은 것이 자란다** — day ${planted.plantedDay} → ${tgtDay}(성목까지 ${needY}년 · T122 정본 \`TREE_FULL_Y−TREE_STUMP_Y\`) · 다시 봄 ${look}회 · 개체 방송 ${feed.spawnN + feed.spawn1 - nb0}건 · 지금 \`${after ? after.type : 'null'}\``);
-            if (after && after.type === 'tree') {
-              ok(after.sp === 'oak', `★★심기③ 자란 뒤에도 **종이 그대로다** — \`sp=${after.sp}\``);
-              ok(after.fruitNow === true,
-                `★★★심기④ 그리고 **심은 나무에도 열매 비트가 온다** — 가을 · \`fruitNow=${after.fruitNow}\`(표 \`${TR.fruitSeasonOf('oak')}\`)`);
-              PLANTED = after;
-            }
+
+            const aCh = rows.get(pCh.id), aOak = rows.get(pOak.id);
+            ok(!!aCh && aCh.sp === 'chestnut' && !!aOak && aOak.sp === 'oak',
+              `★★심기④ 자란 뒤에도 **종이 그대로다** — \`${aCh ? aCh.sp : null}\` · \`${aOak ? aOak.sp : null}\``);
+            ok(!!aCh && aCh.fruitNow === true && !!aOak && aOak.fruitNow === true,
+              `★★★심기④ 그리고 **심은 나무 둘 다 열매 비트를 받는다** — 가을 · 밤 \`${aCh ? aCh.fruitNow : null}\` · 참 \`${aOak ? aOak.fruitNow : null}\``);
+            PLANTED = aOak; PLANTED_CH = aCh;
           }
         }
 
@@ -789,15 +821,16 @@ function diffCountNoEnts(a, b, ents) {
           ok(sapGot.length === sapWant.length,
             `★★심기⑤ 화면이 **표가 댄 묘목 그림을 전부 받아 갔다** — ${sapGot.length}/${sapWant.length}장`
             + ` (소스 문자열이 아니라 네트워크가 증인 · \`sap_oak\` ${sapGot.includes('sap_oak') ? '○' : '✗'})`);
-          if (PLANTED) {
+          for (const T3 of [PLANTED_CH, PLANTED]) {
+            if (!T3) continue;
             const op = await page.evaluate((a) => (window.__treeSpriteFor ? window.__treeSpriteFor(a[0], a[1], a[2], a[3]) : null),
-              [PLANTED.sp, PLANTED.x, PLANTED.y, !!PLANTED.fruitNow]);
+              [T3.sp, T3.x, T3.y, !!T3.fruitNow]);
             const opOff = await page.evaluate((a) => (window.__treeSpriteFor ? window.__treeSpriteFor(a[0], a[1], a[2], false) : null),
-              [PLANTED.sp, PLANTED.x, PLANTED.y]);
-            ok(!!op && (TBL2.oak.autumn || []).includes(op),
-              `★★★심기⑥ **심은 나무가 종이 맞는 열매판으로 선다** — \`${op}\` (표 \`oak.autumn\`)`);
-            ok(!!opOff && TBL2.oak.sprites.includes(opOff) && opOff !== op,
-              `★★심기⑥ 열매가 없으면 **참나무 성목판**이다 — \`${opOff}\` (표 \`oak.sprites\`) ≠ \`${op}\``);
+              [T3.sp, T3.x, T3.y]);
+            ok(!!op && (TBL2[T3.sp].autumn || []).includes(op),
+              `★★★심기⑥ **심은 ${TR.koOf(T3.sp)}가 종이 맞는 열매판으로 선다** — \`${op}\` (표 \`${T3.sp}.autumn\`)`);
+            ok(!!opOff && TBL2[T3.sp].sprites.includes(opOff) && opOff !== op,
+              `★★심기⑥ 열매가 없으면 **${TR.koOf(T3.sp)} 성목판**이다 — \`${opOff}\` (표 \`${T3.sp}.sprites\`) ≠ \`${op}\``);
           }
         }
         // ── 대조 스크린샷 한 장 (재민 ④) ─────────────────────────────────────────────

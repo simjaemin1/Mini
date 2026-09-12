@@ -342,7 +342,26 @@ const Y = E.yearDaysOf();
 
     // ── ⓐ 씨앗 — econ 은 알고 플레이어 표엔 구멍이 있었다 ────────────────────
     ok(H.ITEM_LABEL_SERVER.acorn === '도토리', '★★⑦ⓐ `acorn` 에 **플레이어 이름표**가 생겼다(econ 은 이미 알던 품목)', H.ITEM_LABEL_SERVER.acorn);
-    ok(JSON.stringify(H.plantSeedList()) === '["acorn"]', '★⑦ⓐ2 심을 수 있는 씨앗을 **서버가 정한다**', JSON.stringify(H.plantSeedList()));
+    // ★★[T187 2026-09-12] 종전 판정은 `'["acorn"]'` 이라고 **적혀** 있었다 — 표 한 줄의 사본이다.
+    //   씨앗 표가 종 표에서 유도되면서(열매 품목이 있는 종 = 심을 수 있는 종) 그 줄이 낡았다.
+    //   ⇒ 여기서도 **정본에게 묻는다**: 서버가 내주는 목록이 종 표에서 유도한 것과 같은가.
+    {
+      const TT = require(path.join(ROOT, 'server', 'trees.js'));
+      const derived = [];
+      for (const id of TT.fruitIds()) { const it = TT.fruitOf(id); if (it) derived.push(it); }
+      const served = H.plantSeedList().slice().sort(), want = derived.slice().sort();
+      ok(served.join(',') === want.join(','),
+        '★★⑦ⓐ2 심을 수 있는 씨앗을 **종 표가 정한다**(손편집 0 — 열매 품목이 있는 종이 곧 심을 수 있는 종)',
+        `${JSON.stringify(served)} = ${JSON.stringify(want)}`);
+      ok(want.length > 1, '⑦ⓐ2 전제 — 유도된 씨앗이 실제로 여럿이다(0·1 이면 아래가 자명 통과다)', `${want.length}종`);
+      const noFruit = TT.ids().filter((id) => !TT.fruitOf(id));
+      ok(noFruit.length > 0 && !served.some((it) => noFruit.includes(TT.fruitIds().find((f) => TT.fruitOf(f) === it))),
+        '★★⑦ⓐ2 **열매가 없는 종은 목록에 없다**', noFruit.join(','));
+      const lbl = H.ITEM_LABEL_SERVER || {};
+      const noName = served.filter((it) => !lbl[it]);
+      ok(noName.length === 0, '★⑦ⓐ2 그리고 **심을 수 있는 씨앗은 전부 이름표가 있다**(알림이 날 id 로 나가지 않는다)',
+        noName.length ? `이름 없음: ${noName.join(',')}` : served.map((it) => `${it}=${lbl[it]}`).join(' '));
+    }
     {
       // ★벌목 부산물 — econ 의 그 비율(0.06)이고 **주사위가 아니다**
       let n = 0, tot = 0;
