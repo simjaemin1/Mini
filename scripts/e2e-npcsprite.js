@@ -291,7 +291,7 @@ const ZENV = {
     //      (지게를 진 남이 `body,clothes_*,back_carrier,tool_*` 로 그려지는 것을 본다).
     //   ⇒ 서버가 주민에게 비트를 1 로 놓기만 하면 그림은 따라온다 — 그 놓는 자리도 소스로 건다.
     {
-      const codeOnly = (t) => t.split('\n').filter((L) => !/^\s*(\/\/|\*|\/\*)/.test(L)).join('\n');
+      const codeOnly = require('./code-only.js');   // ★[T171] 주석 제거기 **정본**(acorn onComment · 사본 0). 옛 정규식 판은 `villages.js:20` 의 `// … sim/* …` 에 걸려 파일의 67.9% 를 삼켰다
       const cs = codeOnly(fs.readFileSync(path.join(ROOT, 'public', 'client', '42-r2-char.js'), 'utf8'));
       const backLines = cs.split('\n').filter((L) => /back_carrier/.test(L) || /const back = /.test(L));
       ok(/const back = isMe \? [^:]+: !!\(o && o\.carrier\);/.test(cs),

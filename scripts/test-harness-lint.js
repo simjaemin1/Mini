@@ -25,6 +25,7 @@ let pass = 0, fail = 0;
 const ok = (c, m, extra) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (extra ? `  ${extra}` : '')); };
 const EMO = /\p{Extended_Pictographic}/u;
 const SCRIPTS = path.join(__dirname);
+const ROOT = path.resolve(__dirname, '..');   // ★[T171] ⑦ 이 `server/villages.js` 를 대조군으로 읽는다
 
 // 이모지가 **검사 대상 자체**인 하네스 — 여기선 판정 자리에 이모지가 있어야 정상이다
 const ALLOW = {
@@ -247,6 +248,70 @@ ok(bad.length === 0, '② ★판정 자리에 이모지 0 (정규식 · 술어 �
      '⑥b 돌연변이 — 옛 문구(T160 이 고친 그 줄)를 이 검사가 **잡는다**');
   ok(ORDER.test("console.log('  ✓ 씨앗을 스스로 만들었다');") === false,
      '⑥c 대조 — 스스로 만드는 하네스는 안 잡는다');
+}
+
+// ── ⑦ 주석 제거기는 **하나**다 [T171 2026-09-11] ──────────────────────────────
+//
+// ★★T152 §3 이 센 것: `codeOnly` 가 스무 파일에 **스물넷**으로 흩어져 있었고 판이 넷이었다.
+//   그중 열넷("블록 먼저")은 `server/villages.js:20` 의 `// … sim/* …` 를 블록 주석의 시작으로
+//   읽어 그 파일 **코드 글자의 절반**을 삼켰다(T171 §0-ⓑ 실측: 181,489 → 90,779자).
+//   그 위에서 도는 판정은 "없다"를 늘 통과시킨다 — 하네스가 조용히 눈이 먼다.
+//   ⇒ 정본은 `scripts/code-only.js`(acorn `onComment`) 하나이고, **정의가 둘이 되면 여기서 빨개진다.**
+console.log('\n⑦ 주석 제거기 정본 하나 [T171]');
+{
+  const CO = require(path.join(SCRIPTS, 'code-only.js'));
+  // ⓐ 정의는 하나 — 나머지는 전부 정본을 부른다
+  const defs = [];
+  for (const f of fs.readdirSync(SCRIPTS).filter((x) => x.endsWith('.js'))) {
+    if (f === 'code-only.js') continue;
+    const src = fs.readFileSync(path.join(SCRIPTS, f), 'utf8').split('\n');
+    src.forEach((L, i) => {
+      const m = L.match(/(?:const|let)\s+(codeOnly\d*)\s*=\s*(.*)$/) || L.match(/function\s+(codeOnly\d*)\s*\(/);
+      if (!m) return;
+      const rhs = m[2] || '';
+      if (rhs.includes("require('./code-only.js')")) return;      // 정본 호출은 정의가 아니다
+      defs.push(`${f}:${i + 1}`);
+    });
+  }
+  ok(defs.length === 0, '★★⑦a **`codeOnly` 정의는 정본 하나뿐**(나머지 스물넷은 `require` 호출) — 사본이 생기면 여기가 빨개진다',
+     defs.length ? defs.slice(0, 4).join(' · ') : `${fs.readdirSync(SCRIPTS).filter((x) => x.endsWith('.js')).length}파일 훑음 · 사본 0`);
+  // 자명 통과 금지 — 같은 훑기로 **사본 한 줄을 넣으면 잡는다**
+  // ⚠미끼 줄은 **조각을 이어 붙여** 만든다 — 통째로 적으면 위 훑기가 **이 파일**을 잡는다
+  //   (1차 실행에서 실제로 `test-harness-lint.js:279` 가 사본으로 걸렸다 · T143 이 물린 자기-일치 함정).
+  const canaryLine = 'const ' + 'codeOnly' + " = (s) => s.replace(/x/g, '');";
+  const canary = [canaryLine].filter((L) => {
+    const m = L.match(/(?:const|let)\s+(codeOnly\d*)\s*=\s*(.*)$/);
+    return m && !m[2].includes("require('./code-only.js')");
+  }).length;
+  ok(canary === 1, '★⑦b 자명 통과 금지 — 같은 자로 **사본 한 줄을 넣으면 잡는다**');
+
+  // ⓑ 정본이 `// … /* …` 에 안 속는다 — T152 가 물린 그 두 줄을 픽스처로
+  const FIX = 'const a = 1;   // 길은 sim/* 아래에 있다\nconst keep = 2;\n';
+  const outFix = CO(FIX);
+  ok(outFix.includes('const keep = 2;'),
+     '★★⑦c **`// … sim/* …` 가 블록을 열지 않는다** — 뒤의 코드가 살아 있다(옛 판은 여기서 파일을 삼켰다)');
+  ok(!outFix.includes('길은'), '★⑦d 그 줄의 주석 자체는 지워졌다');
+
+  // ⓒ 문자열 안의 `//` 는 코드다
+  const STR = 'const u = "http://localhost:3010/x"; const v = 1;\n';
+  ok(CO(STR).includes('http://localhost:3010/x'),
+     '★★⑦e **문자열 안의 `//` 를 안 지운다**(옛 "줄 먼저" 판은 `zone.js` 에서 이 줄을 잘랐다)');
+
+  // ⓓ 오프셋 보존 — 길이·줄 수가 안 흔들린다(하네스가 `indexOf` 로 찾은 자리를 그대로 쓴다)
+  const V = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8');
+  const VC = CO(V);
+  ok(VC.length === V.length, '★★⑦f **길이가 안 변한다** — 주석을 지우지 않고 공백으로 덮는다', `${V.length} = ${VC.length}`);
+  ok(VC.split('\n').length === V.split('\n').length, '★⑦g 줄 수도 같다', `${V.split('\n').length}줄`);
+  const ANCH = 'function _pestAt';
+  ok(V.indexOf(ANCH) === VC.indexOf(ANCH) && VC.indexOf(ANCH) > 0,
+     '★★⑦h 앵커가 **제자리**다 — `indexOf` 로 찾아 `slice` 하는 하네스가 안 흔들린다', `${VC.indexOf(ANCH)}`);
+  // 그리고 옛 "블록 먼저" 판이었다면 이 파일이 반토막이라는 것 — 대조군
+  const OLDB = V.replace(/\/\*[\s\S]*?\*\//g, ' ').split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n');
+  const nw = (s) => { let n = 0; for (const c of s) if (c !== ' ' && c !== '\t' && c !== '\n' && c !== '\r') n++; return n; };
+  ok(nw(OLDB) < nw(VC) * 0.6,
+     '★★⑦i 대조군 — **옛 "블록 먼저" 판이라면 코드 글자가 절반 아래로 떨어진다**(이 검사가 지키는 것이 그것이다)',
+     `옛 ${nw(OLDB)} < 정본 ${nw(VC)} × 0.6`);
+  console.log('    접점: codeOnly · acorn · onComment · code-only.js · villages.js:20');
 }
 
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);

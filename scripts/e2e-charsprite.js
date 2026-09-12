@@ -247,7 +247,7 @@ function openSpot() {
     const tbl = {};
     if (m) for (const mm of m[1].matchAll(/(\w+)\s*:\s*'([\w_]+)'/g)) tbl[mm[1]] = mm[2];
     // ★주석에 옛 줄을 **인용해 남겨 뒀다**(왜 갈렸는지가 거기 있다) — 그래서 주석을 걷고 **코드만** 본다.
-    const codeOnly = (txt) => txt.split('\n').filter((L) => !/^\s*(\/\/|\*|\/\*)/.test(L)).join('\n');
+    const codeOnly = require('./code-only.js');   // ★[T171] 주석 제거기 **정본**(acorn onComment · 사본 0). 옛 정규식 판은 `villages.js:20` 의 `// … sim/* …` 에 걸려 파일의 67.9% 를 삼켰다
     const charSrc = codeOnly(fs.readFileSync(path.join(ROOT, 'public', 'client', '42-r2-char.js'), 'utf8'));
     ok(!/rod\|fish\|낚/.test(charSrc), '★[T134] 옛 정규식이 **코드에서** 없어졌다 (표로 갈렸다)');
     ok(/PLAYER_TOOL_LAYER\[t\]/.test(charSrc), '★[T134] 층 함수가 그 표를 부른다');

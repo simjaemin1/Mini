@@ -23,7 +23,7 @@ const ok = (c, m, x) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  �
 const pre = (c, m, x) => { if (!c) { fail++; console.log('  ✗ [상황] ' + m + (x !== undefined ? `  ${x}` : '')); } else console.log('  · [상황] ' + m + (x !== undefined ? `  ${x}` : '')); };
 const say = (m) => console.log(m);
 // ★주석을 빼고 본다 — 소스 계약은 **코드**를 물어야 한다(주석은 설명할 자유가 있다).
-const codeOnly = (s) => String(s).replace(/\/\*[\s\S]*?\*\//g, '').split('\n').map((l) => l.replace(/(^|[^:])\/\/.*$/, '$1')).join('\n');
+const codeOnly = require('./code-only.js');   // ★[T171] 주석 제거기 **정본**(acorn onComment · 사본 0). 옛 정규식 판은 `villages.js:20` 의 `// … sim/* …` 에 걸려 파일의 67.9% 를 삼켰다
 
 const C = require(path.join(ROOT, 'server', 'chunk.js'));
 const E = require(path.join(ROOT, 'server', 'events.js'));
