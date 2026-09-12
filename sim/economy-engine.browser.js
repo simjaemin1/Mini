@@ -4843,12 +4843,54 @@ function _allocKnob(name) {
 }
 function allocRealOn() { const x = _allocKnob('L_ALLOC_REAL'); return x !== null && x !== '0'; }
 function allocRealWin() { const x = _allocKnob('L_ALLOC_WIN'); const n = (x === null) ? 1 : parseFloat(x); return Number.isFinite(n) ? n : 1; }
+// ★[T184] 되돌림 — `L_ALLOC_BASKET=1` 이면 1판(바구니 전체 소득)으로 돌아간다. 기본은 2판(주산물 항).
+function allocBasketMode() { const x = _allocKnob('L_ALLOC_BASKET'); return x !== null && x !== '0'; }
 
-// 직업의 **바구니** — 엔진 표에게 물어본다(새 목록을 손으로 안 적는다). 없으면 null(→ 폴백).
-//   ⚠**겹침 실측(T164 §0ⓑ)**: 후보로 서는 직업들 사이 겹침은 `acorn`(나무꾼 ∩ 채집꾼 · 나무 층이 켜졌을 때)
-//     **하나뿐**이다. `weapon`(대장장이 ∩ 무기장)은 애초에 한계가치 후보에서 빠져 있다.
-//     광부 바구니는 `JOBS.miner.output` = `ore` 하나다 — 부산물(salt·clay·tin·obsidian·jade)은
-//     `produceSpecial` 코드가 내므로 표에 없다. 종전 식도 그 부산물을 안 봤으니 **덮는 범위가 안 줄었다**.
+// ★★★[T184 2026-09-12 · 2판] 직업의 **주산물 항** — 종전식이 보던 그 품목과 그 값식 그대로.
+//
+// 1판(T161·T164)은 바구니를 `JOBS[j].output` + `byproduct` 전부로 잡고 소득을 합산했다.
+// T177 이 그 결과를 쟀다: 실현÷종전 배율이 **0.60×~316×** 로 흩어지고 **세 시드 순서가 같았다**(구조).
+// 원인 둘 — ① 종전 계수(농부 0.4 · 나무꾼 0.3 · 어부 1.2 …)는 생산율이 아니라 **손으로 맞춘 상대
+// 가중치**였고 ② 바구니 등재가 직업마다 고르지 않다(광부는 `ore` 하나 · 어부는 일곱).
+// 그래서 광부가 지워지고(픽 48→2) 광맥 부자 마을이 죽었다(T177 ⓒ).
+//
+// ⇒ **2판은 축을 종전에 맞춘다.** 각 직업의 항을 `(주산물 집합, 종전 값식)` 쌍으로 적고,
+//   **양만** 땅 상수에서 실현으로 갈아 끼운다. 값식은 종전 그대로라 **새 수 0** —
+//   0.3(사냥 가죽) · 0.6(채집 약재)은 전부 종전식에서 그대로 옮겨 온 수다.
+//
+//   한계가치(j) = Σ_항 [ (Σ_{r∈주산물} 실현ᵣ) / 인원 ] × 값식 × period
+//
+// ⚠상인·전사는 생산이 없다 — 항이 없으면 **폴백**(종전 값 그대로).
+// ⚠되돌림 `L_ALLOC_BASKET=1` 이면 1판(바구니 전체 소득)으로 돌아간다 — 하네스가 그걸로 배율 표를 건다.
+function allocTermsOf(job, ctx, world) {
+  const W = ctx.w;
+  switch (job) {
+    // 종전: v.land.fertility * 0.4 * period * FOOD_VALUE * w('food')
+    case 'farmer':     return [[['food'], () => W('food')]];
+    // 종전: v.land.water * 1.2 * period * w('fish')
+    case 'fisher':     return [[['fish'], () => W('fish')]];
+    // 종전: v.land.game * 0.7 * period * (w('meat') + 0.3*w('hide'))   ← 값식의 예외를 그대로 옮긴다
+    case 'hunter':     return [[['meat'], () => W('meat') + 0.3 * W('hide')]];
+    // 종전: v.land.wood * 0.3 * period * w('wood')
+    case 'lumberjack': return [[['wood'], () => W('wood')]];
+    // 종전: max(ore·w(ore)·(1−글럿), obsidian·w, jade·w, tin·…) * 0.3 * period
+    //   ★주산물은 `ore` 하나다. 종전의 max 는 **땅 부존**을 고르는 것이라 실현 양에는 자리가 없다 —
+    //     실제로 무엇을 캤는지는 `dailyProductionBuf` 가 이미 안다(표 §0ⓐ 예외란).
+    case 'miner':      return [[['ore'], () => W('ore')]];
+    // 종전: (forageLandMean*0.25*(w('vegetable')+0.6*w('herb')) + land.stone*0.9*w('stone')) * period * MSY
+    //   ★**항이 둘**이다 — 종전식 그대로 둘로 나눈다. 첫 항의 양은 채집 믹스 실현, 둘째 항은 돌 실현.
+    case 'forager': {
+      const y = (ctx.forageYields && ctx.forageYields()) || {};
+      const mix = Object.keys(y).filter((r) => r !== 'stone' && r !== 'pebble');
+      const real = (world && world.forageRealItems) || [];
+      for (const r of real) if (mix.indexOf(r) < 0) mix.push(r);
+      return [[mix, () => W('vegetable') + 0.6 * W('herb')], [['stone'], () => W('stone')]];
+    }
+    default:           return null;   // 상인·전사·장인 — 폴백
+  }
+}
+
+// 1판 바구니(되돌림 `L_ALLOC_BASKET=1` 전용) — 엔진 표에게 묻는다.
 function allocBasketOf(job, ctx, world) {
   const J = ctx.JOBS && ctx.JOBS[job]; if (!J) return null;
   const out = [];
@@ -4857,8 +4899,8 @@ function allocBasketOf(job, ctx, world) {
   if (J.produceSpecial === 'forager') {
     const y = (ctx.forageYields && ctx.forageYields()) || {};
     for (const r in y) out.push(r);
-    out.push('stone');                             // 종전 식이 이미 이름을 댄 그 항(`land.stone*0.9*w('stone')`)
-    const real = world && world.forageRealItems;   // 나무 층(T135)이 켜져 있으면 실물 열매도 이 바구니다
+    out.push('stone');
+    const real = world && world.forageRealItems;
     if (real) for (const r of real) out.push(r);
   }
   return out.length ? Array.from(new Set(out)) : null;
@@ -4880,20 +4922,38 @@ function allocRealCandidates(v, world, cands, ctx) {
   v._allocDay = day;
   if (prev === null) return null;                   // ★첫 정산 전 — 종전 그대로(폴백)
 
+  const B1 = allocBasketMode();                     // 되돌림 — 1판(바구니 전체 소득)
   const out = [];
   for (let i = 0; i < cands.length; i++) {
     const job = cands[i][0], gain = cands[i][1];
-    const b = allocBasketOf(job, ctx, world);
     const n = (ctx.counts && ctx.counts[job]) || 0;
-    if (!b || n <= 0) { out.push([job, gain]); continue; }     // 폴백
-    let q = 0, inc = 0;
-    for (let k = 0; k < b.length; k++) { const x = e[b[k]] || 0; if (x > 0) { q += x; inc += x * ctx.w(b[k]); } }
-    if (!(q > 0)) { out.push([job, gain]); continue; }         // 폴백 — 아직 실현이 0
-    // 한계가치 = (1인당 실현 산출) × (그 바구니의 **양 가중 평균값**) × period
-    //          = (Σ 실현ᵣ · w(r)) / 인원 × period — 양과 값이 **같은 바구니**를 본다.
-    let g = (inc / n) * ctx.period;
-    // ★사냥 위험 프리미엄은 생산이 아니라 **기회비용**이라 실현 산출에 안 들어 있다 — 그대로 곱한다.
+    if (n <= 0) { out.push([job, gain]); continue; }           // 폴백 — 아직 그 일을 하는 사람이 없다
+    let g = 0, any = false;
+
+    if (B1) {
+      // ── 1판(되돌림): 바구니 전체 소득 ──────────────────────────────────────
+      const b = allocBasketOf(job, ctx, world);
+      if (!b) { out.push([job, gain]); continue; }
+      let q = 0, inc = 0;
+      for (let k = 0; k < b.length; k++) { const x = e[b[k]] || 0; if (x > 0) { q += x; inc += x * ctx.w(b[k]); } }
+      if (!(q > 0)) { out.push([job, gain]); continue; }
+      g = (inc / n) * ctx.period; any = true;
+    } else {
+      // ── ★2판: 항마다 (1인당 실현 양) × (종전 값식) — 축이 종전과 같다 ─────
+      const terms = allocTermsOf(job, ctx, world);
+      if (!terms) { out.push([job, gain]); continue; }          // 상인·전사 — 폴백
+      for (let t = 0; t < terms.length; t++) {
+        const keys = terms[t][0];
+        let q = 0;
+        for (let k = 0; k < keys.length; k++) q += (e[keys[k]] || 0);
+        if (q > 0) { g += (q / n) * terms[t][1]() * ctx.period; any = true; }
+      }
+      if (!any) { out.push([job, gain]); continue; }            // 폴백 — 아직 실현이 0
+    }
+
+    // ★사냥 위험 프리미엄은 생산이 아니라 **기회비용**이라 실현 산출에 안 들어 있다 — 종전식 그대로 곱한다.
     if (job === 'hunter' && v._huntRisk != null) g *= (1 - Math.min(1, Math.max(0, v._huntRisk)));
+    // ★채집 MSY 포화도 종전식에 있던 항이다 — 실현 양엔 이미 들어 있으니 **두 번 곱하지 않는다**(주석으로 남긴다).
     out.push([job, g]);
   }
   return out;
@@ -5920,7 +5980,7 @@ module.exports = {
   computeDailyConsumption,
   FORAGE_FOOD_FACTOR,   // ★식량 pull(v2 FOOD_CLASSES 파생용 단일 진실 — 구황·해산물 식용 등가)
   // ★[T164] 실현 배분 정본 — 랩도 하네스도 **이 함수들을** 부른다(사본 0).
-  allocRealOn, allocRealWin, allocBasketOf, allocRealCandidates,
+  allocRealOn, allocRealWin, allocBasketMode, allocBasketOf, allocTermsOf, allocRealCandidates,
   JOB_NAMES,
   FIELDS,
   RESOURCES,

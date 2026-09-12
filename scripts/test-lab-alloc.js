@@ -17,6 +17,8 @@
 //   ⑦ 돌연변이 — 창을 0 으로(`L_ALLOC_WIN=0`) 하면 평활이 사라져 하루치 요동이 그대로 든다
 //   ⑧ 서버 표 — `FORAGE_FOOD_FACTOR` 에 `mulberry_fruit` 이 있고 값은 산포도와 같다(새 수 0)
 //   ⑨ ★사본 0 — 랩 HTML 이 제 `allocRealFn`/`allocBasketOf` 를 **안 들고 있다**
+//   ⑩ ★[T184 2판] 주산물 항 — 항이 종전식의 그 품목·그 값식이고, 되돌림이 1판으로 돌아간다
+//   ⑪ ★[T184 2판] **축 검사** — 실현÷종전 배율이 직업 간 한 자릿수 안(1판이면 두 자릿수 → 빨강)
 //
 // 실행: node scripts/test-lab-alloc.js
 'use strict';
@@ -69,9 +71,10 @@ async function open(env) {
   }
 
   // ── ⓢ 서버 경로 — 브라우저 없이 정본을 직접 부른다 ─────────────────────────
-  console.log('\nⓢ 서버 경로 — 정본 함수를 직접');
+  console.log('\nⓢ 서버 경로 — 정본 함수를 직접 (④⑤ 는 **1판 의미**라 `L_ALLOC_BASKET=1` 로 건다)');
   {
     const E = require(path.resolve(__dirname, '..', 'sim', 'economy-sim.js'));
+    process.env.L_ALLOC_BASKET = '1';   // ★[T184] 아래 ④⑤ 는 바구니 소득(1판)의 성질이다
     delete process.env.L_ALLOC_REAL;
     ok(E.allocRealOn() === false, '손잡이가 없으면 **꺼짐**이 기본이다');
     process.env.L_ALLOC_REAL = '1';
@@ -112,6 +115,73 @@ async function open(env) {
       return E.allocRealCandidates(v, W, [['farmer', 1]], ctx({ farmer: 1 }))[0][1]; };
     const w1 = win(null), w0 = win(0); delete process.env.L_ALLOC_WIN;
     ok(w0 > w1 * 5, 'ⓢ⑦ 돌연변이 — 창 0 이면 하루 요동이 그대로', `창1 ${w1.toFixed(2)} · 창0 ${w0.toFixed(2)}`);
+    delete process.env.L_ALLOC_BASKET;
+  }
+
+  // ── ⑩⑪ ★[T184] 2판 — 주산물 항 · 축이 종전과 같은가 ────────────────────────
+  console.log('\n⑩⑪ [T184 2판] 주산물 항 · 축 검사');
+  {
+    const E = require(path.resolve(__dirname, '..', 'sim', 'economy-sim.js'));
+    delete process.env.L_ALLOC_BASKET;
+    const W = (r) => ({ food: 3, fish: 5, meat: 7, hide: 2, wood: 4, ore: 9, vegetable: 6, herb: 8, stone: 1.5 }[r] || 1);
+    const YIELDS = { fruit: 1, vegetable: 1, mushroom: 1, herb: 1, grape: 1 };
+    const ctx = (counts) => ({ period: 100, counts, w: W, JOBS: E.JOBS, forageYields: () => YIELDS });
+    // ⑩ 항의 품목·값식이 종전식 그대로인가
+    const terms = (j) => E.allocTermsOf(j, ctx({}), {});
+    const T = {}; for (const j of ['farmer', 'fisher', 'hunter', 'lumberjack', 'miner', 'forager', 'merchant'])
+      T[j] = terms(j);
+    ok(T.farmer.length === 1 && T.farmer[0][0].join() === 'food' && T.farmer[0][1]() === W('food'),
+       '⑩ 농부 = (`food`, w(food)) — 종전식 그대로');
+    ok(T.lumberjack[0][0].join() === 'wood' && T.lumberjack[0][1]() === W('wood'),
+       '⑩ 나무꾼 = (`wood`, w(wood)) — 바구니가 **주산물 하나**(resin·bark·acorn 빠진다)');
+    ok(T.miner[0][0].join() === 'ore' && T.miner[0][1]() === W('ore'), '⑩ 광부 = (`ore`, w(ore))');
+    ok(T.hunter[0][0].join() === 'meat' && Math.abs(T.hunter[0][1]() - (W('meat') + 0.3 * W('hide'))) < 1e-12,
+       '★⑩ 사냥꾼 값식의 **예외를 그대로 옮겼다** — `w(meat) + 0.3·w(hide)`');
+    ok(T.forager.length === 2 && T.forager[1][0].join() === 'stone'
+       && Math.abs(T.forager[0][1]() - (W('vegetable') + 0.6 * W('herb'))) < 1e-12
+       && T.forager[0][0].indexOf('stone') < 0,
+       '★⑩ 채집꾼은 **항이 둘** — (믹스, w(veg)+0.6·w(herb)) + (`stone`, w(stone))');
+    ok(T.merchant === null, '⑩ 상인은 항이 없다 → 폴백(종전 값 그대로)');
+
+    // ⑪ 축 검사 — 실현이 **종전식의 양**과 같으면 2판 값은 종전 값과 같아야 한다(비 = 1.00)
+    const W0 = { day: 0 };
+    const run = (job, prod, n) => {
+      const v = { dailyProductionBuf: Object.assign({}, prod) };
+      W0.day = 0; E.allocRealCandidates(v, W0, [[job, 1]], ctx({ [job]: n }));
+      W0.day = 100000;
+      return E.allocRealCandidates(v, W0, [[job, 1]], ctx({ [job]: n }))[0][1];
+    };
+    const N = 4, per = 2.5;                       // 1인당 실현 양(임의) — 종전식의 '땅×계수' 자리에 그대로 넣는다
+    const cases = [
+      ['farmer', { food: per * N }, per * W('food') * 100],
+      ['fisher', { fish: per * N }, per * W('fish') * 100],
+      ['lumberjack', { wood: per * N }, per * W('wood') * 100],
+      ['miner', { ore: per * N }, per * W('ore') * 100],
+      ['hunter', { meat: per * N }, per * (W('meat') + 0.3 * W('hide')) * 100],
+    ];
+    const ratios = [];
+    for (const [j, prod, expect] of cases) {
+      const g = run(j, prod, N);
+      ratios.push(g / expect);
+      ok(Math.abs(g / expect - 1) < 1e-9, `★⑪ ${j} — 실현 양이 종전 양과 같으면 값도 **같다**(비 1.000)`,
+        `${g.toFixed(1)} vs ${expect.toFixed(1)}`);
+    }
+    const spread = Math.max.apply(null, ratios) / Math.min.apply(null, ratios);
+    ok(spread < 10, '★⑪ 축 검사 — 직업 간 배율 퍼짐이 **한 자릿수 안**', `퍼짐 ×${spread.toFixed(2)}`);
+
+    // ⑪ 돌연변이 — 1판(바구니 전체)으로 되돌리면 같은 설정에서 배율이 흩어진다
+    process.env.L_ALLOC_BASKET = '1';
+    const r1 = [];
+    for (const [j, prod, expect] of cases) {
+      const extra = Object.assign({}, prod);
+      if (j === 'lumberjack') { extra.resin = per * N; extra.bark = per * N; }   // 종전식이 안 보던 부산물
+      if (j === 'fisher') { extra.salmon = per * N; extra.salt = per * N; }
+      r1.push(run(j, extra, N) / expect);
+    }
+    process.env.L_ALLOC_BASKET = '';
+    const spread1 = Math.max.apply(null, r1) / Math.min.apply(null, r1);
+    ok(spread1 > spread * 1.5, '★⑪ 돌연변이 — 1판(바구니 전체)으로 되돌리면 퍼짐이 **커진다**',
+      `2판 ×${spread.toFixed(2)} → 1판 ×${spread1.toFixed(2)}`);
   }
 
   // ── ① 되돌림 ───────────────────────────────────────────────────────────────
@@ -153,9 +223,9 @@ async function open(env) {
   }
 
   // ── ④⑤⑥⑦ 양·값·바구니·창 ─────────────────────────────────────────────────
-  console.log('\n④⑤⑥⑦ 양 자리 · 값 자리 · 바구니 · 창');
+  console.log('\n④⑤⑥⑦ 양 자리 · 값 자리 · 바구니 · 창 (⑤\'⑥ 은 **1판 의미** — `L_ALLOC_BASKET=1`)');
   {
-    const { b, p, errs } = await open('window.L_ALLOC_REAL=1;');
+    const { b, p, errs } = await open('window.L_ALLOC_REAL=1;window.L_ALLOC_BASKET=1;');
     const r = await p.evaluate(() => {
       document.getElementById('seed').value = '7'; document.getElementById('nvil').value = '4'; reseed(); lifeInit();
       const W = ECON_WORLD, out = {}, A = EconEngine.allocRealCandidates;
@@ -208,7 +278,7 @@ async function open(env) {
     ok(near(r.perCap[1], r.perCap[0] / 2), "④' 인원이 두 배면 1인당이라 **반**이다", `${r.perCap[0]} → ${r.perCap[1]}`);
     ok(near(r.price[1], r.price[0] * 2), '★⑤ 값이 두 배면 한계가치도 **두 배**다', `${r.price[0]} → ${r.price[1]}`);
     ok(r.basket[1] > r.basket[0] * 1.9 && r.basket[1] < r.basket[0] * 2.1,
-       "★⑤' 바구니 절반 품목의 값을 3배로 하면 **평균이 2배**(양 가중)", `${r.basket[0]} → ${r.basket[1]}`);
+       "★⑤' **바구니 소득(양 가중)** — 절반 품목의 값을 3배로 하면 소득이 2배", `${r.basket[0]} → ${r.basket[1]}`);
     ok(near(r.table[1], r.table[0] / 2), '⑥ 바구니는 **엔진 표**가 정한다 — byproduct 를 빼면 그 몫이 빠진다', `${r.table[0]} → ${r.table[1]}`);
     ok(r.forage[0] > r.forage[1], "⑥' 채집꾼 바구니에 `foragerYieldsFor` 가 들어간다", `${r.forage[0]} vs ${r.forage[1]}`);
     ok(r.win[1] > r.win[0] * 5, '★⑦ 돌연변이 — 창을 0 으로 하면 하루 요동이 그대로 든다', `창1 ${r.win[0].toFixed(2)} · 창0 ${r.win[1].toFixed(2)}`);
