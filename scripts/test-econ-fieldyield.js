@@ -286,6 +286,17 @@ if (!process.env.T100_CHILD) {
     ok(/[*/+]/.test(line.split('harvestToGranary')[1] || ''),
       '⑦ ★★★생활층에서 배율을 **두 번** 물리면 ⑥ 의 「산수 없다」 감지기가 문다(이중 0)');
   }
+  // ★변조 다섯째 [T193] — 장부에 **배수**를 끼우는 판(`_t100Pot * 2`). ⑬ⓐ 의 꼴 검사가 물어야 한다.
+  let made9 = false;
+  try {
+    const mutSrc5 = SRC.replace(
+      'if (T193_LEDGER) dailyProduction.food = (dailyProduction.food || 0) + _t100Pot;',
+      'if (T193_LEDGER) dailyProduction.food = (dailyProduction.food || 0) + _t100Pot * 2;');
+    ok(mutSrc5 !== SRC, '⑦ [T193] 장부 배수의 변조 지점이 소스에 **실재한다**');
+    fs.writeFileSync(MUTPATH, mutSrc5); made9 = true;
+    ok(run({ T100_FIELD_YIELD: '1', T193_LEDGER: '1', T100_MUT_MOD: MUTNAME }) !== 0,
+      '⑦ ★★★장부에 **×2** 를 끼우면 빨개진다(⑮ 꼴·양 검사 — 새 수 0 의 파수꾼)');
+  } finally { if (made9) { try { fs.unlinkSync(MUTPATH); } catch (e) { console.log('  ⚠변조 사본 정리 실패: ' + MUTPATH); } } }
   const mutated = VSRC.replace('  if (vil.econ) vil.econ._fieldCells = vil._farmSet.size;',
     '  if (vil.econ) { vil.econ._fieldCells = vil._farmSet.size; vil.econ.storage.food += 1; }');
   ok(mutated !== VSRC && bites(mutated),
@@ -430,6 +441,65 @@ console.log('\n⑫ 켠 팔의 잠재 — 밭이 낸 식량이 **잠재에도** �
       `fuel ${p0.fuel} · prod ${p0.prod} 고정`);
     ok(p0.food === p1.food, '⑫ [끔] 곳간도 안 변한다');
   }
+}
+
+// ── ⑮ 장부가 밭을 본다 (T193) ──────────────────────────────────────────────
+console.log('\n⑮ 장부 — 밭이 곳간에 넣은 그 양이 **실현 흐름 장부**에도 적히나(T193 · 손잡이 기본 끔)');
+{
+  const C = codeOf(SRC);
+  const LED = econ.T193_LEDGER;
+  // ⓐ 자리 전수 — `dailyProduction`(실현 장부)을 쓰는 곳 둘 · 읽는 곳 하나
+  const hits = C.split('\n').map((l, i) => [i + 1, l]).filter(([, l]) => /dailyProduction\b/.test(l));
+  const writes = hits.filter(([, l]) => /dailyProduction(\[[^\]]+\]|\.food)\s*=/.test(l) && !/= v\.dailyProductionBuf/.test(l));
+  ok(/const dailyProduction = v\.dailyProductionBuf;/.test(C), '⑮ 장부는 **마을에 사는 버퍼**다(`v.dailyProductionBuf`)');
+  ok(/for \(const r in dailyProduction\) dailyProduction\[r\] = 0;/.test(C),
+    '⑮ ★그 버퍼는 **틱 머리에서 리셋**된다 — 그래서 생활층(틱 뒤)에서 적으면 지워진다');
+  ok(writes.length === 4, '⑮ ★쓰는 줄 넷 — 리셋 둘 + `addProduce`(끈 팔) + T193(켠 팔)', `실제 ${writes.length}`);
+  ok(/const dailyFoodProd = totalFoodProductionEquivalent\(dailyProduction\);/.test(C),
+    '⑮ 읽는 곳은 하나 — `totalFoodProductionEquivalent` → `dailySurplus` → `surplusEMA.food`');
+  ok(/if \(T193_LEDGER\) dailyProduction\.food = \(dailyProduction\.food \|\| 0\) \+ _t100Pot;/.test(C),
+    '⑮ ★★★적는 수는 **잠재에 적는 그 수 그대로**다(`_t100Pot`) — 배수 0 · 새 수 0(`* 2` 를 끼우면 여기가 빨개진다)');
+  ok(/const T193_LEDGER = process\.env\.T193_LEDGER === '1';/.test(C),
+    '⑮ 손잡이는 **기본 끔**이다(`=== \'1\'` — 켜야 켜진다)');
+  ok(C.indexOf('T193_LEDGER') > 0 && !/T193_LEDGER[^\n]*dailyProductionPotential/.test(C),
+    '⑮ 손잡이는 **실현 장부만** 문다 — T183 의 잠재 줄은 손잡이 밖이다(따로 산다)');
+
+  // ⓑ 리셋 실측 — 생활층 자리가 왜 못 쓰는 자리인가(자명 통과 금지: 실제로 지워지는 걸 본다)
+  {
+    const w = econV2.createWorldV2({ seed: 5, villageCount: 1, namePool: ['가'], infoRange: 5000, raidPer100: 0 });
+    const v = w.villages[0];
+    const _l = console.log; console.log = () => {};
+    try { econV2.tickWorldV2(w); v.dailyProductionBuf.food = 999; econV2.tickWorldV2(w); } finally { console.log = _l; }
+    ok(v.dailyProductionBuf.food !== 999,
+      '⑮ ★생활층 자리에 적은 값은 **다음 틱이 읽기 전에 지워진다**(999 → 리셋) — 자리가 틱 안이어야 하는 이유',
+      `틱 뒤 ${v.dailyProductionBuf.food.toFixed(2)}`);
+  }
+
+  // ⓒ 기능 — 켜면 장부에 오르고, 끄면 0. 곳간은 두 판이 **같다**(장부만 적는다 · 이중 0)
+  const probe = () => {
+    const w = econV2.createWorldV2({ seed: 5, villageCount: 1, namePool: ['가'], infoRange: 5000, raidPer100: 0 });
+    const v = w.villages[0];
+    econ.harvestToGranary(v, 100);                      // 생활층이 어제 거둔 것(정본 입구)
+    const _l = console.log; console.log = () => {};
+    try { econV2.tickWorldV2(w); } finally { console.log = _l; }
+    return { led: +(v.dailyProductionBuf.food || 0), sp: v.surplusEMA.food, food: +(v.storage.food || 0).toFixed(6) };
+  };
+  const p = probe();
+  if (ON && LED) {
+    ok(p.led > 0, '⑮ ★★★[켬] 수확 100건이 장부에 **오른다**(0 이면 빨강 — 자명 통과 금지)', `장부 ${p.led.toFixed(2)}`);
+    ok(Math.abs(p.led - 100 * econ.T100_K) < 1e-6,
+      '⑮ ★오른 양이 곳간에 넣은 그 양과 **같다**(`100 × k` · 세전 · 배수 0)', `${p.led.toFixed(4)} = 100×${econ.T100_K.toFixed(4)}`);
+    ok(p.sp > 0, '⑮ ★그래서 `surplusEMA.food` 가 **양수로 선다**(마을이 자기를 적자로 안 읽는다)', p.sp.toFixed(3));
+  } else if (ON) {
+    ok(p.led === 0, '⑮ ★★[켠 팔 · 손잡이 끔] 장부는 여전히 **0** 이다(T186 팔 그대로 — 비트 동일의 뿌리)');
+  } else {
+    ok(p.led === 0, '⑮ [끔] 밭 입구가 아예 안 열리므로 장부도 0 이다');
+  }
+  ok(/if \(!\(T100_FIELD_YIELD && npc\.currentJob === 'farmer'\)\) addProduce\(jdef\.output, baseAmt\);/.test(C),
+    '⑮ ★이중 0 — 켠 팔에서 농부의 `food` 는 `addProduce` 를 **안 탄다**(들어오는 길이 하나뿐이다)');
+  // ⓓ `totalFoodProductionEquivalent` 이 보는 것 — `food` 만이 아니다(§0-ⓐ 의 셋째 물음)
+  ok(/if \(T73_RAWGRAIN\) for \(const r of RAW_GRAINS\) total \+= \(prod\[r\] \|\| 0\) \* RAW_GRAIN_FOOD_FACTOR;/.test(C),
+    '⑮ 장부를 읽는 자는 `food` 말고 **생곡도 본다**(T73) — 켠 팔이 통째로 눈먼 건 아니었다(부산물은 두 팔이 같은 길)');
 }
 
 // ── ⑨ 3사본 ────────────────────────────────────────────────────────────────

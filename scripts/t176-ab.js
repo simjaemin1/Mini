@@ -267,6 +267,10 @@ const M = vils.map(() => ({ harvestN: 0, units: 0, foodEq: 0, sow: 0, fDays: 0, 
   famineDays: 0,                  // `totalFoodEquivalent < N×30` — 배분의 기근 게이트가 열린 날
   clearedFracDays: 0,             // `_clearedFrac` 이 실제로 심긴 날(0 이면 그 다리는 죽어 있다)
   priceSum: 0, priceN: 0,         // 식량 그림자가격 표본(10일마다 · 배분식의 `w('food')`)
+  // ★[T193] 장부·주거 게이트 — 전부 정본이 써 둔 값을 **읽기만** 한다
+  ledgerDays: 0,                  // `dailyProductionBuf.food > 0` 인 날(장부가 밭을 본 날 · 덩어리인가 흐름인가)
+  houseUp: 0, houseDown: 0, houseDelta: 0,   // 집이 는 날 / 준 날 / 순변화(노후화 대 건축)
+  d40: null,                      // 40일째 한 장(게이트가 처음 걸리는 그 날 · 카드 ④)
   traj: [] }));                   // ⓒ 궤적(20일마다)
 const IX = new Map(vils.map((v, i) => [v, i]));
 const GRAN = {};
@@ -292,7 +296,18 @@ for (let day = 0; day < DAYS; day++) {
     // ★[T186] 오늘의 장부 — 틱이 막 끝났으므로 `dailyProductionBuf`·`_consDay` 는 **오늘치**다
     //   (`_consDay` 는 내일 틱 머리에서 `_consEMA` 로 접히며 0 이 된다 — 그 전에 읽는다).
     for (const j of JOBNAMES) { const c = (ev.counts && ev.counts[j]) || 0; if (c) m.jobDays[j] = (m.jobDays[j] || 0) + c; }
-    m.prodLedger += +((ev.dailyProductionBuf && ev.dailyProductionBuf.food) || 0);
+    const _led = +((ev.dailyProductionBuf && ev.dailyProductionBuf.food) || 0);
+    m.prodLedger += _led; if (_led > 0) m.ledgerDays++;
+    const _h = ev.housing != null ? +ev.housing : null;
+    if (_h != null && m._hPrev != null) { const d = _h - m._hPrev; m.houseDelta += d; if (d > 1e-9) m.houseUp++; else if (d < -1e-9) m.houseDown++; }
+    if (_h != null) m._hPrev = _h;
+    if (day === 40) m.d40 = { N: n, housing: _h != null ? +_h.toFixed(2) : null,
+      mapBeds: ev._mapBeds != null ? +ev._mapBeds : null,
+      gated: !!(ev._dpDebug && ev._dpDebug.gated), dP: ev._dpDebug ? +(+ev._dpDebug.dP).toFixed(3) : null,
+      K: ev._dpDebug ? +(+ev._dpDebug.K).toFixed(1) : null,
+      wood: +((ev.storage.wood || 0)).toFixed(1), stone: +((ev.storage.stone || 0)).toFixed(1),
+      pebble: +((ev.storage.pebble || 0)).toFixed(1),
+      foodEq: +econ.totalFoodEquivalent(ev).toFixed(1) };
     m.consFood += +((ev._consDay && ev._consDay.food) || 0);
     const _sp = (ev.surplusEMA && ev.surplusEMA.food) || 0;
     m.surplusSum += _sp; if (_sp < 0) m.surplusNegDays++;
@@ -364,6 +379,8 @@ for (let i = 0; i < world.villages.length; i++) {
     kSlot: v._kDbg ? v._kDbg.slot : null, kProd: v._kDbg ? v._kDbg.prod : null, kFuel: v._kDbg ? v._kDbg.fuel : null,
     // ★[T186] ⓐ 직업 · ⓑ 수지 · ⓒ 궤적
     jobDays: m.jobDays, prodLedger: +m.prodLedger.toFixed(1), consFood: +m.consFood.toFixed(1),
+    ledgerDays: m.ledgerDays, houseUp: m.houseUp, houseDown: m.houseDown, houseDelta: +m.houseDelta.toFixed(2),
+    mapBeds: v._mapBeds != null ? +v._mapBeds : null, d40: m.d40,
     surplusMean: +(m.surplusSum / DAYS).toFixed(4), surplusNegDays: m.surplusNegDays,
     famineDays: m.famineDays, clearedFracDays: m.clearedFracDays,
     priceFood: m.priceN ? +(m.priceSum / m.priceN).toFixed(4) : null,
@@ -426,6 +443,10 @@ const out = {
   taxFoodTot: +per.reduce((a, p) => a + p.taxFood, 0).toFixed(1),
   foodImportedTot: +per.reduce((a, p) => a + p.foodImported, 0).toFixed(1),
   cargoSentTot: per.reduce((a, p) => a + p.cargoSent, 0),
+  ledgerDaysTot: per.reduce((a, p) => a + p.ledgerDays, 0),
+  houseUpTot: per.reduce((a, p) => a + p.houseUp, 0), houseDownTot: per.reduce((a, p) => a + p.houseDown, 0),
+  mapBedsSeen: per.filter((p) => p.mapBeds != null).length,
+  ledger: econ.T193_LEDGER === true,
   caravansTot: per.reduce((a, p) => a + p.caravans, 0),
   floorTot: +world.villages.reduce((a, v) => a + (v._t100FloorTot || 0), 0).toFixed(1),
   floorDaysTot: M.reduce((a, m) => a + m.floorDays, 0),

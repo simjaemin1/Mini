@@ -2262,6 +2262,12 @@ function seedFoodDays(bornDay) {
 //     (`T100_GARDEN=0`), 보고가 **하한이 낸 몫 ÷ 수확이 낸 몫**을 적는다.
 const T100_GARDEN_CELLS = 3;         // = server/villages.js LIFE_CLEAR_PDAY (하네스가 두 값을 대조한다)
 const T100_GARDEN = process.env.T100_GARDEN !== '0';   // 되돌림: ⓑ 만 보려면 T100_GARDEN=0
+// ★★[T193 2026-09-12] **장부가 밭을 본다** — 손잡이 하나(기본 **끔**).
+//   T186 §0-ⓑ' 가 잰 것: 켠 팔에서 `dailyProductionBuf.food` 가 **정확히 0** 이다(`food` 를 내는 직업은
+//   농부뿐인데 켠 팔 농부는 `addProduce` 를 안 탄다) ⇒ `surplusEMA.food` 가 무너져 **마을의 3분의 2가
+//   쌀을 쌓아 두고 자기를 적자로 읽는다**(음수 마을·일 30%→65% · 식량 그림자가격 +53~+227%).
+//   ⚠`T100_FIELD_YIELD` 켠 팔 **안에서만** 산다 — 끈 팔엔 밭 유입 자체가 0 이라 이 손잡이가 무의미하다.
+const T193_LEDGER = process.env.T193_LEDGER === '1';   // 되돌림: 끄면 T186 켠 팔과 **비트 동일**
 const T100_GARDEN_FLOOR = T100_GARDEN_CELLS * T100_K / SEED_FOOD_DAYS_D0;   // 농부 1인 하루 식량등가 바닥(유도값)
 // 하루 한 번 — econ 틱이 부른다. 오늘 들어온 수확이 바닥보다 적으면 그 차이만 메운다.
 function gardenFloorTopUp(v) {
@@ -3964,6 +3970,16 @@ if (_hwW > 0 && v.lastStats && typeof v.lastStats.happiness === 'number') {
   if (_t100Pot > 0) {
     v._t100InflowToday = 0;   // ★텃밭을 끈 판(`T100_GARDEN=0`)에서도 오늘치로 비운다 — 누적 누수 차단
     dailyProductionPotential.food = (dailyProductionPotential.food || 0) + _t100Pot;
+    // ★★[T193] **실현 장부에도 같은 양을 적는다**(손잡이 뒤 · 기본 끔).
+    //   ⚠왜 여기인가 — 생활층 자리(`harvestToGranary`)에서는 **못 적는다.** 그 버퍼는 `v.dailyProductionBuf`
+    //     인데 틱 머리(`:2090~2092`)가 매일 0 으로 리셋한다. 생활층은 틱 **뒤**에 도므로 거기서 적으면
+    //     다음 틱이 읽기 전에 지워진다(실측: 999 → 0). 살아남는 자리는 **틱 안, 읽는 줄(`:2870`) 앞** 뿐이고
+    //     그게 바로 T183 이 연 이 줄이다 — 같은 양(`_t100Pot`)이 이미 손에 있다.
+    //   ★새 수 0 · 새 상수 0 · 사본 0 — 잠재에 적는 그 수를 실현 장부에도 **그대로** 적는다.
+    //   ★이중 0 — 켠 팔에서 농부의 `food` 는 `addProduce` 를 안 탄다(`:2609` 게이트). 들어오는 길은 이 줄 하나다.
+    //   ⚠`addProduce` 를 부를 수는 없다 — 그건 NPC 루프 안의 클로저다(`npc`·`sm`·`_hpm` 에 묶여 있다).
+    //     그 함수가 장부에 하는 일은 `dailyProduction[r] += amt` 한 줄이고, 아래가 그 한 줄이다.
+    if (T193_LEDGER) dailyProduction.food = (dailyProduction.food || 0) + _t100Pot;
   }
 
   // ★S3 막석기 자급 안전망 — 도구(석기)가 치명적으로 부족(커버리지<SELF_TOOL_COV)하면 도구의존 노동자가 급할 때 막석기를 손수 자급.
@@ -5887,7 +5903,7 @@ module.exports = {
   DAILY_FOOD_CONSUMPTION,   // ★[T100 4판] 하루 1인 식량 정본 — `k` 유도의 한 항(하네스가 1.0 을 옮겨 적지 않는다)
   seedFoodDays, SEED_FOOD_DAYS_D0, SEED_FOOD_DAYS_LEGACY,   // ★[T100 5판] 창설 곳간의 밑변 — 하네스가 `crops.js` 에서 다시 유도해 대조한다
   HEALTH_PROD_W, happyWorkMul,   // ★[T157] 건강→작업량 계수 — 하네스가 "행복은 건강과 같은 문법" 을 대조한다(사본 0)
-  gardenFloorTopUp, T100_GARDEN, T100_GARDEN_CELLS, T100_GARDEN_FLOOR,   // ★[T100 5판 ⓒ] 텃밭 하한 — 값·손잡이·유도식을 하네스가 다시 계산한다
+  gardenFloorTopUp, T100_GARDEN, T100_GARDEN_CELLS, T100_GARDEN_FLOOR, T193_LEDGER,   // ★[T193] 장부 손잡이 — 하네스가 옮겨 적지 않는다   // ★[T100 5판 ⓒ] 텃밭 하한 — 값·손잡이·유도식을 하네스가 다시 계산한다
   FARMER_BASE: JOBS.farmer.base,   // ★[T100] 농부 1인 기준 산출(옛 밑변 `1.5 × 지력`의 1.5) — 계측기·하네스가 이 수를 옮겨 적지 않게
   // ★[T125] 옷감 보온 가중 — `server/villages.js` 가 주민 착장 재질을 고를 때 **읽는다**.
   //   같은 이유(사본 금지)로 이름만 낸다. 값·틱 로직 무접촉 — 이 줄은 시뮬을 한 톨도 안 바꾼다.
