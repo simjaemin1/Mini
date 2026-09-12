@@ -2594,7 +2594,7 @@ function init(deps) {
       //   ★[T203] 창설자 이름도 되살린다 — 읽는 자리가 `econ` 이므로 `econ` 에 얹는다(`_tribeId` 와 같은 짝).
       //     ⚠**있을 때만** 얹는다: NPC 마을엔 이 칸이 아예 없고, 그래서 랩·기준선은 한 비트도 안 움직인다.
       if (hallData && hallData.founderName) ev.founderName = String(hallData.founderName);
-      ev._fieldCells = farmSet.size;   // ★[T100] 밭 브리지 초기값(영속 행에서 — 개간 전에도 밭은 있다)
+      _fieldBridge({ econ: ev, _farmSet: farmSet, _potSet: potSet, _drySet: drySet });   // ★[T100] 밭 브리지 초기값(영속 행에서 — 개간 전에도 밭은 있다) · ★[T198] 두 칸도 같은 줄에서
       // ★[11차 재민 확정] 마을 안엔 숲이 없다 — 영토 셀의 나무를 벤다(개간).
       //   부팅 때마다 부르지만 이미 벤 나무는 harvestedSeeds 에 있어 다시 생성되지 않는다(멱등).
       try { if (state.deps.clearTreesInCells) { const n2 = state.deps.clearTreesInCells(terrSet); if (n2) console.log(`[${state.zoneId}] 🏘️ ${row.name} 영토 개간 — 나무 ${n2}그루`); } } catch (e) {}   // ★[생활 층] 런타임 상태(구DB=terr 0셀 → 생활층 휴면). _crop=작물 상태머신(랩 life.crop 동형 — 인메모리 관용: 재부팅=재파종)
@@ -3531,6 +3531,30 @@ function banditHost() {
 //   village_buildings 갱신 API 부재 관용). 좌표·야간 귀가·늑대 도주는 기존 계약 유지.
 // =============================================================================
 const LIFE_ON = process.env.VILLAGE_LIFE !== '0';
+// ★★[T198 2026-09-12] **죽은 다리 둘을 손잡이 뒤에 살린다.**
+//   econ 은 `_paddyShare`(논 프리미엄 `economy-sim.js:2203`)와 `_clearedFrac`(개간 완료율 `:2244` 산출 ·
+//   `:2964` 부양력)을 곱하는데 **아무도 안 심었다** — 122,400 마을·일 중 심긴 날 0(T186 §0-ⓐ').
+//   T100 3판이 "`_paddyShare`·`_clearedFrac` 계열"을 적어 두고 4판에서 `_fieldCells` 하나만 배선했고,
+//   그 `_fieldCells` 는 **econ 이 한 번도 안 읽는다**(전수 0) — 다리 셋이 다 끊겨 있었다(회부 #5).
+//   ⚠**두 칸은 T100 손잡이 밖에서 곱힌다** — 끈 팔에서도 농부 `baseAmt`(= 추상 식량 산출)와
+//     부양력 `prodK` 를 직접 움직인다 ⇒ 살리는 순간 **기준선이 바뀐다**(승인 게이트 · §0ⓐ).
+//   ⇒ 기본은 **끔**: 안 심으면 econ 이 `null → ×1` 로 받아 **비트 동일**이다.
+const T198_BRIDGE = process.env.T198_BRIDGE === '1';
+// ★밭 브리지 — econ 이 읽는 공간 값을 심는 **유일한 자리**(사본 0 · 부팅·개간·랩이 같은 줄을 쓴다).
+//   유도는 생활층 정본 셋에서만 온다(**새 수 0**):
+//     `_clearedFrac = |개간| / (|개간| + |미개간 존닝|)`   — `_farmSet` · `_potSet`
+//     `_paddyShare  = (|개간| − |밭|) / |개간|`            — `_drySet` ⊂ `_farmSet` 이라 나머지가 논이다
+//   ⚠분모가 0 이면 **안 심는다**(지어낸 값 0 — econ 이 종전대로 ×1 로 받는다).
+function _fieldBridge(vil) {
+  const ec = vil && vil.econ; if (!ec) return;
+  const f = vil._farmSet ? vil._farmSet.size : 0;
+  ec._fieldCells = f;
+  if (!T198_BRIDGE) return;   // ★되돌림 — 두 칸은 `undefined` 그대로다(비트 동일의 뿌리)
+  const p = vil._potSet ? vil._potSet.size : 0;
+  const d = vil._drySet ? vil._drySet.size : 0;
+  if (f + p > 0) ec._clearedFrac = f / (f + p);
+  if (f > 0) ec._paddyShare = (f - d) / f;
+}
 let _vlMod = null;   // ★lazy require(설계 계약: 시뮬 off면 sim 모듈 무로드) — **읽을 땐 반드시 `_lifeVL()` 로.**
 //   시딩(seedVillages)은 자기 지역 require를 씀 — 모듈 레벨 참조가 없어 "is not defined"로 일일 훅이 죽던 버그 수정.
 // ★★[T48 2026-09-02] **백킹 변수의 이름을 지웠다.** 종전엔 `VillageLayout` 이라는 맨 이름이 있어서
@@ -4233,9 +4257,10 @@ function _lifeLiveFarmTile(vil, cx, cy, type) {   // 개간 완료 실체화: �
   vil._farmSet.add(cx + ',' + cy); vil._potSet.delete(cx + ',' + cy); vil._frontier = null; vil._farmArr = null;
   if (type === 'dryfield' && vil._drySet) vil._drySet.add(cx + ',' + cy);   // ★[생활 층 100% ③] 밭 구분 유지(작물 상태머신 field 판정)
   if (type === 'farmland') vil._farmN++; else vil._dryN++;
-  // ★★[T100 · ECON 2-b] **밭 브리지** — 개간한 칸 수를 econ 이 읽는다(`_paddyShare`·`_clearedFrac` 계열).
+  // ★★[T100 · ECON 2-b] **밭 브리지** — 개간한 칸 수를 econ 이 읽는다.
   //   회계가 아니다: 생활 층은 `storage` 를 여전히 안 만진다(`villages.js:4617` 규약 그대로).
-  if (vil.econ) vil.econ._fieldCells = vil._farmSet.size;
+  //   ★[T198] "계열"이라 적어 둔 두 칸(`_clearedFrac`·`_paddyShare`)도 **이 한 줄이** 심는다(손잡이 뒤).
+  _fieldBridge(vil);
   const bo = { id: `vb${rowid}`, dbId: null, sim: true, type: 'farmland', ownerId: `npc_simvil_${vil.dbId}`, ownerName: `${vil.name} 경작지`, x: cx * SZ + SZ / 2, y: cy * SZ + SZ / 2, data: { sim: 1, dry: type === 'dryfield' ? 1 : 0 }, floor: 0, villageId: vil.dbId };
   try { if (state.deps.chunkManager) state.deps.chunkManager.insertBuilding(bo); state.deps.broadcast({ type: 'buildings_spawn', buildings: [bo] }); } catch (e) {}
 }
@@ -6431,6 +6456,8 @@ module.exports = {
     _huntProbe: { setTa: (ta) => { const k = state.ta; state.ta = ta; return k; } },
     // ★[T190] 배율을 집는 **그 함수 자체**를 내준다 — 하네스가 라운드로빈을 다시 적으면 그게 사본이다.
     _farmMulProbe: (vil, npc) => _farmMul(vil, npc),
+    // ★[T198] 공간 브리지를 심는 **그 함수 자체**를 내준다 — 하네스가 유도식을 다시 적으면 그게 사본이다.
+    _fieldBridgeProbe: (vil) => _fieldBridge(vil),
     get VILLAGE_MAX() { return VILLAGE_MAX; },
     get INITIAL_POP() { return INITIAL_POP; },
     get SZ() { return SZ; },
@@ -6507,7 +6534,7 @@ module.exports = {
         for (const c of (L.nongZone || [])) potSet.add(c.cx + ',' + c.cy);
         for (const k of farmSet) potSet.delete(k);                       // 부팅 규약 동형(이미 개간된 존닝 제외)
         for (const c of (L.territory || [])) terrSet.add(c[0] + ',' + c[1]);
-        if (o.econ) o.econ._fieldCells = farmSet.size;                   // 밭 브리지 초기값(부팅과 같은 줄)
+        _fieldBridge({ econ: o.econ, _farmSet: farmSet, _potSet: potSet, _drySet: drySet });   // 밭 브리지 초기값(부팅과 **같은 줄**)
         return { dbId: o.dbId, name: o.name, ccx: o.ccx, ccy: o.ccy, econ: o.econ,
           _terrSet: terrSet, _potSet: potSet, _farmSet: farmSet, _drySet: drySet,
           _granList: [], _houseCells: (L.houses || []).map((h) => ({ cx: h.cx, cy: h.cy })), _site: null,
@@ -6525,7 +6552,7 @@ module.exports = {
         for (const vil of vils) {
           const ev = vil.econ; if (!ev || !ev.npcs || !ev.npcs.length) continue;
           const c = _lifeClearDay(vil, (ev.counts && ev.counts.farmer) || 0);
-          if (c) { n += c; ev._fieldCells = vil._farmSet.size; }         // 라이브는 `_lifeLiveFarmTile` 이 같은 줄을 쓴다
+          if (c) { n += c; _fieldBridge(vil); }                          // 라이브는 `_lifeLiveFarmTile` 이 같은 줄을 쓴다
         }
         return n;
       },

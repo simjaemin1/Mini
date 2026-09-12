@@ -399,6 +399,11 @@ for (let i = 0; i < world.villages.length; i++) {
     wood: +(v.land.wood || 0).toFixed(2), stone: +(v.land.stone || 0).toFixed(2),
     game: +(v.land.game || 0).toFixed(2), stoneFloor: sf,
     cells0: cells0[i], cells: vils[i]._farmSet.size, cleared: vils[i]._farmSet.size - cells0[i],
+    // ★[T198 · 관측 전용] 공간 브리지 두 칸 — **정본이 심어 둔 값을 옮겨 적기만** 한다(여기서 유도 0 · 사본 0).
+    //   손잡이(`T198_BRIDGE`)가 꺼져 있으면 둘 다 `undefined` 라 `null` 로 적힌다(그게 죽은 다리의 모습이다).
+    clearedFrac: v._clearedFrac != null ? +v._clearedFrac.toFixed(4) : null,
+    paddyShare: v._paddyShare != null ? +v._paddyShare.toFixed(4) : null,
+    potCells: vils[i]._potSet ? vils[i]._potSet.size : null, dryCells: vils[i]._drySet ? vils[i]._drySet.size : null,
     sow: m.sow, harvestN: m.harvestN, units: m.units, fieldFoodEq: +m.foodEq.toFixed(1),
     floorTot: +((v._t100FloorTot || 0)).toFixed(1), floorDays: m.floorDays, firstHarvest: m.first,
     popDays: m.popDays, cellDays: m.cellDays, gatedDays: m.gatedDays, hungerDays: m.hungerDays,
