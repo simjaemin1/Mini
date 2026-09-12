@@ -197,6 +197,11 @@ const Events = R('server/events');
 const Crops = R('server/crops');
 const KCAL = R('server/kcal');
 const JOBNAMES = econ.JOB_NAMES || Object.keys(econ.JOBS || {});   // ★정본 목록(사본 0)
+// ★★[T207] 주거 상수는 **내보내기가 없다.** 계측기가 옮겨 적으면 그게 사본이고, 정본이 바뀌면
+//   조용히 어긋난다 — 그래서 **정본 소스 텍스트에서 읽는다**(값을 이 파일에 한 자도 안 적는다).
+const _ECONSRC = fs.readFileSync(path.join(__dirname, '..', 'sim', 'economy-sim.js'), 'utf8');
+const _constOf = (name) => { const m = _ECONSRC.match(new RegExp('const\\s+' + name + '\\s*=\\s*([0-9.]+)\\s*;')); return m ? +m[1] : null; };
+const HOUSE_WOOD = _constOf('HOUSE_WOOD'), HOUSE_DECAY = _constOf('HOUSE_DECAY');
 const P = Villages.__labProbe;
 const CP = P._cropProbe;
 const CL = P._clearProbe || null;
@@ -270,6 +275,14 @@ const M = vils.map(() => ({ harvestN: 0, units: 0, foodEq: 0, sow: 0, fDays: 0, 
   // ★[T193] 장부·주거 게이트 — 전부 정본이 써 둔 값을 **읽기만** 한다
   ledgerDays: 0,                  // `dailyProductionBuf.food > 0` 인 날(장부가 밭을 본 날 · 덩어리인가 흐름인가)
   houseUp: 0, houseDown: 0, houseDelta: 0,   // 집이 는 날 / 준 날 / 순변화(노후화 대 건축)
+  // ★[T207] 목재 수지 — 전부 정본이 써 둔 값을 **읽기만** 한다(판정 0 · 새 수 0)
+  woodProd: 0,        // Σ `dailyProductionBuf.wood` — 벌목 실현 산출
+  woodCons: 0,        // Σ `_consDay.wood` — `_cons` 로 잡히는 유출 **둘뿐**(연료 `:3028` + 건축 `:3047`)
+  woodBuilt: 0,       // Σ 건축이 먹은 목재 = Σ(그날 지은 양) × HOUSE_WOOD(정본에서 읽은 값)
+  builtSum: 0,        // Σ 그날 지은 수용력(= housing_t − housing_{t−1}×(1−HOUSE_DECAY))
+  woodStockSum: 0, woodZeroDays: 0,   // 재고 평균 · **한 채도 못 지을 만큼 모자란 날**(재고 < HOUSE_WOOD)
+  priceWoodSum: 0, priceWoodN: 0,     // 목재 그림자가격 표본(식량과 같은 자리·같은 문법)
+  fuelCovSum: 0,
   d40: null,                      // 40일째 한 장(게이트가 처음 걸리는 그 날 · 카드 ④)
   traj: [] }));                   // ⓒ 궤적(20일마다)
 const IX = new Map(vils.map((v, i) => [v, i]));
@@ -300,14 +313,30 @@ for (let day = 0; day < DAYS; day++) {
     m.prodLedger += _led; if (_led > 0) m.ledgerDays++;
     const _h = ev.housing != null ? +ev.housing : null;
     if (_h != null && m._hPrev != null) { const d = _h - m._hPrev; m.houseDelta += d; if (d > 1e-9) m.houseUp++; else if (d < -1e-9) m.houseDown++; }
+    // ★[T207] 그날 **지은 양** — 정본은 `housing *= (1−HOUSE_DECAY)` 뒤 `housing += built` 이므로
+    //   `built = housing_t − housing_{t−1}×(1−HOUSE_DECAY)` 다(역산 · 새 수 0).
+    if (_h != null && m._hPrev != null && HOUSE_DECAY != null) {
+      const _b = _h - m._hPrev * (1 - HOUSE_DECAY);
+      if (_b > 1e-12) { m.builtSum += _b; if (HOUSE_WOOD != null) m.woodBuilt += _b * HOUSE_WOOD; }
+    }
     if (_h != null) m._hPrev = _h;
+    m.woodProd += +((ev.dailyProductionBuf && ev.dailyProductionBuf.wood) || 0);
+    m.woodCons += +((ev._consDay && ev._consDay.wood) || 0);
+    const _ws = +((ev.storage.wood || 0));
+    m.woodStockSum += _ws; if (HOUSE_WOOD != null && _ws < HOUSE_WOOD) m.woodZeroDays++;
+    m.fuelCovSum += +((ev._fuelCov != null ? ev._fuelCov : 1));
+    if (day % 10 === 0 && typeof world.priceFn === 'function') {
+      try { const _pw = world.priceFn(ev); if (_pw && _pw.wood > 0) { m.priceWoodSum += _pw.wood; m.priceWoodN++; } } catch (e) {}
+    }
     if (day === 40) m.d40 = { N: n, housing: _h != null ? +_h.toFixed(2) : null,
       mapBeds: ev._mapBeds != null ? +ev._mapBeds : null,
       gated: !!(ev._dpDebug && ev._dpDebug.gated), dP: ev._dpDebug ? +(+ev._dpDebug.dP).toFixed(3) : null,
       K: ev._dpDebug ? +(+ev._dpDebug.K).toFixed(1) : null,
       wood: +((ev.storage.wood || 0)).toFixed(1), stone: +((ev.storage.stone || 0)).toFixed(1),
       pebble: +((ev.storage.pebble || 0)).toFixed(1),
-      foodEq: +econ.totalFoodEquivalent(ev).toFixed(1) };
+      foodEq: +econ.totalFoodEquivalent(ev).toFixed(1),
+      woodProd: +m.woodProd.toFixed(1), woodCons: +m.woodCons.toFixed(1), woodBuilt: +m.woodBuilt.toFixed(1),
+      lumber: (ev.counts && ev.counts.lumberjack) || 0, woodZeroDays: m.woodZeroDays };
     m.consFood += +((ev._consDay && ev._consDay.food) || 0);
     const _sp = (ev.surplusEMA && ev.surplusEMA.food) || 0;
     m.surplusSum += _sp; if (_sp < 0) m.surplusNegDays++;
@@ -380,6 +409,13 @@ for (let i = 0; i < world.villages.length; i++) {
     // ★[T186] ⓐ 직업 · ⓑ 수지 · ⓒ 궤적
     jobDays: m.jobDays, prodLedger: +m.prodLedger.toFixed(1), consFood: +m.consFood.toFixed(1),
     ledgerDays: m.ledgerDays, houseUp: m.houseUp, houseDown: m.houseDown, houseDelta: +m.houseDelta.toFixed(2),
+    woodProd: +m.woodProd.toFixed(1), woodCons: +m.woodCons.toFixed(1), woodBuilt: +m.woodBuilt.toFixed(1),
+    woodFuel: +(m.woodCons - m.woodBuilt).toFixed(1), builtSum: +m.builtSum.toFixed(2),
+    woodStockMean: +(m.woodStockSum / DAYS).toFixed(2), woodZeroDays: m.woodZeroDays,
+    woodStockEnd: +((v.storage.wood || 0)).toFixed(1),
+    woodImported: +((v.tradeStats && v.tradeStats.woodImported) || 0).toFixed(1),
+    priceWood: m.priceWoodN ? +(m.priceWoodSum / m.priceWoodN).toFixed(4) : null,
+    fuelCovMean: +(m.fuelCovSum / DAYS).toFixed(4),
     mapBeds: v._mapBeds != null ? +v._mapBeds : null, d40: m.d40,
     surplusMean: +(m.surplusSum / DAYS).toFixed(4), surplusNegDays: m.surplusNegDays,
     famineDays: m.famineDays, clearedFracDays: m.clearedFracDays,
@@ -447,6 +483,17 @@ const out = {
   houseUpTot: per.reduce((a, p) => a + p.houseUp, 0), houseDownTot: per.reduce((a, p) => a + p.houseDown, 0),
   mapBedsSeen: per.filter((p) => p.mapBeds != null).length,
   ledger: econ.T193_LEDGER === true,
+  HOUSE_WOOD, HOUSE_DECAY,   // ★정본에서 읽은 값(계측기에 숫자를 안 적었다는 증거로 같이 담는다)
+  woodProdTot: +per.reduce((a, p) => a + p.woodProd, 0).toFixed(1),
+  woodConsTot: +per.reduce((a, p) => a + p.woodCons, 0).toFixed(1),
+  woodBuiltTot: +per.reduce((a, p) => a + p.woodBuilt, 0).toFixed(1),
+  woodFuelTot: +per.reduce((a, p) => a + p.woodFuel, 0).toFixed(1),
+  woodImportedTot: +per.reduce((a, p) => a + p.woodImported, 0).toFixed(1),
+  woodStockEndTot: +per.reduce((a, p) => a + p.woodStockEnd, 0).toFixed(1),
+  woodZeroDaysTot: per.reduce((a, p) => a + p.woodZeroDays, 0),
+  priceWoodMean: +(per.filter((p) => p.priceWood != null).reduce((a, p) => a + p.priceWood, 0)
+                   / Math.max(1, per.filter((p) => p.priceWood != null).length)).toFixed(4),
+  fuelCovMean: +(per.reduce((a, p) => a + p.fuelCovMean, 0) / Math.max(1, per.length)).toFixed(4),
   caravansTot: per.reduce((a, p) => a + p.caravans, 0),
   floorTot: +world.villages.reduce((a, v) => a + (v._t100FloorTot || 0), 0).toFixed(1),
   floorDaysTot: M.reduce((a, m) => a + m.floorDays, 0),
