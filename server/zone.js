@@ -1386,7 +1386,11 @@ function _liveResourceRow(row) {
   const r = { id, dbId: row.id, x: row.x, y: row.y, type: row.type,
               hp: row.hp, maxHp: row.max_hp, isSeed: false };
   if (Number.isFinite(row.planted_day) && row.planted_day >= 0) r.plantedDay = row.planted_day;
-  if (row.species) r.species = row.species;
+  // ★★[T178 2026-09-12 재민 확정] **필드는 하나다 — `sp`.** 종전엔 여기만 `r.species` 였다.
+  //   §0-ⓐ 실측: 그 이름을 **읽는 곳이 한 군데도 없었다**(시더·클라·열매 비트가 전부 `sp` 를 본다)
+  //   ⇒ 심은 나무는 종을 들고 있으면서 종별 그림도(T148-B) 열매 비트도(T170) 영영 못 받았다.
+  //   DB 열 이름은 `species` 그대로다(새 표 0 · 마이그레이션 0) — 갈아입는 건 **개체 행의 필드**다.
+  if (row.species) r.sp = row.species;
   //   ⚠여기서 **단계를 입히지 않는다.** 이 함수는 부팅 최상위에서도 불리는데 그때 `gameDayNow()` 는
   //     TDZ 이고 econ 시계도 안 섰다(T122 가 `test-mining` 으로 배운 그 자리). 단계는 **볼 때**
   //     — 청크가 켜질 때 — 입힌다. 그게 T122 의 "볼 때 정산"과 같은 규약이기도 하다.
@@ -1423,7 +1427,8 @@ function _shapePlantedAll() {
     const before = r.type;
     _shapeRegrown(r);
     //   모양이 바뀌면 **다시 보낸다** — `resource_spawn` 은 클라에서 `set` 이라 덮어쓰기다(제거 아님).
-    if (r.type !== before) { broadcast({ type: 'resource_spawn', resource: r }); resourcesDirty = true; }
+    //   ★[T178] 묘목이 성목이 되는 그 순간이 열매 비트의 "볼 때"다 — 같은 행에 같이 실어 보낸다.
+    if (r.type !== before) { _fruitStamp(r); broadcast({ type: 'resource_spawn', resource: r }); resourcesDirty = true; }
   }
 }
 let _regrowY = 0;

@@ -253,11 +253,27 @@ const Y = E.yearDaysOf();
     ok(/if \(!\(t\.obj\.maxHp > 0\)\) return out;/.test(vb),
       '★★⑤ 그루터기엔 동사가 안 뜬다 — **물리(`maxHp`)로** 거른다(종류 이름 목록 사본 0)');
     const sp = fs.readFileSync(path.join(ROOT, 'public', 'client', '40-r2-sprites.js'), 'utf8');
-    ok(/assets\/trees\/stump01\.png/.test(sp) && /assets\/trees\/sap_/.test(sp),
-      '★★⑤ 그림은 **T129 가 구운 것**을 그대로 쓴다(축소 그림 임시 0)');
-    for (const f of ['stump01.png', 'sap_pine.png', 'sap_oak.png']) {
-      ok(fs.existsSync(path.join(ROOT, 'public', 'assets', 'trees', f)), `★⑤ 그림이 실제로 있다 — ${f}`);
+    // ★★[T178 2026-09-12] **낡은 소스 계약을 갈았다.** 종전 판정은 `40-r2-sprites.js` 안에
+    //   `/assets/trees/sap_` 라는 **문자열이 있는가**를 물었다. T148-B 가 그 여덟 줄(`SAP_SPRITES` —
+    //   표의 사본)을 지우고 경로를 `'/assets/trees/' + 표가 준 이름 + '.png'` 로 **조립**하게 바꾸자
+    //   문자열이 사라져 이 줄이 빨개졌다 — 묘목은 그대로 뜬다(회귀가 아니다 · §0-ⓑ).
+    //   ⇒ 이제 **정본에게 묻는다**: 표(`tree_species.json`)가 이름을 대고, 클라가 그 이름으로
+    //     경로를 조립하는지와, 표가 댄 그림이 **전부 실재하는지**를 본다. 사본 0 · 종 전수.
+    //   (그린 판이 실제로 그 파일인지는 `e2e-nature` 가 **화면에게** 묻는다 — T148-B ⓐ 문법.)
+    const TBLs = JSON.parse(fs.readFileSync(path.join(ROOT, 'public', 'assets', 'trees', 'tree_species.json'), 'utf8')).species || {};
+    const sapNames = Object.values(TBLs).map((e) => e && e.sapling).filter(Boolean);
+    ok(/assets\/trees\/stump01\.png/.test(sp), '★★⑤ 그루터기는 종 공통 한 장이라 이름이 소스에 있다(`stump01.png`)');
+    ok(/'\/assets\/trees\/' \+ name \+ '\.png'/.test(sp) && /e\.sapling/.test(sp),
+      '★★⑤ 묘목 그림 이름은 **표가 댄다** — 클라는 경로만 조립한다(이름 사본 0)');
+    ok(sapNames.length > 0, '⑤ 전제 — 표가 묘목 그림 이름을 실제로 여럿 댔다(0 이면 아래가 자명 통과다)', `${sapNames.length}종`);
+    {
+      const miss = sapNames.filter((n) => !fs.existsSync(path.join(ROOT, 'public', 'assets', 'trees', n + '.png')));
+      ok(miss.length === 0, `★★⑤ 표가 댄 묘목 그림이 **전부 실재한다** — ${sapNames.length}장`, miss.length ? `없다: ${miss.join(',')}` : sapNames.join(','));
     }
+    ok(fs.existsSync(path.join(ROOT, 'public', 'assets', 'trees', 'stump01.png')), '★⑤ 그루터기 그림이 실제로 있다 — stump01.png');
+    // ★자명 통과 금지 — 없는 이름을 물으면 위 판정이 실제로 빨개진다
+    ok(!fs.existsSync(path.join(ROOT, 'public', 'assets', 'trees', 'sap_nosuchtree.png')),
+      '★⑤ 자명 통과 금지 — 없는 이름은 실제로 **없다고** 답한다(파일 검사가 늘 통과하지 않는다)');
   }
 
   // ═══ ⑥ 앵커 — 출처가 있고, 실시간 환산을 숨기지 않는다 ═════════════════════
