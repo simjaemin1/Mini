@@ -87,6 +87,12 @@ world.villages = []; world.events = [];
 //   ⚠족보 130: 계측기가 이 문을 안 열면 여덟 수는 대체를 못 보고 "안 움직인다"고 말한다.
 //     그건 대체가 없다는 증거가 아니라 **자가 그 층을 안 돈다**는 증거다. `test-trees` 가 두 자리를 다 본다.
 require('../server/trees').attachToWorld(world);
+// ★★[T191 2026-09-12 · 계측 전용 · **env 가 없으면 한 글자도 안 바뀐다**] 도구 마모 배수 주입.
+//   T180 이 엔진에 뚫은 문(`world.toolWearMul`)을 **서버 세계에서도** 한 번 보기 위한 자리다.
+//   카드 T191 ②: 랩 8마을이 못 보는 꼬리(족보 144)를 51마을로 한 번 본다.
+//   ⚠이 줄을 여기 둔 이유: ⓚ 여덟 수를 **다시 구현하지 않기 위해서**다(계측기 정본 재구현 0 · T163 규약).
+//     `T191_TOOLWEAR` 를 안 주면 `world.toolWearMul` 이 없고 엔진 배수는 1 이다 — 기준선 계측기 무변.
+{ const _tw = parseFloat(process.env.T191_TOOLWEAR || ''); if (Number.isFinite(_tw) && _tw > 0 && _tw !== 1) world.toolWearMul = _tw; }
 for (const s of seeds) {
   const ev = econ.createVillage({ ...s.lp, initialPop: P.INITIAL_POP, name: s.name });
   ev._world = world; ev.coord = { x: s.ccx * 2.5, y: s.ccy * 2.5 };
