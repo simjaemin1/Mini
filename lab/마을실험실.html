@@ -2079,8 +2079,23 @@ const TIGERHIDE_PRESTIGE_CAP = 0.1;      // 상한(PRESTIGE_MOD_CAP 0.25 스케�
 // ★★[T157] 행복 → 작업량 배수 — **순수 함수**(하네스가 이걸 직접 물어본다 · 사본 0).
 //   0.5 가 중립 · 대칭 · 상한은 `H` 자신(`1 ± H/2`) — 자르는 값을 따로 짓지 않는다.
 //   ⚠계수 `H` 는 이 파일이 안 갖는다: 부르는 쪽(=랩의 `world.happyWorkW`)이 준다.
+// ★★★[T209 2026-09-12 · 이 함수의 유일한 접점] **하한 1 — 벌점 없이 보너스만**(T196 이 낸 #13 ② 의 길 ⓐ).
+//   T196 이 표로 보인 것: 행복은 **빼는 항이 없어** 0.5 가 중간점이 아니라 채워야 하는 문턱이고,
+//   서버 51마을에서 42~45% 의 마을·일이 그 아래 있다(랩 8마을은 부자 꼬리가 없어 이 구간을 못 보여준다).
+//   T165 를 켜면 그 마을들이 배수 <1 을 맞고 얇은 둘이 넘어갔다(소멸 1·1·0) — 벌점이 **회복 창을 닫았다**(T196 §3).
+//   ⇒ 이 손잡이는 **아래쪽만 잘라낸다**: 배수 = `max(1, 종전 식)`. 위쪽(보너스·상한 `1 + H/2`)은 한 톨도 안 바뀐다.
+//   ⚠**새 수 0** — 1 은 이 함수가 이미 쓰는 중립값이다(주입이 없을 때 `return 1`). 계수 `H` 도 부르는 쪽 그대로.
+//   ⚠**기본 끔** — 손잡이가 없으면 아래 줄은 종전 `return` 한 줄뿐이라 **비트 동일**이다(T100·T193 env 관습 + 랩 `window` 관습).
+function happyFloor1On() {
+  const on = (x) => x !== undefined && x !== null && String(x) !== '' && String(x) !== '0';   // 빈 값은 **끔**(내보내기만 하고 안 채운 판을 켜면 안 된다)
+  const g = (typeof window !== 'undefined') ? window : null;                       // 랩은 `window.L_HAPPY_FLOOR1` (lifeInit 전에 켠다 — 호출 때 읽는다)
+  if (g && on(g.L_HAPPY_FLOOR1)) return true;
+  if (typeof process !== 'undefined' && process.env && on(process.env.L_HAPPY_FLOOR1)) return true;
+  return false;
+}
 function happyWorkMul(happiness, W) {
   if (!(W > 0) || typeof happiness !== 'number' || !isFinite(happiness)) return 1;
+  if (happyFloor1On()) return Math.max(1, Math.max(1 - W * 0.5, Math.min(1 + W * 0.5, 1 + (happiness - 0.5) * W)));   // ★[T209] 아래만 자른다(위는 그대로)
   return Math.max(1 - W * 0.5, Math.min(1 + W * 0.5, 1 + (happiness - 0.5) * W));
 }
 const HEALTH_PROD_W = 0.15;              // (health−0.5)×W → ±0.075(상한 클램프 ±0.1). 완만 — 과채광 억제
@@ -5902,7 +5917,7 @@ module.exports = {
   T100_ANCHOR_N, T100_HARVEST_PER_FARMER_YEAR, T100_K, T100_FIELD_YIELD,   // ★[T100 4판] 앵커 하나 · 실측 하나 · 유도값 하나 · 손잡이 — 생활층(`villages.js`)과 하네스가 **여기서만** 읽는다(사본 0)
   DAILY_FOOD_CONSUMPTION,   // ★[T100 4판] 하루 1인 식량 정본 — `k` 유도의 한 항(하네스가 1.0 을 옮겨 적지 않는다)
   seedFoodDays, SEED_FOOD_DAYS_D0, SEED_FOOD_DAYS_LEGACY,   // ★[T100 5판] 창설 곳간의 밑변 — 하네스가 `crops.js` 에서 다시 유도해 대조한다
-  HEALTH_PROD_W, happyWorkMul,   // ★[T157] 건강→작업량 계수 — 하네스가 "행복은 건강과 같은 문법" 을 대조한다(사본 0)
+  HEALTH_PROD_W, happyWorkMul, happyFloor1On,   // ★[T157] 건강→작업량 계수 — 하네스가 "행복은 건강과 같은 문법" 을 대조한다(사본 0) · ★[T209] 하한 손잡이(하네스가 되돌림을 건다)
   gardenFloorTopUp, T100_GARDEN, T100_GARDEN_CELLS, T100_GARDEN_FLOOR, T193_LEDGER,   // ★[T193] 장부 손잡이 — 하네스가 옮겨 적지 않는다   // ★[T100 5판 ⓒ] 텃밭 하한 — 값·손잡이·유도식을 하네스가 다시 계산한다
   FARMER_BASE: JOBS.farmer.base,   // ★[T100] 농부 1인 기준 산출(옛 밑변 `1.5 × 지력`의 1.5) — 계측기·하네스가 이 수를 옮겨 적지 않게
   // ★[T125] 옷감 보온 가중 — `server/villages.js` 가 주민 착장 재질을 고를 때 **읽는다**.

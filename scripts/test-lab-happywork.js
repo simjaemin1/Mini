@@ -154,5 +154,41 @@ console.log('\n⑦ 랩 배선 — 훅이 세계 생성 때 설치된다');
   for (const k of ['happyWorkMul', 'happyWorkW', '_hwm']) ok(B.indexOf(k) >= 0, `⑦ 번들에 \`${k}\` 가 있다(3사본)`);
 }
 
+// ── ⑧ [T209] 하한 1 — 벌점 없이 보너스만(기본 끔) ───────────────────────────
+console.log('\n⑧ ★[T209] 하한 1 — 아래만 자른다 · 기본 끔 · 되돌림');
+{
+  const f = econ.happyWorkMul;
+  const CODE = codeOf(SRC);
+  // ⓐ 기본 끔 — 손잡이 없이는 종전 줄 하나뿐(비트 동일)
+  ok(econ.happyFloor1On() === false, '⑧ ★★손잡이 미설정 = **끔**', String(econ.happyFloor1On()));
+  const below = [0, 0.1, 0.2, 0.3, 0.4].map((h) => f(h, H));
+  ok(below.every((m) => m < 1), '⑧ 끔이면 0.5 아래가 **배수 <1**(종전 그대로)', below.map((x) => x.toFixed(3)).join(' · '));
+  // ⓑ 켜면 아래가 1 에서 선다 — 자식 프로세스로(족보 128: env 는 모듈 적재 전에)
+  const { execFileSync } = require('child_process');
+  const probe = (env) => JSON.parse(execFileSync(process.execPath, ['-e',
+    `const E=require(${JSON.stringify(path.join(ROOT, 'sim', 'economy-sim.js'))});` +
+    `const H=${H};process.stdout.write(JSON.stringify({on:E.happyFloor1On(),` +
+    `lo:[0,0.1,0.2,0.3,0.4,0.5].map(h=>E.happyWorkMul(h,H)),hi:[0.6,0.8,1.0,2.07].map(h=>E.happyWorkMul(h,H))}));`],
+    { env: Object.assign({}, process.env, env), stdio: 'pipe' }).toString());
+  const OFF = probe({ L_HAPPY_FLOOR1: '' }), ON = probe({ L_HAPPY_FLOOR1: '1' });
+  ok(ON.on === true && ON.lo.every((m) => m >= 1), '⑧ ★★★켜면 **배수 ≥ 1** — 벌점이 없다', ON.lo.map((x) => x.toFixed(3)).join(' · '));
+  ok(ON.lo.slice(0, 5).every((m) => m === 1), '⑧ ★아래는 **정확히 1** 에서 멈춘다(중립값 · 새 수 0)');
+  ok(JSON.stringify(ON.hi) === JSON.stringify(OFF.hi), '⑧ ★★위쪽은 **한 톨도 안 바뀐다**(보너스·상한 그대로)', OFF.hi.map((x) => x.toFixed(4)).join(' · '));
+  // ⓒ 되돌림 — 끈 판이 켜기 전과 같은 수다
+  ok(JSON.stringify(OFF.lo) === JSON.stringify([0, 0.1, 0.2, 0.3, 0.4, 0.5].map((h) => f(h, H))),
+    '⑧ ★★되돌림 — 손잡이를 떼면 **종전 수 그대로**');
+  ok(OFF.lo.some((m) => m < 1) && ON.lo.every((m) => m >= 1), '⑧ ★[자명 통과 금지] 두 판이 **실제로 다르다**');
+  // ⓓ 자리 — 한 곳에서만 자른다 · 종전 식 줄은 손 안 댔다
+  ok(CODE.split('\n').filter((l) => l.indexOf('happyFloor1On()') >= 0 && l.indexOf('function ') < 0).length === 1,
+    '⑧ ★하한이 무는 자리가 **한 줄**이다(선언 말고 부르는 자리 — 부르는 쪽은 무접촉)');
+  ok(probe({ L_HAPPY_FLOOR1: '' }).on === false && probe({ L_HAPPY_FLOOR1: '0' }).on === false,
+    '⑧ ★빈 값·`0` 은 **끔**이다(내보내기만 한 판이 세계를 안 바꾼다)');
+  ok(/return Math\.max\(1 - W \* 0\.5, Math\.min\(1 \+ W \* 0\.5, 1 \+ \(happiness - 0\.5\) \* W\)\);/.test(SRC),
+    '⑧ ★★종전 식 줄은 **글자 그대로 남아 있다**(끄면 그 줄만 돈다)');
+  ok(/happyFloor1On/.test(fs.readFileSync(path.join(ROOT, 'sim', 'economy-engine.browser.js'), 'utf8')),
+    '⑧ ★번들에 따라왔다(3사본)');
+  ok(/happyFloor1On/.test(LAB), '⑧ ★랩 인라인 번들에도 따라왔다(랩은 `window.L_HAPPY_FLOOR1` 만 켠다 — 랩에 수가 없다)');
+}
+
 console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===\n`);
 process.exit(fail ? 1 : 0);

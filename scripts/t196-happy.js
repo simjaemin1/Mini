@@ -125,7 +125,9 @@ if (LABMODE) {
     const b = await chromium.launch();
     const p = await b.newPage();
     if (process.env.T196_NOPRNG !== '1') await p.addInitScript(PRNG(SEED));   // ★랩 하네스 문법(고정 PRNG) · 끄면 랩 제 씨앗만
-    if (HW > 0) await p.addInitScript(`window.L_HAPPYWORK=${HW};`);   // ★랩의 T165 손잡이(있으면)
+    // ★★랩의 기본은 **T165 켬**이다(`L_HAPPYWORK_BASE=0.24`) — 끈 팔을 보려면 **0 을 명시로 넣어야 한다**.
+    if (process.env.T196_HW !== undefined) await p.addInitScript(`window.L_HAPPYWORK=${HW};`);
+    if (process.env.L_HAPPY_FLOOR1 && process.env.L_HAPPY_FLOOR1 !== '0') await p.addInitScript('window.L_HAPPY_FLOOR1=1;');   // ★[T209] 하한 1 — 랩은 손잡이만 켠다(수는 정본)
     const errs = []; p.on('pageerror', (e) => errs.push(String(e.message).slice(0, 200)));
     await p.goto('file://' + LAB, { waitUntil: 'load', timeout: 300000 });
     await p.waitForTimeout(1200);
@@ -309,7 +311,8 @@ function med(a) { if (!a.length) return null; const s = a.slice().sort((x, y) =>
 function pct(x) { return (100 * x).toFixed(0) + '%'; }
 
 function report(tag, rows, eight) {
-  const armTxt = HW > 0 ? `T165 **켠** 팔(H=${HW})` : '**끈** 팔(손잡이 전부 미설정)';
+  const _fl = !!(process.env.L_HAPPY_FLOOR1 && process.env.L_HAPPY_FLOOR1 !== '0');
+  const armTxt = (HW > 0 ? `T165 **켠** 팔(H=${HW})` : '**끈** 팔(손잡이 전부 미설정)') + (_fl ? ' + **하한 1**(T209)' : '');
   console.log(`\n=== T196 행복 항별 귀속 — ${tag} · 시드 ${SEED} · ${DAYS}일 · ${armTxt} · 표본 ${SAMPLE}일 ===`);
   if (eight) {
     console.log(`  여덟 수   인구 ${eight.pop} · 소멸 ${eight.dead}/${eight.ever} · 무기Q ${eight.weapQ.toFixed(0)} · 확장셀 ${eight.expand}`);
